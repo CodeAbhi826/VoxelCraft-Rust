@@ -145,7 +145,16 @@ fn main() {
                                 if let Some((pos, normal)) = player.raycast(&world, 6.0) {
                                     let place = pos + normal;
                                     let block = hotbar[selected_slot];
-                                    world.set_block(place.x, place.y, place.z, block);
+                                    let p_min = player.position - Vec3::new(0.3, 0.0, 0.3);
+                                    let p_max = player.position + Vec3::new(0.3, 1.8, 0.3);
+                                    let b_min = Vec3::new(place.x as f32, place.y as f32, place.z as f32);
+                                    let b_max = b_min + Vec3::ONE;
+                                    let intersects = p_min.x < b_max.x && p_max.x > b_min.x
+                                                   && p_min.y < b_max.y && p_max.y > b_min.y
+                                                   && p_min.z < b_max.z && p_max.z > b_min.z;
+                                    if !intersects {
+                                        world.set_block(place.x, place.y, place.z, block);
+                                    }
                                 }
                             }
                             _ => {}
@@ -191,6 +200,8 @@ fn main() {
                 match state {
                     GameState::Loading => {
                         if !loading_started { world.update_player_position(0, 0, settings.render_distance); loading_started = true; }
+                        world.build_meshes_parallel(0, 0, 4);
+                        process_mesh_uploads(&world, &mut renderer);
                         let (total, ready) = world.chunk_stats();
                         let progress = if loading_total > 0 { ready as f32 / loading_total as f32 } else { 0.0 };
                         if progress > 0.6 || loading_start.elapsed().as_secs() > 8 {
@@ -202,6 +213,7 @@ fn main() {
                     }
                     GameState::StartScreen => {
                         if render_start_screen(&egui_ctx, true) { state = GameState::Playing; lock_mouse(&window, &mut mouse_locked); }
+                        rebuild_dirty_chunks(&world, &player, 2);
                         process_mesh_uploads(&world, &mut renderer);
                     }
                     GameState::Playing => {
@@ -231,15 +243,15 @@ fn main() {
                     }
                 }
 
-                let (view, proj) = if matches!(state, GameState::Playing | GameState::Paused | GameState::StartScreen) {
+                let fog_color = sky_color_for_time(0.3);
+                if matches!(state, GameState::Playing | GameState::Paused | GameState::StartScreen) {
                     let eye = player.eye_position();
                     let view = Mat4::look_to_rh(eye, player.forward_vector(), Vec3::Y);
                     let proj = Mat4::perspective_rh_gl(settings.fov.to_radians(), renderer.config.width as f32 / renderer.config.height as f32, 0.05, 1000.0);
-                    (view, proj)
-                } else { (Mat4::IDENTITY, Mat4::IDENTITY) };
-
-                let fog_color = sky_color_for_time(0.3);
-                let _ = renderer.render(view, proj, player.eye_position(), fog_color, 0.3, &mut egui_renderer, primitives, &screen_descriptor);
+                    let _ = renderer.render(view, proj, player.eye_position(), fog_color, 0.3, &mut egui_renderer, primitives, &screen_descriptor);
+                } else {
+                    let _ = renderer.render_ui_only(&mut egui_renderer, primitives, &screen_descriptor, fog_color);
+                }
             }
             _ => {}
         }
@@ -257,31 +269,22 @@ fn release_mouse(window: &winit::window::Window, locked: &mut bool) {
     *locked = false;
 }
 fn process_mesh_uploads(world: &World, renderer: &mut Renderer) {
-    for p in world.drain_pending_meshes() { renderer.upload_chunk_mesh(p.cx, p.cz, p.mesh); }
+    const MAX_UPLOADS_PER_FRAME: usize = 4;
+    let mut pending = world.drain_pending_meshes();
+    let upload_count = pending.len().min(MAX_UPLOADS_PER_FRAME);
+    for p in pending.drain(..upload_count) {
+        renderer.upload_chunk_mesh(p.cx, p.cz, p.mesh);
+    }
+    for p in pending.into_iter() {
+        world.queue_mesh(p.cx, p.cz, p.mesh);
+    }
 }
 fn rebuild_dirty_chunks(world: &World, player: &Player, budget: usize) {
-    let pcx = (player.position.x as i32).div_euclid(CHUNK_SIZE as i32);
-    let pcz = (player.position.z as i32).div_euclid(CHUNK_SIZE as i32);
-    let mut rebuilt = 0;
-    'outer: for r in 0i32..=8 {
-        for dx in -r..=r {
-            for dz in -r..=r {
-                if dx.abs() != r && dz.abs() != r { continue; }
-                let cx = pcx + dx;
-                let cz = pcz + dz;
-                if let Some(chunk) = world.get_chunk(cx, cz) {
-                    if chunk.read().dirty {
-                        if let Some(mesh) = world.build_mesh(cx, cz) {
-                            world.queue_mesh(cx, cz, mesh);
-                            if let Some(c) = world.get_chunk(cx, cz) { c.write().dirty = false; }
-                            rebuilt += 1;
-                            if rebuilt >= budget { break 'outer; }
-                        }
-                    }
-                }
-            }
-        }
-    }
+    world.build_meshes_parallel(
+        player.position.x as i32,
+        player.position.z as i32,
+        budget,
+    );
 }
 fn update_stats(stats: &mut GameStats, player: &Player, world: &World, _settings: &Settings, fps: f32, frame_ms: f32, renderer: &Renderer) {
     stats.fps = fps as i32;

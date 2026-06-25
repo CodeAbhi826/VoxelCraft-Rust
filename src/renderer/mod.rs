@@ -197,6 +197,7 @@ impl Renderer {
             let mvp_bytes: [[f32; 4]; 4] = mvp.to_cols_array_2d();
             render_pass.set_pipeline(&self.world_pipeline.pipeline);
             render_pass.set_bind_group(0, &self.world_pipeline.bind_group, &[]);
+            render_pass.set_bind_group(1, &self.texture_atlas.bind_group, &[]);
 
             // Update uniforms
             self.queue.write_buffer(&self.world_pipeline.uniform_buf, 0, bytemuck::cast_slice(&[
@@ -280,6 +281,63 @@ impl Renderer {
         self.queue.submit(egui_cmds);
         output.present();
 
+        Ok(())
+    }
+
+    /// Render ONLY the egui UI (no 3D world). Used for Loading/Settings/Logger states.
+    pub fn render_ui_only(
+        &mut self,
+        egui_renderer: &mut Option<egui_wgpu::Renderer>,
+        egui_primitives: Vec<egui::ClippedPrimitive>,
+        screen_descriptor: &egui_wgpu::ScreenDescriptor,
+        clear_color: [f32; 4],
+    ) -> Result<(), wgpu::SurfaceError> {
+        let output = self.surface.get_current_texture()?;
+        let view_tex = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("UI Only Encoder"),
+        });
+
+        // egui buffer upload
+        let mut egui_cmds: Vec<wgpu::CommandBuffer> = Vec::new();
+        if let Some(renderer) = egui_renderer.as_mut() {
+            egui_cmds = renderer.update_buffers(
+                &self.device, &self.queue, &mut encoder,
+                &egui_primitives, screen_descriptor,
+            );
+        }
+
+        // Clear screen + draw egui (no world pass)
+        {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("UI Clear Pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &view_tex,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: clear_color[0] as f64,
+                            g: clear_color[1] as f64,
+                            b: clear_color[2] as f64,
+                            a: 1.0,
+                        }),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+            if let Some(renderer) = egui_renderer.as_ref() {
+                renderer.render(&mut render_pass, &egui_primitives, screen_descriptor);
+            }
+        }
+
+        let main_cmd = encoder.finish();
+        egui_cmds.push(main_cmd);
+        self.queue.submit(egui_cmds);
+        output.present();
         Ok(())
     }
 }

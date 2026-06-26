@@ -204,10 +204,12 @@ impl Renderer {
                 WorldUniforms {
                     mvp: mvp_bytes,
                     cam_pos: [cam_pos.x, cam_pos.y, cam_pos.z],
+                    _pad1: 0.0,
                     fog_color: [fog_color[0], fog_color[1], fog_color[2]],
+                    _pad2: 0.0,
                     fog_start: 16.0 * 6.0,
                     fog_end: 16.0 * 12.0,
-                    _pad: [0.0; 2],
+                    _pad3: [0.0; 2],
                 },
             ]));
 
@@ -424,8 +426,10 @@ fn upload_mesh(device: &wgpu::Device, vertices: &[ChunkVertex], indices: &[u32])
 struct WorldUniforms {
     mvp: [[f32; 4]; 4],
     cam_pos: [f32; 3],
+    _pad1: f32,
     fog_color: [f32; 3],
+    _pad2: f32,
     fog_start: f32,
     fog_end: f32,
-    _pad: [f32; 2],
+    _pad3: [f32; 2],
 }

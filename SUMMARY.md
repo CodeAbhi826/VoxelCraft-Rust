@@ -176,9 +176,10 @@ A systematic audit of the full diff between `main.rs.full` and the fixed code id
 | 5 | 🟠 HIGH | Stutter on world load | `drain_pending_meshes` returns all meshes at once; uploading 25+ meshes in one frame takes 50+ ms | Capped uploads to 4/frame, re-queue remainder via `queue_mesh` |
 | 6 | 🟠 HIGH | Place block inside player causes suffocation | No intersection check between placed block and player AABB | Added AABB overlap test before `set_block` |
 | 7 | 🟡 MEDIUM | StartScreen doesn't build meshes | No `rebuild_dirty_chunks` call in StartScreen state, so chunks remain dirty while on menu | Added `rebuild_dirty_chunks(&world, &player, 2)` in StartScreen block |
+| 8 | 🔴 CRITICAL | Uniform buffer size mismatch (104 bytes vs WGSL 112) | `#[repr(C)] [f32; 3]` has 4-byte alignment, WGSL `vec3<f32>` in `uniform` has 16-byte alignment — causes padding mismatch | Added explicit `_pad1`/`_pad2`/`_pad3` fields after each `vec3` to match WGSL's 16-byte alignment |
 
 ### Final Status
 - `cargo build --release` — 0 errors, 27 warnings (cosmetic)
-- `cargo test` — 30/30 pass (22 unit + 8 integration)
-- `cargo run --release` — window opens, game loop starts, no crash
-- GitHub commit: `d922cf7`
+- `cargo test` — 52/52 pass (22 unit ×2 + 8 integration + 0 doc)
+- `cargo run --release` — window opens, game loop starts, **no validation error**
+- GitHub commit: `d922cf7` (initial), `b4ef8d5` (CI), pending bug #8

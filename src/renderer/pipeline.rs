@@ -15,10 +15,12 @@ pub struct WorldPipeline {
 struct WorldUniforms {
     mvp: [[f32; 4]; 4],
     cam_pos: [f32; 3],
+    _pad1: f32,
     fog_color: [f32; 3],
+    _pad2: f32,
     fog_start: f32,
     fog_end: f32,
-    _pad: [f32; 2],
+    _pad3: [f32; 2],
 }
 
 impl WorldPipeline {
@@ -28,10 +30,12 @@ impl WorldPipeline {
             contents: bytemuck::cast_slice(&[WorldUniforms {
                 mvp: glam::Mat4::IDENTITY.to_cols_array_2d(),
                 cam_pos: [0.0; 3],
+                _pad1: 0.0,
                 fog_color: [0.5, 0.7, 1.0],
+                _pad2: 0.0,
                 fog_start: 96.0,
                 fog_end: 192.0,
-                _pad: [0.0; 2],
+                _pad3: [0.0; 2],
             }]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });

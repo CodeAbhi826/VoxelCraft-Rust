@@ -160,3 +160,25 @@ cargo build --release      # build the game
 | egui for UI | Professional widgets (sliders, panels, scrollbars) for free |
 | Procedural textures only | Zero Mojang or external assets |
 | `Arc<Window>` for surface | Allows `'static` lifetime on wgpu `Surface` |
+
+---
+
+## Deep Bug Audit — Results
+
+A systematic audit of the full diff between `main.rs.full` and the fixed code identified **7 bugs** (3 critical, 4 high). All are now fixed.
+
+| # | Severity | Bug | Root Cause | Fix |
+|---|----------|-----|------------|-----|
+| 1 | 🔴 CRITICAL | Crash on world render: missing bind group 1 | The texture bind group was never set before drawing chunks | Added `render_pass.set_bind_group(1, &self.texture_atlas.bind_group, &[])` in `renderer/mod.rs:200` |
+| 2 | 🔴 CRITICAL | Loading screen stuck at 0% progress | `build_meshes_parallel` was never called in the Loading state, so chunk stats never advanced to 60% | Added `world.build_meshes_parallel(0, 0, 4)` + `process_mesh_uploads` in Loading block |
+| 3 | 🔴 CRITICAL | Crash during Loading/Settings/Logger states | `render_world_pass` was called with identity matrix during states that have no world, triggering Bug #1 | Added `render_ui_only()` method; guard world render on `is_world_visible` flag |
+| 4 | 🟠 HIGH | Serial meshing bottleneck | `rebuild_dirty_chunks` called `build_mesh` one chunk at a time (no parallelism) | Replaced implementation to delegate to `build_meshes_parallel` |
+| 5 | 🟠 HIGH | Stutter on world load | `drain_pending_meshes` returns all meshes at once; uploading 25+ meshes in one frame takes 50+ ms | Capped uploads to 4/frame, re-queue remainder via `queue_mesh` |
+| 6 | 🟠 HIGH | Place block inside player causes suffocation | No intersection check between placed block and player AABB | Added AABB overlap test before `set_block` |
+| 7 | 🟡 MEDIUM | StartScreen doesn't build meshes | No `rebuild_dirty_chunks` call in StartScreen state, so chunks remain dirty while on menu | Added `rebuild_dirty_chunks(&world, &player, 2)` in StartScreen block |
+
+### Final Status
+- `cargo build --release` — 0 errors, 27 warnings (cosmetic)
+- `cargo test` — 30/30 pass (22 unit + 8 integration)
+- `cargo run --release` — window opens, game loop starts, no crash
+- GitHub commit: `d922cf7`

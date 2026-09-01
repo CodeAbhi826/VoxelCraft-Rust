@@ -38,11 +38,13 @@ struct LineUniform {
 }
 
 /// post uniforms: p = (mode, menu_blur, time, aspect), q = (bloom, vig, sat, exposure)
+/// s = (sharpen, scene_texel_x, scene_texel_y, _)
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct PostUniform {
     p: [f32; 4],
     q: [f32; 4],
+    s: [f32; 4],
 }
 
 /// blur direction + texel step for the separable blur passes
@@ -50,6 +52,15 @@ struct PostUniform {
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct AuxUniform {
     dir: [f32; 4],
+}
+
+/// shadow-map globals: light view-projection + params
+/// params = (enabled, strength, fade_start, fade_end)
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct ShadowGlobals {
+    shadow_vp: [[f32; 4]; 4],
+    params: [f32; 4],
 }
 
 /// offscreen scene + bloom pyramid textures (recreated on resize)
@@ -68,7 +79,7 @@ struct PostTargets {
 }
 
 impl PostTargets {
-    fn new(device: &wgpu::Device, w: u32, h: u32, _format: wgpu::TextureFormat) -> Self {
+    fn new(device: &wgpu::Device, w: u32, h: u32, _format: wgpu::TextureFormat, scale: f32) -> Self {
         // LINEAR (Unorm) intermediates: the scene shaders output linear
         // color; the post chain reads/writes raw linear values and the
         // final composite encodes once into the srgb surface. This avoids
@@ -90,11 +101,20 @@ impl PostTargets {
             let v = t.create_view(&wgpu::TextureViewDescriptor::default());
             (t, v)
         };
-        let (scene, scene_view) = make(w, h);
-        let (q, q_view) = make(w / 4, h / 4);
-        let (b1, b1_view) = make(w / 8, h / 8);
-        let (b2, b2_view) = make(w / 8, h / 8);
+        // FSR-lite: all post targets live at the internal render scale —
+        // the composite bilinearly upscales to the surface and sharpens.
+        let sw = ((w as f32) * scale).round().max(1.0) as u32;
+        let sh = ((h as f32) * scale).round().max(1.0) as u32;
+        let (scene, scene_view) = make(sw, sh);
+        let (q, q_view) = make(sw / 4, sh / 4);
+        let (b1, b1_view) = make(sw / 8, sh / 8);
+        let (b2, b2_view) = make(sw / 8, sh / 8);
         PostTargets { scene, scene_view, q, q_view, b1, b1_view, b2, b2_view }
+    }
+
+    /// internal (scaled) size of the scene target
+    fn scene_size(&self) -> (u32, u32) {
+        (self.scene.width(), self.scene.height())
     }
 }
 
@@ -123,6 +143,10 @@ pub struct PostParams {
     pub mode: u8,
     /// menu/panorama background blur 0..1
     pub menu_blur: f32,
+    /// sun shadow strength 0..1 (0 disables the shadow pass entirely)
+    pub shadows: f32,
+    /// RCAS sharpen amount for the FSR-lite upscale (0 = off)
+    pub sharpen: f32,
 }
 
 #[derive(Default)]
@@ -145,6 +169,46 @@ struct Globals {
 @group(0) @binding(0) var<uniform> G: Globals;
 @group(0) @binding(1) var atlas_tex: texture_2d<f32>;
 @group(0) @binding(2) var atlas_samp: sampler;
+@group(0) @binding(3) var shadow_tex: texture_2d<f32>;
+@group(0) @binding(4) var shadow_samp: sampler;
+@group(0) @binding(5) var<uniform> SH: ShadowG;
+
+struct ShadowG {
+    shadow_vp: mat4x4<f32>,
+    // x = enabled, y = strength, zw = distance fade start/end
+    params: vec4<f32>,
+};
+
+fn unpackShadowDepth(c: vec4<f32>) -> f32 {
+    return c.r + c.g / 255.0;
+}
+
+/// 3x3 PCF shadow test. Uses textureLoad (not textureSample) so it is legal
+/// inside non-uniform control flow and works on every backend (incl. WebGL2).
+/// Normal-offset pushes the sample point out of the surface to kill acne.
+fn sampleShadow(world: vec3<f32>, nrm: vec3<f32>) -> f32 {
+    if (SH.params.x < 0.5) { return 0.0; }
+    let n = select(-nrm, nrm, dot(nrm, G.cam.xyz - world) >= 0.0);
+    let sp = world + n * 0.10;
+    let clip = SH.shadow_vp * vec4<f32>(sp, 1.0);
+    let uv = clip.xy * 0.5 + 0.5;
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) { return 0.0; }
+    let d = clip.z;
+    let ts = vec2<i32>(2048, 2048);
+    let base = vec2<i32>(uv * vec2<f32>(2048.0, 2048.0));
+    var acc = 0.0;
+    for (var dy: i32 = -1; dy <= 1; dy = dy + 1) {
+        for (var dx: i32 = -1; dx <= 1; dx = dx + 1) {
+            let c = vec2<i32>(base.x + dx, base.y + dy);
+            let s = unpackShadowDepth(textureLoad(shadow_tex, c, 0));
+            acc = acc + select(1.0, 0.0, d <= s + 0.0006);
+        }
+    }
+    var sh = acc / 9.0;
+    let dist = distance(world, G.cam.xyz);
+    sh = sh * (1.0 - smoothstep(SH.params.z, SH.params.w, dist));
+    return sh;
+}
 
 struct VsOut {
     @builtin(position) pos: vec4<f32>,
@@ -153,6 +217,7 @@ struct VsOut {
     @location(2) tile: vec2<f32>,
     @location(3) light: f32,
     @location(4) sky: f32,
+    @location(5) block: f32,
 };
 
 @vertex
@@ -162,6 +227,7 @@ fn vs_main(
     @location(2) in_tile: vec2<f32>,
     @location(3) in_light: f32,
     @location(4) in_sky: f32,
+    @location(5) in_block: f32,
 ) -> VsOut {
     var out: VsOut;
     out.pos = G.view_proj * vec4<f32>(in_pos, 1.0);
@@ -170,6 +236,7 @@ fn vs_main(
     out.tile = in_tile;
     out.light = in_light;
     out.sky = in_sky;
+    out.block = in_block;
     return out;
 }
 
@@ -179,8 +246,14 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let c = textureSample(atlas_tex, atlas_samp, tuv);
     if (c.a < 0.5) { discard; }
     let day = G.misc.x;
+    // geometric face normal from derivatives (camera-facing sign)
+    var nrm = normalize(cross(dpdx(in.world), dpdy(in.world)));
+    let shadow = sampleShadow(in.world, nrm);
+    let sun_factor = 1.0 - shadow * SH.params.y;
+    // block light (glowstone etc.) is independent of day/night and shadows
+    let dyn_l = in.sky * day * sun_factor;
     // G.misc.w = min-light floor (brightness setting, kills pitch-black caves)
-    let sky_l = max(in.sky * day, G.misc.w);
+    let sky_l = max(max(dyn_l, in.block), G.misc.w);
     var rgb = c.rgb * in.light * sky_l;
     let d = distance(in.world, G.cam.xyz);
     let f = smoothstep(G.fog_color.w, G.sun_dir.w, d);
@@ -204,6 +277,40 @@ struct Globals {
 @group(0) @binding(0) var<uniform> G: Globals;
 @group(0) @binding(1) var atlas_tex: texture_2d<f32>;
 @group(0) @binding(2) var atlas_samp: sampler;
+@group(0) @binding(3) var shadow_tex: texture_2d<f32>;
+@group(0) @binding(4) var shadow_samp: sampler;
+@group(0) @binding(5) var<uniform> SH: ShadowG;
+
+struct ShadowG {
+    shadow_vp: mat4x4<f32>,
+    params: vec4<f32>,
+};
+
+fn unpackShadowDepth(c: vec4<f32>) -> f32 {
+    return c.r + c.g / 255.0;
+}
+
+fn sampleShadow(world: vec3<f32>, nrm: vec3<f32>) -> f32 {
+    if (SH.params.x < 0.5) { return 0.0; }
+    let sp = world + nrm * 0.10;
+    let clip = SH.shadow_vp * vec4<f32>(sp, 1.0);
+    let uv = clip.xy * 0.5 + 0.5;
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) { return 0.0; }
+    let d = clip.z;
+    let base = vec2<i32>(uv * vec2<f32>(2048.0, 2048.0));
+    var acc = 0.0;
+    for (var dy: i32 = -1; dy <= 1; dy = dy + 1) {
+        for (var dx: i32 = -1; dx <= 1; dx = dx + 1) {
+            let c = vec2<i32>(base.x + dx, base.y + dy);
+            let s = unpackShadowDepth(textureLoad(shadow_tex, c, 0));
+            acc = acc + select(1.0, 0.0, d <= s + 0.0006);
+        }
+    }
+    var sh = acc / 9.0;
+    let dist = distance(world, G.cam.xyz);
+    sh = sh * (1.0 - smoothstep(SH.params.z, SH.params.w, dist));
+    return sh;
+}
 
 struct VsOut {
     @builtin(position) pos: vec4<f32>,
@@ -212,6 +319,7 @@ struct VsOut {
     @location(2) tile: vec2<f32>,
     @location(3) light: f32,
     @location(4) sky: f32,
+    @location(5) block: f32,
 };
 
 @vertex
@@ -221,6 +329,7 @@ fn vs_main(
     @location(2) in_tile: vec2<f32>,
     @location(3) in_light: f32,
     @location(4) in_sky: f32,
+    @location(5) in_block: f32,
 ) -> VsOut {
     var out: VsOut;
     var p = in_pos;
@@ -234,6 +343,7 @@ fn vs_main(
     out.tile = in_tile;
     out.light = in_light;
     out.sky = in_sky;
+    out.block = in_block;
     return out;
 }
 
@@ -243,8 +353,13 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let tuv = (in.tile + fract(in.uv + scroll)) / vec2<f32>(16.0, 16.0);
     let c = textureSample(atlas_tex, atlas_samp, tuv);
     let day = G.misc.x;
+    // water is a flat plane — the up normal is exact
+    let shadow = sampleShadow(in.world, vec3<f32>(0.0, 1.0, 0.0));
+    let sun_factor = 1.0 - shadow * SH.params.y;
+    // block light is independent of day/night and shadows
+    let dyn_l = in.sky * day * sun_factor;
     // G.misc.w = min-light floor (brightness setting)
-    let sky_l = max(in.sky * day, G.misc.w);
+    let sky_l = max(max(dyn_l, in.block), G.misc.w);
     var rgb = c.rgb * in.light * sky_l * 1.05;
     let d = distance(in.world, G.cam.xyz);
     let f = smoothstep(G.fog_color.w, G.sun_dir.w, d);
@@ -506,8 +621,11 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
 
 // composite: menu blur + bloom + grade + vignette + chroma + tonemap
 const POST_SHADER: &str = r#"
-struct PostU { p: vec4<f32>, q: vec4<f32> };
+struct PostU { p: vec4<f32>, q: vec4<f32>, s: vec4<f32> };
 // p = (mode, menu_blur, time, aspect)  q = (bloom, vignette, saturation, exposure)
+// s = (sharpen, scene_texel_x, scene_texel_y, unused) — RCAS-style sharpen
+// applied after the bilinear upscale (FSR-lite: scene may be smaller than
+// the surface; sharpening restores edge contrast lost to the upscale).
 @group(0) @binding(0) var scene: texture_2d<f32>;
 @group(0) @binding(1) var bloom: texture_2d<f32>;
 @group(0) @binding(2) var samp: sampler;
@@ -582,6 +700,21 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let d2 = distance(uv, vec2<f32>(0.5, 0.5));
     col = col * (1.0 - U.q.y * smoothstep(0.35, 0.85, d2));
 
+    // FSR-lite RCAS sharpen: 5-tap cross, result clamped to the local
+    // min/max range so high-contrast edges don't halo (AMD RCAS behaviour).
+    if (U.s.x > 0.001) {
+        let ts = vec2<f32>(U.s.y, U.s.z);
+        let n = textureSample(scene, samp, uv + vec2<f32>(0.0, -1.0) * ts).rgb;
+        let so = textureSample(scene, samp, uv + vec2<f32>(0.0, 1.0) * ts).rgb;
+        let e = textureSample(scene, samp, uv + vec2<f32>(1.0, 0.0) * ts).rgb;
+        let w = textureSample(scene, samp, uv + vec2<f32>(-1.0, 0.0) * ts).rgb;
+        let blur = (n + so + e + w) * 0.25;
+        let detail = col - blur;
+        let mx = max(col, max(max(n, so), max(e, w)));
+        let mn = min(col, min(min(n, so), min(e, w)));
+        col = clamp(col + detail * U.s.x, mn, mx);
+    }
+
     // cinematic: ACES-ish filmic curve
     if (mode > 1.5) {
         col = clamp((col * (2.51 * col + 0.03)) / (col * (2.43 * col + 0.59) + 0.14), vec3<f32>(0.0), vec3<f32>(1.0));
@@ -592,6 +725,47 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
 "#;
 
 // ---------------------------------------------------------------- renderer
+
+/// Sun shadow-map pass: renders terrain geometry from an orthographic camera
+/// at the sun, packing linear clip-space depth (0..1, glam orthographic_rh
+/// convention) into two RGBA8 channels (16-bit split: r = hi/255, g = lo).
+/// A plain RGBA8 color target + textureLoad PCF works on EVERY backend
+/// (WebGL2 has no guaranteed comparison samplers / float render targets),
+/// which depth-texture sampling or R32Float targets would not.
+const SHADOW_SHADER: &str = r#"
+struct ShadowG {
+    shadow_vp: mat4x4<f32>,
+    params: vec4<f32>,
+};
+@group(0) @binding(5) var<uniform> SH: ShadowG;
+
+struct VsOut {
+    @builtin(position) pos: vec4<f32>,
+};
+
+@vertex
+fn vs_main(
+    @location(0) in_pos: vec3<f32>,
+    @location(1) in_uv: vec2<f32>,
+    @location(2) in_tile: vec2<f32>,
+    @location(3) in_light: f32,
+    @location(4) in_sky: f32,
+) -> VsOut {
+    var out: VsOut;
+    out.pos = SH.shadow_vp * vec4<f32>(in_pos, 1.0);
+    return out;
+}
+
+@fragment
+fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
+    // orthographic w = 1 → clip.z is already the 0..1 depth
+    let d = clamp(in.pos.z, 0.0, 1.0);
+    let v = d * 255.0;
+    let hi = floor(v);
+    let lo = v - hi;
+    return vec4<f32>(hi / 255.0, lo, 0.0, 1.0);
+}
+"#;
 
 pub(crate) struct ChunkGpu {
     pub v: wgpu::Buffer,
@@ -652,6 +826,17 @@ pub struct Renderer {
     bright_pipe: wgpu::RenderPipeline,
     blur_pipe: wgpu::RenderPipeline,
     post_pipe: wgpu::RenderPipeline,
+    // sun shadow map
+    shadow_tex: wgpu::TextureView,
+    shadow_depth: wgpu::TextureView,
+    shadow_samp: wgpu::Sampler,
+    shadow_buf: wgpu::Buffer,
+    shadow_bg: wgpu::BindGroup,
+    shadow_pipe: wgpu::RenderPipeline,
+    // internal render scale (FSR-lite): scene/bloom/depth sized w*scale
+    pub upscale: f32,
+    /// adapter/backend description for the F3 overlay (e.g. "WebGPU (SwiftShader)")
+    pub backend_name: String,
     pub chunks: HashMap<ChunkPos, ChunkGpu>,
     present_modes: Vec<wgpu::PresentMode>,
     pub vsync: bool,
@@ -778,7 +963,21 @@ impl Renderer {
         let present_modes = caps.present_modes.clone();
         let vsync = present_modes.contains(&wgpu::PresentMode::Fifo);
 
-        let depth = Self::make_depth(&device, config.width, config.height);
+        // backend description for the F3 debug overlay
+        let adapter_info = adapter.get_info();
+        let backend_name = format!("{:?} ({})", adapter_info.backend, {
+            let n = adapter_info.name.clone();
+            if n.is_empty() { "generic".to_string() } else { n }
+        });
+
+        // FSR-lite: start at native scale (1.0); the game raises it via
+        // set_upscale() from the saved settings once running.
+        let upscale = 1.0f32;
+        let depth = Self::make_depth(
+            &device,
+            ((config.width as f32) * upscale).round().max(1.0) as u32,
+            ((config.height as f32) * upscale).round().max(1.0) as u32,
+        );
 
         // atlas
         let atlas_size = wgpu::Extent3d {
@@ -848,8 +1047,87 @@ impl Renderer {
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                     count: None,
                 },
+                // sun shadow map (sampled with textureLoad PCF — NEAREST,
+                // packed depth: bilinear filtering would corrupt the hi/lo split)
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                    count: None,
+                },
+                // light view-projection + params (VERTEX: the shadow depth
+                // pass vertex shader projects with it)
+                wgpu::BindGroupLayoutEntry {
+                    binding: 5,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
             ],
         });
+
+        // shadow map resources: 2048² RGBA8 packed-depth target + its own
+        // depth buffer (color targets cannot depth-test, and the depth
+        // texture is what keeps the FRONT-MOST surface in the map when
+        // geometry overlaps in the light view).
+        let shadow_extent = wgpu::Extent3d {
+            width: 2048,
+            height: 2048,
+            depth_or_array_layers: 1,
+        };
+        let shadow_tex = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("shadow"),
+            size: shadow_extent,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        });
+        let shadow_view = shadow_tex.create_view(&wgpu::TextureViewDescriptor::default());
+        let shadow_depth_tex = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("shadow-depth"),
+            size: shadow_extent,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Depth32Float,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        });
+        let shadow_depth = shadow_depth_tex.create_view(&wgpu::TextureViewDescriptor::default());
+        let mut shadow_samp_d = wgpu::SamplerDescriptor::default();
+        shadow_samp_d.mag_filter = wgpu::FilterMode::Nearest;
+        shadow_samp_d.min_filter = wgpu::FilterMode::Nearest;
+        shadow_samp_d.address_mode_u = wgpu::AddressMode::ClampToEdge;
+        shadow_samp_d.address_mode_v = wgpu::AddressMode::ClampToEdge;
+        let shadow_samp = device.create_sampler(&shadow_samp_d);
+        let shadow_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("shadow-globals"),
+            size: std::mem::size_of::<ShadowGlobals>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let shadow_globals = ShadowGlobals {
+            shadow_vp: Mat4::IDENTITY.to_cols_array_2d(),
+            params: [0.0, 0.0, 0.0, 0.0],
+        };
+        queue.write_buffer(&shadow_buf, 0, bytemuck::bytes_of(&shadow_globals));
 
         let globals_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("globals"),
@@ -878,6 +1156,22 @@ impl Renderer {
                     binding: 2,
                     resource: wgpu::BindingResource::Sampler(&sampler),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(&shadow_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::Sampler(&shadow_samp),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: &shadow_buf,
+                        offset: 0,
+                        size: None,
+                    }),
+                },
             ],
         });
 
@@ -890,6 +1184,7 @@ impl Renderer {
                 wgpu::VertexAttribute { offset: 20, shader_location: 2, format: wgpu::VertexFormat::Float32x2 },
                 wgpu::VertexAttribute { offset: 28, shader_location: 3, format: wgpu::VertexFormat::Float32 },
                 wgpu::VertexAttribute { offset: 32, shader_location: 4, format: wgpu::VertexFormat::Float32 },
+                wgpu::VertexAttribute { offset: 36, shader_location: 5, format: wgpu::VertexFormat::Float32 },
             ],
         };
 
@@ -977,6 +1272,93 @@ impl Renderer {
         });
         let terrain_pipe = make_pipe(&terrain_mod, "vs_main", Some(wgpu::Face::Back), None, depth_state(true, wgpu::CompareFunction::Less));
         let water_pipe = make_pipe(&water_mod, "vs_main", None, opaque_blend, depth_state(false, wgpu::CompareFunction::Less));
+
+        // shadow depth pipeline: same vertex layout as terrain, writes packed
+        // depth into RGBA8. Slope-scaled depth bias (mapped to polygon
+        // offset by the GL backend) supplements the shader-side normal
+        // offset to kill self-shadow acne.
+        //
+        // NOTE: the shadow pass gets its OWN bind group containing ONLY the
+        // light matrix uniform — binding the world group here would make the
+        // shadow texture a RESOURCE inside the very pass that uses it as a
+        // COLOR_TARGET (exclusive) → wgpu validation error.
+        let shadow_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("shadow"),
+            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(SHADOW_SHADER)),
+        });
+        let shadow_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("shadow-bgl"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 5,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+        let shadow_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("shadow-pl"),
+            bind_group_layouts: &[&shadow_bgl],
+            push_constant_ranges: &[],
+        });
+        let shadow_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("shadow-bg"),
+            layout: &shadow_bgl,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 5,
+                resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                    buffer: &shadow_buf,
+                    offset: 0,
+                    size: None,
+                }),
+            }],
+        });
+        let shadow_pipe = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("shadow-pipe"),
+            layout: Some(&shadow_pl),
+            vertex: wgpu::VertexState {
+                module: &shadow_mod,
+                entry_point: "vs_main",
+                compilation_options: Default::default(),
+                buffers: &[terrain_vbl.clone()],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &shadow_mod,
+                entry_point: "fs_main",
+                compilation_options: Default::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: wgpu::TextureFormat::Rgba8Unorm,
+                    blend: None,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: Some(wgpu::Face::Back),
+                polygon_mode: wgpu::PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
+            },
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: wgpu::TextureFormat::Depth32Float,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Less,
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState {
+                    constant: 0,
+                    slope_scale: -1.5,
+                    clamp: 0.0,
+                },
+            }),
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        });
         let sky_pipe = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("sky-pipe"),
             layout: Some(&pipeline_layout),
@@ -1578,7 +1960,7 @@ impl Renderer {
 
         // offscreen targets + bind groups at the real size
         // (blur-h reads q with the H-step aux; blur-v reads b1 with the V-step)
-        let post_targets = PostTargets::new(&device, config.width, config.height, format);
+        let post_targets = PostTargets::new(&device, config.width, config.height, format, upscale);
         let bg_scene = Self::single_tex_bg(&device, &post_bgl, &post_targets.scene_view, &post_samp, &post_buf, &aux_v_buf);
         let bg_q = Self::single_tex_bg(&device, &post_bgl, &post_targets.q_view, &post_samp, &post_buf, &aux_h_buf);
         let bg_b1 = Self::single_tex_bg(&device, &post_bgl, &post_targets.b1_view, &post_samp, &post_buf, &aux_v_buf);
@@ -1627,6 +2009,14 @@ impl Renderer {
             bright_pipe,
             blur_pipe,
             post_pipe,
+            shadow_tex: shadow_view,
+            shadow_depth,
+            shadow_samp,
+            shadow_buf,
+            shadow_bg,
+            shadow_pipe,
+            upscale,
+            backend_name,
             chunks: HashMap::new(),
             present_modes,
             vsync,
@@ -1717,7 +2107,7 @@ impl Renderer {
         let w = self.config.width.max(1);
         let h = self.config.height.max(1);
         let format = self.config.format;
-        let t = PostTargets::new(&self.device, w, h, format);
+        let t = PostTargets::new(&self.device, w, h, format, self.upscale);
         let bg_scene = Self::single_tex_bg(&self.device, &self.post_bgl, &t.scene_view, &self.post_samp, &self.post_buf, &self.aux_v_buf);
         let bg_q = Self::single_tex_bg(&self.device, &self.post_bgl, &t.q_view, &self.post_samp, &self.post_buf, &self.aux_h_buf);
         let bg_b1 = Self::single_tex_bg(&self.device, &self.post_bgl, &t.b1_view, &self.post_samp, &self.post_buf, &self.aux_v_buf);
@@ -1763,8 +2153,33 @@ impl Renderer {
         self.config.width = w;
         self.config.height = h;
         self.surface.configure(&self.device, &self.config);
-        self.depth = Self::make_depth(&self.device, w, h);
+        self.depth = Self::make_depth(
+            &self.device,
+            ((w as f32) * self.upscale).round().max(1.0) as u32,
+            ((h as f32) * self.upscale).round().max(1.0) as u32,
+        );
         self.rebuild_post_targets();
+    }
+
+    /// FSR-lite: set the internal render scale (1.0 = native, 0.75/0.5 =
+    /// upscaled). Rebuilds the offscreen targets + scene depth immediately.
+    pub fn set_upscale(&mut self, scale: f32) {
+        let scale = scale.clamp(0.5, 1.0);
+        if (scale - self.upscale).abs() < 1e-3 {
+            return;
+        }
+        self.upscale = scale;
+        self.depth = Self::make_depth(
+            &self.device,
+            ((self.config.width as f32) * scale).round().max(1.0) as u32,
+            ((self.config.height as f32) * scale).round().max(1.0) as u32,
+        );
+        self.rebuild_post_targets();
+    }
+
+    /// internal (scaled) scene size in px
+    pub fn scene_size(&self) -> (u32, u32) {
+        self.post_targets.scene_size()
     }
 
     /// current surface size in physical px (UI coordinate mapping)
@@ -1920,16 +2335,61 @@ impl Renderer {
         }
 
         // post uniform: mode, menu_blur, time, aspect | bloom, vig, sat, exp
+        // | sharpen, scene texel size (FSR-lite RCAS uses the SCENE-resolution
+        // texel so sharpening matches the upscaled pixels, not surface px)
         let (bloom, vig, sat, exp) = match post.mode {
             1 => (0.55, 0.14, 1.07, 1.0),   // vanilla+
             2 => (0.85, 0.32, 1.16, 1.06),  // cinematic
             _ => (0.0, 0.0, 1.0, 1.0),      // off
         };
+        let (sc_w, sc_h) = self.post_targets.scene_size();
         let post_u = PostUniform {
             p: [post.mode as f32, post.menu_blur.clamp(0.0, 1.0), sky.time, aspect],
             q: [bloom, vig, sat, exp],
+            s: [post.sharpen, 1.0 / sc_w.max(1) as f32, 1.0 / sc_h.max(1) as f32, 0.0],
         };
         self.queue.write_buffer(&self.post_buf, 0, bytemuck::bytes_of(&post_u));
+
+        // ──────────────────────────────── sun shadow camera + globals ──
+        // Ortho box following the player, aligned to the sun. The light-space
+        // center is snapped to shadow-map texels so camera movement doesn't
+        // make the shadows swim. Disabled at night / when strength = 0.
+        let sun_up = sky.sun_dir.y > 0.06;
+        let sh_strength = if sun_up { post.shadows.clamp(0.0, 1.0) } else { 0.0 };
+        let mut sh_globals = ShadowGlobals {
+            shadow_vp: Mat4::IDENTITY.to_cols_array_2d(),
+            params: [0.0, 0.0, 0.0, 0.0],
+        };
+        if sh_strength > 0.0 {
+            const SHADOW_R: f32 = 110.0;
+            const SHADOW_FAR: f32 = 420.0;
+            let texel = 2.0 * SHADOW_R / 2048.0;
+            let center0 = Vec3::new(cam.eye.x, 0.0, cam.eye.z);
+            let light_pos0 = center0 + sky.sun_dir * (SHADOW_FAR * 0.5);
+            let view0 = Mat4::look_at_rh(light_pos0, center0, Vec3::Y);
+            // snap the center in light space to texel grid (kills shimmer)
+            let c_l = view0 * Vec4::new(center0.x, center0.y, center0.z, 1.0);
+            let snapped = Vec3::new(
+                (c_l.x / texel).round() * texel,
+                (c_l.y / texel).round() * texel,
+                c_l.z,
+            );
+            let center = (view0.inverse() * Vec4::new(snapped.x, snapped.y, snapped.z, 1.0))
+                .truncate();
+            let light_pos = center + sky.sun_dir * (SHADOW_FAR * 0.5);
+            let view = Mat4::look_at_rh(light_pos, center, Vec3::Y);
+            let ortho = Mat4::orthographic_rh(
+                -SHADOW_R, SHADOW_R, -SHADOW_R, SHADOW_R, 0.1, SHADOW_FAR,
+            );
+            let sh_vp = ortho * view;
+            sh_globals = ShadowGlobals {
+                shadow_vp: sh_vp.to_cols_array_2d(),
+                params: [1.0, sh_strength, 90.0, 110.0],
+            };
+        }
+        self.queue
+            .write_buffer(&self.shadow_buf, 0, bytemuck::bytes_of(&sh_globals));
+        let shadows_on = sh_strength > 0.0;
 
         // selection line uniform
         let line_u = LineUniform {
@@ -1986,6 +2446,60 @@ impl Renderer {
             .collect();
 
         let mut stats = RenderStats::default();
+
+        // ────────────────────────────────────────── pass 0: sun shadows ──
+        // Depth-only re-render of the terrain from the light's ortho camera
+        // into the 2048² packed-depth map. This runs in its OWN command
+        // encoder + submit: a wgpu command buffer is one usage scope, so the
+        // shadow texture can be COLOR_TARGET here and RESOURCE (sampled via
+        // the world bind group) only in the NEXT encoder, after a queue-order
+        // barrier between the two submits.
+        if shadows_on {
+            let mut sh_encoder = self
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("shadow") });
+            let sh_att = wgpu::RenderPassColorAttachment {
+                view: &self.shadow_tex,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::WHITE), // depth 1.0
+                    store: wgpu::StoreOp::Store,
+                },
+            };
+            let sh_depth_att = wgpu::RenderPassDepthStencilAttachment {
+                view: &self.shadow_depth,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            };
+            {
+                let mut pass = sh_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("shadow"),
+                    color_attachments: &[Some(sh_att)],
+                    depth_stencil_attachment: Some(sh_depth_att),
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                });
+                pass.set_pipeline(&self.shadow_pipe);
+                pass.set_bind_group(0, &self.shadow_bg, &[]);
+                for (pos, dist2) in visible.iter() {
+                    // 110 u shadow radius + one chunk margin (16√2 ≈ 23)
+                    if *dist2 > (110.0 + 23.0) * (110.0 + 23.0) {
+                        continue;
+                    }
+                    let Some(g) = self.chunks.get(pos) else { continue };
+                    if g.n == 0 {
+                        continue;
+                    }
+                    pass.set_vertex_buffer(0, g.v.slice(..));
+                    pass.set_index_buffer(g.i.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..g.n, 0, 0..1);
+                }
+            }
+            self.queue.submit([sh_encoder.finish()]);
+        }
 
         let mut encoder = self
             .device

@@ -30,8 +30,15 @@ pub struct Settings {
     pub brightness: f32, // 0..1
     pub smooth_lighting: bool,
     pub clouds: bool,
-    pub fancy: bool,
+    /// 0 = fast, 1 = fancy, 2 = fabulous (fancy + soft shadows + full post)
+    pub graphics: u8,
     pub shader: u8, // 0 = off, 1 = vanilla+, 2 = cinematic
+    /// directional sun shadows (roadmap: shadow map pass)
+    pub shadows: bool,
+    /// FSR-lite internal render scale index: 0 = 100%, 1 = 75%, 2 = 50%
+    pub upscale: u8,
+    /// frame limiter: 0 = uncapped, else a fps ceiling (30/60/120)
+    pub maxfps: u8,
 }
 
 impl Default for Settings {
@@ -47,17 +54,47 @@ impl Default for Settings {
             brightness: 0.10,
             smooth_lighting: true,
             clouds: true,
-            fancy: true,
+            graphics: 1,
             shader: 1,
+            shadows: true,
+            upscale: 0,
+            maxfps: 0,
         }
     }
 }
 
 impl Settings {
+    /// effective shadow strength (fabulous = softer/stronger, fast = off)
+    pub fn shadow_strength(&self) -> f32 {
+        if !self.shadows || self.graphics == 0 {
+            0.0
+        } else if self.graphics == 2 {
+            0.72
+        } else {
+            0.55
+        }
+    }
+    /// effective internal render scale
+    pub fn upscale_factor(&self) -> f32 {
+        match self.upscale {
+            1 => 0.75,
+            2 => 0.5,
+            _ => 1.0,
+        }
+    }
+    /// effective frame cap (0 = uncapped)
+    pub fn fps_cap(&self) -> f32 {
+        match self.maxfps {
+            1 => 30.0,
+            2 => 60.0,
+            3 => 120.0,
+            _ => 0.0,
+        }
+    }
     /// serialize as k=v; pairs (parsed without serde)
     pub fn serialize(&self) -> String {
         format!(
-            "rd={};sens={:.3};vol={:.3};fov={:.1};bright={:.3};smooth={};clouds={};fancy={};shader={}",
+            "rd={};sens={:.3};vol={:.3};fov={:.1};bright={:.3};smooth={};clouds={};graphics={};shader={};shadows={};upscale={};maxfps={}",
             self.render_distance,
             self.sensitivity,
             self.volume,
@@ -65,8 +102,11 @@ impl Settings {
             self.brightness,
             self.smooth_lighting as u8,
             self.clouds as u8,
-            self.fancy as u8,
-            self.shader
+            self.graphics,
+            self.shader,
+            self.shadows as u8,
+            self.upscale,
+            self.maxfps
         )
     }
     pub fn deserialize(s: &str) -> Settings {
@@ -83,8 +123,13 @@ impl Settings {
                 "bright" => st.brightness = v.parse().unwrap_or(st.brightness).clamp(0.0, 1.0),
                 "smooth" => st.smooth_lighting = v == "1",
                 "clouds" => st.clouds = v == "1",
-                "fancy" => st.fancy = v == "1",
+                // legacy key from older saves
+                "fancy" => st.graphics = if v == "1" { 1 } else { 0 },
+                "graphics" => st.graphics = v.parse().unwrap_or(st.graphics).min(2),
                 "shader" => st.shader = v.parse().unwrap_or(st.shader).min(2),
+                "shadows" => st.shadows = v == "1",
+                "upscale" => st.upscale = v.parse().unwrap_or(st.upscale).min(2),
+                "maxfps" => st.maxfps = v.parse().unwrap_or(st.maxfps).min(3),
                 _ => {}
             }
         }
@@ -200,12 +245,26 @@ pub struct GameApp {
     place_timer: f32,
     show_debug: bool,
     show_help: bool,
+    /// creative-style block picker overlay (E key)
+    picker_open: bool,
+    /// last pickr grid geometry for hit-testing clicks
+    picker_geom: Option<crate::ui::PickerGeom>,
+    /// rolling frame times (ms) for the F3 frame-time graph
+    frame_times: std::collections::VecDeque<f32>,
     item_toast: Option<(String, f32)>,
     last_ui_t: f32,
     last_frame_t: f32,
+    last_draw_t: f32,
     fps: f32,
     frames: u32,
     fps_t: f32,
+    /// rolling 100-frame window: min / avg / max fps + last frame ms
+    fps_min: f32,
+    fps_avg: f32,
+    fps_max: f32,
+    frame_ms: f32,
+    /// game-time of the previous draw() (for the frame-time history)
+    draw_game_t: f32,
     stats: RenderStats,
     spawn_snapped: bool,
     faced_land: bool,
@@ -241,7 +300,7 @@ pub fn now_secs() -> f32 {
 impl GameApp {
     pub async fn new(window: &'static winit::window::Window) -> Self {
         let atlas = crate::textures::generate_atlas();
-        let renderer = Renderer::new(window, &atlas).await;
+        let mut renderer = Renderer::new(window, &atlas).await;
         let bank = SoundBank::generate();
         let world = World::new(crate::world::World::random_seed());
         let spawn = world.find_spawn();
@@ -263,6 +322,9 @@ impl GameApp {
         let mut player = player;
         player.fov = settings.fov.to_radians();
         player.fov_cur = player.fov;
+
+        // apply persisted render scale (FSR-lite) before the first frame
+        renderer.set_upscale(settings.upscale_factor());
 
         let work = {
             #[cfg(not(target_arch = "wasm32"))]
@@ -319,12 +381,21 @@ impl GameApp {
             place_timer: 0.0,
             show_debug: false,
             show_help: false,
+            picker_open: false,
+            picker_geom: None,
+            frame_times: std::collections::VecDeque::new(),
             item_toast: None,
             last_ui_t: -1.0,
             last_frame_t: now_secs(),
+            last_draw_t: 0.0,
             fps: 0.0,
             frames: 0,
             fps_t: now_secs(),
+            fps_min: 0.0,
+            fps_avg: 0.0,
+            fps_max: 0.0,
+            frame_ms: 0.0,
+            draw_game_t: 0.0,
             stats: RenderStats::default(),
             spawn_snapped: false,
             faced_land: false,
@@ -379,7 +450,11 @@ impl GameApp {
                 WindowEvent::MouseInput { state, button, .. } => {
                     let pressed = state == ElementState::Pressed;
                     let (cx, cy) = (self.cursor.0 as i32, self.cursor.1 as i32);
-                    if self.screen == Screen::Game {
+                    if self.picker_open && self.screen == Screen::Game {
+                        if pressed {
+                            self.picker_click(cx, cy);
+                        }
+                    } else if self.screen == Screen::Game {
                         self.game_mouse(button, pressed);
                     } else {
                         self.menu_mouse(button, pressed, cx, cy);
@@ -411,6 +486,16 @@ impl GameApp {
                     // handled by the JS input shim
                 }
                 WindowEvent::RedrawRequested => {
+                    // optional frame limiter: skip draws that arrive too soon
+                    // (update still runs at full RAF rate — only drawing is
+                    // throttled, which is where the GPU time goes)
+                    let cap = self.settings.fps_cap();
+                    let now = now_secs();
+                    if cap > 0.0 && now - self.last_draw_t < (1.0 / cap) - 0.001 {
+                        self.window.request_redraw();
+                        return;
+                    }
+                    self.last_draw_t = now;
                     self.draw();
                 }
                 WindowEvent::Focused(false) => {
@@ -461,7 +546,7 @@ impl GameApp {
                     }
                 }
                 WebEvent::MouseDelta { dx, dy } => {
-                    if self.screen == Screen::Game {
+                    if self.screen == Screen::Game && !self.picker_open {
                         self.input.add_mouse(dx, dy);
                     }
                 }
@@ -476,7 +561,12 @@ impl GameApp {
                     }
                 }
                 WebEvent::Button { button, pressed, x, y } => {
-                    if self.screen == Screen::Game {
+                    if self.picker_open && self.screen == Screen::Game {
+                        if pressed {
+                            let (ux, uy) = self.css_to_ui(x, y);
+                            self.picker_click(ux as i32, uy as i32);
+                        }
+                    } else if self.screen == Screen::Game {
                         // drag-look fallback path (pointer lock unavailable)
                         let b = match button {
                             0 => MouseButton::Left,
@@ -502,7 +592,7 @@ impl GameApp {
                     self.pointer_locked = locked;
                     if locked {
                         self.ever_locked = true;
-                    } else if self.screen == Screen::Game {
+                    } else if self.screen == Screen::Game && !self.picker_open {
                         // browser released the lock (Esc) → pause menu
                         self.enter_pause();
                     }
@@ -554,7 +644,8 @@ impl GameApp {
 
     fn key_action(&mut self, code: winit::keyboard::KeyCode, pressed: bool, repeat: bool) {
         use winit::keyboard::KeyCode;
-        let in_game = self.screen == Screen::Game;
+        // movement only when actually in the game world (not in the picker)
+        let in_game = self.screen == Screen::Game && !self.picker_open;
         match code {
             KeyCode::KeyW => self.input.fwd = pressed && in_game,
             KeyCode::KeyS => self.input.back = pressed && in_game,
@@ -571,15 +662,30 @@ impl GameApp {
             KeyCode::Escape => {
                 if pressed {
                     match self.screen {
-                        Screen::Game => self.enter_pause(),
+                        Screen::Game => {
+                            if self.picker_open {
+                                self.close_picker();
+                            } else {
+                                self.enter_pause();
+                            }
+                        }
                         Screen::Pause => self.resume_game(),
                         Screen::Options => self.close_options(),
                         _ => {}
                     }
                 }
             }
+            KeyCode::KeyE => {
+                if pressed && !repeat && self.screen == Screen::Game {
+                    if self.picker_open {
+                        self.close_picker();
+                    } else {
+                        self.open_picker();
+                    }
+                }
+            }
             KeyCode::F3 => {
-                if pressed && !repeat && in_game {
+                if pressed && !repeat && self.screen == Screen::Game {
                     self.show_debug = !self.show_debug;
                     self.ui.dirty = true;
                 }
@@ -667,6 +773,60 @@ impl GameApp {
                 }
             }
             _ => {}
+        }
+    }
+
+    // ------------------------------------------------------ block picker --
+
+    fn open_picker(&mut self) {
+        self.picker_open = true;
+        self.input = Input::default();
+        // release the pointer so the cursor can select blocks; tell the JS
+        // shim we're in a "picker" state so canvas clicks are forwarded as
+        // button events instead of lock requests
+        #[cfg(target_arch = "wasm32")]
+        {
+            crate::web_input::release_pointer_lock();
+            crate::web_input::set_screen("picker");
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let _ = self
+                .window
+                .set_cursor_grab(winit::window::CursorGrabMode::None);
+            self.window.set_cursor_visible(true);
+        }
+        self.ui.dirty = true;
+    }
+
+    fn close_picker(&mut self) {
+        self.picker_open = false;
+        self.picker_geom = None;
+        // back to the plain game state in the shim
+        #[cfg(target_arch = "wasm32")]
+        crate::web_input::set_screen("game");
+        // re-capture the mouse (the E keypress counts as user activation)
+        #[cfg(target_arch = "wasm32")]
+        crate::web_input::request_pointer_lock();
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let _ = self
+                .window
+                .set_cursor_grab(winit::window::CursorGrabMode::Locked);
+            self.window.set_cursor_visible(false);
+        }
+        self.ui.dirty = true;
+    }
+
+    /// click inside the picker grid → assign that block to the selected slot
+    fn picker_click(&mut self, ux: i32, uy: i32) {
+        self.unlock_audio();
+        let Some(g) = &self.picker_geom else { return };
+        if let Some(idx) = g.slot_at(ux, uy) {
+            let b = PICKER_BLOCKS[idx];
+            self.player.hotbar[self.player.selected] = b;
+            self.item_toast = Some((name(b).to_string(), 2.0));
+            self.ui.dirty = true;
         }
     }
 
@@ -868,7 +1028,20 @@ impl GameApp {
                 self.after_settings_change();
             }
             ID_OPT_GRAPHICS => {
-                self.settings.fancy = !self.settings.fancy;
+                self.settings.graphics = (self.settings.graphics + 1) % 3;
+                self.after_settings_change();
+            }
+            ID_OPT_SHADOWS => {
+                self.settings.shadows = !self.settings.shadows;
+                self.after_settings_change();
+            }
+            ID_OPT_UPSCALE => {
+                self.settings.upscale = (self.settings.upscale + 1) % 3;
+                self.renderer.set_upscale(self.settings.upscale_factor());
+                self.after_settings_change();
+            }
+            ID_OPT_MAXFPS => {
+                self.settings.maxfps = (self.settings.maxfps + 1) % 4;
                 self.after_settings_change();
             }
             ID_OPT_SMOOTH => {
@@ -931,7 +1104,10 @@ impl GameApp {
                         }
                         ID_OPT_VOL => set_slider(w, &format!("VOLUME: {}%", (s.volume * 100.0).round() as i32), s.volume),
                         ID_OPT_SHADER => set_button_value(w, ["OFF", "VANILLA+", "CINEMATIC"][s.shader as usize]),
-                        ID_OPT_GRAPHICS => set_button_value(w, if s.fancy { "FANCY" } else { "FAST" }),
+                        ID_OPT_GRAPHICS => set_button_value(w, match s.graphics { 0 => "FAST", 2 => "FABULOUS!", _ => "FANCY" }),
+                        ID_OPT_SHADOWS => set_button_value(w, if s.shadows { "ON" } else { "OFF" }),
+                        ID_OPT_UPSCALE => set_button_value(w, match s.upscale { 1 => "75%", 2 => "50%", _ => "OFF" }),
+                        ID_OPT_MAXFPS => set_button_value(w, match s.maxfps { 1 => "30", 2 => "60", 3 => "120", _ => "VSYNC" }),
                         ID_OPT_SMOOTH => set_button_value(w, if s.smooth_lighting { "ON" } else { "OFF" }),
                         ID_OPT_CLOUDS => set_button_value(w, if s.clouds { "ON" } else { "OFF" }),
                         _ => {}
@@ -1057,8 +1233,16 @@ impl GameApp {
             }
         }
 
-        // UI rebuild cadence: snappier in menus (hover), relaxed in game
-        let cadence = if self.screen == Screen::Game { 0.15 } else { 0.05 };
+        // UI rebuild cadence: snappier in menus (hover) + picker + live F3
+        let live_debug = self.screen == Screen::Game && self.show_debug;
+        let cadence = if self.screen == Screen::Game
+            && !self.picker_open
+            && !live_debug
+        {
+            0.15
+        } else {
+            0.05
+        };
         if self.ui.dirty && self.time - self.last_ui_t > cadence {
             self.rebuild_ui();
         }
@@ -1098,7 +1282,10 @@ impl GameApp {
             ("shader", StatsVal::F(self.settings.shader as f32)),
             ("clouds", StatsVal::B(self.settings.clouds)),
             ("smooth", StatsVal::B(self.settings.smooth_lighting)),
-            ("fancy", StatsVal::B(self.settings.fancy)),
+            ("fancy", StatsVal::B(self.settings.graphics >= 1)),
+            ("graphics", StatsVal::F(self.settings.graphics as f32)),
+            ("shadows", StatsVal::B(self.settings.shadows)),
+            ("upscale", StatsVal::F(self.settings.upscale_factor())),
             ("edits", StatsVal::F(self.edits as f32)),
             ("fwd", StatsVal::B(self.input.fwd)),
             ("back", StatsVal::B(self.input.back)),
@@ -1110,6 +1297,9 @@ impl GameApp {
             ("hasTarget", StatsVal::B(self.target.is_some())),
             ("breakTimer", StatsVal::F(self.break_timer)),
             ("hover", StatsVal::F(self.hover.map(|h| h as f32).unwrap_or(-1.0))),
+            ("picker", StatsVal::B(self.picker_open)),
+            ("frameMs", StatsVal::F(self.frame_ms)),
+            ("histLen", StatsVal::F(self.frame_times.len() as f32)),
             ("dragging", StatsVal::F(self.dragging.map(|d| d as f32).unwrap_or(-1.0))),
         ]);
     }
@@ -1356,20 +1546,36 @@ impl GameApp {
                 }
             };
             let lines = vec![
-                format!("VOXELCRAFT (Rust + wgpu) {} fps", self.fps as i32),
-                format!("XYZ: {:.1} / {:.1} / {:.1}", p.pos.x, p.pos.y, p.pos.z),
-                format!("Chunk: {} {}  Facing: {}", pc.0, pc.1, facing),
                 format!(
-                    "Chunks: {} drawn / {} loaded  Tris: {}",
+                    "VOXELCRAFT (Rust + wgpu)  {} fps  ({} min / {} avg / {} max)",
+                    self.fps as i32,
+                    self.fps_min as i32,
+                    self.fps_avg as i32,
+                    self.fps_max as i32
+                ),
+                format!(
+                    "Frame: {:.2} ms  Chunks: {} drawn / {} loaded  Tris: {}",
+                    self.frame_ms,
                     self.stats.chunks,
                     self.world.chunks.len(),
                     self.stats.tris
                 ),
+                format!("XYZ: {:.2} / {:.2} / {:.2}", p.pos.x, p.pos.y, p.pos.z),
+                format!("Block: {} {} {}  ({})", p.pos.x as i32, p.pos.y as i32, p.pos.z as i32, ""),
+                format!("Chunk: {} {}  Facing: {}  Light: sky {}",
+                    pc.0, pc.1, facing,
+                    "-"),
                 format!("Biome: {}", biome),
                 format!(
                     "Day cycle: {:.0}%  Fly: {}",
                     self.day_time * 100.0,
                     if self.player.flying { "on" } else { "off" }
+                ),
+                format!(
+                    "Targeted: {}",
+                    self.target
+                        .map(|(_, b, _)| name(b))
+                        .unwrap_or("none")
                 ),
                 format!(
                     "RD: {}  FOV: {:.0}  Vol: {:.0}%  Bright: {:.0}%",
@@ -1379,6 +1585,13 @@ impl GameApp {
                     self.settings.brightness * 100.0
                 ),
                 format!(
+                    "Graphics: {}  Shadows: {}  Upscale: {:.0}%  MaxFPS: {}",
+                    ["fast", "fancy", "fabulous"][self.settings.graphics as usize],
+                    if self.settings.shadows { "on" } else { "off" },
+                    self.settings.upscale_factor() * 100.0,
+                    match self.settings.maxfps { 0 => "vsync", 1 => "30", 2 => "60", _ => "120" }
+                ),
+                format!(
                     "Shader: {}  Clouds: {}  Smooth: {}  VSync: {}",
                     ["off", "vanilla+", "cinematic"][self.settings.shader as usize],
                     if self.settings.clouds { "on" } else { "off" },
@@ -1386,12 +1599,23 @@ impl GameApp {
                     if self.renderer.vsync { "on" } else { "off" }
                 ),
                 format!("Edits: {} (xp lvl {})  Seed: {}", self.edits, level, self.world.seed),
+                format!("Backend: {}  Scene: {}x{}", self.renderer.backend_name, self.renderer.scene_size().0, self.renderer.scene_size().1),
             ];
             self.ui.debug(&lines);
+            // Sodium-style frame-time graph right under the text block
+            self.ui.frame_graph(7 + lines.len() as i32 * 14 + 8, self.frame_times.as_slices().0);
         }
 
         if self.show_help {
             self.ui.help();
+        }
+
+        // block picker overlay (E) — sits above the HUD
+        if self.picker_open {
+            let g = self.ui.picker(self.cursor, &self.atlas);
+            self.picker_geom = Some(g);
+        } else {
+            self.picker_geom = None;
         }
 
         // mouse-capture hint when unlocked and no drag-look fallback
@@ -1408,11 +1632,32 @@ impl GameApp {
     fn draw(&mut self) {
         // fps = real RENDERED frame rate (draws ride RAF on the web)
         self.frames += 1;
+        // rolling frame-time history (Sodium-style F3 graph + min/avg/max).
+        // Uses the GAME-TIME delta between draws: the wall-clock
+        // `last_draw_t` is stamped after the last `self.time` advance in the
+        // same RAF tick, so time - last_draw_t reads ≈ 0 on wasm.
+        let t_draw = self.time;
+        self.frame_ms = (t_draw - self.draw_game_t).max(0.0) * 1000.0;
+        if self.frame_ms > 1.0 && self.frame_ms < 500.0 {
+            self.frame_times.push_back(self.frame_ms);
+            while self.frame_times.len() > 180 {
+                self.frame_times.pop_front();
+            }
+        }
+        self.draw_game_t = t_draw;
         if self.time - self.fps_t > 0.5 {
             self.fps = self.frames as f32 / (self.time - self.fps_t);
             self.frames = 0;
             self.fps_t = self.time;
             self.ui.dirty = true;
+        }
+        // recompute the rolling min/avg/max once per FPS window
+        if !self.frame_times.is_empty() {
+            let n = self.frame_times.len() as f32;
+            let total: f32 = self.frame_times.iter().sum();
+            self.fps_avg = 1000.0 / (total / n);
+            self.fps_min = 1000.0 / self.frame_times.iter().cloned().fold(f32::INFINITY, f32::max);
+            self.fps_max = 1000.0 / self.frame_times.iter().cloned().fold(0.0, f32::min);
         }
         // Only log the first frames of each actual game instance — the FPS
         // window counter (`self.frames`) resets every 0.5 s, so without the
@@ -1517,8 +1762,13 @@ impl GameApp {
             &sky,
             &mut self.ui,
             selection,
-            &crate::render::PostParams { mode: self.settings.shader, menu_blur },
-            self.settings.clouds && self.settings.fancy,
+            &crate::render::PostParams {
+                mode: self.settings.shader,
+                menu_blur,
+                shadows: self.settings.shadow_strength(),
+                sharpen: if self.settings.upscale > 0 { 0.35 } else { 0.0 },
+            },
+            self.settings.clouds && self.settings.graphics >= 1,
         );
     }
 }
@@ -1551,6 +1801,7 @@ fn keycode_from_web(code: &str) -> Option<winit::keyboard::KeyCode> {
         "ControlRight" => KeyCode::ControlRight,
         "Escape" => KeyCode::Escape,
         "F3" => KeyCode::F3,
+        "KeyE" => KeyCode::KeyE,
         "KeyH" => KeyCode::KeyH,
         "KeyV" => KeyCode::KeyV,
         "BracketLeft" => KeyCode::BracketLeft,

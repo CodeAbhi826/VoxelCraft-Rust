@@ -19,6 +19,9 @@ pub struct Vertex {
     pub light: f32,
     /// skylight 0..1
     pub sky: f32,
+    /// block light 0..1 (emissive sources: glowstone) — independent of
+    /// day/night and sun shadows in the shader
+    pub block: f32,
 }
 
 pub struct MeshData {
@@ -186,6 +189,82 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
         }
     }
 
+    // ------------------------------------------------ block light
+    // Emissive blocks (glowstone = 15) light their surroundings; BFS
+    // flood-decrements like MC's block-light channel. Kept separate from
+    // skylight because it is independent of time-of-day and sun shadows.
+    let mut blight = vec![0u8; PAD * PAD * 256];
+    let mut bqueue: VecDeque<(usize, u8)> = VecDeque::new();
+    for y in 0..256usize {
+        for z in 0..PAD {
+            for x in 0..PAD {
+                let b = blocks[pidx(x, y, z)];
+                let e = emissive(b);
+                if e == 0 {
+                    continue;
+                }
+                // seed the non-opaque neighbors at full source level
+                let lvl = e.min(15);
+                macro_rules! seed {
+                    ($x:expr, $y:expr, $z:expr) => {{
+                        if $x < PAD && $z < PAD && $y < 256 {
+                            let np = pidx($x, $y, $z);
+                            if !is_opaque(blocks[np]) && blight[np] < lvl {
+                                blight[np] = lvl;
+                                bqueue.push_back((np, lvl));
+                            }
+                        }
+                    }};
+                }
+                if x > 0 { seed!(x - 1, y, z); }
+                if x + 1 < PAD { seed!(x + 1, y, z); }
+                if y > 0 { seed!(x, y - 1, z); }
+                if y + 1 < 256 { seed!(x, y + 1, z); }
+                if z > 0 { seed!(x, y, z - 1); }
+                if z + 1 < PAD { seed!(x, y, z + 1); }
+            }
+        }
+    }
+    // BFS flood (lateral + vertical, decrementing)
+    while let Some((p, l)) = bqueue.pop_front() {
+        if l < 2 {
+            continue;
+        }
+        let x = p % PAD;
+        let z = (p / PAD) % PAD;
+        let y = p / (PAD * PAD);
+        let nl = l - 1;
+        macro_rules! bprop {
+            ($x:expr, $y:expr, $z:expr) => {{
+                let np = pidx($x, $y, $z);
+                if !is_opaque(blocks[np]) && blight[np] < nl {
+                    blight[np] = nl;
+                    if nl > 1 {
+                        bqueue.push_back((np, nl));
+                    }
+                }
+            }};
+        }
+        if x > 0 {
+            bprop!(x - 1, y, z);
+        }
+        if x + 1 < PAD {
+            bprop!(x + 1, y, z);
+        }
+        if y > 0 {
+            bprop!(x, y - 1, z);
+        }
+        if y + 1 < 256 {
+            bprop!(x, y + 1, z);
+        }
+        if z > 0 {
+            bprop!(x, y, z - 1);
+        }
+        if z + 1 < PAD {
+            bprop!(x, y, z + 1);
+        }
+    }
+
     // ------------------------------------------------ greedy meshing
     let mut solid_v: Vec<Vertex> = Vec::with_capacity(8192);
     let mut solid_i: Vec<u32> = Vec::with_capacity(12288);
@@ -222,9 +301,10 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
                         if b == WATER {
                             if face_visible(WATER, nb) {
                                 let l = getl(&light, ncell[0], ncell[1], ncell[2]) as u64;
+                                let bl = getl(&blight, ncell[0], ncell[1], ncell[2]) as u64;
                                 let above = getb(&blocks, cell[0], cell[1] + 1, cell[2]);
                                 let aw = if above == WATER { 1u64 } else { 0u64 };
-                                wmask[vi * du + ui] = 1 | (l << 1) | (aw << 6);
+                                wmask[vi * du + ui] = 1 | (l << 1) | (aw << 6) | (bl << 7);
                             }
                             continue;
                         }
@@ -233,7 +313,8 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
                             continue;
                         }
 
-                        let nl = getl(&light, ncell[0], ncell[1], ncell[2]) as u64;
+                        // (skylight at the neighbor cell is folded into the
+                        // per-corner sky_pack below; block light joins it)
 
                         // AO + corner sky, absolute (u, v) coords in the neighbor layer
                         let mut ao = [0u64; 4];
@@ -277,8 +358,11 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
                         }
                         let ao_pack = (ao[0] << 6) | (ao[1] << 4) | (ao[2] << 2) | ao[3];
                         let sky_pack = (sky[0] << 12) | (sky[1] << 8) | (sky[2] << 4) | sky[3];
+                        // block light at the face's neighbor cell (bits 0..3,
+                        // flat per face — no per-corner smoothing needed)
+                        let bl = getl(&blight, ncell[0], ncell[1], ncell[2]) as u64;
 
-                        let key = ((b as u64) << 28) | (ao_pack << 20) | (sky_pack << 4) | nl;
+                        let key = ((b as u64) << 28) | (ao_pack << 20) | (sky_pack << 4) | bl;
                         smask[vi * du + ui] = key;
                     }
                 }
@@ -329,6 +413,7 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
                                 tile,
                                 light: 0.85,
                                 sky,
+                                block: getl(&blight, lx as i32, ly as i32, lz as i32) as f32 / 15.0,
                             });
                         }
                         for i in [0u32, 1, 2, 0, 2, 3] {
@@ -386,11 +471,23 @@ fn greedy_merge(
                 h += 1;
             }
 
-            let (block, ao_pack, sky_pack, water_aw) = if is_solid {
-                (((key >> 28) & 0xff) as u8, (key >> 20) & 0xff, (key >> 4) & 0xffff, 0u64)
+            let (block, ao_pack, sky_pack, water_aw, bl_pack) = if is_solid {
+                (
+                    ((key >> 28) & 0xff) as u8,
+                    (key >> 20) & 0xff,
+                    (key >> 4) & 0xffff,
+                    0u64,
+                    key & 0xf,
+                )
             } else {
                 let l = (key >> 1) & 0xf;
-                (WATER, 0xffu64, (l << 12) | (l << 8) | (l << 4) | l, (key >> 6) & 1)
+                (
+                    WATER,
+                    0xffu64,
+                    (l << 12) | (l << 8) | (l << 4) | l,
+                    (key >> 6) & 1,
+                    (key >> 7) & 0xf,
+                )
             };
 
             // face plane coordinate along d (local)
@@ -457,6 +554,7 @@ fn greedy_merge(
                 (c11, t11, ao[2], sky[2]),
                 (c01, t01, ao[3], sky[3]),
             ];
+            let bl = (bl_pack as f32) / 15.0;
             for (c, t, a, s) in corners.iter() {
                 verts.push(Vertex {
                     pos: world(*c),
@@ -464,6 +562,7 @@ fn greedy_merge(
                     tile,
                     light: shade * AO_MULT[*a],
                     sky: *s,
+                    block: bl,
                 });
             }
 

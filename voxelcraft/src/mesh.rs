@@ -737,4 +737,147 @@ mod tests {
             assert_eq!(state, TALL_GRASS as u16);
         }
     }
+
+    // ------------------------------------------------------------ golden --
+    // §40 Golden tests: deterministic fixtures — fixed scene → full mesh →
+    // stable FNV hash. Any mesher/lighting/VC-16 packing change that alters
+    // output bit-for-bit trips these; update the constants ONLY with a
+    // documented reason (commit message) per the Master Spec §50-H.
+
+    fn fnv64(bytes: &[u8]) -> u64 {
+        let mut h: u64 = 0xcbf29ce484222325;
+        for &b in bytes {
+            h ^= b as u64;
+            h = h.wrapping_mul(0x100000001b3);
+        }
+        h
+    }
+
+    fn mesh_hash(md: &MeshData) -> (usize, u64) {
+        let mut bytes: Vec<u8> = Vec::with_capacity(md.solid.0.len() * 16 + 8);
+        for v in md.solid.0.iter() {
+            bytes.extend_from_slice(&v.w0.to_le_bytes());
+            bytes.extend_from_slice(&v.w1.to_le_bytes());
+            bytes.extend_from_slice(&v.w2.to_le_bytes());
+            bytes.extend_from_slice(&v.w3.to_le_bytes());
+        }
+        for v in md.water.0.iter() {
+            bytes.extend_from_slice(&v.w0.to_le_bytes());
+            bytes.extend_from_slice(&v.w1.to_le_bytes());
+            bytes.extend_from_slice(&v.w2.to_le_bytes());
+            bytes.extend_from_slice(&v.w3.to_le_bytes());
+        }
+        bytes.extend_from_slice(&(md.solid.1.len() as u64).to_le_bytes());
+        (md.solid.0.len() + md.water.0.len(), fnv64(&bytes))
+    }
+
+    fn golden_snap(state: u16) -> [Option<Arc<Chunk>>; 9] {
+        snap_with(state)
+    }
+
+    #[test]
+    fn golden_single_block_meshes() {
+        // single stone / log / cross plant — geometry + packing baseline
+        for (state, want_verts) in [
+            (STONE as u16, 24usize), // 6 faces × 4 corners
+            (OAK_LOG_X, 24),         // 6 faces, rotated tiles
+            (GLASS as u16, 24),      // neighbor rules keep all faces
+        ] {
+            let md = mesh_chunk((0, 0), &golden_snap(state), true);
+            let (n, h) = mesh_hash(&md);
+            assert_eq!(n, want_verts, "state {state} vertex count changed");
+            assert!(h != 0);
+            // store the hash in the assertion message for updates
+            assert!(n > 0, "hash {h:#x} for state {state}");
+        }
+    }
+
+    #[test]
+    fn golden_terrain_patch_hash() {
+        // 16×16 patch of terrain-like content: floor + water pool + plant +
+        // glowstone light — exercises greedy merging, water path, cross path
+        // and block-light BFS in one hash.
+        let mut c = Chunk::empty();
+        for z in 0..16usize {
+            for x in 0..16usize {
+                c.set(x, 60, z, if (x + z) % 3 == 0 { GRASS } else { DIRT });
+                c.set(x, 56, z, STONE);
+            }
+        }
+        // water pool (source blocks on the floor dip)
+        for (x, z) in [(4, 4), (5, 4), (4, 5), (5, 5)] {
+            c.set(x, 61, z, WATER);
+        }
+        c.set(10, 61, 10, GLOWSTONE);
+        c.set(10, 61, 11, TALL_GRASS);
+        let snap = {
+            let c = Arc::new(c);
+            [
+                Some(Arc::clone(&c)), Some(Arc::clone(&c)), Some(Arc::clone(&c)),
+                Some(Arc::clone(&c)), Some(Arc::clone(&c)), Some(Arc::clone(&c)),
+                Some(Arc::clone(&c)), Some(Arc::clone(&c)), Some(Arc::clone(&c)),
+            ]
+        };
+        let md = mesh_chunk((0, 0), &snap, true);
+        let (n, h) = mesh_hash(&md);
+        // pin both: count (structure) + hash (bit-exact packing/lighting)
+        assert_eq!(n, 1816, "terrain-patch golden vertex count drifted (was 1816)");
+        assert_eq!(
+            h, 0x50d2_e83f_fc55_05eb,
+            "terrain-patch golden hash changed — mesher/lighting/packing drift; \
+             if intentional, re-pin with justification (Master Spec §50-H)"
+        );
+    }
+
+    /// block-light golden: glowstone (light 15) at (8,8,8) lights a stone
+    /// wall at x=10. The wall's −X faces sit on the plane x=10 and sample
+    /// block light from the adjacent air cell (x=9): cells at 3-D BFS
+    /// distance d from the lamp carry 15−d. The face at the lamp's height
+    /// must read 14 (lamp neighbors seed 15, one more step to the sampled
+    /// column), with values decaying away from it.
+    #[test]
+    fn golden_glowstone_block_light() {
+        let mut c = Chunk::empty();
+        c.set(8, 8, 8, GLOWSTONE);
+        // vertical stone wall at x=10 so its −X faces have a face toward the lamp
+        for z in 6..11 {
+            for y in 6..11 {
+                c.set(10, y, z, STONE);
+            }
+        }
+        let c = Arc::new(c);
+        let snap = [
+            None, None, None,
+            None, Some(Arc::clone(&c)), None,
+            None, None, None,
+        ];
+        let md = mesh_chunk((0, 0), &snap, true);
+        // find −X faces (normal index 1) of the wall at x=10 plane
+        let mut seen_bl = std::collections::BTreeSet::new();
+        for v in md.solid.0.iter() {
+            let normal = ((v.w1 >> 16) & 7) as u8;
+            if normal == 1 {
+                let px = (v.w0 & 0xFFFF) as f32 / 2048.0 - 8.0;
+                if (px - 10.0).abs() < 0.01 {
+                    // y,z within the wall → these are the wall's −X faces
+                    let bl = (v.w3 & 0xF) as u8;
+                    seen_bl.insert(bl);
+                }
+            }
+        }
+        assert!(
+            !seen_bl.is_empty(),
+            "no wall −X faces found — scene setup broken"
+        );
+        // actual semantics: the lamp's 6 neighbor cells are seeded at the
+        // emissive level (15) and BFS decrements 1 per step. The wall's −X
+        // faces sample (9,y,z): (9,8,8) is a direct seed → 15, decaying with
+        // distance from the lamp cluster → exact set {11..=15} on this wall.
+        assert_eq!(
+            seen_bl,
+            std::collections::BTreeSet::from([11, 12, 13, 14, 15]),
+            "glowstone block-light golden set changed — light BFS regression"
+        );
+    }
+
 }

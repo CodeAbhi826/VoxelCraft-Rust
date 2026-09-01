@@ -129,3 +129,23 @@ jobs:
       - name: cargo check (native)
         working-directory: voxelcraft
         run: cargo check --release
+
+      - name: cargo test (native, headless-safe)
+        working-directory: voxelcraft
+        run: cargo test --release --no-default-features --features bench-bin
+
+      - name: Headless CPU-pipeline benchmark (Phase-0 baseline, §37/§48)
+        working-directory: voxelcraft
+        run: |
+          cargo run --release --no-default-features --features bench-bin --bin vc_bench -- \
+            chunks=96 json=bench-headless.json
+          echo "=== bench-headless.json ==="
+          cat bench-headless.json
+
+      - name: Upload benchmark JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: headless-bench
+          path: voxelcraft/bench-headless.json
+          retention-days: 90
+          if-no-files-found: error

@@ -274,6 +274,12 @@ pub struct GameApp {
     pub pointer_locked: bool,
     pub drag_look: bool,
     ever_locked: bool,
+    /// Phase-0 baseline instrumentation (§44): per-frame CPU phases
+    pub phases: crate::bench::FramePhases,
+    /// active in-game benchmark (§37/§48 Phase 0) — None in normal play
+    pub bench: Option<crate::bench::BenchState>,
+    /// spawn position captured at world init (bench camera orbits it)
+    bench_spawn: glam::Vec3,
 }
 
 pub fn now_secs() -> f32 {
@@ -405,6 +411,9 @@ impl GameApp {
             pointer_locked: false,
             drag_look: false,
             ever_locked: false,
+            phases: crate::bench::FramePhases::new(240),
+            bench: None,
+            bench_spawn: spawn.into(),
         };
         app.load_start = app.time;
         app.refresh_widgets();
@@ -1005,6 +1014,30 @@ impl GameApp {
         }
     }
 
+    /// Enter deterministic benchmark mode (§37/§48 Phase 0): rebuilds the
+    /// world with the fixed bench seed, arms the scripted camera, skips the
+    /// title flow. Loading still runs normally (streaming + first meshes are
+    /// part of what the warmup window absorbs).
+    pub fn start_bench(&mut self, bench: crate::bench::BenchState) {
+        let seed = bench.seed;
+        self.bench = Some(bench);
+        // fixed-seed world replaces the random one from GameApp::new
+        self.world = World::new(seed);
+        let spawn = self.world.find_spawn();
+        self.bench_spawn = spawn.into();
+        self.player.pos = Vec3::new(spawn.0, spawn.1 + 20.0, spawn.2);
+        self.player.vel = Vec3::ZERO;
+        // uncapped frames for the measurement window
+        self.settings.maxfps = 0;
+        // start immediately: camera is scripted, not user-driven
+        self.faced_land = true;
+        self.set_screen(Screen::Game);
+        self.input = Input::default();
+        crate::render::report_boot_log(&format!(
+            "benchmark armed: seed={seed}, orbit camera, fixed timestep"
+        ));
+    }
+
     fn quit_to_title(&mut self) {
         self.set_screen(Screen::Title);
         self.input = Input::default();
@@ -1133,8 +1166,23 @@ impl GameApp {
         self.time += dt;
         self.day_time = (self.day_time + dt / 600.0) % 1.0; // 10-minute day
 
+        // --- bench mode: scripted camera, frame bookkeeping (§48 Phase 0)
+        if let Some(bs) = self.bench.as_mut() {
+            bs.t += dt;
+            if self.screen == Screen::Game {
+                let spawn = self.bench_spawn;
+                let (pos, yaw, pitch) = bs.camera(spawn);
+                self.player.pos = pos;
+                self.player.vel = glam::Vec3::ZERO;
+                self.player.yaw = yaw;
+                self.player.pitch = pitch;
+                self.player.flying = true;
+                self.player.on_ground = false;
+            }
+        }
+
         // stream chunks (also during title/menus: the panorama keeps loading)
-        self.stream();
+        crate::phase!(self.phases, crate::bench::PHASE_STREAM, self.stream());
 
         // loading → wait for spawn chunk, then snap to surface → title screen
         if self.screen == Screen::Loading {
@@ -1172,6 +1220,7 @@ impl GameApp {
         let in_game = self.screen == Screen::Game;
 
         // player physics
+        let t_sim = crate::bench::micros();
         if in_game {
             let sounds = self.player.update(
                 dt,
@@ -1237,6 +1286,7 @@ impl GameApp {
                 }
             }
         }
+        self.phases.add(crate::bench::PHASE_SIM, crate::bench::micros() - t_sim);
 
         // toasts
         if let Some((_, t)) = self.item_toast.as_mut() {
@@ -1258,7 +1308,7 @@ impl GameApp {
             0.05
         };
         if self.ui.dirty && self.time - self.last_ui_t > cadence {
-            self.rebuild_ui();
+            crate::phase!(self.phases, crate::bench::PHASE_UI, self.rebuild_ui());
         }
 
         // publish debug stats for E2E tests (wasm)
@@ -1351,6 +1401,7 @@ impl GameApp {
         let rd = self.settings.render_distance;
 
         // 1. collect + apply results (collect first to release the borrow)
+        let t_results = crate::bench::micros();
         let mut results: Vec<JobResult> = Vec::new();
         let mut done = 0usize;
         match &mut self.work {
@@ -1375,6 +1426,8 @@ impl GameApp {
         for res in results {
             self.apply_result(res);
         }
+        self.phases
+            .add(crate::bench::PHASE_RESULTS, crate::bench::micros() - t_results);
 
         // 2. queue generation jobs (radius rd+1, nearest first)
         let mut want_gen: Vec<ChunkPos> = Vec::new();
@@ -1631,6 +1684,8 @@ impl GameApp {
                 ),
                 format!("Edits: {} (xp lvl {})  Seed: {}", self.edits, level, self.world.seed),
                 format!("Backend: {}  Scene: {}x{}", self.renderer.backend_name, self.renderer.scene_size().0, self.renderer.scene_size().1),
+                // Phase-0 (§44): per-frame CPU phase breakdown
+                self.phases.f3_line(),
             ];
             self.ui.debug(&lines);
             // Sodium-style frame-time graph right under the text block
@@ -1661,6 +1716,9 @@ impl GameApp {
     // -------------------------------------------------------------- draw --
 
     fn draw(&mut self) {
+        // Phase-0 instrumentation: frame phases (§44)
+        self.phases.begin_frame();
+        let t_draw0 = crate::bench::micros();
         // fps = real RENDERED frame rate (draws ride RAF on the web)
         self.frames += 1;
         // rolling frame-time history (Sodium-style F3 graph + min/avg/max).
@@ -1801,6 +1859,42 @@ impl GameApp {
             },
             self.settings.clouds && self.settings.graphics >= 1,
         );
+        self.phases
+            .add(crate::bench::PHASE_DRAW, crate::bench::micros() - t_draw0);
+
+        // --- bench bookkeeping: count measured frames, finish + exit (§37)
+        if let Some(bs) = self.bench.as_mut() {
+            if self.screen == Screen::Game {
+                bs.seen += 1;
+                if bs.seen == bs.warmup + 1 {
+                    crate::render::report_boot_log("benchmark: warmup done, measuring");
+                }
+                if bs.seen >= bs.warmup + bs.frames {
+                    let (stats, report, mode) = {
+                        let times: Vec<u64> = self.phases.frame_times_us().iter().copied().collect();
+                        let fs = crate::bench::FrameStats::from_us(&times);
+                        let pr = self.phases.report();
+                        (fs, pr, self.renderer.present_mode_name())
+                    };
+                    if let Some(fs) = stats {
+                        crate::bench::print_report(&fs, &report, &mode);
+                        let json = format!(
+                            "{{\"benchmark\":{{\"frame\":{},\"phases\":{}}}}}",
+                            fs.to_json(),
+                            report.to_json()
+                        );
+                        #[cfg(not(target_arch = "wasm32"))]
+                        if let Some(path) = &self.bench.as_ref().and_then(|b| b.json_path.clone()) {
+                            let _ = std::fs::write(path, json.clone());
+                            println!("benchmark JSON written to {path}");
+                        }
+                        println!("benchmark JSON: {json}");
+                    }
+                    self.quit_requested = true;
+                }
+            }
+        }
+        self.phases.end_frame();
     }
 }
 

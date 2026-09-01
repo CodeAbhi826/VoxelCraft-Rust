@@ -156,6 +156,74 @@ pub const DEAD_BUSH: u8 = 56;
 
 pub const BLOCK_COUNT: usize = 57;
 
+// ---------------------------------------------------------------------------
+// BlockState registry (1.16.5 pattern, miniature)
+// ---------------------------------------------------------------------------
+// State ids are u16 in the paletted sections + VC-16 vertices. States
+// 0..=56 are IDENTITY-mapped (each block's default state = its own id), so
+// every existing code path that stores/compares u8 block ids keeps working
+// unchanged. States 57+ are property variants — today: logs with
+// `axis=x|y|z`, exactly how vanilla models oak_log[axis=...]. The 1.16.5
+// global palette is 15 bits (~17k states); this registry grows into it
+// without touching storage (u16) or the mesher key.
+pub const STATE_COUNT: usize = 63;
+pub const OAK_LOG_X: u16 = 57;
+pub const OAK_LOG_Z: u16 = 58;
+pub const BIRCH_LOG_X: u16 = 59;
+pub const BIRCH_LOG_Z: u16 = 60;
+pub const SPRUCE_LOG_X: u16 = 61;
+pub const SPRUCE_LOG_Z: u16 = 62;
+
+/// state id -> owning block id (property variants fold to their parent)
+#[inline]
+pub fn state_block(s: u16) -> u8 {
+    match s {
+        OAK_LOG_X | OAK_LOG_Z => OAK_LOG,
+        BIRCH_LOG_X | BIRCH_LOG_Z => BIRCH_LOG,
+        SPRUCE_LOG_X | SPRUCE_LOG_Z => SPRUCE_LOG,
+        _ => s as u8, // identity for 0..=56
+    }
+}
+
+/// per-state tiles: [top(+Y), bottom(−Y), side_x(±X), side_z(±Z)].
+/// Vanilla logs show the ring texture on the ±axis faces and bark on the
+/// rest — the axis property drives the tile rotation.
+#[inline]
+pub fn state_tiles(s: u16) -> [u16; 4] {
+    match s {
+        OAK_LOG_X => [TILE_LOG_SIDE, TILE_LOG_SIDE, TILE_LOG_TOP, TILE_LOG_SIDE],
+        OAK_LOG_Z => [TILE_LOG_SIDE, TILE_LOG_SIDE, TILE_LOG_SIDE, TILE_LOG_TOP],
+        BIRCH_LOG_X => [TILE_BIRCH_LOG_SIDE, TILE_BIRCH_LOG_SIDE, TILE_LOG_TOP, TILE_BIRCH_LOG_SIDE],
+        BIRCH_LOG_Z => [TILE_BIRCH_LOG_SIDE, TILE_BIRCH_LOG_SIDE, TILE_BIRCH_LOG_SIDE, TILE_LOG_TOP],
+        SPRUCE_LOG_X => [TILE_SPRUCE_LOG_SIDE, TILE_SPRUCE_LOG_SIDE, TILE_LOG_TOP, TILE_SPRUCE_LOG_SIDE],
+        SPRUCE_LOG_Z => [TILE_SPRUCE_LOG_SIDE, TILE_SPRUCE_LOG_SIDE, TILE_SPRUCE_LOG_SIDE, TILE_LOG_TOP],
+        _ => {
+            let b = def(s as u8);
+            [b.tiles[0], b.tiles[1], b.tiles[2], b.tiles[2]]
+        }
+    }
+}
+
+#[inline]
+pub fn is_log(b: u8) -> bool {
+    b == OAK_LOG || b == BIRCH_LOG || b == SPRUCE_LOG
+}
+
+/// state for placing a log with the given axis (0=X, 1=Y, 2=Z).
+/// Vanilla placement rule: the log's axis follows the clicked face.
+#[inline]
+pub fn log_axis_state(block: u8, axis: u8) -> u16 {
+    match (block, axis) {
+        (OAK_LOG, 0) => OAK_LOG_X,
+        (OAK_LOG, 2) => OAK_LOG_Z,
+        (BIRCH_LOG, 0) => BIRCH_LOG_X,
+        (BIRCH_LOG, 2) => BIRCH_LOG_Z,
+        (SPRUCE_LOG, 0) => SPRUCE_LOG_X,
+        (SPRUCE_LOG, 2) => SPRUCE_LOG_Z,
+        _ => block as u16,
+    }
+}
+
 /// highest tile index the generator must draw
 pub const TILE_MAX: u16 = 62;
 
@@ -332,3 +400,62 @@ pub const PICKER_BLOCKS: [u8; 52] = [
 
 /// default hotbar palette
 pub const PALETTE: [u8; 9] = [GRASS, DIRT, STONE, COBBLE, PLANKS, OAK_LOG, LEAVES, GLOWSTONE, GLASS];
+
+#[cfg(test)]
+mod state_tests {
+    use super::*;
+
+    #[test]
+    fn identity_states_fold_to_their_blocks() {
+        for b in 0..BLOCK_COUNT as u16 {
+            assert_eq!(state_block(b), b as u8, "state {b}");
+        }
+    }
+
+    #[test]
+    fn log_axis_variants() {
+        assert_eq!(state_block(OAK_LOG_X), OAK_LOG);
+        assert_eq!(state_block(OAK_LOG_Z), OAK_LOG);
+        assert_eq!(state_block(BIRCH_LOG_X), BIRCH_LOG);
+        assert_eq!(state_block(SPRUCE_LOG_Z), SPRUCE_LOG);
+        // default (axis Y) is the identity state
+        assert_eq!(log_axis_state(OAK_LOG, 1), OAK_LOG as u16);
+        assert_eq!(log_axis_state(OAK_LOG, 0), OAK_LOG_X);
+        assert_eq!(log_axis_state(OAK_LOG, 2), OAK_LOG_Z);
+        // non-logs pass through untouched
+        assert_eq!(log_axis_state(STONE, 0), STONE as u16);
+    }
+
+    #[test]
+    fn log_tiles_rotate_with_axis() {
+        // axis Y (default): rings on top/bottom, bark on the sides
+        let y = state_tiles(OAK_LOG as u16);
+        assert_eq!(y[0], TILE_LOG_TOP);
+        assert_eq!(y[1], TILE_LOG_TOP);
+        assert_eq!(y[2], TILE_LOG_SIDE);
+        assert_eq!(y[3], TILE_LOG_SIDE);
+        // axis X: rings on the ±X faces, bark elsewhere
+        let x = state_tiles(OAK_LOG_X);
+        assert_eq!(x[0], TILE_LOG_SIDE);
+        assert_eq!(x[1], TILE_LOG_SIDE);
+        assert_eq!(x[2], TILE_LOG_TOP);
+        assert_eq!(x[3], TILE_LOG_SIDE);
+        // axis Z: rings on the ±Z faces
+        let z = state_tiles(OAK_LOG_Z);
+        assert_eq!(z[2], TILE_LOG_SIDE);
+        assert_eq!(z[3], TILE_LOG_TOP);
+        // every non-variant state mirrors its block def
+        let g = state_tiles(GRASS as u16);
+        assert_eq!(g, [TILE_GRASS_TOP, TILE_DIRT, TILE_GRASS_SIDE, TILE_GRASS_SIDE]);
+    }
+
+    #[test]
+    fn all_states_in_range() {
+        for s in 0..STATE_COUNT as u16 {
+            let b = state_block(s);
+            assert!(b < BLOCK_COUNT as u8, "state {s} maps to bad block {b}");
+            let t = state_tiles(s);
+            assert!(t.iter().all(|&t| t <= TILE_MAX));
+        }
+    }
+}

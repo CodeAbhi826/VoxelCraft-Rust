@@ -7,6 +7,13 @@ use crate::world::ChunkPos;
 use std::collections::VecDeque;
 use std::sync::Arc;
 
+/// snapshot values are STATE ids (u16 truncated to u8, ≤ 62 today);
+/// property lookups fold them to block ids
+#[inline]
+fn sb(s: u8) -> u8 {
+    state_block(s as u16)
+}
+
 /// VC-16 packed terrain vertex — 16 bytes, Sodium-class GPU bandwidth
 /// (−60% vs the previous 40-byte float layout).
 ///
@@ -165,7 +172,7 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
         for x in 0..PAD {
             let mut l: i32 = 15;
             for y in (0..256usize).rev() {
-                let b = blocks[pidx(x, y, z)];
+                let b = sb(blocks[pidx(x, y, z)]);
                 if is_opaque(b) {
                     l = 0;
                     if surface[z][x] < 0 {
@@ -224,7 +231,7 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
         macro_rules! prop {
             ($x:expr, $y:expr, $z:expr) => {{
                 let np = pidx($x, $y, $z);
-                if !is_opaque(blocks[np]) && light[np] < nl {
+                if !is_opaque(sb(blocks[np])) && light[np] < nl {
                     light[np] = nl;
                     if nl > 1 {
                         queue.push_back((np, nl));
@@ -261,7 +268,7 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
     for y in 0..256usize {
         for z in 0..PAD {
             for x in 0..PAD {
-                let b = blocks[pidx(x, y, z)];
+                let b = sb(blocks[pidx(x, y, z)]);
                 let e = emissive(b);
                 if e == 0 {
                     continue;
@@ -272,7 +279,7 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
                     ($x:expr, $y:expr, $z:expr) => {{
                         if $x < PAD && $z < PAD && $y < 256 {
                             let np = pidx($x, $y, $z);
-                            if !is_opaque(blocks[np]) && blight[np] < lvl {
+                            if !is_opaque(sb(blocks[np])) && blight[np] < lvl {
                                 blight[np] = lvl;
                                 bqueue.push_back((np, lvl));
                             }
@@ -300,7 +307,7 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
         macro_rules! bprop {
             ($x:expr, $y:expr, $z:expr) => {{
                 let np = pidx($x, $y, $z);
-                if !is_opaque(blocks[np]) && blight[np] < nl {
+                if !is_opaque(sb(blocks[np])) && blight[np] < nl {
                     blight[np] = nl;
                     if nl > 1 {
                         bqueue.push_back((np, nl));
@@ -353,13 +360,14 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
                         cell[d] = sl as i32;
                         cell[u] = ui as i32;
                         cell[v] = vi as i32;
-                        let b = getb(&blocks, cell[0], cell[1], cell[2]);
+                        let bs = getb(&blocks, cell[0], cell[1], cell[2]); // state
+                        let b = sb(bs);
                         if b == AIR || is_cross(b) {
                             continue;
                         }
                         let mut ncell = cell;
                         ncell[d] += dir;
-                        let nb = getb(&blocks, ncell[0], ncell[1], ncell[2]);
+                        let nb = sb(getb(&blocks, ncell[0], ncell[1], ncell[2]));
 
                         if b == WATER {
                             if face_visible(WATER, nb) {
@@ -395,7 +403,7 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
                                 let mut c = ncell;
                                 c[u] = au;
                                 c[v] = av;
-                                is_opaque(getb(&blocks, c[0], c[1], c[2]))
+                                is_opaque(sb(getb(&blocks, c[0], c[1], c[2])))
                             };
                             let light_at = |au: i32, av: i32| -> u64 {
                                 let mut c = ncell;
@@ -425,7 +433,7 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
                         // flat per face — no per-corner smoothing needed)
                         let bl = getl(&blight, ncell[0], ncell[1], ncell[2]) as u64;
 
-                        let key = ((b as u64) << 28) | (ao_pack << 20) | (sky_pack << 4) | bl;
+                        let key = ((bs as u64) << 28) | (ao_pack << 20) | (sky_pack << 4) | bl;
                         smask[vi * du + ui] = key;
                     }
                 }
@@ -440,13 +448,13 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
     for ly in 0..256usize {
         for lz in 0..16usize {
             for lx in 0..16usize {
-                let b = getb(&blocks, lx as i32, ly as i32, lz as i32);
-                if !is_cross(b) {
+                let bs = getb(&blocks, lx as i32, ly as i32, lz as i32);
+                if !is_cross(sb(bs)) {
                     continue;
                 }
                 let sky = getl(&light, lx as i32, ly as i32, lz as i32) as u32;
                 let bl = getl(&blight, lx as i32, ly as i32, lz as i32) as u32;
-                let tile_i = def(b).tiles[2];
+                let tile_i = state_tiles(bs as u16)[3];
                 // chunk-local positions (origin supplied per-draw at render time)
                 let x0 = lx as f32 + 0.15;
                 let x1 = lx as f32 + 0.85;
@@ -477,7 +485,7 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
                                 tile_i, 6, /* normal = cross (shade 0.85) */
                                 3,          /* ao = full */
                                 sky.min(15), bl.min(15),
-                                b as u16,
+                                bs as u16,
                             ));
                         }
                         for i in [0u32, 1, 2, 0, 2, 3] {
@@ -533,9 +541,9 @@ fn greedy_merge(
                 h += 1;
             }
 
-            let (block, ao_pack, sky_pack, water_aw, bl_pack) = if is_solid {
+            let (state, ao_pack, sky_pack, water_aw, bl_pack) = if is_solid {
                 (
-                    ((key >> 28) & 0xff) as u8,
+                    ((key >> 28) & 0xff) as u16, // STATE id
                     (key >> 20) & 0xff,
                     (key >> 4) & 0xffff,
                     0u64,
@@ -544,7 +552,7 @@ fn greedy_merge(
             } else {
                 let l = (key >> 1) & 0xf;
                 (
-                    WATER,
+                    WATER as u16,
                     0xffu64,
                     (l << 12) | (l << 8) | (l << 4) | l,
                     (key >> 6) & 1,
@@ -581,11 +589,14 @@ fn greedy_merge(
             ];
             let water_top_open = !is_solid && water_aw == 0;
 
-            let tiles = def(block).tiles;
+            // per-STATE tiles (log axis rotation: rings on the ±axis faces)
+            let t = state_tiles(state);
             let tile_i = if d == 1 {
-                if dir > 0 { tiles[0] } else { tiles[1] }
+                if dir > 0 { t[0] } else { t[1] }
+            } else if d == 0 {
+                t[2] // ±X faces
             } else {
-                tiles[2]
+                t[3] // ±Z faces
             };
 
             let base = verts.len() as u32;
@@ -621,7 +632,7 @@ fn greedy_merge(
                     p[0], p[1], p[2],
                     t[0], t[1],
                     tile_i, nrm, *a, *s, bl,
-                    block as u16,
+                    state,
                 ));
             }
 
@@ -646,5 +657,84 @@ fn greedy_merge(
             ui += w;
         }
         vi += 1;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::blocks::*;
+
+    /// 3x3 snapshot with a single block state set at the center chunk's (8, 8y, 8)
+    fn snap_with(state: u16) -> [Option<Arc<Chunk>>; 9] {
+        let mut c = Chunk::empty();
+        c.set_state(8, 8, 8, state);
+        let c = Arc::new(c);
+        [
+            None, Some(Arc::clone(&c)), None,
+            Some(Arc::clone(&c)), Some(Arc::clone(&c)), Some(Arc::clone(&c)),
+            None, Some(Arc::clone(&c)), None,
+        ]
+    }
+
+    /// decode the tile index + face normal from a VC-16 vertex
+    fn decode(v: &Vertex) -> (u16, u8, u16) {
+        let tile = ((v.w2 >> 18) & 0x3FFF) as u16;
+        let flags = (v.w1 >> 16) as u8;
+        let normal = (flags & 7) as u8;
+        let state = (v.w3 >> 16) as u16;
+        (tile, normal, state)
+    }
+
+    /// A log placed with axis=x must show the RING texture (TILE_LOG_TOP) on
+    /// its ±X faces and bark (TILE_LOG_SIDE) on ±Y/±Z — the vanilla
+    /// oak_log[axis=x] model. Verifies the whole storage → mesher →
+    /// packed-vertex pipeline.
+    #[test]
+    fn log_axis_x_rotates_tiles() {
+        let md = mesh_chunk((0, 0), &snap_with(OAK_LOG_X), true);
+        let mut faces: Vec<(u8, u16)> = Vec::new(); // (normal, tile)
+        for v in md.solid.0.iter() {
+            let (tile, normal, state) = decode(v);
+            assert_eq!(state, OAK_LOG_X, "state must round-trip through the mesher");
+            faces.push((normal, tile));
+        }
+        assert!(!faces.is_empty(), "axis-x log must emit geometry");
+        let x_rings = faces.iter().any(|(n, t)| *n == 0 && *t == TILE_LOG_TOP);
+        let x_rings2 = faces.iter().any(|(n, t)| *n == 1 && *t == TILE_LOG_TOP);
+        let y_bark = faces.iter().any(|(n, t)| *n == 2 && *t == TILE_LOG_SIDE);
+        let z_bark = faces.iter().any(|(n, t)| *n == 4 && *t == TILE_LOG_SIDE);
+        assert!(x_rings && x_rings2, "±X faces must use the ring tile, got {faces:?}");
+        assert!(y_bark && z_bark, "±Y/±Z faces must use bark, got {faces:?}");
+    }
+
+    /// axis=y (identity state) keeps rings on ±Y — the default tree trunk.
+    #[test]
+    fn log_axis_y_default() {
+        let md = mesh_chunk((0, 0), &snap_with(OAK_LOG as u16), true);
+        let mut ok_top = false;
+        let mut ok_side = false;
+        for v in md.solid.0.iter() {
+            let (tile, normal, _) = decode(v);
+            if normal == 2 || normal == 3 {
+                ok_top |= tile == TILE_LOG_TOP;
+            } else {
+                ok_side |= tile == TILE_LOG_SIDE;
+            }
+        }
+        assert!(ok_top && ok_side);
+    }
+
+    /// cross plants keep their side tile and the cross normal index
+    #[test]
+    fn cross_plant_normal_and_tile() {
+        let md = mesh_chunk((0, 0), &snap_with(TALL_GRASS as u16), true);
+        assert!(!md.solid.0.is_empty());
+        for v in md.solid.0.iter() {
+            let (tile, normal, state) = decode(v);
+            assert_eq!(normal, 6, "cross plants use normal index 6");
+            assert_eq!(tile, TILE_TALL_GRASS);
+            assert_eq!(state, TALL_GRASS as u16);
+        }
     }
 }

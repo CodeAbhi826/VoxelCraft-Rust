@@ -1207,14 +1207,28 @@ impl GameApp {
                 }
             }
             if self.input.place_hold && self.place_timer <= 0.0 {
-                if let Some((_, _, prev)) = self.target {
+                if let Some((tpos, _, prev)) = self.target {
                     let b = self.player.hotbar[self.player.selected];
                     if b != AIR {
                         let pb = self.world.get_block(prev[0], prev[1], prev[2]);
                         let replaceable = pb == AIR || pb == WATER || is_cross(pb);
                         let collides_player = is_solid(b) && self.player.block_intersects_player(prev);
                         if replaceable && !collides_player {
-                            self.world.set_block(prev[0], prev[1], prev[2], b);
+                            // vanilla log placement: the axis follows the
+                            // clicked face (top/bottom → axis Y, ±X → X, ±Z → Z)
+                            let state = if is_log(b) {
+                                let axis = if prev[1] != tpos[1] {
+                                    1
+                                } else if prev[0] != tpos[0] {
+                                    0
+                                } else {
+                                    2
+                                };
+                                log_axis_state(b, axis)
+                            } else {
+                                b as u16
+                            };
+                            self.world.set_block_state(prev[0], prev[1], prev[2], state);
                             self.audio.play(&self.bank, def(b).sound, 0.55 * self.settings.volume, 1.15);
                             self.place_timer = 0.24;
                             self.edits += 1;
@@ -1295,6 +1309,9 @@ impl GameApp {
             ("breakHold", StatsVal::B(self.input.break_hold)),
             ("placeHold", StatsVal::B(self.input.place_hold)),
             ("hasTarget", StatsVal::B(self.target.is_some())),
+            ("targetState", StatsVal::F(
+                self.target.map(|(t, _, _)| self.world.get_state(t[0], t[1], t[2]) as f32).unwrap_or(-1.0)
+            )),
             ("breakTimer", StatsVal::F(self.break_timer)),
             ("hover", StatsVal::F(self.hover.map(|h| h as f32).unwrap_or(-1.0))),
             ("picker", StatsVal::B(self.picker_open)),
@@ -1574,8 +1591,22 @@ impl GameApp {
                 format!(
                     "Targeted: {}",
                     self.target
-                        .map(|(_, b, _)| name(b))
-                        .unwrap_or("none")
+                        .map(|(t, b, _)| {
+                            // vanilla F3 parity: show the exact blockstate
+                            // (e.g. "Oak Log[axis=x]")
+                            let s = self.world.get_state(t[0], t[1], t[2]);
+                            let axis = match s {
+                                crate::blocks::OAK_LOG_X
+                                | crate::blocks::BIRCH_LOG_X
+                                | crate::blocks::SPRUCE_LOG_X => "[axis=x]",
+                                crate::blocks::OAK_LOG_Z
+                                | crate::blocks::BIRCH_LOG_Z
+                                | crate::blocks::SPRUCE_LOG_Z => "[axis=z]",
+                                _ => "",
+                            };
+                            format!("{}{}", name(b), axis)
+                        })
+                        .unwrap_or("none".into())
                 ),
                 format!(
                     "RD: {}  FOV: {:.0}  Vol: {:.0}%  Bright: {:.0}%",

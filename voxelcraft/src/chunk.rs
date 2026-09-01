@@ -286,8 +286,14 @@ impl Chunk {
     /// mesh jobs
     #[inline]
     pub fn set(&mut self, x: usize, y: usize, z: usize, id: u8) {
+        self.set_state(x, y, z, id as u16);
+    }
+
+    /// store a raw BLOCK-STATE id (property variants, e.g. log[axis=x])
+    #[inline]
+    pub fn set_state(&mut self, x: usize, y: usize, z: usize, state: u16) {
         let sy = y >> 4;
-        if id == 0 {
+        if state == 0 {
             if let Some(s) = &self.sections[sy] {
                 if s.is_empty() {
                     return; // air in an air section — no-op
@@ -297,7 +303,7 @@ impl Chunk {
             }
         }
         let sec = Arc::make_mut(self.section_mut(sy));
-        sec.set(x, y & 15, z, id as u16);
+        sec.set(x, y & 15, z, state);
         if sec.is_empty() {
             self.sections[sy] = None;
         }

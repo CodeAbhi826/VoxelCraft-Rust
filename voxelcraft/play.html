@@ -13,9 +13,9 @@
     #boot {
       position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
       color: #cbd5e1; font: 14px ui-monospace, Menlo, monospace; text-align: center;
-      pointer-events: none;
+      pointer-events: none; z-index: 10;
     }
-    #boot .wrap { padding: 24px; max-width: 420px; line-height: 1.55; }
+    #boot .wrap { padding: 24px; max-width: 480px; line-height: 1.55; }
     #boot h1 { margin: 0 0 12px; font-size: 22px; letter-spacing: 1px; color: #93c5fd; }
     #boot small { color: #64748b; }
     #boot.hide { display: none; }
@@ -25,26 +25,109 @@
   <canvas id="game" tabindex="0"></canvas>
   <div id="boot"><div class="wrap">
     <h1>VOXELCRAFT</h1>
-    <p>Loading engine…</p>
-    <p><small>Rust + wgpu · WebGPU build · click the canvas to play</small></p>
+    <p id="boot-status">Loading engine…</p>
+    <p><small>Rust + wgpu · WebGPU / WebGL2 build · click the canvas to play</small></p>
   </div></div>
   <script type="module">
-    // Hide the boot splash once the WASM module boots (it replaces canvas).
-    function hide() { const e = document.getElementById('boot'); if (e) e.classList.add('hide'); }
+    // ────────────────────────────────────────────────────────────────────────
+    // 1) WebGPU requestDevice sanitizer (critical fix, 2026-09)
+    // wgpu 22 sends limit keys that were REMOVED from the WebGPU spec
+    // (e.g. `maxInterStageShaderComponents`, removed in Chrome 129).
+    // Chrome rejects the entire requestDevice() call when it sees an
+    // unrecognized limit → the engine panics → blank screen.
+    // Fix: strip every limit key that is not in the current WebGPU spec.
+    // ────────────────────────────────────────────────────────────────────────
+    (function sanitizeRequestDevice() {
+      try {
+        if (!navigator.gpu || !window.GPUAdapter || !GPUAdapter.prototype.requestDevice) return;
+        // limit names recognized by the current WebGPU spec (everything else gets stripped)
+        const SPEC_LIMITS = new Set([
+          'maxTextureDimension1D', 'maxTextureDimension2D', 'maxTextureDimension3D',
+          'maxTextureArrayLayers', 'maxBindGroups', 'maxBindGroupsPerPipeline',
+          'maxColorAttachments', 'maxColorAttachmentBytesPerSample',
+          'maxDynamicUniformBuffersPerPipelineLayout', 'maxDynamicStorageBuffersPerPipelineLayout',
+          'maxSampledTexturesPerShaderStage', 'maxSamplersPerShaderStage',
+          'maxStorageBuffersPerShaderStage', 'maxStorageTexturesPerShaderStage',
+          'maxUniformBuffersPerShaderStage', 'maxUniformBufferBindingSize',
+          'maxStorageBufferBindingSize', 'maxBufferSize',
+          'maxVertexBuffers', 'maxVertexAttributes', 'maxVertexBufferArrayStride',
+          'minUniformBufferOffsetAlignment', 'minStorageBufferOffsetAlignment',
+          'maxComputeWorkgroupStorageSize', 'maxComputeInvocationsPerWorkgroup',
+          'maxComputeWorkgroupSizeX', 'maxComputeWorkgroupSizeY', 'maxComputeWorkgroupSizeZ',
+          'maxComputeWorkgroupsPerDimension',
+        ]);
+        const orig = GPUAdapter.prototype.requestDevice;
+        GPUAdapter.prototype.requestDevice = function (desc) {
+          try {
+            // wgpu 22 puts limits under `requiredLimits` (the spec property);
+            // also handle `limits` for other shapes.
+            for (const key of ['requiredLimits', 'limits']) {
+              const lim = desc && desc[key];
+              if (lim && typeof lim === 'object') {
+                for (const k of Object.keys(lim)) {
+                  if (!SPEC_LIMITS.has(k)) delete lim[k];
+                }
+              }
+            }
+          } catch (e) { /* never break the actual call */ }
+          return orig.call(this, desc);
+        };
+      } catch (e) { /* never block boot */ }
+    })();
+
+    // ────────────────────────────────────────────────────────────────────────
+    // 2) Boot overlay lifecycle: stays visible until the engine draws its
+    //    first frame (voxelcraft:ready), and doubles as the ERROR surface.
+    // ────────────────────────────────────────────────────────────────────────
+    const bootOverlay = document.getElementById('boot');
+    const status = document.getElementById('boot-status');
+    const canvas = document.getElementById('game');
+
+    function hideBoot() { if (bootOverlay) bootOverlay.classList.add('hide'); }
+    function bootError(msg) {
+      if (status) {
+        // append (a panic follows a specific init error — keep both visible)
+        status.textContent = status.textContent && status.textContent.indexOf('Engine error') === 0
+          ? status.textContent + '\n' + msg
+          : 'Engine error: ' + msg;
+        status.style.whiteSpace = 'pre-wrap';
+        status.style.color = '#f87171';
+      }
+      if (bootOverlay) bootOverlay.classList.remove('hide');
+    }
+
+    // engine signals readiness after its first rendered frame
+    window.addEventListener('voxelcraft:ready', hideBoot, { once: true });
+    window.voxelcraftReady = function () {
+      window.dispatchEvent(new CustomEvent('voxelcraft:ready'));
+    };
+    // exposed for the Rust side (panic hook / fatal init errors / diagnostics)
+    window.voxelcraftBootError = bootError;
+    window.voxelcraftLog = function (msg) { console.log('[voxelcraft] ' + msg); };
+
+    // safety net: if the canvas is live (wgpu configured its backing size)
+    // but the ready event never arrived, hide the overlay after ~3 s.
+    let liveTicks = 0;
+    setInterval(function () {
+      if (canvas.width > 300 && !bootOverlay.classList.contains('hide')) {
+        if (++liveTicks > 12) hideBoot();
+      }
+    }, 250);
 
     async function boot() {
       try {
-        // Detect WebGPU support and warn early if absent.
         if (!('gpu' in navigator)) {
-          document.querySelector('#boot p').textContent = 'Your browser does not have WebGPU enabled. Use Chrome / Edge 113+.';
-          return;
+          // not fatal — the engine falls back to WebGL2 automatically
+          if (status) status.textContent = 'No WebGPU in this browser — using WebGL2…';
         }
         const { default: init } = await import('./voxelcraft.js');
         await init('./voxelcraft_bg.wasm');
-        hide();
+        // NOTE: do NOT hide the overlay here. The wasm module initializes
+        // before the GPU device/pipelines are created; if init fails the
+        // engine reports the error into this overlay instead of a blank page.
       } catch (err) {
         console.error(err);
-        document.querySelector('#boot p').textContent = 'Failed to load: ' + (err?.message || err);
+        bootError('failed to load — ' + ((err && err.message) || err));
       }
     }
     boot();

@@ -781,6 +781,15 @@ impl GameApp {
     // -------------------------------------------------------------- draw --
 
     fn draw(&mut self) {
+        // first-frames instrumentation (diagnoses event-loop / pipeline stalls)
+        if self.frames < 3 {
+            crate::render::report_boot_log(&format!(
+                "draw() frame #{}: chunks_gpu={}, meshes drawn from {}",
+                self.frames + 1,
+                self.renderer.chunks.len(),
+                0
+            ));
+        }
         // day/night state
         let theta = self.day_time * std::f32::consts::TAU;
         let sun_dir = Vec3::new(theta.cos() * 0.85, theta.sin(), -0.4).normalize();

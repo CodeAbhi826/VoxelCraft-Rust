@@ -131,17 +131,27 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
     let (_cx, _cz) = pos;
 
     // ------------------------------------------------ copy blocks (padded)
+    // decode paletted sections into the flat padded buffer; air-only
+    // sections cost one `None` probe instead of 16 KB of zeros
     let mut blocks = vec![0u8; PAD * PAD * 256];
     for dzi in 0..3usize {
         for dxi in 0..3usize {
             let Some(chunk) = &snap[dzi * 3 + dxi] else { continue };
             let px0 = dxi * 16;
             let pz0 = dzi * 16;
-            for y in 0..256usize {
-                for sz in 0..16usize {
-                    let src = &chunk.blocks[y * 256 + sz * 16..y * 256 + sz * 16 + 16];
-                    let dst = y * (PAD * PAD) + (pz0 + sz) * PAD + px0;
-                    blocks[dst..dst + 16].copy_from_slice(src);
+            for (sy, sec) in chunk.sections.iter().enumerate() {
+                let Some(sec) = sec else { continue };
+                if sec.is_empty() {
+                    continue;
+                }
+                let flat = sec.decode_flat(); // 4096 bytes, YZX
+                for yy in 0..16usize {
+                    let y = sy * 16 + yy;
+                    for sz in 0..16usize {
+                        let src_row = (yy << 8) | (sz << 4);
+                        let dst = y * (PAD * PAD) + (pz0 + sz) * PAD + px0;
+                        blocks[dst..dst + 16].copy_from_slice(&flat[src_row..src_row + 16]);
+                    }
                 }
             }
         }

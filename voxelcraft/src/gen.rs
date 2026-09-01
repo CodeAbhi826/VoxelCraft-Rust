@@ -425,9 +425,9 @@ impl TerrainGen {
 
         // pass 2: inbound edits from neighbors (trees poking into this chunk)
         for (idx, id) in inbound {
-            let cur = chunk.blocks[idx as usize];
+            let cur = chunk.get_idx(idx as usize);
             if cur == AIR || (cur == LEAVES && id == OAK_LOG) {
-                chunk.blocks[idx as usize] = id;
+                chunk.set_idx(idx as usize, id);
             }
         }
 

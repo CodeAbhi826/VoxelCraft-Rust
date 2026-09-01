@@ -348,23 +348,27 @@ pub struct Renderer {
     pub chunks: HashMap<ChunkPos, ChunkGpu>,
     present_modes: Vec<wgpu::PresentMode>,
     pub vsync: bool,
+    /// diagnostic counter: frames successfully submitted (logged first 3)
+    submitted_frames: u32,
 }
 
 impl Renderer {
     pub async fn new(window: &'static winit::window::Window, atlas: &[u8]) -> Self {
-        // Backend selection: probe for a *working* WebGPU adapter first.
-        // (navigator.gpu existing is not enough — wgpu locks the instance to
-        // WebGPU-only mode when it merely detects the API, which strands
-        // browsers whose adapter request returns null, e.g. headless Chromium.
+        // Backend selection: probe for a *working* WebGPU adapter first,
+        // mirroring EXACTLY the requestAdapter() options wgpu will use.
+        // (navigator.gpu existing is not enough — headless Chromium exposes
+        // the API but returns null adapters, and wgpu locks an instance to
+        // WebGPU-only mode whenever it detects the API at all.
         // Those fall back to the WebGL2/GL backend.)
+        // Chain: hardware adapter → fallback (software) adapter → WebGL2.
         #[cfg(target_arch = "wasm32")]
-        let backends = if probe_webgpu_adapter().await {
-            wgpu::Backends::BROWSER_WEBGPU
-        } else {
-            wgpu::Backends::GL
+        let (backends, force_fallback_adapter) = match choose_webgpu_mode().await {
+            // false = real GPU adapter, true = software adapter (SwiftShader)
+            Some(force_fallback) => (wgpu::Backends::BROWSER_WEBGPU, force_fallback),
+            None => (wgpu::Backends::GL, false),
         };
         #[cfg(not(target_arch = "wasm32"))]
-        let backends = wgpu::Backends::all();
+        let (backends, force_fallback_adapter) = (wgpu::Backends::all(), false);
 
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends,
@@ -373,14 +377,20 @@ impl Renderer {
         let surface = instance
             .create_surface(wgpu::SurfaceTarget::from(window))
             .expect("create surface");
-        let adapter = instance
+        let adapter = match instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 compatible_surface: Some(&surface),
-                force_fallback_adapter: false,
+                force_fallback_adapter,
             })
             .await
-            .expect("no suitable GPU adapter (neither WebGPU nor WebGL2 available)");
+        {
+            Some(a) => a,
+            None => {
+                report_boot_error("no suitable GPU adapter (WebGPU and WebGL2 both unavailable)");
+                panic!("no suitable GPU adapter");
+            }
+        };
 
         // WebGL2 (downlevel) can't satisfy default limits (no compute);
         // retry with downlevel limits in that case.
@@ -397,18 +407,31 @@ impl Renderer {
             .await
         {
             Ok(dq) => dq,
-            Err(_) => adapter
-                .request_device(
-                    &wgpu::DeviceDescriptor {
-                        label: Some("voxelcraft-downlevel"),
-                        required_features: wgpu::Features::empty(),
-                        required_limits: wgpu::Limits::downlevel_webgl2_defaults(),
-                        ..Default::default()
-                    },
-                    None,
-                )
-                .await
-                .expect("request device (downlevel)"),
+            Err(first_err) => {
+                report_boot_log(&format!(
+                    "default device limits rejected ({first_err:?}) — retrying with downlevel limits"
+                ));
+                match adapter
+                    .request_device(
+                        &wgpu::DeviceDescriptor {
+                            label: Some("voxelcraft-downlevel"),
+                            required_features: wgpu::Features::empty(),
+                            required_limits: wgpu::Limits::downlevel_webgl2_defaults(),
+                            ..Default::default()
+                        },
+                        None,
+                    )
+                    .await
+                {
+                    Ok(dq) => dq,
+                    Err(second_err) => {
+                        report_boot_error(&format!(
+                            "GPU device request failed: {first_err:?} / {second_err:?}"
+                        ));
+                        panic!("request device (downlevel)");
+                    }
+                }
+            }
         };
 
         let caps = surface.get_capabilities(&adapter);
@@ -418,6 +441,19 @@ impl Renderer {
             .find(|f| f.is_srgb())
             .copied()
             .unwrap_or(caps.formats[0]);
+        // The game renders a fully opaque 3D scene — force Opaque compositing
+        // where supported. With `Auto`/premultiplied, browsers composite the
+        // canvas with the page background, which can yield a see-through
+        // canvas if any pass leaves alpha < 1 (WebGPU honors it strictly,
+        // unlike the WebGL2 path).
+        let alpha_mode = if caps
+            .alpha_modes
+            .contains(&wgpu::CompositeAlphaMode::Opaque)
+        {
+            wgpu::CompositeAlphaMode::Opaque
+        } else {
+            wgpu::CompositeAlphaMode::Auto
+        };
         let size = window.inner_size();
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
@@ -425,11 +461,12 @@ impl Renderer {
             width: size.width.max(1),
             height: size.height.max(1),
             present_mode: wgpu::PresentMode::Fifo,
-            alpha_mode: wgpu::CompositeAlphaMode::Auto,
+            alpha_mode,
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
         };
         surface.configure(&device, &config);
+        report_boot_log("surface configured, building pipelines…");
 
         let present_modes = caps.present_modes.clone();
         let vsync = present_modes.contains(&wgpu::PresentMode::Fifo);
@@ -904,7 +941,7 @@ impl Renderer {
             usage: wgpu::BufferUsages::VERTEX,
         });
 
-        Renderer {
+        let renderer = Renderer {
             surface,
             device,
             queue,
@@ -933,7 +970,10 @@ impl Renderer {
             chunks: HashMap::new(),
             present_modes,
             vsync,
-        }
+            submitted_frames: 0,
+        };
+        report_boot_log("renderer ready (pipelines + atlas uploaded)");
+        renderer
     }
 
     fn make_depth(device: &wgpu::Device, w: u32, h: u32) -> wgpu::TextureView {
@@ -1030,7 +1070,9 @@ impl Renderer {
     ) -> RenderStats {
         let frame = match self.surface.get_current_texture() {
             Ok(f) => f,
-            Err(_) => {
+            Err(e) => {
+                // NOTE: this was silently swallowing per-frame failures
+                report_boot_log(&format!("get_current_texture failed: {e:?}"));
                 self.surface.configure(&self.device, &self.config);
                 return RenderStats::default();
             }
@@ -1232,17 +1274,42 @@ impl Renderer {
 
         self.queue.submit(Some(encoder.finish()));
         frame.present();
+        if self.submitted_frames < 3 {
+            self.submitted_frames += 1;
+            report_boot_log(&format!(
+                "frame submitted #{}: format={:?} alpha={:?} {}x{}",
+                self.submitted_frames, self.config.format, self.config.alpha_mode, self.config.width, self.config.height
+            ));
+        }
 
         stats
     }
 }
 
-/// Probe whether a *working* WebGPU adapter exists (wasm only).
-/// navigator.gpu presence alone is not sufficient — headless Chromium exposes
-/// the API but returns null adapters, and wgpu locks an instance to WebGPU-only
-/// mode whenever it detects the API at all.
+/// Choose the GPU backend on wasm by ACTUALLY requesting adapters with the
+/// same options wgpu will use later:
+///   1. hardware adapter:  {powerPreference: 'high-performance', forceFallbackAdapter: false}
+///   2. software adapter:  {forceFallbackAdapter: true}   (blocklisted/absent GPUs)
+///   3. else: WebGL2 (GL backend)
+/// Returns Some(force_fallback_adapter) when WebGPU is viable, None → GL.
+/// (navigator.gpu presence alone is insufficient — headless Chromium exposes
+/// the API but returns null adapters, and wgpu locks an instance to
+/// WebGPU-only mode whenever it detects the API at all.)
 #[cfg(target_arch = "wasm32")]
-async fn probe_webgpu_adapter() -> bool {
+async fn choose_webgpu_mode() -> Option<bool> {
+    if request_adapter_js(Some("high-performance"), false).await {
+        return Some(false);
+    }
+    if request_adapter_js(None, true).await {
+        return Some(true);
+    }
+    None
+}
+
+/// Call navigator.gpu.requestAdapter(options) via JS reflection (avoids
+/// extra web-sys features) and report whether an adapter came back.
+#[cfg(target_arch = "wasm32")]
+async fn request_adapter_js(power_preference: Option<&str>, force_fallback: bool) -> bool {
     use wasm_bindgen::JsCast;
     let Some(window) = web_sys::window() else { return false };
     let window_val: wasm_bindgen::JsValue = window.into();
@@ -1262,7 +1329,23 @@ async fn probe_webgpu_adapter() -> bool {
         Err(_) => return false,
     };
     let Ok(func) = request_adapter.dyn_into::<js_sys::Function>() else { return false };
-    let result = match func.call0(&gpu) {
+
+    // build the options object exactly like wgpu will
+    let opts = js_sys::Object::new();
+    if let Some(pref) = power_preference {
+        let _ = js_sys::Reflect::set(
+            &opts,
+            &"powerPreference".into(),
+            &wasm_bindgen::JsValue::from_str(pref),
+        );
+    }
+    let _ = js_sys::Reflect::set(
+        &opts,
+        &"forceFallbackAdapter".into(),
+        &wasm_bindgen::JsValue::from_bool(force_fallback),
+    );
+
+    let result = match func.call1(&gpu, &opts) {
         Ok(r) => r,
         Err(_) => return false,
     };
@@ -1271,4 +1354,23 @@ async fn probe_webgpu_adapter() -> bool {
         return false;
     };
     !value.is_null() && !value.is_undefined()
+}
+
+/// Surface a fatal init error on the page (wasm) / stderr (native),
+/// instead of silently panicking into a blank screen.
+#[allow(dead_code)]
+pub(crate) fn report_boot_error(msg: &str) {
+    #[cfg(target_arch = "wasm32")]
+    crate::wasm_entry::boot_error(msg);
+    #[cfg(not(target_arch = "wasm32"))]
+    eprintln!("[voxelcraft] {msg}");
+}
+
+/// Best-effort diagnostic log (wasm: JS console, native: stderr).
+#[allow(dead_code)]
+pub(crate) fn report_boot_log(msg: &str) {
+    #[cfg(target_arch = "wasm32")]
+    crate::wasm_entry::boot_log(msg);
+    #[cfg(not(target_arch = "wasm32"))]
+    eprintln!("[voxelcraft] {msg}");
 }

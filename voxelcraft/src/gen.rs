@@ -498,19 +498,57 @@ impl TerrainGen {
 
     /// Find a comfortable spawn point (land, moderate altitude) near origin.
     pub fn find_spawn(&self) -> (f32, f32, f32) {
+        // green, welcoming biomes score higher for the spawn
+        let biome_bonus = |b: Biome| -> i32 {
+            match b {
+                Biome::Forest => 3,
+                Biome::Plains => 2,
+                Biome::Desert => 0,
+                Biome::Mountains => 0,
+                _ => -6, // Ocean / Beach / Snowy
+            }
+        };
+        let land = |x: i32, z: i32| -> bool {
+            let c = self.column(x, z);
+            c.height > crate::SEA_LEVEL + 1 && c.biome != Biome::Ocean && c.biome != Biome::Beach
+        };
         let mut best: Option<(i32, i32)> = None;
+        let mut best_score = i32::MIN;
         'search: for r in 0..40 {
             for i in -r..=r {
                 let candidates = [(i, r), (i, -r), (r, i), (-r, i)];
                 for &(x, z) in &candidates {
-                    let col = self.column(x * 8, z * 8);
-                    if col.height > crate::SEA_LEVEL + 1
+                    let (wx, wz) = (x * 8, z * 8);
+                    let col = self.column(wx, wz);
+                    if !(col.height > crate::SEA_LEVEL + 1
                         && col.height < 90
                         && col.biome != Biome::Ocean
-                        && col.biome != Biome::Beach
+                        && col.biome != Biome::Beach)
                     {
-                        best = Some((x * 8, z * 8));
-                        break 'search;
+                        continue;
+                    }
+                    // Landmass check: a spawn on a 1-block beach islet reads
+                    // as an empty ocean world — require land in most
+                    // surrounding directions (12 dirs x 3 radii), and prefer
+                    // green biomes around the spawn.
+                    let mut score = biome_bonus(col.biome);
+                    for k in 0..12i32 {
+                        let yaw = k as f32 * std::f32::consts::TAU / 12.0;
+                        for d in [24.0f32, 48.0, 96.0] {
+                            let sx = (wx as f32 + yaw.sin() * d) as i32;
+                            let sz = (wz as f32 - yaw.cos() * d) as i32;
+                            let c = self.column(sx, sz);
+                            if land(sx, sz) {
+                                score += 1 + biome_bonus(c.biome);
+                            }
+                        }
+                    }
+                    if score > best_score {
+                        best_score = score;
+                        best = Some((wx, wz));
+                    }
+                    if score >= 40 {
+                        break 'search; // solid, green landmass
                     }
                 }
             }
@@ -528,4 +566,33 @@ fn CHUNK_X_CHUNK() -> usize {
 #[inline]
 fn CHUNK_Z_CHUNK() -> usize {
     16
+}
+
+#[cfg(test)]
+mod spawn_tests {
+    use super::*;
+
+    #[test]
+    fn spawn_quality_across_seeds() {
+        let mut green = 0;
+        let mut total = 0;
+        for i in 0..20u64 {
+            let gen = TerrainGen::new(0x9E37_79B9_7F4A_7C15u64.wrapping_mul(i + 1));
+            let (x, y, z) = gen.find_spawn();
+            let col = gen.column(x as i32, z as i32);
+            let neighbors_green = (0..12).map(|k| {
+                let yaw = k as f32 * std::f32::consts::TAU / 12.0;
+                let c = gen.column((x + yaw.sin() * 40.0) as i32, (z - yaw.cos() * 40.0) as i32);
+                matches!(c.biome, Biome::Forest | Biome::Plains)
+            }).filter(|g| *g).count();
+            println!("seed {} -> spawn ({},{},{}) biome {:?} height {} green_neighbors {}/12",
+                i, x as i32, y as i32, z as i32, col.biome, col.height, neighbors_green);
+            if matches!(col.biome, Biome::Forest | Biome::Plains) || neighbors_green >= 4 {
+                green += 1;
+            }
+            total += 1;
+        }
+        println!("green-ish spawns: {}/{}", green, total);
+        assert!(green >= total / 2, "at least half of seeds should spawn green");
+    }
 }

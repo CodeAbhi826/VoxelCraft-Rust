@@ -469,3 +469,64 @@ pub fn blit_tile(atlas: &[u8], tile: u16, scale: usize, ox: usize, oy: usize, ou
         }
     }
 }
+
+// ---------------------------------------------------------------- clouds --
+
+/// Procedural cloud texture size (128x128, blocky 2x2 cells → 64x64 clouds).
+pub const CLOUD_TEX: usize = 128;
+
+/// Vanilla-style blocky cloud layer: periodic value noise thresholded on a
+/// 64x64 cell grid (periodic by construction → seamless tiling), each cell
+/// rendered as a 2x2 block for the crisp Minecraft cloud look.
+pub fn generate_cloud_atlas() -> Vec<u8> {
+    const CELLS: usize = 64;
+    let hash = |x: i32, y: i32| -> f32 {
+        let n = ((x * 73856093) ^ (y * 19349663)) as f64;
+        let s = (n * 0.0001).fract().abs();
+        let _ = s;
+        let v = (n.sin() * 43758.5453).fract().abs() as f32;
+        v
+    };
+    let cell = |cx: usize, cy: usize| -> bool {
+        // wrap → seamless tiling over CELLS
+        let x = (cx & (CELLS - 1)) as i32;
+        let y = (cy & (CELLS - 1)) as i32;
+        let n = hash(x, y) * 0.62 + hash((x >> 1) & 31, (y >> 1) & 31) * 0.38;
+        n > 0.56
+    };
+    let mut px = vec![0u8; CLOUD_TEX * CLOUD_TEX * 4];
+    for ty in 0..CLOUD_TEX {
+        for tx in 0..CLOUD_TEX {
+            let c = cell(tx / 2, ty / 2);
+            let i = (ty * CLOUD_TEX + tx) * 4;
+            if c {
+                px[i] = 255;
+                px[i + 1] = 255;
+                px[i + 2] = 255;
+                px[i + 3] = 255;
+            }
+        }
+    }
+    px
+}
+
+#[cfg(test)]
+mod cloud_tests {
+    use super::*;
+
+    #[test]
+    fn cloud_atlas_has_sparse_coverage() {
+        let px = generate_cloud_atlas();
+        let mut opaque = 0;
+        for i in (3..px.len()).step_by(4) {
+            if px[i] > 127 {
+                opaque += 1;
+            }
+        }
+        let total = CLOUD_TEX * CLOUD_TEX;
+        println!("cloud coverage: {}/{} = {:.1}%", opaque, total, 100.0 * opaque as f32 / total as f32);
+        // expect ~30-60% puffy coverage, NOT 0% and NOT ~100%
+        assert!(opaque > total / 10, "clouds vanished (no opaque pixels)");
+        assert!(opaque < total * 7 / 10, "clouds blanket the whole sky");
+    }
+}

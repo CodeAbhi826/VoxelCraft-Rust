@@ -9,6 +9,8 @@
     canvas#game {
       display: block; width: 100vw; height: 100vh; touch-action: none;
       outline: none; image-rendering: pixelated;
+      /* sky-ish backdrop: masks browser-cleared frames during resize (anti-flicker) */
+      background: #7ba4e8;
     }
     #boot {
       position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
@@ -26,21 +28,214 @@
   <div id="boot"><div class="wrap">
     <h1>VOXELCRAFT</h1>
     <p id="boot-status">Loading engine…</p>
-    <p><small>Rust + wgpu · WebGPU / WebGL2 build · click the canvas to play</small></p>
+    <p><small>Rust + wgpu · WebGPU / WebGL2 build</small></p>
   </div></div>
-  <script type="module">
-    // ────────────────────────────────────────────────────────────────────────
+  <script>
+    // ══════════════════════════════════════════════════════════════════════
+    // 0) INPUT SHIM — robust keyboard + mouse for ANY embedding (nested
+    //    iframes, preview panels, sandboxed origins).
+    //
+    //    Why: winit's web backend only delivers KeyboardInput when its canvas
+    //    holds DOM focus, and gates DeviceEvent::MouseMotion behind the same
+    //    focus — inside the preview panel's nested iframe the canvas loses
+    //    focus silently and BOTH inputs die. This shim listens at the
+    //    document level (focus-independent) and pushes events into a queue
+    //    the Rust side drains every frame. Pointer lock is attempted first;
+    //    if the browser blocks it (permissions policy in a cross-origin
+    //    iframe) we fall back to drag-to-look so the game stays playable.
+    // ══════════════════════════════════════════════════════════════════════
+    (function initInputShim() {
+      var canvas = document.getElementById('game');
+      var queue = [];
+      var held = {};              // physical keys currently down
+      var screen = 'loading';     // loading|title|options|game|pause (Rust keeps in sync)
+      var dragLook = false;       // pointer lock unavailable → drag to look
+      var dragging = false;       // active drag-look gesture
+      var dragMoved = 0;          // px moved during this gesture
+      var dragButton = 0;
+      var holdTimer = null;       // delayed mining while drag-look gesture is still
+
+      window.voxelcraftEvents = queue;
+      window.voxelcraftSetScreen = function (s) { screen = s; };
+      window.voxelcraftScreen = function () { return screen; };
+      window.voxelcraftRequestLock = function () {
+        try {
+          var p = canvas.requestPointerLock && canvas.requestPointerLock({ unadjustedMovement: false });
+          if (p && p.catch) p.catch(function () { /* pointerlockerror handles it */ });
+        } catch (e) { try { canvas.requestPointerLock(); } catch (e2) {} }
+      };
+      window.voxelcraftRequestUnlock = function () {
+        try { if (document.exitPointerLock) document.exitPointerLock(); } catch (e) {}
+      };
+      // settings persistence (localStorage)
+      window.voxelcraftSaveSettings = function (s) {
+        try { localStorage.setItem('voxelcraft.settings', s); } catch (e) {}
+      };
+      window.voxelcraftLoadSettings = function () {
+        try { return localStorage.getItem('voxelcraft.settings') || ''; } catch (e) { return ''; }
+      };
+
+      function push(ev) { if (queue.length < 256) queue.push(ev); }
+      function locked() { return document.pointerLockElement === canvas; }
+
+      // keys we consume ourselves (page has no text inputs)
+      var GAME_KEYS = { 'Space': 1, 'ArrowUp': 1, 'ArrowDown': 1, 'ArrowLeft': 1, 'ArrowRight': 1, 'Tab': 1 };
+
+      // physical key code; fall back to e.key for events synthesized without
+      // code (automation tools, some virtual keyboards)
+      function codeOf(e) {
+        if (e.code) return e.code;
+        var k = e.key || '';
+        if (k === ' ') return 'Space';
+        if (k.length === 1) {
+          if (k >= '0' && k <= '9') return 'Digit' + k;
+          if (k >= 'a' && k <= 'z') return 'Key' + k.toUpperCase();
+          if (k >= 'A' && k <= 'Z') return 'Key' + k;
+        }
+        return k;
+      }
+
+      window.addEventListener('keydown', function (e) {
+        var t = e.target;
+        var onCanvas = t === canvas || t === document.body || t === document.documentElement;
+        if (!onCanvas) return;
+        var code = codeOf(e);
+        if (GAME_KEYS[code] || (screen === 'game' && code !== 'F5' && code !== 'F12')) {
+          if (GAME_KEYS[code] || /^Key[WASD]$/.test(code) || /^Digit[1-9]$/.test(code) ||
+              code === 'Escape' || code === 'F3' || code === 'KeyH' || code === 'KeyV' ||
+              code === 'BracketLeft' || code === 'BracketRight' || code === 'Minus' || code === 'Equal') {
+            e.preventDefault();
+          }
+        }
+        held[code] = true;
+        push(['k', code, 1, e.repeat ? 1 : 0]);
+      }, { capture: true });
+
+      window.addEventListener('keyup', function (e) {
+        var t = e.target;
+        var onCanvas = t === canvas || t === document.body || t === document.documentElement;
+        if (!onCanvas) return;
+        var code = codeOf(e);
+        delete held[code];
+        push(['k', code, 0, 0]);
+      }, { capture: true });
+
+      // release everything if the frame/page loses focus (prevents stuck keys)
+      window.addEventListener('blur', function () {
+        for (var k in held) push(['k', k, 0, 0]);
+        held = {};
+        push(['blur', 1, 0, 0]);
+      });
+
+      document.addEventListener('visibilitychange', function () {
+        push(['vis', document.hidden ? 1 : 0, 0, 0]);
+      });
+
+      window.addEventListener('pointermove', function (e) {
+        if (locked()) {
+          push(['m', e.movementX || 0, e.movementY || 0]);
+        } else {
+          push(['c', e.clientX || 0, e.clientY || 0]);
+          if (dragging && (e.movementX || e.movementY)) {
+            dragMoved += Math.abs(e.movementX || 0) + Math.abs(e.movementY || 0);
+            push(['m', e.movementX || 0, e.movementY || 0]);
+          }
+        }
+      }, { capture: true });
+
+      canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+      canvas.addEventListener('pointerdown', function (e) {
+        try { canvas.focus(); } catch (err) {}
+        if (screen === 'game') {
+          if (locked()) {
+            push(['b', e.button, 1, e.clientX, e.clientY]);
+          } else if (dragLook) {
+            // drag-look fallback: click-and-hold still = mine after a beat,
+            // drag = look. A short tap = single break/place action.
+            dragging = true; dragMoved = 0; dragButton = e.button;
+            push(['c', e.clientX, e.clientY]);
+            if (holdTimer) clearTimeout(holdTimer);
+            holdTimer = setTimeout(function () {
+              if (dragging && dragMoved < 6) push(['b', 0, 1, 0, 0]);
+            }, 180);
+          } else {
+            // not locked yet — this gesture is the pointer-lock request
+            window.voxelcraftRequestLock();
+          }
+        } else {
+          push(['b', e.button, 1, e.clientX, e.clientY]);
+        }
+      });
+
+      window.addEventListener('pointerup', function (e) {
+        if (screen === 'game') {
+          if (locked()) {
+            push(['b', e.button, 0, e.clientX, e.clientY]);
+          } else if (dragging) {
+            if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+            if (dragMoved < 6) {
+              // tap → fire one action pulse
+              push(['b', e.button, 1, 0, 0]);
+              push(['b', e.button, 0, 0, 0]);
+            }
+            dragging = false;
+          }
+        } else {
+          push(['b', e.button, 0, e.clientX, e.clientY]);
+        }
+      }, { capture: true });
+
+      document.addEventListener('pointerlockchange', function () {
+        push(['pl', locked() ? 1 : 0, 0, 0]);
+      });
+      document.addEventListener('pointerlockerror', function () {
+        if (!dragLook) { dragLook = true; push(['ple', 1, 0, 0]); }
+      });
+
+      window.addEventListener('wheel', function (e) {
+        if (screen === 'game') {
+          e.preventDefault();
+          push(['w', e.deltaY > 0 ? 1 : -1, 0, 0]);
+        }
+      }, { capture: true, passive: false });
+
+      // resize → let Rust reconfigure + redraw in the same tick (anti-flicker).
+      // Push the DESIRED backing size (CSS box × dpr), never the stale current
+      // backing size — at boot the canvas is still the 300x150 default and
+      // pushing that would shrink the surface.
+      if (window.ResizeObserver) {
+        var lastW = -1, lastH = -1;
+        new ResizeObserver(function () {
+          var dpr = window.devicePixelRatio || 1;
+          var w = Math.round(canvas.clientWidth * dpr);
+          var h = Math.round(canvas.clientHeight * dpr);
+          if (w > 0 && h > 0 && (w !== lastW || h !== lastH)) {
+            lastW = w; lastH = h;
+            push(['r', w, h, 0]);
+          }
+        }).observe(canvas);
+      }
+
+      // exposed for E2E tests / debugging
+      window.__vcInput = {
+        get locked() { return locked(); },
+        get dragLook() { return dragLook; },
+        get screen() { return screen; },
+        heldCount: function () { return Object.keys(held).length; }
+      };
+    })();
+
+    // ══════════════════════════════════════════════════════════════════════
     // 1) WebGPU requestDevice sanitizer (critical fix, 2026-09)
-    // wgpu 22 sends limit keys that were REMOVED from the WebGPU spec
-    // (e.g. `maxInterStageShaderComponents`, removed in Chrome 129).
-    // Chrome rejects the entire requestDevice() call when it sees an
-    // unrecognized limit → the engine panics → blank screen.
-    // Fix: strip every limit key that is not in the current WebGPU spec.
-    // ────────────────────────────────────────────────────────────────────────
+    //    wgpu 22 sends limit keys that were REMOVED from the WebGPU spec
+    //    (e.g. `maxInterStageShaderComponents`, removed in Chrome 129).
+    //    Chrome rejects the whole requestDevice() → engine panics → blank.
+    //    Fix: strip every limit key not in the current spec.
+    // ══════════════════════════════════════════════════════════════════════
     (function sanitizeRequestDevice() {
       try {
         if (!navigator.gpu || !window.GPUAdapter || !GPUAdapter.prototype.requestDevice) return;
-        // limit names recognized by the current WebGPU spec (everything else gets stripped)
         const SPEC_LIMITS = new Set([
           'maxTextureDimension1D', 'maxTextureDimension2D', 'maxTextureDimension3D',
           'maxTextureArrayLayers', 'maxBindGroups', 'maxBindGroupsPerPipeline',
@@ -59,8 +254,6 @@
         const orig = GPUAdapter.prototype.requestDevice;
         GPUAdapter.prototype.requestDevice = function (desc) {
           try {
-            // wgpu 22 puts limits under `requiredLimits` (the spec property);
-            // also handle `limits` for other shapes.
             for (const key of ['requiredLimits', 'limits']) {
               const lim = desc && desc[key];
               if (lim && typeof lim === 'object') {
@@ -75,10 +268,10 @@
       } catch (e) { /* never block boot */ }
     })();
 
-    // ────────────────────────────────────────────────────────────────────────
-    // 2) Boot overlay lifecycle: stays visible until the engine draws its
-    //    first frame (voxelcraft:ready), and doubles as the ERROR surface.
-    // ────────────────────────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════
+    // 2) Boot overlay lifecycle: visible until the engine draws its first
+    //    frame ('voxelcraft:ready'); doubles as the ERROR surface.
+    // ══════════════════════════════════════════════════════════════════════
     const bootOverlay = document.getElementById('boot');
     const status = document.getElementById('boot-status');
     const canvas = document.getElementById('game');
@@ -86,7 +279,6 @@
     function hideBoot() { if (bootOverlay) bootOverlay.classList.add('hide'); }
     function bootError(msg) {
       if (status) {
-        // append (a panic follows a specific init error — keep both visible)
         status.textContent = status.textContent && status.textContent.indexOf('Engine error') === 0
           ? status.textContent + '\n' + msg
           : 'Engine error: ' + msg;
@@ -96,17 +288,14 @@
       if (bootOverlay) bootOverlay.classList.remove('hide');
     }
 
-    // engine signals readiness after its first rendered frame
     window.addEventListener('voxelcraft:ready', hideBoot, { once: true });
     window.voxelcraftReady = function () {
       window.dispatchEvent(new CustomEvent('voxelcraft:ready'));
     };
-    // exposed for the Rust side (panic hook / fatal init errors / diagnostics)
     window.voxelcraftBootError = bootError;
     window.voxelcraftLog = function (msg) { console.log('[voxelcraft] ' + msg); };
 
-    // safety net: if the canvas is live (wgpu configured its backing size)
-    // but the ready event never arrived, hide the overlay after ~3 s.
+    // safety net: canvas live but ready event never arrived → hide after ~3 s
     let liveTicks = 0;
     setInterval(function () {
       if (canvas.width > 300 && !bootOverlay.classList.contains('hide')) {
@@ -117,14 +306,11 @@
     async function boot() {
       try {
         if (!('gpu' in navigator)) {
-          // not fatal — the engine falls back to WebGL2 automatically
           if (status) status.textContent = 'No WebGPU in this browser — using WebGL2…';
         }
-        const { default: init } = await import('/voxelcraft.js?v=17');
-        await init('/voxelcraft_bg.wasm?v=17');
-        // NOTE: do NOT hide the overlay here. The wasm module initializes
-        // before the GPU device/pipelines are created; if init fails the
-        // engine reports the error into this overlay instead of a blank page.
+        const { default: init } = await import('/voxelcraft.js?v=24');
+        await init('/voxelcraft_bg.wasm?v=24');
+        // NOTE: overlay hides on first rendered frame, not here.
       } catch (err) {
         console.error(err);
         bootError('failed to load — ' + ((err && err.message) || err));

@@ -69,7 +69,7 @@ fn getl(light: &[u8], gx: i32, y: i32, gz: i32) -> u8 {
     light[pidx((gx + 16) as usize, y as usize, (gz + 16) as usize)]
 }
 
-pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9]) -> MeshData {
+pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -> MeshData {
     let (cx, cz) = pos;
     let wox = cx * 16;
     let woz = cz * 16;
@@ -263,7 +263,12 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9]) -> MeshData {
                             let s1 = solid_at(h_side.0, h_side.1);
                             let s2 = solid_at(v_side.0, v_side.1);
                             let cr = solid_at(diag.0, diag.1);
-                            ao[ci] = if s1 && s2 { 0 } else { 3 - (s1 as u64 + s2 as u64 + cr as u64) };
+                            // smooth lighting OFF ("Fast" graphics) → flat AO
+                            ao[ci] = if smooth {
+                                if s1 && s2 { 0 } else { 3 - (s1 as u64 + s2 as u64 + cr as u64) }
+                            } else {
+                                3
+                            };
                             let s = light_at(big_u - 1, big_v - 1)
                                 + light_at(big_u, big_v - 1)
                                 + light_at(big_u - 1, big_v)

@@ -58,3 +58,7 @@ voxelcraft/dist-native/
 # snapshot
 initial_snapshot.json
 worklog.md
+
+# user uploads & tool outputs (session artifacts, not project source)
+/upload/
+/tool-results/

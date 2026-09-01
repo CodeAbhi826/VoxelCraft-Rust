@@ -37,6 +37,67 @@ struct LineUniform {
     color: [f32; 4],
 }
 
+/// post uniforms: p = (mode, menu_blur, time, aspect), q = (bloom, vig, sat, exposure)
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct PostUniform {
+    p: [f32; 4],
+    q: [f32; 4],
+}
+
+/// blur direction + texel step for the separable blur passes
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct AuxUniform {
+    dir: [f32; 4],
+}
+
+/// offscreen scene + bloom pyramid textures (recreated on resize)
+struct PostTargets {
+    scene: wgpu::Texture,
+    scene_view: wgpu::TextureView,
+    /// bright-pass output (1/4 res)
+    q: wgpu::Texture,
+    q_view: wgpu::TextureView,
+    /// blur ping (1/8 res)
+    b1: wgpu::Texture,
+    b1_view: wgpu::TextureView,
+    /// blur pong (1/8 res)
+    b2: wgpu::Texture,
+    b2_view: wgpu::TextureView,
+}
+
+impl PostTargets {
+    fn new(device: &wgpu::Device, w: u32, h: u32, _format: wgpu::TextureFormat) -> Self {
+        // LINEAR (Unorm) intermediates: the scene shaders output linear
+        // color; the post chain reads/writes raw linear values and the
+        // final composite encodes once into the srgb surface. This avoids
+        // srgb texture sampling in the post chain entirely (a real-world
+        // WebGL2/SwiftShader srgb-sampling corruption hit the washed-out
+        // gray sky).
+        let format = wgpu::TextureFormat::Rgba8Unorm;
+        let make = |w: u32, h: u32| {
+            let t = device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("post"),
+                size: wgpu::Extent3d { width: w.max(1), height: h.max(1), depth_or_array_layers: 1 },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            });
+            let v = t.create_view(&wgpu::TextureViewDescriptor::default());
+            (t, v)
+        };
+        let (scene, scene_view) = make(w, h);
+        let (q, q_view) = make(w / 4, h / 4);
+        let (b1, b1_view) = make(w / 8, h / 8);
+        let (b2, b2_view) = make(w / 8, h / 8);
+        PostTargets { scene, scene_view, q, q_view, b1, b1_view, b2, b2_view }
+    }
+}
+
 pub struct Camera {
     pub eye: Vec3,
     pub yaw: f32,
@@ -52,6 +113,16 @@ pub struct SkyState {
     pub fog_end: f32,
     pub time: f32,
     pub underwater: bool,
+    /// minimum light floor (brightness setting) — G.misc.w in shaders
+    pub min_light: f32,
+}
+
+/// Post-processing request for a frame.
+pub struct PostParams {
+    /// 0 = off, 1 = vanilla+ (bloom/vig/sat), 2 = cinematic (+chroma, ACES)
+    pub mode: u8,
+    /// menu/panorama background blur 0..1
+    pub menu_blur: f32,
 }
 
 #[derive(Default)]
@@ -108,7 +179,8 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let c = textureSample(atlas_tex, atlas_samp, tuv);
     if (c.a < 0.5) { discard; }
     let day = G.misc.x;
-    let sky_l = max(in.sky * day, 0.05);
+    // G.misc.w = min-light floor (brightness setting, kills pitch-black caves)
+    let sky_l = max(in.sky * day, G.misc.w);
     var rgb = c.rgb * in.light * sky_l;
     let d = distance(in.world, G.cam.xyz);
     let f = smoothstep(G.fog_color.w, G.sun_dir.w, d);
@@ -171,7 +243,8 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let tuv = (in.tile + fract(in.uv + scroll)) / vec2<f32>(16.0, 16.0);
     let c = textureSample(atlas_tex, atlas_samp, tuv);
     let day = G.misc.x;
-    let sky_l = max(in.sky * day, 0.06);
+    // G.misc.w = min-light floor (brightness setting)
+    let sky_l = max(in.sky * day, G.misc.w);
     var rgb = c.rgb * in.light * sky_l * 1.05;
     let d = distance(in.world, G.cam.xyz);
     let f = smoothstep(G.fog_color.w, G.sun_dir.w, d);
@@ -308,6 +381,216 @@ fn fs_main() -> @location(0) vec4<f32> {
 }
 "#;
 
+// ---------------------------------------------------------------- clouds --
+
+const CLOUD_SHADER: &str = r#"
+struct Globals {
+    view_proj: mat4x4<f32>,
+    inv_view_proj: mat4x4<f32>,
+    cam: vec4<f32>,
+    fog_color: vec4<f32>,
+    sun_dir: vec4<f32>,
+    misc: vec4<f32>,
+};
+@group(0) @binding(0) var<uniform> G: Globals;
+@group(0) @binding(1) var cloud_tex: texture_2d<f32>;
+@group(0) @binding(2) var cloud_samp: sampler;
+
+struct VsOut {
+    @builtin(position) pos: vec4<f32>,
+    @location(0) world: vec3<f32>,
+};
+
+@vertex
+fn vs_main(@location(0) xz: vec2<f32>) -> VsOut {
+    var out: VsOut;
+    let world = vec3<f32>(xz.x + G.cam.x, 168.0, xz.y + G.cam.z);
+    out.pos = G.view_proj * vec4<f32>(world, 1.0);
+    out.world = world;
+    return out;
+}
+
+@fragment
+fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
+    let uv = (in.world.xz + vec2<f32>(G.misc.y * 6.0, G.misc.y * 2.5)) / vec2<f32>(512.0, 512.0);
+    let c = textureSample(cloud_tex, cloud_samp, uv);
+    let day = G.misc.x;
+    var col = vec3<f32>(1.0, 1.0, 1.0) * (0.30 + 0.70 * day);
+    // fade far clouds into the fog
+    let d = distance(in.world, G.cam.xyz);
+    let f = smoothstep(G.fog_color.w, G.sun_dir.w, d);
+    col = mix(col, G.fog_color.rgb, f * 0.9);
+    return vec4<f32>(col, c.a * 0.55);
+}
+"#;
+
+// -------------------------------------------------------- post-processing --
+
+// bright-pass (threshold + downsample to 1/4)
+const BRIGHT_SHADER: &str = r#"
+struct PostU { p: vec4<f32>, q: vec4<f32> };
+@group(0) @binding(0) var tex: texture_2d<f32>;
+@group(0) @binding(1) var samp: sampler;
+@group(0) @binding(2) var<uniform> U: PostU;
+
+struct VsOut {
+    @builtin(position) pos: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+};
+
+@vertex
+fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
+    var p = array<vec2<f32>, 3>(
+        vec2<f32>(-1.0, -1.0),
+        vec2<f32>(3.0, -1.0),
+        vec2<f32>(-1.0, 3.0),
+    );
+    var out: VsOut;
+    out.pos = vec4<f32>(p[vi], 0.0, 1.0);
+    // CRITICAL: sampling a previously-rendered-to texture requires the NDC→UV
+    // V-flip (NDC y=+1 = top of viewport = texture row 0 = v=0). Without it
+    // the composited world renders upside-down while the UI (own mapping)
+    // stays right-side up.
+    out.uv = vec2<f32>(p[vi].x * 0.5 + 0.5, 0.5 - p[vi].y * 0.5);
+    return out;
+}
+
+@fragment
+fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
+    let c = textureSample(tex, samp, in.uv);
+    let l = max(c.rgb - vec3<f32>(0.82), vec3<f32>(0.0));
+    return vec4<f32>(l * 1.5, 1.0);
+}
+"#;
+
+// separable 9-tap gaussian blur (direction from aux uniform)
+const BLUR_SHADER: &str = r#"
+struct PostU { p: vec4<f32>, q: vec4<f32> };
+struct AuxU { dir: vec4<f32> };
+@group(0) @binding(0) var tex: texture_2d<f32>;
+@group(0) @binding(1) var samp: sampler;
+@group(0) @binding(2) var<uniform> U: PostU;
+@group(0) @binding(3) var<uniform> A: AuxU;
+
+struct VsOut {
+    @builtin(position) pos: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+};
+
+@vertex
+fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
+    var p = array<vec2<f32>, 3>(
+        vec2<f32>(-1.0, -1.0),
+        vec2<f32>(3.0, -1.0),
+        vec2<f32>(-1.0, 3.0),
+    );
+    var out: VsOut;
+    out.pos = vec4<f32>(p[vi], 0.0, 1.0);
+    // NDC→UV V-flip (see BRIGHT_SHADER note) — keeps the bloom pyramid
+    // orientation-stable relative to the scene texture.
+    out.uv = vec2<f32>(p[vi].x * 0.5 + 0.5, 0.5 - p[vi].y * 0.5);
+    return out;
+}
+
+@fragment
+fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
+    let off = A.dir.xy;
+    var acc = textureSample(tex, samp, in.uv).rgb * 0.2270270270;
+    acc += (textureSample(tex, samp, in.uv + off * 1.3846153846).rgb
+          + textureSample(tex, samp, in.uv - off * 1.3846153846).rgb) * 0.3162162162;
+    acc += (textureSample(tex, samp, in.uv + off * 3.2307692308).rgb
+          + textureSample(tex, samp, in.uv - off * 3.2307692308).rgb) * 0.0702702703;
+    return vec4<f32>(acc, 1.0);
+}
+"#;
+
+// composite: menu blur + bloom + grade + vignette + chroma + tonemap
+const POST_SHADER: &str = r#"
+struct PostU { p: vec4<f32>, q: vec4<f32> };
+// p = (mode, menu_blur, time, aspect)  q = (bloom, vignette, saturation, exposure)
+@group(0) @binding(0) var scene: texture_2d<f32>;
+@group(0) @binding(1) var bloom: texture_2d<f32>;
+@group(0) @binding(2) var samp: sampler;
+@group(0) @binding(3) var<uniform> U: PostU;
+
+struct VsOut {
+    @builtin(position) pos: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+};
+
+@vertex
+fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
+    var p = array<vec2<f32>, 3>(
+        vec2<f32>(-1.0, -1.0),
+        vec2<f32>(3.0, -1.0),
+        vec2<f32>(-1.0, 3.0),
+    );
+    var out: VsOut;
+    out.pos = vec4<f32>(p[vi], 0.0, 1.0);
+    // NDC→UV V-flip (see BRIGHT_SHADER note) — this pass writes to the
+    // SWAPCHAIN, so without the flip the whole world appears upside-down.
+    out.uv = vec2<f32>(p[vi].x * 0.5 + 0.5, 0.5 - p[vi].y * 0.5);
+    return out;
+}
+
+@fragment
+fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
+    let uv = in.uv;
+    let mode = U.p.x;
+    let blur = U.p.y;
+    var col: vec3<f32>;
+
+    if (blur > 0.001) {
+        // menu/panorama blur: 13-tap disc in uv space (resolution independent)
+        var offs = array<vec2<f32>, 12>(
+            vec2<f32>(1.0, 0.0), vec2<f32>(-1.0, 0.0),
+            vec2<f32>(0.0, 1.0), vec2<f32>(0.0, -1.0),
+            vec2<f32>(0.7071, 0.7071), vec2<f32>(-0.7071, 0.7071),
+            vec2<f32>(0.7071, -0.7071), vec2<f32>(-0.7071, -0.7071),
+            vec2<f32>(1.0, 0.7071), vec2<f32>(-1.0, -0.7071),
+            vec2<f32>(0.7071, 1.0), vec2<f32>(-0.7071, -1.0),
+        );
+        let r = blur * 0.012;
+        var acc = textureSample(scene, samp, uv).rgb;
+        for (var i = 0; i < 12; i = i + 1) {
+            acc += textureSample(scene, samp, uv + offs[i] * r).rgb;
+        }
+        col = acc / 13.0;
+    } else {
+        col = textureSample(scene, samp, uv).rgb;
+        // cinematic chromatic aberration
+        if (mode > 1.5) {
+            let d = (uv - vec2<f32>(0.5, 0.5)) * 0.004;
+            col.r = textureSample(scene, samp, uv + d).r;
+            col.b = textureSample(scene, samp, uv - d).b;
+        }
+    }
+
+    // bloom
+    if (U.q.x > 0.001) {
+        col += textureSample(bloom, samp, uv).rgb * U.q.x;
+    }
+
+    // exposure
+    col = col * U.q.w;
+
+    // saturation
+    let lum = dot(col, vec3<f32>(0.2126, 0.7152, 0.0722));
+    col = mix(vec3<f32>(lum), col, U.q.z);
+
+    // vignette
+    let d2 = distance(uv, vec2<f32>(0.5, 0.5));
+    col = col * (1.0 - U.q.y * smoothstep(0.35, 0.85, d2));
+
+    // cinematic: ACES-ish filmic curve
+    if (mode > 1.5) {
+        col = clamp((col * (2.51 * col + 0.03)) / (col * (2.43 * col + 0.59) + 0.14), vec3<f32>(0.0), vec3<f32>(1.0));
+    }
+
+    return vec4<f32>(col, 1.0);
+}
+"#;
+
 // ---------------------------------------------------------------- renderer
 
 pub(crate) struct ChunkGpu {
@@ -331,6 +614,10 @@ pub struct Renderer {
     terrain_pipe: wgpu::RenderPipeline,
     water_pipe: wgpu::RenderPipeline,
     sky_pipe: wgpu::RenderPipeline,
+    // clouds
+    cloud_bg: wgpu::BindGroup,
+    cloud_pipe: wgpu::RenderPipeline,
+    cloud_vb: wgpu::Buffer,
     // ui
     ui_tex: wgpu::Texture,
     ui_view: wgpu::TextureView,
@@ -345,6 +632,26 @@ pub struct Renderer {
     line_vb: wgpu::Buffer,
     line_pipe: wgpu::RenderPipeline,
     line_bg: wgpu::BindGroup,
+    // post-processing
+    post_targets: PostTargets,
+    post_samp: wgpu::Sampler,
+    post_buf: wgpu::Buffer,
+    // blur directions: SEPARATE buffers per axis. A single buffer written
+    // mid-encoder (between the h-blur and v-blur passes) does NOT work —
+    // queue.write_buffer applies at the next submit, so both passes read the
+    // last-written value (horizontal) and the vertical blur never runs →
+    // bloom smears into vertical streaks (looked like sky "tearing").
+    aux_h_buf: wgpu::Buffer,
+    aux_v_buf: wgpu::Buffer,
+    post_bgl: wgpu::BindGroupLayout,
+    comp_bgl: wgpu::BindGroupLayout,
+    bg_scene: wgpu::BindGroup,
+    bg_q: wgpu::BindGroup,
+    bg_b1: wgpu::BindGroup,
+    bg_comp: wgpu::BindGroup,
+    bright_pipe: wgpu::RenderPipeline,
+    blur_pipe: wgpu::RenderPipeline,
+    post_pipe: wgpu::RenderPipeline,
     pub chunks: HashMap<ChunkPos, ChunkGpu>,
     present_modes: Vec<wgpu::PresentMode>,
     pub vsync: bool,
@@ -613,6 +920,8 @@ impl Renderer {
             push_constant_ranges: &[],
         });
 
+        // scene pipelines target the LINEAR offscreen scene texture
+        let scene_format = wgpu::TextureFormat::Rgba8Unorm;
         let make_pipe = |module: &wgpu::ShaderModule, entry: &str, cull: Option<wgpu::Face>, blend: Option<wgpu::BlendState>, depth: wgpu::DepthStencilState| {
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some("pipe"),
@@ -628,7 +937,7 @@ impl Renderer {
                     entry_point: "fs_main",
                     compilation_options: Default::default(),
                     targets: &[Some(wgpu::ColorTargetState {
-                        format,
+                        format: scene_format,
                         blend,
                         write_mask: wgpu::ColorWrites::ALL,
                     })],
@@ -649,9 +958,25 @@ impl Renderer {
             })
         };
 
-        let alpha_blend = Some(wgpu::BlendState::ALPHA_BLENDING);
+        // Blending for translucent surfaces that keeps the canvas OPAQUE:
+        // the alpha channel uses One/One so dst.a stays 1. With plain
+        // ALPHA_BLENDING, water/cloud pixels end with a < 1 and the browser
+        // composites the page background through them (see-through water /
+        // flicker on WebGL2 and premultiplied WebGPU surfaces).
+        let opaque_blend = Some(wgpu::BlendState {
+            color: wgpu::BlendComponent {
+                src_factor: wgpu::BlendFactor::SrcAlpha,
+                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                operation: wgpu::BlendOperation::Add,
+            },
+            alpha: wgpu::BlendComponent {
+                src_factor: wgpu::BlendFactor::One,
+                dst_factor: wgpu::BlendFactor::One,
+                operation: wgpu::BlendOperation::Add,
+            },
+        });
         let terrain_pipe = make_pipe(&terrain_mod, "vs_main", Some(wgpu::Face::Back), None, depth_state(true, wgpu::CompareFunction::Less));
-        let water_pipe = make_pipe(&water_mod, "vs_main", None, alpha_blend, depth_state(false, wgpu::CompareFunction::Less));
+        let water_pipe = make_pipe(&water_mod, "vs_main", None, opaque_blend, depth_state(false, wgpu::CompareFunction::Less));
         let sky_pipe = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("sky-pipe"),
             layout: Some(&pipeline_layout),
@@ -666,7 +991,7 @@ impl Renderer {
                 entry_point: "fs_main",
                 compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
-                    format,
+                    format: scene_format,
                     blend: None,
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
@@ -818,7 +1143,8 @@ impl Renderer {
                 unclipped_depth: false,
                 conservative: false,
             },
-            depth_stencil: Some(depth_state(false, wgpu::CompareFunction::Always)),
+            // UI pass renders without a depth attachment (drawn last, on top)
+            depth_stencil: None,
             multisample: wgpu::MultisampleState::default(),
             multiview: None,
             cache: None,
@@ -902,7 +1228,7 @@ impl Renderer {
                 entry_point: "fs_main",
                 compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
-                    format,
+                    format: scene_format,
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
@@ -941,6 +1267,323 @@ impl Renderer {
             usage: wgpu::BufferUsages::VERTEX,
         });
 
+        // ---------------------------------------------------------- clouds
+        let cloud_atlas = crate::textures::generate_cloud_atlas();
+        let cloud_size = wgpu::Extent3d {
+            width: crate::textures::CLOUD_TEX as u32,
+            height: crate::textures::CLOUD_TEX as u32,
+            depth_or_array_layers: 1,
+        };
+        let cloud_tex = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("clouds"),
+            size: cloud_size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        queue.write_texture(
+            wgpu::ImageCopyTexture {
+                texture: &cloud_tex,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            &cloud_atlas,
+            wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(crate::textures::CLOUD_TEX as u32 * 4),
+                rows_per_image: Some(crate::textures::CLOUD_TEX as u32),
+            },
+            cloud_size,
+        );
+        let cloud_view = cloud_tex.create_view(&wgpu::TextureViewDescriptor::default());
+        let mut csamp = wgpu::SamplerDescriptor::default();
+        csamp.mag_filter = wgpu::FilterMode::Nearest; // crisp vanilla-style cloud edges
+        csamp.min_filter = wgpu::FilterMode::Nearest;
+        csamp.address_mode_u = wgpu::AddressMode::Repeat;
+        csamp.address_mode_v = wgpu::AddressMode::Repeat;
+        let cloud_samp = device.create_sampler(&csamp);
+
+        let cloud_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("cloud-bgl"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+        });
+        let cloud_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("cloud-bg"),
+            layout: &cloud_bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: &globals_buf,
+                        offset: 0,
+                        size: None,
+                    }),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&cloud_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&cloud_samp),
+                },
+            ],
+        });
+        let cloud_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("clouds"),
+            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(CLOUD_SHADER)),
+        });
+        let cloud_vbl = wgpu::VertexBufferLayout {
+            array_stride: 8,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &[wgpu::VertexAttribute {
+                offset: 0,
+                shader_location: 0,
+                format: wgpu::VertexFormat::Float32x2,
+            }],
+        };
+        let cloud_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("cloud-pl"),
+            bind_group_layouts: &[&cloud_bgl],
+            push_constant_ranges: &[],
+        });
+        let cloud_pipe = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("cloud-pipe"),
+            layout: Some(&cloud_pl),
+            vertex: wgpu::VertexState {
+                module: &cloud_mod,
+                entry_point: "vs_main",
+                compilation_options: Default::default(),
+                buffers: &[cloud_vbl],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &cloud_mod,
+                entry_point: "fs_main",
+                compilation_options: Default::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: scene_format,
+                    blend: opaque_blend,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: None,
+                polygon_mode: wgpu::PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
+            },
+            depth_stencil: Some(depth_state(false, wgpu::CompareFunction::Less)),
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        });
+        // cloud quad: big XZ plane centered on the camera (recentered in vs)
+        let s = 2400.0f32;
+        let cloud_verts: [[f32; 2]; 6] = [
+            [-s, -s], [s, -s], [s, s],
+            [-s, -s], [s, s], [-s, s],
+        ];
+        let cloud_vb = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("cloud-vb"),
+            contents: bytemuck::cast_slice(&cloud_verts),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+
+        // ------------------------------------------------- post-processing
+        let post_samp = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("post-samp"),
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
+        let post_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("post-uniform"),
+            size: std::mem::size_of::<PostUniform>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let aux_h_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("post-aux-h"),
+            size: std::mem::size_of::<AuxUniform>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let aux_v_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("post-aux-v"),
+            size: std::mem::size_of::<AuxUniform>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        // write once here; rewritten on resize (texel steps are size-dependent)
+        let bw = (config.width / 8).max(1);
+        let bh = (config.height / 8).max(1);
+        queue.write_buffer(
+            &aux_h_buf,
+            0,
+            bytemuck::bytes_of(&AuxUniform { dir: [1.0 / bw as f32, 0.0, 0.0, 0.0] }),
+        );
+        queue.write_buffer(
+            &aux_v_buf,
+            0,
+            bytemuck::bytes_of(&AuxUniform { dir: [0.0, 1.0 / bh as f32, 0.0, 0.0] }),
+        );
+
+        let uniform_entry = |binding: u32, vis: wgpu::ShaderStages| wgpu::BindGroupLayoutEntry {
+            binding,
+            visibility: vis,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        };
+        let texture_entry = |binding: u32| wgpu::BindGroupLayoutEntry {
+            binding,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Texture {
+                sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                view_dimension: wgpu::TextureViewDimension::D2,
+                multisampled: false,
+            },
+            count: None,
+        };
+        let sampler_entry = |binding: u32| wgpu::BindGroupLayoutEntry {
+            binding,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+            count: None,
+        };
+
+        // single-texture layout (bright + blur passes)
+        let post_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("post-bgl"),
+            entries: &[
+                texture_entry(0),
+                sampler_entry(1),
+                uniform_entry(2, wgpu::ShaderStages::FRAGMENT),
+                uniform_entry(3, wgpu::ShaderStages::FRAGMENT),
+            ],
+        });
+        // two-texture layout (composite pass)
+        let comp_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("comp-bgl"),
+            entries: &[
+                texture_entry(0),
+                texture_entry(1),
+                sampler_entry(2),
+                uniform_entry(3, wgpu::ShaderStages::FRAGMENT),
+            ],
+        });
+
+        let bright_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("bright"),
+            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(BRIGHT_SHADER)),
+        });
+        let blur_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("blur"),
+            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(BLUR_SHADER)),
+        });
+        let post_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("post"),
+            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(POST_SHADER)),
+        });
+
+        let post_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("post-pl"),
+            bind_group_layouts: &[&post_bgl],
+            push_constant_ranges: &[],
+        });
+        let comp_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("comp-pl"),
+            bind_group_layouts: &[&comp_bgl],
+            push_constant_ranges: &[],
+        });
+        let make_fs_pipe = |module: &wgpu::ShaderModule, layout: &wgpu::PipelineLayout, out_format: wgpu::TextureFormat| {
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("fs-pipe"),
+                layout: Some(layout),
+                vertex: wgpu::VertexState {
+                    module,
+                    entry_point: "vs_main",
+                    compilation_options: Default::default(),
+                    buffers: &[],
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module,
+                    entry_point: "fs_main",
+                    compilation_options: Default::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: out_format,
+                        blend: None,
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    strip_index_format: None,
+                    front_face: wgpu::FrontFace::Ccw,
+                    cull_mode: None,
+                    polygon_mode: wgpu::PolygonMode::Fill,
+                    unclipped_depth: false,
+                    conservative: false,
+                },
+                depth_stencil: None,
+                multisample: wgpu::MultisampleState::default(),
+                multiview: None,
+                cache: None,
+            })
+        };
+        let linear = wgpu::TextureFormat::Rgba8Unorm;
+        let bright_pipe = make_fs_pipe(&bright_mod, &post_pl, linear);
+        let blur_pipe = make_fs_pipe(&blur_mod, &post_pl, linear);
+        // composite writes the final srgb-encoded image to the surface
+        let post_pipe = make_fs_pipe(&post_mod, &comp_pl, format);
+
+        // offscreen targets + bind groups at the real size
+        // (blur-h reads q with the H-step aux; blur-v reads b1 with the V-step)
+        let post_targets = PostTargets::new(&device, config.width, config.height, format);
+        let bg_scene = Self::single_tex_bg(&device, &post_bgl, &post_targets.scene_view, &post_samp, &post_buf, &aux_v_buf);
+        let bg_q = Self::single_tex_bg(&device, &post_bgl, &post_targets.q_view, &post_samp, &post_buf, &aux_h_buf);
+        let bg_b1 = Self::single_tex_bg(&device, &post_bgl, &post_targets.b1_view, &post_samp, &post_buf, &aux_v_buf);
+        let bg_comp = Self::comp_bg(&device, &comp_bgl, &post_targets.scene_view, &post_targets.b2_view, &post_samp, &post_buf);
+
         let renderer = Renderer {
             surface,
             device,
@@ -955,6 +1598,9 @@ impl Renderer {
             terrain_pipe,
             water_pipe,
             sky_pipe,
+            cloud_bg,
+            cloud_pipe,
+            cloud_vb,
             ui_tex,
             ui_view,
             ui_samp,
@@ -967,13 +1613,133 @@ impl Renderer {
             line_vb,
             line_pipe,
             line_bg,
+            post_targets,
+            post_samp,
+            post_buf,
+            aux_h_buf,
+            aux_v_buf,
+            post_bgl,
+            comp_bgl,
+            bg_scene,
+            bg_q,
+            bg_b1,
+            bg_comp,
+            bright_pipe,
+            blur_pipe,
+            post_pipe,
             chunks: HashMap::new(),
             present_modes,
             vsync,
             submitted_frames: 0,
         };
-        report_boot_log("renderer ready (pipelines + atlas uploaded)");
+        report_boot_log("renderer ready (pipelines + atlas + clouds + post chain)");
         renderer
+    }
+
+    fn single_tex_bg(
+        device: &wgpu::Device,
+        layout: &wgpu::BindGroupLayout,
+        view: &wgpu::TextureView,
+        samp: &wgpu::Sampler,
+        post_buf: &wgpu::Buffer,
+        aux_buf: &wgpu::Buffer,
+    ) -> wgpu::BindGroup {
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("post-bg"),
+            layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(samp),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: post_buf,
+                        offset: 0,
+                        size: None,
+                    }),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: aux_buf,
+                        offset: 0,
+                        size: None,
+                    }),
+                },
+            ],
+        })
+    }
+
+    fn comp_bg(
+        device: &wgpu::Device,
+        layout: &wgpu::BindGroupLayout,
+        scene: &wgpu::TextureView,
+        bloom: &wgpu::TextureView,
+        samp: &wgpu::Sampler,
+        post_buf: &wgpu::Buffer,
+    ) -> wgpu::BindGroup {
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("comp-bg"),
+            layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(scene),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(bloom),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(samp),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: post_buf,
+                        offset: 0,
+                        size: None,
+                    }),
+                },
+            ],
+        })
+    }
+
+    /// recreate offscreen targets + bind groups after a resize
+    fn rebuild_post_targets(&mut self) {
+        let w = self.config.width.max(1);
+        let h = self.config.height.max(1);
+        let format = self.config.format;
+        let t = PostTargets::new(&self.device, w, h, format);
+        let bg_scene = Self::single_tex_bg(&self.device, &self.post_bgl, &t.scene_view, &self.post_samp, &self.post_buf, &self.aux_v_buf);
+        let bg_q = Self::single_tex_bg(&self.device, &self.post_bgl, &t.q_view, &self.post_samp, &self.post_buf, &self.aux_h_buf);
+        let bg_b1 = Self::single_tex_bg(&self.device, &self.post_bgl, &t.b1_view, &self.post_samp, &self.post_buf, &self.aux_v_buf);
+        let bg_comp = Self::comp_bg(&self.device, &self.comp_bgl, &t.scene_view, &t.b2_view, &self.post_samp, &self.post_buf);
+        self.post_targets = t;
+        self.bg_scene = bg_scene;
+        self.bg_q = bg_q;
+        self.bg_b1 = bg_b1;
+        self.bg_comp = bg_comp;
+        // refresh blur texel steps for the new size (1/8 targets)
+        let bw = (w / 8).max(1);
+        let bh = (h / 8).max(1);
+        self.queue.write_buffer(
+            &self.aux_h_buf,
+            0,
+            bytemuck::bytes_of(&AuxUniform { dir: [1.0 / bw as f32, 0.0, 0.0, 0.0] }),
+        );
+        self.queue.write_buffer(
+            &self.aux_v_buf,
+            0,
+            bytemuck::bytes_of(&AuxUniform { dir: [0.0, 1.0 / bh as f32, 0.0, 0.0] }),
+        );
     }
 
     fn make_depth(device: &wgpu::Device, w: u32, h: u32) -> wgpu::TextureView {
@@ -998,6 +1764,17 @@ impl Renderer {
         self.config.height = h;
         self.surface.configure(&self.device, &self.config);
         self.depth = Self::make_depth(&self.device, w, h);
+        self.rebuild_post_targets();
+    }
+
+    /// current surface size in physical px (UI coordinate mapping)
+    pub fn size(&self) -> (f32, f32) {
+        (self.config.width as f32, self.config.height as f32)
+    }
+
+    /// drop all GPU chunk meshes (full re-mesh, e.g. smooth-lighting toggle)
+    pub fn clear_meshes(&mut self) {
+        self.chunks.clear();
     }
 
     pub fn toggle_vsync(&mut self) {
@@ -1067,6 +1844,8 @@ impl Renderer {
         sky: &SkyState,
         ui: &mut UiCanvas,
         selection: Option<(i32, i32, i32)>,
+        post: &PostParams,
+        clouds: bool,
     ) -> RenderStats {
         let frame = match self.surface.get_current_texture() {
             Ok(f) => f,
@@ -1077,7 +1856,7 @@ impl Renderer {
                 return RenderStats::default();
             }
         };
-        let view = frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let frame_view = frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
 
         let aspect = self.config.width as f32 / self.config.height as f32;
         let dir = Vec3::new(
@@ -1096,7 +1875,12 @@ impl Renderer {
             cam: [cam.eye.x, cam.eye.y, cam.eye.z, 0.0],
             fog_color: [sky.fog_color[0], sky.fog_color[1], sky.fog_color[2], sky.fog_start],
             sun_dir: [sky.sun_dir.x, sky.sun_dir.y, sky.sun_dir.z, sky.fog_end],
-            misc: [sky.day_light, sky.time, if sky.underwater { 1.0 } else { 0.0 }, 0.0],
+            misc: [
+                sky.day_light,
+                sky.time,
+                if sky.underwater { 1.0 } else { 0.0 },
+                sky.min_light,
+            ],
         };
         self.queue.write_buffer(&self.globals_buf, 0, bytemuck::bytes_of(&globals));
 
@@ -1135,6 +1919,18 @@ impl Renderer {
             ui.dirty = false;
         }
 
+        // post uniform: mode, menu_blur, time, aspect | bloom, vig, sat, exp
+        let (bloom, vig, sat, exp) = match post.mode {
+            1 => (0.55, 0.14, 1.07, 1.0),   // vanilla+
+            2 => (0.85, 0.32, 1.16, 1.06),  // cinematic
+            _ => (0.0, 0.0, 1.0, 1.0),      // off
+        };
+        let post_u = PostUniform {
+            p: [post.mode as f32, post.menu_blur.clamp(0.0, 1.0), sky.time, aspect],
+            q: [bloom, vig, sat, exp],
+        };
+        self.queue.write_buffer(&self.post_buf, 0, bytemuck::bytes_of(&post_u));
+
         // selection line uniform
         let line_u = LineUniform {
             vp: vp.to_cols_array_2d(),
@@ -1147,6 +1943,11 @@ impl Renderer {
             color: [0.0, 0.0, 0.0, 0.55],
         };
         self.queue.write_buffer(&self.line_buf, 0, bytemuck::bytes_of(&line_u));
+
+        // NOTE: blur direction uniforms (aux_h_buf / aux_v_buf) are written
+        // once at init and refreshed in rebuild_post_targets() — per-frame
+        // mid-encoder writes cannot take effect between passes (see struct
+        // field comment).
 
         // frustum planes from vp (rows)
         let rows: [Vec4; 4] = [vp.row(0), vp.row(1), vp.row(2), vp.row(3)];
@@ -1190,8 +1991,11 @@ impl Renderer {
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("frame") });
 
+        // ─────────────────────────────────────────────── pass 1: scene ──
+        // (sky + terrain + selection + water + clouds → offscreen LINEAR
+        // scene texture — the composite encodes to srgb once at the end)
         let clear = wgpu::RenderPassColorAttachment {
-            view: &view,
+            view: &self.post_targets.scene_view,
             resolve_target: None,
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Clear(wgpu::Color {
@@ -1214,7 +2018,7 @@ impl Renderer {
 
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("main"),
+                label: Some("scene"),
                 color_attachments: &[Some(clear)],
                 depth_stencil_attachment: Some(depth_att),
                 timestamp_writes: None,
@@ -1264,7 +2068,122 @@ impl Renderer {
                 pass.draw_indexed(0..*n, 0, 0..1);
             }
 
-            // 5. UI
+            // 5. clouds (translucent plane above the world)
+            if clouds {
+                pass.set_pipeline(&self.cloud_pipe);
+                pass.set_bind_group(0, &self.cloud_bg, &[]);
+                pass.set_vertex_buffer(0, self.cloud_vb.slice(..));
+                pass.draw(0..6, 0..1);
+            }
+        }
+
+        // ─────────────────────────────────────── pass 2/3: bloom pyramid ──
+        if post.mode > 0 {
+            // bright: scene → q (1/4)
+            {
+                let att = wgpu::RenderPassColorAttachment {
+                    view: &self.post_targets.q_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: wgpu::StoreOp::Store,
+                    },
+                };
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("bright"),
+                    color_attachments: &[Some(att)],
+                    depth_stencil_attachment: None,
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                });
+                pass.set_pipeline(&self.bright_pipe);
+                pass.set_bind_group(0, &self.bg_scene, &[]);
+                pass.draw(0..3, 0..1);
+            }
+            // blur h: q → b1 (1/8)
+            {
+                let att = wgpu::RenderPassColorAttachment {
+                    view: &self.post_targets.b1_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: wgpu::StoreOp::Store,
+                    },
+                };
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("blur-h"),
+                    color_attachments: &[Some(att)],
+                    depth_stencil_attachment: None,
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                });
+                pass.set_pipeline(&self.blur_pipe);
+                pass.set_bind_group(0, &self.bg_q, &[]);
+                pass.draw(0..3, 0..1);
+            }
+            // blur v: b1 → b2 (1/8) — bg_b1 binds aux_v_buf (vertical step)
+            {
+                let att = wgpu::RenderPassColorAttachment {
+                    view: &self.post_targets.b2_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: wgpu::StoreOp::Store,
+                    },
+                };
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("blur-v"),
+                    color_attachments: &[Some(att)],
+                    depth_stencil_attachment: None,
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                });
+                pass.set_pipeline(&self.blur_pipe);
+                pass.set_bind_group(0, &self.bg_b1, &[]);
+                pass.draw(0..3, 0..1);
+            }
+        }
+
+        // ───────────────────────────────── pass 4: composite → surface ──
+        {
+            let att = wgpu::RenderPassColorAttachment {
+                view: &frame_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                    store: wgpu::StoreOp::Store,
+                },
+            };
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("post"),
+                color_attachments: &[Some(att)],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+            pass.set_pipeline(&self.post_pipe);
+            pass.set_bind_group(0, &self.bg_comp, &[]);
+            pass.draw(0..3, 0..1);
+        }
+
+        // ───────────────────────────────────── pass 5: UI → surface ──
+        // (crisp, unblurred, alpha-blended over the final composited image)
+        {
+            let att = wgpu::RenderPassColorAttachment {
+                view: &frame_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            };
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("ui"),
+                color_attachments: &[Some(att)],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
             pass.set_pipeline(&self.ui_pipe);
             pass.set_bind_group(0, &self.ui_bg, &[]);
             pass.set_vertex_buffer(0, self.ui_vb.slice(..));
@@ -1277,8 +2196,9 @@ impl Renderer {
         if self.submitted_frames < 3 {
             self.submitted_frames += 1;
             report_boot_log(&format!(
-                "frame submitted #{}: format={:?} alpha={:?} {}x{}",
-                self.submitted_frames, self.config.format, self.config.alpha_mode, self.config.width, self.config.height
+                "frame submitted #{}: format={:?} alpha={:?} {}x{} post_mode={} blur={:.2}",
+                self.submitted_frames, self.config.format, self.config.alpha_mode, self.config.width, self.config.height,
+                post.mode, post.menu_blur
             ));
         }
 

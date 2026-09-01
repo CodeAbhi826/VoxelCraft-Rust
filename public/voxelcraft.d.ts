@@ -21,7 +21,7 @@ export interface InitOutput {
     readonly wgpu_render_bundle_set_index_buffer: (a: number, b: bigint, c: number, d: bigint, e: bigint) => void;
     readonly wgpu_render_bundle_push_debug_group: (a: number, b: number) => void;
     readonly wasm_bindgen_9db9684516082e64___convert__closures_____invoke___wasm_bindgen_9db9684516082e64___JsValue__core_f0fd674eaa06beef___result__Result_____wasm_bindgen_9db9684516082e64___JsError___true_: (a: number, b: number, c: any) => [number, number];
-    readonly wasm_bindgen_9db9684516082e64___convert__closures_____invoke___js_sys_71a3917a39f159cf___Array__web_sys_f6a1b1a6c1f91696___features__gen_ResizeObserver__ResizeObserver______true_: (a: number, b: number, c: any, d: any) => void;
+    readonly wasm_bindgen_9db9684516082e64___convert__closures_____invoke___js_sys_71a3917a39f159cf___Array__web_sys_d980ed5802a6f028___features__gen_ResizeObserver__ResizeObserver______true_: (a: number, b: number, c: any, d: any) => void;
     readonly wasm_bindgen_9db9684516082e64___convert__closures_____invoke___wasm_bindgen_9db9684516082e64___JsValue______true__1_: (a: number, b: number, c: any) => void;
     readonly wasm_bindgen_9db9684516082e64___convert__closures_____invoke___wasm_bindgen_9db9684516082e64___JsValue______true_: (a: number, b: number, c: any) => void;
     readonly wasm_bindgen_9db9684516082e64___convert__closures_____invoke___js_sys_71a3917a39f159cf___Array______true_: (a: number, b: number, c: any) => void;

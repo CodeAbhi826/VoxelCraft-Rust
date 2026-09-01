@@ -55,9 +55,27 @@ impl World {
             Some(c) => {
                 let lx = (wx - cx * 16) as usize;
                 let lz = (wz - cz * 16) as usize;
-                c.get(lx, wy as usize, lz)
+                state_block(c.get(lx, wy as usize, lz) as u16)
             }
             None => AIR,
+        }
+    }
+
+    /// raw state id at a position (property variants included)
+    #[inline]
+    pub fn get_state(&self, wx: i32, wy: i32, wz: i32) -> u16 {
+        if wy < 0 || wy > 255 {
+            return 0;
+        }
+        let cx = wx.div_euclid(16);
+        let cz = wz.div_euclid(16);
+        match self.chunks.get(&(cx, cz)) {
+            Some(c) => {
+                let lx = (wx - cx * 16) as usize;
+                let lz = (wz - cz * 16) as usize;
+                c.get(lx, wy as usize, lz) as u16
+            }
+            None => 0,
         }
     }
 
@@ -69,7 +87,14 @@ impl World {
 
     /// Player-driven block edit (copy-on-write so in-flight mesh jobs with old
     /// snapshots stay consistent). Marks affected chunks dirty for re-mesh.
+    /// `id` is a BLOCK id — the default state of that block is stored.
     pub fn set_block(&mut self, wx: i32, wy: i32, wz: i32, id: u8) {
+        self.set_block_state(wx, wy, wz, id as u16);
+    }
+
+    /// Player-driven BLOCK-STATE edit (e.g. a log placed with axis=x).
+    /// Copy-on-write at section granularity; marks affected chunks dirty.
+    pub fn set_block_state(&mut self, wx: i32, wy: i32, wz: i32, state: u16) {
         if wy < 0 || wy > 255 {
             return;
         }
@@ -81,7 +106,7 @@ impl World {
         let mut new_chunk = (*old).clone();
         let lx = (wx - cx * 16) as usize;
         let lz = (wz - cz * 16) as usize;
-        new_chunk.set(lx, wy as usize, lz, id);
+        new_chunk.set_state(lx, wy as usize, lz, state);
         self.chunks.insert(pos, Arc::new(new_chunk));
 
         self.dirty.insert(pos);

@@ -54,22 +54,22 @@ It is **four pasted LLM outputs concatenated**, not one document:
 | Roadmap phase | Item | Status | Evidence |
 |---|---|---|---|
 | 1 | `GameSettings` + deps | ✅ **Done** (settings + persistence, 3-state graphics, maxfps, shadows, upscale; web = localStorage) | `game.rs`/`ui.rs`, commit `f08c21a` |
-| 2 | BlockState system + JSON models | ❌ Not started (57 flat block defs, no properties) | `blocks.rs` |
-| 3 | Paletted 16³ ChunkSections | ❌ Not started (flat 64KiB array) | `chunk.rs` |
-| 4 | Packed vertex + new mesher | ❌ Not started (36-byte verts, per-chunk buffers) | `mesh.rs` |
-| 5 | zip/JAR resource-pack atlas loader | ❌ Not started (procedural, 44 tiles) — *kept as designed fallback* | `textures.rs` |
-| 6 | Deferred G-Buffer renderer | ❌ Not started (forward+; see §2.6) | `render.rs` |
+| 2 | BlockState system + JSON models | ◐ **Registry done** — 1.16.5-pattern state ids, `log[axis=x\|y\|z]` variants proven through the full palette→mesh→vertex pipeline; JSON model parsing still pending (needs non-cube geometry) | commit `8dde4e5`, 18 unit tests |
+| 3 | Paletted 16³ ChunkSections | ✅ **Done** — vanilla palette ladder (4b→direct), entries never straddle words, section-granularity CoW; ~0.5 KiB air chunks | commit `6039a9e` |
+| 4 | Packed vertex + new mesher | ✅ **Done** — VC-16 (16 B, Sodium 0.5.1 parity), chunk-relative + instance-rate origins, corrected bit layout (roadmap's 8 B is mathematically impossible) | commit `9ae6fb9` |
+| 5 | zip/JAR resource-pack atlas loader | ❌ Not started (procedural, 44 tiles) — *kept as designed fallback*; wasm path researched (`zip`+`image` pure-Rust features) | `textures.rs` |
+| 6 | Deferred G-Buffer renderer | ❌ Not started (forward+; **recommended deferral** until shader packs exist — see §2.6) | `render.rs` |
 | 7 | Shadow map pass | ✅ **Done** (2048² sun pass, 3×3 PCF, slope+normal bias, texel-snapped light camera, strength by graphics preset) | commit `f08c21a` |
-| 8 | Region MDI + global buffer | ❌ Not started | `render.rs` |
+| 8 | Region MDI + global buffer | ❌ Not started — research shows MDI native-only + indirect PANICS on WebGL2; needs the 3-path draw abstraction (MDI / WebGPU-indirect-loop / GL draw-loop) | `docs/research/sodium-meshing.md` §8.4 |
 | 9 | FSR 1.0 | ✅ **Done as FSR-lite** (scaled targets 75/50% + RCAS-style sharpen) — the doc's own endorsed WASM-compatible variant | commit `f08c21a` |
-| 10 | Enhanced F3 | ✅ **Done** (min/avg/max fps, frame ms, frame-time graph, targeted block, backend name, chunks/verts) | commit `f08c21a` |
+| 10 | Enhanced F3 | ✅ **Done** (min/avg/max fps, frame ms, frame-time graph, targeted block **+ blockstate**, backend name, chunks/verts) | commits `f08c21a`, `8dde4e5` |
 | 11 | Iris shader-pack loader | ❌ Not started | — |
 | 12 | Spatial audio + sounds.json | ◐ Partial (synth bank, distance/pan attenuation; no JSON registry, no categories) | `sounds.rs` |
 | 13 | Polish (settings menu, biome tint, mipmap, clouds) | ◐ Partial (settings menu ✅, picker ✅, block light ✅; mipmap ❌, clouds mode ❌) | `f08c21a` |
 
 Also shipped beyond the roadmap's letter: E-key creative picker (52 blocks), emissive block-light BFS + vertex channel, 18→57 block registry with ores/tree species/glowstone caves, web hardening commits `157324d`/`f08c21a`.
 
-**Honest score vs. the doc's own 13-phase plan: 4.5 / 13 phases** — the user-visible feature phases (7, 9, 10, settings) are done; the deep architecture phases (2, 3, 4, 8 — and optionally 6) are the remaining mountain, correctly estimated at multi-week effort each.
+**Honest score vs. the doc's own 13-phase plan: 7.5 / 13 phases** — the full data-layer trilogy (2-registry, 3-paletted sections, 4-VC-16 vertices) plus the feature phases (1, 7, 9, 10, settings/picker extras) are done, each with unit tests and browser E2E. Remaining: resource-pack loader (5), G-buffer (6 — keep deferred), region MDI (8 — needs 3-path draw abstraction), Iris packs (11), sounds.json spatial audio (12), mipmap/clouds polish (13).
 
 ---
 

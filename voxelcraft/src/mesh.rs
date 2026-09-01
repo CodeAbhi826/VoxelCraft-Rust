@@ -7,21 +7,84 @@ use crate::world::ChunkPos;
 use std::collections::VecDeque;
 use std::sync::Arc;
 
+/// VC-16 packed terrain vertex — 16 bytes, Sodium-class GPU bandwidth
+/// (−60% vs the previous 40-byte float layout).
+///
+/// Positions are CHUNK-relative; the chunk origin reaches the shader via an
+/// instance-rate `Float32x2` vertex buffer sliced per draw (portable to
+/// Vulkan/DX12/Metal, WebGPU and WebGL2 — no push constants, no dynamic
+/// uniform offsets, no SSBOs).
+///
+/// Bit layout (LSB = bit 0):
+///   w0 =  z:u16 << 16 | x:u16   — xz @ 1/2048 block, offset −8 (range −8..+24,
+///                                 32-block span like Sodium 0.5; covers the
+///                                 16-block chunk + overhang)
+///   w1 =  flags:u16 << 16 | y:u16 — y @ 1/128 block (0..256 exact, water
+///                                 surface 0.875 and build-limit 256.0 exact)
+///                                 flags = normal:3 | ao:2 | material:4 | spare:7
+///   w2 =  tile:u14 << 18 | u:u8 << 10 | v:u8 << 2 | bias:u2
+///                                 — uv in 1/16-block units (texel-exact for
+///                                 16px tiles; greedy runs up to 16 blocks
+///                                 encode exactly, the 16.0 endpoint clamps to
+///                                 255/256 which only shortens the final
+///                                 half-texel of a 16-wide run)
+///   w3 =  state:u16 << 16 | reserved:u8 << 8 | sky:u4 << 4 | block:u4
+///                                 — state = block id today, block-state id
+///                                 after the BlockState registry lands (u16
+///                                 headroom per the research doc)
+///
+/// normal: 0=+X 1=−X 2=+Y 3=−Y 4=+Z 5=−Z 6=cross-plants (shade tables in
+/// the shaders reproduce the old `face_shade * AO_MULT` exactly). bias:u2 is
+/// reserved for a future texture-bleed inset sign (shader currently ignores).
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, Debug)]
 pub struct Vertex {
-    pub pos: [f32; 3],
-    /// block-unit uv (0..w, 0..h) — shader applies fract() for per-block tiling
-    pub uv: [f32; 2],
-    /// atlas tile coordinates (0..16, 0..16)
-    pub tile: [f32; 2],
-    /// geometry light = face shade * AO
-    pub light: f32,
-    /// skylight 0..1
-    pub sky: f32,
-    /// block light 0..1 (emissive sources: glowstone) — independent of
-    /// day/night and sun shadows in the shader
-    pub block: f32,
+    pub w0: u32,
+    pub w1: u32,
+    pub w2: u32,
+    pub w3: u32,
+}
+
+#[inline]
+fn pack_vertex(
+    x: f32,
+    y: f32,
+    z: f32,
+    u: f32,
+    v: f32,
+    tile: u16,
+    normal: u32,
+    ao: u32,
+    sky: u32,
+    block: u32,
+    state: u16,
+) -> Vertex {
+    let px = (((x + 8.0) * 2048.0 + 0.5) as i64).clamp(0, 0xFFFF) as u32;
+    let pz = (((z + 8.0) * 2048.0 + 0.5) as i64).clamp(0, 0xFFFF) as u32;
+    let py = ((y * 128.0 + 0.5) as i64).clamp(0, 0xFFFF) as u32;
+    let pu = (((u * 16.0) + 0.5) as i64).clamp(0, 0xFF) as u32;
+    let pv = (((v * 16.0) + 0.5) as i64).clamp(0, 0xFF) as u32;
+    let flags = (normal & 7) | ((ao & 3) << 3);
+    let t = (tile as u32) & 0x3FFF;
+    Vertex {
+        w0: (pz << 16) | px,
+        w1: (flags << 16) | py,
+        w2: (t << 18) | (pu << 10) | (pv << 2),
+        w3: ((state as u32) << 16) | ((sky & 0xF) << 4) | (block & 0xF),
+    }
+}
+
+/// normal index from greedy-mesh axis (d) and face direction (dir)
+#[inline]
+fn normal_index(d: usize, dir: i32) -> u32 {
+    match (d, dir > 0) {
+        (0, true) => 0,  // +X
+        (0, false) => 1, // -X
+        (1, true) => 2,  // +Y
+        (1, false) => 3, // -Y
+        (2, true) => 4,  // +Z
+        _ => 5,          // -Z
+    }
 }
 
 pub struct MeshData {
@@ -42,16 +105,8 @@ fn pidx(x: usize, y: usize, z: usize) -> usize {
     y * (PAD * PAD) + z * PAD + x
 }
 
-const AO_MULT: [f32; 4] = [0.42, 0.62, 0.80, 1.0];
-
-#[inline]
-fn face_shade(d: usize, dir: i32) -> f32 {
-    match d {
-        1 => if dir > 0 { 1.0 } else { 0.5 },
-        2 => 0.8,
-        _ => 0.6,
-    }
-}
+// NOTE: face shading + AO tables now live in the WGSL shaders (indexed by
+// the packed normal/ao fields) — see VC-16 layout above.
 
 #[inline]
 fn getb(blocks: &[u8], gx: i32, y: i32, gz: i32) -> u8 {
@@ -73,9 +128,7 @@ fn getl(light: &[u8], gx: i32, y: i32, gz: i32) -> u8 {
 }
 
 pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -> MeshData {
-    let (cx, cz) = pos;
-    let wox = cx * 16;
-    let woz = cz * 16;
+    let (_cx, _cz) = pos;
 
     // ------------------------------------------------ copy blocks (padded)
     let mut blocks = vec![0u8; PAD * PAD * 256];
@@ -367,8 +420,8 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
                     }
                 }
 
-                greedy_merge(d, dir, sl, &mut smask, du, dv, true, wox, woz, &mut solid_v, &mut solid_i);
-                greedy_merge(d, dir, sl, &mut wmask, du, dv, false, wox, woz, &mut water_v, &mut water_i);
+                greedy_merge(d, dir, sl, &mut smask, du, dv, true, &mut solid_v, &mut solid_i);
+                greedy_merge(d, dir, sl, &mut wmask, du, dv, false, &mut water_v, &mut water_i);
             }
         }
     }
@@ -381,13 +434,14 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
                 if !is_cross(b) {
                     continue;
                 }
-                let sky = getl(&light, lx as i32, ly as i32, lz as i32) as f32 / 15.0;
+                let sky = getl(&light, lx as i32, ly as i32, lz as i32) as u32;
+                let bl = getl(&blight, lx as i32, ly as i32, lz as i32) as u32;
                 let tile_i = def(b).tiles[2];
-                let tile = [tile_i as f32 % 16.0, (tile_i as f32 / 16.0).floor()];
-                let x0 = wox as f32 + lx as f32 + 0.15;
-                let x1 = wox as f32 + lx as f32 + 0.85;
-                let z0 = woz as f32 + lz as f32 + 0.15;
-                let z1 = woz as f32 + lz as f32 + 0.85;
+                // chunk-local positions (origin supplied per-draw at render time)
+                let x0 = lx as f32 + 0.15;
+                let x1 = lx as f32 + 0.85;
+                let z0 = lz as f32 + 0.15;
+                let z1 = lz as f32 + 0.85;
                 let y0 = ly as f32;
                 let y1 = ly as f32 + 1.0;
 
@@ -407,14 +461,14 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
                     for quad in quads.iter() {
                         let base = solid_v.len() as u32;
                         for (ci, p) in quad.iter().enumerate() {
-                            solid_v.push(Vertex {
-                                pos: [p.0, p.1, p.2],
-                                uv: uvs[ci],
-                                tile,
-                                light: 0.85,
-                                sky,
-                                block: getl(&blight, lx as i32, ly as i32, lz as i32) as f32 / 15.0,
-                            });
+                            solid_v.push(pack_vertex(
+                                p.0, p.1, p.2,
+                                uvs[ci][0], uvs[ci][1],
+                                tile_i, 6, /* normal = cross (shade 0.85) */
+                                3,          /* ao = full */
+                                sky.min(15), bl.min(15),
+                                b as u16,
+                            ));
                         }
                         for i in [0u32, 1, 2, 0, 2, 3] {
                             solid_i.push(base + i);
@@ -440,8 +494,6 @@ fn greedy_merge(
     du: usize,
     dv: usize,
     is_solid: bool,
-    wox: i32,
-    woz: i32,
     verts: &mut Vec<Vertex>,
     idxs: &mut Vec<u32>,
 ) {
@@ -506,18 +558,17 @@ fn greedy_merge(
             };
 
             let ao = [
-                ((ao_pack >> 6) & 3) as usize,
-                ((ao_pack >> 4) & 3) as usize,
-                ((ao_pack >> 2) & 3) as usize,
-                (ao_pack & 3) as usize,
+                ((ao_pack >> 6) & 3) as u32,
+                ((ao_pack >> 4) & 3) as u32,
+                ((ao_pack >> 2) & 3) as u32,
+                (ao_pack & 3) as u32,
             ];
             let sky = [
-                ((sky_pack >> 12) & 0xf) as f32 / 15.0,
-                ((sky_pack >> 8) & 0xf) as f32 / 15.0,
-                ((sky_pack >> 4) & 0xf) as f32 / 15.0,
-                (sky_pack & 0xf) as f32 / 15.0,
+                ((sky_pack >> 12) & 0xf) as u32,
+                ((sky_pack >> 8) & 0xf) as u32,
+                ((sky_pack >> 4) & 0xf) as u32,
+                (sky_pack & 0xf) as u32,
             ];
-            let shade = face_shade(d, dir);
             let water_top_open = !is_solid && water_aw == 0;
 
             let tiles = def(block).tiles;
@@ -526,16 +577,14 @@ fn greedy_merge(
             } else {
                 tiles[2]
             };
-            let tile = [tile_i as f32 % 16.0, (tile_i as f32 / 16.0).floor()];
 
             let base = verts.len() as u32;
-            let world = |c: [f32; 2]| -> [f32; 3] {
+            // chunk-local position (the origin is a per-draw instance attribute)
+            let local = |c: [f32; 2]| -> [f32; 3] {
                 let mut p = [0f32; 3];
                 p[d] = pd;
                 p[u] = c[0];
                 p[v] = c[1];
-                p[0] += wox as f32;
-                p[2] += woz as f32;
                 if !is_solid {
                     if d == 1 && dir > 0 {
                         p[1] -= 0.125; // water surface at 14/16
@@ -554,16 +603,16 @@ fn greedy_merge(
                 (c11, t11, ao[2], sky[2]),
                 (c01, t01, ao[3], sky[3]),
             ];
-            let bl = (bl_pack as f32) / 15.0;
+            let bl = bl_pack as u32;
+            let nrm = normal_index(d, dir);
             for (c, t, a, s) in corners.iter() {
-                verts.push(Vertex {
-                    pos: world(*c),
-                    uv: *t,
-                    tile,
-                    light: shade * AO_MULT[*a],
-                    sky: *s,
-                    block: bl,
-                });
+                let p = local(*c);
+                verts.push(pack_vertex(
+                    p[0], p[1], p[2],
+                    t[0], t[1],
+                    tile_i, nrm, *a, *s, bl,
+                    block as u16,
+                ));
             }
 
             // diagonal choice by AO anisotropy; winding flipped for negative faces

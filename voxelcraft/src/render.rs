@@ -210,6 +210,27 @@ fn sampleShadow(world: vec3<f32>, nrm: vec3<f32>) -> f32 {
     return sh;
 }
 
+// ---- VC-16 packed-vertex decode (bit layout documented in mesh.rs) ----
+fn vc16_pos(v: vec4<u32>, origin: vec2<f32>) -> vec3<f32> {
+    let x = f32(v.x & 0xFFFFu) / 2048.0 - 8.0;
+    let z = f32(v.x >> 16u) / 2048.0 - 8.0;
+    let y = f32(v.y & 0xFFFFu) / 128.0;
+    return vec3<f32>(origin.x + x, y, origin.y + z);
+}
+fn face_shade(n: u32) -> f32 {
+    if (n == 2u) { return 1.0; }       // +Y
+    if (n == 3u) { return 0.5; }       // -Y
+    if (n == 4u || n == 5u) { return 0.8; } // ±Z
+    if (n == 6u) { return 0.85; }      // cross plants
+    return 0.6;                        // ±X
+}
+fn ao_factor(a: u32) -> f32 {
+    if (a == 0u) { return 0.42; }
+    if (a == 1u) { return 0.62; }
+    if (a == 2u) { return 0.80; }
+    return 1.0;
+}
+
 struct VsOut {
     @builtin(position) pos: vec4<f32>,
     @location(0) world: vec3<f32>,
@@ -222,21 +243,26 @@ struct VsOut {
 
 @vertex
 fn vs_main(
-    @location(0) in_pos: vec3<f32>,
-    @location(1) in_uv: vec2<f32>,
-    @location(2) in_tile: vec2<f32>,
-    @location(3) in_light: f32,
-    @location(4) in_sky: f32,
-    @location(5) in_block: f32,
+    @location(0) v_data: vec4<u32>,
+    @location(1) origin: vec2<f32>,
 ) -> VsOut {
+    let flags = v_data.y >> 16u;
+    let nrm = flags & 7u;
+    let ao = (flags >> 3u) & 3u;
+    let tile_i = (v_data.z >> 18u) & 0x3FFFu;
+    let uv = vec2<f32>(f32((v_data.z >> 10u) & 0xFFu), f32((v_data.z >> 2u) & 0xFFu)) / 16.0;
+    let tile = vec2<f32>(f32(tile_i % 16u), f32(tile_i / 16u));
+    let sky = f32((v_data.w >> 4u) & 0xFu) / 15.0;
+    let block = f32(v_data.w & 0xFu) / 15.0;
+    let world = vc16_pos(v_data, origin);
     var out: VsOut;
-    out.pos = G.view_proj * vec4<f32>(in_pos, 1.0);
-    out.world = in_pos;
-    out.uv = in_uv;
-    out.tile = in_tile;
-    out.light = in_light;
-    out.sky = in_sky;
-    out.block = in_block;
+    out.pos = G.view_proj * vec4<f32>(world, 1.0);
+    out.world = world;
+    out.uv = uv;
+    out.tile = tile;
+    out.light = face_shade(nrm) * ao_factor(ao);
+    out.sky = sky;
+    out.block = block;
     return out;
 }
 
@@ -312,6 +338,27 @@ fn sampleShadow(world: vec3<f32>, nrm: vec3<f32>) -> f32 {
     return sh;
 }
 
+// ---- VC-16 packed-vertex decode (bit layout documented in mesh.rs) ----
+fn vc16_pos(v: vec4<u32>, origin: vec2<f32>) -> vec3<f32> {
+    let x = f32(v.x & 0xFFFFu) / 2048.0 - 8.0;
+    let z = f32(v.x >> 16u) / 2048.0 - 8.0;
+    let y = f32(v.y & 0xFFFFu) / 128.0;
+    return vec3<f32>(origin.x + x, y, origin.y + z);
+}
+fn face_shade(n: u32) -> f32 {
+    if (n == 2u) { return 1.0; }
+    if (n == 3u) { return 0.5; }
+    if (n == 4u || n == 5u) { return 0.8; }
+    if (n == 6u) { return 0.85; }
+    return 0.6;
+}
+fn ao_factor(a: u32) -> f32 {
+    if (a == 0u) { return 0.42; }
+    if (a == 1u) { return 0.62; }
+    if (a == 2u) { return 0.80; }
+    return 1.0;
+}
+
 struct VsOut {
     @builtin(position) pos: vec4<f32>,
     @location(0) world: vec3<f32>,
@@ -324,26 +371,30 @@ struct VsOut {
 
 @vertex
 fn vs_main(
-    @location(0) in_pos: vec3<f32>,
-    @location(1) in_uv: vec2<f32>,
-    @location(2) in_tile: vec2<f32>,
-    @location(3) in_light: f32,
-    @location(4) in_sky: f32,
-    @location(5) in_block: f32,
+    @location(0) v_data: vec4<u32>,
+    @location(1) origin: vec2<f32>,
 ) -> VsOut {
-    var out: VsOut;
-    var p = in_pos;
+    let flags = v_data.y >> 16u;
+    let nrm = flags & 7u;
+    let ao = (flags >> 3u) & 3u;
+    let tile_i = (v_data.z >> 18u) & 0x3FFFu;
+    let uv = vec2<f32>(f32((v_data.z >> 10u) & 0xFFu), f32((v_data.z >> 2u) & 0xFFu)) / 16.0;
+    let tile = vec2<f32>(f32(tile_i % 16u), f32(tile_i / 16u));
+    let sky = f32((v_data.w >> 4u) & 0xFu) / 15.0;
+    let block = f32(v_data.w & 0xFu) / 15.0;
+    var p = vc16_pos(v_data, origin);
     let is_top = abs(fract(p.y) - 0.875) < 0.01;
     let wob = sin(G.misc.y * 1.6 + p.x * 0.7 + p.z * 1.1) * 0.045
             + sin(G.misc.y * 1.1 + p.x * 1.9 - p.z * 0.6) * 0.025;
     p.y = p.y + select(0.0, wob, is_top);
+    var out: VsOut;
     out.pos = G.view_proj * vec4<f32>(p, 1.0);
     out.world = p;
-    out.uv = in_uv;
-    out.tile = in_tile;
-    out.light = in_light;
-    out.sky = in_sky;
-    out.block = in_block;
+    out.uv = uv;
+    out.tile = tile;
+    out.light = face_shade(nrm) * ao_factor(ao);
+    out.sky = sky;
+    out.block = block;
     return out;
 }
 
@@ -745,14 +796,15 @@ struct VsOut {
 
 @vertex
 fn vs_main(
-    @location(0) in_pos: vec3<f32>,
-    @location(1) in_uv: vec2<f32>,
-    @location(2) in_tile: vec2<f32>,
-    @location(3) in_light: f32,
-    @location(4) in_sky: f32,
+    @location(0) v_data: vec4<u32>,
+    @location(1) origin: vec2<f32>,
 ) -> VsOut {
+    // VC-16 packed position decode (see mesh.rs for the bit layout)
+    let x = f32(v_data.x & 0xFFFFu) / 2048.0 - 8.0;
+    let z = f32(v_data.x >> 16u) / 2048.0 - 8.0;
+    let y = f32(v_data.y & 0xFFFFu) / 128.0;
     var out: VsOut;
-    out.pos = SH.shadow_vp * vec4<f32>(in_pos, 1.0);
+    out.pos = SH.shadow_vp * vec4<f32>(origin.x + x, y, origin.y + z, 1.0);
     return out;
 }
 
@@ -774,6 +826,11 @@ pub(crate) struct ChunkGpu {
     pub w: Option<(wgpu::Buffer, wgpu::Buffer, u32)>,
 }
 
+/// capacity of the per-frame chunk-origin instance buffer (one Float32x2
+/// entry per visible chunk drawn; render distance 64 would need ~16k —
+/// 2048 covers every setting the options screen allows at 60fps draw budgets)
+const MAX_DRAW_CHUNKS: usize = 2048;
+
 pub struct Renderer {
     pub surface: wgpu::Surface<'static>,
     pub device: wgpu::Device,
@@ -785,6 +842,9 @@ pub struct Renderer {
     sampler: wgpu::Sampler,
     globals_buf: wgpu::Buffer,
     world_bg: wgpu::BindGroup,
+    /// per-frame instance-rate chunk origins (x,z in world blocks) — slot 1
+    /// of the VC-16 terrain/water/shadow pipelines
+    origin_vb: wgpu::Buffer,
     terrain_pipe: wgpu::RenderPipeline,
     water_pipe: wgpu::RenderPipeline,
     sky_pipe: wgpu::RenderPipeline,
@@ -1136,6 +1196,14 @@ impl Renderer {
             mapped_at_creation: false,
         });
 
+        // per-frame instance-rate chunk origins for the VC-16 vertex format
+        let origin_vb = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("chunk-origins"),
+            size: (MAX_DRAW_CHUNKS * 8) as u64,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
         let world_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("world-bg"),
             layout: &world_bgl,
@@ -1175,18 +1243,31 @@ impl Renderer {
             ],
         });
 
-        let terrain_vbl = wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<Vertex>() as u64,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &[
-                wgpu::VertexAttribute { offset: 0, shader_location: 0, format: wgpu::VertexFormat::Float32x3 },
-                wgpu::VertexAttribute { offset: 12, shader_location: 1, format: wgpu::VertexFormat::Float32x2 },
-                wgpu::VertexAttribute { offset: 20, shader_location: 2, format: wgpu::VertexFormat::Float32x2 },
-                wgpu::VertexAttribute { offset: 28, shader_location: 3, format: wgpu::VertexFormat::Float32 },
-                wgpu::VertexAttribute { offset: 32, shader_location: 4, format: wgpu::VertexFormat::Float32 },
-                wgpu::VertexAttribute { offset: 36, shader_location: 5, format: wgpu::VertexFormat::Float32 },
-            ],
-        };
+        // VC-16 packed vertex (slot 0) + per-chunk origin (slot 1, instance
+        // rate). The origin reaches the vertex shader as a plain instance
+        // attribute — portable to native, WebGPU AND WebGL2 (no push
+        // constants, no dynamic uniform offsets, no SSBOs; see
+        // docs/research/wgpu-web-assets.md).
+        let terrain_vbl = [
+            wgpu::VertexBufferLayout {
+                array_stride: std::mem::size_of::<Vertex>() as u64,
+                step_mode: wgpu::VertexStepMode::Vertex,
+                attributes: &[wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 0,
+                    format: wgpu::VertexFormat::Uint32x4,
+                }],
+            },
+            wgpu::VertexBufferLayout {
+                array_stride: 8,
+                step_mode: wgpu::VertexStepMode::Instance,
+                attributes: &[wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 1,
+                    format: wgpu::VertexFormat::Float32x2,
+                }],
+            },
+        ];
 
         let depth_state = |write: bool, cmp: wgpu::CompareFunction| wgpu::DepthStencilState {
             format: wgpu::TextureFormat::Depth32Float,
@@ -1225,7 +1306,7 @@ impl Renderer {
                     module,
                     entry_point: entry,
                     compilation_options: Default::default(),
-                    buffers: &[terrain_vbl.clone()],
+                    buffers: &terrain_vbl,
                 },
                 fragment: Some(wgpu::FragmentState {
                     module,
@@ -1323,7 +1404,7 @@ impl Renderer {
                 module: &shadow_mod,
                 entry_point: "vs_main",
                 compilation_options: Default::default(),
-                buffers: &[terrain_vbl.clone()],
+                buffers: &terrain_vbl,
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shadow_mod,
@@ -1977,6 +2058,7 @@ impl Renderer {
             sampler,
             globals_buf,
             world_bg,
+            origin_vb,
             terrain_pipe,
             water_pipe,
             sky_pipe,
@@ -2447,6 +2529,27 @@ impl Renderer {
 
         let mut stats = RenderStats::default();
 
+        // Sort once (near → far, for early-z in the scene pass); the shadow
+        // and water passes reuse the same order so the per-chunk origin
+        // instance buffer (written once, below) indexes identically in all
+        // three passes.
+        let mut sorted = visible.clone();
+        sorted.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+
+        // per-frame instance-rate origins: one Float32x2 per visible chunk
+        let draw_count = sorted.len().min(MAX_DRAW_CHUNKS);
+        let mut origin_data: Vec<[f32; 2]> = Vec::with_capacity(draw_count);
+        for (pos, _) in sorted.iter().take(draw_count) {
+            origin_data.push([pos.0 as f32 * 16.0, pos.1 as f32 * 16.0]);
+        }
+        if draw_count > 0 {
+            self.queue.write_buffer(
+                &self.origin_vb,
+                0,
+                bytemuck::cast_slice(&origin_data),
+            );
+        }
+
         // ────────────────────────────────────────── pass 0: sun shadows ──
         // Depth-only re-render of the terrain from the light's ortho camera
         // into the 2048² packed-depth map. This runs in its OWN command
@@ -2484,7 +2587,7 @@ impl Renderer {
                 });
                 pass.set_pipeline(&self.shadow_pipe);
                 pass.set_bind_group(0, &self.shadow_bg, &[]);
-                for (pos, dist2) in visible.iter() {
+                for (idx, (pos, dist2)) in sorted.iter().take(draw_count).enumerate() {
                     // 110 u shadow radius + one chunk margin (16√2 ≈ 23)
                     if *dist2 > (110.0 + 23.0) * (110.0 + 23.0) {
                         continue;
@@ -2494,6 +2597,7 @@ impl Renderer {
                         continue;
                     }
                     pass.set_vertex_buffer(0, g.v.slice(..));
+                    pass.set_vertex_buffer(1, self.origin_vb.slice((idx * 8) as u64..(idx * 8 + 8) as u64));
                     pass.set_index_buffer(g.i.slice(..), wgpu::IndexFormat::Uint32);
                     pass.draw_indexed(0..g.n, 0, 0..1);
                 }
@@ -2544,17 +2648,17 @@ impl Renderer {
             pass.set_bind_group(0, &self.world_bg, &[]);
             pass.draw(0..3, 0..1);
 
-            // 2. terrain (near → far for early-z)
-            let mut sorted = visible.clone();
-            sorted.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+            // 2. terrain (near → far for early-z) — `sorted` was built before
+            // the shadow pass so the origin instance indices line up
             pass.set_pipeline(&self.terrain_pipe);
             pass.set_bind_group(0, &self.world_bg, &[]);
-            for (pos, _) in sorted.iter() {
+            for (idx, (pos, _)) in sorted.iter().take(draw_count).enumerate() {
                 let g = self.chunks.get(pos).unwrap();
                 if g.n == 0 {
                     continue;
                 }
                 pass.set_vertex_buffer(0, g.v.slice(..));
+                pass.set_vertex_buffer(1, self.origin_vb.slice((idx * 8) as u64..(idx * 8 + 8) as u64));
                 pass.set_index_buffer(g.i.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..g.n, 0, 0..1);
                 stats.chunks += 1;
@@ -2569,15 +2673,14 @@ impl Renderer {
                 pass.draw(0..24, 0..1);
             }
 
-            // 4. water (far → near, blended)
+            // 4. water (far → near, blended) — same origin indices, reversed
             pass.set_pipeline(&self.water_pipe);
             pass.set_bind_group(0, &self.world_bg, &[]);
-            let mut far_sorted = sorted;
-            far_sorted.reverse();
-            for (pos, _) in far_sorted.iter() {
+            for (idx, (pos, _)) in sorted.iter().take(draw_count).enumerate().rev() {
                 let Some(g) = self.chunks.get(pos) else { continue };
                 let Some((v, i, n)) = &g.w else { continue };
                 pass.set_vertex_buffer(0, v.slice(..));
+                pass.set_vertex_buffer(1, self.origin_vb.slice((idx * 8) as u64..(idx * 8 + 8) as u64));
                 pass.set_index_buffer(i.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..*n, 0, 0..1);
             }

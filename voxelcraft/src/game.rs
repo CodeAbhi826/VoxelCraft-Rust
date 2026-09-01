@@ -280,6 +280,8 @@ pub struct GameApp {
     pub bench: Option<crate::bench::BenchState>,
     /// spawn position captured at world init (bench camera orbits it)
     bench_spawn: glam::Vec3,
+    /// pack-driven animated textures (frame updates only, no re-mesh)
+    animations: Vec<crate::textures::AnimatedTile>,
 }
 
 pub fn now_secs() -> f32 {
@@ -303,9 +305,133 @@ pub fn now_secs() -> f32 {
     }
 }
 
+/// Compile the builtin resource pack into a ModelSet and merge its textures
+/// into a fresh procedural atlas (Phase 1, Master Spec §5.2/§19).
+///
+/// Native: reads `voxelcraft/assets/` from the working directory. Wasm:
+/// fetches the same file set from `/assets/` (deployed by CI). Any failure
+/// degrades to the procedural-only path with the missing-texture fallback
+/// (§46 — an imperfect pack must never crash the engine).
+async fn load_builtin_pack_assets() -> (Vec<u8>, Vec<crate::textures::AnimatedTile>) {
+    let mut atlas = crate::textures::generate_atlas();
+
+    // 1. acquire the pack source
+    #[cfg(not(target_arch = "wasm32"))]
+    let source: Option<std::sync::Arc<dyn crate::pack::PackSource>> = {
+        let folder = crate::pack::FolderSource::new("builtin-pack", "builtin");
+        if folder.exists() {
+            match crate::pack::open(std::sync::Arc::new(folder)) {
+                Ok((meta, src)) => {
+                    crate::render::report_boot_log(&format!(
+                        "builtin pack: {} (format {}, {})",
+                        src.name(),
+                        meta.pack_format,
+                        meta.description
+                    ));
+                    Some(src)
+                }
+                Err(e) => {
+                    crate::render::report_boot_log(&format!("builtin pack unavailable: {e}"));
+                    None
+                }
+            }
+        } else {
+            crate::render::report_boot_log("no builtin pack folder (builtin-pack/) — procedural fallback");
+            None
+        }
+    };
+    #[cfg(target_arch = "wasm32")]
+    let source: Option<std::sync::Arc<dyn crate::pack::PackSource>> = {
+        let specs: Vec<crate::model::BlockDispatchSpec> = crate::blocks::PROP_BLOCKS
+            .iter()
+            .map(|pb| crate::model::BlockDispatchSpec {
+                name: pb.name,
+                props: pb.props,
+                base_state: pb.base_state,
+                state_count: pb.state_count,
+            })
+            .collect();
+        match crate::pack::fetch_builtin_pack(&specs).await {
+            Some(mem) => match crate::pack::open(std::sync::Arc::new(mem)) {
+                Ok((meta, src)) => {
+                    crate::render::report_boot_log(&format!(
+                        "builtin pack fetched: {} (format {})",
+                        src.name(),
+                        meta.pack_format
+                    ));
+                    Some(src)
+                }
+                Err(e) => {
+                    crate::render::report_boot_log(&format!("builtin pack fetch failed: {e}"));
+                    None
+                }
+            },
+            None => {
+                crate::render::report_boot_log("no builtin pack on server — procedural fallback");
+                None
+            }
+        }
+    };
+
+    let Some(source) = source else {
+        // no pack: still install an empty ModelSet so model-state blocks
+        // render the missing texture instead of being skipped silently
+        crate::model::install(crate::model::ModelSet {
+            by_state: Default::default(),
+            tiles: Default::default(),
+        });
+        return (atlas, Vec::new());
+    };
+
+    // 2. compile per-block dispatches (parse once, canonicalize, cache)
+    let mut by_state = std::collections::HashMap::new();
+    for pb in crate::blocks::PROP_BLOCKS.iter() {
+        let spec = crate::model::BlockDispatchSpec {
+            name: pb.name,
+            props: pb.props,
+            base_state: pb.base_state,
+            state_count: pb.state_count,
+        };
+        match crate::model::compile_block_dispatch(&spec, &|p| source.read(p)) {
+            Ok(map) => {
+                by_state.extend(map);
+            }
+            Err(e) => {
+                // §46: one bad blockstate must not take the engine down
+                crate::render::report_boot_log(&format!(
+                    "blockstate {name} failed: {e} — block will use the missing model",
+                    name = pb.name
+                ));
+            }
+        }
+    }
+    let mut set = crate::model::ModelSet {
+        by_state,
+        tiles: Default::default(),
+    };
+
+    // 3. merge pack textures into the atlas (fills set.tiles + animations)
+    let animations = crate::textures::merge_pack_textures(&mut atlas, &mut set, source.as_ref());
+    let n_models: usize = set.by_state.values().map(|v| v.len()).sum();
+    crate::render::report_boot_log(&format!(
+        "model dispatch: {} states, {} applied models, {} pack textures, {} animations",
+        set.by_state.len(),
+        n_models,
+        set.tiles.len(),
+        animations.len()
+    ));
+    crate::model::install(set);
+    (atlas, animations)
+}
+
 impl GameApp {
     pub async fn new(window: &'static winit::window::Window) -> Self {
-        let atlas = crate::textures::generate_atlas();
+        // ---------------------------------------------------- Phase 1 assets
+        // Compile the builtin resource pack (blockstates → models → textures)
+        // BEFORE any mesh job can run; merge its textures into the atlas.
+        let (mut atlas, animations) = crate::game::load_builtin_pack_assets().await;
+        crate::textures::draw_missing_tile(&mut atlas);
+
         let mut renderer = Renderer::new(window, &atlas).await;
         let bank = SoundBank::generate();
         let world = World::new(crate::world::World::random_seed());
@@ -414,6 +540,7 @@ impl GameApp {
             phases: crate::bench::FramePhases::new(240),
             bench: None,
             bench_spawn: spawn.into(),
+            animations,
         };
         app.load_start = app.time;
         app.refresh_widgets();
@@ -1244,6 +1371,8 @@ impl GameApp {
                 if let Some((pos, b, _)) = self.target {
                     if b != BEDROCK {
                         self.world.set_block(pos[0], pos[1], pos[2], AIR);
+                        // fences: removing a block changes neighbor connections
+                        update_fence_neighbors(&mut self.world, pos[0], pos[1], pos[2]);
                         self.audio.play(
                             &self.bank,
                             def(b).sound,
@@ -1263,9 +1392,10 @@ impl GameApp {
                         let replaceable = pb == AIR || pb == WATER || is_cross(pb);
                         let collides_player = is_solid(b) && self.player.block_intersects_player(prev);
                         if replaceable && !collides_player {
-                            // vanilla log placement: the axis follows the
-                            // clicked face (top/bottom → axis Y, ±X → X, ±Z → Z)
+                            // vanilla placement rules per block family
                             let state = if is_log(b) {
+                                // vanilla log placement: the axis follows the
+                                // clicked face (top/bottom → axis Y, ±X → X, ±Z → Z)
                                 let axis = if prev[1] != tpos[1] {
                                     1
                                 } else if prev[0] != tpos[0] {
@@ -1274,10 +1404,37 @@ impl GameApp {
                                     2
                                 };
                                 log_axis_state(b, axis)
+                            } else if b == OAK_SLAB {
+                                // vanilla slabs: clicking the TOP of a block →
+                                // bottom slab; the UNDERSIDE → top slab
+                                let half = if prev[1] < tpos[1] { "top" } else { "bottom" };
+                                prop_state_encode(b, &[("half", half)]).unwrap_or(b as u16)
+                            } else if b == COBBLE_STAIRS {
+                                // vanilla stairs: face AWAY from the player
+                                // (the ascent direction); half like slabs
+                                let yaw = ((self.player.yaw.to_degrees() % 360.0) + 360.0) % 360.0;
+                                let facing = match yaw {
+                                    315.0..=360.0 | 0.0..=45.0 => "south",
+                                    45.0..=135.0 => "west",
+                                    135.0..=225.0 => "north",
+                                    _ => "east",
+                                };
+                                let half = if prev[1] < tpos[1] { "top" } else { "bottom" };
+                                prop_state_encode(
+                                    b,
+                                    &[("facing", facing), ("half", half)],
+                                )
+                                .unwrap_or(b as u16)
+                            } else if b == OAK_FENCE {
+                                // connections computed from the current world
+                                fence_state_for(&self.world, prev[0], prev[1], prev[2])
+                                    .unwrap_or(b as u16)
                             } else {
                                 b as u16
                             };
                             self.world.set_block_state(prev[0], prev[1], prev[2], state);
+                            // fences: neighbors recompute their connections
+                            update_fence_neighbors(&mut self.world, prev[0], prev[1], prev[2]);
                             self.audio.play(&self.bank, def(b).sound, 0.55 * self.settings.volume, 1.15);
                             self.place_timer = 0.24;
                             self.edits += 1;
@@ -1294,6 +1451,21 @@ impl GameApp {
             if *t <= 0.0 {
                 self.item_toast = None;
                 self.ui.dirty = true;
+            }
+        }
+
+        // animated pack textures: atlas region updates only (§20 — no
+        // geometry rebuilds when a texture frame changes)
+        if !self.animations.is_empty() {
+            let updates = crate::textures::tick_animations(&mut self.animations, dt);
+            for (tile, frame) in updates {
+                if let Some(a) = self
+                    .animations
+                    .iter()
+                    .find(|a| a.tile == tile)
+                {
+                    self.renderer.update_atlas_frame(a, frame as usize);
+                }
             }
         }
 
@@ -1362,6 +1534,18 @@ impl GameApp {
             ("targetState", StatsVal::F(
                 self.target.map(|(t, _, _)| self.world.get_state(t[0], t[1], t[2]) as f32).unwrap_or(-1.0)
             )),
+            ("targetDesc", StatsVal::S(
+                self.target
+                    .map(|(t, _, _)| state_description(self.world.get_state(t[0], t[1], t[2])))
+                    .unwrap_or_default()
+            )),
+            ("modelStates", StatsVal::F(
+                crate::model::models().map(|m| m.by_state.len() as f32).unwrap_or(0.0)
+            )),
+            ("packTextures", StatsVal::F(
+                crate::model::models().map(|m| m.tiles.len() as f32).unwrap_or(0.0)
+            )),
+            ("animations", StatsVal::F(self.animations.len() as f32)),
             ("breakTimer", StatsVal::F(self.break_timer)),
             ("hover", StatsVal::F(self.hover.map(|h| h as f32).unwrap_or(-1.0))),
             ("picker", StatsVal::B(self.picker_open)),
@@ -1644,20 +1828,10 @@ impl GameApp {
                 format!(
                     "Targeted: {}",
                     self.target
-                        .map(|(t, b, _)| {
-                            // vanilla F3 parity: show the exact blockstate
-                            // (e.g. "Oak Log[axis=x]")
-                            let s = self.world.get_state(t[0], t[1], t[2]);
-                            let axis = match s {
-                                crate::blocks::OAK_LOG_X
-                                | crate::blocks::BIRCH_LOG_X
-                                | crate::blocks::SPRUCE_LOG_X => "[axis=x]",
-                                crate::blocks::OAK_LOG_Z
-                                | crate::blocks::BIRCH_LOG_Z
-                                | crate::blocks::SPRUCE_LOG_Z => "[axis=z]",
-                                _ => "",
-                            };
-                            format!("{}{}", name(b), axis)
+                        .map(|(t, _, _)| {
+                            // vanilla F3 parity: exact blockstate, e.g.
+                            // "Oak Slab[half=top]" / "Oak Fence[north=true]"
+                            state_description(self.world.get_state(t[0], t[1], t[2]))
                         })
                         .unwrap_or("none".into())
                 ),
@@ -1899,6 +2073,56 @@ impl GameApp {
 }
 
 // ---------------------------------------------------------------- helpers --
+
+/// does a block connect a fence? (vanilla rule: solid blocks + fences)
+#[inline]
+fn fence_connects_to(b: u8) -> bool {
+    is_solid(b) || b == OAK_FENCE
+}
+
+/// compute the fence state (connection booleans) for a position from the
+/// current world (vanilla: connect to solid blocks and other fences)
+fn fence_state_for(world: &World, wx: i32, wy: i32, wz: i32) -> Option<u16> {
+    let north = fence_connects_to(world.get_block(wx, wy, wz - 1));
+    let east = fence_connects_to(world.get_block(wx + 1, wy, wz));
+    let south = fence_connects_to(world.get_block(wx, wy, wz + 1));
+    let west = fence_connects_to(world.get_block(wx - 1, wy, wz));
+    prop_state_encode(
+        OAK_FENCE,
+        &[
+            ("east", if east { "true" } else { "false" }),
+            ("north", if north { "true" } else { "false" }),
+            ("south", if south { "true" } else { "false" }),
+            ("west", if west { "true" } else { "false" }),
+        ],
+    )
+}
+
+/// after an edit at (wx, wy, wz), refresh the connection states of any fence
+/// blocks among the 4 horizontal neighbors (and the position itself if the
+/// edit placed a fence — handled by the caller passing its own state).
+fn update_fence_neighbors(world: &mut World, wx: i32, wy: i32, wz: i32) {
+    for (dx, dz) in [(0i32, -1i32), (1, 0), (0, 1), (-1, 0)] {
+        let nx = wx + dx;
+        let nz = wz + dz;
+        if world.get_block(nx, wy, nz) == OAK_FENCE {
+            if let Some(s) = fence_state_for(world, nx, wy, nz) {
+                // skip no-op writes (avoids dirty churn on repeated edits)
+                if world.get_state(nx, wy, nz) != s {
+                    world.set_block_state(nx, wy, nz, s);
+                }
+            }
+        }
+    }
+    // the fence at the edit position itself (placed or revealed)
+    if world.get_block(wx, wy, wz) == OAK_FENCE {
+        if let Some(s) = fence_state_for(world, wx, wy, wz) {
+            if world.get_state(wx, wy, wz) != s {
+                world.set_block_state(wx, wy, wz, s);
+            }
+        }
+    }
+}
 
 fn smoothstep(a: f32, b: f32, x: f32) -> f32 {
     let t = ((x - a) / (b - a)).clamp(0.0, 1.0);

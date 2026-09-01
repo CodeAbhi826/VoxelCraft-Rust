@@ -1050,11 +1050,317 @@ pub fn blit_tile(atlas: &[u8], tile: u16, scale: usize, ox: usize, oy: usize, ou
     }
 }
 
+// ------------------------------------------------------- pack texture merge --
+
+/// first free atlas tile after the procedural set + missing-texture tile
+pub const PACK_TILE_BASE: u16 = 64;
+/// hard cap: 16×16 tile grid = 256 tiles in the 256² atlas
+pub const PACK_TILE_MAX: u16 = 255;
+
+/// draw the missing-texture tile (magenta/black 8×8 checker, §46 fallback —
+/// never crash, always something visible)
+pub fn draw_missing_tile(atlas: &mut [u8]) {
+    let t = crate::mesh::TILE_MISSING;
+    let tx = (t % 16) as usize;
+    let ty = (t / 16) as usize;
+    for y in 0..TILE_PX {
+        for x in 0..TILE_PX {
+            let magenta = ((x / 4) + (y / 4)) % 2 == 0;
+            let (r, g, b) = if magenta { (248, 0, 248) } else { (0, 0, 0) };
+            let i = ((ty * TILE_PX + y) * ATLAS_SIZE + tx * TILE_PX + x) * 4;
+            atlas[i] = r;
+            atlas[i + 1] = g;
+            atlas[i + 2] = b;
+            atlas[i + 3] = 255;
+        }
+    }
+}
+
+/// one pack texture animation (VERIFIED semantics: vertical strip, frame =
+/// width×width, `frametime` in ticks, optional explicit `frames` list)
+#[derive(Clone, Debug)]
+pub struct AnimatedTile {
+    pub tile: u16,
+    /// precomputed 16×16 RGBA frames
+    pub frames: Vec<Vec<u8>>,
+    /// ticks per frame (1 tick = 1/20 s; we advance by game time)
+    pub frametime: f32,
+    pub current: usize,
+    pub timer: f32,
+}
+
+/// Merge pack textures into the procedural atlas + fill the ModelSet's
+/// tile registry. Returns the animations to drive per frame.
+///
+/// * texture paths come from the compiled model faces (`models.tiles`)
+/// * missing files fall back to the missing-texture tile (§46)
+/// * non-16×16 sources are nearest-resampled to 16×16
+/// * vertical-strip PNGs with `.png.mcmeta {animation:{...}}` become
+///   AnimatedTiles (geometry is NOT rebuilt — only the atlas region updates)
+pub fn merge_pack_textures(
+    atlas: &mut [u8],
+    models: &mut crate::model::ModelSet,
+    source: &dyn crate::pack::PackSource,
+) -> Vec<AnimatedTile> {
+    let mut animations = Vec::new();
+    // stable order: collect locations from by_state (dispatch order)
+    let mut locs: Vec<String> = Vec::new();
+    let mut seen: std::collections::HashSet<String> = Default::default();
+    for choices in models.by_state.values() {
+        for choice in choices {
+            for ap in &choice.alts {
+                for el in ap.model.elements.iter() {
+                    for f in el.faces.iter() {
+                        if seen.insert(f.texture.clone()) {
+                            locs.push(f.texture.clone());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let mut next_tile = PACK_TILE_BASE;
+    for loc in locs {
+        if next_tile > PACK_TILE_MAX {
+            // atlas full: everything remaining falls back to the missing tile
+            models.tiles.insert(loc, crate::mesh::TILE_MISSING);
+            continue;
+        }
+        let path = crate::model::texture_path(&loc);
+        let Some(bytes) = source.read(&path) else {
+            models.tiles.insert(loc, crate::mesh::TILE_MISSING);
+            continue;
+        };
+        let Ok(img) = image::load_from_memory(&bytes) else {
+            models.tiles.insert(loc, crate::mesh::TILE_MISSING);
+            continue;
+        };
+        let rgba = img.to_rgba8();
+        let (w, h) = rgba.dimensions();
+        let tile = next_tile;
+        next_tile += 1;
+
+        // animation metadata?
+        let mcmeta: Option<serde_json::Value> = source
+            .read(&format!("{path}.mcmeta"))
+            .and_then(|b| serde_json::from_slice(&b).ok());
+        let anim = mcmeta
+            .as_ref()
+            .and_then(|m| m.get("animation"))
+            .cloned();
+        let strip = anim.is_some() && w > 0 && h > w && (h % w == 0);
+
+        if strip && w <= 64 {
+            // vertical animation strip: frames stacked top→bottom
+            let frames_n = (h / w) as usize;
+            let frametime = anim
+                .as_ref()
+                .and_then(|a| a.get("frametime"))
+                .and_then(|f| f.as_u64())
+                .unwrap_or(1) as f32;
+            // explicit frame order (defaults to 0..n sequential)
+            let order: Vec<usize> = anim
+                .as_ref()
+                .and_then(|a| a.get("frames"))
+                .and_then(|f| f.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| {
+                            v.as_u64().map(|i| i as usize).or_else(|| {
+                                v.get("index").and_then(|i| i.as_u64()).map(|i| i as usize)
+                            })
+                        })
+                        .collect()
+                })
+                .unwrap_or_else(|| (0..frames_n).collect());
+            let mut frames: Vec<Vec<u8>> = Vec::with_capacity(order.len());
+            for fi in order.iter() {
+                if *fi < frames_n {
+                    frames.push(resample_strip_frame(&rgba, *fi, w as usize));
+                }
+            }
+            if !frames.is_empty() {
+                // frame 0 goes into the atlas immediately
+                blit_16(atlas, tile, &frames[0]);
+                models.tiles.insert(loc, tile);
+                animations.push(AnimatedTile {
+                    tile,
+                    frames,
+                    frametime: (frametime / 20.0).max(0.05),
+                    current: 0,
+                    timer: 0.0,
+                });
+                continue;
+            }
+        }
+
+        // static texture: nearest-resample to 16×16
+        let frame = resample_full(&rgba, w as usize, h as usize);
+        blit_16(atlas, tile, &frame);
+        models.tiles.insert(loc, tile);
+    }
+    animations
+}
+
+/// blit a 16×16 RGBA frame into an atlas tile slot
+fn blit_16(atlas: &mut [u8], tile: u16, frame: &[u8]) {
+    let tx = (tile % 16) as usize;
+    let ty = (tile / 16) as usize;
+    for y in 0..TILE_PX {
+        for x in 0..TILE_PX {
+            let src = (y * TILE_PX + x) * 4;
+            let dst = ((ty * TILE_PX + y) * ATLAS_SIZE + tx * TILE_PX + x) * 4;
+            atlas[dst..dst + 4].copy_from_slice(&frame[src..src + 4]);
+        }
+    }
+}
+
+/// nearest-neighbor resample of a full image to 16×16
+fn resample_full(rgba: &image::RgbaImage, w: usize, h: usize) -> Vec<u8> {
+    let mut out = vec![0u8; TILE_PX * TILE_PX * 4];
+    for y in 0..TILE_PX {
+        for x in 0..TILE_PX {
+            let sx = x * w / TILE_PX;
+            let sy = y * h / TILE_PX;
+            let dst = (y * TILE_PX + x) * 4;
+            let p = rgba.get_pixel(sx as u32, sy as u32).0;
+            out[dst] = p[0];
+            out[dst + 1] = p[1];
+            out[dst + 2] = p[2];
+            out[dst + 3] = p[3];
+        }
+    }
+    out
+}
+
+/// extract + resample one frame from a vertical strip (frame fi)
+fn resample_strip_frame(rgba: &image::RgbaImage, fi: usize, w: usize) -> Vec<u8> {
+    let mut out = vec![0u8; TILE_PX * TILE_PX * 4];
+    let fh = w; // frame height == width (square frames)
+    let off_y = fi * fh;
+    for y in 0..TILE_PX {
+        for x in 0..TILE_PX {
+            let sx = x * w / TILE_PX;
+            let sy = off_y + y * fh / TILE_PX;
+            let dst = (y * TILE_PX + x) * 4;
+            let p = rgba.get_pixel(sx as u32, sy as u32).0;
+            out[dst] = p[0];
+            out[dst + 1] = p[1];
+            out[dst + 2] = p[2];
+            out[dst + 3] = p[3];
+        }
+    }
+    out
+}
+
+/// advance every animation by dt; returns (tile, frame) pairs to re-upload
+pub fn tick_animations(anims: &mut [AnimatedTile], dt: f32) -> Vec<(u16, u16)> {
+    let mut updates = Vec::new();
+    for a in anims.iter_mut() {
+        a.timer += dt;
+        while a.timer >= a.frametime {
+            a.timer -= a.frametime;
+            a.current = (a.current + 1) % a.frames.len();
+            updates.push((a.tile, a.current as u16));
+        }
+    }
+    updates
+}
+
+#[cfg(test)]
+mod pack_tex_tests {
+    use super::*;
+
+    #[test]
+    fn missing_tile_draws_checker() {
+        let mut atlas = vec![0u8; ATLAS_SIZE * ATLAS_SIZE * 4];
+        draw_missing_tile(&mut atlas);
+        let t = crate::mesh::TILE_MISSING;
+        let tx = (t % 16) as usize;
+        let ty = (t / 16) as usize;
+        let i = ((ty * TILE_PX + 0) * ATLAS_SIZE + tx * TILE_PX + 0) * 4;
+        assert_eq!(&atlas[i..i + 4], &[248, 0, 248, 255]); // magenta
+        let i2 = ((ty * TILE_PX + 0) * ATLAS_SIZE + tx * TILE_PX + 4) * 4;
+        assert_eq!(&atlas[i2..i2 + 4], &[0, 0, 0, 255]); // black
+    }
+
+    #[test]
+    fn animation_tick_advances_frames() {
+        let mut anims = vec![AnimatedTile {
+            tile: 64,
+            frames: vec![vec![1u8; 1024], vec![2u8; 1024], vec![3u8; 1024]],
+            frametime: 0.05,
+            current: 0,
+            timer: 0.0,
+        }];
+        let upd = tick_animations(&mut anims, 0.05);
+        assert_eq!(upd, vec![(64, 1)]);
+        assert_eq!(anims[0].current, 1);
+        // 3 frames wrap
+        let _ = tick_animations(&mut anims, 0.11); // 2+ steps
+        assert_eq!(anims[0].current, 0);
+    }
+
+    /// Regenerate the builtin pack's PNG textures from the procedural atlas
+    /// (our own clean-room art). Not part of CI: run on demand with
+    ///   cargo test write_builtin_pack_pngs -- --ignored --nocapture
+    #[test]
+    #[ignore]
+    fn write_builtin_pack_pngs() {
+        let out_dir = "builtin-pack/assets/minecraft/textures/block";
+        std::fs::create_dir_all(out_dir).unwrap();
+        let atlas = generate_atlas();
+
+        let save = |_tile: u16, name: &str, w: u32, h: u32, buf: &[u8]| {
+            let img = image::RgbaImage::from_raw(w, h, buf.to_vec()).unwrap();
+            let path = format!("{out_dir}/{name}");
+            img.save_with_format(&path, image::ImageFormat::Png).unwrap();
+            println!("wrote {path} ({w}x{h})");
+        };
+
+        let extract = |tile: u16| -> Vec<u8> {
+            let tx = (tile % 16) as usize;
+            let ty = (tile / 16) as usize;
+            let mut out = vec![0u8; TILE_PX * TILE_PX * 4];
+            for y in 0..TILE_PX {
+                for x in 0..TILE_PX {
+                    let src = ((ty * TILE_PX + y) * ATLAS_SIZE + tx * TILE_PX + x) * 4;
+                    let dst = (y * TILE_PX + x) * 4;
+                    out[dst..dst + 4].copy_from_slice(&atlas[src..src + 4]);
+                }
+            }
+            out
+        };
+
+        // static: oak_planks (slab + fence textures)
+        save(TILE_PLANKS, "oak_planks.png", TILE_PX as u32, TILE_PX as u32, &extract(TILE_PLANKS));
+
+        // animated: cobblestone 4-frame shimmer strip (16x64) + .mcmeta
+        let strip: Vec<u8> = (0..4)
+            .flat_map(|f| {
+                // each frame: the procedural cobble re-jittered by frame seed
+                let mut frame = extract(TILE_COBBLE);
+                let mut rng = Rng::new(0x4C0B + f as u64 * 131);
+                for i in 0..TILE_PX * TILE_PX {
+                    let j = rng.next_u64() as i32 % 7 - 3;
+                    let d = (i * 4) + (i % 3);
+                    frame[d] = (frame[d] as i32 + j).clamp(0, 255) as u8;
+                }
+                frame
+            })
+            .collect();
+        save(TILE_COBBLE, "cobblestone.png", TILE_PX as u32, (TILE_PX * 4) as u32, &strip);
+        let mcmeta = r#"{ "animation": { "frametime": 8 } }"#;
+        std::fs::write(format!("{out_dir}/cobblestone.png.mcmeta"), mcmeta).unwrap();
+        println!("wrote {out_dir}/cobblestone.png.mcmeta (frametime 8)");
+    }
+}
+
 // ---------------------------------------------------------------- clouds --
 
 /// Procedural cloud texture size (128x128, blocky 2x2 cells → 64x64 clouds).
 pub const CLOUD_TEX: usize = 128;
-
 /// Vanilla-style blocky cloud layer: periodic value noise thresholded on a
 /// 64x64 cell grid (periodic by construction → seamless tiling), each cell
 /// rendered as a 2x2 block for the crisp Minecraft cloud look.

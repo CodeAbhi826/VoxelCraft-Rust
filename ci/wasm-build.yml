@@ -1,0 +1,131 @@
+name: Build WASM
+
+# Auto-builds the Rust engine to a browser-ready WASM bundle and commits it
+# back to public/ so nobody ever has to compile locally again.
+# Re-trigger guard: only fires on Rust-source changes (public/** changes are
+# excluded from paths) AND the artifact commit message carries [skip ci].
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'voxelcraft/**'
+      - '.github/workflows/wasm-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: wasm-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: cargo -> wasm-bindgen -> patch -> public/
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust + wasm32 target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: voxelcraft
+          key: wasm
+
+      - name: Cache wasm-bindgen-cli
+        id: cache_wbg
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/wasm-bindgen
+          key: wasm-bindgen-0.2.127-x86_64-unknown-linux-gnu
+
+      - name: Install wasm-bindgen-cli (pinned to wasm-bindgen crate version)
+        if: steps.cache_wbg.outputs.cache-hit != 'true'
+        run: cargo install wasm-bindgen-cli --version 0.2.127 --locked
+
+      - name: Show toolchain
+        run: |
+          cargo --version
+          rustc --version
+          wasm-bindgen --version
+
+      - name: Build release WASM
+        working-directory: voxelcraft
+        run: cargo build --release --target wasm32-unknown-unknown --lib
+
+      - name: Generate JS glue
+        working-directory: voxelcraft
+        run: |
+          wasm-bindgen --target web \
+            --out-dir ./wasm-out \
+            target/wasm32-unknown-unknown/release/voxelcraft.wasm
+
+      - name: Patch JS glue (winit pointerType hardening)
+        run: python3 voxelcraft/patch-wasm-glue.py voxelcraft/wasm-out/voxelcraft.js
+
+      - name: Deploy bundle to public/
+        run: |
+          cp voxelcraft/wasm-out/voxelcraft.js             public/voxelcraft.js
+          cp voxelcraft/wasm-out/voxelcraft_bg.wasm        public/voxelcraft_bg.wasm
+          cp voxelcraft/wasm-out/voxelcraft.d.ts           public/voxelcraft.d.ts
+          cp voxelcraft/wasm-out/voxelcraft_bg.wasm.d.ts   public/voxelcraft_bg.wasm.d.ts
+          ls -la public/voxelcraft*
+
+      - name: Upload bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: voxelcraft-wasm-bundle
+          path: |
+            public/voxelcraft.js
+            public/voxelcraft_bg.wasm
+            public/voxelcraft.d.ts
+            public/voxelcraft_bg.wasm.d.ts
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Commit & push bundle back to main
+        run: |
+          git config user.name  "voxelcraft-ci"
+          git config user.email "actions@github.com"
+          git add public/voxelcraft.js public/voxelcraft_bg.wasm \
+                  public/voxelcraft.d.ts public/voxelcraft_bg.wasm.d.ts
+          if git diff --cached --quiet; then
+            echo "Bundle unchanged - nothing to commit."
+          else
+            git commit -m "ci(wasm): auto-rebuild bundle for ${GITHUB_SHA::12} [skip ci]"
+            git push
+            echo "PUSHED_BUNDLE=1" >> "$GITHUB_ENV"
+          fi
+
+  native-check:
+    name: cargo check (native, audio on)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ALSA headers (rodio/cpal)
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: voxelcraft
+          key: native
+
+      - name: cargo check (native)
+        working-directory: voxelcraft
+        run: cargo check --release

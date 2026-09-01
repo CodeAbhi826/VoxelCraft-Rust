@@ -1452,8 +1452,8 @@ impl GameApp {
                 } else {
                     let mut c = (*chunk).clone();
                     for (idx, id) in leftover {
-                        if c.blocks[idx as usize] == AIR {
-                            c.blocks[idx as usize] = id;
+                        if c.get_idx(idx as usize) == AIR {
+                            c.set_idx(idx as usize, id);
                         }
                     }
                     Arc::new(c)

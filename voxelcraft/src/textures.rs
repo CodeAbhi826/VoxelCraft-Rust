@@ -1061,7 +1061,7 @@ pub const CLOUD_TEX: usize = 128;
 pub fn generate_cloud_atlas() -> Vec<u8> {
     const CELLS: usize = 64;
     let hash = |x: i32, y: i32| -> f32 {
-        let n = ((x * 73856093) ^ (y * 19349663)) as f64;
+        let n = ((x.wrapping_mul(73856093)) ^ (y.wrapping_mul(19349663))) as f64;
         let s = (n * 0.0001).fract().abs();
         let _ = s;
         let v = (n.sin() * 43758.5453).fract().abs() as f32;

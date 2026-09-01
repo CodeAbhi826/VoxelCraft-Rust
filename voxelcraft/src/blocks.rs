@@ -1,4 +1,6 @@
 //! Block registry — ids, tiles, physical + optical properties, sound families.
+//! 57 blocks in the style of MC 1.16.5's overworld palette (all textures
+//! procedurally synthesized — none copied from Mojang assets).
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum SoundFamily {
@@ -9,6 +11,7 @@ pub enum SoundFamily {
     Sand,
     Leaves,
     Glass,
+    Wool,
     Water,
     None,
 }
@@ -33,6 +36,57 @@ pub const TILE_SNOW_SIDE: u16 = 15;
 pub const TILE_TALL_GRASS: u16 = 16;
 pub const TILE_FLOWER_RED: u16 = 17;
 pub const TILE_FLOWER_YELLOW: u16 = 18;
+// stone family
+pub const TILE_GRANITE: u16 = 19;
+pub const TILE_DIORITE: u16 = 20;
+pub const TILE_ANDESITE: u16 = 21;
+pub const TILE_STONE_BRICKS: u16 = 22;
+pub const TILE_BRICKS: u16 = 23;
+pub const TILE_MOSSY_COBBLE: u16 = 24;
+pub const TILE_SMOOTH_STONE: u16 = 25;
+pub const TILE_OBSIDIAN: u16 = 26;
+// ores
+pub const TILE_COAL_ORE: u16 = 27;
+pub const TILE_IRON_ORE: u16 = 28;
+pub const TILE_GOLD_ORE: u16 = 29;
+pub const TILE_DIAMOND_ORE: u16 = 30;
+pub const TILE_REDSTONE_ORE: u16 = 31;
+pub const TILE_LAPIS_ORE: u16 = 32;
+pub const TILE_EMERALD_ORE: u16 = 33;
+// mineral blocks
+pub const TILE_IRON_BLOCK: u16 = 34;
+pub const TILE_GOLD_BLOCK: u16 = 35;
+pub const TILE_DIAMOND_BLOCK: u16 = 36;
+// misc
+pub const TILE_GLOWSTONE: u16 = 37;
+pub const TILE_BOOKSHELF_SIDE: u16 = 38;
+pub const TILE_BOOKSHELF_TOP: u16 = 39;
+pub const TILE_CRAFT_TOP: u16 = 40;
+pub const TILE_CRAFT_SIDE: u16 = 41;
+pub const TILE_CLAY: u16 = 42;
+pub const TILE_TERRACOTTA: u16 = 43;
+pub const TILE_PUMPKIN_SIDE: u16 = 44;
+pub const TILE_PUMPKIN_TOP: u16 = 45;
+pub const TILE_MELON_SIDE: u16 = 46;
+pub const TILE_MELON_TOP: u16 = 47;
+pub const TILE_ICE: u16 = 48;
+pub const TILE_CACTUS_SIDE: u16 = 49;
+pub const TILE_CACTUS_TOP: u16 = 50;
+// wool
+pub const TILE_WOOL_WHITE: u16 = 51;
+pub const TILE_WOOL_RED: u16 = 52;
+pub const TILE_WOOL_BLUE: u16 = 53;
+pub const TILE_WOOL_YELLOW: u16 = 54;
+pub const TILE_WOOL_BLACK: u16 = 55;
+// wood variants
+pub const TILE_BIRCH_LOG_SIDE: u16 = 56;
+pub const TILE_BIRCH_LEAVES: u16 = 57;
+pub const TILE_SPRUCE_LOG_SIDE: u16 = 58;
+pub const TILE_SPRUCE_LEAVES: u16 = 59;
+// plants
+pub const TILE_MUSHROOM_RED: u16 = 60;
+pub const TILE_MUSHROOM_BROWN: u16 = 61;
+pub const TILE_DEAD_BUSH: u16 = 62;
 
 // Block ids (u8 in chunk storage).
 pub const AIR: u8 = 0;
@@ -53,8 +107,57 @@ pub const SNOW_GRASS: u8 = 14;
 pub const TALL_GRASS: u8 = 15;
 pub const FLOWER_RED: u8 = 16;
 pub const FLOWER_YELLOW: u8 = 17;
+// stone family
+pub const GRANITE: u8 = 18;
+pub const DIORITE: u8 = 19;
+pub const ANDESITE: u8 = 20;
+pub const STONE_BRICKS: u8 = 21;
+pub const BRICKS: u8 = 22;
+pub const MOSSY_COBBLE: u8 = 23;
+pub const SMOOTH_STONE: u8 = 24;
+pub const OBSIDIAN: u8 = 25;
+// ores
+pub const COAL_ORE: u8 = 26;
+pub const IRON_ORE: u8 = 27;
+pub const GOLD_ORE: u8 = 28;
+pub const DIAMOND_ORE: u8 = 29;
+pub const REDSTONE_ORE: u8 = 30;
+pub const LAPIS_ORE: u8 = 31;
+pub const EMERALD_ORE: u8 = 32;
+// mineral blocks
+pub const IRON_BLOCK: u8 = 33;
+pub const GOLD_BLOCK: u8 = 34;
+pub const DIAMOND_BLOCK: u8 = 35;
+// misc
+pub const GLOWSTONE: u8 = 36;
+pub const BOOKSHELF: u8 = 37;
+pub const CRAFTING_TABLE: u8 = 38;
+pub const CLAY: u8 = 39;
+pub const TERRACOTTA: u8 = 40;
+pub const PUMPKIN: u8 = 41;
+pub const MELON: u8 = 42;
+pub const ICE: u8 = 43;
+pub const CACTUS: u8 = 44;
+// wool
+pub const WOOL_WHITE: u8 = 45;
+pub const WOOL_RED: u8 = 46;
+pub const WOOL_BLUE: u8 = 47;
+pub const WOOL_YELLOW: u8 = 48;
+pub const WOOL_BLACK: u8 = 49;
+// wood variants
+pub const BIRCH_LOG: u8 = 50;
+pub const BIRCH_LEAVES: u8 = 51;
+pub const SPRUCE_LOG: u8 = 52;
+pub const SPRUCE_LEAVES: u8 = 53;
+// plants
+pub const MUSHROOM_RED: u8 = 54;
+pub const MUSHROOM_BROWN: u8 = 55;
+pub const DEAD_BUSH: u8 = 56;
 
-pub const BLOCK_COUNT: usize = 18;
+pub const BLOCK_COUNT: usize = 57;
+
+/// highest tile index the generator must draw
+pub const TILE_MAX: u16 = 62;
 
 pub struct BlockDef {
     pub name: &'static str,
@@ -67,28 +170,89 @@ pub struct BlockDef {
     /// rendered as X-shaped plant
     pub cross: bool,
     pub fluid: bool,
+    /// 0..15 self-illuminated light level (glowstone = 15)
+    pub emissive: u8,
     pub sound: SoundFamily,
 }
 
+const fn d(
+    name: &'static str,
+    tiles: [u16; 3],
+    solid: bool,
+    opaque: bool,
+    cross: bool,
+    fluid: bool,
+    emissive: u8,
+    sound: SoundFamily,
+) -> BlockDef {
+    BlockDef { name, tiles, solid, opaque, cross, fluid, emissive, sound }
+}
+
 pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
-    BlockDef { name: "Air", tiles: [0, 0, 0], solid: false, opaque: false, cross: false, fluid: false, sound: SoundFamily::None },
-    BlockDef { name: "Grass Block", tiles: [TILE_GRASS_TOP, TILE_DIRT, TILE_GRASS_SIDE], solid: true, opaque: true, cross: false, fluid: false, sound: SoundFamily::Grass },
-    BlockDef { name: "Dirt", tiles: [TILE_DIRT, TILE_DIRT, TILE_DIRT], solid: true, opaque: true, cross: false, fluid: false, sound: SoundFamily::Dirt },
-    BlockDef { name: "Stone", tiles: [TILE_STONE, TILE_STONE, TILE_STONE], solid: true, opaque: true, cross: false, fluid: false, sound: SoundFamily::Stone },
-    BlockDef { name: "Cobblestone", tiles: [TILE_COBBLE, TILE_COBBLE, TILE_COBBLE], solid: true, opaque: true, cross: false, fluid: false, sound: SoundFamily::Stone },
-    BlockDef { name: "Sand", tiles: [TILE_SAND, TILE_SAND, TILE_SAND], solid: true, opaque: true, cross: false, fluid: false, sound: SoundFamily::Sand },
-    BlockDef { name: "Oak Log", tiles: [TILE_LOG_TOP, TILE_LOG_TOP, TILE_LOG_SIDE], solid: true, opaque: true, cross: false, fluid: false, sound: SoundFamily::Wood },
-    BlockDef { name: "Oak Planks", tiles: [TILE_PLANKS, TILE_PLANKS, TILE_PLANKS], solid: true, opaque: true, cross: false, fluid: false, sound: SoundFamily::Wood },
-    BlockDef { name: "Oak Leaves", tiles: [TILE_LEAVES, TILE_LEAVES, TILE_LEAVES], solid: true, opaque: false, cross: false, fluid: false, sound: SoundFamily::Leaves },
-    BlockDef { name: "Water", tiles: [TILE_WATER, TILE_WATER, TILE_WATER], solid: false, opaque: false, cross: false, fluid: true, sound: SoundFamily::Water },
-    BlockDef { name: "Glass", tiles: [TILE_GLASS, TILE_GLASS, TILE_GLASS], solid: true, opaque: false, cross: false, fluid: false, sound: SoundFamily::Glass },
-    BlockDef { name: "Bedrock", tiles: [TILE_BEDROCK, TILE_BEDROCK, TILE_BEDROCK], solid: true, opaque: true, cross: false, fluid: false, sound: SoundFamily::Stone },
-    BlockDef { name: "Gravel", tiles: [TILE_GRAVEL, TILE_GRAVEL, TILE_GRAVEL], solid: true, opaque: true, cross: false, fluid: false, sound: SoundFamily::Sand },
-    BlockDef { name: "Snow Block", tiles: [TILE_SNOW, TILE_SNOW, TILE_SNOW], solid: true, opaque: true, cross: false, fluid: false, sound: SoundFamily::Sand },
-    BlockDef { name: "Snowy Grass", tiles: [TILE_SNOW, TILE_DIRT, TILE_SNOW_SIDE], solid: true, opaque: true, cross: false, fluid: false, sound: SoundFamily::Grass },
-    BlockDef { name: "Grass", tiles: [TILE_TALL_GRASS, TILE_TALL_GRASS, TILE_TALL_GRASS], solid: false, opaque: false, cross: true, fluid: false, sound: SoundFamily::Grass },
-    BlockDef { name: "Poppy", tiles: [TILE_FLOWER_RED, TILE_FLOWER_RED, TILE_FLOWER_RED], solid: false, opaque: false, cross: true, fluid: false, sound: SoundFamily::Grass },
-    BlockDef { name: "Dandelion", tiles: [TILE_FLOWER_YELLOW, TILE_FLOWER_YELLOW, TILE_FLOWER_YELLOW], solid: false, opaque: false, cross: true, fluid: false, sound: SoundFamily::Grass },
+    d("Air", [0, 0, 0], false, false, false, false, 0, SoundFamily::None),
+    d("Grass Block", [TILE_GRASS_TOP, TILE_DIRT, TILE_GRASS_SIDE], true, true, false, false, 0, SoundFamily::Grass),
+    d("Dirt", [TILE_DIRT, TILE_DIRT, TILE_DIRT], true, true, false, false, 0, SoundFamily::Dirt),
+    d("Stone", [TILE_STONE, TILE_STONE, TILE_STONE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Cobblestone", [TILE_COBBLE, TILE_COBBLE, TILE_COBBLE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Sand", [TILE_SAND, TILE_SAND, TILE_SAND], true, true, false, false, 0, SoundFamily::Sand),
+    d("Oak Log", [TILE_LOG_TOP, TILE_LOG_TOP, TILE_LOG_SIDE], true, true, false, false, 0, SoundFamily::Wood),
+    d("Oak Planks", [TILE_PLANKS, TILE_PLANKS, TILE_PLANKS], true, true, false, false, 0, SoundFamily::Wood),
+    d("Oak Leaves", [TILE_LEAVES, TILE_LEAVES, TILE_LEAVES], true, false, false, false, 0, SoundFamily::Leaves),
+    d("Water", [TILE_WATER, TILE_WATER, TILE_WATER], false, false, false, true, 0, SoundFamily::Water),
+    d("Glass", [TILE_GLASS, TILE_GLASS, TILE_GLASS], true, false, false, false, 0, SoundFamily::Glass),
+    d("Bedrock", [TILE_BEDROCK, TILE_BEDROCK, TILE_BEDROCK], true, true, false, false, 0, SoundFamily::Stone),
+    d("Gravel", [TILE_GRAVEL, TILE_GRAVEL, TILE_GRAVEL], true, true, false, false, 0, SoundFamily::Sand),
+    d("Snow Block", [TILE_SNOW, TILE_SNOW, TILE_SNOW], true, true, false, false, 0, SoundFamily::Sand),
+    d("Snowy Grass", [TILE_SNOW, TILE_DIRT, TILE_SNOW_SIDE], true, true, false, false, 0, SoundFamily::Grass),
+    d("Grass", [TILE_TALL_GRASS, TILE_TALL_GRASS, TILE_TALL_GRASS], false, false, true, false, 0, SoundFamily::Grass),
+    d("Poppy", [TILE_FLOWER_RED, TILE_FLOWER_RED, TILE_FLOWER_RED], false, false, true, false, 0, SoundFamily::Grass),
+    d("Dandelion", [TILE_FLOWER_YELLOW, TILE_FLOWER_YELLOW, TILE_FLOWER_YELLOW], false, false, true, false, 0, SoundFamily::Grass),
+    // stone family
+    d("Granite", [TILE_GRANITE, TILE_GRANITE, TILE_GRANITE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Diorite", [TILE_DIORITE, TILE_DIORITE, TILE_DIORITE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Andesite", [TILE_ANDESITE, TILE_ANDESITE, TILE_ANDESITE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Stone Bricks", [TILE_STONE_BRICKS, TILE_STONE_BRICKS, TILE_STONE_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
+    d("Bricks", [TILE_BRICKS, TILE_BRICKS, TILE_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
+    d("Mossy Cobblestone", [TILE_MOSSY_COBBLE, TILE_MOSSY_COBBLE, TILE_MOSSY_COBBLE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Smooth Stone", [TILE_SMOOTH_STONE, TILE_SMOOTH_STONE, TILE_SMOOTH_STONE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Obsidian", [TILE_OBSIDIAN, TILE_OBSIDIAN, TILE_OBSIDIAN], true, true, false, false, 0, SoundFamily::Stone),
+    // ores
+    d("Coal Ore", [TILE_COAL_ORE, TILE_COAL_ORE, TILE_COAL_ORE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Iron Ore", [TILE_IRON_ORE, TILE_IRON_ORE, TILE_IRON_ORE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Gold Ore", [TILE_GOLD_ORE, TILE_GOLD_ORE, TILE_GOLD_ORE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Diamond Ore", [TILE_DIAMOND_ORE, TILE_DIAMOND_ORE, TILE_DIAMOND_ORE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Redstone Ore", [TILE_REDSTONE_ORE, TILE_REDSTONE_ORE, TILE_REDSTONE_ORE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Lapis Ore", [TILE_LAPIS_ORE, TILE_LAPIS_ORE, TILE_LAPIS_ORE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Emerald Ore", [TILE_EMERALD_ORE, TILE_EMERALD_ORE, TILE_EMERALD_ORE], true, true, false, false, 0, SoundFamily::Stone),
+    // mineral blocks
+    d("Block of Iron", [TILE_IRON_BLOCK, TILE_IRON_BLOCK, TILE_IRON_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
+    d("Block of Gold", [TILE_GOLD_BLOCK, TILE_GOLD_BLOCK, TILE_GOLD_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
+    d("Block of Diamond", [TILE_DIAMOND_BLOCK, TILE_DIAMOND_BLOCK, TILE_DIAMOND_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
+    // misc
+    d("Glowstone", [TILE_GLOWSTONE, TILE_GLOWSTONE, TILE_GLOWSTONE], true, true, false, false, 15, SoundFamily::Glass),
+    d("Bookshelf", [TILE_BOOKSHELF_TOP, TILE_BOOKSHELF_TOP, TILE_BOOKSHELF_SIDE], true, true, false, false, 0, SoundFamily::Wood),
+    d("Crafting Table", [TILE_CRAFT_TOP, TILE_PLANKS, TILE_CRAFT_SIDE], true, true, false, false, 0, SoundFamily::Wood),
+    d("Clay", [TILE_CLAY, TILE_CLAY, TILE_CLAY], true, true, false, false, 0, SoundFamily::Dirt),
+    d("Terracotta", [TILE_TERRACOTTA, TILE_TERRACOTTA, TILE_TERRACOTTA], true, true, false, false, 0, SoundFamily::Stone),
+    d("Pumpkin", [TILE_PUMPKIN_TOP, TILE_PUMPKIN_TOP, TILE_PUMPKIN_SIDE], true, true, false, false, 0, SoundFamily::Wood),
+    d("Melon", [TILE_MELON_TOP, TILE_MELON_TOP, TILE_MELON_SIDE], true, true, false, false, 0, SoundFamily::Wood),
+    d("Ice", [TILE_ICE, TILE_ICE, TILE_ICE], true, false, false, false, 0, SoundFamily::Glass),
+    d("Cactus", [TILE_CACTUS_TOP, TILE_CACTUS_TOP, TILE_CACTUS_SIDE], true, true, false, false, 0, SoundFamily::Wool),
+    // wool
+    d("White Wool", [TILE_WOOL_WHITE, TILE_WOOL_WHITE, TILE_WOOL_WHITE], true, true, false, false, 0, SoundFamily::Wool),
+    d("Red Wool", [TILE_WOOL_RED, TILE_WOOL_RED, TILE_WOOL_RED], true, true, false, false, 0, SoundFamily::Wool),
+    d("Blue Wool", [TILE_WOOL_BLUE, TILE_WOOL_BLUE, TILE_WOOL_BLUE], true, true, false, false, 0, SoundFamily::Wool),
+    d("Yellow Wool", [TILE_WOOL_YELLOW, TILE_WOOL_YELLOW, TILE_WOOL_YELLOW], true, true, false, false, 0, SoundFamily::Wool),
+    d("Black Wool", [TILE_WOOL_BLACK, TILE_WOOL_BLACK, TILE_WOOL_BLACK], true, true, false, false, 0, SoundFamily::Wool),
+    // wood variants
+    d("Birch Log", [TILE_LOG_TOP, TILE_LOG_TOP, TILE_BIRCH_LOG_SIDE], true, true, false, false, 0, SoundFamily::Wood),
+    d("Birch Leaves", [TILE_BIRCH_LEAVES, TILE_BIRCH_LEAVES, TILE_BIRCH_LEAVES], true, false, false, false, 0, SoundFamily::Leaves),
+    d("Spruce Log", [TILE_LOG_TOP, TILE_LOG_TOP, TILE_SPRUCE_LOG_SIDE], true, true, false, false, 0, SoundFamily::Wood),
+    d("Spruce Leaves", [TILE_SPRUCE_LEAVES, TILE_SPRUCE_LEAVES, TILE_SPRUCE_LEAVES], true, false, false, false, 0, SoundFamily::Leaves),
+    // plants
+    d("Red Mushroom", [TILE_MUSHROOM_RED, TILE_MUSHROOM_RED, TILE_MUSHROOM_RED], false, false, true, false, 0, SoundFamily::Grass),
+    d("Brown Mushroom", [TILE_MUSHROOM_BROWN, TILE_MUSHROOM_BROWN, TILE_MUSHROOM_BROWN], false, false, true, false, 0, SoundFamily::Grass),
+    d("Dead Bush", [TILE_DEAD_BUSH, TILE_DEAD_BUSH, TILE_DEAD_BUSH], false, false, true, false, 0, SoundFamily::Grass),
 ];
 
 #[inline]
@@ -117,6 +281,11 @@ pub fn is_fluid(id: u8) -> bool {
 }
 
 #[inline]
+pub fn emissive(id: u8) -> u8 {
+    def(id).emissive
+}
+
+#[inline]
 pub fn name(id: u8) -> &'static str {
     def(id).name
 }
@@ -131,16 +300,35 @@ pub fn face_visible(b: u8, n: u8) -> bool {
         // water visible through non-water, non-opaque neighbors (air, glass, plants)
         return !is_opaque(n) && n != WATER;
     }
-    if b == LEAVES {
+    if b == LEAVES || b == BIRCH_LEAVES || b == SPRUCE_LEAVES {
         // "fancy" leaves: render even against other leaves
         return !is_opaque(n);
     }
     if b == GLASS {
         return !is_opaque(n) && n != GLASS;
     }
+    if b == ICE {
+        return !is_opaque(n) && n != ICE;
+    }
     // fully opaque blocks
     !is_opaque(n)
 }
 
-/// Blocks placeable from the hotbar.
-pub const PALETTE: [u8; 9] = [GRASS, DIRT, STONE, COBBLE, PLANKS, OAK_LOG, LEAVES, SAND, GLASS];
+/// blocks offered in the E-key picker (creative-style), in display order.
+/// Everything placeable except air, bedrock (unbreakable) and water
+/// (needs fluid sim to be fun).
+pub const PICKER_BLOCKS: [u8; 52] = [
+    GRASS, DIRT, STONE, COBBLE, SMOOTH_STONE, STONE_BRICKS, BRICKS, MOSSY_COBBLE,
+    GRANITE, DIORITE, ANDESITE, OBSIDIAN,
+    SAND, GRAVEL, CLAY, TERRACOTTA,
+    OAK_LOG, LEAVES, PLANKS, BIRCH_LOG, BIRCH_LEAVES, SPRUCE_LOG, SPRUCE_LEAVES,
+    COAL_ORE, IRON_ORE, GOLD_ORE, REDSTONE_ORE, LAPIS_ORE, EMERALD_ORE, DIAMOND_ORE,
+    IRON_BLOCK, GOLD_BLOCK, DIAMOND_BLOCK, GLOWSTONE,
+    BOOKSHELF, CRAFTING_TABLE, GLASS, ICE, SNOW,
+    PUMPKIN, MELON, CACTUS,
+    WOOL_WHITE, WOOL_RED, WOOL_YELLOW, WOOL_BLUE, WOOL_BLACK,
+    TALL_GRASS, FLOWER_RED, FLOWER_YELLOW, MUSHROOM_RED, MUSHROOM_BROWN,
+];
+
+/// default hotbar palette
+pub const PALETTE: [u8; 9] = [GRASS, DIRT, STONE, COBBLE, PLANKS, OAK_LOG, LEAVES, GLOWSTONE, GLASS];

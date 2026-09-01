@@ -414,11 +414,540 @@ fn dandelion_art(a: &mut [u8], t: u16) {
     });
 }
 
+// --------------------------------------------------- extended tile set --
+// Stone family, ores, mineral blocks, misc, wool, wood variants, plants.
+
+fn granite(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [149, 103, 85], 7, rng);
+    for _ in 0..6 {
+        let cx = rng.next_range(16) as i32;
+        let cy = rng.next_range(16) as i32;
+        let shade = 125 + rng.next_range(30) as i32;
+        for dy in -1..=1 {
+            for dx in -1..=1 {
+                if rng.next_f32() < 0.7 {
+                    put(a, t, cx + dx, cy + dy, jit(shade, 5, rng), jit(shade - 42, 4, rng), jit(shade - 60, 4, rng), 255);
+                }
+            }
+        }
+    }
+}
+
+fn diorite(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [189, 188, 189], 6, rng);
+    for _ in 0..8 {
+        let cx = rng.next_range(16) as i32;
+        let cy = rng.next_range(16) as i32;
+        let dark = rng.next_f32() < 0.5;
+        let shade: i32 = if dark { 78 } else { 235 };
+        for dy in -1..=1 {
+            for dx in -1..=1 {
+                if rng.next_f32() < 0.6 {
+                    put(a, t, cx + dx, cy + dy, jit(shade, 5, rng), jit(shade, 5, rng), jit(shade, 5, rng), 255);
+                }
+            }
+        }
+    }
+}
+
+fn andesite(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [136, 136, 137], 6, rng);
+    for _ in 0..5 {
+        let cx = rng.next_range(16) as i32;
+        let cy = rng.next_range(16) as i32;
+        let shade = 112 + rng.next_range(18) as i32;
+        for dy in -1..=1 {
+            for dx in -1..=1 {
+                if rng.next_f32() < 0.5 {
+                    put(a, t, cx + dx, cy + dy, jit(shade, 4, rng), jit(shade, 4, rng), jit(shade + 1, 4, rng), 255);
+                }
+            }
+        }
+    }
+}
+
+fn stone_bricks(a: &mut [u8], t: u16, rng: &mut Rng) {
+    let brick = [122, 121, 121];
+    let mortar = [88, 87, 87];
+    for y in 0..16 {
+        for x in 0..16 {
+            // rows of 8x4 bricks offset every other row (row h=4)
+            let row = y / 4;
+            let offset = if row % 2 == 0 { 0 } else { 4 };
+            let in_mortar_h = y % 4 == 3;
+            let in_mortar_v = (x + offset) % 8 == 7;
+            let s = if in_mortar_h || in_mortar_v { mortar } else { brick };
+            put(a, t, x, y, jit(s[0], 5, rng), jit(s[1], 5, rng), jit(s[2], 5, rng), 255);
+        }
+    }
+}
+
+fn bricks(a: &mut [u8], t: u16, rng: &mut Rng) {
+    let brick = [151, 97, 83];
+    let mortar = [139, 133, 126];
+    for y in 0..16 {
+        for x in 0..16 {
+            let row = y / 4;
+            let offset = if row % 2 == 0 { 0 } else { 4 };
+            let in_mortar_h = y % 4 == 3;
+            let in_mortar_v = (x + offset) % 8 == 7;
+            let s = if in_mortar_h || in_mortar_v { mortar } else { brick };
+            put(a, t, x, y, jit(s[0], 6, rng), jit(s[1], 5, rng), jit(s[2], 5, rng), 255);
+        }
+    }
+}
+
+fn mossy_cobble(a: &mut [u8], t: u16, rng: &mut Rng) {
+    cobble(a, t, rng);
+    // moss blotches
+    for _ in 0..7 {
+        let cx = rng.next_range(16) as i32;
+        let cy = rng.next_range(16) as i32;
+        let r = 1 + rng.next_range(2) as i32;
+        for dy in -r..=r {
+            for dx in -r..=r {
+                if dx * dx + dy * dy <= r * r && rng.next_f32() < 0.55 {
+                    put(a, t, cx + dx, cy + dy, jit(88, 8, rng), jit(120, 10, rng), jit(62, 7, rng), 255);
+                }
+            }
+        }
+    }
+}
+
+fn smooth_stone(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [160, 160, 160], 4, rng);
+    // faint horizontal strata
+    for y in 0..16 {
+        if y % 5 == 2 {
+            for x in 0..16 {
+                let s = 148 + rng.next_range(8) as i32;
+                put(a, t, x, y, jit(s, 3, rng), jit(s, 3, rng), jit(s, 3, rng), 255);
+            }
+        }
+    }
+}
+
+fn obsidian(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [21, 18, 32], 5, rng);
+    // purple sparkles
+    for _ in 0..9 {
+        let x = rng.next_range(16) as i32;
+        let y = rng.next_range(16) as i32;
+        let bright = rng.next_f32() < 0.4;
+        if bright {
+            put(a, t, x, y, jit(136, 20, rng), jit(96, 15, rng), jit(182, 20, rng), 255);
+        } else {
+            put(a, t, x, y, jit(58, 10, rng), jit(42, 8, rng), jit(84, 12, rng), 255);
+        }
+    }
+}
+
+/// ore helper: stone base + clustered colored blobs
+fn ore_blob(a: &mut [u8], t: u16, rng: &mut Rng, colors: &[[i32; 3]; 3], attempts: usize) {
+    stone(a, t, rng);
+    for _ in 0..attempts {
+        let cx = 1 + rng.next_range(13) as i32;
+        let cy = 1 + rng.next_range(13) as i32;
+        let r = 1 + rng.next_range(2) as i32;
+        for dy in -r..=r {
+            for dx in -r..=r {
+                if dx.abs() + dy.abs() <= r && rng.next_f32() < 0.85 {
+                    let c = colors[rng.next_range(3) as usize];
+                    put(a, t, cx + dx, cy + dy, jit(c[0], 8, rng), jit(c[1], 8, rng), jit(c[2], 8, rng), 255);
+                }
+            }
+        }
+    }
+}
+
+fn coal_ore(a: &mut [u8], t: u16, rng: &mut Rng) {
+    ore_blob(a, t, rng, &[[28, 28, 28], [45, 45, 45], [16, 16, 16]], 5);
+}
+fn iron_ore(a: &mut [u8], t: u16, rng: &mut Rng) {
+    ore_blob(a, t, rng, &[[216, 175, 147], [175, 142, 120], [229, 190, 159]], 5);
+}
+fn gold_ore(a: &mut [u8], t: u16, rng: &mut Rng) {
+    ore_blob(a, t, rng, &[[250, 238, 77], [222, 206, 66], [253, 246, 130]], 4);
+}
+fn diamond_ore(a: &mut [u8], t: u16, rng: &mut Rng) {
+    ore_blob(a, t, rng, &[[93, 236, 245], [61, 214, 224], [140, 247, 252]], 4);
+}
+fn redstone_ore(a: &mut [u8], t: u16, rng: &mut Rng) {
+    ore_blob(a, t, rng, &[[255, 40, 40], [190, 24, 24], [232, 70, 70]], 5);
+}
+fn lapis_ore(a: &mut [u8], t: u16, rng: &mut Rng) {
+    ore_blob(a, t, rng, &[[38, 97, 214], [28, 71, 160], [61, 121, 232]], 5);
+}
+fn emerald_ore(a: &mut [u8], t: u16, rng: &mut Rng) {
+    ore_blob(a, t, rng, &[[23, 217, 101], [17, 168, 77], [58, 232, 128]], 3);
+}
+
+fn metal_block(a: &mut [u8], t: u16, rng: &mut Rng, base: [i32; 3]) {
+    for y in 0..16 {
+        for x in 0..16 {
+            let border = x == 0 || y == 0 || x == 15 || y == 15;
+            let inner_frame = x == 1 || y == 1 || x == 14 || y == 14;
+            let mut s = base;
+            if border {
+                s = [base[0] - 28, base[1] - 28, base[2] - 28];
+            } else if inner_frame {
+                s = [base[0] + 14, base[1] + 14, base[2] + 14];
+            }
+            put(a, t, x, y, jit(s[0], 4, rng), jit(s[1], 4, rng), jit(s[2], 4, rng), 255);
+        }
+    }
+}
+
+fn iron_block(a: &mut [u8], t: u16, rng: &mut Rng) {
+    metal_block(a, t, rng, [220, 220, 220]);
+}
+fn gold_block(a: &mut [u8], t: u16, rng: &mut Rng) {
+    metal_block(a, t, rng, [247, 233, 76]);
+}
+fn diamond_block(a: &mut [u8], t: u16, rng: &mut Rng) {
+    metal_block(a, t, rng, [98, 231, 231]);
+}
+
+fn glowstone(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [144, 106, 51], 8, rng);
+    // bright glowing pocks
+    for _ in 0..12 {
+        let cx = rng.next_range(16) as i32;
+        let cy = rng.next_range(16) as i32;
+        let r = 1 + rng.next_range(2) as i32;
+        for dy in -r..=r {
+            for dx in -r..=r {
+                if dx * dx + dy * dy <= r * r && rng.next_f32() < 0.8 {
+                    put(a, t, cx + dx, cy + dy, jit(255, 4, rng), jit(222, 12, rng), jit(140, 16, rng), 255);
+                }
+            }
+        }
+    }
+}
+
+fn bookshelf_side(a: &mut [u8], t: u16, rng: &mut Rng) {
+    planks(a, t, rng);
+    // two shelf rows of colored book spines
+    let spine_colors: [[i32; 3]; 6] = [
+        [161, 64, 50], [62, 98, 168], [96, 138, 66], [170, 130, 60], [120, 70, 140], [200, 190, 170],
+    ];
+    for (row, y0) in [2i32, 9i32].iter().enumerate() {
+        let y0 = *y0;
+        let mut x = 1;
+        while x < 15 {
+            let w = 1 + rng.next_range(3) as i32;
+            let c = spine_colors[rng.next_range(6) as usize];
+            for dy in 0..5 {
+                for dx in 0..w {
+                    if x + dx < 15 {
+                        put(a, t, x + dx, y0 + dy, jit(c[0], 10, rng), jit(c[1], 10, rng), jit(c[2], 10, rng), 255);
+                    }
+                }
+            }
+            x += w;
+        }
+        let _ = row;
+    }
+}
+
+fn bookshelf_top(a: &mut [u8], t: u16, rng: &mut Rng) {
+    planks(a, t, rng);
+}
+
+fn craft_top(a: &mut [u8], t: u16, rng: &mut Rng) {
+    planks(a, t, rng);
+    // 3x3 grid of darker squares
+    for gy in 0..3 {
+        for gx in 0..3 {
+            let x0 = 2 + gx * 4;
+            let y0 = 2 + gy * 4;
+            for dy in 0..3 {
+                for dx in 0..3 {
+                    let s = 138 + rng.next_range(14) as i32;
+                    put(a, t, x0 + dx, y0 + dy, jit(s, 4, rng), jit(s - 14, 4, rng), jit(s - 30, 4, rng), 255);
+                }
+            }
+        }
+    }
+}
+
+fn craft_side(a: &mut [u8], t: u16, rng: &mut Rng) {
+    planks(a, t, rng);
+    // tool silhouettes hanging
+    for y in 6..10 {
+        put(a, t, 4, y, jit(90, 6, rng), jit(70, 5, rng), jit(44, 4, rng), 255);
+        put(a, t, 10, y, jit(120, 6, rng), jit(100, 5, rng), jit(60, 4, rng), 255);
+    }
+}
+
+fn clay(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [160, 166, 179], 5, rng);
+    for _ in 0..5 {
+        let x = rng.next_range(16) as i32;
+        let y = rng.next_range(16) as i32;
+        put(a, t, x, y, jit(141, 5, rng), jit(147, 5, rng), jit(160, 5, rng), 255);
+    }
+}
+
+fn terracotta(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [152, 94, 67], 6, rng);
+    for _ in 0..6 {
+        let x = rng.next_range(16) as i32;
+        let y = rng.next_range(16) as i32;
+        put(a, t, x, y, jit(141, 6, rng), jit(85, 5, rng), jit(60, 5, rng), 255);
+    }
+}
+
+fn pumpkin_side(a: &mut [u8], t: u16, rng: &mut Rng) {
+    for x in 0..16 {
+        let lobe = if x % 5 == 0 { -26 } else { 0 };
+        for y in 0..16 {
+            let top = y < 2;
+            let s = if top { lobe - 30 } else { lobe };
+            put(a, t, x, y, jit(208 + s, 8, rng), jit(126 + s, 7, rng), jit(26 + s / 2, 5, rng), 255);
+        }
+    }
+}
+
+fn pumpkin_top(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [196, 118, 28], 6, rng);
+    // stem
+    for dy in 0..2 {
+        for dx in 0..2 {
+            put(a, t, 7 + dx, 7 + dy, jit(124, 8, rng), jit(96, 6, rng), jit(30, 5, rng), 255);
+        }
+    }
+    // ridge rings
+    for i in 0..16 {
+        put(a, t, i, 3, jit(186, 6, rng), jit(110, 5, rng), jit(24, 4, rng), 255);
+        put(a, t, i, 12, jit(186, 6, rng), jit(110, 5, rng), jit(24, 4, rng), 255);
+    }
+}
+
+fn melon_side(a: &mut [u8], t: u16, rng: &mut Rng) {
+    // vertical light/dark green stripes
+    for x in 0..16 {
+        let s = if (x / 2) % 2 == 0 { 0 } else { -34 };
+        for y in 0..16 {
+            put(a, t, x, y, jit(112 + s, 7, rng), jit(172 + s, 8, rng), jit(72 + s / 2, 6, rng), 255);
+        }
+    }
+}
+
+fn melon_top(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [112, 172, 72], 6, rng);
+    for _ in 0..8 {
+        let x = rng.next_range(16) as i32;
+        let y = rng.next_range(16) as i32;
+        put(a, t, x, y, jit(88, 6, rng), jit(146, 7, rng), jit(58, 5, rng), 255);
+    }
+}
+
+fn ice(a: &mut [u8], t: u16, rng: &mut Rng) {
+    for y in 0..16 {
+        for x in 0..16 {
+            let shard = ((x + y * 2) / 5) % 2 == 0;
+            let s = if shard { 16 } else { 0 };
+            put(a, t, x, y, jit(160 + s, 5, rng), jit(198 + s, 5, rng), jit(246, 3, rng), 190);
+        }
+    }
+}
+
+fn cactus_side(a: &mut [u8], t: u16, rng: &mut Rng) {
+    for x in 0..16 {
+        let edge = x < 2 || x > 13;
+        let s = if edge { -26 } else { 0 };
+        for y in 0..16 {
+            put(a, t, x, y, jit(14 + s, 4, rng), jit(124 + s, 7, rng), jit(36 + s / 2, 4, rng), 255);
+        }
+    }
+    // spines
+    for _ in 0..10 {
+        let x = 2 + rng.next_range(12) as i32;
+        let y = rng.next_range(16) as i32;
+        put(a, t, x, y, jit(230, 6, rng), jit(230, 6, rng), jit(180, 8, rng), 255);
+    }
+}
+
+fn cactus_top(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [24, 134, 46], 5, rng);
+    for _ in 0..8 {
+        let x = rng.next_range(16) as i32;
+        let y = rng.next_range(16) as i32;
+        put(a, t, x, y, jit(220, 8, rng), jit(220, 8, rng), jit(170, 10, rng), 255);
+    }
+}
+
+fn wool(a: &mut [u8], t: u16, rng: &mut Rng, base: [i32; 3]) {
+    // woven cross-hatch
+    for y in 0..16 {
+        for x in 0..16 {
+            let weave = if (x / 3 + y / 3) % 2 == 0 { 10 } else { -10 };
+            let bump = (x % 3 == 0 || y % 3 == 0) as i32 * 6;
+            put(a, t, x, y,
+                jit(base[0] + weave + bump, 5, rng),
+                jit(base[1] + weave + bump, 5, rng),
+                jit(base[2] + weave + bump, 5, rng), 255);
+        }
+    }
+}
+
+fn wool_white(a: &mut [u8], t: u16, rng: &mut Rng) { wool(a, t, rng, [233, 236, 236]); }
+fn wool_red(a: &mut [u8], t: u16, rng: &mut Rng) { wool(a, t, rng, [160, 39, 34]); }
+fn wool_blue(a: &mut [u8], t: u16, rng: &mut Rng) { wool(a, t, rng, [53, 57, 157]); }
+fn wool_yellow(a: &mut [u8], t: u16, rng: &mut Rng) { wool(a, t, rng, [254, 216, 59]); }
+fn wool_black(a: &mut [u8], t: u16, rng: &mut Rng) { wool(a, t, rng, [33, 35, 38]); }
+
+fn birch_log_side(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [216, 215, 206], 5, rng);
+    // dark dashes
+    for _ in 0..7 {
+        let x = rng.next_range(14) as i32;
+        let y = rng.next_range(16) as i32;
+        let w = 2 + rng.next_range(3) as i32;
+        for dx in 0..w {
+            put(a, t, x + dx, y, jit(64, 8, rng), jit(62, 8, rng), jit(58, 8, rng), 255);
+        }
+    }
+}
+
+const BIRCH_LEAF_SHADES: [[i32; 3]; 4] = [
+    [106, 156, 66],
+    [88, 138, 55],
+    [120, 168, 75],
+    [78, 124, 48],
+];
+
+fn birch_leaves(a: &mut [u8], t: u16, rng: &mut Rng) {
+    for y in 0..16 {
+        for x in 0..16 {
+            if rng.next_f32() < 0.12 {
+                put(a, t, x, y, 0, 0, 0, 0);
+            } else {
+                let s = BIRCH_LEAF_SHADES[rng.next_range(4) as usize];
+                put(a, t, x, y, jit(s[0], 5, rng), jit(s[1], 6, rng), jit(s[2], 5, rng), 255);
+            }
+        }
+    }
+}
+
+fn spruce_log_side(a: &mut [u8], t: u16, rng: &mut Rng) {
+    for x in 0..16 {
+        let col = match x % 5 {
+            0 => -18,
+            2 => 6,
+            _ => 0,
+        };
+        for y in 0..16 {
+            put(a, t, x, y, jit(64 + col, 5, rng), jit(46 + col, 4, rng), jit(26 + col, 3, rng), 255);
+        }
+    }
+}
+
+const SPRUCE_LEAF_SHADES: [[i32; 3]; 4] = [
+    [50, 90, 58],
+    [38, 74, 47],
+    [60, 104, 66],
+    [32, 62, 40],
+];
+
+fn spruce_leaves(a: &mut [u8], t: u16, rng: &mut Rng) {
+    for y in 0..16 {
+        for x in 0..16 {
+            if rng.next_f32() < 0.10 {
+                put(a, t, x, y, 0, 0, 0, 0);
+            } else {
+                let s = SPRUCE_LEAF_SHADES[rng.next_range(4) as usize];
+                put(a, t, x, y, jit(s[0], 5, rng), jit(s[1], 6, rng), jit(s[2], 5, rng), 255);
+            }
+        }
+    }
+}
+
+fn mushroom_red_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "................",
+        "....RRRRRRRR....",
+        "..RRWWRRRRRRRR..",
+        ".RRWWWWRRWWRRRR.",
+        ".RRWWWWRRWWWWRR.",
+        ".RRRWWRRRWWWWRR.",
+        ".RRRRRRRRWWWRRR.",
+        "..RRRRRRRRRRRR..",
+        "......ssss......",
+        "......ssss......",
+        "......ssss......",
+        ".....ssssss.....",
+        "................",
+        "................",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'R' => Some((188, 38, 34, 255)),
+        'W' => Some((245, 240, 235, 255)),
+        's' => Some((206, 194, 176, 255)),
+        _ => None,
+    });
+}
+
+fn mushroom_brown_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "................",
+        "....MMMMMMMM....",
+        "..MMMMMMMMMMMM..",
+        ".MMMLLLLMMMMMMM.",
+        ".MMMLLLLMMMMMMM.",
+        ".MMMMMMMMMMMMMM.",
+        ".MMMMMMMMMMMMMM.",
+        "..MMMMMMMMMMMM..",
+        "......ssss......",
+        "......ssss......",
+        "......ssss......",
+        ".....ssssss.....",
+        "................",
+        "................",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'M' => Some((150, 112, 78, 255)),
+        'L' => Some((182, 148, 110, 255)),
+        's' => Some((206, 194, 176, 255)),
+        _ => None,
+    });
+}
+
+fn dead_bush_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "......b.........",
+        ".....b.b...b....",
+        "....b..b..b.....",
+        "...b...b.b......",
+        "....b..b.b......",
+        ".....b.b..b.....",
+        "....b..b...b....",
+        ".....b.b..b.....",
+        "......bb.b......",
+        ".......bb.......",
+        ".......b........",
+        "......bbb.......",
+        ".....bbbbb......",
+        "................",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'b' => Some((123, 79, 25, 255)),
+        _ => None,
+    });
+}
+
 // ------------------------------------------------------------------ entry --
 
 pub fn generate_atlas() -> Vec<u8> {
     let mut a = vec![0u8; ATLAS_SIZE * ATLAS_SIZE * 4];
-    for t in 0..=TILE_FLOWER_YELLOW {
+    for t in 0..=TILE_MAX {
         let mut rng = Rng::new(0xBE7A5 + t as u64 * 7919);
         match t {
             TILE_GRASS_TOP => grass_top(&mut a, t, &mut rng),
@@ -440,6 +969,57 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_TALL_GRASS => tall_grass_art(&mut a, t),
             TILE_FLOWER_RED => poppy_art(&mut a, t),
             TILE_FLOWER_YELLOW => dandelion_art(&mut a, t),
+            // stone family
+            TILE_GRANITE => granite(&mut a, t, &mut rng),
+            TILE_DIORITE => diorite(&mut a, t, &mut rng),
+            TILE_ANDESITE => andesite(&mut a, t, &mut rng),
+            TILE_STONE_BRICKS => stone_bricks(&mut a, t, &mut rng),
+            TILE_BRICKS => bricks(&mut a, t, &mut rng),
+            TILE_MOSSY_COBBLE => mossy_cobble(&mut a, t, &mut rng),
+            TILE_SMOOTH_STONE => smooth_stone(&mut a, t, &mut rng),
+            TILE_OBSIDIAN => obsidian(&mut a, t, &mut rng),
+            // ores
+            TILE_COAL_ORE => coal_ore(&mut a, t, &mut rng),
+            TILE_IRON_ORE => iron_ore(&mut a, t, &mut rng),
+            TILE_GOLD_ORE => gold_ore(&mut a, t, &mut rng),
+            TILE_DIAMOND_ORE => diamond_ore(&mut a, t, &mut rng),
+            TILE_REDSTONE_ORE => redstone_ore(&mut a, t, &mut rng),
+            TILE_LAPIS_ORE => lapis_ore(&mut a, t, &mut rng),
+            TILE_EMERALD_ORE => emerald_ore(&mut a, t, &mut rng),
+            // mineral blocks
+            TILE_IRON_BLOCK => iron_block(&mut a, t, &mut rng),
+            TILE_GOLD_BLOCK => gold_block(&mut a, t, &mut rng),
+            TILE_DIAMOND_BLOCK => diamond_block(&mut a, t, &mut rng),
+            // misc
+            TILE_GLOWSTONE => glowstone(&mut a, t, &mut rng),
+            TILE_BOOKSHELF_SIDE => bookshelf_side(&mut a, t, &mut rng),
+            TILE_BOOKSHELF_TOP => bookshelf_top(&mut a, t, &mut rng),
+            TILE_CRAFT_TOP => craft_top(&mut a, t, &mut rng),
+            TILE_CRAFT_SIDE => craft_side(&mut a, t, &mut rng),
+            TILE_CLAY => clay(&mut a, t, &mut rng),
+            TILE_TERRACOTTA => terracotta(&mut a, t, &mut rng),
+            TILE_PUMPKIN_SIDE => pumpkin_side(&mut a, t, &mut rng),
+            TILE_PUMPKIN_TOP => pumpkin_top(&mut a, t, &mut rng),
+            TILE_MELON_SIDE => melon_side(&mut a, t, &mut rng),
+            TILE_MELON_TOP => melon_top(&mut a, t, &mut rng),
+            TILE_ICE => ice(&mut a, t, &mut rng),
+            TILE_CACTUS_SIDE => cactus_side(&mut a, t, &mut rng),
+            TILE_CACTUS_TOP => cactus_top(&mut a, t, &mut rng),
+            // wool
+            TILE_WOOL_WHITE => wool_white(&mut a, t, &mut rng),
+            TILE_WOOL_RED => wool_red(&mut a, t, &mut rng),
+            TILE_WOOL_BLUE => wool_blue(&mut a, t, &mut rng),
+            TILE_WOOL_YELLOW => wool_yellow(&mut a, t, &mut rng),
+            TILE_WOOL_BLACK => wool_black(&mut a, t, &mut rng),
+            // wood variants
+            TILE_BIRCH_LOG_SIDE => birch_log_side(&mut a, t, &mut rng),
+            TILE_BIRCH_LEAVES => birch_leaves(&mut a, t, &mut rng),
+            TILE_SPRUCE_LOG_SIDE => spruce_log_side(&mut a, t, &mut rng),
+            TILE_SPRUCE_LEAVES => spruce_leaves(&mut a, t, &mut rng),
+            // plants
+            TILE_MUSHROOM_RED => mushroom_red_art(&mut a, t),
+            TILE_MUSHROOM_BROWN => mushroom_brown_art(&mut a, t),
+            TILE_DEAD_BUSH => dead_bush_art(&mut a, t),
             _ => {}
         }
     }

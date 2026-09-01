@@ -23,12 +23,13 @@ pub fn family_index(f: SoundFamily) -> usize {
         SoundFamily::Sand => 4,
         SoundFamily::Leaves => 5,
         SoundFamily::Glass => 6,
-        SoundFamily::Water | SoundFamily::None => 7, // splash
+        SoundFamily::Wool => 7,
+        SoundFamily::Water | SoundFamily::None => 8, // splash
     }
 }
 
-pub const SPLASH: usize = 7;
-pub const BANK_LEN: usize = 8;
+pub const SPLASH: usize = 8;
+pub const BANK_LEN: usize = 9;
 
 // ------------------------------------------------------------- synthesis --
 
@@ -145,6 +146,12 @@ impl SoundBank {
         mix_into(&mut gl, &ping(3050.0, 0.07, 0.28, 73), 1.0);
         mix_into(&mut gl, &ping(2400.0, 0.06, 0.25, 74), 1.0);
         data.push(clamp_amp(gl));
+
+        // wool dig: muffled soft thump (carpeted step)
+        let wl = thump(95.0, 0.16, 0.6);
+        let mut wl = one_pole_lp(wl, 500.0);
+        mix_into(&mut wl, &one_pole_lp(noise_burst(900, 91, 0.22, 0.003, 0.08), 600.0), 1.0);
+        data.push(clamp_amp(wl));
 
         // splash: noise sweep, slower attack
         let sp = one_pole_lp(noise_burst(6600, 81, 0.55, 0.02, 0.3), 2400.0);

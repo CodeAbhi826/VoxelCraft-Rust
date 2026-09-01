@@ -136,6 +136,9 @@ pub const ID_OPT_DONE: u16 = 19;
 pub const ID_PAUSE_BACK: u16 = 20;
 pub const ID_PAUSE_OPTIONS: u16 = 21;
 pub const ID_PAUSE_QUIT: u16 = 22;
+pub const ID_OPT_SHADOWS: u16 = 23;
+pub const ID_OPT_UPSCALE: u16 = 24;
+pub const ID_OPT_MAXFPS: u16 = 25;
 
 /// Title screen layout (quit button only exists on native).
 pub fn layout_title(is_web: bool) -> Vec<Widget> {
@@ -154,7 +157,7 @@ pub fn layout_options() -> Vec<Widget> {
     let col1 = 72;
     let col2 = 496;
     let w = 392;
-    let rows = [70, 124, 178, 232, 286];
+    let rows = [62, 110, 158, 206, 254, 302];
     vec![
         slider(ID_OPT_FOV, col1, rows[0], w, "FOV", 0.5),
         slider(ID_OPT_BRIGHT, col2, rows[0], w, "BRIGHTNESS", 0.1),
@@ -163,8 +166,11 @@ pub fn layout_options() -> Vec<Widget> {
         slider(ID_OPT_RD, col1, rows[2], w, "RENDER DISTANCE", 0.4),
         btn(ID_OPT_SHADER, col2, rows[2], w, "SHADERS", "OFF", true),
         btn(ID_OPT_GRAPHICS, col1, rows[3], w, "GRAPHICS", "FANCY", true),
-        btn(ID_OPT_SMOOTH, col2, rows[3], w, "SMOOTH LIGHTING", "ON", true),
-        btn(ID_OPT_CLOUDS, col1, rows[4], w, "CLOUDS", "ON", true),
+        btn(ID_OPT_SHADOWS, col2, rows[3], w, "SHADOWS", "ON", true),
+        btn(ID_OPT_SMOOTH, col1, rows[4], w, "SMOOTH LIGHTING", "ON", true),
+        btn(ID_OPT_UPSCALE, col2, rows[4], w, "UPSCALING", "OFF", true),
+        btn(ID_OPT_CLOUDS, col1, rows[5], w, "CLOUDS", "ON", true),
+        btn(ID_OPT_MAXFPS, col2, rows[5], w, "MAX FPS", "VSYNC", true),
         btn(ID_OPT_DONE, (UI_W as i32 - 320) / 2, 470, 320, "DONE", "", true),
     ]
 }
@@ -582,6 +588,101 @@ impl UiCanvas {
         }
     }
 
+    /// Sodium-style rolling frame-time graph under the F3 text block.
+    /// `times_ms` = last N frame times; green bars, 50 ms scale, 2 px/bar.
+    /// single-pixel set with bounds clamp (graph bars)
+    fn px_set(&mut self, x: i32, y: i32, c: Color) {
+        self.set(x, y, c);
+    }
+
+    pub fn frame_graph(&mut self, y: i32, times_ms: &[f32]) {
+        let n = times_ms.len();
+        if n < 2 {
+            return;
+        }
+        let w = (n as i32 * 2).min(360);
+        let x0 = 4;
+        let h = 40;
+        self.rect(x0, y, w + 4, h + 4, [80, 80, 80, 110]);
+        // 16.7 ms guide line (60 fps target)
+        let guide_y = y + 2 + h - ((16.7f32 / 50.0) * h as f32) as i32;
+        for dx in 0..w {
+            let x = x0 + 2 + dx;
+            if x < x0 + 2 + w {
+                self.px_set(x, guide_y, [255, 255, 255, 70]);
+            }
+        }
+        for (i, t) in times_ms.iter().rev().enumerate() {
+            let x = x0 + 2 + i as i32 * 2;
+            if x >= x0 + 2 + w {
+                break;
+            }
+            let th = ((t / 50.0).clamp(0.0, 1.0) * h as f32) as i32;
+            let color: Color = if *t <= 20.0 {
+                [60, 220, 90, 230]
+            } else if *t <= 40.0 {
+                [240, 200, 40, 230]
+            } else {
+                [235, 70, 50, 230]
+            };
+            for dy in 0..th {
+                self.px_set(x, y + 2 + h - 1 - dy, color);
+                self.px_set(x + 1, y + 2 + h - 1 - dy, color);
+            }
+        }
+    }
+
+    /// Creative-style block picker (E key): centered grid of every placeable
+    /// block; click → assigns to the selected hotbar slot. Returns the grid
+    /// geometry so game.rs can hit-test clicks.
+    pub fn picker(&mut self, cursor: (f32, f32), atlas: &[u8]) -> PickerGeom {
+        let blocks = &PICKER_BLOCKS;
+        let cols = 8;
+        let cell = 44i32;
+        let rows = (blocks.len() + cols - 1) / cols;
+        let grid_w = cols as i32 * cell + 8;
+        let grid_h = rows as i32 * cell + 8 + 22;
+        let x0 = (UI_W as i32 - grid_w) / 2;
+        let y0 = (UI_H as i32 - grid_h) / 2;
+
+        self.rect(x0 - 6, y0 - 26, grid_w + 12, grid_h + 32, [16, 16, 16, 210]);
+        self.frame(x0 - 6, y0 - 26, grid_w + 12, grid_h + 32, [70, 70, 70, 255]);
+        self.text(
+            x0 - 6 + 10,
+            y0 - 24,
+            "SELECT BLOCK  (E / ESC to close)",
+            [230, 230, 230, 255],
+            1,
+        );
+
+        let mut hovered: Option<u8> = None;
+        for (i, b) in blocks.iter().enumerate() {
+            let col = (i % cols) as i32;
+            let row = (i / cols) as i32;
+            let sx = x0 + 4 + col * cell;
+            let sy = y0 + 4 + row * cell;
+            self.rect(sx, sy, 40, 40, [58, 58, 58, 170]);
+            self.frame(sx, sy, 40, 40, [90, 90, 90, 220]);
+            let tile = def(*b).tiles[0];
+            blit_tile(atlas, tile, 2, (sx + 4) as usize, (sy + 4) as usize, &mut self.px, UI_W);
+            // hover highlight
+            let cx = cursor.0 as i32;
+            let cy = cursor.1 as i32;
+            if cx >= sx && cx < sx + 40 && cy >= sy && cy < sy + 40 {
+                self.frame(sx - 1, sy - 1, 42, 42, [255, 255, 255, 255]);
+                hovered = Some(*b);
+            }
+        }
+
+        // hovered block name on a bottom strip
+        let label = hovered.map(name).unwrap_or("");
+        let lw = Self::text_width(label, 1);
+        self.text(x0 + 4, y0 + grid_h - 18, label, [255, 255, 255, 255], 1);
+        let _ = lw;
+
+        PickerGeom { x0, y0, cell, cols }
+    }
+
     pub fn help(&mut self) {
         let lines: Vec<(&str, &str)> = vec![
             ("WASD", "Move"),
@@ -628,5 +729,36 @@ impl UiCanvas {
         let y0 = UI_H as i32 / 2 + 60;
         self.frame(x0, y0, bw, 12, [255, 255, 255, 200]);
         self.rect(x0 + 2, y0 + 2, ((bw - 4) as f32 * progress.clamp(0.0, 1.0)) as i32, 8, [110, 200, 90, 255]);
+    }
+}
+
+/// hit-test geometry for the picker grid (UI-space), returned by
+/// `UiCanvas::picker` so game.rs can map clicks to picker slots.
+pub struct PickerGeom {
+    pub x0: i32,
+    pub y0: i32,
+    pub cell: i32,
+    pub cols: usize,
+}
+
+impl PickerGeom {
+    /// which picker slot (if any) is under this UI-space cursor position
+    pub fn slot_at(&self, ux: i32, uy: i32) -> Option<usize> {
+        let dx = ux - (self.x0 + 4);
+        let dy = uy - (self.y0 + 4);
+        if dx < 0 || dy < 0 {
+            return None;
+        }
+        let col = dx / self.cell;
+        let row = dy / self.cell;
+        if col >= self.cols as i32 || dx % self.cell >= 40 || dy % self.cell >= 40 {
+            return None;
+        }
+        let idx = row as usize * self.cols + col as usize;
+        if idx < PICKER_BLOCKS.len() {
+            Some(idx)
+        } else {
+            None
+        }
     }
 }

@@ -323,6 +323,46 @@ impl TerrainGen {
         false
     }
 
+    /// Deterministic ore / stone-variant picker for deep stone. Called for
+    /// every STONE block — pure hash, no noise evaluation (fast).
+    fn stone_variant(&self, x: i32, y: i32, z: i32) -> u8 {
+        // stone-family blobs (granite/diorite/andesite) — hash-based patches
+        let v = Rng::hash3(self.seed ^ 0xA000, x >> 3, y >> 3, z >> 3);
+        let patch = (v % 100) as u32;
+        let variant = match patch {
+            0..=7 => Some(GRANITE),
+            8..=15 => Some(DIORITE),
+            16..=23 => Some(ANDESITE),
+            _ => None,
+        };
+        if let Some(s) = variant {
+            // smooth the blob edges: blend by finer hash
+            let edge = Rng::hash3(self.seed ^ 0xA001, x, y, z) % 4;
+            if edge != 0 {
+                return s;
+            }
+        }
+
+        // ores by depth (1.16.5-ish distributions)
+        let o = Rng::hash3(self.seed ^ 0xB000, x, y, z);
+        let p = (o % 100_000) as f32 / 100_000.0;
+        if p < 0.0012 && y <= 14 {
+            DIAMOND_ORE
+        } else if p < 0.0024 && y <= 30 {
+            LAPIS_ORE
+        } else if p < 0.0035 && y <= 32 {
+            GOLD_ORE
+        } else if p < 0.0055 && y <= 16 {
+            REDSTONE_ORE
+        } else if p < 0.013 && y <= 64 {
+            IRON_ORE
+        } else if p < 0.024 && y <= 96 {
+            COAL_ORE
+        } else {
+            STONE
+        }
+    }
+
     /// Generate one chunk column. Pure: returns chunk + edits for neighbors
     /// (tree canopies crossing chunk borders).
     pub fn generate_chunk(
@@ -361,7 +401,7 @@ impl TerrainGen {
                     } else if yi > h - 4 {
                         col.filler
                     } else {
-                        STONE
+                        self.stone_variant(wx, yi, wz)
                     };
 
                     // cave carving (never through bedrock; stay well below surface,
@@ -429,29 +469,74 @@ impl TerrainGen {
                 continue;
             }
             let h = chunk.height[col_idx] as i32;
-            let th = 4 + rng.next_range(3) as i32; // 4..6
+            // species: forest mixes oak + birch; snowy taiga grows spruce
+            let biome_here = Biome::from_u8(chunk.biome[col_idx]);
+            let (log, leaf) = match biome_here {
+                Biome::Snowy => (SPRUCE_LOG, SPRUCE_LEAVES),
+                Biome::Forest => {
+                    if rng.next_f32() < 0.35 {
+                        (BIRCH_LOG, BIRCH_LEAVES)
+                    } else {
+                        (OAK_LOG, LEAVES)
+                    }
+                }
+                _ => (OAK_LOG, LEAVES),
+            };
+            let th = if biome_here == Biome::Snowy {
+                6 + rng.next_range(3) as i32 // spruce grows taller
+            } else {
+                4 + rng.next_range(3) as i32 // 4..6
+            };
             let y0 = h + 1;
 
-            // canopy: two 5x5 layers, two 3x3 layers
-            for dy in -2..=1 {
-                let ly = y0 + th - 1 + dy;
-                let r: i32 = if dy < 0 { 2 } else { 1 };
-                for dx in -r..=r {
-                    for dz in -r..=r {
-                        if dx == 0 && dz == 0 && dy < 0 {
-                            continue; // trunk spot
+            // canopy: two 5x5 layers, two 3x3 layers (oak/birch);
+            // spruce: stacked narrowing rings
+            if biome_here == Biome::Snowy {
+                for dy in 0..th {
+                    let ly = y0 + dy;
+                    let r: i32 = match dy {
+                        0 => 1,
+                        1 => 2,
+                        2 => 2,
+                        3 => 2,
+                        _ => 1,
+                    };
+                    for dx in -r..=r {
+                        for dz in -r..=r {
+                            if dx == 0 && dz == 0 {
+                                continue;
+                            }
+                            let corner = dx.abs() == r && dz.abs() == r;
+                            if corner && rng.next_f32() < 0.6 {
+                                continue;
+                            }
+                            set_dec(&mut chunk, &mut outbound, ox + lx + dx, ly, oz + lz + dz, leaf, false);
                         }
-                        let corner = dx.abs() == r && dz.abs() == r;
-                        if corner && (dy >= 0 || rng.next_f32() < 0.5) {
-                            continue; // ragged corners
+                    }
+                }
+                // spire tip
+                set_dec(&mut chunk, &mut outbound, ox + lx, y0 + th, oz + lz, leaf, false);
+            } else {
+                for dy in -2..=1 {
+                    let ly = y0 + th - 1 + dy;
+                    let r: i32 = if dy < 0 { 2 } else { 1 };
+                    for dx in -r..=r {
+                        for dz in -r..=r {
+                            if dx == 0 && dz == 0 && dy < 0 {
+                                continue; // trunk spot
+                            }
+                            let corner = dx.abs() == r && dz.abs() == r;
+                            if corner && (dy >= 0 || rng.next_f32() < 0.5) {
+                                continue; // ragged corners
+                            }
+                            set_dec(&mut chunk, &mut outbound, ox + lx + dx, ly, oz + lz + dz, leaf, false);
                         }
-                        set_dec(&mut chunk, &mut outbound, ox + lx + dx, ly, oz + lz + dz, LEAVES, false);
                     }
                 }
             }
             // trunk
             for ty in 0..th {
-                set_dec(&mut chunk, &mut outbound, ox + lx, y0 + ty, oz + lz, OAK_LOG, true);
+                set_dec(&mut chunk, &mut outbound, ox + lx, y0 + ty, oz + lz, log, true);
             }
             // dirt under trunk
             if chunk.get(lx as usize, h as usize, lz as usize) == GRASS {
@@ -491,6 +576,106 @@ impl TerrainGen {
                 FLOWER_YELLOW
             };
             set_dec(&mut chunk, &mut outbound, ox + lx, h + 1, oz + lz, id, false);
+        }
+
+        // mushrooms in forests (shaded floor)
+        let mush_attempts = {
+            let b = Biome::from_u8(chunk.biome[8 * 16 + 8]);
+            match b {
+                Biome::Forest => 6,
+                Biome::Snowy => 3,
+                _ => 0,
+            }
+        };
+        for _ in 0..mush_attempts {
+            let lx = rng.next_range(16) as i32;
+            let lz = rng.next_range(16) as i32;
+            let col_idx = lz as usize * 16 + lx as usize;
+            let h = chunk.height[col_idx] as i32;
+            if chunk.get(lx as usize, h as usize, lz as usize) != GRASS
+                && chunk.get(lx as usize, h as usize, lz as usize) != SNOW_GRASS
+            {
+                continue;
+            }
+            if chunk.get(lx as usize, (h + 1) as usize, lz as usize) != AIR {
+                continue;
+            }
+            let id = if rng.next_f32() < 0.5 { MUSHROOM_RED } else { MUSHROOM_BROWN };
+            set_dec(&mut chunk, &mut outbound, ox + lx, h + 1, oz + lz, id, false);
+        }
+
+        // desert: dead bushes + cactus columns + clay in low sand
+        {
+            let b = Biome::from_u8(chunk.biome[8 * 16 + 8]);
+            if b == Biome::Desert {
+                for _ in 0..4 {
+                    let lx = rng.next_range(16) as i32;
+                    let lz = rng.next_range(16) as i32;
+                    let col_idx = lz as usize * 16 + lx as usize;
+                    let h = chunk.height[col_idx] as i32;
+                    if chunk.get(lx as usize, h as usize, lz as usize) != SAND {
+                        continue;
+                    }
+                    if chunk.get(lx as usize, (h + 1) as usize, lz as usize) != AIR {
+                        continue;
+                    }
+                    if rng.next_f32() < 0.55 {
+                        set_dec(&mut chunk, &mut outbound, ox + lx, h + 1, oz + lz, DEAD_BUSH, false);
+                    } else {
+                        let ch = 1 + rng.next_range(3) as i32;
+                        for dy in 0..ch {
+                            set_dec(&mut chunk, &mut outbound, ox + lx, h + 1 + dy, oz + lz, CACTUS, false);
+                        }
+                    }
+                }
+                // shallow clay pockets (1.16.5 river/beach clay patches)
+                for _ in 0..2 {
+                    let lx = rng.next_range(16) as i32;
+                    let lz = rng.next_range(16) as i32;
+                    let col_idx = lz as usize * 16 + lx as usize;
+                    let h = chunk.height[col_idx] as i32;
+                    if h < crate::SEA_LEVEL - 2 || h > crate::SEA_LEVEL + 1 {
+                        continue;
+                    }
+                    if chunk.get(lx as usize, h as usize, lz as usize) == SAND {
+                        chunk.set(lx as usize, h as usize, lz as usize, CLAY);
+                    }
+                }
+            }
+        }
+
+        // cave glowstone: rare glowing clusters deep underground, glued to
+        // cave ceilings (the block above a carved cell stays stone — hang
+        // the glowstone from it by scanning y where air sits below solid).
+        {
+            for _ in 0..3 {
+                let lx = rng.next_range(16) as i32;
+                let lz = rng.next_range(16) as i32;
+                let col_idx = lz as usize * 16 + lx as usize;
+                let hmax = (chunk.height[col_idx] as i32 - 6).max(8).min(40);
+                if hmax <= 10 {
+                    continue;
+                }
+                let y = 8 + rng.next_range((hmax - 8) as u32) as i32;
+                let above = chunk.get(lx as usize, (y + 1) as usize, lz as usize);
+                let here = chunk.get(lx as usize, y as usize, lz as usize);
+                if here == AIR && (is_opaque(above) && above != BEDROCK) {
+                    chunk.set(lx as usize, (y + 1) as usize, lz as usize, GLOWSTONE);
+                    // a couple of extra glow blocks around it
+                    let extra = rng.next_range(3);
+                    for _ in 0..extra {
+                        let dx = rng.next_range(3) as i32 - 1;
+                        let dz = rng.next_range(3) as i32 - 1;
+                        let nx = (lx + dx).clamp(0, 15) as usize;
+                        let nz = (lz + dz).clamp(0, 15) as usize;
+                        if chunk.get(nx, (y + 1) as usize, nz) != AIR
+                            && chunk.get(nx, y as usize, nz) == AIR
+                        {
+                            chunk.set(nx, (y + 1) as usize, nz, GLOWSTONE);
+                        }
+                    }
+                }
+            }
         }
 
         (Arc::new(chunk), outbound)

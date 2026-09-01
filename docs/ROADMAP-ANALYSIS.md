@@ -71,6 +71,22 @@ Also shipped beyond the roadmap's letter: E-key creative picker (52 blocks), emi
 
 **Honest score vs. the doc's own 13-phase plan: 7.5 / 13 phases** — the full data-layer trilogy (2-registry, 3-paletted sections, 4-VC-16 vertices) plus the feature phases (1, 7, 9, 10, settings/picker extras) are done, each with unit tests and browser E2E. Remaining: resource-pack loader (5), G-buffer (6 — keep deferred), region MDI (8 — needs 3-path draw abstraction), Iris packs (11), sounds.json spatial audio (12), mipmap/clouds polish (13).
 
+### Update 2026-09-01 (Master-Spec session — Phases 0 + 1)
+
+The authoritative plan is now `upload/VoxelCraft-Rust_1.16.5_Master_Engineering_Spec_FINAL.md` (its own Phase 0–11 ladder). Status against it:
+
+| Spec phase | Status | Evidence |
+|---|---|---|
+| P0 baseline (bench harness, frame instrumentation, regression) | ✅ Done | commits `4dbc6cf` — `--benchmark` in-game mode, `vc_bench` headless CPU benchmark (in CI), §44 phase timing in F3, golden mesh/light tests |
+| P1 block/asset foundation | ✅ Done (code) | commits `e8b771a`/`4b5e0b1` — blockstate/model JSON parsers + compiler, builtin pack, property states (slab/stairs/fence), animated textures, pack texture merge; 40/40 tests; browser E2E pending CI |
+| P2 world data (sections/palettes) | ✅ Done | paletted sections `6039a9e`; serialization (Anvil/NBT) still open |
+| P3 mesh system | ◐ VC-16 + model path done; upload batching/MDI open | `9ae6fb9`, Phase-1 model emission |
+| P4 lighting | ◐ skylight+block light done (per-mesh); incremental/cross-chunk propagation open | `mesh.rs` |
+| P5–P8 | partial per table above | — |
+| P10 FSR | ◐ FSR-lite; spec §33 demands real EASU+RCAS — labelled, not claimed as FSR 1 | `render.rs` |
+
+Clean-room rule honored: the builtin pack's JSONs follow the vanilla **format**; every texture is our own procedural art (regenerable via `cargo test write_builtin_pack_pngs -- --ignored`).
+
 ---
 
 ## 4. Recommended remaining order (revised, risk-aware)

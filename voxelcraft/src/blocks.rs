@@ -154,7 +154,7 @@ pub const MUSHROOM_RED: u8 = 54;
 pub const MUSHROOM_BROWN: u8 = 55;
 pub const DEAD_BUSH: u8 = 56;
 
-pub const BLOCK_COUNT: usize = 57;
+pub const BLOCK_COUNT: usize = 60;
 
 // ---------------------------------------------------------------------------
 // BlockState registry (1.16.5 pattern, miniature)
@@ -166,7 +166,7 @@ pub const BLOCK_COUNT: usize = 57;
 // `axis=x|y|z`, exactly how vanilla models oak_log[axis=...]. The 1.16.5
 // global palette is 15 bits (~17k states); this registry grows into it
 // without touching storage (u16) or the mesher key.
-pub const STATE_COUNT: usize = 63;
+pub const STATE_COUNT: usize = 89;
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -174,15 +174,167 @@ pub const BIRCH_LOG_Z: u16 = 60;
 pub const SPRUCE_LOG_X: u16 = 61;
 pub const SPRUCE_LOG_Z: u16 = 62;
 
-/// state id -> owning block id (property variants fold to their parent)
+// ---------------------------------------------------------------------------
+// property-driven states (Phase 1, Master Spec §5.1)
+// ---------------------------------------------------------------------------
+// Blocks whose variants come from compact PROPERTY DEFINITIONS instead of
+// hand-listed ids. State ids follow the vanilla assignment algorithm
+// (research R2, VERIFIED): properties sorted alphabetically by name,
+// mixed-radix index, last-sorted property varies fastest. These states map
+// to JSON models via the blockstate dispatch in model.rs.
+
+/// one blockstate property (compact definition, not per-block boilerplate)
+#[derive(Clone, Copy, Debug)]
+pub struct PropDef {
+    pub name: &'static str,
+    /// value strings in declaration order (index = radix digit)
+    pub values: &'static [&'static str],
+}
+
+/// a block with property-driven states
+pub struct PropBlock {
+    pub block: u8,
+    /// registry name → blockstates/<name>.json
+    pub name: &'static str,
+    /// sorted alphabetically (vanilla state order)
+    pub props: &'static [PropDef],
+    /// first state id of this block's range
+    pub base_state: u16,
+    /// number of states (product of radixes)
+    pub state_count: u16,
+}
+
+// new blocks (Phase 1): ids continue after the flat registry
+pub const OAK_SLAB: u8 = 57;
+pub const COBBLE_STAIRS: u8 = 58;
+pub const OAK_FENCE: u8 = 59;
+
+pub const HALF: PropDef = PropDef { name: "half", values: &["bottom", "top"] };
+pub const FACING: PropDef =
+    PropDef { name: "facing", values: &["north", "east", "south", "west"] };
+pub const EAST_B: PropDef = PropDef { name: "east", values: &["false", "true"] };
+pub const NORTH_B: PropDef = PropDef { name: "north", values: &["false", "true"] };
+pub const SOUTH_B: PropDef = PropDef { name: "south", values: &["false", "true"] };
+pub const WEST_B: PropDef = PropDef { name: "west", values: &["false", "true"] };
+
+/// property-driven blocks, states starting at MODEL_STATE_BASE
+pub const MODEL_STATE_BASE: u16 = 63;
+pub const PROP_BLOCKS: [PropBlock; 3] = [
+    PropBlock {
+        block: OAK_SLAB,
+        name: "oak_slab",
+        props: &[HALF],
+        base_state: 63,
+        state_count: 2,
+    },
+    PropBlock {
+        block: COBBLE_STAIRS,
+        name: "cobblestone_stairs",
+        // sorted: facing (radix 4, slower) × half (radix 2, fastest)
+        props: &[FACING, HALF],
+        base_state: 65,
+        state_count: 8,
+    },
+    PropBlock {
+        block: OAK_FENCE,
+        name: "oak_fence",
+        // sorted: east (slowest) × north × south × west (fastest)
+        props: &[EAST_B, NORTH_B, SOUTH_B, WEST_B],
+        base_state: 73,
+        state_count: 16,
+    },
+];
+
+/// decode a property state id → (block, [(prop, value)])
+#[inline]
+pub fn prop_state_decode(s: u16) -> Option<(u8, Vec<(&'static str, &'static str)>)> {
+    if s < MODEL_STATE_BASE {
+        return None;
+    }
+    for pb in PROP_BLOCKS.iter() {
+        let off = s - pb.base_state;
+        if off < pb.state_count {
+            let mut idx = off as usize;
+            let mut out: Vec<(&str, &str)> = Vec::with_capacity(pb.props.len());
+            for p in pb.props.iter().rev() {
+                let radix = p.values.len().max(1);
+                out.push((p.name, p.values[idx % radix]));
+                idx /= radix;
+            }
+            out.reverse();
+            return Some((pb.block, out));
+        }
+    }
+    None
+}
+
+/// find a prop-block's state id from a property assignment (missing props →
+/// their first value, vanilla default-state pattern)
+#[inline]
+pub fn prop_state_encode(block: u8, set: &[(&str, &str)]) -> Option<u16> {
+    let pb = PROP_BLOCKS.iter().find(|pb| pb.block == block)?;
+    let mut idx = 0usize;
+    for (i, p) in pb.props.iter().enumerate() {
+        let v = set
+            .iter()
+            .find(|(k, _)| *k == p.name)
+            .map(|(_, v)| *v)
+            .unwrap_or(p.values[0]);
+        let digit = p.values.iter().position(|&c| c == v).unwrap_or(0);
+        // radix products: earlier props are slower
+        let radix_after: usize = pb.props[i + 1..]
+            .iter()
+            .map(|q| q.values.len().max(1))
+            .product();
+        idx += digit * radix_after;
+    }
+    Some(pb.base_state + idx as u16)
+}
+
+/// state id → owning block id (property variants fold to their parent)
 #[inline]
 pub fn state_block(s: u16) -> u8 {
+    if let Some((b, _)) = prop_state_decode(s) {
+        return b;
+    }
     match s {
         OAK_LOG_X | OAK_LOG_Z => OAK_LOG,
         BIRCH_LOG_X | BIRCH_LOG_Z => BIRCH_LOG,
         SPRUCE_LOG_X | SPRUCE_LOG_Z => SPRUCE_LOG,
         _ => s as u8, // identity for 0..=56
     }
+}
+
+/// vanilla-style state description for F3: "Oak Slab[half=top]"
+#[inline]
+pub fn state_description(s: u16) -> String {
+    if let Some((b, props)) = prop_state_decode(s) {
+        if props.is_empty() {
+            return name(b).to_string();
+        }
+        let inner: Vec<String> = props.iter().map(|(k, v)| format!("{k}={v}")).collect();
+        format!("{}[{}]", name(b), inner.join(","))
+    } else {
+        let axis = match s {
+            OAK_LOG_X | BIRCH_LOG_X | SPRUCE_LOG_X => "[axis=x]",
+            OAK_LOG_Z | BIRCH_LOG_Z | SPRUCE_LOG_Z => "[axis=z]",
+            _ => "",
+        };
+        // fold log-variant states to their owning block for the name
+        format!("{}{}", name(state_block(s)), axis)
+    }
+}
+
+/// true if this state renders through the JSON-model path (mesher dispatch)
+#[inline]
+pub fn is_model_state(s: u16) -> bool {
+    s >= MODEL_STATE_BASE
+}
+
+/// true if this block id has property-driven model states
+#[inline]
+pub fn is_model_block(b: u8) -> bool {
+    b >= OAK_SLAB && b <= OAK_FENCE
 }
 
 /// per-state tiles: [top(+Y), bottom(−Y), side_x(±X), side_z(±Z)].
@@ -198,8 +350,11 @@ pub fn state_tiles(s: u16) -> [u16; 4] {
         SPRUCE_LOG_X => [TILE_SPRUCE_LOG_SIDE, TILE_SPRUCE_LOG_SIDE, TILE_LOG_TOP, TILE_SPRUCE_LOG_SIDE],
         SPRUCE_LOG_Z => [TILE_SPRUCE_LOG_SIDE, TILE_SPRUCE_LOG_SIDE, TILE_SPRUCE_LOG_SIDE, TILE_LOG_TOP],
         _ => {
-            let b = def(s as u8);
-            [b.tiles[0], b.tiles[1], b.tiles[2], b.tiles[2]]
+            // fold property states to their block (model geometry supplies
+            // the real tiles; these are for the HUD/hotbar blit path)
+            let b = state_block(s);
+            let d = def(b);
+            [d.tiles[0], d.tiles[1], d.tiles[2], d.tiles[2]]
         }
     }
 }
@@ -321,6 +476,12 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Red Mushroom", [TILE_MUSHROOM_RED, TILE_MUSHROOM_RED, TILE_MUSHROOM_RED], false, false, true, false, 0, SoundFamily::Grass),
     d("Brown Mushroom", [TILE_MUSHROOM_BROWN, TILE_MUSHROOM_BROWN, TILE_MUSHROOM_BROWN], false, false, true, false, 0, SoundFamily::Grass),
     d("Dead Bush", [TILE_DEAD_BUSH, TILE_DEAD_BUSH, TILE_DEAD_BUSH], false, false, true, false, 0, SoundFamily::Grass),
+    // Phase-1 model blocks: rendered through the blockstate/model JSON path
+    // (partial geometry — not opaque, not greedy-meshed). Collision uses the
+    // full-cube approximation until per-shape collision lands (Phase 6 TODO).
+    d("Oak Slab", [TILE_PLANKS, TILE_PLANKS, TILE_PLANKS], true, false, false, false, 0, SoundFamily::Wood),
+    d("Cobblestone Stairs", [TILE_COBBLE, TILE_COBBLE, TILE_COBBLE], true, false, false, false, 0, SoundFamily::Stone),
+    d("Oak Fence", [TILE_PLANKS, TILE_PLANKS, TILE_PLANKS], true, false, false, false, 0, SoundFamily::Wood),
 ];
 
 #[inline]
@@ -385,7 +546,7 @@ pub fn face_visible(b: u8, n: u8) -> bool {
 /// blocks offered in the E-key picker (creative-style), in display order.
 /// Everything placeable except air, bedrock (unbreakable) and water
 /// (needs fluid sim to be fun).
-pub const PICKER_BLOCKS: [u8; 52] = [
+pub const PICKER_BLOCKS: [u8; 55] = [
     GRASS, DIRT, STONE, COBBLE, SMOOTH_STONE, STONE_BRICKS, BRICKS, MOSSY_COBBLE,
     GRANITE, DIORITE, ANDESITE, OBSIDIAN,
     SAND, GRAVEL, CLAY, TERRACOTTA,
@@ -396,6 +557,7 @@ pub const PICKER_BLOCKS: [u8; 52] = [
     PUMPKIN, MELON, CACTUS,
     WOOL_WHITE, WOOL_RED, WOOL_YELLOW, WOOL_BLUE, WOOL_BLACK,
     TALL_GRASS, FLOWER_RED, FLOWER_YELLOW, MUSHROOM_RED, MUSHROOM_BROWN,
+    OAK_SLAB, COBBLE_STAIRS, OAK_FENCE,
 ];
 
 /// default hotbar palette
@@ -407,8 +569,14 @@ mod state_tests {
 
     #[test]
     fn identity_states_fold_to_their_blocks() {
-        for b in 0..BLOCK_COUNT as u16 {
+        // flat-registry states 0..=56 are identity-mapped; 57..=62 are the
+        // log axis variants (state ids ≠ block ids there); 63+ are property
+        // states (covered by prop_states_roundtrip)
+        for b in 0..57u16 {
             assert_eq!(state_block(b), b as u8, "state {b}");
+        }
+        for s in 57..=62u16 {
+            assert!(is_log(state_block(s)), "state {s} must fold to a log");
         }
     }
 
@@ -457,5 +625,69 @@ mod state_tests {
             let t = state_tiles(s);
             assert!(t.iter().all(|&t| t <= TILE_MAX));
         }
+    }
+
+    #[test]
+    fn prop_states_roundtrip() {
+        // slab: half=bottom at base, half=top next
+        assert_eq!(prop_state_decode(63), Some((OAK_SLAB, vec![("half", "bottom")])));
+        assert_eq!(prop_state_decode(64), Some((OAK_SLAB, vec![("half", "top")])));
+        assert_eq!(prop_state_encode(OAK_SLAB, &[("half", "top")]), Some(64));
+        assert_eq!(
+            prop_state_encode(OAK_SLAB, &[]),
+            Some(63),
+            "missing props default to first value"
+        );
+        // stairs: facing (radix 4, slow) × half (fast)
+        assert_eq!(
+            prop_state_decode(65),
+            Some((COBBLE_STAIRS, vec![("facing", "north"), ("half", "bottom")]))
+        );
+        assert_eq!(
+            prop_state_decode(66),
+            Some((COBBLE_STAIRS, vec![("facing", "north"), ("half", "top")]))
+        );
+        assert_eq!(
+            prop_state_decode(67),
+            Some((COBBLE_STAIRS, vec![("facing", "east"), ("half", "bottom")]))
+        );
+        assert_eq!(
+            prop_state_encode(COBBLE_STAIRS, &[("facing", "west"), ("half", "top")]),
+            Some(72)
+        );
+        // fence: east×north×south×west, west fastest
+        assert_eq!(
+            prop_state_decode(73),
+            Some((OAK_FENCE, vec![("east", "false"), ("north", "false"), ("south", "false"), ("west", "false")]))
+        );
+        assert_eq!(
+            prop_state_decode(88),
+            Some((OAK_FENCE, vec![("east", "true"), ("north", "true"), ("south", "true"), ("west", "true")]))
+        );
+        assert_eq!(
+            prop_state_encode(OAK_FENCE, &[("north", "true")]),
+            Some(77),
+            "single connection north = base + 1*4 (east slot slow radix)"
+        );
+        // exhaustive roundtrip over all model states
+        for s in MODEL_STATE_BASE..STATE_COUNT as u16 {
+            let Some((b, props)) = prop_state_decode(s) else {
+                panic!("state {s} failed to decode");
+            };
+            let set: Vec<(&str, &str)> = props.iter().map(|(k, v)| (*k, *v)).collect();
+            assert_eq!(prop_state_encode(b, &set), Some(s), "state {s}");
+            assert!(is_model_block(b) && is_model_state(s));
+        }
+        // states below the base are legacy, never model states
+        assert!(!is_model_state(62));
+        assert!(!is_model_block(STONE));
+    }
+
+    #[test]
+    fn state_descriptions_vanilla_style() {
+        assert_eq!(state_description(64), "Oak Slab[half=top]");
+        assert_eq!(state_description(65), "Cobblestone Stairs[facing=north,half=bottom]");
+        assert_eq!(state_description(OAK_LOG_X), "Oak Log[axis=x]");
+        assert_eq!(state_description(STONE as u16), "Stone");
     }
 }

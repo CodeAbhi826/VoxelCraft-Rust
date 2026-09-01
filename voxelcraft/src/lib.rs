@@ -7,6 +7,8 @@ pub mod chunk;
 pub mod game;
 pub mod gen;
 pub mod mesh;
+pub mod model;
+pub mod pack;
 pub mod player;
 pub mod render;
 pub mod rng;

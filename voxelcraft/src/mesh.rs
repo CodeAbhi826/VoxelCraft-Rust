@@ -1,4 +1,5 @@
-//! Greedy mesher + voxel lighting (skylight column scan + lateral BFS) + AO.
+//! Greedy mesher + voxel lighting (skylight column scan + lateral BFS) + AO
+//! + JSON-model path (blockstate dispatch, Phase 1).
 //! Pure function over a 3x3 chunk snapshot → safe on worker threads.
 
 use crate::blocks::*;
@@ -6,6 +7,9 @@ use crate::chunk::Chunk;
 use crate::world::ChunkPos;
 use std::collections::VecDeque;
 use std::sync::Arc;
+
+/// engine-drawn missing-texture tile (magenta/black checker) — §46 fallback
+pub const TILE_MISSING: u16 = 63;
 
 /// snapshot values are STATE ids (u16 truncated to u8, ≤ 62 today);
 /// property lookups fold them to block ids
@@ -141,17 +145,32 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
     // decode paletted sections into the flat padded buffer; air-only
     // sections cost one `None` probe instead of 16 KB of zeros
     let mut blocks = vec![0u8; PAD * PAD * 256];
+    // flags: does the CENTER chunk contain cross plants / model blocks at
+    // all? (guards the per-cell special loops — §48 Phase-3: no baseline
+    // mesh-time regression when a world has none, which is the common case)
+    let mut has_cross = false;
+    let mut has_models = false;
     for dzi in 0..3usize {
         for dxi in 0..3usize {
             let Some(chunk) = &snap[dzi * 3 + dxi] else { continue };
             let px0 = dxi * 16;
             let pz0 = dzi * 16;
+            let center = dxi == 1 && dzi == 1;
             for (sy, sec) in chunk.sections.iter().enumerate() {
                 let Some(sec) = sec else { continue };
                 if sec.is_empty() {
                     continue;
                 }
                 let flat = sec.decode_flat(); // 4096 bytes, YZX
+                if center && !(has_cross && has_models) {
+                    for &v in flat.iter() {
+                        if v >= crate::blocks::MODEL_STATE_BASE as u8 {
+                            has_models = true;
+                        } else if is_cross(sb(v)) {
+                            has_cross = true;
+                        }
+                    }
+                }
                 for yy in 0..16usize {
                     let y = sy * 16 + yy;
                     for sz in 0..16usize {
@@ -362,7 +381,7 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
                         cell[v] = vi as i32;
                         let bs = getb(&blocks, cell[0], cell[1], cell[2]); // state
                         let b = sb(bs);
-                        if b == AIR || is_cross(b) {
+                        if b == AIR || is_cross(b) || is_model_state(bs as u16) {
                             continue;
                         }
                         let mut ncell = cell;
@@ -445,16 +464,17 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
     }
 
     // ------------------------------------------------ cross plants
-    for ly in 0..256usize {
-        for lz in 0..16usize {
-            for lx in 0..16usize {
-                let bs = getb(&blocks, lx as i32, ly as i32, lz as i32);
-                if !is_cross(sb(bs)) {
-                    continue;
-                }
-                let sky = getl(&light, lx as i32, ly as i32, lz as i32) as u32;
-                let bl = getl(&blight, lx as i32, ly as i32, lz as i32) as u32;
-                let tile_i = state_tiles(bs as u16)[3];
+    if has_cross {
+        for ly in 0..256usize {
+            for lz in 0..16usize {
+                for lx in 0..16usize {
+                    let bs = getb(&blocks, lx as i32, ly as i32, lz as i32);
+                    if !is_cross(sb(bs)) {
+                        continue;
+                    }
+                    let sky = getl(&light, lx as i32, ly as i32, lz as i32) as u32;
+                    let bl = getl(&blight, lx as i32, ly as i32, lz as i32) as u32;
+                    let tile_i = state_tiles(bs as u16)[3];
                 // chunk-local positions (origin supplied per-draw at render time)
                 let x0 = lx as f32 + 0.15;
                 let x1 = lx as f32 + 0.85;
@@ -493,6 +513,45 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
                         }
                     }
                 }
+                }
+            }
+        }
+    }
+
+    // ------------------------------------------------ JSON model blocks
+    // States ≥ MODEL_STATE_BASE render through the compiled blockstate
+    // dispatch (model.rs): partial cuboids, rotations, multipart, cullface.
+    // The dispatch is precomputed at boot — zero JSON work per mesh (§5.2).
+    if let Some(models) = crate::model::models().filter(|_| has_models) {
+        for ly in 0..256usize {
+            for lz in 0..16usize {
+                for lx in 0..16usize {
+                    let bs = getb(&blocks, lx as i32, ly as i32, lz as i32) as u16;
+                    if !is_model_state(bs) {
+                        continue;
+                    }
+                    // deterministic per-position hash picks weighted variants
+                    let hash = crate::rng::Rng::hash3(
+                        0x9E37_79B9,
+                        pos.0.wrapping_mul(31) + lx as i32,
+                        ly as i32,
+                        pos.1.wrapping_mul(31) + lz as i32,
+                    );
+                    emit_model_block(
+                        models,
+                        hash,
+                        lx,
+                        ly,
+                        lz,
+                        bs,
+                        &blocks,
+                        &light,
+                        &blight,
+                        smooth,
+                        &mut solid_v,
+                        &mut solid_i,
+                    );
+                }
             }
         }
     }
@@ -501,6 +560,185 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
         solid: (solid_v, solid_i),
         water: (water_v, water_i),
     }
+}
+
+/// Emit one JSON-model block instance: every element face becomes a quad
+/// with UVs from the model, cullface suppression, light from the outward
+/// neighbor cell, and per-corner AO from the enclosing cell grid (vanilla
+/// approximation for partial geometry).
+#[allow(clippy::too_many_arguments)]
+fn emit_model_block(
+    models: &crate::model::ModelSet,
+    pos_hash: u64,
+    lx: usize,
+    ly: usize,
+    lz: usize,
+    bs: u16,
+    blocks: &[u8],
+    light: &[u8],
+    blight: &[u8],
+    smooth: bool,
+    solid_v: &mut Vec<Vertex>,
+    solid_i: &mut Vec<u32>,
+) {
+    let Some(choices) = models.by_state.get(&bs) else { return };
+    // each CHOICE independently picks one weighted alternative, hashed by
+    // world position (variants = 1 choice with N alts; multipart = N choices)
+    for (ci, choice) in choices.iter().enumerate() {
+        let chosen = pick_weighted(choice, pos_hash ^ (ci as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15));
+        let m = &chosen.model;
+        emit_model_faces(models, m, lx, ly, lz, bs, blocks, light, blight, smooth, solid_v, solid_i);
+    }
+}
+
+/// weighted pick among a choice's alternatives
+fn pick_weighted<'a>(choice: &'a crate::model::ModelChoice, hash: u64) -> &'a crate::model::AppliedModel {
+    let total: u32 = choice.alts.iter().map(|a| a.weight).sum();
+    if choice.alts.len() == 1 || total == 0 {
+        return &choice.alts[0];
+    }
+    let mut pick = (hash % total as u64) as u32;
+    let mut sel = &choice.alts[0];
+    for a in choice.alts.iter() {
+        if pick < a.weight {
+            sel = a;
+            break;
+        }
+        pick -= a.weight;
+    }
+    sel
+}
+
+/// Emit one compiled model's faces at a block position
+#[allow(clippy::too_many_arguments)]
+fn emit_model_faces(
+    models: &crate::model::ModelSet,
+    m: &crate::model::CompiledModel,
+    lx: usize,
+    ly: usize,
+    lz: usize,
+    bs: u16,
+    blocks: &[u8],
+    light: &[u8],
+    blight: &[u8],
+    smooth: bool,
+    solid_v: &mut Vec<Vertex>,
+    solid_i: &mut Vec<u32>,
+) {
+    let wx = lx as i32;
+    let wy = ly as i32;
+    let wz = lz as i32;
+
+    for el in m.elements.iter() {
+        for f in el.faces.iter() {
+            // cullface: an opaque neighbor in the culled direction suppresses
+            let n = f.dir.normal();
+            if let Some(c) = f.cullface {
+                let cn = c.normal();
+                let nb = sb(getb(blocks, wx + cn[0] as i32, wy + cn[1] as i32, wz + cn[2] as i32));
+                if is_opaque(nb) {
+                    continue;
+                }
+            }
+            // light sampled at the outward neighbor cell (flat per face;
+            // per-corner AO below supplies the gradient)
+            let nx = (wx + n[0] as i32) as i32;
+            let ny = (wy + n[1] as i32) as i32;
+            let nz = (wz + n[2] as i32) as i32;
+            let sky = getl(light, nx, ny, nz).min(15) as u32;
+            let bl = getl(blight, nx, ny, nz).min(15) as u32;
+            let tile = models
+                .tiles
+                .get(&f.texture)
+                .copied()
+                .unwrap_or(TILE_MISSING);
+            let nrm = f.dir.normal_index();
+
+            // tangent axes for AO (the two axes perpendicular to the normal)
+            let (ta, tb) = tangent_axes(f.dir);
+
+            // per-corner AO from the enclosing full-cell grid: the neighbor
+            // layer one step along the normal, side cells toward the corner
+            let mut aos = [3u32; 4];
+            if smooth && el_affects_ao(el) {
+                for (ci, v) in f.verts.iter().enumerate() {
+                    // vert position in block units (0..1) per axis
+                    let bx = v[0] / 16.0;
+                    let by = v[1] / 16.0;
+                    let bz = v[2] / 16.0;
+                    // offsets toward the block's edges (vanilla-style: which
+                    // side of the block center the corner is on)
+                    let da = offset_toward(bx, by, bz, ta);
+                    let db = offset_toward(bx, by, bz, tb);
+                    let cell = [nx, ny, nz];
+                    let mut c1 = cell;
+                    c1[ta] += da;
+                    let mut c2 = cell;
+                    c2[tb] += db;
+                    let mut c3 = cell;
+                    c3[ta] += da;
+                    c3[tb] += db;
+                    let s1 = is_opaque(sb(getb(blocks, c1[0], c1[1], c1[2])));
+                    let s2 = is_opaque(sb(getb(blocks, c2[0], c2[1], c2[2])));
+                    let cr = is_opaque(sb(getb(blocks, c3[0], c3[1], c3[2])));
+                    aos[ci] = if s1 && s2 { 0 } else { 3 - (s1 as u32 + s2 as u32 + cr as u32) };
+                }
+            }
+
+            let base = solid_v.len() as u32;
+            for (ci, v) in f.verts.iter().enumerate() {
+                solid_v.push(pack_vertex(
+                    lx as f32 + v[0] / 16.0,
+                    ly as f32 + v[1] / 16.0,
+                    lz as f32 + v[2] / 16.0,
+                    f.uvs[ci][0],
+                    f.uvs[ci][1],
+                    tile,
+                    nrm,
+                    aos[ci],
+                    sky,
+                    bl,
+                    bs,
+                ));
+            }
+            // CCW from outside (compile_face guarantees) — front-face rule
+            for i in [0u32, 1, 2, 0, 2, 3] {
+                solid_i.push(base + i);
+            }
+        }
+    }
+}
+
+/// the two axis indices perpendicular to a face normal
+#[inline]
+fn tangent_axes(d: crate::model::FaceDir) -> (usize, usize) {
+    match d {
+        crate::model::FaceDir::Up | crate::model::FaceDir::Down => (0, 2), // x, z
+        crate::model::FaceDir::North | crate::model::FaceDir::South => (0, 1), // x, y
+        crate::model::FaceDir::West | crate::model::FaceDir::East => (2, 1),   // z, y
+    }
+}
+
+/// which neighboring cell along `axis` a corner at block-unit coordinate
+/// `bx/b y/bz` leans toward (vanilla model-AO approximation)
+#[inline]
+fn offset_toward(bx: f32, by: f32, bz: f32, axis: usize) -> i32 {
+    let c = match axis {
+        0 => bx,
+        1 => by,
+        _ => bz,
+    };
+    if c < 0.5 {
+        -1
+    } else {
+        1
+    }
+}
+
+/// elements with model `shade` disabled skip AO (flat look)
+#[inline]
+fn el_affects_ao(_el: &crate::model::CompiledElement) -> bool {
+    true
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -736,6 +974,141 @@ mod tests {
             assert_eq!(tile, TILE_TALL_GRASS);
             assert_eq!(state, TALL_GRASS as u16);
         }
+    }
+
+    /// Phase-1 gate test: compile the REAL builtin pack (assets/) and mesh
+    /// model blocks through it — slab geometry, stairs rotations, fence
+    /// multipart, tiles from the pack PNGs. Native-only (reads the folder).
+    #[test]
+    #[cfg(not(target_arch = "wasm32"))]
+    fn builtin_pack_model_blocks_mesh() {
+        // 1. compile the real pack exactly as the game does at boot
+        let source = std::sync::Arc::new(crate::pack::FolderSource::new("builtin-pack", "test"));
+        use crate::pack::PackSource as _;
+        assert!(source.exists(), "builtin pack missing — run from voxelcraft/");
+        let mut by_state: std::collections::HashMap<u16, Vec<crate::model::ModelChoice>> =
+            Default::default();
+        for pb in crate::blocks::PROP_BLOCKS.iter() {
+            let spec = crate::model::BlockDispatchSpec {
+                name: pb.name,
+                props: pb.props,
+                base_state: pb.base_state,
+                state_count: pb.state_count,
+            };
+            let map = crate::model::compile_block_dispatch(&spec, &|p| source.read(p))
+                .unwrap_or_else(|e| panic!("dispatch {name:?}: {e}", name = pb.name));
+            by_state.extend(map);
+        }
+        let mut set = crate::model::ModelSet { by_state, tiles: Default::default() };
+        let mut atlas = crate::textures::generate_atlas();
+        let anims = crate::textures::merge_pack_textures(&mut atlas, &mut set, source.as_ref());
+        // every model face resolved to a real pack tile (planks/cobble)
+        assert!(!set.tiles.is_empty(), "no pack textures registered");
+        assert!(
+            set.tiles.values().all(|&t| t >= crate::textures::PACK_TILE_BASE),
+            "pack textures must land in the pack tile range"
+        );
+        // the animated cobble strip was recognized
+        assert_eq!(anims.len(), 1, "cobblestone.png must register as animated");
+        assert_eq!(anims[0].frames.len(), 4);
+
+        // install as the global registry so mesh_chunk's model path can see
+        // it (single install per test process; legacy-state tests above are
+        // unaffected — they never touch states ≥ MODEL_STATE_BASE)
+        crate::model::install_for_tests(set);
+
+        // 2. slab: bottom state (63) — top face at y=8/16, all 6 faces present
+        let mut c = Chunk::empty();
+        c.set_state(8, 8, 8, 63);
+        let c = Arc::new(c);
+        let snap = [
+            None, None, None,
+            None, Some(Arc::clone(&c)), None,
+            None, None, None,
+        ];
+        let md = mesh_chunk((0, 0), &snap, true);
+        let mut dirs = std::collections::BTreeSet::new();
+        for v in md.solid.0.iter() {
+            dirs.insert(((v.w1 >> 16) & 7) as u8);
+        }
+        assert!(md.solid.0.len() >= 24, "slab needs ≥6 quads, got {}", md.solid.0.len());
+        assert_eq!(dirs, std::collections::BTreeSet::from([0, 1, 2, 3, 4, 5]));
+        // top face verts at y=8/16=0.5
+        for v in md.solid.0.iter() {
+            if ((v.w1 >> 16) & 7) == 2 {
+                let py = (v.w1 & 0xFFFF) as f32 / 128.0;
+                assert!((py - 8.5).abs() < 0.01, "slab top face y {py} (want 8.5)");
+            }
+        }
+        // top-slab state (64): the x=180 variant puts the slab in the upper half
+        let mut c2 = Chunk::empty();
+        c2.set_state(8, 8, 8, 64);
+        let c2 = Arc::new(c2);
+        let snap2 = [
+            None, None, None,
+            None, Some(Arc::clone(&c2)), None,
+            None, None, None,
+        ];
+        let md2 = mesh_chunk((0, 0), &snap2, true);
+        for v in md2.solid.0.iter() {
+            if ((v.w1 >> 16) & 7) == 2 {
+                let py = (v.w1 & 0xFFFF) as f32 / 128.0;
+                // block at ly=8, top slab occupies the upper half → y=9.0
+                assert!((py - 9.0).abs() < 0.01, "top-slab up face y {py} (want 9.0)");
+            }
+        }
+
+        // 3. stairs: facing=east,half=bottom (state 65) — two elements:
+        //    base slab + upper step at x∈[8,16], y∈[8,16]
+        let mut c3 = Chunk::empty();
+        c3.set_state(8, 8, 8, 65);
+        let c3 = Arc::new(c3);
+        let snap3 = [
+            None, None, None,
+            None, Some(Arc::clone(&c3)), None,
+            None, None, None,
+        ];
+        let md3 = mesh_chunk((0, 0), &snap3, true);
+        assert!(md3.solid.0.len() >= 40, "stairs need ≥10 quads, got {}", md3.solid.0.len());
+        let mut step_verts = 0;
+        for v in md3.solid.0.iter() {
+            if ((v.w1 >> 16) & 7) == 2 {
+                // up faces: base at y=8.5, step top at y=9.0 (block at ly=8)
+                let py = (v.w1 & 0xFFFF) as f32 / 128.0;
+                if (py - 9.0).abs() < 0.01 {
+                    step_verts += 1;
+                }
+            }
+        }
+        assert!(step_verts >= 4, "stairs step top face missing");
+
+        // 4. fence: state 77 = north=true → post + side (multipart), side
+        //    geometry extends toward −Z from the post
+        let mut c4 = Chunk::empty();
+        c4.set_state(8, 8, 8, 77);
+        let c4 = Arc::new(c4);
+        let snap4 = [
+            None, None, None,
+            None, Some(Arc::clone(&c4)), None,
+            None, None, None,
+        ];
+        let md4 = mesh_chunk((0, 0), &snap4, true);
+        // post (6 dirs × 4) + side (3 faces × 4) ≥ 36 verts
+        assert!(md4.solid.0.len() >= 36, "fence post+side, got {}", md4.solid.0.len());
+        // unconnected fence (73) → post only, fewer verts
+        let mut c5 = Chunk::empty();
+        c5.set_state(8, 8, 8, 73);
+        let c5 = Arc::new(c5);
+        let snap5 = [
+            None, None, None,
+            None, Some(Arc::clone(&c5)), None,
+            None, None, None,
+        ];
+        let md5 = mesh_chunk((0, 0), &snap5, true);
+        assert!(
+            md5.solid.0.len() < md4.solid.0.len(),
+            "connected fence must have more geometry than a lone post"
+        );
     }
 
     // ------------------------------------------------------------ golden --

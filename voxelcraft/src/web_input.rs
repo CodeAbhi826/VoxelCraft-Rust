@@ -146,3 +146,25 @@ pub enum StatsVal {
     S(String),
     B(bool),
 }
+
+/// Fetch same-origin bytes (builtin resource pack on the web).
+/// Returns None on any network/HTTP failure — the caller falls back to the
+/// missing-asset path (§46), never panics.
+pub async fn fetch_bytes(url: &str) -> Option<Vec<u8>> {
+    use wasm_bindgen_futures::JsFuture;
+    use wasm_bindgen::JsCast;
+    let Some(window) = web_sys::window() else { return None };
+    let Ok(resp_val) = JsFuture::from(window.fetch_with_str(url)).await else {
+        return None;
+    };
+    let resp = resp_val.dyn_into::<web_sys::Response>().ok()?;
+    if !resp.ok() {
+        return None;
+    }
+    let Ok(buf_val) = JsFuture::from(resp.array_buffer().ok()?).await else {
+        return None;
+    };
+    let buf = buf_val.dyn_into::<js_sys::ArrayBuffer>().ok()?;
+    let bytes = js_sys::Uint8Array::new(&buf).to_vec();
+    Some(bytes)
+}

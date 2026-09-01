@@ -128,3 +128,21 @@ automation events that lack `pointerType` (CDP `Input.dispatchMouseEvent`,
 manually dispatched `MouseEvent`s) instead of crashing with
 `TypeError: Cannot read properties of undefined (reading 'length')`.
 Real browser pointer events always carry `pointerType` and are unaffected.
+
+## Resource pack (Phase 1, Master Spec §5.2/§19)
+
+The engine ships a clean-room **builtin pack** at `voxelcraft/builtin-pack/`
+(vanilla 1.16.5 layout: `pack.mcmeta` + `assets/minecraft/{blockstates,
+models,textures}`). Native reads the folder; WASM fetches the same files from
+`/voxelcraft-pack/` (CI deploys `public/voxelcraft-pack`). Any failure falls
+back to the procedural atlas + missing-texture tile (§46).
+
+Regenerate the PNG textures (procedural art → PNG strips) on demand:
+
+```sh
+cd voxelcraft
+cargo test write_builtin_pack_pngs -- --ignored --nocapture
+```
+
+Deps added (pure-Rust, wasm-safe per docs/research/wgpu-web-assets.md):
+`serde` + `serde_json` (JSON), `image` png-only (texture decode).

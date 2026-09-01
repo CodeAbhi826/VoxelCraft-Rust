@@ -78,7 +78,11 @@ jobs:
           cp voxelcraft/wasm-out/voxelcraft_bg.wasm        public/voxelcraft_bg.wasm
           cp voxelcraft/wasm-out/voxelcraft.d.ts           public/voxelcraft.d.ts
           cp voxelcraft/wasm-out/voxelcraft_bg.wasm.d.ts   public/voxelcraft_bg.wasm.d.ts
+          # builtin resource pack (wasm fetches /voxelcraft-pack/** at boot)
+          rm -rf public/voxelcraft-pack
+          cp -r voxelcraft/builtin-pack public/voxelcraft-pack
           ls -la public/voxelcraft*
+          find public/voxelcraft-pack -type f | head -20
 
       - name: Upload bundle artifact
         uses: actions/upload-artifact@v4
@@ -92,12 +96,21 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
+      - name: Upload builtin pack artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: voxelcraft-builtin-pack
+          path: voxelcraft/builtin-pack/**
+          retention-days: 30
+          if-no-files-found: error
+
       - name: Commit & push bundle back to main
         run: |
           git config user.name  "voxelcraft-ci"
           git config user.email "actions@github.com"
           git add public/voxelcraft.js public/voxelcraft_bg.wasm \
                   public/voxelcraft.d.ts public/voxelcraft_bg.wasm.d.ts
+          git add public/voxelcraft-pack
           if git diff --cached --quiet; then
             echo "Bundle unchanged - nothing to commit."
           else

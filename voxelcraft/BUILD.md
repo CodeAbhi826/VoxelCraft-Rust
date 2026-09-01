@@ -110,3 +110,21 @@ src/
 ## Disclaimer
 
 Not affiliated with Mojang or Microsoft. "Minecraft" is a trademark of Mojang Synergies AB. This project is an independent Rust engine written in the visual style of Minecraft 1.16.5; all textures and sounds are generated procedurally from scratch at startup — none are copied from Minecraft's asset files.
+
+### 4. Post-build step (required): patch the generated JS glue
+
+`wasm-bindgen` regenerates `wasm-out/voxelcraft.js` from scratch on every
+build and overwrites manual fixes. Re-apply the pointerType hardening patch
+after every `wasm-bindgen` run, then copy the bundle into `../public/`:
+
+```sh
+python3 patch-wasm-glue.py wasm-out/voxelcraft.js
+cp wasm-out/voxelcraft.js ../public/voxelcraft.js
+cp wasm-out/voxelcraft_bg.wasm ../public/voxelcraft_bg.wasm
+```
+
+The patch makes winit's pointer-event handlers tolerate synthetic /
+automation events that lack `pointerType` (CDP `Input.dispatchMouseEvent`,
+manually dispatched `MouseEvent`s) instead of crashing with
+`TypeError: Cannot read properties of undefined (reading 'length')`.
+Real browser pointer events always carry `pointerType` and are unaffected.

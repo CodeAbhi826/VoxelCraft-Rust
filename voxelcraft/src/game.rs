@@ -1414,7 +1414,11 @@ impl GameApp {
             self.fps_t = self.time;
             self.ui.dirty = true;
         }
-        if self.frames < 3 {
+        // Only log the first frames of each actual game instance — the FPS
+        // window counter (`self.frames`) resets every 0.5 s, so without the
+        // time gate this spams "frame #1..#3" twice a second and makes
+        // remounts impossible to distinguish from normal windows.
+        if self.frames < 3 && self.time_since_load() < 2.0 {
             crate::render::report_boot_log(&format!(
                 "draw() frame #{}: chunks_gpu={}, screen={:?}",
                 self.frames + 1,

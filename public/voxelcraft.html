@@ -308,8 +308,20 @@
         if (!('gpu' in navigator)) {
           if (status) status.textContent = 'No WebGPU in this browser — using WebGL2…';
         }
-        const { default: init } = await import('/voxelcraft.js?v=24');
-        await init('/voxelcraft_bg.wasm?v=24');
+        // Cache-bust by the engine bundle's ACTUAL server-side modification
+        // time — a hardcoded ?v=24 would keep browsers on a stale JS/wasm
+        // module after an engine update (module cache + HTTP cache both key
+        // on the full URL). One tiny HEAD revalidation per page load; when
+        // the bundle is unchanged the URL is stable and caches still hit.
+        let v = '25';
+        try {
+          var r = await fetch('/voxelcraft_bg.wasm', { method: 'HEAD', cache: 'no-cache' });
+          var lm = r.headers.get('Last-Modified') || r.headers.get('ETag') || '';
+          lm = lm.replace(/[^0-9A-Za-z]/g, '');
+          if (lm) v = lm;
+        } catch (e) { /* keep fallback */ }
+        const { default: init } = await import('/voxelcraft.js?v=' + v);
+        await init('/voxelcraft_bg.wasm?v=' + v);
         // NOTE: overlay hides on first rendered frame, not here.
       } catch (err) {
         console.error(err);

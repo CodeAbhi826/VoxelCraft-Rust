@@ -1,6 +1,7 @@
 //! VoxelCraft — high-performance Minecraft-1.16.5-style voxel engine.
 //! Rust + wgpu. One codebase → native (Vulkan/DX12/Metal) + WASM (WebGPU).
 
+pub mod bench;
 pub mod blocks;
 pub mod chunk;
 pub mod game;

@@ -2289,6 +2289,20 @@ impl Renderer {
         self.surface.configure(&self.device, &self.config);
     }
 
+    /// current present mode, human-readable (benchmark report context)
+    pub fn present_mode_name(&self) -> String {
+        let name = match self.config.present_mode {
+            wgpu::PresentMode::Fifo => "Fifo (vsync)",
+            wgpu::PresentMode::FifoRelaxed => "FifoRelaxed (vsync, relaxed)",
+            wgpu::PresentMode::Mailbox => "Mailbox",
+            wgpu::PresentMode::Immediate => "Immediate (no vsync)",
+            wgpu::PresentMode::AutoVsync => "AutoVsync",
+            wgpu::PresentMode::AutoNoVsync => "AutoNoVsync",
+            _ => "other",
+        };
+        format!("{name}{}", if self.vsync { "" } else { "" })
+    }
+
     pub fn set_chunk_mesh(&mut self, pos: ChunkPos, md: &MeshData) {
         let usage = wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST;
         let make = |data: (&Vec<Vertex>, &Vec<u32>)| -> Option<(wgpu::Buffer, wgpu::Buffer, u32)> {

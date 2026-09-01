@@ -12,9 +12,17 @@ crate-type = ["rlib", "cdylib"]
 name = "voxelcraft"
 path = "src/main.rs"
 
+[[bin]]
+name = "vc_bench"
+path = "src/bin/vc_bench.rs"
+required-features = ["bench-bin"]
+
 [features]
 default = ["audio"]
 audio = ["dep:rodio"]
+# opt-in native-only benchmark binary (uses rayon + std::fs + env args;
+# not buildable for wasm32). Run: cargo run --release --features bench-bin --bin vc_bench
+bench-bin = []
 
 [dependencies]
 winit = "0.29"

@@ -377,14 +377,24 @@ pub fn raycast(world: &World, eye: Vec3, dir: Vec3, max_dist: f32) -> Option<([i
     let step_x = if dir.x > 0.0 { 1 } else { -1 };
     let step_y = if dir.y > 0.0 { 1 } else { -1 };
     let step_z = if dir.z > 0.0 { 1 } else { -1 };
-    let tdx = (1.0 / dir.x.abs()).max(1e30);
-    let tdy = (1.0 / dir.y.abs()).max(1e30);
-    let tdz = (1.0 / dir.z.abs()).max(1e30);
+    // distance-per-block along each axis; clamp only the degenerate (0)
+    // components so the DDA never steps on an unused axis. NOTE: .min, NOT
+    // .max — .max would floor every step at 1e30 and the ray would stall
+    // after one block (this exact bug broke all block targeting beyond ~1
+    // block of the eye).
+    let tdx = (1.0 / dir.x.abs()).min(1e30);
+    let tdy = (1.0 / dir.y.abs()).min(1e30);
+    let tdz = (1.0 / dir.z.abs()).min(1e30);
     let dist_to_boundary = |o: f32, d: f32| -> f32 {
         if d > 0.0 {
             (o.floor() + 1.0 - o) / d
-        } else {
+        } else if d < 0.0 {
             (o - o.floor()) / (-d)
+        } else {
+            // axis unused by the ray: never cross a boundary on it.
+            // (0/-0.0 = -inf clamped to 0 would make the DDA take a spurious
+            // sideways step and track along a shifted column.)
+            f32::INFINITY
         }
     };
     let mut tmx = dist_to_boundary(eye.x, dir.x).max(0.0);
@@ -418,3 +428,55 @@ pub fn raycast(world: &World, eye: Vec3, dir: Vec3, max_dist: f32) -> Option<([i
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+
+    #[test]
+    fn raycast_hits_ground_straight_down() {
+        let mut world = World::new(42);
+        let gen = crate::gen::TerrainGen::new(42);
+        let (chunk, outbound) = gen.generate_chunk(0, 0, vec![]);
+        world.insert_generated((0, 0), chunk, outbound);
+        let eye = Vec3::new(0.5, 90.0, 0.5);
+        let hit = raycast(&world, eye, Vec3::new(0.0, -1.0, 0.0), 50.0);
+        assert!(hit.is_some(), "straight-down ray must hit terrain");
+        let (p, b, _) = hit.unwrap();
+        println!("hit block {} at {:?}", b, p);
+        assert!(b != crate::blocks::AIR);
+    }
+
+    #[test]
+    fn raycast_hits_forward_down_45() {
+        let mut world = World::new(42);
+        let gen = crate::gen::TerrainGen::new(42);
+        // the ray travels in -z: load the neighbor chunk too
+        for pos in [(0, 0), (0, -1), (-1, 0), (-1, -1)] {
+            let (chunk, outbound) = gen.generate_chunk(pos.0, pos.1, vec![]);
+            world.insert_generated(pos, chunk, outbound);
+        }
+        let top = chunk_top(&world);
+        let eye = Vec3::new(0.5, top as f32 + 2.7, 0.5);
+        let dir = Vec3::new(0.0, -0.9, -0.447).normalize();
+        let hit = raycast(&world, eye, dir, 10.0);
+        assert!(hit.is_some(), "45-degree down ray must hit terrain");
+        let (p, _, _) = hit.unwrap();
+        assert!(p[1] <= top, "hit should be at or below the surface");
+    }
+
+    fn chunk_top(world: &World) -> i32 {
+        // scan down from 255 for the first solid block at (0, ?, 0)
+        for y in (0..255).rev() {
+            let b = world.get_block(0, y, 0);
+            if b != crate::blocks::AIR && b != crate::blocks::WATER {
+                return y + 1;
+            }
+        }
+        64
+    }
+}
+
+
+

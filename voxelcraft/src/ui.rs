@@ -1,5 +1,6 @@
-//! UI canvas (960x540 RGBA) with hand-built 5x7 bitmap font, crosshair,
-//! hotbar with block icons, F3-style debug overlay, pause + help screens.
+//! UI canvas (960x540 RGBA) with hand-built 5x7 bitmap font, Minecraft-style
+//! widgets (buttons + sliders), title / options / pause screens, and the
+//! full 1.16.5-style HUD (hotbar, hearts, hunger, XP bar, crosshair, F3).
 //! Redrawn only when state changes; uploaded to GPU as a texture.
 
 use crate::blocks::*;
@@ -11,201 +12,172 @@ pub const UI_H: usize = 540;
 // 5x7 font, rows top→bottom, bit 4 = leftmost pixel. ASCII 32..127.
 #[rustfmt::skip]
 const FONT: [[u8; 7]; 96] = [
-    // space
-    [0x00,0x00,0x00,0x00,0x00,0x00,0x00],
-    // !
-    [0x04,0x04,0x04,0x04,0x04,0x00,0x04],
-    // "
-    [0x0A,0x0A,0x00,0x00,0x00,0x00,0x00],
-    // #
-    [0x0A,0x1F,0x0A,0x1F,0x0A,0x00,0x00],
-    // $
-    [0x04,0x0F,0x14,0x0E,0x05,0x1F,0x04],
-    // %
-    [0x18,0x19,0x02,0x04,0x08,0x13,0x03],
-    // &
-    [0x0E,0x11,0x0E,0x14,0x1E,0x11,0x16],
-    // '
-    [0x04,0x04,0x00,0x00,0x00,0x00,0x00],
-    // (
-    [0x02,0x04,0x08,0x08,0x08,0x04,0x02],
-    // )
-    [0x08,0x04,0x02,0x02,0x02,0x04,0x08],
-    // *
-    [0x00,0x04,0x15,0x0E,0x15,0x04,0x00],
-    // +
-    [0x00,0x04,0x04,0x1F,0x04,0x04,0x00],
-    // ,
-    [0x00,0x00,0x00,0x00,0x04,0x04,0x08],
-    // -
-    [0x00,0x00,0x00,0x1F,0x00,0x00,0x00],
-    // .
-    [0x00,0x00,0x00,0x00,0x00,0x0C,0x0C],
-    // /
-    [0x00,0x01,0x02,0x04,0x08,0x10,0x00],
-    // 0
-    [0x0E,0x11,0x13,0x15,0x19,0x11,0x0E],
-    // 1
-    [0x04,0x0C,0x04,0x04,0x04,0x04,0x0E],
-    // 2
-    [0x0E,0x11,0x01,0x02,0x04,0x08,0x1F],
-    // 3
-    [0x1F,0x02,0x04,0x02,0x01,0x11,0x0E],
-    // 4
-    [0x02,0x06,0x0A,0x12,0x1F,0x02,0x02],
-    // 5
-    [0x1F,0x10,0x1E,0x01,0x01,0x11,0x0E],
-    // 6
-    [0x06,0x08,0x10,0x1E,0x11,0x11,0x0E],
-    // 7
-    [0x1F,0x01,0x02,0x04,0x08,0x08,0x08],
-    // 8
-    [0x0E,0x11,0x11,0x0E,0x11,0x11,0x0E],
-    // 9
-    [0x0E,0x11,0x11,0x0F,0x01,0x02,0x0C],
-    // :
-    [0x00,0x0C,0x0C,0x00,0x0C,0x0C,0x00],
-    // ;
-    [0x00,0x0C,0x0C,0x00,0x0C,0x04,0x08],
-    // <
-    [0x02,0x04,0x08,0x10,0x08,0x04,0x02],
-    // =
-    [0x00,0x00,0x1F,0x00,0x1F,0x00,0x00],
-    // >
-    [0x08,0x04,0x02,0x01,0x02,0x04,0x08],
-    // ?
-    [0x0E,0x11,0x01,0x02,0x04,0x00,0x04],
-    // @
-    [0x0E,0x11,0x15,0x17,0x16,0x10,0x0E],
-    // A
-    [0x0E,0x11,0x11,0x1F,0x11,0x11,0x11],
-    // B
-    [0x1E,0x11,0x11,0x1E,0x11,0x11,0x1E],
-    // C
-    [0x0E,0x11,0x10,0x10,0x10,0x11,0x0E],
-    // D
-    [0x1C,0x12,0x11,0x11,0x11,0x12,0x1C],
-    // E
-    [0x1F,0x10,0x10,0x1E,0x10,0x10,0x1F],
-    // F
-    [0x1F,0x10,0x10,0x1E,0x10,0x10,0x10],
-    // G
-    [0x0E,0x11,0x10,0x17,0x11,0x11,0x0F],
-    // H
-    [0x11,0x11,0x11,0x1F,0x11,0x11,0x11],
-    // I
-    [0x0E,0x04,0x04,0x04,0x04,0x04,0x0E],
-    // J
-    [0x07,0x02,0x02,0x02,0x02,0x12,0x0C],
-    // K
-    [0x11,0x12,0x14,0x18,0x14,0x12,0x11],
-    // L
-    [0x10,0x10,0x10,0x10,0x10,0x10,0x1F],
-    // M
-    [0x11,0x1B,0x15,0x15,0x11,0x11,0x11],
-    // N
-    [0x11,0x19,0x15,0x13,0x11,0x11,0x11],
-    // O
-    [0x0E,0x11,0x11,0x11,0x11,0x11,0x0E],
-    // P
-    [0x1E,0x11,0x11,0x1E,0x10,0x10,0x10],
-    // Q
-    [0x0E,0x11,0x11,0x11,0x15,0x12,0x0D],
-    // R
-    [0x1E,0x11,0x11,0x1E,0x14,0x12,0x11],
-    // S
-    [0x0F,0x10,0x10,0x0E,0x01,0x01,0x1E],
-    // T
-    [0x1F,0x04,0x04,0x04,0x04,0x04,0x04],
-    // U
-    [0x11,0x11,0x11,0x11,0x11,0x11,0x0E],
-    // V
-    [0x11,0x11,0x11,0x11,0x11,0x0A,0x04],
-    // W
-    [0x11,0x11,0x11,0x15,0x15,0x15,0x0A],
-    // X
-    [0x11,0x11,0x0A,0x04,0x0A,0x11,0x11],
-    // Y
-    [0x11,0x11,0x0A,0x04,0x04,0x04,0x04],
-    // Z
-    [0x1F,0x01,0x02,0x04,0x08,0x10,0x1F],
-    // [
-    [0x0E,0x08,0x08,0x08,0x08,0x08,0x0E],
-    // backslash
-    [0x00,0x10,0x08,0x04,0x02,0x01,0x00],
-    // ]
-    [0x0E,0x02,0x02,0x02,0x02,0x02,0x0E],
-    // ^
-    [0x04,0x0A,0x11,0x00,0x00,0x00,0x00],
-    // _
-    [0x00,0x00,0x00,0x00,0x00,0x00,0x1F],
-    // `
+    [0x00,0x00,0x00,0x00,0x00,0x00,0x00], [0x04,0x04,0x04,0x04,0x04,0x00,0x04],
+    [0x0A,0x0A,0x00,0x00,0x00,0x00,0x00], [0x0A,0x1F,0x0A,0x1F,0x0A,0x00,0x00],
+    [0x04,0x0F,0x14,0x0E,0x05,0x1F,0x04], [0x18,0x19,0x02,0x04,0x08,0x13,0x03],
+    [0x0E,0x11,0x0E,0x14,0x1E,0x11,0x16], [0x04,0x04,0x00,0x00,0x00,0x00,0x00],
+    [0x02,0x04,0x08,0x08,0x08,0x04,0x02], [0x08,0x04,0x02,0x02,0x02,0x04,0x08],
+    [0x00,0x04,0x15,0x0E,0x15,0x04,0x00], [0x00,0x04,0x04,0x1F,0x04,0x04,0x00],
+    [0x00,0x00,0x00,0x00,0x04,0x04,0x08], [0x00,0x00,0x00,0x1F,0x00,0x00,0x00],
+    [0x00,0x00,0x00,0x00,0x00,0x0C,0x0C], [0x00,0x01,0x02,0x04,0x08,0x10,0x00],
+    [0x0E,0x11,0x13,0x15,0x19,0x11,0x0E], [0x04,0x0C,0x04,0x04,0x04,0x04,0x0E],
+    [0x0E,0x11,0x01,0x02,0x04,0x08,0x1F], [0x1F,0x02,0x04,0x02,0x01,0x11,0x0E],
+    [0x02,0x06,0x0A,0x12,0x1F,0x02,0x02], [0x1F,0x10,0x1E,0x01,0x01,0x11,0x0E],
+    [0x06,0x08,0x10,0x1E,0x11,0x11,0x0E], [0x1F,0x01,0x02,0x04,0x08,0x08,0x08],
+    [0x0E,0x11,0x11,0x0E,0x11,0x11,0x0E], [0x0E,0x11,0x11,0x0F,0x01,0x02,0x0C],
+    [0x00,0x0C,0x0C,0x00,0x0C,0x0C,0x00], [0x00,0x0C,0x0C,0x00,0x0C,0x04,0x08],
+    [0x02,0x04,0x08,0x10,0x08,0x04,0x02], [0x00,0x00,0x1F,0x00,0x1F,0x00,0x00],
+    [0x08,0x04,0x02,0x01,0x02,0x04,0x08], [0x0E,0x11,0x01,0x02,0x04,0x00,0x04],
+    [0x0E,0x11,0x15,0x17,0x16,0x10,0x0E], [0x0E,0x11,0x11,0x1F,0x11,0x11,0x11],
+    [0x1E,0x11,0x11,0x1E,0x11,0x11,0x1E], [0x0E,0x11,0x10,0x10,0x10,0x11,0x0E],
+    [0x1C,0x12,0x11,0x11,0x11,0x12,0x1C], [0x1F,0x10,0x10,0x1E,0x10,0x10,0x1F],
+    [0x1F,0x10,0x10,0x1E,0x10,0x10,0x10], [0x0E,0x11,0x10,0x17,0x11,0x11,0x0F],
+    [0x11,0x11,0x11,0x1F,0x11,0x11,0x11], [0x0E,0x04,0x04,0x04,0x04,0x04,0x0E],
+    [0x07,0x02,0x02,0x02,0x02,0x12,0x0C], [0x11,0x12,0x14,0x18,0x14,0x12,0x11],
+    [0x10,0x10,0x10,0x10,0x10,0x10,0x1F], [0x11,0x1B,0x15,0x15,0x11,0x11,0x11],
+    [0x11,0x19,0x15,0x13,0x11,0x11,0x11], [0x0E,0x11,0x11,0x11,0x11,0x11,0x0E],
+    [0x1E,0x11,0x11,0x1E,0x10,0x10,0x10], [0x0E,0x11,0x11,0x11,0x15,0x12,0x0D],
+    [0x1E,0x11,0x11,0x1E,0x14,0x12,0x11], [0x0F,0x10,0x10,0x0E,0x01,0x01,0x1E],
+    [0x1F,0x04,0x04,0x04,0x04,0x04,0x04], [0x11,0x11,0x11,0x11,0x11,0x11,0x0E],
+    [0x11,0x11,0x11,0x11,0x11,0x0A,0x04], [0x11,0x11,0x11,0x15,0x15,0x15,0x0A],
+    [0x11,0x11,0x0A,0x04,0x0A,0x11,0x11], [0x11,0x11,0x0A,0x04,0x04,0x04,0x04],
+    [0x1F,0x01,0x02,0x04,0x08,0x10,0x1F], [0x0E,0x08,0x08,0x08,0x08,0x08,0x0E],
+    [0x00,0x10,0x08,0x04,0x02,0x01,0x00], [0x0E,0x02,0x02,0x02,0x02,0x02,0x0E],
+    [0x04,0x0A,0x11,0x00,0x00,0x00,0x00], [0x00,0x00,0x00,0x00,0x00,0x00,0x1F],
     [0x08,0x04,0x00,0x00,0x00,0x00,0x00],
-    // a (smallcaps A)
-    [0x0E,0x11,0x11,0x1F,0x11,0x11,0x11],
-    // b
-    [0x1E,0x11,0x11,0x1E,0x11,0x11,0x1E],
-    // c
-    [0x0E,0x11,0x10,0x10,0x10,0x11,0x0E],
-    // d
-    [0x1C,0x12,0x11,0x11,0x11,0x12,0x1C],
-    // e
-    [0x1F,0x10,0x10,0x1E,0x10,0x10,0x1F],
-    // f
-    [0x1F,0x10,0x10,0x1E,0x10,0x10,0x10],
-    // g
-    [0x0E,0x11,0x10,0x17,0x11,0x11,0x0F],
-    // h
-    [0x11,0x11,0x11,0x1F,0x11,0x11,0x11],
-    // i
-    [0x0E,0x04,0x04,0x04,0x04,0x04,0x0E],
-    // j
-    [0x07,0x02,0x02,0x02,0x02,0x12,0x0C],
-    // k
-    [0x11,0x12,0x14,0x18,0x14,0x12,0x11],
-    // l
-    [0x10,0x10,0x10,0x10,0x10,0x10,0x1F],
-    // m
-    [0x11,0x1B,0x15,0x15,0x11,0x11,0x11],
-    // n
-    [0x11,0x19,0x15,0x13,0x11,0x11,0x11],
-    // o
-    [0x0E,0x11,0x11,0x11,0x11,0x11,0x0E],
-    // p
-    [0x1E,0x11,0x11,0x1E,0x10,0x10,0x10],
-    // q
-    [0x0E,0x11,0x11,0x11,0x15,0x12,0x0D],
-    // r
-    [0x1E,0x11,0x11,0x1E,0x14,0x12,0x11],
-    // s
-    [0x0F,0x10,0x10,0x0E,0x01,0x01,0x1E],
-    // t
-    [0x1F,0x04,0x04,0x04,0x04,0x04,0x04],
-    // u
-    [0x11,0x11,0x11,0x11,0x11,0x11,0x0E],
-    // v
-    [0x11,0x11,0x11,0x11,0x11,0x0A,0x04],
-    // w
-    [0x11,0x11,0x11,0x15,0x15,0x15,0x0A],
-    // x
-    [0x11,0x11,0x0A,0x04,0x0A,0x11,0x11],
-    // y
-    [0x11,0x11,0x0A,0x04,0x04,0x04,0x04],
-    // z
-    [0x1F,0x01,0x02,0x04,0x08,0x10,0x1F],
-    // {
-    [0x06,0x08,0x08,0x0C,0x08,0x08,0x06],
-    // |
-    [0x04,0x04,0x04,0x04,0x04,0x04,0x04],
-    // }
-    [0x0C,0x02,0x02,0x06,0x02,0x02,0x0C],
-    // ~
-    [0x00,0x00,0x08,0x15,0x02,0x00,0x00],
-    // DEL (unused)
+    [0x0E,0x11,0x11,0x1F,0x11,0x11,0x11], [0x1E,0x11,0x11,0x1E,0x11,0x11,0x1E],
+    [0x0E,0x11,0x10,0x10,0x10,0x11,0x0E], [0x1C,0x12,0x11,0x11,0x11,0x12,0x1C],
+    [0x1F,0x10,0x10,0x1E,0x10,0x10,0x1F], [0x1F,0x10,0x10,0x1E,0x10,0x10,0x10],
+    [0x0E,0x11,0x10,0x17,0x11,0x11,0x0F], [0x11,0x11,0x11,0x1F,0x11,0x11,0x11],
+    [0x0E,0x04,0x04,0x04,0x04,0x04,0x0E], [0x07,0x02,0x02,0x02,0x02,0x12,0x0C],
+    [0x11,0x12,0x14,0x18,0x14,0x12,0x11], [0x10,0x10,0x10,0x10,0x10,0x10,0x1F],
+    [0x11,0x1B,0x15,0x15,0x11,0x11,0x11], [0x11,0x19,0x15,0x13,0x11,0x11,0x11],
+    [0x0E,0x11,0x11,0x11,0x11,0x11,0x0E], [0x1E,0x11,0x11,0x1E,0x10,0x10,0x10],
+    [0x0E,0x11,0x11,0x11,0x15,0x12,0x0D], [0x1E,0x11,0x11,0x1E,0x14,0x12,0x11],
+    [0x0F,0x10,0x10,0x0E,0x01,0x01,0x1E], [0x1F,0x04,0x04,0x04,0x04,0x04,0x04],
+    [0x11,0x11,0x11,0x11,0x11,0x11,0x0E], [0x11,0x11,0x11,0x11,0x11,0x0A,0x04],
+    [0x11,0x11,0x11,0x15,0x15,0x15,0x0A], [0x11,0x11,0x0A,0x04,0x0A,0x11,0x11],
+    [0x11,0x11,0x0A,0x04,0x04,0x04,0x04], [0x1F,0x01,0x02,0x04,0x08,0x10,0x1F],
+    [0x06,0x08,0x08,0x0C,0x08,0x08,0x06], [0x04,0x04,0x04,0x04,0x04,0x04,0x04],
+    [0x0C,0x02,0x02,0x06,0x02,0x02,0x0C], [0x00,0x00,0x08,0x15,0x02,0x00,0x00],
     [0x00,0x00,0x00,0x00,0x00,0x00,0x00],
 ];
 
 pub type Color = [u8; 4];
+
+// ------------------------------------------------------------- widgets --
+
+#[derive(Clone, Debug)]
+pub enum WidgetKind {
+    Button { label: String, value: String, enabled: bool },
+    Slider { label: String, value: f32 },
+}
+
+#[derive(Clone, Debug)]
+pub struct Widget {
+    pub id: u16,
+    pub x: i32,
+    pub y: i32,
+    pub w: i32,
+    pub h: i32,
+    pub kind: WidgetKind,
+}
+
+impl Widget {
+    pub fn hit(&self, x: i32, y: i32) -> bool {
+        x >= self.x && x < self.x + self.w && y >= self.y && y < self.y + self.h
+    }
+    pub fn slider_value_at(&self, px: i32) -> f32 {
+        let t = ((px - self.x - 8) as f32 / (self.w - 16) as f32).clamp(0.0, 1.0);
+        t
+    }
+}
+
+pub fn btn(id: u16, x: i32, y: i32, w: i32, label: &str, value: &str, enabled: bool) -> Widget {
+    Widget {
+        id,
+        x,
+        y,
+        w,
+        h: 44,
+        kind: WidgetKind::Button {
+            label: label.to_string(),
+            value: value.to_string(),
+            enabled,
+        },
+    }
+}
+
+pub fn slider(id: u16, x: i32, y: i32, w: i32, label: &str, value: f32) -> Widget {
+    Widget {
+        id,
+        x,
+        y,
+        w,
+        h: 44,
+        kind: WidgetKind::Slider { label: label.to_string(), value: value.clamp(0.0, 1.0) },
+    }
+}
+
+// widget id constants shared with game.rs
+pub const ID_TITLE_PLAY: u16 = 1;
+pub const ID_TITLE_OPTIONS: u16 = 2;
+pub const ID_TITLE_QUIT: u16 = 3;
+pub const ID_OPT_FOV: u16 = 10;
+pub const ID_OPT_SENS: u16 = 11;
+pub const ID_OPT_RD: u16 = 12;
+pub const ID_OPT_BRIGHT: u16 = 13;
+pub const ID_OPT_VOL: u16 = 14;
+pub const ID_OPT_SHADER: u16 = 15;
+pub const ID_OPT_GRAPHICS: u16 = 16;
+pub const ID_OPT_SMOOTH: u16 = 17;
+pub const ID_OPT_CLOUDS: u16 = 18;
+pub const ID_OPT_DONE: u16 = 19;
+pub const ID_PAUSE_BACK: u16 = 20;
+pub const ID_PAUSE_OPTIONS: u16 = 21;
+pub const ID_PAUSE_QUIT: u16 = 22;
+
+/// Title screen layout (quit button only exists on native).
+pub fn layout_title(is_web: bool) -> Vec<Widget> {
+    let mut v = vec![
+        btn(ID_TITLE_PLAY, (UI_W as i32 - 320) / 2, 296, 320, "SINGLEPLAYER", "", true),
+        btn(ID_TITLE_OPTIONS, (UI_W as i32 - 320) / 2, 352, 320, "OPTIONS...", "", true),
+    ];
+    if !is_web {
+        v.push(btn(ID_TITLE_QUIT, (UI_W as i32 - 320) / 2, 408, 320, "QUIT GAME", "", true));
+    }
+    v
+}
+
+/// Options screen layout. Values are 0..1 for sliders (game.rs normalizes).
+pub fn layout_options() -> Vec<Widget> {
+    let col1 = 72;
+    let col2 = 496;
+    let w = 392;
+    let rows = [70, 124, 178, 232, 286];
+    vec![
+        slider(ID_OPT_FOV, col1, rows[0], w, "FOV", 0.5),
+        slider(ID_OPT_BRIGHT, col2, rows[0], w, "BRIGHTNESS", 0.1),
+        slider(ID_OPT_SENS, col1, rows[1], w, "MOUSE SENSITIVITY", 0.45),
+        slider(ID_OPT_VOL, col2, rows[1], w, "MASTER VOLUME", 0.7),
+        slider(ID_OPT_RD, col1, rows[2], w, "RENDER DISTANCE", 0.4),
+        btn(ID_OPT_SHADER, col2, rows[2], w, "SHADERS", "OFF", true),
+        btn(ID_OPT_GRAPHICS, col1, rows[3], w, "GRAPHICS", "FANCY", true),
+        btn(ID_OPT_SMOOTH, col2, rows[3], w, "SMOOTH LIGHTING", "ON", true),
+        btn(ID_OPT_CLOUDS, col1, rows[4], w, "CLOUDS", "ON", true),
+        btn(ID_OPT_DONE, (UI_W as i32 - 320) / 2, 470, 320, "DONE", "", true),
+    ]
+}
+
+pub fn layout_pause() -> Vec<Widget> {
+    vec![
+        btn(ID_PAUSE_BACK, (UI_W as i32 - 320) / 2, 208, 320, "BACK TO GAME", "", true),
+        btn(ID_PAUSE_OPTIONS, (UI_W as i32 - 320) / 2, 264, 320, "OPTIONS...", "", true),
+        btn(ID_PAUSE_QUIT, (UI_W as i32 - 320) / 2, 320, 320, "QUIT TO TITLE", "", true),
+    ]
+}
+
+// ------------------------------------------------------------- canvas --
 
 pub struct UiCanvas {
     pub px: Vec<u8>,
@@ -246,7 +218,6 @@ impl UiCanvas {
         }
     }
 
-    /// rect outline
     pub fn frame(&mut self, x: i32, y: i32, w: i32, h: i32, c: Color) {
         for xx in x..x + w {
             self.set(xx, y, c);
@@ -258,7 +229,7 @@ impl UiCanvas {
         }
     }
 
-    /// 5x7 text with 1px shadow, scale 1..4. Returns width drawn.
+    /// 5x7 text with 1px shadow, scale 1..8. Returns width drawn.
     pub fn text(&mut self, x: i32, y: i32, s: &str, c: Color, scale: i32) -> i32 {
         let mut cx = x;
         for ch in s.chars() {
@@ -289,70 +260,320 @@ impl UiCanvas {
         cx - x
     }
 
+    pub fn text_width(s: &str, scale: i32) -> i32 {
+        s.chars().count() as i32 * 6 * scale
+    }
+
     pub fn text_center(&mut self, y: i32, s: &str, c: Color, scale: i32) {
-        let w = s.len() as i32 * 6 * scale;
+        let w = Self::text_width(s, scale);
         self.text((UI_W as i32 - w) / 2, y, s, c, scale);
     }
 
+    /// Text with a 1px outline in all 8 directions (for logo / level number).
+    pub fn text_outlined(&mut self, x: i32, y: i32, s: &str, c: Color, oc: Color, scale: i32) -> i32 {
+        for (dx, dy) in [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (1, -1), (-1, 1), (1, 1)] {
+            self.text(x + dx * (scale / 4 + 1), y + dy * (scale / 4 + 1), s, oc, scale);
+        }
+        self.text(x, y, s, c, scale)
+    }
+
+    /// Draw a pixel-art sprite from string rows with a char→color palette.
+    pub fn sprite(&mut self, x: i32, y: i32, rows: &[&str], palette: &[(char, Color)], scale: i32) {
+        for (ry, row) in rows.iter().enumerate() {
+            for (rx, ch) in row.chars().enumerate() {
+                if ch == '.' || ch == ' ' {
+                    continue;
+                }
+                let col = palette.iter().find(|(c, _)| *c == ch).map(|(_, col)| *col);
+                let Some(col) = col else { continue };
+                for sy in 0..scale {
+                    for sx in 0..scale {
+                        self.set(x + rx as i32 * scale + sx, y + ry as i32 * scale + sy, col);
+                    }
+                }
+            }
+        }
+    }
+
+    // ------------------------------------------------------ widgets ----
+
+    /// Minecraft-style button (gray body, bevel, hover tint).
+    pub fn draw_button(&mut self, w: &Widget, hover: bool) {
+        let (label, value, enabled) = match &w.kind {
+            WidgetKind::Button { label, value, enabled } => (label.clone(), value.clone(), *enabled),
+            _ => return,
+        };
+        let body: Color = if enabled { [96, 96, 96, 235] } else { [70, 70, 70, 200] };
+        self.rect(w.x, w.y, w.w, w.h, body);
+        // bevel: light top/left, dark bottom/right
+        self.rect(w.x + 2, w.y + 2, w.w - 4, 2, [140, 140, 140, 255]);
+        self.rect(w.x + 2, w.y + 2, 2, w.h - 4, [130, 130, 130, 255]);
+        self.rect(w.x + 2, w.y + w.h - 4, w.w - 4, 2, [58, 58, 58, 255]);
+        self.rect(w.x + w.w - 4, w.y + 2, 2, w.h - 4, [58, 58, 58, 255]);
+        // 2px black border
+        self.frame(w.x, w.y, w.w, w.h, [12, 12, 12, 255]);
+        self.frame(w.x + 1, w.y + 1, w.w - 2, w.h - 2, [42, 42, 42, 255]);
+        if hover && enabled {
+            let tint: Color = [130, 160, 255, 70];
+            self.rect(w.x + 2, w.y + 2, w.w - 4, w.h - 4, tint);
+            self.frame(w.x + 2, w.y + 2, w.w - 4, w.h - 4, [255, 255, 255, 130]);
+        }
+        let text_col: Color = if !enabled {
+            [160, 160, 160, 255]
+        } else if hover {
+            [255, 255, 160, 255]
+        } else {
+            [240, 240, 240, 255]
+        };
+        let full = if value.is_empty() { label } else { format!("{}: {}", label, value) };
+        let tw = Self::text_width(&full, 2);
+        self.text(w.x + (w.w - tw) / 2, w.y + (w.h - 14) / 2, &full, text_col, 2);
+    }
+
+    /// Minecraft-style slider: inset track + knob.
+    pub fn draw_slider(&mut self, w: &Widget, hover: bool) {
+        let (label, value) = match &w.kind {
+            WidgetKind::Slider { label, value } => (label.clone(), *value),
+            _ => return,
+        };
+        let ty = w.y + 8;
+        let th = w.h - 16;
+        // track: dark inset
+        self.rect(w.x, ty, w.w, th, [30, 30, 30, 230]);
+        self.frame(w.x, ty, w.w, th, [12, 12, 12, 255]);
+        self.rect(w.x + 2, ty + 2, w.w - 4, th - 4, [86, 86, 86, 230]);
+        self.rect(w.x + 2, ty + 2, w.w - 4, 2, [64, 64, 64, 255]);
+        // knob (16 wide, button style)
+        let kx = w.x + 8 + ((w.w - 16 - 16) as f32 * value) as i32;
+        self.rect(kx, ty - 4, 16, th + 8, [110, 110, 110, 250]);
+        self.frame(kx, ty - 4, 16, th + 8, [12, 12, 12, 255]);
+        self.rect(kx + 2, ty - 2, 12, 2, [150, 150, 150, 255]);
+        self.rect(kx + 2, ty + th, 12, 2, [58, 58, 58, 255]);
+        if hover {
+            self.frame(kx + 1, ty - 3, 14, th + 6, [255, 255, 255, 110]);
+        }
+        // label centered over the track
+        let text_col: Color = if hover { [255, 255, 160, 255] } else { [240, 240, 240, 255] };
+        let tw = Self::text_width(&label, 2);
+        self.text(w.x + (w.w - tw) / 2, w.y + (w.h - 14) / 2 - 1, &label, text_col, 2);
+    }
+
+    pub fn draw_widget(&mut self, w: &Widget, hover: bool) {
+        match w.kind {
+            WidgetKind::Button { .. } => self.draw_button(w, hover),
+            WidgetKind::Slider { .. } => self.draw_slider(w, hover),
+        }
+    }
+
+    pub fn draw_widgets(&mut self, ws: &[Widget], hover: Option<u16>) {
+        for w in ws {
+            self.draw_widget(w, hover == Some(w.id));
+        }
+    }
+
+    // ----------------------------------------------------- screens ----
+
+    /// Title screen overlay (drawn over the panorama).
+    pub fn title_screen(&mut self, splash: &str, ws: &[Widget], hover: Option<u16>, time: f32) {
+        // dim band behind logo area so it reads over bright panorama
+        self.rect(0, 30, UI_W as i32, 120, [0, 0, 0, 60]);
+        // logo with outline + drop shadow
+        let scale = 7;
+        let logo = "VOXELCRAFT";
+        let lw = Self::text_width(logo, scale);
+        let lx = (UI_W as i32 - lw) / 2;
+        let ly = 52;
+        // soft drop shadow
+        self.text(lx + 3, ly + 4, logo, [0, 0, 0, 160], scale);
+        // dark outline pass
+        self.text_outlined(lx, ly, logo, [235, 235, 235, 255], [42, 42, 42, 255], scale);
+        self.text_center(ly + 58, "A 1.16.5-STYLE VOXEL ENGINE", [200, 200, 200, 255], 1);
+
+        // splash: yellow, pulsing, tucked at the logo's right
+        let pulse = 0.5 + 0.5 * (time * 3.2).sin();
+        let alpha = (150.0 + 105.0 * pulse) as u8;
+        let sw = Self::text_width(splash, 2);
+        let sx = (lx + lw - sw / 2).min(UI_W as i32 - sw - 8).max(8);
+        self.text_outlined(sx, ly + 44, splash, [255, 255, 60, alpha], [60, 50, 0, alpha], 2);
+
+        self.draw_widgets(ws, hover);
+
+        self.text(8, UI_H as i32 - 20, "VoxelCraft 2.0_beta (Rust + wgpu)", [220, 220, 220, 255], 1);
+        let vr = "100% PROCEDURAL — NO MOJANG ASSETS";
+        let vw = Self::text_width(vr, 1);
+        self.text(UI_W as i32 - vw - 8, UI_H as i32 - 20, vr, [210, 210, 210, 255], 1);
+    }
+
+    pub fn options_screen(&mut self, ws: &[Widget], hover: Option<u16>, sub: &str) {
+        self.rect(0, 0, UI_W as i32, UI_H as i32, [8, 8, 10, 110]);
+        self.text_center(18, "OPTIONS", [255, 255, 255, 255], 3);
+        let sw = Self::text_width(sub, 1);
+        self.text((UI_W as i32 - sw) / 2, 46, sub, [150, 150, 150, 255], 1);
+        self.draw_widgets(ws, hover);
+    }
+
+    pub fn pause_screen(&mut self, ws: &[Widget], hover: Option<u16>) {
+        self.rect(0, 0, UI_W as i32, UI_H as i32, [0, 0, 0, 130]);
+        self.text_center(140, "GAME MENU", [255, 255, 255, 255], 3);
+        self.draw_widgets(ws, hover);
+    }
+
+    // -------------------------------------------------------- HUD ----
+
+    /// Vanilla-style crosshair: white plus with dark outline.
     pub fn crosshair(&mut self) {
         let cx = (UI_W / 2) as i32;
         let cy = (UI_H / 2) as i32;
-        let c: Color = [255, 255, 255, 190];
-        let mut blend_white = |x: i32, y: i32| {
-            let cc: Color = [235, 240, 240, 210];
-            self.set(x, y, cc);
-        };
-        for i in -4i32..=4 {
-            if i.abs() > 1 {
-                blend_white(cx + i, cy);
-                blend_white(cx, cy + i);
-            }
-        }
-        let _ = c;
-        // center dot
-        blend_white(cx, cy);
+        let arm = 8;
+        let th = 2;
+        let white: Color = [238, 238, 238, 185];
+        let dark: Color = [10, 10, 10, 90];
+        // horizontal bar
+        self.rect(cx - arm, cy - th / 2 - 1, arm * 2, 1, dark);
+        self.rect(cx - arm, cy + th / 2 + 1, arm * 2, 1, dark);
+        self.rect(cx - arm, cy - th / 2, arm * 2, th, white);
+        // vertical bar
+        self.rect(cx - th / 2 - 1, cy - arm, 1, arm * 2, dark);
+        self.rect(cx + th / 2 + 1, cy - arm, 1, arm * 2, dark);
+        self.rect(cx - th / 2, cy - arm, th, arm * 2, white);
     }
 
+    const HEART: [&'static str; 6] = [
+        ".OO..OO.",
+        "ORROORRO",
+        "ORHRRRRO",
+        "ORRRRRRO",
+        ".ORRRRO.",
+        "..ORRO..",
+    ];
+
+    const FOOD: [&'static str; 7] = [
+        ".OOOO...",
+        "OMMMMO..",
+        "OMMMMO..",
+        "OMMMMO..",
+        ".OMMO...",
+        "..OWO...",
+        "...OO...",
+    ];
+
+    /// Full 1.16.5-style status bars: hearts (left), hunger (right), XP bar.
+    pub fn status_bars(&mut self, health: f32, food: f32, xp: f32, level: u32) {
+        const HB: Color = [20, 20, 20, 255]; // hotbar base coords
+        let hb_w = 9 * 40 + 4;
+        let hb_x = (UI_W as i32 - hb_w) / 2;
+        let hb_y = UI_H as i32 - 48;
+
+        // hearts row
+        let heart_pal: [(char, Color); 4] = [
+            ('O', [46, 6, 6, 255]),
+            ('R', [227, 27, 13, 255]),
+            ('H', [255, 116, 116, 255]),
+            ('W', [255, 255, 255, 255]),
+        ];
+        for i in 0..10i32 {
+            let x = hb_x + 2 + i * 17;
+            let y = hb_y - 26;
+            // background outline (empty heart) then fill
+            if health >= (i + 1) as f32 / 10.0 {
+                self.sprite(x, y, &Self::HEART, &heart_pal, 2);
+            } else {
+                let dim: [(char, Color); 4] = [
+                    ('O', [30, 30, 30, 200]),
+                    ('R', [70, 70, 70, 200]),
+                    ('H', [90, 90, 90, 200]),
+                    ('W', [110, 110, 110, 200]),
+                ];
+                self.sprite(x, y, &Self::HEART, &dim, 2);
+            }
+        }
+
+        // hunger row (right aligned, mirrored order)
+        let food_pal: [(char, Color); 4] = [
+            ('O', [43, 26, 4, 255]),
+            ('M', [186, 106, 38, 255]),
+            ('W', [222, 222, 222, 255]),
+            ('H', [255, 255, 255, 255]),
+        ];
+        for i in 0..10i32 {
+            let x = hb_x + hb_w - 4 - (i + 1) * 17;
+            let y = hb_y - 28;
+            if food >= (i + 1) as f32 / 10.0 {
+                self.sprite(x, y, &Self::FOOD, &food_pal, 2);
+            } else {
+                let dim: [(char, Color); 4] = [
+                    ('O', [30, 30, 30, 200]),
+                    ('M', [70, 70, 70, 200]),
+                    ('W', [110, 110, 110, 200]),
+                    ('H', [110, 110, 110, 200]),
+                ];
+                self.sprite(x, y, &Self::FOOD, &dim, 2);
+            }
+        }
+
+        // XP bar
+        let xp_w = hb_w;
+        let xp_x = hb_x;
+        let xp_y = hb_y - 10;
+        self.rect(xp_x, xp_y, xp_w, 8, [16, 16, 16, 220]);
+        self.frame(xp_x, xp_y, xp_w, 8, [60, 60, 60, 255]);
+        let fill = ((xp_w - 4) as f32 * xp.clamp(0.0, 1.0)) as i32;
+        if fill > 0 {
+            self.rect(xp_x + 2, xp_y + 2, fill, 4, [128, 255, 32, 255]);
+            self.rect(xp_x + 2, xp_y + 2, fill, 1, [190, 255, 130, 255]);
+        }
+        if level > 0 {
+            let s = format!("{}", level);
+            let w = Self::text_width(&s, 2);
+            self.text_outlined(
+                (UI_W as i32 - w) / 2,
+                xp_y - 20,
+                &s,
+                [128, 255, 32, 255],
+                [20, 40, 8, 255],
+                2,
+            );
+        }
+    }
+
+    /// 1.16.5-style hotbar: 40px slots, big white selection frame, icons.
     pub fn hotbar(&mut self, palette: &[u8], selected: usize, atlas: &[u8], item_name: Option<(&str, u8)>) {
         let n = palette.len() as i32;
         let slot = 40i32;
         let bw = n * slot + 4;
-        let bh = 44;
         let x0 = (UI_W as i32 - bw) / 2;
-        let y0 = UI_H as i32 - bh - 6;
-        self.rect(x0, y0, bw, bh, [0, 0, 0, 110]);
-        self.frame(x0, y0, bw, bh, [30, 30, 30, 220]);
+        let y0 = UI_H as i32 - 48;
+        self.rect(x0, y0, bw, 44, [12, 12, 12, 190]);
+        self.frame(x0, y0, bw, 44, [8, 8, 8, 255]);
         for i in 0..n as usize {
             let sx = x0 + 2 + i as i32 * slot;
             let sy = y0 + 2;
-            self.frame(sx, sy, 36, 36, [90, 90, 90, 255]);
+            self.rect(sx, sy, 36, 36, [58, 58, 58, 160]);
+            self.frame(sx, sy, 36, 36, [90, 90, 90, 220]);
             let b = palette[i];
             if b != AIR {
-                // icon: use side tile (log/planks show best) — grass shows side
                 let tile = {
                     let d = def(b);
-                    if b == GRASS { d.tiles[2] } else if b == OAK_LOG { d.tiles[2] } else { d.tiles[0] }
+                    if b == GRASS || b == OAK_LOG { d.tiles[2] } else { d.tiles[0] }
                 };
                 blit_tile(atlas, tile, 2, (sx + 2) as usize, (sy + 2) as usize, &mut self.px, UI_W);
             }
-            // slot number
-            self.text(sx + 2, sy + 27, &format!("{}", i + 1), [200, 200, 200, 220], 1);
         }
-        // selection
+        // selection: chunky white frame extending past the slot
         let sel = x0 + 2 + selected as i32 * slot;
-        self.frame(sel - 1, y0 + 1, 38, 38, [255, 255, 255, 255]);
-        self.frame(sel - 2, y0 + 0, 40, 40, [255, 255, 255, 160]);
+        self.frame(sel - 2, y0, 40, 40, [255, 255, 255, 255]);
+        self.frame(sel - 3, y0 - 1, 42, 42, [200, 200, 200, 140]);
 
         if let Some((name, alpha)) = item_name {
             let w = name.len() as i32 * 12;
-            self.text((UI_W as i32 - w) / 2, y0 - 30, name, [255, 255, 255, alpha], 2);
+            self.text((UI_W as i32 - w) / 2, y0 - 76, name, [255, 255, 255, alpha], 2);
         }
     }
 
     pub fn debug(&mut self, lines: &[String]) {
         let mut max_w = 0i32;
         for l in lines {
-            max_w = max_w.max(l.len() as i32 * 6 + 8);
+            max_w = max_w.max(Self::text_width(l, 1) + 8);
         }
         let line_h = 14;
         self.rect(4, 4, max_w, lines.len() as i32 * line_h + 6, [80, 80, 80, 110]);
@@ -364,23 +585,23 @@ impl UiCanvas {
     pub fn help(&mut self) {
         let lines: Vec<(&str, &str)> = vec![
             ("WASD", "Move"),
-            ("SPACE", "Jump / swim up / fly up"),
+            ("SPACE", "Jump / swim up"),
             ("DOUBLE SPACE", "Toggle flying"),
-            ("SHIFT", "Fly down"),
+            ("SHIFT", "Sneak / fly down"),
             ("CTRL", "Sprint"),
-            ("MOUSE", "Look around"),
+            ("MOUSE", "Look (click canvas to capture)"),
             ("LEFT CLICK", "Break block (hold)"),
             ("RIGHT CLICK", "Place block (hold)"),
             ("MIDDLE CLICK", "Pick block"),
             ("1-9 / WHEEL", "Select hotbar slot"),
+            ("ESC", "Pause menu / options"),
             ("F3", "Debug info"),
             ("H", "This help"),
             ("[ ]", "Render distance"),
             ("- =", "Volume"),
             ("V", "Toggle V-Sync"),
-            ("ESC", "Pause / release mouse"),
         ];
-        let bw = 420;
+        let bw = 460;
         let bh = lines.len() as i32 * 20 + 50;
         let x0 = (UI_W as i32 - bw) / 2;
         let y0 = (UI_H as i32 - bh) / 2;
@@ -389,7 +610,7 @@ impl UiCanvas {
         self.text(x0 + 16, y0 + 10, "CONTROLS (H to close)", [255, 220, 120, 255], 2);
         for (i, (k, v)) in lines.iter().enumerate() {
             self.text(x0 + 16, y0 + 44 + i as i32 * 20, k, [160, 220, 160, 255], 1);
-            self.text(x0 + 150, y0 + 44 + i as i32 * 20, v, [220, 220, 220, 255], 1);
+            self.text(x0 + 180, y0 + 44 + i as i32 * 20, v, [220, 220, 220, 255], 1);
         }
     }
 
@@ -402,7 +623,6 @@ impl UiCanvas {
         self.rect(0, 0, UI_W as i32, UI_H as i32, [10, 12, 16, 120]);
         self.text_center(UI_H as i32 / 2 - 20, "VOXELCRAFT", [255, 255, 255, 255], 4);
         self.text_center(UI_H as i32 / 2 + 30, msg, [210, 210, 210, 255], 1);
-        // progress bar
         let bw = 360;
         let x0 = (UI_W as i32 - bw) / 2;
         let y0 = UI_H as i32 / 2 + 60;

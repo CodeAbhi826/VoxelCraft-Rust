@@ -21,3 +21,5 @@ pub const SEA_LEVEL: i32 = 62;
 
 #[cfg(target_arch = "wasm32")]
 pub mod wasm_entry;
+#[cfg(target_arch = "wasm32")]
+pub mod web_input;

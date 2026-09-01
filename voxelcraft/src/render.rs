@@ -2303,6 +2303,47 @@ impl Renderer {
         format!("{name}{}", if self.vsync { "" } else { "" })
     }
 
+    /// overwrite one 16×16 atlas tile (animated textures: frame update path —
+    /// geometry is never rebuilt for a texture frame change, §20)
+    pub fn write_atlas_tile(&mut self, tile: u16, rgba: &[u8]) {
+        let tx = (tile % 16) as u32;
+        let ty = (tile / 16) as u32;
+        self.queue.write_texture(
+            wgpu::ImageCopyTexture {
+                texture: &self.atlas_tex,
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: tx * textures::TILE_PX as u32,
+                    y: ty * textures::TILE_PX as u32,
+                    z: 0,
+                },
+                aspect: wgpu::TextureAspect::All,
+            },
+            rgba,
+            wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(textures::TILE_PX as u32 * 4),
+                rows_per_image: Some(textures::TILE_PX as u32),
+            },
+            wgpu::Extent3d {
+                width: textures::TILE_PX as u32,
+                height: textures::TILE_PX as u32,
+                depth_or_array_layers: 1,
+            },
+        );
+    }
+
+    /// update an animated tile from its precomputed frames
+    pub fn update_atlas_frame(
+        &mut self,
+        anim: &crate::textures::AnimatedTile,
+        frame: usize,
+    ) {
+        if let Some(f) = anim.frames.get(frame) {
+            self.write_atlas_tile(anim.tile, f);
+        }
+    }
+
     pub fn set_chunk_mesh(&mut self, pos: ChunkPos, md: &MeshData) {
         let usage = wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST;
         let make = |data: (&Vec<Vertex>, &Vec<u32>)| -> Option<(wgpu::Buffer, wgpu::Buffer, u32)> {

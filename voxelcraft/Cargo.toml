@@ -1,0 +1,61 @@
+[package]
+name = "voxelcraft"
+version = "0.1.0"
+edition = "2021"
+description = "High-performance Minecraft-1.16.5-style voxel engine in Rust + wgpu (native Vulkan/DX12/Metal + WebGPU/WASM)"
+
+[lib]
+name = "voxelcraft"
+crate-type = ["rlib", "cdylib"]
+
+[[bin]]
+name = "voxelcraft"
+path = "src/main.rs"
+
+[features]
+default = ["audio"]
+audio = ["dep:rodio"]
+
+[dependencies]
+winit = "0.29"
+glam = "0.29"
+bytemuck = { version = "1", features = ["derive"] }
+pollster = "0.3"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+wgpu = "22"
+rodio = { version = "0.19", optional = true }
+rayon = "1.10"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wgpu = { version = "22", features = ["webgl"] }
+wasm-bindgen = "=0.2.127"
+wasm-bindgen-futures = "0.4"
+console_error_panic_hook = "0.1.7"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = [
+    "Window",
+    "Document",
+    "Element",
+    "HtmlCanvasElement",
+    "HtmlElement",
+    "Navigator",
+    "Gpu",
+    "AudioContext",
+    "BaseAudioContext",
+    "AudioBuffer",
+    "AudioBufferSourceNode",
+    "AudioNode",
+    "AudioParam",
+    "GainNode",
+    "AudioDestinationNode",
+    "Performance",
+] }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 4
+
+[profile.release.package."*"]
+opt-level = 3

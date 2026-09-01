@@ -1,0 +1,60 @@
+# dependencies
+node_modules
+
+# next.js
+/.next/
+/out/
+next-env.d.ts
+*.tsbuildinfo
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+dev.log
+dev.out.log
+server.log
+
+# env files (local config - never commit)
+.env*
+
+# vercel
+.vercel
+
+# local platform artifacts
+local-*
+.claude
+.z-ai-config
+skills/
+prompt
+
+# sandbox operational state
+.zscripts/dev.pid
+.zscripts/*.log
+
+# database (runtime state)
+db/
+*.db
+
+# Rust / VoxelCraft build artifacts
+voxelcraft/target/
+voxelcraft/target-release/
+voxelcraft/dist-native/
+
+# local deliverables folder (this repo IS the source)
+/download/
+
+# sandbox session scripts & auth state (not part of the project)
+/scripts/
+
+# snapshot
+initial_snapshot.json
+worklog.md

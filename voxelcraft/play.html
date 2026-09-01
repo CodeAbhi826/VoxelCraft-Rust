@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>VoxelCraft — Rust + wgpu voxel engine</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #0a0d12; overflow: hidden; }
+    canvas#game {
+      display: block; width: 100vw; height: 100vh; touch-action: none;
+      outline: none; image-rendering: pixelated;
+    }
+    #boot {
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      color: #cbd5e1; font: 14px ui-monospace, Menlo, monospace; text-align: center;
+      pointer-events: none;
+    }
+    #boot .wrap { padding: 24px; max-width: 420px; line-height: 1.55; }
+    #boot h1 { margin: 0 0 12px; font-size: 22px; letter-spacing: 1px; color: #93c5fd; }
+    #boot small { color: #64748b; }
+    #boot.hide { display: none; }
+  </style>
+</head>
+<body>
+  <canvas id="game" tabindex="0"></canvas>
+  <div id="boot"><div class="wrap">
+    <h1>VOXELCRAFT</h1>
+    <p>Loading engine…</p>
+    <p><small>Rust + wgpu · WebGPU build · click the canvas to play</small></p>
+  </div></div>
+  <script type="module">
+    // Hide the boot splash once the WASM module boots (it replaces canvas).
+    function hide() { const e = document.getElementById('boot'); if (e) e.classList.add('hide'); }
+
+    async function boot() {
+      try {
+        // Detect WebGPU support and warn early if absent.
+        if (!('gpu' in navigator)) {
+          document.querySelector('#boot p').textContent = 'Your browser does not have WebGPU enabled. Use Chrome / Edge 113+.';
+          return;
+        }
+        const { default: init } = await import('./voxelcraft.js');
+        await init('./voxelcraft_bg.wasm');
+        hide();
+      } catch (err) {
+        console.error(err);
+        document.querySelector('#boot p').textContent = 'Failed to load: ' + (err?.message || err);
+      }
+    }
+    boot();
+  </script>
+</body>
+</html>

@@ -35,7 +35,7 @@ pub struct Settings {
     pub shader: u8, // 0 = off, 1 = vanilla+, 2 = cinematic
     /// §17 sun shadows: 0 = off, 1 = 1024px, 2 = 2048px, 3 = 4096px
     pub shadow_quality: u8,
-    /// FSR-lite internal render scale index: 0 = 100%, 1 = 75%, 2 = 50%
+    /// FSR 1.0 internal render scale index: 0 = 100%, 1 = 75%, 2 = 50%
     pub upscale: u8,
     /// frame limiter: 0 = uncapped, else a fps ceiling (30/60/120)
     pub maxfps: u8,
@@ -556,7 +556,7 @@ impl GameApp {
         player.fov = settings.fov.to_radians();
         player.fov_cur = player.fov;
 
-        // apply persisted render scale (FSR-lite) before the first frame
+        // apply persisted render scale (FSR 1.0 EASU) before the first frame
         renderer.set_upscale(settings.upscale_factor());
         // §17: apply persisted shadow quality
         renderer.set_shadow_quality(settings.shadow_map_px());
@@ -1441,7 +1441,7 @@ impl GameApp {
                                 _ => "4K",
                             },
                         ),
-                        ID_OPT_UPSCALE => set_button_value(w, match s.upscale { 1 => "75%", 2 => "50%", _ => "OFF" }),
+                        ID_OPT_UPSCALE => set_button_value(w, match s.upscale { 1 => "75% FSR", 2 => "50% FSR", _ => "OFF" }),
                         ID_OPT_MAXFPS => set_button_value(w, match s.maxfps { 1 => "30", 2 => "60", 3 => "120", _ => "VSYNC" }),
                         ID_OPT_SMOOTH => set_button_value(w, if s.smooth_lighting { "ON" } else { "OFF" }),
                         ID_OPT_CLOUDS => set_button_value(w, if s.clouds { "ON" } else { "OFF" }),
@@ -2836,7 +2836,7 @@ impl GameApp {
                     self.settings.brightness * 100.0
                 ),
                 format!(
-                    "Graphics: {}  Shadows: {}  Upscale: {:.0}%  MaxFPS: {}",
+                    "Graphics: {}  Shadows: {}  FSR1: {}  MaxFPS: {}",
                     ["fast", "fancy", "fabulous"][self.settings.graphics as usize],
                     match self.settings.shadow_quality {
                         0 => "off",
@@ -2844,7 +2844,11 @@ impl GameApp {
                         2 => "2K",
                         _ => "4K",
                     },
-                    self.settings.upscale_factor() * 100.0,
+                    match self.settings.upscale {
+                        0 => "native",
+                        1 => "75% EASU+RCAS",
+                        _ => "50% EASU+RCAS",
+                    },
                     match self.settings.maxfps { 0 => "vsync", 1 => "30", 2 => "60", _ => "120" }
                 ),
                 format!(
@@ -3068,7 +3072,10 @@ impl GameApp {
                 mode: self.settings.shader,
                 menu_blur,
                 shadows: self.settings.shadow_strength(),
-                sharpen: if self.settings.upscale > 0 { 0.35 } else { 0.0 },
+                // FSR 1.0: RCAS lobe factor when the internal scale is below
+                // native (0.6 ≈ FsrRcasCon(~0.7 stops) — sharp without halos;
+                // EASU already reconstructs most of the edge contrast)
+                sharpen: if self.settings.upscale > 0 { 0.6 } else { 0.0 },
             },
             self.settings.clouds && self.settings.graphics >= 1,
             &self.particle_verts,

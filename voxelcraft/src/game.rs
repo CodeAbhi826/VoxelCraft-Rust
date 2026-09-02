@@ -37,6 +37,8 @@ pub struct Settings {
     pub shadow_quality: u8,
     /// FSR 1.0 internal render scale index: 0 = 100%, 1 = 75%, 2 = 50%
     pub upscale: u8,
+    /// §21 music category volume (0..1, master = `volume`)
+    pub music_volume: f32,
     /// frame limiter: 0 = uncapped, else a fps ceiling (30/60/120)
     pub maxfps: u8,
 }
@@ -58,6 +60,7 @@ impl Default for Settings {
             shader: 1,
             shadow_quality: 2,
             upscale: 0,
+            music_volume: 0.6,
             maxfps: 0,
         }
     }
@@ -103,10 +106,11 @@ impl Settings {
     /// serialize as k=v; pairs (parsed without serde)
     pub fn serialize(&self) -> String {
         format!(
-            "rd={};sens={:.3};vol={:.3};fov={:.1};bright={:.3};smooth={};clouds={};graphics={};shader={};shadowq={};upscale={};maxfps={}",
+            "rd={};sens={:.3};vol={:.3};mvol={:.3};fov={:.1};bright={:.3};smooth={};clouds={};graphics={};shader={};shadowq={};upscale={};maxfps={}",
             self.render_distance,
             self.sensitivity,
             self.volume,
+            self.music_volume,
             self.fov,
             self.brightness,
             self.smooth_lighting as u8,
@@ -128,6 +132,7 @@ impl Settings {
                 "rd" => st.render_distance = v.parse().unwrap_or(st.render_distance).clamp(2, 16),
                 "sens" => st.sensitivity = v.parse().unwrap_or(st.sensitivity).clamp(0.1, 2.0),
                 "vol" => st.volume = v.parse().unwrap_or(st.volume).clamp(0.0, 1.0),
+                "mvol" => st.music_volume = v.parse().unwrap_or(st.music_volume).clamp(0.0, 1.0),
                 "fov" => st.fov = v.parse().unwrap_or(st.fov).clamp(30.0, 110.0),
                 "bright" => st.brightness = v.parse().unwrap_or(st.brightness).clamp(0.0, 1.0),
                 "smooth" => st.smooth_lighting = v == "1",
@@ -266,6 +271,17 @@ pub struct GameApp {
     pub ui: UiCanvas,
     pub atlas: Vec<u8>,
     pub bank: SoundBank,
+    /// §21 data-driven sound-event registry (parsed from sounds::SOUNDS_JSON)
+    pub sounds: crate::sounds::SoundRegistry,
+    /// rng for weighted variant picks + pitch rolls + schedulers
+    audio_rng: crate::rng::Rng,
+    /// sounds played this session (stats/E2E)
+    pub sounds_played: u32,
+    /// §21: next game-time a music pad starts (first at ~12 s, then every
+    /// 2.5–4 min; day/night pick the progression)
+    music_next: f32,
+    /// §21: next game-time for the ambient cave-sound roll
+    ambient_next: f32,
     pub audio: Box<dyn AudioBackend>,
     pub settings: Settings,
     work: WorkBackend,
@@ -509,6 +525,12 @@ impl GameApp {
 
         let mut renderer = Renderer::new(window, &atlas).await;
         let bank = SoundBank::generate();
+        let sounds = crate::sounds::SoundRegistry::from_json(crate::sounds::SOUNDS_JSON)
+            .unwrap_or_else(|e| {
+                crate::render::report_boot_log(&format!("sound registry broken: {e}"));
+                // empty registry = silent game rather than a boot failure
+                crate::sounds::SoundRegistry { events: Default::default() }
+            });
         #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
         let mut world = World::new(crate::world::World::random_seed());
         #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
@@ -595,6 +617,11 @@ impl GameApp {
             ui: UiCanvas::new(),
             atlas,
             bank,
+            sounds,
+            audio_rng: crate::rng::Rng::new(0x50_0D_5EED),
+            sounds_played: 0,
+            music_next: 12.0,
+            ambient_next: 4.0,
             audio,
             settings,
             work,
@@ -1182,7 +1209,34 @@ impl GameApp {
     }
 
     fn click_sound(&mut self) {
-        self.audio.play(&self.bank, SoundFamily::Wood, 0.30 * self.settings.volume, 1.62);
+        self.play_event("ui.click", None, 1.0);
+    }
+
+    /// §21: play a sound EVENT through the data-driven registry —
+    /// weighted variant pick, pitch range roll, category gain (master ×
+    /// music), distance attenuation and stereo pan relative to the player.
+    /// `pos` = world position (None = non-positional: UI, music, ambient).
+    fn play_event(&mut self, event: &str, pos: Option<[f32; 3]>, volume_scale: f32) {
+        let listener = self.player.eye().to_array();
+        let yaw = self.player.yaw;
+        let master = self.settings.volume;
+        let music = self.settings.music_volume;
+        let Some(r) = self.sounds.pick(event, &mut self.audio_rng, &self.bank) else {
+            return;
+        };
+        // category gain: music rides its own slider; the other seven
+        // categories default to full (their content volumes already encode
+        // the mix); everything is scaled by the master volume
+        let cat_gain = match r.category {
+            crate::sounds::SoundCategory::Music => music,
+            _ => 1.0,
+        };
+        let (att, pan) = crate::sounds::spatialize(pos, listener, yaw, r.attenuation);
+        let vol = r.volume * volume_scale * att * cat_gain * master;
+        if vol > 0.004 {
+            self.sounds_played += 1;
+            self.audio.play(&self.bank, r.recipe, vol, r.pitch, pan);
+        }
     }
 
     fn unlock_audio(&mut self) {
@@ -1393,6 +1447,7 @@ impl GameApp {
             ID_OPT_RD => self.settings.render_distance = 2 + (t * 14.0).round() as i32,
             ID_OPT_BRIGHT => self.settings.brightness = t,
             ID_OPT_VOL => self.settings.volume = t,
+            ID_OPT_MUSIC => self.settings.music_volume = t,
             _ => {}
         }
         self.after_settings_change();
@@ -1430,6 +1485,9 @@ impl GameApp {
                             set_slider(w, &format!("BRIGHTNESS: {}", label), s.brightness)
                         }
                         ID_OPT_VOL => set_slider(w, &format!("VOLUME: {}%", (s.volume * 100.0).round() as i32), s.volume),
+                        ID_OPT_MUSIC => {
+                            set_slider(w, &format!("MUSIC: {}%", (s.music_volume * 100.0).round() as i32), s.music_volume)
+                        }
                         ID_OPT_SHADER => set_button_value(w, ["OFF", "VANILLA+", "CINEMATIC"][s.shader as usize]),
                         ID_OPT_GRAPHICS => set_button_value(w, match s.graphics { 0 => "FAST", 2 => "FABULOUS!", _ => "FANCY" }),
                         ID_OPT_SHADOWS => set_button_value(
@@ -1608,12 +1666,7 @@ impl GameApp {
                         crate::craft::consume_grid(
                             &mut self.craft_grid[..size * size],
                         );
-                        self.audio.play(
-                            &self.bank,
-                            SoundFamily::Wood,
-                            0.4 * self.settings.volume,
-                            1.3,
-                        );
+                        self.play_event("block.wood.dig", None, 0.8);
                     }
                 }
             }
@@ -1752,6 +1805,12 @@ impl GameApp {
             .spawn_block_break(x, y, z, b, biome, sky, blk);
         self.sim.items.drop_block(x, y, z, b, biome, sky, blk);
         notify_sim(&self.world, &mut self.sim.sched, x, y, z);
+        // §21: the dig event, same as the interactive path
+        self.play_event(
+            crate::sounds::family_event(crate::blocks::def(b).sound, true),
+            Some([x as f32 + 0.5, y as f32 + 0.5, z as f32 + 0.5]),
+            1.0,
+        );
         self.edits += 1;
     }
 
@@ -1818,7 +1877,39 @@ impl GameApp {
                 if leftover == 0 {
                     let toast = name(b);
                     self.item_toast = Some((toast.to_string(), 2.0));
+                    self.play_event("entity.item.pickup", None, 1.0);
                     self.ui.dirty = true;
+                }
+            }
+        }
+
+        // §21 music + ambient scheduling: a procedural pad every 2.5–4 min
+        // (day/night progressions), and cave "eerie" tones when the player
+        // is deep with no skylight. Both ride their own categories.
+        if self.screen == Screen::Game {
+            if self.time >= self.music_next {
+                self.music_next = self.time + 150.0 + self.audio_rng.next_f32() * 90.0;
+                let ev = if self.day_time < 0.55 {
+                    "music.pad.day"
+                } else {
+                    "music.pad.night"
+                };
+                self.play_event(ev, None, 1.0);
+            }
+            if self.time >= self.ambient_next {
+                self.ambient_next = self.time + 8.0;
+                let p = &self.player.pos;
+                if p.y < 45.0 {
+                    let (_, sky, _) = light_at(
+                        &self.world,
+                        &self.light,
+                        p.x.floor() as i32,
+                        p.y.floor() as i32,
+                        p.z.floor() as i32,
+                    );
+                    if sky == 0 && self.audio_rng.next_f32() < 0.12 {
+                        self.play_event("ambient.eerie", None, 1.0);
+                    }
                 }
             }
         }
@@ -2135,7 +2226,10 @@ impl GameApp {
                 true,
             );
             for s in sounds {
-                self.audio.play(&self.bank, s.family, s.volume * self.settings.volume, s.pitch);
+                // footsteps + water-entry: the registry's step/splash events
+                // carry their own volume + pitch ranges (§21)
+                let ev = crate::sounds::family_event(s.family, false);
+                self.play_event(ev, None, 1.0);
             }
 
             // targeting
@@ -2165,11 +2259,10 @@ impl GameApp {
                             pos[0], pos[1], pos[2], broke, biome, sky, blk,
                         );
                         notify_sim(&self.world, &mut self.sim.sched, pos[0], pos[1], pos[2]);
-                        self.audio.play(
-                            &self.bank,
-                            def(b).sound,
-                            0.55 * self.settings.volume,
-                            0.95 + (self.time * 7.13).sin().fract().abs() * 0.15,
+                        self.play_event(
+                            crate::sounds::family_event(def(b).sound, true),
+                            Some([pos[0] as f32 + 0.5, pos[1] as f32 + 0.5, pos[2] as f32 + 0.5]),
+                            1.0,
                         );
                         self.break_timer = 0.24;
                         self.edits += 1;
@@ -2187,7 +2280,11 @@ impl GameApp {
                             tpos[1],
                             tpos[2],
                         );
-                        self.audio.play(&self.bank, SoundFamily::Wood, 0.4 * self.settings.volume, 0.8);
+                        self.play_event(
+                            "block.lever.click",
+                            Some([tpos[0] as f32 + 0.5, tpos[1] as f32 + 0.5, tpos[2] as f32 + 0.5]),
+                            1.0,
+                        );
                         self.place_timer = 0.24;
                     } else if tb == CRAFTING_TABLE {
                         // §27: right-click opens the 3×3 crafting screen
@@ -2259,7 +2356,15 @@ impl GameApp {
                             update_fence_neighbors(&mut self.world, prev[0], prev[1], prev[2]);
                             // §24/§25: a new block notifies the sim
                             notify_sim(&self.world, &mut self.sim.sched, prev[0], prev[1], prev[2]);
-                            self.audio.play(&self.bank, def(b).sound, 0.55 * self.settings.volume, 1.15);
+                            self.play_event(
+                                crate::sounds::family_event(def(b).sound, true),
+                                Some([
+                                    prev[0] as f32 + 0.5,
+                                    prev[1] as f32 + 0.5,
+                                    prev[2] as f32 + 0.5,
+                                ]),
+                                1.0,
+                            );
                             // survival placement: the stack depletes
                             let held = self.player.held_mut();
                             held.count -= 1;
@@ -2441,6 +2546,7 @@ impl GameApp {
             ("items", StatsVal::F(self.sim.items.len() as f32)),
             ("itemsDropped", StatsVal::F(self.sim.items.dropped_total as f32)),
             ("itemsPicked", StatsVal::F(self.sim.items.picked_total as f32)),
+            ("sounds", StatsVal::F(self.sounds_played as f32)),
             ("fwd", StatsVal::B(self.input.fwd)),
             ("back", StatsVal::B(self.input.back)),
             ("left", StatsVal::B(self.input.left)),

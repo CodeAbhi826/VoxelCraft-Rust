@@ -70,6 +70,7 @@ web-sys = { version = "0.3", features = [
     "AudioParam",
     "GainNode",
     "AudioDestinationNode",
+    "StereoPannerNode",
     "Performance",
     "console",
     "Response",

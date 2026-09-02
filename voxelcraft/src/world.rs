@@ -11,6 +11,65 @@ use std::sync::Arc;
 
 pub type ChunkPos = (i32, i32);
 
+/// §28 world family: which dimension a World generates. Each dimension
+/// derives its own generator instance from the shared world seed (the
+/// vanilla pattern: same seed, per-dimension generators), so chunk content
+/// is independent per dimension and deterministic.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Dimension {
+    Overworld = 0,
+    /// the Nether: 8:1 coordinate scale, caverns, no skylight
+    Nether = 1,
+}
+
+impl Dimension {
+    /// registry-style identifier (F3 parity: "minecraft:overworld")
+    pub fn id(self) -> &'static str {
+        match self {
+            Dimension::Overworld => "overworld",
+            Dimension::Nether => "the_nether",
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Dimension::Overworld => "Overworld",
+            Dimension::Nether => "Nether",
+        }
+    }
+
+    pub fn from_u8(v: u8) -> Dimension {
+        if v == 1 { Dimension::Nether } else { Dimension::Overworld }
+    }
+
+    /// horizontal block-per-block scale of this dimension relative to the
+    /// overworld (vanilla nether travel: 8 overworld blocks = 1 nether block)
+    pub fn coord_scale(self) -> i32 {
+        match self {
+            Dimension::Overworld => 1,
+            Dimension::Nether => 8,
+        }
+    }
+
+    /// seed salt mixed into the per-dimension generator seed
+    pub fn seed_salt(self) -> u64 {
+        match self {
+            Dimension::Overworld => 0,
+            Dimension::Nether => 0x1DE1_1E77_0D1D_1234,
+        }
+    }
+
+    /// map a horizontal position from `self` into `other` (travel scaling)
+    pub fn map_coords(self, other: Dimension, x: i32, z: i32) -> (i32, i32) {
+        let from = self.coord_scale();
+        let to = other.coord_scale();
+        // x is in `self` units; convert to shared units then to `other`
+        let shared = x as i64 * from as i64;
+        let out = shared / to as i64;
+        (out as i32, (z as i64 * from as i64 / to as i64) as i32)
+    }
+}
+
 /// Block ids that may be overwritten by decorations.
 #[inline]
 fn replaceable(cur: u8) -> bool {
@@ -32,6 +91,9 @@ fn is_transparent_class(b: u8) -> bool {
 
 pub struct World {
     pub seed: u64,
+    /// §28: which dimension this world generates/stores — travel swaps the
+    /// whole World (fresh generator + chunk maps), vanilla-style
+    pub dimension: Dimension,
     pub gen: TerrainGen,
     pub chunks: HashMap<ChunkPos, Arc<Chunk>>,
     /// persistent per-chunk light (Phase 4 §18): sky + block channels,
@@ -53,10 +115,18 @@ pub struct World {
 }
 
 impl World {
+    /// overworld world (back-compatible)
     pub fn new(seed: u64) -> Self {
+        World::new_in_dimension(seed, Dimension::Overworld)
+    }
+
+    /// §28: world in a specific dimension — the generator seed derives from
+    /// the shared world seed + the dimension salt
+    pub fn new_in_dimension(seed: u64, dim: Dimension) -> Self {
         World {
             seed,
-            gen: TerrainGen::new(seed),
+            dimension: dim,
+            gen: TerrainGen::for_dimension(seed, dim),
             chunks: HashMap::new(),
             light: HashMap::new(),
             decorated: HashSet::new(),
@@ -362,7 +432,10 @@ impl World {
     }
 
     pub fn find_spawn(&self) -> (f32, f32, f32) {
-        self.gen.find_spawn()
+        match self.dimension {
+            Dimension::Overworld => self.gen.find_spawn(),
+            Dimension::Nether => self.gen.find_nether_spawn(),
+        }
     }
 
     /// Random seed for this world.
@@ -510,6 +583,77 @@ mod phase3_tests {
         assert!(!w.dirty.contains_key(&(0, 0)));
         assert!(!w.dirty_causes.contains_key(&(0, 0)));
     }
+}
 
+#[cfg(test)]
+mod dimension_tests {
+    use super::*;
 
+    /// §28: dimension construction — same world seed, dimension-salted
+    /// generators, distinct chunk content
+    #[test]
+    fn dimension_construction() {
+        let seed = 0xAB12_CD34;
+        let a = World::new(seed);
+        let b = World::new_in_dimension(seed, Dimension::Nether);
+        assert_eq!(a.dimension, Dimension::Overworld);
+        assert_eq!(b.dimension, Dimension::Nether);
+        assert_eq!(a.seed, b.seed, "the world seed is shared across dimensions");
+        // the generators derive different seeds
+        assert_ne!(a.gen.seed, b.gen.seed);
+        // and generate different terrain at the same chunk: thousands of
+        // cells differ AND the nether's bedrock roof (y=127) contrasts with
+        // the overworld's open sky — unambiguous even before counting
+        let (ca, _) = a.gen.generate_chunk(0, 0, Vec::new());
+        let (cb, _) = b.gen.generate_chunk(0, 0, Vec::new());
+        let mut diff = 0usize;
+        for i in 0..crate::chunk::CHUNK_LEN {
+            if ca.get_idx(i) != cb.get_idx(i) {
+                diff += 1;
+            }
+        }
+        assert!(
+            diff > 8_000,
+            "dimensions must generate different terrain (diff={diff})"
+        );
+        for z in 0..16usize {
+            for x in 0..16usize {
+                let i = (127 << 8) | (z << 4) | x;
+                assert_ne!(
+                    ca.get_idx(i),
+                    cb.get_idx(i),
+                    "y=127: nether roof (bedrock) vs overworld sky"
+                );
+            }
+        }
+    }
+
+    /// §28: the vanilla 8:1 coordinate rule both ways
+    #[test]
+    fn coordinate_mapping_8_to_1() {
+        use Dimension::{Nether, Overworld};
+        // overworld → nether divides by 8
+        assert_eq!(Overworld.map_coords(Nether, 800, -1600), (100, -200));
+        // nether → overworld multiplies by 8
+        assert_eq!(Nether.map_coords(Overworld, 100, -200), (800, -1600));
+        // rounding: not-multiples floor toward zero on the shared axis
+        let (x, _) = Overworld.map_coords(Nether, 805, 0);
+        assert_eq!(x, 100);
+        // self-mapping is identity
+        assert_eq!(Overworld.map_coords(Overworld, 123, -45), (123, -45));
+        assert_eq!(Nether.map_coords(Nether, 123, -45), (123, -45));
+    }
+
+    /// §28: overworld worlds keep the legacy constructor behavior (same
+    /// terrain as TerrainGen::new)
+    #[test]
+    fn overworld_new_matches_legacy_gen() {
+        let w = World::new(777);
+        let legacy = TerrainGen::new(777);
+        let (a, _) = w.gen.generate_chunk(2, -3, Vec::new());
+        let (b, _) = legacy.generate_chunk(2, -3, Vec::new());
+        for i in 0..crate::chunk::CHUNK_LEN {
+            assert_eq!(a.get_idx(i), b.get_idx(i));
+        }
+    }
 }

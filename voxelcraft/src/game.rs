@@ -205,7 +205,7 @@ const SPLASHES: [&str; 14] = [
 // ------------------------------------------------------------------ jobs --
 
 enum Job {
-    Gen { pos: ChunkPos, seed: u64, inbound: Vec<(u16, u8)> },
+    Gen { pos: ChunkPos, seed: u64, dim: crate::world::Dimension, inbound: Vec<(u16, u8)> },
     Mesh {
         pos: ChunkPos,
         snap: [Option<Arc<crate::chunk::Chunk>>; 9],
@@ -233,8 +233,8 @@ enum JobResult {
 
 fn run_job(job: Job) -> JobResult {
     match job {
-        Job::Gen { pos, seed, inbound } => {
-            let gen = crate::gen::TerrainGen::new(seed);
+        Job::Gen { pos, seed, dim, inbound } => {
+            let gen = crate::gen::TerrainGen::for_dimension(seed, dim);
             let (chunk, outbound) = gen.generate_chunk(pos.0, pos.1, inbound);
             JobResult::Gen { pos, chunk, outbound }
         }
@@ -368,9 +368,15 @@ pub struct GameApp {
     shader_packs: Vec<crate::shaders::ShaderPack>,
     /// pack-driven animated textures (frame updates only, no re-mesh)
     animations: Vec<crate::textures::AnimatedTile>,
+    /// §28: root save dir (world root); `world_dir` is the CURRENT
+    /// dimension's dir (overworld = root, nether = DIM-1)
+    #[cfg(not(target_arch = "wasm32"))]
+    save_root: std::path::PathBuf,
     /// world save directory (native, §28 — browsers get OPFS later)
     #[cfg(not(target_arch = "wasm32"))]
     world_dir: std::path::PathBuf,
+    /// §28: a dimension travel is waiting for the spawn chunk (Loading)
+    traveling: bool,
     /// persisted spawn point (level.dat SpawnX/Y/Z)
     #[cfg(not(target_arch = "wasm32"))]
     level_spawn: (i32, i32, i32),
@@ -543,13 +549,20 @@ impl GameApp {
         let mut player = Player::new(Vec3::new(spawn.0, spawn.1 + 20.0, spawn.2));
 
         // native: restore a persisted world (seed, spawn, player) if one
-        // exists in the save dir (§28) — otherwise a fresh random world
+        // exists in the save dir (§28) — otherwise a fresh random world.
+        // §28: the overworld saves at the world root (boot always starts
+        // there, like vanilla); the nether dir is derived on travel.
         #[cfg(not(target_arch = "wasm32"))]
-        let world_dir = crate::save::default_world_dir();
+        let save_root = crate::save::default_world_dir();
+        #[cfg(not(target_arch = "wasm32"))]
+        let world_dir = crate::save::dimension_dir(
+            &save_root,
+            crate::world::Dimension::Overworld,
+        );
         #[cfg(not(target_arch = "wasm32"))]
         let mut level_spawn = (spawn.0 as i32, spawn.1 as i32, spawn.2 as i32);
         #[cfg(not(target_arch = "wasm32"))]
-        if let Ok(Some(meta)) = crate::save::read_level_dat(&world_dir) {
+        if let Ok(Some(meta)) = crate::save::read_level_dat(&save_root) {
             world = World::new(meta.seed);
             spawn = world.find_spawn();
             level_spawn = meta.spawn;
@@ -705,7 +718,10 @@ impl GameApp {
             bench_spawn: spawn.into(),
             animations,
             #[cfg(not(target_arch = "wasm32"))]
+            save_root,
+            #[cfg(not(target_arch = "wasm32"))]
             world_dir,
+            traveling: false,
             #[cfg(not(target_arch = "wasm32"))]
             level_spawn,
             #[cfg(not(target_arch = "wasm32"))]
@@ -2238,6 +2254,28 @@ impl GameApp {
                             ));
                         }
                     }
+                    Some("dim") => {
+                        // §28 E2E: dim:<0|1> — dimension travel through the
+                        // full pipeline (world swap, 8:1 coords, mesh reset,
+                        // Loading snap); stats `dim`/`dimName` + the nether
+                        // fog verify it. Travel lands asynchronously — the
+                        // Loading screen holds the player until the spawn
+                        // chunk meshes, then returns to the game.
+                        if let Some(v) = parts.get(1).and_then(|s| s.parse::<u8>().ok()) {
+                            let dim = crate::world::Dimension::from_u8(v);
+                            let changed = dim != self.world.dimension;
+                            if changed {
+                                self.travel_to_dimension(dim);
+                            }
+                            crate::render::report_boot_log(&format!(
+                                "e2e: dim {} ({}) changed={} traveling={}",
+                                dim.id(),
+                                dim.name(),
+                                changed,
+                                self.traveling
+                            ));
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -2248,13 +2286,28 @@ impl GameApp {
             let pc = self.player_chunk();
             if self.renderer.has_chunk(pc) {
                 if !self.spawn_snapped {
-                    let lx = (self.player.pos.x - pc.0 as f32 * 16.0).floor() as usize;
-                    let lz = (self.player.pos.z - pc.1 as f32 * 16.0).floor() as usize;
+                    let lx = (self.player.pos.x - pc.0 as f32 * 16.0).floor().clamp(0.0, 15.0) as usize;
+                    let lz = (self.player.pos.z - pc.1 as f32 * 16.0).floor().clamp(0.0, 15.0) as usize;
                     if let Some(c) = self.world.chunk(pc) {
-                        let top = c.top_solid_y(lx.min(15), lz.min(15));
-                        if top >= 0 {
-                            self.player.pos.y = top as f32 + 1.0;
+                        // §28: the snap depends on the dimension — the
+                        // overworld snaps to the topmost solid block; the
+                        // nether needs a CAVERN floor (top_solid_y there is
+                        // the bedrock roof). Travel keeps flying on until a
+                        // spot exists so the player never spawns inside rock.
+                        let snap = if self.world.dimension == crate::world::Dimension::Nether {
+                            self.nether_floor_y(c, lx.min(15), lz.min(15))
+                        } else {
+                            let t = c.top_solid_y(lx.min(15), lz.min(15));
+                            if t >= 0 { Some(t + 1) } else { None }
+                        };
+                        if let Some(y) = snap {
+                            self.player.pos.y = y as f32;
                             self.player.flying = false;
+                        } else if self.traveling {
+                            // no open floor in this column — arrive flying so
+                            // the player glides to a cavern instead of being
+                            // embedded in netherrack
+                            self.player.flying = true;
                         }
                     }
                     self.spawn_snapped = true;
@@ -2271,7 +2324,9 @@ impl GameApp {
                     count >= 5 && self.mesh_near_count(pc) > 4
                 };
                 if ready || self.time - self.load_start > 15.0 {
-                    self.set_screen(Screen::Title);
+                    // boot → title screen; §28 travel → straight back to play
+                    self.set_screen(if self.traveling { Screen::Game } else { Screen::Title });
+                    self.traveling = false;
                 }
             }
         }
@@ -2556,6 +2611,103 @@ impl GameApp {
         }
     }
 
+    /// §28 dimension travel (P7): swap the entire world for a fresh one in
+    /// the target dimension — same seed, dimension-salted generator — and
+    /// reset every dimension-local system:
+    ///
+    /// * player position follows the vanilla 8:1 coordinate rule
+    ///   (overworld → nether divides by 8; nether → overworld multiplies);
+    ///   the exact landing spot is refined when the spawn chunk arrives
+    ///   (the Loading snap), like vanilla's portal search
+    /// * GPU meshes, section-mesh caches, generation/mesh queues, light
+    ///   engine, sim (block entities never cross dimensions), particles,
+    ///   open containers are all reset
+    /// * the inventory travels with the player (vanilla behavior)
+    /// * native: the outgoing dimension's dirty chunks flush to its own
+    ///   save dir first (overworld = world root, nether = DIM-1)
+    pub fn travel_to_dimension(&mut self, dim: crate::world::Dimension) {
+        if dim == self.world.dimension {
+            return;
+        }
+        // native: flush the outgoing dimension before swapping the dir
+        #[cfg(not(target_arch = "wasm32"))]
+        if self.bench.is_none() {
+            self.save_world();
+        }
+
+        // 8:1 horizontal mapping (vanilla nether portals)
+        let cur = self.world.dimension;
+        let (nx, nz) = cur.map_coords(dim, self.player.pos.x.floor() as i32, self.player.pos.z.floor() as i32);
+
+        // fresh world in the target dimension
+        self.world = World::new_in_dimension(self.world.seed, dim);
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.world_dir = crate::save::dimension_dir(&self.save_root, dim);
+        }
+
+        // reset every dimension-local system
+        self.renderer.clear_meshes();
+        self.section_meshes.clear();
+        self.mesh_inflight.clear();
+        self.gen_inflight.clear();
+        self.light = crate::light::LightEngine::new();
+        self.sim = crate::sim::Sim::new(self.world.seed ^ dim.seed_salt());
+        self.particles = crate::particles::ParticleSystem::new(self.world.seed ^ 0x7EED);
+        self.particle_verts.clear();
+        self.container = None;
+        self.container_geom = None;
+        self.cursor_stack = crate::inventory::ItemStack::EMPTY;
+        self.craft_grid = [crate::inventory::ItemStack::EMPTY; 9];
+        self.target = None;
+        self.break_timer = 0.0;
+        self.place_timer = 0.0;
+
+        // player: inventory persists, position rescales; y waits for the snap
+        let y = if dim == crate::world::Dimension::Nether { 90.0 } else { 120.0 };
+        self.player.pos = Vec3::new(nx as f32 + 0.5, y, nz as f32 + 0.5);
+        self.player.vel = Vec3::ZERO;
+        self.player.flying = false;
+
+        // wait for the spawn chunk through the Loading screen (vanilla shows
+        // a loading screen on travel too), then return to the game
+        self.traveling = true;
+        self.spawn_snapped = false;
+        self.load_start = self.time;
+        self.set_screen(Screen::Loading);
+        crate::render::report_boot_log(&format!(
+            "dimension travel: {} -> {} (coords {},{})",
+            cur.id(),
+            dim.id(),
+            nx,
+            nz
+        ));
+    }
+
+    /// §28: nether floor search for the travel snap — a cavern cell with a
+    /// solid floor and 2 blocks of headroom, nearest to the target height.
+    /// (top_solid_y is wrong in the nether: the bedrock ROOF is the top.)
+    fn nether_floor_y(&self, chunk: &crate::chunk::Chunk, lx: usize, lz: usize) -> Option<i32> {
+        use crate::blocks::{is_solid, state_block};
+        let target = self.player.pos.y;
+        let mut best: Option<i32> = None;
+        let mut best_dist = f32::MAX;
+        for y in 6..120usize {
+            let feet = state_block(chunk.get(lx, y, lz) as u16);
+            let head = state_block(chunk.get(lx, y + 1, lz) as u16);
+            let floor = state_block(chunk.get(lx, y - 1, lz) as u16);
+            if !is_solid(floor) || is_solid(feet) || is_solid(head) {
+                continue;
+            }
+            let d = (y as f32 - target).abs();
+            if d < best_dist {
+                best_dist = d;
+                best = Some(y as i32);
+            }
+        }
+        best
+    }
+
     #[cfg(target_arch = "wasm32")]
     fn publish_stats(&self) {
         use crate::web_input::{publish_stats, StatsVal};
@@ -2576,6 +2728,10 @@ impl GameApp {
             ("drawCalls", StatsVal::F(self.stats.draws as f32)),
             ("bufferBinds", StatsVal::F(self.stats.binds as f32)),
             ("drawPath", StatsVal::S(self.renderer.draw_path_name().into())),
+            // §28: current dimension (0 = overworld, 1 = nether) + name
+            ("dim", StatsVal::F(self.world.dimension as u8 as f32)),
+            ("dimName", StatsVal::S(self.world.dimension.id().into())),
+            ("traveling", StatsVal::B(self.traveling)),
             ("shaderMode", StatsVal::F(self.settings.shader as f32)),
             (
                 "shaderPack",
@@ -2761,7 +2917,7 @@ impl GameApp {
             }
             let inbound = self.world.take_pending(pos);
             self.gen_inflight.insert(pos);
-            let job = Job::Gen { pos, seed: self.world.seed, inbound };
+            let job = Job::Gen { pos, seed: self.world.seed, dim: self.world.dimension, inbound };
             self.submit(job);
         }
 
@@ -2999,7 +3155,7 @@ impl GameApp {
                 format!("Chunk: {} {}  Facing: {}  Light: sky {}",
                     pc.0, pc.1, facing,
                     "-"),
-                format!("Biome: {}", biome),
+                format!("Biome: {}  Dimension: {}", biome, self.world.dimension.id()),
                 format!(
                     "Day cycle: {:.0}%  Fly: {}",
                     self.day_time * 100.0,
@@ -3150,26 +3306,41 @@ impl GameApp {
                 self.screen
             ));
         }
-        // day/night state
-        let theta = self.day_time * std::f32::consts::TAU;
-        let sun_dir = Vec3::new(theta.cos() * 0.85, theta.sin(), -0.4).normalize();
-        let day_light = 0.16 + 0.84 * smoothstep(-0.10, 0.14, sun_dir.y);
-
-        let sunset = (1.0 - (sun_dir.y * 4.0).abs()).clamp(0.0, 1.0) * (day_light.clamp(0.2, 0.8) - 0.2) / 0.6;
-        let day_fog = [0.75, 0.85, 1.0];
-        let night_fog = [0.02, 0.03, 0.07];
-        let mut fog = [
-            day_fog[0] * day_light + night_fog[0] * (1.0 - day_light),
-            day_fog[1] * day_light + night_fog[1] * (1.0 - day_light),
-            day_fog[2] * day_light + night_fog[2] * (1.0 - day_light),
-        ];
-        fog[0] += 0.65 * sunset;
-        fog[1] += 0.22 * sunset;
-        fog[2] -= 0.02 * sunset;
+        // day/night state — §28: the Nether has no sky: constant dim
+        // ambient (vanilla's flat nether light), thick dark-red fog close
+        // in, no sun/shadows/clouds (the skyless flag drops the sky pass)
+        let nether = self.world.dimension == crate::world::Dimension::Nether;
+        let (sun_dir, day_light, fog) = if nether {
+            (
+                Vec3::new(0.0, 1.0, 0.0), // cosmetic only — skyless
+                0.30,
+                [0.16, 0.02, 0.02],
+            )
+        } else {
+            let theta = self.day_time * std::f32::consts::TAU;
+            let sun_dir = Vec3::new(theta.cos() * 0.85, theta.sin(), -0.4).normalize();
+            let day_light = 0.16 + 0.84 * smoothstep(-0.10, 0.14, sun_dir.y);
+            let sunset = (1.0 - (sun_dir.y * 4.0).abs()).clamp(0.0, 1.0)
+                * (day_light.clamp(0.2, 0.8) - 0.2) / 0.6;
+            let day_fog = [0.75, 0.85, 1.0];
+            let night_fog = [0.02, 0.03, 0.07];
+            let mut fog = [
+                day_fog[0] * day_light + night_fog[0] * (1.0 - day_light),
+                day_fog[1] * day_light + night_fog[1] * (1.0 - day_light),
+                day_fog[2] * day_light + night_fog[2] * (1.0 - day_light),
+            ];
+            fog[0] += 0.65 * sunset;
+            fog[1] += 0.22 * sunset;
+            fog[2] -= 0.02 * sunset;
+            (sun_dir, day_light, fog)
+        };
 
         let rd = self.settings.render_distance;
         let (fog_start, fog_end, fog_col) = if self.player.head_in_water && self.screen == Screen::Game {
             (2.0, 28.0, [0.11, 0.22, 0.45])
+        } else if nether {
+            // thick nether fog well inside any render distance
+            (8.0, 44.0, fog)
         } else {
             let end = (rd * 16 - 12) as f32;
             (end * 0.55, end, fog)
@@ -3234,6 +3405,9 @@ impl GameApp {
             time: self.time,
             underwater: self.player.head_in_water && self.screen == Screen::Game,
             min_light: 0.05 + self.settings.brightness * 0.25,
+            // §28: no sky pass in the Nether — the fog-colored clear is the
+            // whole "sky" (dark red haze, no sun, no gradient)
+            skyless: nether,
         };
 
         // particle billboards: camera basis from the active camera (game
@@ -3270,13 +3444,14 @@ impl GameApp {
             &crate::render::PostParams {
                 mode: self.settings.shader,
                 menu_blur,
-                shadows: self.settings.shadow_strength(),
+                // §28: the Nether has no sun — no shadow pass
+                shadows: if nether { 0.0 } else { self.settings.shadow_strength() },
                 // FSR 1.0: RCAS lobe factor when the internal scale is below
                 // native (0.6 ≈ FsrRcasCon(~0.7 stops) — sharp without halos;
                 // EASU already reconstructs most of the edge contrast)
                 sharpen: if self.settings.upscale > 0 { 0.6 } else { 0.0 },
             },
-            self.settings.clouds && self.settings.graphics >= 1,
+            self.settings.clouds && self.settings.graphics >= 1 && !nether,
             &self.particle_verts,
         );
         self.phases

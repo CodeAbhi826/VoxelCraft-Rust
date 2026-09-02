@@ -47,7 +47,8 @@ fn rgb(hex: u32) -> [f32; 3] {
     ]
 }
 
-/// grass colormap color per biome (vanilla 1.16.5)
+/// grass colormap color per biome (vanilla 1.16.5; §28 Nether Wastes has
+/// no grass — a defensive reddish-olive for player-placed grass blocks)
 #[inline]
 pub fn grass_color(biome: u8) -> [f32; 3] {
     match biome {
@@ -58,6 +59,7 @@ pub fn grass_color(biome: u8) -> [f32; 3] {
         4 => rgb(0xBFB755), // Desert
         5 => rgb(0x80B497), // Snowy Taiga
         6 => rgb(0x8AB689), // Mountains
+        7 => rgb(0x77624B), // Nether Wastes (§28)
         _ => rgb(0x91BD59), // default
     }
 }
@@ -73,11 +75,13 @@ pub fn foliage_color(biome: u8) -> [f32; 3] {
         4 => rgb(0xAEA42),  // Desert
         5 => rgb(0x60A17B), // Snowy Taiga
         6 => rgb(0x6B9959), // Mountains
+        7 => rgb(0x6B5442), // Nether Wastes (§28)
         _ => rgb(0x77AB2F),
     }
 }
 
-/// water color per biome (1.16 biome-effect water tint)
+/// water color per biome (1.16 biome-effect water tint; the Nether's is
+/// a muddy dark brown for the rare placed water)
 #[inline]
 pub fn water_color(biome: u8) -> [f32; 3] {
     match biome {
@@ -88,6 +92,7 @@ pub fn water_color(biome: u8) -> [f32; 3] {
         4 => rgb(0x32A598), // Desert
         5 => rgb(0x205E83), // Snowy Taiga
         6 => rgb(0x45765E), // Mountains
+        7 => rgb(0x4A2B18), // Nether Wastes (§28)
         _ => rgb(0x3F76E4),
     }
 }
@@ -111,7 +116,7 @@ pub fn lut_rgba() -> Vec<u8> {
         data[idx + 2] = (hex & 0xFF) as u8;
         data[idx + 3] = 255;
     };
-    for b in 0u8..7 {
+    for b in 0u8..8 {
         let g = grass_color(b);
         let f = foliage_color(b);
         let w = water_color(b);

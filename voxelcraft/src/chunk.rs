@@ -365,10 +365,13 @@ impl Chunk {
 
     /// copy-on-write at SECTION granularity: `Arc::make_mut` clones only the
     /// affected section (~2.5 KiB) when the chunk is shared with in-flight
-    /// mesh jobs
+    /// mesh jobs. The u8 BLOCK id routes through `default_state` so blocks
+    /// whose identity STATE slot belongs to another system (log axes 57..62,
+    /// model states, sim states, nether states) never collide — this is the
+    /// generator-side guarantee (villages once placed furnaces as slabs).
     #[inline]
     pub fn set(&mut self, x: usize, y: usize, z: usize, id: u8) {
-        self.set_state(x, y, z, id as u16);
+        self.set_state(x, y, z, crate::blocks::default_state(id));
     }
 
     /// store a raw BLOCK-STATE id (property variants, e.g. log[axis=x])
@@ -404,7 +407,9 @@ impl Chunk {
 
     /// Topmost solid block y (for spawn placement). -1 if none.
     /// Skips empty sections top-down (the flat-array scan cost ~256 gets;
-    /// this is ≤16 section probes + one 16-block column).
+    /// this is ≤16 section probes + one 16-block column). States are FOLDED
+    /// to their owning block first — a fence/sim state stored above would
+    /// otherwise index the block table with a raw state id.
     pub fn top_solid_y(&self, x: usize, z: usize) -> i32 {
         for sy in (0..SECTION_COUNT).rev() {
             if let Some(s) = &self.sections[sy] {
@@ -412,7 +417,7 @@ impl Chunk {
                     continue;
                 }
                 for y in (0..16usize).rev() {
-                    if crate::blocks::is_solid(s.get(x, y, z) as u8) {
+                    if crate::blocks::is_solid(crate::blocks::state_block(s.get(x, y, z))) {
                         return (sy * 16 + y) as i32;
                     }
                 }

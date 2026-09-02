@@ -4,6 +4,7 @@
 use crate::blocks::*;
 use crate::chunk::{Chunk, CHUNK_LEN};
 use crate::rng::Rng;
+use crate::world::Dimension;
 use std::sync::Arc;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -15,6 +16,8 @@ pub enum Biome {
     Desert = 4,
     Snowy = 5,
     Mountains = 6,
+    /// §26/§28: the Nether's single biome (chunk biome u8 = 7)
+    NetherWastes = 7,
 }
 
 impl Biome {
@@ -27,6 +30,7 @@ impl Biome {
             Biome::Desert => "Desert",
             Biome::Snowy => "Snowy Taiga",
             Biome::Mountains => "Mountains",
+            Biome::NetherWastes => "Nether Wastes",
         }
     }
 
@@ -38,6 +42,7 @@ impl Biome {
             4 => Biome::Desert,
             5 => Biome::Snowy,
             6 => Biome::Mountains,
+            7 => Biome::NetherWastes,
             _ => Biome::Ocean,
         }
     }
@@ -249,6 +254,8 @@ struct HouseSite {
 
 pub struct TerrainGen {
     pub seed: u64,
+    /// §28: which dimension this generator produces
+    pub dim: Dimension,
     n_cont: Noise,
     n_mfac: Noise,
     n_ridge: Noise,
@@ -258,12 +265,26 @@ pub struct TerrainGen {
     n_cave1: Noise,
     n_cave2: Noise,
     n_cave3: Noise,
+    /// §28 nether: cavern pair (bigger scale than overworld caves)
+    n_neth1: Noise,
+    n_neth2: Noise,
+    /// §28 nether: wall density variation so caverns aren't uniform
+    n_neth3: Noise,
 }
 
 impl TerrainGen {
+    /// overworld generator (back-compatible)
     pub fn new(seed: u64) -> Self {
+        TerrainGen::for_dimension(seed, Dimension::Overworld)
+    }
+
+    /// §28: per-dimension generator — the world seed is salted per
+    /// dimension (same seed, independent generators, vanilla pattern)
+    pub fn for_dimension(seed: u64, dim: Dimension) -> Self {
+        let seed = seed ^ dim.seed_salt();
         TerrainGen {
             seed,
+            dim,
             n_cont: Noise::new(seed ^ 0x1000),
             n_mfac: Noise::new(seed ^ 0x2000),
             n_ridge: Noise::new(seed ^ 0x3000),
@@ -273,6 +294,9 @@ impl TerrainGen {
             n_cave1: Noise::new(seed ^ 0x7000),
             n_cave2: Noise::new(seed ^ 0x8000),
             n_cave3: Noise::new(seed ^ 0x9000),
+            n_neth1: Noise::new(seed ^ 0xA100),
+            n_neth2: Noise::new(seed ^ 0xA200),
+            n_neth3: Noise::new(seed ^ 0xA300),
         }
     }
 
@@ -380,9 +404,23 @@ impl TerrainGen {
         }
     }
 
-    /// Generate one chunk column. Pure: returns chunk + edits for neighbors
-    /// (tree canopies crossing chunk borders).
+    /// Generate one chunk column (dimension-dispatched). Pure: returns
+    /// chunk + edits for neighbors (tree canopies crossing chunk borders).
     pub fn generate_chunk(
+        &self,
+        cx: i32,
+        cz: i32,
+        inbound: Vec<(u16, u8)>, // (block idx, id) edits queued from neighbors
+    ) -> (Arc<Chunk>, Vec<(i32, i32, i32, u8)>) {
+        match self.dim {
+            Dimension::Overworld => self.generate_overworld_chunk(cx, cz, inbound),
+            Dimension::Nether => self.generate_nether_chunk(cx, cz, inbound),
+        }
+    }
+
+    /// The overworld generator: terrain columns, caves, ores, vegetation,
+    /// villages. §26/§48 Phase 7.
+    fn generate_overworld_chunk(
         &self,
         cx: i32,
         cz: i32,
@@ -707,6 +745,211 @@ impl TerrainGen {
         (Arc::new(chunk), outbound)
     }
 
+    // ------------------------------------------------------------ nether --
+    // §26/§28: the Nether generator (our own implementation, 1.16.5's
+    // Nether-Wastes *character*): a solid netherrack mass 0..127 between a
+    // jittered bedrock floor and bedrock ceiling, carved by two big 3D
+    // noise fields into vast caverns; quartz ore veins in the rock, soul
+    // sand patches on cavern floors, glowstone clusters on cavern ceilings.
+    // The opaque bedrock ceiling zeroes skylight for everything below —
+    // exactly the vanilla "no sky light in the nether" rule, achieved
+    // through the same column scan the light engine already runs.
+    fn generate_nether_chunk(
+        &self,
+        cx: i32,
+        cz: i32,
+        inbound: Vec<(u16, u8)>,
+    ) -> (Arc<Chunk>, Vec<(i32, i32, i32, u8)>) {
+        let mut chunk = Chunk::empty();
+        let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x0D1D, cx, 0, cz));
+        // the nether has no cross-chunk decorations (structures are
+        // strictly in-chunk) → outbound stays empty
+        let outbound: Vec<(i32, i32, i32, u8)> = Vec::new();
+
+        // bedrock shell thickness (floor 1..5, ceiling 1..5, jittered)
+        let floor_bed = |wx: i32, wz: i32| -> i32 {
+            (Rng::hash3(self.seed ^ 0xF10D, wx, 0, wz) % 4) as i32 // 0..3
+        };
+        let ceil_bed = |wx: i32, wz: i32| -> i32 {
+            (Rng::hash3(self.seed ^ 0xCE11, wx, 0, wz) % 4) as i32 // 0..3
+        };
+
+        let mut nether = vec![false; 16 * 16 * 128]; // solid-cell scratch (y<128)
+
+        for z in 0..16usize {
+            for x in 0..16usize {
+                let wx = cx * 16 + x as i32;
+                let wz = cz * 16 + z as i32;
+                let col_idx = z * 16 + x;
+                chunk.biome[col_idx] = Biome::NetherWastes as u8;
+                let fb = 1 + floor_bed(wx, wz);
+                let cb = 127 - ceil_bed(wx, wz);
+                chunk.height[col_idx] = 127; // highest opaque = the bedrock roof
+
+                for y in 1..=126i32 {
+                    let solid = if y < fb || y > cb {
+                        // near the shell: always rock (blend into bedrock)
+                        true
+                    } else {
+                        // carve: intersection of two 3D "sheets" (like the
+                        // overworld spaghetti caves, scaled up ~2.2x) → the
+                        // big interconnected caverns; n_neth3 biases whole
+                        // regions rockier or hollower so caverns vary
+                        let xf = wx as f32;
+                        let yf = y as f32;
+                        let zf = wz as f32;
+                        let n1 = self.n_neth1.noise3(xf / 150.0, yf / 70.0, zf / 150.0);
+                        let n2 = self.n_neth2.noise3((xf + 800.0) / 150.0, yf / 70.0, (zf - 800.0) / 150.0);
+                        let bias = self.n_neth3.noise3(xf / 300.0, yf / 110.0, zf / 300.0);
+                        // carve where the two fields both approach 0 AND the
+                        // regional bias leans hollow. Base ~0.055 keeps the
+                        // mass dominant (~70% rock); the ±0.09 swing gives
+                        // rocky vs hollower regions; the mid-height band
+                        // stays a bit more open (vanilla's cavern band)
+                        let r = n1 * n1 + n2 * n2;
+                        let t = 0.055 + bias * 0.09 + 0.025 * (1.0 - (y - 70).abs() as f32 / 90.0);
+                        r < t.max(0.012)
+                    };
+                    if solid {
+                        nether[(y * 256 + z as i32 * 16 + x as i32) as usize] = true;
+                    }
+                }
+            }
+        }
+
+        // materialize: bedrock shell + netherrack (with quartz ore) cells
+        for z in 0..16usize {
+            for x in 0..16usize {
+                let wx = cx * 16 + x as i32;
+                let wz = cz * 16 + z as i32;
+                let fb = 1 + floor_bed(wx, wz);
+                let cb = 127 - ceil_bed(wx, wz);
+                for y in 0..=127i32 {
+                    let is_bed = y <= fb.saturating_sub(1) || y >= cb + 1 || y == 0 || y == 127;
+                    let solid = is_bed || nether[(y.max(0) * 256 + z as i32 * 16 + x as i32) as usize];
+                    if !solid {
+                        continue;
+                    }
+                    let b: u8 = if is_bed {
+                        BEDROCK
+                    } else {
+                        // quartz ore: hash-gated veins in the rock
+                        let v = Rng::hash3(self.seed ^ 0x07A2, wx, y, wz);
+                        if (v % 100_000) as f32 / 100_000.0 < 0.011 {
+                            NETHER_QUARTZ_ORE
+                        } else {
+                            NETHERRACK
+                        }
+                    };
+                    chunk.set(x, y as usize, z, b);
+                }
+            }
+        }
+
+        // inbound edits (none in practice — no cross-chunk nether decorations
+        // — but the pipeline contract is honored)
+        for (idx, id) in inbound {
+            if chunk.get_idx(idx as usize) == AIR {
+                chunk.set_idx(idx as usize, id);
+            }
+        }
+
+        // decorations: soul sand floors + glowstone ceilings (deterministic).
+        // NOTE: chunk.get returns raw STATE ids — nether blocks store their
+        // dedicated states (118..120), so comparisons fold via state_block.
+        let fold = |s: u8| state_block(s as u16);
+        for _ in 0..14 {
+            let lx = rng.next_range(16) as i32;
+            let lz = rng.next_range(16) as i32;
+            // scan the column for a floor (solid below air) in the band
+            let mut y = 30;
+            while y < 100 {
+                let here_air = chunk.get(lx as usize, y as usize, lz as usize) == AIR
+                    && (y + 1) < 128
+                    && chunk.get(lx as usize, (y + 1) as usize, lz as usize) == AIR;
+                let below = if y > 0 { chunk.get(lx as usize, (y - 1) as usize, lz as usize) } else { BEDROCK };
+                if here_air && fold(below) == NETHERRACK {
+                    // vanilla-ish: soul sand valley patches — replace the top
+                    // 1..2 floor blocks
+                    let depth = 1 + rng.next_range(2) as i32;
+                    for d in 0..depth {
+                        chunk.set(lx as usize, (y - 1 - d) as usize, lz as usize, SOUL_SAND);
+                    }
+                    break;
+                }
+                y += 1;
+            }
+        }
+        for _ in 0..8 {
+            let lx = rng.next_range(16) as i32;
+            let lz = rng.next_range(16) as i32;
+            let mut y = 20;
+            while y < 110 {
+                let here = chunk.get(lx as usize, y as usize, lz as usize);
+                let above = if y < 127 { chunk.get(lx as usize, (y + 1) as usize, lz as usize) } else { BEDROCK };
+                if here == AIR && fold(above) == NETHERRACK {
+                    chunk.set(lx as usize, (y + 1) as usize, lz as usize, GLOWSTONE);
+                    // a small cluster around it
+                    let extra = rng.next_range(3);
+                    for _ in 0..extra {
+                        let dx = rng.next_range(3) as i32 - 1;
+                        let dz = rng.next_range(3) as i32 - 1;
+                        let nx = (lx + dx).clamp(0, 15) as usize;
+                        let nz = (lz + dz).clamp(0, 15) as usize;
+                        let there = chunk.get(nx, (y + 1) as usize, nz);
+                        let below_there = chunk.get(nx, y as usize, nz);
+                        if fold(there) == NETHERRACK && below_there == AIR {
+                            chunk.set(nx, (y + 1) as usize, nz, GLOWSTONE);
+                        }
+                    }
+                    break;
+                }
+                y += 1;
+            }
+        }
+
+        (Arc::new(chunk), outbound)
+    }
+
+    /// §28: find a spawn position inside a nether cavern — spiral-scan
+    /// chunks from the origin for an open floor with headroom (the very
+    /// first chunk can be solid rock; caverns interleave with walls).
+    pub fn find_nether_spawn(&self) -> (f32, f32, f32) {
+        // ring-by-ring spiral over the first ~9×9 chunks
+        for r in 0..4i32 {
+            for dz in -r..=r {
+                for dx in -r..=r {
+                    if dx.abs() != r && dz.abs() != r {
+                        continue; // ring cells only
+                    }
+                    let (chunk, _) = self.generate_nether_chunk(dx, dz, Vec::new());
+                    for lz in 0..16usize {
+                        for lx in 0..16usize {
+                            for y in 10..110usize {
+                                let feet = chunk.get(lx, y, lz);
+                                let head = if y + 1 < 128 { chunk.get(lx, y + 1, lz) } else { BEDROCK };
+                                let floor = if y > 0 { chunk.get(lx, y - 1, lz) } else { BEDROCK };
+                                if feet == AIR
+                                    && head == AIR
+                                    && is_solid(state_block(floor as u16))
+                                {
+                                    return (
+                                        (dx * 16 + lx as i32) as f32 + 0.5,
+                                        y as f32,
+                                        (dz * 16 + lz as i32) as f32 + 0.5,
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // fallback: mid-band position — the travel snap (nether_floor_y)
+        // refines it, arriving flying if nothing opens up
+        (8.5, 70.0, 8.5)
+    }
+
     // ------------------------------------------------------------ villages --
 
     /// all village centers whose structures can reach into the 16×16 block
@@ -997,11 +1240,23 @@ mod village_tests {
         let lx = (wx - cx * 16) as usize;
         let lz = (wz - cz * 16) as usize;
         let ground = gen.column(wx, wz).height as usize;
+        // raw states are folded to owning blocks (fences now store their
+        // model state 73, furnaces 116 — the P7-structures collision fix)
+        let fold = |s: u16| crate::blocks::state_block(s);
         // well: water at center, cobble rim, fence post corner, plank roof
-        assert_eq!(chunk.get(lx, ground, lz), WATER, "well center water");
-        assert_eq!(chunk.get(lx + 1, ground, lz), COBBLE, "well rim cobble");
-        assert_eq!(chunk.get(lx - 1, ground + 3, lz - 1), OAK_FENCE, "well post");
-        assert_eq!(chunk.get(lx, ground + 4, lz), PLANKS, "well roof");
+        assert_eq!(fold(chunk.get(lx, ground, lz) as u16), WATER, "well center water");
+        assert_eq!(fold(chunk.get(lx + 1, ground, lz) as u16), COBBLE, "well rim cobble");
+        assert_eq!(
+            fold(chunk.get(lx - 1, ground + 3, lz - 1) as u16),
+            OAK_FENCE,
+            "well post"
+        );
+        assert_eq!(
+            chunk.get(lx - 1, ground + 3, lz - 1) as u16,
+            73,
+            "well post stores the no-connection fence STATE (not a log axis)"
+        );
+        assert_eq!(fold(chunk.get(lx, ground + 4, lz) as u16), PLANKS, "well roof");
     }
 
     /// generation is order-independent and deterministic: generating the
@@ -1080,6 +1335,191 @@ mod village_tests {
         assert!(glass > 0, "windows: {glass} glass");
         assert!(logs >= 4, "log corners: {logs} logs");
         assert!(tables >= 1, "crafting tables: {tables}");
+    }
+}
+
+#[cfg(test)]
+mod nether_tests {
+    use crate::blocks::*;
+    use crate::world::Dimension;
+    use super::*;
+
+    /// fold a raw stored state to its block id (nether blocks store 118..120)
+    fn fold(s: u8) -> u8 {
+        state_block(s as u16)
+    }
+
+    /// §28: the nether shell — bedrock floor + roof, nothing above 127
+    #[test]
+    fn nether_bedrock_shell() {
+        let gen = TerrainGen::for_dimension(0xDEAD_BEEF, Dimension::Nether);
+        let (chunk, _) = gen.generate_chunk(0, 0, Vec::new());
+        for lz in 0..16usize {
+            for lx in 0..16usize {
+                assert_eq!(fold(chunk.get(lx, 0, lz)), BEDROCK, "y=0 is bedrock floor");
+                assert_eq!(fold(chunk.get(lx, 127, lz)), BEDROCK, "y=127 is bedrock roof");
+                // above the build ceiling: air (nothing exists)
+                for y in 128..256usize {
+                    assert_eq!(chunk.get(lx, y, lz), AIR, "y={y} must be air");
+                }
+            }
+        }
+    }
+
+    /// §26/§28: netherrack dominates the mass, with quartz ore sprinkled in
+    #[test]
+    fn nether_is_netherrack_with_quartz() {
+        let mut rack = 0usize;
+        let mut quartz = 0usize;
+        let mut other = 0usize;
+        for s in 0..16i32 {
+            let gen = TerrainGen::for_dimension(0xCAFE_F00D, Dimension::Nether);
+            let (chunk, _) = gen.generate_chunk(s * 3, s * 7, Vec::new());
+            for i in 0..crate::chunk::CHUNK_LEN {
+                // mid band only — the shell (bedrock) lives near y 0 and 127
+                let y = (i >> 8) as i32;
+                if !(6..=120).contains(&y) {
+                    continue;
+                }
+                match fold(chunk.get_idx(i)) {
+                    NETHERRACK => rack += 1,
+                    NETHER_QUARTZ_ORE => quartz += 1,
+                    AIR | GLOWSTONE | SOUL_SAND => {}
+                    _ => other += 1,
+                }
+            }
+        }
+        assert!(rack > 50_000, "netherrack dominates the mass ({rack} cells)");
+        assert!(quartz > 50, "quartz ore appears across seeds ({quartz} cells)");
+        assert!(
+            other == 0,
+            "the nether mass is ONLY netherrack/quartz/glowstone/soul-sand — got {other} others"
+        );
+    }
+
+    /// §26/§28: vast open caverns exist (the nether is hollow, not solid),
+    /// and glowstone hangs from ceilings somewhere in a region
+    #[test]
+    fn nether_caverns_and_glowstone() {
+        let mut open = 0usize;
+        let mut glowstone = 0usize;
+        let mut soul_sand = 0usize;
+        for dz in -2..=2i32 {
+            for dx in -2..=2i32 {
+                let gen = TerrainGen::for_dimension(0x5EED_1234, Dimension::Nether);
+                let (chunk, _) = gen.generate_chunk(dx, dz, Vec::new());
+                for i in 0..crate::chunk::CHUNK_LEN {
+                    let y = (i >> 8) as i32;
+                    if y <= 6 || y >= 120 {
+                        continue; // shell margin
+                    }
+                    match fold(chunk.get_idx(i)) {
+                        AIR => open += 1,
+                        GLOWSTONE => glowstone += 1,
+                        SOUL_SAND => soul_sand += 1,
+                        _ => {}
+                    }
+                }
+            }
+        }
+        // a 5×5-chunk nether neighborhood is substantially hollow
+        let total = 25 * CHUNK_LEN * 5 / 8; // band y 7..119 ≈ 5/8 of cells
+        let ratio = open as f32 / total as f32;
+        assert!(ratio > 0.12, "caverns too small: {ratio:.2} open in the mid band");
+        assert!(glowstone > 0, "glowstone clusters exist ({glowstone})");
+        assert!(soul_sand > 0, "soul sand patches exist ({soul_sand})");
+    }
+
+    /// §9/§26 determinism: same seed + dimension → identical bytes; the two
+    /// dimensions with the same world seed → different terrain
+    #[test]
+    fn nether_deterministic_and_distinct_from_overworld() {
+        let gen = TerrainGen::for_dimension(0x1234_ABCD, Dimension::Nether);
+        let a = gen.generate_chunk(1, 2, Vec::new()).0;
+        // interleave neighbors, regenerate — must be identical
+        for dz in -1..=1 {
+            for dx in -1..=1 {
+                if (dx, dz) != (0, 0) {
+                    let _ = gen.generate_chunk(1 + dx, 2 + dz, Vec::new());
+                }
+            }
+        }
+        let b = gen.generate_chunk(1, 2, Vec::new()).0;
+        for i in 0..crate::chunk::CHUNK_LEN {
+            assert_eq!(a.get_idx(i), b.get_idx(i), "nether gen must be order-independent at {i}");
+        }
+        // same world seed, overworld vs nether → different chunks
+        let over = TerrainGen::for_dimension(0x1234_ABCD, Dimension::Overworld);
+        let (oc, _) = over.generate_chunk(1, 2, Vec::new());
+        let mut same = 0;
+        for i in 0..crate::chunk::CHUNK_LEN {
+            if oc.get_idx(i) == a.get_idx(i) {
+                same += 1;
+            }
+        }
+        // air cells match trivially; the mass must differ
+        assert!(same < CHUNK_LEN, "dimensions must generate different terrain (same={same})");
+    }
+
+    /// §28: no skylight path — the bedrock roof makes the light engine's
+    /// column scan produce sky=0 for the whole nether interior
+    #[test]
+    fn nether_roof_blocks_skylight() {
+        let gen = TerrainGen::for_dimension(0xBEEF_CAFE, Dimension::Nether);
+        let (chunk, _) = gen.generate_chunk(0, 0, Vec::new());
+        for lz in 0..16usize {
+            for lx in 0..16usize {
+                // first block from the top above y=127: none allowed (the
+                // roof at ≤127 covers everything below — sky=0 for the light
+                // engine's column scan). 127 = "nothing above" = pass.
+                let mut top_content = 127;
+                for y in (128..256usize).rev() {
+                    if chunk.get(lx, y, lz) != AIR {
+                        top_content = y as i32;
+                        break;
+                    }
+                }
+                assert!(
+                    top_content <= 127,
+                    "column ({lx},{lz}) has content above the nether roof at {top_content}"
+                );
+            }
+        }
+    }
+
+    /// §28: find_nether_spawn lands on an open cavern floor with headroom
+    #[test]
+    fn nether_spawn_is_on_open_floor() {
+        for s in 0..6u64 {
+            let gen = TerrainGen::for_dimension(0x9000_0000 + s * 7919, Dimension::Nether);
+            let (x, y, z) = gen.find_nether_spawn();
+            // block coords use FLOOR semantics (negative x truncates wrong)
+            let (xi, yi, zi) = (x.floor() as i32, y.floor() as i32, z.floor() as i32);
+            let (chunk, _) = gen.generate_chunk(
+                xi.div_euclid(16),
+                zi.div_euclid(16),
+                Vec::new(),
+            );
+            let lx = (xi - xi.div_euclid(16) * 16) as usize;
+            let lz = (zi - zi.div_euclid(16) * 16) as usize;
+            assert_eq!(chunk.get(lx, yi as usize, lz), AIR, "feet open (seed {s})");
+            assert!(yi + 1 >= 128 || chunk.get(lx, (yi + 1) as usize, lz) == AIR, "headroom (seed {s})");
+            assert!(
+                is_solid(fold(chunk.get(lx, (yi - 1) as usize, lz))),
+                "solid floor below (seed {s})"
+            );
+            assert!((8..120).contains(&yi), "spawn inside the nether band (seed {s})");
+        }
+    }
+
+    /// §28: the biome field is Nether Wastes everywhere
+    #[test]
+    fn nether_biome_field() {
+        let gen = TerrainGen::for_dimension(0xFEED_1234, Dimension::Nether);
+        let (chunk, _) = gen.generate_chunk(3, -4, Vec::new());
+        for i in 0..256usize {
+            assert_eq!(chunk.biome[i], Biome::NetherWastes as u8, "biome[{i}]");
+        }
     }
 }
 

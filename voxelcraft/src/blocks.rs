@@ -95,6 +95,10 @@ pub const TILE_LEVER: u16 = 66;
 pub const TILE_FURNACE_SIDE: u16 = 67;
 pub const TILE_FURNACE_TOP: u16 = 68;
 pub const TILE_FURNACE_LIT_SIDE: u16 = 69;
+// nether blocks (Phase 7 §28 dimensions)
+pub const TILE_NETHERRACK: u16 = 70;
+pub const TILE_QUARTZ_ORE: u16 = 71;
+pub const TILE_SOUL_SAND: u16 = 72;
 
 // Block ids (u8 in chunk storage).
 pub const AIR: u8 = 0;
@@ -162,7 +166,7 @@ pub const MUSHROOM_RED: u8 = 54;
 pub const MUSHROOM_BROWN: u8 = 55;
 pub const DEAD_BUSH: u8 = 56;
 
-pub const BLOCK_COUNT: usize = 64;
+pub const BLOCK_COUNT: usize = 67;
 
 // redstone core (Phase 6 §25 subset)
 pub const REDSTONE_WIRE: u8 = 60;
@@ -170,6 +174,15 @@ pub const REDSTONE_TORCH: u8 = 61;
 pub const LEVER: u8 = 62;
 // gameplay (Phase 7)
 pub const FURNACE: u8 = 63;
+// nether blocks (Phase 7 §28 dimensions): identities collide with the
+// log-axis/model state slots exactly like FURNACE — they too always store
+// their dedicated STATE ids below
+pub const NETHERRACK: u8 = 64;
+pub const NETHER_QUARTZ_ORE: u8 = 65;
+pub const SOUL_SAND: u8 = 66;
+pub const NETHERRACK_STATE: u16 = 118;
+pub const QUARTZ_ORE_STATE: u16 = 119;
+pub const SOUL_SAND_STATE: u16 = 120;
 
 // ---------------------------------------------------------------------------
 // BlockState registry (1.16.5 pattern, miniature)
@@ -181,7 +194,7 @@ pub const FURNACE: u8 = 63;
 // `axis=x|y|z`, exactly how vanilla models oak_log[axis=...]. The 1.16.5
 // global palette is 15 bits (~17k states); this registry grows into it
 // without touching storage (u16) or the mesher key.
-pub const STATE_COUNT: usize = 118;
+pub const STATE_COUNT: usize = 121;
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -220,6 +233,9 @@ pub const TORCH_OFF: u16 = 115;
 // always stores one of these
 pub const FURNACE_STATE: u16 = 116;
 pub const FURNACE_LIT: u16 = 117;
+// nether blocks (Phase 7 §28): identity slots 64..66 collide with the
+// oak-fence model-state range — dedicated states above the sim range
+// (see the constants next to the block ids)
 
 #[inline]
 pub fn is_wire_power(s: u16) -> bool {
@@ -262,9 +278,12 @@ pub fn torch_is_lit(s: u16) -> bool {
 }
 
 /// default STATE id for a freshly placed block — sim blocks (wire/torch/
-/// lever/furnace) never store their identity state: those slots belong to
-/// model variants / log axes (FURNACE=63 is exactly MODEL_STATE_BASE, so a
-/// raw identity placement would render as the oak-slab model!)
+/// lever/furnace) and nether blocks never store their identity state:
+/// those slots belong to model variants / log axes (FURNACE=63 is exactly
+/// MODEL_STATE_BASE, so a raw identity placement would render as the
+/// oak-slab model!). Prop blocks map to their FIRST state (all properties
+/// at their first value — the vanilla default-state rule) because their
+/// identity ids (57..59) collide with the log-axis states.
 #[inline]
 pub fn default_state(b: u8) -> u16 {
     match b {
@@ -272,6 +291,12 @@ pub fn default_state(b: u8) -> u16 {
         REDSTONE_TORCH => torch_state(true),
         LEVER => lever_state(false),
         FURNACE => FURNACE_STATE,
+        NETHERRACK => NETHERRACK_STATE,
+        NETHER_QUARTZ_ORE => QUARTZ_ORE_STATE,
+        SOUL_SAND => SOUL_SAND_STATE,
+        OAK_SLAB => 63,     // PROP_BLOCKS[0].base_state (half=bottom)
+        COBBLE_STAIRS => 65, // base_state (facing=north, half=bottom)
+        OAK_FENCE => 73,    // base_state (no connections)
         _ => b as u16,
     }
 }
@@ -434,6 +459,9 @@ pub fn state_block(s: u16) -> u8 {
         LEVER_OFF | LEVER_ON => return LEVER,
         TORCH_LIT | TORCH_OFF => return REDSTONE_TORCH,
         FURNACE_STATE | FURNACE_LIT => return FURNACE,
+        NETHERRACK_STATE => return NETHERRACK,
+        QUARTZ_ORE_STATE => return NETHER_QUARTZ_ORE,
+        SOUL_SAND_STATE => return SOUL_SAND,
         _ => {}
     }
     if let Some((b, _)) = prop_state_decode(s) {
@@ -476,6 +504,7 @@ pub fn is_model_state(s: u16) -> bool {
         && !matches!(
             s,
             LEVER_OFF | LEVER_ON | TORCH_LIT | TORCH_OFF | FURNACE_STATE | FURNACE_LIT
+                | NETHERRACK_STATE | QUARTZ_ORE_STATE | SOUL_SAND_STATE
         )
 }
 
@@ -535,7 +564,7 @@ pub fn log_axis_state(block: u8, axis: u8) -> u16 {
 }
 
 /// highest tile index the generator must draw
-pub const TILE_MAX: u16 = 69;
+pub const TILE_MAX: u16 = 72;
 
 pub struct BlockDef {
     pub name: &'static str,
@@ -644,11 +673,19 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Lever", [TILE_LEVER, TILE_LEVER, TILE_LEVER], false, false, true, false, 0, SoundFamily::Wood),
     // gameplay (Phase 7): full-cube greedy-meshed, lit variant glows
     d("Furnace", [TILE_FURNACE_TOP, TILE_FURNACE_TOP, TILE_FURNACE_SIDE], true, true, false, false, 0, SoundFamily::Stone),
+    // nether blocks (Phase 7 §28): full-cube greedy-meshed; quartz ore in
+    // netherrack; soul sand slows (§23 hook later) and sinks slightly
+    d("Netherrack", [TILE_NETHERRACK, TILE_NETHERRACK, TILE_NETHERRACK], true, true, false, false, 0, SoundFamily::Stone),
+    d("Nether Quartz Ore", [TILE_QUARTZ_ORE, TILE_QUARTZ_ORE, TILE_QUARTZ_ORE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Soul Sand", [TILE_SOUL_SAND, TILE_SOUL_SAND, TILE_SOUL_SAND], true, true, false, false, 0, SoundFamily::Sand),
 ];
 
 #[inline]
 pub fn def(id: u8) -> &'static BlockDef {
-    &BLOCK_TABLE[id as usize]
+    // §46 resilience: a raw STATE id that slipped past a fold indexes the
+    // table out of bounds — clamp to the last def instead of panicking
+    // (the honest fix is folding via state_block; this is the crash guard)
+    &BLOCK_TABLE[(id as usize).min(BLOCK_COUNT - 1)]
 }
 
 #[inline]
@@ -708,7 +745,7 @@ pub fn face_visible(b: u8, n: u8) -> bool {
 /// blocks offered in the E-key picker (creative-style), in display order.
 /// Everything placeable except air, bedrock (unbreakable) and water
 /// (needs fluid sim to be fun).
-pub const PICKER_BLOCKS: [u8; 56] = [
+pub const PICKER_BLOCKS: [u8; 59] = [
     GRASS, DIRT, STONE, COBBLE, SMOOTH_STONE, STONE_BRICKS, BRICKS, MOSSY_COBBLE,
     GRANITE, DIORITE, ANDESITE, OBSIDIAN,
     SAND, GRAVEL, CLAY, TERRACOTTA,
@@ -720,6 +757,7 @@ pub const PICKER_BLOCKS: [u8; 56] = [
     WOOL_WHITE, WOOL_RED, WOOL_YELLOW, WOOL_BLUE, WOOL_BLACK,
     TALL_GRASS, FLOWER_RED, FLOWER_YELLOW, MUSHROOM_RED, MUSHROOM_BROWN,
     OAK_SLAB, COBBLE_STAIRS, OAK_FENCE,
+    NETHERRACK, NETHER_QUARTZ_ORE, SOUL_SAND,
 ];
 
 /// default hotbar palette
@@ -860,6 +898,12 @@ mod state_tests {
                 assert!(!is_model_state(s));
                 continue;
             }
+            // nether blocks (§28): full-cube greedy-meshed, dedicated states
+            if matches!(s, NETHERRACK_STATE | QUARTZ_ORE_STATE | SOUL_SAND_STATE) {
+                assert!(!is_model_state(s), "nether state {s} never routes to models");
+                assert!(s > FURNACE_LIT, "nether states live above the sim range");
+                continue;
+            }
             let Some((b, props)) = prop_state_decode(s) else {
                 panic!("state {s} failed to decode");
             };
@@ -905,5 +949,54 @@ mod state_tests {
         assert_eq!(state_description(65), "Cobblestone Stairs[facing=north,half=bottom]");
         assert_eq!(state_description(OAK_LOG_X), "Oak Log[axis=x]");
         assert_eq!(state_description(STONE as u16), "Stone");
+    }
+
+    /// §28 + the P7-structures followup: every BLOCK id must place a state
+    /// that (a) folds back to itself and (b) never masquerades as another
+    /// block's model/log state. This is exactly the collision class that
+    /// made village furnaces render as oak slabs and well posts as birch
+    /// logs (raw identity ids 57..63 land on log-axis/model slots).
+    #[test]
+    fn default_states_never_collide_and_fold_back() {
+        for b in 0..BLOCK_COUNT as u8 {
+            if b == AIR {
+                continue; // air's identity state is legal
+            }
+            let s = default_state(b);
+            assert_eq!(
+                state_block(s),
+                b,
+                "default_state({b} = {}) folds back to {}",
+                name(b),
+                name(state_block(s))
+            );
+        }
+        // the previously-colliding placements, pinned:
+        assert_eq!(default_state(OAK_SLAB), 63, "slab → half=bottom model state");
+        assert_eq!(default_state(COBBLE_STAIRS), 65, "stairs → facing=north, half=bottom");
+        assert_eq!(default_state(OAK_FENCE), 73, "fence → no connections");
+        assert_eq!(default_state(FURNACE), FURNACE_STATE);
+        assert_eq!(default_state(NETHERRACK), NETHERRACK_STATE);
+        assert_eq!(default_state(NETHER_QUARTZ_ORE), QUARTZ_ORE_STATE);
+        assert_eq!(default_state(SOUL_SAND), SOUL_SAND_STATE);
+        // sim blocks keep their states
+        assert_eq!(default_state(REDSTONE_WIRE), wire_state(0));
+        assert_eq!(default_state(REDSTONE_TORCH), torch_state(true));
+        assert_eq!(default_state(LEVER), lever_state(false));
+    }
+
+    /// §46: a raw STATE id fed to the u8 block helpers must not panic —
+    /// def() clamps; the fold helpers are total functions.
+    #[test]
+    fn def_clamps_out_of_range_state_ids() {
+        // simulate the top_solid_y bug class: state 73 (fence) truncated
+        // to u8 = 73 lands past the table end
+        for raw in [73u8, 88, 96, 118, 121, 255] {
+            let d = def(raw);
+            let _ = d.solid;
+            let _ = is_solid(raw);
+            let _ = is_opaque(raw);
+            let _ = name(raw);
+        }
     }
 }

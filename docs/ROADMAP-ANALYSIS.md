@@ -182,6 +182,24 @@ Key fix shipped alongside: `Furnaces` moved into `Sim` (ticks at exactly 20 Hz l
 
 All four were scope-gated on item/entity systems per the earlier audit; they remain the honest open tail of the spec ladder. Everything else — P0, P1, P2, P3, P4, P5, P6, P7§27-subset+structures, P8, P9, P10, P11 — is closed to its gate.
 
+### Update 2026-09-03 (P7-Dimensions ✅ — the Nether, §28 world family)
+
+**Dimensions ✅**: the full §28 world-family item, end to end.
+
+- **`Dimension` enum + world family** (`world.rs`): `Overworld`/`Nether` with vanilla semantics — the shared world seed salts per-dimension generators (`for_dimension`), `map_coords` implements the 8:1 nether travel rule (both directions, tested), `World::new_in_dimension` swaps the whole world (fresh generator + chunk maps).
+- **Nether generator** (`gen.rs` `generate_nether_chunk`): netherrack mass 0..127 inside a jittered bedrock floor+roof shell, carved by two big 3D noise fields (intersection = the vast caverns; a third noise biases regions rockier/hollower; mid-height band slightly more open — tuned to ~70% rock / ~30% cavern). Nether Quartz Ore veins (hash-gated), soul-sand valley patches on cavern floors, glowstone clusters hanging from ceilings. `NetherWastes` biome (7) everywhere; tint LUT + grass/foliage/water slots extended. The opaque bedrock roof means the light engine's column scan yields sky=0 below — vanilla's "no skylight in the nether" for free.
+- **Nether blocks** (`blocks.rs`/`textures.rs`): NETHERRACK (64), NETHER_QUARTZ_ORE (65), SOUL_SAND (66) — tiles 70..72, own procedural art; dedicated STATE ids 118..120 above the sim range (their identity slots collide with log-axis/model states exactly like FURNACE=63 — the state registry pattern, `default_state`/`state_block`/`is_model_state` all wired). Picker offers all three.
+- **Travel** (`game.rs::travel_to_dimension`): flushes the outgoing dimension's saves (native), swaps the world + every dimension-local system (GPU meshes/regions, section caches, gen/mesh queues, light engine, sim, particles, containers), rescales the player by 8:1, keeps the inventory (vanilla), then waits through the Loading screen with a **nether cavern-floor snap** (`nether_floor_y` — `top_solid_y` is wrong under a bedrock roof; if the column has no open floor the player arrives flying instead of inside rock). Per-dimension save dirs follow vanilla layout (overworld = world root, nether = `DIM-1`).
+- **Nether presentation**: `SkyState.skyless` drops the sky/sun pass (the dark-red fog clear IS the sky), thick close fog (8..44 blocks), constant dim ambient light, no shadows, no clouds; F3 shows `Dimension: the_nether` (§31 parity), stats `dim`/`dimName`/`traveling`, E2E command `dim:0|1`.
+- **Tests**: 12 new (157 total): bedrock shell, netherrack-dominates mass + quartz, cavern openness + glowstone + soul sand, determinism + overworld-distinctness, roof-blocks-skylight, spiral `find_nether_spawn` on open floors, biome field, dimension construction/seed-derivation, 8:1 coordinate mapping both ways, legacy-overworld equivalence.
+
+**Latent bugs found + fixed alongside** (both would have bitten the nether; both pre-dated it):
+1. `PACK_TILE_BASE` was pinned at 64 while Phase 6/7 procedural tiles grew to 69 — the builtin pack's cobblestone/planks textures overwrote the redstone-wire/torch atlas tiles at runtime (wire rendered gray since P6). Now derived from `TILE_MAX + 1` + two regression tests. Commit `29a5537`.
+2. Generator-side placements of prop/model/sim blocks stored raw identity ids: village blacksmith furnaces rendered as oak-slab models, well posts as birch logs (axis x), slab parapets as horizontal logs. Root fix: `Chunk::set(u8)` routes through `default_state`, and `default_state` maps prop blocks to their base model states (63/65/73). `def()` now clamps out-of-range ids (§46 — raw states could panic `BLOCK_TABLE` indexing) and `top_solid_y` folds states before the solidity test.
+
+**Honest scope notes**: no nether PORTALS (travel is via the E2E command / API — the portal-block + ignition system is a separate feature), no lava (no lava block exists in the registry — caverns are dry), no fortresses (structure queue: dungeons/strongholds/mineshafts remain open §26 items), and the End is out of the 1.16.5 scope we committed to in §26 (Overworld + Nether only). Browser E2E: pending CI's WASM rebuild — to be verified with `dim:1` (stats + pixel-diff of the red fog) and appended here.
+
+
 ---
 
 ## 4. Recommended remaining order (revised, risk-aware)

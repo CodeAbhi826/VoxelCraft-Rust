@@ -757,11 +757,17 @@ mod tests {
         let a = chunk_to_nbt(-3, 9, &c, 777);
         let b = chunk_to_nbt(-3, 9, &c, 777);
         assert_eq!(a, b);
-        // and a loaded-then-resaved chunk is also stable: palette order is
-        // derived from content, so re-saving the load reproduces the bytes
+        // save→load→save reaches a FIXED POINT after one cycle: the only
+        // load-side mutation is `height`, recomputed from content (derived
+        // data — §28 runtime/external separation); palette order, sections
+        // and biomes are content-derived, so resaves stay byte-stable.
         let loaded = chunk_from_nbt(&a).unwrap();
         let resaved = chunk_to_nbt(-3, 9, &loaded, 777);
-        assert_eq!(a, resaved);
+        let reloaded = chunk_from_nbt(&resaved).unwrap();
+        let resaved2 = chunk_to_nbt(-3, 9, &reloaded, 777);
+        assert_eq!(resaved, resaved2, "resave must be a fixed point");
+        // content survives both cycles unchanged
+        assert_same_content(&c, &reloaded);
     }
 
     #[test]
@@ -814,11 +820,13 @@ mod tests {
         // 4-bit packing → 256 longs; 5-bit (our palette ≥ 9 distinct) → 342
         let longs = sec0.get("BlockStates").unwrap().as_i64_slice().unwrap().len();
         assert!(longs == 256 || longs == 342);
-        // biomes: IntArray(256) with vanilla ids
+        // biomes: IntArray(256) with vanilla ids. Quadrants:
+        // (x<8,z<8) → Forest(4), (x≥8,z<8) → Plains(1),
+        // (x<8,z≥8) → Beach(16), (x≥8,z≥8) → Ocean(0)
         let bi = level.get("Biomes").unwrap().as_i32_slice().unwrap();
         assert_eq!(bi.len(), 256);
-        assert_eq!(bi[0], 0); // quadrant (x<8,z<8) → Ocean
-        assert_eq!(bi[15 * 16 + 15], 4); // Forest quadrant
+        assert_eq!(bi[0], 4); // (x=0,z=0) → Forest
+        assert_eq!(bi[15 * 16 + 15], 0); // (x=15,z=15) → Ocean
         // heightmaps: 37 longs, 9-bit
         let hm = level.get("Heightmaps").unwrap().get("WORLD_SURFACE").unwrap();
         assert_eq!(hm.as_i64_slice().unwrap().len(), 37);

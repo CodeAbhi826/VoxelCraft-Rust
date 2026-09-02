@@ -36,6 +36,8 @@ pub struct FurnaceState {
     pub output: ItemStack,
     /// ticks of burning left in the current fuel item
     pub burn_left: i32,
+    /// total ticks of the CURRENT fuel item (flame-progress denominator)
+    pub burn_max: i32,
     /// ticks of cook progress on the current input
     pub cook_left: i32,
 }
@@ -47,6 +49,7 @@ impl Default for FurnaceState {
             fuel: ItemStack::EMPTY,
             output: ItemStack::EMPTY,
             burn_left: 0,
+            burn_max: 0,
             cook_left: 0,
         }
     }
@@ -81,6 +84,7 @@ impl FurnaceState {
         // start burning if there is smeltable work and no flame
         if self.burn_left <= 0 && self.can_output() && !self.fuel.is_empty() {
             self.burn_left = fuel_ticks(self.fuel.block);
+            self.burn_max = self.burn_left;
             self.fuel.count -= 1;
             if self.fuel.count == 0 {
                 self.fuel = ItemStack::EMPTY;

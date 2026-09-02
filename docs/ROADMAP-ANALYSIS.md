@@ -87,6 +87,18 @@ The authoritative plan is now `upload/VoxelCraft-Rust_1.16.5_Master_Engineering_
 
 Clean-room rule honored: the builtin pack's JSONs follow the vanilla **format**; every texture is our own procedural art (regenerable via `cargo test write_builtin_pack_pngs -- --ignored`).
 
+### Update 2026-09-02 (Master-Spec session — Phases 4 + 5 + 6 + 7§27)
+
+| Spec phase | Status | Evidence |
+|---|---|---|
+| P4 lighting — incremental + cross-chunk | ✅ Done | `40eeba7` — LightEngine with incremental `on_block_changed`/`pump`, differential light tests |
+| P5 vanilla rendering (tint, particles, shadows) | ✅ Done | `b5e280c` — biome tint, block-break particles, shadow-quality presets; FSR-lite + settings from `f08c21a` |
+| P6 simulation (ticks, fluids, gravity, items) | ✅ Done | `b711ed9` — deterministic 20 Hz sim core; `2dc2e51` physics regression; `d61e0ac` §25 redstone core |
+| P7 gameplay — inventories/crafting/furnaces (§27/§29 subset) | ✅ Done | `inventory.rs` (36-slot, vanilla stack semantics, 4 tests), `craft.rs` (shaped recipes, 2×2/3×3, 4 tests), `furnace.rs` (200-tick smelt, fuel burn, lit-state swap, 4 tests), container screens (inventory/crafting/furnace with slot hit-testing), E-key inventory + B-key picker, right-click opens table/furnace, furnace ticking in the 20 Hz sim, E2E commands (`open`/`cclick`/`give`/`craft`/`smelt`) — browser E2E green: 119/119 unit tests, pixel-verified screens, real right-click interaction |
+| P7 gameplay — brewing/enchanting/villagers/structures/dimensions | ❌ Not started (scope-gated: payoff-gated on item/entity systems) | — |
+
+Key fix shipped alongside: `Furnaces` moved into `Sim` (ticks at exactly 20 Hz like vanilla); `default_state()` helper prevents the FURNACE=63 identity-state collision with MODEL_STATE_BASE (a raw identity placement would have rendered as the oak-slab model); LockChange guard so opening a container no longer drops into the pause menu on WASM.
+
 ---
 
 ## 4. Recommended remaining order (revised, risk-aware)

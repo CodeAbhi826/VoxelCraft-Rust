@@ -261,6 +261,21 @@ pub fn torch_is_lit(s: u16) -> bool {
     s == TORCH_LIT
 }
 
+/// default STATE id for a freshly placed block — sim blocks (wire/torch/
+/// lever/furnace) never store their identity state: those slots belong to
+/// model variants / log axes (FURNACE=63 is exactly MODEL_STATE_BASE, so a
+/// raw identity placement would render as the oak-slab model!)
+#[inline]
+pub fn default_state(b: u8) -> u16 {
+    match b {
+        REDSTONE_WIRE => wire_state(0),
+        REDSTONE_TORCH => torch_state(true),
+        LEVER => lever_state(false),
+        FURNACE => FURNACE_STATE,
+        _ => b as u16,
+    }
+}
+
 /// true if a state id is a flowing-water level (not the source)
 #[inline]
 pub fn is_water_flow(s: u16) -> bool {
@@ -482,6 +497,13 @@ pub fn state_tiles(s: u16) -> [u16; 4] {
         BIRCH_LOG_Z => [TILE_BIRCH_LOG_SIDE, TILE_BIRCH_LOG_SIDE, TILE_BIRCH_LOG_SIDE, TILE_LOG_TOP],
         SPRUCE_LOG_X => [TILE_SPRUCE_LOG_SIDE, TILE_SPRUCE_LOG_SIDE, TILE_LOG_TOP, TILE_SPRUCE_LOG_SIDE],
         SPRUCE_LOG_Z => [TILE_SPRUCE_LOG_SIDE, TILE_SPRUCE_LOG_SIDE, TILE_SPRUCE_LOG_SIDE, TILE_LOG_TOP],
+        // §27: lit furnace swaps the SIDE tiles to the glowing variant
+        FURNACE_LIT => [
+            TILE_FURNACE_TOP,
+            TILE_FURNACE_TOP,
+            TILE_FURNACE_LIT_SIDE,
+            TILE_FURNACE_LIT_SIDE,
+        ],
         _ => {
             // fold property states to their block (model geometry supplies
             // the real tiles; these are for the HUD/hotbar blit path)
@@ -686,14 +708,14 @@ pub fn face_visible(b: u8, n: u8) -> bool {
 /// blocks offered in the E-key picker (creative-style), in display order.
 /// Everything placeable except air, bedrock (unbreakable) and water
 /// (needs fluid sim to be fun).
-pub const PICKER_BLOCKS: [u8; 55] = [
+pub const PICKER_BLOCKS: [u8; 56] = [
     GRASS, DIRT, STONE, COBBLE, SMOOTH_STONE, STONE_BRICKS, BRICKS, MOSSY_COBBLE,
     GRANITE, DIORITE, ANDESITE, OBSIDIAN,
     SAND, GRAVEL, CLAY, TERRACOTTA,
     OAK_LOG, LEAVES, PLANKS, BIRCH_LOG, BIRCH_LEAVES, SPRUCE_LOG, SPRUCE_LEAVES,
     COAL_ORE, IRON_ORE, GOLD_ORE, REDSTONE_ORE, LAPIS_ORE, EMERALD_ORE, DIAMOND_ORE,
     IRON_BLOCK, GOLD_BLOCK, DIAMOND_BLOCK, GLOWSTONE,
-    BOOKSHELF, CRAFTING_TABLE, GLASS, ICE, SNOW,
+    BOOKSHELF, CRAFTING_TABLE, FURNACE, GLASS, ICE, SNOW,
     PUMPKIN, MELON, CACTUS,
     WOOL_WHITE, WOOL_RED, WOOL_YELLOW, WOOL_BLUE, WOOL_BLACK,
     TALL_GRASS, FLOWER_RED, FLOWER_YELLOW, MUSHROOM_RED, MUSHROOM_BROWN,
@@ -830,6 +852,11 @@ mod state_tests {
             }
             if matches!(s, TORCH_LIT | TORCH_OFF) {
                 assert_eq!(state_block(s), REDSTONE_TORCH);
+                assert!(!is_model_state(s));
+                continue;
+            }
+            if matches!(s, FURNACE_STATE | FURNACE_LIT) {
+                assert_eq!(state_block(s), FURNACE);
                 assert!(!is_model_state(s));
                 continue;
             }

@@ -4,6 +4,7 @@
 //! Redrawn only when state changes; uploaded to GPU as a texture.
 
 use crate::blocks::*;
+use crate::inventory::ItemStack;
 use crate::textures::blit_tile;
 
 pub const UI_W: usize = 960;
@@ -542,9 +543,10 @@ impl UiCanvas {
         }
     }
 
-    /// 1.16.5-style hotbar: 40px slots, big white selection frame, icons.
-    pub fn hotbar(&mut self, palette: &[u8], selected: usize, atlas: &[u8], item_name: Option<(&str, u8)>) {
-        let n = palette.len() as i32;
+    /// 1.16.5-style hotbar: 40px slots, big white selection frame, icons
+    /// and vanilla stack counts (bottom-right, shadowed).
+    pub fn hotbar(&mut self, slots: &[ItemStack], selected: usize, atlas: &[u8], item_name: Option<(&str, u8)>) {
+        let n = slots.len() as i32;
         let slot = 40i32;
         let bw = n * slot + 4;
         let x0 = (UI_W as i32 - bw) / 2;
@@ -556,14 +558,7 @@ impl UiCanvas {
             let sy = y0 + 2;
             self.rect(sx, sy, 36, 36, [58, 58, 58, 160]);
             self.frame(sx, sy, 36, 36, [90, 90, 90, 220]);
-            let b = palette[i];
-            if b != AIR {
-                let tile = {
-                    let d = def(b);
-                    if b == GRASS || b == OAK_LOG { d.tiles[2] } else { d.tiles[0] }
-                };
-                blit_tile(atlas, tile, 2, (sx + 2) as usize, (sy + 2) as usize, &mut self.px, UI_W);
-            }
+            self.draw_stack(&slots[i], sx, sy, atlas);
         }
         // selection: chunky white frame extending past the slot
         let sel = x0 + 2 + selected as i32 * slot;
@@ -574,6 +569,250 @@ impl UiCanvas {
             let w = name.len() as i32 * 12;
             self.text((UI_W as i32 - w) / 2, y0 - 76, name, [255, 255, 255, alpha], 2);
         }
+    }
+
+    /// one item stack inside a 36px slot at (sx, sy): icon + vanilla count
+    /// label (bottom-right, dark shadow) — shared by hotbar + containers.
+    fn draw_stack(&mut self, s: &ItemStack, sx: i32, sy: i32, atlas: &[u8]) {
+        let b = s.block;
+        if b != AIR && s.count > 0 {
+            let tile = {
+                let d = def(b);
+                if b == GRASS || b == OAK_LOG { d.tiles[2] } else { d.tiles[0] }
+            };
+            blit_tile(atlas, tile, 2, (sx + 2) as usize, (sy + 2) as usize, &mut self.px, UI_W);
+        }
+        if s.count > 1 {
+            let label = s.count.to_string();
+            let w = label.len() as i32 * 6;
+            let tx = sx + 34 - w;
+            let ty = sy + 27;
+            self.text(tx + 1, ty + 1, &label, [0, 0, 0, 190], 1);
+            self.text(tx, ty, &label, [255, 255, 255, 255], 1);
+        }
+    }
+
+    /// container slot: recessed 36px well + optional stack
+    fn slot_well(&mut self, x: i32, y: i32, s: &ItemStack, atlas: &[u8]) {
+        self.rect(x, y, 36, 36, [52, 52, 52, 200]);
+        self.frame(x, y, 36, 36, [24, 24, 24, 255]); // inner shadow
+        self.frame(x + 1, y + 1, 34, 34, [110, 110, 110, 255]);
+        self.draw_stack(s, x, y, atlas);
+    }
+
+    /// vanilla container arrow: gray track, white fill by progress fraction
+    fn arrow(&mut self, x: i32, y: i32, frac: f32) {
+        let w = 44i32;
+        let h = 20i32;
+        // track
+        self.rect(x, y + 2, w - 14, h - 4, [70, 70, 70, 255]);
+        self.rect(x + w - 14, y, 14, h, [70, 70, 70, 255]);
+        // head cut (triangle-ish via stepped rects)
+        self.rect(x + w - 10, y + 3, 8, h - 6, [16, 16, 16, 220]);
+        self.rect(x + w - 12, y + 7, 4, h - 14, [16, 16, 16, 220]);
+        // filled portion
+        let fw = ((w - 16) as f32 * frac.clamp(0.0, 1.0)) as i32;
+        if fw > 0 {
+            self.rect(x + 1, y + 4, fw, h - 8, [235, 235, 235, 255]);
+        }
+    }
+
+    /// vanilla furnace flame between input and fuel slots, filled by the
+    /// burn-progress fraction
+    fn flame(&mut self, x: i32, y: i32, frac: f32) {
+        let rows_on = [
+            "  f  ",
+            " fFf ",
+            " fFf ",
+            "fFFFf",
+            "fFFFf",
+        ];
+        let rows_off = [
+            "  .  ",
+            " . . ",
+            " . . ",
+            ".....",
+            ".....",
+        ];
+        let pal = [
+            ('f', [255, 110, 20, 255]),
+            ('F', [255, 210, 60, 255]),
+            ('.', [90, 90, 90, 255]),
+        ];
+        let scale = 5i32; // 25x25
+        if frac > 0.02 {
+            self.sprite(x, y, &rows_on, &pal, scale);
+            // dim the bottom when nearly burnt out (fraction low)
+            if frac < 0.35 {
+                self.rect(x + 2, y + 15, 21, 10, [40, 30, 20, 110]);
+            }
+        } else {
+            self.sprite(x, y, &rows_off, &pal, scale);
+        }
+    }
+
+    /// one generic 9-wide slot row (hotbar strip or storage row)
+    #[allow(dead_code)]
+    fn inv_row(&mut self, x0: i32, y: i32, slots: &[ItemStack], atlas: &[u8], start: usize, count: usize) {
+        for i in 0..count {
+            let x = x0 + i as i32 * 40;
+            self.slot_well(x, y, &slots[start + i], atlas);
+        }
+    }
+
+    /// Full container overlay (Phase 7 §27): player inventory (9×3 storage +
+    /// 9 hotbar) plus the container-specific top area — 2×2 personal
+    /// crafting grid, 3×3 crafting table, or the furnace slots with live
+    /// burn/cook progress. Returns the slot geometry so game.rs can
+    /// hit-test clicks (LEFT = whole stack, RIGHT = half/single).
+    pub fn container_screen(
+        &mut self,
+        view: &ContainerView,
+        cursor_pos: (f32, f32),
+        atlas: &[u8],
+    ) -> ContainerGeom {
+        let kind = view.kind;
+        // ---- shared bottom layout: 9-col storage (3 rows) + hotbar row ----
+        let cols: i32 = 9;
+        let grid_w = cols * 40 + 4;
+        let x0 = (UI_W as i32 - grid_w) / 2;
+        // top-area height per kind
+        let top_h = match kind {
+            ContainerKind::Inventory => 96,   // 2x2 craft + arrow + output
+            ContainerKind::Crafting => 140,   // 3x3 craft + arrow + output
+            ContainerKind::Furnace => 128,    // input / flame / fuel + arrow + output
+        };
+        let panel_h = top_h + 3 * 44 + 8 + 44 + 30; // + title + gaps + padding
+        let y0 = (UI_H as i32 - panel_h) / 2;
+
+        // panel chrome
+        let px0 = x0 - 14;
+        let pw = grid_w + 28;
+        self.rect(px0, y0 - 30, pw, panel_h + 30, [26, 26, 30, 235]);
+        self.frame(px0, y0 - 30, pw, panel_h + 30, [60, 60, 66, 255]);
+        self.frame(px0 + 1, y0 - 29, pw - 2, panel_h + 28, [12, 12, 14, 255]);
+
+        let title = match kind {
+            ContainerKind::Inventory => "INVENTORY  (E / ESC to close)",
+            ContainerKind::Crafting => "CRAFTING TABLE",
+            ContainerKind::Furnace => "FURNACE",
+        };
+        self.text(px0 + 12, y0 - 24, title, [255, 220, 120, 255], 1);
+
+        let mut geom = ContainerGeom {
+            inv: Vec::with_capacity(36),
+            craft: Vec::new(),
+            craft_out: (i32::MIN, i32::MIN),
+            furnace: None,
+        };
+
+        // ---- container-specific top area ----
+        match kind {
+            ContainerKind::Inventory => {
+                // 2x2 grid + arrow + output, centered
+                let total = 2 * 40 + 50 + 36;
+                let cx = x0 + (grid_w - total) / 2;
+                let cy = y0 + 8;
+                for r in 0..2 {
+                    for c in 0..2 {
+                        let x = cx + c as i32 * 40;
+                        let y = cy + r as i32 * 40;
+                        self.slot_well(x, y, &view.grid[r * 2 + c], atlas);
+                        geom.craft.push((x, y));
+                    }
+                }
+                self.arrow(cx + 84, cy + 12, if !view.craft_out.is_empty() { 1.0 } else { 0.0 });
+                let ox = cx + 134;
+                let oy = cy + 2;
+                self.slot_well(ox, oy, &view.craft_out, atlas);
+                geom.craft_out = (ox, oy);
+            }
+            ContainerKind::Crafting => {
+                // 3x3 grid + arrow + output, centered
+                let total = 3 * 40 + 50 + 36;
+                let cx = x0 + (grid_w - total) / 2;
+                let cy = y0 + 8;
+                for r in 0..3 {
+                    for c in 0..3 {
+                        let x = cx + c as i32 * 40;
+                        let y = cy + r as i32 * 40;
+                        self.slot_well(x, y, &view.grid[r * 3 + c], atlas);
+                        geom.craft.push((x, y));
+                    }
+                }
+                self.arrow(cx + 124, cy + 32, if !view.craft_out.is_empty() { 1.0 } else { 0.0 });
+                let ox = cx + 174;
+                let oy = cy + 22;
+                self.slot_well(ox, oy, &view.craft_out, atlas);
+                geom.craft_out = (ox, oy);
+            }
+            ContainerKind::Furnace => {
+                // left column: input above flame above fuel; arrow → output
+                let cx = x0 + (grid_w - 240) / 2;
+                let cy = y0 + 8;
+                let (input, fuel, output, burn, cook) = view.furnace
+                    .map(|f| (f.0, f.1, f.2, f.3, f.4))
+                    .unwrap_or((ItemStack::EMPTY, ItemStack::EMPTY, ItemStack::EMPTY, 0.0, 0.0));
+                let ix = cx + 10;
+                let iy = cy;
+                self.slot_well(ix, iy, &input, atlas);
+                self.flame(ix + 5, iy + 40, burn);
+                let fx = cx + 10;
+                let fy = iy + 70;
+                self.slot_well(fx, fy, &fuel, atlas);
+                self.arrow(cx + 70, iy + 42, cook);
+                let oxp = cx + 126;
+                let oyp = iy + 22;
+                self.slot_well(oxp, oyp, &output, atlas);
+                // output gets the vanilla wide highlight frame
+                self.frame(oxp - 2, oyp - 2, 40, 40, [255, 255, 255, 120]);
+                geom.furnace = Some(FurnaceSlots {
+                    input: (ix, iy),
+                    fuel: (fx, fy),
+                    output: (oxp, oyp),
+                });
+            }
+        }
+
+        // ---- shared inventory: 3 storage rows + hotbar row ----
+        let sy = y0 + top_h + 4;
+        for row in 0..3 {
+            let y = sy + row as i32 * 44;
+            for c in 0..9 {
+                let x = x0 + c as i32 * 40;
+                self.slot_well(x, y, &view.inv[9 + row * 9 + c], atlas);
+                geom.inv.push((x, y));
+            }
+        }
+        let hy = sy + 3 * 44 + 10;
+        for c in 0..9 {
+            let x = x0 + c as i32 * 40;
+            self.slot_well(x, hy, &view.inv[c], atlas);
+            geom.inv.push((x, hy));
+        }
+
+        // ---- cursor stack follows the mouse (vanilla) ----
+        if !view.cursor.is_empty() {
+            let cx = cursor_pos.0 as i32 - 18;
+            let cy = cursor_pos.1 as i32 - 18;
+            self.draw_stack(&view.cursor, cx, cy, atlas);
+        }
+
+        // hover label: name of the hovered slot's block
+        if let Some(s) = view.hovered_stack(cursor_pos.0 as i32, cursor_pos.1 as i32, &geom) {
+            if !s.is_empty() {
+                let label = name(s.block);
+                let lw = Self::text_width(label, 1);
+                self.text(
+                    (UI_W as i32 - lw) / 2,
+                    y0 - 44,
+                    label,
+                    [255, 255, 255, 255],
+                    1,
+                );
+            }
+        }
+        geom
     }
 
     pub fn debug(&mut self, lines: &[String]) {
@@ -650,7 +889,7 @@ impl UiCanvas {
         self.text(
             x0 - 6 + 10,
             y0 - 24,
-            "SELECT BLOCK  (E / ESC to close)",
+            "SELECT BLOCK  (B / ESC to close)",
             [230, 230, 230, 255],
             1,
         );
@@ -692,9 +931,11 @@ impl UiCanvas {
             ("CTRL", "Sprint"),
             ("MOUSE", "Look (click canvas to capture)"),
             ("LEFT CLICK", "Break block (hold)"),
-            ("RIGHT CLICK", "Place block (hold)"),
+            ("RIGHT CLICK", "Place block / open table & furnace"),
             ("MIDDLE CLICK", "Pick block"),
             ("1-9 / WHEEL", "Select hotbar slot"),
+            ("E", "Inventory + crafting (§27)"),
+            ("B", "Creative block picker"),
             ("ESC", "Pause menu / options"),
             ("F3", "Debug info"),
             ("H", "This help"),
@@ -760,5 +1001,116 @@ impl PickerGeom {
         } else {
             None
         }
+    }
+}
+
+// ------------------------------------------------------- containers (§27) --
+
+/// which container to draw (game.rs maps its `Container` enum to this so
+/// ui.rs stays independent of game.rs)
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum ContainerKind {
+    /// player inventory screen: 2×2 personal crafting grid
+    Inventory,
+    /// crafting table: 3×3 grid
+    Crafting,
+    /// furnace: input / fuel / output with live progress
+    Furnace,
+}
+
+/// a logical slot in a container screen — the target of a mouse click
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum SlotRef {
+    /// player inventory slot (0..36; 0..9 = hotbar row)
+    Inv(usize),
+    /// crafting-grid cell (row-major; 4 cells for 2×2, 9 for 3×3)
+    Craft(usize),
+    /// crafting result slot (special click semantics)
+    CraftOut,
+    FurnaceInput,
+    FurnaceFuel,
+    FurnaceOutput,
+}
+
+/// pure-data snapshot of everything a container screen renders — owned
+/// copies only, so game.rs can build it without borrow fights.
+pub struct ContainerView {
+    pub kind: ContainerKind,
+    /// 36 player slots (0..9 hotbar, 9..36 storage)
+    pub inv: Vec<ItemStack>,
+    /// craft-grid cells (row-major; 2×2 uses the first 4)
+    pub grid: Vec<ItemStack>,
+    /// current craft result (already matched by game.rs)
+    pub craft_out: ItemStack,
+    /// furnace slots: (input, fuel, output, burn_frac, cook_frac)
+    pub furnace: Option<(ItemStack, ItemStack, ItemStack, f32, f32)>,
+    /// stack riding the mouse cursor
+    pub cursor: ItemStack,
+}
+
+impl ContainerView {
+    fn hovered_stack(&self, x: i32, y: i32, geom: &ContainerGeom) -> Option<ItemStack> {
+        Some(match geom.slot_at(x, y)? {
+            SlotRef::Inv(i) => self.inv[i],
+            SlotRef::Craft(i) => self.grid[i],
+            SlotRef::CraftOut => self.craft_out,
+            SlotRef::FurnaceInput => self.furnace?.0,
+            SlotRef::FurnaceFuel => self.furnace?.1,
+            SlotRef::FurnaceOutput => self.furnace?.2,
+        })
+    }
+}
+
+/// furnace slot positions for hit-testing
+pub struct FurnaceSlots {
+    pub input: (i32, i32),
+    pub fuel: (i32, i32),
+    pub output: (i32, i32),
+}
+
+/// hit-test geometry for a container screen (UI-space 36px slots)
+pub struct ContainerGeom {
+    /// 36 inventory slot origins: 0..9 hotbar row (bottom), 9..36 storage
+    pub inv: Vec<(i32, i32)>,
+    /// craft-grid cell origins (row-major)
+    pub craft: Vec<(i32, i32)>,
+    /// craft result slot origin
+    pub craft_out: (i32, i32),
+    /// furnace slot origins when the screen is a furnace
+    pub furnace: Option<FurnaceSlots>,
+}
+
+impl ContainerGeom {
+    fn hit(x: i32, y: i32, s: &(i32, i32)) -> bool {
+        x >= s.0 && x < s.0 + 36 && y >= s.1 && y < s.1 + 36
+    }
+
+    /// which logical slot (if any) is under this UI-space cursor position
+    pub fn slot_at(&self, x: i32, y: i32) -> Option<SlotRef> {
+        if let Some(fs) = &self.furnace {
+            if Self::hit(x, y, &fs.input) {
+                return Some(SlotRef::FurnaceInput);
+            }
+            if Self::hit(x, y, &fs.fuel) {
+                return Some(SlotRef::FurnaceFuel);
+            }
+            if Self::hit(x, y, &fs.output) {
+                return Some(SlotRef::FurnaceOutput);
+            }
+        }
+        if Self::hit(x, y, &self.craft_out) {
+            return Some(SlotRef::CraftOut);
+        }
+        for (i, s) in self.craft.iter().enumerate() {
+            if Self::hit(x, y, s) {
+                return Some(SlotRef::Craft(i));
+            }
+        }
+        for (i, s) in self.inv.iter().enumerate() {
+            if Self::hit(x, y, s) {
+                return Some(SlotRef::Inv(i));
+            }
+        }
+        None
     }
 }

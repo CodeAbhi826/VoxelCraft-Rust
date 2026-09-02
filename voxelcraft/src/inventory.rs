@@ -7,7 +7,7 @@ use crate::blocks::*;
 pub const STACK_MAX: u8 = 64;
 pub const INV_SLOTS: usize = 36; // 0..9 hotbar, 9..36 storage
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct ItemStack {
     pub block: u8,
     pub count: u8,
@@ -25,8 +25,8 @@ impl ItemStack {
     }
 
     pub fn split(&mut self) -> ItemStack {
-        // vanilla right-click half-take
-        let half = (self.count + 1) / 2;
+        // vanilla right-click half-take (round up: 3 → 2 + 1)
+        let half = self.count.div_ceil(2);
         let out = ItemStack::new(self.block, half);
         self.count -= half;
         if self.count == 0 {

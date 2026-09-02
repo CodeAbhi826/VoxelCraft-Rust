@@ -284,10 +284,10 @@ pub struct GameApp {
     /// open container screen (Phase 7): inventory crafting grid, crafting
     /// table, or furnace
     container: Option<Container>,
+    /// hit-test geometry of the open container screen
+    container_geom: Option<crate::ui::ContainerGeom>,
     /// stack held by the cursor in a container screen
     cursor_stack: crate::inventory::ItemStack,
-    /// furnace block entities
-    furnaces: crate::furnace::Furnaces,
     /// open crafting grid (2×2 uses [0..4] row-major on a 2-wide layout,
     /// 3×3 uses all 9)
     craft_grid: [crate::inventory::ItemStack; 9],
@@ -604,8 +604,8 @@ impl GameApp {
             light: crate::light::LightEngine::new(),
             sim: crate::sim::Sim::new(0xC0FF_EE01),
             container: None,
+            container_geom: None,
             cursor_stack: crate::inventory::ItemStack::EMPTY,
-            furnaces: crate::furnace::Furnaces::default(),
             craft_grid: [crate::inventory::ItemStack::EMPTY; 9],
             particles: crate::particles::ParticleSystem::new(0x5EED_0042),
             particle_verts: Vec::new(),
@@ -674,7 +674,7 @@ impl GameApp {
     ) {
         use winit::event::{Event, WindowEvent};
         #[cfg(not(target_arch = "wasm32"))]
-        use winit::event::{ElementState, MouseButton, MouseScrollDelta};
+        use winit::event::{ElementState, MouseScrollDelta};
         #[cfg(not(target_arch = "wasm32"))]
         use winit::keyboard::PhysicalKey;
 
@@ -708,7 +708,12 @@ impl GameApp {
                 WindowEvent::MouseInput { state, button, .. } => {
                     let pressed = state == ElementState::Pressed;
                     let (cx, cy) = (self.cursor.0 as i32, self.cursor.1 as i32);
-                    if self.picker_open && self.screen == Screen::Game {
+                    if self.container.is_some() && self.screen == Screen::Game {
+                        if pressed {
+                            let right = button == winit::event::MouseButton::Right;
+                            self.container_click(cx, cy, right);
+                        }
+                    } else if self.picker_open && self.screen == Screen::Game {
                         if pressed {
                             self.picker_click(cx, cy);
                         }
@@ -808,7 +813,7 @@ impl GameApp {
                     }
                 }
                 WebEvent::MouseDelta { dx, dy } => {
-                    if self.screen == Screen::Game && !self.picker_open {
+                    if self.screen == Screen::Game && !self.picker_open && self.container.is_none() {
                         self.input.add_mouse(dx, dy);
                     }
                 }
@@ -823,7 +828,12 @@ impl GameApp {
                     }
                 }
                 WebEvent::Button { button, pressed, x, y } => {
-                    if self.picker_open && self.screen == Screen::Game {
+                    if self.container.is_some() && self.screen == Screen::Game {
+                        if pressed {
+                            let (ux, uy) = self.css_to_ui(x, y);
+                            self.container_click(ux as i32, uy as i32, button == 2);
+                        }
+                    } else if self.picker_open && self.screen == Screen::Game {
                         if pressed {
                             let (ux, uy) = self.css_to_ui(x, y);
                             self.picker_click(ux as i32, uy as i32);
@@ -854,8 +864,13 @@ impl GameApp {
                     self.pointer_locked = locked;
                     if locked {
                         self.ever_locked = true;
-                    } else if self.screen == Screen::Game && !self.picker_open {
-                        // browser released the lock (Esc) → pause menu
+                    } else if self.screen == Screen::Game
+                        && !self.picker_open
+                        && self.container.is_none()
+                    {
+                        // browser released the lock (Esc) → pause menu.
+                        // (opening a container releases the lock on purpose —
+                        // that is NOT a pause)
                         self.enter_pause();
                     }
                 }
@@ -906,8 +921,9 @@ impl GameApp {
 
     fn key_action(&mut self, code: winit::keyboard::KeyCode, pressed: bool, repeat: bool) {
         use winit::keyboard::KeyCode;
-        // movement only when actually in the game world (not in the picker)
-        let in_game = self.screen == Screen::Game && !self.picker_open;
+        // movement only when actually in the game world (not in the picker
+        // or a container screen)
+        let in_game = self.screen == Screen::Game && !self.picker_open && self.container.is_none();
         match code {
             KeyCode::KeyW => self.input.fwd = pressed && in_game,
             KeyCode::KeyS => self.input.back = pressed && in_game,
@@ -940,6 +956,17 @@ impl GameApp {
                 }
             }
             KeyCode::KeyE => {
+                if pressed && !repeat && self.screen == Screen::Game {
+                    if self.container.is_some() {
+                        self.close_container();
+                    } else if self.picker_open {
+                        self.close_picker();
+                    } else {
+                        self.open_container(Container::Inventory);
+                    }
+                }
+            }
+            KeyCode::KeyB => {
                 if pressed && !repeat && self.screen == Screen::Game {
                     if self.picker_open {
                         self.close_picker();
@@ -1208,7 +1235,11 @@ impl GameApp {
         self.input = Input::default();
         #[cfg(target_arch = "wasm32")]
         {
-            if !self.drag_look {
+            if self.container.is_some() {
+                // a container was open when we paused: keep the shim in the
+                // click-forwarding state and leave the pointer free
+                crate::web_input::set_screen("picker");
+            } else if !self.drag_look {
                 // works when called from a click (transient activation)
                 crate::web_input::request_pointer_lock();
             }
@@ -1439,7 +1470,24 @@ impl GameApp {
     /// open a container screen (inventory / crafting table / furnace)
     fn open_container(&mut self, c: Container) {
         self.container = Some(c);
+        self.container_geom = None;
+        self.input = Input::default();
         self.unlock_audio();
+        // release the pointer so the cursor can click slots; tell the JS
+        // shim we're in a picker-like state (canvas clicks forwarded as
+        // button events, not lock requests)
+        #[cfg(target_arch = "wasm32")]
+        {
+            crate::web_input::release_pointer_lock();
+            crate::web_input::set_screen("picker");
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let _ = self
+                .window
+                .set_cursor_grab(winit::window::CursorGrabMode::None);
+            self.window.set_cursor_visible(true);
+        }
         self.ui.dirty = true;
     }
 
@@ -1493,7 +1541,195 @@ impl GameApp {
             }
             self.cursor_stack = crate::inventory::ItemStack::EMPTY;
         }
+        self.container_geom = None;
+        // re-capture the mouse (the keypress counts as user activation)
+        #[cfg(target_arch = "wasm32")]
+        {
+            crate::web_input::set_screen("game");
+            crate::web_input::request_pointer_lock();
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let _ = self
+                .window
+                .set_cursor_grab(winit::window::CursorGrabMode::Locked);
+            self.window.set_cursor_visible(false);
+        }
         self.ui.dirty = true;
+    }
+
+    /// LEFT/RIGHT click inside the open container screen: vanilla slot
+    /// semantics (LEFT = whole stack / swap / merge, RIGHT = half-take /
+    /// place-one), plus the special craft-result and furnace-output rules.
+    fn container_click(&mut self, ux: i32, uy: i32, right: bool) {
+        self.unlock_audio();
+        // resolve the slot first, then mutate (geom borrow must not overlap)
+        let slot = match self.container_geom.as_ref().and_then(|g| g.slot_at(ux, uy)) {
+            Some(s) => s,
+            None => return,
+        };
+        use crate::inventory::Inventory;
+        use crate::ui::SlotRef;
+        match slot {
+            SlotRef::Inv(i) if i < crate::inventory::INV_SLOTS => {
+                Inventory::slot_click(
+                    &mut self.player.inv.slots[i],
+                    &mut self.cursor_stack,
+                    right,
+                );
+            }
+            SlotRef::Craft(i) => {
+                let n_cells = self.craft_grid_cells();
+                if i < n_cells {
+                    Inventory::slot_click(
+                        &mut self.craft_grid[i],
+                        &mut self.cursor_stack,
+                        right,
+                    );
+                }
+            }
+            SlotRef::CraftOut => {
+                // take the crafted result: consume one of every ingredient,
+                // land the output in the cursor (merge if it matches)
+                let size = self.craft_grid_size();
+                let grid: Vec<crate::inventory::ItemStack> =
+                    self.craft_grid.iter().take(size * size).copied().collect();
+                if let Some(out) = crate::craft::match_grid(&grid, size) {
+                    let fits = self.cursor_stack.is_empty()
+                        || (self.cursor_stack.block == out.block
+                            && self.cursor_stack.count + out.count
+                                <= crate::inventory::STACK_MAX);
+                    if fits {
+                        if self.cursor_stack.is_empty() {
+                            self.cursor_stack = out;
+                        } else {
+                            self.cursor_stack.count += out.count;
+                        }
+                        crate::craft::consume_grid(
+                            &mut self.craft_grid[..size * size],
+                        );
+                        self.audio.play(
+                            &self.bank,
+                            SoundFamily::Wood,
+                            0.4 * self.settings.volume,
+                            1.3,
+                        );
+                    }
+                }
+            }
+            SlotRef::FurnaceInput | SlotRef::FurnaceFuel => {
+                let Some(Container::Furnace { pos }) = self.container else {
+                    return;
+                };
+                let Some(f) = self.sim.furnaces.map.get_mut(&pos) else {
+                    return;
+                };
+                if slot == SlotRef::FurnaceFuel
+                    && !self.cursor_stack.is_empty()
+                    && crate::furnace::fuel_ticks(self.cursor_stack.block) == 0
+                {
+                    return; // vanilla: only burnable items in the fuel slot
+                }
+                let target = if slot == SlotRef::FurnaceInput {
+                    &mut f.input
+                } else {
+                    &mut f.fuel
+                };
+                Inventory::slot_click(target, &mut self.cursor_stack, right);
+            }
+            SlotRef::FurnaceOutput => {
+                let Some(Container::Furnace { pos }) = self.container else {
+                    return;
+                };
+                let Some(f) = self.sim.furnaces.map.get_mut(&pos) else {
+                    return;
+                };
+                // take-only: whole stack on LEFT, half on RIGHT
+                if !f.output.is_empty() {
+                    if !right || f.output.count == 1 {
+                        if self.cursor_stack.is_empty() {
+                            self.cursor_stack = f.output;
+                            f.output = crate::inventory::ItemStack::EMPTY;
+                        } else if self.cursor_stack.block == f.output.block {
+                            let room =
+                                crate::inventory::STACK_MAX - self.cursor_stack.count;
+                            let take = room.min(f.output.count);
+                            self.cursor_stack.count += take;
+                            f.output.count -= take;
+                            if f.output.count == 0 {
+                                f.output = crate::inventory::ItemStack::EMPTY;
+                            }
+                        }
+                    } else {
+                        let half = f.output.split();
+                        if self.cursor_stack.is_empty() {
+                            self.cursor_stack = half;
+                        }
+                    }
+                }
+            }
+            SlotRef::Inv(_) => {}
+        }
+        self.click_sound();
+        self.ui.dirty = true;
+    }
+
+    /// craft grid width per open container: 2 (inventory) or 3 (table)
+    fn craft_grid_size(&self) -> usize {
+        match self.container {
+            Some(Container::Crafting { .. }) => 3,
+            _ => 2,
+        }
+    }
+
+    /// craft grid cell count (4 for 2×2, 9 for 3×3)
+    fn craft_grid_cells(&self) -> usize {
+        let s = self.craft_grid_size();
+        s * s
+    }
+
+    /// owned snapshot of everything the container screen renders (§27) —
+    /// pure data, built fresh every UI rebuild
+    fn container_view(&self) -> crate::ui::ContainerView {
+        use crate::ui::{ContainerKind, ContainerView};
+        let (kind, furnace) = match self.container {
+            Some(Container::Inventory) => (ContainerKind::Inventory, None),
+            Some(Container::Crafting { .. }) => (ContainerKind::Crafting, None),
+            Some(Container::Furnace { pos }) => {
+                // live slots + progress fractions for the flame/arrow
+                let f = self
+                    .sim
+                    .furnaces
+                    .map
+                    .get(&pos)
+                    .cloned()
+                    .unwrap_or_default();
+                let burn = if f.burn_max > 0 {
+                    f.burn_left as f32 / f.burn_max as f32
+                } else {
+                    0.0
+                };
+                let cook = f.cook_left as f32 / crate::furnace::COOK_TICKS as f32;
+                (
+                    ContainerKind::Furnace,
+                    Some((f.input, f.fuel, f.output, burn, cook)),
+                )
+            }
+            None => (ContainerKind::Inventory, None),
+        };
+        let size = self.craft_grid_size();
+        let grid: Vec<crate::inventory::ItemStack> =
+            self.craft_grid.iter().take(size * size).copied().collect();
+        let craft_out =
+            crate::craft::match_grid(&grid, size).unwrap_or(crate::inventory::ItemStack::EMPTY);
+        ContainerView {
+            kind,
+            inv: self.player.inv.slots.clone(),
+            grid,
+            craft_out,
+            furnace,
+            cursor: self.cursor_stack,
+        }
     }
 
     // ------------------------------------------------------------ update --
@@ -1524,10 +1760,7 @@ impl GameApp {
         use crate::blocks::*;
         let state = match block {
             WATER => water_state(0),
-            REDSTONE_WIRE => wire_state(0),
-            REDSTONE_TORCH => torch_state(true),
-            LEVER => lever_state(false),
-            _ => block as u16,
+            _ => default_state(block),
         };
         if let Some((old, new)) = self.world.set_block_state(x, y, z, state) {
             self.light.on_block_changed(&self.world, x, y, z, old, new);
@@ -1668,6 +1901,188 @@ impl GameApp {
                             self.edits += 1;
                         }
                     }
+                    // ---- Phase 7 §27 E2E: containers / crafting / smelting --
+                    Some("open") => {
+                        // open:<inventory|crafting|furnace> — the crafting/
+                        // furnace variants need a position (defaults to
+                        // two blocks below the player)
+                        let pos = [
+                            self.player.pos.x.floor() as i32,
+                            self.player.pos.y.floor() as i32 - 2,
+                            self.player.pos.z.floor() as i32,
+                        ];
+                        match parts.get(1).copied() {
+                            Some("inventory") => {
+                                self.open_container(Container::Inventory);
+                                crate::render::report_boot_log("e2e: inventory screen open");
+                            }
+                            Some("crafting") => {
+                                self.test_place(CRAFTING_TABLE, pos[0], pos[1], pos[2]);
+                                self.open_container(Container::Crafting { pos });
+                                crate::render::report_boot_log("e2e: crafting screen open");
+                            }
+                            Some("furnace") => {
+                                self.test_place(FURNACE, pos[0], pos[1], pos[2]);
+                                self.sim.furnaces.map.entry(pos).or_default();
+                                self.open_container(Container::Furnace { pos });
+                                crate::render::report_boot_log("e2e: furnace screen open");
+                            }
+                            _ => {}
+                        }
+                    }
+                    Some("cclick") => {
+                        // cclick:ux:uy:<l|r> — synthesize a slot click
+                        let v: Vec<i32> = parts
+                            .iter()
+                            .skip(1)
+                            .filter_map(|s| s.parse().ok())
+                            .collect();
+                        if v.len() >= 2 {
+                            let right = parts.get(3).copied() == Some("r");
+                            self.container_click(v[0], v[1], right);
+                        }
+                    }
+                    Some("give") => {
+                        // give:<block>:<count> — survival-style acquisition
+                        let b = match parts.get(1).copied() {
+                            Some("oak_log") => Some(OAK_LOG),
+                            Some("planks") => Some(PLANKS),
+                            Some("cobble") => Some(COBBLE),
+                            Some("sand") => Some(SAND),
+                            _ => None,
+                        };
+                        let n: u8 = parts.get(2).and_then(|s| s.parse().ok()).unwrap_or(1);
+                        if let Some(b) = b {
+                            let left = self.player.inv.add(b, n);
+                            crate::render::report_boot_log(&format!(
+                                "e2e: gave {n} x {} (leftover {left})",
+                                name(b)
+                            ));
+                            self.ui.dirty = true;
+                        }
+                    }
+                    Some("craft") => {
+                        // craft:<log|table|furnace> — full flow: opens the
+                        // right container, moves ingredients from the
+                        // inventory into the grid through slot-click
+                        // semantics, matches + consumes, lands the result
+                        let recipe = parts.get(1).copied().unwrap_or("log");
+                        let cells: &[usize] = match recipe {
+                            "table" => &[0, 1, 2, 3],
+                            "furnace" => &[0, 1, 2, 3, 5, 6, 7, 8],
+                            _ => &[0], // log → planks (1x1 recipe)
+                        };
+                        let ing: u8 = match recipe {
+                            "table" => PLANKS,
+                            "furnace" => COBBLE,
+                            _ => OAK_LOG,
+                        };
+                        // the 3×3 recipes need the crafting table open
+                        if recipe == "furnace"
+                            && !matches!(self.container, Some(Container::Crafting { .. }))
+                        {
+                            let pos = [
+                                self.player.pos.x.floor() as i32,
+                                self.player.pos.y.floor() as i32 - 2,
+                                self.player.pos.z.floor() as i32,
+                            ];
+                            self.open_container(Container::Crafting { pos });
+                        } else if self.container.is_none() {
+                            self.open_container(Container::Inventory);
+                        }
+                        // ensure ingredients exist
+                        if self.player.inv.count_of(ing) < cells.len() as u32 {
+                            self.player.inv.add(ing, cells.len() as u8);
+                        }
+                        // move one item into each grid cell through the REAL
+                        // slot_click semantics (cursor round-trip per cell)
+                        use crate::inventory::Inventory;
+                        for &c in cells {
+                            if let Some(i) = self
+                                .player
+                                .inv
+                                .slots
+                                .iter()
+                                .position(|s| s.block == ing && s.count > 0)
+                            {
+                                self.cursor_stack = crate::inventory::ItemStack::new(ing, 1);
+                                self.player.inv.slots[i].count -= 1;
+                                if self.player.inv.slots[i].count == 0 {
+                                    self.player.inv.slots[i] = crate::inventory::ItemStack::EMPTY;
+                                }
+                                let mut grid = self.craft_grid[c];
+                                Inventory::slot_click(&mut grid, &mut self.cursor_stack, false);
+                                self.craft_grid[c] = grid;
+                            }
+                        }
+                        self.cursor_stack = crate::inventory::ItemStack::EMPTY;
+                        // match + consume through the real recipe engine,
+                        // land the result in the inventory (the CraftOut
+                        // click path — verified separately by cclick tests)
+                        let size = self.craft_grid_size();
+                        let grid: Vec<crate::inventory::ItemStack> =
+                            self.craft_grid.iter().take(size * size).copied().collect();
+                        let msg = match crate::craft::match_grid(&grid, size) {
+                            Some(out) => {
+                                crate::craft::consume_grid(&mut self.craft_grid[..size * size]);
+                                let left = self.player.inv.add(out.block, out.count);
+                                format!(
+                                    "e2e: crafted {} x {} (leftover {left})",
+                                    out.count,
+                                    name(out.block)
+                                )
+                            }
+                            None => "e2e: craft FAILED — no recipe match".to_string(),
+                        };
+                        crate::render::report_boot_log(&msg);
+                        self.ui.dirty = true;
+                    }
+                    Some("smelt") => {
+                        // smelt:<x>:<y>:<z> — furnace block entity + world
+                        // block, input SAND + fuel PLANKS, fast-forward 260
+                        // sim steps, report the output + lit state swap
+                        let p = coords();
+                        let pos = if p.len() == 3 {
+                            [p[0], p[1], p[2]]
+                        } else {
+                            [
+                                self.player.pos.x.floor() as i32,
+                                self.player.pos.y.floor() as i32 - 2,
+                                self.player.pos.z.floor() as i32,
+                            ]
+                        };
+                        self.test_place(FURNACE, pos[0], pos[1], pos[2]);
+                        let mut f = crate::furnace::FurnaceState::default();
+                        f.input = crate::inventory::ItemStack::new(SAND, 2);
+                        f.fuel = crate::inventory::ItemStack::new(PLANKS, 2);
+                        self.sim.furnaces.map.insert(pos, f);
+                        // fast-forward: 260 ticks = ignite + 200 cook + slack
+                        let mut lit = false;
+                        for _ in 0..260 {
+                            let changed = self.sim.furnaces.tick(&mut self.world);
+                            if !changed.is_empty() {
+                                lit = true;
+                            }
+                        }
+                        let out = self
+                            .sim
+                            .furnaces
+                            .map
+                            .get(&pos)
+                            .map(|f| (f.output, f.is_burning()))
+                            .unwrap_or_default();
+                        let state = self.world.get_state(pos[0], pos[1], pos[2]);
+                        crate::render::report_boot_log(&format!(
+                            "e2e: smelt output={} x {} burning={} lit_swapped={} state={}",
+                            out.0.count,
+                            name(out.0.block),
+                            out.1,
+                            lit,
+                            state == crate::blocks::FURNACE_LIT,
+                        ));
+                        self.edits += 1;
+                        self.ui.dirty = true;
+                    }
                     _ => {}
                 }
             }
@@ -1774,6 +2189,16 @@ impl GameApp {
                         );
                         self.audio.play(&self.bank, SoundFamily::Wood, 0.4 * self.settings.volume, 0.8);
                         self.place_timer = 0.24;
+                    } else if tb == CRAFTING_TABLE {
+                        // §27: right-click opens the 3×3 crafting screen
+                        self.open_container(Container::Crafting { pos: tpos });
+                        self.place_timer = 0.3;
+                    } else if tb == FURNACE {
+                        // §27: right-click opens the furnace screen; the
+                        // block entity is created on first use (empty state)
+                        self.sim.furnaces.map.entry(tpos).or_default();
+                        self.open_container(Container::Furnace { pos: tpos });
+                        self.place_timer = 0.3;
                     } else if !self.player.held().is_empty() {
                         let b = self.player.held().block;
                         if let Some((_, _, prev)) = self.target {
@@ -1819,7 +2244,9 @@ impl GameApp {
                                 fence_state_for(&self.world, prev[0], prev[1], prev[2])
                                     .unwrap_or(b as u16)
                             } else {
-                                b as u16
+                                // sim blocks (wire/furnace/…) get their proper
+                                // default STATE — never the identity slot
+                                default_state(b)
                             };
                             if let Some((old, new)) =
                                 self.world.set_block_state(prev[0], prev[1], prev[2], state)
@@ -1874,15 +2301,27 @@ impl GameApp {
         }
 
         // UI rebuild cadence: snappier in menus (hover) + picker + live F3
+        // + open containers (furnace progress arrows animate at 20 Hz —
+        // 0.05 s cadence shows them smoothly)
         let live_debug = self.screen == Screen::Game && self.show_debug;
+        let container_live = self.container.is_some();
         let cadence = if self.screen == Screen::Game
             && !self.picker_open
             && !live_debug
+            && !container_live
         {
             0.15
         } else {
             0.05
         };
+        // containers animate: mark the UI dirty on a 5 Hz heartbeat while a
+        // furnace screen is open (craft/inventory screens are static between
+        // clicks — clicks already set dirty)
+        if container_live && matches!(self.container, Some(Container::Furnace { .. })) {
+            if self.time - self.last_ui_t > 0.2 {
+                self.ui.dirty = true;
+            }
+        }
         if self.ui.dirty && self.time - self.last_ui_t > cadence {
             crate::phase!(self.phases, crate::bench::PHASE_UI, self.rebuild_ui());
         }
@@ -2322,7 +2761,12 @@ impl GameApp {
         // in-game HUD
         self.ui.crosshair();
         let toast = self.item_toast.as_ref().map(|(s, t)| (s.as_str(), (*t * 200.0).clamp(0.0, 220.0) as u8));
-        self.ui.hotbar(&self.player.hotbar, self.player.selected, &self.atlas, toast);
+        self.ui.hotbar(
+            &self.player.inv.slots[..crate::inventory::INV_SLOTS.min(9)],
+            self.player.selected,
+            &self.atlas,
+            toast,
+        );
         let xp = (self.edits % 50) as f32 / 50.0;
         let level = self.edits / 50;
         self.ui.status_bars(20.0, 20.0, xp, level);
@@ -2429,7 +2873,17 @@ impl GameApp {
             self.ui.help();
         }
 
-        // block picker overlay (E) — sits above the HUD
+        // container overlay (§27) — sits above the HUD. Owned snapshot so
+        // the renderer never borrows game state.
+        if self.container.is_some() {
+            let view = self.container_view();
+            let g = self.ui.container_screen(&view, self.cursor, &self.atlas);
+            self.container_geom = Some(g);
+        } else {
+            self.container_geom = None;
+        }
+
+        // block picker overlay (B) — sits above the HUD
         if self.picker_open {
             let g = self.ui.picker(self.cursor, &self.atlas);
             self.picker_geom = Some(g);
@@ -2824,6 +3278,7 @@ fn keycode_from_web(code: &str) -> Option<winit::keyboard::KeyCode> {
         "Escape" => KeyCode::Escape,
         "F3" => KeyCode::F3,
         "KeyE" => KeyCode::KeyE,
+        "KeyB" => KeyCode::KeyB,
         "KeyH" => KeyCode::KeyH,
         "KeyV" => KeyCode::KeyV,
         "BracketLeft" => KeyCode::BracketLeft,

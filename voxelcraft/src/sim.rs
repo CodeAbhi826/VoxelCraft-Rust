@@ -17,6 +17,9 @@ pub struct Sim {
     pub sched: TickScheduler,
     random: RandomTicker,
     pub items: ItemSystem,
+    /// furnace block entities (Phase 7 §27) — ticked at the sim rate so
+    /// COOK_TICKS = 200 means the vanilla 10 seconds
+    pub furnaces: crate::furnace::Furnaces,
     acc: f32,
     /// total sim ticks executed (stats/F3/E2E)
     pub ticks: u64,
@@ -28,6 +31,7 @@ impl Sim {
             sched: TickScheduler::new(),
             random: RandomTicker::new(seed),
             items: ItemSystem::new(seed ^ 0xD00_0042),
+            furnaces: crate::furnace::Furnaces::default(),
             acc: 0.0,
             ticks: 0,
         }
@@ -88,7 +92,13 @@ impl Sim {
             fluids::random_plant_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
         });
 
-        // 3. item entities
+        // 3. furnace block entities (§27): smelt progress, fuel burn, and
+        // the lit/unlit world-state swap (remeshes via set_block_state's
+        // dirty marking; visual-only light — FURNACE_STATE/LIT both map to
+        // the FURNACE block id so the light engine sees no delta)
+        let _changed = self.furnaces.tick(world);
+
+        // 4. item entities
         self.items.tick(world);
     }
 

@@ -267,6 +267,9 @@ pub struct GameApp {
     section_meshes: HashMap<ChunkPos, Vec<Option<Arc<MeshData>>>>,
     /// incremental light engine (Phase 4 §18)
     light: crate::light::LightEngine,
+    /// fixed-step simulation (Phase 6: scheduled ticks, fluids, gravity,
+    /// random ticks, item entities)
+    sim: crate::sim::Sim,
     /// block particles (Phase 5 §16.2 pass 4)
     particles: crate::particles::ParticleSystem,
     /// billboard vertex scratch (rebuilt per frame against the camera basis)
@@ -578,6 +581,7 @@ impl GameApp {
             mesh_inflight: HashMap::new(),
             section_meshes: HashMap::new(),
             light: crate::light::LightEngine::new(),
+            sim: crate::sim::Sim::new(0xC0FF_EE01),
             particles: crate::particles::ParticleSystem::new(0x5EED_0042),
             particle_verts: Vec::new(),
             input: Input::default(),
@@ -1404,8 +1408,9 @@ impl GameApp {
     // ------------------------------------------------------------ update --
 
     /// E2E hook: break a block at world coords through the full interactive
-    /// path (state edit → light update → fence re-link → particles →
-    /// invalidation), without requiring pointer lock / raycast targeting.
+    /// path (state edit → light update → fence re-link → particles → item
+    /// drop → sim notification → invalidation), without requiring pointer
+    /// lock / raycast targeting.
     fn test_break(&mut self, x: i32, y: i32, z: i32) {
         let b = self.world.get_block(x, y, z);
         if b == AIR || b == BEDROCK {
@@ -1418,6 +1423,22 @@ impl GameApp {
         update_fence_neighbors(&mut self.world, x, y, z);
         self.particles
             .spawn_block_break(x, y, z, b, biome, sky, blk);
+        self.sim.items.drop_block(x, y, z, b, biome, sky, blk);
+        crate::fluids::on_block_changed(&mut self.sim.sched, &self.world, x, y, z);
+        self.edits += 1;
+    }
+
+    /// E2E hook: place a block / water source at world coords.
+    fn test_place(&mut self, block: u8, x: i32, y: i32, z: i32) {
+        let state = if block == WATER {
+            crate::blocks::water_state(0)
+        } else {
+            block as u16
+        };
+        if let Some((old, new)) = self.world.set_block_state(x, y, z, state) {
+            self.light.on_block_changed(&self.world, x, y, z, old, new);
+        }
+        crate::fluids::on_block_changed(&mut self.sim.sched, &self.world, x, y, z);
         self.edits += 1;
     }
 
@@ -1457,16 +1478,76 @@ impl GameApp {
             self.particles.update(dt, &self.world);
         });
 
-        // E2E test commands (wasm only): "break:x:y:z" → same path as an
-        // interactive break (mesh invalidation + light + particles)
+        // Phase 6 simulation: scheduled ticks (fluids/gravity), random
+        // ticks, item entities — same fixed-step accumulator
+        crate::phase!(self.phases, crate::bench::PHASE_SIM, {
+            self.sim.update(dt, &mut self.world, &mut self.light);
+        });
+
+        // item pickup: entities in radius land in the hotbar
+        if self.screen == Screen::Game {
+            for b in self.sim.collect_items(self.player.eye().to_array()) {
+                let hb = &mut self.player.hotbar;
+                if let Some(slot) = hb.iter().position(|&s| s == b) {
+                    let _ = slot; // already have it: stack count comes with
+                                  // the inventory system (Phase 7)
+                } else if let Some(free) = hb.iter().position(|&s| s == AIR) {
+                    hb[free] = b;
+                }
+                let toast = name(b);
+                self.item_toast = Some((toast.to_string(), 2.0));
+                self.ui.dirty = true;
+            }
+        }
+
+        // E2E test commands (wasm only): break/place/water/drop → full
+        // interactive paths (mesh invalidation + light + particles + sim)
         #[cfg(target_arch = "wasm32")]
         {
             if let Some(cmd) = crate::web_input::pop_test_cmd() {
-                if let Some(rest) = cmd.strip_prefix("break:") {
-                    let p: Vec<i32> = rest.split(':').filter_map(|v| v.parse().ok()).collect();
-                    if p.len() == 3 {
-                        self.test_break(p[0], p[1], p[2]);
+                let parts: Vec<&str> = cmd.split(':').collect();
+                let coords = || {
+                    parts.iter()
+                        .skip(1)
+                        .filter_map(|v| v.parse::<i32>().ok())
+                        .collect::<Vec<i32>>()
+                };
+                match parts.first().copied() {
+                    Some("break") => {
+                        let p = coords();
+                        if p.len() == 3 {
+                            self.test_break(p[0], p[1], p[2]);
+                        }
                     }
+                    Some("place") => {
+                        // place:block_name:x:y:z (sand|gravel|dirt|stone|water)
+                        let p = coords();
+                        let b = match parts.get(1).copied() {
+                            Some("sand") => Some(SAND),
+                            Some("gravel") => Some(GRAVEL),
+                            Some("dirt") => Some(DIRT),
+                            Some("stone") => Some(STONE),
+                            Some("water") => Some(WATER),
+                            _ => None,
+                        };
+                        if p.len() == 3 && b.is_some() {
+                            // coords() skipped the name — re-parse the tail
+                            let q: Vec<i32> = parts[2..]
+                                .iter()
+                                .filter_map(|v| v.parse().ok())
+                                .collect();
+                            if q.len() == 3 {
+                                self.test_place(b.unwrap(), q[0], q[1], q[2]);
+                            }
+                        }
+                    }
+                    Some("water") => {
+                        let p = coords();
+                        if p.len() == 3 {
+                            self.test_place(WATER, p[0], p[1], p[2]);
+                        }
+                    }
+                    _ => {}
                 }
             }
         }
@@ -1542,6 +1623,14 @@ impl GameApp {
                         self.particles.spawn_block_break(
                             pos[0], pos[1], pos[2], broke, biome, sky, blk,
                         );
+                        // §22/§24: item drop + neighbor sim notification
+                        // (water flows, sand falls)
+                        self.sim.items.drop_block(
+                            pos[0], pos[1], pos[2], broke, biome, sky, blk,
+                        );
+                        crate::fluids::on_block_changed(
+                            &mut self.sim.sched, &self.world, pos[0], pos[1], pos[2],
+                        );
                         self.audio.play(
                             &self.bank,
                             def(b).sound,
@@ -1610,6 +1699,10 @@ impl GameApp {
                             }
                             // fences: neighbors recompute their connections
                             update_fence_neighbors(&mut self.world, prev[0], prev[1], prev[2]);
+                            // §24: a new block notifies the fluid/gravity sim
+                            crate::fluids::on_block_changed(
+                                &mut self.sim.sched, &self.world, prev[0], prev[1], prev[2],
+                            );
                             self.audio.play(&self.bank, def(b).sound, 0.55 * self.settings.volume, 1.15);
                             self.place_timer = 0.24;
                             self.edits += 1;
@@ -1768,6 +1861,11 @@ impl GameApp {
             ("particles", StatsVal::F(self.particles.len() as f32)),
             ("particlesDrawn", StatsVal::F(self.stats.particles as f32)),
             ("particlesTotal", StatsVal::F(self.particles.spawned_total as f32)),
+            ("simTicks", StatsVal::F(self.sim.ticks as f32)),
+            ("schedPending", StatsVal::F(self.sim.sched.pending() as f32)),
+            ("items", StatsVal::F(self.sim.items.len() as f32)),
+            ("itemsDropped", StatsVal::F(self.sim.items.dropped_total as f32)),
+            ("itemsPicked", StatsVal::F(self.sim.items.picked_total as f32)),
             ("fwd", StatsVal::B(self.input.fwd)),
             ("back", StatsVal::B(self.input.back)),
             ("left", StatsVal::B(self.input.left)),
@@ -2365,6 +2463,10 @@ impl GameApp {
             ];
             self.particles
                 .build_vertices(right, up, &mut self.particle_verts);
+            // item entities share the billboard pipeline (§22 progressive)
+            self.sim
+                .items
+                .build_vertices(self.time, right, up, &mut self.particle_verts);
         }
 
         self.stats = self.renderer.render(

@@ -330,6 +330,66 @@ fn art(a: &mut [u8], t: u16, rows: [&str; 16], map: &dyn Fn(char) -> Option<(i32
 }
 
 /// §25 redstone wire: a flat red cross laid on the block floor
+/// furnace side: stone body with a dark mouth
+fn furnace_side_art(a: &mut [u8], t: u16, lit: bool) {
+    let rows = [
+        "ssssssssssssssss",
+        "ssssssssssssssss",
+        "ssssssssssssssss",
+        "ssssdddddddsssss",
+        "sssdddddddddssss",
+        "ssdddddddddddsss",
+        "ssdddddddddddsss",
+        "ssdddddddddddsss",
+        "ssdddmmmmmdddsss",
+        "ssdddmmmmmdddsss",
+        "ssdddddddddddsss",
+        "ssdddddddddddsss",
+        "sssdddddddddssss",
+        "ssssdddddddsssss",
+        "ssssssssssssssss",
+        "ssssssssssssssss",
+    ];
+    art(a, t, rows, &|c| match c {
+        's' => Some((120, 120, 120, 255)),
+        'd' => Some((70, 70, 70, 255)),
+        'm' => {
+            if lit {
+                Some((255, 160, 30, 255))
+            } else {
+                Some((30, 30, 30, 255))
+            }
+        }
+        _ => None,
+    });
+}
+
+fn furnace_top_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "ssssssssssssssss",
+        "sdddddddddddddss",
+        "sdddddddddddddss",
+        "sddssssssssssdds",
+        "sddssssssssssdds",
+        "sddssssssssssdds",
+        "sddssssssssssdds",
+        "sddssssssssssdds",
+        "sddssssssssssdds",
+        "sddssssssssssdds",
+        "sddssssssssssdds",
+        "sddssssssssssdds",
+        "sdddddddddddddss",
+        "sdddddddddddddss",
+        "ssssssssssssssss",
+        "ssssssssssssssss",
+    ];
+    art(a, t, rows, &|c| match c {
+        's' => Some((100, 100, 100, 255)),
+        'd' => Some((125, 125, 125, 255)),
+        _ => None,
+    });
+}
+
 fn redstone_wire_art(a: &mut [u8], t: u16) {
     let rows = [
         "................",
@@ -1105,6 +1165,10 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_REDSTONE_WIRE => redstone_wire_art(&mut a, t),
             TILE_REDSTONE_TORCH => redstone_torch_art(&mut a, t),
             TILE_LEVER => lever_art(&mut a, t),
+            // gameplay (Phase 7)
+            TILE_FURNACE_SIDE => furnace_side_art(&mut a, t, false),
+            TILE_FURNACE_TOP => furnace_top_art(&mut a, t),
+            TILE_FURNACE_LIT_SIDE => furnace_side_art(&mut a, t, true),
             _ => {}
         }
     }

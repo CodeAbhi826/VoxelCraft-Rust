@@ -61,7 +61,8 @@ pub struct Player {
     pub flying: bool,
     pub in_water: bool,
     pub head_in_water: bool,
-    pub hotbar: [u8; 9],
+    /// 36-slot inventory: 0..9 hotbar, 9..36 storage (Phase 7)
+    pub inv: crate::inventory::Inventory,
     pub selected: usize,
     pub fov: f32,
     pub fov_cur: f32,
@@ -81,7 +82,13 @@ impl Player {
             flying: true, // spawn in air, land when chunks ready
             in_water: false,
             head_in_water: false,
-            hotbar: PALETTE,
+            inv: {
+                let mut inv = crate::inventory::Inventory::new(crate::inventory::INV_SLOTS);
+                for (i, &b) in PALETTE.iter().enumerate() {
+                    inv.slots[i] = crate::inventory::ItemStack::new(b, 64);
+                }
+                inv
+            },
             selected: 0,
             fov: 1.2217, // 70 degrees
             fov_cur: 1.2217,
@@ -89,6 +96,16 @@ impl Player {
             step_accum: 0.0,
             was_in_water: false,
         }
+    }
+
+    /// the selected hotbar stack
+    pub fn held(&self) -> crate::inventory::ItemStack {
+        self.inv.slots[self.selected]
+    }
+
+    /// mutable access to the selected hotbar stack
+    pub fn held_mut(&mut self) -> &mut crate::inventory::ItemStack {
+        &mut self.inv.slots[self.selected]
     }
 
     pub fn eye(&self) -> Vec3 {

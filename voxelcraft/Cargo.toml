@@ -37,6 +37,10 @@ image = { version = "0.25", default-features = false, features = ["png"] }
 wgpu = "22"
 rodio = { version = "0.19", optional = true }
 rayon = "1.10"
+# Anvil save/load: zlib (type 2, what vanilla 1.16.5 writes) + gzip (type 1)
+# region payloads. Default backend = pure-Rust miniz_oxide — wasm-safe too,
+# but the save system itself is native-only (browser saves need OPFS later).
+flate2 = "1"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wgpu = { version = "22", features = ["webgl"] }

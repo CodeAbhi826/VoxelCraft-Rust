@@ -1260,7 +1260,7 @@ impl Renderer {
         // overlaps in the light view). §17 quality: 1024/2048/4096 selectable
         // — CLAMPED to the device limit (downlevel/SwiftShader adapters cap
         // at 2048; requesting more is a validation error, not a fallback).
-        let shadow_px: u32 = 2048.min(device.limits().max_texture_dimension2d);
+        let shadow_px: u32 = 2048.min(device.limits().max_texture_dimension_2d);
         let shadow_extent = wgpu::Extent3d {
             width: shadow_px,
             height: shadow_px,
@@ -2561,7 +2561,7 @@ impl Renderer {
         // clamp to the DEVICE limit — a 4096 request on a 2048-max adapter
         // (SwiftShader/downlevel) is a validation PANIC, so it degrades to
         // the largest supported size instead of dying
-        let max = self.device.limits().max_texture_dimension2d;
+        let max = self.device.limits().max_texture_dimension_2d;
         let px = px.clamp(1024, 4096).min(max);
         if px == self.shadow_px {
             return;

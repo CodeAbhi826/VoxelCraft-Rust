@@ -481,7 +481,7 @@ mod tests {
                 TAG_COMPOUND, 0, 1, b'r', TAG_LIST, 0, 1, b'L', TAG_INT,
                 0, 0, 0, 2, // list: type Int, 2 entries
                 0, 0, 0, 1, 0, 0, 0, 2, // payloads, no keys
-                TAG_END, TAG_END
+                TAG_END // closes the root compound — lists carry NO terminator
             ]
         );
     }

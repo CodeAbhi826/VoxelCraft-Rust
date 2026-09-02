@@ -571,6 +571,38 @@ fn enchant_table_art(a: &mut [u8], t: u16) {
     });
 }
 
+/// villager (§27): the classic robe NPC — brown robe, tan face, big nose
+/// (drawn from scratch; the tile maps onto a 0.6×1.9 crossed-quad sprite)
+fn villager_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "....hhhhhhhh....",
+        "....hFFFFFFh....",
+        "....hFEFFEFh....",
+        "....hFFFFFFh....",
+        "....hFFNNFFh....",
+        "....hFFNNFFh....",
+        "....hFFFFFFh....",
+        "....rFFFFFFr....",
+        "...rrFFFFFFrr...",
+        "...rrrRRRRrrr...",
+        "...rrrRRRRrrr...",
+        "...rrrRRRRrrr...",
+        "...rrRRRRRRrr...",
+        "...rrRRRRRRrr...",
+        "...rrr....rrr...",
+    ];
+    art(a, t, rows, &|c| match c {
+        'h' => Some((70, 45, 24, 255)),   // hair
+        'F' => Some((198, 157, 110, 255)), // face
+        'E' => Some((40, 30, 20, 255)),   // eyes
+        'N' => Some((180, 125, 85, 255)), // the big nose
+        'r' => Some((102, 60, 32, 255)),  // robe
+        'R' => Some((120, 74, 40, 255)),  // robe front
+        _ => None,
+    });
+}
+
 /// enchanted book (§29): a book with a sparkle
 fn enchanted_book_art(a: &mut [u8], t: u16) {
     let rows = [
@@ -1378,6 +1410,8 @@ pub fn generate_atlas() -> Vec<u8> {
             // enchanting (Phase 7 §29)
             TILE_ENCHANT_TABLE => enchant_table_art(&mut a, t),
             TILE_ENCHANTED_BOOK => enchanted_book_art(&mut a, t),
+            // villagers (Phase 7 §27/§29)
+            TILE_VILLAGER => villager_art(&mut a, t),
             _ => {}
         }
     }

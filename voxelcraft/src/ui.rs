@@ -723,6 +723,7 @@ impl UiCanvas {
             ContainerKind::Furnace => 128,    // input / flame / fuel + arrow + output
             ContainerKind::Brewing => 150,   // ingredient / bubbles / fuel + 3 bottles
             ContainerKind::Enchant => 160,   // item + lapis + 3 option buttons
+            ContainerKind::Trade => 150,     // 4-6 trade rows
         };
         let panel_h = top_h + 3 * 44 + 8 + 44 + 30; // + title + gaps + padding
         let y0 = (UI_H as i32 - panel_h) / 2;
@@ -740,6 +741,7 @@ impl UiCanvas {
             ContainerKind::Furnace => "FURNACE",
             ContainerKind::Brewing => "BREWING STAND",
             ContainerKind::Enchant => "ENCHANT  (needs book + lapis + levels)",
+            ContainerKind::Trade => "VILLAGER",
         };
         self.text(px0 + 12, y0 - 24, title, [255, 220, 120, 255], 1);
 
@@ -750,6 +752,7 @@ impl UiCanvas {
             furnace: None,
             brewing: None,
             enchant: None,
+            trade: None,
         };
 
         // ---- container-specific top area ----
@@ -942,6 +945,56 @@ impl UiCanvas {
                     lapis: (lx, ly),
                     options: opt_pos,
                 });
+            }
+            ContainerKind::Trade => {
+                // vanilla trade screen: rows of "give N x ITEM -> get M x
+                // ITEM"; the profession rides the title
+                let (prof, rows) = view.trade
+                    .clone()
+                    .unwrap_or(("VILLAGER".into(), Vec::new()));
+                // overwrite the generic title with the profession
+                self.text(
+                    px0 + 12,
+                    y0 - 24,
+                    &format!("VILLAGER: {prof}"),
+                    [255, 220, 120, 255],
+                    1,
+                );
+                let cx = (x0 + grid_w / 2 - 130).max(x0);
+                let cy = y0 + 8;
+                let mut row_pos = Vec::with_capacity(rows.len());
+                for (i, (give, get, affordable)) in rows.iter().enumerate() {
+                    let ry = cy + i as i32 * 44;
+                    let bg = if *affordable {
+                        [34, 60, 34, 235]
+                    } else {
+                        [40, 34, 34, 200]
+                    };
+                    self.rect(cx, ry, 260, 40, bg);
+                    self.frame(cx, ry, 260, 40, [12, 12, 14, 255]);
+                    // give stack (scaled-down icon) + count
+                    self.draw_stack(give, cx + 6, ry + 2, atlas);
+                    self.text(
+                        cx + 44,
+                        ry + 12,
+                        &format!("{} x", give.count),
+                        [255, 255, 255, 255],
+                        1,
+                    );
+                    // arrow
+                    self.arrow(cx + 76, ry + 10, if *affordable { 1.0 } else { 0.25 });
+                    // get stack + count
+                    self.draw_stack(get, cx + 128, ry + 2, atlas);
+                    self.text(
+                        cx + 166,
+                        ry + 12,
+                        &format!("{} x", get.count),
+                        if *affordable { [120, 255, 120, 255] } else { [150, 150, 150, 255] },
+                        1,
+                    );
+                    row_pos.push((cx, ry));
+                }
+                geom.trade = Some(TradeSlots { rows: row_pos });
             }
         }
 
@@ -1191,6 +1244,8 @@ pub enum ContainerKind {
     Brewing,
     /// enchanting table: item + lapis + 3 option rows (§29)
     Enchant,
+    /// villager trade screen: rows of give→get deals (§27/§29)
+    Trade,
 }
 
 /// a logical slot in a container screen — the target of a mouse click
@@ -1217,6 +1272,8 @@ pub enum SlotRef {
     EnchantLapis,
     /// enchanting table: one of the three option rows
     EnchantOption(usize),
+    /// villager trade: one of the trade rows
+    TradeRow(usize),
 }
 
 /// pure-data snapshot of everything a container screen renders — owned
@@ -1241,6 +1298,8 @@ pub struct ContainerView {
         i32,
         u8,
     )>,
+    /// trade screen: (profession display name, rows of (give, get, affordable))
+    pub trade: Option<(String, Vec<(ItemStack, ItemStack, bool)>)>,
     /// stack riding the mouse cursor
     pub cursor: ItemStack,
 }
@@ -1260,6 +1319,10 @@ impl ContainerView {
             SlotRef::EnchantItem => self.enchant?.0,
             SlotRef::EnchantLapis => self.enchant?.1,
             SlotRef::EnchantOption(_) => ItemStack::EMPTY, // buttons, not stacks
+            SlotRef::TradeRow(i) => {
+                let (_, rows) = self.trade.as_ref()?;
+                rows.get(i)?.0
+            }
         })
     }
 }
@@ -1286,6 +1349,11 @@ pub struct EnchantSlots {
     pub options: [(i32, i32); 3],
 }
 
+/// trade-screen hit rects: one row button per trade (w = 260, h = 40)
+pub struct TradeSlots {
+    pub rows: Vec<(i32, i32)>,
+}
+
 /// hit-test geometry for a container screen (UI-space 36px slots)
 pub struct ContainerGeom {
     /// 36 inventory slot origins: 0..9 hotbar row (bottom), 9..36 storage
@@ -1300,6 +1368,8 @@ pub struct ContainerGeom {
     pub brewing: Option<BrewSlots>,
     /// enchanting slot/button origins when the screen is a table
     pub enchant: Option<EnchantSlots>,
+    /// trade row origins when the screen is a villager trade
+    pub trade: Option<TradeSlots>,
 }
 
 impl ContainerGeom {
@@ -1343,6 +1413,13 @@ impl ContainerGeom {
             for (i, s) in es.options.iter().enumerate() {
                 if x >= s.0 && x < s.0 + 180 && y >= s.1 && y < s.1 + 44 {
                     return Some(SlotRef::EnchantOption(i));
+                }
+            }
+        }
+        if let Some(ts) = &self.trade {
+            for (i, s) in ts.rows.iter().enumerate() {
+                if x >= s.0 && x < s.0 + 260 && y >= s.1 && y < s.1 + 40 {
+                    return Some(SlotRef::TradeRow(i));
                 }
             }
         }

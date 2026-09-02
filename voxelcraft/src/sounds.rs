@@ -284,6 +284,21 @@ fn levelup_recipe() -> Vec<f32> {
     clamp_amp(l)
 }
 
+/// villager ambient (§27): the low "hrmm" — two soft nasally tones
+fn villager_ambient_recipe() -> Vec<f32> {
+    let mut v = thump(150.0, 0.18, 0.4);
+    let h = thump(200.0, 0.14, 0.25);
+    mix_into(&mut v, &h, 0.6);
+    clamp_amp(v)
+}
+
+/// villager trade (§29): the pleased agreeing grunt — rising pair
+fn villager_trade_recipe() -> Vec<f32> {
+    let mut v = ping(260.0, 0.10, 0.35, 415);
+    mix_into(&mut v, &ping(340.0, 0.14, 0.3, 416), 1.0);
+    clamp_amp(v)
+}
+
 /// ambient cave "eerie" tone: slow beating detuned sines with a long tail
 fn eerie_recipe() -> Vec<f32> {
     let n = (1.6 * RATE as f32) as usize;
@@ -387,6 +402,8 @@ impl SoundBank {
             ("liquid/splash", splash_recipe()),
             ("block/enchant_use", enchant_recipe()),
             ("entity/levelup", levelup_recipe()),
+            ("entity/villager_ambient", villager_ambient_recipe()),
+            ("entity/villager_trade", villager_trade_recipe()),
         ] {
             names.push(n.into());
             data.push(d);
@@ -648,7 +665,9 @@ pub const SOUNDS_JSON: &str = r##"{
   "entity.generic.drink": {"category": "players", "volume": 0.6, "pitch": [0.9, 1.1], "sounds": [{"name": "entity/drink"}]},
   "liquid.splash":       {"category": "blocks", "volume": 0.6, "pitch": [0.9, 1.2], "attenuation": 12, "sounds": [{"name": "liquid/splash"}]},
   "block.enchantment_table.use": {"category": "blocks", "volume": 0.8, "pitch": [0.9, 1.1], "attenuation": 12, "sounds": [{"name": "block/enchant_use"}]},
-  "entity.player.levelup": {"category": "players", "volume": 0.6, "pitch": [0.95, 1.1], "sounds": [{"name": "entity/levelup"}]}
+  "entity.player.levelup": {"category": "players", "volume": 0.6, "pitch": [0.95, 1.1], "sounds": [{"name": "entity/levelup"}]},
+  "entity.villager.ambient": {"category": "neutral", "volume": 0.55, "pitch": [0.85, 1.15], "attenuation": 12, "sounds": [{"name": "entity/villager_ambient"}]},
+  "entity.villager.trade":  {"category": "neutral", "volume": 0.7, "pitch": [0.9, 1.1], "attenuation": 12, "sounds": [{"name": "entity/villager_trade"}]}
 }"##;
 
 /// distance attenuation + stereo pan for one positioned sound relative to

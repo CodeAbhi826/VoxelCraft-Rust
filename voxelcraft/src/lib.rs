@@ -34,6 +34,7 @@ pub mod sounds;
 pub mod textures;
 pub mod ticks;
 pub mod tint;
+pub mod villagers;
 pub mod ui;
 pub mod world;
 

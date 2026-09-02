@@ -1,0 +1,110 @@
+name: CI
+
+# Automated test matrix: every push (any branch) + every PR to main.
+# Complements wasm-build.yml (which deploys the WASM bundle to public/):
+# this workflow is the quality GATE — tests, wasm check, native check
+# with audio, and the headless benchmark, on the code that ships.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: cargo test (ubuntu, headless-safe)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: voxelcraft
+          key: ci-test
+
+      - name: Show toolchain
+        run: |
+          cargo --version
+          rustc --version
+
+      - name: cargo test (native, all 181+ tests)
+        working-directory: voxelcraft
+        run: cargo test --release --no-default-features
+
+      - name: cargo check (native, audio on)
+        working-directory: voxelcraft
+        run: |
+          sudo apt-get update && sudo apt-get install -y libasound2-dev
+          cargo check --release
+
+  wasm:
+    name: cargo check (wasm32, lib)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust + wasm32 target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: voxelcraft
+          key: ci-wasm
+
+      - name: cargo check (wasm32 lib)
+        working-directory: voxelcraft
+        run: cargo check --release --no-default-features --lib --target wasm32-unknown-unknown
+
+      - name: cargo test (wasm32-compile unit tests — headless-safe subset)
+        working-directory: voxelcraft
+        run: cargo test --no-default-features --lib --target wasm32-unknown-unknown --no-run
+
+  bench:
+    name: headless benchmark (§37/§48 baselines)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: voxelcraft
+          key: ci-bench
+
+      - name: Headless CPU-pipeline benchmark
+        working-directory: voxelcraft
+        run: |
+          cargo run --release --no-default-features --features bench-bin --bin vc_bench -- \
+            chunks=96 json=bench-headless.json
+          echo "=== bench-headless.json ==="
+          cat bench-headless.json
+
+      - name: Upload benchmark JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-bench-json
+          path: voxelcraft/bench-headless.json
+          retention-days: 30
+          if-no-files-found: error

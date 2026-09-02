@@ -166,13 +166,51 @@ pub const BLOCK_COUNT: usize = 60;
 // `axis=x|y|z`, exactly how vanilla models oak_log[axis=...]. The 1.16.5
 // global palette is 15 bits (~17k states); this registry grows into it
 // without touching storage (u16) or the mesher key.
-pub const STATE_COUNT: usize = 89;
+pub const STATE_COUNT: usize = 96;
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
 pub const BIRCH_LOG_Z: u16 = 60;
 pub const SPRUCE_LOG_X: u16 = 61;
 pub const SPRUCE_LOG_Z: u16 = 62;
+
+// ---------------------------------------------------------------------------
+// flowing water states (§24 Fluids, Phase 6)
+// ---------------------------------------------------------------------------
+// Level 0 (source) is the identity state `WATER`; flowing levels 1..7 are
+// SIMULATION states — they mesh through the greedy WATER path (never the
+// JSON model dispatch) and fold to block WATER everywhere block ids are
+// expected. Save/load round-trips the u16 palette unchanged.
+pub const WATER_FLOW_BASE: u16 = 89;
+pub const WATER_FLOW_END: u16 = 95; // 7 flowing levels
+
+/// true if a state id is a flowing-water level (not the source)
+#[inline]
+pub fn is_water_flow(s: u16) -> bool {
+    (WATER_FLOW_BASE..=WATER_FLOW_END).contains(&s)
+}
+
+/// water level of a state: 0 = source, 1..7 = flowing, 255 = not water
+#[inline]
+pub fn water_level(s: u16) -> u8 {
+    if s == WATER as u16 {
+        0
+    } else if is_water_flow(s) {
+        (s - WATER_FLOW_BASE + 1) as u8
+    } else {
+        255
+    }
+}
+
+/// state id for a water level (0 = source)
+#[inline]
+pub fn water_state(level: u8) -> u16 {
+    if level == 0 {
+        WATER as u16
+    } else {
+        (WATER_FLOW_BASE + level.min(7) as u16 - 1) as u16
+    }
+}
 
 // ---------------------------------------------------------------------------
 // property-driven states (Phase 1, Master Spec §5.1)
@@ -294,6 +332,9 @@ pub fn prop_state_encode(block: u8, set: &[(&str, &str)]) -> Option<u16> {
 /// state id → owning block id (property variants fold to their parent)
 #[inline]
 pub fn state_block(s: u16) -> u8 {
+    if is_water_flow(s) {
+        return WATER;
+    }
     if let Some((b, _)) = prop_state_decode(s) {
         return b;
     }
@@ -328,7 +369,7 @@ pub fn state_description(s: u16) -> String {
 /// true if this state renders through the JSON-model path (mesher dispatch)
 #[inline]
 pub fn is_model_state(s: u16) -> bool {
-    s >= MODEL_STATE_BASE
+    s >= MODEL_STATE_BASE && !is_water_flow(s)
 }
 
 /// true if this block id has property-driven model states
@@ -669,8 +710,15 @@ mod state_tests {
             Some(77),
             "single connection north = base + 1*4 (east slot slow radix)"
         );
-        // exhaustive roundtrip over all model states
+        // exhaustive roundtrip over all model states (water flow states
+        // 89..=95 are SIM states — decoded by water_level, not the prop
+        // machinery)
         for s in MODEL_STATE_BASE..STATE_COUNT as u16 {
+            if is_water_flow(s) {
+                assert!(!is_model_state(s), "flow state {s} never routes to models");
+                assert_eq!(state_block(s), WATER);
+                continue;
+            }
             let Some((b, props)) = prop_state_decode(s) else {
                 panic!("state {s} failed to decode");
             };
@@ -678,6 +726,14 @@ mod state_tests {
             assert_eq!(prop_state_encode(b, &set), Some(s), "state {s}");
             assert!(is_model_block(b) && is_model_state(s));
         }
+        // water level roundtrip
+        for l in 0u8..=7 {
+            let s = water_state(l);
+            assert_eq!(water_level(s), l);
+            assert_eq!(state_block(s), WATER);
+            assert!(!is_model_state(s));
+        }
+        assert_eq!(water_level(STONE as u16), 255);
         // states below the base are legacy, never model states
         assert!(!is_model_state(62));
         assert!(!is_model_block(STONE));

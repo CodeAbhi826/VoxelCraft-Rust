@@ -4,6 +4,8 @@
 pub mod bench;
 pub mod blocks;
 pub mod chunk;
+pub mod entities;
+pub mod fluids;
 pub mod game;
 pub mod gen;
 pub mod light;
@@ -19,8 +21,10 @@ pub mod render;
 pub mod rng;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod save;
+pub mod sim;
 pub mod sounds;
 pub mod textures;
+pub mod ticks;
 pub mod tint;
 pub mod ui;
 pub mod world;

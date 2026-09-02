@@ -170,6 +170,18 @@ Key fix shipped alongside: `Furnaces` moved into `Sim` (ticks at exactly 20 Hz l
 |---|---|---|
 | P11 shader compatibility (SHADER-PACK-API tier) | ✅ Done to gate | `src/shaders.rs` (6 tests), `render.rs` pack pass + linear composite, `shader-packs/` demo packs, browser E2E screenshots + pixel diffs, F3/stats/E2E wiring |
 
+### Update 2026-09-02 (P7 breadth — structures done; rest queued for next session)
+
+**P7 structures ✅**: deterministic villages (24×24-chunk regions, terrain-gated flat-plains centers, 3..6 houses + central well; cobble/log/glass/plank materials, crafting tables, ~35% blacksmith houses with furnaces). Zero cross-chunk handoff — positions are globally derived so each chunk emits only its own in-chunk part → generation-order-independent and byte-deterministic (test regenerates interleaved). 4 tests, 143/143 total. Commit `99b337c`.
+
+**Remaining P7 breadth** (explicit queue, each needs a full-context session per §50's small-commits rule):
+- **Dimensions** (§28 world-family): dimension field + travel (nether 8:1 scale), NETHERRACK-style block + nether terrain variant in `gen.rs`, dimension swap (fresh World with derived seed, mesh/stream reset), E2E `dim:N` command. ~200+ lines across 5 files.
+- **Brewing** (§29): brewing-stand block entity + 400-tick brew cycle + fuel (20 ops/blaze-powder-equivalent) + recipes; needs item-id extensions (potions are non-block items — extend the ItemStack model).
+- **Enchanting** (§29): enchanting table + XP levels + enchant metadata on items (tools need durability/enchant fields first).
+- **Villagers** (§27): entity with wander AI + trade screen (emerald economy); needs entity-AI framework extension (§22).
+
+All four were scope-gated on item/entity systems per the earlier audit; they remain the honest open tail of the spec ladder. Everything else — P0, P1, P2, P3, P4, P5, P6, P7§27-subset+structures, P8, P9, P10, P11 — is closed to its gate.
+
 ---
 
 ## 4. Recommended remaining order (revised, risk-aware)

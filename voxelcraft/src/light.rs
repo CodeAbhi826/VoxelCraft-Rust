@@ -1208,7 +1208,9 @@ mod tests {
     }
 
     /// §28: light survives the NBT round-trip bit-identically.
+    /// (native-only: the save module is cfg'd out on wasm32)
     #[test]
+    #[cfg(not(target_arch = "wasm32"))]
     fn light_nibbles_roundtrip() {
         let mut sec = Box::new(LightSection {
             sky: Box::new([0u8; 4096]),

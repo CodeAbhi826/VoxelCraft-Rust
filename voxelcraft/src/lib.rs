@@ -6,6 +6,7 @@ pub mod blocks;
 pub mod chunk;
 pub mod game;
 pub mod gen;
+pub mod light;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod anvil;
 pub mod mesh;

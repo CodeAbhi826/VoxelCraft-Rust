@@ -285,7 +285,13 @@ fn bits_for(len: usize) -> u8 {
 /// Serialize a chunk into the vanilla 1.16.5 chunk NBT root (unnamed root
 /// compound carrying `DataVersion` + `Level`). Deterministic: same chunk +
 /// same `last_update` → byte-identical output (gate §Phase 2).
-pub fn chunk_to_nbt(cx: i32, cz: i32, chunk: &Chunk, last_update: i64) -> Vec<u8> {
+pub fn chunk_to_nbt(
+    cx: i32,
+    cz: i32,
+    chunk: &Chunk,
+    last_update: i64,
+    light: Option<&crate::light::LightData>,
+) -> Vec<u8> {
     let mut level = Nbt::compound();
     level.set("xPos", Nbt::Int(cx));
     level.set("zPos", Nbt::Int(cz));
@@ -346,7 +352,42 @@ pub fn chunk_to_nbt(cx: i32, cz: i32, chunk: &Chunk, last_update: i64) -> Vec<u8
         sec_nbt.set("Y", Nbt::Byte(sy as i8));
         sec_nbt.set("Palette", Nbt::List(palette_nbt));
         sec_nbt.set("BlockStates", Nbt::LongArray(data));
+        // Phase 4 §28: light arrays (vanilla nibble format — even index in
+        // the low nibble). Only materialized sections carry data; the
+        // loader treats a save with NO light arrays anywhere as pre-P4 and
+        // re-lights on load.
+        if let Some(ld) = light {
+            if let Some(lsec) = &ld.sections[sy] {
+                sec_nbt.set("SkyLight", Nbt::ByteArray(pack_nibbles(&lsec.sky)));
+                sec_nbt.set("BlockLight", Nbt::ByteArray(pack_nibbles(&lsec.blk)));
+            }
+        }
         sections.push(sec_nbt);
+    }
+    // Phase 4: sections with NO blocks but materialized light (block light
+    // reaches into pure-air sections) — emit air-palette compounds so the
+    // light survives the round-trip.
+    if let Some(ld) = light {
+        for sy in 0..16usize {
+            if chunk.sections[sy]
+                .as_ref()
+                .map(|s| !s.is_empty())
+                .unwrap_or(false)
+            {
+                continue; // already written above
+            }
+            let Some(lsec) = &ld.sections[sy] else { continue };
+            let mut sec_nbt = Nbt::compound();
+            sec_nbt.set("Y", Nbt::Byte(sy as i8));
+            let mut air = Nbt::compound();
+            air.set("Name", Nbt::String("minecraft:air".into()));
+            sec_nbt.set("Palette", Nbt::List(vec![air]));
+            // single-entry palette → 4-bit indices, 256 longs of zeros
+            sec_nbt.set("BlockStates", Nbt::LongArray(vec![0i64; 256]));
+            sec_nbt.set("SkyLight", Nbt::ByteArray(pack_nibbles(&lsec.sky)));
+            sec_nbt.set("BlockLight", Nbt::ByteArray(pack_nibbles(&lsec.blk)));
+            sections.push(sec_nbt);
+        }
     }
     level.set("Sections", Nbt::List(sections));
 
@@ -397,11 +438,32 @@ fn derive_bits(longs: usize) -> Option<u8> {
     Some(bpe)
 }
 
-/// Parse a vanilla 1.16.5 chunk NBT root into a `Chunk`. Unknown palette
-/// names degrade to air; corrupt sections are skipped; `height` is
-/// recomputed from content. Returns `Err(reason)` only for wholesale
-/// unparseable data (callers fall back to terrain regeneration).
-pub fn chunk_from_nbt(data: &[u8]) -> Result<Chunk, String> {
+/// pack a 4096-entry nibble array (vanilla order: even index = low nibble)
+fn pack_nibbles(data: &[u8; 4096]) -> Vec<i8> {
+    let mut out = vec![0i8; 2048];
+    for (i, &v) in data.iter().enumerate() {
+        out[i >> 1] |= ((v & 0xF) as i8) << ((i & 1) * 4);
+    }
+    out
+}
+
+/// unpack a vanilla nibble array (missing/short arrays read as 0)
+fn unpack_nibbles(data: &[i8]) -> [u8; 4096] {
+    let mut out = [0u8; 4096];
+    for i in 0..4096 {
+        let b = data.get(i >> 1).copied().unwrap_or(0) as u8;
+        out[i] = (b >> ((i & 1) * 4)) & 0xF;
+    }
+    out
+}
+
+/// Parse a vanilla 1.16.5 chunk NBT root into a `Chunk` (+ its light, when
+/// the save carries light arrays). Unknown palette names degrade to air;
+/// corrupt sections are skipped; `height` is recomputed from content.
+/// Returns `Err(reason)` only for wholesale unparseable data (callers fall
+/// back to terrain regeneration). A save with no light arrays at all
+/// (pre-Phase-4) yields `None` → the caller re-lights on load.
+pub fn chunk_from_nbt(data: &[u8]) -> Result<(Chunk, Option<crate::light::LightData>), String> {
     let (_root_name, root) = nbt::read_root(data).map_err(|e| e.to_string())?;
     let level = root
         .get("Level")
@@ -411,6 +473,8 @@ pub fn chunk_from_nbt(data: &[u8]) -> Result<Chunk, String> {
     }
 
     let mut chunk = Chunk::empty();
+    let mut out_light = crate::light::LightData::new();
+    let mut any_light = false;
 
     // ---- sections ----
     if let Some(sections) = level.get("Sections").and_then(|s| s.as_list()) {
@@ -465,6 +529,22 @@ pub fn chunk_from_nbt(data: &[u8]) -> Result<Chunk, String> {
                     }
                 }
             }
+            // Phase 4 §28: light arrays — materialize the section when present
+            if let Some(sky) = sec.get("SkyLight").and_then(|d| d.as_i8_slice()) {
+                let lsec = out_light
+                    .sections[sy]
+                    .get_or_insert_with(|| {
+                        Box::new(crate::light::LightSection {
+                            sky: Box::new([0u8; 4096]),
+                            blk: Box::new([0u8; 4096]),
+                        })
+                    });
+                lsec.sky = Box::new(unpack_nibbles(sky));
+                if let Some(blk) = sec.get("BlockLight").and_then(|d| d.as_i8_slice()) {
+                    lsec.blk = Box::new(unpack_nibbles(blk));
+                }
+                any_light = true;
+            }
             // (missing BlockStates → flat stays all-air — 1.18-style single
             // palette entries; harmless to accept)
 
@@ -480,7 +560,14 @@ pub fn chunk_from_nbt(data: &[u8]) -> Result<Chunk, String> {
     }
 
     recompute_height(&mut chunk);
-    Ok(chunk)
+    Ok((
+        chunk,
+        if any_light {
+            Some(out_light)
+        } else {
+            None // pre-Phase-4 save → caller re-lights
+        },
+    ))
 }
 
 // ---------------------------------------------------------------------------
@@ -627,27 +714,38 @@ pub fn default_world_dir() -> PathBuf {
 }
 
 /// Persist one chunk into its region file (Anvil write, zlib like vanilla).
-pub fn store_chunk(world_dir: &Path, cx: i32, cz: i32, chunk: &Chunk, last_update: i64) -> std::io::Result<()> {
-    anvil::write_chunk(world_dir, cx, cz, &chunk_to_nbt(cx, cz, chunk, last_update))
+pub fn store_chunk(
+    world_dir: &Path,
+    cx: i32,
+    cz: i32,
+    chunk: &Chunk,
+    last_update: i64,
+    light: Option<&crate::light::LightData>,
+) -> std::io::Result<()> {
+    anvil::write_chunk(world_dir, cx, cz, &chunk_to_nbt(cx, cz, chunk, last_update, light))
 }
 
 /// Persist many chunks in one pass — one compact-and-rewrite per touched
 /// region file (autosave path; ~400 chunks → a handful of rewrites).
 pub fn store_chunks(
     world_dir: &Path,
-    entries: &[(i32, i32, &Chunk)],
+    entries: &[(i32, i32, &Chunk, Option<&std::sync::Arc<crate::light::LightData>>)],
     last_update: i64,
 ) -> std::io::Result<()> {
     let encoded: Vec<(i32, i32, Vec<u8>)> = entries
         .iter()
-        .map(|(cx, cz, c)| (*cx, *cz, chunk_to_nbt(*cx, *cz, c, last_update)))
+        .map(|(cx, cz, c, l)| (*cx, *cz, chunk_to_nbt(*cx, *cz, c, last_update, l.map(|a| a.as_ref()))))
         .collect();
     anvil::write_chunks(world_dir, &encoded)
 }
 
-/// Load one chunk from its region file. `Ok(None)` = not saved (or corrupt
-/// beyond repair) → caller regenerates from terrain.
-pub fn load_chunk(world_dir: &Path, cx: i32, cz: i32) -> std::io::Result<Option<Chunk>> {
+/// Load one chunk (+ its light) from its region file. `Ok(None)` = not saved
+/// (or corrupt beyond repair) → caller regenerates from terrain.
+pub fn load_chunk(
+    world_dir: &Path,
+    cx: i32,
+    cz: i32,
+) -> std::io::Result<Option<(Chunk, Option<crate::light::LightData>)>> {
     match anvil::read_chunk(world_dir, cx, cz)? {
         None => Ok(None),
         Some(nbt_bytes) => Ok(chunk_from_nbt(&nbt_bytes).ok()),
@@ -745,26 +843,26 @@ mod tests {
     #[test]
     fn chunk_nbt_roundtrip_content_identical() {
         let c = demo_chunk();
-        let bytes = chunk_to_nbt(5, -7, &c, 12345);
+        let bytes = chunk_to_nbt(5, -7, &c, 12345, None);
         let back = chunk_from_nbt(&bytes).unwrap();
-        assert_same_content(&c, &back);
+        assert_same_content(&c, &back.0);
     }
 
     #[test]
     fn chunk_roundtrip_is_deterministic() {
         let c = demo_chunk();
         // serialize twice → byte-identical (Phase 2 gate)
-        let a = chunk_to_nbt(-3, 9, &c, 777);
-        let b = chunk_to_nbt(-3, 9, &c, 777);
+        let a = chunk_to_nbt(-3, 9, &c, 777, None);
+        let b = chunk_to_nbt(-3, 9, &c, 777, None);
         assert_eq!(a, b);
         // save→load→save reaches a FIXED POINT after one cycle: the only
         // load-side mutation is `height`, recomputed from content (derived
         // data — §28 runtime/external separation); palette order, sections
         // and biomes are content-derived, so resaves stay byte-stable.
-        let loaded = chunk_from_nbt(&a).unwrap();
-        let resaved = chunk_to_nbt(-3, 9, &loaded, 777);
-        let reloaded = chunk_from_nbt(&resaved).unwrap();
-        let resaved2 = chunk_to_nbt(-3, 9, &reloaded, 777);
+        let loaded = chunk_from_nbt(&a).unwrap().0;
+        let resaved = chunk_to_nbt(-3, 9, &loaded, 777, None);
+        let reloaded = chunk_from_nbt(&resaved).unwrap().0;
+        let resaved2 = chunk_to_nbt(-3, 9, &reloaded, 777, None);
         assert_eq!(resaved, resaved2, "resave must be a fixed point");
         // content survives both cycles unchanged
         assert_same_content(&c, &reloaded);
@@ -774,9 +872,9 @@ mod tests {
     fn anvil_store_load_roundtrip() {
         let dir = tmp_dir("anvil");
         let c = demo_chunk();
-        store_chunk(&dir, 100, -100, &c, 42).unwrap();
+        store_chunk(&dir, 100, -100, &c, 42, None).unwrap();
         let back = load_chunk(&dir, 100, -100).unwrap().expect("chunk present");
-        assert_same_content(&c, &back);
+        assert_same_content(&c, &back.0);
         // absent chunk → None
         assert!(load_chunk(&dir, 101, -100).unwrap().is_none());
     }
@@ -788,19 +886,23 @@ mod tests {
         let mut b = demo_chunk();
         b.set(0, 1, 0, OBSIDIAN);
         let d = Chunk::empty(); // all-air chunk survives the cycle too
-        let entries: Vec<(i32, i32, &Chunk)> =
-            vec![(0, 0, &a), (31, 31, &b), (-5, 7, &d), (64, 64, &a)];
+        let entries: Vec<(i32, i32, &Chunk, Option<&std::sync::Arc<crate::light::LightData>>)> = vec![
+            (0, 0, &a, None),
+            (31, 31, &b, None),
+            (-5, 7, &d, None),
+            (64, 64, &a, None),
+        ];
         store_chunks(&dir, &entries, 5).unwrap();
-        assert_same_content(&a, &load_chunk(&dir, 0, 0).unwrap().unwrap());
-        assert_same_content(&b, &load_chunk(&dir, 31, 31).unwrap().unwrap());
-        assert_same_content(&d, &load_chunk(&dir, -5, 7).unwrap().unwrap());
-        assert_same_content(&a, &load_chunk(&dir, 64, 64).unwrap().unwrap());
+        assert_same_content(&a, &load_chunk(&dir, 0, 0).unwrap().unwrap().0);
+        assert_same_content(&b, &load_chunk(&dir, 31, 31).unwrap().unwrap().0);
+        assert_same_content(&d, &load_chunk(&dir, -5, 7).unwrap().unwrap().0);
+        assert_same_content(&a, &load_chunk(&dir, 64, 64).unwrap().unwrap().0);
     }
 
     #[test]
     fn nbt_layout_matches_vanilla_shape() {
         let c = demo_chunk();
-        let bytes = chunk_to_nbt(2, 3, &c, 0);
+        let bytes = chunk_to_nbt(2, 3, &c, 0, None);
         let (name, root) = nbt::read_root(&bytes).unwrap();
         assert_eq!(name, "");
         assert_eq!(root.get("DataVersion").unwrap().as_i64(), Some(2586));
@@ -866,7 +968,7 @@ mod tests {
         root.set("Level", level);
         let bytes = nbt::write_root("", &root).unwrap();
 
-        let chunk = chunk_from_nbt(&bytes).unwrap();
+        let (chunk, _light) = chunk_from_nbt(&bytes).unwrap();
         assert_eq!(chunk.get(0, 0, 0), STONE);
         // chunk.get returns the raw u8 state id (57 = OAK_LOG_X); the flat
         // u16 accessor confirms the full state survived
@@ -879,7 +981,7 @@ mod tests {
     #[test]
     fn unknown_names_and_corruption_degrade_gracefully() {
         let c = demo_chunk();
-        let mut bytes = chunk_to_nbt(0, 0, &c, 1);
+        let mut bytes = chunk_to_nbt(0, 0, &c, 1, None);
         // corrupt one palette name in-place (stone → sTonE) — must still
         // parse (that state becomes air), never panic
         let needle = b"minecraft:stone";
@@ -900,9 +1002,10 @@ mod tests {
         let mut root = Nbt::compound();
         root.set("Level", level);
         let empty = nbt::write_root("", &root).unwrap();
-        let e = chunk_from_nbt(&empty).unwrap();
+        let (e, el) = chunk_from_nbt(&empty).unwrap();
         assert_eq!(e.get(0, 0, 0), 0);
         assert!(e.sections.iter().all(|s| s.is_none()));
+        assert!(el.is_none(), "no light arrays → None (pre-P4 save)");
     }
 
     #[test]
@@ -941,9 +1044,10 @@ mod tests {
         // player digs a hole and places a fence
         c.set(8, 4, 8, AIR);
         c.set_state(8, 4, 8, prop_state_encode(OAK_FENCE, &[("west", "true")]).unwrap());
-        store_chunk(&dir, 0, 0, &c, 9).unwrap();
+        store_chunk(&dir, 0, 0, &c, 9, None).unwrap();
         let back = load_chunk(&dir, 0, 0).unwrap().expect("present");
-        let fence = back.sections[0].as_ref().unwrap().states_flat()[idx(8, 4, 8)];
+        let back = (back.0, back.1);
+        let fence = back.0.sections[0].as_ref().unwrap().states_flat()[idx(8, 4, 8)];
         assert_eq!(fence, prop_state_encode(OAK_FENCE, &[("west", "true")]).unwrap());
     }
 
@@ -952,13 +1056,13 @@ mod tests {
         let mut c = Chunk::empty();
         c.set(4, 33, 4, STONE);
         c.set(4, 200, 4, GLOWSTONE);
-        let bytes = chunk_to_nbt(0, 0, &c, 0);
+        let bytes = chunk_to_nbt(0, 0, &c, 0, None);
         let back = chunk_from_nbt(&bytes).unwrap();
-        assert_eq!(back.height[4 * 16 + 4], 200);
+        assert_eq!(back.0.height[4 * 16 + 4], 200);
         c.set(4, 200, 4, AIR);
-        let bytes = chunk_to_nbt(0, 0, &c, 0);
+        let bytes = chunk_to_nbt(0, 0, &c, 0, None);
         let back = chunk_from_nbt(&bytes).unwrap();
-        assert_eq!(back.height[4 * 16 + 4], 33);
+        assert_eq!(back.0.height[4 * 16 + 4], 33);
     }
 
     /// Full §28 life cycle with REAL terrain-gen output (the exact path the
@@ -975,7 +1079,8 @@ mod tests {
         let (generated, _outbound) = gen.generate_chunk(0, 0, Vec::new());
         let mut chunk = (*generated).clone(); // detach from Arc for editing
         chunk.set(8, 70, 8, GLOWSTONE); // a player edit
-        let entries: Vec<(i32, i32, &Chunk)> = vec![(0, 0, &chunk)];
+        let entries: Vec<(i32, i32, &Chunk, Option<&std::sync::Arc<crate::light::LightData>>)> =
+            vec![(0, 0, &chunk, None)];
         store_chunks(&dir, &entries, 100).unwrap();
         write_level_dat(
             &dir,
@@ -998,7 +1103,7 @@ mod tests {
         assert!((p.yaw - 1.0).abs() < 1e-6 && (p.pitch + 0.5).abs() < 1e-6);
 
         // --- …the chunk reloads with the edit intact…
-        let loaded = load_chunk(&dir, 0, 0).unwrap().expect("chunk present");
+        let (loaded, _l) = load_chunk(&dir, 0, 0).unwrap().expect("chunk present");
         assert_eq!(loaded.get(8, 70, 8), GLOWSTONE);
 
         // --- …and every other block matches a same-seed regeneration exactly

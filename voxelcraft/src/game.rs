@@ -184,6 +184,7 @@ enum Job {
     Mesh {
         pos: ChunkPos,
         snap: [Option<Arc<crate::chunk::Chunk>>; 9],
+        lsnap: [Option<Arc<crate::light::LightData>>; 9],
         smooth: bool,
         /// sections to rebuild (§12 bitset; 0xFFFF = full chunk)
         mask: u16,
@@ -212,8 +213,8 @@ fn run_job(job: Job) -> JobResult {
             let (chunk, outbound) = gen.generate_chunk(pos.0, pos.1, inbound);
             JobResult::Gen { pos, chunk, outbound }
         }
-        Job::Mesh { pos, snap, smooth, mask, prev } => {
-            let out = mesh_sections(pos, &snap, smooth, mask, &prev);
+        Job::Mesh { pos, snap, lsnap, smooth, mask, prev } => {
+            let out = mesh_sections(pos, &snap, &lsnap, smooth, mask, &prev);
             JobResult::Mesh {
                 pos,
                 mask,
@@ -255,6 +256,8 @@ pub struct GameApp {
     /// per-chunk cache of the 16 section meshes (§12 fine-grained remesh —
     /// worker jobs rebuild only dirty sections and reuse the rest)
     section_meshes: HashMap<ChunkPos, Vec<Option<Arc<MeshData>>>>,
+    /// incremental light engine (Phase 4 §18)
+    light: crate::light::LightEngine,
     input: Input,
     pub screen: Screen,
     options_from: Screen, // where Options was opened from
@@ -559,6 +562,7 @@ impl GameApp {
             gen_inflight: HashSet::new(),
             mesh_inflight: HashMap::new(),
             section_meshes: HashMap::new(),
+            light: crate::light::LightEngine::new(),
             input: Input::default(),
             screen: Screen::Loading,
             options_from: Screen::Title,
@@ -1391,6 +1395,15 @@ impl GameApp {
             }
         }
 
+        // Phase 4 §18: settle incremental light updates, then fold the
+        // engine's EXACT changed sections into the §12 dirty map (replaces
+        // the heuristic light regions from Phase 3)
+        self.light.pump(&mut self.world, 8_000);
+        for (pos, mask) in self.light.take_changed() {
+            self.world
+                .mark_sections_dirty(pos, mask, crate::world::CAUSE_LIGHT);
+        }
+
         // stream chunks (also during title/menus: the panorama keeps loading)
         crate::phase!(self.phases, crate::bench::PHASE_STREAM, self.stream());
 
@@ -1453,7 +1466,9 @@ impl GameApp {
             if self.input.break_hold && self.break_timer <= 0.0 {
                 if let Some((pos, b, _)) = self.target {
                     if b != BEDROCK {
-                        self.world.set_block(pos[0], pos[1], pos[2], AIR);
+                        if let Some((old, new)) = self.world.set_block(pos[0], pos[1], pos[2], AIR) {
+                            self.light.on_block_changed(&self.world, pos[0], pos[1], pos[2], old, new);
+                        }
                         // fences: removing a block changes neighbor connections
                         update_fence_neighbors(&mut self.world, pos[0], pos[1], pos[2]);
                         self.audio.play(
@@ -1515,7 +1530,13 @@ impl GameApp {
                             } else {
                                 b as u16
                             };
-                            self.world.set_block_state(prev[0], prev[1], prev[2], state);
+                            if let Some((old, new)) =
+                                self.world.set_block_state(prev[0], prev[1], prev[2], state)
+                            {
+                                self.light.on_block_changed(
+                                    &self.world, prev[0], prev[1], prev[2], old, new,
+                                );
+                            }
                             // fences: neighbors recompute their connections
                             update_fence_neighbors(&mut self.world, prev[0], prev[1], prev[2]);
                             self.audio.play(&self.bank, def(b).sound, 0.55 * self.settings.volume, 1.15);
@@ -1602,10 +1623,11 @@ impl GameApp {
             .collect();
         let tick = ((self.time - self.load_start) * 20.0).max(0.0) as i64;
         if !entries.is_empty() {
-            let refs: Vec<(i32, i32, &crate::chunk::Chunk)> = entries
-                .iter()
-                .map(|(p, c)| (p.0, p.1, c.as_ref()))
-                .collect();
+            let refs: Vec<(i32, i32, &crate::chunk::Chunk, Option<&Arc<crate::light::LightData>>)> =
+                entries
+                    .iter()
+                    .map(|(p, c)| (p.0, p.1, c.as_ref(), self.world.light.get(p)))
+                    .collect();
             if let Err(e) = crate::save::store_chunks(&self.world_dir, &refs, tick) {
                 crate::render::report_boot_log(&format!("autosave failed: {e}"));
             }
@@ -1778,13 +1800,31 @@ impl GameApp {
             // generation entirely; pending edits queued while the chunk was
             // absent replay on top. Sync disk read bounded by max_gen/frame.
             #[cfg(not(target_arch = "wasm32"))]
-            if let Ok(Some(mut chunk)) = crate::save::load_chunk(&self.world_dir, pos.0, pos.1) {
+            if let Ok(Some((mut chunk, light))) =
+                crate::save::load_chunk(&self.world_dir, pos.0, pos.1)
+            {
                 let inbound = self.world.take_pending(pos);
                 let edited = !inbound.is_empty();
                 for (idx, id) in inbound {
                     chunk.set_idx(idx as usize, id);
                 }
                 self.world.insert_generated(pos, Arc::new(chunk), Vec::new());
+                match light {
+                    Some(ld) => {
+                        self.world.light.insert(pos, Arc::new(ld));
+                    }
+                    None => {
+                        // pre-Phase-4 save: re-light on load
+                        self.light.init_chunk(&mut self.world, pos);
+                        for (lpos, lmask) in self.light.take_changed() {
+                            self.world.mark_sections_dirty(
+                                lpos,
+                                lmask,
+                                crate::world::CAUSE_LIGHT,
+                            );
+                        }
+                    }
+                }
                 if !edited {
                     // pristine content straight from disk — no need to
                     // rewrite it at the next autosave
@@ -1828,6 +1868,10 @@ impl GameApp {
         let max_mesh = if cfg!(target_arch = "wasm32") { 2 } else { 16 };
         for (pos, _, mask) in want_mesh.into_iter().take(max_mesh) {
             if let Some(snap) = self.world.snapshot3x3(pos.0, pos.1) {
+                let lsnap = self
+                    .world
+                    .snapshot3x3_light(pos.0, pos.1)
+                    .unwrap_or_default();
                 let prev = self
                     .section_meshes
                     .get(&pos)
@@ -1837,6 +1881,7 @@ impl GameApp {
                 self.submit(Job::Mesh {
                     pos,
                     snap,
+                    lsnap,
                     smooth: self.settings.smooth_lighting,
                     mask,
                     prev,
@@ -1899,19 +1944,21 @@ impl GameApp {
                     Arc::new(c)
                 };
                 self.world.insert_generated(pos, chunk, outbound);
-                // the new chunk changes border face culling + light in its
-                // 8 neighbors — mark them all (§12 mask semantics keep any
-                // bits that land while a neighbor job is in flight)
-                for dz in -1..=1 {
-                    for dx in -1..=1 {
-                        if dx != 0 || dz != 0 {
-                            let np = (pos.0 + dx, pos.1 + dz);
-                            self.world.mark_all_dirty(
-                                np,
-                                crate::world::CAUSE_GEOMETRY | crate::world::CAUSE_LIGHT,
-                            );
-                        }
-                    }
+                // Phase 4: initial lighting for the new chunk (column scan +
+                // border exchange, settled synchronously) — the engine's
+                // changed map feeds precise §12 dirty bits below
+                self.light.init_chunk(&mut self.world, pos);
+                for (lpos, lmask) in self.light.take_changed() {
+                    self.world
+                        .mark_sections_dirty(lpos, lmask, crate::world::CAUSE_LIGHT);
+                }
+                // the new chunk changes border face culling in its 8
+                // neighbors — mark the sections whose y-bands touch the new
+                // chunk's non-air border cells (NOT all 16: §12)
+                let bands = neighbor_geometry_bands(&self.world, pos);
+                for (npos, band) in bands {
+                    self.world
+                        .mark_sections_dirty(npos, band, crate::world::CAUSE_GEOMETRY);
                 }
             }
             JobResult::Mesh { pos, mask, sections, mesh } => {
@@ -2320,6 +2367,60 @@ fn update_fence_neighbors(world: &mut World, wx: i32, wy: i32, wz: i32) {
             }
         }
     }
+}
+
+/// §12 streaming geometry bands: for each of the 8 neighbors of a newly
+/// generated chunk, the sections whose y-bands touch the new chunk's
+/// non-air cells along the shared face (face culling + AO read ±1 cells).
+/// Replaces the old mark-all-16 — a surface chunk (y ≤ ~90) dirties ≤ 6
+/// sections per neighbor instead of 16.
+fn neighbor_geometry_bands(world: &World, pos: ChunkPos) -> Vec<(ChunkPos, u16)> {
+    let mut out = Vec::with_capacity(8);
+    let Some(chunk) = world.chunk(pos) else { return out };
+    // per-direction shared-face columns (in the NEW chunk's local coords)
+    let faces: [(i32, i32, Vec<(usize, usize)>); 8] = [
+        (1, 0, (0..16).map(|t| (15, t)).collect()),
+        (-1, 0, (0..16).map(|t| (0, t)).collect()),
+        (0, 1, (0..16).map(|t| (t, 15)).collect()),
+        (0, -1, (0..16).map(|t| (t, 0)).collect()),
+        (1, 1, vec![(15, 15)]),
+        (1, -1, vec![(15, 0)]),
+        (-1, 1, vec![(0, 15)]),
+        (-1, -1, vec![(0, 0)]),
+    ];
+    for (dx, dz, cols) in faces {
+        let mut y_min = 256i32;
+        let mut y_max = -1i32;
+        for (lx, lz) in cols {
+            for sy in (0..16usize).rev() {
+                let Some(sec) = &chunk.sections[sy] else { continue };
+                if sec.is_empty() {
+                    continue;
+                }
+                let flat = sec.decode_flat();
+                let base = sy * 16;
+                for yy in (0..16usize).rev() {
+                    if flat[(yy << 8) | (lz << 4) | lx] != 0 {
+                        let y = (base + yy) as i32;
+                        y_max = y_max.max(y);
+                        y_min = y_min.min(y);
+                    }
+                }
+            }
+        }
+        if y_max < 0 {
+            continue; // nothing to cull against on this face
+        }
+        // ±1 for AO corner reads
+        let lo = (y_min - 1).max(0) / 16;
+        let hi = (y_max + 1).min(255) / 16;
+        let mut band = 0u16;
+        for s in lo..=hi {
+            band |= 1 << s;
+        }
+        out.push(((pos.0 + dx, pos.1 + dz), band));
+    }
+    out
 }
 
 fn smoothstep(a: f32, b: f32, x: f32) -> f32 {

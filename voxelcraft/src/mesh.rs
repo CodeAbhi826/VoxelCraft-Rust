@@ -5,7 +5,6 @@
 use crate::blocks::*;
 use crate::chunk::Chunk;
 use crate::world::ChunkPos;
-use std::collections::VecDeque;
 use std::sync::Arc;
 
 /// engine-drawn missing-texture tile (magenta/black checker) — §46 fallback
@@ -125,8 +124,13 @@ pub struct MeshOut {
 }
 
 /// Full-chunk mesh (bench + tests + first mesh of a chunk).
-pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -> MeshData {
-    mesh_sections(pos, snap, smooth, u16::MAX, &[]).merged
+pub fn mesh_chunk(
+    pos: ChunkPos,
+    snap: &[Option<Arc<Chunk>>; 9],
+    lsnap: &[Option<Arc<crate::light::LightData>>; 9],
+    smooth: bool,
+) -> MeshData {
+    mesh_sections(pos, snap, lsnap, smooth, u16::MAX, &[]).merged
 }
 
 // padded 48 x 256 x 48 region covering the 3x3 snapshot
@@ -161,6 +165,7 @@ fn getl(light: &[u8], gx: i32, y: i32, gz: i32) -> u8 {
 pub fn mesh_sections(
     pos: ChunkPos,
     snap: &[Option<Arc<Chunk>>; 9],
+    lsnap: &[Option<Arc<crate::light::LightData>>; 9],
     smooth: bool,
     mask: u16,
     prev: &[Option<Arc<MeshData>>],
@@ -209,174 +214,53 @@ pub fn mesh_sections(
         }
     }
 
-    // ------------------------------------------------ skylight
+    // ------------------------------------------------ light pad (Phase 4)
+    // The persistent incremental LightEngine owns light now — jobs COPY the
+    // per-section arrays into the padded snapshot (cheap memcpy, no BFS).
+    // Defaults for sections without materialized light: open air = sky 15,
+    // sections with blocks = 0 (dark interior — "never written").
     let mut light = vec![0u8; PAD * PAD * 256];
-    let mut surface = [[-1i32; PAD]; PAD];
-
-    for z in 0..PAD {
-        for x in 0..PAD {
-            let mut l: i32 = 15;
-            for y in (0..256usize).rev() {
-                let b = sb(blocks[pidx(x, y, z)]);
-                if is_opaque(b) {
-                    l = 0;
-                    if surface[z][x] < 0 {
-                        surface[z][x] = y as i32;
-                    }
-                } else if b == WATER {
-                    l = (l - 2).max(0);
-                } else if b == LEAVES {
-                    l = (l - 1).max(0);
-                }
-                light[pidx(x, y, z)] = l as u8;
-            }
-        }
-    }
-
-    // lateral BFS seeds: bright cells next to darker columns
-    let mut queue: VecDeque<(usize, u8)> = VecDeque::new();
-    for z in 0..PAD {
-        for x in 0..PAD {
-            let sy_here = surface[z][x];
-            let nbrs = [
-                (x.wrapping_add(1), z),
-                (x.wrapping_sub(1), z),
-                (x, z.wrapping_add(1)),
-                (x, z.wrapping_sub(1)),
-            ];
-            for (nx, nz) in nbrs {
-                if nx >= PAD || nz >= PAD {
-                    continue;
-                }
-                let sy_n = surface[nz][nx];
-                if sy_n > sy_here {
-                    let lo = (sy_here + 1).max(0) as usize;
-                    let hi = sy_n.min(sy_here + 16).max(0) as usize;
-                    for y in lo..=hi.min(255) {
-                        let la = light[pidx(x, y, z)];
-                        let lb = light[pidx(nx, y, nz)];
-                        if la >= 2 && la > lb.saturating_add(1) {
-                            queue.push_back((pidx(x, y, z), la));
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // BFS flood (lateral + vertical, decrementing)
-    while let Some((p, l)) = queue.pop_front() {
-        if l < 2 {
-            continue;
-        }
-        let x = p % PAD;
-        let z = (p / PAD) % PAD;
-        let y = p / (PAD * PAD);
-        let nl = l - 1;
-        macro_rules! prop {
-            ($x:expr, $y:expr, $z:expr) => {{
-                let np = pidx($x, $y, $z);
-                if !is_opaque(sb(blocks[np])) && light[np] < nl {
-                    light[np] = nl;
-                    if nl > 1 {
-                        queue.push_back((np, nl));
-                    }
-                }
-            }};
-        }
-        if x > 0 {
-            prop!(x - 1, y, z);
-        }
-        if x + 1 < PAD {
-            prop!(x + 1, y, z);
-        }
-        if y > 0 {
-            prop!(x, y - 1, z);
-        }
-        if y + 1 < 256 {
-            prop!(x, y + 1, z);
-        }
-        if z > 0 {
-            prop!(x, y, z - 1);
-        }
-        if z + 1 < PAD {
-            prop!(x, y, z + 1);
-        }
-    }
-
-    // ------------------------------------------------ block light
-    // Emissive blocks (glowstone = 15) light their surroundings; BFS
-    // flood-decrements like MC's block-light channel. Kept separate from
-    // skylight because it is independent of time-of-day and sun shadows.
     let mut blight = vec![0u8; PAD * PAD * 256];
-    let mut bqueue: VecDeque<(usize, u8)> = VecDeque::new();
-    for y in 0..256usize {
-        for z in 0..PAD {
-            for x in 0..PAD {
-                let b = sb(blocks[pidx(x, y, z)]);
-                let e = emissive(b);
-                if e == 0 {
-                    continue;
-                }
-                // seed the non-opaque neighbors at full source level
-                let lvl = e.min(15);
-                macro_rules! seed {
-                    ($x:expr, $y:expr, $z:expr) => {{
-                        if $x < PAD && $z < PAD && $y < 256 {
-                            let np = pidx($x, $y, $z);
-                            if !is_opaque(sb(blocks[np])) && blight[np] < lvl {
-                                blight[np] = lvl;
-                                bqueue.push_back((np, lvl));
+    {
+        for dzi in 0..3usize {
+            for dxi in 0..3usize {
+                let Some(chunk) = &snap[dzi * 3 + dxi] else { continue };
+                let ld = lsnap[dzi * 3 + dxi].as_ref();
+                let px0 = dxi * 16;
+                let pz0 = dzi * 16;
+                for sy in 0..16usize {
+                    let sec_has_blocks = chunk.sections[sy]
+                        .as_ref()
+                        .map(|s| !s.is_empty())
+                        .unwrap_or(false);
+                    let lsec = ld.and_then(|l| l.sections[sy].as_ref());
+                    match lsec {
+                        Some(lsec) => {
+                            for yy in 0..16usize {
+                                let y = sy * 16 + yy;
+                                for sz in 0..16usize {
+                                    let src = (yy << 8) | (sz << 4);
+                                    let dst = y * (PAD * PAD) + (pz0 + sz) * PAD + px0;
+                                    light[dst..dst + 16].copy_from_slice(&lsec.sky[src..src + 16]);
+                                    blight[dst..dst + 16].copy_from_slice(&lsec.blk[src..src + 16]);
+                                }
                             }
                         }
-                    }};
-                }
-                if x > 0 { seed!(x - 1, y, z); }
-                if x + 1 < PAD { seed!(x + 1, y, z); }
-                if y > 0 { seed!(x, y - 1, z); }
-                if y + 1 < 256 { seed!(x, y + 1, z); }
-                if z > 0 { seed!(x, y, z - 1); }
-                if z + 1 < PAD { seed!(x, y, z + 1); }
-            }
-        }
-    }
-    // BFS flood (lateral + vertical, decrementing)
-    while let Some((p, l)) = bqueue.pop_front() {
-        if l < 2 {
-            continue;
-        }
-        let x = p % PAD;
-        let z = (p / PAD) % PAD;
-        let y = p / (PAD * PAD);
-        let nl = l - 1;
-        macro_rules! bprop {
-            ($x:expr, $y:expr, $z:expr) => {{
-                let np = pidx($x, $y, $z);
-                if !is_opaque(sb(blocks[np])) && blight[np] < nl {
-                    blight[np] = nl;
-                    if nl > 1 {
-                        bqueue.push_back((np, nl));
+                        None => {
+                            if !sec_has_blocks {
+                                // open air above terrain: full sky
+                                for yy in 0..16usize {
+                                    let y = sy * 16 + yy;
+                                    for sz in 0..16usize {
+                                        let dst = y * (PAD * PAD) + (pz0 + sz) * PAD + px0;
+                                        light[dst..dst + 16].fill(15);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
-            }};
-        }
-        if x > 0 {
-            bprop!(x - 1, y, z);
-        }
-        if x + 1 < PAD {
-            bprop!(x + 1, y, z);
-        }
-        if y > 0 {
-            bprop!(x, y - 1, z);
-        }
-        if y + 1 < 256 {
-            bprop!(x, y + 1, z);
-        }
-        if z > 0 {
-            bprop!(x, y, z - 1);
-        }
-        if z + 1 < PAD {
-            bprop!(x, y, z + 1);
+            }
         }
     }
 
@@ -1018,6 +902,11 @@ mod tests {
     use super::*;
     use crate::blocks::*;
 
+    /// reference light for a snapshot (differential bridge, Phase 4)
+    fn lref(snap: &[Option<Arc<Chunk>>; 9]) -> [Option<Arc<crate::light::LightData>>; 9] {
+        crate::light::reference_lightdata(snap)
+    }
+
     /// 3x3 snapshot with a single block state set at the center chunk's (8, 8y, 8)
     fn snap_with(state: u16) -> [Option<Arc<Chunk>>; 9] {
         let mut c = Chunk::empty();
@@ -1045,7 +934,8 @@ mod tests {
     /// packed-vertex pipeline.
     #[test]
     fn log_axis_x_rotates_tiles() {
-        let md = mesh_chunk((0, 0), &snap_with(OAK_LOG_X), true);
+        let snap = snap_with(OAK_LOG_X);
+        let md = mesh_chunk((0, 0), &snap, &lref(&snap), true);
         let mut faces: Vec<(u8, u16)> = Vec::new(); // (normal, tile)
         for v in md.solid.0.iter() {
             let (tile, normal, state) = decode(v);
@@ -1064,7 +954,8 @@ mod tests {
     /// axis=y (identity state) keeps rings on ±Y — the default tree trunk.
     #[test]
     fn log_axis_y_default() {
-        let md = mesh_chunk((0, 0), &snap_with(OAK_LOG as u16), true);
+        let snap = snap_with(OAK_LOG as u16);
+        let md = mesh_chunk((0, 0), &snap, &lref(&snap), true);
         let mut ok_top = false;
         let mut ok_side = false;
         for v in md.solid.0.iter() {
@@ -1081,7 +972,8 @@ mod tests {
     /// cross plants keep their side tile and the cross normal index
     #[test]
     fn cross_plant_normal_and_tile() {
-        let md = mesh_chunk((0, 0), &snap_with(TALL_GRASS as u16), true);
+        let snap = snap_with(TALL_GRASS as u16);
+        let md = mesh_chunk((0, 0), &snap, &lref(&snap), true);
         assert!(!md.solid.0.is_empty());
         for v in md.solid.0.iter() {
             let (tile, normal, state) = decode(v);
@@ -1141,7 +1033,8 @@ mod tests {
             None, Some(Arc::clone(&c)), None,
             None, None, None,
         ];
-        let md = mesh_chunk((0, 0), &snap, true);
+        let lsnap = lref(&snap);
+        let md = mesh_chunk((0, 0), &snap, &lsnap, true);
         let mut dirs = std::collections::BTreeSet::new();
         for v in md.solid.0.iter() {
             dirs.insert(((v.w1 >> 16) & 7) as u8);
@@ -1164,7 +1057,8 @@ mod tests {
             None, Some(Arc::clone(&c2)), None,
             None, None, None,
         ];
-        let md2 = mesh_chunk((0, 0), &snap2, true);
+        let lsnap2 = lref(&snap2);
+        let md2 = mesh_chunk((0, 0), &snap2, &lsnap2, true);
         for v in md2.solid.0.iter() {
             if ((v.w1 >> 16) & 7) == 2 {
                 let py = (v.w1 & 0xFFFF) as f32 / 128.0;
@@ -1183,7 +1077,8 @@ mod tests {
             None, Some(Arc::clone(&c3)), None,
             None, None, None,
         ];
-        let md3 = mesh_chunk((0, 0), &snap3, true);
+        let lsnap3 = lref(&snap3);
+        let md3 = mesh_chunk((0, 0), &snap3, &lsnap3, true);
         assert!(md3.solid.0.len() >= 40, "stairs need ≥10 quads, got {}", md3.solid.0.len());
         let mut step_verts = 0;
         for v in md3.solid.0.iter() {
@@ -1207,7 +1102,8 @@ mod tests {
             None, Some(Arc::clone(&c4)), None,
             None, None, None,
         ];
-        let md4 = mesh_chunk((0, 0), &snap4, true);
+        let lsnap4 = lref(&snap4);
+        let md4 = mesh_chunk((0, 0), &snap4, &lsnap4, true);
         // post (6 dirs × 4) + side (3 faces × 4) ≥ 36 verts
         assert!(md4.solid.0.len() >= 36, "fence post+side, got {}", md4.solid.0.len());
         // unconnected fence (73) → post only, fewer verts
@@ -1219,7 +1115,8 @@ mod tests {
             None, Some(Arc::clone(&c5)), None,
             None, None, None,
         ];
-        let md5 = mesh_chunk((0, 0), &snap5, true);
+        let lsnap5 = lref(&snap5);
+        let md5 = mesh_chunk((0, 0), &snap5, &lsnap5, true);
         assert!(
             md5.solid.0.len() < md4.solid.0.len(),
             "connected fence must have more geometry than a lone post"
@@ -1271,7 +1168,8 @@ mod tests {
             (OAK_LOG_X, 24),         // 6 faces, rotated tiles
             (GLASS as u16, 24),      // neighbor rules keep all faces
         ] {
-            let md = mesh_chunk((0, 0), &golden_snap(state), true);
+            let gsnap = golden_snap(state);
+            let md = mesh_chunk((0, 0), &gsnap, &lref(&gsnap), true);
             let (n, h) = mesh_hash(&md);
             assert_eq!(n, want_verts, "state {state} vertex count changed");
             assert!(h != 0);
@@ -1306,14 +1204,17 @@ mod tests {
                 Some(Arc::clone(&c)), Some(Arc::clone(&c)), Some(Arc::clone(&c)),
             ]
         };
-        let md = mesh_chunk((0, 0), &snap, true);
+        let lsnap = lref(&snap);
+        let md = mesh_chunk((0, 0), &snap, &lsnap, true);
         let (n, h) = mesh_hash(&md);
         // pin both: count (structure) + hash (bit-exact packing/lighting)
         assert_eq!(n, 1816, "terrain-patch golden vertex count drifted (was 1816)");
         assert_eq!(
-            h, 0x50d2_e83f_fc55_05eb,
+            h, 0x5b7b_5257_9ed3_57cb,
             "terrain-patch golden hash changed — mesher/lighting/packing drift; \
-             if intentional, re-pin with justification (Master Spec §50-H)"
+             re-pinned for Phase 4: light fields are now the full BFS fixed \
+             point (§48 P4 reference upgrade — smooth shadow edges), so \
+             baked sky-light values shifted"
         );
     }
 
@@ -1339,7 +1240,8 @@ mod tests {
             None, Some(Arc::clone(&c)), None,
             None, None, None,
         ];
-        let md = mesh_chunk((0, 0), &snap, true);
+        let lsnap = lref(&snap);
+        let md = mesh_chunk((0, 0), &snap, &lsnap, true);
         // find −X faces (normal index 1) of the wall at x=10 plane
         let mut seen_bl = std::collections::BTreeSet::new();
         for v in md.solid.0.iter() {
@@ -1402,28 +1304,29 @@ mod phase3_tests {
     fn partial_remesh_matches_full() {
         let (_, snap) = terrain_snap(0xC0FFEE);
         let pos = (0, 0);
-        let full = mesh_sections(pos, &snap, true, u16::MAX, &[]);
+        let lsnap = crate::light::reference_lightdata(&snap);
+        let full = mesh_sections(pos, &snap, &lsnap, true, u16::MAX, &[]);
         assert!(full.merged.tri_count() > 0, "terrain must produce geometry");
 
         // single-section remesh
         let cache = full.sections.clone();
-        let p1 = mesh_sections(pos, &snap, true, 1 << 7, &cache);
+        let p1 = mesh_sections(pos, &snap, &lsnap, true, 1 << 7, &cache);
         assert_eq!(p1.merged.solid.0, full.merged.solid.0, "vertices (solid) must match");
         assert_eq!(p1.merged.solid.1, full.merged.solid.1, "indices (solid) must match");
         assert_eq!(p1.merged.water.0, full.merged.water.0, "vertices (water) must match");
         assert_eq!(p1.merged.water.1, full.merged.water.1, "indices (water) must match");
 
         // multi-section remesh (a typical edit's light band)
-        let p3 = mesh_sections(pos, &snap, true, 0b111 << 4, &cache);
+        let p3 = mesh_sections(pos, &snap, &lsnap, true, 0b111 << 4, &cache);
         assert_eq!(p3.merged.solid.1, full.merged.solid.1);
 
         // sequential partial remeshes through the cache also converge
         let mut cache2 = full.sections.clone();
         for k in [3usize, 8, 12, 4] {
-            let step = mesh_sections(pos, &snap, true, 1 << k, &cache2);
+            let step = mesh_sections(pos, &snap, &lsnap, true, 1 << k, &cache2);
             cache2 = step.sections.clone();
         }
-        let final_merged = mesh_sections(pos, &snap, true, 0, &cache2).merged;
+        let final_merged = mesh_sections(pos, &snap, &lsnap, true, 0, &cache2).merged;
         assert_eq!(final_merged.solid.1, full.merged.solid.1, "all-cached merge == full");
     }
 
@@ -1432,8 +1335,9 @@ mod phase3_tests {
     #[test]
     fn mesh_chunk_wrapper_equivalence() {
         let (_, snap) = terrain_snap(0xABCD);
-        let a = mesh_chunk((0, 0), &snap, true);
-        let b = mesh_sections((0, 0), &snap, true, u16::MAX, &[]).merged;
+        let lsnap = crate::light::reference_lightdata(&snap);
+        let a = mesh_chunk((0, 0), &snap, &lsnap, true);
+        let b = mesh_sections((0, 0), &snap, &lsnap, true, u16::MAX, &[]).merged;
         assert_eq!(a.solid.0.len(), b.solid.0.len());
         assert_eq!(a.solid.1, b.solid.1);
         assert_eq!(a.water.1, b.water.1);
@@ -1445,7 +1349,8 @@ mod phase3_tests {
     fn unmasked_sections_are_reused_arc() {
         let (chunks, snap) = terrain_snap(0x1234);
         let pos = (0, 0);
-        let full = mesh_sections(pos, &snap, true, u16::MAX, &[]);
+        let lsnap = crate::light::reference_lightdata(&snap);
+        let full = mesh_sections(pos, &snap, &lsnap, true, u16::MAX, &[]);
 
         // edit a block in section 8 (y 128..143) in the CENTER chunk only
         let mut c = (*chunks[4]).clone();
@@ -1453,7 +1358,8 @@ mod phase3_tests {
         let mut snap2 = snap;
         snap2[4] = Some(Arc::new(c));
 
-        let part = mesh_sections(pos, &snap2, true, 1 << 8, &full.sections);
+        let lsnap2 = crate::light::reference_lightdata(&snap2);
+        let part = mesh_sections(pos, &snap2, &lsnap2, true, 1 << 8, &full.sections);
         // section 7 untouched by the edit AND not masked → same Arc
         assert!(
             Arc::ptr_eq(

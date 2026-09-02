@@ -63,3 +63,6 @@ worklog.md
 /upload/
 /tool-results/
 voxelcraft/wasm-out/
+
+# voxelcraft build outputs (scripts/build-all.sh)
+dist/

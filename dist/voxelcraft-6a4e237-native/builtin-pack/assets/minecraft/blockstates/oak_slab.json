@@ -1,6 +1,0 @@
-{
-  "variants": {
-    "half=bottom": { "model": "minecraft:block/oak_slab" },
-    "half=top":    { "model": "minecraft:block/oak_slab", "x": 180 }
-  }
-}

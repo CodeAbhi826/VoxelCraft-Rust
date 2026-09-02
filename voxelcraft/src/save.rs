@@ -964,7 +964,8 @@ mod tests {
 
         // --- session 1: the game generates, the player edits, autosave fires
         let gen = crate::gen::TerrainGen::new(seed);
-        let (mut chunk, _outbound) = gen.generate_chunk(0, 0, Vec::new());
+        let (generated, _outbound) = gen.generate_chunk(0, 0, Vec::new());
+        let mut chunk = (*generated).clone(); // detach from Arc for editing
         chunk.set(8, 70, 8, GLOWSTONE); // a player edit
         let entries: Vec<(i32, i32, &Chunk)> = vec![(0, 0, &chunk)];
         store_chunks(&dir, &entries, 100).unwrap();

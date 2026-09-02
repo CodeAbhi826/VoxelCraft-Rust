@@ -157,6 +157,17 @@ pub enum Screen {
     Pause,
 }
 
+/// open container screens (Phase 7 §27)
+#[derive(Clone, Copy, PartialEq)]
+pub enum Container {
+    /// player inventory with its 2×2 craft grid
+    Inventory,
+    /// crafting table at a world position with a 3×3 grid
+    Crafting { pos: [i32; 3] },
+    /// furnace UI bound to a block entity
+    Furnace { pos: [i32; 3] },
+}
+
 impl Screen {
     pub fn name(self) -> &'static str {
         match self {
@@ -270,6 +281,16 @@ pub struct GameApp {
     /// fixed-step simulation (Phase 6: scheduled ticks, fluids, gravity,
     /// random ticks, item entities)
     sim: crate::sim::Sim,
+    /// open container screen (Phase 7): inventory crafting grid, crafting
+    /// table, or furnace
+    container: Option<Container>,
+    /// stack held by the cursor in a container screen
+    cursor_stack: crate::inventory::ItemStack,
+    /// furnace block entities
+    furnaces: crate::furnace::Furnaces,
+    /// open crafting grid (2×2 uses [0..4] row-major on a 2-wide layout,
+    /// 3×3 uses all 9)
+    craft_grid: [crate::inventory::ItemStack; 9],
     /// block particles (Phase 5 §16.2 pass 4)
     particles: crate::particles::ParticleSystem,
     /// billboard vertex scratch (rebuilt per frame against the camera basis)
@@ -582,6 +603,10 @@ impl GameApp {
             section_meshes: HashMap::new(),
             light: crate::light::LightEngine::new(),
             sim: crate::sim::Sim::new(0xC0FF_EE01),
+            container: None,
+            cursor_stack: crate::inventory::ItemStack::EMPTY,
+            furnaces: crate::furnace::Furnaces::default(),
+            craft_grid: [crate::inventory::ItemStack::EMPTY; 9],
             particles: crate::particles::ParticleSystem::new(0x5EED_0042),
             particle_verts: Vec::new(),
             input: Input::default(),
@@ -900,7 +925,9 @@ impl GameApp {
                 if pressed {
                     match self.screen {
                         Screen::Game => {
-                            if self.picker_open {
+                            if self.container.is_some() {
+                                self.close_container();
+                            } else if self.picker_open {
                                 self.close_picker();
                             } else {
                                 self.enter_pause();
@@ -969,7 +996,7 @@ impl GameApp {
                 if pressed && in_game {
                     let n = code as u8 - KeyCode::Digit1 as u8;
                     self.player.selected = n as usize;
-                    let b = self.player.hotbar[n as usize];
+                    let b = self.player.inv.slots[n as usize].block;
                     self.item_toast = Some((name(b).to_string(), 2.0));
                     self.ui.dirty = true;
                 }
@@ -999,10 +1026,11 @@ impl GameApp {
             MouseButton::Middle => {
                 if pressed {
                     if let Some((_, b, _)) = self.target {
-                        if let Some(slot) = self.player.hotbar.iter().position(|&h| h == b) {
-                            self.player.selected = slot;
+                        if let Some(slot) = self.player.inv.slots.iter().position(|h| h.block == b && h.count > 0) {
+                            self.player.selected = slot.min(8);
                         } else {
-                            self.player.hotbar[self.player.selected] = b;
+                            self.player.inv.slots[self.player.selected] =
+                                crate::inventory::ItemStack::new(b, 64);
                         }
                         self.item_toast = Some((name(b).to_string(), 2.0));
                         self.ui.dirty = true;
@@ -1061,7 +1089,7 @@ impl GameApp {
         let Some(g) = &self.picker_geom else { return };
         if let Some(idx) = g.slot_at(ux, uy) {
             let b = PICKER_BLOCKS[idx];
-            self.player.hotbar[self.player.selected] = b;
+            self.player.inv.slots[self.player.selected] = crate::inventory::ItemStack::new(b, 64);
             self.item_toast = Some((name(b).to_string(), 2.0));
             self.ui.dirty = true;
         }
@@ -1096,11 +1124,11 @@ impl GameApp {
         if self.screen != Screen::Game || d.abs() <= 0.01 {
             return;
         }
-        let n = self.player.hotbar.len() as i32;
+        let n = crate::inventory::INV_SLOTS.min(9) as i32;
         let cur = self.player.selected as i32;
         let next = ((cur - d.signum() as i32).rem_euclid(n)) as usize;
         self.player.selected = next;
-        let b = self.player.hotbar[next];
+        let b = self.player.inv.slots[next].block;
         self.item_toast = Some((name(b).to_string(), 2.0));
         self.ui.dirty = true;
     }
@@ -1405,6 +1433,69 @@ impl GameApp {
         self.renderer.clear_meshes();
     }
 
+
+    // ------------------------------------------- containers (Phase 7) --
+
+    /// open a container screen (inventory / crafting table / furnace)
+    fn open_container(&mut self, c: Container) {
+        self.container = Some(c);
+        self.unlock_audio();
+        self.ui.dirty = true;
+    }
+
+    /// close the container: craft-grid leftovers return to the inventory
+    /// (vanilla behavior), the cursor stack drops back in too
+    fn close_container(&mut self) {
+        if let Some(c) = self.container.take() {
+            match c {
+                Container::Inventory => {
+                    for s in self.craft_grid.iter_mut().take(4) {
+                        if !s.is_empty() {
+                            let left = self.player.inv.add(s.block, s.count);
+                            if left > 0 {
+                                // inventory full → drop into the world
+                                self.sim.items.drop_block(
+                                    self.player.pos.x.floor() as i32,
+                                    self.player.pos.y.floor() as i32,
+                                    self.player.pos.z.floor() as i32,
+                                    s.block, 2, 15, 0,
+                                );
+                            }
+                            *s = crate::inventory::ItemStack::EMPTY;
+                        }
+                    }
+                }
+                Container::Crafting { pos } => {
+                    for s in self.craft_grid.iter_mut() {
+                        if !s.is_empty() {
+                            let left = self.player.inv.add(s.block, s.count);
+                            if left > 0 {
+                                self.sim.items.drop_block(pos[0], pos[1] + 1, pos[2], s.block, 2, 15, 0);
+                            }
+                            *s = crate::inventory::ItemStack::EMPTY;
+                        }
+                    }
+                }
+                Container::Furnace { .. } => {}
+            }
+        }
+        // cursor returns to the inventory
+        if !self.cursor_stack.is_empty() {
+            let left = self.player.inv.add(self.cursor_stack.block, self.cursor_stack.count);
+            if left > 0 {
+                let b = self.cursor_stack.block;
+                self.sim.items.drop_block(
+                    self.player.pos.x.floor() as i32,
+                    self.player.pos.y.floor() as i32,
+                    self.player.pos.z.floor() as i32,
+                    b, 2, 15, 0,
+                );
+            }
+            self.cursor_stack = crate::inventory::ItemStack::EMPTY;
+        }
+        self.ui.dirty = true;
+    }
+
     // ------------------------------------------------------------ update --
 
     /// E2E hook: break a block at world coords through the full interactive
@@ -1490,16 +1581,12 @@ impl GameApp {
         // item pickup: entities in radius land in the hotbar
         if self.screen == Screen::Game {
             for b in self.sim.collect_items(self.player.eye().to_array()) {
-                let hb = &mut self.player.hotbar;
-                if let Some(slot) = hb.iter().position(|&s| s == b) {
-                    let _ = slot; // already have it: stack count comes with
-                                  // the inventory system (Phase 7)
-                } else if let Some(free) = hb.iter().position(|&s| s == AIR) {
-                    hb[free] = b;
+                let leftover = self.player.inv.add(b, 1);
+                if leftover == 0 {
+                    let toast = name(b);
+                    self.item_toast = Some((toast.to_string(), 2.0));
+                    self.ui.dirty = true;
                 }
-                let toast = name(b);
-                self.item_toast = Some((toast.to_string(), 2.0));
-                self.ui.dirty = true;
             }
         }
 
@@ -1687,8 +1774,8 @@ impl GameApp {
                         );
                         self.audio.play(&self.bank, SoundFamily::Wood, 0.4 * self.settings.volume, 0.8);
                         self.place_timer = 0.24;
-                    } else if self.player.hotbar[self.player.selected] != AIR {
-                        let b = self.player.hotbar[self.player.selected];
+                    } else if !self.player.held().is_empty() {
+                        let b = self.player.held().block;
                         if let Some((_, _, prev)) = self.target {
                         let pb = self.world.get_block(prev[0], prev[1], prev[2]);
                         let replaceable = pb == AIR || pb == WATER || is_cross(pb);
@@ -1746,6 +1833,12 @@ impl GameApp {
                             // §24/§25: a new block notifies the sim
                             notify_sim(&self.world, &mut self.sim.sched, prev[0], prev[1], prev[2]);
                             self.audio.play(&self.bank, def(b).sound, 0.55 * self.settings.volume, 1.15);
+                            // survival placement: the stack depletes
+                            let held = self.player.held_mut();
+                            held.count -= 1;
+                            if held.count == 0 {
+                                *held = crate::inventory::ItemStack::EMPTY;
+                            }
                             self.place_timer = 0.24;
                             self.edits += 1;
                         }

@@ -91,6 +91,10 @@ pub const TILE_DEAD_BUSH: u16 = 62;
 pub const TILE_REDSTONE_WIRE: u16 = 64;
 pub const TILE_REDSTONE_TORCH: u16 = 65;
 pub const TILE_LEVER: u16 = 66;
+// gameplay (Phase 7)
+pub const TILE_FURNACE_SIDE: u16 = 67;
+pub const TILE_FURNACE_TOP: u16 = 68;
+pub const TILE_FURNACE_LIT_SIDE: u16 = 69;
 
 // Block ids (u8 in chunk storage).
 pub const AIR: u8 = 0;
@@ -158,12 +162,14 @@ pub const MUSHROOM_RED: u8 = 54;
 pub const MUSHROOM_BROWN: u8 = 55;
 pub const DEAD_BUSH: u8 = 56;
 
-pub const BLOCK_COUNT: usize = 63;
+pub const BLOCK_COUNT: usize = 64;
 
 // redstone core (Phase 6 §25 subset)
 pub const REDSTONE_WIRE: u8 = 60;
 pub const REDSTONE_TORCH: u8 = 61;
 pub const LEVER: u8 = 62;
+// gameplay (Phase 7)
+pub const FURNACE: u8 = 63;
 
 // ---------------------------------------------------------------------------
 // BlockState registry (1.16.5 pattern, miniature)
@@ -175,7 +181,7 @@ pub const LEVER: u8 = 62;
 // `axis=x|y|z`, exactly how vanilla models oak_log[axis=...]. The 1.16.5
 // global palette is 15 bits (~17k states); this registry grows into it
 // without touching storage (u16) or the mesher key.
-pub const STATE_COUNT: usize = 116;
+pub const STATE_COUNT: usize = 118;
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -209,6 +215,11 @@ pub const LEVER_OFF: u16 = 112;
 pub const LEVER_ON: u16 = 113;
 pub const TORCH_LIT: u16 = 114;
 pub const TORCH_OFF: u16 = 115;
+// furnace (Phase 7): unlit/lit sim states — block id 63's identity slot
+// collides with the oak-slab model state, so like redstone the furnace
+// always stores one of these
+pub const FURNACE_STATE: u16 = 116;
+pub const FURNACE_LIT: u16 = 117;
 
 #[inline]
 pub fn is_wire_power(s: u16) -> bool {
@@ -407,6 +418,7 @@ pub fn state_block(s: u16) -> u8 {
     match s {
         LEVER_OFF | LEVER_ON => return LEVER,
         TORCH_LIT | TORCH_OFF => return REDSTONE_TORCH,
+        FURNACE_STATE | FURNACE_LIT => return FURNACE,
         _ => {}
     }
     if let Some((b, _)) = prop_state_decode(s) {
@@ -446,7 +458,10 @@ pub fn is_model_state(s: u16) -> bool {
     s >= MODEL_STATE_BASE
         && !is_water_flow(s)
         && !is_wire_power(s)
-        && !matches!(s, LEVER_OFF | LEVER_ON | TORCH_LIT | TORCH_OFF)
+        && !matches!(
+            s,
+            LEVER_OFF | LEVER_ON | TORCH_LIT | TORCH_OFF | FURNACE_STATE | FURNACE_LIT
+        )
 }
 
 /// true if this block id has property-driven model states
@@ -498,7 +513,7 @@ pub fn log_axis_state(block: u8, axis: u8) -> u16 {
 }
 
 /// highest tile index the generator must draw
-pub const TILE_MAX: u16 = 66;
+pub const TILE_MAX: u16 = 69;
 
 pub struct BlockDef {
     pub name: &'static str,
@@ -605,6 +620,8 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Redstone Wire", [TILE_REDSTONE_WIRE, TILE_REDSTONE_WIRE, TILE_REDSTONE_WIRE], false, false, true, false, 0, SoundFamily::Grass),
     d("Redstone Torch", [TILE_REDSTONE_TORCH, TILE_REDSTONE_TORCH, TILE_REDSTONE_TORCH], false, false, true, false, 7, SoundFamily::Wood),
     d("Lever", [TILE_LEVER, TILE_LEVER, TILE_LEVER], false, false, true, false, 0, SoundFamily::Wood),
+    // gameplay (Phase 7): full-cube greedy-meshed, lit variant glows
+    d("Furnace", [TILE_FURNACE_TOP, TILE_FURNACE_TOP, TILE_FURNACE_SIDE], true, true, false, false, 0, SoundFamily::Stone),
 ];
 
 #[inline]

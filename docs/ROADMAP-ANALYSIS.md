@@ -130,6 +130,30 @@ Key fix shipped alongside: `Furnaces` moved into `Sim` (ticks at exactly 20 Hz l
 | P8 audio (§21) | ✅ Done | `sounds.rs` registry + categories + spatial audio + music + ambient; 5 new tests (126 total) |
 | P8 UI | ✅ Done (HUD/menus/settings/F3/picker/container screens were shipped across P1–P7; MUSIC slider added) | — |
 
+### Update 2026-09-02 (P9 — advanced draw submission)
+
+**Phase 9 is DONE to its gate** (spec §48: "Only now evaluate: indirect draws, MDI, GPU-driven visibility, occlusion, LOD, more aggressive batching, lock-free structures. Gate: benchmark improvement must be measurable"). Design = spec §14 ladder items 3+4+5 with capability detection:
+
+- **Regional mega-buffers** (§14 item 3): one vertex+index buffer pair per 8×8-chunk mesh region; chunks sub-allocate element slots via a first-fit free-range allocator with live-slot counting (`src/draw.rs`). Remeshes that fit write **in place** (§14 reuse preserved); arena growth is a doubling realloc + GPU→GPU copy submitted strictly before the new data write (§43: no host synchronization, no stalls). Regions are created lazily and destroyed when their last live slot is freed.
+- **Draw paths** (§14 "use capability detection and maintain a fallback path"):
+  - native + `MULTI_DRAW_INDIRECT` + `INDIRECT_FIRST_INSTANCE` (Vulkan/DX12/Metal): one `multi_draw_indexed_indirect` per region run over a per-frame args buffer (`[terrain|shadow|water]` segments);
+  - everything else (WebGPU, **WebGL2**, GL): the origin instance buffer is bound whole once per pass and each chunk draws with `draw_indexed(first_index.., 0, origin..origin+1)` — **zero per-chunk buffer binds**; arena re-binds only at region transitions.
+- **WebGL2 base-vertex constraint, found the hard way** (E2E): wgpu-hal's GL backend panics in glow on `draw_elements_instanced_base_vertex`. Fix: arena indices are **baked absolute (+v_off at upload)** so `base_vertex` is 0 on every backend. `first_instance ≠ 0` on *direct* draws is emulated by wgpu-hal GL via instance-attribute offsets — verified in wgpu-hal 22's `gles/mod.rs` design notes and empirically in-browser.
+- **Region-major ordering** (near→far, region key as secondary sort so equidistant regions never interleave — a real bug caught by the bench: 502 runs → 4 after the fix): chunks of one region are contiguous → 1 bind per region run while keeping roughly front-to-back early-z order; water reverses the whole order for blending.
+- **Measured** (§37/§48 gate — headless `vc_bench` drawprep scene + browser E2E on the real WebGL2 backend):
+  - vc_bench (225 visible chunks, 4 regions, 3 passes): legacy **1614 binds** → loop **23 binds** (70.2×), MDI **10 draw calls** total (vs 538); draw-prep CPU cost 27 µs/frame.
+  - browser E2E (SwiftShader WebGL2, in-game): 60 chunks drawn → 129 draws / **19 binds** vs ~387 legacy; break/place remesh in-place path verified; clean reload, no panics; F3 shows `Draws/Binds/Path`, `--benchmark` JSON reports `draw.calls_avg/binds_avg/path`.
+- **MDI-path caveat (honest, §0.2)**: the MDI path is compiled and logic-tested (args packing ≡ loop expansion, unit-proven) but not GPU-executed in this sandbox (no Vulkan ICD). It activates automatically on native Vulkan/DX12/Metal via feature intersection; the loop path is the fully E2E-validated one.
+- **Evaluated, deliberately deferred** (§48 "only now evaluate" — decisions, not omissions):
+  - *GPU-driven visibility*: needs compute culling + `MULTI_DRAW_INDIRECT_COUNT`; at our visible-set sizes the CPU cull is ~27 µs/frame — no measurable win available to justify the complexity yet.
+  - *Occlusion culling*: §15 "only an optimization if it saves more work than it costs" — frustum + empty-section culling already cover the cheap wins; chunk-occlusion queries need per-pass readback plumbing; deferred until a cave/forest scene measurably hitches.
+  - *LOD far-chunk meshes*: parity-sensitive (silhouette popping vs 1.16.5 look), needs impostor/clipmap art; deferred as a visual-parity risk, not a perf need at current draw budgets.
+  - *Lock-free structures*: world-grid edits are CoW/Arc with Rayon mesh jobs; bench shows no contention at this scale; deferred until a profile says otherwise.
+
+| Spec phase | Status | Evidence |
+|---|---|---|
+| P9 advanced performance | ✅ Done to gate | `src/draw.rs` (pure-CPU core, 7 tests), `render.rs` (RegionArena + capability-detected paths), vc_bench drawprep scene, browser E2E p9-webgl2-*.png, F3/bench draw stats |
+
 ---
 
 ## 4. Recommended remaining order (revised, risk-aware)
@@ -138,5 +162,5 @@ Key fix shipped alongside: `Furnaces` moved into `Sim` (ticks at exactly 20 Hz l
 2. **Paletted ChunkSections** (phase 3) — memory + mesh invalidation correctness; can land behind the existing `Chunk` API to avoid a big-bang rewrite.
 3. **BlockState system** (phase 2) — needed before any resource-pack/model work; start with property-bits in a `u16`/`u32` state ID, not the doc's full JSON stack.
 4. **Resource-pack loader** (phase 5) — only after 2–3; `zip`+`image` gated off on WASM unless a web pack-import path is built.
-5. **Region MDI** (phase 8) then **shader packs** (phase 11) — both last, both payoff-gated on real content.
+5. ~~**Region MDI** (phase 8)~~ ✅ shipped as P9 above — then **shader packs** (phase 11): payoff-gated on real content.
 - *Defer* the full deferred/G-Buffer rewrite (phase 6) until Iris packs actually exist to load (see §2.6).

@@ -4,6 +4,7 @@
 pub mod bench;
 pub mod blocks;
 pub mod chunk;
+pub mod draw;
 pub mod entities;
 pub mod fluids;
 pub mod craft;

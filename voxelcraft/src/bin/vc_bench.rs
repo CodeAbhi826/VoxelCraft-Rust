@@ -15,9 +15,11 @@
 //! rather than fabricate).
 
 use std::collections::HashMap;
+use std::hint::black_box;
 use std::sync::Arc;
 use std::time::Instant;
 use voxelcraft::chunk::Chunk;
+use voxelcraft::draw::{self, ChunkGpu, DrawCallAccounting, MeshSlot, SlotAlloc, VisEntry};
 use voxelcraft::gen::TerrainGen;
 use voxelcraft::mesh::{mesh_chunk, mesh_sections};
 use voxelcraft::world::ChunkPos;
@@ -117,6 +119,8 @@ fn main() {
     let mut mesh_ms: Vec<f32> = Vec::with_capacity(meshable.len());
     let mut total_verts = 0usize;
     let mut total_tris = 0u32;
+    // per-chunk mesh sizes for the Phase-9 drawprep scene (realistic slots)
+    let mut mesh_dims: Vec<(ChunkPos, usize, usize, usize)> = Vec::with_capacity(meshable.len());
     for &pos in meshable.iter() {
         let snap = snapshot(&by_pos, pos);
         let lsnap = voxelcraft::light::reference_lightdata(&snap);
@@ -125,6 +129,7 @@ fn main() {
         mesh_ms.push(t0.elapsed().as_secs_f32() * 1000.0);
         total_verts += md.solid.0.len() + md.water.0.len();
         total_tris += md.tri_count();
+        mesh_dims.push((pos, md.solid.0.len(), md.solid.1.len(), md.water.1.len()));
     }
 
     // parallel mesh timing
@@ -171,6 +176,86 @@ fn main() {
     // memory footprint of the paletted sections
     let heap: usize = chunks.iter().map(|c| c.heap_bytes()).sum();
 
+    // -------------------------------------------------- Phase 9 drawprep (§37)
+    // Simulate the per-frame CPU draw-submission prep with REAL mesh sizes
+    // and the REAL allocator/ordering/list/args code (§48 Phase-9 gate:
+    // measurable). One "frame" = region ordering + the three pass lists +
+    // region runs + MDI args packing for every visible chunk.
+    let mut gpu: HashMap<ChunkPos, ChunkGpu> = HashMap::new();
+    let mut allocs: HashMap<(i32, i32), (SlotAlloc, SlotAlloc)> = HashMap::new();
+    for &(pos, v_len, i_len, w_i_len) in mesh_dims.iter() {
+        let rk = draw::region_of(pos);
+        let (va, ia) = allocs.entry(rk).or_default();
+        let (v_off, _) = va.alloc(v_len as u32);
+        let (i_off, _) = ia.alloc(i_len as u32);
+        let solid = MeshSlot {
+            region: rk,
+            v_off,
+            v_cap: v_len as u32,
+            i_off,
+            i_cap: i_len as u32,
+            n: i_len as u32,
+        };
+        let water = if w_i_len > 0 {
+            // water shares the same arena allocators (separate slot)
+            let (w_v_off, _) = va.alloc((v_len / 4).max(1) as u32);
+            let (w_i_off, _) = ia.alloc(w_i_len as u32);
+            Some(MeshSlot {
+                region: rk,
+                v_off: w_v_off,
+                v_cap: (v_len / 4).max(1) as u32,
+                i_off: w_i_off,
+                i_cap: w_i_len as u32,
+                n: w_i_len as u32,
+            })
+        } else {
+            None
+        };
+        gpu.insert(pos, ChunkGpu { solid, water });
+    }
+    // visible set: every meshed chunk, dist² from a camera at the grid
+    // center (all visible — worst-case list sizes), origin rows assigned
+    let cam2 = (0.0f32, 0.0f32);
+    let vis: Vec<VisEntry> = mesh_dims
+        .iter()
+        .enumerate()
+        .map(|(i, &(pos, ..))| {
+            let dx = pos.0 as f32 * 16.0 + 8.0 - cam2.0;
+            let dz = pos.1 as f32 * 16.0 + 8.0 - cam2.1;
+            (pos, dx * dx + dz * dz, i as u32)
+        })
+        .collect();
+    const SHADOW_R2: f32 = (110.0 + 23.0) * (110.0 + 23.0);
+    let mut drawprep_us = 0.0f64;
+    let mut acc_loop = DrawCallAccounting::default();
+    let mut acc_mdi = DrawCallAccounting::default();
+    let mut acc_legacy = DrawCallAccounting::default();
+    let n_regions = allocs.len();
+    const DP_FRAMES: usize = 200;
+    for f in 0..DP_FRAMES {
+        let t0 = Instant::now();
+        let terrain_order = draw::order_by_region(&vis, cam2, false);
+        let water_order: Vec<VisEntry> = terrain_order.iter().rev().copied().collect();
+        let terrain_list = draw::build_draw_list(&gpu, &terrain_order, false, None);
+        let water_list = draw::build_draw_list(&gpu, &water_order, true, None);
+        let shadow_list = draw::build_draw_list(&gpu, &terrain_order, false, Some(SHADOW_R2));
+        let runs = draw::region_runs(black_box(&terrain_list));
+        let args = draw::pack_args(black_box(&terrain_list));
+        let us = t0.elapsed().as_secs_f64() * 1e6;
+        if f > 20 {
+            // skip the first iterations (cache warmup) like the game bench
+            drawprep_us += us;
+        }
+        if f == DP_FRAMES - 1 {
+            acc_loop = DrawCallAccounting::loop_path(&terrain_list, &water_list, &shadow_list);
+            acc_mdi = DrawCallAccounting::mdi_path(&terrain_list, &water_list, &shadow_list);
+            acc_legacy = DrawCallAccounting::legacy(&terrain_list, &water_list, &shadow_list);
+            black_box((runs, args));
+        }
+    }
+    drawprep_us /= (DP_FRAMES - 21) as f64;
+    let visible_n = vis.len();
+
     // ---------------------------------------------------------------- report
     let gen_seq_total = gen_ms.iter().sum::<f32>();
     let gen_p50 = percentile_ms(&mut gen_ms, 0.50);
@@ -203,13 +288,29 @@ fn main() {
         n_chunks,
         heap as f64 / n_chunks.max(1) as f64 / 1024.0
     );
+    // Phase 9 §48 gate: draw submission accounting (all three passes)
+    println!(
+        "drawprep    : {drawprep_us:.1} µs/frame  ({visible_n} visible chunks, {n_regions} regions, 3 passes, incl. MDI args pack)"
+    );
+    println!(
+        "draw calls  : legacy {}/{} binds  →  region-loop {}/{}  →  MDI {}/{}  (per frame)",
+        acc_legacy.draws, acc_legacy.binds, acc_loop.draws, acc_loop.binds, acc_mdi.draws, acc_mdi.binds
+    );
+    println!(
+        "bind reduction : {:.1}x fewer buffer binds (loop) / {:.1}x (MDI) vs legacy",
+        acc_legacy.binds as f64 / acc_loop.binds.max(1) as f64,
+        acc_legacy.binds as f64 / acc_mdi.binds.max(1) as f64
+    );
     println!("GPU metrics : unavailable (headless — use `voxelcraft --benchmark` on a desktop)");
     println!("============================================================\n");
 
     if !json_path.is_empty() {
         let json = format!(
-            "{{\"headless_bench\":{{\"seed\":{seed},\"chunks\":{n_chunks},\"threads\":{threads},\"gen\":{{\"avg_ms\":{gen_avg:.3},\"p50_ms\":{gen_p50:.3},\"p95_ms\":{gen_p95:.3},\"parallel_total_ms\":{gen_par_ms:.3}}},\"mesh\":{{\"chunks\":{},\"avg_ms\":{mesh_avg:.3},\"p50_ms\":{mesh_p50:.3},\"p95_ms\":{mesh_p95:.3},\"parallel_total_ms\":{mesh_par_ms:.3}}},\"remesh3\":{{\"avg_ms\":{rm3_avg:.3},\"p50_ms\":{rm3_p50:.3},\"deterministic\":{remesh3_eq}}},\"verts\":{total_verts},\"tris\":{total_tris},\"par_verts\":{par_verts},\"heap_bytes\":{heap}}}}}",
-            meshable.len()
+            "{{\"headless_bench\":{{\"seed\":{seed},\"chunks\":{n_chunks},\"threads\":{threads},\"gen\":{{\"avg_ms\":{gen_avg:.3},\"p50_ms\":{gen_p50:.3},\"p95_ms\":{gen_p95:.3},\"parallel_total_ms\":{gen_par_ms:.3}}},\"mesh\":{{\"chunks\":{},\"avg_ms\":{mesh_avg:.3},\"p50_ms\":{mesh_p50:.3},\"p95_ms\":{mesh_p95:.3},\"parallel_total_ms\":{mesh_par_ms:.3}}},\"remesh3\":{{\"avg_ms\":{rm3_avg:.3},\"p50_ms\":{rm3_p50:.3},\"deterministic\":{remesh3_eq}}},\"drawprep\":{{\"us_per_frame\":{drawprep_us:.2},\"visible\":{visible_n},\"regions\":{n_regions},\"legacy\":{{\"draws\":{},\"binds\":{}}},\"loop\":{{\"draws\":{},\"binds\":{}}},\"mdi\":{{\"draws\":{},\"binds\":{}}}}},\"verts\":{total_verts},\"tris\":{total_tris},\"par_verts\":{par_verts},\"heap_bytes\":{heap}}}}}",
+            meshable.len(),
+            acc_legacy.draws, acc_legacy.binds,
+            acc_loop.draws, acc_loop.binds,
+            acc_mdi.draws, acc_mdi.binds
         );
         std::fs::write(&json_path, json)
             .unwrap_or_else(|e| eprintln!("failed to write {json_path}: {e}"));

@@ -333,6 +333,8 @@ pub struct GameApp {
     picker_geom: Option<crate::ui::PickerGeom>,
     /// rolling frame times (ms) for the F3 frame-time graph
     frame_times: std::collections::VecDeque<f32>,
+    /// rolling (draw calls, buffer binds) per frame — Phase 9 §37 metric
+    draw_calls_ring: std::collections::VecDeque<(u32, u32)>,
     item_toast: Option<(String, f32)>,
     last_ui_t: f32,
     last_frame_t: f32,
@@ -655,6 +657,7 @@ impl GameApp {
             picker_open: false,
             picker_geom: None,
             frame_times: std::collections::VecDeque::new(),
+            draw_calls_ring: std::collections::VecDeque::new(),
             item_toast: None,
             last_ui_t: -1.0,
             last_frame_t: now_secs(),
@@ -2509,6 +2512,9 @@ impl GameApp {
             ("chunksLoaded", StatsVal::F(self.world.chunks.len() as f32)),
             ("chunksDrawn", StatsVal::F(self.stats.chunks as f32)),
             ("tris", StatsVal::F(self.stats.tris as f32)),
+            ("drawCalls", StatsVal::F(self.stats.draws as f32)),
+            ("bufferBinds", StatsVal::F(self.stats.binds as f32)),
+            ("drawPath", StatsVal::S(self.renderer.draw_path_name().into())),
             // §12 evidence: section-granular invalidation state
             ("dirtySections", StatsVal::F(self.world.dirty_section_count() as f32)),
             ("dirtyChunks", StatsVal::F(self.world.dirty.len() as f32)),
@@ -2913,6 +2919,14 @@ impl GameApp {
                     self.world.chunks.len(),
                     self.stats.tris
                 ),
+                format!(
+                    "Draws: {} avg  Binds: {} avg  Path: {}",
+                    self.draw_calls_ring.iter().map(|d| d.0).sum::<u32>()
+                        / self.draw_calls_ring.len().max(1) as u32,
+                    self.draw_calls_ring.iter().map(|d| d.1).sum::<u32>()
+                        / self.draw_calls_ring.len().max(1) as u32,
+                    self.renderer.draw_path_name()
+                ),
                 format!("XYZ: {:.2} / {:.2} / {:.2}", p.pos.x, p.pos.y, p.pos.z),
                 format!("Block: {} {} {}  ({})", p.pos.x as i32, p.pos.y as i32, p.pos.z as i32, ""),
                 format!("Chunk: {} {}  Facing: {}  Light: sky {}",
@@ -3029,6 +3043,11 @@ impl GameApp {
             while self.frame_times.len() > 180 {
                 self.frame_times.pop_front();
             }
+        }
+        // Phase 9: draw-call/bind history (F3 + benchmark §37)
+        self.draw_calls_ring.push_back((self.stats.draws, self.stats.binds));
+        while self.draw_calls_ring.len() > 64 {
+            self.draw_calls_ring.pop_front();
         }
         self.draw_game_t = t_draw;
         if self.time - self.fps_t > 0.5 {
@@ -3205,10 +3224,18 @@ impl GameApp {
                     };
                     if let Some(fs) = stats {
                         crate::bench::print_report(&fs, &report, &mode);
+                        // Phase 9 §37/§48 gate: draw-call + bind counts travel
+                        // with the frame-time report (rolling 64-frame means)
+                        let n = self.draw_calls_ring.len().max(1) as u32;
+                        let d_avg = self.draw_calls_ring.iter().map(|d| d.0).sum::<u32>() / n;
+                        let b_avg = self.draw_calls_ring.iter().map(|d| d.1).sum::<u32>() / n;
                         let json = format!(
-                            "{{\"benchmark\":{{\"frame\":{},\"phases\":{}}}}}",
+                            "{{\"benchmark\":{{\"frame\":{},\"phases\":{},\"draw\":{{\"calls_avg\":{},\"binds_avg\":{},\"path\":\"{}\"}}}}}}",
                             fs.to_json(),
-                            report.to_json()
+                            report.to_json(),
+                            d_avg,
+                            b_avg,
+                            self.renderer.draw_path_name()
                         );
                         #[cfg(not(target_arch = "wasm32"))]
                         if let Some(path) = &self.bench.as_ref().and_then(|b| b.json_path.clone()) {

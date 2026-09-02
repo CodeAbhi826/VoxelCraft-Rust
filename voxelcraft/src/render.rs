@@ -2,6 +2,7 @@
 //! Pipelines: sky (gradient + sun/moon/stars), terrain (alpha-test, smooth
 //! light), water (blend + waves), selection wireframe, UI (bitmap canvas).
 
+use crate::draw::{self, ChunkGpu, DrawCmd, IndirectArgs, MeshSlot, SlotAlloc, VisEntry};
 use crate::mesh::{MeshData, Vertex};
 use crate::textures;
 use crate::ui::{UiCanvas, UI_H, UI_W};
@@ -171,6 +172,11 @@ pub struct RenderStats {
     pub tris: u32,
     /// particles drawn this frame
     pub particles: u32,
+    /// draw_indexed-family API calls issued this frame (all passes) —
+    /// the Phase-9 metric: loop path = drawn chunks, MDI path = region runs
+    pub draws: u32,
+    /// buffer binds issued for chunk drawing (§14/§37 diagnostics)
+    pub binds: u32,
 }
 
 // ---------------------------------------------------------------- shaders
@@ -1160,19 +1166,49 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
 }
 "#;
 
-pub(crate) struct ChunkGpu {
-    pub v: wgpu::Buffer,
-    pub i: wgpu::Buffer,
-    pub n: u32,
-    pub w: Option<(wgpu::Buffer, wgpu::Buffer, u32)>,
-    /// allocated capacities (elements) — §14 upload batching: a remesh that
-    /// fits reuses the existing buffers (write_buffer in place) instead of
-    /// reallocating per edit
-    pub v_cap: usize,
-    pub i_cap: usize,
-    pub w_v_cap: usize,
-    pub w_i_cap: usize,
+// ChunkGpu / MeshSlot / draw-list types live in draw.rs (pure CPU,
+// unit-testable + benchable headless — Phase 9 §14/§37).
+
+/// GPU buffers of one 8×8-chunk mesh region (spec §14 item 3: regional
+/// mega-buffers). Vertex + index storage is sub-allocated to chunks via
+/// `SlotAlloc` ranges; remeshes that fit write in place (no realloc —
+/// §14 in-place reuse), growth is a doubling realloc + GPU→GPU copy
+/// submitted before the new data (§43).
+struct RegionArena {
+    v: wgpu::Buffer,
+    i: wgpu::Buffer,
+    /// buffer capacities in elements (16 B vertices / 4 B indices)
+    v_elems: u32,
+    i_elems: u32,
+    va: SlotAlloc,
+    ia: SlotAlloc,
 }
+
+const VERT_SIZE: u64 = std::mem::size_of::<Vertex>() as u64;
+
+/// Bake a chunk's mesh-relative indices into ABSOLUTE arena indices
+/// (i + v_off). Uploaded once per (re)mesh; lets every draw use
+/// base_vertex = 0 — mandatory on WebGL2/GL (glow has no
+/// draw_elements_instanced_base_vertex), harmless on Vulkan/DX12/Metal.
+#[inline]
+fn bake_absolute_indices(idx: &[u32], v_off: u32) -> Vec<u32> {
+    if v_off == 0 {
+        return idx.to_vec();
+    }
+    idx.iter().map(|&i| i + v_off).collect()
+}
+
+#[inline]
+fn arena_v_usage() -> wgpu::BufferUsages {
+    wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC
+}
+#[inline]
+fn arena_i_usage() -> wgpu::BufferUsages {
+    wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC
+}
+/// initial region arena capacities: 65 536 B vertices / 16 384 B indices
+const REGION_START_V_ELEMS: u32 = 4096;
+const REGION_START_I_ELEMS: u32 = 4096;
 
 /// capacity of the per-frame chunk-origin instance buffer (one Float32x2
 /// entry per visible chunk drawn; render distance 64 would need ~16k —
@@ -1262,6 +1298,15 @@ pub struct Renderer {
     /// adapter/backend description for the F3 overlay (e.g. "WebGPU (SwiftShader)")
     pub backend_name: String,
     pub chunks: HashMap<ChunkPos, ChunkGpu>,
+    /// 8×8-chunk mesh-region arenas (Phase 9 §14: regional mega-buffers)
+    regions: HashMap<(i32, i32), RegionArena>,
+    /// true when the device exposes MULTI_DRAW_INDIRECT +
+    /// INDIRECT_FIRST_INSTANCE (native Vulkan/DX12/Metal) — one
+    /// multi_draw_indexed_indirect per region run; false → zero-rebind
+    /// loop path (WebGPU/WebGL2/GL, §14 capability detection)
+    draw_mdi: bool,
+    /// per-frame indirect draw records: [terrain | shadow | water] segments
+    args_buf: wgpu::Buffer,
     present_modes: Vec<wgpu::PresentMode>,
     pub vsync: bool,
     /// diagnostic counter: frames successfully submitted (logged first 3)
@@ -1308,13 +1353,23 @@ impl Renderer {
             }
         };
 
+        // Phase 9 §14: request multi-draw-indirect where the adapter has it
+        // (native-only feature; intersected so unsupported adapters still
+        // create the device — capability detection, not assumption).
+        let mdi_wanted = if cfg!(not(target_arch = "wasm32")) {
+            adapter.features()
+                & (wgpu::Features::MULTI_DRAW_INDIRECT | wgpu::Features::INDIRECT_FIRST_INSTANCE)
+        } else {
+            wgpu::Features::empty()
+        };
+
         // WebGL2 (downlevel) can't satisfy default limits (no compute);
         // retry with downlevel limits in that case.
         let (device, queue) = match adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
                     label: Some("voxelcraft"),
-                    required_features: wgpu::Features::empty(),
+                    required_features: mdi_wanted,
                     required_limits: wgpu::Limits::default(),
                     ..Default::default()
                 },
@@ -2622,6 +2677,23 @@ impl Renderer {
             }),
         );
 
+        // Phase 9 §14: per-frame indirect draw records — [terrain | shadow |
+        // water] segments, one record per drawn chunk (20 B each, ≤ 2048 ×3)
+        let args_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("draw-indirect-args"),
+            size: 3 * MAX_DRAW_CHUNKS as u64 * IndirectArgs::SIZE,
+            usage: wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let draw_mdi = device
+            .features()
+            .contains(wgpu::Features::MULTI_DRAW_INDIRECT | wgpu::Features::INDIRECT_FIRST_INSTANCE);
+        if draw_mdi {
+            report_boot_log("draw path: MDI (multi_draw_indexed_indirect per region run)");
+        } else {
+            report_boot_log("draw path: region-arena loop (zero per-chunk binds)");
+        }
+
         let renderer = Renderer {
             surface,
             device,
@@ -2685,6 +2757,9 @@ impl Renderer {
             upscale,
             backend_name,
             chunks: HashMap::new(),
+            regions: HashMap::new(),
+            draw_mdi,
+            args_buf,
             present_modes,
             vsync,
             submitted_frames: 0,
@@ -2951,6 +3026,8 @@ impl Renderer {
     /// drop all GPU chunk meshes (full re-mesh, e.g. smooth-lighting toggle)
     pub fn clear_meshes(&mut self) {
         self.chunks.clear();
+        // dropping every RegionArena destroys its buffers (§43: no leaks)
+        self.regions.clear();
     }
 
     pub fn toggle_vsync(&mut self) {
@@ -3023,112 +3100,266 @@ impl Renderer {
         }
     }
 
-    /// Upload one chunk's merged mesh (§14: per-chunk merged buffers, one
-    /// buffer pair + one draw per chunk). Buffers are REUSED when the new
-    /// data fits the existing capacity — repeated edits don't churn GPU
-    /// allocations; write_buffer calls coalesce into the next submit.
+    /// Upload one chunk's merged mesh (Phase 9 §14/§43: regional
+    /// mega-buffers + slot sub-allocation). A remesh that fits the chunk's
+    /// existing slot writes IN PLACE — repeated edits never reallocate;
+       /// write_buffer calls coalesce into the next submit. Arena growth is
+    /// a doubling realloc whose GPU→GPU copy is submitted strictly before
+    /// the new data write (disjoint ranges either way — see grow()),
     pub fn set_chunk_mesh(&mut self, pos: ChunkPos, md: &MeshData) {
-        let usage = wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST;
-        let v_len = md.solid.0.len();
-        let i_len = md.solid.1.len();
-        let w_v_len = md.water.0.len();
-        let w_i_len = md.water.1.len();
+        let region = draw::region_of(pos);
+        let v_len = md.solid.0.len() as u32;
+        let i_len = md.solid.1.len() as u32;
+        let w_v_len = md.water.0.len() as u32;
+        let w_i_len = md.water.1.len() as u32;
 
-        // fresh buffer allocation helper
-        let alloc = |size: u64| -> wgpu::Buffer {
-            self.device.create_buffer(&wgpu::BufferDescriptor {
-                label: None,
-                size: size.max(16),
-                usage,
-                mapped_at_creation: false,
-            })
-        };
+        let mut solid_old = self.chunks.get(&pos).map(|c| c.solid);
+        let mut water_old = self.chunks.get(&pos).and_then(|c| c.water);
 
-        if let Some(c) = self.chunks.get_mut(&pos) {
-            // ---- in-place reuse path (§14) — sizes fit the old buffers
-            if v_len <= c.v_cap && i_len <= c.i_cap {
-                if i_len > 0 {
-                    self.queue.write_buffer(&c.v, 0, bytemuck::cast_slice(&md.solid.0));
-                    self.queue.write_buffer(&c.i, 0, bytemuck::cast_slice(&md.solid.1));
+        let solid = self.place_slot(region, solid_old.take(), v_len, i_len, &md.solid.0, &md.solid.1);
+        let water = if w_i_len == 0 {
+            // no water: release any old water allocation (None = not drawn)
+            if let Some(o) = water_old.take() {
+                if o.i_cap > 0 || o.v_cap > 0 {
+                    self.free_slot(o);
                 }
-                c.n = i_len as u32;
-            } else {
-                let v = alloc((v_len * std::mem::size_of::<Vertex>()) as u64);
-                let i = alloc((i_len * 4) as u64);
-                if i_len > 0 {
-                    self.queue.write_buffer(&v, 0, bytemuck::cast_slice(&md.solid.0));
-                    self.queue.write_buffer(&i, 0, bytemuck::cast_slice(&md.solid.1));
-                }
-                c.v = v;
-                c.i = i;
-                c.n = i_len as u32;
-                c.v_cap = v_len;
-                c.i_cap = i_len;
             }
-            // water: None → Some / Some → None / reuse
-            if w_i_len > 0 {
-                if c.w.is_some() && w_v_len <= c.w_v_cap && w_i_len <= c.w_i_cap {
-                    let (wv, wi, _) = c.w.take().unwrap();
-                    self.queue.write_buffer(&wv, 0, bytemuck::cast_slice(&md.water.0));
-                    self.queue.write_buffer(&wi, 0, bytemuck::cast_slice(&md.water.1));
-                    c.w = Some((wv, wi, w_i_len as u32));
-                } else {
-                    let wv = alloc((w_v_len * std::mem::size_of::<Vertex>()) as u64);
-                    let wi = alloc((w_i_len * 4) as u64);
-                    self.queue.write_buffer(&wv, 0, bytemuck::cast_slice(&md.water.0));
-                    self.queue.write_buffer(&wi, 0, bytemuck::cast_slice(&md.water.1));
-                    c.w = Some((wv, wi, w_i_len as u32));
-                    c.w_v_cap = w_v_len;
-                    c.w_i_cap = w_i_len;
-                }
-            } else {
-                c.w = None;
-                c.w_v_cap = 0;
-                c.w_i_cap = 0;
-            }
-            return;
-        }
-
-        // ---- first upload for this chunk: allocate exactly
-        let (v, i, n, v_cap, i_cap) = if i_len == 0 {
-            (self.empty_buf(), self.empty_buf(), 0, 0, 0)
-        } else {
-            let v = alloc((v_len * std::mem::size_of::<Vertex>()) as u64);
-            let i = alloc((i_len * 4) as u64);
-            self.queue.write_buffer(&v, 0, bytemuck::cast_slice(&md.solid.0));
-            self.queue.write_buffer(&i, 0, bytemuck::cast_slice(&md.solid.1));
-            (v, i, i_len as u32, v_len, i_len)
-        };
-        let w = if w_i_len == 0 {
             None
         } else {
-            let wv = alloc((w_v_len * std::mem::size_of::<Vertex>()) as u64);
-            let wi = alloc((w_i_len * 4) as u64);
-            self.queue.write_buffer(&wv, 0, bytemuck::cast_slice(&md.water.0));
-            self.queue.write_buffer(&wi, 0, bytemuck::cast_slice(&md.water.1));
-            Some((wv, wi, w_i_len as u32))
+            Some(self.place_slot(region, water_old.take(), w_v_len, w_i_len, &md.water.0, &md.water.1))
         };
-        self.chunks.insert(
-            pos,
-            ChunkGpu { v, i, n, w, v_cap, i_cap, w_v_cap: w_v_len, w_i_cap: w_i_len },
-        );
+
+        match self.chunks.get_mut(&pos) {
+            Some(c) => {
+                c.solid = solid;
+                c.water = water;
+            }
+            None => {
+                self.chunks.insert(pos, ChunkGpu { solid, water });
+            }
+        }
     }
 
-    fn empty_buf(&self) -> wgpu::Buffer {
-        self.device.create_buffer(&wgpu::BufferDescriptor {
-            label: None,
-            size: 16,
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::INDEX,
+    /// fit-or-replace one mesh slot in its region arena and upload the data.
+    /// `old` is the chunk's previous slot (None on first upload). Returns
+    /// the (possibly new) slot. Empty meshes get the null slot.
+    /// Indices are baked ABSOLUTE (+ v_off) so every backend draws with
+    /// base_vertex = 0 — WebGL2/GL cannot instanced-draw with a non-zero
+    /// base vertex (§14 capability rules, empirically verified).
+    fn place_slot(
+        &mut self,
+        region: (i32, i32),
+        old: Option<MeshSlot>,
+        v_len: u32,
+        i_len: u32,
+        verts: &[Vertex],
+        idx: &[u32],
+    ) -> MeshSlot {
+        if i_len == 0 {
+            // no indices → nothing drawn; release any old allocation
+            if let Some(o) = old {
+                if o.i_cap > 0 || o.v_cap > 0 {
+                    self.free_slot(o);
+                }
+            }
+            return MeshSlot::EMPTY;
+        }
+        // ---- in-place reuse (§14): new data fits the old slot
+        if let Some(o) = &old {
+            if v_len <= o.v_cap && i_len <= o.i_cap {
+                let r = self.regions.get(&region).unwrap();
+                self.queue.write_buffer(&r.v, o.v_off as u64 * VERT_SIZE, bytemuck::cast_slice(verts));
+                let baked = bake_absolute_indices(idx, o.v_off);
+                self.queue.write_buffer(&r.i, o.i_off as u64 * 4, bytemuck::cast_slice(&baked));
+                return MeshSlot { region, v_off: o.v_off, v_cap: o.v_cap, i_off: o.i_off, i_cap: o.i_cap, n: i_len };
+            }
+        }
+        // ---- doesn't fit (or first upload): allocate the new slot BEFORE
+        // releasing the old one — if this was the region's only live slot,
+        // releasing first would destroy the arena out from under us. The
+        // region arena itself is created lazily here (only when a mesh
+        // actually needs GPU space).
+        if !self.regions.contains_key(&region) {
+            self.regions.insert(
+                region,
+                RegionArena {
+                    v: self.device.create_buffer(&wgpu::BufferDescriptor {
+                        label: Some("region-v"),
+                        size: REGION_START_V_ELEMS as u64 * VERT_SIZE,
+                        usage: arena_v_usage(),
+                        mapped_at_creation: false,
+                    }),
+                    i: self.device.create_buffer(&wgpu::BufferDescriptor {
+                        label: Some("region-i"),
+                        size: REGION_START_I_ELEMS as u64 * 4,
+                        usage: arena_i_usage(),
+                        mapped_at_creation: false,
+                    }),
+                    v_elems: REGION_START_V_ELEMS,
+                    i_elems: REGION_START_I_ELEMS,
+                    va: SlotAlloc::default(),
+                    ia: SlotAlloc::default(),
+                },
+            );
+        }
+        let (v_off, _) = self.regions.get_mut(&region).unwrap().va.alloc(v_len);
+        let (i_off, _) = self.regions.get_mut(&region).unwrap().ia.alloc(i_len);
+        self.grow_region_if_needed(region);
+        if let Some(o) = old {
+            if o.i_cap > 0 || o.v_cap > 0 {
+                self.free_slot(o);
+            }
+        }
+        let r = self.regions.get(&region).unwrap();
+        self.queue.write_buffer(&r.v, v_off as u64 * VERT_SIZE, bytemuck::cast_slice(verts));
+        let baked = bake_absolute_indices(idx, v_off);
+        self.queue.write_buffer(&r.i, i_off as u64 * 4, bytemuck::cast_slice(&baked));
+        MeshSlot { region, v_off, v_cap: v_len, i_off, i_cap: i_len, n: i_len }
+    }
+
+    /// grow the region's buffers when the freshly bump-allocated slots
+    /// exceed capacity: new doubled buffers, GPU→GPU copy of the old
+    /// contents submitted FIRST, then the caller's write_buffer (staged
+    /// for the next submit) lands strictly after — so the fresh data
+    /// always wins in any overlapping range (§43: no synchronized stall,
+    /// no host round-trip).
+    fn grow_region_if_needed(&mut self, region: (i32, i32)) {
+        let r = self.regions.get(&region).unwrap();
+        let need_v = r.va.used();
+        let need_i = r.ia.used();
+        if need_v <= r.v_elems && need_i <= r.i_elems {
+            return;
+        }
+        // copy the whole old capacity — every live slot's data lands at
+        // the identical offsets in the new buffer
+        let copy_v = r.v_elems as u64 * VERT_SIZE;
+        let copy_i = r.i_elems as u64 * 4;
+        let new_v_elems = draw::grow_plan(need_v, r.v_elems);
+        let new_i_elems = draw::grow_plan(need_i, r.i_elems);
+        let new_v = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("region-v"),
+            size: new_v_elems as u64 * VERT_SIZE,
+            usage: arena_v_usage(),
             mapped_at_creation: false,
-        })
+        });
+        let new_i = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("region-i"),
+            size: new_i_elems as u64 * 4,
+            usage: arena_i_usage(),
+            mapped_at_creation: false,
+        });
+        let mut enc = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("arena-grow") });
+        {
+            let r = self.regions.get(&region).unwrap();
+            if copy_v > 0 {
+                enc.copy_buffer_to_buffer(&r.v, 0, &new_v, 0, copy_v);
+            }
+            if copy_i > 0 {
+                enc.copy_buffer_to_buffer(&r.i, 0, &new_i, 0, copy_i);
+            }
+        }
+        // submit the copy BEFORE the caller's write_buffer stages for the
+        // NEXT submit → deterministic ordering (§43). The old buffers are
+        // destroyed by the field swap below — wgpu defers actual GPU-side
+        // destruction until the submitted copy completes.
+        self.queue.submit(Some(enc.finish()));
+        let r = self.regions.get_mut(&region).unwrap();
+        r.v = new_v;
+        r.i = new_i;
+        r.v_elems = new_v_elems;
+        r.i_elems = new_i_elems;
+    }
+
+    /// return a slot's ranges to the region's free pools; destroy the
+    /// region's buffers entirely when no live slot remains (§43)
+    fn free_slot(&mut self, s: MeshSlot) {
+        let mut dead = false;
+        if let Some(r) = self.regions.get_mut(&s.region) {
+            r.va.release(s.v_off, s.v_cap);
+            r.ia.release(s.i_off, s.i_cap);
+            dead = r.va.is_empty() && r.ia.is_empty();
+        }
+        if dead {
+            self.regions.remove(&s.region);
+        }
     }
 
     pub fn remove_chunk(&mut self, pos: ChunkPos) {
-        self.chunks.remove(&pos);
+        if let Some(c) = self.chunks.remove(&pos) {
+            if c.solid.i_cap > 0 || c.solid.v_cap > 0 {
+                self.free_slot(c.solid);
+            }
+            if let Some(w) = c.water {
+                if w.i_cap > 0 || w.v_cap > 0 {
+                    self.free_slot(w);
+                }
+            }
+        }
     }
 
     pub fn has_chunk(&self, pos: ChunkPos) -> bool {
         self.chunks.contains_key(&pos)
+    }
+
+    /// Phase 9 §14 — active submission path (F3 / bench context)
+    pub fn draw_path_name(&self) -> &'static str {
+        if self.draw_mdi {
+            "MDI (multi-draw-indirect)"
+        } else {
+            "region-loop (zero per-chunk binds)"
+        }
+    }
+
+    /// Phase 9 §14 — submit one pass's draw list. The origin instance
+    /// buffer must already be bound at slot 1 (whole buffer). Issues either
+    /// MDI (one multi_draw per region run) or the zero-rebind loop (one
+    /// draw per chunk, arena re-bound only at region transitions).
+    /// `count_chunks` keeps the legacy F3 semantics (terrain pass only).
+    fn issue_draws(
+        &self,
+        pass: &mut wgpu::RenderPass,
+        list: &[DrawCmd],
+        args_off: u64,
+        stats: &mut RenderStats,
+    ) {
+        if self.draw_mdi {
+            let runs = draw::region_runs(list);
+            let mut cur: Option<(i32, i32)> = None;
+            for &(region, start, count) in runs.iter() {
+                if cur != Some(region) {
+                    let r = self.regions.get(&region).expect("draw region missing");
+                    pass.set_vertex_buffer(0, r.v.slice(..));
+                    pass.set_index_buffer(r.i.slice(..), wgpu::IndexFormat::Uint32);
+                    cur = Some(region);
+                    stats.binds += 2;
+                }
+                pass.multi_draw_indexed_indirect(
+                    &self.args_buf,
+                    args_off + start as u64 * IndirectArgs::SIZE,
+                    count as u32,
+                );
+                stats.draws += 1;
+            }
+        } else {
+            let mut cur: Option<(i32, i32)> = None;
+            for c in list.iter() {
+                if cur != Some(c.region) {
+                    let r = self.regions.get(&c.region).expect("draw region missing");
+                    pass.set_vertex_buffer(0, r.v.slice(..));
+                    pass.set_index_buffer(r.i.slice(..), wgpu::IndexFormat::Uint32);
+                    cur = Some(c.region);
+                    stats.binds += 2;
+                }
+                pass.draw_indexed(
+                    c.i_first..c.i_first + c.i_count,
+                    0, // base_vertex always 0 — arena indices are absolute
+                    c.origin..c.origin + 1,
+                );
+                stats.draws += 1;
+            }
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -3330,10 +3561,8 @@ impl Renderer {
 
         let mut stats = RenderStats::default();
 
-        // Sort once (near → far, for early-z in the scene pass); the shadow
-        // and water passes reuse the same order so the per-chunk origin
-        // instance buffer (written once, below) indexes identically in all
-        // three passes.
+        // Sort once (near → far) — the per-frame origin rows are indexed by
+        // this order (identical in all three passes, as before).
         let mut sorted = visible.clone();
         sorted.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
@@ -3349,6 +3578,50 @@ impl Renderer {
                 0,
                 bytemuck::cast_slice(&origin_data),
             );
+        }
+
+        // ─────────────────────── Phase 9: region-grouped draw lists (§14) ──
+        // origin row = index in `sorted`; draw order = region-major near→far
+        // so chunks of one 8×8 region are contiguous → one arena bind per
+        // region run, zero per-chunk buffer binds (water: far→near).
+        let vis: Vec<VisEntry> = sorted
+            .iter()
+            .take(draw_count)
+            .enumerate()
+            .map(|(i, &(pos, d))| (pos, d, i as u32))
+            .collect();
+        let cam2 = (cam.eye.x, cam.eye.z);
+        let terrain_order = draw::order_by_region(&vis, cam2, false);
+        let water_order: Vec<VisEntry> = terrain_order.iter().rev().copied().collect();
+        let terrain_list = draw::build_draw_list(&self.chunks, &terrain_order, false, None);
+        let water_list = draw::build_draw_list(&self.chunks, &water_order, true, None);
+        // 110 u shadow radius + one chunk margin (16√2 ≈ 23)
+        let shadow_list = if shadows_on {
+            draw::build_draw_list(&self.chunks, &terrain_order, false, Some((110.0 + 23.0) * (110.0 + 23.0)))
+        } else {
+            Vec::new()
+        };
+        // same counting semantics as the old inline loops (drawn chunks of
+        // the terrain pass; empty/missing were skipped there, skipped here)
+        stats.chunks = terrain_list.len() as u32;
+        stats.tris = terrain_list.iter().map(|c| c.i_count / 3).sum();
+
+        // args buffer segments: [terrain | shadow | water]
+        let args_shadow_off = MAX_DRAW_CHUNKS as u64 * IndirectArgs::SIZE;
+        let args_water_off = 2 * args_shadow_off;
+        if self.draw_mdi {
+            let t = draw::pack_args(&terrain_list);
+            let s = draw::pack_args(&shadow_list);
+            let w = draw::pack_args(&water_list);
+            if !t.is_empty() {
+                self.queue.write_buffer(&self.args_buf, 0, bytemuck::cast_slice(&t));
+            }
+            if !s.is_empty() {
+                self.queue.write_buffer(&self.args_buf, args_shadow_off, bytemuck::cast_slice(&s));
+            }
+            if !w.is_empty() {
+                self.queue.write_buffer(&self.args_buf, args_water_off, bytemuck::cast_slice(&w));
+            }
         }
 
         // ────────────────────────────────────────── pass 0: sun shadows ──
@@ -3388,20 +3661,11 @@ impl Renderer {
                 });
                 pass.set_pipeline(&self.shadow_pipe);
                 pass.set_bind_group(0, &self.shadow_bg, &[]);
-                for (idx, (pos, dist2)) in sorted.iter().take(draw_count).enumerate() {
-                    // 110 u shadow radius + one chunk margin (16√2 ≈ 23)
-                    if *dist2 > (110.0 + 23.0) * (110.0 + 23.0) {
-                        continue;
-                    }
-                    let Some(g) = self.chunks.get(pos) else { continue };
-                    if g.n == 0 {
-                        continue;
-                    }
-                    pass.set_vertex_buffer(0, g.v.slice(..));
-                    pass.set_vertex_buffer(1, self.origin_vb.slice((idx * 8) as u64..(idx * 8 + 8) as u64));
-                    pass.set_index_buffer(g.i.slice(..), wgpu::IndexFormat::Uint32);
-                    pass.draw_indexed(0..g.n, 0, 0..1);
-                }
+                // Phase 9: whole origin buffer + region-arena draws — no
+                // per-chunk buffer binds
+                pass.set_vertex_buffer(1, self.origin_vb.slice(..));
+                self.issue_draws(&mut pass, &shadow_list, args_shadow_off, &mut stats);
+                stats.binds += 1; // the origin bind
             }
             self.queue.submit([sh_encoder.finish()]);
         }
@@ -3449,22 +3713,14 @@ impl Renderer {
             pass.set_bind_group(0, &self.world_bg, &[]);
             pass.draw(0..3, 0..1);
 
-            // 2. terrain (near → far for early-z) — `sorted` was built before
-            // the shadow pass so the origin instance indices line up
+            // 2. terrain — Phase 9: region-grouped near→far (approximately
+            // front-to-back for early-z), whole origin buffer bound once,
+            // arena re-bound once per region run; MDI where supported
             pass.set_pipeline(&self.terrain_pipe);
             pass.set_bind_group(0, &self.world_bg, &[]);
-            for (idx, (pos, _)) in sorted.iter().take(draw_count).enumerate() {
-                let g = self.chunks.get(pos).unwrap();
-                if g.n == 0 {
-                    continue;
-                }
-                pass.set_vertex_buffer(0, g.v.slice(..));
-                pass.set_vertex_buffer(1, self.origin_vb.slice((idx * 8) as u64..(idx * 8 + 8) as u64));
-                pass.set_index_buffer(g.i.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..g.n, 0, 0..1);
-                stats.chunks += 1;
-                stats.tris += g.n / 3;
-            }
+            pass.set_vertex_buffer(1, self.origin_vb.slice(..));
+            self.issue_draws(&mut pass, &terrain_list, 0, &mut stats);
+            stats.binds += 1; // the origin bind
 
             // 3. selection wireframe
             if selection.is_some() {
@@ -3474,17 +3730,13 @@ impl Renderer {
                 pass.draw(0..24, 0..1);
             }
 
-            // 4. water (far → near, blended) — same origin indices, reversed
+            // 4. water (far → near, blended) — reversed region-major order,
+            // same origin rows, same zero-rebind submission
             pass.set_pipeline(&self.water_pipe);
             pass.set_bind_group(0, &self.world_bg, &[]);
-            for (idx, (pos, _)) in sorted.iter().take(draw_count).enumerate().rev() {
-                let Some(g) = self.chunks.get(pos) else { continue };
-                let Some((v, i, n)) = &g.w else { continue };
-                pass.set_vertex_buffer(0, v.slice(..));
-                pass.set_vertex_buffer(1, self.origin_vb.slice((idx * 8) as u64..(idx * 8 + 8) as u64));
-                pass.set_index_buffer(i.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..*n, 0, 0..1);
-            }
+            pass.set_vertex_buffer(1, self.origin_vb.slice(..));
+            self.issue_draws(&mut pass, &water_list, args_water_off, &mut stats);
+            stats.binds += 1; // the origin bind
 
             // 4.5 particles (§16.2 pass 4): billboard quads uploaded per
             // frame, alpha-blended, depth-tested but not written — after

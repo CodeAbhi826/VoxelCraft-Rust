@@ -140,6 +140,7 @@ pub const ID_PAUSE_QUIT: u16 = 22;
 pub const ID_OPT_SHADOWS: u16 = 23;
 pub const ID_OPT_UPSCALE: u16 = 24;
 pub const ID_OPT_MAXFPS: u16 = 25;
+pub const ID_OPT_MUSIC: u16 = 26;
 
 /// Title screen layout (quit button only exists on native).
 pub fn layout_title(is_web: bool) -> Vec<Widget> {
@@ -158,7 +159,7 @@ pub fn layout_options() -> Vec<Widget> {
     let col1 = 72;
     let col2 = 496;
     let w = 392;
-    let rows = [62, 110, 158, 206, 254, 302];
+    let rows = [62, 110, 158, 206, 254, 302, 350];
     vec![
         slider(ID_OPT_FOV, col1, rows[0], w, "FOV", 0.5),
         slider(ID_OPT_BRIGHT, col2, rows[0], w, "BRIGHTNESS", 0.1),
@@ -172,6 +173,8 @@ pub fn layout_options() -> Vec<Widget> {
         btn(ID_OPT_UPSCALE, col2, rows[4], w, "UPSCALING", "OFF", true),
         btn(ID_OPT_CLOUDS, col1, rows[5], w, "CLOUDS", "ON", true),
         btn(ID_OPT_MAXFPS, col2, rows[5], w, "MAX FPS", "VSYNC", true),
+        // §21: the music category rides its own slider (master still scales it)
+        slider(ID_OPT_MUSIC, col1, rows[6], w, "MUSIC", 0.6),
         btn(ID_OPT_DONE, (UI_W as i32 - 320) / 2, 470, 320, "DONE", "", true),
     ]
 }

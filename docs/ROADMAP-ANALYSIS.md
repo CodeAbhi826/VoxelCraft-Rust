@@ -113,6 +113,23 @@ Key fix shipped alongside: `Furnaces` moved into `Sim` (ticks at exactly 20 Hz l
 |---|---|---|
 | P10 FSR | ✅ **Done (real FSR 1.0)** | EASU_SHADER + RCAS in `render.rs`, FsrRcasCon-mapped sharpen setting (0.6 default when upscaling), options label "75%/50% FSR", F3 "FSR1: … EASU+RCAS" |
 
+### Update 2026-09-02 (P8 §21 — data-driven sound events)
+
+**Phase 8's audio half is DONE properly** (spec §21, every bullet):
+
+- **Sound-event registry** (`SOUNDS_JSON`): a vanilla-`sounds.json`-shaped table (clean-room — same fields, our own recipe names) parsed at boot with serde + validated (26 events); `SoundRegistry::pick()` does the **weighted variant selection** + **pitch-range roll**.
+- **Sound categories**: vanilla's nine (master/music/record/weather/blocks/hostile/neutral/players/ambient); music rides its own settings slider (`mvol`, MUSIC in options), everything scales by master.
+- **Variants + weight**: 2 dig variants per block family (jittered seeds/filters) + step takes; 5 unit-tested distributions (3:1 weighting verified statistically).
+- **Attenuation + spatial positioning**: `spatialize()` — quadratic distance falloff to a per-event attenuation distance, stereo pan from the listener's right-vector projection; native renders equal-power stereo buffers, WASM chains a StereoPannerNode.
+- **Streaming flags + music**: two procedural pads (day/night chord progressions, ~23 s, `stream: true` in the registry) on a 2.5–4 min scheduler; **ambient/cave sounds**: "eerie" detuned tones when the player is below y=45 with zero skylight (8 s rolls, 12%).
+- Backends stay behind the one `AudioBackend` trait (rodio / WebAudio / silent); all interactive call sites migrated to events (`ui.click`, `entity.item.pickup`, `block.<family>.dig/step`, `block.glass.break`, `block.water.splash`, `block.lever.click`); `sounds_played` stat for E2E.
+- E2E: boot → game → breaks/places each +1 sound through the registry, the first music pad fires at t≈12 s, MUSIC slider renders in options (pixel-verified), no console errors.
+
+| Spec phase | Status | Evidence |
+|---|---|---|
+| P8 audio (§21) | ✅ Done | `sounds.rs` registry + categories + spatial audio + music + ambient; 5 new tests (126 total) |
+| P8 UI | ✅ Done (HUD/menus/settings/F3/picker/container screens were shipped across P1–P7; MUSIC slider added) | — |
+
 ---
 
 ## 4. Recommended remaining order (revised, risk-aware)

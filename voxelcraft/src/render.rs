@@ -1257,8 +1257,10 @@ impl Renderer {
         // shadow map resources: RGBA8 packed-depth target + its own depth
         // buffer (color targets cannot depth-test, and the depth texture is
         // what keeps the FRONT-MOST surface in the map when geometry
-        // overlaps in the light view). §17 quality: 1024/2048/4096 selectable.
-        let shadow_px: u32 = 2048;
+        // overlaps in the light view). §17 quality: 1024/2048/4096 selectable
+        // — CLAMPED to the device limit (downlevel/SwiftShader adapters cap
+        // at 2048; requesting more is a validation error, not a fallback).
+        let shadow_px: u32 = 2048.min(device.limits().max_texture_dimension2d);
         let shadow_extent = wgpu::Extent3d {
             width: shadow_px,
             height: shadow_px,
@@ -2556,7 +2558,11 @@ impl Renderer {
     /// and rebinds it into the world bind group (the terrain/water shaders
     /// read the size from the ShadowGlobals uniform each frame).
     pub fn set_shadow_quality(&mut self, px: u32) {
-        let px = px.clamp(1024, 4096);
+        // clamp to the DEVICE limit — a 4096 request on a 2048-max adapter
+        // (SwiftShader/downlevel) is a validation PANIC, so it degrades to
+        // the largest supported size instead of dying
+        let max = self.device.limits().max_texture_dimension2d;
+        let px = px.clamp(1024, 4096).min(max);
         if px == self.shadow_px {
             return;
         }

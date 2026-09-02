@@ -1,0 +1,203 @@
+name: Release
+
+# All-architecture build: one workflow → binaries for every desktop arch
+# plus the browser WASM bundle, packaged with the builtin resource pack.
+#   Linux   x86_64 + aarch64, Windows x86_64, macOS aarch64 + x86_64, WASM
+# Runs on demand (workflow_dispatch) and on version tags (v*).
+# Artifacts upload on every run; a tag ALSO publishes a GitHub Release.
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  native:
+    name: native ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            name: linux-x64
+            features: ""            # full audio (ALSA installed below)
+            cross: false
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            name: linux-arm64
+            features: "--no-default-features"  # audio needs an ALSA sysroot when cross-compiling
+            cross: true
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            name: windows-x64
+            features: ""            # full audio (WASAPI)
+            cross: false
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            name: macos-arm64
+            features: ""            # full audio (CoreAudio)
+            cross: false
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            name: macos-x64
+            features: ""            # full audio (CoreAudio)
+            cross: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust + ${{ matrix.target }}
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: voxelcraft
+          key: rel-${{ matrix.target }}
+
+      - name: Install ALSA headers (linux x64 native)
+        if: runner.os == 'Linux' && matrix.cross == false
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+
+      - name: Install cross (aarch64 cross-compile)
+        if: matrix.cross
+        run: cargo install cross --locked
+
+      - name: Build release binary
+        working-directory: voxelcraft
+        shell: bash
+        run: |
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }} ${{ matrix.features }} --bin voxelcraft
+          else
+            cargo build --release --target ${{ matrix.target }} ${{ matrix.features }} --bin voxelcraft
+          fi
+
+      - name: Package (binary + builtin pack + launcher docs)
+        shell: bash
+        working-directory: voxelcraft
+        run: |
+          VERSION="${GITHUB_REF_NAME:-dev}"
+          DIR="voxelcraft-${VERSION}-${{ matrix.name }}"
+          mkdir -p "../$DIR"
+          EXT=""
+          if [ "${{ runner.os }}" = "Windows" ]; then EXT=".exe"; fi
+          cp "target/${{ matrix.target }}/release/voxelcraft$EXT" "../$DIR/"
+          cp -r builtin-pack "../$DIR/"
+          cp BUILD.md "../$DIR/README.md"
+          if [ "${{ matrix.features }}" = "--no-default-features" ]; then
+            echo "NOTE: this build has audio disabled (cross-compiled without an ALSA sysroot)." >> "../$DIR/README.md"
+          fi
+          cd ..
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            7z a "$DIR.zip" "$DIR"
+          else
+            tar czf "$DIR.tar.gz" "$DIR"
+          fi
+          ls -la
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: voxelcraft-${{ matrix.name }}
+          path: |
+            voxelcraft-*.zip
+            voxelcraft-*.tar.gz
+          retention-days: 90
+          if-no-files-found: error
+
+  wasm:
+    name: wasm32 bundle (browser)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust + wasm32 target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: voxelcraft
+          key: rel-wasm
+
+      - name: Cache wasm-bindgen-cli
+        id: cache_wbg
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/wasm-bindgen
+          key: wasm-bindgen-0.2.127-x86_64-unknown-linux-gnu
+
+      - name: Install wasm-bindgen-cli (pinned to the crate version)
+        if: steps.cache_wbg.outputs.cache-hit != 'true'
+        run: cargo install wasm-bindgen-cli --version 0.2.127 --locked
+
+      - name: Build release WASM + JS glue
+        working-directory: voxelcraft
+        run: |
+          cargo build --release --no-default-features --target wasm32-unknown-unknown --lib
+          wasm-bindgen --target web \
+            --out-dir ./wasm-out \
+            target/wasm32-unknown-unknown/release/voxelcraft.wasm
+
+      - name: Package web bundle
+        working-directory: voxelcraft
+        run: |
+          VERSION="${GITHUB_REF_NAME:-dev}"
+          DIR="voxelcraft-${VERSION}-web"
+          mkdir -p "../$DIR"
+          cp wasm-out/voxelcraft.js             "../$DIR/"
+          cp wasm-out/voxelcraft_bg.wasm        "../$DIR/"
+          cp wasm-out/voxelcraft.d.ts           "../$DIR/"
+          cp wasm-out/voxelcraft_bg.wasm.d.ts   "../$DIR/"
+          cp -r builtin-pack                    "../$DIR/"
+          cp play.html                          "../$DIR/"
+          cp BUILD.md                           "../$DIR/README.md"
+          cd ..
+          tar czf "$DIR.tar.gz" "$DIR"
+          ls -la
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: voxelcraft-web
+          path: voxelcraft-*-web.tar.gz
+          retention-days: 90
+          if-no-files-found: error
+
+  publish:
+    name: publish GitHub release (tags only)
+    needs: [native, wasm]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Flatten + list
+        run: |
+          find dist -type f \( -name '*.zip' -o -name '*.tar.gz' \) -exec mv {} . \;
+          ls -la *.zip *.tar.gz
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            *.zip
+            *.tar.gz

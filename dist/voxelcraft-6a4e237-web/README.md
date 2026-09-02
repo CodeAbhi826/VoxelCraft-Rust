@@ -146,30 +146,3 @@ cargo test write_builtin_pack_pngs -- --ignored --nocapture
 
 Deps added (pure-Rust, wasm-safe per docs/research/wgpu-web-assets.md):
 `serde` + `serde_json` (JSON), `image` png-only (texture decode).
-
-## All-architecture builds (one command)
-
-```sh
-./scripts/build-all.sh              # host binary + WASM browser bundle
-./scripts/build-all.sh --cross      # + linux-arm64, windows, macOS x64/arm64
-./scripts/build-all.sh --wasm-only  # just the browser bundle
-```
-
-Artifacts land in `../dist/voxelcraft-<commit>-<target>/` — binary +
-`builtin-pack/` + README (web bundles also include `play.html` and the
-wasm-bindgen JS glue). Cross-targets need `rustup target add <target>`
-(and `cross` via Docker when plain cargo lacks the system libs).
-
-## CI automation (GitHub Actions)
-
-| workflow | trigger | what it does |
-|----------|---------|--------------|
-| `ci.yml` | every push (any branch) + PRs to main | full test suite (181+ tests), wasm32 lib check, native check with audio, headless `vc_bench` + JSON artifact |
-| `wasm-build.yml` | pushes to main touching `voxelcraft/**` | rebuilds the WASM bundle and **commits it back to `public/`** — the deploy branch always carries a playable build |
-| `release.yml` | manual (`workflow_dispatch`) or tag `v*` | builds **every architecture** — Linux x64 + arm64, Windows x64, macOS x64 + arm64, WASM web — packages each with the builtin pack, uploads artifacts, and on tags publishes a GitHub Release |
-
-Publish a release:
-
-```sh
-git tag v0.2.0 && git push origin v0.2.0   # → release.yml builds + publishes
-```

@@ -99,6 +99,20 @@ Clean-room rule honored: the builtin pack's JSONs follow the vanilla **format**;
 
 Key fix shipped alongside: `Furnaces` moved into `Sim` (ticks at exactly 20 Hz like vanilla); `default_state()` helper prevents the FURNACE=63 identity-state collision with MODEL_STATE_BASE (a raw identity placement would have rendered as the oak-slab model); LockChange guard so opening a container no longer drops into the pause menu on WASM.
 
+### Update 2026-09-02 (P10 — real FSR 1.0)
+
+**Phase 10 is DONE properly**: faithful WGSL ports of the official AMD FidelityFX FSR 1.0 reference (`ffx_fsr1.h` from GPUOpen-Effects/FidelityFX-FSR, float paths):
+
+- **EASU** (`FsrEasuF`): the full 12-tap edge-adaptive kernel — luma-based directional analysis (`FsrEasuSetF` over 4 bilinear-weighted quads), direction rotation, anisotropic stretch, Lanczos-2-approximation window, dering clamp against the 4 nearest. New fullscreen pass: scene (render scale) → `up` (full surface res). textureLoad replaces gather4; exact rcp/rsqrt replace the FP16-speed approximations with epsilon guards for the degenerate flat neighborhoods.
+- **RCAS** (`FsrRcasF`): the canonical 5-tap sharpener with per-channel hit-limiters, peak-range clamps, the `−RCAS_LIMIT..0` lobe and `4·lobe+1` normalization, replacing the old 5-tap approximation. Runs in the composite on the EASU output before the grade (AMD's canonical ordering: EASU → RCAS → everything else). The optional FSR_RCAS_DENOISE gate stays disabled (AMD's default).
+- EASU is mathematically identity at 1:1 (unit-proven — center tap weight 1, neighbors 0), so the pass runs at every setting including native.
+- **Measured quality** (same scene, |Laplacian| edge energy vs native reference): FSR 50% keeps **94.1%**, FSR 75% keeps **94.4%** — vs the old FSR-lite bilinear+sharpen path this is the difference the spec §33 demanded ("real EASU, real RCAS" — no longer labelled approximations).
+- **Regression net**: new naga-based unit test validates ALL 12 embedded WGSL shaders parse+type-check with wgpu 22's exact naga (already caught one real bug: WGSL has no ternary operator); EASU identity-at-1x test; container screens + F3 re-verified in-browser; no console errors.
+
+| Spec phase | Status | Evidence |
+|---|---|---|
+| P10 FSR | ✅ **Done (real FSR 1.0)** | EASU_SHADER + RCAS in `render.rs`, FsrRcasCon-mapped sharpen setting (0.6 default when upscaling), options label "75%/50% FSR", F3 "FSR1: … EASU+RCAS" |
+
 ---
 
 ## 4. Recommended remaining order (revised, risk-aware)

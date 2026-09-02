@@ -2056,6 +2056,7 @@ dependencies = [
  "glam",
  "image",
  "js-sys",
+ "naga",
  "pollster",
  "rayon",
  "rodio",

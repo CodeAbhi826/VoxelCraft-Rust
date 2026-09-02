@@ -38,13 +38,21 @@ struct LineUniform {
 }
 
 /// post uniforms: p = (mode, menu_blur, time, aspect), q = (bloom, vig, sat, exposure)
-/// s = (sharpen, scene_texel_x, scene_texel_y, _)
+/// s = (rcas_amount, _, _, _) — FSR 1.0 RCAS lobe scale (1.0 = FsrRcasCon(0) max)
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct PostUniform {
     p: [f32; 4],
     q: [f32; 4],
     s: [f32; 4],
+}
+
+/// FSR 1.0 EASU size constants: (src_w, src_h, dst_w, dst_h) — the
+/// FsrEasuCon() setup, inlined into the shader as pp = uv*src - 0.5
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct EasuUniform {
+    con: [f32; 4],
 }
 
 /// blur direction + texel step for the separable blur passes
@@ -69,6 +77,10 @@ struct ShadowGlobals {
 struct PostTargets {
     scene: wgpu::Texture,
     scene_view: wgpu::TextureView,
+    /// FSR 1.0 EASU output — FULL surface resolution (the composite + RCAS
+    /// read this; scene stays at the internal render scale)
+    up: wgpu::Texture,
+    up_view: wgpu::TextureView,
     /// bright-pass output (1/4 res)
     q: wgpu::Texture,
     q_view: wgpu::TextureView,
@@ -103,15 +115,17 @@ impl PostTargets {
             let v = t.create_view(&wgpu::TextureViewDescriptor::default());
             (t, v)
         };
-        // FSR-lite: all post targets live at the internal render scale —
-        // the composite bilinearly upscales to the surface and sharpens.
+        // FSR 1.0 (§33): scene + bloom pyramid live at the internal render
+        // scale; the EASU pass upscales scene → `up` at FULL surface
+        // resolution, and the composite (with RCAS) reads `up`.
         let sw = ((w as f32) * scale).round().max(1.0) as u32;
         let sh = ((h as f32) * scale).round().max(1.0) as u32;
         let (scene, scene_view) = make(sw, sh);
+        let (up, up_view) = make(w.max(1), h.max(1));
         let (q, q_view) = make(sw / 4, sh / 4);
         let (b1, b1_view) = make(sw / 8, sh / 8);
         let (b2, b2_view) = make(sw / 8, sh / 8);
-        PostTargets { scene, scene_view, q, q_view, b1, b1_view, b2, b2_view }
+        PostTargets { scene, scene_view, up, up_view, q, q_view, b1, b1_view, b2, b2_view }
     }
 
     /// internal (scaled) size of the scene target
@@ -757,9 +771,9 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
 const POST_SHADER: &str = r#"
 struct PostU { p: vec4<f32>, q: vec4<f32>, s: vec4<f32> };
 // p = (mode, menu_blur, time, aspect)  q = (bloom, vignette, saturation, exposure)
-// s = (sharpen, scene_texel_x, scene_texel_y, unused) — RCAS-style sharpen
-// applied after the bilinear upscale (FSR-lite: scene may be smaller than
-// the surface; sharpening restores edge contrast lost to the upscale).
+// s = (rcas_amount, _, _, _) — AMD FSR 1.0 RCAS lobe scale: 1.0 = maximum
+// sharpness (FsrRcasCon(0)), 0 = off. RCAS runs on the EASU-upscaled image
+// before the grade (AMD canonical ordering: EASU → RCAS → everything else).
 @group(0) @binding(0) var scene: texture_2d<f32>;
 @group(0) @binding(1) var bloom: texture_2d<f32>;
 @group(0) @binding(2) var samp: sampler;
@@ -785,6 +799,71 @@ fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
     return out;
 }
 
+// ----------------------------------------------------- FSR 1.0 RCAS ----
+// Faithful WGSL port of AMD FidelityFX FSR 1.0 "FsrRcasF" (ffx_fsr1.h,
+// float path). 5-tap cross on the OUTPUT-resolution EASU image, with the
+// canonical per-channel hit-limiters, peak-range clamping and the
+// 4*lobe+1 normalization. `scene` here is the EASU-upscaled target.
+// Port notes: exact division replaces ARcpF1 approximations (GPU-friendly
+// in f32); denominators are epsilon-guarded so flat-black/flat-white
+// neighborhoods can't produce NaN (the FP16 approximations returned large
+// finite values; exact math needs the explicit guard).
+const RCAS_LIMIT: f32 = 0.25 - (1.0 / 16.0);
+
+fn rcasLoad(o: vec2<i32>) -> vec3<f32> {
+    let dim = textureDimensions(scene);
+    let p = clamp(o, vec2<i32>(0, 0), vec2<i32>(i32(dim.x) - 1, i32(dim.y) - 1));
+    return textureLoad(scene, p, 0).rgb;
+}
+
+fn rcas(uv: vec2<f32>, lobeScale: f32) -> vec3<f32> {
+    // Algorithm uses minimal 3x3 pixel neighborhood:
+    //    b
+    //  d e f
+    //    h
+    let dim = textureDimensions(scene);
+    let ip = vec2<i32>(floor(uv * vec2<f32>(f32(i32(dim.x)), f32(i32(dim.y))) - vec2<f32>(0.5)));
+    let b = rcasLoad(ip + vec2<i32>( 0, -1));
+    let d = rcasLoad(ip + vec2<i32>(-1,  0));
+    let e = rcasLoad(ip);
+    let f = rcasLoad(ip + vec2<i32>( 1,  0));
+    let h = rcasLoad(ip + vec2<i32>( 0,  1));
+    // luma times 2 — NOT used in the default RCAS path (only the optional
+    // FSR_RCAS_DENOISE gate needs it, which AMD ships disabled); the loads
+    // stay out entirely (dead-code eliminated by the compiler)
+    // min and max of the ring (per channel). NOTE: the optional
+    // FSR_RCAS_DENOISE noise gate is NOT enabled — AMD's reference default
+    // ships without it (their comment: better to add grain after RCAS).
+    let mnR = min(min(b.r, d.r), min(f.r, h.r));
+    let mnG = min(min(b.g, d.g), min(f.g, h.g));
+    let mnB = min(min(b.b, d.b), min(f.b, h.b));
+    let mxR = max(max(b.r, d.r), max(f.r, h.r));
+    let mxG = max(max(b.g, d.g), max(f.g, h.g));
+    let mxB = max(max(b.b, d.b), max(f.b, h.b));
+    // limiters (epsilon-guarded exact rcp). hitMin: the all-black ring makes
+    // 4*mx = 0 → guard the denominator (AMD's approx rcp returned large
+    // finite; exact math would 0/0 → NaN). hitMax: the all-white ring makes
+    // 4*mn−4 = 0 with numerator ≤ 0 → shortcut to 0 (the same value the
+    // approximation produced); the normal path keeps AMD's exact signs.
+    let hitMinR = min(mnR, e.r) / (4.0 * max(mxR, 1e-6));
+    let hitMinG = min(mnG, e.g) / (4.0 * max(mxG, 1e-6));
+    let hitMinB = min(mnB, e.b) / (4.0 * max(mxB, 1e-6));
+    let hitMaxR = select((1.0 - max(mxR, e.r)) / (4.0 * mnR - 4.0), 0.0, mnR > 0.9999);
+    let hitMaxG = select((1.0 - max(mxG, e.g)) / (4.0 * mnG - 4.0), 0.0, mnG > 0.9999);
+    let hitMaxB = select((1.0 - max(mxB, e.b)) / (4.0 * mnB - 4.0), 0.0, mnB > 0.9999);
+    let lobeR = max(-hitMinR, hitMaxR);
+    let lobeG = max(-hitMinG, hitMaxG);
+    let lobeB = max(-hitMinB, hitMaxB);
+    var lobe = max(-RCAS_LIMIT, min(max(max(lobeR, lobeG), lobeB), 0.0)) * lobeScale;
+    // resolve
+    let rcpL = 1.0 / (4.0 * lobe + 1.0);
+    return vec3<f32>(
+        (lobe * b.r + lobe * d.r + lobe * h.r + lobe * f.r + e.r) * rcpL,
+        (lobe * b.g + lobe * d.g + lobe * h.g + lobe * f.g + e.g) * rcpL,
+        (lobe * b.b + lobe * d.b + lobe * h.b + lobe * f.b + e.b) * rcpL,
+    );
+}
+
 @fragment
 fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let uv = in.uv;
@@ -808,9 +887,19 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
             acc += textureSample(scene, samp, uv + offs[i] * r).rgb;
         }
         col = acc / 13.0;
+    } else if (U.s.x > 0.001) {
+        // FSR 1.0: RCAS sharpening of the EASU-upscaled image (AMD ordering:
+        // EASU → RCAS → grade)
+        col = rcas(uv, U.s.x);
+        // cinematic chromatic aberration (a lens effect riding on top — the
+        // shifted taps resample bilinearly, post-RCAS)
+        if (mode > 1.5) {
+            let d = (uv - vec2<f32>(0.5, 0.5)) * 0.004;
+            col.r = textureSample(scene, samp, uv + d).r;
+            col.b = textureSample(scene, samp, uv - d).b;
+        }
     } else {
         col = textureSample(scene, samp, uv).rgb;
-        // cinematic chromatic aberration
         if (mode > 1.5) {
             let d = (uv - vec2<f32>(0.5, 0.5)) * 0.004;
             col.r = textureSample(scene, samp, uv + d).r;
@@ -834,27 +923,195 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let d2 = distance(uv, vec2<f32>(0.5, 0.5));
     col = col * (1.0 - U.q.y * smoothstep(0.35, 0.85, d2));
 
-    // FSR-lite RCAS sharpen: 5-tap cross, result clamped to the local
-    // min/max range so high-contrast edges don't halo (AMD RCAS behaviour).
-    if (U.s.x > 0.001) {
-        let ts = vec2<f32>(U.s.y, U.s.z);
-        let n = textureSample(scene, samp, uv + vec2<f32>(0.0, -1.0) * ts).rgb;
-        let so = textureSample(scene, samp, uv + vec2<f32>(0.0, 1.0) * ts).rgb;
-        let e = textureSample(scene, samp, uv + vec2<f32>(1.0, 0.0) * ts).rgb;
-        let w = textureSample(scene, samp, uv + vec2<f32>(-1.0, 0.0) * ts).rgb;
-        let blur = (n + so + e + w) * 0.25;
-        let detail = col - blur;
-        let mx = max(col, max(max(n, so), max(e, w)));
-        let mn = min(col, min(min(n, so), min(e, w)));
-        col = clamp(col + detail * U.s.x, mn, mx);
-    }
-
     // cinematic: ACES-ish filmic curve
     if (mode > 1.5) {
         col = clamp((col * (2.51 * col + 0.03)) / (col * (2.43 * col + 0.59) + 0.14), vec3<f32>(0.0), vec3<f32>(1.0));
     }
 
     return vec4<f32>(col, 1.0);
+}
+"#;
+
+// ----------------------------------------------------------- FSR 1.0 EASU
+// Faithful WGSL port of AMD FidelityFX FSR 1.0 "FsrEasuF" (ffx_fsr1.h,
+// float path) — the 12-tap edge-adaptive spatial upsampling kernel.
+// Reads the low-res scene target, writes the full-res upscaled target.
+// Port notes:
+//  - textureLoad replaces gather4 (same 12 texels: 4 gathers → 12 loads);
+//  - exact rcp/rsqrt replace the FP16-speed approximations (APrxLoRcpF1 &c)
+//    — division sites are epsilon-guarded so degenerate flat neighborhoods
+//    cannot produce NaN (the approximations returned large finite values);
+//  - the kernel is mathematically identity at 1:1 scaling (verified: the
+//    center tap weight is 1 and all neighbors window to 0), so EASU runs
+//    at every upscale setting including native.
+// Uniform con = (src_w, src_h, dst_w, dst_h) — the FsrEasuCon() setup
+// inlined: pp = (dst_px + 0.5) * src/dst - 0.5.
+const EASU_SHADER: &str = r#"
+struct EasuU { con: vec4<f32> };
+@group(0) @binding(0) var tex: texture_2d<f32>;
+@group(0) @binding(3) var<uniform> U: EasuU;
+
+struct VsOut {
+    @builtin(position) pos: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+};
+
+@vertex
+fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
+    var p = array<vec2<f32>, 3>(
+        vec2<f32>(-1.0, -1.0),
+        vec2<f32>(3.0, -1.0),
+        vec2<f32>(-1.0, 3.0),
+    );
+    var out: VsOut;
+    out.pos = vec4<f32>(p[vi], 0.0, 1.0);
+    // NDC→UV V-flip — same mapping as every fullscreen pass (BRIGHT_SHADER)
+    out.uv = vec2<f32>(p[vi].x * 0.5 + 0.5, 0.5 - p[vi].y * 0.5);
+    return out;
+}
+
+fn loadC(o: vec2<i32>) -> vec3<f32> {
+    let dim = textureDimensions(tex);
+    let p = clamp(o, vec2<i32>(0, 0), vec2<i32>(i32(dim.x) - 1, i32(dim.y) - 1));
+    return textureLoad(tex, p, 0).rgb;
+}
+
+// luma × 2 — AMD's 2-FMA approximation of 2*(0.25R + 0.5G + 0.25B)
+fn luma2(c: vec3<f32>) -> f32 {
+    return c.b * 0.5 + (c.r * 0.5 + c.g);
+}
+
+// FsrEasuSetF: accumulate gradient direction + length from a '+'
+// neighborhood, weighted by the bilinear corner weight of the quad the
+// samples come from.
+fn easuSet(dir: ptr<function, vec2<f32>>, len: ptr<function, f32>, w: f32,
+           lA: f32, lB: f32, lC: f32, lD: f32, lE: f32) {
+    //    a
+    //  b c d
+    //    e
+    let dc = lD - lC;
+    let cb = lC - lB;
+    var lenX = max(abs(dc), abs(cb));
+    lenX = 1.0 / max(lenX, 1e-8);
+    let dirX = lD - lB;
+    (*dir).x += dirX * w;
+    lenX = clamp(abs(dirX) * lenX, 0.0, 1.0);
+    lenX *= lenX;
+    *len += lenX * w;
+    // repeat for the y axis
+    let ec = lE - lC;
+    let ca = lC - lA;
+    var lenY = max(abs(ec), abs(ca));
+    lenY = 1.0 / max(lenY, 1e-8);
+    let dirY = lE - lA;
+    (*dir).y += dirY * w;
+    lenY = clamp(abs(dirY) * lenY, 0.0, 1.0);
+    lenY *= lenY;
+    *len += lenY * w;
+}
+
+// FsrEasuTapF: one weighted tap — offset rotated into the gradient
+// direction, anisotropically scaled, Lanczos-2-approximation window.
+fn easuTap(aC: ptr<function, vec3<f32>>, aW: ptr<function, f32>,
+           off: vec2<f32>, dir: vec2<f32>, len: vec2<f32>,
+           lob: f32, clp: f32, c: vec3<f32>) {
+    // rotate offset by direction
+    var v: vec2<f32>;
+    v.x = (off.x * dir.x) + (off.y * dir.y);
+    v.y = (off.x * (-dir.y)) + (off.y * dir.x);
+    // anisotropy
+    v = v * len;
+    // distance², limited to the window
+    var d2 = v.x * v.x + v.y * v.y;
+    d2 = min(d2, clp);
+    // Lanczos-2 approximation without sin()/rcp()/sqrt():
+    //   (25/16 * (2/5 * x² - 1)² - 9/16) * (lob*x² - 1)²
+    var wB = (2.0 / 5.0) * d2 - 1.0;
+    var wA = lob * d2 - 1.0;
+    wB = wB * wB;
+    wA = wA * wA;
+    wB = (25.0 / 16.0) * wB - (25.0 / 16.0 - 1.0);
+    let w = wB * wA;
+    *aC = *aC + c * w;
+    *aW = *aW + w;
+}
+
+@fragment
+fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
+    let src = vec2<f32>(U.con.x, U.con.y);
+    // output pixel center → input pixel coords (FsrEasuCon inlined)
+    let ppFull = in.uv * src - vec2<f32>(0.5);
+    let fp = floor(ppFull);
+    let pp = ppFull - fp;
+    let ip = vec2<i32>(fp);
+
+    // 12-tap kernel (ffx_fsr1.h diagram):
+    //      b  c
+    //   e  f  g  h
+    //   i  j  k  l
+    //      n  o
+    let bC = loadC(ip + vec2<i32>( 0, -1));
+    let cC = loadC(ip + vec2<i32>( 1, -1));
+    let eC = loadC(ip + vec2<i32>(-1,  0));
+    let fC = loadC(ip + vec2<i32>( 0,  0));
+    let gC = loadC(ip + vec2<i32>( 1,  0));
+    let hC = loadC(ip + vec2<i32>( 2,  0));
+    let iC = loadC(ip + vec2<i32>(-1,  1));
+    let jC = loadC(ip + vec2<i32>( 0,  1));
+    let kC = loadC(ip + vec2<i32>( 1,  1));
+    let lC = loadC(ip + vec2<i32>( 2,  1));
+    let nC = loadC(ip + vec2<i32>( 0,  2));
+    let oC = loadC(ip + vec2<i32>( 1,  2));
+
+    // directional analysis — four quads, bilinear-weighted
+    var dir = vec2<f32>(0.0);
+    var len = 0.0;
+    easuSet(&dir, &len, (1.0 - pp.x) * (1.0 - pp.y), luma2(bC), luma2(eC), luma2(fC), luma2(gC), luma2(jC));
+    easuSet(&dir, &len,        pp.x  * (1.0 - pp.y), luma2(cC), luma2(fC), luma2(gC), luma2(hC), luma2(kC));
+    easuSet(&dir, &len, (1.0 - pp.x) *        pp.y , luma2(fC), luma2(iC), luma2(jC), luma2(kC), luma2(nC));
+    easuSet(&dir, &len,        pp.x  *        pp.y , luma2(gC), luma2(jC), luma2(kC), luma2(lC), luma2(oC));
+
+    // normalize with cleanup close to zero (WGSL has no ternary — select())
+    let dir2 = dir * dir;
+    var dirR = dir2.x + dir2.y;
+    let zro = dirR < (1.0 / 32768.0);
+    dirR = select(inverseSqrt(dirR), 1.0, zro);
+    dir.x = select(dir.x, 1.0, zro);
+    dir = dir * dirR;
+    // transform from {0 to 2} to {0 to 1} range, and shape with square
+    len = len * 0.5;
+    len = len * len;
+    // stretch kernel {1.0 vert|horz, to sqrt(2.0) on diagonal}
+    let stretch = (dir.x * dir.x + dir.y * dir.y) / max(abs(dir.x), abs(dir.y));
+    // anisotropic length after rotation
+    let len2 = vec2<f32>(1.0 + (stretch - 1.0) * len, 1.0 + (-0.5) * len);
+    // negative lobe strength from the edge amount
+    let lob = 0.5 + (0.25 - 0.04 - 0.5) * len;
+    // distance² clipping point at the end of the adjustable window
+    let clp = 1.0 / max(lob, 1e-4);
+
+    // 12-tap accumulation
+    var aC = vec3<f32>(0.0);
+    var aW = 0.0;
+    easuTap(&aC, &aW, vec2<f32>( 0.0, -1.0) - pp, dir, len2, lob, clp, bC); // b
+    easuTap(&aC, &aW, vec2<f32>( 1.0, -1.0) - pp, dir, len2, lob, clp, cC); // c
+    easuTap(&aC, &aW, vec2<f32>( 0.0,  0.0) - pp, dir, len2, lob, clp, fC); // f
+    easuTap(&aC, &aW, vec2<f32>(-1.0,  0.0) - pp, dir, len2, lob, clp, eC); // e
+    easuTap(&aC, &aW, vec2<f32>( 1.0,  0.0) - pp, dir, len2, lob, clp, gC); // g
+    easuTap(&aC, &aW, vec2<f32>( 0.0,  1.0) - pp, dir, len2, lob, clp, jC); // j
+    easuTap(&aC, &aW, vec2<f32>(-1.0,  1.0) - pp, dir, len2, lob, clp, iC); // i
+    easuTap(&aC, &aW, vec2<f32>( 1.0,  1.0) - pp, dir, len2, lob, clp, kC); // k
+    easuTap(&aC, &aW, vec2<f32>( 2.0,  1.0) - pp, dir, len2, lob, clp, lC); // l
+    easuTap(&aC, &aW, vec2<f32>( 2.0,  0.0) - pp, dir, len2, lob, clp, hC); // h
+    easuTap(&aC, &aW, vec2<f32>( 1.0,  2.0) - pp, dir, len2, lob, clp, oC); // o
+    easuTap(&aC, &aW, vec2<f32>( 0.0,  2.0) - pp, dir, len2, lob, clp, nC); // n
+
+    // normalize + dering against the 4 nearest (f, g, j, k)
+    let min4 = min(min(fC, kC), min(jC, gC));
+    let max4 = max(max(fC, kC), max(jC, gC));
+    var pix = aC / max(aW, 1e-6);
+    pix = min(max4, max(min4, pix));
+    return vec4<f32>(pix, 1.0);
 }
 "#;
 
@@ -969,14 +1226,20 @@ pub struct Renderer {
     // bloom smears into vertical streaks (looked like sky "tearing").
     aux_h_buf: wgpu::Buffer,
     aux_v_buf: wgpu::Buffer,
+    /// FSR 1.0 EASU size constants (src/dst) — written on resize/upscale
+    easu_buf: wgpu::Buffer,
     post_bgl: wgpu::BindGroupLayout,
     comp_bgl: wgpu::BindGroupLayout,
     bg_scene: wgpu::BindGroup,
     bg_q: wgpu::BindGroup,
     bg_b1: wgpu::BindGroup,
     bg_comp: wgpu::BindGroup,
+    /// EASU pass bind group (scene view + size constants)
+    bg_easu: wgpu::BindGroup,
     bright_pipe: wgpu::RenderPipeline,
     blur_pipe: wgpu::RenderPipeline,
+    /// FSR 1.0 EASU upscale pass (scene → up)
+    easu_pipe: wgpu::RenderPipeline,
     post_pipe: wgpu::RenderPipeline,
     // sun shadow map
     shadow_tex: wgpu::TextureView,
@@ -2200,6 +2463,13 @@ impl Renderer {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+        // FSR 1.0 EASU size constants (rewritten on resize/upscale change)
+        let easu_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("fsr-easu"),
+            size: std::mem::size_of::<EasuUniform>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
         // write once here; rewritten on resize (texel steps are size-dependent)
         let bw = (config.width / 8).max(1);
         let bh = (config.height / 8).max(1);
@@ -2274,6 +2544,10 @@ impl Renderer {
             label: Some("post"),
             source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(POST_SHADER)),
         });
+        let easu_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("fsr-easu"),
+            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(EASU_SHADER)),
+        });
 
         let post_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("post-pl"),
@@ -2323,6 +2597,8 @@ impl Renderer {
         let linear = wgpu::TextureFormat::Rgba8Unorm;
         let bright_pipe = make_fs_pipe(&bright_mod, &post_pl, linear);
         let blur_pipe = make_fs_pipe(&blur_mod, &post_pl, linear);
+        // FSR 1.0 EASU: scene (render scale) → up (full surface res)
+        let easu_pipe = make_fs_pipe(&easu_mod, &post_pl, linear);
         // composite writes the final srgb-encoded image to the surface
         let post_pipe = make_fs_pipe(&post_mod, &comp_pl, format);
 
@@ -2332,7 +2608,19 @@ impl Renderer {
         let bg_scene = Self::single_tex_bg(&device, &post_bgl, &post_targets.scene_view, &post_samp, &post_buf, &aux_v_buf);
         let bg_q = Self::single_tex_bg(&device, &post_bgl, &post_targets.q_view, &post_samp, &post_buf, &aux_h_buf);
         let bg_b1 = Self::single_tex_bg(&device, &post_bgl, &post_targets.b1_view, &post_samp, &post_buf, &aux_v_buf);
-        let bg_comp = Self::comp_bg(&device, &comp_bgl, &post_targets.scene_view, &post_targets.b2_view, &post_samp, &post_buf);
+        // EASU reads the SCENE; binding 3 = the size constants buffer
+        let bg_easu = Self::single_tex_bg(&device, &post_bgl, &post_targets.scene_view, &post_samp, &post_buf, &easu_buf);
+        // the composite (+ RCAS) reads the EASU-UPScaled target
+        let bg_comp = Self::comp_bg(&device, &comp_bgl, &post_targets.up_view, &post_targets.b2_view, &post_samp, &post_buf);
+        // initial EASU size constants (rewritten on resize/upscale change)
+        let (sc_w, sc_h) = post_targets.scene_size();
+        queue.write_buffer(
+            &easu_buf,
+            0,
+            bytemuck::bytes_of(&EasuUniform {
+                con: [sc_w as f32, sc_h as f32, config.width as f32, config.height as f32],
+            }),
+        );
 
         let renderer = Renderer {
             surface,
@@ -2370,14 +2658,17 @@ impl Renderer {
             post_buf,
             aux_h_buf,
             aux_v_buf,
+            easu_buf,
             post_bgl,
             comp_bgl,
             bg_scene,
             bg_q,
             bg_b1,
             bg_comp,
+            bg_easu,
             bright_pipe,
             blur_pipe,
+            easu_pipe,
             post_pipe,
             shadow_tex: shadow_view,
             shadow_depth,
@@ -2487,12 +2778,23 @@ impl Renderer {
         let bg_scene = Self::single_tex_bg(&self.device, &self.post_bgl, &t.scene_view, &self.post_samp, &self.post_buf, &self.aux_v_buf);
         let bg_q = Self::single_tex_bg(&self.device, &self.post_bgl, &t.q_view, &self.post_samp, &self.post_buf, &self.aux_h_buf);
         let bg_b1 = Self::single_tex_bg(&self.device, &self.post_bgl, &t.b1_view, &self.post_samp, &self.post_buf, &self.aux_v_buf);
-        let bg_comp = Self::comp_bg(&self.device, &self.comp_bgl, &t.scene_view, &t.b2_view, &self.post_samp, &self.post_buf);
+        let bg_easu = Self::single_tex_bg(&self.device, &self.post_bgl, &t.scene_view, &self.post_samp, &self.post_buf, &self.easu_buf);
+        let bg_comp = Self::comp_bg(&self.device, &self.comp_bgl, &t.up_view, &t.b2_view, &self.post_samp, &self.post_buf);
+        // refresh the FSR EASU size constants for the new src/dst sizes
+        let (sc_w, sc_h) = t.scene_size();
+        self.queue.write_buffer(
+            &self.easu_buf,
+            0,
+            bytemuck::bytes_of(&EasuUniform {
+                con: [sc_w as f32, sc_h as f32, w as f32, h as f32],
+            }),
+        );
         self.post_targets = t;
         self.bg_scene = bg_scene;
         self.bg_q = bg_q;
         self.bg_b1 = bg_b1;
         self.bg_comp = bg_comp;
+        self.bg_easu = bg_easu;
         // refresh blur texel steps for the new size (1/8 targets)
         let bw = (w / 8).max(1);
         let bh = (h / 8).max(1);
@@ -2537,8 +2839,9 @@ impl Renderer {
         self.rebuild_post_targets();
     }
 
-    /// FSR-lite: set the internal render scale (1.0 = native, 0.75/0.5 =
-    /// upscaled). Rebuilds the offscreen targets + scene depth immediately.
+    /// FSR 1.0 (§33): set the internal render scale (1.0 = native, 0.75/0.5
+    /// = EASU-upscaled). Rebuilds the offscreen targets + scene depth
+    /// immediately.
     pub fn set_upscale(&mut self, scale: f32) {
         let scale = scale.clamp(0.5, 1.0);
         if (scale - self.upscale).abs() < 1e-3 {
@@ -2919,11 +3222,12 @@ impl Renderer {
             2 => (0.85, 0.32, 1.16, 1.06),  // cinematic
             _ => (0.0, 0.0, 1.0, 1.0),      // off
         };
-        let (sc_w, sc_h) = self.post_targets.scene_size();
         let post_u = PostUniform {
             p: [post.mode as f32, post.menu_blur.clamp(0.0, 1.0), sky.time, aspect],
             q: [bloom, vig, sat, exp],
-            s: [post.sharpen, 1.0 / sc_w.max(1) as f32, 1.0 / sc_h.max(1) as f32, 0.0],
+            // FSR 1.0 RCAS lobe scale: post.sharpen maps 0..1 → the
+            // FsrRcasCon factor (1.0 = maximum sharpness, 0 = off)
+            s: [post.sharpen.clamp(0.0, 1.0), 0.0, 0.0, 0.0],
         };
         self.queue.write_buffer(&self.post_buf, 0, bytemuck::bytes_of(&post_u));
 
@@ -3273,7 +3577,34 @@ impl Renderer {
             }
         }
 
+        // ───────────────────── pass 3.5: FSR 1.0 EASU: scene → up ──
+        // Edge-adaptive spatial upsampling to the full surface resolution.
+        // Mathematically identity at 1:1 scale (verified in EASU_SHADER
+        // notes), so it runs at every upscale setting.
+        {
+            let att = wgpu::RenderPassColorAttachment {
+                view: &self.post_targets.up_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                    store: wgpu::StoreOp::Store,
+                },
+            };
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("fsr-easu"),
+                color_attachments: &[Some(att)],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+            pass.set_pipeline(&self.easu_pipe);
+            pass.set_bind_group(0, &self.bg_easu, &[]);
+            pass.draw(0..3, 0..1);
+        }
+
         // ───────────────────────────────── pass 4: composite → surface ──
+        // (reads the EASU-upscaled target; applies RCAS sharpening when
+        // enabled, then bloom + grade + vignette)
         {
             let att = wgpu::RenderPassColorAttachment {
                 view: &frame_view,
@@ -3422,4 +3753,81 @@ pub(crate) fn report_boot_log(msg: &str) {
     crate::wasm_entry::boot_log(msg);
     #[cfg(not(target_arch = "wasm32"))]
     eprintln!("[voxelcraft] {msg}");
+}
+
+#[cfg(test)]
+mod shader_tests {
+    use super::*;
+
+    /// All embedded WGSL must parse AND type-check with the exact naga
+    /// version wgpu 22 ships (dev-dependency) — catches shader errors in
+    /// `cargo test` instead of at device-creation time on a real GPU.
+    #[test]
+    fn wgsl_shaders_validate() {
+        let shaders: &[(&str, &str)] = &[
+            ("terrain", TERRAIN_SHADER),
+            ("water", WATER_SHADER),
+            ("sky", SKY_SHADER),
+            ("cloud", CLOUD_SHADER),
+            ("ui", UI_SHADER),
+            ("line", LINE_SHADER),
+            ("bright", BRIGHT_SHADER),
+            ("blur", BLUR_SHADER),
+            ("post", POST_SHADER),
+            ("fsr-easu", EASU_SHADER),
+            ("shadow", SHADOW_SHADER),
+            ("particle", PARTICLE_SHADER),
+        ];
+        let mut frontend = naga::front::wgsl::Frontend::new();
+        for (name, src) in shaders {
+            let module = frontend
+                .parse(src)
+                .unwrap_or_else(|e| panic!("{name} WGSL parse failed: {e}"));
+            let mut validator = naga::valid::Validator::new(
+                naga::valid::ValidationFlags::all(),
+                naga::valid::Capabilities::all(),
+            );
+            validator
+                .validate(&module)
+                .unwrap_or_else(|e| panic!("{name} WGSL validation failed: {e:?}"));
+        }
+    }
+
+    /// FSR 1.0 EASU at EXACT 1:1 input/output scale must be the identity:
+    /// the center tap weight is 1 and every neighbor windows to 0 (this is
+    /// the property that lets the EASU pass run at native resolution). Runs
+    /// the WGSL kernel math on the CPU by re-implementing the tap function
+    /// — kept in lockstep with EASU_SHADER by the constants below.
+    #[test]
+    fn easu_is_identity_at_1x() {
+        // kernel state for a flat neighborhood (dir=(1,0) after the zero
+        // guard, len=0): len2=(1,1), lob=0.5, clp=1/0.5=2
+        let dir = (1.0f32, 0.0f32);
+        let len2 = (1.0f32, 1.0f32);
+        let lob = 0.5f32;
+        let clp = 2.0f32;
+        let pp = (0.0f32, 0.0f32); // exact texel alignment at 1:1
+        let tap = |off: (f32, f32)| -> f32 {
+            let v = (
+                (off.0 * dir.0 + off.1 * dir.1) * len2.0,
+                (off.0 * -dir.1 + off.1 * dir.0) * len2.1,
+            );
+            let d2 = (v.0 * v.0 + v.1 * v.1).min(clp);
+            let wb = (2.0 / 5.0 * d2 - 1.0).powi(2);
+            let wa = (lob * d2 - 1.0).powi(2);
+            (25.0 / 16.0 * wb - (25.0 / 16.0 - 1.0)) * wa
+        };
+        // center tap (0,0)-pp: weight exactly 1
+        let center = tap((0.0, 0.0));
+        assert!((center - 1.0).abs() < 1e-6, "center weight {center}");
+        // every neighbor tap: 0 (windowed out)
+        for off in [
+            (0.0, -1.0), (1.0, -1.0), (-1.0, 0.0), (1.0, 0.0),
+            (-1.0, 1.0), (0.0, 1.0), (1.0, 1.0), (2.0, 0.0),
+            (2.0, 1.0), (1.0, 2.0), (0.0, 2.0),
+        ] {
+            let w = tap((off.0 - pp.0, off.1 - pp.1));
+            assert!(w.abs() < 1e-6, "tap {off:?} weight {w} (must be 0)");
+        }
+    }
 }

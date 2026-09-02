@@ -244,6 +244,30 @@ fn lever_recipe() -> Vec<f32> {
     clamp_amp(c)
 }
 
+/// brewing bubble (§29): a row of low liquid pips rising in pitch —
+/// the "glug glug" of an active stand
+fn bubble_recipe() -> Vec<f32> {
+    let mut out = thump(180.0, 0.09, 0.5);
+    mix_into(&mut out, &ping(300.0, 0.10, 0.25, 405), 1.0);
+    mix_into(&mut out, &ping(430.0, 0.08, 0.2, 406), 0.8);
+    clamp_amp(out)
+}
+
+/// drinking a potion (§29): two soft swallows
+fn drink_recipe() -> Vec<f32> {
+    let mut d = thump(220.0, 0.12, 0.55);
+    let second = thump(190.0, 0.10, 0.4);
+    mix_into(&mut d, &second, 0.7);
+    clamp_amp(d)
+}
+
+/// potion splash (§29, breaking a stand / filling a bottle): watery pip
+fn splash_recipe() -> Vec<f32> {
+    let mut s = ping(900.0, 0.07, 0.3, 407);
+    mix_into(&mut s, &one_pole_lp(noise_burst(900, 408, 0.3, 0.001, 0.06), 2500.0), 1.0);
+    clamp_amp(s)
+}
+
 /// ambient cave "eerie" tone: slow beating detuned sines with a long tail
 fn eerie_recipe() -> Vec<f32> {
     let n = (1.6 * RATE as f32) as usize;
@@ -342,6 +366,9 @@ impl SoundBank {
             ("ambient/eerie", eerie_recipe()),
             ("music/pad_day", music_pad(false)),
             ("music/pad_night", music_pad(true)),
+            ("block/brewing_bubble", bubble_recipe()),
+            ("entity/drink", drink_recipe()),
+            ("liquid/splash", splash_recipe()),
         ] {
             names.push(n.into());
             data.push(d);
@@ -598,7 +625,10 @@ pub const SOUNDS_JSON: &str = r##"{
   "entity.item.pickup":  {"category": "players", "volume": 0.45, "pitch": [0.9, 1.3], "sounds": [{"name": "entity/item/pickup"}]},
   "ambient.eerie":       {"category": "ambient", "volume": 0.55, "pitch": [0.85, 1.3], "attenuation": 0, "sounds": [{"name": "ambient/eerie"}]},
   "music.pad.day":       {"category": "music", "volume": 0.5, "sounds": [{"name": "music/pad_day", "stream": true}]},
-  "music.pad.night":     {"category": "music", "volume": 0.5, "sounds": [{"name": "music/pad_night", "stream": true}]}
+  "music.pad.night":     {"category": "music", "volume": 0.5, "sounds": [{"name": "music/pad_night", "stream": true}]},
+  "block.brewing_stand.bubble": {"category": "blocks", "volume": 0.7, "pitch": [0.9, 1.15], "attenuation": 12, "sounds": [{"name": "block/brewing_bubble"}]},
+  "entity.generic.drink": {"category": "players", "volume": 0.6, "pitch": [0.9, 1.1], "sounds": [{"name": "entity/drink"}]},
+  "liquid.splash":       {"category": "blocks", "volume": 0.6, "pitch": [0.9, 1.2], "attenuation": 12, "sounds": [{"name": "liquid/splash"}]}
 }"##;
 
 /// distance attenuation + stereo pan for one positioned sound relative to

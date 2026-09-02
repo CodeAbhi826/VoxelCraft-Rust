@@ -620,6 +620,16 @@ impl UiCanvas {
         }
     }
 
+    /// small horizontal progress bar (brewing fuel charges, §29)
+    fn bar(&mut self, x: i32, y: i32, w: i32, h: i32, frac: f32) {
+        self.rect(x, y, w, h, [26, 26, 30, 220]);
+        self.frame(x, y, w, h, [12, 12, 14, 255]);
+        let fw = (w as f32 * frac.clamp(0.0, 1.0)) as i32;
+        if fw > 0 {
+            self.rect(x + 1, y + 1, fw.min(w - 2), h - 2, [235, 235, 235, 255]);
+        }
+    }
+
     /// vanilla furnace flame between input and fuel slots, filled by the
     /// burn-progress fraction
     fn flame(&mut self, x: i32, y: i32, frac: f32) {
@@ -654,6 +664,33 @@ impl UiCanvas {
         }
     }
 
+    /// vanilla brewing bubble column: white dots rising with the brew
+    /// progress (the mirror of the furnace flame — fills bottom-up as the
+    /// cycle advances)
+    fn bubbles(&mut self, x: i32, y: i32, frac: f32) {
+        let rows = [
+            ".  b  .",
+            ".  b  .",
+            ".  b  .",
+            ".  b  .",
+            ".  b  .",
+            ".  b  .",
+            ".  b  .",
+        ];
+        let pal = [('b', [200, 230, 255, 255]), ('.', [70, 70, 80, 200])];
+        let scale = 5i32; // 7 wide x 35 tall
+        self.sprite(x, y, &rows, &pal, scale);
+        // fill from the BOTTOM up as the cycle progresses (vanilla bubbles
+        // rise as the brew advances)
+        let total = rows.len() as f32;
+        let lit = (frac.clamp(0.0, 1.0) * total).floor() as i32;
+        if lit > 0 {
+            let y_fill = y + (rows.len() as i32 - lit) * scale;
+            self.rect(x + 2 * scale, y_fill, scale, lit * scale, [200, 230, 255, 255]);
+        }
+    }
+
+
     /// one generic 9-wide slot row (hotbar strip or storage row)
     #[allow(dead_code)]
     fn inv_row(&mut self, x0: i32, y: i32, slots: &[ItemStack], atlas: &[u8], start: usize, count: usize) {
@@ -684,6 +721,7 @@ impl UiCanvas {
             ContainerKind::Inventory => 96,   // 2x2 craft + arrow + output
             ContainerKind::Crafting => 140,   // 3x3 craft + arrow + output
             ContainerKind::Furnace => 128,    // input / flame / fuel + arrow + output
+            ContainerKind::Brewing => 150,   // ingredient / bubbles / fuel + 3 bottles
         };
         let panel_h = top_h + 3 * 44 + 8 + 44 + 30; // + title + gaps + padding
         let y0 = (UI_H as i32 - panel_h) / 2;
@@ -699,6 +737,7 @@ impl UiCanvas {
             ContainerKind::Inventory => "INVENTORY  (E / ESC to close)",
             ContainerKind::Crafting => "CRAFTING TABLE",
             ContainerKind::Furnace => "FURNACE",
+            ContainerKind::Brewing => "BREWING STAND",
         };
         self.text(px0 + 12, y0 - 24, title, [255, 220, 120, 255], 1);
 
@@ -707,6 +746,7 @@ impl UiCanvas {
             craft: Vec::new(),
             craft_out: (i32::MIN, i32::MIN),
             furnace: None,
+            brewing: None,
         };
 
         // ---- container-specific top area ----
@@ -773,6 +813,46 @@ impl UiCanvas {
                     input: (ix, iy),
                     fuel: (fx, fy),
                     output: (oxp, oyp),
+                });
+            }
+            ContainerKind::Brewing => {
+                // vanilla layout: ingredient top-center; below it the bubble
+                // column; bottom row = fuel left + 3 bottle slots
+                let total = 3 * 40 + 30;
+                let cx = x0 + (grid_w - total) / 2;
+                let cy = y0 + 8;
+                let (ing, fuel, bottles, fuel_frac, brew_frac) = view.brewing
+                    .map(|b| (b.0, b.1, b.2, b.3, b.4))
+                    .unwrap_or((
+                        ItemStack::EMPTY,
+                        ItemStack::EMPTY,
+                        [ItemStack::EMPTY; 3],
+                        0.0,
+                        0.0,
+                    ));
+                let ix = cx + 44;
+                let iy = cy;
+                self.slot_well(ix, iy, &ing, atlas);
+                // bubbles under the ingredient
+                self.bubbles(ix + 14, iy + 40, brew_frac);
+                // fuel slot on the left with a charge bar
+                let fx = cx;
+                let fy = cy + 78;
+                self.slot_well(fx, fy, &fuel, atlas);
+                // fuel-charge bar under the fuel slot (20 operations)
+                self.bar(fx - 2, fy + 40, 40, 5, fuel_frac.clamp(0.0, 1.0));
+                // three bottle slots
+                let by = cy + 78;
+                let mut bottle_pos = [(0, 0); 3];
+                for (i, bp) in bottle_pos.iter_mut().enumerate() {
+                    let bx = cx + 40 + i as i32 * 40;
+                    self.slot_well(bx, by, &bottles[i], atlas);
+                    *bp = (bx, by);
+                }
+                geom.brewing = Some(BrewSlots {
+                    ingredient: (ix, iy),
+                    fuel: (fx, fy),
+                    bottles: bottle_pos,
                 });
             }
         }
@@ -1019,6 +1099,8 @@ pub enum ContainerKind {
     Crafting,
     /// furnace: input / fuel / output with live progress
     Furnace,
+    /// brewing stand: ingredient / fuel / 3 bottles with bubble progress
+    Brewing,
 }
 
 /// a logical slot in a container screen — the target of a mouse click
@@ -1033,6 +1115,12 @@ pub enum SlotRef {
     FurnaceInput,
     FurnaceFuel,
     FurnaceOutput,
+    /// brewing stand: the top ingredient slot
+    BrewIngredient,
+    /// brewing stand: the fuel slot (blaze-powder analogue)
+    BrewFuel,
+    /// brewing stand: one of the three bottle slots
+    BrewBottle(usize),
 }
 
 /// pure-data snapshot of everything a container screen renders — owned
@@ -1047,6 +1135,8 @@ pub struct ContainerView {
     pub craft_out: ItemStack,
     /// furnace slots: (input, fuel, output, burn_frac, cook_frac)
     pub furnace: Option<(ItemStack, ItemStack, ItemStack, f32, f32)>,
+    /// brewing slots: (ingredient, fuel, [3 bottles], fuel_frac, brew_frac)
+    pub brewing: Option<(ItemStack, ItemStack, [ItemStack; 3], f32, f32)>,
     /// stack riding the mouse cursor
     pub cursor: ItemStack,
 }
@@ -1060,6 +1150,9 @@ impl ContainerView {
             SlotRef::FurnaceInput => self.furnace?.0,
             SlotRef::FurnaceFuel => self.furnace?.1,
             SlotRef::FurnaceOutput => self.furnace?.2,
+            SlotRef::BrewIngredient => self.brewing?.0,
+            SlotRef::BrewFuel => self.brewing?.1,
+            SlotRef::BrewBottle(i) => self.brewing?.2[i],
         })
     }
 }
@@ -1069,6 +1162,13 @@ pub struct FurnaceSlots {
     pub input: (i32, i32),
     pub fuel: (i32, i32),
     pub output: (i32, i32),
+}
+
+/// brewing-stand slot positions for hit-testing
+pub struct BrewSlots {
+    pub ingredient: (i32, i32),
+    pub fuel: (i32, i32),
+    pub bottles: [(i32, i32); 3],
 }
 
 /// hit-test geometry for a container screen (UI-space 36px slots)
@@ -1081,6 +1181,8 @@ pub struct ContainerGeom {
     pub craft_out: (i32, i32),
     /// furnace slot origins when the screen is a furnace
     pub furnace: Option<FurnaceSlots>,
+    /// brewing slot origins when the screen is a brewing stand
+    pub brewing: Option<BrewSlots>,
 }
 
 impl ContainerGeom {
@@ -1099,6 +1201,19 @@ impl ContainerGeom {
             }
             if Self::hit(x, y, &fs.output) {
                 return Some(SlotRef::FurnaceOutput);
+            }
+        }
+        if let Some(bs) = &self.brewing {
+            if Self::hit(x, y, &bs.ingredient) {
+                return Some(SlotRef::BrewIngredient);
+            }
+            if Self::hit(x, y, &bs.fuel) {
+                return Some(SlotRef::BrewFuel);
+            }
+            for (i, s) in bs.bottles.iter().enumerate() {
+                if Self::hit(x, y, s) {
+                    return Some(SlotRef::BrewBottle(i));
+                }
             }
         }
         if Self::hit(x, y, &self.craft_out) {

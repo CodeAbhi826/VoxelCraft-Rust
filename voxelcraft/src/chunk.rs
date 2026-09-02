@@ -198,6 +198,71 @@ impl Section {
         out
     }
 
+    /// unpack one whole section into a flat 4096-u16-state buffer (YZX
+    /// order) — save path (property states survive, unlike decode_flat)
+    pub fn states_flat(&self) -> [u16; SECTION_LEN] {
+        let mut out = [0u16; SECTION_LEN];
+        if self.bits == 16 {
+            let epl = self.epl() as usize;
+            for i in 0..SECTION_LEN {
+                let word = i / epl;
+                let shift = (i % epl) * 16;
+                out[i] = ((self.data[word] >> shift) & 0xFFFF) as u16;
+            }
+        } else {
+            let epl = self.epl() as usize;
+            let mask = (1u64 << self.bits) - 1;
+            for i in 0..SECTION_LEN {
+                let word = i / epl;
+                let shift = (i % epl) * self.bits as usize;
+                out[i] = self.palette[((self.data[word] >> shift) & mask) as usize];
+            }
+        }
+        out
+    }
+
+    /// pack from a flat 4096-u16-state buffer (YZX order) — load path.
+    /// Mirrors `from_flat` but keeps 16-bit property/model states intact.
+    pub fn from_states(flat: &[u16; SECTION_LEN]) -> Option<Box<Section>> {
+        let mut palette: Vec<u16> = vec![0];
+        let mut non_air = 0u32;
+        for &s in flat.iter() {
+            if s != 0 {
+                non_air += 1;
+                if !palette.contains(&s) {
+                    palette.push(s);
+                }
+            }
+        }
+        if non_air == 0 {
+            return None;
+        }
+        let bits = bits_for(palette.len());
+        let epl = (64 / bits) as usize;
+        let words = if bits == 16 {
+            SECTION_LEN.div_ceil(4)
+        } else {
+            SECTION_LEN.div_ceil(epl)
+        };
+        let mut s = Section { palette, bits, data: vec![0u64; words], non_air };
+        for (i, &v) in flat.iter().enumerate() {
+            if v == 0 {
+                continue; // air = palette index 0 = packed zero
+            }
+            if s.bits == 16 {
+                let word = i / 4;
+                let shift = (i % 4) * 16;
+                s.data[word] |= (v as u64) << shift;
+            } else {
+                let pi = s.palette.iter().position(|&p| p == v).unwrap();
+                let word = i / epl;
+                let shift = (i % epl) * s.bits as usize;
+                s.data[word] |= (pi as u64) << shift;
+            }
+        }
+        Some(Box::new(s))
+    }
+
     /// pack from a flat 4096-byte buffer (YZX order) — build path
     pub fn from_flat(flat: &[u8; SECTION_LEN]) -> Option<Box<Section>> {
         let mut palette: Vec<u16> = vec![0];

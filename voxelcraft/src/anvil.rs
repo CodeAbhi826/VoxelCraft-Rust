@@ -172,15 +172,45 @@ pub fn read_chunk(world_dir: &Path, cx: i32, cz: i32) -> std::io::Result<Option<
 
 // --------------------------------------------------------------- writing --
 
-/// Write one chunk's (uncompressed NBT) bytes into its region file,
-/// preserving all other chunks. Compact-and-rewrite (see module doc):
-/// every live record is re-packed from sector 2, timestamps refreshed
-/// for the touched slot only, others preserved.
+/// Write one chunk's (uncompressed NBT) bytes into its region file —
+/// convenience wrapper around [`write_chunks`].
+pub fn write_chunk(world_dir: &Path, cx: i32, cz: i32, nbt_bytes: &[u8]) -> std::io::Result<()> {
+    write_chunks(world_dir, &[(cx, cz, nbt_bytes.to_vec())])
+}
+
+/// Batch-write chunks, grouped by region file: ONE compact-and-rewrite per
+/// region per call. An autosave of ~400 loaded chunks touches a handful of
+/// region files once each instead of rewriting each file once per chunk
+/// (the naive path costs O(chunks²) region-sized IO per flush).
+///
+/// Compact-and-rewrite (see module doc): every live record is re-packed
+/// from sector 2, timestamps refreshed for the touched slots only, others
+/// preserved.
 ///
 /// Atomic-ish: writes `path.tmp` then renames over the target, so a crash
 /// mid-save leaves either the old or the new file, never a torn header.
-pub fn write_chunk(world_dir: &Path, cx: i32, cz: i32, nbt_bytes: &[u8]) -> std::io::Result<()> {
-    let path = region_path(world_dir, cx, cz);
+pub fn write_chunks(world_dir: &Path, entries: &[(i32, i32, Vec<u8>)]) -> std::io::Result<()> {
+    // group by region file (r.X.Z.mca), deterministic order
+    let mut by_region: std::collections::BTreeMap<(i32, i32), Vec<(i32, i32, &[u8])>> =
+        std::collections::BTreeMap::new();
+    for (cx, cz, nbt) in entries {
+        let key = (cx.div_euclid(32), cz.div_euclid(32));
+        by_region.entry(key).or_default().push((*cx, *cz, nbt.as_slice()));
+    }
+    for ((rx, rz), chunks) in by_region {
+        let mut p = world_dir.to_path_buf();
+        p.push("region");
+        let _ = fs::create_dir_all(&p); // idempotent; failures surface at write
+        p.push(format!("r.{rx}.{rz}.mca"));
+        rewrite_region(&p, &chunks)?;
+    }
+    Ok(())
+}
+
+/// Compact-and-rewrite one region file with `chunks` = [(world cx, cz,
+/// uncompressed NBT)]. The path is derived by the caller (write_chunks);
+/// unlike `region_path` this does no directory side effects.
+fn rewrite_region(path: &Path, chunks: &[(i32, i32, &[u8])]) -> std::io::Result<()> {
 
     // 1. collect existing records (raw, still compressed)
     let mut records: Vec<Option<RawChunk>> = vec![None; CHUNKS_PER_SIDE * CHUNKS_PER_SIDE];
@@ -223,17 +253,20 @@ pub fn write_chunk(world_dir: &Path, cx: i32, cz: i32, nbt_bytes: &[u8]) -> std:
         }
     }
 
-    // 2. compress + place the new record
-    let compressed = compress(nbt_bytes, WRITE_COMPRESSION)?;
-    let capacity_hint = existing.len() + compressed.len() + SECTOR_BYTES;
-    records[slot_index(cx, cz)] = Some(RawChunk {
-        scheme: WRITE_COMPRESSION,
-        data: compressed,
-    });
-    timestamps[slot_index(cx, cz)] = now_secs();
+    // 2. compress + place the new records (multiple chunks per call)
+    let mut capacity_extra = 0usize;
+    for (cx, cz, nbt_bytes) in chunks {
+        let compressed = compress(nbt_bytes, WRITE_COMPRESSION)?;
+        capacity_extra += compressed.len();
+        records[slot_index(*cx, *cz)] = Some(RawChunk {
+            scheme: WRITE_COMPRESSION,
+            data: compressed,
+        });
+        timestamps[slot_index(*cx, *cz)] = now_secs();
+    }
 
     // 3. serialize: header then packed payloads from sector 2
-    let mut out: Vec<u8> = Vec::with_capacity(capacity_hint);
+    let mut out: Vec<u8> = Vec::with_capacity(existing.len() + capacity_extra + SECTOR_BYTES);
     out.resize(2 * SECTOR_BYTES, 0);
     let mut next_sector = FIRST_DATA_SECTOR;
     for slot in 0..CHUNKS_PER_SIDE * CHUNKS_PER_SIDE {
@@ -248,7 +281,7 @@ pub fn write_chunk(world_dir: &Path, cx: i32, cz: i32, nbt_bytes: &[u8]) -> std:
             return Err(std::io::Error::new(
                 std::io::ErrorKind::FileTooLarge,
                 format!(
-                    "anvil: chunk ({cx},{cz}) compressed record spans {sectors} sectors (max 255)"
+                    "anvil: a record spans {sectors} sectors (max 255)"
                 ),
             ));
         }
@@ -412,6 +445,37 @@ mod tests {
         }
         let last = fs::read(region_path(&dir, 0, 0)).unwrap().len();
         assert!(last <= first + SECTOR_BYTES, "grew: {first} -> {last}");
+    }
+
+    #[test]
+    fn batch_write_groups_into_one_rewrite_per_region() {
+        let dir = tmp_dir("batch");
+        // 42 chunks inside r.0.0.mca + 1 in r.1.0.mca + 1 in r.-1.-1.mca
+        let mut entries: Vec<(i32, i32, Vec<u8>)> = Vec::new();
+        for i in 0..42i32 {
+            let x = i % 7;
+            let z = i / 7;
+            entries.push((x, z, demo_chunk_nbt(x, z, i)));
+        }
+        entries.push((35, 0, demo_chunk_nbt(35, 0, 99))); // r.1.0.mca
+        entries.push((-1, -1, demo_chunk_nbt(-1, -1, 98))); // r.-1.-1.mca
+        write_chunks(&dir, &entries).unwrap();
+        // every chunk readable, byte-exact
+        for (x, z, bytes) in &entries {
+            assert_eq!(read_chunk(&dir, *x, *z).unwrap().unwrap(), *bytes, "chunk ({x},{z})");
+        }
+        // exactly three region files exist (grouped, not one per chunk)
+        let mut names: Vec<String> = fs::read_dir(dir.join("region"))
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        names.sort();
+        assert_eq!(names, vec!["r.-1.-1.mca", "r.0.0.mca", "r.1.0.mca"]);
+        // a later single-chunk write still preserves the batch
+        let extra = demo_chunk_nbt(6, 6, 123);
+        write_chunk(&dir, 6, 6, &extra).unwrap();
+        assert_eq!(read_chunk(&dir, 6, 6).unwrap().unwrap(), extra);
+        assert_eq!(read_chunk(&dir, 0, 0).unwrap().unwrap(), entries[0].2);
     }
 
     #[test]

@@ -565,10 +565,10 @@ pub fn write_level_dat(world_dir: &Path, meta: &WorldMeta) -> std::io::Result<()
 /// still yields a usable `WorldMeta` (§46).
 pub fn read_level_dat(world_dir: &Path) -> std::io::Result<Option<WorldMeta>> {
     let path = world_dir.join("level.dat");
-    let gz = match fs::read(&path) {
-        Ok(b) => b,
-        Err(_) => fs::read(world_dir.join("level.dat_old")).ok(), // None if both absent
-    };
+    // primary first, vanilla's kept backup as fallback; both absent → None
+    let gz = fs::read(&path)
+        .or_else(|_| fs::read(world_dir.join("level.dat_old")))
+        .ok();
     let Some(gz) = gz else { return Ok(None) };
     let bytes = gunzip_bytes(&gz)?;
 
@@ -589,16 +589,17 @@ pub fn read_level_dat(world_dir: &Path) -> std::io::Result<Option<WorldMeta>> {
             .to_string(),
         spawn: (
             get_i64("SpawnX").unwrap_or(8) as i32,
-            get_i64("SpawnY").unwrap_or(crate::SEA_LEVEL as i32 + 1) as i32,
+            get_i64("SpawnY").unwrap_or(crate::SEA_LEVEL as i64 + 1) as i32,
             get_i64("SpawnZ").unwrap_or(8) as i32,
         ),
         player: None,
         game_time: get_i64("Time").unwrap_or(0),
     };
     if let Some(Nbt::Compound(vc)) = data.get("voxelcraft") {
-        let f = |k: &str| vc.get(k);
-        let d = |k: &str| f(k).map(|v| if let Nbt::Double(x) = v { *x } else { 0.0 });
-        let fl = |k: &str| f(k).map(|v| if let Nbt::Float(x) = v { *x } else { 0.0 });
+        // Vec<(String, Nbt)> — direct lookup (Nbt::get is on Nbt, not the vec)
+        let find = |k: &str| vc.iter().find(|(key, _)| key == k).map(|(_, v)| v);
+        let d = |k: &str| find(k).map(|v| if let Nbt::Double(x) = v { *x } else { 0.0 });
+        let fl = |k: &str| find(k).map(|v| if let Nbt::Float(x) = v { *x } else { 0.0 });
         meta.player = Some(PlayerMeta {
             pos: [
                 d("PlayerX").unwrap_or(meta.spawn.0 as f64),

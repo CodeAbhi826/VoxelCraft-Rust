@@ -230,6 +230,23 @@ pub struct ColumnInfo {
     pub filler: u8,
 }
 
+/// P7 structures: village grid + one house site (deterministic)
+pub const VILLAGE_REGION_CHUNKS: i32 = 24;
+/// max horizontal reach of village structures from the well (houses ≤ 19 r
+/// + 2 footprint + well roof)
+const VILLAGE_MAX_REACH: i32 = 40;
+
+#[derive(Clone, Copy, Debug)]
+struct HouseSite {
+    /// house center (world blocks)
+    x: i32,
+    z: i32,
+    /// floor level (terrain height at the site)
+    floor: i32,
+    /// blacksmith houses get a furnace
+    blacksmith: bool,
+}
+
 pub struct TerrainGen {
     pub seed: u64,
     n_cont: Noise,
@@ -678,8 +695,187 @@ impl TerrainGen {
             }
         }
 
+        // ──────────────────────────────── P7 structures: villages ────
+        // Deterministic per 24×24-chunk region: each chunk emits ONLY the
+        // village blocks falling inside itself (positions are globally
+        // derived, so every chunk independently agrees on the layout —
+        // no cross-chunk handoff, no generation-order dependence).
+        for &(village_wx, village_wz) in self.villages_near(ox, oz).iter() {
+            self.emit_village(&mut chunk, village_wx, village_wz, ox, oz);
+        }
+
         (Arc::new(chunk), outbound)
     }
+
+    // ------------------------------------------------------------ villages --
+
+    /// all village centers whose structures can reach into the 16×16 block
+    /// area at (ox, oz): village regions overlapping [ox-40, ox+56)
+    fn villages_near(&self, ox: i32, oz: i32) -> Vec<(i32, i32)> {
+        const RC: i32 = VILLAGE_REGION_CHUNKS * 16; // region size in blocks
+        let mut out = Vec::new();
+        let rx0 = (ox - VILLAGE_MAX_REACH).div_euclid(RC);
+        let rx1 = (ox + 16 + VILLAGE_MAX_REACH).div_euclid(RC);
+        let rz0 = (oz - VILLAGE_MAX_REACH).div_euclid(RC);
+        let rz1 = (oz + 16 + VILLAGE_MAX_REACH).div_euclid(RC);
+        for rz in rz0..=rz1 {
+            for rx in rx0..=rx1 {
+                if let Some((wx, wz)) = self.village_center(rx, rz) {
+                    out.push((wx, wz));
+                }
+            }
+        }
+        out
+    }
+
+    /// deterministic village center for one region, or None. Placement:
+    /// ~55% of regions have a village; the center is jittered inside the
+    /// region and must sit on flat-enough plains/meadow above sea level.
+    fn village_center(&self, rx: i32, rz: i32) -> Option<(i32, i32)> {
+        const RC: i32 = VILLAGE_REGION_CHUNKS * 16;
+        let mut rng = Rng::new(Rng::hash3(self.seed, rx, 0x5EED, rz));
+        if rng.next_f32() > 0.55 {
+            return None;
+        }
+        // jitter across the region interior (margin keeps houses off borders)
+        let base_x = rx * RC + 32;
+        let base_z = rz * RC + 32;
+        let span = RC - 64;
+        let wx = base_x + rng.next_range(span as u32) as i32;
+        let wz = base_z + rng.next_range(span as u32) as i32;
+        // site check: the well spot + its surroundings must be friendly
+        for d in [0i32, 6, -6, 12, -12] {
+            let (dx, dz) = (d, if d == 0 { 0 } else { d / 2 });
+            let c = self.column(wx + dx, wz + dz);
+            if c.height < crate::SEA_LEVEL + 2 || c.height > 96 {
+                return None;
+            }
+            if !matches!(c.biome, Biome::Plains | Biome::Forest | Biome::Snowy | Biome::Mountains) {
+                return None;
+            }
+        }
+        Some((wx, wz))
+    }
+
+    /// house sites of one village (deterministic): 3..6 houses on a ring
+    /// around the well, each validated for flat ground at its own center
+    fn village_houses(&self, wx: i32, wz: i32) -> Vec<HouseSite> {
+        let mut rng = Rng::new(Rng::hash3(self.seed, wx, 0x12C5, wz));
+        let n = 3 + rng.next_range(4) as usize; // 3..6
+        let mut houses = Vec::new();
+        for i in 0..n {
+            let ang = (i as f32 + rng.next_f32() * 0.6) * std::f32::consts::TAU / n as f32;
+            let r = 10.0 + rng.next_f32() * 9.0;
+            let hx = wx + (ang.cos() * r).round() as i32;
+            let hz = wz + (ang.sin() * r).round() as i32;
+            // flatness: corner+center height spread ≤ 2, above sea
+            let mut mn = i32::MAX;
+            let mut mx = i32::MIN;
+            for c in [
+                self.column(hx - 2, hz - 2),
+                self.column(hx + 2, hz - 2),
+                self.column(hx - 2, hz + 2),
+                self.column(hx + 2, hz + 2),
+                self.column(hx, hz),
+            ] {
+                mn = mn.min(c.height);
+                mx = mx.max(c.height);
+            }
+            if mx - mn > 2 || mn < crate::SEA_LEVEL + 1 {
+                continue; // skip bad site (deterministic)
+            }
+            houses.push(HouseSite {
+                x: hx,
+                z: hz,
+                floor: mx,
+                blacksmith: rng.next_f32() < 0.35,
+            });
+        }
+        houses
+    }
+
+    /// emit every village block that falls inside THIS chunk: well at the
+    /// center + each house (5×5, cobble walls, log corners, glass windows,
+    /// plank floor/roof, south doorway, crafting table, furnace in the
+    /// blacksmith). Force-set semantics — structures own their volume.
+    fn emit_village(&self, chunk: &mut Chunk, wx: i32, wz: i32, ox: i32, oz: i32) {
+        let put = |chunk: &mut Chunk, x: i32, y: i32, z: i32, id: u8| {
+            let lx = x - ox;
+            let lz = z - oz;
+            if lx >= 0 && lx < 16 && lz >= 0 && lz < 16 && (0..256).contains(&y) {
+                chunk.set(lx as usize, y as usize, lz as usize, id);
+            }
+        };
+
+        // ---- the well: 3×3 cobble ring, 2-deep water, fence posts + roof
+        let ground = self.column(wx, wz).height;
+        for dx in -1i32..=1 {
+            for dz in -1i32..=1 {
+                let edge = dx.abs() == 1 || dz.abs() == 1;
+                put(chunk, wx + dx, ground, wz + dz, if edge { COBBLE } else { WATER });
+                put(chunk, wx + dx, ground - 1, wz + dz, if edge { COBBLE } else { WATER });
+                put(chunk, wx + dx, ground - 2, wz + dz, COBBLE);
+            }
+        }
+        // posts + roof
+        for &(px, pz) in &[(-1, -1), (1, -1), (-1, 1), (1, 1)] {
+            for dy in 1..=3 {
+                put(chunk, wx + px, ground + dy, wz + pz, OAK_FENCE);
+            }
+        }
+        for dx in -1i32..=1 {
+            for dz in -1i32..=1 {
+                put(chunk, wx + dx, ground + 4, wz + dz, PLANKS);
+            }
+        }
+
+        // ---- houses
+        for house in self.village_houses(wx, wz) {
+            let f = house.floor;
+            for dx in -2i32..=2 {
+                for dz in -2i32..=2 {
+                    // floor
+                    put(chunk, house.x + dx, f, house.z + dz, PLANKS);
+                    // interior air (hillsides must not bury the house)
+                    for dy in 1..=3 {
+                        put(chunk, house.x + dx, f + dy, house.z + dz, AIR);
+                    }
+                    // roof + parapet rim
+                    put(chunk, house.x + dx, f + 4, house.z + dz, PLANKS);
+                    if dx.abs() == 2 || dz.abs() == 2 {
+                        put(chunk, house.x + dx, f + 5, house.z + dz, OAK_SLAB);
+                    }
+                }
+            }
+            for dy in 1..=3 {
+                for dx in -2i32..=2 {
+                    for dz in -2i32..=2 {
+                        let wall = dx.abs() == 2 || dz.abs() == 2;
+                        if !wall {
+                            continue;
+                        }
+                        let corner = dx.abs() == 2 && dz.abs() == 2;
+                        let mut id = if corner { OAK_LOG } else { COBBLE };
+                        // windows at wall mid-height on E/W faces
+                        if dy == 2 && dz == 0 && dx.abs() == 2 {
+                            id = GLASS;
+                        }
+                        // south doorway (1 wide, 2 tall)
+                        if dz == 2 && dx == 0 && (dy == 1 || dy == 2) {
+                            id = AIR;
+                        }
+                        put(chunk, house.x + dx, f + dy, house.z + dz, id);
+                    }
+                }
+            }
+            // furniture: crafting table corner; furnace for the blacksmith
+            put(chunk, house.x - 1, f + 1, house.z - 1, CRAFTING_TABLE);
+            if house.blacksmith {
+                put(chunk, house.x + 1, f + 1, house.z - 1, FURNACE);
+            }
+        }
+    }
+
 
     /// Find a comfortable spawn point (land, moderate altitude) near origin.
     pub fn find_spawn(&self) -> (f32, f32, f32) {
@@ -751,6 +947,140 @@ fn CHUNK_X_CHUNK() -> usize {
 #[inline]
 fn CHUNK_Z_CHUNK() -> usize {
     16
+}
+
+#[cfg(test)]
+mod village_tests {
+    use super::*;
+
+    /// villages exist and are findable: scan region space for a handful of
+    /// seeds until villages appear (placement is ~55%/region, gated on
+    /// terrain, so a scan is the honest test)
+    #[test]
+    fn villages_spawn_deterministically() {
+        let mut found = 0;
+        'seeds: for s in 0..12u64 {
+            let gen = TerrainGen::new(0xC0FF_EE00u64.wrapping_add(s));
+            for rz in -3..=3i32 {
+                for rx in -3..=3i32 {
+                    if gen.village_center(rx, rz).is_some() {
+                        found += 1;
+                        continue 'seeds; // one per seed is enough
+                    }
+                }
+            }
+        }
+        assert!(found >= 4, "expected several villages across seeds, got {found}");
+    }
+
+    /// a village's blocks actually land in the chunk containing it: the
+    /// well chunk must contain water + cobble + fence + planks above ground
+    #[test]
+    fn village_blocks_emit_into_owning_chunk() {
+        // find a concrete village
+        let mut village = None;
+        'outer: for s in 0..40u64 {
+            let gen = TerrainGen::new(0xAB_CDEF00u64.wrapping_add(s));
+            for rz in -4..=4i32 {
+                for rx in -4..=4i32 {
+                    if let Some(v) = gen.village_center(rx, rz) {
+                        village = Some((gen, v));
+                        break 'outer;
+                    }
+                }
+            }
+        }
+        let (gen, (wx, wz)) = village.expect("a village within 40 seeds");
+        let cx = wx.div_euclid(16);
+        let cz = wz.div_euclid(16);
+        let (chunk, _) = gen.generate_chunk(cx, cz, Vec::new());
+        let lx = (wx - cx * 16) as usize;
+        let lz = (wz - cz * 16) as usize;
+        let ground = gen.column(wx, wz).height as usize;
+        // well: water at center, cobble rim, fence post corner, plank roof
+        assert_eq!(chunk.get(lx, ground, lz), WATER, "well center water");
+        assert_eq!(chunk.get(lx + 1, ground, lz), COBBLE, "well rim cobble");
+        assert_eq!(chunk.get(lx - 1, ground + 3, lz - 1), OAK_FENCE, "well post");
+        assert_eq!(chunk.get(lx, ground + 4, lz), PLANKS, "well roof");
+    }
+
+    /// generation is order-independent and deterministic: generating the
+    /// well chunk BEFORE vs AFTER its neighbors yields identical bytes
+    #[test]
+    fn village_chunks_are_deterministic() {
+        let gen = TerrainGen::new(0x1234_5678u64);
+        // find a village to make the test meaningful
+        let mut hit = None;
+        'o: for rz in -5..=5i32 {
+            for rx in -5..=5i32 {
+                if let Some(v) = gen.village_center(rx, rz) {
+                    hit = Some(v);
+                    break 'o;
+                }
+            }
+        }
+        let (wx, wz) = hit.expect("village near seed 0x12345678");
+        let cx = wx.div_euclid(16);
+        let cz = wz.div_euclid(16);
+        let a = gen.generate_chunk(cx, cz, Vec::new()).0;
+        // interleave neighbor generation, then regenerate — must be equal
+        for dz in -1..=1 {
+            for dx in -1..=1 {
+                if (dx, dz) != (0, 0) {
+                    let _ = gen.generate_chunk(cx + dx, cz + dz, Vec::new());
+                }
+            }
+        }
+        let b = gen.generate_chunk(cx, cz, Vec::new()).0;
+        // compare raw block storage
+        for i in 0..crate::chunk::CHUNK_LEN {
+            assert_eq!(
+                a.get_idx(i),
+                b.get_idx(i),
+                "chunk differs at flat idx {i} — village gen must be order-independent"
+            );
+        }
+    }
+
+    /// houses appear around the well with the expected materials somewhere
+    /// in the village chunks (scan the 3×3 chunk neighborhood)
+    #[test]
+    fn village_houses_have_expected_materials() {
+        let mut village = None;
+        'outer: for s in 0..40u64 {
+            let gen = TerrainGen::new(0x99_CAFE00u64.wrapping_add(s));
+            for rz in -4..=4i32 {
+                for rx in -4..=4i32 {
+                    if let Some(v) = gen.village_center(rx, rz) {
+                        village = Some((gen, v));
+                        break 'outer;
+                    }
+                }
+            }
+        }
+        let (gen, (wx, wz)) = village.expect("a village");
+        let houses = gen.village_houses(wx, wz);
+        assert!(!houses.is_empty(), "validated house sites exist");
+        let (mut planks, mut glass, mut logs, mut tables) = (0, 0, 0, 0);
+        for dz in -1..=1i32 {
+            for dx in -1..=1i32 {
+                let (chunk, _) = gen.generate_chunk(wx.div_euclid(16) + dx, wz.div_euclid(16) + dz, Vec::new());
+                for i in 0..crate::chunk::CHUNK_LEN {
+                    match chunk.get_idx(i) {
+                        crate::blocks::PLANKS => planks += 1,
+                        crate::blocks::GLASS => glass += 1,
+                        crate::blocks::OAK_LOG => logs += 1,
+                        crate::blocks::CRAFTING_TABLE => tables += 1,
+                        _ => {}
+                    }
+                }
+            }
+        }
+        assert!(planks > 20, "house floors+roofs: {planks} planks");
+        assert!(glass > 0, "windows: {glass} glass");
+        assert!(logs >= 4, "log corners: {logs} logs");
+        assert!(tables >= 1, "crafting tables: {tables}");
+    }
 }
 
 #[cfg(test)]

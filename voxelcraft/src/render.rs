@@ -82,6 +82,11 @@ struct PostTargets {
     /// read this; scene stays at the internal render scale)
     up: wgpu::Texture,
     up_view: wgpu::TextureView,
+    /// shader-pack composite handoff target (full res, LINEAR) — the engine
+    /// composite writes here when a pack stage is active, the pack pass
+    /// then writes the srgb surface (Phase 11 §34)
+    pack: wgpu::Texture,
+    pack_view: wgpu::TextureView,
     /// bright-pass output (1/4 res)
     q: wgpu::Texture,
     q_view: wgpu::TextureView,
@@ -123,10 +128,11 @@ impl PostTargets {
         let sh = ((h as f32) * scale).round().max(1.0) as u32;
         let (scene, scene_view) = make(sw, sh);
         let (up, up_view) = make(w.max(1), h.max(1));
+        let (pack, pack_view) = make(w.max(1), h.max(1));
         let (q, q_view) = make(sw / 4, sh / 4);
         let (b1, b1_view) = make(sw / 8, sh / 8);
         let (b2, b2_view) = make(sw / 8, sh / 8);
-        PostTargets { scene, scene_view, up, up_view, q, q_view, b1, b1_view, b2, b2_view }
+        PostTargets { scene, scene_view, up, up_view, pack, pack_view, q, q_view, b1, b1_view, b2, b2_view }
     }
 
     /// internal (scaled) size of the scene target
@@ -1255,6 +1261,11 @@ pub struct Renderer {
     post_targets: PostTargets,
     post_samp: wgpu::Sampler,
     post_buf: wgpu::Buffer,
+    /// composite pipeline variant targeting the LINEAR pack handoff target
+    /// (used instead of `post_pipe` when a shader-pack stage is active —
+    /// Phase 11 §34: the pack sees linear color, its pass does the sRGB
+    /// encode; caught as a wgpu validation error in browser E2E)
+    post_pipe_linear: wgpu::RenderPipeline,
     // blur directions: SEPARATE buffers per axis. A single buffer written
     // mid-encoder (between the h-blur and v-blur passes) does NOT work —
     // queue.write_buffer applies at the next submit, so both passes read the
@@ -1307,6 +1318,21 @@ pub struct Renderer {
     draw_mdi: bool,
     /// per-frame indirect draw records: [terrain | shadow | water] segments
     args_buf: wgpu::Buffer,
+    // ------------------------------------------------ Phase 11 (§34) packs --
+    /// active shader-pack stage (pipeline + bind group over the pack
+    /// handoff target) — None = engine composite writes the surface directly
+    pack_pipe: Option<(wgpu::RenderPipeline, wgpu::BindGroup)>,
+    /// PackUniform bridge buffer (params/viewport/time)
+    pack_buf: wgpu::Buffer,
+    /// active pack's engine-side grade row (PostUniform.q override)
+    pack_grade: Option<[f32; 4]>,
+    /// active pack id (F3/E2E) + tier label
+    pub pack_id: Option<String>,
+    pub pack_tier: String,
+    /// clone of the active pack (settings defaults feed PackUniform)
+    active_pack_src: Option<crate::shaders::ShaderPack>,
+    /// composite pipeline layout (pack composites reuse it, §34)
+    comp_pl: wgpu::PipelineLayout,
     present_modes: Vec<wgpu::PresentMode>,
     pub vsync: bool,
     /// diagnostic counter: frames successfully submitted (logged first 3)
@@ -2656,6 +2682,8 @@ impl Renderer {
         let easu_pipe = make_fs_pipe(&easu_mod, &post_pl, linear);
         // composite writes the final srgb-encoded image to the surface
         let post_pipe = make_fs_pipe(&post_mod, &comp_pl, format);
+        // Phase 11 §34: linear-target variant for the pack handoff path
+        let post_pipe_linear = make_fs_pipe(&post_mod, &comp_pl, wgpu::TextureFormat::Rgba8Unorm);
 
         // offscreen targets + bind groups at the real size
         // (blur-h reads q with the H-step aux; blur-v reads b1 with the V-step)
@@ -2694,6 +2722,14 @@ impl Renderer {
             report_boot_log("draw path: region-arena loop (zero per-chunk binds)");
         }
 
+        // Phase 11 §34: pack-uniform bridge buffer
+        let pack_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("pack-uniforms"),
+            size: std::mem::size_of::<crate::shaders::PackUniform>() as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
         let renderer = Renderer {
             surface,
             device,
@@ -2728,6 +2764,7 @@ impl Renderer {
             post_targets,
             post_samp,
             post_buf,
+            post_pipe_linear,
             aux_h_buf,
             aux_v_buf,
             easu_buf,
@@ -2760,6 +2797,13 @@ impl Renderer {
             regions: HashMap::new(),
             draw_mdi,
             args_buf,
+            pack_pipe: None,
+            pack_buf,
+            pack_grade: None,
+            pack_id: None,
+            pack_tier: String::new(),
+            active_pack_src: None,
+            comp_pl,
             present_modes,
             vsync,
             submitted_frames: 0,
@@ -2855,6 +2899,11 @@ impl Renderer {
         let bg_b1 = Self::single_tex_bg(&self.device, &self.post_bgl, &t.b1_view, &self.post_samp, &self.post_buf, &self.aux_v_buf);
         let bg_easu = Self::single_tex_bg(&self.device, &self.post_bgl, &t.scene_view, &self.post_samp, &self.post_buf, &self.easu_buf);
         let bg_comp = Self::comp_bg(&self.device, &self.comp_bgl, &t.up_view, &t.b2_view, &self.post_samp, &self.post_buf);
+        // Phase 11: the pack bind group follows the (resized) pack target
+        let bg_pack = Self::comp_bg(&self.device, &self.comp_bgl, &t.pack_view, &t.b2_view, &self.post_samp, &self.pack_buf);
+        if let Some((pipe, _)) = self.pack_pipe.take() {
+            self.pack_pipe = Some((pipe, bg_pack));
+        }
         // refresh the FSR EASU size constants for the new src/dst sizes
         let (sc_w, sc_h) = t.scene_size();
         self.queue.write_buffer(
@@ -3312,6 +3361,72 @@ impl Renderer {
         }
     }
 
+    /// Phase 11 §34 — install (or clear) a shader pack. Grade-only packs
+    /// just override the engine grade; packs with a composite stage get a
+    /// pipeline built from the WRAPPED, naga-validated WGSL. Invalid packs
+    /// are rejected with a boot-log line and the previous state kept (§46
+    /// resilience — a bad pack never takes the renderer down).
+    pub fn set_shader_pack(&mut self, pack: Option<&crate::shaders::ShaderPack>) {
+        let Some(p) = pack else {
+            self.pack_pipe = None;
+            self.pack_grade = None;
+            self.pack_id = None;
+            self.pack_tier.clear();
+            self.active_pack_src = None;
+            return;
+        };
+        self.pack_grade = Some(p.grade.as_q());
+        self.pack_id = Some(p.id.clone());
+        self.pack_tier = p.tier.clone();
+        self.active_pack_src = Some(p.clone());
+        match p.composite.as_deref() {
+            None => {
+                self.pack_pipe = None; // grade-only pack
+            }
+            Some(src) => {
+                let wrapped = crate::shaders::wrap_composite(src);
+                if let Err(e) = crate::shaders::validate_wgsl(&wrapped) {
+                    report_boot_log(&format!(
+                        "shader pack {} rejected at install: {}",
+                        p.id, e
+                    ));
+                    self.pack_pipe = None;
+                    return;
+                }
+                let module = self.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("pack-composite"),
+                    source: wgpu::ShaderSource::Wgsl(wrapped.into()),
+                });
+                let pipe = make_fullscreen_pipe(
+                    &self.device,
+                    &module,
+                    &self.comp_pl,
+                    self.config.format,
+                );
+                let bg = Self::comp_bg(
+                    &self.device,
+                    &self.comp_bgl,
+                    &self.post_targets.pack_view,
+                    &self.post_targets.b2_view,
+                    &self.post_samp,
+                    &self.pack_buf,
+                );
+                self.pack_pipe = Some((pipe, bg));
+            }
+        }
+    }
+
+    /// pack settings row 0 → PackUniform.params (v1: the pack's declared
+    /// defaults — first slider's default, or 1.0 = neutral)
+    fn pack_params_row(p: &crate::shaders::ShaderPack) -> [f32; 4] {
+        let x = p
+            .settings
+            .first()
+            .map(|s| s.default.clamp(s.min, s.max))
+            .unwrap_or(1.0);
+        [x, 0.0, 0.0, 0.0]
+    }
+
     /// Phase 9 §14 — submit one pass's draw list. The origin instance
     /// buffer must already be bound at slot 1 (whole buffer). Issues either
     /// MDI (one multi_draw per region run) or the zero-rebind loop (one
@@ -3448,10 +3563,16 @@ impl Renderer {
         // post uniform: mode, menu_blur, time, aspect | bloom, vig, sat, exp
         // | sharpen, scene texel size (FSR-lite RCAS uses the SCENE-resolution
         // texel so sharpening matches the upscaled pixels, not surface px)
-        let (bloom, vig, sat, exp) = match post.mode {
-            1 => (0.55, 0.14, 1.07, 1.0),   // vanilla+
-            2 => (0.85, 0.32, 1.16, 1.06),  // cinematic
-            _ => (0.0, 0.0, 1.0, 1.0),      // off
+        // Phase 11 §34: an active shader pack OVERRIDES the grade row with
+        // its declared preset (packs without a composite are grade-only)
+        let (bloom, vig, sat, exp) = if let Some([b, v, s, e]) = self.pack_grade {
+            (b, v, s, e)
+        } else {
+            match post.mode {
+                1 => (0.55, 0.14, 1.07, 1.0),   // vanilla+
+                2 => (0.85, 0.32, 1.16, 1.06),  // cinematic
+                _ => (0.0, 0.0, 1.0, 1.0),      // off
+            }
         };
         let post_u = PostUniform {
             p: [post.mode as f32, post.menu_blur.clamp(0.0, 1.0), sky.time, aspect],
@@ -3461,6 +3582,17 @@ impl Renderer {
             s: [post.sharpen.clamp(0.0, 1.0), 0.0, 0.0, 0.0],
         };
         self.queue.write_buffer(&self.post_buf, 0, bytemuck::bytes_of(&post_u));
+
+        // Phase 11 §34: bridge engine state → the active pack's uniforms
+        // (OptiFine-style alias subset — see shaders.rs PackUniform docs)
+        if let Some(p) = &self.active_pack_src {
+            let u = crate::shaders::PackUniform {
+                params: Self::pack_params_row(p),
+                viewport: [sw, sh, 1.0 / sw.max(1.0), 1.0 / sh.max(1.0)],
+                time: [sky.time, sky.day_light, if sky.underwater { 1.0 } else { 0.0 }, sky.min_light],
+            };
+            self.queue.write_buffer(&self.pack_buf, 0, bytemuck::bytes_of(&u));
+        }
 
         // ──────────────────────────────── sun shadow camera + globals ──
         // Ortho box following the player, aligned to the sun. The light-space
@@ -3854,12 +3986,20 @@ impl Renderer {
             pass.draw(0..3, 0..1);
         }
 
-        // ───────────────────────────────── pass 4: composite → surface ──
+        // ─────────── pass 4: composite → surface (or pack handoff) ──
         // (reads the EASU-upscaled target; applies RCAS sharpening when
-        // enabled, then bloom + grade + vignette)
+        // enabled, then bloom + grade + vignette). With an active pack
+        // STAGE the composite writes the LINEAR pack handoff target and
+        // pass 4.5 encodes to srgb on the surface (Phase 11 §34).
         {
+            let pack_active = self.pack_pipe.is_some();
+            let out_view: &wgpu::TextureView = if pack_active {
+                &self.post_targets.pack_view
+            } else {
+                &frame_view
+            };
             let att = wgpu::RenderPassColorAttachment {
-                view: &frame_view,
+                view: out_view,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
@@ -3873,8 +4013,37 @@ impl Renderer {
                 timestamp_writes: None,
                 occlusion_query_set: None,
             });
-            pass.set_pipeline(&self.post_pipe);
+            // pack path: LINEAR pipeline writing the LINEAR handoff target
+            if pack_active {
+                pass.set_pipeline(&self.post_pipe_linear);
+            } else {
+                pass.set_pipeline(&self.post_pipe);
+            }
             pass.set_bind_group(0, &self.bg_comp, &[]);
+            pass.draw(0..3, 0..1);
+        }
+
+        // ───────── pass 4.5: shader-pack composite → surface (§34) ──
+        // The pack's packGrade() runs on the LINEAR composite output + the
+        // bloom buffer; its result is srgb-encoded by the surface write.
+        if let Some((pipe, bg)) = &self.pack_pipe {
+            let att = wgpu::RenderPassColorAttachment {
+                view: &frame_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                    store: wgpu::StoreOp::Store,
+                },
+            };
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("shader-pack"),
+                color_attachments: &[Some(att)],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+            pass.set_pipeline(pipe);
+            pass.set_bind_group(0, bg, &[]);
             pass.draw(0..3, 0..1);
         }
 
@@ -3916,6 +4085,49 @@ impl Renderer {
 
         stats
     }
+}
+
+/// full-screen triangle pipeline (shared by the post chain and Phase-11
+/// pack composites — extracted from Renderer::new's make_fs_pipe)
+fn make_fullscreen_pipe(
+    device: &wgpu::Device,
+    module: &wgpu::ShaderModule,
+    layout: &wgpu::PipelineLayout,
+    out_format: wgpu::TextureFormat,
+) -> wgpu::RenderPipeline {
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("fs-pipe"),
+        layout: Some(layout),
+        vertex: wgpu::VertexState {
+            module,
+            entry_point: "vs_main",
+            compilation_options: Default::default(),
+            buffers: &[],
+        },
+        fragment: Some(wgpu::FragmentState {
+            module,
+            entry_point: "fs_main",
+            compilation_options: Default::default(),
+            targets: &[Some(wgpu::ColorTargetState {
+                format: out_format,
+                blend: None,
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: None,
+            polygon_mode: wgpu::PolygonMode::Fill,
+            unclipped_depth: false,
+            conservative: false,
+        },
+        depth_stencil: None,
+        multisample: wgpu::MultisampleState::default(),
+        multiview: None,
+        cache: None,
+    })
 }
 
 /// Choose the GPU backend on wasm by ACTUALLY requesting adapters with the

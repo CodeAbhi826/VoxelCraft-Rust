@@ -154,6 +154,22 @@ Key fix shipped alongside: `Furnaces` moved into `Sim` (ticks at exactly 20 Hz l
 |---|---|---|
 | P9 advanced performance | ✅ Done to gate | `src/draw.rs` (pure-CPU core, 7 tests), `render.rs` (RegionArena + capability-detected paths), vc_bench drawprep scene, browser E2E p9-webgl2-*.png, F3/bench draw stats |
 
+### Update 2026-09-02 (P11 — shader-pack API, tier SHADER-PACK-API)
+
+**Phase 11 is DONE to its gate** (§48: "native shader API, shader-pack metadata, compatibility subset, transformation layer… Gate: demonstrated compatibility with explicitly tested packs"). Tier labeling follows §34.2 exactly — **this is `SHADER-PACK-API`, NOT Iris/OptiFine compatibility** (that remains "a separate major compatibility project" per the spec's own rule; never claimed):
+
+- **Native framework (§34.1)**: `src/shaders.rs` — pack manifests (`shaders.json`: name/tier/grade/settings/composite), grade presets, the `PACK_CONTRACT` (packs define `fn packGrade(uv, scene, bloom, u: PackU) -> vec3`), engine WRAPPER WGSL (engine-owned bindings + VS; pack source embedded verbatim — packs cannot break geometry/bindings by design), recompilation via `set_shader_pack` (pipeline swap), tier enforcement (a manifest self-declaring above SHADER-PACK-API is rejected citing §34.2).
+- **Transformation layer (§34.2 subset)**: `PackUniform` bridges engine state with documented OptiFine-style aliases (viewWidth/viewHeight ← viewport.xy, frameTimeCounter ← time.x, worldTime ← time.y, isEyeInWater ← time.z, eyeBrightness ← time.w).
+- **Runtime validation (§46)**: naga moved to a regular dependency — pack WGSL is parse+type-checked BEFORE any pipeline exists; invalid packs are rejected with the contract text in the error, never fatal. 6 unit tests (incl. both demo packs naga-validated in CI).
+- **Renderer integration**: composite → LINEAR pack handoff target → pack pass → sRGB surface (packs see linear color; the engine encodes once); grade-only packs (no WGSL) just override the engine grade row; `post_pipe_linear` variant for the handoff target (a format-mismatch wgpu validation error caught by browser E2E and fixed); pack bind group rebuilt on resize; SHADER options row cycles off → vanilla+ → cinematic → packs; persisted; F3 "Pack: id (tier)" line; `shader:N` E2E command; stats `shaderMode/shaderPack/packTier`.
+- **Packs ship with the engine** (clean-room, our own art, embedded via `include_str!` — works native + wasm): `shader-packs/warm-evening/` (golden-hour grade + filmic roll-off) and `shader-packs/moonlit/` (time-varying grain via frameTimeCounter — proves per-frame uniforms flow). Native additionally discovers `shader-packs/` dirs on disk.
+- **E2E (the gate)**: browser on the WebGL2/SwiftShader fallback — `shader:3`/`shader:4` activate the packs (stats verify pack id + tier), pixel analysis vs vanilla+: warm-evening R +4.4 / diff energy 56.8, moonlit B +6.8 / diff energy 25.5 (directional, per-pack); switching back clears the pack; zero panics after the format fix. Screenshots: `p11-pack-{warm-evening,moonlit,none-vanilla}.png`.
+- **Deliberately v1-scoped (documented, not claimed)**: no texture/depth access for packs (color+time only — a pack cannot break parity), pack settings at declared defaults (sliders are the JSON knob, options wiring = v2), no OptiFine/Iris pack loading (separate project per §34.2).
+
+| Spec phase | Status | Evidence |
+|---|---|---|
+| P11 shader compatibility (SHADER-PACK-API tier) | ✅ Done to gate | `src/shaders.rs` (6 tests), `render.rs` pack pass + linear composite, `shader-packs/` demo packs, browser E2E screenshots + pixel diffs, F3/stats/E2E wiring |
+
 ---
 
 ## 4. Recommended remaining order (revised, risk-aware)

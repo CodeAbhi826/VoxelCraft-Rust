@@ -32,6 +32,10 @@ pollster = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 image = { version = "0.25", default-features = false, features = ["png"] }
+# WGSL validation of shader-pack sources at RUNTIME (§34/§46: a broken
+# pack must be rejected before pipeline creation, not at boot on a GPU).
+# Same frontend wgpu 22 ships — also used by the shader unit tests.
+naga = { version = "22", features = ["wgsl-in"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 wgpu = "22"
@@ -43,10 +47,8 @@ rayon = "1.10"
 flate2 = "1"
 
 [dev-dependencies]
-# WGSL shader validation in unit tests (the FSR EASU/RCAS ports are big
-# enough that runtime-only shader errors would be painful to debug);
-# naga's `valid` module ships built-in, no feature needed
-naga = { version = "22", features = ["wgsl-in"] }
+# naga moved to a regular dependency (runtime shader-pack validation);
+# the dev-dependency block keeps no duplicate.
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wgpu = { version = "22", features = ["webgl"] }

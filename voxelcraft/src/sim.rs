@@ -20,6 +20,9 @@ pub struct Sim {
     /// furnace block entities (Phase 7 §27) — ticked at the sim rate so
     /// COOK_TICKS = 200 means the vanilla 10 seconds
     pub furnaces: crate::furnace::Furnaces,
+    /// brewing-stand block entities (Phase 7 §29) — BREW_TICKS = 400 means
+    /// the vanilla 20 seconds
+    pub brewing: crate::brewing::Brewings,
     acc: f32,
     /// total sim ticks executed (stats/F3/E2E)
     pub ticks: u64,
@@ -32,6 +35,7 @@ impl Sim {
             random: RandomTicker::new(seed),
             items: ItemSystem::new(seed ^ 0xD00_0042),
             furnaces: crate::furnace::Furnaces::default(),
+            brewing: crate::brewing::Brewings::default(),
             acc: 0.0,
             ticks: 0,
         }
@@ -97,6 +101,10 @@ impl Sim {
         // dirty marking; visual-only light — FURNACE_STATE/LIT both map to
         // the FURNACE block id so the light engine sees no delta)
         let _changed = self.furnaces.tick(world);
+
+        // 3b. brewing stands (§29): brew cycles; `completed` positions are
+        // drained by game.rs for the bubble sound + stats
+        self.brewing.tick();
 
         // 4. item entities
         self.items.tick(world);

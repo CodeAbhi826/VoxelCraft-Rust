@@ -162,7 +162,7 @@ pub enum Screen {
     Pause,
 }
 
-/// open container screens (Phase 7 §27)
+/// open container screens (Phase 7 §27/§29)
 #[derive(Clone, Copy, PartialEq)]
 pub enum Container {
     /// player inventory with its 2×2 craft grid
@@ -171,6 +171,8 @@ pub enum Container {
     Crafting { pos: [i32; 3] },
     /// furnace UI bound to a block entity
     Furnace { pos: [i32; 3] },
+    /// brewing-stand UI bound to a block entity (§29)
+    Brewing { pos: [i32; 3] },
 }
 
 impl Screen {
@@ -1650,6 +1652,7 @@ impl GameApp {
                     }
                 }
                 Container::Furnace { .. } => {}
+                Container::Brewing { .. } => {}
             }
         }
         // cursor returns to the inventory
@@ -1788,6 +1791,47 @@ impl GameApp {
                     }
                 }
             }
+            SlotRef::BrewIngredient => {
+                let Some(Container::Brewing { pos }) = self.container else {
+                    return;
+                };
+                let Some(b) = self.sim.brewing.map.get_mut(&pos) else {
+                    return;
+                };
+                Inventory::slot_click(&mut b.ingredient, &mut self.cursor_stack, right);
+            }
+            SlotRef::BrewFuel => {
+                let Some(Container::Brewing { pos }) = self.container else {
+                    return;
+                };
+                // vanilla: only fuel items in the fuel slot
+                if !self.cursor_stack.is_empty()
+                    && !crate::brewing::is_fuel(self.cursor_stack.block)
+                {
+                    return;
+                }
+                let Some(b) = self.sim.brewing.map.get_mut(&pos) else {
+                    return;
+                };
+                Inventory::slot_click(&mut b.fuel, &mut self.cursor_stack, right);
+            }
+            SlotRef::BrewBottle(i) => {
+                let Some(Container::Brewing { pos }) = self.container else {
+                    return;
+                };
+                // vanilla: bottle slots accept only bottles/potions
+                if !self.cursor_stack.is_empty()
+                    && !is_item_block(self.cursor_stack.block)
+                {
+                    return;
+                }
+                let Some(b) = self.sim.brewing.map.get_mut(&pos) else {
+                    return;
+                };
+                let mut slot = b.bottles[i];
+                Inventory::slot_click(&mut slot, &mut self.cursor_stack, right);
+                b.bottles[i] = slot;
+            }
             SlotRef::Inv(_) => {}
         }
         self.click_sound();
@@ -1812,9 +1856,9 @@ impl GameApp {
     /// pure data, built fresh every UI rebuild
     fn container_view(&self) -> crate::ui::ContainerView {
         use crate::ui::{ContainerKind, ContainerView};
-        let (kind, furnace) = match self.container {
-            Some(Container::Inventory) => (ContainerKind::Inventory, None),
-            Some(Container::Crafting { .. }) => (ContainerKind::Crafting, None),
+        let (kind, furnace, brewing) = match self.container {
+            Some(Container::Inventory) => (ContainerKind::Inventory, None, None),
+            Some(Container::Crafting { .. }) => (ContainerKind::Crafting, None, None),
             Some(Container::Furnace { pos }) => {
                 // live slots + progress fractions for the flame/arrow
                 let f = self
@@ -1833,9 +1877,28 @@ impl GameApp {
                 (
                     ContainerKind::Furnace,
                     Some((f.input, f.fuel, f.output, burn, cook)),
+                    None,
                 )
             }
-            None => (ContainerKind::Inventory, None),
+            Some(Container::Brewing { pos }) => {
+                // live slots + progress fractions for the bubbles/charge bar
+                let b = self
+                    .sim
+                    .brewing
+                    .map
+                    .get(&pos)
+                    .cloned()
+                    .unwrap_or_default();
+                let fuel_frac = b.fuel_charges as f32
+                    / crate::brewing::FUEL_OPERATIONS as f32;
+                let brew_frac = b.progress();
+                (
+                    ContainerKind::Brewing,
+                    None,
+                    Some((b.ingredient, b.fuel, b.bottles, fuel_frac, brew_frac)),
+                )
+            }
+            None => (ContainerKind::Inventory, None, None),
         };
         let size = self.craft_grid_size();
         let grid: Vec<crate::inventory::ItemStack> =
@@ -1848,6 +1911,7 @@ impl GameApp {
             grid,
             craft_out,
             furnace,
+            brewing,
             cursor: self.cursor_stack,
         }
     }
@@ -1872,6 +1936,8 @@ impl GameApp {
             .spawn_block_break(x, y, z, b, biome, sky, blk);
         self.sim.items.drop_block(x, y, z, b, biome, sky, blk);
         notify_sim(&self.world, &mut self.sim.sched, x, y, z);
+        // §27/§29: container contents spill + entity cleanup
+        self.drop_container_contents([x, y, z], b);
         // §21: the dig event, same as the interactive path
         self.play_event(
             crate::sounds::family_event(crate::blocks::def(b).sound, true),
@@ -1879,6 +1945,37 @@ impl GameApp {
             1.0,
         );
         self.edits += 1;
+    }
+
+    /// §27/§29: breaking a container block drops its contents and removes
+    /// the block entity (vanilla behavior — also fixes the latent entity
+    /// leak where broken furnaces stayed in the sim map forever)
+    fn drop_container_contents(&mut self, pos: [i32; 3], broke: u8) {
+        if broke == FURNACE {
+            if let Some(f) = self.sim.furnaces.map.remove(&pos) {
+                let (biome, sky, blk) = light_at(&self.world, &self.light, pos[0], pos[1] + 1, pos[2]);
+                for s in [&f.input, &f.fuel, &f.output] {
+                    if !s.is_empty() {
+                        for _ in 0..s.count {
+                            self.sim.items.drop_block(pos[0], pos[1] + 1, pos[2], s.block, biome, sky, blk);
+                        }
+                    }
+                }
+            }
+        } else if broke == BREWING_STAND {
+            if let Some(b) = self.sim.brewing.map.remove(&pos) {
+                let (biome, sky, blk) = light_at(&self.world, &self.light, pos[0], pos[1] + 1, pos[2]);
+                let mut slots = vec![b.ingredient, b.fuel];
+                slots.extend(b.bottles.iter().copied());
+                for s in &slots {
+                    if !s.is_empty() {
+                        for _ in 0..s.count {
+                            self.sim.items.drop_block(pos[0], pos[1] + 1, pos[2], s.block, biome, sky, blk);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /// E2E hook: place a block / water source / redstone component.
@@ -1936,6 +2033,19 @@ impl GameApp {
         crate::phase!(self.phases, crate::bench::PHASE_SIM, {
             self.sim.update(dt, &mut self.world, &mut self.light);
         });
+
+        // §29: brewing completions → bubble sound at the stand (drained
+        // here so the audio path stays on the game thread, not the sim)
+        if !self.sim.brewing.completed.is_empty() {
+            let done: Vec<[i32; 3]> = self.sim.brewing.completed.drain(..).collect();
+            for pos in done {
+                self.play_event(
+                    "block.brewing_stand.bubble",
+                    Some([pos[0] as f32 + 0.5, pos[1] as f32 + 0.5, pos[2] as f32 + 0.5]),
+                    1.0,
+                );
+            }
+        }
 
         // item pickup: entities in radius land in the hotbar
         if self.screen == Screen::Game {
@@ -2085,6 +2195,67 @@ impl GameApp {
                                 self.open_container(Container::Furnace { pos });
                                 crate::render::report_boot_log("e2e: furnace screen open");
                             }
+                            Some("brewing") => {
+                                self.test_place(BREWING_STAND, pos[0], pos[1], pos[2]);
+                                self.sim.brewing.map.entry(pos).or_default();
+                                self.open_container(Container::Brewing { pos });
+                                crate::render::report_boot_log("e2e: brewing screen open");
+                            }
+                            Some("brew") => {
+                                // brew:<ticks> — scripted §29 flow: place a
+                                // stand, load it through REAL slot
+                                // semantics (3 water bottles, wart
+                                // ingredient, netherrack fuel), sim N ticks,
+                                // report the bottle contents
+                                let n_ticks: i32 = parts
+                                    .get(2)
+                                    .and_then(|s| s.parse().ok())
+                                    .unwrap_or(crate::brewing::BREW_TICKS);
+                                self.test_place(BREWING_STAND, pos[0], pos[1], pos[2]);
+                                let entry = self.sim.brewing.map.entry(pos).or_default();
+                                use crate::inventory::Inventory;
+                                // bottles through slot_click semantics
+                                for i in 0..3 {
+                                    let mut slot = entry.bottles[i];
+                                    let mut cursor =
+                                        crate::inventory::ItemStack::new(POTION_WATER, 1);
+                                    Inventory::slot_click(&mut slot, &mut cursor, false);
+                                    entry.bottles[i] = slot;
+                                }
+                                entry.ingredient = crate::inventory::ItemStack::new(MUSHROOM_RED, 1);
+                                entry.fuel = crate::inventory::ItemStack::new(NETHERRACK, 1);
+                                drop(entry);
+                                // advance the sim deterministically
+                                for _ in 0..n_ticks {
+                                    self.sim.step(
+                                        &mut self.world,
+                                        &mut self.light,
+                                    );
+                                }
+                                let describe = |s: &crate::inventory::ItemStack| {
+                                    if s.is_empty() {
+                                        "-".to_string()
+                                    } else {
+                                        format!("{}x{}", name(s.block), s.count)
+                                    }
+                                };
+                                let b = self
+                                    .sim
+                                    .brewing
+                                    .map
+                                    .get(&pos)
+                                    .cloned()
+                                    .unwrap_or_default();
+                                crate::render::report_boot_log(&format!(
+                                    "e2e: brew {}t -> bottles [{}, {}, {}] brewed={} charges={}",
+                                    n_ticks,
+                                    describe(&b.bottles[0]),
+                                    describe(&b.bottles[1]),
+                                    describe(&b.bottles[2]),
+                                    self.sim.brewing.total_brewed,
+                                    b.fuel_charges
+                                ));
+                            }
                             _ => {}
                         }
                     }
@@ -2107,6 +2278,18 @@ impl GameApp {
                             Some("planks") => Some(PLANKS),
                             Some("cobble") => Some(COBBLE),
                             Some("sand") => Some(SAND),
+                            // §29 brewing chain
+                            Some("brewing_stand") => Some(BREWING_STAND),
+                            Some("glass_bottle") => Some(POTION_EMPTY),
+                            Some("potion_water") => Some(POTION_WATER),
+                            Some("potion_awkward") => Some(POTION_AWKWARD),
+                            Some("potion_mundane") => Some(POTION_MUNDANE),
+                            Some("potion_healing") => Some(POTION_HEALING),
+                            Some("potion_healing_2") => Some(POTION_HEALING_II),
+                            Some("mushroom_red") => Some(MUSHROOM_RED),
+                            Some("mushroom_brown") => Some(MUSHROOM_BROWN),
+                            Some("netherrack") => Some(NETHERRACK),
+                            Some("glowstone") => Some(GLOWSTONE),
                             _ => None,
                         };
                         let n: u8 = parts.get(2).and_then(|s| s.parse().ok()).unwrap_or(1);
@@ -2117,6 +2300,56 @@ impl GameApp {
                                 name(b)
                             ));
                             self.ui.dirty = true;
+                        }
+                    }
+                    Some("fill") => {
+                        // fill: — E2E shortcut for the bottle-at-water
+                        // interaction: every empty glass bottle in the
+                        // inventory becomes a water bottle (the interactive
+                        // path requires submersion, verified separately)
+                        let empties = self.player.inv.count_of(POTION_EMPTY);
+                        if empties > 0 {
+                            self.player.inv.consume(POTION_EMPTY, empties as u8);
+                            let left = self.player.inv.add(POTION_WATER, empties as u8);
+                            crate::render::report_boot_log(&format!(
+                                "e2e: filled {empties} bottles (leftover {left})"
+                            ));
+                            self.ui.dirty = true;
+                        } else {
+                            crate::render::report_boot_log("e2e: no glass bottles to fill");
+                        }
+                    }
+                    Some("drink") => {
+                        // drink:<potion> — consume one potion from the
+                        // inventory, report the health effect (§29)
+                        let b = match parts.get(1).copied() {
+                            Some("potion_water") => Some(POTION_WATER),
+                            Some("potion_awkward") => Some(POTION_AWKWARD),
+                            Some("potion_mundane") => Some(POTION_MUNDANE),
+                            Some("potion_healing") => Some(POTION_HEALING),
+                            Some("potion_healing_2") => Some(POTION_HEALING_II),
+                            _ => None,
+                        };
+                        match b {
+                            None => crate::render::report_boot_log(
+                                "e2e: drink:<potion_water|potion_awkward|potion_mundane|potion_healing|potion_healing_2>",
+                            ),
+                            Some(b) if self.player.inv.consume(b, 1) => {
+                                let before = self.player.health;
+                                if let Some(h) = crate::brewing::potion_heal(b) {
+                                    self.player.heal(h);
+                                }
+                                self.player.inv.add(POTION_EMPTY, 1);
+                                self.play_event("entity.generic.drink", None, 0.9);
+                                crate::render::report_boot_log(&format!(
+                                    "e2e: drank {} hp {:.1} -> {:.1}",
+                                    name(b),
+                                    before,
+                                    self.player.health
+                                ));
+                                self.ui.dirty = true;
+                            }
+                            Some(_) => crate::render::report_boot_log("e2e: no such potion"),
                         }
                     }
                     Some("craft") => {
@@ -2378,6 +2611,8 @@ impl GameApp {
                             pos[0], pos[1], pos[2], broke, biome, sky, blk,
                         );
                         notify_sim(&self.world, &mut self.sim.sched, pos[0], pos[1], pos[2]);
+                        // §27/§29: container contents spill + entity cleanup
+                        self.drop_container_contents(pos, broke);
                         self.play_event(
                             crate::sounds::family_event(def(b).sound, true),
                             Some([pos[0] as f32 + 0.5, pos[1] as f32 + 0.5, pos[2] as f32 + 0.5]),
@@ -2415,9 +2650,82 @@ impl GameApp {
                         self.sim.furnaces.map.entry(tpos).or_default();
                         self.open_container(Container::Furnace { pos: tpos });
                         self.place_timer = 0.3;
+                    } else if tb == BREWING_STAND {
+                        // §29: right-click opens the brewing screen; the
+                        // block entity is created on first use (empty state)
+                        self.sim.brewing.map.entry(tpos).or_default();
+                        self.open_container(Container::Brewing { pos: tpos });
+                        self.place_timer = 0.3;
+                    } else if !self.player.held().is_empty()
+                        && self.player.held().block == POTION_EMPTY
+                        && (self.player.in_water || self.player.head_in_water)
+                    {
+                        // §29: right-click while submerged fills a glass
+                        // bottle (vanilla bottle-on-water interaction; our
+                        // raycast skips water, so the submersion check is
+                        // the playable trigger)
+                        let held = self.player.held_mut();
+                        held.count -= 1;
+                        let empty = held.count == 0;
+                        if empty {
+                            *held = crate::inventory::ItemStack::EMPTY;
+                        }
+                        let left = self.player.inv.add(POTION_WATER, 1);
+                        if left > 0 {
+                            self.sim.items.drop_block(
+                                self.player.pos.x.floor() as i32,
+                                self.player.pos.y.floor() as i32,
+                                self.player.pos.z.floor() as i32,
+                                POTION_WATER, 2, 15, 0,
+                            );
+                        }
+                        self.play_event("liquid.splash", None, 0.8);
+                        self.place_timer = 0.3;
+                        self.ui.dirty = true;
+                    } else if !self.player.held().is_empty()
+                        && is_item_block(self.player.held().block)
+                        && self.player.held().block != POTION_EMPTY
+                    {
+                        // §29: right-click drinks a potion — instant health
+                        // heals; water/awkward/mundane do nothing (vanilla);
+                        // the glass bottle comes back
+                        let b = self.player.held().block;
+                        let heal = crate::brewing::potion_heal(b);
+                        let held = self.player.held_mut();
+                        held.count -= 1;
+                        let empty = held.count == 0;
+                        if empty {
+                            *held = crate::inventory::ItemStack::EMPTY;
+                        }
+                        drop(held);
+                        if let Some(h) = heal {
+                            self.player.heal(h);
+                            crate::render::report_boot_log(&format!(
+                                "e2e: drank {} (+{h} hp → {})",
+                                name(b),
+                                self.player.health
+                            ));
+                        }
+                        // vanilla: the empty glass bottle returns
+                        let left = self.player.inv.add(POTION_EMPTY, 1);
+                        if left > 0 {
+                            self.sim.items.drop_block(
+                                self.player.pos.x.floor() as i32,
+                                self.player.pos.y.floor() as i32,
+                                self.player.pos.z.floor() as i32,
+                                POTION_EMPTY, 2, 15, 0,
+                            );
+                        }
+                        self.play_event("entity.generic.drink", None, 0.9);
+                        self.place_timer = 0.3;
+                        self.ui.dirty = true;
                     } else if !self.player.held().is_empty() {
                         let b = self.player.held().block;
-                        if let Some((_, _, prev)) = self.target {
+                        if is_item_block(b) {
+                            // potions/bottles are never placeable (§29) —
+                            // the drink/fill branches above catch the real
+                            // interactions; empty bottle out of water = no-op
+                        } else if let Some((_, _, prev)) = self.target {
                         let pb = self.world.get_block(prev[0], prev[1], prev[2]);
                         let replaceable = pb == AIR || pb == WATER || is_cross(pb);
                         let collides_player = is_solid(b) && self.player.block_intersects_player(prev);
@@ -2776,6 +3084,11 @@ impl GameApp {
             ("itemsDropped", StatsVal::F(self.sim.items.dropped_total as f32)),
             ("itemsPicked", StatsVal::F(self.sim.items.picked_total as f32)),
             ("sounds", StatsVal::F(self.sounds_played as f32)),
+            // §29: real player health + brewing counters
+            ("health", StatsVal::F(self.player.health)),
+            ("furnaces", StatsVal::F(self.sim.furnaces.map.len() as f32)),
+            ("brewStands", StatsVal::F(self.sim.brewing.map.len() as f32)),
+            ("potionsBrewed", StatsVal::F(self.sim.brewing.total_brewed as f32)),
             ("fwd", StatsVal::B(self.input.fwd)),
             ("back", StatsVal::B(self.input.back)),
             ("left", StatsVal::B(self.input.left)),
@@ -3104,7 +3417,8 @@ impl GameApp {
         );
         let xp = (self.edits % 50) as f32 / 50.0;
         let level = self.edits / 50;
-        self.ui.status_bars(20.0, 20.0, xp, level);
+        // §29: the health bar is REAL now — potions heal it, damage lowers it
+        self.ui.status_bars(self.player.health, 20.0, xp, level);
 
         if self.show_debug {
             let p = &self.player;

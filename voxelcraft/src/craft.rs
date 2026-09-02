@@ -51,6 +51,28 @@ pub const RECIPES: &[Recipe] = &[
     // 3×3 sand → sand... no. sand→glass needs the furnace. Recipes for
     // wool→? keep the set tight and honest.
     // 2×2 snow → snow block? snow IS a block already. skip.
+    // 3×3 glass V (vanilla glass-bottle recipe, 3 bottles) — the §29 chain
+    // head: bottle → fill at water → brew
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(GLASS), Ing::None,     Ing::Block(GLASS),
+            Ing::None,     Ing::Block(GLASS), Ing::None,
+            Ing::None,     Ing::None,     Ing::None,
+        ],
+        out: ItemStack::new(POTION_EMPTY, 3),
+    },
+    // 3×3: cobble bottom row + netherrack center (vanilla stand recipe:
+    // blaze rod center — §29 palette adaptation)
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::None,       Ing::Block(NETHERRACK), Ing::None,
+            Ing::None,       Ing::None,       Ing::None,
+            Ing::Block(COBBLE), Ing::Block(COBBLE), Ing::Block(COBBLE),
+        ],
+        out: ItemStack::new(BREWING_STAND, 1),
+    },
 ];
 
 /// match a crafting grid (row-major, `size`×`size` of ItemStacks) → the
@@ -152,5 +174,41 @@ mod tests {
         assert!(g.iter().all(|s| s.count == 1));
         consume_grid(&mut g);
         assert!(g.iter().all(|s| s.is_empty()));
+    }
+
+    #[test]
+    fn glass_v_makes_three_bottles() {
+        // the vanilla glass-bottle V: G_G / _G_ in a 3×3 (crafting table)
+        let mut g = vec![ItemStack::EMPTY; 9];
+        g[0] = ItemStack::new(GLASS, 7);
+        g[2] = ItemStack::new(GLASS, 7);
+        g[4] = ItemStack::new(GLASS, 7);
+        let out = match_grid(&g, 3).unwrap();
+        assert_eq!((out.block, out.count), (POTION_EMPTY, 3));
+        // 2×2 grid also hosts the V (pattern fits inside 2×2 with the
+        // bottom row empty → but our exact-shape rule needs the third
+        // glass in the second row — a 2×2 has it at cell 3: G G / G _ →
+        // NOT the V; verify the furnace ring does not false-match)
+        let mut g2 = vec![ItemStack::EMPTY; 9];
+        g2[0] = ItemStack::new(GLASS, 1);
+        g2[1] = ItemStack::new(GLASS, 1);
+        g2[3] = ItemStack::new(GLASS, 1);
+        assert!(match_grid(&g2, 3).is_none(), "not the V pattern");
+    }
+
+    #[test]
+    fn stand_recipe_needs_the_exact_layout() {
+        let mut g = vec![ItemStack::EMPTY; 9];
+        g[1] = ItemStack::new(NETHERRACK, 1);
+        for i in [6, 7, 8] {
+            g[i] = ItemStack::new(COBBLE, 2);
+        }
+        let out = match_grid(&g, 3).unwrap();
+        assert_eq!((out.block, out.count), (BREWING_STAND, 1));
+        // rod NOT centered → no match
+        let mut bad = g.clone();
+        bad[1] = ItemStack::EMPTY;
+        bad[0] = ItemStack::new(NETHERRACK, 1);
+        assert!(match_grid(&bad, 3).is_none());
     }
 }

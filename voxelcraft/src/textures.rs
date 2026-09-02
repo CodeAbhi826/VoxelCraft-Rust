@@ -515,6 +515,71 @@ fn redstone_torch_art(a: &mut [u8], t: u16) {
     });
 }
 
+/// brewing stand (Phase 7 §29): a rod with a cross-arm and hint bottles —
+/// cross-rendered like redstone components (not a full cube)
+fn brewing_stand_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "................",
+        ".....r...r......",
+        ".....r...r......",
+        "......rrr.......",
+        ".......w........",
+        ".......w........",
+        ".......w........",
+        "....wwwwwww.....",
+        ".......w........",
+        ".......w........",
+        ".......w........",
+        "......www.......",
+        ".....wwwww......",
+        "................",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'r' => Some((150, 40, 50, 255)),    // hint bottles (red-ish)
+        'w' => Some((120, 84, 48, 255)),   // wood rod
+        _ => None,
+    });
+}
+
+/// potion bottle (Phase 7 §29): one bottle shape, per-potion liquid color.
+/// `glow` brightens the liquid (the level-II variant sparkles).
+fn potion_art(a: &mut [u8], t: u16, liquid: (i32, i32, i32), glow: bool) {
+    let rows = [
+        "................",
+        "................",
+        "................",
+        ".......c........",
+        ".......c........",
+        "......ggg.......",
+        "......gGg.......",
+        "......lLl.......",
+        "......lLl.......",
+        ".....glLlg......",
+        ".....glLlg......",
+        ".....glLlg......",
+        ".....glllg......",
+        "......ggg.......",
+        "................",
+        "................",
+    ];
+    let (r, g, b) = liquid;
+    let (r, g, b) = if glow {
+        (r + 60, g + 60, b + 60)
+    } else {
+        (r, g, b)
+    };
+    art(a, t, rows, &|ch| match ch {
+        'c' => Some((150, 116, 68, 255)), // cork
+        'g' => Some((200, 220, 235, 190)), // glass (translucent)
+        'G' => Some((235, 245, 250, 220)), // glass highlight
+        'l' => Some((r.clamp(0, 255), g.clamp(0, 255), b.clamp(0, 255), 235)),
+        'L' => Some(((r + 40).clamp(0, 255), (g + 40).clamp(0, 255), (b + 40).clamp(0, 255), 245)),
+        _ => None,
+    });
+}
+
 /// lever: a wooden base with a diagonal handle
 fn lever_art(a: &mut [u8], t: u16) {
     let rows = [
@@ -1245,6 +1310,14 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_NETHERRACK => netherrack(&mut a, t, &mut rng),
             TILE_QUARTZ_ORE => quartz_ore(&mut a, t, &mut rng),
             TILE_SOUL_SAND => soul_sand(&mut a, t, &mut rng),
+            // brewing (Phase 7 §29)
+            TILE_BREWING_STAND => brewing_stand_art(&mut a, t),
+            TILE_BOTTLE_EMPTY => potion_art(&mut a, t, (120, 130, 150), false),
+            TILE_POTION_WATER => potion_art(&mut a, t, (60, 100, 220), false),
+            TILE_POTION_AWKWARD => potion_art(&mut a, t, (200, 120, 200), false),
+            TILE_POTION_MUNDANE => potion_art(&mut a, t, (130, 130, 130), false),
+            TILE_POTION_HEALING => potion_art(&mut a, t, (220, 60, 110), false),
+            TILE_POTION_HEALING_II => potion_art(&mut a, t, (240, 80, 60), true),
             _ => {}
         }
     }

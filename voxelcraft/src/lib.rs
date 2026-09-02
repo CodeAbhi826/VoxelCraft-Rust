@@ -3,6 +3,7 @@
 
 pub mod bench;
 pub mod blocks;
+pub mod brewing;
 pub mod chunk;
 pub mod draw;
 pub mod entities;

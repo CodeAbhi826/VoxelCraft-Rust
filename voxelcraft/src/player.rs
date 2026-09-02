@@ -61,6 +61,9 @@ pub struct Player {
     pub flying: bool,
     pub in_water: bool,
     pub head_in_water: bool,
+    /// health points (0..20, vanilla half-heart scale ×2; §29 potions act
+    /// on this, the HUD renders it as the real health bar)
+    pub health: f32,
     /// 36-slot inventory: 0..9 hotbar, 9..36 storage (Phase 7)
     pub inv: crate::inventory::Inventory,
     pub selected: usize,
@@ -82,6 +85,7 @@ impl Player {
             flying: true, // spawn in air, land when chunks ready
             in_water: false,
             head_in_water: false,
+            health: 20.0,
             inv: {
                 let mut inv = crate::inventory::Inventory::new(crate::inventory::INV_SLOTS);
                 for (i, &b) in PALETTE.iter().enumerate() {
@@ -101,6 +105,18 @@ impl Player {
     /// the selected hotbar stack
     pub fn held(&self) -> crate::inventory::ItemStack {
         self.inv.slots[self.selected]
+    }
+
+    /// clamp-to-max healing (§29 potions)
+    pub fn heal(&mut self, amount: f32) {
+        self.health = (self.health + amount).min(20.0);
+    }
+
+    /// damage clamped to 0; returns the ACTUAL damage applied
+    pub fn damage(&mut self, amount: f32) -> f32 {
+        let before = self.health;
+        self.health = (self.health - amount).max(0.0);
+        before - self.health
     }
 
     /// mutable access to the selected hotbar stack

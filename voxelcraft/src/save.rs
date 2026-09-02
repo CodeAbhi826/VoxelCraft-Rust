@@ -706,6 +706,16 @@ pub fn read_level_dat(world_dir: &Path) -> std::io::Result<Option<WorldMeta>> {
 
 /// Default save location: `./saves/VoxelCraft` next to the current dir.
 /// (A platform config-dir layout arrives with §32 settings work.)
+/// §28: the save directory of one dimension. Vanilla layout: the overworld
+/// saves at the world root; the nether at `<world>/DIM-1` (the End, if it
+/// ever ships, is `DIM1`). Chunks of different dimensions never mix.
+pub fn dimension_dir(world_dir: &Path, dim: crate::world::Dimension) -> PathBuf {
+    match dim {
+        crate::world::Dimension::Overworld => world_dir.to_path_buf(),
+        crate::world::Dimension::Nether => world_dir.join("DIM-1"),
+    }
+}
+
 pub fn default_world_dir() -> PathBuf {
     std::env::current_dir()
         .unwrap_or_else(|_| PathBuf::from("."))

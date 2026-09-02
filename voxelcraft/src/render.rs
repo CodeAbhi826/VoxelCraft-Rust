@@ -158,6 +158,9 @@ pub struct SkyState {
     pub underwater: bool,
     /// minimum light floor (brightness setting) — G.misc.w in shaders
     pub min_light: f32,
+    /// §28: skip the sky/sun entirely — the Nether's fog-colored clear IS
+    /// the sky (no gradient, no sun disc, no clouds)
+    pub skyless: bool,
 }
 
 /// Post-processing request for a frame.
@@ -3840,10 +3843,13 @@ impl Renderer {
                 occlusion_query_set: None,
             });
 
-            // 1. sky
-            pass.set_pipeline(&self.sky_pipe);
-            pass.set_bind_group(0, &self.world_bg, &[]);
-            pass.draw(0..3, 0..1);
+            // 1. sky (§28: skipped in skyless dimensions — the nether's
+            // fog-colored clear color IS the sky)
+            if !sky.skyless {
+                pass.set_pipeline(&self.sky_pipe);
+                pass.set_bind_group(0, &self.world_bg, &[]);
+                pass.draw(0..3, 0..1);
+            }
 
             // 2. terrain — Phase 9: region-grouped near→far (approximately
             // front-to-back for early-z), whole origin buffer bound once,

@@ -390,6 +390,78 @@ fn furnace_top_art(a: &mut [u8], t: u16) {
     });
 }
 
+// nether blocks (Phase 7 §28): our own procedural art, clean-room
+
+/// netherrack: maroon rock — mottled base, darker pits, occasional bright
+/// flecks (the "living rock" look)
+fn netherrack(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [111, 54, 54], 10, rng);
+    for _ in 0..9 {
+        let cx = rng.next_range(16) as i32;
+        let cy = rng.next_range(16) as i32;
+        let shade = 60 + rng.next_range(24) as i32;
+        for dy in -1..=1 {
+            for dx in -1..=1 {
+                if rng.next_f32() < 0.75 {
+                    put(a, t, cx + dx, cy + dy, jit(shade + 18, 6, rng), jit(shade, 5, rng), jit(shade, 5, rng), 255);
+                }
+            }
+        }
+    }
+    // sparse warm flecks
+    for _ in 0..5 {
+        let x = rng.next_range(16) as i32;
+        let y = rng.next_range(16) as i32;
+        put(a, t, x, y, jit(178, 14, rng), jit(96, 10, rng), jit(88, 10, rng), 255);
+    }
+}
+
+/// nether quartz ore: netherrack base + cream crystal clusters
+fn quartz_ore(a: &mut [u8], t: u16, rng: &mut Rng) {
+    netherrack(a, t, rng);
+    for _ in 0..4 {
+        let cx = 2 + rng.next_range(12) as i32;
+        let cy = 2 + rng.next_range(12) as i32;
+        let shade = 214 + rng.next_range(24) as i32;
+        for dy in -1i32..=1 {
+            for dx in -1i32..=1 {
+                let corner = dx.abs() == 1 && dy.abs() == 1;
+                if !corner || rng.next_f32() < 0.5 {
+                    put(a, t, cx + dx, cy + dy, jit(shade, 8, rng), jit(shade - 12, 8, rng), jit(shade - 34, 8, rng), 255);
+                }
+            }
+        }
+    }
+}
+
+/// soul sand: swampy brown with dark pores and sagging swirls
+fn soul_sand(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [84, 64, 51], 8, rng);
+    // sagging darker striations
+    for y in 0..16i32 {
+        let band = ((y as f32 / 16.0) * 6.0).sin() * 8.0;
+        for x in 0..16i32 {
+            if rng.next_f32() < 0.55 {
+                put(a, t, x, y, jit(72 + band as i32, 6, rng), jit(55 + band as i32, 6, rng), jit(44 + band as i32, 6, rng), 255);
+            }
+        }
+    }
+    // the faces-in-the-sand pores
+    for _ in 0..6 {
+        let cx = rng.next_range(16) as i32;
+        let cy = rng.next_range(16) as i32;
+        for (dx, dy) in [(0, 0), (1, 0), (0, 1)] {
+            put(a, t, cx + dx, cy + dy, jit(44, 6, rng), jit(33, 5, rng), jit(26, 5, rng), 255);
+        }
+    }
+    // light speckle so it reads as grain, not mud
+    for _ in 0..7 {
+        let x = rng.next_range(16) as i32;
+        let y = rng.next_range(16) as i32;
+        put(a, t, x, y, jit(118, 10, rng), jit(92, 9, rng), jit(74, 8, rng), 255);
+    }
+}
+
 fn redstone_wire_art(a: &mut [u8], t: u16) {
     let rows = [
         "................",
@@ -1169,6 +1241,10 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_FURNACE_SIDE => furnace_side_art(&mut a, t, false),
             TILE_FURNACE_TOP => furnace_top_art(&mut a, t),
             TILE_FURNACE_LIT_SIDE => furnace_side_art(&mut a, t, true),
+            // nether blocks (Phase 7 §28)
+            TILE_NETHERRACK => netherrack(&mut a, t, &mut rng),
+            TILE_QUARTZ_ORE => quartz_ore(&mut a, t, &mut rng),
+            TILE_SOUL_SAND => soul_sand(&mut a, t, &mut rng),
             _ => {}
         }
     }

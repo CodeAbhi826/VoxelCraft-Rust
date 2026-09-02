@@ -6,12 +6,17 @@ pub mod blocks;
 pub mod chunk;
 pub mod game;
 pub mod gen;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod anvil;
 pub mod mesh;
 pub mod model;
+pub mod nbt;
 pub mod pack;
 pub mod player;
 pub mod render;
 pub mod rng;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod save;
 pub mod sounds;
 pub mod textures;
 pub mod ui;

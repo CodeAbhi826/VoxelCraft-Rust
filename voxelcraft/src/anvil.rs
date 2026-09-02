@@ -145,11 +145,13 @@ pub fn read_chunk(world_dir: &Path, cx: i32, cz: i32) -> std::io::Result<Option<
         return Ok(None); // chunk absent
     }
     let start = sector as usize * SECTOR_BYTES;
-    // bounds + truncation guards (§46 — never panic, treat as absent)
-    if start >= bytes.len() {
+    // bounds + truncation guards (§46 — never panic, treat as absent).
+    // A record needs at least 5 bytes past the sector start: 4 length +
+    // 1 compression byte — anything less is a corrupt/torn tail.
+    let available = bytes.len().saturating_sub(start);
+    if available < 5 {
         return Ok(None);
     }
-    let available = bytes.len() - start;
     let record_len = u32::from_be_bytes(
         bytes[start..start + 4].try_into().map_err(|e| {
             std::io::Error::new(std::io::ErrorKind::UnexpectedEof, format!("anvil: short length field: {e}"))
@@ -237,7 +239,8 @@ pub fn write_chunk(world_dir: &Path, cx: i32, cz: i32, nbt_bytes: &[u8]) -> std:
     for slot in 0..CHUNKS_PER_SIDE * CHUNKS_PER_SIDE {
         let Some(rec) = &records[slot] else { continue };
         let record_len = 1 + rec.data.len();
-        let sectors = record_len.div_ceil(SECTOR_BYTES) as u32;
+        // whole on-disk record incl. the 4-byte length prefix
+        let sectors = (4 + record_len).div_ceil(SECTOR_BYTES) as u32;
         // location-table sector count is ONE byte: a record spanning more
         // than 255 sectors (> ~1 MiB compressed) cannot be represented —
         // reject instead of silently wrapping the count (§46).
@@ -256,9 +259,12 @@ pub fn write_chunk(world_dir: &Path, cx: i32, cz: i32, nbt_bytes: &[u8]) -> std:
         // timestamp table lives at bytes 4096..8192 (second header sector)
         let ts = timestamps[slot].to_be_bytes();
         out[SECTOR_BYTES + slot * 4..SECTOR_BYTES + slot * 4 + 4].copy_from_slice(&ts);
-        // payload
+        // payload — the on-disk record is [4-byte BE length][scheme][data];
+        // `record_len` counts what FOLLOWS the length field, so the buffer
+        // must hold 4 + record_len bytes, and the sector count (and the
+        // location-table count byte) covers the WHOLE record incl. prefix.
         let start = out.len();
-        out.resize(start + record_len, 0);
+        out.resize(start + 4 + record_len, 0);
         out[start..start + 4].copy_from_slice(&(record_len as u32).to_be_bytes());
         out[start + 4] = rec.scheme;
         out[start + 5..start + 5 + rec.data.len()].copy_from_slice(&rec.data);

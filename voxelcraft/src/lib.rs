@@ -17,6 +17,7 @@ pub mod model;
 pub mod nbt;
 pub mod pack;
 pub mod player;
+pub mod redstone;
 pub mod render;
 pub mod rng;
 #[cfg(not(target_arch = "wasm32"))]

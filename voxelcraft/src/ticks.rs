@@ -7,12 +7,17 @@
 //! produces the same update order. This is the backbone the Phase-6
 //! regression suite hashes.
 
-use crate::world::World;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 pub struct TickScheduler {
     /// (due_tick, insertion_seq) → position
     queue: BTreeMap<(u64, u64), [i32; 3]>,
+    /// pending positions — VANILLA SEMANTICS: a block has at most ONE
+    /// scheduled update. Deduping is also what keeps propagation circuits
+    /// from exploding the queue exponentially (each change notifies ~7
+    /// neighbors; without dedupe a 4-wire oscillator reaches 10⁴ entries
+    /// within a hundred ticks).
+    pending_pos: HashSet<[i32; 3]>,
     seq: u64,
     /// current sim tick (20 Hz since world start)
     now: u64,
@@ -30,7 +35,14 @@ impl Default for TickScheduler {
 
 impl TickScheduler {
     pub fn new() -> Self {
-        TickScheduler { queue: BTreeMap::new(), seq: 0, now: 0, scheduled_total: 0, executed_total: 0 }
+        TickScheduler {
+            queue: BTreeMap::new(),
+            pending_pos: HashSet::new(),
+            seq: 0,
+            now: 0,
+            scheduled_total: 0,
+            executed_total: 0,
+        }
     }
 
     /// current sim tick
@@ -42,11 +54,13 @@ impl TickScheduler {
         self.queue.len()
     }
 
-    /// schedule an update at `pos` in `delay` sim ticks. Re-scheduling the
-    /// same position is allowed (vanilla dedupes per-position; multiple
-    /// entries are harmless because the handlers are idempotent — a stale
-    /// entry for a changed block no-ops).
+    /// schedule an update at `pos` in `delay` sim ticks. A position with a
+    /// pending update is NOT re-scheduled (vanilla one-entry-per-block
+    /// rule) — the earliest deadline wins.
     pub fn schedule(&mut self, pos: [i32; 3], delay: u64) {
+        if !self.pending_pos.insert(pos) {
+            return; // already queued
+        }
         let seq = self.seq;
         self.seq += 1;
         self.queue.insert((self.now + delay.max(1), seq), pos);
@@ -63,6 +77,7 @@ impl TickScheduler {
                 break;
             }
             let (_, pos) = self.queue.remove_entry(&key).unwrap();
+            self.pending_pos.remove(&pos);
             due.push(pos);
         }
         self.executed_total += due.len() as u64;
@@ -115,6 +130,21 @@ impl RandomTicker {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn positions_dedupe_while_pending() {
+        let mut t = TickScheduler::new();
+        t.schedule([5, 5, 5], 2);
+        t.schedule([5, 5, 5], 9); // deduped (already pending)
+        assert_eq!(t.pending(), 1);
+        assert_eq!(t.scheduled_total, 1);
+        assert_eq!(t.tick(), Vec::<[i32; 3]>::new());
+        let due = t.tick();
+        assert_eq!(due, vec![[5, 5, 5]]);
+        // after execution it can be scheduled again
+        t.schedule([5, 5, 5], 3);
+        assert_eq!(t.pending(), 1);
+    }
 
     #[test]
     fn due_order_is_fifo_within_a_tick() {

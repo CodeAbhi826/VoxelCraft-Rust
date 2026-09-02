@@ -329,6 +329,87 @@ fn art(a: &mut [u8], t: u16, rows: [&str; 16], map: &dyn Fn(char) -> Option<(i32
     }
 }
 
+/// §25 redstone wire: a flat red cross laid on the block floor
+fn redstone_wire_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "......r........",
+        "....rrrrrrrr....",
+        "......r........",
+        "......r........",
+        "......r........",
+        "......r....r...",
+        "......r..rrrr..",
+        "......r..r.....",
+        "......r..r.....",
+    ];
+    art(a, t, rows, &|c| match c {
+        'r' => Some((120, 2, 2, 255)),
+        _ => None,
+    });
+}
+
+/// redstone torch: a lit stick with a glowing tip
+fn redstone_torch_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "................",
+        "................",
+        ".......gg.......",
+        ".......gg.......",
+        "......gyyg......",
+        "......gyyg......",
+        ".......yy.......",
+        ".......yy.......",
+        ".......ww.......",
+        ".......ww.......",
+        ".......ww.......",
+        ".......ww.......",
+        ".......ww.......",
+        ".......ww.......",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'g' => Some((200, 40, 20, 255)),
+        'y' => Some((255, 150, 40, 255)),
+        'w' => Some((120, 84, 48, 255)),
+        _ => None,
+    });
+}
+
+/// lever: a wooden base with a diagonal handle
+fn lever_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "................",
+        "................",
+        "..........hh....",
+        ".........hh.....",
+        "........hh......",
+        ".......hh.......",
+        "......hh........",
+        ".....bb.........",
+        "....bbbbb.......",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'h' => Some((140, 100, 60, 255)),
+        'b' => Some((90, 64, 40, 255)),
+        _ => None,
+    });
+}
+
 fn tall_grass_art(a: &mut [u8], t: u16) {
     let rows = [
         "................",
@@ -1020,6 +1101,10 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_MUSHROOM_RED => mushroom_red_art(&mut a, t),
             TILE_MUSHROOM_BROWN => mushroom_brown_art(&mut a, t),
             TILE_DEAD_BUSH => dead_bush_art(&mut a, t),
+            // redstone core (Phase 6 §25)
+            TILE_REDSTONE_WIRE => redstone_wire_art(&mut a, t),
+            TILE_REDSTONE_TORCH => redstone_torch_art(&mut a, t),
+            TILE_LEVER => lever_art(&mut a, t),
             _ => {}
         }
     }

@@ -59,6 +59,15 @@ impl Sim {
                 crate::blocks::SAND | crate::blocks::GRAVEL => {
                     fluids::gravity_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
                 }
+                crate::blocks::REDSTONE_WIRE => {
+                    crate::redstone::wire_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
+                }
+                crate::blocks::REDSTONE_TORCH => {
+                    crate::redstone::torch_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
+                }
+                crate::blocks::LEVER => {
+                    crate::redstone::lever_tick(world, pos[0], pos[1], pos[2]);
+                }
                 _ => {} // stale entry: block changed since scheduling
             }
             // light follows every sim-side block edit (water/sand move

@@ -7,6 +7,7 @@ pub mod chunk;
 pub mod game;
 pub mod gen;
 pub mod light;
+pub mod particles;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod anvil;
 pub mod mesh;
@@ -20,6 +21,7 @@ pub mod rng;
 pub mod save;
 pub mod sounds;
 pub mod textures;
+pub mod tint;
 pub mod ui;
 pub mod world;
 

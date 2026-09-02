@@ -27,6 +27,23 @@ pub enum WebEvent {
     Visibility { hidden: bool },
 }
 
+/// E2E test command queue: the page JS pushes strings
+/// (`window.__vcCmds.push("break:12:70:8")`), the game pops one per frame.
+/// Returns None off-wasm or when the queue is empty/absent.
+pub fn pop_test_cmd() -> Option<String> {
+    let window = web_sys::window()?;
+    let win: wasm_bindgen::JsValue = window.into();
+    let arr = js_sys::Reflect::get(&win, &"__vcCmds".into()).ok()?;
+    let arr = arr.dyn_into::<js_sys::Array>().ok()?;
+    let len = arr.length();
+    if len == 0 {
+        return None;
+    }
+    // shift() the front element
+    let shifted = arr.shift();
+    shifted.as_string()
+}
+
 /// Drain `window.voxelcraftEvents` (array of small arrays) → typed events.
 pub fn drain_events() -> Vec<WebEvent> {
     let mut out = Vec::new();

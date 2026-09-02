@@ -56,11 +56,13 @@ struct AuxUniform {
 
 /// shadow-map globals: light view-projection + params
 /// params = (enabled, strength, fade_start, fade_end)
+/// size = (map_px, _, _, _) — §17 quality (1024/2048/4096)
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct ShadowGlobals {
     shadow_vp: [[f32; 4]; 4],
     params: [f32; 4],
+    size: [f32; 4],
 }
 
 /// offscreen scene + bloom pyramid textures (recreated on resize)
@@ -153,6 +155,8 @@ pub struct PostParams {
 pub struct RenderStats {
     pub chunks: u32,
     pub tris: u32,
+    /// particles drawn this frame
+    pub particles: u32,
 }
 
 // ---------------------------------------------------------------- shaders
@@ -172,11 +176,16 @@ struct Globals {
 @group(0) @binding(3) var shadow_tex: texture_2d<f32>;
 @group(0) @binding(4) var shadow_samp: sampler;
 @group(0) @binding(5) var<uniform> SH: ShadowG;
+// §18 biome tint LUT (row = kind, col = slot; textureLoad is legal with
+// per-vertex indices on every backend — incl. Vulkan's UBO rule)
+@group(0) @binding(6) var tint_tex: texture_2d<f32>;
 
 struct ShadowG {
     shadow_vp: mat4x4<f32>,
     // x = enabled, y = strength, zw = distance fade start/end
     params: vec4<f32>,
+    // x = shadow map size in px (1024/2048/4096 — §17 quality)
+    size: vec4<f32>,
 };
 
 fn unpackShadowDepth(c: vec4<f32>) -> f32 {
@@ -194,8 +203,8 @@ fn sampleShadow(world: vec3<f32>, nrm: vec3<f32>) -> f32 {
     let uv = clip.xy * 0.5 + 0.5;
     if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) { return 0.0; }
     let d = clip.z;
-    let ts = vec2<i32>(2048, 2048);
-    let base = vec2<i32>(uv * vec2<f32>(2048.0, 2048.0));
+    let ts = vec2<i32>(i32(SH.size.x), i32(SH.size.x));
+    let base = vec2<i32>(uv * SH.size.xy);
     var acc = 0.0;
     for (var dy: i32 = -1; dy <= 1; dy = dy + 1) {
         for (var dx: i32 = -1; dx <= 1; dx = dx + 1) {
@@ -239,6 +248,7 @@ struct VsOut {
     @location(3) light: f32,
     @location(4) sky: f32,
     @location(5) block: f32,
+    @location(6) tintcol: vec3<f32>,
 };
 
 @vertex
@@ -255,6 +265,14 @@ fn vs_main(
     let sky = f32((v_data.w >> 4u) & 0xFu) / 15.0;
     let block = f32(v_data.w & 0xFu) / 15.0;
     let world = vc16_pos(v_data, origin);
+    // biome tint (§18): resolve the packed index HERE — the COLOR
+    // interpolates across the face, the index must not
+    let tint = (v_data.w >> 8u) & 0xFFu;
+    let tintcol = select(
+        vec3<f32>(1.0, 1.0, 1.0),
+        textureLoad(tint_tex, vec2<i32>(i32(tint & 63u), i32(tint >> 6u)), 0).rgb,
+        tint != 0u,
+    );
     var out: VsOut;
     out.pos = G.view_proj * vec4<f32>(world, 1.0);
     out.world = world;
@@ -263,6 +281,7 @@ fn vs_main(
     out.light = face_shade(nrm) * ao_factor(ao);
     out.sky = sky;
     out.block = block;
+    out.tintcol = tintcol;
     return out;
 }
 
@@ -280,7 +299,7 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let dyn_l = in.sky * day * sun_factor;
     // G.misc.w = min-light floor (brightness setting, kills pitch-black caves)
     let sky_l = max(max(dyn_l, in.block), G.misc.w);
-    var rgb = c.rgb * in.light * sky_l;
+    var rgb = c.rgb * in.tintcol * in.light * sky_l;
     let d = distance(in.world, G.cam.xyz);
     let f = smoothstep(G.fog_color.w, G.sun_dir.w, d);
     rgb = mix(rgb, G.fog_color.rgb, f);
@@ -306,10 +325,15 @@ struct Globals {
 @group(0) @binding(3) var shadow_tex: texture_2d<f32>;
 @group(0) @binding(4) var shadow_samp: sampler;
 @group(0) @binding(5) var<uniform> SH: ShadowG;
+// §18 biome tint LUT (water takes the biome water color)
+@group(0) @binding(6) var tint_tex: texture_2d<f32>;
 
 struct ShadowG {
     shadow_vp: mat4x4<f32>,
+    // x = enabled, y = strength, zw = distance fade start/end
     params: vec4<f32>,
+    // x = shadow map size in px (§17 quality)
+    size: vec4<f32>,
 };
 
 fn unpackShadowDepth(c: vec4<f32>) -> f32 {
@@ -323,7 +347,7 @@ fn sampleShadow(world: vec3<f32>, nrm: vec3<f32>) -> f32 {
     let uv = clip.xy * 0.5 + 0.5;
     if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) { return 0.0; }
     let d = clip.z;
-    let base = vec2<i32>(uv * vec2<f32>(2048.0, 2048.0));
+    let base = vec2<i32>(uv * SH.size.xy);
     var acc = 0.0;
     for (var dy: i32 = -1; dy <= 1; dy = dy + 1) {
         for (var dx: i32 = -1; dx <= 1; dx = dx + 1) {
@@ -367,6 +391,7 @@ struct VsOut {
     @location(3) light: f32,
     @location(4) sky: f32,
     @location(5) block: f32,
+    @location(6) tintcol: vec3<f32>,
 };
 
 @vertex
@@ -382,6 +407,13 @@ fn vs_main(
     let tile = vec2<f32>(f32(tile_i % 16u), f32(tile_i / 16u));
     let sky = f32((v_data.w >> 4u) & 0xFu) / 15.0;
     let block = f32(v_data.w & 0xFu) / 15.0;
+    // §18 water tint: resolve the packed index in the vertex stage
+    let tint = (v_data.w >> 8u) & 0xFFu;
+    let tintcol = select(
+        vec3<f32>(1.0, 1.0, 1.0),
+        textureLoad(tint_tex, vec2<i32>(i32(tint & 63u), i32(tint >> 6u)), 0).rgb,
+        tint != 0u,
+    );
     var p = vc16_pos(v_data, origin);
     let is_top = abs(fract(p.y) - 0.875) < 0.01;
     let wob = sin(G.misc.y * 1.6 + p.x * 0.7 + p.z * 1.1) * 0.045
@@ -395,6 +427,7 @@ fn vs_main(
     out.light = face_shade(nrm) * ao_factor(ao);
     out.sky = sky;
     out.block = block;
+    out.tintcol = tintcol;
     return out;
 }
 
@@ -411,7 +444,7 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let dyn_l = in.sky * day * sun_factor;
     // G.misc.w = min-light floor (brightness setting)
     let sky_l = max(max(dyn_l, in.block), G.misc.w);
-    var rgb = c.rgb * in.light * sky_l * 1.05;
+    var rgb = c.rgb * in.tintcol * in.light * sky_l * 1.05;
     let d = distance(in.world, G.cam.xyz);
     let f = smoothstep(G.fog_color.w, G.sun_dir.w, d);
     rgb = mix(rgb, G.fog_color.rgb, f);
@@ -587,6 +620,56 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let f = smoothstep(G.fog_color.w, G.sun_dir.w, d);
     col = mix(col, G.fog_color.rgb, f * 0.9);
     return vec4<f32>(col, c.a * 0.55);
+}
+"#;
+
+/// Block particles (§16.2 pass 4: after the translucent water pass, before
+/// clouds). Billboard quads built CPU-side against the camera basis — the
+/// vertex carries ABSOLUTE atlas UVs (a random 4×4-px quarter of the block
+/// tile) and a baked light × tint color.
+const PARTICLE_SHADER: &str = r#"
+struct Globals {
+    view_proj: mat4x4<f32>,
+    inv_view_proj: mat4x4<f32>,
+    cam: vec4<f32>,
+    fog_color: vec4<f32>,
+    sun_dir: vec4<f32>,
+    misc: vec4<f32>,
+};
+@group(0) @binding(0) var<uniform> G: Globals;
+@group(0) @binding(1) var atlas_tex: texture_2d<f32>;
+@group(0) @binding(2) var atlas_samp: sampler;
+
+struct VsOut {
+    @builtin(position) pos: vec4<f32>,
+    @location(0) world: vec3<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) col: vec3<f32>,
+};
+
+@vertex
+fn vs_main(
+    @location(0) pos: vec3<f32>,
+    @location(1) uv: vec2<f32>,
+    @location(2) col: vec3<f32>,
+) -> VsOut {
+    var out: VsOut;
+    out.pos = G.view_proj * vec4<f32>(pos, 1.0);
+    out.world = pos;
+    out.uv = uv;
+    out.col = col;
+    return out;
+}
+
+@fragment
+fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
+    let c = textureSample(atlas_tex, atlas_samp, in.uv);
+    if (c.a < 0.1) { discard; }
+    var rgb = c.rgb * in.col;
+    let d = distance(in.world, G.cam.xyz);
+    let f = smoothstep(G.fog_color.w, G.sun_dir.w, d);
+    rgb = mix(rgb, G.fog_color.rgb, f);
+    return vec4<f32>(rgb, c.a);
 }
 "#;
 
@@ -787,6 +870,7 @@ const SHADOW_SHADER: &str = r#"
 struct ShadowG {
     shadow_vp: mat4x4<f32>,
     params: vec4<f32>,
+    size: vec4<f32>,
 };
 @group(0) @binding(5) var<uniform> SH: ShadowG;
 
@@ -848,6 +932,7 @@ pub struct Renderer {
     atlas_view: wgpu::TextureView,
     sampler: wgpu::Sampler,
     globals_buf: wgpu::Buffer,
+    world_bgl: wgpu::BindGroupLayout,
     world_bg: wgpu::BindGroup,
     /// per-frame instance-rate chunk origins (x,z in world blocks) — slot 1
     /// of the VC-16 terrain/water/shadow pipelines
@@ -900,6 +985,15 @@ pub struct Renderer {
     shadow_buf: wgpu::Buffer,
     shadow_bg: wgpu::BindGroup,
     shadow_pipe: wgpu::RenderPipeline,
+    /// current shadow map resolution (px per side) — §17 quality setting
+    pub shadow_px: u32,
+    // §18 biome tint LUT (row = kind, col = slot)
+    tint_tex: wgpu::Texture,
+    tint_view: wgpu::TextureView,
+    // particles (§16.2 pass 4)
+    part_bg: wgpu::BindGroup,
+    part_pipe: wgpu::RenderPipeline,
+    particle_vb: wgpu::Buffer,
     // internal render scale (FSR-lite): scene/bloom/depth sized w*scale
     pub upscale: f32,
     /// adapter/backend description for the F3 overlay (e.g. "WebGPU (SwiftShader)")
@@ -1144,16 +1238,30 @@ impl Renderer {
                     },
                     count: None,
                 },
+                // §18 biome tint LUT — textureLoad in the VERTEX stage
+                // (per-vertex indices are only guaranteed for texture
+                // loads, not uniform array indexing, on Vulkan/WebGL2)
+                wgpu::BindGroupLayoutEntry {
+                    binding: 6,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
             ],
         });
 
-        // shadow map resources: 2048² RGBA8 packed-depth target + its own
-        // depth buffer (color targets cannot depth-test, and the depth
-        // texture is what keeps the FRONT-MOST surface in the map when
-        // geometry overlaps in the light view).
+        // shadow map resources: RGBA8 packed-depth target + its own depth
+        // buffer (color targets cannot depth-test, and the depth texture is
+        // what keeps the FRONT-MOST surface in the map when geometry
+        // overlaps in the light view). §17 quality: 1024/2048/4096 selectable.
+        let shadow_px: u32 = 2048;
         let shadow_extent = wgpu::Extent3d {
-            width: 2048,
-            height: 2048,
+            width: shadow_px,
+            height: shadow_px,
             depth_or_array_layers: 1,
         };
         let shadow_tex = device.create_texture(&wgpu::TextureDescriptor {
@@ -1193,6 +1301,7 @@ impl Renderer {
         let shadow_globals = ShadowGlobals {
             shadow_vp: Mat4::IDENTITY.to_cols_array_2d(),
             params: [0.0, 0.0, 0.0, 0.0],
+            size: [shadow_px as f32, 0.0, 0.0, 0.0],
         };
         queue.write_buffer(&shadow_buf, 0, bytemuck::bytes_of(&shadow_globals));
 
@@ -1210,6 +1319,44 @@ impl Renderer {
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+
+        // §18 biome tint LUT: 64×4 RGBA8 (row = kind, col = slot). Static
+        // engine constants — written once, never touched again.
+        let tint_data = crate::tint::lut_rgba();
+        let tint_tex = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("tint-lut"),
+            size: wgpu::Extent3d {
+                width: crate::tint::LUT_W,
+                height: crate::tint::LUT_H,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        queue.write_texture(
+            wgpu::ImageCopyTexture {
+                texture: &tint_tex,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            &tint_data,
+            wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(crate::tint::LUT_W * 4),
+                rows_per_image: Some(crate::tint::LUT_H),
+            },
+            wgpu::Extent3d {
+                width: crate::tint::LUT_W,
+                height: crate::tint::LUT_H,
+                depth_or_array_layers: 1,
+            },
+        );
+        let tint_view = tint_tex.create_view(&wgpu::TextureViewDescriptor::default());
 
         let world_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("world-bg"),
@@ -1246,6 +1393,10 @@ impl Renderer {
                         offset: 0,
                         size: None,
                     }),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: wgpu::BindingResource::TextureView(&tint_view),
                 },
             ],
         });
@@ -1479,6 +1630,133 @@ impl Renderer {
             multisample: wgpu::MultisampleState::default(),
             multiview: None,
             cache: None,
+        });
+
+        // --------------------------------------------- particles (§16.2)
+        // billboard quads, alpha blend, depth-TEST but no depth write —
+        // drawn after the translucent water pass, before clouds
+        let part_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("particles"),
+            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(PARTICLE_SHADER)),
+        });
+        let part_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("part-bgl"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+        });
+        let part_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("part-bg"),
+            layout: &part_bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: &globals_buf,
+                        offset: 0,
+                        size: None,
+                    }),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&atlas_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+            ],
+        });
+        let part_vbl = [wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<crate::particles::ParticleVertex>() as u64,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &[
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 0,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                wgpu::VertexAttribute {
+                    offset: 12,
+                    shader_location: 1,
+                    format: wgpu::VertexFormat::Float32x2,
+                },
+                wgpu::VertexAttribute {
+                    offset: 20,
+                    shader_location: 2,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+            ],
+        }];
+        let part_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("part-pl"),
+            bind_group_layouts: &[&part_bgl],
+            push_constant_ranges: &[],
+        });
+        let part_pipe = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("part-pipe"),
+            layout: Some(&part_pl),
+            vertex: wgpu::VertexState {
+                module: &part_mod,
+                entry_point: "vs_main",
+                compilation_options: Default::default(),
+                buffers: &part_vbl,
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &part_mod,
+                entry_point: "fs_main",
+                compilation_options: Default::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: scene_format,
+                    blend: opaque_blend,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: None, // billboards: winding varies with view angle
+                polygon_mode: wgpu::PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
+            },
+            depth_stencil: Some(depth_state(false, wgpu::CompareFunction::Less)),
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        });
+        // dynamic billboard buffer: MAX_PARTICLES quads × 6 verts × 32 B
+        let particle_vb = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("particle-vb"),
+            size: (crate::particles::MAX_PARTICLES * 6 * 32) as u64,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
         });
 
         // ---------------------------------------------------------- UI
@@ -2064,6 +2342,7 @@ impl Renderer {
             atlas_view,
             sampler,
             globals_buf,
+            world_bgl,
             world_bg,
             origin_vb,
             terrain_pipe,
@@ -2104,6 +2383,12 @@ impl Renderer {
             shadow_buf,
             shadow_bg,
             shadow_pipe,
+            shadow_px,
+            tint_tex,
+            tint_view,
+            part_bg,
+            part_pipe,
+            particle_vb,
             upscale,
             backend_name,
             chunks: HashMap::new(),
@@ -2264,6 +2549,84 @@ impl Renderer {
             ((self.config.height as f32) * scale).round().max(1.0) as u32,
         );
         self.rebuild_post_targets();
+    }
+
+    /// §17 shadow quality: rebuild the shadow map at a new resolution
+    /// (1024/2048/4096). Recreates the packed-depth target + depth buffer
+    /// and rebinds it into the world bind group (the terrain/water shaders
+    /// read the size from the ShadowGlobals uniform each frame).
+    pub fn set_shadow_quality(&mut self, px: u32) {
+        let px = px.clamp(1024, 4096);
+        if px == self.shadow_px {
+            return;
+        }
+        self.shadow_px = px;
+        let extent = wgpu::Extent3d { width: px, height: px, depth_or_array_layers: 1 };
+        let tex = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("shadow"),
+            size: extent,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        });
+        self.shadow_tex = tex.create_view(&wgpu::TextureViewDescriptor::default());
+        let dtex = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("shadow-depth"),
+            size: extent,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Depth32Float,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        });
+        self.shadow_depth = dtex.create_view(&wgpu::TextureViewDescriptor::default());
+        // world_bg binds the shadow VIEW (binding 3) — rebuild it
+        self.world_bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("world-bg"),
+            layout: &self.world_bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: &self.globals_buf,
+                        offset: 0,
+                        size: None,
+                    }),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&self.atlas_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(&self.shadow_tex),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::Sampler(&self.shadow_samp),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: &self.shadow_buf,
+                        offset: 0,
+                        size: None,
+                    }),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: wgpu::BindingResource::TextureView(&self.tint_view),
+                },
+            ],
+        });
     }
 
     /// internal (scaled) scene size in px
@@ -2468,6 +2831,7 @@ impl Renderer {
         selection: Option<(i32, i32, i32)>,
         post: &PostParams,
         clouds: bool,
+        particles: &[crate::particles::ParticleVertex],
     ) -> RenderStats {
         let frame = match self.surface.get_current_texture() {
             Ok(f) => f,
@@ -2566,11 +2930,12 @@ impl Renderer {
         let mut sh_globals = ShadowGlobals {
             shadow_vp: Mat4::IDENTITY.to_cols_array_2d(),
             params: [0.0, 0.0, 0.0, 0.0],
+            size: [self.shadow_px as f32, 0.0, 0.0, 0.0],
         };
         if sh_strength > 0.0 {
             const SHADOW_R: f32 = 110.0;
             const SHADOW_FAR: f32 = 420.0;
-            let texel = 2.0 * SHADOW_R / 2048.0;
+            let texel = 2.0 * SHADOW_R / self.shadow_px as f32;
             let center0 = Vec3::new(cam.eye.x, 0.0, cam.eye.z);
             let light_pos0 = center0 + sky.sun_dir * (SHADOW_FAR * 0.5);
             let view0 = Mat4::look_at_rh(light_pos0, center0, Vec3::Y);
@@ -2592,6 +2957,7 @@ impl Renderer {
             sh_globals = ShadowGlobals {
                 shadow_vp: sh_vp.to_cols_array_2d(),
                 params: [1.0, sh_strength, 90.0, 110.0],
+                size: [self.shadow_px as f32, 0.0, 0.0, 0.0],
             };
         }
         self.queue
@@ -2808,6 +3174,21 @@ impl Renderer {
                 pass.set_vertex_buffer(1, self.origin_vb.slice((idx * 8) as u64..(idx * 8 + 8) as u64));
                 pass.set_index_buffer(i.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..*n, 0, 0..1);
+            }
+
+            // 4.5 particles (§16.2 pass 4): billboard quads uploaded per
+            // frame, alpha-blended, depth-tested but not written — after
+            // the translucent water pass, before clouds
+            if !particles.is_empty() {
+                let bytes =
+                    bytemuck::cast_slice(particles);
+                self.queue.write_buffer(&self.particle_vb, 0, bytes);
+                pass.set_pipeline(&self.part_pipe);
+                pass.set_bind_group(0, &self.part_bg, &[]);
+                pass.set_vertex_buffer(0, self.particle_vb.slice(..));
+                let n = (particles.len() as u32).min(crate::particles::MAX_PARTICLES as u32 * 6);
+                pass.draw(0..n, 0..1);
+                stats.particles += n / 6;
             }
 
             // 5. clouds (translucent plane above the world)

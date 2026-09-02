@@ -4,6 +4,7 @@
 use crate::blocks::*;
 use crate::chunk::Chunk;
 use crate::gen::TerrainGen;
+use crate::light::LightData;
 use crate::rng::Rng;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -23,22 +24,6 @@ pub const CAUSE_MATERIAL: u8 = 4;
 pub const CAUSE_TRANSPARENCY: u8 = 8;
 pub const CAUSE_VISIBILITY: u8 = 16;
 
-/// light propagation budget — the radius a block-light/sky-light change can
-/// reach through air (vanilla 15 levels, one per BFS step)
-const LIGHT_RADIUS: i32 = 15;
-
-/// section bitset covering the y range [ylo, yhi] (clamped to 0..255)
-#[inline]
-fn sections_spanning(ylo: i32, yhi: i32) -> u16 {
-    let lo = (ylo.max(0) / 16) as usize;
-    let hi = (yhi.min(255).max(0) / 16) as usize;
-    let mut m = 0u16;
-    for s in lo..=hi.min(15) {
-        m |= 1 << s;
-    }
-    m
-}
-
 /// material class for §12 cause accounting: cutout/transparent vs solid
 #[inline]
 fn is_transparent_class(b: u8) -> bool {
@@ -49,6 +34,10 @@ pub struct World {
     pub seed: u64,
     pub gen: TerrainGen,
     pub chunks: HashMap<ChunkPos, Arc<Chunk>>,
+    /// persistent per-chunk light (Phase 4 §18): sky + block channels,
+    /// updated incrementally by light::LightEngine, snapshotted for mesh
+    /// jobs exactly like the block data (Arc COW)
+    pub light: HashMap<ChunkPos, Arc<LightData>>,
     /// chunks fully generated + decorated (meshable)
     pub decorated: HashSet<ChunkPos>,
     /// edits queued for not-yet-generated chunks: (block_idx, id)
@@ -69,6 +58,7 @@ impl World {
             seed,
             gen: TerrainGen::new(seed),
             chunks: HashMap::new(),
+            light: HashMap::new(),
             decorated: HashSet::new(),
             pending: HashMap::new(),
             dirty: HashMap::new(),
@@ -161,32 +151,38 @@ impl World {
     /// Player-driven block edit (copy-on-write so in-flight mesh jobs with old
     /// snapshots stay consistent). Marks affected chunks dirty for re-mesh.
     /// `id` is a BLOCK id — the default state of that block is stored.
-    pub fn set_block(&mut self, wx: i32, wy: i32, wz: i32, id: u8) {
-        self.set_block_state(wx, wy, wz, id as u16);
+    /// Returns (old_state, new_state) for the light engine when the edit
+    /// landed (Phase 4), None otherwise.
+    pub fn set_block(&mut self, wx: i32, wy: i32, wz: i32, id: u8) -> Option<(u16, u16)> {
+        self.set_block_state(wx, wy, wz, id as u16)
     }
 
     /// Player-driven BLOCK-STATE edit (e.g. a log placed with axis=x).
     /// Copy-on-write at section granularity; marks the affected SECTIONS
-    /// dirty (§12): geometry near the edit, light within the propagation
-    /// radius (block light ±15, sky light down the column).
-    pub fn set_block_state(&mut self, wx: i32, wy: i32, wz: i32, state: u16) {
+    /// dirty (§12 geometry region — the light engine marks light regions).
+    /// Returns (old_state, new_state).
+    pub fn set_block_state(&mut self, wx: i32, wy: i32, wz: i32, state: u16) -> Option<(u16, u16)> {
         if wy < 0 || wy > 255 {
-            return;
+            return None;
         }
         let cx = wx.div_euclid(16);
         let cz = wz.div_euclid(16);
         let pos = (cx, cz);
-        let Some(old) = self.chunks.get(&pos) else { return };
+        let Some(old) = self.chunks.get(&pos) else { return None };
         let old = Arc::clone(old);
         let lx = (wx - cx * 16) as usize;
         let lz = (wz - cz * 16) as usize;
         let old_state = old.get(lx, wy as usize, lz) as u16;
+        if old_state == state {
+            return None; // no-op edit (skip dirty churn)
+        }
         let mut new_chunk = (*old).clone();
         new_chunk.set_state(lx, wy as usize, lz, state);
         self.chunks.insert(pos, Arc::new(new_chunk));
 
         self.save_dirty.insert(pos); // persist player edits (§28)
         self.mark_edit(wx, wy, wz, old_state, state);
+        Some((old_state, state))
     }
 
     /// §12 invalidation region for one block edit.
@@ -266,238 +262,8 @@ impl World {
             touch(1, 1);
         }
 
-        // ---- light region (§12: mark only RELEVANT lighting regions)
-        //
-        // Block light changes require a source: the edit's emissivity, or
-        // an emissive block inside the ±15 box (light reach is 15).
-        // Sky light changes require the sky: an exposed column at the edit
-        // (shadow / lit segment + lateral spread into cover), or — when
-        // mining under cover — a nearby exposed column. Dark sealed caves
-        // with no emissive sources get NO light region at all.
-        let darkens = |b: u8| is_opaque(b) || b == WATER || b == LEAVES;
-        let new_d = darkens(new_b);
-        let old_d = darkens(old_b);
-        let emissive_changed = emissive(old_b) != emissive(new_b);
-        let light_changed = emissive_changed || new_d != old_d;
-        if !light_changed {
-            return;
-        }
-        let cause_l = cause | CAUSE_LIGHT;
-
-        // (1) block light — ±15 box around the edit
-        let bl_mask = if emissive_changed || self.any_emissive_in_box(wx, wy, wz) {
-            sections_spanning(wy - LIGHT_RADIUS, wy + LIGHT_RADIUS)
-        } else {
-            0
-        };
-
-        // (2) sky light — the edit's column (shadow / lit segment) plus
-        //     lateral spread when nearby cover can hold sub-15 light
-        let mut sky_own = 0u16;
-        let mut sky_box = 0u16;
-        if new_d != old_d {
-            let exposed = self.column_exposed(wx, wy, wz);
-            let floor = self.first_opaque_below(wx, wy, wz);
-            // the lit segment [floor+1, wy] matters only when it spans MORE
-            // than the edit cell itself (floor == wy-1 → nothing below to
-            // shadow; geometry already covers the edit section)
-            if exposed && floor < wy - 1 {
-                // the segment darkens (place) or lights (mine)
-                sky_own = sections_spanning((floor + 1).max(0), wy);
-            }
-            let scan_lo = ((floor + 1).max(wy - LIGHT_RADIUS)).max(0);
-            let scan_hi = (wy + LIGHT_RADIUS).min(255);
-            if exposed {
-                // entering/leaving light spreads into nearby cover
-                if self.any_cover_in_box(wx, wz, scan_lo, scan_hi) {
-                    sky_box = sections_spanning(scan_lo, scan_hi);
-                }
-            } else if old_d {
-                // mining under cover: light can only appear via a nearby
-                // exposed column (opaque-only walk — water/leaves pass dimmed sky)
-                if self.any_exposed_in_box(wx, wz, scan_lo, scan_hi) {
-                    sky_box = sections_spanning(scan_lo, scan_hi);
-                }
-            } else {
-                // placing under cover: existing lateral light routes through
-                // the cell — cover present means sub-15 light could be nearby
-                if self.any_cover_in_box(wx, wz, scan_lo, scan_hi) {
-                    sky_box = sections_spanning(scan_lo, scan_hi);
-                }
-            }
-        }
-
-        if sky_own != 0 {
-            self.mark_sections_dirty((cx, cz), sky_own, cause_l);
-        }
-        let box_mask = sky_box | bl_mask;
-        if box_mask != 0 {
-            let x0 = wx - LIGHT_RADIUS;
-            let x1 = wx + LIGHT_RADIUS;
-            let z0 = wz - LIGHT_RADIUS;
-            let z1 = wz + LIGHT_RADIUS;
-            for cxx in x0.div_euclid(16)..=x1.div_euclid(16) {
-                for czz in z0.div_euclid(16)..=z1.div_euclid(16) {
-                    self.mark_sections_dirty((cxx, czz), box_mask, cause_l);
-                }
-            }
-        }
-    }
-
-    // ---------------- §12 light-region probes (all read-only, main thread) --
-
-    /// is there any emissive block in the ±15 box around the edit?
-    /// Palette-level probe — sections without emissive entries cost O(1).
-    fn any_emissive_in_box(&self, wx: i32, wy: i32, wz: i32) -> bool {
-        let y0 = (wy - LIGHT_RADIUS).max(0);
-        let y1 = (wy + LIGHT_RADIUS).min(255);
-        for cxx in (wx - LIGHT_RADIUS).div_euclid(16)..=(wx + LIGHT_RADIUS).div_euclid(16) {
-            for czz in (wz - LIGHT_RADIUS).div_euclid(16)..=(wz + LIGHT_RADIUS).div_euclid(16) {
-                let Some(c) = self.chunks.get(&(cxx, czz)) else { continue };
-                for sy in (y0 / 16) as usize..=((y1 / 16) as usize).min(15) {
-                    if let Some(sec) = &c.sections[sy] {
-                        if sec.has_emissive() {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        false
-    }
-
-    /// is the edit column exposed to the sky at the edit height? (no opaque
-    /// block above). Walks sections top-down: empty sections pass for free,
-    /// all-opaque sections terminate immediately.
-    fn column_exposed(&self, wx: i32, wy: i32, wz: i32) -> bool {
-        let cx = wx.div_euclid(16);
-        let cz = wz.div_euclid(16);
-        let lx = (wx - cx * 16) as usize;
-        let lz = (wz - cz * 16) as usize;
-        let Some(c) = self.chunks.get(&(cx, cz)) else { return false };
-        let top = (wy + 1).min(255);
-        for sy in ((wy / 16) as usize..16).rev() {
-            if let Some(sec) = &c.sections[sy] {
-                if sec.is_empty() {
-                    continue;
-                }
-                if sec.all_opaque() {
-                    return false;
-                }
-                // cells to check in this section: down to `top`, not lower
-                let y_from = if sy == (wy / 16) as usize { top as usize } else { sy * 16 };
-                for y in (y_from..=sy * 16 + 15).rev() {
-                    if is_opaque(state_block(c.get(lx, y, lz) as u16)) {
-                        return false;
-                    }
-                }
-            }
-        }
-        true
-    }
-
-    /// y of the first opaque block strictly below wy in the edit column
-    /// (-1 if none). Walks sections downward with all-opaque early exit.
-    fn first_opaque_below(&self, wx: i32, wy: i32, wz: i32) -> i32 {
-        let cx = wx.div_euclid(16);
-        let cz = wz.div_euclid(16);
-        let lx = (wx - cx * 16) as usize;
-        let lz = (wz - cz * 16) as usize;
-        let Some(c) = self.chunks.get(&(cx, cz)) else { return -1 };
-        let bot = (wy - 1).max(0);
-        for sy in (0..=(bot / 16) as usize).rev() {
-            if let Some(sec) = &c.sections[sy] {
-                if sec.is_empty() {
-                    continue;
-                }
-                if sec.all_opaque() {
-                    return (sy * 16 + 15) as i32;
-                }
-                // cells to check in this section: from `bot` down
-                let y_top = if sy == (bot / 16) as usize { bot as usize } else { sy * 16 + 15 };
-                for y in (sy * 16..=y_top).rev() {
-                    if is_opaque(state_block(c.get(lx, y, lz) as u16)) {
-                        return y as i32;
-                    }
-                }
-            }
-        }
-        -1
-    }
-
-    /// any NON-AIR block in the ±15 xz box within the y band (the edit's own
-    /// column excluded) — "cover": cells there may hold light below full sky
-    /// that derives from the lit segment at the edit.
-    fn any_cover_in_box(&self, wx: i32, wz: i32, y_lo: i32, y_hi: i32) -> bool {
-        for cxx in (wx - LIGHT_RADIUS).div_euclid(16)..=(wx + LIGHT_RADIUS).div_euclid(16) {
-            for czz in (wz - LIGHT_RADIUS).div_euclid(16)..=(wz + LIGHT_RADIUS).div_euclid(16) {
-                let Some(c) = self.chunks.get(&(cxx, czz)) else { continue };
-                for sy in (y_lo / 16) as usize..=((y_hi / 16) as usize).min(15) {
-                    let Some(sec) = &c.sections[sy] else { continue };
-                    if sec.is_empty() {
-                        continue;
-                    }
-                    let yl = (sy * 16).max(y_lo as usize);
-                    let yh = (sy * 16 + 15).min(y_hi as usize);
-                    for lz in 0..16usize {
-                        for lx in 0..16usize {
-                            // world coords of this column (skip the edit column)
-                            let wx_l = cxx * 16 + lx as i32;
-                            let wz_l = czz * 16 + lz as i32;
-                            if wx_l == wx && wz_l == wz {
-                                continue;
-                            }
-                            for y in yl..=yh {
-                                if c.get(lx, y, lz) != AIR {
-                                    return true;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        false
-    }
-
-    /// any column in the ±15 xz box exposed to the sky at band level?
-    /// (highest opaque block strictly below the band top). Empty sections
-    /// pass free, all-opaque sections terminate the column walk instantly.
-    fn any_exposed_in_box(&self, wx: i32, wz: i32, y_lo: i32, y_hi: i32) -> bool {
-        for cxx in (wx - LIGHT_RADIUS).div_euclid(16)..=(wx + LIGHT_RADIUS).div_euclid(16) {
-            for czz in (wz - LIGHT_RADIUS).div_euclid(16)..=(wz + LIGHT_RADIUS).div_euclid(16) {
-                let Some(c) = self.chunks.get(&(cxx, czz)) else { continue };
-                for lz in 0..16usize {
-                    'col: for lx in 0..16usize {
-                        // walk this column from the sky down to the band top
-                        for sy in (((y_hi / 16) as usize)..16).rev() {
-                            if let Some(sec) = &c.sections[sy] {
-                                if sec.is_empty() {
-                                    continue;
-                                }
-                                if sec.all_opaque() {
-                                    continue 'col; // blocked above the band
-                                }
-                                // cells to check in this section: down to y_hi
-                                let y_from = if sy == (y_hi / 16) as usize {
-                                    y_hi as usize
-                                } else {
-                                    sy * 16
-                                };
-                                for y in (y_from..=sy * 16 + 15).rev() {
-                                    if is_opaque(state_block(c.get(lx, y, lz) as u16)) {
-                                        continue 'col;
-                                    }
-                                }
-                            }
-                        }
-                        // no opaque above the band top → the band is sky-lit
-                        return true;
-                    }
-                }
-            }
-        }
-        false
+        // ---- light region (Phase 4): the incremental LightEngine marks the
+        // EXACT changed sections via its `changed` map — no heuristics here.
     }
 
     /// Apply a generation-time outbound edit (tree canopy crossing borders).
@@ -561,6 +327,22 @@ impl World {
                 let pos = (cx + dx, cz + dz);
                 let c = self.chunks.get(&pos)?;
                 snap[i] = Some(Arc::clone(c));
+                i += 1;
+            }
+        }
+        Some(snap)
+    }
+
+    /// Snapshot the 3×3 LIGHT neighborhood for a mesh job (Phase 4).
+    pub fn snapshot3x3_light(&self, cx: i32, cz: i32) -> Option<[Option<Arc<LightData>>; 9]> {
+        let mut snap: [Option<Arc<LightData>>; 9] = Default::default();
+        let mut i = 0;
+        for dz in -1..=1 {
+            for dx in -1..=1 {
+                let pos = (cx + dx, cz + dz);
+                let c = self.chunks.get(&pos)?; // blocks must exist
+                snap[i] = self.light.get(&pos).cloned();
+                let _ = c;
                 i += 1;
             }
         }
@@ -645,36 +427,10 @@ mod phase3_tests {
         assert_eq!(*w.dirty_causes.get(&(0, 0)).unwrap(), CAUSE_GEOMETRY | CAUSE_MATERIAL);
     }
 
-    /// §12: placing a block ABOVE the floor (mid-air) shadows the open
-    /// column below it — sections from the floor to the edit go dirty; still
-    /// no lateral box (no cover above the floor within ±15).
-    #[test]
-    fn floor_edit_shadows_column() {
-        let mut w = flat_world(70);
-        w.set_block(8, 80, 8, STONE); // 10 above the floor, open sky
-        let mask = *w.dirty.get(&(0, 0)).unwrap();
-        // lit segment [71..80] → sections 4 (64..79) and 5 (80..95) ∪ geometry section 5
-        assert_eq!(mask, (1 << 4) | (1 << 5), "shadow column sections, got {mask:#b}");
-        assert_eq!(*w.dirty_causes.get(&(0, 0)).unwrap(), CAUSE_GEOMETRY | CAUSE_LIGHT | CAUSE_MATERIAL);
-        assert_eq!(w.dirty.len(), 1, "no neighbor chunks — no cover, no emissive");
-    }
-
-    /// §12: glowstone in the open sky dirties the ±15 block-light box in
-    /// every chunk the box touches (own + neighbors), band y±15.
-    #[test]
-    fn glowstone_box_reaches_neighbors() {
-        let mut w = flat_world(70);
-        w.set_block(8, 120, 8, GLOWSTONE);
-        // emissive changed → box [105..135] = sections 6..8; sky shadow
-        // [71..120] = sections 4..7 (own only)
-        let own = *w.dirty.get(&(0, 0)).unwrap();
-        assert_eq!(own, 0x1F0, "sections 4..8, got {own:#b}");
-        for pos in [(1, 0), (0, 1), (1, 1), (-1, 0), (0, -1)] {
-            let m = *w.dirty.get(&pos).unwrap_or(&0);
-            assert_eq!(m, 0x1C0, "neighbor {pos:?} gets the light box sections 6..8, got {m:#b}");
-        }
-        assert_eq!(w.dirty.len(), 9, "±15 box spans the 3×3 chunks");
-    }
+    /// §12 + §18: light regions now come from the incremental LightEngine's
+    /// exact `changed` map — see light.rs::tests (differential gate +
+    /// region coverage). These two cases (mid-air shadow column, glowstone
+    /// ±15 box) are asserted there against the engine, not heuristics.
 
     /// §12: a border edit reaches the adjacent chunk's matching sections
     /// (face culling + AO), including the diagonal corner chunk.
@@ -727,16 +483,14 @@ mod phase3_tests {
         assert_eq!(mask, 1 << 4, "geometry section 4 (y 64..79) only, got {mask:#b}");
     }
 
-    /// §12: a NO-OP edit (same block re-written) changes nothing that light
-    /// depends on — only the geometry section re-meshes.
+    /// §12: a NO-OP edit (same block re-written) dirties NOTHING — the
+    /// write is skipped entirely (no mesh churn on repeated edits).
     #[test]
-    fn noop_edit_skips_light_region() {
+    fn noop_edit_dirties_nothing() {
         let mut w = flat_world(70);
-        w.set_block(8, 65, 8, STONE); // STONE → STONE
-        let mask = *w.dirty.get(&(0, 0)).unwrap();
-        assert_eq!(mask.count_ones(), 1, "only the geometry section, got {mask:#b}");
-        assert_eq!(w.dirty_section_count(), 1);
-        assert_eq!(*w.dirty_causes.get(&(0, 0)).unwrap(), CAUSE_GEOMETRY);
+        assert!(w.set_block(8, 65, 8, STONE).is_none()); // STONE → STONE
+        assert!(w.dirty.is_empty());
+        assert!(w.dirty_causes.is_empty());
     }
 
     /// §12: clear_dirty_mask keeps bits added while a job was in flight —

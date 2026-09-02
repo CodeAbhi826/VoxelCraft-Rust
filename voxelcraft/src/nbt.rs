@@ -184,6 +184,15 @@ impl Nbt {
             None
         }
     }
+
+    /// byte-array view (§28 light nibbles)
+    pub fn as_i8_slice(&self) -> Option<&[i8]> {
+        if let Nbt::ByteArray(l) = self {
+            Some(l)
+        } else {
+            None
+        }
+    }
 }
 
 // ---------------------------------------------------------------- writer --

@@ -282,6 +282,15 @@ pub struct GameApp {
     bench_spawn: glam::Vec3,
     /// pack-driven animated textures (frame updates only, no re-mesh)
     animations: Vec<crate::textures::AnimatedTile>,
+    /// world save directory (native, §28 — browsers get OPFS later)
+    #[cfg(not(target_arch = "wasm32"))]
+    world_dir: std::path::PathBuf,
+    /// persisted spawn point (level.dat SpawnX/Y/Z)
+    #[cfg(not(target_arch = "wasm32"))]
+    level_spawn: (i32, i32, i32),
+    /// seconds until the next autosave flush (20 s cadence, vanilla-like)
+    #[cfg(not(target_arch = "wasm32"))]
+    autosave_in: f32,
 }
 
 pub fn now_secs() -> f32 {
@@ -434,9 +443,34 @@ impl GameApp {
 
         let mut renderer = Renderer::new(window, &atlas).await;
         let bank = SoundBank::generate();
-        let world = World::new(crate::world::World::random_seed());
-        let spawn = world.find_spawn();
-        let player = Player::new(Vec3::new(spawn.0, spawn.1 + 20.0, spawn.2));
+        #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
+        let mut world = World::new(crate::world::World::random_seed());
+        #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
+        let mut spawn = world.find_spawn();
+        #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
+        let mut player = Player::new(Vec3::new(spawn.0, spawn.1 + 20.0, spawn.2));
+
+        // native: restore a persisted world (seed, spawn, player) if one
+        // exists in the save dir (§28) — otherwise a fresh random world
+        #[cfg(not(target_arch = "wasm32"))]
+        let world_dir = crate::save::default_world_dir();
+        #[cfg(not(target_arch = "wasm32"))]
+        let mut level_spawn = (spawn.0 as i32, spawn.1 as i32, spawn.2 as i32);
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Ok(Some(meta)) = crate::save::read_level_dat(&world_dir) {
+            world = World::new(meta.seed);
+            spawn = world.find_spawn();
+            level_spawn = meta.spawn;
+            if let Some(p) = &meta.player {
+                player = Player::new(Vec3::new(
+                    p.pos[0] as f32,
+                    p.pos[1] as f32,
+                    p.pos[2] as f32,
+                ));
+                player.yaw = p.yaw;
+                player.pitch = p.pitch;
+            }
+        }
 
         // persisted settings (web: localStorage)
         let settings = {
@@ -451,7 +485,8 @@ impl GameApp {
                 Settings::default()
             }
         };
-        let mut player = player;
+        // (player was already built above — restored from level.dat on native
+        // when a save exists, else spawn-positioned for a fresh world)
         player.fov = settings.fov.to_radians();
         player.fov_cur = player.fov;
 
@@ -541,6 +576,12 @@ impl GameApp {
             bench: None,
             bench_spawn: spawn.into(),
             animations,
+            #[cfg(not(target_arch = "wasm32"))]
+            world_dir,
+            #[cfg(not(target_arch = "wasm32"))]
+            level_spawn,
+            #[cfg(not(target_arch = "wasm32"))]
+            autosave_in: 20.0,
         };
         app.load_start = app.time;
         app.refresh_widgets();
@@ -563,6 +604,10 @@ impl GameApp {
         match event {
             Event::WindowEvent { event, .. } => match event {
                 WindowEvent::CloseRequested => {
+                    #[cfg(not(target_arch = "wasm32"))]
+                    if self.bench.is_none() {
+                        self.save_world(); // final flush on window close (§28)
+                    }
                     elwt.exit();
                 }
                 WindowEvent::Resized(size) => {
@@ -659,6 +704,10 @@ impl GameApp {
                 self.poll_web_events();
                 self.update(dt);
                 if self.quit_requested {
+                    #[cfg(not(target_arch = "wasm32"))]
+                    if self.bench.is_none() {
+                        self.save_world(); // QUIT GAME button — final flush
+                    }
                     elwt.exit();
                     return;
                 }
@@ -1166,6 +1215,11 @@ impl GameApp {
     }
 
     fn quit_to_title(&mut self) {
+        // leaving the world → flush unsaved chunks + level.dat (native, §28)
+        #[cfg(not(target_arch = "wasm32"))]
+        if self.bench.is_none() {
+            self.save_world();
+        }
         self.set_screen(Screen::Title);
         self.input = Input::default();
         self.target = None;
@@ -1491,6 +1545,56 @@ impl GameApp {
                 self.publish_stats();
             }
         }
+
+        // native autosave (§28): 20 s cadence while a world is in play.
+        // Benchmarks never touch the save dir.
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let in_world = self.screen == Screen::Game || self.screen == Screen::Pause;
+            if in_world && self.bench.is_none() {
+                self.autosave_in -= dt;
+                if self.autosave_in <= 0.0 {
+                    self.autosave_in = 20.0;
+                    self.save_world();
+                }
+            }
+        }
+    }
+
+    /// Flush all unsaved chunks + level.dat to the save dir (native, §28).
+    /// One compact-and-rewrite per touched region file; the player state
+    /// rides in level.dat (vanilla keys + a `voxelcraft` sub-compound).
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save_world(&mut self) {
+        let dirty: Vec<ChunkPos> = self.world.save_dirty.drain().collect();
+        let entries: Vec<(ChunkPos, Arc<crate::chunk::Chunk>)> = dirty
+            .into_iter()
+            .filter_map(|p| self.world.chunks.get(&p).map(|c| (p, Arc::clone(c))))
+            .collect();
+        let tick = ((self.time - self.load_start) * 20.0).max(0.0) as i64;
+        if !entries.is_empty() {
+            let refs: Vec<(i32, i32, &crate::chunk::Chunk)> = entries
+                .iter()
+                .map(|(p, c)| (p.0, p.1, c.as_ref()))
+                .collect();
+            if let Err(e) = crate::save::store_chunks(&self.world_dir, &refs, tick) {
+                crate::render::report_boot_log(&format!("autosave failed: {e}"));
+            }
+        }
+        let meta = crate::save::WorldMeta {
+            seed: self.world.seed,
+            name: "VoxelCraft".into(),
+            spawn: self.level_spawn,
+            player: Some(crate::save::PlayerMeta {
+                pos: [self.player.pos.x as f64, self.player.pos.y as f64, self.player.pos.z as f64],
+                yaw: self.player.yaw,
+                pitch: self.player.pitch,
+            }),
+            game_time: tick,
+        };
+        if let Err(e) = crate::save::write_level_dat(&self.world_dir, &meta) {
+            crate::render::report_boot_log(&format!("level.dat write failed: {e}"));
+        }
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -1626,6 +1730,24 @@ impl GameApp {
         want_gen.sort_by_key(|p| (p.0 - pc.0).abs() + (p.1 - pc.1).abs());
         let max_gen = if cfg!(target_arch = "wasm32") { 4 } else { 16 };
         for pos in want_gen.into_iter().take(max_gen) {
+            // native: try the save dir first (§28) — a stored chunk skips
+            // generation entirely; pending edits queued while the chunk was
+            // absent replay on top. Sync disk read bounded by max_gen/frame.
+            #[cfg(not(target_arch = "wasm32"))]
+            if let Ok(Some(mut chunk)) = crate::save::load_chunk(&self.world_dir, pos.0, pos.1) {
+                let inbound = self.world.take_pending(pos);
+                let edited = !inbound.is_empty();
+                for (idx, id) in inbound {
+                    chunk.set_idx(idx as usize, id);
+                }
+                self.world.insert_generated(pos, Arc::new(chunk), Vec::new());
+                if !edited {
+                    // pristine content straight from disk — no need to
+                    // rewrite it at the next autosave
+                    self.world.save_dirty.remove(&pos);
+                }
+                continue;
+            }
             let inbound = self.world.take_pending(pos);
             self.gen_inflight.insert(pos);
             let job = Job::Gen { pos, seed: self.world.seed, inbound };

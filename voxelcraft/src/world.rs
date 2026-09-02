@@ -26,6 +26,9 @@ pub struct World {
     pub pending: HashMap<ChunkPos, Vec<(u16, u8)>>,
     /// chunks whose mesh is stale (block edit / light change)
     pub dirty: HashSet<ChunkPos>,
+    /// chunks with unsaved content (player edits + newly generated;
+    /// drained by the native autosave — §28)
+    pub save_dirty: HashSet<ChunkPos>,
 }
 
 impl World {
@@ -37,6 +40,7 @@ impl World {
             decorated: HashSet::new(),
             pending: HashMap::new(),
             dirty: HashSet::new(),
+            save_dirty: HashSet::new(),
         }
     }
 
@@ -110,6 +114,7 @@ impl World {
         self.chunks.insert(pos, Arc::new(new_chunk));
 
         self.dirty.insert(pos);
+        self.save_dirty.insert(pos); // persist player edits (§28)
         // border blocks change neighbor face culling + light
         let mut touch = |dx: i32, dz: i32| {
             self.dirty.insert((cx + dx, cz + dz));
@@ -164,9 +169,11 @@ impl World {
     }
 
     /// Insert a freshly generated chunk + apply outbound decorations.
+    /// Newly generated content has never been saved → save-dirty.
     pub fn insert_generated(&mut self, pos: ChunkPos, chunk: Arc<Chunk>, outbound: Vec<(i32, i32, i32, u8)>) {
         self.chunks.insert(pos, chunk);
         self.decorated.insert(pos);
+        self.save_dirty.insert(pos);
         for (wx, wy, wz, id) in outbound {
             self.apply_gen_edit(wx, wy, wz, id);
         }

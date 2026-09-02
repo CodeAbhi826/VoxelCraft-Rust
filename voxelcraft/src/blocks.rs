@@ -87,6 +87,10 @@ pub const TILE_SPRUCE_LEAVES: u16 = 59;
 pub const TILE_MUSHROOM_RED: u16 = 60;
 pub const TILE_MUSHROOM_BROWN: u16 = 61;
 pub const TILE_DEAD_BUSH: u16 = 62;
+// redstone core (Phase 6 §25)
+pub const TILE_REDSTONE_WIRE: u16 = 64;
+pub const TILE_REDSTONE_TORCH: u16 = 65;
+pub const TILE_LEVER: u16 = 66;
 
 // Block ids (u8 in chunk storage).
 pub const AIR: u8 = 0;
@@ -154,7 +158,12 @@ pub const MUSHROOM_RED: u8 = 54;
 pub const MUSHROOM_BROWN: u8 = 55;
 pub const DEAD_BUSH: u8 = 56;
 
-pub const BLOCK_COUNT: usize = 60;
+pub const BLOCK_COUNT: usize = 63;
+
+// redstone core (Phase 6 §25 subset)
+pub const REDSTONE_WIRE: u8 = 60;
+pub const REDSTONE_TORCH: u8 = 61;
+pub const LEVER: u8 = 62;
 
 // ---------------------------------------------------------------------------
 // BlockState registry (1.16.5 pattern, miniature)
@@ -166,7 +175,7 @@ pub const BLOCK_COUNT: usize = 60;
 // `axis=x|y|z`, exactly how vanilla models oak_log[axis=...]. The 1.16.5
 // global palette is 15 bits (~17k states); this registry grows into it
 // without touching storage (u16) or the mesher key.
-pub const STATE_COUNT: usize = 96;
+pub const STATE_COUNT: usize = 116;
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -183,6 +192,63 @@ pub const SPRUCE_LOG_Z: u16 = 62;
 // expected. Save/load round-trips the u16 palette unchanged.
 pub const WATER_FLOW_BASE: u16 = 89;
 pub const WATER_FLOW_END: u16 = 95; // 7 flowing levels
+
+// ---------------------------------------------------------------------------
+// redstone sim states (§25, Phase 6)
+// ---------------------------------------------------------------------------
+// Wire power 0..15 → states 96..111; lever off/on → 112/113; torch
+// lit/unlit → 114/115. NOTE: the wire/torch/lever BLOCK ids (60..62) can
+// never be stored as identity states — those state slots belong to the log
+// axis variants (57..62). Every placement goes through wire_state() /
+// torch_state() / lever_state(); state_block folds everything back. All
+// fold to their block ids and never route to the JSON model dispatch
+// (is_model_state exempts them like water).
+pub const WIRE_POWER_BASE: u16 = 96;
+pub const WIRE_POWER_END: u16 = 111; // 16 power levels
+pub const LEVER_OFF: u16 = 112;
+pub const LEVER_ON: u16 = 113;
+pub const TORCH_LIT: u16 = 114;
+pub const TORCH_OFF: u16 = 115;
+
+#[inline]
+pub fn is_wire_power(s: u16) -> bool {
+    (WIRE_POWER_BASE..=WIRE_POWER_END).contains(&s)
+}
+
+/// wire power of a state: 0..15, 255 = not wire
+#[inline]
+pub fn wire_power(s: u16) -> u8 {
+    if is_wire_power(s) {
+        (s - WIRE_POWER_BASE) as u8
+    } else {
+        255
+    }
+}
+
+#[inline]
+pub fn wire_state(power: u8) -> u16 {
+    WIRE_POWER_BASE + power.min(15) as u16
+}
+
+#[inline]
+pub fn lever_state(on: bool) -> u16 {
+    if on { LEVER_ON } else { LEVER_OFF }
+}
+
+#[inline]
+pub fn lever_is_on(s: u16) -> bool {
+    s == LEVER_ON
+}
+
+#[inline]
+pub fn torch_state(lit: bool) -> u16 {
+    if lit { TORCH_LIT } else { TORCH_OFF }
+}
+
+#[inline]
+pub fn torch_is_lit(s: u16) -> bool {
+    s == TORCH_LIT
+}
 
 /// true if a state id is a flowing-water level (not the source)
 #[inline]
@@ -335,6 +401,14 @@ pub fn state_block(s: u16) -> u8 {
     if is_water_flow(s) {
         return WATER;
     }
+    if is_wire_power(s) {
+        return REDSTONE_WIRE;
+    }
+    match s {
+        LEVER_OFF | LEVER_ON => return LEVER,
+        TORCH_LIT | TORCH_OFF => return REDSTONE_TORCH,
+        _ => {}
+    }
     if let Some((b, _)) = prop_state_decode(s) {
         return b;
     }
@@ -369,7 +443,10 @@ pub fn state_description(s: u16) -> String {
 /// true if this state renders through the JSON-model path (mesher dispatch)
 #[inline]
 pub fn is_model_state(s: u16) -> bool {
-    s >= MODEL_STATE_BASE && !is_water_flow(s)
+    s >= MODEL_STATE_BASE
+        && !is_water_flow(s)
+        && !is_wire_power(s)
+        && !matches!(s, LEVER_OFF | LEVER_ON | TORCH_LIT | TORCH_OFF)
 }
 
 /// true if this block id has property-driven model states
@@ -421,7 +498,7 @@ pub fn log_axis_state(block: u8, axis: u8) -> u16 {
 }
 
 /// highest tile index the generator must draw
-pub const TILE_MAX: u16 = 62;
+pub const TILE_MAX: u16 = 66;
 
 pub struct BlockDef {
     pub name: &'static str,
@@ -523,6 +600,11 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Oak Slab", [TILE_PLANKS, TILE_PLANKS, TILE_PLANKS], true, false, false, false, 0, SoundFamily::Wood),
     d("Cobblestone Stairs", [TILE_COBBLE, TILE_COBBLE, TILE_COBBLE], true, false, false, false, 0, SoundFamily::Stone),
     d("Oak Fence", [TILE_PLANKS, TILE_PLANKS, TILE_PLANKS], true, false, false, false, 0, SoundFamily::Wood),
+    // redstone core (Phase 6 §25): cross-rendered components; power lives
+    // in the sim states (wire 113..128, lever 129/130, torch 131/132)
+    d("Redstone Wire", [TILE_REDSTONE_WIRE, TILE_REDSTONE_WIRE, TILE_REDSTONE_WIRE], false, false, true, false, 0, SoundFamily::Grass),
+    d("Redstone Torch", [TILE_REDSTONE_TORCH, TILE_REDSTONE_TORCH, TILE_REDSTONE_TORCH], false, false, true, false, 7, SoundFamily::Wood),
+    d("Lever", [TILE_LEVER, TILE_LEVER, TILE_LEVER], false, false, true, false, 0, SoundFamily::Wood),
 ];
 
 #[inline]
@@ -719,6 +801,21 @@ mod state_tests {
                 assert_eq!(state_block(s), WATER);
                 continue;
             }
+            if is_wire_power(s) {
+                assert!(!is_model_state(s), "wire state {s} never routes to models");
+                assert_eq!(state_block(s), REDSTONE_WIRE);
+                continue;
+            }
+            if matches!(s, LEVER_OFF | LEVER_ON) {
+                assert_eq!(state_block(s), LEVER);
+                assert!(!is_model_state(s));
+                continue;
+            }
+            if matches!(s, TORCH_LIT | TORCH_OFF) {
+                assert_eq!(state_block(s), REDSTONE_TORCH);
+                assert!(!is_model_state(s));
+                continue;
+            }
             let Some((b, props)) = prop_state_decode(s) else {
                 panic!("state {s} failed to decode");
             };
@@ -734,6 +831,25 @@ mod state_tests {
             assert!(!is_model_state(s));
         }
         assert_eq!(water_level(STONE as u16), 255);
+        // redstone state roundtrips
+        for p in 0u8..=15 {
+            let s = wire_state(p);
+            assert_eq!(wire_power(s), p, "wire power roundtrip {p}");
+            assert_eq!(state_block(s), REDSTONE_WIRE);
+            assert!(!is_model_state(s));
+        }
+        assert_eq!(wire_power(STONE as u16), 255);
+        assert!(lever_is_on(lever_state(true)));
+        assert!(!lever_is_on(lever_state(false)));
+        assert_eq!(state_block(lever_state(true)), LEVER);
+        assert!(torch_is_lit(torch_state(true)));
+        assert!(!torch_is_lit(torch_state(false)));
+        assert_eq!(state_block(torch_state(false)), REDSTONE_TORCH);
+        // block ids 60..62 never appear as identity states (57..62 = logs)
+        for b in [REDSTONE_WIRE, REDSTONE_TORCH, LEVER] {
+            let d = def(b);
+            assert!(d.cross, "{} renders as a cross plant", d.name);
+        }
         // states below the base are legacy, never model states
         assert!(!is_model_state(62));
         assert!(!is_model_block(STONE));

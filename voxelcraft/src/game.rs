@@ -1424,21 +1424,24 @@ impl GameApp {
         self.particles
             .spawn_block_break(x, y, z, b, biome, sky, blk);
         self.sim.items.drop_block(x, y, z, b, biome, sky, blk);
-        crate::fluids::on_block_changed(&mut self.sim.sched, &self.world, x, y, z);
+        notify_sim(&self.world, &mut self.sim.sched, x, y, z);
         self.edits += 1;
     }
 
-    /// E2E hook: place a block / water source at world coords.
+    /// E2E hook: place a block / water source / redstone component.
     fn test_place(&mut self, block: u8, x: i32, y: i32, z: i32) {
-        let state = if block == WATER {
-            crate::blocks::water_state(0)
-        } else {
-            block as u16
+        use crate::blocks::*;
+        let state = match block {
+            WATER => water_state(0),
+            REDSTONE_WIRE => wire_state(0),
+            REDSTONE_TORCH => torch_state(true),
+            LEVER => lever_state(false),
+            _ => block as u16,
         };
         if let Some((old, new)) = self.world.set_block_state(x, y, z, state) {
             self.light.on_block_changed(&self.world, x, y, z, old, new);
         }
-        crate::fluids::on_block_changed(&mut self.sim.sched, &self.world, x, y, z);
+        notify_sim(&self.world, &mut self.sim.sched, x, y, z);
         self.edits += 1;
     }
 
@@ -1547,6 +1550,37 @@ impl GameApp {
                             self.test_place(WATER, p[0], p[1], p[2]);
                         }
                     }
+                    Some("lever") => {
+                        let p = coords();
+                        if p.len() == 3 {
+                            self.test_place(LEVER, p[0], p[1], p[2]);
+                        }
+                    }
+                    Some("wire") => {
+                        let p = coords();
+                        if p.len() == 3 {
+                            self.test_place(REDSTONE_WIRE, p[0], p[1], p[2]);
+                        }
+                    }
+                    Some("torch") => {
+                        let p = coords();
+                        if p.len() == 3 {
+                            self.test_place(REDSTONE_TORCH, p[0], p[1], p[2]);
+                        }
+                    }
+                    Some("toggle") => {
+                        let p = coords();
+                        if p.len() == 3 {
+                            crate::redstone::toggle_lever(
+                                &mut self.world,
+                                &mut self.sim.sched,
+                                p[0],
+                                p[1],
+                                p[2],
+                            );
+                            self.edits += 1;
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -1628,9 +1662,7 @@ impl GameApp {
                         self.sim.items.drop_block(
                             pos[0], pos[1], pos[2], broke, biome, sky, blk,
                         );
-                        crate::fluids::on_block_changed(
-                            &mut self.sim.sched, &self.world, pos[0], pos[1], pos[2],
-                        );
+                        notify_sim(&self.world, &mut self.sim.sched, pos[0], pos[1], pos[2]);
                         self.audio.play(
                             &self.bank,
                             def(b).sound,
@@ -1643,9 +1675,21 @@ impl GameApp {
                 }
             }
             if self.input.place_hold && self.place_timer <= 0.0 {
-                if let Some((tpos, _, prev)) = self.target {
-                    let b = self.player.hotbar[self.player.selected];
-                    if b != AIR {
+                if let Some((tpos, tb, _)) = self.target {
+                    // §25: right-click a lever toggles it (vanilla interaction)
+                    if tb == LEVER {
+                        crate::redstone::toggle_lever(
+                            &mut self.world,
+                            &mut self.sim.sched,
+                            tpos[0],
+                            tpos[1],
+                            tpos[2],
+                        );
+                        self.audio.play(&self.bank, SoundFamily::Wood, 0.4 * self.settings.volume, 0.8);
+                        self.place_timer = 0.24;
+                    } else if self.player.hotbar[self.player.selected] != AIR {
+                        let b = self.player.hotbar[self.player.selected];
+                        if let Some((_, _, prev)) = self.target {
                         let pb = self.world.get_block(prev[0], prev[1], prev[2]);
                         let replaceable = pb == AIR || pb == WATER || is_cross(pb);
                         let collides_player = is_solid(b) && self.player.block_intersects_player(prev);
@@ -1699,13 +1743,12 @@ impl GameApp {
                             }
                             // fences: neighbors recompute their connections
                             update_fence_neighbors(&mut self.world, prev[0], prev[1], prev[2]);
-                            // §24: a new block notifies the fluid/gravity sim
-                            crate::fluids::on_block_changed(
-                                &mut self.sim.sched, &self.world, prev[0], prev[1], prev[2],
-                            );
+                            // §24/§25: a new block notifies the sim
+                            notify_sim(&self.world, &mut self.sim.sched, prev[0], prev[1], prev[2]);
                             self.audio.play(&self.bank, def(b).sound, 0.55 * self.settings.volume, 1.15);
                             self.place_timer = 0.24;
                             self.edits += 1;
+                        }
                         }
                     }
                 }
@@ -2546,6 +2589,14 @@ fn fence_state_for(world: &World, wx: i32, wy: i32, wz: i32) -> Option<u16> {
             ("west", if west { "true" } else { "false" }),
         ],
     )
+}
+
+
+/// block-change notification for the whole sim (fluids + gravity +
+/// redstone) — the §25 ordering backbone entry point
+fn notify_sim(world: &World, sched: &mut crate::ticks::TickScheduler, x: i32, y: i32, z: i32) {
+    crate::fluids::on_block_changed(sched, world, x, y, z);
+    crate::redstone::on_block_changed(sched, world, x, y, z);
 }
 
 /// biome + (sky, block) light levels at a world position — for baking

@@ -1201,8 +1201,10 @@ pub fn blit_tile(atlas: &[u8], tile: u16, scale: usize, ox: usize, oy: usize, ou
 
 // ------------------------------------------------------- pack texture merge --
 
-/// first free atlas tile after the procedural set + missing-texture tile
-pub const PACK_TILE_BASE: u16 = 64;
+/// first free atlas tile after the procedural set + missing-texture tile.
+/// DERIVED from TILE_MAX so Phase-6/7+ procedural tiles can never collide
+/// with pack textures again (they did: base 64 overwrote the wire/torch).
+pub const PACK_TILE_BASE: u16 = crate::blocks::TILE_MAX + 1;
 /// hard cap: 16×16 tile grid = 256 tiles in the 256² atlas
 pub const PACK_TILE_MAX: u16 = 255;
 
@@ -1543,6 +1545,87 @@ pub fn generate_cloud_atlas() -> Vec<u8> {
         }
     }
     px
+}
+
+#[cfg(test)]
+mod pack_merge_tests {
+    use super::*;
+
+    /// helper: raw atlas bytes of one tile (RGBA, 16×16)
+    fn tile_bytes(atlas: &[u8], tile: u16) -> Vec<u8> {
+        let tx = (tile % 16) as usize;
+        let ty = (tile / 16) as usize;
+        let mut out = Vec::with_capacity(TILE_PX * TILE_PX * 4);
+        for y in 0..TILE_PX {
+            let row = ((ty * TILE_PX + y) * ATLAS_SIZE + tx * TILE_PX) * 4;
+            out.extend_from_slice(&atlas[row..row + TILE_PX * 4]);
+        }
+        out
+    }
+
+    /// PACK_TILE_BASE must sit strictly ABOVE every procedural tile
+    /// (incl. the missing-texture tile). Phase-6/7 added tiles 64..69
+    /// (wire/torch/lever/furnace) while PACK_TILE_BASE stayed 64 — the
+    /// builtin pack then overwrote the wire/torch art in the atlas.
+    #[test]
+    fn pack_tile_base_is_above_all_procedural_tiles() {
+        assert!(
+            PACK_TILE_BASE > crate::blocks::TILE_MAX,
+            "PACK_TILE_BASE {PACK_TILE_BASE} must clear procedural TILE_MAX {}",
+            crate::blocks::TILE_MAX
+        );
+        assert!(PACK_TILE_BASE > crate::mesh::TILE_MISSING);
+    }
+
+    /// the real merge must not touch ANY procedural tile: generate the
+    /// atlas, snapshot the wire/torch tiles, compile the real builtin
+    /// dispatch (so the pack's textures actually merge), compare
+    /// (native-only — reads the folder).
+    #[test]
+    #[cfg(not(target_arch = "wasm32"))]
+    fn builtin_pack_merge_preserves_procedural_tiles() {
+        let source = std::sync::Arc::new(crate::pack::FolderSource::new("builtin-pack", "test"));
+        use crate::pack::PackSource as _;
+        assert!(source.exists(), "builtin pack missing — run from voxelcraft/");
+        // compile the real dispatch so the pack textures genuinely merge
+        let mut by_state: std::collections::HashMap<u16, Vec<crate::model::ModelChoice>> =
+            Default::default();
+        for pb in crate::blocks::PROP_BLOCKS.iter() {
+            let spec = crate::model::BlockDispatchSpec {
+                name: pb.name,
+                props: pb.props,
+                base_state: pb.base_state,
+                state_count: pb.state_count,
+            };
+            let map = crate::model::compile_block_dispatch(&spec, &|p| source.read(p))
+                .unwrap_or_else(|e| panic!("dispatch {name:?}: {e}", name = pb.name));
+            by_state.extend(map);
+        }
+        let mut set = crate::model::ModelSet { by_state, tiles: Default::default() };
+        let mut atlas = generate_atlas();
+        let watched = [
+            crate::blocks::TILE_REDSTONE_WIRE,
+            crate::blocks::TILE_REDSTONE_TORCH,
+            crate::blocks::TILE_LEVER,
+            crate::blocks::TILE_FURNACE_SIDE,
+            crate::blocks::TILE_FURNACE_TOP,
+            crate::blocks::TILE_FURNACE_LIT_SIDE,
+        ];
+        let before: Vec<(u16, Vec<u8>)> =
+            watched.iter().map(|&t| (t, tile_bytes(&atlas, t))).collect();
+        let _ = merge_pack_textures(&mut atlas, &mut set, source.as_ref());
+        assert!(
+            !set.tiles.is_empty(),
+            "test setup broken — no pack textures merged, comparison would be vacuous"
+        );
+        for (t, b) in before {
+            assert_eq!(
+                tile_bytes(&atlas, t),
+                b,
+                "atlas tile {t} changed under the pack merge — pack tiles overlap procedural tiles"
+            );
+        }
+    }
 }
 
 #[cfg(test)]

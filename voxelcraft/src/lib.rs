@@ -26,6 +26,7 @@ pub mod render;
 pub mod rng;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod save;
+pub mod shaders;
 pub mod sim;
 pub mod sounds;
 pub mod textures;

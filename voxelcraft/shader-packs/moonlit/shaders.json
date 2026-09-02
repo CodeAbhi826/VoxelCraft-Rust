@@ -1,0 +1,21 @@
+{
+  "name": "Moonlit",
+  "tier": "SHADER-PACK-API",
+  "description": "Cold moon-blue grade with time-varying film grain. VoxelCraft demo pack (clean-room, our own art).",
+  "grade": {
+    "saturation": 0.82,
+    "bloom": 0.34,
+    "exposure": 0.94,
+    "vignette": 0.38
+  },
+  "settings": [
+    {
+      "id": "strength",
+      "name": "Moonlight",
+      "type": "slider",
+      "min": 0.0,
+      "max": 2.0,
+      "default": 1.0
+    }
+  ]
+}

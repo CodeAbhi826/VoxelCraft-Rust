@@ -1,0 +1,21 @@
+{
+  "name": "Warm Evening",
+  "tier": "SHADER-PACK-API",
+  "description": "Golden-hour warmth with a soft filmic roll-off. VoxelCraft demo pack (clean-room, our own art).",
+  "grade": {
+    "saturation": 1.12,
+    "bloom": 0.28,
+    "exposure": 1.02,
+    "vignette": 0.3
+  },
+  "settings": [
+    {
+      "id": "strength",
+      "name": "Warmth",
+      "type": "slider",
+      "min": 0.0,
+      "max": 2.0,
+      "default": 1.0
+    }
+  ]
+}

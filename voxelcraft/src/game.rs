@@ -364,6 +364,8 @@ pub struct GameApp {
     pub bench: Option<crate::bench::BenchState>,
     /// spawn position captured at world init (bench camera orbits it)
     bench_spawn: glam::Vec3,
+    /// Phase 11 §34: discovered shader packs (builtin + external)
+    shader_packs: Vec<crate::shaders::ShaderPack>,
     /// pack-driven animated textures (frame updates only, no re-mesh)
     animations: Vec<crate::textures::AnimatedTile>,
     /// world save directory (native, §28 — browsers get OPFS later)
@@ -585,6 +587,24 @@ impl GameApp {
         // §17: apply persisted shadow quality
         renderer.set_shadow_quality(settings.shadow_map_px());
 
+        // Phase 11 §34: discover shader packs (builtin embedded + native
+        // external dir) and apply the persisted selection before frame 1
+        let mut shader_packs = crate::shaders::builtin_packs();
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let mut ext = crate::shaders::external_packs();
+            shader_packs.append(&mut ext);
+        }
+        if let Some(n) = shader_mode_pack_index(settings.shader, shader_packs.len()) {
+            renderer.set_shader_pack(shader_packs.get(n).map(|p| p));
+            if let Some(p) = shader_packs.get(n) {
+                crate::render::report_boot_log(&format!(
+                    "shader pack active: {} ({})",
+                    p.name, p.tier
+                ));
+            }
+        }
+
         let work = {
             #[cfg(not(target_arch = "wasm32"))]
             {
@@ -620,6 +640,7 @@ impl GameApp {
             atlas,
             bank,
             sounds,
+            shader_packs,
             audio_rng: crate::rng::Rng::new(0x50_0D_5EED),
             sounds_played: 0,
             music_next: 12.0,
@@ -1406,7 +1427,9 @@ impl GameApp {
             ID_PAUSE_OPTIONS => self.open_options(Screen::Pause),
             ID_PAUSE_QUIT => self.quit_to_title(),
             ID_OPT_SHADER => {
-                self.settings.shader = (self.settings.shader + 1) % 3;
+                // Phase 11: off → vanilla+ → cinematic → <pack 0> … <pack N>
+                let n = 3 + self.shader_packs.len() as u8;
+                self.settings.shader = (self.settings.shader + 1) % n.max(3);
                 self.after_settings_change();
             }
             ID_OPT_GRAPHICS => {
@@ -1459,10 +1482,35 @@ impl GameApp {
     /// persist + refresh widget labels + player fov
     fn after_settings_change(&mut self) {
         self.player.fov = self.settings.fov.to_radians();
+        // Phase 11 §34: re-apply the shader selection (pack pipeline swap)
+        self.apply_shader_selection();
         #[cfg(target_arch = "wasm32")]
         crate::web_input::save_settings(&self.settings.serialize());
         self.refresh_widgets();
         self.ui.dirty = true;
+    }
+
+    /// Phase 11 §34: settings.shader → display name (engine modes + packs)
+    fn shader_mode_name(&self, mode: u8) -> &str {
+        match mode {
+            0 => "OFF",
+            1 => "VANILLA+",
+            2 => "CINEMATIC",
+            i => self
+                .shader_packs
+                .get((i - 3) as usize)
+                .map(|p| p.name.as_str())
+                .unwrap_or("?"),
+        }
+    }
+
+    /// Phase 11 §34: map settings.shader → renderer pack state. 0..2 are
+    /// the engine modes (pack cleared); 3.. = pack index (clamped — a
+    /// persisted selection outliving a removed pack falls back cleanly).
+    fn apply_shader_selection(&mut self) {
+        let idx = shader_mode_pack_index(self.settings.shader, self.shader_packs.len());
+        let pack = idx.and_then(|i| self.shader_packs.get(i));
+        self.renderer.set_shader_pack(pack);
     }
 
     /// rebuild widget list from current settings (labels carry values)
@@ -1491,7 +1539,7 @@ impl GameApp {
                         ID_OPT_MUSIC => {
                             set_slider(w, &format!("MUSIC: {}%", (s.music_volume * 100.0).round() as i32), s.music_volume)
                         }
-                        ID_OPT_SHADER => set_button_value(w, ["OFF", "VANILLA+", "CINEMATIC"][s.shader as usize]),
+                        ID_OPT_SHADER => set_button_value(w, &self.shader_mode_name(s.shader)),
                         ID_OPT_GRAPHICS => set_button_value(w, match s.graphics { 0 => "FAST", 2 => "FABULOUS!", _ => "FANCY" }),
                         ID_OPT_SHADOWS => set_button_value(
                             w,
@@ -2177,6 +2225,19 @@ impl GameApp {
                         self.edits += 1;
                         self.ui.dirty = true;
                     }
+                    Some("shader") => {
+                        // Phase 11 §34: shader:<mode> — set the shader mode
+                        // (0..2 engine grades, 3.. packs) exactly like the
+                        // options row; E2E verifies via stats + pixels
+                        if let Some(v) = parts.get(1).and_then(|s| s.parse::<u8>().ok()) {
+                            self.settings.shader = v;
+                            self.after_settings_change();
+                            crate::render::report_boot_log(&format!(
+                                "e2e: shader mode {v} = {}",
+                                self.shader_mode_name(v)
+                            ));
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -2515,6 +2576,12 @@ impl GameApp {
             ("drawCalls", StatsVal::F(self.stats.draws as f32)),
             ("bufferBinds", StatsVal::F(self.stats.binds as f32)),
             ("drawPath", StatsVal::S(self.renderer.draw_path_name().into())),
+            ("shaderMode", StatsVal::F(self.settings.shader as f32)),
+            (
+                "shaderPack",
+                StatsVal::S(self.renderer.pack_id.clone().unwrap_or_default()),
+            ),
+            ("packTier", StatsVal::S(self.renderer.pack_tier.clone())),
             // §12 evidence: section-granular invalidation state
             ("dirtySections", StatsVal::F(self.world.dirty_section_count() as f32)),
             ("dirtyChunks", StatsVal::F(self.world.dirty.len() as f32)),
@@ -2978,10 +3045,17 @@ impl GameApp {
                 ),
                 format!(
                     "Shader: {}  Clouds: {}  Smooth: {}  VSync: {}",
-                    ["off", "vanilla+", "cinematic"][self.settings.shader as usize],
+                    self.shader_mode_name(self.settings.shader),
                     if self.settings.clouds { "on" } else { "off" },
                     if self.settings.smooth_lighting { "on" } else { "off" },
                     if self.renderer.vsync { "on" } else { "off" }
+                ),
+                format!(
+                    "Pack: {}",
+                    match (&self.renderer.pack_id, &self.renderer.pack_tier) {
+                        (Some(id), tier) if !tier.is_empty() => format!("{id} ({tier})"),
+                        _ => "none".to_string(),
+                    }
                 ),
                 format!("Edits: {} (xp lvl {})  Seed: {}", self.edits, level, self.world.seed),
                 format!("Backend: {}  Scene: {}x{}", self.renderer.backend_name, self.renderer.scene_size().0, self.renderer.scene_size().1),
@@ -3256,6 +3330,17 @@ impl GameApp {
 
 /// does a block connect a fence? (vanilla rule: solid blocks + fences)
 #[inline]
+/// Phase 11 §34: shader-mode index → pack list index. Modes 0..2 are the
+/// engine's own grades; 3.. selects pack i-3 when it exists.
+fn shader_mode_pack_index(mode: u8, n_packs: usize) -> Option<usize> {
+    let i = mode as usize;
+    if i >= 3 && i - 3 < n_packs {
+        Some(i - 3)
+    } else {
+        None
+    }
+}
+
 fn fence_connects_to(b: u8) -> bool {
     is_solid(b) || b == OAK_FENCE
 }

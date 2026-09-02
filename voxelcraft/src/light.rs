@@ -703,8 +703,10 @@ const NEIGHBORS: [(i32, i32, i32); 6] = [
 /// The previous from-scratch algorithm (per-mesh-job light recompute),
 /// preserved as the differential-test oracle: given the mesher's 48×48×256
 /// padded blocks, produce (sky, block) light arrays.
-#[cfg(test)]
-pub(crate) fn reference_light(blocks: &[u8]) -> (Vec<u8>, Vec<u8>) {
+/// full-recompute reference (skylight column scan + lateral BFS, block
+/// light emissive BFS) over a PADDED 48×256×48 block array — the ground
+/// truth the incremental engine is differential-tested against.
+pub fn reference_light(blocks: &[u8]) -> (Vec<u8>, Vec<u8>) {
     const PADREF: usize = 48;
     let pad = PADREF;
     let pidx = |x: usize, y: usize, z: usize| y * (pad * pad) + z * pad + x;
@@ -878,9 +880,11 @@ pub(crate) fn reference_light(blocks: &[u8]) -> (Vec<u8>, Vec<u8>) {
     (light, blight)
 }
 
-/// test bridge: reference light for a 3×3 snapshot, as per-chunk LightData
-#[cfg(test)]
-pub(crate) fn reference_lightdata(
+/// reference light for a 3×3 snapshot, as per-chunk LightData. Full BFS
+/// recompute — the deterministic ground truth the incremental engine
+/// converges to (differential tests assert equality). Also used by the
+/// headless bench binary to feed mesh jobs.
+pub fn reference_lightdata(
     snap: &[Option<Arc<Chunk>>; 9],
 ) -> [Option<Arc<LightData>>; 9] {
     let pad = 48usize;

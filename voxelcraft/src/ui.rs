@@ -722,6 +722,7 @@ impl UiCanvas {
             ContainerKind::Crafting => 140,   // 3x3 craft + arrow + output
             ContainerKind::Furnace => 128,    // input / flame / fuel + arrow + output
             ContainerKind::Brewing => 150,   // ingredient / bubbles / fuel + 3 bottles
+            ContainerKind::Enchant => 160,   // item + lapis + 3 option buttons
         };
         let panel_h = top_h + 3 * 44 + 8 + 44 + 30; // + title + gaps + padding
         let y0 = (UI_H as i32 - panel_h) / 2;
@@ -738,6 +739,7 @@ impl UiCanvas {
             ContainerKind::Crafting => "CRAFTING TABLE",
             ContainerKind::Furnace => "FURNACE",
             ContainerKind::Brewing => "BREWING STAND",
+            ContainerKind::Enchant => "ENCHANT  (needs book + lapis + levels)",
         };
         self.text(px0 + 12, y0 - 24, title, [255, 220, 120, 255], 1);
 
@@ -747,6 +749,7 @@ impl UiCanvas {
             craft_out: (i32::MIN, i32::MIN),
             furnace: None,
             brewing: None,
+            enchant: None,
         };
 
         // ---- container-specific top area ----
@@ -853,6 +856,91 @@ impl UiCanvas {
                     ingredient: (ix, iy),
                     fuel: (fx, fy),
                     bottles: bottle_pos,
+                });
+            }
+            ContainerKind::Enchant => {
+                // vanilla layout: item + lapis slots left, 3 option rows
+                // right; each option shows its level number and cost
+                let (item, lapis, options, player_level, power) = view.enchant
+                    .map(|e| (e.0, e.1, e.2, e.3, e.4))
+                    .unwrap_or((
+                        ItemStack::EMPTY,
+                        ItemStack::EMPTY,
+                        [crate::enchanting::EnchOption { level: 0, ench: 0, ench_level: 0, cost: 0 }; 3],
+                        0,
+                        0,
+                    ));
+                let cx = x0 + 20;
+                let cy = y0 + 8;
+                self.slot_well(cx, cy, &item, atlas);
+                let lx = cx;
+                let ly = cy + 44;
+                self.slot_well(lx, ly, &lapis, atlas);
+                // power readout under the slots
+                self.text(
+                    cx,
+                    ly + 44,
+                    &format!("shelves {power}/15"),
+                    [120, 200, 120, 255],
+                    1,
+                );
+                // three option buttons
+                let ox = cx + 60;
+                let mut opt_pos = [(0, 0); 3];
+                for (i, o) in options.iter().enumerate() {
+                    let oy = cy + i as i32 * 48;
+                    let affordable = o.level > 0
+                        && !item.is_empty()
+                        && item.block == crate::blocks::ENCHANTED_BOOK
+                        && lapis.count >= o.cost
+                        && player_level >= o.cost as i32;
+                    // button chrome
+                    let bg = if affordable {
+                        [34, 60, 34, 235]
+                    } else {
+                        [40, 34, 34, 200]
+                    };
+                    self.rect(ox, oy, 180, 44, bg);
+                    self.frame(ox, oy, 180, 44, [12, 12, 14, 255]);
+                    if o.level == 0 {
+                        self.text(ox + 8, oy + 16, "- - -", [110, 110, 110, 255], 1);
+                    } else {
+                        // the vanilla green level number
+                        self.text(
+                            ox + 6,
+                            oy + 16,
+                            &format!("{}", o.level),
+                            [90, 255, 90, 255],
+                            1,
+                        );
+                        // enchant name + roman level
+                        let def = crate::enchanting::enchant_def(o.ench);
+                        let label = format!(
+                            "{} {}",
+                            def.name,
+                            crate::enchanting::roman(o.ench_level)
+                        );
+                        let color: [u8; 4] = if affordable {
+                            [255, 255, 255, 255]
+                        } else {
+                            [150, 150, 150, 255]
+                        };
+                        self.text(ox + 34, oy + 6, &label, color, 1);
+                        // cost line
+                        self.text(
+                            ox + 34,
+                            oy + 24,
+                            &format!("cost {} lvl + {} lapis", o.cost, o.cost),
+                            [200, 200, 120, 255],
+                            1,
+                        );
+                    }
+                    opt_pos[i] = (ox, oy);
+                }
+                geom.enchant = Some(EnchantSlots {
+                    item: (cx, cy),
+                    lapis: (lx, ly),
+                    options: opt_pos,
                 });
             }
         }
@@ -1101,6 +1189,8 @@ pub enum ContainerKind {
     Furnace,
     /// brewing stand: ingredient / fuel / 3 bottles with bubble progress
     Brewing,
+    /// enchanting table: item + lapis + 3 option rows (§29)
+    Enchant,
 }
 
 /// a logical slot in a container screen — the target of a mouse click
@@ -1121,6 +1211,12 @@ pub enum SlotRef {
     BrewFuel,
     /// brewing stand: one of the three bottle slots
     BrewBottle(usize),
+    /// enchanting table: the item slot
+    EnchantItem,
+    /// enchanting table: the lapis slot
+    EnchantLapis,
+    /// enchanting table: one of the three option rows
+    EnchantOption(usize),
 }
 
 /// pure-data snapshot of everything a container screen renders — owned
@@ -1137,6 +1233,14 @@ pub struct ContainerView {
     pub furnace: Option<(ItemStack, ItemStack, ItemStack, f32, f32)>,
     /// brewing slots: (ingredient, fuel, [3 bottles], fuel_frac, brew_frac)
     pub brewing: Option<(ItemStack, ItemStack, [ItemStack; 3], f32, f32)>,
+    /// enchanting: (item, lapis, [3 options], player_level, power)
+    pub enchant: Option<(
+        ItemStack,
+        ItemStack,
+        [crate::enchanting::EnchOption; 3],
+        i32,
+        u8,
+    )>,
     /// stack riding the mouse cursor
     pub cursor: ItemStack,
 }
@@ -1153,6 +1257,9 @@ impl ContainerView {
             SlotRef::BrewIngredient => self.brewing?.0,
             SlotRef::BrewFuel => self.brewing?.1,
             SlotRef::BrewBottle(i) => self.brewing?.2[i],
+            SlotRef::EnchantItem => self.enchant?.0,
+            SlotRef::EnchantLapis => self.enchant?.1,
+            SlotRef::EnchantOption(_) => ItemStack::EMPTY, // buttons, not stacks
         })
     }
 }
@@ -1171,6 +1278,14 @@ pub struct BrewSlots {
     pub bottles: [(i32, i32); 3],
 }
 
+/// enchanting-table hit rects: item + lapis slots and 3 option buttons
+pub struct EnchantSlots {
+    pub item: (i32, i32),
+    pub lapis: (i32, i32),
+    /// option button origins (w = 180, h = 44 each)
+    pub options: [(i32, i32); 3],
+}
+
 /// hit-test geometry for a container screen (UI-space 36px slots)
 pub struct ContainerGeom {
     /// 36 inventory slot origins: 0..9 hotbar row (bottom), 9..36 storage
@@ -1183,6 +1298,8 @@ pub struct ContainerGeom {
     pub furnace: Option<FurnaceSlots>,
     /// brewing slot origins when the screen is a brewing stand
     pub brewing: Option<BrewSlots>,
+    /// enchanting slot/button origins when the screen is a table
+    pub enchant: Option<EnchantSlots>,
 }
 
 impl ContainerGeom {
@@ -1213,6 +1330,19 @@ impl ContainerGeom {
             for (i, s) in bs.bottles.iter().enumerate() {
                 if Self::hit(x, y, s) {
                     return Some(SlotRef::BrewBottle(i));
+                }
+            }
+        }
+        if let Some(es) = &self.enchant {
+            if Self::hit(x, y, &es.item) {
+                return Some(SlotRef::EnchantItem);
+            }
+            if Self::hit(x, y, &es.lapis) {
+                return Some(SlotRef::EnchantLapis);
+            }
+            for (i, s) in es.options.iter().enumerate() {
+                if x >= s.0 && x < s.0 + 180 && y >= s.1 && y < s.1 + 44 {
+                    return Some(SlotRef::EnchantOption(i));
                 }
             }
         }

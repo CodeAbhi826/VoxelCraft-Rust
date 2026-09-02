@@ -107,6 +107,9 @@ pub const TILE_POTION_AWKWARD: u16 = 76;
 pub const TILE_POTION_MUNDANE: u16 = 77;
 pub const TILE_POTION_HEALING: u16 = 78;
 pub const TILE_POTION_HEALING_II: u16 = 79;
+// enchanting (Phase 7 §29): table + enchanted book
+pub const TILE_ENCHANT_TABLE: u16 = 80;
+pub const TILE_ENCHANTED_BOOK: u16 = 81;
 
 // Block ids (u8 in chunk storage).
 pub const AIR: u8 = 0;
@@ -174,7 +177,7 @@ pub const MUSHROOM_RED: u8 = 54;
 pub const MUSHROOM_BROWN: u8 = 55;
 pub const DEAD_BUSH: u8 = 56;
 
-pub const BLOCK_COUNT: usize = 74;
+pub const BLOCK_COUNT: usize = 76;
 
 // redstone core (Phase 6 §25 subset)
 pub const REDSTONE_WIRE: u8 = 60;
@@ -210,6 +213,12 @@ pub const POTION_AWKWARD_STATE: u16 = 124;
 pub const POTION_MUNDANE_STATE: u16 = 125;
 pub const POTION_HEALING_STATE: u16 = 126;
 pub const POTION_HEALING_II_STATE: u16 = 127;
+// enchanting (Phase 7 §29): table block + the book item-block (same
+// dedicated-state pattern; the book carries the enchant in ItemStack.ench)
+pub const ENCHANT_TABLE: u8 = 74;
+pub const ENCHANTED_BOOK: u8 = 75;
+pub const ENCHANT_TABLE_STATE: u16 = 128;
+pub const ENCHANTED_BOOK_STATE: u16 = 129;
 
 // ---------------------------------------------------------------------------
 // BlockState registry (1.16.5 pattern, miniature)
@@ -221,7 +230,7 @@ pub const POTION_HEALING_II_STATE: u16 = 127;
 // `axis=x|y|z`, exactly how vanilla models oak_log[axis=...]. The 1.16.5
 // global palette is 15 bits (~17k states); this registry grows into it
 // without touching storage (u16) or the mesher key.
-pub const STATE_COUNT: usize = 128;
+pub const STATE_COUNT: usize = 130;
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -328,6 +337,8 @@ pub fn default_state(b: u8) -> u16 {
         POTION_MUNDANE => POTION_MUNDANE_STATE,
         POTION_HEALING => POTION_HEALING_STATE,
         POTION_HEALING_II => POTION_HEALING_II_STATE,
+        ENCHANT_TABLE => ENCHANT_TABLE_STATE,
+        ENCHANTED_BOOK => ENCHANTED_BOOK_STATE,
         OAK_SLAB => 63,     // PROP_BLOCKS[0].base_state (half=bottom)
         COBBLE_STAIRS => 65, // base_state (facing=north, half=bottom)
         OAK_FENCE => 73,    // base_state (no connections)
@@ -503,6 +514,8 @@ pub fn state_block(s: u16) -> u8 {
         POTION_MUNDANE_STATE => return POTION_MUNDANE,
         POTION_HEALING_STATE => return POTION_HEALING,
         POTION_HEALING_II_STATE => return POTION_HEALING_II,
+        ENCHANT_TABLE_STATE => return ENCHANT_TABLE,
+        ENCHANTED_BOOK_STATE => return ENCHANTED_BOOK,
         _ => {}
     }
     if let Some((b, _)) = prop_state_decode(s) {
@@ -549,6 +562,7 @@ pub fn is_model_state(s: u16) -> bool {
                 | BREWING_STAND_STATE
                 | POTION_EMPTY_STATE | POTION_WATER_STATE | POTION_AWKWARD_STATE
                 | POTION_MUNDANE_STATE | POTION_HEALING_STATE | POTION_HEALING_II_STATE
+                | ENCHANT_TABLE_STATE | ENCHANTED_BOOK_STATE
         )
 }
 
@@ -608,16 +622,16 @@ pub fn log_axis_state(block: u8, axis: u8) -> u16 {
 }
 
 /// highest tile index the generator must draw
-pub const TILE_MAX: u16 = 79;
+pub const TILE_MAX: u16 = 81;
 
-/// inventory-only ITEM blocks (potions/bottles): never placeable in the
-/// world — right-click drinks (potions) / fills (glass bottle at water).
+/// inventory-only ITEM blocks (potions/bottles/books): never placeable in
+/// the world — right-click drinks (potions) / fills (glass bottle at water).
 #[inline]
 pub fn is_item_block(b: u8) -> bool {
     matches!(
         b,
         POTION_EMPTY | POTION_WATER | POTION_AWKWARD | POTION_MUNDANE | POTION_HEALING
-            | POTION_HEALING_II
+            | POTION_HEALING_II | ENCHANTED_BOOK
     )
 }
 
@@ -743,6 +757,10 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Mundane Potion", [TILE_POTION_MUNDANE, TILE_POTION_MUNDANE, TILE_POTION_MUNDANE], false, false, true, false, 0, SoundFamily::Water),
     d("Potion of Healing", [TILE_POTION_HEALING, TILE_POTION_HEALING, TILE_POTION_HEALING], false, false, true, false, 0, SoundFamily::Water),
     d("Potion of Healing II", [TILE_POTION_HEALING_II, TILE_POTION_HEALING_II, TILE_POTION_HEALING_II], false, false, true, false, 0, SoundFamily::Water),
+    // enchanting (§29): cross-rendered table slab (vanilla table is a small
+    // block with runes); the book is an ITEM block that carries enchants
+    d("Enchanting Table", [TILE_ENCHANT_TABLE, TILE_ENCHANT_TABLE, TILE_ENCHANT_TABLE], false, false, true, false, 4, SoundFamily::Stone),
+    d("Enchanted Book", [TILE_ENCHANTED_BOOK, TILE_ENCHANTED_BOOK, TILE_ENCHANTED_BOOK], false, false, true, false, 0, SoundFamily::Wood),
 ];
 
 #[inline]
@@ -811,7 +829,7 @@ pub fn face_visible(b: u8, n: u8) -> bool {
 /// Everything placeable except air, bedrock (unbreakable) and water
 /// (needs fluid sim to be fun). Potions are item-blocks — usable from the
 /// hotbar (drink), never placeable.
-pub const PICKER_BLOCKS: [u8; 66] = [
+pub const PICKER_BLOCKS: [u8; 68] = [
     GRASS, DIRT, STONE, COBBLE, SMOOTH_STONE, STONE_BRICKS, BRICKS, MOSSY_COBBLE,
     GRANITE, DIORITE, ANDESITE, OBSIDIAN,
     SAND, GRAVEL, CLAY, TERRACOTTA,
@@ -826,6 +844,7 @@ pub const PICKER_BLOCKS: [u8; 66] = [
     NETHERRACK, NETHER_QUARTZ_ORE, SOUL_SAND,
     BREWING_STAND,
     POTION_EMPTY, POTION_WATER, POTION_AWKWARD, POTION_MUNDANE, POTION_HEALING, POTION_HEALING_II,
+    ENCHANT_TABLE, ENCHANTED_BOOK,
 ];
 
 /// default hotbar palette
@@ -982,11 +1001,14 @@ mod state_tests {
                     | POTION_MUNDANE_STATE
                     | POTION_HEALING_STATE
                     | POTION_HEALING_II_STATE
+                    | ENCHANT_TABLE_STATE
+                    | ENCHANTED_BOOK_STATE
             ) {
-                assert!(!is_model_state(s), "brewing state {s} never routes to models");
+                assert!(!is_model_state(s), "brewing/enchant state {s} never routes to models");
                 assert!(s > SOUL_SAND_STATE, "brewing states live above the sim range");
                 // every dedicated state folds back to its own block id
-                assert_eq!(state_block(s) as u16, s - BREWING_STAND_STATE + BREWING_STAND as u16);
+                // (BREWING_STAND_STATE..ENCHANTED_BOOK_STATE == blocks 67..75)
+                assert_eq!(state_block(s), (s - BREWING_STAND_STATE + BREWING_STAND as u16) as u8);
                 continue;
             }
             let Some((b, props)) = prop_state_decode(s) else {

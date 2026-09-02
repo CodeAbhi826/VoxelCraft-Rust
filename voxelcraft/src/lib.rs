@@ -7,6 +7,7 @@ pub mod brewing;
 pub mod chunk;
 pub mod draw;
 pub mod entities;
+pub mod enchanting;
 pub mod fluids;
 pub mod craft;
 pub mod furnace;

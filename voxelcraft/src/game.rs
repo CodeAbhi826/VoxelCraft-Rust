@@ -173,6 +173,8 @@ pub enum Container {
     Furnace { pos: [i32; 3] },
     /// brewing-stand UI bound to a block entity (§29)
     Brewing { pos: [i32; 3] },
+    /// enchanting-table UI bound to a block entity (§29)
+    Enchant { pos: [i32; 3] },
 }
 
 impl Screen {
@@ -1653,6 +1655,21 @@ impl GameApp {
                 }
                 Container::Furnace { .. } => {}
                 Container::Brewing { .. } => {}
+                Container::Enchant { pos } => {
+                    // vanilla: the table's item + lapis return to the player
+                    if let Some(e) = self.sim.enchants.map.get(&pos) {
+                        for s in [&e.item, &e.lapis] {
+                            if !s.is_empty() {
+                                let left = self.player.inv.add(s.block, s.count);
+                                if left > 0 {
+                                    self.sim.items.drop_block(
+                                        pos[0], pos[1] + 1, pos[2], s.block, 2, 15, 0,
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         // cursor returns to the inventory
@@ -1764,6 +1781,25 @@ impl GameApp {
                 let Some(Container::Furnace { pos }) = self.container else {
                     return;
                 };
+                // §29: collecting smelted output grants the pooled XP
+                // (vanilla: xp accrues per smelt, pays on collect) —
+                // self.player is a disjoint field so this stays borrow-clean
+                let grant = self
+                    .sim
+                    .furnaces
+                    .map
+                    .get_mut(&pos)
+                    .map(|f| {
+                        let g = f.xp_pool.floor() as i32;
+                        f.xp_pool -= g as f32;
+                        g
+                    })
+                    .unwrap_or(0);
+                let leveled = if grant > 0 {
+                    self.player.add_xp(grant)
+                } else {
+                    0
+                };
                 let Some(f) = self.sim.furnaces.map.get_mut(&pos) else {
                     return;
                 };
@@ -1789,6 +1825,9 @@ impl GameApp {
                             self.cursor_stack = half;
                         }
                     }
+                }
+                if leveled > 0 {
+                    self.play_event("entity.player.levelup", None, 1.0);
                 }
             }
             SlotRef::BrewIngredient => {
@@ -1832,6 +1871,87 @@ impl GameApp {
                 Inventory::slot_click(&mut slot, &mut self.cursor_stack, right);
                 b.bottles[i] = slot;
             }
+            SlotRef::EnchantItem => {
+                let Some(Container::Enchant { pos }) = self.container else {
+                    return;
+                };
+                // vanilla: only books go in the item slot
+                if !self.cursor_stack.is_empty()
+                    && self.cursor_stack.block != ENCHANTED_BOOK
+                {
+                    return;
+                }
+                let seed = self.world.seed;
+                let Some(e) = self.sim.enchants.map.get_mut(&pos) else {
+                    return;
+                };
+                let changed = e.item != self.cursor_stack;
+                let mut slot = e.item;
+                Inventory::slot_click(&mut slot, &mut self.cursor_stack, right);
+                e.item = slot;
+                // vanilla: the offer list re-rolls when the item changes
+                if changed {
+                    e.reroll(&self.world, pos, seed);
+                }
+            }
+            SlotRef::EnchantLapis => {
+                let Some(Container::Enchant { pos }) = self.container else {
+                    return;
+                };
+                // vanilla: only lapis goes in the lapis slot
+                if !self.cursor_stack.is_empty()
+                    && self.cursor_stack.block != LAPIS_ORE
+                {
+                    return;
+                }
+                let Some(e) = self.sim.enchants.map.get_mut(&pos) else {
+                    return;
+                };
+                let mut slot = e.lapis;
+                Inventory::slot_click(&mut slot, &mut self.cursor_stack, right);
+                e.lapis = slot;
+            }
+            SlotRef::EnchantOption(row) => {
+                // §29: pay levels + lapis, enchant the book, re-roll offers
+                let Some(Container::Enchant { pos }) = self.container else {
+                    return;
+                };
+                let player_level = self.player.xp_level;
+                let Some(e) = self.sim.enchants.map.get_mut(&pos) else {
+                    return;
+                };
+                if !e.can_apply(row, player_level) {
+                    return;
+                }
+                let before = e.options[row];
+                let Some(cost) = e.apply(row) else {
+                    return;
+                };
+                // pay: lapis from the slot, levels from the player
+                if e.lapis.count >= cost {
+                    e.lapis.count -= cost;
+                    if e.lapis.count == 0 {
+                        e.lapis = crate::inventory::ItemStack::EMPTY;
+                    }
+                }
+                self.player.spend_levels(cost as i32);
+                self.sim.enchants.total_enchanted += 1;
+                let seed = self.world.seed;
+                e.reroll(&self.world, pos, seed);
+                self.play_event(
+                    "block.enchantment_table.use",
+                    Some([pos[0] as f32 + 0.5, pos[1] as f32 + 0.5, pos[2] as f32 + 0.5]),
+                    1.0,
+                );
+                let def = crate::enchanting::enchant_def(before.ench);
+                crate::render::report_boot_log(&format!(
+                    "e2e: enchanted {} {} (lvl {}) cost {cost} lvl + {cost} lapis → xp lvl {}",
+                    def.name,
+                    crate::enchanting::roman(before.ench_level),
+                    before.level,
+                    self.player.xp_level
+                ));
+            }
             SlotRef::Inv(_) => {}
         }
         self.click_sound();
@@ -1856,9 +1976,9 @@ impl GameApp {
     /// pure data, built fresh every UI rebuild
     fn container_view(&self) -> crate::ui::ContainerView {
         use crate::ui::{ContainerKind, ContainerView};
-        let (kind, furnace, brewing) = match self.container {
-            Some(Container::Inventory) => (ContainerKind::Inventory, None, None),
-            Some(Container::Crafting { .. }) => (ContainerKind::Crafting, None, None),
+        let (kind, furnace, brewing, enchant) = match self.container {
+            Some(Container::Inventory) => (ContainerKind::Inventory, None, None, None),
+            Some(Container::Crafting { .. }) => (ContainerKind::Crafting, None, None, None),
             Some(Container::Furnace { pos }) => {
                 // live slots + progress fractions for the flame/arrow
                 let f = self
@@ -1878,6 +1998,7 @@ impl GameApp {
                     ContainerKind::Furnace,
                     Some((f.input, f.fuel, f.output, burn, cook)),
                     None,
+                    None,
                 )
             }
             Some(Container::Brewing { pos }) => {
@@ -1896,9 +2017,25 @@ impl GameApp {
                     ContainerKind::Brewing,
                     None,
                     Some((b.ingredient, b.fuel, b.bottles, fuel_frac, brew_frac)),
+                    None,
                 )
             }
-            None => (ContainerKind::Inventory, None, None),
+            Some(Container::Enchant { pos }) => {
+                let e = self
+                    .sim
+                    .enchants
+                    .map
+                    .get(&pos)
+                    .cloned()
+                    .unwrap_or_default();
+                (
+                    ContainerKind::Enchant,
+                    None,
+                    None,
+                    Some((e.item, e.lapis, e.options, self.player.xp_level, e.power)),
+                )
+            }
+            None => (ContainerKind::Inventory, None, None, None),
         };
         let size = self.craft_grid_size();
         let grid: Vec<crate::inventory::ItemStack> =
@@ -1912,6 +2049,7 @@ impl GameApp {
             craft_out,
             furnace,
             brewing,
+            enchant,
             cursor: self.cursor_stack,
         }
     }
@@ -1938,6 +2076,14 @@ impl GameApp {
         notify_sim(&self.world, &mut self.sim.sched, x, y, z);
         // §27/§29: container contents spill + entity cleanup
         self.drop_container_contents([x, y, z], b);
+        // §29: mining ores grants XP (vanilla amounts, fixed midpoint)
+        let ore_xp = crate::enchanting::ore_xp(b);
+        if ore_xp > 0 {
+            let gained = self.player.add_xp(ore_xp);
+            if gained > 0 {
+                self.play_event("entity.player.levelup", None, 1.0);
+            }
+        }
         // §21: the dig event, same as the interactive path
         self.play_event(
             crate::sounds::family_event(crate::blocks::def(b).sound, true),
@@ -2201,6 +2347,34 @@ impl GameApp {
                                 self.open_container(Container::Brewing { pos });
                                 crate::render::report_boot_log("e2e: brewing screen open");
                             }
+                            Some("enchant") => {
+                                // place the table + the vanilla 15-bookshelf
+                                // ring, then open with a fresh offer list
+                                self.test_place(ENCHANT_TABLE, pos[0], pos[1], pos[2]);
+                                for dz in [-2, 2] {
+                                    for dx in -2i32..=2 {
+                                        self.test_place(BOOKSHELF, pos[0] + dx, pos[1], pos[2] + dz);
+                                        self.test_place(BOOKSHELF, pos[0] + dx, pos[1] + 1, pos[2] + dz);
+                                    }
+                                }
+                                for dx in [-2, 2] {
+                                    for dz in -1i32..=1 {
+                                        self.test_place(BOOKSHELF, pos[0] + dx, pos[1], pos[2] + dz);
+                                        self.test_place(BOOKSHELF, pos[0] + dx, pos[1] + 1, pos[2] + dz);
+                                    }
+                                }
+                                let seed = self.world.seed;
+                                let (power, offers) = {
+                                    let e = self.sim.enchants.map.entry(pos).or_default();
+                                    e.reroll(&self.world, pos, seed);
+                                    (e.power, e.options.iter().map(|o| o.level).collect::<Vec<_>>())
+                                };
+                                self.open_container(Container::Enchant { pos });
+                                crate::render::report_boot_log(&format!(
+                                    "e2e: enchant screen open (power {}/15, offers {:?})",
+                                    power, offers
+                                ));
+                            }
                             Some("brew") => {
                                 // brew:<ticks> — scripted §29 flow: place a
                                 // stand, load it through REAL slot
@@ -2290,6 +2464,11 @@ impl GameApp {
                             Some("mushroom_brown") => Some(MUSHROOM_BROWN),
                             Some("netherrack") => Some(NETHERRACK),
                             Some("glowstone") => Some(GLOWSTONE),
+                            // §29 enchanting chain
+                            Some("book") => Some(ENCHANTED_BOOK),
+                            Some("lapis") => Some(LAPIS_ORE),
+                            Some("enchant_table") => Some(ENCHANT_TABLE),
+                            Some("bookshelf") => Some(BOOKSHELF),
                             _ => None,
                         };
                         let n: u8 = parts.get(2).and_then(|s| s.parse().ok()).unwrap_or(1);
@@ -2300,6 +2479,106 @@ impl GameApp {
                                 name(b)
                             ));
                             self.ui.dirty = true;
+                        }
+                    }
+                    Some("xp") => {
+                        // xp:<points> — E2E shortcut: grant points through the
+                        // REAL level-up curve and report level/progress
+                        let pts: i32 = parts
+                            .get(1)
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(100);
+                        let gained = self.player.add_xp(pts);
+                        if gained > 0 {
+                            self.play_event("entity.player.levelup", None, 1.0);
+                        }
+                        crate::render::report_boot_log(&format!(
+                            "e2e: +{pts} xp -> level {} (+{}/{})",
+                            self.player.xp_level,
+                            self.player.xp_points,
+                            crate::enchanting::xp_to_next(self.player.xp_level)
+                        ));
+                        self.ui.dirty = true;
+                    }
+                    Some("enchant") => {
+                        // enchant:<row> — scripted §29 flow: table + full
+                        // bookshelf ring, book + lapis through the REAL slot
+                        // semantics, grant levels, click the option row
+                        let row: usize = parts
+                            .get(1)
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(2);
+                        let pos = [
+                            self.player.pos.x.floor() as i32,
+                            self.player.pos.y.floor() as i32 - 2,
+                            self.player.pos.z.floor() as i32,
+                        ];
+                        self.test_place(ENCHANT_TABLE, pos[0], pos[1], pos[2]);
+                        for dz in [-2, 2] {
+                            for dx in -2i32..=2 {
+                                self.test_place(BOOKSHELF, pos[0] + dx, pos[1], pos[2] + dz);
+                                self.test_place(BOOKSHELF, pos[0] + dx, pos[1] + 1, pos[2] + dz);
+                            }
+                        }
+                        for dx in [-2, 2] {
+                            for dz in -1i32..=1 {
+                                self.test_place(BOOKSHELF, pos[0] + dx, pos[1], pos[2] + dz);
+                                self.test_place(BOOKSHELF, pos[0] + dx, pos[1] + 1, pos[2] + dz);
+                            }
+                        }
+                        let seed = self.world.seed;
+                        let e = self.sim.enchants.map.entry(pos).or_default();
+                        e.reroll(&self.world, pos, seed);
+                        e.item = crate::inventory::ItemStack::new(ENCHANTED_BOOK, 1);
+                        e.lapis = crate::inventory::ItemStack::new(LAPIS_ORE, 3);
+                        // make sure the player can pay (vanilla: needs the
+                        // levels — grant enough for the cost)
+                        let cost = e.options.get(row).map(|o| o.cost as i32).unwrap_or(0);
+                        while self.player.xp_level < cost {
+                            self.player.add_xp(crate::enchanting::xp_to_next(self.player.xp_level));
+                        }
+                        let before = e.options[row];
+                        let level_before = self.player.xp_level;
+                        drop(e);
+                        self.open_container(Container::Enchant { pos });
+                        // apply through the same can_apply/apply logic the
+                        // option click uses (geometry-driven click is
+                        // verified separately via cclick)
+                        let affordable = self
+                            .sim
+                            .enchants
+                            .map
+                            .get(&pos)
+                            .map(|e| e.can_apply(row, self.player.xp_level))
+                            .unwrap_or(false);
+                        if affordable {
+                            let Some(e) = self.sim.enchants.map.get_mut(&pos) else {
+                                return;
+                            };
+                            let Some(cost) = e.apply(row) else {
+                                return;
+                            };
+                            if e.lapis.count >= cost {
+                                e.lapis.count -= cost;
+                                if e.lapis.count == 0 {
+                                    e.lapis = crate::inventory::ItemStack::EMPTY;
+                                }
+                            }
+                            self.player.spend_levels(cost as i32);
+                            self.sim.enchants.total_enchanted += 1;
+                            e.reroll(&self.world, pos, seed);
+                            let def = crate::enchanting::enchant_def(before.ench);
+                            crate::render::report_boot_log(&format!(
+                                "e2e: enchanted {} {} (row lvl {}) cost {cost} lvl + {cost} lapis, xp {} -> {}, book ench={}",
+                                def.name,
+                                crate::enchanting::roman(before.ench_level),
+                                before.level,
+                                level_before,
+                                self.player.xp_level,
+                                self.sim.enchants.map[&pos].item.ench
+                            ));
+                        } else {
+                            crate::render::report_boot_log("e2e: enchant offer not affordable");
                         }
                     }
                     Some("fill") => {
@@ -2613,6 +2892,14 @@ impl GameApp {
                         notify_sim(&self.world, &mut self.sim.sched, pos[0], pos[1], pos[2]);
                         // §27/§29: container contents spill + entity cleanup
                         self.drop_container_contents(pos, broke);
+                        // §29: mining ores grants XP (vanilla amounts)
+                        let ore_xp = crate::enchanting::ore_xp(broke);
+                        if ore_xp > 0 {
+                            let gained = self.player.add_xp(ore_xp);
+                            if gained > 0 {
+                                self.play_event("entity.player.levelup", None, 1.0);
+                            }
+                        }
                         self.play_event(
                             crate::sounds::family_event(def(b).sound, true),
                             Some([pos[0] as f32 + 0.5, pos[1] as f32 + 0.5, pos[2] as f32 + 0.5]),
@@ -2655,6 +2942,14 @@ impl GameApp {
                         // block entity is created on first use (empty state)
                         self.sim.brewing.map.entry(tpos).or_default();
                         self.open_container(Container::Brewing { pos: tpos });
+                        self.place_timer = 0.3;
+                    } else if tb == ENCHANT_TABLE {
+                        // §29: right-click opens the enchanting screen; the
+                        // entity + offer list generate on first use
+                        let seed = self.world.seed;
+                        let e = self.sim.enchants.map.entry(tpos).or_default();
+                        e.reroll(&self.world, tpos, seed);
+                        self.open_container(Container::Enchant { pos: tpos });
                         self.place_timer = 0.3;
                     } else if !self.player.held().is_empty()
                         && self.player.held().block == POTION_EMPTY
@@ -3415,9 +3710,10 @@ impl GameApp {
             &self.atlas,
             toast,
         );
-        let xp = (self.edits % 50) as f32 / 50.0;
-        let level = self.edits / 50;
-        // §29: the health bar is REAL now — potions heal it, damage lowers it
+        let xp = self.player.xp_fraction();
+        let level = self.player.xp_level.max(0) as u32;
+        // §29: the health bar is REAL now — potions heal it, damage lowers it;
+        // the XP bar shows the real in-level progress + level
         self.ui.status_bars(self.player.health, 20.0, xp, level);
 
         if self.show_debug {

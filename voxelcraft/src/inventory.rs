@@ -11,13 +11,35 @@ pub const INV_SLOTS: usize = 36; // 0..9 hotbar, 9..36 storage
 pub struct ItemStack {
     pub block: u8,
     pub count: u8,
+    /// carried enchantment (§29): 0 = none; encoding (enchant_id << 8) |
+    /// level — books keep their enchant through every slot/cursor move
+    /// because the WHOLE struct is copied, never rebuilt from (block,count)
+    pub ench: u16,
 }
 
 impl ItemStack {
-    pub const EMPTY: ItemStack = ItemStack { block: AIR, count: 0 };
+    pub const EMPTY: ItemStack = ItemStack { block: AIR, count: 0, ench: 0 };
 
     pub const fn new(block: u8, count: u8) -> Self {
-        ItemStack { block, count }
+        ItemStack { block, count, ench: 0 }
+    }
+
+    pub const fn new_enchanted(block: u8, count: u8, ench: u16) -> Self {
+        ItemStack { block, count, ench }
+    }
+
+    /// decode the carried enchant → (registry id, level) or None
+    pub fn enchant(&self) -> Option<(u8, u8)> {
+        if self.ench == 0 {
+            None
+        } else {
+            Some(((self.ench >> 8) as u8, (self.ench & 0xFF) as u8))
+        }
+    }
+
+    /// encode an enchant onto this stack (id < 256, level 1..=255)
+    pub fn set_enchant(&mut self, id: u8, level: u8) {
+        self.ench = ((id as u16) << 8) | level.min(255) as u16;
     }
 
     pub fn is_empty(&self) -> bool {

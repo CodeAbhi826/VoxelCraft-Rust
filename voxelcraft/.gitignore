@@ -1,3 +1,4 @@
 bench-quick.json
 bench-headless.json
 wasm-out/
+dist/

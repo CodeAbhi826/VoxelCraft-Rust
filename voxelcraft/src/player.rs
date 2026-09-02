@@ -476,7 +476,169 @@ mod tests {
         }
         64
     }
+
+
+
+
+
+    // ------------------------------------------------ §23 physics constants --
+
+    /// hand-built flat world: stone floor top surface at y=65
+    fn flat_floor() -> World {
+        let mut w = World::new(7);
+        for dz in -1i32..=1 {
+            for dx in -1i32..=1 {
+                let mut c = crate::chunk::Chunk::empty();
+                for y in 0..=64i32 {
+                    for lz in 0..16usize {
+                        for lx in 0..16usize {
+                            c.set(lx, y as usize, lz, crate::blocks::STONE);
+                        }
+                    }
+                }
+                w.insert_generated((dx, dz), Arc::new(c), Vec::new());
+            }
+        }
+        w.dirty.clear();
+        w
+    }
+
+    /// vanilla 1.16.5 walking speed converges to 4.317 m/s (§23)
+    #[test]
+    fn walk_speed_converges_to_vanilla() {
+        let w = flat_floor();
+        let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
+        p.flying = false;
+        let mut input = Input::default();
+        input.fwd = true;
+        // 3 seconds at 60 Hz — acceleration converges (rate 12 on ground)
+        for _ in 0..180 {
+            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+        }
+        let horiz = (p.vel.x * p.vel.x + p.vel.z * p.vel.z).sqrt();
+        assert!(
+            (horiz - WALK_SPEED).abs() < 0.05,
+            "walk speed {horiz} vs vanilla {WALK_SPEED}"
+        );
+        // actually moved (yaw 0 faces −Z)
+        assert!(p.pos.z < -10.0, "walked forward, z={}", p.pos.z);
+        // stayed on the floor
+        assert!((p.pos.y - 65.0).abs() < 0.02, "grounded, y={}", p.pos.y);
+    }
+
+    /// sprint = 5.612 m/s (§23)
+    #[test]
+    fn sprint_speed_converges_to_vanilla() {
+        let w = flat_floor();
+        let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
+        p.flying = false;
+        let mut input = Input::default();
+        input.fwd = true;
+        input.sprint = true;
+        for _ in 0..180 {
+            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+        }
+        let horiz = (p.vel.x * p.vel.x + p.vel.z * p.vel.z).sqrt();
+        assert!(
+            (horiz - SPRINT_SPEED).abs() < 0.05,
+            "sprint speed {horiz} vs vanilla {SPRINT_SPEED}"
+        );
+    }
+
+    /// jump apex ≈ 1.2522 blocks (§23 vanilla 1.16.5 jump height)
+    #[test]
+    fn jump_apex_is_vanilla_height() {
+        let w = flat_floor();
+        let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
+        p.flying = false;
+        let mut input = Input::default();
+        input.jump = true;
+        let start = p.pos.y;
+        let mut apex = start;
+        for _ in 0..120 {
+            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+            apex = apex.max(p.pos.y);
+            if p.on_ground && p.pos.y > start + 0.5 {
+                break; // landed
+            }
+        }
+        let height = apex - start;
+        // continuous apex (v²/2g = 1.2514 ≈ vanilla 1.2522); semi-implicit
+        // integration (v -= g·dt BEFORE the position step) undershoots by
+        // JUMP_VEL·dt/2 ≈ 0.075 — both are asserted
+        let continuous = JUMP_VEL * JUMP_VEL / (2.0 * GRAVITY);
+        assert!(
+            (height - continuous).abs() < JUMP_VEL / 120.0 + 0.01,
+            "jump height {height} vs continuous apex {continuous}"
+        );
+        assert!((continuous - 1.2522).abs() < 0.01, "vanilla jump parity");
+    }
+
+    /// terminal velocity caps the fall; the fall accelerates at gravity
+    #[test]
+    fn fall_accelerates_and_terminates() {
+        let mut w = flat_floor();
+        // remove the floor under the column so the fall is unbounded
+        for y in 0..=64i32 {
+            w.set_block(0, y, 0, crate::blocks::AIR);
+        }
+        let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
+        p.flying = false;
+        p.vel.y = -60.0; // start past terminal
+        let mut input = Input::default();
+        let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+        assert!(
+            p.vel.y >= -TERMINAL - 0.01,
+            "terminal velocity clamps, got {}",
+            p.vel.y
+        );
+        // free fall from rest: v = g*t after ~0.5 s
+        let mut p2 = Player::new(Vec3::new(0.5, 65.0, 0.5));
+        p2.flying = false;
+        for _ in 0..30 {
+            let _ = p2.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+        }
+        let expect = TERMINAL.min(GRAVITY * 0.5);
+        assert!(
+            (p2.vel.y + expect).abs() < 0.5,
+            "gravity integration ~{} vs {}",
+            -p2.vel.y,
+            expect
+        );
+    }
+
+    /// swimming: buoyancy + water speed scaling (§23 water movement)
+    #[test]
+    fn water_slows_and_buoys() {
+        let mut w = flat_floor();
+        // flood a wide pool (the player walks forward for 2 s — must
+        // stay inside the water the whole time)
+        for y in 65..70i32 {
+            for z in -12..=12i32 {
+                for x in -12..=12i32 {
+                    w.set_block(x, y, z, crate::blocks::WATER);
+                }
+            }
+        }
+        let mut p = Player::new(Vec3::new(0.5, 66.0, 0.5));
+        p.flying = false;
+        let mut input = Input::default();
+        input.fwd = true;
+        for _ in 0..120 {
+            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+        }
+        assert!(p.in_water, "in water");
+        let horiz = (p.vel.x * p.vel.x + p.vel.z * p.vel.z).sqrt();
+        assert!(
+            (horiz - WALK_SPEED * 0.55).abs() < 0.05,
+            "water speed {} vs {}",
+            horiz,
+            WALK_SPEED * 0.55
+        );
+        // sank to the pool floor (vy 0 on the ground) or still sinking,
+        // never faster than the -4 water terminal
+        assert!(p.vel.y > -4.5 && p.vel.y <= 0.0, "buoyant sink, vy={}", p.vel.y);
+        assert!((p.pos.y - 65.0).abs() < 0.1, "resting on the pool floor, y={}", p.pos.y);
+    }
+
 }
-
-
-

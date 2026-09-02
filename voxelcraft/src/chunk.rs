@@ -169,6 +169,23 @@ impl Section {
         self.non_air == 0
     }
 
+    /// §12 light-region pruning: does any palette entry name an emissive
+    /// block? Sections without one cannot hold block-light sources — the
+    /// world can skip whole sections when checking light relevance.
+    pub fn has_emissive(&self) -> bool {
+        self.palette
+            .iter()
+            .any(|&s| crate::blocks::emissive(crate::blocks::state_block(s)) > 0)
+    }
+
+    /// §12 light-region pruning: is every palette entry fully opaque? Skips
+    /// whole 16³ sections to O(palette) when walking columns from above.
+    pub fn all_opaque(&self) -> bool {
+        self.palette
+            .iter()
+            .all(|&s| crate::blocks::is_opaque(crate::blocks::state_block(s)))
+    }
+
     /// memory footprint in bytes (debug/F3 stats)
     pub fn heap_bytes(&self) -> usize {
         self.palette.len() * 2 + self.data.len() * 8

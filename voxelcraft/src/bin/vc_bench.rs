@@ -19,7 +19,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use voxelcraft::chunk::Chunk;
 use voxelcraft::gen::TerrainGen;
-use voxelcraft::mesh::mesh_chunk;
+use voxelcraft::mesh::{mesh_chunk, mesh_sections};
 use voxelcraft::world::ChunkPos;
 
 use rayon::prelude::*;
@@ -139,6 +139,32 @@ fn main() {
     let mesh_par_ms = t_mesh_par.elapsed().as_secs_f32() * 1000.0;
     let par_verts: usize = mesh_sizes.iter().sum();
 
+    // §48 Phase 3: partial remesh (§12 fine-grained invalidation).
+    // A typical block edit dirties ~3 sections of one chunk — measure the
+    // same 3-section job against a full 16-section remesh. Includes the
+    // cache handoff (prev) exactly like the game's worker jobs.
+    let mut remesh3_ms: Vec<f32> = Vec::with_capacity(meshable.len());
+    let mut remesh3_eq = true; // determinism: partial == matching part of full
+    for &pos in meshable.iter() {
+        let snap = snapshot(&by_pos, pos);
+        let full = mesh_sections(pos, &snap, true, u16::MAX, &[]);
+        let cache = full.sections.clone();
+        // sections 4–6 (typical terrain band, y 64–111)
+        let mask: u16 = 0b111 << 4;
+        let t0 = Instant::now();
+        let part = mesh_sections(pos, &snap, true, mask, &cache);
+        remesh3_ms.push(t0.elapsed().as_secs_f32() * 1000.0);
+        // the partial result must reproduce the full mesh bit-for-bit
+        // (unmasked sections reused verbatim, masked rebuilt deterministically)
+        if part.merged.solid.0 != full.merged.solid.0
+            || part.merged.solid.1 != full.merged.solid.1
+            || part.merged.water.0 != full.merged.water.0
+            || part.merged.water.1 != full.merged.water.1
+        {
+            remesh3_eq = false;
+        }
+    }
+
     // memory footprint of the paletted sections
     let heap: usize = chunks.iter().map(|c| c.heap_bytes()).sum();
 
@@ -162,6 +188,11 @@ fn main() {
     println!("meshing     : {} interior chunks", meshable.len());
     println!("meshing     : avg {mesh_avg:.2} ms  p50 {mesh_p50:.2} ms  p95 {mesh_p95:.2} ms  (per chunk, single-threaded, incl. light BFS)");
     println!("meshing     : total {mesh_par_ms:.0} ms parallel");
+    let rm3_p50 = percentile_ms(&mut remesh3_ms, 0.50);
+    let rm3_avg = remesh3_ms.iter().sum::<f32>() / remesh3_ms.len().max(1) as f32;
+    println!(
+        "remesh 3sec : avg {rm3_avg:.2} ms  p50 {rm3_p50:.2} ms  (3-section edit job, §12 fine-grained; deterministic: {remesh3_eq})"
+    );
     println!("geometry    : {total_verts} vertices  {total_tris} triangles  (VC-16 = 16 B/vertex)");
     println!(
         "chunk memory: {:.2} MiB for {} chunks ({:.1} KiB/chunk avg, paletted sections)",
@@ -174,7 +205,7 @@ fn main() {
 
     if !json_path.is_empty() {
         let json = format!(
-            "{{\"headless_bench\":{{\"seed\":{seed},\"chunks\":{n_chunks},\"threads\":{threads},\"gen\":{{\"avg_ms\":{gen_avg:.3},\"p50_ms\":{gen_p50:.3},\"p95_ms\":{gen_p95:.3},\"parallel_total_ms\":{gen_par_ms:.3}}},\"mesh\":{{\"chunks\":{},\"avg_ms\":{mesh_avg:.3},\"p50_ms\":{mesh_p50:.3},\"p95_ms\":{mesh_p95:.3},\"parallel_total_ms\":{mesh_par_ms:.3}}},\"verts\":{total_verts},\"tris\":{total_tris},\"par_verts\":{par_verts},\"heap_bytes\":{heap}}}}}",
+            "{{\"headless_bench\":{{\"seed\":{seed},\"chunks\":{n_chunks},\"threads\":{threads},\"gen\":{{\"avg_ms\":{gen_avg:.3},\"p50_ms\":{gen_p50:.3},\"p95_ms\":{gen_p95:.3},\"parallel_total_ms\":{gen_par_ms:.3}}},\"mesh\":{{\"chunks\":{},\"avg_ms\":{mesh_avg:.3},\"p50_ms\":{mesh_p50:.3},\"p95_ms\":{mesh_p95:.3},\"parallel_total_ms\":{mesh_par_ms:.3}}},\"remesh3\":{{\"avg_ms\":{rm3_avg:.3},\"p50_ms\":{rm3_p50:.3},\"deterministic\":{remesh3_eq}}},\"verts\":{total_verts},\"tris\":{total_tris},\"par_verts\":{par_verts},\"heap_bytes\":{heap}}}}}",
             meshable.len()
         );
         std::fs::write(&json_path, json)

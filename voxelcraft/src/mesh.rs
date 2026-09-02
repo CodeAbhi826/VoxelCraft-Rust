@@ -38,10 +38,14 @@ fn sb(s: u8) -> u8 {
 ///                                 encode exactly, the 16.0 endpoint clamps to
 ///                                 255/256 which only shortens the final
 ///                                 half-texel of a 16-wide run)
-///   w3 =  state:u16 << 16 | reserved:u8 << 8 | sky:u4 << 4 | block:u4
+///   w3 =  state:u16 << 16 | tint:u8 << 8 | sky:u4 << 4 | block:u4
 ///                                 — state = block id today, block-state id
 ///                                 after the BlockState registry lands (u16
-///                                 headroom per the research doc)
+///                                 headroom per the research doc);
+///                                 tint = §18 biome tint index
+///                                 (kind:u2 << 6 | slot:u6, 0 = untinted;
+///                                 decoded via the tint LUT in the vertex
+///                                 stage — see tint.rs)
 ///
 /// normal: 0=+X 1=−X 2=+Y 3=−Y 4=+Z 5=−Z 6=cross-plants (shade tables in
 /// the shaders reproduce the old `face_shade * AO_MULT` exactly). bias:u2 is
@@ -68,6 +72,7 @@ fn pack_vertex(
     sky: u32,
     block: u32,
     state: u16,
+    tint: u8,
 ) -> Vertex {
     let px = (((x + 8.0) * 2048.0 + 0.5) as i64).clamp(0, 0xFFFF) as u32;
     let pz = (((z + 8.0) * 2048.0 + 0.5) as i64).clamp(0, 0xFFFF) as u32;
@@ -80,7 +85,7 @@ fn pack_vertex(
         w0: (pz << 16) | px,
         w1: (flags << 16) | py,
         w2: (t << 18) | (pu << 10) | (pv << 2),
-        w3: ((state as u32) << 16) | ((sky & 0xF) << 4) | (block & 0xF),
+        w3: ((state as u32) << 16) | ((tint as u32) << 8) | ((sky & 0xF) << 4) | (block & 0xF),
     }
 }
 
@@ -264,6 +269,16 @@ pub fn mesh_sections(
         }
     }
 
+    // ------------------------------------------------ biome pad (§5)
+    // per-column biome of the CENTER chunk (tint resolution is per-block,
+    // and only the center chunk's cells emit faces — neighbors are
+    // culling/AO context only). Default Plains when the chunk is absent.
+    let biomes: Box<[u8]> = snap[4]
+        .as_ref()
+        .map(|c| c.biome.as_ref().to_vec().into_boxed_slice())
+        .unwrap_or_else(|| vec![2u8; 256].into_boxed_slice());
+    let biome_at = |lx: usize, lz: usize| biomes[lz * 16 + lx];
+
     // ------------------------------------------------ greedy meshing
     // §12: per-SECTION output buffers — the sweep is restricted to masked
     // sections so a block edit rebuilds 1–3 sections instead of the whole
@@ -333,7 +348,12 @@ pub fn mesh_sections(
                                 let bl = getl(&blight, ncell[0], ncell[1], ncell[2]) as u64;
                                 let above = getb(&blocks, cell[0], cell[1] + 1, cell[2]);
                                 let aw = if above == WATER { 1u64 } else { 0u64 };
-                                wmask[vi * du + ui] = 1 | (l << 1) | (aw << 6) | (bl << 7);
+                                // §18 water tint: biome water color, in the
+                                // greedy key so runs never merge across biomes
+                                let wt = crate::tint::block_face_tint_packed(
+                                    WATER, false, biome_at(cell[0] as usize, cell[2] as usize),
+                                ) as u64;
+                                wmask[vi * du + ui] = 1 | (l << 1) | (aw << 6) | (bl << 7) | (wt << 11);
                             }
                             continue;
                         }
@@ -391,7 +411,16 @@ pub fn mesh_sections(
                         // flat per face — no per-corner smoothing needed)
                         let bl = getl(&blight, ncell[0], ncell[1], ncell[2]) as u64;
 
-                        let key = ((bs as u64) << 28) | (ao_pack << 20) | (sky_pack << 4) | bl;
+                        let key = ((bs as u64) << 28)
+                            | (ao_pack << 20)
+                            | (sky_pack << 4)
+                            | bl
+                            | ((crate::tint::block_face_tint_packed(
+                                b,
+                                d == 1 && dir > 0,
+                                biome_at(cell[0] as usize, cell[2] as usize),
+                            ) as u64)
+                                << 36);
                         smask[vi * du + ui] = key;
                     }
                 }
@@ -429,6 +458,10 @@ pub fn mesh_sections(
                     let sky = getl(&light, lx as i32, ly as i32, lz as i32) as u32;
                     let bl = getl(&blight, lx as i32, ly as i32, lz as i32) as u32;
                     let tile_i = state_tiles(bs as u16)[3];
+                    // §18: grass-family cross plants take the biome grass tint
+                    let tint = crate::tint::block_face_tint_packed(
+                        sb(bs), true, biome_at(lx, lz),
+                    );
                 // chunk-local positions (origin supplied per-draw at render time)
                 let x0 = lx as f32 + 0.15;
                 let x1 = lx as f32 + 0.85;
@@ -460,6 +493,7 @@ pub fn mesh_sections(
                                 3,          /* ao = full */
                                 sky.min(15), bl.min(15),
                                 bs as u16,
+                                tint,
                             ));
                         }
                         for i in [0u32, 1, 2, 0, 2, 3] {
@@ -509,6 +543,7 @@ pub fn mesh_sections(
                         &light,
                         &blight,
                         smooth,
+                        biome_at(lx, lz),
                         solid_v,
                         solid_i,
                     );
@@ -574,6 +609,7 @@ fn emit_model_block(
     light: &[u8],
     blight: &[u8],
     smooth: bool,
+    biome: u8,
     solid_v: &mut Vec<Vertex>,
     solid_i: &mut Vec<u32>,
 ) {
@@ -583,7 +619,7 @@ fn emit_model_block(
     for (ci, choice) in choices.iter().enumerate() {
         let chosen = pick_weighted(choice, pos_hash ^ (ci as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15));
         let m = &chosen.model;
-        emit_model_faces(models, m, lx, ly, lz, bs, blocks, light, blight, smooth, solid_v, solid_i);
+        emit_model_faces(models, m, lx, ly, lz, bs, blocks, light, blight, smooth, biome, solid_v, solid_i);
     }
 }
 
@@ -618,6 +654,7 @@ fn emit_model_faces(
     light: &[u8],
     blight: &[u8],
     smooth: bool,
+    biome: u8,
     solid_v: &mut Vec<Vertex>,
     solid_i: &mut Vec<u32>,
 ) {
@@ -649,6 +686,15 @@ fn emit_model_faces(
                 .copied()
                 .unwrap_or(TILE_MISSING);
             let nrm = f.dir.normal_index();
+
+            // §18 biome tint: JSON faces with tintindex >= 0 pick the
+            // colormap by block family; grass sides stay untinted
+            let top_face = f.dir.normal()[1] > 0.0;
+            let tint = if f.tintindex >= 0 {
+                crate::tint::model_face_tint_packed(bs, top_face, biome)
+            } else {
+                crate::tint::TINT_NONE
+            };
 
             // tangent axes for AO (the two axes perpendicular to the normal)
             let (ta, tb) = tangent_axes(f.dir);
@@ -695,6 +741,7 @@ fn emit_model_faces(
                     sky,
                     bl,
                     bs,
+                    tint,
                 ));
             }
             // CCW from outside (compile_face guarantees) — front-face rule
@@ -777,13 +824,14 @@ fn greedy_merge(
                 h += 1;
             }
 
-            let (state, ao_pack, sky_pack, water_aw, bl_pack) = if is_solid {
+            let (state, ao_pack, sky_pack, water_aw, bl_pack, tint) = if is_solid {
                 (
                     ((key >> 28) & 0xff) as u16, // STATE id
                     (key >> 20) & 0xff,
                     (key >> 4) & 0xffff,
                     0u64,
                     key & 0xf,
+                    ((key >> 36) & 0xff) as u8, // §18 biome tint
                 )
             } else {
                 let l = (key >> 1) & 0xf;
@@ -793,6 +841,7 @@ fn greedy_merge(
                     (l << 12) | (l << 8) | (l << 4) | l,
                     (key >> 6) & 1,
                     (key >> 7) & 0xf,
+                    ((key >> 11) & 0xff) as u8,
                 )
             };
 
@@ -870,6 +919,7 @@ fn greedy_merge(
                     t[0], t[1],
                     tile_i, nrm, *a, *s, bl,
                     state,
+                    tint,
                 ));
             }
 
@@ -1160,6 +1210,82 @@ mod tests {
         snap_with(state)
     }
 
+    /// §18 biome tint: verify the packed tint byte on real meshed faces —
+    /// grass TOP tinted with the column biome, sides untinted; leaves and
+    /// water tinted; and greedy runs never MERGE across different biomes.
+    #[test]
+    fn biome_tint_faces() {
+        use crate::tint;
+
+        let snap_for = |biome: u8, block: u8| -> [Option<Arc<Chunk>>; 9] {
+            let mut c = Chunk::empty();
+            c.set(8, 8, 8, block);
+            c.biome = Box::new([biome; 256]);
+            let c = Arc::new(c);
+            [
+                None, Some(Arc::clone(&c)), None,
+                Some(Arc::clone(&c)), Some(Arc::clone(&c)), Some(Arc::clone(&c)),
+                None, Some(Arc::clone(&c)), None,
+            ]
+        };
+
+        // grass top in Forest(3): top face tinted, sides not
+        let md = mesh_chunk((0, 0), &snap_for(3, GRASS), &lref(&snap_for(3, GRASS)), true);
+        let top_tint = (md.solid.0.iter())
+            .filter(|v| ((v.w1 >> 16) & 7) == 2) // normal 2 = +Y
+            .map(|v| (v.w3 >> 8) as u8)
+            .collect::<Vec<u8>>();
+        let side_tint = (md.solid.0.iter())
+            .filter(|v| ((v.w1 >> 16) & 7) != 2)
+            .map(|v| (v.w3 >> 8) as u8)
+            .collect::<Vec<u8>>();
+        assert!(!top_tint.is_empty());
+        assert!(
+            top_tint.iter().all(|&t| t == tint::pack(tint::KIND_GRASS, 3)),
+            "grass top must carry the Forest grass tint, got {top_tint:?}"
+        );
+        assert!(
+            side_tint.iter().all(|&t| t == tint::TINT_NONE),
+            "grass sides are pre-baked, must stay untinted, got {side_tint:?}"
+        );
+
+        // oak leaves in Plains(2): every face foliage-tinted
+        let md = mesh_chunk((0, 0), &snap_for(2, LEAVES), &lref(&snap_for(2, LEAVES)), true);
+        assert!(
+            md.solid.0.iter().all(|v| (v.w3 >> 8) as u8 == tint::pack(tint::KIND_FOLIAGE, 2)),
+            "leaves faces all carry the Plains foliage tint"
+        );
+
+        // water in Ocean(0)
+        let md = mesh_chunk((0, 0), &snap_for(0, WATER), &lref(&snap_for(0, WATER)), true);
+        assert!(
+            md.water.0.iter().all(|v| (v.w3 >> 8) as u8 == tint::pack(tint::KIND_WATER, 0)),
+            "water faces carry the Ocean water tint"
+        );
+
+        // greedy merge boundary: two grass columns x=7 (Plains) / x=8
+        // (Forest) at the same y must NOT merge into one quad — their keys
+        // differ by tint → two quads with different tint bytes
+        let mut c = Chunk::empty();
+        for x in 0..16usize {
+            c.set(x, 8, 8, GRASS);
+            c.biome[8 * 16 + x] = if x < 8 { 2 } else { 3 };
+        }
+        let c = Arc::new(c);
+        let snap = [None, None, None, None, Some(Arc::clone(&c)), None, None, None, None];
+        let md = mesh_chunk((0, 0), &snap, &lref(&snap), true);
+        let tops: Vec<u8> = (md.solid.0.iter())
+            .filter(|v| ((v.w1 >> 16) & 7) == 2)
+            .map(|v| (v.w3 >> 8) as u8)
+            .collect();
+        let plains = tint::pack(tint::KIND_GRASS, 2);
+        let forest = tint::pack(tint::KIND_GRASS, 3);
+        assert!(
+            tops.contains(&plains) && tops.contains(&forest),
+            "grass top runs split at the biome boundary (Plains+Forest quads), got {tops:?}"
+        );
+    }
+
     #[test]
     fn golden_single_block_meshes() {
         // single stone / log / cross plant — geometry + packing baseline
@@ -1210,11 +1336,11 @@ mod tests {
         // pin both: count (structure) + hash (bit-exact packing/lighting)
         assert_eq!(n, 1816, "terrain-patch golden vertex count drifted (was 1816)");
         assert_eq!(
-            h, 0x5b7b_5257_9ed3_57cb,
+            h, 0x45fd_baab_86e9_3dcb,
             "terrain-patch golden hash changed — mesher/lighting/packing drift; \
-             re-pinned for Phase 4: light fields are now the full BFS fixed \
-             point (§48 P4 reference upgrade — smooth shadow edges), so \
-             baked sky-light values shifted"
+             re-pinned for Phase 5: w3 now carries the §18 biome tint byte \
+             (grass/leaves/water/tall-grass faces in this patch), so the \
+             packed-vertex hash shifted with the format"
         );
     }
 

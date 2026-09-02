@@ -33,8 +33,8 @@ pub struct Settings {
     /// 0 = fast, 1 = fancy, 2 = fabulous (fancy + soft shadows + full post)
     pub graphics: u8,
     pub shader: u8, // 0 = off, 1 = vanilla+, 2 = cinematic
-    /// directional sun shadows (roadmap: shadow map pass)
-    pub shadows: bool,
+    /// §17 sun shadows: 0 = off, 1 = 1024px, 2 = 2048px, 3 = 4096px
+    pub shadow_quality: u8,
     /// FSR-lite internal render scale index: 0 = 100%, 1 = 75%, 2 = 50%
     pub upscale: u8,
     /// frame limiter: 0 = uncapped, else a fps ceiling (30/60/120)
@@ -56,7 +56,7 @@ impl Default for Settings {
             clouds: true,
             graphics: 1,
             shader: 1,
-            shadows: true,
+            shadow_quality: 2,
             upscale: 0,
             maxfps: 0,
         }
@@ -64,9 +64,18 @@ impl Default for Settings {
 }
 
 impl Settings {
+    /// §17: shadow map resolution for the current quality (0 = off)
+    pub fn shadow_map_px(&self) -> u32 {
+        match self.shadow_quality {
+            1 => 1024,
+            2 => 2048,
+            3 => 4096,
+            _ => 2048, // quality 0 + graphics "fast" still renders at 2048
+        }
+    }
     /// effective shadow strength (fabulous = softer/stronger, fast = off)
     pub fn shadow_strength(&self) -> f32 {
-        if !self.shadows || self.graphics == 0 {
+        if self.shadow_quality == 0 || self.graphics == 0 {
             0.0
         } else if self.graphics == 2 {
             0.72
@@ -94,7 +103,7 @@ impl Settings {
     /// serialize as k=v; pairs (parsed without serde)
     pub fn serialize(&self) -> String {
         format!(
-            "rd={};sens={:.3};vol={:.3};fov={:.1};bright={:.3};smooth={};clouds={};graphics={};shader={};shadows={};upscale={};maxfps={}",
+            "rd={};sens={:.3};vol={:.3};fov={:.1};bright={:.3};smooth={};clouds={};graphics={};shader={};shadowq={};upscale={};maxfps={}",
             self.render_distance,
             self.sensitivity,
             self.volume,
@@ -104,7 +113,7 @@ impl Settings {
             self.clouds as u8,
             self.graphics,
             self.shader,
-            self.shadows as u8,
+            self.shadow_quality,
             self.upscale,
             self.maxfps
         )
@@ -127,7 +136,7 @@ impl Settings {
                 "fancy" => st.graphics = if v == "1" { 1 } else { 0 },
                 "graphics" => st.graphics = v.parse().unwrap_or(st.graphics).min(2),
                 "shader" => st.shader = v.parse().unwrap_or(st.shader).min(2),
-                "shadows" => st.shadows = v == "1",
+                "shadowq" => st.shadow_quality = v.parse().unwrap_or(2).min(3),
                 "upscale" => st.upscale = v.parse().unwrap_or(st.upscale).min(2),
                 "maxfps" => st.maxfps = v.parse().unwrap_or(st.maxfps).min(3),
                 _ => {}
@@ -258,6 +267,10 @@ pub struct GameApp {
     section_meshes: HashMap<ChunkPos, Vec<Option<Arc<MeshData>>>>,
     /// incremental light engine (Phase 4 §18)
     light: crate::light::LightEngine,
+    /// block particles (Phase 5 §16.2 pass 4)
+    particles: crate::particles::ParticleSystem,
+    /// billboard vertex scratch (rebuilt per frame against the camera basis)
+    particle_verts: Vec<crate::particles::ParticleVertex>,
     input: Input,
     pub screen: Screen,
     options_from: Screen, // where Options was opened from
@@ -521,6 +534,8 @@ impl GameApp {
 
         // apply persisted render scale (FSR-lite) before the first frame
         renderer.set_upscale(settings.upscale_factor());
+        // §17: apply persisted shadow quality
+        renderer.set_shadow_quality(settings.shadow_map_px());
 
         let work = {
             #[cfg(not(target_arch = "wasm32"))]
@@ -563,6 +578,8 @@ impl GameApp {
             mesh_inflight: HashMap::new(),
             section_meshes: HashMap::new(),
             light: crate::light::LightEngine::new(),
+            particles: crate::particles::ParticleSystem::new(0x5EED_0042),
+            particle_verts: Vec::new(),
             input: Input::default(),
             screen: Screen::Loading,
             options_from: Screen::Title,
@@ -1277,7 +1294,9 @@ impl GameApp {
                 self.after_settings_change();
             }
             ID_OPT_SHADOWS => {
-                self.settings.shadows = !self.settings.shadows;
+                // §17 quality cycle: OFF → 1024 → 2048 → 4096
+                self.settings.shadow_quality = (self.settings.shadow_quality + 1) % 4;
+                self.renderer.set_shadow_quality(self.settings.shadow_map_px());
                 self.after_settings_change();
             }
             ID_OPT_UPSCALE => {
@@ -1350,7 +1369,15 @@ impl GameApp {
                         ID_OPT_VOL => set_slider(w, &format!("VOLUME: {}%", (s.volume * 100.0).round() as i32), s.volume),
                         ID_OPT_SHADER => set_button_value(w, ["OFF", "VANILLA+", "CINEMATIC"][s.shader as usize]),
                         ID_OPT_GRAPHICS => set_button_value(w, match s.graphics { 0 => "FAST", 2 => "FABULOUS!", _ => "FANCY" }),
-                        ID_OPT_SHADOWS => set_button_value(w, if s.shadows { "ON" } else { "OFF" }),
+                        ID_OPT_SHADOWS => set_button_value(
+                            w,
+                            match s.shadow_quality {
+                                0 => "OFF",
+                                1 => "1K",
+                                2 => "2K",
+                                _ => "4K",
+                            },
+                        ),
                         ID_OPT_UPSCALE => set_button_value(w, match s.upscale { 1 => "75%", 2 => "50%", _ => "OFF" }),
                         ID_OPT_MAXFPS => set_button_value(w, match s.maxfps { 1 => "30", 2 => "60", 3 => "120", _ => "VSYNC" }),
                         ID_OPT_SMOOTH => set_button_value(w, if s.smooth_lighting { "ON" } else { "OFF" }),
@@ -1375,6 +1402,24 @@ impl GameApp {
     }
 
     // ------------------------------------------------------------ update --
+
+    /// E2E hook: break a block at world coords through the full interactive
+    /// path (state edit → light update → fence re-link → particles →
+    /// invalidation), without requiring pointer lock / raycast targeting.
+    fn test_break(&mut self, x: i32, y: i32, z: i32) {
+        let b = self.world.get_block(x, y, z);
+        if b == AIR || b == BEDROCK {
+            return;
+        }
+        let (biome, sky, blk) = light_at(&self.world, &self.light, x, y, z);
+        if let Some((old, new)) = self.world.set_block(x, y, z, AIR) {
+            self.light.on_block_changed(&self.world, x, y, z, old, new);
+        }
+        update_fence_neighbors(&mut self.world, x, y, z);
+        self.particles
+            .spawn_block_break(x, y, z, b, biome, sky, blk);
+        self.edits += 1;
+    }
 
     fn update(&mut self, dt: f32) {
         self.time += dt;
@@ -1406,6 +1451,25 @@ impl GameApp {
 
         // stream chunks (also during title/menus: the panorama keeps loading)
         crate::phase!(self.phases, crate::bench::PHASE_STREAM, self.stream());
+
+        // particles: fixed 20 Hz sim against the live world (§16.2 pass 4)
+        crate::phase!(self.phases, crate::bench::PHASE_SIM, {
+            self.particles.update(dt, &self.world);
+        });
+
+        // E2E test commands (wasm only): "break:x:y:z" → same path as an
+        // interactive break (mesh invalidation + light + particles)
+        #[cfg(target_arch = "wasm32")]
+        {
+            if let Some(cmd) = crate::web_input::pop_test_cmd() {
+                if let Some(rest) = cmd.strip_prefix("break:") {
+                    let p: Vec<i32> = rest.split(':').filter_map(|v| v.parse().ok()).collect();
+                    if p.len() == 3 {
+                        self.test_break(p[0], p[1], p[2]);
+                    }
+                }
+            }
+        }
 
         // loading → wait for spawn chunk, then snap to surface → title screen
         if self.screen == Screen::Loading {
@@ -1466,11 +1530,18 @@ impl GameApp {
             if self.input.break_hold && self.break_timer <= 0.0 {
                 if let Some((pos, b, _)) = self.target {
                     if b != BEDROCK {
+                        let broke = self.world.get_block(pos[0], pos[1], pos[2]);
+                        let (biome, sky, blk) = light_at(&self.world, &self.light, pos[0], pos[1], pos[2]);
                         if let Some((old, new)) = self.world.set_block(pos[0], pos[1], pos[2], AIR) {
                             self.light.on_block_changed(&self.world, pos[0], pos[1], pos[2], old, new);
                         }
                         // fences: removing a block changes neighbor connections
                         update_fence_neighbors(&mut self.world, pos[0], pos[1], pos[2]);
+                        // §5 break burst: vanilla 4×4×4 particle grid, baked
+                        // biome tint + light
+                        self.particles.spawn_block_break(
+                            pos[0], pos[1], pos[2], broke, biome, sky, blk,
+                        );
                         self.audio.play(
                             &self.bank,
                             def(b).sound,
@@ -1690,9 +1761,13 @@ impl GameApp {
             ("smooth", StatsVal::B(self.settings.smooth_lighting)),
             ("fancy", StatsVal::B(self.settings.graphics >= 1)),
             ("graphics", StatsVal::F(self.settings.graphics as f32)),
-            ("shadows", StatsVal::B(self.settings.shadows)),
+            ("shadowQuality", StatsVal::F(self.settings.shadow_quality as f32)),
+            ("shadowMap", StatsVal::F(self.renderer.shadow_px as f32)),
             ("upscale", StatsVal::F(self.settings.upscale_factor())),
             ("edits", StatsVal::F(self.edits as f32)),
+            ("particles", StatsVal::F(self.particles.len() as f32)),
+            ("particlesDrawn", StatsVal::F(self.stats.particles as f32)),
+            ("particlesTotal", StatsVal::F(self.particles.spawned_total as f32)),
             ("fwd", StatsVal::B(self.input.fwd)),
             ("back", StatsVal::B(self.input.back)),
             ("left", StatsVal::B(self.input.left)),
@@ -2085,7 +2160,12 @@ impl GameApp {
                 format!(
                     "Graphics: {}  Shadows: {}  Upscale: {:.0}%  MaxFPS: {}",
                     ["fast", "fancy", "fabulous"][self.settings.graphics as usize],
-                    if self.settings.shadows { "on" } else { "off" },
+                    match self.settings.shadow_quality {
+                        0 => "off",
+                        1 => "1K",
+                        2 => "2K",
+                        _ => "4K",
+                    },
                     self.settings.upscale_factor() * 100.0,
                     match self.settings.maxfps { 0 => "vsync", 1 => "30", 2 => "60", _ => "120" }
                 ),
@@ -2265,6 +2345,28 @@ impl GameApp {
             min_light: 0.05 + self.settings.brightness * 0.25,
         };
 
+        // particle billboards: camera basis from the active camera (game
+        // camera or menu panorama camera)
+        {
+            let dir = [
+                cam.yaw.sin() * cam.pitch.cos(),
+                cam.pitch.sin(),
+                -cam.yaw.cos() * cam.pitch.cos(),
+            ];
+            // right = normalize(dir × world-up) = (-dz, 0, dx)
+            let rx = -dir[2];
+            let rz = dir[0];
+            let rl = (rx * rx + rz * rz).sqrt().max(1e-6);
+            let right = [rx / rl, 0.0, rz / rl];
+            let up = [
+                right[1] * dir[2] - right[2] * dir[1],
+                right[2] * dir[0] - right[0] * dir[2],
+                right[0] * dir[1] - right[1] * dir[0],
+            ];
+            self.particles
+                .build_vertices(right, up, &mut self.particle_verts);
+        }
+
         self.stats = self.renderer.render(
             &cam,
             &sky,
@@ -2277,6 +2379,7 @@ impl GameApp {
                 sharpen: if self.settings.upscale > 0 { 0.35 } else { 0.0 },
             },
             self.settings.clouds && self.settings.graphics >= 1,
+            &self.particle_verts,
         );
         self.phases
             .add(crate::bench::PHASE_DRAW, crate::bench::micros() - t_draw0);
@@ -2341,6 +2444,31 @@ fn fence_state_for(world: &World, wx: i32, wy: i32, wz: i32) -> Option<u16> {
             ("west", if west { "true" } else { "false" }),
         ],
     )
+}
+
+/// biome + (sky, block) light levels at a world position — for baking
+/// particle tint/brightness at spawn (Phase 5)
+fn light_at(world: &World, light: &crate::light::LightEngine, wx: i32, wy: i32, wz: i32) -> (u8, u8, u8) {
+    let _ = light; // engine state lives in world.light (LightData map)
+    let cx = wx.div_euclid(16);
+    let cz = wz.div_euclid(16);
+    let lx = (wx - cx * 16) as usize;
+    let lz = (wz - cz * 16) as usize;
+    let biome = world
+        .chunk((cx, cz))
+        .map(|c| c.biome[lz * 16 + lx])
+        .unwrap_or(2);
+    let (sky, blk) = world
+        .light
+        .get(&(cx, cz))
+        .and_then(|ld| {
+            let sec = (wy.clamp(0, 255) / 16) as usize;
+            let yy = (wy.clamp(0, 255) % 16) as usize;
+            let idx = (yy << 8) | (lz << 4) | lx;
+            ld.sections[sec].as_ref().map(|s| (s.sky[idx], s.blk[idx]))
+        })
+        .unwrap_or((15, 0));
+    (biome, sky, blk)
 }
 
 /// after an edit at (wx, wy, wz), refresh the connection states of any fence

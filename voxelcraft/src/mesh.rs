@@ -48,7 +48,7 @@ fn sb(s: u8) -> u8 {
 /// the shaders reproduce the old `face_shade * AO_MULT` exactly). bias:u2 is
 /// reserved for a future texture-bleed inset sign (shader currently ignores).
 #[repr(C)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, Debug)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, Debug, PartialEq, Eq)]
 pub struct Vertex {
     pub w0: u32,
     pub w1: u32,
@@ -109,6 +109,26 @@ impl MeshData {
     }
 }
 
+/// Section-set meshing result (§12 fine-grained invalidation, Phase 3).
+///
+/// Greedy runs never cross 16×16×16 section Y boundaries (masks are
+/// section-local), so each section's output depends only on the world
+/// snapshot — a partial remesh is bit-identical to the matching part of a
+/// full remesh, and cached sections merge back losslessly.
+pub struct MeshOut {
+    /// 16 entries: fresh meshes for masked sections, `Arc` clones of `prev`
+    /// for the rest (cache continuity — only dirty sections are rebuilt)
+    pub sections: Vec<Option<Arc<MeshData>>>,
+    /// all 16 concatenated with rebased indices — the per-chunk upload (§14
+    /// per-chunk merged buffers, unchanged draw path)
+    pub merged: MeshData,
+}
+
+/// Full-chunk mesh (bench + tests + first mesh of a chunk).
+pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -> MeshData {
+    mesh_sections(pos, snap, smooth, u16::MAX, &[]).merged
+}
+
 // padded 48 x 256 x 48 region covering the 3x3 snapshot
 const PAD: usize = 48;
 #[inline]
@@ -138,7 +158,13 @@ fn getl(light: &[u8], gx: i32, y: i32, gz: i32) -> u8 {
     light[pidx((gx + 16) as usize, y as usize, (gz + 16) as usize)]
 }
 
-pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -> MeshData {
+pub fn mesh_sections(
+    pos: ChunkPos,
+    snap: &[Option<Arc<Chunk>>; 9],
+    smooth: bool,
+    mask: u16,
+    prev: &[Option<Arc<MeshData>>],
+) -> MeshOut {
     let (_cx, _cz) = pos;
 
     // ------------------------------------------------ copy blocks (padded)
@@ -355,30 +381,59 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
     }
 
     // ------------------------------------------------ greedy meshing
-    let mut solid_v: Vec<Vertex> = Vec::with_capacity(8192);
-    let mut solid_i: Vec<u32> = Vec::with_capacity(12288);
-    let mut water_v: Vec<Vertex> = Vec::with_capacity(512);
-    let mut water_i: Vec<u32> = Vec::with_capacity(768);
-
-    let dims = [16usize, 256usize, 16usize];
+    // §12: per-SECTION output buffers — the sweep is restricted to masked
+    // sections so a block edit rebuilds 1–3 sections instead of the whole
+    // 16×256×16 chunk. Greedy runs never cross section Y boundaries.
+    #[derive(Default)]
+    struct SecOut {
+        sv: Vec<Vertex>,
+        si: Vec<u32>,
+        wv: Vec<Vertex>,
+        wi: Vec<u32>,
+    }
+    let mut outs: Vec<SecOut> = (0..16)
+        .map(|_| SecOut {
+            sv: Vec::with_capacity(512),
+            si: Vec::with_capacity(768),
+            wv: Vec::with_capacity(128),
+            wi: Vec::with_capacity(192),
+        })
+        .collect();
 
     for d in 0..3usize {
         let u = (d + 1) % 3;
         let v = (d + 2) % 3;
-        let du = dims[u];
-        let dv = dims[v];
+        let du = 16usize; // section-local along Y, chunk-local along X/Z
+        let dv = 16usize;
 
         for dir in [1i32, -1i32] {
-            for sl in 0..dims[d] {
-                let mut smask: Vec<u64> = vec![0; du * dv];
-                let mut wmask: Vec<u64> = vec![0; du * dv];
+            for sec in 0..16usize {
+                if mask & (1 << sec) == 0 {
+                    continue;
+                }
+                let ylo = sec * 16;
+                // emitted-position offsets: the Y-indexed mask axis starts
+                // at the section base (absolute Y reaches the vertices)
+                let off_u = if u == 1 { ylo } else { 0 };
+                let off_v = if v == 1 { ylo } else { 0 };
+                let o = &mut outs[sec];
+                // slice along d: absolute Y for Y-sweeps, local X/Z otherwise
+                let sls: Box<dyn Iterator<Item = usize>> =
+                    if d == 1 { Box::new(ylo..ylo + 16) } else { Box::new(0..16) };
+                for sl in sls {
+                    let mut smask: Vec<u64> = vec![0; du * dv];
+                    let mut wmask: Vec<u64> = vec![0; du * dv];
 
-                for vi in 0..dv {
-                    for ui in 0..du {
-                        let mut cell = [0i32; 3];
-                        cell[d] = sl as i32;
-                        cell[u] = ui as i32;
-                        cell[v] = vi as i32;
+                    for vi in 0..dv {
+                        for ui in 0..du {
+                            // absolute chunk-local coords (section base added
+                            // on the Y axis so culling/AO/light read real cells)
+                            let au = if u == 1 { ylo + ui } else { ui };
+                            let av = if v == 1 { ylo + vi } else { vi };
+                            let mut cell = [0i32; 3];
+                            cell[d] = sl as i32;
+                            cell[u] = au as i32;
+                            cell[v] = av as i32;
                         let bs = getb(&blocks, cell[0], cell[1], cell[2]); // state
                         let b = sb(bs);
                         if b == AIR || is_cross(b) || is_model_state(bs as u16) {
@@ -410,8 +465,8 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
                         let mut ao = [0u64; 4];
                         let mut sky = [0u64; 4];
                         for (ci, (cu, cv)) in [(0i32, 0i32), (1, 0), (1, 1), (0, 1)].iter().enumerate() {
-                            let big_u = ui as i32 + cu; // corner coord along u (cell ui or ui+1)
-                            let big_v = vi as i32 + cv;
+                            let big_u = au as i32 + cu; // corner coord along u (absolute)
+                            let big_v = av as i32 + cv;
                             let u_out = if *cu == 0 { big_u - 1 } else { big_u };
                             let v_out = if *cv == 0 { big_v - 1 } else { big_v };
                             let h_side = (u_out, if *cv == 0 { big_v } else { big_v - 1 });
@@ -457,15 +512,30 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
                     }
                 }
 
-                greedy_merge(d, dir, sl, &mut smask, du, dv, true, &mut solid_v, &mut solid_i);
-                greedy_merge(d, dir, sl, &mut wmask, du, dv, false, &mut water_v, &mut water_i);
+                    greedy_merge(
+                        d, dir, sl, &mut smask, du, dv, true,
+                        &mut o.sv, &mut o.si, off_u, off_v,
+                    );
+                    greedy_merge(
+                        d, dir, sl, &mut wmask, du, dv, false,
+                        &mut o.wv, &mut o.wi, off_u, off_v,
+                    );
+                }
             }
         }
     }
 
     // ------------------------------------------------ cross plants
     if has_cross {
-        for ly in 0..256usize {
+        for sec in 0..16usize {
+            if mask & (1 << sec) == 0 {
+                continue;
+            }
+            // shadowed names keep the per-cell body unchanged (§12: only
+            // the dirty section's output is rebuilt)
+            let o = &mut outs[sec];
+            let (solid_v, solid_i) = (&mut o.sv, &mut o.si);
+            for ly in (sec * 16)..(sec * 16 + 16) {
             for lz in 0..16usize {
                 for lx in 0..16usize {
                     let bs = getb(&blocks, lx as i32, ly as i32, lz as i32);
@@ -515,6 +585,7 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
                 }
                 }
             }
+            }
         }
     }
 
@@ -523,7 +594,13 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
     // dispatch (model.rs): partial cuboids, rotations, multipart, cullface.
     // The dispatch is precomputed at boot — zero JSON work per mesh (§5.2).
     if let Some(models) = crate::model::models().filter(|_| has_models) {
-        for ly in 0..256usize {
+        for sec in 0..16usize {
+            if mask & (1 << sec) == 0 {
+                continue;
+            }
+            let o = &mut outs[sec];
+            let (solid_v, solid_i) = (&mut o.sv, &mut o.si);
+            for ly in (sec * 16)..(sec * 16 + 16) {
             for lz in 0..16usize {
                 for lx in 0..16usize {
                     let bs = getb(&blocks, lx as i32, ly as i32, lz as i32) as u16;
@@ -548,18 +625,53 @@ pub fn mesh_chunk(pos: ChunkPos, snap: &[Option<Arc<Chunk>>; 9], smooth: bool) -
                         &light,
                         &blight,
                         smooth,
-                        &mut solid_v,
-                        &mut solid_i,
+                        solid_v,
+                        solid_i,
                     );
                 }
+            }
             }
         }
     }
 
-    MeshData {
-        solid: (solid_v, solid_i),
-        water: (water_v, water_i),
+    // ------------------------------------------------ merge (§12/§14)
+    // masked sections: fresh output; the rest: Arc clones of `prev`.
+    // The merged per-chunk mesh (one buffer pair, one draw) is rebuilt by
+    // concatenation with rebased indices — the GPU/draw path is unchanged.
+    let mut sections: Vec<Option<Arc<MeshData>>> = Vec::with_capacity(16);
+    let mut merged = MeshData {
+        solid: (Vec::new(), Vec::new()),
+        water: (Vec::new(), Vec::new()),
+    };
+    for sec in 0..16usize {
+        if mask & (1 << sec) != 0 {
+            let o = std::mem::take(&mut outs[sec]);
+            let md = Arc::new(MeshData {
+                solid: (o.sv, o.si),
+                water: (o.wv, o.wi),
+            });
+            merge_into(&mut merged, &md);
+            sections.push(Some(md));
+        } else {
+            let cached = prev.get(sec).and_then(|p| p.clone());
+            if let Some(p) = &cached {
+                merge_into(&mut merged, p);
+            }
+            sections.push(cached);
+        }
     }
+
+    MeshOut { sections, merged }
+}
+
+/// append one section mesh into a merged chunk mesh (indices rebased)
+fn merge_into(dst: &mut MeshData, src: &MeshData) {
+    let base = dst.solid.0.len() as u32;
+    dst.solid.0.extend_from_slice(&src.solid.0);
+    dst.solid.1.extend(src.solid.1.iter().map(|i| i + base));
+    let wbase = dst.water.0.len() as u32;
+    dst.water.0.extend_from_slice(&src.water.0);
+    dst.water.1.extend(src.water.1.iter().map(|i| i + wbase));
 }
 
 /// Emit one JSON-model block instance: every element face becomes a quad
@@ -752,6 +864,8 @@ fn greedy_merge(
     is_solid: bool,
     verts: &mut Vec<Vertex>,
     idxs: &mut Vec<u32>,
+    off_u: usize,
+    off_v: usize,
 ) {
     let u = (d + 1) % 3;
     let v = (d + 2) % 3;
@@ -838,12 +952,13 @@ fn greedy_merge(
             };
 
             let base = verts.len() as u32;
-            // chunk-local position (the origin is a per-draw instance attribute)
+            // chunk-local position (the origin is a per-draw instance attribute);
+            // section base offsets restore absolute Y on the Y-indexed axis
             let local = |c: [f32; 2]| -> [f32; 3] {
                 let mut p = [0f32; 3];
                 p[d] = pd;
-                p[u] = c[0];
-                p[v] = c[1];
+                p[u] = c[0] + off_u as f32;
+                p[v] = c[1] + off_v as f32;
                 if !is_solid {
                     if d == 1 && dir > 0 {
                         p[1] -= 0.125; // water surface at 14/16
@@ -1253,4 +1368,104 @@ mod tests {
         );
     }
 
+}
+
+#[cfg(test)]
+mod phase3_tests {
+    use super::*;
+    use crate::gen::TerrainGen;
+
+    /// 3x3 snapshot of real generated terrain (deterministic seed)
+    fn terrain_snap(seed: u64) -> (Vec<Arc<Chunk>>, [Option<Arc<Chunk>>; 9]) {
+        let gen = TerrainGen::new(seed);
+        let mut chunks = Vec::new();
+        for dz in -1i32..=1 {
+            for dx in -1i32..=1 {
+                let (c, _) = gen.generate_chunk(dx, dz, Vec::new());
+                chunks.push(Arc::clone(&c));
+            }
+        }
+        let snap: [Option<Arc<Chunk>>; 9] = {
+            let v: Vec<Option<Arc<Chunk>>> = chunks.iter().cloned().map(Some).collect();
+            match v.try_into() {
+                Ok(a) => a,
+                Err(_) => unreachable!("9 elements"),
+            }
+        };
+        (chunks, snap)
+    }
+
+    /// §12 gate: a partial remesh (masked sections + cached prev) must be
+    /// BIT-IDENTICAL to a full remesh — the cached sections merge back
+    /// losslessly and the rebuilt ones are deterministic per snapshot.
+    #[test]
+    fn partial_remesh_matches_full() {
+        let (_, snap) = terrain_snap(0xC0FFEE);
+        let pos = (0, 0);
+        let full = mesh_sections(pos, &snap, true, u16::MAX, &[]);
+        assert!(full.merged.tri_count() > 0, "terrain must produce geometry");
+
+        // single-section remesh
+        let cache = full.sections.clone();
+        let p1 = mesh_sections(pos, &snap, true, 1 << 7, &cache);
+        assert_eq!(p1.merged.solid.0, full.merged.solid.0, "vertices (solid) must match");
+        assert_eq!(p1.merged.solid.1, full.merged.solid.1, "indices (solid) must match");
+        assert_eq!(p1.merged.water.0, full.merged.water.0, "vertices (water) must match");
+        assert_eq!(p1.merged.water.1, full.merged.water.1, "indices (water) must match");
+
+        // multi-section remesh (a typical edit's light band)
+        let p3 = mesh_sections(pos, &snap, true, 0b111 << 4, &cache);
+        assert_eq!(p3.merged.solid.1, full.merged.solid.1);
+
+        // sequential partial remeshes through the cache also converge
+        let mut cache2 = full.sections.clone();
+        for k in [3usize, 8, 12, 4] {
+            let step = mesh_sections(pos, &snap, true, 1 << k, &cache2);
+            cache2 = step.sections.clone();
+        }
+        let final_merged = mesh_sections(pos, &snap, true, 0, &cache2).merged;
+        assert_eq!(final_merged.solid.1, full.merged.solid.1, "all-cached merge == full");
+    }
+
+    /// mesh_chunk (bench/game path) == mesh_sections(all).merged — the two
+    /// entry points can never diverge.
+    #[test]
+    fn mesh_chunk_wrapper_equivalence() {
+        let (_, snap) = terrain_snap(0xABCD);
+        let a = mesh_chunk((0, 0), &snap, true);
+        let b = mesh_sections((0, 0), &snap, true, u16::MAX, &[]).merged;
+        assert_eq!(a.solid.0.len(), b.solid.0.len());
+        assert_eq!(a.solid.1, b.solid.1);
+        assert_eq!(a.water.1, b.water.1);
+    }
+
+    /// §12: an edit through the snapshot changes ONLY the edited section's
+    /// cached mesh — the rest are Arc-identical (cheap reuse, no rebuild).
+    #[test]
+    fn unmasked_sections_are_reused_arc() {
+        let (chunks, snap) = terrain_snap(0x1234);
+        let pos = (0, 0);
+        let full = mesh_sections(pos, &snap, true, u16::MAX, &[]);
+
+        // edit a block in section 8 (y 128..143) in the CENTER chunk only
+        let mut c = (*chunks[4]).clone();
+        c.set_state(8, 130, 8, STONE as u16);
+        let mut snap2 = snap;
+        snap2[4] = Some(Arc::new(c));
+
+        let part = mesh_sections(pos, &snap2, true, 1 << 8, &full.sections);
+        // section 7 untouched by the edit AND not masked → same Arc
+        assert!(
+            Arc::ptr_eq(
+                part.sections[7].as_ref().unwrap(),
+                full.sections[7].as_ref().unwrap()
+            ),
+            "unmasked cached sections must be reused (Arc identity), not rebuilt"
+        );
+        // section 8 rebuilt → different Arc (content changed)
+        assert!(!Arc::ptr_eq(
+            part.sections[8].as_ref().unwrap(),
+            full.sections[8].as_ref().unwrap()
+        ));
+    }
 }

@@ -824,6 +824,13 @@ pub(crate) struct ChunkGpu {
     pub i: wgpu::Buffer,
     pub n: u32,
     pub w: Option<(wgpu::Buffer, wgpu::Buffer, u32)>,
+    /// allocated capacities (elements) — §14 upload batching: a remesh that
+    /// fits reuses the existing buffers (write_buffer in place) instead of
+    /// reallocating per edit
+    pub v_cap: usize,
+    pub i_cap: usize,
+    pub w_v_cap: usize,
+    pub w_i_cap: usize,
 }
 
 /// capacity of the per-frame chunk-origin instance buffer (one Float32x2
@@ -2344,32 +2351,95 @@ impl Renderer {
         }
     }
 
+    /// Upload one chunk's merged mesh (§14: per-chunk merged buffers, one
+    /// buffer pair + one draw per chunk). Buffers are REUSED when the new
+    /// data fits the existing capacity — repeated edits don't churn GPU
+    /// allocations; write_buffer calls coalesce into the next submit.
     pub fn set_chunk_mesh(&mut self, pos: ChunkPos, md: &MeshData) {
         let usage = wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST;
-        let make = |data: (&Vec<Vertex>, &Vec<u32>)| -> Option<(wgpu::Buffer, wgpu::Buffer, u32)> {
-            if data.1.is_empty() {
-                return None;
-            }
-            let v = self.device.create_buffer(&wgpu::BufferDescriptor {
+        let v_len = md.solid.0.len();
+        let i_len = md.solid.1.len();
+        let w_v_len = md.water.0.len();
+        let w_i_len = md.water.1.len();
+
+        // fresh buffer allocation helper
+        let alloc = |size: u64| -> wgpu::Buffer {
+            self.device.create_buffer(&wgpu::BufferDescriptor {
                 label: None,
-                size: (data.0.len() * std::mem::size_of::<Vertex>()) as u64,
+                size: size.max(16),
                 usage,
                 mapped_at_creation: false,
-            });
-            self.queue.write_buffer(&v, 0, bytemuck::cast_slice(data.0));
-            let i = self.device.create_buffer(&wgpu::BufferDescriptor {
-                label: None,
-                size: (data.1.len() * 4) as u64,
-                usage,
-                mapped_at_creation: false,
-            });
-            self.queue.write_buffer(&i, 0, bytemuck::cast_slice(data.1));
-            Some((v, i, data.1.len() as u32))
+            })
         };
-        let solid = make((&md.solid.0, &md.solid.1));
-        let water = make((&md.water.0, &md.water.1));
-        let (v, i, n) = solid.unwrap_or_else(|| (self.empty_buf(), self.empty_buf(), 0));
-        self.chunks.insert(pos, ChunkGpu { v, i, n, w: water });
+
+        if let Some(c) = self.chunks.get_mut(&pos) {
+            // ---- in-place reuse path (§14) — sizes fit the old buffers
+            if v_len <= c.v_cap && i_len <= c.i_cap {
+                if i_len > 0 {
+                    self.queue.write_buffer(&c.v, 0, bytemuck::cast_slice(&md.solid.0));
+                    self.queue.write_buffer(&c.i, 0, bytemuck::cast_slice(&md.solid.1));
+                }
+                c.n = i_len as u32;
+            } else {
+                let v = alloc((v_len * std::mem::size_of::<Vertex>()) as u64);
+                let i = alloc((i_len * 4) as u64);
+                if i_len > 0 {
+                    self.queue.write_buffer(&v, 0, bytemuck::cast_slice(&md.solid.0));
+                    self.queue.write_buffer(&i, 0, bytemuck::cast_slice(&md.solid.1));
+                }
+                c.v = v;
+                c.i = i;
+                c.n = i_len as u32;
+                c.v_cap = v_len;
+                c.i_cap = i_len;
+            }
+            // water: None → Some / Some → None / reuse
+            if w_i_len > 0 {
+                if c.w.is_some() && w_v_len <= c.w_v_cap && w_i_len <= c.w_i_cap {
+                    let (wv, wi, _) = c.w.take().unwrap();
+                    self.queue.write_buffer(&wv, 0, bytemuck::cast_slice(&md.water.0));
+                    self.queue.write_buffer(&wi, 0, bytemuck::cast_slice(&md.water.1));
+                    c.w = Some((wv, wi, w_i_len as u32));
+                } else {
+                    let wv = alloc((w_v_len * std::mem::size_of::<Vertex>()) as u64);
+                    let wi = alloc((w_i_len * 4) as u64);
+                    self.queue.write_buffer(&wv, 0, bytemuck::cast_slice(&md.water.0));
+                    self.queue.write_buffer(&wi, 0, bytemuck::cast_slice(&md.water.1));
+                    c.w = Some((wv, wi, w_i_len as u32));
+                    c.w_v_cap = w_v_len;
+                    c.w_i_cap = w_i_len;
+                }
+            } else {
+                c.w = None;
+                c.w_v_cap = 0;
+                c.w_i_cap = 0;
+            }
+            return;
+        }
+
+        // ---- first upload for this chunk: allocate exactly
+        let (v, i, n, v_cap, i_cap) = if i_len == 0 {
+            (self.empty_buf(), self.empty_buf(), 0, 0, 0)
+        } else {
+            let v = alloc((v_len * std::mem::size_of::<Vertex>()) as u64);
+            let i = alloc((i_len * 4) as u64);
+            self.queue.write_buffer(&v, 0, bytemuck::cast_slice(&md.solid.0));
+            self.queue.write_buffer(&i, 0, bytemuck::cast_slice(&md.solid.1));
+            (v, i, i_len as u32, v_len, i_len)
+        };
+        let w = if w_i_len == 0 {
+            None
+        } else {
+            let wv = alloc((w_v_len * std::mem::size_of::<Vertex>()) as u64);
+            let wi = alloc((w_i_len * 4) as u64);
+            self.queue.write_buffer(&wv, 0, bytemuck::cast_slice(&md.water.0));
+            self.queue.write_buffer(&wi, 0, bytemuck::cast_slice(&md.water.1));
+            Some((wv, wi, w_i_len as u32))
+        };
+        self.chunks.insert(
+            pos,
+            ChunkGpu { v, i, n, w, v_cap, i_cap, w_v_cap: w_v_len, w_i_cap: w_i_len },
+        );
     }
 
     fn empty_buf(&self) -> wgpu::Buffer {

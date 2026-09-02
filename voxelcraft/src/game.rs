@@ -5,7 +5,7 @@
 
 use crate::blocks::*;
 use crate::gen::Biome;
-use crate::mesh::{mesh_chunk, MeshData};
+use crate::mesh::{mesh_sections, MeshData};
 use crate::player::{raycast, Input, Player};
 use crate::render::{Camera, RenderStats, Renderer, SkyState};
 use crate::sounds::{AudioBackend, SoundBank};
@@ -16,7 +16,7 @@ use crate::sounds::web_audio;
 use crate::ui::{self, UiCanvas, Widget, WidgetKind, UI_H, UI_W};
 use crate::world::{ChunkPos, World};
 use glam::Vec3;
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
 // --------------------------------------------------------------- settings --
@@ -181,12 +181,28 @@ const SPLASHES: [&str; 14] = [
 
 enum Job {
     Gen { pos: ChunkPos, seed: u64, inbound: Vec<(u16, u8)> },
-    Mesh { pos: ChunkPos, snap: [Option<Arc<crate::chunk::Chunk>>; 9], smooth: bool },
+    Mesh {
+        pos: ChunkPos,
+        snap: [Option<Arc<crate::chunk::Chunk>>; 9],
+        smooth: bool,
+        /// sections to rebuild (§12 bitset; 0xFFFF = full chunk)
+        mask: u16,
+        /// cached section meshes to reuse for unmasked sections
+        prev: Vec<Option<Arc<MeshData>>>,
+    },
 }
 
 enum JobResult {
     Gen { pos: ChunkPos, chunk: Arc<crate::chunk::Chunk>, outbound: Vec<(i32, i32, i32, u8)> },
-    Mesh { pos: ChunkPos, mesh: Box<MeshData> },
+    Mesh {
+        pos: ChunkPos,
+        /// the mask this job covered (dirty-bit clearing)
+        mask: u16,
+        /// new 16-slot section cache (fresh for masked, Arc clones for rest)
+        sections: Vec<Option<Arc<MeshData>>>,
+        /// merged per-chunk mesh for upload (§14 per-chunk merged buffers)
+        mesh: Box<MeshData>,
+    },
 }
 
 fn run_job(job: Job) -> JobResult {
@@ -196,9 +212,14 @@ fn run_job(job: Job) -> JobResult {
             let (chunk, outbound) = gen.generate_chunk(pos.0, pos.1, inbound);
             JobResult::Gen { pos, chunk, outbound }
         }
-        Job::Mesh { pos, snap, smooth } => {
-            let mesh = mesh_chunk(pos, &snap, smooth);
-            JobResult::Mesh { pos, mesh: Box::new(mesh) }
+        Job::Mesh { pos, snap, smooth, mask, prev } => {
+            let out = mesh_sections(pos, &snap, smooth, mask, &prev);
+            JobResult::Mesh {
+                pos,
+                mask,
+                sections: out.sections,
+                mesh: Box::new(out.merged),
+            }
         }
     }
 }
@@ -228,7 +249,12 @@ pub struct GameApp {
     pub settings: Settings,
     work: WorkBackend,
     gen_inflight: HashSet<ChunkPos>,
-    mesh_inflight: HashSet<ChunkPos>,
+    /// in-flight mesh jobs: pos → submitted section mask (bits added while
+    /// a job runs survive via §12 clear_dirty_mask semantics)
+    mesh_inflight: HashMap<ChunkPos, u16>,
+    /// per-chunk cache of the 16 section meshes (§12 fine-grained remesh —
+    /// worker jobs rebuild only dirty sections and reuse the rest)
+    section_meshes: HashMap<ChunkPos, Vec<Option<Arc<MeshData>>>>,
     input: Input,
     pub screen: Screen,
     options_from: Screen, // where Options was opened from
@@ -531,7 +557,8 @@ impl GameApp {
             settings,
             work,
             gen_inflight: HashSet::new(),
-            mesh_inflight: HashSet::new(),
+            mesh_inflight: HashMap::new(),
+            section_meshes: HashMap::new(),
             input: Input::default(),
             screen: Screen::Loading,
             options_from: Screen::Title,
@@ -1336,8 +1363,10 @@ impl GameApp {
     fn remesh_all(&mut self) {
         let positions: Vec<ChunkPos> = self.renderer.chunks.keys().copied().collect();
         for p in positions {
-            self.world.dirty.insert(p);
+            self.world.mark_all_dirty(p, crate::world::CAUSE_GEOMETRY | crate::world::CAUSE_LIGHT);
         }
+        // cached section meshes embed the old baking (e.g. smooth-lighting AO)
+        self.section_meshes.clear();
         self.renderer.clear_meshes();
     }
 
@@ -1614,6 +1643,21 @@ impl GameApp {
             ("chunksLoaded", StatsVal::F(self.world.chunks.len() as f32)),
             ("chunksDrawn", StatsVal::F(self.stats.chunks as f32)),
             ("tris", StatsVal::F(self.stats.tris as f32)),
+            // §12 evidence: section-granular invalidation state
+            ("dirtySections", StatsVal::F(self.world.dirty_section_count() as f32)),
+            ("dirtyChunks", StatsVal::F(self.world.dirty.len() as f32)),
+            (
+                "dirtyCauses",
+                StatsVal::F(
+                    self.world.dirty_causes.values().fold(0u8, |a, b| a | b) as f32
+                ),
+            ),
+            ("sectionCache", StatsVal::F(
+                self.section_meshes
+                    .values()
+                    .map(|v| v.iter().filter(|s| s.is_some()).count())
+                    .sum::<usize>() as f32,
+            )),
             ("rd", StatsVal::F(self.settings.render_distance as f32)),
             ("fov", StatsVal::F(self.settings.fov)),
             ("sens", StatsVal::F(self.settings.sensitivity)),
@@ -1754,18 +1798,25 @@ impl GameApp {
             self.submit(job);
         }
 
-        // 3. queue mesh jobs (radius rd, nearest first, dirty first)
-        let mut want_mesh: Vec<(ChunkPos, bool)> = Vec::new();
+        // 3. queue mesh jobs (radius rd, nearest first, dirty first).
+        // §12: dirty bits are SECTION masks — a job rebuilds only the stale
+        // sections, reusing the cached meshes for the rest.
+        let mut want_mesh: Vec<(ChunkPos, bool, u16)> = Vec::new();
         for dz in -rd..=rd {
             for dx in -rd..=rd {
                 let pos = (pc.0 + dx, pc.1 + dz);
-                if self.mesh_inflight.contains(&pos) {
+                if self.mesh_inflight.contains_key(&pos) {
                     continue;
                 }
-                let dirty = self.world.dirty.contains(&pos);
+                let dirty_mask = self.world.dirty.get(&pos).copied().unwrap_or(0);
                 let meshed = self.renderer.has_chunk(pos);
-                if (dirty || !meshed) && self.world.meshable(pos.0, pos.1) {
-                    want_mesh.push((pos, dirty));
+                let mask = if !meshed {
+                    u16::MAX // first mesh of the chunk: all 16 sections
+                } else {
+                    dirty_mask
+                };
+                if mask != 0 && self.world.meshable(pos.0, pos.1) {
+                    want_mesh.push((pos, dirty_mask != 0, mask));
                 }
             }
         }
@@ -1775,14 +1826,25 @@ impl GameApp {
             b.1.cmp(&a.1).then(da.cmp(&db)) // dirty chunks first
         });
         let max_mesh = if cfg!(target_arch = "wasm32") { 2 } else { 16 };
-        for (pos, _) in want_mesh.into_iter().take(max_mesh) {
+        for (pos, _, mask) in want_mesh.into_iter().take(max_mesh) {
             if let Some(snap) = self.world.snapshot3x3(pos.0, pos.1) {
-                self.mesh_inflight.insert(pos);
-                self.submit(Job::Mesh { pos, snap, smooth: self.settings.smooth_lighting });
+                let prev = self
+                    .section_meshes
+                    .get(&pos)
+                    .cloned()
+                    .unwrap_or_else(|| vec![None; 16]);
+                self.mesh_inflight.insert(pos, mask);
+                self.submit(Job::Mesh {
+                    pos,
+                    snap,
+                    smooth: self.settings.smooth_lighting,
+                    mask,
+                    prev,
+                });
             }
         }
 
-        // 4. unload far GPU meshes
+        // 4. unload far GPU meshes + their section caches
         let unload: Vec<ChunkPos> = self
             .renderer
             .chunks
@@ -1795,7 +1857,9 @@ impl GameApp {
             .collect();
         for pos in unload {
             self.renderer.remove_chunk(pos);
+            self.section_meshes.remove(&pos);
             self.world.dirty.remove(&pos);
+            self.world.dirty_causes.remove(&pos);
         }
     }
 
@@ -1835,20 +1899,27 @@ impl GameApp {
                     Arc::new(c)
                 };
                 self.world.insert_generated(pos, chunk, outbound);
+                // the new chunk changes border face culling + light in its
+                // 8 neighbors — mark them all (§12 mask semantics keep any
+                // bits that land while a neighbor job is in flight)
                 for dz in -1..=1 {
                     for dx in -1..=1 {
-                        let np = (pos.0 + dx, pos.1 + dz);
                         if dx != 0 || dz != 0 {
-                            if !self.mesh_inflight.contains(&np) {
-                                self.world.dirty.insert(np);
-                            }
+                            let np = (pos.0 + dx, pos.1 + dz);
+                            self.world.mark_all_dirty(
+                                np,
+                                crate::world::CAUSE_GEOMETRY | crate::world::CAUSE_LIGHT,
+                            );
                         }
                     }
                 }
             }
-            JobResult::Mesh { pos, mesh } => {
+            JobResult::Mesh { pos, mask, sections, mesh } => {
                 self.mesh_inflight.remove(&pos);
-                self.world.dirty.remove(&pos);
+                // clear only the bits this job covered — edits that arrived
+                // after its snapshot re-queue the chunk (§12)
+                self.world.clear_dirty_mask(pos, mask);
+                self.section_meshes.insert(pos, sections);
                 self.renderer.set_chunk_mesh(pos, &mesh);
             }
         }
@@ -1970,6 +2041,11 @@ impl GameApp {
                     if self.settings.shadows { "on" } else { "off" },
                     self.settings.upscale_factor() * 100.0,
                     match self.settings.maxfps { 0 => "vsync", 1 => "30", 2 => "60", _ => "120" }
+                ),
+                format!(
+                    "Dirty: {} sections in {} chunks (§12 fine-grained invalidation)",
+                    self.world.dirty_section_count(),
+                    self.world.dirty.len()
                 ),
                 format!(
                     "Shader: {}  Clouds: {}  Smooth: {}  VSync: {}",

@@ -119,8 +119,9 @@ fn main() {
     let mut total_tris = 0u32;
     for &pos in meshable.iter() {
         let snap = snapshot(&by_pos, pos);
+        let lsnap = voxelcraft::light::reference_lightdata(&snap);
         let t0 = Instant::now();
-        let md = mesh_chunk(pos, &snap, true);
+        let md = mesh_chunk(pos, &snap, &lsnap, true);
         mesh_ms.push(t0.elapsed().as_secs_f32() * 1000.0);
         total_verts += md.solid.0.len() + md.water.0.len();
         total_tris += md.tri_count();
@@ -132,7 +133,8 @@ fn main() {
         .par_iter()
         .map(|&pos| {
             let snap = snapshot(&by_pos, pos);
-            let md = mesh_chunk(pos, &snap, true);
+            let lsnap = voxelcraft::light::reference_lightdata(&snap);
+            let md = mesh_chunk(pos, &snap, &lsnap, true);
             md.solid.0.len() + md.water.0.len()
         })
         .collect();
@@ -147,12 +149,13 @@ fn main() {
     let mut remesh3_eq = true; // determinism: partial == matching part of full
     for &pos in meshable.iter() {
         let snap = snapshot(&by_pos, pos);
-        let full = mesh_sections(pos, &snap, true, u16::MAX, &[]);
+        let lsnap = voxelcraft::light::reference_lightdata(&snap);
+        let full = mesh_sections(pos, &snap, &lsnap, true, u16::MAX, &[]);
         let cache = full.sections.clone();
         // sections 4–6 (typical terrain band, y 64–111)
         let mask: u16 = 0b111 << 4;
         let t0 = Instant::now();
-        let part = mesh_sections(pos, &snap, true, mask, &cache);
+        let part = mesh_sections(pos, &snap, &lsnap, true, mask, &cache);
         remesh3_ms.push(t0.elapsed().as_secs_f32() * 1000.0);
         // the partial result must reproduce the full mesh bit-for-bit
         // (unmasked sections reused verbatim, masked rebuilt deterministically)

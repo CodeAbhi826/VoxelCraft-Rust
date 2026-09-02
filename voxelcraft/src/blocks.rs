@@ -110,6 +110,8 @@ pub const TILE_POTION_HEALING_II: u16 = 79;
 // enchanting (Phase 7 §29): table + enchanted book
 pub const TILE_ENCHANT_TABLE: u16 = 80;
 pub const TILE_ENCHANTED_BOOK: u16 = 81;
+// villagers (Phase 7 §27/§29): the NPC sprite
+pub const TILE_VILLAGER: u16 = 82;
 
 // Block ids (u8 in chunk storage).
 pub const AIR: u8 = 0;
@@ -622,7 +624,7 @@ pub fn log_axis_state(block: u8, axis: u8) -> u16 {
 }
 
 /// highest tile index the generator must draw
-pub const TILE_MAX: u16 = 81;
+pub const TILE_MAX: u16 = 82;
 
 /// inventory-only ITEM blocks (potions/bottles/books): never placeable in
 /// the world — right-click drinks (potions) / fills (glass bottle at water).

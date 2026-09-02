@@ -175,6 +175,8 @@ pub enum Container {
     Brewing { pos: [i32; 3] },
     /// enchanting-table UI bound to a block entity (§29)
     Enchant { pos: [i32; 3] },
+    /// villager trade screen bound to a villager entity id (§27/§29)
+    Trade { villager: u32 },
 }
 
 impl Screen {
@@ -1670,6 +1672,7 @@ impl GameApp {
                         }
                     }
                 }
+                Container::Trade { .. } => {}
             }
         }
         // cursor returns to the inventory
@@ -1952,6 +1955,53 @@ impl GameApp {
                     self.player.xp_level
                 ));
             }
+            SlotRef::TradeRow(i) => {
+                // §29 trading: pay give, receive get — through the REAL
+                // inventory consume/add path; emerald ore = our emerald
+                let Some(Container::Trade { villager }) = self.container else {
+                    return;
+                };
+                // copy out position + trade row first so the entity borrow
+                // ends before the stat mutation below
+                let vpos = self.sim.villagers.by_id(villager).map(|v| v.pos);
+                let tr = self
+                    .sim
+                    .villagers
+                    .by_id(villager)
+                    .and_then(|v| crate::villagers::trades(v.profession).get(i).copied());
+                let (Some(vpos), Some(tr)) = (vpos, tr) else {
+                    return;
+                };
+                let (give, give_n) = tr.give;
+                let (get, get_n) = tr.get;
+                if self.player.inv.consume(give, give_n) {
+                    let left = self.player.inv.add(get, get_n);
+                    if left > 0 {
+                        self.sim.items.drop_block(
+                            self.player.pos.x.floor() as i32,
+                            self.player.pos.y.floor() as i32,
+                            self.player.pos.z.floor() as i32,
+                            get, 2, 15, 0,
+                        );
+                    }
+                    self.sim.villagers.trades_done += 1;
+                    self.play_event(
+                        "entity.villager.trade",
+                        Some([vpos[0], vpos[1] + 0.9, vpos[2]]),
+                        1.0,
+                    );
+                    crate::render::report_boot_log(&format!(
+                        "e2e: traded {}x {} for {}x {} (total {})",
+                        give_n,
+                        name(give),
+                        get_n,
+                        name(get),
+                        self.sim.villagers.trades_done
+                    ));
+                } else {
+                    self.click_sound();
+                }
+            }
             SlotRef::Inv(_) => {}
         }
         self.click_sound();
@@ -1976,9 +2026,9 @@ impl GameApp {
     /// pure data, built fresh every UI rebuild
     fn container_view(&self) -> crate::ui::ContainerView {
         use crate::ui::{ContainerKind, ContainerView};
-        let (kind, furnace, brewing, enchant) = match self.container {
-            Some(Container::Inventory) => (ContainerKind::Inventory, None, None, None),
-            Some(Container::Crafting { .. }) => (ContainerKind::Crafting, None, None, None),
+        let (kind, furnace, brewing, enchant, trade) = match self.container {
+            Some(Container::Inventory) => (ContainerKind::Inventory, None, None, None, None),
+            Some(Container::Crafting { .. }) => (ContainerKind::Crafting, None, None, None, None),
             Some(Container::Furnace { pos }) => {
                 // live slots + progress fractions for the flame/arrow
                 let f = self
@@ -1997,6 +2047,7 @@ impl GameApp {
                 (
                     ContainerKind::Furnace,
                     Some((f.input, f.fuel, f.output, burn, cook)),
+                    None,
                     None,
                     None,
                 )
@@ -2018,6 +2069,7 @@ impl GameApp {
                     None,
                     Some((b.ingredient, b.fuel, b.bottles, fuel_frac, brew_frac)),
                     None,
+                    None,
                 )
             }
             Some(Container::Enchant { pos }) => {
@@ -2033,9 +2085,40 @@ impl GameApp {
                     None,
                     None,
                     Some((e.item, e.lapis, e.options, self.player.xp_level, e.power)),
+                    None,
                 )
             }
-            None => (ContainerKind::Inventory, None, None, None),
+            Some(Container::Trade { villager }) => {
+                // live trade rows + affordability from the inventory
+                let rows = self
+                    .sim
+                    .villagers
+                    .by_id(villager)
+                    .map(|v| {
+                        let prof =
+                            crate::villagers::PROFESSIONS[v.profession as usize % crate::villagers::PROFESSIONS.len()];
+                        let list: Vec<(crate::inventory::ItemStack, crate::inventory::ItemStack, bool)> =
+                            crate::villagers::trades(v.profession)
+                                .iter()
+                                .map(|t| {
+                                    let give = crate::inventory::ItemStack::new(t.give.0, t.give.1);
+                                    let get = crate::inventory::ItemStack::new(t.get.0, t.get.1);
+                                    let afford = self.player.inv.count_of(t.give.0) >= t.give.1 as u32;
+                                    (give, get, afford)
+                                })
+                                .collect();
+                        (prof.to_string(), list)
+                    })
+                    .unwrap_or_default();
+                (
+                    ContainerKind::Trade,
+                    None,
+                    None,
+                    None,
+                    Some(rows),
+                )
+            }
+            None => (ContainerKind::Inventory, None, None, None, None),
         };
         let size = self.craft_grid_size();
         let grid: Vec<crate::inventory::ItemStack> =
@@ -2050,6 +2133,7 @@ impl GameApp {
             furnace,
             brewing,
             enchant,
+            trade,
             cursor: self.cursor_stack,
         }
     }
@@ -2581,6 +2665,85 @@ impl GameApp {
                             crate::render::report_boot_log("e2e: enchant offer not affordable");
                         }
                     }
+                    Some("spawn") => {
+                        // spawn:villager[:profession] — E2E: a villager near
+                        // the player (auto-spawn at villages is separate)
+                        let prof = parts.get(1).copied().and_then(|p| {
+                            crate::villagers::PROFESSIONS
+                                .iter()
+                                .position(|n| *n == p)
+                                .map(|i| i as u8)
+                        });
+                        let pos = self.player.pos;
+                        match self.sim.villagers.spawn_at(
+                            pos.x.floor() as i32 + 2,
+                            pos.y.floor() as i32,
+                            pos.z.floor() as i32,
+                            prof,
+                        ) {
+                            Some(id) => {
+                                let v = self.sim.villagers.by_id(id).unwrap();
+                                crate::render::report_boot_log(&format!(
+                                    "e2e: spawned villager #{id} {} at ({:.0},{:.0},{:.0})",
+                                    crate::villagers::PROFESSIONS[v.profession as usize],
+                                    v.pos[0],
+                                    v.pos[1],
+                                    v.pos[2]
+                                ));
+                            }
+                            None => {
+                                crate::render::report_boot_log("e2e: villager cap reached");
+                            }
+                        }
+                    }
+                    Some("trade") => {
+                        // trade:<idx> — scripted §29 flow: spawn a cleric (sells
+                        // healing potions — the §29 cross-link), grant the
+                        // give items, open the screen, execute the trade
+                        // through the same consume/add path the TradeRow
+                        // click uses (geometry-driven click verified via cclick)
+                        let idx: usize = parts
+                            .get(1)
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(0);
+                        let pos = self.player.pos;
+                        let id = self
+                            .sim
+                            .villagers
+                            .spawn_at(
+                                pos.x.floor() as i32 + 2,
+                                pos.y.floor() as i32,
+                                pos.z.floor() as i32,
+                                Some(2), // Cleric
+                            )
+                            .expect("villager cap");
+                        let tr = crate::villagers::trades(2)[idx.min(1)];
+                        // grant the payment through the real add path
+                        self.player.inv.add(tr.give.0, tr.give.1);
+                        self.open_container(Container::Trade { villager: id });
+                        // execute the trade: consume give, add get
+                        if self.player.inv.consume(tr.give.0, tr.give.1) {
+                            let left = self.player.inv.add(tr.get.0, tr.get.1);
+                            if left > 0 {
+                                self.sim.items.drop_block(
+                                    pos.x.floor() as i32,
+                                    pos.y.floor() as i32,
+                                    pos.z.floor() as i32,
+                                    tr.get.0, 2, 15, 0,
+                                );
+                            }
+                            self.sim.villagers.trades_done += 1;
+                            self.play_event("entity.villager.trade", None, 1.0);
+                            crate::render::report_boot_log(&format!(
+                                "e2e: trade flow done - inv has {}x {} (trades {})",
+                                self.player.inv.count_of(tr.get.0),
+                                name(tr.get.0),
+                                self.sim.villagers.trades_done
+                            ));
+                        } else {
+                            crate::render::report_boot_log("e2e: trade payment missing");
+                        }
+                    }
                     Some("fill") => {
                         // fill: — E2E shortcut for the bottle-at-water
                         // interaction: every empty glass bottle in the
@@ -2911,7 +3074,24 @@ impl GameApp {
                 }
             }
             if self.input.place_hold && self.place_timer <= 0.0 {
-                if let Some((tpos, tb, _)) = self.target {
+                // §27/§29: a villager under the crosshair opens the trade
+                // screen FIRST (vanilla interaction priority over blocks)
+                if let Some(vid) = self.sim.villagers.ray_hit(
+                    self.player.eye().to_array(),
+                    self.player.look_dir().to_array(),
+                    crate::player::REACH,
+                ) {
+                    if let Some(v) = self.sim.villagers.by_id(vid) {
+                        let pos = v.pos;
+                        self.play_event(
+                            "entity.villager.ambient",
+                            Some([pos[0], pos[1] + 0.9, pos[2]]),
+                            1.0,
+                        );
+                    }
+                    self.open_container(Container::Trade { villager: vid });
+                    self.place_timer = 0.3;
+                } else if let Some((tpos, tb, _)) = self.target {
                     // §25: right-click a lever toggles it (vanilla interaction)
                     if tb == LEVER {
                         crate::redstone::toggle_lever(
@@ -3384,6 +3564,12 @@ impl GameApp {
             ("furnaces", StatsVal::F(self.sim.furnaces.map.len() as f32)),
             ("brewStands", StatsVal::F(self.sim.brewing.map.len() as f32)),
             ("potionsBrewed", StatsVal::F(self.sim.brewing.total_brewed as f32)),
+            // §29: XP + enchanting + villagers
+            ("xpLevel", StatsVal::F(self.player.xp_level as f32)),
+            ("xpPoints", StatsVal::F(self.player.xp_points as f32)),
+            ("enchApplied", StatsVal::F(self.sim.enchants.total_enchanted as f32)),
+            ("villagers", StatsVal::F(self.sim.villagers.list.len() as f32)),
+            ("tradesDone", StatsVal::F(self.sim.villagers.trades_done as f32)),
             ("fwd", StatsVal::B(self.input.fwd)),
             ("back", StatsVal::B(self.input.back)),
             ("left", StatsVal::B(self.input.left)),
@@ -3635,6 +3821,9 @@ impl GameApp {
                     Arc::new(c)
                 };
                 self.world.insert_generated(pos, chunk, outbound);
+                // §27: villagers spawn with their village — populate the
+                // wells whose reach covers this chunk (guarded, once)
+                self.sim.villagers.populate_villages(&self.world, pos.0, pos.1);
                 // Phase 4: initial lighting for the new chunk (column scan +
                 // border exchange, settled synchronously) — the engine's
                 // changed map feeds precise §12 dirty bits below
@@ -4044,6 +4233,14 @@ impl GameApp {
             self.sim
                 .items
                 .build_vertices(self.time, right, up, &mut self.particle_verts);
+            // §27/§29 villagers: crossed-quad sprites, villager scale
+            crate::villagers::build_vertices(
+                &self.sim.villagers.list,
+                self.time,
+                right,
+                up,
+                &mut self.particle_verts,
+            );
         }
 
         self.stats = self.renderer.render(

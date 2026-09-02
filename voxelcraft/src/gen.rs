@@ -954,7 +954,7 @@ impl TerrainGen {
 
     /// all village centers whose structures can reach into the 16×16 block
     /// area at (ox, oz): village regions overlapping [ox-40, ox+56)
-    fn villages_near(&self, ox: i32, oz: i32) -> Vec<(i32, i32)> {
+    pub fn villages_near(&self, ox: i32, oz: i32) -> Vec<(i32, i32)> {
         const RC: i32 = VILLAGE_REGION_CHUNKS * 16; // region size in blocks
         let mut out = Vec::new();
         let rx0 = (ox - VILLAGE_MAX_REACH).div_euclid(RC);

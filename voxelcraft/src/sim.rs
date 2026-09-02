@@ -25,6 +25,8 @@ pub struct Sim {
     pub brewing: crate::brewing::Brewings,
     /// enchanting-table block entities (§29 — reactive, not ticked)
     pub enchants: crate::enchanting::Enchants,
+    /// villager NPCs (Phase 7 §27/§29): wander AI + trade state
+    pub villagers: crate::villagers::Villagers,
     acc: f32,
     /// total sim ticks executed (stats/F3/E2E)
     pub ticks: u64,
@@ -39,6 +41,7 @@ impl Sim {
             furnaces: crate::furnace::Furnaces::default(),
             brewing: crate::brewing::Brewings::default(),
             enchants: crate::enchanting::Enchants::default(),
+            villagers: crate::villagers::Villagers::new(seed ^ 0x315_7A9),
             acc: 0.0,
             ticks: 0,
         }
@@ -111,6 +114,9 @@ impl Sim {
 
         // 4. item entities
         self.items.tick(world);
+
+        // 5. villagers (§27): wander decisions + walking physics
+        self.villagers.tick(world);
     }
 
     /// player pickup collection (called by the game each frame with the

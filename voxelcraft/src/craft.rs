@@ -73,6 +73,24 @@ pub const RECIPES: &[Recipe] = &[
         ],
         out: ItemStack::new(BREWING_STAND, 1),
     },
+    // 1×1: bookshelf → 3 books (§29 adaptation: vanilla book = paper +
+    // leather; our paper/leather is the bookshelf itself)
+    Recipe {
+        size: 1,
+        grid: &[Ing::Block(BOOKSHELF)],
+        out: ItemStack::new(ENCHANTED_BOOK, 3),
+    },
+    // 3×3 vanilla enchanting-table layout: book top-center, diamonds
+    // left/right mid, obsidian bottom row + mid column
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::None,        Ing::Block(BOOKSHELF), Ing::None,
+            Ing::Block(DIAMOND_BLOCK), Ing::Block(OBSIDIAN), Ing::Block(DIAMOND_BLOCK),
+            Ing::Block(OBSIDIAN), Ing::Block(OBSIDIAN), Ing::Block(OBSIDIAN),
+        ],
+        out: ItemStack::new(ENCHANT_TABLE, 1),
+    },
 ];
 
 /// match a crafting grid (row-major, `size`×`size` of ItemStacks) → the
@@ -210,5 +228,27 @@ mod tests {
         bad[1] = ItemStack::EMPTY;
         bad[0] = ItemStack::new(NETHERRACK, 1);
         assert!(match_grid(&bad, 3).is_none());
+    }
+
+    #[test]
+    fn bookshelf_makes_books() {
+        // 1×1 recipe: works in the 2×2 inventory grid anywhere
+        let mut g = vec![ItemStack::EMPTY; 4];
+        g[2] = ItemStack::new(BOOKSHELF, 1);
+        let out = match_grid(&g, 2).unwrap();
+        assert_eq!((out.block, out.count), (ENCHANTED_BOOK, 3));
+    }
+
+    #[test]
+    fn enchant_table_layout_is_vanilla() {
+        let mut g = vec![ItemStack::EMPTY; 9];
+        g[1] = ItemStack::new(BOOKSHELF, 1);
+        g[3] = ItemStack::new(DIAMOND_BLOCK, 1);
+        g[5] = ItemStack::new(DIAMOND_BLOCK, 1);
+        for i in [4, 6, 7, 8] {
+            g[i] = ItemStack::new(OBSIDIAN, 1);
+        }
+        let out = match_grid(&g, 3).unwrap();
+        assert_eq!((out.block, out.count), (ENCHANT_TABLE, 1));
     }
 }

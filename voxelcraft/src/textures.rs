@@ -543,6 +543,63 @@ fn brewing_stand_art(a: &mut [u8], t: u16) {
     });
 }
 
+/// enchanting table (§29): a dark slab with glowing runes
+fn enchant_table_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "................",
+        "...dddddddddd...",
+        "...dDDDDDDDDd...",
+        "...dDrDDrDDrd...",
+        "...dDDrDDrDDd...",
+        "...dDrDDDDrd...",
+        "...dDDDDDDDDd...",
+        "...dddddddddd...",
+        "...dd.dddd.dd...",
+        "....d..dd..d....",
+        "....d..dd..d....",
+        "...dd..dd..dd...",
+        "...ddddddddd....",
+        "................",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'd' => Some((30, 24, 40, 255)),   // obsidian dark
+        'D' => Some((58, 44, 74, 255)),   // slab face
+        'r' => Some((255, 130, 255, 255)), // glowing runes
+        _ => None,
+    });
+}
+
+/// enchanted book (§29): a book with a sparkle
+fn enchanted_book_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "................",
+        "....ss..........",
+        "...bBBs.........",
+        "...bBBBs........",
+        "...bPPPPs.......",
+        "...bPPPPPs......",
+        "...bPPPPPPs.....",
+        "...bPPPPPPPs....",
+        "...bPPPPPPPPs...",
+        "...bPPPPPPPPs...",
+        "...bPPPPPPPPs...",
+        "...bbbbbbbbbb...",
+        "................",
+        "................",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'b' => Some((110, 70, 30, 255)),   // leather cover
+        'B' => Some((150, 100, 45, 255)),  // cover highlight
+        'P' => Some((235, 225, 200, 255)), // pages
+        's' => Some((120, 255, 200, 255)), // sparkle
+        _ => None,
+    });
+}
+
 /// potion bottle (Phase 7 §29): one bottle shape, per-potion liquid color.
 /// `glow` brightens the liquid (the level-II variant sparkles).
 fn potion_art(a: &mut [u8], t: u16, liquid: (i32, i32, i32), glow: bool) {
@@ -1318,6 +1375,9 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_POTION_MUNDANE => potion_art(&mut a, t, (130, 130, 130), false),
             TILE_POTION_HEALING => potion_art(&mut a, t, (220, 60, 110), false),
             TILE_POTION_HEALING_II => potion_art(&mut a, t, (240, 80, 60), true),
+            // enchanting (Phase 7 §29)
+            TILE_ENCHANT_TABLE => enchant_table_art(&mut a, t),
+            TILE_ENCHANTED_BOOK => enchanted_book_art(&mut a, t),
             _ => {}
         }
     }

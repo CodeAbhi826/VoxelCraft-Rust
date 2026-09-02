@@ -268,6 +268,22 @@ fn splash_recipe() -> Vec<f32> {
     clamp_amp(s)
 }
 
+/// enchanting-table use (§29): a rising mystical arpeggio
+fn enchant_recipe() -> Vec<f32> {
+    let mut e = ping(520.0, 0.25, 0.25, 409);
+    mix_into(&mut e, &ping(660.0, 0.25, 0.2, 410), 0.9);
+    mix_into(&mut e, &ping(880.0, 0.30, 0.16, 411), 0.8);
+    mix_into(&mut e, &ping(1320.0, 0.35, 0.10, 412), 0.7);
+    clamp_amp(e)
+}
+
+/// player level-up (§29): bright two-note rise
+fn levelup_recipe() -> Vec<f32> {
+    let mut l = ping(740.0, 0.12, 0.3, 413);
+    mix_into(&mut l, &ping(1110.0, 0.20, 0.25, 414), 1.0);
+    clamp_amp(l)
+}
+
 /// ambient cave "eerie" tone: slow beating detuned sines with a long tail
 fn eerie_recipe() -> Vec<f32> {
     let n = (1.6 * RATE as f32) as usize;
@@ -369,6 +385,8 @@ impl SoundBank {
             ("block/brewing_bubble", bubble_recipe()),
             ("entity/drink", drink_recipe()),
             ("liquid/splash", splash_recipe()),
+            ("block/enchant_use", enchant_recipe()),
+            ("entity/levelup", levelup_recipe()),
         ] {
             names.push(n.into());
             data.push(d);
@@ -628,7 +646,9 @@ pub const SOUNDS_JSON: &str = r##"{
   "music.pad.night":     {"category": "music", "volume": 0.5, "sounds": [{"name": "music/pad_night", "stream": true}]},
   "block.brewing_stand.bubble": {"category": "blocks", "volume": 0.7, "pitch": [0.9, 1.15], "attenuation": 12, "sounds": [{"name": "block/brewing_bubble"}]},
   "entity.generic.drink": {"category": "players", "volume": 0.6, "pitch": [0.9, 1.1], "sounds": [{"name": "entity/drink"}]},
-  "liquid.splash":       {"category": "blocks", "volume": 0.6, "pitch": [0.9, 1.2], "attenuation": 12, "sounds": [{"name": "liquid/splash"}]}
+  "liquid.splash":       {"category": "blocks", "volume": 0.6, "pitch": [0.9, 1.2], "attenuation": 12, "sounds": [{"name": "liquid/splash"}]},
+  "block.enchantment_table.use": {"category": "blocks", "volume": 0.8, "pitch": [0.9, 1.1], "attenuation": 12, "sounds": [{"name": "block/enchant_use"}]},
+  "entity.player.levelup": {"category": "players", "volume": 0.6, "pitch": [0.95, 1.1], "sounds": [{"name": "entity/levelup"}]}
 }"##;
 
 /// distance attenuation + stereo pan for one positioned sound relative to

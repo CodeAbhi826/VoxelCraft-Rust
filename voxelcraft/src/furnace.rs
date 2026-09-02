@@ -40,6 +40,9 @@ pub struct FurnaceState {
     pub burn_max: i32,
     /// ticks of cook progress on the current input
     pub cook_left: i32,
+    /// accumulated smelting XP (§29 vanilla: granted when the output is
+    /// collected, e.g. 0.1 per glass)
+    pub xp_pool: f32,
 }
 
 impl Default for FurnaceState {
@@ -51,6 +54,7 @@ impl Default for FurnaceState {
             burn_left: 0,
             burn_max: 0,
             cook_left: 0,
+            xp_pool: 0.0,
         }
     }
 }
@@ -96,7 +100,8 @@ impl FurnaceState {
             self.cook_left += 1;
             if self.cook_left >= COOK_TICKS {
                 // item done
-                let out_block = smelt_result(self.input.block).unwrap();
+                let in_block = self.input.block;
+                let out_block = smelt_result(in_block).unwrap();
                 self.input.count -= 1;
                 if self.input.count == 0 {
                     self.input = ItemStack::EMPTY;
@@ -106,6 +111,8 @@ impl FurnaceState {
                 } else {
                     self.output.count += 1;
                 }
+                // §29: smelting XP accrues until the output is collected
+                self.xp_pool += crate::enchanting::smelt_xp(in_block);
                 self.cook_left = 0;
             }
         } else if self.cook_left > 0 && !self.can_output() {

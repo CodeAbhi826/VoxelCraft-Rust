@@ -64,6 +64,10 @@ pub struct Player {
     /// health points (0..20, vanilla half-heart scale ×2; §29 potions act
     /// on this, the HUD renders it as the real health bar)
     pub health: f32,
+    /// XP points progress within the current level (§29)
+    pub xp_points: i32,
+    /// XP level (§29; enchanting pays 1..3 of these per option)
+    pub xp_level: i32,
     /// 36-slot inventory: 0..9 hotbar, 9..36 storage (Phase 7)
     pub inv: crate::inventory::Inventory,
     pub selected: usize,
@@ -86,6 +90,8 @@ impl Player {
             in_water: false,
             head_in_water: false,
             health: 20.0,
+            xp_points: 0,
+            xp_level: 0,
             inv: {
                 let mut inv = crate::inventory::Inventory::new(crate::inventory::INV_SLOTS);
                 for (i, &b) in PALETTE.iter().enumerate() {
@@ -117,6 +123,41 @@ impl Player {
         let before = self.health;
         self.health = (self.health - amount).max(0.0);
         before - self.health
+    }
+
+    /// add XP points → levels advance on the vanilla curve (§29); returns
+    /// how many levels were gained (for the level-up sound hook)
+    pub fn add_xp(&mut self, points: i32) -> i32 {
+        self.xp_points += points.max(0);
+        let mut gained = 0;
+        loop {
+            let need = crate::enchanting::xp_to_next(self.xp_level);
+            if self.xp_points >= need {
+                self.xp_points -= need;
+                self.xp_level += 1;
+                gained += 1;
+            } else {
+                break;
+            }
+        }
+        gained
+    }
+
+    /// pay `levels` levels for an enchant (§29): requires the levels,
+    /// resets in-level progress (vanilla sets the bar to 0)
+    pub fn spend_levels(&mut self, levels: i32) -> bool {
+        if self.xp_level < levels {
+            return false;
+        }
+        self.xp_level -= levels;
+        self.xp_points = 0;
+        true
+    }
+
+    /// XP bar fraction for the HUD (progress within the current level)
+    pub fn xp_fraction(&self) -> f32 {
+        let need = crate::enchanting::xp_to_next(self.xp_level);
+        (self.xp_points as f32 / need as f32).clamp(0.0, 1.0)
     }
 
     /// mutable access to the selected hotbar stack

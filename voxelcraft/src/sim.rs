@@ -23,6 +23,8 @@ pub struct Sim {
     /// brewing-stand block entities (Phase 7 §29) — BREW_TICKS = 400 means
     /// the vanilla 20 seconds
     pub brewing: crate::brewing::Brewings,
+    /// enchanting-table block entities (§29 — reactive, not ticked)
+    pub enchants: crate::enchanting::Enchants,
     acc: f32,
     /// total sim ticks executed (stats/F3/E2E)
     pub ticks: u64,
@@ -36,6 +38,7 @@ impl Sim {
             items: ItemSystem::new(seed ^ 0xD00_0042),
             furnaces: crate::furnace::Furnaces::default(),
             brewing: crate::brewing::Brewings::default(),
+            enchants: crate::enchanting::Enchants::default(),
             acc: 0.0,
             ticks: 0,
         }

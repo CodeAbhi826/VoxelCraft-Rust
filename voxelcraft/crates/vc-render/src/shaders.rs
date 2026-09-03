@@ -252,11 +252,11 @@ pub fn validate_wgsl(src: &str) -> Result<(), String> {
 // ------------------------------------------------------------- builtin --
 
 /// demo pack 1 — pure grade + warmth curve (clean-room, our own art)
-const WARM_EVENING_JSON: &str = include_str!("../shader-packs/warm-evening/shaders.json");
-const WARM_EVENING_WGSL: &str = include_str!("../shader-packs/warm-evening/composite.wgsl");
+const WARM_EVENING_JSON: &str = include_str!("../../../shader-packs/warm-evening/shaders.json");
+const WARM_EVENING_WGSL: &str = include_str!("../../../shader-packs/warm-evening/composite.wgsl");
 /// demo pack 2 — time-varying grain + blue shift (proves uniforms flow)
-const MOONLIT_JSON: &str = include_str!("../shader-packs/moonlit/shaders.json");
-const MOONLIT_WGSL: &str = include_str!("../shader-packs/moonlit/composite.wgsl");
+const MOONLIT_JSON: &str = include_str!("../../../shader-packs/moonlit/shaders.json");
+const MOONLIT_WGSL: &str = include_str!("../../../shader-packs/moonlit/composite.wgsl");
 
 /// the engine's clean-room demo packs — explicitly tested (§48 Phase-11
 /// gate: "demonstrated compatibility with explicitly tested packs")

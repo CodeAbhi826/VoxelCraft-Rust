@@ -1,0 +1,14 @@
+[package]
+name = "vc-world"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+description = "World grid, terrain generation, biomes and the light engine"
+
+[dependencies]
+vc-blocks = { workspace = true }
+vc-chunk = { workspace = true }
+vc-rng = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = { workspace = true }

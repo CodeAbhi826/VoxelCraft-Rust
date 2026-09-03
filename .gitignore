@@ -66,3 +66,4 @@ voxelcraft/wasm-out/
 
 # voxelcraft build outputs (scripts/build-all.sh)
 dist/
+stage/

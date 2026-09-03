@@ -3,8 +3,8 @@
 //! full 1.16.5-style HUD (hotbar, hearts, hunger, XP bar, crosshair, F3).
 //! Redrawn only when state changes; uploaded to GPU as a texture.
 
-use crate::blocks::*;
-use crate::inventory::ItemStack;
+use vc_blocks::blocks::*;
+use vc_inventory::inventory::ItemStack;
 use crate::textures::blit_tile;
 
 pub const UI_W: usize = 960;
@@ -869,7 +869,7 @@ impl UiCanvas {
                     .unwrap_or((
                         ItemStack::EMPTY,
                         ItemStack::EMPTY,
-                        [crate::enchanting::EnchOption { level: 0, ench: 0, ench_level: 0, cost: 0 }; 3],
+                        [vc_gameplay::enchanting::EnchOption { level: 0, ench: 0, ench_level: 0, cost: 0 }; 3],
                         0,
                         0,
                     ));
@@ -894,7 +894,7 @@ impl UiCanvas {
                     let oy = cy + i as i32 * 48;
                     let affordable = o.level > 0
                         && !item.is_empty()
-                        && item.block == crate::blocks::ENCHANTED_BOOK
+                        && item.block == vc_blocks::blocks::ENCHANTED_BOOK
                         && lapis.count >= o.cost
                         && player_level >= o.cost as i32;
                     // button chrome
@@ -917,11 +917,11 @@ impl UiCanvas {
                             1,
                         );
                         // enchant name + roman level
-                        let def = crate::enchanting::enchant_def(o.ench);
+                        let def = vc_gameplay::enchanting::enchant_def(o.ench);
                         let label = format!(
                             "{} {}",
                             def.name,
-                            crate::enchanting::roman(o.ench_level)
+                            vc_gameplay::enchanting::roman(o.ench_level)
                         );
                         let color: [u8; 4] = if affordable {
                             [255, 255, 255, 255]
@@ -1294,7 +1294,7 @@ pub struct ContainerView {
     pub enchant: Option<(
         ItemStack,
         ItemStack,
-        [crate::enchanting::EnchOption; 3],
+        [vc_gameplay::enchanting::EnchOption; 3],
         i32,
         u8,
     )>,

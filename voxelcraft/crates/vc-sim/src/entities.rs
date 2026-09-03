@@ -5,8 +5,8 @@
 //! vertex format carries baked light × tint, computed at spawn like
 //! vanilla's item light sampling).
 
-use crate::blocks::*;
-use crate::rng::Rng;
+use vc_blocks::blocks::*;
+use vc_rng::rng::Rng;
 
 pub const MAX_ITEMS: usize = 256;
 /// vanilla pickup delay (ticks)
@@ -65,7 +65,7 @@ impl ItemSystem {
         if self.items.len() >= MAX_ITEMS {
             return; // cap: oldest items still live, refuse the drop
         }
-        let tint = crate::tint::block_tint_color(block, biome);
+        let tint = vc_blocks::tint::block_tint_color(block, biome);
         let s = sky.min(15) as f32 / 15.0;
         let b = blk.min(15) as f32 / 15.0;
         let light = (s.max(b) * 0.96 + 0.04) * s.max(b).powf(1.2);
@@ -87,7 +87,7 @@ impl ItemSystem {
     /// one sim tick (20 Hz): gravity 0.04, drag 0.98, ground rest with
     /// slip, buoyancy in water. Item hitbox is a point (visual half-size
     /// 0.15); collision probes the world at the entity position.
-    pub fn tick(&mut self, world: &crate::world::World) {
+    pub fn tick(&mut self, world: &vc_world::world::World) {
         for it in self.items.iter_mut() {
             it.age += 1;
             let in_water = world.get_block(
@@ -157,7 +157,7 @@ impl ItemSystem {
         time: f32,
         right: [f32; 3],
         up: [f32; 3],
-        out: &mut Vec<crate::particles::ParticleVertex>,
+        out: &mut Vec<vc_particles::particles::ParticleVertex>,
     ) {
         for it in self.items.iter() {
             let tile = state_tiles(it.block as u16)[3];
@@ -195,7 +195,7 @@ impl ItemSystem {
             ];
             for ci in [0usize, 1, 2, 0, 2, 3] {
                 let (c, uv) = corners[ci];
-                out.push(crate::particles::ParticleVertex {
+                out.push(vc_particles::particles::ParticleVertex {
                     pos: [it.pos[0] + c[0], it.pos[1] + c[1] + bob, it.pos[2] + c[2]],
                     uv: [uv[0], uv[1]],
                     col,
@@ -208,14 +208,14 @@ impl ItemSystem {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::World;
+    use vc_world::world::World;
     use std::sync::Arc;
 
     fn flat_world() -> World {
         let mut w = World::new(7);
         for dz in -1i32..=1 {
             for dx in -1i32..=1 {
-                let mut c = crate::chunk::Chunk::empty();
+                let mut c = vc_chunk::chunk::Chunk::empty();
                 for y in 0..=64i32 {
                     for lz in 0..16usize {
                         for lx in 0..16usize {

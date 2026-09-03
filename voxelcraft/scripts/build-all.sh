@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
-# VoxelCraft — all-in-one build script (§ "compile for all arch systems")
+# VoxelCraft — all-target build script (§ "compile for all arch systems")
 #
-# Builds EVERY target from this one script:
+# ONE script builds EVERY target — but the artifacts stay SEPARATE
+# (per-arch game folders + one source archive per library; no AIO zip):
 #   1. host native binary      (cargo, full audio)
 #   2. wasm32 browser bundle   (wasm-bindgen --target web)
-#   3. optional cross targets  (--cross: linux-arm64, windows, macos —
+#   3. library source archives (one .tar.gz per vc-* crate)
+#   4. optional cross targets  (--cross: linux-arm64, windows, macos —
 #      requires the targets installed: rustup target add <t>)
 #
-# Everything lands in dist/ as ready-to-run folders:
-#   dist/voxelcraft-<version>-<name>/
-#     voxelcraft[.exe]  builtin-pack/  README.md  (+ web: play.html, js+wasm)
+# Everything lands in dist/:
+#   dist/voxelcraft-<version>-<name>/      game folders (binary + pack)
+#   dist/vc-<name>-<version>-source.tar.gz one archive per library
 #
 # Usage:
 #   ./scripts/build-all.sh              # host + wasm
@@ -33,7 +35,7 @@ build_host() {
     log "ALSA headers not found -> building with --no-default-features (engine-only, no audio)"
     FEATURES="--no-default-features"
   fi
-  cargo build --release $FEATURES --bin voxelcraft
+  cargo build --release $FEATURES -p voxelcraft --bin voxelcraft
   DIR="$DIST/voxelcraft-$VERSION-native"
   rm -rf "$DIR"; mkdir -p "$DIR"
   EXT=""
@@ -77,10 +79,10 @@ build_cross() {
   log "building CROSS target $name ($target)"
   local features=""
   if [ "$no_audio" = "1" ]; then features="--no-default-features"; fi
-  if ! cargo build --release --target "$target" $features --bin voxelcraft 2>/dev/null; then
+  if ! cargo build --release --target "$target" $features -p voxelcraft --bin voxelcraft 2>/dev/null; then
     log "plain cargo cross-build failed; trying 'cross' (docker)"
     command -v cross >/dev/null 2>&1 || cargo install cross --locked
-    cross build --release --target "$target" $features --bin voxelcraft
+    cross build --release --target "$target" $features -p voxelcraft --bin voxelcraft
   fi
   DIR="$DIST/voxelcraft-$VERSION-$name"
   rm -rf "$DIR"; mkdir -p "$DIR"
@@ -95,6 +97,30 @@ build_cross() {
   log "packaged $DIR"
 }
 
+# ---- 4. library source archives (separate, no AIO) --------------------------
+build_libs() {
+  log "packaging library source archives (one per crate, standalone manifests)"
+  local version
+  version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)
+  rm -rf .stage && mkdir .stage
+  local dir name
+  for dir in crates/vc-*/; do
+    name=$(basename "$dir")
+    cp -r "$dir" ".stage/${name}"
+  done
+  for dir in .stage/vc-*/; do
+    python3 scripts/portableize-lib.py ".stage/$(basename "$dir")" >/dev/null
+  done
+  for dir in .stage/vc-*/; do
+    name=$(basename "$dir")
+    tar czf "$DIST/${name}-${version}-source.tar.gz" -C .stage "${name}"
+    log "  ${name}-${version}-source.tar.gz"
+  done
+  cp LIBRARIES.md "$DIST/vc-libraries-index.md"
+  log "library index: $DIST/vc-libraries-index.md"
+  rm -rf .stage
+}
+
 # ---- dispatch ----------------------------------------------------------------
 CROSS=0; WASM_ONLY=0
 for arg in "$@"; do
@@ -107,6 +133,7 @@ done
 
 if [ "$WASM_ONLY" = "0" ]; then build_host; fi
 build_wasm
+build_libs
 if [ "$CROSS" = "1" ]; then
   build_cross aarch64-unknown-linux-gnu linux-arm64 1 || true
   build_cross x86_64-pc-windows-gnu     windows-x64  1 || true

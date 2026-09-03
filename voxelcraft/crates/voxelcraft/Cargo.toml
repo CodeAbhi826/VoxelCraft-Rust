@@ -1,0 +1,74 @@
+[package]
+name = "voxelcraft"
+description = "High-performance Minecraft-1.16.5-style voxel engine in Rust + wgpu (native Vulkan/DX12/Metal + WebGPU/WASM)"
+default-run = "voxelcraft"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+
+[lib]
+name = "voxelcraft"
+crate-type = ["rlib", "cdylib"]
+
+[[bin]]
+name = "voxelcraft"
+path = "src/main.rs"
+
+[[bin]]
+name = "vc_bench"
+path = "src/bin/vc_bench.rs"
+required-features = ["bench-bin"]
+
+[features]
+default = ["audio"]
+audio = ["vc-audio/audio"]
+# opt-in native-only benchmark binary (rayon + std::fs; not wasm-buildable).
+# cargo run --release --features bench-bin --bin vc_bench
+bench-bin = []
+
+[dependencies]
+glam = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+winit = { workspace = true }
+pollster = { workspace = true }
+wgpu = { workspace = true }
+vc-anvil = { workspace = true }
+vc-audio = { workspace = true }
+vc-blocks = { workspace = true }
+vc-chunk = { workspace = true }
+vc-gameplay = { workspace = true }
+vc-inventory = { workspace = true }
+vc-mesh = { workspace = true }
+vc-nbt = { workspace = true }
+vc-pack = { workspace = true }
+vc-particles = { workspace = true }
+vc-render = { workspace = true }
+vc-rng = { workspace = true }
+vc-sim = { workspace = true }
+vc-world = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+rayon = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wgpu = { workspace = true, features = ["webgl"] }
+wasm-bindgen = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+console_error_panic_hook = { workspace = true }
+js-sys = { workspace = true }
+web-sys = { workspace = true, features = [
+    "Window",
+    "Document",
+    "Element",
+    "HtmlCanvasElement",
+    "HtmlElement",
+    "Navigator",
+    "Gpu",
+    "Performance",
+    "console",
+    "Response",
+] }
+
+[dev-dependencies]
+# (kept empty; engine crates carry their own dev-deps)

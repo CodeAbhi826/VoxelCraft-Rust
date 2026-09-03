@@ -11,8 +11,8 @@
 //! - glistering melon → MUSHROOM_BROWN as the effect ingredient
 //! - glowstone upgrade is exactly vanilla
 
-use crate::blocks::*;
-use crate::inventory::ItemStack;
+use vc_blocks::blocks::*;
+use vc_inventory::inventory::ItemStack;
 use std::collections::HashMap;
 
 /// vanilla: 400 game ticks per brew (20 s)

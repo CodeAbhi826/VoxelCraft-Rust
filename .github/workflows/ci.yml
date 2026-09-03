@@ -2,8 +2,9 @@ name: CI
 
 # Automated test matrix: every push (any branch) + every PR to main.
 # Complements wasm-build.yml (which deploys the WASM bundle to public/):
-# this workflow is the quality GATE — tests, wasm check, native check
-# with audio, and the headless benchmark, on the code that ships.
+# this workflow is the quality GATE — the whole library workspace
+# (14 vc-* crates + the app) is tested: native tests, wasm check,
+# native check with audio, and the headless benchmark, on the code that ships.
 
 on:
   push:
@@ -39,15 +40,15 @@ jobs:
           cargo --version
           rustc --version
 
-      - name: cargo test (native, all 181+ tests)
+      - name: cargo test (whole workspace — 14 libraries + app, 181 tests)
         working-directory: voxelcraft
-        run: cargo test --release --no-default-features
+        run: cargo test --release --no-default-features --workspace
 
       - name: cargo check (native, audio on)
         working-directory: voxelcraft
         run: |
           sudo apt-get update && sudo apt-get install -y libasound2-dev
-          cargo check --release
+          cargo check --release --workspace
 
   wasm:
     name: cargo check (wasm32, lib)
@@ -68,13 +69,13 @@ jobs:
           workspaces: voxelcraft
           key: ci-wasm
 
-      - name: cargo check (wasm32 lib)
+      - name: cargo check (wasm32 — every library + the app lib)
         working-directory: voxelcraft
-        run: cargo check --release --no-default-features --lib --target wasm32-unknown-unknown
+        run: cargo check --release --no-default-features --workspace --lib --target wasm32-unknown-unknown
 
       - name: cargo test (wasm32-compile unit tests — headless-safe subset)
         working-directory: voxelcraft
-        run: cargo test --no-default-features --lib --target wasm32-unknown-unknown --no-run
+        run: cargo test --no-default-features --workspace --lib --target wasm32-unknown-unknown --no-run
 
   bench:
     name: headless benchmark (§37/§48 baselines)

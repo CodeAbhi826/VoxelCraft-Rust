@@ -2,9 +2,9 @@
 //! — 200-tick cook time, fuel burn times (planks/logs 300 ticks), input →
 //! output, lit state swap on the world block. Ticked by the sim at 20 Hz.
 
-use crate::blocks::*;
-use crate::inventory::ItemStack;
-use crate::world::World;
+use vc_blocks::blocks::*;
+use vc_inventory::inventory::ItemStack;
+use vc_world::world::World;
 use std::collections::HashMap;
 
 /// vanilla: 200 game ticks per item
@@ -169,7 +169,7 @@ mod tests {
         let mut w = World::new(7);
         for dz in -1i32..=1 {
             for dx in -1i32..=1 {
-                let mut c = crate::chunk::Chunk::empty();
+                let mut c = vc_chunk::chunk::Chunk::empty();
                 for y in 0..=64i32 {
                     for lz in 0..16usize {
                         for lx in 0..16usize {

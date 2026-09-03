@@ -220,11 +220,25 @@ pub async fn fetch_builtin_pack(
 
 #[cfg(target_arch = "wasm32")]
 async fn fetch_bytes(path: &str) -> Option<Vec<u8>> {
-    let url = format!("assets-prefixed-internal/{path}"); // placeholder, replaced below
-    let _ = url;
+    // same-origin fetch of the deployed builtin pack (public/voxelcraft-pack).
+    // Returns None on any network/HTTP failure — callers fall back to the
+    // missing-asset path (§46), never panic.
+    use wasm_bindgen::JsCast;
+    use wasm_bindgen_futures::JsFuture;
     let url = format!("/voxelcraft-pack/{path}");
-    let resp = crate::web_input::fetch_bytes(&url).await?;
-    Some(resp)
+    let Some(window) = web_sys::window() else { return None };
+    let Ok(resp_val) = JsFuture::from(window.fetch_with_str(&url)).await else {
+        return None;
+    };
+    let resp = resp_val.dyn_into::<web_sys::Response>().ok()?;
+    if !resp.ok() {
+        return None;
+    }
+    let Ok(buf_val) = JsFuture::from(resp.array_buffer().ok()?).await else {
+        return None;
+    };
+    let buf = buf_val.dyn_into::<js_sys::ArrayBuffer>().ok()?;
+    Some(js_sys::Uint8Array::new(&buf).to_vec())
 }
 
 #[cfg(target_arch = "wasm32")]

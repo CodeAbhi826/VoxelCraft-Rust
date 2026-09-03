@@ -1,8 +1,11 @@
 name: Release
 
-# All-architecture build: one workflow → binaries for every desktop arch
-# plus the browser WASM bundle, packaged with the builtin resource pack.
-#   Linux   x86_64 + aarch64, Windows x86_64, macOS aarch64 + x86_64, WASM
+# All-architecture build + SEPARATE library downloads:
+#   * every desktop arch binary + the browser WASM bundle
+#     (Linux x86_64 + aarch64, Windows x86_64, macOS aarch64 + x86_64, WASM)
+#   * every vc-* library packaged as its OWN source archive — there is
+#     deliberately NO all-in-one bundle; users download only what they need
+#     (see voxelcraft/LIBRARIES.md for the per-library instructions).
 # Runs on demand (workflow_dispatch) and on version tags (v*).
 # Artifacts upload on every run; a tag ALSO publishes a GitHub Release.
 
@@ -77,9 +80,9 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.cross }}" = "true" ]; then
-            cross build --release --target ${{ matrix.target }} ${{ matrix.features }} --bin voxelcraft
+            cross build --release --target ${{ matrix.target }} ${{ matrix.features }} -p voxelcraft --bin voxelcraft
           else
-            cargo build --release --target ${{ matrix.target }} ${{ matrix.features }} --bin voxelcraft
+            cargo build --release --target ${{ matrix.target }} ${{ matrix.features }} -p voxelcraft --bin voxelcraft
           fi
 
       - name: Package (binary + builtin pack + launcher docs)
@@ -112,6 +115,53 @@ jobs:
           path: |
             voxelcraft-*.zip
             voxelcraft-*.tar.gz
+          retention-days: 90
+          if-no-files-found: error
+
+  libraries:
+    name: library source archives (one per library — no AIO)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Package each vc-* library as its own standalone archive
+        working-directory: voxelcraft
+        run: |
+          VERSION=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)
+          echo "workspace version: ${VERSION}"
+          rm -f ./*.tar.gz
+          rm -rf .stage && mkdir .stage
+          # 1. copy every library to a staging dir and rewrite its manifest
+          #    to be workspace-free (concrete versions + sibling paths)
+          for dir in crates/vc-*/; do
+            name=$(basename "$dir")
+            cp -r "$dir" ".stage/${name}"
+          done
+          for dir in .stage/vc-*/; do
+            name=$(basename "$dir")
+            python3 scripts/portableize-lib.py ".stage/${name}"
+          done
+          # 2. one archive per library (no AIO)
+          for dir in .stage/vc-*/; do
+            name=$(basename "$dir")
+            tar czf "${name}-${VERSION}-source.tar.gz" -C .stage "${name}"
+            echo "packaged ${name} -> ${name}-${VERSION}-source.tar.gz ($(du -h ${name}-${VERSION}-source.tar.gz | cut -f1))"
+          done
+          # 3. the library index ships as its own small asset too
+          cp LIBRARIES.md vc-libraries-index.md
+          # sanity: an archive with zero internal deps must build alone
+          tar tzf vc-nbt-${VERSION}-source.tar.gz | head -3
+          ls -la ./*.tar.gz vc-libraries-index.md
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: voxelcraft-libraries
+          path: |
+            voxelcraft/*.tar.gz
+            voxelcraft/vc-libraries-index.md
           retention-days: 90
           if-no-files-found: error
 
@@ -180,7 +230,7 @@ jobs:
 
   publish:
     name: publish GitHub release (tags only)
-    needs: [native, wasm]
+    needs: [native, wasm, libraries]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
@@ -191,8 +241,8 @@ jobs:
 
       - name: Flatten + list
         run: |
-          find dist -type f \( -name '*.zip' -o -name '*.tar.gz' \) -exec mv {} . \;
-          ls -la *.zip *.tar.gz
+          find dist -type f \( -name '*.zip' -o -name '*.tar.gz' -o -name '*.md' \) -exec mv {} . \;
+          ls -la *.zip *.tar.gz *.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -201,3 +251,4 @@ jobs:
           files: |
             *.zip
             *.tar.gz
+            vc-libraries-index.md

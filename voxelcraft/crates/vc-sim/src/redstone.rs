@@ -17,9 +17,9 @@
 //! pistons and the remaining §25 component list are not in the registry
 //! yet — this is the connectivity + ordering core they bolt onto.
 
-use crate::blocks::*;
+use vc_blocks::blocks::*;
 use crate::ticks::TickScheduler;
-use crate::world::World;
+use vc_world::world::World;
 
 /// 1 redstone tick = 2 game ticks (vanilla)
 pub const REDSTONE_TICK_RATE: u64 = 2;
@@ -184,7 +184,7 @@ mod tests {
         let mut w = World::new(7);
         for dz in -1i32..=1 {
             for dx in -1i32..=1 {
-                let mut c = crate::chunk::Chunk::empty();
+                let mut c = vc_chunk::chunk::Chunk::empty();
                 for y in 0..=64i32 {
                     for lz in 0..16usize {
                         for lx in 0..16usize {

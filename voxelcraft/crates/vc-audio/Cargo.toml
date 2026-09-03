@@ -1,0 +1,36 @@
+[package]
+name = "vc-audio"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+description = "Synthesized sound bank, sound events & spatial audio (rodio / WebAudio)"
+
+[features]
+default = []
+# native-only output backend
+audio = ["dep:rodio"]
+
+[dependencies]
+serde_json = { workspace = true }
+serde = { workspace = true }
+vc-blocks = { workspace = true }
+vc-rng = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+rodio = { workspace = true, optional = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = { workspace = true }
+wasm-bindgen = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+web-sys = { workspace = true, features = [
+    "AudioContext",
+    "BaseAudioContext",
+    "AudioBuffer",
+    "AudioBufferSourceNode",
+    "AudioNode",
+    "AudioParam",
+    "GainNode",
+    "AudioDestinationNode",
+    "StereoPannerNode",
+] }

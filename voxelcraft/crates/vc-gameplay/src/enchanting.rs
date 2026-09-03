@@ -17,9 +17,9 @@
 //! - per-slot option-level curve and the enchant-weighted pick are a
 //!   close approximation of vanilla's (documented, deterministic)
 
-use crate::blocks::*;
-use crate::inventory::ItemStack;
-use crate::rng::Rng;
+use vc_blocks::blocks::*;
+use vc_inventory::inventory::ItemStack;
+use vc_rng::rng::Rng;
 use std::collections::HashMap;
 
 /// one enchantment row offered by the table
@@ -111,7 +111,7 @@ pub fn smelt_xp(block: u8) -> f32 {
 
 /// bookshelf power: bookshelves in the 5×5 outer ring (|dx| or |dz| == 2)
 /// at the table's height and one above, capped at 15 (vanilla scan)
-pub fn bookshelf_power(world: &crate::world::World, pos: [i32; 3]) -> u8 {
+pub fn bookshelf_power(world: &vc_world::world::World, pos: [i32; 3]) -> u8 {
     let mut n = 0u8;
     for dy in 0..=1 {
         for dz in -2i32..=2 {
@@ -215,7 +215,7 @@ impl Default for EnchantState {
 
 impl EnchantState {
     /// re-roll the options (fresh power scan + advancing seed)
-    pub fn reroll(&mut self, world: &crate::world::World, pos: [i32; 3], base_seed: u64) {
+    pub fn reroll(&mut self, world: &vc_world::world::World, pos: [i32; 3], base_seed: u64) {
         self.power = bookshelf_power(world, pos);
         self.seed = self.seed.wrapping_add(0x9E37_79B9_7F4A_7C15);
         self.options = gen_options(self.power, base_seed ^ self.seed ^ (pos[0] as u64) << 32 ^ pos[2] as u64);
@@ -255,11 +255,11 @@ pub struct Enchants {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::chunk::Chunk;
+    use vc_chunk::chunk::Chunk;
     use std::sync::Arc;
 
-    fn flat_world() -> crate::world::World {
-        let mut w = crate::world::World::new(7);
+    fn flat_world() -> vc_world::world::World {
+        let mut w = vc_world::world::World::new(7);
         for dz in -1i32..=1 {
             for dx in -1i32..=1 {
                 let mut c = Chunk::empty();

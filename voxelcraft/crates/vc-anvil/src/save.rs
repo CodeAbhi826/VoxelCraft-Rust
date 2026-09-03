@@ -30,12 +30,12 @@
 //! can never desync gameplay from saved blocks.
 
 use crate::anvil;
-use crate::blocks::{
+use vc_blocks::blocks::{
     self, prop_state_decode, prop_state_encode, COBBLE_STAIRS, OAK_FENCE, OAK_SLAB,
     BIRCH_LOG_X, BIRCH_LOG_Z, OAK_LOG_X, OAK_LOG_Z, SPRUCE_LOG_X, SPRUCE_LOG_Z,
 };
-use crate::chunk::{Chunk, Section, SECTION_COUNT, SECTION_LEN};
-use crate::nbt::{self, Nbt};
+use vc_chunk::chunk::{Chunk, Section, SECTION_COUNT, SECTION_LEN};
+use vc_nbt::nbt::{self, Nbt};
 use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -290,7 +290,7 @@ pub fn chunk_to_nbt(
     cz: i32,
     chunk: &Chunk,
     last_update: i64,
-    light: Option<&crate::light::LightData>,
+    light: Option<&vc_world::light::LightData>,
 ) -> Vec<u8> {
     let mut level = Nbt::compound();
     level.set("xPos", Nbt::Int(cx));
@@ -463,7 +463,7 @@ fn unpack_nibbles(data: &[i8]) -> [u8; 4096] {
 /// Returns `Err(reason)` only for wholesale unparseable data (callers fall
 /// back to terrain regeneration). A save with no light arrays at all
 /// (pre-Phase-4) yields `None` → the caller re-lights on load.
-pub fn chunk_from_nbt(data: &[u8]) -> Result<(Chunk, Option<crate::light::LightData>), String> {
+pub fn chunk_from_nbt(data: &[u8]) -> Result<(Chunk, Option<vc_world::light::LightData>), String> {
     let (_root_name, root) = nbt::read_root(data).map_err(|e| e.to_string())?;
     let level = root
         .get("Level")
@@ -473,7 +473,7 @@ pub fn chunk_from_nbt(data: &[u8]) -> Result<(Chunk, Option<crate::light::LightD
     }
 
     let mut chunk = Chunk::empty();
-    let mut out_light = crate::light::LightData::new();
+    let mut out_light = vc_world::light::LightData::new();
     let mut any_light = false;
 
     // ---- sections ----
@@ -534,7 +534,7 @@ pub fn chunk_from_nbt(data: &[u8]) -> Result<(Chunk, Option<crate::light::LightD
                 let lsec = out_light
                     .sections[sy]
                     .get_or_insert_with(|| {
-                        Box::new(crate::light::LightSection {
+                        Box::new(vc_world::light::LightSection {
                             sky: Box::new([0u8; 4096]),
                             blk: Box::new([0u8; 4096]),
                         })
@@ -676,7 +676,7 @@ pub fn read_level_dat(world_dir: &Path) -> std::io::Result<Option<WorldMeta>> {
             .to_string(),
         spawn: (
             get_i64("SpawnX").unwrap_or(8) as i32,
-            get_i64("SpawnY").unwrap_or(crate::SEA_LEVEL as i64 + 1) as i32,
+            get_i64("SpawnY").unwrap_or(vc_chunk::SEA_LEVEL as i64 + 1) as i32,
             get_i64("SpawnZ").unwrap_or(8) as i32,
         ),
         player: None,
@@ -709,10 +709,10 @@ pub fn read_level_dat(world_dir: &Path) -> std::io::Result<Option<WorldMeta>> {
 /// §28: the save directory of one dimension. Vanilla layout: the overworld
 /// saves at the world root; the nether at `<world>/DIM-1` (the End, if it
 /// ever ships, is `DIM1`). Chunks of different dimensions never mix.
-pub fn dimension_dir(world_dir: &Path, dim: crate::world::Dimension) -> PathBuf {
+pub fn dimension_dir(world_dir: &Path, dim: vc_world::world::Dimension) -> PathBuf {
     match dim {
-        crate::world::Dimension::Overworld => world_dir.to_path_buf(),
-        crate::world::Dimension::Nether => world_dir.join("DIM-1"),
+        vc_world::world::Dimension::Overworld => world_dir.to_path_buf(),
+        vc_world::world::Dimension::Nether => world_dir.join("DIM-1"),
     }
 }
 
@@ -730,7 +730,7 @@ pub fn store_chunk(
     cz: i32,
     chunk: &Chunk,
     last_update: i64,
-    light: Option<&crate::light::LightData>,
+    light: Option<&vc_world::light::LightData>,
 ) -> std::io::Result<()> {
     anvil::write_chunk(world_dir, cx, cz, &chunk_to_nbt(cx, cz, chunk, last_update, light))
 }
@@ -739,7 +739,7 @@ pub fn store_chunk(
 /// region file (autosave path; ~400 chunks → a handful of rewrites).
 pub fn store_chunks(
     world_dir: &Path,
-    entries: &[(i32, i32, &Chunk, Option<&std::sync::Arc<crate::light::LightData>>)],
+    entries: &[(i32, i32, &Chunk, Option<&std::sync::Arc<vc_world::light::LightData>>)],
     last_update: i64,
 ) -> std::io::Result<()> {
     let encoded: Vec<(i32, i32, Vec<u8>)> = entries
@@ -755,7 +755,7 @@ pub fn load_chunk(
     world_dir: &Path,
     cx: i32,
     cz: i32,
-) -> std::io::Result<Option<(Chunk, Option<crate::light::LightData>)>> {
+) -> std::io::Result<Option<(Chunk, Option<vc_world::light::LightData>)>> {
     match anvil::read_chunk(world_dir, cx, cz)? {
         None => Ok(None),
         Some(nbt_bytes) => Ok(chunk_from_nbt(&nbt_bytes).ok()),
@@ -767,8 +767,8 @@ pub fn load_chunk(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::blocks::*;
-    use crate::chunk::idx;
+    use vc_blocks::blocks::*;
+    use vc_chunk::chunk::idx;
     use std::time::SystemTime;
 
     fn tmp_dir(tag: &str) -> PathBuf {
@@ -896,7 +896,7 @@ mod tests {
         let mut b = demo_chunk();
         b.set(0, 1, 0, OBSIDIAN);
         let d = Chunk::empty(); // all-air chunk survives the cycle too
-        let entries: Vec<(i32, i32, &Chunk, Option<&std::sync::Arc<crate::light::LightData>>)> = vec![
+        let entries: Vec<(i32, i32, &Chunk, Option<&std::sync::Arc<vc_world::light::LightData>>)> = vec![
             (0, 0, &a, None),
             (31, 31, &b, None),
             (-5, 7, &d, None),
@@ -1085,11 +1085,11 @@ mod tests {
         let seed: u64 = 12345;
 
         // --- session 1: the game generates, the player edits, autosave fires
-        let gen = crate::gen::TerrainGen::new(seed);
+        let gen = vc_world::gen::TerrainGen::new(seed);
         let (generated, _outbound) = gen.generate_chunk(0, 0, Vec::new());
         let mut chunk = (*generated).clone(); // detach from Arc for editing
         chunk.set(8, 70, 8, GLOWSTONE); // a player edit
-        let entries: Vec<(i32, i32, &Chunk, Option<&std::sync::Arc<crate::light::LightData>>)> =
+        let entries: Vec<(i32, i32, &Chunk, Option<&std::sync::Arc<vc_world::light::LightData>>)> =
             vec![(0, 0, &chunk, None)];
         store_chunks(&dir, &entries, 100).unwrap();
         write_level_dat(
@@ -1117,7 +1117,7 @@ mod tests {
         assert_eq!(loaded.get(8, 70, 8), GLOWSTONE);
 
         // --- …and every other block matches a same-seed regeneration exactly
-        let (fresh, _) = crate::gen::TerrainGen::new(seed).generate_chunk(0, 0, Vec::new());
+        let (fresh, _) = vc_world::gen::TerrainGen::new(seed).generate_chunk(0, 0, Vec::new());
         let mut mismatches = 0u32;
         for y in 0..256usize {
             for z in 0..16usize {

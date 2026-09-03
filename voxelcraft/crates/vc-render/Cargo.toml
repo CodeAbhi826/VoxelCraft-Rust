@@ -1,0 +1,33 @@
+[package]
+name = "vc-render"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+description = "wgpu renderer: 5 pipelines, texture atlas, FSR 1.0, shader-pack API"
+
+[dependencies]
+serde_json = { workspace = true }
+winit = { workspace = true }
+glam = { workspace = true }
+bytemuck = { workspace = true }
+image = { workspace = true }
+naga = { workspace = true }
+serde = { workspace = true }
+vc-blocks = { workspace = true }
+vc-gameplay = { workspace = true }
+vc-inventory = { workspace = true }
+vc-mesh = { workspace = true }
+vc-pack = { workspace = true }
+vc-particles = { workspace = true }
+vc-rng = { workspace = true }
+vc-world = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+wgpu = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = { workspace = true }
+wasm-bindgen = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+web-sys = { workspace = true, features = ["Window", "Navigator", "Performance", "console"] }
+wgpu = { workspace = true, features = ["webgl"] }

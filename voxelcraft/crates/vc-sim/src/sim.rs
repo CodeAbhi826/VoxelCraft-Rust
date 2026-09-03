@@ -7,7 +7,7 @@
 use crate::entities::ItemSystem;
 use crate::fluids;
 use crate::ticks::{RandomTicker, TickScheduler};
-use crate::world::World;
+use vc_world::world::World;
 
 pub const SIM_HZ: f32 = 20.0;
 /// random-tick blocks sampled per loaded chunk per tick (vanilla: 3)
@@ -19,14 +19,14 @@ pub struct Sim {
     pub items: ItemSystem,
     /// furnace block entities (Phase 7 §27) — ticked at the sim rate so
     /// COOK_TICKS = 200 means the vanilla 10 seconds
-    pub furnaces: crate::furnace::Furnaces,
+    pub furnaces: vc_gameplay::furnace::Furnaces,
     /// brewing-stand block entities (Phase 7 §29) — BREW_TICKS = 400 means
     /// the vanilla 20 seconds
-    pub brewing: crate::brewing::Brewings,
+    pub brewing: vc_gameplay::brewing::Brewings,
     /// enchanting-table block entities (§29 — reactive, not ticked)
-    pub enchants: crate::enchanting::Enchants,
+    pub enchants: vc_gameplay::enchanting::Enchants,
     /// villager NPCs (Phase 7 §27/§29): wander AI + trade state
-    pub villagers: crate::villagers::Villagers,
+    pub villagers: vc_gameplay::villagers::Villagers,
     acc: f32,
     /// total sim ticks executed (stats/F3/E2E)
     pub ticks: u64,
@@ -38,17 +38,17 @@ impl Sim {
             sched: TickScheduler::new(),
             random: RandomTicker::new(seed),
             items: ItemSystem::new(seed ^ 0xD00_0042),
-            furnaces: crate::furnace::Furnaces::default(),
-            brewing: crate::brewing::Brewings::default(),
-            enchants: crate::enchanting::Enchants::default(),
-            villagers: crate::villagers::Villagers::new(seed ^ 0x315_7A9),
+            furnaces: vc_gameplay::furnace::Furnaces::default(),
+            brewing: vc_gameplay::brewing::Brewings::default(),
+            enchants: vc_gameplay::enchanting::Enchants::default(),
+            villagers: vc_gameplay::villagers::Villagers::new(seed ^ 0x315_7A9),
             acc: 0.0,
             ticks: 0,
         }
     }
 
     /// advance wall-clock time; runs 0..n fixed sim steps
-    pub fn update(&mut self, dt: f32, world: &mut World, light: &mut crate::light::LightEngine) {
+    pub fn update(&mut self, dt: f32, world: &mut World, light: &mut vc_world::light::LightEngine) {
         self.acc += dt.min(0.25);
         let step = 1.0 / SIM_HZ;
         while self.acc >= step {
@@ -58,28 +58,28 @@ impl Sim {
     }
 
     /// ONE deterministic sim tick
-    pub fn step(&mut self, world: &mut World, light: &mut crate::light::LightEngine) {
+    pub fn step(&mut self, world: &mut World, light: &mut vc_world::light::LightEngine) {
         self.ticks += 1;
 
         // 1. scheduled block updates in (due, insertion) order
         let due = self.sched.tick();
         for pos in due {
             let s = world.get_state(pos[0], pos[1], pos[2]);
-            let b = crate::blocks::state_block(s);
+            let b = vc_blocks::blocks::state_block(s);
             match b {
-                crate::blocks::WATER => {
+                vc_blocks::blocks::WATER => {
                     fluids::water_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
                 }
-                crate::blocks::SAND | crate::blocks::GRAVEL => {
+                vc_blocks::blocks::SAND | vc_blocks::blocks::GRAVEL => {
                     fluids::gravity_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
                 }
-                crate::blocks::REDSTONE_WIRE => {
+                vc_blocks::blocks::REDSTONE_WIRE => {
                     crate::redstone::wire_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
                 }
-                crate::blocks::REDSTONE_TORCH => {
+                vc_blocks::blocks::REDSTONE_TORCH => {
                     crate::redstone::torch_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
                 }
-                crate::blocks::LEVER => {
+                vc_blocks::blocks::LEVER => {
                     crate::redstone::lever_tick(world, pos[0], pos[1], pos[2]);
                 }
                 _ => {} // stale entry: block changed since scheduling
@@ -129,14 +129,14 @@ impl Sim {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::blocks::*;
+    use vc_blocks::blocks::*;
     use std::sync::Arc;
 
     fn flat_world() -> World {
         let mut w = World::new(11);
         for dz in -1i32..=1 {
             for dx in -1i32..=1 {
-                let mut c = crate::chunk::Chunk::empty();
+                let mut c = vc_chunk::chunk::Chunk::empty();
                 for y in 0..=64i32 {
                     for lz in 0..16usize {
                         for lx in 0..16usize {
@@ -158,9 +158,9 @@ mod tests {
         let run = || {
             let mut w = flat_world();
             let mut sim = Sim::new(99);
-            let mut light = crate::light::LightEngine::new();
+            let mut light = vc_world::light::LightEngine::new();
             // scripted events at fixed ticks
-            w.set_block_state(0, 65, 0, crate::blocks::water_state(0));
+            w.set_block_state(0, 65, 0, vc_blocks::blocks::water_state(0));
             fluids::on_block_changed(&mut sim.sched, &w, 0, 65, 0);
             w.set_block_state(8, 68, 8, SAND as u16);
             fluids::on_block_changed(&mut sim.sched, &w, 8, 68, 8);

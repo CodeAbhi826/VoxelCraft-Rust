@@ -13,8 +13,8 @@
 //! - 6 professions (vanilla has ~15; ours bound to our tradeable blocks)
 //! - pathfinding is straight-line steering + step jumps (no full A*)
 
-use crate::blocks::*;
-use crate::rng::Rng;
+use vc_blocks::blocks::*;
+use vc_rng::rng::Rng;
 use std::collections::HashSet;
 
 pub const MAX_VILLAGERS: usize = 96;
@@ -141,7 +141,7 @@ impl Villagers {
     /// populate the villages whose reach covers the given chunk — called
     /// once per generated chunk; each village well seeds 3..5 villagers
     /// (deterministic from the world seed + well position)
-    pub fn populate_villages(&mut self, world: &crate::world::World, cx: i32, cz: i32) {
+    pub fn populate_villages(&mut self, world: &vc_world::world::World, cx: i32, cz: i32) {
         let ox = cx * 16;
         let oz = cz * 16;
         for (wx, wz) in world.gen.villages_near(ox, oz) {
@@ -198,7 +198,7 @@ impl Villagers {
     }
 
     /// ONE sim tick (20 Hz): wander decisions + walking physics
-    pub fn tick(&mut self, world: &crate::world::World) {
+    pub fn tick(&mut self, world: &vc_world::world::World) {
         for v in self.list.iter_mut() {
             // wander state machine: idle countdown → pick a target (with a
             // generous walk deadline) → walk until arrival or deadline →
@@ -300,12 +300,12 @@ impl Villagers {
 }
 
 impl Villager {
-    fn on_ground(&self, world: &crate::world::World) -> bool {
+    fn on_ground(&self, world: &vc_world::world::World) -> bool {
         solid_at(world, self.pos[0], self.pos[1] - 0.05, self.pos[2])
     }
 }
 
-fn solid_at(world: &crate::world::World, x: f32, y: f32, z: f32) -> bool {
+fn solid_at(world: &vc_world::world::World, x: f32, y: f32, z: f32) -> bool {
     is_solid(world.get_block(x.floor() as i32, y.floor() as i32, z.floor() as i32))
 }
 
@@ -318,7 +318,7 @@ pub fn build_vertices(
     time: f32,
     right: [f32; 3],
     up: [f32; 3],
-    out: &mut Vec<crate::particles::ParticleVertex>,
+    out: &mut Vec<vc_particles::particles::ParticleVertex>,
 ) {
     let tile = TILE_VILLAGER as u16;
     let tx = (tile % 16) as f32;
@@ -353,7 +353,7 @@ pub fn build_vertices(
         ];
         for ci in [0usize, 1, 2, 0, 2, 3] {
             let (c, uv) = corners[ci];
-            out.push(crate::particles::ParticleVertex {
+            out.push(vc_particles::particles::ParticleVertex {
                 pos: [v.pos[0] + c[0], v.pos[1] + c[1] + bob, v.pos[2] + c[2]],
                 uv: [uv[0], uv[1]],
                 col,
@@ -365,11 +365,11 @@ pub fn build_vertices(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::chunk::Chunk;
+    use vc_chunk::chunk::Chunk;
     use std::sync::Arc;
 
-    fn flat_world() -> crate::world::World {
-        let mut w = crate::world::World::new(9);
+    fn flat_world() -> vc_world::world::World {
+        let mut w = vc_world::world::World::new(9);
         for dz in -1i32..=1 {
             for dx in -1i32..=1 {
                 let mut c = Chunk::empty();

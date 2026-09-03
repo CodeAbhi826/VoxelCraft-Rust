@@ -1,8 +1,8 @@
 //! Procedural 16x16 texture atlas (256x256, 16x16 tiles) in the visual style
 //! of Minecraft 1.16.5. Every pixel is synthesized at startup — zero asset files.
 
-use crate::blocks::*;
-use crate::rng::Rng;
+use vc_blocks::blocks::*;
+use vc_rng::rng::Rng;
 
 pub const ATLAS_SIZE: usize = 256;
 pub const TILE_PX: usize = 16;
@@ -1447,14 +1447,14 @@ pub fn blit_tile(atlas: &[u8], tile: u16, scale: usize, ox: usize, oy: usize, ou
 /// first free atlas tile after the procedural set + missing-texture tile.
 /// DERIVED from TILE_MAX so Phase-6/7+ procedural tiles can never collide
 /// with pack textures again (they did: base 64 overwrote the wire/torch).
-pub const PACK_TILE_BASE: u16 = crate::blocks::TILE_MAX + 1;
+pub const PACK_TILE_BASE: u16 = vc_blocks::blocks::TILE_MAX + 1;
 /// hard cap: 16×16 tile grid = 256 tiles in the 256² atlas
 pub const PACK_TILE_MAX: u16 = 255;
 
 /// draw the missing-texture tile (magenta/black 8×8 checker, §46 fallback —
 /// never crash, always something visible)
 pub fn draw_missing_tile(atlas: &mut [u8]) {
-    let t = crate::mesh::TILE_MISSING;
+    let t = vc_mesh::mesh::TILE_MISSING;
     let tx = (t % 16) as usize;
     let ty = (t / 16) as usize;
     for y in 0..TILE_PX {
@@ -1493,8 +1493,8 @@ pub struct AnimatedTile {
 ///   AnimatedTiles (geometry is NOT rebuilt — only the atlas region updates)
 pub fn merge_pack_textures(
     atlas: &mut [u8],
-    models: &mut crate::model::ModelSet,
-    source: &dyn crate::pack::PackSource,
+    models: &mut vc_pack::model::ModelSet,
+    source: &dyn vc_pack::pack::PackSource,
 ) -> Vec<AnimatedTile> {
     let mut animations = Vec::new();
     // stable order: collect locations from by_state (dispatch order)
@@ -1518,16 +1518,16 @@ pub fn merge_pack_textures(
     for loc in locs {
         if next_tile > PACK_TILE_MAX {
             // atlas full: everything remaining falls back to the missing tile
-            models.tiles.insert(loc, crate::mesh::TILE_MISSING);
+            models.tiles.insert(loc, vc_mesh::mesh::TILE_MISSING);
             continue;
         }
-        let path = crate::model::texture_path(&loc);
+        let path = vc_pack::model::texture_path(&loc);
         let Some(bytes) = source.read(&path) else {
-            models.tiles.insert(loc, crate::mesh::TILE_MISSING);
+            models.tiles.insert(loc, vc_mesh::mesh::TILE_MISSING);
             continue;
         };
         let Ok(img) = image::load_from_memory(&bytes) else {
-            models.tiles.insert(loc, crate::mesh::TILE_MISSING);
+            models.tiles.insert(loc, vc_mesh::mesh::TILE_MISSING);
             continue;
         };
         let rgba = img.to_rgba8();
@@ -1670,7 +1670,7 @@ mod pack_tex_tests {
     fn missing_tile_draws_checker() {
         let mut atlas = vec![0u8; ATLAS_SIZE * ATLAS_SIZE * 4];
         draw_missing_tile(&mut atlas);
-        let t = crate::mesh::TILE_MISSING;
+        let t = vc_mesh::mesh::TILE_MISSING;
         let tx = (t % 16) as usize;
         let ty = (t / 16) as usize;
         let i = ((ty * TILE_PX + 0) * ATLAS_SIZE + tx * TILE_PX + 0) * 4;
@@ -1702,7 +1702,8 @@ mod pack_tex_tests {
     #[test]
     #[ignore]
     fn write_builtin_pack_pngs() {
-        let out_dir = "builtin-pack/assets/minecraft/textures/block";
+        let out_dir = concat!(env!("CARGO_MANIFEST_DIR"),
+            "/../../builtin-pack/assets/minecraft/textures/block");
         std::fs::create_dir_all(out_dir).unwrap();
         let atlas = generate_atlas();
 
@@ -1813,11 +1814,11 @@ mod pack_merge_tests {
     #[test]
     fn pack_tile_base_is_above_all_procedural_tiles() {
         assert!(
-            PACK_TILE_BASE > crate::blocks::TILE_MAX,
+            PACK_TILE_BASE > vc_blocks::blocks::TILE_MAX,
             "PACK_TILE_BASE {PACK_TILE_BASE} must clear procedural TILE_MAX {}",
-            crate::blocks::TILE_MAX
+            vc_blocks::blocks::TILE_MAX
         );
-        assert!(PACK_TILE_BASE > crate::mesh::TILE_MISSING);
+        assert!(PACK_TILE_BASE > vc_mesh::mesh::TILE_MISSING);
     }
 
     /// the real merge must not touch ANY procedural tile: generate the
@@ -1827,32 +1828,33 @@ mod pack_merge_tests {
     #[test]
     #[cfg(not(target_arch = "wasm32"))]
     fn builtin_pack_merge_preserves_procedural_tiles() {
-        let source = std::sync::Arc::new(crate::pack::FolderSource::new("builtin-pack", "test"));
-        use crate::pack::PackSource as _;
+        let source = std::sync::Arc::new(vc_pack::pack::FolderSource::new(
+            concat!(env!("CARGO_MANIFEST_DIR"), "/../../builtin-pack"), "test"));
+        use vc_pack::pack::PackSource as _;
         assert!(source.exists(), "builtin pack missing — run from voxelcraft/");
         // compile the real dispatch so the pack textures genuinely merge
-        let mut by_state: std::collections::HashMap<u16, Vec<crate::model::ModelChoice>> =
+        let mut by_state: std::collections::HashMap<u16, Vec<vc_pack::model::ModelChoice>> =
             Default::default();
-        for pb in crate::blocks::PROP_BLOCKS.iter() {
-            let spec = crate::model::BlockDispatchSpec {
+        for pb in vc_blocks::blocks::PROP_BLOCKS.iter() {
+            let spec = vc_pack::model::BlockDispatchSpec {
                 name: pb.name,
                 props: pb.props,
                 base_state: pb.base_state,
                 state_count: pb.state_count,
             };
-            let map = crate::model::compile_block_dispatch(&spec, &|p| source.read(p))
+            let map = vc_pack::model::compile_block_dispatch(&spec, &|p| source.read(p))
                 .unwrap_or_else(|e| panic!("dispatch {name:?}: {e}", name = pb.name));
             by_state.extend(map);
         }
-        let mut set = crate::model::ModelSet { by_state, tiles: Default::default() };
+        let mut set = vc_pack::model::ModelSet { by_state, tiles: Default::default() };
         let mut atlas = generate_atlas();
         let watched = [
-            crate::blocks::TILE_REDSTONE_WIRE,
-            crate::blocks::TILE_REDSTONE_TORCH,
-            crate::blocks::TILE_LEVER,
-            crate::blocks::TILE_FURNACE_SIDE,
-            crate::blocks::TILE_FURNACE_TOP,
-            crate::blocks::TILE_FURNACE_LIT_SIDE,
+            vc_blocks::blocks::TILE_REDSTONE_WIRE,
+            vc_blocks::blocks::TILE_REDSTONE_TORCH,
+            vc_blocks::blocks::TILE_LEVER,
+            vc_blocks::blocks::TILE_FURNACE_SIDE,
+            vc_blocks::blocks::TILE_FURNACE_TOP,
+            vc_blocks::blocks::TILE_FURNACE_LIT_SIDE,
         ];
         let before: Vec<(u16, Vec<u8>)> =
             watched.iter().map(|&t| (t, tile_bytes(&atlas, t))).collect();

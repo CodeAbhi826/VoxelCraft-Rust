@@ -318,7 +318,7 @@ fn rewrite_region(path: &Path, chunks: &[(i32, i32, &[u8])]) -> std::io::Result<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::nbt;
+    use vc_nbt::nbt;
     use std::time::SystemTime;
 
     fn tmp_dir(tag: &str) -> PathBuf {

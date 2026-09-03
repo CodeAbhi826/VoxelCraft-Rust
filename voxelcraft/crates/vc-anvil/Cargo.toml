@@ -1,0 +1,16 @@
+[package]
+name = "vc-anvil"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+description = "Vanilla 1.16.5 Anvil save/load: NBT chunk encoding + .mca regions"
+
+[dependencies]
+serde = { workspace = true }
+vc-blocks = { workspace = true }
+vc-chunk = { workspace = true }
+vc-nbt = { workspace = true }
+vc-world = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+flate2 = { workspace = true }

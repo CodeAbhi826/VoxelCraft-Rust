@@ -1,0 +1,18 @@
+[package]
+name = "vc-mesh"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+description = "Greedy mesher with per-vertex AO/skylight and section-scoped meshing"
+
+[dependencies]
+vc-rng = { workspace = true }
+bytemuck = { workspace = true }
+vc-blocks = { workspace = true }
+vc-chunk = { workspace = true }
+vc-pack = { workspace = true }
+vc-world = { workspace = true }
+
+[dev-dependencies]
+# test-only (cycle is dev-only: vc-render depends on vc-mesh for real)
+vc-render = { workspace = true }

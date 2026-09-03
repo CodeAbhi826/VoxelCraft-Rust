@@ -2,7 +2,7 @@
 //! cap, 36-slot player inventory (9 hotbar + 27 storage), add/merge,
 //! click-to-move cursor semantics for the container screens.
 
-use crate::blocks::*;
+use vc_blocks::blocks::*;
 
 pub const STACK_MAX: u8 = 64;
 pub const INV_SLOTS: usize = 36; // 0..9 hotbar, 9..36 storage

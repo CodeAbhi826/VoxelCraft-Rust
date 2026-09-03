@@ -271,8 +271,8 @@ pub fn install(set: ModelSet) {
 }
 
 /// test helper: swap in a set (leaks the previous Arc intentionally —
-/// tests build fresh registries per case)
-#[cfg(test)]
+/// tests build fresh registries per case; also used by vc-mesh's tests,
+/// so it is compiled unconditionally (tiny test hook, public API))
 pub fn install_for_tests(set: ModelSet) {
     MODELS.set(Arc::new(set)).ok(); // ignore double-install
 }
@@ -596,7 +596,7 @@ pub struct BlockDispatchSpec {
     pub name: &'static str,
     /// sorted property definitions (vanilla state-id order: alphabetical,
     /// last-sorted varies fastest)
-    pub props: &'static [crate::blocks::PropDef],
+    pub props: &'static [vc_blocks::blocks::PropDef],
     /// base state id for this block's property states
     pub base_state: u16,
     /// state count = product of property value counts
@@ -957,7 +957,7 @@ mod tests {
         ]);
         let spec = BlockDispatchSpec {
             name: "testslab",
-            props: &[crate::blocks::PropDef { name: "half", values: &["bottom", "top"] }],
+            props: &[vc_blocks::blocks::PropDef { name: "half", values: &["bottom", "top"] }],
             base_state: 100,
             state_count: 2,
         };
@@ -1005,8 +1005,8 @@ mod tests {
         let spec = BlockDispatchSpec {
             name: "fence",
             props: &[
-                crate::blocks::PropDef { name: "east", values: &["false", "true"] },
-                crate::blocks::PropDef { name: "north", values: &["false", "true"] },
+                vc_blocks::blocks::PropDef { name: "east", values: &["false", "true"] },
+                vc_blocks::blocks::PropDef { name: "north", values: &["false", "true"] },
             ],
             base_state: 200,
             state_count: 4,

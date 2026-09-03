@@ -1,8 +1,8 @@
 //! Player: movement (walk/sprint/swim/fly), AABB voxel collision,
 //! DDA block raycast, hotbar state, footstep logic.
 
-use crate::blocks::*;
-use crate::world::World;
+use vc_blocks::blocks::*;
+use vc_world::world::World;
 use glam::Vec3;
 
 pub const WALK_SPEED: f32 = 4.317;
@@ -69,7 +69,7 @@ pub struct Player {
     /// XP level (§29; enchanting pays 1..3 of these per option)
     pub xp_level: i32,
     /// 36-slot inventory: 0..9 hotbar, 9..36 storage (Phase 7)
-    pub inv: crate::inventory::Inventory,
+    pub inv: vc_inventory::inventory::Inventory,
     pub selected: usize,
     pub fov: f32,
     pub fov_cur: f32,
@@ -93,9 +93,9 @@ impl Player {
             xp_points: 0,
             xp_level: 0,
             inv: {
-                let mut inv = crate::inventory::Inventory::new(crate::inventory::INV_SLOTS);
+                let mut inv = vc_inventory::inventory::Inventory::new(vc_inventory::inventory::INV_SLOTS);
                 for (i, &b) in PALETTE.iter().enumerate() {
-                    inv.slots[i] = crate::inventory::ItemStack::new(b, 64);
+                    inv.slots[i] = vc_inventory::inventory::ItemStack::new(b, 64);
                 }
                 inv
             },
@@ -109,7 +109,7 @@ impl Player {
     }
 
     /// the selected hotbar stack
-    pub fn held(&self) -> crate::inventory::ItemStack {
+    pub fn held(&self) -> vc_inventory::inventory::ItemStack {
         self.inv.slots[self.selected]
     }
 
@@ -131,7 +131,7 @@ impl Player {
         self.xp_points += points.max(0);
         let mut gained = 0;
         loop {
-            let need = crate::enchanting::xp_to_next(self.xp_level);
+            let need = vc_gameplay::enchanting::xp_to_next(self.xp_level);
             if self.xp_points >= need {
                 self.xp_points -= need;
                 self.xp_level += 1;
@@ -156,12 +156,12 @@ impl Player {
 
     /// XP bar fraction for the HUD (progress within the current level)
     pub fn xp_fraction(&self) -> f32 {
-        let need = crate::enchanting::xp_to_next(self.xp_level);
+        let need = vc_gameplay::enchanting::xp_to_next(self.xp_level);
         (self.xp_points as f32 / need as f32).clamp(0.0, 1.0)
     }
 
     /// mutable access to the selected hotbar stack
-    pub fn held_mut(&mut self) -> &mut crate::inventory::ItemStack {
+    pub fn held_mut(&mut self) -> &mut vc_inventory::inventory::ItemStack {
         &mut self.inv.slots[self.selected]
     }
 
@@ -511,7 +511,7 @@ mod tests {
     #[test]
     fn raycast_hits_ground_straight_down() {
         let mut world = World::new(42);
-        let gen = crate::gen::TerrainGen::new(42);
+        let gen = vc_world::gen::TerrainGen::new(42);
         let (chunk, outbound) = gen.generate_chunk(0, 0, vec![]);
         world.insert_generated((0, 0), chunk, outbound);
         let eye = Vec3::new(0.5, 90.0, 0.5);
@@ -519,13 +519,13 @@ mod tests {
         assert!(hit.is_some(), "straight-down ray must hit terrain");
         let (p, b, _) = hit.unwrap();
         println!("hit block {} at {:?}", b, p);
-        assert!(b != crate::blocks::AIR);
+        assert!(b != vc_blocks::blocks::AIR);
     }
 
     #[test]
     fn raycast_hits_forward_down_45() {
         let mut world = World::new(42);
-        let gen = crate::gen::TerrainGen::new(42);
+        let gen = vc_world::gen::TerrainGen::new(42);
         // the ray travels in -z: load the neighbor chunk too
         for pos in [(0, 0), (0, -1), (-1, 0), (-1, -1)] {
             let (chunk, outbound) = gen.generate_chunk(pos.0, pos.1, vec![]);
@@ -544,7 +544,7 @@ mod tests {
         // scan down from 255 for the first solid block at (0, ?, 0)
         for y in (0..255).rev() {
             let b = world.get_block(0, y, 0);
-            if b != crate::blocks::AIR && b != crate::blocks::WATER {
+            if b != vc_blocks::blocks::AIR && b != vc_blocks::blocks::WATER {
                 return y + 1;
             }
         }
@@ -562,11 +562,11 @@ mod tests {
         let mut w = World::new(7);
         for dz in -1i32..=1 {
             for dx in -1i32..=1 {
-                let mut c = crate::chunk::Chunk::empty();
+                let mut c = vc_chunk::chunk::Chunk::empty();
                 for y in 0..=64i32 {
                     for lz in 0..16usize {
                         for lx in 0..16usize {
-                            c.set(lx, y as usize, lz, crate::blocks::STONE);
+                            c.set(lx, y as usize, lz, vc_blocks::blocks::STONE);
                         }
                     }
                 }
@@ -654,7 +654,7 @@ mod tests {
         let mut w = flat_floor();
         // remove the floor under the column so the fall is unbounded
         for y in 0..=64i32 {
-            w.set_block(0, y, 0, crate::blocks::AIR);
+            w.set_block(0, y, 0, vc_blocks::blocks::AIR);
         }
         let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
         p.flying = false;
@@ -690,7 +690,7 @@ mod tests {
         for y in 65..70i32 {
             for z in -12..=12i32 {
                 for x in -12..=12i32 {
-                    w.set_block(x, y, z, crate::blocks::WATER);
+                    w.set_block(x, y, z, vc_blocks::blocks::WATER);
                 }
             }
         }

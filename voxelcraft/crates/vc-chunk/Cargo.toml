@@ -1,0 +1,9 @@
+[package]
+name = "vc-chunk"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+description = "Chunk & section storage: paletted containers, heightmaps, grid constants"
+
+[dependencies]
+vc-blocks = { workspace = true }

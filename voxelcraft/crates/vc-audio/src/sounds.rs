@@ -13,8 +13,8 @@
 //! - distance ATTENUATION + stereo PAN (spatial positioning)
 //! - procedural MUSIC pads (day/night) + AMBIENT cave sounds
 
-use crate::blocks::SoundFamily;
-use crate::rng::Rng;
+use vc_blocks::blocks::SoundFamily;
+use vc_rng::rng::Rng;
 use serde::Deserialize;
 use std::collections::HashMap;
 

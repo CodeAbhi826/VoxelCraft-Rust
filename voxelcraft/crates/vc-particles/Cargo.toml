@@ -1,0 +1,13 @@
+[package]
+name = "vc-particles"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+description = "Vanilla-style break/hit particle pool with baked light and tint"
+
+[dependencies]
+vc-chunk = { workspace = true }
+bytemuck = { workspace = true }
+vc-blocks = { workspace = true }
+vc-rng = { workspace = true }
+vc-world = { workspace = true }

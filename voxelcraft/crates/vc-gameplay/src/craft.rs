@@ -2,8 +2,8 @@
 //! 3×3 (crafting table) grids, vanilla ingredient semantics — any log →
 //! planks, 4 planks → crafting table, 8 cobble ring → furnace.
 
-use crate::blocks::*;
-use crate::inventory::ItemStack;
+use vc_blocks::blocks::*;
+use vc_inventory::inventory::ItemStack;
 
 /// a shaped recipe: `grid` is w×w ingredients (AIR = empty), rotated
 /// matches allowed (vanilla behavior for symmetric recipes we ship)

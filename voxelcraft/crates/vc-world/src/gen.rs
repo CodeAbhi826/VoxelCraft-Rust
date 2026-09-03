@@ -1,9 +1,9 @@
 //! World generation: simplex noise, fBm, biomes, caves, trees.
 //! Fully deterministic per seed; pure functions (safe on worker threads).
 
-use crate::blocks::*;
-use crate::chunk::{Chunk, CHUNK_LEN};
-use crate::rng::Rng;
+use vc_blocks::blocks::*;
+use vc_chunk::chunk::{Chunk, CHUNK_LEN};
+use vc_rng::rng::Rng;
 use crate::world::Dimension;
 use std::sync::Arc;
 
@@ -316,13 +316,13 @@ impl TerrainGen {
         let temp = fbm2(&self.n_temp, (xf + 3000.0) / 1700.0, (zf + 3000.0) / 1700.0, 2, 2.0, 0.5);
         let humid = fbm2(&self.n_humid, (xf - 5000.0) / 1400.0, (zf + 5000.0) / 1400.0, 2, 2.0, 0.5);
 
-        let (biome, top, filler) = if h < crate::SEA_LEVEL - 1 {
-            if h < crate::SEA_LEVEL - 6 {
+        let (biome, top, filler) = if h < vc_chunk::SEA_LEVEL - 1 {
+            if h < vc_chunk::SEA_LEVEL - 6 {
                 (Biome::Ocean, GRAVEL, GRAVEL)
             } else {
                 (Biome::Ocean, SAND, SAND)
             }
-        } else if h <= crate::SEA_LEVEL + 1 {
+        } else if h <= vc_chunk::SEA_LEVEL + 1 {
             (Biome::Beach, SAND, SAND)
         } else if h > 96 {
             if h > 112 {
@@ -428,7 +428,7 @@ impl TerrainGen {
     ) -> (Arc<Chunk>, Vec<(i32, i32, i32, u8)>) {
         let mut chunk = Chunk::empty();
         let mut rng = Rng::new(Rng::hash3(self.seed, cx, 0, cz));
-        let sea = crate::SEA_LEVEL;
+        let sea = vc_chunk::SEA_LEVEL;
         let mut outbound: Vec<(i32, i32, i32, u8)> = Vec::new();
 
         // pass 1: terrain columns
@@ -689,7 +689,7 @@ impl TerrainGen {
                     let lz = rng.next_range(16) as i32;
                     let col_idx = lz as usize * 16 + lx as usize;
                     let h = chunk.height[col_idx] as i32;
-                    if h < crate::SEA_LEVEL - 2 || h > crate::SEA_LEVEL + 1 {
+                    if h < vc_chunk::SEA_LEVEL - 2 || h > vc_chunk::SEA_LEVEL + 1 {
                         continue;
                     }
                     if chunk.get(lx as usize, h as usize, lz as usize) == SAND {
@@ -990,7 +990,7 @@ impl TerrainGen {
         for d in [0i32, 6, -6, 12, -12] {
             let (dx, dz) = (d, if d == 0 { 0 } else { d / 2 });
             let c = self.column(wx + dx, wz + dz);
-            if c.height < crate::SEA_LEVEL + 2 || c.height > 96 {
+            if c.height < vc_chunk::SEA_LEVEL + 2 || c.height > 96 {
                 return None;
             }
             if !matches!(c.biome, Biome::Plains | Biome::Forest | Biome::Snowy | Biome::Mountains) {
@@ -1024,7 +1024,7 @@ impl TerrainGen {
                 mn = mn.min(c.height);
                 mx = mx.max(c.height);
             }
-            if mx - mn > 2 || mn < crate::SEA_LEVEL + 1 {
+            if mx - mn > 2 || mn < vc_chunk::SEA_LEVEL + 1 {
                 continue; // skip bad site (deterministic)
             }
             houses.push(HouseSite {
@@ -1134,7 +1134,7 @@ impl TerrainGen {
         };
         let land = |x: i32, z: i32| -> bool {
             let c = self.column(x, z);
-            c.height > crate::SEA_LEVEL + 1 && c.biome != Biome::Ocean && c.biome != Biome::Beach
+            c.height > vc_chunk::SEA_LEVEL + 1 && c.biome != Biome::Ocean && c.biome != Biome::Beach
         };
         let mut best: Option<(i32, i32)> = None;
         let mut best_score = i32::MIN;
@@ -1144,7 +1144,7 @@ impl TerrainGen {
                 for &(x, z) in &candidates {
                     let (wx, wz) = (x * 8, z * 8);
                     let col = self.column(wx, wz);
-                    if !(col.height > crate::SEA_LEVEL + 1
+                    if !(col.height > vc_chunk::SEA_LEVEL + 1
                         && col.height < 90
                         && col.biome != Biome::Ocean
                         && col.biome != Biome::Beach)
@@ -1242,7 +1242,7 @@ mod village_tests {
         let ground = gen.column(wx, wz).height as usize;
         // raw states are folded to owning blocks (fences now store their
         // model state 73, furnaces 116 — the P7-structures collision fix)
-        let fold = |s: u16| crate::blocks::state_block(s);
+        let fold = |s: u16| vc_blocks::blocks::state_block(s);
         // well: water at center, cobble rim, fence post corner, plank roof
         assert_eq!(fold(chunk.get(lx, ground, lz) as u16), WATER, "well center water");
         assert_eq!(fold(chunk.get(lx + 1, ground, lz) as u16), COBBLE, "well rim cobble");
@@ -1288,7 +1288,7 @@ mod village_tests {
         }
         let b = gen.generate_chunk(cx, cz, Vec::new()).0;
         // compare raw block storage
-        for i in 0..crate::chunk::CHUNK_LEN {
+        for i in 0..vc_chunk::chunk::CHUNK_LEN {
             assert_eq!(
                 a.get_idx(i),
                 b.get_idx(i),
@@ -1320,12 +1320,12 @@ mod village_tests {
         for dz in -1..=1i32 {
             for dx in -1..=1i32 {
                 let (chunk, _) = gen.generate_chunk(wx.div_euclid(16) + dx, wz.div_euclid(16) + dz, Vec::new());
-                for i in 0..crate::chunk::CHUNK_LEN {
+                for i in 0..vc_chunk::chunk::CHUNK_LEN {
                     match chunk.get_idx(i) {
-                        crate::blocks::PLANKS => planks += 1,
-                        crate::blocks::GLASS => glass += 1,
-                        crate::blocks::OAK_LOG => logs += 1,
-                        crate::blocks::CRAFTING_TABLE => tables += 1,
+                        vc_blocks::blocks::PLANKS => planks += 1,
+                        vc_blocks::blocks::GLASS => glass += 1,
+                        vc_blocks::blocks::OAK_LOG => logs += 1,
+                        vc_blocks::blocks::CRAFTING_TABLE => tables += 1,
                         _ => {}
                     }
                 }
@@ -1340,7 +1340,7 @@ mod village_tests {
 
 #[cfg(test)]
 mod nether_tests {
-    use crate::blocks::*;
+    use vc_blocks::blocks::*;
     use crate::world::Dimension;
     use super::*;
 
@@ -1375,7 +1375,7 @@ mod nether_tests {
         for s in 0..16i32 {
             let gen = TerrainGen::for_dimension(0xCAFE_F00D, Dimension::Nether);
             let (chunk, _) = gen.generate_chunk(s * 3, s * 7, Vec::new());
-            for i in 0..crate::chunk::CHUNK_LEN {
+            for i in 0..vc_chunk::chunk::CHUNK_LEN {
                 // mid band only — the shell (bedrock) lives near y 0 and 127
                 let y = (i >> 8) as i32;
                 if !(6..=120).contains(&y) {
@@ -1408,7 +1408,7 @@ mod nether_tests {
             for dx in -2..=2i32 {
                 let gen = TerrainGen::for_dimension(0x5EED_1234, Dimension::Nether);
                 let (chunk, _) = gen.generate_chunk(dx, dz, Vec::new());
-                for i in 0..crate::chunk::CHUNK_LEN {
+                for i in 0..vc_chunk::chunk::CHUNK_LEN {
                     let y = (i >> 8) as i32;
                     if y <= 6 || y >= 120 {
                         continue; // shell margin
@@ -1445,14 +1445,14 @@ mod nether_tests {
             }
         }
         let b = gen.generate_chunk(1, 2, Vec::new()).0;
-        for i in 0..crate::chunk::CHUNK_LEN {
+        for i in 0..vc_chunk::chunk::CHUNK_LEN {
             assert_eq!(a.get_idx(i), b.get_idx(i), "nether gen must be order-independent at {i}");
         }
         // same world seed, overworld vs nether → different chunks
         let over = TerrainGen::for_dimension(0x1234_ABCD, Dimension::Overworld);
         let (oc, _) = over.generate_chunk(1, 2, Vec::new());
         let mut same = 0;
-        for i in 0..crate::chunk::CHUNK_LEN {
+        for i in 0..vc_chunk::chunk::CHUNK_LEN {
             if oc.get_idx(i) == a.get_idx(i) {
                 same += 1;
             }

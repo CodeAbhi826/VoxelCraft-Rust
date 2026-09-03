@@ -2,9 +2,9 @@
 //! + JSON-model path (blockstate dispatch, Phase 1).
 //! Pure function over a 3x3 chunk snapshot → safe on worker threads.
 
-use crate::blocks::*;
-use crate::chunk::Chunk;
-use crate::world::ChunkPos;
+use vc_blocks::blocks::*;
+use vc_chunk::chunk::Chunk;
+use vc_world::world::ChunkPos;
 use std::sync::Arc;
 
 /// engine-drawn missing-texture tile (magenta/black checker) — §46 fallback
@@ -132,7 +132,7 @@ pub struct MeshOut {
 pub fn mesh_chunk(
     pos: ChunkPos,
     snap: &[Option<Arc<Chunk>>; 9],
-    lsnap: &[Option<Arc<crate::light::LightData>>; 9],
+    lsnap: &[Option<Arc<vc_world::light::LightData>>; 9],
     smooth: bool,
 ) -> MeshData {
     mesh_sections(pos, snap, lsnap, smooth, u16::MAX, &[]).merged
@@ -170,7 +170,7 @@ fn getl(light: &[u8], gx: i32, y: i32, gz: i32) -> u8 {
 pub fn mesh_sections(
     pos: ChunkPos,
     snap: &[Option<Arc<Chunk>>; 9],
-    lsnap: &[Option<Arc<crate::light::LightData>>; 9],
+    lsnap: &[Option<Arc<vc_world::light::LightData>>; 9],
     smooth: bool,
     mask: u16,
     prev: &[Option<Arc<MeshData>>],
@@ -200,7 +200,7 @@ pub fn mesh_sections(
                 let flat = sec.decode_flat(); // 4096 bytes, YZX
                 if center && !(has_cross && has_models) {
                     for &v in flat.iter() {
-                        if v >= crate::blocks::MODEL_STATE_BASE as u8 {
+                        if v >= vc_blocks::blocks::MODEL_STATE_BASE as u8 {
                             has_models = true;
                         } else if is_cross(sb(v)) {
                             has_cross = true;
@@ -350,7 +350,7 @@ pub fn mesh_sections(
                                 let aw = if above == WATER { 1u64 } else { 0u64 };
                                 // §18 water tint: biome water color, in the
                                 // greedy key so runs never merge across biomes
-                                let wt = crate::tint::block_face_tint_packed(
+                                let wt = vc_blocks::tint::block_face_tint_packed(
                                     WATER, false, biome_at(cell[0] as usize, cell[2] as usize),
                                 ) as u64;
                                 wmask[vi * du + ui] = 1 | (l << 1) | (aw << 6) | (bl << 7) | (wt << 11);
@@ -415,7 +415,7 @@ pub fn mesh_sections(
                             | (ao_pack << 20)
                             | (sky_pack << 4)
                             | bl
-                            | ((crate::tint::block_face_tint_packed(
+                            | ((vc_blocks::tint::block_face_tint_packed(
                                 b,
                                 d == 1 && dir > 0,
                                 biome_at(cell[0] as usize, cell[2] as usize),
@@ -459,7 +459,7 @@ pub fn mesh_sections(
                     let bl = getl(&blight, lx as i32, ly as i32, lz as i32) as u32;
                     let tile_i = state_tiles(bs as u16)[3];
                     // §18: grass-family cross plants take the biome grass tint
-                    let tint = crate::tint::block_face_tint_packed(
+                    let tint = vc_blocks::tint::block_face_tint_packed(
                         sb(bs), true, biome_at(lx, lz),
                     );
                 // chunk-local positions (origin supplied per-draw at render time)
@@ -511,7 +511,7 @@ pub fn mesh_sections(
     // States ≥ MODEL_STATE_BASE render through the compiled blockstate
     // dispatch (model.rs): partial cuboids, rotations, multipart, cullface.
     // The dispatch is precomputed at boot — zero JSON work per mesh (§5.2).
-    if let Some(models) = crate::model::models().filter(|_| has_models) {
+    if let Some(models) = vc_pack::model::models().filter(|_| has_models) {
         for sec in 0..16usize {
             if mask & (1 << sec) == 0 {
                 continue;
@@ -526,7 +526,7 @@ pub fn mesh_sections(
                         continue;
                     }
                     // deterministic per-position hash picks weighted variants
-                    let hash = crate::rng::Rng::hash3(
+                    let hash = vc_rng::rng::Rng::hash3(
                         0x9E37_79B9,
                         pos.0.wrapping_mul(31) + lx as i32,
                         ly as i32,
@@ -599,7 +599,7 @@ fn merge_into(dst: &mut MeshData, src: &MeshData) {
 /// approximation for partial geometry).
 #[allow(clippy::too_many_arguments)]
 fn emit_model_block(
-    models: &crate::model::ModelSet,
+    models: &vc_pack::model::ModelSet,
     pos_hash: u64,
     lx: usize,
     ly: usize,
@@ -624,7 +624,7 @@ fn emit_model_block(
 }
 
 /// weighted pick among a choice's alternatives
-fn pick_weighted<'a>(choice: &'a crate::model::ModelChoice, hash: u64) -> &'a crate::model::AppliedModel {
+fn pick_weighted<'a>(choice: &'a vc_pack::model::ModelChoice, hash: u64) -> &'a vc_pack::model::AppliedModel {
     let total: u32 = choice.alts.iter().map(|a| a.weight).sum();
     if choice.alts.len() == 1 || total == 0 {
         return &choice.alts[0];
@@ -644,8 +644,8 @@ fn pick_weighted<'a>(choice: &'a crate::model::ModelChoice, hash: u64) -> &'a cr
 /// Emit one compiled model's faces at a block position
 #[allow(clippy::too_many_arguments)]
 fn emit_model_faces(
-    models: &crate::model::ModelSet,
-    m: &crate::model::CompiledModel,
+    models: &vc_pack::model::ModelSet,
+    m: &vc_pack::model::CompiledModel,
     lx: usize,
     ly: usize,
     lz: usize,
@@ -691,9 +691,9 @@ fn emit_model_faces(
             // colormap by block family; grass sides stay untinted
             let top_face = f.dir.normal()[1] > 0.0;
             let tint = if f.tintindex >= 0 {
-                crate::tint::model_face_tint_packed(bs, top_face, biome)
+                vc_blocks::tint::model_face_tint_packed(bs, top_face, biome)
             } else {
-                crate::tint::TINT_NONE
+                vc_blocks::tint::TINT_NONE
             };
 
             // tangent axes for AO (the two axes perpendicular to the normal)
@@ -754,11 +754,11 @@ fn emit_model_faces(
 
 /// the two axis indices perpendicular to a face normal
 #[inline]
-fn tangent_axes(d: crate::model::FaceDir) -> (usize, usize) {
+fn tangent_axes(d: vc_pack::model::FaceDir) -> (usize, usize) {
     match d {
-        crate::model::FaceDir::Up | crate::model::FaceDir::Down => (0, 2), // x, z
-        crate::model::FaceDir::North | crate::model::FaceDir::South => (0, 1), // x, y
-        crate::model::FaceDir::West | crate::model::FaceDir::East => (2, 1),   // z, y
+        vc_pack::model::FaceDir::Up | vc_pack::model::FaceDir::Down => (0, 2), // x, z
+        vc_pack::model::FaceDir::North | vc_pack::model::FaceDir::South => (0, 1), // x, y
+        vc_pack::model::FaceDir::West | vc_pack::model::FaceDir::East => (2, 1),   // z, y
     }
 }
 
@@ -780,7 +780,7 @@ fn offset_toward(bx: f32, by: f32, bz: f32, axis: usize) -> i32 {
 
 /// elements with model `shade` disabled skip AO (flat look)
 #[inline]
-fn el_affects_ao(_el: &crate::model::CompiledElement) -> bool {
+fn el_affects_ao(_el: &vc_pack::model::CompiledElement) -> bool {
     true
 }
 
@@ -950,11 +950,11 @@ fn greedy_merge(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::blocks::*;
+    use vc_blocks::blocks::*;
 
     /// reference light for a snapshot (differential bridge, Phase 4)
-    fn lref(snap: &[Option<Arc<Chunk>>; 9]) -> [Option<Arc<crate::light::LightData>>; 9] {
-        crate::light::reference_lightdata(snap)
+    fn lref(snap: &[Option<Arc<Chunk>>; 9]) -> [Option<Arc<vc_world::light::LightData>>; 9] {
+        vc_world::light::reference_lightdata(snap)
     }
 
     /// 3x3 snapshot with a single block state set at the center chunk's (8, 8y, 8)
@@ -1040,29 +1040,30 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     fn builtin_pack_model_blocks_mesh() {
         // 1. compile the real pack exactly as the game does at boot
-        let source = std::sync::Arc::new(crate::pack::FolderSource::new("builtin-pack", "test"));
-        use crate::pack::PackSource as _;
+        let source = std::sync::Arc::new(vc_pack::pack::FolderSource::new(
+            concat!(env!("CARGO_MANIFEST_DIR"), "/../../builtin-pack"), "test"));
+        use vc_pack::pack::PackSource as _;
         assert!(source.exists(), "builtin pack missing — run from voxelcraft/");
-        let mut by_state: std::collections::HashMap<u16, Vec<crate::model::ModelChoice>> =
+        let mut by_state: std::collections::HashMap<u16, Vec<vc_pack::model::ModelChoice>> =
             Default::default();
-        for pb in crate::blocks::PROP_BLOCKS.iter() {
-            let spec = crate::model::BlockDispatchSpec {
+        for pb in vc_blocks::blocks::PROP_BLOCKS.iter() {
+            let spec = vc_pack::model::BlockDispatchSpec {
                 name: pb.name,
                 props: pb.props,
                 base_state: pb.base_state,
                 state_count: pb.state_count,
             };
-            let map = crate::model::compile_block_dispatch(&spec, &|p| source.read(p))
+            let map = vc_pack::model::compile_block_dispatch(&spec, &|p| source.read(p))
                 .unwrap_or_else(|e| panic!("dispatch {name:?}: {e}", name = pb.name));
             by_state.extend(map);
         }
-        let mut set = crate::model::ModelSet { by_state, tiles: Default::default() };
-        let mut atlas = crate::textures::generate_atlas();
-        let anims = crate::textures::merge_pack_textures(&mut atlas, &mut set, source.as_ref());
+        let mut set = vc_pack::model::ModelSet { by_state, tiles: Default::default() };
+        let mut atlas = vc_render::textures::generate_atlas();
+        let anims = vc_render::textures::merge_pack_textures(&mut atlas, &mut set, source.as_ref());
         // every model face resolved to a real pack tile (planks/cobble)
         assert!(!set.tiles.is_empty(), "no pack textures registered");
         assert!(
-            set.tiles.values().all(|&t| t >= crate::textures::PACK_TILE_BASE),
+            set.tiles.values().all(|&t| t >= vc_render::textures::PACK_TILE_BASE),
             "pack textures must land in the pack tile range"
         );
         // the animated cobble strip was recognized
@@ -1072,7 +1073,7 @@ mod tests {
         // install as the global registry so mesh_chunk's model path can see
         // it (single install per test process; legacy-state tests above are
         // unaffected — they never touch states ≥ MODEL_STATE_BASE)
-        crate::model::install_for_tests(set);
+        vc_pack::model::install_for_tests(set);
 
         // 2. slab: bottom state (63) — top face at y=8/16, all 6 faces present
         let mut c = Chunk::empty();
@@ -1215,7 +1216,7 @@ mod tests {
     /// water tinted; and greedy runs never MERGE across different biomes.
     #[test]
     fn biome_tint_faces() {
-        use crate::tint;
+        use vc_blocks::tint;
 
         let snap_for = |biome: u8, block: u8| -> [Option<Arc<Chunk>>; 9] {
             let mut c = Chunk::empty();
@@ -1401,7 +1402,7 @@ mod tests {
 #[cfg(test)]
 mod phase3_tests {
     use super::*;
-    use crate::gen::TerrainGen;
+    use vc_world::gen::TerrainGen;
 
     /// 3x3 snapshot of real generated terrain (deterministic seed)
     fn terrain_snap(seed: u64) -> (Vec<Arc<Chunk>>, [Option<Arc<Chunk>>; 9]) {
@@ -1430,7 +1431,7 @@ mod phase3_tests {
     fn partial_remesh_matches_full() {
         let (_, snap) = terrain_snap(0xC0FFEE);
         let pos = (0, 0);
-        let lsnap = crate::light::reference_lightdata(&snap);
+        let lsnap = vc_world::light::reference_lightdata(&snap);
         let full = mesh_sections(pos, &snap, &lsnap, true, u16::MAX, &[]);
         assert!(full.merged.tri_count() > 0, "terrain must produce geometry");
 
@@ -1461,7 +1462,7 @@ mod phase3_tests {
     #[test]
     fn mesh_chunk_wrapper_equivalence() {
         let (_, snap) = terrain_snap(0xABCD);
-        let lsnap = crate::light::reference_lightdata(&snap);
+        let lsnap = vc_world::light::reference_lightdata(&snap);
         let a = mesh_chunk((0, 0), &snap, &lsnap, true);
         let b = mesh_sections((0, 0), &snap, &lsnap, true, u16::MAX, &[]).merged;
         assert_eq!(a.solid.0.len(), b.solid.0.len());
@@ -1475,7 +1476,7 @@ mod phase3_tests {
     fn unmasked_sections_are_reused_arc() {
         let (chunks, snap) = terrain_snap(0x1234);
         let pos = (0, 0);
-        let lsnap = crate::light::reference_lightdata(&snap);
+        let lsnap = vc_world::light::reference_lightdata(&snap);
         let full = mesh_sections(pos, &snap, &lsnap, true, u16::MAX, &[]);
 
         // edit a block in section 8 (y 128..143) in the CENTER chunk only
@@ -1484,7 +1485,7 @@ mod phase3_tests {
         let mut snap2 = snap;
         snap2[4] = Some(Arc::new(c));
 
-        let lsnap2 = crate::light::reference_lightdata(&snap2);
+        let lsnap2 = vc_world::light::reference_lightdata(&snap2);
         let part = mesh_sections(pos, &snap2, &lsnap2, true, 1 << 8, &full.sections);
         // section 7 untouched by the edit AND not masked → same Arc
         assert!(

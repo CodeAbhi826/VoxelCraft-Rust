@@ -2041,6 +2041,160 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 
 [[package]]
+name = "vc-anvil"
+version = "0.3.0"
+dependencies = [
+ "flate2",
+ "serde",
+ "vc-blocks",
+ "vc-chunk",
+ "vc-nbt",
+ "vc-world",
+]
+
+[[package]]
+name = "vc-audio"
+version = "0.3.0"
+dependencies = [
+ "js-sys",
+ "rodio",
+ "serde",
+ "serde_json",
+ "vc-blocks",
+ "vc-rng",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
+name = "vc-blocks"
+version = "0.3.0"
+
+[[package]]
+name = "vc-chunk"
+version = "0.3.0"
+dependencies = [
+ "vc-blocks",
+]
+
+[[package]]
+name = "vc-gameplay"
+version = "0.3.0"
+dependencies = [
+ "vc-blocks",
+ "vc-chunk",
+ "vc-inventory",
+ "vc-particles",
+ "vc-rng",
+ "vc-world",
+]
+
+[[package]]
+name = "vc-inventory"
+version = "0.3.0"
+dependencies = [
+ "vc-blocks",
+]
+
+[[package]]
+name = "vc-mesh"
+version = "0.3.0"
+dependencies = [
+ "bytemuck",
+ "vc-blocks",
+ "vc-chunk",
+ "vc-pack",
+ "vc-render",
+ "vc-rng",
+ "vc-world",
+]
+
+[[package]]
+name = "vc-nbt"
+version = "0.3.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "vc-pack"
+version = "0.3.0"
+dependencies = [
+ "js-sys",
+ "rayon",
+ "serde",
+ "serde_json",
+ "vc-blocks",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
+name = "vc-particles"
+version = "0.3.0"
+dependencies = [
+ "bytemuck",
+ "vc-blocks",
+ "vc-chunk",
+ "vc-rng",
+ "vc-world",
+]
+
+[[package]]
+name = "vc-render"
+version = "0.3.0"
+dependencies = [
+ "bytemuck",
+ "glam",
+ "image",
+ "js-sys",
+ "naga",
+ "serde",
+ "serde_json",
+ "vc-blocks",
+ "vc-gameplay",
+ "vc-inventory",
+ "vc-mesh",
+ "vc-pack",
+ "vc-particles",
+ "vc-rng",
+ "vc-world",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "wgpu",
+ "winit",
+]
+
+[[package]]
+name = "vc-rng"
+version = "0.3.0"
+
+[[package]]
+name = "vc-sim"
+version = "0.3.0"
+dependencies = [
+ "vc-blocks",
+ "vc-chunk",
+ "vc-gameplay",
+ "vc-particles",
+ "vc-rng",
+ "vc-world",
+]
+
+[[package]]
+name = "vc-world"
+version = "0.3.0"
+dependencies = [
+ "js-sys",
+ "vc-blocks",
+ "vc-chunk",
+ "vc-rng",
+]
+
+[[package]]
 name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2048,20 +2202,29 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "voxelcraft"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
- "bytemuck",
  "console_error_panic_hook",
- "flate2",
  "glam",
- "image",
  "js-sys",
- "naga",
  "pollster",
  "rayon",
- "rodio",
  "serde",
  "serde_json",
+ "vc-anvil",
+ "vc-audio",
+ "vc-blocks",
+ "vc-chunk",
+ "vc-gameplay",
+ "vc-inventory",
+ "vc-mesh",
+ "vc-nbt",
+ "vc-pack",
+ "vc-particles",
+ "vc-render",
+ "vc-rng",
+ "vc-sim",
+ "vc-world",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",

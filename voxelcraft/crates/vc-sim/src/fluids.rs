@@ -19,9 +19,9 @@
 //! * water does not break cross-plants it flows into (it stops at them;
 //!   vanilla replaces them) — scheduled with the plant interaction work
 
-use crate::blocks::*;
+use vc_blocks::blocks::*;
 use crate::ticks::TickScheduler;
-use crate::world::World;
+use vc_world::world::World;
 
 /// vanilla water tick rate: updates every 5 game ticks
 pub const WATER_TICK_RATE: u64 = 5;
@@ -226,7 +226,7 @@ mod tests {
         let mut w = World::new(7);
         for dz in -1i32..=1 {
             for dx in -1i32..=1 {
-                let mut c = crate::chunk::Chunk::empty();
+                let mut c = vc_chunk::chunk::Chunk::empty();
                 for y in 0..=top {
                     for lz in 0..16usize {
                         for lx in 0..16usize {

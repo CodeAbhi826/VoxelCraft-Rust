@@ -1,0 +1,8 @@
+[package]
+name = "vc-blocks"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+description = "Block registry & BlockState system with 1.16.5-pattern state ids"
+
+[dependencies]

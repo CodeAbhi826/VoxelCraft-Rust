@@ -1,0 +1,14 @@
+[package]
+name = "vc-gameplay"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+description = "Crafting, furnaces, brewing, enchanting and villagers"
+
+[dependencies]
+vc-blocks = { workspace = true }
+vc-chunk = { workspace = true }
+vc-inventory = { workspace = true }
+vc-particles = { workspace = true }
+vc-rng = { workspace = true }
+vc-world = { workspace = true }

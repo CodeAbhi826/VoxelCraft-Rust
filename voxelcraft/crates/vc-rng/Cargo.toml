@@ -1,0 +1,8 @@
+[package]
+name = "vc-rng"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+description = "Deterministic seeded RNG for reproducible world generation"
+
+[dependencies]

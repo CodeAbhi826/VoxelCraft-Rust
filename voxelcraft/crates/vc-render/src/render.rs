@@ -3,10 +3,10 @@
 //! light), water (blend + waves), selection wireframe, UI (bitmap canvas).
 
 use crate::draw::{self, ChunkGpu, DrawCmd, IndirectArgs, MeshSlot, SlotAlloc, VisEntry};
-use crate::mesh::{MeshData, Vertex};
+use vc_mesh::mesh::{MeshData, Vertex};
 use crate::textures;
 use crate::ui::{UiCanvas, UI_H, UI_W};
-use crate::world::ChunkPos;
+use vc_world::world::ChunkPos;
 use glam::{Mat4, Vec3, Vec4};
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
@@ -1671,12 +1671,12 @@ impl Renderer {
 
         // §18 biome tint LUT: 64×4 RGBA8 (row = kind, col = slot). Static
         // engine constants — written once, never touched again.
-        let tint_data = crate::tint::lut_rgba();
+        let tint_data = vc_blocks::tint::lut_rgba();
         let tint_tex = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("tint-lut"),
             size: wgpu::Extent3d {
-                width: crate::tint::LUT_W,
-                height: crate::tint::LUT_H,
+                width: vc_blocks::tint::LUT_W,
+                height: vc_blocks::tint::LUT_H,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
@@ -1696,12 +1696,12 @@ impl Renderer {
             &tint_data,
             wgpu::ImageDataLayout {
                 offset: 0,
-                bytes_per_row: Some(crate::tint::LUT_W * 4),
-                rows_per_image: Some(crate::tint::LUT_H),
+                bytes_per_row: Some(vc_blocks::tint::LUT_W * 4),
+                rows_per_image: Some(vc_blocks::tint::LUT_H),
             },
             wgpu::Extent3d {
-                width: crate::tint::LUT_W,
-                height: crate::tint::LUT_H,
+                width: vc_blocks::tint::LUT_W,
+                height: vc_blocks::tint::LUT_H,
                 depth_or_array_layers: 1,
             },
         );
@@ -2042,7 +2042,7 @@ impl Renderer {
             ],
         });
         let part_vbl = [wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<crate::particles::ParticleVertex>() as u64,
+            array_stride: std::mem::size_of::<vc_particles::particles::ParticleVertex>() as u64,
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &[
                 wgpu::VertexAttribute {
@@ -2103,7 +2103,7 @@ impl Renderer {
         // dynamic billboard buffer: MAX_PARTICLES quads × 6 verts × 32 B
         let particle_vb = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("particle-vb"),
-            size: (crate::particles::MAX_PARTICLES * 6 * 32) as u64,
+            size: (vc_particles::particles::MAX_PARTICLES * 6 * 32) as u64,
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -3489,7 +3489,7 @@ impl Renderer {
         selection: Option<(i32, i32, i32)>,
         post: &PostParams,
         clouds: bool,
-        particles: &[crate::particles::ParticleVertex],
+        particles: &[vc_particles::particles::ParticleVertex],
     ) -> RenderStats {
         let frame = match self.surface.get_current_texture() {
             Ok(f) => f,
@@ -3886,7 +3886,7 @@ impl Renderer {
                 pass.set_pipeline(&self.part_pipe);
                 pass.set_bind_group(0, &self.part_bg, &[]);
                 pass.set_vertex_buffer(0, self.particle_vb.slice(..));
-                let n = (particles.len() as u32).min(crate::particles::MAX_PARTICLES as u32 * 6);
+                let n = (particles.len() as u32).min(vc_particles::particles::MAX_PARTICLES as u32 * 6);
                 pass.draw(0..n, 0..1);
                 stats.particles += n / 6;
             }
@@ -4209,18 +4209,30 @@ async fn request_adapter_js(power_preference: Option<&str>, force_fallback: bool
 /// Surface a fatal init error on the page (wasm) / stderr (native),
 /// instead of silently panicking into a blank screen.
 #[allow(dead_code)]
-pub(crate) fn report_boot_error(msg: &str) {
+pub fn report_boot_error(msg: &str) {
     #[cfg(target_arch = "wasm32")]
-    crate::wasm_entry::boot_error(msg);
+    {
+        // page-level boot overlay hook (same JS contract as the app's
+        // wasm_entry::boot_error; kept here so the library stays app-free)
+        use wasm_bindgen::{JsCast, JsValue};
+        if let Some(window) = web_sys::window() {
+            let w: JsValue = window.into();
+            if let Ok(f) = js_sys::Reflect::get(&w, &"voxelcraftBootError".into()) {
+                if let Ok(f) = f.dyn_into::<js_sys::Function>() {
+                    let _ = f.call1(&w, &JsValue::from_str(msg));
+                }
+            }
+        }
+    }
     #[cfg(not(target_arch = "wasm32"))]
     eprintln!("[voxelcraft] {msg}");
 }
 
 /// Best-effort diagnostic log (wasm: JS console, native: stderr).
 #[allow(dead_code)]
-pub(crate) fn report_boot_log(msg: &str) {
+pub fn report_boot_log(msg: &str) {
     #[cfg(target_arch = "wasm32")]
-    crate::wasm_entry::boot_log(msg);
+    web_sys::console::log_1(&wasm_bindgen::JsValue::from_str(msg));
     #[cfg(not(target_arch = "wasm32"))]
     eprintln!("[voxelcraft] {msg}");
 }

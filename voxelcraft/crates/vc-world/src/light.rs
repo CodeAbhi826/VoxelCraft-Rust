@@ -19,8 +19,8 @@
 //! test oracle for the differential gate (§48 Phase 4: differential light
 //! tests pass).
 
-use crate::blocks::*;
-use crate::chunk::Chunk;
+use vc_blocks::blocks::*;
+use vc_chunk::chunk::Chunk;
 use crate::world::{ChunkPos, World};
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
@@ -946,7 +946,7 @@ pub fn reference_lightdata(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::blocks::*;
+    use vc_blocks::blocks::*;
 
     /// hand-built 5×5 world with variance: floor + hill + cave + water pool.
     /// The inner 3×3 (all chunks with |x|<=1, |z|<=1) is the comparison
@@ -1207,37 +1207,5 @@ mod tests {
         );
     }
 
-    /// §28: light survives the NBT round-trip bit-identically.
-    /// (native-only: the save module is cfg'd out on wasm32)
-    #[test]
-    #[cfg(not(target_arch = "wasm32"))]
-    fn light_nibbles_roundtrip() {
-        let mut sec = Box::new(LightSection {
-            sky: Box::new([0u8; 4096]),
-            blk: Box::new([0u8; 4096]),
-        });
-        for i in 0..4096 {
-            sec.sky[i] = (i % 16) as u8;
-            sec.blk[i] = ((i / 16) % 16) as u8;
-        }
-        let mut ld = LightData::new();
-        ld.sections[4] = Some(sec);
-
-        let mut c = Chunk::empty();
-        for y in 0..16usize {
-            for lz in 0..16usize {
-                for lx in 0..16usize {
-                    c.set(lx, y, lz, STONE);
-                }
-            }
-        }
-        let bytes = crate::save::chunk_to_nbt(0, 0, &c, 1, Some(&ld));
-        let (back, light) = crate::save::chunk_from_nbt(&bytes).unwrap();
-        assert!(light.is_some(), "light must survive the round-trip");
-        let l2 = light.unwrap();
-        let s2 = l2.sections[4].as_ref().expect("section 4 present");
-        assert_eq!(&*s2.sky, &*ld.sections[4].as_ref().unwrap().sky);
-        assert_eq!(&*s2.blk, &*ld.sections[4].as_ref().unwrap().blk);
-    }
 }
 

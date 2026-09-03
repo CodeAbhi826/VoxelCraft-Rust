@@ -36,7 +36,7 @@
 //! 3 passes (shadow/terrain/water). New: binds = 3 + 2·regions·passes;
 //! draws = chunks (loop path) or regions (MDI path).
 
-use crate::world::ChunkPos;
+use vc_world::world::ChunkPos;
 use std::collections::HashMap;
 
 /// chunks per mesh-region side (8 → 128×128 blocks, ≈1–16 MB arena)

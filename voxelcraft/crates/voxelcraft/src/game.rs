@@ -3,18 +3,18 @@
 //! Loading → Title ⇄ Options, Game ⇄ Pause/Options.
 //! Streams chunks (rayon worker pool on native, time-budgeted inline on wasm).
 
-use crate::blocks::*;
-use crate::gen::Biome;
-use crate::mesh::{mesh_sections, MeshData};
+use vc_blocks::blocks::*;
+use vc_world::gen::Biome;
+use vc_mesh::mesh::{mesh_sections, MeshData};
 use crate::player::{raycast, Input, Player};
-use crate::render::{Camera, RenderStats, Renderer, SkyState};
-use crate::sounds::{AudioBackend, SoundBank};
+use vc_render::render::{Camera, RenderStats, Renderer, SkyState};
+use vc_audio::sounds::{AudioBackend, SoundBank};
 #[cfg(not(target_arch = "wasm32"))]
-use crate::sounds::native_audio;
+use vc_audio::sounds::native_audio;
 #[cfg(target_arch = "wasm32")]
-use crate::sounds::web_audio;
-use crate::ui::{self, UiCanvas, Widget, WidgetKind, UI_H, UI_W};
-use crate::world::{ChunkPos, World};
+use vc_audio::sounds::web_audio;
+use vc_render::ui::{self, UiCanvas, Widget, WidgetKind, UI_H, UI_W};
+use vc_world::world::{ChunkPos, World};
 use glam::Vec3;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
@@ -211,11 +211,11 @@ const SPLASHES: [&str; 14] = [
 // ------------------------------------------------------------------ jobs --
 
 enum Job {
-    Gen { pos: ChunkPos, seed: u64, dim: crate::world::Dimension, inbound: Vec<(u16, u8)> },
+    Gen { pos: ChunkPos, seed: u64, dim: vc_world::world::Dimension, inbound: Vec<(u16, u8)> },
     Mesh {
         pos: ChunkPos,
-        snap: [Option<Arc<crate::chunk::Chunk>>; 9],
-        lsnap: [Option<Arc<crate::light::LightData>>; 9],
+        snap: [Option<Arc<vc_chunk::chunk::Chunk>>; 9],
+        lsnap: [Option<Arc<vc_world::light::LightData>>; 9],
         smooth: bool,
         /// sections to rebuild (§12 bitset; 0xFFFF = full chunk)
         mask: u16,
@@ -225,7 +225,7 @@ enum Job {
 }
 
 enum JobResult {
-    Gen { pos: ChunkPos, chunk: Arc<crate::chunk::Chunk>, outbound: Vec<(i32, i32, i32, u8)> },
+    Gen { pos: ChunkPos, chunk: Arc<vc_chunk::chunk::Chunk>, outbound: Vec<(i32, i32, i32, u8)> },
     Mesh {
         pos: ChunkPos,
         /// the mask this job covered (dirty-bit clearing)
@@ -240,7 +240,7 @@ enum JobResult {
 fn run_job(job: Job) -> JobResult {
     match job {
         Job::Gen { pos, seed, dim, inbound } => {
-            let gen = crate::gen::TerrainGen::for_dimension(seed, dim);
+            let gen = vc_world::gen::TerrainGen::for_dimension(seed, dim);
             let (chunk, outbound) = gen.generate_chunk(pos.0, pos.1, inbound);
             JobResult::Gen { pos, chunk, outbound }
         }
@@ -278,9 +278,9 @@ pub struct GameApp {
     pub atlas: Vec<u8>,
     pub bank: SoundBank,
     /// §21 data-driven sound-event registry (parsed from sounds::SOUNDS_JSON)
-    pub sounds: crate::sounds::SoundRegistry,
+    pub sounds: vc_audio::sounds::SoundRegistry,
     /// rng for weighted variant picks + pitch rolls + schedulers
-    audio_rng: crate::rng::Rng,
+    audio_rng: vc_rng::rng::Rng,
     /// sounds played this session (stats/E2E)
     pub sounds_played: u32,
     /// §21: next game-time a music pad starts (first at ~12 s, then every
@@ -299,24 +299,24 @@ pub struct GameApp {
     /// worker jobs rebuild only dirty sections and reuse the rest)
     section_meshes: HashMap<ChunkPos, Vec<Option<Arc<MeshData>>>>,
     /// incremental light engine (Phase 4 §18)
-    light: crate::light::LightEngine,
+    light: vc_world::light::LightEngine,
     /// fixed-step simulation (Phase 6: scheduled ticks, fluids, gravity,
     /// random ticks, item entities)
-    sim: crate::sim::Sim,
+    sim: vc_sim::sim::Sim,
     /// open container screen (Phase 7): inventory crafting grid, crafting
     /// table, or furnace
     container: Option<Container>,
     /// hit-test geometry of the open container screen
-    container_geom: Option<crate::ui::ContainerGeom>,
+    container_geom: Option<vc_render::ui::ContainerGeom>,
     /// stack held by the cursor in a container screen
-    cursor_stack: crate::inventory::ItemStack,
+    cursor_stack: vc_inventory::inventory::ItemStack,
     /// open crafting grid (2×2 uses [0..4] row-major on a 2-wide layout,
     /// 3×3 uses all 9)
-    craft_grid: [crate::inventory::ItemStack; 9],
+    craft_grid: [vc_inventory::inventory::ItemStack; 9],
     /// block particles (Phase 5 §16.2 pass 4)
-    particles: crate::particles::ParticleSystem,
+    particles: vc_particles::particles::ParticleSystem,
     /// billboard vertex scratch (rebuilt per frame against the camera basis)
-    particle_verts: Vec<crate::particles::ParticleVertex>,
+    particle_verts: Vec<vc_particles::particles::ParticleVertex>,
     input: Input,
     pub screen: Screen,
     options_from: Screen, // where Options was opened from
@@ -336,7 +336,7 @@ pub struct GameApp {
     /// creative-style block picker overlay (E key)
     picker_open: bool,
     /// last pickr grid geometry for hit-testing clicks
-    picker_geom: Option<crate::ui::PickerGeom>,
+    picker_geom: Option<vc_render::ui::PickerGeom>,
     /// rolling frame times (ms) for the F3 frame-time graph
     frame_times: std::collections::VecDeque<f32>,
     /// rolling (draw calls, buffer binds) per frame — Phase 9 §37 metric
@@ -371,9 +371,9 @@ pub struct GameApp {
     /// spawn position captured at world init (bench camera orbits it)
     bench_spawn: glam::Vec3,
     /// Phase 11 §34: discovered shader packs (builtin + external)
-    shader_packs: Vec<crate::shaders::ShaderPack>,
+    shader_packs: Vec<vc_render::shaders::ShaderPack>,
     /// pack-driven animated textures (frame updates only, no re-mesh)
-    animations: Vec<crate::textures::AnimatedTile>,
+    animations: Vec<vc_render::textures::AnimatedTile>,
     /// §28: root save dir (world root); `world_dir` is the CURRENT
     /// dimension's dir (overworld = root, nether = DIM-1)
     #[cfg(not(target_arch = "wasm32"))]
@@ -419,17 +419,17 @@ pub fn now_secs() -> f32 {
 /// fetches the same file set from `/assets/` (deployed by CI). Any failure
 /// degrades to the procedural-only path with the missing-texture fallback
 /// (§46 — an imperfect pack must never crash the engine).
-async fn load_builtin_pack_assets() -> (Vec<u8>, Vec<crate::textures::AnimatedTile>) {
-    let mut atlas = crate::textures::generate_atlas();
+async fn load_builtin_pack_assets() -> (Vec<u8>, Vec<vc_render::textures::AnimatedTile>) {
+    let mut atlas = vc_render::textures::generate_atlas();
 
     // 1. acquire the pack source
     #[cfg(not(target_arch = "wasm32"))]
-    let source: Option<std::sync::Arc<dyn crate::pack::PackSource>> = {
-        let folder = crate::pack::FolderSource::new("builtin-pack", "builtin");
+    let source: Option<std::sync::Arc<dyn vc_pack::pack::PackSource>> = {
+        let folder = vc_pack::pack::FolderSource::new("builtin-pack", "builtin");
         if folder.exists() {
-            match crate::pack::open(std::sync::Arc::new(folder)) {
+            match vc_pack::pack::open(std::sync::Arc::new(folder)) {
                 Ok((meta, src)) => {
-                    crate::render::report_boot_log(&format!(
+                    vc_render::render::report_boot_log(&format!(
                         "builtin pack: {} (format {}, {})",
                         src.name(),
                         meta.pack_format,
@@ -438,30 +438,30 @@ async fn load_builtin_pack_assets() -> (Vec<u8>, Vec<crate::textures::AnimatedTi
                     Some(src)
                 }
                 Err(e) => {
-                    crate::render::report_boot_log(&format!("builtin pack unavailable: {e}"));
+                    vc_render::render::report_boot_log(&format!("builtin pack unavailable: {e}"));
                     None
                 }
             }
         } else {
-            crate::render::report_boot_log("no builtin pack folder (builtin-pack/) — procedural fallback");
+            vc_render::render::report_boot_log("no builtin pack folder (builtin-pack/) — procedural fallback");
             None
         }
     };
     #[cfg(target_arch = "wasm32")]
-    let source: Option<std::sync::Arc<dyn crate::pack::PackSource>> = {
-        let specs: Vec<crate::model::BlockDispatchSpec> = crate::blocks::PROP_BLOCKS
+    let source: Option<std::sync::Arc<dyn vc_pack::pack::PackSource>> = {
+        let specs: Vec<vc_pack::model::BlockDispatchSpec> = vc_blocks::blocks::PROP_BLOCKS
             .iter()
-            .map(|pb| crate::model::BlockDispatchSpec {
+            .map(|pb| vc_pack::model::BlockDispatchSpec {
                 name: pb.name,
                 props: pb.props,
                 base_state: pb.base_state,
                 state_count: pb.state_count,
             })
             .collect();
-        match crate::pack::fetch_builtin_pack(&specs).await {
-            Some(mem) => match crate::pack::open(std::sync::Arc::new(mem)) {
+        match vc_pack::pack::fetch_builtin_pack(&specs).await {
+            Some(mem) => match vc_pack::pack::open(std::sync::Arc::new(mem)) {
                 Ok((meta, src)) => {
-                    crate::render::report_boot_log(&format!(
+                    vc_render::render::report_boot_log(&format!(
                         "builtin pack fetched: {} (format {})",
                         src.name(),
                         meta.pack_format
@@ -469,12 +469,12 @@ async fn load_builtin_pack_assets() -> (Vec<u8>, Vec<crate::textures::AnimatedTi
                     Some(src)
                 }
                 Err(e) => {
-                    crate::render::report_boot_log(&format!("builtin pack fetch failed: {e}"));
+                    vc_render::render::report_boot_log(&format!("builtin pack fetch failed: {e}"));
                     None
                 }
             },
             None => {
-                crate::render::report_boot_log("no builtin pack on server — procedural fallback");
+                vc_render::render::report_boot_log("no builtin pack on server — procedural fallback");
                 None
             }
         }
@@ -483,7 +483,7 @@ async fn load_builtin_pack_assets() -> (Vec<u8>, Vec<crate::textures::AnimatedTi
     let Some(source) = source else {
         // no pack: still install an empty ModelSet so model-state blocks
         // render the missing texture instead of being skipped silently
-        crate::model::install(crate::model::ModelSet {
+        vc_pack::model::install(vc_pack::model::ModelSet {
             by_state: Default::default(),
             tiles: Default::default(),
         });
@@ -492,42 +492,42 @@ async fn load_builtin_pack_assets() -> (Vec<u8>, Vec<crate::textures::AnimatedTi
 
     // 2. compile per-block dispatches (parse once, canonicalize, cache)
     let mut by_state = std::collections::HashMap::new();
-    for pb in crate::blocks::PROP_BLOCKS.iter() {
-        let spec = crate::model::BlockDispatchSpec {
+    for pb in vc_blocks::blocks::PROP_BLOCKS.iter() {
+        let spec = vc_pack::model::BlockDispatchSpec {
             name: pb.name,
             props: pb.props,
             base_state: pb.base_state,
             state_count: pb.state_count,
         };
-        match crate::model::compile_block_dispatch(&spec, &|p| source.read(p)) {
+        match vc_pack::model::compile_block_dispatch(&spec, &|p| source.read(p)) {
             Ok(map) => {
                 by_state.extend(map);
             }
             Err(e) => {
                 // §46: one bad blockstate must not take the engine down
-                crate::render::report_boot_log(&format!(
+                vc_render::render::report_boot_log(&format!(
                     "blockstate {name} failed: {e} — block will use the missing model",
                     name = pb.name
                 ));
             }
         }
     }
-    let mut set = crate::model::ModelSet {
+    let mut set = vc_pack::model::ModelSet {
         by_state,
         tiles: Default::default(),
     };
 
     // 3. merge pack textures into the atlas (fills set.tiles + animations)
-    let animations = crate::textures::merge_pack_textures(&mut atlas, &mut set, source.as_ref());
+    let animations = vc_render::textures::merge_pack_textures(&mut atlas, &mut set, source.as_ref());
     let n_models: usize = set.by_state.values().map(|v| v.len()).sum();
-    crate::render::report_boot_log(&format!(
+    vc_render::render::report_boot_log(&format!(
         "model dispatch: {} states, {} applied models, {} pack textures, {} animations",
         set.by_state.len(),
         n_models,
         set.tiles.len(),
         animations.len()
     ));
-    crate::model::install(set);
+    vc_pack::model::install(set);
     (atlas, animations)
 }
 
@@ -537,18 +537,18 @@ impl GameApp {
         // Compile the builtin resource pack (blockstates → models → textures)
         // BEFORE any mesh job can run; merge its textures into the atlas.
         let (mut atlas, animations) = crate::game::load_builtin_pack_assets().await;
-        crate::textures::draw_missing_tile(&mut atlas);
+        vc_render::textures::draw_missing_tile(&mut atlas);
 
         let mut renderer = Renderer::new(window, &atlas).await;
         let bank = SoundBank::generate();
-        let sounds = crate::sounds::SoundRegistry::from_json(crate::sounds::SOUNDS_JSON)
+        let sounds = vc_audio::sounds::SoundRegistry::from_json(vc_audio::sounds::SOUNDS_JSON)
             .unwrap_or_else(|e| {
-                crate::render::report_boot_log(&format!("sound registry broken: {e}"));
+                vc_render::render::report_boot_log(&format!("sound registry broken: {e}"));
                 // empty registry = silent game rather than a boot failure
-                crate::sounds::SoundRegistry { events: Default::default() }
+                vc_audio::sounds::SoundRegistry { events: Default::default() }
             });
         #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
-        let mut world = World::new(crate::world::World::random_seed());
+        let mut world = World::new(vc_world::world::World::random_seed());
         #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
         let mut spawn = world.find_spawn();
         #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
@@ -559,16 +559,16 @@ impl GameApp {
         // §28: the overworld saves at the world root (boot always starts
         // there, like vanilla); the nether dir is derived on travel.
         #[cfg(not(target_arch = "wasm32"))]
-        let save_root = crate::save::default_world_dir();
+        let save_root = vc_anvil::save::default_world_dir();
         #[cfg(not(target_arch = "wasm32"))]
-        let world_dir = crate::save::dimension_dir(
+        let world_dir = vc_anvil::save::dimension_dir(
             &save_root,
-            crate::world::Dimension::Overworld,
+            vc_world::world::Dimension::Overworld,
         );
         #[cfg(not(target_arch = "wasm32"))]
         let mut level_spawn = (spawn.0 as i32, spawn.1 as i32, spawn.2 as i32);
         #[cfg(not(target_arch = "wasm32"))]
-        if let Ok(Some(meta)) = crate::save::read_level_dat(&save_root) {
+        if let Ok(Some(meta)) = vc_anvil::save::read_level_dat(&save_root) {
             world = World::new(meta.seed);
             spawn = world.find_spawn();
             level_spawn = meta.spawn;
@@ -608,16 +608,16 @@ impl GameApp {
 
         // Phase 11 §34: discover shader packs (builtin embedded + native
         // external dir) and apply the persisted selection before frame 1
-        let mut shader_packs = crate::shaders::builtin_packs();
+        let mut shader_packs = vc_render::shaders::builtin_packs();
         #[cfg(not(target_arch = "wasm32"))]
         {
-            let mut ext = crate::shaders::external_packs();
+            let mut ext = vc_render::shaders::external_packs();
             shader_packs.append(&mut ext);
         }
         if let Some(n) = shader_mode_pack_index(settings.shader, shader_packs.len()) {
             renderer.set_shader_pack(shader_packs.get(n).map(|p| p));
             if let Some(p) = shader_packs.get(n) {
-                crate::render::report_boot_log(&format!(
+                vc_render::render::report_boot_log(&format!(
                     "shader pack active: {} ({})",
                     p.name, p.tier
                 ));
@@ -641,7 +641,7 @@ impl GameApp {
             {
                 match native_audio::RodioOut::new() {
                     Some(o) => Box::new(o),
-                    None => Box::new(crate::sounds::SilentOut),
+                    None => Box::new(vc_audio::sounds::SilentOut),
                 }
             }
             #[cfg(target_arch = "wasm32")]
@@ -660,7 +660,7 @@ impl GameApp {
             bank,
             sounds,
             shader_packs,
-            audio_rng: crate::rng::Rng::new(0x50_0D_5EED),
+            audio_rng: vc_rng::rng::Rng::new(0x50_0D_5EED),
             sounds_played: 0,
             music_next: 12.0,
             ambient_next: 4.0,
@@ -670,13 +670,13 @@ impl GameApp {
             gen_inflight: HashSet::new(),
             mesh_inflight: HashMap::new(),
             section_meshes: HashMap::new(),
-            light: crate::light::LightEngine::new(),
-            sim: crate::sim::Sim::new(0xC0FF_EE01),
+            light: vc_world::light::LightEngine::new(),
+            sim: vc_sim::sim::Sim::new(0xC0FF_EE01),
             container: None,
             container_geom: None,
-            cursor_stack: crate::inventory::ItemStack::EMPTY,
-            craft_grid: [crate::inventory::ItemStack::EMPTY; 9],
-            particles: crate::particles::ParticleSystem::new(0x5EED_0042),
+            cursor_stack: vc_inventory::inventory::ItemStack::EMPTY,
+            craft_grid: [vc_inventory::inventory::ItemStack::EMPTY; 9],
+            particles: vc_particles::particles::ParticleSystem::new(0x5EED_0042),
             particle_verts: Vec::new(),
             input: Input::default(),
             screen: Screen::Loading,
@@ -1130,7 +1130,7 @@ impl GameApp {
                             self.player.selected = slot.min(8);
                         } else {
                             self.player.inv.slots[self.player.selected] =
-                                crate::inventory::ItemStack::new(b, 64);
+                                vc_inventory::inventory::ItemStack::new(b, 64);
                         }
                         self.item_toast = Some((name(b).to_string(), 2.0));
                         self.ui.dirty = true;
@@ -1189,7 +1189,7 @@ impl GameApp {
         let Some(g) = &self.picker_geom else { return };
         if let Some(idx) = g.slot_at(ux, uy) {
             let b = PICKER_BLOCKS[idx];
-            self.player.inv.slots[self.player.selected] = crate::inventory::ItemStack::new(b, 64);
+            self.player.inv.slots[self.player.selected] = vc_inventory::inventory::ItemStack::new(b, 64);
             self.item_toast = Some((name(b).to_string(), 2.0));
             self.ui.dirty = true;
         }
@@ -1224,7 +1224,7 @@ impl GameApp {
         if self.screen != Screen::Game || d.abs() <= 0.01 {
             return;
         }
-        let n = crate::inventory::INV_SLOTS.min(9) as i32;
+        let n = vc_inventory::inventory::INV_SLOTS.min(9) as i32;
         let cur = self.player.selected as i32;
         let next = ((cur - d.signum() as i32).rem_euclid(n)) as usize;
         self.player.selected = next;
@@ -1274,10 +1274,10 @@ impl GameApp {
         // categories default to full (their content volumes already encode
         // the mix); everything is scaled by the master volume
         let cat_gain = match r.category {
-            crate::sounds::SoundCategory::Music => music,
+            vc_audio::sounds::SoundCategory::Music => music,
             _ => 1.0,
         };
-        let (att, pan) = crate::sounds::spatialize(pos, listener, yaw, r.attenuation);
+        let (att, pan) = vc_audio::sounds::spatialize(pos, listener, yaw, r.attenuation);
         let vol = r.volume * volume_scale * att * cat_gain * master;
         if vol > 0.004 {
             self.sounds_played += 1;
@@ -1420,7 +1420,7 @@ impl GameApp {
         self.faced_land = true;
         self.set_screen(Screen::Game);
         self.input = Input::default();
-        crate::render::report_boot_log(&format!(
+        vc_render::render::report_boot_log(&format!(
             "benchmark armed: seed={seed}, orbit camera, fixed timestep"
         ));
     }
@@ -1588,7 +1588,7 @@ impl GameApp {
     fn remesh_all(&mut self) {
         let positions: Vec<ChunkPos> = self.renderer.chunks.keys().copied().collect();
         for p in positions {
-            self.world.mark_all_dirty(p, crate::world::CAUSE_GEOMETRY | crate::world::CAUSE_LIGHT);
+            self.world.mark_all_dirty(p, vc_world::world::CAUSE_GEOMETRY | vc_world::world::CAUSE_LIGHT);
         }
         // cached section meshes embed the old baking (e.g. smooth-lighting AO)
         self.section_meshes.clear();
@@ -1640,7 +1640,7 @@ impl GameApp {
                                     s.block, 2, 15, 0,
                                 );
                             }
-                            *s = crate::inventory::ItemStack::EMPTY;
+                            *s = vc_inventory::inventory::ItemStack::EMPTY;
                         }
                     }
                 }
@@ -1651,7 +1651,7 @@ impl GameApp {
                             if left > 0 {
                                 self.sim.items.drop_block(pos[0], pos[1] + 1, pos[2], s.block, 2, 15, 0);
                             }
-                            *s = crate::inventory::ItemStack::EMPTY;
+                            *s = vc_inventory::inventory::ItemStack::EMPTY;
                         }
                     }
                 }
@@ -1687,7 +1687,7 @@ impl GameApp {
                     b, 2, 15, 0,
                 );
             }
-            self.cursor_stack = crate::inventory::ItemStack::EMPTY;
+            self.cursor_stack = vc_inventory::inventory::ItemStack::EMPTY;
         }
         self.container_geom = None;
         // re-capture the mouse (the keypress counts as user activation)
@@ -1716,10 +1716,10 @@ impl GameApp {
             Some(s) => s,
             None => return,
         };
-        use crate::inventory::Inventory;
-        use crate::ui::SlotRef;
+        use vc_inventory::inventory::Inventory;
+        use vc_render::ui::SlotRef;
         match slot {
-            SlotRef::Inv(i) if i < crate::inventory::INV_SLOTS => {
+            SlotRef::Inv(i) if i < vc_inventory::inventory::INV_SLOTS => {
                 Inventory::slot_click(
                     &mut self.player.inv.slots[i],
                     &mut self.cursor_stack,
@@ -1740,20 +1740,20 @@ impl GameApp {
                 // take the crafted result: consume one of every ingredient,
                 // land the output in the cursor (merge if it matches)
                 let size = self.craft_grid_size();
-                let grid: Vec<crate::inventory::ItemStack> =
+                let grid: Vec<vc_inventory::inventory::ItemStack> =
                     self.craft_grid.iter().take(size * size).copied().collect();
-                if let Some(out) = crate::craft::match_grid(&grid, size) {
+                if let Some(out) = vc_gameplay::craft::match_grid(&grid, size) {
                     let fits = self.cursor_stack.is_empty()
                         || (self.cursor_stack.block == out.block
                             && self.cursor_stack.count + out.count
-                                <= crate::inventory::STACK_MAX);
+                                <= vc_inventory::inventory::STACK_MAX);
                     if fits {
                         if self.cursor_stack.is_empty() {
                             self.cursor_stack = out;
                         } else {
                             self.cursor_stack.count += out.count;
                         }
-                        crate::craft::consume_grid(
+                        vc_gameplay::craft::consume_grid(
                             &mut self.craft_grid[..size * size],
                         );
                         self.play_event("block.wood.dig", None, 0.8);
@@ -1769,7 +1769,7 @@ impl GameApp {
                 };
                 if slot == SlotRef::FurnaceFuel
                     && !self.cursor_stack.is_empty()
-                    && crate::furnace::fuel_ticks(self.cursor_stack.block) == 0
+                    && vc_gameplay::furnace::fuel_ticks(self.cursor_stack.block) == 0
                 {
                     return; // vanilla: only burnable items in the fuel slot
                 }
@@ -1811,15 +1811,15 @@ impl GameApp {
                     if !right || f.output.count == 1 {
                         if self.cursor_stack.is_empty() {
                             self.cursor_stack = f.output;
-                            f.output = crate::inventory::ItemStack::EMPTY;
+                            f.output = vc_inventory::inventory::ItemStack::EMPTY;
                         } else if self.cursor_stack.block == f.output.block {
                             let room =
-                                crate::inventory::STACK_MAX - self.cursor_stack.count;
+                                vc_inventory::inventory::STACK_MAX - self.cursor_stack.count;
                             let take = room.min(f.output.count);
                             self.cursor_stack.count += take;
                             f.output.count -= take;
                             if f.output.count == 0 {
-                                f.output = crate::inventory::ItemStack::EMPTY;
+                                f.output = vc_inventory::inventory::ItemStack::EMPTY;
                             }
                         }
                     } else {
@@ -1848,7 +1848,7 @@ impl GameApp {
                 };
                 // vanilla: only fuel items in the fuel slot
                 if !self.cursor_stack.is_empty()
-                    && !crate::brewing::is_fuel(self.cursor_stack.block)
+                    && !vc_gameplay::brewing::is_fuel(self.cursor_stack.block)
                 {
                     return;
                 }
@@ -1934,7 +1934,7 @@ impl GameApp {
                 if e.lapis.count >= cost {
                     e.lapis.count -= cost;
                     if e.lapis.count == 0 {
-                        e.lapis = crate::inventory::ItemStack::EMPTY;
+                        e.lapis = vc_inventory::inventory::ItemStack::EMPTY;
                     }
                 }
                 self.player.spend_levels(cost as i32);
@@ -1946,11 +1946,11 @@ impl GameApp {
                     Some([pos[0] as f32 + 0.5, pos[1] as f32 + 0.5, pos[2] as f32 + 0.5]),
                     1.0,
                 );
-                let def = crate::enchanting::enchant_def(before.ench);
-                crate::render::report_boot_log(&format!(
+                let def = vc_gameplay::enchanting::enchant_def(before.ench);
+                vc_render::render::report_boot_log(&format!(
                     "e2e: enchanted {} {} (lvl {}) cost {cost} lvl + {cost} lapis → xp lvl {}",
                     def.name,
-                    crate::enchanting::roman(before.ench_level),
+                    vc_gameplay::enchanting::roman(before.ench_level),
                     before.level,
                     self.player.xp_level
                 ));
@@ -1968,7 +1968,7 @@ impl GameApp {
                     .sim
                     .villagers
                     .by_id(villager)
-                    .and_then(|v| crate::villagers::trades(v.profession).get(i).copied());
+                    .and_then(|v| vc_gameplay::villagers::trades(v.profession).get(i).copied());
                 let (Some(vpos), Some(tr)) = (vpos, tr) else {
                     return;
                 };
@@ -1990,7 +1990,7 @@ impl GameApp {
                         Some([vpos[0], vpos[1] + 0.9, vpos[2]]),
                         1.0,
                     );
-                    crate::render::report_boot_log(&format!(
+                    vc_render::render::report_boot_log(&format!(
                         "e2e: traded {}x {} for {}x {} (total {})",
                         give_n,
                         name(give),
@@ -2024,8 +2024,8 @@ impl GameApp {
 
     /// owned snapshot of everything the container screen renders (§27) —
     /// pure data, built fresh every UI rebuild
-    fn container_view(&self) -> crate::ui::ContainerView {
-        use crate::ui::{ContainerKind, ContainerView};
+    fn container_view(&self) -> vc_render::ui::ContainerView {
+        use vc_render::ui::{ContainerKind, ContainerView};
         let (kind, furnace, brewing, enchant, trade) = match self.container {
             Some(Container::Inventory) => (ContainerKind::Inventory, None, None, None, None),
             Some(Container::Crafting { .. }) => (ContainerKind::Crafting, None, None, None, None),
@@ -2043,7 +2043,7 @@ impl GameApp {
                 } else {
                     0.0
                 };
-                let cook = f.cook_left as f32 / crate::furnace::COOK_TICKS as f32;
+                let cook = f.cook_left as f32 / vc_gameplay::furnace::COOK_TICKS as f32;
                 (
                     ContainerKind::Furnace,
                     Some((f.input, f.fuel, f.output, burn, cook)),
@@ -2062,7 +2062,7 @@ impl GameApp {
                     .cloned()
                     .unwrap_or_default();
                 let fuel_frac = b.fuel_charges as f32
-                    / crate::brewing::FUEL_OPERATIONS as f32;
+                    / vc_gameplay::brewing::FUEL_OPERATIONS as f32;
                 let brew_frac = b.progress();
                 (
                     ContainerKind::Brewing,
@@ -2096,13 +2096,13 @@ impl GameApp {
                     .by_id(villager)
                     .map(|v| {
                         let prof =
-                            crate::villagers::PROFESSIONS[v.profession as usize % crate::villagers::PROFESSIONS.len()];
-                        let list: Vec<(crate::inventory::ItemStack, crate::inventory::ItemStack, bool)> =
-                            crate::villagers::trades(v.profession)
+                            vc_gameplay::villagers::PROFESSIONS[v.profession as usize % vc_gameplay::villagers::PROFESSIONS.len()];
+                        let list: Vec<(vc_inventory::inventory::ItemStack, vc_inventory::inventory::ItemStack, bool)> =
+                            vc_gameplay::villagers::trades(v.profession)
                                 .iter()
                                 .map(|t| {
-                                    let give = crate::inventory::ItemStack::new(t.give.0, t.give.1);
-                                    let get = crate::inventory::ItemStack::new(t.get.0, t.get.1);
+                                    let give = vc_inventory::inventory::ItemStack::new(t.give.0, t.give.1);
+                                    let get = vc_inventory::inventory::ItemStack::new(t.get.0, t.get.1);
                                     let afford = self.player.inv.count_of(t.give.0) >= t.give.1 as u32;
                                     (give, get, afford)
                                 })
@@ -2121,10 +2121,10 @@ impl GameApp {
             None => (ContainerKind::Inventory, None, None, None, None),
         };
         let size = self.craft_grid_size();
-        let grid: Vec<crate::inventory::ItemStack> =
+        let grid: Vec<vc_inventory::inventory::ItemStack> =
             self.craft_grid.iter().take(size * size).copied().collect();
         let craft_out =
-            crate::craft::match_grid(&grid, size).unwrap_or(crate::inventory::ItemStack::EMPTY);
+            vc_gameplay::craft::match_grid(&grid, size).unwrap_or(vc_inventory::inventory::ItemStack::EMPTY);
         ContainerView {
             kind,
             inv: self.player.inv.slots.clone(),
@@ -2161,7 +2161,7 @@ impl GameApp {
         // §27/§29: container contents spill + entity cleanup
         self.drop_container_contents([x, y, z], b);
         // §29: mining ores grants XP (vanilla amounts, fixed midpoint)
-        let ore_xp = crate::enchanting::ore_xp(b);
+        let ore_xp = vc_gameplay::enchanting::ore_xp(b);
         if ore_xp > 0 {
             let gained = self.player.add_xp(ore_xp);
             if gained > 0 {
@@ -2170,7 +2170,7 @@ impl GameApp {
         }
         // §21: the dig event, same as the interactive path
         self.play_event(
-            crate::sounds::family_event(crate::blocks::def(b).sound, true),
+            vc_audio::sounds::family_event(vc_blocks::blocks::def(b).sound, true),
             Some([x as f32 + 0.5, y as f32 + 0.5, z as f32 + 0.5]),
             1.0,
         );
@@ -2210,7 +2210,7 @@ impl GameApp {
 
     /// E2E hook: place a block / water source / redstone component.
     fn test_place(&mut self, block: u8, x: i32, y: i32, z: i32) {
-        use crate::blocks::*;
+        use vc_blocks::blocks::*;
         let state = match block {
             WATER => water_state(0),
             _ => default_state(block),
@@ -2247,7 +2247,7 @@ impl GameApp {
         self.light.pump(&mut self.world, 8_000);
         for (pos, mask) in self.light.take_changed() {
             self.world
-                .mark_sections_dirty(pos, mask, crate::world::CAUSE_LIGHT);
+                .mark_sections_dirty(pos, mask, vc_world::world::CAUSE_LIGHT);
         }
 
         // stream chunks (also during title/menus: the panorama keeps loading)
@@ -2389,7 +2389,7 @@ impl GameApp {
                     Some("toggle") => {
                         let p = coords();
                         if p.len() == 3 {
-                            crate::redstone::toggle_lever(
+                            vc_sim::redstone::toggle_lever(
                                 &mut self.world,
                                 &mut self.sim.sched,
                                 p[0],
@@ -2412,24 +2412,24 @@ impl GameApp {
                         match parts.get(1).copied() {
                             Some("inventory") => {
                                 self.open_container(Container::Inventory);
-                                crate::render::report_boot_log("e2e: inventory screen open");
+                                vc_render::render::report_boot_log("e2e: inventory screen open");
                             }
                             Some("crafting") => {
                                 self.test_place(CRAFTING_TABLE, pos[0], pos[1], pos[2]);
                                 self.open_container(Container::Crafting { pos });
-                                crate::render::report_boot_log("e2e: crafting screen open");
+                                vc_render::render::report_boot_log("e2e: crafting screen open");
                             }
                             Some("furnace") => {
                                 self.test_place(FURNACE, pos[0], pos[1], pos[2]);
                                 self.sim.furnaces.map.entry(pos).or_default();
                                 self.open_container(Container::Furnace { pos });
-                                crate::render::report_boot_log("e2e: furnace screen open");
+                                vc_render::render::report_boot_log("e2e: furnace screen open");
                             }
                             Some("brewing") => {
                                 self.test_place(BREWING_STAND, pos[0], pos[1], pos[2]);
                                 self.sim.brewing.map.entry(pos).or_default();
                                 self.open_container(Container::Brewing { pos });
-                                crate::render::report_boot_log("e2e: brewing screen open");
+                                vc_render::render::report_boot_log("e2e: brewing screen open");
                             }
                             Some("enchant") => {
                                 // place the table + the vanilla 15-bookshelf
@@ -2454,7 +2454,7 @@ impl GameApp {
                                     (e.power, e.options.iter().map(|o| o.level).collect::<Vec<_>>())
                                 };
                                 self.open_container(Container::Enchant { pos });
-                                crate::render::report_boot_log(&format!(
+                                vc_render::render::report_boot_log(&format!(
                                     "e2e: enchant screen open (power {}/15, offers {:?})",
                                     power, offers
                                 ));
@@ -2468,20 +2468,20 @@ impl GameApp {
                                 let n_ticks: i32 = parts
                                     .get(2)
                                     .and_then(|s| s.parse().ok())
-                                    .unwrap_or(crate::brewing::BREW_TICKS);
+                                    .unwrap_or(vc_gameplay::brewing::BREW_TICKS);
                                 self.test_place(BREWING_STAND, pos[0], pos[1], pos[2]);
                                 let entry = self.sim.brewing.map.entry(pos).or_default();
-                                use crate::inventory::Inventory;
+                                use vc_inventory::inventory::Inventory;
                                 // bottles through slot_click semantics
                                 for i in 0..3 {
                                     let mut slot = entry.bottles[i];
                                     let mut cursor =
-                                        crate::inventory::ItemStack::new(POTION_WATER, 1);
+                                        vc_inventory::inventory::ItemStack::new(POTION_WATER, 1);
                                     Inventory::slot_click(&mut slot, &mut cursor, false);
                                     entry.bottles[i] = slot;
                                 }
-                                entry.ingredient = crate::inventory::ItemStack::new(MUSHROOM_RED, 1);
-                                entry.fuel = crate::inventory::ItemStack::new(NETHERRACK, 1);
+                                entry.ingredient = vc_inventory::inventory::ItemStack::new(MUSHROOM_RED, 1);
+                                entry.fuel = vc_inventory::inventory::ItemStack::new(NETHERRACK, 1);
                                 drop(entry);
                                 // advance the sim deterministically
                                 for _ in 0..n_ticks {
@@ -2490,7 +2490,7 @@ impl GameApp {
                                         &mut self.light,
                                     );
                                 }
-                                let describe = |s: &crate::inventory::ItemStack| {
+                                let describe = |s: &vc_inventory::inventory::ItemStack| {
                                     if s.is_empty() {
                                         "-".to_string()
                                     } else {
@@ -2504,7 +2504,7 @@ impl GameApp {
                                     .get(&pos)
                                     .cloned()
                                     .unwrap_or_default();
-                                crate::render::report_boot_log(&format!(
+                                vc_render::render::report_boot_log(&format!(
                                     "e2e: brew {}t -> bottles [{}, {}, {}] brewed={} charges={}",
                                     n_ticks,
                                     describe(&b.bottles[0]),
@@ -2558,7 +2558,7 @@ impl GameApp {
                         let n: u8 = parts.get(2).and_then(|s| s.parse().ok()).unwrap_or(1);
                         if let Some(b) = b {
                             let left = self.player.inv.add(b, n);
-                            crate::render::report_boot_log(&format!(
+                            vc_render::render::report_boot_log(&format!(
                                 "e2e: gave {n} x {} (leftover {left})",
                                 name(b)
                             ));
@@ -2576,11 +2576,11 @@ impl GameApp {
                         if gained > 0 {
                             self.play_event("entity.player.levelup", None, 1.0);
                         }
-                        crate::render::report_boot_log(&format!(
+                        vc_render::render::report_boot_log(&format!(
                             "e2e: +{pts} xp -> level {} (+{}/{})",
                             self.player.xp_level,
                             self.player.xp_points,
-                            crate::enchanting::xp_to_next(self.player.xp_level)
+                            vc_gameplay::enchanting::xp_to_next(self.player.xp_level)
                         ));
                         self.ui.dirty = true;
                     }
@@ -2613,13 +2613,13 @@ impl GameApp {
                         let seed = self.world.seed;
                         let e = self.sim.enchants.map.entry(pos).or_default();
                         e.reroll(&self.world, pos, seed);
-                        e.item = crate::inventory::ItemStack::new(ENCHANTED_BOOK, 1);
-                        e.lapis = crate::inventory::ItemStack::new(LAPIS_ORE, 3);
+                        e.item = vc_inventory::inventory::ItemStack::new(ENCHANTED_BOOK, 1);
+                        e.lapis = vc_inventory::inventory::ItemStack::new(LAPIS_ORE, 3);
                         // make sure the player can pay (vanilla: needs the
                         // levels — grant enough for the cost)
                         let cost = e.options.get(row).map(|o| o.cost as i32).unwrap_or(0);
                         while self.player.xp_level < cost {
-                            self.player.add_xp(crate::enchanting::xp_to_next(self.player.xp_level));
+                            self.player.add_xp(vc_gameplay::enchanting::xp_to_next(self.player.xp_level));
                         }
                         let before = e.options[row];
                         let level_before = self.player.xp_level;
@@ -2645,31 +2645,31 @@ impl GameApp {
                             if e.lapis.count >= cost {
                                 e.lapis.count -= cost;
                                 if e.lapis.count == 0 {
-                                    e.lapis = crate::inventory::ItemStack::EMPTY;
+                                    e.lapis = vc_inventory::inventory::ItemStack::EMPTY;
                                 }
                             }
                             self.player.spend_levels(cost as i32);
                             self.sim.enchants.total_enchanted += 1;
                             e.reroll(&self.world, pos, seed);
-                            let def = crate::enchanting::enchant_def(before.ench);
-                            crate::render::report_boot_log(&format!(
+                            let def = vc_gameplay::enchanting::enchant_def(before.ench);
+                            vc_render::render::report_boot_log(&format!(
                                 "e2e: enchanted {} {} (row lvl {}) cost {cost} lvl + {cost} lapis, xp {} -> {}, book ench={}",
                                 def.name,
-                                crate::enchanting::roman(before.ench_level),
+                                vc_gameplay::enchanting::roman(before.ench_level),
                                 before.level,
                                 level_before,
                                 self.player.xp_level,
                                 self.sim.enchants.map[&pos].item.ench
                             ));
                         } else {
-                            crate::render::report_boot_log("e2e: enchant offer not affordable");
+                            vc_render::render::report_boot_log("e2e: enchant offer not affordable");
                         }
                     }
                     Some("spawn") => {
                         // spawn:villager[:profession] — E2E: a villager near
                         // the player (auto-spawn at villages is separate)
                         let prof = parts.get(1).copied().and_then(|p| {
-                            crate::villagers::PROFESSIONS
+                            vc_gameplay::villagers::PROFESSIONS
                                 .iter()
                                 .position(|n| *n == p)
                                 .map(|i| i as u8)
@@ -2683,16 +2683,16 @@ impl GameApp {
                         ) {
                             Some(id) => {
                                 let v = self.sim.villagers.by_id(id).unwrap();
-                                crate::render::report_boot_log(&format!(
+                                vc_render::render::report_boot_log(&format!(
                                     "e2e: spawned villager #{id} {} at ({:.0},{:.0},{:.0})",
-                                    crate::villagers::PROFESSIONS[v.profession as usize],
+                                    vc_gameplay::villagers::PROFESSIONS[v.profession as usize],
                                     v.pos[0],
                                     v.pos[1],
                                     v.pos[2]
                                 ));
                             }
                             None => {
-                                crate::render::report_boot_log("e2e: villager cap reached");
+                                vc_render::render::report_boot_log("e2e: villager cap reached");
                             }
                         }
                     }
@@ -2717,7 +2717,7 @@ impl GameApp {
                                 Some(2), // Cleric
                             )
                             .expect("villager cap");
-                        let tr = crate::villagers::trades(2)[idx.min(1)];
+                        let tr = vc_gameplay::villagers::trades(2)[idx.min(1)];
                         // grant the payment through the real add path
                         self.player.inv.add(tr.give.0, tr.give.1);
                         self.open_container(Container::Trade { villager: id });
@@ -2734,14 +2734,14 @@ impl GameApp {
                             }
                             self.sim.villagers.trades_done += 1;
                             self.play_event("entity.villager.trade", None, 1.0);
-                            crate::render::report_boot_log(&format!(
+                            vc_render::render::report_boot_log(&format!(
                                 "e2e: trade flow done - inv has {}x {} (trades {})",
                                 self.player.inv.count_of(tr.get.0),
                                 name(tr.get.0),
                                 self.sim.villagers.trades_done
                             ));
                         } else {
-                            crate::render::report_boot_log("e2e: trade payment missing");
+                            vc_render::render::report_boot_log("e2e: trade payment missing");
                         }
                     }
                     Some("fill") => {
@@ -2753,12 +2753,12 @@ impl GameApp {
                         if empties > 0 {
                             self.player.inv.consume(POTION_EMPTY, empties as u8);
                             let left = self.player.inv.add(POTION_WATER, empties as u8);
-                            crate::render::report_boot_log(&format!(
+                            vc_render::render::report_boot_log(&format!(
                                 "e2e: filled {empties} bottles (leftover {left})"
                             ));
                             self.ui.dirty = true;
                         } else {
-                            crate::render::report_boot_log("e2e: no glass bottles to fill");
+                            vc_render::render::report_boot_log("e2e: no glass bottles to fill");
                         }
                     }
                     Some("drink") => {
@@ -2773,17 +2773,17 @@ impl GameApp {
                             _ => None,
                         };
                         match b {
-                            None => crate::render::report_boot_log(
+                            None => vc_render::render::report_boot_log(
                                 "e2e: drink:<potion_water|potion_awkward|potion_mundane|potion_healing|potion_healing_2>",
                             ),
                             Some(b) if self.player.inv.consume(b, 1) => {
                                 let before = self.player.health;
-                                if let Some(h) = crate::brewing::potion_heal(b) {
+                                if let Some(h) = vc_gameplay::brewing::potion_heal(b) {
                                     self.player.heal(h);
                                 }
                                 self.player.inv.add(POTION_EMPTY, 1);
                                 self.play_event("entity.generic.drink", None, 0.9);
-                                crate::render::report_boot_log(&format!(
+                                vc_render::render::report_boot_log(&format!(
                                     "e2e: drank {} hp {:.1} -> {:.1}",
                                     name(b),
                                     before,
@@ -2791,7 +2791,7 @@ impl GameApp {
                                 ));
                                 self.ui.dirty = true;
                             }
-                            Some(_) => crate::render::report_boot_log("e2e: no such potion"),
+                            Some(_) => vc_render::render::report_boot_log("e2e: no such potion"),
                         }
                     }
                     Some("craft") => {
@@ -2829,7 +2829,7 @@ impl GameApp {
                         }
                         // move one item into each grid cell through the REAL
                         // slot_click semantics (cursor round-trip per cell)
-                        use crate::inventory::Inventory;
+                        use vc_inventory::inventory::Inventory;
                         for &c in cells {
                             if let Some(i) = self
                                 .player
@@ -2838,26 +2838,26 @@ impl GameApp {
                                 .iter()
                                 .position(|s| s.block == ing && s.count > 0)
                             {
-                                self.cursor_stack = crate::inventory::ItemStack::new(ing, 1);
+                                self.cursor_stack = vc_inventory::inventory::ItemStack::new(ing, 1);
                                 self.player.inv.slots[i].count -= 1;
                                 if self.player.inv.slots[i].count == 0 {
-                                    self.player.inv.slots[i] = crate::inventory::ItemStack::EMPTY;
+                                    self.player.inv.slots[i] = vc_inventory::inventory::ItemStack::EMPTY;
                                 }
                                 let mut grid = self.craft_grid[c];
                                 Inventory::slot_click(&mut grid, &mut self.cursor_stack, false);
                                 self.craft_grid[c] = grid;
                             }
                         }
-                        self.cursor_stack = crate::inventory::ItemStack::EMPTY;
+                        self.cursor_stack = vc_inventory::inventory::ItemStack::EMPTY;
                         // match + consume through the real recipe engine,
                         // land the result in the inventory (the CraftOut
                         // click path — verified separately by cclick tests)
                         let size = self.craft_grid_size();
-                        let grid: Vec<crate::inventory::ItemStack> =
+                        let grid: Vec<vc_inventory::inventory::ItemStack> =
                             self.craft_grid.iter().take(size * size).copied().collect();
-                        let msg = match crate::craft::match_grid(&grid, size) {
+                        let msg = match vc_gameplay::craft::match_grid(&grid, size) {
                             Some(out) => {
-                                crate::craft::consume_grid(&mut self.craft_grid[..size * size]);
+                                vc_gameplay::craft::consume_grid(&mut self.craft_grid[..size * size]);
                                 let left = self.player.inv.add(out.block, out.count);
                                 format!(
                                     "e2e: crafted {} x {} (leftover {left})",
@@ -2867,7 +2867,7 @@ impl GameApp {
                             }
                             None => "e2e: craft FAILED — no recipe match".to_string(),
                         };
-                        crate::render::report_boot_log(&msg);
+                        vc_render::render::report_boot_log(&msg);
                         self.ui.dirty = true;
                     }
                     Some("smelt") => {
@@ -2885,9 +2885,9 @@ impl GameApp {
                             ]
                         };
                         self.test_place(FURNACE, pos[0], pos[1], pos[2]);
-                        let mut f = crate::furnace::FurnaceState::default();
-                        f.input = crate::inventory::ItemStack::new(SAND, 2);
-                        f.fuel = crate::inventory::ItemStack::new(PLANKS, 2);
+                        let mut f = vc_gameplay::furnace::FurnaceState::default();
+                        f.input = vc_inventory::inventory::ItemStack::new(SAND, 2);
+                        f.fuel = vc_inventory::inventory::ItemStack::new(PLANKS, 2);
                         self.sim.furnaces.map.insert(pos, f);
                         // fast-forward: 260 ticks = ignite + 200 cook + slack
                         let mut lit = false;
@@ -2905,13 +2905,13 @@ impl GameApp {
                             .map(|f| (f.output, f.is_burning()))
                             .unwrap_or_default();
                         let state = self.world.get_state(pos[0], pos[1], pos[2]);
-                        crate::render::report_boot_log(&format!(
+                        vc_render::render::report_boot_log(&format!(
                             "e2e: smelt output={} x {} burning={} lit_swapped={} state={}",
                             out.0.count,
                             name(out.0.block),
                             out.1,
                             lit,
-                            state == crate::blocks::FURNACE_LIT,
+                            state == vc_blocks::blocks::FURNACE_LIT,
                         ));
                         self.edits += 1;
                         self.ui.dirty = true;
@@ -2923,7 +2923,7 @@ impl GameApp {
                         if let Some(v) = parts.get(1).and_then(|s| s.parse::<u8>().ok()) {
                             self.settings.shader = v;
                             self.after_settings_change();
-                            crate::render::report_boot_log(&format!(
+                            vc_render::render::report_boot_log(&format!(
                                 "e2e: shader mode {v} = {}",
                                 self.shader_mode_name(v)
                             ));
@@ -2937,12 +2937,12 @@ impl GameApp {
                         // Loading screen holds the player until the spawn
                         // chunk meshes, then returns to the game.
                         if let Some(v) = parts.get(1).and_then(|s| s.parse::<u8>().ok()) {
-                            let dim = crate::world::Dimension::from_u8(v);
+                            let dim = vc_world::world::Dimension::from_u8(v);
                             let changed = dim != self.world.dimension;
                             if changed {
                                 self.travel_to_dimension(dim);
                             }
-                            crate::render::report_boot_log(&format!(
+                            vc_render::render::report_boot_log(&format!(
                                 "e2e: dim {} ({}) changed={} traveling={}",
                                 dim.id(),
                                 dim.name(),
@@ -2969,7 +2969,7 @@ impl GameApp {
                         // nether needs a CAVERN floor (top_solid_y there is
                         // the bedrock roof). Travel keeps flying on until a
                         // spot exists so the player never spawns inside rock.
-                        let snap = if self.world.dimension == crate::world::Dimension::Nether {
+                        let snap = if self.world.dimension == vc_world::world::Dimension::Nether {
                             self.nether_floor_y(c, lx.min(15), lz.min(15))
                         } else {
                             let t = c.top_solid_y(lx.min(15), lz.min(15));
@@ -3022,7 +3022,7 @@ impl GameApp {
             for s in sounds {
                 // footsteps + water-entry: the registry's step/splash events
                 // carry their own volume + pitch ranges (§21)
-                let ev = crate::sounds::family_event(s.family, false);
+                let ev = vc_audio::sounds::family_event(s.family, false);
                 self.play_event(ev, None, 1.0);
             }
 
@@ -3056,7 +3056,7 @@ impl GameApp {
                         // §27/§29: container contents spill + entity cleanup
                         self.drop_container_contents(pos, broke);
                         // §29: mining ores grants XP (vanilla amounts)
-                        let ore_xp = crate::enchanting::ore_xp(broke);
+                        let ore_xp = vc_gameplay::enchanting::ore_xp(broke);
                         if ore_xp > 0 {
                             let gained = self.player.add_xp(ore_xp);
                             if gained > 0 {
@@ -3064,7 +3064,7 @@ impl GameApp {
                             }
                         }
                         self.play_event(
-                            crate::sounds::family_event(def(b).sound, true),
+                            vc_audio::sounds::family_event(def(b).sound, true),
                             Some([pos[0] as f32 + 0.5, pos[1] as f32 + 0.5, pos[2] as f32 + 0.5]),
                             1.0,
                         );
@@ -3094,7 +3094,7 @@ impl GameApp {
                 } else if let Some((tpos, tb, _)) = self.target {
                     // §25: right-click a lever toggles it (vanilla interaction)
                     if tb == LEVER {
-                        crate::redstone::toggle_lever(
+                        vc_sim::redstone::toggle_lever(
                             &mut self.world,
                             &mut self.sim.sched,
                             tpos[0],
@@ -3143,7 +3143,7 @@ impl GameApp {
                         held.count -= 1;
                         let empty = held.count == 0;
                         if empty {
-                            *held = crate::inventory::ItemStack::EMPTY;
+                            *held = vc_inventory::inventory::ItemStack::EMPTY;
                         }
                         let left = self.player.inv.add(POTION_WATER, 1);
                         if left > 0 {
@@ -3165,17 +3165,17 @@ impl GameApp {
                         // heals; water/awkward/mundane do nothing (vanilla);
                         // the glass bottle comes back
                         let b = self.player.held().block;
-                        let heal = crate::brewing::potion_heal(b);
+                        let heal = vc_gameplay::brewing::potion_heal(b);
                         let held = self.player.held_mut();
                         held.count -= 1;
                         let empty = held.count == 0;
                         if empty {
-                            *held = crate::inventory::ItemStack::EMPTY;
+                            *held = vc_inventory::inventory::ItemStack::EMPTY;
                         }
                         drop(held);
                         if let Some(h) = heal {
                             self.player.heal(h);
-                            crate::render::report_boot_log(&format!(
+                            vc_render::render::report_boot_log(&format!(
                                 "e2e: drank {} (+{h} hp → {})",
                                 name(b),
                                 self.player.health
@@ -3259,7 +3259,7 @@ impl GameApp {
                             // §24/§25: a new block notifies the sim
                             notify_sim(&self.world, &mut self.sim.sched, prev[0], prev[1], prev[2]);
                             self.play_event(
-                                crate::sounds::family_event(def(b).sound, true),
+                                vc_audio::sounds::family_event(def(b).sound, true),
                                 Some([
                                     prev[0] as f32 + 0.5,
                                     prev[1] as f32 + 0.5,
@@ -3271,7 +3271,7 @@ impl GameApp {
                             let held = self.player.held_mut();
                             held.count -= 1;
                             if held.count == 0 {
-                                *held = crate::inventory::ItemStack::EMPTY;
+                                *held = vc_inventory::inventory::ItemStack::EMPTY;
                             }
                             self.place_timer = 0.24;
                             self.edits += 1;
@@ -3295,7 +3295,7 @@ impl GameApp {
         // animated pack textures: atlas region updates only (§20 — no
         // geometry rebuilds when a texture frame changes)
         if !self.animations.is_empty() {
-            let updates = crate::textures::tick_animations(&mut self.animations, dt);
+            let updates = vc_render::textures::tick_animations(&mut self.animations, dt);
             for (tile, frame) in updates {
                 if let Some(a) = self
                     .animations
@@ -3363,34 +3363,34 @@ impl GameApp {
     #[cfg(not(target_arch = "wasm32"))]
     fn save_world(&mut self) {
         let dirty: Vec<ChunkPos> = self.world.save_dirty.drain().collect();
-        let entries: Vec<(ChunkPos, Arc<crate::chunk::Chunk>)> = dirty
+        let entries: Vec<(ChunkPos, Arc<vc_chunk::chunk::Chunk>)> = dirty
             .into_iter()
             .filter_map(|p| self.world.chunks.get(&p).map(|c| (p, Arc::clone(c))))
             .collect();
         let tick = ((self.time - self.load_start) * 20.0).max(0.0) as i64;
         if !entries.is_empty() {
-            let refs: Vec<(i32, i32, &crate::chunk::Chunk, Option<&Arc<crate::light::LightData>>)> =
+            let refs: Vec<(i32, i32, &vc_chunk::chunk::Chunk, Option<&Arc<vc_world::light::LightData>>)> =
                 entries
                     .iter()
                     .map(|(p, c)| (p.0, p.1, c.as_ref(), self.world.light.get(p)))
                     .collect();
-            if let Err(e) = crate::save::store_chunks(&self.world_dir, &refs, tick) {
-                crate::render::report_boot_log(&format!("autosave failed: {e}"));
+            if let Err(e) = vc_anvil::save::store_chunks(&self.world_dir, &refs, tick) {
+                vc_render::render::report_boot_log(&format!("autosave failed: {e}"));
             }
         }
-        let meta = crate::save::WorldMeta {
+        let meta = vc_anvil::save::WorldMeta {
             seed: self.world.seed,
             name: "VoxelCraft".into(),
             spawn: self.level_spawn,
-            player: Some(crate::save::PlayerMeta {
+            player: Some(vc_anvil::save::PlayerMeta {
                 pos: [self.player.pos.x as f64, self.player.pos.y as f64, self.player.pos.z as f64],
                 yaw: self.player.yaw,
                 pitch: self.player.pitch,
             }),
             game_time: tick,
         };
-        if let Err(e) = crate::save::write_level_dat(&self.world_dir, &meta) {
-            crate::render::report_boot_log(&format!("level.dat write failed: {e}"));
+        if let Err(e) = vc_anvil::save::write_level_dat(&self.world_dir, &meta) {
+            vc_render::render::report_boot_log(&format!("level.dat write failed: {e}"));
         }
     }
 
@@ -3408,7 +3408,7 @@ impl GameApp {
     /// * the inventory travels with the player (vanilla behavior)
     /// * native: the outgoing dimension's dirty chunks flush to its own
     ///   save dir first (overworld = world root, nether = DIM-1)
-    pub fn travel_to_dimension(&mut self, dim: crate::world::Dimension) {
+    pub fn travel_to_dimension(&mut self, dim: vc_world::world::Dimension) {
         if dim == self.world.dimension {
             return;
         }
@@ -3426,7 +3426,7 @@ impl GameApp {
         self.world = World::new_in_dimension(self.world.seed, dim);
         #[cfg(not(target_arch = "wasm32"))]
         {
-            self.world_dir = crate::save::dimension_dir(&self.save_root, dim);
+            self.world_dir = vc_anvil::save::dimension_dir(&self.save_root, dim);
         }
 
         // reset every dimension-local system
@@ -3434,20 +3434,20 @@ impl GameApp {
         self.section_meshes.clear();
         self.mesh_inflight.clear();
         self.gen_inflight.clear();
-        self.light = crate::light::LightEngine::new();
-        self.sim = crate::sim::Sim::new(self.world.seed ^ dim.seed_salt());
-        self.particles = crate::particles::ParticleSystem::new(self.world.seed ^ 0x7EED);
+        self.light = vc_world::light::LightEngine::new();
+        self.sim = vc_sim::sim::Sim::new(self.world.seed ^ dim.seed_salt());
+        self.particles = vc_particles::particles::ParticleSystem::new(self.world.seed ^ 0x7EED);
         self.particle_verts.clear();
         self.container = None;
         self.container_geom = None;
-        self.cursor_stack = crate::inventory::ItemStack::EMPTY;
-        self.craft_grid = [crate::inventory::ItemStack::EMPTY; 9];
+        self.cursor_stack = vc_inventory::inventory::ItemStack::EMPTY;
+        self.craft_grid = [vc_inventory::inventory::ItemStack::EMPTY; 9];
         self.target = None;
         self.break_timer = 0.0;
         self.place_timer = 0.0;
 
         // player: inventory persists, position rescales; y waits for the snap
-        let y = if dim == crate::world::Dimension::Nether { 90.0 } else { 120.0 };
+        let y = if dim == vc_world::world::Dimension::Nether { 90.0 } else { 120.0 };
         self.player.pos = Vec3::new(nx as f32 + 0.5, y, nz as f32 + 0.5);
         self.player.vel = Vec3::ZERO;
         self.player.flying = false;
@@ -3458,7 +3458,7 @@ impl GameApp {
         self.spawn_snapped = false;
         self.load_start = self.time;
         self.set_screen(Screen::Loading);
-        crate::render::report_boot_log(&format!(
+        vc_render::render::report_boot_log(&format!(
             "dimension travel: {} -> {} (coords {},{})",
             cur.id(),
             dim.id(),
@@ -3470,8 +3470,8 @@ impl GameApp {
     /// §28: nether floor search for the travel snap — a cavern cell with a
     /// solid floor and 2 blocks of headroom, nearest to the target height.
     /// (top_solid_y is wrong in the nether: the bedrock ROOF is the top.)
-    fn nether_floor_y(&self, chunk: &crate::chunk::Chunk, lx: usize, lz: usize) -> Option<i32> {
-        use crate::blocks::{is_solid, state_block};
+    fn nether_floor_y(&self, chunk: &vc_chunk::chunk::Chunk, lx: usize, lz: usize) -> Option<i32> {
+        use vc_blocks::blocks::{is_solid, state_block};
         let target = self.player.pos.y;
         let mut best: Option<i32> = None;
         let mut best_dist = f32::MAX;
@@ -3587,10 +3587,10 @@ impl GameApp {
                     .unwrap_or_default()
             )),
             ("modelStates", StatsVal::F(
-                crate::model::models().map(|m| m.by_state.len() as f32).unwrap_or(0.0)
+                vc_pack::model::models().map(|m| m.by_state.len() as f32).unwrap_or(0.0)
             )),
             ("packTextures", StatsVal::F(
-                crate::model::models().map(|m| m.tiles.len() as f32).unwrap_or(0.0)
+                vc_pack::model::models().map(|m| m.tiles.len() as f32).unwrap_or(0.0)
             )),
             ("animations", StatsVal::F(self.animations.len() as f32)),
             ("breakTimer", StatsVal::F(self.break_timer)),
@@ -3678,7 +3678,7 @@ impl GameApp {
             // absent replay on top. Sync disk read bounded by max_gen/frame.
             #[cfg(not(target_arch = "wasm32"))]
             if let Ok(Some((mut chunk, light))) =
-                crate::save::load_chunk(&self.world_dir, pos.0, pos.1)
+                vc_anvil::save::load_chunk(&self.world_dir, pos.0, pos.1)
             {
                 let inbound = self.world.take_pending(pos);
                 let edited = !inbound.is_empty();
@@ -3697,7 +3697,7 @@ impl GameApp {
                             self.world.mark_sections_dirty(
                                 lpos,
                                 lmask,
-                                crate::world::CAUSE_LIGHT,
+                                vc_world::world::CAUSE_LIGHT,
                             );
                         }
                     }
@@ -3830,7 +3830,7 @@ impl GameApp {
                 self.light.init_chunk(&mut self.world, pos);
                 for (lpos, lmask) in self.light.take_changed() {
                     self.world
-                        .mark_sections_dirty(lpos, lmask, crate::world::CAUSE_LIGHT);
+                        .mark_sections_dirty(lpos, lmask, vc_world::world::CAUSE_LIGHT);
                 }
                 // the new chunk changes border face culling in its 8
                 // neighbors — mark the sections whose y-bands touch the new
@@ -3838,7 +3838,7 @@ impl GameApp {
                 let bands = neighbor_geometry_bands(&self.world, pos);
                 for (npos, band) in bands {
                     self.world
-                        .mark_sections_dirty(npos, band, crate::world::CAUSE_GEOMETRY);
+                        .mark_sections_dirty(npos, band, vc_world::world::CAUSE_GEOMETRY);
                 }
             }
             JobResult::Mesh { pos, mask, sections, mesh } => {
@@ -3894,7 +3894,7 @@ impl GameApp {
         self.ui.crosshair();
         let toast = self.item_toast.as_ref().map(|(s, t)| (s.as_str(), (*t * 200.0).clamp(0.0, 220.0) as u8));
         self.ui.hotbar(
-            &self.player.inv.slots[..crate::inventory::INV_SLOTS.min(9)],
+            &self.player.inv.slots[..vc_inventory::inventory::INV_SLOTS.min(9)],
             self.player.selected,
             &self.atlas,
             toast,
@@ -4098,7 +4098,7 @@ impl GameApp {
         // time gate this spams "frame #1..#3" twice a second and makes
         // remounts impossible to distinguish from normal windows.
         if self.frames < 3 && self.time_since_load() < 2.0 {
-            crate::render::report_boot_log(&format!(
+            vc_render::render::report_boot_log(&format!(
                 "draw() frame #{}: chunks_gpu={}, screen={:?}",
                 self.frames + 1,
                 self.renderer.chunks.len(),
@@ -4108,7 +4108,7 @@ impl GameApp {
         // day/night state — §28: the Nether has no sky: constant dim
         // ambient (vanilla's flat nether light), thick dark-red fog close
         // in, no sun/shadows/clouds (the skyless flag drops the sky pass)
-        let nether = self.world.dimension == crate::world::Dimension::Nether;
+        let nether = self.world.dimension == vc_world::world::Dimension::Nether;
         let (sun_dir, day_light, fog) = if nether {
             (
                 Vec3::new(0.0, 1.0, 0.0), // cosmetic only — skyless
@@ -4234,7 +4234,7 @@ impl GameApp {
                 .items
                 .build_vertices(self.time, right, up, &mut self.particle_verts);
             // §27/§29 villagers: crossed-quad sprites, villager scale
-            crate::villagers::build_vertices(
+            vc_gameplay::villagers::build_vertices(
                 &self.sim.villagers.list,
                 self.time,
                 right,
@@ -4248,7 +4248,7 @@ impl GameApp {
             &sky,
             &mut self.ui,
             selection,
-            &crate::render::PostParams {
+            &vc_render::render::PostParams {
                 mode: self.settings.shader,
                 menu_blur,
                 // §28: the Nether has no sun — no shadow pass
@@ -4269,7 +4269,7 @@ impl GameApp {
             if self.screen == Screen::Game {
                 bs.seen += 1;
                 if bs.seen == bs.warmup + 1 {
-                    crate::render::report_boot_log("benchmark: warmup done, measuring");
+                    vc_render::render::report_boot_log("benchmark: warmup done, measuring");
                 }
                 if bs.seen >= bs.warmup + bs.frames {
                     let (stats, report, mode) = {
@@ -4348,14 +4348,14 @@ fn fence_state_for(world: &World, wx: i32, wy: i32, wz: i32) -> Option<u16> {
 
 /// block-change notification for the whole sim (fluids + gravity +
 /// redstone) — the §25 ordering backbone entry point
-fn notify_sim(world: &World, sched: &mut crate::ticks::TickScheduler, x: i32, y: i32, z: i32) {
-    crate::fluids::on_block_changed(sched, world, x, y, z);
-    crate::redstone::on_block_changed(sched, world, x, y, z);
+fn notify_sim(world: &World, sched: &mut vc_sim::ticks::TickScheduler, x: i32, y: i32, z: i32) {
+    vc_sim::fluids::on_block_changed(sched, world, x, y, z);
+    vc_sim::redstone::on_block_changed(sched, world, x, y, z);
 }
 
 /// biome + (sky, block) light levels at a world position — for baking
 /// particle tint/brightness at spawn (Phase 5)
-fn light_at(world: &World, light: &crate::light::LightEngine, wx: i32, wy: i32, wz: i32) -> (u8, u8, u8) {
+fn light_at(world: &World, light: &vc_world::light::LightEngine, wx: i32, wy: i32, wz: i32) -> (u8, u8, u8) {
     let _ = light; // engine state lives in world.light (LightData map)
     let cx = wx.div_euclid(16);
     let cz = wz.div_euclid(16);

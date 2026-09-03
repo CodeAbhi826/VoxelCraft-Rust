@@ -9,9 +9,9 @@
 //! (particles live ~1 s; day/night drift over a particle lifetime is
 //! imperceptible — vanilla bakes per frame, we document the difference).
 
-use crate::blocks::*;
-use crate::rng::Rng;
-use crate::tint;
+use vc_blocks::blocks::*;
+use vc_rng::rng::Rng;
+use vc_blocks::tint;
 
 /// pool cap — 64/break * 64 simultaneous breaks worst case; E2E asserts
 /// the cap is respected
@@ -183,7 +183,7 @@ impl ParticleSystem {
     /// advance the fixed 20 Hz sim by `dt` seconds of wall time. Collisions
     /// against the world's solid blocks: per-axis sweep, vanilla's "land →
     /// vy = 0, horizontal slip 0.7", buoyancy in water.
-    pub fn update(&mut self, dt: f32, world: &crate::world::World) {
+    pub fn update(&mut self, dt: f32, world: &vc_world::world::World) {
         self.acc += dt.min(0.25); // clamp so a hitch can't teleport particles
         let step = 1.0 / TICK_HZ;
         while self.acc >= step {
@@ -192,7 +192,7 @@ impl ParticleSystem {
         }
     }
 
-    fn tick(&mut self, world: &crate::world::World) {
+    fn tick(&mut self, world: &vc_world::world::World) {
         for p in self.parts.iter_mut() {
             p.life -= 1;
             if p.life <= 0 {
@@ -286,7 +286,7 @@ fn particle_light(sky: u8, blk: u8) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::World;
+    use vc_world::world::World;
 
     fn flat_world() -> World {
         // hand-built: solid floor at y<=64, open sky above (deterministic,
@@ -294,7 +294,7 @@ mod tests {
         let mut w = World::new(7);
         for dz in -1i32..=1 {
             for dx in -1i32..=1 {
-                let mut c = crate::chunk::Chunk::empty();
+                let mut c = vc_chunk::chunk::Chunk::empty();
                 for y in 0..=64i32 {
                     for lz in 0..16usize {
                         for lx in 0..16usize {

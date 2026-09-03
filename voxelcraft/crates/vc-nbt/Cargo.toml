@@ -1,0 +1,9 @@
+[package]
+name = "vc-nbt"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+description = "Minecraft 1.16.5 NBT codec (named binary tags, read/write)"
+
+[dependencies]
+serde = { workspace = true }

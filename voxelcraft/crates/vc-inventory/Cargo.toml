@@ -1,0 +1,9 @@
+[package]
+name = "vc-inventory"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+description = "Items, ItemStacks, slots and container logic"
+
+[dependencies]
+vc-blocks = { workspace = true }

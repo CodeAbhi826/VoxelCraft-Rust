@@ -1,11 +1,11 @@
 //! World: chunk map, block access, copy-on-write edits (thread-safe meshing),
 //! pending cross-chunk decoration edits.
 
-use crate::blocks::*;
-use crate::chunk::Chunk;
+use vc_blocks::blocks::*;
+use vc_chunk::chunk::Chunk;
 use crate::gen::TerrainGen;
 use crate::light::LightData;
-use crate::rng::Rng;
+use vc_rng::rng::Rng;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
@@ -361,13 +361,13 @@ impl World {
                 let sy = (wy / 16) as usize;
                 self.mark_sections_dirty(pos, 1 << sy, CAUSE_GEOMETRY);
             } else {
-                let idx = crate::chunk::idx(lx, wy as usize, lz) as u16;
+                let idx = vc_chunk::chunk::idx(lx, wy as usize, lz) as u16;
                 self.pending.entry(pos).or_default().push((idx, id));
             }
         } else {
             let lx = (wx - cx * 16) as usize;
             let lz = (wz - cz * 16) as usize;
-            let idx = crate::chunk::idx(lx, wy as usize, lz) as u16;
+            let idx = vc_chunk::chunk::idx(lx, wy as usize, lz) as u16;
             self.pending.entry(pos).or_default().push((idx, id));
         }
     }
@@ -607,7 +607,7 @@ mod dimension_tests {
         let (ca, _) = a.gen.generate_chunk(0, 0, Vec::new());
         let (cb, _) = b.gen.generate_chunk(0, 0, Vec::new());
         let mut diff = 0usize;
-        for i in 0..crate::chunk::CHUNK_LEN {
+        for i in 0..vc_chunk::chunk::CHUNK_LEN {
             if ca.get_idx(i) != cb.get_idx(i) {
                 diff += 1;
             }
@@ -652,7 +652,7 @@ mod dimension_tests {
         let legacy = TerrainGen::new(777);
         let (a, _) = w.gen.generate_chunk(2, -3, Vec::new());
         let (b, _) = legacy.generate_chunk(2, -3, Vec::new());
-        for i in 0..crate::chunk::CHUNK_LEN {
+        for i in 0..vc_chunk::chunk::CHUNK_LEN {
             assert_eq!(a.get_idx(i), b.get_idx(i));
         }
     }

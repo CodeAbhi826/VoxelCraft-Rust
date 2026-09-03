@@ -175,7 +175,7 @@ impl Section {
     pub fn has_emissive(&self) -> bool {
         self.palette
             .iter()
-            .any(|&s| crate::blocks::emissive(crate::blocks::state_block(s)) > 0)
+            .any(|&s| vc_blocks::blocks::emissive(vc_blocks::blocks::state_block(s)) > 0)
     }
 
     /// §12 light-region pruning: is every palette entry fully opaque? Skips
@@ -183,7 +183,7 @@ impl Section {
     pub fn all_opaque(&self) -> bool {
         self.palette
             .iter()
-            .all(|&s| crate::blocks::is_opaque(crate::blocks::state_block(s)))
+            .all(|&s| vc_blocks::blocks::is_opaque(vc_blocks::blocks::state_block(s)))
     }
 
     /// memory footprint in bytes (debug/F3 stats)
@@ -371,7 +371,7 @@ impl Chunk {
     /// generator-side guarantee (villages once placed furnaces as slabs).
     #[inline]
     pub fn set(&mut self, x: usize, y: usize, z: usize, id: u8) {
-        self.set_state(x, y, z, crate::blocks::default_state(id));
+        self.set_state(x, y, z, vc_blocks::blocks::default_state(id));
     }
 
     /// store a raw BLOCK-STATE id (property variants, e.g. log[axis=x])
@@ -417,7 +417,7 @@ impl Chunk {
                     continue;
                 }
                 for y in (0..16usize).rev() {
-                    if crate::blocks::is_solid(crate::blocks::state_block(s.get(x, y, z))) {
+                    if vc_blocks::blocks::is_solid(vc_blocks::blocks::state_block(s.get(x, y, z))) {
                         return (sy * 16 + y) as i32;
                     }
                 }

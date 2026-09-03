@@ -1,0 +1,14 @@
+[package]
+name = "vc-sim"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+description = "Deterministic 20 Hz simulation: fluids, redstone, entities, block entities"
+
+[dependencies]
+vc-chunk = { workspace = true }
+vc-blocks = { workspace = true }
+vc-gameplay = { workspace = true }
+vc-particles = { workspace = true }
+vc-rng = { workspace = true }
+vc-world = { workspace = true }

@@ -1,87 +1,52 @@
-[package]
-name = "voxelcraft"
-version = "0.1.0"
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+default-members = ["crates/voxelcraft"]
+
+[workspace.package]
+version = "0.3.0"
 edition = "2021"
-description = "High-performance Minecraft-1.16.5-style voxel engine in Rust + wgpu (native Vulkan/DX12/Metal + WebGPU/WASM)"
+repository = "https://github.com/CodeAbhi826/VoxelCraft-Rust"
 
-[lib]
-name = "voxelcraft"
-crate-type = ["rlib", "cdylib"]
+[workspace.dependencies]
+# internal libraries — separately consumable, each published as its own
+# release archive (NO all-in-one bundle)
+vc-nbt = { path = "crates/vc-nbt" }
+vc-blocks = { path = "crates/vc-blocks" }
+vc-rng = { path = "crates/vc-rng" }
+vc-chunk = { path = "crates/vc-chunk" }
+vc-pack = { path = "crates/vc-pack" }
+vc-inventory = { path = "crates/vc-inventory" }
+vc-world = { path = "crates/vc-world" }
+vc-mesh = { path = "crates/vc-mesh" }
+vc-particles = { path = "crates/vc-particles" }
+vc-gameplay = { path = "crates/vc-gameplay" }
+vc-sim = { path = "crates/vc-sim" }
+vc-anvil = { path = "crates/vc-anvil" }
+vc-render = { path = "crates/vc-render" }
+vc-audio = { path = "crates/vc-audio" }
 
-[[bin]]
-name = "voxelcraft"
-path = "src/main.rs"
-
-[[bin]]
-name = "vc_bench"
-path = "src/bin/vc_bench.rs"
-required-features = ["bench-bin"]
-
-[features]
-default = ["audio"]
-audio = ["dep:rodio"]
-# opt-in native-only benchmark binary (uses rayon + std::fs + env args;
-# not buildable for wasm32). Run: cargo run --release --features bench-bin --bin vc_bench
-bench-bin = []
-
-[dependencies]
-winit = "0.29"
-glam = "0.29"
-bytemuck = { version = "1", features = ["derive"] }
-pollster = "0.3"
+# shared external versions
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+bytemuck = { version = "1", features = ["derive"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
-# WGSL validation of shader-pack sources at RUNTIME (§34/§46: a broken
-# pack must be rejected before pipeline creation, not at boot on a GPU).
-# Same frontend wgpu 22 ships — also used by the shader unit tests.
+# WGSL validation of shader-pack sources at RUNTIME (§34/§46).
 naga = { version = "22", features = ["wgsl-in"] }
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 wgpu = "22"
-rodio = { version = "0.19", optional = true }
+winit = "0.29"
+glam = "0.29"
+pollster = "0.3"
 rayon = "1.10"
-# Anvil save/load: zlib (type 2, what vanilla 1.16.5 writes) + gzip (type 1)
-# region payloads. Default backend = pure-Rust miniz_oxide — wasm-safe too,
-# but the save system itself is native-only (browser saves need OPFS later).
 flate2 = "1"
-
-[dev-dependencies]
-# naga moved to a regular dependency (runtime shader-pack validation);
-# the dev-dependency block keeps no duplicate.
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-wgpu = { version = "22", features = ["webgl"] }
-wasm-bindgen = "=0.2.127"
+rodio = "0.19"
+wasm-bindgen = { version = "=0.2.127" }
 wasm-bindgen-futures = "0.4"
 console_error_panic_hook = "0.1.7"
 js-sys = "0.3"
-web-sys = { version = "0.3", features = [
-    "Window",
-    "Document",
-    "Element",
-    "HtmlCanvasElement",
-    "HtmlElement",
-    "Navigator",
-    "Gpu",
-    "AudioContext",
-    "BaseAudioContext",
-    "AudioBuffer",
-    "AudioBufferSourceNode",
-    "AudioNode",
-    "AudioParam",
-    "GainNode",
-    "AudioDestinationNode",
-    "StereoPannerNode",
-    "Performance",
-    "console",
-    "Response",
-] }
+web-sys = "0.3"
 
 [profile.release]
+# keep the engine's release profile at the workspace root
 opt-level = 3
 lto = "thin"
-codegen-units = 4
-
-[profile.release.package."*"]
-opt-level = 3

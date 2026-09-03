@@ -25,8 +25,12 @@ source "$HOME/.cargo/env"
 ### 2. Run native (Windows / Linux / macOS)
 
 ```sh
-cargo run --release
+cargo run --release          # from the workspace root (this directory)
 ```
+
+The engine is a Cargo **workspace**: `crates/vc-*` are the 14 libraries,
+`crates/voxelcraft` is the application. Run everything from this root —
+`builtin-pack/` is resolved from the working directory.
 
 - Linux audio needs ALSA dev headers: `sudo apt install -y libasound2-dev` (or the equivalent on your distro).
 - macOS / Windows work out of the box (CoreAudio / WASAPI).
@@ -45,9 +49,10 @@ rustup target add wasm32-unknown-unknown
 cargo build --release --target wasm32-unknown-unknown --lib
 wasm-bindgen --version 0.2.127 --target web \
   --out-dir ./wasm-out target/wasm32-unknown-unknown/release/voxelcraft.wasm
+python3 patch-wasm-glue.py wasm-out/voxelcraft.js     # re-applies the CDP input hardening
 
 # any static file server works; example:
-cd wasm-out && python3 -m http.server 8080
+python3 -m http.server 8080
 # open http://localhost:8080/play.html
 ```
 
@@ -77,21 +82,22 @@ A matching `play.html` loader is included in this repo (`/play.html`) — it exp
 ## Project layout
 
 ```
-src/
-  lib.rs          module roots
-  blocks.rs       block registry: 18 types, tile mapping, sound families
-  chunk.rs        16×256×16 storage + heightmap
-  gen.rs          simplex 2D/3D noise, biomes, caves, trees (pure, thread-safe)
-  world.rs        chunk map + COW edits + cross-chunk decoration edits
-  mesh.rs         greedy mesher + skylight BFS + per-vertex AO
-  textures.rs     256×256 procedural atlas (grass/stone/wood/water/glass/...)
-  sounds.rs       synthesised 1.16.5-style sound bank + rodio/WebAudio backends
-  render.rs       wgpu device + 5 pipelines + WGSL (terrain/water/sky/ui/lines)
-  ui.rs           5×7 bitmap font, crosshair, hotbar, F3 overlay, pause/help
-  player.rs       physics, AABB voxel collision, DDA raycast, footstep logic
-  game.rs         GameApp: event handling + streaming work queue + day/night
-  main.rs         native entry (Windows / Linux / macOS)
-  wasm_entry.rs   WASM entry (WebGPU)
+crates/
+  vc-nbt/         NBT codec (all 13 tag types, round-trip safe)
+  vc-blocks/      block registry, BlockState ids, sound families, biome tint
+  vc-chunk/       16×256×16 storage, paletted sections, heightmaps
+  vc-rng/         deterministic seeded RNG
+  vc-pack/        resource-pack / blockstate+model JSON pipeline
+  vc-inventory/   items, ItemStacks, containers
+  vc-world/       chunk map + COW edits, terrain gen, light engine
+  vc-mesh/        greedy mesher + skylight BFS + per-vertex AO
+  vc-particles/   break/hit particle pool (vanilla physics)
+  vc-gameplay/    crafting, furnaces, brewing, enchanting, villagers
+  vc-sim/         20 Hz tick loop, fluids, redstone, item entities
+  vc-anvil/       vanilla 1.16.5 save/load (NBT + .mca regions)
+  vc-render/      wgpu renderer, atlas, FSR 1.0, shader packs, UI canvas
+  vc-audio/       synthesized sound bank + rodio/WebAudio backends
+  voxelcraft/     the app: game.rs, player.rs, main.rs, wasm_entry.rs, vc_bench
 ```
 
 ## Engine answer (custom vs existing?)

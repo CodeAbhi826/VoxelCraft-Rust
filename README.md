@@ -3,15 +3,21 @@
 A high-performance, **single-codebase Minecraft-1.16.5-style voxel engine** written in **Rust** on top of `wgpu` — the same graphics abstraction that powers Bevy and Veloren. One codebase, two targets:
 
 - **Native** (Windows / Linux / macOS) → Vulkan · DirectX 12 · Metal
-- **Browser** (WASM + WebGPU, with automatic WebGL2 fallback) → served as static files, **prebuilt and included** so you can play instantly
+- **Browser** (WASM + WebGPU, with automatic WebGL2 fallback) → served as static files, **prebuilt and included** so it can be run instantly
+
+## Libraries — download them separately (no all-in-one bundle)
+
+The engine is split into **14 independent libraries** (`vc-nbt`, `vc-blocks`, `vc-world`, `vc-mesh`, `vc-render`, …), each one a normal Rust crate with its own README, usage example and test suite. On the [Releases](https://github.com/CodeAbhi826/VoxelCraft-Rust/releases) page **every library ships as its own archive** (`vc-nbt-0.3.0-source.tar.gz`, `vc-blocks-0.3.0-source.tar.gz`, …) next to the per-architecture game binaries — there is deliberately **no AIO zip**. Grab exactly what you need and drop it into your project as a path dependency.
+
+→ Full index with per-library instructions: **[`voxelcraft/LIBRARIES.md`](voxelcraft/LIBRARIES.md)**
 
 ![VoxelCraft first person view](docs/screenshots/voxelcraft-release-2-game-first.png)
 
 ![VoxelCraft rotated view](docs/screenshots/voxelcraft-release-3-game-rotated.png)
 
-## Quick start — play in the browser right now
+## Quick start — run it in the browser (dev preview)
 
-No toolchain needed. The repo ships the prebuilt WASM bundle:
+No toolchain needed. The repo ships the prebuilt WASM bundle — this is the fastest way to **run and verify** the engine (it is a development preview of the native build, not an end-user product):
 
 ```sh
 cd voxelcraft
@@ -82,27 +88,35 @@ All 16×16 textures and every sound are **synthesized procedurally at startup** 
 ## Repository layout
 
 ```
-voxelcraft/            Rust crate (the whole engine)
-  src/
-    blocks.rs          block registry: 18 types, tiles, sound families
-    chunk.rs           16×256×16 storage + heightmap
-    gen.rs             simplex 2D/3D noise, biomes, caves, trees
-    world.rs           chunk map + COW edits + cross-chunk decoration
-    mesh.rs            greedy mesher + skylight BFS + per-vertex AO
-    textures.rs        256×256 procedural atlas (grass/stone/wood/water/...)
-    sounds.rs          synthesized sound bank + rodio/WebAudio backends
-    render.rs          wgpu device + 5 pipelines + WGSL shaders
-    ui.rs              bitmap font, crosshair, hotbar, F3, pause/help
-    player.rs          physics, AABB voxel collision, DDA raycast
-    game.rs            GameApp: events + streaming work queue + day cycle
-    main.rs            native entry
-    wasm_entry.rs      browser entry (WebGPU → WebGL2 fallback)
-  wasm-out/            prebuilt wasm-bindgen output (play instantly)
-  play.html            standalone browser loader
-  BUILD.md             full build instructions (native + wasm)
-docs/screenshots/      in-game screenshots
-public/                same wasm build, wired into the Next.js preview wrapper
-src/app/page.tsx       Next.js wrapper that serves the game at /
+voxelcraft/                     Cargo workspace (the engine + the game)
+  Cargo.toml                    workspace manifest (shared versions, profile)
+  LIBRARIES.md                  index of all 14 libraries + download instructions
+  crates/
+    vc-nbt/                     NBT codec (read/write, all 13 tag types)
+    vc-blocks/                  block registry + BlockState + biome tint
+    vc-rng/                     deterministic RNG
+    vc-chunk/                   16×256×16 chunks, paletted sections
+    vc-pack/                    resource-pack / blockstate+model JSON pipeline
+    vc-inventory/               items, stacks, containers
+    vc-world/                   world grid + terrain gen + light engine
+    vc-mesh/                    greedy mesher (AO/skylight-aware merging)
+    vc-particles/               vanilla-style break/hit particles
+    vc-gameplay/                crafting, furnaces, brewing, enchanting, villagers
+    vc-sim/                     20 Hz simulation: fluids, redstone, entities
+    vc-anvil/                   vanilla 1.16.5 save/load (.mca + level.dat)
+    vc-render/                  wgpu renderer, FSR 1.0, shader packs, UI
+    vc-audio/                   synthesized sound bank + spatial audio
+    voxelcraft/                 the APPLICATION (game, vc_bench, wasm entry)
+  builtin-pack/                 1.16.5-format resource pack (blockstates/models/PNGs)
+  shader-packs/                 demo shader packs (moonlit, warm-evening)
+  wasm-out/                     prebuilt wasm-bindgen output (run instantly)
+  play.html                     standalone browser loader
+  BUILD.md                      full build instructions (native + wasm + all-arch)
+docs/                           roadmap analysis, session logs
+docs/screenshots/               in-game screenshots
+public/                         same wasm build, wired into the Next.js preview wrapper
+src/app/page.tsx                Next.js wrapper that serves the game at /
+scripts/                        build-all.sh (all-arch one-shot builder)
 ```
 
 The Next.js app in this repo root is only a thin preview wrapper (it iframes `public/voxelcraft.html`); the game itself is entirely in `voxelcraft/`.
@@ -110,11 +124,12 @@ The Next.js app in this repo root is only a thin preview wrapper (it iframes `pu
 ## Rebuilding the browser bundle
 
 ```sh
-cd voxelcraft
+cd voxelcraft                                   # workspace root
 rustup target add wasm32-unknown-unknown
 cargo build --release --target wasm32-unknown-unknown --lib
 wasm-bindgen --version 0.2.127 --target web \
   --out-dir ./wasm-out target/wasm32-unknown-unknown/release/voxelcraft.wasm
+python3 patch-wasm-glue.py wasm-out/voxelcraft.js
 ```
 
 See `voxelcraft/BUILD.md` for details.

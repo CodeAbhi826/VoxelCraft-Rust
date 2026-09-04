@@ -428,6 +428,9 @@ pub struct GameApp {
     ws_selected: Option<usize>,
     /// Phase 1: web text-entry shift state (codes arrive without case)
     web_shift: bool,
+    /// Phase 2: seconds since the last melee swing (attack-cooldown
+    /// recovery — feeds combat::cooldown_damage_scale)
+    swing_t: f32,
     /// persisted spawn point (level.dat SpawnX/Y/Z)
     #[cfg(not(target_arch = "wasm32"))]
     level_spawn: (i32, i32, i32),
@@ -820,6 +823,7 @@ impl GameApp {
             worlds: Vec::new(),
             ws_selected: None,
             web_shift: false,
+            swing_t: 99.0,
             #[cfg(not(target_arch = "wasm32"))]
             level_spawn,
             #[cfg(not(target_arch = "wasm32"))]
@@ -1260,6 +1264,11 @@ impl GameApp {
                             .window
                             .set_cursor_grab(winit::window::CursorGrabMode::Locked);
                         self.window.set_cursor_visible(false);
+                    }
+                    // Phase 2: a mob under the crosshair takes swing
+                    // priority over block breaking (vanilla ordering)
+                    if self.try_attack_mob() {
+                        return;
                     }
                 }
                 self.input.break_hold = pressed;
@@ -1938,6 +1947,252 @@ impl GameApp {
         }
         self.death_cause.clear();
         self.quit_to_title();
+    }
+
+    // ----------------------------------------------- Phase 2: mob combat --
+
+    /// Swing at the mob under the crosshair. Full vanilla combat math
+    /// (verified formulas in vc_gameplay::combat): cooldown scaling
+    /// 0.2 + 0.8·p², crits ×1.5 (falling + ≥84.8% + not sprinting),
+    /// armor reduction. Returns true when a mob was hit (block breaking
+    /// then yields this click).
+    fn try_attack_mob(&mut self) -> bool {
+        if self.screen != Screen::Game || self.picker_open || self.container.is_some() {
+            return false;
+        }
+        use vc_gameplay::combat;
+        let eye = self.player.eye().to_array();
+        let dir = self.player.look_dir().to_array();
+        let Some(id) = self.sim.mobs.ray_hit(eye, dir, crate::player::REACH) else {
+            return false;
+        };
+        let Some(m) = self.sim.mobs.by_id(id) else { return false };
+        let kind = m.kind;
+        let armor = vc_gameplay::mobs::def(kind).armor;
+        // cooldown recovery fraction p
+        let (_, atk_speed) = combat::held_attack(self.player.held().block);
+        let period = combat::attack_cooldown_ticks(atk_speed) / 20.0; // seconds
+        let p = (self.swing_t / period).min(1.0);
+        let falling = !self.player.on_ground && self.player.vel.y < 0.0;
+        let sprinting = self.input.sprint
+            && (self.input.fwd || self.input.back || self.input.left || self.input.right);
+        let outcome = combat::player_melee(
+            self.player.held().block,
+            p,
+            falling,
+            sprinting,
+            armor,
+            0.0,
+        );
+        let applied = self.sim.mobs.damage(id, outcome.damage);
+        if applied > 0.0 {
+            self.play_event("entity.generic.death", None, 0.6); // hurt grunt
+            vc_render::render::report_boot_log(&format!(
+                "e2e: swing p={:.2}{} -> {:.2} dmg to {} (hp now serving)",
+                p,
+                if outcome.critical { " CRIT" } else { "" },
+                outcome.damage,
+                kind.name()
+            ));
+        }
+        // every swing resets the recovery clock (weak spam allowed —
+        // vanilla's 0.2× floor comes through the same formula)
+        self.swing_t = 0.0;
+        true
+    }
+
+    /// Drain the sim's mob queues after the fixed-step tick: player hits
+    /// (difficulty-scaled + knockback), mob deaths (drops + XP), and
+    /// creeper explosions (world edits + light + entity damage).
+    fn drain_mob_events(&mut self) {
+        use vc_gameplay::combat::{difficulty_scale, Difficulty};
+        use vc_gameplay::mobs;
+        // ---- 1. hits on the player ----
+        let hits: Vec<mobs::PlayerHit> = self.sim.mobs.hits.drain(..).collect();
+        for h in hits {
+            if self.mode.invulnerable() || self.screen != Screen::Game {
+                continue; // creative absorbs everything
+            }
+            let difficulty = if self.mode.permadeath() {
+                Difficulty::Hard
+            } else {
+                Difficulty::Normal
+            };
+            let dmg = difficulty_scale(h.damage, difficulty);
+            let applied = self.player.damage(dmg);
+            if applied > 0.0 {
+                self.play_event("entity.player.hurt", None, 1.0);
+                // knockback: horizontal impulse away from the source +
+                // a lift (documented adaptation of vanilla's 0.4 base)
+                let k = &h.knockback_dir;
+                self.player.vel[0] += k[0] * 6.0;
+                self.player.vel[2] += k[1] * 6.0;
+                if self.player.on_ground {
+                    self.player.vel[1] = 4.2;
+                }
+                self.death_cause = format!("SLAIN BY A {}", h.source.name());
+                self.ui.dirty = true;
+            }
+        }
+        // ---- 2. mob deaths → drops + XP ----
+        let deaths: Vec<(mobs::MobKind, [f32; 3])> = self.sim.mobs.deaths.drain(..).collect();
+        for (kind, pos) in deaths {
+            let d = mobs::def(kind);
+            // vanilla-common loot ranges [adaptation: fixed min..max per
+            // kind, no weighted loot tables yet — Phase 9 territory]
+            let drops: &[(u8, u8)] = match kind {
+                mobs::MobKind::Zombie => &[(ROTTEN_FLESH, 2)],
+                mobs::MobKind::Skeleton => &[(BONE, 2), (ARROW_ITEM, 2)],
+                mobs::MobKind::Creeper => &[(GUNPOWDER, 2)],
+                mobs::MobKind::Spider => &[(STRING, 2)],
+                mobs::MobKind::Enderman => &[(ENDER_PEARL, 1)],
+                mobs::MobKind::Cow => &[(BEEF, 3), (LEATHER, 2)],
+                mobs::MobKind::Pig => &[(PORKCHOP, 3)],
+                mobs::MobKind::Sheep => &[(MUTTON, 2), (WOOL_WHITE, 1)],
+                mobs::MobKind::Chicken => &[(CHICKEN_RAW, 1), (FEATHER, 2)],
+            };
+            for (block, max_n) in drops {
+                let n = 1 + (self.audio_rng.next_f32() * *max_n as f32) as u8;
+                for _ in 0..n {
+                    self.sim.items.drop_block(
+                        pos[0].floor() as i32,
+                        pos[1].floor() as i32,
+                        pos[2].floor() as i32,
+                        *block,
+                        2,
+                        15,
+                        0,
+                    );
+                }
+            }
+            // XP through the real curve
+            if d.xp > 0 {
+                let gained = self.player.add_xp(d.xp);
+                if gained > 0 {
+                    self.play_event("entity.player.levelup", None, 1.0);
+                }
+            }
+            self.play_event(
+                "entity.generic.death",
+                Some([pos[0], pos[1] + 0.5, pos[2]]),
+                1.0,
+            );
+            self.edits += 1;
+        }
+        // ---- 3. creeper explosions ----
+        let booms = mobs::take_explosions(&mut self.sim.mobs);
+        for (center, power) in booms {
+            self.explode(center, power);
+        }
+    }
+
+    /// One explosion: probabilistic sphere of block destruction (bedrock
+    /// and obsidian resist), light updates per edit, particles + sound,
+    /// distance-scaled damage to the player and every mob.
+    /// [placeholder: damage = 24·(1 − dist/(power·2)) capped — vanilla's
+    /// exact exposure-based formula was not verified this pass]
+    fn explode(&mut self, center: [f32; 3], power: f32) {
+        let r = power as i32;
+        let (cx, cy, cz) = (
+            center[0].floor() as i32,
+            center[1].floor() as i32,
+            center[2].floor() as i32,
+        );
+        let mut destroyed = 0u32;
+        for dy in -r..=r {
+            for dz in -r..=r {
+                for dx in -r..=r {
+                    let dist = ((dx * dx + dy * dy + dz * dz) as f32).sqrt();
+                    if dist > power as f32 {
+                        continue;
+                    }
+                    let (x, y, z) = (cx + dx, cy + dy, cz + dz);
+                    let b = self.world.get_block(x, y, z);
+                    if b == AIR || b == BEDROCK || b == OBSIDIAN || b == WATER {
+                        continue; // resistant / already gone
+                    }
+                    // vanilla-ish ragged edge: 70% + 30%·random survival
+                    let edge = 0.7 + self.audio_rng.next_f32() * 0.3;
+                    if dist / power as f32 > edge {
+                        continue;
+                    }
+                    if let Some((old, new)) = self.world.set_block(x, y, z, AIR) {
+                        self.light.on_block_changed(&self.world, x, y, z, old, new);
+                    }
+                    destroyed += 1;
+                }
+            }
+        }
+        // entity damage: distance-scaled (see placeholder note)
+        let blast_damage = |ex: f32, ey: f32, ez: f32| -> f32 {
+            let d = ((ex - center[0]).powi(2) + (ey - center[1]).powi(2) + (ez - center[2]).powi(2)).sqrt();
+            (24.0 * (1.0 - d / (power * 2.0)).max(0.0)).max(0.0)
+        };
+        // player (mode-gated, knockback away from the blast)
+        if !self.mode.invulnerable() && self.screen == Screen::Game {
+            let dmg = blast_damage(
+                self.player.pos.x,
+                self.player.pos.y + 0.9,
+                self.player.pos.z,
+            );
+            if dmg > 0.0 {
+                let applied = self.player.damage(dmg);
+                if applied > 0.0 {
+                    let dir = glam::Vec3::new(
+                        self.player.pos.x - center[0],
+                        0.0,
+                        self.player.pos.z - center[2],
+                    )
+                    .normalize_or_zero();
+                    self.player.vel[0] += dir.x * 10.0;
+                    self.player.vel[2] += dir.z * 10.0;
+                    self.player.vel[1] += 6.0;
+                    self.death_cause = "BLOWN UP BY A CREEPER".into();
+                    self.play_event("entity.player.hurt", None, 1.0);
+                    self.ui.dirty = true;
+                }
+            }
+        }
+        // every other mob in range takes the same blast (armor applies)
+        use vc_gameplay::combat::armor_reduce;
+        let mob_ids: Vec<(u32, f32)> = self
+            .sim
+            .mobs
+            .list
+            .iter()
+            .map(|m| {
+                (
+                    m.id,
+                    blast_damage(m.pos[0], m.pos[1] + 0.9, m.pos[2]),
+                )
+            })
+            .collect();
+        for (id, dmg) in mob_ids {
+            if dmg > 0.0 {
+                let armor = self
+                    .sim
+                    .mobs
+                    .by_id(id)
+                    .map(|m| vc_gameplay::mobs::def(m.kind).armor)
+                    .unwrap_or(0.0);
+                let through = armor_reduce(dmg, armor, 0.0);
+                self.sim.mobs.damage(id, through);
+            }
+        }
+        // explosion visual + sound
+        for _ in 0..24 {
+            self.particles.spawn_block_break(
+                cx,
+                cy,
+                cz,
+                COBBLE,
+                2,
+                14,
+                10,
+            );
+        }
+        self.play_event("entity.generic.explode", Some(center), 1.0);
+        let _ = destroyed;
     }
 
     // ------------------------------------------------------ menu actions --
@@ -2846,8 +3101,21 @@ impl GameApp {
         // Phase 6 simulation: scheduled ticks (fluids/gravity), random
         // ticks, item entities — same fixed-step accumulator
         crate::phase!(self.phases, crate::bench::PHASE_SIM, {
+            // Phase 2: anchor the mob system before the tick (spawns/AI
+            // need the player; creative flight holds all fire)
+            self.sim.mobs.player = if self.screen == Screen::Game {
+                Some(self.player.pos.to_array())
+            } else {
+                None
+            };
+            self.sim.mobs.player_invulnerable = self.mode.invulnerable();
             self.sim.update(dt, &mut self.world, &mut self.light);
+            // Phase 2: drain mob hits/deaths/explosions on the game thread
+            self.drain_mob_events();
         });
+
+        // Phase 2: melee cooldown recovery clock
+        self.swing_t += dt;
 
         // §29: brewing completions → bubble sound at the stand (drained
         // here so the audio path stays on the game thread, not the sim)
@@ -3617,6 +3885,53 @@ impl GameApp {
                             self.hardcore_dead
                         ));
                     }
+                    // ---- Phase 2 E2E: mob spawning + combat probes --
+                    Some("mob") => {
+                        // mob:<kind>[:count] — spawn near the player through
+                        // the REAL MobSystem (light rules apply to natural
+                        // spawning only; explicit spawns are unconditional)
+                        let kind = parts.get(1).copied().and_then(vc_gameplay::mobs::MobKind::from_name);
+                        let n: usize = parts.get(2).and_then(|s| s.parse().ok()).unwrap_or(1);
+                        if let Some(kind) = kind {
+                            let (px, py, pz) = (
+                                self.player.pos.x.floor() as i32 + 2,
+                                self.player.pos.y.floor() as i32,
+                                self.player.pos.z.floor() as i32,
+                            );
+                            let mut spawned = 0;
+                            for i in 0..n.min(16) {
+                                let dx = ((i % 4) as i32) - 1;
+                                let dz = ((i / 4) as i32) - 1;
+                                if self
+                                    .sim
+                                    .mobs
+                                    .spawn_at(kind, px + dx * 2, py, pz + dz * 2)
+                                    .is_some()
+                                {
+                                    spawned += 1;
+                                }
+                            }
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: spawned {spawned} x {} (alive {})",
+                                kind.name(),
+                                self.sim.mobs.len()
+                            ));
+                        }
+                    }
+                    Some("attack") => {
+                        // attack:<p> — E2E: swing at the crosshair mob with a
+                        // forced cooldown fraction (bypasses the mouse)
+                        let p: f32 = parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(1.0);
+                        self.swing_t = p * 10.0; // big enough = charged
+                        if self.try_attack_mob() {
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: attack p={p} -> mob hit (alive {})",
+                                self.sim.mobs.len()
+                            ));
+                        } else {
+                            vc_render::render::report_boot_log("e2e: attack — no mob in reach");
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -3856,6 +4171,33 @@ impl GameApp {
                         }
                         self.play_event("liquid.splash", None, 0.8);
                         self.place_timer = 0.3;
+                        self.ui.dirty = true;
+                    } else if !self.player.held().is_empty()
+                        && is_food(self.player.held().block)
+                    {
+                        // Phase 2: right-click eats raw meat. Documented
+                        // deviation: no hunger system yet, so food heals
+                        // directly (4 HP ≈ the meats' satiating weight);
+                        // stacks deplete in Survival only
+                        let b = self.player.held().block;
+                        let heal_amt = 4.0;
+                        if self.mode.depletes_items() {
+                            let held = self.player.held_mut();
+                            held.count -= 1;
+                            if held.count == 0 {
+                                *held = vc_inventory::inventory::ItemStack::EMPTY;
+                            }
+                        }
+                        if !self.mode.invulnerable() {
+                            self.player.heal(heal_amt);
+                        }
+                        self.play_event("entity.generic.drink", None, 0.8);
+                        vc_render::render::report_boot_log(&format!(
+                            "e2e: ate {} (+{heal_amt} hp -> {})",
+                            name(b),
+                            self.player.health
+                        ));
+                        self.place_timer = 0.5;
                         self.ui.dirty = true;
                     } else if !self.player.held().is_empty()
                         && is_item_block(self.player.held().block)
@@ -4298,6 +4640,12 @@ impl GameApp {
             ("enchApplied", StatsVal::F(self.sim.enchants.total_enchanted as f32)),
             ("villagers", StatsVal::F(self.sim.villagers.list.len() as f32)),
             ("tradesDone", StatsVal::F(self.sim.villagers.trades_done as f32)),
+            // Phase 2: mobs + combat
+            ("mobs", StatsVal::F(self.sim.mobs.len() as f32)),
+            ("mobsSpawned", StatsVal::F(self.sim.mobs.spawned_total as f32)),
+            ("mobsKilled", StatsVal::F(self.sim.mobs.killed_total as f32)),
+            ("arrows", StatsVal::F(self.sim.mobs.arrows.len() as f32)),
+            ("swingT", StatsVal::F(self.swing_t)),
             ("fwd", StatsVal::B(self.input.fwd)),
             ("back", StatsVal::B(self.input.back)),
             ("left", StatsVal::B(self.input.left)),
@@ -4728,6 +5076,15 @@ impl GameApp {
                     self.world_name,
                     self.world.seed
                 ),
+                // Phase 2: mob system state
+                format!(
+                    "Mobs: {} alive / {} spawned / {} killed  Arrows: {}  Swing: {:.0}%",
+                    self.sim.mobs.len(),
+                    self.sim.mobs.spawned_total,
+                    self.sim.mobs.killed_total,
+                    self.sim.mobs.arrows.len(),
+                    self.swing_t.min(9.99) * 10.0
+                ),
                 format!(
                     "Day cycle: {:.0}%  Fly: {}",
                     self.day_time * 100.0,
@@ -5036,6 +5393,18 @@ impl GameApp {
                 up,
                 &mut self.particle_verts,
             );
+            // Phase 2: mobs + skeleton arrows share the billboard pipeline
+            vc_gameplay::mobs::build_vertices(
+                &self.sim.mobs.list,
+                right,
+                &mut self.particle_verts,
+            );
+            vc_gameplay::mobs::build_arrow_vertices(
+                &self.sim.mobs.arrows,
+                right,
+                up,
+                &mut self.particle_verts,
+            );
         }
 
         self.stats = self.renderer.render(
@@ -5150,6 +5519,12 @@ fn notify_sim(world: &World, sched: &mut vc_sim::ticks::TickScheduler, x: i32, y
 
 /// biome + (sky, block) light levels at a world position — for baking
 /// particle tint/brightness at spawn (Phase 5)
+/// Phase 2: edible mob drops (right-click to eat — heals directly until
+/// the hunger system exists; documented deviation)
+fn is_food(b: u8) -> bool {
+    matches!(b, BEEF | PORKCHOP | MUTTON | CHICKEN_RAW | ROTTEN_FLESH)
+}
+
 fn light_at(world: &World, light: &vc_world::light::LightEngine, wx: i32, wy: i32, wz: i32) -> (u8, u8, u8) {
     let _ = light; // engine state lives in world.light (LightData map)
     let cx = wx.div_euclid(16);

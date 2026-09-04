@@ -632,6 +632,510 @@ fn enchanted_book_art(a: &mut [u8], t: u16) {
     });
 }
 
+// ---------------------------------------------------- Phase 2 mob art --
+//
+// All clean-room pixel art: distinct silhouettes and palettes of our own
+// design — deliberately NOT recreations of any Mojang sprite. The palette
+// choices are generic (undead green, bone white, spotted hide...) which
+// are unprotectable style conventions for the creature archetypes.
+
+/// zombie: shambler silhouette, sickly green skin, ragged tunic
+fn zombie_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "....GGGGGG......",
+        "....GGGGGG......",
+        "....GDGGDG......",
+        "....GGGGGG......",
+        "....GMMMMMG.....",
+        "...TTMMMMMTT....",
+        "..TTTMMMMMTTT...",
+        "..TTTMMMMMTTT...",
+        "..TTTMMMMMTTT...",
+        "...TTMMMMMTT....",
+        "...TTMMMMMTT....",
+        "...LL......LL...",
+        "...LL......LL...",
+        "...LL......LL...",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'G' => Some((96, 140, 86, 255)),   // skin
+        'D' => Some((30, 42, 26, 255)),    // dark eyes
+        'M' => Some((70, 100, 62, 255)),   // mouth strip
+        'T' => Some((60, 84, 110, 255)),   // tunic
+        'L' => Some((52, 62, 90, 255)),    // legs
+        _ => None,
+    });
+}
+
+/// skeleton: bone frame, hollow eyes, bow arm
+fn skeleton_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "....WWWWWW......",
+        "....WWWWWW......",
+        "....WDWWDW......",
+        "....WWWWWW......",
+        "....WWNNWW......",
+        "...BWWWWWWB.....",
+        "..BBWWWWWWBB....",
+        "...BWWWWWWB.....",
+        "....WWWWWW......",
+        "....W....W......",
+        "....W....W......",
+        "....W....W......",
+        "....W....W......",
+        "................",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'W' => Some((212, 210, 200, 255)), // bone
+        'D' => Some((40, 40, 38, 255)),    // hollow eyes
+        'N' => Some((120, 118, 110, 255)), // nasal
+        'B' => Some((150, 110, 60, 255)),  // bow limb
+        _ => None,
+    });
+}
+
+/// creeper: tall body, four stubby feet, sad face
+fn creeper_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "................",
+        "....CCCCCCC.....",
+        "....CCDCCDC.....",
+        "....CCDCCDC.....",
+        "....CCCCCCCC....",
+        "....CCNNNNCC....",
+        "....CCNNNNCC....",
+        "....CCCCCCCC....",
+        "....CC.CC.CC....",
+        "....CC.CC.CC....",
+        "....CC.CC.CC....",
+        "...CCC.CC.CCC...",
+        "................",
+        "................",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'C' => Some((88, 190, 96, 255)),   // plant-flesh
+        'D' => Some((20, 40, 22, 255)),    // droopy eyes
+        'N' => Some((28, 58, 30, 255)),    // frowning mouth
+        _ => None,
+    });
+}
+
+/// spider: wide low body + eight leg tips at the corners
+fn spider_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "................",
+        "................",
+        "..L..........L..",
+        "..LL.BBBBBB.LL..",
+        "...LLBBBBBBLL...",
+        "...LBBBBBBBBL...",
+        "..LBBRDBBDRBBL..",
+        "..LBBBBBBBBBBL..",
+        "...LBBBBBBBBL...",
+        "...LLB BBBBLL...",
+        "....LL....LL....",
+        "................",
+        "................",
+        "................",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'B' => Some((58, 44, 40, 255)),    // cephalothorax/abdomen
+        'R' => Some((150, 40, 40, 255)),   // red eye specks
+        'D' => Some((226, 60, 60, 255)),   // brighter eyes
+        'L' => Some((44, 34, 32, 255)),    // legs
+        _ => None,
+    });
+}
+
+/// enderman: extremely tall thin dark frame, glowing eyes
+fn enderman_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "....KKKKKK......",
+        "....KKKKKK......",
+        "....VEVVEV......",
+        "....KKKKKK......",
+        "....KKKKKK......",
+        "...K.KKKK.K.....",
+        "...K.KKKK.K.....",
+        "...K.KKKK.K.....",
+        "...K.KKKK.K.....",
+        "...K.KKKK.K.....",
+        "...K.KKKK.K.....",
+        "......KK........",
+        "......KK........",
+        "......KK........",
+        "......KK........",
+        "......KK........",
+    ];
+    art(a, t, rows, &|c| match c {
+        'K' => Some((18, 16, 24, 255)),    // void-black body
+        'V' => Some((206, 220, 255, 255)), // pale violet-white eyes
+        'E' => Some((150, 90, 220, 255)),  // violet eye core
+        _ => None,
+    });
+}
+
+/// cow: blocky body with hide patches, pale horns
+fn cow_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "..H...........H.",
+        "...BBBBBBBBBB...",
+        "...BWBBBPPPBB...",
+        "...BBWBPPPPBB...",
+        "...BBBBPPWBBB...",
+        "...BBBBBBBBBB...",
+        "..BBBBBBBBBBBB..",
+        "..BBBBBBBBBBBB..",
+        "..BBBBBBBBBBBB..",
+        "..BBBBBBBBBBBB..",
+        "...L.L....L.L...",
+        "...L.L....L.L...",
+        "................",
+        "................",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'B' => Some((72, 54, 40, 255)),    // brown hide
+        'W' => Some((232, 228, 220, 255)), // white patches
+        'P' => Some((90, 70, 58, 255)),    // darker patches
+        'L' => Some((58, 44, 34, 255)),    // legs
+        'H' => Some((220, 214, 200, 255)), // horns
+        _ => None,
+    });
+}
+
+/// pig: round pink body, snout
+fn pig_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "................",
+        "....PPPPPPP.....",
+        "....PPPPPPP.....",
+        "....PNPPPNP.....",
+        "....PPPPPddS....",
+        "...PPPPPPPPP....",
+        "..PPPPPPPPPPP...",
+        "..PPPPPPPPPPP...",
+        "..PPPPPPPPPPP...",
+        "..PPPPPPPPPPP...",
+        "...L.L..L.L.....",
+        "...L.L..L.L.....",
+        "................",
+        "................",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'P' => Some((238, 160, 158, 255)), // pink hide
+        'N' => Some((120, 74, 70, 255)),   // nostril-line eyes
+        'd' => Some((190, 110, 108, 255)), // darker snout
+        'S' => Some((198, 120, 118, 255)), // snout side
+        'L' => Some((210, 130, 128, 255)), // legs
+        _ => None,
+    });
+}
+
+/// sheep: wool cloud body, wool cap, bare face
+fn sheep_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "................",
+        "....WWWWWW......",
+        "....WFFFFW......",
+        "....WFDFFW......",
+        "...WWFFFFWWW....",
+        "..WWWWWWWWWW....",
+        "..WWWWWWWWWW....",
+        "..WWWWWWWWWW....",
+        "..WWWWWWWWWW....",
+        "..WWWWWWWWWW....",
+        "...L.L..L.L.....",
+        "...L.L..L.L.....",
+        "................",
+        "................",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'W' => Some((234, 230, 224, 255)), // wool
+        'F' => Some((222, 210, 196, 255)), // face
+        'D' => Some((40, 36, 32, 255)),    // eyes
+        'L' => Some((200, 192, 182, 255)), // legs
+        _ => None,
+    });
+}
+
+/// chicken: small body, red comb, yellow beak
+fn chicken_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "................",
+        "................",
+        ".....RRR........",
+        "....WWWWWR......",
+        "....WDWWRYY.....",
+        "....WWWW........",
+        "...WWWWWWW......",
+        "...WWWWWWWW.....",
+        "...WWWWWWWW.....",
+        "....WWWWWW......",
+        ".....Y..Y.......",
+        ".....Y..Y.......",
+        "................",
+        "................",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'W' => Some((240, 240, 236, 255)), // feathers
+        'R' => Some((206, 60, 54, 255)),   // comb/wattle
+        'D' => Some((30, 30, 28, 255)),    // eye
+        'Y' => Some((230, 180, 60, 255)),  // beak/feet
+        _ => None,
+    });
+}
+
+/// arrow projectile: slim diagonal shaft with head + fletching
+fn arrow_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "..............F.",
+        ".............FF.",
+        "............FF..",
+        "...........HS...",
+        "..........HS....",
+        ".........HS.....",
+        "........HS......",
+        ".......HS.......",
+        "......HS........",
+        ".....HS.........",
+        "....HS..........",
+        "...FS...........",
+        "..FF............",
+        "..F.............",
+        "................",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'F' => Some((220, 220, 216, 255)), // fletching
+        'H' => Some((180, 184, 190, 255)), // head
+        'S' => Some((140, 100, 50, 255)),  // shaft
+        _ => None,
+    });
+}
+
+/// generic raw-meat icon: shape shared, per-animal palette
+fn meat_art(a: &mut [u8], t: u16, main: (i32, i32, i32), dark: (i32, i32, i32)) {
+    let rows = [
+        "................",
+        "................",
+        "................",
+        "...MMMMMMM......",
+        "..MMMMMMMMM.....",
+        "..MMDDMMDDMM....",
+        "..MMDDMMDDMM....",
+        "..MMMMMMMMMM....",
+        "..MMMMMMMMMM....",
+        "...MMMMMMMMM....",
+        "....MMMMMMM.....",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'M' => Some((main.0, main.1, main.2, 255)),
+        'D' => Some((dark.0, dark.1, dark.2, 255)),
+        _ => None,
+    });
+}
+
+fn feather_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "............W...",
+        "...........WW...",
+        "..........WWW...",
+        ".........WWW....",
+        "........WWW.....",
+        ".......WWW......",
+        "......WWW.......",
+        ".....WWW........",
+        "....WWW.........",
+        "....W...........",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'W' => Some((240, 240, 244, 255)),
+        _ => None,
+    });
+}
+
+fn leather_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "................",
+        "................",
+        "...LLLLLLLL.....",
+        "..LLBLLLLBLL....",
+        "..LLLLLLLLLL....",
+        "..LLLLBLLLLL....",
+        "..LLLLLLLLLL....",
+        "...LLLLLLLL.....",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'L' => Some((140, 90, 42, 255)),
+        'B' => Some((112, 70, 32, 255)),
+        _ => None,
+    });
+}
+
+fn bone_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "................",
+        "................",
+        "..WW........WW..",
+        "...WW......WW...",
+        "....WWWWWWWW....",
+        ".....WSSSSW.....",
+        ".....SSSSSS.....",
+        ".....SSSSSS.....",
+        ".....WSSSSW.....",
+        "....WWWWWWWW....",
+        "...WW......WW...",
+        "..WW........WW..",
+        "................",
+        "................",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'W' => Some((230, 226, 214, 255)),
+        'S' => Some((208, 204, 192, 255)),
+        _ => None,
+    });
+}
+
+fn string_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "................",
+        "..SS..........S.",
+        "...SS........S..",
+        "....SS......SS..",
+        ".....SS....SS...",
+        "......SS..SS....",
+        ".......SSSS.....",
+        "......SS..SS....",
+        ".....SS....SS...",
+        "....SS......SS..",
+        "...S........SS..",
+        "..S..........S..",
+        "................",
+        "................",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'S' => Some((234, 234, 230, 255)),
+        _ => None,
+    });
+}
+
+fn gunpowder_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "................",
+        "................",
+        "....GGGGGG......",
+        "..GGDGGGGDGG....",
+        "..GGGGDDGGGG....",
+        "..GDGGGGGGDG....",
+        "..GGGGGGGGGG....",
+        "...GGDDDDGG.....",
+        "....GGGGGG......",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'G' => Some((86, 84, 82, 255)),
+        'D' => Some((54, 52, 50, 255)),
+        _ => None,
+    });
+}
+
+fn ender_pearl_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "................",
+        "................",
+        "......KKKK......",
+        "....KKVVVVK K...",
+        "....KVVKKVVK....",
+        "...KKVKKKKVKK...",
+        "...KKVKKKKVKK...",
+        "...KKKVVVVKKK...",
+        "....KKVVVKKK....",
+        "......KKKK......",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'K' => Some((22, 34, 44, 255)),
+        'V' => Some((110, 200, 190, 255)),
+        _ => None,
+    });
+}
+
+fn rotten_flesh_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "................",
+        "................",
+        "...MMMMMMM......",
+        "..MMGMMMMGM.....",
+        "..MMMGMMGMMM....",
+        "..MGGMMMMMMM....",
+        "..MMMMMGGMMM....",
+        "...MMMMMMMMM....",
+        "....MMMMMM......",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'M' => Some((150, 96, 76, 255)),
+        'G' => Some((110, 130, 70, 255)),
+        _ => None,
+    });
+}
+
 /// potion bottle (Phase 7 §29): one bottle shape, per-potion liquid color.
 /// `glow` brightens the liquid (the level-II variant sparkles).
 fn potion_art(a: &mut [u8], t: u16, liquid: (i32, i32, i32), glow: bool) {
@@ -1412,6 +1916,30 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_ENCHANTED_BOOK => enchanted_book_art(&mut a, t),
             // villagers (Phase 7 §27/§29)
             TILE_VILLAGER => villager_art(&mut a, t),
+            // mobs (Phase 2) — entity sprites, clean-room art (ours)
+            TILE_ZOMBIE => zombie_art(&mut a, t),
+            TILE_SKELETON => skeleton_art(&mut a, t),
+            TILE_CREEPER => creeper_art(&mut a, t),
+            TILE_SPIDER => spider_art(&mut a, t),
+            TILE_ENDERMAN => enderman_art(&mut a, t),
+            TILE_COW => cow_art(&mut a, t),
+            TILE_PIG => pig_art(&mut a, t),
+            TILE_SHEEP => sheep_art(&mut a, t),
+            TILE_CHICKEN => chicken_art(&mut a, t),
+            TILE_ARROW => arrow_art(&mut a, t),
+            // mob drops (Phase 2) — item icons
+            TILE_BEEF => meat_art(&mut a, t, (196, 92, 76), (150, 62, 52)),
+            TILE_PORKCHOP => meat_art(&mut a, t, (240, 150, 140), (222, 110, 96)),
+            TILE_MUTTON => meat_art(&mut a, t, (200, 80, 70), (150, 50, 46)),
+            TILE_CHICKEN_RAW => meat_art(&mut a, t, (232, 176, 168), (206, 130, 120)),
+            TILE_FEATHER => feather_art(&mut a, t),
+            TILE_LEATHER => leather_art(&mut a, t),
+            TILE_BONE => bone_art(&mut a, t),
+            TILE_STRING => string_art(&mut a, t),
+            TILE_GUNPOWDER => gunpowder_art(&mut a, t),
+            TILE_ENDER_PEARL => ender_pearl_art(&mut a, t),
+            TILE_ROTTEN_FLESH => rotten_flesh_art(&mut a, t),
+            TILE_ARROW_ITEM => arrow_art(&mut a, t),
             _ => {}
         }
     }

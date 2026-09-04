@@ -318,8 +318,31 @@ fn vs_main(
 
 @fragment
 fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
-    let tuv = (in.tile + fract(in.uv)) / vec2<f32>(16.0, 16.0);
-    let c = textureSample(atlas_tex, atlas_samp, tuv);
+    // ---- atlas tile-safety: half-texel inset + analytic gradients ----
+    // Two seam bugs lived here (the "textures connect/bleed" artifact):
+    // (1) BOUNDARY BLEED: fract(uv) spans the tile exactly, so bilinear/
+    //     mipmap/aniso filtering near tile edges sampled the NEIGHBORING
+    //     atlas tile's texels. The half-texel inset (0.5/16 tile = 0.03125)
+    //     keeps every bilinear footprint inside the tile (vanilla's stitched
+    //     atlas uses the same trick; NEAREST sampling is unaffected since
+    //     texel centers survive a half-texel clamp).
+    // (2) LOD EXPLOSION: fract() is discontinuous at every integer UV, so
+    //     the implicit dpdx/dpdy the GPU derives for mip/aniso selection
+    //     jump to ~the full tile width at every block boundary — the GPU
+    //     picked the coarsest mip along every seam line (dark/blurry grid
+    //     over the world) and aniso footprints streaked across tiles.
+    //     Fix: sample with EXPLICIT gradients taken from the PRE-fract uv
+    //     (fract' has derivative 1 a.e., so d(uv)/16 is the analytic
+    //     gradient of the atlas coordinate everywhere except the seam
+    //     itself — exactly what the LOD computation wants).
+    // Deep-distance note: at mip 3/4 (2px/1px per tile) bilinear still
+    // mixes neighboring tiles — same residual vanilla 1.16.5 has (the
+    // reason its mipmap slider stops at 4); covered by fog at that range.
+    let fuv = clamp(fract(in.uv), vec2<f32>(0.03125), vec2<f32>(0.96875));
+    let tuv = (in.tile + fuv) / vec2<f32>(16.0, 16.0);
+    let gdx = dpdx(in.uv) / vec2<f32>(16.0, 16.0);
+    let gdy = dpdy(in.uv) / vec2<f32>(16.0, 16.0);
+    let c = textureSampleGrad(atlas_tex, atlas_samp, tuv, gdx, gdy);
     if (c.a < 0.5) { discard; }
     let day = G.misc.x;
     // geometric face normal from derivatives (camera-facing sign)
@@ -464,9 +487,18 @@ fn vs_main(
 
 @fragment
 fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
+    // scroll + fract(uv + scroll): the scroll offset is uniform across the
+    // surface (contributes ZERO to derivatives), so the analytic gradients
+    // still come from the pre-fract `in.uv`. Same tile-safety treatment as
+    // TERRAIN_SHADER: half-texel inset kills cross-tile bleed (the moving
+    // seam line the scroll used to drag across the surface), explicit
+    // gradients fix the LOD explosion at every fract discontinuity.
     let scroll = vec2<f32>(G.misc.y * 0.06, G.misc.y * 0.025);
-    let tuv = (in.tile + fract(in.uv + scroll)) / vec2<f32>(16.0, 16.0);
-    let c = textureSample(atlas_tex, atlas_samp, tuv);
+    let fuv = clamp(fract(in.uv + scroll), vec2<f32>(0.03125), vec2<f32>(0.96875));
+    let tuv = (in.tile + fuv) / vec2<f32>(16.0, 16.0);
+    let gdx = dpdx(in.uv) / vec2<f32>(16.0, 16.0);
+    let gdy = dpdy(in.uv) / vec2<f32>(16.0, 16.0);
+    let c = textureSampleGrad(atlas_tex, atlas_samp, tuv, gdx, gdy);
     let day = G.misc.x;
     // water is a flat plane — the up normal is exact
     let shadow = sampleShadow(in.world, vec3<f32>(0.0, 1.0, 0.0));
@@ -1354,6 +1386,13 @@ pub struct Renderer {
     /// chunk-graph occlusion culling (§26; OptiFine ofOcclusionFancy parity
     /// — default ON)
     pub occlusion: bool,
+    /// §26 rendering-cost fix: mesh-set revision — bumped by EVERY mesh
+    /// upload/removal/clear; the occlusion flood cache keys on it so the
+    /// BFS runs only when the world or camera section actually changes
+    /// (see draw::OcclCache)
+    mesh_rev: u64,
+    /// §26 rendering-cost fix: cached occlusion flood (per-frame reuse)
+    occl_cache: draw::OcclCache,
     // ------------------------------------------------ Phase 11 (§34) packs --
     /// active shader-pack stage (pipeline + bind group over the pack
     /// handoff target) — None = engine composite writes the surface directly
@@ -2918,6 +2957,8 @@ impl Renderer {
             msaa_depth: None,
             msaa_pipes: None,
             occlusion: true,
+            mesh_rev: 0,
+            occl_cache: draw::OcclCache::default(),
             pack_pipe: None,
             pack_buf,
             pack_grade: None,
@@ -3475,6 +3516,8 @@ impl Renderer {
         self.chunks.clear();
         // dropping every RegionArena destroys its buffers (§43: no leaks)
         self.regions.clear();
+        // the mesh set changed → occlusion flood cache is stale (§26)
+        self.mesh_rev = self.mesh_rev.wrapping_add(1);
     }
 
     pub fn toggle_vsync(&mut self) {
@@ -3625,6 +3668,8 @@ impl Renderer {
                 self.chunks.insert(pos, ChunkGpu { solid, water, occl });
             }
         }
+        // occl bits may have changed → occlusion flood cache is stale (§26)
+        self.mesh_rev = self.mesh_rev.wrapping_add(1);
     }
 
     /// fit-or-replace one mesh slot in its region arena and upload the data.
@@ -3783,6 +3828,8 @@ impl Renderer {
                     self.free_slot(w);
                 }
             }
+            // the mesh set changed → occlusion flood cache is stale (§26)
+            self.mesh_rev = self.mesh_rev.wrapping_add(1);
         }
     }
 
@@ -4132,8 +4179,9 @@ impl Renderer {
         let mut stats = RenderStats::default();
 
         // Sort once (near → far) — the per-frame origin rows are indexed by
-        // this order (identical in all three passes, as before).
-        let mut sorted = visible.clone();
+        // this order (identical in all three passes, as before). `visible`
+        // is not used afterwards — moved, not cloned (rendering-cost fix).
+        let mut sorted = visible;
         sorted.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
         // per-frame instance-rate origins: one Float32x2 per visible chunk
@@ -4169,7 +4217,16 @@ impl Renderer {
                 cam.eye.z.div_euclid(16.0) as i32,
             );
             let cam_band = (cam.eye.y.clamp(0.0, 255.99) as u32 >> 4) as u8;
-            match draw::occlusion_visible(&self.chunks, cam_chunk, cam_band) {
+            // §26 rendering-cost fix: cached flood — the BFS re-runs only
+            // when the camera section or the mesh set (mesh_rev) changes,
+            // not every frame (see draw::OcclCache).
+            match draw::occlusion_visible_cached(
+                &self.chunks,
+                cam_chunk,
+                cam_band,
+                self.mesh_rev,
+                &mut self.occl_cache,
+            ) {
                 Some(vis_set) => {
                     let before = vis_full.len();
                     let v: Vec<VisEntry> = vis_full
@@ -4777,6 +4834,43 @@ mod shader_tests {
             validator
                 .validate(&module)
                 .unwrap_or_else(|e| panic!("{name} WGSL validation failed: {e:?}"));
+        }
+    }
+
+    /// §26 texture-seam drift guard: the atlas tile-safety fix (the
+    /// "textures connect/bleed" bug) has THREE required ingredients in
+    /// BOTH the terrain and water fragment shaders —
+    /// 1. `textureSampleGrad` (explicit gradients: no implicit-derivative
+    ///    LOD explosion at fract() discontinuities),
+    /// 2. the half-texel inset `clamp(fract(...), 0.03125, 0.96875)`
+    ///    (bilinear/mipmap/aniso footprints stay inside the tile),
+    /// 3. gradients taken from the PRE-fract uv (`dpdx(in.uv)`, not of the
+    ///    clamped/fract'ed coordinate).
+    /// A refactor that drops any one of them resurrects the seam bug —
+    /// this test fails loudly instead.
+    #[test]
+    fn terrain_water_seam_guards_present() {
+        for (name, src) in [("terrain", TERRAIN_SHADER), ("water", WATER_SHADER)] {
+            assert!(
+                src.contains("textureSampleGrad(atlas_tex, atlas_samp, tuv, gdx, gdy)"),
+                "{name}: explicit-gradient atlas sampling missing"
+            );
+            assert!(
+                src.contains("clamp(fract("),
+                "{name}: half-texel inset clamp missing"
+            );
+            assert!(
+                src.contains("vec2<f32>(0.03125), vec2<f32>(0.96875)"),
+                "{name}: inset bounds are not the half-texel pair (0.5/16, 1-0.5/16)"
+            );
+            assert!(
+                src.contains("dpdx(in.uv) / vec2<f32>(16.0, 16.0)"),
+                "{name}: gradients must come from the PRE-fract uv"
+            );
+            assert!(
+                !src.contains("textureSample(atlas_tex"),
+                "{name}: implicit-derivative atlas sampling is the seam bug — do not reintroduce"
+            );
         }
     }
 

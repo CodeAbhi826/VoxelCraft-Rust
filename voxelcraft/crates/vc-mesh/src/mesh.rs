@@ -48,8 +48,11 @@ fn sb(s: u8) -> u8 {
 ///                                 stage — see tint.rs)
 ///
 /// normal: 0=+X 1=−X 2=+Y 3=−Y 4=+Z 5=−Z 6=cross-plants (shade tables in
-/// the shaders reproduce the old `face_shade * AO_MULT` exactly). bias:u2 is
-/// reserved for a future texture-bleed inset sign (shader currently ignores).
+/// the shaders reproduce the old `face_shade * AO_MULT` exactly). bias:u2
+/// remains reserved (the texture-bleed seam fix landed as explicit
+/// gradients + a half-texel inset in TERRAIN_SHADER/WATER_SHADER fs_main —
+/// see the `terrain_water_seam_guards_present` drift-guard test; the bits
+/// stay free for a future per-vertex inset refinement).
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, Debug, PartialEq, Eq)]
 pub struct Vertex {

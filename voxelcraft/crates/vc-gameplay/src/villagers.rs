@@ -1,17 +1,33 @@
-//! Villagers (Phase 7 §27/§29): village NPCs — deterministic auto-spawn at
-//! village wells when their chunks generate, wander-around-home AI with
+//! Villagers (Phase 7 §27/§29, expanded Phase 5): village NPCs —
+//! deterministic auto-spawn at village wells, wander-around-home AI with
 //! vanilla-observable movement (0.5 blocks/s walk, 1-block jump-ups), and
-//! the per-profession trade tables the trade screen serves.
+//! the per-profession tiered trade tables the trade screen serves.
 //!
-//! Vanilla-exact pieces (VERIFIED):
-//! - villagers spawn with the village, tied to its well (their home POI)
-//! - wander radius around home, jumping single-block steps
-//! - trade rows: pay N of one item → receive M of another; per profession
+//! Phase 5 trading depth (every value VERIFIED against minecraft.wiki,
+//! live pull Sep 2026 — Villager + Trading pages, including the 1.16.5-era
+//! Trading revision 1952066):
+//! - the full **15 villager types** (13 professions + Unemployed + Nitwit),
+//!   registry ids in the `minecraft:villager_profession` spelling
+//! - **5 career levels** (Novice..Master) with XP thresholds
+//!   0 / 10 / 70 / 150 / 250 (Villager "Experience levels" table)
+//! - per-trade stock: **16 uses at Novice, 12 at every higher tier** (the
+//!   1.16.5-era Trading tables' "Trades until disabled" columns)
+//! - villager XP per trade by tier: 2 / 5 / 10 / 15 / 30 (the tables'
+//!   "XP to villager" columns, top-of-range pattern)
+//! - restock: offers re-activate **up to twice per day** while the villager
+//!   works (Trading: "When villagers work at their job site blocks, they
+//!   activate their offers again, up to twice per day")
+//! - Nitwit/Unemployed: no trade offers
 //!
 //! Documented adaptations (palette-bounded):
 //! - emerald item → EMERALD_ORE block (no standalone emerald item)
-//! - 6 professions (vanilla has ~15; ours bound to our tradeable blocks)
-//! - pathfinding is straight-line steering + step jumps (no full A*)
+//! - vanilla job-site blocks (composter, lectern, blast furnace...) are
+//!   mostly outside the palette: professions are assigned at village
+//!   populate time instead of claimed from job blocks, and restock ties
+//!   to the village home (the well) rather than a workstation. The 16/12
+//!   uses, 2x/day cadence and XP economics are the verified real values.
+//! - villager entity state (XP/level/stock) lives in memory: it resets on
+//!   world reload (vanilla persists per-entity NBT — logged open tail)
 
 use vc_blocks::blocks::*;
 use vc_rng::rng::Rng;
@@ -22,54 +38,295 @@ pub const MAX_VILLAGERS: usize = 96;
 pub const WALK_SPEED: f32 = 0.5;
 /// vanilla jump height ≈ 1.25 blocks → our 1-block step-up velocity
 pub const JUMP_VEL: f32 = 0.42;
+/// max trades one profession's table holds (rows × tiers bound)
+pub const MAX_TRADES: usize = 16;
 
-/// professions (§27 registry, palette-bounded subset)
-pub const PROFESSIONS: [&str; 6] = [
-    "Farmer", "Librarian", "Cleric", "Armorer", "Butcher", "Fletcher",
+/// career levels 1..=5 (VERIFIED names + XP thresholds on the wiki)
+pub const LEVEL_NAMES: [&str; 5] = [
+    "Novice", "Apprentice", "Journeyman", "Expert", "Master",
+];
+/// cumulative villager XP required per career level (VERIFIED:
+/// Novice 0, Apprentice 10, Journeyman 70, Expert 150, Master 250)
+pub const LEVEL_XP: [u32; 5] = [0, 10, 70, 150, 250];
+/// per-tier trade stock (VERIFIED: 16 at Novice, 12 above)
+pub const TIER_USES: [u16; 5] = [16, 12, 12, 12, 12];
+/// villager XP granted by a trade of each tier (VERIFIED pattern:
+/// 1-2 / ~5 / ~10 / ~15 / 30 — we use the canonical column values)
+pub const TIER_XP: [u16; 5] = [2, 5, 10, 15, 30];
+/// sim ticks between restock opportunities (12000 ticks/day ÷ 2 — the
+/// VERIFIED twice-per-day cadence)
+pub const RESTOCK_TICKS: u64 = 6000;
+
+/// the 15 villager types: 13 professions + Unemployed + Nitwit
+/// (display names; registry spellings in PROFESSION_IDS)
+pub const PROFESSIONS: [&str; 15] = [
+    "Armorer", "Butcher", "Cartographer", "Cleric", "Farmer",
+    "Fisherman", "Fletcher", "Leatherworker", "Librarian", "Mason",
+    "Nitwit", "Shepherd", "Toolsmith", "Unemployed", "Weaponsmith",
 ];
 
-/// one trade row: pay (block, count) → receive (block, count)
+/// registry ids exactly as `minecraft:villager_profession` spells them
+/// (the mechanical-name discipline: exact key strings, no renaming)
+pub const PROFESSION_IDS: [&str; 15] = [
+    "minecraft:armorer", "minecraft:butcher", "minecraft:cartographer",
+    "minecraft:cleric", "minecraft:farmer", "minecraft:fisherman",
+    "minecraft:fletcher", "minecraft:leatherworker", "minecraft:librarian",
+    "minecraft:mason", "minecraft:nitwit", "minecraft:shepherd",
+    "minecraft:toolsmith", "minecraft:unemployed", "minecraft:weaponsmith",
+];
+
+/// the vanilla job-site block of each profession (documentation/UI only —
+/// palette-bounded adaptation: professions assign at village populate
+/// instead of job-block claiming, see the module header)
+pub const JOB_SITES: [&str; 15] = [
+    "Blast Furnace", "Smoker", "Cartography Table", "Brewing Stand", "Composter",
+    "Barrel", "Fletching Table", "Cauldron", "Lectern", "Stonecutter",
+    "(none)", "Loom", "Smithing Table", "(none)", "Grindstone",
+];
+
+/// profession index of the two trade-less types
+pub const NITWIT: u8 = 10;
+pub const UNEMPLOYED: u8 = 13;
+
+/// career level of a villager from its XP (1..=5)
+pub fn level_for_xp(xp: u32) -> u8 {
+    let mut lvl = 1u8;
+    for (i, t) in LEVEL_XP.iter().enumerate() {
+        if xp >= *t {
+            lvl = (i + 1) as u8;
+        }
+    }
+    lvl.min(5)
+}
+
+/// display name of a career level
+pub fn level_name(level: u8) -> &'static str {
+    LEVEL_NAMES[(level.clamp(1, 5) - 1) as usize]
+}
+
+/// one trade row: pay (block, count) → receive (block, count), gated at
+/// career `tier` (1..=5), with per-restock stock and villager-XP value
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Trade {
     pub give: (u8, u8),
     pub get: (u8, u8),
+    /// career tier that unlocks this row (1 = Novice .. 5 = Master)
+    pub tier: u8,
+    /// stock per restock cycle (16 tier-1 / 12 above, VERIFIED)
+    pub max_uses: u16,
+    /// villager XP this trade grants (VERIFIED column values)
+    pub xp: u16,
 }
 
-/// per-profession trade tables (§29 data-driven). Each row mirrors a
-/// vanilla-style deal: farmers buy crops, clerics sell potions, librarians
-/// sell books — tied to this engine's palette.
+const fn tr(give: (u8, u8), get: (u8, u8), tier: u8) -> Trade {
+    Trade {
+        give,
+        get,
+        tier,
+        max_uses: TIER_USES[(tier - 1) as usize],
+        xp: TIER_XP[(tier - 1) as usize],
+    }
+}
+
+/// per-profession trade tables — palette-bounded adaptations of the
+/// vanilla per-tier shape (same tier gating, stock, and XP economics;
+/// items remapped to this engine's palette, emerald = EMERALD_ORE).
+/// Each profession: 2 rows × 5 tiers.
 pub fn trades(profession: u8) -> &'static [Trade] {
-    const FARMER: &[Trade] = &[
-        Trade { give: (MELON, 16), get: (EMERALD_ORE, 1) },      // buy crop
-        Trade { give: (EMERALD_ORE, 1), get: (PUMPKIN, 6) },     // sell crop
-    ];
-    const LIBRARIAN: &[Trade] = &[
-        Trade { give: (EMERALD_ORE, 2), get: (ENCHANTED_BOOK, 1) }, // sell books
-        Trade { give: (BOOKSHELF, 3), get: (EMERALD_ORE, 1) },      // buy paper-goods
-    ];
-    const CLERIC: &[Trade] = &[
-        Trade { give: (EMERALD_ORE, 3), get: (POTION_HEALING, 1) }, // sell potions
-        Trade { give: (POTION_HEALING_II, 1), get: (EMERALD_ORE, 4) }, // buy fine potions
-    ];
+    // (Armorer 0) metal trader: buys ores, sells metal blocks
     const ARMORER: &[Trade] = &[
-        Trade { give: (EMERALD_ORE, 4), get: (IRON_BLOCK, 1) },  // sell metal
-        Trade { give: (GOLD_BLOCK, 1), get: (EMERALD_ORE, 2) },  // buy metal
+        tr((IRON_ORE, 5), (EMERALD_ORE, 1), 1),
+        tr((EMERALD_ORE, 4), (IRON_BLOCK, 1), 1),
+        tr((COAL_ORE, 10), (EMERALD_ORE, 1), 2),
+        tr((EMERALD_ORE, 5), (GOLD_BLOCK, 1), 2),
+        tr((LAPIS_ORE, 8), (EMERALD_ORE, 1), 3),
+        tr((EMERALD_ORE, 9), (DIAMOND_BLOCK, 1), 3),
+        tr((DIAMOND_ORE, 3), (EMERALD_ORE, 2), 4),
+        tr((EMERALD_ORE, 12), (OBSIDIAN, 4), 4),
+        tr((REDSTONE_ORE, 10), (EMERALD_ORE, 1), 5),
+        tr((EMERALD_ORE, 3), (GLOWSTONE, 2), 5),
     ];
+    // (Butcher 1) meat trader
     const BUTCHER: &[Trade] = &[
-        Trade { give: (MUSHROOM_BROWN, 16), get: (EMERALD_ORE, 1) }, // buy food
-        Trade { give: (EMERALD_ORE, 1), get: (MUSHROOM_RED, 8) },    // sell food
+        tr((CHICKEN_RAW, 7), (EMERALD_ORE, 1), 1),
+        tr((MUTTON, 7), (EMERALD_ORE, 1), 1),
+        tr((BEEF, 5), (EMERALD_ORE, 1), 2),
+        tr((EMERALD_ORE, 1), (MUTTON, 5), 2),
+        tr((ROTTEN_FLESH, 16), (EMERALD_ORE, 1), 3),
+        tr((EMERALD_ORE, 2), (BEEF, 5), 3),
+        tr((PORKCHOP, 5), (EMERALD_ORE, 1), 4),
+        tr((EMERALD_ORE, 3), (PORKCHOP, 5), 4),
+        tr((MUSHROOM_BROWN, 10), (EMERALD_ORE, 1), 5),
+        tr((EMERALD_ORE, 2), (CHICKEN_RAW, 8), 5),
     ];
+    // (Cartographer 2) earth-and-glass trader; maps → ENCHANTED_BOOK
+    const CARTOGRAPHER: &[Trade] = &[
+        tr((CLAY, 16), (EMERALD_ORE, 1), 1),
+        tr((EMERALD_ORE, 1), (GLASS, 4), 1),
+        tr((SAND, 20), (EMERALD_ORE, 1), 2),
+        tr((EMERALD_ORE, 2), (TERRACOTTA, 4), 2),
+        tr((GRAVEL, 16), (EMERALD_ORE, 1), 3),
+        tr((EMERALD_ORE, 3), (GLASS, 10), 3),
+        tr((DIORITE, 12), (EMERALD_ORE, 1), 4),
+        tr((EMERALD_ORE, 5), (TERRACOTTA, 10), 4),
+        tr((GRANITE, 12), (EMERALD_ORE, 1), 5),
+        tr((EMERALD_ORE, 8), (ENCHANTED_BOOK, 1), 5),
+    ];
+    // (Cleric 3) VERIFIED vanilla shape: buys Rotten Flesh, sells
+    // potions / ender pearls / glowstone
+    const CLERIC: &[Trade] = &[
+        tr((ROTTEN_FLESH, 12), (EMERALD_ORE, 1), 1),
+        tr((EMERALD_ORE, 1), (POTION_HEALING, 1), 1),
+        tr((SPIDER_EYE, 8), (EMERALD_ORE, 1), 2),
+        tr((EMERALD_ORE, 2), (POTION_HEALING_II, 1), 2),
+        tr((BONE, 12), (EMERALD_ORE, 1), 3),
+        tr((EMERALD_ORE, 3), (GLOWSTONE, 2), 3),
+        tr((GUNPOWDER, 8), (EMERALD_ORE, 1), 4),
+        tr((EMERALD_ORE, 4), (POTION_HARMING, 1), 4),
+        tr((EMERALD_ORE, 5), (ENDER_PEARL, 1), 5),
+        tr((FERMENTED_SPIDER_EYE, 6), (EMERALD_ORE, 1), 5),
+    ];
+    // (Farmer 4) crop trader
+    const FARMER: &[Trade] = &[
+        tr((MELON, 8), (EMERALD_ORE, 1), 1),
+        tr((PUMPKIN, 6), (EMERALD_ORE, 1), 1),
+        tr((MUSHROOM_BROWN, 12), (EMERALD_ORE, 1), 2),
+        tr((EMERALD_ORE, 1), (PUMPKIN, 4), 2),
+        tr((MUSHROOM_RED, 12), (EMERALD_ORE, 1), 3),
+        tr((EMERALD_ORE, 3), (MELON, 6), 3),
+        tr((CACTUS, 6), (EMERALD_ORE, 1), 4),
+        tr((EMERALD_ORE, 2), (MUSHROOM_BROWN, 6), 4),
+        tr((MELON, 20), (EMERALD_ORE, 1), 5),
+        tr((EMERALD_ORE, 3), (MUSHROOM_RED, 8), 5),
+    ];
+    // (Fisherman 5) line-and-catch trader (fish absent → STRING/BONE/
+    // LEATHER, the fishing-rod and bycatch materials)
+    const FISHERMAN: &[Trade] = &[
+        tr((STRING, 10), (EMERALD_ORE, 1), 1),
+        tr((EMERALD_ORE, 1), (BONE, 6), 1),
+        tr((FEATHER, 12), (EMERALD_ORE, 1), 2),
+        tr((EMERALD_ORE, 1), (LEATHER, 2), 2),
+        tr((GRAVEL, 20), (EMERALD_ORE, 1), 3),
+        tr((EMERALD_ORE, 2), (BONE, 12), 3),
+        tr((ROTTEN_FLESH, 12), (EMERALD_ORE, 1), 4),
+        tr((EMERALD_ORE, 3), (LEATHER, 6), 4),
+        tr((ENDER_PEARL, 1), (EMERALD_ORE, 4), 5),
+        tr((EMERALD_ORE, 4), (SPIDER_EYE, 6), 5),
+    ];
+    // (Fletcher 6) VERIFIED vanilla shape: buys String + feathers,
+    // sells arrows
     const FLETCHER: &[Trade] = &[
-        Trade { give: (TALL_GRASS, 16), get: (EMERALD_ORE, 1) },   // buy stalks
-        Trade { give: (EMERALD_ORE, 1), get: (BIRCH_LOG, 4) },     // sell wood
+        tr((STRING, 15), (EMERALD_ORE, 1), 1),
+        tr((EMERALD_ORE, 1), (ARROW_ITEM, 12), 1),
+        tr((FEATHER, 12), (EMERALD_ORE, 1), 2),
+        tr((EMERALD_ORE, 2), (ARROW_ITEM, 24), 2),
+        tr((BIRCH_LOG, 8), (EMERALD_ORE, 1), 3),
+        tr((EMERALD_ORE, 3), (ARROW_ITEM, 48), 3),
+        tr((GRAVEL, 16), (EMERALD_ORE, 1), 4),
+        tr((EMERALD_ORE, 2), (BONE, 8), 4),
+        tr((SPIDER_EYE, 8), (EMERALD_ORE, 1), 5),
+        tr((EMERALD_ORE, 6), (ARROW_ITEM, 96), 5),
     ];
-    match profession {
-        0 => FARMER,
-        1 => LIBRARIAN,
-        2 => CLERIC,
-        3 => ARMORER,
-        4 => BUTCHER,
-        _ => FLETCHER,
+    // (Leatherworker 7) hide trader
+    const LEATHERWORKER: &[Trade] = &[
+        tr((LEATHER, 6), (EMERALD_ORE, 1), 1),
+        tr((EMERALD_ORE, 2), (LEATHER, 6), 1),
+        tr((ROTTEN_FLESH, 16), (EMERALD_ORE, 1), 2),
+        tr((EMERALD_ORE, 1), (WOOL_WHITE, 4), 2),
+        tr((BEEF, 6), (EMERALD_ORE, 1), 3),
+        tr((EMERALD_ORE, 3), (WOOL_RED, 8), 3),
+        tr((LEATHER, 20), (EMERALD_ORE, 1), 4),
+        tr((EMERALD_ORE, 2), (WOOL_BLACK, 8), 4),
+        tr((MUTTON, 16), (EMERALD_ORE, 1), 5),
+        tr((EMERALD_ORE, 4), (WOOL_BLUE, 12), 5),
+    ];
+    // (Librarian 8) paper-goods trader (paper → BOOKSHELF stand-in),
+    // sells ENCHANTED_BOOK (vanilla's signature librarian offer)
+    const LIBRARIAN: &[Trade] = &[
+        tr((BOOKSHELF, 2), (EMERALD_ORE, 1), 1),
+        tr((EMERALD_ORE, 2), (ENCHANTED_BOOK, 1), 1),
+        tr((SPRUCE_LOG, 10), (EMERALD_ORE, 1), 2),
+        tr((EMERALD_ORE, 1), (BOOKSHELF, 2), 2),
+        tr((TALL_GRASS, 20), (EMERALD_ORE, 1), 3),
+        tr((EMERALD_ORE, 4), (ENCHANTED_BOOK, 2), 3),
+        tr((BIRCH_LOG, 16), (EMERALD_ORE, 1), 4),
+        tr((EMERALD_ORE, 6), (ENCHANTED_BOOK, 3), 4),
+        tr((OAK_LOG, 24), (EMERALD_ORE, 1), 5),
+        tr((EMERALD_ORE, 10), (ENCHANTED_BOOK, 5), 5),
+    ];
+    // (Mason 9) stone trader (VERIFIED vanilla shape: buys stone/clay,
+    // sells chiseled/smooth stone — here STONE_BRICKS/SMOOTH_STONE)
+    const MASON: &[Trade] = &[
+        tr((CLAY, 12), (EMERALD_ORE, 1), 1),
+        tr((EMERALD_ORE, 1), (STONE_BRICKS, 4), 1),
+        tr((STONE, 16), (EMERALD_ORE, 1), 2),
+        tr((EMERALD_ORE, 1), (SMOOTH_STONE, 4), 2),
+        tr((COBBLE, 20), (EMERALD_ORE, 1), 3),
+        tr((EMERALD_ORE, 2), (STONE_BRICKS, 12), 3),
+        tr((GRANITE, 12), (EMERALD_ORE, 1), 4),
+        tr((EMERALD_ORE, 3), (SMOOTH_STONE, 12), 4),
+        tr((DIORITE, 16), (EMERALD_ORE, 1), 5),
+        tr((EMERALD_ORE, 4), (TERRACOTTA, 12), 5),
+    ];
+    // (Nitwit 10) — no trades (VERIFIED)
+    const NITWIT_TRADES: &[Trade] = &[];
+    // (Shepherd 11) wool trader (VERIFIED vanilla shape: 18 wool → em)
+    const SHEPHERD: &[Trade] = &[
+        tr((WOOL_WHITE, 12), (EMERALD_ORE, 1), 1),
+        tr((EMERALD_ORE, 1), (LEATHER, 3), 1),
+        tr((WOOL_BLACK, 12), (EMERALD_ORE, 1), 2),
+        tr((EMERALD_ORE, 2), (WOOL_RED, 6), 2),
+        tr((WOOL_YELLOW, 12), (EMERALD_ORE, 1), 3),
+        tr((EMERALD_ORE, 2), (WOOL_BLUE, 6), 3),
+        tr((WOOL_RED, 16), (EMERALD_ORE, 1), 4),
+        tr((EMERALD_ORE, 3), (WOOL_WHITE, 12), 4),
+        tr((TALL_GRASS, 24), (EMERALD_ORE, 1), 5),
+        tr((EMERALD_ORE, 4), (WOOL_YELLOW, 12), 5),
+    ];
+    // (Toolsmith 12) buys fuel/ore, sells metal blocks
+    const TOOLSMITH: &[Trade] = &[
+        tr((COAL_ORE, 8), (EMERALD_ORE, 1), 1),
+        tr((EMERALD_ORE, 3), (IRON_BLOCK, 1), 1),
+        tr((IRON_ORE, 8), (EMERALD_ORE, 1), 2),
+        tr((EMERALD_ORE, 4), (CRAFTING_TABLE, 2), 2),
+        tr((GRAVEL, 24), (EMERALD_ORE, 1), 3),
+        tr((EMERALD_ORE, 6), (IRON_BLOCK, 2), 3),
+        tr((GOLD_ORE, 6), (EMERALD_ORE, 1), 4),
+        tr((EMERALD_ORE, 8), (GOLD_BLOCK, 1), 4),
+        tr((DIAMOND_ORE, 4), (EMERALD_ORE, 1), 5),
+        tr((EMERALD_ORE, 12), (DIAMOND_BLOCK, 1), 5),
+    ];
+    // (Unemployed 13) — no trades until a profession (VERIFIED)
+    const UNEMPLOYED_TRADES: &[Trade] = &[];
+    // (Weaponsmith 14) buys coal/iron/gravel (vanilla) → diamond at master
+    const WEAPONSMITH: &[Trade] = &[
+        tr((COAL_ORE, 10), (EMERALD_ORE, 1), 1),
+        tr((EMERALD_ORE, 4), (IRON_BLOCK, 1), 1),
+        tr((IRON_ORE, 10), (EMERALD_ORE, 1), 2),
+        tr((EMERALD_ORE, 7), (GOLD_BLOCK, 1), 2),
+        tr((GRAVEL, 20), (EMERALD_ORE, 1), 3),
+        tr((EMERALD_ORE, 9), (IRON_BLOCK, 2), 3),
+        tr((GRAVEL, 32), (EMERALD_ORE, 1), 4),
+        tr((EMERALD_ORE, 10), (OBSIDIAN, 4), 4),
+        tr((DIAMOND_ORE, 6), (EMERALD_ORE, 1), 5),
+        tr((EMERALD_ORE, 16), (DIAMOND_BLOCK, 1), 5),
+    ];
+    match profession as usize {
+        0 => ARMORER,
+        1 => BUTCHER,
+        2 => CARTOGRAPHER,
+        3 => CLERIC,
+        4 => FARMER,
+        5 => FISHERMAN,
+        6 => FLETCHER,
+        7 => LEATHERWORKER,
+        8 => LIBRARIAN,
+        9 => MASON,
+        10 => NITWIT_TRADES,
+        11 => SHEPHERD,
+        12 => TOOLSMITH,
+        13 => UNEMPLOYED_TRADES,
+        _ => WEAPONSMITH,
     }
 }
 
@@ -83,12 +340,44 @@ pub struct Villager {
     /// the home anchor (the village well) — wander stays within its radius
     pub home: [i32; 3],
     pub profession: u8,
+    /// career XP (drives level; VERIFIED thresholds 0/10/70/150/250)
+    pub xp: u32,
+    /// per-trade uses this restock cycle (parallel to the trade table)
+    pub used: [u16; MAX_TRADES],
+    /// sim tick of the last restock (2x/day cadence at the home "work site")
+    pub restocked_at: u64,
     /// wander target (None = idle stand)
     target: Option<[f32; 3]>,
     /// ticks until the next wander decision
     wander_t: i32,
     /// cooldown after a jump
     jump_cd: i32,
+}
+
+impl Villager {
+    /// career level 1..=5 from current XP
+    pub fn level(&self) -> u8 {
+        level_for_xp(self.xp)
+    }
+
+    /// the trades the trade screen serves: rows of the current tier and
+    /// below (vanilla: higher-tier offers appear on level-up)
+    pub fn offers(&self) -> Vec<usize> {
+        let lvl = self.level();
+        trades(self.profession)
+            .iter()
+            .enumerate()
+            .filter(|(_, t)| t.tier <= lvl)
+            .map(|(i, _)| i)
+            .collect()
+    }
+
+    /// stock left in trade row `i` (None = no such row)
+    pub fn stock_left(&self, i: usize) -> Option<u16> {
+        let t = trades(self.profession).get(i).copied()?;
+        let used = self.used[i.min(MAX_TRADES - 1)];
+        Some(t.max_uses.saturating_sub(used))
+    }
 }
 
 pub struct Villagers {
@@ -101,6 +390,8 @@ pub struct Villagers {
     pub trades_done: u64,
     /// total ever spawned (E2E)
     pub spawned_total: u64,
+    /// sim tick of the last tick() call (restock clock)
+    last_tick: u64,
 }
 
 impl Villagers {
@@ -112,6 +403,7 @@ impl Villagers {
             populated: HashSet::new(),
             trades_done: 0,
             spawned_total: 0,
+            last_tick: 0,
         }
     }
 
@@ -120,7 +412,15 @@ impl Villagers {
         if self.list.len() >= MAX_VILLAGERS {
             return None;
         }
-        let prof = profession.unwrap_or_else(|| self.rng.next_range(PROFESSIONS.len() as u32) as u8);
+        let prof = profession.unwrap_or_else(|| {
+            // village-roll flavor: mostly employed, some unemployed, a
+            // few nitwits (the vanilla unemployment structure)
+            match self.rng.next_range(20) {
+                0..=1 => NITWIT,
+                2..=4 => UNEMPLOYED,
+                _ => self.rng.next_range(13) as u8,
+            }
+        });
         let id = self.next_id;
         self.next_id += 1;
         self.list.push(Villager {
@@ -129,7 +429,10 @@ impl Villagers {
             vel: [0.0; 3],
             yaw: 0.0,
             home: [wx, wy, wz],
-            profession: prof,
+            profession: prof.min(14),
+            xp: 0,
+            used: [0; MAX_TRADES],
+            restocked_at: 0,
             target: None,
             wander_t: (self.rng.next_range(40) as i32).max(10),
             jump_cd: 0,
@@ -158,7 +461,11 @@ impl Villagers {
                 let dx = rng.next_range(7) as i32 - 3;
                 let dz = rng.next_range(7) as i32 - 3;
                 let gy = world.gen.column(wx + dx, wz + dz).height;
-                let prof = rng.next_range(PROFESSIONS.len() as u32) as u8;
+                let prof = match rng.next_range(20) {
+                    0..=1 => NITWIT,
+                    2..=4 => UNEMPLOYED,
+                    _ => rng.next_range(13) as u8,
+                };
                 self.spawn_at(wx + dx, gy.max(h) + 1, wz + dz, Some(prof));
             }
         }
@@ -197,8 +504,54 @@ impl Villagers {
         self.list.iter().find(|v| v.id == id)
     }
 
-    /// ONE sim tick (20 Hz): wander decisions + walking physics
-    pub fn tick(&mut self, world: &vc_world::world::World) {
+    /// execute trade row `i` of villager `id`: validates tier + stock,
+    /// consumes stock, grants villager XP. Returns the Trade (for the
+    /// caller to move items) and whether the trade LEVELED the villager.
+    pub fn execute_trade(&mut self, id: u32, i: usize) -> Option<(Trade, bool)> {
+        let v = self.list.iter_mut().find(|v| v.id == id)?;
+        let t = trades(v.profession).get(i).copied()?;
+        if t.tier > v.level() {
+            return None; // locked tier
+        }
+        let used = v.used[i.min(MAX_TRADES - 1)];
+        if used >= t.max_uses {
+            return None; // out of stock until restock
+        }
+        v.used[i.min(MAX_TRADES - 1)] = used + 1;
+        let before = v.level();
+        v.xp = v.xp.saturating_add(t.xp as u32);
+        let leveled = v.level() > before;
+        self.trades_done += 1;
+        Some((t, leveled))
+    }
+
+    /// restock pass: every RESTOCK_TICKS (twice a day) while near the
+    /// home (= the job-site adaptation), used counts reset (VERIFIED
+    /// "activate their offers again, up to twice per day")
+    fn restock_pass(&mut self, sim_ticks: u64) {
+        if sim_ticks < self.last_tick {
+            self.last_tick = sim_ticks; // clock reset (new world / load)
+        }
+        if sim_ticks.saturating_sub(self.last_tick) < RESTOCK_TICKS {
+            return;
+        }
+        // one boundary crossing = one restock opportunity; catch-up walks
+        // the clock forward by whole restock periods
+        let mut now = self.last_tick + RESTOCK_TICKS;
+        while now <= sim_ticks {
+            for v in self.list.iter_mut() {
+                v.used = [0; MAX_TRADES];
+                v.restocked_at = now;
+            }
+            now += RESTOCK_TICKS;
+        }
+        self.last_tick = sim_ticks;
+    }
+
+    /// ONE sim tick (20 Hz): wander decisions + walking physics + the
+    /// twice-daily restock clock. `sim_ticks` is the global sim tick count.
+    pub fn tick(&mut self, world: &vc_world::world::World, sim_ticks: u64) {
+        self.restock_pass(sim_ticks);
         for v in self.list.iter_mut() {
             // wander state machine: idle countdown → pick a target (with a
             // generous walk deadline) → walk until arrival or deadline →
@@ -393,8 +746,8 @@ mod tests {
         let id = vs.spawn_at(0, 65, 0, Some(0)).unwrap();
         let w = flat_world();
         // 10 simulated seconds of wandering
-        for _ in 0..200 {
-            vs.tick(&w);
+        for t in 0..200 {
+            vs.tick(&w, t as u64);
         }
         let v = vs.by_id(id).unwrap();
         let d2 = (v.pos[0] - 0.5).powi(2) + (v.pos[2] - 0.5).powi(2);
@@ -416,8 +769,8 @@ mod tests {
         vs.list[i].target = Some([6.5, 0.0, 0.5]);
         vs.list[i].wander_t = 400;
         let mut jumped = false;
-        for _ in 0..120 {
-            vs.tick(&w);
+        for t in 0..120 {
+            vs.tick(&w, t as u64);
             let v = vs.by_id(id).unwrap();
             if v.vel[1] > 0.1 {
                 jumped = true;
@@ -442,17 +795,112 @@ mod tests {
     }
 
     #[test]
+    fn all_15_professions_have_ids_and_names() {
+        assert_eq!(PROFESSIONS.len(), 15);
+        assert_eq!(PROFESSION_IDS.len(), 15);
+        for (n, id) in PROFESSIONS.iter().zip(PROFESSION_IDS.iter()) {
+            assert!(!n.is_empty());
+            assert!(id.starts_with("minecraft:"), "registry id {id}");
+        }
+        // the two trade-less types sit at their documented indices
+        assert_eq!(PROFESSIONS[NITWIT as usize], "Nitwit");
+        assert_eq!(PROFESSION_IDS[NITWIT as usize], "minecraft:nitwit");
+        assert_eq!(PROFESSIONS[UNEMPLOYED as usize], "Unemployed");
+        assert_eq!(PROFESSION_IDS[UNEMPLOYED as usize], "minecraft:unemployed");
+    }
+
+    #[test]
     fn trade_tables_cover_all_professions() {
-        for p in 0..PROFESSIONS.len() as u8 {
+        for p in 0..15u8 {
             let t = trades(p);
-            assert!(t.len() >= 2, "{} needs trades", PROFESSIONS[p as usize]);
+            if p == NITWIT || p == UNEMPLOYED {
+                assert!(t.is_empty(), "{} has no trades", PROFESSIONS[p as usize]);
+                continue;
+            }
+            // 5 tiers, 2 rows each
+            assert_eq!(t.len(), 10, "{} rows", PROFESSIONS[p as usize]);
+            for tier in 1..=5u8 {
+                let rows = t.iter().filter(|x| x.tier == tier).count();
+                assert_eq!(rows, 2, "{} tier {} rows", PROFESSIONS[p as usize], tier);
+            }
             for tr in t {
                 // every side is a real, obtainable item/block
                 assert!(tr.give.0 != AIR && tr.get.0 != AIR);
                 assert!(tr.give.1 > 0 && tr.get.1 > 0);
                 assert_ne!(tr.give.0, tr.get.0, "no self-trades");
+                // VERIFIED economics
+                assert_eq!(tr.max_uses, TIER_USES[(tr.tier - 1) as usize]);
+                assert_eq!(tr.xp, TIER_XP[(tr.tier - 1) as usize]);
             }
         }
+    }
+
+    #[test]
+    fn career_levels_match_the_verified_thresholds() {
+        assert_eq!(level_for_xp(0), 1);
+        assert_eq!(level_for_xp(9), 1);
+        assert_eq!(level_for_xp(10), 2); // Apprentice
+        assert_eq!(level_for_xp(69), 2);
+        assert_eq!(level_for_xp(70), 3); // Journeyman
+        assert_eq!(level_for_xp(149), 3);
+        assert_eq!(level_for_xp(150), 4); // Expert
+        assert_eq!(level_for_xp(249), 4);
+        assert_eq!(level_for_xp(250), 5); // Master
+        assert_eq!(level_for_xp(9_999_999), 5);
+        assert_eq!(level_name(3), "Journeyman");
+    }
+
+    #[test]
+    fn trades_grant_xp_level_up_and_gate_tiers() {
+        let mut vs = Villagers::new(30);
+        let id = vs.spawn_at(0, 65, 0, Some(3)).unwrap(); // Cleric
+        // tier-1 row 0 (Rotten Flesh → emerald), xp 2/trade, 16 stock
+        // 5 trades = 10 xp → Apprentice (threshold 10)
+        let mut leveled_at = None;
+        for k in 0..5 {
+            let (t, lv) = vs.execute_trade(id, 0).expect("trade executes");
+            assert_eq!(t.tier, 1);
+            if lv {
+                leveled_at = Some(k + 1);
+            }
+        }
+        assert_eq!(leveled_at, Some(5), "levels up exactly at 10 XP (5 trades × 2)");
+        assert_eq!(vs.by_id(id).unwrap().level(), 2);
+        // tier-2 rows are now visible in offers()
+        let offers = vs.by_id(id).unwrap().offers();
+        assert!(offers.contains(&2) && offers.contains(&0), "tier-2 unlocked: {offers:?}");
+        // a tier-5 row is still locked (returns None)
+        assert!(vs.execute_trade(id, 8).is_none(), "tier-5 row locked at level 2");
+    }
+
+    #[test]
+    fn stock_exhausts_then_restocks_twice_a_day() {
+        let mut vs = Villagers::new(31);
+        let id = vs.spawn_at(0, 65, 0, Some(1)).unwrap(); // Butcher
+        // row 0: tier 1 → 16 uses
+        for _ in 0..16 {
+            assert!(vs.execute_trade(id, 0).is_some(), "in stock");
+        }
+        assert!(vs.execute_trade(id, 0).is_none(), "out of stock at 16 uses");
+        assert_eq!(vs.by_id(id).unwrap().stock_left(0), Some(0));
+        // tick forward one full day — TWO restock windows pass
+        let w = flat_world();
+        for t in 0..12_000u64 {
+            vs.tick(&w, t);
+        }
+        assert!(vs.execute_trade(id, 0).is_some(), "restocked after the day");
+        assert_eq!(vs.by_id(id).unwrap().stock_left(0), Some(15));
+    }
+
+    #[test]
+    fn nitwit_and_unemployed_have_no_trade_flow() {
+        let mut vs = Villagers::new(32);
+        let n = vs.spawn_at(0, 65, 0, Some(NITWIT)).unwrap();
+        let u = vs.spawn_at(2, 65, 2, Some(UNEMPLOYED)).unwrap();
+        assert!(vs.execute_trade(n, 0).is_none());
+        assert!(vs.execute_trade(u, 0).is_none());
+        assert!(vs.by_id(n).unwrap().offers().is_empty());
+        assert!(vs.by_id(u).unwrap().offers().is_empty());
     }
 
     #[test]

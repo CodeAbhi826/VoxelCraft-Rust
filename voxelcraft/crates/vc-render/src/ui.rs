@@ -984,14 +984,20 @@ impl UiCanvas {
             ContainerKind::Furnace => 128,    // input / flame / fuel + arrow + output
             ContainerKind::Brewing => 150,   // ingredient / bubbles / fuel + 3 bottles
             ContainerKind::Enchant => 160,   // item + lapis + 3 option buttons
-            ContainerKind::Trade => 150,     // 4-6 trade rows
+            // Phase 5: two 5-row columns + the career header
+            ContainerKind::Trade => 248,
         };
         let panel_h = top_h + 3 * 44 + 8 + 44 + 30; // + title + gaps + padding
         let y0 = (UI_H as i32 - panel_h) / 2;
 
-        // panel chrome
-        let px0 = x0 - 14;
-        let pw = grid_w + 28;
+        // panel chrome (the trade screen is wider: two 260px columns)
+        let trade_wide = kind == ContainerKind::Trade;
+        let pw = if trade_wide { 562 } else { grid_w + 28 };
+        let px0 = if trade_wide {
+            (UI_W as i32 - pw) / 2
+        } else {
+            x0 - 14
+        };
         self.rect(px0, y0 - 30, pw, panel_h + 30, [26, 26, 30, 235]);
         self.frame(px0, y0 - 30, pw, panel_h + 30, [60, 60, 66, 255]);
         self.frame(px0 + 1, y0 - 29, pw - 2, panel_h + 28, [12, 12, 14, 255]);
@@ -1226,52 +1232,108 @@ impl UiCanvas {
                 });
             }
             ContainerKind::Trade => {
-                // vanilla trade screen: rows of "give N x ITEM -> get M x
-                // ITEM"; the profession rides the title
-                let (prof, rows) = view.trade
-                    .clone()
-                    .unwrap_or(("VILLAGER".into(), Vec::new()));
-                // overwrite the generic title with the profession
+                // Phase 5 trade screen: two columns of offer rows (10 rows
+                // per profession), the career level + XP bar in the title,
+                // per-row stock counts, locked tiers dimmed with the level
+                // they unlock at. Row hit-rects keep TABLE indices, so
+                // SlotRef::TradeRow(i) maps straight to execute_trade(i).
+                let tv = view.trade.clone().unwrap_or(TradeView {
+                    profession: "VILLAGER".into(),
+                    level_name: "Novice".into(),
+                    level: 1,
+                    xp: 0,
+                    xp_next: Some(10),
+                    rows: Vec::new(),
+                });
+                // career header: profession · level · xp bar
                 self.text(
                     px0 + 12,
                     y0 - 24,
-                    &format!("VILLAGER: {prof}"),
+                    &format!("VILLAGER: {} — {}", tv.profession, tv.level_name),
                     [255, 220, 120, 255],
                     1,
                 );
-                let cx = (x0 + grid_w / 2 - 130).max(x0);
-                let cy = y0 + 8;
-                let mut row_pos = Vec::with_capacity(rows.len());
-                for (i, (give, get, affordable)) in rows.iter().enumerate() {
-                    let ry = cy + i as i32 * 44;
-                    let bg = if *affordable {
+                let bx = px0 + pw - 130;
+                self.rect(bx, y0 - 28, 108, 10, [20, 20, 24, 255]);
+                self.frame(bx, y0 - 28, 108, 10, [70, 70, 76, 255]);
+                if let Some(next) = tv.xp_next {
+                    let prev = vc_gameplay::villagers::LEVEL_XP[(tv.level - 1) as usize] as u32;
+                    let frac = ((tv.xp - prev) as f32 / (next - prev).max(1) as f32)
+                        .clamp(0.0, 1.0);
+                    self.rect(
+                        bx + 2,
+                        y0 - 26,
+                        ((104.0 * frac) as i32).max(if tv.xp > prev { 1 } else { 0 }),
+                        6,
+                        [120, 220, 120, 255],
+                    );
+                } else {
+                    self.rect(bx + 2, y0 - 26, 104, 6, [220, 170, 80, 255]); // Master
+                }
+                // two columns of 5 rows, 260 wide each
+                let col_x = [px0 + 16, px0 + 286];
+                let cy = y0 + 16;
+                let mut row_pos = vec![(i32::MIN, i32::MIN); tv.rows.len()];
+                for (i, r) in tv.rows.iter().enumerate() {
+                    let (col, slot) = (i / 5, i % 5);
+                    let rx = col_x[col.min(1)];
+                    let ry = cy + slot as i32 * 44;
+                    // state colors: locked (tier above the level) → gray;
+                    // out of stock → dark red; affordable → dark green
+                    let bg = if r.locked {
+                        [30, 30, 34, 170]
+                    } else if r.stock == 0 {
+                        [50, 26, 26, 220]
+                    } else if r.afford {
                         [34, 60, 34, 235]
                     } else {
                         [40, 34, 34, 200]
                     };
-                    self.rect(cx, ry, 260, 40, bg);
-                    self.frame(cx, ry, 260, 40, [12, 12, 14, 255]);
-                    // give stack (scaled-down icon) + count
-                    self.draw_stack(give, cx + 6, ry + 2, atlas);
+                    self.rect(rx, ry, 260, 40, bg);
+                    self.frame(rx, ry, 260, 40, [12, 12, 14, 255]);
+                    // give stack + count
+                    self.draw_stack(&r.give, rx + 6, ry + 2, atlas);
                     self.text(
-                        cx + 44,
-                        ry + 12,
-                        &format!("{} x", give.count),
-                        [255, 255, 255, 255],
+                        rx + 44,
+                        ry + 4,
+                        &format!("{} x", r.give.count),
+                        if r.locked { [110, 110, 110, 255] } else { [255, 255, 255, 255] },
                         1,
                     );
                     // arrow
-                    self.arrow(cx + 76, ry + 10, if *affordable { 1.0 } else { 0.25 });
+                    let lit = !r.locked && r.stock > 0 && r.afford;
+                    self.arrow(rx + 76, ry + 10, if lit { 1.0 } else { 0.25 });
                     // get stack + count
-                    self.draw_stack(get, cx + 128, ry + 2, atlas);
+                    self.draw_stack(&r.get, rx + 128, ry + 2, atlas);
                     self.text(
-                        cx + 166,
-                        ry + 12,
-                        &format!("{} x", get.count),
-                        if *affordable { [120, 255, 120, 255] } else { [150, 150, 150, 255] },
+                        rx + 166,
+                        ry + 4,
+                        &format!("{} x", r.get.count),
+                        if r.locked {
+                            [110, 110, 110, 255]
+                        } else if r.afford {
+                            [120, 255, 120, 255]
+                        } else {
+                            [150, 150, 150, 255]
+                        },
                         1,
                     );
-                    row_pos.push((cx, ry));
+                    // right rail: stock "n/m" or the level that unlocks it
+                    if r.locked {
+                        self.text(rx + 216, ry + 24, "LOCK", [130, 130, 140, 255], 1);
+                        self.text(rx + 186, ry + 4, &format!("LV{}", r.tier), [160, 160, 170, 255], 1);
+                    } else if r.stock == 0 {
+                        self.text(rx + 206, ry + 24, "OUT", [255, 90, 90, 255], 1);
+                    } else {
+                        self.text(
+                            rx + 200,
+                            ry + 24,
+                            &format!("{}/{}", r.stock, r.max_uses),
+                            [200, 200, 205, 255],
+                            1,
+                        );
+                    }
+                    row_pos[i] = (rx, ry);
                 }
                 geom.trade = Some(TradeSlots { rows: row_pos });
             }
@@ -1583,10 +1645,45 @@ pub struct ContainerView {
     )>,
     /// Phase 3: chest slots (27)
     pub chest: Vec<ItemStack>,
-    /// trade screen: (profession display name, rows of (give, get, affordable))
-    pub trade: Option<(String, Vec<(ItemStack, ItemStack, bool)>)>,
+    /// trade screen (Phase 5): tiered offers + stock + career level
+    pub trade: Option<TradeView>,
     /// stack riding the mouse cursor
     pub cursor: ItemStack,
+}
+
+/// one trade row as the screen serves it (Phase 5: tier + stock state)
+#[derive(Clone)]
+pub struct TradeRowView {
+    pub give: ItemStack,
+    pub get: ItemStack,
+    /// player has enough of `give` in the inventory
+    pub afford: bool,
+    /// stock left in this restock cycle (0 = disabled offer)
+    pub stock: u16,
+    /// stock per restock cycle (16 tier-1 / 12 above, VERIFIED)
+    pub max_uses: u16,
+    /// career tier that gates the row (1 Novice .. 5 Master)
+    pub tier: u8,
+    /// villager career level is below this row's tier (rendered dim,
+    /// clicks rejected — vanilla hides these rows entirely; we show
+    /// them grayed so the progression is visible: documented adaptation)
+    pub locked: bool,
+}
+
+/// the trade screen view: profession + career level + XP + all rows
+#[derive(Clone)]
+pub struct TradeView {
+    pub profession: String,
+    /// career level display name (Novice..Master)
+    pub level_name: String,
+    /// career level 1..=5
+    pub level: u8,
+    /// villager career XP
+    pub xp: u32,
+    /// cumulative XP of the next level (None at Master)
+    pub xp_next: Option<u32>,
+    /// all table rows, in table order (indices = SlotRef::TradeRow(i))
+    pub rows: Vec<TradeRowView>,
 }
 
 impl ContainerView {
@@ -1606,8 +1703,7 @@ impl ContainerView {
             SlotRef::EnchantLapis => self.enchant?.1,
             SlotRef::EnchantOption(_) => ItemStack::EMPTY, // buttons, not stacks
             SlotRef::TradeRow(i) => {
-                let (_, rows) = self.trade.as_ref()?;
-                rows.get(i)?.0
+                self.trade.as_ref()?.rows.get(i)?.give
             }
         })
     }

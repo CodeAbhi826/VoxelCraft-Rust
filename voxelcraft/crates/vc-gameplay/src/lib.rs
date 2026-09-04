@@ -8,4 +8,5 @@ pub mod enchanting;
 pub mod furnace;
 pub mod mobs;
 pub mod modes;
+pub mod spawners;
 pub mod villagers;

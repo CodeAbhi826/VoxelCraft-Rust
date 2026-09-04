@@ -194,6 +194,9 @@ pub const ID_OPT_ANISO: u16 = 31;
 pub const ID_OPT_MSAA: u16 = 32;
 pub const ID_OPT_OCCL: u16 = 33;
 pub const ID_OPT_DONE2: u16 = 34;
+/// Phase 7: GPU compute meshing toggle (engine optimization — no vanilla
+/// equivalent; labeled plainly, not with a vanilla options.txt name)
+pub const ID_OPT_GMESH: u16 = 35;
 
 /// Title screen layout (quit button only exists on native).
 pub fn layout_title(is_web: bool) -> Vec<Widget> {
@@ -250,6 +253,7 @@ pub fn layout_options2() -> Vec<Widget> {
         btn(ID_OPT_ANISO, col2, rows[1], w, "ANISOTROPIC", "4X", true),
         btn(ID_OPT_MSAA, col1, rows[2], w, "MSAA", "OFF", true),
         btn(ID_OPT_OCCL, col2, rows[2], w, "OCCLUSION CULLING", "ON", true),
+        btn(ID_OPT_GMESH, col1, rows[3], w, "GPU CHUNK MESHING", "ON", true),
         btn(ID_OPT_PREV, col1, rows[4], 242, "< GENERAL", "", true),
         btn(ID_OPT_DONE2, (UI_W as i32 - 320) / 2, 470, 320, "DONE", "", true),
     ]

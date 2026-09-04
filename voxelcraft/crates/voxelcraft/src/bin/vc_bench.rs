@@ -146,6 +146,52 @@ fn main() {
     let mesh_par_ms = t_mesh_par.elapsed().as_secs_f32() * 1000.0;
     let par_verts: usize = mesh_sizes.iter().sum();
 
+    // ---- Phase 7: GPU compute mesher (adapter-gated) ----
+    // Headless probe: no adapter (CI, display-less) → SKIP with a note and
+    // the bench stays CPU-only; with one → time the full GPU path (input
+    // build + dispatch A + counts readback + offsets + dispatch B + output
+    // readback — everything the game pays) against the CPU numbers, AND
+    // verify bit-parity per chunk (the design contract).
+    let gpu_mesh_report = match probe_headless_device() {
+        None => "gpu-mesh    : SKIP (no GPU adapter — headless environment)".to_string(),
+        Some((device, queue)) => {
+            let mut mesher = vc_render::gpu_mesh::GpuMesher::new(&device, &queue);
+            const GPU_BENCH_N: usize = 32;
+            let subset: Vec<ChunkPos> = meshable.iter().take(GPU_BENCH_N).copied().collect();
+            let t0 = Instant::now();
+            let mut parity = true;
+            for &pos in subset.iter() {
+                let snap = snapshot(&by_pos, pos);
+                let lsnap = vc_world::light::reference_lightdata(&snap);
+                let inputs = vc_mesh::mesh::build_mesh_inputs(&snap, &lsnap);
+                let want = mesh_chunk(pos, &snap, &lsnap, true);
+                let gpu_ok = !inputs.has_cross && !inputs.has_models;
+                mesher.enqueue(
+                    vc_render::gpu_mesh::GpuMeshJobMeta {
+                        pos,
+                        mask: u16::MAX,
+                        smooth: true,
+                        prev: vec![None; 16],
+                        center: snap[4].clone(),
+                    },
+                    inputs,
+                );
+                let done = mesher.wait_done(&device, &queue);
+                if gpu_ok {
+                    let got = &done[0].mesh;
+                    parity &= got.solid.0 == want.solid.0 && got.solid.1 == want.solid.1
+                        && got.water.0 == want.water.0 && got.water.1 == want.water.1;
+                }
+            }
+            let gpu_ms = t0.elapsed().as_secs_f32() * 1000.0;
+            let n = subset.len().max(1) as f32;
+            format!(
+                "gpu-mesh    : avg {:.2} ms/chunk (full pipeline incl. input build + 2 readbacks) over {n} chunks — bit-parity with CPU: {parity}",
+                gpu_ms / n
+            )
+        }
+    };
+
     // §48 Phase 3: partial remesh (§12 fine-grained invalidation).
     // A typical block edit dirties ~3 sections of one chunk — measure the
     // same 3-section job against a full 16-section remesh. Includes the
@@ -317,6 +363,7 @@ fn main() {
         acc_legacy.binds as f64 / acc_loop.binds.max(1) as f64,
         acc_legacy.binds as f64 / acc_mdi.binds.max(1) as f64
     );
+    println!("{gpu_mesh_report}");
     println!("GPU metrics : unavailable (headless — use `voxelcraft --benchmark` on a desktop)");
     println!("============================================================\n");
 
@@ -347,4 +394,33 @@ fn snapshot(
         }
     }
     snap
+}
+
+
+/// Phase 7: headless wgpu device probe for the GPU-mesh bench section
+/// (None in CI/display-less environments — those print a SKIP line).
+fn probe_headless_device() -> Option<(wgpu::Device, wgpu::Queue)> {
+    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        backends: wgpu::Backends::all(),
+        ..Default::default()
+    });
+    let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+        power_preference: wgpu::PowerPreference::None,
+        compatible_surface: None,
+        force_fallback_adapter: true,
+    }))?;
+    let downlevel = adapter.get_downlevel_capabilities();
+    if !downlevel.flags.contains(wgpu::DownlevelFlags::COMPUTE_SHADERS) {
+        return None;
+    }
+    pollster::block_on(adapter.request_device(
+        &wgpu::DeviceDescriptor {
+            label: Some("vc-bench-gpu-mesh"),
+            required_features: wgpu::Features::empty(),
+            required_limits: wgpu::Limits::default(),
+            ..Default::default()
+        },
+        None,
+    ))
+    .ok()
 }

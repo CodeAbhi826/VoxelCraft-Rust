@@ -139,44 +139,42 @@ pub fn mesh_chunk(
 }
 
 // padded 48 x 256 x 48 region covering the 3x3 snapshot
-const PAD: usize = 48;
+pub const PAD: usize = 48;
 #[inline]
 fn pidx(x: usize, y: usize, z: usize) -> usize {
     y * (PAD * PAD) + z * PAD + x
 }
 
-// NOTE: face shading + AO tables now live in the WGSL shaders (indexed by
-// the packed normal/ao fields) — see VC-16 layout above.
-
-#[inline]
-fn getb(blocks: &[u8], gx: i32, y: i32, gz: i32) -> u8 {
-    if y < 0 || y > 255 {
-        return AIR;
-    }
-    blocks[pidx((gx + 16) as usize, y as usize, (gz + 16) as usize)]
+/// Phase 7: the padded snapshot volumes the greedy core consumes.
+///
+/// Extracted verbatim from `mesh_sections` (same loops, same defaults) so
+/// the CPU mesher and the GPU compute mesher (vc-render `gpu_mesh`) build
+/// on byte-identical inputs — the padding semantics (absent-neighbor air,
+/// "never written" dark-interior light, open-sky defaults, biome pad)
+/// have exactly ONE source of truth.
+pub struct MeshInputs {
+    /// 48×256×48 block STATE ids (u8), padded region covering the 3×3
+    pub blocks: Vec<u8>,
+    /// 48×256×48 skylight nibbles (same layout)
+    pub light: Vec<u8>,
+    /// 48×256×48 block-light nibbles (same layout)
+    pub blight: Vec<u8>,
+    /// center chunk's 256 per-column biome ids (tint resolution is
+    /// per-block but only the center chunk emits faces)
+    pub biomes: Box<[u8]>,
+    /// center snapshot contains cross plants (special CPU path)
+    pub has_cross: bool,
+    /// center snapshot contains JSON-model states (special CPU path)
+    pub has_models: bool,
 }
 
-#[inline]
-fn getl(light: &[u8], gx: i32, y: i32, gz: i32) -> u8 {
-    if y < 0 {
-        return 0;
-    }
-    if y > 255 {
-        return 15;
-    }
-    light[pidx((gx + 16) as usize, y as usize, (gz + 16) as usize)]
-}
-
-pub fn mesh_sections(
-    pos: ChunkPos,
+/// Phase 7: materialize the padded input volumes from a 3×3 chunk + light
+/// snapshot. Byte-identical to what `mesh_sections` builds internally
+/// (the internal copy was removed — `mesh_sections` now calls this).
+pub fn build_mesh_inputs(
     snap: &[Option<Arc<Chunk>>; 9],
     lsnap: &[Option<Arc<vc_world::light::LightData>>; 9],
-    smooth: bool,
-    mask: u16,
-    prev: &[Option<Arc<MeshData>>],
-) -> MeshOut {
-    let (_cx, _cz) = pos;
-
+) -> MeshInputs {
     // ------------------------------------------------ copy blocks (padded)
     // decode paletted sections into the flat padded buffer; air-only
     // sections cost one `None` probe instead of 16 KB of zeros
@@ -277,6 +275,46 @@ pub fn mesh_sections(
         .as_ref()
         .map(|c| c.biome.as_ref().to_vec().into_boxed_slice())
         .unwrap_or_else(|| vec![2u8; 256].into_boxed_slice());
+
+    MeshInputs { blocks, light, blight, biomes, has_cross, has_models }
+}
+
+// NOTE: face shading + AO tables now live in the WGSL shaders (indexed by
+// the packed normal/ao fields) — see VC-16 layout above.
+
+#[inline]
+fn getb(blocks: &[u8], gx: i32, y: i32, gz: i32) -> u8 {
+    if y < 0 || y > 255 {
+        return AIR;
+    }
+    blocks[pidx((gx + 16) as usize, y as usize, (gz + 16) as usize)]
+}
+
+#[inline]
+fn getl(light: &[u8], gx: i32, y: i32, gz: i32) -> u8 {
+    if y < 0 {
+        return 0;
+    }
+    if y > 255 {
+        return 15;
+    }
+    light[pidx((gx + 16) as usize, y as usize, (gz + 16) as usize)]
+}
+
+pub fn mesh_sections(
+    pos: ChunkPos,
+    snap: &[Option<Arc<Chunk>>; 9],
+    lsnap: &[Option<Arc<vc_world::light::LightData>>; 9],
+    smooth: bool,
+    mask: u16,
+    prev: &[Option<Arc<MeshData>>],
+) -> MeshOut {
+    let (_cx, _cz) = pos;
+
+    // ------------------------------------------------ shared padded inputs
+    // (Phase 7 extraction — byte-identical to the loops this replaced)
+    let MeshInputs { blocks, light, blight, biomes, has_cross, has_models } =
+        build_mesh_inputs(snap, lsnap);
     let biome_at = |lx: usize, lz: usize| biomes[lz * 16 + lx];
 
     // ------------------------------------------------ greedy meshing
@@ -591,6 +629,12 @@ fn merge_into(dst: &mut MeshData, src: &MeshData) {
     let wbase = dst.water.0.len() as u32;
     dst.water.0.extend_from_slice(&src.water.0);
     dst.water.1.extend(src.water.1.iter().map(|i| i + wbase));
+}
+
+/// Phase 7: public wrapper over the private `merge_into` — the GPU mesher
+/// (vc-render) assembles section meshes the same way `mesh_sections` does.
+pub fn merge_mesh_into(dst: &mut MeshData, src: &MeshData) {
+    merge_into(dst, src)
 }
 
 /// Emit one JSON-model block instance: every element face becomes a quad

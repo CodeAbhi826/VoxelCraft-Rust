@@ -55,8 +55,20 @@ const STATUS_FULL: &str = "full";
 // ---------------------------------------------------------------------------
 
 /// our Biome id → vanilla 1.16.5 numeric biome id
-/// (Ocean, Beach, Plains, Forest, Desert, Snowy, Mountains)
-const BIOME_TO_VANILLA: [i32; 7] = [0, 16, 1, 4, 2, 12, 3];
+/// (Ocean, Beach, Plains, Forest, Desert, Snowy, Mountains,
+///  + Phase 10: Taiga, BirchForest, Jungle, Savanna, Swamp, Badlands —
+///  the vanilla ids live-verified from the wiki Biome page: taiga=5,
+///  swamp=6, jungle=21, birch_forest=27, savanna=35, badlands=37)
+const BIOME_TO_VANILLA: [i32; 14] = [
+    0, 16, 1, 4, 2, 12, 3,
+    8,  // Nether Wastes
+    5,  // Taiga
+    27, // Birch Forest
+    21, // Jungle
+    35, // Savanna
+    6,  // Swamp
+    37, // Badlands
+];
 /// vanilla biome id → ours; unknown → Plains (2)
 fn vanilla_biome_to_ours(v: i32) -> u8 {
     match v {
@@ -67,6 +79,12 @@ fn vanilla_biome_to_ours(v: i32) -> u8 {
         2 => 4,  // Desert
         12 => 5, // Snowy (taiga/tundra family)
         3 => 6,  // Mountains
+        5 => 8,  // Taiga
+        27 => 9, // Birch Forest
+        21 => 10, // Jungle
+        35 => 11, // Savanna
+        6 => 12,  // Swamp
+        37 => 13, // Badlands
         _ => 2,  // unknown → Plains (safe, always valid)
     }
 }

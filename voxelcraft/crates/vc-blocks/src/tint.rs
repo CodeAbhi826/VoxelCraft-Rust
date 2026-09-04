@@ -60,6 +60,13 @@ pub fn grass_color(biome: u8) -> [f32; 3] {
         5 => rgb(0x80B497), // Snowy Taiga
         6 => rgb(0x8AB689), // Mountains
         7 => rgb(0x77624B), // Nether Wastes (§28)
+        // Phase 10 (live wiki biome-color table, JE columns):
+        8 => rgb(0x86B783), // Taiga
+        9 => rgb(0x88BB67), // Birch Forest
+        10 => rgb(0x59C93C), // Jungle
+        11 => rgb(0xBFB755), // Savanna
+        12 => rgb(0x6A7039), // Swamp
+        13 => rgb(0x90814D), // Badlands
         _ => rgb(0x91BD59), // default
     }
 }
@@ -76,6 +83,13 @@ pub fn foliage_color(biome: u8) -> [f32; 3] {
         5 => rgb(0x60A17B), // Snowy Taiga
         6 => rgb(0x6B9959), // Mountains
         7 => rgb(0x6B5442), // Nether Wastes (§28)
+        // Phase 10 (live wiki biome-color table, JE columns):
+        8 => rgb(0x68A464), // Taiga
+        9 => rgb(0x6BA941), // Birch Forest
+        10 => rgb(0x30BB0B), // Jungle
+        11 => rgb(0xAEA42A), // Savanna
+        12 => rgb(0x8DB127), // Swamp
+        13 => rgb(0x9E814D), // Badlands
         _ => rgb(0x77AB2F),
     }
 }
@@ -93,6 +107,15 @@ pub fn water_color(biome: u8) -> [f32; 3] {
         5 => rgb(0x205E83), // Snowy Taiga
         6 => rgb(0x45765E), // Mountains
         7 => rgb(0x4A2B18), // Nether Wastes (§28)
+        // Phase 10 (live wiki water-color table; savanna/birch/jungle/
+        // badlands keep the default blue — the wiki lists no special
+        // value for them)
+        8 => rgb(0x287082), // Taiga
+        9 => rgb(0x3F76E4), // Birch Forest
+        10 => rgb(0x3F76E4), // Jungle
+        11 => rgb(0x3F76E4), // Savanna
+        12 => rgb(0x617B64), // Swamp (murky green — wiki)
+        13 => rgb(0x3F76E4), // Badlands
         _ => rgb(0x3F76E4),
     }
 }

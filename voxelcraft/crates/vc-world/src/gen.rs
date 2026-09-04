@@ -18,6 +18,15 @@ pub enum Biome {
     Mountains = 6,
     /// §26/§28: the Nether's single biome (chunk biome u8 = 7)
     NetherWastes = 7,
+    // ---- Phase 10 content breadth: 6 climate biomes (vanilla save ids
+    // live-verified from the wiki Biome page: taiga=5, swamp=6, jungle=21,
+    // birch_forest=27, savanna=35, badlands=37) ----
+    Taiga = 8,
+    BirchForest = 9,
+    Jungle = 10,
+    Savanna = 11,
+    Swamp = 12,
+    Badlands = 13,
 }
 
 impl Biome {
@@ -31,6 +40,12 @@ impl Biome {
             Biome::Snowy => "Snowy Taiga",
             Biome::Mountains => "Mountains",
             Biome::NetherWastes => "Nether Wastes",
+            Biome::Taiga => "Taiga",
+            Biome::BirchForest => "Birch Forest",
+            Biome::Jungle => "Jungle",
+            Biome::Savanna => "Savanna",
+            Biome::Swamp => "Swamp",
+            Biome::Badlands => "Badlands",
         }
     }
 
@@ -43,6 +58,12 @@ impl Biome {
             5 => Biome::Snowy,
             6 => Biome::Mountains,
             7 => Biome::NetherWastes,
+            8 => Biome::Taiga,
+            9 => Biome::BirchForest,
+            10 => Biome::Jungle,
+            11 => Biome::Savanna,
+            12 => Biome::Swamp,
+            13 => Biome::Badlands,
             _ => Biome::Ocean,
         }
     }
@@ -241,6 +262,65 @@ pub const VILLAGE_REGION_CHUNKS: i32 = 24;
 /// + 2 footprint + well roof)
 const VILLAGE_MAX_REACH: i32 = 40;
 
+// ---- Phase 10 structure descriptors (module scope, like DungeonRoom) ----
+
+/// one mineshaft anchored in its chunk: parlor + corridors (layout
+/// deterministic from the anchor chunk). Each chunk near a shaft emits
+/// only the parts of this layout that fall inside itself.
+#[derive(Clone, Debug)]
+pub struct Mineshaft {
+    /// parlor center (world coords)
+    pub x: i32,
+    pub z: i32,
+    pub y: i32,
+    /// corridor: (dx, dz, length) — unit direction + block length
+    pub corridors: Vec<(i32, i32, i32)>,
+}
+
+/// one ravine: anchored in its chunk, path deterministic from the seed.
+#[derive(Clone, Debug)]
+pub struct Ravine {
+    /// path start (world coords)
+    pub x0: i32,
+    pub z0: i32,
+    /// direction (unit)
+    pub dx: f32,
+    pub dz: f32,
+    /// VERIFIED: 85..=127
+    pub length: i32,
+    /// base half-width (< 15 wide ⇒ half-width ≤ 7)
+    pub half_w: f32,
+    /// VERIFIED: up to 62 deep
+    pub depth: i32,
+    /// VERIFIED: start (top) 10..=72
+    pub top: i32,
+}
+
+
+/// floor division (Rust's `/` truncates toward zero — region math needs
+/// the mathematical floor so negative coordinates map to the right
+/// region)
+#[inline]
+fn floor_div(a: i32, b: i32) -> i32 {
+    let q = a / b;
+    if a % b != 0 && ((a < 0) != (b < 0)) {
+        q - 1
+    } else {
+        q
+    }
+}
+
+/// mineshaft generation chance per chunk — VERIFIED (wiki Mineshaft
+/// page, live): "a 0.4% chance to attempt to begin generating in every
+/// chunk"
+pub const MINESHAFT_CHANCE: f32 = 0.004;
+/// pyramid candidate spacing [tuning value — vanilla's structure spacing
+/// is not published on the wiki; one candidate per 32×32-chunk region]
+pub const PYRAMID_REGION_CHUNKS: i32 = 32;
+/// ravine chance per chunk [tuning value — vanilla's canyon carver
+/// probability is not published on the wiki; 1 per 50 chunks]
+pub const RAVINE_CHANCE: f32 = 0.02;
+
 #[derive(Clone, Copy, Debug)]
 struct HouseSite {
     /// house center (world blocks)
@@ -349,8 +429,36 @@ impl TerrainGen {
             }
         } else if temp < -0.32 {
             (Biome::Snowy, SNOW_GRASS, DIRT)
+        }
+        // ---- Phase 10 climate biomes: our temp/humid predicates are the
+        // documented climate adaptation (vanilla 1.16.5 selects biomes
+        // through a biome lattice, not two noises); the BIOME CONTENT
+        // (surface, trees, tint) follows the wiki descriptions ----
+        else if temp < -0.1 {
+            // Taiga: cold enough for spruce but not snow-locked
+            (Biome::Taiga, GRASS, DIRT)
+        } else if temp > 0.25 && humid < -0.12 {
+            // Badlands: hot AND the driest climate band — terracotta
+            // layers (vanilla's 1.16.5 badlands surface is terracotta
+            // banded with colored terracotta; ours is the plain block —
+            // palette adaptation)
+            (Biome::Badlands, TERRACOTTA, TERRACOTTA)
         } else if temp > 0.3 && humid < 0.05 {
             (Biome::Desert, SAND, SAND)
+        } else if temp > 0.25 && humid > 0.3 {
+            // Jungle: hot + wet (dense oak canopy + melons — vanilla's
+            // jungle wood/melon patches adapted to our palette)
+            (Biome::Jungle, GRASS, DIRT)
+        } else if temp > 0.35 {
+            // Savanna: hot, mid-dry — yellow-tinted grass, sparse trees
+            (Biome::Savanna, GRASS, DIRT)
+        } else if humid > 0.45 && h <= 66 {
+            // Swamp: wettest band + low flat terrain — murky grass,
+            // water pools (vanilla 1.16.5 swamps sit at low elevation)
+            (Biome::Swamp, GRASS, DIRT)
+        } else if humid > 0.12 && temp < 0.2 {
+            // Birch Forest: wet + cool — birch-dominant canopy
+            (Biome::BirchForest, GRASS, DIRT)
         } else if humid > 0.12 {
             (Biome::Forest, GRASS, DIRT)
         } else {
@@ -448,6 +556,12 @@ impl TerrainGen {
         let sea = vc_chunk::SEA_LEVEL;
         let mut outbound: Vec<(i32, i32, i32, u8)> = Vec::new();
 
+        // Phase 10: ravines covering this chunk (computed once — the
+        // 11×11-chunk neighborhood covers the max 127-block diagonal so
+        // every chunk independently agrees on every ravine that reaches
+        // it, exactly like the village/mineshaft region queries)
+        let ravines = self.ravines_near_chunk(cx, cz);
+
         // pass 1: terrain columns
         for z in 0..CHUNK_Z_CHUNK() {
             for x in 0..CHUNK_X_CHUNK() {
@@ -458,6 +572,12 @@ impl TerrainGen {
                 let col_idx = z * 16 + x;
                 chunk.height[col_idx] = h.min(255) as u8;
                 chunk.biome[col_idx] = col.biome as u8;
+                // the ravine cut interval for this column (None = no cut)
+                let rv_cut = if ravines.is_empty() {
+                    None
+                } else {
+                    self.ravine_cut(&ravines, wx, wz, h)
+                };
 
                 let top_y = h.max(sea).min(255) as usize;
                 for y in 0..=top_y {
@@ -486,6 +606,16 @@ impl TerrainGen {
                         };
                         if h - yi > margin && self.cave(wx, yi, wz) {
                             continue; // leave air
+                        }
+                        // Phase 10: ravine carve — the V-cut interval for
+                        // this column; never through bedrock or water
+                        // (deep bottoms expose stone + ores in the walls,
+                        // the wiki-verified look; vanilla's lava-flooded
+                        // floors are palette-sim-out-of-scope, documented)
+                        if let Some((rv_top, rv_bottom)) = rv_cut {
+                            if yi <= rv_top && yi > rv_bottom {
+                                continue; // leave air
+                            }
                         }
                     }
                     if b != AIR {
@@ -526,6 +656,11 @@ impl TerrainGen {
             let b = Biome::from_u8(chunk.biome[8 * 16 + 8]); // center sample
             match b {
                 Biome::Forest => 8,
+                Biome::BirchForest => 7,
+                Biome::Jungle => 10,
+                Biome::Taiga => 5,
+                Biome::Swamp => 3,
+                Biome::Savanna => if rng.next_f32() < 0.6 { 1 } else { 0 },
                 Biome::Plains => if rng.next_f32() < 0.5 { 1 } else { 0 },
                 Biome::Snowy => 3,
                 _ => 0,
@@ -541,10 +676,12 @@ impl TerrainGen {
                 continue;
             }
             let h = chunk.height[col_idx] as i32;
-            // species: forest mixes oak + birch; snowy taiga grows spruce
+            // species: forest mixes oak + birch; snowy taiga/taiga grow
+            // spruce; birch forest is birch-dominant; jungle keeps oak
+            // (vanilla jungle wood is palette-absent — documented)
             let biome_here = Biome::from_u8(chunk.biome[col_idx]);
             let (log, leaf) = match biome_here {
-                Biome::Snowy => (SPRUCE_LOG, SPRUCE_LEAVES),
+                Biome::Snowy | Biome::Taiga => (SPRUCE_LOG, SPRUCE_LEAVES),
                 Biome::Forest => {
                     if rng.next_f32() < 0.35 {
                         (BIRCH_LOG, BIRCH_LEAVES)
@@ -552,9 +689,16 @@ impl TerrainGen {
                         (OAK_LOG, LEAVES)
                     }
                 }
+                Biome::BirchForest => {
+                    if rng.next_f32() < 0.75 {
+                        (BIRCH_LOG, BIRCH_LEAVES)
+                    } else {
+                        (OAK_LOG, LEAVES)
+                    }
+                }
                 _ => (OAK_LOG, LEAVES),
             };
-            let th = if biome_here == Biome::Snowy {
+            let th = if biome_here == Biome::Snowy || biome_here == Biome::Taiga {
                 6 + rng.next_range(3) as i32 // spruce grows taller
             } else {
                 4 + rng.next_range(3) as i32 // 4..6
@@ -563,7 +707,7 @@ impl TerrainGen {
 
             // canopy: two 5x5 layers, two 3x3 layers (oak/birch);
             // spruce: stacked narrowing rings
-            if biome_here == Biome::Snowy {
+            if biome_here == Biome::Snowy || biome_here == Biome::Taiga {
                 for dy in 0..th {
                     let ly = y0 + dy;
                     let r: i32 = match dy {
@@ -623,7 +767,12 @@ impl TerrainGen {
             let b = Biome::from_u8(chunk.biome[8 * 16 + 8]);
             match b {
                 Biome::Plains => 14,
+                Biome::Savanna => 12,
+                Biome::Jungle => 14,
                 Biome::Forest => 10,
+                Biome::BirchForest => 9,
+                Biome::Taiga => 4,
+                Biome::Swamp => 6,
                 Biome::Snowy => 2,
                 _ => 0,
             }
@@ -655,6 +804,10 @@ impl TerrainGen {
             let b = Biome::from_u8(chunk.biome[8 * 16 + 8]);
             match b {
                 Biome::Forest => 6,
+                Biome::Jungle => 5,
+                Biome::Taiga => 4,
+                Biome::Swamp => 4,
+                Biome::BirchForest => 3,
                 Biome::Snowy => 3,
                 _ => 0,
             }
@@ -716,6 +869,49 @@ impl TerrainGen {
             }
         }
 
+        // Phase 10: jungle melon patches (vanilla jungles scatter melons
+        // on the floor) + swamp water pools (vanilla swamps are dotted
+        // with shallow pools at surface level)
+        {
+            let b = Biome::from_u8(chunk.biome[8 * 16 + 8]);
+            if b == Biome::Jungle {
+                for _ in 0..2 {
+                    let lx = 1 + rng.next_range(14) as i32;
+                    let lz = 1 + rng.next_range(14) as i32;
+                    let col_idx = lz as usize * 16 + lx as usize;
+                    let h = chunk.height[col_idx] as i32;
+                    if chunk.get(lx as usize, h as usize, lz as usize) == GRASS
+                        && chunk.get(lx as usize, (h + 1) as usize, lz as usize) == AIR
+                    {
+                        set_dec(&mut chunk, &mut outbound, ox + lx, h + 1, oz + lz, MELON, false);
+                    }
+                }
+            }
+            if b == Biome::Swamp {
+                for _ in 0..4 {
+                    let lx = 1 + rng.next_range(14) as i32;
+                    let lz = 1 + rng.next_range(14) as i32;
+                    let col_idx = lz as usize * 16 + lx as usize;
+                    let h = chunk.height[col_idx] as i32;
+                    // only in the flat swamp band, and not already water
+                    if h < vc_chunk::SEA_LEVEL || h > vc_chunk::SEA_LEVEL + 2 {
+                        continue;
+                    }
+                    if chunk.get(lx as usize, h as usize, lz as usize) == GRASS
+                        && chunk.get(lx as usize, (h + 1) as usize, lz as usize) == AIR
+                    {
+                        // 2x1 shallow pool: punch the surface to water
+                        chunk.set(lx as usize, h as usize, lz as usize, WATER);
+                        if lx + 1 < 16
+                            && chunk.get((lx + 1) as usize, h as usize, lz as usize) == GRASS
+                        {
+                            chunk.set((lx + 1) as usize, h as usize, lz as usize, WATER);
+                        }
+                    }
+                }
+            }
+        }
+
         // cave glowstone: rare glowing clusters deep underground, glued to
         // cave ceilings (the block above a carved cell stays stone — hang
         // the glowstone from it by scanning y where air sits below solid).
@@ -766,6 +962,26 @@ impl TerrainGen {
         // no cross-chunk handoff, no generation-order dependence).
         for &(village_wx, village_wz) in self.villages_near(ox, oz).iter() {
             self.emit_village(&mut chunk, village_wx, village_wz, ox, oz);
+        }
+
+        // ─────────────── Phase 10 structures (same emit discipline) ──
+        for ms in self.mineshafts_near(ox, oz).iter() {
+            self.emit_mineshaft(&mut chunk, ms, ox, oz);
+        }
+        for &(px, pz) in self.pyramids_near(ox, oz).iter() {
+            self.emit_pyramid(&mut chunk, px, pz, ox, oz);
+        }
+        for &(tx, tz) in self.jungle_temples_near(ox, oz).iter() {
+            self.emit_jungle_temple(&mut chunk, tx, tz, ox, oz);
+        }
+        for &(sx, sz) in self.strongholds().iter() {
+            // skip far strongholds cheaply (the layout spans ~30 blocks
+            // around the center; the guard avoids running the emit for
+            // the 99.99% of chunks nowhere near one)
+            if (sx - ox).abs() > 40 || (sz - oz).abs() > 40 {
+                continue;
+            }
+            self.emit_stronghold(&mut chunk, sx, sz, ox, oz);
         }
 
         (Arc::new(chunk), outbound)
@@ -1329,6 +1545,593 @@ impl TerrainGen {
         }
     }
 
+
+
+    // ------------------------------------------------- Phase 10 structures --
+    // Four deferred structures from the Part 1 §2 gap table, every numeric
+    // rule live-verified from minecraft.wiki (2026-09-04) with the
+    // adaptation notes inline. All of them follow the established pure/
+    // deterministic layout style (region queries + per-chunk clipped emit
+    // like villages; validated against the same carved-terrain replica
+    // the dungeons use).
+
+    // ---- mineshafts (wiki Mineshaft page, live) ----
+    // VERIFIED: "the most common generated structures in the Overworld,
+    // having a 0.4% chance to attempt to begin generating in every chunk";
+    // "Starting point: a 10×10 parlor, with an arched ceiling and one to
+    // four exits in each direction"; "Corridors: some 3×3 tunnels and
+    // junctions supported by planks and fences"; "On long corridors,
+    // these supports are placed four blocks away from each other";
+    // "Crossings: dual-floor, 5×5 intersections"; spider spawners sit in
+    // cobwebbed side passages; chest loot = chests/abandoned_mineshaft.
+    // ADAPTED (palette): oak instead of vanilla mixed timber; chest as a
+    // plain CHEST block (no chest-minecart entity); no rails/cobwebs
+    // (palette-absent, honestly documented); cave-spider spawner → the
+    // registry's spider spawner (no distinct cave-spider mob).
+
+
+    /// every mineshaft whose layout can reach the chunk containing world
+    /// position (ox, oz) — the 7×7-chunk neighborhood covers the longest
+    /// corridor (48) plus the parlor
+    pub fn mineshafts_near(&self, ox: i32, oz: i32) -> Vec<Mineshaft> {
+        let cx = ox >> 4;
+        let cz = oz >> 4;
+        let mut out = Vec::new();
+        for dcx in -3..=3 {
+            for dcz in -3..=3 {
+                let (cx, cz) = (cx + dcx, cz + dcz);
+                let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x411E5, cx, 0, cz));
+                if rng.next_f32() >= MINESHAFT_CHANCE {
+                    continue;
+                }
+                // 10×10 parlor, floor in the deep band
+                let y = 10 + rng.next_range(31) as i32; // 10..=40
+                let px = cx * 16 + 3 + rng.next_range(10) as i32;
+                let pz = cz * 16 + 3 + rng.next_range(10) as i32;
+                let mut corridors = Vec::new();
+                // 1..=4 exits "in each direction" → one corridor per
+                // cardinal direction, each 0 (closed) or 24..=48 long
+                for (dx, dz) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                    let len = if rng.next_f32() < 0.25 {
+                        0 // sealed exit
+                    } else {
+                        24 + rng.next_range(25) as i32
+                    };
+                    if len > 0 {
+                        corridors.push((dx, dz, len));
+                    }
+                }
+                out.push(Mineshaft { x: px, z: pz, y, corridors });
+            }
+        }
+        out
+    }
+
+    /// emit every part of `ms` that falls inside the chunk (ox, oz)
+    fn emit_mineshaft(&self, chunk: &mut Chunk, ms: &Mineshaft, ox: i32, oz: i32) {
+        let put = |chunk: &mut Chunk, wx: i32, wy: i32, wz: i32, id: u8| {
+            let lxi = wx - ox;
+            let lzi = wz - oz;
+            if (0..16).contains(&lxi) && (0..16).contains(&lzi) && (0..256).contains(&wy) {
+                chunk.set(lxi as usize, wy as usize, lzi as usize, id);
+            }
+        };
+        // ---- the 10×10 parlor: plank floor, cobble walls, arched
+        // ceiling (VERIFIED: arched, 1-4 exits) ----
+        for dx in -5..=5 {
+            for dz in -5..=5 {
+                let wx = ms.x + dx;
+                let wz = ms.z + dz;
+                let ring = dx.abs() == 5 || dz.abs() == 5;
+                put(chunk, wx, ms.y, wz, PLANKS); // floor
+                for dy in 1..=4 {
+                    let id = if dy <= 3 {
+                        if ring { COBBLE } else { AIR }
+                    } else {
+                        // ceiling: corners solid, the arch opens inward
+                        // (|dx|+|dz| ≤ 7 keeps the diagonal corners)
+                        if dx.abs() + dz.abs() > 7 { COBBLE } else { AIR }
+                    };
+                    put(chunk, wx, ms.y + dy, wz, id);
+                }
+            }
+        }
+        // corner log pillars of the parlor
+        for (sx, sz) in [(-5i32, -5i32), (5, -5), (-5, 5), (5, 5)] {
+            for dy in 1..=3 {
+                put(chunk, ms.x + sx, ms.y + dy, ms.z + sz, OAK_LOG);
+            }
+        }
+        // ---- corridors: 3 wide × 3 high, supports every 4 blocks ----
+        for &(dx, dz, len) in &ms.corridors {
+            for step in 1..=len {
+                // corridor center line steps from the parlor edge
+                let cxw = ms.x + dx * (5 + step);
+                let czw = ms.z + dz * (5 + step);
+                // perpendicular offsets for the 3-wide bore
+                let (px, pz) = (dz, dx);
+                for off in -1..=1 {
+                    for dy in 0..=3 {
+                        let wx = cxw + px * off;
+                        let wz = czw + pz * off;
+                        if dy == 0 {
+                            // floor: plank bridge ONLY where the terrain
+                            // was carved/absent (vanilla corridors bridge
+                            // over caves); solid ground keeps its stone
+                            let ground = self.gen_solid(wx, ms.y, wz);
+                            if !ground {
+                                put(chunk, wx, ms.y, wz, PLANKS);
+                            }
+                        } else if dy < 3 {
+                            put(chunk, wx, ms.y + dy, wz, AIR); // bore
+                        } else {
+                            // lintel: log beam across the top, every 4
+                            put(chunk, wx, ms.y + dy, wz, if off == 0 && step % 4 == 0 { OAK_LOG } else { AIR });
+                        }
+                    }
+                }
+                // supports every 4 blocks (VERIFIED): fence posts + plank
+                // lintel, log pillars hanging over open cave air
+                if step % 4 == 0 {
+                    for off in -1..=1 {
+                        let wx = cxw + px * off;
+                        let wz = czw + pz * off;
+                        put(chunk, wx, ms.y + 1, wz, if off == 0 { AIR } else { OAK_FENCE });
+                        let below = self.gen_solid(wx, ms.y, wz);
+                        if !below {
+                            put(chunk, wx, ms.y, wz, OAK_LOG); // pillar down
+                        }
+                    }
+                }
+            }
+            // spider spawner in a side pocket at the corridor midpoint
+            // (vanilla: cave-spawner spawners in cobwebbed passages —
+            // adapted to the registry's spider)
+            let mid = 5 + len / 2;
+            let sx = ms.x + dx * mid + dz * 2;
+            let sz = ms.z + dz * mid + dx * 2;
+            for ddx in 0..2 {
+                for ddz in 0..2 {
+                    for dy in 0..=2 {
+                        let wx = sx + ddx;
+                        let wz = sz + ddz;
+                        if dy == 0 {
+                            put(chunk, wx, ms.y, wz, COBBLE);
+                        } else {
+                            put(chunk, wx, ms.y + dy, wz, AIR);
+                        }
+                    }
+                }
+            }
+            let lxi = (sx - ox) as usize;
+            let lzi = (sz - oz) as usize;
+            if lxi < 16 && lzi < 16 {
+                chunk.set_state(lxi, ms.y as usize, lzi, spawner_state(2));
+            }
+            // a chest near the far end (chests/abandoned_mineshaft seam)
+            if len > 20 {
+                let far = 5 + len - 3;
+                put(chunk, ms.x + dx * far, ms.y + 1, ms.z + dz * far, CHEST);
+            }
+        }
+    }
+
+    // ---- desert pyramid (wiki Desert pyramid page, live) ----
+    // VERIFIED: 21×21 ground floor; sandstone + terracotta materials with
+    // a terracotta/sandstone checkerboard "wind rose" center; a hidden
+    // pit under the center with the treasure; one main entrance; the top
+    // stays above ground even when buried. Loot = chests/desert_pyramid.
+    // ADAPTED (palette): SAND body (no sandstone block in the registry),
+    // SMOOTH_STONE borders, TERRACOTTA accents; the TNT pressure-plate
+    // trap is palette-absent → the pit simply holds the chests.
+
+    /// pyramid center in a region, desert-gated; None = no pyramid
+    pub fn pyramid_center_pub(&self, rx: i32, rz: i32) -> Option<(i32, i32)> {
+        let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x0E5, rx, 0, rz));
+        let cx = rx * 32 + 4 + rng.next_range(24) as i32;
+        let cz = rz * 32 + 4 + rng.next_range(24) as i32;
+        // site check: sampled columns must be desert + land
+        for d in [0i32, 4, -4] {
+            let c = self.column(cx * 16 + 8 + d, cz * 16 + 8 + d);
+            if c.biome != Biome::Desert || c.height <= vc_chunk::SEA_LEVEL + 1 {
+                return None;
+            }
+        }
+        Some((cx * 16 + 8, cz * 16 + 8))
+    }
+
+    /// all pyramids near world position (ox, oz)
+    pub fn pyramids_near(&self, ox: i32, oz: i32) -> Vec<(i32, i32)> {
+        let mut out = Vec::new();
+        let r0x = floor_div(ox - 24, 32 * 16);
+        let r1x = floor_div(ox + 24, 32 * 16);
+        let r0z = floor_div(oz - 24, 32 * 16);
+        let r1z = floor_div(oz + 24, 32 * 16);
+        for rx in r0x..=r1x {
+            for rz in r0z..=r1z {
+                if let Some(c) = self.pyramid_center_pub(rx, rz) {
+                    out.push(c);
+                }
+            }
+        }
+        out
+    }
+
+    fn emit_pyramid(&self, chunk: &mut Chunk, wx: i32, wz: i32, ox: i32, oz: i32) {
+        let base = self.column(wx, wz).height as i32; // ground level
+        let put = |chunk: &mut Chunk, x: i32, y: i32, z: i32, id: u8| {
+            let lxi = x - ox;
+            let lzi = z - oz;
+            if (0..16).contains(&lxi) && (0..16).contains(&lzi) && (0..256).contains(&y) {
+                chunk.set(lxi as usize, y as usize, lzi as usize, id);
+            }
+        };
+        // ---- the stepped 21×21 pyramid: 5 tiers of 4-block inset ----
+        // (VERIFIED base size; tier count is our layout)
+        let tiers = [(10i32, 0i32), (8, 1), (6, 2), (4, 3), (2, 4)];
+        for (half, th) in tiers {
+            for dx in -half..=half {
+                for dz in -half..=half {
+                    let x = wx + dx;
+                    let z = wz + dz;
+                    let shell = dx.abs() == half || dz.abs() == half;
+                    let y = base + 1 + th;
+                    if half == 2 {
+                        // top tier: solid cap with a 1-wide window gap
+                        if dx.abs() <= 1 && dz.abs() <= 1 && !(dx == 0 && dz == 0) {
+                            put(chunk, x, y, z, AIR);
+                        } else {
+                            put(chunk, x, y, z, SAND);
+                        }
+                        continue;
+                    }
+                    if shell {
+                        put(chunk, x, y, z, SAND);
+                        // smooth-stone corner accents
+                        if dx.abs() == half && dz.abs() == half {
+                            put(chunk, x, y, z, SMOOTH_STONE);
+                        }
+                    } else if half == 10 {
+                        // ground floor: terracotta/sandstone checkerboard
+                        // "wind rose" (VERIFIED pattern; palette-adapted)
+                        let checker = (dx + dz).rem_euclid(2) == 0;
+                        put(chunk, x, y, z, if checker { TERRACOTTA } else { SMOOTH_STONE });
+                    } else {
+                        put(chunk, x, y, z, AIR); // hollow interior
+                    }
+                }
+            }
+        }
+        // main entrance: 2-high 2-wide gap in the front (south) wall
+        for dy in 1..=2 {
+            for d in -1..=1 {
+                put(chunk, wx + d, base + dy, wz + 10, AIR);
+            }
+        }
+        // ---- the hidden pit: 3×3 shaft straight down under the center
+        // to a 5×5 treasure room with 4 chests (vanilla: 11 deep, TNT
+        // floor trap — palette-adapted to a plain floor) ----
+        let floor = base - 11;
+        for dy in floor..=base {
+            for dx in -1..=1 {
+                for dz in -1..=1 {
+                    put(chunk, wx + dx, dy, wz + dz, AIR);
+                }
+            }
+        }
+        for dx in -2..=2 {
+            for dz in -2..=2 {
+                // treasure room floor + rim
+                put(chunk, wx + dx, floor - 1, wz + dz, SMOOTH_STONE);
+                if dx.abs() == 2 || dz.abs() == 2 {
+                    // room walls where the shaft doesn't open
+                    for dy in 0..=3 {
+                        put(chunk, wx + dx, floor + dy, wz + dz, TERRACOTTA);
+                    }
+                }
+            }
+        }
+        // 4 chests around the center (vanilla desert_pyramid has a
+        // pressure-plate + TNT trap here; palette-absent → documented)
+        put(chunk, wx - 1, floor, wz - 1, CHEST);
+        put(chunk, wx + 1, floor, wz - 1, CHEST);
+        put(chunk, wx - 1, floor, wz + 1, CHEST);
+        put(chunk, wx + 1, floor, wz + 1, CHEST);
+    }
+
+    // ---- jungle temple (wiki Jungle pyramid page, live) ----
+    // VERIFIED: cobblestone + mossy cobblestone construction, 3 floors,
+    // a lever puzzle + a chest on the bottom floor, a second chest down
+    // the hall, dispenser tripwire traps (palette-absent → skipped,
+    // documented). Loot = chests/jungle_temple. Layout compactness is
+    // our own (the wiki does not publish exact dimensions).
+    pub fn jungle_temples_near(&self, ox: i32, oz: i32) -> Vec<(i32, i32)> {
+        let mut out = Vec::new();
+        let rx0 = floor_div(ox - 16, 32 * 16);
+        let rx1 = floor_div(ox + 16, 32 * 16);
+        let rz0 = floor_div(oz - 16, 32 * 16);
+        let rz1 = floor_div(oz + 16, 32 * 16);
+        for rx in rx0..=rx1 {
+            for rz in rz0..=rz1 {
+                let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x3E4E, rx, 0, rz));
+                let cx = rx * 32 + 4 + rng.next_range(24) as i32;
+                let cz = rz * 32 + 4 + rng.next_range(24) as i32;
+                let mut ok = true;
+                for d in [0i32, 4, -4] {
+                    let c = self.column(cx * 16 + 8 + d, cz * 16 + 8 + d);
+                    if c.biome != Biome::Jungle || c.height <= vc_chunk::SEA_LEVEL + 1 {
+                        ok = false;
+                        break;
+                    }
+                }
+                if ok {
+                    out.push((cx * 16 + 8, cz * 16 + 8));
+                }
+            }
+        }
+        out
+    }
+
+    fn emit_jungle_temple(&self, chunk: &mut Chunk, wx: i32, wz: i32, ox: i32, oz: i32) {
+        let base = self.column(wx, wz).height as i32;
+        let put = |chunk: &mut Chunk, x: i32, y: i32, z: i32, id: u8| {
+            let lxi = x - ox;
+            let lzi = z - oz;
+            if (0..16).contains(&lxi) && (0..16).contains(&lzi) && (0..256).contains(&y) {
+                chunk.set(lxi as usize, y as usize, lzi as usize, id);
+            }
+        };
+        // 11×11 footprint, 3 floors of 4 high (our compact layout);
+        // cobble/mossy mix on the shell (VERIFIED materials)
+        let mix = |rng: &mut Rng| -> u8 {
+            if rng.next_f32() < 0.5 { COBBLE } else { MOSSY_COBBLE }
+        };
+        // per-structure rng seeded from the anchor
+        let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x3E4E, wx, 0, wz));
+        for floor in 0..3 {
+            let half = 5 - floor; // stepped: 5,4,3
+            let y0 = base + 1 + floor * 4;
+            for dx in -half..=half {
+                for dz in -half..=half {
+                    let x = wx + dx;
+                    let z = wz + dz;
+                    let shell = dx.abs() == half || dz.abs() == half;
+                    for dy in 0..4 {
+                        let y = y0 + dy;
+                        if shell {
+                            let id = mix(&mut rng);
+                            put(chunk, x, y, z, id);
+                        } else if dy == 3 && floor < 2 {
+                            put(chunk, x, y, z, mix(&mut rng)); // ceiling
+                        } else {
+                            put(chunk, x, y, z, AIR);
+                        }
+                    }
+                }
+            }
+            // floor slabs
+            for dx in -(half - 1)..=(half - 1) {
+                for dz in -(half - 1)..=(half - 1) {
+                    put(chunk, wx + dx, y0 - 1, wz + dz, mix(&mut rng));
+                }
+            }
+        }
+        // entrance: front gap at ground level
+        for dy in 1..=2 {
+            put(chunk, wx, base + dy, wz + 5, AIR);
+            put(chunk, wx, base + dy, wz + 4, AIR);
+        }
+        // ground floor: the lever puzzle (2 levers — vanilla has 3)
+        for (lx, lz) in [(-2, -2), (2, -2)] {
+            let gx = (wx + lx - ox) as usize;
+            let gz = (wz + lz - oz) as usize;
+            if gx < 16 && gz < 16 {
+                chunk.set_state(gx, (base + 1) as usize, gz, LEVER_OFF);
+            }
+        }
+        put(chunk, wx - 2, base + 1, wz - 1, CHEST); // puzzle chest
+        // top floor: the far chest down the hall
+        put(chunk, wx + 1, base + 9, wz - 1, CHEST);
+        // interior ladderless stairwell: a cut in each floor's ceiling
+        for floor in 0..2 {
+            let y0 = base + 1 + floor * 4;
+            put(chunk, wx + 1, y0 + 3, wz + 1, AIR);
+            put(chunk, wx + 1, y0 + 4, wz + 1, AIR);
+        }
+    }
+
+    // ---- stronghold (wiki Stronghold page, live) ----
+    // VERIFIED: Java has 128 strongholds in 8 rings; ring 1 = 3
+    // strongholds within 1,280–2,816 blocks of the origin, at roughly
+    // equal angles. Stone-brick construction; the End portal room holds
+    // the 12-frame portal ring over lava. Loot: stronghold_library +
+    // stronghold_corridor.
+    // ADAPTED: ring 1 only (the engine's playable range; the remaining
+    // rings are world-gen the player would need ~5k+ blocks of travel to
+    // reach — documented); compact 4-room layout (corridor + library +
+    // store room + portal room) instead of vanilla's maze; portal frame
+    // is decorative (no eye insertion/activation).
+    pub fn strongholds(&self) -> Vec<(i32, i32)> {
+        let mut out = Vec::new();
+        let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x57_0E, 0, 0, 0));
+        for i in 0..3 {
+            // each stronghold sits in its own 120° sector with a small
+            // jitter (the wiki: "roughly equal angles … in the region of
+            // 120 degrees from the others")
+            let angle = (i as f32) * std::f32::consts::TAU / 3.0
+                + (rng.next_f32() - 0.5) * 0.5; // ±~14°
+            let dist = 1280.0 + rng.next_f32() * (2816.0 - 1280.0);
+            let x = (angle.cos() * dist) as i32;
+            let z = (angle.sin() * dist) as i32;
+            out.push((x, z));
+        }
+        out
+    }
+
+    fn emit_stronghold(&self, chunk: &mut Chunk, wx: i32, wz: i32, ox: i32, oz: i32) {
+        let put = |chunk: &mut Chunk, x: i32, y: i32, z: i32, id: u8| {
+            let lxi = x - ox;
+            let lzi = z - oz;
+            if (0..16).contains(&lxi) && (0..16).contains(&lzi) && (0..256).contains(&y) {
+                chunk.set(lxi as usize, y as usize, lzi as usize, id);
+            }
+        };
+        // deep band, below the cave margin (mostly underground — VERIFIED
+        // "generate at any Y level, mostly underground")
+        let y = 20;
+        let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x57_0E, wx, 1, wz));
+        // room helper: hollow box of stone bricks
+        let mut room = |chunk: &mut Chunk, x0: i32, z0: i32, w: i32, h: i32, d: i32, y: i32, rng: &mut Rng| {
+            for dx in 0..w {
+                for dz in 0..d {
+                    for dy in 0..h {
+                        let x = x0 + dx;
+                        let z = z0 + dz;
+                        let yy = y + dy;
+                        let shell = dx == 0 || dx == w - 1 || dz == 0 || dz == d - 1
+                            || dy == 0 || dy == h - 1;
+                        if shell {
+                            // cracked-looking mossy mix (palette: no
+                            // cracked/chiseled stone bricks — mixed)
+                            let id = if rng.next_f32() < 0.2 { MOSSY_COBBLE } else { STONE_BRICKS };
+                            put(chunk, x, yy, z, id);
+                        } else {
+                            put(chunk, x, yy, z, AIR);
+                        }
+                    }
+                }
+            }
+        };
+        // entrance corridor (east→west, 5 high 3 wide 12 long)
+        room(chunk, wx - 12, wz - 1, 12, 5, 3, y, &mut rng);
+        put(chunk, wx - 12, y + 1, wz, STONE_BRICKS); // sealed end
+        // library (north): 11×7×9 with bookshelf walls
+        room(chunk, wx - 9, wz - 10, 11, 7, 9, y, &mut rng);
+        for dz in -9..=-2 {
+            for dy in 1..=3 {
+                // bookshelf stacks along the north wall
+                put(chunk, wx - 4 + ((dz + 9) % 2) * 2, y + dy, wz + dz, BOOKSHELF);
+            }
+        }
+        put(chunk, wx - 7, y + 1, wz - 8, CHEST); // stronghold_library chest
+        // store room (south): 9×5×7
+        room(chunk, wx - 8, wz + 2, 9, 5, 7, y, &mut rng);
+        put(chunk, wx - 4, y + 1, wz + 4, CHEST); // stronghold_corridor chest
+        // portal room (west): 11×7×11 with the 12-frame ring + lava pool
+        room(chunk, wx - 22, wz - 5, 11, 7, 11, y, &mut rng);
+        let px = wx - 17; // portal ring center
+        let pz = wz;
+        // lava pool below the ring (vanilla: lava under the portal)
+        for dx in -1..=1 {
+            for dz in -1..=1 {
+                put(chunk, px + dx, y, pz + dz, GLOWSTONE); // lit floor (no lava-flow sim here — glowstone reads as lit)
+            }
+        }
+        // the 12-frame ring: 3 per side, gap at the corners (vanilla
+        // 1.16.5 portal room layout)
+        for i in 0..3 {
+            put(chunk, px + (i - 1), y + 1, pz - 2, END_PORTAL_FRAME);
+            put(chunk, px + (i - 1), y + 1, pz + 2, END_PORTAL_FRAME);
+            put(chunk, px - 2, y + 1, pz + (i - 1), END_PORTAL_FRAME);
+            put(chunk, px + 2, y + 1, pz + (i - 1), END_PORTAL_FRAME);
+        }
+        // doorway from the corridor into the portal room
+        put(chunk, wx - 12, y + 1, wz, AIR);
+        put(chunk, wx - 12, y + 2, wz, AIR);
+    }
+
+    // ---- ravines (wiki Ravine page, live) ----
+    // VERIFIED: "around 85 to 127 blocks in length and typically less
+    // than 15 blocks wide"; "up to 62 blocks in depth and can start at
+    // levels 10 to 72"; ledges along the top; deep bottoms expose ores
+    // (and in vanilla can flood with lava). Frequency is a [tuning]
+    // value: vanilla's canyon carver probability is not published on the
+    // wiki; we use 1 per 50 chunks (0.02).
+
+
+    /// every ravine that can cover the chunk containing (cx, cz): the
+    /// 11×11-chunk neighborhood covers the 127-block max diagonal
+    pub fn ravines_near_chunk(&self, cx: i32, cz: i32) -> Vec<Ravine> {
+        let mut out = Vec::new();
+        for dcx in -5..=5 {
+            for dcz in -5..=5 {
+                let (cx, cz) = (cx + dcx, cz + dcz);
+                let mut rng = Rng::new(Rng::hash3(self.seed ^ 0xCA_E, cx, 0, cz));
+                if rng.next_f32() >= RAVINE_CHANCE {
+                    continue;
+                }
+                let x0 = cx * 16 + rng.next_range(16) as i32;
+                let z0 = cz * 16 + rng.next_range(16) as i32;
+                let angle = rng.next_f32() * std::f32::consts::TAU;
+                let length = 85 + rng.next_range(43) as i32; // 85..=127
+                let half_w = 2.0 + rng.next_f32() * 5.0; // < 15 wide total
+                let depth = 40 + rng.next_range(23) as i32; // ≤ 62
+                // top: terrain height at the start, clamped to 10..=72
+                let h = self.column(x0, z0).height as i32;
+                let top = h.clamp(10, 72);
+                out.push(Ravine {
+                    x0,
+                    z0,
+                    dx: angle.cos(),
+                    dz: angle.sin(),
+                    length,
+                    half_w,
+                    depth,
+                    top,
+                });
+            }
+        }
+        out
+    }
+
+    /// ravine carve test for one column (x, z) → the carved y-interval
+    /// (top, bottom), if any. V-shape: full width at the rim, tapering
+    /// toward the floor; lengthwise taper at both ends.
+    fn ravine_cut(&self, ravines: &[Ravine], x: i32, z: i32, surface: i32) -> Option<(i32, i32)> {
+        let mut best: Option<(i32, i32)> = None;
+        for rv in ravines {
+            // project (x,z) onto the path segment
+            let rx = (x - rv.x0) as f32;
+            let rz = (z - rv.z0) as f32;
+            let t = rx * rv.dx + rz * rv.dz; // distance along
+            if t < 0.0 || t > rv.length as f32 {
+                continue;
+            }
+            let perp = (rx * rv.dz - rz * rv.dx).abs(); // distance from line
+            // lengthwise taper: half-width scales down in the last 12
+            // blocks of each end
+            let end_taper = {
+                let from_end = (rv.length as f32 - t).min(t);
+                (from_end / 12.0).min(1.0)
+            };
+            let rim_w = rv.half_w * end_taper;
+            if perp > rim_w {
+                continue;
+            }
+            // the top starts at min(surface, rv.top): a ravine never
+            // rises above the terrain it cuts
+            let top = surface.min(rv.top);
+            let bottom = (top - rv.depth).max(8);
+            if bottom >= top {
+                continue;
+            }
+            // V-shape: floor narrower than the rim — carve the interval
+            // scaled by how far into the width we are
+            let frac = 1.0 - (perp / rim_w.max(0.001)); // 1 at center
+            let cut_top = top;
+            let cut_bottom = top - ((top - bottom) as f32 * (0.45 + 0.55 * frac)) as i32;
+            let cut_bottom = cut_bottom.max(bottom);
+            if cut_bottom < cut_top {
+                // merge overlapping ravine cuts: keep the deepest floor
+                // and the lowest rim of any contributor
+                best = Some(match best {
+                    Some((bt, bb)) => (bt.min(cut_top), bb.min(cut_bottom)),
+                    None => (cut_top, cut_bottom),
+                });
+            }
+        }
+        best
+    }
 
     /// Find a comfortable spawn point (land, moderate altitude) near origin.
     pub fn find_spawn(&self) -> (f32, f32, f32) {
@@ -1943,5 +2746,301 @@ mod dungeon_tests {
             }
         }
         assert!(same, "dungeon chunk regenerates identically");
+    }
+}
+
+// ---------------------------------------------------------------- tests --
+#[cfg(test)]
+mod phase10_tests {
+    use super::*;
+    use vc_blocks::blocks::*;
+
+    fn gen() -> TerrainGen {
+        TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Overworld)
+    }
+
+    /// the 6 new climate biomes all exist somewhere in a reasonable scan
+    /// window, and from_u8 round-trips every variant
+    #[test]
+    fn new_biomes_present_and_roundtrip() {
+        let g = gen();
+        let mut seen = std::collections::HashSet::new();
+        for x in -40..40 {
+            for z in -40..40 {
+                let b = g.column(x * 16, z * 16).biome;
+                seen.insert(b as u8);
+            }
+        }
+        for b in [
+            Biome::Taiga,
+            Biome::BirchForest,
+            Biome::Jungle,
+            Biome::Savanna,
+            Biome::Swamp,
+            Biome::Badlands,
+        ] {
+            assert!(
+                seen.contains(&(b as u8)),
+                "{} never selected in the scan window",
+                b.name()
+            );
+            assert_eq!(Biome::from_u8(b as u8), b);
+        }
+    }
+
+    /// mineshafts: 0.4%/chunk means a ±10-chunk scan (441 chunks) is
+    /// expected to find ≥1 (probability of zero ≈ 0.996^441 ≈ 17% —
+    /// sensitive to the seed; use a seed that yields one and verify the
+    /// STRUCTURE, with the presence itself asserted on a wider window)
+    #[test]
+    fn mineshaft_layout_is_deterministic_and_wellformed() {
+        let g = gen();
+        // find a seed-window that contains a shaft
+        let mut found: Option<Mineshaft> = None;
+        'outer: for cx in -12..12 {
+            for cz in -12..12 {
+                let near = g.mineshafts_near(cx * 16, cz * 16);
+                if let Some(ms) = near.into_iter().next() {
+                    found = Some(ms);
+                    break 'outer;
+                }
+            }
+        }
+        let ms = found.expect("a mineshaft within ±12 chunks of a 0.4% roll");
+        // determinism: the same query returns the same layout
+        let again = g.mineshafts_near(ms.x, ms.z);
+        assert!(again.iter().any(|m| m.x == ms.x && m.z == ms.z && m.y == ms.y));
+        // well-formed: y in the deep band, 1..=4 corridors, lengths sane
+        assert!((10..=40).contains(&ms.y));
+        assert!(!ms.corridors.is_empty() && ms.corridors.len() <= 4);
+        for &(_, _, len) in &ms.corridors {
+            assert!((24..=48).contains(&len));
+        }
+        // emit: the owning chunk contains a parlor (planks at ms.y) and
+        // structure regenerates identically
+        let cx = ms.x >> 4;
+        let cz = ms.z >> 4;
+        let (c1, _) = g.generate_chunk(cx, cz, Vec::new());
+        let (c2, _) = g.generate_chunk(cx, cz, Vec::new());
+        let same = (0..256usize)
+            .map(|y| {
+                (0..16usize)
+                    .map(|z| {
+                        (0..16usize)
+                            .filter(|x| c1.get(*x, y, z) != c2.get(*x, y, z))
+                            .count()
+                    })
+                    .sum::<usize>()
+            })
+            .sum::<usize>();
+        assert_eq!(same, 0, "chunk regenerates identically");
+        // parlor floor: the center cell is planks
+        let lx = (ms.x - cx * 16) as usize;
+        let lz = (ms.z - cz * 16) as usize;
+        assert_eq!(c1.get(lx, ms.y as usize, lz), PLANKS);
+    }
+
+    /// desert pyramid: 21×21 base, hidden pit with 4 chests, entrance,
+    /// and the terracotta checkerboard floor; regeneration determinism
+    #[test]
+    fn pyramid_emits_full_layout() {
+        let g = gen();
+        // find a pyramid region
+        let mut found = None;
+        'outer: for rx in -8..8 {
+            for rz in -8..8 {
+                if let Some(c) = g.pyramid_center_pub(rx, rz) {
+                    found = Some(c);
+                    break 'outer;
+                }
+            }
+        }
+        let (wx, wz) = found.expect("a desert pyramid within ±8 regions");
+        // force-emit the center chunk + register what's inside
+        let cx = wx >> 4;
+        let cz = wz >> 4;
+        let (c1, _) = g.generate_chunk(cx, cz, Vec::new());
+        let (c2, _) = g.generate_chunk(cx, cz, Vec::new());
+        let same = (0..256usize)
+            .map(|y| {
+                (0..16usize)
+                    .map(|z| {
+                        (0..16usize)
+                            .filter(|x| c1.get(*x, y, z) != c2.get(*x, y, z))
+                            .count()
+                    })
+                    .sum::<usize>()
+            })
+            .sum::<usize>();
+        assert_eq!(same, 0);
+        let base = g.column(wx, wz).height as i32;
+        let at = |dx: i32, dy: i32, dz: i32| -> u8 {
+            let x = ((wx + dx) - cx * 16) as usize;
+            let z = ((wz + dz) - cz * 16) as usize;
+            c1.get(x, (base + dy) as usize, z)
+        };
+        // checkerboard floor: terracotta + smooth stone alternating —
+        // probe OPPOSITE parities: (0,0) is even, (1,0) is odd
+        let a = at(0, 1, 0);
+        let b = at(1, 1, 0);
+        assert!(
+            { let pair = [a, b]; pair.contains(&TERRACOTTA) && pair.contains(&SMOOTH_STONE) },
+            "wind-rose checkerboard: {a:?} {b:?}"
+        );
+        // pit: air shaft under the center, treasure floor below
+        assert_eq!(at(0, -5, 0), AIR, "hidden pit shaft is carved");
+        // 4 chests around the treasure-room center — Chunk::get returns
+        // the raw STATE id (CHEST_STATE 227, not block id 96), so the
+        // check routes through state_block (the Phase 5 dungeon-test
+        // pattern; identity states are unchanged by it)
+        let floor = base - 11;
+        let mut chests = 0;
+        for (dx, dz) in [(-1, -1), (1, -1), (-1, 1), (1, 1)] {
+            let x = ((wx + dx) - cx * 16) as usize;
+            let z = ((wz + dz) - cz * 16) as usize;
+            if state_block(c1.get(x, floor as usize, z) as u16) == CHEST {
+                chests += 1;
+            }
+        }
+        assert_eq!(chests, 4, "4 treasure chests around the pit floor");
+    }
+
+    /// stronghold: ring 1 = 3 strongholds in the verified 1280..=2816
+    /// distance band at roughly equal angles; the portal room emits the
+    /// 12-frame ring
+    #[test]
+    fn stronghold_ring1_and_portal_room() {
+        let g = gen();
+        let sh = g.strongholds();
+        assert_eq!(sh.len(), 3, "VERIFIED: ring 1 has 3 strongholds");
+        for &(x, z) in &sh {
+            let dist = ((x * x + z * z) as f64).sqrt();
+            assert!(
+                (1280.0..=2816.0).contains(&dist),
+                "VERIFIED band 1280-2816, got {dist}"
+            );
+        }
+        // angles roughly 120° apart (the wiki: "each stronghold in a ring
+        // of 3 is in the region of 120 degrees from the others")
+        let angles: Vec<f32> = sh
+            .iter()
+            .map(|&(x, z)| (z as f32).atan2(x as f32))
+            .collect();
+        let mut gaps: Vec<f32> = Vec::new();
+        for i in 0..3 {
+            let mut d = (angles[(i + 1) % 3] - angles[i]).abs();
+            let tau = std::f32::consts::TAU;
+            if d > tau / 2.0 {
+                d = tau - d;
+            }
+            gaps.push(d);
+        }
+        assert!(
+            gaps.iter().all(|&d| d > 1.4 && d < 2.8),
+            "roughly-equal angles (~120° apart, wiki: 'in the region of 120 degrees'): {gaps:?}"
+        );
+        // emit: the portal room's 12-frame ring. The ring center sits 17
+        // blocks WEST of the stronghold anchor (the portal room centers
+        // on the anchor's west side), so generate the RING-CENTER chunk's
+        // 3×3 neighborhood: the 5×5 ring and the library/store-room chests
+        // can straddle chunk borders, and every chunk near a stronghold
+        // emits the parts of the layout falling inside itself (the same
+        // discipline as villages/mineshafts).
+        let (sx, sz) = sh[0];
+        let (rcx, rcz) = ((sx - 17) >> 4, sz >> 4);
+        let mut grid: Vec<(i32, i32, std::sync::Arc<Chunk>)> = Vec::new();
+        for dcx in -1..=1 {
+            for dcz in -1..=1 {
+                let (c, _) = g.generate_chunk(rcx + dcx, rcz + dcz, Vec::new());
+                grid.push((rcx + dcx, rcz + dcz, c));
+            }
+        }
+        // world-coord lookup across the neighborhood — returns the BLOCK
+        // id (Chunk::get yields the raw state; END_PORTAL_FRAME stores
+        // state 235 ≠ block 102, CHEST stores 227 ≠ 96, so route through
+        // state_block)
+        let get = |x: i32, y: usize, z: i32| -> u8 {
+            for &(cx, cz, ref c) in &grid {
+                let lx = x - cx * 16;
+                let lz = z - cz * 16;
+                if (0..16).contains(&lx) && (0..16).contains(&lz) {
+                    return state_block(c.get(lx as usize, y, lz as usize) as u16);
+                }
+            }
+            panic!("probe ({x},{y},{z}) outside the generated neighborhood");
+        };
+        // the 12-frame ring: 3 per side, corners open (vanilla layout)
+        let (px, pz) = (sx - 17, sz);
+        let mut frames = 0;
+        for i in -2..=2i32 {
+            for j in -2..=2i32 {
+                let on_ring = (i.abs() == 2 || j.abs() == 2) && !(i.abs() == 2 && j.abs() == 2);
+                if on_ring && get(px + i, 21, pz + j) == END_PORTAL_FRAME {
+                    frames += 1;
+                }
+            }
+        }
+        assert_eq!(frames, 12, "the 12-frame portal ring (3 per side)");
+        // the library chest + store-room chest exist (exact emit coords,
+        // both inside the neighborhood: +10 east/−8 north and +13
+        // east/+4 south of the ring center)
+        assert_eq!(get(sx - 7, 21, sz - 8), CHEST, "stronghold_library chest");
+        assert_eq!(get(sx - 4, 21, sz + 4), CHEST, "stronghold_corridor chest");
+    }
+
+    /// ravines: descriptors respect the wiki-verified shape grammar
+    /// (85..=127 long, <15 wide, ≤62 deep, top 10..=72); the carve
+    /// actually opens a deep air column somewhere on the path
+    #[test]
+    fn ravine_shape_and_carve() {
+        let g = gen();
+        let mut found: Option<(i32, i32, Ravine)> = None;
+        'outer: for cx in -10..10 {
+            for cz in -10..10 {
+                let rv = g.ravines_near_chunk(cx, cz);
+                if let Some(r) = rv.into_iter().next() {
+                    found = Some((cx, cz, r));
+                    break 'outer;
+                }
+            }
+        }
+        let (cx, cz, r) = found.expect("a ravine within ±10 chunks of a 2% roll");
+        // VERIFIED grammar
+        assert!((85..=127).contains(&r.length), "85..=127 long");
+        assert!(r.half_w < 7.5, "typically less than 15 wide");
+        assert!(r.depth <= 62, "up to 62 deep");
+        assert!((10..=72).contains(&r.top), "start levels 10 to 72");
+        // the carve: the path's midpoint column is air at mid-depth
+        let mx = r.x0 + (r.dx * (r.length as f32 / 2.0)) as i32;
+        let mz = r.z0 + (r.dz * (r.length as f32 / 2.0)) as i32;
+        let (c, _) = g.generate_chunk(mx >> 4, mz >> 4, Vec::new());
+        let col_h = g.column(mx, mz).height as i32;
+        // probe 3 blocks below the local surface at the midpoint: the
+        // cut may be shallow where it clipped a low top; assert that at
+        // SOME depth along the column the terrain is carved to air
+        let lx = (mx - (mx >> 4) * 16) as usize;
+        let lz = (mz - (mz >> 4) * 16) as usize;
+        let mut carved = 0;
+        for y in 8..col_h.min(r.top) {
+            if c.get(lx, y as usize, lz) == AIR {
+                carved += 1;
+            }
+        }
+        assert!(carved > 0, "the ravine path is carved open ({carved} cells)");
+        // determinism
+        let (c2, _) = g.generate_chunk(cx, cz, Vec::new());
+        let (c1, _) = g.generate_chunk(cx, cz, Vec::new());
+        let same = (0..256usize)
+            .map(|y| {
+                (0..16usize)
+                    .map(|z| {
+                        (0..16usize)
+                            .filter(|x| c1.get(*x, y, z) != c2.get(*x, y, z))
+                            .count()
+                    })
+                    .sum::<usize>()
+            })
+            .sum::<usize>();
+        assert_eq!(same, 0);
     }
 }

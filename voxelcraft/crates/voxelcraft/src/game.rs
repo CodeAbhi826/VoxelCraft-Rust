@@ -4459,6 +4459,200 @@ impl GameApp {
                             }
                         }
                     }
+                    // ---- Phase 10 E2E: structures + biomes ----
+                    Some("mineshaft") => {
+                        // mineshaft — find the nearest shaft roll within
+                        // ±10 chunks, teleport into its parlor, report the
+                        // layout (corridors + y)
+                        let gen = &self.world.gen;
+                        let pcx = (self.player.pos.x.floor() as i32) >> 4;
+                        let pcz = (self.player.pos.z.floor() as i32) >> 4;
+                        let mut found = None;
+                        'scan: for r in 0..=10i32 {
+                            for dz in -r..=r {
+                                for dx in -r..=r {
+                                    if dx.abs() != r && dz.abs() != r {
+                                        continue;
+                                    }
+                                    for ms in
+                                        gen.mineshafts_near((pcx + dx) * 16, (pcz + dz) * 16)
+                                    {
+                                        found = Some(((pcx + dx, pcz + dz), ms));
+                                        break 'scan;
+                                    }
+                                }
+                            }
+                        }
+                        match found {
+                            None => vc_render::render::report_boot_log("e2e: no mineshaft within ±10 chunks (0.4%/chunk — try more area)"),
+                            Some(((cx, cz), ms)) => {
+                                let (chunk, _) = gen.generate_chunk(cx, cz, Vec::new());
+                                let pos = (cx, cz);
+                                self.world.insert_generated(pos, chunk.clone(), Vec::new());
+                                self.light.init_chunk(&mut self.world, pos);
+                                for (lpos, lmask) in self.light.take_changed() {
+                                    self.world
+                                        .mark_sections_dirty(lpos, lmask, vc_world::world::CAUSE_LIGHT);
+                                }
+                                self.register_block_entities(pos, &chunk, true);
+                                self.player.pos.x = ms.x as f32 + 0.5;
+                                self.player.pos.y = (ms.y + 1) as f32 + 0.2;
+                                self.player.pos.z = ms.z as f32 + 0.5;
+                                vc_render::render::report_boot_log(&format!(
+                                    "e2e: mineshaft at chunk ({cx},{cz}) parlor ({},{},{}) corridors {} (lens {:?})",
+                                    ms.x, ms.y, ms.z, ms.corridors.len(),
+                                    ms.corridors.iter().map(|c| c.2).collect::<Vec<_>>()
+                                ));
+                            }
+                        }
+                    }
+                    Some("pyramid") => {
+                        // pyramid — locate the nearest desert pyramid,
+                        // teleport to its hidden treasure room, report
+                        let gen = &self.world.gen;
+                        let px = self.player.pos.x.floor() as i32;
+                        let pz = self.player.pos.z.floor() as i32;
+                        // search outward region by region
+                        let mut found = None;
+                        'scan: for r in 0..=6i32 {
+                            for rrz in -r..=r {
+                                for rrx in -r..=r {
+                                    if rrx.abs() != r && rrz.abs() != r {
+                                        continue;
+                                    }
+                                    let rx = (px / (32 * 16)) + rrx;
+                                    let rz = (pz / (32 * 16)) + rrz;
+                                    if let Some((wx, wz)) = gen.pyramid_center_pub(rx, rz) {
+                                        found = Some((wx, wz));
+                                        break 'scan;
+                                    }
+                                }
+                            }
+                        }
+                        match found {
+                            None => vc_render::render::report_boot_log("e2e: no desert pyramid nearby (desert-gated, 1 per 32×32-chunk region)"),
+                            Some((wx, wz)) => {
+                                // read everything off `gen` FIRST (its
+                                // borrow ends before the world mutations —
+                                // held-across-mutation fails borrowck on
+                                // the wasm target)
+                                let base = gen.column(wx, wz).height as i32;
+                                let floor = base - 11;
+                                let cx = wx >> 4;
+                                let cz = wz >> 4;
+                                let (chunk, _) = gen.generate_chunk(cx, cz, Vec::new());
+                                let pos = (cx, cz);
+                                self.world.insert_generated(pos, chunk.clone(), Vec::new());
+                                self.light.init_chunk(&mut self.world, pos);
+                                for (lpos, lmask) in self.light.take_changed() {
+                                    self.world
+                                        .mark_sections_dirty(lpos, lmask, vc_world::world::CAUSE_LIGHT);
+                                }
+                                self.register_block_entities(pos, &chunk, true);
+                                self.player.pos.x = wx as f32 + 0.5;
+                                self.player.pos.y = floor as f32 + 0.2;
+                                self.player.pos.z = wz as f32 + 0.5;
+                                vc_render::render::report_boot_log(&format!(
+                                    "e2e: desert pyramid at ({wx},{wz}) pit floor y={floor} (4 chests, desert_pyramid loot)"
+                                ));
+                            }
+                        }
+                    }
+                    Some("chestloot") => {
+                        // chestloot:<x>:<y>:<z> — report what rolled into
+                        // the structure chest at a position: the Phase 10
+                        // loot seam (fresh chunk → register_block_entities
+                        // → chest_table_for attribution → fill_structure_
+                        // chest through the data-pack pipeline) verified
+                        // live, without needing crosshair aim
+                        let c = coords();
+                        if c.len() == 3 {
+                            let p = [c[0], c[1], c[2]];
+                            match self.sim.containers.map.get(&p) {
+                                None => vc_render::render::report_boot_log(&format!(
+                                    "e2e: chestloot ({},{},{}) — no container entity",
+                                    p[0], p[1], p[2]
+                                )),
+                                Some(inv) => {
+                                    let items: Vec<String> = inv
+                                        .slots
+                                        .iter()
+                                        .filter(|s| !s.is_empty())
+                                        .map(|s| {
+                                            format!(
+                                                "{} x{}",
+                                                vc_blocks::blocks::name(s.block),
+                                                s.count
+                                            )
+                                        })
+                                        .collect();
+                                    vc_render::render::report_boot_log(&format!(
+                                        "e2e: chestloot ({},{},{}) — {} stacks: [{}]",
+                                        p[0],
+                                        p[1],
+                                        p[2],
+                                        items.len(),
+                                        items.join(", ")
+                                    ));
+                                }
+                            }
+                        } else {
+                            vc_render::render::report_boot_log(
+                                "e2e: chestloot:<x>:<y>:<z> — report the loot in the chest at a position",
+                            );
+                        }
+                    }
+                    Some("stronghold") => {
+                        // stronghold — report ring-1 positions (VERIFIED:
+                        // 3 strongholds, 1280-2816 blocks, ~120° apart) and
+                        // teleport to the first one's portal room. The room
+                        // centers 17 blocks WEST of the anchor, so the
+                        // RING-CENTER chunk's 3×3 neighborhood is what holds
+                        // the room (each nearby chunk emits its own part of
+                        // the layout, the village/mineshaft discipline).
+                        let gen = &self.world.gen;
+                        let sh = gen.strongholds();
+                        let (sx, sz) = sh[0];
+                        let (rcx, rcz) = ((sx - 17) >> 4, sz >> 4);
+                        // phase 1: generate the 3×3 neighborhood while `gen`
+                        // is borrowed (the player's world insert needs &mut)
+                        let mut made = Vec::new();
+                        for dcx in -1..=1i32 {
+                            for dcz in -1..=1i32 {
+                                let (chunk, _) = gen.generate_chunk(rcx + dcx, rcz + dcz, Vec::new());
+                                made.push(((rcx + dcx, rcz + dcz), chunk));
+                            }
+                        }
+                        // phase 2: insert + light + register entities
+                        for (pos, chunk) in made {
+                            self.world.insert_generated(pos, chunk.clone(), Vec::new());
+                            self.light.init_chunk(&mut self.world, pos);
+                            for (lpos, lmask) in self.light.take_changed() {
+                                self.world
+                                    .mark_sections_dirty(lpos, lmask, vc_world::world::CAUSE_LIGHT);
+                            }
+                            self.register_block_entities(pos, &chunk, true);
+                        }
+                        // the portal room center (portal ring + frames)
+                        self.player.pos.x = (sx - 17) as f32 + 0.5;
+                        self.player.pos.y = 21.0;
+                        self.player.pos.z = sz as f32 + 0.5;
+                        let dist = ((sx * sx + sz * sz) as f32).sqrt();
+                        vc_render::render::report_boot_log(&format!(
+                            "e2e: stronghold ring 1: {} at dist {:.0} ({}..{} verified) — teleported to portal room of #1 at ({sx},{sz})",
+                            sh.len(), dist, 1280, 2816
+                        ));
+                    }
+                    Some("biome") => {
+                        // biome — report the biome under the player
+                        let x = self.player.pos.x.floor() as i32;
+                        let z = self.player.pos.z.floor() as i32;
+                        let col = self.world.gen.column(x, z);
+                        vc_render::render::report_boot_log(&format!(
+                            "e2e: biome at ({x},{z}) = {} (h {}) — 14 biomes total (Phase 10: Taiga/Birch Forest/Jungle/Savanna/Swamp/Badlands)",
+                            col.biome.name(), col.height
+                        ));
+                    }
                     Some("fill") => {
                         // fill: — E2E shortcut for the bottle-at-water
                         // interaction: every empty glass bottle in the
@@ -6157,10 +6351,29 @@ impl GameApp {
     fn register_block_entities(&mut self, pos: ChunkPos, chunk: &Arc<vc_chunk::chunk::Chunk>, fill_loot: bool) {
         let ox = pos.0 * 16;
         let oz = pos.1 * 16;
+        // Phase 10: which structure's loot table owns this chunk's fresh
+        // chests — per-chunk primary-structure attribution (dungeon exact;
+        // the others region queries; documented approximation: a chest in
+        // a chunk claimed by two structures follows the higher priority)
+        let table = if fill_loot {
+            Some(self.chest_table_for(pos))
+        } else {
+            None
+        };
         for y in 0..256usize {
             for z in 0..16usize {
                 for x in 0..16usize {
-                    let b = chunk.get(x, y, z);
+                    // Chunk::get returns the raw STATE id (as u8), and the
+                    // dedicated-state blocks this scan hunts for never
+                    // equal their block ids raw (CHEST_STATE 227 vs block
+                    // 96, SPAWNER states 232..=234 vs block 101) — so the
+                    // comparison must decode through state_block, the same
+                    // mapping World::get_block applies. [Phase 5 carried a
+                    // latent miss here: chunk-arrival spawners/chests never
+                    // actually registered, because the fast-skip compared
+                    // raw states against block ids. Fixed with the Phase 10
+                    // loot seam that builds on this scan.]
+                    let b = state_block(chunk.get(x, y, z) as u16);
                     if b != SPAWNER && b != CHEST {
                         continue; // fast skip — `get` on empty sections is cheap
                     }
@@ -6173,18 +6386,53 @@ impl GameApp {
                             .unwrap_or(0);
                         self.sim.spawners.register(p, vc_blocks::blocks::spawner_mob(s));
                     } else if fill_loot {
-                        // dungeon loot chest: fill ONLY if the container is
-                        // untouched (fresh generation creates it here; a
+                        // structure loot chest: fill ONLY if the container
+                        // is untouched (fresh generation creates it here; a
                         // re-arriving chunk with loot already inside never
                         // refills — the all-empty guard)
                         let inv = self.sim.containers.entry(p, CHEST);
                         if inv.slots.iter().all(|s| s.is_empty()) {
-                            fill_dungeon_chest(&self.data, inv, self.world.seed, p);
+                            fill_structure_chest(&self.data, table.unwrap_or("minecraft:chests/simple_dungeon"), inv, self.world.seed, p);
                         }
                     }
                 }
             }
         }
+    }
+
+    /// Phase 10: the loot-table seam a fresh chest in chunk (cx, cz)
+    /// rolls from — structure-attribution priority dungeon > mineshaft >
+    /// desert pyramid > jungle temple > stronghold (the per-chunk
+    /// primary-structure approximation, documented). Stronghold chests
+    /// split by position: the library chest sits north of the portal
+    /// room's center, the store-room chest south of it.
+    fn chest_table_for(&self, pos: ChunkPos) -> &'static str {
+        let gen = &self.world.gen;
+        let cx = pos.0;
+        let cz = pos.1;
+        if gen.dungeon_in_chunk(cx, cz).is_some() {
+            return "minecraft:chests/simple_dungeon";
+        }
+        if !gen.mineshafts_near(cx * 16 + 8, cz * 16 + 8).is_empty() {
+            return "minecraft:chests/abandoned_mineshaft";
+        }
+        if !gen.pyramids_near(cx * 16 + 8, cz * 16 + 8).is_empty() {
+            return "minecraft:chests/desert_pyramid";
+        }
+        if !gen.jungle_temples_near(cx * 16 + 8, cz * 16 + 8).is_empty() {
+            return "minecraft:chests/jungle_temple";
+        }
+        for &(sx, sz) in gen.strongholds().iter() {
+            if (sx - (cx * 16 + 8)).abs() <= 40 && (sz - (cz * 16 + 8)).abs() <= 40 {
+                return if sz - (cz * 16 + 8) > 0 {
+                    // chest north of the stronghold center → library
+                    "minecraft:chests/stronghold_library"
+                } else {
+                    "minecraft:chests/stronghold_corridor"
+                };
+            }
+        }
+        "minecraft:chests/simple_dungeon"
     }
 
     fn apply_result(&mut self, res: JobResult) {
@@ -6862,15 +7110,16 @@ fn notify_sim(world: &World, sched: &mut vc_sim::ticks::TickScheduler, x: i32, y
 /// 1..=4, deterministic from the world seed + chest position. Vanilla
 /// saddle/music-disc/golden-apple slots are palette-absent and simply
 /// don't roll (documented, not substituted with lookalikes).
-/// Phase 9: the dungeon chest now rolls through the data-pack loot
-/// system (vanilla `minecraft:chests/simple_dungeon` seam): a pack that
-/// ships that table overrides the palette-limited builtin; either way
-/// the distribution is pools/rolls/weights/set_count — the exact
-/// vanilla model, with our own palette values in the builtin default
-/// (saddle/music-disc/golden-apple slots are palette-absent and simply
-/// don't roll — documented, not substituted with lookalikes).
-fn fill_dungeon_chest(
+/// Phase 9/10: fresh structure chests roll through the data-pack loot
+/// system (vanilla table-name seam): a pack that ships the table
+/// overrides the palette-limited builtin; either way the distribution is
+/// pools/rolls/weights/set_count — the exact vanilla model, with our own
+/// palette values in the builtin defaults (saddle/music-disc/golden-apple
+/// slots are palette-absent and simply don't roll — documented, not
+/// substituted with lookalikes).
+fn fill_structure_chest(
     data: &vc_pack::datapack::LoadedData,
+    table: &str,
     inv: &mut vc_sim::containers::ContainerInv,
     seed: u64,
     pos: [i32; 3],
@@ -6881,9 +7130,7 @@ fn fill_dungeon_chest(
         pos[1],
         pos[2],
     ));
-    let stacks = data
-        .roll("minecraft:chests/simple_dungeon", &mut rng)
-        .unwrap_or_default();
+    let stacks = data.roll(table, &mut rng).unwrap_or_default();
     let mut slot = rng.next_range(27) as usize;
     for (item, count) in stacks {
         // walk to the next free slot (chests are fresh — always one)
@@ -7294,5 +7541,78 @@ mod settings_tests {
                 assert!((1..=2).contains(&count));
             }
         }
+    }
+
+    /// Phase 10 E2E claims hold: the `mineshaft` / `pyramid` /
+    /// `stronghold` / `biome` command log lines state structure facts
+    /// that must stay true (corridor lens 24..=48, the 4-chest pit +
+    /// desert_pyramid loot, ring-1 = 3 strongholds in 1280..=2816, 14
+    /// biomes) — this mirrors those log lines so drift breaks either
+    /// the live E2E or this test, the same discipline as the P8/P9
+    /// claims tests.
+    #[test]
+    fn phase10_structure_e2e_claims_hold() {
+        use vc_world::gen::{Biome, TerrainGen};
+        use vc_world::world::Dimension;
+        let gen = TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Overworld);
+        // "e2e: stronghold ring 1: 3 at dist ... (1280..2816 verified)"
+        let sh = gen.strongholds();
+        assert_eq!(sh.len(), 3, "ring 1 has 3 strongholds");
+        for &(x, z) in &sh {
+            let dist = ((x * x + z * z) as f32).sqrt();
+            assert!((1280.0..=2816.0).contains(&dist), "band claim, got {dist}");
+        }
+        // "e2e: desert pyramid at ... (4 chests, desert_pyramid loot)"
+        let mut pyr = None;
+        'p: for rx in -8..8 {
+            for rz in -8..8 {
+                if let Some(c) = gen.pyramid_center_pub(rx, rz) {
+                    pyr = Some(c);
+                    break 'p;
+                }
+            }
+        }
+        let (wx, wz) = pyr.expect("a pyramid within ±8 regions");
+        let (cx, cz) = (wx >> 4, wz >> 4);
+        let (chunk, _) = gen.generate_chunk(cx, cz, Vec::new());
+        let base = gen.column(wx, wz).height as i32;
+        let floor = (base - 11) as usize;
+        let mut chests = 0;
+        for (dx, dz) in [(-1i32, -1i32), (1, -1), (-1, 1), (1, 1)] {
+            let x = ((wx + dx) - cx * 16) as usize;
+            let z = ((wz + dz) - cz * 16) as usize;
+            // Chunk::get yields the raw state — route through state_block
+            if vc_blocks::blocks::state_block(chunk.get(x, floor, z) as u16)
+                == vc_blocks::blocks::CHEST
+            {
+                chests += 1;
+            }
+        }
+        assert_eq!(chests, 4, "the 4-chest pit claim");
+        assert!(
+            vc_pack::datapack::builtin_structure_table("minecraft:chests/desert_pyramid").is_some(),
+            "the desert_pyramid loot-table claim"
+        );
+        // "e2e: mineshaft at chunk ... corridors N (lens [24..=48])"
+        let mut shaft = None;
+        'm: for dcx in -10..10i32 {
+            for dcz in -10..10i32 {
+                let v = gen.mineshafts_near(dcx * 16, dcz * 16);
+                if let Some(m) = v.first() {
+                    shaft = Some(m.clone());
+                    break 'm;
+                }
+            }
+        }
+        let ms = shaft.expect("a mineshaft within ±10 chunks");
+        assert!(!ms.corridors.is_empty() && ms.corridors.len() <= 4);
+        for &(_, _, len) in &ms.corridors {
+            assert!((24..=48).contains(&len), "corridor lens claim");
+        }
+        // "14 biomes total (Phase 10: Taiga/Birch Forest/Jungle/Savanna/
+        // Swamp/Badlands)" — from_u8 maps 0..=13 to distinct names
+        let mut names: Vec<&str> = (0u8..=13).map(Biome::from_u8).map(|b| b.name()).collect();
+        names.dedup();
+        assert_eq!(names.len(), 14, "the 14-biomes-total claim");
     }
 }

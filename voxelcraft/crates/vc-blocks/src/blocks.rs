@@ -120,6 +120,8 @@ pub const TILE_FERMENTED_EYE: u16 = 121;
 // Phase 5 §27: monster-spawner cage face (dark lattice, vanilla-like
 // cage silhouette, clean-room drawn — see textures.rs spawner_art)
 pub const TILE_SPAWNER: u16 = 122;
+/// Phase 10: end-portal frame tile (clean-room inset-ring face)
+pub const TILE_END_PORTAL_FRAME: u16 = 123;
 // mobs (Phase 2): entity sprites + drops' item tiles. Mob sprites are
 // clean-room pixel art (ours, not Mojang's) — distinct silhouettes/palettes
 pub const TILE_ZOMBIE: u16 = 83;
@@ -302,6 +304,11 @@ pub const FERMENTED_SPIDER_EYE: u8 = 100;
 /// Phase 5 §27: monster spawner (dungeon block entity). Mob type is
 /// encoded in the block state (232 zombie / 233 skeleton / 234 spider).
 pub const SPAWNER: u8 = 101;
+/// Phase 10: end-portal frame block (stronghold portal room ring).
+/// Decorative-only: eye-of-ender insertion + portal activation are out
+/// of scope (documented); the frame marks the vanilla portal room's
+/// 12-frame ring, ours renders as a full cube with a frame inset.
+pub const END_PORTAL_FRAME: u8 = 102;
 /// spawner mob-kind code 0: zombie (dungeon roll 50%)
 pub const SPAWNER_ZOMBIE: u8 = 0;
 /// spawner mob-kind code 1: skeleton (dungeon roll 25%)
@@ -362,8 +369,10 @@ pub const FERMENTED_EYE_STATE: u16 = 231;
 // (documented adaptation; 3 states, 232..=234)
 pub const SPAWNER_STATE_BASE: u16 = 232;
 pub const SPAWNER_STATE_END: u16 = 234;
+/// Phase 10: end-portal frame state (single)
+pub const END_PORTAL_FRAME_STATE: u16 = 235;
 
-pub const BLOCK_COUNT: usize = 102;
+pub const BLOCK_COUNT: usize = 103;
 
 // ---------------------------------------------------------------------------
 // BlockState registry (1.16.5 pattern, miniature)
@@ -380,7 +389,7 @@ pub const BLOCK_COUNT: usize = 102;
 /// Phase 4: extended to cover the Phase 2/3/4 state ids (130..=231) —
 /// before, the range tests stopped at 130 and never saw them.
 /// Phase 5: spawner states 232..=234
-pub const STATE_COUNT: usize = 235;
+pub const STATE_COUNT: usize = 236;
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -652,6 +661,7 @@ pub fn default_state(b: u8) -> u16 {
         FERMENTED_SPIDER_EYE => FERMENTED_EYE_STATE,
         // default spawner = zombie (the 50% dungeon roll)
         SPAWNER => SPAWNER_STATE_BASE,
+        END_PORTAL_FRAME => END_PORTAL_FRAME_STATE,
         ENCHANT_TABLE => ENCHANT_TABLE_STATE,
         ENCHANTED_BOOK => ENCHANTED_BOOK_STATE,
         BEEF => BEEF_STATE,
@@ -855,6 +865,7 @@ pub fn state_block(s: u16) -> u8 {
         SPIDER_EYE_STATE => return SPIDER_EYE,
         FERMENTED_EYE_STATE => return FERMENTED_SPIDER_EYE,
         s if (SPAWNER_STATE_BASE..=SPAWNER_STATE_END).contains(&s) => return SPAWNER,
+        END_PORTAL_FRAME_STATE => return END_PORTAL_FRAME,
         ENCHANT_TABLE_STATE => return ENCHANT_TABLE,
         ENCHANTED_BOOK_STATE => return ENCHANTED_BOOK,
         BEEF_STATE => return BEEF,
@@ -940,7 +951,8 @@ pub fn is_model_state(s: u16) -> bool {
             || (OBSERVER_STATE_BASE..=OBSERVER_STATE_END).contains(&s)
             || (HOPPER_STATE_BASE..=HOPPER_STATE_END).contains(&s)
             || (SPAWNER_STATE_BASE..=SPAWNER_STATE_END).contains(&s)
-            || s == CHEST_STATE)
+            || s == CHEST_STATE
+            || s == END_PORTAL_FRAME_STATE)
 }
 
 /// true if this block id has property-driven model states
@@ -1005,7 +1017,7 @@ pub fn log_axis_state(block: u8, axis: u8) -> u16 {
 /// component tile rendered BLANK since Phase 2. Now derived from the
 /// highest tile constant (118–121 here) and guarded by the
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
-pub const TILE_MAX: u16 = 122;
+pub const TILE_MAX: u16 = 123;
 
 /// inventory-only ITEM blocks (potions/bottles/books): never placeable in
 /// the world — right-click drinks (potions) / fills (glass bottle at water).
@@ -1182,6 +1194,9 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     // the mob inside; ours is a full lattice cube — see-through faces on
     // all sides like glass)
     d("Monster Spawner", [TILE_SPAWNER, TILE_SPAWNER, TILE_SPAWNER], true, false, false, false, 0, SoundFamily::Stone),
+    // Phase 10: end-portal frame (stronghold portal room) — solid cube
+    // with the frame inset face; eye insertion + activation out of scope
+    d("End Portal Frame", [TILE_END_PORTAL_FRAME, TILE_END_PORTAL_FRAME, TILE_END_PORTAL_FRAME], true, false, false, false, 0, SoundFamily::Stone),
 ];
 
 #[inline]
@@ -1469,6 +1484,7 @@ mod state_tests {
                 || (REPEATER_STATE_BASE..=CHEST_STATE).contains(&s)
                 || (POTION_HARMING_STATE..=FERMENTED_EYE_STATE).contains(&s)
                 || (SPAWNER_STATE_BASE..=SPAWNER_STATE_END).contains(&s)
+                || s == END_PORTAL_FRAME_STATE
             {
                 assert!(!is_model_state(s), "component/item state {s} never routes to models");
                 // identity: the state folds to the block whose def table

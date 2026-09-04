@@ -284,7 +284,7 @@ fn levelup_recipe() -> Vec<f32> {
     clamp_amp(l)
 }
 
-/// villager ambient (§27): the low "hrmm" — two soft nasally tones
+/// villager ambient (§27): the "hrmm" — two soft thumps
 fn villager_ambient_recipe() -> Vec<f32> {
     let mut v = thump(150.0, 0.18, 0.4);
     let h = thump(200.0, 0.14, 0.25);
@@ -296,6 +296,89 @@ fn villager_ambient_recipe() -> Vec<f32> {
 fn villager_trade_recipe() -> Vec<f32> {
     let mut v = ping(260.0, 0.10, 0.35, 415);
     mix_into(&mut v, &ping(340.0, 0.14, 0.3, 416), 1.0);
+    clamp_amp(v)
+}
+
+// ---------------------------------------------- Phase 2 combat sounds --
+
+/// player hurt: sharp low thud + brief noise gasp
+fn hurt_recipe() -> Vec<f32> {
+    let mut v = thump(90.0, 0.16, 0.55);
+    mix_into(&mut v, &noise_burst((0.08 * RATE as f32) as usize, 77, 0.25, 0.02, 0.8), 0.8);
+    clamp_amp(v)
+}
+
+/// zombie groan: two descending low thumps (nasally "uhh-hrr")
+fn zombie_groan_recipe() -> Vec<f32> {
+    let mut v = thump(110.0, 0.22, 0.45);
+    let mut d = thump(80.0, 0.26, 0.4);
+    mix_into(&mut v, &d, 0.8);
+    d = thump(140.0, 0.1, 0.2);
+    mix_into(&mut v, &d, 0.5);
+    clamp_amp(v)
+}
+
+/// generic mob death: falling pitch pair
+fn death_recipe() -> Vec<f32> {
+    let mut v = ping(320.0, 0.12, 0.4, 621);
+    mix_into(&mut v, &ping(180.0, 0.22, 0.4, 622), 1.0);
+    clamp_amp(v)
+}
+
+/// creeper priming: the rising hiss — filtered noise swell
+fn priming_recipe() -> Vec<f32> {
+    let n = (1.5 * RATE as f32) as usize;
+    let mut v: Vec<f32> = (0..n)
+        .map(|i| {
+            let t = i as f32 / n as f32;
+            let noise = vc_rng::rng::Rng::new(777 + i as u64).next_f32() * 2.0 - 1.0;
+            noise * t * 0.5
+        })
+        .collect();
+    let _ = &mut v;
+    clamp_amp(v)
+}
+
+/// explosion: big noise burst with a low boom tail
+fn explosion_recipe() -> Vec<f32> {
+    let mut v = noise_burst((0.9 * RATE as f32) as usize, 991, 0.9, 0.005, 3.0);
+    mix_into(&mut v, &thump(45.0, 0.7, 0.9), 1.0);
+    mix_into(&mut v, &thump(60.0, 0.5, 0.6), 1.0);
+    clamp_amp(v)
+}
+
+/// skeleton bow: the twang — quick ping + pluck noise
+fn bow_recipe() -> Vec<f32> {
+    let mut v = ping(500.0, 0.08, 0.4, 731);
+    mix_into(&mut v, &noise_burst((0.05 * RATE as f32) as usize, 732, 0.3, 0.01, 1.5), 1.0);
+    clamp_amp(v)
+}
+
+/// cow moo: long low thump with vibrato-ish second harmonic
+fn cow_recipe() -> Vec<f32> {
+    let mut v = thump(85.0, 0.5, 0.5);
+    mix_into(&mut v, &thump(170.0, 0.4, 0.2), 0.8);
+    clamp_amp(v)
+}
+
+/// pig oink: two quick nasal thumps
+fn pig_recipe() -> Vec<f32> {
+    let mut v = thump(220.0, 0.09, 0.4);
+    mix_into(&mut v, &thump(160.0, 0.11, 0.35), 1.0);
+    clamp_amp(v)
+}
+
+/// sheep baa: wobbly mid thump pair
+fn sheep_recipe() -> Vec<f32> {
+    let mut v = thump(280.0, 0.14, 0.4);
+    mix_into(&mut v, &thump(240.0, 0.16, 0.35), 1.0);
+    clamp_amp(v)
+}
+
+/// chicken cluck: short bright pings
+fn chicken_recipe() -> Vec<f32> {
+    let mut v = ping(820.0, 0.05, 0.3, 911);
+    mix_into(&mut v, &ping(700.0, 0.06, 0.3, 912), 1.0);
     clamp_amp(v)
 }
 
@@ -404,6 +487,17 @@ impl SoundBank {
             ("entity/levelup", levelup_recipe()),
             ("entity/villager_ambient", villager_ambient_recipe()),
             ("entity/villager_trade", villager_trade_recipe()),
+            // Phase 2: combat + mob sounds
+            ("entity/player/hurt", hurt_recipe()),
+            ("entity/zombie/ambient", zombie_groan_recipe()),
+            ("entity/generic/death", death_recipe()),
+            ("entity/creeper/priming", priming_recipe()),
+            ("entity/explode", explosion_recipe()),
+            ("entity/skeleton/shoot", bow_recipe()),
+            ("entity/cow/ambient", cow_recipe()),
+            ("entity/pig/ambient", pig_recipe()),
+            ("entity/sheep/ambient", sheep_recipe()),
+            ("entity/chicken/ambient", chicken_recipe()),
         ] {
             names.push(n.into());
             data.push(d);
@@ -667,7 +761,17 @@ pub const SOUNDS_JSON: &str = r##"{
   "block.enchantment_table.use": {"category": "blocks", "volume": 0.8, "pitch": [0.9, 1.1], "attenuation": 12, "sounds": [{"name": "block/enchant_use"}]},
   "entity.player.levelup": {"category": "players", "volume": 0.6, "pitch": [0.95, 1.1], "sounds": [{"name": "entity/levelup"}]},
   "entity.villager.ambient": {"category": "neutral", "volume": 0.55, "pitch": [0.85, 1.15], "attenuation": 12, "sounds": [{"name": "entity/villager_ambient"}]},
-  "entity.villager.trade":  {"category": "neutral", "volume": 0.7, "pitch": [0.9, 1.1], "attenuation": 12, "sounds": [{"name": "entity/villager_trade"}]}
+  "entity.villager.trade":  {"category": "neutral", "volume": 0.7, "pitch": [0.9, 1.1], "attenuation": 12, "sounds": [{"name": "entity/villager_trade"}]},
+  "entity.player.hurt":     {"category": "players", "volume": 0.8, "pitch": [0.9, 1.15], "sounds": [{"name": "entity/player/hurt"}]},
+  "entity.zombie.ambient":  {"category": "hostile", "volume": 0.6, "pitch": [0.8, 1.1], "attenuation": 14, "sounds": [{"name": "entity/zombie/ambient"}]},
+  "entity.generic.death":   {"category": "hostile", "volume": 0.7, "pitch": [0.85, 1.1], "attenuation": 14, "sounds": [{"name": "entity/generic/death"}]},
+  "entity.creeper.priming": {"category": "hostile", "volume": 0.9, "pitch": [1.0, 1.0], "attenuation": 16, "sounds": [{"name": "entity/creeper/priming"}]},
+  "entity.generic.explode": {"category": "hostile", "volume": 1.0, "pitch": [0.9, 1.1], "attenuation": 24, "sounds": [{"name": "entity/explode"}]},
+  "entity.skeleton.shoot":  {"category": "hostile", "volume": 0.6, "pitch": [0.9, 1.1], "attenuation": 16, "sounds": [{"name": "entity/skeleton/shoot"}]},
+  "entity.cow.ambient":     {"category": "neutral", "volume": 0.55, "pitch": [0.9, 1.1], "attenuation": 14, "sounds": [{"name": "entity/cow/ambient"}]},
+  "entity.pig.ambient":     {"category": "neutral", "volume": 0.55, "pitch": [0.9, 1.1], "attenuation": 14, "sounds": [{"name": "entity/pig/ambient"}]},
+  "entity.sheep.ambient":   {"category": "neutral", "volume": 0.55, "pitch": [0.9, 1.1], "attenuation": 14, "sounds": [{"name": "entity/sheep/ambient"}]},
+  "entity.chicken.ambient": {"category": "neutral", "volume": 0.5, "pitch": [0.95, 1.15], "attenuation": 12, "sounds": [{"name": "entity/chicken/ambient"}]}
 }"##;
 
 /// distance attenuation + stereo pan for one positioned sound relative to

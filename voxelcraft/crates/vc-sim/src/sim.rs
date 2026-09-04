@@ -27,6 +27,9 @@ pub struct Sim {
     pub enchants: vc_gameplay::enchanting::Enchants,
     /// villager NPCs (Phase 7 §27/§29): wander AI + trade state
     pub villagers: vc_gameplay::villagers::Villagers,
+    /// mobs (Phase 2): spawn/AI/physics + arrows; hits, deaths and
+    /// explosions queue here for the game layer to drain
+    pub mobs: vc_gameplay::mobs::MobSystem,
     acc: f32,
     /// total sim ticks executed (stats/F3/E2E)
     pub ticks: u64,
@@ -42,6 +45,7 @@ impl Sim {
             brewing: vc_gameplay::brewing::Brewings::default(),
             enchants: vc_gameplay::enchanting::Enchants::default(),
             villagers: vc_gameplay::villagers::Villagers::new(seed ^ 0x315_7A9),
+            mobs: vc_gameplay::mobs::MobSystem::new(seed ^ 0x5C_0DE),
             acc: 0.0,
             ticks: 0,
         }
@@ -117,6 +121,11 @@ impl Sim {
 
         // 5. villagers (§27): wander decisions + walking physics
         self.villagers.tick(world);
+
+        // 6. mobs (Phase 2): spawning + AI + arrows. Hits on the player,
+        // deaths, and explosions queue inside for game.rs to drain (the
+        // game layer owns damage gating, drops, and world edits).
+        self.mobs.tick(world);
     }
 
     /// player pickup collection (called by the game each frame with the

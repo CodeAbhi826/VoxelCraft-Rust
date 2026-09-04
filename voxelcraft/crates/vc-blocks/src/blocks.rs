@@ -112,6 +112,30 @@ pub const TILE_ENCHANT_TABLE: u16 = 80;
 pub const TILE_ENCHANTED_BOOK: u16 = 81;
 // villagers (Phase 7 §27/§29): the NPC sprite
 pub const TILE_VILLAGER: u16 = 82;
+// mobs (Phase 2): entity sprites + drops' item tiles. Mob sprites are
+// clean-room pixel art (ours, not Mojang's) — distinct silhouettes/palettes
+pub const TILE_ZOMBIE: u16 = 83;
+pub const TILE_SKELETON: u16 = 84;
+pub const TILE_CREEPER: u16 = 85;
+pub const TILE_SPIDER: u16 = 86;
+pub const TILE_ENDERMAN: u16 = 87;
+pub const TILE_COW: u16 = 88;
+pub const TILE_PIG: u16 = 89;
+pub const TILE_SHEEP: u16 = 90;
+pub const TILE_CHICKEN: u16 = 91;
+pub const TILE_ARROW: u16 = 92;
+pub const TILE_BEEF: u16 = 93;
+pub const TILE_PORKCHOP: u16 = 94;
+pub const TILE_MUTTON: u16 = 95;
+pub const TILE_CHICKEN_RAW: u16 = 96;
+pub const TILE_FEATHER: u16 = 97;
+pub const TILE_LEATHER: u16 = 98;
+pub const TILE_BONE: u16 = 99;
+pub const TILE_STRING: u16 = 100;
+pub const TILE_GUNPOWDER: u16 = 101;
+pub const TILE_ENDER_PEARL: u16 = 102;
+pub const TILE_ROTTEN_FLESH: u16 = 103;
+pub const TILE_ARROW_ITEM: u16 = 104;
 
 // Block ids (u8 in chunk storage).
 pub const AIR: u8 = 0;
@@ -179,7 +203,7 @@ pub const MUSHROOM_RED: u8 = 54;
 pub const MUSHROOM_BROWN: u8 = 55;
 pub const DEAD_BUSH: u8 = 56;
 
-pub const BLOCK_COUNT: usize = 76;
+// (BLOCK_COUNT moved below — after all item ids are declared)
 
 // redstone core (Phase 6 §25 subset)
 pub const REDSTONE_WIRE: u8 = 60;
@@ -221,6 +245,35 @@ pub const ENCHANT_TABLE: u8 = 74;
 pub const ENCHANTED_BOOK: u8 = 75;
 pub const ENCHANT_TABLE_STATE: u16 = 128;
 pub const ENCHANTED_BOOK_STATE: u16 = 129;
+// mob drops (Phase 2): item-only ids in the potion pattern — they live in
+// inventories/hotbar, never stored in the world. Registered names are
+// vanilla registry strings (mechanical data, safe to match); the art is ours.
+pub const BEEF: u8 = 76;
+pub const PORKCHOP: u8 = 77;
+pub const MUTTON: u8 = 78;
+pub const CHICKEN_RAW: u8 = 79;
+pub const FEATHER: u8 = 80;
+pub const LEATHER: u8 = 81;
+pub const BONE: u8 = 82;
+pub const STRING: u8 = 83;
+pub const GUNPOWDER: u8 = 84;
+pub const ENDER_PEARL: u8 = 85;
+pub const ROTTEN_FLESH: u8 = 86;
+pub const ARROW_ITEM: u8 = 87;
+pub const BEEF_STATE: u16 = 130;
+pub const PORKCHOP_STATE: u16 = 131;
+pub const MUTTON_STATE: u16 = 132;
+pub const CHICKEN_RAW_STATE: u16 = 133;
+pub const FEATHER_STATE: u16 = 134;
+pub const LEATHER_STATE: u16 = 135;
+pub const BONE_STATE: u16 = 136;
+pub const STRING_STATE: u16 = 137;
+pub const GUNPOWDER_STATE: u16 = 138;
+pub const ENDER_PEARL_STATE: u16 = 139;
+pub const ROTTEN_FLESH_STATE: u16 = 140;
+pub const ARROW_ITEM_STATE: u16 = 141;
+
+pub const BLOCK_COUNT: usize = 88;
 
 // ---------------------------------------------------------------------------
 // BlockState registry (1.16.5 pattern, miniature)
@@ -341,6 +394,18 @@ pub fn default_state(b: u8) -> u16 {
         POTION_HEALING_II => POTION_HEALING_II_STATE,
         ENCHANT_TABLE => ENCHANT_TABLE_STATE,
         ENCHANTED_BOOK => ENCHANTED_BOOK_STATE,
+        BEEF => BEEF_STATE,
+        PORKCHOP => PORKCHOP_STATE,
+        MUTTON => MUTTON_STATE,
+        CHICKEN_RAW => CHICKEN_RAW_STATE,
+        FEATHER => FEATHER_STATE,
+        LEATHER => LEATHER_STATE,
+        BONE => BONE_STATE,
+        STRING => STRING_STATE,
+        GUNPOWDER => GUNPOWDER_STATE,
+        ENDER_PEARL => ENDER_PEARL_STATE,
+        ROTTEN_FLESH => ROTTEN_FLESH_STATE,
+        ARROW_ITEM => ARROW_ITEM_STATE,
         OAK_SLAB => 63,     // PROP_BLOCKS[0].base_state (half=bottom)
         COBBLE_STAIRS => 65, // base_state (facing=north, half=bottom)
         OAK_FENCE => 73,    // base_state (no connections)
@@ -518,6 +583,18 @@ pub fn state_block(s: u16) -> u8 {
         POTION_HEALING_II_STATE => return POTION_HEALING_II,
         ENCHANT_TABLE_STATE => return ENCHANT_TABLE,
         ENCHANTED_BOOK_STATE => return ENCHANTED_BOOK,
+        BEEF_STATE => return BEEF,
+        PORKCHOP_STATE => return PORKCHOP,
+        MUTTON_STATE => return MUTTON,
+        CHICKEN_RAW_STATE => return CHICKEN_RAW,
+        FEATHER_STATE => return FEATHER,
+        LEATHER_STATE => return LEATHER,
+        BONE_STATE => return BONE,
+        STRING_STATE => return STRING,
+        GUNPOWDER_STATE => return GUNPOWDER,
+        ENDER_PEARL_STATE => return ENDER_PEARL,
+        ROTTEN_FLESH_STATE => return ROTTEN_FLESH,
+        ARROW_ITEM_STATE => return ARROW_ITEM,
         _ => {}
     }
     if let Some((b, _)) = prop_state_decode(s) {
@@ -565,6 +642,10 @@ pub fn is_model_state(s: u16) -> bool {
                 | POTION_EMPTY_STATE | POTION_WATER_STATE | POTION_AWKWARD_STATE
                 | POTION_MUNDANE_STATE | POTION_HEALING_STATE | POTION_HEALING_II_STATE
                 | ENCHANT_TABLE_STATE | ENCHANTED_BOOK_STATE
+                | BEEF_STATE | PORKCHOP_STATE | MUTTON_STATE | CHICKEN_RAW_STATE
+                | FEATHER_STATE | LEATHER_STATE | BONE_STATE | STRING_STATE
+                | GUNPOWDER_STATE | ENDER_PEARL_STATE | ROTTEN_FLESH_STATE
+                | ARROW_ITEM_STATE
         )
 }
 
@@ -634,6 +715,8 @@ pub fn is_item_block(b: u8) -> bool {
         b,
         POTION_EMPTY | POTION_WATER | POTION_AWKWARD | POTION_MUNDANE | POTION_HEALING
             | POTION_HEALING_II | ENCHANTED_BOOK
+            | BEEF | PORKCHOP | MUTTON | CHICKEN_RAW | FEATHER | LEATHER | BONE | STRING
+            | GUNPOWDER | ENDER_PEARL | ROTTEN_FLESH | ARROW_ITEM
     )
 }
 
@@ -763,6 +846,19 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     // block with runes); the book is an ITEM block that carries enchants
     d("Enchanting Table", [TILE_ENCHANT_TABLE, TILE_ENCHANT_TABLE, TILE_ENCHANT_TABLE], false, false, true, false, 4, SoundFamily::Stone),
     d("Enchanted Book", [TILE_ENCHANTED_BOOK, TILE_ENCHANTED_BOOK, TILE_ENCHANTED_BOOK], false, false, true, false, 0, SoundFamily::Wood),
+    // mob drops (Phase 2) — item-only, cross-rendered icons
+    d("Raw Beef", [TILE_BEEF, TILE_BEEF, TILE_BEEF], false, false, true, false, 0, SoundFamily::Grass),
+    d("Raw Porkchop", [TILE_PORKCHOP, TILE_PORKCHOP, TILE_PORKCHOP], false, false, true, false, 0, SoundFamily::Grass),
+    d("Raw Mutton", [TILE_MUTTON, TILE_MUTTON, TILE_MUTTON], false, false, true, false, 0, SoundFamily::Grass),
+    d("Raw Chicken", [TILE_CHICKEN_RAW, TILE_CHICKEN_RAW, TILE_CHICKEN_RAW], false, false, true, false, 0, SoundFamily::Grass),
+    d("Feather", [TILE_FEATHER, TILE_FEATHER, TILE_FEATHER], false, false, true, false, 0, SoundFamily::Grass),
+    d("Leather", [TILE_LEATHER, TILE_LEATHER, TILE_LEATHER], false, false, true, false, 0, SoundFamily::Grass),
+    d("Bone", [TILE_BONE, TILE_BONE, TILE_BONE], false, false, true, false, 0, SoundFamily::Stone),
+    d("String", [TILE_STRING, TILE_STRING, TILE_STRING], false, false, true, false, 0, SoundFamily::Grass),
+    d("Gunpowder", [TILE_GUNPOWDER, TILE_GUNPOWDER, TILE_GUNPOWDER], false, false, true, false, 0, SoundFamily::Sand),
+    d("Ender Pearl", [TILE_ENDER_PEARL, TILE_ENDER_PEARL, TILE_ENDER_PEARL], false, false, true, false, 0, SoundFamily::Glass),
+    d("Rotten Flesh", [TILE_ROTTEN_FLESH, TILE_ROTTEN_FLESH, TILE_ROTTEN_FLESH], false, false, true, false, 0, SoundFamily::Grass),
+    d("Arrow", [TILE_ARROW_ITEM, TILE_ARROW_ITEM, TILE_ARROW_ITEM], false, false, true, false, 0, SoundFamily::Stone),
 ];
 
 #[inline]

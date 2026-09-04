@@ -5,4 +5,5 @@ pub mod brewing;
 pub mod craft;
 pub mod enchanting;
 pub mod furnace;
+pub mod modes;
 pub mod villagers;

@@ -72,6 +72,10 @@ pub type Color = [u8; 4];
 pub enum WidgetKind {
     Button { label: String, value: String, enabled: bool },
     Slider { label: String, value: f32 },
+    /// Phase 1: single-line text entry (world name / seed). `text` holds the
+    /// current buffer; `focused` drives the caret; `placeholder` shows when
+    /// empty (e.g. a random seed preview).
+    TextField { label: String, text: String, placeholder: String, focused: bool },
 }
 
 #[derive(Clone, Debug)]
@@ -120,10 +124,50 @@ pub fn slider(id: u16, x: i32, y: i32, w: i32, label: &str, value: f32) -> Widge
     }
 }
 
+/// Phase 1: a single-line text entry field.
+pub fn text_field(id: u16, x: i32, y: i32, w: i32, label: &str, text: &str, placeholder: &str) -> Widget {
+    Widget {
+        id,
+        x,
+        y,
+        w,
+        h: 44,
+        kind: WidgetKind::TextField {
+            label: label.to_string(),
+            text: text.to_string(),
+            placeholder: placeholder.to_string(),
+            focused: false,
+        },
+    }
+}
+
+/// Update a TextField widget's buffer in place (keeps label/placeholder).
+pub fn set_text(w: &mut Widget, text: &str) {
+    if let WidgetKind::TextField { text: t, .. } = &mut w.kind {
+        *t = text.to_string();
+    }
+}
+
 // widget id constants shared with game.rs
 pub const ID_TITLE_PLAY: u16 = 1;
 pub const ID_TITLE_OPTIONS: u16 = 2;
 pub const ID_TITLE_QUIT: u16 = 3;
+// Phase 1: world-select + world-create + death screens
+pub const ID_WS_WORLD_BASE: u16 = 60; // world entries: 60..60+MAX_LISTED
+pub const ID_WS_CREATE: u16 = 90;
+pub const ID_WS_CANCEL: u16 = 91;
+pub const ID_WS_DELETE: u16 = 92;
+pub const ID_WC_NAME: u16 = 93;
+pub const ID_WC_SEED: u16 = 94;
+pub const ID_WC_MODE: u16 = 95;
+pub const ID_WC_TYPE: u16 = 96;
+pub const ID_WC_CREATE: u16 = 97;
+pub const ID_WC_CANCEL: u16 = 98;
+pub const ID_DEATH_RESPAWN: u16 = 99;
+pub const ID_DEATH_TITLE: u16 = 100;
+pub const ID_DEATH_DELETE: u16 = 101;
+/// maximum world entries the select screen lists (ids 60..60+n)
+pub const MAX_LISTED_WORLDS: usize = 8;
 pub const ID_OPT_FOV: u16 = 10;
 pub const ID_OPT_SENS: u16 = 11;
 pub const ID_OPT_RD: u16 = 12;
@@ -185,6 +229,71 @@ pub fn layout_pause() -> Vec<Widget> {
         btn(ID_PAUSE_OPTIONS, (UI_W as i32 - 320) / 2, 264, 320, "OPTIONS...", "", true),
         btn(ID_PAUSE_QUIT, (UI_W as i32 - 320) / 2, 320, 320, "QUIT TO TITLE", "", true),
     ]
+}
+
+/// Phase 1: world-select layout (native). One button per saved world plus
+/// create/delete/cancel. `dead` marks a hardcore world whose player died —
+/// it can't be played but stays clickable so it can be selected + deleted.
+pub fn layout_world_select(
+    names: &[(String, String, bool)], // (name, mode label, dead)
+) -> Vec<Widget> {
+    let mut v = Vec::new();
+    for (i, (name, mode, dead)) in names.iter().take(MAX_LISTED_WORLDS).enumerate() {
+        let label = if *dead {
+            format!("{name} - GAME OVER")
+        } else {
+            format!("{name} ({mode})")
+        };
+        v.push(btn(
+            ID_WS_WORLD_BASE + i as u16,
+            176,
+            96 + i as i32 * 56,
+            500,
+            &label,
+            "",
+            true,
+        ));
+    }
+    let y = 96 + names.len().min(MAX_LISTED_WORLDS) as i32 * 56 + 8;
+    v.push(btn(ID_WS_CREATE, 176, y, 242, "CREATE NEW WORLD", "", true));
+    v.push(btn(ID_WS_DELETE, 434, y, 242, "DELETE SELECTED", "", true));
+    v.push(btn(ID_WS_CANCEL, 176, y + 56, 500, "CANCEL", "", true));
+    v
+}
+
+/// Phase 1: world-create layout. Values refresh on every keystroke /
+/// mode cycle from game.rs (widgets are rebuilt per state change).
+pub fn layout_world_create(
+    name: &str,
+    seed_placeholder: &str,
+    mode_label: &str,
+    mode_desc: &str,
+) -> Vec<Widget> {
+    let col = 176;
+    let w = 500;
+    vec![
+        text_field(ID_WC_NAME, col, 96, w, "NAME", name, "New World"),
+        text_field(ID_WC_SEED, col, 152, w, "SEED", "", seed_placeholder),
+        btn(ID_WC_MODE, col, 208, w, "GAME MODE", mode_label, true),
+        btn(ID_WC_TYPE, col, 264, w, "WORLD TYPE", "NORMAL", false),
+        btn(ID_WC_CREATE, col, 336, w, "CREATE WORLD", mode_desc, true),
+        btn(ID_WC_CANCEL, col, 392, w, "CANCEL", "", true),
+    ]
+}
+
+/// Phase 1: death screen (Survival vs Hardcore variants).
+pub fn layout_death(hardcore: bool) -> Vec<Widget> {
+    let mut v = Vec::new();
+    if !hardcore {
+        v.push(btn(ID_DEATH_RESPAWN, (UI_W as i32 - 320) / 2, 300, 320, "RESPAWN", "", true));
+        v.push(btn(ID_DEATH_TITLE, (UI_W as i32 - 320) / 2, 356, 320, "TITLE SCREEN", "", true));
+    } else {
+        // hardcore: death is final — vanilla's two options (delete world /
+        // title screen, which leaves the locked world on disk)
+        v.push(btn(ID_DEATH_DELETE, (UI_W as i32 - 320) / 2, 300, 320, "DELETE WORLD", "", true));
+        v.push(btn(ID_DEATH_TITLE, (UI_W as i32 - 320) / 2, 356, 320, "TITLE SCREEN", "", true));
+    }
+    v
 }
 
 // ------------------------------------------------------------- canvas --
@@ -368,10 +477,42 @@ impl UiCanvas {
         self.text(w.x + (w.w - tw) / 2, w.y + (w.h - 14) / 2 - 1, &label, text_col, 2);
     }
 
+    /// Phase 1: text-entry field — vanilla look: small caps label above an
+    /// inset dark tray, typed text at 16px, gray placeholder when empty,
+    /// light frame when focused.
+    pub fn draw_text_field(&mut self, w: &Widget, _hover: bool) {
+        let (label, text, placeholder, focused) = match &w.kind {
+            WidgetKind::TextField { label, text, placeholder, focused } => {
+                (label.clone(), text.clone(), placeholder.clone(), *focused)
+            }
+            _ => return,
+        };
+        // label (small, above the tray)
+        self.text(w.x + 2, w.y - 12, &label, [180, 180, 180, 255], 1);
+        // inset tray
+        self.rect(w.x, w.y, w.w, w.h, [16, 16, 16, 235]);
+        self.frame(w.x, w.y, w.w, w.h, [12, 12, 12, 255]);
+        self.rect(w.x + 2, w.y + 2, w.w - 4, 2, [50, 50, 50, 255]);
+        self.rect(w.x + 2, w.y + w.h - 4, w.w - 4, 2, [70, 70, 70, 255]);
+        if focused {
+            self.frame(w.x + 1, w.y + 1, w.w - 2, w.h - 2, [255, 255, 255, 170]);
+        }
+        // contents: typed text, else placeholder in gray
+        let shown = Self::field_visible_text(w.w, &text);
+        if !shown.is_empty() {
+            let col: Color = if focused { [255, 255, 255, 255] } else { [230, 230, 230, 255] };
+            self.text(w.x + 16, w.y + (w.h - 14) / 2, shown, col, 2);
+        } else {
+            let pshown = Self::field_visible_text(w.w, &placeholder);
+            self.text(w.x + 16, w.y + (w.h - 14) / 2, pshown, [130, 130, 130, 255], 2);
+        }
+    }
+
     pub fn draw_widget(&mut self, w: &Widget, hover: bool) {
-        match w.kind {
+        match &w.kind {
             WidgetKind::Button { .. } => self.draw_button(w, hover),
             WidgetKind::Slider { .. } => self.draw_slider(w, hover),
+            WidgetKind::TextField { .. } => self.draw_text_field(w, hover),
         }
     }
 
@@ -379,6 +520,38 @@ impl UiCanvas {
         for w in ws {
             self.draw_widget(w, hover == Some(w.id));
         }
+    }
+
+    /// Phase 1: like [`draw_widgets`] but blinking carets on focused fields.
+    pub fn draw_widgets_caret(&mut self, ws: &[Widget], hover: Option<u16>, time: f32) {
+        for w in ws {
+            self.draw_widget(w, hover == Some(w.id));
+        }
+        // second pass for the caret (borrow split: draw then measure)
+        for w in ws {
+            if let WidgetKind::TextField { text, focused: true, .. } = &w.kind {
+                if (time * 2.2).fract() < 0.6 {
+                    let shown = Self::field_visible_text(w.w, text);
+                    let tw = Self::text_width(shown, 2);
+                    self.rect(w.x + 16 + tw + 1, w.y + 12, 2, 20, [240, 240, 240, 255]);
+                }
+            }
+        }
+    }
+
+    /// Truncate text to what fits in a field's inner width (5x7 font, scale 2).
+    fn field_visible_text(w: i32, text: &str) -> &str {
+        let max_chars = ((w - 36) / 12).max(0) as usize;
+        let mut end = text.len();
+        while text[..end].chars().count() > max_chars {
+            // walk back one char boundary
+            let mut new_end = end - 1;
+            while !text.is_char_boundary(new_end) {
+                new_end -= 1;
+            }
+            end = new_end;
+        }
+        &text[..end]
     }
 
     // ----------------------------------------------------- screens ----
@@ -425,6 +598,62 @@ impl UiCanvas {
     pub fn pause_screen(&mut self, ws: &[Widget], hover: Option<u16>) {
         self.rect(0, 0, UI_W as i32, UI_H as i32, [0, 0, 0, 130]);
         self.text_center(140, "GAME MENU", [255, 255, 255, 255], 3);
+        self.draw_widgets(ws, hover);
+    }
+
+    /// Phase 1: world-select screen (native — the browser build creates
+    /// worlds directly, no persistent list).
+    pub fn world_select_screen(
+        &mut self,
+        ws: &[Widget],
+        hover: Option<u16>,
+        selected: Option<usize>,
+        count_shown: usize,
+        total: usize,
+    ) {
+        self.rect(0, 0, UI_W as i32, UI_H as i32, [8, 8, 10, 200]);
+        self.text_center(18, "SELECT WORLD", [255, 255, 255, 255], 3);
+        if total == 0 {
+            self.text_center(64, "NO SAVED WORLDS YET - CREATE ONE BELOW", [170, 170, 170, 255], 1);
+        } else if total > count_shown {
+            let sub = format!("SHOWING {count_shown} OF {total} (OLDEST HIDDEN)");
+            self.text_center(64, &sub, [170, 170, 170, 255], 1);
+        }
+        // highlight the selected row (vanilla-style white frame)
+        if let Some(sel) = selected {
+            if let Some(w) = ws.iter().find(|w| w.id == ID_WS_WORLD_BASE + sel as u16) {
+                self.frame(w.x - 3, w.y - 3, w.w + 6, w.h + 6, [255, 255, 255, 200]);
+            }
+        }
+        self.draw_widgets(ws, hover);
+    }
+
+    /// Phase 1: world-create screen (shared native/web).
+    pub fn world_create_screen(&mut self, ws: &[Widget], hover: Option<u16>, time: f32) {
+        self.rect(0, 0, UI_W as i32, UI_H as i32, [8, 8, 10, 200]);
+        self.text_center(18, "CREATE NEW WORLD", [255, 255, 255, 255], 3);
+        self.text_center(
+            64,
+            "SEED: NUMBER = ITSELF, TEXT = JAVA HASH, BLANK = RANDOM",
+            [150, 150, 150, 255],
+            1,
+        );
+        // focused-field hint + blinking caret handled per widget
+        self.draw_widgets_caret(ws, hover, time);
+    }
+
+    /// Phase 1: death screen — red-tinged overlay, vanilla "You died!".
+    pub fn death_screen(&mut self, ws: &[Widget], hover: Option<u16>, hardcore: bool, cause: &str) {
+        self.rect(0, 0, UI_W as i32, UI_H as i32, [80, 0, 0, 150]);
+        let title = if hardcore { "GAME OVER!" } else { "YOU DIED!" };
+        let tw = Self::text_width(title, 5);
+        self.text((UI_W as i32 - tw) / 2, 150, title, [255, 240, 240, 255], 5);
+        let sub = if hardcore {
+            "HARDCORE WORLD - DEATH IS PERMANENT"
+        } else {
+            cause
+        };
+        self.text_center(210, sub, [230, 200, 200, 255], 1);
         self.draw_widgets(ws, hover);
     }
 
@@ -522,6 +751,37 @@ impl UiCanvas {
         }
 
         // XP bar
+        let xp_w = hb_w;
+        let xp_x = hb_x;
+        let xp_y = hb_y - 10;
+        self.rect(xp_x, xp_y, xp_w, 8, [16, 16, 16, 220]);
+        self.frame(xp_x, xp_y, xp_w, 8, [60, 60, 60, 255]);
+        let fill = ((xp_w - 4) as f32 * xp.clamp(0.0, 1.0)) as i32;
+        if fill > 0 {
+            self.rect(xp_x + 2, xp_y + 2, fill, 4, [128, 255, 32, 255]);
+            self.rect(xp_x + 2, xp_y + 2, fill, 1, [190, 255, 130, 255]);
+        }
+        if level > 0 {
+            let s = format!("{}", level);
+            let w = Self::text_width(&s, 2);
+            self.text_outlined(
+                (UI_W as i32 - w) / 2,
+                xp_y - 20,
+                &s,
+                [128, 255, 32, 255],
+                [20, 40, 8, 255],
+                2,
+            );
+        }
+    }
+
+    /// Phase 1: creative HUD — no hearts, no hunger, XP bar only
+    /// (vanilla creative shows no status rows; levels still matter here
+    /// because enchanting spends them).
+    pub fn xp_bar_only(&mut self, xp: f32, level: u32) {
+        let hb_w = 9 * 40 + 4;
+        let hb_x = (UI_W as i32 - hb_w) / 2;
+        let hb_y = UI_H as i32 - 48;
         let xp_w = hb_w;
         let xp_x = hb_x;
         let xp_y = hb_y - 10;

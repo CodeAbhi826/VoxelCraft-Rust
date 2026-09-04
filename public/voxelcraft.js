@@ -1525,7 +1525,13 @@ function __wbg_get_imports() {
             return ret;
         },
         __wbg_pointerType_b3dafa8fb9c97016: function(arg0, arg1) {
-            const ret = arg1.pointerType;
+            // PATCHED: synthetic/automation events (CDP Input.dispatchMouseEvent,
+            // dispatched MouseEvent with type 'pointer*') lack pointerType —
+            // winit's own canvas handlers then crashed with
+            // "Cannot read properties of undefined (reading 'length')".
+            // Default to '' (winit classifies as generic pointer; the game's
+            // input shim handles actual gameplay input anyway).
+            const ret = arg1.pointerType || '';
             const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
             const len1 = WASM_VECTOR_LEN;
             getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);

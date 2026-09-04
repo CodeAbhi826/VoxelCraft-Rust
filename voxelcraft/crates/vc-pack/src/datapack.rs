@@ -843,6 +843,121 @@ fn loot_item(id: u8) -> LootEntry {
     }
 }
 
+/// a loot entry builder with explicit count range + weight
+fn loot_item_w(id: u8, weight: u32, min: f32, max: f32) -> LootEntry {
+    LootEntry {
+        weight,
+        kind: LootKind::Item {
+            id,
+            functions: vec![LootFn::SetCount { min, max }],
+        },
+    }
+}
+
+/// Phase 10 builtin tables for the new structures — the vanilla table
+/// NAMES (verified from the genuine jar's loot_tables/chests/ listing)
+/// with our palette-limited values (the vanilla rows reference items
+/// like rails/torches/name tags/enchanted books that the engine does
+/// not carry — palette-absent slots simply don't roll, the same honest
+/// policy as the dungeon default; each table keeps the vanilla POOL
+/// structure: rolls + weighted entries + set_count).
+pub fn builtin_structure_table(name: &str) -> Option<LootTable> {
+    let table = match name {
+        // jar: chests/abandoned_mineshaft (3 pools in vanilla: rails,
+        // torches, treasure — palette collapses to ore/drop pools)
+        "minecraft:chests/abandoned_mineshaft" => LootTable {
+            pools: vec![
+                LootPool {
+                    rolls: Rolls::Uniform { min: 1.0, max: 3.0 },
+                    entries: vec![
+                        loot_item_w(IRON_ORE, 6, 1.0, 4.0),
+                        loot_item_w(GUNPOWDER, 4, 1.0, 3.0),
+                        loot_item_w(STRING, 3, 1.0, 3.0),
+                    ],
+                },
+                LootPool {
+                    rolls: Rolls::Fixed(1),
+                    entries: vec![
+                        loot_item_w(GOLD_ORE, 4, 1.0, 2.0),
+                        loot_item_w(COAL_ORE, 6, 2.0, 6.0),
+                        loot_item_w(BONE, 3, 1.0, 4.0),
+                        LootEntry { weight: 3, kind: LootKind::Empty },
+                    ],
+                },
+            ],
+        },
+        // jar: chests/desert_pyramid (4 pools in vanilla; ours: 2)
+        "minecraft:chests/desert_pyramid" => LootTable {
+            pools: vec![
+                LootPool {
+                    rolls: Rolls::Uniform { min: 2.0, max: 4.0 },
+                    entries: vec![
+                        loot_item_w(ROTTEN_FLESH, 6, 1.0, 4.0),
+                        loot_item_w(STRING, 5, 1.0, 4.0),
+                        loot_item_w(BONE, 5, 1.0, 4.0),
+                        loot_item_w(SPIDER_EYE, 3, 1.0, 3.0),
+                    ],
+                },
+                LootPool {
+                    rolls: Rolls::Fixed(1),
+                    entries: vec![
+                        loot_item_w(GOLD_ORE, 3, 1.0, 3.0),
+                        loot_item_w(EMERALD_ORE, 2, 1.0, 2.0),
+                        loot_item_w(DIAMOND_ORE, 1, 1.0, 1.0),
+                        LootEntry { weight: 4, kind: LootKind::Empty },
+                    ],
+                },
+            ],
+        },
+        // jar: chests/jungle_temple
+        "minecraft:chests/jungle_temple" => LootTable {
+            pools: vec![
+                LootPool {
+                    rolls: Rolls::Uniform { min: 2.0, max: 5.0 },
+                    entries: vec![
+                        loot_item_w(ROTTEN_FLESH, 5, 1.0, 4.0),
+                        loot_item_w(BONE, 4, 1.0, 4.0),
+                        loot_item_w(FEATHER, 3, 1.0, 3.0),
+                        loot_item_w(ENDER_PEARL, 1, 1.0, 1.0),
+                    ],
+                },
+            ],
+        },
+        // jar: chests/stronghold_corridor
+        "minecraft:chests/stronghold_corridor" => LootTable {
+            pools: vec![
+                LootPool {
+                    rolls: Rolls::Uniform { min: 2.0, max: 4.0 },
+                    entries: vec![
+                        loot_item_w(IRON_ORE, 5, 1.0, 4.0),
+                        loot_item_w(GOLD_ORE, 3, 1.0, 3.0),
+                        loot_item_w(REDSTONE_ORE, 3, 4.0, 8.0),
+                        loot_item_w(ENDER_PEARL, 1, 1.0, 2.0),
+                    ],
+                },
+            ],
+        },
+        // jar: chests/stronghold_library
+        "minecraft:chests/stronghold_library" => LootTable {
+            pools: vec![
+                LootPool {
+                    rolls: Rolls::Uniform { min: 2.0, max: 4.0 },
+                    entries: vec![
+                        // vanilla's paper/books/enchanted books adapt to
+                        // the palette's book + bookshelf items
+                        loot_item_w(ENCHANTED_BOOK, 4, 1.0, 2.0),
+                        loot_item_w(BOOKSHELF, 2, 1.0, 1.0),
+                        // paper is palette-absent — leather stands in
+                        loot_item_w(LEATHER, 3, 1.0, 3.0),
+                    ],
+                },
+            ],
+        },
+        _ => return None,
+    };
+    Some(table)
+}
+
 // ---------------------------------------------------------------------------
 // 6) pack scanning + aggregation
 // ---------------------------------------------------------------------------
@@ -1101,20 +1216,21 @@ impl LoadedData {
         out
     }
 
-    /// roll a named table (falls back to the builtin dungeon default for
-    /// `minecraft:chests/simple_dungeon` — the engine's palette-limited
-    /// stand-in, see `builtin_dungeon_table`)
+    /// roll a named table (falls back to the builtin defaults when the
+    /// world ships no override: the dungeon default plus the Phase 10
+    /// structure tables — palette-limited stand-ins, see
+    /// `builtin_structure_table`)
     pub fn roll(&self, name: &str, rng: &mut Rng) -> Option<Vec<(u8, u8)>> {
         let builtin;
         let table = match self.loot_tables.get(name) {
             Some(t) => t,
             None => {
-                if name == "minecraft:chests/simple_dungeon" {
-                    builtin = builtin_dungeon_table();
-                    &builtin
+                builtin = if name == "minecraft:chests/simple_dungeon" {
+                    builtin_dungeon_table()
                 } else {
-                    return None;
-                }
+                    builtin_structure_table(name)?
+                };
+                &builtin
             }
         };
         // sub-table lookup closes over the loaded set only (builtin

@@ -70,10 +70,10 @@ pub const MESH_COMPUTE_SHADER: &str = r#"
 const VOL_WORDS: u32 = 147456u;    // 48*256*48 bytes / 4
 const B_WATER: u32 = 9u;           // block id of WATER (identity state)
 const MODEL_BASE: u32 = 63u;       // MODEL_STATE_BASE
-const L_SB: u32 = 0u;              // lut: state -> block        (235)
-const L_FL: u32 = 235u;            // lut: block flags           (102)
-const L_TC: u32 = 337u;            // lut: block tint class      (102)
-const L_ST: u32 = 439u;            // lut: state tiles, 4/state  (940)
+const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=236)
+const L_FL: u32 = 236u;            // lut: block flags           (BLOCK_COUNT=103)
+const L_TC: u32 = 339u;            // lut: block tint class      (BLOCK_COUNT=103)
+const L_ST: u32 = 442u;            // lut: state tiles, 4/state  (4·STATE_COUNT=944)
 const P_N: u32 = 0u;               // params[0] = n_jobs
 const P_JOB: u32 = 2u;             // params job base = 2 + j*66
 const P_BIOME: u32 = 2u;           // biomes at job base + 2 (64 packed u32)
@@ -125,8 +125,8 @@ fn job_get_blk(j: u32, x: i32, y: i32, z: i32) -> u32 {
     let base = j * VOL_WORDS;
     return (blk_l[base + (p >> 2u)] >> ((p & 3u) * 8u)) & 0xFFu;
 }
-fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 234u)]; }
-fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 101u)]; }
+fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 235u)]; }
+fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 102u)]; }
 fn biome_at(j: u32, x: i32, z: i32) -> u32 {
     let c = u32(z * 16 + x);
     let w = params[P_JOB + j * 66u + P_BIOME + (c >> 2u)];
@@ -148,7 +148,7 @@ fn face_visible(bf: u32, fnb: u32) -> bool {
 // tint class -> packed tint byte (kind<<6 | slot), port of
 // vc_blocks::tint::block_face_tint_packed's block match
 fn tint_packed(b: u32, top: bool, biome: u32) -> u32 {
-    let tc = lut[L_TC + min(b, 101u)];
+    let tc = lut[L_TC + min(b, 102u)];
     var kind = 0u; var slot = 0u;
     if tc == 1u { if top { kind = 1u; slot = biome; } }          // GRASS top
     else if tc == 2u { kind = 1u; slot = biome; }                // TALL_GRASS
@@ -537,9 +537,18 @@ fn main_emit(@builtin(workgroup_id) wid: vec3<u32>,
 // section assembly.
 // ---------------------------------------------------------------------------
 
-/// LUT words: [0..235) state→block · [235..337) block flags ·
-/// [337..439) block tint class · [439..1379) state tiles (4/state)
-const LUT_WORDS: usize = 1379;
+/// LUT region offsets, ALL derived from vc-blocks (STATE_COUNT=236,
+/// BLOCK_COUNT=103) so a new block/state grows the layout with them —
+/// the Phase 10 END_PORTAL_FRAME state (235) collided with the old
+/// hardcoded layout ([0..235) state→block ended exactly where the
+/// flags region began, and the clamps/offsets were frozen at 234/101).
+/// The WGSL `L_*` constants mirror these values — guarded by the
+/// `wgsl_lut_offsets_match_rust` test.
+const L_SB: usize = 0;
+const L_FL: usize = STATE_COUNT;
+const L_TC: usize = L_FL + BLOCK_COUNT;
+const L_ST: usize = L_TC + BLOCK_COUNT;
+const LUT_WORDS: usize = L_ST + STATE_COUNT * 4;
 
 fn build_lut() -> Vec<u32> {
     use vc_blocks::blocks::{is_cross, is_opaque, state_block, state_tiles};
@@ -568,7 +577,7 @@ fn build_lut() -> Vec<u32> {
         if is_cross(id) {
             flags |= 32; // F_CROSS
         }
-        lut[235 + b] = flags;
+        lut[L_FL + b] = flags;
         let tint_class = match id {
             GRASS => 1,
             TALL_GRASS => 2,
@@ -578,12 +587,12 @@ fn build_lut() -> Vec<u32> {
             WATER => 6,
             _ => 0,
         };
-        lut[337 + b] = tint_class;
+        lut[L_TC + b] = tint_class;
     }
     for s in 0..STATE_COUNT {
         let tiles = state_tiles(s as u16);
         for i in 0..4 {
-            lut[439 + s * 4 + i] = tiles[i] as u32;
+            lut[L_ST + s * 4 + i] = tiles[i] as u32;
         }
     }
     lut
@@ -1318,6 +1327,34 @@ mod tests {
             .unwrap_or_else(|e| panic!("gpu-mesh WGSL validation failed: {e:?}"));
     }
 
+    /// the WGSL L_* offsets and clamps must match the Rust-side layout
+    /// (the regions are shared through one storage buffer — the Rust
+    /// build_lut writes at L_SB/L_FL/L_TC/L_ST, the shader reads at its
+    /// own L_* constants; a mismatch silently reads the wrong region).
+    /// Phase 10 found this the hard way: END_PORTAL_FRAME's state 235
+    /// collided with the old hardcoded flags base.
+    #[test]
+    fn wgsl_lut_offsets_match_rust() {
+        let want_sb = format!("const L_SB: u32 = {}u;", L_SB);
+        let want_fl = format!("const L_FL: u32 = {}u;", L_FL);
+        let want_tc = format!("const L_TC: u32 = {}u;", L_TC);
+        let want_st = format!("const L_ST: u32 = {}u;", L_ST);
+        assert!(MESH_COMPUTE_SHADER.contains(&want_sb), "WGSL L_SB drift: want {want_sb}");
+        assert!(MESH_COMPUTE_SHADER.contains(&want_fl), "WGSL L_FL drift: want {want_fl}");
+        assert!(MESH_COMPUTE_SHADER.contains(&want_tc), "WGSL L_TC drift: want {want_tc}");
+        assert!(MESH_COMPUTE_SHADER.contains(&want_st), "WGSL L_ST drift: want {want_st}");
+        // the shader's defensive clamps must cover the full ranges
+        let want_clamp_s = format!("min(s, {}u)", STATE_COUNT - 1);
+        let want_clamp_b = format!("min(b, {}u)", BLOCK_COUNT - 1);
+        assert!(
+            MESH_COMPUTE_SHADER.contains(&want_clamp_s),
+            "WGSL state clamp drift: want {want_clamp_s}"
+        );
+        assert!(
+            MESH_COMPUTE_SHADER.contains(&want_clamp_b),
+            "WGSL block clamp drift: want {want_clamp_b}"
+        );
+    }
     /// the LUT must mirror the vc-blocks property functions exactly —
     /// every flag/class/tile entry is generated FROM those functions, and
     /// this test guards against drift (e.g. a new block changing the
@@ -1334,7 +1371,7 @@ mod tests {
         // flags encode the exact face_visible arm structure
         for b in 0..BLOCK_COUNT {
             let id = b as u8;
-            let f = lut[235 + b];
+            let f = lut[L_FL + b];
             if id == AIR {
                 // the CPU and the WGSL both guard AIR BEFORE face_visible
                 // (vc_blocks: `if b == AIR return false`; shader:
@@ -1350,7 +1387,7 @@ mod tests {
             // simulate the WGSL face_visible over a representative neighbor
             // set (air / opaque stone / same-kind) and compare to Rust
             for n in [0u8, 3u8, id] {
-                let fnb = lut[235 + n as usize];
+                let fnb = lut[L_FL + n as usize];
                 let got = if (f & 2) != 0 {
                     (fnb & 1) == 0 && (fnb & 2) == 0
                 } else if (f & 4) != 0 {
@@ -1375,7 +1412,7 @@ mod tests {
         for s in 0..STATE_COUNT {
             let t = state_tiles(s as u16);
             for i in 0..4 {
-                assert_eq!(lut[439 + s * 4 + i], t[i] as u32, "tiles({s})[{i}]");
+                assert_eq!(lut[L_ST + s * 4 + i], t[i] as u32, "tiles({s})[{i}]");
             }
         }
         // tint classes -> packed tints identical to vc_blocks::tint
@@ -1383,7 +1420,7 @@ mod tests {
             let id = b as u8;
             for top in [true, false] {
                 for biome in [0u8, 2, 4, 7] {
-                    let tc = lut[337 + b];
+                    let tc = lut[L_TC + b];
                     let (kind, slot) = match tc {
                         1 if top => (KIND_GRASS as u32, biome as u32),
                         2 => (KIND_GRASS as u32, biome as u32),

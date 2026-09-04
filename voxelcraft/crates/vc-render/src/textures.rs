@@ -1216,6 +1216,37 @@ fn spawner_art(a: &mut [u8], t: u16) {
     });
 }
 
+/// end-portal frame (Phase 10): clean-room portal-room frame block —
+/// end-stone pale base with a recessed dark ring inset (the eye socket)
+/// + green glint corners (ours, not Mojang's)
+fn end_portal_frame_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "S.S..........S.S",
+        "................",
+        ".RRRRRRRRRRRRRR.",
+        ".R............R.",
+        ".R.D........D.R.",
+        ".R..D......D..R.",
+        ".R............R.",
+        ".R..G......G..R.",
+        ".R..G......G..R.",
+        ".R............R.",
+        ".R..D......D..R.",
+        ".R.D........D.R.",
+        ".R............R.",
+        ".RRRRRRRRRRRRRR.",
+        "................",
+        "S.S..........S.S",
+    ];
+    art(a, t, rows, &|c| match c {
+        'S' => Some((96, 116, 112, 255)), // end-stone pale speck
+        'R' => Some((74, 92, 88, 255)),  // ring rail
+        'D' => Some((30, 38, 40, 255)),  // socket recess
+        'G' => Some((70, 160, 130, 255)), // green glint
+        _ => Some((120, 140, 134, 255)), // base
+    });
+}
+
 /// potion bottle (Phase 7 §29): one bottle shape, per-potion liquid color.
 /// `glow` brightens the liquid (the level-II variant sparkles).
 fn potion_art(a: &mut [u8], t: u16, liquid: (i32, i32, i32), glow: bool) {
@@ -2027,6 +2058,8 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_FERMENTED_EYE => spider_eye_art(&mut a, t, true),
             // Phase 5 §27: dungeon spawner cage face
             TILE_SPAWNER => spawner_art(&mut a, t),
+            // Phase 10: stronghold portal-room frame
+            TILE_END_PORTAL_FRAME => end_portal_frame_art(&mut a, t),
             _ => {}
         }
     }

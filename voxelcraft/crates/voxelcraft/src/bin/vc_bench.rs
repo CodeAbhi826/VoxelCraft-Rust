@@ -211,7 +211,23 @@ fn main() {
         } else {
             None
         };
-        gpu.insert(pos, ChunkGpu { solid, water });
+        // Phase 6 §26: the bench measures draw-list mechanics with every
+        // meshed chunk visible (worst-case list sizes, per the comment
+        // below) — so the synthetic occlusion data is fully open + all-geo
+        // (occlusion culling would remove chunks and shrink the lists,
+        // breaking comparability with the Phase-9 baselines)
+        gpu.insert(
+            pos,
+            ChunkGpu {
+                solid,
+                water,
+                occl: draw::ChunkOccl {
+                    sides: u64::MAX,
+                    planes: u16::MAX,
+                    geo: u16::MAX,
+                },
+            },
+        );
     }
     // visible set: every meshed chunk, dist² from a camera at the grid
     // center (all visible — worst-case list sizes), origin rows assigned

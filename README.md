@@ -100,8 +100,10 @@ The engine is being completed phase by phase (one commit per phase, values verif
 | 6 | Rendering optimization (mipmaps, aniso, MSAA, occlusion culling, simulation distance) | ✅ done |
 | 7 | GPU compute meshing (WGSL greedy mesher, bit-identical to CPU) | ✅ done |
 | 8 | Iris integration interface (shader-pack structure validation + translator seam) | ✅ done |
-| 9 | Datapacks (Mojang official format) | 🚧 in progress |
-| 10 | Content breadth (more structures, biomes) | ⬜ pending |
+| 9 | Datapacks (Mojang official format: recipes, loot tables, tags; folder + zip packs) | ✅ done |
+| 10 | Content breadth (more structures, biomes) | 🚧 in progress |
+
+Phase 9 note: data packs follow **Mojang's official 1.16.5 format** (pack_format 6). Drop a pack — a folder or a `.zip` — into your world's `datapacks/` directory (next to `level.dat`) and the engine loads its `recipes/`, `loot_tables/` and `tags/` on world start: datapack crafting recipes appear in the crafting table, `minecraft:chests/simple_dungeon` overrides change dungeon-chest loot, and item tags drive ingredient matching. Advancements, structures and `.mcfunction` files are detected and reported honestly as not-yet-supported. Every format fact was verified against the genuine vanilla 1.16.5 server jar's own data pack.
 
 Phase 8 note: Iris/GLSL compatibility is a **separate sister project** (`vc-iris`, per the clean-room legal boundary — the LGPL Iris source is never copied, only its published documentation). This repo ships the integration surface: drop an Iris-format pack (a folder with `shaders.properties` + `shaders/*.vsh/fsh`) into `shader-packs/` and the engine boots it through structure validation, reporting the pass chain, render targets and uniforms it found.
 

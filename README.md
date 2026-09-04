@@ -85,6 +85,26 @@ All 16×16 textures and every sound are **synthesized procedurally at startup** 
 - Water with wave animation, glass, 18 block types
 - 16×256×16 chunks streamed around the player
 
+## Roadmap progress
+
+The engine is being completed phase by phase (one commit per phase, values verified against minecraft.wiki; unverifiable values are explicitly marked placeholders):
+
+| Phase | Scope | Status |
+|---|---|---|
+| 0 | Apache-2.0 license + README | ✅ done |
+| 1 | Game modes (Creative/Survival/Hardcore), world creation, death & respawn | ✅ done |
+| 2 | Mobs + combat (attack cooldown, armor, crits, light-gated spawning) | ✅ done |
+| 3 | Full redstone (repeaters, comparators, pistons, containers) | ✅ done |
+| 4 | Enchanting (38 entries) + brewing chain | ✅ done |
+| 5 | Villager trading depth (15 professions, 5 tiers) + dungeons with spawners | ✅ done |
+| 6 | Rendering optimization (mipmaps, aniso, MSAA, occlusion culling, simulation distance) | ✅ done |
+| 7 | GPU compute meshing (WGSL greedy mesher, bit-identical to CPU) | ✅ done |
+| 8 | Iris integration interface (shader-pack structure validation + translator seam) | ✅ done |
+| 9 | Datapacks (Mojang official format) | 🚧 in progress |
+| 10 | Content breadth (more structures, biomes) | ⬜ pending |
+
+Phase 8 note: Iris/GLSL compatibility is a **separate sister project** (`vc-iris`, per the clean-room legal boundary — the LGPL Iris source is never copied, only its published documentation). This repo ships the integration surface: drop an Iris-format pack (a folder with `shaders.properties` + `shaders/*.vsh/fsh`) into `shader-packs/` and the engine boots it through structure validation, reporting the pass chain, render targets and uniforms it found.
+
 ## Repository layout
 
 ```

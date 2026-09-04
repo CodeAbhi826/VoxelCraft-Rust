@@ -7,6 +7,8 @@ description = "Resource-pack / blockstate+model JSON pipeline for 1.16.5-format 
 
 [dependencies]
 vc-blocks = { workspace = true }
+vc-rng = { workspace = true }
+flate2 = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 

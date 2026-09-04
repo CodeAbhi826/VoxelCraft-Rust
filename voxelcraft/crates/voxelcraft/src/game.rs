@@ -558,6 +558,11 @@ pub struct GameApp {
     /// applied: GLSL translation ships in the vc-iris sister project and
     /// plugs in through the IrisTranslator seam (vc-render/src/iris.rs).
     iris_packs: Vec<vc_render::iris::IrisPackInfo>,
+    /// Phase 9: the active world's data packs (Mojang official format —
+    /// recipes + loot tables + tags; scanned from `<world>/datapacks/`,
+    /// folders AND zips). Wasm has no filesystem: boots empty and the
+    /// E2E `dpdemo` command exercises the in-memory demo pack instead.
+    data: vc_pack::datapack::LoadedData,
     /// pack-driven animated textures (frame updates only, no re-mesh)
     animations: Vec<vc_render::textures::AnimatedTile>,
     /// §28: root save dir (world root); `world_dir` is the CURRENT
@@ -888,6 +893,22 @@ impl GameApp {
         #[cfg(target_arch = "wasm32")]
         let iris_packs = Vec::new();
 
+        // Phase 9: scan the restored world's data packs (recipes + loot
+        // tables + tags, Mojang's official format — folders AND zips).
+        // Must happen before the world starts generating: dungeon-chest
+        // loot rolls through the loaded tables. wasm has no filesystem —
+        // `data` boots empty and the E2E `dpdemo` command runs the
+        // in-memory demo pack through the same code path.
+        #[cfg(not(target_arch = "wasm32"))]
+        let data = {
+            let root = save_root.join("datapacks");
+            let loaded = vc_pack::datapack::scan_datapacks(&root);
+            report_datapacks(&loaded);
+            loaded
+        };
+        #[cfg(target_arch = "wasm32")]
+        let data = vc_pack::datapack::LoadedData::default();
+
         let work = {
             #[cfg(not(target_arch = "wasm32"))]
             {
@@ -925,6 +946,7 @@ impl GameApp {
             sounds,
             shader_packs,
             iris_packs,
+            data,
             audio_rng: vc_rng::rng::Rng::new(0x50_0D_5EED),
             sounds_played: 0,
             music_next: 12.0,
@@ -1863,10 +1885,43 @@ impl GameApp {
             );
         }
         self.reset_world(seed, mode, name, None);
+        self.load_datapacks();
         vc_render::render::report_boot_log(&format!(
             "world created: \"{}\" seed={} mode={}",
             self.world_name, self.world.seed, self.mode.label()
         ));
+    }
+
+    /// Phase 9: craft-grid matching with data packs — datapack recipes
+    /// first (mirroring vanilla's "later pack overrides" semantics: a
+    /// pack recipe can shadow a builtin shape), then the builtin static
+    /// registry. Zero packs loaded → behavior identical to before.
+    fn craft_result(
+        &self,
+        grid: &[vc_inventory::inventory::ItemStack],
+        size: usize,
+    ) -> Option<vc_inventory::inventory::ItemStack> {
+        // adapt ItemStacks to name-based GridItems (the datapack matcher
+        // is name/tag-driven; the builtin matcher is id-driven)
+        let items: Vec<vc_pack::datapack::GridItem> = grid
+            .iter()
+            .map(|s| {
+                if s.is_empty() {
+                    vc_pack::datapack::GridItem::empty()
+                } else {
+                    match vc_pack::datapack::item_name_by_id(s.block) {
+                        Some(n) => vc_pack::datapack::GridItem::item(n, s.count),
+                        // palette-absent items match no datapack recipe
+                        // (recipes reference only bridge-known names)
+                        None => vc_pack::datapack::GridItem::item("", s.count),
+                    }
+                }
+            })
+            .collect();
+        if let Some((block, count)) = self.data.match_grid(&items, size) {
+            return Some(vc_inventory::inventory::ItemStack::new(block, count));
+        }
+        vc_gameplay::craft::match_grid(grid, size)
     }
 
     /// Play the `idx`-th world from the cached select list (native).
@@ -1893,10 +1948,28 @@ impl GameApp {
             vc_world::world::Dimension::Overworld,
         );
         self.reset_world(seed, mode, name, player);
+        self.load_datapacks();
         vc_render::render::report_boot_log(&format!(
             "world loaded: \"{}\" seed={} mode={}",
             self.world_name, self.world.seed, self.mode.label()
         ));
+    }
+
+    /// Phase 9: (re)scan the active world's `datapacks/` directory —
+    /// called on world create AND on world load, after `save_root` is
+    /// set and before generation fills dungeon chests. Native only;
+    /// the wasm build has no filesystem (the E2E `dpdemo` command runs
+    /// the embedded demo pack through the same code path instead).
+    #[cfg(not(target_arch = "wasm32"))]
+    fn load_datapacks(&mut self) {
+        let loaded =
+            vc_pack::datapack::scan_datapacks(&self.save_root.join("datapacks"));
+        report_datapacks(&loaded);
+        self.data = loaded;
+    }
+    #[cfg(target_arch = "wasm32")]
+    fn load_datapacks(&mut self) {
+        self.data = vc_pack::datapack::LoadedData::default();
     }
 
     /// DELETE SELECTED on the world-select screen (native). No confirm
@@ -2934,7 +3007,7 @@ impl GameApp {
                 let size = self.craft_grid_size();
                 let grid: Vec<vc_inventory::inventory::ItemStack> =
                     self.craft_grid.iter().take(size * size).copied().collect();
-                if let Some(out) = vc_gameplay::craft::match_grid(&grid, size) {
+                if let Some(out) = self.craft_result(&grid, size) {
                     let fits = self.cursor_stack.is_empty()
                         || (self.cursor_stack.block == out.block
                             && self.cursor_stack.count + out.count
@@ -3387,7 +3460,7 @@ impl GameApp {
         let grid: Vec<vc_inventory::inventory::ItemStack> =
             self.craft_grid.iter().take(size * size).copied().collect();
         let craft_out =
-            vc_gameplay::craft::match_grid(&grid, size).unwrap_or(vc_inventory::inventory::ItemStack::EMPTY);
+            self.craft_result(&grid, size).unwrap_or(vc_inventory::inventory::ItemStack::EMPTY);
         ContainerView {
             kind,
             inv: self.player.inv.slots.clone(),
@@ -4507,7 +4580,7 @@ impl GameApp {
                         let size = self.craft_grid_size();
                         let grid: Vec<vc_inventory::inventory::ItemStack> =
                             self.craft_grid.iter().take(size * size).copied().collect();
-                        let msg = match vc_gameplay::craft::match_grid(&grid, size) {
+                        let msg = match self.craft_result(&grid, size) {
                             Some(out) => {
                                 vc_gameplay::craft::consume_grid(&mut self.craft_grid[..size * size]);
                                 let left = self.player.inv.add(out.block, out.count);
@@ -4732,6 +4805,141 @@ impl GameApp {
                             props.sliders().len(),
                             version.as_deref().unwrap_or("?"),
                             targets
+                        ));
+                    }
+                    // ---- Phase 9 E2E: data packs ----
+                    Some("dp") => {
+                        // dp — report the active world's data packs
+                        // (native scan results; wasm: honestly empty)
+                        if self.data.packs.is_empty() {
+                            vc_render::render::report_boot_log(
+                                "e2e: data packs — 0 (no filesystem on wasm; use dpdemo)",
+                            );
+                        } else {
+                            for p in &self.data.packs {
+                                vc_render::render::report_boot_log(&format!(
+                                    "e2e: data pack: {}",
+                                    p.summary()
+                                ));
+                            }
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: data packs — {} packs, {} recipes, {} loot tables, {} tags",
+                                self.data.packs.len(),
+                                self.data.recipes.len(),
+                                self.data.loot_tables.len(),
+                                self.data.tags.len()
+                            ));
+                        }
+                    }
+                    Some("dpdemo") => {
+                        // dpdemo — run the EMBEDDED demo data pack (the
+                        // genuine 1.16.5 JSON grammar) through the REAL
+                        // scan→parse→match→roll code path. Works on every
+                        // platform (the wasm proof that the whole
+                        // pipeline executes, not just compiles).
+                        let files = vc_pack::datapack::MemoryFiles::demo();
+                        match vc_pack::datapack::scan_pack("demo", &files) {
+                            Some(report) => {
+                                vc_render::render::report_boot_log(&format!(
+                                    "e2e: dpdemo scan — {}",
+                                    report.summary()
+                                ));
+                                let loaded = vc_pack::datapack::LoadedData::from_reports(
+                                    vec![report],
+                                );
+                                // shaped recipe: 2x2 cobble -> 4 stone bricks
+                                let grid = vec![
+                                    vc_pack::datapack::GridItem::item(
+                                        "minecraft:cobblestone",
+                                        5,
+                                    ),
+                                    vc_pack::datapack::GridItem::item(
+                                        "minecraft:cobblestone",
+                                        5,
+                                    ),
+                                    vc_pack::datapack::GridItem::item(
+                                        "minecraft:cobblestone",
+                                        5,
+                                    ),
+                                    vc_pack::datapack::GridItem::item(
+                                        "minecraft:cobblestone",
+                                        5,
+                                    ),
+                                ];
+                                let craft = loaded
+                                    .match_grid(&grid, 2)
+                                    .map(|(b, c)| format!("{} x{c}", name(b)))
+                                    .unwrap_or_else(|| "NO MATCH".into());
+                                // tag-driven shapeless: red wool -> string
+                                let wool = vec![vc_pack::datapack::GridItem::item(
+                                    "minecraft:red_wool",
+                                    1,
+                                )];
+                                let craft2 = loaded
+                                    .match_grid(&wool, 1)
+                                    .map(|(b, c)| format!("{} x{c}", name(b)))
+                                    .unwrap_or_else(|| "NO MATCH".into());
+                                // loot table: one roll of the weighted table
+                                let mut rng = vc_rng::rng::Rng::new(99);
+                                let loot = loaded
+                                    .roll("demo:demo_loot", &mut rng)
+                                    .map(|stacks| {
+                                        stacks
+                                            .iter()
+                                            .map(|(b, c)| format!("{} x{c}", name(*b)))
+                                            .collect::<Vec<_>>()
+                                            .join(", ")
+                                    })
+                                    .unwrap_or_else(|| "NO TABLE".into());
+                                vc_render::render::report_boot_log(&format!(
+                                    "e2e: dpdemo craft 2x2 cobble -> {craft}; red wool -> {craft2}"
+                                ));
+                                vc_render::render::report_boot_log(&format!(
+                                    "e2e: dpdemo loot demo:demo_loot -> [{loot}]"
+                                ));
+                            }
+                            None => {
+                                vc_render::render::report_boot_log(
+                                    "e2e: dpdemo scan FAILED (demo pack invalid)",
+                                );
+                            }
+                        }
+                    }
+                    Some("dloot") => {
+                        // dloot[:n] — roll the dungeon seam n times
+                        // (default 5) through the ACTIVE data (pack
+                        // override if the world ships one, else the
+                        // palette-limited builtin default)
+                        let n: u32 = parts
+                            .get(1)
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(5)
+                            .clamp(1, 50);
+                        let mut rng = vc_rng::rng::Rng::new(1234);
+                        let mut total = 0usize;
+                        for i in 0..n {
+                            let stacks = self
+                                .data
+                                .roll("minecraft:chests/simple_dungeon", &mut rng)
+                                .unwrap_or_default();
+                            total += stacks.len();
+                            let items = stacks
+                                .iter()
+                                .map(|(b, c)| format!("{} x{c}", name(*b)))
+                                .collect::<Vec<_>>()
+                                .join(", ");
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: dloot roll {} -> [{}]",
+                                i + 1,
+                                items
+                            ));
+                        }
+                        vc_render::render::report_boot_log(&format!(
+                            "e2e: dloot {} rolls, {} stacks total (packs {}, tables {})",
+                            n,
+                            total,
+                            self.data.packs.len(),
+                            self.data.loot_tables.len()
                         ));
                     }
                     // ---- Phase 1 E2E: game modes / world creation / death --
@@ -5598,6 +5806,11 @@ impl GameApp {
             // Phase 8: Iris interface — detected packs (native scan; the
             // wasm build boots empty by design, no filesystem)
             ("irisPacks", StatsVal::F(self.iris_packs.len() as f32)),
+            // Phase 9: data packs — counts for E2E assertions
+            ("dpacks", StatsVal::F(self.data.packs.len() as f32)),
+            ("drecipes", StatsVal::F(self.data.recipes.len() as f32)),
+            ("dloots", StatsVal::F(self.data.loot_tables.len() as f32)),
+            ("dtags", StatsVal::F(self.data.tags.len() as f32)),
             ("fov", StatsVal::F(self.settings.fov)),
             ("sens", StatsVal::F(self.settings.sensitivity)),
             ("vol", StatsVal::F(self.settings.volume)),
@@ -5966,7 +6179,7 @@ impl GameApp {
                         // refills — the all-empty guard)
                         let inv = self.sim.containers.entry(p, CHEST);
                         if inv.slots.iter().all(|s| s.is_empty()) {
-                            fill_dungeon_chest(inv, self.world.seed, p);
+                            fill_dungeon_chest(&self.data, inv, self.world.seed, p);
                         }
                     }
                 }
@@ -6649,23 +6862,35 @@ fn notify_sim(world: &World, sched: &mut vc_sim::ticks::TickScheduler, x: i32, y
 /// 1..=4, deterministic from the world seed + chest position. Vanilla
 /// saddle/music-disc/golden-apple slots are palette-absent and simply
 /// don't roll (documented, not substituted with lookalikes).
-fn fill_dungeon_chest(inv: &mut vc_sim::containers::ContainerInv, seed: u64, pos: [i32; 3]) {
+/// Phase 9: the dungeon chest now rolls through the data-pack loot
+/// system (vanilla `minecraft:chests/simple_dungeon` seam): a pack that
+/// ships that table overrides the palette-limited builtin; either way
+/// the distribution is pools/rolls/weights/set_count — the exact
+/// vanilla model, with our own palette values in the builtin default
+/// (saddle/music-disc/golden-apple slots are palette-absent and simply
+/// don't roll — documented, not substituted with lookalikes).
+fn fill_dungeon_chest(
+    data: &vc_pack::datapack::LoadedData,
+    inv: &mut vc_sim::containers::ContainerInv,
+    seed: u64,
+    pos: [i32; 3],
+) {
     let mut rng = vc_rng::rng::Rng::new(vc_rng::rng::Rng::hash3(
         seed ^ 0xDCC_E5,
         pos[0],
         pos[1],
         pos[2],
     ));
-    const LOOT: [u8; 7] = [BONE, STRING, GUNPOWDER, ROTTEN_FLESH, ARROW_ITEM, IRON_ORE, SPIDER_EYE];
-    let n = 3 + rng.next_range(5) as usize; // 3..=7 stacks
+    let stacks = data
+        .roll("minecraft:chests/simple_dungeon", &mut rng)
+        .unwrap_or_default();
     let mut slot = rng.next_range(27) as usize;
-    for _ in 0..n {
-        let item = LOOT[rng.next_range(LOOT.len() as u32) as usize];
-        let count = 1 + rng.next_range(4) as u8; // 1..=4
+    for (item, count) in stacks {
         // walk to the next free slot (chests are fresh — always one)
         for _ in 0..27 {
             if inv.slots[slot].is_empty() {
-                inv.slots[slot] = vc_inventory::inventory::ItemStack::new(item, count);
+                inv.slots[slot] =
+                    vc_inventory::inventory::ItemStack::new(item, count);
                 break;
             }
             slot = (slot + 1) % 27;
@@ -6893,6 +7118,46 @@ fn set_button_value(w: &mut Widget, value: &str) {
     }
 }
 
+/// Phase 9: honest boot-log reporting for the scanned data packs — one
+/// summary line per pack, plus every skipped file (parse failures,
+/// palette gaps, unsupported content) as its own reason line. Never
+/// fatal: vanilla prompts Safe Mode for broken packs; the engine has no
+/// pack-selection screen, so it degrades to the working parts + reports.
+fn report_datapacks(loaded: &vc_pack::datapack::LoadedData) {
+    if loaded.packs.is_empty() {
+        return; // no packs — no log noise
+    }
+    for pack in &loaded.packs {
+        if pack.pack_format != vc_pack::datapack::PACK_FORMAT_1_16_5 {
+            vc_render::render::report_boot_log(&format!(
+                "data pack {}: pack_format {} (1.16.5 wants 6) — loading anyway",
+                pack.id, pack.pack_format
+            ));
+        }
+        vc_render::render::report_boot_log(&format!(
+            "data pack: {}{}",
+            pack.summary(),
+            if pack.description.is_empty() {
+                String::new()
+            } else {
+                format!(" ({})", pack.description)
+            },
+        ));
+        for (kind, count) in &pack.unsupported {
+            vc_render::render::report_boot_log(&format!(
+                "data pack {}: {count}x {kind}/ entries detected — not supported yet, reported honestly",
+                pack.id
+            ));
+        }
+        for s in &pack.skipped {
+            vc_render::render::report_boot_log(&format!(
+                "data pack {}: skipped {s}",
+                pack.id
+            ));
+        }
+    }
+}
+
 #[cfg(test)]
 mod settings_tests {
     use super::Settings;
@@ -6986,5 +7251,48 @@ mod settings_tests {
             "no-such-dir-iris"
         ))
         .is_empty());
+    }
+
+    /// Phase 9: the data-pack pipeline the `dpdemo` E2E command runs must
+    /// produce exactly the numbers its log lines claim — the demo pack
+    /// scans to (2 recipes, 1 loot table, 1 tag, 1 unsupported
+    /// advancement), the 2×2-cobble grid crafts Stone Bricks x4, red wool
+    /// crafts String (tag-driven shapeless), and the demo loot table
+    /// rolls inside its declared grammar. Mirrors the vc-pack
+    /// `demo_pack_end_to_end` test so drift breaks one of the two.
+    #[test]
+    fn datapack_demo_e2e_claims_hold() {
+        use vc_pack::datapack::{GridItem, MemoryFiles, PackFiles};
+        let files = MemoryFiles::demo();
+        let report = vc_pack::datapack::scan_pack("demo", &files).expect("demo pack valid");
+        assert_eq!(report.pack_format, vc_pack::datapack::PACK_FORMAT_1_16_5);
+        assert_eq!(report.recipes.len(), 2);
+        assert_eq!(report.loot_tables.len(), 1);
+        assert_eq!(report.tags.len(), 1);
+        assert_eq!(report.unsupported, vec![("advancements".to_string(), 1)]);
+        assert!(report.skipped.is_empty(), "{:?}", report.skipped);
+
+        let loaded = vc_pack::datapack::LoadedData::from_reports(vec![report]);
+        // dpdemo line 1: "craft 2x2 cobble -> Stone Bricks x4"
+        let grid = vec![GridItem::item("minecraft:cobblestone", 5); 4];
+        let (b, c) = loaded.match_grid(&grid, 2).expect("cobble grid matches");
+        assert_eq!((b, c), (vc_blocks::blocks::STONE_BRICKS, 4));
+        // dpdemo line 1: "red wool -> String x1"
+        let wool = vec![GridItem::item("minecraft:red_wool", 1)];
+        let (b, c) = loaded.match_grid(&wool, 1).expect("wool matches via tag");
+        assert_eq!((b, c), (vc_blocks::blocks::STRING, 1));
+        // dpdemo line 2: loot rolls within 2..=4 stacks of palette items
+        let mut rng = vc_rng::rng::Rng::new(99);
+        let stacks = loaded.roll("demo:demo_loot", &mut rng).expect("table rolls");
+        assert!((2..=4).contains(&stacks.len()));
+        for (id, count) in stacks {
+            assert!(
+                [vc_blocks::blocks::IRON_ORE, vc_blocks::blocks::GOLD_ORE, vc_blocks::blocks::BONE]
+                    .contains(&id)
+            );
+            if id == vc_blocks::blocks::IRON_ORE {
+                assert!((1..=2).contains(&count));
+            }
+        }
     }
 }

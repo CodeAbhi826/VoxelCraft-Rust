@@ -2121,11 +2121,13 @@ dependencies = [
 name = "vc-pack"
 version = "0.3.0"
 dependencies = [
+ "flate2",
  "js-sys",
  "rayon",
  "serde",
  "serde_json",
  "vc-blocks",
+ "vc-rng",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",

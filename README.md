@@ -145,3 +145,9 @@ See `voxelcraft/BUILD.md` for details.
 ## Disclaimer
 
 Not affiliated with Mojang or Microsoft. "Minecraft" is a trademark of Mojang Synergies AB. This is an independent Rust engine written in the visual style of Minecraft 1.16.5; all textures and sounds are generated procedurally from scratch — none are copied from Minecraft's asset files.
+
+## License
+
+Licensed under the **Apache License 2.0** — see [`LICENSE`](LICENSE) for the full text.
+
+In short: you are free to use, copy, modify, and distribute this project (including commercially), as long as you retain the license notice and state significant changes. Game *mechanics and data* (formulas, timings, recipe/loot schemas, registry names) are not copyrightable and are replicated from published documentation; all *assets* (textures, sounds, UI art) are independently authored and contain no Mojang material.

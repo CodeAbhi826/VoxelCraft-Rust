@@ -185,6 +185,15 @@ pub const ID_OPT_SHADOWS: u16 = 23;
 pub const ID_OPT_UPSCALE: u16 = 24;
 pub const ID_OPT_MAXFPS: u16 = 25;
 pub const ID_OPT_MUSIC: u16 = 26;
+/// Phase 6 §26: options page 2 (video detail) ids
+pub const ID_OPT_NEXT: u16 = 27;
+pub const ID_OPT_PREV: u16 = 28;
+pub const ID_OPT_SIMDIST: u16 = 29;
+pub const ID_OPT_MIP: u16 = 30;
+pub const ID_OPT_ANISO: u16 = 31;
+pub const ID_OPT_MSAA: u16 = 32;
+pub const ID_OPT_OCCL: u16 = 33;
+pub const ID_OPT_DONE2: u16 = 34;
 
 /// Title screen layout (quit button only exists on native).
 pub fn layout_title(is_web: bool) -> Vec<Widget> {
@@ -219,7 +228,30 @@ pub fn layout_options() -> Vec<Widget> {
         btn(ID_OPT_MAXFPS, col2, rows[5], w, "MAX FPS", "VSYNC", true),
         // §21: the music category rides its own slider (master still scales it)
         slider(ID_OPT_MUSIC, col1, rows[6], w, "MUSIC", 0.6),
+        // Phase 6 §26: page 2 = video detail (vanilla splits Video Settings
+        // to its own screen — same idea)
+        btn(ID_OPT_NEXT, col2, rows[6], w, "VIDEO DETAILS >", "", true),
         btn(ID_OPT_DONE, (UI_W as i32 - 320) / 2, 470, 320, "DONE", "", true),
+    ]
+}
+
+/// Phase 6 §26: options page 2 — simulation distance + the rendering
+/// quality set (mipmaps, aniso, MSAA, occlusion). Values are placeholders;
+/// game.rs rewrites the labels + positions via `refresh_widgets`.
+pub fn layout_options2() -> Vec<Widget> {
+    let col1 = 72;
+    let col2 = 496;
+    let w = 392;
+    let rows = [62, 110, 158, 206, 254];
+    vec![
+        slider(ID_OPT_SIMDIST, col1, rows[0], w, "SIM DISTANCE", 0.0),
+        slider(ID_OPT_RD, col2, rows[0], w, "RENDER DISTANCE", 0.4),
+        btn(ID_OPT_MIP, col1, rows[1], w, "MIPMAP LEVELS", "4", true),
+        btn(ID_OPT_ANISO, col2, rows[1], w, "ANISOTROPIC", "4X", true),
+        btn(ID_OPT_MSAA, col1, rows[2], w, "MSAA", "OFF", true),
+        btn(ID_OPT_OCCL, col2, rows[2], w, "OCCLUSION CULLING", "ON", true),
+        btn(ID_OPT_PREV, col1, rows[4], 242, "< GENERAL", "", true),
+        btn(ID_OPT_DONE2, (UI_W as i32 - 320) / 2, 470, 320, "DONE", "", true),
     ]
 }
 

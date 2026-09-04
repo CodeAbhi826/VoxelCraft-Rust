@@ -84,11 +84,24 @@ impl ItemSystem {
         self.dropped_total += 1;
     }
 
-    /// one sim tick (20 Hz): gravity 0.04, drag 0.98, ground rest with
-    /// slip, buoyancy in water. Item hitbox is a point (visual half-size
-    /// 0.15); collision probes the world at the entity position.
-    pub fn tick(&mut self, world: &vc_world::world::World) {
+    /// ONE sim tick for all item entities: gravity 0.04, drag 0.98, ground
+    /// rest with slip, buoyancy in water. Item hitbox is a point (visual
+    /// half-size 0.15); collision probes the world at the entity position.
+    /// Phase 6 §26: entities outside the simulation ring (Chebyshev chunk
+    /// distance from `sim_center`) freeze — age included (1.18+ semantics;
+    /// `sim_radius` = i32::MAX disables gating = 1.16.5 behavior).
+    pub fn tick(&mut self, world: &vc_world::world::World, sim_center: (i32, i32), sim_radius: i32) {
         for it in self.items.iter_mut() {
+            let ichunk = ((it.pos[0] / 16.0).floor() as i32, (it.pos[2] / 16.0).floor() as i32);
+            let in_ring = ichunk
+                .0
+                .wrapping_sub(sim_center.0)
+                .saturating_abs()
+                .max(ichunk.1.wrapping_sub(sim_center.1).saturating_abs())
+                <= sim_radius;
+            if !in_ring {
+                continue;
+            }
             it.age += 1;
             let in_water = world.get_block(
                 it.pos[0] as i32,
@@ -238,7 +251,7 @@ mod tests {
         assert_eq!(is.len(), 1);
         // 3 seconds of ticks
         for _ in 0..60 {
-            is.tick(&w);
+            is.tick(&w, (0, 0), i32::MAX);
         }
         let it = &is.items[0];
         // fell from 66.3 to rest on the y=64 floor's top surface (y=65);
@@ -246,7 +259,7 @@ mod tests {
         assert!((it.pos[1] - 65.0).abs() < 0.06, "rest height: {}", it.pos[1]);
         // despawn at 6000 ticks
         for _ in 0..6000 {
-            is.tick(&w);
+            is.tick(&w, (0, 0), i32::MAX);
         }
         assert_eq!(is.len(), 0);
     }
@@ -258,12 +271,12 @@ mod tests {
         is.drop_block(0, 66, 0, DIRT, 2, 15, 0);
         // before the delay: no pickup
         for _ in 0..5 {
-            is.tick(&w);
+            is.tick(&w, (0, 0), i32::MAX);
         }
         assert!(is.collect([0.5, 66.0, 0.5]).is_empty(), "pickup delay guards");
         // after the delay: player near → collected
         for _ in 0..10 {
-            is.tick(&w);
+            is.tick(&w, (0, 0), i32::MAX);
         }
         let got = is.collect([0.5, 65.8, 0.5]);
         assert_eq!(got, vec![DIRT]);
@@ -272,7 +285,7 @@ mod tests {
         // far away: no pickup
         is.drop_block(4, 66, 4, STONE, 2, 15, 0);
         for _ in 0..20 {
-            is.tick(&w);
+            is.tick(&w, (0, 0), i32::MAX);
         }
         assert!(is.collect([0.5, 66.0, 0.5]).is_empty(), "distance guards");
         assert_eq!(is.len(), 1);

@@ -24,6 +24,11 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct Settings {
     pub render_distance: i32,
+    /// Phase 6 §26: simulation distance (chunk radius for the sim ring).
+    /// NOT a 1.16.5 feature (dossier: Mojang 1.18+/26.x) — opt-in
+    /// optimization. VERIFIED modern-vanilla range 5–32, default 12 ≥ the
+    /// default render distances → 1.16.5-identical behavior by default.
+    pub sim_distance: i32,
     pub sensitivity: f32,
     pub volume: f32,
     pub fov: f32,        // degrees, 30..110
@@ -41,6 +46,20 @@ pub struct Settings {
     pub music_volume: f32,
     /// frame limiter: 0 = uncapped, else a fps ceiling (30/60/120)
     pub maxfps: u8,
+    // ------------------------------------------ Phase 6 §26: rendering --
+    /// mipmap levels 0–4 (vanilla `mipmapLevels`; VERIFIED default 4,
+    /// range 0-4, exists since 1.7.2 — wiki Options.txt)
+    pub mipmap_levels: u8,
+    /// anisotropic filtering 1/2/4/8/16 (OptiFine `ofAfLevel` parity —
+    /// vanilla 1.16.5 has no aniso setting; default 4 from the dossier
+    /// Part 1 §3 captured optionsof.txt). 1 = effectively off
+    pub aniso: u8,
+    /// MSAA: 0 = off (vanilla-faithful), 4/8 (OptiFine `ofAaLevel` parity;
+    /// 2x has no guaranteed WebGPU path — off/4/8 only, device-gated)
+    pub msaa: u8,
+    /// chunk-graph occlusion culling (OptiFine `ofOcclusionFancy` parity,
+    /// default on)
+    pub occlusion: bool,
 }
 
 impl Default for Settings {
@@ -50,6 +69,7 @@ impl Default for Settings {
             render_distance: 6,
             #[cfg(not(target_arch = "wasm32"))]
             render_distance: 10,
+            sim_distance: 12,
             sensitivity: 1.0,
             volume: 0.7,
             fov: 70.0,
@@ -62,6 +82,10 @@ impl Default for Settings {
             upscale: 0,
             music_volume: 0.6,
             maxfps: 0,
+            mipmap_levels: 4,
+            aniso: 4,
+            msaa: 0,
+            occlusion: true,
         }
     }
 }
@@ -106,8 +130,9 @@ impl Settings {
     /// serialize as k=v; pairs (parsed without serde)
     pub fn serialize(&self) -> String {
         format!(
-            "rd={};sens={:.3};vol={:.3};mvol={:.3};fov={:.1};bright={:.3};smooth={};clouds={};graphics={};shader={};shadowq={};upscale={};maxfps={}",
+            "rd={};sd={};sens={:.3};vol={:.3};mvol={:.3};fov={:.1};bright={:.3};smooth={};clouds={};graphics={};shader={};shadowq={};upscale={};maxfps={};mip={};aniso={};msaa={};occl={}",
             self.render_distance,
+            self.sim_distance,
             self.sensitivity,
             self.volume,
             self.music_volume,
@@ -119,7 +144,11 @@ impl Settings {
             self.shader,
             self.shadow_quality,
             self.upscale,
-            self.maxfps
+            self.maxfps,
+            self.mipmap_levels,
+            self.aniso,
+            self.msaa,
+            self.occlusion as u8
         )
     }
     pub fn deserialize(s: &str) -> Settings {
@@ -130,6 +159,7 @@ impl Settings {
             let v = kv.next().unwrap_or("");
             match k {
                 "rd" => st.render_distance = v.parse().unwrap_or(st.render_distance).clamp(2, 16),
+                "sd" => st.sim_distance = v.parse().unwrap_or(st.sim_distance).clamp(5, 32),
                 "sens" => st.sensitivity = v.parse().unwrap_or(st.sensitivity).clamp(0.1, 2.0),
                 "vol" => st.volume = v.parse().unwrap_or(st.volume).clamp(0.0, 1.0),
                 "mvol" => st.music_volume = v.parse().unwrap_or(st.music_volume).clamp(0.0, 1.0),
@@ -144,6 +174,14 @@ impl Settings {
                 "shadowq" => st.shadow_quality = v.parse().unwrap_or(2).min(3),
                 "upscale" => st.upscale = v.parse().unwrap_or(st.upscale).min(2),
                 "maxfps" => st.maxfps = v.parse().unwrap_or(st.maxfps).min(3),
+                "mip" => st.mipmap_levels = v.parse().unwrap_or(4).min(4),
+                "aniso" => st.aniso = v.parse().unwrap_or(4).clamp(1, 16),
+                "msaa" => {
+                    // valid sample counts: 0 (off), 4, 8 — snap anything else
+                    let v = v.parse::<u8>().unwrap_or(0);
+                    st.msaa = if v >= 6 { 8 } else if v >= 2 { 4 } else { 0 };
+                }
+                "occl" => st.occlusion = v == "1",
                 _ => {}
             }
         }
@@ -253,7 +291,76 @@ enum JobResult {
         sections: Vec<Option<Arc<MeshData>>>,
         /// merged per-chunk mesh for upload (§14 per-chunk merged buffers)
         mesh: Box<MeshData>,
+        /// Phase 6 §26: occlusion-graph bits for this column (§26)
+        occl: vc_render::draw::ChunkOccl,
     },
+}
+
+/// Phase 6 §26: occlusion-graph bits for one chunk column, computed at
+/// mesh time from the center snapshot + the fresh section meshes.
+/// * walls: a section's 16×16×1 side face has ≥1 non-opaque cell
+///   (empty/air sections are fully open — default to open, conservative)
+/// * planes: the y = s·16+15 plane between bands s/s+1 has ≥1 non-opaque cell
+/// * geo: the band's fresh mesh has indices (empty bands have nothing to
+///   hide — the mesher culled interior faces against opaque neighbors)
+fn chunk_occl(
+    center: Option<&Arc<vc_chunk::chunk::Chunk>>,
+    sections: &[Option<Arc<MeshData>>],
+) -> vc_render::draw::ChunkOccl {
+    use vc_render::draw::{ChunkOccl, FACE_NX, FACE_NZ, FACE_PX, FACE_PZ};
+    let mut occl = ChunkOccl::default();
+    // geometry bits (any meshed triangles → the band is worth drawing)
+    for (b, s) in sections.iter().enumerate().take(16) {
+        if let Some(m) = s {
+            if !m.solid.1.is_empty() || !m.water.1.is_empty() {
+                occl.geo |= 1u16 << b;
+            }
+        }
+    }
+    let Some(c) = center else {
+        // no center chunk (defensive — the mesh job requires it): treat the
+        // column as fully open so the cull can never hide it
+        occl.sides = u64::MAX;
+        occl.planes = u16::MAX;
+        return occl;
+    };
+    for b in 0usize..16 {
+        // empty section = all-air band: every wall + adjacent planes open
+        if c.sections[b].is_none() {
+            for f in 0u32..4 {
+                occl.sides |= 1u64 << (b as u32 * 4 + f);
+            }
+            if b > 0 {
+                occl.planes |= 1u16 << (b - 1); // plane between b-1 and b
+            }
+            if b < 15 {
+                occl.planes |= 1u16 << b; // plane between b and b+1
+            }
+            continue;
+        }
+        let y0 = b * 16;
+        // +X / -X walls: 16×16 cells each (x fixed, y × z varies)
+        if (0..16usize).any(|dy| (0..16usize).any(|z| !is_opaque(c.get(15, y0 + dy, z)))) {
+            occl.sides |= 1u64 << (b as u32 * 4 + FACE_PX as u32);
+        }
+        if (0..16usize).any(|dy| (0..16usize).any(|z| !is_opaque(c.get(0, y0 + dy, z)))) {
+            occl.sides |= 1u64 << (b as u32 * 4 + FACE_NX as u32);
+        }
+        // +Z / -Z walls: 16×16 cells each (z fixed, y × x varies)
+        if (0..16usize).any(|dy| (0..16usize).any(|x| !is_opaque(c.get(x, y0 + dy, 15)))) {
+            occl.sides |= 1u64 << (b as u32 * 4 + FACE_PZ as u32);
+        }
+        if (0..16usize).any(|dy| (0..16usize).any(|x| !is_opaque(c.get(x, y0 + dy, 0)))) {
+            occl.sides |= 1u64 << (b as u32 * 4 + FACE_NZ as u32);
+        }
+        // ceiling plane of this band (y = b·16+15) — only for b < 15
+        if b < 15
+            && (0..16usize).any(|x| (0..16usize).any(|z| !is_opaque(c.get(x, y0 + 15, z))))
+        {
+            occl.planes |= 1u16 << b;
+        }
+    }
+    occl
 }
 
 fn run_job(job: Job) -> JobResult {
@@ -265,11 +372,14 @@ fn run_job(job: Job) -> JobResult {
         }
         Job::Mesh { pos, snap, lsnap, smooth, mask, prev } => {
             let out = mesh_sections(pos, &snap, &lsnap, smooth, mask, &prev);
+            // Phase 6 §26: occlusion-graph data rides the mesh result
+            let occl = chunk_occl(snap[4].as_ref(), &out.sections);
             JobResult::Mesh {
                 pos,
                 mask,
                 sections: out.sections,
                 mesh: Box::new(out.merged),
+                occl,
             }
         }
     }
@@ -339,6 +449,8 @@ pub struct GameApp {
     input: Input,
     pub screen: Screen,
     options_from: Screen, // where Options was opened from
+    /// Phase 6 §26: options page (0 = general, 1 = video details)
+    options_page: u8,
     widgets: Vec<Widget>,
     hover: Option<u16>,
     dragging: Option<u16>,
@@ -675,6 +787,11 @@ impl GameApp {
         renderer.set_upscale(settings.upscale_factor());
         // §17: apply persisted shadow quality
         renderer.set_shadow_quality(settings.shadow_map_px());
+        // Phase 6 §26: apply persisted texture quality (mipmaps + aniso),
+        // MSAA, and the occlusion-culling toggle before frame 1
+        renderer.set_texture_quality(settings.mipmap_levels, settings.aniso);
+        renderer.set_msaa(settings.msaa);
+        renderer.set_occlusion(settings.occlusion);
 
         // Phase 11 §34: discover shader packs (builtin embedded + native
         // external dir) and apply the persisted selection before frame 1
@@ -751,6 +868,7 @@ impl GameApp {
             input: Input::default(),
             screen: Screen::Loading,
             options_from: Screen::Title,
+            options_page: 0,
             widgets: Vec::new(),
             hover: None,
             dragging: None,
@@ -1525,6 +1643,7 @@ impl GameApp {
 
     fn open_options(&mut self, from: Screen) {
         self.options_from = from;
+        self.options_page = 0; // always land on the general page
         self.set_screen(Screen::Options);
     }
 
@@ -2240,7 +2359,55 @@ impl GameApp {
             }
             ID_TITLE_OPTIONS => self.open_options(Screen::Title),
             ID_TITLE_QUIT => self.quit_requested = true,
-            ID_OPT_DONE => self.close_options(),
+            ID_OPT_DONE | ID_OPT_DONE2 => self.close_options(),
+            // Phase 6 §26: options page navigation (vanilla-style Video
+            // Settings split)
+            ID_OPT_NEXT => {
+                self.options_page = 1;
+                self.refresh_widgets();
+                self.ui.dirty = true;
+            }
+            ID_OPT_PREV => {
+                self.options_page = 0;
+                self.refresh_widgets();
+                self.ui.dirty = true;
+            }
+            // ---- Phase 6 §26: video-detail buttons ----
+            ID_OPT_MIP => {
+                // vanilla mipmapLevels cycle: 0 → 4 (VERIFIED range 0–4)
+                self.settings.mipmap_levels = (self.settings.mipmap_levels + 1) % 5;
+                self.after_settings_change();
+            }
+            ID_OPT_ANISO => {
+                // OptiFine ofAfLevel cycle: 1 → 2 → 4 → 8 → 16
+                self.settings.aniso = match self.settings.aniso {
+                    1 => 2,
+                    2 => 4,
+                    4 => 8,
+                    8 => 16,
+                    _ => 1,
+                };
+                self.after_settings_change();
+            }
+            ID_OPT_MSAA => {
+                // off → 4x → 8x, device-gated: an unsupported 8x request
+                // snaps to the device max (4x on most hardware)
+                let wanted = match self.settings.msaa {
+                    0 => 4,
+                    4 => 8,
+                    _ => 0,
+                };
+                self.settings.msaa = if wanted == 0 {
+                    0
+                } else {
+                    self.renderer.msaa_supported().min(wanted)
+                };
+                self.after_settings_change();
+            }
+            ID_OPT_OCCL => {
+                self.settings.occlusion = !self.settings.occlusion;
+                self.after_settings_change();
+            }
             ID_PAUSE_BACK => self.resume_game(),
             ID_PAUSE_OPTIONS => self.open_options(Screen::Pause),
             ID_PAUSE_QUIT => self.quit_to_title(),
@@ -2327,6 +2494,8 @@ impl GameApp {
             ID_OPT_FOV => self.settings.fov = 30.0 + t * 80.0,
             ID_OPT_SENS => self.settings.sensitivity = 0.1 + t * 1.9,
             ID_OPT_RD => self.settings.render_distance = 2 + (t * 14.0).round() as i32,
+            // Phase 6 §26: VERIFIED range 5–32 (wiki simulationDistance)
+            ID_OPT_SIMDIST => self.settings.sim_distance = 5 + (t * 27.0).round() as i32,
             ID_OPT_BRIGHT => self.settings.brightness = t,
             ID_OPT_VOL => self.settings.volume = t,
             ID_OPT_MUSIC => self.settings.music_volume = t,
@@ -2340,6 +2509,10 @@ impl GameApp {
         self.player.fov = self.settings.fov.to_radians();
         // Phase 11 §34: re-apply the shader selection (pack pipeline swap)
         self.apply_shader_selection();
+        // Phase 6 §26: texture quality (mipmaps + aniso), MSAA, occlusion
+        self.renderer.set_texture_quality(self.settings.mipmap_levels, self.settings.aniso);
+        self.renderer.set_msaa(self.settings.msaa);
+        self.renderer.set_occlusion(self.settings.occlusion);
         #[cfg(target_arch = "wasm32")]
         crate::web_input::save_settings(&self.settings.serialize());
         self.refresh_widgets();
@@ -2379,6 +2552,38 @@ impl GameApp {
             }
             Screen::Pause => {
                 self.widgets = layout_pause();
+            }
+            Screen::Options if self.options_page == 1 => {
+                // Phase 6 §26: page 2 — video details
+                let mut ws = layout_options2();
+                let max_msaa = self.renderer.msaa_supported();
+                for w in ws.iter_mut() {
+                    match w.id {
+                        ID_OPT_SIMDIST => set_slider(
+                            w,
+                            &format!("SIM DIST: {} CHUNKS", s.sim_distance),
+                            (s.sim_distance - 5) as f32 / 27.0,
+                        ),
+                        ID_OPT_RD => set_slider(w, &format!("RENDER DIST: {} CHUNKS", s.render_distance), (s.render_distance - 2) as f32 / 14.0),
+                        ID_OPT_MIP => set_button_value(w, &format!("{}", s.mipmap_levels)),
+                        ID_OPT_ANISO => set_button_value(
+                            w,
+                            &if s.aniso > 1 { format!("{}X", s.aniso) } else { "OFF".into() },
+                        ),
+                        ID_OPT_MSAA => {
+                            let label = if self.renderer.msaa() == 0 {
+                                "OFF".to_string()
+                            } else {
+                                format!("{}X{}", self.renderer.msaa(),
+                                    if (self.renderer.msaa() as u8) < max_msaa { " (MAX)" } else { "" })
+                            };
+                            set_button_value(w, &label);
+                        }
+                        ID_OPT_OCCL => set_button_value(w, if s.occlusion { "ON" } else { "OFF" }),
+                        _ => {}
+                    }
+                }
+                self.widgets = ws;
             }
             Screen::Options => {
                 let mut ws = layout_options();
@@ -3258,7 +3463,14 @@ impl GameApp {
                 None
             };
             self.sim.mobs.player_invulnerable = self.mode.invulnerable();
-            self.sim.update(dt, &mut self.world, &mut self.light);
+            // Phase 6 §26: the sim ring follows the player chunk; radius =
+            // the simulation-distance setting (default 12 covers everything
+            // loaded at the default render distances — 1.16.5 behavior)
+            let scope = vc_sim::sim::TickScope {
+                center: self.player_chunk(),
+                radius: self.settings.sim_distance,
+            };
+            self.sim.update(dt, &mut self.world, &mut self.light, &scope);
             // Phase 2: drain mob hits/deaths/explosions on the game thread
             self.drain_mob_events();
         });
@@ -3622,11 +3834,14 @@ impl GameApp {
                                 }
                                 entry.fuel = vc_inventory::inventory::ItemStack::new(NETHERRACK, 1);
                                 drop(entry);
-                                // advance the sim deterministically
+                                // advance the sim deterministically (the
+                                // full 1.16.5-unticked scope — E2E brew
+                                // fast-forward must behave like live play)
                                 for _ in 0..n_ticks {
                                     self.sim.step(
                                         &mut self.world,
                                         &mut self.light,
+                                        &vc_sim::sim::TickScope::everything(),
                                     );
                                 }
                                 let describe = |s: &vc_inventory::inventory::ItemStack| {
@@ -3982,7 +4197,7 @@ impl GameApp {
                             .filter(|m| m.kind == kind)
                             .count();
                         for _ in 0..n_ticks {
-                            self.sim.step(&mut self.world, &mut self.light);
+                            self.sim.step(&mut self.world, &mut self.light, &vc_sim::sim::TickScope::everything());
                         }
                         let after = self
                             .sim
@@ -4283,6 +4498,68 @@ impl GameApp {
                                 dim.name(),
                                 changed,
                                 self.traveling
+                            ));
+                        }
+                    }
+                    // ---- Phase 6 §26 E2E: rendering-quality settings --
+                    Some("sd") => {
+                        // sd:<chunks> — simulation distance (stats `sd`)
+                        if let Some(v) = parts.get(1).and_then(|s| s.parse::<i32>().ok()) {
+                            self.settings.sim_distance = v.clamp(5, 32);
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: sim distance {} (rd {}, ring center follows player)",
+                                self.settings.sim_distance,
+                                self.settings.render_distance
+                            ));
+                        }
+                    }
+                    Some("mip") => {
+                        // mip:<0-4> — mipmap levels (stats `mip`; renderer
+                        // atlas rebuild + sampler change verified via pixels)
+                        if let Some(v) = parts.get(1).and_then(|s| s.parse::<u8>().ok()) {
+                            self.settings.mipmap_levels = v.min(4);
+                            self.after_settings_change();
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: mipmap levels {} (atlas rebuilt)",
+                                self.settings.mipmap_levels
+                            ));
+                        }
+                    }
+                    Some("aniso") => {
+                        // aniso:<1|2|4|8|16> — anisotropic filtering
+                        if let Some(v) = parts.get(1).and_then(|s| s.parse::<u8>().ok()) {
+                            self.settings.aniso = v.clamp(1, 16);
+                            self.after_settings_change();
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: anisotropy {}x",
+                                self.settings.aniso
+                            ));
+                        }
+                    }
+                    Some("msaa") => {
+                        // msaa:<0|4|8> — MSAA (device-gated; stats `msaa`
+                        // reports the ACTIVE count)
+                        if let Some(v) = parts.get(1).and_then(|s| s.parse::<u8>().ok()) {
+                            self.settings.msaa = if v >= 6 { 8 } else if v >= 2 { 4 } else { 0 };
+                            self.after_settings_change();
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: msaa {} (device max {}, active {})",
+                                self.settings.msaa,
+                                self.renderer.msaa_supported(),
+                                self.renderer.msaa()
+                            ));
+                        }
+                    }
+                    Some("occl") => {
+                        // occl:<0|1> — chunk-graph occlusion culling toggle
+                        // (stats `culled` responds: 0 when off)
+                        if let Some(v) = parts.get(1) {
+                            self.settings.occlusion = *v != "0";
+                            self.after_settings_change();
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: occlusion {} (culled counter: {})",
+                                self.settings.occlusion,
+                                self.stats.culled
                             ));
                         }
                     }
@@ -5128,6 +5405,14 @@ impl GameApp {
                     .sum::<usize>() as f32,
             )),
             ("rd", StatsVal::F(self.settings.render_distance as f32)),
+            // Phase 6 §26: rendering-quality settings + occlusion counters
+            ("sd", StatsVal::F(self.settings.sim_distance as f32)),
+            ("mip", StatsVal::F(self.settings.mipmap_levels as f32)),
+            ("aniso", StatsVal::F(self.settings.aniso as f32)),
+            ("msaa", StatsVal::F(self.renderer.msaa() as f32)),
+            ("msaaMax", StatsVal::F(self.renderer.msaa_supported() as f32)),
+            ("occl", StatsVal::B(self.settings.occlusion)),
+            ("culled", StatsVal::F(self.stats.culled as f32)),
             ("fov", StatsVal::F(self.settings.fov)),
             ("sens", StatsVal::F(self.settings.sensitivity)),
             ("vol", StatsVal::F(self.settings.volume)),
@@ -5495,13 +5780,13 @@ impl GameApp {
                         .mark_sections_dirty(npos, band, vc_world::world::CAUSE_GEOMETRY);
                 }
             }
-            JobResult::Mesh { pos, mask, sections, mesh } => {
+            JobResult::Mesh { pos, mask, sections, mesh, occl } => {
                 self.mesh_inflight.remove(&pos);
                 // clear only the bits this job covered — edits that arrived
                 // after its snapshot re-queue the chunk (§12)
                 self.world.clear_dirty_mask(pos, mask);
                 self.section_meshes.insert(pos, sections);
-                self.renderer.set_chunk_mesh(pos, &mesh);
+                self.renderer.set_chunk_mesh(pos, &mesh, occl);
             }
         }
     }
@@ -5533,7 +5818,11 @@ impl GameApp {
                 return;
             }
             Screen::Options => {
-                let sub = "SETTINGS APPLY INSTANTLY AND ARE SAVED";
+                let sub = if self.options_page == 1 {
+                    "VIDEO DETAILS - 2/2"
+                } else {
+                    "SETTINGS APPLY INSTANTLY AND ARE SAVED"
+                };
                 self.ui.options_screen(&self.widgets, self.hover, sub);
                 return;
             }
@@ -5632,6 +5921,17 @@ impl GameApp {
                     self.stats.chunks,
                     self.world.chunks.len(),
                     self.stats.tris
+                ),
+                // Phase 6 §26: quality row (occlusion culling counter + the
+                // four new settings, MSAA shows the ACTIVE device count)
+                format!(
+                    "Culled: {}  Sim: {}  Mip: {}  Aniso: {}x  MSAA: {}{}",
+                    self.stats.culled,
+                    self.settings.sim_distance,
+                    self.settings.mipmap_levels,
+                    self.settings.aniso,
+                    if self.renderer.msaa() == 0 { "off".to_string() } else { self.renderer.msaa().to_string() },
+                    if self.settings.occlusion { "" } else { "  (occl off)" }
                 ),
                 format!(
                     "Draws: {} avg  Binds: {} avg  Path: {}",
@@ -6342,5 +6642,61 @@ fn web_char_from_code(code: &str, shift: bool) -> Option<char> {
 fn set_button_value(w: &mut Widget, value: &str) {
     if let WidgetKind::Button { value: v, .. } = &mut w.kind {
         *v = value.to_string();
+    }
+}
+
+#[cfg(test)]
+mod settings_tests {
+    use super::Settings;
+
+    /// Phase 6 §26: the new quality settings survive a serialize →
+    /// deserialize round trip, and a legacy settings string (pre-Phase-6
+    /// save, no new keys) parses to the DEFAULTS for those keys
+    #[test]
+    fn quality_settings_roundtrip() {
+        let mut s = Settings::default();
+        s.sim_distance = 7;
+        s.mipmap_levels = 2;
+        s.aniso = 8;
+        s.msaa = 4;
+        s.occlusion = false;
+        let restored = Settings::deserialize(&s.serialize());
+        assert_eq!(restored.sim_distance, 7);
+        assert_eq!(restored.mipmap_levels, 2);
+        assert_eq!(restored.aniso, 8);
+        assert_eq!(restored.msaa, 4);
+        assert!(!restored.occlusion);
+        // the pre-existing keys still round trip
+        assert_eq!(restored.render_distance, s.render_distance);
+        assert_eq!(restored.fov, s.fov);
+        assert_eq!(restored.smooth_lighting, s.smooth_lighting);
+    }
+
+    /// legacy settings strings (Phase 5 era) keep parsing; the Phase 6 keys
+    /// fall back to their defaults
+    #[test]
+    fn legacy_settings_string_parses() {
+        let legacy = "rd=8;sens=1.200;vol=0.500;mvol=0.400;fov=80.0;bright=0.250;smooth=1;clouds=0;graphics=2;shader=1;shadowq=3;upscale=1;maxfps=2";
+        let s = Settings::deserialize(legacy);
+        assert_eq!(s.render_distance, 8);
+        assert_eq!(s.fov, 80.0);
+        assert_eq!(s.graphics, 2);
+        assert!(!s.clouds);
+        assert_eq!(s.upscale, 1);
+        // Phase 6 keys → defaults
+        assert_eq!(s.sim_distance, 12);
+        assert_eq!(s.mipmap_levels, 4);
+        assert_eq!(s.aniso, 4);
+        assert_eq!(s.msaa, 0);
+        assert!(s.occlusion);
+    }
+
+    /// garbage msaa values snap to the valid set (0/4/8)
+    #[test]
+    fn msaa_values_snap_to_valid_counts() {
+        for (raw, want) in [(0u8, 0u8), (1, 0), (2, 4), (3, 4), (4, 4), (5, 4), (6, 8), (8, 8), (16, 8)] {
+            let s = Settings::deserialize(&format!("msaa={raw}"));
+            assert_eq!(s.msaa, want, "raw {raw} should snap to {want}");
+        }
     }
 }

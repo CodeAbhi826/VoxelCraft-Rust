@@ -169,6 +169,123 @@ impl MeshSlot {
 pub struct ChunkGpu {
     pub solid: MeshSlot,
     pub water: Option<MeshSlot>,
+    /// Phase 6 §26: occlusion-graph data for this column (see `ChunkOccl`)
+    pub occl: ChunkOccl,
+}
+
+// ------------------------------------------- Phase 6 §26: occlusion graph --
+
+/// face indices into `ChunkOccl::sides` (band*4 + face)
+pub const FACE_PX: u8 = 0;
+pub const FACE_NX: u8 = 1;
+pub const FACE_PZ: u8 = 2;
+pub const FACE_NZ: u8 = 3;
+
+/// Occlusion-graph data for one chunk column, computed at mesh time from
+/// the block snapshot + the fresh section meshes.
+///
+/// **Technique** (dossier Part 1 §6: "chunk-graph occlusion culling
+/// (Sodium's technique / classic portal-culling), LGPL-3.0 — technique
+/// only"): a flood through the section grid gates propagation on the
+/// actual boundary geometry:
+///
+/// * `sides` bit `(band*4 + face)`: that 16×16×1 wall of the section has
+///   ≥1 non-opaque cell — straight rays leaving the column horizontally
+///   through band `b` must pass through one of those cells.
+/// * `planes` bit `s`: the horizontal plane between bands `s`/`s+1`
+///   (y = s·16+15) has ≥1 non-opaque cell — rays moving vertically inside
+///   the column cross exactly that plane.
+/// * `geo` bit `b`: band `b`'s mesh has triangles (interior faces of
+///   fully-buried solid are culled by the mesher, so a sealed band has no
+///   geometry to hide anyway — geo marks bands worth drawing).
+///
+/// The graph flood is **sound** (never culls a chunk that could be
+/// visible): every propagation step corresponds to a family of straight
+/// rays — horizontal crossings are gated by the exact wall band the ray
+/// crosses (entry cell shares the crossing y ⇒ same section band), and
+/// vertical movement is gated by the exact plane. It is *conservative*
+/// in chunk granularity: a column is drawn when ANY of its geometry bands
+/// is reachable (the merged per-chunk mesh can't be partially drawn).
+///
+/// **Honest scope notes** (§49 documented behavior):
+/// * overworld surfaces barely cull — surface sections interconnect
+///   through open air, and steep sky rays can descend behind hills
+///   (correctly conservative);
+/// * the wins are sealed subterranean columns — cave chunks with no
+///   surface exposure, and Nether rock sealed from the tunnels — where
+///   every wall/plane of the geometry bands is opaque;
+/// * fully-buried solid columns were already skipped as empty meshes;
+///   this system culls columns that HAVE geometry but no reachable band.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ChunkOccl {
+    pub sides: u64,
+    pub planes: u16,
+    pub geo: u16,
+}
+
+impl ChunkOccl {
+    #[inline]
+    pub fn wall_open(&self, band: u8, face: u8) -> bool {
+        self.sides & (1u64 << (band as u32 * 4 + face as u32)) != 0
+    }
+    /// plane between `band` and `band+1` open
+    #[inline]
+    pub fn plane_open(&self, band: u8) -> bool {
+        band < 15 && self.planes & (1u16 << band) != 0
+    }
+}
+
+/// Chunk-graph visibility flood from the camera's section.
+///
+/// Returns `None` when the camera's chunk has no GPU mesh yet (boot,
+/// travel, extreme un-mesh) — the caller then skips occlusion culling
+/// entirely (draws everything frustum-visible; conservative fallback).
+/// Otherwise returns the set of drawable chunks: the camera's own column
+/// plus every column with a reachable geometry band.
+pub fn occlusion_visible(
+    chunks: &HashMap<ChunkPos, ChunkGpu>,
+    cam_chunk: ChunkPos,
+    cam_band: u8,
+) -> Option<std::collections::HashSet<ChunkPos>> {
+    chunks.get(&cam_chunk)?;
+    let mut seen: std::collections::HashSet<(ChunkPos, u8)> = Default::default();
+    let mut queue: std::collections::VecDeque<(ChunkPos, u8)> = Default::default();
+    seen.insert((cam_chunk, cam_band));
+    queue.push_back((cam_chunk, cam_band));
+    while let Some((p, b)) = queue.pop_front() {
+        let Some(g) = chunks.get(&p) else { continue };
+        // horizontal: same band, gated by this column's wall
+        for (face, d) in [
+            (FACE_PX, (1i32, 0i32)),
+            (FACE_NX, (-1, 0)),
+            (FACE_PZ, (0, 1)),
+            (FACE_NZ, (0, -1)),
+        ] {
+            if g.occl.wall_open(b, face) {
+                let n = (p.0 + d.0, p.1 + d.1);
+                if chunks.contains_key(&n) && seen.insert((n, b)) {
+                    queue.push_back((n, b));
+                }
+            }
+        }
+        // vertical: gated by the plane between the bands
+        if g.occl.plane_open(b) && seen.insert((p, b + 1)) {
+            queue.push_back((p, b + 1));
+        }
+        if b > 0 && g.occl.plane_open(b - 1) && seen.insert((p, b - 1)) {
+            queue.push_back((p, b - 1));
+        }
+    }
+    let mut vis: std::collections::HashSet<ChunkPos> = Default::default();
+    vis.insert(cam_chunk); // the column you stand in is always drawn
+    for (p, b) in seen {
+        if let Some(g) = chunks.get(&p) {
+            if g.occl.geo & (1u16 << b) != 0 {
+                vis.insert(p);
+            }
+        }
+    }
+    Some(vis)
 }
 
 // ------------------------------------------------------------ draw lists --
@@ -477,22 +594,23 @@ mod tests {
         let mut chunks = HashMap::new();
         chunks.insert(
             (0, 0),
-            ChunkGpu { solid: slot((0, 0), 0, 10, 0, 12, 12), water: None },
+            ChunkGpu { solid: slot((0, 0), 0, 10, 0, 12, 12), water: None, occl: Default::default() },
         );
         chunks.insert(
             (1, 0),
             ChunkGpu {
                 solid: slot((0, 0), 10, 10, 12, 6, 6),
                 water: Some(slot((0, 0), 20, 10, 18, 9, 9)),
+                occl: Default::default(),
             },
         );
         chunks.insert(
             (8, 8),
-            ChunkGpu { solid: slot((1, 1), 0, 10, 0, 4, 4), water: None },
+            ChunkGpu { solid: slot((1, 1), 0, 10, 0, 4, 4), water: None, occl: Default::default() },
         );
         chunks.insert(
             (64, 64),
-            ChunkGpu { solid: MeshSlot::EMPTY, water: None }, // empty → skipped
+            ChunkGpu { solid: MeshSlot::EMPTY, water: None, occl: Default::default() }, // empty → skipped
         );
         let vis: Vec<VisEntry> =
             vec![((0, 0), 1.0, 0), ((1, 0), 2.0, 1), ((8, 8), 3.0, 2), ((64, 64), 4.0, 3)];
@@ -541,5 +659,124 @@ mod tests {
         let mut bad = args.clone();
         bad[1].first_index += 1;
         assert!(!assert_args_match_loop(&cmds, &bad));
+    }
+
+    // ------------------------------------------- Phase 6 §26: occlusion --
+
+    /// helper: one column with all walls/planes open in a set of bands and
+    /// geometry in a set of bands
+    fn col(bands: u16, geo_bands: u16) -> ChunkGpu {
+        let mut sides = 0u64;
+        for b in 0..16u32 {
+            if bands & (1 << b) != 0 {
+                for f in 0..4u32 {
+                    sides |= 1 << (b * 4 + f);
+                }
+            }
+        }
+        let mut planes = 0u16;
+        for s in 0..15u16 {
+            // a band's airspace connects vertically through its ceiling
+            // plane when the band (or its neighbor band) is open
+            if (bands & (1 << s) != 0) && (bands & (1 << (s + 1)) != 0) {
+                planes |= 1 << s;
+            }
+        }
+        ChunkGpu {
+            solid: slot((0, 0), 0, 8, 0, 6, 6),
+            water: None,
+            occl: ChunkOccl { sides, planes, geo: geo_bands },
+        }
+    }
+
+    /// surface world: camera on the surface (band 5), air bands 4..8 all
+    /// interconnected across columns, geometry at band 4 — every column
+    /// with a surface band is visible
+    #[test]
+    fn occlusion_surface_world_sees_all_surfaces() {
+        let mut chunks = HashMap::new();
+        for dz in -2..=2 {
+            for dx in -2..=2 {
+                chunks.insert((dx, dz), col(0b1111111_0, 1 << 4)); // bands 4..10 air, geo band 4
+            }
+        }
+        let vis = occlusion_visible(&chunks, (0, 0), 5).unwrap();
+        for dz in -2..=2 {
+            for dx in -2..=2 {
+                assert!(vis.contains(&(dx, dz)), "surface chunk ({dx},{dz}) culled");
+            }
+        }
+    }
+
+    /// sealed cave: geometry bands 1..2 under a stone ceiling (plane
+    /// closed), walls closed — the column is culled even though its upper
+    /// air bands would be open (no geo up there → nothing worth drawing
+    /// below the sealed ceiling). The camera's column is always drawn.
+    #[test]
+    fn occlusion_culls_sealed_cave_column() {
+        let mut chunks = HashMap::new();
+        // camera column: air bands 3..7 (walls + planes open), geo at 4
+        chunks.insert((0, 0), col(0b1111100_0, 1 << 4));
+        // neighbor columns: air bands 3..7 open (connected), but their geo
+        // band 1 has CLOSED walls and the plane above it (band 1→2) closed:
+        // no path reaches it → culled
+        for d in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+            let mut g = col(0b1111100_0, 1 << 1); // geo deep down
+            g.occl.sides &= !0xF; // close band-0..: only band 1 walls closed
+            // close ALL walls of band 1 and the plane between band 1/2
+            g.occl.sides &= !(0xF << 4);
+            g.occl.planes &= !(1 << 1);
+            chunks.insert(d, g);
+        }
+        let vis = occlusion_visible(&chunks, (0, 0), 5).unwrap();
+        assert!(vis.contains(&(0, 0)));
+        for d in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+            assert!(!vis.contains(&d), "sealed cave column {d:?} not culled");
+        }
+    }
+
+    /// tunnel: the neighbor's deep geo band has ONE open wall cell (the
+    /// tunnel mouth in the shared wall) — the flood walks through the wall
+    /// via that band → the column is drawn
+    #[test]
+    fn occlusion_keeps_tunnel_connected_cave() {
+        let mut chunks = HashMap::new();
+        chunks.insert((0, 0), col(0b1111100_0, 1 << 4));
+        let mut g = col(0b1111100_0, 1 << 1);
+        g.occl.sides &= !(0xF << 4); // band-1 walls all closed…
+        g.occl.sides |= 1 << (1 * 4 + FACE_NX); // …except the wall facing the camera
+        g.occl.planes &= !(1 << 1);
+        chunks.insert((1, 0), g);
+        // (1,0)'s open band set has no band 1 → the flood must reach band 1
+        // through the camera column: camera band 5 → down through planes →
+        // band 1 → wall open → (1,0) band 1. The camera column's planes must
+        // therefore reach band 1: give it open bands 1..7.
+        chunks.get_mut(&(0, 0)).unwrap().occl = {
+            let mut c = col(0b1111111_0, 1 << 4).occl;
+            c.planes |= 0b11_1111_11; // open planes down to band 0
+            c
+        };
+        let vis = occlusion_visible(&chunks, (0, 0), 5).unwrap();
+        assert!(vis.contains(&(1, 0)), "tunnel-visible cave column culled");
+    }
+
+    /// missing camera chunk → None (caller must skip occlusion culling)
+    #[test]
+    fn occlusion_camera_chunk_missing_is_none() {
+        let mut chunks = HashMap::new();
+        chunks.insert((1, 0), col(0b1111111_0, 1 << 4));
+        assert!(occlusion_visible(&chunks, (0, 0), 5).is_none());
+    }
+
+    /// bit helpers agree with the raw fields
+    #[test]
+    fn occl_bit_helpers() {
+        let o = ChunkOccl { sides: 1 << (3 * 4 + FACE_PZ), planes: 1 << 7, geo: 1 << 9 };
+        assert!(o.wall_open(3, FACE_PZ));
+        assert!(!o.wall_open(3, FACE_PX));
+        assert!(!o.wall_open(4, FACE_PZ));
+        assert!(o.plane_open(7));
+        assert!(!o.plane_open(6));
+        assert!(!o.plane_open(15), "no plane above band 15");
     }
 }

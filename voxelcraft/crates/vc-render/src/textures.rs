@@ -2057,6 +2057,71 @@ pub fn blit_tile(atlas: &[u8], tile: u16, scale: usize, ox: usize, oy: usize, ou
     }
 }
 
+// -------------------------------------------------- Phase 6: mipmaps (§26) --
+
+/// maximum mipmap levels BEYOND level 0 (vanilla `mipmapLevels` slider caps
+/// at 4 — VERIFIED against minecraft.wiki Options.txt: range 0–4, default 4,
+/// option exists since 1.7.2). A 16px tile bottoms out at 1px on level 4;
+/// level 5+ would collapse whole tiles into single texels (cross-tile
+/// blending) which is exactly why vanilla stops at 4.
+pub const MAX_MIP_LEVELS: u8 = 4;
+
+/// Generate the mipmap chain for the atlas: returns images for levels
+/// 1..=levels (`out[L-1]` is level L, sized ATLAS_SIZE>>L). Pure sequential
+/// 2×2 box filter over the raw RGBA bytes.
+///
+/// **Tile safety (the vanilla-parity property):** vanilla generates mips
+/// PER SPRITE (each sprite's mip data comes from the sprite alone, so
+/// neighboring atlas sprites never bleed into each other). We get the same
+/// guarantee for free from geometry: tiles are 16px-aligned power-of-2
+/// squares, so a 2×2 average block at any level ≤ 4 always lies inside one
+/// tile (the block's origin is even-aligned in source space, and tile
+/// boundaries are multiples of the level-1 tile stride). Verified by test.
+///
+/// **Documented adaptation:** vanilla's MipmapGenerator blends in linear
+/// space with alpha-weighting to avoid dark halos on cutout textures; we
+/// average the raw sRGB bytes (what GL's generateMipmap does on sRGB
+/// formats — a classic quirk). Deterministic, and the halo difference is
+/// invisible on our 16px procedural tiles.
+pub fn generate_mips(atlas: &[u8], levels: u8) -> Vec<Vec<u8>> {
+    let levels = levels.min(MAX_MIP_LEVELS);
+    let mut out = Vec::with_capacity(levels as usize);
+    let mut cur = atlas.to_vec();
+    for _ in 0..levels {
+        let next = box_downsample(&cur);
+        out.push(next.clone());
+        cur = next;
+    }
+    out
+}
+
+/// one 2×2 box-filter step: `src` is a square RGBA image, `dst` is half-size.
+/// Square side is derived from the data (256, 128, 64, …).
+fn box_downsample(src: &[u8]) -> Vec<u8> {
+    let px = src.len() / 4;
+    let side = (px as f64).sqrt() as usize; // exact for power-of-2 squares
+    let half = side / 2;
+    let mut dst = vec![0u8; half * half * 4];
+    for y in 0..half {
+        for x in 0..half {
+            // 2×2 source block — never crosses a tile boundary (see above)
+            let i00 = ((y * 2) * side + x * 2) * 4;
+            let i01 = ((y * 2) * side + x * 2 + 1) * 4;
+            let i10 = ((y * 2 + 1) * side + x * 2) * 4;
+            let i11 = ((y * 2 + 1) * side + x * 2 + 1) * 4;
+            let d = (y * half + x) * 4;
+            for c in 0..4 {
+                dst[d + c] = ((src[i00 + c] as u32
+                    + src[i01 + c] as u32
+                    + src[i10 + c] as u32
+                    + src[i11 + c] as u32)
+                    / 4) as u8;
+            }
+        }
+    }
+    dst
+}
+
 // ------------------------------------------------------- pack texture merge --
 
 /// first free atlas tile after the procedural set + missing-texture tile.
@@ -2434,6 +2499,88 @@ mod pack_merge_tests {
             vc_blocks::blocks::TILE_MAX
         );
         assert!(PACK_TILE_BASE > vc_mesh::mesh::TILE_MISSING);
+    }
+
+    // --------------------------------------------- Phase 6 §26: mipmaps --
+
+    /// the mip chain has the right sizes: level L is (ATLAS_SIZE>>L)²
+    #[test]
+    fn mip_chain_sizes() {
+        let atlas = generate_atlas();
+        let mips = generate_mips(&atlas, 4);
+        assert_eq!(mips.len(), 4);
+        assert_eq!(mips[0].len(), 128 * 128 * 4);
+        assert_eq!(mips[1].len(), 64 * 64 * 4);
+        assert_eq!(mips[2].len(), 32 * 32 * 4);
+        assert_eq!(mips[3].len(), 16 * 16 * 4);
+    }
+
+    /// levels is clamped to MAX_MIP_LEVELS (vanilla's 0-4 range)
+    #[test]
+    fn mip_levels_clamped() {
+        let atlas = generate_atlas();
+        assert!(generate_mips(&atlas, 0).is_empty());
+        assert_eq!(generate_mips(&atlas, 9).len(), MAX_MIP_LEVELS as usize);
+    }
+
+    /// THE vanilla-parity property: adjacent tiles must never bleed into
+    /// each other at any mip level. Craft an atlas with tile (0,0) pure
+    /// white and tile (1,0) pure black; every mip level must keep tile
+    /// (0,0)'s area pure white and tile (1,0)'s area pure black.
+    #[test]
+    fn mips_never_blend_across_tiles() {
+        let mut atlas = vec![0u8; ATLAS_SIZE * ATLAS_SIZE * 4];
+        // tile (0,0): white; tile (1,0): black; rest mid-gray
+        for ty in 0..16 {
+            for tx in 0..16 {
+                let c = match (tx, ty) {
+                    (0, 0) => [255, 255, 255, 255],
+                    (1, 0) => [0, 0, 0, 255],
+                    _ => [128, 128, 128, 255],
+                };
+                for y in 0..TILE_PX {
+                    for x in 0..TILE_PX {
+                        let i = ((ty * TILE_PX + y) * ATLAS_SIZE + tx * TILE_PX + x) * 4;
+                        atlas[i..i + 4].copy_from_slice(&c);
+                    }
+                }
+            }
+        }
+        for (li, mip) in generate_mips(&atlas, MAX_MIP_LEVELS).iter().enumerate() {
+            let level = li + 1; // mip[0] is level 1
+            let side = ATLAS_SIZE >> level;
+            let tile_side = TILE_PX >> level;
+            for t in [0usize, 1usize] {
+                let px = mip[(0 * side + t * tile_side) * 4]; // first px of tile (t, 0)
+                let want = if t == 0 { 255 } else { 0 };
+                // every pixel of the tile must stay pure (uniform source tiles)
+                for y in 0..tile_side {
+                    for x in 0..tile_side {
+                        let i = (y * side + t * tile_side + x) * 4;
+                        assert_eq!(
+                            mip[i],
+                            want,
+                            "level {level} tile {t} px ({x},{y}) = {} — cross-tile bleed!",
+                            mip[i]
+                        );
+                        assert_eq!(mip[i + 3], 255, "alpha must stay opaque");
+                    }
+                }
+                assert_eq!(px, want);
+            }
+        }
+    }
+
+    /// a flat 2×2 block averages exactly (determinism + correctness of the
+    /// box filter itself, on a known constant)
+    #[test]
+    fn mip_averages_a_flat_block() {
+        let mut atlas = vec![0u8; ATLAS_SIZE * ATLAS_SIZE * 4];
+        for px in atlas.chunks_exact_mut(4) {
+            px.copy_from_slice(&[100, 150, 200, 255]);
+        }
+        let mips = generate_mips(&atlas, 1);
+        assert!(mips[0].chunks_exact(4).all(|px| px == [100, 150, 200, 255]));
     }
 
     /// the real merge must not touch ANY procedural tile: generate the

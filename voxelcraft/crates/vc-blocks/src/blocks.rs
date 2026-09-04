@@ -112,6 +112,11 @@ pub const TILE_ENCHANT_TABLE: u16 = 80;
 pub const TILE_ENCHANTED_BOOK: u16 = 81;
 // villagers (Phase 7 §27/§29): the NPC sprite
 pub const TILE_VILLAGER: u16 = 82;
+// Phase 4 §26/§30: corruption-chain potion + item tiles
+pub const TILE_POTION_HARMING: u16 = 118;
+pub const TILE_POTION_HARMING_II: u16 = 119;
+pub const TILE_SPIDER_EYE: u16 = 120;
+pub const TILE_FERMENTED_EYE: u16 = 121;
 // mobs (Phase 2): entity sprites + drops' item tiles. Mob sprites are
 // clean-room pixel art (ours, not Mojang's) — distinct silhouettes/palettes
 pub const TILE_ZOMBIE: u16 = 83;
@@ -286,6 +291,11 @@ pub const DROPPER: u8 = 93;
 pub const OBSERVER: u8 = 94;
 pub const HOPPER: u8 = 95;
 pub const CHEST: u8 = 96;
+// brewing expansion (Phase 4 §26/§30): the corruption chain + its items
+pub const POTION_HARMING: u8 = 97;
+pub const POTION_HARMING_II: u8 = 98;
+pub const SPIDER_EYE: u8 = 99;
+pub const FERMENTED_SPIDER_EYE: u8 = 100;
 pub const BEEF_STATE: u16 = 130;
 pub const PORKCHOP_STATE: u16 = 131;
 pub const MUTTON_STATE: u16 = 132;
@@ -330,8 +340,13 @@ pub const OBSERVER_STATE_END: u16 = 221;
 pub const HOPPER_STATE_BASE: u16 = 222;
 pub const HOPPER_STATE_END: u16 = 226;
 pub const CHEST_STATE: u16 = 227;
+// Phase 4 §26/§30: potion-of-harming + corruption-chain item states
+pub const POTION_HARMING_STATE: u16 = 228;
+pub const POTION_HARMING_II_STATE: u16 = 229;
+pub const SPIDER_EYE_STATE: u16 = 230;
+pub const FERMENTED_EYE_STATE: u16 = 231;
 
-pub const BLOCK_COUNT: usize = 97;
+pub const BLOCK_COUNT: usize = 101;
 
 // ---------------------------------------------------------------------------
 // BlockState registry (1.16.5 pattern, miniature)
@@ -343,7 +358,11 @@ pub const BLOCK_COUNT: usize = 97;
 // `axis=x|y|z`, exactly how vanilla models oak_log[axis=...]. The 1.16.5
 // global palette is 15 bits (~17k states); this registry grows into it
 // without touching storage (u16) or the mesher key.
-pub const STATE_COUNT: usize = 130;
+/// total state-id space the registries cover (test-facing bound: every
+/// state ≤ STATE_COUNT must fold to a valid block + renderable tiles).
+/// Phase 4: extended to cover the Phase 2/3/4 state ids (130..=231) —
+/// before, the range tests stopped at 130 and never saw them
+pub const STATE_COUNT: usize = 232;
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -588,6 +607,10 @@ pub fn default_state(b: u8) -> u16 {
         POTION_MUNDANE => POTION_MUNDANE_STATE,
         POTION_HEALING => POTION_HEALING_STATE,
         POTION_HEALING_II => POTION_HEALING_II_STATE,
+        POTION_HARMING => POTION_HARMING_STATE,
+        POTION_HARMING_II => POTION_HARMING_II_STATE,
+        SPIDER_EYE => SPIDER_EYE_STATE,
+        FERMENTED_SPIDER_EYE => FERMENTED_EYE_STATE,
         ENCHANT_TABLE => ENCHANT_TABLE_STATE,
         ENCHANTED_BOOK => ENCHANTED_BOOK_STATE,
         BEEF => BEEF_STATE,
@@ -786,6 +809,10 @@ pub fn state_block(s: u16) -> u8 {
         POTION_MUNDANE_STATE => return POTION_MUNDANE,
         POTION_HEALING_STATE => return POTION_HEALING,
         POTION_HEALING_II_STATE => return POTION_HEALING_II,
+        POTION_HARMING_STATE => return POTION_HARMING,
+        POTION_HARMING_II_STATE => return POTION_HARMING_II,
+        SPIDER_EYE_STATE => return SPIDER_EYE,
+        FERMENTED_EYE_STATE => return FERMENTED_SPIDER_EYE,
         ENCHANT_TABLE_STATE => return ENCHANT_TABLE,
         ENCHANTED_BOOK_STATE => return ENCHANTED_BOOK,
         BEEF_STATE => return BEEF,
@@ -860,6 +887,8 @@ pub fn is_model_state(s: u16) -> bool {
                 | FEATHER_STATE | LEATHER_STATE | BONE_STATE | STRING_STATE
                 | GUNPOWDER_STATE | ENDER_PEARL_STATE | ROTTEN_FLESH_STATE
                 | ARROW_ITEM_STATE
+                | POTION_HARMING_STATE | POTION_HARMING_II_STATE
+                | SPIDER_EYE_STATE | FERMENTED_EYE_STATE
         ) && !((REPEATER_STATE_BASE..=REPEATER_STATE_END).contains(&s)
             || (COMPARATOR_STATE_BASE..=COMPARATOR_STATE_END).contains(&s)
             || (PISTON_STATE_BASE..=PISTON_STATE_END).contains(&s)
@@ -926,8 +955,14 @@ pub fn log_axis_state(block: u8, axis: u8) -> u16 {
     }
 }
 
-/// highest tile index the generator must draw
-pub const TILE_MAX: u16 = 82;
+/// highest tile index the generator must draw. Phase 4 BUG FIX: this sat
+/// at 82 while Phase 2 (tiles 83–104) and Phase 3 (tiles 105–117) kept
+/// adding art arms ABOVE it — the atlas loop `for t in 0..=TILE_MAX`
+/// never reached them, so every mob sprite, mob-drop icon, and redstone
+/// component tile rendered BLANK since Phase 2. Now derived from the
+/// highest tile constant (118–121 here) and guarded by the
+/// `all_def_tiles_within_tile_max` test so it can never drift again.
+pub const TILE_MAX: u16 = 121;
 
 /// inventory-only ITEM blocks (potions/bottles/books): never placeable in
 /// the world — right-click drinks (potions) / fills (glass bottle at water).
@@ -936,7 +971,8 @@ pub fn is_item_block(b: u8) -> bool {
     matches!(
         b,
         POTION_EMPTY | POTION_WATER | POTION_AWKWARD | POTION_MUNDANE | POTION_HEALING
-            | POTION_HEALING_II | ENCHANTED_BOOK
+            | POTION_HEALING_II | POTION_HARMING | POTION_HARMING_II | ENCHANTED_BOOK
+            | SPIDER_EYE | FERMENTED_SPIDER_EYE
             | BEEF | PORKCHOP | MUTTON | CHICKEN_RAW | FEATHER | LEATHER | BONE | STRING
             | GUNPOWDER | ENDER_PEARL | ROTTEN_FLESH | ARROW_ITEM
     )
@@ -1093,6 +1129,12 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Observer", [TILE_OBSERVER, TILE_OBSERVER, TILE_OBSERVER], true, false, true, false, 0, SoundFamily::Wood),
     d("Hopper", [TILE_HOPPER, TILE_HOPPER, TILE_HOPPER], true, false, true, false, 0, SoundFamily::Wood),
     d("Chest", [TILE_CHEST, TILE_CHEST, TILE_CHEST], true, false, true, false, 0, SoundFamily::Wood),
+    // Phase 4 §26/§30: corruption-chain potions + items (item-only,
+    // cross-rendered icons; potions drink, eyes are ingredients)
+    d("Potion of Harming", [TILE_POTION_HARMING, TILE_POTION_HARMING, TILE_POTION_HARMING], false, false, true, false, 0, SoundFamily::Water),
+    d("Potion of Harming II", [TILE_POTION_HARMING_II, TILE_POTION_HARMING_II, TILE_POTION_HARMING_II], false, false, true, false, 0, SoundFamily::Water),
+    d("Spider Eye", [TILE_SPIDER_EYE, TILE_SPIDER_EYE, TILE_SPIDER_EYE], false, false, true, false, 0, SoundFamily::Grass),
+    d("Fermented Spider Eye", [TILE_FERMENTED_EYE, TILE_FERMENTED_EYE, TILE_FERMENTED_EYE], false, false, true, false, 0, SoundFamily::Grass),
 ];
 
 #[inline]
@@ -1246,6 +1288,34 @@ mod state_tests {
         }
     }
 
+    /// REGRESSION (Phase 4 bug fix): TILE_MAX sat at 82 while Phases 2/3
+    /// defined tiles 83–117 — the atlas loop (0..=TILE_MAX) never drew
+    /// them, so mob sprites / drop icons / redstone tiles rendered blank.
+    /// Every def-referenced tile must now be within TILE_MAX so the atlas
+    /// generator provably reaches it.
+    #[test]
+    fn all_def_tiles_within_tile_max() {
+        for b in 0..BLOCK_COUNT as u8 {
+            for &t in def(b).tiles.iter() {
+                assert!(
+                    t <= TILE_MAX,
+                    "block {b} ({}) references tile {t} > TILE_MAX {TILE_MAX} — it would render blank",
+                    def(b).name
+                );
+            }
+        }
+    }
+
+    /// Phase 4: the dedicated item tiles exist in the 16×16-tile atlas grid
+    #[test]
+    fn phase4_tiles_fit_the_atlas() {
+        assert!(TILE_POTION_HARMING < 256);
+        assert!(TILE_FERMENTED_EYE < 256);
+        // the tile ids the Phase 4 blocks reference are exactly the new ones
+        assert_eq!(def(POTION_HARMING).tiles[0], TILE_POTION_HARMING);
+        assert_eq!(def(FERMENTED_SPIDER_EYE).tiles[0], TILE_FERMENTED_EYE);
+    }
+
     #[test]
     fn prop_states_roundtrip() {
         // slab: half=bottom at base, half=top next
@@ -1341,6 +1411,22 @@ mod state_tests {
                 // every dedicated state folds back to its own block id
                 // (BREWING_STAND_STATE..ENCHANTED_BOOK_STATE == blocks 67..75)
                 assert_eq!(state_block(s), (s - BREWING_STAND_STATE + BREWING_STAND as u16) as u8);
+                continue;
+            }
+            // Phase 2 mob-drop item states + Phase 3 redstone-component
+            // states + Phase 4 corruption-chain states: dedicated identity
+            // states (fold 1:1 to their block, never model states — the
+            // components' visuals are cross-sprites, not block models)
+            if (BEEF_STATE..=ARROW_ITEM_STATE).contains(&s)
+                || (REPEATER_STATE_BASE..=CHEST_STATE).contains(&s)
+                || (POTION_HARMING_STATE..=FERMENTED_EYE_STATE).contains(&s)
+            {
+                assert!(!is_model_state(s), "component/item state {s} never routes to models");
+                // identity: the state folds to the block whose def table
+                // lists it (verified per-block in the dedicated ranges'
+                // own tests)
+                let b = state_block(s);
+                assert!(b < BLOCK_COUNT as u8, "state {s} folds to valid block");
                 continue;
             }
             let Some((b, props)) = prop_state_decode(s) else {

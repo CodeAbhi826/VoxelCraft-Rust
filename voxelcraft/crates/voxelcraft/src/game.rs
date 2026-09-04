@@ -60,6 +60,15 @@ pub struct Settings {
     /// chunk-graph occlusion culling (OptiFine `ofOcclusionFancy` parity,
     /// default on)
     pub occlusion: bool,
+    // ------------------------------------------------------ Phase 7 --
+    /// GPU compute meshing (dossier Part 1 §2 gap "GPU compute: zero
+    /// compute shaders"; §4 "bleeding-edge"). Engine optimization, NOT a
+    /// vanilla 1.16.5 setting — no vanilla-parity default exists. Default:
+    /// ON natively, OFF on wasm (SwiftShader compute measured slower than
+    /// the inline CPU path; enable via options/E2E — see the Phase 7
+    /// measurements). Falls back to CPU automatically when the adapter
+    /// lacks compute or a chunk needs the cross/model special paths.
+    pub gpu_meshing: bool,
 }
 
 impl Default for Settings {
@@ -86,6 +95,10 @@ impl Default for Settings {
             aniso: 4,
             msaa: 0,
             occlusion: true,
+            #[cfg(target_arch = "wasm32")]
+            gpu_meshing: false,
+            #[cfg(not(target_arch = "wasm32"))]
+            gpu_meshing: true,
         }
     }
 }
@@ -130,7 +143,7 @@ impl Settings {
     /// serialize as k=v; pairs (parsed without serde)
     pub fn serialize(&self) -> String {
         format!(
-            "rd={};sd={};sens={:.3};vol={:.3};mvol={:.3};fov={:.1};bright={:.3};smooth={};clouds={};graphics={};shader={};shadowq={};upscale={};maxfps={};mip={};aniso={};msaa={};occl={}",
+            "rd={};sd={};sens={:.3};vol={:.3};mvol={:.3};fov={:.1};bright={:.3};smooth={};clouds={};graphics={};shader={};shadowq={};upscale={};maxfps={};mip={};aniso={};msaa={};occl={};gmesh={}",
             self.render_distance,
             self.sim_distance,
             self.sensitivity,
@@ -148,7 +161,8 @@ impl Settings {
             self.mipmap_levels,
             self.aniso,
             self.msaa,
-            self.occlusion as u8
+            self.occlusion as u8,
+            self.gpu_meshing as u8
         )
     }
     pub fn deserialize(s: &str) -> Settings {
@@ -182,6 +196,7 @@ impl Settings {
                     st.msaa = if v >= 6 { 8 } else if v >= 2 { 4 } else { 0 };
                 }
                 "occl" => st.occlusion = v == "1",
+                "gmesh" => st.gpu_meshing = v == "1",
                 _ => {}
             }
         }
@@ -278,6 +293,10 @@ enum Job {
         mask: u16,
         /// cached section meshes to reuse for unmasked sections
         prev: Vec<Option<Arc<MeshData>>>,
+        /// Phase 7: route through the GPU compute mesher (the submit site
+        /// checks the setting + device capability; run_job falls back to
+        /// the CPU path when the snapshot needs the cross/model paths)
+        gpu: bool,
     },
 }
 
@@ -293,6 +312,18 @@ enum JobResult {
         mesh: Box<MeshData>,
         /// Phase 6 §26: occlusion-graph bits for this column (§26)
         occl: vc_render::draw::ChunkOccl,
+    },
+    /// Phase 7: the worker built the padded inputs and the chunk is
+    /// greedy-path-eligible — the main thread hands it to the GPU
+    /// compute mesher (all mesher state is main-thread-only, preserving
+    /// the repo's zero-Mutex concurrency model)
+    GpuMeshPending {
+        pos: ChunkPos,
+        mask: u16,
+        smooth: bool,
+        prev: Vec<Option<Arc<MeshData>>>,
+        center: Option<Arc<vc_chunk::chunk::Chunk>>,
+        inputs: vc_mesh::mesh::MeshInputs,
     },
 }
 
@@ -370,7 +401,25 @@ fn run_job(job: Job) -> JobResult {
             let (chunk, outbound) = gen.generate_chunk(pos.0, pos.1, inbound);
             JobResult::Gen { pos, chunk, outbound }
         }
-        Job::Mesh { pos, snap, lsnap, smooth, mask, prev } => {
+        Job::Mesh { pos, snap, lsnap, smooth, mask, prev, gpu } => {
+            // Phase 7: GPU route — build the shared padded inputs on the
+            // worker; greedy-eligible snapshots go to the compute mesher,
+            // anything with cross plants / JSON-model states falls back to
+            // the full CPU mesh (the special paths stay CPU — documented
+            // hybrid scope)
+            if gpu {
+                let inputs = vc_mesh::mesh::build_mesh_inputs(&snap, &lsnap);
+                if !inputs.has_cross && !inputs.has_models {
+                    return JobResult::GpuMeshPending {
+                        pos,
+                        mask,
+                        smooth,
+                        prev,
+                        center: snap[4].clone(),
+                        inputs,
+                    };
+                }
+            }
             let out = mesh_sections(pos, &snap, &lsnap, smooth, mask, &prev);
             // Phase 6 §26: occlusion-graph data rides the mesh result
             let occl = chunk_occl(snap[4].as_ref(), &out.sections);
@@ -2408,6 +2457,20 @@ impl GameApp {
                 self.settings.occlusion = !self.settings.occlusion;
                 self.after_settings_change();
             }
+            ID_OPT_GMESH => {
+                // Phase 7: GPU compute meshing toggle — remeshes everything
+                // through the new backend (mirrors the smooth-lighting
+                // toggle's remesh_all semantics: cached section meshes
+                // were built by the other backend). N/A (no compute
+                // adapter): flip the stored preference but skip the
+                // remesh — nothing renders differently.
+                let avail = self.renderer.gpu_mesh.is_some();
+                self.settings.gpu_meshing = !self.settings.gpu_meshing && avail;
+                if avail {
+                    self.remesh_all();
+                }
+                self.after_settings_change();
+            }
             ID_PAUSE_BACK => self.resume_game(),
             ID_PAUSE_OPTIONS => self.open_options(Screen::Pause),
             ID_PAUSE_QUIT => self.quit_to_title(),
@@ -2580,6 +2643,16 @@ impl GameApp {
                             set_button_value(w, &label);
                         }
                         ID_OPT_OCCL => set_button_value(w, if s.occlusion { "ON" } else { "OFF" }),
+                        ID_OPT_GMESH => set_button_value(
+                            w,
+                            if s.gpu_meshing && self.renderer.gpu_mesh.is_some() {
+                                "ON"
+                            } else if self.renderer.gpu_mesh.is_some() {
+                                "OFF"
+                            } else {
+                                "N/A"
+                            },
+                        ),
                         _ => {}
                     }
                 }
@@ -4563,6 +4636,31 @@ impl GameApp {
                             ));
                         }
                     }
+                    Some("gmesh") => {
+                        // gmesh:<0|1|2> — Phase 7 GPU compute meshing toggle.
+                        // 2 = force-GPU even on SwiftShader (same as 1 today —
+                        // documented; the flag exists so E2E scripts can
+                        // express intent). Toggling remeshes every loaded
+                        // chunk through the NEW backend; the e2e log reports
+                        // the mesher's completed-job counter (gpumesh stat)
+                        // so the harness can verify chunks actually flowed
+                        // through the compute path.
+                        if let Some(v) = parts.get(1) {
+                            self.settings.gpu_meshing = *v != "0";
+                            self.remesh_all();
+                            self.after_settings_change();
+                            let backend = match (&self.renderer.gpu_mesh, self.settings.gpu_meshing) {
+                                (Some(m), true) => {
+                                    format!("GPU (done {})", m.jobs_done)
+                                }
+                                (Some(_), false) => "CPU (setting off)".to_string(),
+                                (None, _) => "CPU (no compute adapter)".to_string(),
+                            };
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: gpu meshing {backend}"
+                            ));
+                        }
+                    }
                     // ---- Phase 1 E2E: game modes / world creation / death --
                     Some("world") => {
                         // world:<survival|creative|hardcore>[:seed] — create a
@@ -5413,6 +5511,17 @@ impl GameApp {
             ("msaaMax", StatsVal::F(self.renderer.msaa_supported() as f32)),
             ("occl", StatsVal::B(self.settings.occlusion)),
             ("culled", StatsVal::F(self.stats.culled as f32)),
+            // Phase 7: GPU meshing backend + throughput counters
+            ("gmesh", StatsVal::B(
+                self.settings.gpu_meshing && self.renderer.gpu_mesh.is_some()
+            )),
+            ("gmeshAvail", StatsVal::B(self.renderer.gpu_mesh.is_some())),
+            ("gmeshDone", StatsVal::F(
+                self.renderer.gpu_mesh.as_ref().map(|m| m.jobs_done as f32).unwrap_or(0.0)
+            )),
+            ("gmeshQueue", StatsVal::F(
+                self.renderer.gpu_mesh.as_ref().map(|m| m.queued() as f32).unwrap_or(0.0)
+            )),
             ("fov", StatsVal::F(self.settings.fov)),
             ("sens", StatsVal::F(self.settings.sensitivity)),
             ("vol", StatsVal::F(self.settings.volume)),
@@ -5541,6 +5650,52 @@ impl GameApp {
                 }
             }
         }
+        // Phase 7: drive the GPU compute mesher — completions become
+        // ordinary Mesh results; pendings go back to the mesher; lost jobs
+        // (readback failure) release their inflight markers so the §12
+        // dirty bits (still set) trigger a CPU remesh
+        {
+            let renderer = &mut self.renderer;
+            if let Some(m) = renderer.gpu_mesh.as_mut() {
+                let (gpu_done, lost) = m.advance(&renderer.device, &renderer.queue);
+                for d in gpu_done {
+                    let occl = chunk_occl(d.center.as_ref(), &d.sections);
+                    results.push(JobResult::Mesh {
+                        pos: d.pos,
+                        mask: d.mask,
+                        sections: d.sections,
+                        mesh: Box::new(d.mesh),
+                        occl,
+                    });
+                }
+                for (pos, _) in lost {
+                    self.mesh_inflight.remove(&pos);
+                }
+                // route pendings collected this frame into the next batch
+                let mut pendings: Vec<JobResult> = Vec::new();
+                for res in results.drain(..) {
+                    match res {
+                        JobResult::GpuMeshPending { pos, mask, smooth, prev, center, inputs } => {
+                            m.enqueue(
+                                vc_render::gpu_mesh::GpuMeshJobMeta {
+                                    pos,
+                                    mask,
+                                    smooth,
+                                    prev,
+                                    center,
+                                },
+                                inputs,
+                            );
+                        }
+                        other => pendings.push(other),
+                    }
+                }
+                results = pendings;
+            } else {
+                // no mesher (WebGL2): pendings can't occur (gpu flag is
+                // false at submit) — drain nothing
+            }
+        }
         for res in results {
             self.apply_result(res);
         }
@@ -5650,6 +5805,10 @@ impl GameApp {
                     .cloned()
                     .unwrap_or_else(|| vec![None; 16]);
                 self.mesh_inflight.insert(pos, mask);
+                // Phase 7: GPU route when the setting is on AND the device
+                // has compute; run_job still falls back per-snapshot
+                let gpu = self.settings.gpu_meshing
+                    && self.renderer.gpu_mesh.is_some();
                 self.submit(Job::Mesh {
                     pos,
                     snap,
@@ -5657,6 +5816,7 @@ impl GameApp {
                     smooth: self.settings.smooth_lighting,
                     mask,
                     prev,
+                    gpu,
                 });
             }
         }
@@ -5740,6 +5900,12 @@ impl GameApp {
 
     fn apply_result(&mut self, res: JobResult) {
         match res {
+            // pendings are intercepted in stream() before apply_result —
+            // reaching here would double-route a GPU job; treat as a bug
+            JobResult::GpuMeshPending { pos, .. } => {
+                debug_assert!(false, "GpuMeshPending reached apply_result ({pos:?})");
+                self.mesh_inflight.remove(&pos);
+            }
             JobResult::Gen { pos, chunk, outbound } => {
                 self.gen_inflight.remove(&pos);
                 let leftover = self.world.pending.remove(&pos).unwrap_or_default();
@@ -5923,15 +6089,21 @@ impl GameApp {
                     self.stats.tris
                 ),
                 // Phase 6 §26: quality row (occlusion culling counter + the
-                // four new settings, MSAA shows the ACTIVE device count)
+                // four new settings, MSAA shows the ACTIVE device count) +
+                // the Phase 7 meshing backend
                 format!(
-                    "Culled: {}  Sim: {}  Mip: {}  Aniso: {}x  MSAA: {}{}",
+                    "Culled: {}  Sim: {}  Mip: {}  Aniso: {}x  MSAA: {}{}  Mesh: {}",
                     self.stats.culled,
                     self.settings.sim_distance,
                     self.settings.mipmap_levels,
                     self.settings.aniso,
                     if self.renderer.msaa() == 0 { "off".to_string() } else { self.renderer.msaa().to_string() },
-                    if self.settings.occlusion { "" } else { "  (occl off)" }
+                    if self.settings.occlusion { "" } else { "  (occl off)" },
+                    match (&self.renderer.gpu_mesh, self.settings.gpu_meshing) {
+                        (Some(m), true) => format!("GPU ({})", m.jobs_done),
+                        (Some(_), false) => "CPU (off)".to_string(),
+                        (None, _) => "CPU".to_string(),
+                    }
                 ),
                 format!(
                     "Draws: {} avg  Binds: {} avg  Path: {}",
@@ -6689,6 +6861,21 @@ mod settings_tests {
         assert_eq!(s.aniso, 4);
         assert_eq!(s.msaa, 0);
         assert!(s.occlusion);
+    }
+
+    /// Phase 7: the GPU-meshing flag round trips and legacy strings fall
+    /// back to the platform default
+    #[test]
+    fn gpu_meshing_flag_roundtrips() {
+        let mut s = Settings::default();
+        let native_default = s.gpu_meshing;
+        s.gpu_meshing = !native_default;
+        let restored = Settings::deserialize(&s.serialize());
+        assert_eq!(restored.gpu_meshing, !native_default);
+        // legacy string (no gmesh key) → platform default
+        let legacy = "rd=8;smooth=1;clouds=0";
+        let s2 = Settings::deserialize(legacy);
+        assert_eq!(s2.gpu_meshing, native_default, "legacy save keeps the platform default");
     }
 
     /// garbage msaa values snap to the valid set (0/4/8)

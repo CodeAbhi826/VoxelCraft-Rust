@@ -3,6 +3,7 @@
 //! (runtime WGSL validation), post-processing, HUD/UI canvas.
 
 pub mod draw;
+pub mod gpu_mesh;
 pub mod render;
 pub mod shaders;
 pub mod textures;

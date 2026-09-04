@@ -1373,6 +1373,11 @@ pub struct Renderer {
     pub vsync: bool,
     /// diagnostic counter: frames successfully submitted (logged first 3)
     submitted_frames: u32,
+    /// Phase 7: GPU compute mesher — None when the adapter lacks compute
+    /// (WebGL2 fallback) or pipeline creation failed. All mesher state is
+    /// main-thread-only (the zero-Mutex design holds: rayon jobs build
+    /// inputs, a channel hands them back here)
+    pub gpu_mesh: Option<crate::gpu_mesh::GpuMesher>,
 }
 
 /// Phase 6: the six scene-pass pipelines (everything that renders into the
@@ -2822,6 +2827,18 @@ impl Renderer {
             mapped_at_creation: false,
         });
 
+        // Phase 7: construct the compute mesher BEFORE the struct literal
+        // moves device/queue into the Renderer (wgpu 22 handles aren't Clone)
+        let gpu_mesh = if adapter
+            .get_downlevel_capabilities()
+            .flags
+            .contains(wgpu::DownlevelFlags::COMPUTE_SHADERS)
+        {
+            Some(crate::gpu_mesh::GpuMesher::new(&device, &queue))
+        } else {
+            report_boot_log("gpu meshing unavailable: adapter lacks compute (WebGL2-class)");
+            None
+        };
         let renderer = Renderer {
             surface,
             device,
@@ -2911,6 +2928,7 @@ impl Renderer {
             present_modes,
             vsync,
             submitted_frames: 0,
+            gpu_mesh,
         };
         report_boot_log("renderer ready (pipelines + atlas + clouds + post chain)");
         renderer

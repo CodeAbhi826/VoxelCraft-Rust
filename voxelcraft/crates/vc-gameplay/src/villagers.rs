@@ -550,9 +550,31 @@ impl Villagers {
 
     /// ONE sim tick (20 Hz): wander decisions + walking physics + the
     /// twice-daily restock clock. `sim_ticks` is the global sim tick count.
-    pub fn tick(&mut self, world: &vc_world::world::World, sim_ticks: u64) {
+    /// Phase 6 §26: villagers outside the simulation ring freeze — wander
+    /// and walking physics (1.18+ semantics; radius i32::MAX = 1.16.5
+    /// behavior). The restock day-clock stays global (documented
+    /// simplification: a village's trades refresh on the day cycle even
+    /// while frozen — freezing it would punish legitimate play patterns
+    /// for a few CPU cycles).
+    pub fn tick(
+        &mut self,
+        world: &vc_world::world::World,
+        sim_ticks: u64,
+        sim_center: (i32, i32),
+        sim_radius: i32,
+    ) {
         self.restock_pass(sim_ticks);
+        let ring = |p: [f32; 3]| {
+            let (cx, cz) = ((p[0] / 16.0).floor() as i32, (p[2] / 16.0).floor() as i32);
+            cx.wrapping_sub(sim_center.0)
+                .saturating_abs()
+                .max(cz.wrapping_sub(sim_center.1).saturating_abs())
+                <= sim_radius
+        };
         for v in self.list.iter_mut() {
+            if !ring(v.pos) {
+                continue; // out of the simulation ring: frozen this tick
+            }
             // wander state machine: idle countdown → pick a target (with a
             // generous walk deadline) → walk until arrival or deadline →
             // idle again. wander_t is the countdown in BOTH states.
@@ -747,7 +769,7 @@ mod tests {
         let w = flat_world();
         // 10 simulated seconds of wandering
         for t in 0..200 {
-            vs.tick(&w, t as u64);
+            vs.tick(&w, t as u64, (0, 0), i32::MAX);
         }
         let v = vs.by_id(id).unwrap();
         let d2 = (v.pos[0] - 0.5).powi(2) + (v.pos[2] - 0.5).powi(2);
@@ -770,7 +792,7 @@ mod tests {
         vs.list[i].wander_t = 400;
         let mut jumped = false;
         for t in 0..120 {
-            vs.tick(&w, t as u64);
+            vs.tick(&w, t as u64, (0, 0), i32::MAX);
             let v = vs.by_id(id).unwrap();
             if v.vel[1] > 0.1 {
                 jumped = true;
@@ -886,7 +908,7 @@ mod tests {
         // tick forward one full day — TWO restock windows pass
         let w = flat_world();
         for t in 0..12_000u64 {
-            vs.tick(&w, t);
+            vs.tick(&w, t, (0, 0), i32::MAX);
         }
         assert!(vs.execute_trade(id, 0).is_some(), "restocked after the day");
         assert_eq!(vs.by_id(id).unwrap().stock_left(0), Some(15));

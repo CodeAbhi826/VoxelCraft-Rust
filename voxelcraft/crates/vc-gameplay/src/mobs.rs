@@ -318,12 +318,23 @@ impl MobSystem {
     }
 
     /// ONE deterministic sim tick (20 Hz).
-    pub fn tick(&mut self, world: &World) {
+    /// Phase 6 §26: `sim_center`/`sim_radius` = the simulation-distance
+    /// ring — mobs outside it freeze (AI + physics), spawning clamps its
+    /// chunk pick to the ring (vanilla JE: simulation distance "controls
+    /// mob spawning and despawning, and tick updates" — wiki). Despawn
+    /// runs regardless (distance-based bookkeeping, cheap).
+    pub fn tick(&mut self, world: &World, sim_center: (i32, i32), sim_radius: i32) {
+        let sim_ring = |cx: i32, cz: i32| {
+            cx.wrapping_sub(sim_center.0)
+                .saturating_abs()
+                .max(cz.wrapping_sub(sim_center.1).saturating_abs())
+                <= sim_radius
+        };
         // 1. environmental spawning — one attempt per tick per category
         // while a non-invulnerable player anchor exists (cap-gated)
         if self.player.is_some() && !self.player_invulnerable {
-            self.try_spawn_hostile(world);
-            self.try_spawn_passive(world);
+            self.try_spawn_hostile(world, sim_ring);
+            self.try_spawn_passive(world, sim_ring);
         }
 
         // 2. AI + physics (split borrows: rng/hits/arrows vs the mob list)
@@ -333,6 +344,11 @@ impl MobSystem {
         let hits = &mut self.hits;
         let arrows = &mut self.arrows;
         for m in self.list.iter_mut() {
+            // Phase 6 §26: out-of-ring mobs freeze (1.18+ semantics)
+            let mchunk = ((m.pos[0] / 16.0).floor() as i32, (m.pos[2] / 16.0).floor() as i32);
+            if !sim_ring(mchunk.0, mchunk.1) {
+                continue;
+            }
             m.hurt_t = m.hurt_t.saturating_sub(1);
             m.attack_cd = m.attack_cd.saturating_sub(1);
             ai_tick(rng, m, player, invuln, hits, arrows, world);
@@ -393,13 +409,17 @@ impl MobSystem {
     /// sky light ≤ 7, solid floor with 2 air, packs up to 4 (vanilla
     /// monster pack size), cap 70 × chunks/289 (single-player worst case
     /// = the full 289-chunk square → the raw constant).
-    fn try_spawn_hostile(&mut self, world: &World) {
+    fn try_spawn_hostile(&mut self, world: &World, sim_ring: impl Fn(i32, i32) -> bool) {
         if self.hostiles_alive() as f32 >= MONSTER_CAP {
             return;
         }
         let Some(p) = self.player else { return };
         let cx = (p[0] / 16.0).floor() as i32 + (self.rng.next_range(17) as i32) - 8;
         let cz = (p[2] / 16.0).floor() as i32 + (self.rng.next_range(17) as i32) - 8;
+        // Phase 6 §26: spawning clamps to the simulation ring
+        if !sim_ring(cx, cz) {
+            return;
+        }
         if world.chunk((cx, cz)).is_none() {
             return;
         }
@@ -442,7 +462,7 @@ impl MobSystem {
     /// passive spawn attempt (VERIFIED): light ≥ 9 on GRASS with 2 air,
     /// cap 10; herds of 2–4. Vanilla weights these by biome and runs them
     /// rarely — ours gates at 1/20 per attempt.
-    fn try_spawn_passive(&mut self, world: &World) {
+    fn try_spawn_passive(&mut self, world: &World, sim_ring: impl Fn(i32, i32) -> bool) {
         if self.rng.next_range(20) != 0 {
             return;
         }
@@ -452,6 +472,10 @@ impl MobSystem {
         let Some(p) = self.player else { return };
         let cx = (p[0] / 16.0).floor() as i32 + (self.rng.next_range(17) as i32) - 8;
         let cz = (p[2] / 16.0).floor() as i32 + (self.rng.next_range(17) as i32) - 8;
+        // Phase 6 §26: spawning clamps to the simulation ring
+        if !sim_ring(cx, cz) {
+            return;
+        }
         if world.chunk((cx, cz)).is_none() {
             return;
         }
@@ -1001,7 +1025,7 @@ mod tests {
         assert!((sys.by_id(id).unwrap().health - 14.0).abs() < 1e-5);
         assert!(sys.by_id(id).unwrap().provoked);
         sys.damage(id, 20.0);
-        sys.tick(&flat_world());
+        sys.tick(&flat_world(), (0, 0), i32::MAX);
         assert!(sys.is_empty());
         assert_eq!(sys.deaths.len(), 1);
         assert_eq!(sys.deaths[0].0, MobKind::Zombie);
@@ -1024,7 +1048,7 @@ mod tests {
         sys.player = Some([0.0, 70.0, 0.0]);
         sys.spawn_at(MobKind::Zombie, 0, 65, 0).unwrap();
         sys.spawn_at(MobKind::Zombie, 200, 65, 200).unwrap(); // >128 away
-        sys.tick(&flat_world());
+        sys.tick(&flat_world(), (0, 0), i32::MAX);
         assert_eq!(sys.len(), 1, "far mob gone, near mob stays");
         assert_eq!(sys.despawned_total, 1);
     }
@@ -1096,7 +1120,7 @@ mod tests {
         assert_eq!(booms[0].0, pos0);
         assert_eq!(booms[0].1 as i32, 3, "explosion power 3 (VERIFIED)");
         // the death sweep must NOT queue drops (exploded = destroyed)
-        sys.tick(&world);
+        sys.tick(&world, (0, 0), i32::MAX);
         assert!(sys.is_empty());
         assert!(sys.deaths.is_empty(), "exploded creepers drop nothing");
     }
@@ -1137,7 +1161,7 @@ mod tests {
         sys.spawn_at(MobKind::Zombie, 4, 65, 4).unwrap();
         let world = flat_world();
         for _ in 0..60 {
-            sys.tick(&world);
+            sys.tick(&world, (0, 0), i32::MAX);
         }
         assert!(sys.hits.is_empty(), "creative is never attacked");
         // ...and nothing even spawns while invulnerable

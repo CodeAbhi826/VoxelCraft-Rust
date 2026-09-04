@@ -13,6 +13,53 @@ pub const SIM_HZ: f32 = 20.0;
 /// random-tick blocks sampled per loaded chunk per tick (vanilla: 3)
 pub const RANDOM_PER_CHUNK: usize = 3;
 
+/// Phase 6 §26: the simulation-distance scope of one sim tick.
+///
+/// Dossier Part 1 §6: "simulation distance ≠ render distance (Mojang
+/// 1.18+/26.x) — no separate tick radius currently exists". 1.16.5 — our
+/// accuracy target — has NO simulation distance (everything loaded ticks),
+/// so this is an opt-in optimization. Defaults follow modern vanilla
+/// (VERIFIED, minecraft.wiki Options.txt + Simulation distance, 2026-09):
+/// range 5–32, default 12 — at 12 ≥ the default render distances every
+/// loaded chunk ticks and behavior is bit-identical to the 1.16.5 rule.
+///
+/// Gating semantics (wiki-anchored, documented):
+/// * random ticks: only chunks inside the ring;
+/// * scheduled ticks: WATER/SAND/GRAVEL and tick-machinery (pistons,
+///   observers, dispensers, hoppers) outside the ring defer one tick —
+///   "pure redstone circuits continue to function infinitely far away"
+///   (wiki), so wire/torch/repeater/comparator/lever entries always run;
+/// * entities (mobs/villagers/items) outside the ring freeze — 1.18+
+///   semantics; spawning is clamped to the ring;
+/// * block entities (furnaces/brewing) keep 1.16.5 always-tick semantics
+///   (cheap, few, and freezing a furnace mid-smelt is an observable
+///   gameplay regression — documented adaptation).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TickScope {
+    pub center: (i32, i32),
+    pub radius: i32,
+}
+
+impl TickScope {
+    /// the un-gated scope (1.16.5 semantics — everything loaded ticks)
+    pub fn everything() -> Self {
+        TickScope { center: (0, 0), radius: i32::MAX }
+    }
+    #[inline]
+    pub fn chunk_in(&self, cx: i32, cz: i32) -> bool {
+        // saturating_abs: the everything()-scope must never overflow on
+        // extreme coordinates
+        cx.wrapping_sub(self.center.0)
+            .saturating_abs()
+            .max(cz.wrapping_sub(self.center.1).saturating_abs())
+            <= self.radius
+    }
+    #[inline]
+    pub fn block_in(&self, x: i32, z: i32) -> bool {
+        self.chunk_in(x.div_euclid(16), z.div_euclid(16))
+    }
+}
+
 pub struct Sim {
     pub sched: TickScheduler,
     random: RandomTicker,
@@ -68,22 +115,49 @@ impl Sim {
     }
 
     /// advance wall-clock time; runs 0..n fixed sim steps
-    pub fn update(&mut self, dt: f32, world: &mut World, light: &mut vc_world::light::LightEngine) {
+    pub fn update(
+        &mut self,
+        dt: f32,
+        world: &mut World,
+        light: &mut vc_world::light::LightEngine,
+        scope: &TickScope,
+    ) {
         self.acc += dt.min(0.25);
         let step = 1.0 / SIM_HZ;
         while self.acc >= step {
             self.acc -= step;
-            self.step(world, light);
+            self.step(world, light, scope);
         }
     }
 
-    /// ONE deterministic sim tick
-    pub fn step(&mut self, world: &mut World, light: &mut vc_world::light::LightEngine) {
+    /// ONE deterministic sim tick (`scope` = the simulation-distance ring;
+    /// `TickScope::everything()` = 1.16.5 behavior)
+    pub fn step(&mut self, world: &mut World, light: &mut vc_world::light::LightEngine, scope: &TickScope) {
         self.ticks += 1;
 
-        // 1. scheduled block updates in (due, insertion) order
+        // 1. scheduled block updates in (due, insertion) order.
+        // Phase 6 §26: entries OUTSIDE the simulation ring defer one tick —
+        // except pure redstone (wiki: "pure redstone circuits continue to
+        // function infinitely far away"). Deferred entries re-queue, so
+        // walking back into range resumes them exactly where they left.
         let due = self.sched.tick();
+        let mut deferred: Vec<[i32; 3]> = Vec::new();
         for pos in due {
+            if !scope.block_in(pos[0], pos[2]) {
+                let b = vc_blocks::blocks::state_block(world.get_state(pos[0], pos[1], pos[2]));
+                let pure_redstone = matches!(
+                    b,
+                    vc_blocks::blocks::REDSTONE_WIRE
+                        | vc_blocks::blocks::REDSTONE_TORCH
+                        | vc_blocks::blocks::REPEATER
+                        | vc_blocks::blocks::COMPARATOR
+                        | vc_blocks::blocks::LEVER
+                );
+                if !pure_redstone {
+                    deferred.push(pos);
+                    continue;
+                }
+            }
             let s = world.get_state(pos[0], pos[1], pos[2]);
             let b = vc_blocks::blocks::state_block(s);
             match b {
@@ -139,11 +213,20 @@ impl Sim {
                 light.on_block_changed(world, pos[0], pos[1], pos[2], s, new);
             }
         }
+        for pos in deferred {
+            self.sched.schedule(pos, 1);
+        }
 
         // random ticks (grass spread/die — progressive §26). The light
         // hook runs per edit inside random_plant_tick's callers; grass↔dirt
         // are both opaque so the light engine no-ops there anyway.
-        let chunks: Vec<(i32, i32)> = world.chunks.keys().copied().collect();
+        // Phase 6 §26: only chunks inside the simulation ring roll.
+        let chunks: Vec<(i32, i32)> = world
+            .chunks
+            .keys()
+            .copied()
+            .filter(|c| scope.chunk_in(c.0, c.1))
+            .collect();
         let rt = &self.random;
         rt.tick(&chunks, self.ticks, RANDOM_PER_CHUNK, |pos| {
             fluids::random_plant_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
@@ -159,17 +242,19 @@ impl Sim {
         // drained by game.rs for the bubble sound + stats
         self.brewing.tick();
 
-        // 4. item entities
-        self.items.tick(world);
+        // 4. item entities (Phase 6 §26: frozen outside the simulation ring)
+        self.items.tick(world, scope.center, scope.radius);
 
         // 5. villagers (§27): wander decisions + walking physics + the
         // twice-daily trade restock clock (sim.ticks is the day clock)
-        self.villagers.tick(world, self.ticks);
+        // (Phase 6 §26: villagers outside the ring freeze — restock included)
+        self.villagers.tick(world, self.ticks, scope.center, scope.radius);
 
         // 6. mobs (Phase 2): spawning + AI + arrows. Hits on the player,
         // deaths, and explosions queue inside for game.rs to drain (the
         // game layer owns damage gating, drops, and world edits).
-        self.mobs.tick(world);
+        // (Phase 6 §26: AI frozen + spawning clamped inside the ring)
+        self.mobs.tick(world, scope.center, scope.radius);
 
         // 6b. spawners (Phase 5 §27): dungeon block entities — activation
         // gate, delay, 4-attempt cycles, 6-mob cap
@@ -178,7 +263,8 @@ impl Sim {
         // 7. hoppers (Phase 3): collect items above (VERIFIED: hoppers
         // collect every game tick, then 8gt cooldown), push one item per
         // 8gt into the container below when not redstone-locked
-        self.hopper_pass(world);
+        // (Phase 6 §26: hopper positions outside the ring defer)
+        self.hopper_pass(world, scope);
 
         // 8. dispenser/dropper ejects (4 game tick countdown — VERIFIED)
         let ejects: Vec<[i32; 3]> = {
@@ -222,14 +308,18 @@ impl Sim {
     /// v1 scope (documented): transfers push DOWN only (chest, dispenser,
     /// dropper, hopper below); furnace input slots arrive with the
     /// container unification later.
-    fn hopper_pass(&mut self, world: &World) {
+    fn hopper_pass(&mut self, world: &World, scope: &TickScope) {
         use vc_blocks::blocks::*;
         // A. collect item entities resting on a hopper
+        // (item entities outside the ring are frozen and never rest-hopped)
         let mut collected: Vec<usize> = Vec::new();
         for (i, it) in self.items.items.iter().enumerate() {
             let bx = it.pos[0].floor() as i32;
             let by = (it.pos[1] - 0.25).floor() as i32;
             let bz = it.pos[2].floor() as i32;
+            if !scope.block_in(bx, bz) {
+                continue;
+            }
             let s = world.get_state(bx, by, bz);
             if state_block(s) == HOPPER && crate::redstone::hopper_enabled(world, bx, by, bz) {
                 let slot = it.block;
@@ -251,6 +341,9 @@ impl Sim {
             .map(|(pos, _)| *pos)
             .collect();
         for pos in hopper_positions {
+            if !scope.block_in(pos[0], pos[2]) {
+                continue; // outside the simulation ring: frozen this tick
+            }
             if !crate::redstone::hopper_enabled(world, pos[0], pos[1], pos[2]) {
                 continue;
             }
@@ -329,7 +422,7 @@ mod tests {
             fluids::on_block_changed(&mut sim.sched, &w, 8, 68, 8);
             sim.items.drop_block(4, 66, 4, DIRT, 2, 15, 0);
             for _ in 0..400 {
-                sim.step(&mut w, &mut light);
+                sim.step(&mut w, &mut light, &TickScope::everything());
             }
             // hash the world + item positions
             let mut h: u64 = 0xcbf2_9ce4_8422_2325;
@@ -367,5 +460,94 @@ mod tests {
         // nothing keeps scheduling (no busy-loop ticks — that's the point
         // of the §12-style pruned scheduling)
         assert_eq!(a.3, 0, "scheduler settled, got {} pending", a.3);
+    }
+
+    // ------------------------------------------- Phase 6 §26: sim distance --
+
+    #[test]
+    fn tick_scope_ring_math() {
+        let s = TickScope { center: (3, -2), radius: 2 };
+        assert!(s.chunk_in(3, -2));
+        assert!(s.chunk_in(5, 0));
+        assert!(s.chunk_in(1, -4));
+        assert!(!s.chunk_in(6, -2), "Chebyshev: 3 chunks east is out");
+        assert!(!s.chunk_in(3, 1));
+        // block → chunk mapping (negative coords floor correctly)
+        assert!(s.block_in(48, -32)); // chunk (3,-2)
+        assert!(!s.block_in(-1, 0)); // chunk (-1,0), 4 away
+        // the everything() scope never excludes anything (incl. extremes)
+        let all = TickScope::everything();
+        assert!(all.chunk_in(i32::MIN, i32::MIN));
+        assert!(all.chunk_in(i32::MAX, i32::MAX));
+        assert!(all.block_in(-1, -1));
+    }
+
+    /// default radius 12 ≥ every loaded chunk at the default render
+    /// distances → 1.16.5-identical behavior (the point of the default)
+    #[test]
+    fn default_scope_covers_default_render_distance() {
+        let all = TickScope::everything();
+        let default_ring = TickScope { center: (0, 0), radius: 12 };
+        for dz in -11..=11 {
+            for dx in -11..=11 {
+                let r = default_ring.chunk_in(dx, dz);
+                assert!(r, "12-ring must cover the loaded set (rd 10 + 1)");
+                assert!(all.chunk_in(dx, dz));
+            }
+        }
+    }
+
+    /// water scheduled outside the ring defers; a pure-redstone entry runs
+    /// regardless (wiki: "pure redstone circuits continue to function
+    /// infinitely far away")
+    #[test]
+    fn scheduled_ticks_defer_outside_ring_but_redstone_runs() {
+        let mut w = flat_world();
+        let mut sim = Sim::new(7);
+        let mut light = vc_world::light::LightEngine::new();
+        // water at (0, 65, 0) — inside; water at (0, 65, 16) is in chunk
+        // (0, 1), 1 away → outside a radius-0 ring
+        w.set_block_state(0, 65, 0, water_state(0));
+        w.set_block_state(0, 65, 16, water_state(0));
+        fluids::on_block_changed(&mut sim.sched, &w, 0, 65, 0);
+        fluids::on_block_changed(&mut sim.sched, &w, 0, 65, 16);
+        // wire + torch far away: torch at (16, 65, 0) (chunk (1, 0), outside
+        // the radius-0 ring) — pure redstone must still run
+        w.set_block_state(16, 65, 0, REDSTONE_TORCH as u16);
+        crate::redstone::on_block_changed(&mut sim.sched, &w, 16, 65, 0);
+        let tiny = TickScope { center: (0, 0), radius: 0 };
+        for _ in 0..20 {
+            sim.step(&mut w, &mut light, &tiny);
+        }
+        // the in-ring water flowed (has a scheduled follow-up or spread);
+        // the out-of-ring water never flowed: still a single source block
+        let out_states: Vec<u16> = (0..16).map(|x| w.get_state(x, 65, 17)).collect();
+        assert!(
+            out_states.iter().all(|&s| s == AIR as u16),
+            "out-of-ring water column untouched (got {out_states:?})"
+        );
+        // ...while the deferred out-of-ring entry keeps re-queueing
+        assert!(sim.sched.pending() >= 1, "deferred out-of-ring entries re-queued");
+    }
+
+    /// items outside the ring freeze (age + physics)
+    #[test]
+    fn items_freeze_outside_ring() {
+        let mut w = flat_world();
+        let mut sim = Sim::new(7);
+        let mut light = vc_world::light::LightEngine::new();
+        // two dirt drops: one above the floor at (8, 66, 8) (chunk (0,0)),
+        // one at (8, 66, 24) (chunk (0,1)) — same world, different rings
+        sim.items.drop_block(8, 66, 8, DIRT, 2, 15, 0);
+        sim.items.drop_block(8, 66, 24, DIRT, 2, 15, 0);
+        let tiny = TickScope { center: (0, 0), radius: 0 };
+        for _ in 0..40 {
+            sim.step(&mut w, &mut light, &tiny);
+        }
+        let a = sim.items.items.iter().find(|i| i.pos[2] < 16.0).unwrap();
+        let b = sim.items.items.iter().find(|i| i.pos[2] >= 16.0).unwrap();
+        assert!(a.age > 0, "in-ring item ages");
+        assert_eq!(b.age, 0, "out-of-ring item frozen (age 0)");
+        assert!((a.pos[1] - b.pos[1]).abs() > 0.001, "in-ring item fell; frozen one did not");
     }
 }

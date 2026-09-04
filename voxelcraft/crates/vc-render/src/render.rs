@@ -186,6 +186,8 @@ pub struct RenderStats {
     pub draws: u32,
     /// buffer binds issued for chunk drawing (§14/§37 diagnostics)
     pub binds: u32,
+    /// Phase 6 §26: frustum-visible chunks removed by the occlusion flood
+    pub culled: u32,
 }
 
 // ---------------------------------------------------------------- shaders
@@ -1233,6 +1235,12 @@ pub struct Renderer {
     atlas_tex: wgpu::Texture,
     atlas_view: wgpu::TextureView,
     sampler: wgpu::Sampler,
+    /// CPU copy of the atlas (mip-chain rebuilds + E2E pixel reads)
+    atlas_data: Vec<u8>,
+    /// Phase 6 §26: mipmap levels in use (0 = off; vanilla default 4)
+    mip_levels: u8,
+    /// Phase 6 §26: anisotropy clamp in use (1 = off; OptiFine default 4)
+    aniso: u8,
     globals_buf: wgpu::Buffer,
     world_bgl: wgpu::BindGroupLayout,
     world_bg: wgpu::BindGroup,
@@ -1260,6 +1268,12 @@ pub struct Renderer {
     line_vb: wgpu::Buffer,
     line_pipe: wgpu::RenderPipeline,
     line_bg: wgpu::BindGroup,
+    /// Phase 6: shared scene bind group layouts — both the 1x and MSAA
+    /// pipeline sets reference the SAME objects, so bind groups stay
+    /// compatible across a quality toggle without recreation
+    line_bgl: wgpu::BindGroupLayout,
+    cloud_bgl: wgpu::BindGroupLayout,
+    part_bgl: wgpu::BindGroupLayout,
     // post-processing
     post_targets: PostTargets,
     post_samp: wgpu::Sampler,
@@ -1321,6 +1335,25 @@ pub struct Renderer {
     draw_mdi: bool,
     /// per-frame indirect draw records: [terrain | shadow | water] segments
     args_buf: wgpu::Buffer,
+    // ------------------------------------------------- Phase 6 §26 quality --
+    /// MSAA sample count in use (0 = off — vanilla-faithful default; the
+    /// setting itself is an OptiFine-parity extension, dossier Part 1 §3:
+    /// ofAaLevel. Only 4x/8x — WebGPU guarantees 4x on renderable formats,
+    /// 2x has no guaranteed path)
+    msaa: u8,
+    /// device-supported maximum (capability detection, not assumption):
+    /// 0/4/8 from the scene format's MULTISAMPLE_X4/X8 flags
+    msaa_max: u8,
+    /// MSAA scene color target (resolve → post_targets.scene_view)
+    msaa_view: Option<wgpu::TextureView>,
+    /// MSAA depth target (replaced by `depth` when off)
+    msaa_depth: Option<wgpu::TextureView>,
+    /// lazily-built 4x/8x scene pipeline set (built on first enable —
+    /// one-time hitch like vanilla's settings-apply, zero boot cost off)
+    msaa_pipes: Option<ScenePipes>,
+    /// chunk-graph occlusion culling (§26; OptiFine ofOcclusionFancy parity
+    /// — default ON)
+    pub occlusion: bool,
     // ------------------------------------------------ Phase 11 (§34) packs --
     /// active shader-pack stage (pipeline + bind group over the pack
     /// handoff target) — None = engine composite writes the surface directly
@@ -1340,6 +1373,315 @@ pub struct Renderer {
     pub vsync: bool,
     /// diagnostic counter: frames successfully submitted (logged first 3)
     submitted_frames: u32,
+}
+
+/// Phase 6: the six scene-pass pipelines (everything that renders into the
+/// offscreen scene target + depth). Built per sample count — 1x at boot,
+/// the MSAA set lazily on first enable. All variants share the Renderer's
+/// bind group layouts, so the same bind groups bind to either set.
+struct ScenePipes {
+    terrain: wgpu::RenderPipeline,
+    water: wgpu::RenderPipeline,
+    sky: wgpu::RenderPipeline,
+    line: wgpu::RenderPipeline,
+    part: wgpu::RenderPipeline,
+    cloud: wgpu::RenderPipeline,
+}
+
+/// build one full scene-pipeline set at `samples` (1 or 4/8). Shader
+/// sources are the module consts; layouts are the Renderer's shared bgl's.
+fn build_scene_pipes(
+    device: &wgpu::Device,
+    world_bgl: &wgpu::BindGroupLayout,
+    line_bgl: &wgpu::BindGroupLayout,
+    cloud_bgl: &wgpu::BindGroupLayout,
+    part_bgl: &wgpu::BindGroupLayout,
+    samples: u32,
+) -> ScenePipes {
+    let scene_format = wgpu::TextureFormat::Rgba8Unorm;
+
+    // VC-16 packed vertex (slot 0) + per-chunk origin (slot 1, instance rate)
+    let terrain_vbl = [
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<Vertex>() as u64,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &[wgpu::VertexAttribute {
+                offset: 0,
+                shader_location: 0,
+                format: wgpu::VertexFormat::Uint32x4,
+            }],
+        },
+        wgpu::VertexBufferLayout {
+            array_stride: 8,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: &[wgpu::VertexAttribute {
+                offset: 0,
+                shader_location: 1,
+                format: wgpu::VertexFormat::Float32x2,
+            }],
+        },
+    ];
+    let depth_state = |write: bool, cmp: wgpu::CompareFunction| wgpu::DepthStencilState {
+        format: wgpu::TextureFormat::Depth32Float,
+        depth_write_enabled: write,
+        depth_compare: cmp,
+        stencil: wgpu::StencilState::default(),
+        bias: wgpu::DepthBiasState::default(),
+    };
+    // Blending for translucent surfaces that keeps the canvas OPAQUE:
+    // alpha uses One/One so dst.a stays 1 (see the 1x-site comment).
+    let opaque_blend = Some(wgpu::BlendState {
+        color: wgpu::BlendComponent {
+            src_factor: wgpu::BlendFactor::SrcAlpha,
+            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+            operation: wgpu::BlendOperation::Add,
+        },
+        alpha: wgpu::BlendComponent {
+            src_factor: wgpu::BlendFactor::One,
+            dst_factor: wgpu::BlendFactor::One,
+            operation: wgpu::BlendOperation::Add,
+        },
+    });
+
+    let terrain_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("terrain"),
+        source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(TERRAIN_SHADER)),
+    });
+    let water_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("water"),
+        source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(WATER_SHADER)),
+    });
+    let sky_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("sky"),
+        source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(SKY_SHADER)),
+    });
+    let line_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("lines"),
+        source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(LINE_SHADER)),
+    });
+    let part_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("particles"),
+        source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(PARTICLE_SHADER)),
+    });
+    let cloud_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("clouds"),
+        source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(CLOUD_SHADER)),
+    });
+
+    let world_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("world-pl"),
+        bind_group_layouts: &[world_bgl],
+        push_constant_ranges: &[],
+    });
+    let line_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("line-pl"),
+        bind_group_layouts: &[line_bgl],
+        push_constant_ranges: &[],
+    });
+    let cloud_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("cloud-pl"),
+        bind_group_layouts: &[cloud_bgl],
+        push_constant_ranges: &[],
+    });
+    let part_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("part-pl"),
+        bind_group_layouts: &[part_bgl],
+        push_constant_ranges: &[],
+    });
+
+    let ms = wgpu::MultisampleState {
+        count: samples,
+        ..Default::default()
+    };
+    let make_world_pipe = |module: &wgpu::ShaderModule, entry: &str, cull: Option<wgpu::Face>, blend: Option<wgpu::BlendState>, depth: wgpu::DepthStencilState, buffers: &[wgpu::VertexBufferLayout]| {
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("pipe"),
+            layout: Some(&world_pl),
+            vertex: wgpu::VertexState {
+                module,
+                entry_point: entry,
+                compilation_options: Default::default(),
+                buffers,
+            },
+            fragment: Some(wgpu::FragmentState {
+                module,
+                entry_point: "fs_main",
+                compilation_options: Default::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: scene_format,
+                    blend,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: cull,
+                polygon_mode: wgpu::PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
+            },
+            depth_stencil: Some(depth),
+            multisample: ms,
+            multiview: None,
+            cache: None,
+        })
+    };
+
+    // sky: no vertex buffers, no cull, depth-tested Always (paints first)
+    static NO_BUFS: [wgpu::VertexBufferLayout; 0] = [];
+    let sky = make_world_pipe(
+        &sky_mod,
+        "vs_main",
+        None,
+        None,
+        depth_state(false, wgpu::CompareFunction::Always),
+        &NO_BUFS,
+    );
+    let terrain = make_world_pipe(
+        &terrain_mod,
+        "vs_main",
+        Some(wgpu::Face::Back),
+        None,
+        depth_state(true, wgpu::CompareFunction::Less),
+        &terrain_vbl,
+    );
+    let water = make_world_pipe(
+        &water_mod,
+        "vs_main",
+        None,
+        opaque_blend,
+        depth_state(false, wgpu::CompareFunction::Less),
+        &terrain_vbl,
+    );
+
+    // selection lines: LineList, alpha blend, depth-test no write
+    let line_vbl = [wgpu::VertexBufferLayout {
+        array_stride: 12,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &[wgpu::VertexAttribute { offset: 0, shader_location: 0, format: wgpu::VertexFormat::Float32x3 }],
+    }];
+    let line = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("line-pipe"),
+        layout: Some(&line_pl),
+        vertex: wgpu::VertexState {
+            module: &line_mod,
+            entry_point: "vs_main",
+            compilation_options: Default::default(),
+            buffers: &line_vbl,
+        },
+        fragment: Some(wgpu::FragmentState {
+            module: &line_mod,
+            entry_point: "fs_main",
+            compilation_options: Default::default(),
+            targets: &[Some(wgpu::ColorTargetState {
+                format: scene_format,
+                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::LineList,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: None,
+            polygon_mode: wgpu::PolygonMode::Fill,
+            unclipped_depth: false,
+            conservative: false,
+        },
+        depth_stencil: Some(depth_state(false, wgpu::CompareFunction::Less)),
+        multisample: ms,
+        multiview: None,
+        cache: None,
+    });
+
+    // particles: billboards, alpha blend, depth-test no write
+    let part_vbl = [wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<vc_particles::particles::ParticleVertex>() as u64,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &[
+            wgpu::VertexAttribute { offset: 0, shader_location: 0, format: wgpu::VertexFormat::Float32x3 },
+            wgpu::VertexAttribute { offset: 12, shader_location: 1, format: wgpu::VertexFormat::Float32x2 },
+            wgpu::VertexAttribute { offset: 20, shader_location: 2, format: wgpu::VertexFormat::Float32x3 },
+        ],
+    }];
+    let part = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("part-pipe"),
+        layout: Some(&part_pl),
+        vertex: wgpu::VertexState {
+            module: &part_mod,
+            entry_point: "vs_main",
+            compilation_options: Default::default(),
+            buffers: &part_vbl,
+        },
+        fragment: Some(wgpu::FragmentState {
+            module: &part_mod,
+            entry_point: "fs_main",
+            compilation_options: Default::default(),
+            targets: &[Some(wgpu::ColorTargetState {
+                format: scene_format,
+                blend: opaque_blend,
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: None, // billboards: winding varies with view angle
+            polygon_mode: wgpu::PolygonMode::Fill,
+            unclipped_depth: false,
+            conservative: false,
+        },
+        depth_stencil: Some(depth_state(false, wgpu::CompareFunction::Less)),
+        multisample: ms,
+        multiview: None,
+        cache: None,
+    });
+
+    // clouds: 2-vertex xz plane
+    let cloud_vbl = [wgpu::VertexBufferLayout {
+        array_stride: 8,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &[wgpu::VertexAttribute { offset: 0, shader_location: 0, format: wgpu::VertexFormat::Float32x2 }],
+    }];
+    let cloud = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("cloud-pipe"),
+        layout: Some(&cloud_pl),
+        vertex: wgpu::VertexState {
+            module: &cloud_mod,
+            entry_point: "vs_main",
+            compilation_options: Default::default(),
+            buffers: &cloud_vbl,
+        },
+        fragment: Some(wgpu::FragmentState {
+            module: &cloud_mod,
+            entry_point: "fs_main",
+            compilation_options: Default::default(),
+            targets: &[Some(wgpu::ColorTargetState {
+                format: scene_format,
+                blend: opaque_blend,
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: None,
+            polygon_mode: wgpu::PolygonMode::Fill,
+            unclipped_depth: false,
+            conservative: false,
+        },
+        // clouds sit above the world: drawn with depth-test no write
+        depth_stencil: Some(depth_state(false, wgpu::CompareFunction::Less)),
+        multisample: ms,
+        multiview: None,
+        cache: None,
+    });
+
+    ScenePipes { terrain, water, sky, line, part, cloud }
 }
 
 impl Renderer {
@@ -1775,91 +2117,9 @@ impl Renderer {
                 }],
             },
         ];
-
-        let depth_state = |write: bool, cmp: wgpu::CompareFunction| wgpu::DepthStencilState {
-            format: wgpu::TextureFormat::Depth32Float,
-            depth_write_enabled: write,
-            depth_compare: cmp,
-            stencil: wgpu::StencilState::default(),
-            bias: wgpu::DepthBiasState::default(),
-        };
-
-        let terrain_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("terrain"),
-            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(TERRAIN_SHADER)),
-        });
-        let water_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("water"),
-            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(WATER_SHADER)),
-        });
-        let sky_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("sky"),
-            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(SKY_SHADER)),
-        });
-
-        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("world-pl"),
-            bind_group_layouts: &[&world_bgl],
-            push_constant_ranges: &[],
-        });
-
-        // scene pipelines target the LINEAR offscreen scene texture
-        let scene_format = wgpu::TextureFormat::Rgba8Unorm;
-        let make_pipe = |module: &wgpu::ShaderModule, entry: &str, cull: Option<wgpu::Face>, blend: Option<wgpu::BlendState>, depth: wgpu::DepthStencilState| {
-            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("pipe"),
-                layout: Some(&pipeline_layout),
-                vertex: wgpu::VertexState {
-                    module,
-                    entry_point: entry,
-                    compilation_options: Default::default(),
-                    buffers: &terrain_vbl,
-                },
-                fragment: Some(wgpu::FragmentState {
-                    module,
-                    entry_point: "fs_main",
-                    compilation_options: Default::default(),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format: scene_format,
-                        blend,
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                }),
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList,
-                    strip_index_format: None,
-                    front_face: wgpu::FrontFace::Ccw,
-                    cull_mode: cull,
-                    polygon_mode: wgpu::PolygonMode::Fill,
-                    unclipped_depth: false,
-                    conservative: false,
-                },
-                depth_stencil: Some(depth),
-                multisample: wgpu::MultisampleState::default(),
-                multiview: None,
-                cache: None,
-            })
-        };
-
-        // Blending for translucent surfaces that keeps the canvas OPAQUE:
-        // the alpha channel uses One/One so dst.a stays 1. With plain
-        // ALPHA_BLENDING, water/cloud pixels end with a < 1 and the browser
-        // composites the page background through them (see-through water /
-        // flicker on WebGL2 and premultiplied WebGPU surfaces).
-        let opaque_blend = Some(wgpu::BlendState {
-            color: wgpu::BlendComponent {
-                src_factor: wgpu::BlendFactor::SrcAlpha,
-                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                operation: wgpu::BlendOperation::Add,
-            },
-            alpha: wgpu::BlendComponent {
-                src_factor: wgpu::BlendFactor::One,
-                dst_factor: wgpu::BlendFactor::One,
-                operation: wgpu::BlendOperation::Add,
-            },
-        });
-        let terrain_pipe = make_pipe(&terrain_mod, "vs_main", Some(wgpu::Face::Back), None, depth_state(true, wgpu::CompareFunction::Less));
-        let water_pipe = make_pipe(&water_mod, "vs_main", None, opaque_blend, depth_state(false, wgpu::CompareFunction::Less));
+        // (terrain/water/sky/line/particles/clouds pipelines are built by
+        // `build_scene_pipes` — Phase 6 made the set sample-count-parametric
+        // for MSAA; see its comment for blend/depth rationale)
 
         // shadow depth pipeline: same vertex layout as terrain, writes packed
         // depth into RGBA8. Slope-scaled depth bias (mapped to polygon
@@ -1947,47 +2207,11 @@ impl Renderer {
             multiview: None,
             cache: None,
         });
-        let sky_pipe = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("sky-pipe"),
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &sky_mod,
-                entry_point: "vs_main",
-                compilation_options: Default::default(),
-                buffers: &[],
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &sky_mod,
-                entry_point: "fs_main",
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: scene_format,
-                    blend: None,
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: None,
-                polygon_mode: wgpu::PolygonMode::Fill,
-                unclipped_depth: false,
-                conservative: false,
-            },
-            depth_stencil: Some(depth_state(false, wgpu::CompareFunction::Always)),
-            multisample: wgpu::MultisampleState::default(),
-            multiview: None,
-            cache: None,
-        });
 
         // --------------------------------------------- particles (§16.2)
         // billboard quads, alpha blend, depth-TEST but no depth write —
         // drawn after the translucent water pass, before clouds
-        let part_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("particles"),
-            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(PARTICLE_SHADER)),
-        });
+        // (pipeline itself: build_scene_pipes)
         let part_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("part-bgl"),
             entries: &[
@@ -2040,65 +2264,6 @@ impl Renderer {
                     resource: wgpu::BindingResource::Sampler(&sampler),
                 },
             ],
-        });
-        let part_vbl = [wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<vc_particles::particles::ParticleVertex>() as u64,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &[
-                wgpu::VertexAttribute {
-                    offset: 0,
-                    shader_location: 0,
-                    format: wgpu::VertexFormat::Float32x3,
-                },
-                wgpu::VertexAttribute {
-                    offset: 12,
-                    shader_location: 1,
-                    format: wgpu::VertexFormat::Float32x2,
-                },
-                wgpu::VertexAttribute {
-                    offset: 20,
-                    shader_location: 2,
-                    format: wgpu::VertexFormat::Float32x3,
-                },
-            ],
-        }];
-        let part_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("part-pl"),
-            bind_group_layouts: &[&part_bgl],
-            push_constant_ranges: &[],
-        });
-        let part_pipe = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("part-pipe"),
-            layout: Some(&part_pl),
-            vertex: wgpu::VertexState {
-                module: &part_mod,
-                entry_point: "vs_main",
-                compilation_options: Default::default(),
-                buffers: &part_vbl,
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &part_mod,
-                entry_point: "fs_main",
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: scene_format,
-                    blend: opaque_blend,
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: None, // billboards: winding varies with view angle
-                polygon_mode: wgpu::PolygonMode::Fill,
-                unclipped_depth: false,
-                conservative: false,
-            },
-            depth_stencil: Some(depth_state(false, wgpu::CompareFunction::Less)),
-            multisample: wgpu::MultisampleState::default(),
-            multiview: None,
-            cache: None,
         });
         // dynamic billboard buffer: MAX_PARTICLES quads × 6 verts × 32 B
         let particle_vb = device.create_buffer(&wgpu::BufferDescriptor {
@@ -2266,10 +2431,7 @@ impl Renderer {
         });
 
         // ------------------------------------------------- selection lines
-        let line_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("lines"),
-            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(LINE_SHADER)),
-        });
+        // (pipeline: build_scene_pipes; the bgl stays shared)
         let line_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("line-bgl"),
             entries: &[wgpu::BindGroupLayoutEntry {
@@ -2300,49 +2462,6 @@ impl Renderer {
                     size: None,
                 }),
             }],
-        });
-        let line_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("line-pl"),
-            bind_group_layouts: &[&line_bgl],
-            push_constant_ranges: &[],
-        });
-        let line_vbl = wgpu::VertexBufferLayout {
-            array_stride: 12,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &[wgpu::VertexAttribute { offset: 0, shader_location: 0, format: wgpu::VertexFormat::Float32x3 }],
-        };
-        let line_pipe = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("line-pipe"),
-            layout: Some(&line_pl),
-            vertex: wgpu::VertexState {
-                module: &line_mod,
-                entry_point: "vs_main",
-                compilation_options: Default::default(),
-                buffers: &[line_vbl],
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &line_mod,
-                entry_point: "fs_main",
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: scene_format,
-                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::LineList,
-                strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: None,
-                polygon_mode: wgpu::PolygonMode::Fill,
-                unclipped_depth: false,
-                conservative: false,
-            },
-            depth_stencil: Some(depth_state(false, wgpu::CompareFunction::Less)),
-            multisample: wgpu::MultisampleState::default(),
-            multiview: None,
-            cache: None,
         });
 
         // unit cube edges (slightly inflated to avoid z-fighting)
@@ -2456,57 +2575,6 @@ impl Renderer {
                     resource: wgpu::BindingResource::Sampler(&cloud_samp),
                 },
             ],
-        });
-        let cloud_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("clouds"),
-            source: wgpu::ShaderSource::Wgsl(std::borrow::Cow::Borrowed(CLOUD_SHADER)),
-        });
-        let cloud_vbl = wgpu::VertexBufferLayout {
-            array_stride: 8,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &[wgpu::VertexAttribute {
-                offset: 0,
-                shader_location: 0,
-                format: wgpu::VertexFormat::Float32x2,
-            }],
-        };
-        let cloud_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("cloud-pl"),
-            bind_group_layouts: &[&cloud_bgl],
-            push_constant_ranges: &[],
-        });
-        let cloud_pipe = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("cloud-pipe"),
-            layout: Some(&cloud_pl),
-            vertex: wgpu::VertexState {
-                module: &cloud_mod,
-                entry_point: "vs_main",
-                compilation_options: Default::default(),
-                buffers: &[cloud_vbl],
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &cloud_mod,
-                entry_point: "fs_main",
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: scene_format,
-                    blend: opaque_blend,
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: None,
-                polygon_mode: wgpu::PolygonMode::Fill,
-                unclipped_depth: false,
-                conservative: false,
-            },
-            depth_stencil: Some(depth_state(false, wgpu::CompareFunction::Less)),
-            multisample: wgpu::MultisampleState::default(),
-            multiview: None,
-            cache: None,
         });
         // cloud quad: big XZ plane centered on the camera (recentered in vs)
         let s = 2400.0f32;
@@ -2725,6 +2793,27 @@ impl Renderer {
             report_boot_log("draw path: region-arena loop (zero per-chunk binds)");
         }
 
+        // Phase 6 §26: MSAA capability — the scene color format must support
+        // multisampling + automatic resolve, the depth format multisampling.
+        // (Rgba8Unorm 4x + resolve is guaranteed by WebGPU on every
+        // renderable format; 8x is checked, 2x has no guaranteed WebGPU
+        // path so the setting only offers off/4/8.)
+        let fmt_feats = |f| adapter.get_texture_format_features(f).flags;
+        let color_ms = fmt_feats(wgpu::TextureFormat::Rgba8Unorm);
+        let depth_ms = fmt_feats(wgpu::TextureFormat::Depth32Float);
+        let msaa_max = if color_ms.contains(
+            wgpu::TextureFormatFeatureFlags::MULTISAMPLE_X4
+                | wgpu::TextureFormatFeatureFlags::MULTISAMPLE_RESOLVE,
+        ) && depth_ms.contains(wgpu::TextureFormatFeatureFlags::MULTISAMPLE_X4)
+        {
+            if color_ms.contains(wgpu::TextureFormatFeatureFlags::MULTISAMPLE_X8) { 8 } else { 4 }
+        } else {
+            0
+        };
+
+        // Phase 6: the 1x scene pipeline set (the MSAA set builds lazily)
+        let scene = build_scene_pipes(&device, &world_bgl, &line_bgl, &cloud_bgl, &part_bgl, 1);
+
         // Phase 11 §34: pack-uniform bridge buffer
         let pack_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("pack-uniforms"),
@@ -2742,15 +2831,18 @@ impl Renderer {
             atlas_tex,
             atlas_view,
             sampler,
+            atlas_data: atlas.to_vec(),
+            mip_levels: 0,
+            aniso: 1,
             globals_buf,
             world_bgl,
             world_bg,
             origin_vb,
-            terrain_pipe,
-            water_pipe,
-            sky_pipe,
+            terrain_pipe: scene.terrain,
+            water_pipe: scene.water,
+            sky_pipe: scene.sky,
             cloud_bg,
-            cloud_pipe,
+            cloud_pipe: scene.cloud,
             cloud_vb,
             ui_tex,
             ui_view,
@@ -2762,8 +2854,11 @@ impl Renderer {
             ui_ib,
             line_buf,
             line_vb,
-            line_pipe,
+            line_pipe: scene.line,
             line_bg,
+            line_bgl,
+            cloud_bgl,
+            part_bgl,
             post_targets,
             post_samp,
             post_buf,
@@ -2792,7 +2887,7 @@ impl Renderer {
             tint_tex,
             tint_view,
             part_bg,
-            part_pipe,
+            part_pipe: scene.part,
             particle_vb,
             upscale,
             backend_name,
@@ -2800,6 +2895,12 @@ impl Renderer {
             regions: HashMap::new(),
             draw_mdi,
             args_buf,
+            msaa: 0,
+            msaa_max,
+            msaa_view: None,
+            msaa_depth: None,
+            msaa_pipes: None,
+            occlusion: true,
             pack_pipe: None,
             pack_buf,
             pack_grade: None,
@@ -2935,6 +3036,10 @@ impl Renderer {
             0,
             bytemuck::bytes_of(&AuxUniform { dir: [0.0, 1.0 / bh as f32, 0.0, 0.0] }),
         );
+        // Phase 6: the MSAA targets track the scene scale — resize with it
+        if self.msaa > 0 {
+            self.rebuild_msaa_targets();
+        }
     }
 
     fn make_depth(device: &wgpu::Device, w: u32, h: u32) -> wgpu::TextureView {
@@ -2981,6 +3086,278 @@ impl Renderer {
             ((self.config.height as f32) * scale).round().max(1.0) as u32,
         );
         self.rebuild_post_targets();
+    }
+
+    // ------------------------------------------------- Phase 6 §26 quality --
+
+    /// Texture quality: `mip_levels` 0..=4 (vanilla `mipmapLevels`, VERIFIED
+    /// default 4 / range 0-4, wiki Options.txt) and `aniso` 1/2/4/8/16
+    /// (OptiFine `ofAfLevel` parity — vanilla 1.16.5 has no aniso setting;
+    /// default 4 comes from the dossier Part 1 §3 captured optionsof.txt).
+    /// Rebuilds the atlas texture (mip chain), the world sampler, and the
+    /// two atlas-bound bind groups.
+    pub fn set_texture_quality(&mut self, mip_levels: u8, aniso: u8) {
+        let mips = mip_levels.min(textures::MAX_MIP_LEVELS);
+        let aniso = aniso.clamp(1, 16);
+        if mips == self.mip_levels && aniso == self.aniso {
+            return;
+        }
+        self.mip_levels = mips;
+        self.aniso = aniso;
+        self.rebuild_atlas();
+    }
+
+    /// current quality settings (F3 / E2E stats)
+    pub fn texture_quality(&self) -> (u8, u8) {
+        (self.mip_levels, self.aniso)
+    }
+
+    /// world bind group over a given atlas view + sampler (binding set:
+    /// globals, atlas, sampler, shadow map, shadow sampler, shadow
+    /// uniforms, biome-tint LUT — see world_bgl)
+    fn make_world_bg(&self, atlas_view: &wgpu::TextureView, sampler: &wgpu::Sampler) -> wgpu::BindGroup {
+        self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("world-bg"),
+            layout: &self.world_bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: &self.globals_buf,
+                        offset: 0,
+                        size: None,
+                    }),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(atlas_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(&self.shadow_tex),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::Sampler(&self.shadow_samp),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: &self.shadow_buf,
+                        offset: 0,
+                        size: None,
+                    }),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: wgpu::BindingResource::TextureView(&self.tint_view),
+                },
+            ],
+        })
+    }
+
+    /// particle bind group over a given atlas view + sampler
+    fn make_part_bg(&self, atlas_view: &wgpu::TextureView, sampler: &wgpu::Sampler) -> wgpu::BindGroup {
+        self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("part-bg"),
+            layout: &self.part_bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: &self.globals_buf,
+                        offset: 0,
+                        size: None,
+                    }),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(atlas_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(sampler),
+                },
+            ],
+        })
+    }
+
+    /// the world sampler for the current quality:
+    /// * mips off, aniso 1: Nearest/Nearest (the crisp vanilla default)
+    /// * mips on: min Linear + mipmap Linear, mag Nearest — the classic
+    ///   vanilla distance blur (documented adaptation: the exact GL
+    ///   constants of 1.16.5's GlStateManager can't be verified from the
+    ///   public wiki; nearest magnification is certain, trilinear
+    ///   minification matches the vanilla look)
+    /// * aniso > 1: all filters Linear (WebGPU REQUIRES linear filters for
+    ///   anisotropy_clamp > 1 — a spec rule, wgpu validates it) +
+    ///   anisotropy_clamp set
+    fn world_sampler(&self) -> wgpu::Sampler {
+        let mut d = wgpu::SamplerDescriptor::default();
+        if self.mip_levels > 0 {
+            d.min_filter = wgpu::FilterMode::Linear;
+            d.mipmap_filter = wgpu::FilterMode::Linear;
+            d.mag_filter = wgpu::FilterMode::Nearest;
+        } else {
+            d.min_filter = wgpu::FilterMode::Nearest;
+            d.mag_filter = wgpu::FilterMode::Nearest;
+        }
+        if self.aniso > 1 {
+            d.anisotropy_clamp = self.aniso as u16;
+            d.mag_filter = wgpu::FilterMode::Linear;
+            d.min_filter = wgpu::FilterMode::Linear;
+            d.mipmap_filter = wgpu::FilterMode::Linear;
+        }
+        self.device.create_sampler(&d)
+    }
+
+    /// recreate the atlas texture with the active mip count, upload the
+    /// base image + generated mip levels, refresh the sampler + the two
+    /// atlas-bound bind groups
+    fn rebuild_atlas(&mut self) {
+        let levels = 1 + self.mip_levels as u32;
+        let size = wgpu::Extent3d {
+            width: textures::ATLAS_SIZE as u32,
+            height: textures::ATLAS_SIZE as u32,
+            depth_or_array_layers: 1,
+        };
+        let atlas_tex = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("atlas"),
+            size,
+            mip_level_count: levels,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        self.queue.write_texture(
+            wgpu::ImageCopyTexture {
+                texture: &atlas_tex,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            &self.atlas_data,
+            wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(textures::ATLAS_SIZE as u32 * 4),
+                rows_per_image: Some(textures::ATLAS_SIZE as u32),
+            },
+            size,
+        );
+        // mip levels 1..=N: CPU-generated per-tile-safe chain (§26)
+        for (i, mip) in textures::generate_mips(&self.atlas_data, self.mip_levels).iter().enumerate() {
+            let level = (i + 1) as u32;
+            let side = (textures::ATLAS_SIZE >> level) as u32;
+            self.queue.write_texture(
+                wgpu::ImageCopyTexture {
+                    texture: &atlas_tex,
+                    mip_level: level,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                mip,
+                wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: Some(side * 4),
+                    rows_per_image: Some(side),
+                },
+                wgpu::Extent3d { width: side, height: side, depth_or_array_layers: 1 },
+            );
+        }
+        let atlas_view = atlas_tex.create_view(&wgpu::TextureViewDescriptor::default());
+        let sampler = self.world_sampler();
+        let world_bg = self.make_world_bg(&atlas_view, &sampler);
+        let part_bg = self.make_part_bg(&atlas_view, &sampler);
+        self.atlas_tex = atlas_tex;
+        self.atlas_view = atlas_view;
+        self.sampler = sampler;
+        self.world_bg = world_bg;
+        self.part_bg = part_bg;
+    }
+
+    /// MSAA setting (0 = off — the vanilla-faithful default; 4/8 gated on
+    /// device support via `msaa_supported`). Rebuilds the multisampled
+    /// targets and lazily builds the scene pipeline variant.
+    pub fn set_msaa(&mut self, samples: u8) {
+        let want = if samples >= 8 && self.msaa_max >= 8 {
+            8
+        } else if samples >= 4 && self.msaa_max >= 4 {
+            4
+        } else {
+            0
+        };
+        if want == self.msaa {
+            return;
+        }
+        self.msaa = want;
+        if want == 0 {
+            self.msaa_view = None;
+            self.msaa_depth = None;
+            self.msaa_pipes = None; // free the variant set
+        } else {
+            self.rebuild_msaa_targets();
+            if self.msaa_pipes.is_none() {
+                let pipes = build_scene_pipes(
+                    &self.device,
+                    &self.world_bgl,
+                    &self.line_bgl,
+                    &self.cloud_bgl,
+                    &self.part_bgl,
+                    want as u32,
+                );
+                self.msaa_pipes = Some(pipes);
+            }
+        }
+    }
+
+    /// current MSAA sample count (0/4/8 — E2E + F3)
+    pub fn msaa(&self) -> u8 {
+        self.msaa
+    }
+
+    /// device max MSAA (0/4/8) — settings UI hides unsupported options
+    pub fn msaa_supported(&self) -> u8 {
+        self.msaa_max
+    }
+
+    /// (re)create the multisampled color + depth targets at the current
+    /// scene scale — called on enable, resize, and upscale changes
+    fn rebuild_msaa_targets(&mut self) {
+        let (w, h) = self.post_targets.scene_size();
+        let samples = self.msaa as u32;
+        let color = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("msaa-color"),
+            size: wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+            mip_level_count: 1,
+            sample_count: samples,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        });
+        let depth = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("msaa-depth"),
+            size: wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+            mip_level_count: 1,
+            sample_count: samples,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Depth32Float,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        });
+        self.msaa_view = Some(color.create_view(&wgpu::TextureViewDescriptor::default()));
+        self.msaa_depth = Some(depth.create_view(&wgpu::TextureViewDescriptor::default()));
+    }
+
+    /// chunk-graph occlusion culling toggle (§26)
+    pub fn set_occlusion(&mut self, on: bool) {
+        self.occlusion = on;
     }
 
     /// §17 shadow quality: rebuild the shadow map at a new resolution
@@ -3112,7 +3489,9 @@ impl Renderer {
     }
 
     /// overwrite one 16×16 atlas tile (animated textures: frame update path —
-    /// geometry is never rebuilt for a texture frame change, §20)
+    /// geometry is never rebuilt for a texture frame change, §20). With
+    /// mipmaps active the tile's mip levels are refreshed too (vanilla
+    /// uploads each animation frame's own mip chain — same behavior).
     pub fn write_atlas_tile(&mut self, tile: u16, rgba: &[u8]) {
         let tx = (tile % 16) as u32;
         let ty = (tile / 16) as u32;
@@ -3139,6 +3518,43 @@ impl Renderer {
                 depth_or_array_layers: 1,
             },
         );
+        // keep the CPU atlas in sync (future full rebuilds stay correct)
+        let base = ((ty as usize * textures::TILE_PX) * textures::ATLAS_SIZE
+            + tx as usize * textures::TILE_PX)
+            * 4;
+        if base + rgba.len() <= self.atlas_data.len() {
+            self.atlas_data[base..base + rgba.len()].copy_from_slice(rgba);
+        }
+        // mip refresh: per-tile chain from THIS frame (vanilla parity)
+        if self.mip_levels > 0 {
+            for (i, mip) in textures::generate_mips(rgba, self.mip_levels).iter().enumerate() {
+                let level = (i + 1) as u32;
+                let tile_px = (textures::TILE_PX as u32) >> level;
+                self.queue.write_texture(
+                    wgpu::ImageCopyTexture {
+                        texture: &self.atlas_tex,
+                        mip_level: level,
+                        origin: wgpu::Origin3d {
+                            x: (tx * textures::TILE_PX as u32) >> level,
+                            y: (ty * textures::TILE_PX as u32) >> level,
+                            z: 0,
+                        },
+                        aspect: wgpu::TextureAspect::All,
+                    },
+                    mip,
+                    wgpu::ImageDataLayout {
+                        offset: 0,
+                        bytes_per_row: Some(tile_px * 4),
+                        rows_per_image: Some(tile_px),
+                    },
+                    wgpu::Extent3d {
+                        width: tile_px,
+                        height: tile_px,
+                        depth_or_array_layers: 1,
+                    },
+                );
+            }
+        }
     }
 
     /// update an animated tile from its precomputed frames
@@ -3158,7 +3574,7 @@ impl Renderer {
        /// write_buffer calls coalesce into the next submit. Arena growth is
     /// a doubling realloc whose GPU→GPU copy is submitted strictly before
     /// the new data write (disjoint ranges either way — see grow()),
-    pub fn set_chunk_mesh(&mut self, pos: ChunkPos, md: &MeshData) {
+    pub fn set_chunk_mesh(&mut self, pos: ChunkPos, md: &MeshData, occl: draw::ChunkOccl) {
         let region = draw::region_of(pos);
         let v_len = md.solid.0.len() as u32;
         let i_len = md.solid.1.len() as u32;
@@ -3185,9 +3601,10 @@ impl Renderer {
             Some(c) => {
                 c.solid = solid;
                 c.water = water;
+                c.occl = occl;
             }
             None => {
-                self.chunks.insert(pos, ChunkGpu { solid, water });
+                self.chunks.insert(pos, ChunkGpu { solid, water, occl });
             }
         }
     }
@@ -3715,24 +4132,57 @@ impl Renderer {
             );
         }
 
-        // ─────────────────────── Phase 9: region-grouped draw lists (§14) ──
-        // origin row = index in `sorted`; draw order = region-major near→far
-        // so chunks of one 8×8 region are contiguous → one arena bind per
-        // region run, zero per-chunk buffer binds (water: far→near).
-        let vis: Vec<VisEntry> = sorted
+        // ──────────────────────── Phase 6 §26: occlusion culling ──
+        // The chunk-graph flood (see draw::occlusion_visible) runs on the
+        // SECTION grid from the camera's own section; a column is drawable
+        // when any of its geometry bands is reachable. None = camera chunk
+        // not meshed yet → skip (draw everything frustum-visible). The
+        // SHADOW list deliberately stays unfiltered: sun shadows of
+        // camera-occluded columns are still visible in view.
+        let vis_full: Vec<VisEntry> = sorted
             .iter()
             .take(draw_count)
             .enumerate()
             .map(|(i, &(pos, d))| (pos, d, i as u32))
             .collect();
+        let vis: Vec<VisEntry> = if self.occlusion {
+            let cam_chunk = (
+                cam.eye.x.div_euclid(16.0) as i32,
+                cam.eye.z.div_euclid(16.0) as i32,
+            );
+            let cam_band = (cam.eye.y.clamp(0.0, 255.99) as u32 >> 4) as u8;
+            match draw::occlusion_visible(&self.chunks, cam_chunk, cam_band) {
+                Some(vis_set) => {
+                    let before = vis_full.len();
+                    let v: Vec<VisEntry> = vis_full
+                        .iter()
+                        .copied()
+                        .filter(|(pos, _, _)| vis_set.contains(pos))
+                        .collect();
+                    stats.culled = (before - v.len()) as u32;
+                    v
+                }
+                None => vis_full.clone(),
+            }
+        } else {
+            vis_full.clone()
+        };
+
+        // ─────────────────────── Phase 9: region-grouped draw lists (§14) ──
+        // origin row = index in `sorted`; draw order = region-major near→far
+        // so chunks of one 8×8 region are contiguous → one arena bind per
+        // region run, zero per-chunk buffer binds (water: far→near).
         let cam2 = (cam.eye.x, cam.eye.z);
         let terrain_order = draw::order_by_region(&vis, cam2, false);
         let water_order: Vec<VisEntry> = terrain_order.iter().rev().copied().collect();
         let terrain_list = draw::build_draw_list(&self.chunks, &terrain_order, false, None);
         let water_list = draw::build_draw_list(&self.chunks, &water_order, true, None);
-        // 110 u shadow radius + one chunk margin (16√2 ≈ 23)
+        // 110 u shadow radius + one chunk margin (16√2 ≈ 23) — built from
+        // the FULL frustum-visible set (not occlusion-filtered: shadows of
+        // hidden columns still land in view)
         let shadow_list = if shadows_on {
-            draw::build_draw_list(&self.chunks, &terrain_order, false, Some((110.0 + 23.0) * (110.0 + 23.0)))
+            let shadow_order = draw::order_by_region(&vis_full, cam2, false);
+            draw::build_draw_list(&self.chunks, &shadow_order, false, Some((110.0 + 23.0) * (110.0 + 23.0)))
         } else {
             Vec::new()
         };
@@ -3812,9 +4262,24 @@ impl Renderer {
         // ─────────────────────────────────────────────── pass 1: scene ──
         // (sky + terrain + selection + water + clouds → offscreen LINEAR
         // scene texture — the composite encodes to srgb once at the end)
+        // Phase 6 §26: with MSAA on, the scene renders into a multisampled
+        // color+depth pair and resolves into the scene target automatically
+        // at pass end (driver resolve — the Rgba8Unorm+X4+RESOLVE support
+        // was capability-checked at boot); the post chain stays 1x.
+        let msaa_on = self.msaa > 0 && self.msaa_view.is_some();
+        let color_view: &wgpu::TextureView = if msaa_on {
+            self.msaa_view.as_ref().unwrap()
+        } else {
+            &self.post_targets.scene_view
+        };
+        let resolve: Option<&wgpu::TextureView> = if msaa_on {
+            Some(&self.post_targets.scene_view)
+        } else {
+            None
+        };
         let clear = wgpu::RenderPassColorAttachment {
-            view: &self.post_targets.scene_view,
-            resolve_target: None,
+            view: color_view,
+            resolve_target: resolve,
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Clear(wgpu::Color {
                     r: sky.fog_color[0] as f64,
@@ -3825,14 +4290,36 @@ impl Renderer {
                 store: wgpu::StoreOp::Store,
             },
         };
+        let depth_view: &wgpu::TextureView = if msaa_on {
+            self.msaa_depth.as_ref().unwrap()
+        } else {
+            &self.depth
+        };
         let depth_att = wgpu::RenderPassDepthStencilAttachment {
-            view: &self.depth,
+            view: depth_view,
             depth_ops: Some(wgpu::Operations {
                 load: wgpu::LoadOp::Clear(1.0),
                 store: wgpu::StoreOp::Store,
             }),
             stencil_ops: None,
         };
+
+        // pipeline set: the MSAA variants when active, else the 1x set
+        let (sky_p, terrain_p, line_p, water_p, part_p, cloud_p) =
+            if let (true, Some(p)) = (msaa_on, &self.msaa_pipes) {
+                (
+                    &p.sky, &p.terrain, &p.line, &p.water, &p.part, &p.cloud,
+                )
+            } else {
+                (
+                    &self.sky_pipe,
+                    &self.terrain_pipe,
+                    &self.line_pipe,
+                    &self.water_pipe,
+                    &self.part_pipe,
+                    &self.cloud_pipe,
+                )
+            };
 
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -3846,7 +4333,7 @@ impl Renderer {
             // 1. sky (§28: skipped in skyless dimensions — the nether's
             // fog-colored clear color IS the sky)
             if !sky.skyless {
-                pass.set_pipeline(&self.sky_pipe);
+                pass.set_pipeline(sky_p);
                 pass.set_bind_group(0, &self.world_bg, &[]);
                 pass.draw(0..3, 0..1);
             }
@@ -3854,7 +4341,7 @@ impl Renderer {
             // 2. terrain — Phase 9: region-grouped near→far (approximately
             // front-to-back for early-z), whole origin buffer bound once,
             // arena re-bound once per region run; MDI where supported
-            pass.set_pipeline(&self.terrain_pipe);
+            pass.set_pipeline(terrain_p);
             pass.set_bind_group(0, &self.world_bg, &[]);
             pass.set_vertex_buffer(1, self.origin_vb.slice(..));
             self.issue_draws(&mut pass, &terrain_list, 0, &mut stats);
@@ -3862,7 +4349,7 @@ impl Renderer {
 
             // 3. selection wireframe
             if selection.is_some() {
-                pass.set_pipeline(&self.line_pipe);
+                pass.set_pipeline(line_p);
                 pass.set_bind_group(0, &self.line_bg, &[]);
                 pass.set_vertex_buffer(0, self.line_vb.slice(..));
                 pass.draw(0..24, 0..1);
@@ -3870,7 +4357,7 @@ impl Renderer {
 
             // 4. water (far → near, blended) — reversed region-major order,
             // same origin rows, same zero-rebind submission
-            pass.set_pipeline(&self.water_pipe);
+            pass.set_pipeline(water_p);
             pass.set_bind_group(0, &self.world_bg, &[]);
             pass.set_vertex_buffer(1, self.origin_vb.slice(..));
             self.issue_draws(&mut pass, &water_list, args_water_off, &mut stats);
@@ -3883,7 +4370,7 @@ impl Renderer {
                 let bytes =
                     bytemuck::cast_slice(particles);
                 self.queue.write_buffer(&self.particle_vb, 0, bytes);
-                pass.set_pipeline(&self.part_pipe);
+                pass.set_pipeline(part_p);
                 pass.set_bind_group(0, &self.part_bg, &[]);
                 pass.set_vertex_buffer(0, self.particle_vb.slice(..));
                 let n = (particles.len() as u32).min(vc_particles::particles::MAX_PARTICLES as u32 * 6);
@@ -3893,7 +4380,7 @@ impl Renderer {
 
             // 5. clouds (translucent plane above the world)
             if clouds {
-                pass.set_pipeline(&self.cloud_pipe);
+                pass.set_pipeline(cloud_p);
                 pass.set_bind_group(0, &self.cloud_bg, &[]);
                 pass.set_vertex_buffer(0, self.cloud_vb.slice(..));
                 pass.draw(0..6, 0..1);

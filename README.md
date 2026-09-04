@@ -64,7 +64,7 @@ All 16×16 textures and every sound are **synthesized procedurally at startup** 
 | WASD               | Move                                        |
 | Mouse              | Look around (cursor is locked)              |
 | Space              | Jump / swim up / fly up                     |
-| **Double Space**   | Toggle flying (creative-style)              |
+| **Double Space**   | Toggle flying (**Creative mode only** — see game modes) |
 | Shift              | Fly down / sneak in water                   |
 | Ctrl               | Sprint (FOV widens)                         |
 | Left click (hold)  | Break blocks                                |

@@ -76,6 +76,16 @@ pub struct Player {
     last_space_tap: f32,
     step_accum: f32,
     was_in_water: bool,
+    /// Phase 1: blocks fallen since last reset (vanilla `fallDistance`).
+    /// Reset by water, flight, climbing — NOT by mere landing (landing is
+    /// what CONVERTS it into damage).
+    pub fall_dist: f32,
+    /// Phase 1: fall damage queued for the game layer (HP, half-heart
+    /// scale). Vanilla formula, verified against Mojang's own tracker
+    /// (MC-12357, Dossier Part 5 §25): damage = fall_distance − 3, so a
+    /// 4-block fall costs 1 HP and a 23-block fall is lethal.
+    pending_fall_dmg: f32,
+    was_on_ground: bool,
 }
 
 impl Player {
@@ -105,7 +115,25 @@ impl Player {
             last_space_tap: -1.0,
             step_accum: 0.0,
             was_in_water: false,
+            fall_dist: 0.0,
+            pending_fall_dmg: 0.0,
+            was_on_ground: false,
         }
+    }
+
+    /// Phase 1: drain queued fall damage (HP). One-shot: landing converts
+    /// the whole accumulated fall into one hit, exactly like vanilla.
+    pub fn take_pending_fall_damage(&mut self) -> f32 {
+        let d = self.pending_fall_dmg;
+        self.pending_fall_dmg = 0.0;
+        d
+    }
+
+    /// Reset fall accumulation (spawn snap / respawn / mode change).
+    pub fn reset_fall(&mut self) {
+        self.fall_dist = 0.0;
+        self.pending_fall_dmg = 0.0;
+        self.was_on_ground = false;
     }
 
     /// the selected hotbar stack
@@ -291,6 +319,16 @@ impl Player {
         let target_fov = if sprinting && !self.flying { self.fov * 1.12 } else { self.fov };
         self.fov_cur += (target_fov - self.fov_cur) * (10.0 * dt).min(1.0);
 
+        // Phase 1: vanilla fall-distance bookkeeping — accumulate while
+        // falling unaided; water and flight zero it (a dive or a hover is
+        // free); landing converts it to queued damage via the MC-12357
+        // formula `fall_distance − 3` HP.
+        if self.flying || self.in_water {
+            self.fall_dist = 0.0;
+        } else if self.vel.y < 0.0 {
+            self.fall_dist += -self.vel.y * dt;
+        }
+
         // integrate with axis-separated collision substeps
         let delta = self.vel * dt;
         let max_comp = delta.x.abs().max(delta.y.abs()).max(delta.z.abs());
@@ -309,6 +347,17 @@ impl Player {
                 self.on_ground = true;
             }
         }
+
+        // Phase 1: the landing itself — one hit for the whole fall
+        // (vanilla applies it on the ground-contact tick; water/flight
+        // already zeroed fall_dist above, so a dive lands free)
+        if self.on_ground && !self.was_on_ground && self.fall_dist > 3.0 {
+            self.pending_fall_dmg += self.fall_dist - 3.0;
+        }
+        if self.on_ground {
+            self.fall_dist = 0.0;
+        }
+        self.was_on_ground = self.on_ground;
 
         // footsteps
         if self.on_ground && !self.flying {
@@ -715,4 +764,72 @@ mod tests {
         assert!((p.pos.y - 65.0).abs() < 0.1, "resting on the pool floor, y={}", p.pos.y);
     }
 
+    /// Phase 1: fall damage follows the vanilla MC-12357 formula —
+    /// damage = fall_distance − 3 HP (a 4-block drop costs 1 HP, a
+    /// 23-block drop is lethal at 20 HP). Landing in water is free.
+    #[test]
+    fn fall_damage_is_distance_minus_three() {
+        let mut input = Input::default();
+        // drop from 7 blocks onto the flat floor: expect 7 − 3 = 4 HP
+        let mut w = flat_floor();
+        let top = chunk_top(&w) as f32;
+        let mut p = Player::new(Vec3::new(0.5, top + 7.0 + 1.0, 0.5));
+        p.flying = false;
+        let mut frames = 0;
+        while !p.on_ground && frames < 600 {
+            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+            frames += 1;
+        }
+        assert!(p.on_ground, "must land within 10 s");
+        let dmg = p.take_pending_fall_damage();
+        // fall_dist counts the ~7-block descent (exact distance differs by
+        // the integration step and the +1 spawn epsilon — accept a window)
+        assert!(
+            (3.0..=6.5).contains(&dmg),
+            "7-block fall deals ~4 HP, got {dmg}"
+        );
+        // queued damage drains once, then nothing
+        assert_eq!(p.take_pending_fall_damage(), 0.0);
+    }
+
+    #[test]
+    fn short_falls_and_water_entries_cost_nothing() {
+        let mut input = Input::default();
+        // sub-3-block hop: below the 3-block grace, zero damage (spawned a
+        // hair under the threshold so integration overshoot can't trip it)
+        let w = flat_floor();
+        let top = chunk_top(&w) as f32;
+        let mut p = Player::new(Vec3::new(0.5, top + 2.5, 0.5));
+        p.flying = false;
+        let mut frames = 0;
+        while !p.on_ground && frames < 600 {
+            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+            frames += 1;
+        }
+        assert_eq!(p.take_pending_fall_damage(), 0.0, "2.5-block fall is free");
+        // deep dive into water: fall distance resets, no queued damage
+        let mut w2 = flat_floor();
+        for y in 50..=64i32 {
+            for z in -4..=4i32 {
+                for x in -4..=4i32 {
+                    w2.set_block(x, y, z, vc_blocks::blocks::WATER);
+                }
+            }
+        }
+        let mut p2 = Player::new(Vec3::new(0.5, 64.0, 0.5));
+        p2.flying = false;
+        for _ in 0..120 {
+            let _ = p2.update(1.0 / 60.0, 0.0, &w2, &mut input, 1.0, true);
+        }
+        assert!(p2.in_water, "should be submerged");
+        assert_eq!(p2.take_pending_fall_damage(), 0.0, "water entry is free");
+        // flying never accumulates
+        let mut p3 = Player::new(Vec3::new(0.5, 120.0, 0.5));
+        p3.flying = true;
+        p3.vel.y = -30.0;
+        for _ in 0..60 {
+            let _ = p3.update(1.0 / 60.0, 0.0, &w2, &mut input, 1.0, true);
+        }
+        assert_eq!(p3.fall_dist, 0.0, "flight resets fall distance");
+    }
 }

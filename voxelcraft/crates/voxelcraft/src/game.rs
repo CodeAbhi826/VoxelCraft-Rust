@@ -160,6 +160,12 @@ pub enum Screen {
     Options,
     Game,
     Pause,
+    /// Phase 1: saved-world list (native)
+    WorldSelect,
+    /// Phase 1: new-world creation (name / seed / mode)
+    WorldCreate,
+    /// Phase 1: death screen (respawn vs hardcore game-over)
+    Death,
 }
 
 /// open container screens (Phase 7 §27/§29)
@@ -187,7 +193,18 @@ impl Screen {
             Screen::Options => "options",
             Screen::Game => "game",
             Screen::Pause => "pause",
+            Screen::WorldSelect => "worldselect",
+            Screen::WorldCreate => "create",
+            Screen::Death => "death",
         }
+    }
+
+    /// Full-screen UI screens that own the cursor (menus proper).
+    pub fn is_menu(self) -> bool {
+        matches!(
+            self,
+            Screen::Title | Screen::Options | Screen::Pause | Screen::WorldSelect | Screen::WorldCreate | Screen::Death
+        )
     }
 }
 
@@ -383,6 +400,34 @@ pub struct GameApp {
     world_dir: std::path::PathBuf,
     /// §28: a dimension travel is waiting for the spawn chunk (Loading)
     traveling: bool,
+    /// Phase 1: a created/loaded world is waiting for the spawn chunk —
+    /// Loading then goes straight into the game (not back to the title)
+    pending_play: bool,
+    /// Phase 1: the active game mode (rules gate, see vc-gameplay::modes)
+    mode: vc_gameplay::modes::GameMode,
+    /// Phase 1: display name of the active world (level.dat LevelName)
+    world_name: String,
+    /// Phase 1: a hardcore world whose player died — locked, no respawn
+    hardcore_dead: bool,
+    /// Phase 1: world spawn for respawn (both targets — web has no
+    /// level.dat but still needs a respawn point)
+    respawn_pos: glam::Vec3,
+    /// Phase 1: last death cause shown on the death screen
+    death_cause: String,
+    /// Phase 1: world-create screen state (buffers + selected mode + the
+    /// random seed preview shown as the placeholder)
+    wc_name: String,
+    wc_seed: String,
+    wc_mode: vc_gameplay::modes::GameMode,
+    wc_seed_preview: u64,
+    /// Phase 1: cached world list for the select screen + selection
+    /// (native only — the save module is fs-based and cfg'd out on wasm;
+    /// the web build goes straight to world-create)
+    #[cfg(not(target_arch = "wasm32"))]
+    worlds: Vec<vc_anvil::save::WorldEntry>,
+    ws_selected: Option<usize>,
+    /// Phase 1: web text-entry shift state (codes arrive without case)
+    web_shift: bool,
     /// persisted spawn point (level.dat SpawnX/Y/Z)
     #[cfg(not(target_arch = "wasm32"))]
     level_spawn: (i32, i32, i32),
@@ -553,13 +598,41 @@ impl GameApp {
         let mut spawn = world.find_spawn();
         #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
         let mut player = Player::new(Vec3::new(spawn.0, spawn.1 + 20.0, spawn.2));
+        // Phase 1: default state until a world is created/loaded
+        #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
+        let mut mode = vc_gameplay::modes::GameMode::Survival;
+        let mut world_name = String::from("VoxelCraft");
 
-        // native: restore a persisted world (seed, spawn, player) if one
-        // exists in the save dir (§28) — otherwise a fresh random world.
+        // native: scan every saved world (Phase 1) and restore the most
+        // recently played one (panorama background + fast re-entry); the
+        // legacy single save at saves/VoxelCraft is simply one entry.
         // §28: the overworld saves at the world root (boot always starts
         // there, like vanilla); the nether dir is derived on travel.
         #[cfg(not(target_arch = "wasm32"))]
-        let save_root = vc_anvil::save::default_world_dir();
+        let save_root = {
+            let worlds = vc_anvil::save::list_worlds();
+            if let Some(newest) = worlds.first() {
+                let meta = &newest.meta;
+                world = World::new(meta.seed);
+                spawn = world.find_spawn();
+                mode = vc_gameplay::modes::GameMode::from_save(meta.game_type, meta.hardcore);
+                world_name = meta.name.clone();
+                if let Some(p) = &meta.player {
+                    player = Player::new(Vec3::new(
+                        p.pos[0] as f32,
+                        p.pos[1] as f32,
+                        p.pos[2] as f32,
+                    ));
+                    player.yaw = p.yaw;
+                    player.pitch = p.pitch;
+                } else {
+                    player = Player::new(Vec3::new(spawn.0, spawn.1 + 20.0, spawn.2));
+                }
+                newest.dir.clone()
+            } else {
+                vc_anvil::save::default_world_dir()
+            }
+        };
         #[cfg(not(target_arch = "wasm32"))]
         let world_dir = vc_anvil::save::dimension_dir(
             &save_root,
@@ -568,18 +641,10 @@ impl GameApp {
         #[cfg(not(target_arch = "wasm32"))]
         let mut level_spawn = (spawn.0 as i32, spawn.1 as i32, spawn.2 as i32);
         #[cfg(not(target_arch = "wasm32"))]
-        if let Ok(Some(meta)) = vc_anvil::save::read_level_dat(&save_root) {
-            world = World::new(meta.seed);
-            spawn = world.find_spawn();
-            level_spawn = meta.spawn;
-            if let Some(p) = &meta.player {
-                player = Player::new(Vec3::new(
-                    p.pos[0] as f32,
-                    p.pos[1] as f32,
-                    p.pos[2] as f32,
-                ));
-                player.yaw = p.yaw;
-                player.pitch = p.pitch;
+        {
+            // the restored save's own spawn point wins over find_spawn()
+            if let Ok(Some(meta)) = vc_anvil::save::read_level_dat(&save_root) {
+                level_spawn = meta.spawn;
             }
         }
 
@@ -728,6 +793,33 @@ impl GameApp {
             #[cfg(not(target_arch = "wasm32"))]
             world_dir,
             traveling: false,
+            pending_play: false,
+            mode,
+            world_name,
+            hardcore_dead: false,
+            respawn_pos: {
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    glam::Vec3::new(
+                        level_spawn.0 as f32 + 0.5,
+                        level_spawn.1 as f32 + 0.5,
+                        level_spawn.2 as f32 + 0.5,
+                    )
+                }
+                #[cfg(target_arch = "wasm32")]
+                {
+                    glam::Vec3::new(spawn.0, spawn.1 + 1.0, spawn.2)
+                }
+            },
+            death_cause: String::new(),
+            wc_name: String::from("New World"),
+            wc_seed: String::new(),
+            wc_mode: vc_gameplay::modes::GameMode::Survival,
+            wc_seed_preview: vc_world::world::World::random_seed(),
+            #[cfg(not(target_arch = "wasm32"))]
+            worlds: Vec::new(),
+            ws_selected: None,
+            web_shift: false,
             #[cfg(not(target_arch = "wasm32"))]
             level_spawn,
             #[cfg(not(target_arch = "wasm32"))]
@@ -767,6 +859,24 @@ impl GameApp {
                 #[cfg(not(target_arch = "wasm32"))]
                 WindowEvent::KeyboardInput { event, .. } => {
                     let pressed = event.state == ElementState::Pressed;
+                    // Phase 1: text fields eat printable characters first
+                    // (world name / seed entry on the create screen)
+                    if pressed
+                        && self.screen == Screen::WorldCreate
+                        && self.text_field_focused().is_some()
+                    {
+                        if let winit::keyboard::Key::Character(s) = &event.logical_key {
+                            let mut ate = false;
+                            for ch in s.chars() {
+                                if self.type_char(ch) {
+                                    ate = true;
+                                }
+                            }
+                            if ate {
+                                return;
+                            }
+                        }
+                    }
                     let code = match event.physical_key {
                         PhysicalKey::Code(c) => c,
                         _ => return,
@@ -881,6 +991,23 @@ impl GameApp {
         for ev in web_input::drain_events() {
             match ev {
                 WebEvent::Key { code, pressed, repeat } => {
+                    // Phase 1: shift state for web text case mapping
+                    if code == "ShiftLeft" || code == "ShiftRight" {
+                        self.web_shift = pressed;
+                    }
+                    // text fields eat printable keys (codes → chars, with
+                    // shift for case — the shim sends physical codes)
+                    if pressed
+                        && !repeat
+                        && self.screen == Screen::WorldCreate
+                        && self.text_field_focused().is_some()
+                    {
+                        if let Some(ch) = web_char_from_code(&code, self.web_shift) {
+                            if self.type_char(ch) {
+                                continue;
+                            }
+                        }
+                    }
                     if let Some(kc) = keycode_from_web(&code) {
                         self.key_action(kc, pressed, repeat);
                     }
@@ -1004,12 +1131,25 @@ impl GameApp {
             KeyCode::KeyD => self.input.right = pressed && in_game,
             KeyCode::Space => {
                 self.input.jump = pressed && in_game;
-                if pressed && in_game {
+                // Phase 1: double-space flight is a Creative-only mechanic
+                if pressed && in_game && self.mode.allows_flight() {
                     self.player.try_fly_toggle(self.time);
                 }
             }
             KeyCode::ShiftLeft | KeyCode::ShiftRight => self.input.sneak = pressed && in_game,
             KeyCode::ControlLeft | KeyCode::ControlRight => self.input.sprint = pressed && in_game,
+            KeyCode::Backspace => {
+                // Phase 1: text-field editing (world name / seed)
+                if pressed && self.screen == Screen::WorldCreate {
+                    self.backspace_field();
+                }
+            }
+            KeyCode::Enter | KeyCode::NumpadEnter => {
+                // Phase 1: Enter on the create screen = CREATE
+                if pressed && self.screen == Screen::WorldCreate {
+                    self.create_world();
+                }
+            }
             KeyCode::Escape => {
                 if pressed {
                     match self.screen {
@@ -1024,6 +1164,8 @@ impl GameApp {
                         }
                         Screen::Pause => self.resume_game(),
                         Screen::Options => self.close_options(),
+                        Screen::WorldCreate => self.cancel_world_create(),
+                        Screen::WorldSelect => self.set_screen(Screen::Title),
                         _ => {}
                     }
                 }
@@ -1195,7 +1337,7 @@ impl GameApp {
         }
     }
 
-    /// mouse buttons while in a menu (buttons + sliders)
+    /// mouse buttons while in a menu (buttons + sliders + text fields)
     fn menu_mouse(&mut self, _button: winit::event::MouseButton, pressed: bool, x: i32, y: i32) {
         if pressed {
             self.unlock_audio();
@@ -1213,6 +1355,16 @@ impl GameApp {
                             self.click_sound();
                         }
                     }
+                    WidgetKind::TextField { .. } => {
+                        // Phase 1: clicking a field focuses it (exclusively)
+                        self.focus_field(w.id);
+                        self.click_sound();
+                    }
+                }
+            } else {
+                // click outside any widget: drop text-field focus
+                if self.text_field_focused().is_some() {
+                    self.focus_field(0);
                 }
             }
         } else if self.dragging.is_some() {
@@ -1436,18 +1588,415 @@ impl GameApp {
         self.target = None;
     }
 
+    // --------------------------------------------- Phase 1: world flow --
+
+    /// Open the saved-world list (native). Rescans `saves/` every time —
+    /// the world set may have changed since boot.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn open_world_select(&mut self) {
+        self.worlds = vc_anvil::save::list_worlds();
+        // preselect the most recent playable world (vanilla behavior)
+        self.ws_selected = self.worlds.iter().position(|w| !w.meta.hardcore_dead);
+        self.set_screen(Screen::WorldSelect);
+    }
+
+    /// Open the create-world screen (shared native/web). Fresh random seed
+    /// preview each time; buffers reset to defaults.
+    fn open_world_create(&mut self) {
+        self.wc_name = String::from("New World");
+        self.wc_seed = String::new();
+        self.wc_mode = vc_gameplay::modes::GameMode::Survival;
+        self.wc_seed_preview = vc_world::world::World::random_seed();
+        self.set_screen(Screen::WorldCreate);
+    }
+
+    /// Cancel create: native goes back to the list, web straight to title.
+    fn cancel_world_create(&mut self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        self.set_screen(Screen::WorldSelect);
+        #[cfg(target_arch = "wasm32")]
+        self.set_screen(Screen::Title);
+    }
+
+    /// CREATE WORLD: seed parse (vanilla: number = itself, text = Java
+    /// hash, blank = random), fresh world + spawn, then the Loading →
+    /// spawn-snap → game pipeline (`pending_play`).
+    fn create_world(&mut self) {
+        let name = {
+            let n = self.wc_name.trim();
+            if n.is_empty() { "New World" } else { n }
+        }
+        .to_string();
+        let seed = vc_gameplay::modes::parse_seed(&self.wc_seed)
+            .unwrap_or_else(|| vc_world::world::World::random_seed());
+        let mode = self.wc_mode;
+        // native: a fresh directory per world (unique-ified on collision)
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let dir = vc_anvil::save::unique_world_dir(&name);
+            self.save_root = dir;
+            self.world_dir = vc_anvil::save::dimension_dir(
+                &self.save_root,
+                vc_world::world::Dimension::Overworld,
+            );
+        }
+        self.reset_world(seed, mode, name, None);
+        vc_render::render::report_boot_log(&format!(
+            "world created: \"{}\" seed={} mode={}",
+            self.world_name, self.world.seed, self.mode.label()
+        ));
+    }
+
+    /// Play the `idx`-th world from the cached select list (native).
+    #[cfg(not(target_arch = "wasm32"))]
+    fn play_world(&mut self, idx: usize) {
+        let Some(entry) = self.worlds.get(idx).cloned() else { return };
+        // a dead hardcore world is unplayable — the list disables its
+        // button, but keep the guard here too (defense in depth)
+        if entry.meta.hardcore_dead {
+            return;
+        }
+        let seed = entry.meta.seed;
+        let mode = vc_gameplay::modes::GameMode::from_save(
+            entry.meta.game_type,
+            entry.meta.hardcore,
+        );
+        let name = entry.meta.name.clone();
+        let player = entry.meta.player.clone().map(|p| {
+            (p.pos[0] as f32, p.pos[1] as f32, p.pos[2] as f32, p.yaw, p.pitch)
+        });
+        self.save_root = entry.dir;
+        self.world_dir = vc_anvil::save::dimension_dir(
+            &self.save_root,
+            vc_world::world::Dimension::Overworld,
+        );
+        self.reset_world(seed, mode, name, player);
+        vc_render::render::report_boot_log(&format!(
+            "world loaded: \"{}\" seed={} mode={}",
+            self.world_name, self.world.seed, self.mode.label()
+        ));
+    }
+
+    /// DELETE SELECTED on the world-select screen (native). No confirm
+    /// dialog yet — vanilla has one; noted as a follow-up.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn delete_selected_world(&mut self) {
+        if let Some(idx) = self.ws_selected {
+            if let Some(entry) = self.worlds.get(idx).cloned() {
+                if vc_anvil::save::delete_world(&entry.dir) {
+                    self.worlds.remove(idx);
+                    self.ws_selected = None;
+                    vc_render::render::report_boot_log(&format!(
+                        "world deleted: {}",
+                        entry.dir.display()
+                    ));
+                }
+            }
+        }
+        self.refresh_widgets();
+        self.ui.dirty = true;
+    }
+
+    /// Swap the entire engine into a different world: fresh terrain,
+    /// fresh sim/particles, fresh player (or restored from `level.dat`).
+    /// Mirrors `travel_to_dimension`'s reset list — every world-local
+    /// system restarts. The inventory reset is a documented deviation:
+    /// vanilla starts Survival empty, we keep the starter palette so the
+    /// sandbox stays playable before mobs/food exist (Phase 2).
+    ///
+    /// `restore` = (x, y, z, yaw, pitch) — a plain tuple so the signature
+    /// is identical on wasm (PlayerMeta lives in the native save module).
+    #[allow(clippy::too_many_arguments)]
+    fn reset_world(
+        &mut self,
+        seed: u64,
+        mode: vc_gameplay::modes::GameMode,
+        name: String,
+        restore: Option<(f32, f32, f32, f32, f32)>,
+    ) {
+        // flush the outgoing world first (native, §28)
+        #[cfg(not(target_arch = "wasm32"))]
+        if self.bench.is_none() && self.screen != Screen::Loading {
+            self.save_world();
+        }
+        self.world = World::new(seed);
+        let spawn = self.world.find_spawn();
+        // Phase 1: mode + identity take effect BEFORE the player exists
+        self.mode = mode;
+        self.world_name = name;
+        self.hardcore_dead = false;
+        // overworld respawn point (the world's own spawn)
+        self.respawn_pos = Vec3::new(spawn.0, spawn.1 + 1.0, spawn.2);
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.level_spawn = (spawn.0 as i32, spawn.1 as i32, spawn.2 as i32);
+        }
+        self.player = Player::new(Vec3::new(spawn.0, spawn.1 + 20.0, spawn.2));
+        if let Some((x, y, z, yaw, pitch)) = restore {
+            self.player.pos = Vec3::new(x, y, z);
+            self.player.yaw = yaw;
+            self.player.pitch = pitch;
+        }
+        // creative starts hovering; survival rides the Loading snap
+        self.player.flying = mode.allows_flight();
+        self.player.vel = Vec3::ZERO;
+        self.player.reset_fall();
+
+        // world-local system reset (same list as dimension travel)
+        self.renderer.clear_meshes();
+        self.section_meshes.clear();
+        self.mesh_inflight.clear();
+        self.gen_inflight.clear();
+        self.light = vc_world::light::LightEngine::new();
+        self.sim = vc_sim::sim::Sim::new(seed);
+        self.particles = vc_particles::particles::ParticleSystem::new(seed ^ 0x7EED);
+        self.particle_verts.clear();
+        self.container = None;
+        self.container_geom = None;
+        self.cursor_stack = vc_inventory::inventory::ItemStack::EMPTY;
+        self.craft_grid = [vc_inventory::inventory::ItemStack::EMPTY; 9];
+        self.target = None;
+        self.break_timer = 0.0;
+        self.place_timer = 0.0;
+        self.day_time = 0.30;
+        self.edits = 0;
+
+        // the Loading pipeline snaps the player to the surface, then
+        // pending_play routes straight into the game
+        self.pending_play = true;
+        self.traveling = false;
+        self.spawn_snapped = false;
+        self.faced_land = false;
+        self.load_start = self.time;
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.autosave_in = 20.0;
+        }
+        self.set_screen(Screen::Loading);
+    }
+
+    // ---------------------------------------------- Phase 1: text fields --
+
+    /// Which text field (widget id) currently holds focus, if any.
+    fn text_field_focused(&self) -> Option<u16> {
+        self.widgets.iter().find_map(|w| {
+            if let WidgetKind::TextField { focused: true, .. } = &w.kind {
+                Some(w.id)
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Focus exactly one text field (`id` 0 = none). Rebuilds widgets so
+    /// the focus frame + caret appear immediately.
+    fn focus_field(&mut self, id: u16) {
+        for w in self.widgets.iter_mut() {
+            if let WidgetKind::TextField { focused, .. } = &mut w.kind {
+                *focused = w.id == id;
+            }
+        }
+        self.ui.dirty = true;
+    }
+
+    /// Type one character into the focused field (ASCII 32..=126 only —
+    /// that is the entire range the 5x7 font renders). Returns true when
+    /// the character was consumed.
+    fn type_char(&mut self, ch: char) -> bool {
+        if !(32..=126).contains(&(ch as u32)) {
+            return false;
+        }
+        let Some(id) = self.text_field_focused() else { return false };
+        let (buf, max) = match id {
+            ui::ID_WC_NAME => (&mut self.wc_name, 32),
+            ui::ID_WC_SEED => (&mut self.wc_seed, 24),
+            _ => return false,
+        };
+        if buf.chars().count() >= max {
+            return true; // full, but consumed
+        }
+        buf.push(ch);
+        self.sync_field_widgets();
+        true
+    }
+
+    /// Backspace on the focused field.
+    fn backspace_field(&mut self) {
+        let Some(id) = self.text_field_focused() else { return };
+        let buf = match id {
+            ui::ID_WC_NAME => &mut self.wc_name,
+            ui::ID_WC_SEED => &mut self.wc_seed,
+            _ => return,
+        };
+        buf.pop();
+        self.sync_field_widgets();
+    }
+
+    /// Push the live buffers into the widget copies (widgets own their
+    /// render state; game.rs owns the truth).
+    fn sync_field_widgets(&mut self) {
+        let (name, seed) = (self.wc_name.clone(), self.wc_seed.clone());
+        for w in self.widgets.iter_mut() {
+            match w.id {
+                ui::ID_WC_NAME => ui::set_text(w, &name),
+                ui::ID_WC_SEED => ui::set_text(w, &seed),
+                _ => {}
+            }
+        }
+        self.ui.dirty = true;
+    }
+
+    // -------------------------------------------------- Phase 1: death --
+
+    /// Death check + transition. Creative can never die (invulnerable).
+    fn check_death(&mut self) {
+        if self.mode.invulnerable() || self.screen != Screen::Game {
+            return;
+        }
+        if self.player.health > 0.0 {
+            return;
+        }
+        self.die();
+    }
+
+    /// The player died: scatter the inventory (Survival/Hardcore —
+    /// vanilla drops it all), zero XP, freeze, show the death screen.
+    /// Hardcore additionally latches `hardcore_dead` and flushes the
+    /// save IMMEDIATELY so the lock survives a window close.
+    fn die(&mut self) {
+        let cause = if self.death_cause.is_empty() {
+            "YOU DIED".to_string()
+        } else {
+            std::mem::take(&mut self.death_cause)
+        };
+        self.player.vel = Vec3::ZERO;
+        self.player.flying = false;
+        // scatter the inventory as item drops at the death spot
+        if self.mode.drops_inventory_on_death() {
+            let (bx, by, bz) = (
+                self.player.pos.x.floor() as i32,
+                self.player.pos.y.floor() as i32,
+                self.player.pos.z.floor() as i32,
+            );
+            let mut dropped = 0usize;
+            for slot in self.player.inv.slots.iter_mut() {
+                if !slot.is_empty() {
+                    for _ in 0..slot.count {
+                        self.sim.items.drop_block(bx, by, bz, slot.block, 2, 15, 0);
+                    }
+                    *slot = vc_inventory::inventory::ItemStack::EMPTY;
+                    dropped += 1;
+                }
+            }
+            let _ = dropped;
+        }
+        // vanilla: XP is lost on death (dropped as orbs — we have none yet,
+        // so it just zeroes; documented deviation)
+        self.player.xp_points = 0;
+        self.player.xp_level = 0;
+        self.play_event("entity.player.hurt", None, 1.0);
+
+        if self.mode.permadeath() {
+            self.hardcore_dead = true;
+            // persist the lock right now — closing the window must not
+            // resurrect a dead hardcore world
+            #[cfg(not(target_arch = "wasm32"))]
+            if self.bench.is_none() {
+                self.save_world();
+            }
+        }
+        self.death_cause = cause;
+        self.set_screen(Screen::Death);
+    }
+
+    /// RESPAWN (Survival only — the button doesn't exist for hardcore).
+    /// Full health at the world spawn, empty fall accumulator.
+    fn respawn(&mut self) {
+        if self.mode.permadeath() || self.hardcore_dead {
+            return; // unreachable via UI; guard stays for safety
+        }
+        self.player.health = 20.0;
+        self.player.vel = Vec3::ZERO;
+        self.player.pos = self.respawn_pos;
+        self.player.reset_fall();
+        self.death_cause.clear();
+        // re-run the surface snap pipeline from the spawn column
+        self.spawn_snapped = false;
+        self.pending_play = true;
+        self.load_start = self.time;
+        self.set_screen(Screen::Loading);
+    }
+
+    /// Death-screen exit: TITLE (keeps a locked hardcore world on disk)
+    /// or DELETE WORLD (hardcore's clean-slate option).
+    fn death_quit_to_title(&mut self, delete: bool) {
+        if delete && self.hardcore_dead {
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                let _ = vc_anvil::save::delete_world(&self.save_root);
+            }
+        }
+        self.death_cause.clear();
+        self.quit_to_title();
+    }
+
     // ------------------------------------------------------ menu actions --
 
     fn activate(&mut self, id: u16) {
         use ui::*;
         match id {
-            ID_TITLE_PLAY => self.start_game(),
+            ID_TITLE_PLAY => {
+                // Phase 1: SINGLEPLAYER opens the world flow — native picks
+                // from the save list, web (no persistence) creates directly
+                #[cfg(not(target_arch = "wasm32"))]
+                self.open_world_select();
+                #[cfg(target_arch = "wasm32")]
+                self.open_world_create();
+            }
             ID_TITLE_OPTIONS => self.open_options(Screen::Title),
             ID_TITLE_QUIT => self.quit_requested = true,
             ID_OPT_DONE => self.close_options(),
             ID_PAUSE_BACK => self.resume_game(),
             ID_PAUSE_OPTIONS => self.open_options(Screen::Pause),
             ID_PAUSE_QUIT => self.quit_to_title(),
+            // ---- Phase 1: world select / create / death screens ----
+            ID_WS_CREATE => self.open_world_create(),
+            ID_WS_CANCEL => self.set_screen(Screen::Title),
+            ID_WS_DELETE => {
+                #[cfg(not(target_arch = "wasm32"))]
+                self.delete_selected_world();
+            }
+            ID_WC_MODE => {
+                self.wc_mode = self.wc_mode.next();
+                self.refresh_widgets();
+                self.ui.dirty = true;
+            }
+            ID_WC_CREATE => self.create_world(),
+            ID_WC_CANCEL => self.cancel_world_create(),
+            ID_DEATH_RESPAWN => self.respawn(),
+            ID_DEATH_TITLE => self.death_quit_to_title(false),
+            ID_DEATH_DELETE => self.death_quit_to_title(true),
+            _ if (ID_WS_WORLD_BASE..ID_WS_WORLD_BASE + MAX_LISTED_WORLDS as u16)
+                .contains(&id) =>
+            {
+                // clicking a row selects it; a live world also plays
+                // (WorldSelect is native-only — unreachable on wasm)
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    let idx = (id - ID_WS_WORLD_BASE) as usize;
+                    self.ws_selected = Some(idx);
+                    let dead = self
+                        .worlds
+                        .get(idx)
+                        .map(|w| w.meta.hardcore_dead)
+                        .unwrap_or(false);
+                    if !dead {
+                        self.play_world(idx);
+                    } else {
+                        self.refresh_widgets();
+                    }
+                }
+            }
             ID_OPT_SHADER => {
                 // Phase 11: off → vanilla+ → cinematic → <pack 0> … <pack N>
                 let n = 3 + self.shader_packs.len() as u8;
@@ -1580,6 +2129,42 @@ impl GameApp {
                     }
                 }
                 self.widgets = ws;
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            Screen::WorldSelect => {
+                let names: Vec<(String, String, bool)> = self
+                    .worlds
+                    .iter()
+                    .take(MAX_LISTED_WORLDS)
+                    .map(|w| {
+                        let mode = vc_gameplay::modes::GameMode::from_save(
+                            w.meta.game_type,
+                            w.meta.hardcore,
+                        );
+                        (w.meta.name.clone(), mode.label().to_string(), w.meta.hardcore_dead)
+                    })
+                    .collect();
+                self.widgets = layout_world_select(&names);
+            }
+            Screen::WorldCreate => {
+                // live buffers → widgets (focus state preserved via the
+                // rebuild: the focused id is re-set from the last state)
+                let focused = self.text_field_focused().unwrap_or(0);
+                let mut ws = layout_world_create(
+                    &self.wc_name,
+                    &format!("{}", self.wc_seed_preview),
+                    self.wc_mode.label(),
+                    self.wc_mode.describe(),
+                );
+                for w in ws.iter_mut() {
+                    if let WidgetKind::TextField { focused: f, .. } = &mut w.kind {
+                        *f = w.id == focused;
+                    }
+                }
+                self.widgets = ws;
+            }
+            Screen::Death => {
+                self.widgets = layout_death(self.mode.permadeath());
             }
             _ => self.widgets = Vec::new(),
         }
@@ -2951,6 +3536,87 @@ impl GameApp {
                             ));
                         }
                     }
+                    // ---- Phase 1 E2E: game modes / world creation / death --
+                    Some("world") => {
+                        // world:<survival|creative|hardcore>[:seed] — create a
+                        // world through the REAL create pipeline (seed parse
+                        // + reset_world + Loading snap) without UI clicks
+                        let mode = match parts.get(1).copied() {
+                            Some("creative") => {
+                                vc_gameplay::modes::GameMode::Creative
+                            }
+                            Some("hardcore") => {
+                                vc_gameplay::modes::GameMode::Hardcore
+                            }
+                            _ => vc_gameplay::modes::GameMode::Survival,
+                        };
+                        let seed = parts
+                            .get(2)
+                            .and_then(|s| vc_gameplay::modes::parse_seed(s))
+                            .unwrap_or(12345);
+                        self.reset_world(seed, mode, "E2E World".into(), None);
+                        vc_render::render::report_boot_log(&format!(
+                            "e2e: world mode={} seed={} (loading snap follows)",
+                            mode.label(),
+                            seed
+                        ));
+                    }
+                    Some("hurt") => {
+                        // hurt:<hp> — direct damage through the mode rules
+                        // (creative absorbs it — immunity is observable)
+                        let dmg: f32 = parts
+                            .get(1)
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(4.0);
+                        if self.mode.invulnerable() {
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: hurt {dmg} absorbed (creative immunity), health {}",
+                                self.player.health
+                            ));
+                        } else {
+                            let applied = self.player.damage(dmg);
+                            self.play_event("entity.player.hurt", None, 1.0);
+                            self.death_cause = "E2E DAMAGE".into();
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: hurt {dmg} applied {applied}, health {} mode {}",
+                                self.player.health,
+                                self.mode.label()
+                            ));
+                            self.ui.dirty = true;
+                        }
+                    }
+                    Some("fall") => {
+                        // fall:<blocks> — teleport up, let real gravity +
+                        // the real fall-damage path apply (MC-12357)
+                        let blocks: f32 = parts
+                            .get(1)
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(10.0);
+                        self.player.pos.y += blocks;
+                        self.player.vel.y = 0.0;
+                        self.player.reset_fall();
+                        vc_render::render::report_boot_log(&format!(
+                            "e2e: fall {blocks} armed (health {})",
+                            self.player.health
+                        ));
+                    }
+                    Some("respawn") => {
+                        // respawn:<hp> — set health then trigger the death
+                        // check manually; the stats screen/mode/health
+                        // fields verify the outcome
+                        let hp: f32 = parts
+                            .get(1)
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(0.0);
+                        self.player.health = hp;
+                        self.check_death();
+                        vc_render::render::report_boot_log(&format!(
+                            "e2e: respawn-check hp={hp} -> screen {} mode {} dead-lock {}",
+                            self.screen.name(),
+                            self.mode.label(),
+                            self.hardcore_dead
+                        ));
+                    }
                     _ => {}
                 }
             }
@@ -2977,12 +3643,18 @@ impl GameApp {
                         };
                         if let Some(y) = snap {
                             self.player.pos.y = y as f32;
+                            // Phase 1: survival lands on its feet (snap = no
+                            // fall damage, fall accumulator resets); creative
+                            // only "arrives" flying if it arrived flying
                             self.player.flying = false;
+                            self.player.reset_fall();
                         } else if self.traveling {
-                            // no open floor in this column — arrive flying so
-                            // the player glides to a cavern instead of being
-                            // embedded in netherrack
-                            self.player.flying = true;
+                            // no open floor in this column — a creative player
+                            // arrives flying and glides to a cavern; a survival
+                            // player stays put and waits for the timeout path
+                            // (documented deviation: vanilla does a full
+                            // portal search; our travel is the debug/API path)
+                            self.player.flying = self.mode.allows_flight();
                         }
                     }
                     self.spawn_snapped = true;
@@ -2999,8 +3671,16 @@ impl GameApp {
                     count >= 5 && self.mesh_near_count(pc) > 4
                 };
                 if ready || self.time - self.load_start > 15.0 {
-                    // boot → title screen; §28 travel → straight back to play
-                    self.set_screen(if self.traveling { Screen::Game } else { Screen::Title });
+                    // boot → title screen; §28 travel → straight back to play;
+                    // Phase 1 world create/play/respawn → into the game
+                    if self.traveling {
+                        self.set_screen(Screen::Game);
+                    } else if self.pending_play {
+                        self.pending_play = false;
+                        self.start_game();
+                    } else {
+                        self.set_screen(Screen::Title);
+                    }
                     self.traveling = false;
                 }
             }
@@ -3026,6 +3706,22 @@ impl GameApp {
                 self.play_event(ev, None, 1.0);
             }
 
+            // Phase 1: fall damage (MC-12357: fall − 3 HP) — creative is
+            // invulnerable, the queued damage drains away instead
+            let fall = self.player.take_pending_fall_damage();
+            if fall > 0.0 {
+                if self.mode.invulnerable() {
+                    // creative: nothing happens (immunity includes falls)
+                } else {
+                    let applied = self.player.damage(fall);
+                    if applied > 0.0 {
+                        self.play_event("entity.player.hurt", None, 1.0);
+                        self.death_cause = "FELL FROM A HIGH PLACE".into();
+                        self.ui.dirty = true;
+                    }
+                }
+            }
+
             // targeting
             self.target = raycast(&self.world, self.player.eye(), self.player.look_dir(), crate::player::REACH);
 
@@ -3048,10 +3744,14 @@ impl GameApp {
                             pos[0], pos[1], pos[2], broke, biome, sky, blk,
                         );
                         // §22/§24: item drop + neighbor sim notification
-                        // (water flows, sand falls)
-                        self.sim.items.drop_block(
-                            pos[0], pos[1], pos[2], broke, biome, sky, blk,
-                        );
+                        // (water flows, sand falls). Phase 1: creative
+                        // breaking yields NO drops (infinite inventory —
+                        // blocks just vanish, vanilla behavior)
+                        if self.mode.drops_blocks() {
+                            self.sim.items.drop_block(
+                                pos[0], pos[1], pos[2], broke, biome, sky, blk,
+                            );
+                        }
                         notify_sim(&self.world, &mut self.sim.sched, pos[0], pos[1], pos[2]);
                         // §27/§29: container contents spill + entity cleanup
                         self.drop_container_contents(pos, broke);
@@ -3174,7 +3874,15 @@ impl GameApp {
                         }
                         drop(held);
                         if let Some(h) = heal {
-                            self.player.heal(h);
+                            // Phase 1: potions never damage Creative (mode
+                            // immunity); positive healing still applies
+                            if h >= 0.0 || !self.mode.invulnerable() {
+                                self.player.heal(h);
+                                if h < 0.0 {
+                                    self.death_cause = "DIED FROM MAGIC".into();
+                                    self.play_event("entity.player.hurt", None, 1.0);
+                                }
+                            }
                             vc_render::render::report_boot_log(&format!(
                                 "e2e: drank {} (+{h} hp → {})",
                                 name(b),
@@ -3267,11 +3975,15 @@ impl GameApp {
                                 ]),
                                 1.0,
                             );
-                            // survival placement: the stack depletes
-                            let held = self.player.held_mut();
-                            held.count -= 1;
-                            if held.count == 0 {
-                                *held = vc_inventory::inventory::ItemStack::EMPTY;
+                            // Phase 1: placement depletes the stack in
+                            // Survival/Hardcore only — creative stacks are
+                            // infinite (vanilla behavior)
+                            if self.mode.depletes_items() {
+                                let held = self.player.held_mut();
+                                held.count -= 1;
+                                if held.count == 0 {
+                                    *held = vc_inventory::inventory::ItemStack::EMPTY;
+                                }
                             }
                             self.place_timer = 0.24;
                             self.edits += 1;
@@ -3280,6 +3992,13 @@ impl GameApp {
                     }
                 }
             }
+
+            // Phase 1: death gate, END of the gameplay tick — fall damage
+            // and potion damage have applied by now. Runs after the
+            // interactions (not around them) so a death this tick still
+            // reaches the UI-cadence code below: the death screen needs the
+            // rebuild to draw at all.
+            self.check_death();
         }
         self.phases.add(crate::bench::PHASE_SIM, crate::bench::micros() - t_sim);
 
@@ -3380,7 +4099,7 @@ impl GameApp {
         }
         let meta = vc_anvil::save::WorldMeta {
             seed: self.world.seed,
-            name: "VoxelCraft".into(),
+            name: self.world_name.clone(),
             spawn: self.level_spawn,
             player: Some(vc_anvil::save::PlayerMeta {
                 pos: [self.player.pos.x as f64, self.player.pos.y as f64, self.player.pos.z as f64],
@@ -3388,6 +4107,10 @@ impl GameApp {
                 pitch: self.player.pitch,
             }),
             game_time: tick,
+            // Phase 1: the real mode + hardcore state (vanilla schema)
+            game_type: self.mode.vanilla_game_type(),
+            hardcore: self.mode.vanilla_hardcore(),
+            hardcore_dead: self.hardcore_dead,
         };
         if let Err(e) = vc_anvil::save::write_level_dat(&self.world_dir, &meta) {
             vc_render::render::report_boot_log(&format!("level.dat write failed: {e}"));
@@ -3561,6 +4284,11 @@ impl GameApp {
             ("sounds", StatsVal::F(self.sounds_played as f32)),
             // §29: real player health + brewing counters
             ("health", StatsVal::F(self.player.health)),
+            // Phase 1: mode + world identity for E2E assertions
+            ("mode", StatsVal::S(self.mode.label().into())),
+            ("modeIdx", StatsVal::F(self.mode.index() as f32)),
+            ("worldName", StatsVal::S(self.world_name.clone())),
+            ("hardcoreDead", StatsVal::B(self.hardcore_dead)),
             ("furnaces", StatsVal::F(self.sim.furnaces.map.len() as f32)),
             ("brewStands", StatsVal::F(self.sim.brewing.map.len() as f32)),
             ("potionsBrewed", StatsVal::F(self.sim.brewing.total_brewed as f32)),
@@ -3887,6 +4615,38 @@ impl GameApp {
                 self.ui.pause_screen(&self.widgets, self.hover);
                 return;
             }
+            #[cfg(not(target_arch = "wasm32"))]
+            Screen::WorldSelect => {
+                let total = self.worlds.len();
+                let shown = total.min(ui::MAX_LISTED_WORLDS);
+                self.ui.world_select_screen(
+                    &self.widgets,
+                    self.hover,
+                    self.ws_selected,
+                    shown,
+                    total,
+                );
+                return;
+            }
+            // wasm: the select screen is unreachable (no save list); the
+            // arm keeps the match exhaustive
+            #[cfg(target_arch = "wasm32")]
+            Screen::WorldSelect => {
+                self.widgets = Vec::new();
+            }
+            Screen::WorldCreate => {
+                self.ui.world_create_screen(&self.widgets, self.hover, self.time);
+                return;
+            }
+            Screen::Death => {
+                self.ui.death_screen(
+                    &self.widgets,
+                    self.hover,
+                    self.mode.permadeath(),
+                    &self.death_cause,
+                );
+                return;
+            }
             Screen::Game => {}
         }
 
@@ -3902,8 +4662,14 @@ impl GameApp {
         let xp = self.player.xp_fraction();
         let level = self.player.xp_level.max(0) as u32;
         // §29: the health bar is REAL now — potions heal it, damage lowers it;
-        // the XP bar shows the real in-level progress + level
-        self.ui.status_bars(self.player.health, 20.0, xp, level);
+        // the XP bar shows the real in-level progress + level.
+        // Phase 1: creative hides hearts + hunger (vanilla), XP stays
+        // (creative still earns and spends enchanting levels here)
+        if self.mode.invulnerable() {
+            self.ui.xp_bar_only(xp, level);
+        } else {
+            self.ui.status_bars(self.player.health, 20.0, xp, level);
+        }
 
         if self.show_debug {
             let p = &self.player;
@@ -3955,6 +4721,13 @@ impl GameApp {
                     pc.0, pc.1, facing,
                     "-"),
                 format!("Biome: {}  Dimension: {}", biome, self.world.dimension.id()),
+                // Phase 1: active game mode + world identity
+                format!(
+                    "Mode: {}  World: \"{}\"  Seed: {}",
+                    self.mode.label(),
+                    self.world_name,
+                    self.world.seed
+                ),
                 format!(
                     "Day cycle: {:.0}%  Fly: {}",
                     self.day_time * 100.0,
@@ -4164,6 +4937,28 @@ impl GameApp {
                     fov: 1.2217,
                 };
                 (cam, 0.9, None)
+            }
+            // Phase 1: world screens ride the (blurred) panorama like the
+            // title/options screens — the world list previews the world
+            Screen::WorldSelect | Screen::WorldCreate => {
+                let cam = Camera {
+                    eye: Vec3::new(self.player.pos.x, self.player.pos.y + 14.0, self.player.pos.z),
+                    yaw: self.time * 0.06,
+                    pitch: -0.42,
+                    fov: 1.2217,
+                };
+                (cam, 0.9, None)
+            }
+            // Phase 1: death screen — frozen first-person view behind a
+            // heavy red wash (the UI overlay paints it)
+            Screen::Death => {
+                let cam = Camera {
+                    eye: self.player.eye(),
+                    yaw: self.player.yaw,
+                    pitch: self.player.pitch,
+                    fov: self.player.fov_cur,
+                };
+                (cam, 0.55, None)
             }
             Screen::Loading => {
                 let cam = Camera {
@@ -4484,6 +5279,8 @@ fn keycode_from_web(code: &str) -> Option<winit::keyboard::KeyCode> {
         "ControlRight" => KeyCode::ControlRight,
         "Escape" => KeyCode::Escape,
         "F3" => KeyCode::F3,
+        "Backspace" => KeyCode::Backspace,
+        "Enter" => KeyCode::Enter,
         "KeyE" => KeyCode::KeyE,
         "KeyB" => KeyCode::KeyB,
         "KeyH" => KeyCode::KeyH,
@@ -4510,6 +5307,52 @@ fn set_slider(w: &mut Widget, label: &str, value: f32) {
         *l = label.to_string();
         *v = value.clamp(0.0, 1.0);
     }
+}
+
+/// Phase 1 (web): map a physical key code + shift state to the character
+/// it types — enough for world names / seeds (a–z, 0–9, symbols, space,
+/// dash, underscore, dot). The native path uses winit's logical_key
+/// (full Unicode) instead.
+#[cfg(target_arch = "wasm32")]
+fn web_char_from_code(code: &str, shift: bool) -> Option<char> {
+    if code == "Space" {
+        return Some(' ');
+    }
+    if code == "Minus" {
+        return Some(if shift { '_' } else { '-' });
+    }
+    if code == "Period" {
+        return Some('.');
+    }
+    if let Some(rest) = code.strip_prefix("Key") {
+        let c = rest.chars().next()?;
+        if c.is_ascii_alphabetic() {
+            return Some(if shift {
+                c.to_ascii_uppercase()
+            } else {
+                c.to_ascii_lowercase()
+            });
+        }
+        return None;
+    }
+    if let Some(rest) = code.strip_prefix("Digit") {
+        let d = rest.chars().next()?;
+        let sym = match d {
+            '1' => Some(('1', '!')),
+            '2' => Some(('2', '@')),
+            '3' => Some(('3', '#')),
+            '4' => Some(('4', '$')),
+            '5' => Some(('5', '%')),
+            '6' => Some(('6', '^')),
+            '7' => Some(('7', '&')),
+            '8' => Some(('8', '*')),
+            '9' => Some(('9', '(')),
+            '0' => Some(('0', ')')),
+            _ => None,
+        }?;
+        return Some(if shift { sym.1 } else { sym.0 });
+    }
+    None
 }
 
 fn set_button_value(w: &mut Widget, value: &str) {

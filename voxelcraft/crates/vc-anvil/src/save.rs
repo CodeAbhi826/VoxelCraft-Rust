@@ -576,7 +576,7 @@ pub fn chunk_from_nbt(data: &[u8]) -> Result<(Chunk, Option<vc_world::light::Lig
 
 /// World metadata persisted in `level.dat` (vanilla keys + a `voxelcraft`
 /// sub-compound for engine-specific player state, ignored by vanilla).
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct WorldMeta {
     pub seed: u64,
     pub name: String,
@@ -585,6 +585,31 @@ pub struct WorldMeta {
     pub player: Option<PlayerMeta>,
     /// engine world-age tick (vanilla `Time`)
     pub game_time: i64,
+    /// vanilla `GameType` Int (0 = Survival, 1 = Creative; 2/3 out of
+    /// scope) — Phase 1 replaced the hardcoded `1` with the real mode
+    pub game_type: i32,
+    /// vanilla `Hardcore` Byte — Hardcore rides this flag on GameType 0
+    pub hardcore: bool,
+    /// Phase 1: a hardcore world whose player already died (no respawn
+    /// is possible; the world-select screen locks it). Vanilla marks the
+    /// player NBT dead instead — we keep a top-level marker because the
+    /// player block here is a minimal subset.
+    pub hardcore_dead: bool,
+}
+
+impl Default for WorldMeta {
+    fn default() -> Self {
+        WorldMeta {
+            seed: 0,
+            name: "VoxelCraft".into(),
+            spawn: (8, vc_chunk::SEA_LEVEL + 1, 8),
+            player: None,
+            game_time: 0,
+            game_type: 0,
+            hardcore: false,
+            hardcore_dead: false,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -616,21 +641,28 @@ pub fn write_level_dat(world_dir: &Path, meta: &WorldMeta) -> std::io::Result<()
     data.set("SpawnY", Nbt::Int(meta.spawn.1));
     data.set("SpawnZ", Nbt::Int(meta.spawn.2));
     data.set("DataVersion", Nbt::Int(DATA_VERSION));
-    data.set("GameType", Nbt::Int(1)); // creative
+    // Phase 1: the REAL selected mode, vanilla schema (GameType Int +
+    // Hardcore Byte — Dossier Part 3 §15) instead of hardcoded creative
+    data.set("GameType", Nbt::Int(meta.game_type));
+    data.set("Hardcore", Nbt::Byte(if meta.hardcore { 1 } else { 0 }));
     data.set("Time", Nbt::Long(meta.game_time));
     data.set(
         "LastPlayed",
         Nbt::Long(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0)),
     );
+    let mut vc = Nbt::compound();
     if let Some(p) = &meta.player {
-        let mut vc = Nbt::compound();
         vc.set("PlayerX", Nbt::Double(p.pos[0]));
         vc.set("PlayerY", Nbt::Double(p.pos[1]));
         vc.set("PlayerZ", Nbt::Double(p.pos[2]));
         vc.set("PlayerYaw", Nbt::Float(p.yaw));
         vc.set("PlayerPitch", Nbt::Float(p.pitch));
-        data.set("voxelcraft", vc);
     }
+    // Phase 1: hardcore world whose player died — locked forever
+    if meta.hardcore_dead {
+        vc.set("HardcoreDead", Nbt::Byte(1));
+    }
+    data.set("voxelcraft", vc);
     let mut root = Nbt::compound();
     root.set("Data", data);
     let bytes = nbt::write_root("", &root).expect("level.dat writer");
@@ -667,6 +699,20 @@ pub fn read_level_dat(world_dir: &Path) -> std::io::Result<Option<WorldMeta>> {
         std::io::Error::new(std::io::ErrorKind::InvalidData, "level.dat: no Data compound")
     })?;
     let get_i64 = |k: &str| data.get(k).and_then(|v| v.as_i64());
+    // Phase 1: read the saved mode back (vanilla keys; permissive defaults
+    // — a foreign level.dat without them reads as plain Survival)
+    let game_type = get_i64("GameType").unwrap_or(0).clamp(0, 3) as i32;
+    let hardcore = data
+        .get("Hardcore")
+        .and_then(|v| v.as_i64())
+        .map(|v| v != 0)
+        .unwrap_or(false);
+    let hardcore_dead = data
+        .get("voxelcraft")
+        .and_then(|v| v.get("HardcoreDead"))
+        .and_then(|v| v.as_i64())
+        .map(|v| v != 0)
+        .unwrap_or(false);
     let mut meta = WorldMeta {
         seed: get_i64("RandomSeed").unwrap_or(0) as u64,
         name: data
@@ -681,6 +727,9 @@ pub fn read_level_dat(world_dir: &Path) -> std::io::Result<Option<WorldMeta>> {
         ),
         player: None,
         game_time: get_i64("Time").unwrap_or(0),
+        game_type,
+        hardcore,
+        hardcore_dead,
     };
     if let Some(Nbt::Compound(vc)) = data.get("voxelcraft") {
         // Vec<(String, Nbt)> — direct lookup (Nbt::get is on Nbt, not the vec)
@@ -721,6 +770,108 @@ pub fn default_world_dir() -> PathBuf {
         .unwrap_or_else(|_| PathBuf::from("."))
         .join("saves")
         .join("VoxelCraft")
+}
+
+// ------------------------------------------------- Phase 1: world list --
+
+/// Root folder that holds every world (`./saves`, one sub-directory per
+/// world). Vanilla-style layout: `saves/<world name>/level.dat`.
+pub fn saves_root() -> PathBuf {
+    std::env::current_dir()
+        .unwrap_or_else(|_| PathBuf::from("."))
+        .join("saves")
+}
+
+/// Turn a user-typed world name into a safe directory name (vanilla asks
+/// the OS for a valid file name and keeps duplicates apart by suffixing;
+/// we sanitize + suffix the same way so two worlds can share a name).
+pub fn sanitize_world_name(name: &str) -> String {
+    let mut clean: String = name
+        .trim()
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    if clean.is_empty() {
+        clean = "World".into();
+    }
+    // clamp to a sane length (world names stay readable in the list UI)
+    if clean.len() > 32 {
+        clean.truncate(32);
+    }
+    // never collide with the Nether's sub-directory inside a world root
+    if clean.eq_ignore_ascii_case("DIM-1") || clean.eq_ignore_ascii_case("DIM1") {
+        clean.push('_');
+    }
+    clean
+}
+
+/// A world entry in the world-select list: the on-disk directory plus the
+/// metadata read from its `level.dat`.
+#[derive(Clone, Debug)]
+pub struct WorldEntry {
+    pub dir: PathBuf,
+    pub meta: WorldMeta,
+    /// mtime of `level.dat` (unix secs) — "last played" ordering
+    pub last_played: u64,
+}
+
+/// Scan `saves_root()` for every sub-directory carrying a readable
+/// `level.dat`, newest first. The legacy single save
+/// (`saves/VoxelCraft`) shows up here like any other world — no
+/// migration step needed.
+pub fn list_worlds() -> Vec<WorldEntry> {
+    let root = saves_root();
+    let mut out = Vec::new();
+    let Ok(rd) = fs::read_dir(&root) else { return out };
+    for entry in rd.flatten() {
+        let dir = entry.path();
+        if !dir.is_dir() {
+            continue;
+        }
+        if let Ok(Some(meta)) = read_level_dat(&dir) {
+            let last_played = entry
+                .metadata()
+                .and_then(|m| m.modified())
+                .ok()
+                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            out.push(WorldEntry { dir, meta, last_played });
+        }
+    }
+    out.sort_by(|a, b| b.last_played.cmp(&a.last_played));
+    out
+}
+
+/// Directory for a NEW world: `saves/<sanitized>`, suffixed `-2`, `-3`, …
+/// when the name is already taken (vanilla's duplicate-name behavior).
+pub fn unique_world_dir(name: &str) -> PathBuf {
+    let base = sanitize_world_name(name);
+    let root = saves_root();
+    let mut dir = root.join(&base);
+    let mut n = 2;
+    while dir.exists() {
+        dir = root.join(format!("{}-{n}", base));
+        n += 1;
+    }
+    dir
+}
+
+/// Remove a world directory entirely (hardcore delete-after-death).
+/// Returns false when the directory was already gone.
+pub fn delete_world(dir: &Path) -> bool {
+    if dir.exists() {
+        let _ = fs::remove_dir_all(dir);
+        true
+    } else {
+        false
+    }
 }
 
 /// Persist one chunk into its region file (Anvil write, zlib like vanilla).
@@ -1019,6 +1170,37 @@ mod tests {
     }
 
     #[test]
+    fn world_name_sanitization() {
+        assert_eq!(sanitize_world_name("My World"), "My_World");
+        assert_eq!(sanitize_world_name("  trimmed  "), "trimmed");
+        assert_eq!(sanitize_world_name(""), "World");
+        assert_eq!(sanitize_world_name("???"), "___");
+        // never collides with the Nether's DIM-1 sub-directory
+        assert_eq!(sanitize_world_name("DIM-1"), "DIM-1_");
+        assert_eq!(sanitize_world_name("dim1"), "dim1_");
+        // long names clamp, multi-byte chars collapse safely per char
+        assert_eq!(sanitize_world_name(&"x".repeat(50)).len(), 32);
+        assert_eq!(sanitize_world_name("tëst"), "t_st");
+    }
+
+    #[test]
+    fn hardcore_dead_marker_roundtrip() {
+        let dir = tmp_dir("hcdead");
+        let meta = WorldMeta {
+            hardcore: true,
+            hardcore_dead: true,
+            ..Default::default()
+        };
+        write_level_dat(&dir, &meta).unwrap();
+        let back = read_level_dat(&dir).unwrap().expect("present");
+        assert_eq!(back.game_type, 0);
+        assert!(back.hardcore);
+        // the death lock survives the save cycle — a dead hardcore world
+        // must never come back as playable
+        assert!(back.hardcore_dead);
+    }
+
+    #[test]
     fn level_dat_roundtrip() {
         let dir = tmp_dir("level");
         let meta = WorldMeta {
@@ -1027,6 +1209,9 @@ mod tests {
             spawn: (-17, 71, 239),
             player: Some(PlayerMeta { pos: [1.5, 72.0, -3.25], yaw: -0.75, pitch: 0.5 }),
             game_time: 4242,
+            game_type: 1,
+            hardcore: false,
+            hardcore_dead: false,
         };
         write_level_dat(&dir, &meta).unwrap();
         let back = read_level_dat(&dir).unwrap().expect("level.dat present");
@@ -1040,6 +1225,10 @@ mod tests {
         assert!((p.yaw - -0.75).abs() < 1e-6);
         assert!((p.pitch - 0.5).abs() < 1e-6);
         assert_eq!(back.game_time, 4242);
+        // Phase 1: the saved mode round-trips (vanilla GameType + Hardcore)
+        assert_eq!(back.game_type, 1);
+        assert!(!back.hardcore);
+        assert!(!back.hardcore_dead);
         // missing dir → None; level.dat_old fallback works
         assert!(read_level_dat(&dir.join("nowhere")).unwrap().is_none());
         fs::rename(dir.join("level.dat"), dir.join("level.dat_old")).unwrap();
@@ -1100,6 +1289,9 @@ mod tests {
                 spawn: (8, 70, 8),
                 player: Some(PlayerMeta { pos: [8.5, 90.0, 8.5], yaw: 1.0, pitch: -0.5 }),
                 game_time: 100,
+                game_type: 0,
+                hardcore: true,
+                hardcore_dead: false,
             },
         )
         .unwrap();
@@ -1108,6 +1300,10 @@ mod tests {
         let m2 = read_level_dat(&dir).unwrap().expect("level.dat survives");
         assert_eq!(m2.seed, seed);
         assert_eq!(m2.spawn, (8, 70, 8));
+        // …including the hardcore mode (GameType 0 + Hardcore byte)
+        assert_eq!(m2.game_type, 0);
+        assert!(m2.hardcore);
+        assert!(!m2.hardcore_dead);
         let p = m2.player.unwrap();
         assert_eq!(p.pos, [8.5, 90.0, 8.5]);
         assert!((p.yaw - 1.0).abs() < 1e-6 && (p.pitch + 0.5).abs() < 1e-6);

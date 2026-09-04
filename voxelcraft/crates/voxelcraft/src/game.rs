@@ -183,6 +183,8 @@ pub enum Container {
     Enchant { pos: [i32; 3] },
     /// villager trade screen bound to a villager entity id (§27/§29)
     Trade { villager: u32 },
+    /// Phase 3: chest container screen (27 slots)
+    Chest { pos: [i32; 3] },
 }
 
 impl Screen {
@@ -2495,6 +2497,10 @@ impl GameApp {
                         }
                     }
                 }
+                Container::Chest { .. } => {
+                    // chest contents live in the block entity, not the
+                    // player — nothing to return (vanilla behavior)
+                }
                 Container::Furnace { .. } => {}
                 Container::Brewing { .. } => {}
                 Container::Enchant { pos } => {
@@ -2574,6 +2580,17 @@ impl GameApp {
                         &mut self.cursor_stack,
                         right,
                     );
+                }
+            }
+            SlotRef::Chest(i) => {
+                // Phase 3: chest slots click like inventory slots
+                if let Some(Container::Chest { pos }) = self.container {
+                    if let Some(inv) = self.sim.containers.get_mut(&pos) {
+                        if i < inv.slots.len() {
+                            let inv = &mut inv.slots[i];
+                            Inventory::slot_click(inv, &mut self.cursor_stack, right);
+                        }
+                    }
                 }
             }
             SlotRef::CraftOut => {
@@ -2869,6 +2886,7 @@ impl GameApp {
         let (kind, furnace, brewing, enchant, trade) = match self.container {
             Some(Container::Inventory) => (ContainerKind::Inventory, None, None, None, None),
             Some(Container::Crafting { .. }) => (ContainerKind::Crafting, None, None, None, None),
+            Some(Container::Chest { pos }) => (ContainerKind::Chest, None, None, None, None),
             Some(Container::Furnace { pos }) => {
                 // live slots + progress fractions for the flame/arrow
                 let f = self
@@ -2960,6 +2978,17 @@ impl GameApp {
             }
             None => (ContainerKind::Inventory, None, None, None, None),
         };
+        // Phase 3: live chest slots (the container entity is created on
+        // open; an absent entity renders as an empty 27-slot chest)
+        let chest = match self.container {
+            Some(Container::Chest { pos }) => self
+                .sim
+                .containers
+                .get(&pos)
+                .map(|c| c.slots.clone())
+                .unwrap_or_default(),
+            _ => Vec::new(),
+        };
         let size = self.craft_grid_size();
         let grid: Vec<vc_inventory::inventory::ItemStack> =
             self.craft_grid.iter().take(size * size).copied().collect();
@@ -2974,6 +3003,7 @@ impl GameApp {
             brewing,
             enchant,
             trade,
+            chest,
             cursor: self.cursor_stack,
         }
     }
@@ -3017,10 +3047,24 @@ impl GameApp {
         self.edits += 1;
     }
 
-    /// §27/§29: breaking a container block drops its contents and removes
-    /// the block entity (vanilla behavior — also fixes the latent entity
-    /// leak where broken furnaces stayed in the sim map forever)
+    /// §27/§29/§26: breaking a container block drops its contents and
+    /// removes the block entity (vanilla behavior — also fixes the latent
+    /// entity leak where broken furnaces stayed in the sim map forever)
     fn drop_container_contents(&mut self, pos: [i32; 3], broke: u8) {
+        // Phase 3 §26: chests / dispensers / droppers / hoppers — the
+        // containers module queues the spill, we turn it into item drops
+        // (and if the player is mid-screen on this very container, close
+        // it — the block is gone)
+        if matches!(broke, CHEST | DISPENSER | DROPPER | HOPPER) {
+            if matches!(
+                self.container,
+                Some(Container::Chest { pos: p }) if p == pos
+            ) {
+                self.close_container();
+            }
+            self.sim.containers.remove(&pos);
+            self.drain_container_spills();
+        }
         if broke == FURNACE {
             if let Some(f) = self.sim.furnaces.map.remove(&pos) {
                 let (biome, sky, blk) = light_at(&self.world, &self.light, pos[0], pos[1] + 1, pos[2]);
@@ -3043,6 +3087,20 @@ impl GameApp {
                             self.sim.items.drop_block(pos[0], pos[1] + 1, pos[2], s.block, biome, sky, blk);
                         }
                     }
+                }
+            }
+        }
+    }
+
+    /// Phase 3 §26: turn queued container spills (broken
+    /// chests/dispensers/droppers/hoppers) into world item drops
+    fn drain_container_spills(&mut self) {
+        let spilled = std::mem::take(&mut self.sim.containers.spilled);
+        for (pos, items) in spilled {
+            let (biome, sky, blk) = light_at(&self.world, &self.light, pos[0], pos[1] + 1, pos[2]);
+            for s in items {
+                for _ in 0..s.count {
+                    self.sim.items.drop_block(pos[0], pos[1] + 1, pos[2], s.block, biome, sky, blk);
                 }
             }
         }
@@ -3194,7 +3252,9 @@ impl GameApp {
                         }
                     }
                     Some("place") => {
-                        // place:block_name:x:y:z (sand|gravel|dirt|stone|water)
+                        // place:block_name:x:y:z (sand|gravel|dirt|stone|water
+                        // | Phase 3: repeater|comparator|piston|sticky_piston
+                        // |observer|chest|dispenser|dropper|hopper)
                         let p = coords();
                         let b = match parts.get(1).copied() {
                             Some("sand") => Some(SAND),
@@ -3202,6 +3262,15 @@ impl GameApp {
                             Some("dirt") => Some(DIRT),
                             Some("stone") => Some(STONE),
                             Some("water") => Some(WATER),
+                            Some("repeater") => Some(REPEATER),
+                            Some("comparator") => Some(COMPARATOR),
+                            Some("piston") => Some(PISTON),
+                            Some("sticky_piston") => Some(STICKY_PISTON),
+                            Some("observer") => Some(OBSERVER),
+                            Some("chest") => Some(CHEST),
+                            Some("dispenser") => Some(DISPENSER),
+                            Some("dropper") => Some(DROPPER),
+                            Some("hopper") => Some(HOPPER),
                             _ => None,
                         };
                         if p.len() == 3 && b.is_some() {
@@ -3213,6 +3282,99 @@ impl GameApp {
                             if q.len() == 3 {
                                 self.test_place(b.unwrap(), q[0], q[1], q[2]);
                             }
+                        }
+                    }
+                    Some("fplace") => {
+                        // fplace:block:facing:x:y:z — Phase 3 components
+                        // with an explicit facing (0=N,1=E,2=S,3=W);
+                        // repeater/comparator delay defaults to 1 rt
+                        let f: usize = parts
+                            .get(2)
+                            .and_then(|v| v.parse().ok())
+                            .unwrap_or(0);
+                        // coords after the facing field
+                        let q: Vec<i32> = parts[3..]
+                            .iter()
+                            .filter_map(|v| v.parse().ok())
+                            .collect();
+                        let state = match parts.get(1).copied() {
+                            Some("repeater") => Some(repeater_state(f, 1, false)),
+                            Some("comparator") => Some(comparator_state(f, false, false)),
+                            Some("piston") => Some(piston_state(f, false)),
+                            Some("sticky_piston") => Some(sticky_piston_state(f, false)),
+                            Some("observer") => Some(observer_state(f, false)),
+                            _ => None,
+                        };
+                        if q.len() == 3 {
+                            if let Some(st) = state {
+                                if let Some((old, new)) = self.world.set_block_state(q[0], q[1], q[2], st) {
+                                    self.light.on_block_changed(&self.world, q[0], q[1], q[2], old, new);
+                                }
+                                notify_sim(&self.world, &mut self.sim.sched, q[0], q[1], q[2]);
+                                self.edits += 1;
+                            }
+                        }
+                    }
+                    Some("probe") => {
+                        // probe:x:y:z — Phase 3 E2E read-back: decode the
+                        // redstone state at a cell and report via boot log
+                        let p = coords();
+                        if p.len() == 3 {
+                            let s = self.world.get_state(p[0], p[1], p[2]);
+                            let b = vc_blocks::blocks::state_block(s);
+                            let msg = match b {
+                                REDSTONE_WIRE => format!(
+                                    "e2e: probe ({},{},{}) WIRE power={}",
+                                    p[0], p[1], p[2],
+                                    vc_blocks::blocks::wire_power(s)
+                                ),
+                                REPEATER => {
+                                    let (f, d, pw) = vc_blocks::blocks::repeater_decode(s);
+                                    format!(
+                                        "e2e: probe ({},{},{}) REPEATER facing={} delay={} powered={}",
+                                        p[0], p[1], p[2], f, d, pw
+                                    )
+                                }
+                                COMPARATOR => {
+                                    let (f, sub, pw) = vc_blocks::blocks::comparator_decode(s);
+                                    format!(
+                                        "e2e: probe ({},{},{}) COMPARATOR facing={} subtract={} powered={}",
+                                        p[0], p[1], p[2], f, sub, pw
+                                    )
+                                }
+                                PISTON | STICKY_PISTON => {
+                                    let (f, ext) = vc_blocks::blocks::piston_decode(s);
+                                    format!(
+                                        "e2e: probe ({},{},{}) PISTON facing={} extended={}",
+                                        p[0], p[1], p[2], f, ext
+                                    )
+                                }
+                                OBSERVER => {
+                                    let (f, pw) = vc_blocks::blocks::observer_decode(s);
+                                    format!(
+                                        "e2e: probe ({},{},{}) OBSERVER facing={} powered={}",
+                                        p[0], p[1], p[2], f, pw
+                                    )
+                                }
+                                CHEST => {
+                                    let key = [p[0], p[1], p[2]];
+                                    let filled = self
+                                        .sim
+                                        .containers
+                                        .get(&key)
+                                        .map(|c| c.slots.iter().filter(|s| !s.is_empty()).count())
+                                        .unwrap_or(0);
+                                    format!(
+                                        "e2e: probe ({},{},{}) CHEST filled_slots={}",
+                                        p[0], p[1], p[2], filled
+                                    )
+                                }
+                                _ => format!(
+                                    "e2e: probe ({},{},{}) block={} state={}",
+                                    p[0], p[1], p[2], b, s
+                                ),
+                            };
+                            vc_render::render::report_boot_log(&msg);
                         }
                     }
                     Some("water") => {
@@ -3277,6 +3439,16 @@ impl GameApp {
                                 self.sim.furnaces.map.entry(pos).or_default();
                                 self.open_container(Container::Furnace { pos });
                                 vc_render::render::report_boot_log("e2e: furnace screen open");
+                            }
+                            Some("chest") => {
+                                // Phase 3 §26: place a chest, seed one item
+                                // into slot 0, open — the harness then reads
+                                // the view back via the screenshot path
+                                self.test_place(CHEST, pos[0], pos[1], pos[2]);
+                                let e = self.sim.containers.entry(pos, CHEST);
+                                e.slots[0] = vc_inventory::inventory::ItemStack::new(STONE, 7);
+                                self.open_container(Container::Chest { pos });
+                                vc_render::render::report_boot_log("e2e: chest screen open (27 slots)");
                             }
                             Some("brewing") => {
                                 self.test_place(BREWING_STAND, pos[0], pos[1], pos[2]);
@@ -4145,6 +4317,13 @@ impl GameApp {
                         let e = self.sim.enchants.map.entry(tpos).or_default();
                         e.reroll(&self.world, tpos, seed);
                         self.open_container(Container::Enchant { pos: tpos });
+                        self.place_timer = 0.3;
+                    } else if tb == CHEST {
+                        // Phase 3: right-click opens the chest screen; the
+                        // 27-slot container entity is created on first use
+                        // (empty state) — §26 containers
+                        self.sim.containers.entry(tpos, CHEST);
+                        self.open_container(Container::Chest { pos: tpos });
                         self.place_timer = 0.3;
                     } else if !self.player.held().is_empty()
                         && self.player.held().block == POTION_EMPTY

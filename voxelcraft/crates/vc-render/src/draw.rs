@@ -288,6 +288,45 @@ pub fn occlusion_visible(
     Some(vis)
 }
 
+/// Frame-to-frame cache for [`occlusion_visible`] (§26 rendering-cost fix).
+///
+/// The flood's result depends ONLY on (camera chunk, camera band, the set
+/// of meshed chunk columns) — none of which change while the camera stands
+/// still in one section and no chunk uploads land. Yet the old path re-ran
+/// the full BFS (two `HashSet`s + a `VecDeque`, `O(rd²·bands)` node visits)
+/// EVERY frame — the single largest fixed CPU cost in `Renderer::render`
+/// outside the draw submission itself.
+///
+/// The renderer owns a monotonically increasing `mesh_rev` counter bumped
+/// by every mesh upload/removal/clear; passing it here lets a stale cache
+/// be detected in one integer compare. `None` (camera chunk unmeshed) is
+/// NOT cached — the conservative draw-everything fallback stays cheap.
+#[derive(Default)]
+pub struct OcclCache {
+    key: (ChunkPos, u8, u64),
+    vis: std::collections::HashSet<ChunkPos>,
+}
+
+/// cached flood: recomputes only when (cam chunk, band, mesh revision)
+/// changes; returns the drawable set by reference (no per-frame clone).
+/// The returned reference borrows the CACHE (the `chunks` borrow ends at
+/// the call — the renderer's disjoint-field borrows of `self` stay valid).
+pub fn occlusion_visible_cached<'a>(
+    chunks: &HashMap<ChunkPos, ChunkGpu>,
+    cam_chunk: ChunkPos,
+    cam_band: u8,
+    mesh_rev: u64,
+    cache: &'a mut OcclCache,
+) -> Option<&'a std::collections::HashSet<ChunkPos>> {
+    if cache.key == (cam_chunk, cam_band, mesh_rev) && !cache.vis.is_empty() {
+        return Some(&cache.vis);
+    }
+    let vis = occlusion_visible(chunks, cam_chunk, cam_band)?;
+    cache.key = (cam_chunk, cam_band, mesh_rev);
+    cache.vis = vis;
+    Some(&cache.vis)
+}
+
 // ------------------------------------------------------------ draw lists --
 
 /// one draw: where in the region arena the indices live and which
@@ -778,5 +817,57 @@ mod tests {
         assert!(o.plane_open(7));
         assert!(!o.plane_open(6));
         assert!(!o.plane_open(15), "no plane above band 15");
+    }
+
+    /// §26 rendering-cost fix: the cached flood returns EXACTLY what a
+    /// direct flood returns for the same (camera, mesh set), a same-key
+    /// repeat call hits the cache (identical set, by reference), and a
+    /// mesh-revision bump after the world changes recomputes.
+    #[test]
+    fn occlusion_cache_hits_and_invalidates() {
+        let mut chunks = HashMap::new();
+        for dz in -2..=2 {
+            for dx in -2..=2 {
+                chunks.insert((dx, dz), col(0b1111111_0, 1 << 4));
+            }
+        }
+        let mut cache = OcclCache::default();
+        // rev 1: first call computes and stores
+        let direct = occlusion_visible(&chunks, (0, 0), 5).unwrap();
+        assert!(direct.contains(&(1, 0)));
+        let cached = occlusion_visible_cached(&chunks, (0, 0), 5, 1, &mut cache).unwrap();
+        assert_eq!(direct, *cached, "cached flood must equal direct flood");
+        // same key: cache hit — identical set
+        let again = occlusion_visible_cached(&chunks, (0, 0), 5, 1, &mut cache).unwrap();
+        assert_eq!(*again, direct);
+        // default-constructed state (key ((0,0),0,0), empty set): the
+        // is_empty guard must fall through to a real compute, never serve
+        // the empty default set as a hit
+        let mut cold = OcclCache::default();
+        let r = occlusion_visible_cached(&chunks, (0, 0), 0, 0, &mut cold);
+        assert!(r.is_some(), "default-state key must fall through to compute");
+        assert!(r.unwrap().contains(&(0, 0)));
+        // mesh revision bump (a chunk remeshed with no drawable faces):
+        // recompute and match the fresh direct flood
+        chunks.get_mut(&(1, 0)).unwrap().occl.geo = 0;
+        let after = occlusion_visible_cached(&chunks, (0, 0), 5, 2, &mut cache).unwrap();
+        assert_eq!(*after, occlusion_visible(&chunks, (0, 0), 5).unwrap());
+        assert!(
+            !after.contains(&(1, 0)),
+            "geometry-less column must be culled after invalidation"
+        );
+    }
+
+    /// missing camera chunk → None is never cached as a result (the caller
+    /// retries next frame — the conservative fallback stays cheap)
+    #[test]
+    fn occlusion_cache_none_is_transient() {
+        let mut chunks = HashMap::new();
+        let mut cache = OcclCache::default();
+        assert!(occlusion_visible_cached(&chunks, (0, 0), 5, 1, &mut cache).is_none());
+        // camera chunk arrives (mesh upload → rev 2)
+        chunks.insert((0, 0), col(0b1111111_0, 1 << 4));
+        let r = occlusion_visible_cached(&chunks, (0, 0), 5, 2, &mut cache);
+        assert!(r.is_some(), "None state must not stick");
     }
 }

@@ -2067,6 +2067,20 @@ impl GameApp {
                     );
                 }
             }
+            // Phase 4 §26: spiders additionally have a 1/3 chance to drop
+            // one spider eye (VERIFIED, 1.16.5-era Spider page — only when
+            // killed by a player, which drain_mob_events is)
+            if kind == mobs::MobKind::Spider && self.audio_rng.next_f32() < 1.0 / 3.0 {
+                self.sim.items.drop_block(
+                    pos[0].floor() as i32,
+                    pos[1].floor() as i32,
+                    pos[2].floor() as i32,
+                    SPIDER_EYE,
+                    2,
+                    15,
+                    0,
+                );
+            }
             // XP through the real curve
             if d.xp > 0 {
                 let gained = self.player.add_xp(d.xp);
@@ -3489,23 +3503,46 @@ impl GameApp {
                                 // stand, load it through REAL slot
                                 // semantics (3 water bottles, wart
                                 // ingredient, netherrack fuel), sim N ticks,
-                                // report the bottle contents
-                                let n_ticks: i32 = parts
-                                    .get(2)
-                                    .and_then(|s| s.parse().ok())
-                                    .unwrap_or(vc_gameplay::brewing::BREW_TICKS);
+                                // report the bottle contents.
+                                // brew:corrupt:<ticks> — Phase 4 §26 flow:
+                                // a HEALING bottle + a fermented spider eye
+                                // → the corruption cycle (→ Harming)
+                                let corrupt = parts.get(2).copied() == Some("corrupt");
+                                let n_ticks: i32 = if corrupt {
+                                    // open:brew:corrupt:<ticks>
+                                    parts.get(3).and_then(|s| s.parse().ok()).unwrap_or(
+                                        vc_gameplay::brewing::BREW_TICKS,
+                                    )
+                                } else {
+                                    // open:brew:<ticks>
+                                    parts
+                                        .get(2)
+                                        .and_then(|s| s.parse().ok())
+                                        .unwrap_or(vc_gameplay::brewing::BREW_TICKS)
+                                };
                                 self.test_place(BREWING_STAND, pos[0], pos[1], pos[2]);
                                 let entry = self.sim.brewing.map.entry(pos).or_default();
                                 use vc_inventory::inventory::Inventory;
-                                // bottles through slot_click semantics
-                                for i in 0..3 {
-                                    let mut slot = entry.bottles[i];
+                                if corrupt {
+                                    // one healing bottle + the corrupted eye
+                                    let mut slot = entry.bottles[0];
                                     let mut cursor =
-                                        vc_inventory::inventory::ItemStack::new(POTION_WATER, 1);
+                                        vc_inventory::inventory::ItemStack::new(POTION_HEALING, 1);
                                     Inventory::slot_click(&mut slot, &mut cursor, false);
-                                    entry.bottles[i] = slot;
+                                    entry.bottles[0] = slot;
+                                    entry.ingredient =
+                                        vc_inventory::inventory::ItemStack::new(FERMENTED_SPIDER_EYE, 1);
+                                } else {
+                                    // bottles through slot_click semantics
+                                    for i in 0..3 {
+                                        let mut slot = entry.bottles[i];
+                                        let mut cursor =
+                                            vc_inventory::inventory::ItemStack::new(POTION_WATER, 1);
+                                        Inventory::slot_click(&mut slot, &mut cursor, false);
+                                        entry.bottles[i] = slot;
+                                    }
+                                    entry.ingredient = vc_inventory::inventory::ItemStack::new(MUSHROOM_RED, 1);
                                 }
-                                entry.ingredient = vc_inventory::inventory::ItemStack::new(MUSHROOM_RED, 1);
                                 entry.fuel = vc_inventory::inventory::ItemStack::new(NETHERRACK, 1);
                                 drop(entry);
                                 // advance the sim deterministically
@@ -3573,6 +3610,11 @@ impl GameApp {
                             Some("mushroom_brown") => Some(MUSHROOM_BROWN),
                             Some("netherrack") => Some(NETHERRACK),
                             Some("glowstone") => Some(GLOWSTONE),
+                            // Phase 4 §26: corruption chain
+                            Some("potion_harming") => Some(POTION_HARMING),
+                            Some("potion_harming_2") => Some(POTION_HARMING_II),
+                            Some("spider_eye") => Some(SPIDER_EYE),
+                            Some("fermented_eye") => Some(FERMENTED_SPIDER_EYE),
                             // §29 enchanting chain
                             Some("book") => Some(ENCHANTED_BOOK),
                             Some("lapis") => Some(LAPIS_ORE),
@@ -3795,16 +3837,26 @@ impl GameApp {
                             Some("potion_mundane") => Some(POTION_MUNDANE),
                             Some("potion_healing") => Some(POTION_HEALING),
                             Some("potion_healing_2") => Some(POTION_HEALING_II),
+                            Some("potion_harming") => Some(POTION_HARMING),
+                            Some("potion_harming_2") => Some(POTION_HARMING_II),
                             _ => None,
                         };
                         match b {
                             None => vc_render::render::report_boot_log(
-                                "e2e: drink:<potion_water|potion_awkward|potion_mundane|potion_healing|potion_healing_2>",
+                                "e2e: drink:<potion_water|potion_awkward|potion_mundane|potion_healing|potion_healing_2|potion_harming|potion_harming_2>",
                             ),
                             Some(b) if self.player.inv.consume(b, 1) => {
                                 let before = self.player.health;
+                                // Phase 4 §26: signed instant-effect amounts —
+                                // healing restores, harming damages (through
+                                // the same mode rules as the hurt command)
                                 if let Some(h) = vc_gameplay::brewing::potion_heal(b) {
-                                    self.player.heal(h);
+                                    if h > 0.0 {
+                                        self.player.heal(h);
+                                    } else if !self.mode.invulnerable() {
+                                        let _ = self.player.damage(-h);
+                                        self.check_death();
+                                    }
                                 }
                                 self.player.inv.add(POTION_EMPTY, 1);
                                 self.play_event("entity.generic.drink", None, 0.9);

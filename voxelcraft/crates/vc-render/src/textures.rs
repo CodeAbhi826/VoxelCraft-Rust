@@ -1136,6 +1136,57 @@ fn rotten_flesh_art(a: &mut [u8], t: u16) {
     });
 }
 
+/// spider eye (Phase 4): a clean-room eye item icon — red sclera,
+/// dark pupil, off-center glint (ours, not Mojang's)
+fn spider_eye_art(a: &mut [u8], t: u16, fermented: bool) {
+    let rows = [
+        "................",
+        "................",
+        "................",
+        ".....RRRR.......",
+        "....RRrrRR......",
+        "...RrrPPrrR.....",
+        "...RrPWWPrR.....",
+        "...RrPWWPrR.....",
+        "...RrrPPrrR.....",
+        "....RRrrRR......",
+        ".....RRRR.......",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
+    ];
+    // fresh eye: saturated red with a dark pupil; fermented: dulled
+    // brown-red (the fermentation tints it) + mold speckles on the rim
+    let (sclera, rim, mold) = if fermented {
+        ((122, 62, 44), (86, 44, 32), (96, 116, 58))
+    } else {
+        ((168, 34, 30), (128, 22, 20), (128, 22, 20))
+    };
+    art(a, t, rows, &|c| match c {
+        'R' => Some((sclera.0, sclera.1, sclera.2, 255)),
+        'r' => Some((rim.0, rim.1, rim.2, 255)),
+        'P' => Some((20, 12, 10, 255)), // pupil
+        'W' => Some((60, 150, 90, 255)), // iris glint (greenish)
+        _ => None,
+    });
+    if fermented {
+        // mold speckles: a few green dots scattered on the rim rows
+        let tx = (t % 16) as usize;
+        let ty = (t / 16) as usize;
+        for (dy, dx) in [(3usize, 5usize), (6, 3), (8, 11), (4, 9)] {
+            let i = ((ty * TILE_PX + dy) * ATLAS_SIZE + tx * TILE_PX + dx) * 4;
+            if i + 3 < a.len() {
+                a[i] = mold.0;
+                a[i + 1] = mold.1;
+                a[i + 2] = mold.2;
+                a[i + 3] = 255;
+            }
+        }
+    }
+}
+
 /// potion bottle (Phase 7 §29): one bottle shape, per-potion liquid color.
 /// `glow` brightens the liquid (the level-II variant sparkles).
 fn potion_art(a: &mut [u8], t: u16, liquid: (i32, i32, i32), glow: bool) {
@@ -1940,6 +1991,11 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_ENDER_PEARL => ender_pearl_art(&mut a, t),
             TILE_ROTTEN_FLESH => rotten_flesh_art(&mut a, t),
             TILE_ARROW_ITEM => arrow_art(&mut a, t),
+            // Phase 4 §26/§30: corruption-chain potions + ingredients
+            TILE_POTION_HARMING => potion_art(&mut a, t, (110, 30, 30), false),
+            TILE_POTION_HARMING_II => potion_art(&mut a, t, (130, 40, 26), true),
+            TILE_SPIDER_EYE => spider_eye_art(&mut a, t, false),
+            TILE_FERMENTED_EYE => spider_eye_art(&mut a, t, true),
             _ => {}
         }
     }

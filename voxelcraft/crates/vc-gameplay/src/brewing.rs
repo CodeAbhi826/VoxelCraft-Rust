@@ -59,6 +59,35 @@ pub const BREW_RECIPES: &[BrewRecipe] = &[
         ingredient: GLOWSTONE,
         output: POTION_HEALING_II,
     },
+    // ---- Phase 4 §26: the fermented-spider-eye corruption chain ----
+    // VERIFIED (1.16.5-era wiki, "Potion" page revision 2021-05-01):
+    // a fermented spider eye corrupts Healing into Harming; corruption
+    // preserves the modifier when the corrupted effect supports it
+    // (Java: Healing II → Harming II)
+    BrewRecipe {
+        input: POTION_HEALING,
+        ingredient: FERMENTED_SPIDER_EYE,
+        output: POTION_HARMING,
+    },
+    BrewRecipe {
+        input: POTION_HEALING_II,
+        ingredient: FERMENTED_SPIDER_EYE,
+        output: POTION_HARMING_II,
+    },
+    // VERIFIED: Harming is the only corrupted potion that can be enhanced
+    // (glowstone amplifies it, like every instant-damage family)
+    BrewRecipe {
+        input: POTION_HARMING,
+        ingredient: GLOWSTONE,
+        output: POTION_HARMING_II,
+    },
+    // VERIFIED: a fermented spider eye is a BASE ingredient — water + eye
+    // brews the no-effect Mundane potion (like redstone/glowstone bases)
+    BrewRecipe {
+        input: POTION_WATER,
+        ingredient: FERMENTED_SPIDER_EYE,
+        output: POTION_MUNDANE,
+    },
 ];
 
 /// look up the brew result for an (input, ingredient) pair
@@ -69,11 +98,15 @@ pub fn brew_result(input: u8, ingredient: u8) -> Option<u8> {
         .map(|r| r.output)
 }
 
-/// vanilla instant-health healing amounts (half-hearts ×2 = HP)
+/// vanilla instant-effect amounts in HP, SIGNED (Phase 4: harming is
+/// negative — the drinker takes damage). VERIFIED (1.16.5-era wiki):
+/// Instant Health I = +4 / II = +8; Instant Damage I = −6 / II = −12
 pub fn potion_heal(b: u8) -> Option<f32> {
     match b {
         POTION_HEALING => Some(4.0),
         POTION_HEALING_II => Some(8.0),
+        POTION_HARMING => Some(-6.0),
+        POTION_HARMING_II => Some(-12.0),
         _ => None, // water/awkward/mundane have no effect (vanilla)
     }
 }
@@ -216,6 +249,56 @@ impl Brewings {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Phase 4 §26: the fermented-spider-eye corruption chain (VERIFIED
+    /// against the 1.16.5-era wiki "Potion" page): Healing → Harming,
+    /// modifier preserved (Healing II → Harming II); Harming is the one
+    /// corrupted potion glowstone can enhance; the eye is also a base
+    /// ingredient (water + eye → mundane)
+    #[test]
+    fn corruption_chain_matches_the_wiki() {
+        // corruption preserves the modifier (Java Edition)
+        assert_eq!(brew_result(POTION_HEALING, FERMENTED_SPIDER_EYE), Some(POTION_HARMING));
+        assert_eq!(brew_result(POTION_HEALING_II, FERMENTED_SPIDER_EYE), Some(POTION_HARMING_II));
+        // glowstone enhances harming (the only enhancable corrupted potion)
+        assert_eq!(brew_result(POTION_HARMING, GLOWSTONE), Some(POTION_HARMING_II));
+        // the eye is a base ingredient: water + eye → mundane
+        assert_eq!(brew_result(POTION_WATER, FERMENTED_SPIDER_EYE), Some(POTION_MUNDANE));
+        // corrupting an ALREADY corrupted potion does nothing
+        assert_eq!(brew_result(POTION_HARMING, FERMENTED_SPIDER_EYE), None);
+        assert_eq!(brew_result(POTION_HARMING_II, FERMENTED_SPIDER_EYE), None);
+    }
+
+    /// VERIFIED (1.16.5-era wiki): Instant Health I/II = +4/+8 HP;
+    /// Instant Damage I/II = −6/−12 HP (stored signed)
+    #[test]
+    fn instant_effect_amounts_match_the_wiki() {
+        assert_eq!(potion_heal(POTION_HEALING), Some(4.0));
+        assert_eq!(potion_heal(POTION_HEALING_II), Some(8.0));
+        assert_eq!(potion_heal(POTION_HARMING), Some(-6.0));
+        assert_eq!(potion_heal(POTION_HARMING_II), Some(-12.0));
+        assert_eq!(potion_heal(POTION_WATER), None);
+        assert_eq!(potion_heal(POTION_AWKWARD), None);
+    }
+
+    #[test]
+    fn corrupting_a_live_brew_cycle() {
+        // full interactive path: a brewing stand holding Healing, fed a
+        // fermented eye, produces Harming after exactly one 400-tick cycle
+        let mut b = BrewingState::default();
+        b.bottles = [ItemStack::new(POTION_HEALING, 1), ItemStack::EMPTY, ItemStack::EMPTY];
+        b.ingredient = ItemStack::new(FERMENTED_SPIDER_EYE, 1);
+        b.fuel = ItemStack::new(NETHERRACK, 1);
+        let mut completions = 0;
+        for _ in 0..BREW_TICKS {
+            if b.tick() {
+                completions += 1;
+            }
+        }
+        assert_eq!(completions, 1);
+        assert_eq!(b.bottles[0].block, POTION_HARMING, "healing corrupted to harming");
+        assert!(b.ingredient.is_empty());
+    }
 
     #[test]
     fn water_plus_wart_makes_awkward() {

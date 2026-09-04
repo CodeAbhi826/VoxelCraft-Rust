@@ -91,6 +91,17 @@ pub const RECIPES: &[Recipe] = &[
         ],
         out: ItemStack::new(ENCHANT_TABLE, 1),
     },
+    // Phase 4 §26: fermented spider eye — vanilla = spider eye + sugar +
+    // brown mushroom (shapeless); palette adaptation: the two ingredients
+    // we DO have (no sugar block exists in the registry)
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(SPIDER_EYE), Ing::Block(MUSHROOM_BROWN),
+            Ing::None,          Ing::None,
+        ],
+        out: ItemStack::new(FERMENTED_SPIDER_EYE, 1),
+    },
 ];
 
 /// match a crafting grid (row-major, `size`×`size` of ItemStacks) → the

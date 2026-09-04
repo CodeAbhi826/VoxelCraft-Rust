@@ -117,6 +117,9 @@ pub const TILE_POTION_HARMING: u16 = 118;
 pub const TILE_POTION_HARMING_II: u16 = 119;
 pub const TILE_SPIDER_EYE: u16 = 120;
 pub const TILE_FERMENTED_EYE: u16 = 121;
+// Phase 5 §27: monster-spawner cage face (dark lattice, vanilla-like
+// cage silhouette, clean-room drawn — see textures.rs spawner_art)
+pub const TILE_SPAWNER: u16 = 122;
 // mobs (Phase 2): entity sprites + drops' item tiles. Mob sprites are
 // clean-room pixel art (ours, not Mojang's) — distinct silhouettes/palettes
 pub const TILE_ZOMBIE: u16 = 83;
@@ -296,6 +299,15 @@ pub const POTION_HARMING: u8 = 97;
 pub const POTION_HARMING_II: u8 = 98;
 pub const SPIDER_EYE: u8 = 99;
 pub const FERMENTED_SPIDER_EYE: u8 = 100;
+/// Phase 5 §27: monster spawner (dungeon block entity). Mob type is
+/// encoded in the block state (232 zombie / 233 skeleton / 234 spider).
+pub const SPAWNER: u8 = 101;
+/// spawner mob-kind code 0: zombie (dungeon roll 50%)
+pub const SPAWNER_ZOMBIE: u8 = 0;
+/// spawner mob-kind code 1: skeleton (dungeon roll 25%)
+pub const SPAWNER_SKELETON: u8 = 1;
+/// spawner mob-kind code 2: spider (dungeon roll 25%)
+pub const SPAWNER_SPIDER: u8 = 2;
 pub const BEEF_STATE: u16 = 130;
 pub const PORKCHOP_STATE: u16 = 131;
 pub const MUTTON_STATE: u16 = 132;
@@ -345,8 +357,13 @@ pub const POTION_HARMING_STATE: u16 = 228;
 pub const POTION_HARMING_II_STATE: u16 = 229;
 pub const SPIDER_EYE_STATE: u16 = 230;
 pub const FERMENTED_EYE_STATE: u16 = 231;
+// Phase 5 §27: spawner mob type (0 zombie / 1 skeleton / 2 spider) — the
+// vanilla MobSpawner NBT `Entity` rides the block state here instead
+// (documented adaptation; 3 states, 232..=234)
+pub const SPAWNER_STATE_BASE: u16 = 232;
+pub const SPAWNER_STATE_END: u16 = 234;
 
-pub const BLOCK_COUNT: usize = 101;
+pub const BLOCK_COUNT: usize = 102;
 
 // ---------------------------------------------------------------------------
 // BlockState registry (1.16.5 pattern, miniature)
@@ -361,8 +378,9 @@ pub const BLOCK_COUNT: usize = 101;
 /// total state-id space the registries cover (test-facing bound: every
 /// state ≤ STATE_COUNT must fold to a valid block + renderable tiles).
 /// Phase 4: extended to cover the Phase 2/3/4 state ids (130..=231) —
-/// before, the range tests stopped at 130 and never saw them
-pub const STATE_COUNT: usize = 232;
+/// before, the range tests stopped at 130 and never saw them.
+/// Phase 5: spawner states 232..=234
+pub const STATE_COUNT: usize = 235;
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -536,6 +554,27 @@ pub fn hopper_decode(s: u16) -> usize {
     (s - HOPPER_STATE_BASE) as usize
 }
 
+// ---- Phase 5 §27: spawner mob-type codec ----
+// The vanilla MobSpawner stores its entity in NBT (`SpawnData.Entity.id`);
+// we encode the mob kind in the 3-state window instead — same observable
+// behavior, no extra persistence channel.
+
+/// spawner state for a mob kind (SPAWNER_ZOMBIE / SKELETON / SPIDER)
+#[inline]
+pub fn spawner_state(mob: u8) -> u16 {
+    SPAWNER_STATE_BASE + (mob.min(SPAWNER_SPIDER)) as u16
+}
+
+/// mob kind of a spawner state (0 zombie / 1 skeleton / 2 spider)
+#[inline]
+pub fn spawner_mob(s: u16) -> u8 {
+    if (SPAWNER_STATE_BASE..=SPAWNER_STATE_END).contains(&s) {
+        (s - SPAWNER_STATE_BASE) as u8
+    } else {
+        SPAWNER_ZOMBIE
+    }
+}
+
 /// horizontal facing vector for a decoded facing index
 #[inline]
 pub fn horiz_facing_vec(f: usize) -> [i32; 3] {
@@ -611,6 +650,8 @@ pub fn default_state(b: u8) -> u16 {
         POTION_HARMING_II => POTION_HARMING_II_STATE,
         SPIDER_EYE => SPIDER_EYE_STATE,
         FERMENTED_SPIDER_EYE => FERMENTED_EYE_STATE,
+        // default spawner = zombie (the 50% dungeon roll)
+        SPAWNER => SPAWNER_STATE_BASE,
         ENCHANT_TABLE => ENCHANT_TABLE_STATE,
         ENCHANTED_BOOK => ENCHANTED_BOOK_STATE,
         BEEF => BEEF_STATE,
@@ -813,6 +854,7 @@ pub fn state_block(s: u16) -> u8 {
         POTION_HARMING_II_STATE => return POTION_HARMING_II,
         SPIDER_EYE_STATE => return SPIDER_EYE,
         FERMENTED_EYE_STATE => return FERMENTED_SPIDER_EYE,
+        s if (SPAWNER_STATE_BASE..=SPAWNER_STATE_END).contains(&s) => return SPAWNER,
         ENCHANT_TABLE_STATE => return ENCHANT_TABLE,
         ENCHANTED_BOOK_STATE => return ENCHANTED_BOOK,
         BEEF_STATE => return BEEF,
@@ -897,6 +939,7 @@ pub fn is_model_state(s: u16) -> bool {
             || (DROPPER_STATE_BASE..=DROPPER_STATE_END).contains(&s)
             || (OBSERVER_STATE_BASE..=OBSERVER_STATE_END).contains(&s)
             || (HOPPER_STATE_BASE..=HOPPER_STATE_END).contains(&s)
+            || (SPAWNER_STATE_BASE..=SPAWNER_STATE_END).contains(&s)
             || s == CHEST_STATE)
 }
 
@@ -962,7 +1005,7 @@ pub fn log_axis_state(block: u8, axis: u8) -> u16 {
 /// component tile rendered BLANK since Phase 2. Now derived from the
 /// highest tile constant (118–121 here) and guarded by the
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
-pub const TILE_MAX: u16 = 121;
+pub const TILE_MAX: u16 = 122;
 
 /// inventory-only ITEM blocks (potions/bottles/books): never placeable in
 /// the world — right-click drinks (potions) / fills (glass bottle at water).
@@ -1135,6 +1178,10 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Potion of Harming II", [TILE_POTION_HARMING_II, TILE_POTION_HARMING_II, TILE_POTION_HARMING_II], false, false, true, false, 0, SoundFamily::Water),
     d("Spider Eye", [TILE_SPIDER_EYE, TILE_SPIDER_EYE, TILE_SPIDER_EYE], false, false, true, false, 0, SoundFamily::Grass),
     d("Fermented Spider Eye", [TILE_FERMENTED_EYE, TILE_FERMENTED_EYE, TILE_FERMENTED_EYE], false, false, true, false, 0, SoundFamily::Grass),
+    // Phase 5 §27: solid cage block, NOT opaque (vanilla's spawner shows
+    // the mob inside; ours is a full lattice cube — see-through faces on
+    // all sides like glass)
+    d("Monster Spawner", [TILE_SPAWNER, TILE_SPAWNER, TILE_SPAWNER], true, false, false, false, 0, SoundFamily::Stone),
 ];
 
 #[inline]
@@ -1414,12 +1461,14 @@ mod state_tests {
                 continue;
             }
             // Phase 2 mob-drop item states + Phase 3 redstone-component
-            // states + Phase 4 corruption-chain states: dedicated identity
-            // states (fold 1:1 to their block, never model states — the
-            // components' visuals are cross-sprites, not block models)
+            // states + Phase 4 corruption-chain states + Phase 5 spawner
+            // states: dedicated identity states (fold 1:1 to their block,
+            // never model states — the components' visuals are
+            // cross-sprites or plain cube defs, not block models)
             if (BEEF_STATE..=ARROW_ITEM_STATE).contains(&s)
                 || (REPEATER_STATE_BASE..=CHEST_STATE).contains(&s)
                 || (POTION_HARMING_STATE..=FERMENTED_EYE_STATE).contains(&s)
+                || (SPAWNER_STATE_BASE..=SPAWNER_STATE_END).contains(&s)
             {
                 assert!(!is_model_state(s), "component/item state {s} never routes to models");
                 // identity: the state folds to the block whose def table

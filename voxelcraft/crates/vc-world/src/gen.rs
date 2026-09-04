@@ -252,6 +252,23 @@ struct HouseSite {
     blacksmith: bool,
 }
 
+/// a rolled monster room / dungeon (Phase 5 §27 — all world coordinates)
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct DungeonRoom {
+    /// interior min corner; interior is `size`×4×`size` air
+    pub x0: i32,
+    pub y0: i32,
+    pub z0: i32,
+    /// interior width/length: 7, 9, or 11 (VERIFIED)
+    pub size: i32,
+    /// spawner mob code (50% zombie / 25% skeleton / 25% spider)
+    pub mob: u8,
+    /// chest positions (up to 2, on the floor against the walls)
+    pub chests: [[i32; 3]; 2],
+    /// how many of the two chest slots actually placed
+    pub chest_count: usize,
+}
+
 pub struct TerrainGen {
     pub seed: u64,
     /// §28: which dimension this generator produces
@@ -733,6 +750,15 @@ impl TerrainGen {
             }
         }
 
+        // ───────────────── P5 structures: dungeons (monster rooms) ────
+        // §27/Phase 5: per-chunk feature (VERIFIED 1.16.5 generation,
+        // wiki Monster Room revision 1944695): 8 attempts per chunk, room
+        // size 7/9/11, floor 25% cobble / 75% mossy, spawner at center
+        // (zombie 50% / skeleton 25% / spider 25%), up to 2 chests.
+        if let Some(room) = self.dungeon_in_chunk(cx, cz) {
+            self.emit_dungeon(&mut chunk, room, ox, oz);
+        }
+
         // ──────────────────────────────── P7 structures: villages ────
         // Deterministic per 24×24-chunk region: each chunk emits ONLY the
         // village blocks falling inside itself (positions are globally
@@ -743,6 +769,190 @@ impl TerrainGen {
         }
 
         (Arc::new(chunk), outbound)
+    }
+
+    // ------------------------------------------------------------ dungeons --
+    // Phase 5 §27: the vanilla monster room, in-chunk feature form. All
+    // numeric rules VERIFIED from the 1.16.5-era wiki (revision 1944695):
+    // 8 attempts/chunk · open area 7/9/11 wide · floor solid · ceiling
+    // solid · walls need 1-5 two-high openings · 3 rolls per each of 2
+    // chests · floor 75% mossy · spawner mob 50/25/25.
+    //
+    // Documented adaptations:
+    // * the room fits inside its owning chunk (vanilla rooms can straddle
+    //   chunk borders; the wiki itself classifies them as a per-chunk
+    //   *feature*, which is exactly what this is)
+    // * "next to a cave" is approximated by the 1-5-openings wall check —
+    //   openings only exist where the generator's cave carving produced air
+    // * vanilla's y range spans the whole underground; ours rolls in the
+    //   8..=35 band (below the surface margin, above bedrock)
+
+    /// dungeon attempts per chunk (VERIFIED: Java 8)
+    pub const DUNGEON_ATTEMPTS: u32 = 8;
+
+    /// raw-terrain solidity at underground (x,y,z) — replicates exactly
+    /// what the terrain pass leaves behind (stone unless carved / under
+    /// the surface; air above it)
+    fn gen_solid(&self, x: i32, y: i32, z: i32) -> bool {
+        let col = self.column(x, z);
+        let h = col.height;
+        if y > h {
+            return false; // above the terrain surface: air (or water)
+        }
+        if y == 0 || y <= 2 {
+            return true; // bedrock layers
+        }
+        let margin = if col.biome == Biome::Ocean || col.biome == Biome::Beach {
+            10
+        } else {
+            5
+        };
+        if h - y > margin && self.cave(x, y, z) {
+            return false; // carved
+        }
+        true
+    }
+
+    /// roll this chunk's dungeon (pure — no chunk data needed; the layout
+    /// derives from the seed + terrain functions, so it is identical from
+    /// any caller: generation, tests, E2E)
+    pub fn dungeon_in_chunk(&self, cx: i32, cz: i32) -> Option<DungeonRoom> {
+        let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x0D66, cx, 0, cz));
+        for _ in 0..Self::DUNGEON_ATTEMPTS {
+            // size roll: 7 / 9 / 11 (VERIFIED open-area set)
+            let size = match rng.next_range(3) {
+                0 => 7,
+                1 => 9,
+                _ => 11,
+            };
+            // interior min corner must leave wall rings on both sides
+            let lx = 1 + rng.next_range((15 - size) as u32) as i32; // 1..=15-size
+            let lz = 1 + rng.next_range((15 - size) as u32) as i32;
+            let y0 = 8 + rng.next_range(28) as i32; // 8..=35
+            // spawner mob roll (VERIFIED 50/25/25)
+            let mob = match rng.next_range(4) {
+                0 | 1 => vc_blocks::blocks::SPAWNER_ZOMBIE,
+                2 => vc_blocks::blocks::SPAWNER_SKELETON,
+                _ => vc_blocks::blocks::SPAWNER_SPIDER,
+            };
+            let wx0 = cx * 16 + lx;
+            let wz0 = cz * 16 + lz;
+            // ---- validation (VERIFIED rules) ----
+            // floor area incl. under walls: entirely solid
+            let floor_ok = (-1..=size).all(|dx| {
+                (-1..=size).all(|dz| self.gen_solid(wx0 + dx, y0 - 1, wz0 + dz))
+            });
+            if !floor_ok {
+                continue;
+            }
+            // ceiling area incl. over walls: entirely solid
+            let ceil_ok = (-1..=size).all(|dx| {
+                (-1..=size).all(|dz| self.gen_solid(wx0 + dx, y0 + 5, wz0 + dz))
+            });
+            if !ceil_ok {
+                continue;
+            }
+            // walls need 1..5 openings (2-high air at floor level) — this
+            // is the "always near a cave" approximation
+            let mut openings = 0usize;
+            for dx in -1..=size {
+                for dz in -1..=size {
+                    let on_ring = dx == -1 || dx == size || dz == -1 || dz == size;
+                    if !on_ring {
+                        continue;
+                    }
+                    let air2 = !self.gen_solid(wx0 + dx, y0, wz0 + dz)
+                        && !self.gen_solid(wx0 + dx, y0 + 1, wz0 + dz);
+                    if air2 {
+                        openings += 1;
+                    }
+                }
+            }
+            if !(1..=5).contains(&openings) {
+                continue;
+            }
+
+            // ---- chests: 3 rolls each, max 2 (VERIFIED) ----
+            // qualification (adapted in-chunk): an interior floor cell with
+            // exactly ONE wall-adjacent side (vanilla: "empty block with a
+            // solid block on exactly one of its four sides" — after the
+            // interior is carved to air, wall-adjacency is exactly that)
+            let mut chests = [[wx0, y0, wz0]; 2];
+            let mut chest_count = 0usize;
+            'chests: for slot in 0..2 {
+                for _ in 0..3 {
+                    let dx = rng.next_range(size as u32) as i32;
+                    let dz = rng.next_range(size as u32) as i32;
+                    let on_x_edge = dx == 0 || dx == size - 1;
+                    let on_z_edge = dz == 0 || dz == size - 1;
+                    if on_x_edge == on_z_edge {
+                        continue; // 0 or 2 solid sides — vanilla rejects both
+                    }
+                    let c = [wx0 + dx, y0, wz0 + dz];
+                    if chests[..chest_count].contains(&c) {
+                        continue; // no double chest on the same cell
+                    }
+                    chests[slot] = c;
+                    chest_count += 1;
+                    continue 'chests;
+                }
+            }
+            return Some(DungeonRoom {
+                x0: wx0,
+                y0,
+                z0: wz0,
+                size,
+                mob,
+                chests,
+                chest_count,
+            });
+        }
+        None
+    }
+
+    /// place a rolled room into the chunk (walls cobble, floor 75% mossy
+    /// — VERIFIED —, interior air, spawner center, chests against walls)
+    fn emit_dungeon(&self, chunk: &mut Chunk, room: DungeonRoom, ox: i32, oz: i32) {
+        let DungeonRoom { x0, y0, z0, size, mob, chests, chest_count } = room;
+        // mossy pattern rng — derived from the room anchor (stable)
+        let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x0D66, x0, 0, z0));
+        let lx = x0 - ox;
+        let lz = z0 - oz;
+        for dx in -1..=size {
+            for dz in -1..=size {
+                let ring = dx == -1 || dx == size || dz == -1 || dz == size;
+                let cx = (lx + dx) as usize;
+                let cz = (lz + dz) as usize;
+                for dy in -1..=5i32 {
+                    let cy = (y0 + dy) as usize;
+                    if dy == -1 {
+                        // floor: 25% cobble / 75% mossy (VERIFIED)
+                        let b = if rng.next_range(4) == 0 { COBBLE } else { MOSSY_COBBLE };
+                        chunk.set(cx, cy, cz, b);
+                    } else if dy == 5 {
+                        // ceiling: plain cobble
+                        chunk.set(cx, cy, cz, COBBLE);
+                    } else if ring {
+                        // walls: plain cobble
+                        chunk.set(cx, cy, cz, COBBLE);
+                    } else {
+                        // interior: air (clears any cave/glowstone leftovers)
+                        chunk.set(cx, cy, cz, AIR);
+                    }
+                }
+            }
+        }
+        // spawner dead center (VERIFIED position); the state carries the
+        // mob type (zombie 232 / skeleton 233 / spider 234)
+        let sx = (lx + size / 2) as usize;
+        let sz = (lz + size / 2) as usize;
+        chunk.set_state(sx, y0 as usize, sz, vc_blocks::blocks::spawner_state(mob));
+        // chests (up to 2, VERIFIED count)
+        for c in chests.iter().take(chest_count) {
+            let ccx = (c[0] - ox) as usize;
+            let ccz = (c[2] - oz) as usize;
+            chunk.set(ccx, c[1] as usize, ccz, CHEST);
+        }
     }
 
     // ------------------------------------------------------------ nether --
@@ -1549,5 +1759,189 @@ mod spawn_tests {
         }
         println!("green-ish spawns: {}/{}", green, total);
         assert!(green >= total / 2, "at least half of seeds should spawn green");
+    }
+}
+
+#[cfg(test)]
+mod dungeon_tests {
+    use super::*;
+
+    /// dungeons appear across seeds and chunks (a scan is the honest test —
+    /// placement is gated on terrain, exactly like vanilla)
+    #[test]
+    fn dungeons_roll_for_some_chunks() {
+        let mut found = 0;
+        'seeds: for s in 0..8u64 {
+            let gen = TerrainGen::new(0x0D66_u64.wrapping_add(s));
+            for cz in -6..=6i32 {
+                for cx in -6..=6i32 {
+                    if gen.dungeon_in_chunk(cx, cz).is_some() {
+                        found += 1;
+                        continue 'seeds;
+                    }
+                }
+            }
+        }
+        assert!(found >= 3, "expected several dungeon seeds, got {found}");
+    }
+
+    /// the roll is pure: same seed + chunk → identical room, always
+    #[test]
+    fn dungeon_roll_is_deterministic() {
+        let gen = TerrainGen::new(0xD1A6_5EED);
+        for cz in -4..=4i32 {
+            for cx in -4..=4i32 {
+                let a = gen.dungeon_in_chunk(cx, cz);
+                let b = gen.dungeon_in_chunk(cx, cz);
+                assert_eq!(a, b, "chunk ({cx},{cz}) roll must be pure");
+                if let Some(r) = a {
+                    // size is one of the VERIFIED open-area set
+                    assert!(matches!(r.size, 7 | 9 | 11), "size {}", r.size);
+                    // y band: underground, above bedrock
+                    assert!((8..=35).contains(&r.y0), "y0 {}", r.y0);
+                    // mob is one of the three dungeon spawners
+                    assert!(matches!(r.mob, 0 | 1 | 2), "mob {}", r.mob);
+                    // ≤ 2 chests, all inside the interior
+                    assert!(r.chest_count <= 2);
+                    for c in r.chests.iter().take(r.chest_count) {
+                        assert!(c[0] >= r.x0 && c[0] < r.x0 + r.size);
+                        assert!(c[2] >= r.z0 && c[2] < r.z0 + r.size);
+                        assert_eq!(c[1], r.y0);
+                    }
+                    // the two chests never share a cell
+                    if r.chest_count == 2 {
+                        assert_ne!(r.chests[0], r.chests[1]);
+                    }
+                }
+            }
+        }
+    }
+
+    /// the spawner mob distribution over many rolls is ~50/25/25 (a
+    /// coarse statistical gate, not an exact equality)
+    #[test]
+    fn dungeon_mob_rolls_match_the_50_25_25_shape() {
+        let mut counts = [0usize; 3];
+        let mut total = 0usize;
+        'seeds: for s in 0..40u64 {
+            let gen = TerrainGen::new(0xABBA_u64.wrapping_add(s));
+            for cz in -8..=8i32 {
+                for cx in -8..=8i32 {
+                    if let Some(r) = gen.dungeon_in_chunk(cx, cz) {
+                        counts[r.mob as usize] += 1;
+                        total += 1;
+                        if total >= 300 {
+                            break 'seeds;
+                        }
+                    }
+                }
+            }
+        }
+        assert!(total >= 60, "need a real sample, got {total}");
+        let (z, sk, sp) = (counts[0], counts[1], counts[2]);
+        // 50% zombie with ±12pt tolerance, 25% each with ±9pt
+        let zf = z as f64 / total as f64;
+        let skf = sk as f64 / total as f64;
+        let spf = sp as f64 / total as f64;
+        assert!((0.38..=0.62).contains(&zf), "zombie share {zf}");
+        assert!((0.16..=0.34).contains(&skf), "skeleton share {skf}");
+        assert!((0.16..=0.34).contains(&spf), "spider share {spf}");
+    }
+
+    /// a rolled room emits exactly into its chunk: walls/floor/ceiling
+    /// cobble+mossy, interior air, spawner at the center with the mob
+    /// state, chests in place. Also the VERIFIED 75% mossy floor ratio.
+    #[test]
+    fn dungeon_emits_the_verified_layout() {
+        // find a concrete dungeon
+        let mut found = None;
+        'outer: for s in 0..60u64 {
+            let gen = TerrainGen::new(0x5EED_u64.wrapping_add(s));
+            for cz in -6..=6i32 {
+                for cx in -6..=6i32 {
+                    if let Some(r) = gen.dungeon_in_chunk(cx, cz) {
+                        found = Some((gen, r));
+                        break 'outer;
+                    }
+                }
+            }
+        }
+        let (gen, room) = found.expect("a dungeon to exist in the scan");
+        let (chunk, _) = gen.generate_chunk(room.x0 >> 4, room.z0 >> 4, Vec::new());
+        let lx = |wx: i32| (wx - (room.x0 >> 4) * 16) as usize;
+        let lz = |wz: i32| (wz - (room.z0 >> 4) * 16) as usize;
+        // raw state read (Chunk::get truncates to the block id)
+        let state_at = |chunk: &Arc<Chunk>, wx: i32, wy: usize, wz: i32| -> u16 {
+            chunk.sections[wy >> 4]
+                .as_ref()
+                .map(|s| s.get((wx & 15) as usize, wy & 15, (wz & 15) as usize))
+                .unwrap_or(0)
+        };
+
+        // spawner at the center with the right mob state
+        let scx = room.x0 + room.size / 2;
+        let scz = room.z0 + room.size / 2;
+        let s = state_at(&chunk, scx, room.y0 as usize, scz);
+        assert_eq!(vc_blocks::blocks::state_block(s), SPAWNER);
+        assert_eq!(vc_blocks::blocks::spawner_mob(s), room.mob);
+
+        // floor: only cobble/mossy; count the VERIFIED ~75% mossy share
+        let mut mossy = 0;
+        let mut floor_total = 0;
+        for dx in -1..=room.size {
+            for dz in -1..=room.size {
+                let b = chunk.get(lx(room.x0 + dx), (room.y0 - 1) as usize, lz(room.z0 + dz));
+                assert!(matches!(b, COBBLE | MOSSY_COBBLE), "floor block {b}");
+                floor_total += 1;
+                if b == MOSSY_COBBLE {
+                    mossy += 1;
+                }
+            }
+        }
+        let share = mossy as f64 / floor_total as f64;
+        assert!((0.55..=0.95).contains(&share), "mossy share {share} (VERIFIED 75%)");
+
+        // interior: air (and stays air to the ceiling) — except the
+        // spawner at the center and the chests against the walls
+        let scx_l = room.x0 + room.size / 2;
+        let scz_l = room.z0 + room.size / 2;
+        for dx in 0..room.size {
+            for dz in 0..room.size {
+                for dy in 0..4i32 {
+                    let wx = room.x0 + dx;
+                    let wz = room.z0 + dz;
+                    if dy == 0 && wx == scx_l && wz == scz_l {
+                        continue; // the spawner
+                    }
+                    if dy == 0
+                        && room.chests.iter().take(room.chest_count).any(|c| c[0] == wx && c[2] == wz)
+                    {
+                        continue; // a chest
+                    }
+                    let b = chunk.get(
+                        lx(wx),
+                        (room.y0 + dy) as usize,
+                        lz(wz),
+                    );
+                    assert_eq!(b, AIR, "interior cell must be air");
+                }
+            }
+        }
+
+        // chests landed as placed (fold the state → block)
+        for c in room.chests.iter().take(room.chest_count) {
+            let s = state_at(&chunk, c[0], c[1] as usize, c[2]);
+            assert_eq!(vc_blocks::blocks::state_block(s), CHEST);
+        }
+        // determinism: regenerate → identical chunk (the P6-style gate)
+        let (chunk2, _) = gen.generate_chunk(room.x0 >> 4, room.z0 >> 4, Vec::new());
+        let mut same = true;
+        for i in 0..(16 * 16 * 256) {
+            if chunk.get_idx(i) != chunk2.get_idx(i) {
+                same = false;
+                break;
+            }
+        }
+        assert!(same, "dungeon chunk regenerates identically");
     }
 }

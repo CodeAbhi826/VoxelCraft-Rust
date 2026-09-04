@@ -831,6 +831,20 @@ impl GameApp {
             #[cfg(not(target_arch = "wasm32"))]
             autosave_in: 20.0,
         };
+        // Phase 5: restore container inventories (dungeon loot + the
+        // player's touched chests/hoppers) into the fresh sim — native
+        // only (web sessions regenerate; containers there are transient)
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Ok(Some(meta)) = vc_anvil::save::read_level_dat(&app.world_dir) {
+            for c in meta.containers {
+                let inv = app.sim.containers.entry(c.pos, c.kind);
+                for (slot, block, count) in c.slots {
+                    if let Some(s) = inv.slots.get_mut(slot as usize) {
+                        *s = vc_inventory::inventory::ItemStack::new(block, count);
+                    }
+                }
+            }
+        }
         app.load_start = app.time;
         app.refresh_widgets();
         app
@@ -2827,20 +2841,33 @@ impl GameApp {
                 ));
             }
             SlotRef::TradeRow(i) => {
-                // §29 trading: pay give, receive get — through the REAL
-                // inventory consume/add path; emerald ore = our emerald
+                // §29 trading (Phase 5 depth): tier gating + stock +
+                // villager XP/level-ups live in execute_trade; the item
+                // movement happens here through the REAL inventory
+                // consume/add path (emerald ore = our emerald)
                 let Some(Container::Trade { villager }) = self.container else {
                     return;
                 };
-                // copy out position + trade row first so the entity borrow
-                // ends before the stat mutation below
+                // read-only preflight: the row must be a visible offer
+                // (tier ≤ level) with stock left, and affordable
                 let vpos = self.sim.villagers.by_id(villager).map(|v| v.pos);
-                let tr = self
-                    .sim
-                    .villagers
-                    .by_id(villager)
-                    .and_then(|v| vc_gameplay::villagers::trades(v.profession).get(i).copied());
-                let (Some(vpos), Some(tr)) = (vpos, tr) else {
+                let row = self.sim.villagers.by_id(villager).and_then(|v| {
+                    let t = *vc_gameplay::villagers::trades(v.profession).get(i)?;
+                    let tier_ok = t.tier <= v.level();
+                    let stock = v.stock_left(i).unwrap_or(0);
+                    (tier_ok && stock > 0).then_some((t, v.level()))
+                });
+                let (Some(vpos), Some((tr, level))) = (vpos, row) else {
+                    return; // locked tier / out of stock — no sound, no trade
+                };
+                let (give, give_n) = tr.give;
+                let (get, get_n) = tr.get;
+                if (self.player.inv.count_of(give) as u8) < give_n {
+                    self.click_sound();
+                    return; // cannot afford
+                }
+                // the authoritative consume: stock--, villager XP++, maybe level-up
+                let Some((tr, leveled)) = self.sim.villagers.execute_trade(villager, i) else {
                     return;
                 };
                 let (give, give_n) = tr.give;
@@ -2855,18 +2882,41 @@ impl GameApp {
                             get, 2, 15, 0,
                         );
                     }
-                    self.sim.villagers.trades_done += 1;
+                    if leveled {
+                        // villager career level-up: the pleased grunt +
+                        // the log line the E2E harness greps for
+                        self.play_event(
+                            "entity.villager.trade",
+                            Some([vpos[0], vpos[1] + 0.9, vpos[2]]),
+                            1.15,
+                        );
+                        let v = self.sim.villagers.by_id(villager).unwrap();
+                        vc_render::render::report_boot_log(&format!(
+                            "e2e: villager leveled up -> {} (xp {})",
+                            vc_gameplay::villagers::level_name(v.level()),
+                            v.xp
+                        ));
+                    }
                     self.play_event(
                         "entity.villager.trade",
                         Some([vpos[0], vpos[1] + 0.9, vpos[2]]),
                         1.0,
                     );
+                    let stock = self
+                        .sim
+                        .villagers
+                        .by_id(villager)
+                        .and_then(|v| v.stock_left(i))
+                        .unwrap_or(0);
                     vc_render::render::report_boot_log(&format!(
-                        "e2e: traded {}x {} for {}x {} (total {})",
+                        "e2e: traded {}x {} for {}x {} (lvl {}, stock left {}/{}, total {})",
                         give_n,
                         name(give),
                         get_n,
                         name(get),
+                        level,
+                        stock,
+                        tr.max_uses,
                         self.sim.villagers.trades_done
                     ));
                 } else {
@@ -2961,33 +3011,56 @@ impl GameApp {
                 )
             }
             Some(Container::Trade { villager }) => {
-                // live trade rows + affordability from the inventory
-                let rows = self
+                // Phase 5 trade view: all table rows (table-order indices
+                // match SlotRef::TradeRow(i) → execute_trade(i)), the
+                // career level + XP header, per-row stock + lock state
+                let tv = self
                     .sim
                     .villagers
                     .by_id(villager)
                     .map(|v| {
-                        let prof =
-                            vc_gameplay::villagers::PROFESSIONS[v.profession as usize % vc_gameplay::villagers::PROFESSIONS.len()];
-                        let list: Vec<(vc_inventory::inventory::ItemStack, vc_inventory::inventory::ItemStack, bool)> =
+                        let prof = vc_gameplay::villagers::PROFESSIONS
+                            [(v.profession as usize).min(vc_gameplay::villagers::PROFESSIONS.len() - 1)];
+                        let level = v.level();
+                        let rows: Vec<vc_render::ui::TradeRowView> =
                             vc_gameplay::villagers::trades(v.profession)
                                 .iter()
-                                .map(|t| {
+                                .enumerate()
+                                .map(|(i, t)| {
                                     let give = vc_inventory::inventory::ItemStack::new(t.give.0, t.give.1);
                                     let get = vc_inventory::inventory::ItemStack::new(t.get.0, t.get.1);
-                                    let afford = self.player.inv.count_of(t.give.0) >= t.give.1 as u32;
-                                    (give, get, afford)
+                                    let afford =
+                                        self.player.inv.count_of(t.give.0) >= t.give.1 as u32;
+                                    let stock = v.stock_left(i).unwrap_or(0);
+                                    vc_render::ui::TradeRowView {
+                                        give,
+                                        get,
+                                        afford,
+                                        stock,
+                                        max_uses: t.max_uses,
+                                        tier: t.tier,
+                                        locked: t.tier > level,
+                                    }
                                 })
                                 .collect();
-                        (prof.to_string(), list)
-                    })
-                    .unwrap_or_default();
+                        vc_render::ui::TradeView {
+                            profession: prof.to_string(),
+                            level_name: vc_gameplay::villagers::level_name(level).to_string(),
+                            level,
+                            xp: v.xp,
+                            xp_next: vc_gameplay::villagers::LEVEL_XP
+                                .get(level as usize)
+                                .copied()
+                                .filter(|_| level < 5),
+                            rows,
+                        }
+                    });
                 (
                     ContainerKind::Trade,
                     None,
                     None,
                     None,
-                    Some(rows),
+                    tv,
                 )
             }
             None => (ContainerKind::Inventory, None, None, None, None),
@@ -3078,6 +3151,10 @@ impl GameApp {
             }
             self.sim.containers.remove(&pos);
             self.drain_container_spills();
+        }
+        // Phase 5 §27: a broken spawner drops its block entity state
+        if broke == SPAWNER {
+            self.sim.spawners.remove(pos);
         }
         if broke == FURNACE {
             if let Some(f) = self.sim.furnaces.map.remove(&pos) {
@@ -3620,6 +3697,9 @@ impl GameApp {
                             Some("lapis") => Some(LAPIS_ORE),
                             Some("enchant_table") => Some(ENCHANT_TABLE),
                             Some("bookshelf") => Some(BOOKSHELF),
+                            // Phase 5: trade-payment items (E2E trade flows)
+                            Some("rotten_flesh") => Some(ROTTEN_FLESH),
+                            Some("emerald") => Some(EMERALD_ORE),
                             _ => None,
                         };
                         let n: u8 = parts.get(2).and_then(|s| s.parse().ok()).unwrap_or(1);
@@ -3767,7 +3847,7 @@ impl GameApp {
                         // trade:<idx> — scripted §29 flow: spawn a cleric (sells
                         // healing potions — the §29 cross-link), grant the
                         // give items, open the screen, execute the trade
-                        // through the same consume/add path the TradeRow
+                        // through the same tier/stock/XP path the TradeRow
                         // click uses (geometry-driven click verified via cclick)
                         let idx: usize = parts
                             .get(1)
@@ -3781,34 +3861,212 @@ impl GameApp {
                                 pos.x.floor() as i32 + 2,
                                 pos.y.floor() as i32,
                                 pos.z.floor() as i32,
-                                Some(2), // Cleric
+                                Some(3), // Cleric (15-registry index)
                             )
                             .expect("villager cap");
-                        let tr = vc_gameplay::villagers::trades(2)[idx.min(1)];
+                        let table = vc_gameplay::villagers::trades(3);
+                        let idx = idx.min(table.len() - 1);
+                        let tr = table[idx];
                         // grant the payment through the real add path
                         self.player.inv.add(tr.give.0, tr.give.1);
                         self.open_container(Container::Trade { villager: id });
-                        // execute the trade: consume give, add get
-                        if self.player.inv.consume(tr.give.0, tr.give.1) {
-                            let left = self.player.inv.add(tr.get.0, tr.get.1);
-                            if left > 0 {
-                                self.sim.items.drop_block(
-                                    pos.x.floor() as i32,
-                                    pos.y.floor() as i32,
-                                    pos.z.floor() as i32,
-                                    tr.get.0, 2, 15, 0,
+                        // execute through the REAL tier/stock/XP path
+                        if let Some((tr, _leveled)) = self.sim.villagers.execute_trade(id, idx) {
+                            if self.player.inv.consume(tr.give.0, tr.give.1) {
+                                let left = self.player.inv.add(tr.get.0, tr.get.1);
+                                if left > 0 {
+                                    self.sim.items.drop_block(
+                                        pos.x.floor() as i32,
+                                        pos.y.floor() as i32,
+                                        pos.z.floor() as i32,
+                                        tr.get.0, 2, 15, 0,
+                                    );
+                                }
+                                self.play_event("entity.villager.trade", None, 1.0);
+                                let v = self.sim.villagers.by_id(id).unwrap();
+                                vc_render::render::report_boot_log(&format!(
+                                    "e2e: trade flow done - inv has {}x {} (trades {}, villager lvl {} xp {})",
+                                    self.player.inv.count_of(tr.get.0),
+                                    name(tr.get.0),
+                                    self.sim.villagers.trades_done,
+                                    v.level(),
+                                    v.xp
+                                ));
+                            } else {
+                                vc_render::render::report_boot_log("e2e: trade payment missing");
+                            }
+                        } else {
+                            vc_render::render::report_boot_log("e2e: trade rejected (tier/stock)");
+                        }
+                    }
+                    Some("tradelevel") => {
+                        // tradelevel:<n> — Phase 5 career flow: spawn a
+                        // cleric, run n tier-1 trades through the real
+                        // path, report the level-ups (5 trades × 2 XP =
+                        // Apprentice at the VERIFIED 10-XP threshold)
+                        let n: usize = parts
+                            .get(1)
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(5);
+                        let pos = self.player.pos;
+                        let id = self
+                            .sim
+                            .villagers
+                            .spawn_at(
+                                pos.x.floor() as i32 + 2,
+                                pos.y.floor() as i32,
+                                pos.z.floor() as i32,
+                                Some(3), // Cleric
+                            )
+                            .expect("villager cap");
+                        self.open_container(Container::Trade { villager: id });
+                        let mut done = 0;
+                        for _ in 0..n {
+                            // row 0: Rotten Flesh 12 → Emerald 1 (tier 1)
+                            let Some((tr, _)) = self.sim.villagers.execute_trade(id, 0) else {
+                                break;
+                            };
+                            self.player.inv.add(tr.give.0, tr.give.1); // grant payment
+                            if self.player.inv.consume(tr.give.0, tr.give.1) {
+                                let _ = self.player.inv.add(tr.get.0, tr.get.1);
+                                done += 1;
+                            }
+                        }
+                        let v = self.sim.villagers.by_id(id).unwrap();
+                        let offers = v.offers();
+                        vc_render::render::report_boot_log(&format!(
+                            "e2e: tradelevel {done} trades -> level {} ({}), xp {}, visible offers {} (tier-2 unlocked: {})",
+                            v.level(),
+                            vc_gameplay::villagers::level_name(v.level()),
+                            v.xp,
+                            offers.len(),
+                            offers.contains(&2)
+                        ));
+                    }
+                    Some("spawner") => {
+                        // spawner:<mob>:<ticks> — Phase 5 §27 flow: place a
+                        // spawner 5 blocks from the player, register it,
+                        // step the sim through ticks with the player in
+                        // range, report the spawned mobs (the harness also
+                        // verifies the 6-mob cap by reading F3 stats)
+                        let mob = match parts.get(1).copied() {
+                            Some("skeleton") => SPAWNER_SKELETON,
+                            Some("spider") => SPAWNER_SPIDER,
+                            _ => SPAWNER_ZOMBIE,
+                        };
+                        let n_ticks: i32 = parts
+                            .get(2)
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(30);
+                        let pos = self.player.pos;
+                        let p = [
+                            pos.x.floor() as i32 + 5,
+                            pos.y.floor() as i32,
+                            pos.z.floor() as i32,
+                        ];
+                        self.test_place(SPAWNER, p[0], p[1], p[2]);
+                        self.world.set_block_state(
+                            p[0],
+                            p[1],
+                            p[2],
+                            vc_blocks::blocks::spawner_state(mob),
+                        );
+                        self.sim.spawners.register(p, mob);
+                        self.sim.spawners.map.get_mut(&p).unwrap().delay = 0;
+                        let kind = vc_gameplay::spawners::mob_kind(mob);
+                        let before = self
+                            .sim
+                            .mobs
+                            .list
+                            .iter()
+                            .filter(|m| m.kind == kind)
+                            .count();
+                        for _ in 0..n_ticks {
+                            self.sim.step(&mut self.world, &mut self.light);
+                        }
+                        let after = self
+                            .sim
+                            .mobs
+                            .list
+                            .iter()
+                            .filter(|m| m.kind == kind)
+                            .count();
+                        vc_render::render::report_boot_log(&format!(
+                            "e2e: spawner ({}) {n_ticks}t -> mobs {} -> {} (cycles {}, spawned total {})",
+                            match mob {
+                                SPAWNER_SKELETON => "skeleton",
+                                SPAWNER_SPIDER => "spider",
+                                _ => "zombie",
+                            },
+                            before,
+                            after,
+                            self.sim.spawners.map.get(&p).unwrap().cycles,
+                            self.sim.spawners.spawned_total
+                        ));
+                    }
+                    Some("dungeon") => {
+                        // dungeon — Phase 5 §27 E2E: find the nearest
+                        // dungeon roll near the player (±8 chunks), force
+                        // its chunk through the real generator, register
+                        // entities + loot, teleport the player inside
+                        let gen = vc_world::gen::TerrainGen::for_dimension(
+                            self.world.seed,
+                            self.world.dimension,
+                        );
+                        let pcx = (self.player.pos.x.floor() as i32) >> 4;
+                        let pcz = (self.player.pos.z.floor() as i32) >> 4;
+                        let mut found = None;
+                        'scan: for r in 0..=8i32 {
+                            for dz in -r..=r {
+                                for dx in -r..=r {
+                                    if dx.abs() != r && dz.abs() != r {
+                                        continue; // ring walk
+                                    }
+                                    if let Some(room) = gen.dungeon_in_chunk(pcx + dx, pcz + dz) {
+                                        found = Some(((pcx + dx, pcz + dz), room));
+                                        break 'scan;
+                                    }
+                                }
+                            }
+                        }
+                        match found {
+                            None => {
+                                vc_render::render::report_boot_log(
+                                    "e2e: no dungeon within ±8 chunks (regenerate for a denser roll)",
                                 );
                             }
-                            self.sim.villagers.trades_done += 1;
-                            self.play_event("entity.villager.trade", None, 1.0);
-                            vc_render::render::report_boot_log(&format!(
-                                "e2e: trade flow done - inv has {}x {} (trades {})",
-                                self.player.inv.count_of(tr.get.0),
-                                name(tr.get.0),
-                                self.sim.villagers.trades_done
-                            ));
-                        } else {
-                            vc_render::render::report_boot_log("e2e: trade payment missing");
+                            Some(((cx, cz), room)) => {
+                                // force-generate the chunk (the real path)
+                                let (chunk, _) = gen.generate_chunk(cx, cz, Vec::new());
+                                let pos = (cx, cz);
+                                self.world.insert_generated(pos, chunk.clone(), Vec::new());
+                                self.light.init_chunk(&mut self.world, pos);
+                                for (lpos, lmask) in self.light.take_changed() {
+                                    self.world
+                                        .mark_sections_dirty(lpos, lmask, vc_world::world::CAUSE_LIGHT);
+                                }
+                                self.register_block_entities(pos, &chunk, true);
+                                // teleport into the room center
+                                self.player.pos.x = (room.x0 + room.size / 2) as f32 + 0.5;
+                                self.player.pos.y = room.y0 as f32 + 0.2;
+                                self.player.pos.z = (room.z0 + room.size / 2) as f32 + 0.5;
+                                // stand spot: the spawner is the center —
+                                // offset onto free floor next to it
+                                self.player.pos.x += 2.0;
+                                let mob = match room.mob {
+                                    SPAWNER_SKELETON => "skeleton",
+                                    SPAWNER_SPIDER => "spider",
+                                    _ => "zombie",
+                                };
+                                vc_render::render::report_boot_log(&format!(
+                                    "e2e: dungeon at chunk ({cx},{cz}) center ({},{},{}) size {} mob {mob} chests {}",
+                                    room.x0 + room.size / 2,
+                                    room.y0,
+                                    room.z0 + room.size / 2,
+                                    room.size,
+                                    room.chest_count
+                                ));
+                            }
                         }
                     }
                     Some("fill") => {
@@ -4684,6 +4942,43 @@ impl GameApp {
             game_type: self.mode.vanilla_game_type(),
             hardcore: self.mode.vanilla_hardcore(),
             hardcore_dead: self.hardcore_dead,
+            // Phase 5: container inventories (dungeon loot + touched
+            // chests/hoppers) — they restore on load via read_level_dat
+            containers: self
+                .sim
+                .containers
+                .map
+                .iter()
+                .map(|(pos, inv)| {
+                    let slots = inv
+                        .slots
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, s)| !s.is_empty())
+                        .map(|(i, s)| (i as u16, s.block, s.count))
+                        .collect();
+                    // kind: live block when the chunk is loaded; otherwise
+                    // inferred from the slot count (27 chest / 5 hopper /
+                    // 9 dispenser-dropper) — containers in unloaded chunks
+                    // keep their inventory shape
+                    let live = vc_blocks::blocks::state_block(
+                        self.world.get_state(pos[0], pos[1], pos[2]),
+                    );
+                    let kind = match live {
+                        CHEST | DISPENSER | DROPPER | HOPPER => live,
+                        _ => match inv.slots.len() {
+                            27 => CHEST,
+                            5 => HOPPER,
+                            _ => DISPENSER,
+                        },
+                    };
+                    vc_anvil::save::ContainerMeta {
+                        pos: *pos,
+                        kind,
+                        slots,
+                    }
+                })
+                .collect(),
         };
         if let Err(e) = vc_anvil::save::write_level_dat(&self.world_dir, &meta) {
             vc_render::render::report_boot_log(&format!("level.dat write failed: {e}"));
@@ -4992,7 +5287,15 @@ impl GameApp {
                 for (idx, id) in inbound {
                     chunk.set_idx(idx as usize, id);
                 }
-                self.world.insert_generated(pos, Arc::new(chunk), Vec::new());
+                let chunk = Arc::new(chunk);
+                self.world.insert_generated(pos, chunk.clone(), Vec::new());
+                // Phase 5 §27: re-register the spawner block entities a
+                // save carries (chunk data keeps only states), and re-seed
+                // the villagers of any village whose chunks arrived from
+                // disk (vanilla persists villager NBT; ours re-populate
+                // at the well — the populated set keeps it once/session)
+                self.register_block_entities(pos, &chunk, false);
+                self.sim.villagers.populate_villages(&self.world, pos.0, pos.1);
                 match light {
                     Some(ld) => {
                         self.world.light.insert(pos, Arc::new(ld));
@@ -5111,6 +5414,45 @@ impl GameApp {
         }
     }
 
+    /// Phase 5 §27: scan a newly-arrived chunk for block-entity blocks —
+    /// spawners register into the sim (mob type decoded from the state),
+    /// and on fresh generation dungeon chests get their loot roll. Called
+    /// from BOTH chunk-arrival paths (generated + loaded-from-disk);
+    /// `fill_loot` is true only for fresh generation (loaded inventories
+    /// restore from level.dat instead — double-filling would dupe items).
+    fn register_block_entities(&mut self, pos: ChunkPos, chunk: &Arc<vc_chunk::chunk::Chunk>, fill_loot: bool) {
+        let ox = pos.0 * 16;
+        let oz = pos.1 * 16;
+        for y in 0..256usize {
+            for z in 0..16usize {
+                for x in 0..16usize {
+                    let b = chunk.get(x, y, z);
+                    if b != SPAWNER && b != CHEST {
+                        continue; // fast skip — `get` on empty sections is cheap
+                    }
+                    let p = [ox + x as i32, y as i32, oz + z as i32];
+                    if b == SPAWNER {
+                        let s = chunk
+                            .sections[y >> 4]
+                            .as_ref()
+                            .map(|sec| sec.get(x, y & 15, z))
+                            .unwrap_or(0);
+                        self.sim.spawners.register(p, vc_blocks::blocks::spawner_mob(s));
+                    } else if fill_loot {
+                        // dungeon loot chest: fill ONLY if the container is
+                        // untouched (fresh generation creates it here; a
+                        // re-arriving chunk with loot already inside never
+                        // refills — the all-empty guard)
+                        let inv = self.sim.containers.entry(p, CHEST);
+                        if inv.slots.iter().all(|s| s.is_empty()) {
+                            fill_dungeon_chest(inv, self.world.seed, p);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     fn apply_result(&mut self, res: JobResult) {
         match res {
             JobResult::Gen { pos, chunk, outbound } => {
@@ -5127,10 +5469,15 @@ impl GameApp {
                     }
                     Arc::new(c)
                 };
-                self.world.insert_generated(pos, chunk, outbound);
+                self.world.insert_generated(pos, chunk.clone(), outbound);
                 // §27: villagers spawn with their village — populate the
                 // wells whose reach covers this chunk (guarded, once)
                 self.sim.villagers.populate_villages(&self.world, pos.0, pos.1);
+                // Phase 5 §27: register spawner entities + fill dungeon
+                // chest loot (fresh generation only — loaded chunks take
+                // the no-fill path and their inventories arrive from
+                // level.dat)
+                self.register_block_entities(pos, &chunk, true);
                 // Phase 4: initial lighting for the new chunk (column scan +
                 // border exchange, settled synchronously) — the engine's
                 // changed map feeds precise §12 dirty bits below
@@ -5746,6 +6093,37 @@ fn fence_state_for(world: &World, wx: i32, wy: i32, wz: i32) -> Option<u16> {
 fn notify_sim(world: &World, sched: &mut vc_sim::ticks::TickScheduler, x: i32, y: i32, z: i32) {
     vc_sim::fluids::on_block_changed(sched, world, x, y, z);
     vc_sim::redstone::on_block_changed(sched, world, x, y, z);
+}
+
+/// Phase 5 §27: fill a freshly generated dungeon chest. Palette-bounded
+/// adaptation of the vanilla "simple dungeon" table (bones, string,
+/// gunpowder, rotten flesh, arrows, occasional iron): 3..=7 stacks of
+/// 1..=4, deterministic from the world seed + chest position. Vanilla
+/// saddle/music-disc/golden-apple slots are palette-absent and simply
+/// don't roll (documented, not substituted with lookalikes).
+fn fill_dungeon_chest(inv: &mut vc_sim::containers::ContainerInv, seed: u64, pos: [i32; 3]) {
+    let mut rng = vc_rng::rng::Rng::new(vc_rng::rng::Rng::hash3(
+        seed ^ 0xDCC_E5,
+        pos[0],
+        pos[1],
+        pos[2],
+    ));
+    const LOOT: [u8; 7] = [BONE, STRING, GUNPOWDER, ROTTEN_FLESH, ARROW_ITEM, IRON_ORE, SPIDER_EYE];
+    let n = 3 + rng.next_range(5) as usize; // 3..=7 stacks
+    let mut slot = rng.next_range(27) as usize;
+    for _ in 0..n {
+        let item = LOOT[rng.next_range(LOOT.len() as u32) as usize];
+        let count = 1 + rng.next_range(4) as u8; // 1..=4
+        // walk to the next free slot (chests are fresh — always one)
+        for _ in 0..27 {
+            if inv.slots[slot].is_empty() {
+                inv.slots[slot] = vc_inventory::inventory::ItemStack::new(item, count);
+                break;
+            }
+            slot = (slot + 1) % 27;
+        }
+        slot = (slot + 1 + rng.next_range(3) as usize) % 27;
+    }
 }
 
 /// biome + (sky, block) light levels at a world position — for baking

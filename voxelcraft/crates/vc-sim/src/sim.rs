@@ -25,8 +25,11 @@ pub struct Sim {
     pub brewing: vc_gameplay::brewing::Brewings,
     /// enchanting-table block entities (§29 — reactive, not ticked)
     pub enchants: vc_gameplay::enchanting::Enchants,
-    /// villager NPCs (Phase 7 §27/§29): wander AI + trade state
+    /// villager NPCs (Phase 7 §27/§29, Phase 5 trading depth): wander
+    /// AI + tiered trade state
     pub villagers: vc_gameplay::villagers::Villagers,
+    /// monster spawners (Phase 5 §27): dungeon block entities
+    pub spawners: vc_gameplay::spawners::Spawners,
     /// mobs (Phase 2): spawn/AI/physics + arrows; hits, deaths and
     /// explosions queue here for the game layer to drain
     pub mobs: vc_gameplay::mobs::MobSystem,
@@ -53,6 +56,7 @@ impl Sim {
             brewing: vc_gameplay::brewing::Brewings::default(),
             enchants: vc_gameplay::enchanting::Enchants::default(),
             villagers: vc_gameplay::villagers::Villagers::new(seed ^ 0x315_7A9),
+            spawners: vc_gameplay::spawners::Spawners::new(seed ^ 0x5C_0DE5),
             mobs: vc_gameplay::mobs::MobSystem::new(seed ^ 0x5C_0DE),
             containers: crate::containers::Containers::default(),
             dispenser_prev: std::collections::HashMap::new(),
@@ -158,13 +162,18 @@ impl Sim {
         // 4. item entities
         self.items.tick(world);
 
-        // 5. villagers (§27): wander decisions + walking physics
-        self.villagers.tick(world);
+        // 5. villagers (§27): wander decisions + walking physics + the
+        // twice-daily trade restock clock (sim.ticks is the day clock)
+        self.villagers.tick(world, self.ticks);
 
         // 6. mobs (Phase 2): spawning + AI + arrows. Hits on the player,
         // deaths, and explosions queue inside for game.rs to drain (the
         // game layer owns damage gating, drops, and world edits).
         self.mobs.tick(world);
+
+        // 6b. spawners (Phase 5 §27): dungeon block entities — activation
+        // gate, delay, 4-attempt cycles, 6-mob cap
+        self.spawners.tick(world, self.mobs.player, &mut self.mobs);
 
         // 7. hoppers (Phase 3): collect items above (VERIFIED: hoppers
         // collect every game tick, then 8gt cooldown), push one item per

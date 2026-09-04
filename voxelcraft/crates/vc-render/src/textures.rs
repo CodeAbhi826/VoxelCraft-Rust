@@ -1187,6 +1187,35 @@ fn spider_eye_art(a: &mut [u8], t: u16, fermented: bool) {
     }
 }
 
+/// spawner (Phase 5 §27): clean-room monster cage face — dark steel
+/// lattice bars with an open mesh (ours, not Mojang's): horizontal rails
+/// + vertical bars, rivet dots on the frame
+fn spawner_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "FFFFFFFFFFFFFFFF",
+        "F..............F",
+        "FB.B.B..B.B.B..F",
+        "F..............F",
+        "FFB.B.B..B.B.BFF",
+        "F..............F",
+        "FB.B.B..B.B.B..F",
+        "F..............F",
+        "FFB.B.B..B.B.BFF",
+        "F..............F",
+        "FB.B.B..B.B.B..F",
+        "F..............F",
+        "FBB.B..B.B.B.BBF",
+        "F..............F",
+        "FFFFFFFFFFFFFFFF",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'F' => Some((28, 30, 36, 255)),  // frame rail
+        'B' => Some((54, 58, 66, 255)),  // bar
+        _ => Some((12, 13, 16, 255)),    // mesh hole (dark, not cut out — full cube)
+    });
+}
+
 /// potion bottle (Phase 7 §29): one bottle shape, per-potion liquid color.
 /// `glow` brightens the liquid (the level-II variant sparkles).
 fn potion_art(a: &mut [u8], t: u16, liquid: (i32, i32, i32), glow: bool) {
@@ -1996,6 +2025,8 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_POTION_HARMING_II => potion_art(&mut a, t, (130, 40, 26), true),
             TILE_SPIDER_EYE => spider_eye_art(&mut a, t, false),
             TILE_FERMENTED_EYE => spider_eye_art(&mut a, t, true),
+            // Phase 5 §27: dungeon spawner cage face
+            TILE_SPAWNER => spawner_art(&mut a, t),
             _ => {}
         }
     }

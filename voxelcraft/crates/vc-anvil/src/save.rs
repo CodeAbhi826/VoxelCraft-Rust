@@ -574,6 +574,19 @@ pub fn chunk_from_nbt(data: &[u8]) -> Result<(Chunk, Option<vc_world::light::Lig
 // level.dat
 // ---------------------------------------------------------------------------
 
+/// one persisted container (chest/dispenser/dropper/hopper) — Phase 5:
+/// dungeon loot + placed containers survive save/reload (vanilla keeps
+/// these in chunk TileEntities; ours ride the `voxelcraft` level.dat
+/// block — documented adaptation, small data: only touched containers)
+#[derive(Clone, Debug, PartialEq)]
+pub struct ContainerMeta {
+    pub pos: [i32; 3],
+    /// owning block id (CHEST / DISPENSER / DROPPER / HOPPER)
+    pub kind: u8,
+    /// (block id, count) per non-empty slot, with the slot index
+    pub slots: Vec<(u16, u8, u8)>,
+}
+
 /// World metadata persisted in `level.dat` (vanilla keys + a `voxelcraft`
 /// sub-compound for engine-specific player state, ignored by vanilla).
 #[derive(Clone, Debug)]
@@ -595,6 +608,9 @@ pub struct WorldMeta {
     /// player NBT dead instead — we keep a top-level marker because the
     /// player block here is a minimal subset.
     pub hardcore_dead: bool,
+    /// Phase 5: container inventories (dungeon loot + player-touched
+    /// containers) — the chunk format keeps only block ids
+    pub containers: Vec<ContainerMeta>,
 }
 
 impl Default for WorldMeta {
@@ -608,6 +624,7 @@ impl Default for WorldMeta {
             game_type: 0,
             hardcore: false,
             hardcore_dead: false,
+            containers: Vec::new(),
         }
     }
 }
@@ -661,6 +678,34 @@ pub fn write_level_dat(world_dir: &Path, meta: &WorldMeta) -> std::io::Result<()
     // Phase 1: hardcore world whose player died — locked forever
     if meta.hardcore_dead {
         vc.set("HardcoreDead", Nbt::Byte(1));
+    }
+    // Phase 5: container inventories (dungeon loot + touched containers)
+    let containers: Vec<Nbt> = meta
+        .containers
+        .iter()
+        .map(|c| {
+            let mut n = Nbt::compound();
+            n.set("X", Nbt::Int(c.pos[0]));
+            n.set("Y", Nbt::Int(c.pos[1]));
+            n.set("Z", Nbt::Int(c.pos[2]));
+            n.set("Kind", Nbt::Byte(c.kind as i8));
+            let items: Vec<Nbt> = c
+                .slots
+                .iter()
+                .map(|(slot, block, count)| {
+                    let mut it = Nbt::compound();
+                    it.set("Slot", Nbt::Int(*slot as i32));
+                    it.set("Block", Nbt::Byte(*block as i8));
+                    it.set("Count", Nbt::Byte(*count as i8));
+                    it
+                })
+                .collect();
+            n.set("Items", Nbt::List(items));
+            n
+        })
+        .collect();
+    if !containers.is_empty() {
+        vc.set("Containers", Nbt::List(containers));
     }
     data.set("voxelcraft", vc);
     let mut root = Nbt::compound();
@@ -730,6 +775,7 @@ pub fn read_level_dat(world_dir: &Path) -> std::io::Result<Option<WorldMeta>> {
         game_type,
         hardcore,
         hardcore_dead,
+        containers: Vec::new(),
     };
     if let Some(Nbt::Compound(vc)) = data.get("voxelcraft") {
         // Vec<(String, Nbt)> — direct lookup (Nbt::get is on Nbt, not the vec)
@@ -745,6 +791,52 @@ pub fn read_level_dat(world_dir: &Path) -> std::io::Result<Option<WorldMeta>> {
             yaw: fl("PlayerYaw").unwrap_or(0.0),
             pitch: fl("PlayerPitch").unwrap_or(0.0),
         });
+        // Phase 5: container inventories (permissive — missing/malformed
+        // entries are skipped, a foreign level.dat just has none)
+        if let Some(Nbt::List(list)) = find("Containers") {
+            for c in list {
+                let Nbt::Compound(fields) = c else { continue };
+                let cf = |k: &str| {
+                    fields.iter().find(|(key, _)| key == k).map(|(_, v)| v)
+                };
+                let i32_of = |k: &str| {
+                    cf(k).and_then(|v| v.as_i64()).map(|v| v as i32)
+                };
+                let (Some(x), Some(y), Some(z)) = (
+                    i32_of("X"),
+                    i32_of("Y"),
+                    i32_of("Z"),
+                ) else { continue };
+                let kind = cf("Kind")
+                    .and_then(|v| v.as_i64())
+                    .unwrap_or(96) as u8; // default: chest
+                let mut slots = Vec::new();
+                if let Some(Nbt::List(items)) = cf("Items") {
+                    for it in items {
+                        let Nbt::Compound(ifs) = it else { continue };
+                        let slot = ifs
+                            .iter()
+                            .find(|(k, _)| k == "Slot")
+                            .and_then(|(_, v)| v.as_i64())
+                            .unwrap_or(0) as u16;
+                        let block = ifs
+                            .iter()
+                            .find(|(k, _)| k == "Block")
+                            .and_then(|(_, v)| v.as_i64())
+                            .unwrap_or(0) as u8;
+                        let count = ifs
+                            .iter()
+                            .find(|(k, _)| k == "Count")
+                            .and_then(|(_, v)| v.as_i64())
+                            .unwrap_or(0) as u8;
+                        if block != 0 && count > 0 {
+                            slots.push((slot, block, count));
+                        }
+                    }
+                }
+                meta.containers.push(ContainerMeta { pos: [x, y, z], kind, slots });
+            }
+        }
     }
     Ok(Some(meta))
 }
@@ -1212,6 +1304,11 @@ mod tests {
             game_type: 1,
             hardcore: false,
             hardcore_dead: false,
+            containers: vec![ContainerMeta {
+                pos: [-17, 40, 239],
+                kind: 96, // CHEST
+                slots: vec![(3, 82, 4), (7, 84, 2)],
+            }],
         };
         write_level_dat(&dir, &meta).unwrap();
         let back = read_level_dat(&dir).unwrap().expect("level.dat present");
@@ -1229,6 +1326,16 @@ mod tests {
         assert_eq!(back.game_type, 1);
         assert!(!back.hardcore);
         assert!(!back.hardcore_dead);
+        // Phase 5: the container inventory round-trips
+        assert_eq!(back.containers.len(), 1);
+        assert_eq!(back.containers[0].pos, [-17, 40, 239]);
+        assert_eq!(back.containers[0].kind, 96);
+        assert_eq!(back.containers[0].slots, vec![(3, 82, 4), (7, 84, 2)]);
+        // empty-container worlds write no Containers tag at all
+        let bare = WorldMeta { containers: Vec::new(), ..meta.clone() };
+        write_level_dat(&dir, &bare).unwrap();
+        let back2 = read_level_dat(&dir).unwrap().expect("present");
+        assert!(back2.containers.is_empty());
         // missing dir → None; level.dat_old fallback works
         assert!(read_level_dat(&dir.join("nowhere")).unwrap().is_none());
         fs::rename(dir.join("level.dat"), dir.join("level.dat_old")).unwrap();
@@ -1292,6 +1399,7 @@ mod tests {
                 game_type: 0,
                 hardcore: true,
                 hardcore_dead: false,
+                containers: Vec::new(),
             },
         )
         .unwrap();

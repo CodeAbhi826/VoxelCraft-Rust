@@ -12,3 +12,4 @@ vc-gameplay = { workspace = true }
 vc-particles = { workspace = true }
 vc-rng = { workspace = true }
 vc-world = { workspace = true }
+vc-inventory = { workspace = true }

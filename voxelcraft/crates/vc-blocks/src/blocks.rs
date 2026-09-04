@@ -136,6 +136,22 @@ pub const TILE_GUNPOWDER: u16 = 101;
 pub const TILE_ENDER_PEARL: u16 = 102;
 pub const TILE_ROTTEN_FLESH: u16 = 103;
 pub const TILE_ARROW_ITEM: u16 = 104;
+// redstone components (Phase 3): repeater, comparator, pistons,
+// dispenser, dropper, observer, hopper + chest (hopper target)
+pub const TILE_REPEATER: u16 = 105;
+pub const TILE_COMPARATOR: u16 = 106;
+pub const TILE_PISTON: u16 = 107;
+pub const TILE_STICKY_PISTON: u16 = 108;
+pub const TILE_DISPENSER: u16 = 109;
+pub const TILE_DROPPER: u16 = 110;
+pub const TILE_OBSERVER: u16 = 111;
+pub const TILE_HOPPER: u16 = 112;
+pub const TILE_CHEST: u16 = 113;
+// their lit/active overlays where the state needs a second tile
+pub const TILE_REPEATER_ON: u16 = 114;
+pub const TILE_COMPARATOR_ON: u16 = 115;
+pub const TILE_OBSERVER_ON: u16 = 116;
+pub const TILE_PISTON_HEAD: u16 = 117;
 
 // Block ids (u8 in chunk storage).
 pub const AIR: u8 = 0;
@@ -260,6 +276,16 @@ pub const GUNPOWDER: u8 = 84;
 pub const ENDER_PEARL: u8 = 85;
 pub const ROTTEN_FLESH: u8 = 86;
 pub const ARROW_ITEM: u8 = 87;
+// redstone components (Phase 3): ids 88..=96, dedicated sim states above
+pub const REPEATER: u8 = 88;
+pub const COMPARATOR: u8 = 89;
+pub const PISTON: u8 = 90;
+pub const STICKY_PISTON: u8 = 91;
+pub const DISPENSER: u8 = 92;
+pub const DROPPER: u8 = 93;
+pub const OBSERVER: u8 = 94;
+pub const HOPPER: u8 = 95;
+pub const CHEST: u8 = 96;
 pub const BEEF_STATE: u16 = 130;
 pub const PORKCHOP_STATE: u16 = 131;
 pub const MUTTON_STATE: u16 = 132;
@@ -273,7 +299,39 @@ pub const ENDER_PEARL_STATE: u16 = 139;
 pub const ROTTEN_FLESH_STATE: u16 = 140;
 pub const ARROW_ITEM_STATE: u16 = 141;
 
-pub const BLOCK_COUNT: usize = 88;
+// redstone component states (Phase 3, §25 pattern — dedicated states,
+// never identity slots). CHUNK `get` truncates to u8, so every state must
+// stay ≤ 255 — this layout fits the free window 142..=227:
+// * repeater: facing(4) × delay(4: 1..4 redstone ticks) × powered(2) = 32,
+//   142..=173 (LOCK is DERIVED from side repeaters at tick time — vanilla
+//   persists it, we recompute; same observable behavior)
+// * comparator: facing(4) × mode(2) × powered(2) = 16, 174..=189
+// * piston/sticky: facing(4 horizontal — vertical pistons deferred) ×
+//   extended(2) = 8 each, 190..=197 / 198..=205
+// * dispenser/dropper: facing(4) = 4 each, 206..=209 / 210..=213
+// * observer: facing(4) × powered(2) = 8, 214..=221
+// * hopper: facing(5: down+n/e/s/w) = 5, 222..=226 (ENABLED is derived
+// from redstone power at tick time)
+// * chest: single state 227
+pub const REPEATER_STATE_BASE: u16 = 142;
+pub const REPEATER_STATE_END: u16 = 173;
+pub const COMPARATOR_STATE_BASE: u16 = 174;
+pub const COMPARATOR_STATE_END: u16 = 189;
+pub const PISTON_STATE_BASE: u16 = 190;
+pub const PISTON_STATE_END: u16 = 197;
+pub const STICKY_PISTON_STATE_BASE: u16 = 198;
+pub const STICKY_PISTON_STATE_END: u16 = 205;
+pub const DISPENSER_STATE_BASE: u16 = 206;
+pub const DISPENSER_STATE_END: u16 = 209;
+pub const DROPPER_STATE_BASE: u16 = 210;
+pub const DROPPER_STATE_END: u16 = 213;
+pub const OBSERVER_STATE_BASE: u16 = 214;
+pub const OBSERVER_STATE_END: u16 = 221;
+pub const HOPPER_STATE_BASE: u16 = 222;
+pub const HOPPER_STATE_END: u16 = 226;
+pub const CHEST_STATE: u16 = 227;
+
+pub const BLOCK_COUNT: usize = 97;
 
 // ---------------------------------------------------------------------------
 // BlockState registry (1.16.5 pattern, miniature)
@@ -331,6 +389,144 @@ pub const FURNACE_LIT: u16 = 117;
 #[inline]
 pub fn is_wire_power(s: u16) -> bool {
     (WIRE_POWER_BASE..=WIRE_POWER_END).contains(&s)
+}
+
+// ------------------------------------------------- Phase 3 state codecs --
+
+/// horizontal facing index 0..3 = north/east/south/west
+#[inline]
+fn horiz_facing(f: usize) -> [i32; 3] {
+    match f {
+        0 => [0, 0, -1],
+        1 => [1, 0, 0],
+        2 => [0, 0, 1],
+        _ => [-1, 0, 0],
+    }
+}
+
+/// full (6-way) facing vector — used by observer/dispenser code that may
+/// later grow vertical support; pistons/observers/dispensers v1 are
+/// horizontal-only (documented simplification)
+#[inline]
+fn full_facing(f: usize) -> [i32; 3] {
+    match f {
+        0 => [0, 0, -1],
+        1 => [1, 0, 0],
+        2 => [0, 0, 1],
+        3 => [-1, 0, 0],
+        4 => [0, 1, 0],
+        _ => [0, -1, 0],
+    }
+}
+
+/// repeater state: facing(4) × delay(1..4 redstone ticks) × powered.
+/// VERIFIED (wiki blockstate table): "delay 1 2 3 4 ... in redstone
+/// ticks (double game ticks)" — 1..4 rt = 2..8 game ticks.
+#[inline]
+pub fn repeater_state(facing: usize, delay_rt: u8, powered: bool) -> u16 {
+    let f = (facing.min(3)) as u16;
+    let d = (delay_rt.clamp(1, 4) - 1) as u16;
+    REPEATER_STATE_BASE + f * 8 + d * 2 + (powered as u16)
+}
+
+/// decode a repeater state → (facing, delay_rt, powered)
+#[inline]
+pub fn repeater_decode(s: u16) -> (usize, u8, bool) {
+    let v = s - REPEATER_STATE_BASE;
+    ((v / 8) as usize, (v % 8 / 2 + 1) as u8, v & 1 != 0)
+}
+
+/// comparator state: facing(4) × subtract_mode × powered
+#[inline]
+pub fn comparator_state(facing: usize, subtract: bool, powered: bool) -> u16 {
+    COMPARATOR_STATE_BASE + (facing.min(3)) as u16 * 4
+        + (subtract as u16) * 2 + (powered as u16)
+}
+
+#[inline]
+pub fn comparator_decode(s: u16) -> (usize, bool, bool) {
+    let v = s - COMPARATOR_STATE_BASE;
+    ((v / 4) as usize, v & 2 != 0, v & 1 != 0)
+}
+
+/// piston state: facing(4 horizontal) × extended
+#[inline]
+pub fn piston_state(facing: usize, extended: bool) -> u16 {
+    PISTON_STATE_BASE + (facing.min(3)) as u16 * 2 + (extended as u16)
+}
+
+#[inline]
+pub fn piston_decode(s: u16) -> (usize, bool) {
+    let v = s - PISTON_STATE_BASE;
+    ((v / 2) as usize, v & 1 != 0)
+}
+
+#[inline]
+pub fn sticky_piston_state(facing: usize, extended: bool) -> u16 {
+    STICKY_PISTON_STATE_BASE + (facing.min(3)) as u16 * 2 + (extended as u16)
+}
+
+#[inline]
+pub fn sticky_piston_decode(s: u16) -> (usize, bool) {
+    let v = s - STICKY_PISTON_STATE_BASE;
+    ((v / 2) as usize, v & 1 != 0)
+}
+
+#[inline]
+pub fn dispenser_state(facing: usize) -> u16 {
+    DISPENSER_STATE_BASE + (facing.min(3)) as u16
+}
+
+#[inline]
+pub fn dispenser_decode(s: u16) -> usize {
+    (s - DISPENSER_STATE_BASE) as usize
+}
+
+#[inline]
+pub fn dropper_state(facing: usize) -> u16 {
+    DROPPER_STATE_BASE + (facing.min(3)) as u16
+}
+
+#[inline]
+pub fn dropper_decode(s: u16) -> usize {
+    (s - DROPPER_STATE_BASE) as usize
+}
+
+/// observer state: facing(4) × powered (the 2-game-tick pulse)
+#[inline]
+pub fn observer_state(facing: usize, powered: bool) -> u16 {
+    OBSERVER_STATE_BASE + (facing.min(3)) as u16 * 2 + (powered as u16)
+}
+
+#[inline]
+pub fn observer_decode(s: u16) -> (usize, bool) {
+    let v = s - OBSERVER_STATE_BASE;
+    ((v / 2) as usize, v & 1 != 0)
+}
+
+/// hopper state: facing(5: 0=down, 1..4 = n/e/s/w). ENABLED is derived
+/// from redstone power at tick time (vanilla persists it; deriving is
+/// observably identical) — v1 transfers push down only.
+#[inline]
+pub fn hopper_state(facing: usize) -> u16 {
+    HOPPER_STATE_BASE + (facing.min(4)) as u16
+}
+
+#[inline]
+pub fn hopper_decode(s: u16) -> usize {
+    (s - HOPPER_STATE_BASE) as usize
+}
+
+/// horizontal facing vector for a decoded facing index
+#[inline]
+pub fn horiz_facing_vec(f: usize) -> [i32; 3] {
+    horiz_facing(f)
+}
+
+/// full (6-way) facing vector for a decoded facing index
+#[inline]
+pub fn full_facing_vec(f: usize) -> [i32; 3] {
+    full_facing(f)
 }
 
 /// wire power of a state: 0..15, 255 = not wire
@@ -406,6 +602,15 @@ pub fn default_state(b: u8) -> u16 {
         ENDER_PEARL => ENDER_PEARL_STATE,
         ROTTEN_FLESH => ROTTEN_FLESH_STATE,
         ARROW_ITEM => ARROW_ITEM_STATE,
+        REPEATER => repeater_state(0, 1, false),
+        COMPARATOR => comparator_state(0, false, false),
+        PISTON => piston_state(0, false),
+        STICKY_PISTON => sticky_piston_state(0, false),
+        DISPENSER => dispenser_state(0),
+        DROPPER => dropper_state(0),
+        OBSERVER => observer_state(0, false),
+        HOPPER => hopper_state(0),
+        CHEST => CHEST_STATE,
         OAK_SLAB => 63,     // PROP_BLOCKS[0].base_state (half=bottom)
         COBBLE_STAIRS => 65, // base_state (facing=north, half=bottom)
         OAK_FENCE => 73,    // base_state (no connections)
@@ -595,6 +800,15 @@ pub fn state_block(s: u16) -> u8 {
         ENDER_PEARL_STATE => return ENDER_PEARL,
         ROTTEN_FLESH_STATE => return ROTTEN_FLESH,
         ARROW_ITEM_STATE => return ARROW_ITEM,
+        s if (REPEATER_STATE_BASE..=REPEATER_STATE_END).contains(&s) => return REPEATER,
+        s if (COMPARATOR_STATE_BASE..=COMPARATOR_STATE_END).contains(&s) => return COMPARATOR,
+        s if (PISTON_STATE_BASE..=PISTON_STATE_END).contains(&s) => return PISTON,
+        s if (STICKY_PISTON_STATE_BASE..=STICKY_PISTON_STATE_END).contains(&s) => return STICKY_PISTON,
+        s if (DISPENSER_STATE_BASE..=DISPENSER_STATE_END).contains(&s) => return DISPENSER,
+        s if (DROPPER_STATE_BASE..=DROPPER_STATE_END).contains(&s) => return DROPPER,
+        s if (OBSERVER_STATE_BASE..=OBSERVER_STATE_END).contains(&s) => return OBSERVER,
+        s if (HOPPER_STATE_BASE..=HOPPER_STATE_END).contains(&s) => return HOPPER,
+        CHEST_STATE => return CHEST,
         _ => {}
     }
     if let Some((b, _)) = prop_state_decode(s) {
@@ -646,7 +860,15 @@ pub fn is_model_state(s: u16) -> bool {
                 | FEATHER_STATE | LEATHER_STATE | BONE_STATE | STRING_STATE
                 | GUNPOWDER_STATE | ENDER_PEARL_STATE | ROTTEN_FLESH_STATE
                 | ARROW_ITEM_STATE
-        )
+        ) && !((REPEATER_STATE_BASE..=REPEATER_STATE_END).contains(&s)
+            || (COMPARATOR_STATE_BASE..=COMPARATOR_STATE_END).contains(&s)
+            || (PISTON_STATE_BASE..=PISTON_STATE_END).contains(&s)
+            || (STICKY_PISTON_STATE_BASE..=STICKY_PISTON_STATE_END).contains(&s)
+            || (DISPENSER_STATE_BASE..=DISPENSER_STATE_END).contains(&s)
+            || (DROPPER_STATE_BASE..=DROPPER_STATE_END).contains(&s)
+            || (OBSERVER_STATE_BASE..=OBSERVER_STATE_END).contains(&s)
+            || (HOPPER_STATE_BASE..=HOPPER_STATE_END).contains(&s)
+            || s == CHEST_STATE)
 }
 
 /// true if this block id has property-driven model states
@@ -859,6 +1081,18 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Ender Pearl", [TILE_ENDER_PEARL, TILE_ENDER_PEARL, TILE_ENDER_PEARL], false, false, true, false, 0, SoundFamily::Glass),
     d("Rotten Flesh", [TILE_ROTTEN_FLESH, TILE_ROTTEN_FLESH, TILE_ROTTEN_FLESH], false, false, true, false, 0, SoundFamily::Grass),
     d("Arrow", [TILE_ARROW_ITEM, TILE_ARROW_ITEM, TILE_ARROW_ITEM], false, false, true, false, 0, SoundFamily::Stone),
+    // redstone components (Phase 3) — cross-rendered sprites (visual
+    // simplification: vanilla repeaters/comparators are flat plates;
+    // mechanics are fully directional via the state props)
+    d("Redstone Repeater", [TILE_REPEATER, TILE_REPEATER, TILE_REPEATER], false, false, true, false, 0, SoundFamily::Wood),
+    d("Redstone Comparator", [TILE_COMPARATOR, TILE_COMPARATOR, TILE_COMPARATOR], false, false, true, false, 0, SoundFamily::Wood),
+    d("Piston", [TILE_PISTON, TILE_PISTON, TILE_PISTON], true, false, true, false, 0, SoundFamily::Wood),
+    d("Sticky Piston", [TILE_STICKY_PISTON, TILE_STICKY_PISTON, TILE_STICKY_PISTON], true, false, true, false, 0, SoundFamily::Wood),
+    d("Dispenser", [TILE_DISPENSER, TILE_DISPENSER, TILE_DISPENSER], true, false, true, false, 0, SoundFamily::Wood),
+    d("Dropper", [TILE_DROPPER, TILE_DROPPER, TILE_DROPPER], true, false, true, false, 0, SoundFamily::Wood),
+    d("Observer", [TILE_OBSERVER, TILE_OBSERVER, TILE_OBSERVER], true, false, true, false, 0, SoundFamily::Wood),
+    d("Hopper", [TILE_HOPPER, TILE_HOPPER, TILE_HOPPER], true, false, true, false, 0, SoundFamily::Wood),
+    d("Chest", [TILE_CHEST, TILE_CHEST, TILE_CHEST], true, false, true, false, 0, SoundFamily::Wood),
 ];
 
 #[inline]

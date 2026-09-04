@@ -980,6 +980,7 @@ impl UiCanvas {
         let top_h = match kind {
             ContainerKind::Inventory => 96,   // 2x2 craft + arrow + output
             ContainerKind::Crafting => 140,   // 3x3 craft + arrow + output
+            ContainerKind::Chest => 132,     // 3 rows of 9 slots
             ContainerKind::Furnace => 128,    // input / flame / fuel + arrow + output
             ContainerKind::Brewing => 150,   // ingredient / bubbles / fuel + 3 bottles
             ContainerKind::Enchant => 160,   // item + lapis + 3 option buttons
@@ -998,6 +999,7 @@ impl UiCanvas {
         let title = match kind {
             ContainerKind::Inventory => "INVENTORY  (E / ESC to close)",
             ContainerKind::Crafting => "CRAFTING TABLE",
+            ContainerKind::Chest => "CHEST",
             ContainerKind::Furnace => "FURNACE",
             ContainerKind::Brewing => "BREWING STAND",
             ContainerKind::Enchant => "ENCHANT  (needs book + lapis + levels)",
@@ -1008,6 +1010,7 @@ impl UiCanvas {
         let mut geom = ContainerGeom {
             inv: Vec::with_capacity(36),
             craft: Vec::new(),
+            chest: Vec::new(),
             craft_out: (i32::MIN, i32::MIN),
             furnace: None,
             brewing: None,
@@ -1054,6 +1057,22 @@ impl UiCanvas {
                 let oy = cy + 22;
                 self.slot_well(ox, oy, &view.craft_out, atlas);
                 geom.craft_out = (ox, oy);
+            }
+            ContainerKind::Chest => {
+                // Phase 3: 3 rows of 9 slots, centered
+                let total = 9 * 40;
+                let cx = x0 + (grid_w - total) / 2;
+                let cy = y0 + 8;
+                for r in 0..3 {
+                    for c in 0..9 {
+                        let x = cx + c as i32 * 40;
+                        let y = cy + r as i32 * 40;
+                        let idx = r * 9 + c;
+                        let st = view.chest.get(idx).copied().unwrap_or(ItemStack::EMPTY);
+                        self.slot_well(x, y, &st, atlas);
+                        geom.chest.push((x, y));
+                    }
+                }
             }
             ContainerKind::Furnace => {
                 // left column: input above flame above fuel; arrow → output
@@ -1506,6 +1525,8 @@ pub enum ContainerKind {
     Enchant,
     /// villager trade screen: rows of give→get deals (§27/§29)
     Trade,
+    /// Phase 3: generic container (chest: 3 rows of 9)
+    Chest,
 }
 
 /// a logical slot in a container screen — the target of a mouse click
@@ -1515,6 +1536,8 @@ pub enum SlotRef {
     Inv(usize),
     /// crafting-grid cell (row-major; 4 cells for 2×2, 9 for 3×3)
     Craft(usize),
+    /// Phase 3: container (chest) slot index
+    Chest(usize),
     /// crafting result slot (special click semantics)
     CraftOut,
     FurnaceInput,
@@ -1558,6 +1581,8 @@ pub struct ContainerView {
         i32,
         u8,
     )>,
+    /// Phase 3: chest slots (27)
+    pub chest: Vec<ItemStack>,
     /// trade screen: (profession display name, rows of (give, get, affordable))
     pub trade: Option<(String, Vec<(ItemStack, ItemStack, bool)>)>,
     /// stack riding the mouse cursor
@@ -1569,6 +1594,7 @@ impl ContainerView {
         Some(match geom.slot_at(x, y)? {
             SlotRef::Inv(i) => self.inv[i],
             SlotRef::Craft(i) => self.grid[i],
+            SlotRef::Chest(i) => self.chest[i],
             SlotRef::CraftOut => self.craft_out,
             SlotRef::FurnaceInput => self.furnace?.0,
             SlotRef::FurnaceFuel => self.furnace?.1,
@@ -1630,6 +1656,8 @@ pub struct ContainerGeom {
     pub enchant: Option<EnchantSlots>,
     /// trade row origins when the screen is a villager trade
     pub trade: Option<TradeSlots>,
+    /// Phase 3: chest slot origins (27, row-major 3×9)
+    pub chest: Vec<(i32, i32)>,
 }
 
 impl ContainerGeom {
@@ -1681,6 +1709,11 @@ impl ContainerGeom {
                 if x >= s.0 && x < s.0 + 260 && y >= s.1 && y < s.1 + 40 {
                     return Some(SlotRef::TradeRow(i));
                 }
+            }
+        }
+        for (i, s) in self.chest.iter().enumerate() {
+            if Self::hit(x, y, s) {
+                return Some(SlotRef::Chest(i));
             }
         }
         if Self::hit(x, y, &self.craft_out) {

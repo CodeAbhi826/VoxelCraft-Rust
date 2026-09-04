@@ -30,6 +30,14 @@ pub struct Sim {
     /// mobs (Phase 2): spawn/AI/physics + arrows; hits, deaths and
     /// explosions queue here for the game layer to drain
     pub mobs: vc_gameplay::mobs::MobSystem,
+    /// containers (Phase 3): chests/dispensers/droppers/hoppers
+    pub containers: crate::containers::Containers,
+    /// dispenser/dropper previous powered state (rising-edge detect)
+    dispenser_prev: std::collections::HashMap<[i32; 3], bool>,
+    /// dispenser/dropper eject countdowns (VERIFIED 4 game tick delay)
+    pending_eject: std::collections::HashMap<[i32; 3], u64>,
+    /// hopper transfer cooldowns (VERIFIED 8 game ticks)
+    hopper_cd: std::collections::HashMap<[i32; 3], u64>,
     acc: f32,
     /// total sim ticks executed (stats/F3/E2E)
     pub ticks: u64,
@@ -46,6 +54,10 @@ impl Sim {
             enchants: vc_gameplay::enchanting::Enchants::default(),
             villagers: vc_gameplay::villagers::Villagers::new(seed ^ 0x315_7A9),
             mobs: vc_gameplay::mobs::MobSystem::new(seed ^ 0x5C_0DE),
+            containers: crate::containers::Containers::default(),
+            dispenser_prev: std::collections::HashMap::new(),
+            pending_eject: std::collections::HashMap::new(),
+            hopper_cd: std::collections::HashMap::new(),
             acc: 0.0,
             ticks: 0,
         }
@@ -85,6 +97,33 @@ impl Sim {
                 }
                 vc_blocks::blocks::LEVER => {
                     crate::redstone::lever_tick(world, pos[0], pos[1], pos[2]);
+                }
+                // ---- Phase 3 components ----
+                vc_blocks::blocks::REPEATER => {
+                    crate::redstone::repeater_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
+                }
+                vc_blocks::blocks::COMPARATOR => {
+                    let containers = &self.containers;
+                    crate::redstone::comparator_tick(world, &mut self.sched, containers, pos[0], pos[1], pos[2]);
+                }
+                vc_blocks::blocks::PISTON | vc_blocks::blocks::STICKY_PISTON => {
+                    crate::redstone::piston_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
+                }
+                vc_blocks::blocks::OBSERVER => {
+                    crate::redstone::observer_pulse(world, &mut self.sched, pos[0], pos[1], pos[2]);
+                }
+                vc_blocks::blocks::DISPENSER | vc_blocks::blocks::DROPPER => {
+                    // rising-edge detection (VERIFIED: eject one item per
+                    // activation, 4 game ticks later)
+                    let powered = crate::redstone::dispenser_tick(world, pos[0], pos[1], pos[2]);
+                    let prev = self.dispenser_prev.insert(pos, powered);
+                    if powered && prev != Some(true) {
+                        self.pending_eject.insert(pos, crate::redstone::DISPENSER_DELAY);
+                    }
+                }
+                vc_blocks::blocks::HOPPER => {
+                    // hopper work happens in the hopper pass below; the
+                    // scheduled entry just refreshes its enable state
                 }
                 _ => {} // stale entry: block changed since scheduling
             }
@@ -126,6 +165,112 @@ impl Sim {
         // deaths, and explosions queue inside for game.rs to drain (the
         // game layer owns damage gating, drops, and world edits).
         self.mobs.tick(world);
+
+        // 7. hoppers (Phase 3): collect items above (VERIFIED: hoppers
+        // collect every game tick, then 8gt cooldown), push one item per
+        // 8gt into the container below when not redstone-locked
+        self.hopper_pass(world);
+
+        // 8. dispenser/dropper ejects (4 game tick countdown — VERIFIED)
+        let ejects: Vec<[i32; 3]> = {
+            let mut fire = Vec::new();
+            let mut done = Vec::new();
+            for (pos, t) in self.pending_eject.iter_mut() {
+                *t = t.saturating_sub(1);
+                if *t == 0 {
+                    fire.push(*pos);
+                    done.push(*pos);
+                }
+            }
+            for p in done {
+                self.pending_eject.remove(&p);
+            }
+            fire
+        };
+        for pos in ejects {
+            use vc_blocks::blocks::DISPENSER;
+            let b = world.get_block(pos[0], pos[1], pos[2]);
+            let facing = if b == DISPENSER {
+                vc_blocks::blocks::dispenser_decode(world.get_state(pos[0], pos[1], pos[2]))
+            } else {
+                vc_blocks::blocks::dropper_decode(world.get_state(pos[0], pos[1], pos[2]))
+            };
+            let [fx, fy, fz] = vc_blocks::blocks::full_facing_vec(facing);
+            // take the first item out of the container
+            if let Some(inv) = self.containers.get_mut(&pos) {
+                if let Some(i) = inv.first_item() {
+                    let block = inv.slots[i].block;
+                    inv.slots[i] = vc_inventory::inventory::ItemStack::EMPTY;
+                    self.items.drop_block(
+                        pos[0] + fx, pos[1] + fy, pos[2] + fz, block, 2, 15, 0,
+                    );
+                }
+            }
+        }
+    }
+
+    /// Phase 3 hopper pass: item collection + down-transfer.
+    /// v1 scope (documented): transfers push DOWN only (chest, dispenser,
+    /// dropper, hopper below); furnace input slots arrive with the
+    /// container unification later.
+    fn hopper_pass(&mut self, world: &World) {
+        use vc_blocks::blocks::*;
+        // A. collect item entities resting on a hopper
+        let mut collected: Vec<usize> = Vec::new();
+        for (i, it) in self.items.items.iter().enumerate() {
+            let bx = it.pos[0].floor() as i32;
+            let by = (it.pos[1] - 0.25).floor() as i32;
+            let bz = it.pos[2].floor() as i32;
+            let s = world.get_state(bx, by, bz);
+            if state_block(s) == HOPPER && crate::redstone::hopper_enabled(world, bx, by, bz) {
+                let slot = it.block;
+                let inv = self.containers.entry([bx, by, bz], HOPPER);
+                if inv.add(slot, 1) == 0 {
+                    collected.push(i);
+                }
+            }
+        }
+        for i in collected.iter().rev() {
+            self.items.items.remove(*i);
+        }
+        // B. push one item per 8gt from each hopper into the container below
+        let hopper_positions: Vec<[i32; 3]> = self
+            .containers
+            .map
+            .iter()
+            .filter(|(pos, _)| state_block(world.get_state(pos[0], pos[1], pos[2])) == HOPPER)
+            .map(|(pos, _)| *pos)
+            .collect();
+        for pos in hopper_positions {
+            if !crate::redstone::hopper_enabled(world, pos[0], pos[1], pos[2]) {
+                continue;
+            }
+            let cd = self.hopper_cd.entry(pos).or_insert(0);
+            if *cd > 0 {
+                *cd -= 1;
+                continue;
+            }
+            // is there an item to move?
+            let take = self
+                .containers
+                .get(&pos)
+                .and_then(|inv| inv.first_item())
+                .map(|i| (i, self.containers.get(&pos).unwrap().slots[i].block));
+            let Some((slot_i, block)) = take else { continue };
+            // the container below
+            let below = [pos[0], pos[1] - 1, pos[2]];
+            let below_block = state_block(world.get_state(below[0], below[1], below[2]));
+            if matches!(below_block, CHEST | DISPENSER | DROPPER | HOPPER) {
+                let inv = self.containers.entry(below, below_block);
+                if inv.add(block, 1) == 0 {
+                    // moved: clear the hopper slot, start the cooldown
+                    if let Some(hinv) = self.containers.get_mut(&pos) {
+                        hinv.slots[slot_i] = vc_inventory::inventory::ItemStack::EMPTY;
+                    }
+                    self.hopper_cd.insert(pos, crate::redstone::HOPPER_COOLDOWN);
+                }
+            }
+        }
     }
 
     /// player pickup collection (called by the game each frame with the

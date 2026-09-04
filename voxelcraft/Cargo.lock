@@ -2179,6 +2179,7 @@ dependencies = [
  "vc-blocks",
  "vc-chunk",
  "vc-gameplay",
+ "vc-inventory",
  "vc-particles",
  "vc-rng",
  "vc-world",

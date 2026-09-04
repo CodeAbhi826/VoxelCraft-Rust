@@ -552,6 +552,12 @@ pub struct GameApp {
     bench_spawn: glam::Vec3,
     /// Phase 11 §34: discovered shader packs (builtin + external)
     shader_packs: Vec<vc_render::shaders::ShaderPack>,
+    /// Phase 8: Iris-format packs found in `shader-packs/` (native scan;
+    /// wasm has no filesystem and boots empty). Structure-validated only —
+    /// they are deliberately NOT in `shader_packs` because they cannot be
+    /// applied: GLSL translation ships in the vc-iris sister project and
+    /// plugs in through the IrisTranslator seam (vc-render/src/iris.rs).
+    iris_packs: Vec<vc_render::iris::IrisPackInfo>,
     /// pack-driven animated textures (frame updates only, no re-mesh)
     animations: Vec<vc_render::textures::AnimatedTile>,
     /// §28: root save dir (world root); `world_dir` is the CURRENT
@@ -860,6 +866,28 @@ impl GameApp {
             }
         }
 
+        // Phase 8: scan the same shader-packs/ root for Iris-format packs
+        // (dirs carrying shaders.properties). Each is fully analyzed and
+        // reported HONESTLY: structure-validated, not selectable — the
+        // GLSL-330 translation lives in the vc-iris sister project and
+        // registers itself through the IrisTranslator seam. Web builds
+        // have no filesystem: the list stays empty and the E2E `iris`
+        // command exercises the wasm-reachable surface instead.
+        #[cfg(not(target_arch = "wasm32"))]
+        let iris_packs = {
+            let packs = vc_render::iris::scan_shader_packs(std::path::Path::new("shader-packs"));
+            for p in &packs {
+                vc_render::render::report_boot_log(&format!(
+                    "iris pack detected: {} — structure-validated, not selectable \
+                     (GLSL translation ships in the sister project vc-iris)",
+                    p.summary()
+                ));
+            }
+            packs
+        };
+        #[cfg(target_arch = "wasm32")]
+        let iris_packs = Vec::new();
+
         let work = {
             #[cfg(not(target_arch = "wasm32"))]
             {
@@ -896,6 +924,7 @@ impl GameApp {
             bank,
             sounds,
             shader_packs,
+            iris_packs,
             audio_rng: vc_rng::rng::Rng::new(0x50_0D_5EED),
             sounds_played: 0,
             music_next: 12.0,
@@ -4661,6 +4690,50 @@ impl GameApp {
                             ));
                         }
                     }
+                    // ---- Phase 8 E2E: Iris integration interface ----
+                    Some("iris") => {
+                        // iris — report the Phase 8 interface state honestly:
+                        // * native: every pack the boot scan structure-validated
+                        //   (full summary line per pack) + the translator seam
+                        // * wasm: no filesystem → no packs, and the
+                        //   wasm-reachable surface (properties document parse,
+                        //   stage-directive parse, translator status) exercised
+                        //   LIVE on the embedded demo so the harness proves the
+                        //   interface itself works on the web build
+                        let packs = self.iris_packs.len();
+                        let trans = vc_render::iris::translator().id();
+                        vc_render::render::report_boot_log(&format!(
+                            "e2e: iris interface — packs={packs} translator={}",
+                            if trans == "none (vc-iris sister project not registered)" {
+                                "none"
+                            } else {
+                                trans
+                            }
+                        ));
+                        if packs > 0 {
+                            for p in &self.iris_packs {
+                                vc_render::render::report_boot_log(&format!(
+                                    "e2e: iris pack: {}",
+                                    p.summary()
+                                ));
+                            }
+                        }
+                        // live wasm-reachable surface check (same on native —
+                        // it proves the interface is wired, not just compiled)
+                        let props = vc_render::iris::ShadersProperties::parse(
+                            vc_render::iris::DEMO_PROPERTIES,
+                        );
+                        let (version, targets) = vc_render::iris::parse_stage_directives(
+                            Some(vc_render::iris::DEMO_STAGE_GLSL),
+                        );
+                        vc_render::render::report_boot_log(&format!(
+                            "e2e: iris demo parse — profiles={} sliders={} stage=GLSL-{} targets={:?}",
+                            props.profiles().len(),
+                            props.sliders().len(),
+                            version.as_deref().unwrap_or("?"),
+                            targets
+                        ));
+                    }
                     // ---- Phase 1 E2E: game modes / world creation / death --
                     Some("world") => {
                         // world:<survival|creative|hardcore>[:seed] — create a
@@ -5522,6 +5595,9 @@ impl GameApp {
             ("gmeshQueue", StatsVal::F(
                 self.renderer.gpu_mesh.as_ref().map(|m| m.queued() as f32).unwrap_or(0.0)
             )),
+            // Phase 8: Iris interface — detected packs (native scan; the
+            // wasm build boots empty by design, no filesystem)
+            ("irisPacks", StatsVal::F(self.iris_packs.len() as f32)),
             ("fov", StatsVal::F(self.settings.fov)),
             ("sens", StatsVal::F(self.settings.sensitivity)),
             ("vol", StatsVal::F(self.settings.volume)),
@@ -6885,5 +6961,30 @@ mod settings_tests {
             let s = Settings::deserialize(&format!("msaa={raw}"));
             assert_eq!(s.msaa, want, "raw {raw} should snap to {want}");
         }
+    }
+
+    /// Phase 8: the Iris interface is wired into this crate — the demo
+    /// document the E2E `iris` command parses must produce exactly the
+    /// numbers the e2e log line claims, and the translator seam must
+    /// report its honest default (the sister project is not registered).
+    /// Mirrors the vc-render `demo_document_matches_e2e_claims` test at
+    /// the app level so drift breaks one of the two.
+    #[test]
+    fn iris_interface_e2e_claims_hold() {
+        let props = vc_render::iris::ShadersProperties::parse(vc_render::iris::DEMO_PROPERTIES);
+        assert_eq!(props.profiles().len(), 2);
+        assert_eq!(props.sliders().len(), 3);
+        assert!(props.unknown.is_empty());
+        let (version, targets) =
+            vc_render::iris::parse_stage_directives(Some(vc_render::iris::DEMO_STAGE_GLSL));
+        assert_eq!(version.as_deref(), Some("330 compatibility"));
+        assert_eq!(targets, vec![0, 1]);
+        // honest default: no translator until the sister project registers
+        assert!(!vc_render::iris::translator().supports_version("330 compatibility"));
+        // missing scan root → empty (how the wasm build boots)
+        assert!(vc_render::iris::scan_shader_packs(std::path::Path::new(
+            "no-such-dir-iris"
+        ))
+        .is_empty());
     }
 }

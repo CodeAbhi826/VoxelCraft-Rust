@@ -3,21 +3,21 @@
 //! Loading → Title ⇄ Options, Game ⇄ Pause/Options.
 //! Streams chunks (rayon worker pool on native, time-budgeted inline on wasm).
 
-use vc_blocks::blocks::*;
-use vc_world::gen::Biome;
-use vc_mesh::mesh::{mesh_sections, MeshData};
 use crate::player::{raycast, Input, Player};
-use vc_render::render::{Camera, RenderStats, Renderer, SkyState};
-use vc_audio::sounds::{AudioBackend, SoundBank};
+use glam::Vec3;
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::sync::Arc;
 #[cfg(not(target_arch = "wasm32"))]
 use vc_audio::sounds::native_audio;
 #[cfg(target_arch = "wasm32")]
 use vc_audio::sounds::web_audio;
+use vc_audio::sounds::{AudioBackend, SoundBank};
+use vc_blocks::blocks::*;
+use vc_mesh::mesh::{mesh_sections, MeshData};
+use vc_render::render::{Camera, RenderStats, Renderer, SkyState};
 use vc_render::ui::{self, UiCanvas, Widget, WidgetKind, UI_H, UI_W};
+use vc_world::gen::Biome;
 use vc_world::world::{ChunkPos, World};
-use glam::Vec3;
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::sync::Arc;
 
 // --------------------------------------------------------------- settings --
 
@@ -193,7 +193,13 @@ impl Settings {
                 "msaa" => {
                     // valid sample counts: 0 (off), 4, 8 — snap anything else
                     let v = v.parse::<u8>().unwrap_or(0);
-                    st.msaa = if v >= 6 { 8 } else if v >= 2 { 4 } else { 0 };
+                    st.msaa = if v >= 6 {
+                        8
+                    } else if v >= 2 {
+                        4
+                    } else {
+                        0
+                    };
                 }
                 "occl" => st.occlusion = v == "1",
                 "gmesh" => st.gpu_meshing = v == "1",
@@ -236,6 +242,10 @@ pub enum Container {
     Enchant { pos: [i32; 3] },
     /// villager trade screen bound to a villager entity id (§27/§29)
     Trade { villager: u32 },
+    /// hopper container (§Container): 5 slots — the GUI is the
+    /// verdict-corrected 176×133 vanilla hopper screen (NOT the research
+    /// doc's blanket 176×166; see docs/research/research-verdicts.md)
+    Hopper { pos: [i32; 3] },
     /// Phase 3: chest container screen (27 slots)
     Chest { pos: [i32; 3] },
 }
@@ -258,7 +268,12 @@ impl Screen {
     pub fn is_menu(self) -> bool {
         matches!(
             self,
-            Screen::Title | Screen::Options | Screen::Pause | Screen::WorldSelect | Screen::WorldCreate | Screen::Death
+            Screen::Title
+                | Screen::Options
+                | Screen::Pause
+                | Screen::WorldSelect
+                | Screen::WorldCreate
+                | Screen::Death
         )
     }
 }
@@ -283,7 +298,12 @@ const SPLASHES: [&str; 14] = [
 // ------------------------------------------------------------------ jobs --
 
 enum Job {
-    Gen { pos: ChunkPos, seed: u64, dim: vc_world::world::Dimension, inbound: Vec<(u16, u8)> },
+    Gen {
+        pos: ChunkPos,
+        seed: u64,
+        dim: vc_world::world::Dimension,
+        inbound: Vec<(u16, u8)>,
+    },
     Mesh {
         pos: ChunkPos,
         snap: [Option<Arc<vc_chunk::chunk::Chunk>>; 9],
@@ -301,7 +321,11 @@ enum Job {
 }
 
 enum JobResult {
-    Gen { pos: ChunkPos, chunk: Arc<vc_chunk::chunk::Chunk>, outbound: Vec<(i32, i32, i32, u8)> },
+    Gen {
+        pos: ChunkPos,
+        chunk: Arc<vc_chunk::chunk::Chunk>,
+        outbound: Vec<(i32, i32, i32, u8)>,
+    },
     Mesh {
         pos: ChunkPos,
         /// the mask this job covered (dirty-bit clearing)
@@ -385,9 +409,7 @@ fn chunk_occl(
             occl.sides |= 1u64 << (b as u32 * 4 + FACE_NZ as u32);
         }
         // ceiling plane of this band (y = b·16+15) — only for b < 15
-        if b < 15
-            && (0..16usize).any(|x| (0..16usize).any(|z| !is_opaque(c.get(x, y0 + 15, z))))
-        {
+        if b < 15 && (0..16usize).any(|x| (0..16usize).any(|z| !is_opaque(c.get(x, y0 + 15, z)))) {
             occl.planes |= 1u16 << b;
         }
     }
@@ -396,12 +418,29 @@ fn chunk_occl(
 
 fn run_job(job: Job) -> JobResult {
     match job {
-        Job::Gen { pos, seed, dim, inbound } => {
+        Job::Gen {
+            pos,
+            seed,
+            dim,
+            inbound,
+        } => {
             let gen = vc_world::gen::TerrainGen::for_dimension(seed, dim);
             let (chunk, outbound) = gen.generate_chunk(pos.0, pos.1, inbound);
-            JobResult::Gen { pos, chunk, outbound }
+            JobResult::Gen {
+                pos,
+                chunk,
+                outbound,
+            }
         }
-        Job::Mesh { pos, snap, lsnap, smooth, mask, prev, gpu } => {
+        Job::Mesh {
+            pos,
+            snap,
+            lsnap,
+            smooth,
+            mask,
+            prev,
+            gpu,
+        } => {
             // Phase 7: GPU route — build the shared padded inputs on the
             // worker; greedy-eligible snapshots go to the compute mesher,
             // anything with cross plants / JSON-model states falls back to
@@ -522,6 +561,11 @@ pub struct GameApp {
     /// rolling (draw calls, buffer binds) per frame — Phase 9 §37 metric
     draw_calls_ring: std::collections::VecDeque<(u32, u32)>,
     item_toast: Option<(String, f32)>,
+    /// held-item name display state: current (slot, block) key + the
+    /// remaining fade seconds (vanilla HUD behavior)
+    held_key: (usize, u8),
+    held_name: String,
+    held_name_t: f32,
     last_ui_t: f32,
     last_frame_t: f32,
     last_draw_t: f32,
@@ -665,7 +709,9 @@ async fn load_builtin_pack_assets() -> (Vec<u8>, Vec<vc_render::textures::Animat
                 }
             }
         } else {
-            vc_render::render::report_boot_log("no builtin pack folder (builtin-pack/) — procedural fallback");
+            vc_render::render::report_boot_log(
+                "no builtin pack folder (builtin-pack/) — procedural fallback",
+            );
             None
         }
     };
@@ -696,7 +742,9 @@ async fn load_builtin_pack_assets() -> (Vec<u8>, Vec<vc_render::textures::Animat
                 }
             },
             None => {
-                vc_render::render::report_boot_log("no builtin pack on server — procedural fallback");
+                vc_render::render::report_boot_log(
+                    "no builtin pack on server — procedural fallback",
+                );
                 None
             }
         }
@@ -740,7 +788,8 @@ async fn load_builtin_pack_assets() -> (Vec<u8>, Vec<vc_render::textures::Animat
     };
 
     // 3. merge pack textures into the atlas (fills set.tiles + animations)
-    let animations = vc_render::textures::merge_pack_textures(&mut atlas, &mut set, source.as_ref());
+    let animations =
+        vc_render::textures::merge_pack_textures(&mut atlas, &mut set, source.as_ref());
     let n_models: usize = set.by_state.values().map(|v| v.len()).sum();
     vc_render::render::report_boot_log(&format!(
         "model dispatch: {} states, {} applied models, {} pack textures, {} animations",
@@ -767,7 +816,9 @@ impl GameApp {
             .unwrap_or_else(|e| {
                 vc_render::render::report_boot_log(&format!("sound registry broken: {e}"));
                 // empty registry = silent game rather than a boot failure
-                vc_audio::sounds::SoundRegistry { events: Default::default() }
+                vc_audio::sounds::SoundRegistry {
+                    events: Default::default(),
+                }
             });
         #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
         let mut world = World::new(vc_world::world::World::random_seed());
@@ -795,11 +846,8 @@ impl GameApp {
                 mode = vc_gameplay::modes::GameMode::from_save(meta.game_type, meta.hardcore);
                 world_name = meta.name.clone();
                 if let Some(p) = &meta.player {
-                    player = Player::new(Vec3::new(
-                        p.pos[0] as f32,
-                        p.pos[1] as f32,
-                        p.pos[2] as f32,
-                    ));
+                    player =
+                        Player::new(Vec3::new(p.pos[0] as f32, p.pos[1] as f32, p.pos[2] as f32));
                     player.yaw = p.yaw;
                     player.pitch = p.pitch;
                 } else {
@@ -811,10 +859,8 @@ impl GameApp {
             }
         };
         #[cfg(not(target_arch = "wasm32"))]
-        let world_dir = vc_anvil::save::dimension_dir(
-            &save_root,
-            vc_world::world::Dimension::Overworld,
-        );
+        let world_dir =
+            vc_anvil::save::dimension_dir(&save_root, vc_world::world::Dimension::Overworld);
         #[cfg(not(target_arch = "wasm32"))]
         let mut level_spawn = (spawn.0 as i32, spawn.1 as i32, spawn.2 as i32);
         #[cfg(not(target_arch = "wasm32"))]
@@ -913,11 +959,17 @@ impl GameApp {
             #[cfg(not(target_arch = "wasm32"))]
             {
                 let (tx, rx) = std::sync::mpsc::channel();
-                WorkBackend::Threading { tx, rx, inflight: 0 }
+                WorkBackend::Threading {
+                    tx,
+                    rx,
+                    inflight: 0,
+                }
             }
             #[cfg(target_arch = "wasm32")]
             {
-                WorkBackend::Inline { jobs: VecDeque::new() }
+                WorkBackend::Inline {
+                    jobs: VecDeque::new(),
+                }
             }
         };
 
@@ -987,6 +1039,9 @@ impl GameApp {
             frame_times: std::collections::VecDeque::new(),
             draw_calls_ring: std::collections::VecDeque::new(),
             item_toast: None,
+            held_key: (0, 0),
+            held_name: String::new(),
+            held_name_t: 0.0,
             last_ui_t: -1.0,
             last_frame_t: now_secs(),
             last_draw_t: 0.0,
@@ -1075,9 +1130,9 @@ impl GameApp {
         event: winit::event::Event<()>,
         elwt: &winit::event_loop::EventLoopWindowTarget<()>,
     ) {
-        use winit::event::{Event, WindowEvent};
         #[cfg(not(target_arch = "wasm32"))]
         use winit::event::{ElementState, MouseScrollDelta};
+        use winit::event::{Event, WindowEvent};
         #[cfg(not(target_arch = "wasm32"))]
         use winit::keyboard::PhysicalKey;
 
@@ -1228,7 +1283,11 @@ impl GameApp {
         use winit::event::MouseButton;
         for ev in web_input::drain_events() {
             match ev {
-                WebEvent::Key { code, pressed, repeat } => {
+                WebEvent::Key {
+                    code,
+                    pressed,
+                    repeat,
+                } => {
                     // Phase 1: shift state for web text case mapping
                     if code == "ShiftLeft" || code == "ShiftRight" {
                         self.web_shift = pressed;
@@ -1251,7 +1310,8 @@ impl GameApp {
                     }
                 }
                 WebEvent::MouseDelta { dx, dy } => {
-                    if self.screen == Screen::Game && !self.picker_open && self.container.is_none() {
+                    if self.screen == Screen::Game && !self.picker_open && self.container.is_none()
+                    {
                         self.input.add_mouse(dx, dy);
                     }
                 }
@@ -1265,7 +1325,12 @@ impl GameApp {
                         }
                     }
                 }
-                WebEvent::Button { button, pressed, x, y } => {
+                WebEvent::Button {
+                    button,
+                    pressed,
+                    x,
+                    y,
+                } => {
                     if self.container.is_some() && self.screen == Screen::Game {
                         if pressed {
                             let (ux, uy) = self.css_to_ui(x, y);
@@ -1470,8 +1535,14 @@ impl GameApp {
                     self.ui.dirty = true;
                 }
             }
-            KeyCode::Digit1 | KeyCode::Digit2 | KeyCode::Digit3 | KeyCode::Digit4
-            | KeyCode::Digit5 | KeyCode::Digit6 | KeyCode::Digit7 | KeyCode::Digit8
+            KeyCode::Digit1
+            | KeyCode::Digit2
+            | KeyCode::Digit3
+            | KeyCode::Digit4
+            | KeyCode::Digit5
+            | KeyCode::Digit6
+            | KeyCode::Digit7
+            | KeyCode::Digit8
             | KeyCode::Digit9 => {
                 if pressed && in_game {
                     let n = code as u8 - KeyCode::Digit1 as u8;
@@ -1511,7 +1582,13 @@ impl GameApp {
             MouseButton::Middle => {
                 if pressed {
                     if let Some((_, b, _)) = self.target {
-                        if let Some(slot) = self.player.inv.slots.iter().position(|h| h.block == b && h.count > 0) {
+                        if let Some(slot) = self
+                            .player
+                            .inv
+                            .slots
+                            .iter()
+                            .position(|h| h.block == b && h.count > 0)
+                        {
                             self.player.selected = slot.min(8);
                         } else {
                             self.player.inv.slots[self.player.selected] =
@@ -1574,7 +1651,8 @@ impl GameApp {
         let Some(g) = &self.picker_geom else { return };
         if let Some(idx) = g.slot_at(ux, uy) {
             let b = PICKER_BLOCKS[idx];
-            self.player.inv.slots[self.player.selected] = vc_inventory::inventory::ItemStack::new(b, 64);
+            self.player.inv.slots[self.player.selected] =
+                vc_inventory::inventory::ItemStack::new(b, 64);
             self.item_toast = Some((name(b).to_string(), 2.0));
             self.ui.dirty = true;
         }
@@ -1630,11 +1708,7 @@ impl GameApp {
 
     fn update_hover(&mut self) {
         let (x, y) = (self.cursor.0 as i32, self.cursor.1 as i32);
-        let h = self
-            .widgets
-            .iter()
-            .find(|w| w.hit(x, y))
-            .map(|w| w.id);
+        let h = self.widgets.iter().find(|w| w.hit(x, y)).map(|w| w.id);
         if h != self.hover {
             self.hover = h;
             self.ui.dirty = true;
@@ -1748,7 +1822,11 @@ impl GameApp {
     }
 
     fn close_options(&mut self) {
-        let back = if self.options_from == Screen::Pause { Screen::Pause } else { Screen::Title };
+        let back = if self.options_from == Screen::Pause {
+            Screen::Pause
+        } else {
+            Screen::Title
+        };
         self.set_screen(back);
     }
 
@@ -1777,7 +1855,11 @@ impl GameApp {
                             break;
                         }
                     }
-                    score += if top < 0 { -3.0 } else { (top - crate::SEA_LEVEL) as f32 };
+                    score += if top < 0 {
+                        -3.0
+                    } else {
+                        (top - crate::SEA_LEVEL) as f32
+                    };
                 }
                 if score > best_score {
                     best_score = score;
@@ -1868,7 +1950,11 @@ impl GameApp {
     fn create_world(&mut self) {
         let name = {
             let n = self.wc_name.trim();
-            if n.is_empty() { "New World" } else { n }
+            if n.is_empty() {
+                "New World"
+            } else {
+                n
+            }
         }
         .to_string();
         let seed = vc_gameplay::modes::parse_seed(&self.wc_seed)
@@ -1888,7 +1974,9 @@ impl GameApp {
         self.load_datapacks();
         vc_render::render::report_boot_log(&format!(
             "world created: \"{}\" seed={} mode={}",
-            self.world_name, self.world.seed, self.mode.label()
+            self.world_name,
+            self.world.seed,
+            self.mode.label()
         ));
     }
 
@@ -1927,31 +2015,37 @@ impl GameApp {
     /// Play the `idx`-th world from the cached select list (native).
     #[cfg(not(target_arch = "wasm32"))]
     fn play_world(&mut self, idx: usize) {
-        let Some(entry) = self.worlds.get(idx).cloned() else { return };
+        let Some(entry) = self.worlds.get(idx).cloned() else {
+            return;
+        };
         // a dead hardcore world is unplayable — the list disables its
         // button, but keep the guard here too (defense in depth)
         if entry.meta.hardcore_dead {
             return;
         }
         let seed = entry.meta.seed;
-        let mode = vc_gameplay::modes::GameMode::from_save(
-            entry.meta.game_type,
-            entry.meta.hardcore,
-        );
+        let mode =
+            vc_gameplay::modes::GameMode::from_save(entry.meta.game_type, entry.meta.hardcore);
         let name = entry.meta.name.clone();
         let player = entry.meta.player.clone().map(|p| {
-            (p.pos[0] as f32, p.pos[1] as f32, p.pos[2] as f32, p.yaw, p.pitch)
+            (
+                p.pos[0] as f32,
+                p.pos[1] as f32,
+                p.pos[2] as f32,
+                p.yaw,
+                p.pitch,
+            )
         });
         self.save_root = entry.dir;
-        self.world_dir = vc_anvil::save::dimension_dir(
-            &self.save_root,
-            vc_world::world::Dimension::Overworld,
-        );
+        self.world_dir =
+            vc_anvil::save::dimension_dir(&self.save_root, vc_world::world::Dimension::Overworld);
         self.reset_world(seed, mode, name, player);
         self.load_datapacks();
         vc_render::render::report_boot_log(&format!(
             "world loaded: \"{}\" seed={} mode={}",
-            self.world_name, self.world.seed, self.mode.label()
+            self.world_name,
+            self.world.seed,
+            self.mode.label()
         ));
     }
 
@@ -1962,8 +2056,7 @@ impl GameApp {
     /// the embedded demo pack through the same code path instead).
     #[cfg(not(target_arch = "wasm32"))]
     fn load_datapacks(&mut self) {
-        let loaded =
-            vc_pack::datapack::scan_datapacks(&self.save_root.join("datapacks"));
+        let loaded = vc_pack::datapack::scan_datapacks(&self.save_root.join("datapacks"));
         report_datapacks(&loaded);
         self.data = loaded;
     }
@@ -2036,6 +2129,7 @@ impl GameApp {
         self.player.flying = mode.allows_flight();
         self.player.vel = Vec3::ZERO;
         self.player.reset_fall();
+        self.player.reset_air();
 
         // world-local system reset (same list as dimension travel)
         self.renderer.clear_meshes();
@@ -2101,7 +2195,9 @@ impl GameApp {
         if !(32..=126).contains(&(ch as u32)) {
             return false;
         }
-        let Some(id) = self.text_field_focused() else { return false };
+        let Some(id) = self.text_field_focused() else {
+            return false;
+        };
         let (buf, max) = match id {
             ui::ID_WC_NAME => (&mut self.wc_name, 32),
             ui::ID_WC_SEED => (&mut self.wc_seed, 24),
@@ -2117,7 +2213,9 @@ impl GameApp {
 
     /// Backspace on the focused field.
     fn backspace_field(&mut self) {
-        let Some(id) = self.text_field_focused() else { return };
+        let Some(id) = self.text_field_focused() else {
+            return;
+        };
         let buf = match id {
             ui::ID_WC_NAME => &mut self.wc_name,
             ui::ID_WC_SEED => &mut self.wc_seed,
@@ -2214,6 +2312,7 @@ impl GameApp {
         self.player.vel = Vec3::ZERO;
         self.player.pos = self.respawn_pos;
         self.player.reset_fall();
+        self.player.reset_air();
         self.death_cause.clear();
         // re-run the surface snap pipeline from the spawn column
         self.spawn_snapped = false;
@@ -2250,9 +2349,15 @@ impl GameApp {
         let eye = self.player.eye().to_array();
         let dir = self.player.look_dir().to_array();
         let Some(id) = self.sim.mobs.ray_hit(eye, dir, crate::player::REACH) else {
+            // §Gossiping: no MOB under the crosshair — a villager can be
+            // the melee target (VERIFIED: 20 HP, no armor; attacks grow
+            // minor_negative on the survivor, kills broadcast
+            // major_negative to villagers in the 16-block box)
+            return self.try_attack_villager();
+        };
+        let Some(m) = self.sim.mobs.by_id(id) else {
             return false;
         };
-        let Some(m) = self.sim.mobs.by_id(id) else { return false };
         let kind = m.kind;
         let armor = vc_gameplay::mobs::def(kind).armor;
         // cooldown recovery fraction p
@@ -2262,14 +2367,8 @@ impl GameApp {
         let falling = !self.player.on_ground && self.player.vel.y < 0.0;
         let sprinting = self.input.sprint
             && (self.input.fwd || self.input.back || self.input.left || self.input.right);
-        let outcome = combat::player_melee(
-            self.player.held().block,
-            p,
-            falling,
-            sprinting,
-            armor,
-            0.0,
-        );
+        let outcome =
+            combat::player_melee(self.player.held().block, p, falling, sprinting, armor, 0.0);
         let applied = self.sim.mobs.damage(id, outcome.damage);
         if applied > 0.0 {
             self.play_event("entity.generic.death", None, 0.6); // hurt grunt
@@ -2283,6 +2382,59 @@ impl GameApp {
         }
         // every swing resets the recovery clock (weak spam allowed —
         // vanilla's 0.2× floor comes through the same formula)
+        self.swing_t = 0.0;
+        true
+    }
+
+    /// Swing at the villager under the crosshair (§Gossiping hooks):
+    /// full vanilla melee math with armor 0 (VERIFIED villager stats);
+    /// a surviving hit grows minor_negative, a kill broadcasts
+    /// major_negative to every villager in the 16-block box and logs
+    /// the event for the E2E harness. Returns true when hit.
+    fn try_attack_villager(&mut self) -> bool {
+        if self.screen != Screen::Game || self.picker_open || self.container.is_some() {
+            return false;
+        }
+        use vc_gameplay::combat;
+        let eye = self.player.eye().to_array();
+        let dir = self.player.look_dir().to_array();
+        let Some(vid) = self.sim.villagers.ray_hit(eye, dir, crate::player::REACH) else {
+            return false;
+        };
+        let (_, atk_speed) = combat::held_attack(self.player.held().block);
+        let period = combat::attack_cooldown_ticks(atk_speed) / 20.0; // seconds
+        let p = (self.swing_t / period).min(1.0);
+        let falling = !self.player.on_ground && self.player.vel.y < 0.0;
+        let sprinting = self.input.sprint
+            && (self.input.fwd || self.input.back || self.input.left || self.input.right);
+        let outcome = combat::player_melee(
+            self.player.held().block,
+            p,
+            falling,
+            sprinting,
+            0.0, // villagers: no natural armor (VERIFIED)
+            0.0,
+        );
+        let (applied, kill_pos) = self.sim.villagers.damage(vid, outcome.damage);
+        if applied > 0.0 {
+            self.play_event("entity.villager.hurt", None, 1.0);
+        }
+        if let Some(pos) = kill_pos {
+            // the kill: broadcast the gossip + close the trade screen if
+            // it belonged to the deceased
+            let n = self.sim.villagers.on_player_kill(pos);
+            self.play_event("entity.villager.death", Some(pos), 1.0);
+            if let Some(Container::Trade { villager }) = self.container {
+                if villager == vid {
+                    self.close_container();
+                }
+            }
+            vc_render::render::report_boot_log(&format!(
+                "e2e: villager slain (major_negative broadcast to {n} villagers)"
+            ));
+        } else if applied > 0.0 {
+            self.sim.villagers.on_player_attack(vid);
+        }
         self.swing_t = 0.0;
         true
     }
@@ -2425,7 +2577,9 @@ impl GameApp {
         }
         // entity damage: distance-scaled (see placeholder note)
         let blast_damage = |ex: f32, ey: f32, ez: f32| -> f32 {
-            let d = ((ex - center[0]).powi(2) + (ey - center[1]).powi(2) + (ez - center[2]).powi(2)).sqrt();
+            let d =
+                ((ex - center[0]).powi(2) + (ey - center[1]).powi(2) + (ez - center[2]).powi(2))
+                    .sqrt();
             (24.0 * (1.0 - d / (power * 2.0)).max(0.0)).max(0.0)
         };
         // player (mode-gated, knockback away from the blast)
@@ -2460,12 +2614,7 @@ impl GameApp {
             .mobs
             .list
             .iter()
-            .map(|m| {
-                (
-                    m.id,
-                    blast_damage(m.pos[0], m.pos[1] + 0.9, m.pos[2]),
-                )
-            })
+            .map(|m| (m.id, blast_damage(m.pos[0], m.pos[1] + 0.9, m.pos[2])))
             .collect();
         for (id, dmg) in mob_ids {
             if dmg > 0.0 {
@@ -2481,15 +2630,8 @@ impl GameApp {
         }
         // explosion visual + sound
         for _ in 0..24 {
-            self.particles.spawn_block_break(
-                cx,
-                cy,
-                cz,
-                COBBLE,
-                2,
-                14,
-                10,
-            );
+            self.particles
+                .spawn_block_break(cx, cy, cz, COBBLE, 2, 14, 10);
         }
         self.play_event("entity.generic.explode", Some(center), 1.0);
         let _ = destroyed;
@@ -2593,9 +2735,7 @@ impl GameApp {
             ID_DEATH_RESPAWN => self.respawn(),
             ID_DEATH_TITLE => self.death_quit_to_title(false),
             ID_DEATH_DELETE => self.death_quit_to_title(true),
-            _ if (ID_WS_WORLD_BASE..ID_WS_WORLD_BASE + MAX_LISTED_WORLDS as u16)
-                .contains(&id) =>
-            {
+            _ if (ID_WS_WORLD_BASE..ID_WS_WORLD_BASE + MAX_LISTED_WORLDS as u16).contains(&id) => {
                 // clicking a row selects it; a live world also plays
                 // (WorldSelect is native-only — unreachable on wasm)
                 #[cfg(not(target_arch = "wasm32"))]
@@ -2627,7 +2767,8 @@ impl GameApp {
             ID_OPT_SHADOWS => {
                 // §17 quality cycle: OFF → 1024 → 2048 → 4096
                 self.settings.shadow_quality = (self.settings.shadow_quality + 1) % 4;
-                self.renderer.set_shadow_quality(self.settings.shadow_map_px());
+                self.renderer
+                    .set_shadow_quality(self.settings.shadow_map_px());
                 self.after_settings_change();
             }
             ID_OPT_UPSCALE => {
@@ -2675,7 +2816,8 @@ impl GameApp {
         // Phase 11 §34: re-apply the shader selection (pack pipeline swap)
         self.apply_shader_selection();
         // Phase 6 §26: texture quality (mipmaps + aniso), MSAA, occlusion
-        self.renderer.set_texture_quality(self.settings.mipmap_levels, self.settings.aniso);
+        self.renderer
+            .set_texture_quality(self.settings.mipmap_levels, self.settings.aniso);
         self.renderer.set_msaa(self.settings.msaa);
         self.renderer.set_occlusion(self.settings.occlusion);
         #[cfg(target_arch = "wasm32")]
@@ -2729,18 +2871,33 @@ impl GameApp {
                             &format!("SIM DIST: {} CHUNKS", s.sim_distance),
                             (s.sim_distance - 5) as f32 / 27.0,
                         ),
-                        ID_OPT_RD => set_slider(w, &format!("RENDER DIST: {} CHUNKS", s.render_distance), (s.render_distance - 2) as f32 / 14.0),
+                        ID_OPT_RD => set_slider(
+                            w,
+                            &format!("RENDER DIST: {} CHUNKS", s.render_distance),
+                            (s.render_distance - 2) as f32 / 14.0,
+                        ),
                         ID_OPT_MIP => set_button_value(w, &format!("{}", s.mipmap_levels)),
                         ID_OPT_ANISO => set_button_value(
                             w,
-                            &if s.aniso > 1 { format!("{}X", s.aniso) } else { "OFF".into() },
+                            &if s.aniso > 1 {
+                                format!("{}X", s.aniso)
+                            } else {
+                                "OFF".into()
+                            },
                         ),
                         ID_OPT_MSAA => {
                             let label = if self.renderer.msaa() == 0 {
                                 "OFF".to_string()
                             } else {
-                                format!("{}X{}", self.renderer.msaa(),
-                                    if (self.renderer.msaa() as u8) < max_msaa { " (MAX)" } else { "" })
+                                format!(
+                                    "{}X{}",
+                                    self.renderer.msaa(),
+                                    if (self.renderer.msaa() as u8) < max_msaa {
+                                        " (MAX)"
+                                    } else {
+                                        ""
+                                    }
+                                )
                             };
                             set_button_value(w, &label);
                         }
@@ -2764,19 +2921,48 @@ impl GameApp {
                 let mut ws = layout_options();
                 for w in ws.iter_mut() {
                     match w.id {
-                        ID_OPT_FOV => set_slider(w, &format!("FOV: {}", s.fov.round() as i32), (s.fov - 30.0) / 80.0),
-                        ID_OPT_SENS => set_slider(w, &format!("MOUSE SENS: {}%", (s.sensitivity * 100.0).round() as i32), (s.sensitivity - 0.1) / 1.9),
-                        ID_OPT_RD => set_slider(w, &format!("RENDER DIST: {} CHUNKS", s.render_distance), (s.render_distance - 2) as f32 / 14.0),
+                        ID_OPT_FOV => set_slider(
+                            w,
+                            &format!("FOV: {}", s.fov.round() as i32),
+                            (s.fov - 30.0) / 80.0,
+                        ),
+                        ID_OPT_SENS => set_slider(
+                            w,
+                            &format!("MOUSE SENS: {}%", (s.sensitivity * 100.0).round() as i32),
+                            (s.sensitivity - 0.1) / 1.9,
+                        ),
+                        ID_OPT_RD => set_slider(
+                            w,
+                            &format!("RENDER DIST: {} CHUNKS", s.render_distance),
+                            (s.render_distance - 2) as f32 / 14.0,
+                        ),
                         ID_OPT_BRIGHT => {
-                            let label = if s.brightness < 0.05 { "MOODY".to_string() } else { format!("{}%", (s.brightness * 100.0).round() as i32) };
+                            let label = if s.brightness < 0.05 {
+                                "MOODY".to_string()
+                            } else {
+                                format!("{}%", (s.brightness * 100.0).round() as i32)
+                            };
                             set_slider(w, &format!("BRIGHTNESS: {}", label), s.brightness)
                         }
-                        ID_OPT_VOL => set_slider(w, &format!("VOLUME: {}%", (s.volume * 100.0).round() as i32), s.volume),
-                        ID_OPT_MUSIC => {
-                            set_slider(w, &format!("MUSIC: {}%", (s.music_volume * 100.0).round() as i32), s.music_volume)
-                        }
+                        ID_OPT_VOL => set_slider(
+                            w,
+                            &format!("VOLUME: {}%", (s.volume * 100.0).round() as i32),
+                            s.volume,
+                        ),
+                        ID_OPT_MUSIC => set_slider(
+                            w,
+                            &format!("MUSIC: {}%", (s.music_volume * 100.0).round() as i32),
+                            s.music_volume,
+                        ),
                         ID_OPT_SHADER => set_button_value(w, &self.shader_mode_name(s.shader)),
-                        ID_OPT_GRAPHICS => set_button_value(w, match s.graphics { 0 => "FAST", 2 => "FABULOUS!", _ => "FANCY" }),
+                        ID_OPT_GRAPHICS => set_button_value(
+                            w,
+                            match s.graphics {
+                                0 => "FAST",
+                                2 => "FABULOUS!",
+                                _ => "FANCY",
+                            },
+                        ),
                         ID_OPT_SHADOWS => set_button_value(
                             w,
                             match s.shadow_quality {
@@ -2786,9 +2972,26 @@ impl GameApp {
                                 _ => "4K",
                             },
                         ),
-                        ID_OPT_UPSCALE => set_button_value(w, match s.upscale { 1 => "75% FSR", 2 => "50% FSR", _ => "OFF" }),
-                        ID_OPT_MAXFPS => set_button_value(w, match s.maxfps { 1 => "30", 2 => "60", 3 => "120", _ => "VSYNC" }),
-                        ID_OPT_SMOOTH => set_button_value(w, if s.smooth_lighting { "ON" } else { "OFF" }),
+                        ID_OPT_UPSCALE => set_button_value(
+                            w,
+                            match s.upscale {
+                                1 => "75% FSR",
+                                2 => "50% FSR",
+                                _ => "OFF",
+                            },
+                        ),
+                        ID_OPT_MAXFPS => set_button_value(
+                            w,
+                            match s.maxfps {
+                                1 => "30",
+                                2 => "60",
+                                3 => "120",
+                                _ => "VSYNC",
+                            },
+                        ),
+                        ID_OPT_SMOOTH => {
+                            set_button_value(w, if s.smooth_lighting { "ON" } else { "OFF" })
+                        }
                         ID_OPT_CLOUDS => set_button_value(w, if s.clouds { "ON" } else { "OFF" }),
                         _ => {}
                     }
@@ -2806,7 +3009,11 @@ impl GameApp {
                             w.meta.game_type,
                             w.meta.hardcore,
                         );
-                        (w.meta.name.clone(), mode.label().to_string(), w.meta.hardcore_dead)
+                        (
+                            w.meta.name.clone(),
+                            mode.label().to_string(),
+                            w.meta.hardcore_dead,
+                        )
                     })
                     .collect();
                 self.widgets = layout_world_select(&names);
@@ -2838,13 +3045,15 @@ impl GameApp {
     fn remesh_all(&mut self) {
         let positions: Vec<ChunkPos> = self.renderer.chunks.keys().copied().collect();
         for p in positions {
-            self.world.mark_all_dirty(p, vc_world::world::CAUSE_GEOMETRY | vc_world::world::CAUSE_LIGHT);
+            self.world.mark_all_dirty(
+                p,
+                vc_world::world::CAUSE_GEOMETRY | vc_world::world::CAUSE_LIGHT,
+            );
         }
         // cached section meshes embed the old baking (e.g. smooth-lighting AO)
         self.section_meshes.clear();
         self.renderer.clear_meshes();
     }
-
 
     // ------------------------------------------- containers (Phase 7) --
 
@@ -2887,7 +3096,10 @@ impl GameApp {
                                     self.player.pos.x.floor() as i32,
                                     self.player.pos.y.floor() as i32,
                                     self.player.pos.z.floor() as i32,
-                                    s.block, 2, 15, 0,
+                                    s.block,
+                                    2,
+                                    15,
+                                    0,
                                 );
                             }
                             *s = vc_inventory::inventory::ItemStack::EMPTY;
@@ -2899,7 +3111,15 @@ impl GameApp {
                         if !s.is_empty() {
                             let left = self.player.inv.add(s.block, s.count);
                             if left > 0 {
-                                self.sim.items.drop_block(pos[0], pos[1] + 1, pos[2], s.block, 2, 15, 0);
+                                self.sim.items.drop_block(
+                                    pos[0],
+                                    pos[1] + 1,
+                                    pos[2],
+                                    s.block,
+                                    2,
+                                    15,
+                                    0,
+                                );
                             }
                             *s = vc_inventory::inventory::ItemStack::EMPTY;
                         }
@@ -2908,6 +3128,10 @@ impl GameApp {
                 Container::Chest { .. } => {
                     // chest contents live in the block entity, not the
                     // player — nothing to return (vanilla behavior)
+                }
+                Container::Hopper { .. } => {
+                    // same as the chest: hopper contents persist in the
+                    // block entity (vanilla behavior)
                 }
                 Container::Furnace { .. } => {}
                 Container::Brewing { .. } => {}
@@ -2919,7 +3143,13 @@ impl GameApp {
                                 let left = self.player.inv.add(s.block, s.count);
                                 if left > 0 {
                                     self.sim.items.drop_block(
-                                        pos[0], pos[1] + 1, pos[2], s.block, 2, 15, 0,
+                                        pos[0],
+                                        pos[1] + 1,
+                                        pos[2],
+                                        s.block,
+                                        2,
+                                        15,
+                                        0,
                                     );
                                 }
                             }
@@ -2931,14 +3161,20 @@ impl GameApp {
         }
         // cursor returns to the inventory
         if !self.cursor_stack.is_empty() {
-            let left = self.player.inv.add(self.cursor_stack.block, self.cursor_stack.count);
+            let left = self
+                .player
+                .inv
+                .add(self.cursor_stack.block, self.cursor_stack.count);
             if left > 0 {
                 let b = self.cursor_stack.block;
                 self.sim.items.drop_block(
                     self.player.pos.x.floor() as i32,
                     self.player.pos.y.floor() as i32,
                     self.player.pos.z.floor() as i32,
-                    b, 2, 15, 0,
+                    b,
+                    2,
+                    15,
+                    0,
                 );
             }
             self.cursor_stack = vc_inventory::inventory::ItemStack::EMPTY;
@@ -2974,25 +3210,19 @@ impl GameApp {
         use vc_render::ui::SlotRef;
         match slot {
             SlotRef::Inv(i) if i < vc_inventory::inventory::INV_SLOTS => {
-                Inventory::slot_click(
-                    &mut self.player.inv.slots[i],
-                    &mut self.cursor_stack,
-                    right,
-                );
+                Inventory::slot_click(&mut self.player.inv.slots[i], &mut self.cursor_stack, right);
             }
             SlotRef::Craft(i) => {
                 let n_cells = self.craft_grid_cells();
                 if i < n_cells {
-                    Inventory::slot_click(
-                        &mut self.craft_grid[i],
-                        &mut self.cursor_stack,
-                        right,
-                    );
+                    Inventory::slot_click(&mut self.craft_grid[i], &mut self.cursor_stack, right);
                 }
             }
             SlotRef::Chest(i) => {
                 // Phase 3: chest slots click like inventory slots
-                if let Some(Container::Chest { pos }) = self.container {
+                // (hopper reuses the same generic container-slot path —
+                // its 5 slots are ContainerKind::Hopper's geometry)
+                if let Some(Container::Chest { pos } | Container::Hopper { pos }) = self.container {
                     if let Some(inv) = self.sim.containers.get_mut(&pos) {
                         if i < inv.slots.len() {
                             let inv = &mut inv.slots[i];
@@ -3018,9 +3248,7 @@ impl GameApp {
                         } else {
                             self.cursor_stack.count += out.count;
                         }
-                        vc_gameplay::craft::consume_grid(
-                            &mut self.craft_grid[..size * size],
-                        );
+                        vc_gameplay::craft::consume_grid(&mut self.craft_grid[..size * size]);
                         self.play_event("block.wood.dig", None, 0.8);
                     }
                 }
@@ -3078,8 +3306,7 @@ impl GameApp {
                             self.cursor_stack = f.output;
                             f.output = vc_inventory::inventory::ItemStack::EMPTY;
                         } else if self.cursor_stack.block == f.output.block {
-                            let room =
-                                vc_inventory::inventory::STACK_MAX - self.cursor_stack.count;
+                            let room = vc_inventory::inventory::STACK_MAX - self.cursor_stack.count;
                             let take = room.min(f.output.count);
                             self.cursor_stack.count += take;
                             f.output.count -= take;
@@ -3127,9 +3354,7 @@ impl GameApp {
                     return;
                 };
                 // vanilla: bottle slots accept only bottles/potions
-                if !self.cursor_stack.is_empty()
-                    && !is_item_block(self.cursor_stack.block)
-                {
+                if !self.cursor_stack.is_empty() && !is_item_block(self.cursor_stack.block) {
                     return;
                 }
                 let Some(b) = self.sim.brewing.map.get_mut(&pos) else {
@@ -3144,9 +3369,7 @@ impl GameApp {
                     return;
                 };
                 // vanilla: only books go in the item slot
-                if !self.cursor_stack.is_empty()
-                    && self.cursor_stack.block != ENCHANTED_BOOK
-                {
+                if !self.cursor_stack.is_empty() && self.cursor_stack.block != ENCHANTED_BOOK {
                     return;
                 }
                 let seed = self.world.seed;
@@ -3167,9 +3390,7 @@ impl GameApp {
                     return;
                 };
                 // vanilla: only lapis goes in the lapis slot
-                if !self.cursor_stack.is_empty()
-                    && self.cursor_stack.block != LAPIS_ORE
-                {
+                if !self.cursor_stack.is_empty() && self.cursor_stack.block != LAPIS_ORE {
                     return;
                 }
                 let Some(e) = self.sim.enchants.map.get_mut(&pos) else {
@@ -3208,7 +3429,11 @@ impl GameApp {
                 e.reroll(&self.world, pos, seed);
                 self.play_event(
                     "block.enchantment_table.use",
-                    Some([pos[0] as f32 + 0.5, pos[1] as f32 + 0.5, pos[2] as f32 + 0.5]),
+                    Some([
+                        pos[0] as f32 + 0.5,
+                        pos[1] as f32 + 0.5,
+                        pos[2] as f32 + 0.5,
+                    ]),
                     1.0,
                 );
                 let def = vc_gameplay::enchanting::enchant_def(before.ench);
@@ -3240,17 +3465,33 @@ impl GameApp {
                 let (Some(vpos), Some((tr, level))) = (vpos, row) else {
                     return; // locked tier / out of stock — no sound, no trade
                 };
-                let (give, give_n) = tr.give;
+                // §Sale prices (VERIFIED): the price the player pays is
+                // the table's give-count adjusted by this villager's
+                // gossip reputation — clamp(base − floor(rep × 0.05), 1, 64)
+                let (give, _) = tr.give;
+                let give_n = self
+                    .sim
+                    .villagers
+                    .by_id(villager)
+                    .map(|v| vc_gameplay::villagers::give_count_adjusted(v, i))
+                    .unwrap_or(tr.give.1);
                 let (get, get_n) = tr.get;
                 if (self.player.inv.count_of(give) as u8) < give_n {
                     self.click_sound();
                     return; // cannot afford
                 }
-                // the authoritative consume: stock--, villager XP++, maybe level-up
+                // the authoritative consume: stock--, villager XP++ (and
+                // +4 trading gossip — VERIFIED), maybe level-up
                 let Some((tr, leveled)) = self.sim.villagers.execute_trade(villager, i) else {
                     return;
                 };
-                let (give, give_n) = tr.give;
+                let (give, _) = tr.give;
+                let give_n = self
+                    .sim
+                    .villagers
+                    .by_id(villager)
+                    .map(|v| vc_gameplay::villagers::give_count_adjusted(v, i))
+                    .unwrap_or(tr.give.1);
                 let (get, get_n) = tr.get;
                 if self.player.inv.consume(give, give_n) {
                     let left = self.player.inv.add(get, get_n);
@@ -3259,7 +3500,10 @@ impl GameApp {
                             self.player.pos.x.floor() as i32,
                             self.player.pos.y.floor() as i32,
                             self.player.pos.z.floor() as i32,
-                            get, 2, 15, 0,
+                            get,
+                            2,
+                            15,
+                            0,
                         );
                     }
                     if leveled {
@@ -3331,15 +3575,10 @@ impl GameApp {
             Some(Container::Inventory) => (ContainerKind::Inventory, None, None, None, None),
             Some(Container::Crafting { .. }) => (ContainerKind::Crafting, None, None, None, None),
             Some(Container::Chest { pos }) => (ContainerKind::Chest, None, None, None, None),
+            Some(Container::Hopper { pos: _ }) => (ContainerKind::Hopper, None, None, None, None),
             Some(Container::Furnace { pos }) => {
                 // live slots + progress fractions for the flame/arrow
-                let f = self
-                    .sim
-                    .furnaces
-                    .map
-                    .get(&pos)
-                    .cloned()
-                    .unwrap_or_default();
+                let f = self.sim.furnaces.map.get(&pos).cloned().unwrap_or_default();
                 let burn = if f.burn_max > 0 {
                     f.burn_left as f32 / f.burn_max as f32
                 } else {
@@ -3356,15 +3595,9 @@ impl GameApp {
             }
             Some(Container::Brewing { pos }) => {
                 // live slots + progress fractions for the bubbles/charge bar
-                let b = self
-                    .sim
-                    .brewing
-                    .map
-                    .get(&pos)
-                    .cloned()
-                    .unwrap_or_default();
-                let fuel_frac = b.fuel_charges as f32
-                    / vc_gameplay::brewing::FUEL_OPERATIONS as f32;
+                let b = self.sim.brewing.map.get(&pos).cloned().unwrap_or_default();
+                let fuel_frac =
+                    b.fuel_charges as f32 / vc_gameplay::brewing::FUEL_OPERATIONS as f32;
                 let brew_frac = b.progress();
                 (
                     ContainerKind::Brewing,
@@ -3375,13 +3608,7 @@ impl GameApp {
                 )
             }
             Some(Container::Enchant { pos }) => {
-                let e = self
-                    .sim
-                    .enchants
-                    .map
-                    .get(&pos)
-                    .cloned()
-                    .unwrap_or_default();
+                let e = self.sim.enchants.map.get(&pos).cloned().unwrap_or_default();
                 (
                     ContainerKind::Enchant,
                     None,
@@ -3394,61 +3621,56 @@ impl GameApp {
                 // Phase 5 trade view: all table rows (table-order indices
                 // match SlotRef::TradeRow(i) → execute_trade(i)), the
                 // career level + XP header, per-row stock + lock state
-                let tv = self
-                    .sim
-                    .villagers
-                    .by_id(villager)
-                    .map(|v| {
-                        let prof = vc_gameplay::villagers::PROFESSIONS
-                            [(v.profession as usize).min(vc_gameplay::villagers::PROFESSIONS.len() - 1)];
-                        let level = v.level();
-                        let rows: Vec<vc_render::ui::TradeRowView> =
-                            vc_gameplay::villagers::trades(v.profession)
-                                .iter()
-                                .enumerate()
-                                .map(|(i, t)| {
-                                    let give = vc_inventory::inventory::ItemStack::new(t.give.0, t.give.1);
-                                    let get = vc_inventory::inventory::ItemStack::new(t.get.0, t.get.1);
-                                    let afford =
-                                        self.player.inv.count_of(t.give.0) >= t.give.1 as u32;
-                                    let stock = v.stock_left(i).unwrap_or(0);
-                                    vc_render::ui::TradeRowView {
-                                        give,
-                                        get,
-                                        afford,
-                                        stock,
-                                        max_uses: t.max_uses,
-                                        tier: t.tier,
-                                        locked: t.tier > level,
-                                    }
-                                })
-                                .collect();
-                        vc_render::ui::TradeView {
-                            profession: prof.to_string(),
-                            level_name: vc_gameplay::villagers::level_name(level).to_string(),
-                            level,
-                            xp: v.xp,
-                            xp_next: vc_gameplay::villagers::LEVEL_XP
-                                .get(level as usize)
-                                .copied()
-                                .filter(|_| level < 5),
-                            rows,
-                        }
-                    });
-                (
-                    ContainerKind::Trade,
-                    None,
-                    None,
-                    None,
-                    tv,
-                )
+                let tv = self.sim.villagers.by_id(villager).map(|v| {
+                    let prof = vc_gameplay::villagers::PROFESSIONS[(v.profession as usize)
+                        .min(vc_gameplay::villagers::PROFESSIONS.len() - 1)];
+                    let level = v.level();
+                    let rows: Vec<vc_render::ui::TradeRowView> =
+                        vc_gameplay::villagers::trades(v.profession)
+                            .iter()
+                            .enumerate()
+                            .map(|(i, t)| {
+                                // §Sale prices (VERIFIED): reputation-
+                                // adjusted give-count (what the player
+                                // actually pays — vanilla shows this as
+                                // the live price)
+                                let price = vc_gameplay::villagers::give_count_adjusted(v, i);
+                                let give = vc_inventory::inventory::ItemStack::new(t.give.0, price);
+                                let get = vc_inventory::inventory::ItemStack::new(t.get.0, t.get.1);
+                                let afford = self.player.inv.count_of(t.give.0) >= price as u32;
+                                let stock = v.stock_left(i).unwrap_or(0);
+                                vc_render::ui::TradeRowView {
+                                    give,
+                                    get,
+                                    afford,
+                                    stock,
+                                    max_uses: t.max_uses,
+                                    tier: t.tier,
+                                    locked: t.tier > level,
+                                }
+                            })
+                            .collect();
+                    vc_render::ui::TradeView {
+                        profession: prof.to_string(),
+                        level_name: vc_gameplay::villagers::level_name(level).to_string(),
+                        level,
+                        xp: v.xp,
+                        xp_next: vc_gameplay::villagers::LEVEL_XP
+                            .get(level as usize)
+                            .copied()
+                            .filter(|_| level < 5),
+                        rows,
+                    }
+                });
+                (ContainerKind::Trade, None, None, None, tv)
             }
             None => (ContainerKind::Inventory, None, None, None, None),
         };
         // Phase 3: live chest slots (the container entity is created on
-        // open; an absent entity renders as an empty 27-slot chest)
+        // open; an absent entity renders as an empty 27-slot chest).
+        // Hopper screens share the generic container-slot view (5 slots).
         let chest = match self.container {
-            Some(Container::Chest { pos }) => self
+            Some(Container::Chest { pos } | Container::Hopper { pos }) => self
                 .sim
                 .containers
                 .get(&pos)
@@ -3459,8 +3681,9 @@ impl GameApp {
         let size = self.craft_grid_size();
         let grid: Vec<vc_inventory::inventory::ItemStack> =
             self.craft_grid.iter().take(size * size).copied().collect();
-        let craft_out =
-            self.craft_result(&grid, size).unwrap_or(vc_inventory::inventory::ItemStack::EMPTY);
+        let craft_out = self
+            .craft_result(&grid, size)
+            .unwrap_or(vc_inventory::inventory::ItemStack::EMPTY);
         ContainerView {
             kind,
             inv: self.player.inv.slots.clone(),
@@ -3525,7 +3748,7 @@ impl GameApp {
         if matches!(broke, CHEST | DISPENSER | DROPPER | HOPPER) {
             if matches!(
                 self.container,
-                Some(Container::Chest { pos: p }) if p == pos
+                Some(Container::Chest { pos: p } | Container::Hopper { pos: p }) if p == pos
             ) {
                 self.close_container();
             }
@@ -3538,24 +3761,42 @@ impl GameApp {
         }
         if broke == FURNACE {
             if let Some(f) = self.sim.furnaces.map.remove(&pos) {
-                let (biome, sky, blk) = light_at(&self.world, &self.light, pos[0], pos[1] + 1, pos[2]);
+                let (biome, sky, blk) =
+                    light_at(&self.world, &self.light, pos[0], pos[1] + 1, pos[2]);
                 for s in [&f.input, &f.fuel, &f.output] {
                     if !s.is_empty() {
                         for _ in 0..s.count {
-                            self.sim.items.drop_block(pos[0], pos[1] + 1, pos[2], s.block, biome, sky, blk);
+                            self.sim.items.drop_block(
+                                pos[0],
+                                pos[1] + 1,
+                                pos[2],
+                                s.block,
+                                biome,
+                                sky,
+                                blk,
+                            );
                         }
                     }
                 }
             }
         } else if broke == BREWING_STAND {
             if let Some(b) = self.sim.brewing.map.remove(&pos) {
-                let (biome, sky, blk) = light_at(&self.world, &self.light, pos[0], pos[1] + 1, pos[2]);
+                let (biome, sky, blk) =
+                    light_at(&self.world, &self.light, pos[0], pos[1] + 1, pos[2]);
                 let mut slots = vec![b.ingredient, b.fuel];
                 slots.extend(b.bottles.iter().copied());
                 for s in &slots {
                     if !s.is_empty() {
                         for _ in 0..s.count {
-                            self.sim.items.drop_block(pos[0], pos[1] + 1, pos[2], s.block, biome, sky, blk);
+                            self.sim.items.drop_block(
+                                pos[0],
+                                pos[1] + 1,
+                                pos[2],
+                                s.block,
+                                biome,
+                                sky,
+                                blk,
+                            );
                         }
                     }
                 }
@@ -3571,7 +3812,9 @@ impl GameApp {
             let (biome, sky, blk) = light_at(&self.world, &self.light, pos[0], pos[1] + 1, pos[2]);
             for s in items {
                 for _ in 0..s.count {
-                    self.sim.items.drop_block(pos[0], pos[1] + 1, pos[2], s.block, biome, sky, blk);
+                    self.sim
+                        .items
+                        .drop_block(pos[0], pos[1] + 1, pos[2], s.block, biome, sky, blk);
                 }
             }
         }
@@ -3645,7 +3888,8 @@ impl GameApp {
                 center: self.player_chunk(),
                 radius: self.settings.sim_distance,
             };
-            self.sim.update(dt, &mut self.world, &mut self.light, &scope);
+            self.sim
+                .update(dt, &mut self.world, &mut self.light, &scope);
             // Phase 2: drain mob hits/deaths/explosions on the game thread
             self.drain_mob_events();
         });
@@ -3660,7 +3904,11 @@ impl GameApp {
             for pos in done {
                 self.play_event(
                     "block.brewing_stand.bubble",
-                    Some([pos[0] as f32 + 0.5, pos[1] as f32 + 0.5, pos[2] as f32 + 0.5]),
+                    Some([
+                        pos[0] as f32 + 0.5,
+                        pos[1] as f32 + 0.5,
+                        pos[2] as f32 + 0.5,
+                    ]),
                     1.0,
                 );
             }
@@ -3717,7 +3965,8 @@ impl GameApp {
             if let Some(cmd) = crate::web_input::pop_test_cmd() {
                 let parts: Vec<&str> = cmd.split(':').collect();
                 let coords = || {
-                    parts.iter()
+                    parts
+                        .iter()
                         .skip(1)
                         .filter_map(|v| v.parse::<i32>().ok())
                         .collect::<Vec<i32>>()
@@ -3753,10 +4002,8 @@ impl GameApp {
                         };
                         if p.len() == 3 && b.is_some() {
                             // coords() skipped the name — re-parse the tail
-                            let q: Vec<i32> = parts[2..]
-                                .iter()
-                                .filter_map(|v| v.parse().ok())
-                                .collect();
+                            let q: Vec<i32> =
+                                parts[2..].iter().filter_map(|v| v.parse().ok()).collect();
                             if q.len() == 3 {
                                 self.test_place(b.unwrap(), q[0], q[1], q[2]);
                             }
@@ -3766,15 +4013,10 @@ impl GameApp {
                         // fplace:block:facing:x:y:z — Phase 3 components
                         // with an explicit facing (0=N,1=E,2=S,3=W);
                         // repeater/comparator delay defaults to 1 rt
-                        let f: usize = parts
-                            .get(2)
-                            .and_then(|v| v.parse().ok())
-                            .unwrap_or(0);
+                        let f: usize = parts.get(2).and_then(|v| v.parse().ok()).unwrap_or(0);
                         // coords after the facing field
-                        let q: Vec<i32> = parts[3..]
-                            .iter()
-                            .filter_map(|v| v.parse().ok())
-                            .collect();
+                        let q: Vec<i32> =
+                            parts[3..].iter().filter_map(|v| v.parse().ok()).collect();
                         let state = match parts.get(1).copied() {
                             Some("repeater") => Some(repeater_state(f, 1, false)),
                             Some("comparator") => Some(comparator_state(f, false, false)),
@@ -3785,8 +4027,17 @@ impl GameApp {
                         };
                         if q.len() == 3 {
                             if let Some(st) = state {
-                                if let Some((old, new)) = self.world.set_block_state(q[0], q[1], q[2], st) {
-                                    self.light.on_block_changed(&self.world, q[0], q[1], q[2], old, new);
+                                if let Some((old, new)) =
+                                    self.world.set_block_state(q[0], q[1], q[2], st)
+                                {
+                                    self.light.on_block_changed(
+                                        &self.world,
+                                        q[0],
+                                        q[1],
+                                        q[2],
+                                        old,
+                                        new,
+                                    );
                                 }
                                 notify_sim(&self.world, &mut self.sim.sched, q[0], q[1], q[2]);
                                 self.edits += 1;
@@ -3803,7 +4054,9 @@ impl GameApp {
                             let msg = match b {
                                 REDSTONE_WIRE => format!(
                                     "e2e: probe ({},{},{}) WIRE power={}",
-                                    p[0], p[1], p[2],
+                                    p[0],
+                                    p[1],
+                                    p[2],
                                     vc_blocks::blocks::wire_power(s)
                                 ),
                                 REPEATER => {
@@ -3926,7 +4179,21 @@ impl GameApp {
                                 let e = self.sim.containers.entry(pos, CHEST);
                                 e.slots[0] = vc_inventory::inventory::ItemStack::new(STONE, 7);
                                 self.open_container(Container::Chest { pos });
-                                vc_render::render::report_boot_log("e2e: chest screen open (27 slots)");
+                                vc_render::render::report_boot_log(
+                                    "e2e: chest screen open (27 slots)",
+                                );
+                            }
+                            Some("hopper") => {
+                                // §Container: place a hopper, seed slot 2,
+                                // open — the verdict-corrected 176×133
+                                // screen (5 slots, "Item Hopper")
+                                self.test_place(HOPPER, pos[0], pos[1], pos[2]);
+                                let e = self.sim.containers.entry(pos, HOPPER);
+                                e.slots[2] = vc_inventory::inventory::ItemStack::new(SAND, 3);
+                                self.open_container(Container::Hopper { pos });
+                                vc_render::render::report_boot_log(
+                                    "e2e: hopper screen open (5 slots, 176x133)",
+                                );
                             }
                             Some("brewing") => {
                                 self.test_place(BREWING_STAND, pos[0], pos[1], pos[2]);
@@ -3940,21 +4207,44 @@ impl GameApp {
                                 self.test_place(ENCHANT_TABLE, pos[0], pos[1], pos[2]);
                                 for dz in [-2, 2] {
                                     for dx in -2i32..=2 {
-                                        self.test_place(BOOKSHELF, pos[0] + dx, pos[1], pos[2] + dz);
-                                        self.test_place(BOOKSHELF, pos[0] + dx, pos[1] + 1, pos[2] + dz);
+                                        self.test_place(
+                                            BOOKSHELF,
+                                            pos[0] + dx,
+                                            pos[1],
+                                            pos[2] + dz,
+                                        );
+                                        self.test_place(
+                                            BOOKSHELF,
+                                            pos[0] + dx,
+                                            pos[1] + 1,
+                                            pos[2] + dz,
+                                        );
                                     }
                                 }
                                 for dx in [-2, 2] {
                                     for dz in -1i32..=1 {
-                                        self.test_place(BOOKSHELF, pos[0] + dx, pos[1], pos[2] + dz);
-                                        self.test_place(BOOKSHELF, pos[0] + dx, pos[1] + 1, pos[2] + dz);
+                                        self.test_place(
+                                            BOOKSHELF,
+                                            pos[0] + dx,
+                                            pos[1],
+                                            pos[2] + dz,
+                                        );
+                                        self.test_place(
+                                            BOOKSHELF,
+                                            pos[0] + dx,
+                                            pos[1] + 1,
+                                            pos[2] + dz,
+                                        );
                                     }
                                 }
                                 let seed = self.world.seed;
                                 let (power, offers) = {
                                     let e = self.sim.enchants.map.entry(pos).or_default();
                                     e.reroll(&self.world, pos, seed);
-                                    (e.power, e.options.iter().map(|o| o.level).collect::<Vec<_>>())
+                                    (
+                                        e.power,
+                                        e.options.iter().map(|o| o.level).collect::<Vec<_>>(),
+                                    )
                                 };
                                 self.open_container(Container::Enchant { pos });
                                 vc_render::render::report_boot_log(&format!(
@@ -3974,9 +4264,10 @@ impl GameApp {
                                 let corrupt = parts.get(2).copied() == Some("corrupt");
                                 let n_ticks: i32 = if corrupt {
                                     // open:brew:corrupt:<ticks>
-                                    parts.get(3).and_then(|s| s.parse().ok()).unwrap_or(
-                                        vc_gameplay::brewing::BREW_TICKS,
-                                    )
+                                    parts
+                                        .get(3)
+                                        .and_then(|s| s.parse().ok())
+                                        .unwrap_or(vc_gameplay::brewing::BREW_TICKS)
                                 } else {
                                     // open:brew:<ticks>
                                     parts
@@ -3994,18 +4285,23 @@ impl GameApp {
                                         vc_inventory::inventory::ItemStack::new(POTION_HEALING, 1);
                                     Inventory::slot_click(&mut slot, &mut cursor, false);
                                     entry.bottles[0] = slot;
-                                    entry.ingredient =
-                                        vc_inventory::inventory::ItemStack::new(FERMENTED_SPIDER_EYE, 1);
+                                    entry.ingredient = vc_inventory::inventory::ItemStack::new(
+                                        FERMENTED_SPIDER_EYE,
+                                        1,
+                                    );
                                 } else {
                                     // bottles through slot_click semantics
                                     for i in 0..3 {
                                         let mut slot = entry.bottles[i];
-                                        let mut cursor =
-                                            vc_inventory::inventory::ItemStack::new(POTION_WATER, 1);
+                                        let mut cursor = vc_inventory::inventory::ItemStack::new(
+                                            POTION_WATER,
+                                            1,
+                                        );
                                         Inventory::slot_click(&mut slot, &mut cursor, false);
                                         entry.bottles[i] = slot;
                                     }
-                                    entry.ingredient = vc_inventory::inventory::ItemStack::new(MUSHROOM_RED, 1);
+                                    entry.ingredient =
+                                        vc_inventory::inventory::ItemStack::new(MUSHROOM_RED, 1);
                                 }
                                 entry.fuel = vc_inventory::inventory::ItemStack::new(NETHERRACK, 1);
                                 drop(entry);
@@ -4026,13 +4322,7 @@ impl GameApp {
                                         format!("{}x{}", name(s.block), s.count)
                                     }
                                 };
-                                let b = self
-                                    .sim
-                                    .brewing
-                                    .map
-                                    .get(&pos)
-                                    .cloned()
-                                    .unwrap_or_default();
+                                let b = self.sim.brewing.map.get(&pos).cloned().unwrap_or_default();
                                 vc_render::render::report_boot_log(&format!(
                                     "e2e: brew {}t -> bottles [{}, {}, {}] brewed={} charges={}",
                                     n_ticks,
@@ -4105,10 +4395,7 @@ impl GameApp {
                     Some("xp") => {
                         // xp:<points> — E2E shortcut: grant points through the
                         // REAL level-up curve and report level/progress
-                        let pts: i32 = parts
-                            .get(1)
-                            .and_then(|s| s.parse().ok())
-                            .unwrap_or(100);
+                        let pts: i32 = parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(100);
                         let gained = self.player.add_xp(pts);
                         if gained > 0 {
                             self.play_event("entity.player.levelup", None, 1.0);
@@ -4125,10 +4412,7 @@ impl GameApp {
                         // enchant:<row> — scripted §29 flow: table + full
                         // bookshelf ring, book + lapis through the REAL slot
                         // semantics, grant levels, click the option row
-                        let row: usize = parts
-                            .get(1)
-                            .and_then(|s| s.parse().ok())
-                            .unwrap_or(2);
+                        let row: usize = parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(2);
                         let pos = [
                             self.player.pos.x.floor() as i32,
                             self.player.pos.y.floor() as i32 - 2,
@@ -4156,7 +4440,8 @@ impl GameApp {
                         // levels — grant enough for the cost)
                         let cost = e.options.get(row).map(|o| o.cost as i32).unwrap_or(0);
                         while self.player.xp_level < cost {
-                            self.player.add_xp(vc_gameplay::enchanting::xp_to_next(self.player.xp_level));
+                            self.player
+                                .add_xp(vc_gameplay::enchanting::xp_to_next(self.player.xp_level));
                         }
                         let before = e.options[row];
                         let level_before = self.player.xp_level;
@@ -4239,10 +4524,7 @@ impl GameApp {
                         // give items, open the screen, execute the trade
                         // through the same tier/stock/XP path the TradeRow
                         // click uses (geometry-driven click verified via cclick)
-                        let idx: usize = parts
-                            .get(1)
-                            .and_then(|s| s.parse().ok())
-                            .unwrap_or(0);
+                        let idx: usize = parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(0);
                         let pos = self.player.pos;
                         let id = self
                             .sim
@@ -4269,7 +4551,10 @@ impl GameApp {
                                         pos.x.floor() as i32,
                                         pos.y.floor() as i32,
                                         pos.z.floor() as i32,
-                                        tr.get.0, 2, 15, 0,
+                                        tr.get.0,
+                                        2,
+                                        15,
+                                        0,
                                     );
                                 }
                                 self.play_event("entity.villager.trade", None, 1.0);
@@ -4294,10 +4579,7 @@ impl GameApp {
                         // cleric, run n tier-1 trades through the real
                         // path, report the level-ups (5 trades × 2 XP =
                         // Apprentice at the VERIFIED 10-XP threshold)
-                        let n: usize = parts
-                            .get(1)
-                            .and_then(|s| s.parse().ok())
-                            .unwrap_or(5);
+                        let n: usize = parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(5);
                         let pos = self.player.pos;
                         let id = self
                             .sim
@@ -4344,10 +4626,7 @@ impl GameApp {
                             Some("spider") => SPAWNER_SPIDER,
                             _ => SPAWNER_ZOMBIE,
                         };
-                        let n_ticks: i32 = parts
-                            .get(2)
-                            .and_then(|s| s.parse().ok())
-                            .unwrap_or(30);
+                        let n_ticks: i32 = parts.get(2).and_then(|s| s.parse().ok()).unwrap_or(30);
                         let pos = self.player.pos;
                         let p = [
                             pos.x.floor() as i32 + 5,
@@ -4364,23 +4643,15 @@ impl GameApp {
                         self.sim.spawners.register(p, mob);
                         self.sim.spawners.map.get_mut(&p).unwrap().delay = 0;
                         let kind = vc_gameplay::spawners::mob_kind(mob);
-                        let before = self
-                            .sim
-                            .mobs
-                            .list
-                            .iter()
-                            .filter(|m| m.kind == kind)
-                            .count();
+                        let before = self.sim.mobs.list.iter().filter(|m| m.kind == kind).count();
                         for _ in 0..n_ticks {
-                            self.sim.step(&mut self.world, &mut self.light, &vc_sim::sim::TickScope::everything());
+                            self.sim.step(
+                                &mut self.world,
+                                &mut self.light,
+                                &vc_sim::sim::TickScope::everything(),
+                            );
                         }
-                        let after = self
-                            .sim
-                            .mobs
-                            .list
-                            .iter()
-                            .filter(|m| m.kind == kind)
-                            .count();
+                        let after = self.sim.mobs.list.iter().filter(|m| m.kind == kind).count();
                         vc_render::render::report_boot_log(&format!(
                             "e2e: spawner ({}) {n_ticks}t -> mobs {} -> {} (cycles {}, spawned total {})",
                             match mob {
@@ -4432,8 +4703,11 @@ impl GameApp {
                                 self.world.insert_generated(pos, chunk.clone(), Vec::new());
                                 self.light.init_chunk(&mut self.world, pos);
                                 for (lpos, lmask) in self.light.take_changed() {
-                                    self.world
-                                        .mark_sections_dirty(lpos, lmask, vc_world::world::CAUSE_LIGHT);
+                                    self.world.mark_sections_dirty(
+                                        lpos,
+                                        lmask,
+                                        vc_world::world::CAUSE_LIGHT,
+                                    );
                                 }
                                 self.register_block_entities(pos, &chunk, true);
                                 // teleport into the room center
@@ -4474,8 +4748,7 @@ impl GameApp {
                                     if dx.abs() != r && dz.abs() != r {
                                         continue;
                                     }
-                                    for ms in
-                                        gen.mineshafts_near((pcx + dx) * 16, (pcz + dz) * 16)
+                                    for ms in gen.mineshafts_near((pcx + dx) * 16, (pcz + dz) * 16)
                                     {
                                         found = Some(((pcx + dx, pcz + dz), ms));
                                         break 'scan;
@@ -4484,15 +4757,20 @@ impl GameApp {
                             }
                         }
                         match found {
-                            None => vc_render::render::report_boot_log("e2e: no mineshaft within ±10 chunks (0.4%/chunk — try more area)"),
+                            None => vc_render::render::report_boot_log(
+                                "e2e: no mineshaft within ±10 chunks (0.4%/chunk — try more area)",
+                            ),
                             Some(((cx, cz), ms)) => {
                                 let (chunk, _) = gen.generate_chunk(cx, cz, Vec::new());
                                 let pos = (cx, cz);
                                 self.world.insert_generated(pos, chunk.clone(), Vec::new());
                                 self.light.init_chunk(&mut self.world, pos);
                                 for (lpos, lmask) in self.light.take_changed() {
-                                    self.world
-                                        .mark_sections_dirty(lpos, lmask, vc_world::world::CAUSE_LIGHT);
+                                    self.world.mark_sections_dirty(
+                                        lpos,
+                                        lmask,
+                                        vc_world::world::CAUSE_LIGHT,
+                                    );
                                 }
                                 self.register_block_entities(pos, &chunk, true);
                                 self.player.pos.x = ms.x as f32 + 0.5;
@@ -4619,7 +4897,8 @@ impl GameApp {
                         let mut made = Vec::new();
                         for dcx in -1..=1i32 {
                             for dcz in -1..=1i32 {
-                                let (chunk, _) = gen.generate_chunk(rcx + dcx, rcz + dcz, Vec::new());
+                                let (chunk, _) =
+                                    gen.generate_chunk(rcx + dcx, rcz + dcz, Vec::new());
                                 made.push(((rcx + dcx, rcz + dcz), chunk));
                             }
                         }
@@ -4628,8 +4907,11 @@ impl GameApp {
                             self.world.insert_generated(pos, chunk.clone(), Vec::new());
                             self.light.init_chunk(&mut self.world, pos);
                             for (lpos, lmask) in self.light.take_changed() {
-                                self.world
-                                    .mark_sections_dirty(lpos, lmask, vc_world::world::CAUSE_LIGHT);
+                                self.world.mark_sections_dirty(
+                                    lpos,
+                                    lmask,
+                                    vc_world::world::CAUSE_LIGHT,
+                                );
                             }
                             self.register_block_entities(pos, &chunk, true);
                         }
@@ -4760,7 +5042,8 @@ impl GameApp {
                                 self.cursor_stack = vc_inventory::inventory::ItemStack::new(ing, 1);
                                 self.player.inv.slots[i].count -= 1;
                                 if self.player.inv.slots[i].count == 0 {
-                                    self.player.inv.slots[i] = vc_inventory::inventory::ItemStack::EMPTY;
+                                    self.player.inv.slots[i] =
+                                        vc_inventory::inventory::ItemStack::EMPTY;
                                 }
                                 let mut grid = self.craft_grid[c];
                                 Inventory::slot_click(&mut grid, &mut self.cursor_stack, false);
@@ -4776,7 +5059,9 @@ impl GameApp {
                             self.craft_grid.iter().take(size * size).copied().collect();
                         let msg = match self.craft_result(&grid, size) {
                             Some(out) => {
-                                vc_gameplay::craft::consume_grid(&mut self.craft_grid[..size * size]);
+                                vc_gameplay::craft::consume_grid(
+                                    &mut self.craft_grid[..size * size],
+                                );
                                 let left = self.player.inv.add(out.block, out.count);
                                 format!(
                                     "e2e: crafted {} x {} (leftover {left})",
@@ -4877,8 +5162,7 @@ impl GameApp {
                             self.settings.sim_distance = v.clamp(5, 32);
                             vc_render::render::report_boot_log(&format!(
                                 "e2e: sim distance {} (rd {}, ring center follows player)",
-                                self.settings.sim_distance,
-                                self.settings.render_distance
+                                self.settings.sim_distance, self.settings.render_distance
                             ));
                         }
                     }
@@ -4909,7 +5193,13 @@ impl GameApp {
                         // msaa:<0|4|8> — MSAA (device-gated; stats `msaa`
                         // reports the ACTIVE count)
                         if let Some(v) = parts.get(1).and_then(|s| s.parse::<u8>().ok()) {
-                            self.settings.msaa = if v >= 6 { 8 } else if v >= 2 { 4 } else { 0 };
+                            self.settings.msaa = if v >= 6 {
+                                8
+                            } else if v >= 2 {
+                                4
+                            } else {
+                                0
+                            };
                             self.after_settings_change();
                             vc_render::render::report_boot_log(&format!(
                                 "e2e: msaa {} (device max {}, active {})",
@@ -4927,8 +5217,7 @@ impl GameApp {
                             self.after_settings_change();
                             vc_render::render::report_boot_log(&format!(
                                 "e2e: occlusion {} (culled counter: {})",
-                                self.settings.occlusion,
-                                self.stats.culled
+                                self.settings.occlusion, self.stats.culled
                             ));
                         }
                     }
@@ -4945,7 +5234,8 @@ impl GameApp {
                             self.settings.gpu_meshing = *v != "0";
                             self.remesh_all();
                             self.after_settings_change();
-                            let backend = match (&self.renderer.gpu_mesh, self.settings.gpu_meshing) {
+                            let backend = match (&self.renderer.gpu_mesh, self.settings.gpu_meshing)
+                            {
                                 (Some(m), true) => {
                                     format!("GPU (done {})", m.jobs_done)
                                 }
@@ -4990,9 +5280,9 @@ impl GameApp {
                         let props = vc_render::iris::ShadersProperties::parse(
                             vc_render::iris::DEMO_PROPERTIES,
                         );
-                        let (version, targets) = vc_render::iris::parse_stage_directives(
-                            Some(vc_render::iris::DEMO_STAGE_GLSL),
-                        );
+                        let (version, targets) = vc_render::iris::parse_stage_directives(Some(
+                            vc_render::iris::DEMO_STAGE_GLSL,
+                        ));
                         vc_render::render::report_boot_log(&format!(
                             "e2e: iris demo parse — profiles={} sliders={} stage=GLSL-{} targets={:?}",
                             props.profiles().len(),
@@ -5038,27 +5328,14 @@ impl GameApp {
                                     "e2e: dpdemo scan — {}",
                                     report.summary()
                                 ));
-                                let loaded = vc_pack::datapack::LoadedData::from_reports(
-                                    vec![report],
-                                );
+                                let loaded =
+                                    vc_pack::datapack::LoadedData::from_reports(vec![report]);
                                 // shaped recipe: 2x2 cobble -> 4 stone bricks
                                 let grid = vec![
-                                    vc_pack::datapack::GridItem::item(
-                                        "minecraft:cobblestone",
-                                        5,
-                                    ),
-                                    vc_pack::datapack::GridItem::item(
-                                        "minecraft:cobblestone",
-                                        5,
-                                    ),
-                                    vc_pack::datapack::GridItem::item(
-                                        "minecraft:cobblestone",
-                                        5,
-                                    ),
-                                    vc_pack::datapack::GridItem::item(
-                                        "minecraft:cobblestone",
-                                        5,
-                                    ),
+                                    vc_pack::datapack::GridItem::item("minecraft:cobblestone", 5),
+                                    vc_pack::datapack::GridItem::item("minecraft:cobblestone", 5),
+                                    vc_pack::datapack::GridItem::item("minecraft:cobblestone", 5),
+                                    vc_pack::datapack::GridItem::item("minecraft:cobblestone", 5),
                                 ];
                                 let craft = loaded
                                     .match_grid(&grid, 2)
@@ -5142,12 +5419,8 @@ impl GameApp {
                         // world through the REAL create pipeline (seed parse
                         // + reset_world + Loading snap) without UI clicks
                         let mode = match parts.get(1).copied() {
-                            Some("creative") => {
-                                vc_gameplay::modes::GameMode::Creative
-                            }
-                            Some("hardcore") => {
-                                vc_gameplay::modes::GameMode::Hardcore
-                            }
+                            Some("creative") => vc_gameplay::modes::GameMode::Creative,
+                            Some("hardcore") => vc_gameplay::modes::GameMode::Hardcore,
                             _ => vc_gameplay::modes::GameMode::Survival,
                         };
                         let seed = parts
@@ -5164,10 +5437,7 @@ impl GameApp {
                     Some("hurt") => {
                         // hurt:<hp> — direct damage through the mode rules
                         // (creative absorbs it — immunity is observable)
-                        let dmg: f32 = parts
-                            .get(1)
-                            .and_then(|s| s.parse().ok())
-                            .unwrap_or(4.0);
+                        let dmg: f32 = parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(4.0);
                         if self.mode.invulnerable() {
                             vc_render::render::report_boot_log(&format!(
                                 "e2e: hurt {dmg} absorbed (creative immunity), health {}",
@@ -5188,13 +5458,11 @@ impl GameApp {
                     Some("fall") => {
                         // fall:<blocks> — teleport up, let real gravity +
                         // the real fall-damage path apply (MC-12357)
-                        let blocks: f32 = parts
-                            .get(1)
-                            .and_then(|s| s.parse().ok())
-                            .unwrap_or(10.0);
+                        let blocks: f32 = parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(10.0);
                         self.player.pos.y += blocks;
                         self.player.vel.y = 0.0;
                         self.player.reset_fall();
+                        self.player.reset_air();
                         vc_render::render::report_boot_log(&format!(
                             "e2e: fall {blocks} armed (health {})",
                             self.player.health
@@ -5204,10 +5472,7 @@ impl GameApp {
                         // respawn:<hp> — set health then trigger the death
                         // check manually; the stats screen/mode/health
                         // fields verify the outcome
-                        let hp: f32 = parts
-                            .get(1)
-                            .and_then(|s| s.parse().ok())
-                            .unwrap_or(0.0);
+                        let hp: f32 = parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(0.0);
                         self.player.health = hp;
                         self.check_death();
                         vc_render::render::report_boot_log(&format!(
@@ -5222,7 +5487,10 @@ impl GameApp {
                         // mob:<kind>[:count] — spawn near the player through
                         // the REAL MobSystem (light rules apply to natural
                         // spawning only; explicit spawns are unconditional)
-                        let kind = parts.get(1).copied().and_then(vc_gameplay::mobs::MobKind::from_name);
+                        let kind = parts
+                            .get(1)
+                            .copied()
+                            .and_then(vc_gameplay::mobs::MobKind::from_name);
                         let n: usize = parts.get(2).and_then(|s| s.parse().ok()).unwrap_or(1);
                         if let Some(kind) = kind {
                             let (px, py, pz) = (
@@ -5279,9 +5547,7 @@ impl GameApp {
         // at y = −2312 in the WebGL2 build). Block data is all the snap
         // needs; meshes catch up in view. The Game arm is defense in depth
         // for the timeout path that enters before meshing finishes.
-        if (self.screen == Screen::Loading || self.screen == Screen::Game)
-            && !self.spawn_snapped
-        {
+        if (self.screen == Screen::Loading || self.screen == Screen::Game) && !self.spawn_snapped {
             self.try_snap_to_surface();
         }
         if self.screen == Screen::Loading {
@@ -5361,8 +5627,31 @@ impl GameApp {
                 }
             }
 
+            // Drowning (VERIFIED — research-verdicts.md live round,
+            // minecraft.wiki/w/Damage §Drowning): 2 HP per second once
+            // the 300-tick air supply is depleted; creative is immune
+            let drown = self.player.take_pending_drown_damage();
+            if drown > 0.0 {
+                if self.mode.invulnerable() {
+                    // creative: air still drains (the bubbles show), but
+                    // no damage (vanilla invulnerability)
+                } else {
+                    let applied = self.player.damage(drown);
+                    if applied > 0.0 {
+                        self.play_event("entity.player.hurt", None, 1.0);
+                        self.death_cause = "DROWNED".into();
+                        self.ui.dirty = true;
+                    }
+                }
+            }
+
             // targeting
-            self.target = raycast(&self.world, self.player.eye(), self.player.look_dir(), crate::player::REACH);
+            self.target = raycast(
+                &self.world,
+                self.player.eye(),
+                self.player.look_dir(),
+                crate::player::REACH,
+            );
 
             // interactions
             self.break_timer -= dt;
@@ -5371,25 +5660,33 @@ impl GameApp {
                 if let Some((pos, b, _)) = self.target {
                     if b != BEDROCK {
                         let broke = self.world.get_block(pos[0], pos[1], pos[2]);
-                        let (biome, sky, blk) = light_at(&self.world, &self.light, pos[0], pos[1], pos[2]);
-                        if let Some((old, new)) = self.world.set_block(pos[0], pos[1], pos[2], AIR) {
-                            self.light.on_block_changed(&self.world, pos[0], pos[1], pos[2], old, new);
+                        let (biome, sky, blk) =
+                            light_at(&self.world, &self.light, pos[0], pos[1], pos[2]);
+                        if let Some((old, new)) = self.world.set_block(pos[0], pos[1], pos[2], AIR)
+                        {
+                            self.light.on_block_changed(
+                                &self.world,
+                                pos[0],
+                                pos[1],
+                                pos[2],
+                                old,
+                                new,
+                            );
                         }
                         // fences: removing a block changes neighbor connections
                         update_fence_neighbors(&mut self.world, pos[0], pos[1], pos[2]);
                         // §5 break burst: vanilla 4×4×4 particle grid, baked
                         // biome tint + light
-                        self.particles.spawn_block_break(
-                            pos[0], pos[1], pos[2], broke, biome, sky, blk,
-                        );
+                        self.particles
+                            .spawn_block_break(pos[0], pos[1], pos[2], broke, biome, sky, blk);
                         // §22/§24: item drop + neighbor sim notification
                         // (water flows, sand falls). Phase 1: creative
                         // breaking yields NO drops (infinite inventory —
                         // blocks just vanish, vanilla behavior)
                         if self.mode.drops_blocks() {
-                            self.sim.items.drop_block(
-                                pos[0], pos[1], pos[2], broke, biome, sky, blk,
-                            );
+                            self.sim
+                                .items
+                                .drop_block(pos[0], pos[1], pos[2], broke, biome, sky, blk);
                         }
                         notify_sim(&self.world, &mut self.sim.sched, pos[0], pos[1], pos[2]);
                         // §27/§29: container contents spill + entity cleanup
@@ -5404,7 +5701,11 @@ impl GameApp {
                         }
                         self.play_event(
                             vc_audio::sounds::family_event(def(b).sound, true),
-                            Some([pos[0] as f32 + 0.5, pos[1] as f32 + 0.5, pos[2] as f32 + 0.5]),
+                            Some([
+                                pos[0] as f32 + 0.5,
+                                pos[1] as f32 + 0.5,
+                                pos[2] as f32 + 0.5,
+                            ]),
                             1.0,
                         );
                         self.break_timer = 0.24;
@@ -5442,7 +5743,11 @@ impl GameApp {
                         );
                         self.play_event(
                             "block.lever.click",
-                            Some([tpos[0] as f32 + 0.5, tpos[1] as f32 + 0.5, tpos[2] as f32 + 0.5]),
+                            Some([
+                                tpos[0] as f32 + 0.5,
+                                tpos[1] as f32 + 0.5,
+                                tpos[2] as f32 + 0.5,
+                            ]),
                             1.0,
                         );
                         self.place_timer = 0.24;
@@ -5477,6 +5782,14 @@ impl GameApp {
                         self.sim.containers.entry(tpos, CHEST);
                         self.open_container(Container::Chest { pos: tpos });
                         self.place_timer = 0.3;
+                    } else if tb == HOPPER {
+                        // §Container: right-click opens the hopper screen
+                        // (5 slots, VERIFIED "Item Hopper" GUI); the entity
+                        // is created on first use. Screen dims follow the
+                        // verdict-corrected 176×133 (research-verdicts.md)
+                        self.sim.containers.entry(tpos, HOPPER);
+                        self.open_container(Container::Hopper { pos: tpos });
+                        self.place_timer = 0.3;
                     } else if !self.player.held().is_empty()
                         && self.player.held().block == POTION_EMPTY
                         && (self.player.in_water || self.player.head_in_water)
@@ -5497,15 +5810,16 @@ impl GameApp {
                                 self.player.pos.x.floor() as i32,
                                 self.player.pos.y.floor() as i32,
                                 self.player.pos.z.floor() as i32,
-                                POTION_WATER, 2, 15, 0,
+                                POTION_WATER,
+                                2,
+                                15,
+                                0,
                             );
                         }
                         self.play_event("liquid.splash", None, 0.8);
                         self.place_timer = 0.3;
                         self.ui.dirty = true;
-                    } else if !self.player.held().is_empty()
-                        && is_food(self.player.held().block)
-                    {
+                    } else if !self.player.held().is_empty() && is_food(self.player.held().block) {
                         // Phase 2: right-click eats raw meat. Documented
                         // deviation: no hunger system yet, so food heals
                         // directly (4 HP ≈ the meats' satiating weight);
@@ -5569,7 +5883,10 @@ impl GameApp {
                                 self.player.pos.x.floor() as i32,
                                 self.player.pos.y.floor() as i32,
                                 self.player.pos.z.floor() as i32,
-                                POTION_EMPTY, 2, 15, 0,
+                                POTION_EMPTY,
+                                2,
+                                15,
+                                0,
                             );
                         }
                         self.play_event("entity.generic.drink", None, 0.9);
@@ -5582,85 +5899,95 @@ impl GameApp {
                             // the drink/fill branches above catch the real
                             // interactions; empty bottle out of water = no-op
                         } else if let Some((_, _, prev)) = self.target {
-                        let pb = self.world.get_block(prev[0], prev[1], prev[2]);
-                        let replaceable = pb == AIR || pb == WATER || is_cross(pb);
-                        let collides_player = is_solid(b) && self.player.block_intersects_player(prev);
-                        if replaceable && !collides_player {
-                            // vanilla placement rules per block family
-                            let state = if is_log(b) {
-                                // vanilla log placement: the axis follows the
-                                // clicked face (top/bottom → axis Y, ±X → X, ±Z → Z)
-                                let axis = if prev[1] != tpos[1] {
-                                    1
-                                } else if prev[0] != tpos[0] {
-                                    0
+                            let pb = self.world.get_block(prev[0], prev[1], prev[2]);
+                            let replaceable = pb == AIR || pb == WATER || is_cross(pb);
+                            let collides_player =
+                                is_solid(b) && self.player.block_intersects_player(prev);
+                            if replaceable && !collides_player {
+                                // vanilla placement rules per block family
+                                let state = if is_log(b) {
+                                    // vanilla log placement: the axis follows the
+                                    // clicked face (top/bottom → axis Y, ±X → X, ±Z → Z)
+                                    let axis = if prev[1] != tpos[1] {
+                                        1
+                                    } else if prev[0] != tpos[0] {
+                                        0
+                                    } else {
+                                        2
+                                    };
+                                    log_axis_state(b, axis)
+                                } else if b == OAK_SLAB {
+                                    // vanilla slabs: clicking the TOP of a block →
+                                    // bottom slab; the UNDERSIDE → top slab
+                                    let half = if prev[1] < tpos[1] { "top" } else { "bottom" };
+                                    prop_state_encode(b, &[("half", half)]).unwrap_or(b as u16)
+                                } else if b == COBBLE_STAIRS {
+                                    // vanilla stairs: face AWAY from the player
+                                    // (the ascent direction); half like slabs
+                                    let yaw =
+                                        ((self.player.yaw.to_degrees() % 360.0) + 360.0) % 360.0;
+                                    let facing = match yaw {
+                                        315.0..=360.0 | 0.0..=45.0 => "south",
+                                        45.0..=135.0 => "west",
+                                        135.0..=225.0 => "north",
+                                        _ => "east",
+                                    };
+                                    let half = if prev[1] < tpos[1] { "top" } else { "bottom" };
+                                    prop_state_encode(b, &[("facing", facing), ("half", half)])
+                                        .unwrap_or(b as u16)
+                                } else if b == OAK_FENCE {
+                                    // connections computed from the current world
+                                    fence_state_for(&self.world, prev[0], prev[1], prev[2])
+                                        .unwrap_or(b as u16)
                                 } else {
-                                    2
+                                    // sim blocks (wire/furnace/…) get their proper
+                                    // default STATE — never the identity slot
+                                    default_state(b)
                                 };
-                                log_axis_state(b, axis)
-                            } else if b == OAK_SLAB {
-                                // vanilla slabs: clicking the TOP of a block →
-                                // bottom slab; the UNDERSIDE → top slab
-                                let half = if prev[1] < tpos[1] { "top" } else { "bottom" };
-                                prop_state_encode(b, &[("half", half)]).unwrap_or(b as u16)
-                            } else if b == COBBLE_STAIRS {
-                                // vanilla stairs: face AWAY from the player
-                                // (the ascent direction); half like slabs
-                                let yaw = ((self.player.yaw.to_degrees() % 360.0) + 360.0) % 360.0;
-                                let facing = match yaw {
-                                    315.0..=360.0 | 0.0..=45.0 => "south",
-                                    45.0..=135.0 => "west",
-                                    135.0..=225.0 => "north",
-                                    _ => "east",
-                                };
-                                let half = if prev[1] < tpos[1] { "top" } else { "bottom" };
-                                prop_state_encode(
-                                    b,
-                                    &[("facing", facing), ("half", half)],
-                                )
-                                .unwrap_or(b as u16)
-                            } else if b == OAK_FENCE {
-                                // connections computed from the current world
-                                fence_state_for(&self.world, prev[0], prev[1], prev[2])
-                                    .unwrap_or(b as u16)
-                            } else {
-                                // sim blocks (wire/furnace/…) get their proper
-                                // default STATE — never the identity slot
-                                default_state(b)
-                            };
-                            if let Some((old, new)) =
-                                self.world.set_block_state(prev[0], prev[1], prev[2], state)
-                            {
-                                self.light.on_block_changed(
-                                    &self.world, prev[0], prev[1], prev[2], old, new,
-                                );
-                            }
-                            // fences: neighbors recompute their connections
-                            update_fence_neighbors(&mut self.world, prev[0], prev[1], prev[2]);
-                            // §24/§25: a new block notifies the sim
-                            notify_sim(&self.world, &mut self.sim.sched, prev[0], prev[1], prev[2]);
-                            self.play_event(
-                                vc_audio::sounds::family_event(def(b).sound, true),
-                                Some([
-                                    prev[0] as f32 + 0.5,
-                                    prev[1] as f32 + 0.5,
-                                    prev[2] as f32 + 0.5,
-                                ]),
-                                1.0,
-                            );
-                            // Phase 1: placement depletes the stack in
-                            // Survival/Hardcore only — creative stacks are
-                            // infinite (vanilla behavior)
-                            if self.mode.depletes_items() {
-                                let held = self.player.held_mut();
-                                held.count -= 1;
-                                if held.count == 0 {
-                                    *held = vc_inventory::inventory::ItemStack::EMPTY;
+                                if let Some((old, new)) =
+                                    self.world.set_block_state(prev[0], prev[1], prev[2], state)
+                                {
+                                    self.light.on_block_changed(
+                                        &self.world,
+                                        prev[0],
+                                        prev[1],
+                                        prev[2],
+                                        old,
+                                        new,
+                                    );
                                 }
+                                // fences: neighbors recompute their connections
+                                update_fence_neighbors(&mut self.world, prev[0], prev[1], prev[2]);
+                                // §24/§25: a new block notifies the sim
+                                notify_sim(
+                                    &self.world,
+                                    &mut self.sim.sched,
+                                    prev[0],
+                                    prev[1],
+                                    prev[2],
+                                );
+                                self.play_event(
+                                    vc_audio::sounds::family_event(def(b).sound, true),
+                                    Some([
+                                        prev[0] as f32 + 0.5,
+                                        prev[1] as f32 + 0.5,
+                                        prev[2] as f32 + 0.5,
+                                    ]),
+                                    1.0,
+                                );
+                                // Phase 1: placement depletes the stack in
+                                // Survival/Hardcore only — creative stacks are
+                                // infinite (vanilla behavior)
+                                if self.mode.depletes_items() {
+                                    let held = self.player.held_mut();
+                                    held.count -= 1;
+                                    if held.count == 0 {
+                                        *held = vc_inventory::inventory::ItemStack::EMPTY;
+                                    }
+                                }
+                                self.place_timer = 0.24;
+                                self.edits += 1;
                             }
-                            self.place_timer = 0.24;
-                            self.edits += 1;
-                        }
                         }
                     }
                 }
@@ -5673,7 +6000,8 @@ impl GameApp {
             // rebuild to draw at all.
             self.check_death();
         }
-        self.phases.add(crate::bench::PHASE_SIM, crate::bench::micros() - t_sim);
+        self.phases
+            .add(crate::bench::PHASE_SIM, crate::bench::micros() - t_sim);
 
         // toasts
         if let Some((_, t)) = self.item_toast.as_mut() {
@@ -5684,16 +6012,34 @@ impl GameApp {
             }
         }
 
+        // held-item name fade: track the (slot, block) pair — a change
+        // restarts the ~2 s display (vanilla HUD behavior)
+        let held_key = (
+            self.player.selected,
+            self.player.inv.slots[self.player.selected].block,
+        );
+        if held_key != self.held_key {
+            self.held_key = held_key;
+            let n = name(self.player.inv.slots[self.player.selected].block);
+            self.held_name = if self.player.inv.slots[self.player.selected].is_empty() {
+                String::new()
+            } else {
+                n.to_string()
+            };
+            self.held_name_t = 2.0;
+            self.ui.dirty = true;
+        }
+        if self.held_name_t > 0.0 {
+            self.held_name_t = (self.held_name_t - dt).max(0.0);
+            self.ui.dirty = true;
+        }
+
         // animated pack textures: atlas region updates only (§20 — no
         // geometry rebuilds when a texture frame changes)
         if !self.animations.is_empty() {
             let updates = vc_render::textures::tick_animations(&mut self.animations, dt);
             for (tile, frame) in updates {
-                if let Some(a) = self
-                    .animations
-                    .iter()
-                    .find(|a| a.tile == tile)
-                {
+                if let Some(a) = self.animations.iter().find(|a| a.tile == tile) {
                     self.renderer.update_atlas_frame(a, frame as usize);
                 }
             }
@@ -5704,15 +6050,12 @@ impl GameApp {
         // 0.05 s cadence shows them smoothly)
         let live_debug = self.screen == Screen::Game && self.show_debug;
         let container_live = self.container.is_some();
-        let cadence = if self.screen == Screen::Game
-            && !self.picker_open
-            && !live_debug
-            && !container_live
-        {
-            0.15
-        } else {
-            0.05
-        };
+        let cadence =
+            if self.screen == Screen::Game && !self.picker_open && !live_debug && !container_live {
+                0.15
+            } else {
+                0.05
+            };
         // containers animate: mark the UI dirty on a 5 Hz heartbeat while a
         // furnace screen is open (craft/inventory screens are static between
         // clicks — clicks already set dirty)
@@ -5761,11 +6104,15 @@ impl GameApp {
             .collect();
         let tick = ((self.time - self.load_start) * 20.0).max(0.0) as i64;
         if !entries.is_empty() {
-            let refs: Vec<(i32, i32, &vc_chunk::chunk::Chunk, Option<&Arc<vc_world::light::LightData>>)> =
-                entries
-                    .iter()
-                    .map(|(p, c)| (p.0, p.1, c.as_ref(), self.world.light.get(p)))
-                    .collect();
+            let refs: Vec<(
+                i32,
+                i32,
+                &vc_chunk::chunk::Chunk,
+                Option<&Arc<vc_world::light::LightData>>,
+            )> = entries
+                .iter()
+                .map(|(p, c)| (p.0, p.1, c.as_ref(), self.world.light.get(p)))
+                .collect();
             if let Err(e) = vc_anvil::save::store_chunks(&self.world_dir, &refs, tick) {
                 vc_render::render::report_boot_log(&format!("autosave failed: {e}"));
             }
@@ -5775,7 +6122,11 @@ impl GameApp {
             name: self.world_name.clone(),
             spawn: self.level_spawn,
             player: Some(vc_anvil::save::PlayerMeta {
-                pos: [self.player.pos.x as f64, self.player.pos.y as f64, self.player.pos.z as f64],
+                pos: [
+                    self.player.pos.x as f64,
+                    self.player.pos.y as f64,
+                    self.player.pos.z as f64,
+                ],
                 yaw: self.player.yaw,
                 pitch: self.player.pitch,
             }),
@@ -5853,7 +6204,11 @@ impl GameApp {
 
         // 8:1 horizontal mapping (vanilla nether portals)
         let cur = self.world.dimension;
-        let (nx, nz) = cur.map_coords(dim, self.player.pos.x.floor() as i32, self.player.pos.z.floor() as i32);
+        let (nx, nz) = cur.map_coords(
+            dim,
+            self.player.pos.x.floor() as i32,
+            self.player.pos.z.floor() as i32,
+        );
 
         // fresh world in the target dimension
         self.world = World::new_in_dimension(self.world.seed, dim);
@@ -5880,7 +6235,11 @@ impl GameApp {
         self.place_timer = 0.0;
 
         // player: inventory persists, position rescales; y waits for the snap
-        let y = if dim == vc_world::world::Dimension::Nether { 90.0 } else { 120.0 };
+        let y = if dim == vc_world::world::Dimension::Nether {
+            90.0
+        } else {
+            120.0
+        };
         self.player.pos = Vec3::new(nx as f32 + 0.5, y, nz as f32 + 0.5);
         self.player.vel = Vec3::ZERO;
         self.player.flying = false;
@@ -5943,7 +6302,10 @@ impl GameApp {
             ("tris", StatsVal::F(self.stats.tris as f32)),
             ("drawCalls", StatsVal::F(self.stats.draws as f32)),
             ("bufferBinds", StatsVal::F(self.stats.binds as f32)),
-            ("drawPath", StatsVal::S(self.renderer.draw_path_name().into())),
+            (
+                "drawPath",
+                StatsVal::S(self.renderer.draw_path_name().into()),
+            ),
             // §28: current dimension (0 = overworld, 1 = nether) + name
             ("dim", StatsVal::F(self.world.dimension as u8 as f32)),
             ("dimName", StatsVal::S(self.world.dimension.id().into())),
@@ -5955,40 +6317,62 @@ impl GameApp {
             ),
             ("packTier", StatsVal::S(self.renderer.pack_tier.clone())),
             // §12 evidence: section-granular invalidation state
-            ("dirtySections", StatsVal::F(self.world.dirty_section_count() as f32)),
+            (
+                "dirtySections",
+                StatsVal::F(self.world.dirty_section_count() as f32),
+            ),
             ("dirtyChunks", StatsVal::F(self.world.dirty.len() as f32)),
             (
                 "dirtyCauses",
+                StatsVal::F(self.world.dirty_causes.values().fold(0u8, |a, b| a | b) as f32),
+            ),
+            (
+                "sectionCache",
                 StatsVal::F(
-                    self.world.dirty_causes.values().fold(0u8, |a, b| a | b) as f32
+                    self.section_meshes
+                        .values()
+                        .map(|v| v.iter().filter(|s| s.is_some()).count())
+                        .sum::<usize>() as f32,
                 ),
             ),
-            ("sectionCache", StatsVal::F(
-                self.section_meshes
-                    .values()
-                    .map(|v| v.iter().filter(|s| s.is_some()).count())
-                    .sum::<usize>() as f32,
-            )),
             ("rd", StatsVal::F(self.settings.render_distance as f32)),
             // Phase 6 §26: rendering-quality settings + occlusion counters
             ("sd", StatsVal::F(self.settings.sim_distance as f32)),
             ("mip", StatsVal::F(self.settings.mipmap_levels as f32)),
             ("aniso", StatsVal::F(self.settings.aniso as f32)),
             ("msaa", StatsVal::F(self.renderer.msaa() as f32)),
-            ("msaaMax", StatsVal::F(self.renderer.msaa_supported() as f32)),
+            (
+                "msaaMax",
+                StatsVal::F(self.renderer.msaa_supported() as f32),
+            ),
             ("occl", StatsVal::B(self.settings.occlusion)),
             ("culled", StatsVal::F(self.stats.culled as f32)),
             // Phase 7: GPU meshing backend + throughput counters
-            ("gmesh", StatsVal::B(
-                self.settings.gpu_meshing && self.renderer.gpu_mesh.is_some()
-            )),
+            (
+                "gmesh",
+                StatsVal::B(self.settings.gpu_meshing && self.renderer.gpu_mesh.is_some()),
+            ),
             ("gmeshAvail", StatsVal::B(self.renderer.gpu_mesh.is_some())),
-            ("gmeshDone", StatsVal::F(
-                self.renderer.gpu_mesh.as_ref().map(|m| m.jobs_done as f32).unwrap_or(0.0)
-            )),
-            ("gmeshQueue", StatsVal::F(
-                self.renderer.gpu_mesh.as_ref().map(|m| m.queued() as f32).unwrap_or(0.0)
-            )),
+            (
+                "gmeshDone",
+                StatsVal::F(
+                    self.renderer
+                        .gpu_mesh
+                        .as_ref()
+                        .map(|m| m.jobs_done as f32)
+                        .unwrap_or(0.0),
+                ),
+            ),
+            (
+                "gmeshQueue",
+                StatsVal::F(
+                    self.renderer
+                        .gpu_mesh
+                        .as_ref()
+                        .map(|m| m.queued() as f32)
+                        .unwrap_or(0.0),
+                ),
+            ),
             // Phase 8: Iris interface — detected packs (native scan; the
             // wasm build boots empty by design, no filesystem)
             ("irisPacks", StatsVal::F(self.iris_packs.len() as f32)),
@@ -6006,18 +6390,30 @@ impl GameApp {
             ("smooth", StatsVal::B(self.settings.smooth_lighting)),
             ("fancy", StatsVal::B(self.settings.graphics >= 1)),
             ("graphics", StatsVal::F(self.settings.graphics as f32)),
-            ("shadowQuality", StatsVal::F(self.settings.shadow_quality as f32)),
+            (
+                "shadowQuality",
+                StatsVal::F(self.settings.shadow_quality as f32),
+            ),
             ("shadowMap", StatsVal::F(self.renderer.shadow_px as f32)),
             ("upscale", StatsVal::F(self.settings.upscale_factor())),
             ("edits", StatsVal::F(self.edits as f32)),
             ("particles", StatsVal::F(self.particles.len() as f32)),
             ("particlesDrawn", StatsVal::F(self.stats.particles as f32)),
-            ("particlesTotal", StatsVal::F(self.particles.spawned_total as f32)),
+            (
+                "particlesTotal",
+                StatsVal::F(self.particles.spawned_total as f32),
+            ),
             ("simTicks", StatsVal::F(self.sim.ticks as f32)),
             ("schedPending", StatsVal::F(self.sim.sched.pending() as f32)),
             ("items", StatsVal::F(self.sim.items.len() as f32)),
-            ("itemsDropped", StatsVal::F(self.sim.items.dropped_total as f32)),
-            ("itemsPicked", StatsVal::F(self.sim.items.picked_total as f32)),
+            (
+                "itemsDropped",
+                StatsVal::F(self.sim.items.dropped_total as f32),
+            ),
+            (
+                "itemsPicked",
+                StatsVal::F(self.sim.items.picked_total as f32),
+            ),
             ("sounds", StatsVal::F(self.sounds_played as f32)),
             // §29: real player health + brewing counters
             ("health", StatsVal::F(self.player.health)),
@@ -6028,16 +6424,31 @@ impl GameApp {
             ("hardcoreDead", StatsVal::B(self.hardcore_dead)),
             ("furnaces", StatsVal::F(self.sim.furnaces.map.len() as f32)),
             ("brewStands", StatsVal::F(self.sim.brewing.map.len() as f32)),
-            ("potionsBrewed", StatsVal::F(self.sim.brewing.total_brewed as f32)),
+            (
+                "potionsBrewed",
+                StatsVal::F(self.sim.brewing.total_brewed as f32),
+            ),
             // §29: XP + enchanting + villagers
             ("xpLevel", StatsVal::F(self.player.xp_level as f32)),
             ("xpPoints", StatsVal::F(self.player.xp_points as f32)),
-            ("enchApplied", StatsVal::F(self.sim.enchants.total_enchanted as f32)),
-            ("villagers", StatsVal::F(self.sim.villagers.list.len() as f32)),
-            ("tradesDone", StatsVal::F(self.sim.villagers.trades_done as f32)),
+            (
+                "enchApplied",
+                StatsVal::F(self.sim.enchants.total_enchanted as f32),
+            ),
+            (
+                "villagers",
+                StatsVal::F(self.sim.villagers.list.len() as f32),
+            ),
+            (
+                "tradesDone",
+                StatsVal::F(self.sim.villagers.trades_done as f32),
+            ),
             // Phase 2: mobs + combat
             ("mobs", StatsVal::F(self.sim.mobs.len() as f32)),
-            ("mobsSpawned", StatsVal::F(self.sim.mobs.spawned_total as f32)),
+            (
+                "mobsSpawned",
+                StatsVal::F(self.sim.mobs.spawned_total as f32),
+            ),
             ("mobsKilled", StatsVal::F(self.sim.mobs.killed_total as f32)),
             ("arrows", StatsVal::F(self.sim.mobs.arrows.len() as f32)),
             ("swingT", StatsVal::F(self.swing_t)),
@@ -6049,27 +6460,51 @@ impl GameApp {
             ("breakHold", StatsVal::B(self.input.break_hold)),
             ("placeHold", StatsVal::B(self.input.place_hold)),
             ("hasTarget", StatsVal::B(self.target.is_some())),
-            ("targetState", StatsVal::F(
-                self.target.map(|(t, _, _)| self.world.get_state(t[0], t[1], t[2]) as f32).unwrap_or(-1.0)
-            )),
-            ("targetDesc", StatsVal::S(
-                self.target
-                    .map(|(t, _, _)| state_description(self.world.get_state(t[0], t[1], t[2])))
-                    .unwrap_or_default()
-            )),
-            ("modelStates", StatsVal::F(
-                vc_pack::model::models().map(|m| m.by_state.len() as f32).unwrap_or(0.0)
-            )),
-            ("packTextures", StatsVal::F(
-                vc_pack::model::models().map(|m| m.tiles.len() as f32).unwrap_or(0.0)
-            )),
+            (
+                "targetState",
+                StatsVal::F(
+                    self.target
+                        .map(|(t, _, _)| self.world.get_state(t[0], t[1], t[2]) as f32)
+                        .unwrap_or(-1.0),
+                ),
+            ),
+            (
+                "targetDesc",
+                StatsVal::S(
+                    self.target
+                        .map(|(t, _, _)| state_description(self.world.get_state(t[0], t[1], t[2])))
+                        .unwrap_or_default(),
+                ),
+            ),
+            (
+                "modelStates",
+                StatsVal::F(
+                    vc_pack::model::models()
+                        .map(|m| m.by_state.len() as f32)
+                        .unwrap_or(0.0),
+                ),
+            ),
+            (
+                "packTextures",
+                StatsVal::F(
+                    vc_pack::model::models()
+                        .map(|m| m.tiles.len() as f32)
+                        .unwrap_or(0.0),
+                ),
+            ),
             ("animations", StatsVal::F(self.animations.len() as f32)),
             ("breakTimer", StatsVal::F(self.break_timer)),
-            ("hover", StatsVal::F(self.hover.map(|h| h as f32).unwrap_or(-1.0))),
+            (
+                "hover",
+                StatsVal::F(self.hover.map(|h| h as f32).unwrap_or(-1.0)),
+            ),
             ("picker", StatsVal::B(self.picker_open)),
             ("frameMs", StatsVal::F(self.frame_ms)),
             ("histLen", StatsVal::F(self.frame_times.len() as f32)),
-            ("dragging", StatsVal::F(self.dragging.map(|d| d as f32).unwrap_or(-1.0))),
+            (
+                "dragging",
+                StatsVal::F(self.dragging.map(|d| d as f32).unwrap_or(-1.0)),
+            ),
         ]);
     }
 
@@ -6096,8 +6531,12 @@ impl GameApp {
     /// the Loading timeout entered the game before meshing finished.
     fn try_snap_to_surface(&mut self) {
         let pc = self.player_chunk();
-        let lx = (self.player.pos.x - pc.0 as f32 * 16.0).floor().clamp(0.0, 15.0) as usize;
-        let lz = (self.player.pos.z - pc.1 as f32 * 16.0).floor().clamp(0.0, 15.0) as usize;
+        let lx = (self.player.pos.x - pc.0 as f32 * 16.0)
+            .floor()
+            .clamp(0.0, 15.0) as usize;
+        let lz = (self.player.pos.z - pc.1 as f32 * 16.0)
+            .floor()
+            .clamp(0.0, 15.0) as usize;
         let Some(c) = self.world.chunk(pc) else {
             return; // data not generated yet — retry next frame
         };
@@ -6109,7 +6548,11 @@ impl GameApp {
             self.nether_floor_y(c, lx.min(15), lz.min(15))
         } else {
             let t = c.top_solid_y(lx.min(15), lz.min(15));
-            if t >= 0 { Some(t + 1) } else { None }
+            if t >= 0 {
+                Some(t + 1)
+            } else {
+                None
+            }
         };
         if let Some(y) = snap {
             self.player.pos.y = y as f32;
@@ -6118,6 +6561,7 @@ impl GameApp {
             // it arrived flying
             self.player.flying = false;
             self.player.reset_fall();
+            self.player.reset_air();
         } else if self.traveling {
             // no open floor in this column — a creative player arrives
             // flying and glides to a cavern; a survival player stays put
@@ -6189,7 +6633,14 @@ impl GameApp {
                 let mut pendings: Vec<JobResult> = Vec::new();
                 for res in results.drain(..) {
                     match res {
-                        JobResult::GpuMeshPending { pos, mask, smooth, prev, center, inputs } => {
+                        JobResult::GpuMeshPending {
+                            pos,
+                            mask,
+                            smooth,
+                            prev,
+                            center,
+                            inputs,
+                        } => {
                             m.enqueue(
                                 vc_render::gpu_mesh::GpuMeshJobMeta {
                                     pos,
@@ -6213,8 +6664,10 @@ impl GameApp {
         for res in results {
             self.apply_result(res);
         }
-        self.phases
-            .add(crate::bench::PHASE_RESULTS, crate::bench::micros() - t_results);
+        self.phases.add(
+            crate::bench::PHASE_RESULTS,
+            crate::bench::micros() - t_results,
+        );
 
         // 2. queue generation jobs (radius rd+1, nearest first)
         let mut want_gen: Vec<ChunkPos> = Vec::new();
@@ -6249,7 +6702,9 @@ impl GameApp {
                 // disk (vanilla persists villager NBT; ours re-populate
                 // at the well — the populated set keeps it once/session)
                 self.register_block_entities(pos, &chunk, false);
-                self.sim.villagers.populate_villages(&self.world, pos.0, pos.1);
+                self.sim
+                    .villagers
+                    .populate_villages(&self.world, pos.0, pos.1);
                 match light {
                     Some(ld) => {
                         self.world.light.insert(pos, Arc::new(ld));
@@ -6275,7 +6730,12 @@ impl GameApp {
             }
             let inbound = self.world.take_pending(pos);
             self.gen_inflight.insert(pos);
-            let job = Job::Gen { pos, seed: self.world.seed, dim: self.world.dimension, inbound };
+            let job = Job::Gen {
+                pos,
+                seed: self.world.seed,
+                dim: self.world.dimension,
+                inbound,
+            };
             self.submit(job);
         }
 
@@ -6326,8 +6786,7 @@ impl GameApp {
                 self.mesh_inflight.insert(pos, mask);
                 // Phase 7: GPU route when the setting is on AND the device
                 // has compute; run_job still falls back per-snapshot
-                let gpu = self.settings.gpu_meshing
-                    && self.renderer.gpu_mesh.is_some();
+                let gpu = self.settings.gpu_meshing && self.renderer.gpu_mesh.is_some();
                 self.submit(Job::Mesh {
                     pos,
                     snap,
@@ -6384,7 +6843,12 @@ impl GameApp {
     /// from BOTH chunk-arrival paths (generated + loaded-from-disk);
     /// `fill_loot` is true only for fresh generation (loaded inventories
     /// restore from level.dat instead — double-filling would dupe items).
-    fn register_block_entities(&mut self, pos: ChunkPos, chunk: &Arc<vc_chunk::chunk::Chunk>, fill_loot: bool) {
+    fn register_block_entities(
+        &mut self,
+        pos: ChunkPos,
+        chunk: &Arc<vc_chunk::chunk::Chunk>,
+        fill_loot: bool,
+    ) {
         let ox = pos.0 * 16;
         let oz = pos.1 * 16;
         // Phase 10: which structure's loot table owns this chunk's fresh
@@ -6415,12 +6879,13 @@ impl GameApp {
                     }
                     let p = [ox + x as i32, y as i32, oz + z as i32];
                     if b == SPAWNER {
-                        let s = chunk
-                            .sections[y >> 4]
+                        let s = chunk.sections[y >> 4]
                             .as_ref()
                             .map(|sec| sec.get(x, y & 15, z))
                             .unwrap_or(0);
-                        self.sim.spawners.register(p, vc_blocks::blocks::spawner_mob(s));
+                        self.sim
+                            .spawners
+                            .register(p, vc_blocks::blocks::spawner_mob(s));
                     } else if fill_loot {
                         // structure loot chest: fill ONLY if the container
                         // is untouched (fresh generation creates it here; a
@@ -6428,7 +6893,13 @@ impl GameApp {
                         // refills — the all-empty guard)
                         let inv = self.sim.containers.entry(p, CHEST);
                         if inv.slots.iter().all(|s| s.is_empty()) {
-                            fill_structure_chest(&self.data, table.unwrap_or("minecraft:chests/simple_dungeon"), inv, self.world.seed, p);
+                            fill_structure_chest(
+                                &self.data,
+                                table.unwrap_or("minecraft:chests/simple_dungeon"),
+                                inv,
+                                self.world.seed,
+                                p,
+                            );
                         }
                     }
                 }
@@ -6479,7 +6950,11 @@ impl GameApp {
                 debug_assert!(false, "GpuMeshPending reached apply_result ({pos:?})");
                 self.mesh_inflight.remove(&pos);
             }
-            JobResult::Gen { pos, chunk, outbound } => {
+            JobResult::Gen {
+                pos,
+                chunk,
+                outbound,
+            } => {
                 self.gen_inflight.remove(&pos);
                 let leftover = self.world.pending.remove(&pos).unwrap_or_default();
                 let chunk = if leftover.is_empty() {
@@ -6496,7 +6971,9 @@ impl GameApp {
                 self.world.insert_generated(pos, chunk.clone(), outbound);
                 // §27: villagers spawn with their village — populate the
                 // wells whose reach covers this chunk (guarded, once)
-                self.sim.villagers.populate_villages(&self.world, pos.0, pos.1);
+                self.sim
+                    .villagers
+                    .populate_villages(&self.world, pos.0, pos.1);
                 // Phase 5 §27: register spawner entities + fill dungeon
                 // chest loot (fresh generation only — loaded chunks take
                 // the no-fill path and their inventories arrive from
@@ -6519,7 +6996,13 @@ impl GameApp {
                         .mark_sections_dirty(npos, band, vc_world::world::CAUSE_GEOMETRY);
                 }
             }
-            JobResult::Mesh { pos, mask, sections, mesh, occl } => {
+            JobResult::Mesh {
+                pos,
+                mask,
+                sections,
+                mesh,
+                occl,
+            } => {
                 self.mesh_inflight.remove(&pos);
                 // clear only the bits this job covered — edits that arrived
                 // after its snapshot re-queue the chunk (§12)
@@ -6553,7 +7036,8 @@ impl GameApp {
             }
             Screen::Title => {
                 let splash = splash_for(self.time);
-                self.ui.title_screen(splash, &self.widgets, self.hover, self.time);
+                self.ui
+                    .title_screen(splash, &self.widgets, self.hover, self.time);
                 return;
             }
             Screen::Options => {
@@ -6589,7 +7073,8 @@ impl GameApp {
                 self.widgets = Vec::new();
             }
             Screen::WorldCreate => {
-                self.ui.world_create_screen(&self.widgets, self.hover, self.time);
+                self.ui
+                    .world_create_screen(&self.widgets, self.hover, self.time);
                 return;
             }
             Screen::Death => {
@@ -6606,7 +7091,10 @@ impl GameApp {
 
         // in-game HUD
         self.ui.crosshair();
-        let toast = self.item_toast.as_ref().map(|(s, t)| (s.as_str(), (*t * 200.0).clamp(0.0, 220.0) as u8));
+        let toast = self
+            .item_toast
+            .as_ref()
+            .map(|(s, t)| (s.as_str(), (*t * 200.0).clamp(0.0, 220.0) as u8));
         self.ui.hotbar(
             &self.player.inv.slots[..vc_inventory::inventory::INV_SLOTS.min(9)],
             self.player.selected,
@@ -6620,9 +7108,16 @@ impl GameApp {
         // Phase 1: creative hides hearts + hunger (vanilla), XP stays
         // (creative still earns and spends enchanting levels here)
         if self.mode.invulnerable() {
-            self.ui.xp_bar_only(xp, level);
+            self.ui.xp_bar_only(xp, level, self.player.air);
         } else {
-            self.ui.status_bars(self.player.health, 20.0, xp, level);
+            self.ui
+                .status_bars(self.player.health, 20.0, xp, level, self.player.air);
+        }
+
+        // held-item name (fades ~2 s after the selection changes)
+        if self.held_name_t > 0.0 && !self.mode.invulnerable() {
+            let a = (self.held_name_t / 2.0).min(1.0);
+            self.ui.held_item_name(&self.held_name, a);
         }
 
         if self.show_debug {
@@ -6637,22 +7132,51 @@ impl GameApp {
                     Biome::from_u8(c.biome[lz * 16 + lx]).name().to_string()
                 })
                 .unwrap_or_else(|| "…".into());
-            let facing = {
+            // vanilla F3 "Facing:" line (format verified — Debug_screen):
+            // "Facing: south (Towards positive Z) (yaw / pitch)". Engine
+            // yaw 0 = north; vanilla yaw 0 = south → display yaw =
+            // wrap(engine − 180). Engine pitch is +up; vanilla is +down
+            // → display pitch negates it.
+            let facing_line = {
                 let yaw = ((p.yaw.to_degrees() % 360.0) + 360.0) % 360.0;
-                match yaw {
-                    315.0..=360.0 | 0.0..=45.0 => "north (-Z)",
-                    45.0..=135.0 => "east (+X)",
-                    135.0..=225.0 => "south (+Z)",
-                    _ => "west (-X)",
-                }
+                let (name, towards) = match yaw {
+                    315.0..=360.0 | 0.0..=45.0 => ("north", "negative Z"),
+                    45.0..=135.0 => ("east", "positive X"),
+                    135.0..=225.0 => ("south", "positive Z"),
+                    _ => ("west", "negative X"),
+                };
+                let display_yaw = {
+                    let y = yaw - 180.0;
+                    if y > 180.0 {
+                        y - 360.0
+                    } else {
+                        y
+                    }
+                };
+                format!(
+                    "Facing: {} (Towards {}) ({:.1} / {:.1})",
+                    name,
+                    towards,
+                    display_yaw,
+                    -p.pitch.to_degrees()
+                )
+            };
+            // vanilla "Client Light: L (S sky, B block)" at the feet
+            // (format verified — Debug_screen)
+            let client_light_line = {
+                let (_, sky, blk) = light_at(
+                    &self.world,
+                    &self.light,
+                    p.pos.x.floor() as i32,
+                    p.pos.y.floor() as i32,
+                    p.pos.z.floor() as i32,
+                );
+                format!("Client Light: {} ({} sky, {} blk)", sky.max(blk), sky, blk)
             };
             let lines = vec![
                 format!(
                     "VOXELCRAFT (Rust + wgpu)  {} fps  ({} min / {} avg / {} max)",
-                    self.fps as i32,
-                    self.fps_min as i32,
-                    self.fps_avg as i32,
-                    self.fps_max as i32
+                    self.fps as i32, self.fps_min as i32, self.fps_avg as i32, self.fps_max as i32
                 ),
                 format!(
                     "Frame: {:.2} ms  Chunks: {} drawn / {} loaded  Tris: {}",
@@ -6670,8 +7194,16 @@ impl GameApp {
                     self.settings.sim_distance,
                     self.settings.mipmap_levels,
                     self.settings.aniso,
-                    if self.renderer.msaa() == 0 { "off".to_string() } else { self.renderer.msaa().to_string() },
-                    if self.settings.occlusion { "" } else { "  (occl off)" },
+                    if self.renderer.msaa() == 0 {
+                        "off".to_string()
+                    } else {
+                        self.renderer.msaa().to_string()
+                    },
+                    if self.settings.occlusion {
+                        ""
+                    } else {
+                        "  (occl off)"
+                    },
                     match (&self.renderer.gpu_mesh, self.settings.gpu_meshing) {
                         (Some(m), true) => format!("GPU ({})", m.jobs_done),
                         (Some(_), false) => "CPU (off)".to_string(),
@@ -6686,11 +7218,34 @@ impl GameApp {
                         / self.draw_calls_ring.len().max(1) as u32,
                     self.renderer.draw_path_name()
                 ),
-                format!("XYZ: {:.2} / {:.2} / {:.2}", p.pos.x, p.pos.y, p.pos.z),
-                format!("Block: {} {} {}  ({})", p.pos.x as i32, p.pos.y as i32, p.pos.z as i32, ""),
-                format!("Chunk: {} {}  Facing: {}  Light: sky {}",
-                    pc.0, pc.1, facing,
-                    "-"),
+                // ---- vanilla 1.16.5 F3 parity block (formats verified —
+                // research-verdicts.md live round, minecraft.wiki/w/
+                // Debug_screen; JVM-specific lines are engine-adapted and
+                // documented below) ----
+                format!("XYZ: {:.3} / {:.3} / {:.3}", p.pos.x, p.pos.y, p.pos.z),
+                format!(
+                    "Block: {} {} {}  ({} {} in {} {})",
+                    p.pos.x.floor() as i32,
+                    p.pos.y.floor() as i32,
+                    p.pos.z.floor() as i32,
+                    p.pos.x.floor() as i32 & 15,
+                    p.pos.z.floor() as i32 & 15,
+                    pc.0,
+                    pc.1
+                ),
+                format!(
+                    "Chunk: {} {} in {} {}",
+                    p.pos.x.floor() as i32 & 15,
+                    p.pos.z.floor() as i32 & 15,
+                    pc.0,
+                    pc.1
+                ),
+                facing_line,
+                // Client Light at the player's feet from the real light
+                // engine (sky × block; vanilla multiplies sky by the
+                // time-of-day darkness — the engine's sky column already
+                // carries the night falloff)
+                client_light_line,
                 format!("Biome: {}  Dimension: {}", biome, self.world.dimension.id()),
                 // Phase 1: active game mode + world identity
                 format!(
@@ -6713,15 +7268,31 @@ impl GameApp {
                     self.day_time * 100.0,
                     if self.player.flying { "on" } else { "off" }
                 ),
+                // vanilla F3 "Looking at block/fluid" split (added 1.13
+                // 18w22c, confirmed for 1.16.5 - research-verdicts.md):
+                // a WATER target renders as the fluid line
                 format!(
-                    "Targeted: {}",
+                    "{}",
                     self.target
-                        .map(|(t, _, _)| {
-                            // vanilla F3 parity: exact blockstate, e.g.
-                            // "Oak Slab[half=top]" / "Oak Fence[north=true]"
-                            state_description(self.world.get_state(t[0], t[1], t[2]))
+                        .map(|(t, tb, _)| {
+                            if tb == WATER {
+                                format!(
+                                    "Looking at fluid: minecraft:water [{} {} {}]",
+                                    t[0], t[1], t[2]
+                                )
+                            } else {
+                                // vanilla F3 parity: exact blockstate, e.g.
+                                // "Oak Slab[type=top]" / "Oak Fence[north=true]"
+                                format!(
+                                    "Looking at block: {} {} {}  ({})",
+                                    t[0],
+                                    t[1],
+                                    t[2],
+                                    state_description(self.world.get_state(t[0], t[1], t[2]))
+                                )
+                            }
                         })
-                        .unwrap_or("none".into())
+                        .unwrap_or("Looking at block: none".into())
                 ),
                 format!(
                     "RD: {}  FOV: {:.0}  Vol: {:.0}%  Bright: {:.0}%",
@@ -6744,7 +7315,12 @@ impl GameApp {
                         1 => "75% EASU+RCAS",
                         _ => "50% EASU+RCAS",
                     },
-                    match self.settings.maxfps { 0 => "vsync", 1 => "30", 2 => "60", _ => "120" }
+                    match self.settings.maxfps {
+                        0 => "vsync",
+                        1 => "30",
+                        2 => "60",
+                        _ => "120",
+                    }
                 ),
                 format!(
                     "Dirty: {} sections in {} chunks (§12 fine-grained invalidation)",
@@ -6755,7 +7331,11 @@ impl GameApp {
                     "Shader: {}  Clouds: {}  Smooth: {}  VSync: {}",
                     self.shader_mode_name(self.settings.shader),
                     if self.settings.clouds { "on" } else { "off" },
-                    if self.settings.smooth_lighting { "on" } else { "off" },
+                    if self.settings.smooth_lighting {
+                        "on"
+                    } else {
+                        "off"
+                    },
                     if self.renderer.vsync { "on" } else { "off" }
                 ),
                 format!(
@@ -6765,14 +7345,25 @@ impl GameApp {
                         _ => "none".to_string(),
                     }
                 ),
-                format!("Edits: {} (xp lvl {})  Seed: {}", self.edits, level, self.world.seed),
-                format!("Backend: {}  Scene: {}x{}", self.renderer.backend_name, self.renderer.scene_size().0, self.renderer.scene_size().1),
+                format!(
+                    "Edits: {} (xp lvl {})  Seed: {}",
+                    self.edits, level, self.world.seed
+                ),
+                format!(
+                    "Backend: {}  Scene: {}x{}",
+                    self.renderer.backend_name,
+                    self.renderer.scene_size().0,
+                    self.renderer.scene_size().1
+                ),
                 // Phase-0 (§44): per-frame CPU phase breakdown
                 self.phases.f3_line(),
             ];
             self.ui.debug(&lines);
             // Sodium-style frame-time graph right under the text block
-            self.ui.frame_graph(7 + lines.len() as i32 * 14 + 8, self.frame_times.as_slices().0);
+            self.ui.frame_graph(
+                7 + lines.len() as i32 * 14 + 8,
+                self.frame_times.as_slices().0,
+            );
         }
 
         if self.show_help {
@@ -6801,7 +7392,8 @@ impl GameApp {
         #[cfg(target_arch = "wasm32")]
         {
             if !self.pointer_locked && !self.drag_look {
-                self.ui.center_msg("", "CLICK THE CANVAS TO CAPTURE THE MOUSE");
+                self.ui
+                    .center_msg("", "CLICK THE CANVAS TO CAPTURE THE MOUSE");
             }
         }
     }
@@ -6827,7 +7419,8 @@ impl GameApp {
             }
         }
         // Phase 9: draw-call/bind history (F3 + benchmark §37)
-        self.draw_calls_ring.push_back((self.stats.draws, self.stats.binds));
+        self.draw_calls_ring
+            .push_back((self.stats.draws, self.stats.binds));
         while self.draw_calls_ring.len() > 64 {
             self.draw_calls_ring.pop_front();
         }
@@ -6880,7 +7473,8 @@ impl GameApp {
             let sun_dir = Vec3::new(theta.cos() * 0.85, theta.sin(), -0.4).normalize();
             let day_light = 0.16 + 0.84 * smoothstep(-0.10, 0.14, sun_dir.y);
             let sunset = (1.0 - (sun_dir.y * 4.0).abs()).clamp(0.0, 1.0)
-                * (day_light.clamp(0.2, 0.8) - 0.2) / 0.6;
+                * (day_light.clamp(0.2, 0.8) - 0.2)
+                / 0.6;
             let day_fog = [0.75, 0.85, 1.0];
             let night_fog = [0.02, 0.03, 0.07];
             let mut fog = [
@@ -6895,21 +7489,26 @@ impl GameApp {
         };
 
         let rd = self.settings.render_distance;
-        let (fog_start, fog_end, fog_col) = if self.player.head_in_water && self.screen == Screen::Game {
-            (2.0, 28.0, [0.11, 0.22, 0.45])
-        } else if nether {
-            // thick nether fog well inside any render distance
-            (8.0, 44.0, fog)
-        } else {
-            let end = (rd * 16 - 12) as f32;
-            (end * 0.55, end, fog)
-        };
+        let (fog_start, fog_end, fog_col) =
+            if self.player.head_in_water && self.screen == Screen::Game {
+                (2.0, 28.0, [0.11, 0.22, 0.45])
+            } else if nether {
+                // thick nether fog well inside any render distance
+                (8.0, 44.0, fog)
+            } else {
+                let end = (rd * 16 - 12) as f32;
+                (end * 0.55, end, fog)
+            };
 
         // camera: panorama on the title screen, player otherwise
         let (cam, menu_blur, selection) = match self.screen {
             Screen::Title => {
                 let cam = Camera {
-                    eye: Vec3::new(self.player.pos.x, self.player.pos.y + 14.0, self.player.pos.z),
+                    eye: Vec3::new(
+                        self.player.pos.x,
+                        self.player.pos.y + 14.0,
+                        self.player.pos.z,
+                    ),
                     yaw: self.time * 0.06,
                     pitch: -0.42,
                     fov: 1.2217,
@@ -6918,7 +7517,11 @@ impl GameApp {
             }
             Screen::Options if self.options_from == Screen::Title => {
                 let cam = Camera {
-                    eye: Vec3::new(self.player.pos.x, self.player.pos.y + 14.0, self.player.pos.z),
+                    eye: Vec3::new(
+                        self.player.pos.x,
+                        self.player.pos.y + 14.0,
+                        self.player.pos.z,
+                    ),
                     yaw: self.time * 0.06,
                     pitch: -0.42,
                     fov: 1.2217,
@@ -6929,7 +7532,11 @@ impl GameApp {
             // title/options screens — the world list previews the world
             Screen::WorldSelect | Screen::WorldCreate => {
                 let cam = Camera {
-                    eye: Vec3::new(self.player.pos.x, self.player.pos.y + 14.0, self.player.pos.z),
+                    eye: Vec3::new(
+                        self.player.pos.x,
+                        self.player.pos.y + 14.0,
+                        self.player.pos.z,
+                    ),
                     yaw: self.time * 0.06,
                     pitch: -0.42,
                     fov: 1.2217,
@@ -7024,11 +7631,7 @@ impl GameApp {
                 &mut self.particle_verts,
             );
             // Phase 2: mobs + skeleton arrows share the billboard pipeline
-            vc_gameplay::mobs::build_vertices(
-                &self.sim.mobs.list,
-                right,
-                &mut self.particle_verts,
-            );
+            vc_gameplay::mobs::build_vertices(&self.sim.mobs.list, right, &mut self.particle_verts);
             vc_gameplay::mobs::build_arrow_vertices(
                 &self.sim.mobs.arrows,
                 right,
@@ -7046,7 +7649,11 @@ impl GameApp {
                 mode: self.settings.shader,
                 menu_blur,
                 // §28: the Nether has no sun — no shadow pass
-                shadows: if nether { 0.0 } else { self.settings.shadow_strength() },
+                shadows: if nether {
+                    0.0
+                } else {
+                    self.settings.shadow_strength()
+                },
                 // FSR 1.0: RCAS lobe factor when the internal scale is below
                 // native (0.6 ≈ FsrRcasCon(~0.7 stops) — sharp without halos;
                 // EASU already reconstructs most of the edge contrast)
@@ -7067,7 +7674,8 @@ impl GameApp {
                 }
                 if bs.seen >= bs.warmup + bs.frames {
                     let (stats, report, mode) = {
-                        let times: Vec<u64> = self.phases.frame_times_us().iter().copied().collect();
+                        let times: Vec<u64> =
+                            self.phases.frame_times_us().iter().copied().collect();
                         let fs = crate::bench::FrameStats::from_us(&times);
                         let pr = self.phases.report();
                         (fs, pr, self.renderer.present_mode_name())
@@ -7139,7 +7747,6 @@ fn fence_state_for(world: &World, wx: i32, wy: i32, wz: i32) -> Option<u16> {
     )
 }
 
-
 /// block-change notification for the whole sim (fluids + gravity +
 /// redstone) — the §25 ordering backbone entry point
 fn notify_sim(world: &World, sched: &mut vc_sim::ticks::TickScheduler, x: i32, y: i32, z: i32) {
@@ -7179,8 +7786,7 @@ fn fill_structure_chest(
         // walk to the next free slot (chests are fresh — always one)
         for _ in 0..27 {
             if inv.slots[slot].is_empty() {
-                inv.slots[slot] =
-                    vc_inventory::inventory::ItemStack::new(item, count);
+                inv.slots[slot] = vc_inventory::inventory::ItemStack::new(item, count);
                 break;
             }
             slot = (slot + 1) % 27;
@@ -7197,7 +7803,13 @@ fn is_food(b: u8) -> bool {
     matches!(b, BEEF | PORKCHOP | MUTTON | CHICKEN_RAW | ROTTEN_FLESH)
 }
 
-fn light_at(world: &World, light: &vc_world::light::LightEngine, wx: i32, wy: i32, wz: i32) -> (u8, u8, u8) {
+fn light_at(
+    world: &World,
+    light: &vc_world::light::LightEngine,
+    wx: i32,
+    wy: i32,
+    wz: i32,
+) -> (u8, u8, u8) {
     let _ = light; // engine state lives in world.light (LightData map)
     let cx = wx.div_euclid(16);
     let cz = wz.div_euclid(16);
@@ -7253,7 +7865,9 @@ fn update_fence_neighbors(world: &mut World, wx: i32, wy: i32, wz: i32) {
 /// sections per neighbor instead of 16.
 fn neighbor_geometry_bands(world: &World, pos: ChunkPos) -> Vec<(ChunkPos, u16)> {
     let mut out = Vec::with_capacity(8);
-    let Some(chunk) = world.chunk(pos) else { return out };
+    let Some(chunk) = world.chunk(pos) else {
+        return out;
+    };
     // per-direction shared-face columns (in the NEW chunk's local coords)
     let faces: [(i32, i32, Vec<(usize, usize)>); 8] = [
         (1, 0, (0..16).map(|t| (15, t)).collect()),
@@ -7270,7 +7884,9 @@ fn neighbor_geometry_bands(world: &World, pos: ChunkPos) -> Vec<(ChunkPos, u16)>
         let mut y_max = -1i32;
         for (lx, lz) in cols {
             for sy in (0..16usize).rev() {
-                let Some(sec) = &chunk.sections[sy] else { continue };
+                let Some(sec) = &chunk.sections[sy] else {
+                    continue;
+                };
                 if sec.is_empty() {
                     continue;
                 }
@@ -7440,10 +8056,7 @@ fn report_datapacks(loaded: &vc_pack::datapack::LoadedData) {
             ));
         }
         for s in &pack.skipped {
-            vc_render::render::report_boot_log(&format!(
-                "data pack {}: skipped {s}",
-                pack.id
-            ));
+            vc_render::render::report_boot_log(&format!("data pack {}: skipped {s}", pack.id));
         }
     }
 }
@@ -7506,13 +8119,26 @@ mod settings_tests {
         // legacy string (no gmesh key) → platform default
         let legacy = "rd=8;smooth=1;clouds=0";
         let s2 = Settings::deserialize(legacy);
-        assert_eq!(s2.gpu_meshing, native_default, "legacy save keeps the platform default");
+        assert_eq!(
+            s2.gpu_meshing, native_default,
+            "legacy save keeps the platform default"
+        );
     }
 
     /// garbage msaa values snap to the valid set (0/4/8)
     #[test]
     fn msaa_values_snap_to_valid_counts() {
-        for (raw, want) in [(0u8, 0u8), (1, 0), (2, 4), (3, 4), (4, 4), (5, 4), (6, 8), (8, 8), (16, 8)] {
+        for (raw, want) in [
+            (0u8, 0u8),
+            (1, 0),
+            (2, 4),
+            (3, 4),
+            (4, 4),
+            (5, 4),
+            (6, 8),
+            (8, 8),
+            (16, 8),
+        ] {
             let s = Settings::deserialize(&format!("msaa={raw}"));
             assert_eq!(s.msaa, want, "raw {raw} should snap to {want}");
         }
@@ -7537,10 +8163,9 @@ mod settings_tests {
         // honest default: no translator until the sister project registers
         assert!(!vc_render::iris::translator().supports_version("330 compatibility"));
         // missing scan root → empty (how the wasm build boots)
-        assert!(vc_render::iris::scan_shader_packs(std::path::Path::new(
-            "no-such-dir-iris"
-        ))
-        .is_empty());
+        assert!(
+            vc_render::iris::scan_shader_packs(std::path::Path::new("no-such-dir-iris")).is_empty()
+        );
     }
 
     /// Phase 9: the data-pack pipeline the `dpdemo` E2E command runs must
@@ -7573,13 +8198,17 @@ mod settings_tests {
         assert_eq!((b, c), (vc_blocks::blocks::STRING, 1));
         // dpdemo line 2: loot rolls within 2..=4 stacks of palette items
         let mut rng = vc_rng::rng::Rng::new(99);
-        let stacks = loaded.roll("demo:demo_loot", &mut rng).expect("table rolls");
+        let stacks = loaded
+            .roll("demo:demo_loot", &mut rng)
+            .expect("table rolls");
         assert!((2..=4).contains(&stacks.len()));
         for (id, count) in stacks {
-            assert!(
-                [vc_blocks::blocks::IRON_ORE, vc_blocks::blocks::GOLD_ORE, vc_blocks::blocks::BONE]
-                    .contains(&id)
-            );
+            assert!([
+                vc_blocks::blocks::IRON_ORE,
+                vc_blocks::blocks::GOLD_ORE,
+                vc_blocks::blocks::BONE
+            ]
+            .contains(&id));
             if id == vc_blocks::blocks::IRON_ORE {
                 assert!((1..=2).contains(&count));
             }

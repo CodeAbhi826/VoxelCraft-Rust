@@ -123,7 +123,10 @@ pub fn player_melee(
         dmg *= 1.5; // VERIFIED: +50%
     }
     let damage = armor_reduce(dmg, target_armor, target_toughness);
-    MeleeOutcome { damage, critical: crit }
+    MeleeOutcome {
+        damage,
+        critical: crit,
+    }
 }
 
 #[cfg(test)]
@@ -153,7 +156,7 @@ mod tests {
         assert!(!is_critical(true, false, 0.7)); // not charged enough
         assert!(!is_critical(true, true, 0.9)); // sprint-knockback instead
         assert!(!is_critical(false, false, 0.9)); // must be falling
-        // exact boundary: 0.848 counts as charged
+                                                  // exact boundary: 0.848 counts as charged
         assert!(is_critical(true, false, 0.848));
         assert!(!is_critical(true, false, 0.847));
     }

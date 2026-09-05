@@ -19,8 +19,8 @@
 //! * water does not break cross-plants it flows into (it stops at them;
 //!   vanilla replaces them) — scheduled with the plant interaction work
 
-use vc_blocks::blocks::*;
 use crate::ticks::TickScheduler;
+use vc_blocks::blocks::*;
 use vc_world::world::World;
 
 /// vanilla water tick rate: updates every 5 game ticks
@@ -279,7 +279,11 @@ mod tests {
             );
         }
         // no water past 7 blocks
-        assert_eq!(levels[7], 255, "flow stops after 7 blocks, got {:?}", levels);
+        assert_eq!(
+            levels[7], 255,
+            "flow stops after 7 blocks, got {:?}",
+            levels
+        );
         assert_eq!(levels[8], 255);
     }
 
@@ -290,7 +294,10 @@ mod tests {
         w.set_block_state(0, 65, 0, water_state(0));
         on_block_changed(&mut sched, &w, 0, 65, 0);
         drain(&mut w, &mut sched, 200);
-        assert!(water_level(w.get_state(5, 65, 0)) != 255, "flow established");
+        assert!(
+            water_level(w.get_state(5, 65, 0)) != 255,
+            "flow established"
+        );
 
         // remove the source → every downstream flow decays to air
         w.set_block_state(0, 65, 0, AIR as u16);
@@ -331,8 +338,16 @@ mod tests {
         w.set_block_state(8, 68, 8, SAND as u16);
         on_block_changed(&mut sched, &w, 8, 68, 8);
         drain(&mut w, &mut sched, 100);
-        assert_eq!(state_block(w.get_state(8, 68, 8)), AIR, "left the float position");
-        assert_eq!(state_block(w.get_state(8, 65, 8)), SAND, "landed on the floor");
+        assert_eq!(
+            state_block(w.get_state(8, 68, 8)),
+            AIR,
+            "left the float position"
+        );
+        assert_eq!(
+            state_block(w.get_state(8, 65, 8)),
+            SAND,
+            "landed on the floor"
+        );
         // nothing sank into the floor
         assert_eq!(state_block(w.get_state(8, 64, 8)), STONE);
     }

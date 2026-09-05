@@ -19,11 +19,11 @@
 //! test oracle for the differential gate (§48 Phase 4: differential light
 //! tests pass).
 
-use vc_blocks::blocks::*;
-use vc_chunk::chunk::Chunk;
 use crate::world::{ChunkPos, World};
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
+use vc_blocks::blocks::*;
+use vc_chunk::chunk::Chunk;
 
 /// light reach — max BFS steps with any light left
 pub const LIGHT_REACH: u8 = 15;
@@ -181,7 +181,9 @@ impl LightEngine {
     /// queues to completion (bounded) so mesh jobs immediately see settled
     /// light (no double-mesh on streaming).
     pub fn init_chunk(&mut self, world: &mut World, pos: ChunkPos) {
-        let Some(chunk) = world.chunks.get(&pos) else { return };
+        let Some(chunk) = world.chunks.get(&pos) else {
+            return;
+        };
         let chunk = Arc::clone(chunk);
 
         // ---- column scan (the established reference semantics)
@@ -255,12 +257,7 @@ impl LightEngine {
         // ---- border exchange with existing neighbors: brighter cells on
         // either side propagate across (increase only — stored light never
         // depends on absent chunks, so nothing to remove)
-        for (dx, dz) in [
-            (1i32, 0i32),
-            (-1, 0),
-            (0, 1),
-            (0, -1),
-        ] {
+        for (dx, dz) in [(1i32, 0i32), (-1, 0), (0, 1), (0, -1)] {
             let npos = (pos.0 + dx, pos.1 + dz);
             if !world.chunks.contains_key(&npos) {
                 continue;
@@ -304,7 +301,9 @@ impl LightEngine {
     /// than 1 (the BFS fixed-point seeds — caves, overhangs, water edges)
     fn seed_bright_cells(&mut self, world: &World, pos: &ChunkPos, chunk: &Arc<Chunk>) {
         for sy in 0..16usize {
-            let Some(sec) = &chunk.sections[sy] else { continue };
+            let Some(sec) = &chunk.sections[sy] else {
+                continue;
+            };
             if sec.is_empty() {
                 continue;
             }
@@ -318,11 +317,8 @@ impl LightEngine {
                         if is_opaque(b) {
                             continue;
                         }
-                        let (wx, wy, wz) = (
-                            pos.0 * 16 + lx as i32,
-                            y as i32,
-                            pos.1 * 16 + lz as i32,
-                        );
+                        let (wx, wy, wz) =
+                            (pos.0 * 16 + lx as i32, y as i32, pos.1 * 16 + lz as i32);
                         let s = self.get_sky(world, wx, wy, wz);
                         if s >= 2 {
                             let s2 = self
@@ -366,7 +362,15 @@ impl LightEngine {
 
     /// one block changed at (wx, wy, wz). Enqueues the incremental updates;
     /// pump() settles them. Call AFTER the chunk data is updated.
-    pub fn on_block_changed(&mut self, world: &World, wx: i32, wy: i32, wz: i32, old: u16, new: u16) {
+    pub fn on_block_changed(
+        &mut self,
+        world: &World,
+        wx: i32,
+        wy: i32,
+        wz: i32,
+        old: u16,
+        new: u16,
+    ) {
         let old_b = state_block(old);
         let new_b = state_block(new);
 
@@ -422,7 +426,8 @@ impl LightEngine {
 
         // ---- sky light: the column semantics change → recompute the column
         let darkens = |b: u8| is_opaque(b) || b == WATER || b == LEAVES;
-        if darkens(new_b) != darkens(old_b) || (old_b == WATER) != (new_b == WATER)
+        if darkens(new_b) != darkens(old_b)
+            || (old_b == WATER) != (new_b == WATER)
             || (old_b == LEAVES) != (new_b == LEAVES)
         {
             self.recompute_column(world, wx, wz);
@@ -435,7 +440,9 @@ impl LightEngine {
         let cz = wz.div_euclid(16);
         let lx = (wx - cx * 16) as usize;
         let lz = (wz - cz * 16) as usize;
-        let Some(chunk) = world.chunks.get(&(cx, cz)) else { return };
+        let Some(chunk) = world.chunks.get(&(cx, cz)) else {
+            return;
+        };
         let mut l: u8 = 15;
         for y in (0..256usize).rev() {
             let b = state_block(chunk.get(lx, y, lz) as u16);
@@ -583,9 +590,11 @@ impl LightEngine {
         let cx = wx.div_euclid(16);
         let cz = wz.div_euclid(16);
         match world.chunks.get(&(cx, cz)) {
-            Some(c) => is_opaque(state_block(
-                c.get((wx - cx * 16) as usize, wy as usize, (wz - cz * 16) as usize) as u16,
-            )),
+            Some(c) => is_opaque(state_block(c.get(
+                (wx - cx * 16) as usize,
+                wy as usize,
+                (wz - cz * 16) as usize,
+            ) as u16)),
             None => false,
         }
     }
@@ -598,7 +607,9 @@ impl LightEngine {
             return 0;
         }
         let (cx, cz) = (wx.div_euclid(16), wz.div_euclid(16));
-        let lz16 = (wz - cz * 16) as usize; let lx16 = (wx - cx * 16) as usize; let i = ((wy as usize & 15) << 8) | (lz16 << 4) | lx16;
+        let lz16 = (wz - cz * 16) as usize;
+        let lx16 = (wx - cx * 16) as usize;
+        let i = ((wy as usize & 15) << 8) | (lz16 << 4) | lx16;
         if let Some(w) = self.working.get(&(cx, cz)) {
             return w.sky(wy as usize / 16, i);
         }
@@ -614,7 +625,9 @@ impl LightEngine {
             return 0;
         }
         let (cx, cz) = (wx.div_euclid(16), wz.div_euclid(16));
-        let lz16 = (wz - cz * 16) as usize; let lx16 = (wx - cx * 16) as usize; let i = ((wy as usize & 15) << 8) | (lz16 << 4) | lx16;
+        let lz16 = (wz - cz * 16) as usize;
+        let lx16 = (wx - cx * 16) as usize;
+        let i = ((wy as usize & 15) << 8) | (lz16 << 4) | lx16;
         if let Some(w) = self.working.get(&(cx, cz)) {
             return w.blk(wy as usize / 16, i);
         }
@@ -629,7 +642,9 @@ impl LightEngine {
     fn set_sky_pending(&mut self, world: &World, wx: i32, wy: i32, wz: i32, v: u8) {
         let (cx, cz) = (wx.div_euclid(16), wz.div_euclid(16));
         let sy = wy.div_euclid(16) as usize;
-        let lz16 = (wz - cz * 16) as usize; let lx16 = (wx - cx * 16) as usize; let i = ((wy as usize & 15) << 8) | (lz16 << 4) | lx16;
+        let lz16 = (wz - cz * 16) as usize;
+        let lx16 = (wx - cx * 16) as usize;
+        let i = ((wy as usize & 15) << 8) | (lz16 << 4) | lx16;
         // seed the working copy from the shared snapshot on first touch
         if !self.working.contains_key(&(cx, cz)) {
             let base = world.light.get(&(cx, cz)).cloned();
@@ -651,7 +666,9 @@ impl LightEngine {
     fn set_blk_pending(&mut self, world: &World, wx: i32, wy: i32, wz: i32, v: u8) {
         let (cx, cz) = (wx.div_euclid(16), wz.div_euclid(16));
         let sy = wy.div_euclid(16) as usize;
-        let lz16 = (wz - cz * 16) as usize; let lx16 = (wx - cx * 16) as usize; let i = ((wy as usize & 15) << 8) | (lz16 << 4) | lx16;
+        let lz16 = (wz - cz * 16) as usize;
+        let lx16 = (wx - cx * 16) as usize;
+        let i = ((wy as usize & 15) << 8) | (lz16 << 4) | lx16;
         if !self.working.contains_key(&(cx, cz)) {
             let base = world.light.get(&(cx, cz)).cloned();
             let ld = match base {
@@ -841,12 +858,24 @@ pub fn reference_light(blocks: &[u8]) -> (Vec<u8>, Vec<u8>) {
                         }
                     }};
                 }
-                if x > 0 { seed!(x - 1, y, z); }
-                if x + 1 < pad { seed!(x + 1, y, z); }
-                if y > 0 { seed!(x, y - 1, z); }
-                if y + 1 < 256 { seed!(x, y + 1, z); }
-                if z > 0 { seed!(x, y, z - 1); }
-                if z + 1 < pad { seed!(x, y, z + 1); }
+                if x > 0 {
+                    seed!(x - 1, y, z);
+                }
+                if x + 1 < pad {
+                    seed!(x + 1, y, z);
+                }
+                if y > 0 {
+                    seed!(x, y - 1, z);
+                }
+                if y + 1 < 256 {
+                    seed!(x, y + 1, z);
+                }
+                if z > 0 {
+                    seed!(x, y, z - 1);
+                }
+                if z + 1 < pad {
+                    seed!(x, y, z + 1);
+                }
             }
         }
     }
@@ -869,12 +898,24 @@ pub fn reference_light(blocks: &[u8]) -> (Vec<u8>, Vec<u8>) {
                 }
             }};
         }
-        if x > 0 { bprop!(x - 1, y, z); }
-        if x + 1 < pad { bprop!(x + 1, y, z); }
-        if y > 0 { bprop!(x, y - 1, z); }
-        if y + 1 < 256 { bprop!(x, y + 1, z); }
-        if z > 0 { bprop!(x, y, z - 1); }
-        if z + 1 < pad { bprop!(x, y, z + 1); }
+        if x > 0 {
+            bprop!(x - 1, y, z);
+        }
+        if x + 1 < pad {
+            bprop!(x + 1, y, z);
+        }
+        if y > 0 {
+            bprop!(x, y - 1, z);
+        }
+        if y + 1 < 256 {
+            bprop!(x, y + 1, z);
+        }
+        if z > 0 {
+            bprop!(x, y, z - 1);
+        }
+        if z + 1 < pad {
+            bprop!(x, y, z + 1);
+        }
     }
 
     (light, blight)
@@ -884,16 +925,16 @@ pub fn reference_light(blocks: &[u8]) -> (Vec<u8>, Vec<u8>) {
 /// recompute — the deterministic ground truth the incremental engine
 /// converges to (differential tests assert equality). Also used by the
 /// headless bench binary to feed mesh jobs.
-pub fn reference_lightdata(
-    snap: &[Option<Arc<Chunk>>; 9],
-) -> [Option<Arc<LightData>>; 9] {
+pub fn reference_lightdata(snap: &[Option<Arc<Chunk>>; 9]) -> [Option<Arc<LightData>>; 9] {
     let pad = 48usize;
     let pidx = |x: usize, y: usize, z: usize| y * (pad * pad) + z * pad + x;
     // build the padded block array (same copy loop as the mesher)
     let mut blocks = vec![0u8; pad * pad * 256];
     for dzi in 0..3usize {
         for dxi in 0..3usize {
-            let Some(chunk) = &snap[dzi * 3 + dxi] else { continue };
+            let Some(chunk) = &snap[dzi * 3 + dxi] else {
+                continue;
+            };
             let px0 = dxi * 16;
             let pz0 = dzi * 16;
             for (sy, sec) in chunk.sections.iter().enumerate() {
@@ -1006,7 +1047,11 @@ mod tests {
                     for y in 69..=72 {
                         for lz in 6..11usize {
                             for lx in 6..11usize {
-                                if (lx as i32 - 8).abs() + (y as i32 - 70).abs() + (lz as i32 - 8).abs() <= 3 {
+                                if (lx as i32 - 8).abs()
+                                    + (y as i32 - 70).abs()
+                                    + (lz as i32 - 8).abs()
+                                    <= 3
+                                {
                                     if c.get(lx, y, lz) == 0 {
                                         c.set(lx, y, lz, LEAVES);
                                     }
@@ -1083,7 +1128,11 @@ mod tests {
                     assert!(
                         bad == 0,
                         "{note}: chunk ({cx},{cz}) {:?} — {bad} cells differ, first at {first:?}",
-                        if ch == LightChannel::Sky { "sky" } else { "block" }
+                        if ch == LightChannel::Sky {
+                            "sky"
+                        } else {
+                            "block"
+                        }
                     );
                 }
             }
@@ -1132,7 +1181,13 @@ mod tests {
         let mut engine = LightEngine::new();
         init_and_check(&mut world, &mut engine, "init");
 
-        let edit = |world: &mut World, engine: &mut LightEngine, x: i32, y: i32, z: i32, id: u8, note: &str| {
+        let edit = |world: &mut World,
+                    engine: &mut LightEngine,
+                    x: i32,
+                    y: i32,
+                    z: i32,
+                    id: u8,
+                    note: &str| {
             let r = world.set_block(x, y, z, id);
             engine.on_block_changed(world, x, y, z, r.map(|(o, _)| o).unwrap_or(0), id as u16);
             engine.pump(world, 1_000_000);
@@ -1140,21 +1195,69 @@ mod tests {
         };
 
         // place stone in open sky (shadow column)
-        edit(&mut world, &mut engine, 8, 90, 8, STONE, "place stone mid-air");
+        edit(
+            &mut world,
+            &mut engine,
+            8,
+            90,
+            8,
+            STONE,
+            "place stone mid-air",
+        );
         // mine the hill surface (expose column)
-        edit(&mut world, &mut engine, -16 + 8, 72, -16 + 8, AIR, "mine hill top");
+        edit(
+            &mut world,
+            &mut engine,
+            -16 + 8,
+            72,
+            -16 + 8,
+            AIR,
+            "mine hill top",
+        );
         // place glowstone in the open (light box across chunk borders)
-        edit(&mut world, &mut engine, 15, 80, 15, GLOWSTONE, "place glowstone at corner");
+        edit(
+            &mut world,
+            &mut engine,
+            15,
+            80,
+            15,
+            GLOWSTONE,
+            "place glowstone at corner",
+        );
         // break it (removal BFS + re-add)
         edit(&mut world, &mut engine, 15, 80, 15, AIR, "break glowstone");
         // water in air (attenuation semantics)
-        edit(&mut world, &mut engine, 0, 100, 0, WATER, "place water mid-air");
+        edit(
+            &mut world,
+            &mut engine,
+            0,
+            100,
+            0,
+            WATER,
+            "place water mid-air",
+        );
         // mine into the sealed cave roof (light enters the cave)
         edit(&mut world, &mut engine, 8, 31, 8, AIR, "open cave roof");
         // mine the glowstone inside the cave (block light removal)
-        edit(&mut world, &mut engine, 8, 25, 8, AIR, "remove cave glowstone");
+        edit(
+            &mut world,
+            &mut engine,
+            8,
+            25,
+            8,
+            AIR,
+            "remove cave glowstone",
+        );
         // place it back
-        edit(&mut world, &mut engine, 8, 25, 8, GLOWSTONE, "re-place cave glowstone");
+        edit(
+            &mut world,
+            &mut engine,
+            8,
+            25,
+            8,
+            GLOWSTONE,
+            "re-place cave glowstone",
+        );
     }
 
     /// §12 region evidence (engine-exact): a glowstone in the open sky marks
@@ -1206,6 +1309,4 @@ mod tests {
             "dark sealed cave mining must change no light"
         );
     }
-
 }
-

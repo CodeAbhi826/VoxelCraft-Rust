@@ -1,13 +1,13 @@
 //! World: chunk map, block access, copy-on-write edits (thread-safe meshing),
 //! pending cross-chunk decoration edits.
 
-use vc_blocks::blocks::*;
-use vc_chunk::chunk::Chunk;
 use crate::gen::TerrainGen;
 use crate::light::LightData;
-use vc_rng::rng::Rng;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use vc_blocks::blocks::*;
+use vc_chunk::chunk::Chunk;
+use vc_rng::rng::Rng;
 
 pub type ChunkPos = (i32, i32);
 
@@ -39,7 +39,11 @@ impl Dimension {
     }
 
     pub fn from_u8(v: u8) -> Dimension {
-        if v == 1 { Dimension::Nether } else { Dimension::Overworld }
+        if v == 1 {
+            Dimension::Nether
+        } else {
+            Dimension::Overworld
+        }
     }
 
     /// horizontal block-per-block scale of this dimension relative to the
@@ -238,7 +242,9 @@ impl World {
         let cx = wx.div_euclid(16);
         let cz = wz.div_euclid(16);
         let pos = (cx, cz);
-        let Some(old) = self.chunks.get(&pos) else { return None };
+        let Some(old) = self.chunks.get(&pos) else {
+            return None;
+        };
         let old = Arc::clone(old);
         let lx = (wx - cx * 16) as usize;
         let lz = (wz - cz * 16) as usize;
@@ -374,7 +380,12 @@ impl World {
 
     /// Insert a freshly generated chunk + apply outbound decorations.
     /// Newly generated content has never been saved → save-dirty.
-    pub fn insert_generated(&mut self, pos: ChunkPos, chunk: Arc<Chunk>, outbound: Vec<(i32, i32, i32, u8)>) {
+    pub fn insert_generated(
+        &mut self,
+        pos: ChunkPos,
+        chunk: Arc<Chunk>,
+        outbound: Vec<(i32, i32, i32, u8)>,
+    ) {
         self.chunks.insert(pos, chunk);
         self.decorated.insert(pos);
         self.save_dirty.insert(pos);
@@ -497,7 +508,10 @@ mod phase3_tests {
         assert_eq!(w.dirty.len(), 1, "only the own chunk");
         let mask = *w.dirty.get(&(0, 0)).unwrap();
         assert_eq!(mask, 1 << 4, "section 4 (y 64..79) only, got {mask:#b}");
-        assert_eq!(*w.dirty_causes.get(&(0, 0)).unwrap(), CAUSE_GEOMETRY | CAUSE_MATERIAL);
+        assert_eq!(
+            *w.dirty_causes.get(&(0, 0)).unwrap(),
+            CAUSE_GEOMETRY | CAUSE_MATERIAL
+        );
     }
 
     /// §12 + §18: light regions now come from the incremental LightEngine's
@@ -517,7 +531,11 @@ mod phase3_tests {
         }
         assert!(!w.dirty.contains_key(&(-1, -1)), "far diagonal not touched");
         let m = *w.dirty.get(&(1, 0)).unwrap();
-        assert_eq!(m & (1 << 7), 1 << 7, "neighbor section 7 (y 112..127) must be dirty");
+        assert_eq!(
+            m & (1 << 7),
+            1 << 7,
+            "neighbor section 7 (y 112..127) must be dirty"
+        );
     }
 
     /// §12: mining deep under a sealed stone ceiling with no emissive
@@ -553,7 +571,11 @@ mod phase3_tests {
         w.set_block(8, 70, 8, AIR);
         assert_eq!(w.dirty.len(), 1);
         let mask = *w.dirty.get(&(0, 0)).unwrap();
-        assert_eq!(mask, 1 << 4, "geometry section 4 (y 64..79) only, got {mask:#b}");
+        assert_eq!(
+            mask,
+            1 << 4,
+            "geometry section 4 (y 64..79) only, got {mask:#b}"
+        );
     }
 
     /// §12: a NO-OP edit (same block re-written) dirties NOTHING — the
@@ -576,7 +598,11 @@ mod phase3_tests {
         w.mark_sections_dirty((0, 0), 1 << 9, CAUSE_LIGHT);
         // job completes: clear ONLY section 4
         w.clear_dirty_mask((0, 0), 1 << 4);
-        assert_eq!(*w.dirty.get(&(0, 0)).unwrap(), 1 << 9, "in-flight edit bit survives");
+        assert_eq!(
+            *w.dirty.get(&(0, 0)).unwrap(),
+            1 << 9,
+            "in-flight edit bit survives"
+        );
         assert!(w.dirty_causes.contains_key(&(0, 0)));
         // final job clears the rest → both maps drop the chunk
         w.clear_dirty_mask((0, 0), 1 << 9);

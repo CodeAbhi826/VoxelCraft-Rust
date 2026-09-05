@@ -15,16 +15,40 @@ use wasm_bindgen::JsCast;
 /// Events produced by the JS input shim.
 #[derive(Debug, Clone)]
 pub enum WebEvent {
-    Key { code: String, pressed: bool, repeat: bool },
-    MouseDelta { dx: f32, dy: f32 },
-    Cursor { x: f32, y: f32 },
-    Button { button: i32, pressed: bool, x: f32, y: f32 },
-    Wheel { dir: f32 },
-    LockChange { locked: bool },
+    Key {
+        code: String,
+        pressed: bool,
+        repeat: bool,
+    },
+    MouseDelta {
+        dx: f32,
+        dy: f32,
+    },
+    Cursor {
+        x: f32,
+        y: f32,
+    },
+    Button {
+        button: i32,
+        pressed: bool,
+        x: f32,
+        y: f32,
+    },
+    Wheel {
+        dir: f32,
+    },
+    LockChange {
+        locked: bool,
+    },
     LockError,
-    Resize { w: u32, h: u32 },
+    Resize {
+        w: u32,
+        h: u32,
+    },
     Blur,
-    Visibility { hidden: bool },
+    Visibility {
+        hidden: bool,
+    },
 }
 
 /// E2E test command queue: the page JS pushes strings
@@ -47,15 +71,23 @@ pub fn pop_test_cmd() -> Option<String> {
 /// Drain `window.voxelcraftEvents` (array of small arrays) → typed events.
 pub fn drain_events() -> Vec<WebEvent> {
     let mut out = Vec::new();
-    let Some(window) = web_sys::window() else { return out };
+    let Some(window) = web_sys::window() else {
+        return out;
+    };
     let win: wasm_bindgen::JsValue = window.into();
-    let Ok(arr) = js_sys::Reflect::get(&win, &"voxelcraftEvents".into()) else { return out };
-    let Ok(arr) = arr.dyn_into::<js_sys::Array>() else { return out };
+    let Ok(arr) = js_sys::Reflect::get(&win, &"voxelcraftEvents".into()) else {
+        return out;
+    };
+    let Ok(arr) = arr.dyn_into::<js_sys::Array>() else {
+        return out;
+    };
     if arr.length() == 0 {
         return out;
     }
     for i in 0..arr.length() {
-        let Some(ev) = arr.get(i).dyn_into::<js_sys::Array>().ok() else { continue };
+        let Some(ev) = arr.get(i).dyn_into::<js_sys::Array>().ok() else {
+            continue;
+        };
         let tag = ev.get(0).as_string().unwrap_or_default();
         let f = |i: u32| ev.get(i).as_f64().unwrap_or(0.0);
         let b = |i: u32| ev.get(i).as_f64().unwrap_or(0.0) > 0.5;
@@ -65,8 +97,14 @@ pub fn drain_events() -> Vec<WebEvent> {
                 pressed: b(2),
                 repeat: b(3),
             }),
-            "m" => out.push(WebEvent::MouseDelta { dx: f(1) as f32, dy: f(2) as f32 }),
-            "c" => out.push(WebEvent::Cursor { x: f(1) as f32, y: f(2) as f32 }),
+            "m" => out.push(WebEvent::MouseDelta {
+                dx: f(1) as f32,
+                dy: f(2) as f32,
+            }),
+            "c" => out.push(WebEvent::Cursor {
+                x: f(1) as f32,
+                y: f(2) as f32,
+            }),
             "b" => out.push(WebEvent::Button {
                 button: f(1) as i32,
                 pressed: b(2),
@@ -76,7 +114,10 @@ pub fn drain_events() -> Vec<WebEvent> {
             "w" => out.push(WebEvent::Wheel { dir: f(1) as f32 }),
             "pl" => out.push(WebEvent::LockChange { locked: b(1) }),
             "ple" => out.push(WebEvent::LockError),
-            "r" => out.push(WebEvent::Resize { w: f(1) as u32, h: f(2) as u32 }),
+            "r" => out.push(WebEvent::Resize {
+                w: f(1) as u32,
+                h: f(2) as u32,
+            }),
             "blur" => out.push(WebEvent::Blur),
             "vis" => out.push(WebEvent::Visibility { hidden: b(1) }),
             _ => {}

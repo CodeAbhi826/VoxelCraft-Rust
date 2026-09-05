@@ -17,8 +17,8 @@
 //! pistons and the remaining §25 component list are not in the registry
 //! yet — this is the connectivity + ordering core they bolt onto.
 
-use vc_blocks::blocks::*;
 use crate::ticks::TickScheduler;
+use vc_blocks::blocks::*;
 use vc_world::world::World;
 
 /// 1 redstone tick = 2 game ticks (vanilla)
@@ -478,7 +478,12 @@ pub const DISPENSER_DELAY: u64 = 4;
 fn power_at(world: &World, x: i32, y: i32, z: i32) -> u8 {
     let mut best = 0u8;
     for (dx, dy, dz) in [
-        (1i32, 0i32, 0i32), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1),
+        (1i32, 0i32, 0i32),
+        (-1, 0, 0),
+        (0, 1, 0),
+        (0, -1, 0),
+        (0, 0, 1),
+        (0, 0, -1),
     ] {
         let s = world.get_state(x + dx, y + dy, z + dz);
         let b = state_block(s);
@@ -558,17 +563,29 @@ fn signal_at(world: &World, x: i32, y: i32, z: i32) -> u8 {
     let mut v = match b {
         REDSTONE_WIRE => wire_power(s),
         LEVER => {
-            if lever_is_on(s) { 15 } else { 0 }
+            if lever_is_on(s) {
+                15
+            } else {
+                0
+            }
         }
         REDSTONE_TORCH => {
-            if torch_is_lit(s) { 15 } else { 0 }
+            if torch_is_lit(s) {
+                15
+            } else {
+                0
+            }
         }
         // a powered repeater sitting in the input cell feeds us 15
         // (direct back-to-back chaining; the wire medium covers the
         // general case)
         REPEATER => {
             let (_, _, powered) = repeater_decode(s);
-            if powered { 15 } else { 0 }
+            if powered {
+                15
+            } else {
+                0
+            }
         }
         _ => 0,
     };
@@ -600,10 +617,20 @@ pub fn qc_powered(world: &World, x: i32, y: i32, z: i32) -> bool {
 pub fn piston_unpushable(b: u8) -> bool {
     matches!(
         b,
-        BEDROCK | OBSIDIAN | ENCHANT_TABLE | PISTON | STICKY_PISTON | CHEST | DISPENSER
-            | DROPPER | HOPPER | FURNACE | BREWING_STAND | WATER
+        BEDROCK
+            | OBSIDIAN
+            | ENCHANT_TABLE
+            | PISTON
+            | STICKY_PISTON
+            | CHEST
+            | DISPENSER
+            | DROPPER
+            | HOPPER
+            | FURNACE
+            | BREWING_STAND
+            | WATER
     ) || (b >= REPEATER && b <= COMPARATOR) // directional plates ride the
-    // floor in vanilla; ours stay put (documented simplification)
+                                            // floor in vanilla; ours stay put (documented simplification)
 }
 
 /// blocks that break (pop as drops) when pushed — our cross family
@@ -1166,7 +1193,11 @@ mod phase3_tests {
             }
         }
         // mid-pulse read: the BACK wire is powered, the side wire is not
-        assert_eq!(wire_power(w.get_state(-1, 65, 0)), 15, "back wire sees the pulse");
+        assert_eq!(
+            wire_power(w.get_state(-1, 65, 0)),
+            15,
+            "back wire sees the pulse"
+        );
         assert_eq!(
             wire_power(w.get_state(0, 65, 1)),
             0,

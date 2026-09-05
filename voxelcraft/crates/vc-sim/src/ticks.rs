@@ -111,8 +111,10 @@ impl RandomTicker {
     ) {
         for &(cx, cz) in chunks.iter() {
             // deterministic sample stream: seed ← world seed ⊕ chunk ⊕ tick
-            let mut s = self.seed ^ (cx as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15)
-                ^ (cz as u64).wrapping_mul(0xC2B2_AE3D_27D4_EB4F) ^ tick.wrapping_mul(0x1656_67B1_9E37_79B9);
+            let mut s = self.seed
+                ^ (cx as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15)
+                ^ (cz as u64).wrapping_mul(0xC2B2_AE3D_27D4_EB4F)
+                ^ tick.wrapping_mul(0x1656_67B1_9E37_79B9);
             for _ in 0..per_chunk {
                 // xorshift — fast, stable across platforms
                 s ^= s << 13;

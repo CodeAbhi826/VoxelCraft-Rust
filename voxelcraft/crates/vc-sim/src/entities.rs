@@ -38,7 +38,12 @@ pub struct ItemSystem {
 
 impl ItemSystem {
     pub fn new(seed: u64) -> Self {
-        ItemSystem { items: Vec::with_capacity(64), rng: Rng::new(seed), dropped_total: 0, picked_total: 0 }
+        ItemSystem {
+            items: Vec::with_capacity(64),
+            rng: Rng::new(seed),
+            dropped_total: 0,
+            picked_total: 0,
+        }
     }
 
     pub fn len(&self) -> usize {
@@ -90,9 +95,17 @@ impl ItemSystem {
     /// Phase 6 §26: entities outside the simulation ring (Chebyshev chunk
     /// distance from `sim_center`) freeze — age included (1.18+ semantics;
     /// `sim_radius` = i32::MAX disables gating = 1.16.5 behavior).
-    pub fn tick(&mut self, world: &vc_world::world::World, sim_center: (i32, i32), sim_radius: i32) {
+    pub fn tick(
+        &mut self,
+        world: &vc_world::world::World,
+        sim_center: (i32, i32),
+        sim_radius: i32,
+    ) {
         for it in self.items.iter_mut() {
-            let ichunk = ((it.pos[0] / 16.0).floor() as i32, (it.pos[2] / 16.0).floor() as i32);
+            let ichunk = (
+                (it.pos[0] / 16.0).floor() as i32,
+                (it.pos[2] / 16.0).floor() as i32,
+            );
             let in_ring = ichunk
                 .0
                 .wrapping_sub(sim_center.0)
@@ -103,21 +116,15 @@ impl ItemSystem {
                 continue;
             }
             it.age += 1;
-            let in_water = world.get_block(
-                it.pos[0] as i32,
-                it.pos[1] as i32,
-                it.pos[2] as i32,
-            ) == WATER;
+            let in_water =
+                world.get_block(it.pos[0] as i32, it.pos[1] as i32, it.pos[2] as i32) == WATER;
             it.vel[1] += if in_water { 0.04 } else { -0.04 };
             for axis in 0..3 {
                 let target = it.pos[axis] + it.vel[axis];
                 let mut probe = it.pos;
                 probe[axis] = target;
-                let hit = is_solid(world.get_block(
-                    probe[0] as i32,
-                    probe[1] as i32,
-                    probe[2] as i32,
-                ));
+                let hit =
+                    is_solid(world.get_block(probe[0] as i32, probe[1] as i32, probe[2] as i32));
                 if hit {
                     if axis == 1 {
                         it.vel[1] = 0.0;
@@ -135,6 +142,13 @@ impl ItemSystem {
             it.vel[2] *= drag;
             if in_water {
                 it.vel[1] *= 0.9;
+            } else {
+                // VERIFIED entity physics table (minecraft.wiki/w/
+                // Falling_Block, research-verdicts.md live round):
+                // Drag-Y 0.98 applies in air too — items share the
+                // falling-block profile (gravity 0.04, drag 0.98,
+                // terminal 1.96 b/t)
+                it.vel[1] *= 0.98;
             }
         }
         self.items.retain(|it| it.age < DESPAWN_TICKS);
@@ -187,22 +201,42 @@ impl ItemSystem {
             let ru = up;
             let half = 0.15f32;
             let bob = (time * 2.2 + it.pos[0] + it.pos[2]).sin() * 0.04;
-            let col = [it.light * it.tint[0], it.light * it.tint[1], it.light * it.tint[2]];
+            let col = [
+                it.light * it.tint[0],
+                it.light * it.tint[1],
+                it.light * it.tint[2],
+            ];
             let corners = [
                 (
-                    [-rr[0] * half - ru[0] * half, -rr[1] * half - ru[1] * half, -rr[2] * half - ru[2] * half],
+                    [
+                        -rr[0] * half - ru[0] * half,
+                        -rr[1] * half - ru[1] * half,
+                        -rr[2] * half - ru[2] * half,
+                    ],
                     [tx / 16.0, (ty + 1.0) / 16.0],
                 ),
                 (
-                    [rr[0] * half - ru[0] * half, rr[1] * half - ru[1] * half, rr[2] * half - ru[2] * half],
+                    [
+                        rr[0] * half - ru[0] * half,
+                        rr[1] * half - ru[1] * half,
+                        rr[2] * half - ru[2] * half,
+                    ],
                     [(tx + 1.0) / 16.0, (ty + 1.0) / 16.0],
                 ),
                 (
-                    [rr[0] * half + ru[0] * half, rr[1] * half + ru[1] * half, rr[2] * half + ru[2] * half],
+                    [
+                        rr[0] * half + ru[0] * half,
+                        rr[1] * half + ru[1] * half,
+                        rr[2] * half + ru[2] * half,
+                    ],
                     [(tx + 1.0) / 16.0, ty / 16.0],
                 ),
                 (
-                    [-rr[0] * half + ru[0] * half, -rr[1] * half + ru[1] * half, -rr[2] * half + ru[2] * half],
+                    [
+                        -rr[0] * half + ru[0] * half,
+                        -rr[1] * half + ru[1] * half,
+                        -rr[2] * half + ru[2] * half,
+                    ],
                     [tx / 16.0, ty / 16.0],
                 ),
             ];
@@ -221,8 +255,8 @@ impl ItemSystem {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vc_world::world::World;
     use std::sync::Arc;
+    use vc_world::world::World;
 
     fn flat_world() -> World {
         let mut w = World::new(7);
@@ -256,7 +290,11 @@ mod tests {
         let it = &is.items[0];
         // fell from 66.3 to rest on the y=64 floor's top surface (y=65);
         // point-collision leaves a small rest band above the exact surface
-        assert!((it.pos[1] - 65.0).abs() < 0.06, "rest height: {}", it.pos[1]);
+        assert!(
+            (it.pos[1] - 65.0).abs() < 0.06,
+            "rest height: {}",
+            it.pos[1]
+        );
         // despawn at 6000 ticks
         for _ in 0..6000 {
             is.tick(&w, (0, 0), i32::MAX);
@@ -273,7 +311,10 @@ mod tests {
         for _ in 0..5 {
             is.tick(&w, (0, 0), i32::MAX);
         }
-        assert!(is.collect([0.5, 66.0, 0.5]).is_empty(), "pickup delay guards");
+        assert!(
+            is.collect([0.5, 66.0, 0.5]).is_empty(),
+            "pickup delay guards"
+        );
         // after the delay: player near → collected
         for _ in 0..10 {
             is.tick(&w, (0, 0), i32::MAX);

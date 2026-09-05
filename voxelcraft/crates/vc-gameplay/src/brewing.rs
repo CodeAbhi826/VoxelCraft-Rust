@@ -11,9 +11,9 @@
 //! - glistering melon → MUSHROOM_BROWN as the effect ingredient
 //! - glowstone upgrade is exactly vanilla
 
+use std::collections::HashMap;
 use vc_blocks::blocks::*;
 use vc_inventory::inventory::ItemStack;
-use std::collections::HashMap;
 
 /// vanilla: 400 game ticks per brew (20 s)
 pub const BREW_TICKS: i32 = 400;
@@ -141,15 +141,12 @@ impl BrewingState {
     /// vanilla rule: brewing only proceeds when EVERY non-empty bottle slot
     /// has a recipe for the current ingredient (empty slots are fine)
     fn can_brew(&self) -> bool {
-        let filled: Vec<&ItemStack> =
-            self.bottles.iter().filter(|s| !s.is_empty()).collect();
+        let filled: Vec<&ItemStack> = self.bottles.iter().filter(|s| !s.is_empty()).collect();
         if filled.is_empty() || self.ingredient.is_empty() {
             return false;
         }
         let ing = self.ingredient.block;
-        filled
-            .iter()
-            .all(|s| brew_result(s.block, ing).is_some())
+        filled.iter().all(|s| brew_result(s.block, ing).is_some())
     }
 
     pub fn is_brewing(&self) -> bool {
@@ -230,7 +227,9 @@ impl Brewings {
         self.completed.clear();
         let positions: Vec<[i32; 3]> = self.map.keys().copied().collect();
         for pos in positions {
-            let Some(b) = self.map.get_mut(&pos) else { continue };
+            let Some(b) = self.map.get_mut(&pos) else {
+                continue;
+            };
             if b.tick() {
                 self.completed.push(pos);
                 self.total_brewed += 1;
@@ -258,12 +257,24 @@ mod tests {
     #[test]
     fn corruption_chain_matches_the_wiki() {
         // corruption preserves the modifier (Java Edition)
-        assert_eq!(brew_result(POTION_HEALING, FERMENTED_SPIDER_EYE), Some(POTION_HARMING));
-        assert_eq!(brew_result(POTION_HEALING_II, FERMENTED_SPIDER_EYE), Some(POTION_HARMING_II));
+        assert_eq!(
+            brew_result(POTION_HEALING, FERMENTED_SPIDER_EYE),
+            Some(POTION_HARMING)
+        );
+        assert_eq!(
+            brew_result(POTION_HEALING_II, FERMENTED_SPIDER_EYE),
+            Some(POTION_HARMING_II)
+        );
         // glowstone enhances harming (the only enhancable corrupted potion)
-        assert_eq!(brew_result(POTION_HARMING, GLOWSTONE), Some(POTION_HARMING_II));
+        assert_eq!(
+            brew_result(POTION_HARMING, GLOWSTONE),
+            Some(POTION_HARMING_II)
+        );
         // the eye is a base ingredient: water + eye → mundane
-        assert_eq!(brew_result(POTION_WATER, FERMENTED_SPIDER_EYE), Some(POTION_MUNDANE));
+        assert_eq!(
+            brew_result(POTION_WATER, FERMENTED_SPIDER_EYE),
+            Some(POTION_MUNDANE)
+        );
         // corrupting an ALREADY corrupted potion does nothing
         assert_eq!(brew_result(POTION_HARMING, FERMENTED_SPIDER_EYE), None);
         assert_eq!(brew_result(POTION_HARMING_II, FERMENTED_SPIDER_EYE), None);
@@ -286,7 +297,11 @@ mod tests {
         // full interactive path: a brewing stand holding Healing, fed a
         // fermented eye, produces Harming after exactly one 400-tick cycle
         let mut b = BrewingState::default();
-        b.bottles = [ItemStack::new(POTION_HEALING, 1), ItemStack::EMPTY, ItemStack::EMPTY];
+        b.bottles = [
+            ItemStack::new(POTION_HEALING, 1),
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
+        ];
         b.ingredient = ItemStack::new(FERMENTED_SPIDER_EYE, 1);
         b.fuel = ItemStack::new(NETHERRACK, 1);
         let mut completions = 0;
@@ -296,14 +311,21 @@ mod tests {
             }
         }
         assert_eq!(completions, 1);
-        assert_eq!(b.bottles[0].block, POTION_HARMING, "healing corrupted to harming");
+        assert_eq!(
+            b.bottles[0].block, POTION_HARMING,
+            "healing corrupted to harming"
+        );
         assert!(b.ingredient.is_empty());
     }
 
     #[test]
     fn water_plus_wart_makes_awkward() {
         let mut b = BrewingState::default();
-        b.bottles = [ItemStack::new(POTION_WATER, 1), ItemStack::EMPTY, ItemStack::new(POTION_WATER, 1)];
+        b.bottles = [
+            ItemStack::new(POTION_WATER, 1),
+            ItemStack::EMPTY,
+            ItemStack::new(POTION_WATER, 1),
+        ];
         b.ingredient = ItemStack::new(MUSHROOM_RED, 1);
         b.fuel = ItemStack::new(NETHERRACK, 1);
         let mut completions = 0;
@@ -318,7 +340,10 @@ mod tests {
         assert!(b.bottles[1].is_empty(), "empty slot untouched");
         assert!(b.ingredient.is_empty(), "ingredient consumed");
         assert_eq!(b.fuel_charges, FUEL_OPERATIONS - 1, "one charge spent");
-        assert!(b.fuel.is_empty(), "the single fuel item was consumed into 20 charges");
+        assert!(
+            b.fuel.is_empty(),
+            "the single fuel item was consumed into 20 charges"
+        );
     }
 
     #[test]

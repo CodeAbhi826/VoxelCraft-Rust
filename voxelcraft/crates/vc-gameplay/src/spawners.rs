@@ -18,8 +18,8 @@
 //! spinning model inside the cage is a client visual we omit — the
 //! mechanics (range/delay/cycle/cap) are the gameplay.
 
-use std::collections::HashMap;
 use crate::mobs::{MobKind, MobSystem};
+use std::collections::HashMap;
 use vc_blocks::blocks::*;
 use vc_rng::rng::Rng;
 use vc_world::world::World;
@@ -213,7 +213,10 @@ mod tests {
         let mut s = Spawners::new(7);
         for _ in 0..2000 {
             let d = s.next_delay();
-            assert!((MIN_DELAY..MAX_DELAY).contains(&d), "delay {d} out of 200..=799");
+            assert!(
+                (MIN_DELAY..MAX_DELAY).contains(&d),
+                "delay {d} out of 200..=799"
+            );
         }
     }
 
@@ -227,7 +230,11 @@ mod tests {
         // player 40 blocks away: nothing happens, delay stays armed
         s.tick(&w, Some([48.0, 65.0, 8.0]), &mut mobs);
         assert_eq!(mobs.list.len(), 0, "out of range: no spawn");
-        assert_eq!(s.map.get(&[8, 65, 8]).unwrap().delay, 0, "delay not consumed while idle");
+        assert_eq!(
+            s.map.get(&[8, 65, 8]).unwrap().delay,
+            0,
+            "delay not consumed while idle"
+        );
         // player 10 blocks away: cycle fires immediately (delay 0)
         s.tick(&w, Some([18.0, 65.0, 8.0]), &mut mobs);
         assert!(!mobs.list.is_empty(), "in range: mobs spawned");
@@ -275,8 +282,15 @@ mod tests {
         s.map.get_mut(&[8, 65, 8]).unwrap().delay = 0;
         let before = s.spawned_total;
         s.tick(&w2, Some([9.0, 65.0, 9.0]), &mut mobs);
-        assert_eq!(s.spawned_total, before, "no spawn possible through the wall");
-        assert_eq!(s.map.get(&[8, 65, 8]).unwrap().delay, 0, "failed cycle retries next tick");
+        assert_eq!(
+            s.spawned_total, before,
+            "no spawn possible through the wall"
+        );
+        assert_eq!(
+            s.map.get(&[8, 65, 8]).unwrap().delay,
+            0,
+            "failed cycle retries next tick"
+        );
     }
 
     #[test]

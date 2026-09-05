@@ -17,10 +17,10 @@
 //! - per-slot option-level curve and the enchant-weighted pick are a
 //!   close approximation of vanilla's (documented, deterministic)
 
+use std::collections::HashMap;
 use vc_blocks::blocks::*;
 use vc_inventory::inventory::ItemStack;
 use vc_rng::rng::Rng;
-use std::collections::HashMap;
 
 /// one enchantment row offered by the table
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -70,45 +70,273 @@ pub struct EnchantDef {
 
 pub const ENCHANTS: &[EnchantDef] = &[
     // ---- indices 0..=9: original Phase-era order (save compatibility) ----
-    EnchantDef { name: "Protection", id: "protection", max_level: 4, weight: 10, table: true },
-    EnchantDef { name: "Feather Falling", id: "feather_falling", max_level: 4, weight: 5, table: true },
-    EnchantDef { name: "Sharpness", id: "sharpness", max_level: 5, weight: 10, table: true },
-    EnchantDef { name: "Efficiency", id: "efficiency", max_level: 5, weight: 10, table: true },
-    EnchantDef { name: "Unbreaking", id: "unbreaking", max_level: 3, weight: 5, table: true },
-    EnchantDef { name: "Fortune", id: "fortune", max_level: 3, weight: 2, table: true },
-    EnchantDef { name: "Silk Touch", id: "silk_touch", max_level: 1, weight: 1, table: true },
-    EnchantDef { name: "Mending", id: "mending", max_level: 1, weight: 2, table: false },
-    EnchantDef { name: "Power", id: "power", max_level: 5, weight: 10, table: true },
-    EnchantDef { name: "Looting", id: "looting", max_level: 3, weight: 2, table: true },
+    EnchantDef {
+        name: "Protection",
+        id: "protection",
+        max_level: 4,
+        weight: 10,
+        table: true,
+    },
+    EnchantDef {
+        name: "Feather Falling",
+        id: "feather_falling",
+        max_level: 4,
+        weight: 5,
+        table: true,
+    },
+    EnchantDef {
+        name: "Sharpness",
+        id: "sharpness",
+        max_level: 5,
+        weight: 10,
+        table: true,
+    },
+    EnchantDef {
+        name: "Efficiency",
+        id: "efficiency",
+        max_level: 5,
+        weight: 10,
+        table: true,
+    },
+    EnchantDef {
+        name: "Unbreaking",
+        id: "unbreaking",
+        max_level: 3,
+        weight: 5,
+        table: true,
+    },
+    EnchantDef {
+        name: "Fortune",
+        id: "fortune",
+        max_level: 3,
+        weight: 2,
+        table: true,
+    },
+    EnchantDef {
+        name: "Silk Touch",
+        id: "silk_touch",
+        max_level: 1,
+        weight: 1,
+        table: true,
+    },
+    EnchantDef {
+        name: "Mending",
+        id: "mending",
+        max_level: 1,
+        weight: 2,
+        table: false,
+    },
+    EnchantDef {
+        name: "Power",
+        id: "power",
+        max_level: 5,
+        weight: 10,
+        table: true,
+    },
+    EnchantDef {
+        name: "Looting",
+        id: "looting",
+        max_level: 3,
+        weight: 2,
+        table: true,
+    },
     // ---- Phase 4 additions: the remaining 28 of the 38 ----
-    EnchantDef { name: "Fire Protection", id: "fire_protection", max_level: 4, weight: 5, table: true },
-    EnchantDef { name: "Blast Protection", id: "blast_protection", max_level: 4, weight: 2, table: true },
-    EnchantDef { name: "Projectile Protection", id: "projectile_protection", max_level: 4, weight: 5, table: true },
-    EnchantDef { name: "Respiration", id: "respiration", max_level: 3, weight: 2, table: true },
-    EnchantDef { name: "Aqua Affinity", id: "aqua_affinity", max_level: 1, weight: 2, table: true },
-    EnchantDef { name: "Thorns", id: "thorns", max_level: 3, weight: 1, table: true },
-    EnchantDef { name: "Depth Strider", id: "depth_strider", max_level: 3, weight: 2, table: true },
-    EnchantDef { name: "Frost Walker", id: "frost_walker", max_level: 2, weight: 2, table: false },
-    EnchantDef { name: "Curse of Binding", id: "binding_curse", max_level: 1, weight: 1, table: false },
-    EnchantDef { name: "Soul Speed", id: "soul_speed", max_level: 3, weight: 1, table: false },
-    EnchantDef { name: "Smite", id: "smite", max_level: 5, weight: 5, table: true },
-    EnchantDef { name: "Bane of Arthropods", id: "bane_of_arthropods", max_level: 5, weight: 5, table: true },
-    EnchantDef { name: "Knockback", id: "knockback", max_level: 2, weight: 5, table: true },
-    EnchantDef { name: "Fire Aspect", id: "fire_aspect", max_level: 2, weight: 2, table: true },
-    EnchantDef { name: "Sweeping Edge", id: "sweeping", max_level: 3, weight: 2, table: true },
-    EnchantDef { name: "Punch", id: "punch", max_level: 2, weight: 2, table: true },
-    EnchantDef { name: "Flame", id: "flame", max_level: 1, weight: 2, table: true },
-    EnchantDef { name: "Infinity", id: "infinity", max_level: 1, weight: 1, table: true },
-    EnchantDef { name: "Luck of the Sea", id: "luck_of_the_sea", max_level: 3, weight: 2, table: true },
-    EnchantDef { name: "Lure", id: "lure", max_level: 3, weight: 2, table: true },
-    EnchantDef { name: "Loyalty", id: "loyalty", max_level: 3, weight: 5, table: true },
-    EnchantDef { name: "Impaling", id: "impaling", max_level: 5, weight: 2, table: true },
-    EnchantDef { name: "Riptide", id: "riptide", max_level: 3, weight: 2, table: true },
-    EnchantDef { name: "Channeling", id: "channeling", max_level: 1, weight: 1, table: true },
-    EnchantDef { name: "Multishot", id: "multishot", max_level: 1, weight: 2, table: true },
-    EnchantDef { name: "Quick Charge", id: "quick_charge", max_level: 3, weight: 5, table: true },
-    EnchantDef { name: "Piercing", id: "piercing", max_level: 4, weight: 10, table: true },
-    EnchantDef { name: "Curse of Vanishing", id: "vanishing_curse", max_level: 1, weight: 1, table: false },
+    EnchantDef {
+        name: "Fire Protection",
+        id: "fire_protection",
+        max_level: 4,
+        weight: 5,
+        table: true,
+    },
+    EnchantDef {
+        name: "Blast Protection",
+        id: "blast_protection",
+        max_level: 4,
+        weight: 2,
+        table: true,
+    },
+    EnchantDef {
+        name: "Projectile Protection",
+        id: "projectile_protection",
+        max_level: 4,
+        weight: 5,
+        table: true,
+    },
+    EnchantDef {
+        name: "Respiration",
+        id: "respiration",
+        max_level: 3,
+        weight: 2,
+        table: true,
+    },
+    EnchantDef {
+        name: "Aqua Affinity",
+        id: "aqua_affinity",
+        max_level: 1,
+        weight: 2,
+        table: true,
+    },
+    EnchantDef {
+        name: "Thorns",
+        id: "thorns",
+        max_level: 3,
+        weight: 1,
+        table: true,
+    },
+    EnchantDef {
+        name: "Depth Strider",
+        id: "depth_strider",
+        max_level: 3,
+        weight: 2,
+        table: true,
+    },
+    EnchantDef {
+        name: "Frost Walker",
+        id: "frost_walker",
+        max_level: 2,
+        weight: 2,
+        table: false,
+    },
+    EnchantDef {
+        name: "Curse of Binding",
+        id: "binding_curse",
+        max_level: 1,
+        weight: 1,
+        table: false,
+    },
+    EnchantDef {
+        name: "Soul Speed",
+        id: "soul_speed",
+        max_level: 3,
+        weight: 1,
+        table: false,
+    },
+    EnchantDef {
+        name: "Smite",
+        id: "smite",
+        max_level: 5,
+        weight: 5,
+        table: true,
+    },
+    EnchantDef {
+        name: "Bane of Arthropods",
+        id: "bane_of_arthropods",
+        max_level: 5,
+        weight: 5,
+        table: true,
+    },
+    EnchantDef {
+        name: "Knockback",
+        id: "knockback",
+        max_level: 2,
+        weight: 5,
+        table: true,
+    },
+    EnchantDef {
+        name: "Fire Aspect",
+        id: "fire_aspect",
+        max_level: 2,
+        weight: 2,
+        table: true,
+    },
+    EnchantDef {
+        name: "Sweeping Edge",
+        id: "sweeping",
+        max_level: 3,
+        weight: 2,
+        table: true,
+    },
+    EnchantDef {
+        name: "Punch",
+        id: "punch",
+        max_level: 2,
+        weight: 2,
+        table: true,
+    },
+    EnchantDef {
+        name: "Flame",
+        id: "flame",
+        max_level: 1,
+        weight: 2,
+        table: true,
+    },
+    EnchantDef {
+        name: "Infinity",
+        id: "infinity",
+        max_level: 1,
+        weight: 1,
+        table: true,
+    },
+    EnchantDef {
+        name: "Luck of the Sea",
+        id: "luck_of_the_sea",
+        max_level: 3,
+        weight: 2,
+        table: true,
+    },
+    EnchantDef {
+        name: "Lure",
+        id: "lure",
+        max_level: 3,
+        weight: 2,
+        table: true,
+    },
+    EnchantDef {
+        name: "Loyalty",
+        id: "loyalty",
+        max_level: 3,
+        weight: 5,
+        table: true,
+    },
+    EnchantDef {
+        name: "Impaling",
+        id: "impaling",
+        max_level: 5,
+        weight: 2,
+        table: true,
+    },
+    EnchantDef {
+        name: "Riptide",
+        id: "riptide",
+        max_level: 3,
+        weight: 2,
+        table: true,
+    },
+    EnchantDef {
+        name: "Channeling",
+        id: "channeling",
+        max_level: 1,
+        weight: 1,
+        table: true,
+    },
+    EnchantDef {
+        name: "Multishot",
+        id: "multishot",
+        max_level: 1,
+        weight: 2,
+        table: true,
+    },
+    EnchantDef {
+        name: "Quick Charge",
+        id: "quick_charge",
+        max_level: 3,
+        weight: 5,
+        table: true,
+    },
+    EnchantDef {
+        name: "Piercing",
+        id: "piercing",
+        max_level: 4,
+        weight: 10,
+        table: true,
+    },
+    EnchantDef {
+        name: "Curse of Vanishing",
+        id: "vanishing_curse",
+        max_level: 1,
+        weight: 1,
+        table: false,
+    },
 ];
 
 /// registry lookup by id (§46: out-of-range ids fold to index 0)
@@ -136,8 +364,12 @@ pub fn incompatible(a: u8, b: u8) -> bool {
     if a == b {
         return false; // same enchant: stacking handled by level, not conflict
     }
-    const PROTECTION_FAMILY: &[&str] =
-        &["protection", "fire_protection", "blast_protection", "projectile_protection"];
+    const PROTECTION_FAMILY: &[&str] = &[
+        "protection",
+        "fire_protection",
+        "blast_protection",
+        "projectile_protection",
+    ];
     const DAMAGE_FAMILY: &[&str] = &["sharpness", "smite", "bane_of_arthropods"];
     let (da, db) = (enchant_def(a), enchant_def(b));
     let in_group = |g: &[&str]| g.contains(&da.id) && g.contains(&db.id);
@@ -189,11 +421,11 @@ pub fn xp_to_next(level: i32) -> i32 {
 /// midpoint — the engine's ore drops are deterministic)
 pub fn ore_xp(block: u8) -> i32 {
     match block {
-        COAL_ORE => 1,       // 0..2
-        LAPIS_ORE => 3,      // 2..5
-        REDSTONE_ORE => 3,   // 1..5
-        DIAMOND_ORE => 5,    // 3..7
-        EMERALD_ORE => 5,    // 3..7
+        COAL_ORE => 1,     // 0..2
+        LAPIS_ORE => 3,    // 2..5
+        REDSTONE_ORE => 3, // 1..5
+        DIAMOND_ORE => 5,  // 3..7
+        EMERALD_ORE => 5,  // 3..7
         _ => 0,
     }
 }
@@ -289,7 +521,12 @@ fn ench_level_for(def: &EnchantDef, level: u8) -> u8 {
 pub fn gen_options(power: u8, seed: u64) -> [EnchOption; 3] {
     let mut rng = Rng::new(seed);
     let levels = slot_levels(power, &mut rng);
-    let mut out = [EnchOption { level: 0, ench: 0, ench_level: 0, cost: 0 }; 3];
+    let mut out = [EnchOption {
+        level: 0,
+        ench: 0,
+        ench_level: 0,
+        cost: 0,
+    }; 3];
     for (row, o) in out.iter_mut().enumerate() {
         let level = levels[row];
         let id = pick_enchant(&mut rng);
@@ -325,7 +562,12 @@ impl Default for EnchantState {
         EnchantState {
             item: ItemStack::EMPTY,
             lapis: ItemStack::EMPTY,
-            options: [EnchOption { level: 0, ench: 0, ench_level: 0, cost: 0 }; 3],
+            options: [EnchOption {
+                level: 0,
+                ench: 0,
+                ench_level: 0,
+                cost: 0,
+            }; 3],
             power: 0,
             seed: 0,
         }
@@ -337,7 +579,10 @@ impl EnchantState {
     pub fn reroll(&mut self, world: &vc_world::world::World, pos: [i32; 3], base_seed: u64) {
         self.power = bookshelf_power(world, pos);
         self.seed = self.seed.wrapping_add(0x9E37_79B9_7F4A_7C15);
-        self.options = gen_options(self.power, base_seed ^ self.seed ^ (pos[0] as u64) << 32 ^ pos[2] as u64);
+        self.options = gen_options(
+            self.power,
+            base_seed ^ self.seed ^ (pos[0] as u64) << 32 ^ pos[2] as u64,
+        );
     }
 
     /// can this offer be paid for? (vanilla: levels + lapis + an item)
@@ -345,7 +590,9 @@ impl EnchantState {
     /// on the item is unpayable (the table never rerolls conflicts away
     /// in vanilla either — the slot just can't be taken)
     pub fn can_apply(&self, row: usize, player_level: i32) -> bool {
-        let Some(o) = self.options.get(row) else { return false };
+        let Some(o) = self.options.get(row) else {
+            return false;
+        };
         if o.level == 0 || self.item.is_empty() || self.item.block != ENCHANTED_BOOK {
             return false;
         }
@@ -389,8 +636,8 @@ pub struct Enchants {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vc_chunk::chunk::Chunk;
     use std::sync::Arc;
+    use vc_chunk::chunk::Chunk;
 
     fn flat_world() -> vc_world::world::World {
         let mut w = vc_world::world::World::new(7);
@@ -525,19 +772,31 @@ mod tests {
         assert_eq!(w("mending"), 2);
         assert_eq!(w("thorns"), 1);
         // table-receivable: exactly the 5 non-table enchants
-        let non_table: Vec<&str> =
-            ENCHANTS.iter().filter(|e| !e.table).map(|e| e.id).collect();
+        let non_table: Vec<&str> = ENCHANTS.iter().filter(|e| !e.table).map(|e| e.id).collect();
         assert_eq!(
             non_table,
-            vec!["mending", "frost_walker", "binding_curse", "soul_speed", "vanishing_curse"]
+            vec![
+                "mending",
+                "frost_walker",
+                "binding_curse",
+                "soul_speed",
+                "vanishing_curse"
+            ]
         );
     }
 
     #[test]
     fn incompatibility_groups_match_the_wiki() {
         // protection family: pairwise
-        let prot: Vec<u8> = ["protection", "fire_protection", "blast_protection", "projectile_protection"]
-            .iter().map(|&i| enchant_by_id(i).unwrap()).collect();
+        let prot: Vec<u8> = [
+            "protection",
+            "fire_protection",
+            "blast_protection",
+            "projectile_protection",
+        ]
+        .iter()
+        .map(|&i| enchant_by_id(i).unwrap())
+        .collect();
         for i in 0..prot.len() {
             for j in 0..prot.len() {
                 assert_eq!(incompatible(prot[i], prot[j]), i != j);
@@ -545,7 +804,9 @@ mod tests {
         }
         // damage family: pairwise
         let dmg: Vec<u8> = ["sharpness", "smite", "bane_of_arthropods"]
-            .iter().map(|&i| enchant_by_id(i).unwrap()).collect();
+            .iter()
+            .map(|&i| enchant_by_id(i).unwrap())
+            .collect();
         for i in 0..dmg.len() {
             for j in 0..dmg.len() {
                 assert_eq!(incompatible(dmg[i], dmg[j]), i != j);
@@ -566,14 +827,26 @@ mod tests {
             assert!(incompatible(ib, ia), "symmetric: {b} vs {a}");
         }
         // compatible: channeling + loyalty coexist (VERIFIED)
-        let (ch, lo) = (enchant_by_id("channeling").unwrap(), enchant_by_id("loyalty").unwrap());
+        let (ch, lo) = (
+            enchant_by_id("channeling").unwrap(),
+            enchant_by_id("loyalty").unwrap(),
+        );
         assert!(!incompatible(ch, lo));
         // protection + feather falling coexist (different families)
-        let (pr, ff) = (enchant_by_id("protection").unwrap(), enchant_by_id("feather_falling").unwrap());
+        let (pr, ff) = (
+            enchant_by_id("protection").unwrap(),
+            enchant_by_id("feather_falling").unwrap(),
+        );
         assert!(!incompatible(pr, ff));
         // unrelated pairs
-        assert!(!incompatible(enchant_by_id("sharpness").unwrap(), enchant_by_id("power").unwrap()));
-        assert!(!incompatible(enchant_by_id("unbreaking").unwrap(), enchant_by_id("efficiency").unwrap()));
+        assert!(!incompatible(
+            enchant_by_id("sharpness").unwrap(),
+            enchant_by_id("power").unwrap()
+        ));
+        assert!(!incompatible(
+            enchant_by_id("unbreaking").unwrap(),
+            enchant_by_id("efficiency").unwrap()
+        ));
         // self is not a conflict
         assert!(!incompatible(0, 0));
     }
@@ -617,7 +890,10 @@ mod tests {
         let cost = st.apply(1).expect("apply row 1");
         assert_eq!(cost, 2);
         assert_eq!(st.item.enchant().map(|(i, _)| i), Some(before[1].ench));
-        assert_eq!(st.item.enchant().map(|(_, l)| l), Some(before[1].ench_level));
+        assert_eq!(
+            st.item.enchant().map(|(_, l)| l),
+            Some(before[1].ench_level)
+        );
         // only books are enchantable
         st.item = ItemStack::new(STONE, 1);
         assert!(st.apply(1).is_none());

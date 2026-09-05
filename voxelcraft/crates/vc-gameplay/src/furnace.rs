@@ -2,10 +2,10 @@
 //! — 200-tick cook time, fuel burn times (planks/logs 300 ticks), input →
 //! output, lit state swap on the world block. Ticked by the sim at 20 Hz.
 
+use std::collections::HashMap;
 use vc_blocks::blocks::*;
 use vc_inventory::inventory::ItemStack;
 use vc_world::world::World;
-use std::collections::HashMap;
 
 /// vanilla: 200 game ticks per item
 pub const COOK_TICKS: i32 = 200;
@@ -68,8 +68,7 @@ impl FurnaceState {
     fn can_output(&self) -> bool {
         match smelt_result(self.input.block) {
             Some(out) => {
-                self.output.is_empty()
-                    || (self.output.block == out && self.output.count < 64)
+                self.output.is_empty() || (self.output.block == out && self.output.count < 64)
             }
             None => false,
         }
@@ -143,7 +142,9 @@ impl Furnaces {
         let mut changed = Vec::new();
         let positions: Vec<[i32; 3]> = self.map.keys().copied().collect();
         for pos in positions {
-            let Some(f) = self.map.get_mut(&pos) else { continue };
+            let Some(f) = self.map.get_mut(&pos) else {
+                continue;
+            };
             if f.tick() {
                 let s = world.get_state(pos[0], pos[1], pos[2]);
                 if state_block(s) == FURNACE {

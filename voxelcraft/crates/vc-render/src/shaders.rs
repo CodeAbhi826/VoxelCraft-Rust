@@ -128,7 +128,11 @@ on the given inputs (v1 cannot sample, cannot touch geometry).";
 /// parse + validate a pack manifest (JSON) with optional composite WGSL.
 /// Validation is naga-based (real parse + type-check of the WRAPPED
 /// module) so a broken pack can never reach pipeline creation (§46).
-pub fn parse_pack(id: &str, manifest_json: &str, composite_wgsl: Option<&str>) -> Result<ShaderPack, String> {
+pub fn parse_pack(
+    id: &str,
+    manifest_json: &str,
+    composite_wgsl: Option<&str>,
+) -> Result<ShaderPack, String> {
     #[derive(Deserialize)]
     struct Manifest {
         name: String,
@@ -145,14 +149,18 @@ pub fn parse_pack(id: &str, manifest_json: &str, composite_wgsl: Option<&str>) -
     fn default_tier() -> String {
         "SHADER-PACK-API".into()
     }
-    let m: Manifest =
-        serde_json::from_str(manifest_json).map_err(|e| format!("pack {id}: manifest JSON error: {e}"))?;
+    let m: Manifest = serde_json::from_str(manifest_json)
+        .map_err(|e| format!("pack {id}: manifest JSON error: {e}"))?;
     if m.name.trim().is_empty() {
         return Err(format!("pack {id}: empty name"));
     }
     // honest tier labeling (§34.2): packs may not self-declare above the
     // API tier — the engine decides what it actually demonstrated
-    let tier = if m.tier.is_empty() { default_tier() } else { m.tier };
+    let tier = if m.tier.is_empty() {
+        default_tier()
+    } else {
+        m.tier
+    };
     if tier != "SHADER-PACK-API" {
         return Err(format!(
             "pack {id}: tier '{tier}' is not granted by this engine (only SHADER-PACK-API is; see spec §34.2)"
@@ -238,10 +246,7 @@ pub fn validate_wgsl(src: &str) -> Result<(), String> {
         .map_err(|e| format!("WGSL type-check error: {e:?}"))?;
     // the wrapper must actually call packGrade with the exact signature —
     // a pack that renames or re-types it fails VALIDATION (not at boot)
-    let entry_ok = module
-        .entry_points
-        .iter()
-        .any(|e| e.name == "fs_main");
+    let entry_ok = module.entry_points.iter().any(|e| e.name == "fs_main");
     if !entry_ok {
         return Err("WGSL error: engine wrapper lost its fs_main entry point".into());
     }
@@ -264,11 +269,15 @@ pub fn builtin_packs() -> Vec<ShaderPack> {
     let mut out = Vec::new();
     match parse_pack("warm-evening", WARM_EVENING_JSON, Some(WARM_EVENING_WGSL)) {
         Ok(p) => out.push(p),
-        Err(e) => crate::render::report_boot_log(&format!("builtin pack warm-evening failed validation: {e}")),
+        Err(e) => crate::render::report_boot_log(&format!(
+            "builtin pack warm-evening failed validation: {e}"
+        )),
     }
     match parse_pack("moonlit", MOONLIT_JSON, Some(MOONLIT_WGSL)) {
         Ok(p) => out.push(p),
-        Err(e) => crate::render::report_boot_log(&format!("builtin pack moonlit failed validation: {e}")),
+        Err(e) => {
+            crate::render::report_boot_log(&format!("builtin pack moonlit failed validation: {e}"))
+        }
     }
     out
 }
@@ -295,14 +304,18 @@ pub fn external_packs() -> Vec<ShaderPack> {
         let manifest = match std::fs::read_to_string(path.join("shaders.json")) {
             Ok(m) => m,
             Err(_) => {
-                crate::render::report_boot_log(&format!("shader pack {id}: no shaders.json, skipped"));
+                crate::render::report_boot_log(&format!(
+                    "shader pack {id}: no shaders.json, skipped"
+                ));
                 continue;
             }
         };
         let wgsl = std::fs::read_to_string(path.join("composite.wgsl")).ok();
         match parse_pack(&id, &manifest, wgsl.as_deref()) {
             Ok(p) => out.push(p),
-            Err(err) => crate::render::report_boot_log(&format!("shader pack {id} rejected: {err}")),
+            Err(err) => {
+                crate::render::report_boot_log(&format!("shader pack {id} rejected: {err}"))
+            }
         }
     }
     out

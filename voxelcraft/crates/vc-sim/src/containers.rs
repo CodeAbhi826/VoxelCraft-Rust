@@ -88,7 +88,9 @@ pub struct Containers {
 impl Containers {
     /// entry for a position, creating it on first use
     pub fn entry(&mut self, pos: [i32; 3], block: u8) -> &mut ContainerInv {
-        self.map.entry(pos).or_insert_with(|| ContainerInv::new(block))
+        self.map
+            .entry(pos)
+            .or_insert_with(|| ContainerInv::new(block))
     }
 
     pub fn get(&self, pos: &[i32; 3]) -> Option<&ContainerInv> {
@@ -102,11 +104,7 @@ impl Containers {
     /// remove a container (block broken) → queue its contents for spill
     pub fn remove(&mut self, pos: &[i32; 3]) {
         if let Some(inv) = self.map.remove(pos) {
-            let items: Vec<ItemStack> = inv
-                .slots
-                .into_iter()
-                .filter(|s| !s.is_empty())
-                .collect();
+            let items: Vec<ItemStack> = inv.slots.into_iter().filter(|s| !s.is_empty()).collect();
             if !items.is_empty() {
                 self.spilled.push((*pos, items));
             }

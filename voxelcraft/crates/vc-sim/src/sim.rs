@@ -43,7 +43,10 @@ pub struct TickScope {
 impl TickScope {
     /// the un-gated scope (1.16.5 semantics — everything loaded ticks)
     pub fn everything() -> Self {
-        TickScope { center: (0, 0), radius: i32::MAX }
+        TickScope {
+            center: (0, 0),
+            radius: i32::MAX,
+        }
     }
     #[inline]
     pub fn chunk_in(&self, cx: i32, cz: i32) -> bool {
@@ -132,7 +135,12 @@ impl Sim {
 
     /// ONE deterministic sim tick (`scope` = the simulation-distance ring;
     /// `TickScope::everything()` = 1.16.5 behavior)
-    pub fn step(&mut self, world: &mut World, light: &mut vc_world::light::LightEngine, scope: &TickScope) {
+    pub fn step(
+        &mut self,
+        world: &mut World,
+        light: &mut vc_world::light::LightEngine,
+        scope: &TickScope,
+    ) {
         self.ticks += 1;
 
         // 1. scheduled block updates in (due, insertion) order.
@@ -182,7 +190,14 @@ impl Sim {
                 }
                 vc_blocks::blocks::COMPARATOR => {
                     let containers = &self.containers;
-                    crate::redstone::comparator_tick(world, &mut self.sched, containers, pos[0], pos[1], pos[2]);
+                    crate::redstone::comparator_tick(
+                        world,
+                        &mut self.sched,
+                        containers,
+                        pos[0],
+                        pos[1],
+                        pos[2],
+                    );
                 }
                 vc_blocks::blocks::PISTON | vc_blocks::blocks::STICKY_PISTON => {
                     crate::redstone::piston_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
@@ -196,7 +211,8 @@ impl Sim {
                     let powered = crate::redstone::dispenser_tick(world, pos[0], pos[1], pos[2]);
                     let prev = self.dispenser_prev.insert(pos, powered);
                     if powered && prev != Some(true) {
-                        self.pending_eject.insert(pos, crate::redstone::DISPENSER_DELAY);
+                        self.pending_eject
+                            .insert(pos, crate::redstone::DISPENSER_DELAY);
                     }
                 }
                 vc_blocks::blocks::HOPPER => {
@@ -248,7 +264,8 @@ impl Sim {
         // 5. villagers (§27): wander decisions + walking physics + the
         // twice-daily trade restock clock (sim.ticks is the day clock)
         // (Phase 6 §26: villagers outside the ring freeze — restock included)
-        self.villagers.tick(world, self.ticks, scope.center, scope.radius);
+        self.villagers
+            .tick(world, self.ticks, scope.center, scope.radius);
 
         // 6. mobs (Phase 2): spawning + AI + arrows. Hits on the player,
         // deaths, and explosions queue inside for game.rs to drain (the
@@ -296,9 +313,8 @@ impl Sim {
                 if let Some(i) = inv.first_item() {
                     let block = inv.slots[i].block;
                     inv.slots[i] = vc_inventory::inventory::ItemStack::EMPTY;
-                    self.items.drop_block(
-                        pos[0] + fx, pos[1] + fy, pos[2] + fz, block, 2, 15, 0,
-                    );
+                    self.items
+                        .drop_block(pos[0] + fx, pos[1] + fy, pos[2] + fz, block, 2, 15, 0);
                 }
             }
         }
@@ -358,7 +374,9 @@ impl Sim {
                 .get(&pos)
                 .and_then(|inv| inv.first_item())
                 .map(|i| (i, self.containers.get(&pos).unwrap().slots[i].block));
-            let Some((slot_i, block)) = take else { continue };
+            let Some((slot_i, block)) = take else {
+                continue;
+            };
             // the container below
             let below = [pos[0], pos[1] - 1, pos[2]];
             let below_block = state_block(world.get_state(below[0], below[1], below[2]));
@@ -385,8 +403,8 @@ impl Sim {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vc_blocks::blocks::*;
     use std::sync::Arc;
+    use vc_blocks::blocks::*;
 
     fn flat_world() -> World {
         let mut w = World::new(11);
@@ -453,7 +471,10 @@ mod tests {
         };
         let a = run();
         let b = run();
-        assert_eq!(a, b, "Phase 6 gate: scripted sim → identical world+entity hash");
+        assert_eq!(
+            a, b,
+            "Phase 6 gate: scripted sim → identical world+entity hash"
+        );
         // sanity: the scenario actually did something
         assert_eq!(a.1, 400, "400 sim ticks ran");
         // the scheduler SETTLES: water finished spreading, sand landed,
@@ -466,7 +487,10 @@ mod tests {
 
     #[test]
     fn tick_scope_ring_math() {
-        let s = TickScope { center: (3, -2), radius: 2 };
+        let s = TickScope {
+            center: (3, -2),
+            radius: 2,
+        };
         assert!(s.chunk_in(3, -2));
         assert!(s.chunk_in(5, 0));
         assert!(s.chunk_in(1, -4));
@@ -475,7 +499,7 @@ mod tests {
         // block → chunk mapping (negative coords floor correctly)
         assert!(s.block_in(48, -32)); // chunk (3,-2)
         assert!(!s.block_in(-1, 0)); // chunk (-1,0), 4 away
-        // the everything() scope never excludes anything (incl. extremes)
+                                     // the everything() scope never excludes anything (incl. extremes)
         let all = TickScope::everything();
         assert!(all.chunk_in(i32::MIN, i32::MIN));
         assert!(all.chunk_in(i32::MAX, i32::MAX));
@@ -487,7 +511,10 @@ mod tests {
     #[test]
     fn default_scope_covers_default_render_distance() {
         let all = TickScope::everything();
-        let default_ring = TickScope { center: (0, 0), radius: 12 };
+        let default_ring = TickScope {
+            center: (0, 0),
+            radius: 12,
+        };
         for dz in -11..=11 {
             for dx in -11..=11 {
                 let r = default_ring.chunk_in(dx, dz);
@@ -515,7 +542,10 @@ mod tests {
         // the radius-0 ring) — pure redstone must still run
         w.set_block_state(16, 65, 0, REDSTONE_TORCH as u16);
         crate::redstone::on_block_changed(&mut sim.sched, &w, 16, 65, 0);
-        let tiny = TickScope { center: (0, 0), radius: 0 };
+        let tiny = TickScope {
+            center: (0, 0),
+            radius: 0,
+        };
         for _ in 0..20 {
             sim.step(&mut w, &mut light, &tiny);
         }
@@ -527,7 +557,10 @@ mod tests {
             "out-of-ring water column untouched (got {out_states:?})"
         );
         // ...while the deferred out-of-ring entry keeps re-queueing
-        assert!(sim.sched.pending() >= 1, "deferred out-of-ring entries re-queued");
+        assert!(
+            sim.sched.pending() >= 1,
+            "deferred out-of-ring entries re-queued"
+        );
     }
 
     /// items outside the ring freeze (age + physics)
@@ -540,7 +573,10 @@ mod tests {
         // one at (8, 66, 24) (chunk (0,1)) — same world, different rings
         sim.items.drop_block(8, 66, 8, DIRT, 2, 15, 0);
         sim.items.drop_block(8, 66, 24, DIRT, 2, 15, 0);
-        let tiny = TickScope { center: (0, 0), radius: 0 };
+        let tiny = TickScope {
+            center: (0, 0),
+            radius: 0,
+        };
         for _ in 0..40 {
             sim.step(&mut w, &mut light, &tiny);
         }
@@ -548,6 +584,9 @@ mod tests {
         let b = sim.items.items.iter().find(|i| i.pos[2] >= 16.0).unwrap();
         assert!(a.age > 0, "in-ring item ages");
         assert_eq!(b.age, 0, "out-of-ring item frozen (age 0)");
-        assert!((a.pos[1] - b.pos[1]).abs() > 0.001, "in-ring item fell; frozen one did not");
+        assert!(
+            (a.pos[1] - b.pos[1]).abs() > 0.001,
+            "in-ring item fell; frozen one did not"
+        );
     }
 }

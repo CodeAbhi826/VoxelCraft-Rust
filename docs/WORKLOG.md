@@ -107,6 +107,84 @@ per MC-12357); Monocraft OFL 1.1 + GPL 3 and the gravity formula
 
 ---
 
+## 2026-09-05 — mechanics + visuals implementation round (research documents, verdict-gated)
+
+**Task:** the user asked whether the "visuals and mechanics update" from the
+two AI-generated research documents had been implemented; if not, read the
+full documents, verify against live sources where needed, and implement.
+
+**Verification pass first** (per the standing research-verdicts gate): every
+"unverified" row that touches an existing engine system was checked against
+the live wiki; outcomes appended to
+`docs/research/research-verdicts.md` (live round table). Highlights:
+- CONFIRMED: sprint-swim 3.918 b/s (surface 2.20 / underwater 1.97 — the
+  doc's "downstream 1.81 / upstream 0.39" labels were mislabeled), drowning
+  (air 300, 2 HP/s at −20, 10 bubbles × 30, regen 30/4 ticks), villager
+  gossip table + trade-price rule, passive spawn cycle (1 per 400 ticks,
+  chunk-gen spawn ignores the cap), falling-block entity physics
+  (gravity 0.04, Drag-Y 0.98 — items share it), scaffolding falls at
+  distance ≥ 7, hopper container (5 slots, "Item Hopper", 8-tick transfer
+  cooldown), F3 "Looking at fluid" split (1.13 18w22c — valid for 1.16.5).
+- CONTRADICTED: firework boost 33.5 b/s → current wiki says 35.5 (elytra
+  not in engine; recorded only).
+- STILL UNVERIFIED (no engine system, no live confirmation): minecart
+  friction 0.01, Nether biome spawn weights as 1.16.5-exact, falling-block
+  2/5-tick spawn delay. None were implemented; verified data lives in the
+  verdicts doc for future phases.
+
+**Mechanics implemented (all verdict-cited in code comments):**
+- Exact vanilla gravity drag `v1 = (v0 − 0.08) × 0.98` on a fixed 20 Hz
+  substep for the PLAYER (move-then-gravity ordering — vanilla tick order;
+  jump re-aligns the substep phase so the 0.42 b/t launch rises the
+  vanilla 1.25 blocks), for MOBS (b/s units: `(v − 1.6) × 0.98`; also
+  fixes a latent 20× unit bug that made mobs fall 20× too slow), for
+  VILLAGERS (b/tick, non-vanilla −0.5 clamp removed), and item entities
+  gained the missing air Drag-Y 0.98.
+- Mob fall damage rewritten distance-based (MC-12357: fall − 3) — the old
+  impact-speed path was provably dead code; terminal falls (78.4 b/s) now
+  substep the vertical probe so they cannot tunnel floors.
+- Swimming speeds from the verified table (sprint-swim 3.918, underwater
+  1.97, surface 2.20).
+- Air supply + drowning: 300 air (−1/tick submerged), damage 2 HP when air
+  hits −20 then reset (≈1 damage per second), regen 30 air / 4 ticks out of
+  water; creative drains air visually but is damage-immune.
+- Villager GOSSIP system: full verified table (trading 4/2/20/25/×1,
+  major_positive 20/0/100/20/×5, minor_positive 25/1/5/25/×1,
+  minor_negative 25/20/20/200/×−1, major_negative 25/10/10/100/×−5),
+  per-trade +4, attack +25 (targeted), kill broadcast to the 16-block box,
+  decay every 24000 ticks, proximity sharing (shared value − sharing cost,
+  major_positive unshareable), reputation = Σ value × multiplier, and
+  reputation-priced trades: `clamp(base − floor(rep × 0.05), 1, 64)`
+  (Java Math.floor semantics — floor(−1.25) = −2). Villagers gained 20 HP
+  + a player melee path (armor 0) so the hooks are reachable.
+
+**Visuals implemented:**
+- Hopper container screen at the verdict-corrected 176×133 proportions
+  (ONE row of 5 slots — not the blanket 176×166), vanilla "Item Hopper"
+  title, wired to right-click + break-spill + the generic container slot
+  path; `open:hopper` E2E command added.
+- Oxygen bubble row (10 clean-room bubbles above hunger, ceil(air/30),
+  creative included); drawn only below full air.
+- Held-item name above the XP bar, ~2 s fade on selection change.
+- F3 vanilla-parity lines: XYZ 3-decimals, Block/Chunk with in-chunk
+  coords, `Facing: south (Towards positive Z) (yaw / pitch)` with the
+  vanilla yaw/pitch conventions, `Client Light: L (S sky, B block)` from
+  the real light engine, `Looking at block/fluid` split (water → the fluid
+  line). JVM-specific lines stay engine-adapted (Rust + wgpu backend row).
+
+**Verification:** 310/310 workspace tests green (was 297; +13), wasm32
+target clean, fresh wasm bundle deployed and live browser E2E on
+WebGL2/SwiftShader: hopper screen VLM-verified (title/slots/seeded
+item), F3 overlay VLM-verified (Facing/Client Light formats), survival
+gameplay stable. Pre-existing clippy lint (`never_loop` in vc-pack
+datapack pattern matcher) noted for a future pass — not touched
+(minimal-change discipline).
+
+Screenshots: `docs/screenshots/e2e-hopper-screen.png`,
+`docs/screenshots/e2e-f3-lines.png`.
+
+---
+
 ## Prior phases (from git history)
 
 - Phase 0 — Apache-2.0 LICENSE + README license section (`4f11030`)

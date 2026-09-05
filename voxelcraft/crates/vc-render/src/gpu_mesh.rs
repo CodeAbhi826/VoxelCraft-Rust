@@ -50,7 +50,7 @@ use vc_world::world::ChunkPos;
 use wgpu::util::DeviceExt;
 
 use vc_blocks::blocks::{
-    BLOCK_COUNT, BIRCH_LEAVES, GLASS, GRASS, ICE, LEAVES, SPRUCE_LEAVES, STATE_COUNT, TALL_GRASS,
+    BIRCH_LEAVES, BLOCK_COUNT, GLASS, GRASS, ICE, LEAVES, SPRUCE_LEAVES, STATE_COUNT, TALL_GRASS,
     WATER,
 };
 
@@ -838,7 +838,6 @@ impl GpuMesher {
         self.queue_jobs.push_back((meta, inputs));
     }
 
-
     /// drive the state machine; call every frame.
     /// Returns (completed jobs, lost jobs) — a job is LOST only if a GPU
     /// buffer map fails (Disconnected channel, e.g. a device error): the
@@ -852,8 +851,7 @@ impl GpuMesher {
         // 1. start a batch from queued jobs when idle
         if self.batch.is_none() && !self.queue_jobs.is_empty() {
             let take = self.queue_jobs.len().min(MAX_BATCH);
-            let jobs: Vec<(GpuMeshJobMeta, MeshInputs)> =
-                self.queue_jobs.drain(..take).collect();
+            let jobs: Vec<(GpuMeshJobMeta, MeshInputs)> = self.queue_jobs.drain(..take).collect();
             self.start_batch(device, queue, jobs);
         }
         // 2. progress the active batch one step
@@ -905,11 +903,7 @@ impl GpuMesher {
     /// native/test helper: block until the current batch completes
     /// (drives the device with `Maintain::Wait`). Returns completed jobs;
     /// panics if a readback fails (test contract: no silent degradation).
-    pub fn wait_done(
-        &mut self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-    ) -> Vec<GpuMeshDone> {
+    pub fn wait_done(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<GpuMeshDone> {
         let mut all = Vec::new();
         while self.batch.is_some() || !self.queue_jobs.is_empty() {
             #[cfg(not(target_arch = "wasm32"))]
@@ -925,7 +919,12 @@ impl GpuMesher {
 
     // ------------------------------------------------------------- batch --
 
-    fn start_batch(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, jobs: Vec<(GpuMeshJobMeta, MeshInputs)>) {
+    fn start_batch(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        jobs: Vec<(GpuMeshJobMeta, MeshInputs)>,
+    ) {
         let n = jobs.len();
         let vol = PAD * PAD * 256; // 589,824 bytes per job volume
 
@@ -951,12 +950,11 @@ impl GpuMesher {
         }
 
         let mk_in = |label: &str, data: &[u8]| {
-            device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some(label),
-                    contents: data,
-                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-                })
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some(label),
+                contents: data,
+                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            })
         };
         let params_buf = mk_in("gpu-mesh-params", bytemuck::cast_slice(&params));
         let blocks_buf = mk_in("gpu-mesh-blocks", &blocks);
@@ -991,10 +989,9 @@ impl GpuMesher {
             None,
             None,
         );
-        let mut enc = device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("gpu-mesh-count"),
-            });
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("gpu-mesh-count"),
+        });
         let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: Some("gpu-mesh-count"),
             timestamp_writes: None,
@@ -1003,13 +1000,7 @@ impl GpuMesher {
         pass.set_bind_group(0, &bg, &[]);
         pass.dispatch_workgroups((n * UNITS) as u32, 1, 1);
         drop(pass);
-        enc.copy_buffer_to_buffer(
-            &mesh_data,
-            0,
-            &counts_stage,
-            0,
-            (counts_words * 4) as u64,
-        );
+        enc.copy_buffer_to_buffer(&mesh_data, 0, &counts_stage, 0, (counts_words * 4) as u64);
         let submit = queue.submit([enc.finish()]);
         let (tx, rx) = std::sync::mpsc::channel::<()>();
         counts_stage
@@ -1094,7 +1085,9 @@ impl GpuMesher {
         // read the mapped counts
         {
             let Batch {
-                _counts_stage, counts, ..
+                _counts_stage,
+                counts,
+                ..
             } = batch;
             let data = _counts_stage.slice(..).get_mapped_range();
             let words: Vec<u32> = data
@@ -1129,11 +1122,7 @@ impl GpuMesher {
             mapped_at_creation: false,
         });
         // rewrite binding 5 with the offsets (dual-purpose buffer)
-        queue.write_buffer(
-            &batch._mesh_data,
-            0,
-            bytemuck::cast_slice(&offsets),
-        );
+        queue.write_buffer(&batch._mesh_data, 0, bytemuck::cast_slice(&offsets));
 
         let bg = self.make_bind_group(
             device,
@@ -1152,10 +1141,9 @@ impl GpuMesher {
             mapped_at_creation: false,
         });
 
-        let mut enc = device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("gpu-mesh-emit"),
-            });
+        let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("gpu-mesh-emit"),
+        });
         let mut pass = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: Some("gpu-mesh-emit"),
             timestamp_writes: None,
@@ -1177,12 +1165,14 @@ impl GpuMesher {
         // ONE staging map → one callback → one completion signal (no
         // ordering hazard between two independent maps)
         let (tx, rx) = std::sync::mpsc::channel::<()>();
-        v_stage.slice(..).map_async(wgpu::MapMode::Read, move |res| {
-            if res.is_ok() {
-                let _ = tx.send(());
-            }
-            // no unmap — finish_batch reads then unmaps
-        });
+        v_stage
+            .slice(..)
+            .map_async(wgpu::MapMode::Read, move |res| {
+                if res.is_ok() {
+                    let _ = tx.send(());
+                }
+                // no unmap — finish_batch reads then unmaps
+            });
 
         batch.stage = BatchStage::Outputs {
             _bg: bg,
@@ -1339,10 +1329,22 @@ mod tests {
         let want_fl = format!("const L_FL: u32 = {}u;", L_FL);
         let want_tc = format!("const L_TC: u32 = {}u;", L_TC);
         let want_st = format!("const L_ST: u32 = {}u;", L_ST);
-        assert!(MESH_COMPUTE_SHADER.contains(&want_sb), "WGSL L_SB drift: want {want_sb}");
-        assert!(MESH_COMPUTE_SHADER.contains(&want_fl), "WGSL L_FL drift: want {want_fl}");
-        assert!(MESH_COMPUTE_SHADER.contains(&want_tc), "WGSL L_TC drift: want {want_tc}");
-        assert!(MESH_COMPUTE_SHADER.contains(&want_st), "WGSL L_ST drift: want {want_st}");
+        assert!(
+            MESH_COMPUTE_SHADER.contains(&want_sb),
+            "WGSL L_SB drift: want {want_sb}"
+        );
+        assert!(
+            MESH_COMPUTE_SHADER.contains(&want_fl),
+            "WGSL L_FL drift: want {want_fl}"
+        );
+        assert!(
+            MESH_COMPUTE_SHADER.contains(&want_tc),
+            "WGSL L_TC drift: want {want_tc}"
+        );
+        assert!(
+            MESH_COMPUTE_SHADER.contains(&want_st),
+            "WGSL L_ST drift: want {want_st}"
+        );
         // the shader's defensive clamps must cover the full ranges
         let want_clamp_s = format!("min(s, {}u)", STATE_COUNT - 1);
         let want_clamp_b = format!("min(b, {}u)", BLOCK_COUNT - 1);

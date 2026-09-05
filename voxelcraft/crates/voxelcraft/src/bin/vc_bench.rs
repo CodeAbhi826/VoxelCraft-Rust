@@ -19,9 +19,9 @@ use std::hint::black_box;
 use std::sync::Arc;
 use std::time::Instant;
 use vc_chunk::chunk::Chunk;
+use vc_mesh::mesh::{mesh_chunk, mesh_sections};
 use vc_render::draw::{self, ChunkGpu, DrawCallAccounting, MeshSlot, SlotAlloc, VisEntry};
 use vc_world::gen::TerrainGen;
-use vc_mesh::mesh::{mesh_chunk, mesh_sections};
 use vc_world::world::ChunkPos;
 
 use rayon::prelude::*;
@@ -179,8 +179,10 @@ fn main() {
                 let done = mesher.wait_done(&device, &queue);
                 if gpu_ok {
                     let got = &done[0].mesh;
-                    parity &= got.solid.0 == want.solid.0 && got.solid.1 == want.solid.1
-                        && got.water.0 == want.water.0 && got.water.1 == want.water.1;
+                    parity &= got.solid.0 == want.solid.0
+                        && got.solid.1 == want.solid.1
+                        && got.water.0 == want.water.0
+                        && got.water.1 == want.water.1;
                 }
             }
             let gpu_ms = t0.elapsed().as_secs_f32() * 1000.0;
@@ -356,7 +358,12 @@ fn main() {
     );
     println!(
         "draw calls  : legacy {}/{} binds  →  region-loop {}/{}  →  MDI {}/{}  (per frame)",
-        acc_legacy.draws, acc_legacy.binds, acc_loop.draws, acc_loop.binds, acc_mdi.draws, acc_mdi.binds
+        acc_legacy.draws,
+        acc_legacy.binds,
+        acc_loop.draws,
+        acc_loop.binds,
+        acc_mdi.draws,
+        acc_mdi.binds
     );
     println!(
         "bind reduction : {:.1}x fewer buffer binds (loop) / {:.1}x (MDI) vs legacy",
@@ -381,10 +388,7 @@ fn main() {
     }
 }
 
-fn snapshot(
-    by_pos: &HashMap<ChunkPos, Arc<Chunk>>,
-    pos: ChunkPos,
-) -> [Option<Arc<Chunk>>; 9] {
+fn snapshot(by_pos: &HashMap<ChunkPos, Arc<Chunk>>, pos: ChunkPos) -> [Option<Arc<Chunk>>; 9] {
     let mut snap: [Option<Arc<Chunk>>; 9] = Default::default();
     let mut i = 0;
     for dz in -1..=1 {
@@ -395,7 +399,6 @@ fn snapshot(
     }
     snap
 }
-
 
 /// Phase 7: headless wgpu device probe for the GPU-mesh bench section
 /// (None in CI/display-less environments — those print a SKIP line).
@@ -410,7 +413,10 @@ fn probe_headless_device() -> Option<(wgpu::Device, wgpu::Queue)> {
         force_fallback_adapter: true,
     }))?;
     let downlevel = adapter.get_downlevel_capabilities();
-    if !downlevel.flags.contains(wgpu::DownlevelFlags::COMPUTE_SHADERS) {
+    if !downlevel
+        .flags
+        .contains(wgpu::DownlevelFlags::COMPUTE_SHADERS)
+    {
         return None;
     }
     pollster::block_on(adapter.request_device(

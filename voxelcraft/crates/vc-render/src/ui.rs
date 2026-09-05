@@ -3,9 +3,9 @@
 //! full 1.16.5-style HUD (hotbar, hearts, hunger, XP bar, crosshair, F3).
 //! Redrawn only when state changes; uploaded to GPU as a texture.
 
+use crate::textures::blit_tile;
 use vc_blocks::blocks::*;
 use vc_inventory::inventory::ItemStack;
-use crate::textures::blit_tile;
 
 pub const UI_W: usize = 960;
 pub const UI_H: usize = 540;
@@ -70,12 +70,24 @@ pub type Color = [u8; 4];
 
 #[derive(Clone, Debug)]
 pub enum WidgetKind {
-    Button { label: String, value: String, enabled: bool },
-    Slider { label: String, value: f32 },
+    Button {
+        label: String,
+        value: String,
+        enabled: bool,
+    },
+    Slider {
+        label: String,
+        value: f32,
+    },
     /// Phase 1: single-line text entry (world name / seed). `text` holds the
     /// current buffer; `focused` drives the caret; `placeholder` shows when
     /// empty (e.g. a random seed preview).
-    TextField { label: String, text: String, placeholder: String, focused: bool },
+    TextField {
+        label: String,
+        text: String,
+        placeholder: String,
+        focused: bool,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -120,12 +132,23 @@ pub fn slider(id: u16, x: i32, y: i32, w: i32, label: &str, value: f32) -> Widge
         y,
         w,
         h: 44,
-        kind: WidgetKind::Slider { label: label.to_string(), value: value.clamp(0.0, 1.0) },
+        kind: WidgetKind::Slider {
+            label: label.to_string(),
+            value: value.clamp(0.0, 1.0),
+        },
     }
 }
 
 /// Phase 1: a single-line text entry field.
-pub fn text_field(id: u16, x: i32, y: i32, w: i32, label: &str, text: &str, placeholder: &str) -> Widget {
+pub fn text_field(
+    id: u16,
+    x: i32,
+    y: i32,
+    w: i32,
+    label: &str,
+    text: &str,
+    placeholder: &str,
+) -> Widget {
     Widget {
         id,
         x,
@@ -201,11 +224,35 @@ pub const ID_OPT_GMESH: u16 = 35;
 /// Title screen layout (quit button only exists on native).
 pub fn layout_title(is_web: bool) -> Vec<Widget> {
     let mut v = vec![
-        btn(ID_TITLE_PLAY, (UI_W as i32 - 320) / 2, 296, 320, "SINGLEPLAYER", "", true),
-        btn(ID_TITLE_OPTIONS, (UI_W as i32 - 320) / 2, 352, 320, "OPTIONS...", "", true),
+        btn(
+            ID_TITLE_PLAY,
+            (UI_W as i32 - 320) / 2,
+            296,
+            320,
+            "SINGLEPLAYER",
+            "",
+            true,
+        ),
+        btn(
+            ID_TITLE_OPTIONS,
+            (UI_W as i32 - 320) / 2,
+            352,
+            320,
+            "OPTIONS...",
+            "",
+            true,
+        ),
     ];
     if !is_web {
-        v.push(btn(ID_TITLE_QUIT, (UI_W as i32 - 320) / 2, 408, 320, "QUIT GAME", "", true));
+        v.push(btn(
+            ID_TITLE_QUIT,
+            (UI_W as i32 - 320) / 2,
+            408,
+            320,
+            "QUIT GAME",
+            "",
+            true,
+        ));
     }
     v
 }
@@ -225,7 +272,15 @@ pub fn layout_options() -> Vec<Widget> {
         btn(ID_OPT_SHADER, col2, rows[2], w, "SHADERS", "OFF", true),
         btn(ID_OPT_GRAPHICS, col1, rows[3], w, "GRAPHICS", "FANCY", true),
         btn(ID_OPT_SHADOWS, col2, rows[3], w, "SHADOWS", "ON", true),
-        btn(ID_OPT_SMOOTH, col1, rows[4], w, "SMOOTH LIGHTING", "ON", true),
+        btn(
+            ID_OPT_SMOOTH,
+            col1,
+            rows[4],
+            w,
+            "SMOOTH LIGHTING",
+            "ON",
+            true,
+        ),
         btn(ID_OPT_UPSCALE, col2, rows[4], w, "UPSCALING", "OFF", true),
         btn(ID_OPT_CLOUDS, col1, rows[5], w, "CLOUDS", "ON", true),
         btn(ID_OPT_MAXFPS, col2, rows[5], w, "MAX FPS", "VSYNC", true),
@@ -234,7 +289,15 @@ pub fn layout_options() -> Vec<Widget> {
         // Phase 6 §26: page 2 = video detail (vanilla splits Video Settings
         // to its own screen — same idea)
         btn(ID_OPT_NEXT, col2, rows[6], w, "VIDEO DETAILS >", "", true),
-        btn(ID_OPT_DONE, (UI_W as i32 - 320) / 2, 470, 320, "DONE", "", true),
+        btn(
+            ID_OPT_DONE,
+            (UI_W as i32 - 320) / 2,
+            470,
+            320,
+            "DONE",
+            "",
+            true,
+        ),
     ]
 }
 
@@ -252,18 +315,66 @@ pub fn layout_options2() -> Vec<Widget> {
         btn(ID_OPT_MIP, col1, rows[1], w, "MIPMAP LEVELS", "4", true),
         btn(ID_OPT_ANISO, col2, rows[1], w, "ANISOTROPIC", "4X", true),
         btn(ID_OPT_MSAA, col1, rows[2], w, "MSAA", "OFF", true),
-        btn(ID_OPT_OCCL, col2, rows[2], w, "OCCLUSION CULLING", "ON", true),
-        btn(ID_OPT_GMESH, col1, rows[3], w, "GPU CHUNK MESHING", "ON", true),
+        btn(
+            ID_OPT_OCCL,
+            col2,
+            rows[2],
+            w,
+            "OCCLUSION CULLING",
+            "ON",
+            true,
+        ),
+        btn(
+            ID_OPT_GMESH,
+            col1,
+            rows[3],
+            w,
+            "GPU CHUNK MESHING",
+            "ON",
+            true,
+        ),
         btn(ID_OPT_PREV, col1, rows[4], 242, "< GENERAL", "", true),
-        btn(ID_OPT_DONE2, (UI_W as i32 - 320) / 2, 470, 320, "DONE", "", true),
+        btn(
+            ID_OPT_DONE2,
+            (UI_W as i32 - 320) / 2,
+            470,
+            320,
+            "DONE",
+            "",
+            true,
+        ),
     ]
 }
 
 pub fn layout_pause() -> Vec<Widget> {
     vec![
-        btn(ID_PAUSE_BACK, (UI_W as i32 - 320) / 2, 208, 320, "BACK TO GAME", "", true),
-        btn(ID_PAUSE_OPTIONS, (UI_W as i32 - 320) / 2, 264, 320, "OPTIONS...", "", true),
-        btn(ID_PAUSE_QUIT, (UI_W as i32 - 320) / 2, 320, 320, "QUIT TO TITLE", "", true),
+        btn(
+            ID_PAUSE_BACK,
+            (UI_W as i32 - 320) / 2,
+            208,
+            320,
+            "BACK TO GAME",
+            "",
+            true,
+        ),
+        btn(
+            ID_PAUSE_OPTIONS,
+            (UI_W as i32 - 320) / 2,
+            264,
+            320,
+            "OPTIONS...",
+            "",
+            true,
+        ),
+        btn(
+            ID_PAUSE_QUIT,
+            (UI_W as i32 - 320) / 2,
+            320,
+            320,
+            "QUIT TO TITLE",
+            "",
+            true,
+        ),
     ]
 }
 
@@ -321,13 +432,45 @@ pub fn layout_world_create(
 pub fn layout_death(hardcore: bool) -> Vec<Widget> {
     let mut v = Vec::new();
     if !hardcore {
-        v.push(btn(ID_DEATH_RESPAWN, (UI_W as i32 - 320) / 2, 300, 320, "RESPAWN", "", true));
-        v.push(btn(ID_DEATH_TITLE, (UI_W as i32 - 320) / 2, 356, 320, "TITLE SCREEN", "", true));
+        v.push(btn(
+            ID_DEATH_RESPAWN,
+            (UI_W as i32 - 320) / 2,
+            300,
+            320,
+            "RESPAWN",
+            "",
+            true,
+        ));
+        v.push(btn(
+            ID_DEATH_TITLE,
+            (UI_W as i32 - 320) / 2,
+            356,
+            320,
+            "TITLE SCREEN",
+            "",
+            true,
+        ));
     } else {
         // hardcore: death is final — vanilla's two options (delete world /
         // title screen, which leaves the locked world on disk)
-        v.push(btn(ID_DEATH_DELETE, (UI_W as i32 - 320) / 2, 300, 320, "DELETE WORLD", "", true));
-        v.push(btn(ID_DEATH_TITLE, (UI_W as i32 - 320) / 2, 356, 320, "TITLE SCREEN", "", true));
+        v.push(btn(
+            ID_DEATH_DELETE,
+            (UI_W as i32 - 320) / 2,
+            300,
+            320,
+            "DELETE WORLD",
+            "",
+            true,
+        ));
+        v.push(btn(
+            ID_DEATH_TITLE,
+            (UI_W as i32 - 320) / 2,
+            356,
+            320,
+            "TITLE SCREEN",
+            "",
+            true,
+        ));
     }
     v
 }
@@ -425,9 +568,32 @@ impl UiCanvas {
     }
 
     /// Text with a 1px outline in all 8 directions (for logo / level number).
-    pub fn text_outlined(&mut self, x: i32, y: i32, s: &str, c: Color, oc: Color, scale: i32) -> i32 {
-        for (dx, dy) in [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (1, -1), (-1, 1), (1, 1)] {
-            self.text(x + dx * (scale / 4 + 1), y + dy * (scale / 4 + 1), s, oc, scale);
+    pub fn text_outlined(
+        &mut self,
+        x: i32,
+        y: i32,
+        s: &str,
+        c: Color,
+        oc: Color,
+        scale: i32,
+    ) -> i32 {
+        for (dx, dy) in [
+            (-1, 0),
+            (1, 0),
+            (0, -1),
+            (0, 1),
+            (-1, -1),
+            (1, -1),
+            (-1, 1),
+            (1, 1),
+        ] {
+            self.text(
+                x + dx * (scale / 4 + 1),
+                y + dy * (scale / 4 + 1),
+                s,
+                oc,
+                scale,
+            );
         }
         self.text(x, y, s, c, scale)
     }
@@ -455,10 +621,18 @@ impl UiCanvas {
     /// Minecraft-style button (gray body, bevel, hover tint).
     pub fn draw_button(&mut self, w: &Widget, hover: bool) {
         let (label, value, enabled) = match &w.kind {
-            WidgetKind::Button { label, value, enabled } => (label.clone(), value.clone(), *enabled),
+            WidgetKind::Button {
+                label,
+                value,
+                enabled,
+            } => (label.clone(), value.clone(), *enabled),
             _ => return,
         };
-        let body: Color = if enabled { [96, 96, 96, 235] } else { [70, 70, 70, 200] };
+        let body: Color = if enabled {
+            [96, 96, 96, 235]
+        } else {
+            [70, 70, 70, 200]
+        };
         self.rect(w.x, w.y, w.w, w.h, body);
         // bevel: light top/left, dark bottom/right
         self.rect(w.x + 2, w.y + 2, w.w - 4, 2, [140, 140, 140, 255]);
@@ -480,9 +654,19 @@ impl UiCanvas {
         } else {
             [240, 240, 240, 255]
         };
-        let full = if value.is_empty() { label } else { format!("{}: {}", label, value) };
+        let full = if value.is_empty() {
+            label
+        } else {
+            format!("{}: {}", label, value)
+        };
         let tw = Self::text_width(&full, 2);
-        self.text(w.x + (w.w - tw) / 2, w.y + (w.h - 14) / 2, &full, text_col, 2);
+        self.text(
+            w.x + (w.w - tw) / 2,
+            w.y + (w.h - 14) / 2,
+            &full,
+            text_col,
+            2,
+        );
     }
 
     /// Minecraft-style slider: inset track + knob.
@@ -508,9 +692,19 @@ impl UiCanvas {
             self.frame(kx + 1, ty - 3, 14, th + 6, [255, 255, 255, 110]);
         }
         // label centered over the track
-        let text_col: Color = if hover { [255, 255, 160, 255] } else { [240, 240, 240, 255] };
+        let text_col: Color = if hover {
+            [255, 255, 160, 255]
+        } else {
+            [240, 240, 240, 255]
+        };
         let tw = Self::text_width(&label, 2);
-        self.text(w.x + (w.w - tw) / 2, w.y + (w.h - 14) / 2 - 1, &label, text_col, 2);
+        self.text(
+            w.x + (w.w - tw) / 2,
+            w.y + (w.h - 14) / 2 - 1,
+            &label,
+            text_col,
+            2,
+        );
     }
 
     /// Phase 1: text-entry field — vanilla look: small caps label above an
@@ -518,9 +712,12 @@ impl UiCanvas {
     /// light frame when focused.
     pub fn draw_text_field(&mut self, w: &Widget, _hover: bool) {
         let (label, text, placeholder, focused) = match &w.kind {
-            WidgetKind::TextField { label, text, placeholder, focused } => {
-                (label.clone(), text.clone(), placeholder.clone(), *focused)
-            }
+            WidgetKind::TextField {
+                label,
+                text,
+                placeholder,
+                focused,
+            } => (label.clone(), text.clone(), placeholder.clone(), *focused),
             _ => return,
         };
         // label (small, above the tray)
@@ -536,11 +733,21 @@ impl UiCanvas {
         // contents: typed text, else placeholder in gray
         let shown = Self::field_visible_text(w.w, &text);
         if !shown.is_empty() {
-            let col: Color = if focused { [255, 255, 255, 255] } else { [230, 230, 230, 255] };
+            let col: Color = if focused {
+                [255, 255, 255, 255]
+            } else {
+                [230, 230, 230, 255]
+            };
             self.text(w.x + 16, w.y + (w.h - 14) / 2, shown, col, 2);
         } else {
             let pshown = Self::field_visible_text(w.w, &placeholder);
-            self.text(w.x + 16, w.y + (w.h - 14) / 2, pshown, [130, 130, 130, 255], 2);
+            self.text(
+                w.x + 16,
+                w.y + (w.h - 14) / 2,
+                pshown,
+                [130, 130, 130, 255],
+                2,
+            );
         }
     }
 
@@ -565,7 +772,12 @@ impl UiCanvas {
         }
         // second pass for the caret (borrow split: draw then measure)
         for w in ws {
-            if let WidgetKind::TextField { text, focused: true, .. } = &w.kind {
+            if let WidgetKind::TextField {
+                text,
+                focused: true,
+                ..
+            } = &w.kind
+            {
                 if (time * 2.2).fract() < 0.6 {
                     let shown = Self::field_visible_text(w.w, text);
                     let tw = Self::text_width(shown, 2);
@@ -606,21 +818,45 @@ impl UiCanvas {
         self.text(lx + 3, ly + 4, logo, [0, 0, 0, 160], scale);
         // dark outline pass
         self.text_outlined(lx, ly, logo, [235, 235, 235, 255], [42, 42, 42, 255], scale);
-        self.text_center(ly + 58, "A 1.16.5-STYLE VOXEL ENGINE", [200, 200, 200, 255], 1);
+        self.text_center(
+            ly + 58,
+            "A 1.16.5-STYLE VOXEL ENGINE",
+            [200, 200, 200, 255],
+            1,
+        );
 
         // splash: yellow, pulsing, tucked at the logo's right
         let pulse = 0.5 + 0.5 * (time * 3.2).sin();
         let alpha = (150.0 + 105.0 * pulse) as u8;
         let sw = Self::text_width(splash, 2);
         let sx = (lx + lw - sw / 2).min(UI_W as i32 - sw - 8).max(8);
-        self.text_outlined(sx, ly + 44, splash, [255, 255, 60, alpha], [60, 50, 0, alpha], 2);
+        self.text_outlined(
+            sx,
+            ly + 44,
+            splash,
+            [255, 255, 60, alpha],
+            [60, 50, 0, alpha],
+            2,
+        );
 
         self.draw_widgets(ws, hover);
 
-        self.text(8, UI_H as i32 - 20, "VoxelCraft 2.0_beta (Rust + wgpu)", [220, 220, 220, 255], 1);
+        self.text(
+            8,
+            UI_H as i32 - 20,
+            "VoxelCraft 2.0_beta (Rust + wgpu)",
+            [220, 220, 220, 255],
+            1,
+        );
         let vr = "100% PROCEDURAL — NO MOJANG ASSETS";
         let vw = Self::text_width(vr, 1);
-        self.text(UI_W as i32 - vw - 8, UI_H as i32 - 20, vr, [210, 210, 210, 255], 1);
+        self.text(
+            UI_W as i32 - vw - 8,
+            UI_H as i32 - 20,
+            vr,
+            [210, 210, 210, 255],
+            1,
+        );
     }
 
     pub fn options_screen(&mut self, ws: &[Widget], hover: Option<u16>, sub: &str) {
@@ -650,7 +886,12 @@ impl UiCanvas {
         self.rect(0, 0, UI_W as i32, UI_H as i32, [8, 8, 10, 200]);
         self.text_center(18, "SELECT WORLD", [255, 255, 255, 255], 3);
         if total == 0 {
-            self.text_center(64, "NO SAVED WORLDS YET - CREATE ONE BELOW", [170, 170, 170, 255], 1);
+            self.text_center(
+                64,
+                "NO SAVED WORLDS YET - CREATE ONE BELOW",
+                [170, 170, 170, 255],
+                1,
+            );
         } else if total > count_shown {
             let sub = format!("SHOWING {count_shown} OF {total} (OLDEST HIDDEN)");
             self.text_center(64, &sub, [170, 170, 170, 255], 1);
@@ -714,26 +955,23 @@ impl UiCanvas {
     }
 
     const HEART: [&'static str; 6] = [
-        ".OO..OO.",
-        "ORROORRO",
-        "ORHRRRRO",
-        "ORRRRRRO",
-        ".ORRRRO.",
-        "..ORRO..",
+        ".OO..OO.", "ORROORRO", "ORHRRRRO", "ORRRRRRO", ".ORRRRO.", "..ORRO..",
     ];
 
     const FOOD: [&'static str; 7] = [
-        ".OOOO...",
-        "OMMMMO..",
-        "OMMMMO..",
-        "OMMMMO..",
-        ".OMMO...",
-        "..OWO...",
-        "...OO...",
+        ".OOOO...", "OMMMMO..", "OMMMMO..", "OMMMMO..", ".OMMO...", "..OWO...", "...OO...",
     ];
 
-    /// Full 1.16.5-style status bars: hearts (left), hunger (right), XP bar.
-    pub fn status_bars(&mut self, health: f32, food: f32, xp: f32, level: u32) {
+    /// clean-room bubble icon (8×8, original art — not vanilla's
+    /// icons.png sprite; same functional position: 10 bubbles = the
+    /// 300-air oxygen bar, one bubble per 30 air)
+    const BUBBLE: [&'static str; 6] = [".ooo..", "oWWoo.", "oWBBBo", "oBBBBo", ".oBBo.", "..oo.."];
+
+    /// Full 1.16.5-style status bars: hearts (left), hunger (right), XP
+    /// bar, and the oxygen bubble row above hunger (VERIFIED —
+    /// research-verdicts.md live round: 10 bubbles × 30 air; drawn only
+    /// while the air supply is below full, right-aligned above hunger).
+    pub fn status_bars(&mut self, health: f32, food: f32, xp: f32, level: u32, air: f32) {
         const HB: Color = [20, 20, 20, 255]; // hotbar base coords
         let hb_w = 9 * 40 + 4;
         let hb_x = (UI_W as i32 - hb_w) / 2;
@@ -786,6 +1024,24 @@ impl UiCanvas {
             }
         }
 
+        // oxygen bubbles (air supply < full): right-aligned row ABOVE
+        // the hunger bar, mirrored order (vanilla position); ceil(air/30)
+        // full bubbles — at the pop boundary the last one blinks out
+        if air < 299.0 {
+            let bubble_pal: [(char, Color); 4] = [
+                ('o', [26, 46, 78, 255]),
+                ('W', [235, 247, 255, 255]),
+                ('B', [94, 158, 222, 255]),
+                ('.', [0, 0, 0, 0]),
+            ];
+            let bubbles = (air.max(0.0) / 30.0).ceil() as i32;
+            for i in 0..bubbles.min(10) {
+                let x = hb_x + hb_w - 4 - (i + 1) * 17;
+                let y = hb_y - 48;
+                self.sprite(x, y, &Self::BUBBLE, &bubble_pal, 2);
+            }
+        }
+
         // XP bar
         let xp_w = hb_w;
         let xp_x = hb_x;
@@ -813,8 +1069,10 @@ impl UiCanvas {
 
     /// Phase 1: creative HUD — no hearts, no hunger, XP bar only
     /// (vanilla creative shows no status rows; levels still matter here
-    /// because enchanting spends them).
-    pub fn xp_bar_only(&mut self, xp: f32, level: u32) {
+    /// because enchanting spends them), plus the oxygen bubbles
+    /// (creative players still lose air visually — damage is gated by
+    /// invulnerability).
+    pub fn xp_bar_only(&mut self, xp: f32, level: u32, air: f32) {
         let hb_w = 9 * 40 + 4;
         let hb_x = (UI_W as i32 - hb_w) / 2;
         let hb_y = UI_H as i32 - 48;
@@ -840,11 +1098,52 @@ impl UiCanvas {
                 2,
             );
         }
+        // oxygen bubbles also render in creative (vanilla shows them)
+        if air < 299.0 {
+            let bubble_pal: [(char, Color); 4] = [
+                ('o', [26, 46, 78, 255]),
+                ('W', [235, 247, 255, 255]),
+                ('B', [94, 158, 222, 255]),
+                ('.', [0, 0, 0, 0]),
+            ];
+            let bubbles = (air.max(0.0) / 30.0).ceil() as i32;
+            for i in 0..bubbles.min(10) {
+                let x = hb_x + hb_w - 4 - (i + 1) * 17;
+                let y = hb_y - 48;
+                self.sprite(x, y, &Self::BUBBLE, &bubble_pal, 2);
+            }
+        }
+    }
+
+    /// Held-item name above the XP bar, fading out over ~2 s after the
+    /// selection changes (vanilla HUD behavior; the 2 s fade duration is
+    /// an unverified-but-trivial UI nicety — the layout position is the
+    /// commonly-cited vanilla one). `alpha` 0..1.
+    pub fn held_item_name(&mut self, name: &str, alpha: f32) {
+        let a = alpha.clamp(0.0, 1.0);
+        if a <= 0.0 || name.is_empty() {
+            return;
+        }
+        let hb_w = 9 * 40 + 4;
+        let hb_x = (UI_W as i32 - hb_w) / 2;
+        let hb_y = UI_H as i32 - 48;
+        // above the XP level-number zone, left-aligned with the hotbar
+        let x = hb_x + 4;
+        let y = hb_y - 44;
+        let fg: Color = [255, 255, 255, (230.0 * a) as u8];
+        let sh: Color = [20, 20, 20, (140.0 * a) as u8];
+        self.text_outlined(x, y, name, fg, sh, 2);
     }
 
     /// 1.16.5-style hotbar: 40px slots, big white selection frame, icons
     /// and vanilla stack counts (bottom-right, shadowed).
-    pub fn hotbar(&mut self, slots: &[ItemStack], selected: usize, atlas: &[u8], item_name: Option<(&str, u8)>) {
+    pub fn hotbar(
+        &mut self,
+        slots: &[ItemStack],
+        selected: usize,
+        atlas: &[u8],
+        item_name: Option<(&str, u8)>,
+    ) {
         let n = slots.len() as i32;
         let slot = 40i32;
         let bw = n * slot + 4;
@@ -866,7 +1165,13 @@ impl UiCanvas {
 
         if let Some((name, alpha)) = item_name {
             let w = name.len() as i32 * 12;
-            self.text((UI_W as i32 - w) / 2, y0 - 76, name, [255, 255, 255, alpha], 2);
+            self.text(
+                (UI_W as i32 - w) / 2,
+                y0 - 76,
+                name,
+                [255, 255, 255, alpha],
+                2,
+            );
         }
     }
 
@@ -877,9 +1182,21 @@ impl UiCanvas {
         if b != AIR && s.count > 0 {
             let tile = {
                 let d = def(b);
-                if b == GRASS || b == OAK_LOG { d.tiles[2] } else { d.tiles[0] }
+                if b == GRASS || b == OAK_LOG {
+                    d.tiles[2]
+                } else {
+                    d.tiles[0]
+                }
             };
-            blit_tile(atlas, tile, 2, (sx + 2) as usize, (sy + 2) as usize, &mut self.px, UI_W);
+            blit_tile(
+                atlas,
+                tile,
+                2,
+                (sx + 2) as usize,
+                (sy + 2) as usize,
+                &mut self.px,
+                UI_W,
+            );
         }
         if s.count > 1 {
             let label = s.count.to_string();
@@ -929,20 +1246,8 @@ impl UiCanvas {
     /// vanilla furnace flame between input and fuel slots, filled by the
     /// burn-progress fraction
     fn flame(&mut self, x: i32, y: i32, frac: f32) {
-        let rows_on = [
-            "  f  ",
-            " fFf ",
-            " fFf ",
-            "fFFFf",
-            "fFFFf",
-        ];
-        let rows_off = [
-            "  .  ",
-            " . . ",
-            " . . ",
-            ".....",
-            ".....",
-        ];
+        let rows_on = ["  f  ", " fFf ", " fFf ", "fFFFf", "fFFFf"];
+        let rows_off = ["  .  ", " . . ", " . . ", ".....", "....."];
         let pal = [
             ('f', [255, 110, 20, 255]),
             ('F', [255, 210, 60, 255]),
@@ -965,13 +1270,7 @@ impl UiCanvas {
     /// cycle advances)
     fn bubbles(&mut self, x: i32, y: i32, frac: f32) {
         let rows = [
-            ".  b  .",
-            ".  b  .",
-            ".  b  .",
-            ".  b  .",
-            ".  b  .",
-            ".  b  .",
-            ".  b  .",
+            ".  b  .", ".  b  .", ".  b  .", ".  b  .", ".  b  .", ".  b  .", ".  b  .",
         ];
         let pal = [('b', [200, 230, 255, 255]), ('.', [70, 70, 80, 200])];
         let scale = 5i32; // 7 wide x 35 tall
@@ -982,14 +1281,27 @@ impl UiCanvas {
         let lit = (frac.clamp(0.0, 1.0) * total).floor() as i32;
         if lit > 0 {
             let y_fill = y + (rows.len() as i32 - lit) * scale;
-            self.rect(x + 2 * scale, y_fill, scale, lit * scale, [200, 230, 255, 255]);
+            self.rect(
+                x + 2 * scale,
+                y_fill,
+                scale,
+                lit * scale,
+                [200, 230, 255, 255],
+            );
         }
     }
 
-
     /// one generic 9-wide slot row (hotbar strip or storage row)
     #[allow(dead_code)]
-    fn inv_row(&mut self, x0: i32, y: i32, slots: &[ItemStack], atlas: &[u8], start: usize, count: usize) {
+    fn inv_row(
+        &mut self,
+        x0: i32,
+        y: i32,
+        slots: &[ItemStack],
+        atlas: &[u8],
+        start: usize,
+        count: usize,
+    ) {
         for i in 0..count {
             let x = x0 + i as i32 * 40;
             self.slot_well(x, y, &slots[start + i], atlas);
@@ -1014,12 +1326,15 @@ impl UiCanvas {
         let x0 = (UI_W as i32 - grid_w) / 2;
         // top-area height per kind
         let top_h = match kind {
-            ContainerKind::Inventory => 96,   // 2x2 craft + arrow + output
-            ContainerKind::Crafting => 140,   // 3x3 craft + arrow + output
-            ContainerKind::Chest => 132,     // 3 rows of 9 slots
-            ContainerKind::Furnace => 128,    // input / flame / fuel + arrow + output
-            ContainerKind::Brewing => 150,   // ingredient / bubbles / fuel + 3 bottles
-            ContainerKind::Enchant => 160,   // item + lapis + 3 option buttons
+            ContainerKind::Inventory => 96, // 2x2 craft + arrow + output
+            ContainerKind::Crafting => 140, // 3x3 craft + arrow + output
+            ContainerKind::Chest => 132,    // 3 rows of 9 slots
+            // vanilla ratio: hopper 133/166 of a chest's height — one
+            // content row instead of three (2×40px shorter than the chest)
+            ContainerKind::Hopper => 52,   // 1 row of 5 slots
+            ContainerKind::Furnace => 128, // input / flame / fuel + arrow + output
+            ContainerKind::Brewing => 150, // ingredient / bubbles / fuel + 3 bottles
+            ContainerKind::Enchant => 160, // item + lapis + 3 option buttons
             // Phase 5: two 5-row columns + the career header
             ContainerKind::Trade => 248,
         };
@@ -1042,6 +1357,8 @@ impl UiCanvas {
             ContainerKind::Inventory => "INVENTORY  (E / ESC to close)",
             ContainerKind::Crafting => "CRAFTING TABLE",
             ContainerKind::Chest => "CHEST",
+            // VERIFIED vanilla GUI label: "Item Hopper"
+            ContainerKind::Hopper => "ITEM HOPPER",
             ContainerKind::Furnace => "FURNACE",
             ContainerKind::Brewing => "BREWING STAND",
             ContainerKind::Enchant => "ENCHANT  (needs book + lapis + levels)",
@@ -1075,7 +1392,11 @@ impl UiCanvas {
                         geom.craft.push((x, y));
                     }
                 }
-                self.arrow(cx + 84, cy + 12, if !view.craft_out.is_empty() { 1.0 } else { 0.0 });
+                self.arrow(
+                    cx + 84,
+                    cy + 12,
+                    if !view.craft_out.is_empty() { 1.0 } else { 0.0 },
+                );
                 let ox = cx + 134;
                 let oy = cy + 2;
                 self.slot_well(ox, oy, &view.craft_out, atlas);
@@ -1094,7 +1415,11 @@ impl UiCanvas {
                         geom.craft.push((x, y));
                     }
                 }
-                self.arrow(cx + 124, cy + 32, if !view.craft_out.is_empty() { 1.0 } else { 0.0 });
+                self.arrow(
+                    cx + 124,
+                    cy + 32,
+                    if !view.craft_out.is_empty() { 1.0 } else { 0.0 },
+                );
                 let ox = cx + 174;
                 let oy = cy + 22;
                 self.slot_well(ox, oy, &view.craft_out, atlas);
@@ -1116,13 +1441,33 @@ impl UiCanvas {
                     }
                 }
             }
+            ContainerKind::Hopper => {
+                // §Container: one centered row of 5 slots (vanilla hopper
+                // layout — 44+18·col in vanilla units, ×2.2 here), sharing
+                // the chest slot-geometry list (game.rs maps them through
+                // the generic Container::Hopper slot path)
+                let total = 5 * 40;
+                let cx = x0 + (grid_w - total) / 2;
+                let cy = y0 + 8;
+                for c in 0..5 {
+                    let x = cx + c as i32 * 40;
+                    let st = view.chest.get(c).copied().unwrap_or(ItemStack::EMPTY);
+                    self.slot_well(x, cy, &st, atlas);
+                    geom.chest.push((x, cy));
+                }
+            }
             ContainerKind::Furnace => {
                 // left column: input above flame above fuel; arrow → output
                 let cx = x0 + (grid_w - 240) / 2;
                 let cy = y0 + 8;
-                let (input, fuel, output, burn, cook) = view.furnace
-                    .map(|f| (f.0, f.1, f.2, f.3, f.4))
-                    .unwrap_or((ItemStack::EMPTY, ItemStack::EMPTY, ItemStack::EMPTY, 0.0, 0.0));
+                let (input, fuel, output, burn, cook) =
+                    view.furnace.map(|f| (f.0, f.1, f.2, f.3, f.4)).unwrap_or((
+                        ItemStack::EMPTY,
+                        ItemStack::EMPTY,
+                        ItemStack::EMPTY,
+                        0.0,
+                        0.0,
+                    ));
                 let ix = cx + 10;
                 let iy = cy;
                 self.slot_well(ix, iy, &input, atlas);
@@ -1148,9 +1493,8 @@ impl UiCanvas {
                 let total = 3 * 40 + 30;
                 let cx = x0 + (grid_w - total) / 2;
                 let cy = y0 + 8;
-                let (ing, fuel, bottles, fuel_frac, brew_frac) = view.brewing
-                    .map(|b| (b.0, b.1, b.2, b.3, b.4))
-                    .unwrap_or((
+                let (ing, fuel, bottles, fuel_frac, brew_frac) =
+                    view.brewing.map(|b| (b.0, b.1, b.2, b.3, b.4)).unwrap_or((
                         ItemStack::EMPTY,
                         ItemStack::EMPTY,
                         [ItemStack::EMPTY; 3],
@@ -1185,12 +1529,16 @@ impl UiCanvas {
             ContainerKind::Enchant => {
                 // vanilla layout: item + lapis slots left, 3 option rows
                 // right; each option shows its level number and cost
-                let (item, lapis, options, player_level, power) = view.enchant
-                    .map(|e| (e.0, e.1, e.2, e.3, e.4))
-                    .unwrap_or((
+                let (item, lapis, options, player_level, power) =
+                    view.enchant.map(|e| (e.0, e.1, e.2, e.3, e.4)).unwrap_or((
                         ItemStack::EMPTY,
                         ItemStack::EMPTY,
-                        [vc_gameplay::enchanting::EnchOption { level: 0, ench: 0, ench_level: 0, cost: 0 }; 3],
+                        [vc_gameplay::enchanting::EnchOption {
+                            level: 0,
+                            ench: 0,
+                            ench_level: 0,
+                            cost: 0,
+                        }; 3],
                         0,
                         0,
                     ));
@@ -1294,8 +1642,8 @@ impl UiCanvas {
                 self.frame(bx, y0 - 28, 108, 10, [70, 70, 76, 255]);
                 if let Some(next) = tv.xp_next {
                     let prev = vc_gameplay::villagers::LEVEL_XP[(tv.level - 1) as usize] as u32;
-                    let frac = ((tv.xp - prev) as f32 / (next - prev).max(1) as f32)
-                        .clamp(0.0, 1.0);
+                    let frac =
+                        ((tv.xp - prev) as f32 / (next - prev).max(1) as f32).clamp(0.0, 1.0);
                     self.rect(
                         bx + 2,
                         y0 - 26,
@@ -1333,7 +1681,11 @@ impl UiCanvas {
                         rx + 44,
                         ry + 4,
                         &format!("{} x", r.give.count),
-                        if r.locked { [110, 110, 110, 255] } else { [255, 255, 255, 255] },
+                        if r.locked {
+                            [110, 110, 110, 255]
+                        } else {
+                            [255, 255, 255, 255]
+                        },
                         1,
                     );
                     // arrow
@@ -1357,7 +1709,13 @@ impl UiCanvas {
                     // right rail: stock "n/m" or the level that unlocks it
                     if r.locked {
                         self.text(rx + 216, ry + 24, "LOCK", [130, 130, 140, 255], 1);
-                        self.text(rx + 186, ry + 4, &format!("LV{}", r.tier), [160, 160, 170, 255], 1);
+                        self.text(
+                            rx + 186,
+                            ry + 4,
+                            &format!("LV{}", r.tier),
+                            [160, 160, 170, 255],
+                            1,
+                        );
                     } else if r.stock == 0 {
                         self.text(rx + 206, ry + 24, "OUT", [255, 90, 90, 255], 1);
                     } else {
@@ -1422,7 +1780,13 @@ impl UiCanvas {
             max_w = max_w.max(Self::text_width(l, 1) + 8);
         }
         let line_h = 14;
-        self.rect(4, 4, max_w, lines.len() as i32 * line_h + 6, [80, 80, 80, 110]);
+        self.rect(
+            4,
+            4,
+            max_w,
+            lines.len() as i32 * line_h + 6,
+            [80, 80, 80, 110],
+        );
         for (i, l) in lines.iter().enumerate() {
             self.text(7, 7 + i as i32 * line_h, l, [235, 235, 235, 255], 1);
         }
@@ -1504,7 +1868,15 @@ impl UiCanvas {
             self.rect(sx, sy, 40, 40, [58, 58, 58, 170]);
             self.frame(sx, sy, 40, 40, [90, 90, 90, 220]);
             let tile = def(*b).tiles[0];
-            blit_tile(atlas, tile, 2, (sx + 4) as usize, (sy + 4) as usize, &mut self.px, UI_W);
+            blit_tile(
+                atlas,
+                tile,
+                2,
+                (sx + 4) as usize,
+                (sy + 4) as usize,
+                &mut self.px,
+                UI_W,
+            );
             // hover highlight
             let cx = cursor.0 as i32;
             let cy = cursor.1 as i32;
@@ -1550,10 +1922,22 @@ impl UiCanvas {
         let y0 = (UI_H as i32 - bh) / 2;
         self.rect(x0, y0, bw, bh, [16, 16, 16, 200]);
         self.frame(x0, y0, bw, bh, [120, 120, 120, 255]);
-        self.text(x0 + 16, y0 + 10, "CONTROLS (H to close)", [255, 220, 120, 255], 2);
+        self.text(
+            x0 + 16,
+            y0 + 10,
+            "CONTROLS (H to close)",
+            [255, 220, 120, 255],
+            2,
+        );
         for (i, (k, v)) in lines.iter().enumerate() {
             self.text(x0 + 16, y0 + 44 + i as i32 * 20, k, [160, 220, 160, 255], 1);
-            self.text(x0 + 180, y0 + 44 + i as i32 * 20, v, [220, 220, 220, 255], 1);
+            self.text(
+                x0 + 180,
+                y0 + 44 + i as i32 * 20,
+                v,
+                [220, 220, 220, 255],
+                1,
+            );
         }
     }
 
@@ -1570,7 +1954,13 @@ impl UiCanvas {
         let x0 = (UI_W as i32 - bw) / 2;
         let y0 = UI_H as i32 / 2 + 60;
         self.frame(x0, y0, bw, 12, [255, 255, 255, 200]);
-        self.rect(x0 + 2, y0 + 2, ((bw - 4) as f32 * progress.clamp(0.0, 1.0)) as i32, 8, [110, 200, 90, 255]);
+        self.rect(
+            x0 + 2,
+            y0 + 2,
+            ((bw - 4) as f32 * progress.clamp(0.0, 1.0)) as i32,
+            8,
+            [110, 200, 90, 255],
+        );
     }
 }
 
@@ -1625,6 +2015,11 @@ pub enum ContainerKind {
     Trade,
     /// Phase 3: generic container (chest: 3 rows of 9)
     Chest,
+    /// hopper container: 5 slots in one row — the verdict-corrected
+    /// 176×133 vanilla screen (research doc's blanket 176×166 was
+    /// confirmed wrong; see docs/research/research-verdicts.md — a hopper
+    /// has one content row, not three, so the panel is genuinely shorter)
+    Hopper,
 }
 
 /// a logical slot in a container screen — the target of a mouse click
@@ -1738,9 +2133,7 @@ impl ContainerView {
             SlotRef::EnchantItem => self.enchant?.0,
             SlotRef::EnchantLapis => self.enchant?.1,
             SlotRef::EnchantOption(_) => ItemStack::EMPTY, // buttons, not stacks
-            SlotRef::TradeRow(i) => {
-                self.trade.as_ref()?.rows.get(i)?.give
-            }
+            SlotRef::TradeRow(i) => self.trade.as_ref()?.rows.get(i)?.give,
         })
     }
 }
@@ -1862,5 +2255,93 @@ impl ContainerGeom {
             }
         }
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn hopper_view() -> ContainerView {
+        ContainerView {
+            kind: ContainerKind::Hopper,
+            inv: vec![ItemStack::EMPTY; 36],
+            grid: vec![],
+            craft_out: ItemStack::EMPTY,
+            furnace: None,
+            brewing: None,
+            enchant: None,
+            chest: vec![ItemStack::EMPTY; 5],
+            trade: None,
+            cursor: ItemStack::EMPTY,
+        }
+    }
+
+    /// The verdict-corrected hopper screen (176×133 vanilla, NOT the
+    /// research doc's blanket 176×166): ONE row of 5 slots, all 5 slot
+    /// rects share a y, pitch 40, and clicks map into the generic
+    /// container-slot path. The panel is ~2 rows (80px) shorter than the
+    /// chest's — the vanilla 133-vs-166 relationship.
+    #[test]
+    fn hopper_screen_is_five_slots_in_one_short_row() {
+        let mut ui = UiCanvas::new();
+        let view = hopper_view();
+        let geom = ui.container_screen(&view, (0.0, 0.0), &[]);
+        assert_eq!(geom.chest.len(), 5, "exactly 5 hopper slots");
+        let ys: std::collections::HashSet<i32> = geom.chest.iter().map(|s| s.1).collect();
+        assert_eq!(ys.len(), 1, "all 5 slots on ONE row (the 176x133 shape)");
+        for i in 1..5 {
+            assert_eq!(
+                geom.chest[i].0 - geom.chest[i - 1].0,
+                40,
+                "vanilla slot pitch"
+            );
+        }
+        // clicking the first slot's center hits SlotRef::Chest(0)
+        let (x, y) = geom.chest[0];
+        assert_eq!(geom.slot_at(x + 18, y + 18), Some(SlotRef::Chest(0)));
+        // and the 5th
+        let (x5, y5) = geom.chest[4];
+        assert_eq!(geom.slot_at(x5 + 18, y5 + 18), Some(SlotRef::Chest(4)));
+    }
+
+    /// The oxygen bubble row appears only below a full air supply and
+    /// renders ceil(air/30) bubbles (VERIFIED: 10 bubbles × 30 air).
+    /// (Asserted structurally: status_bars with full air draws no bubble
+    /// pixels in the bubble row band; with air 150 draws the band.)
+    #[test]
+    fn oxygen_row_draws_only_when_air_is_depleted() {
+        let mut ui = UiCanvas::new();
+        ui.status_bars(20.0, 20.0, 0.5, 5, 300.0);
+        // full air -> the bubble band (right side, above hunger) stays empty
+        let band = nonwhite(&ui, bubble_band_rect());
+        let mut ui2 = UiCanvas::new();
+        ui2.status_bars(20.0, 20.0, 0.5, 5, 150.0);
+        let band2 = nonwhite(&ui2, bubble_band_rect());
+        assert_eq!(band, 0, "no bubbles at full air");
+        assert!(band2 > 0, "bubbles drawn at half air ({} px)", band2);
+    }
+
+    fn bubble_band_rect() -> (i32, i32, i32, i32) {
+        // exactly the bubble row: y = hb_y - 48 (above hunger's -28),
+        // 12px tall (6-row sprite x2), right-aligned 10-bubble span
+        let hb_w = 9 * 40 + 4;
+        let hb_x = (UI_W as i32 - hb_w) / 2;
+        (hb_x + hb_w - 176, (UI_H as i32 - 48) - 48, 176, 12)
+    }
+
+    /// count non-transparent pixels inside a rect of the canvas buffer
+    fn nonwhite(ui: &UiCanvas, r: (i32, i32, i32, i32)) -> i32 {
+        let (rx, ry, rw, rh) = r;
+        let mut n = 0;
+        for y in ry..ry + rh {
+            for x in rx..rx + rw {
+                let i = (y as usize * UI_W + x as usize) * 4;
+                if ui.px[i + 3] != 0 {
+                    n += 1;
+                }
+            }
+        }
+        n
     }
 }

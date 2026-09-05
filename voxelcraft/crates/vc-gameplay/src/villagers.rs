@@ -29,9 +29,9 @@
 //! - villager entity state (XP/level/stock) lives in memory: it resets on
 //!   world reload (vanilla persists per-entity NBT — logged open tail)
 
+use std::collections::HashSet;
 use vc_blocks::blocks::*;
 use vc_rng::rng::Rng;
-use std::collections::HashSet;
 
 pub const MAX_VILLAGERS: usize = 96;
 /// vanilla villager walk speed (blocks/s)
@@ -42,9 +42,7 @@ pub const JUMP_VEL: f32 = 0.42;
 pub const MAX_TRADES: usize = 16;
 
 /// career levels 1..=5 (VERIFIED names + XP thresholds on the wiki)
-pub const LEVEL_NAMES: [&str; 5] = [
-    "Novice", "Apprentice", "Journeyman", "Expert", "Master",
-];
+pub const LEVEL_NAMES: [&str; 5] = ["Novice", "Apprentice", "Journeyman", "Expert", "Master"];
 /// cumulative villager XP required per career level (VERIFIED:
 /// Novice 0, Apprentice 10, Journeyman 70, Expert 150, Master 250)
 pub const LEVEL_XP: [u32; 5] = [0, 10, 70, 150, 250];
@@ -57,31 +55,196 @@ pub const TIER_XP: [u16; 5] = [2, 5, 10, 15, 30];
 /// VERIFIED twice-per-day cadence)
 pub const RESTOCK_TICKS: u64 = 6000;
 
+// ------------------------------------------------ gossip (§Gossiping) --
+// VERIFIED against minecraft.wiki/w/Villager §Gossiping (live round,
+// research-verdicts.md): per-type gain / decay / sharing cost / maximum /
+// reputation multiplier. Decay runs every 20 minutes (24000 ticks);
+// shared gossip arrives reduced by the sharing cost; major_positive
+// can never be shared (cost 100 > max 20); reputation = Σ value ×
+// multiplier; trade prices shift by −floor(reputation × 0.05).
+/// gossip decay / share cadence: 20 real minutes = 24000 game ticks
+pub const GOSSIP_DECAY_TICKS: u64 = 24_000;
+/// vanilla standard price multiplier for common trades (the reputation
+/// discount scales with it — minecraft.wiki/w/Trading §Sale prices)
+pub const PRICE_MULTIPLIER: f32 = 0.05;
+
+/// The five gossip types (VERIFIED table). `major_positive`/`minor_positive`
+/// gain on curing zombie villagers — this engine has no zombie-villager
+/// curing, so those gain paths are unreachable today; the rows are kept
+/// (decay + share + reputation stay type-complete) for the future system.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum GossipKind {
+    Trading,
+    MajorPositive,
+    MinorPositive,
+    MinorNegative,
+    MajorNegative,
+}
+
+/// Per-type constants: (gain, decay, sharing cost, maximum, multiplier)
+const GOSSIP_TABLE: [(u16, u16, u16, u16, i32); 5] = [
+    (4, 2, 20, 25, 1),     // Trading
+    (20, 0, 100, 20, 5),   // MajorPositive
+    (25, 1, 5, 25, 1),     // MinorPositive
+    (25, 20, 20, 200, -1), // MinorNegative
+    (25, 10, 10, 100, -5), // MajorNegative
+];
+
+impl GossipKind {
+    pub fn gain(self) -> u16 {
+        GOSSIP_TABLE[self as usize].0
+    }
+    pub fn decay(self) -> u16 {
+        GOSSIP_TABLE[self as usize].1
+    }
+    pub fn share_cost(self) -> u16 {
+        GOSSIP_TABLE[self as usize].2
+    }
+    pub fn max(self) -> u16 {
+        GOSSIP_TABLE[self as usize].3
+    }
+    pub fn multiplier(self) -> i32 {
+        GOSSIP_TABLE[self as usize].4
+    }
+    /// shareable: the wiki note — a type whose sharing cost exceeds its
+    /// maximum can never be shared (major_positive)
+    pub fn shareable(self) -> bool {
+        self.share_cost() < self.max()
+    }
+}
+
+/// One villager's gossip state with the (single) player. Values are
+/// clamped to each type's maximum; the wiki's "line of sight" kill-share
+/// box is approximated by the 16-block cube (documented simplification).
+#[derive(Clone, Copy, Default, Debug)]
+pub struct Gossip {
+    pub trading: u16,
+    pub major_positive: u16,
+    pub minor_positive: u16,
+    pub minor_negative: u16,
+    pub major_negative: u16,
+}
+
+impl Gossip {
+    pub fn get(&self, k: GossipKind) -> u16 {
+        match k {
+            GossipKind::Trading => self.trading,
+            GossipKind::MajorPositive => self.major_positive,
+            GossipKind::MinorPositive => self.minor_positive,
+            GossipKind::MinorNegative => self.minor_negative,
+            GossipKind::MajorNegative => self.major_negative,
+        }
+    }
+    pub fn set(&mut self, k: GossipKind, v: u16) {
+        let v = v.min(k.max());
+        match k {
+            GossipKind::Trading => self.trading = v,
+            GossipKind::MajorPositive => self.major_positive = v,
+            GossipKind::MinorPositive => self.minor_positive = v,
+            GossipKind::MinorNegative => self.minor_negative = v,
+            GossipKind::MajorNegative => self.major_negative = v,
+        }
+    }
+    /// value += gain, clamped at the type maximum
+    pub fn gain_event(&mut self, k: GossipKind) {
+        let v = self.get(k).saturating_add(k.gain()).min(k.max());
+        self.set(k, v);
+    }
+    /// receive shared gossip: value − sharing cost, clamped at the max
+    pub fn receive_share(&mut self, k: GossipKind, shared: u16) {
+        let v = self
+            .get(k)
+            .saturating_add(shared.saturating_sub(k.share_cost()))
+            .min(k.max());
+        self.set(k, v);
+    }
+    /// periodic decay (every 20 min): value -= decay, floor at 0
+    pub fn decay_pass(&mut self) {
+        for k in [
+            GossipKind::Trading,
+            GossipKind::MajorPositive,
+            GossipKind::MinorPositive,
+            GossipKind::MinorNegative,
+            GossipKind::MajorNegative,
+        ] {
+            let v = self.get(k).saturating_sub(k.decay());
+            self.set(k, v);
+        }
+    }
+    /// reputation = Σ value × multiplier (VERIFIED)
+    pub fn reputation(&self) -> i32 {
+        [
+            GossipKind::Trading,
+            GossipKind::MajorPositive,
+            GossipKind::MinorPositive,
+            GossipKind::MinorNegative,
+            GossipKind::MajorNegative,
+        ]
+        .iter()
+        .map(|&k| self.get(k) as i32 * k.multiplier())
+        .sum()
+    }
+}
+
 /// the 15 villager types: 13 professions + Unemployed + Nitwit
 /// (display names; registry spellings in PROFESSION_IDS)
 pub const PROFESSIONS: [&str; 15] = [
-    "Armorer", "Butcher", "Cartographer", "Cleric", "Farmer",
-    "Fisherman", "Fletcher", "Leatherworker", "Librarian", "Mason",
-    "Nitwit", "Shepherd", "Toolsmith", "Unemployed", "Weaponsmith",
+    "Armorer",
+    "Butcher",
+    "Cartographer",
+    "Cleric",
+    "Farmer",
+    "Fisherman",
+    "Fletcher",
+    "Leatherworker",
+    "Librarian",
+    "Mason",
+    "Nitwit",
+    "Shepherd",
+    "Toolsmith",
+    "Unemployed",
+    "Weaponsmith",
 ];
 
 /// registry ids exactly as `minecraft:villager_profession` spells them
 /// (the mechanical-name discipline: exact key strings, no renaming)
 pub const PROFESSION_IDS: [&str; 15] = [
-    "minecraft:armorer", "minecraft:butcher", "minecraft:cartographer",
-    "minecraft:cleric", "minecraft:farmer", "minecraft:fisherman",
-    "minecraft:fletcher", "minecraft:leatherworker", "minecraft:librarian",
-    "minecraft:mason", "minecraft:nitwit", "minecraft:shepherd",
-    "minecraft:toolsmith", "minecraft:unemployed", "minecraft:weaponsmith",
+    "minecraft:armorer",
+    "minecraft:butcher",
+    "minecraft:cartographer",
+    "minecraft:cleric",
+    "minecraft:farmer",
+    "minecraft:fisherman",
+    "minecraft:fletcher",
+    "minecraft:leatherworker",
+    "minecraft:librarian",
+    "minecraft:mason",
+    "minecraft:nitwit",
+    "minecraft:shepherd",
+    "minecraft:toolsmith",
+    "minecraft:unemployed",
+    "minecraft:weaponsmith",
 ];
 
 /// the vanilla job-site block of each profession (documentation/UI only —
 /// palette-bounded adaptation: professions assign at village populate
 /// instead of job-block claiming, see the module header)
 pub const JOB_SITES: [&str; 15] = [
-    "Blast Furnace", "Smoker", "Cartography Table", "Brewing Stand", "Composter",
-    "Barrel", "Fletching Table", "Cauldron", "Lectern", "Stonecutter",
-    "(none)", "Loom", "Smithing Table", "(none)", "Grindstone",
+    "Blast Furnace",
+    "Smoker",
+    "Cartography Table",
+    "Brewing Stand",
+    "Composter",
+    "Barrel",
+    "Fletching Table",
+    "Cauldron",
+    "Lectern",
+    "Stonecutter",
+    "(none)",
+    "Loom",
+    "Smithing Table",
+    "(none)",
+    "Grindstone",
 ];
 
 /// profession index of the two trade-less types
@@ -352,6 +515,10 @@ pub struct Villager {
     wander_t: i32,
     /// cooldown after a jump
     jump_cd: i32,
+    /// gossip with the player (VERIFIED table — see GossipKind)
+    pub gossip: Gossip,
+    /// health (VERIFIED: villagers have 20 HP, no natural armor)
+    pub health: f32,
 }
 
 impl Villager {
@@ -392,6 +559,10 @@ pub struct Villagers {
     pub spawned_total: u64,
     /// sim tick of the last tick() call (restock clock)
     last_tick: u64,
+    /// sim tick of the last gossip decay boundary (20-min clock)
+    gossip_decay_at: u64,
+    /// cadence counter for the pairwise gossip-sharing pass
+    share_t: u32,
 }
 
 impl Villagers {
@@ -404,6 +575,8 @@ impl Villagers {
             trades_done: 0,
             spawned_total: 0,
             last_tick: 0,
+            gossip_decay_at: 0,
+            share_t: 0,
         }
     }
 
@@ -436,6 +609,8 @@ impl Villagers {
             target: None,
             wander_t: (self.rng.next_range(40) as i32).max(10),
             jump_cd: 0,
+            gossip: Gossip::default(),
+            health: 20.0,
         });
         self.spawned_total += 1;
         Some(id)
@@ -520,6 +695,10 @@ impl Villagers {
         v.used[i.min(MAX_TRADES - 1)] = used + 1;
         let before = v.level();
         v.xp = v.xp.saturating_add(t.xp as u32);
+        // VERIFIED (§Gossiping): each trade gives the TARGET villager
+        // +4 trading gossip (cap 25) — the reputation that discounts
+        // future prices
+        v.gossip.gain_event(GossipKind::Trading);
         let leveled = v.level() > before;
         self.trades_done += 1;
         Some((t, leveled))
@@ -548,6 +727,128 @@ impl Villagers {
         self.last_tick = sim_ticks;
     }
 
+    /// Reputation with the (single) player for villager `id`
+    /// (VERIFIED: Σ value × multiplier — positive lowers prices).
+    pub fn reputation_of(&self, id: u32) -> Option<i32> {
+        self.by_id(id).map(|v| v.gossip.reputation())
+    }
+
+    /// Player attacked villager `id` (survived): the targeted villager
+    /// gains minor_negative +25 (cap 200) — VERIFIED.
+    pub fn on_player_attack(&mut self, id: u32) {
+        if let Some(v) = self.list.iter_mut().find(|v| v.id == id) {
+            v.gossip.gain_event(GossipKind::MinorNegative);
+        }
+    }
+
+    /// Player melee on villager `id` (VERIFIED: 20 HP, no armor).
+    /// Returns (applied damage, Some(position) when the hit killed the
+    /// villager — the entity is removed; the caller broadcasts the
+    /// major_negative kill gossip to the survivors).
+    pub fn damage(&mut self, id: u32, dmg: f32) -> (f32, Option<[f32; 3]>) {
+        let Some(v) = self.list.iter_mut().find(|v| v.id == id) else {
+            return (0.0, None);
+        };
+        let applied = dmg.min(v.health).max(0.0);
+        v.health -= applied;
+        if v.health <= 0.0 {
+            let pos = v.pos;
+            self.list.retain(|x| x.id != id);
+            (applied, Some(pos))
+        } else {
+            (applied, None)
+        }
+    }
+
+    /// Player killed a villager at `pos`: every villager within the
+    /// VERIFIED 16-block box gets major_negative +25 (cap 100). (The
+    /// wiki's line-of-sight condition is approximated by the box.)
+    /// Returns how many villagers received the gossip.
+    pub fn on_player_kill(&mut self, pos: [f32; 3]) -> usize {
+        let mut n = 0;
+        for v in self.list.iter_mut() {
+            let inside = (v.pos[0] - pos[0]).abs() <= 16.0
+                && (v.pos[1] - pos[1]).abs() <= 16.0
+                && (v.pos[2] - pos[2]).abs() <= 16.0;
+            if inside {
+                v.gossip.gain_event(GossipKind::MajorNegative);
+                n += 1;
+            }
+        }
+        n
+    }
+
+    /// Gossip decay (VERIFIED: every 20 real minutes = 24000 ticks, each
+    /// gossip decays by its per-type Decay value; major_positive decay 0
+    /// is permanent). Same boundary-crossing shape as restock_pass.
+    fn gossip_decay_pass(&mut self, sim_ticks: u64) {
+        if sim_ticks < self.gossip_decay_at {
+            self.gossip_decay_at = sim_ticks; // clock reset (new world / load)
+        }
+        if sim_ticks.saturating_sub(self.gossip_decay_at) < GOSSIP_DECAY_TICKS {
+            return;
+        }
+        let mut now = self.gossip_decay_at + GOSSIP_DECAY_TICKS;
+        while now <= sim_ticks {
+            for v in self.list.iter_mut() {
+                v.gossip.decay_pass();
+            }
+            now += GOSSIP_DECAY_TICKS;
+        }
+        self.gossip_decay_at = sim_ticks;
+    }
+
+    /// Gossip sharing (VERIFIED one-liner: villagers share gossip by
+    /// talking; the shared value is reduced by the sharing cost;
+    /// major_positive is unshareable since cost 100 > max 20).
+    /// Adaptation: every 20 ticks each pair within 3 blocks has a 10%
+    /// conversation chance; the conversation transfers the pair's
+    /// strongest shareable type ("higher-strength gossip is more likely
+    /// to be shared" — approximated by strongest-first).
+    fn gossip_share_pass(&mut self) {
+        if self.list.len() < 2 {
+            return;
+        }
+        for i in 0..self.list.len() {
+            for j in (i + 1)..self.list.len() {
+                let dx = self.list[i].pos[0] - self.list[j].pos[0];
+                let dy = self.list[i].pos[1] - self.list[j].pos[1];
+                let dz = self.list[i].pos[2] - self.list[j].pos[2];
+                if dx * dx + dy * dy + dz * dz > 9.0 {
+                    continue;
+                }
+                if self.rng.next_range(10) != 0 {
+                    continue;
+                }
+                // strongest shareable type across the pair
+                let kinds = [
+                    GossipKind::Trading,
+                    GossipKind::MajorPositive,
+                    GossipKind::MinorPositive,
+                    GossipKind::MinorNegative,
+                    GossipKind::MajorNegative,
+                ];
+                let mut best: Option<(GossipKind, u16, usize)> = None;
+                for &k in &kinds {
+                    if !k.shareable() {
+                        continue;
+                    }
+                    for (src, val) in [
+                        (i, self.list[i].gossip.get(k)),
+                        (j, self.list[j].gossip.get(k)),
+                    ] {
+                        if val > 0 && best.map(|b| val > b.1).unwrap_or(true) {
+                            best = Some((k, val, src));
+                        }
+                    }
+                }
+                let Some((k, val, src)) = best else { continue };
+                let dst = if src == i { j } else { i };
+                self.list[dst].gossip.receive_share(k, val);
+            }
+        }
+    }
+
     /// ONE sim tick (20 Hz): wander decisions + walking physics + the
     /// twice-daily restock clock. `sim_ticks` is the global sim tick count.
     /// Phase 6 §26: villagers outside the simulation ring freeze — wander
@@ -564,6 +865,11 @@ impl Villagers {
         sim_radius: i32,
     ) {
         self.restock_pass(sim_ticks);
+        self.gossip_decay_pass(sim_ticks);
+        self.share_t = self.share_t.wrapping_add(1);
+        if self.share_t % 20 == 0 {
+            self.gossip_share_pass();
+        }
         let ring = |p: [f32; 3]| {
             let (cx, cz) = ((p[0] / 16.0).floor() as i32, (p[2] / 16.0).floor() as i32);
             cx.wrapping_sub(sim_center.0)
@@ -624,9 +930,14 @@ impl Villagers {
             }
 
             // physics: gravity + axis-separated collision (the item-entity
-            // pattern, villager-scale); jump when horizontally blocked
-            v.vel[1] -= 0.08;
-            v.vel[1] = v.vel[1].max(-0.5);
+            // pattern, villager-scale); jump when horizontally blocked.
+            // Vanilla entity gravity, EXACT per-tick form (VERIFIED,
+            // research-verdicts.md: v1 = (v0 − 0.08) × 0.98 — villager
+            // velocities are b/tick). Terminal −3.92 b/t is the inherent
+            // fixed point; the old non-vanilla −0.5 clamp is gone, and
+            // the vertical move is substepped so a terminal fall cannot
+            // tunnel through 1–3-block floors.
+            v.vel[1] = (v.vel[1] - 0.08) * 0.98;
 
             // horizontal X
             let nx = v.pos[0] + v.vel[0];
@@ -652,16 +963,21 @@ impl Villagers {
             } else {
                 v.vel[2] = 0.0;
             }
-            // vertical
-            let ny = v.pos[1] + v.vel[1];
-            if v.vel[1] < 0.0 && solid_at(world, v.pos[0], ny, v.pos[2]) {
-                v.pos[1] = ny.floor() + 1.0; // rest on the surface
-                v.vel[1] = 0.0;
-                v.vel[0] *= 0.7;
-                v.vel[2] *= 0.7;
-            } else if v.vel[1] > 0.0 && solid_at(world, v.pos[0], ny + 1.8, v.pos[2]) {
-                v.vel[1] = 0.0;
-            } else {
+            // vertical — substepped (≤0.9 blocks per probe)
+            let steps = (v.vel[1].abs() / 0.9).ceil().max(1.0) as i32;
+            let step = v.vel[1] / steps as f32;
+            'vertical: for _ in 0..steps {
+                let ny = v.pos[1] + step;
+                if step < 0.0 && solid_at(world, v.pos[0], ny, v.pos[2]) {
+                    v.pos[1] = ny.floor() + 1.0; // rest on the surface
+                    v.vel[1] = 0.0;
+                    v.vel[0] *= 0.7;
+                    v.vel[2] *= 0.7;
+                    break 'vertical;
+                } else if step > 0.0 && solid_at(world, v.pos[0], ny + 1.8, v.pos[2]) {
+                    v.vel[1] = 0.0;
+                    break 'vertical;
+                }
                 v.pos[1] = ny;
             }
 
@@ -684,6 +1000,20 @@ fn solid_at(world: &vc_world::world::World, x: f32, y: f32, z: f32) -> bool {
     is_solid(world.get_block(x.floor() as i32, y.floor() as i32, z.floor() as i32))
 }
 
+/// Reputation-adjusted give-count (price) for trade row `i` of villager
+/// `v` — VERIFIED price rule (minecraft.wiki/w/Trading §Sale prices,
+/// research-verdicts.md live round):
+///     cost = clamp(base − floor(reputation × 0.05), 1, 64)
+/// Positive reputation discounts, negative raises (Java behavior).
+pub fn give_count_adjusted(v: &Villager, i: usize) -> u8 {
+    let Some(t) = trades(v.profession).get(i) else {
+        return 0;
+    };
+    let base = t.give.1 as i32;
+    let discount = (v.gossip.reputation() as f32 * PRICE_MULTIPLIER).floor() as i32;
+    (base - discount).clamp(1, 64) as u8
+}
+
 /// billboard quads for the render pass: one crossed pair per villager,
 /// villager-scale (0.6 × 1.9) — rides the same particle pipeline the item
 /// entities use
@@ -702,7 +1032,11 @@ pub fn build_vertices(
         // face the movement direction (billboard around world Y)
         let yaw = v.yaw + time * 0.0; // no spin — grounded NPCs
         let (s, c) = (yaw.sin(), yaw.cos());
-        let rr = [c * right[0] + s * right[2], 0.0, -s * right[0] + c * right[2]];
+        let rr = [
+            c * right[0] + s * right[2],
+            0.0,
+            -s * right[0] + c * right[2],
+        ];
         let half = 0.30f32;
         let h = 1.9f32;
         let col = [0.92, 0.86, 0.78]; // baked neutral light (villager robe tones come from the tile)
@@ -721,10 +1055,7 @@ pub fn build_vertices(
                 [rr[0] * half, h, rr[2] * half],
                 [(tx + 1.0) / 16.0, ty / 16.0],
             ),
-            (
-                [-rr[0] * half, h, -rr[2] * half],
-                [tx / 16.0, ty / 16.0],
-            ),
+            ([-rr[0] * half, h, -rr[2] * half], [tx / 16.0, ty / 16.0]),
         ];
         for ci in [0usize, 1, 2, 0, 2, 3] {
             let (c, uv) = corners[ci];
@@ -740,8 +1071,8 @@ pub fn build_vertices(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vc_chunk::chunk::Chunk;
     use std::sync::Arc;
+    use vc_chunk::chunk::Chunk;
 
     fn flat_world() -> vc_world::world::World {
         let mut w = vc_world::world::World::new(9);
@@ -773,8 +1104,16 @@ mod tests {
         }
         let v = vs.by_id(id).unwrap();
         let d2 = (v.pos[0] - 0.5).powi(2) + (v.pos[2] - 0.5).powi(2);
-        assert!(d2 < 9.0 * 9.0, "villager stays within the wander radius, d={}", d2.sqrt());
-        assert!(v.pos[1] >= 64.0 && v.pos[1] < 67.0, "on the ground: {}", v.pos[1]);
+        assert!(
+            d2 < 9.0 * 9.0,
+            "villager stays within the wander radius, d={}",
+            d2.sqrt()
+        );
+        assert!(
+            v.pos[1] >= 64.0 && v.pos[1] < 67.0,
+            "on the ground: {}",
+            v.pos[1]
+        );
         assert_eq!(vs.list.len(), 1);
     }
 
@@ -876,8 +1215,8 @@ mod tests {
     fn trades_grant_xp_level_up_and_gate_tiers() {
         let mut vs = Villagers::new(30);
         let id = vs.spawn_at(0, 65, 0, Some(3)).unwrap(); // Cleric
-        // tier-1 row 0 (Rotten Flesh → emerald), xp 2/trade, 16 stock
-        // 5 trades = 10 xp → Apprentice (threshold 10)
+                                                          // tier-1 row 0 (Rotten Flesh → emerald), xp 2/trade, 16 stock
+                                                          // 5 trades = 10 xp → Apprentice (threshold 10)
         let mut leveled_at = None;
         for k in 0..5 {
             let (t, lv) = vs.execute_trade(id, 0).expect("trade executes");
@@ -886,20 +1225,30 @@ mod tests {
                 leveled_at = Some(k + 1);
             }
         }
-        assert_eq!(leveled_at, Some(5), "levels up exactly at 10 XP (5 trades × 2)");
+        assert_eq!(
+            leveled_at,
+            Some(5),
+            "levels up exactly at 10 XP (5 trades × 2)"
+        );
         assert_eq!(vs.by_id(id).unwrap().level(), 2);
         // tier-2 rows are now visible in offers()
         let offers = vs.by_id(id).unwrap().offers();
-        assert!(offers.contains(&2) && offers.contains(&0), "tier-2 unlocked: {offers:?}");
+        assert!(
+            offers.contains(&2) && offers.contains(&0),
+            "tier-2 unlocked: {offers:?}"
+        );
         // a tier-5 row is still locked (returns None)
-        assert!(vs.execute_trade(id, 8).is_none(), "tier-5 row locked at level 2");
+        assert!(
+            vs.execute_trade(id, 8).is_none(),
+            "tier-5 row locked at level 2"
+        );
     }
 
     #[test]
     fn stock_exhausts_then_restocks_twice_a_day() {
         let mut vs = Villagers::new(31);
         let id = vs.spawn_at(0, 65, 0, Some(1)).unwrap(); // Butcher
-        // row 0: tier 1 → 16 uses
+                                                          // row 0: tier 1 → 16 uses
         for _ in 0..16 {
             assert!(vs.execute_trade(id, 0).is_some(), "in stock");
         }
@@ -934,8 +1283,174 @@ mod tests {
         let w = flat_world();
         vs.populate_villages(&w, 0, 0);
         let n = vs.list.len();
-        assert!(n == 0 || (3..=5).contains(&n), "villages seed 3..5 villagers, got {n}");
+        assert!(
+            n == 0 || (3..=5).contains(&n),
+            "villages seed 3..5 villagers, got {n}"
+        );
         vs.populate_villages(&w, 0, 0);
         assert_eq!(vs.list.len(), n, "second populate: zero new spawns");
+    }
+
+    // ---------------------------------------------------- gossip (VERIFIED) --
+
+    #[test]
+    fn gossip_table_matches_wiki() {
+        // VERIFIED minecraft.wiki/w/Villager §Gossiping (research-verdicts
+        // live round): (gain, decay, share cost, maximum, multiplier)
+        assert_eq!(GossipKind::Trading.gain(), 4);
+        assert_eq!(GossipKind::Trading.decay(), 2);
+        assert_eq!(GossipKind::Trading.share_cost(), 20);
+        assert_eq!(GossipKind::Trading.max(), 25);
+        assert_eq!(GossipKind::Trading.multiplier(), 1);
+        assert_eq!(GossipKind::MajorPositive.gain(), 20);
+        assert_eq!(GossipKind::MajorPositive.decay(), 0);
+        assert_eq!(GossipKind::MajorPositive.share_cost(), 100);
+        assert_eq!(GossipKind::MajorPositive.max(), 20);
+        assert_eq!(GossipKind::MajorPositive.multiplier(), 5);
+        assert_eq!(GossipKind::MinorPositive.gain(), 25);
+        assert_eq!(GossipKind::MinorPositive.decay(), 1);
+        assert_eq!(GossipKind::MinorPositive.share_cost(), 5);
+        assert_eq!(GossipKind::MinorPositive.max(), 25);
+        assert_eq!(GossipKind::MinorNegative.gain(), 25);
+        assert_eq!(GossipKind::MinorNegative.decay(), 20);
+        assert_eq!(GossipKind::MinorNegative.share_cost(), 20);
+        assert_eq!(GossipKind::MinorNegative.max(), 200);
+        assert_eq!(GossipKind::MinorNegative.multiplier(), -1);
+        assert_eq!(GossipKind::MajorNegative.gain(), 25);
+        assert_eq!(GossipKind::MajorNegative.decay(), 10);
+        assert_eq!(GossipKind::MajorNegative.share_cost(), 10);
+        assert_eq!(GossipKind::MajorNegative.max(), 100);
+        assert_eq!(GossipKind::MajorNegative.multiplier(), -5);
+        // the wiki note: major_positive can never be shared
+        assert!(!GossipKind::MajorPositive.shareable());
+        assert!(GossipKind::Trading.shareable());
+    }
+
+    #[test]
+    fn reputation_and_price_discount() {
+        let mut vs = Villagers::new(4);
+        let id = vs.spawn_at(0, 65, 0, Some(4)).unwrap();
+        // baseline price = table value
+        let base = give_count_adjusted(vs.by_id(id).unwrap(), 0);
+        assert_eq!(base, trades(4)[0].give.1);
+        // 7 trades → trading gossip 28 → clamped at max 25 → rep 25
+        for _ in 0..7 {
+            vs.execute_trade(id, 0);
+        }
+        let v = vs.by_id(id).unwrap();
+        assert_eq!(v.gossip.trading, 25, "trading caps at 25");
+        assert_eq!(v.gossip.reputation(), 25);
+        // discount = floor(25 × 0.05) = 1 → price drops by 1 (min 1)
+        let disc = give_count_adjusted(v, 0);
+        assert_eq!(disc as i32, (base as i32 - 1).max(1));
+        // attack once: minor_negative 25 → rep = 25 − 25 = 0 → base price
+        vs.on_player_attack(id);
+        let v = vs.by_id(id).unwrap();
+        assert_eq!(v.gossip.minor_negative, 25);
+        assert_eq!(v.gossip.reputation(), 0);
+        assert_eq!(give_count_adjusted(v, 0), base);
+        // second attack: minor_negative 50 → rep −25 → surcharge: Java
+        // Math.floor semantics — floor(−25 × 0.05) = floor(−1.25) = −2,
+        // so the price rises by 2 (vanilla rounds toward −infinity)
+        vs.on_player_attack(id);
+        let v = vs.by_id(id).unwrap();
+        assert_eq!(v.gossip.reputation(), -25);
+        assert_eq!(give_count_adjusted(v, 0) as i32, (base as i32 + 2).min(64));
+    }
+
+    #[test]
+    fn kill_broadcasts_major_negative_within_16_blocks() {
+        let mut vs = Villagers::new(4);
+        let a = vs.spawn_at(0, 65, 0, Some(4)).unwrap();
+        let b = vs.spawn_at(8, 65, 0, Some(4)).unwrap(); // within 16
+        let c = vs.spawn_at(200, 65, 0, Some(4)).unwrap(); // far
+        let n = vs.on_player_kill([4.5, 65.0, 0.5]);
+        assert_eq!(n, 2, "the two villagers within the 16-block box");
+        assert_eq!(vs.by_id(a).unwrap().gossip.major_negative, 25);
+        assert_eq!(vs.by_id(b).unwrap().gossip.major_negative, 25);
+        assert_eq!(vs.by_id(c).unwrap().gossip.major_negative, 0);
+        // each kill adds +25 up to the cap of 100; reputation −5 per point
+        for _ in 0..5 {
+            vs.on_player_kill([4.5, 65.0, 0.5]);
+        }
+        assert_eq!(vs.by_id(a).unwrap().gossip.major_negative, 100, "cap 100");
+        assert_eq!(vs.by_id(a).unwrap().gossip.reputation(), -500);
+    }
+
+    #[test]
+    fn gossip_decays_every_20_minutes() {
+        let mut vs = Villagers::new(4);
+        let id = vs.spawn_at(0, 65, 0, Some(4)).unwrap();
+        vs.execute_trade(id, 0);
+        vs.on_player_attack(id);
+        let v = vs.by_id(id).unwrap();
+        assert_eq!((v.gossip.trading, v.gossip.minor_negative), (4, 25));
+        // one 20-minute period (24000 ticks) → trading −2, minor_neg −20
+        let w = flat_world();
+        vs.tick(&w, GOSSIP_DECAY_TICKS, (0, 0), i32::MAX);
+        let v = vs.by_id(id).unwrap();
+        assert_eq!(v.gossip.trading, 2);
+        assert_eq!(v.gossip.minor_negative, 5);
+        // a second period floors minor_negative at 0, trading follows
+        vs.tick(&w, GOSSIP_DECAY_TICKS * 2, (0, 0), i32::MAX);
+        let v = vs.by_id(id).unwrap();
+        assert_eq!(v.gossip.trading, 0);
+        assert_eq!(v.gossip.minor_negative, 0);
+        // major_positive is permanent (decay 0) — direct structural check
+        let mut g = Gossip::default();
+        g.set(GossipKind::MajorPositive, 20);
+        g.decay_pass();
+        assert_eq!(g.major_positive, 20);
+    }
+
+    #[test]
+    fn villager_health_and_player_kill_path() {
+        // VERIFIED: 20 HP; two 10-damage hits kill; the kill removes the
+        // entity and the caller-side broadcast sees only the survivors
+        let mut vs = Villagers::new(4);
+        let a = vs.spawn_at(0, 65, 0, Some(4)).unwrap();
+        let b = vs.spawn_at(4, 65, 0, Some(4)).unwrap();
+        assert_eq!(vs.by_id(a).unwrap().health, 20.0);
+        let (d1, kill) = vs.damage(a, 10.0);
+        assert_eq!((d1, kill.is_none()), (10.0, true));
+        assert_eq!(vs.by_id(a).unwrap().health, 10.0);
+        // surviving a hit grows minor_negative (the game layer calls
+        // on_player_attack per non-lethal hit)
+        vs.on_player_attack(a);
+        assert_eq!(vs.by_id(a).unwrap().gossip.minor_negative, 25);
+        let (d2, kill) = vs.damage(a, 15.0);
+        assert_eq!((d2, kill.is_some()), (10.0, true));
+        assert!(vs.by_id(a).is_none(), "dead villager is removed");
+        // the caller broadcasts the kill gossip
+        let n = vs.on_player_kill(kill.unwrap());
+        assert_eq!(n, 1, "only the survivor is in the 16-block box");
+        assert_eq!(vs.by_id(b).unwrap().gossip.major_negative, 25);
+    }
+
+    #[test]
+    fn gossip_shares_reduced_by_cost() {
+        let mut vs = Villagers::new(4);
+        let a = vs.spawn_at(0, 65, 0, Some(4)).unwrap();
+        let b = vs.spawn_at(1, 65, 0, Some(4)).unwrap();
+        // a holds trading 24; sharing cost 20 → b receives 4
+        let v = vs.list.iter_mut().find(|v| v.id == a).unwrap();
+        v.gossip.set(GossipKind::Trading, 24);
+        // force a conversation (10% roll → call the pass directly)
+        for _ in 0..200 {
+            vs.gossip_share_pass();
+        }
+        let g = vs.by_id(b).unwrap().gossip;
+        assert!(
+            g.trading >= 4,
+            "received 24 − 20 = 4 (more if a re-shared), got {}",
+            g.trading
+        );
+        // the sender is never reduced by sharing; a mutual pair converges
+        // toward the type max through re-sharing (25 here) — never below 24
+        let a_val = vs.by_id(a).unwrap().gossip.trading;
+        assert!(
+            (24..=25).contains(&a_val),
+            "sender never reduced, got {a_val}"
+        );
     }
 }

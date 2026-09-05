@@ -36,8 +36,8 @@
 //! 3 passes (shadow/terrain/water). New: binds = 3 + 2·regions·passes;
 //! draws = chunks (loop path) or regions (MDI path).
 
-use vc_world::world::ChunkPos;
 use std::collections::HashMap;
+use vc_world::world::ChunkPos;
 
 /// chunks per mesh-region side (8 → 128×128 blocks, ≈1–16 MB arena)
 pub const REGION_CHUNKS: i32 = 8;
@@ -55,10 +55,7 @@ pub fn region_of(pos: ChunkPos) -> (i32, i32) {
 #[inline]
 pub fn region_center(region: (i32, i32)) -> (f32, f32) {
     let c = REGION_CHUNKS as f32 * 16.0;
-    (
-        region.0 as f32 * c + c * 0.5,
-        region.1 as f32 * c + c * 0.5,
-    )
+    (region.0 as f32 * c + c * 0.5, region.1 as f32 * c + c * 0.5)
 }
 
 // ---------------------------------------------------------------- slots --
@@ -155,7 +152,14 @@ pub struct MeshSlot {
 
 impl MeshSlot {
     /// null slot for empty meshes (never drawn, no arena space)
-    pub const EMPTY: MeshSlot = MeshSlot { region: (0, 0), v_off: 0, v_cap: 0, i_off: 0, i_cap: 0, n: 0 };
+    pub const EMPTY: MeshSlot = MeshSlot {
+        region: (0, 0),
+        v_off: 0,
+        v_cap: 0,
+        i_off: 0,
+        i_cap: 0,
+        n: 0,
+    };
 
     #[inline]
     pub fn is_empty(&self) -> bool {
@@ -488,7 +492,8 @@ pub struct DrawCallAccounting {
 impl DrawCallAccounting {
     /// loop path: 1 whole-buffer origin bind + 2 arena binds per region run
     pub fn loop_path(terrain: &[DrawCmd], water: &[DrawCmd], shadow: &[DrawCmd]) -> Self {
-        let runs = region_runs(terrain).len() + region_runs(water).len() + region_runs(shadow).len();
+        let runs =
+            region_runs(terrain).len() + region_runs(water).len() + region_runs(shadow).len();
         DrawCallAccounting {
             draws: (terrain.len() + water.len() + shadow.len()) as u32,
             binds: 3 + (runs as u32) * 2,
@@ -497,7 +502,8 @@ impl DrawCallAccounting {
 
     /// MDI path: one multi_draw per region run; still per-pass origin binds
     pub fn mdi_path(terrain: &[DrawCmd], water: &[DrawCmd], shadow: &[DrawCmd]) -> Self {
-        let runs = region_runs(terrain).len() + region_runs(water).len() + region_runs(shadow).len();
+        let runs =
+            region_runs(terrain).len() + region_runs(water).len() + region_runs(shadow).len();
         DrawCallAccounting {
             draws: runs as u32,
             binds: 3 + (runs as u32) * 2,
@@ -522,7 +528,14 @@ mod tests {
     use super::*;
 
     fn slot(region: (i32, i32), v: u32, vc: u32, i: u32, ic: u32, n: u32) -> MeshSlot {
-        MeshSlot { region, v_off: v, v_cap: vc, i_off: i, i_cap: ic, n }
+        MeshSlot {
+            region,
+            v_off: v,
+            v_cap: vc,
+            i_off: i,
+            i_cap: ic,
+            n,
+        }
     }
 
     #[test]
@@ -614,7 +627,7 @@ mod tests {
         assert!((idx((0, 0)) - idx((1, 0))).abs() == 1); // both region-(0,0), adjacent
         let r11 = [idx((8, 8)), idx((9, 9)), idx((10, 10))];
         assert_eq!(*r11.iter().max().unwrap() - *r11.iter().min().unwrap(), 2); // contiguous triple
-        // no other region's chunk interleaves into that span
+                                                                                // no other region's chunk interleaves into that span
         for v in ordered.iter() {
             let i = idx(v.0);
             if r11.contains(&i) {
@@ -633,7 +646,11 @@ mod tests {
         let mut chunks = HashMap::new();
         chunks.insert(
             (0, 0),
-            ChunkGpu { solid: slot((0, 0), 0, 10, 0, 12, 12), water: None, occl: Default::default() },
+            ChunkGpu {
+                solid: slot((0, 0), 0, 10, 0, 12, 12),
+                water: None,
+                occl: Default::default(),
+            },
         );
         chunks.insert(
             (1, 0),
@@ -645,20 +662,56 @@ mod tests {
         );
         chunks.insert(
             (8, 8),
-            ChunkGpu { solid: slot((1, 1), 0, 10, 0, 4, 4), water: None, occl: Default::default() },
+            ChunkGpu {
+                solid: slot((1, 1), 0, 10, 0, 4, 4),
+                water: None,
+                occl: Default::default(),
+            },
         );
         chunks.insert(
             (64, 64),
-            ChunkGpu { solid: MeshSlot::EMPTY, water: None, occl: Default::default() }, // empty → skipped
+            ChunkGpu {
+                solid: MeshSlot::EMPTY,
+                water: None,
+                occl: Default::default(),
+            }, // empty → skipped
         );
-        let vis: Vec<VisEntry> =
-            vec![((0, 0), 1.0, 0), ((1, 0), 2.0, 1), ((8, 8), 3.0, 2), ((64, 64), 4.0, 3)];
+        let vis: Vec<VisEntry> = vec![
+            ((0, 0), 1.0, 0),
+            ((1, 0), 2.0, 1),
+            ((8, 8), 3.0, 2),
+            ((64, 64), 4.0, 3),
+        ];
 
         let t = build_draw_list(&chunks, &vis, false, None);
         assert_eq!(t.len(), 3);
-        assert_eq!(t[0], DrawCmd { region: (0, 0), i_first: 0, i_count: 12, origin: 0 });
-        assert_eq!(t[1], DrawCmd { region: (0, 0), i_first: 12, i_count: 6, origin: 1 });
-        assert_eq!(t[2], DrawCmd { region: (1, 1), i_first: 0, i_count: 4, origin: 2 });
+        assert_eq!(
+            t[0],
+            DrawCmd {
+                region: (0, 0),
+                i_first: 0,
+                i_count: 12,
+                origin: 0
+            }
+        );
+        assert_eq!(
+            t[1],
+            DrawCmd {
+                region: (0, 0),
+                i_first: 12,
+                i_count: 6,
+                origin: 1
+            }
+        );
+        assert_eq!(
+            t[2],
+            DrawCmd {
+                region: (1, 1),
+                i_first: 0,
+                i_count: 4,
+                origin: 2
+            }
+        );
 
         // water only where a water slot exists
         let w = build_draw_list(&chunks, &vis, true, None);
@@ -687,9 +740,24 @@ mod tests {
     #[test]
     fn args_packing_matches_loop() {
         let cmds = vec![
-            DrawCmd { region: (0, 0), i_first: 12, i_count: 6, origin: 4 },
-            DrawCmd { region: (0, 0), i_first: 40, i_count: 90, origin: 17 },
-            DrawCmd { region: (2, -3), i_first: 0, i_count: 3, origin: 2047 },
+            DrawCmd {
+                region: (0, 0),
+                i_first: 12,
+                i_count: 6,
+                origin: 4,
+            },
+            DrawCmd {
+                region: (0, 0),
+                i_first: 40,
+                i_count: 90,
+                origin: 17,
+            },
+            DrawCmd {
+                region: (2, -3),
+                i_first: 0,
+                i_count: 3,
+                origin: 2047,
+            },
         ];
         let args = pack_args(&cmds);
         assert_eq!(std::mem::size_of::<IndirectArgs>(), 20);
@@ -724,7 +792,11 @@ mod tests {
         ChunkGpu {
             solid: slot((0, 0), 0, 8, 0, 6, 6),
             water: None,
-            occl: ChunkOccl { sides, planes, geo: geo_bands },
+            occl: ChunkOccl {
+                sides,
+                planes,
+                geo: geo_bands,
+            },
         }
     }
 
@@ -762,7 +834,7 @@ mod tests {
         for d in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
             let mut g = col(0b1111100_0, 1 << 1); // geo deep down
             g.occl.sides &= !0xF; // close band-0..: only band 1 walls closed
-            // close ALL walls of band 1 and the plane between band 1/2
+                                  // close ALL walls of band 1 and the plane between band 1/2
             g.occl.sides &= !(0xF << 4);
             g.occl.planes &= !(1 << 1);
             chunks.insert(d, g);
@@ -810,7 +882,11 @@ mod tests {
     /// bit helpers agree with the raw fields
     #[test]
     fn occl_bit_helpers() {
-        let o = ChunkOccl { sides: 1 << (3 * 4 + FACE_PZ), planes: 1 << 7, geo: 1 << 9 };
+        let o = ChunkOccl {
+            sides: 1 << (3 * 4 + FACE_PZ),
+            planes: 1 << 7,
+            geo: 1 << 9,
+        };
         assert!(o.wall_open(3, FACE_PZ));
         assert!(!o.wall_open(3, FACE_PX));
         assert!(!o.wall_open(4, FACE_PZ));
@@ -845,7 +921,10 @@ mod tests {
         // the empty default set as a hit
         let mut cold = OcclCache::default();
         let r = occlusion_visible_cached(&chunks, (0, 0), 0, 0, &mut cold);
-        assert!(r.is_some(), "default-state key must fall through to compute");
+        assert!(
+            r.is_some(),
+            "default-state key must fall through to compute"
+        );
         assert!(r.unwrap().contains(&(0, 0)));
         // mesh revision bump (a chunk remeshed with no drawable faces):
         // recompute and match the fresh direct flood

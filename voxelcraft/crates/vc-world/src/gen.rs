@@ -1,11 +1,11 @@
 //! World generation: simplex noise, fBm, biomes, caves, trees.
 //! Fully deterministic per seed; pure functions (safe on worker threads).
 
+use crate::world::Dimension;
+use std::sync::Arc;
 use vc_blocks::blocks::*;
 use vc_chunk::chunk::{Chunk, CHUNK_LEN};
 use vc_rng::rng::Rng;
-use crate::world::Dimension;
-use std::sync::Arc;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Biome {
@@ -72,9 +72,18 @@ impl Biome {
 // ---------------------------------------------------------------- simplex --
 
 const GRAD3: [[f32; 3]; 12] = [
-    [1.0, 1.0, 0.0], [-1.0, 1.0, 0.0], [1.0, -1.0, 0.0], [-1.0, -1.0, 0.0],
-    [1.0, 0.0, 1.0], [-1.0, 0.0, 1.0], [1.0, 0.0, -1.0], [-1.0, 0.0, -1.0],
-    [0.0, 1.0, 1.0], [0.0, -1.0, 1.0], [0.0, 1.0, -1.0], [0.0, -1.0, -1.0],
+    [1.0, 1.0, 0.0],
+    [-1.0, 1.0, 0.0],
+    [1.0, -1.0, 0.0],
+    [-1.0, -1.0, 0.0],
+    [1.0, 0.0, 1.0],
+    [-1.0, 0.0, 1.0],
+    [1.0, 0.0, -1.0],
+    [-1.0, 0.0, -1.0],
+    [0.0, 1.0, 1.0],
+    [0.0, -1.0, 1.0],
+    [0.0, 1.0, -1.0],
+    [0.0, -1.0, -1.0],
 ];
 
 const F2: f32 = 0.3660254037844386; // 0.5 * (sqrt(3) - 1)
@@ -162,19 +171,49 @@ impl Noise {
         let (i1, j1, k1, i2, j2, k2): (f32, f32, f32, f32, f32, f32);
         if x0 >= y0 {
             if y0 >= z0 {
-                i1 = 1.0; j1 = 0.0; k1 = 0.0; i2 = 1.0; j2 = 1.0; k2 = 0.0;
+                i1 = 1.0;
+                j1 = 0.0;
+                k1 = 0.0;
+                i2 = 1.0;
+                j2 = 1.0;
+                k2 = 0.0;
             } else if x0 >= z0 {
-                i1 = 1.0; j1 = 0.0; k1 = 0.0; i2 = 1.0; j2 = 0.0; k2 = 1.0;
+                i1 = 1.0;
+                j1 = 0.0;
+                k1 = 0.0;
+                i2 = 1.0;
+                j2 = 0.0;
+                k2 = 1.0;
             } else {
-                i1 = 0.0; j1 = 0.0; k1 = 1.0; i2 = 1.0; j2 = 0.0; k2 = 1.0;
+                i1 = 0.0;
+                j1 = 0.0;
+                k1 = 1.0;
+                i2 = 1.0;
+                j2 = 0.0;
+                k2 = 1.0;
             }
         } else {
             if y0 < z0 {
-                i1 = 0.0; j1 = 0.0; k1 = 1.0; i2 = 0.0; j2 = 1.0; k2 = 1.0;
+                i1 = 0.0;
+                j1 = 0.0;
+                k1 = 1.0;
+                i2 = 0.0;
+                j2 = 1.0;
+                k2 = 1.0;
             } else if x0 < z0 {
-                i1 = 0.0; j1 = 1.0; k1 = 0.0; i2 = 0.0; j2 = 1.0; k2 = 1.0;
+                i1 = 0.0;
+                j1 = 1.0;
+                k1 = 0.0;
+                i2 = 0.0;
+                j2 = 1.0;
+                k2 = 1.0;
             } else {
-                i1 = 0.0; j1 = 1.0; k1 = 0.0; i2 = 1.0; j2 = 1.0; k2 = 0.0;
+                i1 = 0.0;
+                j1 = 1.0;
+                k1 = 0.0;
+                i2 = 1.0;
+                j2 = 1.0;
+                k2 = 0.0;
             }
         }
 
@@ -196,29 +235,34 @@ impl Noise {
 
         let t0 = 0.6 - x0 * x0 - y0 * y0 - z0 * z0;
         if t0 > 0.0 {
-            let g = &GRAD3[self.perm_mod12[ii + self.perm[jj + self.perm[kk] as usize] as usize] as usize];
+            let g = &GRAD3
+                [self.perm_mod12[ii + self.perm[jj + self.perm[kk] as usize] as usize] as usize];
             let t = t0 * t0;
             n += t * t * (g[0] * x0 + g[1] * y0 + g[2] * z0);
         }
         let t1 = 0.6 - x1 * x1 - y1 * y1 - z1 * z1;
         if t1 > 0.0 {
-            let g = &GRAD3[self.perm_mod12
-                [ii + i1 as usize + self.perm[jj + j1 as usize + self.perm[kk + k1 as usize] as usize] as usize]
+            let g = &GRAD3[self.perm_mod12[ii
+                + i1 as usize
+                + self.perm[jj + j1 as usize + self.perm[kk + k1 as usize] as usize] as usize]
                 as usize];
             let t = t1 * t1;
             n += t * t * (g[0] * x1 + g[1] * y1 + g[2] * z1);
         }
         let t2 = 0.6 - x2 * x2 - y2 * y2 - z2 * z2;
         if t2 > 0.0 {
-            let g = &GRAD3[self.perm_mod12
-                [ii + i2 as usize + self.perm[jj + j2 as usize + self.perm[kk + k2 as usize] as usize] as usize]
+            let g = &GRAD3[self.perm_mod12[ii
+                + i2 as usize
+                + self.perm[jj + j2 as usize + self.perm[kk + k2 as usize] as usize] as usize]
                 as usize];
             let t = t2 * t2;
             n += t * t * (g[0] * x2 + g[1] * y2 + g[2] * z2);
         }
         let t3 = 0.6 - x3 * x3 - y3 * y3 - z3 * z3;
         if t3 > 0.0 {
-            let g = &GRAD3[self.perm_mod12[ii + 1 + self.perm[jj + 1 + self.perm[kk + 1] as usize] as usize] as usize];
+            let g = &GRAD3[self.perm_mod12
+                [ii + 1 + self.perm[jj + 1 + self.perm[kk + 1] as usize] as usize]
+                as usize];
             let t = t3 * t3;
             n += t * t * (g[0] * x3 + g[1] * y3 + g[2] * z3);
         }
@@ -295,7 +339,6 @@ pub struct Ravine {
     /// VERIFIED: start (top) 10..=72
     pub top: i32,
 }
-
 
 /// floor division (Rust's `/` truncates toward zero — region math needs
 /// the mathematical floor so negative coordinates map to the right
@@ -405,13 +448,40 @@ impl TerrainGen {
 
         let mut ridge = 1.0 - self.n_ridge.noise2(xf / 230.0, zf / 230.0).abs();
         ridge = ridge * ridge;
-        let mfac = smoothstep(0.15, 0.55, fbm2(&self.n_mfac, (xf + 700.0) / 950.0, (zf - 300.0) / 950.0, 2, 2.0, 0.5));
+        let mfac = smoothstep(
+            0.15,
+            0.55,
+            fbm2(
+                &self.n_mfac,
+                (xf + 700.0) / 950.0,
+                (zf - 300.0) / 950.0,
+                2,
+                2.0,
+                0.5,
+            ),
+        );
         let detail = fbm2(&self.n_detail, xf / 60.0, zf / 60.0, 3, 2.0, 0.5) * 4.0;
 
-        let h = (base + ridge * 52.0 * mfac + detail).clamp(8.0, 170.0).floor() as i32;
+        let h = (base + ridge * 52.0 * mfac + detail)
+            .clamp(8.0, 170.0)
+            .floor() as i32;
 
-        let temp = fbm2(&self.n_temp, (xf + 3000.0) / 1700.0, (zf + 3000.0) / 1700.0, 2, 2.0, 0.5);
-        let humid = fbm2(&self.n_humid, (xf - 5000.0) / 1400.0, (zf + 5000.0) / 1400.0, 2, 2.0, 0.5);
+        let temp = fbm2(
+            &self.n_temp,
+            (xf + 3000.0) / 1700.0,
+            (zf + 3000.0) / 1700.0,
+            2,
+            2.0,
+            0.5,
+        );
+        let humid = fbm2(
+            &self.n_humid,
+            (xf - 5000.0) / 1400.0,
+            (zf + 5000.0) / 1400.0,
+            2,
+            2.0,
+            0.5,
+        );
 
         let (biome, top, filler) = if h < vc_chunk::SEA_LEVEL - 1 {
             if h < vc_chunk::SEA_LEVEL - 6 {
@@ -465,7 +535,12 @@ impl TerrainGen {
             (Biome::Plains, GRASS, DIRT)
         };
 
-        ColumnInfo { height: h, biome, top, filler }
+        ColumnInfo {
+            height: h,
+            biome,
+            top,
+            filler,
+        }
     }
 
     /// Is the block at (x,y,z) carved by a cave? Only called underground.
@@ -477,7 +552,9 @@ impl TerrainGen {
         let yf = y as f32;
         let zf = z as f32;
         let n1 = self.n_cave1.noise3(xf / 110.0, yf / 55.0, zf / 110.0);
-        let n2 = self.n_cave2.noise3((xf + 800.0) / 110.0, yf / 55.0, (zf - 800.0) / 110.0);
+        let n2 = self
+            .n_cave2
+            .noise3((xf + 800.0) / 110.0, yf / 55.0, (zf - 800.0) / 110.0);
         // spaghetti tunnels: intersection of two noise "sheets"
         if n1 * n1 + n2 * n2 < 0.010 {
             return true;
@@ -636,7 +713,13 @@ impl TerrainGen {
         // pass 3: decorations (trees, plants) — deterministic per chunk
         let ox = cx * 16;
         let oz = cz * 16;
-        let mut set_dec = |chunk: &mut Chunk, outbound: &mut Vec<(i32, i32, i32, u8)>, wx: i32, wy: i32, wz: i32, id: u8, replace_leaves: bool| {
+        let mut set_dec = |chunk: &mut Chunk,
+                           outbound: &mut Vec<(i32, i32, i32, u8)>,
+                           wx: i32,
+                           wy: i32,
+                           wz: i32,
+                           id: u8,
+                           replace_leaves: bool| {
             if wy < 0 || wy > 255 {
                 return;
             }
@@ -660,8 +743,20 @@ impl TerrainGen {
                 Biome::Jungle => 10,
                 Biome::Taiga => 5,
                 Biome::Swamp => 3,
-                Biome::Savanna => if rng.next_f32() < 0.6 { 1 } else { 0 },
-                Biome::Plains => if rng.next_f32() < 0.5 { 1 } else { 0 },
+                Biome::Savanna => {
+                    if rng.next_f32() < 0.6 {
+                        1
+                    } else {
+                        0
+                    }
+                }
+                Biome::Plains => {
+                    if rng.next_f32() < 0.5 {
+                        1
+                    } else {
+                        0
+                    }
+                }
                 Biome::Snowy => 3,
                 _ => 0,
             }
@@ -726,12 +821,28 @@ impl TerrainGen {
                             if corner && rng.next_f32() < 0.6 {
                                 continue;
                             }
-                            set_dec(&mut chunk, &mut outbound, ox + lx + dx, ly, oz + lz + dz, leaf, false);
+                            set_dec(
+                                &mut chunk,
+                                &mut outbound,
+                                ox + lx + dx,
+                                ly,
+                                oz + lz + dz,
+                                leaf,
+                                false,
+                            );
                         }
                     }
                 }
                 // spire tip
-                set_dec(&mut chunk, &mut outbound, ox + lx, y0 + th, oz + lz, leaf, false);
+                set_dec(
+                    &mut chunk,
+                    &mut outbound,
+                    ox + lx,
+                    y0 + th,
+                    oz + lz,
+                    leaf,
+                    false,
+                );
             } else {
                 for dy in -2..=1 {
                     let ly = y0 + th - 1 + dy;
@@ -745,14 +856,30 @@ impl TerrainGen {
                             if corner && (dy >= 0 || rng.next_f32() < 0.5) {
                                 continue; // ragged corners
                             }
-                            set_dec(&mut chunk, &mut outbound, ox + lx + dx, ly, oz + lz + dz, leaf, false);
+                            set_dec(
+                                &mut chunk,
+                                &mut outbound,
+                                ox + lx + dx,
+                                ly,
+                                oz + lz + dz,
+                                leaf,
+                                false,
+                            );
                         }
                     }
                 }
             }
             // trunk
             for ty in 0..th {
-                set_dec(&mut chunk, &mut outbound, ox + lx, y0 + ty, oz + lz, log, true);
+                set_dec(
+                    &mut chunk,
+                    &mut outbound,
+                    ox + lx,
+                    y0 + ty,
+                    oz + lz,
+                    log,
+                    true,
+                );
             }
             // dirt under trunk
             if chunk.get(lx as usize, h as usize, lz as usize) == GRASS {
@@ -796,7 +923,15 @@ impl TerrainGen {
             } else {
                 FLOWER_YELLOW
             };
-            set_dec(&mut chunk, &mut outbound, ox + lx, h + 1, oz + lz, id, false);
+            set_dec(
+                &mut chunk,
+                &mut outbound,
+                ox + lx,
+                h + 1,
+                oz + lz,
+                id,
+                false,
+            );
         }
 
         // mushrooms in forests (shaded floor)
@@ -825,8 +960,20 @@ impl TerrainGen {
             if chunk.get(lx as usize, (h + 1) as usize, lz as usize) != AIR {
                 continue;
             }
-            let id = if rng.next_f32() < 0.5 { MUSHROOM_RED } else { MUSHROOM_BROWN };
-            set_dec(&mut chunk, &mut outbound, ox + lx, h + 1, oz + lz, id, false);
+            let id = if rng.next_f32() < 0.5 {
+                MUSHROOM_RED
+            } else {
+                MUSHROOM_BROWN
+            };
+            set_dec(
+                &mut chunk,
+                &mut outbound,
+                ox + lx,
+                h + 1,
+                oz + lz,
+                id,
+                false,
+            );
         }
 
         // desert: dead bushes + cactus columns + clay in low sand
@@ -845,11 +992,27 @@ impl TerrainGen {
                         continue;
                     }
                     if rng.next_f32() < 0.55 {
-                        set_dec(&mut chunk, &mut outbound, ox + lx, h + 1, oz + lz, DEAD_BUSH, false);
+                        set_dec(
+                            &mut chunk,
+                            &mut outbound,
+                            ox + lx,
+                            h + 1,
+                            oz + lz,
+                            DEAD_BUSH,
+                            false,
+                        );
                     } else {
                         let ch = 1 + rng.next_range(3) as i32;
                         for dy in 0..ch {
-                            set_dec(&mut chunk, &mut outbound, ox + lx, h + 1 + dy, oz + lz, CACTUS, false);
+                            set_dec(
+                                &mut chunk,
+                                &mut outbound,
+                                ox + lx,
+                                h + 1 + dy,
+                                oz + lz,
+                                CACTUS,
+                                false,
+                            );
                         }
                     }
                 }
@@ -883,7 +1046,15 @@ impl TerrainGen {
                     if chunk.get(lx as usize, h as usize, lz as usize) == GRASS
                         && chunk.get(lx as usize, (h + 1) as usize, lz as usize) == AIR
                     {
-                        set_dec(&mut chunk, &mut outbound, ox + lx, h + 1, oz + lz, MELON, false);
+                        set_dec(
+                            &mut chunk,
+                            &mut outbound,
+                            ox + lx,
+                            h + 1,
+                            oz + lz,
+                            MELON,
+                            false,
+                        );
                     }
                 }
             }
@@ -1045,7 +1216,7 @@ impl TerrainGen {
             let lx = 1 + rng.next_range((15 - size) as u32) as i32; // 1..=15-size
             let lz = 1 + rng.next_range((15 - size) as u32) as i32;
             let y0 = 8 + rng.next_range(28) as i32; // 8..=35
-            // spawner mob roll (VERIFIED 50/25/25)
+                                                    // spawner mob roll (VERIFIED 50/25/25)
             let mob = match rng.next_range(4) {
                 0 | 1 => vc_blocks::blocks::SPAWNER_ZOMBIE,
                 2 => vc_blocks::blocks::SPAWNER_SKELETON,
@@ -1055,16 +1226,14 @@ impl TerrainGen {
             let wz0 = cz * 16 + lz;
             // ---- validation (VERIFIED rules) ----
             // floor area incl. under walls: entirely solid
-            let floor_ok = (-1..=size).all(|dx| {
-                (-1..=size).all(|dz| self.gen_solid(wx0 + dx, y0 - 1, wz0 + dz))
-            });
+            let floor_ok = (-1..=size)
+                .all(|dx| (-1..=size).all(|dz| self.gen_solid(wx0 + dx, y0 - 1, wz0 + dz)));
             if !floor_ok {
                 continue;
             }
             // ceiling area incl. over walls: entirely solid
-            let ceil_ok = (-1..=size).all(|dx| {
-                (-1..=size).all(|dz| self.gen_solid(wx0 + dx, y0 + 5, wz0 + dz))
-            });
+            let ceil_ok = (-1..=size)
+                .all(|dx| (-1..=size).all(|dz| self.gen_solid(wx0 + dx, y0 + 5, wz0 + dz)));
             if !ceil_ok {
                 continue;
             }
@@ -1129,7 +1298,15 @@ impl TerrainGen {
     /// place a rolled room into the chunk (walls cobble, floor 75% mossy
     /// — VERIFIED —, interior air, spawner center, chests against walls)
     fn emit_dungeon(&self, chunk: &mut Chunk, room: DungeonRoom, ox: i32, oz: i32) {
-        let DungeonRoom { x0, y0, z0, size, mob, chests, chest_count } = room;
+        let DungeonRoom {
+            x0,
+            y0,
+            z0,
+            size,
+            mob,
+            chests,
+            chest_count,
+        } = room;
         // mossy pattern rng — derived from the room anchor (stable)
         let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x0D66, x0, 0, z0));
         let lx = x0 - ox;
@@ -1143,7 +1320,11 @@ impl TerrainGen {
                     let cy = (y0 + dy) as usize;
                     if dy == -1 {
                         // floor: 25% cobble / 75% mossy (VERIFIED)
-                        let b = if rng.next_range(4) == 0 { COBBLE } else { MOSSY_COBBLE };
+                        let b = if rng.next_range(4) == 0 {
+                            COBBLE
+                        } else {
+                            MOSSY_COBBLE
+                        };
                         chunk.set(cx, cy, cz, b);
                     } else if dy == 5 {
                         // ceiling: plain cobble
@@ -1225,7 +1406,11 @@ impl TerrainGen {
                         let yf = y as f32;
                         let zf = wz as f32;
                         let n1 = self.n_neth1.noise3(xf / 150.0, yf / 70.0, zf / 150.0);
-                        let n2 = self.n_neth2.noise3((xf + 800.0) / 150.0, yf / 70.0, (zf - 800.0) / 150.0);
+                        let n2 = self.n_neth2.noise3(
+                            (xf + 800.0) / 150.0,
+                            yf / 70.0,
+                            (zf - 800.0) / 150.0,
+                        );
                         let bias = self.n_neth3.noise3(xf / 300.0, yf / 110.0, zf / 300.0);
                         // carve where the two fields both approach 0 AND the
                         // regional bias leans hollow. Base ~0.055 keeps the
@@ -1252,7 +1437,8 @@ impl TerrainGen {
                 let cb = 127 - ceil_bed(wx, wz);
                 for y in 0..=127i32 {
                     let is_bed = y <= fb.saturating_sub(1) || y >= cb + 1 || y == 0 || y == 127;
-                    let solid = is_bed || nether[(y.max(0) * 256 + z as i32 * 16 + x as i32) as usize];
+                    let solid =
+                        is_bed || nether[(y.max(0) * 256 + z as i32 * 16 + x as i32) as usize];
                     if !solid {
                         continue;
                     }
@@ -1293,7 +1479,11 @@ impl TerrainGen {
                 let here_air = chunk.get(lx as usize, y as usize, lz as usize) == AIR
                     && (y + 1) < 128
                     && chunk.get(lx as usize, (y + 1) as usize, lz as usize) == AIR;
-                let below = if y > 0 { chunk.get(lx as usize, (y - 1) as usize, lz as usize) } else { BEDROCK };
+                let below = if y > 0 {
+                    chunk.get(lx as usize, (y - 1) as usize, lz as usize)
+                } else {
+                    BEDROCK
+                };
                 if here_air && fold(below) == NETHERRACK {
                     // vanilla-ish: soul sand valley patches — replace the top
                     // 1..2 floor blocks
@@ -1312,7 +1502,11 @@ impl TerrainGen {
             let mut y = 20;
             while y < 110 {
                 let here = chunk.get(lx as usize, y as usize, lz as usize);
-                let above = if y < 127 { chunk.get(lx as usize, (y + 1) as usize, lz as usize) } else { BEDROCK };
+                let above = if y < 127 {
+                    chunk.get(lx as usize, (y + 1) as usize, lz as usize)
+                } else {
+                    BEDROCK
+                };
                 if here == AIR && fold(above) == NETHERRACK {
                     chunk.set(lx as usize, (y + 1) as usize, lz as usize, GLOWSTONE);
                     // a small cluster around it
@@ -1353,11 +1547,17 @@ impl TerrainGen {
                         for lx in 0..16usize {
                             for y in 10..110usize {
                                 let feet = chunk.get(lx, y, lz);
-                                let head = if y + 1 < 128 { chunk.get(lx, y + 1, lz) } else { BEDROCK };
-                                let floor = if y > 0 { chunk.get(lx, y - 1, lz) } else { BEDROCK };
-                                if feet == AIR
-                                    && head == AIR
-                                    && is_solid(state_block(floor as u16))
+                                let head = if y + 1 < 128 {
+                                    chunk.get(lx, y + 1, lz)
+                                } else {
+                                    BEDROCK
+                                };
+                                let floor = if y > 0 {
+                                    chunk.get(lx, y - 1, lz)
+                                } else {
+                                    BEDROCK
+                                };
+                                if feet == AIR && head == AIR && is_solid(state_block(floor as u16))
                                 {
                                     return (
                                         (dx * 16 + lx as i32) as f32 + 0.5,
@@ -1419,7 +1619,10 @@ impl TerrainGen {
             if c.height < vc_chunk::SEA_LEVEL + 2 || c.height > 96 {
                 return None;
             }
-            if !matches!(c.biome, Biome::Plains | Biome::Forest | Biome::Snowy | Biome::Mountains) {
+            if !matches!(
+                c.biome,
+                Biome::Plains | Biome::Forest | Biome::Snowy | Biome::Mountains
+            ) {
                 return None;
             }
         }
@@ -1481,8 +1684,20 @@ impl TerrainGen {
         for dx in -1i32..=1 {
             for dz in -1i32..=1 {
                 let edge = dx.abs() == 1 || dz.abs() == 1;
-                put(chunk, wx + dx, ground, wz + dz, if edge { COBBLE } else { WATER });
-                put(chunk, wx + dx, ground - 1, wz + dz, if edge { COBBLE } else { WATER });
+                put(
+                    chunk,
+                    wx + dx,
+                    ground,
+                    wz + dz,
+                    if edge { COBBLE } else { WATER },
+                );
+                put(
+                    chunk,
+                    wx + dx,
+                    ground - 1,
+                    wz + dz,
+                    if edge { COBBLE } else { WATER },
+                );
                 put(chunk, wx + dx, ground - 2, wz + dz, COBBLE);
             }
         }
@@ -1545,8 +1760,6 @@ impl TerrainGen {
         }
     }
 
-
-
     // ------------------------------------------------- Phase 10 structures --
     // Four deferred structures from the Part 1 §2 gap table, every numeric
     // rule live-verified from minecraft.wiki (2026-09-04) with the
@@ -1568,7 +1781,6 @@ impl TerrainGen {
     // plain CHEST block (no chest-minecart entity); no rails/cobwebs
     // (palette-absent, honestly documented); cave-spider spawner → the
     // registry's spider spawner (no distinct cave-spider mob).
-
 
     /// every mineshaft whose layout can reach the chunk containing world
     /// position (ox, oz) — the 7×7-chunk neighborhood covers the longest
@@ -1601,7 +1813,12 @@ impl TerrainGen {
                         corridors.push((dx, dz, len));
                     }
                 }
-                out.push(Mineshaft { x: px, z: pz, y, corridors });
+                out.push(Mineshaft {
+                    x: px,
+                    z: pz,
+                    y,
+                    corridors,
+                });
             }
         }
         out
@@ -1626,11 +1843,19 @@ impl TerrainGen {
                 put(chunk, wx, ms.y, wz, PLANKS); // floor
                 for dy in 1..=4 {
                     let id = if dy <= 3 {
-                        if ring { COBBLE } else { AIR }
+                        if ring {
+                            COBBLE
+                        } else {
+                            AIR
+                        }
                     } else {
                         // ceiling: corners solid, the arch opens inward
                         // (|dx|+|dz| ≤ 7 keeps the diagonal corners)
-                        if dx.abs() + dz.abs() > 7 { COBBLE } else { AIR }
+                        if dx.abs() + dz.abs() > 7 {
+                            COBBLE
+                        } else {
+                            AIR
+                        }
                     };
                     put(chunk, wx, ms.y + dy, wz, id);
                 }
@@ -1666,7 +1891,17 @@ impl TerrainGen {
                             put(chunk, wx, ms.y + dy, wz, AIR); // bore
                         } else {
                             // lintel: log beam across the top, every 4
-                            put(chunk, wx, ms.y + dy, wz, if off == 0 && step % 4 == 0 { OAK_LOG } else { AIR });
+                            put(
+                                chunk,
+                                wx,
+                                ms.y + dy,
+                                wz,
+                                if off == 0 && step % 4 == 0 {
+                                    OAK_LOG
+                                } else {
+                                    AIR
+                                },
+                            );
                         }
                     }
                 }
@@ -1676,7 +1911,13 @@ impl TerrainGen {
                     for off in -1..=1 {
                         let wx = cxw + px * off;
                         let wz = czw + pz * off;
-                        put(chunk, wx, ms.y + 1, wz, if off == 0 { AIR } else { OAK_FENCE });
+                        put(
+                            chunk,
+                            wx,
+                            ms.y + 1,
+                            wz,
+                            if off == 0 { AIR } else { OAK_FENCE },
+                        );
                         let below = self.gen_solid(wx, ms.y, wz);
                         if !below {
                             put(chunk, wx, ms.y, wz, OAK_LOG); // pillar down
@@ -1795,7 +2036,13 @@ impl TerrainGen {
                         // ground floor: terracotta/sandstone checkerboard
                         // "wind rose" (VERIFIED pattern; palette-adapted)
                         let checker = (dx + dz).rem_euclid(2) == 0;
-                        put(chunk, x, y, z, if checker { TERRACOTTA } else { SMOOTH_STONE });
+                        put(
+                            chunk,
+                            x,
+                            y,
+                            z,
+                            if checker { TERRACOTTA } else { SMOOTH_STONE },
+                        );
                     } else {
                         put(chunk, x, y, z, AIR); // hollow interior
                     }
@@ -1884,7 +2131,11 @@ impl TerrainGen {
         // 11×11 footprint, 3 floors of 4 high (our compact layout);
         // cobble/mossy mix on the shell (VERIFIED materials)
         let mix = |rng: &mut Rng| -> u8 {
-            if rng.next_f32() < 0.5 { COBBLE } else { MOSSY_COBBLE }
+            if rng.next_f32() < 0.5 {
+                COBBLE
+            } else {
+                MOSSY_COBBLE
+            }
         };
         // per-structure rng seeded from the anchor
         let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x3E4E, wx, 0, wz));
@@ -1930,7 +2181,7 @@ impl TerrainGen {
             }
         }
         put(chunk, wx - 2, base + 1, wz - 1, CHEST); // puzzle chest
-        // top floor: the far chest down the hall
+                                                     // top floor: the far chest down the hall
         put(chunk, wx + 1, base + 9, wz - 1, CHEST);
         // interior ladderless stairwell: a cut in each floor's ceiling
         for floor in 0..2 {
@@ -1958,8 +2209,7 @@ impl TerrainGen {
             // each stronghold sits in its own 120° sector with a small
             // jitter (the wiki: "roughly equal angles … in the region of
             // 120 degrees from the others")
-            let angle = (i as f32) * std::f32::consts::TAU / 3.0
-                + (rng.next_f32() - 0.5) * 0.5; // ±~14°
+            let angle = (i as f32) * std::f32::consts::TAU / 3.0 + (rng.next_f32() - 0.5) * 0.5; // ±~14°
             let dist = 1280.0 + rng.next_f32() * (2816.0 - 1280.0);
             let x = (angle.cos() * dist) as i32;
             let z = (angle.sin() * dist) as i32;
@@ -1981,43 +2231,58 @@ impl TerrainGen {
         let y = 20;
         let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x57_0E, wx, 1, wz));
         // room helper: hollow box of stone bricks
-        let mut room = |chunk: &mut Chunk, x0: i32, z0: i32, w: i32, h: i32, d: i32, y: i32, rng: &mut Rng| {
-            for dx in 0..w {
-                for dz in 0..d {
-                    for dy in 0..h {
-                        let x = x0 + dx;
-                        let z = z0 + dz;
-                        let yy = y + dy;
-                        let shell = dx == 0 || dx == w - 1 || dz == 0 || dz == d - 1
-                            || dy == 0 || dy == h - 1;
-                        if shell {
-                            // cracked-looking mossy mix (palette: no
-                            // cracked/chiseled stone bricks — mixed)
-                            let id = if rng.next_f32() < 0.2 { MOSSY_COBBLE } else { STONE_BRICKS };
-                            put(chunk, x, yy, z, id);
-                        } else {
-                            put(chunk, x, yy, z, AIR);
+        let mut room =
+            |chunk: &mut Chunk, x0: i32, z0: i32, w: i32, h: i32, d: i32, y: i32, rng: &mut Rng| {
+                for dx in 0..w {
+                    for dz in 0..d {
+                        for dy in 0..h {
+                            let x = x0 + dx;
+                            let z = z0 + dz;
+                            let yy = y + dy;
+                            let shell = dx == 0
+                                || dx == w - 1
+                                || dz == 0
+                                || dz == d - 1
+                                || dy == 0
+                                || dy == h - 1;
+                            if shell {
+                                // cracked-looking mossy mix (palette: no
+                                // cracked/chiseled stone bricks — mixed)
+                                let id = if rng.next_f32() < 0.2 {
+                                    MOSSY_COBBLE
+                                } else {
+                                    STONE_BRICKS
+                                };
+                                put(chunk, x, yy, z, id);
+                            } else {
+                                put(chunk, x, yy, z, AIR);
+                            }
                         }
                     }
                 }
-            }
-        };
+            };
         // entrance corridor (east→west, 5 high 3 wide 12 long)
         room(chunk, wx - 12, wz - 1, 12, 5, 3, y, &mut rng);
         put(chunk, wx - 12, y + 1, wz, STONE_BRICKS); // sealed end
-        // library (north): 11×7×9 with bookshelf walls
+                                                      // library (north): 11×7×9 with bookshelf walls
         room(chunk, wx - 9, wz - 10, 11, 7, 9, y, &mut rng);
         for dz in -9..=-2 {
             for dy in 1..=3 {
                 // bookshelf stacks along the north wall
-                put(chunk, wx - 4 + ((dz + 9) % 2) * 2, y + dy, wz + dz, BOOKSHELF);
+                put(
+                    chunk,
+                    wx - 4 + ((dz + 9) % 2) * 2,
+                    y + dy,
+                    wz + dz,
+                    BOOKSHELF,
+                );
             }
         }
         put(chunk, wx - 7, y + 1, wz - 8, CHEST); // stronghold_library chest
-        // store room (south): 9×5×7
+                                                  // store room (south): 9×5×7
         room(chunk, wx - 8, wz + 2, 9, 5, 7, y, &mut rng);
         put(chunk, wx - 4, y + 1, wz + 4, CHEST); // stronghold_corridor chest
-        // portal room (west): 11×7×11 with the 12-frame ring + lava pool
+                                                  // portal room (west): 11×7×11 with the 12-frame ring + lava pool
         room(chunk, wx - 22, wz - 5, 11, 7, 11, y, &mut rng);
         let px = wx - 17; // portal ring center
         let pz = wz;
@@ -2048,7 +2313,6 @@ impl TerrainGen {
     // value: vanilla's canyon carver probability is not published on the
     // wiki; we use 1 per 50 chunks (0.02).
 
-
     /// every ravine that can cover the chunk containing (cx, cz): the
     /// 11×11-chunk neighborhood covers the 127-block max diagonal
     pub fn ravines_near_chunk(&self, cx: i32, cz: i32) -> Vec<Ravine> {
@@ -2066,7 +2330,7 @@ impl TerrainGen {
                 let length = 85 + rng.next_range(43) as i32; // 85..=127
                 let half_w = 2.0 + rng.next_f32() * 5.0; // < 15 wide total
                 let depth = 40 + rng.next_range(23) as i32; // ≤ 62
-                // top: terrain height at the start, clamped to 10..=72
+                                                            // top: terrain height at the start, clamped to 10..=72
                 let h = self.column(x0, z0).height as i32;
                 let top = h.clamp(10, 72);
                 out.push(Ravine {
@@ -2098,8 +2362,8 @@ impl TerrainGen {
                 continue;
             }
             let perp = (rx * rv.dz - rz * rv.dx).abs(); // distance from line
-            // lengthwise taper: half-width scales down in the last 12
-            // blocks of each end
+                                                        // lengthwise taper: half-width scales down in the last 12
+                                                        // blocks of each end
             let end_taper = {
                 let from_end = (rv.length as f32 - t).min(t);
                 (from_end / 12.0).min(1.0)
@@ -2226,7 +2490,10 @@ mod village_tests {
                 }
             }
         }
-        assert!(found >= 4, "expected several villages across seeds, got {found}");
+        assert!(
+            found >= 4,
+            "expected several villages across seeds, got {found}"
+        );
     }
 
     /// a village's blocks actually land in the chunk containing it: the
@@ -2257,8 +2524,16 @@ mod village_tests {
         // model state 73, furnaces 116 — the P7-structures collision fix)
         let fold = |s: u16| vc_blocks::blocks::state_block(s);
         // well: water at center, cobble rim, fence post corner, plank roof
-        assert_eq!(fold(chunk.get(lx, ground, lz) as u16), WATER, "well center water");
-        assert_eq!(fold(chunk.get(lx + 1, ground, lz) as u16), COBBLE, "well rim cobble");
+        assert_eq!(
+            fold(chunk.get(lx, ground, lz) as u16),
+            WATER,
+            "well center water"
+        );
+        assert_eq!(
+            fold(chunk.get(lx + 1, ground, lz) as u16),
+            COBBLE,
+            "well rim cobble"
+        );
         assert_eq!(
             fold(chunk.get(lx - 1, ground + 3, lz - 1) as u16),
             OAK_FENCE,
@@ -2269,7 +2544,11 @@ mod village_tests {
             73,
             "well post stores the no-connection fence STATE (not a log axis)"
         );
-        assert_eq!(fold(chunk.get(lx, ground + 4, lz) as u16), PLANKS, "well roof");
+        assert_eq!(
+            fold(chunk.get(lx, ground + 4, lz) as u16),
+            PLANKS,
+            "well roof"
+        );
     }
 
     /// generation is order-independent and deterministic: generating the
@@ -2332,7 +2611,8 @@ mod village_tests {
         let (mut planks, mut glass, mut logs, mut tables) = (0, 0, 0, 0);
         for dz in -1..=1i32 {
             for dx in -1..=1i32 {
-                let (chunk, _) = gen.generate_chunk(wx.div_euclid(16) + dx, wz.div_euclid(16) + dz, Vec::new());
+                let (chunk, _) =
+                    gen.generate_chunk(wx.div_euclid(16) + dx, wz.div_euclid(16) + dz, Vec::new());
                 for i in 0..vc_chunk::chunk::CHUNK_LEN {
                     match chunk.get_idx(i) {
                         vc_blocks::blocks::PLANKS => planks += 1,
@@ -2353,9 +2633,9 @@ mod village_tests {
 
 #[cfg(test)]
 mod nether_tests {
-    use vc_blocks::blocks::*;
-    use crate::world::Dimension;
     use super::*;
+    use crate::world::Dimension;
+    use vc_blocks::blocks::*;
 
     /// fold a raw stored state to its block id (nether blocks store 118..120)
     fn fold(s: u8) -> u8 {
@@ -2370,7 +2650,11 @@ mod nether_tests {
         for lz in 0..16usize {
             for lx in 0..16usize {
                 assert_eq!(fold(chunk.get(lx, 0, lz)), BEDROCK, "y=0 is bedrock floor");
-                assert_eq!(fold(chunk.get(lx, 127, lz)), BEDROCK, "y=127 is bedrock roof");
+                assert_eq!(
+                    fold(chunk.get(lx, 127, lz)),
+                    BEDROCK,
+                    "y=127 is bedrock roof"
+                );
                 // above the build ceiling: air (nothing exists)
                 for y in 128..256usize {
                     assert_eq!(chunk.get(lx, y, lz), AIR, "y={y} must be air");
@@ -2402,8 +2686,14 @@ mod nether_tests {
                 }
             }
         }
-        assert!(rack > 50_000, "netherrack dominates the mass ({rack} cells)");
-        assert!(quartz > 50, "quartz ore appears across seeds ({quartz} cells)");
+        assert!(
+            rack > 50_000,
+            "netherrack dominates the mass ({rack} cells)"
+        );
+        assert!(
+            quartz > 50,
+            "quartz ore appears across seeds ({quartz} cells)"
+        );
         assert!(
             other == 0,
             "the nether mass is ONLY netherrack/quartz/glowstone/soul-sand — got {other} others"
@@ -2438,7 +2728,10 @@ mod nether_tests {
         // a 5×5-chunk nether neighborhood is substantially hollow
         let total = 25 * CHUNK_LEN * 5 / 8; // band y 7..119 ≈ 5/8 of cells
         let ratio = open as f32 / total as f32;
-        assert!(ratio > 0.12, "caverns too small: {ratio:.2} open in the mid band");
+        assert!(
+            ratio > 0.12,
+            "caverns too small: {ratio:.2} open in the mid band"
+        );
         assert!(glowstone > 0, "glowstone clusters exist ({glowstone})");
         assert!(soul_sand > 0, "soul sand patches exist ({soul_sand})");
     }
@@ -2459,7 +2752,11 @@ mod nether_tests {
         }
         let b = gen.generate_chunk(1, 2, Vec::new()).0;
         for i in 0..vc_chunk::chunk::CHUNK_LEN {
-            assert_eq!(a.get_idx(i), b.get_idx(i), "nether gen must be order-independent at {i}");
+            assert_eq!(
+                a.get_idx(i),
+                b.get_idx(i),
+                "nether gen must be order-independent at {i}"
+            );
         }
         // same world seed, overworld vs nether → different chunks
         let over = TerrainGen::for_dimension(0x1234_ABCD, Dimension::Overworld);
@@ -2471,7 +2768,10 @@ mod nether_tests {
             }
         }
         // air cells match trivially; the mass must differ
-        assert!(same < CHUNK_LEN, "dimensions must generate different terrain (same={same})");
+        assert!(
+            same < CHUNK_LEN,
+            "dimensions must generate different terrain (same={same})"
+        );
     }
 
     /// §28: no skylight path — the bedrock roof makes the light engine's
@@ -2508,20 +2808,22 @@ mod nether_tests {
             let (x, y, z) = gen.find_nether_spawn();
             // block coords use FLOOR semantics (negative x truncates wrong)
             let (xi, yi, zi) = (x.floor() as i32, y.floor() as i32, z.floor() as i32);
-            let (chunk, _) = gen.generate_chunk(
-                xi.div_euclid(16),
-                zi.div_euclid(16),
-                Vec::new(),
-            );
+            let (chunk, _) = gen.generate_chunk(xi.div_euclid(16), zi.div_euclid(16), Vec::new());
             let lx = (xi - xi.div_euclid(16) * 16) as usize;
             let lz = (zi - zi.div_euclid(16) * 16) as usize;
             assert_eq!(chunk.get(lx, yi as usize, lz), AIR, "feet open (seed {s})");
-            assert!(yi + 1 >= 128 || chunk.get(lx, (yi + 1) as usize, lz) == AIR, "headroom (seed {s})");
+            assert!(
+                yi + 1 >= 128 || chunk.get(lx, (yi + 1) as usize, lz) == AIR,
+                "headroom (seed {s})"
+            );
             assert!(
                 is_solid(fold(chunk.get(lx, (yi - 1) as usize, lz))),
                 "solid floor below (seed {s})"
             );
-            assert!((8..120).contains(&yi), "spawn inside the nether band (seed {s})");
+            assert!(
+                (8..120).contains(&yi),
+                "spawn inside the nether band (seed {s})"
+            );
         }
     }
 
@@ -2548,20 +2850,29 @@ mod spawn_tests {
             let gen = TerrainGen::new(0x9E37_79B9_7F4A_7C15u64.wrapping_mul(i + 1));
             let (x, y, z) = gen.find_spawn();
             let col = gen.column(x as i32, z as i32);
-            let neighbors_green = (0..12).map(|k| {
-                let yaw = k as f32 * std::f32::consts::TAU / 12.0;
-                let c = gen.column((x + yaw.sin() * 40.0) as i32, (z - yaw.cos() * 40.0) as i32);
-                matches!(c.biome, Biome::Forest | Biome::Plains)
-            }).filter(|g| *g).count();
-            println!("seed {} -> spawn ({},{},{}) biome {:?} height {} green_neighbors {}/12",
-                i, x as i32, y as i32, z as i32, col.biome, col.height, neighbors_green);
+            let neighbors_green = (0..12)
+                .map(|k| {
+                    let yaw = k as f32 * std::f32::consts::TAU / 12.0;
+                    let c =
+                        gen.column((x + yaw.sin() * 40.0) as i32, (z - yaw.cos() * 40.0) as i32);
+                    matches!(c.biome, Biome::Forest | Biome::Plains)
+                })
+                .filter(|g| *g)
+                .count();
+            println!(
+                "seed {} -> spawn ({},{},{}) biome {:?} height {} green_neighbors {}/12",
+                i, x as i32, y as i32, z as i32, col.biome, col.height, neighbors_green
+            );
             if matches!(col.biome, Biome::Forest | Biome::Plains) || neighbors_green >= 4 {
                 green += 1;
             }
             total += 1;
         }
         println!("green-ish spawns: {}/{}", green, total);
-        assert!(green >= total / 2, "at least half of seeds should spawn green");
+        assert!(
+            green >= total / 2,
+            "at least half of seeds should spawn green"
+        );
     }
 }
 
@@ -2702,7 +3013,10 @@ mod dungeon_tests {
             }
         }
         let share = mossy as f64 / floor_total as f64;
-        assert!((0.55..=0.95).contains(&share), "mossy share {share} (VERIFIED 75%)");
+        assert!(
+            (0.55..=0.95).contains(&share),
+            "mossy share {share} (VERIFIED 75%)"
+        );
 
         // interior: air (and stays air to the ceiling) — except the
         // spawner at the center and the chests against the walls
@@ -2717,15 +3031,15 @@ mod dungeon_tests {
                         continue; // the spawner
                     }
                     if dy == 0
-                        && room.chests.iter().take(room.chest_count).any(|c| c[0] == wx && c[2] == wz)
+                        && room
+                            .chests
+                            .iter()
+                            .take(room.chest_count)
+                            .any(|c| c[0] == wx && c[2] == wz)
                     {
                         continue; // a chest
                     }
-                    let b = chunk.get(
-                        lx(wx),
-                        (room.y0 + dy) as usize,
-                        lz(wz),
-                    );
+                    let b = chunk.get(lx(wx), (room.y0 + dy) as usize, lz(wz));
                     assert_eq!(b, AIR, "interior cell must be air");
                 }
             }
@@ -2809,7 +3123,9 @@ mod phase10_tests {
         let ms = found.expect("a mineshaft within ±12 chunks of a 0.4% roll");
         // determinism: the same query returns the same layout
         let again = g.mineshafts_near(ms.x, ms.z);
-        assert!(again.iter().any(|m| m.x == ms.x && m.z == ms.z && m.y == ms.y));
+        assert!(again
+            .iter()
+            .any(|m| m.x == ms.x && m.z == ms.z && m.y == ms.y));
         // well-formed: y in the deep band, 1..=4 corridors, lengths sane
         assert!((10..=40).contains(&ms.y));
         assert!(!ms.corridors.is_empty() && ms.corridors.len() <= 4);
@@ -2884,7 +3200,10 @@ mod phase10_tests {
         let a = at(0, 1, 0);
         let b = at(1, 1, 0);
         assert!(
-            { let pair = [a, b]; pair.contains(&TERRACOTTA) && pair.contains(&SMOOTH_STONE) },
+            {
+                let pair = [a, b];
+                pair.contains(&TERRACOTTA) && pair.contains(&SMOOTH_STONE)
+            },
             "wind-rose checkerboard: {a:?} {b:?}"
         );
         // pit: air shaft under the center, treasure floor below
@@ -3026,7 +3345,10 @@ mod phase10_tests {
                 carved += 1;
             }
         }
-        assert!(carved > 0, "the ravine path is carved open ({carved} cells)");
+        assert!(
+            carved > 0,
+            "the ravine path is carved open ({carved} cells)"
+        );
         // determinism
         let (c2, _) = g.generate_chunk(cx, cz, Vec::new());
         let (c1, _) = g.generate_chunk(cx, cz, Vec::new());

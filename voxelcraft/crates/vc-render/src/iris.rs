@@ -284,13 +284,17 @@ impl IrisPassChain {
         };
         for e in entries.flatten() {
             let path = e.path();
-            let Some(ext) = path.extension().and_then(|x| x.to_str()) else { continue };
+            let Some(ext) = path.extension().and_then(|x| x.to_str()) else {
+                continue;
+            };
             let (is_v, is_f) = match ext {
                 "vsh" => (true, false),
                 "fsh" => (false, true),
                 _ => continue,
             };
-            let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else { continue };
+            let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
+                continue;
+            };
             if !is_documented_stage(stem) {
                 continue;
             }
@@ -381,7 +385,12 @@ fn is_documented_stage(stem: &str) -> bool {
         return true;
     }
     // numbered composites/deferreds: composite1..99, deferred1..99
-    for (prefix, hi) in [("composite", 99u32), ("deferred", 99), ("prepare", 9), ("shadow", 9)] {
+    for (prefix, hi) in [
+        ("composite", 99u32),
+        ("deferred", 99),
+        ("prepare", 9),
+        ("shadow", 9),
+    ] {
         if let Some(num) = stem.strip_prefix(prefix) {
             if let Ok(n) = num.parse::<u32>() {
                 if n >= 1 && n <= hi && prefix != "shadow" {
@@ -398,7 +407,9 @@ fn is_documented_stage(stem: &str) -> bool {
 pub fn parse_stage_directives(src: Option<&str>) -> (Option<String>, Vec<u8>) {
     let mut version = None;
     let mut targets = Vec::new();
-    let Some(src) = src else { return (version, targets) };
+    let Some(src) = src else {
+        return (version, targets);
+    };
     for line in src.lines() {
         let t = line.trim();
         if let Some(rest) = t.strip_prefix("#version") {
@@ -471,38 +482,158 @@ pub fn uniform_reference() -> Vec<IrisUniformRef> {
     use UniformAvailability::*;
     vec![
         // ---------------------------------------------------------------- v1
-        IrisUniformRef { name: "viewWidth", ty: "float", availability: Available },
-        IrisUniformRef { name: "viewHeight", ty: "float", availability: Available },
-        IrisUniformRef { name: "frameTimeCounter", ty: "float", availability: Available },
-        IrisUniformRef { name: "worldTime", ty: "float", availability: Available },
-        IrisUniformRef { name: "worldDay", ty: "float", availability: Planned },
-        IrisUniformRef { name: "isEyeInWater", ty: "float", availability: Available },
-        IrisUniformRef { name: "eyeBrightness", ty: "vec2", availability: Available },
-        IrisUniformRef { name: "eyeBrightnessSmooth", ty: "vec2", availability: Planned },
+        IrisUniformRef {
+            name: "viewWidth",
+            ty: "float",
+            availability: Available,
+        },
+        IrisUniformRef {
+            name: "viewHeight",
+            ty: "float",
+            availability: Available,
+        },
+        IrisUniformRef {
+            name: "frameTimeCounter",
+            ty: "float",
+            availability: Available,
+        },
+        IrisUniformRef {
+            name: "worldTime",
+            ty: "float",
+            availability: Available,
+        },
+        IrisUniformRef {
+            name: "worldDay",
+            ty: "float",
+            availability: Planned,
+        },
+        IrisUniformRef {
+            name: "isEyeInWater",
+            ty: "float",
+            availability: Available,
+        },
+        IrisUniformRef {
+            name: "eyeBrightness",
+            ty: "vec2",
+            availability: Available,
+        },
+        IrisUniformRef {
+            name: "eyeBrightnessSmooth",
+            ty: "vec2",
+            availability: Planned,
+        },
         // ---------------------------------------------------------------- v2
-        IrisUniformRef { name: "gbufferModelView", ty: "mat4", availability: Planned },
-        IrisUniformRef { name: "gbufferModelViewInverse", ty: "mat4", availability: Planned },
-        IrisUniformRef { name: "gbufferProjection", ty: "mat4", availability: Planned },
-        IrisUniformRef { name: "gbufferProjectionInverse", ty: "mat4", availability: Planned },
-        IrisUniformRef { name: "cameraPosition", ty: "vec3", availability: Planned },
-        IrisUniformRef { name: "previousCameraPosition", ty: "vec3", availability: Planned },
-        IrisUniformRef { name: "sunPosition", ty: "vec3", availability: Planned },
-        IrisUniformRef { name: "moonPosition", ty: "vec3", availability: Planned },
-        IrisUniformRef { name: "shadowLightPosition", ty: "vec3", availability: Planned },
-        IrisUniformRef { name: "upPosition", ty: "vec3", availability: Planned },
-        IrisUniformRef { name: "fogColor", ty: "vec3", availability: Planned },
-        IrisUniformRef { name: "skyColor", ty: "vec3", availability: Planned },
-        IrisUniformRef { name: "rainStrength", ty: "float", availability: Planned },
-        IrisUniformRef { name: "aspectRatio", ty: "float", availability: Planned },
-        IrisUniformRef { name: "near", ty: "float", availability: Planned },
-        IrisUniformRef { name: "far", ty: "float", availability: Planned },
+        IrisUniformRef {
+            name: "gbufferModelView",
+            ty: "mat4",
+            availability: Planned,
+        },
+        IrisUniformRef {
+            name: "gbufferModelViewInverse",
+            ty: "mat4",
+            availability: Planned,
+        },
+        IrisUniformRef {
+            name: "gbufferProjection",
+            ty: "mat4",
+            availability: Planned,
+        },
+        IrisUniformRef {
+            name: "gbufferProjectionInverse",
+            ty: "mat4",
+            availability: Planned,
+        },
+        IrisUniformRef {
+            name: "cameraPosition",
+            ty: "vec3",
+            availability: Planned,
+        },
+        IrisUniformRef {
+            name: "previousCameraPosition",
+            ty: "vec3",
+            availability: Planned,
+        },
+        IrisUniformRef {
+            name: "sunPosition",
+            ty: "vec3",
+            availability: Planned,
+        },
+        IrisUniformRef {
+            name: "moonPosition",
+            ty: "vec3",
+            availability: Planned,
+        },
+        IrisUniformRef {
+            name: "shadowLightPosition",
+            ty: "vec3",
+            availability: Planned,
+        },
+        IrisUniformRef {
+            name: "upPosition",
+            ty: "vec3",
+            availability: Planned,
+        },
+        IrisUniformRef {
+            name: "fogColor",
+            ty: "vec3",
+            availability: Planned,
+        },
+        IrisUniformRef {
+            name: "skyColor",
+            ty: "vec3",
+            availability: Planned,
+        },
+        IrisUniformRef {
+            name: "rainStrength",
+            ty: "float",
+            availability: Planned,
+        },
+        IrisUniformRef {
+            name: "aspectRatio",
+            ty: "float",
+            availability: Planned,
+        },
+        IrisUniformRef {
+            name: "near",
+            ty: "float",
+            availability: Planned,
+        },
+        IrisUniformRef {
+            name: "far",
+            ty: "float",
+            availability: Planned,
+        },
         // ------------------------------------------------------- engine-side
-        IrisUniformRef { name: "shadowtex0", ty: "sampler2D", availability: EngineDependent },
-        IrisUniformRef { name: "shadowtex1", ty: "sampler2D", availability: EngineDependent },
-        IrisUniformRef { name: "depthtex0", ty: "sampler2D", availability: EngineDependent },
-        IrisUniformRef { name: "colortex0", ty: "sampler2D", availability: EngineDependent },
-        IrisUniformRef { name: "colortex1", ty: "sampler2D", availability: EngineDependent },
-        IrisUniformRef { name: "colortex2", ty: "sampler2D", availability: EngineDependent },
+        IrisUniformRef {
+            name: "shadowtex0",
+            ty: "sampler2D",
+            availability: EngineDependent,
+        },
+        IrisUniformRef {
+            name: "shadowtex1",
+            ty: "sampler2D",
+            availability: EngineDependent,
+        },
+        IrisUniformRef {
+            name: "depthtex0",
+            ty: "sampler2D",
+            availability: EngineDependent,
+        },
+        IrisUniformRef {
+            name: "colortex0",
+            ty: "sampler2D",
+            availability: EngineDependent,
+        },
+        IrisUniformRef {
+            name: "colortex1",
+            ty: "sampler2D",
+            availability: EngineDependent,
+        },
+        IrisUniformRef {
+            name: "colortex2",
+            ty: "sampler2D",
+            availability: EngineDependent,
+        },
     ]
 }
 
@@ -512,13 +643,17 @@ pub fn uniforms_declared(glsl: &str) -> Vec<String> {
     let mut out = Vec::new();
     for line in glsl.lines() {
         let t = line.trim();
-        let Some(rest) = t.strip_prefix("uniform") else { continue };
+        let Some(rest) = t.strip_prefix("uniform") else {
+            continue;
+        };
         // uniform mat4 gbufferModelView;
         let rest = rest.trim().trim_end_matches(';').trim();
         // split type from name (arrays/initializers not modeled — the
         // translator sees the raw source anyway)
         let mut parts = rest.split_whitespace();
-        let (Some(_ty), Some(name)) = (parts.next(), parts.next()) else { continue };
+        let (Some(_ty), Some(name)) = (parts.next(), parts.next()) else {
+            continue;
+        };
         if !name.is_empty() && name.chars().all(|c| c.is_alphanumeric() || c == '_') {
             out.push(name.to_string());
         }
@@ -617,11 +752,12 @@ impl IrisPackInfo {
     /// true when the pack has at least one gbuffers + one composite/final
     /// stage — the minimum a translator needs to produce visible output
     pub fn minimal_chain(&self) -> bool {
-        let has_gbuffers = self
-            .chain
-            .stages
-            .iter()
-            .any(|s| matches!(s.phase, IrisPhase::GbuffersOpaque | IrisPhase::GbuffersTranslucent));
+        let has_gbuffers = self.chain.stages.iter().any(|s| {
+            matches!(
+                s.phase,
+                IrisPhase::GbuffersOpaque | IrisPhase::GbuffersTranslucent
+            )
+        });
         let has_post = self
             .chain
             .stages
@@ -669,14 +805,16 @@ pub fn analyze_pack(dir: &Path) -> Option<IrisPackInfo> {
     if let Ok(entries) = std::fs::read_dir(&shaders_dir) {
         for e in entries.flatten() {
             let path = e.path();
-            let Some(ext) = path.extension().and_then(|x| x.to_str()) else { continue };
+            let Some(ext) = path.extension().and_then(|x| x.to_str()) else {
+                continue;
+            };
             if ext != "vsh" && ext != "fsh" {
                 continue;
             }
-            let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else { continue };
-            if !is_documented_stage(stem)
-                && !unknown_files.iter().any(|u| u == stem)
-            {
+            let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
+                continue;
+            };
+            if !is_documented_stage(stem) && !unknown_files.iter().any(|u| u == stem) {
                 unknown_files.push(stem.to_string());
             }
         }
@@ -734,7 +872,9 @@ pub fn translator() -> &'static dyn IrisTranslator {
 /// attempt translation of a pack's composite/final stages through the
 /// registered translator — the sister-project activation path. Returns
 /// per-stage results so a partially-supported pack reports per pass.
-pub fn try_translate(info: &IrisPackInfo) -> Vec<(String, Result<TranslatedStage, IrisTranslateError>)> {
+pub fn try_translate(
+    info: &IrisPackInfo,
+) -> Vec<(String, Result<TranslatedStage, IrisTranslateError>)> {
     let t = translator();
     let mut out = Vec::new();
     for stage in info
@@ -756,9 +896,9 @@ pub fn try_translate(info: &IrisPackInfo) -> Vec<(String, Result<TranslatedStage
             (Some(f), Some(v)) if t.supports_version(v) => {
                 t.translate(stage, vert_src.as_deref(), f)
             }
-            (Some(_), v) => {
-                Err(IrisTranslateError::UnsupportedVersion(v.unwrap_or("unknown").into()))
-            }
+            (Some(_), v) => Err(IrisTranslateError::UnsupportedVersion(
+                v.unwrap_or("unknown").into(),
+            )),
         };
         out.push((stage.name.clone(), result));
     }
@@ -868,25 +1008,42 @@ separateEntityDraws = true
         );
         // per-stage + feature directives are ordinary entries
         assert_eq!(
-            p.entries.get("texture.composite.colortex4").map(|s| s.as_str()),
+            p.entries
+                .get("texture.composite.colortex4")
+                .map(|s| s.as_str()),
             Some("textures/final.png")
         );
-        assert_eq!(p.entries.get("blend.gbuffers_water").map(|s| s.as_str()), Some("off"));
-        assert_eq!(p.entries.get("program.shadow.enabled").map(|s| s.as_str()), Some("false"));
-        assert_eq!(p.entries.get("separateEntityDraws").map(|s| s.as_str()), Some("true"));
+        assert_eq!(
+            p.entries.get("blend.gbuffers_water").map(|s| s.as_str()),
+            Some("off")
+        );
+        assert_eq!(
+            p.entries.get("program.shadow.enabled").map(|s| s.as_str()),
+            Some("false")
+        );
+        assert_eq!(
+            p.entries.get("separateEntityDraws").map(|s| s.as_str()),
+            Some("true")
+        );
         assert!(p.unknown.is_empty(), "all keys modeled: {p:?}");
     }
 
     #[test]
     fn properties_line_continuation() {
         // Java properties: odd trailing backslash continues the line
-        let p = ShadersProperties::parse("sliders = ALPHA \\
-  BETA GAMMA\n");
+        let p = ShadersProperties::parse(
+            "sliders = ALPHA \\
+  BETA GAMMA\n",
+        );
         assert_eq!(p.sliders(), vec!["ALPHA", "BETA", "GAMMA"]);
         // an escaped backslash (two of them) does NOT continue: the value
         // keeps the backslashes verbatim (no unescape pass — documented)
         let p2 = ShadersProperties::parse(r"sliders = A \ B");
-        assert_eq!(p2.sliders(), vec!["A", "\\", "B"], "escaped pair stays inline");
+        assert_eq!(
+            p2.sliders(),
+            vec!["A", "\\", "B"],
+            "escaped pair stays inline"
+        );
         // multi-line continuation chains
         let p3 = ShadersProperties::parse("profile.MID = OPT_A \\\n OPT_B \\\n OPT_C\n");
         // joined continuations keep raw spacing — list accessors tokenize
@@ -928,7 +1085,10 @@ void main() { gl_FragColor = vec4(1.0); }
         assert!(uniforms.contains(&"gbufferModelView".to_string()));
         assert!(uniforms.contains(&"cameraPosition".to_string()));
         assert!(uniforms.contains(&"frameTimeCounter".to_string()));
-        assert!(!uniforms.contains(&"texcoord".to_string()), "varying is not a uniform");
+        assert!(
+            !uniforms.contains(&"texcoord".to_string()),
+            "varying is not a uniform"
+        );
     }
 
     #[test]
@@ -956,7 +1116,11 @@ void main() { gl_FragColor = vec4(1.0); }
 
         let chain = IrisPassChain::scan(&shaders);
         assert_eq!(chain.stages.len(), 3, "3 documented stages");
-        let terrain = chain.stages.iter().find(|s| s.name == "gbuffers_terrain").unwrap();
+        let terrain = chain
+            .stages
+            .iter()
+            .find(|s| s.name == "gbuffers_terrain")
+            .unwrap();
         assert_eq!(terrain.phase, IrisPhase::GbuffersOpaque);
         assert_eq!(terrain.render_targets, vec![0]);
         assert!(terrain.has_fragment);
@@ -1008,11 +1172,22 @@ void main() { gl_FragColor = vec4(1.0); }
             .filter(|u| u.availability == UniformAvailability::Available)
             .map(|u| u.name)
             .collect();
-        for must in ["viewWidth", "viewHeight", "frameTimeCounter", "worldTime", "isEyeInWater"] {
+        for must in [
+            "viewWidth",
+            "viewHeight",
+            "frameTimeCounter",
+            "worldTime",
+            "isEyeInWater",
+        ] {
             assert!(available.contains(&must), "{must} must be Available");
         }
         // matrices/depth are honestly NOT available yet
-        for planned in ["gbufferModelView", "gbufferProjection", "cameraPosition", "fogColor"] {
+        for planned in [
+            "gbufferModelView",
+            "gbufferProjection",
+            "cameraPosition",
+            "fogColor",
+        ] {
             let u = refs.iter().find(|u| u.name == planned).unwrap();
             assert_eq!(u.availability, UniformAvailability::Planned, "{planned}");
         }
@@ -1027,8 +1202,12 @@ void main() { gl_FragColor = vec4(1.0); }
     fn translator_seam_mock_flow() {
         struct MockTranslator;
         impl IrisTranslator for MockTranslator {
-            fn id(&self) -> &'static str { "mock" }
-            fn supports_version(&self, v: &str) -> bool { v.starts_with("330") }
+            fn id(&self) -> &'static str {
+                "mock"
+            }
+            fn supports_version(&self, v: &str) -> bool {
+                v.starts_with("330")
+            }
             fn translate(
                 &self,
                 stage: &IrisStage,
@@ -1080,7 +1259,11 @@ void main() { gl_FragColor = vec4(1.0); }
     fn scan_shader_packs_filters_correctly() {
         let root = std::env::temp_dir().join(format!("vc-iris-root-{}", std::process::id()));
         std::fs::create_dir_all(root.join("an-iris-pack/shaders")).unwrap();
-        std::fs::write(root.join("an-iris-pack/shaders.properties"), DEMO_PROPERTIES).unwrap();
+        std::fs::write(
+            root.join("an-iris-pack/shaders.properties"),
+            DEMO_PROPERTIES,
+        )
+        .unwrap();
         std::fs::write(
             root.join("an-iris-pack/shaders/gbuffers_terrain.fsh"),
             DEMO_STAGE_GLSL,
@@ -1091,11 +1274,7 @@ void main() { gl_FragColor = vec4(1.0); }
             DEMO_STAGE_GLSL,
         )
         .unwrap();
-        std::fs::write(
-            root.join("an-iris-pack/shaders/final.fsh"),
-            DEMO_STAGE_GLSL,
-        )
-        .unwrap();
+        std::fs::write(root.join("an-iris-pack/shaders/final.fsh"), DEMO_STAGE_GLSL).unwrap();
         // a WGSL pack (shaders.json, no shaders.properties) — not ours
         std::fs::create_dir_all(root.join("a-wgsl-pack")).unwrap();
         std::fs::write(root.join("a-wgsl-pack/shaders.json"), "{}").unwrap();
@@ -1123,15 +1302,24 @@ void main() { gl_FragColor = vec4(1.0); }
     fn demo_document_matches_e2e_claims() {
         let props = ShadersProperties::parse(DEMO_PROPERTIES);
         assert_eq!(props.sliders(), vec!["EXPOSURE", "CONTRAST", "SATURATION"]);
-        assert_eq!(props.screen_main(), vec!["<profile>", "[TONE]", "EXPOSURE", "*"]);
+        assert_eq!(
+            props.screen_main(),
+            vec!["<profile>", "[TONE]", "EXPOSURE", "*"]
+        );
         assert_eq!(props.screen("TONE"), vec!["CONTRAST", "SATURATION"]);
         assert_eq!(props.profiles().len(), 2);
-        assert!(props.unknown.is_empty(), "demo must stay fully modeled: {props:?}");
+        assert!(
+            props.unknown.is_empty(),
+            "demo must stay fully modeled: {props:?}"
+        );
 
         let (version, targets) = parse_stage_directives(Some(DEMO_STAGE_GLSL));
         assert_eq!(version.as_deref(), Some("330 compatibility"));
         assert_eq!(targets, vec![0, 1]);
         let uniforms = uniforms_declared(DEMO_STAGE_GLSL);
-        assert_eq!(uniforms, vec!["viewWidth", "viewHeight", "frameTimeCounter"]);
+        assert_eq!(
+            uniforms,
+            vec!["viewWidth", "viewHeight", "frameTimeCounter"]
+        );
     }
 }

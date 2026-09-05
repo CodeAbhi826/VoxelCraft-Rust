@@ -129,15 +129,96 @@ pub struct MobDef {
 }
 
 pub const MOB_DATA: [MobDef; 9] = [
-    MobDef { kind: MobKind::Zombie, health: 20.0, damage: 3.0, speed_attr: 0.23, armor: 2.0, height: 1.95, width: 0.6, xp: 5 },
-    MobDef { kind: MobKind::Skeleton, health: 20.0, damage: 4.0, speed_attr: 0.25, armor: 0.0, height: 1.99, width: 0.6, xp: 5 }, // dmg = mid of arrow 3–5
-    MobDef { kind: MobKind::Creeper, health: 20.0, damage: 0.0, speed_attr: 0.25, armor: 0.0, height: 1.7, width: 0.6, xp: 5 },
-    MobDef { kind: MobKind::Spider, health: 16.0, damage: 2.0, speed_attr: 0.3, armor: 0.0, height: 0.9, width: 1.4, xp: 5 },
-    MobDef { kind: MobKind::Enderman, health: 40.0, damage: 7.0, speed_attr: 0.3, armor: 0.0, height: 2.9, width: 0.6, xp: 5 },
-    MobDef { kind: MobKind::Cow, health: 10.0, damage: 0.0, speed_attr: 0.2, armor: 0.0, height: 1.4, width: 0.9, xp: 1 },
-    MobDef { kind: MobKind::Pig, health: 10.0, damage: 0.0, speed_attr: 0.25, armor: 0.0, height: 0.9, width: 0.9, xp: 1 },
-    MobDef { kind: MobKind::Sheep, health: 8.0, damage: 0.0, speed_attr: 0.23, armor: 0.0, height: 1.3, width: 0.9, xp: 1 },
-    MobDef { kind: MobKind::Chicken, health: 4.0, damage: 0.0, speed_attr: 0.25, armor: 0.0, height: 0.7, width: 0.4, xp: 1 },
+    MobDef {
+        kind: MobKind::Zombie,
+        health: 20.0,
+        damage: 3.0,
+        speed_attr: 0.23,
+        armor: 2.0,
+        height: 1.95,
+        width: 0.6,
+        xp: 5,
+    },
+    MobDef {
+        kind: MobKind::Skeleton,
+        health: 20.0,
+        damage: 4.0,
+        speed_attr: 0.25,
+        armor: 0.0,
+        height: 1.99,
+        width: 0.6,
+        xp: 5,
+    }, // dmg = mid of arrow 3–5
+    MobDef {
+        kind: MobKind::Creeper,
+        health: 20.0,
+        damage: 0.0,
+        speed_attr: 0.25,
+        armor: 0.0,
+        height: 1.7,
+        width: 0.6,
+        xp: 5,
+    },
+    MobDef {
+        kind: MobKind::Spider,
+        health: 16.0,
+        damage: 2.0,
+        speed_attr: 0.3,
+        armor: 0.0,
+        height: 0.9,
+        width: 1.4,
+        xp: 5,
+    },
+    MobDef {
+        kind: MobKind::Enderman,
+        health: 40.0,
+        damage: 7.0,
+        speed_attr: 0.3,
+        armor: 0.0,
+        height: 2.9,
+        width: 0.6,
+        xp: 5,
+    },
+    MobDef {
+        kind: MobKind::Cow,
+        health: 10.0,
+        damage: 0.0,
+        speed_attr: 0.2,
+        armor: 0.0,
+        height: 1.4,
+        width: 0.9,
+        xp: 1,
+    },
+    MobDef {
+        kind: MobKind::Pig,
+        health: 10.0,
+        damage: 0.0,
+        speed_attr: 0.25,
+        armor: 0.0,
+        height: 0.9,
+        width: 0.9,
+        xp: 1,
+    },
+    MobDef {
+        kind: MobKind::Sheep,
+        health: 8.0,
+        damage: 0.0,
+        speed_attr: 0.23,
+        armor: 0.0,
+        height: 1.3,
+        width: 0.9,
+        xp: 1,
+    },
+    MobDef {
+        kind: MobKind::Chicken,
+        health: 4.0,
+        damage: 0.0,
+        speed_attr: 0.25,
+        armor: 0.0,
+        height: 0.7,
+        width: 0.4,
+        xp: 1,
+    },
 ];
 
 #[inline]
@@ -208,6 +289,9 @@ pub struct Mob {
     pub provoked: bool,
     /// ticks since a player was within 32 blocks
     pub lonely_t: i32,
+    /// blocks fallen since last landing (vanilla `fallDistance`; the
+    /// landing tick converts it via MC-12357: damage = fall − 3)
+    pub fall_dist: f32,
     wander_yaw: f32,
     wander_t: i32,
 }
@@ -310,6 +394,7 @@ impl MobSystem {
             fuse: -1,
             provoked: false,
             lonely_t: 0,
+            fall_dist: 0.0,
             wander_yaw: yaw,
             wander_t: 0,
         });
@@ -345,7 +430,10 @@ impl MobSystem {
         let arrows = &mut self.arrows;
         for m in self.list.iter_mut() {
             // Phase 6 §26: out-of-ring mobs freeze (1.18+ semantics)
-            let mchunk = ((m.pos[0] / 16.0).floor() as i32, (m.pos[2] / 16.0).floor() as i32);
+            let mchunk = (
+                (m.pos[0] / 16.0).floor() as i32,
+                (m.pos[2] / 16.0).floor() as i32,
+            );
             if !sim_ring(mchunk.0, mchunk.1) {
                 continue;
             }
@@ -598,11 +686,19 @@ fn ai_tick(
 
     match m.kind {
         MobKind::Zombie | MobKind::Spider | MobKind::Enderman => {
-            let engage = if m.kind == MobKind::Enderman { m.provoked } else { aggro };
+            let engage = if m.kind == MobKind::Enderman {
+                m.provoked
+            } else {
+                aggro
+            };
             if engage && dist < AGGRO_RADIUS {
                 face_player(m);
                 if dist > MOB_MELEE_REACH * 0.8 {
-                    let chase = if m.kind == MobKind::Enderman { speed } else { speed };
+                    let chase = if m.kind == MobKind::Enderman {
+                        speed
+                    } else {
+                        speed
+                    };
                     m.vel[0] += (dx / dist * chase - m.vel[0]) * 0.3;
                     m.vel[2] += (dz / dist * chase - m.vel[2]) * 0.3;
                 } else {
@@ -708,21 +804,25 @@ fn wander(rng: &mut Rng, m: &mut Mob, speed: f32) {
 /// gravity + axis collision with 1-block step-ups (villager primitive).
 fn physics_tick(m: &mut Mob, world: &World) {
     let d = def(m.kind);
-    // entity gravity per tick (vanilla 0.08) + terminal 3.92/tick
-    m.vel[1] -= 0.08;
-    if m.vel[1] < -3.92 {
-        m.vel[1] = -3.92;
-    }
-    // fall damage for mobs (same MC-12357 formula, from impact speed)
-    if m.vel[1] < -0.35 && m.on_ground {
-        let dist = (m.vel[1] * m.vel[1]) / 0.16;
-        if dist > 3.0 {
-            m.health -= dist - 3.0;
-        }
-    }
+    // Vanilla entity gravity, EXACT per-tick form (VERIFIED,
+    // research-verdicts.md: v1 = (v0 − 0.08) × 0.98 in b/t). Velocities
+    // here are b/s, so the per-tick step on b/s units is
+    // v ← (v − 1.6) × 0.98 (0.08 b/t × 20 = 1.6 b/s; drag is unitless).
+    // Terminal −78.4 b/s (−3.92 b/t) is the inherent fixed point — no
+    // clamp. (This also fixes a latent 20× unit bug: the old code
+    // subtracted the per-tick 0.08 from a b/s velocity, giving 1.6 b/s²
+    // gravity and a 3.92 b/s "terminal" — mobs fell 20× too slow.)
+    m.vel[1] = (m.vel[1] - 1.6) * 0.98;
+    // fall damage (MC-12357, same as the player): distance-based — the
+    // old impact-speed inversion (v²/0.16) was dead code in practice
+    // (on_ground + |v| > 0.35 never coincided after the drag rewrite,
+    // and it overestimated tall falls under drag anyway)
     let half = d.width * 0.5;
     // horizontal move with step-up
-    let (nx, nz) = (m.pos[0] + m.vel[0] * (1.0 / 20.0), m.pos[2] + m.vel[2] * (1.0 / 20.0));
+    let (nx, nz) = (
+        m.pos[0] + m.vel[0] * (1.0 / 20.0),
+        m.pos[2] + m.vel[2] * (1.0 / 20.0),
+    );
     if !collides(world, nx, m.pos[1], nz, half, d.height) {
         m.pos[0] = nx;
         m.pos[2] = nz;
@@ -734,17 +834,35 @@ fn physics_tick(m: &mut Mob, world: &World) {
         m.vel[0] *= 0.5;
         m.vel[2] *= 0.5;
     }
-    // vertical
-    let ny = m.pos[1] + m.vel[1] * (1.0 / 20.0);
-    if collides(world, m.pos[0], ny, m.pos[2], half, d.height) {
-        if m.vel[1] < 0.0 {
-            m.pos[1] = ny.ceil();
-            m.on_ground = true;
+    // vertical — substepped: at terminal 3.92 b/t the per-tick move is
+    // up to 3.92 blocks, and a single end-point probe would tunnel
+    // through 1–3-block floors (the player mover substeps for exactly
+    // this reason)
+    let dy = m.vel[1] * (1.0 / 20.0);
+    let steps = (dy.abs() / 0.9).ceil().max(1.0) as i32;
+    let step = dy / steps as f32;
+    for _ in 0..steps {
+        let ny = m.pos[1] + step;
+        if collides(world, m.pos[0], ny, m.pos[2], half, d.height) {
+            if step < 0.0 {
+                m.pos[1] = ny.ceil();
+                // landing converts the accumulated fall distance
+                // (MC-12357: damage = fall_distance − 3)
+                if m.fall_dist > 3.0 {
+                    m.health -= m.fall_dist - 3.0;
+                }
+                m.fall_dist = 0.0;
+                m.on_ground = true;
+            }
+            m.vel[1] = 0.0;
+            break;
         }
-        m.vel[1] = 0.0;
-    } else {
         m.pos[1] = ny;
         m.on_ground = false;
+    }
+    // fall bookkeeping (vanilla fallDistance: per-tick distance)
+    if !m.on_ground && m.vel[1] < 0.0 {
+        m.fall_dist += -m.vel[1] * (1.0 / 20.0);
     }
 }
 
@@ -888,7 +1006,11 @@ pub fn build_vertices(
         let tx = (tile % 16) as f32;
         let ty = (tile / 16) as f32;
         let (s, c) = (m.yaw.sin(), m.yaw.cos());
-        let rr = [c * right[0] + s * right[2], 0.0, -s * right[0] + c * right[2]];
+        let rr = [
+            c * right[0] + s * right[2],
+            0.0,
+            -s * right[0] + c * right[2],
+        ];
         let half = d.width * 0.55;
         let h = d.height;
         let mut col = [0.92, 0.92, 0.92];
@@ -899,9 +1021,18 @@ pub fn build_vertices(
             col = [1.6, 1.6, 1.6];
         }
         let corners = [
-            ([-rr[0] * half, 0.0, -rr[2] * half], [tx / 16.0, (ty + 1.0) / 16.0]),
-            ([rr[0] * half, 0.0, rr[2] * half], [(tx + 1.0) / 16.0, (ty + 1.0) / 16.0]),
-            ([rr[0] * half, h, rr[2] * half], [(tx + 1.0) / 16.0, ty / 16.0]),
+            (
+                [-rr[0] * half, 0.0, -rr[2] * half],
+                [tx / 16.0, (ty + 1.0) / 16.0],
+            ),
+            (
+                [rr[0] * half, 0.0, rr[2] * half],
+                [(tx + 1.0) / 16.0, (ty + 1.0) / 16.0],
+            ),
+            (
+                [rr[0] * half, h, rr[2] * half],
+                [(tx + 1.0) / 16.0, ty / 16.0],
+            ),
             ([-rr[0] * half, h, -rr[2] * half], [tx / 16.0, ty / 16.0]),
         ];
         for ci in [0usize, 1, 2, 0, 2, 3] {
@@ -929,19 +1060,35 @@ pub fn build_arrow_vertices(
         let half = 0.35f32;
         let corners = [
             (
-                [-right[0] * half - up[0] * half, -right[1] * half - up[1] * half, -right[2] * half - up[2] * half],
+                [
+                    -right[0] * half - up[0] * half,
+                    -right[1] * half - up[1] * half,
+                    -right[2] * half - up[2] * half,
+                ],
                 [tx / 16.0, (ty + 1.0) / 16.0],
             ),
             (
-                [right[0] * half - up[0] * half, right[1] * half - up[1] * half, right[2] * half - up[2] * half],
+                [
+                    right[0] * half - up[0] * half,
+                    right[1] * half - up[1] * half,
+                    right[2] * half - up[2] * half,
+                ],
                 [(tx + 1.0) / 16.0, (ty + 1.0) / 16.0],
             ),
             (
-                [right[0] * half + up[0] * half, right[1] * half + up[1] * half, right[2] * half + up[2] * half],
+                [
+                    right[0] * half + up[0] * half,
+                    right[1] * half + up[1] * half,
+                    right[2] * half + up[2] * half,
+                ],
                 [(tx + 1.0) / 16.0, ty / 16.0],
             ),
             (
-                [-right[0] * half + up[0] * half, -right[1] * half + up[1] * half, -right[2] * half + up[2] * half],
+                [
+                    -right[0] * half + up[0] * half,
+                    -right[1] * half + up[1] * half,
+                    -right[2] * half + up[2] * half,
+                ],
                 [tx / 16.0, ty / 16.0],
             ),
         ];
@@ -1083,7 +1230,11 @@ mod tests {
         }
         assert!(!sys.hits.is_empty(), "arrow reached the player");
         let hit = &sys.hits[0];
-        assert!(hit.damage >= 3.0 && hit.damage <= 5.0, "Normal 3-5, got {}", hit.damage);
+        assert!(
+            hit.damage >= 3.0 && hit.damage <= 5.0,
+            "Normal 3-5, got {}",
+            hit.damage
+        );
         assert_eq!(hit.source, MobKind::Skeleton);
     }
 
@@ -1096,7 +1247,15 @@ mod tests {
         // AI: fuse starts
         let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
         let mut mob = sys.list.remove(0);
-        ai_tick(&mut rng, &mut mob, sys.player, false, &mut sys.hits, &mut sys.arrows, &world);
+        ai_tick(
+            &mut rng,
+            &mut mob,
+            sys.player,
+            false,
+            &mut sys.hits,
+            &mut sys.arrows,
+            &world,
+        );
         sys.list.insert(0, mob);
         sys.rng = rng;
         assert!(sys.list[0].fuse >= 0, "fuse started");
@@ -1105,7 +1264,15 @@ mod tests {
         for _ in 0..CREEPER_FUSE_TICKS + 2 {
             let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
             let mut mob = sys.list.remove(0);
-            ai_tick(&mut rng, &mut mob, sys.player, false, &mut sys.hits, &mut sys.arrows, &world);
+            ai_tick(
+                &mut rng,
+                &mut mob,
+                sys.player,
+                false,
+                &mut sys.hits,
+                &mut sys.arrows,
+                &world,
+            );
             sys.list.insert(0, mob);
             sys.rng = rng;
             physics_tick(&mut sys.list[0], &world);
@@ -1139,7 +1306,15 @@ mod tests {
         for _ in 0..40 {
             let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
             let mut mob = sys.list.remove(0);
-            ai_tick(&mut rng, &mut mob, sys.player, false, &mut sys.hits, &mut sys.arrows, &world);
+            ai_tick(
+                &mut rng,
+                &mut mob,
+                sys.player,
+                false,
+                &mut sys.hits,
+                &mut sys.arrows,
+                &world,
+            );
             sys.list.insert(0, mob);
             sys.rng = rng;
             physics_tick(&mut sys.list[0], &world);
@@ -1166,5 +1341,113 @@ mod tests {
         assert!(sys.hits.is_empty(), "creative is never attacked");
         // ...and nothing even spawns while invulnerable
         assert_eq!(sys.spawned_total, 1, "only the explicit spawn");
+    }
+
+    /// Exact per-tick gravity drag (VERIFIED — research-verdicts.md):
+    /// in b/s units one physics tick maps v ← (v − 1.6) × 0.98
+    #[test]
+    fn mob_gravity_drag_matches_vanilla_formula() {
+        let w = flat_world();
+        // spawn high enough that even terminal velocity moves freely for
+        // the whole tick (the floor is at y=65 — no collision interference)
+        for v0 in [0.0f32, -20.0, -78.4, -100.0] {
+            let mut m = Mob {
+                id: 0,
+                kind: MobKind::Zombie,
+                pos: [8.5, 90.0, 8.5],
+                vel: [0.0, v0, 0.0],
+                yaw: 0.0,
+                health: 20.0,
+                on_ground: false,
+                hurt_t: 0,
+                attack_cd: 0,
+                fuse: -1,
+                provoked: false,
+                lonely_t: 0,
+                fall_dist: 0.0,
+                wander_yaw: 0.0,
+                wander_t: 0,
+            };
+            physics_tick(&mut m, &w);
+            let expect = (v0 - 1.6) * 0.98;
+            assert!(
+                (m.vel[1] - expect).abs() < 1e-3,
+                "v0 {v0}: got {} want {expect}",
+                m.vel[1]
+            );
+        }
+    }
+
+    /// Mob fall damage is distance-based MC-12357: a 7-block fall costs
+    /// 4 HP (fall − 3), a 2.5-block fall is free, and terminal falls no
+    /// longer tunnel through the floor (substepped vertical probe)
+    #[test]
+    fn mob_fall_damage_is_distance_minus_three() {
+        let w = flat_world();
+        for (drop, want_dmg) in [(7.0f32, 4.0f32), (2.5, 0.0)] {
+            let mut m = Mob {
+                id: 0,
+                kind: MobKind::Zombie,
+                pos: [8.5, 64.0 + 1.0 + drop, 8.5],
+                vel: [0.0, 0.0, 0.0],
+                yaw: 0.0,
+                health: 20.0,
+                on_ground: false,
+                hurt_t: 0,
+                attack_cd: 0,
+                fuse: -1,
+                provoked: false,
+                lonely_t: 0,
+                fall_dist: 0.0,
+                wander_yaw: 0.0,
+                wander_t: 0,
+            };
+            let mut ticks = 0;
+            while !m.on_ground && ticks < 200 {
+                physics_tick(&mut m, &w);
+                ticks += 1;
+            }
+            assert!(m.on_ground, "must land ({drop}-block drop)");
+            let dmg = 20.0 - m.health;
+            assert!(
+                (dmg - want_dmg).abs() < 1.5,
+                "{drop}-block fall: {dmg} HP vs ~{want_dmg}"
+            );
+            assert_eq!(m.fall_dist, 0.0, "landing resets the accumulator");
+            // resting on the surface, never below it
+            assert!((m.pos[1] - 65.0).abs() < 0.01, "y={}", m.pos[1]);
+        }
+    }
+
+    /// Terminal falls (terminal −78.4 b/s = 3.92 blocks/tick) must not
+    /// tunnel through the 1-block-thick stone floor
+    #[test]
+    fn terminal_fall_does_not_tunnel() {
+        let w = flat_world();
+        let mut m = Mob {
+            id: 0,
+            kind: MobKind::Zombie,
+            pos: [8.5, 120.0, 8.5],
+            vel: [0.0, -78.4, 0.0],
+            yaw: 0.0,
+            health: 20.0,
+            on_ground: false,
+            hurt_t: 0,
+            attack_cd: 0,
+            fuse: -1,
+            provoked: false,
+            lonely_t: 0,
+            fall_dist: 55.0,
+            wander_yaw: 0.0,
+            wander_t: 0,
+        };
+        let mut ticks = 0;
+        while !m.on_ground && ticks < 100 {
+            physics_tick(&mut m, &w);
+            ticks += 1;
+        }
+        assert!(m.on_ground, "lands");
+        assert!(m.pos[1] >= 65.0, "no tunneling: y={}", m.pos[1]);
+        assert!(m.health <= 0.0, "55-block fall is lethal, hp={}", m.health);
     }
 }

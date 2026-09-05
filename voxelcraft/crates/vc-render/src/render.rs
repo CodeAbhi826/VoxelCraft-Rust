@@ -3,12 +3,12 @@
 //! light), water (blend + waves), selection wireframe, UI (bitmap canvas).
 
 use crate::draw::{self, ChunkGpu, DrawCmd, IndirectArgs, MeshSlot, SlotAlloc, VisEntry};
-use vc_mesh::mesh::{MeshData, Vertex};
 use crate::textures;
 use crate::ui::{UiCanvas, UI_H, UI_W};
-use vc_world::world::ChunkPos;
 use glam::{Mat4, Vec3, Vec4};
 use std::collections::HashMap;
+use vc_mesh::mesh::{MeshData, Vertex};
+use vc_world::world::ChunkPos;
 use wgpu::util::DeviceExt;
 
 // ---------------------------------------------------------------- uniforms
@@ -99,7 +99,13 @@ struct PostTargets {
 }
 
 impl PostTargets {
-    fn new(device: &wgpu::Device, w: u32, h: u32, _format: wgpu::TextureFormat, scale: f32) -> Self {
+    fn new(
+        device: &wgpu::Device,
+        w: u32,
+        h: u32,
+        _format: wgpu::TextureFormat,
+        scale: f32,
+    ) -> Self {
         // LINEAR (Unorm) intermediates: the scene shaders output linear
         // color; the post chain reads/writes raw linear values and the
         // final composite encodes once into the srgb surface. This avoids
@@ -110,12 +116,17 @@ impl PostTargets {
         let make = |w: u32, h: u32| {
             let t = device.create_texture(&wgpu::TextureDescriptor {
                 label: Some("post"),
-                size: wgpu::Extent3d { width: w.max(1), height: h.max(1), depth_or_array_layers: 1 },
+                size: wgpu::Extent3d {
+                    width: w.max(1),
+                    height: h.max(1),
+                    depth_or_array_layers: 1,
+                },
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
                 format,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                    | wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[],
             });
             let v = t.create_view(&wgpu::TextureViewDescriptor::default());
@@ -132,7 +143,20 @@ impl PostTargets {
         let (q, q_view) = make(sw / 4, sh / 4);
         let (b1, b1_view) = make(sw / 8, sh / 8);
         let (b2, b2_view) = make(sw / 8, sh / 8);
-        PostTargets { scene, scene_view, up, up_view, pack, pack_view, q, q_view, b1, b1_view, b2, b2_view }
+        PostTargets {
+            scene,
+            scene_view,
+            up,
+            up_view,
+            pack,
+            pack_view,
+            q,
+            q_view,
+            b1,
+            b1_view,
+            b2,
+            b2_view,
+        }
     }
 
     /// internal (scaled) size of the scene target
@@ -1537,7 +1561,12 @@ fn build_scene_pipes(
         count: samples,
         ..Default::default()
     };
-    let make_world_pipe = |module: &wgpu::ShaderModule, entry: &str, cull: Option<wgpu::Face>, blend: Option<wgpu::BlendState>, depth: wgpu::DepthStencilState, buffers: &[wgpu::VertexBufferLayout]| {
+    let make_world_pipe = |module: &wgpu::ShaderModule,
+                           entry: &str,
+                           cull: Option<wgpu::Face>,
+                           blend: Option<wgpu::BlendState>,
+                           depth: wgpu::DepthStencilState,
+                           buffers: &[wgpu::VertexBufferLayout]| {
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("pipe"),
             layout: Some(&world_pl),
@@ -1604,7 +1633,11 @@ fn build_scene_pipes(
     let line_vbl = [wgpu::VertexBufferLayout {
         array_stride: 12,
         step_mode: wgpu::VertexStepMode::Vertex,
-        attributes: &[wgpu::VertexAttribute { offset: 0, shader_location: 0, format: wgpu::VertexFormat::Float32x3 }],
+        attributes: &[wgpu::VertexAttribute {
+            offset: 0,
+            shader_location: 0,
+            format: wgpu::VertexFormat::Float32x3,
+        }],
     }];
     let line = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("line-pipe"),
@@ -1645,9 +1678,21 @@ fn build_scene_pipes(
         array_stride: std::mem::size_of::<vc_particles::particles::ParticleVertex>() as u64,
         step_mode: wgpu::VertexStepMode::Vertex,
         attributes: &[
-            wgpu::VertexAttribute { offset: 0, shader_location: 0, format: wgpu::VertexFormat::Float32x3 },
-            wgpu::VertexAttribute { offset: 12, shader_location: 1, format: wgpu::VertexFormat::Float32x2 },
-            wgpu::VertexAttribute { offset: 20, shader_location: 2, format: wgpu::VertexFormat::Float32x3 },
+            wgpu::VertexAttribute {
+                offset: 0,
+                shader_location: 0,
+                format: wgpu::VertexFormat::Float32x3,
+            },
+            wgpu::VertexAttribute {
+                offset: 12,
+                shader_location: 1,
+                format: wgpu::VertexFormat::Float32x2,
+            },
+            wgpu::VertexAttribute {
+                offset: 20,
+                shader_location: 2,
+                format: wgpu::VertexFormat::Float32x3,
+            },
         ],
     }];
     let part = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -1688,7 +1733,11 @@ fn build_scene_pipes(
     let cloud_vbl = [wgpu::VertexBufferLayout {
         array_stride: 8,
         step_mode: wgpu::VertexStepMode::Vertex,
-        attributes: &[wgpu::VertexAttribute { offset: 0, shader_location: 0, format: wgpu::VertexFormat::Float32x2 }],
+        attributes: &[wgpu::VertexAttribute {
+            offset: 0,
+            shader_location: 0,
+            format: wgpu::VertexFormat::Float32x2,
+        }],
     }];
     let cloud = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("cloud-pipe"),
@@ -1725,7 +1774,14 @@ fn build_scene_pipes(
         cache: None,
     });
 
-    ScenePipes { terrain, water, sky, line, part, cloud }
+    ScenePipes {
+        terrain,
+        water,
+        sky,
+        line,
+        part,
+        cloud,
+    }
 }
 
 impl Renderer {
@@ -1832,10 +1888,7 @@ impl Renderer {
         // canvas with the page background, which can yield a see-through
         // canvas if any pass leaves alpha < 1 (WebGPU honors it strictly,
         // unlike the WebGL2 path).
-        let alpha_mode = if caps
-            .alpha_modes
-            .contains(&wgpu::CompositeAlphaMode::Opaque)
-        {
+        let alpha_mode = if caps.alpha_modes.contains(&wgpu::CompositeAlphaMode::Opaque) {
             wgpu::CompositeAlphaMode::Opaque
         } else {
             wgpu::CompositeAlphaMode::Auto
@@ -1861,7 +1914,11 @@ impl Renderer {
         let adapter_info = adapter.get_info();
         let backend_name = format!("{:?} ({})", adapter_info.backend, {
             let n = adapter_info.name.clone();
-            if n.is_empty() { "generic".to_string() } else { n }
+            if n.is_empty() {
+                "generic".to_string()
+            } else {
+                n
+            }
         });
 
         // FSR-lite: start at native scale (1.0); the game raises it via
@@ -2410,8 +2467,16 @@ impl Renderer {
             array_stride: 16,
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &[
-                wgpu::VertexAttribute { offset: 0, shader_location: 0, format: wgpu::VertexFormat::Float32x2 },
-                wgpu::VertexAttribute { offset: 8, shader_location: 1, format: wgpu::VertexFormat::Float32x2 },
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 0,
+                    format: wgpu::VertexFormat::Float32x2,
+                },
+                wgpu::VertexAttribute {
+                    offset: 8,
+                    shader_location: 1,
+                    format: wgpu::VertexFormat::Float32x2,
+                },
             ],
         };
 
@@ -2513,13 +2578,18 @@ impl Renderer {
         let lo = -e;
         let hi = 1.0 + e;
         let c = [
-            [lo, lo, lo], [hi, lo, lo], [hi, lo, hi], [lo, lo, hi],
-            [lo, hi, lo], [hi, hi, lo], [hi, hi, hi], [lo, hi, hi],
+            [lo, lo, lo],
+            [hi, lo, lo],
+            [hi, lo, hi],
+            [lo, lo, hi],
+            [lo, hi, lo],
+            [hi, hi, lo],
+            [hi, hi, hi],
+            [lo, hi, hi],
         ];
         let edges: Vec<[f32; 3]> = vec![
-            c[0], c[1], c[1], c[2], c[2], c[3], c[3], c[0],
-            c[4], c[5], c[5], c[6], c[6], c[7], c[7], c[4],
-            c[0], c[4], c[1], c[5], c[2], c[6], c[3], c[7],
+            c[0], c[1], c[1], c[2], c[2], c[3], c[3], c[0], c[4], c[5], c[5], c[6], c[6], c[7],
+            c[7], c[4], c[0], c[4], c[1], c[5], c[2], c[6], c[3], c[7],
         ];
         let line_vb = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("line-vb"),
@@ -2622,10 +2692,7 @@ impl Renderer {
         });
         // cloud quad: big XZ plane centered on the camera (recentered in vs)
         let s = 2400.0f32;
-        let cloud_verts: [[f32; 2]; 6] = [
-            [-s, -s], [s, -s], [s, s],
-            [-s, -s], [s, s], [-s, s],
-        ];
+        let cloud_verts: [[f32; 2]; 6] = [[-s, -s], [s, -s], [s, s], [-s, -s], [s, s], [-s, s]];
         let cloud_vb = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("cloud-vb"),
             contents: bytemuck::cast_slice(&cloud_verts),
@@ -2672,12 +2739,16 @@ impl Renderer {
         queue.write_buffer(
             &aux_h_buf,
             0,
-            bytemuck::bytes_of(&AuxUniform { dir: [1.0 / bw as f32, 0.0, 0.0, 0.0] }),
+            bytemuck::bytes_of(&AuxUniform {
+                dir: [1.0 / bw as f32, 0.0, 0.0, 0.0],
+            }),
         );
         queue.write_buffer(
             &aux_v_buf,
             0,
-            bytemuck::bytes_of(&AuxUniform { dir: [0.0, 1.0 / bh as f32, 0.0, 0.0] }),
+            bytemuck::bytes_of(&AuxUniform {
+                dir: [0.0, 1.0 / bh as f32, 0.0, 0.0],
+            }),
         );
 
         let uniform_entry = |binding: u32, vis: wgpu::ShaderStages| wgpu::BindGroupLayoutEntry {
@@ -2755,7 +2826,9 @@ impl Renderer {
             bind_group_layouts: &[&comp_bgl],
             push_constant_ranges: &[],
         });
-        let make_fs_pipe = |module: &wgpu::ShaderModule, layout: &wgpu::PipelineLayout, out_format: wgpu::TextureFormat| {
+        let make_fs_pipe = |module: &wgpu::ShaderModule,
+                            layout: &wgpu::PipelineLayout,
+                            out_format: wgpu::TextureFormat| {
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some("fs-pipe"),
                 layout: Some(layout),
@@ -2803,20 +2876,60 @@ impl Renderer {
         // offscreen targets + bind groups at the real size
         // (blur-h reads q with the H-step aux; blur-v reads b1 with the V-step)
         let post_targets = PostTargets::new(&device, config.width, config.height, format, upscale);
-        let bg_scene = Self::single_tex_bg(&device, &post_bgl, &post_targets.scene_view, &post_samp, &post_buf, &aux_v_buf);
-        let bg_q = Self::single_tex_bg(&device, &post_bgl, &post_targets.q_view, &post_samp, &post_buf, &aux_h_buf);
-        let bg_b1 = Self::single_tex_bg(&device, &post_bgl, &post_targets.b1_view, &post_samp, &post_buf, &aux_v_buf);
+        let bg_scene = Self::single_tex_bg(
+            &device,
+            &post_bgl,
+            &post_targets.scene_view,
+            &post_samp,
+            &post_buf,
+            &aux_v_buf,
+        );
+        let bg_q = Self::single_tex_bg(
+            &device,
+            &post_bgl,
+            &post_targets.q_view,
+            &post_samp,
+            &post_buf,
+            &aux_h_buf,
+        );
+        let bg_b1 = Self::single_tex_bg(
+            &device,
+            &post_bgl,
+            &post_targets.b1_view,
+            &post_samp,
+            &post_buf,
+            &aux_v_buf,
+        );
         // EASU reads the SCENE; binding 3 = the size constants buffer
-        let bg_easu = Self::single_tex_bg(&device, &post_bgl, &post_targets.scene_view, &post_samp, &post_buf, &easu_buf);
+        let bg_easu = Self::single_tex_bg(
+            &device,
+            &post_bgl,
+            &post_targets.scene_view,
+            &post_samp,
+            &post_buf,
+            &easu_buf,
+        );
         // the composite (+ RCAS) reads the EASU-UPScaled target
-        let bg_comp = Self::comp_bg(&device, &comp_bgl, &post_targets.up_view, &post_targets.b2_view, &post_samp, &post_buf);
+        let bg_comp = Self::comp_bg(
+            &device,
+            &comp_bgl,
+            &post_targets.up_view,
+            &post_targets.b2_view,
+            &post_samp,
+            &post_buf,
+        );
         // initial EASU size constants (rewritten on resize/upscale change)
         let (sc_w, sc_h) = post_targets.scene_size();
         queue.write_buffer(
             &easu_buf,
             0,
             bytemuck::bytes_of(&EasuUniform {
-                con: [sc_w as f32, sc_h as f32, config.width as f32, config.height as f32],
+                con: [
+                    sc_w as f32,
+                    sc_h as f32,
+                    config.width as f32,
+                    config.height as f32,
+                ],
             }),
         );
 
@@ -2828,9 +2941,9 @@ impl Renderer {
             usage: wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        let draw_mdi = device
-            .features()
-            .contains(wgpu::Features::MULTI_DRAW_INDIRECT | wgpu::Features::INDIRECT_FIRST_INSTANCE);
+        let draw_mdi = device.features().contains(
+            wgpu::Features::MULTI_DRAW_INDIRECT | wgpu::Features::INDIRECT_FIRST_INSTANCE,
+        );
         if draw_mdi {
             report_boot_log("draw path: MDI (multi_draw_indexed_indirect per region run)");
         } else {
@@ -2850,7 +2963,11 @@ impl Renderer {
                 | wgpu::TextureFormatFeatureFlags::MULTISAMPLE_RESOLVE,
         ) && depth_ms.contains(wgpu::TextureFormatFeatureFlags::MULTISAMPLE_X4)
         {
-            if color_ms.contains(wgpu::TextureFormatFeatureFlags::MULTISAMPLE_X8) { 8 } else { 4 }
+            if color_ms.contains(wgpu::TextureFormatFeatureFlags::MULTISAMPLE_X8) {
+                8
+            } else {
+                4
+            }
         } else {
             0
         };
@@ -3057,13 +3174,55 @@ impl Renderer {
         let h = self.config.height.max(1);
         let format = self.config.format;
         let t = PostTargets::new(&self.device, w, h, format, self.upscale);
-        let bg_scene = Self::single_tex_bg(&self.device, &self.post_bgl, &t.scene_view, &self.post_samp, &self.post_buf, &self.aux_v_buf);
-        let bg_q = Self::single_tex_bg(&self.device, &self.post_bgl, &t.q_view, &self.post_samp, &self.post_buf, &self.aux_h_buf);
-        let bg_b1 = Self::single_tex_bg(&self.device, &self.post_bgl, &t.b1_view, &self.post_samp, &self.post_buf, &self.aux_v_buf);
-        let bg_easu = Self::single_tex_bg(&self.device, &self.post_bgl, &t.scene_view, &self.post_samp, &self.post_buf, &self.easu_buf);
-        let bg_comp = Self::comp_bg(&self.device, &self.comp_bgl, &t.up_view, &t.b2_view, &self.post_samp, &self.post_buf);
+        let bg_scene = Self::single_tex_bg(
+            &self.device,
+            &self.post_bgl,
+            &t.scene_view,
+            &self.post_samp,
+            &self.post_buf,
+            &self.aux_v_buf,
+        );
+        let bg_q = Self::single_tex_bg(
+            &self.device,
+            &self.post_bgl,
+            &t.q_view,
+            &self.post_samp,
+            &self.post_buf,
+            &self.aux_h_buf,
+        );
+        let bg_b1 = Self::single_tex_bg(
+            &self.device,
+            &self.post_bgl,
+            &t.b1_view,
+            &self.post_samp,
+            &self.post_buf,
+            &self.aux_v_buf,
+        );
+        let bg_easu = Self::single_tex_bg(
+            &self.device,
+            &self.post_bgl,
+            &t.scene_view,
+            &self.post_samp,
+            &self.post_buf,
+            &self.easu_buf,
+        );
+        let bg_comp = Self::comp_bg(
+            &self.device,
+            &self.comp_bgl,
+            &t.up_view,
+            &t.b2_view,
+            &self.post_samp,
+            &self.post_buf,
+        );
         // Phase 11: the pack bind group follows the (resized) pack target
-        let bg_pack = Self::comp_bg(&self.device, &self.comp_bgl, &t.pack_view, &t.b2_view, &self.post_samp, &self.pack_buf);
+        let bg_pack = Self::comp_bg(
+            &self.device,
+            &self.comp_bgl,
+            &t.pack_view,
+            &t.b2_view,
+            &self.post_samp,
+            &self.pack_buf,
+        );
         if let Some((pipe, _)) = self.pack_pipe.take() {
             self.pack_pipe = Some((pipe, bg_pack));
         }
@@ -3088,12 +3247,16 @@ impl Renderer {
         self.queue.write_buffer(
             &self.aux_h_buf,
             0,
-            bytemuck::bytes_of(&AuxUniform { dir: [1.0 / bw as f32, 0.0, 0.0, 0.0] }),
+            bytemuck::bytes_of(&AuxUniform {
+                dir: [1.0 / bw as f32, 0.0, 0.0, 0.0],
+            }),
         );
         self.queue.write_buffer(
             &self.aux_v_buf,
             0,
-            bytemuck::bytes_of(&AuxUniform { dir: [0.0, 1.0 / bh as f32, 0.0, 0.0] }),
+            bytemuck::bytes_of(&AuxUniform {
+                dir: [0.0, 1.0 / bh as f32, 0.0, 0.0],
+            }),
         );
         // Phase 6: the MSAA targets track the scene scale — resize with it
         if self.msaa > 0 {
@@ -3104,7 +3267,11 @@ impl Renderer {
     fn make_depth(device: &wgpu::Device, w: u32, h: u32) -> wgpu::TextureView {
         let tex = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("depth"),
-            size: wgpu::Extent3d { width: w.max(1), height: h.max(1), depth_or_array_layers: 1 },
+            size: wgpu::Extent3d {
+                width: w.max(1),
+                height: h.max(1),
+                depth_or_array_layers: 1,
+            },
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
@@ -3174,7 +3341,11 @@ impl Renderer {
     /// world bind group over a given atlas view + sampler (binding set:
     /// globals, atlas, sampler, shadow map, shadow sampler, shadow
     /// uniforms, biome-tint LUT — see world_bgl)
-    fn make_world_bg(&self, atlas_view: &wgpu::TextureView, sampler: &wgpu::Sampler) -> wgpu::BindGroup {
+    fn make_world_bg(
+        &self,
+        atlas_view: &wgpu::TextureView,
+        sampler: &wgpu::Sampler,
+    ) -> wgpu::BindGroup {
         self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("world-bg"),
             layout: &self.world_bgl,
@@ -3220,7 +3391,11 @@ impl Renderer {
     }
 
     /// particle bind group over a given atlas view + sampler
-    fn make_part_bg(&self, atlas_view: &wgpu::TextureView, sampler: &wgpu::Sampler) -> wgpu::BindGroup {
+    fn make_part_bg(
+        &self,
+        atlas_view: &wgpu::TextureView,
+        sampler: &wgpu::Sampler,
+    ) -> wgpu::BindGroup {
         self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("part-bg"),
             layout: &self.part_bgl,
@@ -3310,7 +3485,10 @@ impl Renderer {
             size,
         );
         // mip levels 1..=N: CPU-generated per-tile-safe chain (§26)
-        for (i, mip) in textures::generate_mips(&self.atlas_data, self.mip_levels).iter().enumerate() {
+        for (i, mip) in textures::generate_mips(&self.atlas_data, self.mip_levels)
+            .iter()
+            .enumerate()
+        {
             let level = (i + 1) as u32;
             let side = (textures::ATLAS_SIZE >> level) as u32;
             self.queue.write_texture(
@@ -3326,7 +3504,11 @@ impl Renderer {
                     bytes_per_row: Some(side * 4),
                     rows_per_image: Some(side),
                 },
-                wgpu::Extent3d { width: side, height: side, depth_or_array_layers: 1 },
+                wgpu::Extent3d {
+                    width: side,
+                    height: side,
+                    depth_or_array_layers: 1,
+                },
             );
         }
         let atlas_view = atlas_tex.create_view(&wgpu::TextureViewDescriptor::default());
@@ -3392,7 +3574,11 @@ impl Renderer {
         let samples = self.msaa as u32;
         let color = self.device.create_texture(&wgpu::TextureDescriptor {
             label: Some("msaa-color"),
-            size: wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+            size: wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
             mip_level_count: 1,
             sample_count: samples,
             dimension: wgpu::TextureDimension::D2,
@@ -3402,7 +3588,11 @@ impl Renderer {
         });
         let depth = self.device.create_texture(&wgpu::TextureDescriptor {
             label: Some("msaa-depth"),
-            size: wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+            size: wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
             mip_level_count: 1,
             sample_count: samples,
             dimension: wgpu::TextureDimension::D2,
@@ -3433,7 +3623,11 @@ impl Renderer {
             return;
         }
         self.shadow_px = px;
-        let extent = wgpu::Extent3d { width: px, height: px, depth_or_array_layers: 1 };
+        let extent = wgpu::Extent3d {
+            width: px,
+            height: px,
+            depth_or_array_layers: 1,
+        };
         let tex = self.device.create_texture(&wgpu::TextureDescriptor {
             label: Some("shadow"),
             size: extent,
@@ -3588,7 +3782,10 @@ impl Renderer {
         }
         // mip refresh: per-tile chain from THIS frame (vanilla parity)
         if self.mip_levels > 0 {
-            for (i, mip) in textures::generate_mips(rgba, self.mip_levels).iter().enumerate() {
+            for (i, mip) in textures::generate_mips(rgba, self.mip_levels)
+                .iter()
+                .enumerate()
+            {
                 let level = (i + 1) as u32;
                 let tile_px = (textures::TILE_PX as u32) >> level;
                 self.queue.write_texture(
@@ -3619,11 +3816,7 @@ impl Renderer {
     }
 
     /// update an animated tile from its precomputed frames
-    pub fn update_atlas_frame(
-        &mut self,
-        anim: &crate::textures::AnimatedTile,
-        frame: usize,
-    ) {
+    pub fn update_atlas_frame(&mut self, anim: &crate::textures::AnimatedTile, frame: usize) {
         if let Some(f) = anim.frames.get(frame) {
             self.write_atlas_tile(anim.tile, f);
         }
@@ -3632,7 +3825,7 @@ impl Renderer {
     /// Upload one chunk's merged mesh (Phase 9 §14/§43: regional
     /// mega-buffers + slot sub-allocation). A remesh that fits the chunk's
     /// existing slot writes IN PLACE — repeated edits never reallocate;
-       /// write_buffer calls coalesce into the next submit. Arena growth is
+    /// write_buffer calls coalesce into the next submit. Arena growth is
     /// a doubling realloc whose GPU→GPU copy is submitted strictly before
     /// the new data write (disjoint ranges either way — see grow()),
     pub fn set_chunk_mesh(&mut self, pos: ChunkPos, md: &MeshData, occl: draw::ChunkOccl) {
@@ -3645,7 +3838,14 @@ impl Renderer {
         let mut solid_old = self.chunks.get(&pos).map(|c| c.solid);
         let mut water_old = self.chunks.get(&pos).and_then(|c| c.water);
 
-        let solid = self.place_slot(region, solid_old.take(), v_len, i_len, &md.solid.0, &md.solid.1);
+        let solid = self.place_slot(
+            region,
+            solid_old.take(),
+            v_len,
+            i_len,
+            &md.solid.0,
+            &md.solid.1,
+        );
         let water = if w_i_len == 0 {
             // no water: release any old water allocation (None = not drawn)
             if let Some(o) = water_old.take() {
@@ -3655,7 +3855,14 @@ impl Renderer {
             }
             None
         } else {
-            Some(self.place_slot(region, water_old.take(), w_v_len, w_i_len, &md.water.0, &md.water.1))
+            Some(self.place_slot(
+                region,
+                water_old.take(),
+                w_v_len,
+                w_i_len,
+                &md.water.0,
+                &md.water.1,
+            ))
         };
 
         match self.chunks.get_mut(&pos) {
@@ -3700,10 +3907,22 @@ impl Renderer {
         if let Some(o) = &old {
             if v_len <= o.v_cap && i_len <= o.i_cap {
                 let r = self.regions.get(&region).unwrap();
-                self.queue.write_buffer(&r.v, o.v_off as u64 * VERT_SIZE, bytemuck::cast_slice(verts));
+                self.queue.write_buffer(
+                    &r.v,
+                    o.v_off as u64 * VERT_SIZE,
+                    bytemuck::cast_slice(verts),
+                );
                 let baked = bake_absolute_indices(idx, o.v_off);
-                self.queue.write_buffer(&r.i, o.i_off as u64 * 4, bytemuck::cast_slice(&baked));
-                return MeshSlot { region, v_off: o.v_off, v_cap: o.v_cap, i_off: o.i_off, i_cap: o.i_cap, n: i_len };
+                self.queue
+                    .write_buffer(&r.i, o.i_off as u64 * 4, bytemuck::cast_slice(&baked));
+                return MeshSlot {
+                    region,
+                    v_off: o.v_off,
+                    v_cap: o.v_cap,
+                    i_off: o.i_off,
+                    i_cap: o.i_cap,
+                    n: i_len,
+                };
             }
         }
         // ---- doesn't fit (or first upload): allocate the new slot BEFORE
@@ -3743,10 +3962,19 @@ impl Renderer {
             }
         }
         let r = self.regions.get(&region).unwrap();
-        self.queue.write_buffer(&r.v, v_off as u64 * VERT_SIZE, bytemuck::cast_slice(verts));
+        self.queue
+            .write_buffer(&r.v, v_off as u64 * VERT_SIZE, bytemuck::cast_slice(verts));
         let baked = bake_absolute_indices(idx, v_off);
-        self.queue.write_buffer(&r.i, i_off as u64 * 4, bytemuck::cast_slice(&baked));
-        MeshSlot { region, v_off, v_cap: v_len, i_off, i_cap: i_len, n: i_len }
+        self.queue
+            .write_buffer(&r.i, i_off as u64 * 4, bytemuck::cast_slice(&baked));
+        MeshSlot {
+            region,
+            v_off,
+            v_cap: v_len,
+            i_off,
+            i_cap: i_len,
+            n: i_len,
+        }
     }
 
     /// grow the region's buffers when the freshly bump-allocated slots
@@ -3782,7 +4010,9 @@ impl Renderer {
         });
         let mut enc = self
             .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("arena-grow") });
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("arena-grow"),
+            });
         {
             let r = self.regions.get(&region).unwrap();
             if copy_v > 0 {
@@ -3871,23 +4101,18 @@ impl Renderer {
             Some(src) => {
                 let wrapped = crate::shaders::wrap_composite(src);
                 if let Err(e) = crate::shaders::validate_wgsl(&wrapped) {
-                    report_boot_log(&format!(
-                        "shader pack {} rejected at install: {}",
-                        p.id, e
-                    ));
+                    report_boot_log(&format!("shader pack {} rejected at install: {}", p.id, e));
                     self.pack_pipe = None;
                     return;
                 }
-                let module = self.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("pack-composite"),
-                    source: wgpu::ShaderSource::Wgsl(wrapped.into()),
-                });
-                let pipe = make_fullscreen_pipe(
-                    &self.device,
-                    &module,
-                    &self.comp_pl,
-                    self.config.format,
-                );
+                let module = self
+                    .device
+                    .create_shader_module(wgpu::ShaderModuleDescriptor {
+                        label: Some("pack-composite"),
+                        source: wgpu::ShaderSource::Wgsl(wrapped.into()),
+                    });
+                let pipe =
+                    make_fullscreen_pipe(&self.device, &module, &self.comp_pl, self.config.format);
                 let bg = Self::comp_bg(
                     &self.device,
                     &self.comp_bgl,
@@ -3982,7 +4207,9 @@ impl Renderer {
                 return RenderStats::default();
             }
         };
-        let frame_view = frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let frame_view = frame
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
 
         let aspect = self.config.width as f32 / self.config.height as f32;
         let dir = Vec3::new(
@@ -3999,7 +4226,12 @@ impl Renderer {
             view_proj: vp.to_cols_array_2d(),
             inv_view_proj: inv_vp.to_cols_array_2d(),
             cam: [cam.eye.x, cam.eye.y, cam.eye.z, 0.0],
-            fog_color: [sky.fog_color[0], sky.fog_color[1], sky.fog_color[2], sky.fog_start],
+            fog_color: [
+                sky.fog_color[0],
+                sky.fog_color[1],
+                sky.fog_color[2],
+                sky.fog_start,
+            ],
             sun_dir: [sky.sun_dir.x, sky.sun_dir.y, sky.sun_dir.z, sky.fog_end],
             misc: [
                 sky.day_light,
@@ -4008,7 +4240,8 @@ impl Renderer {
                 sky.min_light,
             ],
         };
-        self.queue.write_buffer(&self.globals_buf, 0, bytemuck::bytes_of(&globals));
+        self.queue
+            .write_buffer(&self.globals_buf, 0, bytemuck::bytes_of(&globals));
 
         // UI uniform: letterboxed mapping canvas → screen
         let sw = self.config.width as f32;
@@ -4017,9 +4250,15 @@ impl Renderer {
         let x0 = (sw - UI_W as f32 * scale) * 0.5;
         let y0 = (sh - UI_H as f32 * scale) * 0.5;
         let ui_map = UiUniform {
-            map: [2.0 * scale / sw, 2.0 * x0 / sw - 1.0, -2.0 * scale / sh, 1.0 - 2.0 * y0 / sh],
+            map: [
+                2.0 * scale / sw,
+                2.0 * x0 / sw - 1.0,
+                -2.0 * scale / sh,
+                1.0 - 2.0 * y0 / sh,
+            ],
         };
-        self.queue.write_buffer(&self.ui_buf, 0, bytemuck::bytes_of(&ui_map));
+        self.queue
+            .write_buffer(&self.ui_buf, 0, bytemuck::bytes_of(&ui_map));
 
         // upload ui canvas if dirty
         if ui.dirty {
@@ -4054,19 +4293,25 @@ impl Renderer {
             (b, v, s, e)
         } else {
             match post.mode {
-                1 => (0.55, 0.14, 1.07, 1.0),   // vanilla+
-                2 => (0.85, 0.32, 1.16, 1.06),  // cinematic
-                _ => (0.0, 0.0, 1.0, 1.0),      // off
+                1 => (0.55, 0.14, 1.07, 1.0),  // vanilla+
+                2 => (0.85, 0.32, 1.16, 1.06), // cinematic
+                _ => (0.0, 0.0, 1.0, 1.0),     // off
             }
         };
         let post_u = PostUniform {
-            p: [post.mode as f32, post.menu_blur.clamp(0.0, 1.0), sky.time, aspect],
+            p: [
+                post.mode as f32,
+                post.menu_blur.clamp(0.0, 1.0),
+                sky.time,
+                aspect,
+            ],
             q: [bloom, vig, sat, exp],
             // FSR 1.0 RCAS lobe scale: post.sharpen maps 0..1 → the
             // FsrRcasCon factor (1.0 = maximum sharpness, 0 = off)
             s: [post.sharpen.clamp(0.0, 1.0), 0.0, 0.0, 0.0],
         };
-        self.queue.write_buffer(&self.post_buf, 0, bytemuck::bytes_of(&post_u));
+        self.queue
+            .write_buffer(&self.post_buf, 0, bytemuck::bytes_of(&post_u));
 
         // Phase 11 §34: bridge engine state → the active pack's uniforms
         // (OptiFine-style alias subset — see shaders.rs PackUniform docs)
@@ -4074,9 +4319,15 @@ impl Renderer {
             let u = crate::shaders::PackUniform {
                 params: Self::pack_params_row(p),
                 viewport: [sw, sh, 1.0 / sw.max(1.0), 1.0 / sh.max(1.0)],
-                time: [sky.time, sky.day_light, if sky.underwater { 1.0 } else { 0.0 }, sky.min_light],
+                time: [
+                    sky.time,
+                    sky.day_light,
+                    if sky.underwater { 1.0 } else { 0.0 },
+                    sky.min_light,
+                ],
             };
-            self.queue.write_buffer(&self.pack_buf, 0, bytemuck::bytes_of(&u));
+            self.queue
+                .write_buffer(&self.pack_buf, 0, bytemuck::bytes_of(&u));
         }
 
         // ──────────────────────────────── sun shadow camera + globals ──
@@ -4084,7 +4335,11 @@ impl Renderer {
         // center is snapped to shadow-map texels so camera movement doesn't
         // make the shadows swim. Disabled at night / when strength = 0.
         let sun_up = sky.sun_dir.y > 0.06;
-        let sh_strength = if sun_up { post.shadows.clamp(0.0, 1.0) } else { 0.0 };
+        let sh_strength = if sun_up {
+            post.shadows.clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
         let mut sh_globals = ShadowGlobals {
             shadow_vp: Mat4::IDENTITY.to_cols_array_2d(),
             params: [0.0, 0.0, 0.0, 0.0],
@@ -4104,13 +4359,12 @@ impl Renderer {
                 (c_l.y / texel).round() * texel,
                 c_l.z,
             );
-            let center = (view0.inverse() * Vec4::new(snapped.x, snapped.y, snapped.z, 1.0))
-                .truncate();
+            let center =
+                (view0.inverse() * Vec4::new(snapped.x, snapped.y, snapped.z, 1.0)).truncate();
             let light_pos = center + sky.sun_dir * (SHADOW_FAR * 0.5);
             let view = Mat4::look_at_rh(light_pos, center, Vec3::Y);
-            let ortho = Mat4::orthographic_rh(
-                -SHADOW_R, SHADOW_R, -SHADOW_R, SHADOW_R, 0.1, SHADOW_FAR,
-            );
+            let ortho =
+                Mat4::orthographic_rh(-SHADOW_R, SHADOW_R, -SHADOW_R, SHADOW_R, 0.1, SHADOW_FAR);
             let sh_vp = ortho * view;
             sh_globals = ShadowGlobals {
                 shadow_vp: sh_vp.to_cols_array_2d(),
@@ -4133,7 +4387,8 @@ impl Renderer {
             ],
             color: [0.0, 0.0, 0.0, 0.55],
         };
-        self.queue.write_buffer(&self.line_buf, 0, bytemuck::bytes_of(&line_u));
+        self.queue
+            .write_buffer(&self.line_buf, 0, bytemuck::bytes_of(&line_u));
 
         // NOTE: blur direction uniforms (aux_h_buf / aux_v_buf) are written
         // once at init and refreshed in rebuild_post_targets() — per-frame
@@ -4144,11 +4399,11 @@ impl Renderer {
         let rows: [Vec4; 4] = [vp.row(0), vp.row(1), vp.row(2), vp.row(3)];
         let combine = |a: &Vec4, b: &Vec4| [a[0] + b[0], a[1] + b[1], a[2] + b[2], a[3] + b[3]];
         let planes: [[f32; 4]; 6] = [
-            combine(&rows[3], &rows[0]), // left
+            combine(&rows[3], &rows[0]),  // left
             combine(&rows[3], &-rows[0]), // right
-            combine(&rows[3], &rows[1]), // bottom
+            combine(&rows[3], &rows[1]),  // bottom
             combine(&rows[3], &-rows[1]), // top
-            combine(&rows[3], &rows[2]), // near
+            combine(&rows[3], &rows[2]),  // near
             combine(&rows[3], &-rows[2]), // far
         ];
 
@@ -4191,11 +4446,8 @@ impl Renderer {
             origin_data.push([pos.0 as f32 * 16.0, pos.1 as f32 * 16.0]);
         }
         if draw_count > 0 {
-            self.queue.write_buffer(
-                &self.origin_vb,
-                0,
-                bytemuck::cast_slice(&origin_data),
-            );
+            self.queue
+                .write_buffer(&self.origin_vb, 0, bytemuck::cast_slice(&origin_data));
         }
 
         // ──────────────────────── Phase 6 §26: occlusion culling ──
@@ -4257,7 +4509,12 @@ impl Renderer {
         // hidden columns still land in view)
         let shadow_list = if shadows_on {
             let shadow_order = draw::order_by_region(&vis_full, cam2, false);
-            draw::build_draw_list(&self.chunks, &shadow_order, false, Some((110.0 + 23.0) * (110.0 + 23.0)))
+            draw::build_draw_list(
+                &self.chunks,
+                &shadow_order,
+                false,
+                Some((110.0 + 23.0) * (110.0 + 23.0)),
+            )
         } else {
             Vec::new()
         };
@@ -4274,13 +4531,16 @@ impl Renderer {
             let s = draw::pack_args(&shadow_list);
             let w = draw::pack_args(&water_list);
             if !t.is_empty() {
-                self.queue.write_buffer(&self.args_buf, 0, bytemuck::cast_slice(&t));
+                self.queue
+                    .write_buffer(&self.args_buf, 0, bytemuck::cast_slice(&t));
             }
             if !s.is_empty() {
-                self.queue.write_buffer(&self.args_buf, args_shadow_off, bytemuck::cast_slice(&s));
+                self.queue
+                    .write_buffer(&self.args_buf, args_shadow_off, bytemuck::cast_slice(&s));
             }
             if !w.is_empty() {
-                self.queue.write_buffer(&self.args_buf, args_water_off, bytemuck::cast_slice(&w));
+                self.queue
+                    .write_buffer(&self.args_buf, args_water_off, bytemuck::cast_slice(&w));
             }
         }
 
@@ -4292,9 +4552,11 @@ impl Renderer {
         // the world bind group) only in the NEXT encoder, after a queue-order
         // barrier between the two submits.
         if shadows_on {
-            let mut sh_encoder = self
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("shadow") });
+            let mut sh_encoder =
+                self.device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("shadow"),
+                    });
             let sh_att = wgpu::RenderPassColorAttachment {
                 view: &self.shadow_tex,
                 resolve_target: None,
@@ -4332,7 +4594,9 @@ impl Renderer {
 
         let mut encoder = self
             .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("frame") });
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("frame"),
+            });
 
         // ─────────────────────────────────────────────── pass 1: scene ──
         // (sky + terrain + selection + water + clouds → offscreen LINEAR
@@ -4382,9 +4646,7 @@ impl Renderer {
         // pipeline set: the MSAA variants when active, else the 1x set
         let (sky_p, terrain_p, line_p, water_p, part_p, cloud_p) =
             if let (true, Some(p)) = (msaa_on, &self.msaa_pipes) {
-                (
-                    &p.sky, &p.terrain, &p.line, &p.water, &p.part, &p.cloud,
-                )
+                (&p.sky, &p.terrain, &p.line, &p.water, &p.part, &p.cloud)
             } else {
                 (
                     &self.sky_pipe,
@@ -4442,13 +4704,13 @@ impl Renderer {
             // frame, alpha-blended, depth-tested but not written — after
             // the translucent water pass, before clouds
             if !particles.is_empty() {
-                let bytes =
-                    bytemuck::cast_slice(particles);
+                let bytes = bytemuck::cast_slice(particles);
                 self.queue.write_buffer(&self.particle_vb, 0, bytes);
                 pass.set_pipeline(part_p);
                 pass.set_bind_group(0, &self.part_bg, &[]);
                 pass.set_vertex_buffer(0, self.particle_vb.slice(..));
-                let n = (particles.len() as u32).min(vc_particles::particles::MAX_PARTICLES as u32 * 6);
+                let n =
+                    (particles.len() as u32).min(vc_particles::particles::MAX_PARTICLES as u32 * 6);
                 pass.draw(0..n, 0..1);
                 stats.particles += n / 6;
             }
@@ -4646,8 +4908,13 @@ impl Renderer {
             self.submitted_frames += 1;
             report_boot_log(&format!(
                 "frame submitted #{}: format={:?} alpha={:?} {}x{} post_mode={} blur={:.2}",
-                self.submitted_frames, self.config.format, self.config.alpha_mode, self.config.width, self.config.height,
-                post.mode, post.menu_blur
+                self.submitted_frames,
+                self.config.format,
+                self.config.alpha_mode,
+                self.config.width,
+                self.config.height,
+                post.mode,
+                post.menu_blur
             ));
         }
 
@@ -4723,7 +4990,9 @@ async fn choose_webgpu_mode() -> Option<bool> {
 #[cfg(target_arch = "wasm32")]
 async fn request_adapter_js(power_preference: Option<&str>, force_fallback: bool) -> bool {
     use wasm_bindgen::JsCast;
-    let Some(window) = web_sys::window() else { return false };
+    let Some(window) = web_sys::window() else {
+        return false;
+    };
     let window_val: wasm_bindgen::JsValue = window.into();
     let navigator = match js_sys::Reflect::get(&window_val, &"navigator".into()) {
         Ok(v) => v,
@@ -4740,7 +5009,9 @@ async fn request_adapter_js(power_preference: Option<&str>, force_fallback: bool
         Ok(v) => v,
         Err(_) => return false,
     };
-    let Ok(func) = request_adapter.dyn_into::<js_sys::Function>() else { return false };
+    let Ok(func) = request_adapter.dyn_into::<js_sys::Function>() else {
+        return false;
+    };
 
     // build the options object exactly like wgpu will
     let opts = js_sys::Object::new();
@@ -4761,7 +5032,9 @@ async fn request_adapter_js(power_preference: Option<&str>, force_fallback: bool
         Ok(r) => r,
         Err(_) => return false,
     };
-    let Ok(promise) = result.dyn_into::<js_sys::Promise>() else { return false };
+    let Ok(promise) = result.dyn_into::<js_sys::Promise>() else {
+        return false;
+    };
     let Ok(value) = wasm_bindgen_futures::JsFuture::from(promise).await else {
         return false;
     };
@@ -4903,9 +5176,17 @@ mod shader_tests {
         assert!((center - 1.0).abs() < 1e-6, "center weight {center}");
         // every neighbor tap: 0 (windowed out)
         for off in [
-            (0.0, -1.0), (1.0, -1.0), (-1.0, 0.0), (1.0, 0.0),
-            (-1.0, 1.0), (0.0, 1.0), (1.0, 1.0), (2.0, 0.0),
-            (2.0, 1.0), (1.0, 2.0), (0.0, 2.0),
+            (0.0, -1.0),
+            (1.0, -1.0),
+            (-1.0, 0.0),
+            (1.0, 0.0),
+            (-1.0, 1.0),
+            (0.0, 1.0),
+            (1.0, 1.0),
+            (2.0, 0.0),
+            (2.0, 1.0),
+            (1.0, 2.0),
+            (0.0, 2.0),
         ] {
             let w = tap((off.0 - pp.0, off.1 - pp.1));
             assert!(w.abs() < 1e-6, "tap {off:?} weight {w} (must be 0)");

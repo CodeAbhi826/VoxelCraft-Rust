@@ -60,7 +60,9 @@ pub fn start() -> Result<(), JsValue> {
     }));
 
     let window = web_sys::window().ok_or_else(|| JsValue::from_str("no window"))?;
-    let doc = window.document().ok_or_else(|| JsValue::from_str("no document"))?;
+    let doc = window
+        .document()
+        .ok_or_else(|| JsValue::from_str("no document"))?;
     let canvas = doc
         .get_element_by_id("game")
         .ok_or_else(|| JsValue::from_str("missing #game canvas"))?;

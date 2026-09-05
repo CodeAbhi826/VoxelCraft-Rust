@@ -1,17 +1,37 @@
 //! Player: movement (walk/sprint/swim/fly), AABB voxel collision,
 //! DDA block raycast, hotbar state, footstep logic.
 
+use glam::Vec3;
 use vc_blocks::blocks::*;
 use vc_world::world::World;
-use glam::Vec3;
 
 pub const WALK_SPEED: f32 = 4.317;
 pub const SPRINT_SPEED: f32 = 5.612;
 pub const FLY_SPEED: f32 = 10.9;
 pub const FLY_SPRINT: f32 = 21.8;
-pub const GRAVITY: f32 = 32.0;
-pub const JUMP_VEL: f32 = 8.95;
-pub const TERMINAL: f32 = 78.4;
+pub const GRAVITY: f32 = 32.0; // 0.08 b/tick² × 20² — reference constant
+/// vanilla jump velocity 0.42 blocks/tick × 20 (§23; with the exact
+/// per-tick drag integration this yields the vanilla 1.25-block apex)
+pub const JUMP_VEL: f32 = 8.4;
+pub const TERMINAL: f32 = 78.4; // 3.92 b/tick × 20 — inherent fixed point of the drag formula
+/// research-verdicts.md live round (minecraft.wiki/w/Transportation):
+/// still-water surface swim 2.20 b/s, underwater 1.97 b/s,
+/// sprint-swim 3.918 b/s. (The mechanics document's "downstream 1.81 /
+/// upstream 0.39" labels were mislabeled — see verdicts.)
+pub const SWIM_SPEED_SURFACE: f32 = 2.20;
+pub const SWIM_SPEED_UNDERWATER: f32 = 1.97;
+pub const SPRINT_SWIM_SPEED: f32 = 3.918;
+/// air supply / drowning (research-verdicts.md live round,
+/// minecraft.wiki/w/Damage §Drowning): max 300 air (depletes 1/tick
+/// submerged), 10 bubbles × 30 air; damage 2 HP when air reaches −20,
+/// then air resets to 0; regen 30 air per 4 ticks when the head is out.
+pub const AIR_MAX: f32 = 300.0;
+pub const AIR_DROWN_AT: f32 = -20.0;
+pub const DROWN_DMG: f32 = 2.0;
+pub const AIR_REGEN_PER_TICK: f32 = 7.5; // 30 air / 4 ticks
+/// fixed simulation rate — vanilla per-tick formulas integrate verbatim
+pub const TPS: f32 = 20.0;
+pub const TICK_DT: f32 = 1.0 / 20.0;
 pub const REACH: f32 = 4.5;
 
 pub const PLAYER_HALF: f32 = 0.3;
@@ -85,6 +105,15 @@ pub struct Player {
     /// (MC-12357, Dossier Part 5 §25): damage = fall_distance − 3, so a
     /// 4-block fall costs 1 HP and a 23-block fall is lethal.
     pending_fall_dmg: f32,
+    /// drowning damage queued for the game layer (2 HP per second once
+    /// the air supply is depleted — research-verdicts.md live round).
+    pending_drown_dmg: f32,
+    /// air supply 0..300 (over-depletes to −20, then resets on damage).
+    /// 300 = full (10 bubbles × 30).
+    pub air: f32,
+    /// fixed 20 Hz substep accumulator (vanilla per-tick physics)
+    tick_accum: f32,
+    air_accum: f32,
     was_on_ground: bool,
 }
 
@@ -103,7 +132,8 @@ impl Player {
             xp_points: 0,
             xp_level: 0,
             inv: {
-                let mut inv = vc_inventory::inventory::Inventory::new(vc_inventory::inventory::INV_SLOTS);
+                let mut inv =
+                    vc_inventory::inventory::Inventory::new(vc_inventory::inventory::INV_SLOTS);
                 for (i, &b) in PALETTE.iter().enumerate() {
                     inv.slots[i] = vc_inventory::inventory::ItemStack::new(b, 64);
                 }
@@ -117,6 +147,10 @@ impl Player {
             was_in_water: false,
             fall_dist: 0.0,
             pending_fall_dmg: 0.0,
+            pending_drown_dmg: 0.0,
+            air: AIR_MAX,
+            tick_accum: 0.0,
+            air_accum: 0.0,
             was_on_ground: false,
         }
     }
@@ -129,11 +163,25 @@ impl Player {
         d
     }
 
+    /// Drain queued drowning damage (2 HP per second once depleted —
+    /// research-verdicts.md live round). One-shot per damage tick.
+    pub fn take_pending_drown_damage(&mut self) -> f32 {
+        let d = self.pending_drown_dmg;
+        self.pending_drown_dmg = 0.0;
+        d
+    }
+
     /// Reset fall accumulation (spawn snap / respawn / mode change).
     pub fn reset_fall(&mut self) {
         self.fall_dist = 0.0;
         self.pending_fall_dmg = 0.0;
         self.was_on_ground = false;
+    }
+
+    /// Reset air supply (respawn / mode change).
+    pub fn reset_air(&mut self) {
+        self.air = AIR_MAX;
+        self.pending_drown_dmg = 0.0;
     }
 
     /// the selected hotbar stack
@@ -219,8 +267,7 @@ impl Player {
         // look
         let (mdx, mdy) = input.take_mouse();
         self.yaw += mdx * 0.0022 * sensitivity;
-        self.pitch = (self.pitch - mdy * 0.0022 * sensitivity)
-            .clamp(-1.5685, 1.5685);
+        self.pitch = (self.pitch - mdy * 0.0022 * sensitivity).clamp(-1.5685, 1.5685);
 
         if !loaded {
             return sounds;
@@ -284,8 +331,16 @@ impl Player {
             // smooth
             self.vel += (target - self.vel) * (12.0 * dt).min(1.0);
         } else {
+            // swim targets from the verified wiki table (research-verdicts
+            // live round): sprint-swim 3.918, underwater 1.97, surface 2.20
             let speed = if self.in_water {
-                if sprinting { SPRINT_SPEED * 0.55 } else { WALK_SPEED * 0.55 }
+                if sprinting {
+                    SPRINT_SWIM_SPEED
+                } else if self.head_in_water {
+                    SWIM_SPEED_UNDERWATER
+                } else {
+                    SWIM_SPEED_SURFACE
+                }
             } else if sprinting {
                 SPRINT_SPEED
             } else {
@@ -303,30 +358,66 @@ impl Player {
                 self.vel.y += (target_y - self.vel.y) * (6.0 * dt).min(1.0);
                 self.vel.y -= 4.0 * dt;
                 self.vel.y = self.vel.y.clamp(-4.0, 5.0);
+                // no per-tick gravity while buoyant — also freeze the
+                // substep accumulator so leaving water starts fresh
+                self.tick_accum = 0.0;
             } else {
                 if input.jump && self.on_ground {
                     self.vel.y = JUMP_VEL;
                     self.on_ground = false;
+                    // a velocity discontinuity re-aligns the 20 Hz
+                    // substep phase: in vanilla the jump lands ON a tick
+                    // boundary, so the fresh velocity is owed a FULL
+                    // first tick before gravity touches it (without this
+                    // the jump apex loses up to 2/3 of tick 0 and
+                    // undershoots the vanilla 1.25-block height)
+                    self.tick_accum = 0.0;
                 }
-                self.vel.y -= GRAVITY * dt;
-                if self.vel.y < -TERMINAL {
-                    self.vel.y = -TERMINAL;
+                // the per-tick gravity/drag itself runs AFTER the
+                // position integration below — vanilla tick order is
+                // [move by v] THEN [v ← (v − 0.08) × 0.98], so each
+                // velocity value drives exactly one 50 ms slice of
+                // motion (semi-implicit ordering steals up to a frame
+                // from the fresh velocity and shortens jumps)
+            }
+        }
+
+        // Air supply / drowning (VERIFIED — research-verdicts.md live
+        // round, minecraft.wiki/w/Damage §Drowning): fixed 20 Hz substep;
+        // 1 air per tick submerged; at −20 → 2 HP queued and air resets
+        // to 0 (so damage repeats once per second); +7.5 air per tick
+        // (30 per 4 ticks) with the head above water.
+        self.air_accum += dt;
+        let mut air_ticks = 0u8;
+        while self.air_accum >= TICK_DT && air_ticks < 40 {
+            self.air_accum -= TICK_DT;
+            air_ticks += 1;
+            if self.head_in_water {
+                self.air -= 1.0;
+                if self.air <= AIR_DROWN_AT {
+                    self.pending_drown_dmg += DROWN_DMG;
+                    self.air = 0.0;
                 }
+            } else {
+                self.air = (self.air + AIR_REGEN_PER_TICK).min(AIR_MAX);
             }
         }
 
         // FOV: sprint zoom like MC
-        let target_fov = if sprinting && !self.flying { self.fov * 1.12 } else { self.fov };
+        let target_fov = if sprinting && !self.flying {
+            self.fov * 1.12
+        } else {
+            self.fov
+        };
         self.fov_cur += (target_fov - self.fov_cur) * (10.0 * dt).min(1.0);
 
-        // Phase 1: vanilla fall-distance bookkeeping — accumulate while
-        // falling unaided; water and flight zero it (a dive or a hover is
-        // free); landing converts it to queued damage via the MC-12357
-        // formula `fall_distance − 3` HP.
+        // Phase 1: vanilla fall-distance bookkeeping — accumulated per
+        // tick inside the 20 Hz gravity substep above (vanilla semantics);
+        // water and flight zero it (a dive or a hover is free); landing
+        // converts it to queued damage via the MC-12357 formula
+        // `fall_distance − 3` HP.
         if self.flying || self.in_water {
             self.fall_dist = 0.0;
-        } else if self.vel.y < 0.0 {
-            self.fall_dist += -self.vel.y * dt;
         }
 
         // integrate with axis-separated collision substeps
@@ -346,6 +437,37 @@ impl Player {
             if Self::collides(world, Vec3::new(self.pos.x, probe, self.pos.z)) {
                 self.on_ground = true;
             }
+        }
+
+        // Vanilla entity gravity, EXACT per-tick form (VERIFIED,
+        // research-verdicts.md + decompiled snippet):
+        //     v1 = (v0 − 0.08) × 0.98      [blocks/tick]
+        // Runs on a fixed 20 Hz substep AFTER the position integration
+        // (vanilla tick order: move by v, then update v — each velocity
+        // value drives exactly one 50 ms slice of motion). Horizontal
+        // motion stays continuous. The 0.98 drag makes terminal velocity
+        // an inherent fixed point (−3.92 b/t = −78.4 b/s) approached from
+        // BOTH sides — no clamp is needed (NaN guard only).
+        if !self.flying && !self.in_water {
+            self.tick_accum += dt;
+            let mut ticks = 0u8;
+            while self.tick_accum >= TICK_DT && ticks < 40 {
+                self.tick_accum -= TICK_DT;
+                ticks += 1;
+                // vanilla fallDistance: the distance THIS tick's motion
+                // covered (the pre-update velocity is what moved us)
+                let v_bpt = self.vel.y / TPS;
+                if v_bpt < 0.0 {
+                    self.fall_dist += -v_bpt;
+                }
+                let v1 = (v_bpt - 0.08) * 0.98;
+                self.vel.y = v1 * TPS;
+                if self.vel.y.is_nan() {
+                    self.vel.y = 0.0;
+                }
+            }
+        } else {
+            self.tick_accum = 0.0;
         }
 
         // Phase 1: the landing itself — one hit for the whole fall
@@ -468,9 +590,12 @@ impl Player {
         let bmax = bmin + Vec3::ONE;
         let pmin = self.pos - Vec3::new(PLAYER_HALF, 0.0, PLAYER_HALF);
         let pmax = pmin + Vec3::new(PLAYER_HALF * 2.0, PLAYER_HEIGHT, PLAYER_HALF * 2.0);
-        bmin.x < pmax.x && bmax.x > pmin.x
-            && bmin.y < pmax.y && bmax.y > pmin.y
-            && bmin.z < pmax.z && bmax.z > pmin.z
+        bmin.x < pmax.x
+            && bmax.x > pmin.x
+            && bmin.y < pmax.y
+            && bmax.y > pmin.y
+            && bmin.z < pmax.z
+            && bmax.z > pmin.z
     }
 
     /// Double-tap space toggles fly.
@@ -493,7 +618,12 @@ fn rand_small(t: f32) -> f32 {
 }
 
 /// DDA voxel raycast (Amanatides & Woo). Returns hit block + previous cell.
-pub fn raycast(world: &World, eye: Vec3, dir: Vec3, max_dist: f32) -> Option<([i32; 3], u8, [i32; 3])> {
+pub fn raycast(
+    world: &World,
+    eye: Vec3,
+    dir: Vec3,
+    max_dist: f32,
+) -> Option<([i32; 3], u8, [i32; 3])> {
     let mut x = eye.x.floor() as i32;
     let mut y = eye.y.floor() as i32;
     let mut z = eye.z.floor() as i32;
@@ -600,10 +730,6 @@ mod tests {
         64
     }
 
-
-
-
-
     // ------------------------------------------------ §23 physics constants --
 
     /// hand-built flat world: stone floor top surface at y=65
@@ -668,7 +794,10 @@ mod tests {
         );
     }
 
-    /// jump apex ≈ 1.2522 blocks (§23 vanilla 1.16.5 jump height)
+    /// jump apex ≈ 1.25 blocks (§23 vanilla 1.16.5 jump height) — under
+    /// the EXACT per-tick drag formula (v1 = (v0 − 0.08) × 0.98) the
+    /// vanilla 0.42 b/t launch rises 1.2492 blocks; the engine launches
+    /// at 8.4 b/s = 0.42 b/t and must match
     #[test]
     fn jump_apex_is_vanilla_height() {
         let w = flat_floor();
@@ -686,18 +815,26 @@ mod tests {
             }
         }
         let height = apex - start;
-        // continuous apex (v²/2g = 1.2514 ≈ vanilla 1.2522); semi-implicit
-        // integration (v -= g·dt BEFORE the position step) undershoots by
-        // JUMP_VEL·dt/2 ≈ 0.075 — both are asserted
-        let continuous = JUMP_VEL * JUMP_VEL / (2.0 * GRAVITY);
+        // reference: per-tick positions under the drag formula
+        // (integrate v0 = 0.42 b/t: v1 = (v0 − 0.08) × 0.98 each tick)
+        let mut v = 0.42f32;
+        let mut ref_apex = 0.0f32;
+        let mut h = 0.0f32;
+        while v > 0.0 {
+            h += v;
+            ref_apex = ref_apex.max(h);
+            v = (v - 0.08) * 0.98;
+        }
         assert!(
-            (height - continuous).abs() < JUMP_VEL / 120.0 + 0.01,
-            "jump height {height} vs continuous apex {continuous}"
+            (height - ref_apex).abs() < 0.03,
+            "jump height {height} vs drag-integrated apex {ref_apex}"
         );
-        assert!((continuous - 1.2522).abs() < 0.01, "vanilla jump parity");
+        assert!((ref_apex - 1.25).abs() < 0.01, "vanilla jump parity");
     }
 
-    /// terminal velocity caps the fall; the fall accelerates at gravity
+    /// terminal velocity under the drag formula: the fixed point is
+    /// −3.92 b/t (−78.4 b/s), approached from BOTH sides — a launch
+    /// FASTER than terminal decays toward it, a free fall converges up
     #[test]
     fn fall_accelerates_and_terminates() {
         let mut w = flat_floor();
@@ -705,29 +842,102 @@ mod tests {
         for y in 0..=64i32 {
             w.set_block(0, y, 0, vc_blocks::blocks::AIR);
         }
+        let mut input = Input::default();
+        // past terminal (−5 b/t = −100 b/s): drag must pull it back UP
+        // toward −3.92 b/t (i.e. next tick is SLOWER than the launch)
         let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
         p.flying = false;
-        p.vel.y = -60.0; // start past terminal
-        let mut input = Input::default();
-        let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+        p.vel.y = -100.0;
+        let _ = p.update(1.0 / 20.0, 0.0, &w, &mut input, 1.0, true);
+        // one update at exactly one tick: v ← (v0 − 1.6) × 0.98 in b/s,
+        // i.e. (v0/20 − 0.08) × 0.98 in b/t
+        let expect = (-5.0f32 - 0.08) * 0.98; // b/t: (−5 − 0.08) × 0.98
+        let got = p.vel.y / TPS;
         assert!(
-            p.vel.y >= -TERMINAL - 0.01,
-            "terminal velocity clamps, got {}",
-            p.vel.y
+            (got - expect).abs() < 1e-3,
+            "launch past terminal decays toward it: {got} vs {expect}"
         );
-        // free fall from rest: v = g*t after ~0.5 s
+        assert!(got > -5.0, "|v| shrinks from above terminal");
+        // long convergence: 400 ticks from rest stays near the −3.92 fixed
+        // point and never blows past the old hard clamp territory
         let mut p2 = Player::new(Vec3::new(0.5, 65.0, 0.5));
         p2.flying = false;
-        for _ in 0..30 {
-            let _ = p2.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+        for _ in 0..400 {
+            let _ = p2.update(1.0 / 20.0, 0.0, &w, &mut input, 1.0, true);
         }
-        let expect = TERMINAL.min(GRAVITY * 0.5);
         assert!(
-            (p2.vel.y + expect).abs() < 0.5,
-            "gravity integration ~{} vs {}",
-            -p2.vel.y,
-            expect
+            p2.vel.y > -TERMINAL - 0.01 && p2.vel.y < -TERMINAL + 4.0,
+            "converges around terminal, got {}",
+            p2.vel.y
         );
+    }
+
+    /// the exact per-tick formula, verbatim: one update at dt = 1/20 from
+    /// a known velocity must equal (v0 − 0.08) × 0.98 in b/t units
+    #[test]
+    fn gravity_drag_matches_vanilla_formula() {
+        let mut w = flat_floor();
+        for y in 0..=64i32 {
+            w.set_block(0, y, 0, vc_blocks::blocks::AIR);
+        }
+        let mut input = Input::default();
+        for v0_bps in [0.0f32, -20.0, 8.4, -78.4, -100.0] {
+            let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
+            p.flying = false;
+            p.vel.y = v0_bps;
+            let _ = p.update(TICK_DT, 0.0, &w, &mut input, 1.0, true);
+            let v0 = v0_bps / TPS;
+            let expect = (v0 - 0.08) * 0.98 * TPS;
+            assert!(
+                (p.vel.y - expect).abs() < 1e-3,
+                "v0 {v0_bps} b/s: got {} want {expect}",
+                p.vel.y
+            );
+        }
+    }
+
+    /// drowning (research-verdicts live round): 300 ticks submerged → 0
+    /// air; 20 more → 2 HP queued + reset to 0; out of water refills in
+    /// 40 ticks (30 air / 4 ticks)
+    #[test]
+    fn air_depletes_drowns_and_regenerates() {
+        // head submerged: eye 1.62 over a pool floor
+        let mut w = flat_floor();
+        for y in 62..=70i32 {
+            for z in -2..=2i32 {
+                for x in -2..=2i32 {
+                    w.set_block(x, y, z, vc_blocks::blocks::WATER);
+                }
+            }
+        }
+        let mut p = Player::new(Vec3::new(0.5, 64.0, 0.5));
+        p.flying = false;
+        let mut input = Input::default();
+        // 300 ticks = 15 s at the fixed step
+        for _ in 0..300 {
+            let _ = p.update(TICK_DT, 0.0, &w, &mut input, 1.0, true);
+        }
+        assert!(p.head_in_water, "submerged");
+        assert!((p.air).abs() < 1.5, "air drained to ~0, got {}", p.air);
+        assert_eq!(p.take_pending_drown_damage(), 0.0, "no damage at 0");
+        // 20 more ticks → −20 threshold → 2 HP queued, air reset to 0
+        for _ in 0..20 {
+            let _ = p.update(TICK_DT, 0.0, &w, &mut input, 1.0, true);
+        }
+        assert_eq!(p.take_pending_drown_damage(), DROWN_DMG);
+        assert!((p.air).abs() < 1.0, "air reset to 0, got {}", p.air);
+        // surfacing: head above water (hover above the pool — flying so
+        // gravity does not drop the player back in)
+        p.pos.y = 72.0;
+        p.vel.y = 0.0;
+        p.flying = true;
+        for _ in 0..2 {
+            let _ = p.update(TICK_DT, 0.0, &w, &mut input, 1.0, true);
+        }
+        for _ in 0..40 {
+            let _ = p.update(TICK_DT, 0.0, &w, &mut input, 1.0, true);
+        }
+        assert!((p.air - AIR_MAX).abs() < 1.0, "refilled, got {}", p.air);
     }
 
     /// swimming: buoyancy + water speed scaling (§23 water movement)
@@ -752,16 +962,42 @@ mod tests {
         }
         assert!(p.in_water, "in water");
         let horiz = (p.vel.x * p.vel.x + p.vel.z * p.vel.z).sqrt();
+        // verified swim speed (research-verdicts live round): the pool is
+        // 5 deep so the head is under → 1.97 b/s underwater target
         assert!(
-            (horiz - WALK_SPEED * 0.55).abs() < 0.05,
+            (horiz - SWIM_SPEED_UNDERWATER).abs() < 0.05,
             "water speed {} vs {}",
             horiz,
-            WALK_SPEED * 0.55
+            SWIM_SPEED_UNDERWATER
+        );
+        // sprint-swim converges to the verified 3.918 b/s
+        let mut p2 = Player::new(Vec3::new(0.5, 66.0, 0.5));
+        p2.flying = false;
+        let mut input2 = Input::default();
+        input2.fwd = true;
+        input2.sprint = true;
+        for _ in 0..120 {
+            let _ = p2.update(1.0 / 60.0, 0.0, &w, &mut input2, 1.0, true);
+        }
+        let sprint_horiz = (p2.vel.x * p2.vel.x + p2.vel.z * p2.vel.z).sqrt();
+        assert!(
+            (sprint_horiz - SPRINT_SWIM_SPEED).abs() < 0.06,
+            "sprint-swim {} vs {}",
+            sprint_horiz,
+            SPRINT_SWIM_SPEED
         );
         // sank to the pool floor (vy 0 on the ground) or still sinking,
         // never faster than the -4 water terminal
-        assert!(p.vel.y > -4.5 && p.vel.y <= 0.0, "buoyant sink, vy={}", p.vel.y);
-        assert!((p.pos.y - 65.0).abs() < 0.1, "resting on the pool floor, y={}", p.pos.y);
+        assert!(
+            p.vel.y > -4.5 && p.vel.y <= 0.0,
+            "buoyant sink, vy={}",
+            p.vel.y
+        );
+        assert!(
+            (p.pos.y - 65.0).abs() < 0.1,
+            "resting on the pool floor, y={}",
+            p.pos.y
+        );
     }
 
     /// Phase 1: fall damage follows the vanilla MC-12357 formula —

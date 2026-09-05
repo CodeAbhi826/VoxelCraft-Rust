@@ -104,7 +104,12 @@ impl FramePhases {
             let avg: f64 = self.ring.iter().map(|f| f[i] as f64).sum::<f64>() / n / 1000.0;
             parts.push(format!("{name} {avg:.1}"));
         }
-        let cpu: f64 = self.ring.back().map(|f| f.iter().sum::<u64>() as f64).unwrap_or(0.0) / 1000.0;
+        let cpu: f64 = self
+            .ring
+            .back()
+            .map(|f| f.iter().sum::<u64>() as f64)
+            .unwrap_or(0.0)
+            / 1000.0;
         parts.push(format!("[cpu {cpu:.1} ms]"));
         parts.join("  ")
     }
@@ -118,7 +123,10 @@ impl FramePhases {
                 avg_ms[i] += f[i] as f32 / 1000.0 / n as f32;
             }
         }
-        PhaseReport { frames: self.ring.len(), avg_ms }
+        PhaseReport {
+            frames: self.ring.len(),
+            avg_ms,
+        }
     }
 
     pub fn frame_times_us(&self) -> &std::collections::VecDeque<u64> {
@@ -236,7 +244,11 @@ impl PhaseReport {
             .zip(self.avg_ms.iter())
             .map(|(n, v)| format!("\"{n}\":{:.3}", v))
             .collect();
-        format!("{{\"frames\":{},\"phases_ms\":{{{}}}}}", self.frames, parts.join(","))
+        format!(
+            "{{\"frames\":{},\"phases_ms\":{{{}}}}}",
+            self.frames,
+            parts.join(",")
+        )
     }
 }
 
@@ -313,8 +325,16 @@ pub fn print_report(fs: &FrameStats, pr: &PhaseReport, present_mode: &str) {
     println!("avg fps         : {:.1}", fs.fps());
     println!("median frame    : {:.2} ms", fs.median_ms);
     println!("avg frame       : {:.2} ms", fs.avg_ms);
-    println!("1% low          : {:.1} fps  (worst-1% avg {:.2} ms)", fs.one_pct_low(), fs.low1_avg_ms);
-    println!("0.1% low        : {:.1} fps  (worst-0.1% avg {:.2} ms)", fs.point_one_pct_low(), fs.low01_avg_ms);
+    println!(
+        "1% low          : {:.1} fps  (worst-1% avg {:.2} ms)",
+        fs.one_pct_low(),
+        fs.low1_avg_ms
+    );
+    println!(
+        "0.1% low        : {:.1} fps  (worst-0.1% avg {:.2} ms)",
+        fs.point_one_pct_low(),
+        fs.low01_avg_ms
+    );
     println!("worst frame     : {:.2} ms", fs.worst_ms);
     println!("present mode    : {present_mode} (vsync may cap frame rate)");
     println!("CPU phase averages:");
@@ -337,12 +357,24 @@ mod tests {
         assert_eq!(s.frames, 101);
         assert!((s.median_ms - 10.0).abs() < 0.01, "median {}", s.median_ms);
         // 1% low = mean of the worst 1% (floor(101*0.01)=1 frame) = the hitch
-        assert!((s.low1_avg_ms - 100.0).abs() < 0.01, "low1 {}", s.low1_avg_ms);
-        assert!((s.one_pct_low() - 10.0).abs() < 0.01, "1% low fps {}", s.one_pct_low());
+        assert!(
+            (s.low1_avg_ms - 100.0).abs() < 0.01,
+            "low1 {}",
+            s.low1_avg_ms
+        );
+        assert!(
+            (s.one_pct_low() - 10.0).abs() < 0.01,
+            "1% low fps {}",
+            s.one_pct_low()
+        );
         // 0.1% low also = the single worst frame here
         assert!((s.low01_avg_ms - 100.0).abs() < 0.01);
         assert!(s.worst_ms >= 99.0);
-        assert!(s.p99_ms <= 10.01, "nearest-rank p99 with 1/101 outlier = 10ms, got {}", s.p99_ms);
+        assert!(
+            s.p99_ms <= 10.01,
+            "nearest-rank p99 with 1/101 outlier = 10ms, got {}",
+            s.p99_ms
+        );
     }
 
     #[test]
@@ -362,8 +394,16 @@ mod tests {
         p.end_frame();
         assert_eq!(p.ring.len(), 2);
         let r = p.report();
-        assert!((r.avg_ms[PHASE_SIM] - 0.3).abs() < 0.001, "sim avg {}", r.avg_ms[PHASE_SIM]);
-        assert!((r.avg_ms[PHASE_DRAW] - 0.45).abs() < 0.001, "draw avg {}", r.avg_ms[PHASE_DRAW]);
+        assert!(
+            (r.avg_ms[PHASE_SIM] - 0.3).abs() < 0.001,
+            "sim avg {}",
+            r.avg_ms[PHASE_SIM]
+        );
+        assert!(
+            (r.avg_ms[PHASE_DRAW] - 0.45).abs() < 0.001,
+            "draw avg {}",
+            r.avg_ms[PHASE_DRAW]
+        );
         assert!(p.frame_times_us().len() == 2);
         let line = p.f3_line();
         assert!(line.contains("sim") && line.contains("draw"));

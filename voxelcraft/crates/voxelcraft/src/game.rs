@@ -5270,42 +5270,23 @@ impl GameApp {
         }
 
         // loading → wait for spawn chunk, then snap to surface → title screen
+        // BLOCKING-BUG FIX (user report: fall-through-world): the snap now
+        // keys on chunk DATA, not the GPU mesh. On slow devices meshing can
+        // trail the 15 s Loading timeout — the old mesh-gated snap then
+        // never ran, the game started with the player at spawn+20 in
+        // mid-air, and physics over not-yet-generated chunks (get_block =
+        // AIR) free-fell the player below y=0 into the void (observed live
+        // at y = −2312 in the WebGL2 build). Block data is all the snap
+        // needs; meshes catch up in view. The Game arm is defense in depth
+        // for the timeout path that enters before meshing finishes.
+        if (self.screen == Screen::Loading || self.screen == Screen::Game)
+            && !self.spawn_snapped
+        {
+            self.try_snap_to_surface();
+        }
         if self.screen == Screen::Loading {
             let pc = self.player_chunk();
             if self.renderer.has_chunk(pc) {
-                if !self.spawn_snapped {
-                    let lx = (self.player.pos.x - pc.0 as f32 * 16.0).floor().clamp(0.0, 15.0) as usize;
-                    let lz = (self.player.pos.z - pc.1 as f32 * 16.0).floor().clamp(0.0, 15.0) as usize;
-                    if let Some(c) = self.world.chunk(pc) {
-                        // §28: the snap depends on the dimension — the
-                        // overworld snaps to the topmost solid block; the
-                        // nether needs a CAVERN floor (top_solid_y there is
-                        // the bedrock roof). Travel keeps flying on until a
-                        // spot exists so the player never spawns inside rock.
-                        let snap = if self.world.dimension == vc_world::world::Dimension::Nether {
-                            self.nether_floor_y(c, lx.min(15), lz.min(15))
-                        } else {
-                            let t = c.top_solid_y(lx.min(15), lz.min(15));
-                            if t >= 0 { Some(t + 1) } else { None }
-                        };
-                        if let Some(y) = snap {
-                            self.player.pos.y = y as f32;
-                            // Phase 1: survival lands on its feet (snap = no
-                            // fall damage, fall accumulator resets); creative
-                            // only "arrives" flying if it arrived flying
-                            self.player.flying = false;
-                            self.player.reset_fall();
-                        } else if self.traveling {
-                            // no open floor in this column — a creative player
-                            // arrives flying and glides to a cavern; a survival
-                            // player stays put and waits for the timeout path
-                            // (documented deviation: vanilla does a full
-                            // portal search; our travel is the debug/API path)
-                            self.player.flying = self.mode.allows_flight();
-                        }
-                    }
-                    self.spawn_snapped = true;
-                }
                 let ready = {
                     let mut count = 0;
                     for dz in -1..=1 {
@@ -5338,19 +5319,30 @@ impl GameApp {
         // player physics
         let t_sim = crate::bench::micros();
         if in_game {
-            let sounds = self.player.update(
-                dt,
-                self.time,
-                &self.world,
-                &mut self.input,
-                self.settings.sensitivity,
-                true,
-            );
-            for s in sounds {
-                // footsteps + water-entry: the registry's step/splash events
-                // carry their own volume + pitch ranges (§21)
-                let ev = vc_audio::sounds::family_event(s.family, false);
-                self.play_event(ev, None, 1.0);
+            // BLOCKING-BUG FIX (fall-through-world, same report): hold the
+            // player integration while their own chunk is not generated —
+            // get_block() returns AIR over missing chunks, so gravity would
+            // sink the player below y=0 where NO block can ever collide
+            // again (the observed y = −2312 void fall). Vanilla freezes
+            // entities in unloaded chunks (they do not tick); streaming and
+            // meshing keep working around the frozen player meanwhile. This
+            // also covers fast creative flight outrunning the generation
+            // frontier.
+            if !physics_frozen(&self.world, self.player.pos) {
+                let sounds = self.player.update(
+                    dt,
+                    self.time,
+                    &self.world,
+                    &mut self.input,
+                    self.settings.sensitivity,
+                    true,
+                );
+                for s in sounds {
+                    // footsteps + water-entry: the registry's step/splash events
+                    // carry their own volume + pitch ranges (§21)
+                    let ev = vc_audio::sounds::family_event(s.family, false);
+                    self.play_event(ev, None, 1.0);
+                }
             }
 
             // Phase 1: fall damage (MC-12357: fall − 3 HP) — creative is
@@ -6097,6 +6089,45 @@ impl GameApp {
         n
     }
 
+    /// Place the player on the first solid floor of their column the moment
+    /// the column's chunk DATA exists — mesh-independent (see the
+    /// fall-through-world fix note at the Loading handler). Runs from both
+    /// the Loading pipeline and (as a safety net) the first Game frames if
+    /// the Loading timeout entered the game before meshing finished.
+    fn try_snap_to_surface(&mut self) {
+        let pc = self.player_chunk();
+        let lx = (self.player.pos.x - pc.0 as f32 * 16.0).floor().clamp(0.0, 15.0) as usize;
+        let lz = (self.player.pos.z - pc.1 as f32 * 16.0).floor().clamp(0.0, 15.0) as usize;
+        let Some(c) = self.world.chunk(pc) else {
+            return; // data not generated yet — retry next frame
+        };
+        // §28: the snap depends on the dimension — the overworld snaps to
+        // the topmost solid block; the nether needs a CAVERN floor
+        // (top_solid_y there is the bedrock roof). Travel keeps flying on
+        // until a spot exists so the player never spawns inside rock.
+        let snap = if self.world.dimension == vc_world::world::Dimension::Nether {
+            self.nether_floor_y(c, lx.min(15), lz.min(15))
+        } else {
+            let t = c.top_solid_y(lx.min(15), lz.min(15));
+            if t >= 0 { Some(t + 1) } else { None }
+        };
+        if let Some(y) = snap {
+            self.player.pos.y = y as f32;
+            // Phase 1: survival lands on its feet (snap = no fall damage,
+            // fall accumulator resets); creative only "arrives" flying if
+            // it arrived flying
+            self.player.flying = false;
+            self.player.reset_fall();
+        } else if self.traveling {
+            // no open floor in this column — a creative player arrives
+            // flying and glides to a cavern; a survival player stays put
+            // and waits for the timeout path (documented deviation: vanilla
+            // does a full portal search; our travel is the debug/API path)
+            self.player.flying = self.mode.allows_flight();
+        }
+        self.spawn_snapped = true;
+    }
+
     fn player_chunk(&self) -> ChunkPos {
         (
             self.player.pos.x.div_euclid(16.0) as i32,
@@ -6275,7 +6306,12 @@ impl GameApp {
             let db = (b.0 .0 - pc.0).abs() + (b.0 .1 - pc.1).abs();
             b.1.cmp(&a.1).then(da.cmp(&db)) // dirty chunks first
         });
-        let max_mesh = if cfg!(target_arch = "wasm32") { 2 } else { 16 };
+        // wasm: 4 mesh jobs/frame (was 2 — the initial world fill crawled on
+        // capable browsers; the 6 ms inline budget below is the REAL frame
+        // guard: the loop always breaks after the first job that crosses it,
+        // so slow devices are unaffected by the higher cap). Native keeps
+        // the rayon pool cap.
+        let max_mesh = if cfg!(target_arch = "wasm32") { 4 } else { 16 };
         for (pos, _, mask) in want_mesh.into_iter().take(max_mesh) {
             if let Some(snap) = self.world.snapshot3x3(pos.0, pos.1) {
                 let lsnap = self
@@ -6807,8 +6843,15 @@ impl GameApp {
             let n = self.frame_times.len() as f32;
             let total: f32 = self.frame_times.iter().sum();
             self.fps_avg = 1000.0 / (total / n);
-            self.fps_min = 1000.0 / self.frame_times.iter().cloned().fold(f32::INFINITY, f32::max);
-            self.fps_max = 1000.0 / self.frame_times.iter().cloned().fold(0.0, f32::min);
+            // BLOCKING-BUG FIX (user report — F3 showed "max 2147483547
+            // fps"): the folds had swapped initializers — fold(0.0, min)
+            // collapses to 0.0 (fps_max = 1000/0 = inf → saturates to
+            // i32::MAX in the overlay) and fold(INF, max) collapses to INF
+            // (fps_min = 0). Max frame time folds up from 0.0; min frame
+            // time folds down from INFINITY.
+            let (lo, hi) = fps_min_max(&self.frame_times);
+            self.fps_min = lo;
+            self.fps_max = hi;
         }
         // Only log the first frames of each actual game instance — the FPS
         // window counter (`self.frames`) resets every 0.5 s, so without the
@@ -7614,5 +7657,77 @@ mod settings_tests {
         let mut names: Vec<&str> = (0u8..=13).map(Biome::from_u8).map(|b| b.name()).collect();
         names.dedup();
         assert_eq!(names.len(), 14, "the 14-biomes-total claim");
+    }
+}
+
+// ---------------------------------------------------- regression helpers --
+
+/// True when the player's own chunk column is not generated yet — physics
+/// must hold until it is (vanilla: entities in unloaded chunks do not tick).
+/// REGRESSION guard for the user-reported fall-through-world bug:
+/// `World::get_block` returns AIR for missing chunks, so gravity over an
+/// unloaded column free-falls the player below y=0 where nothing can ever
+/// collide again.
+pub(crate) fn physics_frozen(world: &vc_world::world::World, pos: Vec3) -> bool {
+    !world
+        .chunks
+        .contains_key(&(pos.x.div_euclid(16.0) as i32, pos.z.div_euclid(16.0) as i32))
+}
+
+/// Rolling min/max FPS from the frame-time history (ms). Max frame time
+/// folds UP from 0.0 (→ the minimum FPS); min frame time folds DOWN from
+/// INFINITY (→ the maximum FPS). REGRESSION guard for the F3 overlay bug
+/// (the swapped initializers printed "max" as i32::MAX = 2147483547 fps).
+pub(crate) fn fps_min_max(times: &std::collections::VecDeque<f32>) -> (f32, f32) {
+    let max_ms = times.iter().cloned().fold(0.0_f32, f32::max);
+    let min_ms = times.iter().cloned().fold(f32::INFINITY, f32::min);
+    (1000.0 / max_ms, 1000.0 / min_ms)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn physics_freezes_until_own_chunk_exists() {
+        let mut w = vc_world::world::World::new(7);
+        let p = Vec3::new(8.5, 90.0, 8.5);
+        assert!(
+            physics_frozen(&w, p),
+            "no chunk at (0,0) yet → the player must be held (fall-through-world guard)"
+        );
+        let c = std::sync::Arc::new(vc_chunk::chunk::Chunk::empty());
+        w.insert_generated((0, 0), c, vec![]);
+        assert!(
+            !physics_frozen(&w, p),
+            "chunk (0,0) present → physics is live"
+        );
+        assert!(
+            physics_frozen(&w, Vec3::new(-0.5, 90.0, 8.5)),
+            "x=-0.5 is chunk (-1,0) — still unloaded → frozen there"
+        );
+    }
+
+    #[test]
+    fn fps_min_max_orders_the_folds() {
+        // 8 / 16 / 33 ms frames → slowest 33 ms = 30.3 fps min,
+        // fastest 8 ms = 125 fps max
+        let mut t = std::collections::VecDeque::new();
+        t.push_back(8.0);
+        t.push_back(16.0);
+        t.push_back(33.0);
+        let (lo, hi) = fps_min_max(&t);
+        assert!(
+            (lo - 1000.0 / 33.0).abs() < 0.01,
+            "min FPS must come from the SLOWEST frame, got {lo}"
+        );
+        assert!(
+            (hi - 1000.0 / 8.0).abs() < 0.01,
+            "max FPS must come from the FASTEST frame, got {hi}"
+        );
+        // the old swapped-init bug: hi would be inf (→ i32::MAX in F3),
+        // lo would be 0
+        assert!(hi.is_finite() && hi < 1000.0);
+        assert!(lo > 0.0);
     }
 }

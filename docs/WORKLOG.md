@@ -388,7 +388,7 @@ target set.
 
 ---
 
-## 2026-09-06 — MC 1.3–1.4 bracket (version-evolution Phase 2: Adventure Features) — commit pending
+## 2026-09-06 — MC 1.3–1.4 bracket (version-evolution Phase 2: Adventure Features) — commit e9e79de
 
 **Task:** second bracket of the 1.0 → 1.16.5 version-evolution ordering
 (`evolution-research.md` Part 3 Phase 2). All values live-verified this

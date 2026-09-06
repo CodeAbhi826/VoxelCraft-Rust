@@ -194,6 +194,9 @@ pub const TILE_BAT: u16 = 203;
 pub const TILE_WITHER_SKULL_PROJ: u16 = 204;
 /// lava fluid tile (the flowing face art — one shared tile like water)
 pub const TILE_LAVA: u16 = 205;
+/// coal ITEM tile (VERIFICATION-REPORT mechanical fix #4 — base-game
+/// coal as an item-block; fuel 1600 ticks, smelt product of coal ore)
+pub const TILE_COAL: u16 = 206;
 // mobs (Phase 2): entity sprites + drops' item tiles. Mob sprites are
 // clean-room pixel art (ours, not Mojang's) — distinct silhouettes/palettes
 pub const TILE_ZOMBIE: u16 = 83;
@@ -506,6 +509,13 @@ pub const PUMPKIN_PIE: u8 = 160;
 /// ticks per block; contact damage 4 HP per 10 ticks via the damage
 /// immunity window). States: source 307 + flow levels 1..7 at 308..=314.
 pub const LAVA: u8 = 161;
+/// Coal — the fuel item (VERIFICATION-REPORT mechanical fix #4).
+/// VERIFIED live 2026-09-06 (minecraft.wiki/w/Furnace "a piece of coal
+/// burns for 80 seconds and can process eight items"; w/Smelting fuel
+/// table "Coal 1600 ticks / 8 items"): fuel_ticks = 1600 = 80 s × 20 tps.
+/// Obtained by smelting coal ore (vanilla recipe, w/Smelting "coal ore
+/// → coal, 0.1 XP"). Inventory-only item-block, the E2 pattern.
+pub const COAL: u8 = 162;
 pub const BEEF_STATE: u16 = 130;
 pub const PORKCHOP_STATE: u16 = 131;
 pub const MUTTON_STATE: u16 = 132;
@@ -639,6 +649,9 @@ pub const LAVA_FLOW_END: u16 = 314;
 /// Phase E2: spawner mob-kind code 4 — wither skeleton (the fortress's
 /// second platform; VERIFIED w/Wither_Skeleton: Nether fortresses only)
 pub const SPAWNER_WITHER_SKELETON: u16 = 315;
+/// coal ITEM state (VERIFICATION-REPORT fix #4 — dedicated slot; the
+/// identity id 162 collides with repeater states like every E2 block)
+pub const COAL_STATE: u16 = 316;
 
 /// lava state for a level (0 = source)
 #[inline]
@@ -718,7 +731,7 @@ pub fn item_state_block(s: u16) -> Option<u8> {
     }
 }
 
-pub const BLOCK_COUNT: usize = 162;
+pub const BLOCK_COUNT: usize = 163;
 
 // ---------------------------------------------------------------------------
 // BlockState registry (1.16.5 pattern, miniature)
@@ -739,7 +752,7 @@ pub const BLOCK_COUNT: usize = 162;
 /// item states (140..=141, 236..=253, 256..=278)
 /// Phase E2: anvil/beacon/wall/ender-chest/frame/tripwire/skull/command
 /// + E2 items + eggs 17..=20 + lava (283..=314)
-pub const STATE_COUNT: usize = 316;
+pub const STATE_COUNT: usize = 317;
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -1065,6 +1078,7 @@ pub fn default_state(b: u8) -> u16 {
         WITHER_SKELETON_SKULL => WITHER_SKELETON_SKULL_STATE,
         COMMAND_BLOCK => COMMAND_BLOCK_STATE,
         LAVA => LAVA_STATE,
+        COAL => COAL_STATE,
         OAK_SLAB => 63,     // PROP_BLOCKS[0].base_state (half=bottom)
         COBBLE_STAIRS => 65, // base_state (facing=north, half=bottom)
         OAK_FENCE => 73,    // base_state (no connections)
@@ -1290,6 +1304,7 @@ pub fn state_block(s: u16) -> u8 {
         // lava source + flows fold to LAVA (the water-flow pattern)
         LAVA_STATE => return LAVA,
         s if (LAVA_FLOW_BASE..=LAVA_FLOW_END).contains(&s) => return LAVA,
+        COAL_STATE => return COAL,
         SPAWNER_WITHER_SKELETON => return SPAWNER,
         ENCHANT_TABLE_STATE => return ENCHANT_TABLE,
         ENCHANTED_BOOK_STATE => return ENCHANTED_BOOK,
@@ -1412,6 +1427,8 @@ pub fn is_model_state(s: u16) -> bool {
         && s != LAVA_STATE
         && !((LAVA_FLOW_BASE..=LAVA_FLOW_END).contains(&s))
         && s != SPAWNER_WITHER_SKELETON
+        // VERIFICATION-REPORT fix #4: the coal item state (inventory-only)
+        && s != COAL_STATE
 }
 
 /// true if this block id has property-driven model states
@@ -1515,7 +1532,7 @@ pub fn log_axis_state(block: u8, axis: u8) -> u16 {
 /// component tile rendered BLANK since Phase 2. Now derived from the
 /// highest tile constant (118–121 here) and guarded by the
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
-pub const TILE_MAX: u16 = 205;
+pub const TILE_MAX: u16 = 206;
 
 /// inventory-only ITEM blocks (potions/bottles/books): never placeable in
 /// the world — right-click drinks (potions) / fills (glass bottle at water).
@@ -1532,6 +1549,8 @@ pub fn is_item_block(b: u8) -> bool {
             | SNOWBALL | NETHER_BRICK
             // Phase E2 items (evolution 1.3-1.4)
             | EMERALD | NETHER_STAR | POTATO | BAKED_POTATO | CARROT | PUMPKIN_PIE
+            // VERIFICATION-REPORT fix #4: the coal fuel item
+            | COAL
     ) || is_spawn_egg(b)
 }
 
@@ -1825,6 +1844,9 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     // lava: fluid, emissive 15 (VERIFIED w/Lava luminance), not solid —
     // meshes through the fluid-quad path with the fixed lava tint
     d("Lava", [TILE_LAVA, TILE_LAVA, TILE_LAVA], false, false, false, true, 15, SoundFamily::Water),
+    // coal item (VERIFICATION-REPORT fix #4): inventory-only fuel item,
+    // 1600 ticks / 8 items per piece (VERIFIED live w/Furnace + w/Smelting)
+    d("Coal", [TILE_COAL, TILE_COAL, TILE_COAL], false, false, true, false, 0, SoundFamily::Stone),
 ];
 
 #[inline]
@@ -1894,7 +1916,7 @@ pub fn face_visible(b: u8, n: u8) -> bool {
 /// (needs fluid sim to be fun). Potions are item-blocks — usable from the
 /// hotbar (drink), never placeable. Phase E1 adds the 1.0–1.2 bracket
 /// blocks/items + the 16 spawn eggs (creative-only items, w/Spawn_Egg).
-pub const PICKER_BLOCKS: [u8; 126] = [
+pub const PICKER_BLOCKS: [u8; 127] = [
     GRASS, DIRT, STONE, COBBLE, SMOOTH_STONE, STONE_BRICKS, BRICKS, MOSSY_COBBLE,
     GRANITE, DIORITE, ANDESITE, OBSIDIAN,
     SAND, GRAVEL, CLAY, TERRACOTTA,
@@ -1928,6 +1950,9 @@ pub const PICKER_BLOCKS: [u8; 126] = [
     WITHER_SKELETON_SKULL, COMMAND_BLOCK,
     EMERALD, NETHER_STAR, POTATO, BAKED_POTATO, CARROT, PUMPKIN_PIE,
     LAVA,
+    // VERIFICATION-REPORT fix #4: coal (the real fuel item — replaces the
+    // ore-as-fuel stopgap)
+    COAL,
     // E2 spawn eggs (kinds 17..=20: wither skeleton, witch, bat, wither)
     SPAWN_EGG_BASE + 16, SPAWN_EGG_BASE + 17, SPAWN_EGG_BASE + 18, SPAWN_EGG_BASE + 19,
 ];
@@ -2246,6 +2271,8 @@ mod state_tests {
                 || s == LAVA_STATE
                 || (LAVA_FLOW_BASE..=LAVA_FLOW_END).contains(&s)
                 || s == SPAWNER_WITHER_SKELETON
+                // VERIFICATION-REPORT fix #4: the coal item state
+                || s == COAL_STATE
             {
                 assert!(!is_model_state(s), "component/item state {s} never routes to models");
                 // identity: the state folds to the block whose def table

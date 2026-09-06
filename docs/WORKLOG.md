@@ -519,3 +519,85 @@ live in the code comments.
 - The wither's block-breaking on damage can carve terrain fast in a
   long fight (vanilla-accurate behavior; the 3×4×3 box is the VERIFIED
   rule).
+
+## 2026-09-06 — verification follow-up: mechanical priority items 3+4 (+ item-1 slider completion) — commit pending-push
+
+**Task:** close the remaining mechanical items from
+`docs/VERIFICATION-REPORT.md`'s priority list. Items 1 (render distance)
+and 2 (lava fluid) had already folded into the E2 bracket; this round
+implements **item 3 (sprint-jump 7.127 b/s emergence)** and **item 4
+(coal item + 1600-tick fuel)**, plus the options-screen slider mapping
+that item 1's E2 fix had missed.
+
+### Implemented
+
+- **Sprint-jump mechanics** (`player.rs`): the vanilla input — jumping
+  while sprinting accelerates the player **+0.2 blocks/tick toward their
+  facing** (VERIFIED live: mcpk.wiki/wiki/Sprinting "when the player
+  jumps while sprinting, they accelerate by 0.2 towards their facing";
+  minecraft.wiki/w/Jumping "jumping can be combined with sprinting to
+  increase the player's movement speed") — now exists as
+  `SPRINT_JUMP_BOOST = 4.0` (0.2 b/t × 20), applied at the jump.
+- **Excess air drag** (`SPRINT_JUMP_EXTRA_DRAG = 2.2`): a documented
+  adaptation. Vanilla gets the sustained 7.127 b/s figure from its
+  0.91×/tick air drag on an impulse model; this engine's smoothed
+  velocity model decays the speed EXCESS over the movement target at
+  the tuned rate instead (calibrated, not guessed: measured 7.129 b/s
+  with the 60 Hz test harness).
+- **Emergence test** `sprint_jump_averages_vanilla_7_127`: 4 s settle +
+  30 s measured displacement on a 3×19-chunk flat runway (the shared
+  3×3 test world runs out of floor in 4 s at sprint-jump speed);
+  asserts |avg − 7.127| < 0.1, avg > sprint+0.5, y stays in the
+  jump-corridor. VERIFIED live: minecraft.wiki/w/Sprinting "jumping
+  while sprinting allows the player to move with an average speed of
+  7.127 m/s"; w/Transportation "Sprint-jumping, flat terrain, 7.127
+  m/s".
+- **The coal item** (id 162, tile 206, state 316 — the E2 item-block
+  pattern): `COAL` with `fuel_ticks = 1600` (VERIFIED live:
+  minecraft.wiki/w/Furnace "a piece of coal burns for 80 seconds and
+  can process eight items"; w/Smelting fuel table "Coal 1600 ticks /
+  8 items"), clean-room lump art in `e2_art.rs`, picker entry.
+- **Coal ore → coal smelting recipe** (`smelt_result(COAL_ORE) =
+  Some(COAL)`, `smelt_xp 0.1` — VERIFIED live: w/Smelting "smelting 1
+  coal ore and removing the coal, the value is 0.1"). This is how coal
+  is obtained in survival.
+- **The COAL_ORE 800 ore-as-fuel stopgap is retired**: vanilla coal
+  ore is not a fuel; the stand-in sites swapped to the real item —
+  wither-skeleton drop `(COAL, 1)`, the three villager "buys coal"
+  trades (armorer/toolsmith/weaponsmith), the dungeon-chest loot entry.
+- **Registry ripple** (all guarded by tests): BLOCK_COUNT 163,
+  STATE_COUNT 317, `COAL_STATE = 316` wired through `default_state` /
+  `state_block` / `is_model_state` / the prop-roundtrip test; the WGSL
+  mesh-compute LUT offsets resynced (L_FL 317 / L_TC 480 / L_ST 643,
+  sb clamp 316 — `wgsl_lut_offsets_match_rust` guards the pair).
+- **RD slider completion**: `apply_slider(ID_OPT_RD)` and both
+  `refresh_widgets` inverse mappings now use the 2–32 range
+  (2 + t·30 / (rd−2)/30) — the E2 round had fixed the clamp and the
+  in-game ± keys but left the options screen itself mapping 2–16.
+
+### Verified
+
+- Live, this round: 7.127 b/s (w/Sprinting, w/Transportation);
+  +0.2 b/t sprint-jump boost (mcpk.wiki/w/Sprinting); coal 1600 t /
+  80 s / 8 items (w/Furnace, w/Smelting, Template:Smelting_table);
+  coal ore → coal 0.1 XP (w/Smelting). Search transcripts saved under
+  `scripts/verify_*.json`.
+- Suite: **375/375** green (372 → +3: the emergence test, the
+  eight-items-per-coal test, the ore→coal recipe test), wasm32 lib
+  target clean in both feature configs, no new warnings, zero
+  todo!/unimplemented!/unsafe in the touched files.
+
+### Deferred (with disclosure)
+
+- Sprint-jumping's 4× hunger cost (w/Jumping "A single jump while
+  sprinting costs four times as much hunger as a normal jump") — the
+  engine has no exhaustion/sprint-hunger system yet; noted for the
+  hunger milestone.
+- 45° diagonal sprint-jumping (vanilla is ~2 % faster again) — out of
+  scope for the straight-line observable; revisit with a turning model.
+- Block of Coal (16000 ticks / 80 items, live value recorded) — a
+  block + recipe, not just an item; rides a later bracket.
+
+### Known issues & regressions
+
+- None observed: 375/375, wasm clean, WGSL LUT drift guard green.

@@ -21,6 +21,28 @@ pub const TERMINAL: f32 = 78.4; // 3.92 b/tick × 20 — inherent fixed point of
 pub const SWIM_SPEED_SURFACE: f32 = 2.20;
 pub const SWIM_SPEED_UNDERWATER: f32 = 1.97;
 pub const SPRINT_SWIM_SPEED: f32 = 3.918;
+/// Sustained sprint-jumping average speed (VERIFIED 2026-09-06 live:
+/// minecraft.wiki/w/Sprinting "jumping while sprinting allows the player
+/// to move with an average speed of 7.127 m/s"; w/Transportation table
+/// "Sprint-jumping, flat terrain, 7.127 m/s").
+pub const SPRINT_JUMP_SPEED: f32 = 7.127;
+/// Sprint-jump boost (VERIFIED 2026-09-06 live, mcpk.wiki/wiki/Sprinting:
+/// "when the player jumps while sprinting, they accelerate by 0.2 towards
+/// their facing (regardless of whether the player is strafing)"; the
+/// mechanics summary on minecraft.wiki/w/Jumping: "jumping can be
+/// combined with sprinting to increase the player's movement speed").
+/// 0.2 blocks/tick × 20 = 4.0 blocks/s of horizontal impulse at the jump.
+pub const SPRINT_JUMP_BOOST: f32 = 4.0;
+/// Extra air drag applied to horizontal speed EXCESS over the movement
+/// target. Vanilla drags in-flight horizontal velocity 0.91×/tick on its
+/// impulse model; on this smoothed-velocity model the observable to
+/// reproduce is the sustained sprint-jump average — with the 2.5/s air
+/// control rate this brings the boost's total decay to ~4.7/s so the
+/// steady cycle averages the wiki's 7.127 b/s (measured 7.129 with the
+/// 60 Hz harness; guarded by `sprint_jump_averages_vanilla_7_127`).
+/// Documented adaptation: the vanilla internals (0.91 drag + 0.02/tick
+/// air accel) do not map 1:1 onto the exponential-smoothing model.
+pub const SPRINT_JUMP_EXTRA_DRAG: f32 = 2.2;
 /// air supply / drowning (research-verdicts.md live round,
 /// minecraft.wiki/w/Damage §Drowning): max 300 air (depletes 1/tick
 /// submerged), 10 bubbles × 30 air; damage 2 HP when air reaches −20,
@@ -362,6 +384,21 @@ impl Player {
             let f = (rate * dt).min(1.0);
             self.vel.x += (target.x - self.vel.x) * f;
             self.vel.z += (target.z - self.vel.z) * f;
+            // in flight (not water): horizontal speed EXCESS over the
+            // movement target — i.e. the sprint-jump boost — decays at
+            // the extra drag rate (vanilla's 0.91×/tick air drag,
+            // calibrated to the wiki's 7.127 b/s sprint-jump observable;
+            // see SPRINT_JUMP_EXTRA_DRAG)
+            if !self.on_ground && !self.in_water {
+                let sp = (self.vel.x * self.vel.x + self.vel.z * self.vel.z).sqrt();
+                let tp = (target.x * target.x + target.z * target.z).sqrt();
+                if sp > tp + 1e-4 {
+                    let f2 = (SPRINT_JUMP_EXTRA_DRAG * dt).min(1.0);
+                    let scale = (tp + (sp - tp) * (1.0 - f2)) / sp;
+                    self.vel.x *= scale;
+                    self.vel.z *= scale;
+                }
+            }
 
             if self.in_water {
                 // buoyant swimming
@@ -376,6 +413,14 @@ impl Player {
                 if input.jump && self.on_ground {
                     self.vel.y = JUMP_VEL;
                     self.on_ground = false;
+                    if sprinting {
+                        // sprint-jump boost: +0.2 b/t horizontally toward
+                        // the facing (VERIFIED, mcpk.wiki/wiki/Sprinting)
+                        // — the vanilla input behind the 7.127 b/s
+                        // sustained sprint-jump average
+                        self.vel.x += fwd.x * SPRINT_JUMP_BOOST;
+                        self.vel.z += fwd.z * SPRINT_JUMP_BOOST;
+                    }
                     // a velocity discontinuity re-aligns the 20 Hz
                     // substep phase: in vanilla the jump lands ON a tick
                     // boundary, so the fresh velocity is owed a FULL
@@ -802,6 +847,76 @@ mod tests {
         assert!(
             (horiz - SPRINT_SPEED).abs() < 0.05,
             "sprint speed {horiz} vs vanilla {SPRINT_SPEED}"
+        );
+    }
+
+    /// long flat runway for sustained-travel measurements (the 7.127 b/s
+    /// sprint-jump test covers ~220 blocks in 31 s — a 3×3-chunk world
+    /// would run out of floor)
+    fn flat_runway() -> World {
+        let mut w = World::new(7);
+        for dz in -17i32..=1 {
+            for dx in -1i32..=1 {
+                let mut c = vc_chunk::chunk::Chunk::empty();
+                for y in 0..=64i32 {
+                    for lz in 0..16usize {
+                        for lx in 0..16usize {
+                            c.set(lx, y as usize, lz, vc_blocks::blocks::STONE);
+                        }
+                    }
+                }
+                w.insert_generated((dx, dz), Arc::new(c), Vec::new());
+            }
+        }
+        w.dirty.clear();
+        w
+    }
+
+    /// VERIFICATION-REPORT mechanical fix #3: sustained sprint-jumping
+    /// must average the wiki's 7.127 b/s (VERIFIED 2026-09-06 live:
+    /// minecraft.wiki/w/Sprinting "jumping while sprinting allows the
+    /// player to move with an average speed of 7.127 m/s";
+    /// w/Transportation "Sprint-jumping, flat terrain, 7.127 m/s").
+    /// The input mechanic is vanilla's +0.2 b/t facing boost on sprint
+    /// jumps (mcpk.wiki/wiki/Sprinting); the excess air drag constant is
+    /// calibrated to this observable (see SPRINT_JUMP_EXTRA_DRAG).
+    #[test]
+    fn sprint_jump_averages_vanilla_7_127() {
+        let w = flat_runway();
+        let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
+        p.flying = false;
+        let mut input = Input::default();
+        input.fwd = true;
+        input.sprint = true;
+        input.jump = true;
+        // settle into the steady sprint-jump cycle (4 s), then measure
+        // the displacement over 30 s
+        for _ in 0..240 {
+            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+        }
+        let x0 = p.pos.x;
+        let z0 = p.pos.z;
+        for _ in 0..1800 {
+            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+        }
+        let dist = ((p.pos.x - x0) * (p.pos.x - x0) + (p.pos.z - z0) * (p.pos.z - z0)).sqrt();
+        let avg = dist / 30.0;
+        assert!(
+            (avg - SPRINT_JUMP_SPEED).abs() < 0.1,
+            "sustained sprint-jump averaged {avg:.3} b/s, wiki observable is {SPRINT_JUMP_SPEED}"
+        );
+        // sprint-jumping must beat plain sprinting — that is the whole
+        // point of the technique (and of the boost)
+        assert!(
+            avg > SPRINT_SPEED + 0.5,
+            "sprint-jump {avg:.3} must beat sprint {SPRINT_SPEED}"
+        );
+        // still on the runway floor (bouncing between 65.0 and the
+        // 1.25-block jump apex — no drift, no fall)
+        assert!(
+            (65.0..66.3).contains(&p.pos.y),
+            "sprint-jump left the floor: y={}",
+            p.pos.y
         );
     }
 

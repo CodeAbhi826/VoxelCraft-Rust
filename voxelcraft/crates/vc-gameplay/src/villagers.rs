@@ -300,7 +300,7 @@ pub fn trades(profession: u8) -> &'static [Trade] {
     const ARMORER: &[Trade] = &[
         tr((IRON_ORE, 5), (EMERALD_ORE, 1), 1),
         tr((EMERALD_ORE, 4), (IRON_BLOCK, 1), 1),
-        tr((COAL_ORE, 10), (EMERALD_ORE, 1), 2),
+        tr((COAL, 10), (EMERALD_ORE, 1), 2), // fix #4: the real coal item
         tr((EMERALD_ORE, 5), (GOLD_BLOCK, 1), 2),
         tr((LAPIS_ORE, 8), (EMERALD_ORE, 1), 3),
         tr((EMERALD_ORE, 9), (DIAMOND_BLOCK, 1), 3),
@@ -448,7 +448,7 @@ pub fn trades(profession: u8) -> &'static [Trade] {
     ];
     // (Toolsmith 12) buys fuel/ore, sells metal blocks
     const TOOLSMITH: &[Trade] = &[
-        tr((COAL_ORE, 8), (EMERALD_ORE, 1), 1),
+        tr((COAL, 8), (EMERALD_ORE, 1), 1), // fix #4: the real coal item
         tr((EMERALD_ORE, 3), (IRON_BLOCK, 1), 1),
         tr((IRON_ORE, 8), (EMERALD_ORE, 1), 2),
         tr((EMERALD_ORE, 4), (CRAFTING_TABLE, 2), 2),
@@ -463,7 +463,7 @@ pub fn trades(profession: u8) -> &'static [Trade] {
     const UNEMPLOYED_TRADES: &[Trade] = &[];
     // (Weaponsmith 14) buys coal/iron/gravel (vanilla) → diamond at master
     const WEAPONSMITH: &[Trade] = &[
-        tr((COAL_ORE, 10), (EMERALD_ORE, 1), 1),
+        tr((COAL, 10), (EMERALD_ORE, 1), 1), // fix #4: the real coal item
         tr((EMERALD_ORE, 4), (IRON_BLOCK, 1), 1),
         tr((IRON_ORE, 10), (EMERALD_ORE, 1), 2),
         tr((EMERALD_ORE, 7), (GOLD_BLOCK, 1), 2),

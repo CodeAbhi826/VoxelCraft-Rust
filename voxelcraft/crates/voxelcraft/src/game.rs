@@ -3186,7 +3186,7 @@ impl GameApp {
                 // wither skeleton: coal 0-1 @ 33%, bone 0-2 @ 67%, skull
                 // 0-1 @ 2.5% (the skull roll rides the special-cased path
                 // below — it is NOT a guaranteed drop)
-                mobs::MobKind::WitherSkeleton => &[(COAL_ORE, 1), (BONE, 2)],
+                mobs::MobKind::WitherSkeleton => &[(COAL, 1), (BONE, 2)],
                 // witch: the verified per-item 0-2 rolls (redstone,
                 // glowstone, gunpowder, spider eye, sugar, glass bottle,
                 // stick — engine items exist for 5 of the 7; sugar and
@@ -3548,7 +3548,11 @@ impl GameApp {
         match id {
             ID_OPT_FOV => self.settings.fov = 30.0 + t * 80.0,
             ID_OPT_SENS => self.settings.sensitivity = 0.1 + t * 1.9,
-            ID_OPT_RD => self.settings.render_distance = 2 + (t * 14.0).round() as i32,
+            // VERIFICATION-REPORT fix #1 completion: vanilla options.txt
+            // renderDistance range 2..=32 (the in-game +/- keys and the save
+            // clamp already allowed 2..=32 — the E2 round missed the slider
+            // mapping, which still capped at 16)
+            ID_OPT_RD => self.settings.render_distance = 2 + (t * 30.0).round() as i32,
             // Phase 6 §26: VERIFIED range 5–32 (wiki simulationDistance)
             ID_OPT_SIMDIST => self.settings.sim_distance = 5 + (t * 27.0).round() as i32,
             ID_OPT_BRIGHT => self.settings.brightness = t,
@@ -3623,7 +3627,7 @@ impl GameApp {
                         ID_OPT_RD => set_slider(
                             w,
                             &format!("RENDER DIST: {} CHUNKS", s.render_distance),
-                            (s.render_distance - 2) as f32 / 14.0,
+                            (s.render_distance - 2) as f32 / 30.0,
                         ),
                         ID_OPT_MIP => set_button_value(w, &format!("{}", s.mipmap_levels)),
                         ID_OPT_ANISO => set_button_value(
@@ -3683,7 +3687,7 @@ impl GameApp {
                         ID_OPT_RD => set_slider(
                             w,
                             &format!("RENDER DIST: {} CHUNKS", s.render_distance),
-                            (s.render_distance - 2) as f32 / 14.0,
+                            (s.render_distance - 2) as f32 / 30.0,
                         ),
                         ID_OPT_BRIGHT => {
                             let label = if s.brightness < 0.05 {

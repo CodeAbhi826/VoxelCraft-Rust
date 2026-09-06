@@ -19,7 +19,14 @@ pub fn fuel_ticks(block: u8) -> i32 {
         // long). Crafting table + fence stay 300 (wiki fuel table).
         CRAFTING_TABLE | OAK_FENCE => 300,
         OAK_SLAB => 150,
-        COAL_ORE => 800, // progressive: ore-as-fuel until the item exists
+        // the coal ITEM: 1600 ticks = 80 s = 8 items (VERIFIED
+        // 2026-09-06 live, minecraft.wiki/w/Furnace "a piece of coal
+        // burns for 80 seconds and can process eight items";
+        // w/Smelting fuel table "Coal 1600 [ticks], 8 [items]").
+        // COAL_ORE is NO LONGER a fuel: the 800-tick ore-as-fuel
+        // stopgap (VERIFICATION-REPORT §6, disclosed) is retired now
+        // that the coal item exists — vanilla coal ore is not a fuel.
+        COAL => 1600,
         _ => 0,
     }
 }
@@ -39,6 +46,11 @@ pub fn smelt_result(block: u8) -> Option<u8> {
         // Phase E2 (VERIFIED 2026-09-06 w/Food): potato → baked potato
         // (the only E2 food with a smelting recipe)
         POTATO => Some(BAKED_POTATO),
+        // VERIFICATION-REPORT fix #4 (VERIFIED 2026-09-06 live,
+        // minecraft.wiki/w/Smelting recipes + w/Coal_Ore §Smelting):
+        // coal ore smelts into the coal item (0.1 XP per — the recipe
+        // that makes the coal item obtainable in survival)
+        COAL_ORE => Some(COAL),
         _ => None,
     }
 }
@@ -238,9 +250,10 @@ mod tests {
 
     /// VERIFIED 2026-09-06 live (minecraft.wiki/w/Smelting fuel table):
     /// planks/log 300, crafting table 300, fence 300, wooden slab 150
-    /// (half of planks — a slab is half the wood), coal item 1600 (the
-    /// engine uses COAL_ORE 800 as a documented ore-as-fuel stopgap
-    /// until coal the ITEM exists).
+    /// (half of planks — a slab is half the wood), coal 1600 / 8 items
+    /// (w/Furnace "a piece of coal burns for 80 seconds and can process
+    /// eight items"). The old COAL_ORE 800 stopgap is RETIRED — vanilla
+    /// coal ore is not a fuel; smelt the ore into coal instead.
     #[test]
     fn fuel_table_matches_the_live_wiki() {
         assert_eq!(fuel_ticks(PLANKS), 300);
@@ -248,8 +261,43 @@ mod tests {
         assert_eq!(fuel_ticks(CRAFTING_TABLE), 300);
         assert_eq!(fuel_ticks(OAK_FENCE), 300);
         assert_eq!(fuel_ticks(OAK_SLAB), 150, "slab = half of planks (150)");
-        assert_eq!(fuel_ticks(COAL_ORE), 800, "ore-as-fuel stopgap, disclosed");
+        assert_eq!(fuel_ticks(COAL), 1600, "coal: 80 s, 8 items (w/Furnace)");
+        assert_eq!(fuel_ticks(COAL_ORE), 0, "ore is not a fuel in vanilla");
         assert_eq!(fuel_ticks(STONE), 0, "stone is not a fuel");
+    }
+
+    /// VERIFICATION-REPORT fix #4: "a piece of coal ... can process eight
+    /// items" (VERIFIED live, minecraft.wiki/w/Furnace). 9 sand + 1 coal:
+    /// exactly 8 glass smelt (1600 / 200), the 9th stays raw, coal gone.
+    #[test]
+    fn one_coal_smelts_exactly_eight_items() {
+        let mut f = FurnaceState::default();
+        f.input = ItemStack::new(SAND, 9);
+        f.fuel = ItemStack::new(COAL, 1);
+        // 8 items × 200 ticks + 1 tick to ignite = 1601; run long enough
+        for _ in 0..1700 {
+            f.tick();
+        }
+        assert_eq!((f.output.block, f.output.count), (GLASS, 8));
+        assert_eq!(f.input.count, 1, "the ninth item is not smelted");
+        assert!(f.fuel.is_empty(), "the coal is fully consumed");
+        assert!(!f.is_burning(), "the 1600-tick burn window has ended");
+    }
+
+    /// The coal ore → coal recipe (VERIFIED live, w/Smelting: coal ore
+    /// smelts to coal with 0.1 XP — how the coal item is obtained).
+    #[test]
+    fn coal_ore_smelts_into_the_coal_item() {
+        assert_eq!(smelt_result(COAL_ORE), Some(COAL));
+        let mut f = FurnaceState::default();
+        f.input = ItemStack::new(COAL_ORE, 2);
+        f.fuel = ItemStack::new(PLANKS, 1);
+        for _ in 0..420 {
+            f.tick();
+        }
+        assert_eq!((f.output.block, f.output.count), (COAL, 1));
+        // smelting XP: 0.1 per coal (w/Smelting)
+        assert!((f.xp_pool - 0.1).abs() < 1e-6);
     }
 
     /// A slab must burn exactly half as long as a plank: feed each one

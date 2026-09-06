@@ -2697,6 +2697,8 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_WITCH => e2_art::witch_art(&mut a, t),
             TILE_BAT => e2_art::bat_art(&mut a, t),
             TILE_WITHER_SKULL_PROJ => e2_art::wither_skull_proj_art(&mut a, t),
+            // VERIFICATION-REPORT fix #4: the coal fuel item
+            TILE_COAL => e2_art::coal_art(&mut a, t),
             // Phase E2: lava fluid tile (bright orange noise — VERIFIED
             // w/Lava: luminance 15, constant color)
             TILE_LAVA => lava_art(&mut a, t, &mut rng),

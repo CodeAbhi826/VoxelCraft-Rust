@@ -879,7 +879,7 @@ pub fn builtin_structure_table(name: &str) -> Option<LootTable> {
                     rolls: Rolls::Fixed(1),
                     entries: vec![
                         loot_item_w(GOLD_ORE, 4, 1.0, 2.0),
-                        loot_item_w(COAL_ORE, 6, 2.0, 6.0),
+                        loot_item_w(COAL, 6, 2.0, 6.0), // fix #4: the real coal item (was the ore stand-in)
                         loot_item_w(BONE, 3, 1.0, 4.0),
                         LootEntry { weight: 3, kind: LootKind::Empty },
                     ],

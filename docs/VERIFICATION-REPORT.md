@@ -15,6 +15,16 @@ measurements were taken at the 1280×720 default window.
 end): day-night cycle 10 min → **20 min** (24000 ticks @ 20 tps), wooden
 slab fuel 300 → **150 ticks**.
 
+**Round 2 addendum (2026-09-06, post-bracket-E2):** the mechanical
+priority list below is now fully closed — items 1+2 landed with the E2
+bracket (commit e9e79de: render-distance clamp/keys + lava fluid), and
+items 3+4 landed in the follow-up round (sprint-jump emergence + the
+coal item; the options-screen RD slider mapping — an item-1 leftover —
+was completed there too). Live sources this round: minecraft.wiki
+/w/Sprinting, /w/Transportation, /w/Furnace, /w/Smelting, /w/Jumping;
+mcpk.wiki/wiki/Sprinting (the +0.2 b/t sprint-jump boost). Suite:
+**375/375** green, wasm32 lib clean.
+
 ---
 
 ## §1 Font / Text
@@ -68,7 +78,7 @@ slab fuel 300 → **150 ticks**.
 |---|---|---|
 | FOV 30–110 slider | ✅ | `clamp(30,110)`, `30 + t·80` |
 | Brightness Moody→Bright | ✅ | 0–100 % with MOODY label |
-| Render distance 2–32 chunks | ❌ | engine clamps **2–16** (separate sim-distance 5–32 verified) |
+| Render distance 2–32 chunks | ✅ | clamp 2–32 + in-game ± keys (E2) + **options-screen slider mapping fixed** (was 2+(t·14)→2–16; now 2+(t·30)→2–32, round 2) |
 | GUI Scale Auto/1/2/3/4 | ❌ | **not present** — UI is a fixed 960×540 canvas stretched to the window: effective scale 2.67 at 1280×720 (non-integer → uneven nearest-pixel doubling; vanilla scales are integers) |
 | 10 sound sliders (Master/Music/Jukebox/Weather/Blocks/Hostile/Neutral/Players/Ambient/Voice) | ❌ | engine has 2 (VOLUME, MUSIC) |
 | Graphics Fast/Fancy | ✅ | |
@@ -101,7 +111,7 @@ slab fuel 300 → **150 ticks**.
 | Tick rate 20/s | ✅ | fixed 20 Hz substeps; `simTicks` tracked (live box renders sub-realtime — environment, not engine) |
 | Walk 4.317 b/s | ✅ | `WALK_SPEED` + convergence test; **live-verified** w/Walking |
 | Sprint 5.612 b/s | ✅ | constant + test; **live-verified** w/Sprinting |
-| Sprint-jump 7.127 b/s | ⚠️ | jump 0.42 b/t + sprint physics present, but no test asserts the emergent 7.127 figure |
+| Sprint-jump 7.127 b/s | ✅ | **fixed (round 2)**: vanilla +0.2 b/t facing boost on sprint jumps (mcpk.wiki) + excess air drag → measured **7.129 b/s**; pinned by `sprint_jump_averages_vanilla_7_127` |
 | Gravity 0.08 b/t², drag 0.98, terminal 3.92 b/t | ✅ | exact `v1=(v0−0.08)×0.98`; terminal convergence test; live-verified formula |
 | Jump 0.42 → 1.25-block apex | ✅ | substep phase alignment (prior round) |
 | Crit ×1.5, falling + cooldown ≥ 84.8 % + not sprinting | ✅ | `combat.rs` (wiki-cited) |
@@ -110,7 +120,7 @@ slab fuel 300 → **150 ticks**.
 | Water spread 1 lvl/5 ticks, max level 7 | ✅ | `WATER_TICK_RATE = 5`; levels 1..7 |
 | Lava: Overworld 1/30 ticks spread 3, Nether 1/10 spread 7 | ❌ | **lava fluid simulation absent** (static lava blocks; live-verified the vanilla values for when it lands) |
 | Smelting 200 ticks | ✅ | `COOK_TICKS = 200`; live-verified w/Smelting |
-| Coal item 1600 ticks | ⚠️ | engine: COAL_ORE 800 "ore-as-fuel" stopgap (coal item doesn't exist yet) — documented deviation |
+| Coal item 1600 ticks | ✅ | **fixed (round 2)**: COAL item-block added (1600 t / 80 s / 8 items, w/Furnace); coal-ore → coal smelting recipe (0.1 XP); the COAL_ORE 800 stopgap is retired (ore is not a fuel in vanilla) |
 | Planks/logs 300, crafting table 300, fence 300 | ✅ | live-verified this round |
 | Wooden slab 150 | ✅ | **fixed this round** (was 300) — live-verified w/Smelting |
 | Day-night cycle 10 min (checklist) | ❌ | **checklist itself wrong + engine fixed this round**: vanilla = **20 min** (24000 ticks), live-verified w/Daylight_cycle |
@@ -150,14 +160,25 @@ Suite: **342/342 green** (339 → +3), wasm32 target clean.
 
 ## Priority fix list (what the user should decide next)
 
-**Mechanical (small, well-defined):**
-1. Render-distance slider range 2–32 (currently 2–16).
-2. Lava fluid simulation (OW 1/30 ticks spread 3; Nether 1/10 spread 7 —
-   values live-verified and waiting in the verdicts doc).
-3. Sprint-jump 7.127 b/s emergence test.
-4. Coal item + 1600-tick fuel (needs the item-system milestone).
+**Mechanical (small, well-defined) — ALL CLOSED:**
+1. ~~Render-distance slider range 2–32~~ ✅ E2 (clamp + keys) + round 2
+   (the options-screen slider mapping itself, 2+(t·14) → 2+(t·30)).
+2. ~~Lava fluid simulation~~ ✅ E2 (OW 1/30 ticks spread 3; Nether 1/10
+   spread 7 — live-verified, in `fluids.rs`).
+3. ~~Sprint-jump 7.127 b/s emergence test~~ ✅ round 2: the vanilla
+   +0.2 b/t facing boost now exists (`SPRINT_JUMP_BOOST`) plus a
+   documented excess-air-drag adaptation; measured 7.129 b/s, pinned by
+   `sprint_jump_averages_vanilla_7_127` (a 3×19-chunk runway world was
+   needed — the old 3×3 test world runs out of floor in 4 s).
+4. ~~Coal item + 1600-tick fuel~~ ✅ round 2: `COAL` item-block
+   (id 162, tile 206, state 316) — fuel 1600 t, coal-ore → coal
+   smelting (0.1 XP), wither-skeleton drop / villager "buys coal"
+   trades / dungeon-chest loot swapped from the COAL_ORE stand-in to
+   the real item. Registry ripple handled: BLOCK_COUNT 163,
+   STATE_COUNT 317, WGSL mesh-LUT offsets resynced (guarded by
+   `wgsl_lut_offsets_match_rust`).
 
-**Visual (design decisions — bigger work):**
+**Visual (design decisions — bigger work) — still open:**
 5. GUI Scale option (Auto/1/2/3/4) + integer-scaled UI (replaces the fixed
    960×540 stretch; also fixes the non-integer pixel doubling).
 6. Vanilla-style light-grey container theme (#C6C6C6) + exact 176-wide
@@ -170,5 +191,6 @@ Suite: **342/342 green** (339 → +3), wasm32 target clean.
 9. 10-channel sound mixer (engine has 2).
 10. F3 right column + F3 sub-hotkeys.
 
-None of the visual items break gameplay; they are parity polish. The
-mechanical list is small enough to fold into the next bracket (1.3–1.4).
+None of the visual items break gameplay; they are parity polish. With the
+mechanical list closed, the remaining open work is the visual list above
+plus the next evolution bracket (1.5–1.6.x, the Redstone Update).

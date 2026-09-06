@@ -622,3 +622,34 @@ pub const E2_EGG_PALETTES: [(i32, i32, i32, i32, i32, i32); 4] = [
     (96, 72, 58, 74, 56, 44),    // bat: brown + dark wings
     (30, 26, 32, 220, 60, 60),   // wither: black + red
 ];
+
+/// Coal — the fuel item (VERIFICATION-REPORT mechanical fix #4; VERIFIED
+/// live w/Furnace "a piece of coal burns for 80 seconds and can process
+/// eight items"). Clean-room lump silhouette: matte black chunks with
+/// anthracite glints, transparent background.
+pub(super) fn coal_art(a: &mut [u8], t: u16) {
+    let rows = [
+        "................",
+        "................",
+        "................",
+        ".....CC..CC.....",
+        "....CCCCCCCC....",
+        "...CCCLCCCCC....",
+        "...CCCCCCHCC....",
+        "....CCHCCCCC....",
+        "....CCCCCCCC....",
+        ".....CCCCCC.....",
+        "......CCCC......",
+        "......CC........",
+        "................",
+        "................",
+        "................",
+        "................",
+    ];
+    art(a, t, rows, &|c| match c {
+        'C' => Some((30, 30, 32, 255)),
+        'L' => Some((88, 90, 96, 255)),
+        'H' => Some((18, 18, 20, 255)),
+        _ => None,
+    });
+}

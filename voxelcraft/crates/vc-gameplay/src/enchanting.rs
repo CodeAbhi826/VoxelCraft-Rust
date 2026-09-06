@@ -437,6 +437,10 @@ pub fn smelt_xp(block: u8) -> f32 {
         SAND => 0.1,
         COBBLE => 0.1,
         CLAY => 0.35,
+        // VERIFICATION-REPORT fix #4 (VERIFIED live 2026-09-06,
+        // minecraft.wiki/w/Smelting: "smelting 1 coal ore and removing
+        // the coal, the value is 0.1" — ten coal per XP on average)
+        COAL_ORE => 0.1,
         _ => 0.0,
     }
 }
@@ -919,5 +923,6 @@ mod tests {
         assert_eq!(ore_xp(STONE), 0);
         assert!((smelt_xp(SAND) - 0.1).abs() < 1e-6);
         assert!((smelt_xp(CLAY) - 0.35).abs() < 1e-6);
+        assert!((smelt_xp(COAL_ORE) - 0.1).abs() < 1e-6);
     }
 }

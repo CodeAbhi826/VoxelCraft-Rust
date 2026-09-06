@@ -1,0 +1,29 @@
+[
+  {
+    "url": "https://minecraft.wiki",
+    "name": "Tutorial:Shulker farming",
+    "snippet": "Nov 24, 2025 — Shulker farming is the process of using the mechanic where if a shulker is hit by a shulker bullet, there is a chance for a new shulker to ...",
+    "host_name": "minecraft.wiki",
+    "rank": 0,
+    "date": "Nov 24, 2025",
+    "favicon": ""
+  },
+  {
+    "url": "https://minecraft.fandom.com",
+    "name": "Shulker Box - Minecraft Wiki - Fandom",
+    "snippet": "Shulker boxes drop themselves when mined . Unlike other containers, the contents of shulker boxes are stored within the dropped item, and not dropped separately.",
+    "host_name": "minecraft.fandom.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://ftbwiki.org",
+    "name": "Shulker Box - Feed The Beast Wiki",
+    "snippet": "It serves as a storage with 27 slots , but unlike a normal Chest it will keep its content when broken and therefore can be used as a backpack. The Shulker Box ...",
+    "host_name": "ftbwiki.org",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  }
+]

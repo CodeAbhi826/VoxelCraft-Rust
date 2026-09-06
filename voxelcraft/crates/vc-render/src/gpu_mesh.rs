@@ -70,10 +70,10 @@ pub const MESH_COMPUTE_SHADER: &str = r#"
 const VOL_WORDS: u32 = 147456u;    // 48*256*48 bytes / 4
 const B_WATER: u32 = 9u;           // block id of WATER (identity state)
 const MODEL_BASE: u32 = 63u;       // MODEL_STATE_BASE
-const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=317)
-const L_FL: u32 = 317u;            // lut: block flags           (BLOCK_COUNT=163)
-const L_TC: u32 = 480u;            // lut: block tint class      (BLOCK_COUNT=163)
-const L_ST: u32 = 643u;            // lut: state tiles, 4/state  (4·STATE_COUNT=1268)
+const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=400)
+const L_FL: u32 = 400u;            // lut: block flags           (BLOCK_COUNT=200)
+const L_TC: u32 = 600u;            // lut: block tint class      (BLOCK_COUNT=200)
+const L_ST: u32 = 800u;            // lut: state tiles, 4/state  (4·STATE_COUNT=1600)
 const P_N: u32 = 0u;               // params[0] = n_jobs
 const P_JOB: u32 = 2u;             // params job base = 2 + j*66
 const P_BIOME: u32 = 2u;           // biomes at job base + 2 (64 packed u32)
@@ -125,8 +125,8 @@ fn job_get_blk(j: u32, x: i32, y: i32, z: i32) -> u32 {
     let base = j * VOL_WORDS;
     return (blk_l[base + (p >> 2u)] >> ((p & 3u) * 8u)) & 0xFFu;
 }
-fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 316u)]; }
-fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 162u)]; }
+fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 399u)]; }
+fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 199u)]; }
 fn biome_at(j: u32, x: i32, z: i32) -> u32 {
     let c = u32(z * 16 + x);
     let w = params[P_JOB + j * 66u + P_BIOME + (c >> 2u)];

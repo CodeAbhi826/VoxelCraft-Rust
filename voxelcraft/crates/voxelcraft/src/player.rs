@@ -530,7 +530,22 @@ impl Player {
         // (vanilla applies it on the ground-contact tick; water/flight
         // already zeroed fall_dist above, so a dive lands free)
         if self.on_ground && !self.was_on_ground && self.fall_dist > 3.0 {
-            self.pending_fall_dmg += self.fall_dist - 3.0;
+            // Phase E3 (VERIFIED live 2026-09-06, minecraft.wiki/w/
+            // Hay_Bale: "Falling onto a hay bale reduces the fall damage
+            // by 80%, meaning whatever falls on a hay bale takes 20% of
+            // the normal fall damage"): probe the block we landed on
+            let landed_on = world
+                .get_block(
+                    self.pos.x.floor() as i32,
+                    (self.pos.y - 0.06).floor() as i32,
+                    self.pos.z.floor() as i32,
+                );
+            let dmg = self.fall_dist - 3.0;
+            self.pending_fall_dmg += if landed_on == HAY_BALE {
+                dmg * 0.2
+            } else {
+                dmg
+            };
         }
         if self.on_ground {
             self.fall_dist = 0.0;

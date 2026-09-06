@@ -310,6 +310,9 @@ enum Job {
         seed: u64,
         dim: vc_world::world::Dimension,
         inbound: Vec<(u16, u8)>,
+        /// Phase E3: superflat world type (the classic preset —
+        /// VERIFIED w/Superflat)
+        flat: bool,
     },
     Mesh {
         pos: ChunkPos,
@@ -430,8 +433,13 @@ fn run_job(job: Job) -> JobResult {
             seed,
             dim,
             inbound,
+            flat,
         } => {
-            let gen = vc_world::gen::TerrainGen::for_dimension(seed, dim);
+            let gen = if flat {
+                vc_world::gen::TerrainGen::for_dimension_flat(seed, dim)
+            } else {
+                vc_world::gen::TerrainGen::for_dimension(seed, dim)
+            };
             let (chunk, outbound) = gen.generate_chunk(pos.0, pos.1, inbound);
             JobResult::Gen {
                 pos,
@@ -564,6 +572,27 @@ pub struct GameApp {
     place_timer: f32,
     /// Phase E2: lava contact-damage tick counter (4 HP / 10 ticks)
     lava_t: u32,
+    /// Phase E3 (1.5–1.6): the mob id the player is currently riding
+    /// (None = on foot). Mounting/steering/dismount wired through the
+    /// use path + the ride physics below (VERIFIED w/Horse §Riding).
+    riding: Option<u32>,
+    /// Phase E3: registered weighted-pressure-plate positions (the
+    /// entity-count sweep feeds their redstone signals — VERIFIED
+    /// signal formulas w/Light_Weighted_Pressure_Plate + the heavy one)
+    plates: Vec<[i32; 3]>,
+    /// Phase E3: the lead's anchored mob (player-held leash; 1.16.5
+    /// stretch max 10 blocks — VERIFIED w/Lead, version-scoped). The
+    /// anchor: None = the player's hand, Some(pos) = a fence-post knot
+    leashed: Option<(u32, Option<[i32; 3]>)>,
+    /// Phase E3: superflat world-type toggle in the world-create screen
+    /// (classic preset — VERIFIED w/Superflat); the ACTIVE world's flag
+    /// (drives every Gen job; wc_flat is the pending UI toggle)
+    world_flat: bool,
+    /// Phase E3: superflat world-type toggle in the world-create screen
+    /// (classic preset — VERIFIED w/Superflat)
+    wc_flat: bool,
+    /// Phase E3: plate-sweep tick counter (every 10 game ticks)
+    plate_sweep_t: u32,
     show_debug: bool,
     show_help: bool,
     /// creative-style block picker overlay (E key)
@@ -1050,6 +1079,12 @@ impl GameApp {
             break_timer: 0.0,
             place_timer: 0.0,
             lava_t: 0,
+            riding: None,
+            plates: Vec::new(),
+            leashed: None,
+            world_flat: false,
+            wc_flat: false,
+            plate_sweep_t: 0,
             show_debug: false,
             show_help: false,
             picker_open: false,
@@ -1993,11 +2028,16 @@ impl GameApp {
         }
         self.reset_world(seed, mode, name, None);
         self.load_datapacks();
+        // Phase E3 (VERIFIED w/Superflat): the world-type flag rides the
+        // created world — every Gen job routes through the flat generator
+        // (classic preset: bedrock, 2 dirt, grass; plains; no structures)
+        self.world_flat = self.wc_flat;
         vc_render::render::report_boot_log(&format!(
-            "world created: \"{}\" seed={} mode={}",
+            "world created: \"{}\" seed={} mode={} type={}",
             self.world_name,
             self.world.seed,
-            self.mode.label()
+            self.mode.label(),
+            if self.world_flat { "superflat" } else { "normal" }
         ));
     }
 
@@ -2141,6 +2181,10 @@ impl GameApp {
             self.level_spawn = (spawn.0 as i32, spawn.1 as i32, spawn.2 as i32);
         }
         self.player = Player::new(Vec3::new(spawn.0, spawn.1 + 20.0, spawn.2));
+        // Phase E3: riding/leash/plate state is per-world
+        self.riding = None;
+        self.leashed = None;
+        self.plates.clear();
         if let Some((x, y, z, yaw, pitch)) = restore {
             self.player.pos = Vec3::new(x, y, z);
             self.player.yaw = yaw;
@@ -3194,6 +3238,13 @@ impl GameApp {
                 mobs::MobKind::Witch => &[(REDSTONE_ORE, 2), (GLOWSTONE, 2), (GUNPOWDER, 2), (SPIDER_EYE, 2)],
                 // bat: drops nothing (VERIFIED w/Bat: empty drop table)
                 mobs::MobKind::Bat => &[],
+                // ---- Phase E3 (VERIFIED live 2026-09-06: w/Horse §Drops
+                // "0–2 Leather" + 1–3 XP when killed by a player; the
+                // equipped saddle drops on death (variant byte 1) — the
+                // engine has no horse-armor items, disclosed) ----
+                mobs::MobKind::Horse
+                | mobs::MobKind::Donkey
+                | mobs::MobKind::Mule => &[(LEATHER, 2)],
             };
             // blaze rod is a 50% roll (VERIFIED), others roll count 1..max
             if kind == mobs::MobKind::Blaze {
@@ -3208,6 +3259,24 @@ impl GameApp {
                         0,
                     );
                 }
+            }
+            // Phase E3: a saddled equine drops its saddle on death
+            // (VERIFIED w/Horse §Drops — equipped items drop; the death
+            // tuple's variant byte 1 = saddled)
+            if matches!(
+                kind,
+                mobs::MobKind::Horse | mobs::MobKind::Donkey | mobs::MobKind::Mule
+            ) && variant == 1
+            {
+                self.sim.items.drop_block(
+                    pos[0].floor() as i32,
+                    pos[1].floor() as i32,
+                    pos[2].floor() as i32,
+                    SADDLE,
+                    2,
+                    15,
+                    0,
+                );
             }
             for (block, max_n) in drops {
                 let n = 1 + (self.audio_rng.next_f32() * *max_n as f32) as u8;
@@ -3476,6 +3545,14 @@ impl GameApp {
             }
             ID_WC_MODE => {
                 self.wc_mode = self.wc_mode.next();
+                self.refresh_widgets();
+                self.ui.dirty = true;
+            }
+            ID_WC_TYPE => {
+                // Phase E3 (VERIFIED w/Superflat): world-type cycle —
+                // Normal / Superflat (the classic preset: grass, 2 dirt,
+                // bedrock — plains biome)
+                self.wc_flat = !self.wc_flat;
                 self.refresh_widgets();
                 self.ui.dirty = true;
             }
@@ -3780,6 +3857,7 @@ impl GameApp {
                     &format!("{}", self.wc_seed_preview),
                     self.wc_mode.label(),
                     self.wc_mode.describe(),
+                    if self.wc_flat { "SUPERFLAT" } else { "NORMAL" },
                 );
                 for w in ws.iter_mut() {
                     if let WidgetKind::TextField { focused: f, .. } = &mut w.kind {
@@ -3838,6 +3916,15 @@ impl GameApp {
     /// (vanilla behavior), the cursor stack drops back in too
     fn close_container(&mut self) {
         if let Some(c) = self.container.take() {
+            // Phase E3 (VERIFIED w/Trapped_Chest): closing a trapped
+            // chest drops its viewer signal back to 0 (signal = number
+            // of players accessing, max 15 — single-player: 1 while open)
+            if let Container::Chest { pos } = c {
+                if self.world.get_block(pos[0], pos[1], pos[2]) == TRAPPED_CHEST {
+                    let (w, sched) = (&mut self.world, &mut self.sim.sched);
+                    vc_sim::redstone::trapped_chest_tick(w, sched, pos[0], pos[1], pos[2], false);
+                }
+            }
             match c {
                 Container::Inventory => {
                     for s in self.craft_grid.iter_mut().take(4) {
@@ -4648,6 +4735,164 @@ impl GameApp {
             };
             self.sim
                 .update(dt, &mut self.world, &mut self.light, &scope);
+            // ---- Phase E3 (1.5–1.6): ride drive, leash, plate sweep ----
+            if self.screen == Screen::Game {
+                // (a) ride drive: the player's input steers the mount
+                // (VERIFIED w/Horse §Riding — control requires the
+                // saddle; speed = the horse's attribute through the
+                // §Movement_speed ≈43.17 b/s conversion)
+                self.sim.mobs.ridden = self.riding;
+                if let Some(mid) = self.riding {
+                    let (saddled, speed_attr, jump_clear) = {
+                        match self.sim.mobs.by_id(mid) {
+                            Some(m) => {
+                                let eq = m.equine.as_ref().unwrap();
+                                (eq.saddled, eq.speed_attr, eq.jump_clear_height())
+                            }
+                            None => (false, 0.0, 0.0),
+                        }
+                    };
+                    let mut jump_now = false;
+                    if let Some(m) = self.sim.mobs.by_id_mut(mid) {
+                        if saddled {
+                            // steer: forward along the player's look yaw
+                            let yaw = self.player.yaw;
+                            let fx = -yaw.sin();
+                            let fz = -yaw.cos();
+                            let (mut dx, mut dz) = (0.0f32, 0.0f32);
+                            if self.input.fwd {
+                                dx += fx;
+                                dz += fz;
+                            }
+                            if self.input.back {
+                                dx -= fx;
+                                dz -= fz;
+                            }
+                            if self.input.right {
+                                dx += -fz;
+                                dz += fx;
+                            }
+                            if self.input.left {
+                                dx -= -fz;
+                                dz -= fx;
+                            }
+                            let len = (dx * dx + dz * dz).sqrt();
+                            if len > 1e-4 {
+                                let ride_speed = speed_attr * 43.17; // VERIFIED conversion
+                                m.yaw = yaw;
+                                let tv = (dx / len * ride_speed, dz / len * ride_speed);
+                                m.vel[0] += (tv.0 - m.vel[0]) * 0.25;
+                                m.vel[2] += (tv.1 - m.vel[2]) * 0.25;
+                            } else {
+                                m.vel[0] *= 0.8;
+                                m.vel[2] *= 0.8;
+                            }
+                            jump_now = self.input.jump && m.on_ground;
+                        }
+                    }
+                    if jump_now {
+                        // the mount's jump: launch velocity solving the
+                        // jump-strength clear height (0.4→1.153 ..
+                        // 1.0→5.9197 blocks, VERIFIED §Jump_strength; the
+                        // quadratic fit through the three anchors is in
+                        // EquineState). Binary-search the engine integrator
+                        // v1 = (v0 − 0.08) × 0.98.
+                        let want = jump_clear.max(0.42);
+                        let (mut lo, mut hi) = (0.1f32, 1.5f32);
+                        for _ in 0..24 {
+                            let midv = (lo + hi) * 0.5;
+                            if apex_of(midv) < want {
+                                lo = midv;
+                            } else {
+                                hi = midv;
+                            }
+                        }
+                        if let Some(m) = self.sim.mobs.by_id_mut(mid) {
+                            m.vel[1] = hi;
+                            m.on_ground = false;
+                        }
+                        self.play_event("entity.horse.jump", None, 0.9);
+                    }
+                }
+                // (b) leash pull (VERIFIED w/Lead — 1.16.5 stretch max 10
+                // blocks: pulled toward the holder, breaks beyond 10)
+                if let Some((lid, anchor)) = self.leashed {
+                    let anchor_pos = anchor
+                        .map(|p| [p[0] as f32 + 0.5, p[1] as f32, p[2] as f32 + 0.5])
+                        .unwrap_or(self.player.pos.to_array());
+                    let mut broke = false;
+                    if let Some(m) = self.sim.mobs.by_id_mut(lid) {
+                        let dx = anchor_pos[0] - m.pos[0];
+                        let dz = anchor_pos[2] - m.pos[2];
+                        let dist = (dx * dx + dz * dz).sqrt();
+                        if dist > 10.0 {
+                            broke = true; // VERIFIED: lead snaps at 10 blocks (1.16.5)
+                        } else if dist > 4.0 {
+                            // pulled gently toward the anchor (stay-close)
+                            let pull = 2.2f32;
+                            m.vel[0] += (dx / dist * pull - m.vel[0]) * 0.15;
+                            m.vel[2] += (dz / dist * pull - m.vel[2]) * 0.15;
+                        }
+                    } else {
+                        broke = true; // mob gone
+                    }
+                    if broke {
+                        let mob_pos = self
+                            .sim
+                            .mobs
+                            .by_id(lid)
+                            .map(|m| m.pos)
+                            .unwrap_or(anchor_pos);
+                        self.leashed = None;
+                        // vanilla: a broken lead drops as an item at the mob
+                        self.sim.items.drop_block(
+                            mob_pos[0].floor() as i32,
+                            mob_pos[1].floor() as i32,
+                            mob_pos[2].floor() as i32,
+                            LEAD,
+                            2,
+                            15,
+                            0,
+                        );
+                    }
+                }
+                // (c) weighted-pressure-plate sweep: entity count →
+                // signal (VERIFIED formulas; counts mobs + the player —
+                // items ride the item system's positions too)
+                self.plate_sweep_t = self.plate_sweep_t.wrapping_add(1);
+                if self.plate_sweep_t % 10 == 0 && !self.plates.is_empty() {
+                    let mut ents: Vec<[f32; 3]> =
+                        self.sim.mobs.list.iter().map(|m| m.pos).collect();
+                    ents.push(self.player.pos.to_array());
+                    let mut dead: Vec<usize> = Vec::new();
+                    for (i, p) in self.plates.iter().enumerate() {
+                        let pb = self.world.get_block(p[0], p[1], p[2]);
+                        if pb != LIGHT_WEIGHTED_PLATE && pb != HEAVY_WEIGHTED_PLATE {
+                            dead.push(i);
+                            continue;
+                        }
+                        let count = ents
+                            .iter()
+                            .filter(|e| {
+                                e[0].floor() as i32 == p[0]
+                                    && (e[1] - 0.05).floor() as i32 == p[1]
+                                    && e[2].floor() as i32 == p[2]
+                            })
+                            .count();
+                        // Phase E3: the signal lands in the plate's POWER
+                        // state (the vanilla `power` blockstate — a real
+                        // source for the stateless wire re-derivation)
+                        let signal = vc_sim::redstone::weighted_plate_signal(pb, count);
+                        let (w, sched) = (&mut self.world, &mut self.sim.sched);
+                        vc_sim::redstone::plate_tick(w, sched, p[0], p[1], p[2], signal);
+                    }
+                    for i in dead.into_iter().rev() {
+                        self.plates.swap_remove(i);
+                    }
+                }
+                // (d) equine bookkeeping (breed cooldowns + foal growth)
+                self.sim.mobs.tick_equines();
+            }
             // Phase 2: drain mob hits/deaths/explosions on the game thread
             self.drain_mob_events();
             // Phase E1: drain the dragon fight's events (fireballs,
@@ -6446,19 +6691,73 @@ impl GameApp {
             // also covers fast creative flight outrunning the generation
             // frontier.
             if !physics_frozen(&self.world, self.player.pos) {
-                let sounds = self.player.update(
-                    dt,
-                    self.time,
-                    &self.world,
-                    &mut self.input,
-                    self.settings.sensitivity,
-                    true,
-                );
-                for s in sounds {
-                    // footsteps + water-entry: the registry's step/splash events
-                    // carry their own volume + pitch ranges (§21)
-                    let ev = vc_audio::sounds::family_event(s.family, false);
-                    self.play_event(ev, None, 1.0);
+                // ---- Phase E3 (1.5–1.6): riding a horse/donkey/mule ----
+                // (VERIFIED w/Horse §Riding: "Once a horse is tamed and
+                // saddled, the player can control it with standard
+                // directional controls, jump, and the mouse. The player
+                // dismounts using the dismount control.") While riding:
+                // the mount's velocity model carries the player (the
+                // input feeds the mount's yaw/speed; the rider's physics
+                // reduce to position-glue + fall-immunity (the rider
+                // safely-falls 7 blocks in vanilla — engine adaptation:
+                // the mount's landing carries the damage, rider immune
+                // while mounted, disclosed).
+                let ridden_ok = self
+                    .riding
+                    .map(|id| self.sim.mobs.by_id(id).is_some())
+                    .unwrap_or(false);
+                if ridden_ok {
+                    // keep look-control + timers, freeze movement physics
+                    let mut still = self.input.clone();
+                    still.fwd = false;
+                    still.back = false;
+                    still.left = false;
+                    still.right = false;
+                    still.jump = false;
+                    still.sneak = false;
+                    let _sounds = self.player.update(
+                        dt,
+                        self.time,
+                        &self.world,
+                        &mut still,
+                        self.settings.sensitivity,
+                        true,
+                    );
+                    self.player.fall_dist = 0.0;
+                    // glue the rider above the mount
+                    let mount = self.riding.unwrap();
+                    if let Some(m) = self.sim.mobs.by_id(mount) {
+                        self.player.pos.x = m.pos[0];
+                        self.player.pos.y = m.pos[1] + 1.1;
+                        self.player.pos.z = m.pos[2];
+                        self.player.vel.y = 0.0;
+                    }
+                    // sneak = the dismount control (vanilla left-shift)
+                    if self.input.sneak {
+                        let mount = self.riding.unwrap();
+                        if let Some(m) = self.sim.mobs.by_id(mount) {
+                            self.player.pos.y = m.pos[1] + 1.6;
+                        }
+                        self.player.vel.y = 4.2;
+                        self.riding = None;
+                        self.play_event("entity.horse.gallop", None, 0.8);
+                        vc_render::render::report_boot_log("e2e: dismounted (sneak)");
+                    }
+                } else {
+                    let sounds = self.player.update(
+                        dt,
+                        self.time,
+                        &self.world,
+                        &mut self.input,
+                        self.settings.sensitivity,
+                        true,
+                    );
+                    for s in sounds {
+                        // footsteps + water-entry: the registry's step/splash events
+                        // carry their own volume + pitch ranges (§21)
+                        let ev = vc_audio::sounds::family_event(s.family, false);
+                        self.play_event(ev, None, 1.0);
+                    }
                 }
             }
 
@@ -6647,6 +6946,15 @@ impl GameApp {
                                 self.sim.items.drop_block(
                                     pos[0], pos[1], pos[2], EMERALD, biome, sky, blk,
                                 );
+                            } else if broke == NETHER_QUARTZ_ORE {
+                                // Phase E3 (VERIFIED live 2026-09-06,
+                                // minecraft.wiki/w/Nether_Quartz_Ore:
+                                // "it drops 1 Nether quartz" — Fortune up
+                                // to 4 deferred, no Fortune enchant; ore
+                                // XP 2–5 rides the ore_xp path)
+                                self.sim.items.drop_block(
+                                    pos[0], pos[1], pos[2], NETHER_QUARTZ, biome, sky, blk,
+                                );
                             } else {
                                 self.sim.items.drop_block(
                                     pos[0], pos[1], pos[2], broke, biome, sky, blk,
@@ -6696,7 +7004,166 @@ impl GameApp {
                     }
                     self.open_container(Container::Trade { villager: vid });
                     self.place_timer = 0.3;
-                } else if let Some((tpos, tb, _)) = self.target {
+                }
+                // ---- Phase E3 (1.5–1.6): equine interactions (mount /
+                // saddle / feed / lead) — vanilla interaction priority
+                // over blocks, the villager pattern ----
+                else if let Some(eid) = self
+                    .sim
+                    .mobs
+                    .ray_hit(
+                        self.player.eye().to_array(),
+                        self.player.look_dir().to_array(),
+                        crate::player::REACH,
+                    )
+                    .filter(|&id| {
+                        self.sim
+                            .mobs
+                            .by_id(id)
+                            .map(|m| {
+                                matches!(
+                                    m.kind,
+                                    vc_gameplay::mobs::MobKind::Horse
+                                        | vc_gameplay::mobs::MobKind::Donkey
+                                        | vc_gameplay::mobs::MobKind::Mule
+                                )
+                            })
+                            .unwrap_or(false)
+                    })
+                {
+                    let held = self.player.held().block;
+                    // (1) LEAD: leash the mob to the player (VERIFIED w/
+                    // Lead — 10-block stretch in 1.16.5, version-scoped);
+                    // a held lead on a FENCE ties a knot instead (the
+                    // target block path below)
+                    if held == LEAD && self.leashed.is_none() {
+                        self.leashed = Some((eid, None));
+                        if self.mode.depletes_items() {
+                            let h = self.player.held_mut();
+                            h.count -= 1;
+                            if h.count == 0 {
+                                *h = vc_inventory::inventory::ItemStack::EMPTY;
+                            }
+                        }
+                        self.play_event("entity.horse.gallop", None, 0.7);
+                        vc_render::render::report_boot_log("e2e: lead attached (10-block max, VERIFIED 1.16.5)");
+                        self.place_timer = 0.3;
+                    }
+                    // (2) SADDLE: equip a tamed equine (VERIFIED w/Horse
+                    // §Riding — control needs the saddle)
+                    else if held == SADDLE {
+                        let applied = self.sim.mobs.try_saddle(eid);
+                        if applied {
+                            if self.mode.depletes_items() {
+                                let h = self.player.held_mut();
+                                h.count -= 1;
+                                if h.count == 0 {
+                                    *h = vc_inventory::inventory::ItemStack::EMPTY;
+                                }
+                            }
+                            self.play_event("entity.horse.armor", None, 1.0);
+                            vc_render::render::report_boot_log("e2e: saddle equipped (control unlocked, VERIFIED)");
+                        }
+                        self.place_timer = 0.3;
+                    }
+                    // (3) FOOD: golden apple (breeding, VERIFIED w/Horse
+                    // §Breeding) / hay bale (heals + grows temper,
+                    // VERIFIED w/Hay_Bale §Food)
+                    else if held == GOLDEN_APPLE || held == HAY_BALE {
+                        let mut feed_rng =
+                            vc_rng::rng::Rng::new((self.sim.ticks as u64) ^ 0x5EED_1EAD);
+                        let outcome =
+                            self.sim.mobs.try_feed(eid, held, &mut feed_rng);
+                        if let Some(out) = outcome {
+                            if self.mode.depletes_items() {
+                                let h = self.player.held_mut();
+                                h.count -= 1;
+                                if h.count == 0 {
+                                    *h = vc_inventory::inventory::ItemStack::EMPTY;
+                                }
+                            }
+                            self.play_event("entity.horse.eat", None, 1.0);
+                            if let vc_gameplay::mobs::FeedOutcome::LoveMode(partner) = out {
+                                // the foal: bred-stat formula (VERIFIED
+                                // w/Horse §Bred_values)
+                                let (px, py, pz) = {
+                                    let m = self.sim.mobs.by_id(eid).unwrap();
+                                    (m.pos[0] as i32, m.pos[1] as i32, m.pos[2] as i32)
+                                };
+                                let mut foal_rng = vc_rng::rng::Rng::new(
+                                    (self.sim.ticks as u64) ^ 0xF0A1,
+                                );
+                                let foal = self.sim.mobs.spawn_foal(
+                                    eid, partner, px, py + 1, pz, &mut foal_rng,
+                                );
+                                let _ = foal;
+                                vc_render::render::report_boot_log(
+                                    "e2e: love mode → foal (bred-stat formula, VERIFIED)",
+                                );
+                            }
+                            self.place_timer = 0.5;
+                        }
+                    }
+                    // (4) otherwise: mount / unmount / unleash
+                    else {
+                        if self.leashed == Some((eid, None)) {
+                            // using the mob again unleashes it (VERIFIED:
+                            // "A lead is broken by pressing the use item
+                            // control on the leashed mob again")
+                            let mpos = self
+                                .sim
+                                .mobs
+                                .by_id(eid)
+                                .map(|m| m.pos)
+                                .unwrap_or(self.player.pos.to_array());
+                            self.leashed = None;
+                            self.sim.items.drop_block(
+                                mpos[0].floor() as i32,
+                                mpos[1].floor() as i32,
+                                mpos[2].floor() as i32,
+                                LEAD,
+                                2,
+                                15,
+                                0,
+                            );
+                        }
+                        // mounting is disallowed in Adventure (§ modes —
+                        // use the not-adventure rule from modes.rs)
+                        if self.mode.label() != "Adventure" {
+                            let mut tame_rng =
+                                vc_rng::rng::Rng::new((self.sim.ticks as u64) ^ 0x7A1E);
+                            match self.sim.mobs.try_mount(eid, &mut tame_rng) {
+                                Some(true) => {
+                                    self.riding = Some(eid);
+                                    self.play_event("entity.horse.ambient", None, 1.0);
+                                    vc_render::render::report_boot_log(if self
+                                        .sim
+                                        .mobs
+                                        .by_id(eid)
+                                        .map(|m| {
+                                            m.equine.as_ref().map(|e| e.saddled).unwrap_or(false)
+                                        })
+                                        .unwrap_or(false)
+                                    {
+                                        "e2e: mounted (saddled — control enabled, VERIFIED)"
+                                    } else {
+                                        "e2e: mounted (tamed, unsaddled — no control, VERIFIED)"
+                                    });
+                                }
+                                Some(false) => {
+                                    self.play_event("entity.horse.angry", None, 1.0);
+                                    vc_render::render::report_boot_log(
+                                        "e2e: bucked off (temper +5, VERIFIED taming rule)",
+                                    );
+                                }
+                                None => {}
+                            }
+                            self.place_timer = 0.3;
+                        }
+                    }
+                    self.ui.dirty = true;
+                }
+                else if let Some((tpos, tb, _)) = self.target {
                     // §25: right-click a lever toggles it (vanilla interaction)
                     if tb == LEVER {
                         vc_sim::redstone::toggle_lever(
@@ -6746,6 +7213,19 @@ impl GameApp {
                         // (empty state) — §26 containers
                         self.sim.containers.entry(tpos, CHEST);
                         self.open_container(Container::Chest { pos: tpos });
+                        self.place_timer = 0.3;
+                    } else if tb == TRAPPED_CHEST {
+                        // Phase E3 (VERIFIED w/Trapped_Chest): container
+                        // + redstone — "a power level equal to the number
+                        // of players ... accessing the trapped chest at
+                        // once (maximum 15)" (single-player: 1 while the
+                        // GUI is open). Opening feeds adjacent wires the
+                        // viewer signal; closing drops it back to 0 (the
+                        // container-close path re-ticks with open=false).
+                        self.sim.containers.entry(tpos, CHEST);
+                        self.open_container(Container::Chest { pos: tpos });
+                        let (w, sched) = (&mut self.world, &mut self.sim.sched);
+                        vc_sim::redstone::trapped_chest_tick(w, sched, tpos[0], tpos[1], tpos[2], true);
                         self.place_timer = 0.3;
                     } else if tb == ENDER_CHEST {
                         // Phase E2 (VERIFIED w/Ender_Chest): 27 slots,
@@ -7187,6 +7667,27 @@ impl GameApp {
                                 }
                                 // fences: neighbors recompute their connections
                                 update_fence_neighbors(&mut self.world, prev[0], prev[1], prev[2]);
+                                // Phase E3: register weighted plates for
+                                // the entity-count sweep (signals VERIFIED
+                                // w/Light_Weighted_Pressure_Plate + the
+                                // heavy ceil(entities/10) row)
+                                if b == LIGHT_WEIGHTED_PLATE || b == HEAVY_WEIGHTED_PLATE {
+                                    self.plates.push(prev);
+                                }
+                                // Phase E3: a LEAD used on a fence ties the
+                                // held leash as a knot (VERIFIED w/Lead —
+                                // "using the lead on any type of fence
+                                // attaches the lead to it with a visible
+                                // knot"); the mob then stays within the
+                                // leash of that post
+                                if b == OAK_FENCE {
+                                    if let Some((lid, None)) = self.leashed {
+                                        self.leashed = Some((lid, Some(prev)));
+                                        vc_render::render::report_boot_log(
+                                            "e2e: lead tied to fence knot (VERIFIED)",
+                                        );
+                                    }
+                                }
                                 // §24/§25: a new block notifies the sim
                                 notify_sim(
                                     &self.world,
@@ -8150,6 +8651,7 @@ impl GameApp {
                 seed: self.world.seed,
                 dim: self.world.dimension,
                 inbound,
+                flat: self.world_flat,
             };
             self.submit(job);
         }
@@ -9200,6 +9702,26 @@ fn fence_state_for(world: &World, wx: i32, wy: i32, wz: i32) -> Option<u16> {
 fn notify_sim(world: &World, sched: &mut vc_sim::ticks::TickScheduler, x: i32, y: i32, z: i32) {
     vc_sim::fluids::on_block_changed(sched, world, x, y, z);
     vc_sim::redstone::on_block_changed(sched, world, x, y, z);
+}
+
+/// Phase E3 (1.5–1.6): the apex a launch velocity reaches under the
+/// engine's shared entity jump integrator v1 = (v0 − 0.08) × 0.98
+/// (per-tick position += v). Binary-searched inverse for the mount
+/// jump (the VERIFIED jump-strength clear heights live in
+/// EquineState::jump_clear_height).
+fn apex_of(v0: f32) -> f32 {
+    let mut v = v0;
+    let mut y = 0.0f32;
+    let mut apex = 0.0f32;
+    for _ in 0..64 {
+        v = (v - 0.08) * 0.98;
+        if v <= 0.0 {
+            break;
+        }
+        y += v;
+        apex = apex.max(y);
+    }
+    apex
 }
 
 /// Phase 5 §27: fill a freshly generated dungeon chest. Palette-bounded

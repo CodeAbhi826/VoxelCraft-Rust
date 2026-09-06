@@ -415,6 +415,7 @@ pub fn layout_world_create(
     seed_placeholder: &str,
     mode_label: &str,
     mode_desc: &str,
+    type_label: &str,
 ) -> Vec<Widget> {
     let col = 176;
     let w = 500;
@@ -422,7 +423,9 @@ pub fn layout_world_create(
         text_field(ID_WC_NAME, col, 96, w, "NAME", name, "New World"),
         text_field(ID_WC_SEED, col, 152, w, "SEED", "", seed_placeholder),
         btn(ID_WC_MODE, col, 208, w, "GAME MODE", mode_label, true),
-        btn(ID_WC_TYPE, col, 264, w, "WORLD TYPE", "NORMAL", false),
+        // Phase E3 (VERIFIED w/Superflat): world-type cycle Normal ↔
+        // Superflat (classic preset — enabled now)
+        btn(ID_WC_TYPE, col, 264, w, "WORLD TYPE", type_label, true),
         btn(ID_WC_CREATE, col, 336, w, "CREATE WORLD", mode_desc, true),
         btn(ID_WC_CANCEL, col, 392, w, "CANCEL", "", true),
     ]
@@ -1869,9 +1872,12 @@ impl UiCanvas {
     pub fn picker(&mut self, cursor: (f32, f32), atlas: &[u8]) -> PickerGeom {
         let blocks = &PICKER_BLOCKS;
         // Phase E1: 12 columns (was 8) — the picker grew past 68 entries
-        // with the 1.0–1.2 bracket blocks + 16 spawn eggs; 12×9 stays
-        // inside the 960×540 UI canvas (536×426 grid).
-        let cols = 12;
+        // with the 1.0–1.2 bracket blocks + 16 spawn eggs.
+        // Phase E3: 15 columns — the picker grew to 164 entries with the
+        // 1.5–1.6 bracket (quartz family, 16 stained terracotta, carpets,
+        // redstone components, items, 3 eggs); 15×11 stays inside the
+        // 960×540 UI canvas (668×514 grid).
+        let cols = 15;
         let cell = 44i32;
         let rows = (blocks.len() + cols - 1) / cols;
         let grid_w = cols as i32 * cell + 8;

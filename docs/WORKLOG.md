@@ -601,3 +601,176 @@ that item 1's E2 fix had missed.
 ### Known issues & regressions
 
 - None observed: 375/375, wasm clean, WGSL LUT drift guard green.
+
+---
+
+## 2026-09-06 — MC 1.5–1.6 bracket (version-evolution Phase 3: Transport & Building) + full worklog↔evolution audit — commit <this round>
+
+**Task:** third bracket of the 1.0 → 1.16.5 version-evolution ordering
+(`evolution-research.md` Part 3 Phase 3, the Redstone/Horse updates),
+plus the user-requested audit of everything implemented from the
+worklog to the evolution plan. All values live-verified this round
+against minecraft.wiki — search transcripts saved under
+`voxelcraft/scripts/verify_e3_*.json` + `scripts/e3_page_*.json`
+(~35 live citations in the code comments this round).
+
+### The audit (worklog ↔ evolution ↔ code)
+
+- **Suite**: 375/375 pass on the pre-E3 tree (matches every worklog
+  claim; run with `--no-default-features` on this box — alsa-sys needs
+  missing ALSA headers, the audio feature gates rodio only).
+- **Everything the worklog claims exists in code**: E1/E2 module line
+  counts match (dragon.rs 444, e1_art.rs 747, wither.rs 430,
+  beacon.rs 349, effects.rs 305); BLOCK_COUNT/STATE_COUNT/COAL_STATE
+  matched the claimed 163/317/316; 575 VERIFIED citations; zero
+  todo!/unimplemented!/unsafe; 15 biomes (14 + MushroomFields);
+  6 structures; local == origin/main (0 ahead, clean tree); CI
+  workflows present (ci/release/wasm-build).
+- **Audit finding #1 — SUPERFLAT (1.1 item) was silently absent**:
+  never implemented, never deferred. FIXED this round (below).
+- **Audit finding #2 — the evolution doc's 1.5 "already have" row was
+  wrong**: daylight sensor, trapped chest, weighted pressure plates,
+  block of redstone, and activator rail were NOT in the code (only
+  comparator/dispenser/dropper/hopper). Four of the five land this
+  round; activator rail is deferred (no rail/minecart system in the
+  engine — riding arrives with horses instead).
+- **Audit finding #3 — the "Wither Spawn Egg" (egg index 19) stub**:
+  `from_egg(19)` has no arm → falls through to Chicken (the wither is
+  a boss entity outside MobSystem; pre-existing E2 behavior, now
+  documented at the from_egg NOTE).
+- The user's 7 reference screenshots were VLM-reviewed (Options /
+  Video Settings / Resource Packs / Select World / jungle F3 / creative
+  inventory / survival inventory) — they inform the still-open visual
+  priority list (GUI scale, #C6C6C6 theme, 176-wide panels, armor
+  slots + player model, F3 right column) in VERIFICATION-REPORT.md.
+
+### Implemented
+
+- **Blocks/items (37 new ids, BLOCK_COUNT 163→200, STATE_COUNT
+  317→400)**: Block of Coal (fuel 16000 t = 80 items, 9↔ coal
+  crafts); Block of Quartz (4 quartz) + Chiseled Quartz (picker-only —
+  no quartz-slab system) + Quartz Pillar (2 blocks → 2 pillars);
+  16 stained terracotta (vanilla dye order); 5 carpets (the engine
+  wool palette, 1/16-block non-solid overlay adaptation); Hay Bale;
+  Daylight Sensor; Trapped Chest; Light/Heavy Weighted Pressure
+  Plates; Block of Redstone; Nether Quartz item (the quartz-ore drop);
+  Lead; Saddle; 3 spawn eggs (horse/donkey/mule at ids 197..=199,
+  kinds 20..=22 — the legacy 124..=143 egg window was full).
+- **POWER-state architecture (the round's key design fix)**: the
+  first cut fed signals straight into wire states — the stateless
+  wire re-derivation ERASED them on the next tick (caught by the new
+  unit tests). Redesigned the vanilla way: sensor power 1..15
+  (states 355..=369), trapped-chest OPEN (354), plate powers
+  (370..=399) live in blockstates; `power_at`/`direct_feed` read them
+  as real sources. Wire re-derivation now agrees by construction.
+- **Horse/Donkey/Mule** (mobs.rs): per-instance stats (health 15–30,
+  speed 0.1125–0.3375 internal / donkey-mule 0.175, jump 0.4–1.0,
+  20% babies); temper taming (threshold 0–99 at first mount, +5 per
+  failed mount); saddle gates control; ridden mount's AI suspends
+  (physics still ticks); the ride drive steers at attr×43.17 b/s with
+  the jump launch velocity solved by binary search over the engine
+  integrator to hit the jump-strength clear height (the quadratic fit
+  through the three VERIFIED anchors 0.4→1.153 / 0.7→3.124 /
+  1.0→5.9197); breeding via golden apple on two tamed adults (foal
+  stats via the VERIFIED 5-step bred formula; horse×donkey → mule);
+  hay feeds/heals; plains herds (5/46 ≈ 1/9) + savanna (1/52 ≈ 1/26
+  split horse/donkey), herds 2–6; drops 0–2 leather + 1–3 XP + the
+  saddle when equipped.
+- **Lead**: item; right-click a mob → leash (1.16.5 stretch max 10
+  blocks — version-scoped: the current wiki's 12 is the 2025
+  "Chase the Skies" buff); right-click a fence → knot anchor; pulled
+  toward the anchor past 4 blocks; breaks at 10 + drops the item;
+  re-use on the mob unleashes.
+- **Redstone components**: daylight sensor (sky light × day-phase
+  brightness, self-rescheduling every 20 gt); trapped chest (1 viewer
+  while the GUI is open, back to 0 on close — wired at open/close);
+  weighted plates (entity-count sweep every 10 gt: light = count,
+  heavy = ceil(count/10), max 15); block of redstone (always-on weak
+  15 in power_at + direct_feed).
+- **Superflat** (audit finding #1): TerrainGen flat mode + the Gen
+  job carries the flag + the WORLD TYPE button in world-create now
+  cycles NORMAL/SUPERFLAT (was a disabled "NORMAL" stub). Classic
+  preset: bedrock + 2 dirt + grass at y=3, plains, no structures
+  (JE village/stronghold generation disclosed as out of scope).
+- **Badlands terracotta banding**: the surface + top-16 strata band
+  through the stained colors by absolute y with a per-seed offset
+  (vanilla's exact seed-shifted layer table is unpublished —
+  deterministic clean-room banding, disclosed).
+- **Hay fall-damage reduction**: landing on a hay bale takes 20% of
+  the normal damage (player.rs landing site).
+- **WGSL mesh LUT resync** (twice — once per STATE_COUNT change):
+  L_SB/L_FL/L_TC/L_ST = 0/400/600/800, sb clamp 399, fl clamp 199;
+  `wgsl_lut_offsets_match_rust` green.
+- 29 new clean-room art tiles (e3_art.rs); carpets reuse the wool
+  tiles; picker widened to 15 columns (164 entries, 668×514 grid).
+
+### Verified
+
+- Live this round: coal block 16000 t/80 items (w/Block_of_Coal);
+  quartz family + recipes (w/Block_of_Quartz, w/Quartz_Pillar, a
+  2nd source for the output count, w/Chiseled_Quartz_Block,
+  w/Nether_Quartz_Ore drops + 2–5 XP); carpets 2 wool → 3 + 1/16
+  hitbox (w/Carpet 13w17a/14w29a); terracotta 16 colors + badlands
+  (w/Terracotta, w/Badlands); hay −80% fall damage (w/Hay_Bale);
+  daylight recipe + signal factors (w/Daylight_Detector); trapped
+  chest recipe + viewers-signal (w/Trapped_Chest); plate formulas
+  (w/Light_Weighted_Pressure_Plate + the heavy page); redstone block
+  weak-15 (w/Block_of_Redstone); horse stats/taming/breeding/spawning
+  /drops (w/Horse §Health/§Movement_speed/§Jump_strength/§Taming/
+  §Bred_values/§Spawning/§Drops, w/Donkey, w/Mule); lead 10 blocks in
+  1.16.5 (w/Lead + §History — the version-scoping catch); superflat
+  classic preset (w/Superflat); horse 0–2 leather (search round).
+- Suite: **396/396 green** (375 → +21: registry roundtrips + counts +
+  picker, coal-block fuel + burn-outpaces-output, 6 recipe families,
+  day-brightness curve, plate formulas, redstone-block wire power,
+  daylight-sensor day/night, trapped-chest open/close, superflat
+  layers, badlands banding, horse spawn stats, temper taming, saddle
+  gating, bred-stat formula, jump-clear anchors, foal kind rules,
+  ridden-AI suspension). wasm32 lib target clean in both feature
+  configs; zero todo!/unimplemented!/unsafe.
+- Environment note: this container cannot run the audio backend
+  (alsa-sys needs missing system headers) — native build/test runs
+  `--no-default-features` (audio is feature-gated; no test coverage
+  lost). Browser E2E for the riding/lead flows rides the next
+  wasm-bundle round (CI auto-rebuilds it on push).
+
+### Placeholder-unresolved
+
+- **Quartz pillar output count 2**: the wiki recipe table shows
+  "Block of Quartz 2" (count column unreadable in the text extract);
+  a second live source states "produces 2 Quartz Pillars per craft" —
+  implemented as 2 with both citations, flagged as lightly-sourced.
+- **Badlands band sequence**: vanilla's per-seed layer table is not
+  published; the clean-room orange-dominant strata sequence is
+  deterministic and disclosed as an approximation.
+
+### Deferred (with disclosure in code + here)
+
+- **Activator Rail** (1.5): the engine has no rail/minecart system
+  (riding ships with horses this bracket); riding a later
+  transport bracket if rails land.
+- **Scoreboard** (1.5): its whole interface is the command system —
+  the engine has no commands yet (74 = 0 implemented, the evolution
+  table's own row).
+- **Name Tag** (1.6): requires anvil renaming (the anvil GUI +
+  damageable-items deferral from E2).
+- **Horse armor** (iron/gold/diamond): no armor items in the engine.
+- **Donkey/mule chest storage** (15 slots, VERIFIED number recorded):
+  needs chest-item + per-mob container UI; rides the container pass.
+- **Chiseled quartz + hay bale recipes** (2 quartz slabs / 9 wheat):
+  no quartz-slab model, no wheat/farming.
+- **Stained terracotta crafting** (terracotta + dye): no dye system —
+  Badlands banding is the acquisition path.
+- **Lead recipe** (4 string + 1 slimeball): no slimeballs (no slimes);
+  picker + item exist.
+- Vanilla horse traits (jump-charge hold, saddle-less steering
+  prohibition is faithful; the rider's +7-block safe-fall rides the
+  mount's landing instead — disclosed in game.rs).
+
+### Known issues & regressions
+
+- None observed: 396/396, wasm clean, no new clippy lints beyond the
+  pre-existing set (the vc-pack `never_loop` + pre-existing unused
+  warnings). The first-cut E3 redstone design (feeding wires
+  directly) was caught and redesigned BEFORE commit by the new
+  unit tests — the POWER-state architecture is the vanilla pattern.

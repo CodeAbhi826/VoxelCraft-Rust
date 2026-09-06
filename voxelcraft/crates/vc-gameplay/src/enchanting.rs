@@ -426,6 +426,10 @@ pub fn ore_xp(block: u8) -> i32 {
         REDSTONE_ORE => 3, // 1..5
         DIAMOND_ORE => 5,  // 3..7
         EMERALD_ORE => 5,  // 3..7
+        // Phase E3 (VERIFIED live 2026-09-06, minecraft.wiki/w/
+        // Nether_Quartz_Ore: "2–5 experience" — midpoint, the engine's
+        // deterministic-ore convention)
+        NETHER_QUARTZ_ORE => 3, // 2..5
         _ => 0,
     }
 }

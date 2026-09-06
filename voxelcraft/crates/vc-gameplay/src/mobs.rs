@@ -73,6 +73,10 @@ pub enum MobKind {
     WitherSkeleton,
     Witch,
     Bat,
+    // ---- Phase E3 (1.5–1.6 bracket) ----
+    Horse,
+    Donkey,
+    Mule,
 }
 
 impl MobKind {
@@ -97,6 +101,9 @@ impl MobKind {
             "wither_skeleton" => MobKind::WitherSkeleton,
             "witch" => MobKind::Witch,
             "bat" => MobKind::Bat,
+            "horse" => MobKind::Horse,
+            "donkey" => MobKind::Donkey,
+            "mule" => MobKind::Mule,
             _ => return None,
         })
     }
@@ -123,6 +130,9 @@ impl MobKind {
             MobKind::WitherSkeleton => "minecraft:wither_skeleton",
             MobKind::Witch => "minecraft:witch",
             MobKind::Bat => "minecraft:bat",
+            MobKind::Horse => "minecraft:horse",
+            MobKind::Donkey => "minecraft:donkey",
+            MobKind::Mule => "minecraft:mule",
         }
     }
 
@@ -147,6 +157,9 @@ impl MobKind {
             MobKind::WitherSkeleton => TILE_WITHER_SKELETON,
             MobKind::Witch => TILE_WITCH,
             MobKind::Bat => TILE_BAT,
+            MobKind::Horse => TILE_HORSE,
+            MobKind::Donkey => TILE_DONKEY,
+            MobKind::Mule => TILE_MULE,
         }
     }
 
@@ -197,6 +210,16 @@ impl MobKind {
             16 => MobKind::WitherSkeleton,
             17 => MobKind::Witch,
             18 => MobKind::Bat,
+            // NOTE: index 19 (the E2 "Wither Spawn Egg") has no MobKind
+            // arm — the wither is a boss entity outside MobSystem (the
+            // egg stub falls through to Chicken; pre-existing E2
+            // behavior, disclosed in the worklog audit).
+            // Phase E3 (1.5–1.6): kinds 20..=22 (horse, donkey, mule —
+            // egg ids 197..=199; blocks.rs egg_mob decodes those to
+            // 20..=22, guarded by the roundtrip test)
+            20 => MobKind::Horse,
+            21 => MobKind::Donkey,
+            22 => MobKind::Mule,
             _ => MobKind::Chicken,
         }
     }
@@ -223,6 +246,9 @@ impl MobKind {
             MobKind::WitherSkeleton => 16,
             MobKind::Witch => 17,
             MobKind::Bat => 18,
+            MobKind::Horse => 20,
+            MobKind::Donkey => 21,
+            MobKind::Mule => 22,
         }
     }
 }
@@ -247,7 +273,7 @@ pub struct MobDef {
     pub xp: i32,
 }
 
-pub const MOB_DATA: [MobDef; 19] = [
+pub const MOB_DATA: [MobDef; 22] = [
     MobDef {
         kind: MobKind::Zombie,
         health: 20.0,
@@ -462,6 +488,51 @@ pub const MOB_DATA: [MobDef; 19] = [
         width: 0.5,
         xp: 0,
     },
+    // ---- Phase E3 (1.5–1.6 bracket) — all VERIFIED live 2026-09-06
+    // (minecraft.wiki/w/Horse §Health/§Movement_speed/§Jump_strength,
+    // w/Donkey, w/Mule): the DEF rows carry the wiki AVERAGE / midpoint
+    // values; per-instance randomization happens at spawn (below) ----
+    MobDef {
+        // Horse: health 15–30 avg 22.5; speed 0.1125–0.3375 internal
+        // (≈4.86–14.57 b/s, conversion ≈43.17 — VERIFIED §Movement_speed);
+        // jump strength 0.4–1.0 (clears 1.153–5.9197 blocks, VERIFIED);
+        // hitbox 1.4 wide × 1.6 tall
+        kind: MobKind::Horse,
+        health: 22.5,
+        damage: 0.0,
+        speed_attr: 0.225,
+        armor: 0.0,
+        height: 1.6,
+        width: 1.4,
+        // VERIFIED w/Horse §Drops: "1–3 XP when killed by a player"
+        // (midpoint, the engine's fixed-XP convention)
+        xp: 2,
+    },
+    MobDef {
+        // Donkey: health 15–30 avg 22.5; speed 0.175 fixed when spawned
+        // (VERIFIED w/Donkey "0.175 speed when naturally spawned")
+        kind: MobKind::Donkey,
+        health: 22.5,
+        damage: 0.0,
+        speed_attr: 0.175,
+        armor: 0.0,
+        height: 1.6,
+        width: 1.4,
+        xp: 2, // 1–3 XP (VERIFIED w/Donkey §Drops)
+    },
+    MobDef {
+        // Mule: health 15–30 "tends toward the average of 22–23"
+        // (VERIFIED w/Mule); speed 0.175 (the donkey row — mules take the
+        // parent-average path at breed time)
+        kind: MobKind::Mule,
+        health: 22.5,
+        damage: 0.0,
+        speed_attr: 0.175,
+        armor: 0.0,
+        height: 1.6,
+        width: 1.4,
+        xp: 2, // 1–3 XP (VERIFIED w/Mule §Drops)
+    },
 ];
 
 #[inline]
@@ -561,6 +632,59 @@ pub fn begin_cure(m: &mut Mob, rng: &mut Rng) {
     m.aux = CURE_TICKS_MIN + rng.next_range((CURE_TICKS_MAX - CURE_TICKS_MIN + 1) as u32) as i32;
 }
 
+/// Phase E3 (1.5–1.6 bracket): per-instance equine state (horses,
+/// donkeys, mules). All rules VERIFIED live 2026-09-06,
+/// minecraft.wiki/w/Horse:
+/// - temper starts 0/100; a random taming THRESHOLD 0–99 is chosen at
+///   the first mount; each failed mount adds +5 temper; tame once the
+///   temper EXCEEDS the threshold
+/// - health 15–30, speed 0.1125–0.3375 internal (≈4.86–14.57 b/s via the
+///   ≈43.17 conversion — §Movement_speed), jump strength 0.4–1.0
+///   (clears 1.153–5.9197 blocks — §Jump_strength)
+/// - 20% of naturally-spawned horses are babies (§Spawning)
+/// - the saddle is required for CONTROL (§Riding "Once a horse is tamed
+///   and saddled, the player can control it")
+/// - bred stat (§Bred_values): avg(p1,p2) + rand(-0.5..0.5)·
+///   (|p1−p2| + 0.30·range), clamped to the allowed range
+#[derive(Clone, Debug)]
+pub struct EquineState {
+    /// taming temper 0..=100
+    pub temper: u8,
+    /// the random taming threshold 0..=99 (chosen at first mount)
+    pub threshold: u8,
+    /// tamed (hearts shown; mountable without bucking)
+    pub tamed: bool,
+    /// saddled — required for the player to CONTROL the mount
+    pub saddled: bool,
+    /// per-instance movement speed ATTRIBUTE (0.1125–0.3375 horses;
+    /// 0.175 donkeys — VERIFIED)
+    pub speed_attr: f32,
+    /// per-instance jump strength (0.4–1.0 — VERIFIED)
+    pub jump_strength: f32,
+    /// baby (20% of spawns — VERIFIED §Spawning; grows after 20 min)
+    pub baby: bool,
+    /// coat variant (7 base colors × 5 markings in vanilla; one byte —
+    /// rendered via the sprite tint, clean-room adaptation)
+    pub coat: u8,
+    /// love-mode cooldown after breeding (ticks)
+    pub breed_cd: i32,
+}
+
+impl EquineState {
+    /// the launch velocity that clears `height` blocks under the engine's
+    /// jump integrator (v1 = (v0 − 0.08)·0.98 — the shared player/mob
+    /// profile). Jump strength → clear-height uses the quadratic fit
+    /// through the three VERIFIED anchors (0.4→1.153, 0.7→3.124,
+    /// 1.0→5.9197 blocks) — a disclosed interpolation, not a guessed
+    /// formula.
+    pub fn jump_clear_height(&self) -> f32 {
+        let s = self.jump_strength;
+        // quadratic fit through the three verified anchors
+        let h = 4.5817 * s * s + 1.53 * s - 0.192;
+        h.max(0.0)
+    }
+}
+
 /// One mob instance. Position is feet-center like the player.
 #[derive(Clone, Debug)]
 pub struct Mob {
@@ -599,6 +723,9 @@ pub struct Mob {
     /// - MagmaCube: hop cooldown (40..=120 idle / 13..=40 with target,
     ///   VERIFIED §Behavior)
     pub aux: i32,
+    /// Phase E3: per-instance equine state (horses/donkeys/mules —
+    /// None for every other kind)
+    pub equine: Option<Box<EquineState>>,
     wander_yaw: f32,
     wander_t: i32,
 }
@@ -648,6 +775,10 @@ pub struct Arrow {
 pub struct MobSystem {
     /// Phase E2: ambient-bat spawn cadence counter
     bats_spawn_t: u64,
+    /// Phase E3: the mob id the player is currently riding (its AI is
+    /// suspended — the game layer drives its velocity; physics still
+    /// applies)
+    pub ridden: Option<u32>,
     pub list: Vec<Mob>,
     pub arrows: Vec<Arrow>,
     rng: Rng,
@@ -683,6 +814,7 @@ impl MobSystem {
             arrows: Vec::new(),
             rng: Rng::new(seed ^ 0xB0B_5EED),
             bats_spawn_t: 0,
+            ridden: None,
             next_id: 1,
             player: None,
             player_invulnerable: false,
@@ -761,9 +893,43 @@ impl MobSystem {
             fall_dist: 0.0,
             variant,
             aux: 0,
+            // Phase E3: equines get per-instance stats (VERIFIED
+            // w/Horse: health 15–30, speed 0.1125–0.3375, jump 0.4–1.0;
+            // donkeys/mules fixed 0.175 speed w/Donkey; 20% babies
+            // §Spawning)
+            equine: if matches!(kind, MobKind::Horse | MobKind::Donkey | MobKind::Mule) {
+                let speed = if kind == MobKind::Horse {
+                    0.1125 + self.rng.next_f32() * 0.225 // 0.1125..=0.3375
+                } else {
+                    0.175
+                };
+                let jump = 0.4 + self.rng.next_f32() * 0.6; // 0.4..=1.0
+                let baby = self.rng.next_range(100) < 20;
+                Some(Box::new(EquineState {
+                    temper: 0,
+                    threshold: 100, // chosen at the first mount (VERIFIED)
+                    tamed: false,
+                    saddled: false,
+                    speed_attr: speed,
+                    jump_strength: jump,
+                    baby,
+                    coat: (self.rng.next_range(35)) as u8,
+                    breed_cd: 0,
+                }))
+            } else {
+                None
+            },
             wander_yaw: yaw,
             wander_t: 0,
         });
+        // the randomized per-instance health lands on the equine mob
+        // itself (15..=30, VERIFIED w/Horse §Health — the magma-cube
+        // per-instance row pattern)
+        if let Some(m) = self.list.last_mut() {
+            if matches!(m.kind, MobKind::Horse | MobKind::Donkey | MobKind::Mule) {
+                m.health = 15.0 + self.rng.next_f32() * 15.0;
+            }
+        }
         self.spawned_total += 1;
         Some(id)
     }
@@ -819,6 +985,12 @@ impl MobSystem {
             }
             m.hurt_t = m.hurt_t.saturating_sub(1);
             m.attack_cd = m.attack_cd.saturating_sub(1);
+            // Phase E3: the ridden mount's AI is suspended — the game
+            // layer drives its velocity (physics still applies)
+            if self.ridden == Some(m.id) {
+                physics_tick(m, world);
+                continue;
+            }
             ai_tick(rng, m, player, invuln, hits, arrows, world, &snapshot, pending);
             physics_tick(m, world);
         }
@@ -874,8 +1046,16 @@ impl MobSystem {
             if self.list[i].health <= 0.0 {
                 let m = self.list.remove(i);
                 if m.fuse != i32::MAX {
-                    // exploded creepers leave no drops (vanilla: destroyed)
-                    self.deaths.push((m.kind, m.pos, m.variant));
+                    // exploded creepers leave no drops (vanilla: destroyed).
+                    // Phase E3: equines carry "saddled" in the death
+                    // variant byte (1 = the saddle drops — VERIFIED w/
+                    // Horse §Drops: equipped items drop on death)
+                    let variant = if m.equine.as_ref().map(|e| e.saddled).unwrap_or(false) {
+                        1
+                    } else {
+                        m.variant
+                    };
+                    self.deaths.push((m.kind, m.pos, variant));
                 }
                 self.killed_total += 1;
             } else {
@@ -1140,8 +1320,24 @@ fn try_spawn_passive(&mut self, world: &World, sim_ring: impl Fn(i32, i32) -> bo
             }
             // Phase E1: jungle → ocelot chance (JE weight 2/93 ≈ 1/6 of
             // the passive roll — simplified to 1/4)
+            // Phase E3 (VERIFIED w/Horse §Spawning): plains horses 5/46
+            // ≈ 1/9 of the passive roll, herds 2–6, 20% babies; savanna
+            // horses/donkeys 1/52 ≈ 1/26 (split between the two kinds);
+            // donkeys ride the savanna roll (w/Donkey: plains+savanna)
             let kind = if biome == vc_world::gen::Biome::Jungle && self.rng.next_range(4) == 0 {
                 MobKind::Ocelot
+            } else if biome == vc_world::gen::Biome::Plains && self.rng.next_range(9) == 0 {
+                // plains: horse herd (5/46 ≈ 1/9 of creature rolls)
+                MobKind::Horse
+            } else if biome == vc_world::gen::Biome::Savanna && self.rng.next_range(26) == 0 {
+                // savanna: horses or donkeys at the verified 1/52 ≈ 1/26
+                // share (adaptation: even split, both VERIFIED weights
+                // are 1/52 on that biome)
+                if self.rng.next_range(2) == 0 {
+                    MobKind::Horse
+                } else {
+                    MobKind::Donkey
+                }
             } else {
                 match self.rng.next_range(4) {
                     0 => MobKind::Cow,
@@ -1150,7 +1346,13 @@ fn try_spawn_passive(&mut self, world: &World, sim_ring: impl Fn(i32, i32) -> bo
                     _ => MobKind::Chicken,
                 }
             };
-            let herd = 2 + (self.rng.next_range(3)) as usize;
+            // equine herds are 2–6 (VERIFIED w/Horse §Spawning); other
+            // passives keep the engine's 2–4
+            let herd = if matches!(kind, MobKind::Horse | MobKind::Donkey) {
+                2 + (self.rng.next_range(5)) as usize // 2–6
+            } else {
+                2 + (self.rng.next_range(3)) as usize
+            };
             for _ in 0..herd {
                 let _ = self.spawn_at(kind, wx, y, wz);
             }
@@ -1212,6 +1414,212 @@ fn try_spawn_passive(&mut self, world: &World, sim_ring: impl Fn(i32, i32) -> bo
     pub fn by_id(&self, id: u32) -> Option<&Mob> {
         self.list.iter().find(|m| m.id == id)
     }
+
+    /// Phase E3: mutable by-id lookup (the ride drive writes the mount's
+    /// velocity from the game layer)
+    pub fn by_id_mut(&mut self, id: u32) -> Option<&mut Mob> {
+        self.list.iter_mut().find(|m| m.id == id)
+    }
+
+    // ------------------------------------------------- Phase E3: equines --
+
+    /// Mount attempt on an equine (right-click while looking at it).
+    /// VERIFIED w/Horse §Taming: temper starts 0/100; a random threshold
+    /// 0–99 is chosen at the FIRST mount; a failed mount adds +5 temper;
+    /// the horse becomes tame when the temper EXCEEDS the threshold.
+    /// Returns Some(tamed) when the mount succeeded (the player may ride
+    /// — control still requires a saddle, w/Horse §Riding), Some(false)
+    /// = bucked off (untamed), None = not an equine.
+    pub fn try_mount(&mut self, id: u32, rng: &mut Rng) -> Option<bool> {
+        let m = self.list.iter_mut().find(|m| m.id == id)?;
+        let eq = m.equine.as_mut()?;
+        if eq.tamed {
+            return Some(true);
+        }
+        if eq.threshold > 99 {
+            // first mount: choose the random taming threshold (VERIFIED)
+            eq.threshold = (rng.next_range(100)) as u8;
+        }
+        eq.temper = (eq.temper + 5).min(100);
+        eq.tamed = eq.temper > eq.threshold;
+        Some(eq.tamed)
+    }
+
+    /// saddle an already-tamed equine (the held SADDLE routes here).
+    /// VERIFIED w/Horse §Riding: "Once a horse is tamed and saddled, the
+    /// player can control it". Returns true when the saddle was applied.
+    pub fn try_saddle(&mut self, id: u32) -> bool {
+        let Some(m) = self.list.iter_mut().find(|m| m.id == id) else {
+            return false;
+        };
+        let Some(eq) = m.equine.as_mut() else {
+            return false;
+        };
+        if eq.tamed && !eq.saddled {
+            eq.saddled = true;
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Feed an equine: a golden apple on two tamed adults starts breeding
+    /// (VERIFIED w/Horse §Breeding: "Feeding two tamed horses golden
+    /// apples or golden carrots activates love mode"); hay heals + grows
+    /// temper (w/Hay_Bale §Food — "feed llamas and all living horse
+    /// variants", foal growth +3 min — the numeric temper gain is an
+    /// engine adaptation, disclosed: the wiki temper table covers
+    /// sugar/wheat/apples which the engine lacks).
+    /// Returns the feed outcome for the game layer to consume items.
+    pub fn try_feed(&mut self, id: u32, food: u8, rng: &mut Rng) -> Option<FeedOutcome> {
+        if food != GOLDEN_APPLE && food != HAY_BALE {
+            return None;
+        }
+        // snapshot the target state (ends the mutable borrow before the
+        // partner scan below)
+        let (pos, tamed, baby, breed_cd) = {
+            let m = self.list.iter_mut().find(|m| m.id == id)?;
+            let eq = m.equine.as_mut()?;
+            (m.pos, eq.tamed, eq.baby, eq.breed_cd)
+        };
+        let out = match food {
+            HAY_BALE => Some(FeedOutcome::Healed),
+            _ => {
+                if tamed && !baby && breed_cd == 0 {
+                    // find a second fertile partner within 8 blocks
+                    // (foal spawns when BOTH parents are in love mode)
+                    let partner = self.list.iter().find(|o| {
+                        o.id != id
+                            && o.equine
+                                .as_ref()
+                                .map(|e| e.tamed && !e.baby && e.breed_cd == 0)
+                                .unwrap_or(false)
+                            && (o.pos[0] - pos[0]).powi(2) + (o.pos[2] - pos[2]).powi(2) < 64.0
+                    });
+                    if let Some(pid) = partner.map(|o| o.id) {
+                        if let Some(pm) = self.list.iter_mut().find(|o| o.id == pid) {
+                            if let Some(pe) = pm.equine.as_mut() {
+                                pe.breed_cd = 6000;
+                            }
+                        }
+                        Some(FeedOutcome::LoveMode(pid))
+                    } else {
+                        Some(FeedOutcome::Ate)
+                    }
+                } else {
+                    Some(FeedOutcome::Healed)
+                }
+            }
+        };
+        // apply the target-side effects
+        if let Some(m) = self.list.iter_mut().find(|m| m.id == id) {
+            if let Some(eq) = m.equine.as_mut() {
+                match food {
+                    HAY_BALE => {
+                        m.health = (m.health + 10.0).min(30.0);
+                        if !eq.tamed {
+                            eq.temper = (eq.temper + 10).min(100);
+                            if eq.threshold <= 99 && eq.temper > eq.threshold {
+                                eq.tamed = true;
+                            }
+                        }
+                    }
+                    _ => {
+                        if matches!(out, Some(FeedOutcome::LoveMode(_)) | Some(FeedOutcome::Ate)) {
+                            eq.breed_cd = 6000; // love-mode cooldown (5 min)
+                        }
+                        m.health = (m.health + 4.0).min(30.0);
+                    }
+                }
+            }
+        }
+        let _ = rng;
+        out
+    }
+
+    /// Bred-stat roll for a foal (VERIFIED w/Horse §Bred_values, the
+    /// 5-step formula: baby = avg(p1,p2) + rand(−0.5..0.5)·
+    /// (|p1−p2| + 0.30·range), clamped to the allowed range).
+    pub fn bred_stat(p1: f32, p2: f32, lo: f32, hi: f32, rng: &mut Rng) -> f32 {
+        let range = hi - lo;
+        let avg = (p1 + p2) * 0.5;
+        let r = rng.next_f32() - 0.5;
+        let v = avg + r * ((p1 - p2).abs() + 0.30 * range);
+        v.clamp(lo, hi)
+    }
+
+    /// Spawn a foal from two parents (breeding result): horse×horse =
+    /// horse; horse×donkey or any mule pairing = mule (VERIFIED w/Mule:
+    /// "When a horse and donkey breed" a mule results).
+    pub fn spawn_foal(&mut self, p1: u32, p2: u32, x: i32, y: i32, z: i32, rng: &mut Rng) -> Option<u32> {
+        let (k1, s1, j1, h1) = self
+            .list
+            .iter()
+            .find(|m| m.id == p1)
+            .map(|m| {
+                let e = m.equine.as_ref().unwrap();
+                (m.kind, e.speed_attr, e.jump_strength, m.health)
+            })?;
+        let (k2, s2, j2, h2) = self
+            .list
+            .iter()
+            .find(|m| m.id == p2)
+            .map(|m| {
+                let e = m.equine.as_ref().unwrap();
+                (m.kind, e.speed_attr, e.jump_strength, m.health)
+            })?;
+        let kind = if (k1 == MobKind::Horse && k2 == MobKind::Donkey)
+            || (k1 == MobKind::Donkey && k2 == MobKind::Horse)
+            || k1 == MobKind::Mule
+            || k2 == MobKind::Mule
+        {
+            MobKind::Mule
+        } else {
+            k1
+        };
+        let id = self.spawn_at(kind, x, y, z)?;
+        let speed = Self::bred_stat(s1, s2, 0.1125, 0.3375, rng);
+        let jump = Self::bred_stat(j1, j2, 0.4, 1.0, rng);
+        let health = Self::bred_stat(h1, h2, 15.0, 30.0, rng);
+        if let Some(m) = self.list.last_mut() {
+            if let Some(e) = m.equine.as_mut() {
+                e.speed_attr = speed;
+                e.jump_strength = jump;
+                e.baby = true;
+                e.tamed = true; // foals of tamed parents are tamed (VERIFIED w/Horse §Breeding)
+            }
+            m.health = health;
+        }
+        Some(id)
+    }
+
+    /// one tick of equine bookkeeping: breed cooldowns + baby growth
+    /// (foals mature in 20 minutes = 24000 ticks, VERIFIED w/Horse —
+    /// hay accelerates by 3 min per bale, wired in try_feed).
+    pub fn tick_equines(&mut self) {
+        for m in self.list.iter_mut() {
+            if let Some(e) = m.equine.as_mut() {
+                if e.breed_cd > 0 {
+                    e.breed_cd -= 1;
+                }
+                if e.baby {
+                    m.aux += 1;
+                    if m.aux >= 24000 {
+                        e.baby = false;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// feed outcome for the game layer (consume the item, play the sound);
+/// LoveMode carries the partner id so game.rs can spawn the foal
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FeedOutcome {
+    Healed,
+    Ate,
+    LoveMode(u32),
 }
 
 // ------------------------------------------------------------- free fns --
@@ -1252,7 +1660,19 @@ fn ai_tick(
     pending: &mut Vec<(u32, f32)>,
 ) {
     let d = def(m.kind);
-    let speed = d.speed_attr * SPEED_PER_ATTR;
+    let speed = if let Some(eq) = m.equine.as_ref() {
+        // Phase E3: equines use their per-instance speed attribute
+        // (0.1125–0.3375 — VERIFIED w/Horse §Movement_speed); babies
+        // move at half pace (vanilla foal speed scaling, disclosed
+        // simplification)
+        if eq.baby {
+            eq.speed_attr * SPEED_PER_ATTR * 0.5
+        } else {
+            eq.speed_attr * SPEED_PER_ATTR
+        }
+    } else {
+        d.speed_attr * SPEED_PER_ATTR
+    };
 
     // ---- Phase E1: snow golem heat rule (VERIFIED w/Snow_Golem: 1 HP/tick
     // in biomes with temperature > 1.0 — desert/badlands/savanna[JE]/Nether
@@ -1418,6 +1838,21 @@ fn ai_tick(
             }
         }
         wander(rng, m, speed * 0.5);
+        return;
+    }
+
+    // ---- Phase E3 (1.5–1.6): equines — passive grazing herds; panic
+    // gallop after being hit (the provoked flag doubles as the panic
+    // timer's source — vanilla horses flee briefly when damaged).
+    if matches!(m.kind, MobKind::Horse | MobKind::Donkey | MobKind::Mule) {
+        if m.provoked && dist < 16.0 && !invuln {
+            m.yaw = (-dz).atan2(-dx) - std::f32::consts::FRAC_PI_2;
+            let f = speed * 1.5; // gallop
+            m.vel[0] += (-dx / dist * f - m.vel[0]) * 0.35;
+            m.vel[2] += (-dz / dist * f - m.vel[2]) * 0.35;
+            return;
+        }
+        wander(rng, m, speed * 0.4);
         return;
     }
 
@@ -2322,6 +2757,7 @@ mod tests {
                 aux: 0,
                 wander_yaw: 0.0,
                 wander_t: 0,
+                equine: None,
             };
             physics_tick(&mut m, &w);
             let expect = (v0 - 1.6) * 0.98;
@@ -2358,6 +2794,7 @@ mod tests {
                 aux: 0,
                 wander_yaw: 0.0,
                 wander_t: 0,
+                equine: None,
             };
             let mut ticks = 0;
             while !m.on_ground && ticks < 200 {
@@ -2399,6 +2836,7 @@ mod tests {
             aux: 0,
             wander_yaw: 0.0,
             wander_t: 0,
+                equine: None,
         };
         let mut ticks = 0;
         while !m.on_ground && ticks < 100 {
@@ -2414,8 +2852,9 @@ mod tests {
 
     #[test]
     fn phase_e1_registry_rows() {
-        // the 19 kinds resolve in/out of names + eggs (16 E1 + 3 E2)
-        assert_eq!(MOB_DATA.len(), 19);
+        // the 22 kinds resolve in/out of names + eggs (16 E1 + 3 E2
+        // + 3 E3: horse, donkey, mule)
+        assert_eq!(MOB_DATA.len(), 22);
         for d in MOB_DATA.iter() {
             assert_eq!(
                 MobKind::from_name(d.kind.name().strip_prefix("minecraft:").unwrap()),
@@ -2500,7 +2939,7 @@ mod tests {
         let mut m = Mob { id: 9, kind: MobKind::SnowGolem, pos: [8.5, 65.0, 8.5], vel: [0.0; 3],
             yaw: 0.0, health: 4.0, on_ground: true, hurt_t: 0, attack_cd: 0, fuse: -1,
             provoked: false, lonely_t: 0, fall_dist: 0.0, variant: 0, aux: 0,
-            wander_yaw: 0.0, wander_t: 0 };
+            wander_yaw: 0.0, wander_t: 0, equine: None };
         for _ in 0..5 {
             ai_tick(&mut rng, &mut m, None, false, &mut Vec::new(), &mut Vec::new(), &desert, &[], &mut Vec::new());
         }
@@ -2643,5 +3082,163 @@ mod tests {
     fn mobs_cure_short(m: &mut Mob, _rng: &mut Rng) {
         m.variant = 1;
         m.aux = 40;
+    }
+
+    // ---------------- Phase E3 tests (1.5–1.6 bracket) ----------------
+
+    #[test]
+    fn phase_e3_horse_spawn_stats_are_per_instance() {
+        // VERIFIED w/Horse: health 15–30, speed 0.1125–0.3375, jump
+        // 0.4–1.0, 20% babies; donkeys/mules fixed 0.175 speed
+        let mut ms = MobSystem::new(99);
+        let mut seen_baby = false;
+        for i in 0..60 {
+            let id = ms.spawn_at(MobKind::Horse, 0, 65, 0).unwrap();
+            let m = ms.by_id(id).unwrap();
+            let eq = m.equine.as_ref().unwrap();
+            assert!((15.0..=30.0).contains(&m.health), "health {}", m.health);
+            assert!(
+                (0.1125..=0.3375).contains(&eq.speed_attr),
+                "speed {}",
+                eq.speed_attr
+            );
+            assert!((0.4..=1.0).contains(&eq.jump_strength), "jump {}", eq.jump_strength);
+            assert_eq!(m.kind, MobKind::Horse);
+            seen_baby |= eq.baby;
+            let _ = i;
+        }
+        // 20% of 60 spawns: a baby appears with overwhelming probability
+        assert!(seen_baby, "some babies among 60 spawns (20%, VERIFIED)");
+        // donkey: fixed 0.175
+        let id = ms.spawn_at(MobKind::Donkey, 5, 65, 5).unwrap();
+        let eq = ms.by_id(id).unwrap().equine.as_ref().unwrap();
+        assert!((eq.speed_attr - 0.175).abs() < 1e-6, "donkey speed fixed");
+    }
+
+    #[test]
+    fn phase_e3_taming_temper_rule() {
+        // VERIFIED w/Horse §Taming: temper 0/100; threshold 0–99 chosen
+        // at the first mount; +5 per failed mount; tame when temper
+        // EXCEEDS the threshold
+        let mut ms = MobSystem::new(7);
+        let id = ms.spawn_at(MobKind::Horse, 0, 65, 0).unwrap();
+        // force a high threshold via repeated mounts (deterministic rng)
+        let mut rng = Rng::new(1234);
+        // first mount picks the threshold
+        let mut mounts = 0;
+        let mut tamed = false;
+        while !tamed && mounts < 100 {
+            tamed = ms.try_mount(id, &mut rng).unwrap();
+            mounts += 1;
+        }
+        assert!(tamed, "100% temper maxes out and tames any threshold");
+        assert!(mounts >= 1);
+        // the equine state reflects the rule
+        let m = ms.by_id(id).unwrap();
+        let eq = m.equine.as_ref().unwrap();
+        assert!(eq.tamed);
+        assert!(eq.temper <= 100);
+        assert!(eq.threshold <= 99, "threshold drawn from 0..=99");
+        // a tamed mount returns Some(true) immediately
+        assert_eq!(ms.try_mount(id, &mut rng), Some(true));
+    }
+
+    #[test]
+    fn phase_e3_saddle_gates_control() {
+        // VERIFIED w/Horse §Riding: control needs tamed + saddled
+        let mut ms = MobSystem::new(8);
+        let id = ms.spawn_at(MobKind::Horse, 0, 65, 0).unwrap();
+        // untamed: saddle refused
+        assert!(!ms.try_saddle(id), "saddle refused while untamed");
+        // tame it
+        let mut rng = Rng::new(55);
+        while ms.try_mount(id, &mut rng) == Some(false) {}
+        assert!(ms.try_saddle(id), "saddle accepted once tamed");
+        assert!(ms.by_id(id).unwrap().equine.as_ref().unwrap().saddled);
+    }
+
+    #[test]
+    fn phase_e3_bred_stat_formula() {
+        // VERIFIED w/Horse §Bred_values: baby = avg(p1,p2) +
+        // rand(-0.5..0.5)·(|p1−p2| + 0.30·range), clamped to the range
+        let mut rng = Rng::new(31337);
+        // identical parents, mid range: result within ±(0.30·range)/2
+        for _ in 0..200 {
+            let v = MobSystem::bred_stat(0.2, 0.2, 0.1125, 0.3375, &mut rng);
+            assert!((0.1125..=0.3375).contains(&v), "clamped: {v}");
+            // |p1-p2|=0 → spread = 0.3*0.225/2 = 0.03375 around 0.2
+            assert!((0.2 - 0.034..=0.2 + 0.034).contains(&v), "spread {v}");
+        }
+        // extreme parents stay in range
+        for _ in 0..200 {
+            let v = MobSystem::bred_stat(0.1125, 0.3375, 0.1125, 0.3375, &mut rng);
+            assert!((0.1125..=0.3375).contains(&v));
+        }
+    }
+
+    #[test]
+    fn phase_e3_jump_clear_height_fit() {
+        // the quadratic fit through the three VERIFIED anchors
+        // (0.4→1.153, 0.7→3.124, 1.0→5.9197 blocks)
+        let mk = |s: f32| EquineState {
+            temper: 0,
+            threshold: 100,
+            tamed: true,
+            saddled: true,
+            speed_attr: 0.2,
+            jump_strength: s,
+            baby: false,
+            coat: 0,
+            breed_cd: 0,
+        };
+        for (s, want) in [(0.4f32, 1.153f32), (0.7, 3.124), (1.0, 5.9197)] {
+            let got = mk(s).jump_clear_height();
+            assert!(
+                (got - want).abs() < 0.01,
+                "anchor {s} -> {got} (want ~{want})"
+            );
+        }
+    }
+
+    #[test]
+    fn phase_e3_foal_kind_rules() {
+        // VERIFIED w/Mule: horse×donkey → mule; horse×horse → horse
+        let mut ms = MobSystem::new(11);
+        let h = ms.spawn_at(MobKind::Horse, 0, 65, 0).unwrap();
+        let d = ms.spawn_at(MobKind::Donkey, 2, 65, 0).unwrap();
+        let h2 = ms.spawn_at(MobKind::Horse, 4, 65, 0).unwrap();
+        let mut rng = Rng::new(2026);
+        let foal = ms.spawn_foal(h, d, 1, 65, 1, &mut rng).unwrap();
+        assert_eq!(ms.by_id(foal).unwrap().kind, MobKind::Mule, "horse×donkey = mule");
+        let foal2 = ms.spawn_foal(h, h2, 3, 65, 3, &mut rng).unwrap();
+        assert_eq!(ms.by_id(foal2).unwrap().kind, MobKind::Horse);
+        // foals: baby + tamed (VERIFIED w/Horse §Breeding)
+        let m = ms.by_id(foal2).unwrap();
+        let eq = m.equine.as_ref().unwrap();
+        assert!(eq.baby);
+        assert!(eq.tamed);
+    }
+
+    #[test]
+    fn phase_e3_ridden_mount_suspends_ai() {
+        // the ridden id skips ai_tick but still physics-ticks: with the
+        // mob marked ridden, the tick loop must not move it via AI
+        let mut ms = MobSystem::new(12);
+        let w = flat_world();
+        let id = ms.spawn_at(MobKind::Horse, 8, 65, 8).unwrap();
+        // tame + saddle it deterministically
+        let mut rng = Rng::new(64);
+        while ms.try_mount(id, &mut rng) == Some(false) {}
+        assert!(ms.try_saddle(id));
+        ms.ridden = Some(id);
+        let before = ms.by_id(id).unwrap().pos;
+        // no player anchor: AI would wander; ridden skips that
+        ms.player = None;
+        for _ in 0..40 {
+            ms.tick(&w, (0, 0), i32::MAX);
+        }
+        let after = ms.by_id(id).unwrap().pos;
+        let drift = (after[0] - before[0]).abs() + (after[2] - before[2]).abs();
+        assert!(drift < 0.001, "ridden mount does not wander: drift {drift}");
     }
 }

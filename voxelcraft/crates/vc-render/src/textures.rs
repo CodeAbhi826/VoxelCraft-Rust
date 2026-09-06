@@ -8,6 +8,7 @@ use vc_rng::rng::Rng;
 /// the art additions stay reviewable while sharing the put/jit/art helpers.
 mod e1_art;
 mod e2_art;
+mod e3_art;
 
 pub const ATLAS_SIZE: usize = 256;
 pub const TILE_PX: usize = 16;
@@ -2702,6 +2703,37 @@ pub fn generate_atlas() -> Vec<u8> {
             // Phase E2: lava fluid tile (bright orange noise — VERIFIED
             // w/Lava: luminance 15, constant color)
             TILE_LAVA => lava_art(&mut a, t, &mut rng),
+            // ---- Phase E3 tiles (evolution 1.5–1.6 bracket) ----
+            TILE_COAL_BLOCK => e3_art::coal_block_art(&mut a, t, &mut rng),
+            TILE_QUARTZ_BLOCK => e3_art::quartz_block_art(&mut a, t, &mut rng),
+            TILE_CHISELED_QUARTZ => e3_art::chiseled_quartz_art(&mut a, t, &mut rng),
+            TILE_QUARTZ_PILLAR_TOP => e3_art::quartz_pillar_top_art(&mut a, t, &mut rng),
+            TILE_QUARTZ_PILLAR_SIDE => e3_art::quartz_pillar_side_art(&mut a, t, &mut rng),
+            t if (TILE_TERRACOTTA_STAINED_BASE
+                ..=TILE_TERRACOTTA_STAINED_BASE + 15)
+                .contains(&t) =>
+            {
+                let c = (t - TILE_TERRACOTTA_STAINED_BASE) as u8;
+                e3_art::stained_terracotta_art(&mut a, t, c, &mut rng)
+            }
+            TILE_HAY_TOP => e3_art::hay_top_art(&mut a, t, &mut rng),
+            TILE_HAY_SIDE => e3_art::hay_side_art(&mut a, t, &mut rng),
+            TILE_DAYLIGHT_TOP => e3_art::daylight_top_art(&mut a, t, &mut rng),
+            TILE_DAYLIGHT_SIDE => e3_art::daylight_side_art(&mut a, t),
+            TILE_PLATE_LIGHT => e3_art::plate_art(&mut a, t, true),
+            TILE_PLATE_HEAVY => e3_art::plate_art(&mut a, t, false),
+            TILE_REDSTONE_BLOCK => e3_art::redstone_block_art(&mut a, t, &mut rng),
+            TILE_NETHER_QUARTZ => e3_art::nether_quartz_art(&mut a, t),
+            TILE_LEAD => e3_art::lead_art(&mut a, t),
+            TILE_SADDLE => e3_art::saddle_art(&mut a, t),
+            TILE_HORSE => e3_art::horse_art(&mut a, t, [148, 100, 60], [64, 42, 26]),
+            TILE_DONKEY => e3_art::donkey_art(&mut a, t),
+            TILE_MULE => e3_art::mule_art(&mut a, t),
+            t if (TILE_E3_EGG_BASE..=TILE_E3_EGG_BASE + 2).contains(&t) => {
+                let i = (t - TILE_E3_EGG_BASE) as usize;
+                let p = e3_art::E3_EGG_PALETTES[i];
+                e1_art::egg_art(&mut a, t, (p.0, p.1, p.2), (p.3, p.4, p.5))
+            }
             _ => {}
         }
     }

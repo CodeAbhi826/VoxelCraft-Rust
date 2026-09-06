@@ -29,6 +29,13 @@ pub const RECIPES: &[Recipe] = &[
         grid: &[Ing::AnyLog],
         out: ItemStack::new(PLANKS, 4),
     },
+    // ---- audit-fix (1.2): jungle log → 4 JUNGLE planks (the universal
+    // log→planks rule; the jungle family has its own planks block) ----
+    Recipe {
+        size: 1,
+        grid: &[Ing::Block(JUNGLE_LOG)],
+        out: ItemStack::new(JUNGLE_PLANKS, 4),
+    },
     // ---- 1.8 bracket (VERIFIED minecraft.wiki/w/Java_Edition_1.8
     // §Blocks, live 2026-09-06) ----
     // "Polished variants of Diorite, Andesite & Granite — crafting recipe:
@@ -784,5 +791,25 @@ mod tests {
         g9[1..].fill(ItemStack::EMPTY);
         let out6 = match_grid(&g9, 3).unwrap();
         assert_eq!((out6.block, out6.count), (REDSTONE_WIRE, 9));
+    }
+}
+// ---------------- audit-fix round (2026-09-07): 1.2 jungle planks ----------------
+#[cfg(test)]
+mod auditfix_tests {
+    use super::*;
+
+    /// jungle log crafts into 4 JUNGLE planks (the universal
+    /// log→planks rule; VERIFIED family behavior per w/Log)
+    #[test]
+    fn jungle_log_crafts_jungle_planks() {
+        let grid = [ItemStack::new(JUNGLE_LOG, 1); 1];
+        let out = match_grid(&grid, 1).expect("jungle log matches a recipe");
+        assert_eq!(out.block, JUNGLE_PLANKS);
+        assert_eq!(out.count, 4);
+        // the generic AnyLog recipe still serves oak/birch/spruce
+        let oak = [ItemStack::new(OAK_LOG, 1); 1];
+        let out_oak = match_grid(&oak, 1).expect("oak still matches");
+        assert_eq!(out_oak.block, PLANKS);
+        assert_eq!(out_oak.count, 4);
     }
 }

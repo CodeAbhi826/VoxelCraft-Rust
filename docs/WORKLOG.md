@@ -1208,3 +1208,172 @@ u8/u16 type splits, 152+ errors) — nothing was green.
   prior session is now FIXED (scrolling), not carried.
 
 **Commit:** this merge commit (e9e9abf ⊕ fded9ef → unified tree).
+
+---
+
+## 2026-09-07 — Phase-1/2 evolution audit + audit-fix round (user-requested "especially the 1 and 2") — commit pending
+
+**Task:** the user asked to verify the evolution work done so far is
+accurate and complete — with explicit attention on Phases 1 and 2
+(the e1/e2 brackets, which never got a dedicated "continue 1 and 2"
+pass; only 3 and 4 were directed), then to re-check the standing
+rules, then continue the bracket run. This round: the audit itself,
+the fix round for what it found, and the push-discipline repair
+(everything was 1 commit behind + a meaningless-UUID research commit
+— amended to a real message and pushed before this round started).
+
+### The audit (evolution-research.md Part 2/3 ↔ WORKLOG ↔ code ↔ tests)
+
+- **Suite**: 426/426 green on the pre-round tree (matches the merge
+  claim exactly; workspace-wide run, `--no-default-features`).
+- **Zero todo!/unimplemented!/unsafe** — re-verified by grep across
+  all crates.
+- **Push state**: the branch sat 1 commit ahead of origin with the
+  prior session's 1.11 research captures committed under a UUID
+  message (`b9e2c68`) — amended to a descriptive research-commit
+  message and pushed (`99b7f90`); docs/WORKLOG.md + docs/research/
+  + docs/screenshots/ all confirmed tracked on the remote (102
+  files). Commit→push discipline established from here on.
+- **Phase e1 (1.0–1.2) cross-check — everything the WORKLOG claims
+  exists in code**: End/dragon/fortress/mushroom-fields/mobs/XP/
+  spawn-eggs/mycelium/lamp/sandstone variants confirmed via registry
+  + module reads; sunrise/sunset colors ARE implemented (game.rs
+  sunset fog band + render.rs horizon band + the day-brightness
+  curve) even though the e1 WORKLOG never listed it — a
+  documentation gap, not a code gap; Beach biome exists (Phase-10
+  set); superflat was already caught + fixed by the e3 audit.
+- **Phase e2 (1.3–1.4) cross-check**: wither/witch/bat/wither-
+  skeleton, effects, beacon, ender chest, adventure mode, anvil
+  ladder, lava fluid, emerald ore, foods, cobble wall, flower pot,
+  item frame, tripwire hook, command block — all confirmed present
+  with their cited constants.
+- **Genuine audit findings — silently absent, never deferred (all
+  FIXED this round or formally deferred below):**
+  1. **Golden Carrot** (1.4 evolution-plan item) — missing entirely:
+     not implemented, not deferred, not in the phase-2 research doc.
+  2. **Jungle wood family** (1.2: "Jungle wood/leaves/sapling") —
+     the Jungle biome existed as an oak-canopy ADAPTATION (disclosed
+     only in a gen.rs comment); the block family never landed.
+  3. **Vines** (1.2) and **ferns** (1.2) — absent; the only "fern"
+     mention anywhere was the 1.7.2 bracket's "fern bone-meal
+     growth" deferral.
+  4. (Minor, formally deferred this round — see below.)
+
+### Implemented (the fix round — all values live-verified 2026-09-07,
+minecraft.wiki page captures archived under
+`voxelcraft/scripts/auditfix_page_*.json` + one search round)
+
+- **Registry V6 window (ids 276..=281, states 480..=485; BLOCK_COUNT
+  276→282, STATE_COUNT 480→486, TILE_MAX 325→332, PICKER 236→242;
+  WGSL LUT resync L_FL 486 / L_TC 768 / L_ST 1050 + clamp 485/281)**:
+  GOLDEN_CARROT (276), JUNGLE_LOG (277), JUNGLE_LEAVES (278),
+  JUNGLE_PLANKS (279), VINE (280), FERN (281).
+- **Golden Carrot** — food 6 / 14.4 (VERIFIED w/Golden_Carrot
+  infobox: "Hunger 6", "Saturation 14.4"; consumption 32 game
+  ticks; added Java 1.4.2 12w34a per §History); heal 3.0 HP under
+  the engine's hunger/2 convention; picker-only (craft = gold
+  nugget + carrot — no gold nuggets in engine, documented);
+  **equine feed**: golden carrot joins golden apple/hay in
+  `try_feed` — love mode on two tamed adults (VERIFIED w/Horse
+  §Breeding, the E3-round citation: "Feeding two tamed horses golden
+  apples or golden carrots activates love mode") + the +4 heal arm
+  (the engine's e3-verified per-food mapping; w/Golden_Carrot §Usage
+  "used to tame, breed, lead, grow, and heal horses, donkeys, and
+  mules").
+- **Jungle trees** (gen.rs): the species switch now grows JUNGLE_LOG
+  + JUNGLE_LEAVES in the Jungle biome (the oak-adaptation comment
+  retired); 1×1 trunk height 5..10 (VERIFIED search round
+  w/Jungle_Tree: "Regular jungle trees... 1×1 trunk, which can
+  extend up to 10 blocks tall"; trees added 1.2.1 12w03a per
+  w/Tree §History); **vines on trunks** (VERIFIED w/Vines: "Jungle
+  trees of both sizes have vines on their trunks and canopy edges" —
+  cross-rendered adaptation, ~60%/side); **jungle bushes** (~25% of
+  jungle trees): "a single jungle log surrounded by oak leaves"
+  (VERIFIED w/Tree) — the exact vanilla detail.
+- **Vine physics** (player.rs): climbable "collisionless ladder"
+  (VERIFIED w/Vines §History 12w04a + w/Vines: "Vines are climbable
+  non-solid vegetation blocks that grow on walls"; "If there is a
+  solid block behind the vines, the walk forward key can also be
+  used"): up **2.35 b/s** (VERIFIED w/Ladder §Climbing "moves
+  upward at about 2.35 blocks per second"), descent capped **3 b/s**
+  ("maximum downward speed is reduced... at about 3 blocks per
+  second"), sneak hangs ("grab hold of the ladder and not fall
+  off"), jump-key climbing, fall distance zeroed while engaged,
+  gravity substep frozen (ladder semantics), sprint cancelled
+  (w/Vines §Behavior: "Vines cancel a sprint if the player is
+  sprinting").
+- **Ferns** (gen.rs flora pass): jungle/taiga flora arms (VERIFIED
+  w/Fern §Natural generation: "Ferns occur naturally only in jungle,
+  taiga, snowy taiga and old growth taiga biomes and their variants,
+  scattered with short grass" — the live source CORRECTED the first
+  draft, which wrongly included swamp).
+- **Craft + fuel**: jungle log → 4 jungle planks recipe (the
+  universal log→planks rule); JUNGLE_LOG/JUNGLE_PLANKS join the
+  300-tick wood fuels (VERIFIED w/Log §Fuel).
+- **Clean-room art** (`auditfix_art.rs`, 7 tiles): golden-carrot
+  sprite, jungle bark/rings/leaves/planks, vine strands, fern
+  fronds — zero Mojang assets.
+
+### Verified
+
+- Suite: **437/437 green** (426 + 11 new: V6 registry + state
+  roundtrips, jungle-wood/vine/fern worldgen (incl. the bush
+  signature + jungle-dominates-oak), taiga ferns, vine climb speed /
+  descent cap / sneak-hang, golden-carrot breed + heal + food values,
+  jungle-planks craft). wasm32 clean on the CI path. Zero
+  todo!/unimplemented!/unsafe.
+
+### Placeholder-unresolved
+
+- **Vine fall-damage absorption**: the current wiki's Behavior
+  section says "Vines absorb all fall damage, even without a solid
+  surface nearby" — but the page mixes JE/BE without an edition tag
+  at that sentence, and the Java ladder-climb reset (which we
+  implement) is the 1.2-era VERIFIED behavior. NOT implemented as a
+  blanket contact rule; climbing zeroes fall distance (the ladder
+  semantics). Revisit if an edition-tagged source lands.
+- Fern drop (12.5% wheat seeds, w/Fern) and vine/leaf shears
+  collection — no seeds item / no shears in engine; both drop
+  nothing (documented in the block comments).
+
+### Deferred (formal, with reasons — closing the audit's
+"silently-absent" findings that need engine systems first)
+
+- **Jungle sapling** (1.2 item): no sapling system exists in the
+  engine (oak saplings absent since Phase 0; the 1.7.2 bracket
+  already deferred "saplings" as a class). Acquired-jungle-wood
+  works via worldgen + the picker.
+- **Carrot on a Stick** (1.4 item): needs pig riding + a fishing
+  rod with durability — neither system exists (fishing is rod-less
+  by design this engine; pigs are not rideable). The deferral reason
+  is now recorded here (it was previously implicit).
+- **Language support** (1.1 item): single-language engine (English);
+  a translation layer has no scope. Recorded as N/A rather than
+  silently absent.
+- **Glass silk-touch pickup** (1.2 change): Silk Touch exists in the
+  38-enchant registry but block-drop routing never consults
+  enchantments (glass drops nothing, vanilla-without-silk-faithful).
+  Needs the enchant→drops bridge from a tools/drops pass.
+- **Jungle log axis X/Z placement states**: vertical placement
+  unaffected (vanilla placement rule follows the clicked face — the
+  default Y state covers top/bottom faces); sideways placement of
+  jungle logs falls back to axis-Y (disclosed simplification; oak/
+  birch/spruce/acacia/dark-oak have their X/Z states).
+- **Golden-carrot rabbit breeding** (w/Golden_Carrot: "to breed,
+  lead, and grow rabbits"): rabbits exist (1.8) but have no breeding
+  path (equine-only breeding system); rides a future animal-breeding
+  pass.
+- Vine spread (random-tick growth, the ≤4-neighbors rule) — the
+  current-wiki Behavior section's spread rules were not separately
+  verified for the 1.2-era; deferred with the note.
+
+### Known issues & regressions
+
+- None: 437/437, wasm clean, no new clippy lints beyond the
+  pre-existing set. The engine's snowy-taiga flora gate (SNOW_GRASS
+  surface excludes the plant pass — pre-existing) means snowy-taiga
+  ferns from the flora arm can't place; disclosed in the taiga fern
+  test comment (vanilla snowy taiga has ferns; the engine's surface
+  convention blocks it).
+
+**Commit:** this entry (audit-fix round).

@@ -342,6 +342,29 @@ pub const TILE_POLAR_BEAR: u16 = 323;
 pub const TILE_STRAY: u16 = 324;
 pub const TILE_HUSK: u16 = 325;
 
+// ---- audit-fix round (2026-09-07): the Phase-1/2 audit's missed 1.2/1.4
+// content — jungle wood family + vines + ferns (1.2) + golden carrot
+// (1.4). All live-verified this round (minecraft.wiki/w/Jungle_Log via
+// the Log page, /w/Leaves, /w/Vines, /w/Fern, /w/Golden_Carrot, /w/Tree,
+// /w/Ladder; research record in scripts/auditfix_page_*.json). ----
+/// Golden Carrot item sprite (VERIFIED w/Golden_Carrot: hunger 6,
+/// saturation 14.4).
+pub const TILE_GOLDEN_CARROT: u16 = 326;
+/// Jungle log bark (VERIFIED w/Log — Jungle Log redirect: hardness 2,
+/// blast 2, flammable 5, axe-quickest, smelts to charcoal).
+pub const TILE_JUNGLE_LOG_SIDE: u16 = 327;
+pub const TILE_JUNGLE_LOG_TOP: u16 = 328;
+/// Jungle leaves (VERIFIED w/Leaves: hardness 0.2, flammable 30,
+/// jungle-sapling drop rate 2.5% — no saplings in engine, drops nothing).
+pub const TILE_JUNGLE_LEAVES: u16 = 329;
+pub const TILE_JUNGLE_PLANKS: u16 = 330;
+/// Vine (VERIFIED w/Vines: climbable non-solid, hardness 0.2 —
+/// cross-rendered in our engine, side-attachment states deferred).
+pub const TILE_VINE: u16 = 331;
+/// Fern (VERIFIED w/Fern: non-solid, hardness 0, 12.5% wheat-seed drop
+/// — no seeds item in engine, drops nothing).
+pub const TILE_FERN: u16 = 332;
+
 // mobs (Phase 2): entity sprites + drops' item tiles. Mob sprites are
 // clean-room pixel art (ours, not Mojang's) — distinct silhouettes/palettes
 pub const TILE_ZOMBIE: u16 = 83;
@@ -995,6 +1018,52 @@ pub const NETHER_WART_BLOCK: u16 = 273;
 pub const RED_NETHER_BRICKS: u16 = 274;
 pub const BONE_BLOCK: u16 = 275;
 
+// ---- audit-fix round (2026-09-07): ids 276..=281, V6 window 480..=485.
+// Phase-1/2 evolution audit found these silently absent from the 1.2 and
+// 1.4 brackets (never implemented, never deferred — the audit report and
+// the WORKLOG entry document the finding + the fixes). ----
+/// Golden Carrot — food 6 / 14.4 (VERIFIED live 2026-09-07,
+/// minecraft.wiki/w/Golden_Carrot infobox: "Hunger 6", "Saturation
+/// 14.4"; consumption 32 game ticks). Added Java 1.4.2 12w34a (VERIFIED
+/// w/Golden_Carrot §History). Craft = gold nugget + carrot (no gold
+/// nuggets in engine → picker-only, recipe deferred, documented).
+/// Feeds/breeds/heals horses per "Golden carrots are used to tame,
+/// breed, lead, grow, and heal horses, donkeys, and mules" (VERIFIED
+/// w/Golden_Carrot §Usage; the breeding rule also live-verified in the
+/// E3 round w/Horse §Breeding: "Feeding two tamed horses golden apples
+/// or golden carrots activates love mode").
+pub const GOLDEN_CARROT: u16 = 276;
+/// Jungle Log — hardness 2, blast 2, flammable (5), axe-quickest,
+/// smelts to charcoal, fuel (VERIFIED w/Log — "Jungle Log" redirect;
+/// the E1-era comment "vanilla jungle wood is palette-absent" is now
+/// obsolete). Trees added Java 1.2.1 12w03a (VERIFIED w/Tree §History);
+/// 1×1 trunk "can extend up to 10 blocks tall" (VERIFIED w/Jungle_Tree
+/// search round: "Regular jungle trees... 1×1 trunk, which can extend
+/// up to 10 blocks tall"). Axis X/Z placement states omitted (vertical
+/// placement unaffected — disclosed simplification).
+pub const JUNGLE_LOG: u16 = 277;
+/// Jungle Leaves — hardness 0.2, blast 0.2, transparent, flammable (30)
+/// (VERIFIED w/Leaves). Drops nothing without shears (jungle-sapling
+/// 2.5%/sticks 2% rows VERIFIED; neither item exists in engine —
+/// documented).
+pub const JUNGLE_LEAVES: u16 = 278;
+/// Jungle Planks — same family stats as other planks (1 jungle log →
+/// 4 planks, the universal recipe).
+pub const JUNGLE_PLANKS: u16 = 279;
+/// Vine — climbable non-solid block (VERIFIED w/Vines: "Vines are
+/// climbable non-solid vegetation blocks that grow on walls"); climb
+/// = ladder physics (VERIFIED w/Vines §History 12w04a: "Players are
+/// now slowed when going through vines due to their nature of being a
+/// collisionless ladder" + w/Ladder §Climbing: up ~2.35 b/s, max
+/// descent ~3 b/s). Cross-rendered adaptation (side-attachment block
+/// states deferred with the sapling class).
+pub const VINE: u16 = 280;
+/// Fern — non-solid plant, hardness 0 (VERIFIED w/Fern: "non-solid
+/// plant blocks... same characteristics as grass"); 12.5% wheat-seed
+/// drop (no seeds item — drops nothing, documented); placed on
+/// grass/dirt family (VERIFIED w/Fern §Placement).
+pub const FERN: u16 = 281;
+
 pub const V5_STATE_BASE: u16 = 476;
 pub const V5_COUNT: u16 = 4; // ids 191..=194
 pub const V5_STATE_TO_BLOCK: [u16; V5_COUNT as usize] = [
@@ -1013,6 +1082,26 @@ pub fn v5_state(b: u16) -> Option<u16> {
 #[inline]
 pub fn is_v5_state(s: u16) -> bool {
     (V5_STATE_BASE..V5_STATE_BASE + V5_COUNT).contains(&s)
+}
+
+pub const V6_STATE_BASE: u16 = 480;
+pub const V6_COUNT: u16 = 6; // ids 276..=281 (audit-fix round)
+pub const V6_STATE_TO_BLOCK: [u16; V6_COUNT as usize] = [
+    GOLDEN_CARROT, JUNGLE_LOG, JUNGLE_LEAVES, JUNGLE_PLANKS, VINE, FERN,
+];
+
+#[inline]
+pub fn v6_state(b: u16) -> Option<u16> {
+    if (276..276 + V6_COUNT as u16).contains(&b) {
+        Some(V6_STATE_BASE + (b - 276) as u16)
+    } else {
+        None
+    }
+}
+
+#[inline]
+pub fn is_v6_state(s: u16) -> bool {
+    (V6_STATE_BASE..V6_STATE_BASE + V6_COUNT).contains(&s)
 }
 
 pub const BEEF_STATE: u16 = 130;
@@ -1400,7 +1489,7 @@ pub fn item_state_block(s: u16) -> Option<u16> {
     }
 }
 
-pub const BLOCK_COUNT: usize = 276;
+pub const BLOCK_COUNT: usize = 282;
 /// [merge renumber] acacia/dark-oak log axis states moved to 443..=446
 /// (past the E-series states, which end at 354; V2 base is now 400)
 /// acacia/dark-oak log axis states (the V2 log window — same pattern as
@@ -1436,8 +1525,8 @@ pub const DARK_OAK_LOG_Z: u16 = 446;
 /// hay/sensor/trapped-chest/plates/redstone-block + quartz/lead/saddle
 /// items + eggs 20..=22 + the POWER-state ladders (317..=399)
 /// [merge renumber] F-series states: V2 400..=442 + log-axis 443..=446,
-/// V3 447..=465, V4 466..=475, V5 476..=479
-pub const STATE_COUNT: usize = 480;
+/// V3 447..=465, V4 466..=475, V5 476..=479, V6 480..=485 (audit-fix)
+pub const STATE_COUNT: usize = 486;
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -1786,6 +1875,9 @@ pub fn default_state(b: u16) -> u16 {
         b if (243..243 + V3_COUNT as u16).contains(&b) => {
             V3_STATE_BASE + (b - 243) as u16
         }
+        b if (276..276 + V6_COUNT as u16).contains(&b) => {
+            V6_STATE_BASE + (b - 276) as u16
+        }
         b if (262..262 + V4_COUNT as u16).contains(&b) => {
             V4_STATE_BASE + (b - 262) as u16
         }
@@ -2090,6 +2182,9 @@ pub fn state_block(s: u16) -> u16 {
         s if is_v5_state(s) => {
             return V5_STATE_TO_BLOCK[(s - V5_STATE_BASE) as usize];
         }
+        s if is_v6_state(s) => {
+            return V6_STATE_TO_BLOCK[(s - V6_STATE_BASE) as usize];
+        }
         ACACIA_LOG_X | ACACIA_LOG_Z => return ACACIA_LOG,
         DARK_OAK_LOG_X | DARK_OAK_LOG_Z => return DARK_OAK_LOG,
         _ => {}
@@ -2144,6 +2239,7 @@ pub fn is_model_state(s: u16) -> bool {
         || is_v3_state(s)
         || is_v4_state(s)
         || is_v5_state(s)
+        || is_v6_state(s)
         || s == ACACIA_LOG_X
         || s == ACACIA_LOG_Z
         || s == DARK_OAK_LOG_X
@@ -2324,8 +2420,8 @@ pub fn log_axis_state(block: u16, axis: u8) -> u16 {
 /// highest tile constant (118–121 here) and guarded by the
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
 // [merge] E-series tiles end at 243; the F-series (1.7.2-1.10) tiles
-// continue at 244..=325
-pub const TILE_MAX: u16 = 325;
+// continue at 244..=325; the audit-fix round adds 326..=332
+pub const TILE_MAX: u16 = 332;
 
 /// inventory-only ITEM blocks (potions/bottles/books): never placeable in
 /// the world — right-click drinks (potions) / fills (glass bottle at water).
@@ -2342,6 +2438,7 @@ pub fn is_item_block(b: u16) -> bool {
             | SNOWBALL | NETHER_BRICK
             // Phase E2 items (evolution 1.3-1.4)
             | EMERALD | NETHER_STAR | POTATO | BAKED_POTATO | CARROT | PUMPKIN_PIE
+            | GOLDEN_CARROT
             // VERIFICATION-REPORT fix #4: the coal fuel item
             | COAL
             // ---- F-series item-blocks (1.7.2-1.10, merge-renumbered) ----
@@ -2797,6 +2894,13 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Nether Wart Block", [TILE_NETHER_WART_BLOCK, TILE_NETHER_WART_BLOCK, TILE_NETHER_WART_BLOCK], true, true, false, false, 0, SoundFamily::Wool),
     d("Red Nether Bricks", [TILE_RED_NETHER_BRICKS, TILE_RED_NETHER_BRICKS, TILE_RED_NETHER_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
     d("Bone Block", [TILE_BONE_BLOCK, TILE_BONE_BLOCK, TILE_BONE_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
+    // ---- audit-fix round (1.2 jungle family + 1.4 golden carrot) ----
+    d("Golden Carrot", [TILE_GOLDEN_CARROT, TILE_GOLDEN_CARROT, TILE_GOLDEN_CARROT], false, false, true, false, 0, SoundFamily::Grass),
+    d("Jungle Log", [TILE_JUNGLE_LOG_TOP, TILE_JUNGLE_LOG_TOP, TILE_JUNGLE_LOG_SIDE], true, true, false, false, 0, SoundFamily::Wood),
+    d("Jungle Leaves", [TILE_JUNGLE_LEAVES, TILE_JUNGLE_LEAVES, TILE_JUNGLE_LEAVES], true, false, false, false, 0, SoundFamily::Leaves),
+    d("Jungle Planks", [TILE_JUNGLE_PLANKS, TILE_JUNGLE_PLANKS, TILE_JUNGLE_PLANKS], true, true, false, false, 0, SoundFamily::Wood),
+    d("Vine", [TILE_VINE, TILE_VINE, TILE_VINE], false, false, true, false, 0, SoundFamily::Grass),
+    d("Fern", [TILE_FERN, TILE_FERN, TILE_FERN], false, false, true, false, 0, SoundFamily::Grass),
 ];
 
 #[inline]
@@ -2866,7 +2970,7 @@ pub fn face_visible(b: u16, n: u16) -> bool {
 /// (needs fluid sim to be fun). Potions are item-blocks — usable from the
 /// hotbar (drink), never placeable. Phase E1 adds the 1.0–1.2 bracket
 /// blocks/items + the 16 spawn eggs (creative-only items, w/Spawn_Egg).
-pub const PICKER_BLOCKS: [u16; 236] = [
+pub const PICKER_BLOCKS: [u16; 242] = [
     GRASS, DIRT, STONE, COBBLE, SMOOTH_STONE, STONE_BRICKS, BRICKS, MOSSY_COBBLE,
     GRANITE, DIORITE, ANDESITE, OBSIDIAN,
     SAND, GRAVEL, CLAY, TERRACOTTA,
@@ -2928,6 +3032,7 @@ pub const PICKER_BLOCKS: [u16; 236] = [
     ENDER_CHEST, FLOWER_POT, ITEM_FRAME, TRIPWIRE_HOOK,
     WITHER_SKELETON_SKULL, COMMAND_BLOCK,
     EMERALD, NETHER_STAR, POTATO, BAKED_POTATO, CARROT, PUMPKIN_PIE,
+    GOLDEN_CARROT, JUNGLE_LOG, JUNGLE_LEAVES, JUNGLE_PLANKS, VINE, FERN,
     LAVA,
     
     
@@ -3288,6 +3393,7 @@ mod state_tests {
                 || is_v3_state(s)
                 || is_v4_state(s)
                 || is_v5_state(s)
+                || is_v6_state(s)
                 || matches!(s, ACACIA_LOG_X | ACACIA_LOG_Z | DARK_OAK_LOG_X | DARK_OAK_LOG_Z)
             {
                 assert!(!is_model_state(s), "component/item state {s} never routes to models");
@@ -3311,6 +3417,11 @@ mod state_tests {
                 // 1.10 V5: same roundtrip contract
                 if is_v5_state(s) {
                     assert_eq!(default_state(b), s, "v5 state {s} roundtrip");
+                }
+                // audit-fix V6 (1.2 jungle family + 1.4 golden carrot):
+                // same roundtrip contract
+                if is_v6_state(s) {
+                    assert_eq!(default_state(b), s, "v6 state {s} roundtrip");
                 }
                 continue;
             }
@@ -3470,8 +3581,8 @@ mod state_tests {
         // with the 1.7.2–1.10 F-series: 276 blocks / 480 states
         // (E-series states end at 354; V2 400..=442, V3 447..=465,
         // V4 466..=475, V5 476..=479)
-        assert_eq!(BLOCK_COUNT, 276, "E1+E2+E3+1.7–1.10 merged registry");
-        assert_eq!(STATE_COUNT, 480, "merged state space, V5 ends at 479");
+        assert_eq!(BLOCK_COUNT, 282, "E1+E2+E3+1.7–1.10 merged registry + audit-fix V6");
+        assert_eq!(STATE_COUNT, 486, "merged state space, V6 ends at 485");
         assert_eq!(BLOCK_TABLE.len(), BLOCK_COUNT);
         for want in [
             COAL_BLOCK,
@@ -3522,8 +3633,8 @@ mod v110_tests {
             assert_eq!(default_state(b), s);
             assert!(is_v5_state(s));
         }
-        assert_eq!(BLOCK_COUNT, 276);
-        assert_eq!(STATE_COUNT, 480);
+        assert_eq!(BLOCK_COUNT, 282);
+        assert_eq!(STATE_COUNT, 486);
     }
 
     /// magma emits light level 3 (VERIFIED — minecraft.wiki/w/Magma_Block,
@@ -3531,5 +3642,53 @@ mod v110_tests {
     #[test]
     fn magma_emits_light_level_3() {
         assert_eq!(def(MAGMA_BLOCK).emissive, 3);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// audit-fix round tests (2026-09-07): the 1.2 jungle family registry
+// ---------------------------------------------------------------------------
+#[cfg(test)]
+mod auditfix_tests {
+    use super::*;
+
+    /// the V6 window: jungle wood family + vine + fern register with
+    /// correct solidity/cross flags and roundtrip through their states
+    #[test]
+    fn auditfix_v6_registry() {
+        // ids 276..=281, states 480..=485 — non-overlapping with every
+        // earlier window (the merge-round invariant)
+        for (b, s) in [
+            (GOLDEN_CARROT, 480u16),
+            (JUNGLE_LOG, 481),
+            (JUNGLE_LEAVES, 482),
+            (JUNGLE_PLANKS, 483),
+            (VINE, 484),
+            (FERN, 485),
+        ] {
+            assert_eq!(default_state(b), s, "block {b} default state");
+            assert_eq!(state_block(s), b, "state {s} folds back");
+            assert!(!is_model_state(s), "V6 states are cube/cross defs, not model states");
+        }
+        assert_eq!(V6_COUNT, 6);
+        assert_eq!(BLOCK_COUNT, 282);
+        assert_eq!(STATE_COUNT, 486);
+        // solidity classes: log/planks solid-opaque (hardness family 2
+        // per w/Log + w/Planks), leaves see-through, vine/fern non-solid
+        // cross plants (w/Vines: "climbable non-solid"; w/Fern:
+        // "non-solid plant blocks"), golden carrot an item-block
+        assert!(is_solid(JUNGLE_LOG) && is_opaque(JUNGLE_LOG));
+        assert!(is_solid(JUNGLE_PLANKS) && is_opaque(JUNGLE_PLANKS));
+        assert!(is_solid(JUNGLE_LEAVES) && !is_opaque(JUNGLE_LEAVES));
+        assert!(!is_solid(VINE) && is_cross(VINE));
+        assert!(!is_solid(FERN) && is_cross(FERN));
+        assert!(is_item_block(GOLDEN_CARROT) && is_cross(GOLDEN_CARROT));
+        // every new tile is within the atlas guard (the Phase-4
+        // blank-tile regression)
+        assert!(TILE_GOLDEN_CARROT <= TILE_MAX && TILE_VINE <= TILE_MAX && TILE_FERN <= TILE_MAX);
+        // the picker carries the family
+        for b in [GOLDEN_CARROT, JUNGLE_LOG, JUNGLE_LEAVES, JUNGLE_PLANKS, VINE, FERN] {
+            assert!(PICKER_BLOCKS.contains(&b), "picker missing {b}");
+        }
     }
 }

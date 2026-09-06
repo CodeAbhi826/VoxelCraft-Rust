@@ -29,6 +29,86 @@ pub const RECIPES: &[Recipe] = &[
         grid: &[Ing::AnyLog],
         out: ItemStack::new(PLANKS, 4),
     },
+    // ---- 1.8 bracket (VERIFIED minecraft.wiki/w/Java_Edition_1.8
+    // §Blocks, live 2026-09-06) ----
+    // "Polished variants of Diorite, Andesite & Granite — crafting recipe:
+    // 4 pieces of one of the materials, in a 2×2 configuration"
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(GRANITE),
+            Ing::Block(GRANITE),
+            Ing::Block(GRANITE),
+            Ing::Block(GRANITE),
+        ],
+        out: ItemStack::new(POLISHED_GRANITE, 4),
+    },
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(DIORITE),
+            Ing::Block(DIORITE),
+            Ing::Block(DIORITE),
+            Ing::Block(DIORITE),
+        ],
+        out: ItemStack::new(POLISHED_DIORITE, 4),
+    },
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(ANDESITE),
+            Ing::Block(ANDESITE),
+            Ing::Block(ANDESITE),
+            Ing::Block(ANDESITE),
+        ],
+        out: ItemStack::new(POLISHED_ANDESITE, 4),
+    },
+    // "Coarse Dirt — crafting recipe: dirt and gravel in a 2×2 checkered
+    // pattern yields four coarse dirt"
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(DIRT),
+            Ing::Block(GRAVEL),
+            Ing::Block(GRAVEL),
+            Ing::Block(DIRT),
+        ],
+        out: ItemStack::new(COARSE_DIRT, 4),
+    },
+    // red sandstone: 4 red sand 2×2 (vanilla red-sandstone recipe)
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(RED_SAND),
+            Ing::Block(RED_SAND),
+            Ing::Block(RED_SAND),
+            Ing::Block(RED_SAND),
+        ],
+        out: ItemStack::new(RED_SANDSTONE, 1),
+    },
+    // prismarine family (wiki §Blocks: prismarine = shards, bricks =
+    // shards, dark = shards + ink; ink sacs are palette-absent — the dark
+    // variant rides the same shard recipe, documented simplification)
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(PRISMARINE_SHARD),
+            Ing::Block(PRISMARINE_SHARD),
+            Ing::Block(PRISMARINE_SHARD),
+            Ing::Block(PRISMARINE_SHARD),
+        ],
+        out: ItemStack::new(PRISMARINE, 1),
+    },
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(PRISMARINE_CRYSTALS),
+            Ing::Block(PRISMARINE_CRYSTALS),
+            Ing::Block(PRISMARINE_CRYSTALS),
+            Ing::Block(PRISMARINE_CRYSTALS),
+        ],
+        out: ItemStack::new(SEA_LANTERN, 1),
+    },
     // 2×2 planks → crafting table
     Recipe {
         size: 2,

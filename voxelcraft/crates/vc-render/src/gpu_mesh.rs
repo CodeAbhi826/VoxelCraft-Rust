@@ -70,10 +70,10 @@ pub const MESH_COMPUTE_SHADER: &str = r#"
 const VOL_WORDS: u32 = 147456u;    // 48*256*48 bytes / 4
 const B_WATER: u32 = 9u;           // block id of WATER (identity state)
 const MODEL_BASE: u32 = 63u;       // MODEL_STATE_BASE
-const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=299)
-const L_FL: u32 = 299u;            // lut: block flags           (BLOCK_COUNT=162)
-const L_TC: u32 = 461u;            // lut: block tint class      (BLOCK_COUNT=162)
-const L_ST: u32 = 623u;            // lut: state tiles, 4/state  (4·STATE_COUNT=1196)
+const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=318)
+const L_FL: u32 = 318u;            // lut: block flags           (BLOCK_COUNT=181)
+const L_TC: u32 = 499u;            // lut: block tint class      (BLOCK_COUNT=181)
+const L_ST: u32 = 680u;            // lut: state tiles, 4/state  (4·STATE_COUNT=1272)
 const P_N: u32 = 0u;               // params[0] = n_jobs
 const P_JOB: u32 = 2u;             // params job base = 2 + j*66
 const P_BIOME: u32 = 2u;           // biomes at job base + 2 (64 packed u32)
@@ -125,8 +125,8 @@ fn job_get_blk(j: u32, x: i32, y: i32, z: i32) -> u32 {
     let base = j * VOL_WORDS;
     return (blk_l[base + (p >> 2u)] >> ((p & 3u) * 8u)) & 0xFFu;
 }
-fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 298u)]; }
-fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 161u)]; }
+fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 317u)]; }
+fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 180u)]; }
 fn biome_at(j: u32, x: i32, z: i32) -> u32 {
     let c = u32(z * 16 + x);
     let w = params[P_JOB + j * 66u + P_BIOME + (c >> 2u)];
@@ -148,7 +148,7 @@ fn face_visible(bf: u32, fnb: u32) -> bool {
 // tint class -> packed tint byte (kind<<6 | slot), port of
 // vc_blocks::tint::block_face_tint_packed's block match
 fn tint_packed(b: u32, top: bool, biome: u32) -> u32 {
-    let tc = lut[L_TC + min(b, 161u)];
+    let tc = lut[L_TC + min(b, 180u)];
     var kind = 0u; var slot = 0u;
     if tc == 1u { if top { kind = 1u; slot = biome; } }          // GRASS top
     else if tc == 2u { kind = 1u; slot = biome; }                // TALL_GRASS

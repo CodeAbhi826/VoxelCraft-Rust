@@ -28,6 +28,9 @@ pub fn smelt_result(block: u8) -> Option<u8> {
         RED_SAND => Some(GLASS),
         COBBLE => Some(STONE),
         CLAY => Some(TERRACOTTA),
+        // 1.8: raw rabbit smelts to cooked rabbit (changelog §Items:
+        // "Can be cooked into cooked rabbit")
+        RAW_RABBIT => Some(COOKED_RABBIT),
         _ => None,
     }
 }

@@ -2488,6 +2488,10 @@ impl GameApp {
                 mobs::MobKind::Pig => &[(PORKCHOP, 3)],
                 mobs::MobKind::Sheep => &[(MUTTON, 2), (WOOL_WHITE, 1)],
                 mobs::MobKind::Chicken => &[(CHICKEN_RAW, 1), (FEATHER, 2)],
+                // 1.8 rabbit — VERIFIED (wiki /w/Rabbit + /w/Rabbit's_Foot,
+                // live 2026-09-06): 0–1 raw rabbit + 0–1 rabbit hide; the
+                // rabbit's foot is the separate 10% player-kill roll below
+                mobs::MobKind::Rabbit => &[(RAW_RABBIT, 1), (RABBIT_HIDE, 1)],
             };
             for (block, max_n) in drops {
                 let n = 1 + (self.audio_rng.next_f32() * *max_n as f32) as u8;
@@ -2512,6 +2516,21 @@ impl GameApp {
                     pos[1].floor() as i32,
                     pos[2].floor() as i32,
                     SPIDER_EYE,
+                    2,
+                    15,
+                    0,
+                );
+            }
+            // 1.8: rabbits have a 10% chance to drop a rabbit's foot when
+            // killed by the player (VERIFIED — wiki /w/Rabbit's Foot:
+            // "Each rabbit has a 10% chance to drop a rabbit's foot when
+            // killed by the player")
+            if kind == mobs::MobKind::Rabbit && self.audio_rng.next_f32() < 0.10 {
+                self.sim.items.drop_block(
+                    pos[0].floor() as i32,
+                    pos[1].floor() as i32,
+                    pos[2].floor() as i32,
+                    RABBIT_FOOT,
                     2,
                     15,
                     0,
@@ -5595,6 +5614,11 @@ impl GameApp {
             // also covers fast creative flight outrunning the generation
             // frontier.
             if !physics_frozen(&self.world, self.player.pos) {
+                // 1.8: spectator no-clip + always flying (GameType 3)
+                self.player.noclip = self.mode == vc_gameplay::modes::GameMode::Spectator;
+                if self.player.noclip {
+                    self.player.flying = true;
+                }
                 let sounds = self.player.update(
                     dt,
                     self.time,
@@ -5667,7 +5691,12 @@ impl GameApp {
             // interactions
             self.break_timer -= dt;
             self.place_timer -= dt;
-            if self.input.break_hold && self.break_timer <= 0.0 {
+            // 1.8: Spectators never interact (wiki: no block breaking,
+            // placing, or using — flight through everything)
+            if self.input.break_hold
+                && self.break_timer <= 0.0
+                && self.mode != vc_gameplay::modes::GameMode::Spectator
+            {
                 if let Some((pos, b, _)) = self.target {
                     if b != BEDROCK {
                         let broke = self.world.get_block(pos[0], pos[1], pos[2]);
@@ -5724,7 +5753,10 @@ impl GameApp {
                     }
                 }
             }
-            if self.input.place_hold && self.place_timer <= 0.0 {
+            if self.input.place_hold
+                && self.place_timer <= 0.0
+                && self.mode != vc_gameplay::modes::GameMode::Spectator
+            {
                 // §27/§29: a villager under the crosshair opens the trade
                 // screen FIRST (vanilla interaction priority over blocks)
                 if let Some(vid) = self.sim.villagers.ray_hit(
@@ -7844,9 +7876,11 @@ fn fill_structure_chest(
 fn is_food(b: u8) -> bool {
     // 1.7.2: the three edible fish join the meats (pufferfish is
     // deliberately NOT here — it poisons, see the eat path)
+    // 1.8: rabbit meat joins (wiki: raw rabbit restores 3, cooked 5)
     matches!(
         b,
         BEEF | PORKCHOP | MUTTON | CHICKEN_RAW | ROTTEN_FLESH | RAW_FISH | RAW_SALMON | CLOWNFISH
+            | RAW_RABBIT | COOKED_RABBIT
     )
 }
 

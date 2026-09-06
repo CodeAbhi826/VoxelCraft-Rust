@@ -193,6 +193,33 @@ pub const TILE_RAW_FISH: u16 = 180;
 pub const TILE_RAW_SALMON: u16 = 181;
 pub const TILE_CLOWNFISH: u16 = 182;
 pub const TILE_PUFFERFISH: u16 = 183;
+// ---------------------------------------------------------------------------
+// 1.8 bracket tiles (Bountiful Update — live round 2026-09-06): slime,
+// coarse dirt, the three polished stones, red sandstone family,
+// prismarine family, sea lantern, iron trapdoor, barrier, and the
+// rabbit/prismarine item icons.
+// ---------------------------------------------------------------------------
+pub const TILE_SLIME: u16 = 184;
+pub const TILE_COARSE_DIRT: u16 = 185;
+pub const TILE_POLISHED_GRANITE: u16 = 186;
+pub const TILE_POLISHED_DIORITE: u16 = 187;
+pub const TILE_POLISHED_ANDESITE: u16 = 188;
+pub const TILE_RED_SANDSTONE: u16 = 189;
+pub const TILE_SMOOTH_RED_SANDSTONE: u16 = 190;
+pub const TILE_PRISMARINE: u16 = 191;
+pub const TILE_PRISMARINE_BRICKS: u16 = 192;
+pub const TILE_DARK_PRISMARINE: u16 = 193;
+pub const TILE_SEA_LANTERN: u16 = 194;
+pub const TILE_IRON_TRAPDOOR: u16 = 195;
+pub const TILE_BARRIER: u16 = 196;
+pub const TILE_RAW_RABBIT: u16 = 197;
+pub const TILE_COOKED_RABBIT: u16 = 198;
+pub const TILE_RABBIT_HIDE: u16 = 199;
+pub const TILE_RABBIT_FOOT: u16 = 200;
+pub const TILE_PRISMARINE_SHARD: u16 = 201;
+pub const TILE_PRISMARINE_CRYSTALS: u16 = 202;
+/// 1.8 rabbit entity sprite (clean-room, like the other mob tiles)
+pub const TILE_RABBIT: u16 = 203;
 // mobs (Phase 2): entity sprites + drops' item tiles. Mob sprites are
 // clean-room pixel art (ours, not Mojang's) — distinct silhouettes/palettes
 pub const TILE_ZOMBIE: u16 = 83;
@@ -513,6 +540,64 @@ pub fn v2_state(b: u8) -> Option<u16> {
 pub fn is_v2_state(s: u16) -> bool {
     (V2_STATE_BASE..V2_STATE_BASE + V2_COUNT).contains(&s)
 }
+
+// ---------------------------------------------------------------------------
+// 1.8 bracket — the Bountiful Update (2014-09-02,
+// minecraft.wiki/w/Java_Edition_1.8, live round 2026-09-06). V3 window:
+// ids 162..=180, states 299..=317 (after the V2 log-axis states).
+// ---------------------------------------------------------------------------
+pub const SLIME_BLOCK: u8 = 162;
+pub const COARSE_DIRT: u8 = 163;
+pub const POLISHED_GRANITE: u8 = 164;
+pub const POLISHED_DIORITE: u8 = 165;
+pub const POLISHED_ANDESITE: u8 = 166;
+pub const RED_SANDSTONE: u8 = 167;
+pub const SMOOTH_RED_SANDSTONE: u8 = 168;
+pub const PRISMARINE: u8 = 169;
+pub const PRISMARINE_BRICKS: u8 = 170;
+pub const DARK_PRISMARINE: u8 = 171;
+/// sea lantern: light level 15 (wiki: "Emit light at a light level of 15")
+pub const SEA_LANTERN: u8 = 172;
+/// iron trapdoor: redstone-only opening (vanilla) — our redstone gates are
+/// documented as deferred; the block places/plays like a trapdoor
+pub const IRON_TRAPDOOR: u8 = 173;
+/// barrier: bedrock-like, fully transparent, creative-only (wiki)
+pub const BARRIER: u8 = 174;
+// 1.8 rabbit items (inventory-only): VERIFIED §Items — raw rabbit 3,
+// cooked 5, hide crafts to leather, foot brews Leaping
+pub const RAW_RABBIT: u8 = 175;
+pub const COOKED_RABBIT: u8 = 176;
+pub const RABBIT_HIDE: u8 = 177;
+pub const RABBIT_FOOT: u8 = 178;
+// 1.8 prismarine materials (inventory-only; guardian drops — guardians
+// are a documented deferral, the items register now so recipes exist)
+pub const PRISMARINE_SHARD: u8 = 179;
+pub const PRISMARINE_CRYSTALS: u8 = 180;
+
+/// first state of the V3 window (1.8 bracket)
+pub const V3_STATE_BASE: u16 = 299;
+pub const V3_COUNT: u16 = 19; // ids 162..=180
+pub const V3_STATE_TO_BLOCK: [u8; V3_COUNT as usize] = [
+    SLIME_BLOCK, COARSE_DIRT, POLISHED_GRANITE, POLISHED_DIORITE, POLISHED_ANDESITE,
+    RED_SANDSTONE, SMOOTH_RED_SANDSTONE, PRISMARINE, PRISMARINE_BRICKS, DARK_PRISMARINE,
+    SEA_LANTERN, IRON_TRAPDOOR, BARRIER,
+    RAW_RABBIT, COOKED_RABBIT, RABBIT_HIDE, RABBIT_FOOT, PRISMARINE_SHARD,
+    PRISMARINE_CRYSTALS,
+];
+
+#[inline]
+pub fn v3_state(b: u8) -> Option<u16> {
+    if (162..162 + V3_COUNT as u8).contains(&b) {
+        Some(V3_STATE_BASE + (b - 162) as u16)
+    } else {
+        None
+    }
+}
+
+#[inline]
+pub fn is_v3_state(s: u16) -> bool {
+    (V3_STATE_BASE..V3_STATE_BASE + V3_COUNT).contains(&s)
+}
 pub const BEEF_STATE: u16 = 130;
 pub const PORKCHOP_STATE: u16 = 131;
 pub const MUTTON_STATE: u16 = 132;
@@ -577,7 +662,7 @@ pub const ACACIA_LOG_Z: u16 = 296;
 pub const DARK_OAK_LOG_X: u16 = 297;
 pub const DARK_OAK_LOG_Z: u16 = 298;
 
-pub const BLOCK_COUNT: usize = 162;
+pub const BLOCK_COUNT: usize = 181;
 
 // ---------------------------------------------------------------------------
 // BlockState registry (1.16.5 pattern, miniature)
@@ -594,7 +679,7 @@ pub const BLOCK_COUNT: usize = 162;
 /// Phase 4: extended to cover the Phase 2/3/4 state ids (130..=231) —
 /// before, the range tests stopped at 130 and never saw them.
 /// Phase 5: spawner states 232..=234
-pub const STATE_COUNT: usize = 299;
+pub const STATE_COUNT: usize = 318;
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -893,6 +978,9 @@ pub fn default_state(b: u8) -> u16 {
         b if (103..103 + V2_COUNT as u8).contains(&b) => {
             V2_STATE_BASE + (b - 103) as u16
         }
+        b if (162..162 + V3_COUNT as u8).contains(&b) => {
+            V3_STATE_BASE + (b - 162) as u16
+        }
         OAK_SLAB => 63,     // PROP_BLOCKS[0].base_state (half=bottom)
         COBBLE_STAIRS => 65, // base_state (facing=north, half=bottom)
         OAK_FENCE => 73,    // base_state (no connections)
@@ -1100,6 +1188,9 @@ pub fn state_block(s: u16) -> u8 {
         s if is_v2_state(s) => {
             return V2_STATE_TO_BLOCK[(s - V2_STATE_BASE) as usize];
         }
+        s if is_v3_state(s) => {
+            return V3_STATE_TO_BLOCK[(s - V3_STATE_BASE) as usize];
+        }
         ACACIA_LOG_X | ACACIA_LOG_Z => return ACACIA_LOG,
         DARK_OAK_LOG_X | DARK_OAK_LOG_Z => return DARK_OAK_LOG,
         _ => {}
@@ -1141,6 +1232,7 @@ pub fn is_model_state(s: u16) -> bool {
     // 1.7.2 V2 window: never model states — greedy cubes / cross plants
     // per their BlockDef flags, exactly like the sim-state windows
     if is_v2_state(s)
+        || is_v3_state(s)
         || s == ACACIA_LOG_X
         || s == ACACIA_LOG_Z
         || s == DARK_OAK_LOG_X
@@ -1248,7 +1340,7 @@ pub fn log_axis_state(block: u8, axis: u8) -> u16 {
 /// component tile rendered BLANK since Phase 2. Now derived from the
 /// highest tile constant (118–121 here) and guarded by the
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
-pub const TILE_MAX: u16 = 183;
+pub const TILE_MAX: u16 = 203;
 
 /// inventory-only ITEM blocks (potions/bottles/books): never placeable in
 /// the world — right-click drinks (potions) / fills (glass bottle at water).
@@ -1262,6 +1354,8 @@ pub fn is_item_block(b: u8) -> bool {
             | BEEF | PORKCHOP | MUTTON | CHICKEN_RAW | FEATHER | LEATHER | BONE | STRING
             | GUNPOWDER | ENDER_PEARL | ROTTEN_FLESH | ARROW_ITEM
             | RAW_FISH | RAW_SALMON | CLOWNFISH | PUFFERFISH
+            | RAW_RABBIT | COOKED_RABBIT | RABBIT_HIDE | RABBIT_FOOT
+            | PRISMARINE_SHARD | PRISMARINE_CRYSTALS
     )
 }
 
@@ -1499,6 +1593,32 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Raw Salmon", [TILE_RAW_SALMON, TILE_RAW_SALMON, TILE_RAW_SALMON], false, false, true, false, 0, SoundFamily::Grass),
     d("Clownfish", [TILE_CLOWNFISH, TILE_CLOWNFISH, TILE_CLOWNFISH], false, false, true, false, 0, SoundFamily::Grass),
     d("Pufferfish", [TILE_PUFFERFISH, TILE_PUFFERFISH, TILE_PUFFERFISH], false, false, true, false, 0, SoundFamily::Grass),
+    // ---- 1.8 bracket (V3 window) — minecraft.wiki/w/Java_Edition_1.8,
+    // live round 2026-09-06 ----
+    // slime block: solid, translucent, bounces (the trampoline block)
+    d("Slime Block", [TILE_SLIME, TILE_SLIME, TILE_SLIME], true, false, false, false, 0, SoundFamily::Grass),
+    d("Coarse Dirt", [TILE_COARSE_DIRT, TILE_COARSE_DIRT, TILE_COARSE_DIRT], true, true, false, false, 0, SoundFamily::Dirt),
+    d("Polished Granite", [TILE_POLISHED_GRANITE, TILE_POLISHED_GRANITE, TILE_POLISHED_GRANITE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Polished Diorite", [TILE_POLISHED_DIORITE, TILE_POLISHED_DIORITE, TILE_POLISHED_DIORITE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Polished Andesite", [TILE_POLISHED_ANDESITE, TILE_POLISHED_ANDESITE, TILE_POLISHED_ANDESITE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Red Sandstone", [TILE_RED_SANDSTONE, TILE_RED_SANDSTONE, TILE_RED_SANDSTONE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Smooth Red Sandstone", [TILE_SMOOTH_RED_SANDSTONE, TILE_SMOOTH_RED_SANDSTONE, TILE_SMOOTH_RED_SANDSTONE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Prismarine", [TILE_PRISMARINE, TILE_PRISMARINE, TILE_PRISMARINE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Prismarine Bricks", [TILE_PRISMARINE_BRICKS, TILE_PRISMARINE_BRICKS, TILE_PRISMARINE_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
+    d("Dark Prismarine", [TILE_DARK_PRISMARINE, TILE_DARK_PRISMARINE, TILE_DARK_PRISMARINE], true, true, false, false, 0, SoundFamily::Stone),
+    // wiki: "Emit light at a light level of 15"
+    d("Sea Lantern", [TILE_SEA_LANTERN, TILE_SEA_LANTERN, TILE_SEA_LANTERN], true, true, false, false, 15, SoundFamily::Glass),
+    d("Iron Trapdoor", [TILE_IRON_TRAPDOOR, TILE_IRON_TRAPDOOR, TILE_IRON_TRAPDOOR], true, false, false, false, 0, SoundFamily::Wood),
+    // barrier: wiki "acts like bedrock, but is completely transparent" —
+    // near-invisible tile + solid collision
+    d("Barrier", [TILE_BARRIER, TILE_BARRIER, TILE_BARRIER], true, false, false, false, 0, SoundFamily::Glass),
+    // 1.8 rabbit + prismarine items
+    d("Raw Rabbit", [TILE_RAW_RABBIT, TILE_RAW_RABBIT, TILE_RAW_RABBIT], false, false, true, false, 0, SoundFamily::Grass),
+    d("Cooked Rabbit", [TILE_COOKED_RABBIT, TILE_COOKED_RABBIT, TILE_COOKED_RABBIT], false, false, true, false, 0, SoundFamily::Grass),
+    d("Rabbit Hide", [TILE_RABBIT_HIDE, TILE_RABBIT_HIDE, TILE_RABBIT_HIDE], false, false, true, false, 0, SoundFamily::Grass),
+    d("Rabbit's Foot", [TILE_RABBIT_FOOT, TILE_RABBIT_FOOT, TILE_RABBIT_FOOT], false, false, true, false, 0, SoundFamily::Grass),
+    d("Prismarine Shard", [TILE_PRISMARINE_SHARD, TILE_PRISMARINE_SHARD, TILE_PRISMARINE_SHARD], false, false, true, false, 0, SoundFamily::Stone),
+    d("Prismarine Crystals", [TILE_PRISMARINE_CRYSTALS, TILE_PRISMARINE_CRYSTALS, TILE_PRISMARINE_CRYSTALS], false, false, true, false, 0, SoundFamily::Stone),
 ];
 
 #[inline]
@@ -1567,11 +1687,11 @@ pub fn face_visible(b: u8, n: u8) -> bool {
 /// Everything placeable except air, bedrock (unbreakable) and water
 /// (needs fluid sim to be fun). Potions are item-blocks — usable from the
 /// hotbar (drink), never placeable.
-/// 1.7.2 bracket: +55 — the 16 stained glass, 16 stained terracotta, red
+/// 1.8 bracket: +74 entries (55 in 1.7.2 + 19 here) — the 16 stained glass, 16 stained terracotta, red
 /// sand, packed ice, podzol, acacia/dark-oak wood, the 8 new flowers,
 /// the 4 two-block flowers (lower halves place both via worldgen-style
 /// pairs; the picker offers the lower id) and the 4 fish items.
-pub const PICKER_BLOCKS: [u8; 123] = [
+pub const PICKER_BLOCKS: [u8; 142] = [
     GRASS, DIRT, STONE, COBBLE, SMOOTH_STONE, STONE_BRICKS, BRICKS, MOSSY_COBBLE,
     GRANITE, DIORITE, ANDESITE, OBSIDIAN,
     SAND, GRAVEL, CLAY, TERRACOTTA,
@@ -1604,6 +1724,14 @@ pub const PICKER_BLOCKS: [u8; 123] = [
     SUNFLOWER, LILAC, PEONY, ROSE_BUSH,
     // 1.7.2 fish (item-blocks: eatable, never placeable)
     RAW_FISH, RAW_SALMON, CLOWNFISH, PUFFERFISH,
+    // 1.8 additions (Bountiful Update — wiki-verified placement blocks)
+    SLIME_BLOCK, COARSE_DIRT,
+    POLISHED_GRANITE, POLISHED_DIORITE, POLISHED_ANDESITE,
+    RED_SANDSTONE, SMOOTH_RED_SANDSTONE,
+    PRISMARINE, PRISMARINE_BRICKS, DARK_PRISMARINE, SEA_LANTERN,
+    IRON_TRAPDOOR, BARRIER,
+    RAW_RABBIT, COOKED_RABBIT, RABBIT_HIDE, RABBIT_FOOT,
+    PRISMARINE_SHARD, PRISMARINE_CRYSTALS,
     OAK_SLAB, COBBLE_STAIRS, OAK_FENCE,
     NETHERRACK, NETHER_QUARTZ_ORE, SOUL_SAND,
     BREWING_STAND,
@@ -1814,6 +1942,7 @@ mod state_tests {
                 || (SPAWNER_STATE_BASE..=SPAWNER_STATE_END).contains(&s)
                 || s == END_PORTAL_FRAME_STATE
                 || is_v2_state(s)
+                || is_v3_state(s)
                 || matches!(s, ACACIA_LOG_X | ACACIA_LOG_Z | DARK_OAK_LOG_X | DARK_OAK_LOG_Z)
             {
                 assert!(!is_model_state(s), "component/item state {s} never routes to models");
@@ -1825,6 +1954,10 @@ mod state_tests {
                 // 1.7.2 V2: default_state must invert the fold exactly
                 if is_v2_state(s) {
                     assert_eq!(default_state(b), s, "v2 state {s} roundtrip");
+                }
+                // 1.8 V3: same roundtrip contract
+                if is_v3_state(s) {
+                    assert_eq!(default_state(b), s, "v3 state {s} roundtrip");
                 }
                 continue;
             }

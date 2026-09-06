@@ -570,8 +570,10 @@ impl TerrainGen {
             // Badlands: hot AND the driest climate band — red-sand floor
             // over layered terracotta (1.7.2 wiki: "floor similar to a
             // desert, but made of red sand"; the colored banding below is
-            // painted in the terrain fill, see badlands_band)
-            (Biome::Badlands, RED_SAND, TERRACOTTA)
+            // painted in the terrain fill, see badlands_band).
+            // 1.8: red sandstone directly under the red sand floor (the
+            // Bountiful Update's companion block, wiki /w/Red_Sandstone)
+            (Biome::Badlands, RED_SAND, RED_SANDSTONE)
         } else if temp > 0.3 && humid < 0.05 {
             (Biome::Desert, SAND, SAND)
         } else if temp > 0.25 && humid > 0.3 {
@@ -579,8 +581,16 @@ impl TerrainGen {
             // jungle wood/melon patches adapted to our palette)
             (Biome::Jungle, GRASS, DIRT)
         } else if temp > 0.35 {
-            // Savanna: hot, mid-dry — yellow-tinted grass, sparse trees
-            (Biome::Savanna, GRASS, DIRT)
+            // Savanna: hot, mid-dry — yellow-tinted grass, sparse trees.
+            // 1.8: coarse-dirt patches (the wiki's savanna-plateau floors
+            // — "grassless dirt", renamed coarse dirt in the Bountiful
+            // Update: "Replaces the grassless dirt variant found in mega
+            // taiga, mesa and savanna biomes")
+            if var > 0.72 {
+                (Biome::Savanna, COARSE_DIRT, DIRT)
+            } else {
+                (Biome::Savanna, GRASS, DIRT)
+            }
         } else if humid > 0.45 && h <= 66 {
             // Swamp: wettest band + low flat terrain — murky grass,
             // water pools (vanilla 1.16.5 swamps sit at low elevation)
@@ -3771,12 +3781,16 @@ mod v172_tests {
         // center column: top is red sand
         assert_eq!(chunk.get(8, h, 8), RED_SAND, "badlands surface");
         // the banding window below contains at least 3 distinct band
-        // colors (the sedimentary look)
+        // colors (the sedimentary look). 1.8: the 4-layer filler directly
+        // under the floor is red sandstone now — the band check starts
+        // below it.
         let mut distinct = std::collections::HashSet::new();
-        for y in (h - 14)..h {
+        for y in (h - 14)..(h - 4) {
             let b = chunk.get(8, y, 8);
             distinct.insert(b);
         }
+        // 1.8: red sandstone is the filler between red sand and banding
+        assert_eq!(chunk.get(8, h - 2, 8), RED_SANDSTONE, "1.8 red-sand filler");
         assert!(
             distinct.len() >= 3,
             "banded terracotta layers (got {} colors)",

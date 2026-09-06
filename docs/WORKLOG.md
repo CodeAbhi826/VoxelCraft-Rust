@@ -289,3 +289,58 @@ Breathing brewing (brewing stands take block-id ingredients; pufferfish
 item is now in the registry for a future recipe), 1.7 sound set.
 
 **Commit:** this entry (bracket 1.7.2).
+
+---
+
+## 2026-09-06 — version bracket 1.8 ("Bountiful Update") — Phase 1.8
+
+**Live verification:** minecraft.wiki/w/Java_Edition_1.8 parsed (2026-09-06)
++ targeted live checks for rabbit (3 HP, "avoid all players within 8
+blocks", 0–1 raw rabbit + 0–1 hide, 10% rabbit's-foot player-kill roll).
+
+**V3 registry window:** ids 162..=180, states 299..=317 (after the V2
+log-axis states), STATE_COUNT 318, BLOCK_COUNT 181. GPU mesher LUT
+re-derived (WGSL offsets 318/499/680 + clamps).
+
+**1.8 content implemented:**
+- Blocks: slime block (translucent), coarse dirt, polished
+  granite/diorite/andesite, red sandstone + smooth variant, prismarine ×3,
+  sea lantern (emissive 15, wiki-verified), iron trapdoor, barrier
+  (near-invisible solid — the wiki's "completely transparent").
+- Items: raw/cooked rabbit, rabbit hide, rabbit's foot, prismarine shard +
+  crystals.
+- Rabbit mob: 3 HP, skittish AI (bolts within 8 blocks of the player —
+  the wiki's avoidance rule), joins the passive herd roll, drops 0–1 raw
+  rabbit + 0–1 hide + the 10% foot roll, sprite + item art.
+- Slime-block bounce physics: landing on slime negates fall damage and
+  rebounds at the wiki's "up to 60% of initial height" ratio
+  (v = sqrt(0.6)·impact); sneaking keeps the damage and cancels the
+  rebound, exactly per the changelog.
+- Spectator mode: GameType 3 round-trips through the save schema;
+  always-flying, no-clip (move_axis bypass), no break/place/use, mob hits
+  absorbed (invulnerable), not offered in the create-screen cycle
+  (vanilla enters it only via /gamemode — which this engine lacks,
+  documented).
+- Worldgen: coarse-dirt patches in savanna (the 1.8 replacement for 1.7's
+  grassless dirt), red-sandstone filler directly under badlands red sand.
+- Recipes: 2×2 polished trio, 2×2 dirt+gravel checker → 4 coarse dirt,
+  2×2 red sand → red sandstone, 2×2 shards → prismarine, 2×2 crystals →
+  sea lantern (all per the 1.8 changelog text). Smelting: red rabbit →
+  cooked rabbit.
+- Picker: +19 (142 blocks).
+
+**Verification:** 328/328 tests green (301 lib + 27 game; +3:
+slime-bounce physics, spectator rules, rabbit data). The 1.7 badlands
+banding test updated for the new red-sandstone filler (it now checks the
+filler explicitly).
+
+**Deferred (documented):** guardians + elder guardians + ocean monuments
+(the era's flagship structure — beam attack, Mining Fatigue aura and
+monument worldgen are a full phase of their own), armor stands, banners,
+endermite, wet sponge, wood-specific doors/fences/fence gates, world
+border + /clone /fill /title /execute /trigger /stats commands (no
+command system), enchanting-lapis rework, customized/debug world types,
+rabbit stew + Potion of Leaping (brewing needs the rabbit's-foot recipe
+hook), door 3-tall models.
+
+**Commit:** this entry (bracket 1.8).

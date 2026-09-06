@@ -310,3 +310,78 @@ inter-page disagreements) is `docs/research/phase1-1.0-1.2-research.md`;
 - Post-10 — texture-seam fix + occlusion-flood cache (`fe70cd9`)
 - Workspace split into 14 library crates + per-library release archives +
   all-arch CI (`7378c08`, `f4b68a6`)
+
+---
+
+## 2026-09-06 — visual & mechanical verification round (the 7-section test) — commit pending-push
+
+**Task:** execute the user's 200+ item visual/mechanical verification test
+(§1 font, §2 HUD, §3 containers, §4 settings, §5 F3, §6 mechanics, §7
+rendering) against the live engine, under STRICT PROTOCOL discipline —
+every asserted number re-verified live this round (minecraft.wiki),
+nothing copied from the old research dumps. Full verdict table:
+`docs/VERIFICATION-REPORT.md`.
+
+**Environment honesty note:** the headless verifier renders via
+SwiftShader (software raster, ~10 fps, sim advancing sub-realtime), so the
+in-game "10 s walk = 43 blocks" timing checks were replaced by
+code-constant + convergence-test verification (the constants themselves
+live-verified). Pixel measurements taken at the default 1280×720 window.
+The user's 7 reference screenshots (options / video settings / resource
+packs / select world / F3 gameplay / creative inventory / survival
+inventory) were all reviewed via VLM and are recorded as the visual
+target set.
+
+### Implemented (this round's fixes — live-confirmed corrections only)
+
+- **Day-night cycle 600 s → 1200 s**: vanilla 1.16.5 = 24000 ticks @
+  20 tps = 20 min (live: w/Daylight_cycle, w/Tick). BOTH the old engine
+  value AND the checklist's "10-min" claim were wrong — noted as a
+  checklist error, not just an engine one. Extracted `DAY_LEN_SECS`
+  constant + regression test.
+- **Wooden-slab fuel 300 → 150 ticks** (live: w/Smelting fuel table).
+  Planks/logs/table/fence stay 300 (verified). Tests:
+  `fuel_table_matches_the_live_wiki`, `slab_burns_half_as_long_as_planks`.
+
+### Verified
+
+- Live-verified this round: walk 4.317 / sprint 5.612 / sprint-jump 7.127
+  (w/Walking, w/Sprinting, w/Transportation); smelting 200 ticks + coal
+  1600 (w/Smelting, w/Furnace); wooden slab 150; day cycle 20 min; lava
+  spread Nether 7 blocks/10 ticks + Overworld 3 blocks/30 ticks (w/Lava —
+  for when lava sim lands); guiScale semantics (w/Options.txt: 0=Auto or
+  integer). Existing verified rows (gravity formula, MC-12357 fall
+  damage, combat constants, water 5-tick spread, hopper 176×133) were
+  re-checked, not assumed.
+- Suite: **342/342 green** (339 → +3 tests), wasm32 clean, wasm bundle
+  rebuilt from the bracket-1 tree and live-tested in-browser (world
+  create → game entry → HUD/F3/inventory screenshots → VLM inspection).
+- In-game live checks: HUD (9 slots / 10 hearts / 10 drumsticks /
+  bubbles logic / held-item fade), F3 overlay (~24 left lines, all core
+  vanilla lines present), inventory screen functional.
+
+### Placeholder-unresolved
+
+- None new. (Carried: snow-golem trail gate, dragon XP split, iron-golem
+  drops, 5 biome temps — all disclosed in the bracket-1 entry above.)
+
+### Deferred (from the report's priority list, awaiting user direction)
+
+- Mechanical (small): render-distance slider 2–32 (engine 2–16); lava
+  fluid sim; sprint-jump 7.127 emergence test; coal item + 1600-tick fuel.
+- Visual (design-sized): GUI Scale option + integer UI scaling (the fixed
+  960×540 canvas currently yields a non-integer 2.67× effective scale at
+  1280×720); vanilla light-grey #C6C6C6 container theme + exact 176-wide
+  panels + armor slots + player model; font upgrade (8 px descenders,
+  proportional, 25 %-color shadow, § codes) or Monocraft adoption;
+  selection-frame/XP-bar/crosshair micro-sizes; 10-channel audio; F3
+  right column + sub-hotkeys.
+
+### Known issues & regressions
+
+- §1/§2/§3 carry structural deviations from vanilla styling (dark
+  container theme, 5×7 smallcaps font, no armor slots/player model,
+  non-integer GUI scale). These are pre-existing design decisions, now
+  formally measured and disclosed in the report rather than silently
+  kept. No gameplay regressions: 342/342, world create/play/E2E paths
+  all live.

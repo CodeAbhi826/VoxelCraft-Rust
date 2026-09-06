@@ -15,12 +15,20 @@
 //! * Hardcore — Survival rules, difficulty locked to Hard, death is permanent
 //!   (no respawn; the world is over).
 
-/// The three game modes VoxelCraft supports (1.16.5 parity scope).
+/// The game modes VoxelCraft supports (1.16.5 parity scope + 1.8's
+/// Spectator).
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum GameMode {
     Survival,
     Creative,
     Hardcore,
+    /// 1.8 (VERIFIED — minecraft.wiki/w/Java_Edition_1.8 §Gameplay: "Spectator
+    /// game mode — It can be accessed and reversed only via /gamemode";
+    /// GameType 3): flight always on, no-clip through blocks, no
+    /// interaction, mobs ignore the player, no damage. Not offered in the
+    /// world-create cycle (vanilla only enters it via command) — loads
+    /// from a saved GameType 3.
+    Spectator,
 }
 
 impl GameMode {
@@ -33,6 +41,8 @@ impl GameMode {
     pub fn vanilla_game_type(self) -> i32 {
         match self {
             GameMode::Creative => 1,
+            // 1.8: vanilla GameType 3 (the save-schema doc above)
+            GameMode::Spectator => 3,
             GameMode::Survival | GameMode::Hardcore => 0,
         }
     }
@@ -43,25 +53,28 @@ impl GameMode {
     }
 
     /// Decode a saved (GameType, Hardcore) pair. Unknown GameType values
-    /// (Adventure 2 / Spectator 3, or foreign garbage) fall back to Survival
-    /// rather than being invented — 2/3 are out of scope for this engine.
+    /// (Adventure 2, or foreign garbage) fall back to Survival rather
+    /// than being invented — Adventure stays out of scope; Spectator (3)
+    /// loads since the 1.8 bracket.
     pub fn from_save(game_type: i32, hardcore: bool) -> GameMode {
         match (game_type, hardcore) {
             (1, false) => GameMode::Creative,
             (0, true) => GameMode::Hardcore,
+            (3, false) => GameMode::Spectator,
             _ => GameMode::Survival,
         }
     }
 
-    /// Double-space flight toggle available (Creative only in 1.16.5).
+    /// Double-space flight toggle available (Creative + Spectator's
+    /// always-on flight).
     pub fn allows_flight(self) -> bool {
-        self == GameMode::Creative
+        self == GameMode::Creative || self == GameMode::Spectator
     }
 
-    /// Damage of every kind is absorbed (Creative's damage immunity —
-    /// includes fall damage and future starvation).
+    /// Damage of every kind is absorbed (Creative's damage immunity +
+    /// Spectator's).
     pub fn invulnerable(self) -> bool {
-        self == GameMode::Creative
+        self == GameMode::Creative || self == GameMode::Spectator
     }
 
     /// Placing blocks consumes the stack (Creative stacks are infinite).
@@ -90,6 +103,7 @@ impl GameMode {
             GameMode::Survival => "SURVIVAL",
             GameMode::Creative => "CREATIVE",
             GameMode::Hardcore => "HARDCORE",
+            GameMode::Spectator => "SPECTATOR",
         }
     }
 
@@ -99,15 +113,18 @@ impl GameMode {
             GameMode::Survival => "DEPLETING STACKS, REAL DAMAGE, RESPAWN",
             GameMode::Creative => "FLIGHT, NO DAMAGE, INFINITE ITEMS",
             GameMode::Hardcore => "SURVIVAL AT HARD, DEATH IS PERMANENT",
+            GameMode::Spectator => "1.8 SPECTATOR: FLY THROUGH WALLS, NO INTERACTION",
         }
     }
 
-    /// Next mode in the world-creation cycle.
+    /// Next mode in the world-creation cycle (Spectator is not in the
+    /// cycle — vanilla only enters it via command).
     pub fn next(self) -> GameMode {
         match self {
             GameMode::Survival => GameMode::Creative,
             GameMode::Creative => GameMode::Hardcore,
             GameMode::Hardcore => GameMode::Survival,
+            GameMode::Spectator => GameMode::Survival,
         }
     }
 
@@ -117,6 +134,7 @@ impl GameMode {
             GameMode::Survival => 0,
             GameMode::Creative => 1,
             GameMode::Hardcore => 2,
+            GameMode::Spectator => 3,
         }
     }
 
@@ -177,11 +195,14 @@ mod tests {
     #[test]
     fn unknown_game_type_falls_back_to_survival() {
         assert_eq!(GameMode::from_save(2, false), GameMode::Survival); // Adventure
-        assert_eq!(GameMode::from_save(3, false), GameMode::Survival); // Spectator
+        // 1.8: Spectator (GameType 3) loads now — was a Survival fallback
+        assert_eq!(GameMode::from_save(3, false), GameMode::Spectator);
         assert_eq!(GameMode::from_save(999, false), GameMode::Survival);
         // creative id + hardcore flag is not a real vanilla combination;
         // the flag wins per the from_save match — document it
         assert_eq!(GameMode::from_save(1, true), GameMode::Survival);
+        // spectator round-trips through the save schema
+        assert_eq!(GameMode::Spectator.vanilla_game_type(), 3);
     }
 
     #[test]
@@ -249,5 +270,25 @@ mod tests {
         assert_eq!(parse_seed("12345"), Some(12345));
         // non-numeric routes through the hash
         assert_eq!(parse_seed("abc"), Some(96354));
+    }
+}
+
+#[cfg(test)]
+mod v18_tests {
+    use super::*;
+
+    /// 1.8: spectator rules — flight, invulnerability, save round-trip,
+    /// and NOT in the create-screen cycle
+    #[test]
+    fn spectator_mode_rules() {
+        let sp = GameMode::Spectator;
+        assert!(sp.allows_flight(), "always flying");
+        assert!(sp.invulnerable(), "no damage");
+        assert!(sp.depletes_items() && sp.drops_blocks(), "never interacts anyway");
+        assert!(!GameMode::ALL.contains(&sp), "not in the create cycle");
+        assert_eq!(sp.vanilla_game_type(), 3, "GameType 3");
+        assert_eq!(GameMode::from_save(3, false), sp);
+        assert_eq!(sp.next(), GameMode::Survival, "cycle exit");
+        assert_eq!(sp.label(), "SPECTATOR");
     }
 }

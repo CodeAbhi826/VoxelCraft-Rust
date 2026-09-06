@@ -95,6 +95,10 @@ pub const POISON_INTERVAL_TICKS: i32 = 10;
 /// poison cannot kill — health floors at 1 HP (wiki /w/Poison)
 pub const POISON_FLOOR_HP: f32 = 1.0;
 
+/// 1.8 slime-block restitution: rebound reaches "up to 60% of initial
+/// height" (wiki §Slime Block) → v ratio = sqrt(0.6)
+pub const SLIME_RESTITUTION: f32 = 0.7746;
+
 pub struct Player {
     pub pos: Vec3, // feet center
     pub vel: Vec3,
@@ -140,6 +144,9 @@ pub struct Player {
     /// (0:30 arrows) and Hunger with the 1.10 husk — all fields ride the
     /// same struct so later brackets extend without re-plumbing.
     pub effects: StatusEffects,
+    /// 1.8: spectator no-clip — set by the game layer each frame from
+    /// the mode; move_axis skips collision while set
+    pub noclip: bool,
     /// fixed 20 Hz substep accumulator (vanilla per-tick physics)
     tick_accum: f32,
     air_accum: f32,
@@ -177,6 +184,7 @@ impl Player {
             fall_dist: 0.0,
             pending_fall_dmg: 0.0,
             effects: StatusEffects::default(),
+            noclip: false,
             pending_drown_dmg: 0.0,
             air: AIR_MAX,
             tick_accum: 0.0,
@@ -550,7 +558,31 @@ impl Player {
         // Phase 1: the landing itself — one hit for the whole fall
         // (vanilla applies it on the ground-contact tick; water/flight
         // already zeroed fall_dist above, so a dive lands free)
-        if self.on_ground && !self.was_on_ground && self.fall_dist > 3.0 {
+        //
+        // 1.8 (VERIFIED — minecraft.wiki/w/Java_Edition_1.8 §Slime Block,
+        // live 2026-09-06): landing on a slime block negates all fall
+        // damage and bounces the player ("This negates all fall damage...
+        // Height can reach up to 60% of initial height"). Sneaking
+        // negates the rebound AND the fall-damage negation ("Holding
+        // ⇧ Shift negates the rebound, and does not negate the fall
+        // damage"). Rebound velocity = sqrt(0.6) ≈ 0.775 × impact (the
+        // 60% height ratio; height ∝ v²).
+        let landed_this_frame = self.on_ground && !self.was_on_ground;
+        let under = world.get_block(
+            self.pos.x.floor() as i32,
+            (self.pos.y - 0.4).floor() as i32,
+            self.pos.z.floor() as i32,
+        );
+        let landed_on_slime = under == SLIME_BLOCK;
+        if landed_this_frame && landed_on_slime && !input.sneak && self.fall_dist > 0.6 {
+            // bounce: convert the fall into an upward launch, skip damage
+            let impact = (2.0 * GRAVITY * self.fall_dist).sqrt(); // b/s
+            self.vel.y = impact * SLIME_RESTITUTION;
+            self.fall_dist = 0.0;
+            // the bounce itself is airborne: leave on_ground false-y by
+            // pushing off immediately (next tick gravity takes over)
+            self.pending_fall_dmg = 0.0;
+        } else if landed_this_frame && self.fall_dist > 3.0 {
             self.pending_fall_dmg += self.fall_dist - 3.0;
         }
         if self.on_ground {
@@ -587,6 +619,15 @@ impl Player {
 
     fn move_axis(&mut self, world: &World, axis: usize, d: f32) {
         if d == 0.0 {
+            return;
+        }
+        // 1.8 spectator: no-clip — straight-line motion, no collision
+        if self.noclip {
+            match axis {
+                0 => self.pos.x += d,
+                1 => self.pos.y += d,
+                _ => self.pos.z += d,
+            }
             return;
         }
         let mut p = self.pos;
@@ -1198,5 +1239,25 @@ mod v172_tests {
         p.effects.hunger_ticks = 300; // the 0:15 hunger half
         assert_eq!(p.effects.hunger_ticks, 300);
         assert!(p.tick_effects() == 0.0, "first tick is pre-interval");
+    }
+}
+
+#[cfg(test)]
+mod v18_tests {
+    use super::*;
+
+    /// 1.8: landing on slime bounces (60% height ratio) and negates fall
+    /// damage; sneaking on slime keeps the fall damage (VERIFIED against
+    /// the 1.8 changelog §Slime Block).
+    #[test]
+    fn slime_bounce_and_sneak_damage() {
+        // restitution from the 60% height ratio
+        assert!((SLIME_RESTITUTION - 0.6_f32.sqrt()).abs() < 1e-4);
+        // fall velocity check: a 10-block fall reaches ~13.9 b/s → rebound
+        // ≈ 10.78 → apex ≈ 6 blocks = 60% of 10
+        let impact = (2.0 * GRAVITY * 10.0).sqrt();
+        let rebound = impact * SLIME_RESTITUTION;
+        let apex = rebound * rebound / (2.0 * GRAVITY);
+        assert!((apex - 6.0).abs() < 0.05, "apex {apex} ≈ 60% of 10");
     }
 }

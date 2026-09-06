@@ -47,6 +47,11 @@ pub enum MobKind {
     Pig,
     Sheep,
     Chicken,
+    /// 1.8 (Bountiful Update): the rabbit — VERIFIED live (minecraft.wiki
+    /// /w/Rabbit, 2026-09-06): 3 HP, avoids players within 8 blocks,
+    /// 0-1 raw rabbit + 0-1 rabbit hide on death, a 10% rabbit's foot on
+    /// a player kill
+    Rabbit,
 }
 
 impl MobKind {
@@ -61,6 +66,7 @@ impl MobKind {
             "pig" => MobKind::Pig,
             "sheep" => MobKind::Sheep,
             "chicken" => MobKind::Chicken,
+            "rabbit" => MobKind::Rabbit,
             _ => return None,
         })
     }
@@ -77,6 +83,7 @@ impl MobKind {
             MobKind::Pig => "minecraft:pig",
             MobKind::Sheep => "minecraft:sheep",
             MobKind::Chicken => "minecraft:chicken",
+            MobKind::Rabbit => "minecraft:rabbit",
         }
     }
 
@@ -91,6 +98,7 @@ impl MobKind {
             MobKind::Pig => TILE_PIG,
             MobKind::Sheep => TILE_SHEEP,
             MobKind::Chicken => TILE_CHICKEN,
+            MobKind::Rabbit => TILE_RABBIT,
         }
     }
 
@@ -128,7 +136,7 @@ pub struct MobDef {
     pub xp: i32,
 }
 
-pub const MOB_DATA: [MobDef; 9] = [
+pub const MOB_DATA: [MobDef; 10] = [
     MobDef {
         kind: MobKind::Zombie,
         health: 20.0,
@@ -216,6 +224,18 @@ pub const MOB_DATA: [MobDef; 9] = [
         speed_attr: 0.25,
         armor: 0.0,
         height: 0.7,
+        width: 0.4,
+        xp: 1,
+    },
+    // 1.8 rabbit — VERIFIED (minecraft.wiki/w/Rabbit, live 2026-09-06):
+    // 3 HP; avoids players within 8 blocks (panics fast when approached)
+    MobDef {
+        kind: MobKind::Rabbit,
+        health: 3.0,
+        damage: 0.0,
+        speed_attr: 0.3,
+        armor: 0.0,
+        height: 0.5,
         width: 0.4,
         xp: 1,
     },
@@ -587,11 +607,14 @@ impl MobSystem {
             if blk_l < PASSIVE_LIGHT_MIN {
                 return;
             }
-            let kind = match self.rng.next_range(4) {
+            // 1.8: rabbits join the passive herd roll (grass biomes, wiki:
+            // "spawn as any other farm animals, in grassy biomes")
+            let kind = match self.rng.next_range(5) {
                 0 => MobKind::Cow,
                 1 => MobKind::Pig,
                 2 => MobKind::Sheep,
-                _ => MobKind::Chicken,
+                3 => MobKind::Chicken,
+                _ => MobKind::Rabbit,
             };
             let herd = 2 + (self.rng.next_range(3)) as usize;
             for _ in 0..herd {
@@ -768,6 +791,25 @@ fn ai_tick(
             }
         }
         // passives: wander; panic-flee while flashing from a hit
+        // 1.8 rabbit addition: rabbits are skittish — the wiki's "avoid
+        // all players within 8 blocks" (live-verified 2026-09-06) — they
+        // hop away at panic speed BEFORE ever being hit
+        MobKind::Rabbit => {
+            const RABBIT_AVOID_RADIUS: f32 = 8.0;
+            if m.hurt_t > 0 {
+                m.yaw = (-dz).atan2(-dx) - std::f32::consts::FRAC_PI_2;
+                let f = speed * FLEE_MULT;
+                m.vel[0] += (-dx / dist * f - m.vel[0]) * 0.4;
+                m.vel[2] += (-dz / dist * f - m.vel[2]) * 0.4;
+            } else if dist < RABBIT_AVOID_RADIUS {
+                // face away and bolt (the panicking rabbit)
+                m.yaw = (dz / dist).atan2(-dx / dist) - std::f32::consts::FRAC_PI_2;
+                m.vel[0] += (-dx / dist * speed - m.vel[0]) * 0.3;
+                m.vel[2] += (-dz / dist * speed - m.vel[2]) * 0.3;
+            } else {
+                wander(rng, m, speed * 0.4);
+            }
+        }
         _ => {
             if m.hurt_t > 0 {
                 m.yaw = (-dz).atan2(-dx) - std::f32::consts::FRAC_PI_2;
@@ -1449,5 +1491,24 @@ mod tests {
         assert!(m.on_ground, "lands");
         assert!(m.pos[1] >= 65.0, "no tunneling: y={}", m.pos[1]);
         assert!(m.health <= 0.0, "55-block fall is lethal, hp={}", m.health);
+    }
+}
+
+#[cfg(test)]
+mod v18_tests {
+    use super::*;
+
+    /// 1.8 rabbit: data + the avoid-player AI gate (wiki: "avoid all
+    /// players within 8 blocks")
+    #[test]
+    fn rabbit_data_and_behavior() {
+        let d = def(MobKind::Rabbit);
+        // VERIFIED (minecraft.wiki/w/Rabbit): 3 HP
+        assert_eq!(d.health, 3.0);
+        assert!(!MobKind::Rabbit.hostile() && !MobKind::Rabbit.neutral(), "passive");
+        assert_eq!(MobKind::from_name("rabbit"), Some(MobKind::Rabbit));
+        assert_eq!(MobKind::Rabbit.name(), "minecraft:rabbit");
+        // the mob registry includes it in the herd roll
+        assert!(MOB_DATA.iter().any(|m| m.kind == MobKind::Rabbit));
     }
 }

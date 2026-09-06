@@ -2966,6 +2966,353 @@ fn pufferfish_art(a: &mut [u8], t: u16) {
     put(a, t, 8, 9, 120, 96, 22, 255);
 }
 
+
+/// 1.8 rabbit entity sprite: small body, long ears, white tail — the
+/// skittish grass-biome mob
+fn rabbit_sprite_art(a: &mut [u8], t: u16) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    let fur = (154, 122, 94);
+    let fur_d = (128, 100, 76);
+    let belly = (222, 214, 200);
+    // body (side view, facing +x)
+    for y in 8..13 {
+        for x in 4..12 {
+            put(a, t, x, y, fur.0, fur.1, fur.2, 255);
+        }
+    }
+    // belly lighten
+    for x in 5..11 {
+        put(a, t, x, 12, belly.0, belly.1, belly.2, 255);
+    }
+    // head
+    for y in 6..10 {
+        for x in 11..14 {
+            put(a, t, x, y, fur.0, fur.1, fur.2, 255);
+        }
+    }
+    // eye
+    put(a, t, 12, 7, 24, 24, 28, 255);
+    // ears (the signature)
+    for y in 1..6 {
+        put(a, t, 11, y, fur_d.0, fur_d.1, fur_d.2, 255);
+        put(a, t, 12, y, fur_d.0, fur_d.1, fur_d.2, 255);
+    }
+    put(a, t, 11, 2, 196, 148, 140, 255); // inner ear
+    put(a, t, 12, 3, 196, 148, 140, 255);
+    // tail puff
+    put(a, t, 3, 9, belly.0, belly.1, belly.2, 255);
+    put(a, t, 3, 10, belly.0, belly.1, belly.2, 255);
+    // legs
+    for (x, y) in [(5, 13), (6, 13), (9, 13), (10, 13)] {
+        put(a, t, x, y, fur_d.0, fur_d.1, fur_d.2, 255);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 1.8 bracket painters ("Bountiful Update"). Clean-room pixel art.
+// ---------------------------------------------------------------------------
+
+/// slime block: green translucent gel — the wiki's "bouncy, sticky"
+/// trampoline block; inner cube hint + glossy highlight
+fn slime_block_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, jit(112, 6, rng), jit(182, 8, rng), jit(102, 6, rng), 165);
+        }
+    }
+    // inner cube (darker, more opaque)
+    for y in 3..13 {
+        for x in 3..13 {
+            put(a, t, x, y, 98, 168, 90, 210);
+        }
+    }
+    // glossy top-left highlight
+    for (x, y) in [(4, 4), (5, 4), (4, 5), (5, 5), (6, 4), (4, 6)] {
+        put(a, t, x, y, 190, 236, 170, 235);
+    }
+}
+
+/// coarse dirt: dirt base with mixed gravel clods (wiki: "slightly darker
+/// texture than regular dirt" + gravel checkered recipe)
+fn coarse_dirt_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [115, 80, 55], 8, rng);
+    for _ in 0..26 {
+        let x = rng.next_range(16) as i32;
+        let y = rng.next_range(16) as i32;
+        let g = 90 + rng.next_range(60) as i32;
+        put(a, t, x, y, jit(g, 8, rng), jit(g - 6, 8, rng), jit(g - 14, 8, rng), 255);
+    }
+}
+
+/// polished stones: smooth, near-uniform versions of the 1.8 trio
+fn polished_art(a: &mut [u8], t: u16, rgb: (i32, i32, i32), rng: &mut Rng) {
+    noise_fill(a, t, [rgb.0, rgb.1, rgb.2], 4, rng);
+    // faint diagonal polish streaks
+    for i in 0..16 {
+        put(a, t, i, i, (rgb.0 + 10).min(255), (rgb.1 + 10).min(255), (rgb.2 + 10).min(255), 255);
+    }
+}
+
+/// red sandstone: layered strata of red sand tones (smooth = no strata)
+fn red_sandstone_art(a: &mut [u8], t: u16, rng: &mut Rng, smooth: bool) {
+    noise_fill(a, t, [176, 96, 45], 6, rng);
+    if !smooth {
+        for y in [3, 7, 11, 13] {
+            for x in 0..16 {
+                if rng.next_f32() < 0.85 {
+                    put(a, t, x, y, jit(150, 8, rng), jit(78, 6, rng), jit(36, 4, rng), 255);
+                }
+            }
+        }
+    }
+    // frame edges slightly darker
+    for i in 0..16 {
+        put(a, t, i, 0, jit(160, 6, rng), jit(86, 6, rng), jit(40, 4, rng), 255);
+        put(a, t, i, 15, jit(160, 6, rng), jit(86, 6, rng), jit(40, 4, rng), 255);
+    }
+}
+
+/// prismarine: teal-green stone with shifting cracks (vanilla animates
+/// the color slowly — ours is a static mid-tone, documented)
+fn prismarine_art(a: &mut [u8], t: u16, rgb: (i32, i32, i32), rng: &mut Rng) {
+    noise_fill(a, t, [rgb.0, rgb.1, rgb.2], 10, rng);
+    for _ in 0..7 {
+        let x = rng.next_range(12) as i32;
+        let y = rng.next_range(12) as i32;
+        let l = 2 + rng.next_range(4) as i32;
+        for i in 0..l {
+            put(a, t, x + i, y + i, (rgb.0 - 26).max(0), (rgb.1 - 26).max(0), (rgb.2 - 20).max(0), 255);
+        }
+    }
+}
+
+/// prismarine bricks: 4×2 brick grid in the prismarine hue
+fn prismarine_bricks_art(a: &mut [u8], t: u16) {
+    let base = (99, 156, 150);
+    let dark = (74, 124, 118);
+    for y in 0..16 {
+        for x in 0..16 {
+            let (bx, by) = (x / 4, y / 8);
+            let mortar = x % 4 == 0 || y % 8 == 0 || (y / 8 == 1 && (x + 4) % 8 < 1);
+            let c = if mortar { dark } else { base };
+            put(a, t, x, y, c.0, c.1, c.2, 255);
+        }
+    }
+}
+
+/// dark prismarine: deep teal with mottled tiles
+fn dark_prismarine_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [60, 102, 96], 8, rng);
+    for _ in 0..10 {
+        let x = rng.next_range(16) as i32;
+        let y = rng.next_range(16) as i32;
+        put(a, t, x, y, jit(48, 6, rng), jit(84, 8, rng), jit(78, 8, rng), 255);
+    }
+}
+
+/// sea lantern: bright glowing core in a cream/teal casing (light 15)
+fn sea_lantern_art(a: &mut [u8], t: u16) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 168, 196, 196, 255);
+        }
+    }
+    // corner casing triangles
+    for i in 0..4 {
+        for j in 0..(4 - i) {
+            put(a, t, i, j, 120, 152, 152, 255);
+            put(a, t, 15 - i, j, 120, 152, 152, 255);
+            put(a, t, i, 15 - j, 120, 152, 152, 255);
+            put(a, t, 15 - i, 15 - j, 120, 152, 152, 255);
+        }
+    }
+    // bright core + sparkle
+    for y in 4..12 {
+        for x in 4..12 {
+            put(a, t, x, y, 226, 244, 238, 255);
+        }
+    }
+    for y in 6..10 {
+        for x in 6..10 {
+            put(a, t, x, y, 250, 255, 252, 255);
+        }
+    }
+    put(a, t, 5, 5, 255, 255, 255, 255);
+    put(a, t, 10, 8, 255, 255, 255, 255);
+}
+
+/// iron trapdoor: grey metal plate with rivets and a cross brace
+fn iron_trapdoor_art(a: &mut [u8], t: u16) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 148, 148, 150, 255);
+        }
+    }
+    // frame
+    for i in 0..16 {
+        put(a, t, i, 0, 108, 108, 110, 255);
+        put(a, t, i, 15, 108, 108, 110, 255);
+        put(a, t, 0, i, 108, 108, 110, 255);
+        put(a, t, 15, i, 108, 108, 110, 255);
+    }
+    // cross brace
+    for i in 1..15 {
+        put(a, t, i, i, 122, 122, 124, 255);
+        put(a, t, 15 - i, i, 122, 122, 124, 255);
+    }
+    // rivets
+    for (x, y) in [(2, 2), (13, 2), (2, 13), (13, 13)] {
+        put(a, t, x, y, 220, 220, 224, 255);
+        put(a, t, x + 1, y, 90, 90, 92, 255);
+    }
+}
+
+/// barrier: near-invisible (wiki: "completely transparent" in world;
+/// the red cross-out is the held-item particle). Alpha ~0 with a faint
+/// marker so the picker icon is findable.
+fn barrier_art(a: &mut [u8], t: u16) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    // faint red X (mostly for the picker icon; in-world it reads as
+    // near-invisible at alpha 40)
+    for i in 2..14 {
+        put(a, t, i, i, 190, 40, 40, 40);
+        put(a, t, 15 - i, i, 190, 40, 40, 40);
+    }
+}
+
+/// rabbit meat icon (raw pink / cooked brown), haunch silhouette
+fn rabbit_meat_art(a: &mut [u8], t: u16, meat: (i32, i32, i32), cooked: bool) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    // haunch: oval body + bone stub
+    for y in 5..12 {
+        for x in 3..12 {
+            let edge = y == 5 || y == 11 || x == 3;
+            put(
+                a,
+                t,
+                x,
+                y,
+                meat.0 - if edge { 24 } else { 0 },
+                meat.1 - if edge { 24 } else { 0 },
+                meat.2 - if edge { 24 } else { 0 },
+                255,
+            );
+        }
+    }
+    // bone
+    for x in 12..15 {
+        put(a, t, x, 8, 236, 232, 220, 255);
+    }
+    put(a, t, 12, 7, 236, 232, 220, 255);
+    put(a, t, 12, 9, 236, 232, 220, 255);
+    // sear marks on the cooked cut
+    if cooked {
+        for x in 5..11 {
+            put(a, t, x, 7, meat.0 - 40, meat.1 - 40, meat.2 - 30, 255);
+        }
+    } else {
+        // raw marbling
+        put(a, t, 6, 8, (meat.0 + 30).min(255), (meat.1 + 20).min(255), (meat.2 + 20).min(255), 255);
+        put(a, t, 8, 9, (meat.0 + 30).min(255), (meat.1 + 20).min(255), (meat.2 + 20).min(255), 255);
+    }
+}
+
+/// rabbit hide: tan folded pelt
+fn rabbit_hide_art(a: &mut [u8], t: u16) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    for y in 3..13 {
+        for x in 2..14 {
+            let edge = x <= 3 || x >= 13 || y <= 4 || y >= 12;
+            let c = if edge { (166, 128, 92) } else { (190, 150, 110) };
+            put(a, t, x, y, c.0, c.1, c.2, 255);
+        }
+    }
+    // fold line
+    for y in 4..12 {
+        put(a, t, 8, y, 152, 116, 82, 255);
+    }
+}
+
+/// rabbit's foot: pink paw with claws (the Leaping ingredient)
+fn rabbit_foot_art(a: &mut [u8], t: u16) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    // main paw pad
+    for y in 6..13 {
+        for x in 4..11 {
+            let edge = x == 4 || x == 10 || y == 6 || y == 12;
+            let c = if edge { (188, 122, 128) } else { (222, 152, 158) };
+            put(a, t, x, y, c.0, c.1, c.2, 255);
+        }
+    }
+    // toes
+    for (x, y) in [(5, 4), (7, 3), (9, 4)] {
+        put(a, t, x, y, 222, 152, 158, 255);
+        put(a, t, x, y + 1, 205, 136, 142, 255);
+    }
+    // wrist fur above
+    for y in 2..5 {
+        for x in 5..10 {
+            put(a, t, x, y, 236, 226, 216, 255);
+        }
+    }
+}
+
+/// prismarine shard: teal crystal sliver
+fn shard_art(a: &mut [u8], t: u16) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    // diagonal crystal shard
+    for i in 0..9 {
+        for w in 0..2 {
+            put(a, t, 3 + i + w, 12 - i, 116, 190, 182, 255);
+        }
+    }
+    for i in 0..5 {
+        put(a, t, 4 + i, 11 - i, 168, 226, 218, 255);
+    }
+}
+
+/// prismarine crystals: cluster of bright teal gems
+fn crystals_art(a: &mut [u8], t: u16) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    let gems = [(5, 8, 2), (9, 6, 3), (8, 11, 2), (11, 10, 2)];
+    for (gx, gy, gs) in gems {
+        for dy in 0..gs {
+            for dx in 0..gs {
+                put(a, t, gx + dx, gy + dy, 160, 226, 218, 255);
+            }
+        }
+        put(a, t, gx, gy, 224, 250, 246, 255);
+    }
+}
+
 pub fn generate_atlas() -> Vec<u8> {
     let mut a = vec![0u8; ATLAS_SIZE * ATLAS_SIZE * 4];
     for t in 0..=TILE_MAX {
@@ -3160,6 +3507,28 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_RAW_SALMON => fish_art(&mut a, t, (222, 128, 114), (170, 88, 78), true),
             TILE_CLOWNFISH => clownfish_art(&mut a, t),
             TILE_PUFFERFISH => pufferfish_art(&mut a, t),
+            // ---- 1.8 bracket (live-verified minecraft.wiki/w/Java_Edition_1.8) ----
+            TILE_SLIME => slime_block_art(&mut a, t, &mut rng),
+            TILE_COARSE_DIRT => coarse_dirt_art(&mut a, t, &mut rng),
+            TILE_POLISHED_GRANITE => polished_art(&mut a, t, (154, 106, 79), &mut rng),
+            TILE_POLISHED_DIORITE => polished_art(&mut a, t, (189, 188, 187), &mut rng),
+            TILE_POLISHED_ANDESITE => polished_art(&mut a, t, (136, 136, 135), &mut rng),
+            TILE_RED_SANDSTONE => red_sandstone_art(&mut a, t, &mut rng, false),
+            TILE_SMOOTH_RED_SANDSTONE => red_sandstone_art(&mut a, t, &mut rng, true),
+            TILE_PRISMARINE => prismarine_art(&mut a, t, (99, 156, 150), &mut rng),
+            TILE_PRISMARINE_BRICKS => prismarine_bricks_art(&mut a, t),
+            TILE_DARK_PRISMARINE => dark_prismarine_art(&mut a, t, &mut rng),
+            TILE_SEA_LANTERN => sea_lantern_art(&mut a, t),
+            TILE_IRON_TRAPDOOR => iron_trapdoor_art(&mut a, t),
+            TILE_BARRIER => barrier_art(&mut a, t),
+            TILE_RAW_RABBIT => rabbit_meat_art(&mut a, t, (206, 118, 108), false),
+            TILE_COOKED_RABBIT => rabbit_meat_art(&mut a, t, (160, 96, 58), true),
+            TILE_RABBIT_HIDE => rabbit_hide_art(&mut a, t),
+            TILE_RABBIT_FOOT => rabbit_foot_art(&mut a, t),
+            TILE_PRISMARINE_SHARD => shard_art(&mut a, t),
+            TILE_PRISMARINE_CRYSTALS => crystals_art(&mut a, t),
+            // 1.8 rabbit entity sprite
+            TILE_RABBIT => rabbit_sprite_art(&mut a, t),
             _ => {}
         }
     }

@@ -872,6 +872,9 @@ pub fn dimension_dir(world_dir: &Path, dim: vc_world::world::Dimension) -> PathB
     match dim {
         vc_world::world::Dimension::Overworld => world_dir.to_path_buf(),
         vc_world::world::Dimension::Nether => world_dir.join("DIM-1"),
+        // Phase E1: the End ships — vanilla layout (documented in the
+        // §28 note above)
+        vc_world::world::Dimension::End => world_dir.join("DIM1"),
     }
 }
 

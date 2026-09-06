@@ -4,6 +4,10 @@
 use vc_blocks::blocks::*;
 use vc_rng::rng::Rng;
 
+/// Phase E1 procedural tiles (evolution 1.0–1.2 bracket) — child module so
+/// the art additions stay reviewable while sharing the put/jit/art helpers.
+mod e1_art;
+
 pub const ATLAS_SIZE: usize = 256;
 pub const TILE_PX: usize = 16;
 
@@ -2595,6 +2599,49 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_SPAWNER => spawner_art(&mut a, t),
             // Phase 10: stronghold portal-room frame
             TILE_END_PORTAL_FRAME => end_portal_frame_art(&mut a, t),
+            // ---- Phase E1 tiles (evolution 1.0–1.2 bracket) ----
+            TILE_MYCELIUM_TOP => e1_art::mycelium_top(&mut a, t, &mut rng),
+            TILE_MYCELIUM_SIDE => e1_art::mycelium_side(&mut a, t, &mut rng),
+            TILE_END_STONE => e1_art::end_stone(&mut a, t, &mut rng),
+            TILE_NETHER_BRICKS => e1_art::nether_bricks(&mut a, t, &mut rng),
+            TILE_REDSTONE_LAMP => e1_art::redstone_lamp(&mut a, t, &mut rng, false),
+            TILE_REDSTONE_LAMP_ON => e1_art::redstone_lamp(&mut a, t, &mut rng, true),
+            TILE_CHISELED_STONE_BRICKS => e1_art::chiseled_stone_bricks(&mut a, t, &mut rng),
+            TILE_CHISELED_SANDSTONE => e1_art::chiseled_sandstone(&mut a, t, &mut rng),
+            TILE_CUT_SANDSTONE => e1_art::cut_sandstone(&mut a, t, &mut rng),
+            TILE_SMOOTH_SANDSTONE => e1_art::smooth_sandstone(&mut a, t, &mut rng),
+            TILE_MUSHROOM_RED_BLOCK => e1_art::mushroom_block_red(&mut a, t, &mut rng),
+            TILE_MUSHROOM_BROWN_BLOCK => e1_art::mushroom_block_brown(&mut a, t, &mut rng),
+            TILE_MUSHROOM_STEM => e1_art::mushroom_stem(&mut a, t, &mut rng),
+            TILE_NETHER_WART_0 => e1_art::nether_wart_art(&mut a, t, 0),
+            TILE_NETHER_WART_1 => e1_art::nether_wart_art(&mut a, t, 1),
+            TILE_NETHER_WART_2 => e1_art::nether_wart_art(&mut a, t, 2),
+            TILE_NETHER_WART_3 => e1_art::nether_wart_art(&mut a, t, 3),
+            TILE_DRAGON_EGG => e1_art::dragon_egg_art(&mut a, t),
+            TILE_END_PORTAL => e1_art::end_portal_art(&mut a, t),
+            TILE_END_CRYSTAL => e1_art::end_crystal_art(&mut a, t),
+            TILE_XP_ORB => e1_art::xp_orb_art(&mut a, t, false),
+            TILE_XP_ORB_BIG => e1_art::xp_orb_art(&mut a, t, true),
+            TILE_EYE_OF_ENDER => e1_art::eye_of_ender_art(&mut a, t),
+            TILE_BLAZE_ROD => e1_art::blaze_rod_art(&mut a, t),
+            TILE_BLAZE_POWDER => e1_art::blaze_powder_art(&mut a, t),
+            TILE_GOLDEN_APPLE => e1_art::golden_apple_art(&mut a, t),
+            TILE_SNOWBALL => e1_art::snowball_art(&mut a, t),
+            TILE_NETHER_BRICK => e1_art::nether_brick_art(&mut a, t),
+            // mob sprites (Phase E1)
+            TILE_SNOWGOLEM => e1_art::snow_golem_art(&mut a, t),
+            TILE_MAGMACUBE => e1_art::magma_cube_art(&mut a, t),
+            TILE_BLAZE => e1_art::blaze_art(&mut a, t),
+            TILE_OCELOT => e1_art::ocelot_art(&mut a, t),
+            TILE_IRONGOLEM => e1_art::iron_golem_art(&mut a, t),
+            TILE_ZOMBIEVILLAGER => e1_art::zombie_villager_art(&mut a, t),
+            TILE_MOOSHROOM => e1_art::mooshroom_art(&mut a, t),
+            TILE_ENDERDRAGON => e1_art::ender_dragon_art(&mut a, t),
+            // spawn eggs: palette pairs indexed by egg id (order = egg_mob)
+            t if (TILE_EGG_BASE..=TILE_EGG_MAX).contains(&t) => {
+                let p = e1_art::EGG_PALETTES[(t - TILE_EGG_BASE) as usize];
+                e1_art::egg_art(&mut a, t, (p.0, p.1, p.2), (p.3, p.4, p.5));
+            }
             _ => {}
         }
     }

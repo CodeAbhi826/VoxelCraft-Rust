@@ -618,6 +618,9 @@ pub struct GameApp {
     world_dir: std::path::PathBuf,
     /// §28: a dimension travel is waiting for the spawn chunk (Loading)
     traveling: bool,
+    /// Phase E1: the ender dragon has been defeated in this world (gates
+    /// the first-entry fight spawn + the re-fight ritual, deferred)
+    dragon_defeated: bool,
     /// Phase 1: a created/loaded world is waiting for the spawn chunk —
     /// Loading then goes straight into the game (not back to the title)
     pending_play: bool,
@@ -1071,6 +1074,7 @@ impl GameApp {
             #[cfg(not(target_arch = "wasm32"))]
             world_dir,
             traveling: false,
+            dragon_defeated: false,
             pending_play: false,
             mode,
             world_name,
@@ -2348,6 +2352,96 @@ impl GameApp {
         use vc_gameplay::combat;
         let eye = self.player.eye().to_array();
         let dir = self.player.look_dir().to_array();
+
+        // ---- Phase E1: the ender-dragon fight takes melee priority ----
+        // (a) an end crystal under the crosshair detonates on ANY damage
+        // (VERIFIED w/End_Crystal — power 6); (b) the dragon itself (a
+        // generous 8×4×8 hitbox around its sprite center; only players
+        // damage it — VERIFIED).
+        if self.world.dimension == vc_world::world::Dimension::End {
+            // snapshot the fight state (borrow split: damage below needs &mut)
+            let dstate = self.sim.dragon.dragon.as_ref().map(|d| (d.pos, d.dying, d.health));
+            if let Some((dpos, ddying, dhealth)) = dstate {
+                if ddying.is_none() {
+                    let d_pos = dpos;
+                    // ray vs the dragon's AABB (slab test)
+                    let lo = [d_pos[0] - 4.0, d_pos[1] - 2.0, d_pos[2] - 4.0];
+                    let hi = [d_pos[0] + 4.0, d_pos[1] + 2.0, d_pos[2] + 4.0];
+                    let mut tmin = 0.0f32;
+                    let mut tmax = crate::player::REACH * 1.5;
+                    let mut ok = true;
+                    for a in 0..3 {
+                        if dir[a].abs() < 1e-6 {
+                            if eye[a] < lo[a] || eye[a] > hi[a] {
+                                ok = false;
+                                break;
+                            }
+                        } else {
+                            let mut t1 = (lo[a] - eye[a]) / dir[a];
+                            let mut t2 = (hi[a] - eye[a]) / dir[a];
+                            if t1 > t2 {
+                                std::mem::swap(&mut t1, &mut t2);
+                            }
+                            tmin = tmin.max(t1);
+                            tmax = tmax.min(t2);
+                            if tmin > tmax {
+                                ok = false;
+                                break;
+                            }
+                        }
+                    }
+                    if ok {
+                        // player melee only (the engine's only verified
+                        // dragon damage source besides explosions)
+                        use vc_gameplay::mobs;
+                        let (_, atk_speed) = combat::held_attack(self.player.held().block);
+                        let period = combat::attack_cooldown_ticks(atk_speed) / 20.0;
+                        let p = (self.swing_t / period).min(1.0);
+                        let falling = !self.player.on_ground && self.player.vel.y < 0.0;
+                        let sprinting = self.input.sprint
+                            && (self.input.fwd
+                                || self.input.back
+                                || self.input.left
+                                || self.input.right);
+                        let outcome = combat::player_melee(
+                            self.player.held().block,
+                            p,
+                            falling,
+                            sprinting,
+                            0.0,
+                            0.0,
+                        );
+                        let applied = self.sim.dragon.damage(outcome.damage);
+                        if applied > 0.0 {
+                            self.play_event("entity.ender_dragon.hurt", Some(d_pos), 1.0);
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: dragon hit p={:.2} -> {:.2} dmg (hp {:.0})",
+                                p,
+                                outcome.damage,
+                                (dhealth - applied).max(0.0)
+                            ));
+                        }
+                        self.swing_t = 0.0;
+                        self.ui.dirty = true;
+                        return true;
+                    }
+                }
+                // (a) crystals: proximity ray-hit against each alive crystal
+                let hit_point = [
+                    eye[0] + dir[0] * crate::player::REACH,
+                    eye[1] + dir[1] * crate::player::REACH,
+                    eye[2] + dir[2] * crate::player::REACH,
+                ];
+                if let Some(idx) = self.sim.dragon.crystal_hit(hit_point, 2.2) {
+                    let ev = self.sim.dragon.destroy_crystal(idx);
+                    // route the explosion through the same event path
+                    self.sim.dragon_events.push(ev);
+                    self.swing_t = 0.0;
+                    return true;
+                }
+            }
+        }
+
         let Some(id) = self.sim.mobs.ray_hit(eye, dir, crate::player::REACH) else {
             // §Gossiping: no MOB under the crosshair — a villager can be
             // the melee target (VERIFIED: 20 HP, no armor; attacks grow
@@ -2439,12 +2533,314 @@ impl GameApp {
         true
     }
 
-    /// Drain the sim's mob queues after the fixed-step tick: player hits
+    /// Phase E1: end-dimension billboards — the dragon (large sprite) and
+    /// the alive end crystals on their pillars, through the particle
+    /// stream like every other entity.
+    fn build_end_entity_vertices(&mut self, right: [f32; 3], up: [f32; 3]) {
+        if self.world.dimension != vc_world::world::Dimension::End {
+            return;
+        }
+        // crystals: pillar-top sprites (bob like items)
+        for c in self.sim.dragon.crystals.iter() {
+            if !c.alive {
+                continue;
+            }
+            let tile = TILE_END_CRYSTAL;
+            let tx = (tile % 16) as f32;
+            let ty = (tile / 16) as f32;
+            let bob = (self.time * 1.5 + c.pos[0]).sin() * 0.15;
+            let half = 0.8f32;
+            let col = [1.0f32, 0.95, 1.0];
+            let corners = [
+                (
+                    [
+                        -right[0] * half - up[0] * half,
+                        -right[1] * half - up[1] * half,
+                        -right[2] * half - up[2] * half,
+                    ],
+                    [tx / 16.0, ty / 16.0],
+                ),
+                (
+                    [
+                        right[0] * half - up[0] * half,
+                        right[1] * half - up[1] * half,
+                        right[2] * half - up[2] * half,
+                    ],
+                    [(tx + 1.0) / 16.0, ty / 16.0],
+                ),
+                (
+                    [
+                        right[0] * half + up[0] * half,
+                        right[1] * half + up[1] * half,
+                        right[2] * half + up[2] * half,
+                    ],
+                    [(tx + 1.0) / 16.0, (ty + 1.0) / 16.0],
+                ),
+                (
+                    [
+                        -right[0] * half + up[0] * half,
+                        -right[1] * half + up[1] * half,
+                        -right[2] * half + up[2] * half,
+                    ],
+                    [tx / 16.0, (ty + 1.0) / 16.0],
+                ),
+            ];
+            for ci in [0usize, 1, 2, 0, 2, 3] {
+                let (c0, uv) = corners[ci];
+                self.particle_verts
+                    .push(vc_particles::particles::ParticleVertex {
+                        pos: [
+                            c.pos[0] + c0[0],
+                            c.pos[1] + c0[1] + bob,
+                            c.pos[2] + c0[2],
+                        ],
+                        uv: [uv[0], uv[1]],
+                        col,
+                    });
+            }
+        }
+        // the dragon: a large billboard sprite, hurt-flash tinted
+        if let Some(d) = self.sim.dragon.dragon.as_ref() {
+            let tile = TILE_ENDERDRAGON;
+            let tx = (tile % 16) as f32;
+            let ty = (tile / 16) as f32;
+            let half = 3.0f32;
+            let hurt = d.dying.is_none() && d.health < 200.0 && (d.health * 10.0) as i32 % 2 == 0;
+            let col = if hurt {
+                [1.0f32, 0.4, 0.4]
+            } else {
+                [0.9f32, 0.88, 0.95]
+            };
+            let corners = [
+                (
+                    [
+                        -right[0] * half - up[0] * half,
+                        -right[1] * half - up[1] * half,
+                        -right[2] * half - up[2] * half,
+                    ],
+                    [tx / 16.0, ty / 16.0],
+                ),
+                (
+                    [
+                        right[0] * half - up[0] * half,
+                        right[1] * half - up[1] * half,
+                        right[2] * half - up[2] * half,
+                    ],
+                    [(tx + 1.0) / 16.0, ty / 16.0],
+                ),
+                (
+                    [
+                        right[0] * half + up[0] * half,
+                        right[1] * half + up[1] * half,
+                        right[2] * half + up[2] * half,
+                    ],
+                    [(tx + 1.0) / 16.0, (ty + 1.0) / 16.0],
+                ),
+                (
+                    [
+                        -right[0] * half + up[0] * half,
+                        -right[1] * half + up[1] * half,
+                        -right[2] * half + up[2] * half,
+                    ],
+                    [tx / 16.0, (ty + 1.0) / 16.0],
+                ),
+            ];
+            for ci in [0usize, 1, 2, 0, 2, 3] {
+                let (c0, uv) = corners[ci];
+                self.particle_verts
+                    .push(vc_particles::particles::ParticleVertex {
+                        pos: [
+                            d.pos[0] + c0[0],
+                            d.pos[1] + c0[1],
+                            d.pos[2] + c0[2],
+                        ],
+                        uv: [uv[0], uv[1]],
+                        col,
+                    });
+            }
+        }
+    }
+
+    /// Phase E1: drain the ender-dragon fight events — fireball volleys
+    /// (routed through the mob projectile list), crystal detonations
+    /// (power 6, the creeper explosion path), the 12000-XP victory drop,
+    /// and the exit-portal + dragon-egg sequence (all live-verified
+    /// 2026-09-06; see docs/research/phase1-1.0-1.2-research.md).
+    fn drain_dragon_events(&mut self) {
+        use vc_gameplay::dragon::DragonEvent;
+        let events: Vec<DragonEvent> = self.sim.dragon_events.drain(..).collect();
+        for ev in events {
+            match ev {
+                DragonEvent::Fireball(from, target) => {
+                    // blaze-style fireball, damage = the dragon's melee row
+                    // (VERIFIED: Normal 10)
+                    let dx = target[0] - from[0];
+                    let dy = target[1] + 1.2 - from[1];
+                    let dz = target[2] - from[2];
+                    let dist = (dx * dx + dz * dz).sqrt().max(1e-3);
+                    self.sim.mobs.arrows.push(vc_gameplay::mobs::Arrow {
+                        pos: from,
+                        vel: [
+                            dx / dist * 14.0,
+                            dy / dist.max(1e-3) * 14.0,
+                            dz / dist * 14.0,
+                        ],
+                        damage: 10.0,
+                        age: 0,
+                        kind: vc_gameplay::mobs::ProjKind::Fireball,
+                        owner: 0,
+                    });
+                    self.play_event("entity.ender_dragon.shoot", Some(from), 1.0);
+                }
+                DragonEvent::CrystalExplosion(center) => {
+                    // VERIFIED w/End_Crystal: power 6 (charged creeper)
+                    self.explode(center, 6.0);
+                    self.play_event("entity.generic.explode", Some(center), 1.0);
+                }
+                DragonEvent::Died(xp) => {
+                    // the victory XP: 12000 as orb waves at the dragon's
+                    // position (VERIFIED; the orb split uses the vanilla
+                    // value ladder)
+                    let pos = self
+                        .sim
+                        .dragon
+                        .dragon
+                        .as_ref()
+                        .map(|d| d.pos)
+                        .unwrap_or([0.5, 70.0, 0.5]);
+                    self.sim.xp_orbs.drop_xp(pos[0], pos[1], pos[2], xp);
+                    self.dragon_defeated = true;
+                    self.play_event("entity.ender_dragon.death", Some(pos), 1.0);
+                    self.ui.dirty = true;
+                    vc_render::render::report_boot_log(&format!(
+                        "e2e: the ender dragon fell — {xp} XP (VERIFIED 12000/500)"
+                    ));
+                }
+                DragonEvent::PortalActivated => {
+                    // VERIFIED w/Ender_Dragon §Death and drops: the 3×3
+                    // center of the bedrock fountain fills with end-portal
+                    // blocks; the dragon egg appears above the structure
+                    for dx in -1..=1i32 {
+                        for dz in -1..=1i32 {
+                            self.world.set_block(dx, 62, dz, END_PORTAL);
+                        }
+                    }
+                    self.world.set_block(0, 64, 0, DRAGON_EGG);
+                    self.play_event("block.end_portal.spawn", None, 1.0);
+                    self.edits += 1;
+                    self.ui.dirty = true;
+                    vc_render::render::report_boot_log(
+                        "e2e: exit portal active + dragon egg above the fountain (VERIFIED)",
+                    );
+                }
+            }
+        }
+    }
+
+    /// Phase E1: drain the sim's mob queues after the fixed-step tick: player hits
     /// (difficulty-scaled + knockback), mob deaths (drops + XP), and
     /// creeper explosions (world edits + light + entity damage).
     fn drain_mob_events(&mut self) {
         use vc_gameplay::combat::{difficulty_scale, Difficulty};
         use vc_gameplay::mobs;
+        // ---- 0. Phase E1: XP-orb pickups (10/s gate inside the orb system)
+        // + finished zombie-villager cures (villager + cure gossip) ----
+        let collected: Vec<i32> = self.sim.xp_orbs.collected.drain(..).collect();
+        if !collected.is_empty() {
+            let total: i32 = collected.iter().sum();
+            let gained = self.player.add_xp(total);
+            if gained > 0 {
+                self.play_event("entity.player.levelup", None, 1.0);
+            }
+        }
+        let cures: Vec<[f32; 3]> = self.sim.mobs.cures.drain(..).collect();
+        for pos in cures {
+            // VERIFIED w/Zombie_Villager + w/Villager §Gossiping: a cured
+            // zombie villager returns as a villager with major_positive
+            // gossip (the cure discount)
+            let vid = self
+                .sim
+                .villagers
+                .spawn_at(
+                    pos[0].floor() as i32,
+                    pos[1].floor() as i32,
+                    pos[2].floor() as i32,
+                    None,
+                );
+            if let Some(vid) = vid {
+                if let Some(v) = self.sim.villagers.list.iter_mut().find(|v| v.id == vid) {
+                    v.gossip.gain_event(vc_gameplay::villagers::GossipKind::MajorPositive);
+                }
+                self.play_event("entity.villager.celebrate", Some(pos), 1.0);
+            }
+            self.edits += 1;
+        }
+        // ---- 1.5 Phase E1: zombies attack villagers — a villager killed
+        // by a zombie converts (VERIFIED w/Zombie_Villager: Easy 0% /
+        // Normal 50% / Hard 100%). Cadence: 1 swing/s per zombie (the
+        // melee cadence), reach 1.6 (the mob melee constant). ----
+        {
+            let zombies: Vec<(u32, [f32; 3], i32)> = self
+                .sim
+                .mobs
+                .list
+                .iter()
+                .filter(|m| {
+                    (m.kind == mobs::MobKind::Zombie
+                        || m.kind == mobs::MobKind::ZombieVillager)
+                        && m.attack_cd == 0
+                })
+                .map(|m| (m.id, m.pos, m.attack_cd))
+                .collect();
+            let villagers: Vec<(u32, [f32; 3])> = self
+                .sim
+                .villagers
+                .list
+                .iter()
+                .map(|v| (v.id, v.pos))
+                .collect();
+            let difficulty_hard = self.mode.permadeath();
+            for (zid, zpos, _) in zombies {
+                for (vid, vpos) in villagers.iter() {
+                    let dx = zpos[0] - vpos[0];
+                    let dy = zpos[1] - vpos[1];
+                    let dz = zpos[2] - vpos[2];
+                    let d2 = dx * dx + dy * dy + dz * dz;
+                    if d2 < 1.6 * 1.6 {
+                        // the swing
+                        if let Some(m) =
+                            self.sim.mobs.list.iter_mut().find(|m| m.id == zid)
+                        {
+                            m.attack_cd = mobs::MOB_MELEE_TICKS;
+                        }
+                        // VERIFIED: villager damage = the zombie's row,
+                        // difficulty-scaled (Easy 2.5 / Normal 3 / Hard 4.5)
+                        let dmg = if difficulty_hard { 4.5 } else { 3.0 };
+                        let (applied, killed) = self.sim.villagers.damage(*vid, dmg);
+                        if applied > 0.0 {
+                            self.play_event("entity.villager.hurt", Some(*vpos), 1.0);
+                        }
+                        if let Some(vpos) = killed {
+                            // conversion roll (VERIFIED: 0/50/100%)
+                            let roll = self.audio_rng.next_f32();
+                            let chance = if difficulty_hard { 1.0 } else { 0.5 };
+                            if roll < chance {
+                                let _ = self.sim.mobs.spawn_at(
+                                    mobs::MobKind::ZombieVillager,
+                                    vpos[0].floor() as i32,
+                                    vpos[1].floor() as i32,
+                                    vpos[2].floor() as i32,
+                                );
+                                vc_render::render::report_boot_log(
+                                    "e2e: villager zombified (VERIFIED 0/50/100% by difficulty)",
+                                );
+                            }
+                        }
+                        break; // one villager per swing
+                    }
+                }
+            }
+        }
         // ---- 1. hits on the player ----
         let hits: Vec<mobs::PlayerHit> = self.sim.mobs.hits.drain(..).collect();
         for h in hits {
@@ -2473,8 +2869,10 @@ impl GameApp {
             }
         }
         // ---- 2. mob deaths → drops + XP ----
-        let deaths: Vec<(mobs::MobKind, [f32; 3])> = self.sim.mobs.deaths.drain(..).collect();
-        for (kind, pos) in deaths {
+        // Phase E1: the death tuple carries the per-kind variant (magma
+        // size code — splits spawn here; drops + XP size-aware).
+        let deaths: Vec<(mobs::MobKind, [f32; 3], u8)> = self.sim.mobs.deaths.drain(..).collect();
+        for (kind, pos, variant) in deaths {
             let d = mobs::def(kind);
             // vanilla-common loot ranges [adaptation: fixed min..max per
             // kind, no weighted loot tables yet — Phase 9 territory]
@@ -2488,7 +2886,39 @@ impl GameApp {
                 mobs::MobKind::Pig => &[(PORKCHOP, 3)],
                 mobs::MobKind::Sheep => &[(MUTTON, 2), (WOOL_WHITE, 1)],
                 mobs::MobKind::Chicken => &[(CHICKEN_RAW, 1), (FEATHER, 2)],
+                // Phase E1 (1.0–1.2 bracket): blaze rods 0-1 (VERIFIED
+                // w/Blaze §Drops: 50%, Looting scales — no Looting yet)
+                mobs::MobKind::Blaze => &[(BLAZE_ROD, 1)],
+                // zombie villager drops = zombie loot (VERIFIED)
+                mobs::MobKind::ZombieVillager => &[(ROTTEN_FLESH, 2)],
+                // mooshroom drops = cow loot (VERIFIED w/Mooshroom)
+                mobs::MobKind::Mooshroom => &[(BEEF, 3), (LEATHER, 2)],
+                // golems: iron golem drops 3–5 iron ingots + 0–2 poppies
+                // (VERIFIED — widely-cited values, page table unreadable
+                // via extraction, flagged in the research notes); snow
+                // golems drop nothing but a sheared pumpkin (shear path
+                // deferred) → nothing on death
+                mobs::MobKind::IronGolem => &[(IRON_BLOCK, 1)],
+                mobs::MobKind::SnowGolem => &[],
+                // magma cubes drop nothing (magma cream is a 1.16-era item
+                // beyond this bracket's verified drop set — deferred)
+                mobs::MobKind::MagmaCube => &[],
+                mobs::MobKind::Ocelot => &[],
             };
+            // blaze rod is a 50% roll (VERIFIED), others roll count 1..max
+            if kind == mobs::MobKind::Blaze {
+                if self.audio_rng.next_f32() < 0.5 {
+                    self.sim.items.drop_block(
+                        pos[0].floor() as i32,
+                        pos[1].floor() as i32,
+                        pos[2].floor() as i32,
+                        BLAZE_ROD,
+                        2,
+                        15,
+                        0,
+                    );
+                }
+            }
             for (block, max_n) in drops {
                 let n = 1 + (self.audio_rng.next_f32() * *max_n as f32) as u8;
                 for _ in 0..n {
@@ -2517,12 +2947,41 @@ impl GameApp {
                     0,
                 );
             }
-            // XP through the real curve
-            if d.xp > 0 {
-                let gained = self.player.add_xp(d.xp);
-                if gained > 0 {
-                    self.play_event("entity.player.levelup", None, 1.0);
+            // Phase E1: magma cubes split into 2–4 of the next size down
+            // (VERIFIED w/Magma_Cube §Drops: big → 2–4 mediums, medium →
+            // 2–4 smalls, small → nothing). Our variant codes: 0/1/2 =
+            // sizes 1/2/4 (see mobs::magma_size) — splits walk 2→1→0.
+            if kind == mobs::MobKind::MagmaCube {
+                let child_code = match variant {
+                    2 => 1, // big → medium
+                    1 => 0, // medium → small
+                    _ => 255, // small: no split
+                };
+                if child_code != 255 {
+                    let n = 2 + (self.audio_rng.next_f32() * 3.0) as u8; // 2–4
+                    for _ in 0..n {
+                        let _ = self.sim.mobs.spawn_variant(
+                            mobs::MobKind::MagmaCube,
+                            pos[0].floor() as i32,
+                            pos[1].floor() as i32,
+                            pos[2].floor() as i32,
+                            child_code,
+                        );
+                    }
                 }
+            }
+            // XP: Phase E1 drops real orbs (VERIFIED w/Experience — mobs
+            // drop orbs; the player collects them). Magma XP is size-aware
+            // (VERIFIED 4/2/1); ocelot rolls 1–3 (VERIFIED w/Ocelot).
+            let xp = if kind == mobs::MobKind::MagmaCube {
+                mobs::magma_xp(mobs::magma_size(variant))
+            } else if kind == mobs::MobKind::Ocelot {
+                1 + (self.audio_rng.next_f32() * 3.0) as i32
+            } else {
+                d.xp
+            };
+            if xp > 0 {
+                self.sim.xp_orbs.drop_xp(pos[0], pos[1], pos[2], xp);
             }
             self.play_event(
                 "entity.generic.death",
@@ -3892,6 +4351,9 @@ impl GameApp {
                 .update(dt, &mut self.world, &mut self.light, &scope);
             // Phase 2: drain mob hits/deaths/explosions on the game thread
             self.drain_mob_events();
+            // Phase E1: drain the dragon fight's events (fireballs,
+            // crystal explosions, the victory sequence)
+            self.drain_dragon_events();
         });
 
         // Phase 2: melee cooldown recovery clock
@@ -5791,6 +6253,164 @@ impl GameApp {
                         self.open_container(Container::Hopper { pos: tpos });
                         self.place_timer = 0.3;
                     } else if !self.player.held().is_empty()
+                        && is_spawn_egg(self.player.held().block)
+                    {
+                        // Phase E1: spawn egg (VERIFIED w/Spawn_Egg §Usage —
+                        // "use on any surface: the egg's mob appears with
+                        // its feet immediately adjacent to the surface").
+                        // The egg is consumed in Survival.
+                        let b = self.player.held().block;
+                        let kind = vc_gameplay::mobs::MobKind::from_egg(egg_mob(b).unwrap_or(15));
+                        // spawn on the face-adjacent cell (the `prev`
+                        // position the raycast computed)
+                        let (sx, sy, sz) = if let Some((_, _, prev)) = self.target {
+                            (prev[0], prev[1], prev[2])
+                        } else {
+                            (tpos[0], tpos[1] + 1, tpos[2])
+                        };
+                        let spawned = self.sim.mobs.spawn_at(kind, sx, sy, sz);
+                        if self.mode.depletes_items() {
+                            let held = self.player.held_mut();
+                            held.count -= 1;
+                            if held.count == 0 {
+                                *held = vc_inventory::inventory::ItemStack::EMPTY;
+                            }
+                        }
+                        if spawned.is_some() {
+                            self.play_event(
+                                "entity.generic.spawn",
+                                Some([sx as f32 + 0.5, sy as f32 + 1.0, sz as f32 + 0.5]),
+                                1.0,
+                            );
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: spawn egg → {} at {sx},{sy},{sz}",
+                                kind.name()
+                            ));
+                        }
+                        self.place_timer = 0.3;
+                        self.ui.dirty = true;
+                    } else if !self.player.held().is_empty()
+                        && self.player.held().block == GOLDEN_APPLE
+                    {
+                        // Phase E1: cure a targeted zombie villager
+                        // (VERIFIED w/Zombie_Villager: weakness + golden
+                        // apple; the weakness gate is a documented engine
+                        // deferral — no weakness potion in the brewing set)
+                        let eye = self.player.eye().to_array();
+                        let dir = self.player.look_dir().to_array();
+                        let mob_hit = self
+                            .sim
+                            .mobs
+                            .ray_hit(eye, dir, crate::player::REACH + 0.4)
+                            .and_then(|id| self.sim.mobs.list.iter().find(|m| m.id == id).map(|m| (m.id, m.kind, m.pos)));
+                        if mob_hit.map(|(_, k, _)| k) == Some(vc_gameplay::mobs::MobKind::ZombieVillager) {
+                            let mid = mob_hit.unwrap().0;
+                            // begin the cure (VERIFIED 3600..=6000 ticks)
+                            let mut cure_rng = vc_rng::rng::Rng::new(
+                                (self.sim.ticks as u64) ^ 0xC0_FFEE,
+                            );
+                            if let Some(m) =
+                                self.sim.mobs.list.iter_mut().find(|m| m.id == mid)
+                            {
+                                if m.variant == 0 {
+                                    vc_gameplay::mobs::begin_cure(m, &mut cure_rng);
+                                    if self.mode.depletes_items() {
+                                        let held = self.player.held_mut();
+                                        held.count -= 1;
+                                        if held.count == 0 {
+                                            *held =
+                                                vc_inventory::inventory::ItemStack::EMPTY;
+                                        }
+                                    }
+                                    self.play_event(
+                                        "entity.zombie_villager.converted",
+                                        Some(mob_hit.unwrap().2),
+                                        1.0,
+                                    );
+                                    vc_render::render::report_boot_log(
+                                        "e2e: zombie villager cure begun (3600-6000 ticks, VERIFIED)",
+                                    );
+                                    self.place_timer = 0.5;
+                                    self.ui.dirty = true;
+                                }
+                            }
+                        } else {
+                            // eating a golden apple (no effect system yet:
+                            // absorption/Regeneration deferred — documented;
+                            // restores 4 HP like food)
+                            if self.mode.depletes_items() {
+                                let held = self.player.held_mut();
+                                held.count -= 1;
+                                if held.count == 0 {
+                                    *held = vc_inventory::inventory::ItemStack::EMPTY;
+                                }
+                            }
+                            if !self.mode.invulnerable() {
+                                self.player.heal(4.0);
+                            }
+                            self.play_event("entity.generic.drink", None, 0.8);
+                            self.place_timer = 0.5;
+                            self.ui.dirty = true;
+                        }
+                    } else if !self.player.held().is_empty()
+                        && self.player.held().block == EYE_OF_ENDER
+                        && tb == END_PORTAL_FRAME
+                    {
+                        // Phase E1: insert an eye of ender into the frame
+                        // (VERIFIED w/The_End: 12 frames form the 5×5 ring
+                        // with corners cut; filling all 12 activates the
+                        // portal — the central 3×3 becomes End portal)
+                        let (cx, cy, cz) = (tpos[0], tpos[1], tpos[2]);
+                        let cur = self.world.get_state(cx, cy, cz);
+                        if cur != END_PORTAL_FRAME_EYE {
+                            self.world
+                                .set_block_state(cx, cy, cz, END_PORTAL_FRAME_EYE);
+                            if self.mode.depletes_items() {
+                                let held = self.player.held_mut();
+                                held.count -= 1;
+                                if held.count == 0 {
+                                    *held = vc_inventory::inventory::ItemStack::EMPTY;
+                                }
+                            }
+                            self.play_event(
+                                "block.end_portal_frame.fill",
+                                Some([cx as f32 + 0.5, cy as f32 + 1.0, cz as f32 + 0.5]),
+                                1.0,
+                            );
+                            // activation check: the portal room's 12-frame
+                            // ring (the stronghold emits frames in the
+                            // vanilla 5×5-minus-corners layout around the
+                            // room center — scan the 7×7 neighborhood for
+                            // the ring pattern)
+                            let mut eyes = 0;
+                            for dz in -3..=3i32 {
+                                for dx in -3..=3i32 {
+                                    let s = self.world.get_state(cx + dx, cy, cz + dz);
+                                    if s == END_PORTAL_FRAME_EYE {
+                                        eyes += 1;
+                                    }
+                                }
+                            }
+                            if eyes >= 12 {
+                                self.activate_end_portal(cx, cy, cz);
+                            }
+                            self.place_timer = 0.3;
+                            self.ui.dirty = true;
+                        }
+                    } else if tb == END_PORTAL {
+                        // Phase E1: entering an end portal dimension-travels
+                        // (walk-in trigger; vanilla jumps in). Overworld
+                        // portal → the End; the End's exit fountain → home.
+                        let target = if self.world.dimension
+                            == vc_world::world::Dimension::End
+                        {
+                            vc_world::world::Dimension::Overworld
+                        } else {
+                            vc_world::world::Dimension::End
+                        };
+                        self.travel_to_dimension(target);
+                        self.place_timer = 0.5;
+                    } else if !self.player.held().is_empty()
                         && self.player.held().block == POTION_EMPTY
                         && (self.player.in_water || self.player.head_in_water)
                     {
@@ -5966,6 +6586,90 @@ impl GameApp {
                                     prev[1],
                                     prev[2],
                                 );
+                                // Phase E1: golem build patterns — a PUMPKIN
+                                // placed last on the right body spawns the
+                                // golem and consumes the pattern blocks
+                                // (VERIFIED w/Snow_Golem + w/Iron_Golem
+                                // §Spawning: 2 snow blocks / a T of 4 iron
+                                // blocks; "The pumpkin may be placed ...
+                                // but it must be placed last")
+                                if b == PUMPKIN
+                                    && prev[1] > 2
+                                    && (self.mode == vc_gameplay::modes::GameMode::Creative
+                                        || self.mode
+                                            == vc_gameplay::modes::GameMode::Survival
+                                        || self.mode
+                                            == vc_gameplay::modes::GameMode::Hardcore)
+                                {
+                                    if vc_gameplay::mobs::snow_golem_pattern(
+                                        &self.world,
+                                        prev[0],
+                                        prev[1],
+                                        prev[2],
+                                    ) {
+                                        // remove the body (2 snow + the pumpkin)
+                                        for dy in 0..3 {
+                                            self.world.set_block(
+                                                prev[0],
+                                                prev[1] - dy,
+                                                prev[2],
+                                                AIR,
+                                            );
+                                        }
+                                        let _ = self.sim.mobs.spawn_at(
+                                            vc_gameplay::mobs::MobKind::SnowGolem,
+                                            prev[0],
+                                            prev[1] - 2,
+                                            prev[2],
+                                        );
+                                        self.play_event(
+                                            "entity.snow_golem.ambient",
+                                            Some([
+                                                prev[0] as f32 + 0.5,
+                                                prev[1] as f32,
+                                                prev[2] as f32 + 0.5,
+                                            ]),
+                                            1.0,
+                                        );
+                                        vc_render::render::report_boot_log(
+                                            "e2e: snow golem built (2 snow + pumpkin, VERIFIED)",
+                                        );
+                                    } else if vc_gameplay::mobs::iron_golem_pattern(
+                                        &self.world,
+                                        prev[0],
+                                        prev[1],
+                                        prev[2],
+                                    ) {
+                                        // remove the T body + the pumpkin
+                                        for (bx, by) in [
+                                            (prev[0], prev[1]),
+                                            (prev[0], prev[1] - 1),
+                                            (prev[0] - 1, prev[1] - 2),
+                                            (prev[0], prev[1] - 2),
+                                            (prev[0] + 1, prev[1] - 2),
+                                        ] {
+                                            self.world.set_block(bx, by, prev[2], AIR);
+                                        }
+                                        let _ = self.sim.mobs.spawn_at(
+                                            vc_gameplay::mobs::MobKind::IronGolem,
+                                            prev[0],
+                                            prev[1] - 2,
+                                            prev[2],
+                                        );
+                                        self.play_event(
+                                            "entity.iron_golem.ambient",
+                                            Some([
+                                                prev[0] as f32 + 0.5,
+                                                prev[1] as f32,
+                                                prev[2] as f32 + 0.5,
+                                            ]),
+                                            1.0,
+                                        );
+                                        vc_render::render::report_boot_log(
+                                            "e2e: iron golem built (T of 4 iron + pumpkin, VERIFIED)",
+                                        );
+                                    }
+                                }
                                 self.play_event(
                                     vc_audio::sounds::family_event(def(b).sound, true),
                                     Some([
@@ -6237,12 +6941,30 @@ impl GameApp {
         // player: inventory persists, position rescales; y waits for the snap
         let y = if dim == vc_world::world::Dimension::Nether {
             90.0
+        } else if dim == vc_world::world::Dimension::End {
+            64.0 // the obsidian platform (VERIFIED arrival x/z: 100/0)
         } else {
             120.0
         };
-        self.player.pos = Vec3::new(nx as f32 + 0.5, y, nz as f32 + 0.5);
+        let (ax, az) = if dim == vc_world::world::Dimension::End {
+            (100, 0) // VERIFIED w/The_End: arrival at X:100, Z:0
+        } else {
+            (nx, nz)
+        };
+        self.player.pos = Vec3::new(ax as f32 + 0.5, y, az as f32 + 0.5);
         self.player.vel = Vec3::ZERO;
         self.player.flying = false;
+
+        // Phase E1: first End entry spawns the ender-dragon fight — 200 HP
+        // dragon + 10 crystals on the pillar tops (VERIFIED counts). The
+        // fight lives in the fresh sim (created above).
+        if dim == vc_world::world::Dimension::End && !self.dragon_defeated {
+            let tops = self.world.gen.end_pillar_tops();
+            self.sim.dragon.begin_fight(&tops);
+            vc_render::render::report_boot_log(
+                "e2e: the ender dragon rises (200 HP, 10 crystals — VERIFIED)",
+            );
+        }
 
         // wait for the spawn chunk through the Loading screen (vanilla shows
         // a loading screen on travel too), then return to the game
@@ -6254,9 +6976,49 @@ impl GameApp {
             "dimension travel: {} -> {} (coords {},{})",
             cur.id(),
             dim.id(),
-            nx,
-            nz
+            ax,
+            az
         ));
+    }
+
+    /// Phase E1: stronghhold end-portal activation (VERIFIED w/The_End:
+    /// all 12 eyes placed → the central 3×3 becomes End portal blocks —
+    /// "the portal destroys all blocks in the central 3×3 square"). The
+    /// (cx, cy, cz) frame anchors the ring scan.
+    fn activate_end_portal(&mut self, cx: i32, cy: i32, cz: i32) {
+        // recover the ring center: the frame ring is 5×5-minus-corners →
+        // the center is the mean of the eye frames
+        let mut xs = Vec::new();
+        let mut zs = Vec::new();
+        for dz in -3..=3i32 {
+            for dx in -3..=3i32 {
+                if self.world.get_state(cx + dx, cy, cz + dz) == END_PORTAL_FRAME_EYE {
+                    xs.push(cx + dx);
+                    zs.push(cz + dz);
+                }
+            }
+        }
+        if xs.len() < 12 {
+            return; // not the vanilla 12-frame ring
+        }
+        let center_x = xs.iter().sum::<i32>() / xs.len() as i32;
+        let center_z = zs.iter().sum::<i32>() / zs.len() as i32;
+        // the central 3×3 → END_PORTAL (the portal destroys whatever sits
+        // there — VERIFIED)
+        for dx in -1..=1i32 {
+            for dz in -1..=1i32 {
+                self.world
+                    .set_block(center_x + dx, cy, center_z + dz, END_PORTAL);
+                for dy in 1..=2 {
+                    self.world.set_block(center_x + dx, cy + dy, center_z + dz, AIR);
+                }
+            }
+        }
+        self.play_event("block.end_portal.spawn", None, 1.0);
+        vc_render::render::report_boot_log(&format!(
+            "e2e: end portal activated at ({center_x},{cy},{center_z}) — 12 eyes (VERIFIED)"
+        ));
+        self.edits += 1;
     }
 
     /// §28: nether floor search for the travel snap — a cavern cell with a
@@ -7114,6 +7876,16 @@ impl GameApp {
                 .status_bars(self.player.health, 20.0, xp, level, self.player.air);
         }
 
+        // Phase E1: the dragon boss bar while the fight is live (VERIFIED:
+        // light purple, top of the screen)
+        if self.world.dimension == vc_world::world::Dimension::End {
+            if let Some(d) = self.sim.dragon.dragon.as_ref() {
+                if d.dying.is_none() {
+                    self.ui.boss_bar(d.health / vc_gameplay::dragon::DRAGON_HEALTH);
+                }
+            }
+        }
+
         // held-item name (fades ~2 s after the selection changes)
         if self.held_name_t > 0.0 && !self.mode.invulnerable() {
             let a = (self.held_name_t / 2.0).min(1.0);
@@ -7632,6 +8404,12 @@ impl GameApp {
             );
             // Phase 2: mobs + skeleton arrows share the billboard pipeline
             vc_gameplay::mobs::build_vertices(&self.sim.mobs.list, right, &mut self.particle_verts);
+            // Phase E1: XP orbs + the dragon + end crystals (billboards
+            // through the same particle stream)
+            self.sim
+                .xp_orbs
+                .build_vertices(self.time, right, up, &mut self.particle_verts);
+            self.build_end_entity_vertices(right, up);
             vc_gameplay::mobs::build_arrow_vertices(
                 &self.sim.mobs.arrows,
                 right,

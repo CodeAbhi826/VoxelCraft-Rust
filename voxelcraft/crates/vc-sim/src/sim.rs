@@ -4,7 +4,7 @@
 //! accumulator exactly like the particle system — same fixed-step
 //! determinism the Phase-6 regression suite relies on.
 
-use crate::entities::ItemSystem;
+use crate::entities::{ItemSystem, XpOrbSystem};
 use crate::fluids;
 use crate::ticks::{RandomTicker, TickScheduler};
 use vc_world::world::World;
@@ -67,6 +67,9 @@ pub struct Sim {
     pub sched: TickScheduler,
     random: RandomTicker,
     pub items: ItemSystem,
+    /// Phase E1: XP orbs — attraction physics + 10/s pickup, collected
+    /// XP drained by the game layer
+    pub xp_orbs: XpOrbSystem,
     /// furnace block entities (Phase 7 §27) — ticked at the sim rate so
     /// COOK_TICKS = 200 means the vanilla 10 seconds
     pub furnaces: vc_gameplay::furnace::Furnaces,
@@ -83,6 +86,8 @@ pub struct Sim {
     /// mobs (Phase 2): spawn/AI/physics + arrows; hits, deaths and
     /// explosions queue here for the game layer to drain
     pub mobs: vc_gameplay::mobs::MobSystem,
+    /// Phase E1: the ender-dragon fight (End dimension only)
+    pub dragon: vc_gameplay::dragon::DragonSystem,
     /// containers (Phase 3): chests/dispensers/droppers/hoppers
     pub containers: crate::containers::Containers,
     /// dispenser/dropper previous powered state (rising-edge detect)
@@ -94,6 +99,9 @@ pub struct Sim {
     acc: f32,
     /// total sim ticks executed (stats/F3/E2E)
     pub ticks: u64,
+    /// Phase E1: dragon-fight events queued for the game layer (world
+    /// edits + XP + projectiles live there)
+    pub dragon_events: Vec<vc_gameplay::dragon::DragonEvent>,
 }
 
 impl Sim {
@@ -102,18 +110,21 @@ impl Sim {
             sched: TickScheduler::new(),
             random: RandomTicker::new(seed),
             items: ItemSystem::new(seed ^ 0xD00_0042),
+            xp_orbs: XpOrbSystem::new(seed ^ 0x0DB_5EED),
             furnaces: vc_gameplay::furnace::Furnaces::default(),
             brewing: vc_gameplay::brewing::Brewings::default(),
             enchants: vc_gameplay::enchanting::Enchants::default(),
             villagers: vc_gameplay::villagers::Villagers::new(seed ^ 0x315_7A9),
             spawners: vc_gameplay::spawners::Spawners::new(seed ^ 0x5C_0DE5),
             mobs: vc_gameplay::mobs::MobSystem::new(seed ^ 0x5C_0DE),
+            dragon: vc_gameplay::dragon::DragonSystem::new(seed ^ 0xDA60_0005),
             containers: crate::containers::Containers::default(),
             dispenser_prev: std::collections::HashMap::new(),
             pending_eject: std::collections::HashMap::new(),
             hopper_cd: std::collections::HashMap::new(),
             acc: 0.0,
             ticks: 0,
+            dragon_events: Vec::new(),
         }
     }
 
@@ -260,6 +271,18 @@ impl Sim {
 
         // 4. item entities (Phase 6 §26: frozen outside the simulation ring)
         self.items.tick(world, scope.center, scope.radius);
+
+        // 4b. Phase E1: XP orbs — attraction + pickup (the player anchor
+        // rides the mob system's anchor; None when no player)
+        let feet = self.mobs.player.map(|p| p);
+        self.xp_orbs.tick(world, feet);
+
+        // 4c. Phase E1: the ender-dragon fight (End only; the fight is
+        // dormant elsewhere — begin_fight spawns it on arrival)
+        if world.dimension == vc_world::world::Dimension::End {
+            let evs = self.dragon.tick(world, feet);
+            self.dragon_events.extend(evs);
+        }
 
         // 5. villagers (§27): wander decisions + walking physics + the
         // twice-daily trade restock clock (sim.ticks is the day clock)

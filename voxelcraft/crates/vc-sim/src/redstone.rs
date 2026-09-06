@@ -40,6 +40,9 @@ pub fn is_component(s: u16) -> bool {
         || b == DROPPER
         || b == OBSERVER
         || b == HOPPER
+        // Phase E1: the redstone lamp re-checks its inputs on neighbor
+        // changes (light on/off rides the block state)
+        || b == REDSTONE_LAMP
 }
 
 /// schedule redstone updates for a position and its neighbors after a
@@ -244,6 +247,60 @@ pub fn lever_tick(world: &World, x: i32, y: i32, z: i32) {
     }
 }
 
+/// Phase E1: one redstone-lamp update (VERIFIED w/Redstone_Lamp):
+/// - an adjacent active power source lights it (on torch / on lever /
+///   powered wire)
+/// - it turns off when power is gone. Vanilla's exact OFF delay is 4
+///   GAME ticks ("takes 4 ticks (0.2 seconds) to turn off in Java");
+///   our redstone backbone ticks at 2-game-tick granularity, so the
+///   delayed OFF lands at the next redstone tick — a documented
+///   approximation of the verified 4gt (cancel-on-repower falls out
+///   naturally: a returned power source keeps it lit).
+pub fn lamp_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z: i32) {
+    let s = world.get_state(x, y, z);
+    if state_block(s) != REDSTONE_LAMP {
+        return; // stale entry
+    }
+    let powered = lamp_powered(world, x, y, z);
+    let lit = s == REDSTONE_LAMP_LIT;
+    if powered && !lit {
+        // ON (VERIFIED: "A redstone lamp activates instantly")
+        world.set_block_state(x, y, z, REDSTONE_LAMP_LIT);
+        on_block_changed(sched, world, x, y, z);
+    } else if !powered && lit {
+        // OFF at the next redstone tick (the ~4gt approximation above)
+        world.set_block_state(x, y, z, REDSTONE_LAMP_STATE);
+        on_block_changed(sched, world, x, y, z);
+    }
+}
+
+/// is any adjacent cell feeding the lamp? (torch lit / lever on /
+/// wire powered — the engine's verified power sources)
+fn lamp_powered(world: &World, x: i32, y: i32, z: i32) -> bool {
+    for (dx, dy, dz) in [
+        (1i32, 0i32, 0i32),
+        (-1, 0, 0),
+        (0, 1, 0),
+        (0, -1, 0),
+        (0, 0, 1),
+        (0, 0, -1),
+    ] {
+        let s = world.get_state(x + dx, y + dy, z + dz);
+        let b = state_block(s);
+        if b == REDSTONE_TORCH && torch_is_lit(s) {
+            return true;
+        }
+        if b == LEVER && lever_is_on(s) {
+            return true;
+        }
+        let p = wire_power(s);
+        if p != 255 && p > 0 {
+            return true;
+        }
+    }
+    false
+}
+
 /// toggle a lever (interactive) and kick the update cascade
 pub fn toggle_lever(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z: i32) -> bool {
     let s = world.get_state(x, y, z);
@@ -292,6 +349,7 @@ mod tests {
                     REDSTONE_WIRE => wire_tick(world, sched, pos[0], pos[1], pos[2]),
                     REDSTONE_TORCH => torch_tick(world, sched, pos[0], pos[1], pos[2]),
                     LEVER => lever_tick(world, pos[0], pos[1], pos[2]),
+                    REDSTONE_LAMP => lamp_tick(world, sched, pos[0], pos[1], pos[2]),
                     _ => {}
                 }
             }
@@ -403,6 +461,7 @@ mod tests {
                     REDSTONE_WIRE => wire_tick(&mut w, &mut sched, pos[0], pos[1], pos[2]),
                     REDSTONE_TORCH => torch_tick(&mut w, &mut sched, pos[0], pos[1], pos[2]),
                     LEVER => lever_tick(&w, pos[0], pos[1], pos[2]),
+                    REDSTONE_LAMP => lamp_tick(&mut w, &mut sched, pos[0], pos[1], pos[2]),
                     _ => {}
                 }
             }
@@ -945,6 +1004,7 @@ mod phase3_tests {
                     PISTON | STICKY_PISTON => piston_tick(world, sched, pos[0], pos[1], pos[2]),
                     OBSERVER => observer_pulse(world, sched, pos[0], pos[1], pos[2]),
                     LEVER => lever_tick(world, pos[0], pos[1], pos[2]),
+                    REDSTONE_LAMP => lamp_tick(world, sched, pos[0], pos[1], pos[2]),
                     _ => {}
                 }
             }
@@ -1213,5 +1273,75 @@ mod phase3_tests {
         assert_eq!(OBSERVER_PULSE, 2);
         assert_eq!(HOPPER_COOLDOWN, 8);
         assert_eq!(DISPENSER_DELAY, 4);
+    }
+}
+
+#[cfg(test)]
+mod e1_lamp_tests {
+    use super::*;
+
+    fn flat_world() -> World {
+        let mut w = World::new(3);
+        let mut c = vc_chunk::chunk::Chunk::empty();
+        for y in 0..=64i32 {
+            for lz in 0..16usize {
+                for lx in 0..16usize {
+                    c.set(lx, y as usize, lz, STONE);
+                }
+            }
+        }
+        w.insert_generated((0, 0), std::sync::Arc::new(c), Vec::new());
+        w.dirty.clear();
+        w
+    }
+
+    fn drain(w: &mut World, sched: &mut TickScheduler, max: u64) {
+        for _ in 0..max {
+            let due = sched.tick();
+            if due.is_empty() && sched.pending() == 0 {
+                break;
+            }
+            for pos in due {
+                let b = state_block(w.get_state(pos[0], pos[1], pos[2]));
+                match b {
+                    REDSTONE_WIRE => wire_tick(w, sched, pos[0], pos[1], pos[2]),
+                    REDSTONE_TORCH => torch_tick(w, sched, pos[0], pos[1], pos[2]),
+                    LEVER => lever_tick(w, pos[0], pos[1], pos[2]),
+                    REDSTONE_LAMP => lamp_tick(w, sched, pos[0], pos[1], pos[2]),
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    /// Phase E1 (VERIFIED w/Redstone_Lamp): the lamp lights next to an
+    /// on lever, and goes dark after the lever turns off (our redstone
+    /// backbone's 2gt approximation of the vanilla 4gt delay).
+    #[test]
+    fn lamp_lights_and_turns_off_with_the_lever() {
+        let mut w = flat_world();
+        let mut sched = TickScheduler::new();
+        // lever at (0,65,0), lamp at (1,65,0)
+        w.set_block_state(0, 65, 0, lever_state(true));
+        w.set_block_state(1, 65, 0, REDSTONE_LAMP_STATE);
+        on_block_changed(&mut sched, &w, 0, 65, 0);
+        drain(&mut w, &mut sched, 50);
+        assert_eq!(
+            w.get_state(1, 65, 0),
+            REDSTONE_LAMP_LIT,
+            "lit next to the ON lever (VERIFIED)"
+        );
+
+        // lever OFF → the lamp goes dark on the next redstone tick
+        let _ = toggle_lever(&mut w, &mut sched, 0, 65, 0);
+        drain(&mut w, &mut sched, 50);
+        assert_eq!(
+            w.get_state(1, 65, 0),
+            REDSTONE_LAMP_STATE,
+            "off after the lever (2gt-backbone approximation of 4gt)"
+        );
+        // emission rides the state (VERIFIED: lit = 15, off = 0)
+        assert_eq!(state_emissive(REDSTONE_LAMP_LIT), 15);
+        assert_eq!(state_emissive(REDSTONE_LAMP_STATE), 0);
     }
 }

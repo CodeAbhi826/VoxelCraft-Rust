@@ -1,0 +1,56 @@
+[
+  {
+    "url": "https://minecraft.wiki/w/Light_Weighted_Pressure_Plate",
+    "name": "Light Weighted Pressure Plate",
+    "snippet": "Aug 25, 2026 — A light weighted pressure plate is a type of pressure plate that produces a redstone signal while one or more entities stand on it .",
+    "host_name": "minecraft.wiki",
+    "rank": 0,
+    "date": "Aug 25, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://minecraft.wiki/w/Heavy_Weighted_Pressure_Plate",
+    "name": "Heavy Weighted Pressure Plate",
+    "snippet": "Aug 25, 2026 — A heavy weighted pressure plate is a type of pressure plate that produces a redstone signal while one or more entities stand on it .",
+    "host_name": "minecraft.wiki",
+    "rank": 1,
+    "date": "Aug 25, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://minecraft.fandom.com/wiki/Pressure_Plate",
+    "name": "Pressure Plate - Minecraft Wiki - Fandom",
+    "snippet": "Light weighted pressure plates can detect all entities , and the signal strength equals the number of entities stood on one. Heavy weighted pressure plates are ... Read more",
+    "host_name": "minecraft.fandom.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://minecraft.wiki/w/Pressure_Plate",
+    "name": "Pressure Plate",
+    "snippet": "A pressure plate is a non-solid block that produces a redstone signal when stood on by an entity , heavy weighted , and light weighted pressure plates.",
+    "host_name": "minecraft.wiki",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://ftbwiki.org/Weighted_Pressure_Plate_(Light)",
+    "name": "Weighted Pressure Plate (Light) - Feed The Beast Wiki",
+    "snippet": "Apr 22, 2026 — The signal strength is equal to entities amount with the only exception for latter being more than 15, in which case the strength is 15.",
+    "host_name": "ftbwiki.org",
+    "rank": 4,
+    "date": "Apr 22, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.quora.com/In-Minecraft-what-s-the-difference-between-the-different-pressure-plates-like-wooden-stone-golden-iron-etc",
+    "name": "In Minecraft, what's the difference between",
+    "snippet": "In Minecraft, what’s the difference between the different pressure plates like wooden, stone, golden, iron, etc.?",
+    "host_name": "www.quora.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  }
+]

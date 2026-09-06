@@ -50,7 +50,7 @@ use vc_world::world::ChunkPos;
 use wgpu::util::DeviceExt;
 
 use vc_blocks::blocks::{
-    ACACIA_LEAVES, BIRCH_LEAVES, BLOCK_COUNT, DARK_OAK_LEAVES, GLASS, GRASS, ICE, LEAVES,
+    ACACIA_LEAVES, BIRCH_LEAVES, BLOCK_COUNT, DARK_OAK_LEAVES, GLASS, GRASS, ICE, LAVA, LEAVES,
     SPRUCE_LEAVES, STATE_COUNT, TALL_GRASS, WATER,
 };
 
@@ -67,13 +67,20 @@ const PARAM_STRIDE: usize = 66;
 pub const MESH_COMPUTE_SHADER: &str = r#"
 // VC greedy-mesh GPU port — bit-parity port of vc-mesh/src/mesh.rs.
 // Layout constants (must match the Rust side):
-const VOL_WORDS: u32 = 147456u;    // 48*256*48 bytes / 4
+const VOL_WORDS: u32 = 147456u;    // u8 volumes (sky/blk): 48*256*48 bytes / 4
+const VOL_WORDS16: u32 = 294912u;  // [merge] the blocks volume is u16 per
+                                    // cell now — states reach 479 (the old
+                                    // u8 packing truncated >255, a latent
+                                    // truncation bug this merge fixes)
 const B_WATER: u32 = 9u;           // block id of WATER (identity state)
 const MODEL_BASE: u32 = 63u;       // MODEL_STATE_BASE
-const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=332)
-const L_FL: u32 = 332u;            // lut: block flags           (BLOCK_COUNT=195)
-const L_TC: u32 = 527u;            // lut: block tint class      (BLOCK_COUNT=195)
-const L_ST: u32 = 722u;            // lut: state tiles, 4/state  (4·STATE_COUNT=1328)
+// [merge] E-series (ids 0..=199, states 0..=354 padded to 400) + F-series
+// (1.7.2-1.10; ids 200..=275, states 400..=479): STATE_COUNT=480,
+// BLOCK_COUNT=276
+const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=480)
+const L_FL: u32 = 480u;            // lut: block flags           (BLOCK_COUNT=276)
+const L_TC: u32 = 756u;            // lut: block tint class      (BLOCK_COUNT=276)
+const L_ST: u32 = 1032u;           // lut: state tiles, 4/state  (4·STATE_COUNT=1920)
 const P_N: u32 = 0u;               // params[0] = n_jobs
 const P_JOB: u32 = 2u;             // params job base = 2 + j*66
 const P_BIOME: u32 = 2u;           // biomes at job base + 2 (64 packed u32)
@@ -108,8 +115,8 @@ var<workgroup> wmask: array<u32, 256>;
 fn job_getb(j: u32, x: i32, y: i32, z: i32) -> u32 {
     if (y < 0) || (y > 255) { return 0u; }
     let p = u32(y * 2304 + z * 48 + x);
-    let base = j * VOL_WORDS;
-    return (blocks[base + (p >> 2u)] >> ((p & 3u) * 8u)) & 0xFFu;
+    let base = j * VOL_WORDS16;
+    return (blocks[base + (p >> 1u)] >> ((p & 1u) * 16u)) & 0xFFFFu;
 }
 fn job_get_sky(j: u32, x: i32, y: i32, z: i32) -> u32 {
     if (y < 0) { return 0u; }
@@ -125,8 +132,8 @@ fn job_get_blk(j: u32, x: i32, y: i32, z: i32) -> u32 {
     let base = j * VOL_WORDS;
     return (blk_l[base + (p >> 2u)] >> ((p & 3u) * 8u)) & 0xFFu;
 }
-fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 331u)]; }
-fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 194u)]; }
+fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 479u)]; }
+fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 275u)]; }
 fn biome_at(j: u32, x: i32, z: i32) -> u32 {
     let c = u32(z * 16 + x);
     let w = params[P_JOB + j * 66u + P_BIOME + (c >> 2u)];
@@ -148,7 +155,7 @@ fn face_visible(bf: u32, fnb: u32) -> bool {
 // tint class -> packed tint byte (kind<<6 | slot), port of
 // vc_blocks::tint::block_face_tint_packed's block match
 fn tint_packed(b: u32, top: bool, biome: u32) -> u32 {
-    let tc = lut[L_TC + min(b, 194u)];
+    let tc = lut[L_TC + min(b, 275u)];
     var kind = 0u; var slot = 0u;
     if tc == 1u { if top { kind = 1u; slot = biome; } }          // GRASS top
     else if tc == 2u { kind = 1u; slot = biome; }                // TALL_GRASS
@@ -156,8 +163,9 @@ fn tint_packed(b: u32, top: bool, biome: u32) -> u32 {
     else if tc == 4u { kind = 2u; slot = 48u; }                  // BIRCH_LEAVES
     else if tc == 5u { kind = 2u; slot = 49u; }                  // SPRUCE_LEAVES
     else if tc == 6u { kind = 3u; slot = biome; }                // WATER
-    else if tc == 7u { kind = 2u; slot = biome; }                // ACACIA_LEAVES (1.7.2)
-    else if tc == 8u { kind = 2u; slot = biome; }                // DARK_OAK_LEAVES (1.7.2)
+    else if tc == 7u { kind = 3u; slot = 50u; }                  // LAVA (E2 — fixed slot, WATER row)
+    else if tc == 8u { kind = 2u; slot = biome; }                // ACACIA_LEAVES (1.7.2)
+    else if tc == 9u { kind = 2u; slot = biome; }                // DARK_OAK_LEAVES (1.7.2)
     return (kind << 6u) | slot;
 }
 
@@ -559,7 +567,7 @@ fn build_lut() -> Vec<u32> {
         lut[s] = state_block(s as u16) as u32;
     }
     for b in 0..BLOCK_COUNT {
-        let id = b as u8;
+        let id = b as u16;
         let mut flags = 0u32;
         if is_opaque(id) {
             flags |= 1; // F_OPAQUE
@@ -587,8 +595,11 @@ fn build_lut() -> Vec<u32> {
             BIRCH_LEAVES => 4,
             SPRUCE_LEAVES => 5,
             WATER => 6,
-            ACACIA_LEAVES => 7,
-            DARK_OAK_LEAVES => 8,
+            // Phase E2: lava — fixed slot in the WATER tint row
+            LAVA => 7,
+            // 1.7.2: acacia/dark-oak foliage follow the biome colormap
+            ACACIA_LEAVES => 8,
+            DARK_OAK_LEAVES => 9,
             _ => 0,
         };
         lut[L_TC + b] = tint_class;
@@ -936,7 +947,7 @@ impl GpuMesher {
         // 64 packed biome u32] — 2 + n*66 words
         let mut params = vec![0u32; 2 + n * PARAM_STRIDE];
         params[0] = n as u32;
-        let mut blocks = vec![0u8; n * vol];
+        let mut blocks = vec![0u16; n * vol];
         let mut sky = vec![0u8; n * vol];
         let mut blk = vec![0u8; n * vol];
         let mut metas = Vec::with_capacity(n);
@@ -961,7 +972,7 @@ impl GpuMesher {
             })
         };
         let params_buf = mk_in("gpu-mesh-params", bytemuck::cast_slice(&params));
-        let blocks_buf = mk_in("gpu-mesh-blocks", &blocks);
+        let blocks_buf = mk_in("gpu-mesh-blocks", bytemuck::cast_slice(&blocks));
         let sky_buf = mk_in("gpu-mesh-sky", &sky);
         let blk_buf = mk_in("gpu-mesh-blk", &blk);
         // binding 5: counts (pass A) then offsets (pass B — rewritten in
@@ -1366,6 +1377,7 @@ mod tests {
     /// this test guards against drift (e.g. a new block changing the
     /// face_visible arms without the flags LUT following)
     #[test]
+
     fn lut_mirrors_vc_blocks() {
         use vc_blocks::blocks::{is_cross, is_opaque, state_block, state_tiles, AIR};
         use vc_blocks::tint::{KIND_FOLIAGE, KIND_GRASS, KIND_WATER, SLOT_BIRCH, SLOT_SPRUCE};
@@ -1376,7 +1388,7 @@ mod tests {
         }
         // flags encode the exact face_visible arm structure
         for b in 0..BLOCK_COUNT {
-            let id = b as u8;
+            let id = b as u16;
             let f = lut[L_FL + b];
             if id == AIR {
                 // the CPU and the WGSL both guard AIR BEFORE face_visible
@@ -1384,7 +1396,7 @@ mod tests {
                 // `if b == 0u ... return`) — the flags path is never
                 // consulted for an air emitter
                 assert_eq!(
-                    vc_blocks::blocks::face_visible(AIR, 3u8),
+                    vc_blocks::blocks::face_visible(AIR, 3u16),
                     false,
                     "face_visible(AIR, stone) must short-circuit"
                 );
@@ -1392,7 +1404,7 @@ mod tests {
             }
             // simulate the WGSL face_visible over a representative neighbor
             // set (air / opaque stone / same-kind) and compare to Rust
-            for n in [0u8, 3u8, id] {
+            for n in [0u16, 3u16, id] {
                 let fnb = lut[L_FL + n as usize];
                 let got = if (f & 2) != 0 {
                     (fnb & 1) == 0 && (fnb & 2) == 0
@@ -1423,17 +1435,22 @@ mod tests {
         }
         // tint classes -> packed tints identical to vc_blocks::tint
         for b in 0..BLOCK_COUNT {
-            let id = b as u8;
+            let id = b as u16;
             for top in [true, false] {
                 for biome in [0u8, 2, 4, 7] {
                     let tc = lut[L_TC + b];
                     let (kind, slot) = match tc {
                         1 if top => (KIND_GRASS as u32, biome as u32),
                         2 => (KIND_GRASS as u32, biome as u32),
-                        3 | 7 | 8 => (KIND_FOLIAGE as u32, biome as u32),
+                        // 3 = oak leaves; 8/9 = 1.7.2 acacia/dark-oak
+                        // leaves (FOLIAGE colormap — VERIFIED w/Tint:
+                        // "dark oak and acacia ... foliage colormap")
+                        3 | 8 | 9 => (KIND_FOLIAGE as u32, biome as u32),
                         4 => (KIND_FOLIAGE as u32, SLOT_BIRCH as u32),
                         5 => (KIND_FOLIAGE as u32, SLOT_SPRUCE as u32),
                         6 => (KIND_WATER as u32, biome as u32),
+                        // Phase E2: lava fixed slot (SLOT_LAVA = 50)
+                        7 => (KIND_WATER as u32, vc_blocks::tint::SLOT_LAVA as u32),
                         _ => (0, 0),
                     };
                     let got = (kind << 6) | slot;

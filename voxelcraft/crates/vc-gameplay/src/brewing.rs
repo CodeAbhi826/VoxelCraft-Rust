@@ -21,15 +21,15 @@ pub const BREW_TICKS: i32 = 400;
 pub const FUEL_OPERATIONS: i32 = 20;
 
 /// is this block a valid brewing fuel?
-pub fn is_fuel(b: u8) -> bool {
+pub fn is_fuel(b: u16) -> bool {
     b == NETHERRACK
 }
 
 /// one brewing recipe: `ingredient` + `input` bottle → `output` bottle
 pub struct BrewRecipe {
-    pub input: u8,
-    pub ingredient: u8,
-    pub output: u8,
+    pub input: u16,
+    pub ingredient: u16,
+    pub output: u16,
 }
 
 /// the recipe registry (data-driven-shaped: a const table the engine and
@@ -91,7 +91,7 @@ pub const BREW_RECIPES: &[BrewRecipe] = &[
 ];
 
 /// look up the brew result for an (input, ingredient) pair
-pub fn brew_result(input: u8, ingredient: u8) -> Option<u8> {
+pub fn brew_result(input: u16, ingredient: u16) -> Option<u16> {
     BREW_RECIPES
         .iter()
         .find(|r| r.input == input && r.ingredient == ingredient)
@@ -101,7 +101,7 @@ pub fn brew_result(input: u8, ingredient: u8) -> Option<u8> {
 /// vanilla instant-effect amounts in HP, SIGNED (Phase 4: harming is
 /// negative — the drinker takes damage). VERIFIED (1.16.5-era wiki):
 /// Instant Health I = +4 / II = +8; Instant Damage I = −6 / II = −12
-pub fn potion_heal(b: u8) -> Option<f32> {
+pub fn potion_heal(b: u16) -> Option<f32> {
     match b {
         POTION_HEALING => Some(4.0),
         POTION_HEALING_II => Some(8.0),

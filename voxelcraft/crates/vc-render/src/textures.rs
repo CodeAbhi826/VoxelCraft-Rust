@@ -1,16 +1,24 @@
-//! Procedural 16x16 texture atlas (256x256, 16x16 tiles) in the visual style
+//! Procedural 16x16 texture atlas (512x512, 32x32 tiles) in the visual style
 //! of Minecraft 1.16.5. Every pixel is synthesized at startup — zero asset files.
+//! [merge atlas] grown from 256x256/16x16 tiles: the E1–E3 + 1.7–1.10 union
+//! pushed TILE_MAX past 256 slots.
 
 use vc_blocks::blocks::*;
 use vc_rng::rng::Rng;
 
-pub const ATLAS_SIZE: usize = 256;
+/// Phase E1 procedural tiles (evolution 1.0–1.2 bracket) — child module so
+/// the art additions stay reviewable while sharing the put/jit/art helpers.
+mod e1_art;
+mod e2_art;
+mod e3_art;
+
+pub const ATLAS_SIZE: usize = 512;
 pub const TILE_PX: usize = 16;
 
 #[inline]
 fn put(a: &mut [u8], t: u16, x: i32, y: i32, r: i32, g: i32, b: i32, al: i32) {
-    let tx = (t % 16) as i32;
-    let ty = (t / 16) as i32;
+    let tx = (t % 32) as i32;
+    let ty = (t / 32) as i32;
     if x < 0 || x > 15 || y < 0 || y > 15 {
         return;
     }
@@ -1365,8 +1373,8 @@ fn spider_eye_art(a: &mut [u8], t: u16, fermented: bool) {
     });
     if fermented {
         // mold speckles: a few green dots scattered on the rim rows
-        let tx = (t % 16) as usize;
-        let ty = (t / 16) as usize;
+        let tx = (t % 32) as usize;
+        let ty = (t / 32) as usize;
         for (dy, dx) in [(3usize, 5usize), (6, 3), (8, 11), (4, 9)] {
             let i = ((ty * TILE_PX + dy) * ATLAS_SIZE + tx * TILE_PX + dx) * 4;
             if i + 3 < a.len() {
@@ -2462,6 +2470,26 @@ fn dead_bush_art(a: &mut [u8], t: u16) {
 
 // ------------------------------------------------------------------ entry --
 
+/// Phase E2: lava — bright molten orange with darker crust channels
+/// (clean-room; the level-scaled height comes from the fluid-quad path
+/// exactly like water).
+fn lava_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+    let base = [212, 90, 18];
+    noise_fill(a, t, base, 26, rng);
+    // darker crust veins
+    for _ in 0..18 {
+        let x = (rng.next_range(16)) as i32;
+        let y = (rng.next_range(16)) as i32;
+        put(a, t, x, y, 140, 50, 10, 255);
+    }
+    // bright hotspots
+    for _ in 0..10 {
+        let x = (rng.next_range(16)) as i32;
+        let y = (rng.next_range(16)) as i32;
+        put(a, t, x, y, 255, 200, 60, 255);
+    }
+}
+
 // ---------------------------------------------------------------------------
 // 1.7.2 bracket painters ("The Update that Changed the World"). All clean-
 // room pixel art; palettes approximate the vanilla 16 dye hues.
@@ -2488,27 +2516,6 @@ fn stained_glass_art(a: &mut [u8], t: u16, rgb: (i32, i32, i32)) {
     // diagonal light streak
     for i in 0..4 {
         put(a, t, 11 - i, 2 + i, 248, 250, 250, 235);
-    }
-}
-
-/// stained terracotta (1.7 "stained clay"): grainy clay like the base
-/// terracotta painter but in the dye hue
-fn stained_terracotta_art(a: &mut [u8], t: u16, rgb: (i32, i32, i32), rng: &mut Rng) {
-    noise_fill(a, t, [rgb.0, rgb.1, rgb.2], 7, rng);
-    // sparse darker specks (clay grain)
-    for _ in 0..14 {
-        let x = rng.next_range(16) as i32;
-        let y = rng.next_range(16) as i32;
-        put(
-            a,
-            t,
-            x,
-            y,
-            jit(rgb.0 - 18, 4, rng),
-            jit(rgb.1 - 18, 4, rng),
-            jit(rgb.2 - 18, 4, rng),
-            255,
-        );
     }
 }
 
@@ -3839,6 +3846,120 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_SPAWNER => spawner_art(&mut a, t),
             // Phase 10: stronghold portal-room frame
             TILE_END_PORTAL_FRAME => end_portal_frame_art(&mut a, t),
+            // ---- Phase E1 tiles (evolution 1.0–1.2 bracket) ----
+            TILE_MYCELIUM_TOP => e1_art::mycelium_top(&mut a, t, &mut rng),
+            TILE_MYCELIUM_SIDE => e1_art::mycelium_side(&mut a, t, &mut rng),
+            TILE_END_STONE => e1_art::end_stone(&mut a, t, &mut rng),
+            TILE_NETHER_BRICKS => e1_art::nether_bricks(&mut a, t, &mut rng),
+            TILE_REDSTONE_LAMP => e1_art::redstone_lamp(&mut a, t, &mut rng, false),
+            TILE_REDSTONE_LAMP_ON => e1_art::redstone_lamp(&mut a, t, &mut rng, true),
+            TILE_CHISELED_STONE_BRICKS => e1_art::chiseled_stone_bricks(&mut a, t, &mut rng),
+            TILE_CHISELED_SANDSTONE => e1_art::chiseled_sandstone(&mut a, t, &mut rng),
+            TILE_CUT_SANDSTONE => e1_art::cut_sandstone(&mut a, t, &mut rng),
+            TILE_SMOOTH_SANDSTONE => e1_art::smooth_sandstone(&mut a, t, &mut rng),
+            TILE_MUSHROOM_RED_BLOCK => e1_art::mushroom_block_red(&mut a, t, &mut rng),
+            TILE_MUSHROOM_BROWN_BLOCK => e1_art::mushroom_block_brown(&mut a, t, &mut rng),
+            TILE_MUSHROOM_STEM => e1_art::mushroom_stem(&mut a, t, &mut rng),
+            TILE_NETHER_WART_0 => e1_art::nether_wart_art(&mut a, t, 0),
+            TILE_NETHER_WART_1 => e1_art::nether_wart_art(&mut a, t, 1),
+            TILE_NETHER_WART_2 => e1_art::nether_wart_art(&mut a, t, 2),
+            TILE_NETHER_WART_3 => e1_art::nether_wart_art(&mut a, t, 3),
+            TILE_DRAGON_EGG => e1_art::dragon_egg_art(&mut a, t),
+            TILE_END_PORTAL => e1_art::end_portal_art(&mut a, t),
+            TILE_END_CRYSTAL => e1_art::end_crystal_art(&mut a, t),
+            TILE_XP_ORB => e1_art::xp_orb_art(&mut a, t, false),
+            TILE_XP_ORB_BIG => e1_art::xp_orb_art(&mut a, t, true),
+            TILE_EYE_OF_ENDER => e1_art::eye_of_ender_art(&mut a, t),
+            TILE_BLAZE_ROD => e1_art::blaze_rod_art(&mut a, t),
+            TILE_BLAZE_POWDER => e1_art::blaze_powder_art(&mut a, t),
+            TILE_GOLDEN_APPLE => e1_art::golden_apple_art(&mut a, t),
+            TILE_SNOWBALL => e1_art::snowball_art(&mut a, t),
+            TILE_NETHER_BRICK => e1_art::nether_brick_art(&mut a, t),
+            // mob sprites (Phase E1)
+            TILE_SNOWGOLEM => e1_art::snow_golem_art(&mut a, t),
+            TILE_MAGMACUBE => e1_art::magma_cube_art(&mut a, t),
+            TILE_BLAZE => e1_art::blaze_art(&mut a, t),
+            TILE_OCELOT => e1_art::ocelot_art(&mut a, t),
+            TILE_IRONGOLEM => e1_art::iron_golem_art(&mut a, t),
+            TILE_ZOMBIEVILLAGER => e1_art::zombie_villager_art(&mut a, t),
+            TILE_MOOSHROOM => e1_art::mooshroom_art(&mut a, t),
+            TILE_ENDERDRAGON => e1_art::ender_dragon_art(&mut a, t),
+            // spawn eggs: palette pairs indexed by egg id (order = egg_mob);
+            // Phase E2 appends kinds 17..=20 (wither skeleton, witch, bat,
+            // wither) to the E1 16-entry table
+            t if (TILE_EGG_BASE..=TILE_EGG_MAX).contains(&t) => {
+                let i = (t - TILE_EGG_BASE) as usize;
+                let p = if i < 16 {
+                    e1_art::EGG_PALETTES[i]
+                } else {
+                    e2_art::E2_EGG_PALETTES[i - 16]
+                };
+                e1_art::egg_art(&mut a, t, (p.0, p.1, p.2), (p.3, p.4, p.5));
+            }
+            // ---- Phase E2 tiles (evolution 1.3-1.4 bracket) ----
+            TILE_ANVIL => e2_art::anvil_art(&mut a, t, 0),
+            TILE_ANVIL_CHIPPED => e2_art::anvil_art(&mut a, t, 1),
+            TILE_ANVIL_DAMAGED => e2_art::anvil_art(&mut a, t, 2),
+            TILE_BEACON => e2_art::beacon_art(&mut a, t, &mut rng),
+            TILE_BEACON_BEAM => e2_art::beacon_beam_art(&mut a, t),
+            TILE_COBBLE_WALL => e2_art::cobble_wall_art(&mut a, t, &mut rng),
+            TILE_ENDER_CHEST => e2_art::ender_chest_art(&mut a, t, &mut rng),
+            TILE_FLOWER_POT => e2_art::flower_pot_art(&mut a, t),
+            TILE_ITEM_FRAME => e2_art::item_frame_art(&mut a, t),
+            TILE_TRIPWIRE_HOOK => e2_art::tripwire_hook_art(&mut a, t, false),
+            TILE_TRIPWIRE_HOOK_ON => e2_art::tripwire_hook_art(&mut a, t, true),
+            TILE_WITHER_SKULL => e2_art::wither_skull_art(&mut a, t),
+            TILE_COMMAND_BLOCK => e2_art::command_block_art(&mut a, t, false),
+            TILE_COMMAND_BLOCK_ON => e2_art::command_block_art(&mut a, t, true),
+            TILE_EMERALD => e2_art::emerald_art(&mut a, t),
+            TILE_NETHER_STAR => e2_art::nether_star_art(&mut a, t),
+            TILE_POTATO => e2_art::potato_art(&mut a, t),
+            TILE_BAKED_POTATO => e2_art::baked_potato_art(&mut a, t),
+            TILE_CARROT => e2_art::carrot_art(&mut a, t),
+            TILE_PUMPKIN_PIE => e2_art::pumpkin_pie_art(&mut a, t),
+            // E2 mob sprites (billboards)
+            TILE_WITHER => e2_art::wither_art(&mut a, t),
+            TILE_WITHER_SKELETON => e2_art::wither_skeleton_art(&mut a, t),
+            TILE_WITCH => e2_art::witch_art(&mut a, t),
+            TILE_BAT => e2_art::bat_art(&mut a, t),
+            TILE_WITHER_SKULL_PROJ => e2_art::wither_skull_proj_art(&mut a, t),
+            // VERIFICATION-REPORT fix #4: the coal fuel item
+            TILE_COAL => e2_art::coal_art(&mut a, t),
+            // Phase E2: lava fluid tile (bright orange noise — VERIFIED
+            // w/Lava: luminance 15, constant color)
+            TILE_LAVA => lava_art(&mut a, t, &mut rng),
+            // ---- Phase E3 tiles (evolution 1.5–1.6 bracket) ----
+            TILE_COAL_BLOCK => e3_art::coal_block_art(&mut a, t, &mut rng),
+            TILE_QUARTZ_BLOCK => e3_art::quartz_block_art(&mut a, t, &mut rng),
+            TILE_CHISELED_QUARTZ => e3_art::chiseled_quartz_art(&mut a, t, &mut rng),
+            TILE_QUARTZ_PILLAR_TOP => e3_art::quartz_pillar_top_art(&mut a, t, &mut rng),
+            TILE_QUARTZ_PILLAR_SIDE => e3_art::quartz_pillar_side_art(&mut a, t, &mut rng),
+            t if (TILE_TERRACOTTA_STAINED_BASE
+                ..=TILE_TERRACOTTA_STAINED_BASE + 15)
+                .contains(&t) =>
+            {
+                let c = (t - TILE_TERRACOTTA_STAINED_BASE) as u8;
+                e3_art::stained_terracotta_art(&mut a, t, c, &mut rng)
+            }
+            TILE_HAY_TOP => e3_art::hay_top_art(&mut a, t, &mut rng),
+            TILE_HAY_SIDE => e3_art::hay_side_art(&mut a, t, &mut rng),
+            TILE_DAYLIGHT_TOP => e3_art::daylight_top_art(&mut a, t, &mut rng),
+            TILE_DAYLIGHT_SIDE => e3_art::daylight_side_art(&mut a, t),
+            TILE_PLATE_LIGHT => e3_art::plate_art(&mut a, t, true),
+            TILE_PLATE_HEAVY => e3_art::plate_art(&mut a, t, false),
+            TILE_REDSTONE_BLOCK => e3_art::redstone_block_art(&mut a, t, &mut rng),
+            TILE_NETHER_QUARTZ => e3_art::nether_quartz_art(&mut a, t),
+            TILE_LEAD => e3_art::lead_art(&mut a, t),
+            TILE_SADDLE => e3_art::saddle_art(&mut a, t),
+            TILE_HORSE => e3_art::horse_art(&mut a, t, [148, 100, 60], [64, 42, 26]),
+            TILE_DONKEY => e3_art::donkey_art(&mut a, t),
+            TILE_MULE => e3_art::mule_art(&mut a, t),
+            t if (TILE_E3_EGG_BASE..=TILE_E3_EGG_BASE + 2).contains(&t) => {
+                let i = (t - TILE_E3_EGG_BASE) as usize;
+                let p = e3_art::E3_EGG_PALETTES[i];
+                e1_art::egg_art(&mut a, t, (p.0, p.1, p.2), (p.3, p.4, p.5))
+            }
+
             // ---- 1.7.2 bracket (live-verified minecraft.wiki/w/Java_Edition_1.7.2) ----
             TILE_STAINED_GLASS_WHITE => stained_glass_art(&mut a, t, (231, 237, 234)),
             TILE_STAINED_GLASS_ORANGE => stained_glass_art(&mut a, t, (222, 125, 40)),
@@ -3856,22 +3977,6 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_STAINED_GLASS_GREEN => stained_glass_art(&mut a, t, (70, 98, 29)),
             TILE_STAINED_GLASS_RED => stained_glass_art(&mut a, t, (160, 33, 33)),
             TILE_STAINED_GLASS_BLACK => stained_glass_art(&mut a, t, (26, 25, 28)),
-            TILE_STAINED_TERRACOTTA_WHITE => stained_terracotta_art(&mut a, t, (213, 217, 213), &mut rng),
-            TILE_STAINED_TERRACOTTA_ORANGE => stained_terracotta_art(&mut a, t, (164, 94, 47), &mut rng),
-            TILE_STAINED_TERRACOTTA_MAGENTA => stained_terracotta_art(&mut a, t, (154, 71, 137), &mut rng),
-            TILE_STAINED_TERRACOTTA_LIGHT_BLUE => stained_terracotta_art(&mut a, t, (116, 137, 172), &mut rng),
-            TILE_STAINED_TERRACOTTA_YELLOW => stained_terracotta_art(&mut a, t, (187, 147, 58), &mut rng),
-            TILE_STAINED_TERRACOTTA_LIME => stained_terracotta_art(&mut a, t, (113, 119, 52), &mut rng),
-            TILE_STAINED_TERRACOTTA_PINK => stained_terracotta_art(&mut a, t, (163, 100, 91), &mut rng),
-            TILE_STAINED_TERRACOTTA_GRAY => stained_terracotta_art(&mut a, t, (71, 59, 59), &mut rng),
-            TILE_STAINED_TERRACOTTA_LIGHT_GRAY => stained_terracotta_art(&mut a, t, (131, 115, 106), &mut rng),
-            TILE_STAINED_TERRACOTTA_CYAN => stained_terracotta_art(&mut a, t, (76, 87, 89), &mut rng),
-            TILE_STAINED_TERRACOTTA_PURPLE => stained_terracotta_art(&mut a, t, (110, 69, 114), &mut rng),
-            TILE_STAINED_TERRACOTTA_BLUE => stained_terracotta_art(&mut a, t, (75, 74, 101), &mut rng),
-            TILE_STAINED_TERRACOTTA_BROWN => stained_terracotta_art(&mut a, t, (77, 52, 38), &mut rng),
-            TILE_STAINED_TERRACOTTA_GREEN => stained_terracotta_art(&mut a, t, (74, 84, 52), &mut rng),
-            TILE_STAINED_TERRACOTTA_RED => stained_terracotta_art(&mut a, t, (142, 40, 38), &mut rng),
-            TILE_STAINED_TERRACOTTA_BLACK => stained_terracotta_art(&mut a, t, (34, 27, 27), &mut rng),
             TILE_RED_SAND => red_sand_art(&mut a, t, &mut rng),
             TILE_PACKED_ICE => packed_ice_art(&mut a, t, &mut rng),
             TILE_PODZOL_TOP => podzol_top_art(&mut a, t, &mut rng),
@@ -3959,8 +4064,8 @@ pub fn blit_tile(
     out: &mut [u8],
     out_w: usize,
 ) {
-    let tx = (tile % 16) as usize;
-    let ty = (tile / 16) as usize;
+    let tx = (tile % 32) as usize;
+    let ty = (tile / 32) as usize;
     for y in 0..TILE_PX {
         for x in 0..TILE_PX {
             let src = ((ty * TILE_PX + y) * ATLAS_SIZE + tx * TILE_PX + x) * 4;
@@ -4052,15 +4157,17 @@ fn box_downsample(src: &[u8]) -> Vec<u8> {
 /// DERIVED from TILE_MAX so Phase-6/7+ procedural tiles can never collide
 /// with pack textures again (they did: base 64 overwrote the wire/torch).
 pub const PACK_TILE_BASE: u16 = vc_blocks::blocks::TILE_MAX + 1;
-/// hard cap: 16×16 tile grid = 256 tiles in the 256² atlas
-pub const PACK_TILE_MAX: u16 = 255;
+/// hard cap: 32×32 tile grid = 1024 tiles in the 512² atlas
+/// ([merge atlas] was 255 in the 256² atlas — packs were locked out once
+/// TILE_MAX passed 255)
+pub const PACK_TILE_MAX: u16 = 1023;
 
 /// draw the missing-texture tile (magenta/black 8×8 checker, §46 fallback —
 /// never crash, always something visible)
 pub fn draw_missing_tile(atlas: &mut [u8]) {
     let t = vc_mesh::mesh::TILE_MISSING;
-    let tx = (t % 16) as usize;
-    let ty = (t / 16) as usize;
+    let tx = (t % 32) as usize;
+    let ty = (t / 32) as usize;
     for y in 0..TILE_PX {
         for x in 0..TILE_PX {
             let magenta = ((x / 4) + (y / 4)) % 2 == 0;
@@ -4207,8 +4314,8 @@ pub fn merge_pack_textures(
     // animates magma with or without a resource pack.
     {
         let extract_tile = |tile: u16| -> Vec<u8> {
-            let tx = (tile % 16) as usize;
-            let ty = (tile / 16) as usize;
+            let tx = (tile % 32) as usize;
+            let ty = (tile / 32) as usize;
             let mut out = vec![0u8; TILE_PX * TILE_PX * 4];
             for y in 0..TILE_PX {
                 for x in 0..TILE_PX {
@@ -4252,8 +4359,8 @@ pub fn merge_pack_textures(
 
 /// blit a 16×16 RGBA frame into an atlas tile slot
 fn blit_16(atlas: &mut [u8], tile: u16, frame: &[u8]) {
-    let tx = (tile % 16) as usize;
-    let ty = (tile / 16) as usize;
+    let tx = (tile % 32) as usize;
+    let ty = (tile / 32) as usize;
     for y in 0..TILE_PX {
         for x in 0..TILE_PX {
             let src = (y * TILE_PX + x) * 4;
@@ -4324,8 +4431,8 @@ mod pack_tex_tests {
         let mut atlas = vec![0u8; ATLAS_SIZE * ATLAS_SIZE * 4];
         draw_missing_tile(&mut atlas);
         let t = vc_mesh::mesh::TILE_MISSING;
-        let tx = (t % 16) as usize;
-        let ty = (t / 16) as usize;
+        let tx = (t % 32) as usize;
+        let ty = (t / 32) as usize;
         let i = ((ty * TILE_PX + 0) * ATLAS_SIZE + tx * TILE_PX + 0) * 4;
         assert_eq!(&atlas[i..i + 4], &[248, 0, 248, 255]); // magenta
         let i2 = ((ty * TILE_PX + 0) * ATLAS_SIZE + tx * TILE_PX + 4) * 4;
@@ -4371,8 +4478,8 @@ mod pack_tex_tests {
         };
 
         let extract = |tile: u16| -> Vec<u8> {
-            let tx = (tile % 16) as usize;
-            let ty = (tile / 16) as usize;
+            let tx = (tile % 32) as usize;
+            let ty = (tile / 32) as usize;
             let mut out = vec![0u8; TILE_PX * TILE_PX * 4];
             for y in 0..TILE_PX {
                 for x in 0..TILE_PX {
@@ -4465,8 +4572,8 @@ mod pack_merge_tests {
 
     /// helper: raw atlas bytes of one tile (RGBA, 16×16)
     fn tile_bytes(atlas: &[u8], tile: u16) -> Vec<u8> {
-        let tx = (tile % 16) as usize;
-        let ty = (tile / 16) as usize;
+        let tx = (tile % 32) as usize;
+        let ty = (tile / 32) as usize;
         let mut out = Vec::with_capacity(TILE_PX * TILE_PX * 4);
         for y in 0..TILE_PX {
             let row = ((ty * TILE_PX + y) * ATLAS_SIZE + tx * TILE_PX) * 4;
@@ -4497,10 +4604,11 @@ mod pack_merge_tests {
         let atlas = generate_atlas();
         let mips = generate_mips(&atlas, 4);
         assert_eq!(mips.len(), 4);
-        assert_eq!(mips[0].len(), 128 * 128 * 4);
-        assert_eq!(mips[1].len(), 64 * 64 * 4);
-        assert_eq!(mips[2].len(), 32 * 32 * 4);
-        assert_eq!(mips[3].len(), 16 * 16 * 4);
+        // [merge atlas] 512² atlas: level L = (ATLAS_SIZE>>L)²
+        assert_eq!(mips[0].len(), 256 * 256 * 4);
+        assert_eq!(mips[1].len(), 128 * 128 * 4);
+        assert_eq!(mips[2].len(), 64 * 64 * 4);
+        assert_eq!(mips[3].len(), 32 * 32 * 4);
     }
 
     /// levels is clamped to MAX_MIP_LEVELS (vanilla's 0-4 range)
@@ -4664,8 +4772,8 @@ mod v110_tests {
     use vc_pack::pack::MemorySource;
 
     fn tile_bytes(atlas: &[u8], tile: u16) -> Vec<u8> {
-        let tx = (tile % 16) as usize;
-        let ty = (tile / 16) as usize;
+        let tx = (tile % 32) as usize;
+        let ty = (tile / 32) as usize;
         let mut out = vec![0u8; TILE_PX * TILE_PX * 4];
         for y in 0..TILE_PX {
             for x in 0..TILE_PX {

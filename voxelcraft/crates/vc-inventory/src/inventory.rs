@@ -9,7 +9,7 @@ pub const INV_SLOTS: usize = 36; // 0..9 hotbar, 9..36 storage
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct ItemStack {
-    pub block: u8,
+    pub block: u16,
     pub count: u8,
     /// carried enchantment (§29): 0 = none; encoding (enchant_id << 8) |
     /// level — books keep their enchant through every slot/cursor move
@@ -20,11 +20,11 @@ pub struct ItemStack {
 impl ItemStack {
     pub const EMPTY: ItemStack = ItemStack { block: AIR, count: 0, ench: 0 };
 
-    pub const fn new(block: u8, count: u8) -> Self {
+    pub const fn new(block: u16, count: u8) -> Self {
         ItemStack { block, count, ench: 0 }
     }
 
-    pub const fn new_enchanted(block: u8, count: u8, ench: u16) -> Self {
+    pub const fn new_enchanted(block: u16, count: u8, ench: u16) -> Self {
         ItemStack { block, count, ench }
     }
 
@@ -70,7 +70,7 @@ impl Inventory {
 
     /// vanilla pickup: merge into existing stacks first (hotbar-first
     /// order), then empty slots. Returns the leftover count.
-    pub fn add(&mut self, block: u8, mut count: u8) -> u8 {
+    pub fn add(&mut self, block: u16, mut count: u8) -> u8 {
         if block == AIR || count == 0 {
             return 0;
         }
@@ -101,7 +101,7 @@ impl Inventory {
     }
 
     /// count of a block across all slots
-    pub fn count_of(&self, block: u8) -> u32 {
+    pub fn count_of(&self, block: u16) -> u32 {
         self.slots
             .iter()
             .filter(|s| s.block == block)
@@ -110,7 +110,7 @@ impl Inventory {
     }
 
     /// consume `n` of a block (crafting/placing costs); true when fully paid
-    pub fn consume(&mut self, block: u8, mut n: u8) -> bool {
+    pub fn consume(&mut self, block: u16, mut n: u8) -> bool {
         if self.count_of(block) < n as u32 {
             return false;
         }

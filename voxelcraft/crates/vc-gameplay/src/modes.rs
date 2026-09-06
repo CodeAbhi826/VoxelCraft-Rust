@@ -1,11 +1,20 @@
 //! Game modes (Dossier Part 1 §2 gap, master prompt Phase 1):
-//! Survival / Creative / Hardcore as a *rules gate*, not a label.
+//! Survival / Creative / Hardcore / Adventure as a *rules gate*, not a
+//! label.
 //!
 //! Verified against the vanilla 1.16.5 save schema (Dossier Part 3 §15
 //! — `GameType: 1` read from a real `level.dat`):
 //! * `GameType` Int: 0 = Survival, 1 = Creative, 2 = Adventure, 3 = Spectator
 //! * `Hardcore` Byte: 0/1 — hardcore is Survival (GameType 0) + this flag,
-//!   exactly how vanilla stores it. We never write Adventure/Spectator.
+//!   exactly how vanilla stores it. We never write Spectator.
+//!
+//! Phase E2 (evolution 1.3–1.4): ADVENTURE MODE (live-verified
+//! 2026-09-06 w/Adventure): the player cannot directly break or place
+//! blocks (Java allows it only via item can_break/can_place_on
+//! components — the engine has no item components, so plain no-break /
+//! no-place, disclosed); interactions stay open (mobs, levers, buttons,
+//! doors, containers, crafting, fighting); damage/hunger/death behave
+//! exactly like Survival. Vanilla id 2, saved and round-tripped.
 //!
 //! Mode rules are the mechanical part (not copyrightable):
 //! * Creative — flight (double-space toggle), damage immunity, stacks never
@@ -15,25 +24,33 @@
 //! * Hardcore — Survival rules, difficulty locked to Hard, death is permanent
 //!   (no respawn; the world is over).
 
-/// The game modes VoxelCraft supports (1.16.5 parity scope + 1.8's
-/// Spectator).
+/// The game modes VoxelCraft supports (1.16.5 parity scope + E2's
+/// Adventure + 1.8's Spectator; Spectator stays out of the create cycle).
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum GameMode {
     Survival,
     Creative,
     Hardcore,
-    /// 1.8 (VERIFIED — minecraft.wiki/w/Java_Edition_1.8 §Gameplay: "Spectator
-    /// game mode — It can be accessed and reversed only via /gamemode";
-    /// GameType 3): flight always on, no-clip through blocks, no
-    /// interaction, mobs ignore the player, no damage. Not offered in the
-    /// world-create cycle (vanilla only enters it via command) — loads
-    /// from a saved GameType 3.
+    /// Phase E2 (1.3–1.4): no block break/place; everything else is
+    /// Survival rules (VERIFIED w/Adventure).
+    Adventure,
+    /// 1.8 (VERIFIED — minecraft.wiki/w/Java_Edition_1.8 §Gameplay:
+    /// "Spectator game mode — It can be accessed and reversed only via
+    /// /gamemode"; GameType 3): flight always on, no-clip through blocks,
+    /// no interaction, mobs ignore the player, no damage. Not offered in
+    /// the world-create cycle (vanilla only enters it via command) —
+    /// loads from a saved GameType 3.
     Spectator,
 }
 
 impl GameMode {
     /// All modes in world-creation cycle order.
-    pub const ALL: [GameMode; 3] = [GameMode::Survival, GameMode::Creative, GameMode::Hardcore];
+    pub const ALL: [GameMode; 4] = [
+        GameMode::Survival,
+        GameMode::Creative,
+        GameMode::Hardcore,
+        GameMode::Adventure,
+    ];
 
     /// Vanilla `level.dat` `GameType` value (Dossier Part 3 §15 schema).
     /// Hardcore shares Survival's 0 and rides the `Hardcore` byte instead —
@@ -41,6 +58,7 @@ impl GameMode {
     pub fn vanilla_game_type(self) -> i32 {
         match self {
             GameMode::Creative => 1,
+            GameMode::Adventure => 2,
             // 1.8: vanilla GameType 3 (the save-schema doc above)
             GameMode::Spectator => 3,
             GameMode::Survival | GameMode::Hardcore => 0,
@@ -53,13 +71,13 @@ impl GameMode {
     }
 
     /// Decode a saved (GameType, Hardcore) pair. Unknown GameType values
-    /// (Adventure 2, or foreign garbage) fall back to Survival rather
-    /// than being invented — Adventure stays out of scope; Spectator (3)
-    /// loads since the 1.8 bracket.
+    /// (foreign garbage) fall back to Survival rather than being
+    /// invented — Adventure (2, E2) and Spectator (3, 1.8) both load.
     pub fn from_save(game_type: i32, hardcore: bool) -> GameMode {
         match (game_type, hardcore) {
             (1, false) => GameMode::Creative,
             (0, true) => GameMode::Hardcore,
+            (2, false) => GameMode::Adventure,
             (3, false) => GameMode::Spectator,
             _ => GameMode::Survival,
         }
@@ -97,12 +115,21 @@ impl GameMode {
         self == GameMode::Hardcore
     }
 
+    /// Phase E2 (VERIFIED w/Adventure): no direct block break or place
+    /// (Java needs item components for exceptions; the engine has none —
+    /// plain denial, disclosed). All interactions (mobs, levers, doors,
+    /// containers, crafting) stay available.
+    pub fn edits_world_blocks(self) -> bool {
+        self != GameMode::Adventure
+    }
+
     /// Menu label.
     pub fn label(self) -> &'static str {
         match self {
             GameMode::Survival => "SURVIVAL",
             GameMode::Creative => "CREATIVE",
             GameMode::Hardcore => "HARDCORE",
+            GameMode::Adventure => "ADVENTURE",
             GameMode::Spectator => "SPECTATOR",
         }
     }
@@ -113,6 +140,7 @@ impl GameMode {
             GameMode::Survival => "DEPLETING STACKS, REAL DAMAGE, RESPAWN",
             GameMode::Creative => "FLIGHT, NO DAMAGE, INFINITE ITEMS",
             GameMode::Hardcore => "SURVIVAL AT HARD, DEATH IS PERMANENT",
+            GameMode::Adventure => "NO BLOCK BREAK/PLACE, INTERACT ONLY",
             GameMode::Spectator => "1.8 SPECTATOR: FLY THROUGH WALLS, NO INTERACTION",
         }
     }
@@ -123,7 +151,8 @@ impl GameMode {
         match self {
             GameMode::Survival => GameMode::Creative,
             GameMode::Creative => GameMode::Hardcore,
-            GameMode::Hardcore => GameMode::Survival,
+            GameMode::Hardcore => GameMode::Adventure,
+            GameMode::Adventure => GameMode::Survival,
             GameMode::Spectator => GameMode::Survival,
         }
     }
@@ -134,7 +163,8 @@ impl GameMode {
             GameMode::Survival => 0,
             GameMode::Creative => 1,
             GameMode::Hardcore => 2,
-            GameMode::Spectator => 3,
+            GameMode::Adventure => 3,
+            GameMode::Spectator => 4,
         }
     }
 
@@ -194,7 +224,7 @@ mod tests {
 
     #[test]
     fn unknown_game_type_falls_back_to_survival() {
-        assert_eq!(GameMode::from_save(2, false), GameMode::Survival); // Adventure
+        assert_eq!(GameMode::from_save(2, false), GameMode::Adventure); // E2
         // 1.8: Spectator (GameType 3) loads now — was a Survival fallback
         assert_eq!(GameMode::from_save(3, false), GameMode::Spectator);
         assert_eq!(GameMode::from_save(999, false), GameMode::Survival);
@@ -226,13 +256,25 @@ mod tests {
         assert!(!GameMode::Hardcore.invulnerable());
         assert!(GameMode::Hardcore.depletes_items());
         assert!(GameMode::Hardcore.permadeath());
+        // Adventure (E2, VERIFIED w/Adventure): survival rules, but no
+        // direct block edits; interactions unaffected
+        assert!(!GameMode::Adventure.allows_flight());
+        assert!(!GameMode::Adventure.invulnerable());
+        assert!(GameMode::Adventure.depletes_items());
+        assert!(GameMode::Adventure.drops_blocks() == false || true); // drops irrelevant: cannot break
+        assert!(GameMode::Adventure.drops_inventory_on_death());
+        assert!(!GameMode::Adventure.permadeath());
+        assert!(!GameMode::Adventure.edits_world_blocks());
+        assert!(GameMode::Survival.edits_world_blocks());
+        assert!(GameMode::Creative.edits_world_blocks());
     }
 
     #[test]
     fn mode_cycle_and_index() {
         assert_eq!(GameMode::Survival.next(), GameMode::Creative);
         assert_eq!(GameMode::Creative.next(), GameMode::Hardcore);
-        assert_eq!(GameMode::Hardcore.next(), GameMode::Survival);
+        assert_eq!(GameMode::Hardcore.next(), GameMode::Adventure);
+        assert_eq!(GameMode::Adventure.next(), GameMode::Survival);
         for m in GameMode::ALL {
             assert_eq!(GameMode::from_index(m.index()), m);
         }

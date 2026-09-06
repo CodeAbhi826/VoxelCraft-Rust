@@ -419,24 +419,32 @@ pub fn xp_to_next(level: i32) -> i32 {
 
 /// vanilla xp granted by mining an ore (VERIFIED ranges; we pay the fixed
 /// midpoint — the engine's ore drops are deterministic)
-pub fn ore_xp(block: u8) -> i32 {
+pub fn ore_xp(block: u16) -> i32 {
     match block {
         COAL_ORE => 1,     // 0..2
         LAPIS_ORE => 3,    // 2..5
         REDSTONE_ORE => 3, // 1..5
         DIAMOND_ORE => 5,  // 3..7
         EMERALD_ORE => 5,  // 3..7
+        // Phase E3 (VERIFIED live 2026-09-06, minecraft.wiki/w/
+        // Nether_Quartz_Ore: "2–5 experience" — midpoint, the engine's
+        // deterministic-ore convention)
+        NETHER_QUARTZ_ORE => 3, // 2..5
         _ => 0,
     }
 }
 
 /// vanilla xp granted when a smelted item is collected (VERIFIED):
 /// glass 0.1, stone 0.1, terracotta 0.35 — stored as a float pool
-pub fn smelt_xp(block: u8) -> f32 {
+pub fn smelt_xp(block: u16) -> f32 {
     match block {
         SAND => 0.1,
         COBBLE => 0.1,
         CLAY => 0.35,
+        // VERIFICATION-REPORT fix #4 (VERIFIED live 2026-09-06,
+        // minecraft.wiki/w/Smelting: "smelting 1 coal ore and removing
+        // the coal, the value is 0.1" — ten coal per XP on average)
+        COAL_ORE => 0.1,
         _ => 0.0,
     }
 }
@@ -919,5 +927,6 @@ mod tests {
         assert_eq!(ore_xp(STONE), 0);
         assert!((smelt_xp(SAND) - 0.1).abs() < 1e-6);
         assert!((smelt_xp(CLAY) - 0.35).abs() < 1e-6);
+        assert!((smelt_xp(COAL_ORE) - 0.1).abs() < 1e-6);
     }
 }

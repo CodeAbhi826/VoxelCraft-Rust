@@ -316,7 +316,7 @@ fn vs_main(
     let ao = (flags >> 3u) & 3u;
     let tile_i = (v_data.z >> 18u) & 0x3FFFu;
     let uv = vec2<f32>(f32((v_data.z >> 10u) & 0xFFu), f32((v_data.z >> 2u) & 0xFFu)) / 16.0;
-    let tile = vec2<f32>(f32(tile_i % 16u), f32(tile_i / 16u));
+    let tile = vec2<f32>(f32(tile_i % 32u), f32(tile_i / 32u));
     let sky = f32((v_data.w >> 4u) & 0xFu) / 15.0;
     let block = f32(v_data.w & 0xFu) / 15.0;
     let world = vc16_pos(v_data, origin);
@@ -363,7 +363,7 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // mixes neighboring tiles — same residual vanilla 1.16.5 has (the
     // reason its mipmap slider stops at 4); covered by fog at that range.
     let fuv = clamp(fract(in.uv), vec2<f32>(0.03125), vec2<f32>(0.96875));
-    let tuv = (in.tile + fuv) / vec2<f32>(16.0, 16.0);
+    let tuv = (in.tile + fuv) / vec2<f32>(32.0, 32.0);
     let gdx = dpdx(in.uv) / vec2<f32>(16.0, 16.0);
     let gdy = dpdy(in.uv) / vec2<f32>(16.0, 16.0);
     let c = textureSampleGrad(atlas_tex, atlas_samp, tuv, gdx, gdy);
@@ -482,7 +482,7 @@ fn vs_main(
     let ao = (flags >> 3u) & 3u;
     let tile_i = (v_data.z >> 18u) & 0x3FFFu;
     let uv = vec2<f32>(f32((v_data.z >> 10u) & 0xFFu), f32((v_data.z >> 2u) & 0xFFu)) / 16.0;
-    let tile = vec2<f32>(f32(tile_i % 16u), f32(tile_i / 16u));
+    let tile = vec2<f32>(f32(tile_i % 32u), f32(tile_i / 32u));
     let sky = f32((v_data.w >> 4u) & 0xFu) / 15.0;
     let block = f32(v_data.w & 0xFu) / 15.0;
     // §18 water tint: resolve the packed index in the vertex stage
@@ -519,7 +519,7 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // gradients fix the LOD explosion at every fract discontinuity.
     let scroll = vec2<f32>(G.misc.y * 0.06, G.misc.y * 0.025);
     let fuv = clamp(fract(in.uv + scroll), vec2<f32>(0.03125), vec2<f32>(0.96875));
-    let tuv = (in.tile + fuv) / vec2<f32>(16.0, 16.0);
+    let tuv = (in.tile + fuv) / vec2<f32>(32.0, 32.0);
     let gdx = dpdx(in.uv) / vec2<f32>(16.0, 16.0);
     let gdy = dpdy(in.uv) / vec2<f32>(16.0, 16.0);
     let c = textureSampleGrad(atlas_tex, atlas_samp, tuv, gdx, gdy);
@@ -3748,8 +3748,8 @@ impl Renderer {
     /// mipmaps active the tile's mip levels are refreshed too (vanilla
     /// uploads each animation frame's own mip chain — same behavior).
     pub fn write_atlas_tile(&mut self, tile: u16, rgba: &[u8]) {
-        let tx = (tile % 16) as u32;
-        let ty = (tile / 16) as u32;
+        let tx = (tile % 32) as u32;
+        let ty = (tile / 32) as u32;
         self.queue.write_texture(
             wgpu::ImageCopyTexture {
                 texture: &self.atlas_tex,

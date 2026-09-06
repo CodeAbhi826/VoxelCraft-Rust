@@ -18,7 +18,7 @@ pub struct Recipe {
 pub enum Ing {
     None,
     AnyLog,
-    Block(u8),
+    Block(u16),
 }
 
 /// the recipes our registry supports (vanilla-shaped)
@@ -138,6 +138,57 @@ pub const RECIPES: &[Recipe] = &[
     },
     // 3×3 sand → sand... no. sand→glass needs the furnace. Recipes for
     // wool→? keep the set tight and honest.
+    // ---- Phase E1 recipes (evolution 1.0–1.2 bracket, live-verified
+    // 2026-09-06) ----
+    // redstone lamp: 4 glowstone (cardinal) + 1 redstone (center)
+    // (VERIFIED w/Redstone_Lamp §Crafting)
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::None,
+            Ing::Block(GLOWSTONE),
+            Ing::None,
+            Ing::Block(GLOWSTONE),
+            Ing::Block(REDSTONE_WIRE),
+            Ing::Block(GLOWSTONE),
+            Ing::None,
+            Ing::Block(GLOWSTONE),
+            Ing::None,
+        ],
+        out: ItemStack::new(REDSTONE_LAMP, 1),
+    },
+    // eye of ender: blaze powder + ender pearl (shapeless in vanilla —
+    // modeled as the 2×2 diagonal; VERIFIED)
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(BLAZE_POWDER),
+            Ing::None,
+            Ing::None,
+            Ing::Block(ENDER_PEARL),
+        ],
+        out: ItemStack::new(EYE_OF_ENDER, 1),
+    },
+    // blaze powder: 1 rod → 2 (shapeless in vanilla; 1×1 shaped here)
+    Recipe {
+        size: 1,
+        grid: &[Ing::Block(BLAZE_ROD)],
+        out: ItemStack::new(BLAZE_POWDER, 2),
+    },
+    // nether bricks: 4 nether-brick items 2×2 (VERIFIED vanilla)
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(NETHER_BRICK),
+            Ing::Block(NETHER_BRICK),
+            Ing::Block(NETHER_BRICK),
+            Ing::Block(NETHER_BRICK),
+        ],
+        out: ItemStack::new(NETHER_BRICKS, 1),
+    },
+    // [cut/chiseled sandstone crafting DEFERRED: vanilla's recipes need
+    // plain SANDSTONE + sandstone slabs — neither block exists in the
+    // engine yet; both variants stay picker-available (documented)]
     // 2×2 snow → snow block? snow IS a block already. skip.
     // 3×3 glass V (vanilla glass-bottle recipe, 3 bottles) — the §29 chain
     // head: bottle → fill at water → brew
@@ -209,6 +260,290 @@ pub const RECIPES: &[Recipe] = &[
             Ing::None,
         ],
         out: ItemStack::new(FERMENTED_SPIDER_EYE, 1),
+    },
+    // ---- Phase E2 (evolution 1.3-1.4 bracket; all live-verified
+    // 2026-09-06, docs/research/phase2-1.3-1.4-research.md) ----
+    // anvil: 3 blocks of iron + 4 iron ingots (VERIFIED w/Anvil; 31 iron
+    // total). Adaptation: IRON_ORE items stand in for the ingots (the
+    // engine has no ingot item — disclosed).
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::None,
+            Ing::Block(IRON_BLOCK),
+            Ing::None,
+            Ing::Block(IRON_ORE),
+            Ing::Block(IRON_ORE),
+            Ing::Block(IRON_ORE),
+            Ing::None,
+            Ing::Block(IRON_ORE),
+            Ing::None,
+        ],
+        out: ItemStack::new(ANVIL, 1),
+    },
+    // beacon: 5 glass + 1 nether star + 3 obsidian (VERIFIED w/Beacon)
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(GLASS),
+            Ing::Block(GLASS),
+            Ing::Block(GLASS),
+            Ing::Block(GLASS),
+            Ing::Block(NETHER_STAR),
+            Ing::Block(GLASS),
+            Ing::Block(OBSIDIAN),
+            Ing::Block(OBSIDIAN),
+            Ing::Block(OBSIDIAN),
+        ],
+        out: ItemStack::new(BEACON, 1),
+    },
+    // ender chest: 8 obsidian + 1 eye of ender (VERIFIED w/Ender_Chest)
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(OBSIDIAN),
+            Ing::Block(OBSIDIAN),
+            Ing::Block(OBSIDIAN),
+            Ing::Block(OBSIDIAN),
+            Ing::Block(EYE_OF_ENDER),
+            Ing::Block(OBSIDIAN),
+            Ing::Block(OBSIDIAN),
+            Ing::Block(OBSIDIAN),
+            Ing::Block(OBSIDIAN),
+        ],
+        out: ItemStack::new(ENDER_CHEST, 1),
+    },
+    // cobblestone wall: 6 cobble -> 6 walls (VERIFIED w/Wall)
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(COBBLE),
+            Ing::Block(COBBLE),
+            Ing::Block(COBBLE),
+            Ing::Block(COBBLE),
+            Ing::Block(COBBLE),
+            Ing::Block(COBBLE),
+            Ing::None,
+            Ing::None,
+            Ing::None,
+        ],
+        out: ItemStack::new(COBBLE_WALL, 6),
+    },
+    // flower pot: 3 bricks (VERIFIED w/Flower_Pot; brick ITEM -> brick
+    // BLOCK adaptation — no brick item, disclosed)
+    Recipe {
+        size: 1,
+        grid: &[Ing::Block(BRICKS)],
+        out: ItemStack::new(FLOWER_POT, 1),
+    },
+    // item frame: 8 sticks + 1 leather (VERIFIED w/Item_Frame; sticks ->
+    // planks adaptation — no stick item, disclosed)
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(PLANKS),
+            Ing::Block(PLANKS),
+            Ing::Block(PLANKS),
+            Ing::Block(PLANKS),
+            Ing::Block(LEATHER),
+            Ing::Block(PLANKS),
+            Ing::Block(PLANKS),
+            Ing::Block(PLANKS),
+            Ing::Block(PLANKS),
+        ],
+        out: ItemStack::new(ITEM_FRAME, 1),
+    },
+    // tripwire hook: 1 iron + 1 stick + 2 planks -> 2 (VERIFIED
+    // w/Tripwire_Hook; iron ore + planks adaptation, disclosed)
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(IRON_ORE),
+            Ing::Block(PLANKS),
+            Ing::Block(IRON_ORE),
+            Ing::Block(PLANKS),
+        ],
+        out: ItemStack::new(TRIPWIRE_HOOK, 2),
+    },
+    // ---- Phase E3 (evolution 1.5-1.6 bracket; all live-verified
+    // 2026-09-06) ----
+    // block of coal: 9 coal -> 1 (VERIFIED w/Block_of_Coal)
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(COAL),
+            Ing::Block(COAL),
+            Ing::Block(COAL),
+            Ing::Block(COAL),
+            Ing::Block(COAL),
+            Ing::Block(COAL),
+            Ing::Block(COAL),
+            Ing::Block(COAL),
+            Ing::Block(COAL),
+        ],
+        out: ItemStack::new(COAL_BLOCK, 1),
+    },
+    // block of coal -> 9 coal (the vanilla reverse craft, w/Block_of_Coal)
+    Recipe {
+        size: 1,
+        grid: &[Ing::Block(COAL_BLOCK)],
+        out: ItemStack::new(COAL, 9),
+    },
+    // block of quartz: 4 nether quartz (VERIFIED w/Block_of_Quartz)
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(NETHER_QUARTZ),
+            Ing::Block(NETHER_QUARTZ),
+            Ing::Block(NETHER_QUARTZ),
+            Ing::Block(NETHER_QUARTZ),
+        ],
+        out: ItemStack::new(QUARTZ_BLOCK, 1),
+    },
+    // quartz pillar: 2 blocks of quartz (vertical) -> 2 pillars
+    // (VERIFIED w/Quartz_Pillar "Block of Quartz 2"; output count 2
+    // confirmed by a second live source; modeled as a 2×2 left column —
+    // the engine's w×w grid convention)
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(QUARTZ_BLOCK),
+            Ing::None,
+            Ing::Block(QUARTZ_BLOCK),
+            Ing::None,
+        ],
+        out: ItemStack::new(QUARTZ_PILLAR, 2),
+    },
+    // carpets: 2 wool (vertical) -> 3 (VERIFIED w/Carpet 13w17a "now
+    // returns 3 carpets from two wool") — one recipe per engine wool
+    // color; modeled as a 2×2 left column (the w×w grid convention)
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(WOOL_WHITE),
+            Ing::None,
+            Ing::Block(WOOL_WHITE),
+            Ing::None,
+        ],
+        out: ItemStack::new(CARPET_WHITE, 3),
+    },
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(WOOL_RED),
+            Ing::None,
+            Ing::Block(WOOL_RED),
+            Ing::None,
+        ],
+        out: ItemStack::new(CARPET_RED, 3),
+    },
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(WOOL_YELLOW),
+            Ing::None,
+            Ing::Block(WOOL_YELLOW),
+            Ing::None,
+        ],
+        out: ItemStack::new(CARPET_YELLOW, 3),
+    },
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(WOOL_BLUE),
+            Ing::None,
+            Ing::Block(WOOL_BLUE),
+            Ing::None,
+        ],
+        out: ItemStack::new(CARPET_BLUE, 3),
+    },
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(WOOL_BLACK),
+            Ing::None,
+            Ing::Block(WOOL_BLACK),
+            Ing::None,
+        ],
+        out: ItemStack::new(CARPET_BLACK, 3),
+    },
+    // trapped chest: 1 tripwire hook + 1 chest (VERIFIED w/Trapped_Chest;
+    // the 2-ingredient shapeless craft modeled as a 2×2 column pair)
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(TRIPWIRE_HOOK),
+            Ing::None,
+            Ing::Block(CHEST),
+            Ing::None,
+        ],
+        out: ItemStack::new(TRAPPED_CHEST, 1),
+    },
+    // daylight sensor: 3 glass + 3 quartz + 3 wooden slabs (VERIFIED
+    // w/Daylight_Detector "Glass + Nether Quartz + Any Wooden Slab")
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(GLASS),
+            Ing::Block(GLASS),
+            Ing::Block(GLASS),
+            Ing::Block(NETHER_QUARTZ),
+            Ing::Block(NETHER_QUARTZ),
+            Ing::Block(NETHER_QUARTZ),
+            Ing::Block(OAK_SLAB),
+            Ing::Block(OAK_SLAB),
+            Ing::Block(OAK_SLAB),
+        ],
+        out: ItemStack::new(DAYLIGHT_SENSOR, 1),
+    },
+    // light weighted pressure plate: 2 gold (VERIFIED w/
+    // Light_Weighted_Pressure_Plate; gold ore — no ingots, disclosed;
+    // 2×2 column model)
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(GOLD_ORE),
+            Ing::None,
+            Ing::Block(GOLD_ORE),
+            Ing::None,
+        ],
+        out: ItemStack::new(LIGHT_WEIGHTED_PLATE, 1),
+    },
+    // heavy weighted pressure plate: 2 iron (VERIFIED w/
+    // Heavy_Weighted_Pressure_Plate; iron ore — no ingots, disclosed;
+    // 2×2 column model)
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(IRON_ORE),
+            Ing::None,
+            Ing::Block(IRON_ORE),
+            Ing::None,
+        ],
+        out: ItemStack::new(HEAVY_WEIGHTED_PLATE, 1),
+    },
+    // block of redstone: 9 redstone (VERIFIED w/Block_of_Redstone "nine
+    // redstone dust"; redstone WIRE block = the engine's dust — disclosed)
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(REDSTONE_WIRE),
+            Ing::Block(REDSTONE_WIRE),
+            Ing::Block(REDSTONE_WIRE),
+            Ing::Block(REDSTONE_WIRE),
+            Ing::Block(REDSTONE_WIRE),
+            Ing::Block(REDSTONE_WIRE),
+            Ing::Block(REDSTONE_WIRE),
+            Ing::Block(REDSTONE_WIRE),
+            Ing::Block(REDSTONE_WIRE),
+        ],
+        out: ItemStack::new(REDSTONE_BLOCK, 1),
+    },
+    // block of redstone -> 9 redstone (the vanilla reverse craft)
+    Recipe {
+        size: 1,
+        grid: &[Ing::Block(REDSTONE_BLOCK)],
+        out: ItemStack::new(REDSTONE_WIRE, 9),
     },
 ];
 
@@ -369,5 +704,85 @@ mod tests {
         }
         let out = match_grid(&g, 3).unwrap();
         assert_eq!((out.block, out.count), (ENCHANT_TABLE, 1));
+    }
+
+    // ---------------- Phase E3 tests (1.5–1.6 bracket) ----------------
+
+    fn grid2(items: [u16; 4]) -> [ItemStack; 4] {
+        let mut g = [ItemStack::EMPTY; 4];
+        for (i, &b) in items.iter().enumerate() {
+            if b != 0 {
+                g[i] = ItemStack::new(b, 1);
+            }
+        }
+        g
+    }
+
+    #[test]
+    fn phase_e3_coal_block_recipes() {
+        // 9 coal -> 1 block (VERIFIED w/Block_of_Coal)
+        let mut g = [ItemStack::new(COAL, 1); 9];
+        let out = match_grid(&g, 3).unwrap();
+        assert_eq!((out.block, out.count), (COAL_BLOCK, 1));
+        // 1 block -> 9 coal (the vanilla reverse craft)
+        let g2 = [ItemStack::new(COAL_BLOCK, 1), ItemStack::EMPTY, ItemStack::EMPTY, ItemStack::EMPTY];
+        let out2 = match_grid(&g2, 2).unwrap();
+        assert_eq!((out2.block, out2.count), (COAL, 9));
+    }
+
+    #[test]
+    fn phase_e3_quartz_and_pillar_recipes() {
+        // 4 nether quartz -> 1 block of quartz (VERIFIED w/Block_of_Quartz)
+        let out = match_grid(&grid2([NETHER_QUARTZ, NETHER_QUARTZ, NETHER_QUARTZ, NETHER_QUARTZ]), 2).unwrap();
+        assert_eq!((out.block, out.count), (QUARTZ_BLOCK, 1));
+        // 2 blocks of quartz (vertical) -> 2 pillars (VERIFIED
+        // w/Quartz_Pillar; output count 2 confirmed by a 2nd source)
+        let out2 = match_grid(&grid2([QUARTZ_BLOCK, 0, QUARTZ_BLOCK, 0]), 2).unwrap();
+        assert_eq!((out2.block, out2.count), (QUARTZ_PILLAR, 2));
+    }
+
+    #[test]
+    fn phase_e3_carpet_recipes() {
+        // 2 wool (vertical) -> 3 carpets (VERIFIED w/Carpet 13w17a)
+        for (wool, carpet) in [
+            (WOOL_WHITE, CARPET_WHITE),
+            (WOOL_RED, CARPET_RED),
+            (WOOL_YELLOW, CARPET_YELLOW),
+            (WOOL_BLUE, CARPET_BLUE),
+            (WOOL_BLACK, CARPET_BLACK),
+        ] {
+            let out = match_grid(&grid2([wool, 0, wool, 0]), 2).unwrap();
+            assert_eq!((out.block, out.count), (carpet, 3), "wool {wool}");
+        }
+    }
+
+    #[test]
+    fn phase_e3_redstone_component_recipes() {
+        // trapped chest: tripwire hook + chest (VERIFIED w/Trapped_Chest)
+        let out = match_grid(&grid2([TRIPWIRE_HOOK, 0, CHEST, 0]), 2).unwrap();
+        assert_eq!((out.block, out.count), (TRAPPED_CHEST, 1));
+        // daylight sensor: glass + quartz + slabs (VERIFIED
+        // w/Daylight_Detector)
+        let mut g = [ItemStack::EMPTY; 9];
+        for i in 0..3 {
+            g[i] = ItemStack::new(GLASS, 1);
+            g[3 + i] = ItemStack::new(NETHER_QUARTZ, 1);
+            g[6 + i] = ItemStack::new(OAK_SLAB, 1);
+        }
+        let out2 = match_grid(&g, 3).unwrap();
+        assert_eq!((out2.block, out2.count), (DAYLIGHT_SENSOR, 1));
+        // plates: 2 ore blocks (the no-ingot convention, disclosed)
+        let out3 = match_grid(&grid2([GOLD_ORE, 0, GOLD_ORE, 0]), 2).unwrap();
+        assert_eq!((out3.block, out3.count), (LIGHT_WEIGHTED_PLATE, 1));
+        let out4 = match_grid(&grid2([IRON_ORE, 0, IRON_ORE, 0]), 2).unwrap();
+        assert_eq!((out4.block, out4.count), (HEAVY_WEIGHTED_PLATE, 1));
+        // block of redstone: 9 wire (the engine's dust-as-block row) + back
+        let mut g9 = [ItemStack::new(REDSTONE_WIRE, 1); 9];
+        let out5 = match_grid(&g9, 3).unwrap();
+        assert_eq!((out5.block, out5.count), (REDSTONE_BLOCK, 1));
+        g9[0] = ItemStack::new(REDSTONE_BLOCK, 1);
+        g9[1..].fill(ItemStack::EMPTY);
+        let out6 = match_grid(&g9, 3).unwrap();
+        assert_eq!((out6.block, out6.count), (REDSTONE_WIRE, 9));
     }
 }

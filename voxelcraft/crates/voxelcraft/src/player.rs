@@ -21,6 +21,28 @@ pub const TERMINAL: f32 = 78.4; // 3.92 b/tick × 20 — inherent fixed point of
 pub const SWIM_SPEED_SURFACE: f32 = 2.20;
 pub const SWIM_SPEED_UNDERWATER: f32 = 1.97;
 pub const SPRINT_SWIM_SPEED: f32 = 3.918;
+/// Sustained sprint-jumping average speed (VERIFIED 2026-09-06 live:
+/// minecraft.wiki/w/Sprinting "jumping while sprinting allows the player
+/// to move with an average speed of 7.127 m/s"; w/Transportation table
+/// "Sprint-jumping, flat terrain, 7.127 m/s").
+pub const SPRINT_JUMP_SPEED: f32 = 7.127;
+/// Sprint-jump boost (VERIFIED 2026-09-06 live, mcpk.wiki/wiki/Sprinting:
+/// "when the player jumps while sprinting, they accelerate by 0.2 towards
+/// their facing (regardless of whether the player is strafing)"; the
+/// mechanics summary on minecraft.wiki/w/Jumping: "jumping can be
+/// combined with sprinting to increase the player's movement speed").
+/// 0.2 blocks/tick × 20 = 4.0 blocks/s of horizontal impulse at the jump.
+pub const SPRINT_JUMP_BOOST: f32 = 4.0;
+/// Extra air drag applied to horizontal speed EXCESS over the movement
+/// target. Vanilla drags in-flight horizontal velocity 0.91×/tick on its
+/// impulse model; on this smoothed-velocity model the observable to
+/// reproduce is the sustained sprint-jump average — with the 2.5/s air
+/// control rate this brings the boost's total decay to ~4.7/s so the
+/// steady cycle averages the wiki's 7.127 b/s (measured 7.129 with the
+/// 60 Hz harness; guarded by `sprint_jump_averages_vanilla_7_127`).
+/// Documented adaptation: the vanilla internals (0.91 drag + 0.02/tick
+/// air accel) do not map 1:1 onto the exponential-smoothing model.
+pub const SPRINT_JUMP_EXTRA_DRAG: f32 = 2.2;
 /// air supply / drowning (research-verdicts.md live round,
 /// minecraft.wiki/w/Damage §Drowning): max 300 air (depletes 1/tick
 /// submerged), 10 bubbles × 30 air; damage 2 HP when air reaches −20,
@@ -72,29 +94,6 @@ pub struct SoundEvent {
     pub pitch: f32,
 }
 
-/// 1.7.2 bracket: status-effect state carried by the player. Durations are
-/// remaining game ticks (20 Hz); the poison timer is the inter-damage
-/// countdown. Numbers live-verified (minecraft.wiki/w/Poison, /w/Pufferfish,
-/// 2026-09-06) — see `Player::tick_effects` for the cadence derivation.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct StatusEffects {
-    /// remaining Poison ticks (pufferfish: Poison IV, 1200 = 1:00)
-    pub poison_ticks: i32,
-    /// countdown to the next poison damage application
-    poison_timer: i32,
-    /// remaining Slowness ticks (1.10 stray arrows: 600 = 0:30)
-    pub slowness_ticks: i32,
-    /// remaining Hunger ticks (1.10 husk hits: 7×floor(regional difficulty) s)
-    pub hunger_ticks: i32,
-}
-
-/// observable poison cadence: the 10-tick hurt-immunity floor (the raw
-/// level-IV cadence is 3 ticks per HP, but damage below the immunity
-/// window is skipped — the wiki's own effective-rate row)
-pub const POISON_INTERVAL_TICKS: i32 = 10;
-/// poison cannot kill — health floors at 1 HP (wiki /w/Poison)
-pub const POISON_FLOOR_HP: f32 = 1.0;
-
 /// 1.8 slime-block restitution: rebound reaches "up to 60% of initial
 /// height" (wiki §Slime Block) → v ratio = sqrt(0.6)
 pub const SLIME_RESTITUTION: f32 = 0.7746;
@@ -116,6 +115,11 @@ pub struct Player {
     pub flying: bool,
     pub in_water: bool,
     pub head_in_water: bool,
+    /// Phase E2: feet in lava (contact damage + slow — VERIFIED w/Lava)
+    pub in_lava: bool,
+    /// Phase E2: timed status effects (wither/poison/regen + beacon stat
+    /// effects — VERIFIED w/Effect rows; see vc_gameplay::effects)
+    pub effects: vc_gameplay::effects::Effects,
     /// health points (0..20, vanilla half-heart scale ×2; §29 potions act
     /// on this, the HUD renders it as the real health bar)
     pub health: f32,
@@ -153,12 +157,6 @@ pub struct Player {
     /// air supply 0..300 (over-depletes to −20, then resets on damage).
     /// 300 = full (10 bubbles × 30).
     pub air: f32,
-    /// 1.7.2 bracket: player status effects. Poison is the pufferfish
-    /// effect (Poison IV 1:00 — cadence + cannot-kill floor live-verified
-    /// on minecraft.wiki/w/Poison). Slowness arrives with the 1.10 stray
-    /// (0:30 arrows) and Hunger with the 1.10 husk — all fields ride the
-    /// same struct so later brackets extend without re-plumbing.
-    pub effects: StatusEffects,
     /// 1.8: spectator no-clip — set by the game layer each frame from
     /// the mode; move_axis skips collision while set
     pub noclip: bool,
@@ -182,6 +180,8 @@ impl Player {
             flying: true, // spawn in air, land when chunks ready
             in_water: false,
             head_in_water: false,
+            in_lava: false,
+            effects: vc_gameplay::effects::Effects::new(),
             health: 20.0,
             xp_points: 0,
             xp_level: 0,
@@ -201,7 +201,6 @@ impl Player {
             was_in_water: false,
             fall_dist: 0.0,
             pending_fall_dmg: 0.0,
-            effects: StatusEffects::default(),
             noclip: false,
             auto_jump: true,
             pending_drown_dmg: 0.0,
@@ -254,49 +253,19 @@ impl Player {
 
     /// Reset status effects (respawn / mode change / milk-when-it-exists).
     pub fn reset_effects(&mut self) {
-        self.effects = StatusEffects::default();
+        self.effects.clear();
     }
 
-    /// 1.7.2 bracket: one status-effect GAME tick (called from the fixed
-    /// 20 Hz sim step, alongside the air/drown logic). Returns the poison
-    /// damage dealt this tick (0 if none) so the game layer can play the
-    /// hurt sound exactly once per application.
-    ///
-    /// Poison cadence VERIFIED (minecraft.wiki/w/Poison, live 2026-09-06):
-    /// level IV damages 1 HP per 3 ticks raw, but the 10-tick hurt
-    /// immunity makes the OBSERVABLE rate 1 HP per 10 ticks (1 HP/s) —
-    /// we tick at the observable rate. Poison can never kill: it floors
-    /// at 1 HP ("it cannot kill. It can, however, reduce the player's
-    /// health all the way to 1").
-    pub fn tick_effects(&mut self) -> f32 {
-        let mut dealt = 0.0;
-        if self.effects.poison_ticks > 0 {
-            self.effects.poison_ticks -= 1;
-            self.effects.poison_timer -= 1;
-            if self.effects.poison_timer <= 0 {
-                self.effects.poison_timer = POISON_INTERVAL_TICKS;
-                // cannot-kill floor at 1 HP
-                if self.health > POISON_FLOOR_HP {
-                    let cap = self.health - POISON_FLOOR_HP;
-                    dealt = self.damage(1.0_f32.min(cap));
-                }
-            }
-        } else {
-            self.effects.poison_timer = 0;
-        }
-        if self.effects.slowness_ticks > 0 {
-            self.effects.slowness_ticks -= 1;
-        }
-        if self.effects.hunger_ticks > 0 {
-            self.effects.hunger_ticks -= 1;
-        }
-        dealt
-    }
-
-    /// pufferfish poisoning: Poison IV for 1:00 (wiki /w/Pufferfish)
+    /// pufferfish poisoning (1.7.2): Poison IV for 1:00 + Hunger for
+    /// 0:15 (VERIFIED minecraft.wiki/w/Pufferfish, live 2026-09-06;
+    /// cadence + cannot-kill floor live-verified on w/Poison — see
+    /// vc_gameplay::effects::period_ticks for the hurt-immunity floor).
+    /// The unified Effects system carries the state; the game layer's
+    /// 20 Hz tick applies the damage.
     pub fn apply_pufferfish_poison(&mut self) {
-        self.effects.poison_ticks = 20 * 60;
-        self.effects.poison_timer = POISON_INTERVAL_TICKS;
+        use vc_gameplay::effects::EffectKind;
+        self.effects.apply(EffectKind::Poison, 3, 20 * 60); // level IV, 1:00
+        self.effects.apply(EffectKind::Hunger, 0, 20 * 15); // 0:15
     }
 
     /// the selected hotbar stack
@@ -401,6 +370,10 @@ impl Player {
         );
         self.in_water = feet_block == WATER;
         self.head_in_water = head_block == WATER;
+        // Phase E2 (VERIFIED w/Lava): contact damage 4 HP per 10 ticks
+        // (the every-tick damage is reduced by the half-second damage
+        // immunity window); the game layer applies the timed damage.
+        self.in_lava = feet_block == LAVA;
         if self.in_water && !self.was_in_water && self.vel.y < -4.0 {
             sounds.push(SoundEvent {
                 family: SoundFamily::Water,
@@ -475,7 +448,12 @@ impl Player {
             self.vel += (target - self.vel) * (12.0 * dt).min(1.0);
         } else {
             // swim targets from the verified wiki table (research-verdicts
-            // live round): sprint-swim 3.918, underwater 1.97, surface 2.20
+            // live round): sprint-swim 3.918, underwater 1.97, surface 2.20.
+            // Status effects scale the target (Phase E2 beacon Speed +20 %/
+            // level; 1.9/1.10 Slowness −15 %/level — VERIFIED w/Effect rows,
+            // consumed through vc_gameplay::effects multipliers).
+            let stat_mult = vc_gameplay::effects::speed_multiplier(&self.effects)
+                * vc_gameplay::effects::slowness_multiplier(&self.effects);
             let speed = if self.in_water {
                 if sprinting {
                     SPRINT_SWIM_SPEED
@@ -488,12 +466,27 @@ impl Player {
                 SPRINT_SPEED
             } else {
                 WALK_SPEED
-            };
+            } * stat_mult;
             let target = wish * speed;
             let rate = if self.on_ground { 12.0 } else { 2.5 };
             let f = (rate * dt).min(1.0);
             self.vel.x += (target.x - self.vel.x) * f;
             self.vel.z += (target.z - self.vel.z) * f;
+            // in flight (not water): horizontal speed EXCESS over the
+            // movement target — i.e. the sprint-jump boost — decays at
+            // the extra drag rate (vanilla's 0.91×/tick air drag,
+            // calibrated to the wiki's 7.127 b/s sprint-jump observable;
+            // see SPRINT_JUMP_EXTRA_DRAG)
+            if !self.on_ground && !self.in_water {
+                let sp = (self.vel.x * self.vel.x + self.vel.z * self.vel.z).sqrt();
+                let tp = (target.x * target.x + target.z * target.z).sqrt();
+                if sp > tp + 1e-4 {
+                    let f2 = (SPRINT_JUMP_EXTRA_DRAG * dt).min(1.0);
+                    let scale = (tp + (sp - tp) * (1.0 - f2)) / sp;
+                    self.vel.x *= scale;
+                    self.vel.z *= scale;
+                }
+            }
 
             if self.in_water {
                 // buoyant swimming
@@ -508,6 +501,14 @@ impl Player {
                 if input.jump && self.on_ground {
                     self.vel.y = JUMP_VEL;
                     self.on_ground = false;
+                    if sprinting {
+                        // sprint-jump boost: +0.2 b/t horizontally toward
+                        // the facing (VERIFIED, mcpk.wiki/wiki/Sprinting)
+                        // — the vanilla input behind the 7.127 b/s
+                        // sustained sprint-jump average
+                        self.vel.x += fwd.x * SPRINT_JUMP_BOOST;
+                        self.vel.z += fwd.z * SPRINT_JUMP_BOOST;
+                    }
                     // a velocity discontinuity re-aligns the 20 Hz
                     // substep phase: in vanilla the jump lands ON a tick
                     // boundary, so the fresh velocity is owed a FULL
@@ -729,7 +730,22 @@ impl Player {
             // pushing off immediately (next tick gravity takes over)
             self.pending_fall_dmg = 0.0;
         } else if landed_this_frame && self.fall_dist > 3.0 {
-            self.pending_fall_dmg += self.fall_dist - 3.0;
+            // Phase E3 (VERIFIED live 2026-09-06, minecraft.wiki/w/
+            // Hay_Bale: "Falling onto a hay bale reduces the fall damage
+            // by 80%, meaning whatever falls on a hay bale takes 20% of
+            // the normal fall damage"): probe the block we landed on
+            let landed_on = world
+                .get_block(
+                    self.pos.x.floor() as i32,
+                    (self.pos.y - 0.06).floor() as i32,
+                    self.pos.z.floor() as i32,
+                );
+            let dmg = self.fall_dist - 3.0;
+            self.pending_fall_dmg += if landed_on == HAY_BALE {
+                dmg * 0.2
+            } else {
+                dmg
+            };
         }
         if self.on_ground {
             self.fall_dist = 0.0;
@@ -887,7 +903,7 @@ pub fn raycast(
     eye: Vec3,
     dir: Vec3,
     max_dist: f32,
-) -> Option<([i32; 3], u8, [i32; 3])> {
+) -> Option<([i32; 3], u16, [i32; 3])> {
     let mut x = eye.x.floor() as i32;
     let mut y = eye.y.floor() as i32;
     let mut z = eye.z.floor() as i32;
@@ -1055,6 +1071,76 @@ mod tests {
         assert!(
             (horiz - SPRINT_SPEED).abs() < 0.05,
             "sprint speed {horiz} vs vanilla {SPRINT_SPEED}"
+        );
+    }
+
+    /// long flat runway for sustained-travel measurements (the 7.127 b/s
+    /// sprint-jump test covers ~220 blocks in 31 s — a 3×3-chunk world
+    /// would run out of floor)
+    fn flat_runway() -> World {
+        let mut w = World::new(7);
+        for dz in -17i32..=1 {
+            for dx in -1i32..=1 {
+                let mut c = vc_chunk::chunk::Chunk::empty();
+                for y in 0..=64i32 {
+                    for lz in 0..16usize {
+                        for lx in 0..16usize {
+                            c.set(lx, y as usize, lz, vc_blocks::blocks::STONE);
+                        }
+                    }
+                }
+                w.insert_generated((dx, dz), Arc::new(c), Vec::new());
+            }
+        }
+        w.dirty.clear();
+        w
+    }
+
+    /// VERIFICATION-REPORT mechanical fix #3: sustained sprint-jumping
+    /// must average the wiki's 7.127 b/s (VERIFIED 2026-09-06 live:
+    /// minecraft.wiki/w/Sprinting "jumping while sprinting allows the
+    /// player to move with an average speed of 7.127 m/s";
+    /// w/Transportation "Sprint-jumping, flat terrain, 7.127 m/s").
+    /// The input mechanic is vanilla's +0.2 b/t facing boost on sprint
+    /// jumps (mcpk.wiki/wiki/Sprinting); the excess air drag constant is
+    /// calibrated to this observable (see SPRINT_JUMP_EXTRA_DRAG).
+    #[test]
+    fn sprint_jump_averages_vanilla_7_127() {
+        let w = flat_runway();
+        let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
+        p.flying = false;
+        let mut input = Input::default();
+        input.fwd = true;
+        input.sprint = true;
+        input.jump = true;
+        // settle into the steady sprint-jump cycle (4 s), then measure
+        // the displacement over 30 s
+        for _ in 0..240 {
+            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+        }
+        let x0 = p.pos.x;
+        let z0 = p.pos.z;
+        for _ in 0..1800 {
+            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+        }
+        let dist = ((p.pos.x - x0) * (p.pos.x - x0) + (p.pos.z - z0) * (p.pos.z - z0)).sqrt();
+        let avg = dist / 30.0;
+        assert!(
+            (avg - SPRINT_JUMP_SPEED).abs() < 0.1,
+            "sustained sprint-jump averaged {avg:.3} b/s, wiki observable is {SPRINT_JUMP_SPEED}"
+        );
+        // sprint-jumping must beat plain sprinting — that is the whole
+        // point of the technique (and of the boost)
+        assert!(
+            avg > SPRINT_SPEED + 0.5,
+            "sprint-jump {avg:.3} must beat sprint {SPRINT_SPEED}"
+        );
+        // still on the runway floor (bouncing between 65.0 and the
+        // 1.25-block jump apex — no drift, no fall)
+        assert!(
+            (65.0..66.3).contains(&p.pos.y),
+            "sprint-jump left the floor: y={}",
+            p.pos.y
         );
     }
 
@@ -1343,20 +1429,38 @@ mod v172_tests {
         // VERIFIED (minecraft.wiki/w/Poison, live 2026-09-06): the
         // observable rate for Poison IV is the 10-tick hurt-immunity
         // floor (1 HP/s), and poison can never kill (floors at 1 HP).
+        // Ticks through the unified Effects system (E2 + 1.7.2 merged).
+        use vc_gameplay::effects::EffectKind;
         let mut p = Player::new(glam::Vec3::new(0.0, 80.0, 0.0));
         p.health = 20.0;
         p.apply_pufferfish_poison();
-        assert_eq!(p.effects.poison_ticks, 1200); // 1:00
+        assert_eq!(
+            p.effects.amplifier(EffectKind::Poison),
+            Some(3),
+            "level IV active"
+        );
+        assert!(
+            p.effects
+                .amplifier(EffectKind::Hunger)
+                .is_some(),
+            "hunger half of the pufferfish"
+        );
 
         // 1200 ticks at one damage per 10 ticks = 120 HP of raw poison —
         // far more than 19 available above the floor
         let mut dealt_total = 0.0;
         for _ in 0..1200 {
-            dealt_total += p.tick_effects();
+            let (dmg, _) = p.effects.tick(p.health);
+            if dmg > 0.0 {
+                dealt_total += p.damage(dmg);
+            }
         }
         assert!((dealt_total - 19.0).abs() < 1e-6, "total {dealt_total}");
         assert!((p.health - 1.0).abs() < 1e-6, "floors at 1 HP, never kills");
-        assert_eq!(p.effects.poison_ticks, 0, "expired");
+        assert!(
+            p.effects.amplifier(EffectKind::Poison).is_none(),
+            "expired"
+        );
     }
 
     #[test]
@@ -1366,10 +1470,14 @@ mod v172_tests {
         let mut p = Player::new(glam::Vec3::new(0.0, 80.0, 0.0));
         p.health = 20.0;
         p.apply_pufferfish_poison();
-        p.effects.poison_ticks = 25;
+        // trim the exposure to 25 ticks
+        p.effects.apply(vc_gameplay::effects::EffectKind::Poison, 3, 25);
         let mut dealt = 0.0;
         for _ in 0..25 {
-            dealt += p.tick_effects();
+            let (dmg, _) = p.effects.tick(p.health);
+            if dmg > 0.0 {
+                dealt += p.damage(dmg);
+            }
         }
         assert_eq!(dealt, 2.0);
         assert!((p.health - 18.0).abs() < 1e-6);
@@ -1380,11 +1488,12 @@ mod v172_tests {
         // the effect TICKS damage even in creative at this layer; the game
         // layer gates on invulnerability (same pattern as drowning) — the
         // effect state itself is what we verify here
+        use vc_gameplay::effects::EffectKind;
         let mut p = Player::new(glam::Vec3::new(0.0, 80.0, 0.0));
         p.apply_pufferfish_poison();
-        p.effects.hunger_ticks = 300; // the 0:15 hunger half
-        assert_eq!(p.effects.hunger_ticks, 300);
-        assert!(p.tick_effects() == 0.0, "first tick is pre-interval");
+        let (dmg, _) = p.effects.tick(p.health);
+        assert_eq!(dmg, 0.0, "first tick is pre-interval");
+        assert_eq!(p.effects.amplifier(EffectKind::Hunger), Some(0));
     }
 }
 
@@ -1430,9 +1539,11 @@ mod v19_tests {
         let mut p = Player::new(glam::Vec3::new(0.0, 80.0, 0.0));
         p.inv.slots[p.selected] = vc_inventory::inventory::ItemStack::new(ELYTRA, 1);
         assert_eq!(p.held().block, ELYTRA);
-        // the item registers in the 1.9 window
-        assert_eq!(vc_blocks::blocks::v4_state(ELYTRA), Some(326));
-        assert_eq!(vc_blocks::blocks::state_block(326), ELYTRA);
+        // the item registers in the 1.9 window ([merge renumber] the V4
+        // window moved from pre-merge 326 to 474 — V4 = 466..=475 after
+        // the E-series state ids)
+        assert_eq!(vc_blocks::blocks::v4_state(ELYTRA), Some(474));
+        assert_eq!(vc_blocks::blocks::state_block(474), ELYTRA);
     }
 }
 

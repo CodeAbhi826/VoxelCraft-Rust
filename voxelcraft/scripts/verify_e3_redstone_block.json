@@ -1,0 +1,20 @@
+[
+  {
+    "url": "https://minecraft.wiki",
+    "name": "Redstone Repeater",
+    "snippet": "A redstone repeater is a block that produces a full-strength redstone signal from its front while its back is powered , with four toggleable delay settings. Read more",
+    "host_name": "minecraft.wiki",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://minecraft.fandom.com",
+    "name": "Block of Redstone - Minecraft Wiki - Fandom",
+    "snippet": "A block of redstone is a mineral block equivalent to nine redstone dust. It acts as a permanently powered redstone power source that can be pushed by pistons. Read more",
+    "host_name": "minecraft.fandom.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  }
+]

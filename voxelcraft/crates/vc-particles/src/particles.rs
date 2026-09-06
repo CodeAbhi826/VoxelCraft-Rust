@@ -88,7 +88,7 @@ impl ParticleSystem {
         wx: i32,
         wy: i32,
         wz: i32,
-        block: u8,
+        block: u16,
         biome: u8,
         sky: u8,
         blk: u8,
@@ -97,8 +97,8 @@ impl ParticleSystem {
         let tile = state_tiles(state)[3]; // side tile like vanilla (top for grass tops)
         let tint_col = tint::block_tint_color(block, biome);
         let light = particle_light(sky, blk);
-        let tx = (tile % 16) as f32;
-        let ty = (tile / 16) as f32;
+        let tx = (tile % 32) as f32;
+        let ty = (tile / 32) as f32;
         for gy in 0..BREAK_GRID {
             for gz in 0..BREAK_GRID {
                 for gx in 0..BREAK_GRID {
@@ -119,11 +119,11 @@ impl ParticleSystem {
                         ],
                         life: 8 + self.rng.next_range(18) as i32,
                         half: 0.06,
-                        // atlas: 16×16-tile grid; quarter of one tile
-                        u0: (tx + qx * 0.25) / 16.0,
-                        v0: (ty + qy * 0.25) / 16.0,
-                        du: 0.25 / 16.0,
-                        dv: 0.25 / 16.0,
+                        // atlas: 32×32-tile grid; quarter of one tile
+                        u0: (tx + qx * 0.25) / 32.0,
+                        v0: (ty + qy * 0.25) / 32.0,
+                        du: 0.25 / 32.0,
+                        dv: 0.25 / 32.0,
                         light,
                         tint: tint_col,
                     };
@@ -140,14 +140,14 @@ impl ParticleSystem {
         wx: i32,
         wy: i32,
         wz: i32,
-        block: u8,
+        block: u16,
         biome: u8,
         sky: u8,
         blk: u8,
     ) {
         let tile = state_tiles(block as u16)[3];
-        let tx = (tile % 16) as f32;
-        let ty = (tile / 16) as f32;
+        let tx = (tile % 32) as f32;
+        let ty = (tile / 32) as f32;
         let qx = self.rng.next_range(4) as f32;
         let qy = self.rng.next_range(4) as f32;
         let p = Particle {
@@ -163,10 +163,10 @@ impl ParticleSystem {
             ],
             life: 8 + self.rng.next_range(10) as i32,
             half: 0.05,
-            u0: (tx + qx * 0.25) / 16.0,
-            v0: (ty + qy * 0.25) / 16.0,
-            du: 0.25 / 16.0,
-            dv: 0.25 / 16.0,
+            u0: (tx + qx * 0.25) / 32.0,
+            v0: (ty + qy * 0.25) / 32.0,
+            du: 0.25 / 32.0,
+            dv: 0.25 / 32.0,
             light: particle_light(sky, blk),
             tint: tint::block_tint_color(block, biome),
         };

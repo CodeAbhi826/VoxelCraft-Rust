@@ -1,0 +1,56 @@
+[
+  {
+    "url": "https://minecraft.wiki/w/Tripwire_Hook",
+    "name": "Tripwire Hook",
+    "snippet": "A tripwire hook is a block used to create a tripwire circuit, which requires two hooks and a straight horizontal line of 1-40 string. Both hooks in a valid ... Read more",
+    "host_name": "minecraft.wiki",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://minecraft.wiki/w/Trapped_Chest",
+    "name": "Trapped Chest",
+    "snippet": "5 days ago — The crafting recipe for trapped chests is now shapeless . Invicon Tripwire Hook.png: Inventory sprite for Tripwire Hook in Minecraft as shown in ... Read more",
+    "host_name": "minecraft.wiki",
+    "rank": 1,
+    "date": "Sep 1, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://minecraft.fandom.com/wiki/Tripwire_Hook",
+    "name": "Tripwire Hook - Minecraft Wiki - Fandom",
+    "snippet": "Crafting ingredient Tripwire hooks can be used to craft trapped chests and crossbows. Name Ingredients Crafting recipe Crossbow Stick + Iron Ingot + String +  ...",
+    "host_name": "minecraft.fandom.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://ftbwiki.org/Tripwire_Hook",
+    "name": "Tripwire Hook - Feed The Beast Wiki",
+    "snippet": "The Tripwire Hook is a redstone device from Minecraft . it will emit a redstone signal . You can craft it on: Mana Lens: Tripwire . Trapped Chest Trapped Chest",
+    "host_name": "ftbwiki.org",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://minecraft.wiki/w/Redstone_Comparator",
+    "name": "Redstone Comparator",
+    "snippet": "A redstone comparator is a block that can compare the strength of two different redstone signals. Trapped Chest Tripwire Hook Tripwire Signal transmission",
+    "host_name": "minecraft.wiki",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://minecraft.wiki/w/Redstone_components",
+    "name": "Redstone components",
+    "snippet": "A trapped chest produces a redstone signal when accessed by players. the tripwire hook waits 5 game ticks before deactivating. redstone signal of strength",
+    "host_name": "minecraft.wiki",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  }
+]

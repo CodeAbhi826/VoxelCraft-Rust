@@ -10,17 +10,33 @@ use vc_world::world::World;
 /// vanilla: 200 game ticks per item
 pub const COOK_TICKS: i32 = 200;
 /// fuel burn times (game ticks)
-pub fn fuel_ticks(block: u8) -> i32 {
+pub fn fuel_ticks(block: u16) -> i32 {
     match block {
         PLANKS | OAK_LOG | BIRCH_LOG | SPRUCE_LOG => 300,
-        CRAFTING_TABLE | OAK_SLAB | OAK_FENCE => 300,
-        COAL_ORE => 800, // progressive: ore-as-fuel until the item exists
+        // OAK_SLAB = 150 ticks (VERIFIED 2026-09-06 live:
+        // minecraft.wiki/w/Smelting — "Wooden Slab 7.5 [s], 150 ticks";
+        // was 300, the planks value — half-length slabs burn half as
+        // long). Crafting table + fence stay 300 (wiki fuel table).
+        CRAFTING_TABLE | OAK_FENCE => 300,
+        OAK_SLAB => 150,
+        // the coal ITEM: 1600 ticks = 80 s = 8 items (VERIFIED
+        // 2026-09-06 live, minecraft.wiki/w/Furnace "a piece of coal
+        // burns for 80 seconds and can process eight items";
+        // w/Smelting fuel table "Coal 1600 [ticks], 8 [items]").
+        // COAL_ORE is NO LONGER a fuel: the 800-tick ore-as-fuel
+        // stopgap (VERIFICATION-REPORT §6, disclosed) is retired now
+        // that the coal item exists — vanilla coal ore is not a fuel.
+        COAL => 1600,
+        // Phase E3 (VERIFIED live 2026-09-06, minecraft.wiki/w/
+        // Block_of_Coal: "One block of coal lasts 800 seconds (16000
+        // ticks), which smelts 80 items" — 10× the coal item)
+        COAL_BLOCK => 16000,
         _ => 0,
     }
 }
 
 /// what does this block smelt into?
-pub fn smelt_result(block: u8) -> Option<u8> {
+pub fn smelt_result(block: u16) -> Option<u16> {
     match block {
         SAND => Some(GLASS),
         // 1.7.2 (VERIFIED, changelog §Red sand): "can be smelted into
@@ -28,6 +44,20 @@ pub fn smelt_result(block: u8) -> Option<u8> {
         RED_SAND => Some(GLASS),
         COBBLE => Some(STONE),
         CLAY => Some(TERRACOTTA),
+        // Phase E1 (VERIFIED 2026-09-06): sandstone → smooth sandstone
+        // (the 1.14 smelting recipe, valid through 1.16.5 — w/Sandstone
+        // §Smelting); netherrack → the nether-brick item (w/Nether_Brick
+        // §Smelting) — the block form then crafts from 4 items
+        CHISELED_SANDSTONE | CUT_SANDSTONE => Some(SMOOTH_SANDSTONE),
+        NETHERRACK => Some(NETHER_BRICK),
+        // Phase E2 (VERIFIED 2026-09-06 w/Food): potato → baked potato
+        // (the only E2 food with a smelting recipe)
+        POTATO => Some(BAKED_POTATO),
+        // VERIFICATION-REPORT fix #4 (VERIFIED 2026-09-06 live,
+        // minecraft.wiki/w/Smelting recipes + w/Coal_Ore §Smelting):
+        // coal ore smelts into the coal item (0.1 XP per — the recipe
+        // that makes the coal item obtainable in survival)
+        COAL_ORE => Some(COAL),
         // 1.8: raw rabbit smelts to cooked rabbit (changelog §Items:
         // "Can be cooked into cooked rabbit")
         RAW_RABBIT => Some(COOKED_RABBIT),
@@ -228,6 +258,113 @@ mod tests {
         assert!(f.output.is_empty());
         assert_eq!(f.cook_left, 0);
         assert!(!f.is_burning());
+    }
+
+    /// VERIFIED 2026-09-06 live (minecraft.wiki/w/Smelting fuel table):
+    /// planks/log 300, crafting table 300, fence 300, wooden slab 150
+    /// (half of planks — a slab is half the wood), coal 1600 / 8 items
+    /// (w/Furnace "a piece of coal burns for 80 seconds and can process
+    /// eight items"). The old COAL_ORE 800 stopgap is RETIRED — vanilla
+    /// coal ore is not a fuel; smelt the ore into coal instead.
+    #[test]
+    fn fuel_table_matches_the_live_wiki() {
+        assert_eq!(fuel_ticks(PLANKS), 300);
+        assert_eq!(fuel_ticks(OAK_LOG), 300);
+        assert_eq!(fuel_ticks(CRAFTING_TABLE), 300);
+        assert_eq!(fuel_ticks(OAK_FENCE), 300);
+        assert_eq!(fuel_ticks(OAK_SLAB), 150, "slab = half of planks (150)");
+        assert_eq!(fuel_ticks(COAL), 1600, "coal: 80 s, 8 items (w/Furnace)");
+        // Phase E3 (VERIFIED live 2026-09-06, minecraft.wiki/w/
+        // Block_of_Coal: "One block of coal lasts 800 seconds (16000
+        // ticks), which smelts 80 items" — 10x the coal item)
+        assert_eq!(fuel_ticks(COAL_BLOCK), 16000, "block of coal: 800 s, 80 items");
+        assert_eq!(fuel_ticks(COAL_ORE), 0, "ore is not a fuel in vanilla");
+        assert_eq!(fuel_ticks(STONE), 0, "stone is not a fuel");
+    }
+
+    /// Phase E3 (VERIFIED w/Block_of_Coal: 16000 ticks / 80 items —
+    /// 10x the coal item). 80 items outpace the 64-stack output slot:
+    /// 64 smelt, cooking pauses at the full stack while the fuel keeps
+    /// burning (vanilla furnace behavior — the 16000-tick budget and
+    /// the 80-item ratio are pinned by the fuel-table row above).
+    #[test]
+    fn coal_block_burns_16000_and_outpaces_the_output_stack() {
+        let mut f = FurnaceState::default();
+        f.input = ItemStack::new(SAND, 81);
+        f.fuel = ItemStack::new(COAL_BLOCK, 1);
+        for _ in 0..16_000 {
+            f.tick();
+        }
+        // the output slot fills (64 glass); cooking pauses; the block
+        // burned its full 16000-tick budget
+        assert_eq!(f.output.count, 64, "output stack full");
+        assert_eq!(f.output.block, GLASS);
+        assert_eq!(f.input.count, 17, "64 smelted of 81, cooking paused");
+        assert!(f.burn_left <= 1, "fuel fully burned, left={}", f.burn_left);
+    }
+
+    /// VERIFICATION-REPORT fix #4: "a piece of coal ... can process eight
+    /// items" (VERIFIED live, minecraft.wiki/w/Furnace). 9 sand + 1 coal:
+    /// exactly 8 glass smelt (1600 / 200), the 9th stays raw, coal gone.
+    #[test]
+    fn one_coal_smelts_exactly_eight_items() {
+        let mut f = FurnaceState::default();
+        f.input = ItemStack::new(SAND, 9);
+        f.fuel = ItemStack::new(COAL, 1);
+        // 8 items × 200 ticks + 1 tick to ignite = 1601; run long enough
+        for _ in 0..1700 {
+            f.tick();
+        }
+        assert_eq!((f.output.block, f.output.count), (GLASS, 8));
+        assert_eq!(f.input.count, 1, "the ninth item is not smelted");
+        assert!(f.fuel.is_empty(), "the coal is fully consumed");
+        assert!(!f.is_burning(), "the 1600-tick burn window has ended");
+    }
+
+    /// The coal ore → coal recipe (VERIFIED live, w/Smelting: coal ore
+    /// smelts to coal with 0.1 XP — how the coal item is obtained).
+    #[test]
+    fn coal_ore_smelts_into_the_coal_item() {
+        assert_eq!(smelt_result(COAL_ORE), Some(COAL));
+        let mut f = FurnaceState::default();
+        f.input = ItemStack::new(COAL_ORE, 2);
+        f.fuel = ItemStack::new(PLANKS, 1);
+        for _ in 0..420 {
+            f.tick();
+        }
+        assert_eq!((f.output.block, f.output.count), (COAL, 1));
+        // smelting XP: 0.1 per coal (w/Smelting)
+        assert!((f.xp_pool - 0.1).abs() < 1e-6);
+    }
+
+    /// A slab must burn exactly half as long as a plank: feed each one
+    /// to a furnace with 3 sand and compare the burn windows.
+    #[test]
+    fn slab_burns_half_as_long_as_planks() {
+        let run = |fuel: u16| -> i32 {
+            let mut f = FurnaceState::default();
+            f.input = ItemStack::new(SAND, 3);
+            f.fuel = ItemStack::new(fuel, 1);
+            let mut burning_ticks = 0;
+            for _ in 0..400 {
+                f.tick();
+                if f.is_burning() {
+                    burning_ticks += 1;
+                }
+                if !f.output.is_empty() && f.output.count >= 1 && !f.is_burning() {
+                    break;
+                }
+            }
+            burning_ticks
+        };
+        let planks = run(PLANKS);
+        let slab = run(OAK_SLAB);
+        // 300-tick plank vs 150-tick slab (the tick loop stops early on
+        // output completion, so compare the ratio, not absolutes)
+        assert!(
+            (planks - slab).abs() >= 140 && (planks + slab) > 0,
+            "planks burned {planks} ticks vs slab {slab} (expected ~300 vs ~150)"
+        );
     }
 
     #[test]

@@ -356,12 +356,22 @@ impl Chunk {
     }
 
     #[inline]
-    pub fn get(&self, x: usize, y: usize, z: usize) -> u8 {
+    /// Raw BLOCK-STATE id at a position. Phase E2: widened u8 → u16 —
+    /// the E1 bracket exhausted the ≤255 state window (0..=255 fully
+    /// allocated), and E2 world blocks (anvil damage states, ender chest,
+    /// beacon, wall, frame, tripwire) need states ≥ 256. The u16 is the
+    /// raw state; callers wanting a BLOCK id fold via
+    /// `vc_blocks::blocks::state_block`. All previous call sites either
+    /// already folded (`state_block(c.get(...) as u16)` — cast now a
+    /// no-op) or compared against identity-mapped ids ≤ 56, which equals
+    /// the raw state; both keep working unchanged.
+    pub fn get(&self, x: usize, y: usize, z: usize) -> u16 {
         match &self.sections[y >> 4] {
             // 1.7 bracket: the state registry now extends past 255 (V2
             // window), so the historical `as u8` truncation would alias
             // high states onto low block ids. FOLD through state_block so
-            // every u8 return is the owning BLOCK id, whatever the state.
+            // every return is the owning BLOCK id, whatever the state.
+            // [merge] block ids are u16 now (276 ids > u8 at the E3 merge)
             Some(s) => vc_blocks::blocks::state_block(s.get(x, y & 15, z)),
             None => 0,
         }
@@ -369,7 +379,7 @@ impl Chunk {
 
     /// raw STATE id at a position — the honest accessor for callers that
     /// need property variants (World::get_state / set_block_state). The
-    /// u8 `get` folds; this one never truncates.
+    /// `get` folds; this one never truncates.
     #[inline]
     pub fn get_state(&self, x: usize, y: usize, z: usize) -> u16 {
         match &self.sections[y >> 4] {
@@ -385,7 +395,7 @@ impl Chunk {
     /// model states, sim states, nether states) never collide — this is the
     /// generator-side guarantee (villages once placed furnaces as slabs).
     #[inline]
-    pub fn set(&mut self, x: usize, y: usize, z: usize, id: u8) {
+    pub fn set(&mut self, x: usize, y: usize, z: usize, id: u16) {
         self.set_state(x, y, z, vc_blocks::blocks::default_state(id));
     }
 
@@ -410,13 +420,14 @@ impl Chunk {
     }
 
     /// flat-index helpers for queued/pending edits (idx = (y<<8)|(z<<4)|x)
+    /// — raw u16 states (Phase E2 widening, see `get`)
     #[inline]
-    pub fn get_idx(&self, i: usize) -> u8 {
+    pub fn get_idx(&self, i: usize) -> u16 {
         self.get(i & 15, (i >> 8) & 0xFF, (i >> 4) & 15)
     }
 
     #[inline]
-    pub fn set_idx(&mut self, i: usize, id: u8) {
+    pub fn set_idx(&mut self, i: usize, id: u16) {
         self.set(i & 15, (i >> 8) & 0xFF, (i >> 4) & 15, id);
     }
 

@@ -12,7 +12,7 @@ use vc_inventory::inventory::ItemStack;
 
 /// slot count per container kind
 #[inline]
-pub fn slot_count(block: u8) -> Option<usize> {
+pub fn slot_count(block: u16) -> Option<usize> {
     Some(match block {
         CHEST => 27,
         DISPENSER | DROPPER => 9,
@@ -27,7 +27,7 @@ pub struct ContainerInv {
 }
 
 impl ContainerInv {
-    pub fn new(block: u8) -> Self {
+    pub fn new(block: u16) -> Self {
         let n = slot_count(block).unwrap_or(9);
         ContainerInv {
             slots: vec![ItemStack::EMPTY; n],
@@ -40,7 +40,7 @@ impl ContainerInv {
     }
 
     /// add to the first matching/partial or empty slot; returns leftover
-    pub fn add(&mut self, block: u8, count: u8) -> u8 {
+    pub fn add(&mut self, block: u16, count: u8) -> u8 {
         let mut left = count;
         // merge into partial stacks first
         for s in self.slots.iter_mut() {
@@ -87,7 +87,7 @@ pub struct Containers {
 
 impl Containers {
     /// entry for a position, creating it on first use
-    pub fn entry(&mut self, pos: [i32; 3], block: u8) -> &mut ContainerInv {
+    pub fn entry(&mut self, pos: [i32; 3], block: u16) -> &mut ContainerInv {
         self.map
             .entry(pos)
             .or_insert_with(|| ContainerInv::new(block))

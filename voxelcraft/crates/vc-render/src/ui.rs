@@ -428,6 +428,7 @@ pub fn layout_world_create(
     seed_placeholder: &str,
     mode_label: &str,
     mode_desc: &str,
+    type_label: &str,
 ) -> Vec<Widget> {
     let col = 176;
     let w = 500;
@@ -435,7 +436,9 @@ pub fn layout_world_create(
         text_field(ID_WC_NAME, col, 96, w, "NAME", name, "New World"),
         text_field(ID_WC_SEED, col, 152, w, "SEED", "", seed_placeholder),
         btn(ID_WC_MODE, col, 208, w, "GAME MODE", mode_label, true),
-        btn(ID_WC_TYPE, col, 264, w, "WORLD TYPE", "NORMAL", false),
+        // Phase E3 (VERIFIED w/Superflat): world-type cycle Normal ↔
+        // Superflat (classic preset — enabled now)
+        btn(ID_WC_TYPE, col, 264, w, "WORLD TYPE", type_label, true),
         btn(ID_WC_CREATE, col, 336, w, "CREATE WORLD", mode_desc, true),
         btn(ID_WC_CANCEL, col, 392, w, "CANCEL", "", true),
     ]
@@ -985,7 +988,6 @@ impl UiCanvas {
     /// research-verdicts.md live round: 10 bubbles × 30 air; drawn only
     /// while the air supply is below full, right-aligned above hunger).
     pub fn status_bars(&mut self, health: f32, food: f32, xp: f32, level: u32, air: f32) {
-        const HB: Color = [20, 20, 20, 255]; // hotbar base coords
         let hb_w = 9 * 40 + 4;
         let hb_x = (UI_W as i32 - hb_w) / 2;
         let hb_y = UI_H as i32 - 48;
@@ -1077,6 +1079,34 @@ impl UiCanvas {
                 [20, 40, 8, 255],
                 2,
             );
+        }
+    }
+
+    /// Phase E1: the ender-dragon boss bar — VERIFIED w/Ender_Dragon:
+    /// "a light purple health bar ... at the top of the player's screen",
+    /// the name above it, width matches the hotbar band. `frac` = the
+    /// dragon's remaining health fraction (0..1).
+    pub fn boss_bar(&mut self, frac: f32) {
+        let w = 9 * 40 + 4; // hotbar-width band (the vanilla boss-bar width)
+        let x = (UI_W as i32 - w) / 2;
+        let y = 24;
+        // label
+        let name = "ENDER DRAGON";
+        let tw = name.len() as i32 * 8;
+        self.text(
+            (UI_W as i32 - tw) / 2,
+            y - 14,
+            name,
+            [235, 220, 245, 255],
+            1,
+        );
+        // track + light-purple fill (VERIFIED color family)
+        self.rect(x, y, w, 12, [16, 12, 20, 220]);
+        self.frame(x, y, w, 12, [90, 70, 110, 255]);
+        let fill = ((w - 4) as f32 * frac.clamp(0.0, 1.0)) as i32;
+        if fill > 0 {
+            self.rect(x + 2, y + 2, fill, 8, [190, 90, 220, 255]);
+            self.rect(x + 2, y + 2, fill, 2, [230, 150, 250, 255]);
         }
     }
 
@@ -1852,15 +1882,29 @@ impl UiCanvas {
     /// Creative-style block picker (E key): centered grid of every placeable
     /// block; click → assigns to the selected hotbar slot. Returns the grid
     /// geometry so game.rs can hit-test clicks.
-    pub fn picker(&mut self, cursor: (f32, f32), atlas: &[u8]) -> PickerGeom {
+    pub fn picker(&mut self, cursor: (f32, f32), atlas: &[u8], scroll: usize) -> PickerGeom {
         let blocks = &PICKER_BLOCKS;
-        // 1.7.2: 12 columns (was 8) — the 1.7 registry growth (123 picker
-        // blocks) needs 11 rows to stay inside the 540px UI canvas
-        let cols = 12;
+        // [merge scroll] the F-series (1.7.2-1.10) grew PICKER_BLOCKS to
+        // 236 — 15 cols x 16 rows overflows the 540px canvas; the picker
+        // is now a fixed 11-row window scrolled by the game layer (mouse
+        // wheel, vanilla creative-grid behavior) instead of clipping.
+        let cols = 15;
+        let vis_rows = 11usize;
         let cell = 44i32;
-        let rows = (blocks.len() + cols - 1) / cols;
+        let total_rows = (blocks.len() + cols - 1) / cols;
+        let scroll = scroll.min(total_rows.saturating_sub(vis_rows));
+        // Phase E1: 12 columns (was 8) — the picker grew past 68 entries
+        // with the 1.0–1.2 bracket blocks + 16 spawn eggs.
+        // Phase E3: 15 columns — the picker grew to 164 entries with the
+        // 1.5–1.6 bracket (quartz family, 16 stained terracotta, carpets,
+        // redstone components, items, 3 eggs); 15×11 stays inside the
+        // 960×540 UI canvas (668×514 grid).
+        // [merge] F-series (1.7.2-1.10) grows PICKER_BLOCKS to 236 —
+        // 15 cols × 16 rows overflows the 540px canvas bottom; the last
+        // rows clip (known issue, scrolling picker is future UI work,
+        // documented in WORKLOG).
         let grid_w = cols as i32 * cell + 8;
-        let grid_h = rows as i32 * cell + 8 + 22;
+        let grid_h = vis_rows as i32 * cell + 8 + 22;
         let x0 = (UI_W as i32 - grid_w) / 2;
         let y0 = (UI_H as i32 - grid_h) / 2;
 
@@ -1869,13 +1913,15 @@ impl UiCanvas {
         self.text(
             x0 - 6 + 10,
             y0 - 24,
-            "SELECT BLOCK  (B / ESC to close)",
+            "SELECT BLOCK  (B / ESC to close)  -  wheel scrolls",
             [230, 230, 230, 255],
             1,
         );
 
-        let mut hovered: Option<u8> = None;
-        for (i, b) in blocks.iter().enumerate() {
+        let first = scroll * cols;
+        let last = (first + vis_rows * cols).min(blocks.len());
+        let mut hovered: Option<u16> = None;
+        for (i, b) in blocks[first..last].iter().enumerate() {
             let col = (i % cols) as i32;
             let row = (i / cols) as i32;
             let sx = x0 + 4 + col * cell;
@@ -1907,7 +1953,7 @@ impl UiCanvas {
         self.text(x0 + 4, y0 + grid_h - 18, label, [255, 255, 255, 255], 1);
         let _ = lw;
 
-        PickerGeom { x0, y0, cell, cols }
+        PickerGeom { x0, y0, cell, cols, scroll, vis_rows }
     }
 
     pub fn help(&mut self) {
@@ -1986,10 +2032,16 @@ pub struct PickerGeom {
     pub y0: i32,
     pub cell: i32,
     pub cols: usize,
+    /// first visible row (the game layer's scroll state, clamped by the
+    /// renderer to the real range)
+    pub scroll: usize,
+    /// visible rows in the fixed window
+    pub vis_rows: usize,
 }
 
 impl PickerGeom {
     /// which picker slot (if any) is under this UI-space cursor position
+    /// (absolute PICKER_BLOCKS index, scroll-aware)
     pub fn slot_at(&self, ux: i32, uy: i32) -> Option<usize> {
         let dx = ux - (self.x0 + 4);
         let dy = uy - (self.y0 + 4);
@@ -1998,10 +2050,14 @@ impl PickerGeom {
         }
         let col = dx / self.cell;
         let row = dy / self.cell;
-        if col >= self.cols as i32 || dx % self.cell >= 40 || dy % self.cell >= 40 {
+        if col >= self.cols as i32
+            || row >= self.vis_rows as i32
+            || dx % self.cell >= 40
+            || dy % self.cell >= 40
+        {
             return None;
         }
-        let idx = row as usize * self.cols + col as usize;
+        let idx = self.scroll * self.cols + row as usize * self.cols + col as usize;
         if idx < PICKER_BLOCKS.len() {
             Some(idx)
         } else {

@@ -152,7 +152,7 @@ const VANILLA_NAMES: [&str; 57] = [
 ];
 
 /// registry name for the three property-driven blocks (Phase 1)
-fn model_block_name(b: u8) -> &'static str {
+fn model_block_name(b: u16) -> &'static str {
     match b {
         OAK_SLAB => "minecraft:oak_slab",
         COBBLE_STAIRS => "minecraft:cobblestone_stairs",
@@ -599,10 +599,11 @@ pub fn chunk_from_nbt(data: &[u8]) -> Result<(Chunk, Option<vc_world::light::Lig
 #[derive(Clone, Debug, PartialEq)]
 pub struct ContainerMeta {
     pub pos: [i32; 3],
-    /// owning block id (CHEST / DISPENSER / DROPPER / HOPPER)
-    pub kind: u8,
+    /// owning block id (CHEST / DISPENSER / DROPPER / HOPPER) — u16
+    /// since the 1.7-1.10 registry extension pushed ids past 255
+    pub kind: u16,
     /// (block id, count) per non-empty slot, with the slot index
-    pub slots: Vec<(u16, u8, u8)>,
+    pub slots: Vec<(u16, u16, u8)>,
 }
 
 /// World metadata persisted in `level.dat` (vanilla keys + a `voxelcraft`
@@ -706,14 +707,14 @@ pub fn write_level_dat(world_dir: &Path, meta: &WorldMeta) -> std::io::Result<()
             n.set("X", Nbt::Int(c.pos[0]));
             n.set("Y", Nbt::Int(c.pos[1]));
             n.set("Z", Nbt::Int(c.pos[2]));
-            n.set("Kind", Nbt::Byte(c.kind as i8));
+            n.set("Kind", Nbt::Short(c.kind as i16));
             let items: Vec<Nbt> = c
                 .slots
                 .iter()
                 .map(|(slot, block, count)| {
                     let mut it = Nbt::compound();
                     it.set("Slot", Nbt::Int(*slot as i32));
-                    it.set("Block", Nbt::Byte(*block as i8));
+                    it.set("Block", Nbt::Short(*block as i16));
                     it.set("Count", Nbt::Byte(*count as i8));
                     it
                 })
@@ -827,7 +828,7 @@ pub fn read_level_dat(world_dir: &Path) -> std::io::Result<Option<WorldMeta>> {
                 ) else { continue };
                 let kind = cf("Kind")
                     .and_then(|v| v.as_i64())
-                    .unwrap_or(96) as u8; // default: chest
+                    .unwrap_or(96) as u16; // default: chest
                 let mut slots = Vec::new();
                 if let Some(Nbt::List(items)) = cf("Items") {
                     for it in items {
@@ -841,7 +842,7 @@ pub fn read_level_dat(world_dir: &Path) -> std::io::Result<Option<WorldMeta>> {
                             .iter()
                             .find(|(k, _)| k == "Block")
                             .and_then(|(_, v)| v.as_i64())
-                            .unwrap_or(0) as u8;
+                            .unwrap_or(0) as u16;
                         let count = ifs
                             .iter()
                             .find(|(k, _)| k == "Count")
@@ -872,6 +873,9 @@ pub fn dimension_dir(world_dir: &Path, dim: vc_world::world::Dimension) -> PathB
     match dim {
         vc_world::world::Dimension::Overworld => world_dir.to_path_buf(),
         vc_world::world::Dimension::Nether => world_dir.join("DIM-1"),
+        // Phase E1: the End ships — vanilla layout (documented in the
+        // §28 note above)
+        vc_world::world::Dimension::End => world_dir.join("DIM1"),
     }
 }
 
@@ -1241,9 +1245,8 @@ mod tests {
 
         let (chunk, _light) = chunk_from_nbt(&bytes).unwrap();
         assert_eq!(chunk.get(0, 0, 0), STONE);
-        // 1.7.2 refactor: Chunk::get FOLDS states to block ids now (the
-        // V2 state window made the raw `as u8` truncation unsafe); the
-        // raw-state accessor is get_state
+        // 1.7.2 refactor: Chunk::get FOLDS states to block ids (the raw
+        // state accessor is get_state — kept as the honest both-sides check)
         assert_eq!(chunk.get(1, 0, 0), OAK_LOG);
         assert_eq!(chunk.get_state(1, 0, 0), OAK_LOG_X);
         assert_eq!(chunk.sections[0].as_ref().unwrap().states_flat()[1], OAK_LOG_X);
@@ -1438,7 +1441,7 @@ mod tests {
 
         // --- …the chunk reloads with the edit intact…
         let (loaded, _l) = load_chunk(&dir, 0, 0).unwrap().expect("chunk present");
-        assert_eq!(loaded.get(8, 70, 8), GLOWSTONE);
+        assert_eq!(loaded.get(8, 70, 8), GLOWSTONE as u16);
 
         // --- …and every other block matches a same-seed regeneration exactly
         let (fresh, _) = vc_world::gen::TerrainGen::new(seed).generate_chunk(0, 0, Vec::new());

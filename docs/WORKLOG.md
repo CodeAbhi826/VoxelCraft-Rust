@@ -520,7 +520,7 @@ live in the code comments.
   long fight (vanilla-accurate behavior; the 3×4×3 box is the VERIFIED
   rule).
 
-## 2026-09-06 — verification follow-up: mechanical priority items 3+4 (+ item-1 slider completion) — commit pending-push
+## 2026-09-06 — verification follow-up: mechanical priority items 3+4 (+ item-1 slider completion) — commit 3b56274
 
 **Task:** close the remaining mechanical items from
 `docs/VERIFICATION-REPORT.md`'s priority list. Items 1 (render distance)

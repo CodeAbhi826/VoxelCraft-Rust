@@ -67,6 +67,11 @@ pub fn grass_color(biome: u8) -> [f32; 3] {
         11 => rgb(0xBFB755), // Savanna
         12 => rgb(0x6A7039), // Swamp
         13 => rgb(0x90814D), // Badlands
+        // 1.7.2 bracket (live wiki biome pages, 2026-09-06):
+        14 => rgb(0x79C05A), // Flower Forest (wiki: #79C05A)
+        15 => rgb(0x91BD59), // Sunflower Plains (wiki: #91BD59)
+        16 => rgb(0x80B497), // Ice Spikes (wiki: #80B497)
+        17 => rgb(0x507A32), // Dark Forest (wiki: #507A32)
         _ => rgb(0x91BD59), // default
     }
 }
@@ -90,6 +95,13 @@ pub fn foliage_color(biome: u8) -> [f32; 3] {
         11 => rgb(0xAEA42A), // Savanna
         12 => rgb(0x8DB127), // Swamp
         13 => rgb(0x9E814D), // Badlands
+        // 1.7.2 bracket: flower forest inherits Forest's #59AE30;
+        // sunflower plains inherits Plains; ice spikes #60A17B (wiki);
+        // dark forest inherits Forest foliage (the darkness is grass-side)
+        14 => rgb(0x59AE30), // Flower Forest
+        15 => rgb(0x77AB2F), // Sunflower Plains
+        16 => rgb(0x60A17B), // Ice Spikes
+        17 => rgb(0x59AE30), // Dark Forest
         _ => rgb(0x77AB2F),
     }
 }
@@ -116,6 +128,13 @@ pub fn water_color(biome: u8) -> [f32; 3] {
         11 => rgb(0x3F76E4), // Savanna
         12 => rgb(0x617B64), // Swamp (murky green — wiki)
         13 => rgb(0x3F76E4), // Badlands
+        // 1.7.2: ice spikes water — wiki lists #3F76E4 (current) with
+        // #14559B as the pre-1.13-era/alternate value; 1.16.5 = #3F76E4.
+        // The other three use their family defaults.
+        14 => rgb(0x44AFF5), // Flower Forest (plains-family)
+        15 => rgb(0x44AFF5), // Sunflower Plains
+        16 => rgb(0x3F76E4), // Ice Spikes
+        17 => rgb(0x287082), // Dark Forest (forest-family)
         _ => rgb(0x3F76E4),
     }
 }
@@ -139,7 +158,12 @@ pub fn lut_rgba() -> Vec<u8> {
         data[idx + 2] = (hex & 0xFF) as u8;
         data[idx + 3] = 255;
     };
-    for b in 0u8..8 {
+    // 1.7.2 BUG FIX (found during the bracket audit): the loop stopped at
+    // 8, so the Phase-10 biomes 8..=13 and the 1.7 biomes 14..=17 never
+    // landed in the LUT — their shader tints sampled white (untinted)
+    // despite the match arms above having correct colors. Loop the full
+    // biome range now.
+    for b in 0u8..18 {
         let g = grass_color(b);
         let f = foliage_color(b);
         let w = water_color(b);
@@ -164,6 +188,8 @@ pub fn block_face_tint(block: u8, top_face: bool) -> u8 {
         LEAVES => KIND_FOLIAGE,
         BIRCH_LEAVES => KIND_FOLIAGE,
         SPRUCE_LEAVES => KIND_FOLIAGE,
+        ACACIA_LEAVES => KIND_FOLIAGE,
+        DARK_OAK_LEAVES => KIND_FOLIAGE,
         _ => TINT_NONE,
     }
 }
@@ -177,6 +203,8 @@ pub fn block_face_tint_packed(block: u8, top_face: bool, biome: u8) -> u8 {
         LEAVES => pack(KIND_FOLIAGE, biome),
         BIRCH_LEAVES => pack(KIND_FOLIAGE, SLOT_BIRCH),
         SPRUCE_LEAVES => pack(KIND_FOLIAGE, SLOT_SPRUCE),
+        ACACIA_LEAVES => pack(KIND_FOLIAGE, biome),
+        DARK_OAK_LEAVES => pack(KIND_FOLIAGE, biome),
         WATER => pack(KIND_WATER, biome),
         _ => TINT_NONE,
     }
@@ -199,6 +227,7 @@ pub fn block_tint_color(block: u8, biome: u8) -> [f32; 3] {
         LEAVES => foliage_color(biome),
         BIRCH_LEAVES => rgb(BIRCH_COLOR),
         SPRUCE_LEAVES => rgb(SPRUCE_COLOR),
+        ACACIA_LEAVES | DARK_OAK_LEAVES => foliage_color(biome),
         WATER => water_color(biome),
         _ => [1.0, 1.0, 1.0],
     }

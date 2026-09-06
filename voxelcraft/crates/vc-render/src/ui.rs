@@ -1841,7 +1841,9 @@ impl UiCanvas {
     /// geometry so game.rs can hit-test clicks.
     pub fn picker(&mut self, cursor: (f32, f32), atlas: &[u8]) -> PickerGeom {
         let blocks = &PICKER_BLOCKS;
-        let cols = 8;
+        // 1.7.2: 12 columns (was 8) — the 1.7 registry growth (123 picker
+        // blocks) needs 11 rows to stay inside the 540px UI canvas
+        let cols = 12;
         let cell = 44i32;
         let rows = (blocks.len() + cols - 1) / cols;
         let grid_w = cols as i32 * cell + 8;

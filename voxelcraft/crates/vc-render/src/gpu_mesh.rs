@@ -50,8 +50,8 @@ use vc_world::world::ChunkPos;
 use wgpu::util::DeviceExt;
 
 use vc_blocks::blocks::{
-    BIRCH_LEAVES, BLOCK_COUNT, GLASS, GRASS, ICE, LEAVES, SPRUCE_LEAVES, STATE_COUNT, TALL_GRASS,
-    WATER,
+    ACACIA_LEAVES, BIRCH_LEAVES, BLOCK_COUNT, DARK_OAK_LEAVES, GLASS, GRASS, ICE, LEAVES,
+    SPRUCE_LEAVES, STATE_COUNT, TALL_GRASS, WATER,
 };
 
 /// number of (axis, dir, section, slice) units per chunk = 3·2·16·16
@@ -70,10 +70,10 @@ pub const MESH_COMPUTE_SHADER: &str = r#"
 const VOL_WORDS: u32 = 147456u;    // 48*256*48 bytes / 4
 const B_WATER: u32 = 9u;           // block id of WATER (identity state)
 const MODEL_BASE: u32 = 63u;       // MODEL_STATE_BASE
-const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=236)
-const L_FL: u32 = 236u;            // lut: block flags           (BLOCK_COUNT=103)
-const L_TC: u32 = 339u;            // lut: block tint class      (BLOCK_COUNT=103)
-const L_ST: u32 = 442u;            // lut: state tiles, 4/state  (4·STATE_COUNT=944)
+const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=299)
+const L_FL: u32 = 299u;            // lut: block flags           (BLOCK_COUNT=162)
+const L_TC: u32 = 461u;            // lut: block tint class      (BLOCK_COUNT=162)
+const L_ST: u32 = 623u;            // lut: state tiles, 4/state  (4·STATE_COUNT=1196)
 const P_N: u32 = 0u;               // params[0] = n_jobs
 const P_JOB: u32 = 2u;             // params job base = 2 + j*66
 const P_BIOME: u32 = 2u;           // biomes at job base + 2 (64 packed u32)
@@ -125,8 +125,8 @@ fn job_get_blk(j: u32, x: i32, y: i32, z: i32) -> u32 {
     let base = j * VOL_WORDS;
     return (blk_l[base + (p >> 2u)] >> ((p & 3u) * 8u)) & 0xFFu;
 }
-fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 235u)]; }
-fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 102u)]; }
+fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 298u)]; }
+fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 161u)]; }
 fn biome_at(j: u32, x: i32, z: i32) -> u32 {
     let c = u32(z * 16 + x);
     let w = params[P_JOB + j * 66u + P_BIOME + (c >> 2u)];
@@ -148,7 +148,7 @@ fn face_visible(bf: u32, fnb: u32) -> bool {
 // tint class -> packed tint byte (kind<<6 | slot), port of
 // vc_blocks::tint::block_face_tint_packed's block match
 fn tint_packed(b: u32, top: bool, biome: u32) -> u32 {
-    let tc = lut[L_TC + min(b, 102u)];
+    let tc = lut[L_TC + min(b, 161u)];
     var kind = 0u; var slot = 0u;
     if tc == 1u { if top { kind = 1u; slot = biome; } }          // GRASS top
     else if tc == 2u { kind = 1u; slot = biome; }                // TALL_GRASS
@@ -156,6 +156,8 @@ fn tint_packed(b: u32, top: bool, biome: u32) -> u32 {
     else if tc == 4u { kind = 2u; slot = 48u; }                  // BIRCH_LEAVES
     else if tc == 5u { kind = 2u; slot = 49u; }                  // SPRUCE_LEAVES
     else if tc == 6u { kind = 3u; slot = biome; }                // WATER
+    else if tc == 7u { kind = 2u; slot = biome; }                // ACACIA_LEAVES (1.7.2)
+    else if tc == 8u { kind = 2u; slot = biome; }                // DARK_OAK_LEAVES (1.7.2)
     return (kind << 6u) | slot;
 }
 
@@ -585,6 +587,8 @@ fn build_lut() -> Vec<u32> {
             BIRCH_LEAVES => 4,
             SPRUCE_LEAVES => 5,
             WATER => 6,
+            ACACIA_LEAVES => 7,
+            DARK_OAK_LEAVES => 8,
             _ => 0,
         };
         lut[L_TC + b] = tint_class;
@@ -1426,7 +1430,7 @@ mod tests {
                     let (kind, slot) = match tc {
                         1 if top => (KIND_GRASS as u32, biome as u32),
                         2 => (KIND_GRASS as u32, biome as u32),
-                        3 => (KIND_FOLIAGE as u32, biome as u32),
+                        3 | 7 | 8 => (KIND_FOLIAGE as u32, biome as u32),
                         4 => (KIND_FOLIAGE as u32, SLOT_BIRCH as u32),
                         5 => (KIND_FOLIAGE as u32, SLOT_SPRUCE as u32),
                         6 => (KIND_WATER as u32, biome as u32),
@@ -1601,3 +1605,4 @@ mod tests {
         }
     }
 }
+

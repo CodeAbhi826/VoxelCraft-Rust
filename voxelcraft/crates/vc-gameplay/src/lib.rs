@@ -5,6 +5,7 @@ pub mod brewing;
 pub mod combat;
 pub mod craft;
 pub mod enchanting;
+pub mod fishing;
 pub mod furnace;
 pub mod mobs;
 pub mod modes;

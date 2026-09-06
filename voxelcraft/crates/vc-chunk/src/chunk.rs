@@ -358,7 +358,22 @@ impl Chunk {
     #[inline]
     pub fn get(&self, x: usize, y: usize, z: usize) -> u8 {
         match &self.sections[y >> 4] {
-            Some(s) => s.get(x, y & 15, z) as u8,
+            // 1.7 bracket: the state registry now extends past 255 (V2
+            // window), so the historical `as u8` truncation would alias
+            // high states onto low block ids. FOLD through state_block so
+            // every u8 return is the owning BLOCK id, whatever the state.
+            Some(s) => vc_blocks::blocks::state_block(s.get(x, y & 15, z)),
+            None => 0,
+        }
+    }
+
+    /// raw STATE id at a position — the honest accessor for callers that
+    /// need property variants (World::get_state / set_block_state). The
+    /// u8 `get` folds; this one never truncates.
+    #[inline]
+    pub fn get_state(&self, x: usize, y: usize, z: usize) -> u16 {
+        match &self.sections[y >> 4] {
+            Some(s) => s.get(x, y & 15, z),
             None => 0,
         }
     }

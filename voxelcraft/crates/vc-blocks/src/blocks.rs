@@ -122,6 +122,77 @@ pub const TILE_FERMENTED_EYE: u16 = 121;
 pub const TILE_SPAWNER: u16 = 122;
 /// Phase 10: end-portal frame tile (clean-room inset-ring face)
 pub const TILE_END_PORTAL_FRAME: u16 = 123;
+// ---------------------------------------------------------------------------
+// 1.7.2 bracket ("The Update that Changed the World", 2013-10-25 —
+// minecraft.wiki/w/Java_Edition_1.7.2, live round 2026-09-06): the 16
+// stained-glass + 16 stained-clay tiles, red sand, packed ice, podzol,
+// acacia/dark-oak logs, the 8 new small flowers, the 4 two-block-tall
+// flowers (lower + upper halves), and 4 fish item icons.
+// Clean-room palettes approximate the vanilla 16 dye hues (our art, not
+// Mojang's); acacia/dark-oak LEAVES reuse TILE_LEAVES exactly — the 1.7.2
+// changelog itself notes both are "visually identical to regular oak
+// leaves".
+// ---------------------------------------------------------------------------
+pub const TILE_STAINED_GLASS_WHITE: u16 = 124;
+pub const TILE_STAINED_GLASS_ORANGE: u16 = 125;
+pub const TILE_STAINED_GLASS_MAGENTA: u16 = 126;
+pub const TILE_STAINED_GLASS_LIGHT_BLUE: u16 = 127;
+pub const TILE_STAINED_GLASS_YELLOW: u16 = 128;
+pub const TILE_STAINED_GLASS_LIME: u16 = 129;
+pub const TILE_STAINED_GLASS_PINK: u16 = 130;
+pub const TILE_STAINED_GLASS_GRAY: u16 = 131;
+pub const TILE_STAINED_GLASS_LIGHT_GRAY: u16 = 132;
+pub const TILE_STAINED_GLASS_CYAN: u16 = 133;
+pub const TILE_STAINED_GLASS_PURPLE: u16 = 134;
+pub const TILE_STAINED_GLASS_BLUE: u16 = 135;
+pub const TILE_STAINED_GLASS_BROWN: u16 = 136;
+pub const TILE_STAINED_GLASS_GREEN: u16 = 137;
+pub const TILE_STAINED_GLASS_RED: u16 = 138;
+pub const TILE_STAINED_GLASS_BLACK: u16 = 139;
+pub const TILE_STAINED_TERRACOTTA_WHITE: u16 = 140;
+pub const TILE_STAINED_TERRACOTTA_ORANGE: u16 = 141;
+pub const TILE_STAINED_TERRACOTTA_MAGENTA: u16 = 142;
+pub const TILE_STAINED_TERRACOTTA_LIGHT_BLUE: u16 = 143;
+pub const TILE_STAINED_TERRACOTTA_YELLOW: u16 = 144;
+pub const TILE_STAINED_TERRACOTTA_LIME: u16 = 145;
+pub const TILE_STAINED_TERRACOTTA_PINK: u16 = 146;
+pub const TILE_STAINED_TERRACOTTA_GRAY: u16 = 147;
+pub const TILE_STAINED_TERRACOTTA_LIGHT_GRAY: u16 = 148;
+pub const TILE_STAINED_TERRACOTTA_CYAN: u16 = 149;
+pub const TILE_STAINED_TERRACOTTA_PURPLE: u16 = 150;
+pub const TILE_STAINED_TERRACOTTA_BLUE: u16 = 151;
+pub const TILE_STAINED_TERRACOTTA_BROWN: u16 = 152;
+pub const TILE_STAINED_TERRACOTTA_GREEN: u16 = 153;
+pub const TILE_STAINED_TERRACOTTA_RED: u16 = 154;
+pub const TILE_STAINED_TERRACOTTA_BLACK: u16 = 155;
+pub const TILE_RED_SAND: u16 = 156;
+pub const TILE_PACKED_ICE: u16 = 157;
+pub const TILE_PODZOL_TOP: u16 = 158;
+pub const TILE_PODZOL_SIDE: u16 = 159;
+pub const TILE_ACACIA_LOG_SIDE: u16 = 160;
+pub const TILE_ACACIA_LOG_TOP: u16 = 161;
+pub const TILE_DARK_OAK_LOG_SIDE: u16 = 162;
+pub const TILE_DARK_OAK_LOG_TOP: u16 = 163;
+pub const TILE_ALLIUM: u16 = 164;
+pub const TILE_AZURE_BLUET: u16 = 165;
+pub const TILE_BLUE_ORCHID: u16 = 166;
+pub const TILE_OXEYE_DAISY: u16 = 167;
+pub const TILE_ORANGE_TULIP: u16 = 168;
+pub const TILE_RED_TULIP: u16 = 169;
+pub const TILE_WHITE_TULIP: u16 = 170;
+pub const TILE_PINK_TULIP: u16 = 171;
+pub const TILE_SUNFLOWER_LOWER: u16 = 172;
+pub const TILE_SUNFLOWER_TOP: u16 = 173;
+pub const TILE_LILAC_LOWER: u16 = 174;
+pub const TILE_LILAC_TOP: u16 = 175;
+pub const TILE_PEONY_LOWER: u16 = 176;
+pub const TILE_PEONY_TOP: u16 = 177;
+pub const TILE_ROSE_BUSH_LOWER: u16 = 178;
+pub const TILE_ROSE_BUSH_TOP: u16 = 179;
+pub const TILE_RAW_FISH: u16 = 180;
+pub const TILE_RAW_SALMON: u16 = 181;
+pub const TILE_CLOWNFISH: u16 = 182;
+pub const TILE_PUFFERFISH: u16 = 183;
 // mobs (Phase 2): entity sprites + drops' item tiles. Mob sprites are
 // clean-room pixel art (ours, not Mojang's) — distinct silhouettes/palettes
 pub const TILE_ZOMBIE: u16 = 83;
@@ -315,6 +386,133 @@ pub const SPAWNER_ZOMBIE: u8 = 0;
 pub const SPAWNER_SKELETON: u8 = 1;
 /// spawner mob-kind code 2: spider (dungeon roll 25%)
 pub const SPAWNER_SPIDER: u8 = 2;
+
+// ---------------------------------------------------------------------------
+// 1.7.2 bracket — V2 block window (ids 103..=161, states 236..=294).
+// The pre-1.7 registry is fully allocated (identity states 0..=56, model
+// states 57..=88, sim states 89..=235). New blocks get ids past 102 that
+// never live in the world as identity states — each stores its dedicated
+// V2 state, folded through V2_STATE_TO_BLOCK (the table IS the state→block
+// mapping; `Chunk::get` now folds every state through state_block so u16
+// states above 255 are safe).
+// All content verified against minecraft.wiki/w/Java_Edition_1.7.2
+// (live round, 2026-09-06).
+// ---------------------------------------------------------------------------
+
+// stained glass, 16 colors — translucent like glass (solid, non-opaque)
+pub const STAINED_GLASS_WHITE: u8 = 103;
+pub const STAINED_GLASS_ORANGE: u8 = 104;
+pub const STAINED_GLASS_MAGENTA: u8 = 105;
+pub const STAINED_GLASS_LIGHT_BLUE: u8 = 106;
+pub const STAINED_GLASS_YELLOW: u8 = 107;
+pub const STAINED_GLASS_LIME: u8 = 108;
+pub const STAINED_GLASS_PINK: u8 = 109;
+pub const STAINED_GLASS_GRAY: u8 = 110;
+pub const STAINED_GLASS_LIGHT_GRAY: u8 = 111;
+pub const STAINED_GLASS_CYAN: u8 = 112;
+pub const STAINED_GLASS_PURPLE: u8 = 113;
+pub const STAINED_GLASS_BLUE: u8 = 114;
+pub const STAINED_GLASS_BROWN: u8 = 115;
+pub const STAINED_GLASS_GREEN: u8 = 116;
+pub const STAINED_GLASS_RED: u8 = 117;
+pub const STAINED_GLASS_BLACK: u8 = 118;
+// stained terracotta, 16 colors — "stained clay" in 1.7 parlance
+pub const STAINED_TERRACOTTA_WHITE: u8 = 119;
+pub const STAINED_TERRACOTTA_ORANGE: u8 = 120;
+pub const STAINED_TERRACOTTA_MAGENTA: u8 = 121;
+pub const STAINED_TERRACOTTA_LIGHT_BLUE: u8 = 122;
+pub const STAINED_TERRACOTTA_YELLOW: u8 = 123;
+pub const STAINED_TERRACOTTA_LIME: u8 = 124;
+pub const STAINED_TERRACOTTA_PINK: u8 = 125;
+pub const STAINED_TERRACOTTA_GRAY: u8 = 126;
+pub const STAINED_TERRACOTTA_LIGHT_GRAY: u8 = 127;
+pub const STAINED_TERRACOTTA_CYAN: u8 = 128;
+pub const STAINED_TERRACOTTA_PURPLE: u8 = 129;
+pub const STAINED_TERRACOTTA_BLUE: u8 = 130;
+pub const STAINED_TERRACOTTA_BROWN: u8 = 131;
+pub const STAINED_TERRACOTTA_GREEN: u8 = 132;
+pub const STAINED_TERRACOTTA_RED: u8 = 133;
+pub const STAINED_TERRACOTTA_BLACK: u8 = 134;
+pub const RED_SAND: u8 = 135;
+pub const PACKED_ICE: u8 = 136;
+pub const PODZOL: u8 = 137;
+pub const ACACIA_LOG: u8 = 138;
+pub const ACACIA_LEAVES: u8 = 139;
+pub const DARK_OAK_LOG: u8 = 140;
+pub const DARK_OAK_LEAVES: u8 = 141;
+// the 8 new small flowers (1.7.2: allium, azure bluet, blue orchid,
+// oxeye daisy + 4 tulips; poppy already exists as FLOWER_RED)
+pub const ALLIUM: u8 = 142;
+pub const AZURE_BLUET: u8 = 143;
+pub const BLUE_ORCHID: u8 = 144;
+pub const OXEYE_DAISY: u8 = 145;
+pub const ORANGE_TULIP: u8 = 146;
+pub const RED_TULIP: u8 = 147;
+pub const WHITE_TULIP: u8 = 148;
+pub const PINK_TULIP: u8 = 149;
+// the 4 two-block-tall flowers, lower + upper halves (vanilla models one
+// block with half=lower/upper; ours is two ids — same observable shape)
+pub const SUNFLOWER: u8 = 150;
+pub const SUNFLOWER_TOP: u8 = 151;
+pub const LILAC: u8 = 152;
+pub const LILAC_TOP: u8 = 153;
+pub const PEONY: u8 = 154;
+pub const PEONY_TOP: u8 = 155;
+pub const ROSE_BUSH: u8 = 156;
+pub const ROSE_BUSH_TOP: u8 = 157;
+// 1.7.2 fish items — inventory-only (never placed):
+// VERIFIED (wiki §Items): clownfish restores 1, raw salmon 2 (cooked 6),
+// pufferfish 1 + Poison IV 1:00 + Hunger III 0:15 + Nausea 0:15 and brews
+// Water Breathing; raw fish (cod) restores 2.
+pub const RAW_FISH: u8 = 158;
+pub const RAW_SALMON: u8 = 159;
+pub const CLOWNFISH: u8 = 160;
+pub const PUFFERFISH: u8 = 161;
+
+/// first state of the V2 window (1.7.2 bracket)
+pub const V2_STATE_BASE: u16 = 236;
+/// V2 state count: one dedicated state per new block, order = id order
+pub const V2_COUNT: u16 = 59; // ids 103..=161
+/// state → block fold table for the V2 window. Index = state − BASE.
+pub const V2_STATE_TO_BLOCK: [u8; V2_COUNT as usize] = [
+    STAINED_GLASS_WHITE, STAINED_GLASS_ORANGE, STAINED_GLASS_MAGENTA,
+    STAINED_GLASS_LIGHT_BLUE, STAINED_GLASS_YELLOW, STAINED_GLASS_LIME,
+    STAINED_GLASS_PINK, STAINED_GLASS_GRAY, STAINED_GLASS_LIGHT_GRAY,
+    STAINED_GLASS_CYAN, STAINED_GLASS_PURPLE, STAINED_GLASS_BLUE,
+    STAINED_GLASS_BROWN, STAINED_GLASS_GREEN, STAINED_GLASS_RED,
+    STAINED_GLASS_BLACK,
+    STAINED_TERRACOTTA_WHITE, STAINED_TERRACOTTA_ORANGE,
+    STAINED_TERRACOTTA_MAGENTA, STAINED_TERRACOTTA_LIGHT_BLUE,
+    STAINED_TERRACOTTA_YELLOW, STAINED_TERRACOTTA_LIME,
+    STAINED_TERRACOTTA_PINK, STAINED_TERRACOTTA_GRAY,
+    STAINED_TERRACOTTA_LIGHT_GRAY, STAINED_TERRACOTTA_CYAN,
+    STAINED_TERRACOTTA_PURPLE, STAINED_TERRACOTTA_BLUE,
+    STAINED_TERRACOTTA_BROWN, STAINED_TERRACOTTA_GREEN,
+    STAINED_TERRACOTTA_RED, STAINED_TERRACOTTA_BLACK,
+    RED_SAND, PACKED_ICE, PODZOL, ACACIA_LOG, ACACIA_LEAVES, DARK_OAK_LOG,
+    DARK_OAK_LEAVES,
+    ALLIUM, AZURE_BLUET, BLUE_ORCHID, OXEYE_DAISY, ORANGE_TULIP, RED_TULIP,
+    WHITE_TULIP, PINK_TULIP,
+    SUNFLOWER, SUNFLOWER_TOP, LILAC, LILAC_TOP, PEONY, PEONY_TOP,
+    ROSE_BUSH, ROSE_BUSH_TOP,
+    RAW_FISH, RAW_SALMON, CLOWNFISH, PUFFERFISH,
+];
+
+/// default (and only) V2 state of a block id — `b − 103 + V2_STATE_BASE`.
+/// Returns None for pre-V2 blocks.
+#[inline]
+pub fn v2_state(b: u8) -> Option<u16> {
+    if (103..103 + V2_COUNT as u8).contains(&b) {
+        Some(V2_STATE_BASE + (b - 103) as u16)
+    } else {
+        None
+    }
+}
+
+#[inline]
+pub fn is_v2_state(s: u16) -> bool {
+    (V2_STATE_BASE..V2_STATE_BASE + V2_COUNT).contains(&s)
+}
 pub const BEEF_STATE: u16 = 130;
 pub const PORKCHOP_STATE: u16 = 131;
 pub const MUTTON_STATE: u16 = 132;
@@ -372,7 +570,14 @@ pub const SPAWNER_STATE_END: u16 = 234;
 /// Phase 10: end-portal frame state (single)
 pub const END_PORTAL_FRAME_STATE: u16 = 235;
 
-pub const BLOCK_COUNT: usize = 103;
+/// acacia/dark-oak log axis states (the V2 log window — same pattern as
+/// the pre-1.7 oak/birch/spruce axis states 57..=62)
+pub const ACACIA_LOG_X: u16 = 295;
+pub const ACACIA_LOG_Z: u16 = 296;
+pub const DARK_OAK_LOG_X: u16 = 297;
+pub const DARK_OAK_LOG_Z: u16 = 298;
+
+pub const BLOCK_COUNT: usize = 162;
 
 // ---------------------------------------------------------------------------
 // BlockState registry (1.16.5 pattern, miniature)
@@ -389,7 +594,7 @@ pub const BLOCK_COUNT: usize = 103;
 /// Phase 4: extended to cover the Phase 2/3/4 state ids (130..=231) —
 /// before, the range tests stopped at 130 and never saw them.
 /// Phase 5: spawner states 232..=234
-pub const STATE_COUNT: usize = 236;
+pub const STATE_COUNT: usize = 299;
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -685,6 +890,9 @@ pub fn default_state(b: u8) -> u16 {
         OBSERVER => observer_state(0, false),
         HOPPER => hopper_state(0),
         CHEST => CHEST_STATE,
+        b if (103..103 + V2_COUNT as u8).contains(&b) => {
+            V2_STATE_BASE + (b - 103) as u16
+        }
         OAK_SLAB => 63,     // PROP_BLOCKS[0].base_state (half=bottom)
         COBBLE_STAIRS => 65, // base_state (facing=north, half=bottom)
         OAK_FENCE => 73,    // base_state (no connections)
@@ -889,6 +1097,11 @@ pub fn state_block(s: u16) -> u8 {
         s if (OBSERVER_STATE_BASE..=OBSERVER_STATE_END).contains(&s) => return OBSERVER,
         s if (HOPPER_STATE_BASE..=HOPPER_STATE_END).contains(&s) => return HOPPER,
         CHEST_STATE => return CHEST,
+        s if is_v2_state(s) => {
+            return V2_STATE_TO_BLOCK[(s - V2_STATE_BASE) as usize];
+        }
+        ACACIA_LOG_X | ACACIA_LOG_Z => return ACACIA_LOG,
+        DARK_OAK_LOG_X | DARK_OAK_LOG_Z => return DARK_OAK_LOG,
         _ => {}
     }
     if let Some((b, _)) = prop_state_decode(s) {
@@ -913,8 +1126,8 @@ pub fn state_description(s: u16) -> String {
         format!("{}[{}]", name(b), inner.join(","))
     } else {
         let axis = match s {
-            OAK_LOG_X | BIRCH_LOG_X | SPRUCE_LOG_X => "[axis=x]",
-            OAK_LOG_Z | BIRCH_LOG_Z | SPRUCE_LOG_Z => "[axis=z]",
+            OAK_LOG_X | BIRCH_LOG_X | SPRUCE_LOG_X | ACACIA_LOG_X | DARK_OAK_LOG_X => "[axis=x]",
+            OAK_LOG_Z | BIRCH_LOG_Z | SPRUCE_LOG_Z | ACACIA_LOG_Z | DARK_OAK_LOG_Z => "[axis=z]",
             _ => "",
         };
         // fold log-variant states to their owning block for the name
@@ -925,6 +1138,16 @@ pub fn state_description(s: u16) -> String {
 /// true if this state renders through the JSON-model path (mesher dispatch)
 #[inline]
 pub fn is_model_state(s: u16) -> bool {
+    // 1.7.2 V2 window: never model states — greedy cubes / cross plants
+    // per their BlockDef flags, exactly like the sim-state windows
+    if is_v2_state(s)
+        || s == ACACIA_LOG_X
+        || s == ACACIA_LOG_Z
+        || s == DARK_OAK_LOG_X
+        || s == DARK_OAK_LOG_Z
+    {
+        return false;
+    }
     s >= MODEL_STATE_BASE
         && !is_water_flow(s)
         && !is_wire_power(s)
@@ -973,6 +1196,10 @@ pub fn state_tiles(s: u16) -> [u16; 4] {
         BIRCH_LOG_Z => [TILE_BIRCH_LOG_SIDE, TILE_BIRCH_LOG_SIDE, TILE_BIRCH_LOG_SIDE, TILE_LOG_TOP],
         SPRUCE_LOG_X => [TILE_SPRUCE_LOG_SIDE, TILE_SPRUCE_LOG_SIDE, TILE_LOG_TOP, TILE_SPRUCE_LOG_SIDE],
         SPRUCE_LOG_Z => [TILE_SPRUCE_LOG_SIDE, TILE_SPRUCE_LOG_SIDE, TILE_SPRUCE_LOG_SIDE, TILE_LOG_TOP],
+        ACACIA_LOG_X => [TILE_ACACIA_LOG_SIDE, TILE_ACACIA_LOG_SIDE, TILE_ACACIA_LOG_TOP, TILE_ACACIA_LOG_SIDE],
+        ACACIA_LOG_Z => [TILE_ACACIA_LOG_SIDE, TILE_ACACIA_LOG_SIDE, TILE_ACACIA_LOG_SIDE, TILE_ACACIA_LOG_TOP],
+        DARK_OAK_LOG_X => [TILE_DARK_OAK_LOG_SIDE, TILE_DARK_OAK_LOG_SIDE, TILE_DARK_OAK_LOG_TOP, TILE_DARK_OAK_LOG_SIDE],
+        DARK_OAK_LOG_Z => [TILE_DARK_OAK_LOG_SIDE, TILE_DARK_OAK_LOG_SIDE, TILE_DARK_OAK_LOG_SIDE, TILE_DARK_OAK_LOG_TOP],
         // §27: lit furnace swaps the SIDE tiles to the glowing variant
         FURNACE_LIT => [
             TILE_FURNACE_TOP,
@@ -992,7 +1219,7 @@ pub fn state_tiles(s: u16) -> [u16; 4] {
 
 #[inline]
 pub fn is_log(b: u8) -> bool {
-    b == OAK_LOG || b == BIRCH_LOG || b == SPRUCE_LOG
+    b == OAK_LOG || b == BIRCH_LOG || b == SPRUCE_LOG || b == ACACIA_LOG || b == DARK_OAK_LOG
 }
 
 /// state for placing a log with the given axis (0=X, 1=Y, 2=Z).
@@ -1006,6 +1233,10 @@ pub fn log_axis_state(block: u8, axis: u8) -> u16 {
         (BIRCH_LOG, 2) => BIRCH_LOG_Z,
         (SPRUCE_LOG, 0) => SPRUCE_LOG_X,
         (SPRUCE_LOG, 2) => SPRUCE_LOG_Z,
+        (ACACIA_LOG, 0) => ACACIA_LOG_X,
+        (ACACIA_LOG, 2) => ACACIA_LOG_Z,
+        (DARK_OAK_LOG, 0) => DARK_OAK_LOG_X,
+        (DARK_OAK_LOG, 2) => DARK_OAK_LOG_Z,
         _ => block as u16,
     }
 }
@@ -1017,7 +1248,7 @@ pub fn log_axis_state(block: u8, axis: u8) -> u16 {
 /// component tile rendered BLANK since Phase 2. Now derived from the
 /// highest tile constant (118–121 here) and guarded by the
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
-pub const TILE_MAX: u16 = 123;
+pub const TILE_MAX: u16 = 183;
 
 /// inventory-only ITEM blocks (potions/bottles/books): never placeable in
 /// the world — right-click drinks (potions) / fills (glass bottle at water).
@@ -1030,6 +1261,7 @@ pub fn is_item_block(b: u8) -> bool {
             | SPIDER_EYE | FERMENTED_SPIDER_EYE
             | BEEF | PORKCHOP | MUTTON | CHICKEN_RAW | FEATHER | LEATHER | BONE | STRING
             | GUNPOWDER | ENDER_PEARL | ROTTEN_FLESH | ARROW_ITEM
+            | RAW_FISH | RAW_SALMON | CLOWNFISH | PUFFERFISH
     )
 }
 
@@ -1197,6 +1429,76 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     // Phase 10: end-portal frame (stronghold portal room) — solid cube
     // with the frame inset face; eye insertion + activation out of scope
     d("End Portal Frame", [TILE_END_PORTAL_FRAME, TILE_END_PORTAL_FRAME, TILE_END_PORTAL_FRAME], true, false, false, false, 0, SoundFamily::Stone),
+    // ---- 1.7.2 bracket (V2 window) — minecraft.wiki/w/Java_Edition_1.7.2,
+    // live round 2026-09-06 ----
+    // stained glass: solid, NOT opaque (translucent), glass sounds
+    d("White Stained Glass", [TILE_STAINED_GLASS_WHITE, TILE_STAINED_GLASS_WHITE, TILE_STAINED_GLASS_WHITE], true, false, false, false, 0, SoundFamily::Glass),
+    d("Orange Stained Glass", [TILE_STAINED_GLASS_ORANGE, TILE_STAINED_GLASS_ORANGE, TILE_STAINED_GLASS_ORANGE], true, false, false, false, 0, SoundFamily::Glass),
+    d("Magenta Stained Glass", [TILE_STAINED_GLASS_MAGENTA, TILE_STAINED_GLASS_MAGENTA, TILE_STAINED_GLASS_MAGENTA], true, false, false, false, 0, SoundFamily::Glass),
+    d("Light Blue Stained Glass", [TILE_STAINED_GLASS_LIGHT_BLUE, TILE_STAINED_GLASS_LIGHT_BLUE, TILE_STAINED_GLASS_LIGHT_BLUE], true, false, false, false, 0, SoundFamily::Glass),
+    d("Yellow Stained Glass", [TILE_STAINED_GLASS_YELLOW, TILE_STAINED_GLASS_YELLOW, TILE_STAINED_GLASS_YELLOW], true, false, false, false, 0, SoundFamily::Glass),
+    d("Lime Stained Glass", [TILE_STAINED_GLASS_LIME, TILE_STAINED_GLASS_LIME, TILE_STAINED_GLASS_LIME], true, false, false, false, 0, SoundFamily::Glass),
+    d("Pink Stained Glass", [TILE_STAINED_GLASS_PINK, TILE_STAINED_GLASS_PINK, TILE_STAINED_GLASS_PINK], true, false, false, false, 0, SoundFamily::Glass),
+    d("Gray Stained Glass", [TILE_STAINED_GLASS_GRAY, TILE_STAINED_GLASS_GRAY, TILE_STAINED_GLASS_GRAY], true, false, false, false, 0, SoundFamily::Glass),
+    d("Light Gray Stained Glass", [TILE_STAINED_GLASS_LIGHT_GRAY, TILE_STAINED_GLASS_LIGHT_GRAY, TILE_STAINED_GLASS_LIGHT_GRAY], true, false, false, false, 0, SoundFamily::Glass),
+    d("Cyan Stained Glass", [TILE_STAINED_GLASS_CYAN, TILE_STAINED_GLASS_CYAN, TILE_STAINED_GLASS_CYAN], true, false, false, false, 0, SoundFamily::Glass),
+    d("Purple Stained Glass", [TILE_STAINED_GLASS_PURPLE, TILE_STAINED_GLASS_PURPLE, TILE_STAINED_GLASS_PURPLE], true, false, false, false, 0, SoundFamily::Glass),
+    d("Blue Stained Glass", [TILE_STAINED_GLASS_BLUE, TILE_STAINED_GLASS_BLUE, TILE_STAINED_GLASS_BLUE], true, false, false, false, 0, SoundFamily::Glass),
+    d("Brown Stained Glass", [TILE_STAINED_GLASS_BROWN, TILE_STAINED_GLASS_BROWN, TILE_STAINED_GLASS_BROWN], true, false, false, false, 0, SoundFamily::Glass),
+    d("Green Stained Glass", [TILE_STAINED_GLASS_GREEN, TILE_STAINED_GLASS_GREEN, TILE_STAINED_GLASS_GREEN], true, false, false, false, 0, SoundFamily::Glass),
+    d("Red Stained Glass", [TILE_STAINED_GLASS_RED, TILE_STAINED_GLASS_RED, TILE_STAINED_GLASS_RED], true, false, false, false, 0, SoundFamily::Glass),
+    d("Black Stained Glass", [TILE_STAINED_GLASS_BLACK, TILE_STAINED_GLASS_BLACK, TILE_STAINED_GLASS_BLACK], true, false, false, false, 0, SoundFamily::Glass),
+    // stained terracotta ("stained clay"): full opaque cubes, stone sounds
+    d("White Terracotta", [TILE_STAINED_TERRACOTTA_WHITE, TILE_STAINED_TERRACOTTA_WHITE, TILE_STAINED_TERRACOTTA_WHITE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Orange Terracotta", [TILE_STAINED_TERRACOTTA_ORANGE, TILE_STAINED_TERRACOTTA_ORANGE, TILE_STAINED_TERRACOTTA_ORANGE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Magenta Terracotta", [TILE_STAINED_TERRACOTTA_MAGENTA, TILE_STAINED_TERRACOTTA_MAGENTA, TILE_STAINED_TERRACOTTA_MAGENTA], true, true, false, false, 0, SoundFamily::Stone),
+    d("Light Blue Terracotta", [TILE_STAINED_TERRACOTTA_LIGHT_BLUE, TILE_STAINED_TERRACOTTA_LIGHT_BLUE, TILE_STAINED_TERRACOTTA_LIGHT_BLUE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Yellow Terracotta", [TILE_STAINED_TERRACOTTA_YELLOW, TILE_STAINED_TERRACOTTA_YELLOW, TILE_STAINED_TERRACOTTA_YELLOW], true, true, false, false, 0, SoundFamily::Stone),
+    d("Lime Terracotta", [TILE_STAINED_TERRACOTTA_LIME, TILE_STAINED_TERRACOTTA_LIME, TILE_STAINED_TERRACOTTA_LIME], true, true, false, false, 0, SoundFamily::Stone),
+    d("Pink Terracotta", [TILE_STAINED_TERRACOTTA_PINK, TILE_STAINED_TERRACOTTA_PINK, TILE_STAINED_TERRACOTTA_PINK], true, true, false, false, 0, SoundFamily::Stone),
+    d("Gray Terracotta", [TILE_STAINED_TERRACOTTA_GRAY, TILE_STAINED_TERRACOTTA_GRAY, TILE_STAINED_TERRACOTTA_GRAY], true, true, false, false, 0, SoundFamily::Stone),
+    d("Light Gray Terracotta", [TILE_STAINED_TERRACOTTA_LIGHT_GRAY, TILE_STAINED_TERRACOTTA_LIGHT_GRAY, TILE_STAINED_TERRACOTTA_LIGHT_GRAY], true, true, false, false, 0, SoundFamily::Stone),
+    d("Cyan Terracotta", [TILE_STAINED_TERRACOTTA_CYAN, TILE_STAINED_TERRACOTTA_CYAN, TILE_STAINED_TERRACOTTA_CYAN], true, true, false, false, 0, SoundFamily::Stone),
+    d("Purple Terracotta", [TILE_STAINED_TERRACOTTA_PURPLE, TILE_STAINED_TERRACOTTA_PURPLE, TILE_STAINED_TERRACOTTA_PURPLE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Blue Terracotta", [TILE_STAINED_TERRACOTTA_BLUE, TILE_STAINED_TERRACOTTA_BLUE, TILE_STAINED_TERRACOTTA_BLUE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Brown Terracotta", [TILE_STAINED_TERRACOTTA_BROWN, TILE_STAINED_TERRACOTTA_BROWN, TILE_STAINED_TERRACOTTA_BROWN], true, true, false, false, 0, SoundFamily::Stone),
+    d("Green Terracotta", [TILE_STAINED_TERRACOTTA_GREEN, TILE_STAINED_TERRACOTTA_GREEN, TILE_STAINED_TERRACOTTA_GREEN], true, true, false, false, 0, SoundFamily::Stone),
+    d("Red Terracotta", [TILE_STAINED_TERRACOTTA_RED, TILE_STAINED_TERRACOTTA_RED, TILE_STAINED_TERRACOTTA_RED], true, true, false, false, 0, SoundFamily::Stone),
+    d("Black Terracotta", [TILE_STAINED_TERRACOTTA_BLACK, TILE_STAINED_TERRACOTTA_BLACK, TILE_STAINED_TERRACOTTA_BLACK], true, true, false, false, 0, SoundFamily::Stone),
+    // red sand: mesa floor — falls like sand, smelts to glass
+    d("Red Sand", [TILE_RED_SAND, TILE_RED_SAND, TILE_RED_SAND], true, true, false, false, 0, SoundFamily::Sand),
+    // packed ice: OPAQUE (1.7.2 changelog), does not melt
+    d("Packed Ice", [TILE_PACKED_ICE, TILE_PACKED_ICE, TILE_PACKED_ICE], true, true, false, false, 0, SoundFamily::Glass),
+    // podzol: mega-taiga dirt variant (top + side + dirt bottom)
+    d("Podzol", [TILE_PODZOL_TOP, TILE_DIRT, TILE_PODZOL_SIDE], true, true, false, false, 0, SoundFamily::Dirt),
+    // acacia / dark oak
+    d("Acacia Log", [TILE_ACACIA_LOG_TOP, TILE_ACACIA_LOG_TOP, TILE_ACACIA_LOG_SIDE], true, true, false, false, 0, SoundFamily::Wood),
+    d("Acacia Leaves", [TILE_LEAVES, TILE_LEAVES, TILE_LEAVES], true, false, false, false, 0, SoundFamily::Leaves),
+    d("Dark Oak Log", [TILE_DARK_OAK_LOG_TOP, TILE_DARK_OAK_LOG_TOP, TILE_DARK_OAK_LOG_SIDE], true, true, false, false, 0, SoundFamily::Wood),
+    d("Dark Oak Leaves", [TILE_LEAVES, TILE_LEAVES, TILE_LEAVES], true, false, false, false, 0, SoundFamily::Leaves),
+    // 8 new small flowers (cross plants)
+    d("Allium", [TILE_ALLIUM, TILE_ALLIUM, TILE_ALLIUM], false, false, true, false, 0, SoundFamily::Grass),
+    d("Azure Bluet", [TILE_AZURE_BLUET, TILE_AZURE_BLUET, TILE_AZURE_BLUET], false, false, true, false, 0, SoundFamily::Grass),
+    d("Blue Orchid", [TILE_BLUE_ORCHID, TILE_BLUE_ORCHID, TILE_BLUE_ORCHID], false, false, true, false, 0, SoundFamily::Grass),
+    d("Oxeye Daisy", [TILE_OXEYE_DAISY, TILE_OXEYE_DAISY, TILE_OXEYE_DAISY], false, false, true, false, 0, SoundFamily::Grass),
+    d("Orange Tulip", [TILE_ORANGE_TULIP, TILE_ORANGE_TULIP, TILE_ORANGE_TULIP], false, false, true, false, 0, SoundFamily::Grass),
+    d("Red Tulip", [TILE_RED_TULIP, TILE_RED_TULIP, TILE_RED_TULIP], false, false, true, false, 0, SoundFamily::Grass),
+    d("White Tulip", [TILE_WHITE_TULIP, TILE_WHITE_TULIP, TILE_WHITE_TULIP], false, false, true, false, 0, SoundFamily::Grass),
+    d("Pink Tulip", [TILE_PINK_TULIP, TILE_PINK_TULIP, TILE_PINK_TULIP], false, false, true, false, 0, SoundFamily::Grass),
+    // 2-block-tall flowers, lower + upper halves
+    d("Sunflower", [TILE_SUNFLOWER_LOWER, TILE_SUNFLOWER_LOWER, TILE_SUNFLOWER_LOWER], false, false, true, false, 0, SoundFamily::Grass),
+    d("Sunflower", [TILE_SUNFLOWER_TOP, TILE_SUNFLOWER_TOP, TILE_SUNFLOWER_TOP], false, false, true, false, 0, SoundFamily::Grass),
+    d("Lilac", [TILE_LILAC_LOWER, TILE_LILAC_LOWER, TILE_LILAC_LOWER], false, false, true, false, 0, SoundFamily::Grass),
+    d("Lilac", [TILE_LILAC_TOP, TILE_LILAC_TOP, TILE_LILAC_TOP], false, false, true, false, 0, SoundFamily::Grass),
+    d("Peony", [TILE_PEONY_LOWER, TILE_PEONY_LOWER, TILE_PEONY_LOWER], false, false, true, false, 0, SoundFamily::Grass),
+    d("Peony", [TILE_PEONY_TOP, TILE_PEONY_TOP, TILE_PEONY_TOP], false, false, true, false, 0, SoundFamily::Grass),
+    d("Rose Bush", [TILE_ROSE_BUSH_LOWER, TILE_ROSE_BUSH_LOWER, TILE_ROSE_BUSH_LOWER], false, false, true, false, 0, SoundFamily::Grass),
+    d("Rose Bush", [TILE_ROSE_BUSH_TOP, TILE_ROSE_BUSH_TOP, TILE_ROSE_BUSH_TOP], false, false, true, false, 0, SoundFamily::Grass),
+    // 1.7.2 fish items — inventory-only, cross-rendered icons
+    d("Raw Fish", [TILE_RAW_FISH, TILE_RAW_FISH, TILE_RAW_FISH], false, false, true, false, 0, SoundFamily::Grass),
+    d("Raw Salmon", [TILE_RAW_SALMON, TILE_RAW_SALMON, TILE_RAW_SALMON], false, false, true, false, 0, SoundFamily::Grass),
+    d("Clownfish", [TILE_CLOWNFISH, TILE_CLOWNFISH, TILE_CLOWNFISH], false, false, true, false, 0, SoundFamily::Grass),
+    d("Pufferfish", [TILE_PUFFERFISH, TILE_PUFFERFISH, TILE_PUFFERFISH], false, false, true, false, 0, SoundFamily::Grass),
 ];
 
 #[inline]
@@ -1265,17 +1567,43 @@ pub fn face_visible(b: u8, n: u8) -> bool {
 /// Everything placeable except air, bedrock (unbreakable) and water
 /// (needs fluid sim to be fun). Potions are item-blocks — usable from the
 /// hotbar (drink), never placeable.
-pub const PICKER_BLOCKS: [u8; 68] = [
+/// 1.7.2 bracket: +55 — the 16 stained glass, 16 stained terracotta, red
+/// sand, packed ice, podzol, acacia/dark-oak wood, the 8 new flowers,
+/// the 4 two-block flowers (lower halves place both via worldgen-style
+/// pairs; the picker offers the lower id) and the 4 fish items.
+pub const PICKER_BLOCKS: [u8; 123] = [
     GRASS, DIRT, STONE, COBBLE, SMOOTH_STONE, STONE_BRICKS, BRICKS, MOSSY_COBBLE,
     GRANITE, DIORITE, ANDESITE, OBSIDIAN,
     SAND, GRAVEL, CLAY, TERRACOTTA,
+    RED_SAND, PACKED_ICE, PODZOL,
     OAK_LOG, LEAVES, PLANKS, BIRCH_LOG, BIRCH_LEAVES, SPRUCE_LOG, SPRUCE_LEAVES,
+    ACACIA_LOG, ACACIA_LEAVES, DARK_OAK_LOG, DARK_OAK_LEAVES,
     COAL_ORE, IRON_ORE, GOLD_ORE, REDSTONE_ORE, LAPIS_ORE, EMERALD_ORE, DIAMOND_ORE,
     IRON_BLOCK, GOLD_BLOCK, DIAMOND_BLOCK, GLOWSTONE,
     BOOKSHELF, CRAFTING_TABLE, FURNACE, GLASS, ICE, SNOW,
     PUMPKIN, MELON, CACTUS,
     WOOL_WHITE, WOOL_RED, WOOL_YELLOW, WOOL_BLUE, WOOL_BLACK,
+    // 1.7.2 stained glass, all 16
+    STAINED_GLASS_WHITE, STAINED_GLASS_ORANGE, STAINED_GLASS_MAGENTA,
+    STAINED_GLASS_LIGHT_BLUE, STAINED_GLASS_YELLOW, STAINED_GLASS_LIME,
+    STAINED_GLASS_PINK, STAINED_GLASS_GRAY, STAINED_GLASS_LIGHT_GRAY,
+    STAINED_GLASS_CYAN, STAINED_GLASS_PURPLE, STAINED_GLASS_BLUE,
+    STAINED_GLASS_BROWN, STAINED_GLASS_GREEN, STAINED_GLASS_RED,
+    STAINED_GLASS_BLACK,
+    // 1.7.2 stained terracotta, all 16
+    STAINED_TERRACOTTA_WHITE, STAINED_TERRACOTTA_ORANGE, STAINED_TERRACOTTA_MAGENTA,
+    STAINED_TERRACOTTA_LIGHT_BLUE, STAINED_TERRACOTTA_YELLOW, STAINED_TERRACOTTA_LIME,
+    STAINED_TERRACOTTA_PINK, STAINED_TERRACOTTA_GRAY, STAINED_TERRACOTTA_LIGHT_GRAY,
+    STAINED_TERRACOTTA_CYAN, STAINED_TERRACOTTA_PURPLE, STAINED_TERRACOTTA_BLUE,
+    STAINED_TERRACOTTA_BROWN, STAINED_TERRACOTTA_GREEN, STAINED_TERRACOTTA_RED,
+    STAINED_TERRACOTTA_BLACK,
     TALL_GRASS, FLOWER_RED, FLOWER_YELLOW, MUSHROOM_RED, MUSHROOM_BROWN,
+    // 1.7.2 flowers + tall flowers
+    ALLIUM, AZURE_BLUET, BLUE_ORCHID, OXEYE_DAISY,
+    ORANGE_TULIP, RED_TULIP, WHITE_TULIP, PINK_TULIP,
+    SUNFLOWER, LILAC, PEONY, ROSE_BUSH,
+    // 1.7.2 fish (item-blocks: eatable, never placeable)
+    RAW_FISH, RAW_SALMON, CLOWNFISH, PUFFERFISH,
     OAK_SLAB, COBBLE_STAIRS, OAK_FENCE,
     NETHERRACK, NETHER_QUARTZ_ORE, SOUL_SAND,
     BREWING_STAND,
@@ -1485,6 +1813,8 @@ mod state_tests {
                 || (POTION_HARMING_STATE..=FERMENTED_EYE_STATE).contains(&s)
                 || (SPAWNER_STATE_BASE..=SPAWNER_STATE_END).contains(&s)
                 || s == END_PORTAL_FRAME_STATE
+                || is_v2_state(s)
+                || matches!(s, ACACIA_LOG_X | ACACIA_LOG_Z | DARK_OAK_LOG_X | DARK_OAK_LOG_Z)
             {
                 assert!(!is_model_state(s), "component/item state {s} never routes to models");
                 // identity: the state folds to the block whose def table
@@ -1492,6 +1822,10 @@ mod state_tests {
                 // own tests)
                 let b = state_block(s);
                 assert!(b < BLOCK_COUNT as u8, "state {s} folds to valid block");
+                // 1.7.2 V2: default_state must invert the fold exactly
+                if is_v2_state(s) {
+                    assert_eq!(default_state(b), s, "v2 state {s} roundtrip");
+                }
                 continue;
             }
             let Some((b, props)) = prop_state_decode(s) else {

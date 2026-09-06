@@ -5645,6 +5645,17 @@ impl GameApp {
                 }
             }
 
+            // 1.7.2 bracket: status-effect tick (pufferfish poison —
+            // Poison IV 1:00, 1 HP per 10 ticks observable, floor 1 HP,
+            // all live-verified on minecraft.wiki/w/Poison). Creative is
+            // damage-immune like every other source.
+            let poison = self.player.tick_effects();
+            if poison > 0.0 && !self.mode.invulnerable() {
+                self.play_event("entity.player.hurt", None, 0.9);
+                self.death_cause = "POISONED".into();
+                self.ui.dirty = true;
+            }
+
             // targeting
             self.target = raycast(
                 &self.world,
@@ -5818,6 +5829,37 @@ impl GameApp {
                         }
                         self.play_event("liquid.splash", None, 0.8);
                         self.place_timer = 0.3;
+                        self.ui.dirty = true;
+                    } else if !self.player.held().is_empty()
+                        && self.player.held().block == PUFFERFISH
+                    {
+                        // 1.7.2: eating a pufferfish — VERIFIED
+                        // (minecraft.wiki/w/Java_Edition_1.7.2 §Items,
+                        // live 2026-09-06): restores 1 hunger but inflicts
+                        // Poison IV (1:00), Hunger III (0:15) and Nausea
+                        // (0:15). Our hunger-bar-less adaptation: the
+                        // hunger/nausea halves are recorded effects (no
+                        // mechanical hunger bar yet — documented), the
+                        // POISON is exact (1.7.2's headline pufferfish
+                        // mechanic). Not in is_food() so it can't heal.
+                        if self.mode.depletes_items() {
+                            let held = self.player.held_mut();
+                            held.count -= 1;
+                            if held.count == 0 {
+                                *held = vc_inventory::inventory::ItemStack::EMPTY;
+                            }
+                        }
+                        if !self.mode.invulnerable() {
+                            self.player.apply_pufferfish_poison();
+                            self.player.effects.hunger_ticks =
+                                vc_gameplay::fishing::PUFFERFISH_HUNGER_TICKS;
+                        }
+                        self.play_event("entity.generic.drink", None, 0.8);
+                        vc_render::render::report_boot_log(&format!(
+                            "e2e: ate a pufferfish (poison IV 1:00 -> hp {})",
+                            self.player.health
+                        ));
+                        self.place_timer = 0.5;
                         self.ui.dirty = true;
                     } else if !self.player.held().is_empty() && is_food(self.player.held().block) {
                         // Phase 2: right-click eats raw meat. Documented
@@ -7800,7 +7842,12 @@ fn fill_structure_chest(
 /// Phase 2: edible mob drops (right-click to eat — heals directly until
 /// the hunger system exists; documented deviation)
 fn is_food(b: u8) -> bool {
-    matches!(b, BEEF | PORKCHOP | MUTTON | CHICKEN_RAW | ROTTEN_FLESH)
+    // 1.7.2: the three edible fish join the meats (pufferfish is
+    // deliberately NOT here — it poisons, see the eat path)
+    matches!(
+        b,
+        BEEF | PORKCHOP | MUTTON | CHICKEN_RAW | ROTTEN_FLESH | RAW_FISH | RAW_SALMON | CLOWNFISH
+    )
 }
 
 fn light_at(
@@ -8253,10 +8300,8 @@ mod settings_tests {
         for (dx, dz) in [(-1i32, -1i32), (1, -1), (-1, 1), (1, 1)] {
             let x = ((wx + dx) - cx * 16) as usize;
             let z = ((wz + dz) - cz * 16) as usize;
-            // Chunk::get yields the raw state — route through state_block
-            if vc_blocks::blocks::state_block(chunk.get(x, floor, z) as u16)
-                == vc_blocks::blocks::CHEST
-            {
+            // 1.7.2 refactor: Chunk::get FOLDS to the block id itself now
+            if chunk.get(x, floor, z) == vc_blocks::blocks::CHEST {
                 chests += 1;
             }
         }

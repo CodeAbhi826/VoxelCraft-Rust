@@ -13,8 +13,8 @@ pub const TILE_MISSING: u16 = 63;
 /// snapshot values are STATE ids (u16 truncated to u8, ≤ 62 today);
 /// property lookups fold them to block ids
 #[inline]
-fn sb(s: u8) -> u8 {
-    state_block(s as u16)
+fn sb(s: u16) -> u16 {
+    state_block(s)
 }
 
 /// VC-16 packed terrain vertex — 16 bytes, Sodium-class GPU bandwidth
@@ -157,7 +157,7 @@ fn pidx(x: usize, y: usize, z: usize) -> usize {
 /// have exactly ONE source of truth.
 pub struct MeshInputs {
     /// 48×256×48 block STATE ids (u8), padded region covering the 3×3
-    pub blocks: Vec<u8>,
+    pub blocks: Vec<u16>,
     /// 48×256×48 skylight nibbles (same layout)
     pub light: Vec<u8>,
     /// 48×256×48 block-light nibbles (same layout)
@@ -181,7 +181,7 @@ pub fn build_mesh_inputs(
     // ------------------------------------------------ copy blocks (padded)
     // decode paletted sections into the flat padded buffer; air-only
     // sections cost one `None` probe instead of 16 KB of zeros
-    let mut blocks = vec![0u8; PAD * PAD * 256];
+    let mut blocks = vec![0u16; PAD * PAD * 256];
     // flags: does the CENTER chunk contain cross plants / model blocks at
     // all? (guards the per-cell special loops — §48 Phase-3: no baseline
     // mesh-time regression when a world has none, which is the common case)
@@ -198,10 +198,10 @@ pub fn build_mesh_inputs(
                 if sec.is_empty() {
                     continue;
                 }
-                let flat = sec.decode_flat(); // 4096 bytes, YZX
+                let flat = sec.states_flat(); // 4096 u16 states, YZX (decode_flat truncated >255!)
                 if center && !(has_cross && has_models) {
                     for &v in flat.iter() {
-                        if v >= vc_blocks::blocks::MODEL_STATE_BASE as u8 {
+                        if v >= vc_blocks::blocks::MODEL_STATE_BASE {
                             has_models = true;
                         } else if is_cross(sb(v)) {
                             has_cross = true;
@@ -286,7 +286,7 @@ pub fn build_mesh_inputs(
 // the packed normal/ao fields) — see VC-16 layout above.
 
 #[inline]
-fn getb(blocks: &[u8], gx: i32, y: i32, gz: i32) -> u8 {
+fn getb(blocks: &[u16], gx: i32, y: i32, gz: i32) -> u16 {
     if y < 0 || y > 255 {
         return AIR;
     }
@@ -376,23 +376,24 @@ pub fn mesh_sections(
                             cell[v] = av as i32;
                         let bs = getb(&blocks, cell[0], cell[1], cell[2]); // state
                         let b = sb(bs);
-                        if b == AIR || is_cross(b) || is_model_state(bs as u16) {
+                        if b == AIR || is_cross(b) || is_model_state(bs) {
                             continue;
                         }
                         let mut ncell = cell;
                         ncell[d] += dir;
                         let nb = sb(getb(&blocks, ncell[0], ncell[1], ncell[2]));
 
-                        if b == WATER {
-                            if face_visible(WATER, nb) {
+                        if b == WATER || b == LAVA {
+                            // fluids mesh through the water-quad path (§18
+                            // tint: biome water color / the fixed lava slot —
+                            // both in the greedy key so runs never merge)
+                            if face_visible(b, nb) {
                                 let l = getl(&light, ncell[0], ncell[1], ncell[2]) as u64;
                                 let bl = getl(&blight, ncell[0], ncell[1], ncell[2]) as u64;
                                 let above = getb(&blocks, cell[0], cell[1] + 1, cell[2]);
-                                let aw = if above == WATER { 1u64 } else { 0u64 };
-                                // §18 water tint: biome water color, in the
-                                // greedy key so runs never merge across biomes
+                                let aw = if above == b { 1u64 } else { 0u64 };
                                 let wt = vc_blocks::tint::block_face_tint_packed(
-                                    WATER, false, biome_at(cell[0] as usize, cell[2] as usize),
+                                    b, false, biome_at(cell[0] as usize, cell[2] as usize),
                                 ) as u64;
                                 wmask[vi * du + ui] = 1 | (l << 1) | (aw << 6) | (bl << 7) | (wt << 11);
                             }
@@ -652,7 +653,7 @@ fn emit_model_block(
     ly: usize,
     lz: usize,
     bs: u16,
-    blocks: &[u8],
+    blocks: &[u16],
     light: &[u8],
     blight: &[u8],
     smooth: bool,
@@ -697,7 +698,7 @@ fn emit_model_faces(
     ly: usize,
     lz: usize,
     bs: u16,
-    blocks: &[u8],
+    blocks: &[u16],
     light: &[u8],
     blight: &[u8],
     smooth: bool,
@@ -1279,7 +1280,7 @@ mod tests {
     fn biome_tint_faces() {
         use vc_blocks::tint;
 
-        let snap_for = |biome: u8, block: u8| -> [Option<Arc<Chunk>>; 9] {
+        let snap_for = |biome: u8, block: u16| -> [Option<Arc<Chunk>>; 9] {
             let mut c = Chunk::empty();
             c.set(8, 8, 8, block);
             c.biome = Box::new([biome; 256]);

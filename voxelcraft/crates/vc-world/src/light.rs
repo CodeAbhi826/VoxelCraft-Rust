@@ -209,8 +209,11 @@ impl LightEngine {
         for y in 0..256usize {
             for lz in 0..16usize {
                 for lx in 0..16usize {
-                    let b = chunk.get(lx, y, lz); // 1.7.2: Chunk::get folds states itself
-                    let e = emissive(b);
+                    // [merge] state-aware emission (E1 lit lamps) via
+                    // the RAW state accessor — our 1.7.2 Chunk::get folds
+                    // states to block ids, so state_emissive needs
+                    // get_state here
+                    let e = state_emissive(chunk.get_state(lx, y, lz));
                     if e == 0 {
                         continue;
                     }
@@ -375,8 +378,9 @@ impl LightEngine {
         let new_b = state_block(new);
 
         // ---- block light
-        let e_old = emissive(old_b);
-        let e_new = emissive(new_b);
+        // Phase E1: state-aware emission (lit redstone lamp state = 15)
+        let e_old = state_emissive(old);
+        let e_new = state_emissive(new);
         if e_new > 0 {
             // source appeared: seed neighbors at the emissive level
             let lvl = e_new.min(15);
@@ -425,7 +429,7 @@ impl LightEngine {
         }
 
         // ---- sky light: the column semantics change → recompute the column
-        let darkens = |b: u8| is_opaque(b) || b == WATER || b == LEAVES;
+        let darkens = |b: u16| is_opaque(b) || b == WATER || b == LEAVES;
         if darkens(new_b) != darkens(old_b)
             || (old_b == WATER) != (new_b == WATER)
             || (old_b == LEAVES) != (new_b == LEAVES)
@@ -844,7 +848,8 @@ pub fn reference_light(blocks: &[u8]) -> (Vec<u8>, Vec<u8>) {
     for y in 0..256usize {
         for z in 0..pad {
             for x in 0..pad {
-                let e = emissive(sb(blocks[pidx(x, y, z)]));
+                // Phase E1: state-aware emission (lit lamp states)
+                let e = state_emissive(blocks[pidx(x, y, z)] as u16);
                 if e == 0 {
                     continue;
                 }
@@ -1186,10 +1191,10 @@ mod tests {
                     x: i32,
                     y: i32,
                     z: i32,
-                    id: u8,
+                    id: u16,
                     note: &str| {
             let r = world.set_block(x, y, z, id);
-            engine.on_block_changed(world, x, y, z, r.map(|(o, _)| o).unwrap_or(0), id as u16);
+            engine.on_block_changed(world, x, y, z, r.map(|(o, _)| o).unwrap_or(0), id);
             engine.pump(world, 1_000_000);
             assert_differential(world, note);
         };

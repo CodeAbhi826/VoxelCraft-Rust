@@ -20,6 +20,10 @@ pub enum Dimension {
     Overworld = 0,
     /// the Nether: 8:1 coordinate scale, caverns, no skylight
     Nether = 1,
+    /// Phase E1 (1.0.0 content, live-verified w/The_End): the End —
+    /// void dimension of end-stone islands, obsidian pillars, the ender
+    /// dragon fight; 1:1 coordinate scale, no skylight
+    End = 2,
 }
 
 impl Dimension {
@@ -28,6 +32,7 @@ impl Dimension {
         match self {
             Dimension::Overworld => "overworld",
             Dimension::Nether => "the_nether",
+            Dimension::End => "the_end",
         }
     }
 
@@ -35,14 +40,15 @@ impl Dimension {
         match self {
             Dimension::Overworld => "Overworld",
             Dimension::Nether => "Nether",
+            Dimension::End => "End",
         }
     }
 
     pub fn from_u8(v: u8) -> Dimension {
-        if v == 1 {
-            Dimension::Nether
-        } else {
-            Dimension::Overworld
+        match v {
+            1 => Dimension::Nether,
+            2 => Dimension::End,
+            _ => Dimension::Overworld,
         }
     }
 
@@ -52,6 +58,7 @@ impl Dimension {
         match self {
             Dimension::Overworld => 1,
             Dimension::Nether => 8,
+            Dimension::End => 1,
         }
     }
 
@@ -60,6 +67,7 @@ impl Dimension {
         match self {
             Dimension::Overworld => 0,
             Dimension::Nether => 0x1DE1_1E77_0D1D_1234,
+            Dimension::End => 0x0EAD_BEE5_E1D5_1234,
         }
     }
 
@@ -76,7 +84,7 @@ impl Dimension {
 
 /// Block ids that may be overwritten by decorations.
 #[inline]
-fn replaceable(cur: u8) -> bool {
+fn replaceable(cur: u16) -> bool {
     cur == AIR || cur == TALL_GRASS || cur == FLOWER_RED || cur == FLOWER_YELLOW
 }
 
@@ -89,7 +97,7 @@ pub const CAUSE_VISIBILITY: u8 = 16;
 
 /// material class for §12 cause accounting: cutout/transparent vs solid
 #[inline]
-fn is_transparent_class(b: u8) -> bool {
+fn is_transparent_class(b: u16) -> bool {
     !is_opaque(b) || b == WATER
 }
 
@@ -107,7 +115,7 @@ pub struct World {
     /// chunks fully generated + decorated (meshable)
     pub decorated: HashSet<ChunkPos>,
     /// edits queued for not-yet-generated chunks: (block_idx, id)
-    pub pending: HashMap<ChunkPos, Vec<(u16, u8)>>,
+    pub pending: HashMap<ChunkPos, Vec<(u16, u16)>>,
     /// sections (bit s = 16-block section s) whose mesh is stale (§12:
     /// fine-grained — a block edit rebuilds sections, not the whole chunk)
     pub dirty: HashMap<ChunkPos, u16>,
@@ -182,7 +190,7 @@ impl World {
     }
 
     #[inline]
-    pub fn get_block(&self, wx: i32, wy: i32, wz: i32) -> u8 {
+    pub fn get_block(&self, wx: i32, wy: i32, wz: i32) -> u16 {
         if wy < 0 || wy > 255 {
             return AIR;
         }
@@ -216,6 +224,22 @@ impl World {
         }
     }
 
+    /// Biome id of the column at (wx, wz); 0 (Ocean fallback) when the
+    /// chunk is not loaded. Phase E1: biome-gated mechanics (snow golem
+    /// heat damage, mushroom-fields spawn rules).
+    pub fn get_biome(&self, wx: i32, wz: i32) -> u8 {
+        let cx = wx.div_euclid(16);
+        let cz = wz.div_euclid(16);
+        match self.chunks.get(&(cx, cz)) {
+            Some(c) => {
+                let lx = (wx - cx * 16) as usize;
+                let lz = (wz - cz * 16) as usize;
+                c.biome[lz * 16 + lx]
+            }
+            None => 0,
+        }
+    }
+
     /// True if the block position sits inside a loaded chunk.
     pub fn is_loaded(&self, wx: i32, wz: i32) -> bool {
         self.chunks
@@ -227,8 +251,16 @@ impl World {
     /// `id` is a BLOCK id — the default state of that block is stored.
     /// Returns (old_state, new_state) for the light engine when the edit
     /// landed (Phase 4), None otherwise.
-    pub fn set_block(&mut self, wx: i32, wy: i32, wz: i32, id: u8) -> Option<(u16, u16)> {
-        self.set_block_state(wx, wy, wz, id as u16)
+    pub fn set_block(&mut self, wx: i32, wy: i32, wz: i32, id: u16) -> Option<(u16, u16)> {
+        // Phase E2 fix (latent E1 bug): store the block's DEFAULT STATE,
+        // not the raw id. The raw id only equals a valid state for
+        // identity-mapped blocks 0..=56 — END_PORTAL (116) stored raw
+        // folded back as FURNACE (63), DRAGON_EGG (115) as REDSTONE_TORCH,
+        // and prop blocks (OAK_SLAB 57) as OAK_LOG[axis=x]. Routing
+        // through default_state matches Chunk::set (the generator-side
+        // rule) and makes high-id placement correct everywhere.
+        let st = vc_blocks::blocks::default_state(id);
+        self.set_block_state(wx, wy, wz, st)
     }
 
     /// Player-driven BLOCK-STATE edit (e.g. a log placed with axis=x).
@@ -343,7 +375,7 @@ impl World {
     }
 
     /// Apply a generation-time outbound edit (tree canopy crossing borders).
-    pub fn apply_gen_edit(&mut self, wx: i32, wy: i32, wz: i32, id: u8) {
+    pub fn apply_gen_edit(&mut self, wx: i32, wy: i32, wz: i32, id: u16) {
         if wy < 0 || wy > 255 {
             return;
         }
@@ -354,7 +386,7 @@ impl World {
             let old = Arc::clone(old);
             let lx = (wx - cx * 16) as usize;
             let lz = (wz - cz * 16) as usize;
-            let cur = old.get(lx, wy as usize, lz);
+            let cur = state_block(old.get(lx, wy as usize, lz));
             let target_ok = replaceable(cur) || (cur == LEAVES && id == OAK_LOG);
             if !target_ok {
                 return;
@@ -384,7 +416,7 @@ impl World {
         &mut self,
         pos: ChunkPos,
         chunk: Arc<Chunk>,
-        outbound: Vec<(i32, i32, i32, u8)>,
+        outbound: Vec<(i32, i32, i32, u16)>,
     ) {
         self.chunks.insert(pos, chunk);
         self.decorated.insert(pos);
@@ -395,7 +427,7 @@ impl World {
     }
 
     /// Take (drain) the pending inbound edits for a chunk being generated.
-    pub fn take_pending(&mut self, pos: ChunkPos) -> Vec<(u16, u8)> {
+    pub fn take_pending(&mut self, pos: ChunkPos) -> Vec<(u16, u16)> {
         self.pending.remove(&pos).unwrap_or_default()
     }
 
@@ -446,6 +478,9 @@ impl World {
         match self.dimension {
             Dimension::Overworld => self.gen.find_spawn(),
             Dimension::Nether => self.gen.find_nether_spawn(),
+            // Phase E1: the End arrival — the 5×5 obsidian platform
+            // (VERIFIED w/The_End: entry point x=100, z=0)
+            Dimension::End => self.gen.end_arrival(),
         }
     }
 

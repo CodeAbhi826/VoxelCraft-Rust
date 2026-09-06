@@ -29,13 +29,19 @@ pub enum Biome {
     Savanna = 11,
     Swamp = 12,
     Badlands = 13,
+    /// Phase E1 (1.0.0 content): Mushroom Fields — mycelium surface,
+    /// huge mushrooms, mooshroom herds, NO natural hostile spawns (all
+    /// VERIFIED w/Mushroom_Fields, live 2026-09-06). Internal id 14
+    /// (vanilla's real registry id is 14 = mushroom_fields, matching).
+    MushroomFields = 14,
     // ---- 1.7.2 bracket (live-verified minecraft.wiki/w/Java_Edition_1.7.2):
     // the four headliner overworld additions of the Update that Changed
-    // the World ----
-    FlowerForest = 14,
-    SunflowerPlains = 15,
-    IceSpikes = 16,
-    DarkForest = 17,
+    // the World. [merge renumber] shifted 14..=17 -> 15..=18 past the E1
+    // MushroomFields id ----
+    FlowerForest = 15,
+    SunflowerPlains = 16,
+    IceSpikes = 17,
+    DarkForest = 18,
 }
 
 impl Biome {
@@ -55,6 +61,7 @@ impl Biome {
             Biome::Savanna => "Savanna",
             Biome::Swamp => "Swamp",
             Biome::Badlands => "Badlands",
+            Biome::MushroomFields => "Mushroom Fields",
             Biome::FlowerForest => "Flower Forest",
             Biome::SunflowerPlains => "Sunflower Plains",
             Biome::IceSpikes => "Ice Spikes",
@@ -77,10 +84,11 @@ impl Biome {
             11 => Biome::Savanna,
             12 => Biome::Swamp,
             13 => Biome::Badlands,
-            14 => Biome::FlowerForest,
-            15 => Biome::SunflowerPlains,
-            16 => Biome::IceSpikes,
-            17 => Biome::DarkForest,
+            14 => Biome::MushroomFields,
+            15 => Biome::FlowerForest,
+            16 => Biome::SunflowerPlains,
+            17 => Biome::IceSpikes,
+            18 => Biome::DarkForest,
             _ => Biome::Ocean,
         }
     }
@@ -313,8 +321,8 @@ fn smoothstep(a: f32, b: f32, x: f32) -> f32 {
 pub struct ColumnInfo {
     pub height: i32,
     pub biome: Biome,
-    pub top: u8,
-    pub filler: u8,
+    pub top: u16,
+    pub filler: u16,
 }
 
 /// P7 structures: village grid + one house site (deterministic)
@@ -370,24 +378,8 @@ fn floor_div(a: i32, b: i32) -> i32 {
     }
 }
 
-/// 1.7.2: mesa sedimentary banding — the changelog's seven hardened-clay
-/// colors ("normal, orange, red, yellow, white, light gray and brown") as
-/// ~3-block depth bands with hash-jittered boundaries so bands read as
-/// layered rock, not flat stripes.
-fn badlands_band(seed: u64, x: i32, y: i32, z: i32) -> u8 {
-    const BANDS: [u8; 7] = [
-        TERRACOTTA,
-        STAINED_TERRACOTTA_ORANGE,
-        STAINED_TERRACOTTA_RED,
-        STAINED_TERRACOTTA_YELLOW,
-        STAINED_TERRACOTTA_WHITE,
-        STAINED_TERRACOTTA_LIGHT_GRAY,
-        STAINED_TERRACOTTA_BROWN,
-    ];
-    let jitter = (Rng::hash3(seed ^ 0xBA0D, x >> 2, 0, z >> 2) % 3) as i32;
-    let band = ((y + jitter).div_euclid(3) as usize) % BANDS.len();
-    BANDS[band]
-}
+// [merge] our 1.7.2 badlands_band fn removed — the E-series
+// badlands_band_color + stained_terracotta(color) banding replaced it
 
 /// mineshaft generation chance per chunk — VERIFIED (wiki Mineshaft
 /// page, live): "a 0.4% chance to attempt to begin generating in every
@@ -432,6 +424,13 @@ pub struct TerrainGen {
     pub seed: u64,
     /// §28: which dimension this generator produces
     pub dim: Dimension,
+    /// Phase E3 (1.5–1.6 bracket): Superflat world type (VERIFIED live
+    /// 2026-09-06, minecraft.wiki/w/Superflat: classic preset = "one
+    /// layer of grass blocks and two layers of dirt, followed by
+    /// bedrock", plains biome; JE also generates villages/strongholds —
+    /// the engine's flat mode generates NO structures, disclosed
+    /// adaptation).
+    pub flat: bool,
     n_cont: Noise,
     n_mfac: Noise,
     n_ridge: Noise,
@@ -446,6 +445,11 @@ pub struct TerrainGen {
     n_neth2: Noise,
     /// §28 nether: wall density variation so caverns aren't uniform
     n_neth3: Noise,
+    /// Phase E1: the rare mushroom-island field (~0.15% of the overworld
+    /// — VERIFIED w/Mushroom_Fields). A dedicated low-frequency noise;
+    /// where it clears the threshold, the column becomes a
+    /// mushroom-fields island regardless of the climate result.
+    n_mush: Noise,
 }
 
 impl TerrainGen {
@@ -461,6 +465,7 @@ impl TerrainGen {
         TerrainGen {
             seed,
             dim,
+            flat: false,
             n_cont: Noise::new(seed ^ 0x1000),
             n_mfac: Noise::new(seed ^ 0x2000),
             n_ridge: Noise::new(seed ^ 0x3000),
@@ -473,7 +478,17 @@ impl TerrainGen {
             n_neth1: Noise::new(seed ^ 0xA100),
             n_neth2: Noise::new(seed ^ 0xA200),
             n_neth3: Noise::new(seed ^ 0xA300),
+            n_mush: Noise::new(seed ^ 0xA400),
         }
+    }
+
+    /// Phase E3: classic-superflat generator (bedrock + 2 dirt + grass,
+    /// plains biome, no structures — the engine adaptation of the
+    /// VERIFIED classic preset; see the `flat` field docs).
+    pub fn for_dimension_flat(seed: u64, dim: Dimension) -> Self {
+        let mut g = Self::for_dimension(seed, dim);
+        g.flat = true;
+        g
     }
 
     pub fn column(&self, x: i32, z: i32) -> ColumnInfo {
@@ -501,6 +516,25 @@ impl TerrainGen {
         let h = (base + ridge * 52.0 * mfac + detail)
             .clamp(8.0, 170.0)
             .floor() as i32;
+
+        // Phase E1: the mushroom-island override (VERIFIED w/Mushroom_Fields:
+        // ~0.15% of the overworld, islands in the ocean, mycelium surface).
+        // A dedicated low-frequency field; where it clears the threshold the
+        // column becomes a gentle island above sea level regardless of the
+        // climate pick below. Threshold tuned so the field covers roughly
+        // the verified fraction (a > 0.63 window of a ±1 noise ≈ 0.15%).
+        let mush = self.n_mush.noise2(xf / 400.0, zf / 400.0);
+        if self.dim == Dimension::Overworld && mush > 0.63 {
+            let h = (vc_chunk::SEA_LEVEL as f32 + 1.0 + (mush - 0.63) * 30.0)
+                .floor()
+                .min(vc_chunk::SEA_LEVEL as f32 + 6.0) as i32;
+            return ColumnInfo {
+                height: h,
+                biome: Biome::MushroomFields,
+                top: MYCELIUM,
+                filler: DIRT,
+            };
+        }
 
         let temp = fbm2(
             &self.n_temp,
@@ -661,7 +695,7 @@ impl TerrainGen {
 
     /// Deterministic ore / stone-variant picker for deep stone. Called for
     /// every STONE block — pure hash, no noise evaluation (fast).
-    fn stone_variant(&self, x: i32, y: i32, z: i32) -> u8 {
+    fn stone_variant(&self, x: i32, y: i32, z: i32) -> u16 {
         // stone-family blobs (granite/diorite/andesite) — hash-based patches
         let v = Rng::hash3(self.seed ^ 0xA000, x >> 3, y >> 3, z >> 3);
         let patch = (v % 100) as u32;
@@ -705,11 +739,12 @@ impl TerrainGen {
         &self,
         cx: i32,
         cz: i32,
-        inbound: Vec<(u16, u8)>, // (block idx, id) edits queued from neighbors
-    ) -> (Arc<Chunk>, Vec<(i32, i32, i32, u8)>) {
+        inbound: Vec<(u16, u16)>, // (block idx, id) edits queued from neighbors
+    ) -> (Arc<Chunk>, Vec<(i32, i32, i32, u16)>) {
         match self.dim {
             Dimension::Overworld => self.generate_overworld_chunk(cx, cz, inbound),
             Dimension::Nether => self.generate_nether_chunk(cx, cz, inbound),
+            Dimension::End => self.generate_end_chunk(cx, cz, inbound),
         }
     }
 
@@ -719,12 +754,34 @@ impl TerrainGen {
         &self,
         cx: i32,
         cz: i32,
-        inbound: Vec<(u16, u8)>, // (block idx, id) edits queued from neighbors
-    ) -> (Arc<Chunk>, Vec<(i32, i32, i32, u8)>) {
+        inbound: Vec<(u16, u16)>, // (block idx, id) edits queued from neighbors
+    ) -> (Arc<Chunk>, Vec<(i32, i32, i32, u16)>) {
         let mut chunk = Chunk::empty();
         let mut rng = Rng::new(Rng::hash3(self.seed, cx, 0, cz));
         let sea = vc_chunk::SEA_LEVEL;
-        let mut outbound: Vec<(i32, i32, i32, u8)> = Vec::new();
+        let mut outbound: Vec<(i32, i32, i32, u16)> = Vec::new();
+
+        // ---- Phase E3: superflat short-circuit (the VERIFIED classic
+        // preset: bedrock, 2 dirt, grass; plains biome; no structures,
+        // no caves, no ocean fill — the surface sits at y=3) ----
+        if self.flat {
+            for z in 0..16usize {
+                for x in 0..16usize {
+                    let col_idx = z * 16 + x;
+                    chunk.height[col_idx] = 3;
+                    chunk.biome[col_idx] = Biome::Plains as u8;
+                    for y in 0..=3usize {
+                        let b = match y {
+                            0 => BEDROCK,
+                            1 | 2 => DIRT,
+                            _ => GRASS,
+                        };
+                        chunk.set(x, y, z, b);
+                    }
+                }
+            }
+            return (Arc::new(chunk), outbound);
+        }
 
         // Phase 10: ravines covering this chunk (computed once — the
         // 11×11-chunk neighborhood covers the max 127-block diagonal so
@@ -752,23 +809,48 @@ impl TerrainGen {
                 let top_y = h.max(sea).min(255) as usize;
                 for y in 0..=top_y {
                     let yi = y as i32;
-                    let b: u8 = if y == 0 {
+                    let b: u16 = if y == 0 {
                         BEDROCK
                     } else if y <= 2 && rng.next_f32() < 0.35 {
                         BEDROCK
                     } else if yi > h {
                         WATER
                     } else if yi == h {
+                        // [merge 1.7.2] the badlands FLOOR is red sand
+                        // (1.7.2, VERIFIED wiki: "floor similar to a
+                        // desert, but made of red sand") — the E3-era
+                        // surface override is retired: stained terracotta
+                        // bands live in the STRATA below the 1.8
+                        // red-sandstone filler, not on the surface
                         col.top
                     } else if yi > h - 4 {
+                        // 1.8: red sandstone directly under the badlands
+                        // red-sand floor (VERIFIED w/Red_Sandstone:
+                        // generates beneath red sand); other biomes keep
+                        // their filler
                         col.filler
                     } else if col.biome == Biome::Badlands && yi > h - 16 {
-                        // 1.7.2: mesa sedimentary banding — the changelog's
-                        // "multiple colored hardened clay that are layered in
-                        // a way that resembles sedimentary rock", the seven
-                        // colors (normal, orange, red, yellow, white, light
-                        // gray, brown) as depth bands with jittered edges
-                        badlands_band(self.seed, wx, yi, wz)
+                        // Phase E3 (VERIFIED w/Terracotta + w/Badlands:
+                        // "found abundantly in badlands biomes" as banded
+                        // colored layers): the strata band through the 16
+                        // stained-terracotta colors by absolute y with a
+                        // per-seed offset (vanilla's exact seed-shifted
+                        // layer table is not published — deterministic
+                        // clean-room banding, disclosed adaptation)
+                        // the deeper banded strata (vanilla badlands
+                        // terracotta runs deep; 16 blocks below the
+                        // surface — clean-room depth, disclosed)
+                        stained_terracotta(badlands_band_color(self.seed, yi))
+                    } else if col.biome == Biome::Mountains
+                        && (4..=31).contains(&yi)
+                        && emerald_ore(self.seed, wx, yi, wz)
+                    {
+                        // Phase E2 (VERIFIED w/Emerald_Ore): emerald ore
+                        // generates ONLY in mountains-family biomes, as
+                        // single blocks (12w22a "blob size reduced to 1"),
+                        // y 4..=31, can be exposed to the sky. The engine's
+                        // hash-ore convention lands ~a few per chunk.
+                        EMERALD_ORE
                     } else {
                         self.stone_variant(wx, yi, wz)
                     };
@@ -817,11 +899,11 @@ impl TerrainGen {
         let ox = cx * 16;
         let oz = cz * 16;
         let mut set_dec = |chunk: &mut Chunk,
-                           outbound: &mut Vec<(i32, i32, i32, u8)>,
+                           outbound: &mut Vec<(i32, i32, i32, u16)>,
                            wx: i32,
                            wy: i32,
                            wz: i32,
-                           id: u8,
+                           id: u16,
                            replace_leaves: bool| {
             if wy < 0 || wy > 255 {
                 return;
@@ -1192,7 +1274,7 @@ impl TerrainGen {
                             6 => AZURE_BLUET,
                             _ => BLUE_ORCHID,
                         };
-                        (small, 0u8)
+                        (small, 0u16)
                     } else if r < 0.62 {
                         (PEONY, PEONY_TOP)
                     } else if r < 0.74 {
@@ -1200,29 +1282,29 @@ impl TerrainGen {
                     } else if r < 0.84 {
                         (LILAC, LILAC_TOP)
                     } else if r < 0.92 {
-                        (FLOWER_RED, 0u8)
+                        (FLOWER_RED, 0u16)
                     } else {
-                        (FLOWER_YELLOW, 0u8)
+                        (FLOWER_YELLOW, 0u16)
                     }
                 }
                 Biome::SunflowerPlains => {
                     if r < 0.45 {
                         (SUNFLOWER, SUNFLOWER_TOP)
                     } else if r < 0.85 {
-                        (TALL_GRASS, 0u8)
+                        (TALL_GRASS, 0u16)
                     } else if r < 0.93 {
-                        (FLOWER_RED, 0u8)
+                        (FLOWER_RED, 0u16)
                     } else {
-                        (OXEYE_DAISY, 0u8)
+                        (OXEYE_DAISY, 0u16)
                     }
                 }
                 _ => {
                     if r < 0.72 {
-                        (TALL_GRASS, 0u8)
+                        (TALL_GRASS, 0u16)
                     } else if r < 0.86 {
-                        (FLOWER_RED, 0u8)
+                        (FLOWER_RED, 0u16)
                     } else {
-                        (FLOWER_YELLOW, 0u8)
+                        (FLOWER_YELLOW, 0u16)
                     }
                 }
             };
@@ -1375,6 +1457,124 @@ impl TerrainGen {
                 id,
                 false,
             );
+        }
+
+        // Phase E1: HUGE mushrooms in Mushroom Fields (VERIFIED
+        // w/Mushroom_Fields: "generate abundantly"; w/Huge_mushroom: the
+        // red dome = five 3×3 slabs of cap blocks around the stalk, the
+        // brown cap = a flat slab; stems 4..6 tall; growth needs ≥5 clear
+        // blocks which an island surface provides)
+        {
+            let has_mush = chunk
+                .biome
+                .iter()
+                .any(|&b| Biome::from_u8(b) == Biome::MushroomFields);
+            if has_mush {
+                let count = 4 + rng.next_range(4) as i32; // 4..7 attempts
+                for _ in 0..count {
+                    let lx = 2 + rng.next_range(12) as i32;
+                    let lz = 2 + rng.next_range(12) as i32;
+                    let col_idx = lz as usize * 16 + lx as usize;
+                    if Biome::from_u8(chunk.biome[col_idx]) != Biome::MushroomFields {
+                        continue; // per-column gate
+                    }
+                    let h = chunk.height[col_idx] as i32;
+                    // fold: MYCELIUM stores its dedicated state (254)
+                    let top = chunk.get(lx as usize, h as usize, lz as usize);
+                    if top != MYCELIUM && top != GRASS {
+                        continue;
+                    }
+                    if chunk.get(lx as usize, (h + 1) as usize, lz as usize) != AIR {
+                        continue;
+                    }
+                    let red = rng.next_f32() < 0.5;
+                    let stem = 4 + rng.next_range(3) as i32; // 4..6
+                    let y0 = h + 1;
+                    // stalk
+                    for dy in 0..stem {
+                        set_dec(
+                            &mut chunk,
+                            &mut outbound,
+                            ox + lx,
+                            y0 + dy,
+                            oz + lz,
+                            MUSHROOM_STEM,
+                            false,
+                        );
+                    }
+                    let cap_y = y0 + stem;
+                    let cap_block = if red {
+                        MUSHROOM_RED_BLOCK
+                    } else {
+                        MUSHROOM_BROWN_BLOCK
+                    };
+                    if red {
+                        // dome: the 3×3 cap slab on top + four side slabs
+                        // (VERIFIED w/Huge_mushroom: "five 3×3 slabs ...
+                        // arranged above and around the stalk, forming a
+                        // dome")
+                        set_dec(
+                            &mut chunk, &mut outbound, ox + lx, cap_y, oz + lz, cap_block, false,
+                        );
+                        for dx in -1..=1 {
+                            for dz in -1..=1 {
+                                if dx == 0 && dz == 0 {
+                                    continue;
+                                }
+                                set_dec(
+                                    &mut chunk, &mut outbound,
+                                    ox + lx + dx, cap_y, oz + lz + dz, cap_block, false,
+                                );
+                                set_dec(
+                                    &mut chunk, &mut outbound,
+                                    ox + lx + dx, cap_y - 1, oz + lz + dz, cap_block, false,
+                                );
+                                // side slabs hang one lower, edges only
+                                if dx.abs() == 1 || dz.abs() == 1 {
+                                    set_dec(
+                                        &mut chunk, &mut outbound,
+                                        ox + lx + dx, cap_y - 2, oz + lz + dz, cap_block, false,
+                                    );
+                                }
+                            }
+                        }
+                    } else {
+                        // brown: one flat 5×5 slab cap (VERIFIED: flat)
+                        for dx in -2..=2 {
+                            for dz in -2..=2 {
+                                set_dec(
+                                    &mut chunk, &mut outbound,
+                                    ox + lx + dx, cap_y, oz + lz + dz, cap_block, false,
+                                );
+                            }
+                        }
+                    }
+                }
+                // small mushrooms scatter on the mycelium (any light —
+                // VERIFIED w/Mycelium: mushrooms persist at any light)
+                for _ in 0..6 {
+                    let lx = rng.next_range(16) as i32;
+                    let lz = rng.next_range(16) as i32;
+                    let col_idx = lz as usize * 16 + lx as usize;
+                    if Biome::from_u8(chunk.biome[col_idx]) != Biome::MushroomFields {
+                        continue; // per-column gate
+                    }
+                    let h = chunk.height[col_idx] as i32;
+                    // fold: MYCELIUM stores its dedicated state (254)
+                    if chunk.get(lx as usize, h as usize, lz as usize) != MYCELIUM {
+                        continue;
+                    }
+                    if chunk.get(lx as usize, (h + 1) as usize, lz as usize) != AIR {
+                        continue;
+                    }
+                    let id = if rng.next_f32() < 0.5 {
+                        MUSHROOM_RED
+                    } else {
+                        MUSHROOM_BROWN
+                    };
+                    set_dec(&mut chunk, &mut outbound, ox + lx, h + 1, oz + lz, id, false);
+                }
+            }
         }
 
         // desert: dead bushes + cactus columns + clay in low sand
@@ -1766,13 +1966,13 @@ impl TerrainGen {
         &self,
         cx: i32,
         cz: i32,
-        inbound: Vec<(u16, u8)>,
-    ) -> (Arc<Chunk>, Vec<(i32, i32, i32, u8)>) {
+        inbound: Vec<(u16, u16)>,
+    ) -> (Arc<Chunk>, Vec<(i32, i32, i32, u16)>) {
         let mut chunk = Chunk::empty();
         let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x0D1D, cx, 0, cz));
         // the nether has no cross-chunk decorations (structures are
         // strictly in-chunk) → outbound stays empty
-        let outbound: Vec<(i32, i32, i32, u8)> = Vec::new();
+        let outbound: Vec<(i32, i32, i32, u16)> = Vec::new();
 
         // bedrock shell thickness (floor 1..5, ceiling 1..5, jittered)
         let floor_bed = |wx: i32, wz: i32| -> i32 {
@@ -1843,7 +2043,7 @@ impl TerrainGen {
                     if !solid {
                         continue;
                     }
-                    let b: u8 = if is_bed {
+                    let b: u16 = if is_bed {
                         BEDROCK
                     } else {
                         // quartz ore: hash-gated veins in the rock
@@ -1918,6 +2118,16 @@ impl TerrainGen {
                 y += 1;
             }
         }
+
+        // Phase E1: Nether fortresses (432×432 regions — VERIFIED). Each
+        // chunk emits every fortress whose arms reach it, so the layout is
+        // deterministic and cross-chunk stable (the village/mineshaft
+        // region-query pattern).
+        let (ox, oz) = (cx * 16, cz * 16);
+        for (fx, fz) in self.fortresses_near_chunk(cx, cz) {
+            self.emit_fortress(&mut chunk, fx, fz, ox, oz);
+        }
+
         for _ in 0..8 {
             let lx = rng.next_range(16) as i32;
             let lz = rng.next_range(16) as i32;
@@ -1979,7 +2189,7 @@ impl TerrainGen {
                                 } else {
                                     BEDROCK
                                 };
-                                if feet == AIR && head == AIR && is_solid(state_block(floor as u16))
+                                if feet == AIR && head == AIR && is_solid(floor)
                                 {
                                     return (
                                         (dx * 16 + lx as i32) as f32 + 0.5,
@@ -2093,7 +2303,7 @@ impl TerrainGen {
     /// plank floor/roof, south doorway, crafting table, furnace in the
     /// blacksmith). Force-set semantics — structures own their volume.
     fn emit_village(&self, chunk: &mut Chunk, wx: i32, wz: i32, ox: i32, oz: i32) {
-        let put = |chunk: &mut Chunk, x: i32, y: i32, z: i32, id: u8| {
+        let put = |chunk: &mut Chunk, x: i32, y: i32, z: i32, id: u16| {
             let lx = x - ox;
             let lz = z - oz;
             if lx >= 0 && lx < 16 && lz >= 0 && lz < 16 && (0..256).contains(&y) {
@@ -2248,7 +2458,7 @@ impl TerrainGen {
 
     /// emit every part of `ms` that falls inside the chunk (ox, oz)
     fn emit_mineshaft(&self, chunk: &mut Chunk, ms: &Mineshaft, ox: i32, oz: i32) {
-        let put = |chunk: &mut Chunk, wx: i32, wy: i32, wz: i32, id: u8| {
+        let put = |chunk: &mut Chunk, wx: i32, wy: i32, wz: i32, id: u16| {
             let lxi = wx - ox;
             let lzi = wz - oz;
             if (0..16).contains(&lxi) && (0..16).contains(&lzi) && (0..256).contains(&wy) {
@@ -2422,7 +2632,7 @@ impl TerrainGen {
 
     fn emit_pyramid(&self, chunk: &mut Chunk, wx: i32, wz: i32, ox: i32, oz: i32) {
         let base = self.column(wx, wz).height as i32; // ground level
-        let put = |chunk: &mut Chunk, x: i32, y: i32, z: i32, id: u8| {
+        let put = |chunk: &mut Chunk, x: i32, y: i32, z: i32, id: u16| {
             let lxi = x - ox;
             let lzi = z - oz;
             if (0..16).contains(&lxi) && (0..16).contains(&lzi) && (0..256).contains(&y) {
@@ -2543,7 +2753,7 @@ impl TerrainGen {
 
     fn emit_jungle_temple(&self, chunk: &mut Chunk, wx: i32, wz: i32, ox: i32, oz: i32) {
         let base = self.column(wx, wz).height as i32;
-        let put = |chunk: &mut Chunk, x: i32, y: i32, z: i32, id: u8| {
+        let put = |chunk: &mut Chunk, x: i32, y: i32, z: i32, id: u16| {
             let lxi = x - ox;
             let lzi = z - oz;
             if (0..16).contains(&lxi) && (0..16).contains(&lzi) && (0..256).contains(&y) {
@@ -2552,7 +2762,7 @@ impl TerrainGen {
         };
         // 11×11 footprint, 3 floors of 4 high (our compact layout);
         // cobble/mossy mix on the shell (VERIFIED materials)
-        let mix = |rng: &mut Rng| -> u8 {
+        let mix = |rng: &mut Rng| -> u16 {
             if rng.next_f32() < 0.5 {
                 COBBLE
             } else {
@@ -2641,7 +2851,7 @@ impl TerrainGen {
     }
 
     fn emit_stronghold(&self, chunk: &mut Chunk, wx: i32, wz: i32, ox: i32, oz: i32) {
-        let put = |chunk: &mut Chunk, x: i32, y: i32, z: i32, id: u8| {
+        let put = |chunk: &mut Chunk, x: i32, y: i32, z: i32, id: u16| {
             let lxi = x - ox;
             let lzi = z - oz;
             if (0..16).contains(&lxi) && (0..16).contains(&lzi) && (0..256).contains(&y) {
@@ -2819,6 +3029,339 @@ impl TerrainGen {
         best
     }
 
+    // =================================================================
+    // Phase E1 (evolution 1.0–1.2 bracket): The End + Nether Fortress.
+    // All structural facts live-verified 2026-09-06 (the audit trail:
+    // docs/research/phase1-1.0-1.2-research.md).
+    // =================================================================
+
+    /// The End (VERIFIED w/The_End): a void dimension — one end-stone
+    /// central island around (0,0); 10 obsidian pillars on a 42-block
+    /// radius circle around the exit portal, descending to y=0, each
+    /// capped with a bedrock block (the crystal sits above it, entity
+    /// side); the exit-portal bedrock fountain at the center; the 5×5
+    /// obsidian arrival platform at (100, 64, 0) [documented
+    /// approximation: the wiki fixes the arrival X/Z at 100/0; our
+    /// platform Y rides the island band]. Pillar heights: vanilla uses a
+    /// fixed 10-entry table we did not capture this round — ours is a
+    /// deterministic 78..103 spread [placeholder, disclosed in worklog].
+    fn generate_end_chunk(
+        &self,
+        cx: i32,
+        cz: i32,
+        _inbound: Vec<(u16, u16)>,
+    ) -> (Arc<Chunk>, Vec<(i32, i32, i32, u16)>) {
+        let mut chunk = Chunk::empty();
+        let outbound: Vec<(i32, i32, i32, u16)> = Vec::new();
+        let ox = cx * 16;
+        let oz = cz * 16;
+
+        // ---- central island: end stone, radius ~60, surface band 60..64 ----
+        for z in 0..16i32 {
+            for x in 0..16i32 {
+                let wx = ox + x;
+                let wz = oz + z;
+                let col_idx = (z * 16 + x) as usize;
+                let dist = ((wx * wx + wz * wz) as f32).sqrt();
+                // gentle island surface: 62-64 center, tapering to the rim
+                if dist < 60.0 {
+                    let surface = 63 - (dist / 30.0).floor() as i32 + (Rng::hash3(
+                        self.seed ^ 0xE1D5, wx, 0, wz,
+                    ) % 2) as i32;
+                    let surface = surface.clamp(58, 64);
+                    // island thickness tapers to the rim (vanilla look)
+                    let thick = ((60.0 - dist) / 12.0).ceil() as i32;
+                    let bottom = (surface - thick).max(40);
+                    chunk.height[col_idx] = surface as u8;
+                    for y in bottom..=surface {
+                        chunk.set(x as usize, y as usize, z as usize, END_STONE);
+                    }
+                }
+                chunk.biome[col_idx] = 9; // the_end (Bedrock single-biome id)
+            }
+        }
+
+        // ---- the 10 obsidian pillars (VERIFIED: 42-radius circle, down to
+        // y=0, bedrock cap + a crystal entity above, 2 of them caged) ----
+        let put = |chunk: &mut Chunk, x: i32, y: i32, z: i32, id: u16| {
+            let lxi = x - ox;
+            let lzi = z - oz;
+            if (0..16).contains(&lxi) && (0..16).contains(&lzi) && (0..256).contains(&y) {
+                chunk.set(lxi as usize, y as usize, lzi as usize, id);
+            }
+        };
+        // the 10 crystal-bearing pillars, evenly spaced on the 42-radius
+        // circle (VERIFIED count/radius; even angular spacing)
+        let mut angles = [(0.0f32, 0.0f32); 10];
+        for (i, a) in angles.iter_mut().enumerate() {
+            let th = i as f32 * std::f32::consts::TAU / 10.0;
+            *a = (th.cos(), th.sin());
+        }
+        for (i, ang) in angles.iter().enumerate() {
+            let px = (ang.0 * 42.0).round() as i32;
+            let pz = (ang.1 * 42.0).round() as i32;
+            // deterministic height spread 78..=103 [placeholder for
+            // vanilla's fixed table — disclosed]
+            let top = 78 + ((Rng::hash3(self.seed, i as i32, 0x11, 0xE1D) % 26) as i32);
+            let radius = 3;
+            for dx in -radius..=radius {
+                for dz in -radius..=radius {
+                    if dx * dx + dz * dz > radius * radius + 1 {
+                        continue;
+                    }
+                    let x = px + dx;
+                    let z = pz + dz;
+                    // VERIFIED: the pillars "penetrate through the main
+                    // island down to y level 0" — every column descends
+                    // the full height, island or not
+                    for y in 0..=top {
+                        put(&mut chunk, x, y, z, OBSIDIAN);
+                    }
+                    put(&mut chunk, x, top, z, BEDROCK);
+                }
+            }
+            // 2 pillars carry iron-bar cages (VERIFIED: "two of which are
+            // protected in cages of iron bars" — w/The_End). No iron-bars
+            // block in the engine: OBSIDIAN corner posts stand in
+            // [documented adaptation; the crystal stays reachable from
+            // above like vanilla's open-top cages]
+            if i == 2 || i == 7 {
+                for dx in -2..=2i32 {
+                    for dz in -2..=2i32 {
+                        let edge = dx.abs() == 2 || dz.abs() == 2;
+                        if edge && dx.abs() == 2 && dz.abs() == 2 {
+                            for y in (top + 1)..=(top + 3) {
+                                put(&mut chunk, px + dx, y, pz + dz, OBSIDIAN);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ---- the exit-portal bedrock fountain at (0, y, 0) (VERIFIED
+        // w/The_End: activates on the dragon's defeat — the 3×3 center
+        // fills with END_PORTAL blocks then, game-side). Sits ON the
+        // island surface (the island center tops at ~y 63).
+        {
+            // base slab (5×5) at 61, ring at 62, the inner 3×3 stays open
+            // for the victory portal; the egg pedestal rises at (0, 63, 0)
+            for dx in -2..=2i32 {
+                for dz in -2..=2i32 {
+                    put(&mut chunk, dx, 61, dz, BEDROCK);
+                    let ring = dx.abs() == 2 || dz.abs() == 2;
+                    if ring {
+                        put(&mut chunk, dx, 62, dz, BEDROCK);
+                    }
+                }
+            }
+            put(&mut chunk, 0, 63, 0, BEDROCK); // the egg pedestal (egg at 64)
+            // carve the inner 3×3 at y 62 — the victory portal fills it
+            for dx in -1..=1i32 {
+                for dz in -1..=1i32 {
+                    put(&mut chunk, dx, 62, dz, AIR);
+                }
+            }
+        }
+
+        // ---- the 5×5 obsidian arrival platform at (100, 64, 0) (VERIFIED
+        // w/The_End: "a 5 by 5 square of obsidian that is generated once a\n        // player or entity enters the End" — we emit it with the world so\n        // the first arrival already stands on it) ----
+        {
+            for dx in -2..=2i32 {
+                for dz in -2..=2i32 {
+                    put(&mut chunk, 100 + dx, 63, dz, OBSIDIAN);
+                    // clear the platform's air
+                    for y in 64..=66 {
+                        put(&mut chunk, 100 + dx, y, dz, AIR);
+                    }
+                }
+            }
+        }
+
+        (Arc::new(chunk), outbound)
+    }
+
+    /// The End arrival position (the platform's center top).
+    pub fn end_arrival(&self) -> (f32, f32, f32) {
+        (100.5, 64.0, 0.5)
+    }
+
+    /// The 10 pillar tops as (x, top_y, z) — the crystal spawn points
+    /// (game layer's dragon fight). Mirrors generate_end_chunk's pillar
+    /// math exactly (same angle table + height roll).
+    pub fn end_pillar_tops(&self) -> Vec<(i32, i32, i32)> {
+        let mut out = Vec::with_capacity(10);
+        for i in 0..10usize {
+            let th = i as f32 * std::f32::consts::TAU / 10.0;
+            let px = (th.cos() * 42.0).round() as i32;
+            let pz = (th.sin() * 42.0).round() as i32;
+            let top = 78 + ((Rng::hash3(self.seed, i as i32, 0x11, 0xE1D) % 26) as i32);
+            out.push((px, top, pz));
+        }
+        out
+    }
+
+    /// Phase E1: does this 432×432 nether region (VERIFIED region size,
+    /// w/Nether_Fortress "regions are 432×432 blocks in Java Edition")
+    /// carry a fortress? Deterministic per-region roll [placeholder: the
+    /// vanilla per-region probability was not captured this round — 50%
+    /// chosen so fortresses are findable; disclosed in the worklog].
+    pub fn fortress_in_region(&self, rx: i32, rz: i32) -> Option<(i32, i32)> {
+        let roll = Rng::hash3(self.seed ^ 0xF0E7, rx, 0x1E5, rz) % 100;
+        if roll < 50 {
+            // center + deterministic jitter inside the region
+            let jx = (Rng::hash3(self.seed ^ 0xF0E8, rx, 1, rz) % 144) as i32;
+            let jz = (Rng::hash3(self.seed ^ 0xF0E9, rx, 2, rz) % 144) as i32;
+            Some((rx * 432 + 144 + jx, rz * 432 + 144 + jz))
+        } else {
+            None
+        }
+    }
+
+    /// All fortress centers whose bounding box (arm half-length 60) might
+    /// reach the given chunk.
+    pub fn fortresses_near_chunk(&self, cx: i32, cz: i32) -> Vec<(i32, i32)> {
+        let ox = cx * 16;
+        let oz = cz * 16;
+        let mut out = Vec::new();
+        let reach = 60 + 16;
+        let r0x = floor_div(ox - reach, 432);
+        let r1x = floor_div(ox + reach, 432);
+        let r0z = floor_div(oz - reach, 432);
+        let r1z = floor_div(oz + reach, 432);
+        for rx in r0x..=r1x {
+            for rz in r0z..=r1z {
+                if let Some(c) = self.fortress_in_region(rx, rz) {
+                    out.push(c);
+                }
+            }
+        }
+        out
+    }
+
+    /// Fortress layout (all VERIFIED w/Nether_Fortress unless noted):
+    /// bridges + enclosed corridors of nether bricks on pillars "that
+    /// tower high above the lava seas"; up to 2 blaze spawner platforms
+    /// (each surrounded by nether-brick fences + a 3-block staircase —
+    /// w/Blaze); nether-wart garden by a stairwell (20 plants in soul
+    /// sand — w/Nether_Wart). We emit a symmetric cross: an E-W bridge
+    /// spine, a N-S corridor, 2 blaze platforms, 1 wart garden. [layout
+    /// geometry is our procedural approximation of the vanilla piece
+    /// system — the verified facts are the material, the blaze platforms,
+    /// and the wart garden]
+    fn emit_fortress(&self, chunk: &mut Chunk, wx: i32, wz: i32, ox: i32, oz: i32) {
+        let put = |chunk: &mut Chunk, x: i32, y: i32, z: i32, id: u16| {
+            let lxi = x - ox;
+            let lzi = z - oz;
+            if (0..16).contains(&lxi) && (0..16).contains(&lzi) && (0..256).contains(&y) {
+                chunk.set(lxi as usize, y as usize, lzi as usize, id);
+            }
+        };
+        let deck = 70i32; // bridge deck height (above the cavern floor)
+        let arm = 60i32; // half-length of each arm
+
+        // ---- the E-W bridge spine (5 wide, railings, pillars) ----
+        for dx in -arm..=arm {
+            for dz in -2..=2i32 {
+                let x = wx + dx;
+                let z = wz + dz;
+                put(chunk, x, deck, z, NETHER_BRICKS);
+                // railing rows (vanilla bridges have side rails)
+                if dz.abs() == 2 {
+                    put(chunk, x, deck + 1, z, NETHER_BRICKS);
+                }
+                // support pillars every 8 blocks down to y=8
+                if dx % 8 == 0 && dz == 0 {
+                    for y in 8..deck {
+                        put(chunk, x, y, z, NETHER_BRICKS);
+                    }
+                }
+            }
+        }
+
+        // ---- the N-S enclosed corridor (3 wide, walls + roof) ----
+        for dz in -arm..=arm {
+            for dx in -1..=1i32 {
+                let x = wx + dx;
+                let z = wz + dz;
+                put(chunk, x, deck, z, NETHER_BRICKS);
+                if dx.abs() == 1 {
+                    // side walls with window gaps
+                    if dz % 4 != 2 {
+                        put(chunk, x, deck + 1, z, NETHER_BRICKS);
+                        put(chunk, x, deck + 2, z, NETHER_BRICKS);
+                    }
+                }
+                put(chunk, x, deck + 3, z, NETHER_BRICKS); // roof
+                // pillars
+                if dz % 8 == 0 && dx == 0 {
+                    for y in 8..deck {
+                        put(chunk, x, y, z, NETHER_BRICKS);
+                    }
+                }
+            }
+        }
+
+        // ---- spawner platforms ×2 (VERIFIED w/Blaze: "up to two blaze
+        // spawner platforms…"; Phase E2: the second platform hosts a
+        // WITHER-SKELETON spawner — VERIFIED w/Wither_Skeleton "spawn in
+        // Nether fortresses" — no fence block in the engine; railing
+        // posts stand in [adaptation]) ----
+        for (pi, (sx, sz)) in [(0, (wx + 24, wz + 10)), (1, (wx - 24, wz - 10))].into_iter() {
+            for dx in -3..=3i32 {
+                for dz in -3..=3i32 {
+                    put(chunk, sx + dx, deck, sz + dz, NETHER_BRICKS);
+                    // railing ring
+                    if dx.abs() == 3 || dz.abs() == 3 {
+                        put(chunk, sx + dx, deck + 1, sz + dz, NETHER_BRICKS);
+                    }
+                }
+            }
+            // the spawner itself (SPAWNER_BLAZE state 241 / the second
+            // platform's wither-skeleton spawner state 315)
+            let lxi = sx - ox;
+            let lzi = sz - oz;
+            if (0..16).contains(&lxi) && (0..16).contains(&lzi) {
+                let st = if pi == 0 { SPAWNER_BLAZE } else { SPAWNER_WITHER_SKELETON };
+                chunk.set_state(lxi as usize, deck as usize + 1, lzi as usize, st);
+            }
+            // 3-block staircase down (VERIFIED)
+            for step in 0..3i32 {
+                for dz in -1..=1i32 {
+                    put(chunk, sx + 4, deck - 1 - step, sz + dz, NETHER_BRICKS);
+                }
+            }
+        }
+
+        // ---- the nether-wart garden (VERIFIED w/Nether_Wart: soul sand
+        // gardens near stairwells; ~20 plants; growth needs only soul
+        // sand) ----
+        {
+            let gx = wx + 10;
+            let gz = wz - 14;
+            let mut planted = 0;
+            for dx in 0..6i32 {
+                for dz in 0..6i32 {
+                    put(chunk, gx + dx, deck, gz + dz, SOUL_SAND);
+                    // plant ~20 warts in a scatter (age 0 state)
+                    if planted < 20 && dx % 2 == 0 && dz % 2 == 0 {
+                        let lxi = gx + dx - ox;
+                        let lzi = gz + dz - oz;
+                        if (0..16).contains(&lxi) && (0..16).contains(&lzi) {
+                            chunk.set_state(
+                                lxi as usize,
+                                deck as usize + 1,
+                                lzi as usize,
+                                WART_STATE_BASE,
+                            );
+                            planted += 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     /// Find a comfortable spawn point (land, moderate altitude) near origin.
     pub fn find_spawn(&self) -> (f32, f32, f32) {
         // green, welcoming biomes score higher for the spawn
@@ -2889,6 +3432,36 @@ fn CHUNK_X_CHUNK() -> usize {
 #[inline]
 fn CHUNK_Z_CHUNK() -> usize {
     16
+}
+
+/// Phase E3: the badlands stained-terracotta band color for an absolute
+/// y level. Vanilla generates seed-shifted colored-terracotta layers in
+/// badlands ("found abundantly in badlands biomes" — VERIFIED w/
+/// Terracotta; w/Badlands) but the exact per-seed layer table is not
+/// published; this deterministic banding (a fixed color sequence by
+/// (y + seed offset)) is the disclosed clean-room adaptation. The
+/// sequence mixes the warm desert-family colors the vanilla badlands
+/// actually shows (orange/yellow/red/brown/white + plain terracotta
+/// returns).
+fn badlands_band_color(seed: u64, y: i32) -> u8 {
+    // index into the vanilla dye-order color table (0=white, 1=orange,
+    // 4=yellow, 14=red, 12=brown ...) — 16 stains + the plain-terracotta
+    // fallback handled by the caller via `255`
+    const BANDS: [u8; 12] = [
+        1, 1, 4, 1, 12, 0, 1, 14, 1, 12, 4, 1, // orange-dominant strata
+    ];
+    let off = (seed >> 13) as i32 & 63; // per-seed vertical shift
+    let i = ((y + off).rem_euclid(BANDS.len() as i32)) as usize;
+    BANDS[i]
+}
+
+/// Phase E2: emerald-ore hash gate (mountains only; ~5 per chunk at
+/// p = 0.0008 — see the stone-fill branch comment for the vanilla
+/// feature semantics: attempts 100 times per chunk in 0-3-size blobs,
+/// single blocks since 12w22a).
+fn emerald_ore(seed: u64, x: i32, y: i32, z: i32) -> bool {
+    let o = Rng::hash3(seed ^ 0xE000, x, y, z);
+    (o % 100_000) as f32 / 100_000.0 < 0.0008
 }
 
 #[cfg(test)]
@@ -3059,10 +3632,10 @@ mod nether_tests {
     use crate::world::Dimension;
     use vc_blocks::blocks::*;
 
-    /// 1.7.2 refactor: Chunk::get FOLDS states now — identity for the ids
-    /// it returns (kept as a named helper so the historical test prose
-    /// still reads correctly)
-    fn fold(s: u8) -> u8 {
+    /// 1.7.2 refactor: Chunk::get FOLDS states to block ids itself, so the
+    /// fold helper is identity (kept for the historical test prose). u16
+    /// since the merge (block ids widened).
+    fn fold(s: u16) -> u16 {
         s
     }
 
@@ -3105,10 +3678,12 @@ mod nether_tests {
                 match fold(chunk.get_idx(i)) {
                     NETHERRACK => rack += 1,
                     NETHER_QUARTZ_ORE => quartz += 1,
-                    // 1.10 bracket: magma blobs (4/chunk, Y 27-36, wiki
-                    // /w/Magma_Block) joined the nether mass — 1.7.2
-                    // quartz-first holdover removed
-                    AIR | GLOWSTONE | SOUL_SAND | MAGMA_BLOCK => {}
+                    // Phase E1: fortress materials (nether bricks, spawners,
+                    // soul-sand wart gardens) are legitimate nether content;
+                    // 1.10: magma blobs (4/chunk, Y 27-36, wiki
+                    // /w/Magma_Block) joined the nether mass
+                    NETHER_BRICKS | SPAWNER | NETHER_WART | MAGMA_BLOCK => {}
+                    AIR | GLOWSTONE | SOUL_SAND => {}
                     _ => other += 1,
                 }
             }
@@ -3580,7 +4155,7 @@ mod phase10_tests {
         // parlor floor: the center cell is planks
         let lx = (ms.x - cx * 16) as usize;
         let lz = (ms.z - cz * 16) as usize;
-        assert_eq!(c1.get(lx, ms.y as usize, lz), PLANKS);
+        assert_eq!(state_block(c1.get(lx, ms.y as usize, lz)), PLANKS);
     }
 
     /// desert pyramid: 21×21 base, hidden pit with 4 chests, entrance,
@@ -3617,10 +4192,10 @@ mod phase10_tests {
             .sum::<usize>();
         assert_eq!(same, 0);
         let base = g.column(wx, wz).height as i32;
-        let at = |dx: i32, dy: i32, dz: i32| -> u8 {
+        let at = |dx: i32, dy: i32, dz: i32| -> u16 {
             let x = ((wx + dx) - cx * 16) as usize;
             let z = ((wz + dz) - cz * 16) as usize;
-            c1.get(x, (base + dy) as usize, z)
+            state_block(c1.get(x, (base + dy) as usize, z))
         };
         // checkerboard floor: terracotta + smooth stone alternating —
         // probe OPPOSITE parities: (0,0) is even, (1,0) is odd
@@ -3705,7 +4280,7 @@ mod phase10_tests {
         // id (Chunk::get yields the raw state; END_PORTAL_FRAME stores
         // state 235 ≠ block 102, CHEST stores 227 ≠ 96, so route through
         // state_block)
-        let get = |x: i32, y: usize, z: i32| -> u8 {
+        let get = |x: i32, y: usize, z: i32| -> u16 {
             for &(cx, cz, ref c) in &grid {
                 let lx = x - cx * 16;
                 let lz = z - cz * 16;
@@ -3768,7 +4343,7 @@ mod phase10_tests {
         let lz = (mz - (mz >> 4) * 16) as usize;
         let mut carved = 0;
         for y in 8..col_h.min(r.top) {
-            if c.get(lx, y as usize, lz) == AIR {
+            if state_block(c.get(lx, y as usize, lz)) == AIR {
                 carved += 1;
             }
         }
@@ -3864,7 +4439,7 @@ mod v172_tests {
         // every banded block is terracotta family
         for &b in distinct.iter() {
             let terracotta = b == TERRACOTTA
-                || (STAINED_TERRACOTTA_WHITE..=STAINED_TERRACOTTA_BLACK).contains(&b);
+                || (STAINED_TERRACOTTA_BASE..=STAINED_TERRACOTTA_END).contains(&b);
             assert!(terracotta, "band block {b} is terracotta family");
         }
     }
@@ -4072,5 +4647,307 @@ mod v110_tests {
             }
         }
         assert!(found >= 1, "at least one fossil in the desert/swamp scan");
+    }
+}
+
+/// Phase E1 tests (evolution 1.0–1.2 bracket) — The End, the Nether
+/// Fortress, and the Mushroom Fields.
+#[cfg(test)]
+mod e1_tests {
+    use super::*;
+
+    #[test]
+    fn end_central_island_exists() {
+        let gen = TerrainGen::for_dimension(0x5EED_1234, Dimension::End);
+        let (chunk, _) = gen.generate_chunk(0, 0, Vec::new());
+        // the island center (8,8 local = world (8,8)): end stone surface
+        let mut stone = 0;
+        for y in 40..=64usize {
+            if chunk.get(8, y, 8) == END_STONE {
+                stone += 1;
+            }
+        }
+        assert!(stone >= 4, "end stone column at the island center");
+        // the arrival platform (100, 63, 0) — chunk (6, 0), local (4, ?, 0)
+        let (pchunk, _) = gen.generate_chunk(6, 0, Vec::new());
+        assert_eq!(
+            state_block(pchunk.get(4, 63, 0) as u16),
+            OBSIDIAN,
+            "5×5 obsidian platform at (100, 63, 0) — VERIFIED arrival x/z"
+        );
+        // the exit-portal fountain: the egg pedestal at world (0, 63, 0)
+        assert_eq!(
+            chunk.get(0, 63, 0),
+            BEDROCK,
+            "egg pedestal above the fountain"
+        );
+        // the fountain's inner 3×3 at y 62 stays open for the victory portal
+        assert_eq!(chunk.get(1, 62, 1), AIR);
+        // the biome field is the_end (id 9)
+        assert_eq!(chunk.biome[8 * 16 + 8], 9);
+    }
+
+    #[test]
+    fn end_pillars_form_the_42_radius_circle() {
+        let gen = TerrainGen::for_dimension(0x5EED_1234, Dimension::End);
+        // pillar 0 sits at angle 0 → (42, 0) — chunk (2, 0), local (10, .., 0)
+        let (chunk, _) = gen.generate_chunk(2, 0, Vec::new());
+        let mut found = false;
+        for y in 70..=110usize {
+            if chunk.get(10, y, 0) == BEDROCK {
+                found = true;
+                break;
+            }
+        }
+        assert!(found, "pillar bedrock cap near (42, y, 0)");
+        // the pillar columns descend toward y=0 (VERIFIED: down to y=0)
+        let (chunk0, _) = gen.generate_chunk(2, 0, Vec::new());
+        let mut deep_obsidian = 0;
+        for y in 1..=10usize {
+            if state_block(chunk0.get(10, y, 0) as u16) == OBSIDIAN {
+                deep_obsidian += 1;
+            }
+        }
+        assert!(deep_obsidian >= 5, "pillar shaft reaches deep (y<10)");
+    }
+
+    #[test]
+    fn end_generation_is_deterministic() {
+        let a = TerrainGen::for_dimension(77, Dimension::End);
+        let b = TerrainGen::for_dimension(77, Dimension::End);
+        let (ca, _) = a.generate_chunk(1, 1, Vec::new());
+        let (cb, _) = b.generate_chunk(1, 1, Vec::new());
+        let same = (0..CHUNK_LEN)
+            .map(|i| {
+                if ca.get_idx(i) == cb.get_idx(i) {
+                    0
+                } else {
+                    1
+                }
+            })
+            .sum::<usize>();
+        assert_eq!(same, 0, "same seed → identical End chunks");
+    }
+
+    #[test]
+    fn fortresses_roll_deterministically_per_region() {
+        let gen = TerrainGen::for_dimension(0x5EED_1234, Dimension::Nether);
+        // region queries are pure functions of the seed
+        let a = gen.fortress_in_region(0, 0);
+        let b = gen.fortress_in_region(0, 0);
+        assert_eq!(a, b, "deterministic per-region roll");
+        // across a spread of regions, some carry fortresses (50% roll)
+        let with: usize = (0..20).filter(|i| gen.fortress_in_region(*i, 0).is_some()).count();
+        assert!(with >= 4 && with <= 16, "roughly half the regions, got {with}");
+        // VERIFIED region size: 432 blocks
+        let (x, z) = gen.fortress_in_region(1, 0).unwrap();
+        assert!((432..=432 + 431).contains(&x) && (0..=431).contains(&z));
+    }
+
+    #[test]
+    fn fortress_emits_nether_bricks_and_blaze_spawners() {
+        let gen = TerrainGen::for_dimension(0x5EED_1234, Dimension::Nether);
+        // find a region with a fortress, then scan the 5×5 chunk
+        // neighborhood of its center (spawners sit ±24 out, gardens ±14)
+        'outer: for rx in 0..8 {
+            for rz in 0..8 {
+                if let Some((fx, fz)) = gen.fortress_in_region(rx, rz) {
+                    let ccx = fx.div_euclid(16);
+                    let ccz = fz.div_euclid(16);
+                    let mut bricks = 0;
+                    let mut spawner = false;
+                    let mut wart = false;
+                    for dcx in -2..=2i32 {
+                        for dcz in -2..=2i32 {
+                            let (chunk, _) =
+                                gen.generate_chunk(ccx + dcx, ccz + dcz, Vec::new());
+                            for i in 0..CHUNK_LEN {
+                                match chunk.get_idx(i) {
+                                    NETHER_BRICKS => bricks += 1,
+                                    SPAWNER => spawner = true,
+                                    NETHER_WART => wart = true,
+                                    _ => {}
+                                }
+                            }
+                        }
+                    }
+                    assert!(bricks > 500, "nether-brick structure ({bricks} cells)");
+                    assert!(spawner, "a blaze spawner platform is present");
+                    assert!(wart, "the nether-wart garden is present");
+                    break 'outer;
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn mushroom_fields_generate_somewhere() {
+        // scan a big area for the rare island biome (VERIFIED ~0.15%)
+        let gen = TerrainGen::for_dimension(0x5EED_1234, Dimension::Overworld);
+        let mut found = 0;
+        for x in (-4000..4000).step_by(64) {
+            for z in (-4000..4000).step_by(64) {
+                if gen.column(x, z).biome == Biome::MushroomFields {
+                    found += 1;
+                }
+            }
+        }
+        assert!(found > 0, "mushroom fields exist across a 8000² scan");
+        // and the surface is mycelium
+        'found: for x in (-4000..4000).step_by(64) {
+            for z in (-4000..4000).step_by(64) {
+                let c = gen.column(x, z);
+                if c.biome == Biome::MushroomFields {
+                    assert_eq!(c.top, MYCELIUM, "mycelium surface (VERIFIED)");
+                    assert!(c.height > vc_chunk::SEA_LEVEL, "island above the sea");
+                    break 'found;
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn huge_mushrooms_emit_stem_and_cap_blocks() {
+        // find a mushroom-fields chunk, generate it, verify the decoration
+        let gen = TerrainGen::for_dimension(0x5EED_1234, Dimension::Overworld);
+        let mut target = None;
+        for x in (-4000..4000).step_by(16) {
+            for z in (-4000..4000).step_by(16) {
+                if gen.column(x, z).biome == Biome::MushroomFields {
+                    target = Some((x.div_euclid(16), z.div_euclid(16)));
+                    break;
+                }
+            }
+            if target.is_some() {
+                break;
+            }
+        }
+        let (cx, cz) = target.expect("a mushroom-fields chunk exists");
+        let (chunk, _) = gen.generate_chunk(cx, cz, Vec::new());
+        let mut stems = 0;
+        let mut caps = 0;
+        for i in 0..CHUNK_LEN {
+            match chunk.get_idx(i) {
+                MUSHROOM_STEM => stems += 1,
+                MUSHROOM_RED_BLOCK | MUSHROOM_BROWN_BLOCK => caps += 1,
+                _ => {}
+            }
+        }
+        // several huge mushrooms per chunk (stems ≥ 4 cells, cap shells)
+        assert!(stems >= 4, "hugemush stems ({stems})");
+        assert!(caps >= 10, "hugemush caps ({caps})");
+    }
+}
+
+#[cfg(test)]
+mod e2_tests {
+    use super::*;
+
+    /// Phase E2 (VERIFIED w/Emerald_Ore): emerald ore appears only under
+    /// Mountains columns (single blocks, y 4..31) — the check uses each
+    /// emerald cell's OWN column biome (biomes vary per column, not per
+    /// chunk).
+    #[test]
+    fn emerald_ore_generates_in_mountains_only() {
+        let gen = TerrainGen::for_dimension(1234, Dimension::Overworld);
+        let mut emerald_cells = 0usize;
+        let mut on_mountain_columns = 0usize;
+        for cx in 0..24i32 {
+            for cz in 0..24i32 {
+                let (chunk, _) = gen.generate_chunk(cx, cz, Vec::new());
+                for i in 0..vc_chunk::chunk::CHUNK_LEN {
+                    if chunk.get_idx(i) == EMERALD_ORE {
+                        emerald_cells += 1;
+                        // the cell's own column must be Mountains
+                        let x = cx * 16 + (i & 15) as i32;
+                        let z = cz * 16 + ((i >> 4) & 15) as i32;
+                        let col = gen.column(x, z);
+                        if col.biome == Biome::Mountains {
+                            on_mountain_columns += 1;
+                        }
+                    }
+                }
+            }
+        }
+        assert!(
+            emerald_cells > 0,
+            "emerald ore exists somewhere in the 24x24 region"
+        );
+        assert_eq!(
+            emerald_cells, on_mountain_columns,
+            "EVERY emerald cell sits under a Mountains column (VERIFIED)"
+        );
+    }
+
+    // ---------------- Phase E3 tests (1.5–1.6 bracket) ----------------
+
+    #[test]
+    fn phase_e3_superflat_is_the_classic_preset() {
+        // VERIFIED live 2026-09-06 (minecraft.wiki/w/Superflat): "one
+        // layer of grass blocks and two layers of dirt, followed by
+        // bedrock" — the classic preset, plains biome
+        let gen = TerrainGen::for_dimension_flat(777, Dimension::Overworld);
+        let (chunk, _) = gen.generate_chunk(0, 0, Vec::new());
+        for lz in 0..16usize {
+            for lx in 0..16usize {
+                assert_eq!(chunk.get(lx, 0, lz), BEDROCK as u16, "bedrock floor");
+                assert_eq!(chunk.get(lx, 1, lz), DIRT as u16, "dirt layer 1");
+                assert_eq!(chunk.get(lx, 2, lz), DIRT as u16, "dirt layer 2");
+                assert_eq!(chunk.get(lx, 3, lz), GRASS as u16, "grass surface");
+                assert_eq!(chunk.get(lx, 4, lz), AIR as u16, "air above");
+            }
+        }
+        // plains biome everywhere; no ocean fill above the surface
+        for i in 0..256 {
+            assert_eq!(chunk.biome[i], Biome::Plains as u8);
+        }
+        assert_eq!(chunk.height[0], 3, "surface at y=3");
+    }
+
+    #[test]
+    fn phase_e3_badlands_band_through_stained_terracotta() {
+        // VERIFIED w/Terracotta: stained terracotta "found abundantly in
+        // badlands biomes" — banded by absolute y (the clean-room
+        // deterministic banding, disclosed)
+        let gen = TerrainGen::for_dimension(4242, Dimension::Overworld);
+        // find a badlands column in a 64x64 probe window
+        let mut found = None;
+        'outer: for z in -32..32 {
+            for x in -32..32 {
+                let col = gen.column(x, z);
+                if col.biome == Biome::Badlands {
+                    found = Some((x, z, col.height));
+                    break 'outer;
+                }
+            }
+        }
+        let Some((x, z, h)) = found else {
+            panic!("no badlands column found in the probe window");
+        };
+        let (chunk, _) = gen.generate_chunk(
+            x.div_euclid(16),
+            z.div_euclid(16),
+            Vec::new(),
+        );
+        let lx = (x - x.div_euclid(16) * 16) as usize;
+        let lz = (z - z.div_euclid(16) * 16) as usize;
+        let surface = chunk.get(lx, h.clamp(0, 255) as usize, lz);
+        // [merge 1.7.2] the SURFACE is red sand (1.7.2's verified floor);
+        // the stained-terracotta banding the E3 bracket added lives in
+        // the strata below the 1.8 red-sandstone filler — check the deep
+        // window instead of the surface
+        assert_eq!(surface, RED_SAND, "badlands surface is red sand");
+        let mut bands = std::collections::HashSet::new();
+        for y in (h.saturating_sub(15))..(h.saturating_sub(4)) {
+            let b = chunk.get(lx, y as usize, lz);
+            if (STAINED_TERRACOTTA_BASE..=STAINED_TERRACOTTA_END).contains(&b) {
+                bands.insert(b);
+            }
+        }
+        assert!(
+            bands.len() >= 3,
+            "banded strata below the floor: {} distinct colors, got {bands:?}",
+            bands.len()
+        );
     }
 }

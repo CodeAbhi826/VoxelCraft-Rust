@@ -93,7 +93,7 @@ pub enum Difficulty {
 /// we have no sword items yet) are VERIFIED vanilla "Other Items": 1 HP
 /// base at attack speed 4.0.
 #[inline]
-pub fn held_attack(held_block: u8) -> (f32, f32) {
+pub fn held_attack(held_block: u16) -> (f32, f32) {
     let _ = held_block; // swords arrive with tool items; fists until then
     (1.0, 4.0) // (damage HP, attack_speed attribute)
 }
@@ -108,7 +108,7 @@ pub struct MeleeOutcome {
 }
 
 pub fn player_melee(
-    held_block: u8,
+    held_block: u16,
     cooldown_p: f32,
     falling: bool,
     sprinting: bool,

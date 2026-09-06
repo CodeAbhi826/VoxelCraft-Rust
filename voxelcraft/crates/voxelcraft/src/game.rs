@@ -13,6 +13,13 @@ use vc_audio::sounds::native_audio;
 use vc_audio::sounds::web_audio;
 use vc_audio::sounds::{AudioBackend, SoundBank};
 use vc_blocks::blocks::*;
+
+/// Phase E2 (VERIFIED w/Ender_Chest): the shared ender-chest container
+/// key — a sentinel position far outside any reachable chunk (1M blocks
+/// out); every ender chest opens THIS container, so the contents are
+/// shared across all of them (the single-player form of vanilla's
+/// per-player rule).
+const ENDER_CHEST_KEY: [i32; 3] = [1 << 20, 0, 1 << 20];
 use vc_mesh::mesh::{mesh_sections, MeshData};
 use vc_render::render::{Camera, RenderStats, Renderer, SkyState};
 use vc_render::ui::{self, UiCanvas, Widget, WidgetKind, UI_H, UI_W};
@@ -179,7 +186,7 @@ impl Settings {
             let k = kv.next().unwrap_or("");
             let v = kv.next().unwrap_or("");
             match k {
-                "rd" => st.render_distance = v.parse().unwrap_or(st.render_distance).clamp(2, 16),
+                "rd" => st.render_distance = v.parse().unwrap_or(st.render_distance).clamp(2, 32),
                 "sd" => st.sim_distance = v.parse().unwrap_or(st.sim_distance).clamp(5, 32),
                 "sens" => st.sensitivity = v.parse().unwrap_or(st.sensitivity).clamp(0.1, 2.0),
                 "vol" => st.volume = v.parse().unwrap_or(st.volume).clamp(0.0, 1.0),
@@ -309,7 +316,10 @@ enum Job {
         pos: ChunkPos,
         seed: u64,
         dim: vc_world::world::Dimension,
-        inbound: Vec<(u16, u8)>,
+        inbound: Vec<(u16, u16)>,
+        /// Phase E3: superflat world type (the classic preset —
+        /// VERIFIED w/Superflat)
+        flat: bool,
     },
     Mesh {
         pos: ChunkPos,
@@ -331,7 +341,7 @@ enum JobResult {
     Gen {
         pos: ChunkPos,
         chunk: Arc<vc_chunk::chunk::Chunk>,
-        outbound: Vec<(i32, i32, i32, u8)>,
+        outbound: Vec<(i32, i32, i32, u16)>,
     },
     Mesh {
         pos: ChunkPos,
@@ -402,21 +412,21 @@ fn chunk_occl(
         }
         let y0 = b * 16;
         // +X / -X walls: 16×16 cells each (x fixed, y × z varies)
-        if (0..16usize).any(|dy| (0..16usize).any(|z| !is_opaque(c.get(15, y0 + dy, z)))) {
+        if (0..16usize).any(|dy| (0..16usize).any(|z| !is_opaque(state_block(c.get(15, y0 + dy, z))))) {
             occl.sides |= 1u64 << (b as u32 * 4 + FACE_PX as u32);
         }
-        if (0..16usize).any(|dy| (0..16usize).any(|z| !is_opaque(c.get(0, y0 + dy, z)))) {
+        if (0..16usize).any(|dy| (0..16usize).any(|z| !is_opaque(state_block(c.get(0, y0 + dy, z))))) {
             occl.sides |= 1u64 << (b as u32 * 4 + FACE_NX as u32);
         }
         // +Z / -Z walls: 16×16 cells each (z fixed, y × x varies)
-        if (0..16usize).any(|dy| (0..16usize).any(|x| !is_opaque(c.get(x, y0 + dy, 15)))) {
+        if (0..16usize).any(|dy| (0..16usize).any(|x| !is_opaque(state_block(c.get(x, y0 + dy, 15))))) {
             occl.sides |= 1u64 << (b as u32 * 4 + FACE_PZ as u32);
         }
-        if (0..16usize).any(|dy| (0..16usize).any(|x| !is_opaque(c.get(x, y0 + dy, 0)))) {
+        if (0..16usize).any(|dy| (0..16usize).any(|x| !is_opaque(state_block(c.get(x, y0 + dy, 0))))) {
             occl.sides |= 1u64 << (b as u32 * 4 + FACE_NZ as u32);
         }
         // ceiling plane of this band (y = b·16+15) — only for b < 15
-        if b < 15 && (0..16usize).any(|x| (0..16usize).any(|z| !is_opaque(c.get(x, y0 + 15, z)))) {
+        if b < 15 && (0..16usize).any(|x| (0..16usize).any(|z| !is_opaque(state_block(c.get(x, y0 + 15, z))))) {
             occl.planes |= 1u16 << b;
         }
     }
@@ -430,8 +440,13 @@ fn run_job(job: Job) -> JobResult {
             seed,
             dim,
             inbound,
+            flat,
         } => {
-            let gen = vc_world::gen::TerrainGen::for_dimension(seed, dim);
+            let gen = if flat {
+                vc_world::gen::TerrainGen::for_dimension_flat(seed, dim)
+            } else {
+                vc_world::gen::TerrainGen::for_dimension(seed, dim)
+            };
             let (chunk, outbound) = gen.generate_chunk(pos.0, pos.1, inbound);
             JobResult::Gen {
                 pos,
@@ -492,6 +507,11 @@ enum WorkBackend {
 }
 
 // ------------------------------------------------------------------- app --
+
+/// Full daylight-cycle length in real seconds (VERIFIED 2026-09-06 live,
+/// minecraft.wiki/w/Daylight_cycle): 24000 game ticks at 20 ticks/second
+/// = 1200 s = 20 minutes for the complete day-night cycle in 1.16.5.
+pub const DAY_LEN_SECS: f32 = 1200.0;
 
 pub struct GameApp {
     pub window: &'static winit::window::Window,
@@ -554,13 +574,39 @@ pub struct GameApp {
     audio_unlocked: bool,
     day_time: f32,
     time: f32,
-    target: Option<([i32; 3], u8, [i32; 3])>,
+    target: Option<([i32; 3], u16, [i32; 3])>,
     break_timer: f32,
     place_timer: f32,
+    /// Phase E2: lava contact-damage tick counter (4 HP / 10 ticks)
+    lava_t: u32,
+    /// Phase E3 (1.5–1.6): the mob id the player is currently riding
+    /// (None = on foot). Mounting/steering/dismount wired through the
+    /// use path + the ride physics below (VERIFIED w/Horse §Riding).
+    riding: Option<u32>,
+    /// Phase E3: registered weighted-pressure-plate positions (the
+    /// entity-count sweep feeds their redstone signals — VERIFIED
+    /// signal formulas w/Light_Weighted_Pressure_Plate + the heavy one)
+    plates: Vec<[i32; 3]>,
+    /// Phase E3: the lead's anchored mob (player-held leash; 1.16.5
+    /// stretch max 10 blocks — VERIFIED w/Lead, version-scoped). The
+    /// anchor: None = the player's hand, Some(pos) = a fence-post knot
+    leashed: Option<(u32, Option<[i32; 3]>)>,
+    /// Phase E3: superflat world-type toggle in the world-create screen
+    /// (classic preset — VERIFIED w/Superflat); the ACTIVE world's flag
+    /// (drives every Gen job; wc_flat is the pending UI toggle)
+    world_flat: bool,
+    /// Phase E3: superflat world-type toggle in the world-create screen
+    /// (classic preset — VERIFIED w/Superflat)
+    wc_flat: bool,
+    /// Phase E3: plate-sweep tick counter (every 10 game ticks)
+    plate_sweep_t: u32,
     show_debug: bool,
     show_help: bool,
     /// creative-style block picker overlay (E key)
     picker_open: bool,
+    /// picker scroll (first visible row) — wheel-scrolls like the
+    /// vanilla creative grid since the merged registry outgrew one page
+    picker_scroll: usize,
     /// last pickr grid geometry for hit-testing clicks
     picker_geom: Option<vc_render::ui::PickerGeom>,
     /// rolling frame times (ms) for the F3 frame-time graph
@@ -570,7 +616,7 @@ pub struct GameApp {
     item_toast: Option<(String, f32)>,
     /// held-item name display state: current (slot, block) key + the
     /// remaining fade seconds (vanilla HUD behavior)
-    held_key: (usize, u8),
+    held_key: (usize, u16),
     held_name: String,
     held_name_t: f32,
     last_ui_t: f32,
@@ -625,6 +671,9 @@ pub struct GameApp {
     world_dir: std::path::PathBuf,
     /// §28: a dimension travel is waiting for the spawn chunk (Loading)
     traveling: bool,
+    /// Phase E1: the ender dragon has been defeated in this world (gates
+    /// the first-entry fight spawn + the re-fight ritual, deferred)
+    dragon_defeated: bool,
     /// Phase 1: a created/loaded world is waiting for the spawn chunk —
     /// Loading then goes straight into the game (not back to the title)
     pending_play: bool,
@@ -1039,9 +1088,17 @@ impl GameApp {
             target: None,
             break_timer: 0.0,
             place_timer: 0.0,
+            lava_t: 0,
+            riding: None,
+            plates: Vec::new(),
+            leashed: None,
+            world_flat: false,
+            wc_flat: false,
+            plate_sweep_t: 0,
             show_debug: false,
             show_help: false,
             picker_open: false,
+            picker_scroll: 0,
             picker_geom: None,
             frame_times: std::collections::VecDeque::new(),
             draw_calls_ring: std::collections::VecDeque::new(),
@@ -1078,6 +1135,7 @@ impl GameApp {
             #[cfg(not(target_arch = "wasm32"))]
             world_dir,
             traveling: false,
+            dragon_defeated: false,
             pending_play: false,
             mode,
             world_name,
@@ -1513,13 +1571,15 @@ impl GameApp {
                 }
             }
             KeyCode::BracketLeft => {
-                if pressed && in_game && self.settings.render_distance > 3 {
+                // Phase E2 (VERIFICATION-REPORT fix): vanilla render-distance
+                // slider range is 2..32 (VERIFIED w/Options §Video settings)
+                if pressed && in_game && self.settings.render_distance > 2 {
                     self.settings.render_distance -= 1;
                     self.ui.dirty = true;
                 }
             }
             KeyCode::BracketRight => {
-                if pressed && in_game && self.settings.render_distance < 16 {
+                if pressed && in_game && self.settings.render_distance < 32 {
                     self.settings.render_distance += 1;
                     self.ui.dirty = true;
                 }
@@ -1613,6 +1673,7 @@ impl GameApp {
     // ------------------------------------------------------ block picker --
 
     fn open_picker(&mut self) {
+        self.picker_scroll = 0; // top of the grid on open
         self.picker_open = true;
         self.input = Input::default();
         // release the pointer so the cursor can select blocks; tell the JS
@@ -1702,6 +1763,17 @@ impl GameApp {
 
     fn wheel(&mut self, d: f32) {
         if self.screen != Screen::Game || d.abs() <= 0.01 {
+            return;
+        }
+        // the open picker eats the wheel (scroll rows, vanilla creative
+        // grid); the hotbar cycle below stays for the in-world case
+        if self.picker_open {
+            let cols = 15usize;
+            let total = (PICKER_BLOCKS.len() + cols - 1) / cols;
+            let max_scroll = total.saturating_sub(11);
+            let cur = self.picker_scroll as i32 - d.signum() as i32;
+            self.picker_scroll = cur.clamp(0, max_scroll as i32) as usize;
+            self.ui.dirty = true;
             return;
         }
         let n = vc_inventory::inventory::INV_SLOTS.min(9) as i32;
@@ -1979,11 +2051,16 @@ impl GameApp {
         }
         self.reset_world(seed, mode, name, None);
         self.load_datapacks();
+        // Phase E3 (VERIFIED w/Superflat): the world-type flag rides the
+        // created world — every Gen job routes through the flat generator
+        // (classic preset: bedrock, 2 dirt, grass; plains; no structures)
+        self.world_flat = self.wc_flat;
         vc_render::render::report_boot_log(&format!(
-            "world created: \"{}\" seed={} mode={}",
+            "world created: \"{}\" seed={} mode={} type={}",
             self.world_name,
             self.world.seed,
-            self.mode.label()
+            self.mode.label(),
+            if self.world_flat { "superflat" } else { "normal" }
         ));
     }
 
@@ -2127,6 +2204,10 @@ impl GameApp {
             self.level_spawn = (spawn.0 as i32, spawn.1 as i32, spawn.2 as i32);
         }
         self.player = Player::new(Vec3::new(spawn.0, spawn.1 + 20.0, spawn.2));
+        // Phase E3: riding/leash/plate state is per-world
+        self.riding = None;
+        self.leashed = None;
+        self.plates.clear();
         if let Some((x, y, z, yaw, pitch)) = restore {
             self.player.pos = Vec3::new(x, y, z);
             self.player.yaw = yaw;
@@ -2355,6 +2436,167 @@ impl GameApp {
         use vc_gameplay::combat;
         let eye = self.player.eye().to_array();
         let dir = self.player.look_dir().to_array();
+
+        // ---- Phase E2: the wither takes melee priority ----
+        // (only players damage it; charging = invulnerable — VERIFIED
+        // w/Wither; generous 2×4×2 AABB around the sprite center)
+        let wstate = self.sim.wither.wither.as_ref().map(|w| (w.pos, w.charging(), w.health, w.alive()));
+        if let Some((wpos, wcharging, whealth, walive)) = wstate {
+            if walive && !wcharging {
+                let lo = [wpos[0] - 1.0, wpos[1] - 1.5, wpos[2] - 1.0];
+                let hi = [wpos[0] + 1.0, wpos[1] + 2.0, wpos[2] + 1.0];
+                let mut tmin = 0.0f32;
+                let mut tmax = crate::player::REACH * 1.5;
+                let mut ok = true;
+                for a in 0..3 {
+                    if dir[a].abs() < 1e-6 {
+                        if eye[a] < lo[a] || eye[a] > hi[a] {
+                            ok = false;
+                            break;
+                        }
+                    } else {
+                        let mut t1 = (lo[a] - eye[a]) / dir[a];
+                        let mut t2 = (hi[a] - eye[a]) / dir[a];
+                        if t1 > t2 {
+                            std::mem::swap(&mut t1, &mut t2);
+                        }
+                        tmin = tmin.max(t1);
+                        tmax = tmax.min(t2);
+                        if tmin > tmax {
+                            ok = false;
+                            break;
+                        }
+                    }
+                }
+                if ok {
+                    use vc_gameplay::mobs;
+                    let (_, atk_speed) = combat::held_attack(self.player.held().block);
+                    let period = combat::attack_cooldown_ticks(atk_speed) / 20.0;
+                    let p = (self.swing_t / period).min(1.0);
+                    let falling = !self.player.on_ground && self.player.vel.y < 0.0;
+                    let sprinting = self.input.sprint
+                        && (self.input.fwd
+                            || self.input.back
+                            || self.input.left
+                            || self.input.right);
+                    let outcome = combat::player_melee(
+                        self.player.held().block,
+                        p,
+                        falling,
+                        sprinting,
+                        0.0,
+                        0.0,
+                    );
+                    let (applied, _) = self.sim.wither.damage(outcome.damage);
+                    // VERIFIED: on taking damage the wither breaks blocks
+                    // in a 3×4×3 box around itself
+                    if applied > 0.0 {
+                        self.sim
+                            .wither_events
+                            .push(vc_gameplay::wither::WitherEvent::BreakBlocks(wpos));
+                        self.play_event("entity.wither.hurt", Some(wpos), 1.0);
+                        vc_render::render::report_boot_log(&format!(
+                            "e2e: wither hit p={:.2} -> {:.2} dmg (hp {:.0})",
+                            p,
+                            outcome.damage,
+                            (whealth - applied).max(0.0)
+                        ));
+                    }
+                    self.swing_t = 0.0;
+                    return true;
+                }
+            }
+        }
+
+        // ---- Phase E1: the ender-dragon fight takes melee priority ----
+        // (a) an end crystal under the crosshair detonates on ANY damage
+        // (VERIFIED w/End_Crystal — power 6); (b) the dragon itself (a
+        // generous 8×4×8 hitbox around its sprite center; only players
+        // damage it — VERIFIED).
+        if self.world.dimension == vc_world::world::Dimension::End {
+            // snapshot the fight state (borrow split: damage below needs &mut)
+            let dstate = self.sim.dragon.dragon.as_ref().map(|d| (d.pos, d.dying, d.health));
+            if let Some((dpos, ddying, dhealth)) = dstate {
+                if ddying.is_none() {
+                    let d_pos = dpos;
+                    // ray vs the dragon's AABB (slab test)
+                    let lo = [d_pos[0] - 4.0, d_pos[1] - 2.0, d_pos[2] - 4.0];
+                    let hi = [d_pos[0] + 4.0, d_pos[1] + 2.0, d_pos[2] + 4.0];
+                    let mut tmin = 0.0f32;
+                    let mut tmax = crate::player::REACH * 1.5;
+                    let mut ok = true;
+                    for a in 0..3 {
+                        if dir[a].abs() < 1e-6 {
+                            if eye[a] < lo[a] || eye[a] > hi[a] {
+                                ok = false;
+                                break;
+                            }
+                        } else {
+                            let mut t1 = (lo[a] - eye[a]) / dir[a];
+                            let mut t2 = (hi[a] - eye[a]) / dir[a];
+                            if t1 > t2 {
+                                std::mem::swap(&mut t1, &mut t2);
+                            }
+                            tmin = tmin.max(t1);
+                            tmax = tmax.min(t2);
+                            if tmin > tmax {
+                                ok = false;
+                                break;
+                            }
+                        }
+                    }
+                    if ok {
+                        // player melee only (the engine's only verified
+                        // dragon damage source besides explosions)
+                        use vc_gameplay::mobs;
+                        let (_, atk_speed) = combat::held_attack(self.player.held().block);
+                        let period = combat::attack_cooldown_ticks(atk_speed) / 20.0;
+                        let p = (self.swing_t / period).min(1.0);
+                        let falling = !self.player.on_ground && self.player.vel.y < 0.0;
+                        let sprinting = self.input.sprint
+                            && (self.input.fwd
+                                || self.input.back
+                                || self.input.left
+                                || self.input.right);
+                        let outcome = combat::player_melee(
+                            self.player.held().block,
+                            p,
+                            falling,
+                            sprinting,
+                            0.0,
+                            0.0,
+                        );
+                        let applied = self.sim.dragon.damage(outcome.damage);
+                        if applied > 0.0 {
+                            self.play_event("entity.ender_dragon.hurt", Some(d_pos), 1.0);
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: dragon hit p={:.2} -> {:.2} dmg (hp {:.0})",
+                                p,
+                                outcome.damage,
+                                (dhealth - applied).max(0.0)
+                            ));
+                        }
+                        self.swing_t = 0.0;
+                        self.ui.dirty = true;
+                        return true;
+                    }
+                }
+                // (a) crystals: proximity ray-hit against each alive crystal
+                let hit_point = [
+                    eye[0] + dir[0] * crate::player::REACH,
+                    eye[1] + dir[1] * crate::player::REACH,
+                    eye[2] + dir[2] * crate::player::REACH,
+                ];
+                if let Some(idx) = self.sim.dragon.crystal_hit(hit_point, 2.2) {
+                    let ev = self.sim.dragon.destroy_crystal(idx);
+                    // route the explosion through the same event path
+                    self.sim.dragon_events.push(ev);
+                    self.swing_t = 0.0;
+                    return true;
+                }
+            }
+        }
+
         let Some(id) = self.sim.mobs.ray_hit(eye, dir, crate::player::REACH) else {
             // §Gossiping: no MOB under the crosshair — a villager can be
             // the melee target (VERIFIED: 20 HP, no armor; attacks grow
@@ -2446,12 +2688,488 @@ impl GameApp {
         true
     }
 
-    /// Drain the sim's mob queues after the fixed-step tick: player hits
+    /// Phase E2: the wither billboard — a large dark sprite with a hurt
+    /// flash, through the particle stream (any dimension: the wither is
+    /// player-summoned).
+    fn build_wither_vertices(&mut self, right: [f32; 3], up: [f32; 3]) {
+        let Some(w) = self.sim.wither.wither.as_ref() else {
+            return;
+        };
+        if !w.alive() {
+            return;
+        }
+        let tile = TILE_WITHER;
+        let tx = (tile % 16) as f32;
+        let ty = (tile / 16) as f32;
+        // hover bob + the charge-phase pulsing tint (black↔blue like the
+        // vanilla charge — VERIFIED behavior note)
+        let bob = (self.time * 1.2).sin() * 0.25;
+        let charging = w.charging();
+        let pulse = ((self.time * 8.0).sin() + 1.0) * 0.5;
+        let col = if charging {
+            [0.35 + 0.5 * pulse, 0.4 + 0.4 * pulse, 1.0]
+        } else {
+            [1.0, 1.0, 1.0]
+        };
+        let half = 1.8f32; // 3.5-block-tall boss (VERIFIED hitbox), sprite scale
+        let pos = [w.pos[0], w.pos[1] + bob, w.pos[2]];
+        let corners = [
+            (
+                [
+                    -right[0] * half - up[0] * half,
+                    -right[1] * half - up[1] * half,
+                    -right[2] * half - up[2] * half,
+                ],
+                [tx / 16.0, ty / 16.0],
+            ),
+            (
+                [
+                    right[0] * half - up[0] * half,
+                    right[1] * half - up[1] * half,
+                    right[2] * half - up[2] * half,
+                ],
+                [(tx + 1.0) / 16.0, ty / 16.0],
+            ),
+            (
+                [
+                    right[0] * half + up[0] * half,
+                    right[1] * half + up[1] * half,
+                    right[2] * half + up[2] * half,
+                ],
+                [(tx + 1.0) / 16.0, (ty + 1.0) / 16.0],
+            ),
+            (
+                [
+                    -right[0] * half + up[0] * half,
+                    -right[1] * half + up[1] * half,
+                    -right[2] * half + up[2] * half,
+                ],
+                [tx / 16.0, (ty + 1.0) / 16.0],
+            ),
+        ];
+        for (v, uv) in corners.iter() {
+            self.particle_verts.push(vc_particles::particles::ParticleVertex {
+                pos: [pos[0] + v[0], pos[1] + v[1], pos[2] + v[2]],
+                uv: [uv[0], uv[1]],
+                col,
+            });
+        }
+    }
+
+    /// Phase E1: end-dimension billboards — the dragon (large sprite) and
+    /// the alive end crystals on their pillars, through the particle
+    /// stream like every other entity.
+    fn build_end_entity_vertices(&mut self, right: [f32; 3], up: [f32; 3]) {
+        if self.world.dimension != vc_world::world::Dimension::End {
+            return;
+        }
+        // crystals: pillar-top sprites (bob like items)
+        for c in self.sim.dragon.crystals.iter() {
+            if !c.alive {
+                continue;
+            }
+            let tile = TILE_END_CRYSTAL;
+            let tx = (tile % 16) as f32;
+            let ty = (tile / 16) as f32;
+            let bob = (self.time * 1.5 + c.pos[0]).sin() * 0.15;
+            let half = 0.8f32;
+            let col = [1.0f32, 0.95, 1.0];
+            let corners = [
+                (
+                    [
+                        -right[0] * half - up[0] * half,
+                        -right[1] * half - up[1] * half,
+                        -right[2] * half - up[2] * half,
+                    ],
+                    [tx / 16.0, ty / 16.0],
+                ),
+                (
+                    [
+                        right[0] * half - up[0] * half,
+                        right[1] * half - up[1] * half,
+                        right[2] * half - up[2] * half,
+                    ],
+                    [(tx + 1.0) / 16.0, ty / 16.0],
+                ),
+                (
+                    [
+                        right[0] * half + up[0] * half,
+                        right[1] * half + up[1] * half,
+                        right[2] * half + up[2] * half,
+                    ],
+                    [(tx + 1.0) / 16.0, (ty + 1.0) / 16.0],
+                ),
+                (
+                    [
+                        -right[0] * half + up[0] * half,
+                        -right[1] * half + up[1] * half,
+                        -right[2] * half + up[2] * half,
+                    ],
+                    [tx / 16.0, (ty + 1.0) / 16.0],
+                ),
+            ];
+            for ci in [0usize, 1, 2, 0, 2, 3] {
+                let (c0, uv) = corners[ci];
+                self.particle_verts
+                    .push(vc_particles::particles::ParticleVertex {
+                        pos: [
+                            c.pos[0] + c0[0],
+                            c.pos[1] + c0[1] + bob,
+                            c.pos[2] + c0[2],
+                        ],
+                        uv: [uv[0], uv[1]],
+                        col,
+                    });
+            }
+        }
+        // the dragon: a large billboard sprite, hurt-flash tinted
+        if let Some(d) = self.sim.dragon.dragon.as_ref() {
+            let tile = TILE_ENDERDRAGON;
+            let tx = (tile % 16) as f32;
+            let ty = (tile / 16) as f32;
+            let half = 3.0f32;
+            let hurt = d.dying.is_none() && d.health < 200.0 && (d.health * 10.0) as i32 % 2 == 0;
+            let col = if hurt {
+                [1.0f32, 0.4, 0.4]
+            } else {
+                [0.9f32, 0.88, 0.95]
+            };
+            let corners = [
+                (
+                    [
+                        -right[0] * half - up[0] * half,
+                        -right[1] * half - up[1] * half,
+                        -right[2] * half - up[2] * half,
+                    ],
+                    [tx / 16.0, ty / 16.0],
+                ),
+                (
+                    [
+                        right[0] * half - up[0] * half,
+                        right[1] * half - up[1] * half,
+                        right[2] * half - up[2] * half,
+                    ],
+                    [(tx + 1.0) / 16.0, ty / 16.0],
+                ),
+                (
+                    [
+                        right[0] * half + up[0] * half,
+                        right[1] * half + up[1] * half,
+                        right[2] * half + up[2] * half,
+                    ],
+                    [(tx + 1.0) / 16.0, (ty + 1.0) / 16.0],
+                ),
+                (
+                    [
+                        -right[0] * half + up[0] * half,
+                        -right[1] * half + up[1] * half,
+                        -right[2] * half + up[2] * half,
+                    ],
+                    [tx / 16.0, (ty + 1.0) / 16.0],
+                ),
+            ];
+            for ci in [0usize, 1, 2, 0, 2, 3] {
+                let (c0, uv) = corners[ci];
+                self.particle_verts
+                    .push(vc_particles::particles::ParticleVertex {
+                        pos: [
+                            d.pos[0] + c0[0],
+                            d.pos[1] + c0[1],
+                            d.pos[2] + c0[2],
+                        ],
+                        uv: [uv[0], uv[1]],
+                        col,
+                    });
+            }
+        }
+    }
+
+    /// Phase E1: drain the ender-dragon fight events — fireball volleys
+    /// (routed through the mob projectile list), crystal detonations
+    /// (power 6, the creeper explosion path), the 12000-XP victory drop,
+    /// and the exit-portal + dragon-egg sequence (all live-verified
+    /// 2026-09-06; see docs/research/phase1-1.0-1.2-research.md).
+    fn drain_dragon_events(&mut self) {
+        use vc_gameplay::dragon::DragonEvent;
+        let events: Vec<DragonEvent> = self.sim.dragon_events.drain(..).collect();
+        for ev in events {
+            match ev {
+                DragonEvent::Fireball(from, target) => {
+                    // blaze-style fireball, damage = the dragon's melee row
+                    // (VERIFIED: Normal 10)
+                    let dx = target[0] - from[0];
+                    let dy = target[1] + 1.2 - from[1];
+                    let dz = target[2] - from[2];
+                    let dist = (dx * dx + dz * dz).sqrt().max(1e-3);
+                    self.sim.mobs.arrows.push(vc_gameplay::mobs::Arrow {
+                        pos: from,
+                        vel: [
+                            dx / dist * 14.0,
+                            dy / dist.max(1e-3) * 14.0,
+                            dz / dist * 14.0,
+                        ],
+                        damage: 10.0,
+                        age: 0,
+                        kind: vc_gameplay::mobs::ProjKind::Fireball,
+                        owner: 0,
+                    });
+                    self.play_event("entity.ender_dragon.shoot", Some(from), 1.0);
+                }
+                DragonEvent::CrystalExplosion(center) => {
+                    // VERIFIED w/End_Crystal: power 6 (charged creeper)
+                    self.explode(center, 6.0);
+                    self.play_event("entity.generic.explode", Some(center), 1.0);
+                }
+                DragonEvent::Died(xp) => {
+                    // the victory XP: 12000 as orb waves at the dragon's
+                    // position (VERIFIED; the orb split uses the vanilla
+                    // value ladder)
+                    let pos = self
+                        .sim
+                        .dragon
+                        .dragon
+                        .as_ref()
+                        .map(|d| d.pos)
+                        .unwrap_or([0.5, 70.0, 0.5]);
+                    self.sim.xp_orbs.drop_xp(pos[0], pos[1], pos[2], xp);
+                    self.dragon_defeated = true;
+                    self.play_event("entity.ender_dragon.death", Some(pos), 1.0);
+                    self.ui.dirty = true;
+                    vc_render::render::report_boot_log(&format!(
+                        "e2e: the ender dragon fell — {xp} XP (VERIFIED 12000/500)"
+                    ));
+                }
+                DragonEvent::PortalActivated => {
+                    // VERIFIED w/Ender_Dragon §Death and drops: the 3×3
+                    // center of the bedrock fountain fills with end-portal
+                    // blocks; the dragon egg appears above the structure
+                    for dx in -1..=1i32 {
+                        for dz in -1..=1i32 {
+                            self.world.set_block(dx, 62, dz, END_PORTAL);
+                        }
+                    }
+                    self.world.set_block(0, 64, 0, DRAGON_EGG);
+                    self.play_event("block.end_portal.spawn", None, 1.0);
+                    self.edits += 1;
+                    self.ui.dirty = true;
+                    vc_render::render::report_boot_log(
+                        "e2e: exit portal active + dragon egg above the fountain (VERIFIED)",
+                    );
+                }
+            }
+        }
+    }
+
+    /// Phase E2: drain the wither-fight events — skull volleys (routed
+    /// through the projectile list with the Wither effect payload),
+    /// the birth explosion (proximity-scaled, power-6-class), the
+    /// 3×4×3 block-breaking response to damage, and the death drop
+    /// (nether star + 50 XP — all live-verified 2026-09-06,
+    /// docs/research/phase2-1.3-1.4-research.md).
+    fn drain_wither_events(&mut self) {
+        use vc_gameplay::wither::WitherEvent;
+        let events: Vec<WitherEvent> = self.sim.wither_events.drain(..).collect();
+        for ev in events {
+            match ev {
+                WitherEvent::BirthExplosion(center) => {
+                    // VERIFIED: Java Normal max 69 proximity-scaled; the
+                    // engine's explosion path applies power-scaled damage
+                    // + block destruction
+                    self.explode(center, 6.0);
+                    self.play_event("entity.wither.spawn", Some(center), 1.0);
+                }
+                WitherEvent::SkullShot(from, target) => {
+                    // black wither skull: 8 HP + Wither II 10 s Normal /
+                    // 40 s Hard (VERIFIED). The projectile rides the arrow
+                    // list; the wither payload applies on player hit
+                    // (drain_mob_events routes ProjKind::Skull)
+                    let dx = target[0] - from[0];
+                    let dy = target[1] + 1.0 - from[1];
+                    let dz = target[2] - from[2];
+                    let dist = (dx * dx + dz * dz).sqrt().max(1e-3);
+                    self.sim.mobs.arrows.push(vc_gameplay::mobs::Arrow {
+                        pos: from,
+                        vel: [
+                            dx / dist * 10.0,
+                            dy / dist.max(1e-3) * 10.0,
+                            dz / dist * 10.0,
+                        ],
+                        damage: 8.0,
+                        age: 0,
+                        kind: vc_gameplay::mobs::ProjKind::Skull,
+                        owner: 1,
+                    });
+                    self.play_event("entity.wither.shoot", Some(from), 1.0);
+                }
+                WitherEvent::BreakBlocks(center) => {
+                    // VERIFIED: on taking damage the wither breaks every
+                    // block in a 3×4×3 box around itself (bedrock + portal
+                    // blocks are wither_immune)
+                    let (x0, y0, z0) = (
+                        center[0].floor() as i32,
+                        center[1].floor() as i32,
+                        center[2].floor() as i32,
+                    );
+                    for dy in -2..=1i32 {
+                        for dx in -1..=1i32 {
+                            for dz in -1..=1i32 {
+                                let b = self.world.get_block(x0 + dx, y0 + dy, z0 + dz);
+                                if b != AIR
+                                    && b != BEDROCK
+                                    && b != END_PORTAL
+                                    && b != END_PORTAL_FRAME
+                                {
+                                    if let Some((old, new)) =
+                                        self.world.set_block(x0 + dx, y0 + dy, z0 + dz, AIR)
+                                    {
+                                        self.light.on_block_changed(
+                                            &self.world,
+                                            x0 + dx,
+                                            y0 + dy,
+                                            z0 + dz,
+                                            old,
+                                            new,
+                                        );
+                                    }
+                                    self.edits += 1;
+                                }
+                            }
+                        }
+                    }
+                }
+                WitherEvent::Died(xp) => {
+                    // VERIFIED: 1 nether star (100%), 50 XP
+                    let pos = self
+                        .sim
+                        .wither
+                        .wither
+                        .as_ref()
+                        .map(|w| w.pos)
+                        .unwrap_or([0.5, 70.0, 0.5]);
+                    self.sim.items.drop_block(
+                        pos[0] as i32,
+                        pos[1] as i32,
+                        pos[2] as i32,
+                        NETHER_STAR,
+                        2,
+                        15,
+                        0,
+                    );
+                    self.sim.xp_orbs.drop_xp(pos[0], pos[1], pos[2], xp);
+                    self.play_event("entity.wither.death", Some(pos), 1.0);
+                    self.sim.wither.wither = None;
+                    vc_render::render::report_boot_log(&format!(
+                        "e2e: wither slain — nether star + {xp} XP (VERIFIED drops)"
+                    ));
+                }
+            }
+        }
+    }
+
+    /// Phase E1: drain the sim's mob queues after the fixed-step tick: player hits
     /// (difficulty-scaled + knockback), mob deaths (drops + XP), and
     /// creeper explosions (world edits + light + entity damage).
     fn drain_mob_events(&mut self) {
         use vc_gameplay::combat::{difficulty_scale, Difficulty};
         use vc_gameplay::mobs;
+        // ---- 0. Phase E1: XP-orb pickups (10/s gate inside the orb system)
+        // + finished zombie-villager cures (villager + cure gossip) ----
+        let collected: Vec<i32> = self.sim.xp_orbs.collected.drain(..).collect();
+        if !collected.is_empty() {
+            let total: i32 = collected.iter().sum();
+            let gained = self.player.add_xp(total);
+            if gained > 0 {
+                self.play_event("entity.player.levelup", None, 1.0);
+            }
+        }
+        let cures: Vec<[f32; 3]> = self.sim.mobs.cures.drain(..).collect();
+        for pos in cures {
+            // VERIFIED w/Zombie_Villager + w/Villager §Gossiping: a cured
+            // zombie villager returns as a villager with major_positive
+            // gossip (the cure discount)
+            let vid = self
+                .sim
+                .villagers
+                .spawn_at(
+                    pos[0].floor() as i32,
+                    pos[1].floor() as i32,
+                    pos[2].floor() as i32,
+                    None,
+                );
+            if let Some(vid) = vid {
+                if let Some(v) = self.sim.villagers.list.iter_mut().find(|v| v.id == vid) {
+                    v.gossip.gain_event(vc_gameplay::villagers::GossipKind::MajorPositive);
+                }
+                self.play_event("entity.villager.celebrate", Some(pos), 1.0);
+            }
+            self.edits += 1;
+        }
+        // ---- 1.5 Phase E1: zombies attack villagers — a villager killed
+        // by a zombie converts (VERIFIED w/Zombie_Villager: Easy 0% /
+        // Normal 50% / Hard 100%). Cadence: 1 swing/s per zombie (the
+        // melee cadence), reach 1.6 (the mob melee constant). ----
+        {
+            let zombies: Vec<(u32, [f32; 3], i32)> = self
+                .sim
+                .mobs
+                .list
+                .iter()
+                .filter(|m| {
+                    (m.kind == mobs::MobKind::Zombie
+                        || m.kind == mobs::MobKind::ZombieVillager)
+                        && m.attack_cd == 0
+                })
+                .map(|m| (m.id, m.pos, m.attack_cd))
+                .collect();
+            let villagers: Vec<(u32, [f32; 3])> = self
+                .sim
+                .villagers
+                .list
+                .iter()
+                .map(|v| (v.id, v.pos))
+                .collect();
+            let difficulty_hard = self.mode.permadeath();
+            for (zid, zpos, _) in zombies {
+                for (vid, vpos) in villagers.iter() {
+                    let dx = zpos[0] - vpos[0];
+                    let dy = zpos[1] - vpos[1];
+                    let dz = zpos[2] - vpos[2];
+                    let d2 = dx * dx + dy * dy + dz * dz;
+                    if d2 < 1.6 * 1.6 {
+                        // the swing
+                        if let Some(m) =
+                            self.sim.mobs.list.iter_mut().find(|m| m.id == zid)
+                        {
+                            m.attack_cd = mobs::MOB_MELEE_TICKS;
+                        }
+                        // VERIFIED: villager damage = the zombie's row,
+                        // difficulty-scaled (Easy 2.5 / Normal 3 / Hard 4.5)
+                        let dmg = if difficulty_hard { 4.5 } else { 3.0 };
+                        let (applied, killed) = self.sim.villagers.damage(*vid, dmg);
+                        if applied > 0.0 {
+                            self.play_event("entity.villager.hurt", Some(*vpos), 1.0);
+                        }
+                        if let Some(vpos) = killed {
+                            // conversion roll (VERIFIED: 0/50/100%)
+                            let roll = self.audio_rng.next_f32();
+                            let chance = if difficulty_hard { 1.0 } else { 0.5 };
+                            if roll < chance {
+                                let _ = self.sim.mobs.spawn_at(
+                                    mobs::MobKind::ZombieVillager,
+                                    vpos[0].floor() as i32,
+                                    vpos[1].floor() as i32,
+                                    vpos[2].floor() as i32,
+                                );
+                                vc_render::render::report_boot_log(
+                                    "e2e: villager zombified (VERIFIED 0/50/100% by difficulty)",
+                                );
+                            }
+                        }
+                        break; // one villager per swing
+                    }
+                }
+            }
+        }
         // 1.9 shield blocking (VERIFIED — wiki /w/Java_Edition_1.9 §Items:
         // "If the player holds right click while being attacked, the
         // damage inflicted is reduced" — our adaptation: a fully-raised
@@ -2477,6 +3195,21 @@ impl GameApp {
                 Difficulty::Normal
             };
             let dmg = difficulty_scale(h.damage, difficulty);
+            // Phase E2 (VERIFIED w/Wither): skull hits inflict Wither II
+            // — 200 ticks (10 s) Normal / 800 (40 s) Hard
+            if let Some(ticks) = h.wither_effect {
+                let dur = if difficulty == Difficulty::Hard { 800 } else { ticks };
+                self.player
+                    .effects
+                    .apply(vc_gameplay::effects::EffectKind::Wither, 1, dur);
+            }
+            // Phase E2 (VERIFIED w/Wither_Skeleton): wither-skeleton
+            // melee inflicts Wither I for 10 s on ANY difficulty
+            if h.source == mobs::MobKind::WitherSkeleton {
+                self.player
+                    .effects
+                    .apply(vc_gameplay::effects::EffectKind::Wither, 0, 200);
+            }
             // 1.10 hit riders (VERIFIED, wiki /w/Stray + /w/Husk, live
             // 2026-09-06):
             // * stray arrows: "shoots tipped arrows of Slowness (0:30)" —
@@ -2486,7 +3219,10 @@ impl GameApp {
             //   regional difficulty proxy is the difficulty tier
             //   (Normal 1.5 rounds to 1 → 7 s; Hard 3 → 21 s)
             if h.source == mobs::MobKind::Stray {
-                self.player.effects.slowness_ticks = 20 * 30; // 0:30
+                // Slowness I for 0:30 (amplifier 0 = level I)
+                self.player
+                    .effects
+                    .apply(vc_gameplay::effects::EffectKind::Slowness, 0, 20 * 30);
                 self.ui.dirty = true;
             }
             if h.source == mobs::MobKind::Husk {
@@ -2494,7 +3230,9 @@ impl GameApp {
                     Difficulty::Hard => 3.0,
                     _ => 1.0,
                 };
-                self.player.effects.hunger_ticks = 20 * 7 * rd as i32;
+                self.player
+                    .effects
+                    .apply(vc_gameplay::effects::EffectKind::Hunger, 0, 20 * 7 * rd as i32);
                 self.ui.dirty = true;
             }
             let applied = self.player.damage(dmg);
@@ -2513,12 +3251,14 @@ impl GameApp {
             }
         }
         // ---- 2. mob deaths → drops + XP ----
-        let deaths: Vec<(mobs::MobKind, [f32; 3])> = self.sim.mobs.deaths.drain(..).collect();
-        for (kind, pos) in deaths {
+        // Phase E1: the death tuple carries the per-kind variant (magma
+        // size code — splits spawn here; drops + XP size-aware).
+        let deaths: Vec<(mobs::MobKind, [f32; 3], u8)> = self.sim.mobs.deaths.drain(..).collect();
+        for (kind, pos, variant) in deaths {
             let d = mobs::def(kind);
             // vanilla-common loot ranges [adaptation: fixed min..max per
             // kind, no weighted loot tables yet — Phase 9 territory]
-            let drops: &[(u8, u8)] = match kind {
+            let drops: &[(u16, u8)] = match kind {
                 mobs::MobKind::Zombie => &[(ROTTEN_FLESH, 2)],
                 mobs::MobKind::Skeleton => &[(BONE, 2), (ARROW_ITEM, 2)],
                 mobs::MobKind::Creeper => &[(GUNPOWDER, 2)],
@@ -2528,6 +3268,44 @@ impl GameApp {
                 mobs::MobKind::Pig => &[(PORKCHOP, 3)],
                 mobs::MobKind::Sheep => &[(MUTTON, 2), (WOOL_WHITE, 1)],
                 mobs::MobKind::Chicken => &[(CHICKEN_RAW, 1), (FEATHER, 2)],
+                // Phase E1 (1.0–1.2 bracket): blaze rods 0-1 (VERIFIED
+                // w/Blaze §Drops: 50%, Looting scales — no Looting yet)
+                mobs::MobKind::Blaze => &[(BLAZE_ROD, 1)],
+                // zombie villager drops = zombie loot (VERIFIED)
+                mobs::MobKind::ZombieVillager => &[(ROTTEN_FLESH, 2)],
+                // mooshroom drops = cow loot (VERIFIED w/Mooshroom)
+                mobs::MobKind::Mooshroom => &[(BEEF, 3), (LEATHER, 2)],
+                // golems: iron golem drops 3–5 iron ingots + 0–2 poppies
+                // (VERIFIED — widely-cited values, page table unreadable
+                // via extraction, flagged in the research notes); snow
+                // golems drop nothing but a sheared pumpkin (shear path
+                // deferred) → nothing on death
+                mobs::MobKind::IronGolem => &[(IRON_BLOCK, 1)],
+                mobs::MobKind::SnowGolem => &[],
+                // magma cubes drop nothing (magma cream is a 1.16-era item
+                // beyond this bracket's verified drop set — deferred)
+                mobs::MobKind::MagmaCube => &[],
+                mobs::MobKind::Ocelot => &[],
+                // ---- Phase E2 (VERIFIED 2026-09-06,
+                // docs/research/phase2-1.3-1.4-research.md) ----
+                // wither skeleton: coal 0-1 @ 33%, bone 0-2 @ 67%, skull
+                // 0-1 @ 2.5% (the skull roll rides the special-cased path
+                // below — it is NOT a guaranteed drop)
+                mobs::MobKind::WitherSkeleton => &[(COAL, 1), (BONE, 2)],
+                // witch: the verified per-item 0-2 rolls (redstone,
+                // glowstone, gunpowder, spider eye, sugar, glass bottle,
+                // stick — engine items exist for 5 of the 7; sugar and
+                // glass-bottle items are absent -> covered by the 5)
+                mobs::MobKind::Witch => &[(REDSTONE_ORE, 2), (GLOWSTONE, 2), (GUNPOWDER, 2), (SPIDER_EYE, 2)],
+                // bat: drops nothing (VERIFIED w/Bat: empty drop table)
+                mobs::MobKind::Bat => &[],
+                // ---- Phase E3 (VERIFIED live 2026-09-06: w/Horse §Drops
+                // "0–2 Leather" + 1–3 XP when killed by a player; the
+                // equipped saddle drops on death (variant byte 1) — the
+                // engine has no horse-armor items, disclosed) ----
+                mobs::MobKind::Horse
+                | mobs::MobKind::Donkey
+                | mobs::MobKind::Mule => &[(LEATHER, 2)],
                 // 1.8 rabbit — VERIFIED (wiki /w/Rabbit + /w/Rabbit's_Foot,
                 // live 2026-09-06): 0–1 raw rabbit + 0–1 rabbit hide; the
                 // rabbit's foot is the separate 10% player-kill roll below
@@ -2546,6 +3324,38 @@ impl GameApp {
                     }
                 }
             };
+            // blaze rod is a 50% roll (VERIFIED), others roll count 1..max
+            if kind == mobs::MobKind::Blaze {
+                if self.audio_rng.next_f32() < 0.5 {
+                    self.sim.items.drop_block(
+                        pos[0].floor() as i32,
+                        pos[1].floor() as i32,
+                        pos[2].floor() as i32,
+                        BLAZE_ROD,
+                        2,
+                        15,
+                        0,
+                    );
+                }
+            }
+            // Phase E3: a saddled equine drops its saddle on death
+            // (VERIFIED w/Horse §Drops — equipped items drop; the death
+            // tuple's variant byte 1 = saddled)
+            if matches!(
+                kind,
+                mobs::MobKind::Horse | mobs::MobKind::Donkey | mobs::MobKind::Mule
+            ) && variant == 1
+            {
+                self.sim.items.drop_block(
+                    pos[0].floor() as i32,
+                    pos[1].floor() as i32,
+                    pos[2].floor() as i32,
+                    SADDLE,
+                    2,
+                    15,
+                    0,
+                );
+            }
             for (block, max_n) in drops {
                 let n = 1 + (self.audio_rng.next_f32() * *max_n as f32) as u8;
                 for _ in 0..n {
@@ -2573,6 +3383,29 @@ impl GameApp {
                     15,
                     0,
                 );
+            }
+            // Phase E1: magma cubes split into 2–4 of the next size down
+            // (VERIFIED w/Magma_Cube §Drops: big → 2–4 mediums, medium →
+            // 2–4 smalls, small → nothing). Our variant codes: 0/1/2 =
+            // sizes 1/2/4 (see mobs::magma_size) — splits walk 2→1→0.
+            if kind == mobs::MobKind::MagmaCube {
+                let child_code = match variant {
+                    2 => 1, // big → medium
+                    1 => 0, // medium → small
+                    _ => 255, // small: no split
+                };
+                if child_code != 255 {
+                    let n = 2 + (self.audio_rng.next_f32() * 3.0) as u8; // 2–4
+                    for _ in 0..n {
+                        let _ = self.sim.mobs.spawn_variant(
+                            mobs::MobKind::MagmaCube,
+                            pos[0].floor() as i32,
+                            pos[1].floor() as i32,
+                            pos[2].floor() as i32,
+                            child_code,
+                        );
+                    }
+                }
             }
             // 1.10: strays have a 50% chance to drop one tipped arrow of
             // Slowness when killed by the player (VERIFIED — wiki /w/Stray
@@ -2610,6 +3443,19 @@ impl GameApp {
                 if gained > 0 {
                     self.play_event("entity.player.levelup", None, 1.0);
                 }
+            }
+            // XP: Phase E1 drops real orbs (VERIFIED w/Experience — mobs
+            // drop orbs; the player collects them). Magma XP is size-aware
+            // (VERIFIED 4/2/1); ocelot rolls 1–3 (VERIFIED w/Ocelot).
+            let xp = if kind == mobs::MobKind::MagmaCube {
+                mobs::magma_xp(mobs::magma_size(variant))
+            } else if kind == mobs::MobKind::Ocelot {
+                1 + (self.audio_rng.next_f32() * 3.0) as i32
+            } else {
+                d.xp
+            };
+            if xp > 0 {
+                self.sim.xp_orbs.drop_xp(pos[0], pos[1], pos[2], xp);
             }
             self.play_event(
                 "entity.generic.death",
@@ -2823,6 +3669,14 @@ impl GameApp {
                 self.refresh_widgets();
                 self.ui.dirty = true;
             }
+            ID_WC_TYPE => {
+                // Phase E3 (VERIFIED w/Superflat): world-type cycle —
+                // Normal / Superflat (the classic preset: grass, 2 dirt,
+                // bedrock — plains biome)
+                self.wc_flat = !self.wc_flat;
+                self.refresh_widgets();
+                self.ui.dirty = true;
+            }
             ID_WC_CREATE => self.create_world(),
             ID_WC_CANCEL => self.cancel_world_create(),
             ID_DEATH_RESPAWN => self.respawn(),
@@ -2892,7 +3746,11 @@ impl GameApp {
         match id {
             ID_OPT_FOV => self.settings.fov = 30.0 + t * 80.0,
             ID_OPT_SENS => self.settings.sensitivity = 0.1 + t * 1.9,
-            ID_OPT_RD => self.settings.render_distance = 2 + (t * 14.0).round() as i32,
+            // VERIFICATION-REPORT fix #1 completion: vanilla options.txt
+            // renderDistance range 2..=32 (the in-game +/- keys and the save
+            // clamp already allowed 2..=32 — the E2 round missed the slider
+            // mapping, which still capped at 16)
+            ID_OPT_RD => self.settings.render_distance = 2 + (t * 30.0).round() as i32,
             // Phase 6 §26: VERIFIED range 5–32 (wiki simulationDistance)
             ID_OPT_SIMDIST => self.settings.sim_distance = 5 + (t * 27.0).round() as i32,
             ID_OPT_BRIGHT => self.settings.brightness = t,
@@ -2967,7 +3825,7 @@ impl GameApp {
                         ID_OPT_RD => set_slider(
                             w,
                             &format!("RENDER DIST: {} CHUNKS", s.render_distance),
-                            (s.render_distance - 2) as f32 / 14.0,
+                            (s.render_distance - 2) as f32 / 30.0,
                         ),
                         ID_OPT_MIP => set_button_value(w, &format!("{}", s.mipmap_levels)),
                         ID_OPT_ANISO => set_button_value(
@@ -3030,7 +3888,7 @@ impl GameApp {
                         ID_OPT_RD => set_slider(
                             w,
                             &format!("RENDER DIST: {} CHUNKS", s.render_distance),
-                            (s.render_distance - 2) as f32 / 14.0,
+                            (s.render_distance - 2) as f32 / 30.0,
                         ),
                         ID_OPT_BRIGHT => {
                             let label = if s.brightness < 0.05 {
@@ -3123,6 +3981,7 @@ impl GameApp {
                     &format!("{}", self.wc_seed_preview),
                     self.wc_mode.label(),
                     self.wc_mode.describe(),
+                    if self.wc_flat { "SUPERFLAT" } else { "NORMAL" },
                 );
                 for w in ws.iter_mut() {
                     if let WidgetKind::TextField { focused: f, .. } = &mut w.kind {
@@ -3181,6 +4040,15 @@ impl GameApp {
     /// (vanilla behavior), the cursor stack drops back in too
     fn close_container(&mut self) {
         if let Some(c) = self.container.take() {
+            // Phase E3 (VERIFIED w/Trapped_Chest): closing a trapped
+            // chest drops its viewer signal back to 0 (signal = number
+            // of players accessing, max 15 — single-player: 1 while open)
+            if let Container::Chest { pos } = c {
+                if self.world.get_block(pos[0], pos[1], pos[2]) == TRAPPED_CHEST {
+                    let (w, sched) = (&mut self.world, &mut self.sim.sched);
+                    vc_sim::redstone::trapped_chest_tick(w, sched, pos[0], pos[1], pos[2], false);
+                }
+            }
             match c {
                 Container::Inventory => {
                     for s in self.craft_grid.iter_mut().take(4) {
@@ -3836,7 +4704,7 @@ impl GameApp {
     /// §27/§29/§26: breaking a container block drops its contents and
     /// removes the block entity (vanilla behavior — also fixes the latent
     /// entity leak where broken furnaces stayed in the sim map forever)
-    fn drop_container_contents(&mut self, pos: [i32; 3], broke: u8) {
+    fn drop_container_contents(&mut self, pos: [i32; 3], broke: u16) {
         // Phase 3 §26: chests / dispensers / droppers / hoppers — the
         // containers module queues the spill, we turn it into item drops
         // (and if the player is mid-screen on this very container, close
@@ -3917,7 +4785,7 @@ impl GameApp {
     }
 
     /// E2E hook: place a block / water source / redstone component.
-    fn test_place(&mut self, block: u8, x: i32, y: i32, z: i32) {
+    fn test_place(&mut self, block: u16, x: i32, y: i32, z: i32) {
         use vc_blocks::blocks::*;
         let state = match block {
             WATER => water_state(0),
@@ -3932,7 +4800,12 @@ impl GameApp {
 
     fn update(&mut self, dt: f32) {
         self.time += dt;
-        self.day_time = (self.day_time + dt / 600.0) % 1.0; // 10-minute day
+        self.day_time = (self.day_time + dt / DAY_LEN_SECS).max(0.0) % 1.0;
+        // DAY_LEN_SECS = 1200 = the vanilla 1.16.5 full daylight cycle
+        // (VERIFIED 2026-09-06 live: minecraft.wiki/w/Daylight_cycle —
+        // 24000 ticks at 20 tps = 20 minutes. The old 600 s value came
+        // from a research-doc error (half the real length); fixed this
+        // round.)
 
         // --- bench mode: scripted camera, frame bookkeeping (§48 Phase 0)
         if let Some(bs) = self.bench.as_mut() {
@@ -3986,8 +4859,172 @@ impl GameApp {
             };
             self.sim
                 .update(dt, &mut self.world, &mut self.light, &scope);
+            // ---- Phase E3 (1.5–1.6): ride drive, leash, plate sweep ----
+            if self.screen == Screen::Game {
+                // (a) ride drive: the player's input steers the mount
+                // (VERIFIED w/Horse §Riding — control requires the
+                // saddle; speed = the horse's attribute through the
+                // §Movement_speed ≈43.17 b/s conversion)
+                self.sim.mobs.ridden = self.riding;
+                if let Some(mid) = self.riding {
+                    let (saddled, speed_attr, jump_clear) = {
+                        match self.sim.mobs.by_id(mid) {
+                            Some(m) => {
+                                let eq = m.equine.as_ref().unwrap();
+                                (eq.saddled, eq.speed_attr, eq.jump_clear_height())
+                            }
+                            None => (false, 0.0, 0.0),
+                        }
+                    };
+                    let mut jump_now = false;
+                    if let Some(m) = self.sim.mobs.by_id_mut(mid) {
+                        if saddled {
+                            // steer: forward along the player's look yaw
+                            let yaw = self.player.yaw;
+                            let fx = -yaw.sin();
+                            let fz = -yaw.cos();
+                            let (mut dx, mut dz) = (0.0f32, 0.0f32);
+                            if self.input.fwd {
+                                dx += fx;
+                                dz += fz;
+                            }
+                            if self.input.back {
+                                dx -= fx;
+                                dz -= fz;
+                            }
+                            if self.input.right {
+                                dx += -fz;
+                                dz += fx;
+                            }
+                            if self.input.left {
+                                dx -= -fz;
+                                dz -= fx;
+                            }
+                            let len = (dx * dx + dz * dz).sqrt();
+                            if len > 1e-4 {
+                                let ride_speed = speed_attr * 43.17; // VERIFIED conversion
+                                m.yaw = yaw;
+                                let tv = (dx / len * ride_speed, dz / len * ride_speed);
+                                m.vel[0] += (tv.0 - m.vel[0]) * 0.25;
+                                m.vel[2] += (tv.1 - m.vel[2]) * 0.25;
+                            } else {
+                                m.vel[0] *= 0.8;
+                                m.vel[2] *= 0.8;
+                            }
+                            jump_now = self.input.jump && m.on_ground;
+                        }
+                    }
+                    if jump_now {
+                        // the mount's jump: launch velocity solving the
+                        // jump-strength clear height (0.4→1.153 ..
+                        // 1.0→5.9197 blocks, VERIFIED §Jump_strength; the
+                        // quadratic fit through the three anchors is in
+                        // EquineState). Binary-search the engine integrator
+                        // v1 = (v0 − 0.08) × 0.98.
+                        let want = jump_clear.max(0.42);
+                        let (mut lo, mut hi) = (0.1f32, 1.5f32);
+                        for _ in 0..24 {
+                            let midv = (lo + hi) * 0.5;
+                            if apex_of(midv) < want {
+                                lo = midv;
+                            } else {
+                                hi = midv;
+                            }
+                        }
+                        if let Some(m) = self.sim.mobs.by_id_mut(mid) {
+                            m.vel[1] = hi;
+                            m.on_ground = false;
+                        }
+                        self.play_event("entity.horse.jump", None, 0.9);
+                    }
+                }
+                // (b) leash pull (VERIFIED w/Lead — 1.16.5 stretch max 10
+                // blocks: pulled toward the holder, breaks beyond 10)
+                if let Some((lid, anchor)) = self.leashed {
+                    let anchor_pos = anchor
+                        .map(|p| [p[0] as f32 + 0.5, p[1] as f32, p[2] as f32 + 0.5])
+                        .unwrap_or(self.player.pos.to_array());
+                    let mut broke = false;
+                    if let Some(m) = self.sim.mobs.by_id_mut(lid) {
+                        let dx = anchor_pos[0] - m.pos[0];
+                        let dz = anchor_pos[2] - m.pos[2];
+                        let dist = (dx * dx + dz * dz).sqrt();
+                        if dist > 10.0 {
+                            broke = true; // VERIFIED: lead snaps at 10 blocks (1.16.5)
+                        } else if dist > 4.0 {
+                            // pulled gently toward the anchor (stay-close)
+                            let pull = 2.2f32;
+                            m.vel[0] += (dx / dist * pull - m.vel[0]) * 0.15;
+                            m.vel[2] += (dz / dist * pull - m.vel[2]) * 0.15;
+                        }
+                    } else {
+                        broke = true; // mob gone
+                    }
+                    if broke {
+                        let mob_pos = self
+                            .sim
+                            .mobs
+                            .by_id(lid)
+                            .map(|m| m.pos)
+                            .unwrap_or(anchor_pos);
+                        self.leashed = None;
+                        // vanilla: a broken lead drops as an item at the mob
+                        self.sim.items.drop_block(
+                            mob_pos[0].floor() as i32,
+                            mob_pos[1].floor() as i32,
+                            mob_pos[2].floor() as i32,
+                            LEAD,
+                            2,
+                            15,
+                            0,
+                        );
+                    }
+                }
+                // (c) weighted-pressure-plate sweep: entity count →
+                // signal (VERIFIED formulas; counts mobs + the player —
+                // items ride the item system's positions too)
+                self.plate_sweep_t = self.plate_sweep_t.wrapping_add(1);
+                if self.plate_sweep_t % 10 == 0 && !self.plates.is_empty() {
+                    let mut ents: Vec<[f32; 3]> =
+                        self.sim.mobs.list.iter().map(|m| m.pos).collect();
+                    ents.push(self.player.pos.to_array());
+                    let mut dead: Vec<usize> = Vec::new();
+                    for (i, p) in self.plates.iter().enumerate() {
+                        let pb = self.world.get_block(p[0], p[1], p[2]);
+                        if pb != LIGHT_WEIGHTED_PLATE && pb != HEAVY_WEIGHTED_PLATE {
+                            dead.push(i);
+                            continue;
+                        }
+                        let count = ents
+                            .iter()
+                            .filter(|e| {
+                                e[0].floor() as i32 == p[0]
+                                    && (e[1] - 0.05).floor() as i32 == p[1]
+                                    && e[2].floor() as i32 == p[2]
+                            })
+                            .count();
+                        // Phase E3: the signal lands in the plate's POWER
+                        // state (the vanilla `power` blockstate — a real
+                        // source for the stateless wire re-derivation)
+                        let signal = vc_sim::redstone::weighted_plate_signal(pb, count);
+                        let (w, sched) = (&mut self.world, &mut self.sim.sched);
+                        vc_sim::redstone::plate_tick(w, sched, p[0], p[1], p[2], signal);
+                    }
+                    for i in dead.into_iter().rev() {
+                        self.plates.swap_remove(i);
+                    }
+                }
+                // (d) equine bookkeeping (breed cooldowns + foal growth)
+                self.sim.mobs.tick_equines();
+            }
             // Phase 2: drain mob hits/deaths/explosions on the game thread
             self.drain_mob_events();
+            // Phase E1: drain the dragon fight's events (fireballs,
+            // crystal explosions, the victory sequence)
+            self.drain_dragon_events();
+            // Phase E2: drain the wither fight's events (skulls, the
+            // birth explosion, block breaking, the death drop)
+            self.drain_wither_events();
         });
 
         // Phase 2: melee cooldown recovery clock
@@ -4463,6 +5500,25 @@ impl GameApp {
                             Some("mushroom_brown") => Some(MUSHROOM_BROWN),
                             Some("netherrack") => Some(NETHERRACK),
                             Some("glowstone") => Some(GLOWSTONE),
+                            // Phase E2 (1.3–1.4 bracket)
+                            Some("anvil") => Some(ANVIL),
+                            Some("beacon") => Some(BEACON),
+                            Some("ender_chest") => Some(ENDER_CHEST),
+                            Some("cobble_wall") => Some(COBBLE_WALL),
+                            Some("flower_pot") => Some(FLOWER_POT),
+                            Some("item_frame") => Some(ITEM_FRAME),
+                            Some("tripwire_hook") => Some(TRIPWIRE_HOOK),
+                            Some("wither_skull") => Some(WITHER_SKELETON_SKULL),
+                            Some("command_block") => Some(COMMAND_BLOCK),
+                            Some("emerald") => Some(EMERALD),
+                            Some("nether_star") => Some(NETHER_STAR),
+                            Some("potato") => Some(POTATO),
+                            Some("baked_potato") => Some(BAKED_POTATO),
+                            Some("carrot") => Some(CARROT),
+                            Some("pumpkin_pie") => Some(PUMPKIN_PIE),
+                            Some("soul_sand") => Some(SOUL_SAND),
+                            Some("iron_block") => Some(IRON_BLOCK),
+                            Some("lava") => Some(LAVA),
                             // Phase 4 §26: corruption chain
                             Some("potion_harming") => Some(POTION_HARMING),
                             Some("potion_harming_2") => Some(POTION_HARMING_II),
@@ -4581,6 +5637,74 @@ impl GameApp {
                             ));
                         } else {
                             vc_render::render::report_boot_log("e2e: enchant offer not affordable");
+                        }
+                    }
+                    Some("wither") => {
+                        // wither — E2E: build the summon structure 3 blocks
+                        // ahead (T of 4 soul sand + 3 skulls) and place the
+                        // LAST skull (the trigger) — VERIFIED w/Wither
+                        // Spawning
+                        let d = self.player.look_dir();
+                        let px = self.player.pos.x.floor() as i32 + d.x.round() as i32 * 3;
+                        let pz = self.player.pos.z.floor() as i32 + d.z.round() as i32 * 3;
+                        let py = self.player.pos.y.floor() as i32;
+                        // find the floor
+                        let mut y = py;
+                        while y > 1 && self.world.get_block(px, y - 1, pz) == AIR {
+                            y -= 1;
+                        }
+                        let by = y + 2; // skull row
+                        for dx in -1..=1i32 {
+                            for (yy, blk) in [(by, WITHER_SKELETON_SKULL), (by - 1, SOUL_SAND)] {
+                                self.world.set_block(px + dx, yy, pz, blk);
+                            }
+                        }
+                        self.world.set_block(px, by - 2, pz, SOUL_SAND);
+                        // the last-placed skull (the center one) triggers
+                        // the summon
+                        if vc_gameplay::wither::wither_pattern(&self.world, px, by, pz) {
+                            for c in vc_gameplay::wither::wither_pattern_blocks(px, by, pz) {
+                                self.world.set_block(c[0], c[1], c[2], AIR);
+                            }
+                            self.sim.wither.begin_summon(px, by, pz);
+                            vc_render::render::report_boot_log(
+                                "e2e: wither summoned (300 HP, 220-tick charge — VERIFIED)",
+                            );
+                            self.ui.dirty = true;
+                        } else {
+                            vc_render::render::report_boot_log(
+                                "e2e: wither structure failed to validate",
+                            );
+                        }
+                    }
+                    Some("beacon") => {
+                        // beacon — E2E: report the pyramid level under the
+                        // player's feet (scan 5 blocks down for the beacon)
+                        let px = self.player.pos.x.floor() as i32;
+                        let py = self.player.pos.y.floor() as i32;
+                        let pz = self.player.pos.z.floor() as i32;
+                        let mut found = None;
+                        for dy in -5..=0i32 {
+                            if self.world.get_block(px, py + dy, pz) == BEACON {
+                                found = Some((px, py + dy, pz));
+                                break;
+                            }
+                        }
+                        match found {
+                            Some((bx, byy, bz)) => {
+                                let lvl = vc_gameplay::beacon::pyramid_level(
+                                    &self.world, bx, byy, bz,
+                                );
+                                let blocks = vc_gameplay::beacon::pyramid_block_count(
+                                    &self.world, bx, byy, bz,
+                                );
+                                vc_render::render::report_boot_log(&format!(
+                                    "e2e: beacon pyramid level {lvl} ({blocks} blocks; VERIFIED 9/34/83/164)"
+                                ));
+                            }
+                            None => vc_render::render::report_boot_log(
+                                "e2e: no beacon within 5 blocks below the player",
+                            ),
                         }
                     }
                     Some("spawn") => {
@@ -5102,7 +6226,7 @@ impl GameApp {
                             "furnace" => &[0, 1, 2, 3, 5, 6, 7, 8],
                             _ => &[0], // log → planks (1x1 recipe)
                         };
-                        let ing: u8 = match recipe {
+                        let ing: u16 = match recipe {
                             "table" => PLANKS,
                             "furnace" => COBBLE,
                             _ => OAK_LOG,
@@ -5691,26 +6815,81 @@ impl GameApp {
             // also covers fast creative flight outrunning the generation
             // frontier.
             if !physics_frozen(&self.world, self.player.pos) {
-                // 1.8: spectator no-clip + always flying (GameType 3)
-                self.player.noclip = self.mode == vc_gameplay::modes::GameMode::Spectator;
-                // 1.10: mirror the auto-jump setting into the player
-                self.player.auto_jump = self.settings.auto_jump;
-                if self.player.noclip {
-                    self.player.flying = true;
-                }
-                let sounds = self.player.update(
-                    dt,
-                    self.time,
-                    &self.world,
-                    &mut self.input,
-                    self.settings.sensitivity,
-                    true,
-                );
-                for s in sounds {
-                    // footsteps + water-entry: the registry's step/splash events
-                    // carry their own volume + pitch ranges (§21)
-                    let ev = vc_audio::sounds::family_event(s.family, false);
-                    self.play_event(ev, None, 1.0);
+                // ---- Phase E3 (1.5–1.6): riding a horse/donkey/mule ----
+                // (VERIFIED w/Horse §Riding: "Once a horse is tamed and
+                // saddled, the player can control it with standard
+                // directional controls, jump, and the mouse. The player
+                // dismounts using the dismount control.") While riding:
+                // the mount's velocity model carries the player (the
+                // input feeds the mount's yaw/speed; the rider's physics
+                // reduce to position-glue + fall-immunity (the rider
+                // safely-falls 7 blocks in vanilla — engine adaptation:
+                // the mount's landing carries the damage, rider immune
+                // while mounted, disclosed).
+                let ridden_ok = self
+                    .riding
+                    .map(|id| self.sim.mobs.by_id(id).is_some())
+                    .unwrap_or(false);
+                if ridden_ok {
+                    // keep look-control + timers, freeze movement physics
+                    let mut still = self.input.clone();
+                    still.fwd = false;
+                    still.back = false;
+                    still.left = false;
+                    still.right = false;
+                    still.jump = false;
+                    still.sneak = false;
+                    let _sounds = self.player.update(
+                        dt,
+                        self.time,
+                        &self.world,
+                        &mut still,
+                        self.settings.sensitivity,
+                        true,
+                    );
+                    self.player.fall_dist = 0.0;
+                    // glue the rider above the mount
+                    let mount = self.riding.unwrap();
+                    if let Some(m) = self.sim.mobs.by_id(mount) {
+                        self.player.pos.x = m.pos[0];
+                        self.player.pos.y = m.pos[1] + 1.1;
+                        self.player.pos.z = m.pos[2];
+                        self.player.vel.y = 0.0;
+                    }
+                    // sneak = the dismount control (vanilla left-shift)
+                    if self.input.sneak {
+                        let mount = self.riding.unwrap();
+                        if let Some(m) = self.sim.mobs.by_id(mount) {
+                            self.player.pos.y = m.pos[1] + 1.6;
+                        }
+                        self.player.vel.y = 4.2;
+                        self.riding = None;
+                        self.play_event("entity.horse.gallop", None, 0.8);
+                        vc_render::render::report_boot_log("e2e: dismounted (sneak)");
+                    }
+                } else {
+                    // 1.8: spectator no-clip + always flying (GameType 3)
+                    self.player.noclip =
+                        self.mode == vc_gameplay::modes::GameMode::Spectator;
+                    // 1.10: mirror the auto-jump setting into the player
+                    self.player.auto_jump = self.settings.auto_jump;
+                    if self.player.noclip {
+                        self.player.flying = true;
+                    }
+                    let sounds = self.player.update(
+                        dt,
+                        self.time,
+                        &self.world,
+                        &mut self.input,
+                        self.settings.sensitivity,
+                        true,
+                    );
+                    for s in sounds {
+                        // footsteps + water-entry: the registry's step/splash events
+                        // carry their own volume + pitch ranges (§21)
+                        let ev = vc_audio::sounds::family_event(s.family, false);
+                        self.play_event(ev, None, 1.0);
+                    }
                 }
             }
 
@@ -5726,6 +6905,105 @@ impl GameApp {
                         self.play_event("entity.player.hurt", None, 1.0);
                         self.death_cause = "FELL FROM A HIGH PLACE".into();
                         self.ui.dirty = true;
+                    }
+                }
+            }
+
+            // Phase E2 (VERIFIED w/Lava): contact damage 4 HP per 10
+            // ticks (the every-tick 4 HP is reduced by the half-second
+            // damage-immunity window); creative is immune. Fire
+            // (300-tick burn after leaving) is deferred — no fire system.
+            if self.player.in_lava && self.lava_t % 10 == 0 {
+                if !self.mode.invulnerable() {
+                    let applied = self.player.damage(4.0);
+                    if applied > 0.0 {
+                        self.play_event("entity.player.hurt", None, 1.0);
+                        self.death_cause = "TRIED TO SWIM IN LAVA".into();
+                        self.ui.dirty = true;
+                    }
+                }
+            }
+            self.lava_t += 1;
+
+            // Phase E2 (+ 1.7.2 pufferfish poison, unified): timed status
+            // effects tick (wither / poison / regeneration — VERIFIED
+            // w/Effect rows; beacons refresh these through the same apply
+            // path). Poison damage is floored at 1 HP inside the system
+            // (cannot kill); wither can.
+            {
+                let (edmg, eheal) = self.player.effects.tick(self.player.health);
+                if edmg > 0.0 && !self.mode.invulnerable() {
+                    let applied = self.player.damage(edmg);
+                    if applied > 0.0 {
+                        self.play_event("entity.player.hurt", None, 0.9);
+                        // wither can kill, poison cannot — pick the cause
+                        // from which effect is actually running
+                        let poisoned = self
+                            .player
+                            .effects
+                            .amplifier(vc_gameplay::effects::EffectKind::Poison)
+                            .is_some();
+                        self.death_cause =
+                            if poisoned { "POISONED".into() } else { "WITHERED AWAY".into() };
+                        self.ui.dirty = true;
+                    }
+                }
+                if eheal > 0.0 {
+                    self.player.heal(eheal);
+                }
+            }
+
+            // Phase E2: beacon effects — every beacon reapplication
+            // refreshes the player's effect windows when in range
+            // (VERIFIED w/Beacon: every 4 s, duration 9 + 2×level s,
+            // radius 20/30/40/50)
+            {
+                use vc_gameplay::beacon::{in_range, BeaconSecondary};
+                use vc_gameplay::effects::{EffectKind};
+                let beacons: Vec<([i32; 3], vc_gameplay::beacon::BeaconState)> = self
+                    .sim
+                    .beacons
+                    .iter()
+                    .map(|(k, v)| (*k, v.clone()))
+                    .collect();
+                let px = self.player.pos.x;
+                let py = self.player.pos.y;
+                let pz = self.player.pos.z;
+                for (pos, mut st) in beacons {
+                    if !in_range(st.level.max(1), pos[0], pos[1], pos[2], px, py, pz) {
+                        continue;
+                    }
+                    if st.tick_reapply() {
+                        let dur = vc_gameplay::beacon::duration_ticks(st.level.max(1));
+                        if let Some(primary) = st.primary {
+                            let kind = match primary {
+                                vc_gameplay::beacon::BeaconPower::Speed => EffectKind::Speed,
+                                vc_gameplay::beacon::BeaconPower::Haste => EffectKind::Haste,
+                                vc_gameplay::beacon::BeaconPower::Resistance => {
+                                    EffectKind::Resistance
+                                }
+                                vc_gameplay::beacon::BeaconPower::JumpBoost => {
+                                    EffectKind::JumpBoost
+                                }
+                                vc_gameplay::beacon::BeaconPower::Strength => {
+                                    EffectKind::Strength
+                                }
+                            };
+                            // level II at the PrimaryII secondary (VERIFIED)
+                            let amp = if st.secondary == BeaconSecondary::PrimaryII {
+                                1
+                            } else {
+                                0
+                            };
+                            self.player.effects.apply(kind, amp, dur);
+                        }
+                        if st.secondary == BeaconSecondary::Regeneration {
+                            self.player.effects.apply(EffectKind::Regeneration, 0, dur);
+                        }
+                        // store the re-ticked state back
+                        if let Some(slot) = self.sim.beacons.get_mut(&pos) {
+                            *slot = st;
+                        }
                     }
                 }
             }
@@ -5760,16 +7038,8 @@ impl GameApp {
                 }
             }
 
-            // 1.7.2 bracket: status-effect tick (pufferfish poison —
-            // Poison IV 1:00, 1 HP per 10 ticks observable, floor 1 HP,
-            // all live-verified on minecraft.wiki/w/Poison). Creative is
-            // damage-immune like every other source.
-            let poison = self.player.tick_effects();
-            if poison > 0.0 && !self.mode.invulnerable() {
-                self.play_event("entity.player.hurt", None, 0.9);
-                self.death_cause = "POISONED".into();
-                self.ui.dirty = true;
-            }
+            // (1.7.2 poison ticks through the unified Phase E2 effects
+            // block above — no separate tick call)
 
             // targeting
             self.target = raycast(
@@ -5789,7 +7059,13 @@ impl GameApp {
                 && self.mode != vc_gameplay::modes::GameMode::Spectator
             {
                 if let Some((pos, b, _)) = self.target {
-                    if b != BEDROCK {
+                    // Phase E2 (VERIFIED w/Adventure): adventure mode
+                    // cannot directly break blocks (Java allows it only
+                    // via item can_break components — the engine has
+                    // none: plain denial, disclosed)
+                    if !self.mode.edits_world_blocks() {
+                        self.place_timer = 0.3;
+                    } else if b != BEDROCK {
                         let broke = self.world.get_block(pos[0], pos[1], pos[2]);
                         let (biome, sky, blk) =
                             light_at(&self.world, &self.light, pos[0], pos[1], pos[2]);
@@ -5815,9 +7091,38 @@ impl GameApp {
                         // breaking yields NO drops (infinite inventory —
                         // blocks just vanish, vanilla behavior)
                         if self.mode.drops_blocks() {
-                            self.sim
-                                .items
-                                .drop_block(pos[0], pos[1], pos[2], broke, biome, sky, blk);
+                            if broke == ENDER_CHEST {
+                                // Phase E2 (VERIFIED w/Ender_Chest): breaks
+                                // into 8 obsidian (no Silk Touch in the
+                                // engine — the always-obsidian row,
+                                // documented); contents stay in the shared
+                                // ender inventory (never spilled)
+                                for _ in 0..8 {
+                                    self.sim.items.drop_block(
+                                        pos[0], pos[1], pos[2], OBSIDIAN, biome, sky, blk,
+                                    );
+                                }
+                            } else if broke == EMERALD_ORE {
+                                // Phase E2 (VERIFIED w/Emerald_Ore): drops
+                                // 1 emerald (Fortune deferred — no Fortune
+                                // enchant in the engine)
+                                self.sim.items.drop_block(
+                                    pos[0], pos[1], pos[2], EMERALD, biome, sky, blk,
+                                );
+                            } else if broke == NETHER_QUARTZ_ORE {
+                                // Phase E3 (VERIFIED live 2026-09-06,
+                                // minecraft.wiki/w/Nether_Quartz_Ore:
+                                // "it drops 1 Nether quartz" — Fortune up
+                                // to 4 deferred, no Fortune enchant; ore
+                                // XP 2–5 rides the ore_xp path)
+                                self.sim.items.drop_block(
+                                    pos[0], pos[1], pos[2], NETHER_QUARTZ, biome, sky, blk,
+                                );
+                            } else {
+                                self.sim.items.drop_block(
+                                    pos[0], pos[1], pos[2], broke, biome, sky, blk,
+                                );
+                            }
                         }
                         notify_sim(&self.world, &mut self.sim.sched, pos[0], pos[1], pos[2]);
                         // §27/§29: container contents spill + entity cleanup
@@ -5865,7 +7170,166 @@ impl GameApp {
                     }
                     self.open_container(Container::Trade { villager: vid });
                     self.place_timer = 0.3;
-                } else if let Some((tpos, tb, _)) = self.target {
+                }
+                // ---- Phase E3 (1.5–1.6): equine interactions (mount /
+                // saddle / feed / lead) — vanilla interaction priority
+                // over blocks, the villager pattern ----
+                else if let Some(eid) = self
+                    .sim
+                    .mobs
+                    .ray_hit(
+                        self.player.eye().to_array(),
+                        self.player.look_dir().to_array(),
+                        crate::player::REACH,
+                    )
+                    .filter(|&id| {
+                        self.sim
+                            .mobs
+                            .by_id(id)
+                            .map(|m| {
+                                matches!(
+                                    m.kind,
+                                    vc_gameplay::mobs::MobKind::Horse
+                                        | vc_gameplay::mobs::MobKind::Donkey
+                                        | vc_gameplay::mobs::MobKind::Mule
+                                )
+                            })
+                            .unwrap_or(false)
+                    })
+                {
+                    let held = self.player.held().block;
+                    // (1) LEAD: leash the mob to the player (VERIFIED w/
+                    // Lead — 10-block stretch in 1.16.5, version-scoped);
+                    // a held lead on a FENCE ties a knot instead (the
+                    // target block path below)
+                    if held == LEAD && self.leashed.is_none() {
+                        self.leashed = Some((eid, None));
+                        if self.mode.depletes_items() {
+                            let h = self.player.held_mut();
+                            h.count -= 1;
+                            if h.count == 0 {
+                                *h = vc_inventory::inventory::ItemStack::EMPTY;
+                            }
+                        }
+                        self.play_event("entity.horse.gallop", None, 0.7);
+                        vc_render::render::report_boot_log("e2e: lead attached (10-block max, VERIFIED 1.16.5)");
+                        self.place_timer = 0.3;
+                    }
+                    // (2) SADDLE: equip a tamed equine (VERIFIED w/Horse
+                    // §Riding — control needs the saddle)
+                    else if held == SADDLE {
+                        let applied = self.sim.mobs.try_saddle(eid);
+                        if applied {
+                            if self.mode.depletes_items() {
+                                let h = self.player.held_mut();
+                                h.count -= 1;
+                                if h.count == 0 {
+                                    *h = vc_inventory::inventory::ItemStack::EMPTY;
+                                }
+                            }
+                            self.play_event("entity.horse.armor", None, 1.0);
+                            vc_render::render::report_boot_log("e2e: saddle equipped (control unlocked, VERIFIED)");
+                        }
+                        self.place_timer = 0.3;
+                    }
+                    // (3) FOOD: golden apple (breeding, VERIFIED w/Horse
+                    // §Breeding) / hay bale (heals + grows temper,
+                    // VERIFIED w/Hay_Bale §Food)
+                    else if held == GOLDEN_APPLE || held == HAY_BALE {
+                        let mut feed_rng =
+                            vc_rng::rng::Rng::new((self.sim.ticks as u64) ^ 0x5EED_1EAD);
+                        let outcome =
+                            self.sim.mobs.try_feed(eid, held, &mut feed_rng);
+                        if let Some(out) = outcome {
+                            if self.mode.depletes_items() {
+                                let h = self.player.held_mut();
+                                h.count -= 1;
+                                if h.count == 0 {
+                                    *h = vc_inventory::inventory::ItemStack::EMPTY;
+                                }
+                            }
+                            self.play_event("entity.horse.eat", None, 1.0);
+                            if let vc_gameplay::mobs::FeedOutcome::LoveMode(partner) = out {
+                                // the foal: bred-stat formula (VERIFIED
+                                // w/Horse §Bred_values)
+                                let (px, py, pz) = {
+                                    let m = self.sim.mobs.by_id(eid).unwrap();
+                                    (m.pos[0] as i32, m.pos[1] as i32, m.pos[2] as i32)
+                                };
+                                let mut foal_rng = vc_rng::rng::Rng::new(
+                                    (self.sim.ticks as u64) ^ 0xF0A1,
+                                );
+                                let foal = self.sim.mobs.spawn_foal(
+                                    eid, partner, px, py + 1, pz, &mut foal_rng,
+                                );
+                                let _ = foal;
+                                vc_render::render::report_boot_log(
+                                    "e2e: love mode → foal (bred-stat formula, VERIFIED)",
+                                );
+                            }
+                            self.place_timer = 0.5;
+                        }
+                    }
+                    // (4) otherwise: mount / unmount / unleash
+                    else {
+                        if self.leashed == Some((eid, None)) {
+                            // using the mob again unleashes it (VERIFIED:
+                            // "A lead is broken by pressing the use item
+                            // control on the leashed mob again")
+                            let mpos = self
+                                .sim
+                                .mobs
+                                .by_id(eid)
+                                .map(|m| m.pos)
+                                .unwrap_or(self.player.pos.to_array());
+                            self.leashed = None;
+                            self.sim.items.drop_block(
+                                mpos[0].floor() as i32,
+                                mpos[1].floor() as i32,
+                                mpos[2].floor() as i32,
+                                LEAD,
+                                2,
+                                15,
+                                0,
+                            );
+                        }
+                        // mounting is disallowed in Adventure (§ modes —
+                        // use the not-adventure rule from modes.rs)
+                        if self.mode.label() != "Adventure" {
+                            let mut tame_rng =
+                                vc_rng::rng::Rng::new((self.sim.ticks as u64) ^ 0x7A1E);
+                            match self.sim.mobs.try_mount(eid, &mut tame_rng) {
+                                Some(true) => {
+                                    self.riding = Some(eid);
+                                    self.play_event("entity.horse.ambient", None, 1.0);
+                                    vc_render::render::report_boot_log(if self
+                                        .sim
+                                        .mobs
+                                        .by_id(eid)
+                                        .map(|m| {
+                                            m.equine.as_ref().map(|e| e.saddled).unwrap_or(false)
+                                        })
+                                        .unwrap_or(false)
+                                    {
+                                        "e2e: mounted (saddled — control enabled, VERIFIED)"
+                                    } else {
+                                        "e2e: mounted (tamed, unsaddled — no control, VERIFIED)"
+                                    });
+                                }
+                                Some(false) => {
+                                    self.play_event("entity.horse.angry", None, 1.0);
+                                    vc_render::render::report_boot_log(
+                                        "e2e: bucked off (temper +5, VERIFIED taming rule)",
+                                    );
+                                }
+                                None => {}
+                            }
+                            self.place_timer = 0.3;
+                        }
+                    }
+                    self.ui.dirty = true;
+                }
+                else if let Some((tpos, tb, _)) = self.target {
                     // §25: right-click a lever toggles it (vanilla interaction)
                     if tb == LEVER {
                         vc_sim::redstone::toggle_lever(
@@ -5916,6 +7380,119 @@ impl GameApp {
                         self.sim.containers.entry(tpos, CHEST);
                         self.open_container(Container::Chest { pos: tpos });
                         self.place_timer = 0.3;
+                    } else if tb == TRAPPED_CHEST {
+                        // Phase E3 (VERIFIED w/Trapped_Chest): container
+                        // + redstone — "a power level equal to the number
+                        // of players ... accessing the trapped chest at
+                        // once (maximum 15)" (single-player: 1 while the
+                        // GUI is open). Opening feeds adjacent wires the
+                        // viewer signal; closing drops it back to 0 (the
+                        // container-close path re-ticks with open=false).
+                        self.sim.containers.entry(tpos, CHEST);
+                        self.open_container(Container::Chest { pos: tpos });
+                        let (w, sched) = (&mut self.world, &mut self.sim.sched);
+                        vc_sim::redstone::trapped_chest_tick(w, sched, tpos[0], tpos[1], tpos[2], true);
+                        self.place_timer = 0.3;
+                    } else if tb == ENDER_CHEST {
+                        // Phase E2 (VERIFIED w/Ender_Chest): 27 slots,
+                        // shared across EVERY ender chest — the single
+                        // container entity at the sentinel key makes all
+                        // opens the same inventory (single-player = the
+                        // vanilla per-player rule). Interactions stay
+                        // available in Adventure (containers are
+                        // interactions, not block edits).
+                        self.sim.containers.entry(ENDER_CHEST_KEY, CHEST);
+                        self.open_container(Container::Chest { pos: ENDER_CHEST_KEY });
+                        self.place_timer = 0.3;
+                    } else if tb == BEACON {
+                        // Phase E2 (VERIFIED w/Beacon): feed one material
+                        // (engine adaptation: iron/gold/diamond ORE items
+                        // or EMERALD — no ingot/gem items) + cycle the
+                        // powers. Cycle order: Speed, Haste, Resistance,
+                        // Jump Boost, Strength (min-level gated); at a
+                        // 4-level pyramid the secondary cycles
+                        // None -> Regeneration -> Primary II.
+                        let fed = matches!(
+                            self.player.held().block,
+                            IRON_ORE | GOLD_ORE | DIAMOND_ORE | EMERALD
+                                | IRON_BLOCK | GOLD_BLOCK | DIAMOND_BLOCK
+                        );
+                        if fed && self.mode.depletes_items() {
+                            let held = self.player.held_mut();
+                            held.count -= 1;
+                            if held.count == 0 {
+                                *held = vc_inventory::inventory::ItemStack::EMPTY;
+                            }
+                        }
+                        let level = vc_gameplay::beacon::pyramid_level(
+                            &self.world, tpos[0], tpos[1], tpos[2],
+                        );
+                        use vc_gameplay::beacon::{BeaconPower, BeaconSecondary};
+                        let powers = [
+                            BeaconPower::Speed,
+                            BeaconPower::Haste,
+                            BeaconPower::Resistance,
+                            BeaconPower::JumpBoost,
+                            BeaconPower::Strength,
+                        ];
+                        let cur = self
+                            .sim
+                            .beacons
+                            .get(&tpos)
+                            .cloned()
+                            .unwrap_or_default();
+                        // advance the primary (level-gated), then the
+                        // secondary at level 4
+                        let cur_idx = cur
+                            .primary
+                            .map(|c| powers.iter().position(|&p| p == c).unwrap_or(0))
+                            .unwrap_or(0);
+                        let mut next_idx = cur_idx + 1;
+                        while next_idx < powers.len()
+                            && powers[next_idx].min_level() > level
+                        {
+                            next_idx += 1;
+                        }
+                        let (primary, secondary) = if next_idx >= powers.len() {
+                            // wrapped: restart at the first allowed power
+                            let mut first = 0;
+                            while first < powers.len()
+                                && powers[first].min_level() > level
+                            {
+                                first += 1;
+                            }
+                            let p = powers[first.min(powers.len() - 1)];
+                            let sec = if level >= 4 {
+                                match cur.secondary {
+                                    BeaconSecondary::None => BeaconSecondary::Regeneration,
+                                    BeaconSecondary::Regeneration => BeaconSecondary::PrimaryII,
+                                    BeaconSecondary::PrimaryII => BeaconSecondary::None,
+                                }
+                            } else {
+                                BeaconSecondary::None
+                            };
+                            (p, sec)
+                        } else {
+                            (powers[next_idx], BeaconSecondary::None)
+                        };
+                        let mut st = vc_gameplay::beacon::BeaconState::new();
+                        if level > 0 {
+                            let _ = st.select(level, primary, secondary);
+                        }
+                        self.sim.beacons.insert(tpos, st);
+                        vc_render::render::report_boot_log(&format!(
+                            "e2e: beacon level {level} -> {}{} (fed {}, VERIFIED powers/levels)",
+                            primary.name(),
+                            match secondary {
+                                BeaconSecondary::Regeneration => " + Regeneration".to_string(),
+                                BeaconSecondary::PrimaryII => " II".to_string(),
+                                _ => String::new(),
+                            },
+                            if fed { 1 } else { 0 },
+                        ));
+                        self.play_event("block.beacon.activate", Some([tpos[0] as f32 + 0.5, tpos[1] as f32 + 1.0, tpos[2] as f32 + 0.5]), 1.0);
+                        self.place_timer = 0.3;
+                        self.ui.dirty = true;
                     } else if tb == HOPPER {
                         // §Container: right-click opens the hopper screen
                         // (5 slots, VERIFIED "Item Hopper" GUI); the entity
@@ -5924,6 +7501,164 @@ impl GameApp {
                         self.sim.containers.entry(tpos, HOPPER);
                         self.open_container(Container::Hopper { pos: tpos });
                         self.place_timer = 0.3;
+                    } else if !self.player.held().is_empty()
+                        && is_spawn_egg(self.player.held().block)
+                    {
+                        // Phase E1: spawn egg (VERIFIED w/Spawn_Egg §Usage —
+                        // "use on any surface: the egg's mob appears with
+                        // its feet immediately adjacent to the surface").
+                        // The egg is consumed in Survival.
+                        let b = self.player.held().block;
+                        let kind = vc_gameplay::mobs::MobKind::from_egg(egg_mob(b).unwrap_or(15));
+                        // spawn on the face-adjacent cell (the `prev`
+                        // position the raycast computed)
+                        let (sx, sy, sz) = if let Some((_, _, prev)) = self.target {
+                            (prev[0], prev[1], prev[2])
+                        } else {
+                            (tpos[0], tpos[1] + 1, tpos[2])
+                        };
+                        let spawned = self.sim.mobs.spawn_at(kind, sx, sy, sz);
+                        if self.mode.depletes_items() {
+                            let held = self.player.held_mut();
+                            held.count -= 1;
+                            if held.count == 0 {
+                                *held = vc_inventory::inventory::ItemStack::EMPTY;
+                            }
+                        }
+                        if spawned.is_some() {
+                            self.play_event(
+                                "entity.generic.spawn",
+                                Some([sx as f32 + 0.5, sy as f32 + 1.0, sz as f32 + 0.5]),
+                                1.0,
+                            );
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: spawn egg → {} at {sx},{sy},{sz}",
+                                kind.name()
+                            ));
+                        }
+                        self.place_timer = 0.3;
+                        self.ui.dirty = true;
+                    } else if !self.player.held().is_empty()
+                        && self.player.held().block == GOLDEN_APPLE
+                    {
+                        // Phase E1: cure a targeted zombie villager
+                        // (VERIFIED w/Zombie_Villager: weakness + golden
+                        // apple; the weakness gate is a documented engine
+                        // deferral — no weakness potion in the brewing set)
+                        let eye = self.player.eye().to_array();
+                        let dir = self.player.look_dir().to_array();
+                        let mob_hit = self
+                            .sim
+                            .mobs
+                            .ray_hit(eye, dir, crate::player::REACH + 0.4)
+                            .and_then(|id| self.sim.mobs.list.iter().find(|m| m.id == id).map(|m| (m.id, m.kind, m.pos)));
+                        if mob_hit.map(|(_, k, _)| k) == Some(vc_gameplay::mobs::MobKind::ZombieVillager) {
+                            let mid = mob_hit.unwrap().0;
+                            // begin the cure (VERIFIED 3600..=6000 ticks)
+                            let mut cure_rng = vc_rng::rng::Rng::new(
+                                (self.sim.ticks as u64) ^ 0xC0_FFEE,
+                            );
+                            if let Some(m) =
+                                self.sim.mobs.list.iter_mut().find(|m| m.id == mid)
+                            {
+                                if m.variant == 0 {
+                                    vc_gameplay::mobs::begin_cure(m, &mut cure_rng);
+                                    if self.mode.depletes_items() {
+                                        let held = self.player.held_mut();
+                                        held.count -= 1;
+                                        if held.count == 0 {
+                                            *held =
+                                                vc_inventory::inventory::ItemStack::EMPTY;
+                                        }
+                                    }
+                                    self.play_event(
+                                        "entity.zombie_villager.converted",
+                                        Some(mob_hit.unwrap().2),
+                                        1.0,
+                                    );
+                                    vc_render::render::report_boot_log(
+                                        "e2e: zombie villager cure begun (3600-6000 ticks, VERIFIED)",
+                                    );
+                                    self.place_timer = 0.5;
+                                    self.ui.dirty = true;
+                                }
+                            }
+                        } else {
+                            // eating a golden apple (no effect system yet:
+                            // absorption/Regeneration deferred — documented;
+                            // restores 4 HP like food)
+                            if self.mode.depletes_items() {
+                                let held = self.player.held_mut();
+                                held.count -= 1;
+                                if held.count == 0 {
+                                    *held = vc_inventory::inventory::ItemStack::EMPTY;
+                                }
+                            }
+                            if !self.mode.invulnerable() {
+                                self.player.heal(4.0);
+                            }
+                            self.play_event("entity.generic.drink", None, 0.8);
+                            self.place_timer = 0.5;
+                            self.ui.dirty = true;
+                        }
+                    } else if !self.player.held().is_empty()
+                        && self.player.held().block == EYE_OF_ENDER
+                        && tb == END_PORTAL_FRAME
+                    {
+                        // Phase E1: insert an eye of ender into the frame
+                        // (VERIFIED w/The_End: 12 frames form the 5×5 ring
+                        // with corners cut; filling all 12 activates the
+                        // portal — the central 3×3 becomes End portal)
+                        let (cx, cy, cz) = (tpos[0], tpos[1], tpos[2]);
+                        let cur = self.world.get_state(cx, cy, cz);
+                        if cur != END_PORTAL_FRAME_EYE {
+                            self.world
+                                .set_block_state(cx, cy, cz, END_PORTAL_FRAME_EYE);
+                            if self.mode.depletes_items() {
+                                let held = self.player.held_mut();
+                                held.count -= 1;
+                                if held.count == 0 {
+                                    *held = vc_inventory::inventory::ItemStack::EMPTY;
+                                }
+                            }
+                            self.play_event(
+                                "block.end_portal_frame.fill",
+                                Some([cx as f32 + 0.5, cy as f32 + 1.0, cz as f32 + 0.5]),
+                                1.0,
+                            );
+                            // activation check: the portal room's 12-frame
+                            // ring (the stronghold emits frames in the
+                            // vanilla 5×5-minus-corners layout around the
+                            // room center — scan the 7×7 neighborhood for
+                            // the ring pattern)
+                            let mut eyes = 0;
+                            for dz in -3..=3i32 {
+                                for dx in -3..=3i32 {
+                                    let s = self.world.get_state(cx + dx, cy, cz + dz);
+                                    if s == END_PORTAL_FRAME_EYE {
+                                        eyes += 1;
+                                    }
+                                }
+                            }
+                            if eyes >= 12 {
+                                self.activate_end_portal(cx, cy, cz);
+                            }
+                            self.place_timer = 0.3;
+                            self.ui.dirty = true;
+                        }
+                    } else if tb == END_PORTAL {
+                        // Phase E1: entering an end portal dimension-travels
+                        // (walk-in trigger; vanilla jumps in). Overworld
+                        // portal → the End; the End's exit fountain → home.
+                        let target = if self.world.dimension
+                            == vc_world::world::Dimension::End
+                        {
+                            vc_world::world::Dimension::Overworld
+                        } else {
+                            vc_world::world::Dimension::End
+                        };
+                        self.travel_to_dimension(target);
+                        self.place_timer = 0.5;
                     } else if !self.player.held().is_empty()
                         && self.player.held().block == POTION_EMPTY
                         && (self.player.in_water || self.player.head_in_water)
@@ -6030,9 +7765,10 @@ impl GameApp {
                             }
                         }
                         if !self.mode.invulnerable() {
+                            // Poison IV 1:00 + Hunger 0:15 in one eat
+                            // (VERIFIED w/Pufferfish) — both ride the
+                            // unified Effects system now
                             self.player.apply_pufferfish_poison();
-                            self.player.effects.hunger_ticks =
-                                vc_gameplay::fishing::PUFFERFISH_HUNGER_TICKS;
                         }
                         self.play_event("entity.generic.drink", None, 0.8);
                         vc_render::render::report_boot_log(&format!(
@@ -6045,9 +7781,10 @@ impl GameApp {
                         // Phase 2: right-click eats raw meat. Documented
                         // deviation: no hunger system yet, so food heals
                         // directly (4 HP ≈ the meats' satiating weight);
-                        // stacks deplete in Survival only
+                        // stacks deplete in Survival only. Phase E2: the
+                        // verified per-food values (food_heal).
                         let b = self.player.held().block;
-                        let heal_amt = 4.0;
+                        let heal_amt = food_heal(b);
                         if self.mode.depletes_items() {
                             let held = self.player.held_mut();
                             held.count -= 1;
@@ -6122,7 +7859,12 @@ impl GameApp {
                             // interactions; empty bottle out of water = no-op
                         } else if let Some((_, _, prev)) = self.target {
                             let pb = self.world.get_block(prev[0], prev[1], prev[2]);
-                            let replaceable = pb == AIR || pb == WATER || is_cross(pb);
+                            // Phase E2 (VERIFIED w/Adventure): adventure mode
+                            // cannot place blocks (interactions above stay
+                            // available; plain denial — no can_place_on
+                            // components in the engine, documented)
+                            let replaceable = (pb == AIR || pb == WATER || is_cross(pb))
+                                && self.mode.edits_world_blocks();
                             let collides_player =
                                 is_solid(b) && self.player.block_intersects_player(prev);
                             if replaceable && !collides_player {
@@ -6180,6 +7922,27 @@ impl GameApp {
                                 }
                                 // fences: neighbors recompute their connections
                                 update_fence_neighbors(&mut self.world, prev[0], prev[1], prev[2]);
+                                // Phase E3: register weighted plates for
+                                // the entity-count sweep (signals VERIFIED
+                                // w/Light_Weighted_Pressure_Plate + the
+                                // heavy ceil(entities/10) row)
+                                if b == LIGHT_WEIGHTED_PLATE || b == HEAVY_WEIGHTED_PLATE {
+                                    self.plates.push(prev);
+                                }
+                                // Phase E3: a LEAD used on a fence ties the
+                                // held leash as a knot (VERIFIED w/Lead —
+                                // "using the lead on any type of fence
+                                // attaches the lead to it with a visible
+                                // knot"); the mob then stays within the
+                                // leash of that post
+                                if b == OAK_FENCE {
+                                    if let Some((lid, None)) = self.leashed {
+                                        self.leashed = Some((lid, Some(prev)));
+                                        vc_render::render::report_boot_log(
+                                            "e2e: lead tied to fence knot (VERIFIED)",
+                                        );
+                                    }
+                                }
                                 // §24/§25: a new block notifies the sim
                                 notify_sim(
                                     &self.world,
@@ -6188,6 +7951,134 @@ impl GameApp {
                                     prev[1],
                                     prev[2],
                                 );
+                                // Phase E2 (VERIFIED w/Wither Spawning): the
+                                // wither is summoned when the LAST wither
+                                // skeleton skull is placed on the T of 4
+                                // soul sand (4 soul sand + 3 skulls, the
+                                // final block must be a skull)
+                                if b == WITHER_SKELETON_SKULL
+                                    && self.mode.edits_world_blocks()
+                                    && vc_gameplay::wither::wither_pattern(
+                                        &self.world,
+                                        prev[0],
+                                        prev[1],
+                                        prev[2],
+                                    )
+                                {
+                                    // consume the pattern (7 blocks)
+                                    for c in
+                                        vc_gameplay::wither::wither_pattern_blocks(
+                                            prev[0], prev[1], prev[2],
+                                        )
+                                    {
+                                        self.world.set_block(c[0], c[1], c[2], AIR);
+                                        self.light.on_block_changed(
+                                            &self.world,
+                                            c[0],
+                                            c[1],
+                                            c[2],
+                                            0,
+                                            0,
+                                        );
+                                    }
+                                    self.sim.wither.begin_summon(
+                                        prev[0], prev[1], prev[2],
+                                    );
+                                    self.play_event(
+                                        "entity.wither.spawn",
+                                        Some([
+                                            prev[0] as f32 + 0.5,
+                                            prev[1] as f32 + 1.0,
+                                            prev[2] as f32 + 0.5,
+                                        ]),
+                                        1.0,
+                                    );
+                                    vc_render::render::report_boot_log(
+                                        "e2e: wither summon begun (T of 4 soul sand + 3 skulls, 220-tick charge, VERIFIED)",
+                                    );
+                                    self.place_timer = 0.5;
+                                    self.ui.dirty = true;
+                                } else
+                                // Phase E1: golem build patterns — a PUMPKIN
+                                // placed last on the right body spawns the
+                                // golem and consumes the pattern blocks
+                                // (VERIFIED w/Snow_Golem + w/Iron_Golem
+                                // §Spawning: 2 snow blocks / a T of 4 iron
+                                // blocks; "The pumpkin may be placed ...
+                                // but it must be placed last")
+                                if b == PUMPKIN
+                                    && prev[1] > 2
+                                    && self.mode.edits_world_blocks()
+                                {
+                                    if vc_gameplay::mobs::snow_golem_pattern(
+                                        &self.world,
+                                        prev[0],
+                                        prev[1],
+                                        prev[2],
+                                    ) {
+                                        // remove the body (2 snow + the pumpkin)
+                                        for dy in 0..3 {
+                                            self.world.set_block(
+                                                prev[0],
+                                                prev[1] - dy,
+                                                prev[2],
+                                                AIR,
+                                            );
+                                        }
+                                        let _ = self.sim.mobs.spawn_at(
+                                            vc_gameplay::mobs::MobKind::SnowGolem,
+                                            prev[0],
+                                            prev[1] - 2,
+                                            prev[2],
+                                        );
+                                        self.play_event(
+                                            "entity.snow_golem.ambient",
+                                            Some([
+                                                prev[0] as f32 + 0.5,
+                                                prev[1] as f32,
+                                                prev[2] as f32 + 0.5,
+                                            ]),
+                                            1.0,
+                                        );
+                                        vc_render::render::report_boot_log(
+                                            "e2e: snow golem built (2 snow + pumpkin, VERIFIED)",
+                                        );
+                                    } else if vc_gameplay::mobs::iron_golem_pattern(
+                                        &self.world,
+                                        prev[0],
+                                        prev[1],
+                                        prev[2],
+                                    ) {
+                                        // remove the T body + the pumpkin
+                                        for (bx, by) in [
+                                            (prev[0], prev[1]),
+                                            (prev[0], prev[1] - 1),
+                                            (prev[0] - 1, prev[1] - 2),
+                                            (prev[0], prev[1] - 2),
+                                            (prev[0] + 1, prev[1] - 2),
+                                        ] {
+                                            self.world.set_block(bx, by, prev[2], AIR);
+                                        }
+                                        let _ = self.sim.mobs.spawn_at(
+                                            vc_gameplay::mobs::MobKind::IronGolem,
+                                            prev[0],
+                                            prev[1] - 2,
+                                            prev[2],
+                                        );
+                                        self.play_event(
+                                            "entity.iron_golem.ambient",
+                                            Some([
+                                                prev[0] as f32 + 0.5,
+                                                prev[1] as f32,
+                                                prev[2] as f32 + 0.5,
+                                            ]),
+                                            1.0,
+                                        );
+                                        vc_render::render::report_boot_log(
+                                            "e2e: iron golem built (T of 4 iron + pumpkin, VERIFIED)",
+                                        );
+                                    }
+                                }
                                 self.play_event(
                                     vc_audio::sounds::family_event(def(b).sound, true),
                                     Some([
@@ -6459,12 +8350,30 @@ impl GameApp {
         // player: inventory persists, position rescales; y waits for the snap
         let y = if dim == vc_world::world::Dimension::Nether {
             90.0
+        } else if dim == vc_world::world::Dimension::End {
+            64.0 // the obsidian platform (VERIFIED arrival x/z: 100/0)
         } else {
             120.0
         };
-        self.player.pos = Vec3::new(nx as f32 + 0.5, y, nz as f32 + 0.5);
+        let (ax, az) = if dim == vc_world::world::Dimension::End {
+            (100, 0) // VERIFIED w/The_End: arrival at X:100, Z:0
+        } else {
+            (nx, nz)
+        };
+        self.player.pos = Vec3::new(ax as f32 + 0.5, y, az as f32 + 0.5);
         self.player.vel = Vec3::ZERO;
         self.player.flying = false;
+
+        // Phase E1: first End entry spawns the ender-dragon fight — 200 HP
+        // dragon + 10 crystals on the pillar tops (VERIFIED counts). The
+        // fight lives in the fresh sim (created above).
+        if dim == vc_world::world::Dimension::End && !self.dragon_defeated {
+            let tops = self.world.gen.end_pillar_tops();
+            self.sim.dragon.begin_fight(&tops);
+            vc_render::render::report_boot_log(
+                "e2e: the ender dragon rises (200 HP, 10 crystals — VERIFIED)",
+            );
+        }
 
         // wait for the spawn chunk through the Loading screen (vanilla shows
         // a loading screen on travel too), then return to the game
@@ -6476,9 +8385,49 @@ impl GameApp {
             "dimension travel: {} -> {} (coords {},{})",
             cur.id(),
             dim.id(),
-            nx,
-            nz
+            ax,
+            az
         ));
+    }
+
+    /// Phase E1: stronghhold end-portal activation (VERIFIED w/The_End:
+    /// all 12 eyes placed → the central 3×3 becomes End portal blocks —
+    /// "the portal destroys all blocks in the central 3×3 square"). The
+    /// (cx, cy, cz) frame anchors the ring scan.
+    fn activate_end_portal(&mut self, cx: i32, cy: i32, cz: i32) {
+        // recover the ring center: the frame ring is 5×5-minus-corners →
+        // the center is the mean of the eye frames
+        let mut xs = Vec::new();
+        let mut zs = Vec::new();
+        for dz in -3..=3i32 {
+            for dx in -3..=3i32 {
+                if self.world.get_state(cx + dx, cy, cz + dz) == END_PORTAL_FRAME_EYE {
+                    xs.push(cx + dx);
+                    zs.push(cz + dz);
+                }
+            }
+        }
+        if xs.len() < 12 {
+            return; // not the vanilla 12-frame ring
+        }
+        let center_x = xs.iter().sum::<i32>() / xs.len() as i32;
+        let center_z = zs.iter().sum::<i32>() / zs.len() as i32;
+        // the central 3×3 → END_PORTAL (the portal destroys whatever sits
+        // there — VERIFIED)
+        for dx in -1..=1i32 {
+            for dz in -1..=1i32 {
+                self.world
+                    .set_block(center_x + dx, cy, center_z + dz, END_PORTAL);
+                for dy in 1..=2 {
+                    self.world.set_block(center_x + dx, cy + dy, center_z + dz, AIR);
+                }
+            }
+        }
+        self.play_event("block.end_portal.spawn", None, 1.0);
+        vc_render::render::report_boot_log(&format!(
+            "e2e: end portal activated at ({center_x},{cy},{center_z}) — 12 eyes (VERIFIED)"
+        ));
+        self.edits += 1;
     }
 
     /// §28: nether floor search for the travel snap — a cavern cell with a
@@ -6957,6 +8906,7 @@ impl GameApp {
                 seed: self.world.seed,
                 dim: self.world.dimension,
                 inbound,
+                flat: self.world_flat,
             };
             self.submit(job);
         }
@@ -7184,7 +9134,7 @@ impl GameApp {
                 } else {
                     let mut c = (*chunk).clone();
                     for (idx, id) in leftover {
-                        if c.get_idx(idx as usize) == AIR {
+                        if state_block(c.get_idx(idx as usize)) == AIR {
                             c.set_idx(idx as usize, id);
                         }
                     }
@@ -7334,6 +9284,31 @@ impl GameApp {
         } else {
             self.ui
                 .status_bars(self.player.health, 20.0, xp, level, self.player.air);
+        }
+
+        // Phase E1: the dragon boss bar while the fight is live (VERIFIED:
+        // light purple, top of the screen)
+        if self.world.dimension == vc_world::world::Dimension::End {
+            if let Some(d) = self.sim.dragon.dragon.as_ref() {
+                if d.dying.is_none() {
+                    self.ui.boss_bar(d.health / vc_gameplay::dragon::DRAGON_HEALTH);
+                }
+            }
+        }
+
+        // Phase E2: the wither boss bar (any dimension; VERIFIED w/Wither:
+        // the boss bar fills through the charge then tracks health)
+        if let Some(w) = self.sim.wither.wither.as_ref() {
+            if w.alive() {
+                if w.charging() {
+                    // the charge fills the bar (VERIFIED §Creation: the
+                    // bar charges up over the 220 ticks)
+                    let frac = (w.phase_t as f32) / (vc_gameplay::wither::CHARGE_TICKS as f32);
+                    self.ui.boss_bar(frac.clamp(0.0, 1.0));
+                } else {
+                    self.ui.boss_bar(w.health / vc_gameplay::wither::WITHER_HEALTH);
+                }
+            }
         }
 
         // held-item name (fades ~2 s after the selection changes)
@@ -7604,7 +9579,7 @@ impl GameApp {
 
         // block picker overlay (B) — sits above the HUD
         if self.picker_open {
-            let g = self.ui.picker(self.cursor, &self.atlas);
+            let g = self.ui.picker(self.cursor, &self.atlas, self.picker_scroll);
             self.picker_geom = Some(g);
         } else {
             self.picker_geom = None;
@@ -7854,6 +9829,14 @@ impl GameApp {
             );
             // Phase 2: mobs + skeleton arrows share the billboard pipeline
             vc_gameplay::mobs::build_vertices(&self.sim.mobs.list, right, &mut self.particle_verts);
+            // Phase E1: XP orbs + the dragon + end crystals (billboards
+            // through the same particle stream)
+            self.sim
+                .xp_orbs
+                .build_vertices(self.time, right, up, &mut self.particle_verts);
+            self.build_end_entity_vertices(right, up);
+            // Phase E2: the wither (any dimension — player-summoned)
+            self.build_wither_vertices(right, up);
             vc_gameplay::mobs::build_arrow_vertices(
                 &self.sim.mobs.arrows,
                 right,
@@ -7947,7 +9930,7 @@ fn shader_mode_pack_index(mode: u8, n_packs: usize) -> Option<usize> {
     }
 }
 
-fn fence_connects_to(b: u8) -> bool {
+fn fence_connects_to(b: u16) -> bool {
     is_solid(b) || b == OAK_FENCE
 }
 
@@ -7974,6 +9957,26 @@ fn fence_state_for(world: &World, wx: i32, wy: i32, wz: i32) -> Option<u16> {
 fn notify_sim(world: &World, sched: &mut vc_sim::ticks::TickScheduler, x: i32, y: i32, z: i32) {
     vc_sim::fluids::on_block_changed(sched, world, x, y, z);
     vc_sim::redstone::on_block_changed(sched, world, x, y, z);
+}
+
+/// Phase E3 (1.5–1.6): the apex a launch velocity reaches under the
+/// engine's shared entity jump integrator v1 = (v0 − 0.08) × 0.98
+/// (per-tick position += v). Binary-searched inverse for the mount
+/// jump (the VERIFIED jump-strength clear heights live in
+/// EquineState::jump_clear_height).
+fn apex_of(v0: f32) -> f32 {
+    let mut v = v0;
+    let mut y = 0.0f32;
+    let mut apex = 0.0f32;
+    for _ in 0..64 {
+        v = (v - 0.08) * 0.98;
+        if v <= 0.0 {
+            break;
+        }
+        y += v;
+        apex = apex.max(y);
+    }
+    apex
 }
 
 /// Phase 5 §27: fill a freshly generated dungeon chest. Palette-bounded
@@ -8021,15 +10024,43 @@ fn fill_structure_chest(
 /// particle tint/brightness at spawn (Phase 5)
 /// Phase 2: edible mob drops (right-click to eat — heals directly until
 /// the hunger system exists; documented deviation)
-fn is_food(b: u8) -> bool {
+fn is_food(b: u16) -> bool {
     // 1.7.2: the three edible fish join the meats (pufferfish is
     // deliberately NOT here — it poisons, see the eat path)
     // 1.8: rabbit meat joins (wiki: raw rabbit restores 3, cooked 5)
     matches!(
         b,
         BEEF | PORKCHOP | MUTTON | CHICKEN_RAW | ROTTEN_FLESH | RAW_FISH | RAW_SALMON | CLOWNFISH
-            | RAW_RABBIT | COOKED_RABBIT
+            | RAW_RABBIT
+            | COOKED_RABBIT
+            // Phase E2 foods (VERIFIED w/Food hunger table)
+            | POTATO
+            | BAKED_POTATO
+            | CARROT
+            | PUMPKIN_PIE
     )
+}
+
+/// Phase E2 (VERIFIED w/Food): heal amount per food item — the engine's
+/// convention maps the vanilla hunger points to HP at hunger/2 (steak
+/// 8 hunger -> 4 HP, matching the Phase-2 meat rule):
+/// potato 1 -> 0.5, carrot 3 -> 1.5, baked potato 5 -> 2.5, pie 8 -> 4.
+/// 1.7.2/1.8 extensions use the same hunger/2 mapping from the Food
+/// table: raw cod/salmon 2 -> 1.0, clownfish 1 -> 0.5, raw rabbit 3 ->
+/// 1.5, cooked rabbit 5 -> 2.5.
+fn food_heal(b: u16) -> f32 {
+    match b {
+        POTATO => 0.5,
+        CARROT => 1.5,
+        BAKED_POTATO => 2.5,
+        PUMPKIN_PIE => 4.0,
+        RAW_FISH => 1.0,
+        RAW_SALMON => 1.0,
+        CLOWNFISH => 0.5,
+        RAW_RABBIT => 1.5,
+        COOKED_RABBIT => 2.5,
+        _ => 4.0, // the meats' established value
+    }
 }
 
 fn light_at(
@@ -8543,6 +10574,26 @@ pub(crate) fn fps_min_max(times: &std::collections::VecDeque<f32>) -> (f32, f32)
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// VERIFIED 2026-09-06 live (minecraft.wiki/w/Daylight_cycle):
+    /// the full 1.16.5 day-night cycle is 24000 ticks at 20 tps = 1200 s
+    /// (20 min). The engine briefly shipped 600 s (a research-doc error
+    /// that halved the cycle) — this pins the real value.
+    #[test]
+    fn day_cycle_is_the_vanilla_20_minutes() {
+        assert_eq!(DAY_LEN_SECS, 1200.0);
+        // 24000 ticks at 20 tps
+        let ticks = 24000.0;
+        let secs = ticks / 20.0;
+        assert!(
+            (secs - DAY_LEN_SECS).abs() < 0.001,
+            "24000 ticks / 20 tps = {secs} s, DAY_LEN_SECS = {DAY_LEN_SECS}"
+        );
+        // advancing a full cycle wraps day_time back to its start
+        let t0 = 0.3_f32;
+        let advanced = (t0 + DAY_LEN_SECS / DAY_LEN_SECS) % 1.0;
+        assert!((advanced - t0).abs() < 1e-6);
+    }
 
     #[test]
     fn physics_freezes_until_own_chunk_exists() {

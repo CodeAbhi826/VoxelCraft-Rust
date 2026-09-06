@@ -25,6 +25,11 @@ pub const KIND_WATER: u8 = 3;
 /// biome-tinted — they use fixed colors)
 pub const SLOT_BIRCH: u8 = 48;
 pub const SLOT_SPRUCE: u8 = 49;
+/// Phase E2: lava rides the WATER tint kind with a fixed orange
+/// pseudo-slot (lava is not biome-tinted — VERIFIED: constant color)
+pub const SLOT_LAVA: u8 = 50;
+/// lava surface color (clean-room orange, emissive-bright)
+pub const LAVA_COLOR: u32 = 0xD45A12;
 
 /// pack a tint index; returns TINT_NONE for kind 0
 #[inline]
@@ -174,6 +179,7 @@ pub fn lut_rgba() -> Vec<u8> {
     }
     put(&mut data, KIND_FOLIAGE, SLOT_BIRCH, BIRCH_COLOR);
     put(&mut data, KIND_FOLIAGE, SLOT_SPRUCE, SPRUCE_COLOR);
+    put(&mut data, KIND_WATER, SLOT_LAVA, LAVA_COLOR);
     data
 }
 
@@ -181,7 +187,7 @@ pub fn lut_rgba() -> Vec<u8> {
 /// `top_face` because grass tint applies to the grass-block TOP only (the
 /// side overlay is pre-baked into our tile).
 #[inline]
-pub fn block_face_tint(block: u8, top_face: bool) -> u8 {
+pub fn block_face_tint(block: u16, top_face: bool) -> u8 {
     match block {
         GRASS => if top_face { KIND_GRASS } else { TINT_NONE },
         TALL_GRASS => KIND_GRASS,
@@ -196,7 +202,7 @@ pub fn block_face_tint(block: u8, top_face: bool) -> u8 {
 
 /// full packed tint for a built-in block face in a biome column
 #[inline]
-pub fn block_face_tint_packed(block: u8, top_face: bool, biome: u8) -> u8 {
+pub fn block_face_tint_packed(block: u16, top_face: bool, biome: u8) -> u8 {
     match block {
         GRASS if top_face => pack(KIND_GRASS, biome),
         TALL_GRASS => pack(KIND_GRASS, biome),
@@ -206,6 +212,8 @@ pub fn block_face_tint_packed(block: u8, top_face: bool, biome: u8) -> u8 {
         ACACIA_LEAVES => pack(KIND_FOLIAGE, biome),
         DARK_OAK_LEAVES => pack(KIND_FOLIAGE, biome),
         WATER => pack(KIND_WATER, biome),
+        // Phase E2: fixed lava color (not biome-tinted)
+        LAVA => pack(KIND_WATER, SLOT_LAVA),
         _ => TINT_NONE,
     }
 }
@@ -221,7 +229,7 @@ pub fn model_face_tint_packed(state: u16, top_face: bool, biome: u8) -> u8 {
 
 /// resolved tint COLOR for a block (particles / CPU-side consumers)
 #[inline]
-pub fn block_tint_color(block: u8, biome: u8) -> [f32; 3] {
+pub fn block_tint_color(block: u16, biome: u8) -> [f32; 3] {
     match block {
         GRASS | TALL_GRASS => grass_color(biome),
         LEAVES => foliage_color(biome),

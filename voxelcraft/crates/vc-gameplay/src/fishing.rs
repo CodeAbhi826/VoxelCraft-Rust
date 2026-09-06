@@ -26,12 +26,12 @@ use vc_rng::rng::Rng;
 /// one catchable row of a loot class
 pub struct LootRow {
     /// the block/item id handed to the player (NONE = not yet in registry)
-    pub item: u8,
+    pub item: u16,
     /// vanilla display name of the row
     pub name: &'static str,
 }
 
-pub const LOOT_NONE: u8 = 255;
+pub const LOOT_NONE: u16 = 255;
 
 /// Fish class — the four 1.7.2 fish (all in our registry)
 pub const FISH_TABLE: [LootRow; 4] = [
@@ -253,7 +253,7 @@ mod tests {
         // to registry blocks
         for r in TREASURE_TABLE.iter().chain(JUNK_TABLE.iter()) {
             if r.item != LOOT_NONE {
-                assert!(r.item < BLOCK_COUNT as u8);
+                assert!(r.item < BLOCK_COUNT as u16);
             }
         }
         // enchanted book is the one treasure we CAN award today

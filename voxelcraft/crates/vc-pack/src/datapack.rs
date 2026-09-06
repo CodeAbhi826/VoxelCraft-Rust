@@ -72,7 +72,7 @@ pub const PACK_FORMAT_1_16_5: i32 = 6;
 /// `minecraft:potion` resolves to nothing (documented, would be
 /// ambiguous). Same for blocks the engine stores as palette variants
 /// (e.g. snowy grass = `grass_block[snowy=true]` in vanilla).
-pub const VANILLA_ITEM_NAMES: &[(&str, u8)] = &[
+pub const VANILLA_ITEM_NAMES: &[(&str, u16)] = &[
     // world blocks 0..=56 (mirrors vc-anvil's save-name table — the ids
     // are the engine's own; the vanilla names are registry identifiers)
     ("minecraft:air", AIR),
@@ -179,7 +179,7 @@ pub const VANILLA_ITEM_NAMES: &[(&str, u8)] = &[
 /// resolve a `minecraft:` (or mod `ns:`) item name to an engine item id.
 /// Only `minecraft:` names exist in the bridge; unknown namespaces and
 /// palette-absent names return None (callers skip + warn — honest).
-pub fn item_id_by_name(name: &str) -> Option<u8> {
+pub fn item_id_by_name(name: &str) -> Option<u16> {
     VANILLA_ITEM_NAMES
         .iter()
         .find(|(n, _)| *n == name)
@@ -187,7 +187,7 @@ pub fn item_id_by_name(name: &str) -> Option<u8> {
 }
 
 /// reverse lookup (E2E / logs: show the vanilla name of an engine id)
-pub fn item_name_by_id(id: u8) -> Option<&'static str> {
+pub fn item_name_by_id(id: u16) -> Option<&'static str> {
     VANILLA_ITEM_NAMES.iter().find(|(_, i)| *i == id).map(|(n, _)| *n)
 }
 
@@ -323,7 +323,7 @@ impl TagStore {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Ingredient {
     /// one specific item (`{"item": "minecraft:stone"}`)
-    Item(u8),
+    Item(u16),
     /// every member of an item tag (`{"tag": "minecraft:planks"}`) — the
     /// tag NAME is resolved lazily against the merged TagStore at match
     /// time (tags may come from a later pack)
@@ -340,7 +340,7 @@ pub struct JsonRecipe {
     /// crafting_shapeless ingredient list (order-insensitive set match)
     pub shapeless: Vec<Ingredient>,
     /// result item + count
-    pub result: u8,
+    pub result: u16,
     pub result_count: u8,
 }
 
@@ -598,7 +598,7 @@ pub enum LootFn {
 #[derive(Debug, Clone, PartialEq)]
 pub enum LootKind {
     /// drops a stack of the item (count driven by functions)
-    Item { id: u8, functions: Vec<LootFn> },
+    Item { id: u16, functions: Vec<LootFn> },
     /// rolls another table by name (depth-guarded at roll time)
     Table(String),
     /// drops nothing
@@ -631,7 +631,7 @@ impl LootTable {
     /// roll the table → stacks of (item, count). Referenced sub-tables
     /// resolve through `lookup` (name → table) with a depth guard of 8
     /// (vanilla forbids recursion; cycles would loop forever).
-    pub fn roll(&self, rng: &mut Rng, lookup: &dyn Fn(&str) -> Option<LootTable>) -> Vec<(u8, u8)> {
+    pub fn roll(&self, rng: &mut Rng, lookup: &dyn Fn(&str) -> Option<LootTable>) -> Vec<(u16, u8)> {
         let mut out = Vec::new();
         self.roll_into(rng, lookup, &mut out, 0);
         out
@@ -641,7 +641,7 @@ impl LootTable {
         &self,
         rng: &mut Rng,
         lookup: &dyn Fn(&str) -> Option<LootTable>,
-        out: &mut Vec<(u8, u8)>,
+        out: &mut Vec<(u16, u8)>,
         depth: usize,
     ) {
         if depth > 8 {
@@ -833,7 +833,7 @@ pub fn builtin_dungeon_table() -> LootTable {
     }
 }
 
-fn loot_item(id: u8) -> LootEntry {
+fn loot_item(id: u16) -> LootEntry {
     LootEntry {
         weight: 1,
         kind: LootKind::Item {
@@ -844,7 +844,7 @@ fn loot_item(id: u8) -> LootEntry {
 }
 
 /// a loot entry builder with explicit count range + weight
-fn loot_item_w(id: u8, weight: u32, min: f32, max: f32) -> LootEntry {
+fn loot_item_w(id: u16, weight: u32, min: f32, max: f32) -> LootEntry {
     LootEntry {
         weight,
         kind: LootKind::Item {
@@ -879,7 +879,7 @@ pub fn builtin_structure_table(name: &str) -> Option<LootTable> {
                     rolls: Rolls::Fixed(1),
                     entries: vec![
                         loot_item_w(GOLD_ORE, 4, 1.0, 2.0),
-                        loot_item_w(COAL_ORE, 6, 2.0, 6.0),
+                        loot_item_w(COAL, 6, 2.0, 6.0), // fix #4: the real coal item (was the ore stand-in)
                         loot_item_w(BONE, 3, 1.0, 4.0),
                         LootEntry { weight: 3, kind: LootKind::Empty },
                     ],
@@ -1220,7 +1220,7 @@ impl LoadedData {
     /// world ships no override: the dungeon default plus the Phase 10
     /// structure tables — palette-limited stand-ins, see
     /// `builtin_structure_table`)
-    pub fn roll(&self, name: &str, rng: &mut Rng) -> Option<Vec<(u8, u8)>> {
+    pub fn roll(&self, name: &str, rng: &mut Rng) -> Option<Vec<(u16, u8)>> {
         let builtin;
         let table = match self.loot_tables.get(name) {
             Some(t) => t,
@@ -1242,7 +1242,7 @@ impl LoadedData {
     /// match a crafting grid against the datapack recipes (first hit wins
     /// — recipe list order is pack order, mirroring vanilla's "later pack
     /// overrides" for same-id files)
-    pub fn match_grid(&self, grid: &[GridItem], size: usize) -> Option<(u8, u8)> {
+    pub fn match_grid(&self, grid: &[GridItem], size: usize) -> Option<(u16, u8)> {
         for r in &self.recipes {
             if r.matches(grid, size, &self.tags) {
                 return Some((r.result, r.result_count));
@@ -1766,7 +1766,7 @@ mod tests {
     #[test]
     fn builtin_dungeon_table_matches_phase5_values() {
         let t = builtin_dungeon_table();
-        let items: std::collections::HashSet<u8> = t.pools[0]
+        let items: std::collections::HashSet<u16> = t.pools[0]
             .entries
             .iter()
             .map(|e| match e.kind {

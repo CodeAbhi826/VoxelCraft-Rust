@@ -1113,9 +1113,23 @@ mod tests {
             set.tiles.values().all(|&t| t >= vc_render::textures::PACK_TILE_BASE),
             "pack textures must land in the pack tile range"
         );
-        // the animated cobble strip was recognized
-        assert_eq!(anims.len(), 1, "cobblestone.png must register as animated");
-        assert_eq!(anims[0].frames.len(), 4);
+        // the animated cobble strip was recognized — 1.10 adds the
+        // built-in magma flowing animation alongside it
+        assert_eq!(
+            anims.len(),
+            2,
+            "cobblestone.png + the built-in 1.10 magma animation register"
+        );
+        let cobble = anims
+            .iter()
+            .find(|a| a.frames.len() == 4 && a.tile != vc_blocks::blocks::TILE_MAGMA)
+            .expect("cobblestone strip animation present");
+        assert_eq!(cobble.frames.len(), 4);
+        let magma = anims
+            .iter()
+            .find(|a| a.tile == vc_blocks::blocks::TILE_MAGMA)
+            .expect("built-in magma flowing animation present (1.10)");
+        assert_eq!(magma.frames.len(), 4);
 
         // install as the global registry so mesh_chunk's model path can see
         // it (single install per test process; legacy-state tests above are

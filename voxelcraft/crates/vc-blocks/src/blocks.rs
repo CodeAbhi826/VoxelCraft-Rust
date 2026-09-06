@@ -236,6 +236,15 @@ pub const TILE_CHORUS_FLOWER: u16 = 211;
 pub const TILE_CHORUS_FRUIT: u16 = 212;
 pub const TILE_ELYTRA: u16 = 213;
 pub const TILE_SHIELD: u16 = 214;
+// 1.10 Frostburn tiles (live round 2026-09-06)
+pub const TILE_MAGMA: u16 = 215;
+pub const TILE_NETHER_WART_BLOCK: u16 = 216;
+pub const TILE_RED_NETHER_BRICKS: u16 = 217;
+pub const TILE_BONE_BLOCK: u16 = 218;
+// 1.10 mob sprites
+pub const TILE_POLAR_BEAR: u16 = 219;
+pub const TILE_STRAY: u16 = 220;
+pub const TILE_HUSK: u16 = 221;
 // mobs (Phase 2): entity sprites + drops' item tiles. Mob sprites are
 // clean-room pixel art (ours, not Mojang's) — distinct silhouettes/palettes
 pub const TILE_ZOMBIE: u16 = 83;
@@ -665,6 +674,40 @@ pub fn v4_state(b: u8) -> Option<u16> {
 pub fn is_v4_state(s: u16) -> bool {
     (V4_STATE_BASE..V4_STATE_BASE + V4_COUNT).contains(&s)
 }
+
+// ---------------------------------------------------------------------------
+// 1.10 bracket — the Frostburn Update (2016-06-08,
+// minecraft.wiki/w/Java_Edition_1.10, live round 2026-09-06). V5 window:
+// ids 191..=194, states 328..=331.
+// ---------------------------------------------------------------------------
+/// magma block — VERIFIED (wiki /w/Magma_Block, live 2026-09-06): emits
+/// light level 3; "mobs and players take 1 HP damage every second while
+/// touching it, similar to a cactus"; sneaking / Frost Walker / Fire
+/// Resistance grant immunity; Nether: 4 blobs per chunk between Y=27-36
+pub const MAGMA_BLOCK: u8 = 191;
+pub const NETHER_WART_BLOCK: u8 = 192;
+pub const RED_NETHER_BRICKS: u8 = 193;
+pub const BONE_BLOCK: u8 = 194;
+
+pub const V5_STATE_BASE: u16 = 328;
+pub const V5_COUNT: u16 = 4; // ids 191..=194
+pub const V5_STATE_TO_BLOCK: [u8; V5_COUNT as usize] = [
+    MAGMA_BLOCK, NETHER_WART_BLOCK, RED_NETHER_BRICKS, BONE_BLOCK,
+];
+
+#[inline]
+pub fn v5_state(b: u8) -> Option<u16> {
+    if (191..191 + V5_COUNT as u8).contains(&b) {
+        Some(V5_STATE_BASE + (b - 191) as u16)
+    } else {
+        None
+    }
+}
+
+#[inline]
+pub fn is_v5_state(s: u16) -> bool {
+    (V5_STATE_BASE..V5_STATE_BASE + V5_COUNT).contains(&s)
+}
 pub const BEEF_STATE: u16 = 130;
 pub const PORKCHOP_STATE: u16 = 131;
 pub const MUTTON_STATE: u16 = 132;
@@ -729,7 +772,7 @@ pub const ACACIA_LOG_Z: u16 = 296;
 pub const DARK_OAK_LOG_X: u16 = 297;
 pub const DARK_OAK_LOG_Z: u16 = 298;
 
-pub const BLOCK_COUNT: usize = 191;
+pub const BLOCK_COUNT: usize = 195;
 
 // ---------------------------------------------------------------------------
 // BlockState registry (1.16.5 pattern, miniature)
@@ -746,7 +789,7 @@ pub const BLOCK_COUNT: usize = 191;
 /// Phase 4: extended to cover the Phase 2/3/4 state ids (130..=231) —
 /// before, the range tests stopped at 130 and never saw them.
 /// Phase 5: spawner states 232..=234
-pub const STATE_COUNT: usize = 328;
+pub const STATE_COUNT: usize = 332;
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -1051,6 +1094,9 @@ pub fn default_state(b: u8) -> u16 {
         b if (181..181 + V4_COUNT as u8).contains(&b) => {
             V4_STATE_BASE + (b - 181) as u16
         }
+        b if (191..191 + V5_COUNT as u8).contains(&b) => {
+            V5_STATE_BASE + (b - 191) as u16
+        }
         OAK_SLAB => 63,     // PROP_BLOCKS[0].base_state (half=bottom)
         COBBLE_STAIRS => 65, // base_state (facing=north, half=bottom)
         OAK_FENCE => 73,    // base_state (no connections)
@@ -1264,6 +1310,9 @@ pub fn state_block(s: u16) -> u8 {
         s if is_v4_state(s) => {
             return V4_STATE_TO_BLOCK[(s - V4_STATE_BASE) as usize];
         }
+        s if is_v5_state(s) => {
+            return V5_STATE_TO_BLOCK[(s - V5_STATE_BASE) as usize];
+        }
         ACACIA_LOG_X | ACACIA_LOG_Z => return ACACIA_LOG,
         DARK_OAK_LOG_X | DARK_OAK_LOG_Z => return DARK_OAK_LOG,
         _ => {}
@@ -1307,6 +1356,7 @@ pub fn is_model_state(s: u16) -> bool {
     if is_v2_state(s)
         || is_v3_state(s)
         || is_v4_state(s)
+        || is_v5_state(s)
         || s == ACACIA_LOG_X
         || s == ACACIA_LOG_Z
         || s == DARK_OAK_LOG_X
@@ -1414,7 +1464,7 @@ pub fn log_axis_state(block: u8, axis: u8) -> u16 {
 /// component tile rendered BLANK since Phase 2. Now derived from the
 /// highest tile constant (118–121 here) and guarded by the
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
-pub const TILE_MAX: u16 = 214;
+pub const TILE_MAX: u16 = 221;
 
 /// inventory-only ITEM blocks (potions/bottles/books): never placeable in
 /// the world — right-click drinks (potions) / fills (glass bottle at water).
@@ -1708,6 +1758,13 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Chorus Fruit", [TILE_CHORUS_FRUIT, TILE_CHORUS_FRUIT, TILE_CHORUS_FRUIT], false, false, true, false, 0, SoundFamily::Grass),
     d("Elytra", [TILE_ELYTRA, TILE_ELYTRA, TILE_ELYTRA], false, false, true, false, 0, SoundFamily::Grass),
     d("Shield", [TILE_SHIELD, TILE_SHIELD, TILE_SHIELD], false, false, true, false, 0, SoundFamily::Wood),
+    // ---- 1.10 bracket (V5 window) — minecraft.wiki/w/Java_Edition_1.10,
+    // live round 2026-09-06 ----
+    // magma: light level 3 (wiki /w/Magma_Block, live round)
+    d("Magma Block", [TILE_MAGMA, TILE_MAGMA, TILE_MAGMA], true, true, false, false, 3, SoundFamily::Stone),
+    d("Nether Wart Block", [TILE_NETHER_WART_BLOCK, TILE_NETHER_WART_BLOCK, TILE_NETHER_WART_BLOCK], true, true, false, false, 0, SoundFamily::Wool),
+    d("Red Nether Bricks", [TILE_RED_NETHER_BRICKS, TILE_RED_NETHER_BRICKS, TILE_RED_NETHER_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
+    d("Bone Block", [TILE_BONE_BLOCK, TILE_BONE_BLOCK, TILE_BONE_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
 ];
 
 #[inline]
@@ -1780,7 +1837,7 @@ pub fn face_visible(b: u8, n: u8) -> bool {
 /// sand, packed ice, podzol, acacia/dark-oak wood, the 8 new flowers,
 /// the 4 two-block flowers (lower halves place both via worldgen-style
 /// pairs; the picker offers the lower id) and the 4 fish items.
-pub const PICKER_BLOCKS: [u8; 152] = [
+pub const PICKER_BLOCKS: [u8; 156] = [
     GRASS, DIRT, STONE, COBBLE, SMOOTH_STONE, STONE_BRICKS, BRICKS, MOSSY_COBBLE,
     GRANITE, DIORITE, ANDESITE, OBSIDIAN,
     SAND, GRAVEL, CLAY, TERRACOTTA,
@@ -1813,6 +1870,8 @@ pub const PICKER_BLOCKS: [u8; 152] = [
     SUNFLOWER, LILAC, PEONY, ROSE_BUSH,
     // 1.7.2 fish (item-blocks: eatable, never placeable)
     RAW_FISH, RAW_SALMON, CLOWNFISH, PUFFERFISH,
+    // 1.10 additions (Frostburn)
+    MAGMA_BLOCK, NETHER_WART_BLOCK, RED_NETHER_BRICKS, BONE_BLOCK,
     // 1.9 additions (Combat Update — End blocks + the three items)
     GRASS_PATH, PURPUR_BLOCK, PURPUR_PILLAR, END_STONE_BRICKS, END_ROD,
     CHORUS_PLANT, CHORUS_FLOWER, CHORUS_FRUIT, ELYTRA, SHIELD,
@@ -2036,6 +2095,7 @@ mod state_tests {
                 || is_v2_state(s)
                 || is_v3_state(s)
                 || is_v4_state(s)
+                || is_v5_state(s)
                 || matches!(s, ACACIA_LOG_X | ACACIA_LOG_Z | DARK_OAK_LOG_X | DARK_OAK_LOG_Z)
             {
                 assert!(!is_model_state(s), "component/item state {s} never routes to models");
@@ -2055,6 +2115,10 @@ mod state_tests {
                 // 1.9 V4: same roundtrip contract
                 if is_v4_state(s) {
                     assert_eq!(default_state(b), s, "v4 state {s} roundtrip");
+                }
+                // 1.10 V5: same roundtrip contract
+                if is_v5_state(s) {
+                    assert_eq!(default_state(b), s, "v5 state {s} roundtrip");
                 }
                 continue;
             }
@@ -2152,5 +2216,38 @@ mod state_tests {
             let _ = is_opaque(raw);
             let _ = name(raw);
         }
+    }
+}
+
+#[cfg(test)]
+mod v110_tests {
+    use super::*;
+
+    /// 1.10 Frostburn V5 window: ids 191..=194, states 328..=331 — the
+    /// four new blocks round-trip through the registry (live-verified
+    /// block list, minecraft.wiki/w/Java_Edition_1.10 §Blocks, fetched
+    /// 2026-09-06)
+    #[test]
+    fn v5_window_roundtrips() {
+        for (b, s) in [
+            (MAGMA_BLOCK, 328u16),
+            (NETHER_WART_BLOCK, 329),
+            (RED_NETHER_BRICKS, 330),
+            (BONE_BLOCK, 331),
+        ] {
+            assert_eq!(v5_state(b), Some(s), "block {b} → state {s}");
+            assert_eq!(state_block(s), b, "state {s} → block {b}");
+            assert_eq!(default_state(b), s);
+            assert!(is_v5_state(s));
+        }
+        assert_eq!(BLOCK_COUNT, 195);
+        assert_eq!(STATE_COUNT, 332);
+    }
+
+    /// magma emits light level 3 (VERIFIED — minecraft.wiki/w/Magma_Block,
+    /// live round 2026-09-06: "Magma blocks emit a light level of 3")
+    #[test]
+    fn magma_emits_light_level_3() {
+        assert_eq!(def(MAGMA_BLOCK).emissive, 3);
     }
 }

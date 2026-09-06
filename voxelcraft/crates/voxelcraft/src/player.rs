@@ -143,6 +143,13 @@ pub struct Player {
     /// drowning damage queued for the game layer (2 HP per second once
     /// the air supply is depleted — research-verdicts.md live round).
     pending_drown_dmg: f32,
+    /// 1.10: magma damage queued for the game layer (1 HP per second of
+    /// contact — wiki /w/Magma_Block, live 2026-09-06)
+    pending_magma_dmg: f32,
+    /// 1.10: auto-jump hop cooldown (seconds) — one hop per obstacle
+    autojump_cd: f32,
+    /// 1.10: magma-contact accumulator (seconds; 1 HP per full second)
+    magma_accum: f32,
     /// air supply 0..300 (over-depletes to −20, then resets on damage).
     /// 300 = full (10 bubbles × 30).
     pub air: f32,
@@ -155,6 +162,9 @@ pub struct Player {
     /// 1.8: spectator no-clip — set by the game layer each frame from
     /// the mode; move_axis skips collision while set
     pub noclip: bool,
+    /// 1.10: auto-jump enabled (mirrors the Settings toggle; the 1.10
+    /// default is ON)
+    pub auto_jump: bool,
     /// fixed 20 Hz substep accumulator (vanilla per-tick physics)
     tick_accum: f32,
     air_accum: f32,
@@ -193,7 +203,11 @@ impl Player {
             pending_fall_dmg: 0.0,
             effects: StatusEffects::default(),
             noclip: false,
+            auto_jump: true,
             pending_drown_dmg: 0.0,
+            pending_magma_dmg: 0.0,
+            autojump_cd: 0.0,
+            magma_accum: 0.0,
             air: AIR_MAX,
             tick_accum: 0.0,
             air_accum: 0.0,
@@ -214,6 +228,14 @@ impl Player {
     pub fn take_pending_drown_damage(&mut self) -> f32 {
         let d = self.pending_drown_dmg;
         self.pending_drown_dmg = 0.0;
+        d
+    }
+
+    /// 1.10: drain queued magma-block damage (1 HP per contact-second).
+    /// One-shot per damage tick.
+    pub fn take_pending_magma_damage(&mut self) -> f32 {
+        let d = self.pending_magma_dmg;
+        self.pending_magma_dmg = 0.0;
         d
     }
 
@@ -388,6 +410,34 @@ impl Player {
         }
         self.was_in_water = self.in_water;
 
+        // 1.10: magma-block contact damage — VERIFIED against the live
+        // 1.10 changelog (minecraft.wiki/w/Java_Edition_1.10 fetched
+        // 2026-09-06, §Magma Blocks): "Mobs and players take 1 HP damage
+        // every second while touching it, similar to a cactus", and the
+        // live /w/Magma_Block §Damage round (2026-09-06): "Walking into
+        // the side of a magma block doesn't cause damage" (standing on
+        // it counts) and "[sneaking] and the Frost Walker enchantment
+        // can also grant immunity" — sneak immunity implemented; Frost
+        // Walker boots / the Fire Resistance effect are out of scope
+        // (no boot equipment or fire-resistance registry yet, documented
+        // in WORKLOG). Note: today's /w/Magma_Block describes a modern
+        // per-tick/half-second cadence — a later-bracket value; the
+        // 1.10 changelog's per-second rate is the bracket-correct one.
+        let ground_block = world.get_block(
+            self.pos.x.floor() as i32,
+            (self.pos.y - 0.1).floor() as i32,
+            self.pos.z.floor() as i32,
+        );
+        if ground_block == MAGMA_BLOCK && !input.sneak {
+            self.magma_accum += dt;
+            while self.magma_accum >= 1.0 {
+                self.magma_accum -= 1.0;
+                self.pending_magma_dmg += 1.0;
+            }
+        } else {
+            self.magma_accum = 0.0;
+        }
+
         // wish direction (horizontal)
         let fwd = Vec3::new(self.yaw.sin(), 0.0, -self.yaw.cos());
         let right = Vec3::new(self.yaw.cos(), 0.0, self.yaw.sin());
@@ -529,6 +579,47 @@ impl Player {
             let probe = self.pos.y - 0.06;
             if Self::collides(world, Vec3::new(self.pos.x, probe, self.pos.z)) {
                 self.on_ground = true;
+            }
+        }
+
+        // 1.10 auto-jump (VERIFIED — minecraft.wiki/w/Java_Edition_1.10
+        // §General: "automatically makes the player jump when running
+        // towards a one-block-tall obstacle"): while walking on the
+        // ground toward a 1-block step with headroom, fire the vanilla
+        // jump impulse. Gated on the Settings toggle (default ON).
+        // Cooldown 0.3 s = one hop per obstacle (prevents hop spam
+        // against a wall taller than one block). Probing uses the WISH
+        // direction, not the velocity — the horizontal velocity is
+        // zeroed by the blocked move itself, so a velocity gate would
+        // never re-fire against the step it is pressing on.
+        self.autojump_cd = (self.autojump_cd - dt).max(0.0);
+        if self.auto_jump
+            && self.on_ground
+            && !self.flying
+            && self.autojump_cd <= 0.0
+            && !self.noclip
+            && has_input
+        {
+            // probe one step ahead along the intended movement
+            let px = self.pos.x + wish.x * 0.6;
+            let pz = self.pos.z + wish.z * 0.6;
+            let feet_y = self.pos.y;
+            let blocked = Self::collides(world, Vec3::new(px, feet_y + 0.1, pz));
+            let step_clear = !Self::collides(
+                world,
+                Vec3::new(px, feet_y + 1.1, pz),
+            ) && !Self::collides(
+                world,
+                Vec3::new(self.pos.x, feet_y + 1.9, self.pos.z),
+            );
+            if blocked && step_clear {
+                self.vel.y = JUMP_VEL;
+                self.on_ground = false;
+                self.autojump_cd = 0.3;
+                // phase-align the 20 Hz substep like the manual jump —
+                // without this the hop apex loses up to 2/3 of tick 0
+                // and undershoots the 1-block clearance
+                self.tick_accum = 0.0;
             }
         }
 
@@ -1342,5 +1433,129 @@ mod v19_tests {
         // the item registers in the 1.9 window
         assert_eq!(vc_blocks::blocks::v4_state(ELYTRA), Some(326));
         assert_eq!(vc_blocks::blocks::state_block(326), ELYTRA);
+    }
+}
+
+#[cfg(test)]
+mod v110_tests {
+    use super::*;
+    use std::sync::Arc;
+
+    /// hand-built magma floor: magma top surface at y=65 (the flat_floor
+    /// pattern with MAGMA instead of STONE)
+    fn magma_floor() -> World {
+        let mut w = World::new(7);
+        for dz in -1i32..=1 {
+            for dx in -1i32..=1 {
+                let mut c = vc_chunk::chunk::Chunk::empty();
+                for y in 0..=64i32 {
+                    for lz in 0..16usize {
+                        for lx in 0..16usize {
+                            c.set(lx, y as usize, lz, MAGMA_BLOCK);
+                        }
+                    }
+                }
+                w.insert_generated((dx, dz), Arc::new(c), Vec::new());
+            }
+        }
+        w.dirty.clear();
+        w
+    }
+
+    /// 1.10: standing on magma queues 1 HP per full second of contact
+    /// (VERIFIED against the live 1.10 changelog, /w/Java_Edition_1.10
+    /// §Magma Blocks, fetched 2026-09-06: "Mobs and players take 1 HP
+    /// damage every second while touching it")
+    #[test]
+    fn magma_damage_is_one_hp_per_second() {
+        let w = magma_floor();
+        let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
+        p.flying = false;
+        let mut input = Input::default();
+        // 1.5 s standing still on the magma floor
+        for _ in 0..90 {
+            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+        }
+        let queued = p.take_pending_magma_damage();
+        assert!(
+            (queued - 1.0).abs() < 1e-4,
+            "1.5 s of contact queues exactly 1 HP (got {queued})"
+        );
+        // second second completes exactly at 2.5 s total
+        for _ in 0..60 {
+            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+        }
+        let queued2 = p.take_pending_magma_damage();
+        assert!(
+            (queued2 - 1.0).abs() < 1e-4,
+            "the next full second queues the next HP (got {queued2})"
+        );
+    }
+
+    /// 1.10: sneaking on magma is immune (wiki /w/Magma_Block §Damage,
+    /// live 2026-09-06: sneaking "can also grant immunity")
+    #[test]
+    fn magma_sneaking_is_immune() {
+        let w = magma_floor();
+        let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
+        p.flying = false;
+        let mut input = Input::default();
+        input.sneak = true;
+        for _ in 0..180 {
+            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+        }
+        assert_eq!(
+            p.take_pending_magma_damage(),
+            0.0,
+            "3 s of sneaking on magma queues no damage"
+        );
+    }
+
+    /// 1.10: auto-jump hops a 1-block step while walking (no jump input)
+    /// — VERIFIED (wiki /w/Java_Edition_1.10 §General: "automatically
+    /// makes the player jump when running towards a one-block-tall
+    /// obstacle")
+    #[test]
+    fn auto_jump_hops_one_block_step() {
+        // flat stone floor at y=65 with a single 1-block step at z=-3
+        let mut w = World::new(7);
+        for dz in -2i32..=1 {
+            for dx in -1i32..=1 {
+                let mut c = vc_chunk::chunk::Chunk::empty();
+                for y in 0..=64i32 {
+                    for lz in 0..16usize {
+                        for lx in 0..16usize {
+                            c.set(lx, y as usize, lz, STONE);
+                        }
+                    }
+                }
+                if dz == -1 {
+                    // local z=12 of chunk dz=-1 is world z=-4: a single
+                    // 1-block step row, reached after ~4.5 blocks of
+                    // walking in the −z direction (yaw 0 faces −Z)
+                    for lx in 0..16usize {
+                        c.set(lx, 65, 12, STONE);
+                    }
+                }
+                w.insert_generated((dx, dz), Arc::new(c), Vec::new());
+            }
+        }
+        w.dirty.clear();
+
+        let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
+        p.flying = false;
+        p.auto_jump = true;
+        let mut input = Input::default();
+        input.fwd = true;
+        let mut max_y = p.pos.y;
+        for _ in 0..240 {
+            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+            max_y = max_y.max(p.pos.y);
+        }
+        assert!(
+            max_y > 65.9,
+            "auto-jump must hop the step without jump input (max y {max_y})"
+        );
+        assert!(p.pos.z < -5.0, "walked past the step, z={}", p.pos.z);
     }
 }

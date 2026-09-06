@@ -52,6 +52,20 @@ pub enum MobKind {
     /// 0-1 raw rabbit + 0-1 rabbit hide on death, a 10% rabbit's foot on
     /// a player kill
     Rabbit,
+    /// 1.10 (Frostburn): the polar bear — VERIFIED (wiki /w/Polar_Bear,
+    /// live 2026-09-06): 30 HP, passive until the player comes near cubs,
+    /// "can swim faster in water than the player", drops 0-2 raw fish
+    /// (75%) or 0-2 salmon (25%)
+    PolarBear,
+    /// 1.10: the stray — VERIFIED (wiki /w/Stray): "80% of skeletons
+    /// spawned above ground in ice plains, ice mountains and ice plains
+    /// spikes biomes are strays"; shoots tipped arrows of Slowness (0:30)
+    Stray,
+    /// 1.10: the husk — VERIFIED (wiki /w/Husk): "80% of zombies spawned
+    /// above ground in desert... biomes are husks"; does not burn in
+    /// sunlight; attacks apply Hunger for 7 × floor(regional difficulty)
+    /// seconds
+    Husk,
 }
 
 impl MobKind {
@@ -67,6 +81,9 @@ impl MobKind {
             "sheep" => MobKind::Sheep,
             "chicken" => MobKind::Chicken,
             "rabbit" => MobKind::Rabbit,
+            "polar_bear" => MobKind::PolarBear,
+            "stray" => MobKind::Stray,
+            "husk" => MobKind::Husk,
             _ => return None,
         })
     }
@@ -84,6 +101,9 @@ impl MobKind {
             MobKind::Sheep => "minecraft:sheep",
             MobKind::Chicken => "minecraft:chicken",
             MobKind::Rabbit => "minecraft:rabbit",
+            MobKind::PolarBear => "minecraft:polar_bear",
+            MobKind::Stray => "minecraft:stray",
+            MobKind::Husk => "minecraft:husk",
         }
     }
 
@@ -99,15 +119,24 @@ impl MobKind {
             MobKind::Sheep => TILE_SHEEP,
             MobKind::Chicken => TILE_CHICKEN,
             MobKind::Rabbit => TILE_RABBIT,
+            MobKind::PolarBear => TILE_POLAR_BEAR,
+            MobKind::Stray => TILE_STRAY,
+            MobKind::Husk => TILE_HUSK,
         }
     }
 
     /// attacks on sight (zombie/skeleton/creeper/spider; enderman is
-    /// neutral until provoked)
+    /// neutral until provoked). 1.10: stray/husk inherit their base
+    /// kinds' hostility; the polar bear is neutral (only near cubs)
     pub fn hostile(self) -> bool {
         matches!(
             self,
-            MobKind::Zombie | MobKind::Skeleton | MobKind::Creeper | MobKind::Spider
+            MobKind::Zombie
+                | MobKind::Skeleton
+                | MobKind::Creeper
+                | MobKind::Spider
+                | MobKind::Stray
+                | MobKind::Husk
         )
     }
 
@@ -136,7 +165,7 @@ pub struct MobDef {
     pub xp: i32,
 }
 
-pub const MOB_DATA: [MobDef; 10] = [
+pub const MOB_DATA: [MobDef; 13] = [
     MobDef {
         kind: MobKind::Zombie,
         health: 20.0,
@@ -238,6 +267,40 @@ pub const MOB_DATA: [MobDef; 10] = [
         height: 0.5,
         width: 0.4,
         xp: 1,
+    },
+    // 1.10 polar bear — VERIFIED (wiki /w/Polar_Bear, live 2026-09-06):
+    // 30 HP; wiki melee rows: 4/6/9 HP by difficulty (base 6 here)
+    MobDef {
+        kind: MobKind::PolarBear,
+        health: 30.0,
+        damage: 6.0,
+        speed_attr: 0.25,
+        armor: 0.0,
+        height: 1.4,
+        width: 1.4,
+        xp: 3,
+    },
+    // 1.10 stray — skeleton stats with the slowness-arrow rider
+    MobDef {
+        kind: MobKind::Stray,
+        health: 20.0,
+        damage: 4.0, // arrow 3–5 mid, identical to the skeleton
+        speed_attr: 0.25,
+        armor: 0.0,
+        height: 1.99,
+        width: 0.6,
+        xp: 5,
+    },
+    // 1.10 husk — zombie stats with the hunger rider
+    MobDef {
+        kind: MobKind::Husk,
+        health: 20.0,
+        damage: 3.0,
+        speed_attr: 0.23,
+        armor: 2.0,
+        height: 1.8,
+        width: 0.6,
+        xp: 5,
     },
 ];
 
@@ -552,9 +615,37 @@ impl MobSystem {
             if blk_l > HOSTILE_LIGHT_MAX || sky_l > HOSTILE_SKY_MAX {
                 return;
             }
-            let kind = match self.rng.next_range(5) {
-                0 => MobKind::Zombie,
-                1 => MobKind::Skeleton,
+            // 1.10 biome-variant conversion (VERIFIED, wiki /w/Stray +
+            ///w/Husk, live 2026-09-06): "80% of skeletons spawned above
+            // ground in ice plains, ice mountains and ice plains spikes
+            // biomes are strays" and "80% of zombies spawned above ground
+            // in desert, desert hills and desert biomes are husks". Our
+            // biome ids: 5/16 = the icy family, 4 = desert. Sky-lit
+            // spawns = "above ground" (the sky gate above already
+            // restricts hostile spawns to darkness; the conversion still
+            // applies to all surface spawns, documented adaptation).
+            let biome = world
+                .chunk((cx, cz))
+                .map(|c| c.biome[(lz * 16 + lx) as usize])
+                .unwrap_or(0);
+            let roll = self.rng.next_range(5);
+            let kind = match roll {
+                0 => {
+                    // zombie → husk (80%) in deserts
+                    if biome == 4 && self.rng.next_f32() < 0.8 {
+                        MobKind::Husk
+                    } else {
+                        MobKind::Zombie
+                    }
+                }
+                1 => {
+                    // skeleton → stray (80%) in the icy family
+                    if (biome == 5 || biome == 16) && self.rng.next_f32() < 0.8 {
+                        MobKind::Stray
+                    } else {
+                        MobKind::Skeleton
+                    }
+                }
                 2 => MobKind::Creeper,
                 3 => MobKind::Spider,
                 _ => MobKind::Enderman,
@@ -608,13 +699,35 @@ impl MobSystem {
                 return;
             }
             // 1.8: rabbits join the passive herd roll (grass biomes, wiki:
-            // "spawn as any other farm animals, in grassy biomes")
-            let kind = match self.rng.next_range(5) {
-                0 => MobKind::Cow,
-                1 => MobKind::Pig,
-                2 => MobKind::Sheep,
-                3 => MobKind::Chicken,
-                _ => MobKind::Rabbit,
+            // "spawn as any other farm animals, in grassy biomes").
+            // 1.10: polar bears spawn in the icy family (wiki: "adults and
+            // cubs spawn randomly as passive mobs in ice plains, ice
+            // mountains and ice plains spikes") AND icy biomes roll ONLY
+            // rabbits + polar bears (wiki /w/Java_Edition_1.10 §World
+            // generation changes: "Now don't spawn any passive mobs other
+            // than rabbits and the new polar bears", live 2026-09-06)
+            let biome = world
+                .chunk((wx.div_euclid(16), wz.div_euclid(16)))
+                .map(|c| {
+                    let lxi = (wx - wx.div_euclid(16) * 16) as usize;
+                    let lzi = (wz - wz.div_euclid(16) * 16) as usize;
+                    c.biome[lzi * 16 + lxi]
+                })
+                .unwrap_or(0);
+            let kind = if biome == 5 || biome == 16 {
+                if self.rng.next_f32() < 0.3 {
+                    MobKind::PolarBear
+                } else {
+                    MobKind::Rabbit
+                }
+            } else {
+                match self.rng.next_range(5) {
+                    0 => MobKind::Cow,
+                    1 => MobKind::Pig,
+                    2 => MobKind::Sheep,
+                    3 => MobKind::Chicken,
+                    _ => MobKind::Rabbit,
+                }
             };
             let herd = 2 + (self.rng.next_range(3)) as usize;
             for _ in 0..herd {
@@ -708,7 +821,7 @@ fn ai_tick(
     let aggro = (m.kind.hostile() || m.provoked) && !invuln;
 
     match m.kind {
-        MobKind::Zombie | MobKind::Spider | MobKind::Enderman => {
+        MobKind::Zombie | MobKind::Husk | MobKind::Spider | MobKind::Enderman => {
             let engage = if m.kind == MobKind::Enderman {
                 m.provoked
             } else {
@@ -740,7 +853,7 @@ fn ai_tick(
                 wander(rng, m, speed * 0.5);
             }
         }
-        MobKind::Skeleton => {
+        MobKind::Skeleton | MobKind::Stray => {
             if aggro && dist < AGGRO_RADIUS {
                 face_player(m);
                 if dist > 8.0 {
@@ -1533,5 +1646,32 @@ mod v19_tests {
             .any(|e| e.id == "frost_walker"));
         assert!(crate::enchanting::ENCHANTS.iter().any(|e| e.id == "mending"));
         let _ = vc;
+    }
+}
+
+#[cfg(test)]
+mod v110_tests {
+    use super::*;
+
+    /// 1.10 mob registrations — stats per the live wiki pages
+    #[test]
+    fn frostburn_mob_data() {
+        // polar bear: 30 HP (wiki /w/Polar_Bear)
+        let pb = def(MobKind::PolarBear);
+        assert_eq!(pb.health, 30.0);
+        assert!(!MobKind::PolarBear.hostile(), "neutral, not on-sight hostile");
+        // stray + husk inherit their base kinds' hostility
+        assert!(MobKind::Stray.hostile() && MobKind::Husk.hostile());
+        // registry names
+        assert_eq!(MobKind::PolarBear.name(), "minecraft:polar_bear");
+        assert_eq!(MobKind::Stray.name(), "minecraft:stray");
+        assert_eq!(MobKind::Husk.name(), "minecraft:husk");
+        // stray/husk data mirror skeleton/zombie stats
+        let sk = def(MobKind::Skeleton);
+        let st = def(MobKind::Stray);
+        assert_eq!((st.health, st.damage), (sk.health, sk.damage));
+        let zo = def(MobKind::Zombie);
+        let hu = def(MobKind::Husk);
+        assert_eq!((hu.health, hu.armor), (zo.health, zo.armor));
     }
 }

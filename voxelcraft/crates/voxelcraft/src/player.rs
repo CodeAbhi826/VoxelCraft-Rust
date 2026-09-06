@@ -106,6 +106,15 @@ pub const ELYTRA_MAX_SPEED: f32 = 25.0;
 /// blocks of horizontal distance for each block of altitude lost"
 pub const ELYTRA_DESCENT: f32 = 2.5;
 
+/// audit-fix (1.2 vines): ladder-class climb speed (b/s) — VERIFIED
+/// w/Ladder §Climbing: "moves upward at about 2.35 blocks per second"
+/// (vines are the "collisionless ladder", w/Vines §History 12w04a).
+pub const VINE_CLIMB_SPEED: f32 = 2.35;
+/// audit-fix (1.2 vines): capped ladder descent (b/s) — VERIFIED
+/// w/Ladder §Climbing: "maximum downward speed is reduced to a
+/// 'descending ladder' speed, at about 3 blocks per second".
+pub const VINE_DESCENT_SPEED: f32 = 3.0;
+
 pub struct Player {
     pub pos: Vec3, // feet center
     pub vel: Vec3,
@@ -117,6 +126,9 @@ pub struct Player {
     pub head_in_water: bool,
     /// Phase E2: feet in lava (contact damage + slow — VERIFIED w/Lava)
     pub in_lava: bool,
+    /// audit-fix (1.2): lower half inside a vine — climbing engaged
+    /// (VERIFIED w/Vines + w/Ladder §Climbing)
+    pub on_vine: bool,
     /// Phase E2: timed status effects (wither/poison/regen + beacon stat
     /// effects — VERIFIED w/Effect rows; see vc_gameplay::effects)
     pub effects: vc_gameplay::effects::Effects,
@@ -181,6 +193,7 @@ impl Player {
             in_water: false,
             head_in_water: false,
             in_lava: false,
+            on_vine: false,
             effects: vc_gameplay::effects::Effects::new(),
             health: 20.0,
             xp_points: 0,
@@ -374,6 +387,17 @@ impl Player {
         // (the every-tick damage is reduced by the half-second damage
         // immunity window); the game layer applies the timed damage.
         self.in_lava = feet_block == LAVA;
+        // ---- audit-fix (1.2 vines, VERIFIED w/Vines: "Vines are
+        // climbable non-solid vegetation blocks" + w/Vines §History
+        // 12w04a: "Players are now slowed when going through vines due
+        // to their nature of being a collisionless ladder"; climb
+        // physics per w/Ladder §Climbing: up ~2.35 b/s, max descent
+        // ~3 b/s). The player's lower half in a vine cell engages the
+        // climb (w/Ladder: "whenever the player's lower half is in the
+        // block"). Sprint is cancelled by vines (w/Vines §Behavior:
+        // "Vines cancel a sprint if the player is sprinting").
+        let on_vine = feet_block == VINE;
+        self.on_vine = on_vine;
         if self.in_water && !self.was_in_water && self.vel.y < -4.0 {
             sounds.push(SoundEvent {
                 family: SoundFamily::Water,
@@ -432,7 +456,9 @@ impl Player {
             wish = wish.normalize();
         }
 
-        let sprinting = input.sprint && (input.fwd || input.back || input.left || input.right);
+        let sprinting = input.sprint
+            && (input.fwd || input.back || input.left || input.right)
+            && !on_vine; // vines cancel a sprint (VERIFIED w/Vines)
 
         if self.flying {
             let speed = if sprinting { FLY_SPRINT } else { FLY_SPEED };
@@ -497,6 +523,43 @@ impl Player {
                 // no per-tick gravity while buoyant — also freeze the
                 // substep accumulator so leaving water starts fresh
                 self.tick_accum = 0.0;
+            } else if on_vine {
+                // ---- audit-fix: vine climbing (the "collisionless
+                // ladder" physics). Up while jump held (~2.35 b/s,
+                // VERIFIED w/Ladder §Climbing: "moves upward at about
+                // 2.35 blocks per second"); forward-key climbing
+                // requires a solid block to push against (VERIFIED
+                // w/Vines: "If there is a solid block behind the
+                // vines, the walk forward key can also be used" —
+                // probed as any solid horizontal neighbor of the
+                // player's body); sneak hangs on the vine (w/Ladder:
+                // "Holding the sneak key while climbing... causes the
+                // player to grab hold"); otherwise capped descent
+                // ("maximum downward speed is reduced... at about 3
+                // blocks per second", VERIFIED w/Ladder).
+                let wall_behind = has_input
+                    && (Self::collides(world, Vec3::new(self.pos.x + 0.45, self.pos.y + 0.1, self.pos.z))
+                        || Self::collides(world, Vec3::new(self.pos.x - 0.45, self.pos.y + 0.1, self.pos.z))
+                        || Self::collides(world, Vec3::new(self.pos.x, self.pos.y + 0.1, self.pos.z + 0.45))
+                        || Self::collides(world, Vec3::new(self.pos.x, self.pos.y + 0.1, self.pos.z - 0.45)));
+                let climb_up = input.jump || wall_behind;
+                let target_y = if input.sneak {
+                    0.0
+                } else if climb_up {
+                    VINE_CLIMB_SPEED
+                } else {
+                    -VINE_DESCENT_SPEED
+                };
+                self.vel.y += (target_y - self.vel.y) * (10.0 * dt).min(1.0);
+                // fast dives into a vine column settle to the capped
+                // descent instead of blowing straight through
+                self.vel.y = self.vel.y.clamp(-VINE_DESCENT_SPEED, VINE_CLIMB_SPEED);
+                // climbing zeroes fall distance (ladder semantics — the
+                // grab point resets the fall); no gravity substep while
+                // engaged (accumulator frozen like water)
+                self.fall_dist = 0.0;
+                self.pending_fall_dmg = 0.0;
+                self.tick_accum = 0.0;
             } else {
                 if input.jump && self.on_ground {
                     self.vel.y = JUMP_VEL;
@@ -560,7 +623,7 @@ impl Player {
         // water and flight zero it (a dive or a hover is free); landing
         // converts it to queued damage via the MC-12357 formula
         // `fall_distance − 3` HP.
-        if self.flying || self.in_water {
+        if self.flying || self.in_water || on_vine {
             self.fall_dist = 0.0;
         }
 
@@ -651,7 +714,7 @@ impl Player {
             && input.jump
             && self.held().block == ELYTRA
             && !self.held().is_empty();
-        if !self.flying && !self.in_water && !gliding {
+        if !self.flying && !self.in_water && !gliding && !on_vine {
             self.tick_accum += dt;
             let mut ticks = 0u8;
             while self.tick_accum >= TICK_DT && ticks < 40 {
@@ -1668,5 +1731,112 @@ mod v110_tests {
             "auto-jump must hop the step without jump input (max y {max_y})"
         );
         assert!(p.pos.z < -5.0, "walked past the step, z={}", p.pos.z);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// audit-fix round tests (1.2 vines + jungle family, 1.4 golden carrot)
+// ---------------------------------------------------------------------------
+#[cfg(test)]
+mod auditfix_tests {
+    use super::*;
+    use std::sync::Arc;
+    use vc_blocks::blocks::*;
+
+    /// a vine column: solid walls both sides at x=0/x=2, vines at (1, y)
+    /// for y in 66..=76 — the classic 1×1 climbable shaft (the ladder
+    /// page's "inside a 1×1 ladder shaft" arrangement)
+    fn vine_shaft() -> World {
+        let mut w = World::new(7);
+        for dz in -1i32..=1 {
+            for dx in -1i32..=1 {
+                let mut c = vc_chunk::chunk::Chunk::empty();
+                for y in 0..=64i32 {
+                    for lz in 0..16usize {
+                        for lx in 0..16usize {
+                            c.set(lx, y as usize, lz, STONE);
+                        }
+                    }
+                }
+                // shaft walls: local x 0 and 2 stay stone; local x=1
+                // (world x=1) becomes the vine column above the floor
+                for y in 65..=76i32 {
+                    c.set(0, y as usize, 8, STONE);
+                    c.set(2, y as usize, 8, STONE);
+                    c.set(1, y as usize, 8, VINE);
+                }
+                w.insert_generated((dx, dz), Arc::new(c), Vec::new());
+            }
+        }
+        w.dirty.clear();
+        w
+    }
+
+    /// holding jump in a vine shaft climbs at the ladder speed
+    /// (~2.35 b/s, VERIFIED w/Ladder §Climbing)
+    #[test]
+    fn vine_climb_speed_is_ladder_speed() {
+        let w = vine_shaft();
+        let mut p = Player::new(Vec3::new(1.5, 66.0, 8.5));
+        p.flying = false;
+        let mut input = Input::default();
+        input.jump = true;
+        for _ in 0..60 {
+            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+        }
+        assert!(p.on_vine, "player is in the vine column");
+        assert!(
+            p.vel.y > 2.0 && p.vel.y <= VINE_CLIMB_SPEED + 1e-3,
+            "climb speed ~2.35 b/s (got {})",
+            p.vel.y
+        );
+        // 1 s of climbing gains roughly a block and a half — and the
+        // player must still be INSIDE the shaft (not fallen out)
+        assert!(p.pos.y > 66.5, "player rose (y={})", p.pos.y);
+        assert!(p.fall_dist == 0.0, "climbing zeroes fall distance");
+    }
+
+    /// descending in a vine is capped at ~3 b/s even after a long fall
+    /// (VERIFIED w/Ladder: "maximum downward speed is reduced to a
+    /// 'descending ladder' speed, at about 3 blocks per second")
+    #[test]
+    fn vine_descent_is_capped() {
+        let w = vine_shaft();
+        let mut p = Player::new(Vec3::new(1.5, 74.0, 8.5));
+        p.flying = false;
+        p.vel.y = -20.0; // a fast dive into the vine column
+        let mut input = Input::default();
+        for _ in 0..30 {
+            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+        }
+        assert!(p.on_vine, "player is in the vine column");
+        assert!(
+            p.vel.y >= -VINE_DESCENT_SPEED - 1e-3,
+            "descent capped at 3 b/s (got {})",
+            p.vel.y
+        );
+        assert!(p.pos.y > 65.0, "player has not fallen through (y={})", p.pos.y);
+        // no fall damage is queued from the dive into the vines (the
+        // climb reset — the engine's ladder semantics)
+        assert_eq!(p.pending_fall_dmg, 0.0);
+        assert_eq!(p.fall_dist, 0.0);
+    }
+
+    /// sneak hangs on the vine: no descent, no fall damage
+    /// (w/Ladder: "Holding the sneak key while climbing a ladder causes
+    /// the player to grab hold of the ladder and not fall off")
+    #[test]
+    fn vine_sneak_hangs() {
+        let w = vine_shaft();
+        let mut p = Player::new(Vec3::new(1.5, 70.0, 8.5));
+        p.flying = false;
+        let mut input = Input::default();
+        input.sneak = true;
+        for _ in 0..30 {
+            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+        }
+        assert!(p.on_vine);
+        assert!(p.vel.y.abs() < 0.5, "hanging, not falling (vy={})", p.vel.y);
+        assert!((p.pos.y - 70.0).abs() < 0.2, "held position (y={})", p.pos.y);
     }
 }

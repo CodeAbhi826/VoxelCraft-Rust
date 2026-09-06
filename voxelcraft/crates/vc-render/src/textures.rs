@@ -11,6 +11,7 @@ use vc_rng::rng::Rng;
 mod e1_art;
 mod e2_art;
 mod e3_art;
+mod auditfix_art;
 
 pub const ATLAS_SIZE: usize = 512;
 pub const TILE_PX: usize = 16;
@@ -4048,6 +4049,15 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_NETHER_WART_BLOCK => nether_wart_block_art(&mut a, t, &mut rng),
             TILE_RED_NETHER_BRICKS => red_nether_bricks_art(&mut a, t),
             TILE_BONE_BLOCK => bone_block_art(&mut a, t),
+            // ---- audit-fix round (2026-09-07): 1.2 jungle family + 1.4
+            // golden carrot (live-verified; see auditfix_art.rs) ----
+            TILE_GOLDEN_CARROT => auditfix_art::golden_carrot(&mut a, t, &mut rng),
+            TILE_JUNGLE_LOG_SIDE => auditfix_art::jungle_log_side(&mut a, t, &mut rng),
+            TILE_JUNGLE_LOG_TOP => auditfix_art::jungle_log_top(&mut a, t, &mut rng),
+            TILE_JUNGLE_LEAVES => auditfix_art::jungle_leaves(&mut a, t, &mut rng),
+            TILE_JUNGLE_PLANKS => auditfix_art::jungle_planks(&mut a, t, &mut rng),
+            TILE_VINE => auditfix_art::vine(&mut a, t, &mut rng),
+            TILE_FERN => auditfix_art::fern(&mut a, t, &mut rng),
             _ => {}
         }
     }

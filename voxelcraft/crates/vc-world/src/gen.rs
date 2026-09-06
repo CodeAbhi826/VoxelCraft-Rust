@@ -912,9 +912,17 @@ impl TerrainGen {
             let lzi = wz - oz;
             if lxi >= 0 && lxi < 16 && lzi >= 0 && lzi < 16 {
                 let cur = chunk.get(lxi as usize, wy as usize, lzi as usize);
-                let trunk = id == OAK_LOG || id == DARK_OAK_LOG || id == ACACIA_LOG;
+                let trunk = id == OAK_LOG
+                    || id == DARK_OAK_LOG
+                    || id == ACACIA_LOG
+                    || id == JUNGLE_LOG;
                 if cur == AIR
-                    || (replace_leaves && trunk && (cur == LEAVES || cur == ACACIA_LEAVES || cur == DARK_OAK_LEAVES))
+                    || (replace_leaves
+                        && trunk
+                        && (cur == LEAVES
+                            || cur == ACACIA_LEAVES
+                            || cur == DARK_OAK_LEAVES
+                            || cur == JUNGLE_LEAVES))
                 {
                     chunk.set(lxi as usize, wy as usize, lzi as usize, id);
                 }
@@ -971,14 +979,17 @@ impl TerrainGen {
             }
             let h = chunk.height[col_idx] as i32;
             // species: forest mixes oak + birch; snowy taiga/taiga grow
-            // spruce; birch forest is birch-dominant; jungle keeps oak
-            // (vanilla jungle wood is palette-absent — documented);
+            // spruce; birch forest is birch-dominant; jungle grows its own
+            // wood (audit-fix 2026-09-07: the E1-era oak-adaptation is
+            // retired — JUNGLE_LOG/JUNGLE_LEAVES exist now, VERIFIED
+            // w/Tree: "Added jungle trees" 1.2.1 12w03a);
             // 1.7.2: savanna grows acacia, dark forest grows dark oak
             let biome_here = Biome::from_u8(chunk.biome[col_idx]);
             let (log, leaf) = match biome_here {
                 Biome::Snowy | Biome::Taiga => (SPRUCE_LOG, SPRUCE_LEAVES),
                 Biome::Savanna => (ACACIA_LOG, ACACIA_LEAVES),
                 Biome::DarkForest => (DARK_OAK_LOG, DARK_OAK_LEAVES),
+                Biome::Jungle => (JUNGLE_LOG, JUNGLE_LEAVES),
                 Biome::Forest => {
                     if rng.next_f32() < 0.35 {
                         (BIRCH_LOG, BIRCH_LEAVES)
@@ -997,10 +1008,52 @@ impl TerrainGen {
             };
             let th = if biome_here == Biome::Snowy || biome_here == Biome::Taiga {
                 6 + rng.next_range(3) as i32 // spruce grows taller
+            } else if biome_here == Biome::Jungle {
+                // audit-fix (VERIFIED w/Jungle_Tree search round: regular
+                // jungle trees have a 1x1 trunk "which can extend up to
+                // 10 blocks tall") — 5..10, distinctly taller than oak
+                5 + rng.next_range(6) as i32
             } else {
                 4 + rng.next_range(3) as i32 // 4..6
             };
             let y0 = h + 1;
+
+            // ---- audit-fix: jungle bushes (VERIFIED w/Tree: "Jungle
+            // bushes also generate in the jungle biome, featuring a
+            // single jungle log surrounded by oak leaves") — ~25% of
+            // jungle trees take the bush form: 1 JUNGLE_LOG + an oak
+            // leaf blob, no tall trunk.
+            if biome_here == Biome::Jungle && rng.next_f32() < 0.25 {
+                set_dec(&mut chunk, &mut outbound, ox + lx, y0, oz + lz, JUNGLE_LOG, true);
+                // leaf ring around the log (ragged corners) + a cap above
+                for (dy, r) in [(0i32, 1i32), (1, 1), (2, 1)] {
+                    let ly = y0 + dy;
+                    for dx in -r..=r {
+                        for dz in -r..=r {
+                            if dx == 0 && dz == 0 && dy == 0 {
+                                continue; // the log's own cell
+                            }
+                            let corner = dx.abs() == r && dz.abs() == r;
+                            if corner && rng.next_f32() < 0.5 {
+                                continue;
+                            }
+                            set_dec(
+                                &mut chunk,
+                                &mut outbound,
+                                ox + lx + dx,
+                                ly,
+                                oz + lz + dz,
+                                LEAVES, // oak leaves — the VERIFIED detail
+                                false,
+                            );
+                        }
+                    }
+                }
+                if chunk.get(lx as usize, h as usize, lz as usize) == GRASS {
+                    chunk.set(lx as usize, h as usize, lz as usize, DIRT);
+                }
+                continue;
+            }
 
             // ---- 1.7.2 tree shapes ----
             // acacia (savanna): "curved trees made of acacia logs" — a
@@ -1213,6 +1266,27 @@ impl TerrainGen {
                     true,
                 );
             }
+            // ---- audit-fix: vines on jungle trunks (VERIFIED w/Vines:
+            // "Jungle trees of both sizes have vines on their trunks and
+            // canopy edges"). Cross-rendered adaptation: the vine block
+            // occupies the air cell beside each trunk log (~60%/side).
+            if biome_here == Biome::Jungle {
+                for ty in 0..th {
+                    for (dx, dz) in [(1i32, 0i32), (-1, 0), (0, 1), (0, -1)] {
+                        if rng.next_f32() < 0.6 {
+                            set_dec(
+                                &mut chunk,
+                                &mut outbound,
+                                ox + lx + dx,
+                                y0 + ty,
+                                oz + lz + dz,
+                                VINE,
+                                false,
+                            );
+                        }
+                    }
+                }
+            }
             // dirt under trunk
             if chunk.get(lx as usize, h as usize, lz as usize) == GRASS {
                 chunk.set(lx as usize, h as usize, lz as usize, DIRT);
@@ -1296,6 +1370,36 @@ impl TerrainGen {
                         (FLOWER_RED, 0u16)
                     } else {
                         (OXEYE_DAISY, 0u16)
+                    }
+                }
+                // audit-fix: ferns (VERIFIED w/Fern — "non-solid plant
+                // blocks... have the same characteristics as grass";
+                // placed on grass/dirt family w/Fern §Placement).
+                // Biome list VERIFIED w/Fern §Natural generation:
+                // "Ferns occur naturally only in jungle, taiga, snowy
+                // taiga and old growth taiga biomes and their variants,
+                // scattered with short grass" (NOT swamp — the live
+                // source corrected the first draft).
+                Biome::Jungle => {
+                    if r < 0.55 {
+                        (TALL_GRASS, 0u16)
+                    } else if r < 0.85 {
+                        (FERN, 0u16)
+                    } else if r < 0.93 {
+                        (FLOWER_RED, 0u16)
+                    } else {
+                        (FLOWER_YELLOW, 0u16)
+                    }
+                }
+                Biome::Taiga | Biome::Snowy => {
+                    if r < 0.62 {
+                        (TALL_GRASS, 0u16)
+                    } else if r < 0.86 {
+                        (FERN, 0u16)
+                    } else if r < 0.93 {
+                        (FLOWER_RED, 0u16)
+                    } else {
+                        (FLOWER_YELLOW, 0u16)
                     }
                 }
                 _ => {
@@ -4949,5 +5053,169 @@ mod e2_tests {
             "banded strata below the floor: {} distinct colors, got {bands:?}",
             bands.len()
         );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// audit-fix round tests (2026-09-07): 1.2 jungle wood family + vines +
+// ferns (the Phase-1 evolution-audit gap)
+// ---------------------------------------------------------------------------
+#[cfg(test)]
+mod auditfix_tests {
+    use super::*;
+    use vc_blocks::blocks::*;
+
+    fn gen() -> TerrainGen {
+        TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Overworld)
+    }
+
+    /// find a chunk whose center biome is `b` within ±64 chunks
+    fn find_biome(g: &TerrainGen, b: Biome) -> (i32, i32) {
+        for cx in -64..64 {
+            for cz in -64..64 {
+                let col = g.column(cx * 16 + 8, cz * 16 + 8);
+                if col.biome == b {
+                    return (cx, cz);
+                }
+            }
+        }
+        panic!("{} not found in the ±64-chunk window", b.name());
+    }
+
+    /// jungle chunks grow JUNGLE_LOG/JUNGLE_LEAVES trees with VINE on
+    /// the trunks ("Jungle trees of both sizes have vines on their
+    /// trunks and canopy edges" — VERIFIED w/Vines) and FERN ground
+    /// cover (VERIFIED w/Fern natural generation)
+    #[test]
+    fn jungle_grows_jungle_wood_vines_and_ferns() {
+        let g = gen();
+        let (mut logs, mut leaves, mut vines, mut ferns, mut chunks) =
+            (0usize, 0usize, 0usize, 0usize, 0usize);
+        'scan: for cx in -64..64 {
+            for cz in -64..64 {
+                if g.column(cx * 16 + 8, cz * 16 + 8).biome != Biome::Jungle {
+                    continue;
+                }
+                let (chunk, _) = g.generate_chunk(cx, cz, Vec::new());
+                for i in 0..CHUNK_LEN {
+                    match chunk.get_idx(i) {
+                        JUNGLE_LOG => logs += 1,
+                        JUNGLE_LEAVES => leaves += 1,
+                        VINE => vines += 1,
+                        FERN => ferns += 1,
+                        _ => {}
+                    }
+                }
+                chunks += 1;
+                if chunks >= 8 {
+                    break 'scan;
+                }
+            }
+        }
+        assert!(chunks >= 4, "found jungle chunks to scan (got {chunks})");
+        assert!(logs > 0, "jungle trunks exist (got {logs} JUNGLE_LOG)");
+        assert!(leaves > 0, "jungle canopy exists (got {leaves} JUNGLE_LEAVES)");
+        assert!(vines > 0, "vines on trunks (got {vines} VINE)");
+        assert!(ferns > 0, "fern ground cover (got {ferns} FERN)");
+        // jungle wood must DOMINATE over oak in jungle-center chunks:
+        // the species switch gives every Jungle-column tree jungle
+        // wood; oak logs can only appear from non-jungle edge columns
+        // of the same chunk (the per-tree biome is sampled per column).
+        let mut oak_logs = 0usize;
+        let mut jungle_logs = 0usize;
+        for cx in -64..64 {
+            for cz in -64..64 {
+                if g.column(cx * 16 + 8, cz * 16 + 8).biome != Biome::Jungle {
+                    continue;
+                }
+                let (chunk, _) = g.generate_chunk(cx, cz, Vec::new());
+                for i in 0..CHUNK_LEN {
+                    match chunk.get_idx(i) {
+                        OAK_LOG => oak_logs += 1,
+                        JUNGLE_LOG => jungle_logs += 1,
+                        _ => {}
+                    }
+                }
+                if jungle_logs + oak_logs > 60 {
+                    break;
+                }
+            }
+        }
+        assert!(
+            jungle_logs > oak_logs,
+            "jungle wood dominates (jungle {jungle_logs} vs oak {oak_logs})"
+        );
+    }
+
+    /// jungle bushes: a single JUNGLE_LOG surrounded by OAK LEAVES
+    /// (VERIFIED w/Tree: "Jungle bushes also generate in the jungle
+    /// biome, featuring a single jungle log surrounded by oak leaves")
+    #[test]
+    fn jungle_bushes_are_jungle_log_with_oak_leaves() {
+        let g = gen();
+        let mut found_bush = false;
+        'scan: for cx in -64..64 {
+            for cz in -64..64 {
+                if g.column(cx * 16 + 8, cz * 16 + 8).biome != Biome::Jungle {
+                    continue;
+                }
+                let (chunk, _) = g.generate_chunk(cx, cz, Vec::new());
+                for lz in 1..15usize {
+                    for lx in 1..15usize {
+                        for y in 60..100usize {
+                            if chunk.get(lx, y, lz) != JUNGLE_LOG {
+                                continue;
+                            }
+                            // a bush log has oak LEAVES beside it
+                            let neighbors = [
+                                chunk.get(lx + 1, y, lz),
+                                chunk.get(lx - 1, y, lz),
+                                chunk.get(lx, y, lz + 1),
+                                chunk.get(lx, y, lz - 1),
+                            ];
+                            if neighbors.iter().any(|&n| n == LEAVES) {
+                                found_bush = true;
+                                break 'scan;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        assert!(found_bush, "jungle bush signature found (log + oak leaves)");
+    }
+
+    /// ferns also generate in taiga (VERIFIED w/Fern §Natural
+    /// generation: "Ferns occur naturally only in jungle, taiga, snowy
+    /// taiga and old growth taiga biomes"). Snowy taiga is covered by
+    /// the same flora arm, but the engine's snowy surface is
+    /// SNOW_GRASS which the flora placement gate excludes (the
+    /// pre-existing surface convention — disclosed in the worklog);
+    /// taiga is scanned over several chunks since the 4-attempt pass
+    /// is per-column luck.
+    #[test]
+    fn taiga_grows_ferns() {
+        let g = gen();
+        let mut taiga_chunks = 0;
+        let mut ferns = 0usize;
+        'scan: for cx in -64..64 {
+            for cz in -64..64 {
+                if g.column(cx * 16 + 8, cz * 16 + 8).biome != Biome::Taiga {
+                    continue;
+                }
+                let (chunk, _) = g.generate_chunk(cx, cz, Vec::new());
+                for i in 0..CHUNK_LEN {
+                    if chunk.get_idx(i) == FERN {
+                        ferns += 1;
+                    }
+                }
+                taiga_chunks += 1;
+                if ferns > 0 || taiga_chunks >= 10 {
+                    break 'scan;
+                }
+            }
+        }
+        assert!(taiga_chunks >= 1, "found taiga chunks to scan");
+        assert!(ferns > 0, "taiga grows ferns (got {ferns} over {taiga_chunks} chunks)");
     }
 }

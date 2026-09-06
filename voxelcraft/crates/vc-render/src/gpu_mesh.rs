@@ -77,10 +77,11 @@ const MODEL_BASE: u32 = 63u;       // MODEL_STATE_BASE
 // [merge] E-series (ids 0..=199, states 0..=354 padded to 400) + F-series
 // (1.7.2-1.10; ids 200..=275, states 400..=479): STATE_COUNT=480,
 // BLOCK_COUNT=276
-const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=480)
-const L_FL: u32 = 480u;            // lut: block flags           (BLOCK_COUNT=276)
-const L_TC: u32 = 756u;            // lut: block tint class      (BLOCK_COUNT=276)
-const L_ST: u32 = 1032u;           // lut: state tiles, 4/state  (4·STATE_COUNT=1920)
+// audit-fix: STATE_COUNT=486, BLOCK_COUNT=282 (V6 window 480..=485)
+const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=486)
+const L_FL: u32 = 486u;            // lut: block flags           (BLOCK_COUNT=282)
+const L_TC: u32 = 768u;            // lut: block tint class      (BLOCK_COUNT=282)
+const L_ST: u32 = 1050u;           // lut: state tiles, 4/state  (4·STATE_COUNT=1944)
 const P_N: u32 = 0u;               // params[0] = n_jobs
 const P_JOB: u32 = 2u;             // params job base = 2 + j*66
 const P_BIOME: u32 = 2u;           // biomes at job base + 2 (64 packed u32)
@@ -132,8 +133,8 @@ fn job_get_blk(j: u32, x: i32, y: i32, z: i32) -> u32 {
     let base = j * VOL_WORDS;
     return (blk_l[base + (p >> 2u)] >> ((p & 3u) * 8u)) & 0xFFu;
 }
-fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 479u)]; }
-fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 275u)]; }
+fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 485u)]; }
+fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 281u)]; }
 fn biome_at(j: u32, x: i32, z: i32) -> u32 {
     let c = u32(z * 16 + x);
     let w = params[P_JOB + j * 66u + P_BIOME + (c >> 2u)];
@@ -155,7 +156,7 @@ fn face_visible(bf: u32, fnb: u32) -> bool {
 // tint class -> packed tint byte (kind<<6 | slot), port of
 // vc_blocks::tint::block_face_tint_packed's block match
 fn tint_packed(b: u32, top: bool, biome: u32) -> u32 {
-    let tc = lut[L_TC + min(b, 275u)];
+    let tc = lut[L_TC + min(b, 281u)];
     var kind = 0u; var slot = 0u;
     if tc == 1u { if top { kind = 1u; slot = biome; } }          // GRASS top
     else if tc == 2u { kind = 1u; slot = biome; }                // TALL_GRASS

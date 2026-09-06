@@ -7235,7 +7235,7 @@ impl GameApp {
                     // (3) FOOD: golden apple (breeding, VERIFIED w/Horse
                     // §Breeding) / hay bale (heals + grows temper,
                     // VERIFIED w/Hay_Bale §Food)
-                    else if held == GOLDEN_APPLE || held == HAY_BALE {
+                    else if held == GOLDEN_APPLE || held == HAY_BALE || held == GOLDEN_CARROT {
                         let mut feed_rng =
                             vc_rng::rng::Rng::new((self.sim.ticks as u64) ^ 0x5EED_1EAD);
                         let outcome =
@@ -7539,7 +7539,8 @@ impl GameApp {
                         self.place_timer = 0.3;
                         self.ui.dirty = true;
                     } else if !self.player.held().is_empty()
-                        && self.player.held().block == GOLDEN_APPLE
+                        && (self.player.held().block == GOLDEN_APPLE
+                            || self.player.held().block == GOLDEN_CARROT)
                     {
                         // Phase E1: cure a targeted zombie villager
                         // (VERIFIED w/Zombie_Villager: weakness + golden
@@ -10038,6 +10039,9 @@ fn is_food(b: u16) -> bool {
             | BAKED_POTATO
             | CARROT
             | PUMPKIN_PIE
+            // audit-fix (1.4): golden carrot (VERIFIED live 2026-09-07
+            // w/Golden_Carrot: hunger 6 / saturation 14.4)
+            | GOLDEN_CARROT
     )
 }
 
@@ -10054,6 +10058,9 @@ fn food_heal(b: u16) -> f32 {
         CARROT => 1.5,
         BAKED_POTATO => 2.5,
         PUMPKIN_PIE => 4.0,
+        // audit-fix (1.4): hunger 6 -> 3.0 HP (VERIFIED live 2026-09-07
+        // w/Golden_Carrot: "Hunger 6", "Saturation 14.4")
+        GOLDEN_CARROT => 3.0,
         RAW_FISH => 1.0,
         RAW_SALMON => 1.0,
         CLOWNFISH => 0.5,
@@ -10636,5 +10643,27 @@ mod tests {
         // lo would be 0
         assert!(hi.is_finite() && hi < 1000.0);
         assert!(lo > 0.0);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// audit-fix round tests (2026-09-07): 1.4 golden carrot food
+// ---------------------------------------------------------------------------
+#[cfg(test)]
+mod auditfix_food_tests {
+    use super::*;
+
+    /// golden carrot heals hunger 6 / 2 = 3.0 HP (VERIFIED live
+    /// 2026-09-07 w/Golden_Carrot: "Hunger 6", "Saturation 14.4")
+    #[test]
+    fn golden_carrot_food_values() {
+        assert!((food_heal(GOLDEN_CARROT) - 3.0).abs() < 1e-6, "hunger 6 -> 3 HP");
+        assert!(is_food(GOLDEN_CARROT), "golden carrot is edible");
+        // registry: item-block, in the picker, V6 state roundtrip
+        assert!(vc_blocks::blocks::is_item_block(GOLDEN_CARROT));
+        assert!(vc_blocks::blocks::PICKER_BLOCKS.contains(&GOLDEN_CARROT));
+        assert_eq!(vc_blocks::blocks::v6_state(GOLDEN_CARROT), Some(480));
+        assert_eq!(vc_blocks::blocks::state_block(480), GOLDEN_CARROT);
+        assert_eq!(vc_blocks::blocks::default_state(GOLDEN_CARROT), 480);
     }
 }

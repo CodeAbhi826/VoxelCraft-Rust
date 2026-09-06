@@ -1607,7 +1607,15 @@ impl MobSystem {
     /// sugar/wheat/apples which the engine lacks).
     /// Returns the feed outcome for the game layer to consume items.
     pub fn try_feed(&mut self, id: u32, food: u16, rng: &mut Rng) -> Option<FeedOutcome> {
-        if food != GOLDEN_APPLE && food != HAY_BALE {
+        // audit-fix (1.4): golden carrot joins the equine foods (VERIFIED
+        // live 2026-09-07 w/Golden_Carrot §Usage: "Golden carrots are used
+        // to tame, breed, lead, grow, and heal horses, donkeys, and
+        // mules"; the breeding rule was already live-verified in the E3
+        // round w/Horse §Breeding: "Feeding two tamed horses golden
+        // apples or golden carrots activates love mode"). It follows the
+        // golden-apple arm: love mode on two tamed adults, heal +4
+        // otherwise (the engine's e3-verified per-food mapping).
+        if food != GOLDEN_APPLE && food != HAY_BALE && food != GOLDEN_CARROT {
             return None;
         }
         // snapshot the target state (ends the mutable borrow before the
@@ -3473,5 +3481,68 @@ mod v110_tests {
         let zo = def(MobKind::Zombie);
         let hu = def(MobKind::Husk);
         assert_eq!((hu.health, hu.armor), (zo.health, zo.armor));
+    }
+}
+
+// ---------------- audit-fix round tests (2026-09-07) ----------------
+// 1.4 golden carrot: equine feed (VERIFIED live 2026-09-07
+// w/Golden_Carrot §Usage + w/Horse §Breeding from the E3 round)
+
+#[cfg(test)]
+mod auditfix_tests {
+    use super::*;
+
+    fn tamed_adult_pair(ms: &mut MobSystem) -> (u32, u32) {
+        let a = ms.spawn_at(MobKind::Horse, 0, 65, 0).unwrap();
+        let b = ms.spawn_at(MobKind::Horse, 2, 65, 0).unwrap();
+        for id in [a, b] {
+            if let Some(m) = ms.list.iter_mut().find(|m| m.id == id) {
+                m.equine.as_mut().unwrap().tamed = true;
+                m.equine.as_mut().unwrap().baby = false;
+                m.equine.as_mut().unwrap().breed_cd = 0;
+            }
+        }
+        (a, b)
+    }
+
+    /// golden carrot on two tamed adults starts love mode — the
+    /// VERIFIED breeding rule (w/Horse §Breeding: "Feeding two tamed
+    /// horses golden apples or golden carrots activates love mode")
+    #[test]
+    fn golden_carrot_breeds_tamed_horses() {
+        let mut ms = MobSystem::new(42);
+        let (a, b) = tamed_adult_pair(&mut ms);
+        let mut rng = Rng::new(7);
+        let out = ms.try_feed(a, GOLDEN_CARROT, &mut rng);
+        assert!(
+            matches!(out, Some(FeedOutcome::LoveMode(pid)) if pid == b),
+            "golden carrot -> LoveMode with the nearby partner (got {out:?})"
+        );
+        // the fed horse got its cooldown
+        let m = ms.by_id(a).unwrap();
+        assert!(m.equine.as_ref().unwrap().breed_cd > 0);
+    }
+
+    /// golden carrot heals a horse with no partner (the golden-apple
+    /// arm: +4 HP within the 30 cap — the engine's e3-verified mapping)
+    #[test]
+    fn golden_carrot_heals_a_lone_horse() {
+        let mut ms = MobSystem::new(43);
+        let a = ms.spawn_at(MobKind::Horse, 0, 65, 0).unwrap();
+        // damage + isolate: no partner, not tamed-fertile
+        if let Some(m) = ms.list.iter_mut().find(|m| m.id == a) {
+            m.equine.as_mut().unwrap().tamed = false;
+            m.equine.as_mut().unwrap().baby = false;
+            m.equine.as_mut().unwrap().breed_cd = 0;
+            m.health = 10.0;
+        }
+        let mut rng = Rng::new(8);
+        let out = ms.try_feed(a, GOLDEN_CARROT, &mut rng);
+        assert!(
+            matches!(out, Some(FeedOutcome::Healed) | Some(FeedOutcome::Ate)),
+            "lone-horse feed outcome (got {out:?})"
+        );
+        let m = ms.by_id(a).unwrap();
+        assert!((m.health - 14.0).abs() < 1e-6, "healed +4 (got {})", m.health);
     }
 }

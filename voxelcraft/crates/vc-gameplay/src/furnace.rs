@@ -12,7 +12,10 @@ pub const COOK_TICKS: i32 = 200;
 /// fuel burn times (game ticks)
 pub fn fuel_ticks(block: u16) -> i32 {
     match block {
-        PLANKS | OAK_LOG | BIRCH_LOG | SPRUCE_LOG => 300,
+        // audit-fix (1.2): jungle log/planks join the wood fuels (300
+        // t — VERIFIED w/Log §Fuel: "Logs... can be used as a fuel in
+        // furnaces"; the fuel table's log/plank row is 300 ticks)
+        PLANKS | OAK_LOG | BIRCH_LOG | SPRUCE_LOG | JUNGLE_LOG | JUNGLE_PLANKS => 300,
         // OAK_SLAB = 150 ticks (VERIFIED 2026-09-06 live:
         // minecraft.wiki/w/Smelting — "Wooden Slab 7.5 [s], 150 ticks";
         // was 300, the planks value — half-length slabs burn half as

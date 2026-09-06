@@ -161,9 +161,39 @@ pub const TILE_IRONGOLEM: u16 = 156;
 pub const TILE_ZOMBIEVILLAGER: u16 = 157;
 pub const TILE_MOOSHROOM: u16 = 158;
 pub const TILE_ENDERDRAGON: u16 = 159;
-// spawn eggs: 16 tiles, one per implemented mob kind (base 160..=175)
+// spawn eggs: 20 tiles, one per implemented mob kind (base 160..=179)
 pub const TILE_EGG_BASE: u16 = 160;
-pub const TILE_EGG_MAX: u16 = 175;
+pub const TILE_EGG_MAX: u16 = 179;
+// ---- Phase E2 (evolution 1.3–1.4 bracket, live-verified 2026-09-06) ----
+// world-block + item tiles (180..=196)
+pub const TILE_ANVIL: u16 = 180;
+pub const TILE_ANVIL_CHIPPED: u16 = 181;
+pub const TILE_ANVIL_DAMAGED: u16 = 182;
+pub const TILE_BEACON: u16 = 183;
+pub const TILE_BEACON_BEAM: u16 = 184;
+pub const TILE_COBBLE_WALL: u16 = 185;
+pub const TILE_ENDER_CHEST: u16 = 186;
+pub const TILE_FLOWER_POT: u16 = 187;
+pub const TILE_ITEM_FRAME: u16 = 188;
+pub const TILE_TRIPWIRE_HOOK: u16 = 189;
+pub const TILE_TRIPWIRE_HOOK_ON: u16 = 190;
+pub const TILE_WITHER_SKULL: u16 = 191;
+pub const TILE_COMMAND_BLOCK: u16 = 192;
+pub const TILE_COMMAND_BLOCK_ON: u16 = 193;
+pub const TILE_EMERALD: u16 = 194;
+pub const TILE_NETHER_STAR: u16 = 195;
+pub const TILE_POTATO: u16 = 196;
+pub const TILE_BAKED_POTATO: u16 = 197;
+pub const TILE_CARROT: u16 = 198;
+pub const TILE_PUMPKIN_PIE: u16 = 199;
+// E2 mob sprites (billboards)
+pub const TILE_WITHER: u16 = 200;
+pub const TILE_WITHER_SKELETON: u16 = 201;
+pub const TILE_WITCH: u16 = 202;
+pub const TILE_BAT: u16 = 203;
+pub const TILE_WITHER_SKULL_PROJ: u16 = 204;
+/// lava fluid tile (the flowing face art — one shared tile like water)
+pub const TILE_LAVA: u16 = 205;
 // mobs (Phase 2): entity sprites + drops' item tiles. Mob sprites are
 // clean-room pixel art (ours, not Mojang's) — distinct silhouettes/palettes
 pub const TILE_ZOMBIE: u16 = 83;
@@ -401,18 +431,81 @@ pub const BLAZE_POWDER: u8 = 120;
 pub const GOLDEN_APPLE: u8 = 121;
 pub const SNOWBALL: u8 = 122;
 pub const NETHER_BRICK: u8 = 123;
-/// spawn eggs: ids 124..=139, one per implemented mob kind (16).
+// spawn eggs: ids 124..=143, one per implemented mob kind (20).
 /// Vanilla mechanic (VERIFIED w/Spawn_Egg §Usage): use on a surface →
 /// the mob spawns with feet adjacent to the surface; the egg is
 /// consumed. Creative-picker item.
 pub const SPAWN_EGG_BASE: u8 = 124;
-pub const SPAWN_EGG_MAX: u8 = 139;
+pub const SPAWN_EGG_MAX: u8 = 143;
 /// spawner mob-kind code 0: zombie (dungeon roll 50%)
 pub const SPAWNER_ZOMBIE: u8 = 0;
 /// spawner mob-kind code 1: skeleton (dungeon roll 25%)
 pub const SPAWNER_SKELETON: u8 = 1;
 /// spawner mob-kind code 2: spider (dungeon roll 25%)
 pub const SPAWNER_SPIDER: u8 = 2;
+
+// ---- Phase E2 block ids (evolution 1.3–1.4 bracket) — all values
+// live-verified 2026-09-06 against minecraft.wiki (see
+// docs/research/phase2-1.3-1.4-research.md for the per-claim audit) ----
+/// Anvil — gravity block, 3 damage stages (VERIFIED w/Anvil: 12% per use
+/// to degrade, falls like sand, 2 HP/block falling damage after the
+/// first, cap 40). Craft: 3 iron blocks + 4 iron ingots (engine
+/// adaptation: iron ORE items stand in for ingots — no ingot item yet).
+pub const ANVIL: u8 = 144;
+/// Chipped Anvil — damage stage 1.
+pub const CHIPPED_ANVIL: u8 = 145;
+/// Damaged Anvil — damage stage 2 (next degrade = destroyed).
+pub const DAMAGED_ANVIL: u8 = 146;
+/// Beacon — light 15, pyramid 1–4 levels, effects (VERIFIED w/Beacon).
+/// Craft: 5 glass + 1 nether star + 3 obsidian.
+pub const BEACON: u8 = 147;
+/// Cobblestone Wall — 6 cobble → 6 walls (VERIFIED w/Wall); 1.5-block
+/// collision like fences; connects to neighbors at mesh time.
+pub const COBBLE_WALL: u8 = 148;
+/// Ender Chest — 27 slots, per-player, shared across all ender chests
+/// (VERIFIED w/Ender_Chest). Craft: 8 obsidian + eye of ender. Light 7.
+/// Break drops 8 obsidian (no Silk Touch in engine — documented).
+pub const ENDER_CHEST: u8 = 149;
+/// Flower Pot — craft 3 bricks (VERIFIED w/Flower_Pot; brick ITEM →
+/// brick BLOCK adaptation, documented); hardness 0, instant break.
+pub const FLOWER_POT: u8 = 150;
+/// Item Frame — craft 8 sticks + 1 leather (VERIFIED w/Item_Frame;
+/// stick item absent → planks stand-in, documented). Displays the item
+/// placed in it; interact rotates 45°.
+pub const ITEM_FRAME: u8 = 151;
+/// Tripwire Hook — craft 1 iron + 1 stick + 2 planks → 2 (VERIFIED
+/// w/Tripwire_Hook; iron ore + planks adaptation). Pairs + a 1–40
+/// string line emit redstone while tripped.
+pub const TRIPWIRE_HOOK: u8 = 152;
+/// Wither Skeleton Skull — the wither-summon block (2.5% drop, VERIFIED
+/// w/Wither_Skeleton); hardness 1.
+pub const WITHER_SKELETON_SKULL: u8 = 153;
+/// Command Block — creative/`give` only (VERIFIED w/Command_Block);
+/// executes the engine command bridge on redstone pulse. Impulse variant
+/// (chain/repeating are 1.9 — deferred).
+pub const COMMAND_BLOCK: u8 = 154;
+// ---- Phase E2 item-blocks (inventory-only, the potion pattern) ----
+/// Emerald — ore drop + beacon feed + trade currency (VERIFIED
+/// w/Emerald, w/Emerald_Ore: drops 1, XP 3–7).
+pub const EMERALD: u8 = 155;
+/// Nether Star — the wither's guaranteed drop (VERIFIED w/Wither:
+/// 100%, 50 XP, 10-min despawn); beacon ingredient.
+pub const NETHER_STAR: u8 = 156;
+/// Potato — food 1 / 0.6 (VERIFIED w/Food).
+pub const POTATO: u8 = 157;
+/// Baked Potato — food 5 / 6.0 (VERIFIED w/Food); smelted from potato.
+pub const BAKED_POTATO: u8 = 158;
+/// Carrot — food 3 / 3.6 (VERIFIED w/Food).
+pub const CARROT: u8 = 159;
+/// Pumpkin Pie — food 8 / 4.8 (VERIFIED w/Food). Recipe needs sugar +
+/// egg (absent in engine) → picker-only, recipe deferred (documented).
+pub const PUMPKIN_PIE: u8 = 160;
+/// Lava — light-emitting fluid (VERIFIED w/Lava infobox: luminance 15,
+/// transparent, flow distance 4 blocks Overworld/End & 8 Nether —
+/// counted including the source, i.e. 3/7 spread; flow speed 30/10
+/// ticks per block; contact damage 4 HP per 10 ticks via the damage
+/// immunity window). States: source 307 + flow levels 1..7 at 308..=314.
+pub const LAVA: u8 = 161;
 pub const BEEF_STATE: u16 = 130;
 pub const PORKCHOP_STATE: u16 = 131;
 pub const MUTTON_STATE: u16 = 132;
@@ -503,10 +596,108 @@ pub const DRAGON_EGG_STATE: u16 = 252;
 pub const END_PORTAL_STATE: u16 = 253;
 pub const MYCELIUM_STATE: u16 = 254;
 pub const END_STONE_STATE: u16 = 255;
-/// item-block states (END_CRYSTAL..=SPAWN_EGG_MAX, ids 117..=139):
+/// item-block states (END_CRYSTAL..=SPAWN_EGG_MAX, ids 117..=143):
 /// `state = 256 + (block - 117)` — never stored in chunks.
 pub const ITEM_STATE_BASE: u16 = 256;
-pub const ITEM_STATE_END: u16 = 278;
+pub const ITEM_STATE_END: u16 = 282;
+
+// ---- Phase E2 states (the u16 space ≥ 283 — the ≤ 255 window is FULL;
+// world storage is u16 sections, so these store fine since the Phase-E2
+// Chunk::get widening) ----
+/// anvil damage states (chipped/damaged; the pristine anvil has its own)
+pub const ANVIL_STATE: u16 = 283;
+pub const CHIPPED_ANVIL_STATE: u16 = 284;
+pub const DAMAGED_ANVIL_STATE: u16 = 285;
+/// beacon (single state)
+pub const BEACON_STATE: u16 = 286;
+/// cobblestone wall (single state — connections derive at mesh time)
+pub const COBBLE_WALL_STATE: u16 = 287;
+/// ender chest
+pub const ENDER_CHEST_STATE: u16 = 288;
+/// flower pot
+pub const FLOWER_POT_STATE: u16 = 289;
+/// item frame
+pub const ITEM_FRAME_STATE: u16 = 290;
+/// tripwire hook: facing(4, N/E/S/W) × powered(2) = 8 states 291..=298
+pub const TRIPWIRE_HOOK_STATE_BASE: u16 = 291;
+pub const TRIPWIRE_HOOK_STATE_END: u16 = 298;
+/// wither skeleton skull
+pub const WITHER_SKELETON_SKULL_STATE: u16 = 299;
+/// command block
+pub const COMMAND_BLOCK_STATE: u16 = 300;
+/// E2 item-block states (EMERALD..=PUMPKIN_PIE, ids 155..=160):
+/// `state = 301 + (block - 155)` — never stored in chunks.
+pub const E2_ITEM_STATE_BASE: u16 = 301;
+pub const E2_ITEM_STATE_END: u16 = 306;
+/// lava source state (level 0)
+pub const LAVA_STATE: u16 = 307;
+/// lava flow levels 1..7 (the same level ladder as water; the LEVEL DROP
+/// per block is dimension-dependent — 2 in the Overworld/End (3 spread),
+/// 1 in the Nether (7 spread) — VERIFIED w/Lava flow-distance rows)
+pub const LAVA_FLOW_BASE: u16 = 308;
+pub const LAVA_FLOW_END: u16 = 314;
+/// Phase E2: spawner mob-kind code 4 — wither skeleton (the fortress's
+/// second platform; VERIFIED w/Wither_Skeleton: Nether fortresses only)
+pub const SPAWNER_WITHER_SKELETON: u16 = 315;
+
+/// lava state for a level (0 = source)
+#[inline]
+pub fn lava_state(level: u8) -> u16 {
+    if level == 0 {
+        LAVA_STATE
+    } else {
+        LAVA_FLOW_BASE + (level.clamp(1, 7)) as u16 - 1
+    }
+}
+
+/// lava level of a state: 0 = source, 1..7 = flowing, 255 = not lava
+#[inline]
+pub fn lava_level(s: u16) -> u8 {
+    if s == LAVA_STATE {
+        0
+    } else if (LAVA_FLOW_BASE..=LAVA_FLOW_END).contains(&s) {
+        (s - LAVA_FLOW_BASE + 1) as u8
+    } else {
+        255
+    }
+}
+
+/// true if this state is flowing lava (not the source)
+#[inline]
+pub fn is_lava_flow(s: u16) -> bool {
+    (LAVA_FLOW_BASE..=LAVA_FLOW_END).contains(&s)
+}
+
+// E2 tripwire-hook codec: facing 0..3 = N/E/S/W, powered flag
+#[inline]
+pub fn tripwire_hook_state(facing: usize, powered: bool) -> u16 {
+    TRIPWIRE_HOOK_STATE_BASE + (facing.min(3)) as u16 * 2 + (powered as u16)
+}
+
+#[inline]
+pub fn tripwire_hook_decode(s: u16) -> (usize, bool) {
+    let v = s - TRIPWIRE_HOOK_STATE_BASE;
+    ((v / 2) as usize, v & 1 != 0)
+}
+
+/// E2 item-block arithmetic (ids 155..=160 ↔ states 301..=306)
+#[inline]
+pub fn e2_item_block_state(b: u8) -> Option<u16> {
+    if (EMERALD..=PUMPKIN_PIE).contains(&b) {
+        Some(E2_ITEM_STATE_BASE + (b - EMERALD) as u16)
+    } else {
+        None
+    }
+}
+
+#[inline]
+pub fn e2_item_state_block(s: u16) -> Option<u8> {
+    if (E2_ITEM_STATE_BASE..=E2_ITEM_STATE_END).contains(&s) {
+        Some(EMERALD + (s - E2_ITEM_STATE_BASE) as u8)
+    } else {
+        None
+    }
+}
 
 /// state ↔ item-block arithmetic helpers (item ids 117..=139 ↔ 256..=278)
 #[inline]
@@ -527,7 +718,7 @@ pub fn item_state_block(s: u16) -> Option<u8> {
     }
 }
 
-pub const BLOCK_COUNT: usize = 140;
+pub const BLOCK_COUNT: usize = 162;
 
 // ---------------------------------------------------------------------------
 // BlockState registry (1.16.5 pattern, miniature)
@@ -546,7 +737,9 @@ pub const BLOCK_COUNT: usize = 140;
 /// Phase 5: spawner states 232..=234
 /// Phase E1: lamp/wart/spawner-blaze/frame-eye + dedicated world-block and
 /// item states (140..=141, 236..=253, 256..=278)
-pub const STATE_COUNT: usize = 279;
+/// Phase E2: anvil/beacon/wall/ender-chest/frame/tripwire/skull/command
+/// + E2 items + eggs 17..=20 + lava (283..=314)
+pub const STATE_COUNT: usize = 316;
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -858,11 +1051,28 @@ pub fn default_state(b: u8) -> u16 {
         OBSERVER => observer_state(0, false),
         HOPPER => hopper_state(0),
         CHEST => CHEST_STATE,
+        // ---- Phase E2 defaults (dedicated states ≥ 283; identity slots of
+        // 144..=160 collide with the E1 item-state range) ----
+        ANVIL => ANVIL_STATE,
+        CHIPPED_ANVIL => CHIPPED_ANVIL_STATE,
+        DAMAGED_ANVIL => DAMAGED_ANVIL_STATE,
+        BEACON => BEACON_STATE,
+        COBBLE_WALL => COBBLE_WALL_STATE,
+        ENDER_CHEST => ENDER_CHEST_STATE,
+        FLOWER_POT => FLOWER_POT_STATE,
+        ITEM_FRAME => ITEM_FRAME_STATE,
+        TRIPWIRE_HOOK => tripwire_hook_state(0, false),
+        WITHER_SKELETON_SKULL => WITHER_SKELETON_SKULL_STATE,
+        COMMAND_BLOCK => COMMAND_BLOCK_STATE,
+        LAVA => LAVA_STATE,
         OAK_SLAB => 63,     // PROP_BLOCKS[0].base_state (half=bottom)
         COBBLE_STAIRS => 65, // base_state (facing=north, half=bottom)
         OAK_FENCE => 73,    // base_state (no connections)
         // Phase E1 item-blocks: dedicated states ≥ 256 (never world-stored)
-        _ => item_block_state(b).unwrap_or(b as u16),
+        // Phase E2 item-blocks: dedicated states 301..=306 (never world-stored)
+        _ => item_block_state(b)
+            .or_else(|| e2_item_block_state(b))
+            .unwrap_or(b as u16),
     }
 }
 
@@ -1060,6 +1270,27 @@ pub fn state_block(s: u16) -> u8 {
         s if (ITEM_STATE_BASE..=ITEM_STATE_END).contains(&s) => {
             return item_state_block(s).unwrap_or(AIR)
         }
+        // ---- Phase E2 state folding ----
+        ANVIL_STATE => return ANVIL,
+        CHIPPED_ANVIL_STATE => return CHIPPED_ANVIL,
+        DAMAGED_ANVIL_STATE => return DAMAGED_ANVIL,
+        BEACON_STATE => return BEACON,
+        COBBLE_WALL_STATE => return COBBLE_WALL,
+        ENDER_CHEST_STATE => return ENDER_CHEST,
+        FLOWER_POT_STATE => return FLOWER_POT,
+        ITEM_FRAME_STATE => return ITEM_FRAME,
+        s if (TRIPWIRE_HOOK_STATE_BASE..=TRIPWIRE_HOOK_STATE_END).contains(&s) => {
+            return TRIPWIRE_HOOK
+        }
+        WITHER_SKELETON_SKULL_STATE => return WITHER_SKELETON_SKULL,
+        COMMAND_BLOCK_STATE => return COMMAND_BLOCK,
+        s if (E2_ITEM_STATE_BASE..=E2_ITEM_STATE_END).contains(&s) => {
+            return e2_item_state_block(s).unwrap_or(AIR)
+        }
+        // lava source + flows fold to LAVA (the water-flow pattern)
+        LAVA_STATE => return LAVA,
+        s if (LAVA_FLOW_BASE..=LAVA_FLOW_END).contains(&s) => return LAVA,
+        SPAWNER_WITHER_SKELETON => return SPAWNER,
         ENCHANT_TABLE_STATE => return ENCHANT_TABLE,
         ENCHANTED_BOOK_STATE => return ENCHANTED_BOOK,
         BEEF_STATE => return BEEF,
@@ -1167,6 +1398,20 @@ pub fn is_model_state(s: u16) -> bool {
         )
         && !((WART_STATE_BASE..=WART_STATE_END).contains(&s))
         && !((ITEM_STATE_BASE..=ITEM_STATE_END).contains(&s))
+        // ---- Phase E2: every E2 state is a cross/full-cube/sim state —
+        // none routes to the JSON-model dispatcher ----
+        && !matches!(
+            s,
+            ANVIL_STATE | CHIPPED_ANVIL_STATE | DAMAGED_ANVIL_STATE | BEACON_STATE
+                | COBBLE_WALL_STATE | ENDER_CHEST_STATE | FLOWER_POT_STATE | ITEM_FRAME_STATE
+                | WITHER_SKELETON_SKULL_STATE | COMMAND_BLOCK_STATE
+        )
+        && !((TRIPWIRE_HOOK_STATE_BASE..=TRIPWIRE_HOOK_STATE_END).contains(&s))
+        && !((E2_ITEM_STATE_BASE..=E2_ITEM_STATE_END).contains(&s))
+        // lava source/flows ride the fluid-quad path (never models)
+        && s != LAVA_STATE
+        && !((LAVA_FLOW_BASE..=LAVA_FLOW_END).contains(&s))
+        && s != SPAWNER_WITHER_SKELETON
 }
 
 /// true if this block id has property-driven model states
@@ -1218,6 +1463,21 @@ pub fn state_tiles(s: u16) -> [u16; 4] {
             // the art carries the inset; hotbar shows the frame face
             [TILE_END_PORTAL_FRAME, TILE_END_PORTAL_FRAME, TILE_END_PORTAL_FRAME, TILE_END_PORTAL_FRAME]
         }
+        // Phase E2: anvil damage stages swap the face tile (chipped shows a
+        // cracked face; damaged shows a broken face — VERIFIED w/Anvil
+        // "gradually becomes chipped, then damaged, then breaks")
+        CHIPPED_ANVIL_STATE => {
+            [TILE_ANVIL_CHIPPED, TILE_ANVIL_CHIPPED, TILE_ANVIL_CHIPPED, TILE_ANVIL_CHIPPED]
+        }
+        DAMAGED_ANVIL_STATE => {
+            [TILE_ANVIL_DAMAGED, TILE_ANVIL_DAMAGED, TILE_ANVIL_DAMAGED, TILE_ANVIL_DAMAGED]
+        }
+        // Phase E2: powered tripwire hook glows red (hook + trip state)
+        s if (TRIPWIRE_HOOK_STATE_BASE..=TRIPWIRE_HOOK_STATE_END).contains(&s) => {
+            let (_, powered) = tripwire_hook_decode(s);
+            let t = if powered { TILE_TRIPWIRE_HOOK_ON } else { TILE_TRIPWIRE_HOOK };
+            [t, t, t, t]
+        }
         _ => {
             // fold property states to their block (model geometry supplies
             // the real tiles; these are for the HUD/hotbar blit path)
@@ -1255,7 +1515,7 @@ pub fn log_axis_state(block: u8, axis: u8) -> u16 {
 /// component tile rendered BLANK since Phase 2. Now derived from the
 /// highest tile constant (118–121 here) and guarded by the
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
-pub const TILE_MAX: u16 = 175;
+pub const TILE_MAX: u16 = 205;
 
 /// inventory-only ITEM blocks (potions/bottles/books): never placeable in
 /// the world — right-click drinks (potions) / fills (glass bottle at water).
@@ -1270,10 +1530,12 @@ pub fn is_item_block(b: u8) -> bool {
             | GUNPOWDER | ENDER_PEARL | ROTTEN_FLESH | ARROW_ITEM
             | END_CRYSTAL | EYE_OF_ENDER | BLAZE_ROD | BLAZE_POWDER | GOLDEN_APPLE
             | SNOWBALL | NETHER_BRICK
+            // Phase E2 items (evolution 1.3-1.4)
+            | EMERALD | NETHER_STAR | POTATO | BAKED_POTATO | CARROT | PUMPKIN_PIE
     ) || is_spawn_egg(b)
 }
 
-/// true for the 16 mob spawn-egg item ids (124..=139).
+/// true for the 20 mob spawn-egg item ids (124..=143).
 #[inline]
 pub fn is_spawn_egg(b: u8) -> bool {
     (SPAWN_EGG_BASE..=SPAWN_EGG_MAX).contains(&b)
@@ -1522,6 +1784,47 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Pig Spawn Egg", [TILE_EGG_BASE + 13, TILE_EGG_BASE + 13, TILE_EGG_BASE + 13], false, false, true, false, 0, SoundFamily::Grass),
     d("Sheep Spawn Egg", [TILE_EGG_BASE + 14, TILE_EGG_BASE + 14, TILE_EGG_BASE + 14], false, false, true, false, 0, SoundFamily::Grass),
     d("Chicken Spawn Egg", [TILE_EGG_BASE + 15, TILE_EGG_BASE + 15, TILE_EGG_BASE + 15], false, false, true, false, 0, SoundFamily::Grass),
+    // ---- Phase E2 eggs (mob kinds 17..=20: wither skeleton, witch, bat,
+    // wither — VERIFIED spawn-egg usage rule) ----
+    d("Wither Skeleton Spawn Egg", [TILE_EGG_BASE + 16, TILE_EGG_BASE + 16, TILE_EGG_BASE + 16], false, false, true, false, 0, SoundFamily::Grass),
+    d("Witch Spawn Egg", [TILE_EGG_BASE + 17, TILE_EGG_BASE + 17, TILE_EGG_BASE + 17], false, false, true, false, 0, SoundFamily::Grass),
+    d("Bat Spawn Egg", [TILE_EGG_BASE + 18, TILE_EGG_BASE + 18, TILE_EGG_BASE + 18], false, false, true, false, 0, SoundFamily::Grass),
+    d("Wither Spawn Egg", [TILE_EGG_BASE + 19, TILE_EGG_BASE + 19, TILE_EGG_BASE + 19], false, false, true, false, 0, SoundFamily::Grass),
+    // ---- Phase E2 world blocks (evolution 1.3–1.4 bracket) ----
+    // anvil family: solid, opaque; damage tiles come from state_tiles
+    d("Anvil", [TILE_ANVIL, TILE_ANVIL, TILE_ANVIL], true, true, false, false, 0, SoundFamily::Stone),
+    d("Chipped Anvil", [TILE_ANVIL_CHIPPED, TILE_ANVIL_CHIPPED, TILE_ANVIL_CHIPPED], true, true, false, false, 0, SoundFamily::Stone),
+    d("Damaged Anvil", [TILE_ANVIL_DAMAGED, TILE_ANVIL_DAMAGED, TILE_ANVIL_DAMAGED], true, true, false, false, 0, SoundFamily::Stone),
+    // beacon: solid, NOT opaque (vanilla glass-like core; the beam rides
+    // the billboard pipeline) — self-lit 15 (VERIFIED w/Beacon)
+    d("Beacon", [TILE_BEACON, TILE_BEACON, TILE_BEACON], true, false, false, false, 15, SoundFamily::Glass),
+    // wall: solid, not opaque (fence-class boundary block — 1.5-tall
+    // collision; connections at mesh time)
+    d("Cobblestone Wall", [TILE_COBBLE_WALL, TILE_COBBLE_WALL, TILE_COBBLE_WALL], true, false, false, false, 0, SoundFamily::Stone),
+    // ender chest: solid, opaque, light 7 (VERIFIED w/Ender_Chest)
+    d("Ender Chest", [TILE_ENDER_CHEST, TILE_ENDER_CHEST, TILE_ENDER_CHEST], true, true, false, false, 7, SoundFamily::Stone),
+    // flower pot: cross-rendered, instant break (hardness 0)
+    d("Flower Pot", [TILE_FLOWER_POT, TILE_FLOWER_POT, TILE_FLOWER_POT], false, false, true, false, 0, SoundFamily::Grass),
+    // item frame: cross-rendered sprite of the frame; contents ride the
+    // container system (1-slot, position-keyed)
+    d("Item Frame", [TILE_ITEM_FRAME, TILE_ITEM_FRAME, TILE_ITEM_FRAME], false, false, true, false, 0, SoundFamily::Wood),
+    // tripwire hook: cross-rendered; facing × powered in the state
+    d("Tripwire Hook", [TILE_TRIPWIRE_HOOK, TILE_TRIPWIRE_HOOK, TILE_TRIPWIRE_HOOK], false, false, true, false, 0, SoundFamily::Wood),
+    // wither skeleton skull: cross-rendered head on the ground
+    d("Wither Skeleton Skull", [TILE_WITHER_SKULL, TILE_WITHER_SKULL, TILE_WITHER_SKULL], false, false, true, false, 0, SoundFamily::Stone),
+    // command block: solid opaque cube; the ON face tile glows (lit state
+    // = last-fired pulse, functional only)
+    d("Command Block", [TILE_COMMAND_BLOCK, TILE_COMMAND_BLOCK, TILE_COMMAND_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
+    // ---- Phase E2 item-blocks (155..=160) — inventory-only ----
+    d("Emerald", [TILE_EMERALD, TILE_EMERALD, TILE_EMERALD], false, false, true, false, 0, SoundFamily::Grass),
+    d("Nether Star", [TILE_NETHER_STAR, TILE_NETHER_STAR, TILE_NETHER_STAR], false, false, true, false, 0, SoundFamily::Glass),
+    d("Potato", [TILE_POTATO, TILE_POTATO, TILE_POTATO], false, false, true, false, 0, SoundFamily::Grass),
+    d("Baked Potato", [TILE_BAKED_POTATO, TILE_BAKED_POTATO, TILE_BAKED_POTATO], false, false, true, false, 0, SoundFamily::Grass),
+    d("Carrot", [TILE_CARROT, TILE_CARROT, TILE_CARROT], false, false, true, false, 0, SoundFamily::Grass),
+    d("Pumpkin Pie", [TILE_PUMPKIN_PIE, TILE_PUMPKIN_PIE, TILE_PUMPKIN_PIE], false, false, true, false, 0, SoundFamily::Grass),
+    // lava: fluid, emissive 15 (VERIFIED w/Lava luminance), not solid —
+    // meshes through the fluid-quad path with the fixed lava tint
+    d("Lava", [TILE_LAVA, TILE_LAVA, TILE_LAVA], false, false, false, true, 15, SoundFamily::Water),
 ];
 
 #[inline]
@@ -1591,7 +1894,7 @@ pub fn face_visible(b: u8, n: u8) -> bool {
 /// (needs fluid sim to be fun). Potions are item-blocks — usable from the
 /// hotbar (drink), never placeable. Phase E1 adds the 1.0–1.2 bracket
 /// blocks/items + the 16 spawn eggs (creative-only items, w/Spawn_Egg).
-pub const PICKER_BLOCKS: [u8; 104] = [
+pub const PICKER_BLOCKS: [u8; 126] = [
     GRASS, DIRT, STONE, COBBLE, SMOOTH_STONE, STONE_BRICKS, BRICKS, MOSSY_COBBLE,
     GRANITE, DIORITE, ANDESITE, OBSIDIAN,
     SAND, GRAVEL, CLAY, TERRACOTTA,
@@ -1619,6 +1922,14 @@ pub const PICKER_BLOCKS: [u8; 104] = [
     SPAWN_EGG_BASE + 4, SPAWN_EGG_BASE + 5, SPAWN_EGG_BASE + 6, SPAWN_EGG_BASE + 7,
     SPAWN_EGG_BASE + 8, SPAWN_EGG_BASE + 9, SPAWN_EGG_BASE + 10, SPAWN_EGG_BASE + 11,
     SPAWN_EGG_BASE + 12, SPAWN_EGG_BASE + 13, SPAWN_EGG_BASE + 14, SPAWN_EGG_BASE + 15,
+    // ---- Phase E2 (1.3–1.4 bracket) ----
+    ANVIL, CHIPPED_ANVIL, DAMAGED_ANVIL, BEACON, COBBLE_WALL,
+    ENDER_CHEST, FLOWER_POT, ITEM_FRAME, TRIPWIRE_HOOK,
+    WITHER_SKELETON_SKULL, COMMAND_BLOCK,
+    EMERALD, NETHER_STAR, POTATO, BAKED_POTATO, CARROT, PUMPKIN_PIE,
+    LAVA,
+    // E2 spawn eggs (kinds 17..=20: wither skeleton, witch, bat, wither)
+    SPAWN_EGG_BASE + 16, SPAWN_EGG_BASE + 17, SPAWN_EGG_BASE + 18, SPAWN_EGG_BASE + 19,
 ];
 
 /// default hotbar palette
@@ -1780,8 +2091,8 @@ mod state_tests {
         }
         assert_eq!(egg_mob(SPAWN_EGG_BASE - 1), None);
         assert!(!is_spawn_egg(BLAZE_ROD));
-        // eggs are distinct ids — the gameplay layer decodes 0..=15
-        assert_eq!(SPAWN_EGG_MAX - SPAWN_EGG_BASE, 15);
+        // eggs are distinct ids — the gameplay layer decodes 0..=19
+        assert_eq!(SPAWN_EGG_MAX - SPAWN_EGG_BASE, 19);
     }
 
     /// New item-blocks are recognized; placeables are not.
@@ -1930,6 +2241,11 @@ mod state_tests {
                 // Phase E1 dedicated world-block states + item states
                 || (REDSTONE_LAMP_LIT..=END_STONE_STATE).contains(&s)
                 || (ITEM_STATE_BASE..=ITEM_STATE_END).contains(&s)
+                // Phase E2 dedicated world-block + item states + lava
+                || (ANVIL_STATE..=E2_ITEM_STATE_END).contains(&s)
+                || s == LAVA_STATE
+                || (LAVA_FLOW_BASE..=LAVA_FLOW_END).contains(&s)
+                || s == SPAWNER_WITHER_SKELETON
             {
                 assert!(!is_model_state(s), "component/item state {s} never routes to models");
                 // identity: the state folds to the block whose def table

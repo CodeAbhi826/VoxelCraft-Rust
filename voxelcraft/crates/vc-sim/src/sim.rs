@@ -88,6 +88,11 @@ pub struct Sim {
     pub mobs: vc_gameplay::mobs::MobSystem,
     /// Phase E1: the ender-dragon fight (End dimension only)
     pub dragon: vc_gameplay::dragon::DragonSystem,
+    /// Phase E2: the wither fight (summonable in any dimension)
+    pub wither: vc_gameplay::wither::WitherSystem,
+    /// Phase E2: beacon states (position-keyed; the pyramid + powers,
+    /// VERIFIED w/Beacon)
+    pub beacons: std::collections::HashMap<[i32; 3], vc_gameplay::beacon::BeaconState>,
     /// containers (Phase 3): chests/dispensers/droppers/hoppers
     pub containers: crate::containers::Containers,
     /// dispenser/dropper previous powered state (rising-edge detect)
@@ -102,6 +107,8 @@ pub struct Sim {
     /// Phase E1: dragon-fight events queued for the game layer (world
     /// edits + XP + projectiles live there)
     pub dragon_events: Vec<vc_gameplay::dragon::DragonEvent>,
+    /// Phase E2: wither-fight events
+    pub wither_events: Vec<vc_gameplay::wither::WitherEvent>,
 }
 
 impl Sim {
@@ -118,6 +125,8 @@ impl Sim {
             spawners: vc_gameplay::spawners::Spawners::new(seed ^ 0x5C_0DE5),
             mobs: vc_gameplay::mobs::MobSystem::new(seed ^ 0x5C_0DE),
             dragon: vc_gameplay::dragon::DragonSystem::new(seed ^ 0xDA60_0005),
+            wither: vc_gameplay::wither::WitherSystem::new(seed ^ 0xB055_0002),
+            beacons: std::collections::HashMap::new(),
             containers: crate::containers::Containers::default(),
             dispenser_prev: std::collections::HashMap::new(),
             pending_eject: std::collections::HashMap::new(),
@@ -125,6 +134,7 @@ impl Sim {
             acc: 0.0,
             ticks: 0,
             dragon_events: Vec::new(),
+            wither_events: Vec::new(),
         }
     }
 
@@ -282,6 +292,12 @@ impl Sim {
         if world.dimension == vc_world::world::Dimension::End {
             let evs = self.dragon.tick(world, feet);
             self.dragon_events.extend(evs);
+        }
+
+        // 4d. Phase E2: the wither fight (any dimension — player-summoned)
+        {
+            let evs = self.wither.tick(feet);
+            self.wither_events.extend(evs);
         }
 
         // 5. villagers (§27): wander decisions + walking physics + the

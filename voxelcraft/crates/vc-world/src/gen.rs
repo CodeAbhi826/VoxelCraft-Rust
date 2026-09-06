@@ -702,6 +702,16 @@ impl TerrainGen {
                         col.top
                     } else if yi > h - 4 {
                         col.filler
+                    } else if col.biome == Biome::Mountains
+                        && (4..=31).contains(&yi)
+                        && emerald_ore(self.seed, wx, yi, wz)
+                    {
+                        // Phase E2 (VERIFIED w/Emerald_Ore): emerald ore
+                        // generates ONLY in mountains-family biomes, as
+                        // single blocks (12w22a "blob size reduced to 1"),
+                        // y 4..=31, can be exposed to the sky. The engine's
+                        // hash-ore convention lands ~a few per chunk.
+                        EMERALD_ORE
                     } else {
                         self.stone_variant(wx, yi, wz)
                     };
@@ -737,7 +747,7 @@ impl TerrainGen {
 
         // pass 2: inbound edits from neighbors (trees poking into this chunk)
         for (idx, id) in inbound {
-            let cur = chunk.get_idx(idx as usize);
+            let cur = state_block(chunk.get_idx(idx as usize));
             if cur == AIR || (cur == LEAVES && id == OAK_LOG) {
                 chunk.set_idx(idx as usize, id);
             }
@@ -759,7 +769,7 @@ impl TerrainGen {
             let lxi = wx - ox;
             let lzi = wz - oz;
             if lxi >= 0 && lxi < 16 && lzi >= 0 && lzi < 16 {
-                let cur = chunk.get(lxi as usize, wy as usize, lzi as usize);
+                let cur = state_block(chunk.get(lxi as usize, wy as usize, lzi as usize));
                 if cur == AIR || (replace_leaves && cur == LEAVES && id == OAK_LOG) {
                     chunk.set(lxi as usize, wy as usize, lzi as usize, id);
                 }
@@ -799,7 +809,7 @@ impl TerrainGen {
             let lx = 2 + rng.next_range(12) as i32;
             let lz = 2 + rng.next_range(12) as i32;
             let col_idx = lz as usize * 16 + lx as usize;
-            let top = chunk.get(lx as usize, chunk.height[col_idx] as usize, lz as usize);
+            let top = state_block(chunk.get(lx as usize, chunk.height[col_idx] as usize, lz as usize));
             if top != GRASS && top != SNOW_GRASS {
                 continue;
             }
@@ -915,9 +925,9 @@ impl TerrainGen {
                 );
             }
             // dirt under trunk
-            if chunk.get(lx as usize, h as usize, lz as usize) == GRASS {
+            if state_block(chunk.get(lx as usize, h as usize, lz as usize)) == GRASS {
                 chunk.set(lx as usize, h as usize, lz as usize, DIRT);
-            } else if chunk.get(lx as usize, h as usize, lz as usize) == SNOW_GRASS {
+            } else if state_block(chunk.get(lx as usize, h as usize, lz as usize)) == SNOW_GRASS {
                 chunk.set(lx as usize, h as usize, lz as usize, DIRT);
             }
         }
@@ -942,10 +952,10 @@ impl TerrainGen {
             let lz = rng.next_range(16) as i32;
             let col_idx = lz as usize * 16 + lx as usize;
             let h = chunk.height[col_idx] as i32;
-            if chunk.get(lx as usize, h as usize, lz as usize) != GRASS {
+            if state_block(chunk.get(lx as usize, h as usize, lz as usize)) != GRASS {
                 continue;
             }
-            if chunk.get(lx as usize, (h + 1) as usize, lz as usize) != AIR {
+            if state_block(chunk.get(lx as usize, (h + 1) as usize, lz as usize)) != AIR {
                 continue;
             }
             let r = rng.next_f32();
@@ -985,12 +995,12 @@ impl TerrainGen {
             let lz = rng.next_range(16) as i32;
             let col_idx = lz as usize * 16 + lx as usize;
             let h = chunk.height[col_idx] as i32;
-            if chunk.get(lx as usize, h as usize, lz as usize) != GRASS
-                && chunk.get(lx as usize, h as usize, lz as usize) != SNOW_GRASS
+            if state_block(chunk.get(lx as usize, h as usize, lz as usize)) != GRASS
+                && state_block(chunk.get(lx as usize, h as usize, lz as usize)) != SNOW_GRASS
             {
                 continue;
             }
-            if chunk.get(lx as usize, (h + 1) as usize, lz as usize) != AIR {
+            if state_block(chunk.get(lx as usize, (h + 1) as usize, lz as usize)) != AIR {
                 continue;
             }
             let id = if rng.next_f32() < 0.5 {
@@ -1030,11 +1040,11 @@ impl TerrainGen {
                     }
                     let h = chunk.height[col_idx] as i32;
                     // fold: MYCELIUM stores its dedicated state (254)
-                    let top = state_block(chunk.get(lx as usize, h as usize, lz as usize) as u16);
+                    let top = state_block(chunk.get(lx as usize, h as usize, lz as usize));
                     if top != MYCELIUM && top != GRASS {
                         continue;
                     }
-                    if chunk.get(lx as usize, (h + 1) as usize, lz as usize) != AIR {
+                    if state_block(chunk.get(lx as usize, (h + 1) as usize, lz as usize)) != AIR {
                         continue;
                     }
                     let red = rng.next_f32() < 0.5;
@@ -1111,10 +1121,10 @@ impl TerrainGen {
                     }
                     let h = chunk.height[col_idx] as i32;
                     // fold: MYCELIUM stores its dedicated state (254)
-                    if state_block(chunk.get(lx as usize, h as usize, lz as usize) as u16) != MYCELIUM {
+                    if state_block(chunk.get(lx as usize, h as usize, lz as usize)) != MYCELIUM {
                         continue;
                     }
-                    if chunk.get(lx as usize, (h + 1) as usize, lz as usize) != AIR {
+                    if state_block(chunk.get(lx as usize, (h + 1) as usize, lz as usize)) != AIR {
                         continue;
                     }
                     let id = if rng.next_f32() < 0.5 {
@@ -1136,10 +1146,10 @@ impl TerrainGen {
                     let lz = rng.next_range(16) as i32;
                     let col_idx = lz as usize * 16 + lx as usize;
                     let h = chunk.height[col_idx] as i32;
-                    if chunk.get(lx as usize, h as usize, lz as usize) != SAND {
+                    if state_block(chunk.get(lx as usize, h as usize, lz as usize)) != SAND {
                         continue;
                     }
-                    if chunk.get(lx as usize, (h + 1) as usize, lz as usize) != AIR {
+                    if state_block(chunk.get(lx as usize, (h + 1) as usize, lz as usize)) != AIR {
                         continue;
                     }
                     if rng.next_f32() < 0.55 {
@@ -1176,7 +1186,7 @@ impl TerrainGen {
                     if h < vc_chunk::SEA_LEVEL - 2 || h > vc_chunk::SEA_LEVEL + 1 {
                         continue;
                     }
-                    if chunk.get(lx as usize, h as usize, lz as usize) == SAND {
+                    if state_block(chunk.get(lx as usize, h as usize, lz as usize)) == SAND {
                         chunk.set(lx as usize, h as usize, lz as usize, CLAY);
                     }
                 }
@@ -1194,8 +1204,8 @@ impl TerrainGen {
                     let lz = 1 + rng.next_range(14) as i32;
                     let col_idx = lz as usize * 16 + lx as usize;
                     let h = chunk.height[col_idx] as i32;
-                    if chunk.get(lx as usize, h as usize, lz as usize) == GRASS
-                        && chunk.get(lx as usize, (h + 1) as usize, lz as usize) == AIR
+                    if state_block(chunk.get(lx as usize, h as usize, lz as usize)) == GRASS
+                        && state_block(chunk.get(lx as usize, (h + 1) as usize, lz as usize)) == AIR
                     {
                         set_dec(
                             &mut chunk,
@@ -1219,13 +1229,13 @@ impl TerrainGen {
                     if h < vc_chunk::SEA_LEVEL || h > vc_chunk::SEA_LEVEL + 2 {
                         continue;
                     }
-                    if chunk.get(lx as usize, h as usize, lz as usize) == GRASS
-                        && chunk.get(lx as usize, (h + 1) as usize, lz as usize) == AIR
+                    if state_block(chunk.get(lx as usize, h as usize, lz as usize)) == GRASS
+                        && state_block(chunk.get(lx as usize, (h + 1) as usize, lz as usize)) == AIR
                     {
                         // 2x1 shallow pool: punch the surface to water
                         chunk.set(lx as usize, h as usize, lz as usize, WATER);
                         if lx + 1 < 16
-                            && chunk.get((lx + 1) as usize, h as usize, lz as usize) == GRASS
+                            && state_block(chunk.get((lx + 1) as usize, h as usize, lz as usize)) == GRASS
                         {
                             chunk.set((lx + 1) as usize, h as usize, lz as usize, WATER);
                         }
@@ -1247,8 +1257,8 @@ impl TerrainGen {
                     continue;
                 }
                 let y = 8 + rng.next_range((hmax - 8) as u32) as i32;
-                let above = chunk.get(lx as usize, (y + 1) as usize, lz as usize);
-                let here = chunk.get(lx as usize, y as usize, lz as usize);
+                let above = state_block(chunk.get(lx as usize, (y + 1) as usize, lz as usize));
+                let here = state_block(chunk.get(lx as usize, y as usize, lz as usize));
                 if here == AIR && (is_opaque(above) && above != BEDROCK) {
                     chunk.set(lx as usize, (y + 1) as usize, lz as usize, GLOWSTONE);
                     // a couple of extra glow blocks around it
@@ -1258,8 +1268,8 @@ impl TerrainGen {
                         let dz = rng.next_range(3) as i32 - 1;
                         let nx = (lx + dx).clamp(0, 15) as usize;
                         let nz = (lz + dz).clamp(0, 15) as usize;
-                        if chunk.get(nx, (y + 1) as usize, nz) != AIR
-                            && chunk.get(nx, y as usize, nz) == AIR
+                        if state_block(chunk.get(nx, (y + 1) as usize, nz)) != AIR
+                            && state_block(chunk.get(nx, y as usize, nz)) == AIR
                         {
                             chunk.set(nx, (y + 1) as usize, nz, GLOWSTONE);
                         }
@@ -1612,30 +1622,30 @@ impl TerrainGen {
         // inbound edits (none in practice — no cross-chunk nether decorations
         // — but the pipeline contract is honored)
         for (idx, id) in inbound {
-            if chunk.get_idx(idx as usize) == AIR {
+            if state_block(chunk.get_idx(idx as usize)) == AIR {
                 chunk.set_idx(idx as usize, id);
             }
         }
 
         // decorations: soul sand floors + glowstone ceilings (deterministic).
         // NOTE: chunk.get returns raw STATE ids — nether blocks store their
-        // dedicated states (118..120), so comparisons fold via state_block.
-        let fold = |s: u8| state_block(s as u16);
+        // dedicated states (118..120), so comparisons fold via state_block
+        // (Phase E2: get() is u16 now; the fold lambda became inline wraps).
         for _ in 0..14 {
             let lx = rng.next_range(16) as i32;
             let lz = rng.next_range(16) as i32;
             // scan the column for a floor (solid below air) in the band
             let mut y = 30;
             while y < 100 {
-                let here_air = chunk.get(lx as usize, y as usize, lz as usize) == AIR
+                let here_air = state_block(chunk.get(lx as usize, y as usize, lz as usize)) == AIR
                     && (y + 1) < 128
-                    && chunk.get(lx as usize, (y + 1) as usize, lz as usize) == AIR;
+                    && state_block(chunk.get(lx as usize, (y + 1) as usize, lz as usize)) == AIR;
                 let below = if y > 0 {
-                    chunk.get(lx as usize, (y - 1) as usize, lz as usize)
+                    state_block(chunk.get(lx as usize, (y - 1) as usize, lz as usize))
                 } else {
                     BEDROCK
                 };
-                if here_air && fold(below) == NETHERRACK {
+                if here_air && below == NETHERRACK {
                     // vanilla-ish: soul sand valley patches — replace the top
                     // 1..2 floor blocks
                     let depth = 1 + rng.next_range(2) as i32;
@@ -1662,13 +1672,13 @@ impl TerrainGen {
             let lz = rng.next_range(16) as i32;
             let mut y = 20;
             while y < 110 {
-                let here = chunk.get(lx as usize, y as usize, lz as usize);
+                let here = state_block(chunk.get(lx as usize, y as usize, lz as usize));
                 let above = if y < 127 {
-                    chunk.get(lx as usize, (y + 1) as usize, lz as usize)
+                    state_block(chunk.get(lx as usize, (y + 1) as usize, lz as usize))
                 } else {
                     BEDROCK
                 };
-                if here == AIR && fold(above) == NETHERRACK {
+                if here == AIR && above == NETHERRACK {
                     chunk.set(lx as usize, (y + 1) as usize, lz as usize, GLOWSTONE);
                     // a small cluster around it
                     let extra = rng.next_range(3);
@@ -1677,9 +1687,9 @@ impl TerrainGen {
                         let dz = rng.next_range(3) as i32 - 1;
                         let nx = (lx + dx).clamp(0, 15) as usize;
                         let nz = (lz + dz).clamp(0, 15) as usize;
-                        let there = chunk.get(nx, (y + 1) as usize, nz);
-                        let below_there = chunk.get(nx, y as usize, nz);
-                        if fold(there) == NETHERRACK && below_there == AIR {
+                        let there = state_block(chunk.get(nx, (y + 1) as usize, nz));
+                        let below_there = state_block(chunk.get(nx, y as usize, nz));
+                        if there == NETHERRACK && below_there == AIR {
                             chunk.set(nx, (y + 1) as usize, nz, GLOWSTONE);
                         }
                     }
@@ -1707,18 +1717,18 @@ impl TerrainGen {
                     for lz in 0..16usize {
                         for lx in 0..16usize {
                             for y in 10..110usize {
-                                let feet = chunk.get(lx, y, lz);
+                                let feet = state_block(chunk.get(lx, y, lz));
                                 let head = if y + 1 < 128 {
-                                    chunk.get(lx, y + 1, lz)
+                                    state_block(chunk.get(lx, y + 1, lz))
                                 } else {
                                     BEDROCK
                                 };
                                 let floor = if y > 0 {
-                                    chunk.get(lx, y - 1, lz)
+                                    state_block(chunk.get(lx, y - 1, lz))
                                 } else {
                                     BEDROCK
                                 };
-                                if feet == AIR && head == AIR && is_solid(state_block(floor as u16))
+                                if feet == AIR && head == AIR && is_solid(floor)
                                 {
                                     return (
                                         (dx * 16 + lx as i32) as f32 + 0.5,
@@ -2831,11 +2841,12 @@ impl TerrainGen {
             }
         }
 
-        // ---- blaze spawner platforms ×2 (VERIFIED w/Blaze: "up to two
-        // blaze spawner platforms, each surrounded by Nether brick fences
-        // and reachable via a three-block staircase"; no fence block in
-        // the engine — railing posts stand in [adaptation]) ----
-        for (sx, sz) in [(wx + 24, wz + 10), (wx - 24, wz - 10)] {
+        // ---- spawner platforms ×2 (VERIFIED w/Blaze: "up to two blaze
+        // spawner platforms…"; Phase E2: the second platform hosts a
+        // WITHER-SKELETON spawner — VERIFIED w/Wither_Skeleton "spawn in
+        // Nether fortresses" — no fence block in the engine; railing
+        // posts stand in [adaptation]) ----
+        for (pi, (sx, sz)) in [(0, (wx + 24, wz + 10)), (1, (wx - 24, wz - 10))].into_iter() {
             for dx in -3..=3i32 {
                 for dz in -3..=3i32 {
                     put(chunk, sx + dx, deck, sz + dz, NETHER_BRICKS);
@@ -2845,11 +2856,13 @@ impl TerrainGen {
                     }
                 }
             }
-            // the spawner itself (SPAWNER_BLAZE state 241)
+            // the spawner itself (SPAWNER_BLAZE state 241 / the second
+            // platform's wither-skeleton spawner state 315)
             let lxi = sx - ox;
             let lzi = sz - oz;
             if (0..16).contains(&lxi) && (0..16).contains(&lzi) {
-                chunk.set_state(lxi as usize, deck as usize + 1, lzi as usize, SPAWNER_BLAZE);
+                let st = if pi == 0 { SPAWNER_BLAZE } else { SPAWNER_WITHER_SKELETON };
+                chunk.set_state(lxi as usize, deck as usize + 1, lzi as usize, st);
             }
             // 3-block staircase down (VERIFIED)
             for step in 0..3i32 {
@@ -2958,6 +2971,15 @@ fn CHUNK_X_CHUNK() -> usize {
 #[inline]
 fn CHUNK_Z_CHUNK() -> usize {
     16
+}
+
+/// Phase E2: emerald-ore hash gate (mountains only; ~5 per chunk at
+/// p = 0.0008 — see the stone-fill branch comment for the vanilla
+/// feature semantics: attempts 100 times per chunk in 0-3-size blobs,
+/// single blocks since 12w22a).
+fn emerald_ore(seed: u64, x: i32, y: i32, z: i32) -> bool {
+    let o = Rng::hash3(seed ^ 0xE000, x, y, z);
+    (o % 100_000) as f32 / 100_000.0 < 0.0008
 }
 
 #[cfg(test)]
@@ -3105,7 +3127,7 @@ mod village_tests {
                 let (chunk, _) =
                     gen.generate_chunk(wx.div_euclid(16) + dx, wz.div_euclid(16) + dz, Vec::new());
                 for i in 0..vc_chunk::chunk::CHUNK_LEN {
-                    match chunk.get_idx(i) {
+                    match state_block(chunk.get_idx(i)) {
                         vc_blocks::blocks::PLANKS => planks += 1,
                         vc_blocks::blocks::GLASS => glass += 1,
                         vc_blocks::blocks::OAK_LOG => logs += 1,
@@ -3129,8 +3151,8 @@ mod nether_tests {
     use vc_blocks::blocks::*;
 
     /// fold a raw stored state to its block id (nether blocks store 118..120)
-    fn fold(s: u8) -> u8 {
-        state_block(s as u16)
+    fn fold(s: u16) -> u8 {
+        state_block(s)
     }
 
     /// §28: the nether shell — bedrock floor + roof, nothing above 127
@@ -3148,7 +3170,7 @@ mod nether_tests {
                 );
                 // above the build ceiling: air (nothing exists)
                 for y in 128..256usize {
-                    assert_eq!(chunk.get(lx, y, lz), AIR, "y={y} must be air");
+                    assert_eq!(state_block(chunk.get(lx, y, lz)), AIR, "y={y} must be air");
                 }
             }
         }
@@ -3281,7 +3303,7 @@ mod nether_tests {
                 // engine's column scan). 127 = "nothing above" = pass.
                 let mut top_content = 127;
                 for y in (128..256usize).rev() {
-                    if chunk.get(lx, y, lz) != AIR {
+                    if state_block(chunk.get(lx, y, lz)) != AIR {
                         top_content = y as i32;
                         break;
                     }
@@ -3305,9 +3327,9 @@ mod nether_tests {
             let (chunk, _) = gen.generate_chunk(xi.div_euclid(16), zi.div_euclid(16), Vec::new());
             let lx = (xi - xi.div_euclid(16) * 16) as usize;
             let lz = (zi - zi.div_euclid(16) * 16) as usize;
-            assert_eq!(chunk.get(lx, yi as usize, lz), AIR, "feet open (seed {s})");
+            assert_eq!(state_block(chunk.get(lx, yi as usize, lz)), AIR, "feet open (seed {s})");
             assert!(
-                yi + 1 >= 128 || chunk.get(lx, (yi + 1) as usize, lz) == AIR,
+                yi + 1 >= 128 || state_block(chunk.get(lx, (yi + 1) as usize, lz)) == AIR,
                 "headroom (seed {s})"
             );
             assert!(
@@ -3498,7 +3520,7 @@ mod dungeon_tests {
         let mut floor_total = 0;
         for dx in -1..=room.size {
             for dz in -1..=room.size {
-                let b = chunk.get(lx(room.x0 + dx), (room.y0 - 1) as usize, lz(room.z0 + dz));
+                let b = state_block(chunk.get(lx(room.x0 + dx), (room.y0 - 1) as usize, lz(room.z0 + dz)));
                 assert!(matches!(b, COBBLE | MOSSY_COBBLE), "floor block {b}");
                 floor_total += 1;
                 if b == MOSSY_COBBLE {
@@ -3533,7 +3555,7 @@ mod dungeon_tests {
                     {
                         continue; // a chest
                     }
-                    let b = chunk.get(lx(wx), (room.y0 + dy) as usize, lz(wz));
+                    let b = state_block(chunk.get(lx(wx), (room.y0 + dy) as usize, lz(wz)));
                     assert_eq!(b, AIR, "interior cell must be air");
                 }
             }
@@ -3647,7 +3669,7 @@ mod phase10_tests {
         // parlor floor: the center cell is planks
         let lx = (ms.x - cx * 16) as usize;
         let lz = (ms.z - cz * 16) as usize;
-        assert_eq!(c1.get(lx, ms.y as usize, lz), PLANKS);
+        assert_eq!(state_block(c1.get(lx, ms.y as usize, lz)), PLANKS);
     }
 
     /// desert pyramid: 21×21 base, hidden pit with 4 chests, entrance,
@@ -3687,7 +3709,7 @@ mod phase10_tests {
         let at = |dx: i32, dy: i32, dz: i32| -> u8 {
             let x = ((wx + dx) - cx * 16) as usize;
             let z = ((wz + dz) - cz * 16) as usize;
-            c1.get(x, (base + dy) as usize, z)
+            state_block(c1.get(x, (base + dy) as usize, z))
         };
         // checkerboard floor: terracotta + smooth stone alternating —
         // probe OPPOSITE parities: (0,0) is even, (1,0) is odd
@@ -3835,7 +3857,7 @@ mod phase10_tests {
         let lz = (mz - (mz >> 4) * 16) as usize;
         let mut carved = 0;
         for y in 8..col_h.min(r.top) {
-            if c.get(lx, y as usize, lz) == AIR {
+            if state_block(c.get(lx, y as usize, lz)) == AIR {
                 carved += 1;
             }
         }
@@ -3874,7 +3896,7 @@ mod e1_tests {
         // the island center (8,8 local = world (8,8)): end stone surface
         let mut stone = 0;
         for y in 40..=64usize {
-            if state_block(chunk.get(8, y, 8) as u16) == END_STONE {
+            if state_block(chunk.get(8, y, 8)) == END_STONE {
                 stone += 1;
             }
         }
@@ -3888,12 +3910,12 @@ mod e1_tests {
         );
         // the exit-portal fountain: the egg pedestal at world (0, 63, 0)
         assert_eq!(
-            state_block(chunk.get(0, 63, 0) as u16),
+            state_block(chunk.get(0, 63, 0)),
             BEDROCK,
             "egg pedestal above the fountain"
         );
         // the fountain's inner 3×3 at y 62 stays open for the victory portal
-        assert_eq!(state_block(chunk.get(1, 62, 1) as u16), AIR);
+        assert_eq!(state_block(chunk.get(1, 62, 1)), AIR);
         // the biome field is the_end (id 9)
         assert_eq!(chunk.biome[8 * 16 + 8], 9);
     }
@@ -3905,7 +3927,7 @@ mod e1_tests {
         let (chunk, _) = gen.generate_chunk(2, 0, Vec::new());
         let mut found = false;
         for y in 70..=110usize {
-            if state_block(chunk.get(10, y, 0) as u16) == BEDROCK {
+            if state_block(chunk.get(10, y, 0)) == BEDROCK {
                 found = true;
                 break;
             }
@@ -4047,5 +4069,46 @@ mod e1_tests {
         // several huge mushrooms per chunk (stems ≥ 4 cells, cap shells)
         assert!(stems >= 4, "hugemush stems ({stems})");
         assert!(caps >= 10, "hugemush caps ({caps})");
+    }
+}
+
+#[cfg(test)]
+mod e2_tests {
+    use super::*;
+
+    /// Phase E2 (VERIFIED w/Emerald_Ore): emerald ore appears only under
+    /// Mountains columns (single blocks, y 4..31) — the check uses each
+    /// emerald cell's OWN column biome (biomes vary per column, not per
+    /// chunk).
+    #[test]
+    fn emerald_ore_generates_in_mountains_only() {
+        let gen = TerrainGen::for_dimension(1234, Dimension::Overworld);
+        let mut emerald_cells = 0usize;
+        let mut on_mountain_columns = 0usize;
+        for cx in 0..24i32 {
+            for cz in 0..24i32 {
+                let (chunk, _) = gen.generate_chunk(cx, cz, Vec::new());
+                for i in 0..vc_chunk::chunk::CHUNK_LEN {
+                    if state_block(chunk.get_idx(i)) == EMERALD_ORE {
+                        emerald_cells += 1;
+                        // the cell's own column must be Mountains
+                        let x = cx * 16 + (i & 15) as i32;
+                        let z = cz * 16 + ((i >> 4) & 15) as i32;
+                        let col = gen.column(x, z);
+                        if col.biome == Biome::Mountains {
+                            on_mountain_columns += 1;
+                        }
+                    }
+                }
+            }
+        }
+        assert!(
+            emerald_cells > 0,
+            "emerald ore exists somewhere in the 24x24 region"
+        );
+        assert_eq!(
+            emerald_cells, on_mountain_columns,
+            "EVERY emerald cell sits under a Mountains column (VERIFIED)"
+        );
     }
 }

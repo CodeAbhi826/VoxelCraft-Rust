@@ -1243,7 +1243,7 @@ mod tests {
         let bytes = nbt::write_root("", &root).unwrap();
 
         let (chunk, _light) = chunk_from_nbt(&bytes).unwrap();
-        assert_eq!(chunk.get(0, 0, 0), STONE);
+        assert_eq!(chunk.get(0, 0, 0), STONE as u16);
         // chunk.get returns the raw u8 state id (57 = OAK_LOG_X); the flat
         // u16 accessor confirms the full state survived
         assert_eq!(chunk.get(1, 0, 0) as u16, OAK_LOG_X);
@@ -1439,7 +1439,7 @@ mod tests {
 
         // --- …the chunk reloads with the edit intact…
         let (loaded, _l) = load_chunk(&dir, 0, 0).unwrap().expect("chunk present");
-        assert_eq!(loaded.get(8, 70, 8), GLOWSTONE);
+        assert_eq!(loaded.get(8, 70, 8), GLOWSTONE as u16);
 
         // --- …and every other block matches a same-seed regeneration exactly
         let (fresh, _) = vc_world::gen::TerrainGen::new(seed).generate_chunk(0, 0, Vec::new());

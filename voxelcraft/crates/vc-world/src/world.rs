@@ -252,7 +252,15 @@ impl World {
     /// Returns (old_state, new_state) for the light engine when the edit
     /// landed (Phase 4), None otherwise.
     pub fn set_block(&mut self, wx: i32, wy: i32, wz: i32, id: u8) -> Option<(u16, u16)> {
-        self.set_block_state(wx, wy, wz, id as u16)
+        // Phase E2 fix (latent E1 bug): store the block's DEFAULT STATE,
+        // not the raw id. The raw id only equals a valid state for
+        // identity-mapped blocks 0..=56 — END_PORTAL (116) stored raw
+        // folded back as FURNACE (63), DRAGON_EGG (115) as REDSTONE_TORCH,
+        // and prop blocks (OAK_SLAB 57) as OAK_LOG[axis=x]. Routing
+        // through default_state matches Chunk::set (the generator-side
+        // rule) and makes high-id placement correct everywhere.
+        let st = vc_blocks::blocks::default_state(id);
+        self.set_block_state(wx, wy, wz, st)
     }
 
     /// Player-driven BLOCK-STATE edit (e.g. a log placed with axis=x).
@@ -378,7 +386,7 @@ impl World {
             let old = Arc::clone(old);
             let lx = (wx - cx * 16) as usize;
             let lz = (wz - cz * 16) as usize;
-            let cur = old.get(lx, wy as usize, lz);
+            let cur = state_block(old.get(lx, wy as usize, lz));
             let target_ok = replaceable(cur) || (cur == LEAVES && id == OAK_LOG);
             if !target_ok {
                 return;

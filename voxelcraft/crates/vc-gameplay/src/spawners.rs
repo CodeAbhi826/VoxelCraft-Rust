@@ -60,6 +60,7 @@ pub fn mob_kind(code: u8) -> MobKind {
         SPAWNER_SKELETON => MobKind::Skeleton,
         SPAWNER_SPIDER => MobKind::Spider,
         3 => MobKind::Blaze, // Phase E1 fortress spawner (SPAWNER_BLAZE)
+        4 => MobKind::WitherSkeleton, // Phase E2 fortress platform
         _ => MobKind::Zombie,
     }
 }

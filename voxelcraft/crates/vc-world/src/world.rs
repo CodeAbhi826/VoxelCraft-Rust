@@ -20,6 +20,10 @@ pub enum Dimension {
     Overworld = 0,
     /// the Nether: 8:1 coordinate scale, caverns, no skylight
     Nether = 1,
+    /// Phase E1 (1.0.0 content, live-verified w/The_End): the End —
+    /// void dimension of end-stone islands, obsidian pillars, the ender
+    /// dragon fight; 1:1 coordinate scale, no skylight
+    End = 2,
 }
 
 impl Dimension {
@@ -28,6 +32,7 @@ impl Dimension {
         match self {
             Dimension::Overworld => "overworld",
             Dimension::Nether => "the_nether",
+            Dimension::End => "the_end",
         }
     }
 
@@ -35,14 +40,15 @@ impl Dimension {
         match self {
             Dimension::Overworld => "Overworld",
             Dimension::Nether => "Nether",
+            Dimension::End => "End",
         }
     }
 
     pub fn from_u8(v: u8) -> Dimension {
-        if v == 1 {
-            Dimension::Nether
-        } else {
-            Dimension::Overworld
+        match v {
+            1 => Dimension::Nether,
+            2 => Dimension::End,
+            _ => Dimension::Overworld,
         }
     }
 
@@ -52,6 +58,7 @@ impl Dimension {
         match self {
             Dimension::Overworld => 1,
             Dimension::Nether => 8,
+            Dimension::End => 1,
         }
     }
 
@@ -60,6 +67,7 @@ impl Dimension {
         match self {
             Dimension::Overworld => 0,
             Dimension::Nether => 0x1DE1_1E77_0D1D_1234,
+            Dimension::End => 0x0EAD_BEE5_E1D5_1234,
         }
     }
 
@@ -211,6 +219,22 @@ impl World {
                 let lx = (wx - cx * 16) as usize;
                 let lz = (wz - cz * 16) as usize;
                 c.get(lx, wy as usize, lz) as u16
+            }
+            None => 0,
+        }
+    }
+
+    /// Biome id of the column at (wx, wz); 0 (Ocean fallback) when the
+    /// chunk is not loaded. Phase E1: biome-gated mechanics (snow golem
+    /// heat damage, mushroom-fields spawn rules).
+    pub fn get_biome(&self, wx: i32, wz: i32) -> u8 {
+        let cx = wx.div_euclid(16);
+        let cz = wz.div_euclid(16);
+        match self.chunks.get(&(cx, cz)) {
+            Some(c) => {
+                let lx = (wx - cx * 16) as usize;
+                let lz = (wz - cz * 16) as usize;
+                c.biome[lz * 16 + lx]
             }
             None => 0,
         }
@@ -446,6 +470,9 @@ impl World {
         match self.dimension {
             Dimension::Overworld => self.gen.find_spawn(),
             Dimension::Nether => self.gen.find_nether_spawn(),
+            // Phase E1: the End arrival — the 5×5 obsidian platform
+            // (VERIFIED w/The_End: entry point x=100, z=0)
+            Dimension::End => self.gen.end_arrival(),
         }
     }
 

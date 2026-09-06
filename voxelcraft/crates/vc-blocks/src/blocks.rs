@@ -122,6 +122,48 @@ pub const TILE_FERMENTED_EYE: u16 = 121;
 pub const TILE_SPAWNER: u16 = 122;
 /// Phase 10: end-portal frame tile (clean-room inset-ring face)
 pub const TILE_END_PORTAL_FRAME: u16 = 123;
+// ---- Phase E1 (evolution 1.0–1.2 bracket, live-verified 2026-09-06) ----
+// world blocks
+pub const TILE_MYCELIUM_TOP: u16 = 124;
+pub const TILE_MYCELIUM_SIDE: u16 = 125;
+pub const TILE_END_STONE: u16 = 126;
+pub const TILE_NETHER_BRICKS: u16 = 127;
+pub const TILE_REDSTONE_LAMP: u16 = 128;
+pub const TILE_REDSTONE_LAMP_ON: u16 = 129;
+pub const TILE_CHISELED_STONE_BRICKS: u16 = 130;
+pub const TILE_CHISELED_SANDSTONE: u16 = 131;
+pub const TILE_CUT_SANDSTONE: u16 = 132;
+pub const TILE_SMOOTH_SANDSTONE: u16 = 133;
+pub const TILE_MUSHROOM_RED_BLOCK: u16 = 134;
+pub const TILE_MUSHROOM_BROWN_BLOCK: u16 = 135;
+pub const TILE_MUSHROOM_STEM: u16 = 136;
+pub const TILE_NETHER_WART_0: u16 = 137;
+pub const TILE_NETHER_WART_1: u16 = 138;
+pub const TILE_NETHER_WART_2: u16 = 139;
+pub const TILE_NETHER_WART_3: u16 = 140;
+pub const TILE_DRAGON_EGG: u16 = 141;
+pub const TILE_END_PORTAL: u16 = 142;
+// items + entity sprites
+pub const TILE_END_CRYSTAL: u16 = 143;
+pub const TILE_XP_ORB: u16 = 144;
+pub const TILE_XP_ORB_BIG: u16 = 145;
+pub const TILE_EYE_OF_ENDER: u16 = 146;
+pub const TILE_BLAZE_ROD: u16 = 147;
+pub const TILE_BLAZE_POWDER: u16 = 148;
+pub const TILE_GOLDEN_APPLE: u16 = 149;
+pub const TILE_SNOWBALL: u16 = 150;
+pub const TILE_NETHER_BRICK: u16 = 151;
+pub const TILE_SNOWGOLEM: u16 = 152;
+pub const TILE_MAGMACUBE: u16 = 153;
+pub const TILE_BLAZE: u16 = 154;
+pub const TILE_OCELOT: u16 = 155;
+pub const TILE_IRONGOLEM: u16 = 156;
+pub const TILE_ZOMBIEVILLAGER: u16 = 157;
+pub const TILE_MOOSHROOM: u16 = 158;
+pub const TILE_ENDERDRAGON: u16 = 159;
+// spawn eggs: 16 tiles, one per implemented mob kind (base 160..=175)
+pub const TILE_EGG_BASE: u16 = 160;
+pub const TILE_EGG_MAX: u16 = 175;
 // mobs (Phase 2): entity sprites + drops' item tiles. Mob sprites are
 // clean-room pixel art (ours, not Mojang's) — distinct silhouettes/palettes
 pub const TILE_ZOMBIE: u16 = 83;
@@ -309,6 +351,62 @@ pub const SPAWNER: u8 = 101;
 /// of scope (documented); the frame marks the vanilla portal room's
 /// 12-frame ring, ours renders as a full cube with a frame inset.
 pub const END_PORTAL_FRAME: u8 = 102;
+
+// ---- Phase E1 block ids (evolution 1.0–1.2 bracket) — all values
+// live-verified against minecraft.wiki on 2026-09-06 (see
+// docs/research/phase1-1.0-1.2-research.md for the per-claim audit) ----
+/// Mycelium — mushroom-fields surface block. Spreads to dirt (1 up /
+/// 1 sideways / 3 down, light gates 9/4 — VERIFIED w/Mycelium §Spread).
+/// Drops DIRT without Silk Touch (adaptation: no Silk Touch in engine).
+pub const MYCELIUM: u8 = 103;
+/// End stone — hardness 3, blast resistance 9 (VERIFIED w/End_Stone).
+pub const END_STONE: u8 = 104;
+/// Nether bricks — the fortress structural block.
+pub const NETHER_BRICKS: u8 = 105;
+/// Redstone lamp — light 0 when off; the LIT state emits 15. Turns on
+/// instantly, off after 4 game ticks (VERIFIED w/Redstone_Lamp: "takes
+/// 4 ticks (0.2 seconds) to turn off in Java Edition"; the 1.2.4
+/// history note "2-tick delay" = 2 redstone ticks = the same 4 game
+/// ticks). Crafted 4 glowstone + 1 redstone dust.
+pub const REDSTONE_LAMP: u8 = 106;
+/// Chiseled stone bricks — decorative variant (recipe needs stone-brick
+/// slabs, out of engine scope; picker-only, documented).
+pub const CHISELED_STONE_BRICKS: u8 = 107;
+/// Chiseled sandstone (2 sandstone slabs — slabless engine: picker-only).
+pub const CHISELED_SANDSTONE: u8 = 108;
+/// Cut sandstone — 2×2 sandstone → 4 (craftable).
+pub const CUT_SANDSTONE: u8 = 109;
+/// Smooth sandstone — smelt sandstone (1.14+ recipe, valid for 1.16.5).
+pub const SMOOTH_SANDSTONE: u8 = 110;
+/// Huge red mushroom cap block.
+pub const MUSHROOM_RED_BLOCK: u8 = 111;
+/// Huge brown mushroom cap block.
+pub const MUSHROOM_BROWN_BLOCK: u8 = 112;
+/// Huge mushroom stem.
+pub const MUSHROOM_STEM: u8 = 113;
+/// Nether wart crop — 4 stages (age 0..3), 10%/random-tick growth, only
+/// on soul sand (VERIFIED w/Nether_Wart). Storage states 237..=240.
+pub const NETHER_WART: u8 = 114;
+/// Dragon egg — spawns above the End exit portal after the first dragon
+/// kill (light level 1).
+pub const DRAGON_EGG: u8 = 115;
+/// End portal block — the 3×3 active portal in the stronghold room /
+/// the End exit portal. Emissive 15. Entering it dimension-travels.
+pub const END_PORTAL: u8 = 116;
+// ---- Phase E1 item-blocks (inventory-only, the potion pattern) ----
+pub const END_CRYSTAL: u8 = 117;
+pub const EYE_OF_ENDER: u8 = 118;
+pub const BLAZE_ROD: u8 = 119;
+pub const BLAZE_POWDER: u8 = 120;
+pub const GOLDEN_APPLE: u8 = 121;
+pub const SNOWBALL: u8 = 122;
+pub const NETHER_BRICK: u8 = 123;
+/// spawn eggs: ids 124..=139, one per implemented mob kind (16).
+/// Vanilla mechanic (VERIFIED w/Spawn_Egg §Usage): use on a surface →
+/// the mob spawns with feet adjacent to the surface; the egg is
+/// consumed. Creative-picker item.
+pub const SPAWN_EGG_BASE: u8 = 124;
+pub const SPAWN_EGG_MAX: u8 = 139;
 /// spawner mob-kind code 0: zombie (dungeon roll 50%)
 pub const SPAWNER_ZOMBIE: u8 = 0;
 /// spawner mob-kind code 1: skeleton (dungeon roll 25%)
@@ -371,8 +469,65 @@ pub const SPAWNER_STATE_BASE: u16 = 232;
 pub const SPAWNER_STATE_END: u16 = 234;
 /// Phase 10: end-portal frame state (single)
 pub const END_PORTAL_FRAME_STATE: u16 = 235;
+// ---- Phase E1 states ----
+// The identity slots of block ids 103..=139 COLLIDE with the legacy sim
+// state ranges (wire 96..=111, lever/torch 112..=115, furnace 116..=117,
+// nether 118..=120, brewing 121..=127, enchant 128..=129, item states
+// 130..=141) — exactly the FURNACE/NETHERRACK pattern. Every new block
+// therefore stores one of these DEDICATED states; all world-stored states
+// stay ≤ 255 (CHUNK `get` truncates to u8). The 22 item-blocks' states
+// live at ≥ 256 — they are NEVER stored in the world (items are
+// inventory-only), so the u8 truncation never meets them.
 
-pub const BLOCK_COUNT: usize = 103;
+/// redstone lamp, lit (light 15 — read via state_emissive)
+pub const REDSTONE_LAMP_LIT: u16 = 236;
+/// nether wart crop ages 0..3 (VERIFIED: 4 stages, 10%/random-tick)
+pub const WART_STATE_BASE: u16 = 237;
+pub const WART_STATE_END: u16 = 240;
+/// spawner mob-kind code 3: blaze (fortress platforms — extends the
+/// Phase 5 232..=234 zombie/skeleton/spider set)
+pub const SPAWNER_BLAZE: u16 = 241;
+/// end-portal frame with an eye of ender inserted (activation step)
+pub const END_PORTAL_FRAME_EYE: u16 = 242;
+// dedicated world-block states (the last free window 243..=255)
+pub const NETHER_BRICKS_STATE: u16 = 243;
+pub const REDSTONE_LAMP_STATE: u16 = 244;
+pub const CHISELED_STONE_BRICKS_STATE: u16 = 245;
+pub const CHISELED_SANDSTONE_STATE: u16 = 246;
+pub const CUT_SANDSTONE_STATE: u16 = 247;
+pub const SMOOTH_SANDSTONE_STATE: u16 = 248;
+pub const MUSHROOM_RED_BLOCK_STATE: u16 = 249;
+pub const MUSHROOM_BROWN_BLOCK_STATE: u16 = 250;
+pub const MUSHROOM_STEM_STATE: u16 = 251;
+pub const DRAGON_EGG_STATE: u16 = 252;
+pub const END_PORTAL_STATE: u16 = 253;
+pub const MYCELIUM_STATE: u16 = 254;
+pub const END_STONE_STATE: u16 = 255;
+/// item-block states (END_CRYSTAL..=SPAWN_EGG_MAX, ids 117..=139):
+/// `state = 256 + (block - 117)` — never stored in chunks.
+pub const ITEM_STATE_BASE: u16 = 256;
+pub const ITEM_STATE_END: u16 = 278;
+
+/// state ↔ item-block arithmetic helpers (item ids 117..=139 ↔ 256..=278)
+#[inline]
+pub fn item_block_state(b: u8) -> Option<u16> {
+    if (END_CRYSTAL..=SPAWN_EGG_MAX).contains(&b) {
+        Some(ITEM_STATE_BASE + (b - END_CRYSTAL) as u16)
+    } else {
+        None
+    }
+}
+
+#[inline]
+pub fn item_state_block(s: u16) -> Option<u8> {
+    if (ITEM_STATE_BASE..=ITEM_STATE_END).contains(&s) {
+        Some(END_CRYSTAL + (s - ITEM_STATE_BASE) as u8)
+    } else {
+        None
+    }
+}
+
+pub const BLOCK_COUNT: usize = 140;
 
 // ---------------------------------------------------------------------------
 // BlockState registry (1.16.5 pattern, miniature)
@@ -389,7 +544,9 @@ pub const BLOCK_COUNT: usize = 103;
 /// Phase 4: extended to cover the Phase 2/3/4 state ids (130..=231) —
 /// before, the range tests stopped at 130 and never saw them.
 /// Phase 5: spawner states 232..=234
-pub const STATE_COUNT: usize = 236;
+/// Phase E1: lamp/wart/spawner-blaze/frame-eye + dedicated world-block and
+/// item states (140..=141, 236..=253, 256..=278)
+pub const STATE_COUNT: usize = 279;
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -662,6 +819,22 @@ pub fn default_state(b: u8) -> u16 {
         // default spawner = zombie (the 50% dungeon roll)
         SPAWNER => SPAWNER_STATE_BASE,
         END_PORTAL_FRAME => END_PORTAL_FRAME_STATE,
+        // ---- Phase E1 defaults (dedicated states — identity slots of
+        // 103..=139 collide with the legacy sim-state ranges) ----
+        MYCELIUM => MYCELIUM_STATE,
+        END_STONE => END_STONE_STATE,
+        NETHER_BRICKS => NETHER_BRICKS_STATE,
+        REDSTONE_LAMP => REDSTONE_LAMP_STATE,
+        CHISELED_STONE_BRICKS => CHISELED_STONE_BRICKS_STATE,
+        CHISELED_SANDSTONE => CHISELED_SANDSTONE_STATE,
+        CUT_SANDSTONE => CUT_SANDSTONE_STATE,
+        SMOOTH_SANDSTONE => SMOOTH_SANDSTONE_STATE,
+        MUSHROOM_RED_BLOCK => MUSHROOM_RED_BLOCK_STATE,
+        MUSHROOM_BROWN_BLOCK => MUSHROOM_BROWN_BLOCK_STATE,
+        MUSHROOM_STEM => MUSHROOM_STEM_STATE,
+        NETHER_WART => WART_STATE_BASE, // age 0 (VERIFIED 4 stages)
+        DRAGON_EGG => DRAGON_EGG_STATE,
+        END_PORTAL => END_PORTAL_STATE,
         ENCHANT_TABLE => ENCHANT_TABLE_STATE,
         ENCHANTED_BOOK => ENCHANTED_BOOK_STATE,
         BEEF => BEEF_STATE,
@@ -688,7 +861,8 @@ pub fn default_state(b: u8) -> u16 {
         OAK_SLAB => 63,     // PROP_BLOCKS[0].base_state (half=bottom)
         COBBLE_STAIRS => 65, // base_state (facing=north, half=bottom)
         OAK_FENCE => 73,    // base_state (no connections)
-        _ => b as u16,
+        // Phase E1 item-blocks: dedicated states ≥ 256 (never world-stored)
+        _ => item_block_state(b).unwrap_or(b as u16),
     }
 }
 
@@ -866,6 +1040,26 @@ pub fn state_block(s: u16) -> u8 {
         FERMENTED_EYE_STATE => return FERMENTED_SPIDER_EYE,
         s if (SPAWNER_STATE_BASE..=SPAWNER_STATE_END).contains(&s) => return SPAWNER,
         END_PORTAL_FRAME_STATE => return END_PORTAL_FRAME,
+        // ---- Phase E1 state folding ----
+        REDSTONE_LAMP_LIT | REDSTONE_LAMP_STATE => return REDSTONE_LAMP,
+        s if (WART_STATE_BASE..=WART_STATE_END).contains(&s) => return NETHER_WART,
+        SPAWNER_BLAZE => return SPAWNER,
+        END_PORTAL_FRAME_EYE => return END_PORTAL_FRAME,
+        MYCELIUM_STATE => return MYCELIUM,
+        END_STONE_STATE => return END_STONE,
+        NETHER_BRICKS_STATE => return NETHER_BRICKS,
+        CHISELED_STONE_BRICKS_STATE => return CHISELED_STONE_BRICKS,
+        CHISELED_SANDSTONE_STATE => return CHISELED_SANDSTONE,
+        CUT_SANDSTONE_STATE => return CUT_SANDSTONE,
+        SMOOTH_SANDSTONE_STATE => return SMOOTH_SANDSTONE,
+        MUSHROOM_RED_BLOCK_STATE => return MUSHROOM_RED_BLOCK,
+        MUSHROOM_BROWN_BLOCK_STATE => return MUSHROOM_BROWN_BLOCK,
+        MUSHROOM_STEM_STATE => return MUSHROOM_STEM,
+        DRAGON_EGG_STATE => return DRAGON_EGG,
+        END_PORTAL_STATE => return END_PORTAL,
+        s if (ITEM_STATE_BASE..=ITEM_STATE_END).contains(&s) => {
+            return item_state_block(s).unwrap_or(AIR)
+        }
         ENCHANT_TABLE_STATE => return ENCHANT_TABLE,
         ENCHANTED_BOOK_STATE => return ENCHANTED_BOOK,
         BEEF_STATE => return BEEF,
@@ -905,6 +1099,16 @@ pub fn state_block(s: u16) -> u8 {
 /// vanilla-style state description for F3: "Oak Slab[half=top]"
 #[inline]
 pub fn state_description(s: u16) -> String {
+    // Phase E1 properties (lit lamp / wart age / frame eye) first
+    if s == REDSTONE_LAMP_LIT {
+        return "Redstone Lamp[lit=true]".into();
+    }
+    if (WART_STATE_BASE..=WART_STATE_END).contains(&s) {
+        return format!("Nether Wart[age={}]", s - WART_STATE_BASE);
+    }
+    if s == END_PORTAL_FRAME_EYE {
+        return "End Portal Frame[eye=true]".into();
+    }
     if let Some((b, props)) = prop_state_decode(s) {
         if props.is_empty() {
             return name(b).to_string();
@@ -953,6 +1157,16 @@ pub fn is_model_state(s: u16) -> bool {
             || (SPAWNER_STATE_BASE..=SPAWNER_STATE_END).contains(&s)
             || s == CHEST_STATE
             || s == END_PORTAL_FRAME_STATE)
+        && !matches!(
+            s,
+            REDSTONE_LAMP_LIT | REDSTONE_LAMP_STATE | SPAWNER_BLAZE | END_PORTAL_FRAME_EYE
+                | MYCELIUM_STATE | END_STONE_STATE | NETHER_BRICKS_STATE
+                | CHISELED_STONE_BRICKS_STATE | CHISELED_SANDSTONE_STATE | CUT_SANDSTONE_STATE
+                | SMOOTH_SANDSTONE_STATE | MUSHROOM_RED_BLOCK_STATE | MUSHROOM_BROWN_BLOCK_STATE
+                | MUSHROOM_STEM_STATE | DRAGON_EGG_STATE | END_PORTAL_STATE
+        )
+        && !((WART_STATE_BASE..=WART_STATE_END).contains(&s))
+        && !((ITEM_STATE_BASE..=ITEM_STATE_END).contains(&s))
 }
 
 /// true if this block id has property-driven model states
@@ -980,6 +1194,30 @@ pub fn state_tiles(s: u16) -> [u16; 4] {
             TILE_FURNACE_LIT_SIDE,
             TILE_FURNACE_LIT_SIDE,
         ],
+        // Phase E1: the lit lamp swaps every face to the glowing tile
+        REDSTONE_LAMP_LIT => [
+            TILE_REDSTONE_LAMP_ON,
+            TILE_REDSTONE_LAMP_ON,
+            TILE_REDSTONE_LAMP_ON,
+            TILE_REDSTONE_LAMP_ON,
+        ],
+        // Phase E1: nether-wart crop ages (4 stages, VERIFIED)
+        s if (WART_STATE_BASE..=WART_STATE_END).contains(&s) => {
+            let off = s - WART_STATE_BASE;
+            let t = match off {
+                0 => TILE_NETHER_WART_0,
+                1 => TILE_NETHER_WART_1,
+                2 => TILE_NETHER_WART_2,
+                _ => TILE_NETHER_WART_3,
+            };
+            [t, t, t, t]
+        }
+        // Phase E1: frame with an eye shows the filled inset
+        END_PORTAL_FRAME_EYE => {
+            // same tile for now — the eye state is functional (activation),
+            // the art carries the inset; hotbar shows the frame face
+            [TILE_END_PORTAL_FRAME, TILE_END_PORTAL_FRAME, TILE_END_PORTAL_FRAME, TILE_END_PORTAL_FRAME]
+        }
         _ => {
             // fold property states to their block (model geometry supplies
             // the real tiles; these are for the HUD/hotbar blit path)
@@ -1017,7 +1255,7 @@ pub fn log_axis_state(block: u8, axis: u8) -> u16 {
 /// component tile rendered BLANK since Phase 2. Now derived from the
 /// highest tile constant (118–121 here) and guarded by the
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
-pub const TILE_MAX: u16 = 123;
+pub const TILE_MAX: u16 = 175;
 
 /// inventory-only ITEM blocks (potions/bottles/books): never placeable in
 /// the world — right-click drinks (potions) / fills (glass bottle at water).
@@ -1030,7 +1268,52 @@ pub fn is_item_block(b: u8) -> bool {
             | SPIDER_EYE | FERMENTED_SPIDER_EYE
             | BEEF | PORKCHOP | MUTTON | CHICKEN_RAW | FEATHER | LEATHER | BONE | STRING
             | GUNPOWDER | ENDER_PEARL | ROTTEN_FLESH | ARROW_ITEM
-    )
+            | END_CRYSTAL | EYE_OF_ENDER | BLAZE_ROD | BLAZE_POWDER | GOLDEN_APPLE
+            | SNOWBALL | NETHER_BRICK
+    ) || is_spawn_egg(b)
+}
+
+/// true for the 16 mob spawn-egg item ids (124..=139).
+#[inline]
+pub fn is_spawn_egg(b: u8) -> bool {
+    (SPAWN_EGG_BASE..=SPAWN_EGG_MAX).contains(&b)
+}
+
+/// The mob this spawn-egg id spawns. Tile order in the BLOCK_TABLE egg
+/// rows MUST match this mapping (guarded by the egg roundtrip test).
+/// The egg ids follow the Phase-2/Phase-E1 MobKind discriminant order
+/// (see vc_gameplay::mobs::MobKind and the egg_art palette table).
+#[inline]
+pub fn egg_mob(b: u8) -> Option<u8> {
+    if !is_spawn_egg(b) {
+        return None;
+    }
+    Some(b - SPAWN_EGG_BASE) // 0..=15, decoded by the gameplay layer
+}
+
+/// Phase E1: state-aware emission — the lit redstone lamp state emits 15
+/// even though the lamp BLOCK id (off) emits 0. Call sites pass the raw
+/// stored state; everything else folds to the block table value.
+/// VERIFIED w/Redstone_Lamp: "An active redstone lamp produces block light
+/// level 15. An inactive redstone lamp produces no light."
+#[inline]
+pub fn state_emissive(s: u16) -> u8 {
+    if s == REDSTONE_LAMP_LIT {
+        return 15;
+    }
+    emissive(state_block(s) as u8)
+}
+
+/// Phase E1: nether-wart crop age (0..3) from its storage state.
+#[inline]
+pub fn wart_age(s: u16) -> u8 {
+    if (WART_STATE_BASE..=WART_STATE_END).contains(&s) {
+        (s - WART_STATE_BASE) as u8
+    } else if state_block(s) == NETHER_WART {
+        0
+    } else {
+        0
+    }
 }
 
 pub struct BlockDef {
@@ -1197,6 +1480,48 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     // Phase 10: end-portal frame (stronghold portal room) — solid cube
     // with the frame inset face; eye insertion + activation out of scope
     d("End Portal Frame", [TILE_END_PORTAL_FRAME, TILE_END_PORTAL_FRAME, TILE_END_PORTAL_FRAME], true, false, false, false, 0, SoundFamily::Stone),
+    // ---- Phase E1 rows (ids 103..=139; evolution 1.0–1.2 bracket) ----
+    d("Mycelium", [TILE_MYCELIUM_TOP, TILE_DIRT, TILE_MYCELIUM_SIDE], true, true, false, false, 0, SoundFamily::Grass),
+    d("End Stone", [TILE_END_STONE, TILE_END_STONE, TILE_END_STONE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Nether Bricks", [TILE_NETHER_BRICKS, TILE_NETHER_BRICKS, TILE_NETHER_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
+    // VERIFIED w/Redstone_Lamp: off = no light; lit state emits 15; opaque
+    d("Redstone Lamp", [TILE_REDSTONE_LAMP, TILE_REDSTONE_LAMP, TILE_REDSTONE_LAMP], true, true, false, false, 0, SoundFamily::Glass),
+    d("Chiseled Stone Bricks", [TILE_CHISELED_STONE_BRICKS, TILE_CHISELED_STONE_BRICKS, TILE_CHISELED_STONE_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
+    d("Chiseled Sandstone", [TILE_CHISELED_SANDSTONE, TILE_CHISELED_SANDSTONE, TILE_CHISELED_SANDSTONE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Cut Sandstone", [TILE_CUT_SANDSTONE, TILE_CUT_SANDSTONE, TILE_CUT_SANDSTONE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Smooth Sandstone", [TILE_SMOOTH_SANDSTONE, TILE_SMOOTH_SANDSTONE, TILE_SMOOTH_SANDSTONE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Red Mushroom Block", [TILE_MUSHROOM_RED_BLOCK, TILE_MUSHROOM_RED_BLOCK, TILE_MUSHROOM_RED_BLOCK], true, true, false, false, 0, SoundFamily::Wood),
+    d("Brown Mushroom Block", [TILE_MUSHROOM_BROWN_BLOCK, TILE_MUSHROOM_BROWN_BLOCK, TILE_MUSHROOM_BROWN_BLOCK], true, true, false, false, 0, SoundFamily::Wood),
+    d("Mushroom Stem", [TILE_MUSHROOM_STEM, TILE_MUSHROOM_STEM, TILE_MUSHROOM_STEM], true, true, false, false, 0, SoundFamily::Wood),
+    d("Nether Wart", [TILE_NETHER_WART_0, TILE_NETHER_WART_0, TILE_NETHER_WART_0], false, false, true, false, 0, SoundFamily::Grass),
+    d("Dragon Egg", [TILE_DRAGON_EGG, TILE_DRAGON_EGG, TILE_DRAGON_EGG], true, true, false, false, 1, SoundFamily::Stone),
+    // the portal itself: walk-in block, no skylight-blocking opacity,
+    // full block light (vanilla star-field face)
+    d("End Portal", [TILE_END_PORTAL, TILE_END_PORTAL, TILE_END_PORTAL], true, false, false, false, 15, SoundFamily::Stone),
+    // ---- item-blocks (117..=139) — inventory-only, the potion pattern ----
+    d("End Crystal", [TILE_END_CRYSTAL, TILE_END_CRYSTAL, TILE_END_CRYSTAL], false, false, true, false, 0, SoundFamily::Glass),
+    d("Eye of Ender", [TILE_EYE_OF_ENDER, TILE_EYE_OF_ENDER, TILE_EYE_OF_ENDER], false, false, true, false, 0, SoundFamily::Glass),
+    d("Blaze Rod", [TILE_BLAZE_ROD, TILE_BLAZE_ROD, TILE_BLAZE_ROD], false, false, true, false, 0, SoundFamily::Wood),
+    d("Blaze Powder", [TILE_BLAZE_POWDER, TILE_BLAZE_POWDER, TILE_BLAZE_POWDER], false, false, true, false, 0, SoundFamily::Sand),
+    d("Golden Apple", [TILE_GOLDEN_APPLE, TILE_GOLDEN_APPLE, TILE_GOLDEN_APPLE], false, false, true, false, 0, SoundFamily::Grass),
+    d("Snowball", [TILE_SNOWBALL, TILE_SNOWBALL, TILE_SNOWBALL], false, false, true, false, 0, SoundFamily::Sand),
+    d("Nether Brick", [TILE_NETHER_BRICK, TILE_NETHER_BRICK, TILE_NETHER_BRICK], false, false, true, false, 0, SoundFamily::Stone),
+    d("Snow Golem Spawn Egg", [TILE_EGG_BASE, TILE_EGG_BASE, TILE_EGG_BASE], false, false, true, false, 0, SoundFamily::Grass),
+    d("Magma Cube Spawn Egg", [TILE_EGG_BASE + 1, TILE_EGG_BASE + 1, TILE_EGG_BASE + 1], false, false, true, false, 0, SoundFamily::Grass),
+    d("Blaze Spawn Egg", [TILE_EGG_BASE + 2, TILE_EGG_BASE + 2, TILE_EGG_BASE + 2], false, false, true, false, 0, SoundFamily::Grass),
+    d("Ocelot Spawn Egg", [TILE_EGG_BASE + 3, TILE_EGG_BASE + 3, TILE_EGG_BASE + 3], false, false, true, false, 0, SoundFamily::Grass),
+    d("Iron Golem Spawn Egg", [TILE_EGG_BASE + 4, TILE_EGG_BASE + 4, TILE_EGG_BASE + 4], false, false, true, false, 0, SoundFamily::Grass),
+    d("Zombie Villager Spawn Egg", [TILE_EGG_BASE + 5, TILE_EGG_BASE + 5, TILE_EGG_BASE + 5], false, false, true, false, 0, SoundFamily::Grass),
+    d("Mooshroom Spawn Egg", [TILE_EGG_BASE + 6, TILE_EGG_BASE + 6, TILE_EGG_BASE + 6], false, false, true, false, 0, SoundFamily::Grass),
+    d("Zombie Spawn Egg", [TILE_EGG_BASE + 7, TILE_EGG_BASE + 7, TILE_EGG_BASE + 7], false, false, true, false, 0, SoundFamily::Grass),
+    d("Skeleton Spawn Egg", [TILE_EGG_BASE + 8, TILE_EGG_BASE + 8, TILE_EGG_BASE + 8], false, false, true, false, 0, SoundFamily::Grass),
+    d("Creeper Spawn Egg", [TILE_EGG_BASE + 9, TILE_EGG_BASE + 9, TILE_EGG_BASE + 9], false, false, true, false, 0, SoundFamily::Grass),
+    d("Spider Spawn Egg", [TILE_EGG_BASE + 10, TILE_EGG_BASE + 10, TILE_EGG_BASE + 10], false, false, true, false, 0, SoundFamily::Grass),
+    d("Enderman Spawn Egg", [TILE_EGG_BASE + 11, TILE_EGG_BASE + 11, TILE_EGG_BASE + 11], false, false, true, false, 0, SoundFamily::Grass),
+    d("Cow Spawn Egg", [TILE_EGG_BASE + 12, TILE_EGG_BASE + 12, TILE_EGG_BASE + 12], false, false, true, false, 0, SoundFamily::Grass),
+    d("Pig Spawn Egg", [TILE_EGG_BASE + 13, TILE_EGG_BASE + 13, TILE_EGG_BASE + 13], false, false, true, false, 0, SoundFamily::Grass),
+    d("Sheep Spawn Egg", [TILE_EGG_BASE + 14, TILE_EGG_BASE + 14, TILE_EGG_BASE + 14], false, false, true, false, 0, SoundFamily::Grass),
+    d("Chicken Spawn Egg", [TILE_EGG_BASE + 15, TILE_EGG_BASE + 15, TILE_EGG_BASE + 15], false, false, true, false, 0, SoundFamily::Grass),
 ];
 
 #[inline]
@@ -1264,8 +1589,9 @@ pub fn face_visible(b: u8, n: u8) -> bool {
 /// blocks offered in the E-key picker (creative-style), in display order.
 /// Everything placeable except air, bedrock (unbreakable) and water
 /// (needs fluid sim to be fun). Potions are item-blocks — usable from the
-/// hotbar (drink), never placeable.
-pub const PICKER_BLOCKS: [u8; 68] = [
+/// hotbar (drink), never placeable. Phase E1 adds the 1.0–1.2 bracket
+/// blocks/items + the 16 spawn eggs (creative-only items, w/Spawn_Egg).
+pub const PICKER_BLOCKS: [u8; 104] = [
     GRASS, DIRT, STONE, COBBLE, SMOOTH_STONE, STONE_BRICKS, BRICKS, MOSSY_COBBLE,
     GRANITE, DIORITE, ANDESITE, OBSIDIAN,
     SAND, GRAVEL, CLAY, TERRACOTTA,
@@ -1281,6 +1607,18 @@ pub const PICKER_BLOCKS: [u8; 68] = [
     BREWING_STAND,
     POTION_EMPTY, POTION_WATER, POTION_AWKWARD, POTION_MUNDANE, POTION_HEALING, POTION_HEALING_II,
     ENCHANT_TABLE, ENCHANTED_BOOK,
+    // ---- Phase E1 (1.0–1.2 bracket) ----
+    MYCELIUM, END_STONE, NETHER_BRICKS, NETHER_BRICK,
+    REDSTONE_LAMP,
+    CHISELED_STONE_BRICKS, CHISELED_SANDSTONE, CUT_SANDSTONE, SMOOTH_SANDSTONE,
+    MUSHROOM_RED_BLOCK, MUSHROOM_BROWN_BLOCK, MUSHROOM_STEM,
+    NETHER_WART, DRAGON_EGG, END_CRYSTAL,
+    EYE_OF_ENDER, BLAZE_ROD, BLAZE_POWDER, GOLDEN_APPLE, SNOWBALL,
+    // spawn eggs (16, order = MobKind egg table)
+    SPAWN_EGG_BASE, SPAWN_EGG_BASE + 1, SPAWN_EGG_BASE + 2, SPAWN_EGG_BASE + 3,
+    SPAWN_EGG_BASE + 4, SPAWN_EGG_BASE + 5, SPAWN_EGG_BASE + 6, SPAWN_EGG_BASE + 7,
+    SPAWN_EGG_BASE + 8, SPAWN_EGG_BASE + 9, SPAWN_EGG_BASE + 10, SPAWN_EGG_BASE + 11,
+    SPAWN_EGG_BASE + 12, SPAWN_EGG_BASE + 13, SPAWN_EGG_BASE + 14, SPAWN_EGG_BASE + 15,
 ];
 
 /// default hotbar palette
@@ -1366,6 +1704,110 @@ mod state_tests {
                 );
             }
         }
+    }
+
+    // ---- Phase E1 tests (1.0–1.2 bracket) ----
+
+    /// Every state ≤ STATE_COUNT folds to a real block — extended to the
+    /// lamp/wart/spawner-blaze/frame-eye + dedicated world/item states.
+    #[test]
+    fn phase_e1_states_fold_and_emissive() {
+        // lit lamp folds to the lamp block but emits 15; the OFF state
+        // (the lamp's stored default) emits 0
+        assert_eq!(state_block(REDSTONE_LAMP_LIT), REDSTONE_LAMP);
+        assert_eq!(state_emissive(REDSTONE_LAMP_LIT), 15);
+        assert_eq!(state_block(REDSTONE_LAMP_STATE), REDSTONE_LAMP);
+        assert_eq!(state_emissive(REDSTONE_LAMP_STATE), 0);
+        assert_eq!(default_state(REDSTONE_LAMP), REDSTONE_LAMP_STATE);
+        // warts fold + per-age tiles
+        for a in 0..4u16 {
+            assert_eq!(state_block(WART_STATE_BASE + a), NETHER_WART);
+            assert_eq!(wart_age(WART_STATE_BASE + a), a as u8);
+            let t = state_tiles(WART_STATE_BASE + a);
+            assert!(t.iter().all(|&x| x >= TILE_NETHER_WART_0 && x <= TILE_NETHER_WART_3));
+        }
+        assert_eq!(default_state(NETHER_WART), WART_STATE_BASE);
+        // frame-with-eye folds to the frame
+        assert_eq!(state_block(END_PORTAL_FRAME_EYE), END_PORTAL_FRAME);
+        // spawner blaze state folds to the spawner
+        assert_eq!(state_block(SPAWNER_BLAZE), SPAWNER);
+        // every new world block's default state folds back to it
+        for b in [
+            MYCELIUM, END_STONE, NETHER_BRICKS, REDSTONE_LAMP, CHISELED_STONE_BRICKS,
+            CHISELED_SANDSTONE, CUT_SANDSTONE, SMOOTH_SANDSTONE, MUSHROOM_RED_BLOCK,
+            MUSHROOM_BROWN_BLOCK, MUSHROOM_STEM, NETHER_WART, DRAGON_EGG, END_PORTAL,
+        ] {
+            assert_eq!(
+                state_block(default_state(b)),
+                b,
+                "default_state({}) must fold back",
+                name(b)
+            );
+        }
+        // item states (≥ 256, never world-stored) fold back to their items
+        for b in [END_CRYSTAL, EYE_OF_ENDER, BLAZE_ROD, BLAZE_POWDER, GOLDEN_APPLE, SNOWBALL, NETHER_BRICK, SPAWN_EGG_BASE, SPAWN_EGG_MAX] {
+            let s = item_block_state(b).unwrap();
+            assert!(s >= 256, "item states must live above the u8 window");
+            assert_eq!(state_block(s), b);
+            assert_eq!(default_state(b), s);
+            assert!(!is_model_state(s), "item state {s} must not hit the model path");
+        }
+        // the end portal emits full block light through its stored state
+        assert_eq!(state_emissive(END_PORTAL_STATE), 15);
+        // dragon egg glows level 1
+        assert_eq!(state_emissive(DRAGON_EGG_STATE), 1);
+        // the full 236..=255 window is allocated — no spares, no overlaps
+        // with the legacy ranges (this catches the MYCELIUM_STATE=140 / 140 =
+        // ROTTEN_FLESH_STATE class of collision for good)
+        let legacy_top = FERMENTED_EYE_STATE.max(SPAWNER_STATE_END).max(END_PORTAL_FRAME_STATE);
+        assert!(legacy_top < 236, "legacy ranges must stay below 236");
+        for b in [MYCELIUM, END_STONE, NETHER_WART, DRAGON_EGG, END_PORTAL] {
+            assert!(default_state(b) >= 236);
+        }
+    }
+
+    /// The 16 spawn eggs map in and out, are item-blocks (never placeable),
+    /// and their def tiles land in the egg tile window.
+    #[test]
+    fn phase_e1_spawn_eggs() {
+        for i in 0..16u8 {
+            let b = SPAWN_EGG_BASE + i;
+            assert!(is_spawn_egg(b), "egg {b}");
+            assert_eq!(egg_mob(b), Some(i));
+            assert!(is_item_block(b), "egg {b} must be an item block");
+            let t = def(b).tiles[0];
+            assert!((TILE_EGG_BASE..=TILE_EGG_MAX).contains(&t), "egg {b} tile {t}");
+        }
+        assert_eq!(egg_mob(SPAWN_EGG_BASE - 1), None);
+        assert!(!is_spawn_egg(BLAZE_ROD));
+        // eggs are distinct ids — the gameplay layer decodes 0..=15
+        assert_eq!(SPAWN_EGG_MAX - SPAWN_EGG_BASE, 15);
+    }
+
+    /// New item-blocks are recognized; placeables are not.
+    #[test]
+    fn phase_e1_item_blocks() {
+        for b in [END_CRYSTAL, EYE_OF_ENDER, BLAZE_ROD, BLAZE_POWDER, GOLDEN_APPLE, SNOWBALL, NETHER_BRICK] {
+            assert!(is_item_block(b), "{b} must be an item block");
+        }
+        for b in [MYCELIUM, END_STONE, NETHER_BRICKS, REDSTONE_LAMP, DRAGON_EGG] {
+            assert!(!is_item_block(b), "{b} must be placeable");
+        }
+    }
+
+    /// The picker carries valid ids only, and the new E1 entries are present.
+    #[test]
+    fn phase_e1_picker_entries() {
+        for &b in PICKER_BLOCKS.iter() {
+            assert!((b as usize) < BLOCK_COUNT, "picker id {b} out of range");
+        }
+        for want in [MYCELIUM, END_STONE, REDSTONE_LAMP, SPAWN_EGG_BASE, SPAWN_EGG_BASE + 15] {
+            assert!(PICKER_BLOCKS.contains(&want), "picker missing {want}");
+        }
+        // 12-col grid must stay inside the 960×540 UI canvas
+        let rows = (PICKER_BLOCKS.len() + 11) / 12;
+        assert!(rows * 44 + 30 <= 540, "picker grid too tall: {rows} rows");
+        assert!(12 * 44 + 8 <= 960);
     }
 
     /// Phase 4: the dedicated item tiles exist in the 16×16-tile atlas grid
@@ -1485,6 +1927,9 @@ mod state_tests {
                 || (POTION_HARMING_STATE..=FERMENTED_EYE_STATE).contains(&s)
                 || (SPAWNER_STATE_BASE..=SPAWNER_STATE_END).contains(&s)
                 || s == END_PORTAL_FRAME_STATE
+                // Phase E1 dedicated world-block states + item states
+                || (REDSTONE_LAMP_LIT..=END_STONE_STATE).contains(&s)
+                || (ITEM_STATE_BASE..=ITEM_STATE_END).contains(&s)
             {
                 assert!(!is_model_state(s), "component/item state {s} never routes to models");
                 // identity: the state folds to the block whose def table

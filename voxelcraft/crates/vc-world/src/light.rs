@@ -209,8 +209,8 @@ impl LightEngine {
         for y in 0..256usize {
             for lz in 0..16usize {
                 for lx in 0..16usize {
-                    let b = state_block(chunk.get(lx, y, lz) as u16);
-                    let e = emissive(b);
+                    // Phase E1: state-aware emission (lit lamp states)
+                    let e = state_emissive(chunk.get(lx, y, lz) as u16);
                     if e == 0 {
                         continue;
                     }
@@ -375,8 +375,9 @@ impl LightEngine {
         let new_b = state_block(new);
 
         // ---- block light
-        let e_old = emissive(old_b);
-        let e_new = emissive(new_b);
+        // Phase E1: state-aware emission (lit redstone lamp state = 15)
+        let e_old = state_emissive(old);
+        let e_new = state_emissive(new);
         if e_new > 0 {
             // source appeared: seed neighbors at the emissive level
             let lvl = e_new.min(15);
@@ -844,7 +845,8 @@ pub fn reference_light(blocks: &[u8]) -> (Vec<u8>, Vec<u8>) {
     for y in 0..256usize {
         for z in 0..pad {
             for x in 0..pad {
-                let e = emissive(sb(blocks[pidx(x, y, z)]));
+                // Phase E1: state-aware emission (lit lamp states)
+                let e = state_emissive(blocks[pidx(x, y, z)] as u16);
                 if e == 0 {
                     continue;
                 }

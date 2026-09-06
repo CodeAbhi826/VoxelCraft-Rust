@@ -25,6 +25,12 @@ pub fn smelt_result(block: u8) -> Option<u8> {
         SAND => Some(GLASS),
         COBBLE => Some(STONE),
         CLAY => Some(TERRACOTTA),
+        // Phase E1 (VERIFIED 2026-09-06): sandstone → smooth sandstone
+        // (the 1.14 smelting recipe, valid through 1.16.5 — w/Sandstone
+        // §Smelting); netherrack → the nether-brick item (w/Nether_Brick
+        // §Smelting) — the block form then crafts from 4 items
+        CHISELED_SANDSTONE | CUT_SANDSTONE => Some(SMOOTH_SANDSTONE),
+        NETHERRACK => Some(NETHER_BRICK),
         _ => None,
     }
 }

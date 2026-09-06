@@ -972,7 +972,6 @@ impl UiCanvas {
     /// research-verdicts.md live round: 10 bubbles × 30 air; drawn only
     /// while the air supply is below full, right-aligned above hunger).
     pub fn status_bars(&mut self, health: f32, food: f32, xp: f32, level: u32, air: f32) {
-        const HB: Color = [20, 20, 20, 255]; // hotbar base coords
         let hb_w = 9 * 40 + 4;
         let hb_x = (UI_W as i32 - hb_w) / 2;
         let hb_y = UI_H as i32 - 48;
@@ -1064,6 +1063,34 @@ impl UiCanvas {
                 [20, 40, 8, 255],
                 2,
             );
+        }
+    }
+
+    /// Phase E1: the ender-dragon boss bar — VERIFIED w/Ender_Dragon:
+    /// "a light purple health bar ... at the top of the player's screen",
+    /// the name above it, width matches the hotbar band. `frac` = the
+    /// dragon's remaining health fraction (0..1).
+    pub fn boss_bar(&mut self, frac: f32) {
+        let w = 9 * 40 + 4; // hotbar-width band (the vanilla boss-bar width)
+        let x = (UI_W as i32 - w) / 2;
+        let y = 24;
+        // label
+        let name = "ENDER DRAGON";
+        let tw = name.len() as i32 * 8;
+        self.text(
+            (UI_W as i32 - tw) / 2,
+            y - 14,
+            name,
+            [235, 220, 245, 255],
+            1,
+        );
+        // track + light-purple fill (VERIFIED color family)
+        self.rect(x, y, w, 12, [16, 12, 20, 220]);
+        self.frame(x, y, w, 12, [90, 70, 110, 255]);
+        let fill = ((w - 4) as f32 * frac.clamp(0.0, 1.0)) as i32;
+        if fill > 0 {
+            self.rect(x + 2, y + 2, fill, 8, [190, 90, 220, 255]);
+            self.rect(x + 2, y + 2, fill, 2, [230, 150, 250, 255]);
         }
     }
 
@@ -1841,7 +1868,10 @@ impl UiCanvas {
     /// geometry so game.rs can hit-test clicks.
     pub fn picker(&mut self, cursor: (f32, f32), atlas: &[u8]) -> PickerGeom {
         let blocks = &PICKER_BLOCKS;
-        let cols = 8;
+        // Phase E1: 12 columns (was 8) — the picker grew past 68 entries
+        // with the 1.0–1.2 bracket blocks + 16 spawn eggs; 12×9 stays
+        // inside the 960×540 UI canvas (536×426 grid).
+        let cols = 12;
         let cell = 44i32;
         let rows = (blocks.len() + cols - 1) / cols;
         let grid_w = cols as i32 * cell + 8;

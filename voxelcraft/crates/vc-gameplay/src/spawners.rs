@@ -45,7 +45,8 @@ const INITIAL_DELAY: u32 = 20;
 /// block-entity state of one spawner
 #[derive(Clone, Copy, Debug)]
 pub struct Spawner {
-    /// mob kind code (SPAWNER_ZOMBIE / SKELETON / SPIDER)
+    /// mob kind code (SPAWNER_ZOMBIE / SKELETON / SPIDER / 3 = blaze,
+    /// the Phase E1 fortress platform spawner)
     pub mob: u8,
     /// ticks until the next spawn cycle
     pub delay: u32,
@@ -58,6 +59,7 @@ pub fn mob_kind(code: u8) -> MobKind {
     match code {
         SPAWNER_SKELETON => MobKind::Skeleton,
         SPAWNER_SPIDER => MobKind::Spider,
+        3 => MobKind::Blaze, // Phase E1 fortress spawner (SPAWNER_BLAZE)
         _ => MobKind::Zombie,
     }
 }

@@ -4,6 +4,7 @@
 pub mod brewing;
 pub mod combat;
 pub mod craft;
+pub mod dragon;
 pub mod enchanting;
 pub mod furnace;
 pub mod mobs;

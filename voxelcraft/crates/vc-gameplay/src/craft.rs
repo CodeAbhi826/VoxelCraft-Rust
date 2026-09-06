@@ -58,6 +58,57 @@ pub const RECIPES: &[Recipe] = &[
     },
     // 3×3 sand → sand... no. sand→glass needs the furnace. Recipes for
     // wool→? keep the set tight and honest.
+    // ---- Phase E1 recipes (evolution 1.0–1.2 bracket, live-verified
+    // 2026-09-06) ----
+    // redstone lamp: 4 glowstone (cardinal) + 1 redstone (center)
+    // (VERIFIED w/Redstone_Lamp §Crafting)
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::None,
+            Ing::Block(GLOWSTONE),
+            Ing::None,
+            Ing::Block(GLOWSTONE),
+            Ing::Block(REDSTONE_WIRE),
+            Ing::Block(GLOWSTONE),
+            Ing::None,
+            Ing::Block(GLOWSTONE),
+            Ing::None,
+        ],
+        out: ItemStack::new(REDSTONE_LAMP, 1),
+    },
+    // eye of ender: blaze powder + ender pearl (shapeless in vanilla —
+    // modeled as the 2×2 diagonal; VERIFIED)
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(BLAZE_POWDER),
+            Ing::None,
+            Ing::None,
+            Ing::Block(ENDER_PEARL),
+        ],
+        out: ItemStack::new(EYE_OF_ENDER, 1),
+    },
+    // blaze powder: 1 rod → 2 (shapeless in vanilla; 1×1 shaped here)
+    Recipe {
+        size: 1,
+        grid: &[Ing::Block(BLAZE_ROD)],
+        out: ItemStack::new(BLAZE_POWDER, 2),
+    },
+    // nether bricks: 4 nether-brick items 2×2 (VERIFIED vanilla)
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(NETHER_BRICK),
+            Ing::Block(NETHER_BRICK),
+            Ing::Block(NETHER_BRICK),
+            Ing::Block(NETHER_BRICK),
+        ],
+        out: ItemStack::new(NETHER_BRICKS, 1),
+    },
+    // [cut/chiseled sandstone crafting DEFERRED: vanilla's recipes need
+    // plain SANDSTONE + sandstone slabs — neither block exists in the
+    // engine yet; both variants stay picker-available (documented)]
     // 2×2 snow → snow block? snow IS a block already. skip.
     // 3×3 glass V (vanilla glass-bottle recipe, 3 bottles) — the §29 chain
     // head: bottle → fill at water → brew

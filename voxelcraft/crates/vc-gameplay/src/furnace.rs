@@ -23,6 +23,9 @@ pub fn fuel_ticks(block: u8) -> i32 {
 pub fn smelt_result(block: u8) -> Option<u8> {
     match block {
         SAND => Some(GLASS),
+        // 1.7.2 (VERIFIED, changelog §Red sand): "can be smelted into
+        // glass" — same recipe slot as regular sand
+        RED_SAND => Some(GLASS),
         COBBLE => Some(STONE),
         CLAY => Some(TERRACOTTA),
         _ => None,
@@ -187,6 +190,8 @@ mod tests {
 
     #[test]
     fn smelts_sand_to_glass_on_fuel() {
+        // 1.7.2: red sand smelts to glass too (wiki changelog)
+        assert_eq!(smelt_result(RED_SAND), Some(GLASS));
         let mut f = FurnaceState::default();
         f.input = ItemStack::new(SAND, 3);
         f.fuel = ItemStack::new(PLANKS, 1);

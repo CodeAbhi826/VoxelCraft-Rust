@@ -202,3 +202,90 @@ Screenshots: `docs/screenshots/e2e-hopper-screen.png`,
 - Post-10 — texture-seam fix + occlusion-flood cache (`fe70cd9`)
 - Workspace split into 14 library crates + per-library release archives +
   all-arch CI (`7378c08`, `f4b68a6`)
+
+---
+
+## 2026-09-06 — version bracket 1.7.2 ("The Update that Changed the World") — Phase 1.7
+
+**Task:** user directive — continue the remaining work as version phases
+from the current position (1.7) through 1.10, checking every change in
+detail (mechanics AND visuals) against live sources, implementing the
+bracket content, and reporting parity per change.
+
+**Live verification round (minecraft.wiki, 2026-09-06):** full changelog
+pages fetched and parsed for 1.7.2, 1.8, 1.9, 1.10 (scripts/verify/*.txt)
+plus targeted pages for Fishing (85/10/5 roll, 5–30 s wait, Lure −5 s/level
+off both bounds), Poison (L4 = 3 ticks/HP raw, 10-tick hurt-immunity
+effective floor, cannot kill — floors at 1 HP), and the new-biome color
+pages (Flower Forest #79C05A, Dark Forest #507A32, Sunflower Plains
+#91BD59, Ice Spikes #80B497/#60A17B). Key doc correction caught: the
+evolution-research plan lists Stray under 1.9 — the live 1.10 page puts
+strays in 1.10 (with husks and polar bears).
+
+**Registry foundation (the V2 window):**
+- State space extended past the historical 255 ceiling: block ids
+  103..=161, dedicated states 236..=294 (+4 log-axis states 295..=298 for
+  acacia/dark oak). `Chunk::get` now FOLDS states through `state_block`
+  (the old `as u8` truncation would alias high states); a new raw
+  `Chunk::get_state` accessor serves `World::get_state`/
+  `set_block_state`. All historical double-fold call sites fixed (gen.rs
+  nether decorations + tests, light.rs column scans, anvil test, the
+  Phase-10 pyramid test).
+- GPU mesher LUT re-derived (STATE_COUNT 236→299, BLOCK_COUNT 103→162;
+  WGSL offsets + clamps updated; tint classes 7/8 for the new leaves).
+  Caught a sneaky compile trap: un-imported `ACACIA_LEAVES` in gpu_mesh.rs
+  silently became a *binding* match arm (class 7 for EVERY block) —
+  fixed by importing the constants; the LUT-mirror test caught it.
+
+**1.7.2 content implemented:**
+- 59 new registrations: 16 stained glass, 16 stained terracotta, red
+  sand, packed ice (OPAQUE — the changelog's signature difference vs
+  ice), podzol, acacia/dark oak log+leaves (leaves reuse the oak tile —
+  the changelog itself says both are "visually identical to regular oak
+  leaves"), 8 small flowers, 4 two-block flowers as lower+upper id pairs,
+  4 fish items (raw fish/salmon/clownfish/pufferfish).
+- 60 new procedural clean-room tiles (glass tints, terracotta grain, red
+  sand, packed-ice fractures, podzol, acacia "silver outside, orange
+  inside" bark, dark oak near-black bark, all flower art, fish icons).
+- 4 new biomes + worldgen: Flower Forest (dense new-flower flora, no
+  sunflowers), Sunflower Plains (sunflower pairs), Ice Spikes (packed-
+  ice spires 5–15 tall + snow-block surface), Dark Forest (dense 2×2
+  dark-oak trunks). Badlands: red-sand floor over SEVEN banded terracotta
+  colors ("normal, orange, red, yellow, white, light gray and brown" per
+  the changelog) with jittered band edges. Taiga: mega-taiga podzol
+  patches. Acacia trees: vertical base + diagonal (axis-state) segment +
+  flat disc canopy.
+- Tint parity: new-biome grass/foliage/water colors (live-verified hex),
+  acacia/dark-oak leaves biome-foliage-tinted; tint LUT loop extended
+  0..18 — which FIXED a latent Phase-10 bug: biomes 8..=13 were never
+  written into the shader LUT, so taiga/jungle/savanna/swamp/badlands
+  grass rendered untinted (white) since Phase 10.
+- Mechanics: fishing loot system (85/10/5 fish/junk/treasure, Lure wait
+  math, Luck of the Sea monotone treasure shift — vc-gameplay/fishing.rs
+  with the full vanilla table shapes including palette-missing rows as
+  named placeholders); pufferfish eating applies Poison IV 1:00 with the
+  10-tick observable cadence and the 1-HP cannot-kill floor (new
+  StatusEffects on the player, ticking in the fixed 20 Hz step); raw
+  fish/salmon/clownfish join the eat path; red sand smelts to glass.
+- Creative picker: +55 entries (123 blocks), grid widened 8→12 columns
+  to stay inside the 540-px UI canvas.
+
+**Verification:** 325/325 tests green (299 library + 26 game-crate;
+was 310, +15: fishing ×6, worldgen ×6, poison ×3). The game crate's test
+run uses `--no-default-features` in THIS container only — ALSA dev
+libraries are absent (no root), so the rodio audio backend can't link
+locally; CI builds it normally. Two pre-existing tests updated for the
+new `Chunk::get` fold contract (anvil foreign-chunk, pyramid chest pit).
+
+**Deferred (documented, carried to later brackets/registry phases):**
+dye items + stained-glass/clay crafting recipes (dye economy absent),
+fishing rod/bow/name-tag/bowl/stick/lily-pad/saddle items (loot rows
+listed as placeholders), acacia/dark-oak planks, saplings, tall-grass/
+fern bone-meal growth, infested block variants, grassless dirt
+(1.8 coarse dirt supersedes), minecart-with-command-block, /tellraw /
+/summon / /setblock / /testforblock commands (no chat-command system),
+stained-glass panes, custom 23×23 nether portals, pufferfish→Water
+Breathing brewing (brewing stands take block-id ingredients; pufferfish
+item is now in the registry for a future recipe), 1.7 sound set.
+
+**Commit:** this entry (bracket 1.7.2).

@@ -192,7 +192,7 @@ impl World {
             Some(c) => {
                 let lx = (wx - cx * 16) as usize;
                 let lz = (wz - cz * 16) as usize;
-                state_block(c.get(lx, wy as usize, lz) as u16)
+                c.get(lx, wy as usize, lz) // already folded by Chunk::get
             }
             None => AIR,
         }
@@ -210,7 +210,7 @@ impl World {
             Some(c) => {
                 let lx = (wx - cx * 16) as usize;
                 let lz = (wz - cz * 16) as usize;
-                c.get(lx, wy as usize, lz) as u16
+                c.get_state(lx, wy as usize, lz) // raw, never truncated
             }
             None => 0,
         }
@@ -248,7 +248,7 @@ impl World {
         let old = Arc::clone(old);
         let lx = (wx - cx * 16) as usize;
         let lz = (wz - cz * 16) as usize;
-        let old_state = old.get(lx, wy as usize, lz) as u16;
+        let old_state = old.get_state(lx, wy as usize, lz);
         if old_state == state {
             return None; // no-op edit (skip dirty churn)
         }

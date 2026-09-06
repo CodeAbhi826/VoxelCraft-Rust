@@ -193,7 +193,7 @@ impl LightEngine {
             for lx in 0..16usize {
                 let mut l: u8 = 15;
                 for y in (0..256usize).rev() {
-                    let b = state_block(chunk.get(lx, y, lz) as u16);
+                    let b = chunk.get(lx, y, lz); // 1.7.2: Chunk::get folds states itself
                     if is_opaque(b) {
                         l = 0;
                     } else if b == WATER {
@@ -209,7 +209,7 @@ impl LightEngine {
         for y in 0..256usize {
             for lz in 0..16usize {
                 for lx in 0..16usize {
-                    let b = state_block(chunk.get(lx, y, lz) as u16);
+                    let b = chunk.get(lx, y, lz); // 1.7.2: Chunk::get folds states itself
                     let e = emissive(b);
                     if e == 0 {
                         continue;
@@ -445,7 +445,7 @@ impl LightEngine {
         };
         let mut l: u8 = 15;
         for y in (0..256usize).rev() {
-            let b = state_block(chunk.get(lx, y, lz) as u16);
+            let b = chunk.get(lx, y, lz); // 1.7.2: Chunk::get folds states itself
             if is_opaque(b) {
                 l = 0;
             } else if b == WATER {

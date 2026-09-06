@@ -27,6 +27,13 @@ pub enum Biome {
     Savanna = 11,
     Swamp = 12,
     Badlands = 13,
+    // ---- 1.7.2 bracket (live-verified minecraft.wiki/w/Java_Edition_1.7.2):
+    // the four headliner overworld additions of the Update that Changed
+    // the World ----
+    FlowerForest = 14,
+    SunflowerPlains = 15,
+    IceSpikes = 16,
+    DarkForest = 17,
 }
 
 impl Biome {
@@ -46,6 +53,10 @@ impl Biome {
             Biome::Savanna => "Savanna",
             Biome::Swamp => "Swamp",
             Biome::Badlands => "Badlands",
+            Biome::FlowerForest => "Flower Forest",
+            Biome::SunflowerPlains => "Sunflower Plains",
+            Biome::IceSpikes => "Ice Spikes",
+            Biome::DarkForest => "Dark Forest",
         }
     }
 
@@ -64,6 +75,10 @@ impl Biome {
             11 => Biome::Savanna,
             12 => Biome::Swamp,
             13 => Biome::Badlands,
+            14 => Biome::FlowerForest,
+            15 => Biome::SunflowerPlains,
+            16 => Biome::IceSpikes,
+            17 => Biome::DarkForest,
             _ => Biome::Ocean,
         }
     }
@@ -353,6 +368,25 @@ fn floor_div(a: i32, b: i32) -> i32 {
     }
 }
 
+/// 1.7.2: mesa sedimentary banding — the changelog's seven hardened-clay
+/// colors ("normal, orange, red, yellow, white, light gray and brown") as
+/// ~3-block depth bands with hash-jittered boundaries so bands read as
+/// layered rock, not flat stripes.
+fn badlands_band(seed: u64, x: i32, y: i32, z: i32) -> u8 {
+    const BANDS: [u8; 7] = [
+        TERRACOTTA,
+        STAINED_TERRACOTTA_ORANGE,
+        STAINED_TERRACOTTA_RED,
+        STAINED_TERRACOTTA_YELLOW,
+        STAINED_TERRACOTTA_WHITE,
+        STAINED_TERRACOTTA_LIGHT_GRAY,
+        STAINED_TERRACOTTA_BROWN,
+    ];
+    let jitter = (Rng::hash3(seed ^ 0xBA0D, x >> 2, 0, z >> 2) % 3) as i32;
+    let band = ((y + jitter).div_euclid(3) as usize) % BANDS.len();
+    BANDS[band]
+}
+
 /// mineshaft generation chance per chunk — VERIFIED (wiki Mineshaft
 /// page, live): "a 0.4% chance to attempt to begin generating in every
 /// chunk"
@@ -482,6 +516,17 @@ impl TerrainGen {
             2.0,
             0.5,
         );
+        // 1.7.2 bracket: the variant/biome-flavor noise — same temperature
+        // and humidity fields, different octave offsets, so variant patches
+        // are large-scale (~400 blocks) and never correlate with detail
+        let var = fbm2(
+            &self.n_humid,
+            (xf + 12000.0) / 400.0,
+            (zf - 11000.0) / 400.0,
+            2,
+            2.0,
+            0.5,
+        );
 
         let (biome, top, filler) = if h < vc_chunk::SEA_LEVEL - 1 {
             if h < vc_chunk::SEA_LEVEL - 6 {
@@ -498,21 +543,35 @@ impl TerrainGen {
                 (Biome::Mountains, STONE, STONE)
             }
         } else if temp < -0.32 {
-            (Biome::Snowy, SNOW_GRASS, DIRT)
+            // 1.7.2: ice plains spikes — the rare frozen variant of the
+            // snowy climate (wiki: tall packed-ice spires, snow-block
+            // surface instead of grass)
+            if var > 0.58 {
+                (Biome::IceSpikes, SNOW, DIRT)
+            } else {
+                (Biome::Snowy, SNOW_GRASS, DIRT)
+            }
         }
         // ---- Phase 10 climate biomes: our temp/humid predicates are the
         // documented climate adaptation (vanilla 1.16.5 selects biomes
         // through a biome lattice, not two noises); the BIOME CONTENT
         // (surface, trees, tint) follows the wiki descriptions ----
         else if temp < -0.1 {
-            // Taiga: cold enough for spruce but not snow-locked
-            (Biome::Taiga, GRASS, DIRT)
+            // Taiga: cold enough for spruce but not snow-locked.
+            // 1.7.2: mega-taiga flavor — podzol floor patches (the wiki's
+            // mega taiga is a variant; our single Taiga carries its podzol
+            // patches via the variant noise)
+            if var > 0.45 {
+                (Biome::Taiga, PODZOL, DIRT)
+            } else {
+                (Biome::Taiga, GRASS, DIRT)
+            }
         } else if temp > 0.25 && humid < -0.12 {
-            // Badlands: hot AND the driest climate band — terracotta
-            // layers (vanilla's 1.16.5 badlands surface is terracotta
-            // banded with colored terracotta; ours is the plain block —
-            // palette adaptation)
-            (Biome::Badlands, TERRACOTTA, TERRACOTTA)
+            // Badlands: hot AND the driest climate band — red-sand floor
+            // over layered terracotta (1.7.2 wiki: "floor similar to a
+            // desert, but made of red sand"; the colored banding below is
+            // painted in the terrain fill, see badlands_band)
+            (Biome::Badlands, RED_SAND, TERRACOTTA)
         } else if temp > 0.3 && humid < 0.05 {
             (Biome::Desert, SAND, SAND)
         } else if temp > 0.25 && humid > 0.3 {
@@ -527,12 +586,34 @@ impl TerrainGen {
             // water pools (vanilla 1.16.5 swamps sit at low elevation)
             (Biome::Swamp, GRASS, DIRT)
         } else if humid > 0.12 && temp < 0.2 {
-            // Birch Forest: wet + cool — birch-dominant canopy
-            (Biome::BirchForest, GRASS, DIRT)
+            // 1.7.2: flower forest — the wet-cool forest band's flowery
+            // variant (wiki: "very densely packed with the various new
+            // flowers... excluding sunflowers")
+            if var > 0.42 {
+                (Biome::FlowerForest, GRASS, DIRT)
+            } else {
+                (Biome::BirchForest, GRASS, DIRT)
+            }
+        } else if humid > 0.12 && temp <= 0.25 {
+            // 1.7.2: dark forest (roofed forest) — the warm-wet forest
+            // band's dark variant: dense dark-oak canopy (wiki: dark oak
+            // trees closely packed, giant mushrooms)
+            if var > 0.38 {
+                (Biome::DarkForest, GRASS, DIRT)
+            } else {
+                (Biome::Forest, GRASS, DIRT)
+            }
         } else if humid > 0.12 {
             (Biome::Forest, GRASS, DIRT)
         } else {
-            (Biome::Plains, GRASS, DIRT)
+            // 1.7.2: sunflower plains — the dry-neutral plains band's
+            // variant (wiki: "exactly the same as plains, but can spawn
+            // sunflowers")
+            if var > 0.5 {
+                (Biome::SunflowerPlains, GRASS, DIRT)
+            } else {
+                (Biome::Plains, GRASS, DIRT)
+            }
         };
 
         ColumnInfo {
@@ -669,6 +750,13 @@ impl TerrainGen {
                         col.top
                     } else if yi > h - 4 {
                         col.filler
+                    } else if col.biome == Biome::Badlands && yi > h - 16 {
+                        // 1.7.2: mesa sedimentary banding — the changelog's
+                        // "multiple colored hardened clay that are layered in
+                        // a way that resembles sedimentary rock", the seven
+                        // colors (normal, orange, red, yellow, white, light
+                        // gray, brown) as depth bands with jittered edges
+                        badlands_band(self.seed, wx, yi, wz)
                     } else {
                         self.stone_variant(wx, yi, wz)
                     };
@@ -705,7 +793,10 @@ impl TerrainGen {
         // pass 2: inbound edits from neighbors (trees poking into this chunk)
         for (idx, id) in inbound {
             let cur = chunk.get_idx(idx as usize);
-            if cur == AIR || (cur == LEAVES && id == OAK_LOG) {
+            let trunk = id == OAK_LOG || id == DARK_OAK_LOG || id == ACACIA_LOG;
+            if cur == AIR
+                || (trunk && (cur == LEAVES || cur == ACACIA_LEAVES || cur == DARK_OAK_LEAVES))
+            {
                 chunk.set_idx(idx as usize, id);
             }
         }
@@ -727,7 +818,10 @@ impl TerrainGen {
             let lzi = wz - oz;
             if lxi >= 0 && lxi < 16 && lzi >= 0 && lzi < 16 {
                 let cur = chunk.get(lxi as usize, wy as usize, lzi as usize);
-                if cur == AIR || (replace_leaves && cur == LEAVES && id == OAK_LOG) {
+                let trunk = id == OAK_LOG || id == DARK_OAK_LOG || id == ACACIA_LOG;
+                if cur == AIR
+                    || (replace_leaves && trunk && (cur == LEAVES || cur == ACACIA_LEAVES || cur == DARK_OAK_LEAVES))
+                {
                     chunk.set(lxi as usize, wy as usize, lzi as usize, id);
                 }
             } else {
@@ -743,6 +837,17 @@ impl TerrainGen {
                 Biome::Jungle => 10,
                 Biome::Taiga => 5,
                 Biome::Swamp => 3,
+                // 1.7.2: dark forest = "dark oak trees closely packed
+                // together" (wiki) — the densest canopy in the game
+                Biome::DarkForest => 14,
+                Biome::FlowerForest => 5,
+                Biome::SunflowerPlains => {
+                    if rng.next_f32() < 0.5 {
+                        1
+                    } else {
+                        0
+                    }
+                }
                 Biome::Savanna => {
                     if rng.next_f32() < 0.6 {
                         1
@@ -773,10 +878,13 @@ impl TerrainGen {
             let h = chunk.height[col_idx] as i32;
             // species: forest mixes oak + birch; snowy taiga/taiga grow
             // spruce; birch forest is birch-dominant; jungle keeps oak
-            // (vanilla jungle wood is palette-absent — documented)
+            // (vanilla jungle wood is palette-absent — documented);
+            // 1.7.2: savanna grows acacia, dark forest grows dark oak
             let biome_here = Biome::from_u8(chunk.biome[col_idx]);
             let (log, leaf) = match biome_here {
                 Biome::Snowy | Biome::Taiga => (SPRUCE_LOG, SPRUCE_LEAVES),
+                Biome::Savanna => (ACACIA_LOG, ACACIA_LEAVES),
+                Biome::DarkForest => (DARK_OAK_LOG, DARK_OAK_LEAVES),
                 Biome::Forest => {
                     if rng.next_f32() < 0.35 {
                         (BIRCH_LOG, BIRCH_LEAVES)
@@ -799,6 +907,136 @@ impl TerrainGen {
                 4 + rng.next_range(3) as i32 // 4..6
             };
             let y0 = h + 1;
+
+            // ---- 1.7.2 tree shapes ----
+            // acacia (savanna): "curved trees made of acacia logs" — a
+            // vertical base, a diagonal offset segment, then a FLAT disc
+            // canopy (the wiki's signature acacia silhouette)
+            if biome_here == Biome::Savanna {
+                let base_h = 2 + rng.next_range(2) as i32; // vertical part
+                let lean = (rng.next_range(4) as i32) - 0; // 0..3 = +x,+z,-x,-z
+                let (ldx, ldz) = match lean {
+                    0 => (1, 0),
+                    1 => (0, 1),
+                    2 => (-1, 0),
+                    _ => (0, -1),
+                };
+                let lean_len = 1 + rng.next_range(2) as i32; // diagonal part
+                let top_y = y0 + base_h + lean_len;
+                // vertical trunk
+                for ty in 0..base_h {
+                    set_dec(&mut chunk, &mut outbound, ox + lx, y0 + ty, oz + lz, log, true);
+                }
+                // diagonal segment (axis state when in-chunk; neighbor
+                // outbound keeps the plain id — axis-variant outbound edits
+                // are a documented simplification)
+                for i in 1..=lean_len {
+                    let bx = ox + lx + ldx * i;
+                    let bz = oz + lz + ldz * i;
+                    let by = y0 + base_h - 1 + i;
+                    let lxi_i = bx - ox;
+                    let lzi_i = bz - oz;
+                    if lxi_i >= 0 && lxi_i < 16 && lzi_i >= 0 && lzi_i < 16 {
+                        let axis = if ldx != 0 { 0u8 } else { 2u8 };
+                        chunk.set_state(
+                            lxi_i as usize,
+                            by as usize,
+                            lzi_i as usize,
+                            log_axis_state(log, axis),
+                        );
+                    }
+                }
+                // flat canopy: two r=2 discs + one r=1 cap (ragged corners)
+                for (dy, r) in [(0i32, 2i32), (1, 2), (2, 1)] {
+                    let ly = top_y + dy - 1;
+                    for dx in -r..=r {
+                        for dz in -r..=r {
+                            if dx == 0 && dz == 0 && dy < 2 {
+                                continue;
+                            }
+                            let corner = dx.abs() == r && dz.abs() == r;
+                            if corner && rng.next_f32() < 0.5 {
+                                continue;
+                            }
+                            set_dec(
+                                &mut chunk,
+                                &mut outbound,
+                                ox + lx + ldx * lean_len + dx,
+                                ly,
+                                oz + lz + ldz * lean_len + dz,
+                                leaf,
+                                false,
+                            );
+                        }
+                    }
+                }
+                // dirt under trunk
+                if chunk.get(lx as usize, h as usize, lz as usize) == GRASS {
+                    chunk.set(lx as usize, h as usize, lz as usize, DIRT);
+                }
+                continue;
+            }
+            // dark oak (dark forest): "very thick and short trees" — a 2×2
+            // trunk with a broad low canopy; vanilla requires a 2×2 sapling
+            // configuration to grow (wiki)
+            if biome_here == Biome::DarkForest {
+                let th_d = 5 + rng.next_range(3) as i32; // 5..7 short+thick
+                let y0d = h + 1;
+                // 2×2 trunk
+                for dx in 0..2 {
+                    for dz in 0..2 {
+                        for ty in 0..th_d {
+                            set_dec(
+                                &mut chunk,
+                                &mut outbound,
+                                ox + lx + dx,
+                                y0d + ty,
+                                oz + lz + dz,
+                                log,
+                                true,
+                            );
+                        }
+                    }
+                }
+                // broad canopy: r=3 discs at the top two layers, r=2, r=1 cap
+                for (dy, r) in [(-1i32, 3i32), (0, 3), (1, 2), (2, 1)] {
+                    let ly = y0d + th_d - 1 + dy;
+                    for dx in -r..=r + 1 {
+                        for dz in -r..=r + 1 {
+                            let cdx = dx - 1; // canopy centered on the 2×2
+                            let cdz = dz - 1;
+                            if cdx >= 0 && cdx <= 1 && cdz >= 0 && cdz <= 1 && dy < 2 {
+                                continue; // trunk spot
+                            }
+                            let corner = cdx.abs() == r || cdz.abs() == r;
+                            let corner2 = cdx.abs() == r && cdz.abs() == r;
+                            if (corner2 || (corner && rng.next_f32() < 0.35))
+                                && (cdz.abs() >= r || cdx.abs() >= r)
+                            {
+                                continue;
+                            }
+                            set_dec(
+                                &mut chunk,
+                                &mut outbound,
+                                ox + lx + dx - 1,
+                                ly,
+                                oz + lz + dz - 1,
+                                leaf,
+                                false,
+                            );
+                        }
+                    }
+                }
+                // dirt under the 2×2
+                for dx in 0..2 {
+                    for dz in 0..2 {
+                        if chunk.get((lx + dx) as usize, h as usize, (lz + dz) as usize) == GRASS {
+                            chunk.set((lx + dx) as usize, h as usize, (lz + dz) as usize, DIRT);
+                        }
+                    }
+                }
+                continue;
+            }
 
             // canopy: two 5x5 layers, two 3x3 layers (oak/birch);
             // spruce: stacked narrowing rings
@@ -901,6 +1139,11 @@ impl TerrainGen {
                 Biome::Taiga => 4,
                 Biome::Swamp => 6,
                 Biome::Snowy => 2,
+                // 1.7.2: flower forest = "very densely packed with the
+                // various new flowers"; sunflower plains = plains flora +
+                // the sunflower crop itself
+                Biome::FlowerForest => 40,
+                Biome::SunflowerPlains => 18,
                 _ => 0,
             }
         };
@@ -915,13 +1158,61 @@ impl TerrainGen {
             if chunk.get(lx as usize, (h + 1) as usize, lz as usize) != AIR {
                 continue;
             }
+            let b_here = Biome::from_u8(chunk.biome[col_idx]);
             let r = rng.next_f32();
-            let id = if r < 0.72 {
-                TALL_GRASS
-            } else if r < 0.86 {
-                FLOWER_RED
-            } else {
-                FLOWER_YELLOW
+            // per-biome flora mixes (1.7.2 wiki lists):
+            // * flower forest: peonies, orange/white tulips, oxeye daisies,
+            //   rose bush, allium + dandelions — excluding sunflowers
+            // * sunflower plains: sunflowers over plain flora
+            // * everyone else: tall grass + poppy/dandelion as before
+            let (id, tall_top) = match b_here {
+                Biome::FlowerForest => {
+                    if r < 0.50 {
+                        // the small-flower mix (weighted by the wiki's list)
+                        let s = rng.next_range(8) as u8;
+                        let small = match s {
+                            0 => ALLIUM,
+                            1 => OXEYE_DAISY,
+                            2 => ORANGE_TULIP,
+                            3 => WHITE_TULIP,
+                            4 => RED_TULIP,
+                            5 => PINK_TULIP,
+                            6 => AZURE_BLUET,
+                            _ => BLUE_ORCHID,
+                        };
+                        (small, 0u8)
+                    } else if r < 0.62 {
+                        (PEONY, PEONY_TOP)
+                    } else if r < 0.74 {
+                        (ROSE_BUSH, ROSE_BUSH_TOP)
+                    } else if r < 0.84 {
+                        (LILAC, LILAC_TOP)
+                    } else if r < 0.92 {
+                        (FLOWER_RED, 0u8)
+                    } else {
+                        (FLOWER_YELLOW, 0u8)
+                    }
+                }
+                Biome::SunflowerPlains => {
+                    if r < 0.45 {
+                        (SUNFLOWER, SUNFLOWER_TOP)
+                    } else if r < 0.85 {
+                        (TALL_GRASS, 0u8)
+                    } else if r < 0.93 {
+                        (FLOWER_RED, 0u8)
+                    } else {
+                        (OXEYE_DAISY, 0u8)
+                    }
+                }
+                _ => {
+                    if r < 0.72 {
+                        (TALL_GRASS, 0u8)
+                    } else if r < 0.86 {
+                        (FLOWER_RED, 0u8)
+                    } else {
+                        (FLOWER_YELLOW, 0u8)
+                    }
+                }
             };
             set_dec(
                 &mut chunk,
@@ -932,6 +1223,64 @@ impl TerrainGen {
                 id,
                 false,
             );
+            // two-block flowers: the upper half rides one block above
+            if tall_top != 0 {
+                set_dec(
+                    &mut chunk,
+                    &mut outbound,
+                    ox + lx,
+                    h + 2,
+                    oz + lz,
+                    tall_top,
+                    false,
+                );
+            }
+        }
+
+        // 1.7.2: ice plains spikes — "tall spires made of packed ice"
+        // (wiki); 1-2 spires per chunk, 5-15 tall, plus-shaped bases
+        {
+            let b = Biome::from_u8(chunk.biome[8 * 16 + 8]);
+            if b == Biome::IceSpikes {
+                let spires = 1 + rng.next_range(2) as i32;
+                for _ in 0..spires {
+                    let lx = 2 + rng.next_range(12) as i32;
+                    let lz = 2 + rng.next_range(12) as i32;
+                    let col_idx = lz as usize * 16 + lx as usize;
+                    let h = chunk.height[col_idx] as i32;
+                    let spire_h = 5 + rng.next_range(11) as i32; // 5..15
+                    let base_r = if rng.next_f32() < 0.5 { 1i32 } else { 2i32 };
+                    for dy in 0..spire_h {
+                        let y = h + 1 + dy;
+                        // taper: wide plus-base for the lower quarter,
+                        // single column above, 2x2 collar at mid
+                        let r = if dy < spire_h / 4 {
+                            base_r
+                        } else if dy < spire_h / 2 {
+                            1
+                        } else {
+                            0
+                        };
+                        for dx in -r..=r {
+                            for dz in -r..=r {
+                                // plus shape (no corners) at r=2, full at r<=1
+                                if r == 2 && dx.abs() == 2 && dz.abs() == 2 {
+                                    continue;
+                                }
+                                set_dec(
+                                    &mut chunk,
+                                    &mut outbound,
+                                    ox + lx + dx,
+                                    y,
+                                    oz + lz + dz,
+                                    PACKED_ICE,
+                                    false,
+                                );
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // mushrooms in forests (shaded floor)
@@ -1467,9 +1816,10 @@ impl TerrainGen {
         }
 
         // decorations: soul sand floors + glowstone ceilings (deterministic).
-        // NOTE: chunk.get returns raw STATE ids — nether blocks store their
-        // dedicated states (118..120), so comparisons fold via state_block.
-        let fold = |s: u8| state_block(s as u16);
+        // 1.7.2 refactor: Chunk::get now FOLDS states to block ids itself
+        // (the V2 window made the old `as u8` truncation unsafe), so the
+        // per-site state_block fold here is gone — get already returns the
+        // owning block id.
         for _ in 0..14 {
             let lx = rng.next_range(16) as i32;
             let lz = rng.next_range(16) as i32;
@@ -1484,7 +1834,7 @@ impl TerrainGen {
                 } else {
                     BEDROCK
                 };
-                if here_air && fold(below) == NETHERRACK {
+                if here_air && below == NETHERRACK {
                     // vanilla-ish: soul sand valley patches — replace the top
                     // 1..2 floor blocks
                     let depth = 1 + rng.next_range(2) as i32;
@@ -1507,7 +1857,7 @@ impl TerrainGen {
                 } else {
                     BEDROCK
                 };
-                if here == AIR && fold(above) == NETHERRACK {
+                if here == AIR && above == NETHERRACK {
                     chunk.set(lx as usize, (y + 1) as usize, lz as usize, GLOWSTONE);
                     // a small cluster around it
                     let extra = rng.next_range(3);
@@ -1518,7 +1868,7 @@ impl TerrainGen {
                         let nz = (lz + dz).clamp(0, 15) as usize;
                         let there = chunk.get(nx, (y + 1) as usize, nz);
                         let below_there = chunk.get(nx, y as usize, nz);
-                        if fold(there) == NETHERRACK && below_there == AIR {
+                        if there == NETHERRACK && below_there == AIR {
                             chunk.set(nx, (y + 1) as usize, nz, GLOWSTONE);
                         }
                     }
@@ -2520,32 +2870,32 @@ mod village_tests {
         let lx = (wx - cx * 16) as usize;
         let lz = (wz - cz * 16) as usize;
         let ground = gen.column(wx, wz).height as usize;
-        // raw states are folded to owning blocks (fences now store their
-        // model state 73, furnaces 116 — the P7-structures collision fix)
-        let fold = |s: u16| vc_blocks::blocks::state_block(s);
+        // 1.7.2 refactor: Chunk::get folds states to owning block ids now,
+        // so probes read the block id directly (the fence STATE check below
+        // uses get_state — the raw accessor).
         // well: water at center, cobble rim, fence post corner, plank roof
         assert_eq!(
-            fold(chunk.get(lx, ground, lz) as u16),
+            chunk.get(lx, ground, lz),
             WATER,
             "well center water"
         );
         assert_eq!(
-            fold(chunk.get(lx + 1, ground, lz) as u16),
+            chunk.get(lx + 1, ground, lz),
             COBBLE,
             "well rim cobble"
         );
         assert_eq!(
-            fold(chunk.get(lx - 1, ground + 3, lz - 1) as u16),
+            chunk.get(lx - 1, ground + 3, lz - 1),
             OAK_FENCE,
             "well post"
         );
         assert_eq!(
-            chunk.get(lx - 1, ground + 3, lz - 1) as u16,
+            chunk.get_state(lx - 1, ground + 3, lz - 1),
             73,
             "well post stores the no-connection fence STATE (not a log axis)"
         );
         assert_eq!(
-            fold(chunk.get(lx, ground + 4, lz) as u16),
+            chunk.get(lx, ground + 4, lz),
             PLANKS,
             "well roof"
         );
@@ -2637,9 +2987,11 @@ mod nether_tests {
     use crate::world::Dimension;
     use vc_blocks::blocks::*;
 
-    /// fold a raw stored state to its block id (nether blocks store 118..120)
+    /// 1.7.2 refactor: Chunk::get FOLDS states now — identity for the ids
+    /// it returns (kept as a named helper so the historical test prose
+    /// still reads correctly)
     fn fold(s: u8) -> u8 {
-        state_block(s as u16)
+        s
     }
 
     /// §28: the nether shell — bedrock floor + roof, nothing above 127
@@ -3217,7 +3569,7 @@ mod phase10_tests {
         for (dx, dz) in [(-1, -1), (1, -1), (-1, 1), (1, 1)] {
             let x = ((wx + dx) - cx * 16) as usize;
             let z = ((wz + dz) - cz * 16) as usize;
-            if state_block(c1.get(x, floor as usize, z) as u16) == CHEST {
+            if c1.get(x, floor as usize, z) == CHEST {
                 chests += 1;
             }
         }
@@ -3283,7 +3635,7 @@ mod phase10_tests {
                 let lx = x - cx * 16;
                 let lz = z - cz * 16;
                 if (0..16).contains(&lx) && (0..16).contains(&lz) {
-                    return state_block(c.get(lx as usize, y, lz as usize) as u16);
+                    return c.get(lx as usize, y, lz as usize);
                 }
             }
             panic!("probe ({x},{y},{z}) outside the generated neighborhood");
@@ -3364,5 +3716,203 @@ mod phase10_tests {
             })
             .sum::<usize>();
         assert_eq!(same, 0);
+    }
+}
+
+/// 1.7.2 bracket — the Update that Changed the World world-gen tests.
+/// Every claim is the live-verified changelog text
+/// (minecraft.wiki/w/Java_Edition_1.7.2, 2026-09-06 round).
+#[cfg(test)]
+mod v172_tests {
+    use super::*;
+    use vc_blocks::blocks::*;
+
+    fn gen() -> TerrainGen {
+        TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Overworld)
+    }
+
+    /// find a chunk whose center biome is `b` within ±64 chunks
+    fn find_biome(g: &TerrainGen, b: Biome) -> (i32, i32) {
+        for cx in -64..64 {
+            for cz in -64..64 {
+                let col = g.column(cx * 16 + 8, cz * 16 + 8);
+                if col.biome == b {
+                    return (cx, cz);
+                }
+            }
+        }
+        panic!("{} not found in the ±64-chunk window", b.name());
+    }
+
+    #[test]
+    fn v172_biomes_present_and_roundtrip() {
+        let g = gen();
+        for b in [
+            Biome::FlowerForest,
+            Biome::SunflowerPlains,
+            Biome::IceSpikes,
+            Biome::DarkForest,
+        ] {
+            let (cx, cz) = find_biome(&g, b);
+            assert_eq!(Biome::from_u8(b as u8), b);
+            let _ = (cx, cz);
+        }
+    }
+
+    #[test]
+    fn badlands_floor_is_red_sand_over_banded_terracotta() {
+        // wiki: "floor similar to a desert, but made of red sand" +
+        // "multiple colored hardened clay layered... seven colors"
+        let g = gen();
+        let (cx, cz) = find_biome(&g, Biome::Badlands);
+        let (chunk, _) = g.generate_chunk(cx, cz, Vec::new());
+        let col = g.column(cx * 16 + 8, cz * 16 + 8);
+        let h = col.height as usize;
+        // center column: top is red sand
+        assert_eq!(chunk.get(8, h, 8), RED_SAND, "badlands surface");
+        // the banding window below contains at least 3 distinct band
+        // colors (the sedimentary look)
+        let mut distinct = std::collections::HashSet::new();
+        for y in (h - 14)..h {
+            let b = chunk.get(8, y, 8);
+            distinct.insert(b);
+        }
+        assert!(
+            distinct.len() >= 3,
+            "banded terracotta layers (got {} colors)",
+            distinct.len()
+        );
+        // every banded block is terracotta family
+        for &b in distinct.iter() {
+            let terracotta = b == TERRACOTTA
+                || (STAINED_TERRACOTTA_WHITE..=STAINED_TERRACOTTA_BLACK).contains(&b);
+            assert!(terracotta, "band block {b} is terracotta family");
+        }
+    }
+
+    #[test]
+    fn ice_spikes_generate_packed_ice_spires() {
+        // wiki: "tall spires made of packed ice"
+        let g = gen();
+        let (cx, cz) = find_biome(&g, Biome::IceSpikes);
+        let (chunk, _) = g.generate_chunk(cx, cz, Vec::new());
+        let mut packed_ice = 0;
+        for i in 0..CHUNK_LEN {
+            if chunk.get_idx(i) == PACKED_ICE {
+                packed_ice += 1;
+            }
+        }
+        assert!(packed_ice >= 8, "packed-ice spire mass (got {packed_ice})");
+    }
+
+    #[test]
+    fn savanna_grows_acacia_and_dark_forest_grows_dark_oak() {
+        let g = gen();
+        // savanna: acacia logs + leaves ("curved trees made of acacia
+        // logs"). Savanna tree density is sparse (0..1/chunk, vanilla-like),
+        // so scan several savanna chunks and accumulate.
+        let mut savanna_chunks = 0;
+        let (mut logs, mut leaves) = (0usize, 0usize);
+        'scan: for cx in -64..64 {
+            for cz in -64..64 {
+                if g.column(cx * 16 + 8, cz * 16 + 8).biome != Biome::Savanna {
+                    continue;
+                }
+                let (chunk, _) = g.generate_chunk(cx, cz, Vec::new());
+                for i in 0..CHUNK_LEN {
+                    match chunk.get_idx(i) {
+                        ACACIA_LOG => logs += 1,
+                        ACACIA_LEAVES => leaves += 1,
+                        _ => {}
+                    }
+                }
+                savanna_chunks += 1;
+                if savanna_chunks >= 6 {
+                    break 'scan;
+                }
+            }
+        }
+        assert!(savanna_chunks >= 3, "found savanna chunks to scan");
+        assert!(logs > 0, "acacia trunks exist");
+        assert!(leaves > 0, "acacia canopy exists");
+
+        // dark forest: "very thick and short trees... closely packed" —
+        // 2×2 trunks mean ≥4 logs per tree, dense canopy
+        let (cx, cz) = find_biome(&g, Biome::DarkForest);
+        let (chunk, _) = g.generate_chunk(cx, cz, Vec::new());
+        let (mut logs, mut leaves) = (0usize, 0usize);
+        for i in 0..CHUNK_LEN {
+            match chunk.get_idx(i) {
+                DARK_OAK_LOG => logs += 1,
+                DARK_OAK_LEAVES => leaves += 1,
+                _ => {}
+            }
+        }
+        // 2×2 trunk of height ≥5 = ≥20 logs; dense canopy ≥60
+        assert!(logs >= 20, "2×2 dark-oak trunks (got {logs} logs)");
+        assert!(leaves >= 60, "dense dark-oak canopy (got {leaves})");
+    }
+
+    #[test]
+    fn flower_forest_and_sunflower_plains_flora() {
+        let g = gen();
+        // flower forest: "very densely packed with the various new
+        // flowers... excluding sunflowers"
+        let (cx, cz) = find_biome(&g, Biome::FlowerForest);
+        let (chunk, _) = g.generate_chunk(cx, cz, Vec::new());
+        let mut flowers = 0;
+        let mut sunflowers = 0;
+        for i in 0..CHUNK_LEN {
+            match chunk.get_idx(i) {
+                ALLIUM | AZURE_BLUET | BLUE_ORCHID | OXEYE_DAISY | ORANGE_TULIP | RED_TULIP
+                | WHITE_TULIP | PINK_TULIP | PEONY | PEONY_TOP | ROSE_BUSH | ROSE_BUSH_TOP
+                | LILAC | LILAC_TOP => flowers += 1,
+                SUNFLOWER | SUNFLOWER_TOP => sunflowers += 1,
+                _ => {}
+            }
+        }
+        assert!(flowers >= 8, "dense new-flower flora (got {flowers})");
+        assert_eq!(sunflowers, 0, "sunflowers excluded from flower forest");
+
+        // sunflower plains: sunflowers exist, with the 2-block top half
+        let (cx, cz) = find_biome(&g, Biome::SunflowerPlains);
+        let (chunk, _) = g.generate_chunk(cx, cz, Vec::new());
+        let (mut lower, mut upper) = (0usize, 0usize);
+        for i in 0..CHUNK_LEN {
+            match chunk.get_idx(i) {
+                SUNFLOWER => lower += 1,
+                SUNFLOWER_TOP => upper += 1,
+                _ => {}
+            }
+        }
+        assert!(lower > 0, "sunflowers present");
+        assert_eq!(
+            lower, upper,
+            "every sunflower carries its upper half"
+        );
+    }
+
+    #[test]
+    fn taiga_carries_mega_taiga_podzol_patches() {
+        // wiki (§Mega taiga): "a dirt block variant known as podzol"
+        let g = gen();
+        // taiga is common — scan a few chunks for any podzol
+        let mut found = false;
+        'outer: for cx in -60..60 {
+            for cz in -60..60 {
+                let col = g.column(cx * 16 + 8, cz * 16 + 8);
+                if col.biome != Biome::Taiga {
+                    continue;
+                }
+                let (chunk, _) = g.generate_chunk(cx, cz, Vec::new());
+                for i in 0..CHUNK_LEN {
+                    if chunk.get_idx(i) == PODZOL {
+                        found = true;
+                        break 'outer;
+                    }
+                }
+            }
+        }
+        assert!(found, "podzol patches exist in taiga");
     }
 }

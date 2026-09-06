@@ -72,6 +72,29 @@ pub struct SoundEvent {
     pub pitch: f32,
 }
 
+/// 1.7.2 bracket: status-effect state carried by the player. Durations are
+/// remaining game ticks (20 Hz); the poison timer is the inter-damage
+/// countdown. Numbers live-verified (minecraft.wiki/w/Poison, /w/Pufferfish,
+/// 2026-09-06) — see `Player::tick_effects` for the cadence derivation.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct StatusEffects {
+    /// remaining Poison ticks (pufferfish: Poison IV, 1200 = 1:00)
+    pub poison_ticks: i32,
+    /// countdown to the next poison damage application
+    poison_timer: i32,
+    /// remaining Slowness ticks (1.10 stray arrows: 600 = 0:30)
+    pub slowness_ticks: i32,
+    /// remaining Hunger ticks (1.10 husk hits: 7×floor(regional difficulty) s)
+    pub hunger_ticks: i32,
+}
+
+/// observable poison cadence: the 10-tick hurt-immunity floor (the raw
+/// level-IV cadence is 3 ticks per HP, but damage below the immunity
+/// window is skipped — the wiki's own effective-rate row)
+pub const POISON_INTERVAL_TICKS: i32 = 10;
+/// poison cannot kill — health floors at 1 HP (wiki /w/Poison)
+pub const POISON_FLOOR_HP: f32 = 1.0;
+
 pub struct Player {
     pub pos: Vec3, // feet center
     pub vel: Vec3,
@@ -111,6 +134,12 @@ pub struct Player {
     /// air supply 0..300 (over-depletes to −20, then resets on damage).
     /// 300 = full (10 bubbles × 30).
     pub air: f32,
+    /// 1.7.2 bracket: player status effects. Poison is the pufferfish
+    /// effect (Poison IV 1:00 — cadence + cannot-kill floor live-verified
+    /// on minecraft.wiki/w/Poison). Slowness arrives with the 1.10 stray
+    /// (0:30 arrows) and Hunger with the 1.10 husk — all fields ride the
+    /// same struct so later brackets extend without re-plumbing.
+    pub effects: StatusEffects,
     /// fixed 20 Hz substep accumulator (vanilla per-tick physics)
     tick_accum: f32,
     air_accum: f32,
@@ -147,6 +176,7 @@ impl Player {
             was_in_water: false,
             fall_dist: 0.0,
             pending_fall_dmg: 0.0,
+            effects: StatusEffects::default(),
             pending_drown_dmg: 0.0,
             air: AIR_MAX,
             tick_accum: 0.0,
@@ -182,6 +212,53 @@ impl Player {
     pub fn reset_air(&mut self) {
         self.air = AIR_MAX;
         self.pending_drown_dmg = 0.0;
+    }
+
+    /// Reset status effects (respawn / mode change / milk-when-it-exists).
+    pub fn reset_effects(&mut self) {
+        self.effects = StatusEffects::default();
+    }
+
+    /// 1.7.2 bracket: one status-effect GAME tick (called from the fixed
+    /// 20 Hz sim step, alongside the air/drown logic). Returns the poison
+    /// damage dealt this tick (0 if none) so the game layer can play the
+    /// hurt sound exactly once per application.
+    ///
+    /// Poison cadence VERIFIED (minecraft.wiki/w/Poison, live 2026-09-06):
+    /// level IV damages 1 HP per 3 ticks raw, but the 10-tick hurt
+    /// immunity makes the OBSERVABLE rate 1 HP per 10 ticks (1 HP/s) —
+    /// we tick at the observable rate. Poison can never kill: it floors
+    /// at 1 HP ("it cannot kill. It can, however, reduce the player's
+    /// health all the way to 1").
+    pub fn tick_effects(&mut self) -> f32 {
+        let mut dealt = 0.0;
+        if self.effects.poison_ticks > 0 {
+            self.effects.poison_ticks -= 1;
+            self.effects.poison_timer -= 1;
+            if self.effects.poison_timer <= 0 {
+                self.effects.poison_timer = POISON_INTERVAL_TICKS;
+                // cannot-kill floor at 1 HP
+                if self.health > POISON_FLOOR_HP {
+                    let cap = self.health - POISON_FLOOR_HP;
+                    dealt = self.damage(1.0_f32.min(cap));
+                }
+            }
+        } else {
+            self.effects.poison_timer = 0;
+        }
+        if self.effects.slowness_ticks > 0 {
+            self.effects.slowness_ticks -= 1;
+        }
+        if self.effects.hunger_ticks > 0 {
+            self.effects.hunger_ticks -= 1;
+        }
+        dealt
+    }
+
+    /// pufferfish poisoning: Poison IV for 1:00 (wiki /w/Pufferfish)
+    pub fn apply_pufferfish_poison(&mut self) {
+        self.effects.poison_ticks = 20 * 60;
+        self.effects.poison_timer = POISON_INTERVAL_TICKS;
     }
 
     /// the selected hotbar stack
@@ -1067,5 +1144,59 @@ mod tests {
             let _ = p3.update(1.0 / 60.0, 0.0, &w2, &mut input, 1.0, true);
         }
         assert_eq!(p3.fall_dist, 0.0, "flight resets fall distance");
+    }
+}
+
+#[cfg(test)]
+mod v172_tests {
+    use super::*;
+
+    #[test]
+    fn pufferfish_poison_cadence_and_floor() {
+        // VERIFIED (minecraft.wiki/w/Poison, live 2026-09-06): the
+        // observable rate for Poison IV is the 10-tick hurt-immunity
+        // floor (1 HP/s), and poison can never kill (floors at 1 HP).
+        let mut p = Player::new(glam::Vec3::new(0.0, 80.0, 0.0));
+        p.health = 20.0;
+        p.apply_pufferfish_poison();
+        assert_eq!(p.effects.poison_ticks, 1200); // 1:00
+
+        // 1200 ticks at one damage per 10 ticks = 120 HP of raw poison —
+        // far more than 19 available above the floor
+        let mut dealt_total = 0.0;
+        for _ in 0..1200 {
+            dealt_total += p.tick_effects();
+        }
+        assert!((dealt_total - 19.0).abs() < 1e-6, "total {dealt_total}");
+        assert!((p.health - 1.0).abs() < 1e-6, "floors at 1 HP, never kills");
+        assert_eq!(p.effects.poison_ticks, 0, "expired");
+    }
+
+    #[test]
+    fn poison_stops_mid_tick_at_floor() {
+        // a short exposure still respects the cadence: 25 ticks of poison
+        // = 2 applications (at ticks 10 and 20)
+        let mut p = Player::new(glam::Vec3::new(0.0, 80.0, 0.0));
+        p.health = 20.0;
+        p.apply_pufferfish_poison();
+        p.effects.poison_ticks = 25;
+        let mut dealt = 0.0;
+        for _ in 0..25 {
+            dealt += p.tick_effects();
+        }
+        assert_eq!(dealt, 2.0);
+        assert!((p.health - 18.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn creative_immune_path_is_game_layered() {
+        // the effect TICKS damage even in creative at this layer; the game
+        // layer gates on invulnerability (same pattern as drowning) — the
+        // effect state itself is what we verify here
+        let mut p = Player::new(glam::Vec3::new(0.0, 80.0, 0.0));
+        p.apply_pufferfish_poison();
+        p.effects.hunger_ticks = 300; // the 0:15 hunger half
+        assert_eq!(p.effects.hunger_ticks, 300);
+        assert!(p.tick_effects() == 0.0, "first tick is pre-interval");
     }
 }

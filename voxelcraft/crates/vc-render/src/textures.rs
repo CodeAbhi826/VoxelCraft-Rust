@@ -2462,6 +2462,510 @@ fn dead_bush_art(a: &mut [u8], t: u16) {
 
 // ------------------------------------------------------------------ entry --
 
+// ---------------------------------------------------------------------------
+// 1.7.2 bracket painters ("The Update that Changed the World"). All clean-
+// room pixel art; palettes approximate the vanilla 16 dye hues.
+// ---------------------------------------------------------------------------
+
+/// stained glass: vanilla-like glass frame + tinted translucent fill.
+/// Vanilla stained glass keeps the color visible through stacks; ours is
+/// a flat tint at alpha 150 with the pale frame + streak highlights.
+fn stained_glass_art(a: &mut [u8], t: u16, rgb: (i32, i32, i32)) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, rgb.0, rgb.1, rgb.2, 150);
+        }
+    }
+    for i in 0..16 {
+        let f = ((rgb.0 + 40) as i32).min(255);
+        let g = ((rgb.1 + 40) as i32).min(255);
+        let b = ((rgb.2 + 40) as i32).min(255);
+        put(a, t, i, 0, f, g, b, 220);
+        put(a, t, i, 15, f, g, b, 220);
+        put(a, t, 0, i, f, g, b, 220);
+        put(a, t, 15, i, f, g, b, 220);
+    }
+    // diagonal light streak
+    for i in 0..4 {
+        put(a, t, 11 - i, 2 + i, 248, 250, 250, 235);
+    }
+}
+
+/// stained terracotta (1.7 "stained clay"): grainy clay like the base
+/// terracotta painter but in the dye hue
+fn stained_terracotta_art(a: &mut [u8], t: u16, rgb: (i32, i32, i32), rng: &mut Rng) {
+    noise_fill(a, t, [rgb.0, rgb.1, rgb.2], 7, rng);
+    // sparse darker specks (clay grain)
+    for _ in 0..14 {
+        let x = rng.next_range(16) as i32;
+        let y = rng.next_range(16) as i32;
+        put(
+            a,
+            t,
+            x,
+            y,
+            jit(rgb.0 - 18, 4, rng),
+            jit(rgb.1 - 18, 4, rng),
+            jit(rgb.2 - 18, 4, rng),
+            255,
+        );
+    }
+}
+
+/// red sand: orange-red grainy sand (mesa floor)
+fn red_sand_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [190, 103, 45], 8, rng);
+    for _ in 0..10 {
+        let x = rng.next_range(16) as i32;
+        let y = rng.next_range(16) as i32;
+        put(a, t, x, y, jit(160, 8, rng), jit(84, 8, rng), jit(36, 8, rng), 255);
+    }
+}
+
+/// packed ice: OPACITY is the 1.7.2 signature difference vs ice — solid
+/// pale blue with faint fracture streaks
+fn packed_ice_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [145, 183, 215], 7, rng);
+    for _ in 0..5 {
+        let x = rng.next_range(13) as i32;
+        let y = rng.next_range(13) as i32;
+        let l = 2 + rng.next_range(3) as i32;
+        for i in 0..l {
+            put(a, t, x + i, y + i, 175, 205, 230, 255);
+            put(a, t, x + i + 1, y + i, 120, 160, 198, 255);
+        }
+    }
+}
+
+/// podzol top: orange-brown needle carpet (mega taiga floor)
+fn podzol_top_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [90, 62, 30], 9, rng);
+    for _ in 0..26 {
+        let x = rng.next_range(16) as i32;
+        let y = rng.next_range(16) as i32;
+        put(a, t, x, y, jit(160, 14, rng), jit(106, 12, rng), jit(38, 10, rng), 255);
+    }
+}
+
+/// podzol side: dirt body + orange needle band at the top edge
+fn podzol_side_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [134, 96, 67], 7, rng);
+    for x in 0..16 {
+        put(a, t, x, 0, jit(160, 10, rng), jit(106, 10, rng), jit(38, 8, rng), 255);
+        put(a, t, x, 1, jit(140, 10, rng), jit(92, 10, rng), jit(34, 8, rng), 255);
+        if rng.next_f32() < 0.5 {
+            put(a, t, x, 2, jit(150, 12, rng), jit(99, 10, rng), jit(37, 8, rng), 255);
+        }
+    }
+}
+
+/// acacia log side: pale grey bark with orange ridges ("silver outside,
+/// orange inside" per the 1.7.2 changelog)
+fn acacia_log_side_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [109, 103, 96], 6, rng);
+    for _ in 0..7 {
+        let x = rng.next_range(16) as i32;
+        let y0 = rng.next_range(10) as i32;
+        let l = 3 + rng.next_range(5) as i32;
+        for dy in 0..l {
+            put(a, t, x, y0 + dy, jit(172, 10, rng), jit(105, 12, rng), jit(45, 8, rng), 255);
+        }
+    }
+}
+
+/// acacia log top: rings — grey rim, orange heartwood
+fn acacia_log_top_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [109, 103, 96], 5, rng);
+    for r in 0..7 {
+        for i in 0..64 {
+            let ang = i as f32 * 0.0982;
+            let x = (8.0 + (ang.cos() * r as f32)) as i32;
+            let y = (8.0 + (ang.sin() * r as f32)) as i32;
+            if r < 3 {
+                put(a, t, x, y, jit(176, 8, rng), jit(110, 10, rng), jit(48, 8, rng), 255);
+            } else {
+                put(a, t, x, y, jit(140, 8, rng), jit(132, 8, rng), jit(120, 8, rng), 255);
+            }
+        }
+    }
+}
+
+/// dark oak log side: near-black furrowed bark
+fn dark_oak_log_side_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [56, 43, 32], 6, rng);
+    for _ in 0..7 {
+        let x = rng.next_range(16) as i32;
+        let y0 = rng.next_range(12) as i32;
+        let l = 2 + rng.next_range(4) as i32;
+        for dy in 0..l {
+            put(a, t, x, y0 + dy, jit(43, 5, rng), jit(32, 4, rng), jit(22, 3, rng), 255);
+        }
+    }
+}
+
+/// generic ring-top painter with a tinted heartwood (dark oak reuse)
+fn log_top_tinted(a: &mut [u8], t: u16, heart: (i32, i32, i32), rng: &mut Rng) {
+    noise_fill(a, t, [56, 43, 32], 5, rng);
+    for r in 0..6 {
+        for i in 0..64 {
+            let ang = i as f32 * 0.0982;
+            let x = (8.0 + (ang.cos() * r as f32)) as i32;
+            let y = (8.0 + (ang.sin() * r as f32)) as i32;
+            if r < 3 {
+                put(a, t, x, y, jit(heart.0, 6, rng), jit(heart.1, 6, rng), jit(heart.2, 6, rng), 255);
+            }
+        }
+    }
+}
+
+/// generic small-flower stem helper
+fn flower_stem(a: &mut [u8], t: u16, top_y: i32) {
+    for y in top_y..16 {
+        put(a, t, 7, y, 62, 112, 38, 255);
+        put(a, t, 8, y, 74, 130, 46, 255);
+    }
+    // two leaves
+    put(a, t, 5, 13, 62, 112, 38, 255);
+    put(a, t, 6, 12, 74, 130, 46, 255);
+    put(a, t, 10, 12, 62, 112, 38, 255);
+    put(a, t, 9, 11, 74, 130, 46, 255);
+}
+
+/// allium: pink puffball cluster
+fn allium_art(a: &mut [u8], t: u16) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    flower_stem(a, t, 7);
+    let pts = [
+        (6, 3), (7, 2), (8, 2), (9, 3), (5, 4), (10, 4), (5, 5), (10, 5),
+        (6, 6), (9, 6), (7, 5), (8, 5), (6, 4), (9, 4), (7, 3), (8, 3),
+        (7, 6), (8, 6), (5, 3), (10, 3),
+    ];
+    for (x, y) in pts {
+        put(a, t, x, y, 214, 126, 199, 255);
+    }
+    for (x, y) in [(7, 4), (8, 4), (7, 3), (8, 3)] {
+        put(a, t, x, y, 236, 178, 226, 255);
+    }
+}
+
+/// azure bluet: white 4-petal head, yellow center
+fn azure_bluet_art(a: &mut [u8], t: u16) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    flower_stem(a, t, 8);
+    for (x, y) in [(6, 5), (9, 5), (7, 4), (8, 6), (6, 6), (9, 4), (7, 7), (8, 3)] {
+        put(a, t, x, y, 238, 240, 240, 255);
+    }
+    put(a, t, 7, 5, 238, 240, 240, 255);
+    put(a, t, 8, 5, 238, 240, 240, 255);
+    put(a, t, 7, 5, 250, 216, 68, 255);
+    put(a, t, 8, 5, 250, 216, 68, 255);
+}
+
+/// blue orchid: orchid-blue petals with darker lip
+fn blue_orchid_art(a: &mut [u8], t: u16) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    flower_stem(a, t, 7);
+    for (x, y) in [(6, 3), (7, 2), (8, 2), (9, 3), (6, 4), (9, 4), (6, 5), (9, 5), (7, 6), (8, 6)] {
+        put(a, t, x, y, 60, 148, 214, 255);
+    }
+    for (x, y) in [(7, 3), (8, 3), (7, 4), (8, 4), (7, 5), (8, 5)] {
+        put(a, t, x, y, 92, 176, 232, 255);
+    }
+    put(a, t, 7, 4, 250, 216, 68, 255);
+    put(a, t, 8, 4, 250, 216, 68, 255);
+}
+
+/// oxeye daisy: white petals + sunny center + petal gaps
+fn oxeye_daisy_art(a: &mut [u8], t: u16) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    flower_stem(a, t, 7);
+    let petals = [
+        (7, 2), (8, 2), (6, 3), (9, 3), (5, 4), (10, 4), (5, 5), (10, 5),
+        (6, 6), (9, 6), (7, 7), (8, 7), (5, 3), (10, 6), (6, 2), (9, 7),
+    ];
+    for (x, y) in petals {
+        put(a, t, x, y, 244, 246, 244, 255);
+    }
+    for (x, y) in [(7, 3), (8, 3), (7, 4), (8, 4), (7, 5), (8, 5), (7, 6), (8, 6)] {
+        put(a, t, x, y, 224, 200, 76, 255);
+    }
+    for (x, y) in [(7, 4), (8, 4)] {
+        put(a, t, x, y, 250, 216, 68, 255);
+    }
+}
+
+/// tulip: cup-shaped head in a dye hue
+fn tulip_art(a: &mut [u8], t: u16, hue: (i32, i32, i32)) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    // stem
+    for y in 9..16 {
+        put(a, t, 7, y, 62, 112, 38, 255);
+        put(a, t, 8, y, 74, 130, 46, 255);
+    }
+    put(a, t, 6, 12, 62, 112, 38, 255);
+    // cup
+    for y in 2..9 {
+        for x in 5..11 {
+            let edge = x == 5 || x == 10;
+            put(
+                a,
+                t,
+                x,
+                y,
+                hue.0 - if edge { 24 } else { 0 },
+                hue.1 - if edge { 24 } else { 0 },
+                hue.2 - if edge { 24 } else { 0 },
+                255,
+            );
+        }
+    }
+    // cup rim + inner shadow
+    for x in 5..11 {
+        put(a, t, x, 2, (hue.0 + 18).min(255), (hue.1 + 18).min(255), (hue.2 + 18).min(255), 255);
+    }
+    put(a, t, 7, 6, hue.0 - 40, hue.1 - 40, hue.2 - 40, 255);
+    put(a, t, 8, 6, hue.0 - 40, hue.1 - 40, hue.2 - 40, 255);
+}
+
+/// sunflower lower half: tall stalk + leaves (head lives in the top tile)
+fn sunflower_lower_art(a: &mut [u8], t: u16) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    for y in 0..16 {
+        put(a, t, 7, y, 64, 118, 40, 255);
+        put(a, t, 8, y, 78, 138, 48, 255);
+    }
+    // broad leaves
+    for (x, y) in [(3, 6), (4, 6), (5, 5), (4, 7), (5, 7), (3, 7), (5, 6)] {
+        put(a, t, x, y, 58, 110, 36, 255);
+    }
+    for (x, y) in [(10, 9), (11, 9), (12, 8), (11, 10), (12, 10), (10, 10), (12, 9)] {
+        put(a, t, x, y, 58, 110, 36, 255);
+    }
+}
+
+/// sunflower top half: the head — golden rays + seed disc (faces east in
+/// vanilla; art is orientation-agnostic)
+fn sunflower_top_art(a: &mut [u8], t: u16) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    for y in 10..16 {
+        put(a, t, 7, y, 64, 118, 40, 255);
+        put(a, t, 8, y, 78, 138, 48, 255);
+    }
+    // rays
+    for (x, y) in [
+        (5, 2), (6, 1), (7, 1), (8, 1), (9, 2), (10, 3), (10, 4), (11, 5),
+        (11, 6), (11, 7), (10, 8), (9, 9), (8, 10), (7, 10), (6, 9), (5, 8),
+        (4, 7), (4, 6), (4, 5), (5, 4), (5, 3),
+    ] {
+        put(a, t, x, y, 246, 202, 44, 255);
+    }
+    // disc
+    for y in 4..9 {
+        for x in 6..11 {
+            put(a, t, x, y, 122, 84, 26, 255);
+        }
+    }
+    for y in 5..8 {
+        for x in 7..10 {
+            put(a, t, x, y, 88, 60, 20, 255);
+        }
+    }
+}
+
+/// generic 2-block flower lower half: stalk + leaf pair, stalk-colored
+fn double_flower_lower_art(a: &mut [u8], t: u16, stalk: (i32, i32, i32)) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    for y in 0..16 {
+        put(a, t, 7, y, stalk.0, stalk.1, stalk.2, 255);
+        put(a, t, 8, y, stalk.0, stalk.1, stalk.2, 255);
+    }
+    put(a, t, 5, 8, stalk.0 - 10, stalk.1 - 6, stalk.2 - 6, 255);
+    put(a, t, 6, 8, stalk.0 - 10, stalk.1 - 6, stalk.2 - 6, 255);
+    put(a, t, 10, 10, stalk.0 - 10, stalk.1 - 6, stalk.2 - 6, 255);
+    put(a, t, 9, 10, stalk.0 - 10, stalk.1 - 6, stalk.2 - 6, 255);
+}
+
+/// generic 2-block flower top half: bloom cluster + stalk base
+fn double_flower_top_art(a: &mut [u8], t: u16, stalk: (i32, i32, i32), bloom: (i32, i32, i32)) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    for y in 12..16 {
+        put(a, t, 7, y, stalk.0, stalk.1, stalk.2, 255);
+        put(a, t, 8, y, stalk.0, stalk.1, stalk.2, 255);
+    }
+    // bloom: rounded cluster of buds
+    for (x, y) in [
+        (5, 5), (6, 4), (7, 4), (8, 4), (9, 4), (10, 5), (5, 6), (10, 6),
+        (5, 7), (10, 7), (6, 8), (9, 8), (6, 5), (9, 5), (7, 5), (8, 5),
+        (6, 6), (7, 6), (8, 6), (9, 6), (6, 7), (7, 7), (8, 7), (9, 7),
+        (7, 8), (8, 8),
+    ] {
+        put(a, t, x, y, bloom.0, bloom.1, bloom.2, 255);
+    }
+    // lighter highlights
+    for (x, y) in [(7, 5), (8, 5), (7, 6), (8, 6), (7, 7), (6, 6)] {
+        put(
+            a,
+            t,
+            x,
+            y,
+            (bloom.0 + 30).min(255),
+            (bloom.1 + 30).min(255),
+            (bloom.2 + 30).min(255),
+            255,
+        );
+    }
+}
+
+/// raw fish / salmon icon: simple fish silhouette (belly + back colors);
+/// salmon gets a hooked jaw (true)
+fn fish_art(a: &mut [u8], t: u16, back: (i32, i32, i32), belly: (i32, i32, i32), salmon: bool) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    // body: rows 6..10, cols 3..12
+    for y in 6..11 {
+        for x in 3..13 {
+            let upper = y <= 8;
+            put(
+                a,
+                t,
+                x,
+                y,
+                if upper { back.0 } else { belly.0 },
+                if upper { back.1 } else { belly.1 },
+                if upper { back.2 } else { belly.2 },
+                255,
+            );
+        }
+    }
+    // tail
+    for i in 0..3 {
+        put(a, t, 13 - 0, 7 - i, back.0, back.1, back.2, 255);
+        put(a, t, 13, 9 + i, belly.0, belly.1, belly.2, 255);
+    }
+    for i in 0..2 {
+        put(a, t, 14 - i, 7, back.0, back.1, back.2, 255);
+        put(a, t, 14 - i, 9, belly.0, belly.1, belly.2, 255);
+    }
+    put(a, t, 13, 8, back.0, back.1, back.2, 255);
+    // eye
+    put(a, t, 4, 7, 20, 20, 24, 255);
+    put(a, t, 5, 7, 246, 246, 246, 255);
+    // salmon jaw hook
+    if salmon {
+        put(a, t, 3, 10, back.0, back.1, back.2, 255);
+        put(a, t, 2, 9, belly.0, belly.1, belly.2, 255);
+    }
+}
+
+/// clownfish: orange body with three white bands + black edging
+fn clownfish_art(a: &mut [u8], t: u16) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    for y in 6..11 {
+        for x in 2..13 {
+            put(a, t, x, y, 226, 112, 40, 255);
+        }
+    }
+    // white bands
+    for y in 6..11 {
+        for x in 4..6 {
+            put(a, t, x, y, 240, 240, 240, 255);
+        }
+        for x in 8..10 {
+            put(a, t, x, y, 240, 240, 240, 255);
+        }
+    }
+    // black outlines on band edges
+    for y in 6..11 {
+        put(a, t, 3, y, 40, 28, 20, 255);
+        put(a, t, 6, y, 40, 28, 20, 255);
+        put(a, t, 7, y, 40, 28, 20, 255);
+        put(a, t, 10, y, 40, 28, 20, 255);
+    }
+    // tail + eye
+    put(a, t, 13, 7, 226, 112, 40, 255);
+    put(a, t, 13, 9, 226, 112, 40, 255);
+    put(a, t, 14, 8, 226, 112, 40, 255);
+    put(a, t, 2, 7, 20, 20, 24, 255);
+}
+
+/// pufferfish: rounded puffed body, spikes out, worried eyes
+fn pufferfish_art(a: &mut [u8], t: u16) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    // round body cols 4..11, rows 4..11
+    for y in 4..12 {
+        for x in 4..12 {
+            let edge = x == 4 || x == 11 || y == 4 || y == 11;
+            let c = if edge { (196, 160, 36) } else { (226, 190, 62) };
+            put(a, t, x, y, c.0, c.1, c.2, 255);
+        }
+    }
+    // belly
+    for y in 9..12 {
+        for x in 5..11 {
+            put(a, t, x, y, 240, 226, 160, 255);
+        }
+    }
+    // spikes
+    for (x, y) in [(3, 5), (3, 10), (12, 5), (12, 10), (5, 3), (10, 3), (5, 12), (10, 12), (2, 7), (13, 7), (7, 2), (8, 2), (7, 13), (8, 13)] {
+        put(a, t, x, y, 160, 130, 30, 255);
+    }
+    // eyes
+    put(a, t, 5, 6, 30, 30, 34, 255);
+    put(a, t, 6, 6, 250, 250, 250, 255);
+    put(a, t, 10, 6, 30, 30, 34, 255);
+    put(a, t, 9, 6, 250, 250, 250, 255);
+    // frown
+    put(a, t, 7, 9, 120, 96, 22, 255);
+    put(a, t, 8, 9, 120, 96, 22, 255);
+}
+
 pub fn generate_atlas() -> Vec<u8> {
     let mut a = vec![0u8; ATLAS_SIZE * ATLAS_SIZE * 4];
     for t in 0..=TILE_MAX {
@@ -2595,6 +3099,67 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_SPAWNER => spawner_art(&mut a, t),
             // Phase 10: stronghold portal-room frame
             TILE_END_PORTAL_FRAME => end_portal_frame_art(&mut a, t),
+            // ---- 1.7.2 bracket (live-verified minecraft.wiki/w/Java_Edition_1.7.2) ----
+            TILE_STAINED_GLASS_WHITE => stained_glass_art(&mut a, t, (231, 237, 234)),
+            TILE_STAINED_GLASS_ORANGE => stained_glass_art(&mut a, t, (222, 125, 40)),
+            TILE_STAINED_GLASS_MAGENTA => stained_glass_art(&mut a, t, (186, 84, 186)),
+            TILE_STAINED_GLASS_LIGHT_BLUE => stained_glass_art(&mut a, t, (92, 143, 200)),
+            TILE_STAINED_GLASS_YELLOW => stained_glass_art(&mut a, t, (226, 193, 63)),
+            TILE_STAINED_GLASS_LIME => stained_glass_art(&mut a, t, (106, 184, 46)),
+            TILE_STAINED_GLASS_PINK => stained_glass_art(&mut a, t, (226, 152, 190)),
+            TILE_STAINED_GLASS_GRAY => stained_glass_art(&mut a, t, (63, 62, 65)),
+            TILE_STAINED_GLASS_LIGHT_GRAY => stained_glass_art(&mut a, t, (134, 148, 146)),
+            TILE_STAINED_GLASS_CYAN => stained_glass_art(&mut a, t, (27, 118, 133)),
+            TILE_STAINED_GLASS_PURPLE => stained_glass_art(&mut a, t, (122, 65, 170)),
+            TILE_STAINED_GLASS_BLUE => stained_glass_art(&mut a, t, (57, 63, 152)),
+            TILE_STAINED_GLASS_BROWN => stained_glass_art(&mut a, t, (100, 64, 41)),
+            TILE_STAINED_GLASS_GREEN => stained_glass_art(&mut a, t, (70, 98, 29)),
+            TILE_STAINED_GLASS_RED => stained_glass_art(&mut a, t, (160, 33, 33)),
+            TILE_STAINED_GLASS_BLACK => stained_glass_art(&mut a, t, (26, 25, 28)),
+            TILE_STAINED_TERRACOTTA_WHITE => stained_terracotta_art(&mut a, t, (213, 217, 213), &mut rng),
+            TILE_STAINED_TERRACOTTA_ORANGE => stained_terracotta_art(&mut a, t, (164, 94, 47), &mut rng),
+            TILE_STAINED_TERRACOTTA_MAGENTA => stained_terracotta_art(&mut a, t, (154, 71, 137), &mut rng),
+            TILE_STAINED_TERRACOTTA_LIGHT_BLUE => stained_terracotta_art(&mut a, t, (116, 137, 172), &mut rng),
+            TILE_STAINED_TERRACOTTA_YELLOW => stained_terracotta_art(&mut a, t, (187, 147, 58), &mut rng),
+            TILE_STAINED_TERRACOTTA_LIME => stained_terracotta_art(&mut a, t, (113, 119, 52), &mut rng),
+            TILE_STAINED_TERRACOTTA_PINK => stained_terracotta_art(&mut a, t, (163, 100, 91), &mut rng),
+            TILE_STAINED_TERRACOTTA_GRAY => stained_terracotta_art(&mut a, t, (71, 59, 59), &mut rng),
+            TILE_STAINED_TERRACOTTA_LIGHT_GRAY => stained_terracotta_art(&mut a, t, (131, 115, 106), &mut rng),
+            TILE_STAINED_TERRACOTTA_CYAN => stained_terracotta_art(&mut a, t, (76, 87, 89), &mut rng),
+            TILE_STAINED_TERRACOTTA_PURPLE => stained_terracotta_art(&mut a, t, (110, 69, 114), &mut rng),
+            TILE_STAINED_TERRACOTTA_BLUE => stained_terracotta_art(&mut a, t, (75, 74, 101), &mut rng),
+            TILE_STAINED_TERRACOTTA_BROWN => stained_terracotta_art(&mut a, t, (77, 52, 38), &mut rng),
+            TILE_STAINED_TERRACOTTA_GREEN => stained_terracotta_art(&mut a, t, (74, 84, 52), &mut rng),
+            TILE_STAINED_TERRACOTTA_RED => stained_terracotta_art(&mut a, t, (142, 40, 38), &mut rng),
+            TILE_STAINED_TERRACOTTA_BLACK => stained_terracotta_art(&mut a, t, (34, 27, 27), &mut rng),
+            TILE_RED_SAND => red_sand_art(&mut a, t, &mut rng),
+            TILE_PACKED_ICE => packed_ice_art(&mut a, t, &mut rng),
+            TILE_PODZOL_TOP => podzol_top_art(&mut a, t, &mut rng),
+            TILE_PODZOL_SIDE => podzol_side_art(&mut a, t, &mut rng),
+            TILE_ACACIA_LOG_SIDE => acacia_log_side_art(&mut a, t, &mut rng),
+            TILE_ACACIA_LOG_TOP => acacia_log_top_art(&mut a, t, &mut rng),
+            TILE_DARK_OAK_LOG_SIDE => dark_oak_log_side_art(&mut a, t, &mut rng),
+            TILE_DARK_OAK_LOG_TOP => log_top_tinted(&mut a, t, (78, 60, 42), &mut rng),
+            TILE_ALLIUM => allium_art(&mut a, t),
+            TILE_AZURE_BLUET => azure_bluet_art(&mut a, t),
+            TILE_BLUE_ORCHID => blue_orchid_art(&mut a, t),
+            TILE_OXEYE_DAISY => oxeye_daisy_art(&mut a, t),
+            TILE_ORANGE_TULIP => tulip_art(&mut a, t, (226, 122, 41)),
+            TILE_RED_TULIP => tulip_art(&mut a, t, (200, 44, 44)),
+            TILE_WHITE_TULIP => tulip_art(&mut a, t, (222, 228, 228)),
+            TILE_PINK_TULIP => tulip_art(&mut a, t, (233, 162, 197)),
+            TILE_SUNFLOWER_LOWER => sunflower_lower_art(&mut a, t),
+            TILE_SUNFLOWER_TOP => sunflower_top_art(&mut a, t),
+            TILE_LILAC_LOWER => double_flower_lower_art(&mut a, t, (150, 116, 178)),
+            TILE_LILAC_TOP => double_flower_top_art(&mut a, t, (150, 116, 178), (186, 156, 210)),
+            TILE_PEONY_LOWER => double_flower_lower_art(&mut a, t, (176, 100, 132)),
+            TILE_PEONY_TOP => double_flower_top_art(&mut a, t, (176, 100, 132), (232, 183, 201)),
+            TILE_ROSE_BUSH_LOWER => double_flower_lower_art(&mut a, t, (84, 106, 47)),
+            TILE_ROSE_BUSH_TOP => double_flower_top_art(&mut a, t, (84, 106, 47), (181, 48, 48)),
+            TILE_RAW_FISH => fish_art(&mut a, t, (168, 140, 106), (120, 98, 74), false),
+            TILE_RAW_SALMON => fish_art(&mut a, t, (222, 128, 114), (170, 88, 78), true),
+            TILE_CLOWNFISH => clownfish_art(&mut a, t),
+            TILE_PUFFERFISH => pufferfish_art(&mut a, t),
             _ => {}
         }
     }

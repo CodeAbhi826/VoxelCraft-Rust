@@ -604,7 +604,7 @@ that item 1's E2 fix had missed.
 
 ---
 
-## 2026-09-06 — MC 1.5–1.6 bracket (version-evolution Phase 3: Transport & Building) + full worklog↔evolution audit — commit <this round>
+## 2026-09-06 — MC 1.5–1.6 bracket (version-evolution Phase 3: Transport & Building) + full worklog↔evolution audit — commit a9934f6
 
 **Task:** third bracket of the 1.0 → 1.16.5 version-evolution ordering
 (`evolution-research.md` Part 3 Phase 3, the Redstone/Horse updates),

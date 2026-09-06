@@ -398,3 +398,134 @@ grass-path shovel interaction (no tool items), shield crafting recipe
 and axe-disable.
 
 **Commit:** this entry (bracket 1.9).
+
+---
+
+## 2026-09-06 — version bracket 1.10 ("Frostburn Update") — Phase 1.10
+
+**Live verification:** minecraft.wiki/w/Java_Edition_1.10 parsed
+(2026-09-06 round, saved as scripts/verify/page_110.txt) + fresh live
+rounds for /w/Magma_Block §Damage (api.php wikitext fetch) and the
+Polar_Bear/Stray/Husk rows. Full-changelog sweep below.
+
+**V5 registry window:** ids 191..=194, states 328..=331, STATE_COUNT 332,
+BLOCK_COUNT 195. GPU mesher LUT re-derived (WGSL offsets 332/527/722 +
+clamps 331/194).
+
+**1.10 content implemented (each item checked against the live page):**
+- Blocks: magma block (light 3 — wiki /w/Magma_Block; contact damage 1 HP
+  per second per the 1.10 changelog "Mobs and players take 1 HP damage
+  every second while touching it"; sneaking immune — "If the player is
+  sneaking ... they do not take damage"; Frost Walker / Fire Resistance
+  immunity documented out-of-scope, no boots/fire-effect registries yet;
+  side-contact does not damage — "Walking into the side of a magma block
+  doesn't cause damage"; death message "DISCOVERED FLOOR WAS LAVA" per
+  the changelog's "[Player] discovered floor was lava."), nether wart
+  block, red nether bricks, bone block.
+- MAGMA contact-damage wiring: per-frame feet-below probe + 1-s
+  accumulator → pending_magma_dmg drained by the game layer (creative
+  invulnerable). FOUND+FIXED during this bracket's audit: the in-progress
+  code had declared pending_magma_dmg/magma_accum but never SET them —
+  dead code, zero damage at runtime. Also noted: the modern /w/Magma_
+  Block page describes a per-tick/half-second cadence (damage-immunity
+  gated) — a later-bracket value; the 1.10 changelog's per-second rate is
+  the bracket-correct one, re-verify at the bracket where it changed.
+- MAGMA FLOWING ANIMATION (visual): the changelog's "Has a flowing magma
+  animation" — clean-room 4-frame shimmer registered as a BUILT-IN
+  AnimatedTile (pulses only r>140 crack pixels, frametime 8 ticks, frame
+  0 == the atlas tile for a seamless loop), independent of resource
+  packs; rides the §20 update_atlas_frame path (no geometry rebuild).
+- Worldgen: nether magma blobs ("4 blobs per chunk between Y=27 and
+  Y=36", embedded in netherrack only — never floating); fossils
+  ("generates 15–24 blocks underground in deserts, swampland and their M
+  and hills variants. Each chunk has a 1/64 chance", "composed of bone
+  blocks and some coal ore" — skull 3×3 with coal eye sockets + spine
+  chain).
+- Mobs: polar bear (30 HP, neutral-not-hostile, 4/6/9 HP melee by
+  difficulty → 6 base, icy-family spawner, drops "0–2 raw fish (75%
+  chance) or 0–2 salmon (25% chance)"), stray ("80% of skeletons spawned
+  above ground in ice plains, ice mountains and ice plains spikes biomes
+  are strays"; arrows apply Slowness 600 ticks = 0:30; "50% chance to
+  drop 1 tipped arrow of Slowness when killed by the player" — our
+  adaptation drops a plain arrow until a tipped-arrow registry exists),
+  husk ("80% of zombies spawned above ground in desert ... are husks";
+  melee applies Hunger for 7 × floor(regional difficulty) seconds —
+  regional-difficulty proxy is the difficulty tier, documented; "does not
+  burn in sunlight" — trivially satisfied, no zombie sunlight-burning
+  system exists at this bracket).
+- Icy-biome passive restriction (wiki §World generation: ice plains /
+  ice mountains / ice plains spikes "don't spawn any passive mobs other
+  than rabbits and the new polar bears"): the passive herd roll now
+  yields ONLY Rabbit + PolarBear in biomes 5/16. FOUND+FIXED during the
+  audit: the in-progress code still rolled cow/pig/sheep/chicken there
+  70% of the time. (The same section's 7%-vs-10% worldgen-pass rate is
+  N/A — we have no worldgen animal pass, documented.)
+- Auto-jump ("A new 'Auto-jump' toggle ... automatically makes the player
+  jump when running towards a one-block-tall obstacle. Enabled by
+  default; can be disabled in options" — from Pocket Edition): Settings
+  toggle default ON + AUTO-JUMP options button + player hop. FOUND+FIXED
+  during the audit: two bugs in the in-progress hop — (1) autojump_cd
+  was set but never decremented (one hop then locked), (2) the hspeed
+  gate read the velocity AFTER the blocked move zeroed it, so a pressed
+  player could never re-hop, and the hop missed the manual jump's
+  tick_accum phase reset (apex 0.85 instead of 1.25 — feet never cleared
+  the step). Fix: probe along the WISH direction gated on has_input +
+  tick_accum reset; pinned by test auto_jump_hops_one_block_step.
+
+**Verification:** 340/340 tests green (308 lib + 32 game; +9 over the
+1.9 bracket: v5 window + magma light pin, Frostburn mob data, magma
+damage 1 HP/s, magma sneak immunity, auto-jump hop, magma builtin
+animation, nether magma blobs, fossils, + the nether-mass test updated
+to admit magma).
+
+**Deferred (documented, with reasons):**
+- Structure blocks + structure voids (the bracket's headline feature):
+  a creative/technical save-load-structures system (GUI, 4 modes,
+  32-block limit, redstone activation) — no structure-system scope in
+  the engine; full phase of its own if ever taken.
+- All four 1.10 crafting recipes: magma block (4 magma cream — no magma
+  cream item; magma cubes don't exist yet), nether wart block (9 nether
+  wart — no nether wart crop block; brewing uses a documented red-
+  mushroom substitution), red nether bricks (2×2 checkerboard of nether
+  brick + nether wart — no nether brick BLOCK either), bone block (9
+  bone meal; reverse 1 → 9 — no bone meal item). Also the 1.10 recipe
+  FIX "End stone bricks now again gives four blocks instead of one" —
+  no END_STONE block exists (End dimension is the open 1.0 bracket), so
+  no recipe to fix yet.
+- Spawn eggs (polar bear/stray/husk) — creative-mode items, no spawn-egg
+  registry.
+- Stray-on-spider jockeys, husk chicken jockeys / baby husks — no mob
+  riding or baby-mob system.
+- Looting interactions on the new drops (chance "2×level+1/2×level+2") —
+  no Looting application to drops yet.
+- Nether spawn-weight changes (endermen "1/153" vs pigmen "100/153",
+  magma cubes "2/153 ... twice as often") — none of those Nether mobs
+  exist in the registry yet (1.16.5-era content); re-check at the
+  bracket that adds them.
+- Husk/stray/polar-bear sound events + cave ambience (cave15/16) +
+  splashes — synthesized bank uses generic hurt/step families; per-mob
+  event names are a data-registry concern deferred.
+- Magma behavioral details: mob pathing avoidance, the no-spawn-on-
+  magma rule (exceptions magma cubes/pigmen/squid — none exist yet),
+  water-removal-on-random-tick (N/A — magma only generates in the
+  Nether, no water there in scope), smoke particles under rain.
+- /teleport command, loot-table `limit` tag, FallFlying/ZombieType/
+  ParticleParam NBT tags, fallingdust particle, F3+G chunk borders —
+  no command system / datapack looting hooks / NBT schema for these /
+  particle type / debug-outline renderer respectively.
+- Changes-section items: dispenser-shield equipping, chorus-fruit/
+  ender-pearl rider teleportation, fishing-rod item pulling (no mob-
+  rider or item-entity fishing interaction), firework 3× recipe (no
+  fireworks), skeleton off-hand tipped arrows + flaming arrows at
+  regional difficulty ≥ 3, witch fire-resistance drinking, wolf
+  no-despawn (no despawn system — trivially satisfied, documented),
+  zombie fire-chance regional-difficulty rework (no burning zombies),
+  mesa mineshafts (dark oak, MST type) + village wood variants (taiga
+  spruce, savanna acacia, biome-boundary spread, blacksmith/well
+  cobblestone swaps), plains 5%-tree worldgen, huge-mushroom 1/12 double
+  height, hardened-clay rename ("Red Hardened Clay" — no stained clay
+  exists yet, 1.6-era content), rails full-block bounding box.
+- Visual: magma animation cadence/frame count is our adaptation (4
+  frames, frametime 8); vanilla ships an 8-frame strip.
+
+**Commit:** this entry (bracket 1.10).

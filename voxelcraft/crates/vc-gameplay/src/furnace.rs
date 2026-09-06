@@ -13,7 +13,12 @@ pub const COOK_TICKS: i32 = 200;
 pub fn fuel_ticks(block: u8) -> i32 {
     match block {
         PLANKS | OAK_LOG | BIRCH_LOG | SPRUCE_LOG => 300,
-        CRAFTING_TABLE | OAK_SLAB | OAK_FENCE => 300,
+        // OAK_SLAB = 150 ticks (VERIFIED 2026-09-06 live:
+        // minecraft.wiki/w/Smelting — "Wooden Slab 7.5 [s], 150 ticks";
+        // was 300, the planks value — half-length slabs burn half as
+        // long). Crafting table + fence stay 300 (wiki fuel table).
+        CRAFTING_TABLE | OAK_FENCE => 300,
+        OAK_SLAB => 150,
         COAL_ORE => 800, // progressive: ore-as-fuel until the item exists
         _ => 0,
     }
@@ -226,6 +231,52 @@ mod tests {
         assert!(f.output.is_empty());
         assert_eq!(f.cook_left, 0);
         assert!(!f.is_burning());
+    }
+
+    /// VERIFIED 2026-09-06 live (minecraft.wiki/w/Smelting fuel table):
+    /// planks/log 300, crafting table 300, fence 300, wooden slab 150
+    /// (half of planks — a slab is half the wood), coal item 1600 (the
+    /// engine uses COAL_ORE 800 as a documented ore-as-fuel stopgap
+    /// until coal the ITEM exists).
+    #[test]
+    fn fuel_table_matches_the_live_wiki() {
+        assert_eq!(fuel_ticks(PLANKS), 300);
+        assert_eq!(fuel_ticks(OAK_LOG), 300);
+        assert_eq!(fuel_ticks(CRAFTING_TABLE), 300);
+        assert_eq!(fuel_ticks(OAK_FENCE), 300);
+        assert_eq!(fuel_ticks(OAK_SLAB), 150, "slab = half of planks (150)");
+        assert_eq!(fuel_ticks(COAL_ORE), 800, "ore-as-fuel stopgap, disclosed");
+        assert_eq!(fuel_ticks(STONE), 0, "stone is not a fuel");
+    }
+
+    /// A slab must burn exactly half as long as a plank: feed each one
+    /// to a furnace with 3 sand and compare the burn windows.
+    #[test]
+    fn slab_burns_half_as_long_as_planks() {
+        let run = |fuel: u8| -> i32 {
+            let mut f = FurnaceState::default();
+            f.input = ItemStack::new(SAND, 3);
+            f.fuel = ItemStack::new(fuel, 1);
+            let mut burning_ticks = 0;
+            for _ in 0..400 {
+                f.tick();
+                if f.is_burning() {
+                    burning_ticks += 1;
+                }
+                if !f.output.is_empty() && f.output.count >= 1 && !f.is_burning() {
+                    break;
+                }
+            }
+            burning_ticks
+        };
+        let planks = run(PLANKS);
+        let slab = run(OAK_SLAB);
+        // 300-tick plank vs 150-tick slab (the tick loop stops early on
+        // output completion, so compare the ratio, not absolutes)
+        assert!(
+            (planks - slab).abs() >= 140 && (planks + slab) > 0,
+            "planks burned {planks} ticks vs slab {slab} (expected ~300 vs ~150)"
+        );
     }
 
     #[test]

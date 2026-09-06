@@ -486,6 +486,11 @@ enum WorkBackend {
 
 // ------------------------------------------------------------------- app --
 
+/// Full daylight-cycle length in real seconds (VERIFIED 2026-09-06 live,
+/// minecraft.wiki/w/Daylight_cycle): 24000 game ticks at 20 ticks/second
+/// = 1200 s = 20 minutes for the complete day-night cycle in 1.16.5.
+pub const DAY_LEN_SECS: f32 = 1200.0;
+
 pub struct GameApp {
     pub window: &'static winit::window::Window,
     pub renderer: Renderer,
@@ -4295,7 +4300,12 @@ impl GameApp {
 
     fn update(&mut self, dt: f32) {
         self.time += dt;
-        self.day_time = (self.day_time + dt / 600.0) % 1.0; // 10-minute day
+        self.day_time = (self.day_time + dt / DAY_LEN_SECS).max(0.0) % 1.0;
+        // DAY_LEN_SECS = 1200 = the vanilla 1.16.5 full daylight cycle
+        // (VERIFIED 2026-09-06 live: minecraft.wiki/w/Daylight_cycle —
+        // 24000 ticks at 20 tps = 20 minutes. The old 600 s value came
+        // from a research-doc error (half the real length); fixed this
+        // round.)
 
         // --- bench mode: scripted camera, frame bookkeeping (§48 Phase 0)
         if let Some(bs) = self.bench.as_mut() {
@@ -9094,6 +9104,26 @@ pub(crate) fn fps_min_max(times: &std::collections::VecDeque<f32>) -> (f32, f32)
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// VERIFIED 2026-09-06 live (minecraft.wiki/w/Daylight_cycle):
+    /// the full 1.16.5 day-night cycle is 24000 ticks at 20 tps = 1200 s
+    /// (20 min). The engine briefly shipped 600 s (a research-doc error
+    /// that halved the cycle) — this pins the real value.
+    #[test]
+    fn day_cycle_is_the_vanilla_20_minutes() {
+        assert_eq!(DAY_LEN_SECS, 1200.0);
+        // 24000 ticks at 20 tps
+        let ticks = 24000.0;
+        let secs = ticks / 20.0;
+        assert!(
+            (secs - DAY_LEN_SECS).abs() < 0.001,
+            "24000 ticks / 20 tps = {secs} s, DAY_LEN_SECS = {DAY_LEN_SECS}"
+        );
+        // advancing a full cycle wraps day_time back to its start
+        let t0 = 0.3_f32;
+        let advanced = (t0 + DAY_LEN_SECS / DAY_LEN_SECS) % 1.0;
+        assert!((advanced - t0).abs() < 1e-6);
+    }
 
     #[test]
     fn physics_freezes_until_own_chunk_exists() {

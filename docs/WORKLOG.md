@@ -185,6 +185,114 @@ Screenshots: `docs/screenshots/e2e-hopper-screen.png`,
 
 ---
 
+## 2026-09-06 — MC 1.0–1.2 bracket (version-evolution Phase 1: Core World Content) — commit d60e62f
+
+**Task:** first bracket of the 1.0 → 1.16.5 version-evolution ordering
+(`evolution-research.md` Part 3 Phase 1). All values live-verified at
+implementation time per the STRICT PROTOCOL — the round's research record
+(what was checked, against which wiki page, including intra-page and
+inter-page disagreements) is `docs/research/phase1-1.0-1.2-research.md`;
+204 `VERIFIED` citations live in the code comments.
+
+### Implemented
+
+- **The End dimension**: 5×5 obsidian entry platform at (100, 0), central
+  end-stone island, 10 obsidian pillars on the 42-radius circle down to
+  y=0 with bedrock caps, 10 end crystals (2 in iron-bar cages),
+  deterministic per-seed. Strongholds got the 5×5 end-portal-frame ring
+  (12 frames, corners cut) over lava; eye-of-ender filling activates the
+  central 3×3 into end-portal blocks; dimension travel both directions
+  (portal room → the End; exit fountain → home).
+- **Ender Dragon fight** (`dragon.rs`, 444 lines): 200 HP, damage only
+  from players + explosions, crystal healing (1 HP / 10 ticks within
+  32-block cuboid), 10-HP backlash when a healing crystal is destroyed,
+  power-6 crystal explosions, death timeline (XP at 154 ticks into the
+  ascension, exit portal + dragon egg at 200 ticks), 12,000 first-kill
+  XP / 500 re-summoned. The dragon + crystals render as End billboards
+  in-game.
+- **Nether Fortress**: 432×432 regions (Java), deterministic per-region
+  rolls, nether-brick bridges/corridors on pillars, up to 2 blaze-spawner
+  platforms, nether-wart gardens near stairwells.
+- **Mushroom Fields biome**: mycelium surface, ocean-island placement,
+  no natural hostile spawns, huge red/brown mushrooms (exactly 45 cap
+  blocks + stalk), mooshrooms (JE weight 8/8, groups 4–8).
+- **Mobs**: Snow Golem (2-snow-blocks + pumpkin-last build, 1 snowball/s
+  at hostiles within 10 blocks, 1 HP/tick melt in hot biomes + rain),
+  Magma Cube (HP = size², attack = size+2, armor = 3×size, splits into
+  2–4 on death, fireproof, 16-block aggro), Blaze (HP 20, 3-fireball
+  burst after 3 s charge, fortress spawner at light ≤ 11, 50% blaze rod),
+  Ocelot (flees players, hunts chickens ≤ 15 blocks, jungle-only),
+  Iron Golem (HP 100, village guard, 4-blocks-T + pumpkin build), Zombie
+  Villager (infection Easy 0%/Normal 50%/Hard 100%, cure = Weakness +
+  golden apple over 3600–6000 ticks), Mooshroom (shear → 5 mushrooms +
+  cow, bowl → mushroom stew).
+- **XP orb system**: vanilla value ladder 1/3/7/17/37/73/149/307/617/
+  1237/2477, 7.25-block attraction accelerating near the player, 10
+  orbs/s pickup gate (2-tick), 6000-tick despawn, green↔yellow fade,
+  no merging (merging is 1.17+ — version-scoped check), mob XP only on
+  player kill or within 100 ticks of a player hit.
+- **Spawn eggs**: use-on-surface spawn (feet adjacent), spawner
+  retarget, baby form on same-type, creative-picker-only item.
+- **Blocks**: mycelium (spread 1-up/1-side/3-down, revert under opaque
+  cover at light < 4), redstone lamp (light 15 when powered, 4-game-tick
+  off delay, 4-glowstone + 1-redstone craft), chiseled stone bricks,
+  chiseled/cut/smooth sandstone (smooth = smelt-only, 1.14-valid),
+  nether-wart crop (4 age stages, 10%/random tick, soul-sand only,
+  2–4 mature drops), end stone (hardness 3, blast 9).
+- **Clean-room art** (`e1_art.rs`, 747 lines) for every new block; zero
+  extracted/recreated Mojang assets.
+
+### Verified
+
+- Every constant above carries a `VERIFIED w/<page>` comment from this
+  round's live wiki fetch (record: research doc above).
+- Test suite: **339 passed / 0 failed** (was 310; +29: dragon fight
+  timeline, crystal-heal rules, golem build patterns, zombie-villager
+  cure lifecycle, ocelot AI, magma scaling, XP ladder/attract/despawn,
+  mycelium spread/revert, nether-wart stages, lamp toggle, End geometry
+  (42-radius pillar circle, central island), fortress determinism,
+  huge-mushroom cap counts, registry rows, picker entries).
+
+### Placeholder-unresolved
+
+- **Snow Golem snow-trail biome gate**: the wiki page contradicts itself
+  (lead paragraph = temperature-gated; §Behavior = "any biome, Java").
+  Implemented the temperature-gated reading (temp < 0.5) and disclosed
+  here; revisit if a better source lands.
+- **Dragon first-kill XP split**: Ender_Dragon page says 10×960 + 1×2400;
+  the Experience page says 10×1000 + 1×2000 (both = 12,000 total — an
+  intra-wiki disagreement). The dragon-page split is implemented; the
+  total is what actually matters mechanically since orbs use the ladder.
+- **Iron Golem drops (3–5 iron + 0–2 poppy)**: drop-table section was
+  unreadable via live extraction this round; widely-cited values
+  implemented and flagged, not live-confirmed.
+- **Biome temps for Desert/Mountains/Ocean/Beach/Savanna** (2.0 / 0.2 /
+  0.5 / 0.8 / 0.95): not extractable from the live biome table this
+  round; widely-cited values, flagged.
+
+### Deferred
+
+- Dragon breath attack / lingering-area fire (dragon fireball damage
+  row is cited; the breath *system* rides the 1.9-style effects work).
+- Re-summon ritual (4 side crystals + dragon spawn via the end-portal
+  sequence) — the re-fight XP value is already in place.
+- Wither-skeleton fortress spawns (mob itself is a 1.4 bracket item).
+- Beds / sleep-to-morning (1.0 feature not on the evolution Phase-1
+  list; bed *explosions* in the Nether/End are recorded in the supplement
+  for the dimension brackets).
+
+### Known issues & regressions
+
+- None observed this bracket: wasm32 target still compiles clean
+  (`--no-default-features`), full suite green, no new clippy lints
+  introduced (the pre-existing `never_loop` in vc-pack remains).
+- Engine graphics for the new content use the billboard/sprite path for
+  the dragon + crystals (no articulated dragon model — acceptable for
+  this bracket; revisit with a mesh pass if the user wants closer
+  visual parity).
+
+---
+
 ## Prior phases (from git history)
 
 - Phase 0 — Apache-2.0 LICENSE + README license section (`4f11030`)

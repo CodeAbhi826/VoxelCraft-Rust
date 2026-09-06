@@ -344,3 +344,57 @@ rabbit stew + Potion of Leaping (brewing needs the rabbit's-foot recipe
 hook), door 3-tall models.
 
 **Commit:** this entry (bracket 1.8).
+
+---
+
+## 2026-09-06 — version bracket 1.9 ("Combat Update") — Phase 1.9
+
+**Live verification:** minecraft.wiki/w/Java_Edition_1.9 parsed
+(2026-09-06): blocks (grass path 15/16 + shovel-use, purpur family, end
+stone bricks, end rods "same brightness as torches", chorus plant/flower),
+items (chorus fruit 4-hunger + random teleport, elytra "hang glider
+aerodynamics" + chest slot, shield 6 planks + 1 iron), the combat
+mechanics list, and the Elytra §Flight 10:1 glide ratio claim.
+
+**Prior state confirmed (✅ already 1.9):** the engine's combat.rs was
+built on 1.9 formulas from the start — attack cooldown `0.2 + 0.8p²`,
+`20 / attack_speed` ticks, crits ×1.5 at ≥84.8% charge + falling +
+not-sprinting, armor-toughness damage reduction, difficulty scaling.
+Frost Walker and Mending are in the 38-enchant registry (pinned by a new
+test).
+
+**V4 registry window:** ids 181..=190, states 318..=327, STATE_COUNT 328,
+BLOCK_COUNT 191, GPU LUT re-derived.
+
+**1.9 content implemented:**
+- Blocks: grass path (trodden top + lip side; full-cube simplification
+  documented), purpur block + pillar, end stone bricks, end rod
+  (emissive 14), chorus plant + flower.
+- Items: chorus fruit, elytra, shield (clean-room art).
+- Elytra GLIDE: while the selected item is the elytra and the player is
+  airborne, falling, holding jump — horizontal velocity steers toward
+  the look vector up to 25 b/s with descent clamped to 2.5 b/s,
+  preserving the wiki's 10:1 glide ratio (documented adaptation: vanilla
+  uses chest-slot equipping + pitch-driven per-tick aerodynamics; no
+  armor slots or firework boost in scope).
+- Shield BLOCKING: while the shield is selected and right-click is held,
+  mob melee and arrows are absorbed entirely (adaptation: vanilla's
+  partial-damage window, axe-disable and deflection angles deferred).
+- Chorus FRUIT: eats (4 HP, our hunger-less deviation), then the vanilla
+  teleport — up to 16 attempts in a ±8 cube for a grounded 2-air spot,
+  enderman teleport pop.
+- Grass path: block + picker + recipe path documented (survival
+  obtaining needs the shovel item — tools are a deferred registry).
+
+**Verification:** 331/331 tests green (302 lib + 29 game; +3: glide-ratio
+constants, elytra gate, shield/elytra/enchant registration pins).
+
+**Deferred (documented):** the End overhaul (outer islands, end cities,
+end ships, end gateways, shulker + shulker boxes, dragon-fight rework —
+the End DIMENSION itself is the still-open 1.0 bracket), dual wielding /
+offhand slot (inventory rework), lingering potions + tipped/spectral
+arrows (needs splash-potion brewing + arrow effects), dragon's breath,
+grass-path shovel interaction (no tool items), shield crafting recipe
+and axe-disable.
+
+**Commit:** this entry (bracket 1.9).

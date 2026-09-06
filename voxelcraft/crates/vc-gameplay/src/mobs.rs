@@ -1512,3 +1512,26 @@ mod v18_tests {
         assert!(MOB_DATA.iter().any(|m| m.kind == MobKind::Rabbit));
     }
 }
+
+#[cfg(test)]
+mod v19_tests {
+    use super::*;
+
+    /// 1.9: attack-cooldown combat was verified in Phase 2 (combat.rs has
+    /// the exact 1.9 formulas: 0.2 + 0.8p², ×1.5 crits at ≥84.8%, armor
+    /// toughness). Here we pin the registry side of the bracket.
+    #[test]
+    fn shield_and_elytra_registered() {
+        // shield/elytra/chorus items ride the V4 window and never place
+        let vc = vc_blocks::blocks::default_state(vc_blocks::blocks::SHIELD);
+        assert!(vc_blocks::blocks::is_item_block(vc_blocks::blocks::SHIELD));
+        assert!(vc_blocks::blocks::is_item_block(vc_blocks::blocks::ELYTRA));
+        assert!(vc_blocks::blocks::is_item_block(vc_blocks::blocks::CHORUS_FRUIT));
+        // frost walker + mending (1.9 treasure enchants) are in the 38 set
+        assert!(crate::enchanting::ENCHANTS
+            .iter()
+            .any(|e| e.id == "frost_walker"));
+        assert!(crate::enchanting::ENCHANTS.iter().any(|e| e.id == "mending"));
+        let _ = vc;
+    }
+}

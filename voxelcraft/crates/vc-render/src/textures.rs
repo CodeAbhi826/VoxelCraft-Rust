@@ -3012,6 +3012,194 @@ fn rabbit_sprite_art(a: &mut [u8], t: u16) {
     }
 }
 
+
+// ---------------------------------------------------------------------------
+// 1.9 bracket painters ("Combat Update"). Clean-room pixel art.
+// ---------------------------------------------------------------------------
+
+/// grass path top: trodden tan-dirt path (vanilla: shovel-trodden grass)
+fn grass_path_top_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [148, 127, 93], 8, rng);
+    for _ in 0..12 {
+        let x = rng.next_range(16) as i32;
+        let y = rng.next_range(16) as i32;
+        put(a, t, x, y, jit(120, 8, rng), jit(104, 8, rng), jit(74, 6, rng), 255);
+    }
+}
+
+/// grass path side: dirt body with the trodden lip on top
+fn grass_path_side_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [134, 96, 67], 7, rng);
+    for x in 0..16 {
+        put(a, t, x, 0, jit(148, 10, rng), jit(127, 10, rng), jit(93, 8, rng), 255);
+        if rng.next_f32() < 0.4 {
+            put(a, t, x, 1, jit(138, 10, rng), jit(116, 10, rng), jit(84, 8, rng), 255);
+        }
+    }
+}
+
+/// purpur: pale lavender speckled stone (the End building block)
+fn purpur_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [169, 133, 169], 6, rng);
+    for _ in 0..10 {
+        let x = rng.next_range(16) as i32;
+        let y = rng.next_range(16) as i32;
+        put(a, t, x, y, jit(155, 8, rng), jit(118, 8, rng), jit(155, 8, rng), 255);
+    }
+}
+
+/// purpur pillar side: vertical banding in the purpur hue
+fn purpur_pillar_side_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [169, 133, 169], 5, rng);
+    for x in [2, 5, 8, 11, 14] {
+        for y in 0..16 {
+            put(a, t, x, y, jit(150, 6, rng), jit(114, 6, rng), jit(150, 6, rng), 255);
+        }
+    }
+}
+
+/// end stone bricks: pale-yellow brick courses
+fn end_stone_bricks_art(a: &mut [u8], t: u16) {
+    let base = (221, 223, 165);
+    let mortar_col = (196, 199, 142);
+    for y in 0..16 {
+        for x in 0..16 {
+            let row = y / 4;
+            let offset = if row % 2 == 0 { 0 } else { 4 };
+            let is_mortar = (x + offset) % 8 == 0 || y % 4 == 0;
+            let c = if is_mortar { mortar_col } else { base };
+            put(a, t, x, y, c.0, c.1, c.2, 255);
+        }
+    }
+}
+
+/// end rod: slim white-lavender rod (cross render; light 14)
+fn end_rod_art(a: &mut [u8], t: u16) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    for y in 0..16 {
+        put(a, t, 7, y, 228, 226, 240, 255);
+        put(a, t, 8, y, 206, 200, 224, 255);
+    }
+    // base plate
+    for x in 5..11 {
+        put(a, t, x, 14, 168, 160, 192, 255);
+        put(a, t, x, 15, 148, 140, 176, 255);
+    }
+    // tip glow
+    put(a, t, 7, 1, 250, 250, 255, 255);
+    put(a, t, 8, 1, 250, 250, 255, 255);
+}
+
+/// chorus plant: mottled purple stalk
+fn chorus_plant_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [116, 82, 132], 10, rng);
+    for _ in 0..12 {
+        let x = rng.next_range(16) as i32;
+        let y = rng.next_range(16) as i32;
+        put(a, t, x, y, jit(90, 10, rng), jit(60, 8, rng), jit(104, 10, rng), 255);
+    }
+}
+
+/// chorus flower: the pale growing tip
+fn chorus_flower_art(a: &mut [u8], t: u16) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    for y in 4..12 {
+        for x in 4..12 {
+            let edge = x == 4 || x == 11 || y == 4 || y == 11;
+            let c = if edge { (122, 96, 132) } else { (188, 178, 196) };
+            put(a, t, x, y, c.0, c.1, c.2, 255);
+        }
+    }
+    // inner
+    for y in 7..10 {
+        for x in 7..10 {
+            put(a, t, x, y, 226, 220, 232, 255);
+        }
+    }
+    put(a, t, 8, 8, 250, 248, 252, 255);
+}
+
+/// chorus fruit: rounded purple fruit with pale speckles
+fn chorus_fruit_art(a: &mut [u8], t: u16) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    for y in 4..13 {
+        for x in 3..13 {
+            let edge = x == 3 || x == 12 || y == 4 || y == 12;
+            let c = if edge { (98, 68, 110) } else { (140, 100, 156) };
+            put(a, t, x, y, c.0, c.1, c.2, 255);
+        }
+    }
+    for (x, y) in [(6, 7), (9, 9), (7, 10), (10, 6), (5, 9)] {
+        put(a, t, x, y, 216, 208, 228, 255);
+    }
+}
+
+/// elytra icon: grey beetle wing pair
+fn elytra_art(a: &mut [u8], t: u16) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    // two wings meeting at the center seam
+    for y in 3..14 {
+        let inset = ((14 - y) / 3).max(0);
+        for x in (3 + inset)..8 {
+            let edge = x == 3 + inset || x == 7 || y == 3;
+            let c = if edge { (92, 86, 80) } else { (122, 116, 108) };
+            put(a, t, x, y, c.0, c.1, c.2, 255);
+        }
+        for x in 8..(13 - inset) {
+            let edge = x == 12 - inset || x == 8 || y == 3;
+            let c = if edge { (92, 86, 80) } else { (122, 116, 108) };
+            put(a, t, x, y, c.0, c.1, c.2, 255);
+        }
+    }
+    // highlight streak
+    for i in 0..4 {
+        put(a, t, 4 + i, 6 + i, 158, 152, 144, 255);
+        put(a, t, 11 - i, 6 + i, 158, 152, 144, 255);
+    }
+}
+
+/// shield icon: wooden heater shield with iron boss
+fn shield_art(a: &mut [u8], t: u16) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    // heater shape: rectangle with a rounded taper
+    for y in 2..15 {
+        let half = if y < 9 { 6 } else { 6 - (y - 9) };
+        for x in (8 - half)..(8 + half) {
+            let edge = x == 8 - half || x == 7 + half || y == 2;
+            let c = if edge { (98, 72, 40) } else { (146, 108, 62) };
+            put(a, t, x, y, c.0, c.1, c.2, 255);
+        }
+    }
+    // iron boss + straps
+    for (x, y) in [(7, 7), (8, 7), (7, 8), (8, 8)] {
+        put(a, t, x, y, 178, 178, 182, 255);
+    }
+    for y in 3..13 {
+        put(a, t, 7, y, 110, 82, 46, 255);
+        put(a, t, 8, y, 110, 82, 46, 255);
+    }
+}
+
 // ---------------------------------------------------------------------------
 // 1.8 bracket painters ("Bountiful Update"). Clean-room pixel art.
 // ---------------------------------------------------------------------------
@@ -3529,6 +3717,18 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_PRISMARINE_CRYSTALS => crystals_art(&mut a, t),
             // 1.8 rabbit entity sprite
             TILE_RABBIT => rabbit_sprite_art(&mut a, t),
+            // ---- 1.9 bracket (live-verified minecraft.wiki/w/Java_Edition_1.9) ----
+            TILE_GRASS_PATH => grass_path_top_art(&mut a, t, &mut rng),
+            TILE_GRASS_PATH_SIDE => grass_path_side_art(&mut a, t, &mut rng),
+            TILE_PURPUR => purpur_art(&mut a, t, &mut rng),
+            TILE_PURPUR_PILLAR_SIDE => purpur_pillar_side_art(&mut a, t, &mut rng),
+            TILE_END_STONE_BRICKS => end_stone_bricks_art(&mut a, t),
+            TILE_END_ROD => end_rod_art(&mut a, t),
+            TILE_CHORUS_PLANT => chorus_plant_art(&mut a, t, &mut rng),
+            TILE_CHORUS_FLOWER => chorus_flower_art(&mut a, t),
+            TILE_CHORUS_FRUIT => chorus_fruit_art(&mut a, t),
+            TILE_ELYTRA => elytra_art(&mut a, t),
+            TILE_SHIELD => shield_art(&mut a, t),
             _ => {}
         }
     }

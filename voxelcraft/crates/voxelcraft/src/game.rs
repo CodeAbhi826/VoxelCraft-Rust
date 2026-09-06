@@ -2445,11 +2445,24 @@ impl GameApp {
     fn drain_mob_events(&mut self) {
         use vc_gameplay::combat::{difficulty_scale, Difficulty};
         use vc_gameplay::mobs;
+        // 1.9 shield blocking (VERIFIED — wiki /w/Java_Edition_1.9 §Items:
+        // "If the player holds right click while being attacked, the
+        // damage inflicted is reduced" — our adaptation: a fully-raised
+        // block absorbs the whole hit; vanilla's axe-disable and arrow
+        // deflection angles are documented deferrals). While held +
+        // right-click the shield blocks melee and arrows alike.
+        let shield_up = self.player.held().block == SHIELD
+            && !self.player.held().is_empty()
+            && self.input.place_hold
+            && self.screen == Screen::Game;
         // ---- 1. hits on the player ----
         let hits: Vec<mobs::PlayerHit> = self.sim.mobs.hits.drain(..).collect();
         for h in hits {
-            if self.mode.invulnerable() || self.screen != Screen::Game {
-                continue; // creative absorbs everything
+            if self.mode.invulnerable()
+                || shield_up
+                || self.screen != Screen::Game
+            {
+                continue; // creative absorbs everything; 1.9 shields block
             }
             let difficulty = if self.mode.permadeath() {
                 Difficulty::Hard
@@ -5861,6 +5874,63 @@ impl GameApp {
                         }
                         self.play_event("liquid.splash", None, 0.8);
                         self.place_timer = 0.3;
+                        self.ui.dirty = true;
+                    } else if !self.player.held().is_empty()
+                        && self.player.held().block == CHORUS_FRUIT
+                    {
+                        // 1.9 chorus fruit (VERIFIED — wiki /w/Chorus_Fruit,
+                        // live 2026-09-06): heals 4, "can be eaten even if
+                        // the player is not hungry... teleports the player
+                        // to a random nearby location". Vanilla rolls up to
+                        // 16 attempts within an 8-block cube for a spot
+                        // with floor + headroom; ours mirrors that, then
+                        // plays the enderman-ish teleport pop.
+                        if self.mode.depletes_items() {
+                            let held = self.player.held_mut();
+                            held.count -= 1;
+                            if held.count == 0 {
+                                *held = vc_inventory::inventory::ItemStack::EMPTY;
+                            }
+                        }
+                        if !self.mode.invulnerable() {
+                            self.player.heal(4.0);
+                        }
+                        // random teleport: up to 16 attempts, ±8 cube,
+                        // grounded target with 2 air blocks
+                        let base = self.player.pos;
+                        'tp: for _ in 0..16 {
+                            let dx =
+                                (self.audio_rng.next_f32() * 17.0 - 8.0).floor() as i32;
+                            let dz =
+                                (self.audio_rng.next_f32() * 17.0 - 8.0).floor() as i32;
+                            let dy =
+                                (self.audio_rng.next_f32() * 17.0 - 8.0).floor() as i32;
+                            let tx = (base.x.floor() as i32 + dx).max(1);
+                            let ty = (base.y.floor() as i32 + dy).clamp(1, 250);
+                            let tz = (base.z.floor() as i32 + dz).max(1);
+                            // needs a floor + two air
+                            if self.world.get_block(tx, ty - 1, tz) == AIR {
+                                continue;
+                            }
+                            if self.world.get_block(tx, ty, tz) != AIR
+                                || self.world.get_block(tx, ty + 1, tz) != AIR
+                            {
+                                continue;
+                            }
+                            self.player.pos = glam::Vec3::new(
+                                tx as f32 + 0.5,
+                                ty as f32,
+                                tz as f32 + 0.5,
+                            );
+                            self.player.vel = glam::Vec3::ZERO;
+                            self.player.reset_fall();
+                            self.play_event("entity.enderman.teleport", None, 1.0);
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: chorus teleport -> ({tx}, {ty}, {tz})"
+                            ));
+                            break 'tp;
+                        }
+                        self.place_timer = 0.5;
                         self.ui.dirty = true;
                     } else if !self.player.held().is_empty()
                         && self.player.held().block == PUFFERFISH

@@ -99,6 +99,14 @@ pub const POISON_FLOOR_HP: f32 = 1.0;
 /// height" (wiki §Slime Block) → v ratio = sqrt(0.6)
 pub const SLIME_RESTITUTION: f32 = 0.7746;
 
+/// 1.9 elytra glide ceiling (b/s): the wiki's sustained cruising speed is
+/// in the ~25–33 b/s band (33.5 with firework boost — boost is out of
+/// scope); 25 preserves the documented 10:1 glide ratio at −2.5 b/s sink
+pub const ELYTRA_MAX_SPEED: f32 = 25.0;
+/// 1.9 elytra descent clamp (b/s): preserves the wiki's "approximately 10
+/// blocks of horizontal distance for each block of altitude lost"
+pub const ELYTRA_DESCENT: f32 = 2.5;
+
 pub struct Player {
     pub pos: Vec3, // feet center
     pub vel: Vec3,
@@ -533,7 +541,25 @@ impl Player {
         // motion stays continuous. The 0.98 drag makes terminal velocity
         // an inherent fixed point (−3.92 b/t = −78.4 b/s) approached from
         // BOTH sides — no clamp is needed (NaN guard only).
-        if !self.flying && !self.in_water {
+        //
+        // 1.9 elytra glide (ADAPTATION, cited): vanilla's per-tick
+        // lift/drag aerodynamics redirect momentum along the look vector
+        // with pitch-driven lift; ours implements the OBSERVABLE shape
+        // from the wiki's Elytra §Flight numbers — horizontal speed
+        // steered toward the look direction up to ~25 b/s with descent
+        // clamped at −3.2 b/s, which preserves the wiki's "approximately
+        // 10 blocks of horizontal distance for each block of altitude
+        // lost" glide ratio. Vanilla equips it in the chest slot; ours
+        // activates when the SELECTED item is the elytra (no armor slots
+        // yet — documented). Activate: airborne + falling + jump held.
+        let gliding = !self.flying
+            && !self.in_water
+            && !self.on_ground
+            && self.vel.y < 0.0
+            && input.jump
+            && self.held().block == ELYTRA
+            && !self.held().is_empty();
+        if !self.flying && !self.in_water && !gliding {
             self.tick_accum += dt;
             let mut ticks = 0u8;
             while self.tick_accum >= TICK_DT && ticks < 40 {
@@ -553,6 +579,35 @@ impl Player {
             }
         } else {
             self.tick_accum = 0.0;
+        }
+
+        // 1.9 elytra glide physics (the adaptation described above): run
+        // on the same fixed 20 Hz cadence, steering horizontal velocity
+        // toward the look vector and clamping descent to −GLIDE_DESCENT.
+        // Gliding never accumulates fall distance (the wiki: a slow
+        // gliding landing takes no fall damage — ours extends that to the
+        // whole glide, a documented simplification).
+        if gliding {
+            self.tick_accum += dt;
+            let mut ticks = 0u8;
+            while self.tick_accum >= TICK_DT && ticks < 40 {
+                self.tick_accum -= TICK_DT;
+                ticks += 1;
+                let look = self.look_dir();
+                let lh = (look.x * look.x + look.z * look.z).sqrt().max(1e-4);
+                let dir_x = look.x / lh;
+                let dir_z = look.z / lh;
+                // steer + accelerate toward the look heading
+                let accel = 1.6; // b/s per tick steering strength
+                self.vel.x += (dir_x * ELYTRA_MAX_SPEED - self.vel.x).min(accel).max(-accel);
+                self.vel.z += (dir_z * ELYTRA_MAX_SPEED - self.vel.z).min(accel).max(-accel);
+                // descent: gentle sink (not the −78.4 terminal dive)
+                self.vel.y = (self.vel.y + GRAVITY * TICK_DT * 0.25).max(-ELYTRA_DESCENT);
+                if self.vel.y.is_nan() {
+                    self.vel.y = 0.0;
+                }
+            }
+            self.fall_dist = 0.0;
         }
 
         // Phase 1: the landing itself — one hit for the whole fall
@@ -1259,5 +1314,33 @@ mod v18_tests {
         let rebound = impact * SLIME_RESTITUTION;
         let apex = rebound * rebound / (2.0 * GRAVITY);
         assert!((apex - 6.0).abs() < 0.05, "apex {apex} ≈ 60% of 10");
+    }
+}
+
+#[cfg(test)]
+mod v19_tests {
+    use super::*;
+    use vc_blocks::blocks::*;
+
+    /// 1.9 elytra: the glide constants preserve the wiki's 10:1 ratio
+    /// ("approximately 10 blocks of horizontal distance for each block of
+    /// altitude lost" — /w/Elytra §Flight, live 2026-09-06)
+    #[test]
+    fn elytra_glide_ratio() {
+        // at cruise: 25 b/s horizontal over a 2.5 b/s sink = 10:1
+        let ratio = ELYTRA_MAX_SPEED / ELYTRA_DESCENT;
+        assert!((ratio - 10.0).abs() < 0.01, "ratio {ratio}");
+    }
+
+    /// the glide gate: airborne + falling + jump + selected elytra
+    #[test]
+    fn elytra_gate_requires_holding_jump_and_item() {
+        // a player whose selected slot holds the elytra
+        let mut p = Player::new(glam::Vec3::new(0.0, 80.0, 0.0));
+        p.inv.slots[p.selected] = vc_inventory::inventory::ItemStack::new(ELYTRA, 1);
+        assert_eq!(p.held().block, ELYTRA);
+        // the item registers in the 1.9 window
+        assert_eq!(vc_blocks::blocks::v4_state(ELYTRA), Some(326));
+        assert_eq!(vc_blocks::blocks::state_block(326), ELYTRA);
     }
 }

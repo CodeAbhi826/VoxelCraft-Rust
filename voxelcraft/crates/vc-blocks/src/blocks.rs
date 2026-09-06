@@ -220,6 +220,22 @@ pub const TILE_PRISMARINE_SHARD: u16 = 201;
 pub const TILE_PRISMARINE_CRYSTALS: u16 = 202;
 /// 1.8 rabbit entity sprite (clean-room, like the other mob tiles)
 pub const TILE_RABBIT: u16 = 203;
+// ---------------------------------------------------------------------------
+// 1.9 bracket tiles (Combat Update — live round 2026-09-06): grass path,
+// purpur family, end stone bricks, end rod, chorus plant/flower, and the
+// chorus fruit / elytra / shield item icons.
+// ---------------------------------------------------------------------------
+pub const TILE_GRASS_PATH: u16 = 204;
+pub const TILE_GRASS_PATH_SIDE: u16 = 205;
+pub const TILE_PURPUR: u16 = 206;
+pub const TILE_PURPUR_PILLAR_SIDE: u16 = 207;
+pub const TILE_END_STONE_BRICKS: u16 = 208;
+pub const TILE_END_ROD: u16 = 209;
+pub const TILE_CHORUS_PLANT: u16 = 210;
+pub const TILE_CHORUS_FLOWER: u16 = 211;
+pub const TILE_CHORUS_FRUIT: u16 = 212;
+pub const TILE_ELYTRA: u16 = 213;
+pub const TILE_SHIELD: u16 = 214;
 // mobs (Phase 2): entity sprites + drops' item tiles. Mob sprites are
 // clean-room pixel art (ours, not Mojang's) — distinct silhouettes/palettes
 pub const TILE_ZOMBIE: u16 = 83;
@@ -598,6 +614,57 @@ pub fn v3_state(b: u8) -> Option<u16> {
 pub fn is_v3_state(s: u16) -> bool {
     (V3_STATE_BASE..V3_STATE_BASE + V3_COUNT).contains(&s)
 }
+
+// ---------------------------------------------------------------------------
+// 1.9 bracket — the Combat Update (2016-02-29,
+// minecraft.wiki/w/Java_Edition_1.9, live round 2026-09-06). V4 window:
+// ids 181..=190, states 318..=327.
+// ---------------------------------------------------------------------------
+/// grass path: "15/16 of a block (15 pixels) tall. Obtainable by using a
+/// shovel on a grass block" (wiki §Blocks). Full-cube render + collision
+/// (documented simplification); vanilla always drops dirt even with Silk
+/// Touch — our drops match via the break path.
+pub const GRASS_PATH: u8 = 181;
+pub const PURPUR_BLOCK: u8 = 182;
+pub const PURPUR_PILLAR: u8 = 183;
+pub const END_STONE_BRICKS: u8 = 184;
+/// end rod: "lighting source with the same brightness as torches" (14)
+pub const END_ROD: u8 = 185;
+pub const CHORUS_PLANT: u8 = 186;
+pub const CHORUS_FLOWER: u8 = 187;
+/// chorus fruit: eat + random teleport (VERIFIED §Items: heals 4, "can be
+/// eaten even if the player is not hungry... teleports the player to a
+/// random nearby location")
+pub const CHORUS_FRUIT: u8 = 188;
+/// elytra: gliding wings (§Items: "they function according to hang glider
+/// aerodynamics" — chest slot in vanilla; our adaptation: active when the
+/// SELECTED item while falling, documented)
+pub const ELYTRA: u8 = 189;
+/// shield: "new tool used for blocking incoming attacks" (§Items; crafted
+/// 6 planks + 1 iron — our craft hook is a documented deferral, the item
+/// blocks while held + right-click)
+pub const SHIELD: u8 = 190;
+
+pub const V4_STATE_BASE: u16 = 318;
+pub const V4_COUNT: u16 = 10; // ids 181..=190
+pub const V4_STATE_TO_BLOCK: [u8; V4_COUNT as usize] = [
+    GRASS_PATH, PURPUR_BLOCK, PURPUR_PILLAR, END_STONE_BRICKS, END_ROD,
+    CHORUS_PLANT, CHORUS_FLOWER, CHORUS_FRUIT, ELYTRA, SHIELD,
+];
+
+#[inline]
+pub fn v4_state(b: u8) -> Option<u16> {
+    if (181..181 + V4_COUNT as u8).contains(&b) {
+        Some(V4_STATE_BASE + (b - 181) as u16)
+    } else {
+        None
+    }
+}
+
+#[inline]
+pub fn is_v4_state(s: u16) -> bool {
+    (V4_STATE_BASE..V4_STATE_BASE + V4_COUNT).contains(&s)
+}
 pub const BEEF_STATE: u16 = 130;
 pub const PORKCHOP_STATE: u16 = 131;
 pub const MUTTON_STATE: u16 = 132;
@@ -662,7 +729,7 @@ pub const ACACIA_LOG_Z: u16 = 296;
 pub const DARK_OAK_LOG_X: u16 = 297;
 pub const DARK_OAK_LOG_Z: u16 = 298;
 
-pub const BLOCK_COUNT: usize = 181;
+pub const BLOCK_COUNT: usize = 191;
 
 // ---------------------------------------------------------------------------
 // BlockState registry (1.16.5 pattern, miniature)
@@ -679,7 +746,7 @@ pub const BLOCK_COUNT: usize = 181;
 /// Phase 4: extended to cover the Phase 2/3/4 state ids (130..=231) —
 /// before, the range tests stopped at 130 and never saw them.
 /// Phase 5: spawner states 232..=234
-pub const STATE_COUNT: usize = 318;
+pub const STATE_COUNT: usize = 328;
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -981,6 +1048,9 @@ pub fn default_state(b: u8) -> u16 {
         b if (162..162 + V3_COUNT as u8).contains(&b) => {
             V3_STATE_BASE + (b - 162) as u16
         }
+        b if (181..181 + V4_COUNT as u8).contains(&b) => {
+            V4_STATE_BASE + (b - 181) as u16
+        }
         OAK_SLAB => 63,     // PROP_BLOCKS[0].base_state (half=bottom)
         COBBLE_STAIRS => 65, // base_state (facing=north, half=bottom)
         OAK_FENCE => 73,    // base_state (no connections)
@@ -1191,6 +1261,9 @@ pub fn state_block(s: u16) -> u8 {
         s if is_v3_state(s) => {
             return V3_STATE_TO_BLOCK[(s - V3_STATE_BASE) as usize];
         }
+        s if is_v4_state(s) => {
+            return V4_STATE_TO_BLOCK[(s - V4_STATE_BASE) as usize];
+        }
         ACACIA_LOG_X | ACACIA_LOG_Z => return ACACIA_LOG,
         DARK_OAK_LOG_X | DARK_OAK_LOG_Z => return DARK_OAK_LOG,
         _ => {}
@@ -1233,6 +1306,7 @@ pub fn is_model_state(s: u16) -> bool {
     // per their BlockDef flags, exactly like the sim-state windows
     if is_v2_state(s)
         || is_v3_state(s)
+        || is_v4_state(s)
         || s == ACACIA_LOG_X
         || s == ACACIA_LOG_Z
         || s == DARK_OAK_LOG_X
@@ -1340,7 +1414,7 @@ pub fn log_axis_state(block: u8, axis: u8) -> u16 {
 /// component tile rendered BLANK since Phase 2. Now derived from the
 /// highest tile constant (118–121 here) and guarded by the
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
-pub const TILE_MAX: u16 = 203;
+pub const TILE_MAX: u16 = 214;
 
 /// inventory-only ITEM blocks (potions/bottles/books): never placeable in
 /// the world — right-click drinks (potions) / fills (glass bottle at water).
@@ -1356,6 +1430,7 @@ pub fn is_item_block(b: u8) -> bool {
             | RAW_FISH | RAW_SALMON | CLOWNFISH | PUFFERFISH
             | RAW_RABBIT | COOKED_RABBIT | RABBIT_HIDE | RABBIT_FOOT
             | PRISMARINE_SHARD | PRISMARINE_CRYSTALS
+            | CHORUS_FRUIT | ELYTRA | SHIELD
     )
 }
 
@@ -1619,6 +1694,20 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Rabbit's Foot", [TILE_RABBIT_FOOT, TILE_RABBIT_FOOT, TILE_RABBIT_FOOT], false, false, true, false, 0, SoundFamily::Grass),
     d("Prismarine Shard", [TILE_PRISMARINE_SHARD, TILE_PRISMARINE_SHARD, TILE_PRISMARINE_SHARD], false, false, true, false, 0, SoundFamily::Stone),
     d("Prismarine Crystals", [TILE_PRISMARINE_CRYSTALS, TILE_PRISMARINE_CRYSTALS, TILE_PRISMARINE_CRYSTALS], false, false, true, false, 0, SoundFamily::Stone),
+    // ---- 1.9 bracket (V4 window) — minecraft.wiki/w/Java_Edition_1.9,
+    // live round 2026-09-06 ----
+    d("Grass Path", [TILE_GRASS_PATH, TILE_DIRT, TILE_GRASS_PATH_SIDE], true, true, false, false, 0, SoundFamily::Grass),
+    d("Purpur Block", [TILE_PURPUR, TILE_PURPUR, TILE_PURPUR], true, true, false, false, 0, SoundFamily::Stone),
+    d("Purpur Pillar", [TILE_PURPUR, TILE_PURPUR, TILE_PURPUR_PILLAR_SIDE], true, true, false, false, 0, SoundFamily::Stone),
+    d("End Stone Bricks", [TILE_END_STONE_BRICKS, TILE_END_STONE_BRICKS, TILE_END_STONE_BRICKS], true, true, false, false, 0, SoundFamily::Stone),
+    // wiki: "same brightness as torches" (14)
+    d("End Rod", [TILE_END_ROD, TILE_END_ROD, TILE_END_ROD], false, false, true, false, 14, SoundFamily::Wood),
+    d("Chorus Plant", [TILE_CHORUS_PLANT, TILE_CHORUS_PLANT, TILE_CHORUS_PLANT], true, false, true, false, 0, SoundFamily::Wood),
+    d("Chorus Flower", [TILE_CHORUS_FLOWER, TILE_CHORUS_FLOWER, TILE_CHORUS_FLOWER], true, false, true, false, 0, SoundFamily::Wood),
+    // 1.9 items
+    d("Chorus Fruit", [TILE_CHORUS_FRUIT, TILE_CHORUS_FRUIT, TILE_CHORUS_FRUIT], false, false, true, false, 0, SoundFamily::Grass),
+    d("Elytra", [TILE_ELYTRA, TILE_ELYTRA, TILE_ELYTRA], false, false, true, false, 0, SoundFamily::Grass),
+    d("Shield", [TILE_SHIELD, TILE_SHIELD, TILE_SHIELD], false, false, true, false, 0, SoundFamily::Wood),
 ];
 
 #[inline]
@@ -1691,7 +1780,7 @@ pub fn face_visible(b: u8, n: u8) -> bool {
 /// sand, packed ice, podzol, acacia/dark-oak wood, the 8 new flowers,
 /// the 4 two-block flowers (lower halves place both via worldgen-style
 /// pairs; the picker offers the lower id) and the 4 fish items.
-pub const PICKER_BLOCKS: [u8; 142] = [
+pub const PICKER_BLOCKS: [u8; 152] = [
     GRASS, DIRT, STONE, COBBLE, SMOOTH_STONE, STONE_BRICKS, BRICKS, MOSSY_COBBLE,
     GRANITE, DIORITE, ANDESITE, OBSIDIAN,
     SAND, GRAVEL, CLAY, TERRACOTTA,
@@ -1724,6 +1813,9 @@ pub const PICKER_BLOCKS: [u8; 142] = [
     SUNFLOWER, LILAC, PEONY, ROSE_BUSH,
     // 1.7.2 fish (item-blocks: eatable, never placeable)
     RAW_FISH, RAW_SALMON, CLOWNFISH, PUFFERFISH,
+    // 1.9 additions (Combat Update — End blocks + the three items)
+    GRASS_PATH, PURPUR_BLOCK, PURPUR_PILLAR, END_STONE_BRICKS, END_ROD,
+    CHORUS_PLANT, CHORUS_FLOWER, CHORUS_FRUIT, ELYTRA, SHIELD,
     // 1.8 additions (Bountiful Update — wiki-verified placement blocks)
     SLIME_BLOCK, COARSE_DIRT,
     POLISHED_GRANITE, POLISHED_DIORITE, POLISHED_ANDESITE,
@@ -1943,6 +2035,7 @@ mod state_tests {
                 || s == END_PORTAL_FRAME_STATE
                 || is_v2_state(s)
                 || is_v3_state(s)
+                || is_v4_state(s)
                 || matches!(s, ACACIA_LOG_X | ACACIA_LOG_Z | DARK_OAK_LOG_X | DARK_OAK_LOG_Z)
             {
                 assert!(!is_model_state(s), "component/item state {s} never routes to models");
@@ -1958,6 +2051,10 @@ mod state_tests {
                 // 1.8 V3: same roundtrip contract
                 if is_v3_state(s) {
                     assert_eq!(default_state(b), s, "v3 state {s} roundtrip");
+                }
+                // 1.9 V4: same roundtrip contract
+                if is_v4_state(s) {
+                    assert_eq!(default_state(b), s, "v4 state {s} roundtrip");
                 }
                 continue;
             }

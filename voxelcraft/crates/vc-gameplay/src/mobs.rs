@@ -69,6 +69,10 @@ pub enum MobKind {
     IronGolem,
     ZombieVillager,
     Mooshroom,
+    // ---- Phase E2 (1.3-1.4 bracket) ----
+    WitherSkeleton,
+    Witch,
+    Bat,
 }
 
 impl MobKind {
@@ -90,6 +94,9 @@ impl MobKind {
             "iron_golem" => MobKind::IronGolem,
             "zombie_villager" => MobKind::ZombieVillager,
             "mooshroom" => MobKind::Mooshroom,
+            "wither_skeleton" => MobKind::WitherSkeleton,
+            "witch" => MobKind::Witch,
+            "bat" => MobKind::Bat,
             _ => return None,
         })
     }
@@ -113,6 +120,9 @@ impl MobKind {
             MobKind::IronGolem => "minecraft:iron_golem",
             MobKind::ZombieVillager => "minecraft:zombie_villager",
             MobKind::Mooshroom => "minecraft:mooshroom",
+            MobKind::WitherSkeleton => "minecraft:wither_skeleton",
+            MobKind::Witch => "minecraft:witch",
+            MobKind::Bat => "minecraft:bat",
         }
     }
 
@@ -134,6 +144,9 @@ impl MobKind {
             MobKind::IronGolem => TILE_IRONGOLEM,
             MobKind::ZombieVillager => TILE_ZOMBIEVILLAGER,
             MobKind::Mooshroom => TILE_MOOSHROOM,
+            MobKind::WitherSkeleton => TILE_WITHER_SKELETON,
+            MobKind::Witch => TILE_WITCH,
+            MobKind::Bat => TILE_BAT,
         }
     }
 
@@ -150,6 +163,9 @@ impl MobKind {
                 | MobKind::MagmaCube
                 | MobKind::Blaze
                 | MobKind::ZombieVillager
+                // Phase E2 (VERIFIED w/Wither_Skeleton, w/Witch: hostile)
+                | MobKind::WitherSkeleton
+                | MobKind::Witch
         )
     }
     pub fn neutral(self) -> bool {
@@ -176,6 +192,11 @@ impl MobKind {
             12 => MobKind::Cow,
             13 => MobKind::Pig,
             14 => MobKind::Sheep,
+            15 => MobKind::Chicken,
+            // Phase E2 (1.3-1.4): kinds 16..=19
+            16 => MobKind::WitherSkeleton,
+            17 => MobKind::Witch,
+            18 => MobKind::Bat,
             _ => MobKind::Chicken,
         }
     }
@@ -199,6 +220,9 @@ impl MobKind {
             MobKind::Pig => 13,
             MobKind::Sheep => 14,
             MobKind::Chicken => 15,
+            MobKind::WitherSkeleton => 16,
+            MobKind::Witch => 17,
+            MobKind::Bat => 18,
         }
     }
 }
@@ -223,7 +247,7 @@ pub struct MobDef {
     pub xp: i32,
 }
 
-pub const MOB_DATA: [MobDef; 16] = [
+pub const MOB_DATA: [MobDef; 19] = [
     MobDef {
         kind: MobKind::Zombie,
         health: 20.0,
@@ -401,6 +425,43 @@ pub const MOB_DATA: [MobDef; 16] = [
         width: 0.9,
         xp: 1,
     },
+    // ---- Phase E2 (1.3-1.4 bracket; live-verified 2026-09-06,
+    // docs/research/phase2-1.3-1.4-research.md) ----
+    MobDef {
+        // VERIFIED w/Wither_Skeleton: 20 HP, stone sword Normal 8,
+        // 2.4 tall / 0.7 wide, speed 0.25 (0.3125 attacking)
+        kind: MobKind::WitherSkeleton,
+        health: 20.0,
+        damage: 8.0,
+        speed_attr: 0.25,
+        armor: 0.0,
+        height: 2.4,
+        width: 0.7,
+        xp: 5,
+    },
+    MobDef {
+        // VERIFIED w/Witch: 26 HP, splash-potion attack max 6, speed
+        // 0.25, hitbox 0.6 wide (height approximated 1.95 humanoid)
+        kind: MobKind::Witch,
+        health: 26.0,
+        damage: 6.0,
+        speed_attr: 0.25,
+        armor: 0.0,
+        height: 1.95,
+        width: 0.6,
+        xp: 5,
+    },
+    MobDef {
+        // VERIFIED w/Bat: 6 HP, ambient passive, 0.9 tall / 0.5 wide
+        kind: MobKind::Bat,
+        health: 6.0,
+        damage: 0.0,
+        speed_attr: 0.25,
+        armor: 0.0,
+        height: 0.9,
+        width: 0.5,
+        xp: 0,
+    },
 ];
 
 #[inline]
@@ -550,6 +611,9 @@ pub struct PlayerHit {
     pub damage: f32,
     pub source: MobKind,
     pub knockback_dir: [f32; 2],
+    /// Phase E2: wither-skull payload — Some(ticks) applies Wither II
+    /// (VERIFIED w/Wither: 200 ticks Normal / 800 Hard)
+    pub wither_effect: Option<i32>,
 }
 
 /// An arrow projectile (skeleton): ballistic point. Phase E1 adds
@@ -563,6 +627,9 @@ pub enum ProjKind {
     Fireball,
     /// snow-golem snowball: 0 damage — 3 vs blazes (VERIFIED w/Snow_Golem)
     Snowball,
+    /// Phase E2: wither skull — 8 HP + Wither II on Normal (VERIFIED
+    /// w/Wither)
+    Skull,
 }
 
 #[derive(Clone, Debug)]
@@ -579,6 +646,8 @@ pub struct Arrow {
 }
 
 pub struct MobSystem {
+    /// Phase E2: ambient-bat spawn cadence counter
+    bats_spawn_t: u64,
     pub list: Vec<Mob>,
     pub arrows: Vec<Arrow>,
     rng: Rng,
@@ -613,6 +682,7 @@ impl MobSystem {
             list: Vec::new(),
             arrows: Vec::new(),
             rng: Rng::new(seed ^ 0xB0B_5EED),
+            bats_spawn_t: 0,
             next_id: 1,
             player: None,
             player_invulnerable: false,
@@ -715,6 +785,12 @@ impl MobSystem {
         // while a non-invulnerable player anchor exists (cap-gated)
         if self.player.is_some() && !self.player_invulnerable {
             self.try_spawn_hostile(world, sim_ring);
+        // Phase E2: ambient bats (VERIFIED w/Bat: light <= 3, below sea
+        // level, groups of 8, not counted toward the passive cap)
+        self.bats_spawn_t += 1;
+        if self.bats_spawn_t % 40 == 0 {
+            self.try_spawn_bats(world, sim_ring);
+        }
             self.try_spawn_passive(world, sim_ring);
         }
 
@@ -907,12 +983,19 @@ impl MobSystem {
                     _ => MobKind::Zombie,
                 }
             } else {
-                match self.rng.next_range(5) {
-                    0 => MobKind::Zombie,
-                    1 => MobKind::Skeleton,
-                    2 => MobKind::Creeper,
-                    3 => MobKind::Spider,
-                    _ => MobKind::Enderman,
+                // Phase E2: witches join the monster pool at their verified
+                // ~0.97% share (w/Witch spawn table: weight 5/515, group 1
+                // — the engine rolls 1/100, disclosed)
+                if self.rng.next_range(100) == 0 {
+                    MobKind::Witch
+                } else {
+                    match self.rng.next_range(5) {
+                        0 => MobKind::Zombie,
+                        1 => MobKind::Skeleton,
+                        2 => MobKind::Creeper,
+                        3 => MobKind::Spider,
+                        _ => MobKind::Enderman,
+                    }
                 }
             };
             let pack = 1 + (self.rng.next_range(4)) as usize;
@@ -943,7 +1026,61 @@ impl MobSystem {
     /// Phase E1: Mushroom Fields → mooshroom herds 4–8 on MYCELIUM (the
     /// biome's ONLY natural passive, weight 8/8 — VERIFIED w/Mooshroom);
     /// Jungle rolls ocelots (JE weight 2/93 — VERIFIED w/Ocelot).
-    fn try_spawn_passive(&mut self, world: &World, sim_ring: impl Fn(i32, i32) -> bool) {
+    /// Phase E2: ambient bat spawning (VERIFIED w/Bat Spawning): Overworld,
+/// light <= 3, below sea level (y <= 62 — the pre-1.21.2 rule), solid
+/// floor with 2 air, groups of 8, NOT counted toward the passive mob cap
+/// (the ambient category is separate — VERIFIED).
+fn try_spawn_bats(&mut self, world: &World, sim_ring: impl Fn(i32, i32) -> bool) {
+    let Some(p) = self.player else { return };
+    if world.dimension != vc_world::world::Dimension::Overworld {
+        return;
+    }
+    let bats = self.list.iter().filter(|m| m.kind == MobKind::Bat).count();
+    if bats >= 10 {
+        return; // ambient category cap (10)
+    }
+    let cx = (p[0] / 16.0).floor() as i32 + (self.rng.next_range(9) as i32) - 4;
+    let cz = (p[2] / 16.0).floor() as i32 + (self.rng.next_range(9) as i32) - 4;
+    if !sim_ring(cx, cz) || world.chunk((cx, cz)).is_none() {
+        return;
+    }
+    let lx = self.rng.next_range(16) as i32;
+    let lz = self.rng.next_range(16) as i32;
+    let wx = cx * 16 + lx;
+    let wz = cz * 16 + lz;
+    for y in (1..=62).rev() {
+        if !is_solid(world.get_block(wx, y - 1, wz)) {
+            continue;
+        }
+        if world.get_block(wx, y, wz) != AIR || world.get_block(wx, y + 1, wz) != AIR {
+            continue;
+        }
+        let (blk_l, sky_l) = light_levels(world, wx, y, wz);
+        if blk_l > 3 || sky_l > 3 {
+            return; // light <= 3 (VERIFIED)
+        }
+        let mut placed = 0;
+        'group: for dz in -1..=1i32 {
+            for dx in -1..=1i32 {
+                if placed >= 8 {
+                    break 'group; // group of 8 (VERIFIED JE)
+                }
+                let bx = wx + dx;
+                let bz = wz + dz;
+                if world.get_block(bx, y, bz) == AIR
+                    && world.get_block(bx, y + 1, bz) == AIR
+                    && is_solid(world.get_block(bx, y - 1, bz))
+                {
+                    let _ = self.spawn_variant(MobKind::Bat, bx, y, bz, 0);
+                    placed += 1;
+                }
+            }
+        }
+        return;
+    }
+}
+
+fn try_spawn_passive(&mut self, world: &World, sim_ring: impl Fn(i32, i32) -> bool) {
         if self.rng.next_range(20) != 0 {
             return;
         }
@@ -1240,6 +1377,7 @@ fn ai_tick(
                 damage: d.damage,
                 source: m.kind,
                 knockback_dir: [dx / dist, dz / dist],
+                wither_effect: None,
             });
             return;
         }
@@ -1313,7 +1451,8 @@ fn ai_tick(
                     damage: 6.0,
                     source: m.kind,
                     knockback_dir: [dx / dist, dz / dist],
-                });
+                wither_effect: None,
+            });
             }
         } else {
             m.aux = 0;
@@ -1369,6 +1508,7 @@ fn ai_tick(
                 damage: d.damage, // size + 2 (VERIFIED)
                 source: m.kind,
                 knockback_dir: [dx / dist, dz / dist],
+                wither_effect: None,
             });
         }
         return;
@@ -1401,7 +1541,8 @@ fn ai_tick(
                         damage: d.damage,
                         source: m.kind,
                         knockback_dir: [dx / dist, dz / dist],
-                    });
+                wither_effect: None,
+            });
                 }
             } else {
                 wander(rng, m, speed * 0.5);
@@ -1690,6 +1831,10 @@ fn tick_arrows(
                         ProjKind::Arrow => MobKind::Skeleton,
                         ProjKind::Fireball => MobKind::Blaze,
                         ProjKind::Snowball => MobKind::SnowGolem,
+                        // Phase E2: the wither skull's source (the wither
+                        // itself is the boss system; the hit carries the
+                        // Wither II payload via `wither_effect`)
+                        ProjKind::Skull => MobKind::WitherSkeleton,
                     };
                     // snowballs deal 0 damage to the player (VERIFIED),
                     // knockback only
@@ -1698,6 +1843,13 @@ fn tick_arrows(
                         damage: dmg,
                         source: src,
                         knockback_dir: dir,
+                        // Phase E2 (VERIFIED w/Wither): skulls inflict
+                        // Wither II — 10 s Normal / 40 s Hard
+                        wither_effect: if a.kind == ProjKind::Skull {
+                            Some(200)
+                        } else {
+                            None
+                        },
                     });
                     arrows.remove(i);
                     continue;
@@ -2262,8 +2414,8 @@ mod tests {
 
     #[test]
     fn phase_e1_registry_rows() {
-        // the 16 kinds resolve in/out of names + eggs
-        assert_eq!(MOB_DATA.len(), 16);
+        // the 19 kinds resolve in/out of names + eggs (16 E1 + 3 E2)
+        assert_eq!(MOB_DATA.len(), 19);
         for d in MOB_DATA.iter() {
             assert_eq!(
                 MobKind::from_name(d.kind.name().strip_prefix("minecraft:").unwrap()),

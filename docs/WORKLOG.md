@@ -385,3 +385,137 @@ target set.
   formally measured and disclosed in the report rather than silently
   kept. No gameplay regressions: 342/342, world create/play/E2E paths
   all live.
+
+---
+
+## 2026-09-06 — MC 1.3–1.4 bracket (version-evolution Phase 2: Adventure Features) — commit pending
+
+**Task:** second bracket of the 1.0 → 1.16.5 version-evolution ordering
+(`evolution-research.md` Part 3 Phase 2). All values live-verified this
+round against minecraft.wiki — the round's research record (what was
+checked, against which page, including the disagreements) is
+`docs/research/phase2-1.3-1.4-research.md`; ~120 `VERIFIED` citations
+live in the code comments.
+
+### Implemented
+
+- **Structural: the block-state space widened u8 → u16** (`Chunk::get`,
+  `get_idx`). The E1 bracket had exhausted every state id ≤ 255; E2
+  world blocks live at 283+. All call sites either already folded via
+  `state_block` (the `as u16` casts became no-ops) or compared against
+  identity-mapped ids ≤ 56 — every comparison site now folds explicitly.
+- **The Wither boss** (`wither.rs`, ~370 lines): summon = 4 soul sand in
+  a T + 3 wither-skeleton skulls, last block must be a skull; 220-tick
+  invulnerable charge with the boss bar filling; birth explosion
+  (power-6-class, proximity damage); 300 HP Java row; passive regen
+  1 HP/20 ticks; black skulls every 2 s (8 HP + Wither II 10 s Normal /
+  40 s Hard via the new effects system); 40-block aggro, hovers 5 above
+  the target; breaks a 3×4×3 box of blocks on taking damage (bedrock +
+  portal blocks immune); drops 1 nether star (100%) + 50 XP; billboard
+  sprite render + boss bar. Side-head multi-target AI compressed to the
+  main-head cadence + a 2–3 s volley (disclosed adaptation).
+- **Three mobs** (mobs.rs + drops + spawns): Wither Skeleton (20 HP,
+  stone sword 8 Normal, Wither I 10 s on hit, coal/bone/skull-2.5%
+  drops; fortress spawner platform #2), Witch (26 HP, splash-potion
+  attack 6, joins the dark monster pool at the verified ~0.97% share,
+  per-item 0–2 drops), Bat (6 HP, ambient, light ≤ 3 below sea level,
+  groups of 8, ambient cap 10, no passive-cap pressure, empty drop
+  table).
+- **Effects system** (`effects.rs`): Wither (40/20-tick periods, can
+  kill), Poison (25-tick, floors at 1 HP), Regeneration (50-tick), plus
+  the beacon stat effects (Speed +20%/level, Strength +3/level,
+  Resistance −20%/level floor 20%, Jump Boost +0.1/level). Applied to
+  the player every tick; beacons refresh through the same path.
+- **Beacon** (`beacon.rs` + game wiring): pyramid scan 1–4 levels
+  (9/34/83/164 blocks, mixed materials allowed), powers gated by level
+  (Speed/Haste 1+, Resistance/Jump 2+, Strength 3+), secondary at 4 =
+  Regeneration or primary II; effects every 4 s for 9+2×level s at
+  20/30/40/50 range; feed via iron/gold/diamond ore-or-block/emerald
+  (adaptation: no ingot/gem items); light 15; feed-cycles the powers
+  (adaptation: no beacon GUI, disclosed).
+- **Ender Chest**: craft 8 obsidian + eye of ender; right-click opens
+  the shared 27-slot container (sentinel-keyed — every ender chest opens
+  the same inventory, the single-player form of the vanilla per-player
+  rule); breaks into 8 obsidian, contents never spill; light 7.
+- **Adventure mode** (modes.rs): vanilla GameType 2, saved/round-tripped;
+  no direct block break or place (Java needs item components — plain
+  denial, disclosed); all interactions (mobs, levers, containers,
+  crafting) stay available; everything else = Survival rules.
+- **Anvil** (block family + `anvil.rs`): 3 damage stages (12% per use,
+  pristine→chipped→damaged→destroyed), gravity block (falls like sand),
+  craft 3 iron blocks + 4 iron ore (adaptation). Falling damage on
+  entities + repair/combine/rename costs deferred (no damageable items,
+  no item names, no anvil GUI — the verified constants are recorded in
+  anvil.rs for the tools/armor bracket).
+- **Lava fluid** (`fluids.rs`): the LAVA block (light 15, fluid) + flow
+  levels; dimension-aware spread (Overworld/End: level drop 2 → 3 blocks
+  per 30-tick step; Nether: drop 1 → 7 blocks per 10-tick step);
+  source-removal drains; meshes through the fluid-quad path with the
+  fixed lava tint (SLOT_LAVA); contact damage 4 HP per 10 ticks (the
+  half-second immunity window). Post-lava fire (300 ticks) deferred —
+  no fire system.
+- **Emerald ore generation**: Mountains-family columns only (the engine's
+  per-column biome gate), single blocks, y 4–31, hash-gated ~a few per
+  chunk; drops 1 emerald + the ore's 3–7 XP (existing ore-XP path);
+  Fortune deferred.
+- **Foods**: potato (0.5 HP), carrot (1.5), baked potato (2.5, smelted
+  from potato), pumpkin pie (4.0) — heal = hunger/2 per the engine's
+  food convention (steak 8 hunger → 4 HP); pumpkin pie picker-only
+  (recipe needs sugar + egg, absent — documented).
+- **Blocks/items registry**: cobblestone wall (craft 6→6, fence-class),
+  flower pot (craft 3 bricks-blocks, cross-rendered), item frame (craft
+  8 planks + leather — the stick adaptation), tripwire hook (craft → 2),
+  wither-skeleton skull (cross-rendered summon component), command
+  block (creative-pick only), emerald + nether star items; 4 new spawn
+  eggs (kinds 17–20); 29 new clean-room art tiles (e2_art.rs); creative
+  picker + E2E `give:` entries.
+- **Mechanical fix (VERIFICATION-REPORT)**: render-distance slider range
+  2–32 (was 2–16).
+- **Latent E1 bug fixed**: `World::set_block` stored raw block IDS as
+  states (END_PORTAL placed via set_block read back as FURNACE;
+  DRAGON_EGG as REDSTONE_TORCH; OAK_SLAB as OAK_LOG[axis=x]). It now
+  routes through `default_state`, matching the generator-side rule.
+
+### Verified
+
+- Every constant above carries a `VERIFIED w/<page>` comment from this
+  round's live wiki fetches (research doc above; raw JSON archived under
+  `tool-results/phase2/`).
+- Suite: **372/372 green** (was 342; +30: wither fight timeline/charge/
+  regen/skull cadence/death, summon pattern, effects periods/stat
+  modifiers, beacon pyramid/range/levels/reapply/duration, adventure
+  mode rules, anvil ladder/falling formula/12% gate, lava
+  rates/spread-by-dimension/drain, anvil gravity, emerald
+  mountains-only, registry folds).
+- wasm32 target clean (`--no-default-features --lib`).
+
+### Placeholder-unresolved
+
+- Witch spawn weight implemented as a 1/100 roll ≈ the verified 5/515
+  (~0.97%) share — the engine's 5-kind monster roll has no weight table
+  (disclosed approximation of a VERIFIED number, not an unverified one).
+
+### Deferred (with disclosure in code + here)
+
+- Book and Quill (no paper/ink items, no text editor GUI).
+- Pumpkin pie recipe (needs sugar + egg items).
+- Anvil repair/combine/rename GUI + falling-anvil entity damage (no
+  damageable items; the falling-block sim is block-wise without fall
+  tracking).
+- Item frame contents/rotation, flower pot planting, tripwire circuit
+  signaling, command block execution (blocks + recipes exist; the deep
+  wiring rides later brackets — item-frame entity storage, redstone
+  signal routing, the command bridge).
+- Charged-creeper mob heads (no charged creepers yet — wither skeleton
+  skull IS in via its 2.5% drop).
+- Wither "wither armor" below half health (projectile immunity — the
+  engine's arrows route through melee damage).
+- Post-lava fire ticks (no fire system).
+
+### Known issues & regressions
+
+- None observed: 372/372, wasm clean, no new clippy lints (the
+  pre-existing `never_loop` in vc-pack remains).
+- The wither's block-breaking on damage can carve terrain fast in a
+  long fight (vanilla-accurate behavior; the 3×4×3 box is the VERIFIED
+  rule).

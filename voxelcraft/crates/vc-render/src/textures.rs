@@ -7,6 +7,7 @@ use vc_rng::rng::Rng;
 /// Phase E1 procedural tiles (evolution 1.0–1.2 bracket) — child module so
 /// the art additions stay reviewable while sharing the put/jit/art helpers.
 mod e1_art;
+mod e2_art;
 
 pub const ATLAS_SIZE: usize = 256;
 pub const TILE_PX: usize = 16;
@@ -2466,6 +2467,26 @@ fn dead_bush_art(a: &mut [u8], t: u16) {
 
 // ------------------------------------------------------------------ entry --
 
+/// Phase E2: lava — bright molten orange with darker crust channels
+/// (clean-room; the level-scaled height comes from the fluid-quad path
+/// exactly like water).
+fn lava_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+    let base = [212, 90, 18];
+    noise_fill(a, t, base, 26, rng);
+    // darker crust veins
+    for _ in 0..18 {
+        let x = (rng.next_range(16)) as i32;
+        let y = (rng.next_range(16)) as i32;
+        put(a, t, x, y, 140, 50, 10, 255);
+    }
+    // bright hotspots
+    for _ in 0..10 {
+        let x = (rng.next_range(16)) as i32;
+        let y = (rng.next_range(16)) as i32;
+        put(a, t, x, y, 255, 200, 60, 255);
+    }
+}
+
 pub fn generate_atlas() -> Vec<u8> {
     let mut a = vec![0u8; ATLAS_SIZE * ATLAS_SIZE * 4];
     for t in 0..=TILE_MAX {
@@ -2637,11 +2658,48 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_ZOMBIEVILLAGER => e1_art::zombie_villager_art(&mut a, t),
             TILE_MOOSHROOM => e1_art::mooshroom_art(&mut a, t),
             TILE_ENDERDRAGON => e1_art::ender_dragon_art(&mut a, t),
-            // spawn eggs: palette pairs indexed by egg id (order = egg_mob)
+            // spawn eggs: palette pairs indexed by egg id (order = egg_mob);
+            // Phase E2 appends kinds 17..=20 (wither skeleton, witch, bat,
+            // wither) to the E1 16-entry table
             t if (TILE_EGG_BASE..=TILE_EGG_MAX).contains(&t) => {
-                let p = e1_art::EGG_PALETTES[(t - TILE_EGG_BASE) as usize];
+                let i = (t - TILE_EGG_BASE) as usize;
+                let p = if i < 16 {
+                    e1_art::EGG_PALETTES[i]
+                } else {
+                    e2_art::E2_EGG_PALETTES[i - 16]
+                };
                 e1_art::egg_art(&mut a, t, (p.0, p.1, p.2), (p.3, p.4, p.5));
             }
+            // ---- Phase E2 tiles (evolution 1.3-1.4 bracket) ----
+            TILE_ANVIL => e2_art::anvil_art(&mut a, t, 0),
+            TILE_ANVIL_CHIPPED => e2_art::anvil_art(&mut a, t, 1),
+            TILE_ANVIL_DAMAGED => e2_art::anvil_art(&mut a, t, 2),
+            TILE_BEACON => e2_art::beacon_art(&mut a, t, &mut rng),
+            TILE_BEACON_BEAM => e2_art::beacon_beam_art(&mut a, t),
+            TILE_COBBLE_WALL => e2_art::cobble_wall_art(&mut a, t, &mut rng),
+            TILE_ENDER_CHEST => e2_art::ender_chest_art(&mut a, t, &mut rng),
+            TILE_FLOWER_POT => e2_art::flower_pot_art(&mut a, t),
+            TILE_ITEM_FRAME => e2_art::item_frame_art(&mut a, t),
+            TILE_TRIPWIRE_HOOK => e2_art::tripwire_hook_art(&mut a, t, false),
+            TILE_TRIPWIRE_HOOK_ON => e2_art::tripwire_hook_art(&mut a, t, true),
+            TILE_WITHER_SKULL => e2_art::wither_skull_art(&mut a, t),
+            TILE_COMMAND_BLOCK => e2_art::command_block_art(&mut a, t, false),
+            TILE_COMMAND_BLOCK_ON => e2_art::command_block_art(&mut a, t, true),
+            TILE_EMERALD => e2_art::emerald_art(&mut a, t),
+            TILE_NETHER_STAR => e2_art::nether_star_art(&mut a, t),
+            TILE_POTATO => e2_art::potato_art(&mut a, t),
+            TILE_BAKED_POTATO => e2_art::baked_potato_art(&mut a, t),
+            TILE_CARROT => e2_art::carrot_art(&mut a, t),
+            TILE_PUMPKIN_PIE => e2_art::pumpkin_pie_art(&mut a, t),
+            // E2 mob sprites (billboards)
+            TILE_WITHER => e2_art::wither_art(&mut a, t),
+            TILE_WITHER_SKELETON => e2_art::wither_skeleton_art(&mut a, t),
+            TILE_WITCH => e2_art::witch_art(&mut a, t),
+            TILE_BAT => e2_art::bat_art(&mut a, t),
+            TILE_WITHER_SKULL_PROJ => e2_art::wither_skull_proj_art(&mut a, t),
+            // Phase E2: lava fluid tile (bright orange noise — VERIFIED
+            // w/Lava: luminance 15, constant color)
+            TILE_LAVA => lava_art(&mut a, t, &mut rng),
             _ => {}
         }
     }

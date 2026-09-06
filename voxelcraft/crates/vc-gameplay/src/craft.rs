@@ -181,6 +181,110 @@ pub const RECIPES: &[Recipe] = &[
         ],
         out: ItemStack::new(FERMENTED_SPIDER_EYE, 1),
     },
+    // ---- Phase E2 (evolution 1.3-1.4 bracket; all live-verified
+    // 2026-09-06, docs/research/phase2-1.3-1.4-research.md) ----
+    // anvil: 3 blocks of iron + 4 iron ingots (VERIFIED w/Anvil; 31 iron
+    // total). Adaptation: IRON_ORE items stand in for the ingots (the
+    // engine has no ingot item — disclosed).
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::None,
+            Ing::Block(IRON_BLOCK),
+            Ing::None,
+            Ing::Block(IRON_ORE),
+            Ing::Block(IRON_ORE),
+            Ing::Block(IRON_ORE),
+            Ing::None,
+            Ing::Block(IRON_ORE),
+            Ing::None,
+        ],
+        out: ItemStack::new(ANVIL, 1),
+    },
+    // beacon: 5 glass + 1 nether star + 3 obsidian (VERIFIED w/Beacon)
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(GLASS),
+            Ing::Block(GLASS),
+            Ing::Block(GLASS),
+            Ing::Block(GLASS),
+            Ing::Block(NETHER_STAR),
+            Ing::Block(GLASS),
+            Ing::Block(OBSIDIAN),
+            Ing::Block(OBSIDIAN),
+            Ing::Block(OBSIDIAN),
+        ],
+        out: ItemStack::new(BEACON, 1),
+    },
+    // ender chest: 8 obsidian + 1 eye of ender (VERIFIED w/Ender_Chest)
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(OBSIDIAN),
+            Ing::Block(OBSIDIAN),
+            Ing::Block(OBSIDIAN),
+            Ing::Block(OBSIDIAN),
+            Ing::Block(EYE_OF_ENDER),
+            Ing::Block(OBSIDIAN),
+            Ing::Block(OBSIDIAN),
+            Ing::Block(OBSIDIAN),
+            Ing::Block(OBSIDIAN),
+        ],
+        out: ItemStack::new(ENDER_CHEST, 1),
+    },
+    // cobblestone wall: 6 cobble -> 6 walls (VERIFIED w/Wall)
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(COBBLE),
+            Ing::Block(COBBLE),
+            Ing::Block(COBBLE),
+            Ing::Block(COBBLE),
+            Ing::Block(COBBLE),
+            Ing::Block(COBBLE),
+            Ing::None,
+            Ing::None,
+            Ing::None,
+        ],
+        out: ItemStack::new(COBBLE_WALL, 6),
+    },
+    // flower pot: 3 bricks (VERIFIED w/Flower_Pot; brick ITEM -> brick
+    // BLOCK adaptation — no brick item, disclosed)
+    Recipe {
+        size: 1,
+        grid: &[Ing::Block(BRICKS)],
+        out: ItemStack::new(FLOWER_POT, 1),
+    },
+    // item frame: 8 sticks + 1 leather (VERIFIED w/Item_Frame; sticks ->
+    // planks adaptation — no stick item, disclosed)
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(PLANKS),
+            Ing::Block(PLANKS),
+            Ing::Block(PLANKS),
+            Ing::Block(PLANKS),
+            Ing::Block(LEATHER),
+            Ing::Block(PLANKS),
+            Ing::Block(PLANKS),
+            Ing::Block(PLANKS),
+            Ing::Block(PLANKS),
+        ],
+        out: ItemStack::new(ITEM_FRAME, 1),
+    },
+    // tripwire hook: 1 iron + 1 stick + 2 planks -> 2 (VERIFIED
+    // w/Tripwire_Hook; iron ore + planks adaptation, disclosed)
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(IRON_ORE),
+            Ing::Block(PLANKS),
+            Ing::Block(IRON_ORE),
+            Ing::Block(PLANKS),
+        ],
+        out: ItemStack::new(TRIPWIRE_HOOK, 2),
+    },
 ];
 
 /// match a crafting grid (row-major, `size`×`size` of ItemStacks) → the

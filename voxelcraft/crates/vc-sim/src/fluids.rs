@@ -67,7 +67,14 @@ pub fn on_block_changed(sched: &mut TickScheduler, world: &World, x: i32, y: i32
             // sources only re-check when a neighbor changed (cheap path:
             // every water block re-derives; the level check no-ops)
             sched.schedule([nx, ny, nz], WATER_TICK_RATE);
-        } else if b == SAND || b == GRAVEL {
+        } else if b == LAVA {
+            // Phase E2 lava (VERIFIED w/Lava: flow speed 30 ticks/block in
+            // the Overworld/End, 10 in the Nether)
+            let rate = lava_tick_rate(world);
+            sched.schedule([nx, ny, nz], rate);
+        } else if b == SAND || b == GRAVEL || b == ANVIL || b == CHIPPED_ANVIL || b == DAMAGED_ANVIL {
+            // Phase E2: anvils are gravity blocks (VERIFIED w/Anvil: falls
+            // like sand)
             sched.schedule([nx, ny, nz], GRAVITY_TICK_RATE);
         }
     }
@@ -155,6 +162,136 @@ pub fn water_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, 
     }
 }
 
+/// Phase E2 (evolution 1.3-1.4 bracket + VERIFICATION-REPORT fix):
+/// LAVA fluid — all values live-verified 2026-09-06 w/Lava
+/// (docs/research/phase2-1.3-1.4-research.md):
+/// * flow speed: 30 game ticks/block in the Overworld/End, 10 in the
+///   Nether (the dimension of the WORLD decides)
+/// * flow distance: 4 blocks Overworld/End (source + 3), 8 in the Nether
+///   (source + 7) — implemented as the level drop per block: 2 in the
+///   Overworld, 1 in the Nether (levels 1..7)
+/// * lava falls down first like water; the falling column then spreads
+///   from the landing level
+/// * lava does NOT create sources (VERIFIED "Creates sources? No") and
+///   no infinite-source pairing exists
+pub const LAVA_TICK_RATE_OVERWORLD: u64 = 30;
+pub const LAVA_TICK_RATE_NETHER: u64 = 10;
+
+/// the lava level drop per block of horizontal spread in this dimension
+/// (2 in Overworld/End → 3 spread; 1 in Nether → 7 spread — VERIFIED)
+#[inline]
+fn lava_drop_off(world: &World) -> u8 {
+    match world.dimension {
+        vc_world::world::Dimension::Nether => 1,
+        _ => 2,
+    }
+}
+
+/// the lava tick rate for the world's dimension (VERIFIED: 30 / 10)
+#[inline]
+pub fn lava_tick_rate(world: &World) -> u64 {
+    match world.dimension {
+        vc_world::world::Dimension::Nether => LAVA_TICK_RATE_NETHER,
+        _ => LAVA_TICK_RATE_OVERWORLD,
+    }
+}
+
+#[inline]
+fn lava_at(world: &World, x: i32, y: i32, z: i32) -> Option<u8> {
+    let l = lava_level(world.get_state(x, y, z));
+    if l == 255 {
+        None
+    } else {
+        Some(l)
+    }
+}
+
+/// one lava block update — the vanilla-observable rule set (level
+/// re-derivation + fall + spread, exactly the water machinery with the
+/// lava drop-off and dimension tick rate).
+pub fn lava_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z: i32) {
+    let rate = lava_tick_rate(world);
+    let drop = lava_drop_off(world);
+    let Some(level) = lava_at(world, x, y, z) else {
+        return; // stale entry
+    };
+
+    let below = world.get_state(x, y - 1, z);
+    let below_b = state_block(below);
+
+    // 1. fall: air (or water — lava flows into water, no interaction
+    //    products in this bracket: documented) below → pour down
+    if y > 0 && (below_b == AIR || below_b == WATER) {
+        world.set_block_state(x, y - 1, z, lava_state(1));
+        on_block_changed(sched, world, x, y - 1, z);
+        sched.schedule([x, y - 1, z], rate);
+        return;
+    }
+
+    // 2. re-derive this block's level from its feeders
+    if level > 0 {
+        let mut feed: Option<u8> = None;
+        if lava_at(world, x, y + 1, z).is_some() {
+            feed = Some(0);
+        } else {
+            for (dx, dz) in [(1i32, 0i32), (-1, 0), (0, 1), (0, -1)] {
+                if let Some(nl) = lava_at(world, x + dx, y, z + dz) {
+                    // the neighbor's effective feed level already accounts
+                    // for its own level; the target = neighbor + drop
+                    feed = Some(feed.map_or(nl, |f: u8| f.min(nl)));
+                }
+            }
+        }
+        match feed {
+            None => {
+                world.set_block_state(x, y, z, AIR as u16);
+                on_block_changed(sched, world, x, y, z);
+                return;
+            }
+            // fed by a source (or the column above): the drop-off level
+            Some(0) => {
+                if level != drop {
+                    world.set_block_state(x, y, z, lava_state(drop));
+                    on_block_changed(sched, world, x, y, z);
+                }
+            }
+            Some(f) => {
+                let target = f + drop;
+                if target > 7 {
+                    // too weak: decay
+                    world.set_block_state(x, y, z, AIR as u16);
+                    on_block_changed(sched, world, x, y, z);
+                    return;
+                }
+                if target != level {
+                    world.set_block_state(x, y, z, lava_state(target));
+                    on_block_changed(sched, world, x, y, z);
+                }
+            }
+        }
+    }
+
+    // 3. horizontal spread (level + drop stays ≤ 7)
+    let level = lava_level(world.get_state(x, y, z));
+    if level == 255 {
+        return;
+    }
+    let spread = (level + drop).min(8);
+    if spread <= 7 {
+        let below_ok = !matches!(state_block(world.get_state(x, y - 1, z)), AIR | WATER);
+        if below_ok {
+            for (dx, dz) in [(1i32, 0i32), (-1, 0), (0, 1), (0, -1)] {
+                let n = world.get_state(x + dx, y, z + dz);
+                let nb = state_block(n);
+                if nb == AIR || nb == WATER {
+                    world.set_block_state(x + dx, y, z + dz, lava_state(spread));
+                    on_block_changed(sched, world, x + dx, y, z + dz);
+                }
+            }
+        }
+    }
+}
+
 /// gravity-block update: sand/gravel above air/water falls one block and
 /// re-schedules; stops on support. (vanilla spawns a falling-block ENTITY;
 /// the block-wise fall is the documented progressive approximation —
@@ -162,14 +299,14 @@ pub fn water_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, 
 pub fn gravity_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z: i32) {
     let s = world.get_state(x, y, z);
     let b = state_block(s);
-    if b != SAND && b != GRAVEL {
+    if b != SAND && b != GRAVEL && b != ANVIL && b != CHIPPED_ANVIL && b != DAMAGED_ANVIL {
         return; // stale entry
     }
     if y <= 0 {
         return;
     }
     let below = state_block(world.get_state(x, y - 1, z));
-    if below == AIR || below == WATER {
+    if below == AIR || below == WATER || below == LAVA {
         world.set_block_state(x, y, z, AIR as u16);
         world.set_block_state(x, y - 1, z, s);
         on_block_changed(sched, world, x, y, z);
@@ -319,6 +456,7 @@ mod tests {
             }
             for pos in due {
                 water_tick(world, sched, pos[0], pos[1], pos[2]);
+                lava_tick(world, sched, pos[0], pos[1], pos[2]);
                 gravity_tick(world, sched, pos[0], pos[1], pos[2]);
             }
         }
@@ -560,5 +698,141 @@ mod e1_tests {
         w.set_block_state(x, 65, 8, WART_STATE_BASE + 3);
         random_plant_tick(&mut w, &mut sched, x, 65, 8);
         assert_eq!(w.get_state(x, 65, 8), WART_STATE_BASE + 3, "caps at age 3");
+    }
+}
+
+#[cfg(test)]
+mod e2_tests {
+    use super::*;
+    use std::sync::Arc;
+
+    fn flat_world(top: i32) -> World {
+        let mut w = World::new(9);
+        for dz in -1i32..=1 {
+            for dx in -1i32..=1 {
+                let mut c = vc_chunk::chunk::Chunk::empty();
+                for y in 0..=top {
+                    for lz in 0..16usize {
+                        for lx in 0..16usize {
+                            c.set(lx, y as usize, lz, STONE);
+                        }
+                    }
+                }
+                w.insert_generated((dx, dz), Arc::new(c), Vec::new());
+            }
+        }
+        w.dirty.clear();
+        w
+    }
+
+    fn drain(world: &mut World, sched: &mut TickScheduler, max_ticks: u64) {
+        for _ in 0..max_ticks {
+            let due = sched.tick();
+            if due.is_empty() && sched.pending() == 0 {
+                break;
+            }
+            for pos in due {
+                water_tick(world, sched, pos[0], pos[1], pos[2]);
+                lava_tick(world, sched, pos[0], pos[1], pos[2]);
+                gravity_tick(world, sched, pos[0], pos[1], pos[2]);
+            }
+        }
+    }
+
+    /// Phase E2 (VERIFIED w/Lava): Overworld lava spreads at level-drop 2
+    /// → 3 blocks from the source (4 incl. source); Nether drop 1 → 7
+    /// blocks (8 incl. source). Tick rates: 30 / 10.
+    #[test]
+    fn lava_rates_and_spread_by_dimension() {
+        assert_eq!(LAVA_TICK_RATE_OVERWORLD, 30);
+        assert_eq!(LAVA_TICK_RATE_NETHER, 10);
+        // Overworld: source at y=65 on a shelf
+        let mut w = flat_world(64);
+        let mut sched = TickScheduler::new();
+        w.set_block_state(0, 65, 0, lava_state(0));
+        on_block_changed(&mut sched, &w, 0, 65, 0);
+        drain(&mut w, &mut sched, 2000);
+        // spread along +X: at most 3 blocks of flow (levels 2,4,6)
+        let mut max_x = 0i32;
+        for x in 1..12 {
+            if lava_level(w.get_state(x, 65, 0)) != 255 {
+                max_x = x;
+            }
+        }
+        assert!(
+            (1..=3).contains(&max_x),
+            "Overworld lava spreads 3 blocks, got {max_x}"
+        );
+        // the levels follow the +2 drop (2, 4, 6 across the run)
+        let l1 = lava_level(w.get_state(1, 65, 0));
+        assert_eq!(l1, 2, "first flow block is level 2 (drop-off 2)");
+
+        // Nether: full 7-block spread
+        let mut wn = World::new_in_dimension(9, vc_world::world::Dimension::Nether);
+        for dz in -1i32..=1 {
+            for dx in -1i32..=1 {
+                let mut c = vc_chunk::chunk::Chunk::empty();
+                for y in 0..=64 {
+                    for lz in 0..16usize {
+                        for lx in 0..16usize {
+                            c.set(lx, y as usize, lz, NETHERRACK);
+                        }
+                    }
+                }
+                wn.insert_generated((dx, dz), Arc::new(c), Vec::new());
+            }
+        }
+        wn.dirty.clear();
+        let mut sched_n = TickScheduler::new();
+        wn.set_block_state(0, 65, 0, lava_state(0));
+        on_block_changed(&mut sched_n, &wn, 0, 65, 0);
+        drain(&mut wn, &mut sched_n, 2000);
+        let mut max_xn = 0i32;
+        for x in 1..12 {
+            if lava_level(wn.get_state(x, 65, 0)) != 255 {
+                max_xn = x;
+            }
+        }
+        assert!(
+            (5..=7).contains(&max_xn),
+            "Nether lava spreads up to 7 blocks, got {max_xn}"
+        );
+        let ln1 = lava_level(wn.get_state(1, 65, 0));
+        assert_eq!(ln1, 1, "Nether first flow block is level 1 (drop-off 1)");
+    }
+
+    /// Phase E2 (VERIFIED w/Anvil): anvils are gravity blocks — they fall
+    /// like sand until supported.
+    #[test]
+    fn anvil_falls_until_supported() {
+        let mut w = flat_world(64);
+        let mut sched = TickScheduler::new();
+        w.set_block_state(8, 68, 8, ANVIL_STATE);
+        on_block_changed(&mut sched, &w, 8, 68, 8);
+        drain(&mut w, &mut sched, 100);
+        assert_eq!(state_block(w.get_state(8, 68, 8)), AIR, "left the float");
+        assert_eq!(state_block(w.get_state(8, 65, 8)), ANVIL, "landed");
+    }
+
+    /// Phase E2: lava source removal drains the flow (the water decay
+    /// rule shared by both fluids).
+    #[test]
+    fn lava_source_removal_drains() {
+        let mut w = flat_world(64);
+        let mut sched = TickScheduler::new();
+        w.set_block_state(0, 65, 0, lava_state(0));
+        on_block_changed(&mut sched, &w, 0, 65, 0);
+        drain(&mut w, &mut sched, 2000);
+        assert!(lava_level(w.get_state(1, 65, 0)) != 255, "flow established");
+        w.set_block_state(0, 65, 0, AIR as u16);
+        on_block_changed(&mut sched, &w, 0, 65, 0);
+        drain(&mut w, &mut sched, 4000);
+        for x in 0..5 {
+            assert_eq!(
+                lava_level(w.get_state(x, 65, 0)),
+                255,
+                "lava at x={x} drained"
+            );
+        }
     }
 }

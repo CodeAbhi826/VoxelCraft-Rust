@@ -36,6 +36,9 @@ pub fn smelt_result(block: u8) -> Option<u8> {
         // §Smelting) — the block form then crafts from 4 items
         CHISELED_SANDSTONE | CUT_SANDSTONE => Some(SMOOTH_SANDSTONE),
         NETHERRACK => Some(NETHER_BRICK),
+        // Phase E2 (VERIFIED 2026-09-06 w/Food): potato → baked potato
+        // (the only E2 food with a smelting recipe)
+        POTATO => Some(BAKED_POTATO),
         _ => None,
     }
 }

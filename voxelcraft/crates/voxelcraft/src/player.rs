@@ -81,6 +81,11 @@ pub struct Player {
     pub flying: bool,
     pub in_water: bool,
     pub head_in_water: bool,
+    /// Phase E2: feet in lava (contact damage + slow — VERIFIED w/Lava)
+    pub in_lava: bool,
+    /// Phase E2: timed status effects (wither/poison/regen + beacon stat
+    /// effects — VERIFIED w/Effect rows; see vc_gameplay::effects)
+    pub effects: vc_gameplay::effects::Effects,
     /// health points (0..20, vanilla half-heart scale ×2; §29 potions act
     /// on this, the HUD renders it as the real health bar)
     pub health: f32,
@@ -128,6 +133,8 @@ impl Player {
             flying: true, // spawn in air, land when chunks ready
             in_water: false,
             head_in_water: false,
+            in_lava: false,
+            effects: vc_gameplay::effects::Effects::new(),
             health: 20.0,
             xp_points: 0,
             xp_level: 0,
@@ -286,6 +293,10 @@ impl Player {
         );
         self.in_water = feet_block == WATER;
         self.head_in_water = head_block == WATER;
+        // Phase E2 (VERIFIED w/Lava): contact damage 4 HP per 10 ticks
+        // (the every-tick damage is reduced by the half-second damage
+        // immunity window); the game layer applies the timed damage.
+        self.in_lava = feet_block == LAVA;
         if self.in_water && !self.was_in_water && self.vel.y < -4.0 {
             sounds.push(SoundEvent {
                 family: SoundFamily::Water,

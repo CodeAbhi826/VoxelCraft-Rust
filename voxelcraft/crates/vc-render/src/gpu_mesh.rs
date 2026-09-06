@@ -50,8 +50,8 @@ use vc_world::world::ChunkPos;
 use wgpu::util::DeviceExt;
 
 use vc_blocks::blocks::{
-    BIRCH_LEAVES, BLOCK_COUNT, GLASS, GRASS, ICE, LEAVES, SPRUCE_LEAVES, STATE_COUNT, TALL_GRASS,
-    WATER,
+    BIRCH_LEAVES, BLOCK_COUNT, GLASS, GRASS, ICE, LAVA, LEAVES, SPRUCE_LEAVES, STATE_COUNT,
+    TALL_GRASS, WATER,
 };
 
 /// number of (axis, dir, section, slice) units per chunk = 3·2·16·16
@@ -70,10 +70,10 @@ pub const MESH_COMPUTE_SHADER: &str = r#"
 const VOL_WORDS: u32 = 147456u;    // 48*256*48 bytes / 4
 const B_WATER: u32 = 9u;           // block id of WATER (identity state)
 const MODEL_BASE: u32 = 63u;       // MODEL_STATE_BASE
-const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=279)
-const L_FL: u32 = 279u;            // lut: block flags           (BLOCK_COUNT=140)
-const L_TC: u32 = 419u;            // lut: block tint class      (BLOCK_COUNT=140)
-const L_ST: u32 = 559u;            // lut: state tiles, 4/state  (4·STATE_COUNT=1116)
+const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=316)
+const L_FL: u32 = 316u;            // lut: block flags           (BLOCK_COUNT=162)
+const L_TC: u32 = 478u;            // lut: block tint class      (BLOCK_COUNT=162)
+const L_ST: u32 = 640u;            // lut: state tiles, 4/state  (4·STATE_COUNT=1264)
 const P_N: u32 = 0u;               // params[0] = n_jobs
 const P_JOB: u32 = 2u;             // params job base = 2 + j*66
 const P_BIOME: u32 = 2u;           // biomes at job base + 2 (64 packed u32)
@@ -125,8 +125,8 @@ fn job_get_blk(j: u32, x: i32, y: i32, z: i32) -> u32 {
     let base = j * VOL_WORDS;
     return (blk_l[base + (p >> 2u)] >> ((p & 3u) * 8u)) & 0xFFu;
 }
-fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 278u)]; }
-fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 139u)]; }
+fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 315u)]; }
+fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 161u)]; }
 fn biome_at(j: u32, x: i32, z: i32) -> u32 {
     let c = u32(z * 16 + x);
     let w = params[P_JOB + j * 66u + P_BIOME + (c >> 2u)];
@@ -585,6 +585,8 @@ fn build_lut() -> Vec<u32> {
             BIRCH_LEAVES => 4,
             SPRUCE_LEAVES => 5,
             WATER => 6,
+            // Phase E2: lava — fixed slot in the WATER tint row
+            LAVA => 7,
             _ => 0,
         };
         lut[L_TC + b] = tint_class;
@@ -1362,6 +1364,7 @@ mod tests {
     /// this test guards against drift (e.g. a new block changing the
     /// face_visible arms without the flags LUT following)
     #[test]
+
     fn lut_mirrors_vc_blocks() {
         use vc_blocks::blocks::{is_cross, is_opaque, state_block, state_tiles, AIR};
         use vc_blocks::tint::{KIND_FOLIAGE, KIND_GRASS, KIND_WATER, SLOT_BIRCH, SLOT_SPRUCE};
@@ -1430,6 +1433,8 @@ mod tests {
                         4 => (KIND_FOLIAGE as u32, SLOT_BIRCH as u32),
                         5 => (KIND_FOLIAGE as u32, SLOT_SPRUCE as u32),
                         6 => (KIND_WATER as u32, biome as u32),
+                        // Phase E2: lava fixed slot (SLOT_LAVA = 50)
+                        7 => (KIND_WATER as u32, vc_blocks::tint::SLOT_LAVA as u32),
                         _ => (0, 0),
                     };
                     let got = (kind << 6) | slot;

@@ -383,16 +383,17 @@ pub fn mesh_sections(
                         ncell[d] += dir;
                         let nb = sb(getb(&blocks, ncell[0], ncell[1], ncell[2]));
 
-                        if b == WATER {
-                            if face_visible(WATER, nb) {
+                        if b == WATER || b == LAVA {
+                            // fluids mesh through the water-quad path (§18
+                            // tint: biome water color / the fixed lava slot —
+                            // both in the greedy key so runs never merge)
+                            if face_visible(b, nb) {
                                 let l = getl(&light, ncell[0], ncell[1], ncell[2]) as u64;
                                 let bl = getl(&blight, ncell[0], ncell[1], ncell[2]) as u64;
                                 let above = getb(&blocks, cell[0], cell[1] + 1, cell[2]);
-                                let aw = if above == WATER { 1u64 } else { 0u64 };
-                                // §18 water tint: biome water color, in the
-                                // greedy key so runs never merge across biomes
+                                let aw = if above == b { 1u64 } else { 0u64 };
                                 let wt = vc_blocks::tint::block_face_tint_packed(
-                                    WATER, false, biome_at(cell[0] as usize, cell[2] as usize),
+                                    b, false, biome_at(cell[0] as usize, cell[2] as usize),
                                 ) as u64;
                                 wmask[vi * du + ui] = 1 | (l << 1) | (aw << 6) | (bl << 7) | (wt << 11);
                             }

@@ -27,6 +27,10 @@ pub fn fuel_ticks(block: u8) -> i32 {
         // stopgap (VERIFICATION-REPORT §6, disclosed) is retired now
         // that the coal item exists — vanilla coal ore is not a fuel.
         COAL => 1600,
+        // Phase E3 (VERIFIED live 2026-09-06, minecraft.wiki/w/
+        // Block_of_Coal: "One block of coal lasts 800 seconds (16000
+        // ticks), which smelts 80 items" — 10× the coal item)
+        COAL_BLOCK => 16000,
         _ => 0,
     }
 }
@@ -262,8 +266,33 @@ mod tests {
         assert_eq!(fuel_ticks(OAK_FENCE), 300);
         assert_eq!(fuel_ticks(OAK_SLAB), 150, "slab = half of planks (150)");
         assert_eq!(fuel_ticks(COAL), 1600, "coal: 80 s, 8 items (w/Furnace)");
+        // Phase E3 (VERIFIED live 2026-09-06, minecraft.wiki/w/
+        // Block_of_Coal: "One block of coal lasts 800 seconds (16000
+        // ticks), which smelts 80 items" — 10x the coal item)
+        assert_eq!(fuel_ticks(COAL_BLOCK), 16000, "block of coal: 800 s, 80 items");
         assert_eq!(fuel_ticks(COAL_ORE), 0, "ore is not a fuel in vanilla");
         assert_eq!(fuel_ticks(STONE), 0, "stone is not a fuel");
+    }
+
+    /// Phase E3 (VERIFIED w/Block_of_Coal: 16000 ticks / 80 items —
+    /// 10x the coal item). 80 items outpace the 64-stack output slot:
+    /// 64 smelt, cooking pauses at the full stack while the fuel keeps
+    /// burning (vanilla furnace behavior — the 16000-tick budget and
+    /// the 80-item ratio are pinned by the fuel-table row above).
+    #[test]
+    fn coal_block_burns_16000_and_outpaces_the_output_stack() {
+        let mut f = FurnaceState::default();
+        f.input = ItemStack::new(SAND, 81);
+        f.fuel = ItemStack::new(COAL_BLOCK, 1);
+        for _ in 0..16_000 {
+            f.tick();
+        }
+        // the output slot fills (64 glass); cooking pauses; the block
+        // burned its full 16000-tick budget
+        assert_eq!(f.output.count, 64, "output stack full");
+        assert_eq!(f.output.block, GLASS);
+        assert_eq!(f.input.count, 17, "64 smelted of 81, cooking paused");
+        assert!(f.burn_left <= 1, "fuel fully burned, left={}", f.burn_left);
     }
 
     /// VERIFICATION-REPORT fix #4: "a piece of coal ... can process eight

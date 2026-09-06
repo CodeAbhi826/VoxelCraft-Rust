@@ -240,6 +240,29 @@ impl Sim {
                     // hopper work happens in the hopper pass below; the
                     // scheduled entry just refreshes its enable state
                 }
+                // ---- Phase E3 components (1.5–1.6 bracket) ----
+                vc_blocks::blocks::DAYLIGHT_SENSOR => {
+                    // signal = sky light × day brightness (VERIFIED
+                    // w/Daylight_Detector; the sky-light mapping is the
+                    // disclosed engine adaptation); self-reschedules
+                    // every 20gt so dawn/dusk sweep
+                    crate::redstone::daylight_sensor_tick(
+                        world,
+                        &mut self.sched,
+                        pos[0],
+                        pos[1],
+                        pos[2],
+                        self.ticks,
+                    );
+                }
+                vc_blocks::blocks::TRAPPED_CHEST
+                | vc_blocks::blocks::LIGHT_WEIGHTED_PLATE
+                | vc_blocks::blocks::HEAVY_WEIGHTED_PLATE => {
+                    // the trapped chest + plates are driven by the GAME
+                    // layer (viewer flag / entity counts — mobs + player
+                    // live outside vc-sim); the scheduled entry just
+                    // re-checks via on_block_changed no-ops
+                }
                 _ => {} // stale entry: block changed since scheduling
             }
             // light follows every sim-side block edit (water/sand move

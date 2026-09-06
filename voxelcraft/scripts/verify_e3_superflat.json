@@ -1,0 +1,56 @@
+[
+  {
+    "url": "https://minecraft.wiki/w/Superflat",
+    "name": "Superflat",
+    "snippet": "In the default superflat world, the terrain consists of one layer of bedrock, two layers of dirt, and one layer of grass blocks , with the biome set to plains.",
+    "host_name": "minecraft.wiki",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://minecraft.fandom.com/wiki/Superflat",
+    "name": "Superflat - Minecraft Wiki - Fandom",
+    "snippet": "In the default Superflat world, the terrain consists of one layer of bedrock, two layers of dirt, and one layer of grass blocks . nine original presets,",
+    "host_name": "minecraft.fandom.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://minecraft.wiki/w/Tutorial:Flat_survival",
+    "name": "Tutorial:Flat survival",
+    "snippet": "Jan 24, 2026 — Classic Flat A flat world consisting of one layer of grass blocks and two layers of dirt, followed by bedrock. Classic Flat uses the plains ...",
+    "host_name": "minecraft.wiki",
+    "rank": 2,
+    "date": "Jan 24, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.minecraftforum.net/forums/minecraft-java-edition/creative-mode/365173-superflat-customization-for-beginners",
+    "name": "Superflat Customization for Beginners - Creative Mode",
+    "snippet": "Jan 22, 2013 — there are 2 layers of block ID #3 - which is Dirt . Finally, the top layer is block ID #2 - which is grass. Biome types affect grass and leaf ...",
+    "host_name": "www.minecraftforum.net",
+    "rank": 3,
+    "date": "Jan 22, 2013",
+    "favicon": ""
+  },
+  {
+    "url": "https://mogswamp-superflat.fandom.com/wiki/Help_Center",
+    "name": "Help Center - Mogswamp Superflat Wiki - Fandom",
+    "snippet": "The classic flat superflat preset is the default preset used. The world is composed of 4 layers ; 1 of bedrock , 2 of dirt and 1 of grass block.",
+    "host_name": "mogswamp-superflat.fandom.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.minecraftmaps.com/tools/flat-world",
+    "name": "Minecraft Flat World Generator - Custom Superflat Presets",
+    "snippet": "Create custom Minecraft superflat worlds with a visual layer editor. Pick from 9 presets, choose a biome, toggle structures, and export JSON.",
+    "host_name": "www.minecraftmaps.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  }
+]

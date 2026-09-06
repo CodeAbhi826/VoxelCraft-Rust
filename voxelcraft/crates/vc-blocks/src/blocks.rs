@@ -197,6 +197,40 @@ pub const TILE_LAVA: u16 = 205;
 /// coal ITEM tile (VERIFICATION-REPORT mechanical fix #4 — base-game
 /// coal as an item-block; fuel 1600 ticks, smelt product of coal ore)
 pub const TILE_COAL: u16 = 206;
+// ---- Phase E3 (evolution 1.5–1.6 bracket, live-verified 2026-09-06) ----
+// world-block tiles (207..=224)
+pub const TILE_COAL_BLOCK: u16 = 207;
+pub const TILE_QUARTZ_BLOCK: u16 = 208;
+pub const TILE_CHISELED_QUARTZ: u16 = 209;
+pub const TILE_QUARTZ_PILLAR_TOP: u16 = 210;
+pub const TILE_QUARTZ_PILLAR_SIDE: u16 = 211;
+/// 16 stained-terracotta tiles (base 212..=227) — engine color order:
+/// white, orange, magenta, light blue, yellow, lime, pink, gray,
+/// light gray, cyan, purple, blue, brown, green, red, black (the
+/// vanilla dye-color registry order, VERIFIED w/Terracotta)
+pub const TILE_TERRACOTTA_STAINED_BASE: u16 = 212;
+pub const TILE_HAY_TOP: u16 = 228;
+pub const TILE_HAY_SIDE: u16 = 229;
+pub const TILE_DAYLIGHT_TOP: u16 = 230;
+pub const TILE_DAYLIGHT_SIDE: u16 = 231;
+pub const TILE_PLATE_LIGHT: u16 = 232;
+pub const TILE_PLATE_HEAVY: u16 = 233;
+pub const TILE_REDSTONE_BLOCK: u16 = 234;
+// item tiles
+pub const TILE_NETHER_QUARTZ: u16 = 235;
+pub const TILE_LEAD: u16 = 236;
+pub const TILE_SADDLE: u16 = 237;
+// E3 mob sprites (billboards)
+pub const TILE_HORSE: u16 = 238;
+pub const TILE_DONKEY: u16 = 239;
+pub const TILE_MULE: u16 = 240;
+// E3 spawn eggs (3 tiles, one per new mob kind — the E2 pattern)
+pub const TILE_E3_EGG_BASE: u16 = 241;
+// E3 spawn eggs (kinds 20..=22: horse, donkey, mule — ids 197..=199;
+// the legacy 124..=143 egg window is full)
+pub const TILE_E3_EGG_HORSE: u16 = 241;
+pub const TILE_E3_EGG_DONKEY: u16 = 242;
+pub const TILE_E3_EGG_MULE: u16 = 243;
 // mobs (Phase 2): entity sprites + drops' item tiles. Mob sprites are
 // clean-room pixel art (ours, not Mojang's) — distinct silhouettes/palettes
 pub const TILE_ZOMBIE: u16 = 83;
@@ -516,6 +550,109 @@ pub const LAVA: u8 = 161;
 /// Obtained by smelting coal ore (vanilla recipe, w/Smelting "coal ore
 /// → coal, 0.1 XP"). Inventory-only item-block, the E2 pattern.
 pub const COAL: u8 = 162;
+// ---- Phase E3 (evolution 1.5–1.6 bracket, live-verified 2026-09-06) ----
+/// Block of Coal — fuel 16000 ticks / 800 s / 80 items (VERIFIED live
+/// 2026-09-06: minecraft.wiki/w/Block_of_Coal "One block of coal lasts
+/// 800 seconds (16000 ticks), which smelts 80 items" — 10× the coal
+/// item's 1600). Craft: 9 coal ↔ 1 block (w/Block_of_Coal recipe).
+pub const COAL_BLOCK: u8 = 163;
+/// Block of Quartz — craft 4 nether quartz (VERIFIED live 2026-09-06,
+/// minecraft.wiki/w/Block_of_Quartz).
+pub const QUARTZ_BLOCK: u8 = 164;
+/// Chiseled Quartz Block — vanilla crafts from 2 quartz slabs
+/// (w/Chiseled_Quartz_Block); the engine has no quartz-slab model →
+/// picker-only this bracket, recipe deferred (disclosed).
+pub const CHISELED_QUARTZ: u8 = 165;
+/// Quartz Pillar — craft 2 blocks of quartz → 2 pillars (VERIFIED live
+/// 2026-09-06: minecraft.wiki/w/Quartz_Pillar "Block of Quartz 2";
+/// output count 2 confirmed by a second live source).
+pub const QUARTZ_PILLAR: u8 = 166;
+/// Stained Terracotta — 16 colors (ids 166..=181). VERIFIED live
+/// 2026-09-06: minecraft.wiki/w/Terracotta "comes in the sixteen dye
+/// colors ... found abundantly in badlands biomes"; crafting needs
+/// dye (no dye system in the engine — recipe deferred, disclosed);
+/// Badlands banding generation is the natural acquisition path.
+/// Order = the vanilla dye-color registry order.
+pub const STAINED_TERRACOTTA_BASE: u8 = 167;
+pub const STAINED_TERRACOTTA_END: u8 = 182;
+/// Carpets — the 5 engine wool colors (vanilla has 16; the engine wool
+/// palette is 5 — carpets match it 1:1, adaptation disclosed). Craft
+/// 2 wool → 3 carpets (VERIFIED live: minecraft.wiki/w/Carpet "13w17a
+/// The crafting recipe of carpets now returns 3 carpets from two
+/// wool"). Hitbox height 1/16 block (VERIFIED: "14w29a Carpets now
+/// have a hitbox height of 1⁄16 of a block") — rendered as a thin
+/// non-solid floor overlay (engine blocks are full-height; disclosed).
+pub const CARPET_WHITE: u8 = 183;
+pub const CARPET_RED: u8 = 184;
+pub const CARPET_YELLOW: u8 = 185;
+pub const CARPET_BLUE: u8 = 186;
+pub const CARPET_BLACK: u8 = 187;
+pub const CARPET_BASE: u8 = 183;
+/// Hay Bale — fall damage reduced by 80% (take 20%: VERIFIED live
+/// 2026-09-06, minecraft.wiki/w/Hay_Bale "Falling onto a hay bale
+/// reduces the fall damage by 80%, meaning whatever falls on a hay
+/// bale takes 20% of the normal fall damage"). Craft 9 wheat — no
+/// wheat/farming in the engine → recipe deferred, picker/loot only
+/// (disclosed). Feeds horses (mobs.rs).
+pub const HAY_BALE: u8 = 188;
+/// Daylight Sensor — redstone signal from sky light; recipe glass +
+/// nether quartz + any wooden slab (VERIFIED live: minecraft.wiki/w/
+/// Daylight_Detector "Glass + Nether Quartz + Any Wooden Slab").
+/// Java 1.16.5 signal: driven by time-of-day + weather + sky exposure
+/// (the engine maps its real sky-light engine through the same 0–15
+/// ladder — adaptation disclosed in redstone.rs).
+pub const DAYLIGHT_SENSOR: u8 = 189;
+/// Trapped Chest — container + redstone signal = number of players
+/// viewing, max 15 (VERIFIED live: minecraft.wiki/w/Trapped_Chest "to
+/// a power level equal to the number of players ... accessing the
+/// trapped chest at once (maximum 15)"). Recipe: tripwire hook +
+/// chest (VERIFIED, same page).
+pub const TRAPPED_CHEST: u8 = 190;
+/// Light Weighted Pressure Plate (gold) — signal = entity count on
+/// the plate, 1..15 (VERIFIED live: minecraft.wiki/w/
+/// Light_Weighted_Pressure_Plate "signal strength ... range from 1 to
+/// 15", "signal strength from a light weighted pressure plate does
+/// not vary with the type of entity"). Craft: 2 gold — engine has no
+/// ingots, 2 GOLD_ORE instead (the E2 ore-block convention, disclosed).
+pub const LIGHT_WEIGHTED_PLATE: u8 = 191;
+/// Heavy Weighted Pressure Plate (iron) — signal = ceil(entities/10),
+/// 1..15 (VERIFIED live: minecraft.wiki/w/Heavy_Weighted_Pressure_Plate
+/// "equal to 1⁄10 of the amount of entities on top of them (rounded
+/// up to the nearest integer), up to a maximum power level of 15").
+/// Craft: 2 iron — 2 IRON_ORE (convention, disclosed).
+pub const HEAVY_WEIGHTED_PLATE: u8 = 192;
+/// Block of Redstone — always-on power source, weak power 15 to direct
+/// neighbors (VERIFIED live: minecraft.wiki/w/Block_of_Redstone "acts
+/// as a permanently powered redstone power source", "provide weak
+/// power to their direct neighbors at signal strength 15"). Craft
+/// 9 redstone ↔ 1 block — engine redstone dust is the WIRE block →
+/// 9 REDSTONE_WIRE (adaptation, disclosed).
+pub const REDSTONE_BLOCK: u8 = 193;
+/// Nether Quartz — item dropped by nether quartz ore (VERIFIED live:
+/// minecraft.wiki/w/Nether_Quartz_Ore "it drops 1 Nether quartz";
+/// ore XP 2–5 from the same page). Quartz-block ingredient.
+pub const NETHER_QUARTZ: u8 = 194;
+/// Lead — leash item (VERIFIED live: minecraft.wiki/w/Lead "A lead can
+/// stretch a maximum of 12 blocks" on the CURRENT wiki — but that 12
+/// value is the 2025 "Chase the Skies" buff ("Leash snapping distance
+/// has been increased to 12 blocks", minecraft.wiki/w/Lead §History);
+/// for the 1.16.5 target the value is 10 blocks — version-scoped, both
+/// cited). Craft 4 string + 1 slimeball — no slimeballs in the engine
+/// → recipe deferred, picker-only (disclosed).
+pub const LEAD: u8 = 195;
+/// Saddle — required to CONTROL a tamed horse (VERIFIED live:
+/// minecraft.wiki/w/Horse "Once a horse is tamed and saddled, the
+/// player can control it"; w/Riding). Not craftable in vanilla —
+/// dungeon-chest loot + picker (the engine loot path).
+pub const SADDLE: u8 = 196;
+/// E3 spawn eggs (horse/donkey/mule — kinds 20..=22). The legacy egg
+/// window 124..=143 is full, so these live at 197..=199 with their own
+/// state arithmetic (the E2 item-block pattern).
+pub const E3_SPAWN_EGG_BASE: u8 = 197;
+pub const E3_SPAWN_EGG_END: u8 = 199;
+pub const E3_EGG_HORSE: u8 = 197;
+pub const E3_EGG_DONKEY: u8 = 198;
+pub const E3_EGG_MULE: u8 = 199;
 pub const BEEF_STATE: u16 = 130;
 pub const PORKCHOP_STATE: u16 = 131;
 pub const MUTTON_STATE: u16 = 132;
@@ -653,6 +790,176 @@ pub const SPAWNER_WITHER_SKELETON: u16 = 315;
 /// identity id 162 collides with repeater states like every E2 block)
 pub const COAL_STATE: u16 = 316;
 
+// ---- Phase E3 states (317..=353; ids 163..=209 all collide with the
+// legacy sim-state ranges 142..=227 — the E2 dedicated-state pattern) ----
+/// block of coal
+pub const COAL_BLOCK_STATE: u16 = 317;
+/// block of quartz
+pub const QUARTZ_BLOCK_STATE: u16 = 318;
+/// chiseled quartz block
+pub const CHISELED_QUARTZ_STATE: u16 = 319;
+/// quartz pillar
+pub const QUARTZ_PILLAR_STATE: u16 = 320;
+/// stained terracotta, 16 colors (321..=336) — `state = 321 + color`
+pub const TERRACOTTA_STAINED_STATE_BASE: u16 = 321;
+pub const TERRACOTTA_STAINED_STATE_END: u16 = 336;
+/// carpets — the 5 engine wool colors (337..=341):
+/// `state = 337 + (block - 182)`
+pub const CARPET_STATE_BASE: u16 = 337;
+pub const CARPET_STATE_END: u16 = 341;
+/// hay bale
+pub const HAY_BALE_STATE: u16 = 342;
+/// daylight sensor
+pub const DAYLIGHT_SENSOR_STATE: u16 = 343;
+/// trapped chest
+pub const TRAPPED_CHEST_STATE: u16 = 344;
+/// trapped chest OPEN (a viewer present — signal 1, the single-player
+/// form of the VERIFIED "power level equal to the number of players");
+/// folds to TRAPPED_CHEST
+pub const TRAPPED_CHEST_OPEN_STATE: u16 = 354;
+/// light weighted pressure plate
+pub const LIGHT_PLATE_STATE: u16 = 345;
+/// heavy weighted pressure plate
+pub const HEAVY_PLATE_STATE: u16 = 346;
+/// block of redstone
+pub const REDSTONE_BLOCK_STATE: u16 = 347;
+/// nether-quartz ITEM state (never world-stored)
+pub const NETHER_QUARTZ_STATE: u16 = 348;
+/// lead ITEM state (never world-stored)
+pub const LEAD_STATE: u16 = 349;
+/// saddle ITEM state (never world-stored)
+pub const SADDLE_STATE: u16 = 350;
+/// E3 spawn-egg ITEM states 351..=353 (never world-stored):
+/// `state = 351 + (block - 207)`
+pub const E3_EGG_STATE_BASE: u16 = 351;
+pub const E3_EGG_STATE_END: u16 = 353;
+
+// ---- Phase E3 POWER states (the vanilla `power` blockstate pattern:
+// the sensor/plates/TRAPPED-CHEST signal lives in the state so the
+// stateless wire re-derivation reads it as a real source) ----
+/// daylight sensor power 1..=15 (355..=369); power 0 = the idle
+/// DAYLIGHT_SENSOR_STATE 343. `state = 355 + (power - 1)`
+pub const DAYLIGHT_POWER_BASE: u16 = 355;
+pub const DAYLIGHT_POWER_END: u16 = 369;
+/// light weighted plate power 1..=15 (370..=384); power 0 = 345
+pub const LIGHT_PLATE_POWER_BASE: u16 = 370;
+pub const LIGHT_PLATE_POWER_END: u16 = 384;
+/// heavy weighted plate power 1..=15 (385..=399); power 0 = 346
+pub const HEAVY_PLATE_POWER_BASE: u16 = 385;
+pub const HEAVY_PLATE_POWER_END: u16 = 399;
+
+/// daylight-sensor state for a signal power (0..=15)
+#[inline]
+pub fn daylight_sensor_state(p: u8) -> u16 {
+    if p == 0 {
+        DAYLIGHT_SENSOR_STATE
+    } else {
+        DAYLIGHT_POWER_BASE + (p.clamp(1, 15) - 1) as u16
+    }
+}
+
+/// daylight-sensor signal power of a state (0 = idle/none)
+#[inline]
+pub fn daylight_sensor_power(s: u16) -> u8 {
+    if (DAYLIGHT_POWER_BASE..=DAYLIGHT_POWER_END).contains(&s) {
+        (s - DAYLIGHT_POWER_BASE + 1) as u8
+    } else {
+        0
+    }
+}
+
+/// weighted-plate state for a signal power (0..=15)
+#[inline]
+pub fn plate_state(block: u8, p: u8) -> u16 {
+    let base = if block == LIGHT_WEIGHTED_PLATE {
+        LIGHT_PLATE_POWER_BASE
+    } else {
+        HEAVY_PLATE_POWER_BASE
+    };
+    if p == 0 {
+        if block == LIGHT_WEIGHTED_PLATE {
+            LIGHT_PLATE_STATE
+        } else {
+            HEAVY_PLATE_STATE
+        }
+    } else {
+        base + (p.clamp(1, 15) - 1) as u16
+    }
+}
+
+/// weighted-plate signal power of a state (0 = idle/none)
+#[inline]
+pub fn plate_power(s: u16) -> u8 {
+    if (LIGHT_PLATE_POWER_BASE..=LIGHT_PLATE_POWER_END).contains(&s) {
+        (s - LIGHT_PLATE_POWER_BASE + 1) as u8
+    } else if (HEAVY_PLATE_POWER_BASE..=HEAVY_PLATE_POWER_END).contains(&s) {
+        (s - HEAVY_PLATE_POWER_BASE + 1) as u8
+    } else {
+        0
+    }
+}
+/// E3 item-block arithmetic (quartz/lead/saddle items: 204..=206 ↔
+/// 348..=350)
+#[inline]
+pub fn e3_item_block_state(b: u8) -> Option<u16> {
+    if (NETHER_QUARTZ..=SADDLE).contains(&b) {
+        Some(NETHER_QUARTZ_STATE + (b - NETHER_QUARTZ) as u16)
+    } else {
+        None
+    }
+}
+
+#[inline]
+pub fn e3_item_state_block(s: u16) -> Option<u8> {
+    if (NETHER_QUARTZ_STATE..=SADDLE_STATE).contains(&s) {
+        Some(NETHER_QUARTZ + (s - NETHER_QUARTZ_STATE) as u8)
+    } else {
+        None
+    }
+}
+
+/// E3 spawn-egg state arithmetic (ids 207..=209 ↔ 351..=353)
+#[inline]
+pub fn e3_egg_block_state(b: u8) -> Option<u16> {
+    if (E3_SPAWN_EGG_BASE..=E3_SPAWN_EGG_END).contains(&b) {
+        Some(E3_EGG_STATE_BASE + (b - E3_SPAWN_EGG_BASE) as u16)
+    } else {
+        None
+    }
+}
+
+#[inline]
+pub fn e3_egg_state_block(s: u16) -> Option<u8> {
+    if (E3_EGG_STATE_BASE..=E3_EGG_STATE_END).contains(&s) {
+        Some(E3_SPAWN_EGG_BASE + (s - E3_EGG_STATE_BASE) as u8)
+    } else {
+        None
+    }
+}
+
+/// stained terracotta block id for a color index (0..15, the vanilla
+/// dye-color registry order)
+#[inline]
+pub fn stained_terracotta(color: u8) -> u8 {
+    STAINED_TERRACOTTA_BASE + color.min(15)
+}
+
+/// state id for a stained-terracotta color
+#[inline]
+pub fn stained_terracotta_state(color: u8) -> u16 {
+    TERRACOTTA_STAINED_STATE_BASE + color.min(15) as u16
+}
+
+/// color index of a stained-terracotta state (255 = not one)
+#[inline]
+pub fn stained_terracotta_color(s: u16) -> u8 {
+    if (TERRACOTTA_STAINED_STATE_BASE..=TERRACOTTA_STAINED_STATE_END).contains(&s) {
+        (s - TERRACOTTA_STAINED_STATE_BASE) as u8
+    } else {
+        255
+    }
+}
+
 /// lava state for a level (0 = source)
 #[inline]
 pub fn lava_state(level: u8) -> u16 {
@@ -731,7 +1038,7 @@ pub fn item_state_block(s: u16) -> Option<u8> {
     }
 }
 
-pub const BLOCK_COUNT: usize = 163;
+pub const BLOCK_COUNT: usize = 200;
 
 // ---------------------------------------------------------------------------
 // BlockState registry (1.16.5 pattern, miniature)
@@ -752,7 +1059,10 @@ pub const BLOCK_COUNT: usize = 163;
 /// item states (140..=141, 236..=253, 256..=278)
 /// Phase E2: anvil/beacon/wall/ender-chest/frame/tripwire/skull/command
 /// + E2 items + eggs 17..=20 + lava (283..=314)
-pub const STATE_COUNT: usize = 317;
+/// Phase E3: quartz family + stained terracotta (16) + carpets (5) +
+/// hay/sensor/trapped-chest/plates/redstone-block + quartz/lead/saddle
+/// items + eggs 20..=22 + the POWER-state ladders (317..=399)
+pub const STATE_COUNT: usize = 400;
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -1079,13 +1389,31 @@ pub fn default_state(b: u8) -> u16 {
         COMMAND_BLOCK => COMMAND_BLOCK_STATE,
         LAVA => LAVA_STATE,
         COAL => COAL_STATE,
+        // ---- Phase E3 defaults (dedicated states ≥ 317) ----
+        COAL_BLOCK => COAL_BLOCK_STATE,
+        QUARTZ_BLOCK => QUARTZ_BLOCK_STATE,
+        CHISELED_QUARTZ => CHISELED_QUARTZ_STATE,
+        QUARTZ_PILLAR => QUARTZ_PILLAR_STATE,
+        b if (STAINED_TERRACOTTA_BASE..=STAINED_TERRACOTTA_END).contains(&b) => {
+            stained_terracotta_state(b - STAINED_TERRACOTTA_BASE)
+        }
+        b if (CARPET_WHITE..=CARPET_BLACK).contains(&b) => CARPET_STATE_BASE + (b - CARPET_WHITE) as u16,
+        HAY_BALE => HAY_BALE_STATE,
+        DAYLIGHT_SENSOR => DAYLIGHT_SENSOR_STATE,
+        TRAPPED_CHEST => TRAPPED_CHEST_STATE,
+        LIGHT_WEIGHTED_PLATE => LIGHT_PLATE_STATE,
+        HEAVY_WEIGHTED_PLATE => HEAVY_PLATE_STATE,
+        REDSTONE_BLOCK => REDSTONE_BLOCK_STATE,
         OAK_SLAB => 63,     // PROP_BLOCKS[0].base_state (half=bottom)
         COBBLE_STAIRS => 65, // base_state (facing=north, half=bottom)
         OAK_FENCE => 73,    // base_state (no connections)
         // Phase E1 item-blocks: dedicated states ≥ 256 (never world-stored)
         // Phase E2 item-blocks: dedicated states 301..=306 (never world-stored)
+        // Phase E3 item-blocks (quartz/lead/saddle) + eggs 20..=22
         _ => item_block_state(b)
             .or_else(|| e2_item_block_state(b))
+            .or_else(|| e3_item_block_state(b))
+            .or_else(|| e3_egg_block_state(b))
             .unwrap_or(b as u16),
     }
 }
@@ -1305,6 +1633,39 @@ pub fn state_block(s: u16) -> u8 {
         LAVA_STATE => return LAVA,
         s if (LAVA_FLOW_BASE..=LAVA_FLOW_END).contains(&s) => return LAVA,
         COAL_STATE => return COAL,
+        // ---- Phase E3 state folding ----
+        COAL_BLOCK_STATE => return COAL_BLOCK,
+        QUARTZ_BLOCK_STATE => return QUARTZ_BLOCK,
+        CHISELED_QUARTZ_STATE => return CHISELED_QUARTZ,
+        QUARTZ_PILLAR_STATE => return QUARTZ_PILLAR,
+        s if (TERRACOTTA_STAINED_STATE_BASE..=TERRACOTTA_STAINED_STATE_END).contains(&s) => {
+            return stained_terracotta((s - TERRACOTTA_STAINED_STATE_BASE) as u8)
+        }
+        s if (CARPET_STATE_BASE..=CARPET_STATE_END).contains(&s) => {
+            return CARPET_BASE + (s - CARPET_STATE_BASE) as u8
+        }
+        HAY_BALE_STATE => return HAY_BALE,
+        DAYLIGHT_SENSOR_STATE => return DAYLIGHT_SENSOR,
+        TRAPPED_CHEST_STATE => return TRAPPED_CHEST,
+        LIGHT_PLATE_STATE => return LIGHT_WEIGHTED_PLATE,
+        HEAVY_PLATE_STATE => return HEAVY_WEIGHTED_PLATE,
+        REDSTONE_BLOCK_STATE => return REDSTONE_BLOCK,
+        s if (NETHER_QUARTZ_STATE..=SADDLE_STATE).contains(&s) => {
+            return e3_item_state_block(s).unwrap_or(AIR)
+        }
+        s if (E3_EGG_STATE_BASE..=E3_EGG_STATE_END).contains(&s) => {
+            return e3_egg_state_block(s).unwrap_or(AIR)
+        }
+        // Phase E3 POWER-state folding (sensor/plates/trapped-chest
+        // signal ladders — all fold to their parent block)
+        TRAPPED_CHEST_OPEN_STATE => return TRAPPED_CHEST,
+        s if (DAYLIGHT_POWER_BASE..=DAYLIGHT_POWER_END).contains(&s) => return DAYLIGHT_SENSOR,
+        s if (LIGHT_PLATE_POWER_BASE..=LIGHT_PLATE_POWER_END).contains(&s) => {
+            return LIGHT_WEIGHTED_PLATE
+        }
+        s if (HEAVY_PLATE_POWER_BASE..=HEAVY_PLATE_POWER_END).contains(&s) => {
+            return HEAVY_WEIGHTED_PLATE
+        }
         SPAWNER_WITHER_SKELETON => return SPAWNER,
         ENCHANT_TABLE_STATE => return ENCHANT_TABLE,
         ENCHANTED_BOOK_STATE => return ENCHANTED_BOOK,
@@ -1429,6 +1790,13 @@ pub fn is_model_state(s: u16) -> bool {
         && s != SPAWNER_WITHER_SKELETON
         // VERIFICATION-REPORT fix #4: the coal item state (inventory-only)
         && s != COAL_STATE
+        // ---- Phase E3: every E3 state is a full-cube/cross/sim state —
+        // none routes to the JSON-model dispatcher ----
+        && !((COAL_BLOCK_STATE..=E3_EGG_STATE_END).contains(&s)
+            || s == TRAPPED_CHEST_OPEN_STATE
+            || (DAYLIGHT_POWER_BASE..=DAYLIGHT_POWER_END).contains(&s)
+            || (LIGHT_PLATE_POWER_BASE..=LIGHT_PLATE_POWER_END).contains(&s)
+            || (HEAVY_PLATE_POWER_BASE..=HEAVY_PLATE_POWER_END).contains(&s))
 }
 
 /// true if this block id has property-driven model states
@@ -1532,7 +1900,7 @@ pub fn log_axis_state(block: u8, axis: u8) -> u16 {
 /// component tile rendered BLANK since Phase 2. Now derived from the
 /// highest tile constant (118–121 here) and guarded by the
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
-pub const TILE_MAX: u16 = 206;
+pub const TILE_MAX: u16 = 243;
 
 /// inventory-only ITEM blocks (potions/bottles/books): never placeable in
 /// the world — right-click drinks (potions) / fills (glass bottle at water).
@@ -1554,10 +1922,12 @@ pub fn is_item_block(b: u8) -> bool {
     ) || is_spawn_egg(b)
 }
 
-/// true for the 20 mob spawn-egg item ids (124..=143).
+/// true for the mob spawn-egg item ids (124..=143 + the E3 window
+/// 196..=198).
 #[inline]
 pub fn is_spawn_egg(b: u8) -> bool {
     (SPAWN_EGG_BASE..=SPAWN_EGG_MAX).contains(&b)
+        || (E3_SPAWN_EGG_BASE..=E3_SPAWN_EGG_END).contains(&b)
 }
 
 /// The mob this spawn-egg id spawns. Tile order in the BLOCK_TABLE egg
@@ -1566,10 +1936,14 @@ pub fn is_spawn_egg(b: u8) -> bool {
 /// (see vc_gameplay::mobs::MobKind and the egg_art palette table).
 #[inline]
 pub fn egg_mob(b: u8) -> Option<u8> {
+    if (E3_SPAWN_EGG_BASE..=E3_SPAWN_EGG_END).contains(&b) {
+        // kinds 20..=22 (horse/donkey/mule — MobKind::from_egg)
+        return Some(20 + (b - E3_SPAWN_EGG_BASE));
+    }
     if !is_spawn_egg(b) {
         return None;
     }
-    Some(b - SPAWN_EGG_BASE) // 0..=15, decoded by the gameplay layer
+    Some(b - SPAWN_EGG_BASE) // 0..=19, decoded by the gameplay layer
 }
 
 /// Phase E1: state-aware emission — the lit redstone lamp state emits 15
@@ -1847,6 +2221,50 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     // coal item (VERIFICATION-REPORT fix #4): inventory-only fuel item,
     // 1600 ticks / 8 items per piece (VERIFIED live w/Furnace + w/Smelting)
     d("Coal", [TILE_COAL, TILE_COAL, TILE_COAL], false, false, true, false, 0, SoundFamily::Stone),
+    // ---- Phase E3 (1.5–1.6 bracket) ----
+    // block of coal: 16000 ticks / 80 items (VERIFIED w/Block_of_Coal)
+    d("Block of Coal", [TILE_COAL_BLOCK, TILE_COAL_BLOCK, TILE_COAL_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
+    d("Block of Quartz", [TILE_QUARTZ_BLOCK, TILE_QUARTZ_BLOCK, TILE_QUARTZ_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
+    d("Chiseled Quartz Block", [TILE_CHISELED_QUARTZ, TILE_CHISELED_QUARTZ, TILE_CHISELED_QUARTZ], true, true, false, false, 0, SoundFamily::Stone),
+    d("Quartz Pillar", [TILE_QUARTZ_PILLAR_TOP, TILE_QUARTZ_PILLAR_TOP, TILE_QUARTZ_PILLAR_SIDE], true, true, false, false, 0, SoundFamily::Stone),
+    // 16 stained terracotta (vanilla dye-color order; Badlands banding)
+    d("White Terracotta", [TILE_TERRACOTTA_STAINED_BASE, TILE_TERRACOTTA_STAINED_BASE, TILE_TERRACOTTA_STAINED_BASE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Orange Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 1, TILE_TERRACOTTA_STAINED_BASE + 1, TILE_TERRACOTTA_STAINED_BASE + 1], true, true, false, false, 0, SoundFamily::Stone),
+    d("Magenta Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 2, TILE_TERRACOTTA_STAINED_BASE + 2, TILE_TERRACOTTA_STAINED_BASE + 2], true, true, false, false, 0, SoundFamily::Stone),
+    d("Light Blue Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 3, TILE_TERRACOTTA_STAINED_BASE + 3, TILE_TERRACOTTA_STAINED_BASE + 3], true, true, false, false, 0, SoundFamily::Stone),
+    d("Yellow Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 4, TILE_TERRACOTTA_STAINED_BASE + 4, TILE_TERRACOTTA_STAINED_BASE + 4], true, true, false, false, 0, SoundFamily::Stone),
+    d("Lime Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 5, TILE_TERRACOTTA_STAINED_BASE + 5, TILE_TERRACOTTA_STAINED_BASE + 5], true, true, false, false, 0, SoundFamily::Stone),
+    d("Pink Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 6, TILE_TERRACOTTA_STAINED_BASE + 6, TILE_TERRACOTTA_STAINED_BASE + 6], true, true, false, false, 0, SoundFamily::Stone),
+    d("Gray Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 7, TILE_TERRACOTTA_STAINED_BASE + 7, TILE_TERRACOTTA_STAINED_BASE + 7], true, true, false, false, 0, SoundFamily::Stone),
+    d("Light Gray Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 8, TILE_TERRACOTTA_STAINED_BASE + 8, TILE_TERRACOTTA_STAINED_BASE + 8], true, true, false, false, 0, SoundFamily::Stone),
+    d("Cyan Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 9, TILE_TERRACOTTA_STAINED_BASE + 9, TILE_TERRACOTTA_STAINED_BASE + 9], true, true, false, false, 0, SoundFamily::Stone),
+    d("Purple Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 10, TILE_TERRACOTTA_STAINED_BASE + 10, TILE_TERRACOTTA_STAINED_BASE + 10], true, true, false, false, 0, SoundFamily::Stone),
+    d("Blue Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 11, TILE_TERRACOTTA_STAINED_BASE + 11, TILE_TERRACOTTA_STAINED_BASE + 11], true, true, false, false, 0, SoundFamily::Stone),
+    d("Brown Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 12, TILE_TERRACOTTA_STAINED_BASE + 12, TILE_TERRACOTTA_STAINED_BASE + 12], true, true, false, false, 0, SoundFamily::Stone),
+    d("Green Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 13, TILE_TERRACOTTA_STAINED_BASE + 13, TILE_TERRACOTTA_STAINED_BASE + 13], true, true, false, false, 0, SoundFamily::Stone),
+    d("Red Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 14, TILE_TERRACOTTA_STAINED_BASE + 14, TILE_TERRACOTTA_STAINED_BASE + 14], true, true, false, false, 0, SoundFamily::Stone),
+    d("Black Terracotta", [TILE_TERRACOTTA_STAINED_BASE + 15, TILE_TERRACOTTA_STAINED_BASE + 15, TILE_TERRACOTTA_STAINED_BASE + 15], true, true, false, false, 0, SoundFamily::Stone),
+    // carpets: 1/16-block visual (VERIFIED w/Carpet 14w29a) — non-solid
+    // floor overlay, the engine's full-cube adaptation (disclosed)
+    d("White Carpet", [TILE_WOOL_WHITE, TILE_WOOL_WHITE, TILE_WOOL_WHITE], false, false, false, false, 0, SoundFamily::Wool),
+    d("Red Carpet", [TILE_WOOL_RED, TILE_WOOL_RED, TILE_WOOL_RED], false, false, false, false, 0, SoundFamily::Wool),
+    d("Yellow Carpet", [TILE_WOOL_YELLOW, TILE_WOOL_YELLOW, TILE_WOOL_YELLOW], false, false, false, false, 0, SoundFamily::Wool),
+    d("Blue Carpet", [TILE_WOOL_BLUE, TILE_WOOL_BLUE, TILE_WOOL_BLUE], false, false, false, false, 0, SoundFamily::Wool),
+    d("Black Carpet", [TILE_WOOL_BLACK, TILE_WOOL_BLACK, TILE_WOOL_BLACK], false, false, false, false, 0, SoundFamily::Wool),
+    d("Hay Bale", [TILE_HAY_TOP, TILE_HAY_TOP, TILE_HAY_SIDE], true, true, false, false, 0, SoundFamily::Grass),
+    d("Daylight Sensor", [TILE_DAYLIGHT_TOP, TILE_DAYLIGHT_TOP, TILE_DAYLIGHT_SIDE], false, false, false, false, 0, SoundFamily::Wood),
+    d("Trapped Chest", [TILE_CHEST, TILE_CHEST, TILE_CHEST], true, true, false, false, 0, SoundFamily::Wood),
+    d("Light Weighted Pressure Plate", [TILE_PLATE_LIGHT, TILE_PLATE_LIGHT, TILE_PLATE_LIGHT], false, false, false, false, 0, SoundFamily::Stone),
+    d("Heavy Weighted Pressure Plate", [TILE_PLATE_HEAVY, TILE_PLATE_HEAVY, TILE_PLATE_HEAVY], false, false, false, false, 0, SoundFamily::Stone),
+    d("Block of Redstone", [TILE_REDSTONE_BLOCK, TILE_REDSTONE_BLOCK, TILE_REDSTONE_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
+    // items: nether quartz / lead / saddle (inventory-only)
+    d("Nether Quartz", [TILE_NETHER_QUARTZ, TILE_NETHER_QUARTZ, TILE_NETHER_QUARTZ], false, false, true, false, 0, SoundFamily::Stone),
+    d("Lead", [TILE_LEAD, TILE_LEAD, TILE_LEAD], false, false, true, false, 0, SoundFamily::Grass),
+    d("Saddle", [TILE_SADDLE, TILE_SADDLE, TILE_SADDLE], false, false, true, false, 0, SoundFamily::Grass),
+    // E3 spawn eggs (kinds 20..=22)
+    d("Horse Spawn Egg", [TILE_E3_EGG_HORSE, TILE_E3_EGG_HORSE, TILE_E3_EGG_HORSE], false, false, true, false, 0, SoundFamily::Grass),
+    d("Donkey Spawn Egg", [TILE_E3_EGG_DONKEY, TILE_E3_EGG_DONKEY, TILE_E3_EGG_DONKEY], false, false, true, false, 0, SoundFamily::Grass),
+    d("Mule Spawn Egg", [TILE_E3_EGG_MULE, TILE_E3_EGG_MULE, TILE_E3_EGG_MULE], false, false, true, false, 0, SoundFamily::Grass),
 ];
 
 #[inline]
@@ -1916,7 +2334,7 @@ pub fn face_visible(b: u8, n: u8) -> bool {
 /// (needs fluid sim to be fun). Potions are item-blocks — usable from the
 /// hotbar (drink), never placeable. Phase E1 adds the 1.0–1.2 bracket
 /// blocks/items + the 16 spawn eggs (creative-only items, w/Spawn_Egg).
-pub const PICKER_BLOCKS: [u8; 127] = [
+pub const PICKER_BLOCKS: [u8; 164] = [
     GRASS, DIRT, STONE, COBBLE, SMOOTH_STONE, STONE_BRICKS, BRICKS, MOSSY_COBBLE,
     GRANITE, DIORITE, ANDESITE, OBSIDIAN,
     SAND, GRAVEL, CLAY, TERRACOTTA,
@@ -1955,6 +2373,21 @@ pub const PICKER_BLOCKS: [u8; 127] = [
     COAL,
     // E2 spawn eggs (kinds 17..=20: wither skeleton, witch, bat, wither)
     SPAWN_EGG_BASE + 16, SPAWN_EGG_BASE + 17, SPAWN_EGG_BASE + 18, SPAWN_EGG_BASE + 19,
+    // ---- Phase E3 (1.5–1.6 bracket) ----
+    COAL_BLOCK,
+    QUARTZ_BLOCK, CHISELED_QUARTZ, QUARTZ_PILLAR, NETHER_QUARTZ,
+    STAINED_TERRACOTTA_BASE, STAINED_TERRACOTTA_BASE + 1, STAINED_TERRACOTTA_BASE + 2,
+    STAINED_TERRACOTTA_BASE + 3, STAINED_TERRACOTTA_BASE + 4, STAINED_TERRACOTTA_BASE + 5,
+    STAINED_TERRACOTTA_BASE + 6, STAINED_TERRACOTTA_BASE + 7, STAINED_TERRACOTTA_BASE + 8,
+    STAINED_TERRACOTTA_BASE + 9, STAINED_TERRACOTTA_BASE + 10, STAINED_TERRACOTTA_BASE + 11,
+    STAINED_TERRACOTTA_BASE + 12, STAINED_TERRACOTTA_BASE + 13, STAINED_TERRACOTTA_BASE + 14,
+    STAINED_TERRACOTTA_BASE + 15,
+    CARPET_WHITE, CARPET_RED, CARPET_YELLOW, CARPET_BLUE, CARPET_BLACK,
+    HAY_BALE, DAYLIGHT_SENSOR, TRAPPED_CHEST,
+    LIGHT_WEIGHTED_PLATE, HEAVY_WEIGHTED_PLATE, REDSTONE_BLOCK,
+    LEAD, SADDLE,
+    // E3 spawn eggs (kinds 20..=22: horse, donkey, mule)
+    E3_SPAWN_EGG_BASE, E3_SPAWN_EGG_BASE + 1, E3_SPAWN_EGG_BASE + 2,
 ];
 
 /// default hotbar palette
@@ -2141,9 +2574,12 @@ mod state_tests {
             assert!(PICKER_BLOCKS.contains(&want), "picker missing {want}");
         }
         // 12-col grid must stay inside the 960×540 UI canvas
-        let rows = (PICKER_BLOCKS.len() + 11) / 12;
+        // Phase E3: 15 columns (was 12) — the picker grew to 164 entries
+        // with the 1.5–1.6 bracket; 15×11 stays inside the canvas
+        // (668×514 grid).
+        let rows = (PICKER_BLOCKS.len() + 14) / 15;
         assert!(rows * 44 + 30 <= 540, "picker grid too tall: {rows} rows");
-        assert!(12 * 44 + 8 <= 960);
+        assert!(15 * 44 + 8 <= 960);
     }
 
     /// Phase 4: the dedicated item tiles exist in the 16×16-tile atlas grid
@@ -2273,6 +2709,12 @@ mod state_tests {
                 || s == SPAWNER_WITHER_SKELETON
                 // VERIFICATION-REPORT fix #4: the coal item state
                 || s == COAL_STATE
+                // Phase E3 dedicated world-block + item + egg + POWER states
+                || (COAL_BLOCK_STATE..=E3_EGG_STATE_END).contains(&s)
+                || s == TRAPPED_CHEST_OPEN_STATE
+                || (DAYLIGHT_POWER_BASE..=DAYLIGHT_POWER_END).contains(&s)
+                || (LIGHT_PLATE_POWER_BASE..=LIGHT_PLATE_POWER_END).contains(&s)
+                || (HEAVY_PLATE_POWER_BASE..=HEAVY_PLATE_POWER_END).contains(&s)
             {
                 assert!(!is_model_state(s), "component/item state {s} never routes to models");
                 // identity: the state folds to the block whose def table
@@ -2376,5 +2818,89 @@ mod state_tests {
             let _ = is_opaque(raw);
             let _ = name(raw);
         }
+    }
+
+    // ---------------- Phase E3 tests (1.5–1.6 bracket) ----------------
+
+    #[test]
+    fn phase_e3_registry_roundtrips() {
+        // every E3 block folds through its dedicated state and back
+        let cases = [
+            (COAL_BLOCK, COAL_BLOCK_STATE),
+            (QUARTZ_BLOCK, QUARTZ_BLOCK_STATE),
+            (CHISELED_QUARTZ, CHISELED_QUARTZ_STATE),
+            (QUARTZ_PILLAR, QUARTZ_PILLAR_STATE),
+            (HAY_BALE, HAY_BALE_STATE),
+            (DAYLIGHT_SENSOR, DAYLIGHT_SENSOR_STATE),
+            (TRAPPED_CHEST, TRAPPED_CHEST_STATE),
+            (LIGHT_WEIGHTED_PLATE, LIGHT_PLATE_STATE),
+            (HEAVY_WEIGHTED_PLATE, HEAVY_PLATE_STATE),
+            (REDSTONE_BLOCK, REDSTONE_BLOCK_STATE),
+            (NETHER_QUARTZ, NETHER_QUARTZ_STATE),
+            (LEAD, LEAD_STATE),
+            (SADDLE, SADDLE_STATE),
+        ];
+        for (b, s) in cases {
+            assert_eq!(default_state(b), s, "block {b}");
+            assert_eq!(state_block(s), b, "state {s}");
+            assert!(!is_model_state(s), "state {s} never routes to models");
+        }
+        // 16 stained terracotta colors
+        for c in 0u8..16 {
+            let b = stained_terracotta(c);
+            let s = stained_terracotta_state(c);
+            assert_eq!(default_state(b), s, "terracotta color {c}");
+            assert_eq!(state_block(s), b, "terracotta state {c}");
+            assert_eq!(stained_terracotta_color(s), c);
+        }
+        // 5 carpets (the engine wool palette)
+        for (i, b) in [CARPET_WHITE, CARPET_RED, CARPET_YELLOW, CARPET_BLUE, CARPET_BLACK]
+            .iter()
+            .enumerate()
+        {
+            let s = CARPET_STATE_BASE + i as u16;
+            assert_eq!(default_state(*b), s, "carpet {b}");
+            assert_eq!(state_block(s), *b, "carpet state {s}");
+            // carpets are non-solid, non-opaque (the 1/16-floor overlay)
+            assert!(!def(*b).solid);
+            assert!(!def(*b).opaque);
+        }
+        // E3 eggs decode to kinds 20..=22 (the horse/donkey/mule rows)
+        for (i, want) in [(0u8, 20u8), (1, 21), (2, 22)] {
+            let b = E3_SPAWN_EGG_BASE + i;
+            assert_eq!(egg_mob(b), Some(want), "E3 egg {b}");
+            assert!(is_spawn_egg(b));
+            assert_eq!(default_state(b), E3_EGG_STATE_BASE + i as u16);
+        }
+    }
+
+    #[test]
+    fn phase_e3_counts_and_picker() {
+        assert_eq!(BLOCK_COUNT, 200, "37 new E3 blocks");
+        assert_eq!(STATE_COUNT, 400, "E3 states + POWER ladders end at 399");
+        assert_eq!(BLOCK_TABLE.len(), BLOCK_COUNT);
+        for want in [
+            COAL_BLOCK,
+            QUARTZ_BLOCK,
+            QUARTZ_PILLAR,
+            NETHER_QUARTZ,
+            STAINED_TERRACOTTA_BASE,
+            STAINED_TERRACOTTA_BASE + 15,
+            CARPET_WHITE,
+            CARPET_BLACK,
+            HAY_BALE,
+            DAYLIGHT_SENSOR,
+            TRAPPED_CHEST,
+            LIGHT_WEIGHTED_PLATE,
+            HEAVY_WEIGHTED_PLATE,
+            REDSTONE_BLOCK,
+            LEAD,
+            SADDLE,
+            E3_SPAWN_EGG_BASE,
+        ] {
+            assert!(PICKER_BLOCKS.contains(&want), "picker missing {want}");
+        }
+        // TILE_MAX covers every E3 tile (the Phase-4 blank-tile guard)
+        assert!(TILE_MAX >= 243);
     }
 }

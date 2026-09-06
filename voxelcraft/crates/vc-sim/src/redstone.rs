@@ -43,6 +43,13 @@ pub fn is_component(s: u16) -> bool {
         // Phase E1: the redstone lamp re-checks its inputs on neighbor
         // changes (light on/off rides the block state)
         || b == REDSTONE_LAMP
+        // Phase E3: the daylight sensor + trapped chest re-check on
+        // neighbor changes (their signals feed wires; the sensor also
+        // self-reschedules every 20gt)
+        || b == DAYLIGHT_SENSOR
+        || b == TRAPPED_CHEST
+        || b == LIGHT_WEIGHTED_PLATE
+        || b == HEAVY_WEIGHTED_PLATE
 }
 
 /// schedule redstone updates for a position and its neighbors after a
@@ -130,6 +137,27 @@ fn direct_feed(world: &World, x: i32, y: i32, z: i32) -> u8 {
         }
         if b == REDSTONE_TORCH && torch_is_lit(s) {
             best = best.max(15);
+        }
+        if b == REDSTONE_BLOCK {
+            best = best.max(15);
+        }
+        // Phase E3 (VERIFIED signal ladders): the daylight sensor's
+        // POWER state, an OPEN trapped chest (1 viewer), and both
+        // weighted plates' POWER states feed adjacent wire
+        if b == DAYLIGHT_SENSOR {
+            let p = daylight_sensor_power(s);
+            if p > 0 {
+                best = best.max(p);
+            }
+        }
+        if b == TRAPPED_CHEST && s == TRAPPED_CHEST_OPEN_STATE {
+            best = best.max(1);
+        }
+        if b == LIGHT_WEIGHTED_PLATE || b == HEAVY_WEIGHTED_PLATE {
+            let p = plate_power(s);
+            if p > 0 {
+                best = best.max(p);
+            }
         }
         // Phase 3: repeater/comparator/observer outputs power adjacent
         // wire at full strength (comparator strength nuance: v1 binary —
@@ -311,6 +339,188 @@ pub fn toggle_lever(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32
     world.set_block_state(x, y, z, new);
     on_block_changed(sched, world, x, y, z);
     true
+}
+
+// ---------------------------------------------------------------------
+// Phase E3 (evolution 1.5–1.6 bracket) — all values VERIFIED live
+// 2026-09-06: minecraft.wiki/w/Block_of_Redstone, /w/Daylight_Detector,
+// /w/Trapped_Chest, /w/Light_Weighted_Pressure_Plate,
+// /w/Heavy_Weighted_Pressure_Plate.
+// ---------------------------------------------------------------------
+
+/// daylight factor 0..1 from the sim tick count (the engine's day cycle
+/// = 24000 ticks @ 20 tps, VERIFIED w/Daylight_cycle). Vanilla daylight
+/// detectors respond to "time of day, the weather, the detector's
+/// exposure to the sky, and the internal sky light level" (w/
+/// Daylight_Detector §Redstone_component) — the engine adaptation maps
+/// the real sky-light engine through this brightness curve (no weather
+/// system — disclosed).
+pub fn day_brightness(sim_ticks: u64) -> f32 {
+    // day 0..12000 bright; sunset 12000..13000 ramps down; night
+    // 13000..23000 dark; sunrise 23000..24000 ramps up (the wiki
+    // Daylight_cycle table)
+    let t = (sim_ticks % 24000) as f32;
+    if t < 12000.0 {
+        1.0
+    } else if t < 13000.0 {
+        1.0 - (t - 12000.0) / 1000.0
+    } else if t < 23000.0 {
+        0.0
+    } else {
+        (t - 23000.0) / 1000.0
+    }
+}
+
+/// sky light at a position (the light-engine section read, the
+/// mobs.rs `light_levels` sky half)
+fn sky_light_at(world: &World, x: i32, y: i32, z: i32) -> u8 {
+    let cx = x.div_euclid(16);
+    let cz = z.div_euclid(16);
+    let lx = (x - cx * 16) as usize;
+    let lz = (z - cz * 16) as usize;
+    let sec = (y.clamp(0, 255) / 16) as usize;
+    let yy = (y.clamp(0, 255) % 16) as usize;
+    let idx = (yy << 8) | (lz << 4) | lx;
+    world
+        .light
+        .get(&(cx, cz))
+        .and_then(|ld| ld.sections[sec].as_ref().map(|s| s.sky[idx]))
+        .unwrap_or(15)
+}
+
+/// one daylight-sensor update: signal = sky light × day brightness
+/// (0..15), encoded in the sensor's POWER state (the vanilla `power`
+/// blockstate pattern — the stateless wire re-derivation reads it as a
+/// real source through power_at). VERIFIED signal ladder w/
+/// Daylight_Detector; the sky-light mapping is the disclosed engine
+/// adaptation above. Re-schedules itself every 20 game ticks so the
+/// dawn/dusk sweep is observable.
+pub fn daylight_sensor_tick(
+    world: &mut World,
+    sched: &mut TickScheduler,
+    x: i32,
+    y: i32,
+    z: i32,
+    sim_ticks: u64,
+) {
+    let s = world.get_state(x, y, z);
+    if state_block(s) != DAYLIGHT_SENSOR {
+        return; // stale entry
+    }
+    let sky = sky_light_at(world, x, y, z);
+    let day = day_brightness(sim_ticks);
+    let signal = ((sky as f32 * day).round() as u8).min(15);
+    let new = daylight_sensor_state(signal);
+    if new != s {
+        world.set_block_state(x, y, z, new);
+        on_block_changed(sched, world, x, y, z);
+    }
+    // keep sweeping (the self-rescheduling wire pattern)
+    sched.schedule([x, y, z], 20);
+}
+
+/// trapped-chest update: signal = number of players viewing, max 15
+/// (VERIFIED w/Trapped_Chest "a power level equal to the number of
+/// players ... accessing the trapped chest at once (maximum 15)").
+/// Single-player engine: 1 while the GUI is open, 0 when closed —
+/// encoded as the OPEN state (a real source through power_at).
+pub fn trapped_chest_tick(
+    world: &mut World,
+    sched: &mut TickScheduler,
+    x: i32,
+    y: i32,
+    z: i32,
+    open: bool,
+) {
+    let s = world.get_state(x, y, z);
+    if state_block(s) != TRAPPED_CHEST {
+        return;
+    }
+    let new = if open { TRAPPED_CHEST_OPEN_STATE } else { TRAPPED_CHEST_STATE };
+    if new != s {
+        world.set_block_state(x, y, z, new);
+        on_block_changed(sched, world, x, y, z);
+    }
+}
+
+/// weighted-pressure-plate signal from the entity count (pure formula):
+/// light = 1 per entity (1..15); heavy = ceil(entities/10) (1..15) —
+/// both VERIFIED live (w/Light_Weighted_Pressure_Plate "signal
+/// strength ... range from 1 to 15", "does not vary with the type of
+/// entity"; w/Heavy_Weighted_Pressure_Plate "equal to 1⁄10 of the
+/// amount of entities on top of them (rounded up to the nearest
+/// integer), up to a maximum power level of 15"). The game layer
+/// encodes the signal in the plate's POWER state (a real source).
+pub fn weighted_plate_signal(block: u8, entities: usize) -> u8 {
+    if entities == 0 {
+        return 0;
+    }
+    let raw = if block == LIGHT_WEIGHTED_PLATE {
+        entities as u8
+    } else {
+        (entities + 9) as u8 / 10
+    };
+    raw.clamp(1, 15)
+}
+
+/// Phase E3: write a weighted plate's signal into its POWER state (the
+/// game-layer sweep calls this every 10 game ticks).
+pub fn plate_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z: i32, signal: u8) {
+    let s = world.get_state(x, y, z);
+    let b = state_block(s);
+    if b != LIGHT_WEIGHTED_PLATE && b != HEAVY_WEIGHTED_PLATE {
+        return; // stale
+    }
+    let new = plate_state(b, signal);
+    if new != s {
+        world.set_block_state(x, y, z, new);
+        on_block_changed(sched, world, x, y, z);
+    }
+}
+
+/// feed `signal` into every adjacent wire cell (the source pattern —
+/// wires re-propagate through their own tick). Phase E3: kept for the
+/// game-layer fallback path; the state-based sources (sensor/plates/
+/// trapped chest) no longer need it — their POWER states ARE the source.
+fn feed_adjacent_wires(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z: i32, signal: u8) {
+    for (dx, dy, dz) in [
+        (1i32, 0i32, 0i32),
+        (-1, 0, 0),
+        (0, 1, 0),
+        (0, -1, 0),
+        (0, 0, 1),
+        (0, 0, -1),
+    ] {
+        let (wx, wy, wz) = (x + dx, y + dy, z + dz);
+        let s = world.get_state(wx, wy, wz);
+        let old = wire_power(s);
+        if old != 255 {
+            // wires only rise here; decay rides the normal wire tick
+            // (a vanished source lets neighbors pull them down)
+            let target = if signal > old { signal } else { old };
+            if signal == 0 && old != 0 {
+                // source gone: drop to the best neighbor level (let the
+                // wire tick recompute — schedule it)
+                sched.schedule([wx, wy, wz], REDSTONE_TICK_RATE);
+            } else if target != old {
+                world.set_block_state(wx, wy, wz, wire_state(target));
+                sched.schedule([wx, wy, wz], REDSTONE_TICK_RATE);
+            }
+        }
+    }
+}
+
+/// Phase E3: public wrapper for the game layer's plate sweep (the
+/// weighted plates feed adjacent wires from outside vc-sim).
+pub fn feed_adjacent_wires_public(
+    world: &mut World,
+    sched: &mut TickScheduler,
+    x: i32,
+    y: i32,
+    z: i32,
+    signal: u8,
+) {
+    feed_adjacent_wires(world, sched, x, y, z, signal)
 }
 
 #[cfg(test)]
@@ -556,6 +766,30 @@ fn power_at(world: &World, x: i32, y: i32, z: i32) -> u8 {
             REDSTONE_WIRE => {
                 let p = wire_power(s);
                 if p != 255 {
+                    best = best.max(p);
+                }
+            }
+            REDSTONE_BLOCK => {
+                // Phase E3 (VERIFIED w/Block_of_Redstone): always-on
+                // weak power 15 to direct neighbors
+                best = best.max(15);
+            }
+            DAYLIGHT_SENSOR => {
+                // Phase E3: the POWER-state ladder (vanilla `power`)
+                let p = daylight_sensor_power(s);
+                if p > 0 {
+                    best = best.max(p);
+                }
+            }
+            TRAPPED_CHEST if s == TRAPPED_CHEST_OPEN_STATE => {
+                // Phase E3 (VERIFIED): viewers count, max 15 — single
+                // player = 1 while the GUI is open
+                best = best.max(1);
+            }
+            LIGHT_WEIGHTED_PLATE | HEAVY_WEIGHTED_PLATE => {
+                // Phase E3: the entity-count POWER states
+                let p = plate_power(s);
+                if p > 0 {
                     best = best.max(p);
                 }
             }
@@ -1343,5 +1577,87 @@ mod e1_lamp_tests {
         // emission rides the state (VERIFIED: lit = 15, off = 0)
         assert_eq!(state_emissive(REDSTONE_LAMP_LIT), 15);
         assert_eq!(state_emissive(REDSTONE_LAMP_STATE), 0);
+    }
+
+    // ---------------- Phase E3 tests (1.5–1.6 bracket) ----------------
+
+    #[test]
+    fn phase_e3_day_brightness_follows_the_vanilla_day_cycle() {
+        // day 0..12000 bright, sunset ramp, night dark, sunrise ramp
+        // (VERIFIED w/Daylight_cycle: 24000 ticks @ 20 tps)
+        assert_eq!(day_brightness(0), 1.0);
+        assert_eq!(day_brightness(6000), 1.0);
+        assert!((day_brightness(12500) - 0.5).abs() < 1e-6, "mid-sunset");
+        assert_eq!(day_brightness(18000), 0.0, "midnight");
+        assert!((day_brightness(23500) - 0.5).abs() < 1e-6, "mid-sunrise");
+        assert_eq!(day_brightness(24000 + 100), 1.0, "wraps to day");
+    }
+
+    #[test]
+    fn phase_e3_weighted_plate_formulas() {
+        // light: 1 per entity, 1..15 (VERIFIED w/Light_Weighted_Pressure_Plate)
+        assert_eq!(weighted_plate_signal(LIGHT_WEIGHTED_PLATE, 0), 0);
+        assert_eq!(weighted_plate_signal(LIGHT_WEIGHTED_PLATE, 1), 1);
+        assert_eq!(weighted_plate_signal(LIGHT_WEIGHTED_PLATE, 7), 7);
+        assert_eq!(weighted_plate_signal(LIGHT_WEIGHTED_PLATE, 15), 15);
+        assert_eq!(weighted_plate_signal(LIGHT_WEIGHTED_PLATE, 60), 15, "capped");
+        // heavy: ceil(entities/10), 1..15 (VERIFIED w/Heavy_Weighted_Pressure_Plate
+        // "1/10 of the amount of entities (rounded up)")
+        assert_eq!(weighted_plate_signal(HEAVY_WEIGHTED_PLATE, 0), 0);
+        assert_eq!(weighted_plate_signal(HEAVY_WEIGHTED_PLATE, 1), 1);
+        assert_eq!(weighted_plate_signal(HEAVY_WEIGHTED_PLATE, 10), 1);
+        assert_eq!(weighted_plate_signal(HEAVY_WEIGHTED_PLATE, 11), 2);
+        assert_eq!(weighted_plate_signal(HEAVY_WEIGHTED_PLATE, 150), 15);
+        assert_eq!(weighted_plate_signal(HEAVY_WEIGHTED_PLATE, 500), 15, "capped");
+    }
+
+    #[test]
+    fn phase_e3_redstone_block_powers_adjacent_wire() {
+        // VERIFIED w/Block_of_Redstone: "acts as a permanently powered
+        // redstone power source ... provide weak power to their direct
+        // neighbors at signal strength 15"
+        let mut w = flat_world();
+        let mut sched = TickScheduler::new();
+        w.set_block_state(0, 65, 0, REDSTONE_BLOCK_STATE);
+        w.set_block_state(1, 65, 0, wire_state(0));
+        on_block_changed(&mut sched, &w, 0, 65, 0);
+        drain(&mut w, &mut sched, 50);
+        assert_eq!(wire_power(w.get_state(1, 65, 0)), 15, "wire at 15");
+    }
+
+    #[test]
+    fn phase_e3_daylight_sensor_feeds_wires_by_sky_light() {
+        let mut w = flat_world();
+        let mut sched = TickScheduler::new();
+        w.set_block_state(0, 65, 0, DAYLIGHT_SENSOR_STATE);
+        w.set_block_state(1, 65, 0, wire_state(0));
+        // the flat-world test fixture has no light data — the sensor
+        // reads the "no light data = 15" default; midday ticks
+        on_block_changed(&mut sched, &w, 0, 65, 0);
+        daylight_sensor_tick(&mut w, &mut sched, 0, 65, 0, 6000);
+        drain(&mut w, &mut sched, 50);
+        assert_eq!(wire_power(w.get_state(1, 65, 0)), 15, "full sky at noon");
+        // midnight: signal 0 (the sensor drops to its idle state, the
+        // wire decays through its own tick)
+        daylight_sensor_tick(&mut w, &mut sched, 0, 65, 0, 18000);
+        drain(&mut w, &mut sched, 50);
+        assert_eq!(wire_power(w.get_state(1, 65, 0)), 0, "dark at midnight");
+    }
+
+    #[test]
+    fn phase_e3_trapped_chest_signals_one_viewer() {
+        // VERIFIED w/Trapped_Chest: "a power level equal to the number
+        // of players ... accessing (maximum 15)" — single player = 1
+        let mut w = flat_world();
+        let mut sched = TickScheduler::new();
+        w.set_block_state(0, 65, 0, TRAPPED_CHEST_STATE);
+        w.set_block_state(1, 65, 0, wire_state(0));
+        trapped_chest_tick(&mut w, &mut sched, 0, 65, 0, true);
+        drain(&mut w, &mut sched, 50);
+        assert_eq!(wire_power(w.get_state(1, 65, 0)), 1, "one viewer");
+        // closed: back to 0
+        trapped_chest_tick(&mut w, &mut sched, 0, 65, 0, false);
+        drain(&mut w, &mut sched, 50);
+        assert_eq!(wire_power(w.get_state(1, 65, 0)), 0, "closed chest");
     }
 }

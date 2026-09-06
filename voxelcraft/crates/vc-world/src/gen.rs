@@ -403,6 +403,13 @@ pub struct TerrainGen {
     pub seed: u64,
     /// §28: which dimension this generator produces
     pub dim: Dimension,
+    /// Phase E3 (1.5–1.6 bracket): Superflat world type (VERIFIED live
+    /// 2026-09-06, minecraft.wiki/w/Superflat: classic preset = "one
+    /// layer of grass blocks and two layers of dirt, followed by
+    /// bedrock", plains biome; JE also generates villages/strongholds —
+    /// the engine's flat mode generates NO structures, disclosed
+    /// adaptation).
+    pub flat: bool,
     n_cont: Noise,
     n_mfac: Noise,
     n_ridge: Noise,
@@ -437,6 +444,7 @@ impl TerrainGen {
         TerrainGen {
             seed,
             dim,
+            flat: false,
             n_cont: Noise::new(seed ^ 0x1000),
             n_mfac: Noise::new(seed ^ 0x2000),
             n_ridge: Noise::new(seed ^ 0x3000),
@@ -451,6 +459,15 @@ impl TerrainGen {
             n_neth3: Noise::new(seed ^ 0xA300),
             n_mush: Noise::new(seed ^ 0xA400),
         }
+    }
+
+    /// Phase E3: classic-superflat generator (bedrock + 2 dirt + grass,
+    /// plains biome, no structures — the engine adaptation of the
+    /// VERIFIED classic preset; see the `flat` field docs).
+    pub fn for_dimension_flat(seed: u64, dim: Dimension) -> Self {
+        let mut g = Self::for_dimension(seed, dim);
+        g.flat = true;
+        g
     }
 
     pub fn column(&self, x: i32, z: i32) -> ColumnInfo {
@@ -666,6 +683,28 @@ impl TerrainGen {
         let sea = vc_chunk::SEA_LEVEL;
         let mut outbound: Vec<(i32, i32, i32, u8)> = Vec::new();
 
+        // ---- Phase E3: superflat short-circuit (the VERIFIED classic
+        // preset: bedrock, 2 dirt, grass; plains biome; no structures,
+        // no caves, no ocean fill — the surface sits at y=3) ----
+        if self.flat {
+            for z in 0..16usize {
+                for x in 0..16usize {
+                    let col_idx = z * 16 + x;
+                    chunk.height[col_idx] = 3;
+                    chunk.biome[col_idx] = Biome::Plains as u8;
+                    for y in 0..=3usize {
+                        let b = match y {
+                            0 => BEDROCK,
+                            1 | 2 => DIRT,
+                            _ => GRASS,
+                        };
+                        chunk.set(x, y, z, b);
+                    }
+                }
+            }
+            return (Arc::new(chunk), outbound);
+        }
+
         // Phase 10: ravines covering this chunk (computed once — the
         // 11×11-chunk neighborhood covers the max 127-block diagonal so
         // every chunk independently agrees on every ravine that reaches
@@ -699,9 +738,30 @@ impl TerrainGen {
                     } else if yi > h {
                         WATER
                     } else if yi == h {
-                        col.top
+                        // Phase E3 (VERIFIED w/Terracotta + w/Badlands:
+                        // "found abundantly in badlands biomes" as
+                        // banded colored layers): badlands surfaces band
+                        // through the 16 stained-terracotta colors by
+                        // absolute y with a per-seed offset (vanilla's
+                        // exact seed-shifted layer table is not
+                        // published — deterministic clean-room banding,
+                        // disclosed adaptation)
+                        if col.biome == Biome::Badlands {
+                            stained_terracotta(badlands_band_color(self.seed, yi))
+                        } else {
+                            col.top
+                        }
                     } else if yi > h - 4 {
-                        col.filler
+                        if col.biome == Biome::Badlands {
+                            stained_terracotta(badlands_band_color(self.seed, yi))
+                        } else {
+                            col.filler
+                        }
+                    } else if col.biome == Biome::Badlands && yi > h - 16 {
+                        // the deeper banded strata (vanilla badlands
+                        // terracotta runs deep; 16 blocks below the
+                        // surface — clean-room depth, disclosed)
+                        stained_terracotta(badlands_band_color(self.seed, yi))
                     } else if col.biome == Biome::Mountains
                         && (4..=31).contains(&yi)
                         && emerald_ore(self.seed, wx, yi, wz)
@@ -2973,6 +3033,27 @@ fn CHUNK_Z_CHUNK() -> usize {
     16
 }
 
+/// Phase E3: the badlands stained-terracotta band color for an absolute
+/// y level. Vanilla generates seed-shifted colored-terracotta layers in
+/// badlands ("found abundantly in badlands biomes" — VERIFIED w/
+/// Terracotta; w/Badlands) but the exact per-seed layer table is not
+/// published; this deterministic banding (a fixed color sequence by
+/// (y + seed offset)) is the disclosed clean-room adaptation. The
+/// sequence mixes the warm desert-family colors the vanilla badlands
+/// actually shows (orange/yellow/red/brown/white + plain terracotta
+/// returns).
+fn badlands_band_color(seed: u64, y: i32) -> u8 {
+    // index into the vanilla dye-order color table (0=white, 1=orange,
+    // 4=yellow, 14=red, 12=brown ...) — 16 stains + the plain-terracotta
+    // fallback handled by the caller via `255`
+    const BANDS: [u8; 12] = [
+        1, 1, 4, 1, 12, 0, 1, 14, 1, 12, 4, 1, // orange-dominant strata
+    ];
+    let off = (seed >> 13) as i32 & 63; // per-seed vertical shift
+    let i = ((y + off).rem_euclid(BANDS.len() as i32)) as usize;
+    BANDS[i]
+}
+
 /// Phase E2: emerald-ore hash gate (mountains only; ~5 per chunk at
 /// p = 0.0008 — see the stone-fill branch comment for the vanilla
 /// feature semantics: attempts 100 times per chunk in 0-3-size blobs,
@@ -4109,6 +4190,66 @@ mod e2_tests {
         assert_eq!(
             emerald_cells, on_mountain_columns,
             "EVERY emerald cell sits under a Mountains column (VERIFIED)"
+        );
+    }
+
+    // ---------------- Phase E3 tests (1.5–1.6 bracket) ----------------
+
+    #[test]
+    fn phase_e3_superflat_is_the_classic_preset() {
+        // VERIFIED live 2026-09-06 (minecraft.wiki/w/Superflat): "one
+        // layer of grass blocks and two layers of dirt, followed by
+        // bedrock" — the classic preset, plains biome
+        let gen = TerrainGen::for_dimension_flat(777, Dimension::Overworld);
+        let (chunk, _) = gen.generate_chunk(0, 0, Vec::new());
+        for lz in 0..16usize {
+            for lx in 0..16usize {
+                assert_eq!(chunk.get(lx, 0, lz), BEDROCK as u16, "bedrock floor");
+                assert_eq!(chunk.get(lx, 1, lz), DIRT as u16, "dirt layer 1");
+                assert_eq!(chunk.get(lx, 2, lz), DIRT as u16, "dirt layer 2");
+                assert_eq!(chunk.get(lx, 3, lz), GRASS as u16, "grass surface");
+                assert_eq!(chunk.get(lx, 4, lz), AIR as u16, "air above");
+            }
+        }
+        // plains biome everywhere; no ocean fill above the surface
+        for i in 0..256 {
+            assert_eq!(chunk.biome[i], Biome::Plains as u8);
+        }
+        assert_eq!(chunk.height[0], 3, "surface at y=3");
+    }
+
+    #[test]
+    fn phase_e3_badlands_band_through_stained_terracotta() {
+        // VERIFIED w/Terracotta: stained terracotta "found abundantly in
+        // badlands biomes" — banded by absolute y (the clean-room
+        // deterministic banding, disclosed)
+        let gen = TerrainGen::for_dimension(4242, Dimension::Overworld);
+        // find a badlands column in a 64x64 probe window
+        let mut found = None;
+        'outer: for z in -32..32 {
+            for x in -32..32 {
+                let col = gen.column(x, z);
+                if col.biome == Biome::Badlands {
+                    found = Some((x, z, col.height));
+                    break 'outer;
+                }
+            }
+        }
+        let Some((x, z, h)) = found else {
+            panic!("no badlands column found in the probe window");
+        };
+        let (chunk, _) = gen.generate_chunk(
+            x.div_euclid(16),
+            z.div_euclid(16),
+            Vec::new(),
+        );
+        let lx = (x - x.div_euclid(16) * 16) as usize;
+        let lz = (z - z.div_euclid(16) * 16) as usize;
+        let surface = vc_blocks::blocks::state_block(chunk.get(lx, h.clamp(0, 255) as usize, lz));
+        // the surface + upper strata are stained terracotta family
+        assert!(
+            (STAINED_TERRACOTTA_BASE..=STAINED_TERRACOTTA_END).contains(&surface),
+            "badlands surface is stained terracotta, got {surface}"
         );
     }
 }

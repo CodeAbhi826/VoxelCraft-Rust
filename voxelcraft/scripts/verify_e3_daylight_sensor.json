@@ -1,0 +1,56 @@
+[
+  {
+    "url": "https://minecraft.wiki/w/Daylight_Detector",
+    "name": "Daylight Detector",
+    "snippet": "Aug 28, 2026 — a daylight detector's outputted signal strength depends on the time of day , the weather, snowfall Thunder Time ↓ Time ↑ Time ↓ Time ↑ line of ...",
+    "host_name": "minecraft.wiki",
+    "rank": 0,
+    "date": "Aug 28, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://minecraft.fandom.com/wiki/Daylight_Detector",
+    "name": "Daylight Detector - Minecraft Wiki - Fandom",
+    "snippet": "Specifically, it outputs a signal strength of 15 minus the current internal sky light level , where values over 15 or below 0 are taken as 15 or 0 respectively.",
+    "host_name": "minecraft.fandom.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://minecraft.wiki/w/Tutorial:Daylight_detector",
+    "name": "Tutorial:Daylight detector",
+    "snippet": "The daylight sensor can easily be used to signal things at different times of day . Use a comparator to reduce the redstone clock's signal strength to below ...",
+    "host_name": "minecraft.wiki",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://minecraft.wiki/w/Observer",
+    "name": "Observer",
+    "snippet": "Aug 28, 2026 — When it detects something, the observer emits a redstone pulse of strong power at signal strength 15 for 2 game ticks.",
+    "host_name": "minecraft.wiki",
+    "rank": 3,
+    "date": "Aug 28, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/redstone/comments/1jjnl8a/how_do_i_make_a_daylight_detector_send_a_one_time",
+    "name": "How do i make a daylight detector send a one time output",
+    "snippet": "Im using an autbreeder and cant bother with uptting in bread every minecraft day, so im thinking of one that does it automatically through a daylight ...",
+    "host_name": "www.reddit.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://minecraft-archive.fandom.com/wiki/Daylight_Sensor",
+    "name": "Daylight Sensor - Minecraft Wiki - Fandom",
+    "snippet": "When the sun reaches its maximum daylight (at noon), it can activate up to 15 redstone activated blocks. Daylight sensors only activate when in sunlight, and ... Read more",
+    "host_name": "minecraft-archive.fandom.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  }
+]

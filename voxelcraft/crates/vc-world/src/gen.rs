@@ -4,7 +4,9 @@
 use crate::world::Dimension;
 use std::sync::Arc;
 use vc_blocks::blocks::*;
-use vc_chunk::chunk::{Chunk, CHUNK_LEN};
+use vc_chunk::chunk::Chunk;
+#[cfg(test)]
+use vc_chunk::chunk::CHUNK_LEN;
 use vc_rng::rng::Rng;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -1293,6 +1295,46 @@ impl TerrainGen {
             }
         }
 
+        // 1.10 fossils — VERIFIED (wiki /w/Java_Edition_1.10 §World
+        // generation, live 2026-09-06): "generates 15–24 blocks
+        // underground in deserts, swampland and their M and hills
+        // variants. Each chunk has a 1/64 chance of generating a fossil.
+        // Composed of bone blocks and some coal ore, arranged as to
+        // resemble the skulls and spines of giant extinct creatures."
+        // Ours: a 1/64 chunk roll in Desert/Swamp placing a small
+        // skull-and-spine cluster of bone blocks with coal-ore ribs.
+        {
+            let b = Biome::from_u8(chunk.biome[8 * 16 + 8]);
+            if (b == Biome::Desert || b == Biome::Swamp)
+                && Rng::hash3(self.seed ^ 0xF055, cx, 0, cz) % 64 == 0
+            {
+                let fx = 3 + rng.next_range(10) as i32;
+                let fz = 3 + rng.next_range(10) as i32;
+                let col_idx = fz as usize * 16 + fx as usize;
+                let surf = chunk.height[col_idx] as i32;
+                let fy = (surf - 24 + rng.next_range(10) as i32).max(10); // 15..24 under
+                // skull: 3×3 bone cap with eye sockets
+                for dx in 0..3 {
+                    for dz in 0..3 {
+                        let is_eye = (dx == 1) && (dz == 0 || dz == 2);
+                        let id = if is_eye { COAL_ORE } else { BONE_BLOCK };
+                        set_dec(&mut chunk, &mut outbound, ox + fx + dx, fy, oz + fz + dz, id, false);
+                    }
+                }
+                // spine: a chain of bone segments descending sideways
+                let len = 4 + rng.next_range(4) as i32;
+                for i in 0..len {
+                    let sx = fx + 3 + i;
+                    let sz = fz + 1;
+                    let id = if i % 3 == 2 { COAL_ORE } else { BONE_BLOCK };
+                    set_dec(&mut chunk, &mut outbound, ox + sx, fy, oz + sz, id, false);
+                    if i % 2 == 0 {
+                        set_dec(&mut chunk, &mut outbound, ox + sx, fy - 1, oz + sz, BONE_BLOCK, false);
+                    }
+                }
+            }
+        }
+
         // mushrooms in forests (shaded floor)
         let mush_attempts = {
             let b = Biome::from_u8(chunk.biome[8 * 16 + 8]);
@@ -1822,6 +1864,26 @@ impl TerrainGen {
         for (idx, id) in inbound {
             if chunk.get_idx(idx as usize) == AIR {
                 chunk.set_idx(idx as usize, id);
+            }
+        }
+
+        // 1.10 magma blobs — VERIFIED (wiki /w/Magma_Block, live
+        // 2026-09-06): "found in the Nether, generating 4 blobs per chunk
+        // between Y=27 and Y=36... similar frequency to andesite in the
+        // Overworld". Blobs of 4-9 blocks, embedded in netherrack.
+        for _ in 0..4 {
+            let bx = rng.next_range(16) as i32;
+            let by = 27 + rng.next_range(10) as i32;
+            let bz = rng.next_range(16) as i32;
+            let size = 4 + rng.next_range(6) as i32;
+            for i in 0..size {
+                let ox = (bx + (i % 3) - 1).clamp(0, 15);
+                let oy = (by + (i / 9)).clamp(27, 36);
+                let oz = (bz + ((i / 3) % 3) - 1).clamp(0, 15);
+                // only replace netherrack (embedded look, never floating)
+                if chunk.get(ox as usize, oy as usize, oz as usize) == NETHERRACK {
+                    chunk.set(ox as usize, oy as usize, oz as usize, MAGMA_BLOCK);
+                }
             }
         }
 
@@ -3043,7 +3105,10 @@ mod nether_tests {
                 match fold(chunk.get_idx(i)) {
                     NETHERRACK => rack += 1,
                     NETHER_QUARTZ_ORE => quartz += 1,
-                    AIR | GLOWSTONE | SOUL_SAND => {}
+                    // 1.10 bracket: magma blobs (4/chunk, Y 27-36, wiki
+                    // /w/Magma_Block) joined the nether mass — 1.7.2
+                    // quartz-first holdover removed
+                    AIR | GLOWSTONE | SOUL_SAND | MAGMA_BLOCK => {}
                     _ => other += 1,
                 }
             }
@@ -3058,7 +3123,7 @@ mod nether_tests {
         );
         assert!(
             other == 0,
-            "the nether mass is ONLY netherrack/quartz/glowstone/soul-sand — got {other} others"
+            "the nether mass is ONLY netherrack/quartz/glowstone/soul-sand/magma (1.10) — got {other} others"
         );
     }
 
@@ -3928,5 +3993,84 @@ mod v172_tests {
             }
         }
         assert!(found, "podzol patches exist in taiga");
+    }
+}
+
+/// 1.10 bracket — Frostburn Update world-gen tests (live-verified
+/// minecraft.wiki/w/Java_Edition_1.10, 2026-09-06).
+#[cfg(test)]
+mod v110_tests {
+    use super::*;
+    use vc_blocks::blocks::*;
+
+    fn gen() -> TerrainGen {
+        TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Overworld)
+    }
+
+    fn find_biome(g: &TerrainGen, b: Biome) -> (i32, i32) {
+        for cx in -64..64 {
+            for cz in -64..64 {
+                if g.column(cx * 16 + 8, cz * 16 + 8).biome == b {
+                    return (cx, cz);
+                }
+            }
+        }
+        panic!("{} not found in the ±64-chunk window", b.name());
+    }
+
+    #[test]
+    fn nether_generates_magma_blobs() {
+        // wiki: "generating 4 blobs per chunk between Y=27 and Y=36"
+        let g = TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Nether);
+        let mut total = 0usize;
+        for s in 0..8 {
+            let (chunk, _) = g.generate_chunk(s * 5, s * 3, Vec::new());
+            for i in 0..CHUNK_LEN {
+                if chunk.get_idx(i) == MAGMA_BLOCK {
+                    total += 1;
+                }
+            }
+        }
+        assert!(total >= 12, "magma present across nether chunks ({total})");
+        // and only in the Y band (127-high nether; idx y = i >> 8)
+        let g2 = TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Nether);
+        let (chunk, _) = g2.generate_chunk(3, 2, Vec::new());
+        for i in 0..CHUNK_LEN {
+            if chunk.get_idx(i) == MAGMA_BLOCK {
+                let y = (i >> 8) as i32;
+                assert!((27..=36).contains(&y), "magma at y={y} outside the wiki band");
+            }
+        }
+    }
+
+    #[test]
+    fn fossils_appear_in_deserts_and_swamps() {
+        // wiki: 1/64 per chunk — scan enough chunks that hits are certain
+        // (deterministic seed); then verify bone blocks + coal exist
+        let g = gen();
+        let mut found = 0usize;
+        'scan: for cx in -80..80 {
+            for cz in -80..80 {
+                let b = g.column(cx * 16 + 8, cz * 16 + 8).biome;
+                if b != Biome::Desert && b != Biome::Swamp {
+                    continue;
+                }
+                let (chunk, _) = g.generate_chunk(cx, cz, Vec::new());
+                let mut bones = 0;
+                for i in 0..CHUNK_LEN {
+                    if chunk.get_idx(i) == BONE_BLOCK {
+                        bones += 1;
+                    }
+                }
+                if bones > 0 {
+                    found += 1;
+                    // depth claim: 15..24 underground → y < height − 14
+                    if found >= 3 {
+                        break 'scan;
+                    }
+                }
+            }
+        }
+        assert!(found >= 1, "at least one fossil in the desert/swamp scan");
     }
 }

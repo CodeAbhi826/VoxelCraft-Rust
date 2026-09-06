@@ -3013,6 +3013,211 @@ fn rabbit_sprite_art(a: &mut [u8], t: u16) {
 }
 
 
+
+
+// 1.10 mob sprites (clean-room, like the other entity tiles)
+
+/// polar bear: big white body, black nose and eyes
+fn polar_bear_art(a: &mut [u8], t: u16) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    let fur = (232, 236, 238);
+    let fur_d = (198, 206, 212);
+    // big body
+    for y in 6..14 {
+        for x in 2..13 {
+            let edge = y == 13 || x == 2 || x == 12;
+            let c = if edge { fur_d } else { fur };
+            put(a, t, x, y, c.0, c.1, c.2, 255);
+        }
+    }
+    // head
+    for y in 3..9 {
+        for x in 11..15 {
+            if x == 14 && y > 7 {
+                continue;
+            }
+            let edge = x == 11 || y == 3;
+            let c = if edge { fur_d } else { fur };
+            put(a, t, x, y, c.0, c.1, c.2, 255);
+        }
+    }
+    // face: black eye + nose
+    put(a, t, 12, 5, 30, 30, 34, 255);
+    put(a, t, 14, 6, 24, 24, 28, 255);
+    put(a, t, 14, 7, 16, 16, 20, 255);
+    // legs
+    for x in [3, 6, 9, 11] {
+        put(a, t, x, 14, fur_d.0, fur_d.1, fur_d.2, 255);
+        put(a, t, x, 15, 190, 198, 204, 255);
+    }
+}
+
+/// stray: skeleton in tattered grey rags (the snowy skeleton variant)
+fn stray_art(a: &mut [u8], t: u16) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    let bone = (206, 206, 198);
+    let rag = (106, 116, 126);
+    // skull
+    for y in 1..5 {
+        for x in 6..10 {
+            put(a, t, x, y, bone.0, bone.1, bone.2, 255);
+        }
+    }
+    put(a, t, 7, 2, 24, 24, 28, 255);
+    put(a, t, 8, 2, 24, 24, 28, 255);
+    // ragged torso
+    for y in 5..11 {
+        for x in 5..11 {
+            let ragged = (x + y) % 3 == 0;
+            let c = if ragged { rag } else { (148, 158, 168) };
+            put(a, t, x, y, c.0, c.1, c.2, 255);
+        }
+    }
+    // rib shadow
+    for y in 6..10 {
+        for x in 6..10 {
+            if y % 2 == 0 {
+                put(a, t, x, y, bone.0, bone.1, bone.2, 255);
+            }
+        }
+    }
+    // legs + bow hint
+    for y in 11..16 {
+        put(a, t, 6, y, bone.0, bone.1, bone.2, 255);
+        put(a, t, 9, y, bone.0, bone.1, bone.2, 255);
+    }
+    // bow arc at the side
+    for i in 0..6 {
+        put(a, t, 12, 4 + i, 120, 92, 56, 255);
+    }
+}
+
+/// husk: desiccated tan zombie (the desert variant)
+fn husk_art(a: &mut [u8], t: u16) {
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, 0, 0, 0, 0);
+        }
+    }
+    let skin = (154, 130, 94);
+    let skin_d = (126, 104, 74);
+    let rags = (96, 106, 84);
+    // head
+    for y in 1..6 {
+        for x in 6..10 {
+            let edge = x == 6 || x == 9 || y == 1;
+            let c = if edge { skin_d } else { skin };
+            put(a, t, x, y, c.0, c.1, c.2, 255);
+        }
+    }
+    put(a, t, 7, 3, 40, 30, 20, 255);
+    put(a, t, 8, 3, 40, 30, 20, 255);
+    put(a, t, 7, 4, 30, 24, 16, 255);
+    // torso in rags
+    for y in 6..11 {
+        for x in 5..11 {
+            let ragged = (x + y) % 4 == 0;
+            let c = if ragged { rags } else { skin_d };
+            put(a, t, x, y, c.0, c.1, c.2, 255);
+        }
+    }
+    // arms forward (zombie pose)
+    for x in 10..13 {
+        put(a, t, x, 7, skin.0, skin.1, skin.2, 255);
+    }
+    // legs
+    for y in 11..16 {
+        put(a, t, 6, y, skin_d.0, skin_d.1, skin_d.2, 255);
+        put(a, t, 9, y, skin_d.0, skin_d.1, skin_d.2, 255);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 1.10 bracket painters ("Frostburn Update"). Clean-room pixel art.
+// ---------------------------------------------------------------------------
+
+/// magma: dark crust with glowing orange fissures (light level 3)
+fn magma_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [52, 30, 26], 6, rng);
+    // glowing cracks
+    for _ in 0..6 {
+        let x = rng.next_range(12) as i32;
+        let y = rng.next_range(12) as i32;
+        let l = 2 + rng.next_range(4) as i32;
+        for i in 0..l {
+            put(a, t, x + i, y + i, jit(226, 20, rng), jit(106, 16, rng), jit(24, 10, rng), 255);
+            put(a, t, x + i + 1, y + i, jit(168, 60, rng), jit(70, 14, rng), jit(16, 8, rng), 255);
+        }
+    }
+    // hot spots
+    for _ in 0..5 {
+        let x = rng.next_range(16) as i32;
+        let y = rng.next_range(16) as i32;
+        put(a, t, x, y, 244, 148, 48, 255);
+    }
+}
+
+/// nether wart block: clustered red warts
+fn nether_wart_block_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+    noise_fill(a, t, [118, 24, 32], 10, rng);
+    for _ in 0..22 {
+        let x = rng.next_range(16) as i32;
+        let y = rng.next_range(16) as i32;
+        let bright = rng.next_f32() < 0.4;
+        if bright {
+            put(a, t, x, y, jit(158, 20, rng), jit(34, 12, rng), jit(42, 10, rng), 255);
+        } else {
+            put(a, t, x, y, jit(88, 16, rng), jit(14, 8, rng), jit(22, 8, rng), 255);
+        }
+    }
+}
+
+/// red nether bricks: dark brick courses in the nether-brick hue
+fn red_nether_bricks_art(a: &mut [u8], t: u16) {
+    let base = (70, 22, 26);
+    let mortar = (44, 12, 16);
+    for y in 0..16 {
+        for x in 0..16 {
+            let row = y / 4;
+            let offset = if row % 2 == 0 { 0 } else { 4 };
+            let is_mortar = (x + offset) % 8 == 0 || y % 4 == 0;
+            let c = if is_mortar { mortar } else { base };
+            put(a, t, x, y, c.0, c.1, c.2, 255);
+        }
+    }
+}
+
+/// bone block: pale ivory with vertical grain (fossil material)
+fn bone_block_art(a: &mut [u8], t: u16) {
+    let base = (224, 219, 200);
+    let grain = (200, 194, 172);
+    for y in 0..16 {
+        for x in 0..16 {
+            put(a, t, x, y, base.0, base.1, base.2, 255);
+        }
+    }
+    for x in [1, 4, 7, 10, 13] {
+        for y in 0..16 {
+            put(a, t, x, y, grain.0, grain.1, grain.2, 255);
+        }
+    }
+    // end caps darker
+    for y in 0..2 {
+        for x in 0..16 {
+            put(a, t, x, y, 206, 200, 180, 255);
+            put(a, t, x, 15 - y, 206, 200, 180, 255);
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // 1.9 bracket painters ("Combat Update"). Clean-room pixel art.
 // ---------------------------------------------------------------------------
@@ -3729,6 +3934,15 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_CHORUS_FRUIT => chorus_fruit_art(&mut a, t),
             TILE_ELYTRA => elytra_art(&mut a, t),
             TILE_SHIELD => shield_art(&mut a, t),
+            // ---- 1.10 bracket (live-verified minecraft.wiki/w/Java_Edition_1.10) ----
+            TILE_MAGMA => magma_art(&mut a, t, &mut rng),
+            // 1.10 mob sprites
+            TILE_POLAR_BEAR => polar_bear_art(&mut a, t),
+            TILE_STRAY => stray_art(&mut a, t),
+            TILE_HUSK => husk_art(&mut a, t),
+            TILE_NETHER_WART_BLOCK => nether_wart_block_art(&mut a, t, &mut rng),
+            TILE_RED_NETHER_BRICKS => red_nether_bricks_art(&mut a, t),
+            TILE_BONE_BLOCK => bone_block_art(&mut a, t),
             _ => {}
         }
     }
@@ -3980,6 +4194,58 @@ pub fn merge_pack_textures(
         let frame = resample_full(&rgba, w as usize, h as usize);
         blit_16(atlas, tile, &frame);
         models.tiles.insert(loc, tile);
+    }
+
+    // 1.10 built-in: the magma block's flowing animation (VERIFIED —
+    // minecraft.wiki/w/Java_Edition_1.10 §Magma Blocks, live round
+    // 2026-09-06: "Has a flowing magma animation"). Vanilla ships an
+    // 8-frame texture strip; ours is a clean-room 4-frame shimmer built
+    // from the procedural tile by pulsing only the glowing crack pixels
+    // (r>140 — the dark crust stays stable, so it reads as flowing lava
+    // cracks rather than noise). Cadence: frametime 8 ticks (0.4 s), our
+    // documented adaptation. Registered unconditionally so the engine
+    // animates magma with or without a resource pack.
+    {
+        let extract_tile = |tile: u16| -> Vec<u8> {
+            let tx = (tile % 16) as usize;
+            let ty = (tile / 16) as usize;
+            let mut out = vec![0u8; TILE_PX * TILE_PX * 4];
+            for y in 0..TILE_PX {
+                for x in 0..TILE_PX {
+                    let src = ((ty * TILE_PX + y) * ATLAS_SIZE + tx * TILE_PX + x) * 4;
+                    let dst = (y * TILE_PX + x) * 4;
+                    out[dst..dst + 4].copy_from_slice(&atlas[src..src + 4]);
+                }
+            }
+            out
+        };
+        let base = extract_tile(TILE_MAGMA);
+        if base.iter().any(|&b| b != 0) {
+            let frames: Vec<Vec<u8>> = (0..4)
+                .map(|f| {
+                    let mut frame = base.clone();
+                    // smooth 0 → peak → 0 pulse over the 4 frames, so
+                    // frame 0 == the base tile exactly (seamless loop)
+                    let amp = 40.0 * (std::f32::consts::PI * f as f32 / 4.0).sin();
+                    for px in frame.chunks_exact_mut(4) {
+                        if px[0] > 140 {
+                            // brighten R, keep G/B slightly trailing (hot glow)
+                            px[0] = (px[0] as f32 + amp).clamp(0.0, 255.0) as u8;
+                            px[1] = (px[1] as f32 + amp * 0.45).clamp(0.0, 255.0) as u8;
+                            px[2] = (px[2] as f32 + amp * 0.2).clamp(0.0, 255.0) as u8;
+                        }
+                    }
+                    frame
+                })
+                .collect();
+            animations.push(AnimatedTile {
+                tile: TILE_MAGMA,
+                frames,
+                frametime: 8.0 / 20.0,
+                current: 0,
+                timer: 0.0,
+            });
+        }
     }
     animations
 }
@@ -4389,5 +4655,65 @@ mod cloud_tests {
         // expect ~30-60% puffy coverage, NOT 0% and NOT ~100%
         assert!(opaque > total / 10, "clouds vanished (no opaque pixels)");
         assert!(opaque < total * 7 / 10, "clouds blanket the whole sky");
+    }
+}
+
+#[cfg(test)]
+mod v110_tests {
+    use super::*;
+    use vc_pack::pack::MemorySource;
+
+    fn tile_bytes(atlas: &[u8], tile: u16) -> Vec<u8> {
+        let tx = (tile % 16) as usize;
+        let ty = (tile / 16) as usize;
+        let mut out = vec![0u8; TILE_PX * TILE_PX * 4];
+        for y in 0..TILE_PX {
+            for x in 0..TILE_PX {
+                let src = ((ty * TILE_PX + y) * ATLAS_SIZE + tx * TILE_PX + x) * 4;
+                let dst = (y * TILE_PX + x) * 4;
+                out[dst..dst + 4].copy_from_slice(&atlas[src..src + 4]);
+            }
+        }
+        out
+    }
+
+    /// 1.10: the magma block gets a built-in flowing animation even with
+    /// NO resource pack (VERIFIED — minecraft.wiki/w/Java_Edition_1.10
+    /// §Magma Blocks, live 2026-09-06: "Has a flowing magma animation").
+    /// 4 frames, 8-tick cadence, frame 0 identical to the atlas tile
+    /// (seamless loop start), frames 1/2 differ (the glow pulses).
+    #[test]
+    fn magma_flowing_animation_is_builtin() {
+        let mut set = vc_pack::model::ModelSet {
+            by_state: Default::default(),
+            tiles: Default::default(),
+        };
+        let mut atlas = generate_atlas();
+        let empty = MemorySource::new("empty");
+        let anims = merge_pack_textures(&mut atlas, &mut set, &empty);
+        let magma = anims
+            .iter()
+            .find(|a| a.tile == TILE_MAGMA)
+            .expect("magma animation registered");
+        assert_eq!(magma.frames.len(), 4, "4-frame clean-room strip");
+        assert!(
+            (magma.frametime - 8.0 / 20.0).abs() < 1e-4,
+            "frametime 8 ticks = 0.4 s"
+        );
+        let base = tile_bytes(&atlas, TILE_MAGMA);
+        assert_eq!(magma.frames[0], base, "frame 0 == the atlas tile");
+        assert_ne!(magma.frames[1], base, "frame 1 pulses the glow");
+        assert_ne!(magma.frames[2], base, "frame 2 pulses the glow");
+        // the dark crust stays stable between frames (only r>140 pixels
+        // move — flowing cracks, not global noise)
+        let stable = magma.frames[1]
+            .iter()
+            .zip(magma.frames[2].iter())
+            .filter(|(a, b)| a != b)
+            .count();
+        assert!(
+            stable < TILE_PX * TILE_PX * 4 / 4,
+            "fewer than a quarter of bytes move between frames ({stable})"
+        );
     }
 }

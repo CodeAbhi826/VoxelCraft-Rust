@@ -216,6 +216,8 @@ pub const ID_OPT_MIP: u16 = 30;
 pub const ID_OPT_ANISO: u16 = 31;
 pub const ID_OPT_MSAA: u16 = 32;
 pub const ID_OPT_OCCL: u16 = 33;
+/// 1.10: the auto-jump options toggle
+pub const ID_OPT_AUTOJUMP: u16 = 36;
 pub const ID_OPT_DONE2: u16 = 34;
 /// Phase 7: GPU compute meshing toggle (engine optimization — no vanilla
 /// equivalent; labeled plainly, not with a vanilla options.txt name)
@@ -330,6 +332,17 @@ pub fn layout_options2() -> Vec<Widget> {
             rows[3],
             w,
             "GPU CHUNK MESHING",
+            "ON",
+            true,
+        ),
+        // 1.10: the auto-jump toggle (wiki: "Enabled by default; can be
+        // disabled in options")
+        btn(
+            ID_OPT_AUTOJUMP,
+            col2,
+            rows[3],
+            w,
+            "AUTO-JUMP",
             "ON",
             true,
         ),

@@ -57,6 +57,12 @@ pub struct Settings {
     /// MSAA: 0 = off (vanilla-faithful), 4/8 (OptiFine `ofAaLevel` parity;
     /// 2x has no guaranteed WebGPU path — off/4/8 only, device-gated)
     pub msaa: u8,
+    /// 1.10 auto-jump (VERIFIED — minecraft.wiki/w/Java_Edition_1.10
+    /// §General: "A new 'Auto-jump' toggle has been added, which
+    /// automatically makes the player jump when running towards a
+    /// one-block-tall obstacle. Enabled by default; can be disabled in
+    /// options"). Vanilla option key `autoJump`.
+    pub auto_jump: bool,
     /// chunk-graph occlusion culling (OptiFine `ofOcclusionFancy` parity,
     /// default on)
     pub occlusion: bool,
@@ -95,6 +101,7 @@ impl Default for Settings {
             aniso: 4,
             msaa: 0,
             occlusion: true,
+            auto_jump: true, // 1.10 default ON (wiki)
             #[cfg(target_arch = "wasm32")]
             gpu_meshing: false,
             #[cfg(not(target_arch = "wasm32"))]
@@ -2470,6 +2477,26 @@ impl GameApp {
                 Difficulty::Normal
             };
             let dmg = difficulty_scale(h.damage, difficulty);
+            // 1.10 hit riders (VERIFIED, wiki /w/Stray + /w/Husk, live
+            // 2026-09-06):
+            // * stray arrows: "shoots tipped arrows of Slowness (0:30)" —
+            //   600 ticks of Slowness on the player
+            // * husk melee: "applies Hunger when attacking, duration is
+            //   equal to 7 × floor(regional difficulty) seconds" — our
+            //   regional difficulty proxy is the difficulty tier
+            //   (Normal 1.5 rounds to 1 → 7 s; Hard 3 → 21 s)
+            if h.source == mobs::MobKind::Stray {
+                self.player.effects.slowness_ticks = 20 * 30; // 0:30
+                self.ui.dirty = true;
+            }
+            if h.source == mobs::MobKind::Husk {
+                let rd = match difficulty {
+                    Difficulty::Hard => 3.0,
+                    _ => 1.0,
+                };
+                self.player.effects.hunger_ticks = 20 * 7 * rd as i32;
+                self.ui.dirty = true;
+            }
             let applied = self.player.damage(dmg);
             if applied > 0.0 {
                 self.play_event("entity.player.hurt", None, 1.0);
@@ -2505,6 +2532,19 @@ impl GameApp {
                 // live 2026-09-06): 0–1 raw rabbit + 0–1 rabbit hide; the
                 // rabbit's foot is the separate 10% player-kill roll below
                 mobs::MobKind::Rabbit => &[(RAW_RABBIT, 1), (RABBIT_HIDE, 1)],
+                // 1.10: strays/husks drop like their base kinds; the
+                // stray's 50% slowness-arrow drop is the extra roll below
+                mobs::MobKind::Stray => &[(BONE, 2), (ARROW_ITEM, 2)],
+                mobs::MobKind::Husk => &[(ROTTEN_FLESH, 2)],
+                // 1.10 polar bear — VERIFIED (wiki /w/Polar_Bear): "drops
+                // 0–2 raw fish (75% chance) or 0–2 salmon (25% chance)"
+                mobs::MobKind::PolarBear => {
+                    if self.audio_rng.next_f32() < 0.75 {
+                        &[(RAW_FISH, 2)]
+                    } else {
+                        &[(RAW_SALMON, 2)]
+                    }
+                }
             };
             for (block, max_n) in drops {
                 let n = 1 + (self.audio_rng.next_f32() * *max_n as f32) as u8;
@@ -2529,6 +2569,21 @@ impl GameApp {
                     pos[1].floor() as i32,
                     pos[2].floor() as i32,
                     SPIDER_EYE,
+                    2,
+                    15,
+                    0,
+                );
+            }
+            // 1.10: strays have a 50% chance to drop one tipped arrow of
+            // Slowness when killed by the player (VERIFIED — wiki /w/Stray
+            // — our adaptation drops a plain ARROW until tipped arrows
+            // register; the roll and rate are the verified part)
+            if kind == mobs::MobKind::Stray && self.audio_rng.next_f32() < 0.50 {
+                self.sim.items.drop_block(
+                    pos[0].floor() as i32,
+                    pos[1].floor() as i32,
+                    pos[2].floor() as i32,
+                    ARROW_ITEM,
                     2,
                     15,
                     0,
@@ -2733,6 +2788,12 @@ impl GameApp {
                 self.settings.occlusion = !self.settings.occlusion;
                 self.after_settings_change();
             }
+            ID_OPT_AUTOJUMP => {
+                // 1.10: auto-jump toggle — "can be disabled in options"
+                // (wiki). No remesh needed; the player mirrors the flag
+                // each frame.
+                self.settings.auto_jump = !self.settings.auto_jump;
+            }
             ID_OPT_GMESH => {
                 // Phase 7: GPU compute meshing toggle — remeshes everything
                 // through the new backend (mirrors the smooth-lighting
@@ -2934,6 +2995,9 @@ impl GameApp {
                             set_button_value(w, &label);
                         }
                         ID_OPT_OCCL => set_button_value(w, if s.occlusion { "ON" } else { "OFF" }),
+                        ID_OPT_AUTOJUMP => {
+                            set_button_value(w, if s.auto_jump { "ON" } else { "OFF" })
+                        }
                         ID_OPT_GMESH => set_button_value(
                             w,
                             if s.gpu_meshing && self.renderer.gpu_mesh.is_some() {
@@ -5629,6 +5693,8 @@ impl GameApp {
             if !physics_frozen(&self.world, self.player.pos) {
                 // 1.8: spectator no-clip + always flying (GameType 3)
                 self.player.noclip = self.mode == vc_gameplay::modes::GameMode::Spectator;
+                // 1.10: mirror the auto-jump setting into the player
+                self.player.auto_jump = self.settings.auto_jump;
                 if self.player.noclip {
                     self.player.flying = true;
                 }
@@ -5679,6 +5745,18 @@ impl GameApp {
                         self.death_cause = "DROWNED".into();
                         self.ui.dirty = true;
                     }
+                }
+            }
+
+            // 1.10: magma-block contact damage (1 HP per second — wiki
+            // /w/Magma_Block); creative is immune like every other source
+            let magma = self.player.take_pending_magma_damage();
+            if magma > 0.0 && !self.mode.invulnerable() {
+                let applied = self.player.damage(magma);
+                if applied > 0.0 {
+                    self.play_event("entity.player.hurt", None, 0.9);
+                    self.death_cause = "DISCOVERED FLOOR WAS LAVA".into();
+                    self.ui.dirty = true;
                 }
             }
 

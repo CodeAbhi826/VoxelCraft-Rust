@@ -126,6 +126,12 @@ pub const ENCHANTS: &[EnchantDef] = &[
         weight: 2,
         table: false,
     },
+    // NOTE (1.11 bracket): the curse enchantments (binding_curse id 10 /
+    // vanishing_curse id 71 per the 1.11 changelog §Gameplay) were
+    // ALREADY registry rows from the 38-set — the 1.11 bracket adds the
+    // MECHANICS: Curse of Vanishing filters death drops (game.rs die());
+    // Curse of Binding's drop-prevention rides the future item-drop
+    // action (engine has none — disclosed in the WORKLOG).
     EnchantDef {
         name: "Power",
         id: "power",

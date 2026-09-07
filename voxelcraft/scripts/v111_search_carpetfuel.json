@@ -1,0 +1,56 @@
+[
+  {
+    "url": "https://minecraft.wiki/w/Smelting",
+    "name": "Smelting - Minecraft Wiki",
+    "snippet": "All times given are for fuel burned in a furnace. Each item has a burn time of 20 ticks.",
+    "host_name": "minecraft.wiki",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://minecraft.fandom.com/wiki/Smelting",
+    "name": "Smelting - Minecraft Wiki - Fandom",
+    "snippet": "The furnace burns one fuel item at a time, taking 10 seconds to burn or 200 game ticks, with the fuel gauge indicating how much of that item's burn time remains ...",
+    "host_name": "minecraft.fandom.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://minecraft.wiki/w/Carpet",
+    "name": "Carpet - Minecraft Wiki",
+    "snippet": "Catches fire from lava Yes. Fuel edit Carpet can be used as a fuel in furnaces, smelting 0.335 items per carpet item. carpets are not enough to smelt one item ...",
+    "host_name": "minecraft.wiki",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://minecraft.wiki/w/Furnace",
+    "name": "Furnace - Minecraft Wiki",
+    "snippet": "A furnace runs at a speed of one item every 200 game ticks (10 seconds) or six items per minute. that unit of fuel starts burning. The fuel continues burning ...",
+    "host_name": "minecraft.wiki",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://ftbwiki.org/Carpet",
+    "name": "Carpet - Feed The Beast Wiki",
+    "snippet": "Since MC 1.11, carpets can be used as fuel in a Furnace, where three carpets smelt one item. Also, carpets can be used to saddle Llamas. on: Sleeping Bag ...",
+    "host_name": "ftbwiki.org",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=Lw_AJNTGglA",
+    "name": "Carpet Duper - 1417000 Carpet Per Hour! (Minecraft Java 1.15+)",
+    "snippet": "Apr 13, 2020 · With Zero-Ticking on the way out in 1.16, if you are looking for an easy full auto fuel source, and don't have any issues using an item ...",
+    "host_name": "www.youtube.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  }
+]

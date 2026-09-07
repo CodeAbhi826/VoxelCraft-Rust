@@ -129,6 +129,10 @@ pub struct Player {
     /// audit-fix (1.2): lower half inside a vine — climbing engaged
     /// (VERIFIED w/Vines + w/Ladder §Climbing)
     pub on_vine: bool,
+    /// 1.11: absorption buffer (HP-scale) — granted by the Absorption
+    /// effect (totem of undying: 8 points for Absorption II, VERIFIED
+    /// w/Totem_of_Undying); consumed by damage BEFORE health.
+    pub absorption: f32,
     /// Phase E2: timed status effects (wither/poison/regen + beacon stat
     /// effects — VERIFIED w/Effect rows; see vc_gameplay::effects)
     pub effects: vc_gameplay::effects::Effects,
@@ -194,6 +198,7 @@ impl Player {
             head_in_water: false,
             in_lava: false,
             on_vine: false,
+            absorption: 0.0,
             effects: vc_gameplay::effects::Effects::new(),
             health: 20.0,
             xp_points: 0,
@@ -293,8 +298,17 @@ impl Player {
 
     /// damage clamped to 0; returns the ACTUAL damage applied
     pub fn damage(&mut self, amount: f32) -> f32 {
+        // 1.11: the absorption buffer eats damage first (VERIFIED
+        /// w/Effect §Absorption — the yellow hearts absorb incoming
+        /// damage before health)
+        let mut amt = amount;
+        if self.absorption > 0.0 {
+            let eaten = self.absorption.min(amt);
+            self.absorption -= eaten;
+            amt -= eaten;
+        }
         let before = self.health;
-        self.health = (self.health - amount).max(0.0);
+        self.health = (self.health - amt).max(0.0);
         before - self.health
     }
 

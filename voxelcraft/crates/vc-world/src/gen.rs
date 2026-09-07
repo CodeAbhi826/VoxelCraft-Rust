@@ -1850,6 +1850,11 @@ impl TerrainGen {
         for &(tx, tz) in self.jungle_temples_near(ox, oz).iter() {
             self.emit_jungle_temple(&mut chunk, tx, tz, ox, oz);
         }
+        // 1.11: woodland mansions (dark forest, rare — VERIFIED
+        // w/Woodland_Mansion: "generate rarely in dark forests")
+        for &(mx, mz) in self.woodland_mansions_near(ox, oz).iter() {
+            self.emit_woodland_mansion(&mut chunk, mx, mz, ox, oz);
+        }
         for &(sx, sz) in self.strongholds().iter() {
             // skip far strongholds cheaply (the layout spans ~30 blocks
             // around the center; the guard avoids running the emit for
@@ -2853,6 +2858,127 @@ impl TerrainGen {
             }
         }
         out
+    }
+
+    // ---- 1.11 woodland mansion (VERIFIED live 2026-09-07,
+    // minecraft.wiki/w/Woodland_Mansion: "generate rarely in dark
+    // forests"; "three floors"; "The top floor is about half the size
+    // of the lower floors"; "generate a cobblestone foundation
+    // underneath the entire structure"; "Consist mostly of cobblestone
+    // and wood blocks"; "inhabited by vindicators, evokers"). Placement
+    // regions: 8×8 chunks (128 blocks — mansions are the rarest
+    // overworld structure), hash-gated ~1/5, dark-forest biome check.
+    // The engine-native illager placement = vindicator/evoker SPAWNER
+    // blocks (vanilla spawns them at generation without respawn — the
+    // spawner adaptation is disclosed in the WORKLOG; evoker spawners
+    // on the two upper floors, VERIFIED: "Spawn in the two upper floors
+    // of woodland mansions").
+    pub fn woodland_mansions_near(&self, ox: i32, oz: i32) -> Vec<(i32, i32)> {
+        let mut out = Vec::new();
+        let rx0 = floor_div(ox - 24, 8 * 16);
+        let rx1 = floor_div(ox + 24, 8 * 16);
+        let rz0 = floor_div(oz - 24, 8 * 16);
+        let rz1 = floor_div(oz + 24, 8 * 16);
+        for rx in rx0..=rx1 {
+            for rz in rz0..=rz1 {
+                let mut rng = Rng::new(Rng::hash3(self.seed ^ 0xA11C, rx, 0, rz));
+                if rng.next_range(5) != 0 {
+                    continue; // rare (VERIFIED "rarely")
+                }
+                let cx = rx * 8 + 1 + rng.next_range(6) as i32;
+                let cz = rz * 8 + 1 + rng.next_range(6) as i32;
+                // dark-forest ground check
+                let mut ok = true;
+                for d in [0i32, 5, -5] {
+                    let c = self.column(cx * 16 + 8 + d, cz * 16 + 8 + d);
+                    if c.biome != Biome::DarkForest || c.height <= vc_chunk::SEA_LEVEL + 2 {
+                        ok = false;
+                        break;
+                    }
+                }
+                if ok {
+                    out.push((cx * 16 + 8, cz * 16 + 8));
+                }
+            }
+        }
+        out
+    }
+
+    fn emit_woodland_mansion(&self, chunk: &mut Chunk, wx: i32, wz: i32, ox: i32, oz: i32) {
+        let base = self.column(wx, wz).height as i32;
+        let put = |chunk: &mut Chunk, x: i32, y: i32, z: i32, id: u16| {
+            let lxi = x - ox;
+            let lzi = z - oz;
+            if (0..16).contains(&lxi) && (0..16).contains(&lzi) && (0..256).contains(&y) {
+                chunk.set(lxi as usize, y as usize, lzi as usize, id);
+            }
+        };
+        // per-structure rng
+        let mut rng = Rng::new(Rng::hash3(self.seed ^ 0xA11C, wx, 0, wz));
+        // 13×13 footprint, 3 floors of 5 high; the top floor is half
+        // (VERIFIED: "about half the size") — 13, 13, 7 half-extent.
+        // Materials: cobblestone shell + planks floors/interior (VERIFIED:
+        // "Consist mostly of cobblestone and wood blocks").
+        let floors = [(6i32, 5i32), (6, 10), (3, 15)]; // (half, y-base offset)
+        for &(half, yoff) in floors.iter() {
+            let y0 = base + 1 + yoff;
+            for dx in -half..=half {
+                for dz in -half..=half {
+                    let x = wx + dx;
+                    let z = wz + dz;
+                    let shell = dx.abs() == half || dz.abs() == half;
+                    for dy in 0..5 {
+                        let y = y0 + dy;
+                        if shell {
+                            put(chunk, x, y, z, COBBLE);
+                        } else if dy == 0 {
+                            put(chunk, x, y, z, PLANKS); // wood floor (VERIFIED)
+                        } else if dy == 4 {
+                            put(chunk, x, y, z, if rng.next_f32() < 0.85 { PLANKS } else { COBBLE });
+                        } else {
+                            put(chunk, x, y, z, AIR);
+                        }
+                    }
+                }
+            }
+            // interior walls carve simple rooms (the "variety of rooms"
+            // adaptation — deterministic cross corridors)
+            for d in -(half - 2)..=(half - 2) {
+                put(chunk, wx + d, y0 + 1, wz, AIR);
+                put(chunk, wx + d, y0 + 2, wz, AIR);
+                put(chunk, wx, y0 + 1, wz + d, AIR);
+                put(chunk, wx, y0 + 2, wz + d, AIR);
+            }
+        }
+        // cobblestone foundation under the whole footprint (VERIFIED)
+        for dx in -6..=6 {
+            for dz in -6..=6 {
+                for y in (base - 6)..=base {
+                    if y > 0 {
+                        put(chunk, wx + dx, y, wz + dz, COBBLE);
+                    }
+                }
+            }
+        }
+        // entrance: 2-high gap on the south face
+        for dy in 1..=3 {
+            for d in -1..=1 {
+                put(chunk, wx + d, base + 1 + dy, wz + 6, AIR);
+            }
+        }
+        // illagers: vindicator spawners on the lower two floors, evoker
+        // spawners on the upper two (VERIFIED "Spawn in the two upper
+        // floors" for evokers; vindicators mansion-wide) — the engine's
+        // spawner-block adaptation of vanilla's generation-time spawn
+        // (no-respawn nuance disclosed in the WORKLOG)
+        put(chunk, wx - 3, base + 6, wz - 3, SPAWNER_VINDICATOR);
+        put(chunk, wx + 3, base + 6, wz + 3, SPAWNER_VINDICATOR);
+        put(chunk, wx - 2, base + 11, wz + 2, SPAWNER_EVOKER);
+        put(chunk, wx + 2, base + 16, wz - 2, SPAWNER_EVOKER);
+        put(chunk, wx, base + 16, wz, SPAWNER_VINDICATOR);
+        // a couple of loot chests in the foyer
+        put(chunk, wx - 4, base + 2, wz + 4, CHEST);
+        put(chunk, wx + 4, base + 12, wz - 4, CHEST);
     }
 
     fn emit_jungle_temple(&self, chunk: &mut Chunk, wx: i32, wz: i32, ox: i32, oz: i32) {
@@ -5217,5 +5343,109 @@ mod auditfix_tests {
         }
         assert!(taiga_chunks >= 1, "found taiga chunks to scan");
         assert!(ferns > 0, "taiga grows ferns (got {ferns} over {taiga_chunks} chunks)");
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 1.11 bracket tests (woodland mansion, live 2026-09-07)
+// ---------------------------------------------------------------------------
+#[cfg(test)]
+mod v111_tests {
+    use super::*;
+    use vc_blocks::blocks::*;
+
+    fn gen() -> TerrainGen {
+        TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Overworld)
+    }
+
+    /// dark-forest mansions generate with the illager spawners + chest
+    /// + cobble/wood construction (VERIFIED w/Woodland_Mansion: three
+    /// floors, cobblestone foundation, "inhabited by vindicators,
+    /// evokers")
+    #[test]
+    fn woodland_mansions_generate_with_illagers() {
+        let g = gen();
+        let mut found = None;
+        'scan: for rx in -40..40 {
+            for rz in -40..40 {
+                for mx in 0..8 {
+                    for mz in 0..8 {
+                        let cx = rx * 8 + mx;
+                        let cz = rz * 8 + mz;
+                        if g.column(cx * 16 + 8, cz * 16 + 8).biome != Biome::DarkForest {
+                            continue;
+                        }
+                        if !g.woodland_mansions_near(cx * 16, cz * 16).is_empty() {
+                            found = Some((cx, cz));
+                            break 'scan;
+                        }
+                    }
+                }
+            }
+        }
+        let Some((cx, cz)) = found else {
+            panic!("no mansion found in the scan window (rarity + biome)");
+        };
+        // the near-query may surface a mansion anchored in a NEIGHBOR
+        // chunk — generate the anchor's own chunk (anchor = center+8)
+        let (ax, az) = g.woodland_mansions_near(cx * 16, cz * 16)[0];
+        let acx = floor_div(ax - 8, 16);
+        let acz = floor_div(az - 8, 16);
+        let (chunk, _) = g.generate_chunk(acx, acz, Vec::new());
+        // NOTE: Chunk::get / get_idx FOLD state ids to owning BLOCK ids
+        // (the 1.7.2 refactor — see chunk.rs), and Chunk::set STORES the
+        // default STATE (default_state) — so the raw scan rides get_state:
+        // the placed CHEST lands as CHEST_STATE (227) and the dedicated
+        // mansion spawner states (SPAWNER_VINDICATOR / _EVOKER, already
+        // state ids) survive verbatim. register_block_entities decodes
+        // both through state_block + spawner_mob.
+        let (mut cobble, mut planks, mut spawners, mut chests) = (0, 0, 0, 0);
+        let (mut v_spawners, mut evoker_spawners) = (0, 0);
+        for y in 0..256usize {
+            for z in 0..16usize {
+                for x in 0..16usize {
+                    match chunk.get_state(x, y, z) {
+                        COBBLE => cobble += 1,
+                        PLANKS => planks += 1,
+                        CHEST_STATE => chests += 1,
+                        SPAWNER_VINDICATOR => {
+                            spawners += 1;
+                            v_spawners += 1;
+                        }
+                        SPAWNER_EVOKER => {
+                            spawners += 1;
+                            evoker_spawners += 1;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        assert!(cobble > 200, "cobblestone construction (got {cobble})");
+        assert!(planks > 100, "wood floors (got {planks})");
+        assert!(spawners >= 3, "illager spawners (got {spawners})");
+        assert!(
+            v_spawners >= 2 && evoker_spawners >= 2,
+            "vindicator + evoker spawners (got {v_spawners}/{evoker_spawners})"
+        );
+        assert!(chests >= 1, "loot chest (got {chests})");
+        // the emit's ground truth: the 5 spawner puts + 2 chest puts are
+        // all inside the anchor chunk (anchor-relative dx/dz within
+        // ±6 — see emit_woodland_mansion), so a single-chunk scan sees
+        // them all
+        assert!(spawners == 5 && chests == 2, "all 5 spawners + 2 chests in the anchor chunk (got {spawners}/{chests})");
+    }
+
+    /// 1.11: the mansion spawner states decode to their mobs via
+    /// spawner_mob (the register_block_entities path) — vindicator
+    /// code 5, evoker code 6 (both VERIFIED w/Vindicator + w/Evoker
+    /// spawn behavior: "Spawn in the woodland mansions upon generation.
+    /// They don't respawn." / evokers "Spawn in the two upper floors")
+    #[test]
+    fn v111_mansion_spawner_states_decode() {
+        assert_eq!(vc_blocks::blocks::spawner_mob(SPAWNER_VINDICATOR), 5);
+        assert_eq!(vc_blocks::blocks::spawner_mob(SPAWNER_EVOKER), 6);
+        assert_eq!(vc_blocks::blocks::state_block(SPAWNER_VINDICATOR), SPAWNER);
+        assert_eq!(vc_blocks::blocks::state_block(SPAWNER_EVOKER), SPAWNER);
     }
 }

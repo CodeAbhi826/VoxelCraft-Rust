@@ -4058,6 +4058,21 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_JUNGLE_PLANKS => auditfix_art::jungle_planks(&mut a, t, &mut rng),
             TILE_VINE => auditfix_art::vine(&mut a, t, &mut rng),
             TILE_FERN => auditfix_art::fern(&mut a, t, &mut rng),
+            // ---- 1.11 bracket (Exploration Update) ----
+            TILE_LLAMA => auditfix_art::llama(&mut a, t, &mut rng),
+            TILE_VINDICATOR => auditfix_art::vindicator(&mut a, t, &mut rng),
+            TILE_EVOKER => auditfix_art::evoker(&mut a, t, &mut rng),
+            TILE_VEX => auditfix_art::vex(&mut a, t, &mut rng),
+            TILE_SHULKER_BOX => auditfix_art::shulker_box(&mut a, t, &mut rng),
+            TILE_SHULKER_SHELL => auditfix_art::shulker_shell(&mut a, t, &mut rng),
+            TILE_TOTEM => auditfix_art::totem(&mut a, t, &mut rng),
+            // 1.11 egg items: egg-shaped tiles (the E1/E2/E3 convention
+            // — egg_art + palettes), NOT the mob billboard sprites
+            t if (TILE_V7_EGG_BASE..=TILE_V7_EGG_END).contains(&t) => {
+                let i = (t - TILE_V7_EGG_BASE) as usize;
+                let p = auditfix_art::V7_EGG_PALETTES[i];
+                e1_art::egg_art(&mut a, t, (p.0, p.1, p.2), (p.3, p.4, p.5))
+            }
             _ => {}
         }
     }

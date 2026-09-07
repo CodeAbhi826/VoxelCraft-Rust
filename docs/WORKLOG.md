@@ -1377,3 +1377,209 @@ minecraft.wiki page captures archived under
   convention blocks it).
 
 **Commit:** this entry (audit-fix round).
+
+## 2026-09-07 — MC 1.11 bracket "Exploration Update" (Phase 1.11) — recovered from an interrupted session + completed — commit this-entry
+
+**Task:** the 1.11 (Exploration Update) version bracket. **Honesty note
+on the round's shape:** an earlier session had begun the bracket and
+died mid-work — an unpushed local commit carrying ~1,500 lines of
+implementation (four mobs, shulker box/shell/totem, woodland mansions,
+1.11 research captures) with a UUID for a commit message, no WORKLOG
+entry, five tests of which one failed, and three wiring gaps that made
+real features inert (the new spawn eggs failed the `is_spawn_egg`
+use-gate so using them did nothing; mansion chests never reached a loot
+table; the mansion worldgen test scanned FOLDED block ids and always
+read zero spawners/chests). This session recovered the work, audited
+every changelog row against the live wiki captures, closed the gaps,
+fixed a latent engine bug the new tests exposed, and completed the
+bracket to the standard protocol (tests + WORKLOG + docs + one commit).
+
+**Sources:** the live changelog capture
+(`voxelcraft/scripts/v111_changelog_text.txt` +
+`v111_page_changelog.json`), per-feature page captures
+(`v111_page_{llama,vindicator,evoker,vex,shulker_box,shulker_shell,
+totem,woodland_mansion}.json`), the earlier round's search verdicts
+(`verify_v111_*.json`), plus two fresh live captures this round
+(`v111_search_carpetfuel.json`,
+`v111_search_mansionloot.json`).
+
+### Implemented (this round)
+
+- **Llama** (w/Llama, live): Mountains herds 4–6 (the changelog
+  "Spawn in extreme hills"), health 15–30 per instance, speed 0.175,
+  **strength 1–5** in the variant byte with the wild distribution
+  32.8/32.8/32.8/0.8/0.8% (w/Llama §Strength), temper-taming via the
+  equine infrastructure (repetitive riding, w/Llama §Taming), **hay-bale
+  breeding** on two tamed adults (changelog: "Tamed llamas can be bred
+  with hay bales"), leather 0–2 drops (66.67% roll rides the count max
+  — engine convention), the 1⁄900 per-tick 1-HP regen, neutral class,
+  and **spit retaliation** — provoked llamas fire a `LlamaSpit`
+  projectile: 1 HP Easy/Normal, 1.5 Hard via difficulty scale. **Llama
+  caravans** (changelog: "If the player puts a leash on one, up to 10
+  llamas are attracted and try to form a caravan"): a leashed llama
+  attracts up to 10 llamas within 9 blocks; the follow-the-leader
+  chain (vanilla caravans leash-to-leash) is the disclosed
+  simplification.
+- **Vindicator** (w/Vindicator): 24 HP, iron-axe 13 HP Normal
+  (7.5/19.5 E/H via scale), sprint speed 5.612 b/s, emerald 0–1 @ 50%,
+  hostile; mansion spawner placement. Johnny tag and the
+  attacks-villagers row are N/A (no name tags / no villager entities —
+  disclosed below).
+- **Evoker** (w/Evoker): 24 HP spell-caster, the two spells — **fangs**
+  6 HP armor-ignoring ("not mitigated by armor" — rides the raw-damage
+  path) and the **vex summon ring** (queued through
+  `pending_summons`, drained by the game layer), 100% totem drop +
+  emerald 0–1, XP 10, mansion upper-two-floors spawners. The
+  blue→red sheep conversion is N/A (engine sheep are colorless —
+  disclosed).
+- **Vex** (w/Vex): 14 HP, iron sword 9 HP Normal, no-clip physics
+  ("pass through any block, including water and lava" — the
+  collision-skip path, tested), summoned-only (never in the spawn
+  tables), 5 XP, no item drops (HandDropChances 0).
+- **Totem of Undying** (w/Totem_of_Undying, live): held-item revival on
+  lethal damage — restores 1 HP, clears all effects, Regeneration II
+  45 s + Absorption II 5 s; **the absorption buffer** (8 points for
+  Absorption II) now eats damage BEFORE health in `Player::damage`.
+  Fire Resistance I (0:40) is a 1.16.2 addition (§History 20w28a) —
+  version-scoped OUT. "Either hand" = the selected hotbar item (no
+  offhand — disclosed). The revival payload is extracted into
+  `apply_totem_revival` (unit-tested).
+- **Shulker box + shell** (w/Shulker_Box, w/Shulker_Shell): 27 slots
+  ("the same as a barrel, a single chest, or an ender chest"), solid
+  placeable container, the **no-nesting rule** ("cannot be placed
+  inside another" shulker box — the insert gate), the column recipe
+  (shell/chest/shell — changelog §Blocks; the square matcher places it
+  in the middle column, side columns are a disclosed placement
+  constraint), break spills contents (vanilla keeps them inside the
+  item — needs item-NBT, disclosed). Shell is picker-only (no shulkers
+  / End cities in the engine — the 50% drop is N/A, disclosed).
+- **Spawn eggs** (changelog §Items): the four new eggs
+  llama/vindicator/evoker/vex (kinds 23..=26) **and the re-added
+  husk/stray eggs** (kinds 27/28 — "Eggs that were removed in Java
+  Edition 1.10-pre2 are re-added ... including: ... Husk spawn egg,
+  Stray spawn egg"). All seven render **egg-shaped tiles**
+  (`TILE_V7_EGG_BASE..=+5`, the E1/E2/E3 `egg_art` convention) — the
+  interrupted round's mob-sprite reuse for egg items was replaced. The
+  **zombie-villager egg** — the changelog's 5th new egg — is the
+  engine's PRE-EXISTING E2-era item at id 129 (kind 5): an engine
+  anachronism (added with the 1.4-era cure round) that satisfies the
+  1.11 requirement without a duplicate; disclosed. The wither-skeleton
+  / donkey / mule re-adds were already covered (kinds 16/21/22).
+  **Wiring fix:** `is_spawn_egg` now includes the V7 window — the
+  interrupted round's eggs failed the use-path gate and did nothing.
+- **Woodland mansions** (w/Woodland_Mansion, live): rare dark-forest
+  placement (8×8-chunk regions, ~1/5 hash gate, dark-forest + height
+  checks), 13×13 footprint, three floors ("The top floor is about
+  half the size" — 13/13/7), cobblestone shell + plank floors +
+  full-coverage **cobblestone foundation** ("generate a cobblestone
+  foundation underneath the entire structure"), cross-corridor rooms,
+  south entrance, **vindicator spawners on the lower two floors +
+  evoker spawners on the two upper floors** (the engine-native
+  no-respawn adaptation of vanilla's generation-time spawns), two loot
+  chests. Chunk-arrival registration rides the existing
+  `register_block_entities` seam (spawner kinds 5/6 decode via
+  `spawner_mob`; fortress blaze/wither-skeleton decode fixes were the
+  interrupted round's, kept).
+- **Mansion loot table** (`minecraft:chests/woodland_mansion`): the
+  live page's four-pool structure with the page's own §History
+  version-scoping — Vex Armor Trim (1.20, 23w04a) and Resin Clump
+  (1.21.4, 24w44a) scoped OUT; the name tag (removed 26.1 snap11) and
+  the palette-absent rows (diamond hoe, chainmail, music discs,
+  diamond chestplate, enchanted golden apple, wheat, bread, redstone
+  dust, seeds, iron/gold ingots, bucket) simply don't roll (the
+  established honest policy). Present: pool 1 lead 20 / golden apple
+  15 / enchanted book 10; pool 2 coal 15 (1–4); pool 3 bone /
+  gunpowder / rotten flesh / string 10 each (1–8); pool 4 the empty
+  partner. `chest_table_for` routes mansion chunks to it (priority
+  dungeon > mineshaft > pyramid > jungle temple > **mansion** >
+  stronghold).
+- **Fuel** (changelog §Fuel + live verdict): wool 100 t (0.5 items)
+  and **carpet 67 t (0.335 items** — live search verdict
+  minecraft.wiki/w/Carpet, `v111_search_carpetfuel.json`; the
+  changelog's "0.3 items" is the rounded form — the interrupted
+  round's deferral was resolved by the live check). The other 1.11
+  fuel rows are palette-absent (deferred below).
+- **Curse of Vanishing** (changelog §Gameplay): cursed items are
+  filtered from death drops ("makes the item disappear if the player
+  dies"); both curse rows verified in the enchant registry.
+- **Registry growth**: V7 window 282..=290 (9 blocks — shulker box,
+  shell, totem, the four new eggs, husk/stray eggs), mansion spawner
+  states **495..=496** (renumbered up from the interrupted round's
+  493..=494 to clear the extended V7 window — nothing was ever pushed
+  under the old numbering), BLOCK_COUNT 291, STATE_COUNT 497,
+  TILE_MAX 345, WGSL mesh LUT resynced (L_FL 497 / L_TC 788 / L_ST
+  1079, clamps 496/290).
+- **LATENT ENGINE BUG FIXED (pre-1.11, found by this round's
+  llama-spit test):** `attack_cd` is i32 and its per-tick decrement
+  used `saturating_sub` — which for SIGNED types floors at i32::MIN,
+  not 0. A fresh mob's cooldown walked 0 → −1 → −2 … forever, so every
+  `attack_cd == 0` attack gate (skeleton arrows, melee swings, llama
+  spit, even the game layer's zombie-vs-villager swings) could NEVER
+  fire for a mob that had not already attacked — in the live game only
+  creeper fuses and e2e debug hooks ever dealt damage. The existing
+  mob tests masked it by calling `ai_tick` directly (no decrement).
+  Now floored at 0 (`(cd - 1).max(0)`): fresh mobs can strike
+  immediately, and a 20-tick cooldown re-fires on the 20th tick.
+
+### Verified
+
+- Suite: **454/454 green** (437 + 17: llama herd/strength/spit/
+  breeding/vex-physics/egg-map tests, the mansion worldgen test
+  (fixed to scan RAW states through `get_state` — the folded `get_idx`
+  scan was the interrupted round's failure) + a spawner-state decode
+  test, the mansion loot-table test, V7 registry/egg/roundtrip tests,
+  totem/absorption/curse/shulker-recipe tests, carpet fuel asserts).
+- wasm32 release build clean. Clippy: no NEW lints from this round's
+  code; the pre-existing warning set stands, including the
+  pre-existing `never_loop` error at vc-pack `datapack.rs:362`
+  (present since the Phase 9 pattern matcher — CI runs tests + builds,
+  not clippy; recorded here rather than silently ignored).
+- Carpet fuel + mansion table rows verified live this round (the two
+  new search captures).
+
+### Deferred (formal, with reasons)
+
+- **Observer behavior**: the block pre-exists (id 94, tiles 111/116 —
+  an earlier bracket); its block-update detection needs a redstone
+  signal system. The changelog's "Ported from the Pocket and Windows
+  10 Editions. May have slight behavior differences" row is satisfied
+  by the existing block; the observing function deferred.
+- **Explorer maps** (cartographer trade → ocean monument / woodland
+  mansion maps): no map items or map rendering in the engine.
+- **Vindicator specifics**: Johnny tag (no name-tag/anvil-rename
+  system), attacks-villagers (no villager entities — the villager
+  system is gossip+trades around zombie villagers), axe-disables-
+  shield (rides the disclosed 1.9 shield deferral — the engine's
+  shield has no durability/disable mechanics to begin with).
+- **Evoker blue→red sheep**: engine sheep have no color variants —
+  the rule has no input (vacuously N/A).
+- **Llama specifics**: chest storage (3×strength slots — no
+  mob-equip UI), carpet decoration (same), multiple skins (single
+  clean-room sprite), wolf aggression (no wolves — disclosed in
+  code), leash-chain caravans (single-leash engine — the 10-follower
+  simplification is implemented instead).
+- **Spawn-egg re-adds for absent mobs**: skeleton horse / zombie
+  horse / elder guardian eggs (no such mobs). Rabbit + polar bear
+  eggs remain the standing 1.8/1.10 deferrals (out of 1.11 scope).
+- **Fuel rows for absent items**: ladder 1.5 / wooden button 0.5 /
+  bow 1.5 / fishing rod 1.5 / sign 1 / bowl 0.5 / wooden door 1 /
+  boat 2 (none of these items exist in the palette).
+- **Exhaustion-value changes** (the 1.11 rebalanced table —
+  breaking a block 0.025→0.005 etc.): the engine is hunger-bar-less
+  (no exhaustion treadmill; a disclosed design since Phase 2) — N/A.
+- **Other N/A rows**: /locate (no commands), chat length (no chat),
+  doWeatherCycle + maxEntityCramming gamerules (no gamerule system),
+  entity-ID renames (inherently satisfied — the engine used the
+  flattened `minecraft:*` string ids from day one), End-gateway
+  regeneration (no End gateways), the fishing overhaul (fishing is
+  rod-less by design), 1.11.1/1.11.2 (bugfix micro-releases, out of
+  the bracket unit).
+
+### Known issues & regressions
+
+- None new: 454/454, wasm clean. (The attack_cd fix makes mob melee/
+  ranged attacks live in gameplay for the first time — a behavioral
+  change, but the restoration of intended Phase-2+ behavior, pinned
+  by the round's tests.)
+
+**Commit:** this entry (1.11 bracket, recovered + completed).

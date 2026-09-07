@@ -191,3 +191,149 @@ pub(super) fn fern(a: &mut [u8], t: u16, rng: &mut Rng) {
         _ => None,
     });
 }
+
+// ---- 1.11 bracket (Exploration Update) tiles ----
+
+/// Llama sprite: cream body, pale face, ears.
+pub(super) fn llama(a: &mut [u8], t: u16, rng: &mut Rng) {
+    let body = [196 + jit(0, 12, rng), 182 + jit(0, 12, rng), 156];
+    let face = [226, 216, 196];
+    for y in 2..14 {
+        for x in 3..13 {
+            if y < 6 && x > 8 {
+                put(a, t, x, y, face[0], face[1], face[2], 255);
+            } else {
+                put(a, t, x, y, body[0] as i32, body[1] as i32, body[2] as i32, 255);
+            }
+        }
+    }
+    // ears
+    put(a, t, 9, 1, face[0], face[1], face[2], 255);
+    put(a, t, 11, 1, face[0], face[1], face[2], 255);
+    // eye
+    put(a, t, 10, 4, 40, 34, 30, 255);
+}
+
+/// Vindicator: grey-skinned illager, dark clothes, axe.
+pub(super) fn vindicator(a: &mut [u8], t: u16, rng: &mut Rng) {
+    let skin = [158 + jit(0, 10, rng), 158, 152];
+    let robe = [58 + jit(0, 10, rng), 54, 62];
+    for y in 2..14 {
+        for x in 4..12 {
+            if y < 7 {
+                put(a, t, x, y, skin[0] as i32, skin[1], skin[2], 255);
+            } else {
+                put(a, t, x, y, robe[0] as i32, robe[1], robe[2], 255);
+            }
+        }
+    }
+    put(a, t, 6, 4, 40, 30, 30, 255); // eye
+    put(a, t, 9, 4, 40, 30, 30, 255);
+    // iron axe in hand
+    put(a, t, 12, 8, 200, 200, 205, 255);
+    put(a, t, 12, 9, 140, 100, 62, 255);
+}
+
+/// Evoker: pale-grey illager caster, dark robe, raised arms hint.
+pub(super) fn evoker(a: &mut [u8], t: u16, rng: &mut Rng) {
+    let skin = [178 + jit(0, 10, rng), 172, 166];
+    let robe = [44 + jit(0, 10, rng), 40, 50];
+    for y in 2..14 {
+        for x in 4..12 {
+            if y < 7 {
+                put(a, t, x, y, skin[0] as i32, skin[1], skin[2], 255);
+            } else {
+                put(a, t, x, y, robe[0] as i32, robe[1], robe[2], 255);
+            }
+        }
+    }
+    put(a, t, 6, 4, 40, 30, 30, 255);
+    put(a, t, 9, 4, 40, 30, 30, 255);
+    // spell swirl
+    put(a, t, 3, 8, 160, 110, 190, 255);
+    put(a, t, 13, 8, 160, 110, 190, 255);
+}
+
+/// Vex: small pale ghost with sword.
+pub(super) fn vex(a: &mut [u8], t: u16, rng: &mut Rng) {
+    let body = [196 + jit(0, 14, rng), 206, 216];
+    for y in 4..12 {
+        for x in 5..11 {
+            put(a, t, x, y, body[0] as i32, body[1], body[2], 255);
+        }
+    }
+    put(a, t, 6, 6, 40, 30, 30, 255);
+    put(a, t, 9, 6, 40, 30, 30, 255);
+    // iron sword
+    put(a, t, 12, 9, 210, 210, 215, 255);
+    put(a, t, 12, 10, 150, 150, 158, 255);
+}
+
+/// Shulker box: purple box shell with a lighter lid band.
+pub(super) fn shulker_box(a: &mut [u8], t: u16, rng: &mut Rng) {
+    let shell = [138 + jit(0, 12, rng), 108, 168];
+    let lid = [168, 140, 196];
+    for y in 1..15 {
+        for x in 1..15 {
+            if y < 6 {
+                put(a, t, x, y, lid[0], lid[1], lid[2], 255);
+            } else {
+                put(a, t, x, y, shell[0] as i32, shell[1], shell[2], 255);
+            }
+        }
+    }
+    // darker rim + face
+    for x in 1..15 {
+        put(a, t, x, 6, 96, 70, 120, 255);
+        put(a, t, x, 15, 96, 70, 120, 255);
+    }
+    put(a, t, 6, 9, 230, 220, 240, 255);
+    put(a, t, 9, 9, 230, 220, 240, 255);
+}
+
+/// Shulker shell item: a purple shell half.
+pub(super) fn shulker_shell(a: &mut [u8], t: u16, rng: &mut Rng) {
+    let shell = [150 + jit(0, 12, rng), 118, 180];
+    for y in 4..14 {
+        for x in 4..12 {
+            let edge = y == 4 || y == 13 || x == 4 || x == 11;
+            if edge {
+                put(a, t, x, y, 108, 80, 132, 255);
+            } else {
+                put(a, t, x, y, shell[0] as i32, shell[1], shell[2], 255);
+            }
+        }
+    }
+}
+
+/// Totem of undying: golden emerald-eyed figure.
+pub(super) fn totem(a: &mut [u8], t: u16, rng: &mut Rng) {
+    let gold = [232 + jit(0, 12, rng), 190, 62];
+    for y in 3..14 {
+        for x in 5..11 {
+            put(a, t, x, y, gold[0] as i32, gold[1], gold[2], 255);
+        }
+    }
+    // emerald eyes
+    put(a, t, 6, 6, 60, 200, 120, 255);
+    put(a, t, 9, 6, 60, 200, 120, 255);
+    // arms out
+    for y in 8..10 {
+        put(a, t, 4, y, gold[0] as i32, gold[1], gold[2], 255);
+        put(a, t, 11, y, gold[0] as i32, gold[1], gold[2], 255);
+    }
+}
+
+/// 1.11 spawn-egg palettes (egg order 23..=28 = llama, vindicator,
+/// evoker, vex, husk, stray — the re-added zombie-villager egg keeps
+/// its pre-existing tile in the base window). The E1/E2 egg_art renders
+/// the shell + spots from these pairs; colors are clean-room approximations
+/// of each mob's vanilla egg (disclosed — no Mojang assets).
+pub const V7_EGG_PALETTES: [(i32, i32, i32, i32, i32, i32); 6] = [
+    (226, 216, 196, 139, 90, 43),   // llama: cream body + brown spots
+    (158, 158, 152, 58, 54, 62),    // vindicator: grey skin + dark robe
+    (178, 172, 166, 216, 191, 120), // evoker: pale skin + gold accents
+    (170, 190, 200, 40, 60, 70),    // vex: pale blue + dark slate
+    (135, 110, 75, 80, 60, 40),     // husk: sandy brown + dark husk
+    (208, 224, 230, 100, 120, 140), // stray: icy white + grey-blue rags
+];

@@ -15,6 +15,10 @@ use vc_inventory::inventory::ItemStack;
 pub fn slot_count(block: u16) -> Option<usize> {
     Some(match block {
         CHEST => 27,
+        // 1.11 (VERIFIED w/Shulker_Box: "All shulker boxes have 27
+        // inventory slots, the same as a barrel, a single chest, or an
+        // ender chest")
+        SHULKER_BOX => 27,
         DISPENSER | DROPPER => 9,
         HOPPER => 5,
         _ => return None,

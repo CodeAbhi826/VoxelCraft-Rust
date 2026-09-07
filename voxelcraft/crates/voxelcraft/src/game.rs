@@ -1930,6 +1930,15 @@ impl GameApp {
             }
         }
         self.refresh_widgets();
+        // BLOCKING-BUG FIX (stale-UI race, live-observed in the browser
+        // build): a screen transition must repaint the UI canvas THIS
+        // frame. The rebuild gate throttles on cadence — right after a
+        // 20 Hz progress-screen rebuild it would SKIP the rebuild, and
+        // render() then uploads the STALE canvas (old screen's overlay,
+        // e.g. "BUILDING TERRAIN…" over live terrain) and clears dirty →
+        // nothing ever repaints and the overlay sticks forever. Backdate
+        // last_ui_t so the cadence gate passes immediately.
+        self.last_ui_t = self.time - 1.0;
         self.ui.dirty = true;
     }
 

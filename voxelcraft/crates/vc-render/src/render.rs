@@ -4679,10 +4679,17 @@ impl Renderer {
             };
 
         {
+            // panorama mode draws a depth-less fullscreen pass — a pipeline
+            // without depth-stencil state must not run in a pass that
+            // carries a depth attachment (wgpu validation)
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("scene"),
                 color_attachments: &[Some(clear)],
-                depth_stencil_attachment: Some(depth_att),
+                depth_stencil_attachment: if panorama.is_some() {
+                    None
+                } else {
+                    Some(depth_att)
+                },
                 timestamp_writes: None,
                 occlusion_query_set: None,
             });
@@ -5124,6 +5131,7 @@ mod shader_tests {
             ("fsr-easu", EASU_SHADER),
             ("shadow", SHADOW_SHADER),
             ("particle", PARTICLE_SHADER),
+            ("panorama", crate::panorama::PANO_SHADER),
         ];
         let mut frontend = naga::front::wgsl::Frontend::new();
         for (name, src) in shaders {

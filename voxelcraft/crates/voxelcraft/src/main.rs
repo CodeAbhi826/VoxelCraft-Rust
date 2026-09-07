@@ -27,6 +27,15 @@ fn main() {
         app.start_bench(bench);
     }
 
+    // CI smoke contract (linux-game.yml): boot headless and exit(0) the
+    // moment the loading gate completes and the title screen is reached —
+    // proves the single-file binary actually runs end-to-end (pack embed →
+    // adapter → pipelines → chunk streaming → loading gate) on a clean
+    // machine (llvmpipe software GL under Xvfb).
+    if args.iter().any(|a| a == "--smoke") {
+        app.smoke = true;
+    }
+
     use winit::event_loop::ControlFlow;
     event_loop.set_control_flow(ControlFlow::Poll);
     event_loop

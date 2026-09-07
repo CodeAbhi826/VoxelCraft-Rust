@@ -492,8 +492,12 @@ impl Player {
             // Status effects scale the target (Phase E2 beacon Speed +20 %/
             // level; 1.9/1.10 Slowness −15 %/level — VERIFIED w/Effect rows,
             // consumed through vc_gameplay::effects multipliers).
+            // 1.13 (VERIFIED w/Dolphin: the 5 s boost within 9 blocks of
+            // a dolphin; the wiki publishes no scalar — ×2 is the engine's
+            // documented approximation of the observed doubling).
             let stat_mult = vc_gameplay::effects::speed_multiplier(&self.effects)
-                * vc_gameplay::effects::slowness_multiplier(&self.effects);
+                * vc_gameplay::effects::slowness_multiplier(&self.effects)
+                * vc_gameplay::effects::dolphins_grace_multiplier(&self.effects);
             let speed = if self.in_water {
                 if sprinting {
                     SPRINT_SWIM_SPEED
@@ -608,17 +612,27 @@ impl Player {
         // 1 air per tick submerged; at −20 → 2 HP queued and air resets
         // to 0 (so damage repeats once per second); +7.5 air per tick
         // (30 per 4 ticks) with the head above water.
+        // 1.13 (VERIFIED w/Effect §Water Breathing: "the breath meter
+        // does not run out"): while Water Breathing or Conduit Power
+        // is active the submerged drain is FROZEN (exactly the wiki
+        // claim — no drain, no regen; the turtle-shell helmet and the
+        // conduit's own effect source are deferred with the armor/
+        // conduit-block features — disclosed in the research doc).
+        let water_breathing =
+            vc_gameplay::effects::water_breathing_active(&self.effects);
         self.air_accum += dt;
         let mut air_ticks = 0u8;
         while self.air_accum >= TICK_DT && air_ticks < 40 {
             self.air_accum -= TICK_DT;
             air_ticks += 1;
             if self.head_in_water {
-                self.air -= 1.0;
-                if self.air <= AIR_DROWN_AT {
-                    self.pending_drown_dmg += DROWN_DMG;
-                    self.air = 0.0;
-                }
+                if !water_breathing {
+                    self.air -= 1.0;
+                    if self.air <= AIR_DROWN_AT {
+                        self.pending_drown_dmg += DROWN_DMG;
+                        self.air = 0.0;
+                    }
+                } // else: frozen (VERIFIED — the meter does not run out)
             } else {
                 self.air = (self.air + AIR_REGEN_PER_TICK).min(AIR_MAX);
             }
@@ -711,6 +725,12 @@ impl Player {
         // an inherent fixed point (−3.92 b/t = −78.4 b/s) approached from
         // BOTH sides — no clamp is needed (NaN guard only).
         //
+        // 1.13 Slow Falling (VERIFIED w/Slow_Falling, live 2026-09-07:
+        // "falls at a much slower rate than normal, with a terminal
+        // velocity of 9.8 m/s, and is unable to take fall damage"): the
+        // descent is clamped at −9.8 b/s while the effect runs — the
+        // fall-damage half lands in the landing branch below.
+        let slow_falling = vc_gameplay::effects::slow_falling_active(&self.effects);
         // 1.9 elytra glide (ADAPTATION, cited): vanilla's per-tick
         // lift/drag aerodynamics redirect momentum along the look vector
         // with pitch-driven lift; ours implements the OBSERVABLE shape
@@ -742,6 +762,10 @@ impl Player {
                 }
                 let v1 = (v_bpt - 0.08) * 0.98;
                 self.vel.y = v1 * TPS;
+                if slow_falling {
+                    // 1.13: terminal velocity 9.8 b/s (VERIFIED)
+                    self.vel.y = self.vel.y.max(-9.8);
+                }
                 if self.vel.y.is_nan() {
                     self.vel.y = 0.0;
                 }
@@ -806,7 +830,11 @@ impl Player {
             // the bounce itself is airborne: leave on_ground false-y by
             // pushing off immediately (next tick gravity takes over)
             self.pending_fall_dmg = 0.0;
-        } else if landed_this_frame && self.fall_dist > 3.0 {
+        } else if landed_this_frame && self.fall_dist > 3.0 && !slow_falling {
+            // 1.13: the Slow Falling gate — "unable to take fall damage"
+            // (VERIFIED w/Slow_Falling) — the whole branch is skipped
+            // while the effect runs (the fall was also clamped above, so
+            // fall_dist stays small anyway; the gate is belt-and-braces)
             // Phase E3 (VERIFIED live 2026-09-06, minecraft.wiki/w/
             // Hay_Bale: "Falling onto a hay bale reduces the fall damage
             // by 80%, meaning whatever falls on a hay bale takes 20% of

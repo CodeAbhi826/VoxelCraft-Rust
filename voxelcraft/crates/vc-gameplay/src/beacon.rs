@@ -133,6 +133,32 @@ pub fn duration_ticks(level: u8) -> i32 {
     DURATION_SECS[(level as usize).clamp(1, 4) - 1] * 20
 }
 
+/// 1.13 (Update Aquatic): the conduit's effective range from its frame
+/// block count — VERIFIED w/Conduit §Usage (live 2026-09-07): "The
+/// effective radius of the conduit is 16 blocks for every seven blocks
+/// in the frame ... it extends to 48 at 21 blocks, 64 at 28, 80 at 35,
+/// and 96 with a complete frame of 42 blocks" (minimum 16 to activate
+/// at 32). The wiki's own ladder steps 16→21→28→35→42 (the first step
+/// is +5, then +7 each — the page's "every seven blocks" is its own
+/// rounding); the formula reproduces every published data point.
+/// The game layer's frame scan feeds this.
+pub fn conduit_range(frame: u32) -> f32 {
+    if frame < CONDUIT_FRAME_MIN {
+        return 0.0; // inactive
+    }
+    let frame = frame.min(CONDUIT_FRAME_FULL);
+    32.0 + 16.0 * (((frame - 14) / 7) as f32).min(4.0)
+}
+
+/// 1.13: conduit activation + full-power constants (VERIFIED w/Conduit
+/// §Usage: "A minimum of 16 blocks are required"; "A complete frame
+/// also attacks hostile mob within 8 blocks, dealing 4 HP magic
+/// damage every 2 seconds").
+pub const CONDUIT_FRAME_MIN: u32 = 16;
+pub const CONDUIT_FRAME_FULL: u32 = 42;
+pub const CONDUIT_ATTACK_DAMAGE: f32 = 4.0;
+pub const CONDUIT_ATTACK_TICKS: u64 = 40;
+
 /// Is a player position inside the effect range of a beacon at
 /// (bx, by, bz) with `level`? (VERIFIED Java: radius 20/30/40/50 around
 /// the beacon, downward and outward; upward by range + height limit.)
@@ -345,5 +371,25 @@ mod tests {
         assert_eq!(duration_ticks(2), 260); // 13 s
         assert_eq!(duration_ticks(3), 300); // 15 s
         assert_eq!(duration_ticks(4), 340); // 17 s
+    }
+
+    /// 1.13: the conduit range ladder (VERIFIED w/Conduit §Usage:
+    /// "16 blocks for every seven blocks in the frame ... 48 at 21,
+    /// 64 at 28, 80 at 35, and 96 with a complete frame of 42").
+    #[test]
+    fn conduit_range_matches_the_java_ladder() {
+        assert_eq!(conduit_range(15), 0.0, "below the 16-block minimum: inactive");
+        assert_eq!(conduit_range(16), 32.0);
+        assert_eq!(conduit_range(20), 32.0, "16..=20 all read 32");
+        assert_eq!(conduit_range(21), 48.0);
+        assert_eq!(conduit_range(27), 48.0);
+        assert_eq!(conduit_range(28), 64.0);
+        assert_eq!(conduit_range(35), 80.0);
+        assert_eq!(conduit_range(42), 96.0, "the complete frame");
+        assert_eq!(conduit_range(98), 96.0, "clamped at 42");
+        assert_eq!(CONDUIT_FRAME_MIN, 16);
+        assert_eq!(CONDUIT_FRAME_FULL, 42);
+        assert_eq!(CONDUIT_ATTACK_DAMAGE, 4.0);
+        assert_eq!(CONDUIT_ATTACK_TICKS, 40); // 2 s (VERIFIED)
     }
 }

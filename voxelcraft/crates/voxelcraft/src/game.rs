@@ -2466,6 +2466,11 @@ impl GameApp {
         self.player.pos = self.respawn_pos;
         self.player.reset_fall();
         self.player.reset_air();
+        // 1.13: dying resets "Time Since Last Rest" (VERIFIED
+        // w/Phantom §Spawning: the insomnia statistic resets on death
+        // or sleep; beds are deferred — death is the engine's reset
+        // path, disclosed)
+        self.sim.mobs.note_rest();
         self.death_cause.clear();
         // re-run the surface snap pipeline from the spawn column
         self.spawn_snapped = false;
@@ -3372,6 +3377,49 @@ impl GameApp {
                 self.ui.dirty = true;
             }
         }
+        // ---- 1.13 (Update Aquatic): the dolphin's grace queue —
+        // VERIFIED w/Dolphin: "Players who sprint-swim within a 9 block
+        // spherical radius of a dolphin receive a swimming speed boost
+        // for 5 seconds, replenished as long as the player stays close".
+        // Applied to the player effect list; the movement layer's swim
+        // target scales by the DolphinsGrace multiplier (the engine's
+        // proximity form of "sprint-swimming" is disclosed in mobs.rs) ----
+        let graces: Vec<i32> = self.sim.mobs.pending_player_grace.drain(..).collect();
+        for ticks in graces {
+            if !self.mode.invulnerable() && self.screen == Screen::Game {
+                self.player.effects.apply(
+                    vc_gameplay::effects::EffectKind::DolphinsGrace,
+                    0,
+                    ticks,
+                );
+                self.ui.dirty = true;
+            }
+        }
+        // ---- 1.13: turtle eggs queued by breeding females (VERIFIED
+        // w/Turtle: "A turtle lays eggs after digging" on its home
+        // beach) — the world edit rides the light engine like every
+        // other game-layer block change ----
+        let eggs: Vec<(i32, i32, i32, u16)> =
+            self.sim.mobs.pending_turtle_eggs.drain(..).collect();
+        for (x, y, z, _stage) in eggs {
+            if let Some((old, new)) = self.world.set_block(x, y, z, TURTLE_EGG) {
+                self.light.on_block_changed(&self.world, x, y, z, old, new);
+            }
+        }
+        // ---- 1.13: mob-system-owed drops (baby turtle scutes — VERIFIED
+        // w/Scute: "Dropped when baby turtles grow up") ----
+        let mob_drops: Vec<([f32; 3], u16)> = self.sim.mobs.pending_drops.drain(..).collect();
+        for (pos, item) in mob_drops {
+            self.sim.items.drop_block(
+                pos[0].floor() as i32,
+                pos[1].floor() as i32,
+                pos[2].floor() as i32,
+                item,
+                2,
+                15,
+                0,
+            );
+        }
         let deaths: Vec<(mobs::MobKind, [f32; 3], u8)> = self.sim.mobs.deaths.drain(..).collect();
         for (kind, pos, variant) in deaths {
             let d = mobs::def(kind);
@@ -3466,6 +3514,33 @@ impl GameApp {
                 // 8.5% (its bow — no bow item in the engine, disclosed)
                 // + 5 XP (w/Illusioner §Drops: "5XP experience orbs")
                 mobs::MobKind::Illusioner => &[],
+                // ---- 1.13 (Update Aquatic, VERIFIED live 2026-09-07) ----
+                // drowned: "0–1 Rotten Flesh" + its held trident at
+                // 8.5% on a player kill (w/Drowned §Drops + w/Trident:
+                // "only drop from drowned ... at 8.5%") — the trident
+                // rides the special-case roll below, armed bit 0
+                mobs::MobKind::Drowned => &[(ROTTEN_FLESH, 1)],
+                // phantom: 0–1 phantom membrane at 50% (w/Phantom
+                // §Drops) — the membrane rides the special-case roll
+                mobs::MobKind::Phantom => &[],
+                // dolphin: 1 raw cod when killed (w/Dolphin §Drops:
+                // "Dolphins drop 1 raw cod" — cooked if on fire, no
+                // fire in the engine, disclosed)
+                mobs::MobKind::Dolphin => &[(RAW_FISH, 1)],
+                // cod/salmon/pufferfish/tropical fish: 1 of themselves
+                // (VERIFIED w/ pages: "1 cod" / "1 salmon" / "1
+                // pufferfish (1.13 item)" / "1 tropical fish")
+                mobs::MobKind::Cod => &[(RAW_FISH, 1)],
+                mobs::MobKind::Salmon => &[(RAW_SALMON, 1)],
+                mobs::MobKind::Pufferfish => &[(PUFFERFISH, 1)],
+                mobs::MobKind::TropicalFish => &[(CLOWNFISH, 1)],
+                // turtle: 0–2 seagrass (w/Turtle §Drops: "0–2 seagrass";
+                // the scute rides the baby-maturity queue, not death)
+                mobs::MobKind::Turtle => &[(SEAGRASS, 2)],
+                // classification-only marker (no MOB_DATA row, never
+                // spawns — a defensive empty row; the squid is a
+                // pre-1.13 legacy the engine's brackets skipped)
+                mobs::MobKind::Squid => &[],
             };
             // blaze rod is a 50% roll (VERIFIED), others roll count 1..max
             if kind == mobs::MobKind::Blaze {
@@ -3480,6 +3555,37 @@ impl GameApp {
                         0,
                     );
                 }
+            }
+            // 1.13: phantom membrane — 0–1 at 50% (VERIFIED w/Phantom
+            // §Drops: the "0–1" row on a player kill; Looting out of
+            // scope, no enchantment system yet)
+            if kind == mobs::MobKind::Phantom && self.audio_rng.next_f32() < 0.5 {
+                self.sim.items.drop_block(
+                    pos[0].floor() as i32,
+                    pos[1].floor() as i32,
+                    pos[2].floor() as i32,
+                    PHANTOM_MEMBRANE,
+                    2,
+                    15,
+                    0,
+                );
+            }
+            // 1.13: the drowned's held trident at 8.5% (VERIFIED
+            // w/Trident §Drops — the armed bit in the death variant);
+            // only armed drowned can drop one
+            if kind == mobs::MobKind::Drowned
+                && variant & 1 != 0
+                && self.audio_rng.next_f32() < 0.085
+            {
+                self.sim.items.drop_block(
+                    pos[0].floor() as i32,
+                    pos[1].floor() as i32,
+                    pos[2].floor() as i32,
+                    TRIDENT,
+                    2,
+                    15,
+                    0,
+                );
             }
             // Phase E3: a saddled equine drops its saddle on death
             // (VERIFIED w/Horse §Drops — equipped items drop; the death
@@ -4890,6 +4996,10 @@ impl GameApp {
         // Phase 5 §27: a broken spawner drops its block entity state
         if broke == SPAWNER {
             self.sim.spawners.remove(pos);
+        }
+        // 1.13: a broken conduit deregisters from the power scan
+        if broke == CONDUIT {
+            self.sim.conduits.remove(&pos);
         }
         if broke == FURNACE {
             if let Some(f) = self.sim.furnaces.map.remove(&pos) {
@@ -7215,6 +7325,165 @@ impl GameApp {
                 }
             }
 
+            // 1.13 (Update Aquatic): conduit power — VERIFIED w/Conduit
+            // §Usage (live capture, scripts/v113_page_conduit_text.txt):
+            // "The frame must include 16-42 blocks of prismarine, dark
+            // prismarine, sea lanterns, and/or prismarine bricks";
+            // "When activated, conduits give the 'Conduit Power'
+            // effect to all players in contact with rain or water,
+            // within a spherical range of 32-96 blocks"; "The effective
+            // radius of the conduit is 16 blocks for every seven
+            // blocks in the frame ... 96 with a complete frame of 42
+            // blocks"; "A complete frame also attacks hostile mob
+            // within 8 blocks, dealing 4 HP magic damage every 2
+            // seconds if they are in contact with water or rain";
+            // "Conduits attack only one mob at a time". Engine
+            // adaptations (disclosed): the ring-shaped frame is
+            // approximated by counting frame-material blocks in the
+            // 5×5×5 shell minus the 3×3×3 water core (clamped at 42);
+            // the waterlogged-core gate is the 26 core cells being
+            // water; the ambient blue HUD border + Night Vision half
+            // ride the standing render deferral; the Haste half has
+            // no per-block mining-time system to scale (the same
+            // standing deferral as beacon Haste).
+            {
+                if !self.sim.conduits.is_empty() {
+                    let conduits: Vec<[i32; 3]> =
+                        self.sim.conduits.iter().copied().collect();
+                    let (px, py, pz) = (
+                        self.player.pos.x,
+                        self.player.pos.y,
+                        self.player.pos.z,
+                    );
+                    let player_wet = self.player.in_water || self.player.head_in_water;
+                    self.sim.conduit_attack_t += 1;
+                    let attack_window =
+                        self.sim.conduit_attack_t % vc_gameplay::beacon::CONDUIT_ATTACK_TICKS
+                            == 0;
+                    for pos in conduits {
+                        // activation: 26 water cells in the 3×3×3 core
+                        // (the conduit itself occupies the center)
+                        let mut core_ok = true;
+                        'core: for dx in -1..=1i32 {
+                            for dy in -1..=1i32 {
+                                for dz in -1..=1i32 {
+                                    if dx == 0 && dy == 0 && dz == 0 {
+                                        continue; // the conduit itself
+                                    }
+                                    if self.world.get_block(
+                                        pos[0] + dx,
+                                        pos[1] + dy,
+                                        pos[2] + dz,
+                                    ) != WATER
+                                    {
+                                        core_ok = false;
+                                        break 'core;
+                                    }
+                                }
+                            }
+                        }
+                        if !core_ok {
+                            continue; // not waterlogged — never activates
+                        }
+                        // frame count: frame-material cells in the
+                        // 5×5×5 shell (excluding the 3×3×3 core), ≤ 42
+                        let mut frame: u32 = 0;
+                        for dx in -2..=2i32 {
+                            for dy in -2..=2i32 {
+                                for dz in -2..=2i32 {
+                                    if (dx.abs() <= 1)
+                                        && (dy.abs() <= 1)
+                                        && (dz.abs() <= 1)
+                                    {
+                                        continue; // the core volume
+                                    }
+                                    let b = self.world.get_block(
+                                        pos[0] + dx,
+                                        pos[1] + dy,
+                                        pos[2] + dz,
+                                    );
+                                    if b == PRISMARINE
+                                        || b == PRISMARINE_BRICKS
+                                        || b == DARK_PRISMARINE
+                                        || b == SEA_LANTERN
+                                    {
+                                        frame += 1;
+                                    }
+                                }
+                            }
+                        }
+                        let frame = frame.min(vc_gameplay::beacon::CONDUIT_FRAME_FULL);
+                        if frame < vc_gameplay::beacon::CONDUIT_FRAME_MIN {
+                            continue; // below the minimum — inactive
+                        }
+                        // range: 32 base, +16 per 7 frame blocks, 96 at 42
+                        let range = vc_gameplay::beacon::conduit_range(frame);
+                        let d = ((pos[0] as f32 + 0.5 - px).powi(2)
+                            + (pos[1] as f32 + 0.5 - py).powi(2)
+                            + (pos[2] as f32 + 0.5 - pz).powi(2))
+                        .sqrt();
+                        if player_wet && d <= range {
+                            // refreshed while in range (vanilla re-
+                            // evaluates continuously; the 2 s window
+                            // is the engine's expiry grace)
+                            self.player
+                                .effects
+                                .apply(vc_gameplay::effects::EffectKind::ConduitPower, 0, 40);
+                            self.ui.dirty = true;
+                        }
+                        // full frame: the hostile hunt, one target at a
+                        // time, 4 HP every 2 s, wet mobs only
+                        if frame >= vc_gameplay::beacon::CONDUIT_FRAME_FULL
+                            && attack_window
+                        {
+                            let mut best: Option<(u32, f32)> = None;
+                            for m in self.sim.mobs.list.iter() {
+                                if !m.kind.hostile() {
+                                    continue;
+                                }
+                                let md = ((m.pos[0] - pos[0] as f32 - 0.5).powi(2)
+                                    + (m.pos[1] - pos[1] as f32 - 0.5).powi(2)
+                                    + (m.pos[2] - pos[2] as f32 - 0.5).powi(2))
+                                .sqrt();
+                                if md > 8.0 {
+                                    continue;
+                                }
+                                // wet gate: the mob's body block in water
+                                // (no rain in the engine — water contact
+                                // only, disclosed)
+                                let def_m = vc_gameplay::mobs::def(m.kind);
+                                let body = self.world.get_block(
+                                    m.pos[0] as i32,
+                                    (m.pos[1] + def_m.height * 0.5) as i32,
+                                    m.pos[2] as i32,
+                                );
+                                if body != WATER {
+                                    continue;
+                                }
+                                if best.map(|(_, bd)| md < bd).unwrap_or(true) {
+                                    best = Some((m.id, md));
+                                }
+                            }
+                            if let Some((id, _)) = best {
+                                self.sim.mobs.pending_damage.push((
+                                    id,
+                                    vc_gameplay::beacon::CONDUIT_ATTACK_DAMAGE,
+                                ));
+                                self.play_event(
+                                    "block.conduit.attack.target",
+                                    Some([
+                                        pos[0] as f32 + 0.5,
+                                        pos[1] as f32 + 1.0,
+                                        pos[2] as f32 + 0.5,
+                                    ]),
+                                    1.0,
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+
             // Drowning (VERIFIED — research-verdicts.md live round,
             // minecraft.wiki/w/Damage §Drowning): 2 HP per second once
             // the 300-tick air supply is depleted; creative is immune
@@ -8124,9 +8393,13 @@ impl GameApp {
                     {
                         // §29: right-click drinks a potion — instant health
                         // heals; water/awkward/mundane do nothing (vanilla);
-                        // the glass bottle comes back
+                        // the glass bottle comes back. 1.13: the duration
+                        // family (slow falling / turtle master) applies
+                        // its effect windows (VERIFIED changelog §Items)
                         let b = self.player.held().block;
                         let heal = vc_gameplay::brewing::potion_heal(b);
+                        let effects: &[(vc_gameplay::effects::EffectKind, u8, i32)] =
+                            vc_gameplay::brewing::potion_effects(b);
                         let held = self.player.held_mut();
                         held.count -= 1;
                         let empty = held.count == 0;
@@ -8148,6 +8421,19 @@ impl GameApp {
                                 "e2e: drank {} (+{h} hp → {})",
                                 name(b),
                                 self.player.health
+                            ));
+                        }
+                        if !effects.is_empty() {
+                            for (kind, amp, ticks) in effects {
+                                self.player.effects.apply(*kind, *amp, *ticks);
+                            }
+                            self.ui.dirty = true;
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: drank {} ({} effect{} for {} ticks)",
+                                name(b),
+                                effects.len(),
+                                if effects.len() > 1 { "s" } else { "" },
+                                effects[0].2
                             ));
                         }
                         // vanilla: the empty glass bottle returns
@@ -8270,6 +8556,13 @@ impl GameApp {
                                 // heavy ceil(entities/10) row)
                                 if b == LIGHT_WEIGHTED_PLATE || b == HEAVY_WEIGHTED_PLATE {
                                     self.plates.push(prev);
+                                }
+                                // 1.13 (Update Aquatic): register a placed
+                                // CONDUIT for the Conduit Power scan
+                                // (frame activation + range + hostile
+                                // attacks live in the game layer tick)
+                                if b == CONDUIT {
+                                    self.sim.conduits.insert(prev);
                                 }
                                 // Phase E3: a LEAD used on a fence ties the
                                 // held leash as a knot (VERIFIED w/Lead —
@@ -10436,6 +10729,11 @@ fn food_heal(b: u16) -> f32 {
         CLOWNFISH => 0.5,
         RAW_RABBIT => 1.5,
         COOKED_RABBIT => 2.5,
+        // 1.13: dried kelp — "restoring 1 hunger point" (VERIFIED
+        // changelog §Items); 1 hunger → 0.5 HP on the engine's scale.
+        // "It is eaten faster than other food" — no eating-speed
+        // system in the engine, disclosed
+        DRIED_KELP => 0.5,
         _ => 4.0, // the meats' established value
     }
 }

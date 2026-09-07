@@ -42,6 +42,19 @@ pub enum Biome {
     SunflowerPlains = 16,
     IceSpikes = 17,
     DarkForest = 18,
+    // ---- 1.13 bracket (Update Aquatic): the ocean temperature split
+    // (VERIFIED live 2026-09-07, minecraft.wiki/w/Java_Edition_1.13
+    // §World generation: "Added minecraft:warm_ocean (Warm Ocean),
+    // minecraft:lukewarm_ocean (Lukewarm Ocean), minecraft:cold_ocean
+    // (Cold Ocean) ... minecraft:frozen_ocean (Frozen Ocean) now
+    // generates again"). Internal ids 19..=22 (vanilla registry ids
+    // 44/45/46/10 — the deep variants are depth-cosmetic and fold into
+    // these families here, disclosed). The pre-1.13 "Ocean" (id 0)
+    // stays as the neutral temperate ocean. ----
+    WarmOcean = 19,
+    LukewarmOcean = 20,
+    ColdOcean = 21,
+    FrozenOcean = 22,
 }
 
 impl Biome {
@@ -66,6 +79,10 @@ impl Biome {
             Biome::SunflowerPlains => "Sunflower Plains",
             Biome::IceSpikes => "Ice Spikes",
             Biome::DarkForest => "Dark Forest",
+            Biome::WarmOcean => "Warm Ocean",
+            Biome::LukewarmOcean => "Lukewarm Ocean",
+            Biome::ColdOcean => "Cold Ocean",
+            Biome::FrozenOcean => "Frozen Ocean",
         }
     }
 
@@ -89,8 +106,25 @@ impl Biome {
             16 => Biome::SunflowerPlains,
             17 => Biome::IceSpikes,
             18 => Biome::DarkForest,
+            19 => Biome::WarmOcean,
+            20 => Biome::LukewarmOcean,
+            21 => Biome::ColdOcean,
+            22 => Biome::FrozenOcean,
             _ => Biome::Ocean,
         }
+    }
+
+    /// 1.13: the ocean temperature family gate (any ocean-flavored
+    /// biome, including the neutral id-0 ocean).
+    pub fn is_ocean(self) -> bool {
+        matches!(
+            self,
+            Biome::Ocean
+                | Biome::WarmOcean
+                | Biome::LukewarmOcean
+                | Biome::ColdOcean
+                | Biome::FrozenOcean
+        )
     }
 }
 
@@ -564,11 +598,25 @@ impl TerrainGen {
             0.5,
         );
 
+        // 1.13 (Update Aquatic): the ocean temperature split — the
+        // same temp field that picks land biomes now divides the ocean
+        // into its four 1.13 families (VERIFIED changelog §World
+        // generation). Floor materials: warm/lukewarm = sand (the
+        // coral-reef substrate), cold/frozen/neutral-deep = gravel
+        // (the wiki's ocean floor bands).
         let (biome, top, filler) = if h < vc_chunk::SEA_LEVEL - 1 {
-            if h < vc_chunk::SEA_LEVEL - 6 {
-                (Biome::Ocean, GRAVEL, GRAVEL)
+            let deep = h < vc_chunk::SEA_LEVEL - 6;
+            if temp > 0.35 {
+                (Biome::WarmOcean, SAND, SAND)
+            } else if temp > 0.0 {
+                (Biome::LukewarmOcean, SAND, SAND)
+            } else if temp > -0.25 {
+                (Biome::ColdOcean, if deep { GRAVEL } else { SAND }, GRAVEL)
+            } else if temp < -0.45 {
+                (Biome::FrozenOcean, GRAVEL, GRAVEL)
             } else {
-                (Biome::Ocean, SAND, SAND)
+                // the neutral temperate ocean (the pre-1.13 "Ocean")
+                (Biome::Ocean, if deep { GRAVEL } else { SAND }, GRAVEL)
             }
         } else if h <= vc_chunk::SEA_LEVEL + 1 {
             (Biome::Beach, SAND, SAND)
@@ -1816,6 +1864,154 @@ impl TerrainGen {
                             && chunk.get(nx, y as usize, nz) == AIR
                         {
                             chunk.set(nx, (y + 1) as usize, nz, GLOWSTONE);
+                        }
+                    }
+                }
+            }
+        }
+
+        // ─────────────── 1.13 (Update Aquatic): ocean flora ─────────────
+        // VERIFIED changelog §Blocks + §World generation (live captures
+        // in scripts/v113_page_changelog_text.txt):
+        // - kelp: "Generate in ocean biomes, except warm oceans ...
+        //   Can grow multiple blocks high" — 2-4-block columns
+        // - seagrass: "Generates in oceans ..., rivers, and swamplands"
+        //   (rivers fold into the ocean family's shallow band here;
+        //   swamp pools get their own 20% roll — disclosed)
+        // - coral reefs: "Naturally generate in warm ocean biomes ...
+        //   composed of coral, coral blocks and coral fans" — patch
+        //   noise fields mixing the three forms
+        // - sea pickles: "generate in warm oceans, especially around
+        //   coral reefs ... Up to 4 of them can be placed on a block"
+        // - the frozen-ocean ice sheet + "Generates in icebergs" blue
+        //   ice: simplified pack-ice mounds with blue-ice cores (the
+        //   full iceberg shape grammar is out of scope, disclosed)
+        {
+            for lx in 0..16usize {
+                for lz in 0..16usize {
+                    let col_idx = lz * 16 + lx;
+                    let b = Biome::from_u8(chunk.biome[col_idx]);
+                    let h = chunk.height[col_idx] as i32;
+                    // swamp seagrass: the flat pool band (the pools
+                    // themselves are punched above at the swamp pass)
+                    if b == Biome::Swamp {
+                        if h < vc_chunk::SEA_LEVEL
+                            && chunk.get(lx, (h + 1) as usize, lz) == WATER
+                            && rng.next_f32() < 0.20
+                        {
+                            chunk.set(lx, (h + 1) as usize, lz, SEAGRASS);
+                        }
+                        continue;
+                    }
+                    if !b.is_ocean() || h >= sea - 1 {
+                        continue; // land, shore, or no water column
+                    }
+                    if b == Biome::FrozenOcean {
+                        // the ice sheet: the top water block freezes
+                        // (vanilla frozen-ocean surface)
+                        chunk.set(lx, sea as usize, lz, ICE);
+                    }
+                    // floor flora (a water cell above the floor)
+                    if chunk.get(lx, (h + 1) as usize, lz) != WATER {
+                        continue;
+                    }
+                    if b == Biome::WarmOcean {
+                        // coral reef patch (large-scale noise so reefs
+                        // read as fields, not salt-and-pepper)
+                        let patch = fbm2(
+                            &self.n_humid,
+                            (ox + lx as i32) as f32 / 48.0,
+                            (oz + lz as i32) as f32 / 48.0,
+                            2,
+                            2.0,
+                            0.5,
+                        );
+                        if patch > 0.15 {
+                            let r = rng.next_f32();
+                            if r < 0.35 {
+                                // coral block as the floor surface
+                                let ci = rng.next_range(5) as u16;
+                                chunk.set(lx, h as usize, lz, CORAL_BLOCK_BASE + ci);
+                            } else if r < 0.60 {
+                                let ci = rng.next_range(5) as u16;
+                                chunk.set(lx, (h + 1) as usize, lz, CORAL_PLANT_BASE + ci);
+                            } else if r < 0.78 {
+                                let ci = rng.next_range(5) as u16;
+                                chunk.set(lx, (h + 1) as usize, lz, CORAL_FAN_BASE + ci);
+                            } else if r < 0.90 {
+                                // sea pickle cluster 1-4 (VERIFIED
+                                // "Up to 4 of them can be placed")
+                                let count = 1 + rng.next_range(4) as u8;
+                                chunk.set(
+                                    lx,
+                                    (h + 1) as usize,
+                                    lz,
+                                    sea_pickle_state(count),
+                                );
+                            }
+                        } else if rng.next_f32() < 0.10 {
+                            // sparse warm flora outside the reef patch
+                            chunk.set(lx, (h + 1) as usize, lz, SEAGRASS);
+                        }
+                    } else {
+                        // kelp + seagrass (all ocean families except
+                        // warm — VERIFIED kelp exclusion)
+                        let r = rng.next_f32();
+                        if r < 0.08 {
+                            // "can grow multiple blocks high" — 2-4
+                            let kh = 2 + rng.next_range(3) as i32;
+                            for dy in 1..=kh {
+                                let y = h + dy;
+                                if y < sea
+                                    && chunk.get(lx, y as usize, lz) == WATER
+                                {
+                                    chunk.set(lx, y as usize, lz, KELP);
+                                }
+                            }
+                        } else if r < 0.20 {
+                            chunk.set(lx, (h + 1) as usize, lz, SEAGRASS);
+                        }
+                    }
+                }
+            }
+            // icebergs: 25% of frozen-ocean chunks carry one — a
+            // pack-ice mound with a blue-ice core rising above the
+            // sheet (simplified vanilla shape, disclosed)
+            if Biome::from_u8(chunk.biome[8 * 16 + 8]) == Biome::FrozenOcean
+                && rng.next_f32() < 0.25
+            {
+                let bx = 3 + rng.next_range(10) as i32;
+                let bz = 3 + rng.next_range(10) as i32;
+                let r = 2 + rng.next_range(3) as i32; // 2..4
+                for dy in -2..=4i32 {
+                    // taper: full radius underwater, shrinking above
+                    let rr = if dy <= 0 {
+                        r
+                    } else {
+                        (r as f32 * (1.0 - dy as f32 / 6.0)).round() as i32
+                    };
+                    for dx in -rr..=rr {
+                        for dz in -rr..=rr {
+                            let d = (dx * dx + dz * dz) as f32;
+                            if d > (rr * rr) as f32 {
+                                continue;
+                            }
+                            let px = bx + dx;
+                            let pz = bz + dz;
+                            if px < 0 || px > 15 || pz < 0 || pz > 15 {
+                                continue;
+                            }
+                            let y = (sea + dy) as usize;
+                            // blue-ice core (inner ~half), packed-ice shell
+                            let id = if d < (rr * rr) as f32 * 0.25 {
+                                BLUE_ICE
+                            } else {
+                                PACKED_ICE
+                            };
+                            let cur = chunk.get(px as usize, y, pz as usize);
+                            if cur == WATER || cur == ICE || (dy > 0 && cur == AIR) {
+                                chunk.set(px as usize, y, pz as usize, id);
+                            }
                         }
                     }
                 }
@@ -5447,5 +5643,193 @@ mod v111_tests {
         assert_eq!(vc_blocks::blocks::spawner_mob(SPAWNER_EVOKER), 6);
         assert_eq!(vc_blocks::blocks::state_block(SPAWNER_VINDICATOR), SPAWNER);
         assert_eq!(vc_blocks::blocks::state_block(SPAWNER_EVOKER), SPAWNER);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 1.13 bracket tests (Update Aquatic, live 2026-09-07)
+// ---------------------------------------------------------------------------
+#[cfg(test)]
+mod v113_tests {
+    use super::*;
+    use vc_blocks::blocks::*;
+
+    fn gen() -> TerrainGen {
+        TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Overworld)
+    }
+
+    fn find_biome(g: &TerrainGen, b: Biome) -> (i32, i32) {
+        for cx in -64..64 {
+            for cz in -64..64 {
+                if g.column(cx * 16 + 8, cz * 16 + 8).biome == b {
+                    return (cx, cz);
+                }
+            }
+        }
+        panic!("{} not found in the ±64-chunk window", b.name());
+    }
+
+    /// VERIFIED changelog §Blocks/§World generation: kelp "Generate in
+    /// ocean biomes, except warm oceans"; coral/coral fans/coral blocks
+    /// "Naturally generate in coral reefs" (warm oceans); sea pickles
+    /// "generate in warm oceans, especially around coral reefs";
+    /// seagrass "Generates in oceans ..."; the frozen-ocean ice sheet;
+    /// blue ice "Generates in icebergs" (frozen oceans). Each family's
+    /// signature flora is scanned over a 6×6-chunk window around a
+    /// located biome sample — PER COLUMN (chunks are heterogeneous:
+    /// a warm-ocean-centered chunk can carry neutral columns and
+    /// vice versa).
+    #[test]
+    fn v113_ocean_flora_matches_the_biome_families() {
+        let g = gen();
+        // ---- warm ocean: coral reefs + pickles, NEVER kelp ----
+        let (cx, cz) = find_biome(&g, Biome::WarmOcean);
+        let (mut coral, mut pickles) = (0usize, 0usize);
+        for dcx in -3..3 {
+            for dcz in -3..3 {
+                let (chunk, _) = g.generate_chunk(cx + dcx, cz + dcz, Vec::new());
+                for i in 0..CHUNK_LEN {
+                    let b = chunk.get_idx(i);
+                    // the column that owns this cell
+                    let col = ((i >> 4) & 15) * 16 + (i & 15);
+                    let col_biome = Biome::from_u8(chunk.biome[col]);
+                    if col_biome == Biome::WarmOcean {
+                        if (CORAL_BLOCK_BASE..=CORAL_FAN_END).contains(&b) {
+                            coral += 1;
+                        }
+                        if b == SEA_PICKLE {
+                            pickles += 1;
+                        }
+                        assert!(
+                            b != KELP,
+                            "kelp never generates in warm-ocean columns (VERIFIED changelog)"
+                        );
+                    }
+                }
+            }
+        }
+        assert!(coral > 0, "warm oceans carry coral reefs (got {coral})");
+        assert!(pickles > 0, "sea pickles ride the reef patches (got {pickles})");
+        // ---- cold ocean: kelp + seagrass, NEVER coral ----
+        let (cx, cz) = find_biome(&g, Biome::ColdOcean);
+        let (mut kelp, mut seagrass) = (0usize, 0usize);
+        for dcx in -3..3 {
+            for dcz in -3..3 {
+                let (chunk, _) = g.generate_chunk(cx + dcx, cz + dcz, Vec::new());
+                for i in 0..CHUNK_LEN {
+                    let b = chunk.get_idx(i);
+                    let col = ((i >> 4) & 15) * 16 + (i & 15);
+                    let col_biome = Biome::from_u8(chunk.biome[col]);
+                    if col_biome == Biome::ColdOcean {
+                        if b == KELP {
+                            kelp += 1;
+                        }
+                        if b == SEAGRASS {
+                            seagrass += 1;
+                        }
+                        assert!(
+                            !(CORAL_BLOCK_BASE..=DEAD_CORAL_FAN_END).contains(&b),
+                            "coral only generates in warm-ocean columns (VERIFIED)"
+                        );
+                    }
+                }
+            }
+        }
+        assert!(kelp > 0, "cold oceans grow kelp (got {kelp})");
+        assert!(seagrass > 0, "cold ocean floors carry seagrass (got {seagrass})");
+        // ---- frozen ocean: the ice sheet + iceberg blue ice ----
+        let (cx, cz) = find_biome(&g, Biome::FrozenOcean);
+        let (mut ice_sheet, mut blue_ice) = (0usize, 0usize);
+        for dcx in -3..3 {
+            for dcz in -3..3 {
+                let (chunk, _) = g.generate_chunk(cx + dcx, cz + dcz, Vec::new());
+                for lz in 0..16usize {
+                    for lx in 0..16usize {
+                        let h = chunk.height[lz * 16 + lx] as i32;
+                        if h < 61 {
+                            // the surface water block at y 62 froze
+                            let idx = (62usize << 8) | (lz << 4) | lx;
+                            if chunk.get_idx(idx) == ICE {
+                                ice_sheet += 1;
+                            }
+                        }
+                    }
+                }
+                for i in 0..CHUNK_LEN {
+                    if chunk.get_idx(i) == BLUE_ICE {
+                        blue_ice += 1;
+                    }
+                }
+            }
+        }
+        assert!(
+            ice_sheet > 16,
+            "the frozen-ocean surface froze over (got {ice_sheet} ice cells)"
+        );
+        assert!(
+            blue_ice > 0,
+            "icebergs carry blue ice (got {blue_ice} across 36 chunks)"
+        );
+    }
+
+    /// kelp columns grow multiple blocks high ("Can grow multiple
+    /// blocks high" — VERIFIED): the cold-ocean kelp cells include
+    /// at least one 2+ tall column.
+    #[test]
+    fn v113_kelp_columns_grow_multiple_blocks() {
+        let g = gen();
+        let (cx, cz) = find_biome(&g, Biome::ColdOcean);
+        let mut found = false;
+        'outer: for dcx in -3..3 {
+            for dcz in -3..3 {
+                let (chunk, _) = g.generate_chunk(cx + dcx, cz + dcz, Vec::new());
+                for lz in 0..16usize {
+                    for lx in 0..16usize {
+                        let h = chunk.height[lz * 16 + lx] as i32;
+                        let mut run = 0;
+                        for dy in 1..5 {
+                            let y = h + dy;
+                            if y >= 62 {
+                                break;
+                            }
+                            let idx = ((y as usize) << 8) | (lz << 4) | lx;
+                            if chunk.get_idx(idx) == KELP {
+                                run += 1;
+                            } else {
+                                break;
+                            }
+                        }
+                        if run >= 2 {
+                            found = true;
+                            break 'outer;
+                        }
+                    }
+                }
+            }
+        }
+        assert!(
+            found,
+            "no 2+ tall kelp column found in the window (deterministic seed)"
+        );
+    }
+
+    /// the ocean temperature split itself: all four 1.13 families are
+    /// findable and from_u8 round-trips them.
+    #[test]
+    fn v113_ocean_families_present_and_roundtrip() {
+        let g = gen();
+        for b in [
+            Biome::WarmOcean,
+            Biome::LukewarmOcean,
+            Biome::ColdOcean,
+            Biome::FrozenOcean,
+        ] {
+            let _ = find_biome(&g, b);
+            assert_eq!(Biome::from_u8(b as u8), b);
+        }
+        assert!(Biome::WarmOcean.is_ocean());
+        assert!(Biome::FrozenOcean.is_ocean());
+        assert!(!Biome::Beach.is_ocean());
+        assert!(!Biome::Plains.is_ocean());
     }
 }

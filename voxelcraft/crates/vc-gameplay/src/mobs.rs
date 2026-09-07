@@ -141,6 +141,65 @@ pub enum MobKind {
     /// present only in Java Edition" — spawns ONLY via the direct
     /// spawn API (the engine-native /summon stand-in)
     Illusioner,
+    /// 1.13: the drowned — VERIFIED (w/Drowned live 2026-09-07): 20 HP
+    /// base zombie variant (40/100 for "leaders" is Java-internal,
+    /// disclosed), melee E 2.5/N 3/H 4.5, spawns in ocean/river water
+    /// AND converts from zombies whose heads stayed under water
+    /// (30 s + 15 s shaking — VERIFIED §Conversion), 6.25% chance to
+    /// hold a trident (§Equipment) which drops at 8.5% on a player kill
+    /// (w/Trident), neutral-until-provoked is the infobox's framing of
+    /// their zombie-parity aggro — treated hostile like the zombie.
+    Drowned,
+    /// 1.13: the phantom — VERIFIED (w/Phantom live 2026-09-07): 20 HP
+    /// undead hostile, 2 HP (E/N) / 3 HP (H) attack (the 1.14-pre3
+    /// damage reduction — current wiki), spawns above a player whose
+    /// "Time Since Last Rest" is ≥ 1 hour (72000 ticks = 3 in-game
+    /// days, reset by death or bed), drops 0-1 phantom membrane @ 50%,
+    /// afraid of cats (no cats in the engine — N/A), burns in sunlight
+    /// (undead — the engine's zombies don't model burning, disclosed).
+    Phantom,
+    /// 1.13: the dolphin — VERIFIED (w/Dolphin live 2026-09-07): 10 HP
+    /// neutral, melee E 2.5/N 3/H 4.5, pods of 1-2 (JE) in all ocean
+    /// biomes except frozen/cold at Y 50-64, whole pod retaliates, fed
+    /// raw fish → swims to the nearest treasure (buried treasure/
+    /// shipwreck — the engine's buried-treasure feature), players
+    /// sprint-swimming within 9 blocks get Dolphin's Grace 5 s.
+    Dolphin,
+    /// 1.13: the cod — VERIFIED (w/Cod live 2026-09-07): 3 HP passive
+    /// fish, schools, cold ocean spawning, drops 1 raw cod + 5% bone
+    /// meal; 1-3 XP.
+    Cod,
+    /// 1.13: the salmon — VERIFIED (w/Salmon live 2026-09-07): 3 HP
+    /// passive fish, 3 size variants (0.2/0.4/0.6 height — the variant
+    /// byte), drops 1 raw salmon; 1-3 XP.
+    Salmon,
+    /// 1.13: the pufferfish — VERIFIED (w/Pufferfish live 2026-09-07):
+    /// 3 HP neutral, inflates toward players (variant byte 0/1/2 =
+    /// unpuffed/semi/fully), contact damage E/N 2 H 3 semi + E 2.5/
+    /// N 3/H 4.5 fully, contact Poison 3 s (semi) / 6 s (JE fully),
+    /// warm-ocean spawning; drops 1 pufferfish item; 1-3 XP.
+    Pufferfish,
+    /// 1.13: the tropical fish — VERIFIED (w/Tropical_Fish live
+    /// 2026-09-07): 3 HP passive, 2,700 visual variants (2 shapes ×
+    /// 15 base colors × 6 patterns × 15 pattern colors — encoded across
+    /// variant/aux), lukewarm/warm ocean + mangrove swamp spawning,
+    /// drops 1 tropical fish item; 1-3 XP.
+    TropicalFish,
+    /// 1.13: the sea turtle — VERIFIED (w/Turtle live 2026-09-07): 30 HP
+    /// passive, beach sand spawning (groups ≤ 5, 5% babies), bred with
+    /// seagrass → lays eggs on its home beach (aux = egg cooldown;
+    /// variant bit 7 = carrying egg), babies drop 1 scute on maturity,
+    /// slow on land / fast in water, adults drop 0-2 seagrass;
+    /// zombies/drowned/husks actively trample the eggs.
+    Turtle,
+    /// The squid — a PRE-1.13 legacy marker (vanilla added it in Beta
+    /// 1.2; the engine's early brackets skipped it and it is NOT one of
+    /// 1.13's new mobs). Declared so the aquatic() classification
+    /// question has a real answer: the squid is a legacy water mob and
+    /// does NOT receive the 1.13 Update Aquatic swim-physics/conduit
+    /// gating. No MOB_DATA row, no spawn table entry, no egg — a
+    /// classification-only stub, disclosed in the 1.13 worklog.
+    Squid,
 }
 
 impl MobKind {
@@ -178,6 +237,15 @@ impl MobKind {
             "vindicator" => MobKind::Vindicator,
             "evoker" => MobKind::Evoker,
             "vex" => MobKind::Vex,
+            // 1.13 (Update Aquatic)
+            "drowned" => MobKind::Drowned,
+            "phantom" => MobKind::Phantom,
+            "dolphin" => MobKind::Dolphin,
+            "cod" => MobKind::Cod,
+            "salmon" => MobKind::Salmon,
+            "pufferfish" => MobKind::Pufferfish,
+            "tropical_fish" => MobKind::TropicalFish,
+            "turtle" => MobKind::Turtle,
             _ => return None,
         })
     }
@@ -217,7 +285,27 @@ impl MobKind {
             MobKind::Vindicator => "minecraft:vindicator",
             MobKind::Evoker => "minecraft:evoker",
             MobKind::Vex => "minecraft:vex",
+            MobKind::Drowned => "minecraft:drowned",
+            MobKind::Phantom => "minecraft:phantom",
+            MobKind::Dolphin => "minecraft:dolphin",
+            MobKind::Cod => "minecraft:cod",
+            MobKind::Salmon => "minecraft:salmon",
+            MobKind::Pufferfish => "minecraft:pufferfish",
+            MobKind::TropicalFish => "minecraft:tropical_fish",
+            MobKind::Turtle => "minecraft:turtle",
+            // classification-only marker (see the enum doc) — still
+            // carries its vanilla registry id for completeness
+            MobKind::Squid => "minecraft:squid",
         }
+    }
+
+    /// The 1.13 entity-id registry spelling (VERIFIED: the 1.13 id set
+    /// on minecraft.wiki). Semantic alias of [`MobKind::name`] kept as
+    /// its own accessor so registry-id consumers (spawn data, /summon
+    /// parity checks, save files) read distinctly from display-name
+    /// consumers.
+    pub fn registry_id(self) -> &'static str {
+        self.name()
     }
 
     pub fn sprite_tile(self) -> u16 {
@@ -258,6 +346,18 @@ impl MobKind {
             // per-VARIANT sprite (red/blue/green/cyan/gray)
             MobKind::Parrot => TILE_PARROT_BASE,
             MobKind::Illusioner => TILE_ILLUSIONER,
+            MobKind::Drowned => TILE_MOB_DROWNED,
+            MobKind::Phantom => TILE_MOB_PHANTOM,
+            MobKind::Dolphin => TILE_MOB_DOLPHIN,
+            MobKind::Cod => TILE_MOB_COD,
+            MobKind::Salmon => TILE_MOB_SALMON,
+            MobKind::Pufferfish => TILE_MOB_PUFFERFISH,
+            MobKind::TropicalFish => TILE_MOB_TROPICAL_FISH,
+            MobKind::Turtle => TILE_MOB_TURTLE,
+            // classification-only marker — never rendered (no MOB_DATA
+            // row, no spawn path); reuses the passive-fish tile as a
+            // safe stand-in should a future bracket implement it
+            MobKind::Squid => TILE_MOB_COD,
         }
     }
 
@@ -289,11 +389,52 @@ impl MobKind {
                 | MobKind::Vex
                 // 1.12 (VERIFIED w/Illusioner infobox "Behavior Hostile")
                 | MobKind::Illusioner
+                // 1.13: the drowned + phantom — VERIFIED infoboxes
+                // "Behavior Hostile" (the drowned's zombie-parity aggro
+                // is the infobox's own framing; the phantom is undead)
+                | MobKind::Drowned
+                | MobKind::Phantom
         )
     }
     pub fn neutral(self) -> bool {
         // 1.11: the llama — VERIFIED w/Llama infobox "Neutral"
-        self == MobKind::Enderman || self == MobKind::IronGolem || self == MobKind::Llama
+        // 1.13: dolphin + pufferfish — VERIFIED infoboxes "Neutral"
+        // (the pufferfish's contact defense is not an attack)
+        self == MobKind::Enderman
+            || self == MobKind::IronGolem
+            || self == MobKind::Llama
+            || self == MobKind::Dolphin
+            || self == MobKind::Pufferfish
+    }
+
+    /// 1.13: aquatic mobs — swim physics (buoyancy, 3D steering),
+    /// Conduit damage targets, Impaling bonus targets. The tropical
+    /// fish 2,700-variant math: 2 shapes x 15 base x 6 patterns x
+    /// 15 pattern colors (VERIFIED w/Tropical_Fish).
+    pub fn aquatic(self) -> bool {
+        matches!(
+            self,
+            MobKind::Dolphin
+                | MobKind::Cod
+                | MobKind::Salmon
+                | MobKind::Pufferfish
+                | MobKind::TropicalFish
+                | MobKind::Turtle
+                | MobKind::Drowned
+        )
+    }
+
+    /// The engine's flying mobs (vanilla FlyingMob class forms):
+    /// the phantom (1.13), the vex (1.11), the bat (E2), the parrot
+    /// (1.12). These take NO gravity — their AI's vertical steering
+    /// is the only vertical force (the phantom's 12-block orbit kept
+    /// sagging 3 blocks under gravity before this classification;
+    /// flying mobs also never accumulate fall distance).
+    pub fn flies(self) -> bool {
+        matches!(
+            self,
+            MobKind::Phantom | MobKind::Vex | MobKind::Bat | MobKind::Parrot
+        )
     }
 
     /// The spawn-egg mapping: egg id 0..=15 (SPAWN_EGG_BASE + i) in the
@@ -344,6 +485,17 @@ impl MobKind {
             // 1.12: the parrot egg (changelog §Items: "Parrot Spawn
             // Egg") — kind 30
             30 => MobKind::Parrot,
+            // 1.13: the V9 egg window (changelog §Items: Drowned/
+            // Phantom/Dolphin/Cod/Salmon/Pufferfish/Tropical Fish/
+            // Turtle Spawn Eggs) — kinds 32..=39
+            32 => MobKind::Drowned,
+            33 => MobKind::Phantom,
+            34 => MobKind::Dolphin,
+            35 => MobKind::Cod,
+            36 => MobKind::Salmon,
+            37 => MobKind::Pufferfish,
+            38 => MobKind::TropicalFish,
+            39 => MobKind::Turtle,
             _ => MobKind::Chicken,
         }
     }
@@ -398,6 +550,19 @@ impl MobKind {
             // w/Illusioner: "Does not currently have a spawn egg, so can
             // only be summoned with /summon") — the same 255 sentinel
             MobKind::Illusioner => 255,
+            // 1.13: the V9 egg window — kinds 32..=39 (the changelog's
+            // own spawn-egg list)
+            MobKind::Drowned => 32,
+            MobKind::Phantom => 33,
+            MobKind::Dolphin => 34,
+            MobKind::Cod => 35,
+            MobKind::Salmon => 36,
+            MobKind::Pufferfish => 37,
+            MobKind::TropicalFish => 38,
+            MobKind::Turtle => 39,
+            // classification-only marker: the squid never had an egg in
+            // the engine's window (pre-1.13 legacy, unimplemented)
+            MobKind::Squid => 255,
         }
     }
 }
@@ -422,7 +587,7 @@ pub struct MobDef {
     pub xp: i32,
 }
 
-pub const MOB_DATA: [MobDef; 32] = [
+pub const MOB_DATA: [MobDef; 40] = [
     MobDef {
         kind: MobKind::Zombie,
         health: 20.0,
@@ -799,6 +964,104 @@ pub const MOB_DATA: [MobDef; 32] = [
         width: 0.6,
         xp: 5,
     },
+    // ---- 1.13 (Update Aquatic) — all values VERIFIED live 2026-09-07
+    // against the per-mob wiki captures (voxelcraft/scripts/v113_*) ----
+    MobDef {
+        // w/Drowned: 20 HP base (zombie-parity; the 40/100 "leader"
+        // forms are Java-internal — disclosed), Normal melee 3, armor 2
+        // (undead zombie family), 5 XP + the trident drop rule
+        kind: MobKind::Drowned,
+        health: 20.0,
+        damage: 3.0,
+        speed_attr: 0.23,
+        armor: 2.0,
+        height: 1.95,
+        width: 0.6,
+        xp: 5,
+    },
+    MobDef {
+        // w/Phantom: 20 HP undead, 2 HP E/N + 3 H (the 1.14-pre3 value
+        // the current wiki lists; the 1.13 original was 6 — version-
+        // scoped, disclosed), 5 XP
+        kind: MobKind::Phantom,
+        health: 20.0,
+        damage: 2.0,
+        speed_attr: 0.7,
+        armor: 0.0,
+        height: 0.5,
+        width: 0.9,
+        xp: 5,
+    },
+    MobDef {
+        // w/Dolphin: 10 HP neutral, Normal 3, 1-3 XP (engine takes 1)
+        kind: MobKind::Dolphin,
+        health: 10.0,
+        damage: 3.0,
+        speed_attr: 0.7,
+        armor: 0.0,
+        height: 0.6,
+        width: 0.9,
+        xp: 1,
+    },
+    MobDef {
+        // w/Cod: 3 HP passive fish, 1 XP
+        kind: MobKind::Cod,
+        health: 3.0,
+        damage: 0.0,
+        speed_attr: 0.13,
+        armor: 0.0,
+        height: 0.3,
+        width: 0.5,
+        xp: 1,
+    },
+    MobDef {
+        // w/Salmon: 3 HP passive fish (3 size variants live in the
+        // variant byte — hitbox scaled at spawn), 1 XP
+        kind: MobKind::Salmon,
+        health: 3.0,
+        damage: 0.0,
+        speed_attr: 0.12,
+        armor: 0.0,
+        height: 0.4,
+        width: 0.7,
+        xp: 1,
+    },
+    MobDef {
+        // w/Pufferfish: 3 HP neutral, contact 3 Normal fully-puffed,
+        // 1 XP (the poison rides the contact-hit payload)
+        kind: MobKind::Pufferfish,
+        health: 3.0,
+        damage: 3.0,
+        speed_attr: 0.13,
+        armor: 0.0,
+        height: 0.5,
+        width: 0.5,
+        xp: 1,
+    },
+    MobDef {
+        // w/Tropical_Fish: 3 HP passive, 1 XP (2700 variants encoded
+        // across variant/aux — see tropical_decode)
+        kind: MobKind::TropicalFish,
+        health: 3.0,
+        damage: 0.0,
+        speed_attr: 0.15,
+        armor: 0.0,
+        height: 0.4,
+        width: 0.5,
+        xp: 1,
+    },
+    MobDef {
+        // w/Turtle: 30 HP x 15 passive; slow land speed ~0.12, fast
+        // swimmer; 1 XP (w/Turtle §Drops: 1-3 XP)
+        kind: MobKind::Turtle,
+        health: 30.0,
+        damage: 0.0,
+        speed_attr: 0.12,
+        armor: 0.0,
+        height: 0.4,
+        width: 1.2,
+        xp: 1,
+    },
 ];
 
 #[inline]
@@ -1013,6 +1276,11 @@ pub struct PlayerHit {
     /// Phase E2: wither-skull payload — Some(ticks) applies Wither II
     /// (VERIFIED w/Wither: 200 ticks Normal / 800 Hard)
     pub wither_effect: Option<i32>,
+    /// 1.13: poison payload — Some(ticks) applies Poison I (VERIFIED
+    /// w/Pufferfish: contact "Poison for 6 seconds" fully puffed Java /
+    /// 3 s semi-puffed; the engine's one-tier poison is the I form,
+    /// disclosed)
+    pub poison_effect: Option<i32>,
 }
 
 /// An arrow projectile (skeleton): ballistic point. Phase E1 adds
@@ -1033,6 +1301,11 @@ pub enum ProjKind {
     /// scale; VERIFIED w/Llama: "Llama Spit: Easy and Normal: 1 HP,
     /// Hard: 1.5 HP")
     LlamaSpit,
+    /// 1.13: the trident — 8 HP base (VERIFIED w/Trident: "Projectile
+    /// damage 8 HP"; the drowned throw "sends it up to 20 blocks away"
+    /// at a 1.5 s cadence — VERIFIED w/Drowned §Attacking). The
+    /// player-thrown form applies Impaling bonuses at the game layer.
+    Trident,
 }
 
 #[derive(Clone, Debug)]
@@ -1051,6 +1324,16 @@ pub struct Arrow {
 pub struct MobSystem {
     /// Phase E2: ambient-bat spawn cadence counter
     bats_spawn_t: u64,
+    /// 1.13: water-ambient spawn cadence counter (the fish/dolphin/
+    /// turtle attempt, 1/40 ticks — the bat pattern)
+    aquatic_spawn_t: u64,
+    /// 1.13: "Time Since Last Rest" — ticks since the player last died
+    /// (or slept, when beds exist). At ≥ 72000 (3 in-game days) phantoms
+    /// start spawning above the player (VERIFIED w/Phantom §Spawning:
+    /// "Phantoms spawn when a player's Time Since Last Rest reaches
+    /// 1 hour (72000 ticks)"; beds don't exist yet — reset rides death,
+    /// disclosed). Incremented once per tick in tick().
+    pub rest_t: u64,
     /// Phase E3: the mob id the player is currently riding (its AI is
     /// suspended — the game layer drives its velocity; physics still
     /// applies)
@@ -1077,6 +1360,20 @@ pub struct MobSystem {
     /// Blindness effect that lasts for 20 seconds upon first engaging
     /// a new player opponent").
     pub pending_player_blindness: Vec<i32>,
+    /// 1.13 Dolphin's Grace applications (ticks each — VERIFIED
+    /// w/Dolphin: "a swimming speed boost for 5 seconds, replenished
+    /// as long as the player stays close"; the game layer applies
+    /// the effect while a sprint-swimming player is within 9 blocks).
+    pub pending_player_grace: Vec<i32>,
+    /// 1.13 turtle egg placements, consumed by the game layer (world
+    /// edits must ride the light engine): (x, y, z, state) — the
+    /// egg block at hatch stage 0 (VERIFIED w/Turtle: "A turtle lays
+    /// eggs after digging" on its home beach).
+    pub pending_turtle_eggs: Vec<(i32, i32, i32, u16)>,
+    /// 1.13 item drops the mob system itself owes the world (baby
+    /// turtle maturity scutes — VERIFIED w/Scute: "Dropped when baby
+    /// turtles grow up"): (position, block id).
+    pub pending_drops: Vec<([f32; 3], u16)>,
     /// mob deaths (drops + XP handled by the game layer); the u8 carries
     /// the per-kind variant (magma-cube size code etc.)
     pub deaths: Vec<(MobKind, [f32; 3], u8)>,
@@ -1102,6 +1399,8 @@ impl MobSystem {
             arrows: Vec::new(),
             rng: Rng::new(seed ^ 0xB0B_5EED),
             bats_spawn_t: 0,
+            aquatic_spawn_t: 0,
+            rest_t: 0,
             ridden: None,
             next_id: 1,
             player: None,
@@ -1111,6 +1410,9 @@ impl MobSystem {
             pending_summons: Vec::new(),
             pending_player_fang: Vec::new(),
             pending_player_blindness: Vec::new(),
+            pending_player_grace: Vec::new(),
+            pending_turtle_eggs: Vec::new(),
+            pending_drops: Vec::new(),
             pending_damage: Vec::new(),
             explosions: Vec::new(),
             cures: Vec::new(),
@@ -1133,7 +1435,15 @@ impl MobSystem {
     }
 
     fn passives_alive(&self) -> usize {
-        self.list.iter().filter(|m| !m.kind.hostile()).count()
+        // The vanilla passive (creature) category EXCLUDES the 1.13
+        // water pools (water_ambient / water_creature are separate
+        // spawn categories with their own caps — VERIFIED w/Java
+        // Edition 1.13 §Spawning): fish/dolphins/turtles never count
+        // against the passive cap.
+        self.list
+            .iter()
+            .filter(|m| !m.kind.hostile() && !m.kind.aquatic())
+            .count()
     }
 
     /// Spawn a specific mob at a block position (E2E/structures).
@@ -1263,6 +1573,21 @@ impl MobSystem {
             self.try_spawn_bats(world, sim_ring);
         }
             self.try_spawn_passive(world, sim_ring);
+        // 1.13 (Update Aquatic): the water-ambient pool — fish schools,
+        // dolphin pods, beach turtles (NOT counted toward the passive
+        // cap — the vanilla water_ambient/water_creature categories are
+        // separate, VERIFIED w/Java_Edition_1.13 §Spawning)
+        self.aquatic_spawn_t += 1;
+        if self.aquatic_spawn_t % 40 == 0 {
+            self.try_spawn_aquatic(world, sim_ring);
+        }
+        // 1.13: phantom insomnia spawns — every 20 ticks while "Time
+        // Since Last Rest" ≥ 72000 (VERIFIED w/Phantom §Spawning: the
+        // 1–4 local pack; engine rolls one per attempt)
+        self.rest_t += 1;
+        if self.rest_t % 20 == 0 && self.rest_t >= 72000 {
+            self.try_spawn_phantom(world, sim_ring);
+        }
         }
 
         // 2. AI + physics (split borrows: rng/hits/arrows vs the mob list)
@@ -1277,6 +1602,10 @@ impl MobSystem {
         let pending_player_fang = &mut self.pending_player_fang;
         // 1.12: the illusioner blindness queue
         let pending_blindness = &mut self.pending_player_blindness;
+        // 1.13: the aquatic queues
+        let pending_grace_q = &mut self.pending_player_grace;
+        let pending_turtle_eggs_q = &mut self.pending_turtle_eggs;
+        let pending_drops_q = &mut self.pending_drops;
         // Phase E1: read-only snapshot for mob-vs-mob targeting (snow
         // golem / iron golem / ocelot scan for other mobs)
         let snapshot: Vec<(u32, MobKind, [f32; 3], u8)> = self
@@ -1323,6 +1652,9 @@ impl MobSystem {
                 pending_summons,
                 pending_player_fang,
                 pending_blindness,
+                pending_grace_q,
+                pending_turtle_eggs_q,
+                pending_drops_q,
             );
             physics_tick(m, world);
         }
@@ -1463,6 +1795,16 @@ impl MobSystem {
         }
         let lx = self.rng.next_range(16) as i32;
         let lz = self.rng.next_range(16) as i32;
+        // 1.13 (Update Aquatic): ocean-family columns roll DROWNED —
+        // "Drowned spawn naturally ... in ocean and river biomes"
+        // (VERIFIED w/Drowned §Spawning; no river biome in the engine,
+        // disclosed). Water positions spawn drowned directly (drowned
+        // are the ocean's water-column hostile; the light gate below
+        // is a land rule — deep water is its own darkness, disclosed);
+        // land positions in an ocean chunk convert zombie → drowned.
+        let col_biome =
+            vc_world::gen::Biome::from_u8(world.get_biome(cx * 16 + lx, cz * 16 + lz));
+        let ocean_family = col_biome.is_ocean();
         let py = p[1] as i32;
         for y in (py - 40..py + 16).rev() {
             if !(1..=250).contains(&y) {
@@ -1470,6 +1812,22 @@ impl MobSystem {
             }
             let wx = cx * 16 + lx;
             let wz = cz * 16 + lz;
+            // 1.13: the ocean water column — a drowned spawn position
+            // is two stacked WATER blocks (they sink/stand via the
+            // aquatic swim physics); packs of 1–2, 6.25% trident-armed
+            // (VERIFIED w/Drowned §Equipment: "6.25% of drowned spawn
+            // with a trident" — bit 0 arms the throw)
+            if ocean_family
+                && world.get_block(wx, y, wz) == WATER
+                && world.get_block(wx, y + 1, wz) == WATER
+            {
+                let pack = 1 + (self.rng.next_range(2)) as usize;
+                for _ in 0..pack {
+                    let armed = if self.rng.next_f32() < 0.0625 { 1u8 } else { 0 };
+                    let _ = self.spawn_variant(MobKind::Drowned, wx, y, wz, armed);
+                }
+                return; // one attempt per tick
+            }
             let floor = world.get_block(wx, y - 1, wz);
             if !is_solid(floor) || floor == WATER || is_cross(floor) {
                 continue;
@@ -1519,9 +1877,14 @@ impl MobSystem {
                     let roll = self.rng.next_range(5);
                     match roll {
                         0 => {
-                            // zombie -> husk (80%) in deserts
+                            // zombie -> husk (80%) in deserts; zombie ->
+                            // drowned in ocean-family chunks (1.13: the
+                            // drowned REPLACE zombies there — VERIFIED
+                            // w/Java_Edition_1.13 §Spawning)
                             if biome == 4 && self.rng.next_f32() < 0.8 {
                                 MobKind::Husk
+                            } else if ocean_family {
+                                MobKind::Drowned
                             } else {
                                 MobKind::Zombie
                             }
@@ -1553,6 +1916,13 @@ impl MobSystem {
                     }
                 } else if kind == MobKind::MagmaCube {
                     (kind, self.rng.next_range(3) as u8) // sizes 1/2/4
+                } else if kind == MobKind::Drowned {
+                    // 1.13: land-spawned drowned roll the same 6.25%
+                    // trident-armed bit (VERIFIED w/Drowned §Equipment)
+                    (
+                        kind,
+                        if self.rng.next_f32() < 0.0625 { 1u8 } else { 0 },
+                    )
                 } else {
                     (kind, 0)
                 };
@@ -1614,6 +1984,189 @@ impl MobSystem {
         }
         return;
         }
+    }
+
+    /// 1.13 (Update Aquatic): the water-ambient attempt — fish schools,
+    /// dolphin pods, beach turtles. Runs every 40 ticks (the bat
+    /// cadence) and is NOT counted toward the passive cap (the vanilla
+    /// water_ambient / water_creature categories are separate —
+    /// VERIFIED w/Java_Edition_1.13 §Spawning).
+    /// Fish biome rows (VERIFIED w/Cod, w/Salmon, w/Tropical_Fish,
+    /// w/Pufferfish §Spawning, simplified to the temperature families):
+    /// cod = cold + neutral, salmon = cold/frozen, tropical =
+    /// lukewarm/warm, pufferfish = warm. Dolphins: "all ocean biomes
+    /// except frozen/cold", pods 1–2 (VERIFIED w/Dolphin).
+    fn try_spawn_aquatic(&mut self, world: &World, sim_ring: impl Fn(i32, i32) -> bool) {
+        if world.dimension != vc_world::world::Dimension::Overworld {
+            return;
+        }
+        let Some(p) = self.player else { return };
+        let aquatics = self
+            .list
+            .iter()
+            .filter(|m| {
+                matches!(
+                    m.kind,
+                    MobKind::Cod
+                        | MobKind::Salmon
+                        | MobKind::Pufferfish
+                        | MobKind::TropicalFish
+                        | MobKind::Dolphin
+                )
+            })
+            .count();
+        if aquatics >= 12 {
+            return; // water-ambient cap (adaptation: vanilla pools per category)
+        }
+        let cx = (p[0] / 16.0).floor() as i32 + (self.rng.next_range(9) as i32) - 4;
+        let cz = (p[2] / 16.0).floor() as i32 + (self.rng.next_range(9) as i32) - 4;
+        if !sim_ring(cx, cz) || world.chunk((cx, cz)).is_none() {
+            return;
+        }
+        let lx = self.rng.next_range(16) as i32;
+        let lz = self.rng.next_range(16) as i32;
+        let biome =
+            vc_world::gen::Biome::from_u8(world.get_biome(cx * 16 + lx, cz * 16 + lz));
+        let wx = cx * 16 + lx;
+        let wz = cz * 16 + lz;
+        // turtles: Beach-biome sand columns, groups ≤ 5, 5% babies
+        // (VERIFIED w/Turtle §Spawning: "spawn on the sand ... in groups
+        // of up to 5" + the 5% baby roll; babies carry bit 0x40 with the
+        // 24000-tick (20 min) maturity countdown and drop a scute)
+        if biome == vc_world::gen::Biome::Beach {
+            // scan DOWN from 12 above to 12 below the player (the
+            // bounds were reversed in the first draft — `82..58` is an
+            // empty range and the branch never fired)
+            for y in (p[1] as i32 - 12..p[1] as i32 + 12).rev() {
+                if !(1..=250).contains(&y) {
+                    continue;
+                }
+                let floor = world.get_block(wx, y - 1, wz);
+                if floor != SAND {
+                    continue;
+                }
+                if world.get_block(wx, y, wz) != AIR || world.get_block(wx, y + 1, wz) != AIR
+                {
+                    continue;
+                }
+                let group = 1 + (self.rng.next_range(5)) as usize; // ≤ 5 (VERIFIED)
+                for _ in 0..group {
+                    let baby = self.rng.next_f32() < 0.05; // 5% (VERIFIED)
+                    let (variant, aux) = if baby { (0x40u8, 24000) } else { (0, 0) };
+                    let _ = self.spawn_variant(MobKind::Turtle, wx, y, wz, variant);
+                    if let Some(m) = self.list.last_mut() {
+                        m.aux = aux;
+                    }
+                }
+                return;
+            }
+            return;
+        }
+        if !biome.is_ocean() {
+            return;
+        }
+        // the water column: two stacked WATER blocks at y 45..=SEA_LEVEL
+        // (dolphin doc band Y 50–64 covers the shallow half — disclosed)
+        for y in (45..=vc_chunk::SEA_LEVEL).rev() {
+            if world.get_block(wx, y, wz) != WATER || world.get_block(wx, y + 1, wz) != WATER
+            {
+                continue;
+            }
+            // dolphins: pods 1–2, warm/lukewarm/neutral families only
+            // (VERIFIED: "all ocean biomes except frozen/cold")
+            let warm_side = matches!(
+                biome,
+                vc_world::gen::Biome::WarmOcean
+                    | vc_world::gen::Biome::LukewarmOcean
+                    | vc_world::gen::Biome::Ocean
+            );
+            if warm_side && self.rng.next_range(8) == 0 {
+                let pod = 1 + (self.rng.next_range(2)) as usize; // 1–2 (VERIFIED JE)
+                for _ in 0..pod {
+                    let _ = self.spawn_variant(MobKind::Dolphin, wx, y, wz, 0);
+                }
+                return;
+            }
+            // fish schools (VERIFIED group sizes: cod/salmon 3–6,
+            // tropical 3–5, pufferfish 1–2 — w/ pages)
+            let kind = match biome {
+                vc_world::gen::Biome::WarmOcean => {
+                    if self.rng.next_range(4) == 0 {
+                        MobKind::Pufferfish
+                    } else {
+                        MobKind::TropicalFish
+                    }
+                }
+                vc_world::gen::Biome::LukewarmOcean => {
+                    if self.rng.next_range(2) == 0 {
+                        MobKind::Cod
+                    } else {
+                        MobKind::TropicalFish
+                    }
+                }
+                // cold/frozen/neutral: the cod–salmon split
+                _ => {
+                    if self.rng.next_range(2) == 0 {
+                        MobKind::Cod
+                    } else {
+                        MobKind::Salmon
+                    }
+                }
+            };
+            let school = match kind {
+                MobKind::Pufferfish => 1 + (self.rng.next_range(2)) as usize,
+                MobKind::TropicalFish => 3 + (self.rng.next_range(3)) as usize,
+                _ => 3 + (self.rng.next_range(4)) as usize, // cod/salmon 3–6
+            };
+            for _ in 0..school {
+                let _ = self.spawn_variant(kind, wx, y, wz, 0);
+            }
+            return; // one attempt per cadence tick
+        }
+    }
+
+    /// 1.13: phantom insomnia spawn (VERIFIED w/Phantom §Spawning:
+    /// "Phantoms spawn ... above a player whose Time Since Last Rest
+    /// is 1 hour (72000 ticks)"; the local pack caps at 1–4 — the
+    /// engine rolls one per 20-tick attempt with a hard cap of 4).
+    /// Spawned 12–20 blocks above the player in open air, starting in
+    /// the 200-tick orbit phase of the swoop cycle.
+    fn try_spawn_phantom(&mut self, world: &World, sim_ring: impl Fn(i32, i32) -> bool) {
+        if self.hostiles_alive() as f32 >= MONSTER_CAP {
+            return;
+        }
+        let phantoms = self
+            .list
+            .iter()
+            .filter(|m| m.kind == MobKind::Phantom)
+            .count();
+        if phantoms >= 4 {
+            return; // the local pack cap (VERIFIED 1–4)
+        }
+        let Some(p) = self.player else { return };
+        let x = p[0] as i32 + (self.rng.next_range(17) as i32) - 8;
+        let z = p[2] as i32 + (self.rng.next_range(17) as i32) - 8;
+        let y = p[1] as i32 + 12 + (self.rng.next_range(9)) as i32; // 12–20 above
+        if !sim_ring(x.div_euclid(16), z.div_euclid(16)) {
+            return;
+        }
+        // open air at altitude (the phantom circles up there)
+        for dy in 0..2 {
+            if world.get_block(x, y + dy, z) != AIR {
+                return;
+            }
+        }
+        let _ = self.spawn_variant(MobKind::Phantom, x, y, z, 0);
+        if let Some(m) = self.list.last_mut() {
+            m.aux = 200; // start in the orbit phase (the 200-tick cycle)
+        }
+    }
+
+    /// 1.13: reset "Time Since Last Rest" (VERIFIED w/Phantom §Spawning:
+    /// dying or sleeping resets the statistic; beds are deferred — the
+    /// engine resets on player death, disclosed).
+    pub fn note_rest(&mut self) {
+        self.rest_t = 0;
     }
 
     /// passive spawn attempt (VERIFIED): light ≥ 9 on GRASS with 2 air,
@@ -2212,6 +2765,10 @@ fn ai_tick(
     pending_player_fang: &mut Vec<f32>,
     // 1.12 illusioner spell queue (game-layer consumption)
     pending_blindness: &mut Vec<i32>,
+    // 1.13 (Update Aquatic) queues (game-layer consumption)
+    pending_player_grace: &mut Vec<i32>,
+    pending_turtle_eggs: &mut Vec<(i32, i32, i32, u16)>,
+    pending_drops: &mut Vec<([f32; 3], u16)>,
 ) {
     let d = def(m.kind);
     let speed = if let Some(eq) = m.equine.as_ref() {
@@ -2248,6 +2805,77 @@ fn ai_tick(
         }
     }
 
+    // ---- 1.13 (Update Aquatic) environmental behaviors ----
+    // These run REGARDLESS of a player anchor: conversion and nesting
+    // are environmental — a zombie converts with no player watching,
+    // a bred turtle lays her eggs the same way (the v113 tests pin
+    // player = None for exactly these paths).
+
+    // 1.13: zombies whose heads stay under water convert to drowned
+    // after 30 s (VERIFIED w/Drowned §Conversion: "If a zombie's head
+    // ... is continuously submerged for 30 seconds, it begins to
+    // convert into a drowned" — the 15 s shake window is folded into
+    // the timer, disclosed; aux is free on plain zombies, the
+    // zombie-villager cure path is a different kind so no collision).
+    // Converted drowned are unarmed (their zombie hands were empty).
+    if m.kind == MobKind::Zombie
+        && world.get_block(
+            m.pos[0] as i32,
+            (m.pos[1] + 1.6) as i32,
+            m.pos[2] as i32,
+        ) == WATER
+    {
+        m.aux = (m.aux + 1).min(601);
+        if m.aux >= 600 {
+            m.kind = MobKind::Drowned;
+            m.aux = 0;
+            m.variant = 0; // unarmed (disclosed)
+        }
+    }
+
+    // TURTLE: beach nester — adults wander toward water on land, swim
+    // freely in water; a bred female (variant bit 7 = carrying) lays an
+    // egg on sand (the queued world edit), babies mature on the aux
+    // countdown and drop a scute (VERIFIED w/Scute: "Dropped when baby
+    // turtles grow up"). Environmental — no player anchor needed.
+    if m.kind == MobKind::Turtle {
+        // baby growth: aux counts down to maturity
+        if m.variant & 0x40 != 0 && m.aux > 0 {
+            m.aux -= 1;
+            if m.aux == 0 {
+                // matured: clear the baby bit + queue the scute drop
+                m.variant &= !0x40;
+                pending_drops.push((m.pos, SCUTE));
+            }
+        }
+        // egg laying (bred female, standing on sand)
+        if m.variant & 0x80 != 0 && m.on_ground {
+            let below = world.get_block(
+                m.pos[0] as i32,
+                (m.pos[1] - 0.1) as i32,
+                m.pos[2] as i32,
+            );
+            if below == SAND || below == RED_SAND {
+                m.variant &= !0x80; // egg laid
+                pending_turtle_eggs.push((
+                    m.pos[0] as i32,
+                    m.pos[1] as i32,
+                    m.pos[2] as i32,
+                    0, // stage 0 state id written by the game layer
+                ));
+            }
+        }
+        // land movement: head downhill (toward water) at slow pace —
+        // a turtle "generally attempt to move to near water"
+        // (VERIFIED w/Turtle §Behavior)
+        if in_water_mob(m, world, d.height) {
+            wander_3d(rng, m, speed * 3.0);
+        } else {
+            wander(rng, m, speed);
+        }
+        return;
+    }
+
     let Some(p) = player else {
         wander(rng, m, speed * 0.4);
         return;
@@ -2278,6 +2906,171 @@ fn ai_tick(
         wander(rng, m, speed * 0.3);
         return;
     }
+
+    // ---- 1.13 (Update Aquatic) mob behaviors ----
+    // PHANTOM: the insomnia swooper — circles 12 blocks above the
+    // player, dives on alignment (the classic orbit-and-swoop cycle,
+    // VERIFIED w/Phantom §Behavior: "circles ... swoops down"). The
+    // phase state: variant bit 0 = diving, aux = the phase countdown
+    // (200-tick orbit, 60-tick dive — the two windows the doc comment
+    // promises; a single-aux encoding degenerates to 1-tick dives, so
+    // the bit carries the mode across ticks).
+    if m.kind == MobKind::Phantom {
+        let diving = m.variant & 1 != 0;
+        if m.aux > 0 {
+            m.aux -= 1;
+        }
+        if !diving {
+            // orbit: circle the player at radius 8, 12 blocks up.
+            // Altitude gets its OWN damped controller: the tangential
+            // chase in steer_3d eats most of the steering authority,
+            // so a shared 3D steer left the phantom trailing 3-4
+            // blocks below its spec height (VERIFIED w/Phantom
+            // §Behavior: "circles ... approximately 12 blocks above").
+            let orbit_y = p[1] + 12.0;
+            let ang = (m.pos[0] - p[0]).atan2(m.pos[2] - p[2]);
+            let next_ang = ang + 0.05;
+            let tx = p[0] + next_ang.sin() * 8.0;
+            let tz = p[2] + next_ang.cos() * 8.0;
+            // horizontal chase only (vertical zeroed here)
+            steer_3d(m, [tx, m.pos[1], tz], speed * 1.2);
+            // altitude hold: P-controller with velocity damping — the
+            // approach is asymptotic (gain → 0 as the error → 0), so
+            // the orbit never sags below its target height
+            let y_err = orbit_y - m.pos[1];
+            m.vel[1] = m.vel[1] * 0.6 + y_err.clamp(-3.0, 3.0) * 0.2;
+            if m.aux <= 0 {
+                // orbit window over: switch to the 60-tick dive
+                m.variant |= 1;
+                m.aux = 60;
+            }
+        } else {
+            // dive: straight at the player's chest
+            steer_3d(m, [p[0], p[1] + 1.0, p[2]], speed * 1.8);
+            let d3 = ((p[0] - m.pos[0]).powi(2)
+                + (p[1] - m.pos[1]).powi(2)
+                + (p[2] - m.pos[2]).powi(2))
+            .sqrt();
+            if !invuln && d3 < 1.4 && m.attack_cd == 0 {
+                m.attack_cd = 20;
+                hits.push(PlayerHit {
+                    damage: d.damage, // E/N 2 (VERIFIED, 1.14-pre3 value)
+                    source: m.kind,
+                    knockback_dir: [dx / dist, dz / dist],
+                    wither_effect: None,
+                    poison_effect: None,
+                });
+            }
+            if m.aux <= 0 {
+                // dive window over: back to the 200-tick orbit
+                m.variant &= !1;
+                m.aux = 200;
+            }
+        }
+        return;
+    }
+
+    // PUFFERFISH: the inflating contact defender — inflates as the
+    // player closes within 3 blocks, contact damage + Poison at
+    // touch (VERIFIED w/Pufferfish: semi 2 HP E/N + 3 s poison, fully
+    // 3 HP N + 6 s poison Java; the engine's one-tier poison is I)
+    if m.kind == MobKind::Pufferfish {
+        let near = dist < 3.0 && !invuln;
+        // inflate/deflate one step per 20 ticks
+        if m.attack_cd == 0 {
+            m.attack_cd = 20;
+            if near && m.variant < 2 {
+                m.variant += 1;
+            } else if !near && m.variant > 0 {
+                m.variant -= 1;
+            }
+        }
+        let inflated = m.variant >= 1;
+        if inflated
+            && !invuln
+            && dist < d.width * 0.5 + 0.9
+            && m.aux <= 0
+        {
+            m.aux = 20; // contact cadence (~0.5 s, the immunity window)
+            hits.push(PlayerHit {
+                damage: if m.variant == 2 { d.damage } else { 2.0 },
+                source: m.kind,
+                knockback_dir: [dx / dist, dz / dist],
+                wither_effect: None,
+                // 3 s semi / 6 s fully puffed (VERIFIED Java rows)
+                poison_effect: Some(if m.variant >= 2 { 120 } else { 60 }),
+            });
+        }
+        if m.aux > 0 {
+            m.aux -= 1;
+        }
+        wander_3d(rng, m, speed);
+        return;
+    }
+
+    // TURTLE block moved above the player-anchor early return —
+    // nesting and maturity are environmental (see the 1.13 section).
+
+    // DOLPHIN: the pod grace-giver — any player sprint-swimming within
+    // a 9-block sphere banks Dolphin's Grace 5 s (VERIFIED w/Dolphin);
+    // provoked pods melee like the wolf-pack pattern
+    if m.kind == MobKind::Dolphin {
+        let dd = ((p[0] - m.pos[0]).powi(2)
+            + (p[1] - m.pos[1]).powi(2)
+            + (p[2] - m.pos[2]).powi(2))
+        .sqrt();
+        if !invuln && dd <= 9.0 && m.aux <= 0 {
+            m.aux = 20; // re-apply at most 1/s (replenished, VERIFIED)
+            pending_player_grace.push(100); // 5 s (VERIFIED)
+        }
+        if m.aux > 0 {
+            m.aux -= 1;
+        }
+        if m.provoked && !invuln && dist < MOB_MELEE_REACH + 0.8 && m.attack_cd == 0 {
+            m.attack_cd = MOB_MELEE_TICKS;
+            face_player(m);
+            hits.push(PlayerHit {
+                damage: d.damage, // N 3 (VERIFIED)
+                source: m.kind,
+                knockback_dir: [dx / dist, dz / dist],
+                wither_effect: None,
+                poison_effect: None,
+            });
+            return;
+        }
+        if in_water_mob(m, world, d.height) {
+            wander_3d(rng, m, speed);
+        } else {
+            wander(rng, m, speed * 0.5);
+        }
+        return;
+    }
+
+    // FISH (cod/salmon/tropical): 3D school wander in water
+    if matches!(
+        m.kind,
+        MobKind::Cod | MobKind::Salmon | MobKind::TropicalFish
+    ) {
+        wander_3d(rng, m, speed);
+        return;
+    }
+
+    // DROWNED: zombie-parity melee chase, PLUS the trident throw for
+    // the 6.25% armed roll (VERIFIED w/Drowned §Attacking: "A drowned
+    // with a trident can throw it every 1.5 seconds, sending it up to
+    // 20 blocks away")
+    if m.kind == MobKind::Drowned {
+        if m.variant & 1 != 0 && aggro && dist <= 20.0 && dist > 4.0 && m.attack_cd == 0 {
+            m.attack_cd = 30; // 1.5 s (VERIFIED)
+            face_player(m);
+            spawn_projectile(m, p, rng, arrows, ProjKind::Trident, 20.0, 8.0);
+            return;
+        }
+        // falls through to the generic hostile melee chase below
+    }
+
+    // 1.13: the zombie→drowned conversion moved ABOVE the
+    // player-anchor early return (environmental — see the 1.13 section).
 
     // ---- Phase E1: snow golem targeting (the heat rule ran above,
     // before the player-anchor early return) — throws snowballs at the
@@ -2352,6 +3145,7 @@ fn ai_tick(
                 source: m.kind,
                 knockback_dir: [dx / dist, dz / dist],
                 wither_effect: None,
+                poison_effect: None,
             });
             return;
         }
@@ -2448,6 +3242,7 @@ fn ai_tick(
                     source: m.kind,
                     knockback_dir: [dx / dist, dz / dist],
                     wither_effect: None,
+                    poison_effect: None,
                 });
             }
         } else {
@@ -2527,6 +3322,7 @@ fn ai_tick(
                     source: m.kind,
                     knockback_dir: [dx / dist, dz / dist],
                     wither_effect: None,
+                    poison_effect: None,
                 });
             }
         } else {
@@ -2682,6 +3478,7 @@ fn ai_tick(
                     source: m.kind,
                     knockback_dir: [dx / dist, dz / dist],
                 wither_effect: None,
+                poison_effect: None,
             });
             }
         } else {
@@ -2739,6 +3536,7 @@ fn ai_tick(
                 source: m.kind,
                 knockback_dir: [dx / dist, dz / dist],
                 wither_effect: None,
+                poison_effect: None,
             });
         }
         return;
@@ -2776,6 +3574,7 @@ fn ai_tick(
                         source: m.kind,
                         knockback_dir: [dx / dist, dz / dist],
                 wither_effect: None,
+                poison_effect: None,
             });
                 }
             } else {
@@ -2872,6 +3671,38 @@ fn face_target(m: &mut Mob, tpos: [f32; 3]) {
     m.yaw = (-dz).atan2(dx) - std::f32::consts::FRAC_PI_2;
 }
 
+/// 1.13: is the mob's body in water (the swim-physics gate, AI-side).
+fn in_water_mob(m: &Mob, world: &World, height: f32) -> bool {
+    world.get_block(
+        m.pos[0] as i32,
+        (m.pos[1] + height * 0.5) as i32,
+        m.pos[2] as i32,
+    ) == WATER
+}
+
+/// 1.13: steer toward a 3D point (the aquatic/phantom movement form —
+/// smooth interpolation toward the target velocity).
+fn steer_3d(m: &mut Mob, target: [f32; 3], speed: f32) {
+    let dx = target[0] - m.pos[0];
+    let dy = target[1] - m.pos[1];
+    let dz = target[2] - m.pos[2];
+    let len = (dx * dx + dy * dy + dz * dz).sqrt().max(1e-4);
+    m.vel[0] += (dx / len * speed - m.vel[0]) * 0.15;
+    m.vel[1] += (dy / len * speed - m.vel[1]) * 0.15;
+    m.vel[2] += (dz / len * speed - m.vel[2]) * 0.15;
+    m.yaw = (-dz).atan2(dx) - std::f32::consts::FRAC_PI_2;
+}
+
+/// 1.13: 3D wander for aquatic mobs — the land wander with a gentle
+/// vertical bob (fish school drift; the y target keeps them mid-column).
+fn wander_3d(rng: &mut Rng, m: &mut Mob, speed: f32) {
+    wander(rng, m, speed);
+    if m.wander_t > 0 && rng.next_f32() < 0.02 {
+        // occasional vertical drift: a small target nudge
+        m.vel[1] += (rng.next_f32() - 0.5) * 0.4;
+    }
+}
+
 fn wander(rng: &mut Rng, m: &mut Mob, speed: f32) {
     if m.wander_t == 0 {
         m.wander_t = (rng.next_range(120) as i32 + 40).max(1);
@@ -2895,6 +3726,38 @@ fn wander(rng: &mut Rng, m: &mut Mob, speed: f32) {
 /// gravity + axis collision with 1-block step-ups (villager primitive).
 fn physics_tick(m: &mut Mob, world: &World) {
     let d = def(m.kind);
+    // ---- 1.13 (Update Aquatic): aquatic swim physics. In water the
+    // aquatic kinds get buoyancy + drag instead of gravity (fish hover,
+    // turtles/dolphins glide); out of water the fish family
+    // suffocates (VERIFIED w/Cod: fish "cannot survive out of water
+    // ... they start suffocating" — 1 HP/s engine form of vanilla's
+    // 10-tick no-air window, disclosed approximation) and flips. ----
+    let body_block = world.get_block(
+        m.pos[0] as i32,
+        (m.pos[1] + d.height * 0.5) as i32,
+        m.pos[2] as i32,
+    );
+    let in_water = body_block == WATER;
+    if m.kind.aquatic() && in_water {
+        // buoyancy: relax toward zero vertical speed, water drag on all
+        // axes (vanilla swim drag 0.8-ish; engine approximation)
+        m.vel[1] *= 0.8;
+        m.vel[0] *= 0.92;
+        m.vel[2] *= 0.92;
+        m.fall_dist = 0.0; // water breaks falls (the player rule)
+    } else if m.kind.aquatic() {
+        // fish out of water: flop + suffocate (the fish family only —
+        // dolphins/turtles/drowned breathe air)
+        if matches!(
+            m.kind,
+            MobKind::Cod | MobKind::Salmon | MobKind::Pufferfish | MobKind::TropicalFish
+        ) {
+            m.health -= 1.0 / 20.0; // ~1 HP/s (documented approximation)
+            // flop: a small random hop (vanilla fish flop on land)
+            m.vel[0] *= 0.9;
+            m.vel[2] *= 0.9;
+        }
+    }
     // Vanilla entity gravity, EXACT per-tick form (VERIFIED,
     // research-verdicts.md: v1 = (v0 − 0.08) × 0.98 in b/t). Velocities
     // here are b/s, so the per-tick step on b/s units is
@@ -2903,7 +3766,17 @@ fn physics_tick(m: &mut Mob, world: &World) {
     // clamp. (This also fixes a latent 20× unit bug: the old code
     // subtracted the per-tick 0.08 from a b/s velocity, giving 1.6 b/s²
     // gravity and a 3.92 b/s "terminal" — mobs fell 20× too slow.)
-    m.vel[1] = (m.vel[1] - 1.6) * 0.98;
+    // FLYING mobs (phantom/vex/bat/parrot — MobKind::flies) are exempt:
+    // vanilla FlyingMobs have no gravity, and a constant −1.568 b/s
+    // pull dragged the phantom's orbit 3 blocks below its 12-block
+    // spec height (VERIFIED w/Phantom §Behavior: "circles ... at a
+    // height of approximately 12 blocks above the player").
+    if !m.kind.flies() {
+        m.vel[1] = (m.vel[1] - 1.6) * 0.98;
+    } else {
+        // gentle flight drag instead (no fixed point — decays to 0)
+        m.vel[1] *= 0.98;
+    }
     // fall damage (MC-12357, same as the player): distance-based — the
     // old impact-speed inversion (v²/0.16) was dead code in practice
     // (on_ground + |v| > 0.35 never coincided after the drag rewrite,
@@ -2951,8 +3824,10 @@ fn physics_tick(m: &mut Mob, world: &World) {
         m.pos[1] = ny;
         m.on_ground = false;
     }
-    // fall bookkeeping (vanilla fallDistance: per-tick distance)
-    if !m.on_ground && m.vel[1] < 0.0 {
+    // fall bookkeeping (vanilla fallDistance: per-tick distance).
+    // Flying mobs never accumulate fall distance (no gravity-driven
+    // descents — a swooping phantom is flight, not a fall).
+    if !m.on_ground && m.vel[1] < 0.0 && !m.kind.flies() {
         m.fall_dist += -m.vel[1] * (1.0 / 20.0);
     }
 }
@@ -3090,6 +3965,9 @@ fn tick_arrows(
                         // itself is the boss system; the hit carries the
                         // Wither II payload via `wither_effect`)
                         ProjKind::Skull => MobKind::WitherSkeleton,
+                        // 1.13: the drowned's thrown trident (8 HP base —
+                        // VERIFIED w/Trident "Projectile damage 8 HP")
+                        ProjKind::Trident => MobKind::Drowned,
                     };
                     // snowballs deal 0 damage to the player (VERIFIED),
                     // knockback only
@@ -3105,6 +3983,9 @@ fn tick_arrows(
                         } else {
                             None
                         },
+                        // 1.13: the pufferfish contact poison rides the
+                        // contact-hit path, not projectiles — None here
+                        poison_effect: None,
                     });
                     arrows.remove(i);
                     continue;
@@ -3459,6 +4340,9 @@ mod tests {
             &mut Vec::new(),
             &mut Vec::new(),
             &mut Vec::new(),
+            &mut Vec::new(),
+            &mut Vec::new(),
+            &mut Vec::new(),
         );
         sys.list.insert(0, mob);
         sys.rng = rng;
@@ -3503,6 +4387,9 @@ mod tests {
             &mut Vec::new(),
             &mut Vec::new(),
             &mut Vec::new(),
+            &mut Vec::new(),
+            &mut Vec::new(),
+            &mut Vec::new(),
         );
         sys.list.insert(0, mob);
         sys.rng = rng;
@@ -3521,6 +4408,9 @@ mod tests {
                 &mut sys.arrows,
                 &world,
                 &[],
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
                 &mut Vec::new(),
                 &mut Vec::new(),
                 &mut Vec::new(),
@@ -3568,6 +4458,9 @@ mod tests {
                 &mut sys.arrows,
                 &world,
                 &[],
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
                 &mut Vec::new(),
                 &mut Vec::new(),
                 &mut Vec::new(),
@@ -3725,7 +4618,7 @@ mod tests {
         // [merge] the kinds resolve in/out of names + eggs (16 E1 + 3
         // E2 + 3 E3 horse/donkey/mule + 4 F-series: rabbit 1.8, stray +
         // polar bear + husk 1.10)
-        assert_eq!(MOB_DATA.len(), 32); // + the four 1.11 mobs + parrot + illusioner (1.12)
+        assert_eq!(MOB_DATA.len(), 40); // + 1.11 four + 1.12 two + 1.13 eight (Update Aquatic)
         for d in MOB_DATA.iter() {
             assert_eq!(
                 MobKind::from_name(d.kind.name().strip_prefix("minecraft:").unwrap()),
@@ -3803,6 +4696,9 @@ mod tests {
                 &mut Vec::new(),
                 &mut Vec::new(),
                 &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
             );
             sys.list.insert(0, mob);
             sys.rng = rng;
@@ -3820,7 +4716,7 @@ mod tests {
             provoked: false, lonely_t: 0, fall_dist: 0.0, variant: 0, aux: 0,
             wander_yaw: 0.0, wander_t: 0, equine: None };
         for _ in 0..5 {
-            ai_tick(&mut rng, &mut m, None, false, &mut Vec::new(), &mut Vec::new(), &desert, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
+            ai_tick(&mut rng, &mut m, None, false, &mut Vec::new(), &mut Vec::new(), &desert, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
         }
         assert!(m.health < 4.0, "desert heat melts the golem (1 HP/tick), hp={}", m.health);
     }
@@ -3849,6 +4745,9 @@ mod tests {
                 &mut Vec::new(),
                 &mut Vec::new(),
                 &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
             );
             fired += sys.arrows.len() - before;
             sys.list.insert(0, mob);
@@ -3871,7 +4770,7 @@ mod tests {
         for _ in 0..30 {
             let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
             let mut mob = sys.list.remove(0);
-            ai_tick(&mut rng, &mut mob, sys.player, false, &mut sys.hits, &mut sys.arrows, &world, &[(zid, MobKind::Zombie, [5.5, 65.0, 6.5], 0)], &mut pend, &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
+            ai_tick(&mut rng, &mut mob, sys.player, false, &mut sys.hits, &mut sys.arrows, &world, &[(zid, MobKind::Zombie, [5.5, 65.0, 6.5], 0)], &mut pend, &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
             sys.list.insert(0, mob);
             sys.rng = rng;
         }
@@ -3899,7 +4798,7 @@ mod tests {
         for _ in 0..ticks as usize + 2 {
             let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
             let mut mob = sys.list.remove(0);
-            ai_tick(&mut rng, &mut mob, sys.player, false, &mut sys.hits, &mut sys.arrows, &world, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
+            ai_tick(&mut rng, &mut mob, sys.player, false, &mut sys.hits, &mut sys.arrows, &world, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
             sys.list.insert(0, mob);
             sys.rng = rng;
         }
@@ -3942,7 +4841,7 @@ mod tests {
         let x0 = sys.list[0].pos[0];
         let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
         let mut mob = sys.list.remove(0);
-        ai_tick(&mut rng, &mut mob, sys.player, false, &mut sys.hits, &mut sys.arrows, &world, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
+        ai_tick(&mut rng, &mut mob, sys.player, false, &mut sys.hits, &mut sys.arrows, &world, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
         sys.list.insert(0, mob);
         sys.rng = rng;
         assert!(sys.list[0].pos[0] < x0 + 0.2, "fled away from the player");
@@ -3953,7 +4852,7 @@ mod tests {
         let x1 = sys2.list[0].pos[0];
         let mut rng2 = std::mem::replace(&mut sys2.rng, Rng::new(1));
         let mut mob2 = sys2.list.remove(0);
-        ai_tick(&mut rng2, &mut mob2, sys2.player, false, &mut sys2.hits, &mut sys2.arrows, &world2, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
+        ai_tick(&mut rng2, &mut mob2, sys2.player, false, &mut sys2.hits, &mut sys2.arrows, &world2, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
         sys2.list.insert(0, mob2);
         sys2.rng = rng2;
         assert!((sys2.list[0].pos[0] - x1).abs() < 0.05, "trusting ocelot stays");
@@ -4303,7 +5202,7 @@ mod v111_tests {
         assert_eq!(MobKind::Llama.egg_id(), 23);
         assert_eq!(MobKind::Evoker.egg_id(), 25);
         // 1.12 (World of Color): parrot + illusioner — 32 kinds
-        assert_eq!(MOB_DATA.len(), 32);
+        assert_eq!(MOB_DATA.len(), 40, "+ the 1.13 aquatic eight");
         assert_eq!(MobKind::from_egg(30), MobKind::Parrot);
         assert_eq!(MobKind::Parrot.egg_id(), 30);
         assert_eq!(MobKind::Illusioner.egg_id(), 255, "no spawn egg (VERIFIED)");
@@ -4684,7 +5583,7 @@ mod v112_tests {
             let mut pend = Vec::new();
             let mut summons = Vec::new();
             let mut fang = Vec::new();
-            ai_tick(&mut rng, &mut mob, ms.player, false, &mut hits, &mut arrows, &world, &[], &mut pend, &mut summons, &mut fang, &mut blind);
+            ai_tick(&mut rng, &mut mob, ms.player, false, &mut hits, &mut arrows, &world, &[], &mut pend, &mut summons, &mut fang, &mut blind, &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
             ms.list.insert(0, mob);
             ms.rng = rng;
         }
@@ -4750,5 +5649,505 @@ mod v112_tests {
             !ms.list.iter().any(|m| m.kind == MobKind::Illusioner),
             "illusioners never spawn naturally (vanilla parity)"
         );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 1.13 (Update Aquatic) — VERIFIED live 2026-09-07 against the wiki
+// captures (voxelcraft/scripts/v113_page_*; research record
+// docs/research/phase-v113-1.13-research.md)
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod v113_tests {
+    use super::*;
+
+    fn flat_world() -> World {
+        let mut w = World::new(11);
+        let mut c = vc_chunk::chunk::Chunk::empty();
+        for y in 0..=64i32 {
+            for lz in 0..16usize {
+                for lx in 0..16usize {
+                    c.set(lx, y as usize, lz, STONE);
+                }
+            }
+        }
+        w.insert_generated((0, 0), std::sync::Arc::new(c), Vec::new());
+        w.dirty.clear();
+        w
+    }
+
+    /// 1.13: an ocean-family water world — stone to y 52, WATER 53..=62,
+    /// air above; the whole chunk under one biome id (0 neutral / 19
+    /// warm / 20 lukewarm / 21 cold / 22 frozen).
+    fn ocean_world(biome_id: u8) -> World {
+        let mut w = World::new(11);
+        let mut c = vc_chunk::chunk::Chunk::empty();
+        for y in 0..=52i32 {
+            for lz in 0..16usize {
+                for lx in 0..16usize {
+                    c.set(lx, y as usize, lz, STONE);
+                }
+            }
+        }
+        for y in 53..=62i32 {
+            for lz in 0..16usize {
+                for lx in 0..16usize {
+                    c.set(lx, y as usize, lz, WATER);
+                }
+            }
+        }
+        for i in 0..256usize {
+            c.biome[i] = biome_id;
+        }
+        w.insert_generated((0, 0), std::sync::Arc::new(c), Vec::new());
+        w.dirty.clear();
+        w
+    }
+
+    /// 1.13: a beach world — sand to y 64, air above, biome 1 (Beach):
+    /// the turtle nesting column.
+    fn beach_world() -> World {
+        let mut w = World::new(11);
+        let mut c = vc_chunk::chunk::Chunk::empty();
+        for y in 0..=64i32 {
+            for lz in 0..16usize {
+                for lx in 0..16usize {
+                    c.set(lx, y as usize, lz, SAND);
+                }
+            }
+        }
+        for i in 0..256usize {
+            c.biome[i] = 1; // Beach
+        }
+        w.insert_generated((0, 0), std::sync::Arc::new(c), Vec::new());
+        w.dirty.clear();
+        w
+    }
+
+    /// VERIFIED infobox rows (w/Drowned, w/Phantom, w/Dolphin, w/Cod,
+    /// w/Salmon, w/Pufferfish, w/Tropical_Fish, w/Turtle) + the
+    /// aquatic() swim-physics gate + the V9 spawn-egg kinds.
+    #[test]
+    fn v113_registry_rows_and_flags() {
+        assert_eq!(MOB_DATA.len(), 40, "32 prior + 8 Update Aquatic kinds");
+        // drowned: 20 HP zombie-parity, N 3, armor 2, 5 XP, hostile
+        let d = def(MobKind::Drowned);
+        assert_eq!(d.health as i32, 20);
+        assert_eq!(d.damage as i32, 3);
+        assert_eq!(d.armor as i32, 2);
+        assert_eq!(d.xp, 5);
+        assert!(d.kind.hostile() && !d.kind.neutral());
+        // phantom: 20 HP undead, E/N 2 (the 1.14-pre3 value — disclosed)
+        let p = def(MobKind::Phantom);
+        assert_eq!(p.health as i32, 20);
+        assert!((p.damage - 2.0).abs() < 1e-6);
+        assert_eq!(p.xp, 5);
+        assert!(p.kind.hostile());
+        // dolphin: 10 HP neutral, N 3, 1-3 XP (engine takes 1)
+        let do_ = def(MobKind::Dolphin);
+        assert_eq!(do_.health as i32, 10);
+        assert_eq!(do_.damage as i32, 3);
+        assert_eq!(do_.xp, 1);
+        assert!(do_.kind.neutral() && !do_.kind.hostile());
+        // the 3 HP fish (cod/salmon/tropical) + the neutral pufferfish
+        for k in [
+            MobKind::Cod,
+            MobKind::Salmon,
+            MobKind::Pufferfish,
+            MobKind::TropicalFish,
+        ] {
+            assert_eq!(def(k).health as i32, 3, "{k:?} is a 3 HP fish");
+            assert_eq!(def(k).xp, 1);
+        }
+        assert!(def(MobKind::Pufferfish).kind.neutral());
+        for k in [MobKind::Cod, MobKind::Salmon, MobKind::TropicalFish] {
+            assert!(!def(k).kind.hostile() && !def(k).kind.neutral());
+        }
+        // turtle: 30 HP passive, the wide 1.2-block shell
+        let t = def(MobKind::Turtle);
+        assert_eq!(t.health as i32, 30);
+        assert!((t.width - 1.2).abs() < 1e-6);
+        assert!(!t.kind.hostile() && !t.kind.neutral());
+        // aquatic(): swim physics + conduit/impaling targets
+        for k in [
+            MobKind::Drowned,
+            MobKind::Dolphin,
+            MobKind::Cod,
+            MobKind::Salmon,
+            MobKind::Pufferfish,
+            MobKind::TropicalFish,
+            MobKind::Turtle,
+        ] {
+            assert!(k.aquatic(), "{k:?} is aquatic (VERIFIED)");
+        }
+        assert!(!MobKind::Zombie.aquatic());
+        assert!(!MobKind::Squid.aquatic(), "the squid is pre-1.13 legacy");
+        assert!(!MobKind::Cow.aquatic());
+        // spawn-egg kinds 32..=39 (the changelog's own 8-egg list)
+        assert_eq!(MobKind::Drowned.egg_id(), 32);
+        assert_eq!(MobKind::Phantom.egg_id(), 33);
+        assert_eq!(MobKind::Dolphin.egg_id(), 34);
+        assert_eq!(MobKind::Cod.egg_id(), 35);
+        assert_eq!(MobKind::Salmon.egg_id(), 36);
+        assert_eq!(MobKind::Pufferfish.egg_id(), 37);
+        assert_eq!(MobKind::TropicalFish.egg_id(), 38);
+        assert_eq!(MobKind::Turtle.egg_id(), 39);
+        // from_egg roundtrip (the game layer's spawn-egg use gate)
+        for k in [
+            MobKind::Drowned,
+            MobKind::Phantom,
+            MobKind::Dolphin,
+            MobKind::Cod,
+            MobKind::Salmon,
+            MobKind::Pufferfish,
+            MobKind::TropicalFish,
+            MobKind::Turtle,
+        ] {
+            assert_eq!(MobKind::from_egg(k.egg_id()), k, "{k:?} egg roundtrip");
+        }
+        // registry ids (VERIFIED: the 1.13 entity id set)
+        assert_eq!(MobKind::Drowned.registry_id(), "minecraft:drowned");
+        assert_eq!(MobKind::Phantom.registry_id(), "minecraft:phantom");
+        assert_eq!(MobKind::Dolphin.registry_id(), "minecraft:dolphin");
+        assert_eq!(MobKind::Cod.registry_id(), "minecraft:cod");
+        assert_eq!(MobKind::Salmon.registry_id(), "minecraft:salmon");
+        assert_eq!(
+            MobKind::Pufferfish.registry_id(),
+            "minecraft:pufferfish"
+        );
+        assert_eq!(
+            MobKind::TropicalFish.registry_id(),
+            "minecraft:tropical_fish"
+        );
+        assert_eq!(MobKind::Turtle.registry_id(), "minecraft:turtle");
+    }
+
+    /// VERIFIED w/Drowned §Attacking: "A drowned with a trident can
+    /// throw it every 1.5 seconds, sending it up to 20 blocks away" —
+    /// the armed bit (variant & 1) gates the throw, 8 HP base damage,
+    /// 30-tick cooldown.
+    #[test]
+    fn v113_drowned_throws_trident_at_range() {
+        let mut sys = MobSystem::new(5);
+        // armed drowned 12 blocks from the player (inside the 4..=20 band)
+        let id = sys.spawn_variant(MobKind::Drowned, 0, 65, 0, 1).unwrap();
+        sys.player = Some([12.5, 65.0, 0.5]);
+        let world = flat_world();
+        sys.tick(&world, (0, 0), i32::MAX);
+        assert_eq!(sys.arrows.len(), 1, "armed drowned throws at range");
+        let a = &sys.arrows[0];
+        assert_eq!(a.kind, ProjKind::Trident);
+        assert!((a.damage - 8.0).abs() < 1e-6, "8 HP thrown (VERIFIED)");
+        let m = sys.by_id(id).unwrap();
+        assert_eq!(m.attack_cd, 30, "1.5 s cooldown (VERIFIED)");
+        // unarmed drowned never throws (falls to melee chase instead)
+        let mut sys2 = MobSystem::new(7);
+        sys2.spawn_variant(MobKind::Drowned, 0, 65, 0, 0).unwrap();
+        sys2.player = Some([12.5, 65.0, 0.5]);
+        sys2.tick(&world, (0, 0), i32::MAX);
+        assert!(
+            sys2.arrows.iter().all(|a| a.kind != ProjKind::Trident),
+            "unarmed drowned has no trident to throw"
+        );
+    }
+
+    /// VERIFIED w/Drowned §Conversion: "If a zombie's head ... is
+    /// continuously submerged for 30 seconds, it begins to convert
+    /// into a drowned" — the 600-tick accumulator on aux, head-block
+    /// gate, unarmed result.
+    #[test]
+    fn v113_zombie_converts_to_drowned_underwater() {
+        let world = ocean_world(0);
+        let mut sys = MobSystem::new(5);
+        // zombie standing on the ocean floor: head at y 54 under water.
+        // The wander state is pinned to stand-still so the random walk
+        // can't drift the zombie off the single loaded test chunk
+        // (outside it the head reads AIR and the timer would freeze).
+        let id = sys.spawn_at(MobKind::Zombie, 4, 53, 4).unwrap();
+        sys.by_id_mut(id).unwrap().wander_t = -2000;
+        sys.player = None; // conversion is environmental, no anchor
+        for _ in 0..599 {
+            sys.tick(&world, (0, 0), i32::MAX);
+        }
+        assert_eq!(sys.by_id(id).unwrap().kind, MobKind::Zombie, "599 ticks: still a zombie");
+        assert!(sys.by_id(id).unwrap().aux > 0, "the submersion timer accumulates");
+        sys.tick(&world, (0, 0), i32::MAX); // tick 600
+        assert_eq!(sys.by_id(id).unwrap().kind, MobKind::Drowned, "converted at 30 s");
+        assert_eq!(sys.by_id(id).unwrap().variant, 0, "unarmed conversion");
+        // a dry zombie never converts
+        let mut sys2 = MobSystem::new(9);
+        let id2 = sys2.spawn_at(MobKind::Zombie, 4, 70, 4).unwrap();
+        sys2.player = None;
+        for _ in 0..1000 {
+            sys2.tick(&flat_world(), (0, 0), i32::MAX);
+        }
+        assert_eq!(sys2.by_id(id2).unwrap().kind, MobKind::Zombie, "dry zombies stay zombies");
+    }
+
+    /// VERIFIED w/Phantom §Behavior: the orbit-and-swoop cycle — 12
+    /// blocks above the player at orbit, the 60-tick dive window, the
+    /// 2 HP swoop bite (the 1.14-pre3 value, disclosed).
+    #[test]
+    fn v113_phantom_orbits_then_swoops() {
+        let mut sys = MobSystem::new(5);
+        let id = sys.spawn_at(MobKind::Phantom, 8, 82, 8).unwrap();
+        sys.player = Some([8.5, 70.0, 8.5]);
+        let world = flat_world();
+        // fresh spawn: orbit phase, aux = 200 (the spawn routine sets it)
+        sys.by_id_mut(id).unwrap().aux = 200;
+        for _ in 0..100 {
+            sys.tick(&world, (0, 0), i32::MAX);
+        }
+        let m = sys.by_id(id).unwrap();
+        assert!(m.variant & 1 == 0, "first 100 ticks: orbit phase");
+        assert!(m.aux > 0 && m.aux <= 200, "orbit window counts down");
+        // force the dive window and place the phantom at the player
+        sys.by_id_mut(id).unwrap().aux = 1;
+        sys.tick(&world, (0, 0), i32::MAX);
+        let m = sys.by_id(id).unwrap();
+        assert!(m.variant & 1 != 0, "orbit over: diving");
+        assert_eq!(m.aux, 60, "the 60-tick dive window");
+        // swoop bite: dive position, cd 0
+        {
+            let m = sys.by_id_mut(id).unwrap();
+            m.pos = [8.5, 71.0, 8.5]; // at the player's chest
+            m.variant |= 1; // stay diving
+            m.attack_cd = 0;
+        }
+        let hits0 = sys.hits.len();
+        sys.tick(&world, (0, 0), i32::MAX);
+        assert!(sys.hits.len() > hits0, "the swoop connects");
+        let hit = sys.hits.last().unwrap();
+        assert!((hit.damage - 2.0).abs() < 1e-6, "E/N 2 HP (VERIFIED)");
+        assert_eq!(hit.source, MobKind::Phantom);
+    }
+
+    /// VERIFIED w/Pufferfish: inflate toward variant 2 as the player
+    /// closes within 3 blocks (one step per 20 ticks), contact 3 HP N
+    /// fully-puffed + 6 s (120 tick) poison; the semi tier is 2 HP +
+    /// 3 s (60 tick). Setup: the fish floats in its native warm ocean
+    /// (a beached fish suffocates 1 HP/s and flops away — the water
+    /// world is the vanilla-realistic frame); the wander state is
+    /// pinned to stand-still so the school-swim drift can't carry the
+    /// fish out of the 3-block radius and make the cadence flaky.
+    #[test]
+    fn v113_pufferfish_inflates_and_stings() {
+        let mut sys = MobSystem::new(5);
+        let id = sys.spawn_at(MobKind::Pufferfish, 6, 56, 6).unwrap();
+        // pin the wander state: negative wander_t = standing still
+        // (vel decays; no vertical nudge — see wander/wander_3d)
+        sys.by_id_mut(id).unwrap().wander_t = -400;
+        // player 2 blocks away: inside the 3-block inflate radius,
+        // outside the contact band (width 0.5 -> 1.15)
+        sys.player = Some([8.0, 56.0, 8.0]);
+        let world = ocean_world(19); // warm ocean: the pufferfish's home
+        // two 20-tick steps: 0 -> 1 -> 2 (fully puffed)
+        for _ in 0..41 {
+            sys.tick(&world, (0, 0), i32::MAX);
+        }
+        assert_eq!(sys.by_id(id).unwrap().variant, 2, "fully inflated");
+        // move the player INTO the contact band and let a cadence tick land
+        sys.player = Some([6.8, 56.0, 6.8]);
+        let hits0 = sys.hits.len();
+        for _ in 0..25 {
+            sys.tick(&world, (0, 0), i32::MAX);
+        }
+        assert!(sys.hits.len() > hits0, "contact sting fired");
+        let hit = sys.hits.last().unwrap();
+        assert_eq!(hit.source, MobKind::Pufferfish);
+        assert!((hit.damage - 3.0).abs() < 1e-6, "fully-puffed N contact 3 HP");
+        assert_eq!(hit.poison_effect, Some(120), "6 s poison fully-puffed (VERIFIED Java)");
+    }
+
+    /// VERIFIED w/Dolphin: "Players who sprint-swim within a 9 block
+    /// spherical radius of a dolphin receive a swimming speed boost
+    /// for 5 seconds, replenished as long as the player stays close"
+    /// — the queue carries 100 ticks, refreshed at most 1/s.
+    #[test]
+    fn v113_dolphin_banks_dolphins_grace() {
+        let mut sys = MobSystem::new(5);
+        sys.spawn_at(MobKind::Dolphin, 6, 65, 6).unwrap();
+        sys.player = Some([9.0, 65.0, 9.0]); // ~4.2 blocks: inside 9
+        let world = flat_world();
+        sys.tick(&world, (0, 0), i32::MAX);
+        assert_eq!(sys.pending_player_grace.len(), 1, "grace queued");
+        assert_eq!(sys.pending_player_grace[0], 100, "5 s (VERIFIED)");
+        // replenish cadence: the next 19 ticks queue nothing (1/s cap)
+        for _ in 0..19 {
+            sys.tick(&world, (0, 0), i32::MAX);
+        }
+        assert_eq!(sys.pending_player_grace.len(), 1, "1/s refresh cadence");
+        // beyond 9 blocks: nothing
+        sys.pending_player_grace.clear();
+        sys.player = Some([40.0, 65.0, 40.0]);
+        for _ in 0..40 {
+            sys.tick(&world, (0, 0), i32::MAX);
+        }
+        assert!(sys.pending_player_grace.is_empty(), "out of range: no grace");
+    }
+
+    /// VERIFIED w/Turtle + w/Scute: a bred female (variant bit 0x80)
+    /// standing on sand queues one turtle egg at her position; a baby
+    /// (bit 0x40) matures on the aux countdown and queues a scute.
+    #[test]
+    fn v113_turtle_lays_eggs_and_babies_drop_scutes() {
+        let world = beach_world();
+        let mut sys = MobSystem::new(5);
+        // bred female on sand (y 65, sand floor at 64)
+        let id = sys.spawn_variant(MobKind::Turtle, 4, 65, 4, 0x80).unwrap();
+        sys.by_id_mut(id).unwrap().on_ground = true;
+        sys.player = None;
+        sys.tick(&world, (0, 0), i32::MAX);
+        assert_eq!(sys.pending_turtle_eggs.len(), 1, "egg queued");
+        let (ex, ey, ez, stage) = sys.pending_turtle_eggs[0];
+        assert_eq!((ex, ey, ez), (4, 65, 4), "the egg lands at her feet");
+        assert_eq!(stage, 0, "hatch stage 0");
+        assert_eq!(sys.by_id(id).unwrap().variant & 0x80, 0, "egg bit cleared");
+        // the baby: one tick from maturity
+        let baby = sys.spawn_variant(MobKind::Turtle, 8, 65, 8, 0x40).unwrap();
+        sys.by_id_mut(baby).unwrap().aux = 1;
+        sys.tick(&world, (0, 0), i32::MAX);
+        assert_eq!(sys.pending_drops.len(), 1, "scute queued (VERIFIED w/Scute)");
+        assert_eq!(sys.pending_drops[0].1, SCUTE);
+        assert_eq!(sys.by_id(baby).unwrap().variant & 0x40, 0, "baby matured");
+        // a non-sand floor never receives an egg
+        let mut sys2 = MobSystem::new(7);
+        sys2.spawn_variant(MobKind::Turtle, 4, 65, 4, 0x80).unwrap();
+        sys2.by_id_mut(sys2.list[0].id).unwrap().on_ground = true;
+        sys2.tick(&flat_world(), (0, 0), i32::MAX); // stone floor
+        assert!(sys2.pending_turtle_eggs.is_empty(), "stone floor: no egg");
+    }
+
+    /// VERIFIED w/Phantom §Spawning: "Phantoms spawn ... above a
+    /// player whose Time Since Last Rest is 1 hour (72000 ticks)";
+    /// the local pack caps at 4; dying resets the statistic.
+    #[test]
+    fn v113_phantom_insomnia_spawning() {
+        let world = flat_world();
+        let mut sys = MobSystem::new(5);
+        sys.player = Some([8.5, 70.0, 8.5]);
+        // below the threshold: no phantoms ever (rest_t climbs 80
+        // ticks during the loop — start low enough that even after the
+        // full window the statistic is still short of 72000)
+        sys.rest_t = 71900;
+        for _ in 0..80 {
+            sys.tick(&world, (0, 0), i32::MAX);
+        }
+        assert!(sys.list.iter().all(|m| m.kind != MobKind::Phantom), "insomnia not yet");
+        // at the threshold: phantoms appear above the player
+        sys.rest_t = 72000 - 20; // the % 20 gate fires on 72000
+        for _ in 0..40 {
+            sys.tick(&world, (0, 0), i32::MAX);
+        }
+        let phantoms: Vec<_> = sys.list.iter().filter(|m| m.kind == MobKind::Phantom).collect();
+        assert!(!phantoms.is_empty(), "the insomnia pack arrived");
+        for m in &phantoms {
+            let dy = m.pos[1] - 70.0;
+            assert!(dy >= 12.0 && dy <= 20.0, "12-20 blocks above (got {dy})");
+            // phantoms spawned during the 40-tick window are part-way
+            // through the 200-tick orbit countdown by sampling time
+            assert!(
+                m.aux > 0 && m.aux <= 200,
+                "fresh spawn entered the orbit phase (aux {})",
+                m.aux
+            );
+        }
+        // cap: never more than 4
+        for _ in 0..400 {
+            sys.tick(&world, (0, 0), i32::MAX);
+        }
+        let n = sys.list.iter().filter(|m| m.kind == MobKind::Phantom).count();
+        assert!(n <= 4, "the local pack caps at 4 (got {n})");
+        // death resets the statistic (VERIFIED: "dying ... resets")
+        sys.note_rest();
+        assert_eq!(sys.rest_t, 0);
+    }
+
+    /// VERIFIED w/Drowned §Spawning ("Drowned spawn naturally ... in
+    /// ocean and river biomes") — the water-column branch: two stacked
+    /// WATER blocks, packs 1-2, standing IN water.
+    #[test]
+    fn v113_drowned_spawn_in_ocean_water() {
+        let world = ocean_world(19); // warm ocean family
+        let mut sys = MobSystem::new(5);
+        sys.player = Some([4.5, 70.0, 4.5]); // above the surface
+        for _ in 0..2000 {
+            sys.try_spawn_hostile(&world, |_, _| true);
+        }
+        let drowned: Vec<_> = sys.list.iter().filter(|m| m.kind == MobKind::Drowned).collect();
+        assert!(!drowned.is_empty(), "the ocean rolls drowned (VERIFIED)");
+        for m in &drowned {
+            let y = m.pos[1] as i32;
+            assert!((53..=62).contains(&y), "spawned in the water column (y {y})");
+        }
+        // no zombies in the ocean-family water rolls (drowned replace them)
+        assert!(
+            sys.list.iter().all(|m| m.kind != MobKind::Zombie),
+            "zombies never fill the ocean water column"
+        );
+    }
+
+    /// The water-ambient families (VERIFIED w/Cod, w/Salmon,
+    /// w/Tropical_Fish, w/Pufferfish, w/Dolphin, w/Turtle §Spawning):
+    /// warm = tropical/pufferfish (+ occasional dolphin pods), cold =
+    /// cod/salmon, beach = turtles on sand. NOT counted toward the
+    /// passive cap.
+    #[test]
+    fn v113_water_ambient_biome_families() {
+        // warm ocean: tropical fish dominate, pufferfish ride the 1/4
+        // roll, dolphins the 1/8 pod roll
+        let warm = ocean_world(19);
+        let mut sys = MobSystem::new(5);
+        sys.player = Some([4.5, 70.0, 4.5]);
+        for _ in 0..2000 {
+            sys.try_spawn_aquatic(&warm, |_, _| true);
+        }
+        assert!(
+            sys.list.iter().any(|m| m.kind == MobKind::TropicalFish),
+            "warm oceans school tropical fish (VERIFIED)"
+        );
+        assert!(
+            sys.list
+                .iter()
+                .all(|m| matches!(m.kind, MobKind::TropicalFish | MobKind::Pufferfish | MobKind::Dolphin)),
+            "warm families only"
+        );
+        // cold ocean: the cod-salmon split, no dolphins ("all ocean
+        // biomes except frozen/cold" — VERIFIED)
+        let cold = ocean_world(21);
+        let mut sys2 = MobSystem::new(7);
+        sys2.player = Some([4.5, 70.0, 4.5]);
+        for _ in 0..2000 {
+            sys2.try_spawn_aquatic(&cold, |_, _| true);
+        }
+        assert!(
+            sys2.list
+                .iter()
+                .all(|m| matches!(m.kind, MobKind::Cod | MobKind::Salmon)),
+            "cold families only"
+        );
+        assert!(
+            sys2.list.iter().any(|m| m.kind == MobKind::Cod),
+            "cod present (VERIFIED)"
+        );
+        // beach: turtles on the sand
+        let beach = beach_world();
+        let mut sys3 = MobSystem::new(9);
+        sys3.player = Some([4.5, 70.0, 4.5]);
+        for _ in 0..2000 {
+            sys3.try_spawn_aquatic(&beach, |_, _| true);
+        }
+        assert!(
+            sys3.list.iter().all(|m| m.kind == MobKind::Turtle),
+            "beaches nest turtles (VERIFIED)"
+        );
+        assert!(!sys3.list.is_empty());
+        for m in &sys3.list {
+            assert_eq!(m.pos[1] as i32, 65, "standing on the sand surface");
+        }
+        // the water-ambient pool ignores the passive cap: 12+ aquatics
+        // with zero passives alive is fine (the categories are separate)
+        assert!(sys2.passives_alive() == 0);
     }
 }

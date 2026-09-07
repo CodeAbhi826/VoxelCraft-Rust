@@ -50,6 +50,35 @@ pub enum EffectKind {
     /// sprinting (the engine's 1.12 hooks). Critical hits are a
     /// 1.9-combat detail the engine doesn't model — disclosed.
     Blindness,
+    /// 1.13 bracket (Update Aquatic): Water Breathing — Java effect id
+    /// 13. "Prevents the breath meter from running out" (VERIFIED
+    /// w/Effect §Water Breathing). Sources here: the conduit's Conduit
+    /// Power bundles it, and the turtle-shell helmet would (the helmet
+    /// wear itself is deferred with the armor system — disclosed). No
+    /// per-tick action: the player's air-drain gate checks it.
+    WaterBreathing,
+    /// 1.13 bracket: Slow Falling — Java effect id 28. "Decreases
+    /// falling speed and negates all fall damage" (VERIFIED
+    /// w/Slow_Falling, live 2026-09-07; source: potions brewed from
+    /// phantom membrane, 1:30 base / 4:00 extended). No per-tick action:
+    /// the fall-damage path zeroes and the gravity path clamps the
+    /// fall velocity (the engine's hooks).
+    SlowFalling,
+    /// 1.13 bracket: Conduit Power — Java effect id 29. "The effect has
+    /// the same benefits as Water Breathing, Night Vision, and Haste"
+    /// (VERIFIED w/Conduit, live 2026-09-07; range 32–96 blocks by
+    /// frame, ambient blue-border HUD in vanilla). Engine form: the
+    /// air gate + the mining-speed hook; the underwater-vision half is
+    /// a render-layer nicety the engine's existing underwater fog
+    /// already conveys — disclosed.
+    ConduitPower,
+    /// 1.13 bracket: Dolphin's Grace — Java effect id 30. "Players who
+    /// sprint-swim within a 9 block spherical radius of a dolphin
+    /// receive a swimming speed boost for 5 seconds, replenished as
+    /// long as the player stays close" (VERIFIED w/Dolphin, live
+    /// 2026-09-07). The wiki publishes no scalar for the boost — the
+    /// engine's ×2 swim multiplier is a documented approximation.
+    DolphinsGrace,
 }
 
 impl EffectKind {
@@ -67,6 +96,10 @@ impl EffectKind {
             EffectKind::Hunger => "minecraft:hunger",
             EffectKind::Absorption => "minecraft:absorption",
             EffectKind::Blindness => "minecraft:blindness",
+            EffectKind::WaterBreathing => "minecraft:water_breathing",
+            EffectKind::SlowFalling => "minecraft:slow_falling",
+            EffectKind::ConduitPower => "minecraft:conduit_power",
+            EffectKind::DolphinsGrace => "minecraft:dolphins_grace",
         }
     }
 }
@@ -241,6 +274,37 @@ pub fn jump_boost_velocity(effects: &Effects, base: f32) -> f32 {
         .amplifier(EffectKind::JumpBoost)
         .map(|a| base + 0.1 * (a as f32 + 1.0))
         .unwrap_or(base)
+}
+
+/// 1.13: is Water Breathing active (air meter frozen)? — VERIFIED
+/// w/Effect §Water Breathing: "the breath meter does not run out".
+pub fn water_breathing_active(effects: &Effects) -> bool {
+    effects.amplifier(EffectKind::WaterBreathing).is_some()
+        || effects.amplifier(EffectKind::ConduitPower).is_some()
+}
+
+/// 1.13: is Slow Falling active (fall damage negated)? — VERIFIED
+/// w/Slow_Falling: "prevents all fall damage".
+pub fn slow_falling_active(effects: &Effects) -> bool {
+    effects.amplifier(EffectKind::SlowFalling).is_some()
+}
+
+/// 1.13: is Conduit Power active? (water breathing + haste while
+/// underwater — VERIFIED w/Conduit §Conduit Power).
+pub fn conduit_power_active(effects: &Effects) -> bool {
+    effects.amplifier(EffectKind::ConduitPower).is_some()
+}
+
+/// 1.13: Dolphin's Grace swim-speed multiplier (VERIFIED w/Dolphin:
+/// the boost exists for 5 s, replenished within a 9-block radius; the
+/// wiki publishes no scalar — ×2 is the engine's documented
+/// approximation of vanilla's observed swim-speed doubling).
+pub fn dolphins_grace_multiplier(effects: &Effects) -> f32 {
+    if effects.amplifier(EffectKind::DolphinsGrace).is_some() {
+        2.0
+    } else {
+        1.0
+    }
 }
 
 #[cfg(test)]

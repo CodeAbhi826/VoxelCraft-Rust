@@ -1230,6 +1230,267 @@ pub const BEETROOT_SEEDS: u16 = 359;
 /// to a parrot kills it... the parrot receives 2128 (3.4028 x 10^38)").
 pub const COOKIE: u16 = 360;
 
+// ---- 1.13 bracket (Update Aquatic): ids 361..=416, V9 window ----
+// All values VERIFIED live 2026-09-07 (minecraft.wiki/w/Java_Edition_1.13
+// §Additions + the per-block pages; research record
+// docs/research/phase-v113-1.13-research.md):
+// * coral blocks ×5 — "Comes in the same 5 variants as coral: tube
+//   (blue), brain (pink), bubble (purple), fire (red), horn (yellow)
+//   ... Turns into a dead coral block if none of its six sides are
+//   touching the water" — hardness 1.5 (w/Coral_Block)
+// * dead coral blocks ×5 — irreversible; silk-touch-free drop of live
+//   coral (w/Coral_Block: mined without Silk Touch → dead)
+// * coral plants + fans ×5 each (+ dead) — underwater-only placement,
+//   cross-plant rendering (the engine's non-cube form); the FAN form
+//   renders as a cross instead of vanilla's side-mount — disclosed
+//   adaptation
+// * sea pickle — "Up to 4 of them can be placed on a block. Each one
+//   adds 3 to the light level, but only when placed underwater"
+//   (changelog; w/Sea_Pickle: 1 pickle = 6, +3 per extra → 6/9/12/15)
+// * blue ice — hardness 2.8, "Slippier than ice and packed ice";
+//   slipperiness 0.989 (w/Blue_Ice §History: 0.999 → 0.989 in 1.15;
+//   the 1.13 value was 0.999 — version-scoped, we ship the modern
+//   0.989 and document both)
+// * dried kelp block — fuel "smelts 20 items" (4000 ticks; VERIFIED
+//   w/Dried_Kelp_Block §Fuel)
+// * kelp — "Can grow multiple blocks high ... Can be smelted into dry
+//   kelp"; 14%/random-tick growth (w/Kelp §Farming)
+// * seagrass — the tall-grass analogue underwater; turtles' breeding
+//   food + "Drops from turtles when killed" (changelog)
+// * conduit — "Crafted using 1 heart of the sea and 8 nautilus shells
+//   ... Emits a strong glow, at light level 15" (changelog; the frame
+//   needs 16-42 prismarine-family blocks — w/Conduit)
+// * turtle egg — 3 hatch stages (uncracked/slightly/very cracked;
+//   changelog: "After a while, they become slightly cracked and then
+//   very cracked. Very cracked turtle eggs eventually hatch into baby
+//   turtles")
+// * items: heart of the sea, nautilus shell, scute, trident, phantom
+//   membrane, dried kelp, turtle shell + the 4 potions (Slow Falling,
+//   Slow Falling extended, Turtle Master, Turtle Master enhanced)
+// * 8 spawn eggs (drowned/phantom/dolphin/cod/salmon/pufferfish/
+//   tropical fish/turtle — the changelog's own §Items spawn-egg list)
+pub const CORAL_BLOCK_BASE: u16 = 361;
+pub const CORAL_BLOCK_END: u16 = 365;
+pub const DEAD_CORAL_BLOCK_BASE: u16 = 366;
+pub const DEAD_CORAL_BLOCK_END: u16 = 370;
+pub const CORAL_PLANT_BASE: u16 = 371;
+pub const CORAL_PLANT_END: u16 = 375;
+pub const DEAD_CORAL_PLANT_BASE: u16 = 376;
+pub const DEAD_CORAL_PLANT_END: u16 = 380;
+pub const CORAL_FAN_BASE: u16 = 381;
+pub const CORAL_FAN_END: u16 = 385;
+pub const DEAD_CORAL_FAN_BASE: u16 = 386;
+pub const DEAD_CORAL_FAN_END: u16 = 390;
+/// 1.13 sea pickle — 1-4 pickles per block; light 6/9/12/15 when the
+/// block is in water (VERIFIED w/Sea_Pickle: "A single sea pickle
+/// produces a light level of 6, and each additional pickle increases
+/// the level by 3").
+pub const SEA_PICKLE: u16 = 391;
+/// 1.13 blue ice — crafted from 9 packed ice; the slipperiest block.
+pub const BLUE_ICE: u16 = 392;
+/// 1.13 dried kelp block — fuel: 4000 ticks / 20 items (VERIFIED).
+pub const DRIED_KELP_BLOCK: u16 = 393;
+/// 1.13 kelp plant — grows 14% per random tick (VERIFIED w/Kelp).
+pub const KELP: u16 = 394;
+/// 1.13 seagrass — the underwater grass (turtle breeding food).
+pub const SEAGRASS: u16 = 395;
+/// 1.13 conduit — heart-of-the-sea + 8 nautilus shells; light 15.
+pub const CONDUIT: u16 = 396;
+/// 1.13 turtle egg — 3 hatch stages, tramples, hatches baby turtles.
+pub const TURTLE_EGG: u16 = 397;
+/// 1.13 heart of the sea — the conduit core (buried treasure loot).
+pub const HEART_OF_THE_SEA: u16 = 398;
+/// 1.13 nautilus shell — 8 per conduit; fished (treasure class) +
+/// drowned offhand (3% JE — VERIFIED w/Drowned §Equipment).
+pub const NAUTILUS_SHELL: u16 = 399;
+/// 1.13 scute — "Dropped when baby turtles grow up" (changelog).
+pub const SCUTE: u16 = 400;
+/// 1.13 trident — "A new weapon ... dealing 9 HP damage" melee /
+/// 8 HP thrown; drowned drop (changelog + w/Trident).
+pub const TRIDENT: u16 = 401;
+/// 1.13 phantom membrane — Slow Falling brewing + elytra repair.
+pub const PHANTOM_MEMBRANE: u16 = 402;
+/// 1.13 dried kelp — "Can be eaten, restoring 1 hunger point" (1 HP-
+/// heal in the engine's hunger-bar-less convention, documented).
+pub const DRIED_KELP: u16 = 403;
+/// 1.13 turtle shell — 5 scutes; the Turtle Master brewing item (the
+/// helmet's water-breathing-on-wear is deferred with the armor system
+/// — disclosed in the worklog).
+pub const TURTLE_SHELL: u16 = 404;
+/// 1.13 potion of Slow Falling (1:30 — VERIFIED w/Slow_Falling).
+pub const POTION_SLOW_FALLING: u16 = 405;
+/// 1.13 potion of Slow Falling, extended (4:00 — redstone modifier).
+pub const POTION_SLOW_FALLING_EXT: u16 = 406;
+/// 1.13 potion of the Turtle Master (Slowness IV + Resistance III,
+/// 1:00 — VERIFIED changelog §Items).
+pub const POTION_TURTLE_MASTER: u16 = 407;
+/// 1.13 potion of the Turtle Master, enhanced (Slowness VI +
+/// Resistance IV — the glowstone modifier, VERIFIED changelog).
+pub const POTION_TURTLE_MASTER_II: u16 = 408;
+/// 1.13 spawn eggs (kinds 32..=39 — the V9 egg window; the changelog's
+/// own list: Drowned/Dolphin/Cod/Salmon/Phantom/Pufferfish/
+/// Tropical Fish/Turtle Spawn Eggs).
+pub const SPAWN_EGG_DROWNED: u16 = 409;
+pub const SPAWN_EGG_PHANTOM: u16 = 410;
+pub const SPAWN_EGG_DOLPHIN: u16 = 411;
+pub const SPAWN_EGG_COD: u16 = 412;
+pub const SPAWN_EGG_SALMON: u16 = 413;
+pub const SPAWN_EGG_PUFFERFISH: u16 = 414;
+pub const SPAWN_EGG_TROPICAL_FISH: u16 = 415;
+pub const SPAWN_EGG_TURTLE: u16 = 416;
+
+pub const V9_STATE_BASE: u16 = 615;
+// 61 states: coral families 30 (5 blocks + 5 dead + 5 plants + 5 dead
+// plants + 5 fans + 5 dead fans), sea pickle 4 (count), blue ice 1,
+// dried kelp block 1, kelp 1, seagrass 1, conduit 1, turtle egg 3
+// (hatch stages), 11 items (heart/nautilus/scute/trident/membrane/
+// dried kelp/turtle shell + 4 potions), 8 spawn eggs.
+pub const V9_COUNT: u16 = 61;
+/// V9 state → block fold: 1:1 for every window block (the pickle's
+/// 4 count states and the egg's 3 hatch states all fold to their
+/// parent — the per-state art rides state_tiles).
+pub const V9_STATE_TO_BLOCK: [u16; V9_COUNT as usize] = [
+    // coral blocks (5) + dead (5)
+    CORAL_BLOCK_BASE, CORAL_BLOCK_BASE + 1, CORAL_BLOCK_BASE + 2,
+    CORAL_BLOCK_BASE + 3, CORAL_BLOCK_BASE + 4,
+    DEAD_CORAL_BLOCK_BASE, DEAD_CORAL_BLOCK_BASE + 1, DEAD_CORAL_BLOCK_BASE + 2,
+    DEAD_CORAL_BLOCK_BASE + 3, DEAD_CORAL_BLOCK_BASE + 4,
+    // coral plants (5) + dead (5)
+    CORAL_PLANT_BASE, CORAL_PLANT_BASE + 1, CORAL_PLANT_BASE + 2,
+    CORAL_PLANT_BASE + 3, CORAL_PLANT_BASE + 4,
+    DEAD_CORAL_PLANT_BASE, DEAD_CORAL_PLANT_BASE + 1, DEAD_CORAL_PLANT_BASE + 2,
+    DEAD_CORAL_PLANT_BASE + 3, DEAD_CORAL_PLANT_BASE + 4,
+    // coral fans (5) + dead (5)
+    CORAL_FAN_BASE, CORAL_FAN_BASE + 1, CORAL_FAN_BASE + 2,
+    CORAL_FAN_BASE + 3, CORAL_FAN_BASE + 4,
+    DEAD_CORAL_FAN_BASE, DEAD_CORAL_FAN_BASE + 1, DEAD_CORAL_FAN_BASE + 2,
+    DEAD_CORAL_FAN_BASE + 3, DEAD_CORAL_FAN_BASE + 4,
+    // sea pickle: 4 count states
+    SEA_PICKLE, SEA_PICKLE, SEA_PICKLE, SEA_PICKLE,
+    // blue ice / dried kelp block / kelp / seagrass / conduit
+    BLUE_ICE, DRIED_KELP_BLOCK, KELP, SEAGRASS, CONDUIT,
+    // turtle egg: 3 hatch stages
+    TURTLE_EGG, TURTLE_EGG, TURTLE_EGG,
+    // 11 items
+    HEART_OF_THE_SEA, NAUTILUS_SHELL, SCUTE, TRIDENT, PHANTOM_MEMBRANE,
+    DRIED_KELP, TURTLE_SHELL,
+    POTION_SLOW_FALLING, POTION_SLOW_FALLING_EXT,
+    POTION_TURTLE_MASTER, POTION_TURTLE_MASTER_II,
+    // 8 spawn eggs
+    SPAWN_EGG_DROWNED, SPAWN_EGG_PHANTOM, SPAWN_EGG_DOLPHIN, SPAWN_EGG_COD,
+    SPAWN_EGG_SALMON, SPAWN_EGG_PUFFERFISH, SPAWN_EGG_TROPICAL_FISH,
+    SPAWN_EGG_TURTLE,
+];
+
+#[inline]
+pub fn v9_state(b: u16) -> Option<u16> {
+    if (CORAL_BLOCK_BASE..=DEAD_CORAL_FAN_END).contains(&b) {
+        Some(V9_STATE_BASE + (b - CORAL_BLOCK_BASE) as u16)
+    } else if b == SEA_PICKLE {
+        // default placement: one pickle
+        Some(V9_STATE_BASE + 30)
+    } else if (BLUE_ICE..=CONDUIT).contains(&b) {
+        Some(V9_STATE_BASE + 34 + (b - BLUE_ICE) as u16)
+    } else if b == TURTLE_EGG {
+        Some(V9_STATE_BASE + 39)
+    } else if (HEART_OF_THE_SEA..=SPAWN_EGG_TURTLE).contains(&b) {
+        Some(V9_STATE_BASE + 42 + (b - HEART_OF_THE_SEA) as u16)
+    } else {
+        None
+    }
+}
+
+#[inline]
+pub fn is_v9_state(s: u16) -> bool {
+    (V9_STATE_BASE..V9_STATE_BASE + V9_COUNT).contains(&s)
+}
+
+/// sea pickle count (1..4) from its storage state.
+#[inline]
+pub fn sea_pickle_count(s: u16) -> u8 {
+    if (V9_STATE_BASE + 30..=V9_STATE_BASE + 33).contains(&s) {
+        1 + (s - (V9_STATE_BASE + 30)) as u8
+    } else if state_block(s) == SEA_PICKLE {
+        1
+    } else {
+        0
+    }
+}
+
+/// sea pickle light level: 0 out of water; 6/9/12/15 by count in water
+/// (VERIFIED w/Sea_Pickle — the waterlogged gate is the Java rule).
+pub fn sea_pickle_light(s: u16, in_water: bool) -> u8 {
+    if !in_water {
+        return 0;
+    }
+    match sea_pickle_count(s) {
+        1 => 6,
+        2 => 9,
+        3 => 12,
+        4 => 15,
+        _ => 0,
+    }
+}
+
+/// turtle egg hatch stage (0..2) from its storage state.
+#[inline]
+pub fn turtle_egg_stage(s: u16) -> u8 {
+    if (V9_STATE_BASE + 39..=V9_STATE_BASE + 41).contains(&s) {
+        (s - (V9_STATE_BASE + 39)) as u8
+    } else {
+        0
+    }
+}
+
+/// state for placing a turtle egg at a given hatch stage.
+#[inline]
+pub fn turtle_egg_state(stage: u8) -> u16 {
+    V9_STATE_BASE + 39 + (stage.min(2)) as u16
+}
+
+/// state for placing sea pickles (count 1..4).
+#[inline]
+pub fn sea_pickle_state(count: u8) -> u16 {
+    V9_STATE_BASE + 30 + (count.saturating_sub(1)).min(3) as u16
+}
+
+/// the 5 coral colors (tube/brain/bubble/fire/horn — the changelog's
+/// own list; VERIFIED w/Coral_Block).
+pub const CORAL_NAMES: [&str; 5] = ["Tube", "Brain", "Bubble", "Fire", "Horn"];
+
+/// coral color index → clean-room RGB base (w/Coral variants: blue /
+/// pink / purple / red / yellow).
+pub const CORAL_RGB: [[i32; 3]; 5] = [
+    [45, 118, 205],  // tube — blue
+    [212, 118, 151], // brain — pink
+    [160, 74, 183],  // bubble — purple
+    [196, 76, 61],   // fire — red
+    [209, 178, 60],  // horn — yellow
+];
+
+/// is this a live (water-dependent) coral block id — the death rule
+/// applies (VERIFIED w/Coral_Block: "Turns into a dead coral block if
+/// none of its six sides are touching the water, although not
+/// instantly" — the random-tick delay).
+#[inline]
+pub fn is_live_coral_block(b: u16) -> bool {
+    (CORAL_BLOCK_BASE..=CORAL_BLOCK_END).contains(&b)
+}
+
+/// coral block → its dead counterpart (same color).
+#[inline]
+pub fn dead_coral_of(b: u16) -> u16 {
+    if is_live_coral_block(b) {
+        DEAD_CORAL_BLOCK_BASE + (b - CORAL_BLOCK_BASE)
+    } else if (CORAL_PLANT_BASE..=CORAL_PLANT_END).contains(&b) {
+        DEAD_CORAL_PLANT_BASE + (b - CORAL_PLANT_BASE)
+    } else if (CORAL_FAN_BASE..=CORAL_FAN_END).contains(&b) {
+        DEAD_CORAL_FAN_BASE + (b - CORAL_FAN_BASE)
+    } else {
+        b
+    }
+}
+
 pub const V8_STATE_BASE: u16 = 497;
 // 70 ids: 291..=360 (16 concrete + 16 powder + 16 glazed + parrot egg
 // + 16 dyes + 4 seeds + cookie). States: concrete 497..=512, powder
@@ -1812,7 +2073,7 @@ pub fn item_state_block(s: u16) -> Option<u16> {
     }
 }
 
-pub const BLOCK_COUNT: usize = 361; // 1.12: V8 window ids 291..=360 (concrete/powder/glazed + items)
+pub const BLOCK_COUNT: usize = 417; // 1.13: V9 window ids 361..=416 (coral/pickle/kelp/conduit + items)
 /// [merge renumber] acacia/dark-oak log axis states moved to 443..=446
 /// (past the E-series states, which end at 354; V2 base is now 400)
 /// acacia/dark-oak log axis states (the V2 log window — same pattern as
@@ -1849,7 +2110,7 @@ pub const DARK_OAK_LOG_Z: u16 = 446;
 /// items + eggs 20..=22 + the POWER-state ladders (317..=399)
 /// [merge renumber] F-series states: V2 400..=442 + log-axis 443..=446,
 /// V3 447..=465, V4 466..=475, V5 476..=479, V6 480..=485 (audit-fix)
-pub const STATE_COUNT: usize = 615; // 1.12: V8 states 497..=614 (concrete/powder/glazed + items)
+pub const STATE_COUNT: usize = 676; // 1.13: V9 states 615..=675 (coral 30 + pickle 4 + 27 + items)
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -2218,6 +2479,9 @@ pub fn default_state(b: u16) -> u16 {
         // cookie are 1:1; glazed terracotta defaults to facing 0
         // (north — the placement path writes the player-facing state)
         b if v8_state(b).is_some() => v8_state(b).unwrap(),
+        // 1.13 (Update Aquatic): the V9 window — 1:1 defaults; the sea
+        // pickle places with 1 pickle, the turtle egg at stage 0
+        b if v9_state(b).is_some() => v9_state(b).unwrap(),
         b if (262..262 + V4_COUNT as u16).contains(&b) => {
             V4_STATE_BASE + (b - 262) as u16
         }
@@ -2537,6 +2801,11 @@ pub fn state_block(s: u16) -> u16 {
         s if is_v8_state(s) => {
             return V8_STATE_TO_BLOCK[(s - V8_STATE_BASE) as usize];
         }
+        // 1.13 (Update Aquatic): the V9 window — 1:1 folds; the pickle's
+        // count states and the egg's hatch states fold to their parent
+        s if is_v9_state(s) => {
+            return V9_STATE_TO_BLOCK[(s - V9_STATE_BASE) as usize];
+        }
         ACACIA_LOG_X | ACACIA_LOG_Z => return ACACIA_LOG,
         DARK_OAK_LOG_X | DARK_OAK_LOG_Z => return DARK_OAK_LOG,
         _ => {}
@@ -2596,6 +2865,9 @@ pub fn is_model_state(s: u16) -> bool {
         // 1.12 V8 window: concrete/powder/glazed are greedy cubes (their
         // BlockDef flags); the V8 items are cross/hud-only — never model
         || is_v8_state(s)
+        // 1.13 V9 window: same shape — greedy cubes for the solids,
+        // cross plants/items ride their BlockDef flags
+        || is_v9_state(s)
         || s == SPAWNER_VINDICATOR
         || s == SPAWNER_EVOKER
         || s == ACACIA_LOG_X
@@ -2742,6 +3014,21 @@ pub fn state_tiles(s: u16) -> [u16; 4] {
         // placed, glazed terracotta's texture rotates relative to the
         // direction the player is facing" (VERIFIED
         // w/Glazed_Terracotta §Placement).
+        // ---- 1.13: sea pickle — the count state selects the tile
+        // (1..4 pickles; VERIFIED w/Sea_Pickle: up to 4 per block) ----
+        s if (V9_STATE_BASE + 30..=V9_STATE_BASE + 33).contains(&s) => {
+            let off = s - (V9_STATE_BASE + 30);
+            let t = TILE_SEA_PICKLE_BASE + off;
+            [t, t, t, t]
+        }
+        // ---- 1.13: turtle egg — the hatch stage selects the tile
+        // (0 = uncracked, 1 = slightly cracked, 2 = very cracked —
+        // VERIFIED changelog §Blocks) ----
+        s if (V9_STATE_BASE + 39..=V9_STATE_BASE + 41).contains(&s) => {
+            let off = s - (V9_STATE_BASE + 39);
+            let t = TILE_TURTLE_EGG_BASE + off;
+            [t, t, t, t]
+        }
         s if glazed_decode(s).is_some() => {
             let (color, facing) = glazed_decode(s).unwrap();
             let c = color as u16;
@@ -2795,7 +3082,7 @@ pub fn log_axis_state(block: u16, axis: u8) -> u16 {
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
 // [merge] E-series tiles end at 243; the F-series (1.7.2-1.10) tiles
 // continue at 244..=325; the audit-fix round adds 326..=332
-pub const TILE_MAX: u16 = 549; // 1.12 (World of Color): tiles 346..=549
+pub const TILE_MAX: u16 = 618; // 1.13 (Update Aquatic): tiles 550..=618 (the V9 window + 8 mob sprites)
 /// 1.11 egg tiles (egg-shaped, egg order 23..=28 = llama, vindicator,
 /// evoker, vex, husk, stray) — the E1/E2/E3 egg-art convention
 /// (e1_art::egg_art + palettes), replacing the interrupted round's
@@ -2862,6 +3149,68 @@ pub const TILE_PARROT_BASE: u16 = 544;
 /// naturally, "Unused and present only in Java Edition").
 pub const TILE_ILLUSIONER: u16 = 549;
 
+// ---- 1.13 (Update Aquatic) tiles: 550..=618 ----
+/// coral block tiles ×5 (tube/brain/bubble/fire/horn).
+pub const TILE_CORAL_BLOCK_BASE: u16 = 550;
+/// dead coral block tiles ×5 (the irreversible gray form).
+pub const TILE_DEAD_CORAL_BLOCK_BASE: u16 = 555;
+/// coral plant (cross) tiles ×5.
+pub const TILE_CORAL_PLANT_BASE: u16 = 560;
+/// dead coral plant (cross) tiles ×5.
+pub const TILE_DEAD_CORAL_PLANT_BASE: u16 = 565;
+/// coral fan (cross-rendered) tiles ×5.
+pub const TILE_CORAL_FAN_BASE: u16 = 570;
+/// dead coral fan tiles ×5.
+pub const TILE_DEAD_CORAL_FAN_BASE: u16 = 575;
+/// sea pickle tiles ×4 (the 1..4 count states).
+pub const TILE_SEA_PICKLE_BASE: u16 = 580;
+/// blue ice (slipperiness 0.989).
+pub const TILE_BLUE_ICE: u16 = 584;
+/// dried kelp block.
+pub const TILE_DRIED_KELP_BLOCK: u16 = 585;
+/// kelp plant (cross).
+pub const TILE_KELP: u16 = 586;
+/// seagrass (cross).
+pub const TILE_SEAGRASS: u16 = 587;
+/// conduit (the heart-of-the-sea beacon block).
+pub const TILE_CONDUIT: u16 = 588;
+/// turtle egg tiles ×3 (hatch stages).
+pub const TILE_TURTLE_EGG_BASE: u16 = 589;
+/// heart of the sea item icon.
+pub const TILE_HEART_OF_THE_SEA: u16 = 592;
+/// nautilus shell item icon.
+pub const TILE_NAUTILUS_SHELL: u16 = 593;
+/// scute item icon.
+pub const TILE_SCUTE: u16 = 594;
+/// trident item icon.
+pub const TILE_TRIDENT: u16 = 595;
+/// phantom membrane item icon.
+pub const TILE_PHANTOM_MEMBRANE: u16 = 596;
+/// dried kelp item icon (the food).
+pub const TILE_DRIED_KELP: u16 = 597;
+/// turtle shell item icon.
+pub const TILE_TURTLE_SHELL: u16 = 598;
+/// potion of Slow Falling (cyan).
+pub const TILE_POTION_SLOW_FALLING: u16 = 599;
+/// potion of Slow Falling extended.
+pub const TILE_POTION_SLOW_FALLING_EXT: u16 = 600;
+/// potion of the Turtle Master.
+pub const TILE_POTION_TURTLE_MASTER: u16 = 601;
+/// potion of the Turtle Master (enhanced).
+pub const TILE_POTION_TURTLE_MASTER_II: u16 = 602;
+/// 1.13 spawn-egg tiles ×8 (the E-series egg-art convention).
+pub const TILE_EGG_V113_BASE: u16 = 603;
+/// 1.13 mob sprites: drowned/phantom/dolphin/cod/salmon/pufferfish/
+/// tropical fish/turtle.
+pub const TILE_MOB_DROWNED: u16 = 611;
+pub const TILE_MOB_PHANTOM: u16 = 612;
+pub const TILE_MOB_DOLPHIN: u16 = 613;
+pub const TILE_MOB_COD: u16 = 614;
+pub const TILE_MOB_SALMON: u16 = 615;
+pub const TILE_MOB_PUFFERFISH: u16 = 616;
+pub const TILE_MOB_TROPICAL_FISH: u16 = 617;
+pub const TILE_MOB_TURTLE: u16 = 618;
+
 /// inventory-only ITEM blocks (potions/bottles/books): never placeable in
 /// the world — right-click drinks (potions) / fills (glass bottle at water).
 #[inline]
@@ -2899,6 +3248,21 @@ pub fn is_item_block(b: u16) -> bool {
             // items + the 4 taming seeds + the cookie — inventory-only
             // (concrete/powder/glazed are real placeable BLOCKS) ----
             | COOKIE
+            // ---- 1.13 item-blocks (Update Aquatic): the conduit/turtle
+            // craft items, the trident, the membrane, the food + the 4
+            // new potions — inventory-only (coral/kelp/egg blocks are
+            // real placeable BLOCKS) ----
+            | HEART_OF_THE_SEA
+            | NAUTILUS_SHELL
+            | SCUTE
+            | TRIDENT
+            | PHANTOM_MEMBRANE
+            | DRIED_KELP
+            | TURTLE_SHELL
+            | POTION_SLOW_FALLING
+            | POTION_SLOW_FALLING_EXT
+            | POTION_TURTLE_MASTER
+            | POTION_TURTLE_MASTER_II
     ) || is_spawn_egg(b)
         || (DYE_BASE..=DYE_END).contains(&b)
         || is_seeds(b)
@@ -2915,6 +3279,9 @@ pub fn is_spawn_egg(b: u16) -> bool {
         || (SPAWN_EGG_LLAMA..=SPAWN_EGG_STRAY).contains(&b)
         // 1.12: the V8 parrot egg (kind 30)
         || b == SPAWN_EGG_PARROT
+        // 1.13: the V9 egg window (kinds 32..=39 — drowned/phantom/
+        // dolphin/cod/salmon/pufferfish/tropical fish/turtle)
+        || (SPAWN_EGG_DROWNED..=SPAWN_EGG_TURTLE).contains(&b)
 }
 
 /// The mob this spawn-egg id spawns. Tile order in the BLOCK_TABLE egg
@@ -2938,6 +3305,10 @@ pub fn egg_mob(b: u16) -> Option<u8> {
     // 1.12: the parrot egg — kind 30 (MobKind::Parrot::from_egg)
     if b == SPAWN_EGG_PARROT {
         return Some(30);
+    }
+    // 1.13: the V9 egg window — kinds 32..=39 (MobKind::from_egg)
+    if (SPAWN_EGG_DROWNED..=SPAWN_EGG_TURTLE).contains(&b) {
+        return Some(32 + (b - SPAWN_EGG_DROWNED) as u8);
     }
     if !is_spawn_egg(b) {
         return None;
@@ -3470,6 +3841,73 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Pumpkin Seeds", [TILE_SEEDS_BASE + 2, TILE_SEEDS_BASE + 2, TILE_SEEDS_BASE + 2], false, false, true, false, 0, SoundFamily::Grass),
     d("Beetroot Seeds", [TILE_SEEDS_BASE + 3, TILE_SEEDS_BASE + 3, TILE_SEEDS_BASE + 3], false, false, true, false, 0, SoundFamily::Grass),
     d("Cookie", [TILE_COOKIE, TILE_COOKIE, TILE_COOKIE], false, false, true, false, 0, SoundFamily::Grass),
+    // ---- 1.13 (Update Aquatic): the V9 window ----
+    // coral blocks: full cubes, hardness 1.5, stone-family sound
+    d("Tube Coral Block", [TILE_CORAL_BLOCK_BASE, TILE_CORAL_BLOCK_BASE, TILE_CORAL_BLOCK_BASE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Brain Coral Block", [TILE_CORAL_BLOCK_BASE + 1, TILE_CORAL_BLOCK_BASE + 1, TILE_CORAL_BLOCK_BASE + 1], true, true, false, false, 0, SoundFamily::Stone),
+    d("Bubble Coral Block", [TILE_CORAL_BLOCK_BASE + 2, TILE_CORAL_BLOCK_BASE + 2, TILE_CORAL_BLOCK_BASE + 2], true, true, false, false, 0, SoundFamily::Stone),
+    d("Fire Coral Block", [TILE_CORAL_BLOCK_BASE + 3, TILE_CORAL_BLOCK_BASE + 3, TILE_CORAL_BLOCK_BASE + 3], true, true, false, false, 0, SoundFamily::Stone),
+    d("Horn Coral Block", [TILE_CORAL_BLOCK_BASE + 4, TILE_CORAL_BLOCK_BASE + 4, TILE_CORAL_BLOCK_BASE + 4], true, true, false, false, 0, SoundFamily::Stone),
+    d("Dead Tube Coral Block", [TILE_DEAD_CORAL_BLOCK_BASE, TILE_DEAD_CORAL_BLOCK_BASE, TILE_DEAD_CORAL_BLOCK_BASE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Dead Brain Coral Block", [TILE_DEAD_CORAL_BLOCK_BASE + 1, TILE_DEAD_CORAL_BLOCK_BASE + 1, TILE_DEAD_CORAL_BLOCK_BASE + 1], true, true, false, false, 0, SoundFamily::Stone),
+    d("Dead Bubble Coral Block", [TILE_DEAD_CORAL_BLOCK_BASE + 2, TILE_DEAD_CORAL_BLOCK_BASE + 2, TILE_DEAD_CORAL_BLOCK_BASE + 2], true, true, false, false, 0, SoundFamily::Stone),
+    d("Dead Fire Coral Block", [TILE_DEAD_CORAL_BLOCK_BASE + 3, TILE_DEAD_CORAL_BLOCK_BASE + 3, TILE_DEAD_CORAL_BLOCK_BASE + 3], true, true, false, false, 0, SoundFamily::Stone),
+    d("Dead Horn Coral Block", [TILE_DEAD_CORAL_BLOCK_BASE + 4, TILE_DEAD_CORAL_BLOCK_BASE + 4, TILE_DEAD_CORAL_BLOCK_BASE + 4], true, true, false, false, 0, SoundFamily::Stone),
+    // coral plants + fans: cross-rendered underwater plants
+    d("Tube Coral", [TILE_CORAL_PLANT_BASE, TILE_CORAL_PLANT_BASE, TILE_CORAL_PLANT_BASE], false, false, true, false, 0, SoundFamily::Grass),
+    d("Brain Coral", [TILE_CORAL_PLANT_BASE + 1, TILE_CORAL_PLANT_BASE + 1, TILE_CORAL_PLANT_BASE + 1], false, false, true, false, 0, SoundFamily::Grass),
+    d("Bubble Coral", [TILE_CORAL_PLANT_BASE + 2, TILE_CORAL_PLANT_BASE + 2, TILE_CORAL_PLANT_BASE + 2], false, false, true, false, 0, SoundFamily::Grass),
+    d("Fire Coral", [TILE_CORAL_PLANT_BASE + 3, TILE_CORAL_PLANT_BASE + 3, TILE_CORAL_PLANT_BASE + 3], false, false, true, false, 0, SoundFamily::Grass),
+    d("Horn Coral", [TILE_CORAL_PLANT_BASE + 4, TILE_CORAL_PLANT_BASE + 4, TILE_CORAL_PLANT_BASE + 4], false, false, true, false, 0, SoundFamily::Grass),
+    d("Dead Tube Coral", [TILE_DEAD_CORAL_PLANT_BASE, TILE_DEAD_CORAL_PLANT_BASE, TILE_DEAD_CORAL_PLANT_BASE], false, false, true, false, 0, SoundFamily::Grass),
+    d("Dead Brain Coral", [TILE_DEAD_CORAL_PLANT_BASE + 1, TILE_DEAD_CORAL_PLANT_BASE + 1, TILE_DEAD_CORAL_PLANT_BASE + 1], false, false, true, false, 0, SoundFamily::Grass),
+    d("Dead Bubble Coral", [TILE_DEAD_CORAL_PLANT_BASE + 2, TILE_DEAD_CORAL_PLANT_BASE + 2, TILE_DEAD_CORAL_PLANT_BASE + 2], false, false, true, false, 0, SoundFamily::Grass),
+    d("Dead Fire Coral", [TILE_DEAD_CORAL_PLANT_BASE + 3, TILE_DEAD_CORAL_PLANT_BASE + 3, TILE_DEAD_CORAL_PLANT_BASE + 3], false, false, true, false, 0, SoundFamily::Grass),
+    d("Dead Horn Coral", [TILE_DEAD_CORAL_PLANT_BASE + 4, TILE_DEAD_CORAL_PLANT_BASE + 4, TILE_DEAD_CORAL_PLANT_BASE + 4], false, false, true, false, 0, SoundFamily::Grass),
+    d("Tube Coral Fan", [TILE_CORAL_FAN_BASE, TILE_CORAL_FAN_BASE, TILE_CORAL_FAN_BASE], false, false, true, false, 0, SoundFamily::Grass),
+    d("Brain Coral Fan", [TILE_CORAL_FAN_BASE + 1, TILE_CORAL_FAN_BASE + 1, TILE_CORAL_FAN_BASE + 1], false, false, true, false, 0, SoundFamily::Grass),
+    d("Bubble Coral Fan", [TILE_CORAL_FAN_BASE + 2, TILE_CORAL_FAN_BASE + 2, TILE_CORAL_FAN_BASE + 2], false, false, true, false, 0, SoundFamily::Grass),
+    d("Fire Coral Fan", [TILE_CORAL_FAN_BASE + 3, TILE_CORAL_FAN_BASE + 3, TILE_CORAL_FAN_BASE + 3], false, false, true, false, 0, SoundFamily::Grass),
+    d("Horn Coral Fan", [TILE_CORAL_FAN_BASE + 4, TILE_CORAL_FAN_BASE + 4, TILE_CORAL_FAN_BASE + 4], false, false, true, false, 0, SoundFamily::Grass),
+    d("Dead Tube Coral Fan", [TILE_DEAD_CORAL_FAN_BASE, TILE_DEAD_CORAL_FAN_BASE, TILE_DEAD_CORAL_FAN_BASE], false, false, true, false, 0, SoundFamily::Grass),
+    d("Dead Brain Coral Fan", [TILE_DEAD_CORAL_FAN_BASE + 1, TILE_DEAD_CORAL_FAN_BASE + 1, TILE_DEAD_CORAL_FAN_BASE + 1], false, false, true, false, 0, SoundFamily::Grass),
+    d("Dead Bubble Coral Fan", [TILE_DEAD_CORAL_FAN_BASE + 2, TILE_DEAD_CORAL_FAN_BASE + 2, TILE_DEAD_CORAL_FAN_BASE + 2], false, false, true, false, 0, SoundFamily::Grass),
+    d("Dead Fire Coral Fan", [TILE_DEAD_CORAL_FAN_BASE + 3, TILE_DEAD_CORAL_FAN_BASE + 3, TILE_DEAD_CORAL_FAN_BASE + 3], false, false, true, false, 0, SoundFamily::Grass),
+    d("Dead Horn Coral Fan", [TILE_DEAD_CORAL_FAN_BASE + 4, TILE_DEAD_CORAL_FAN_BASE + 4, TILE_DEAD_CORAL_FAN_BASE + 4], false, false, true, false, 0, SoundFamily::Grass),
+    // sea pickle: cross-rendered (its 1-4 count states carry the art)
+    d("Sea Pickle", [TILE_SEA_PICKLE_BASE, TILE_SEA_PICKLE_BASE, TILE_SEA_PICKLE_BASE], false, false, true, false, 0, SoundFamily::Grass),
+    // blue ice: the slipperiest block (slipperiness 0.989)
+    d("Blue Ice", [TILE_BLUE_ICE, TILE_BLUE_ICE, TILE_BLUE_ICE], true, true, false, false, 0, SoundFamily::Glass),
+    // dried kelp block: fuel (4000 ticks / 20 items)
+    d("Dried Kelp Block", [TILE_DRIED_KELP_BLOCK, TILE_DRIED_KELP_BLOCK, TILE_DRIED_KELP_BLOCK], true, true, false, false, 0, SoundFamily::Grass),
+    // kelp + seagrass: underwater cross plants
+    d("Kelp", [TILE_KELP, TILE_KELP, TILE_KELP], false, false, true, false, 0, SoundFamily::Grass),
+    d("Seagrass", [TILE_SEAGRASS, TILE_SEAGRASS, TILE_SEAGRASS], false, false, true, false, 0, SoundFamily::Grass),
+    // conduit: light-15 beacon block (the frame powers it)
+    d("Conduit", [TILE_CONDUIT, TILE_CONDUIT, TILE_CONDUIT], true, true, false, false, 15, SoundFamily::Stone),
+    // turtle egg: solid-ish (renders as a small-block-adapted cube)
+    d("Turtle Egg", [TILE_TURTLE_EGG_BASE, TILE_TURTLE_EGG_BASE, TILE_TURTLE_EGG_BASE], true, true, false, false, 0, SoundFamily::Stone),
+    // ---- the 1.13 items (cross-rendered item icons, never placeable) ----
+    d("Heart of the Sea", [TILE_HEART_OF_THE_SEA, TILE_HEART_OF_THE_SEA, TILE_HEART_OF_THE_SEA], false, false, true, false, 0, SoundFamily::Stone),
+    d("Nautilus Shell", [TILE_NAUTILUS_SHELL, TILE_NAUTILUS_SHELL, TILE_NAUTILUS_SHELL], false, false, true, false, 0, SoundFamily::Stone),
+    d("Scute", [TILE_SCUTE, TILE_SCUTE, TILE_SCUTE], false, false, true, false, 0, SoundFamily::Grass),
+    d("Trident", [TILE_TRIDENT, TILE_TRIDENT, TILE_TRIDENT], false, false, true, false, 0, SoundFamily::Stone),
+    d("Phantom Membrane", [TILE_PHANTOM_MEMBRANE, TILE_PHANTOM_MEMBRANE, TILE_PHANTOM_MEMBRANE], false, false, true, false, 0, SoundFamily::Grass),
+    d("Dried Kelp", [TILE_DRIED_KELP, TILE_DRIED_KELP, TILE_DRIED_KELP], false, false, true, false, 0, SoundFamily::Grass),
+    d("Turtle Shell", [TILE_TURTLE_SHELL, TILE_TURTLE_SHELL, TILE_TURTLE_SHELL], false, false, true, false, 0, SoundFamily::Stone),
+    d("Potion of Slow Falling", [TILE_POTION_SLOW_FALLING, TILE_POTION_SLOW_FALLING, TILE_POTION_SLOW_FALLING], false, false, true, false, 0, SoundFamily::None),
+    d("Potion of Slow Falling (extended)", [TILE_POTION_SLOW_FALLING_EXT, TILE_POTION_SLOW_FALLING_EXT, TILE_POTION_SLOW_FALLING_EXT], false, false, true, false, 0, SoundFamily::None),
+    d("Potion of the Turtle Master", [TILE_POTION_TURTLE_MASTER, TILE_POTION_TURTLE_MASTER, TILE_POTION_TURTLE_MASTER], false, false, true, false, 0, SoundFamily::None),
+    d("Potion of the Turtle Master (enhanced)", [TILE_POTION_TURTLE_MASTER_II, TILE_POTION_TURTLE_MASTER_II, TILE_POTION_TURTLE_MASTER_II], false, false, true, false, 0, SoundFamily::None),
+    // ---- the 1.13 spawn eggs (kinds 32..=39) ----
+    d("Drowned Spawn Egg", [TILE_EGG_V113_BASE, TILE_EGG_V113_BASE, TILE_EGG_V113_BASE], false, false, true, false, 0, SoundFamily::Grass),
+    d("Phantom Spawn Egg", [TILE_EGG_V113_BASE + 1, TILE_EGG_V113_BASE + 1, TILE_EGG_V113_BASE + 1], false, false, true, false, 0, SoundFamily::Grass),
+    d("Dolphin Spawn Egg", [TILE_EGG_V113_BASE + 2, TILE_EGG_V113_BASE + 2, TILE_EGG_V113_BASE + 2], false, false, true, false, 0, SoundFamily::Grass),
+    d("Cod Spawn Egg", [TILE_EGG_V113_BASE + 3, TILE_EGG_V113_BASE + 3, TILE_EGG_V113_BASE + 3], false, false, true, false, 0, SoundFamily::Grass),
+    d("Salmon Spawn Egg", [TILE_EGG_V113_BASE + 4, TILE_EGG_V113_BASE + 4, TILE_EGG_V113_BASE + 4], false, false, true, false, 0, SoundFamily::Grass),
+    d("Pufferfish Spawn Egg", [TILE_EGG_V113_BASE + 5, TILE_EGG_V113_BASE + 5, TILE_EGG_V113_BASE + 5], false, false, true, false, 0, SoundFamily::Grass),
+    d("Tropical Fish Spawn Egg", [TILE_EGG_V113_BASE + 6, TILE_EGG_V113_BASE + 6, TILE_EGG_V113_BASE + 6], false, false, true, false, 0, SoundFamily::Grass),
+    d("Turtle Spawn Egg", [TILE_EGG_V113_BASE + 7, TILE_EGG_V113_BASE + 7, TILE_EGG_V113_BASE + 7], false, false, true, false, 0, SoundFamily::Grass),
 ];
 
 #[inline]
@@ -4000,6 +4438,7 @@ mod state_tests {
                 || is_v7_state(s)
                 // 1.12 V8 (World of Color Update)
                 || is_v8_state(s)
+                || is_v9_state(s)
                 || matches!(s, ACACIA_LOG_X | ACACIA_LOG_Z | DARK_OAK_LOG_X | DARK_OAK_LOG_Z)
             {
                 assert!(!is_model_state(s), "component/item state {s} never routes to models");
@@ -4053,6 +4492,26 @@ mod state_tests {
                         }
                     } else {
                         assert_eq!(default_state(b), s, "v8 state {s} roundtrip");
+                    }
+                }
+                // 1.13 V9 (Update Aquatic): 1:1 ids roundtrip; the sea
+                // pickle count states (4) and turtle egg hatch stages
+                // (3) fold to their parent — only the default (count 1
+                // / stage 0) equals default_state (the growth path
+                // writes the advanced states)
+                if is_v9_state(s) {
+                    if (V9_STATE_BASE + 30..=V9_STATE_BASE + 33).contains(&s) {
+                        assert_eq!(state_block(s), SEA_PICKLE);
+                        if s == V9_STATE_BASE + 30 {
+                            assert_eq!(default_state(SEA_PICKLE), s);
+                        }
+                    } else if (V9_STATE_BASE + 39..=V9_STATE_BASE + 41).contains(&s) {
+                        assert_eq!(state_block(s), TURTLE_EGG);
+                        if s == V9_STATE_BASE + 39 {
+                            assert_eq!(default_state(TURTLE_EGG), s);
+                        }
+                    } else {
+                        assert_eq!(default_state(b), s, "v9 state {s} roundtrip");
                     }
                 }
                 continue;
@@ -4213,8 +4672,8 @@ mod state_tests {
         // with the 1.7.2–1.10 F-series: 276 blocks / 480 states
         // (E-series states end at 354; V2 400..=442, V3 447..=465,
         // V4 466..=475, V5 476..=479)
-        assert_eq!(BLOCK_COUNT, 361, "merged registry + V6 + V7 + 1.12 V8 (World of Color)");
-        assert_eq!(STATE_COUNT, 615, "merged state space, V8 states end at 614");
+        assert_eq!(BLOCK_COUNT, 417, "merged registry + V6 + V7 + 1.12 V8 + 1.13 V9 (Update Aquatic)");
+        assert_eq!(STATE_COUNT, 676, "merged state space, V9 states end at 675");
         assert_eq!(BLOCK_TABLE.len(), BLOCK_COUNT);
         for want in [
             COAL_BLOCK,
@@ -4265,8 +4724,8 @@ mod v110_tests {
             assert_eq!(default_state(b), s);
             assert!(is_v5_state(s));
         }
-        assert_eq!(BLOCK_COUNT, 361); // 1.12: V8 window grew the registry
-        assert_eq!(STATE_COUNT, 615); // 1.12: V8 window grew the state space
+        assert_eq!(BLOCK_COUNT, 417); // 1.13: V9 window grew the registry
+        assert_eq!(STATE_COUNT, 676); // 1.13: V9 window grew the state space
     }
 
     /// magma emits light level 3 (VERIFIED — minecraft.wiki/w/Magma_Block,
@@ -4303,8 +4762,8 @@ mod auditfix_tests {
             assert!(!is_model_state(s), "V6 states are cube/cross defs, not model states");
         }
         assert_eq!(V6_COUNT, 6);
-        assert_eq!(BLOCK_COUNT, 361); // 1.12: V8 window grew the registry
-        assert_eq!(STATE_COUNT, 615); // 1.12: V8 window grew the state space
+        assert_eq!(BLOCK_COUNT, 417); // 1.13: V9 window grew the registry
+        assert_eq!(STATE_COUNT, 676); // 1.13: V9 window grew the state space
         // solidity classes: log/planks solid-opaque (hardness family 2
         // per w/Log + w/Planks), leaves see-through, vine/fern non-solid
         // cross plants (w/Vines: "climbable non-solid"; w/Fern:
@@ -4353,8 +4812,8 @@ mod v111_tests {
             assert_eq!(default_state(b), s, "block {b} default state");
             assert_eq!(state_block(s), b, "state {s} folds back");
         }
-        assert_eq!(BLOCK_COUNT, 361); // 1.12: V8 window grew the registry
-        assert_eq!(STATE_COUNT, 615); // 1.12: V8 window grew the state space
+        assert_eq!(BLOCK_COUNT, 417); // 1.13: V9 window grew the registry
+        assert_eq!(STATE_COUNT, 676); // 1.13: V9 window grew the state space
         // mansion spawner states fold to SPAWNER + decode their kinds
         assert_eq!(state_block(SPAWNER_VINDICATOR), SPAWNER);
         assert_eq!(state_block(SPAWNER_EVOKER), SPAWNER);
@@ -4458,8 +4917,8 @@ mod v112_tests {
         }
         assert_eq!(default_state(COOKIE), V8_STATE_BASE + 117);
         // bounds
-        assert_eq!(BLOCK_COUNT, 361);
-        assert_eq!(STATE_COUNT, 615);
+        assert_eq!(BLOCK_COUNT, 417);
+        assert_eq!(STATE_COUNT, 676);
         assert_eq!(CONCRETE_BASE + 15, CONCRETE_END);
         assert_eq!(CONCRETE_POWDER_BASE + 15, CONCRETE_POWDER_END);
         assert_eq!(GLAZED_TERRACOTTA_BASE + 15, GLAZED_TERRACOTTA_END);

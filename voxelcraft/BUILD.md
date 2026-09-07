@@ -180,7 +180,8 @@ wasm-bindgen JS glue). Cross-targets need `rustup target add <target>`
 
 | workflow | trigger | what it does |
 |----------|---------|--------------|
-| `ci.yml` | every push (any branch) + PRs to main | full test suite (181+ tests), wasm32 lib check, native check with audio, headless `vc_bench` + JSON artifact |
+| `ci.yml` | every push (any branch) + PRs to main | full test suite (489+ tests), wasm32 lib check, native check with audio, headless `vc_bench` + JSON artifact |
+| `linux-game.yml` | every push to main + manual | builds the **single-file Linux game** (pack embedded in the binary via `build.rs`) and attaches it to the run — one executable, zero companion files |
 | `wasm-build.yml` | pushes to main touching `voxelcraft/**` | rebuilds the WASM bundle and **commits it back to `public/`** — the deploy branch always carries a playable build |
 | `release.yml` | manual (`workflow_dispatch`) or tag `v*` | builds **every architecture** — Linux x64 + arm64, Windows x64, macOS x64 + arm64, WASM web — packages each with the builtin pack, uploads artifacts, and on tags publishes a GitHub Release |
 

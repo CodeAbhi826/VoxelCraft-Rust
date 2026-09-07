@@ -15,6 +15,8 @@ use std::collections::HashMap;
 use vc_blocks::blocks::*;
 use vc_inventory::inventory::ItemStack;
 
+use crate::effects::EffectKind;
+
 /// vanilla: 400 game ticks per brew (20 s)
 pub const BREW_TICKS: i32 = 400;
 /// vanilla: one blaze powder fuels 20 operations (§29 adaptation: netherrack)
@@ -88,6 +90,33 @@ pub const BREW_RECIPES: &[BrewRecipe] = &[
         ingredient: FERMENTED_SPIDER_EYE,
         output: POTION_MUNDANE,
     },
+    // ---- 1.13 (Update Aquatic, VERIFIED changelog §Items live
+    // 2026-09-07) ----
+    // slow falling: "Potion of Slow Falling — Brewed with phantom
+    // membrane" (from an awkward potion, like every effect brew)
+    BrewRecipe {
+        input: POTION_AWKWARD,
+        ingredient: PHANTOM_MEMBRANE,
+        output: POTION_SLOW_FALLING,
+    },
+    // turtle master: "Can be used to brew the potion of the Turtle
+    // Master from an awkward potion" (the turtle shell item)
+    BrewRecipe {
+        input: POTION_AWKWARD,
+        ingredient: TURTLE_SHELL,
+        output: POTION_TURTLE_MASTER,
+    },
+    // turtle master II: "Brewing it with glowstone dust enhances the
+    // effects to Slowness VI and Resistance IV"
+    BrewRecipe {
+        input: POTION_TURTLE_MASTER,
+        ingredient: GLOWSTONE,
+        output: POTION_TURTLE_MASTER_II,
+    },
+    // NOTE: the redstone-dust EXTENDED forms (slow falling 4:00,
+    // turtle master 3:00) are palette-absent — the engine has no
+    // redstone-dust ITEM (disclosed; POTION_SLOW_FALLING_EXT exists as
+    // a registry row for future rounds)
 ];
 
 /// look up the brew result for an (input, ingredient) pair
@@ -96,6 +125,27 @@ pub fn brew_result(input: u16, ingredient: u16) -> Option<u16> {
         .iter()
         .find(|r| r.input == input && r.ingredient == ingredient)
         .map(|r| r.output)
+}
+
+/// 1.13: DURATION-effect potions (VERIFIED changelog §Items, live
+/// 2026-09-07): (effect kind, amplifier 0-based, duration in ticks)
+/// applied when the potion is drunk. The instant heal/harm family
+/// rides [`potion_heal`] instead.
+pub fn potion_effects(b: u16) -> &'static [(EffectKind, u8, i32)] {
+    use EffectKind::{Resistance, Slowness, SlowFalling};
+    match b {
+        // "Gives the player the Slow Falling status effect for 1:30"
+        POTION_SLOW_FALLING => &[(SlowFalling, 0, 1800)],
+        // redstone-extended 4:00 (the item row exists; brewing it is
+        // redstone-item-gated — disclosed)
+        POTION_SLOW_FALLING_EXT => &[(SlowFalling, 0, 4800)],
+        // "Gives Slowness IV and Resistance III for 1 minute"
+        // (amplifiers are 0-based: IV → 3, III → 2)
+        POTION_TURTLE_MASTER => &[(Slowness, 3, 1200), (Resistance, 2, 1200)],
+        // "enhances the effects to Slowness VI and Resistance IV"
+        POTION_TURTLE_MASTER_II => &[(Slowness, 5, 1200), (Resistance, 3, 1200)],
+        _ => &[],
+    }
 }
 
 /// vanilla instant-effect amounts in HP, SIGNED (Phase 4: harming is
@@ -466,5 +516,59 @@ mod tests {
         assert_eq!(potion_heal(POTION_WATER), None);
         assert_eq!(potion_heal(POTION_AWKWARD), None);
         assert_eq!(potion_heal(POTION_MUNDANE), None);
+    }
+
+    /// 1.13 (Update Aquatic) brews — VERIFIED changelog §Items: slow
+    /// falling "Brewed with phantom membrane"; turtle master "brew
+    /// the potion of the Turtle Master from an awkward potion" +
+    /// glowstone "enhances the effects to Slowness VI and Resistance
+    /// IV". The redstone extended forms are redstone-item-gated
+    /// (disclosed).
+    #[test]
+    fn v113_aquatic_brews() {
+        assert_eq!(
+            brew_result(POTION_AWKWARD, PHANTOM_MEMBRANE),
+            Some(POTION_SLOW_FALLING)
+        );
+        assert_eq!(
+            brew_result(POTION_AWKWARD, TURTLE_SHELL),
+            Some(POTION_TURTLE_MASTER)
+        );
+        assert_eq!(
+            brew_result(POTION_TURTLE_MASTER, GLOWSTONE),
+            Some(POTION_TURTLE_MASTER_II)
+        );
+        // no glowstone enhancement for slow falling (level I only)
+        assert_eq!(brew_result(POTION_SLOW_FALLING, GLOWSTONE), None);
+        // the membrane is an effect ingredient, not a modifier
+        assert_eq!(brew_result(POTION_SLOW_FALLING, PHANTOM_MEMBRANE), None);
+    }
+
+    /// 1.13: the duration windows applied on drink (VERIFIED changelog
+    /// §Items: slow falling "for 1:30"; turtle master "Slowness IV and
+    /// Resistance III for 1 minute"; the extended 4:00 row exists as
+    /// an item but is redstone-gated — its window is still correct).
+    #[test]
+    fn v113_potion_effect_windows() {
+        use crate::effects::EffectKind;
+        assert_eq!(
+            potion_effects(POTION_SLOW_FALLING),
+            &[(EffectKind::SlowFalling, 0, 1800)]
+        );
+        assert_eq!(
+            potion_effects(POTION_SLOW_FALLING_EXT),
+            &[(EffectKind::SlowFalling, 0, 4800)]
+        );
+        assert_eq!(
+            potion_effects(POTION_TURTLE_MASTER),
+            &[(EffectKind::Slowness, 3, 1200), (EffectKind::Resistance, 2, 1200)]
+        );
+        assert_eq!(
+            potion_effects(POTION_TURTLE_MASTER_II),
+            &[(EffectKind::Slowness, 5, 1200), (EffectKind::Resistance, 3, 1200)]
+        );
+        // the instant family carries no duration rows
+        assert!(potion_effects(POTION_HEALING).is_empty());
+        assert!(potion_effects(POTION_WATER).is_empty());
     }
 }

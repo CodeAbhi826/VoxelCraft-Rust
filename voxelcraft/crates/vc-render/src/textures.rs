@@ -13,6 +13,7 @@ mod e2_art;
 mod e3_art;
 mod auditfix_art;
 mod v112_art;
+mod v113_art;
 
 pub const ATLAS_SIZE: usize = 512;
 pub const TILE_PX: usize = 16;
@@ -4130,6 +4131,79 @@ pub fn generate_atlas() -> Vec<u8> {
                 v112_art::parrot_art(&mut a, t, v, &mut rng)
             }
             TILE_ILLUSIONER => v112_art::illusioner_art(&mut a, t, &mut rng),
+            // ---- 1.13 bracket (Update Aquatic): the V9 window 550..=618.
+            // ART-GAP FIX: the interrupted-session recovery landed the
+            // registry with TILE_MAX=618 but NO painters — every 1.13
+            // block/item/egg/mob tile rendered BLANK; this dispatch arm
+            // set + v113_art.rs close the gap (guarded by the
+            // v113_tiles_all_painted coverage test). ----
+            // coral blocks (5) + dead (5)
+            t if (TILE_CORAL_BLOCK_BASE..=TILE_CORAL_BLOCK_BASE + 4).contains(&t) => {
+                let c = (t - TILE_CORAL_BLOCK_BASE) as u8;
+                v113_art::coral_block_art(&mut a, t, c, &mut rng)
+            }
+            t if (TILE_DEAD_CORAL_BLOCK_BASE..=TILE_DEAD_CORAL_BLOCK_BASE + 4).contains(&t) => {
+                v113_art::dead_coral_block_art(&mut a, t, &mut rng)
+            }
+            // coral plants (5) + dead (5)
+            t if (TILE_CORAL_PLANT_BASE..=TILE_CORAL_PLANT_BASE + 4).contains(&t) => {
+                let c = (t - TILE_CORAL_PLANT_BASE) as u8;
+                v113_art::coral_plant_art(&mut a, t, c, &mut rng)
+            }
+            t if (TILE_DEAD_CORAL_PLANT_BASE..=TILE_DEAD_CORAL_PLANT_BASE + 4).contains(&t) => {
+                v113_art::dead_coral_plant_art(&mut a, t, &mut rng)
+            }
+            // coral fans (5) + dead (5)
+            t if (TILE_CORAL_FAN_BASE..=TILE_CORAL_FAN_BASE + 4).contains(&t) => {
+                let c = (t - TILE_CORAL_FAN_BASE) as u8;
+                v113_art::coral_fan_art(&mut a, t, c, &mut rng)
+            }
+            t if (TILE_DEAD_CORAL_FAN_BASE..=TILE_DEAD_CORAL_FAN_BASE + 4).contains(&t) => {
+                v113_art::dead_coral_fan_art(&mut a, t, &mut rng)
+            }
+            // sea pickle: 4 count tiles
+            t if (TILE_SEA_PICKLE_BASE..=TILE_SEA_PICKLE_BASE + 3).contains(&t) => {
+                let n = 1 + (t - TILE_SEA_PICKLE_BASE) as u8;
+                v113_art::sea_pickle_art(&mut a, t, n, &mut rng)
+            }
+            TILE_BLUE_ICE => v113_art::blue_ice_art(&mut a, t, &mut rng),
+            TILE_DRIED_KELP_BLOCK => v113_art::dried_kelp_block_art(&mut a, t, &mut rng),
+            TILE_KELP => v113_art::kelp_art(&mut a, t, &mut rng),
+            TILE_SEAGRASS => v113_art::seagrass_art(&mut a, t, &mut rng),
+            TILE_CONDUIT => v113_art::conduit_art(&mut a, t, &mut rng),
+            // turtle egg: 3 hatch stages
+            t if (TILE_TURTLE_EGG_BASE..=TILE_TURTLE_EGG_BASE + 2).contains(&t) => {
+                let st = (t - TILE_TURTLE_EGG_BASE) as u8;
+                v113_art::turtle_egg_art(&mut a, t, st, &mut rng)
+            }
+            // 11 item icons
+            TILE_HEART_OF_THE_SEA => v113_art::heart_of_the_sea_art(&mut a, t),
+            TILE_NAUTILUS_SHELL => v113_art::nautilus_shell_art(&mut a, t, &mut rng),
+            TILE_SCUTE => v113_art::scute_art(&mut a, t, &mut rng),
+            TILE_TRIDENT => v113_art::trident_art(&mut a, t),
+            TILE_PHANTOM_MEMBRANE => v113_art::phantom_membrane_art(&mut a, t, &mut rng),
+            TILE_DRIED_KELP => v113_art::dried_kelp_art(&mut a, t, &mut rng),
+            TILE_TURTLE_SHELL => v113_art::turtle_shell_art(&mut a, t, &mut rng),
+            // 4 potions (the brewing round's items)
+            TILE_POTION_SLOW_FALLING => potion_art(&mut a, t, (80, 150, 200), false),
+            TILE_POTION_SLOW_FALLING_EXT => potion_art(&mut a, t, (100, 170, 220), true),
+            TILE_POTION_TURTLE_MASTER => potion_art(&mut a, t, (140, 90, 40), false),
+            TILE_POTION_TURTLE_MASTER_II => potion_art(&mut a, t, (110, 70, 30), true),
+            // 8 spawn eggs (the egg-art convention + per-mob palettes)
+            t if (TILE_EGG_V113_BASE..=TILE_EGG_V113_BASE + 7).contains(&t) => {
+                let i = (t - TILE_EGG_V113_BASE) as usize;
+                let p = v113_art::V9_EGG_PALETTES[i];
+                e1_art::egg_art(&mut a, t, (p[0], p[1], p[2]), (p[3], p[4], p[5]))
+            }
+            // 8 aquatic mob sprites
+            TILE_MOB_DROWNED => v113_art::drowned_art(&mut a, t, &mut rng),
+            TILE_MOB_PHANTOM => v113_art::phantom_art(&mut a, t, &mut rng),
+            TILE_MOB_DOLPHIN => v113_art::dolphin_art(&mut a, t, &mut rng),
+            TILE_MOB_COD => v113_art::cod_art(&mut a, t, &mut rng),
+            TILE_MOB_SALMON => v113_art::salmon_art(&mut a, t, &mut rng),
+            TILE_MOB_PUFFERFISH => v113_art::pufferfish_art(&mut a, t, &mut rng),
+            TILE_MOB_TROPICAL_FISH => v113_art::tropical_fish_art(&mut a, t, &mut rng),
+            TILE_MOB_TURTLE => v113_art::turtle_art(&mut a, t, &mut rng),
             _ => {}
         }
     }
@@ -4904,6 +4978,134 @@ mod v110_tests {
         assert!(
             stable < TILE_PX * TILE_PX * 4 / 4,
             "fewer than a quarter of bytes move between frames ({stable})"
+        );
+    }
+}
+
+// ---- 1.13 art-gap regression tests (the recovery round shipped the V9
+// registry with TILE_MAX=618 but NO painters — coral/kelp/pickles/eggs/
+// every aquatic mob billboard rendered BLANK; caught by the coverage
+// audit 2026-09-07) ----
+#[cfg(test)]
+mod v113_art_tests {
+    use super::*;
+
+    /// every tile in the V9 window has at least one painted pixel —
+    /// a tile with zero non-transparent pixels is a missing painter
+    #[test]
+    fn v113_tiles_all_painted() {
+        let atlas = generate_atlas();
+        // optional visual dump for inspection (never set in CI):
+        //   ATLAS_DUMP=/tmp/atlas.png cargo test -p vc-render v113_tiles
+        if let Ok(p) = std::env::var("ATLAS_DUMP") {
+            let img: image::RgbaImage =
+                image::RgbaImage::from_raw(ATLAS_SIZE as u32, ATLAS_SIZE as u32, atlas.clone())
+                    .unwrap();
+            let _ = img.save(&p);
+        }
+        for t in 550..=TILE_MAX {
+            let tx = (t % 32) as usize;
+            let ty = (t / 32) as usize;
+            let mut painted = 0usize;
+            for y in 0..TILE_PX {
+                for x in 0..TILE_PX {
+                    let src = ((ty * TILE_PX + y) * ATLAS_SIZE + tx * TILE_PX + x) * 4 + 3;
+                    if atlas[src] > 0 {
+                        painted += 1;
+                    }
+                }
+            }
+            assert!(
+                painted >= 4,
+                "tile {t} is BLANK ({painted} painted pixels) — a painter is missing (the art-gap regression)"
+            );
+        }
+    }
+
+    /// the coral families are actually distinct colors (the five-color
+    /// observable: tube=blue, brain=pink, bubble=purple, fire=red,
+    /// horn=yellow) and the dead forms are the shared gray
+    #[test]
+    fn coral_palette_is_five_distinct_colors() {
+        let atlas = generate_atlas();
+        let avg = |t: u16| {
+            let tx = (t % 32) as usize;
+            let ty = (t / 32) as usize;
+            let (mut r, mut g, mut b, mut n) = (0i64, 0i64, 0i64, 0i64);
+            for y in 0..TILE_PX {
+                for x in 0..TILE_PX {
+                    let src = ((ty * TILE_PX + y) * ATLAS_SIZE + tx * TILE_PX + x) * 4;
+                    if atlas[src + 3] > 0 {
+                        r += atlas[src] as i64;
+                        g += atlas[src + 1] as i64;
+                        b += atlas[src + 2] as i64;
+                        n += 1;
+                    }
+                }
+            }
+            (r / n.max(1), g / n.max(1), b / n.max(1))
+        };
+        let colors: Vec<(i64, i64, i64)> =
+            (0..5).map(|i| avg(TILE_CORAL_BLOCK_BASE + i)).collect();
+        for i in 0..5 {
+            for j in i + 1..5 {
+                let d = (colors[i].0 - colors[j].0).abs()
+                    + (colors[i].1 - colors[j].1).abs()
+                    + (colors[i].2 - colors[j].2).abs();
+                assert!(d > 60, "coral colors {i} and {j} are too close ({d})");
+            }
+        }
+        // dead forms: all gray, all close to each other
+        let dead: Vec<(i64, i64, i64)> =
+            (0..5).map(|i| avg(TILE_DEAD_CORAL_BLOCK_BASE + i)).collect();
+        for c in dead {
+            assert!(c.0.abs_diff(c.1) < 12 && c.1.abs_diff(c.2) < 12, "dead coral {c:?} not gray");
+        }
+    }
+
+    /// the pickle count tiles grow: more painted pixels per count state
+    /// (the 1..4 pickles-per-block observable)
+    #[test]
+    fn sea_pickle_counts_grow() {
+        let atlas = generate_atlas();
+        let painted = |t: u16| {
+            let tx = (t % 32) as usize;
+            let ty = (t / 32) as usize;
+            (0..TILE_PX)
+                .flat_map(move |y| (0..TILE_PX).map(move |x| (x, y)))
+                .filter(|(x, y)| {
+                    let src = ((ty * TILE_PX + y) * ATLAS_SIZE + tx * TILE_PX + x) * 4 + 3;
+                    atlas[src] > 0
+                })
+                .count()
+        };
+        let counts: Vec<usize> = (0..4).map(|i| painted(TILE_SEA_PICKLE_BASE + i)).collect();
+        assert!(
+            counts[0] < counts[1] && counts[1] < counts[2] && counts[2] < counts[3],
+            "pickle tile pixel counts must grow with the count state: {counts:?}"
+        );
+    }
+
+    /// the turtle-egg hatch tiles get more crack pixels per stage
+    #[test]
+    fn turtle_egg_cracks_deepen() {
+        let atlas = generate_atlas();
+        let crackish = |t: u16| {
+            let tx = (t % 32) as usize;
+            let ty = (t / 32) as usize;
+            (0..TILE_PX)
+                .flat_map(move |y| (0..TILE_PX).map(move |x| (x, y)))
+                .filter(|(x, y)| {
+                    let src = ((ty * TILE_PX + y) * ATLAS_SIZE + tx * TILE_PX + x) * 4;
+                    // crack-brown pixels (darker than the pale shell)
+                    atlas[src + 3] > 0 && atlas[src] < 200
+                })
+                .count()
+        };
+        let stages: Vec<usize> = (0..3).map(|i| crackish(TILE_TURTLE_EGG_BASE + i)).collect();
+        assert!(
+            stages[0] <= stages[1] && stages[1] <= stages[2] && stages[2] > stages[0],
+            "crack pixels must grow with the hatch stage: {stages:?}"
         );
     }
 }

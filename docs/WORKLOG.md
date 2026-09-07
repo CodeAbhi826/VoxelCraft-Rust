@@ -2136,3 +2136,47 @@ extracted + folder pack source loaded + options.txt + log mirror).
 
 **Next:** 1.14 Village & Pillage implementation round (research
 contract already landed: docs/research/phase-v114-1.14-research.md).
+
+## 2026-09-07 (session 16, addendum) — 1.13 art-gap fix: the V9 window finally painted
+
+**Found:** starting the 1.14 round's registry prep, an atlas-coverage
+audit revealed the 1.13 recovery round (bracket 10/16) shipped the V9
+tile window (550..=618) with TILE_MAX raised but NO painters in
+textures.rs — every 1.13 block, item, egg and ALL EIGHT aquatic mob
+billboards rendered blank (invisible drowned/phantom/dolphin/cod/
+salmon/pufferfish/tropical-fish/turtle; invisible coral/kelp/seagrass/
+pickles/conduit/eggs in oceans). Undisclosed in the 1.13 deferral list
+— a true gap, now closed.
+
+**Fix:** `vc-render/src/textures/v113_art.rs` (the v112_art.rs child-
+module pattern):
+- coral blocks ×5 + dead ×5 (polyp noise + darker flecks; the five
+  families asserted pairwise-distinct, the dead forms asserted gray)
+- coral plants ×5 + dead ×5, coral fans ×5 + dead ×5 (string-grid art)
+- sea pickle 1..4 count tiles (rod count grows; pixel-count test)
+- blue ice (deep blue + bright streaks), dried kelp block (strand rows)
+- kelp (frond cross), seagrass (blade tuft cross)
+- the conduit (shell frame + glowing heart core)
+- turtle eggs ×3 hatch stages (crack pixels deepen per stage — test)
+- 11 item icons (heart of the sea, nautilus shell, scute, trident,
+  phantom membrane, dried kelp food, turtle shell)
+- 4 potions on the existing potion_art bottle painter
+- 8 spawn eggs on the e1_art::egg_art convention + V9_EGG_PALETTES
+- 8 mob billboards: drowned (teal zombie), phantom (blue manta),
+  dolphin (gray-blue, pale belly), cod, salmon, pufferfish (spiked
+  ball), tropical fish (striped), turtle (shelled)
+
+**Guards:** `v113_tiles_all_painted` (every tile 550..=TILE_MAX must
+have >= 4 painted pixels — a blank tile is a missing painter),
+`coral_palette_is_five_distinct_colors`, `sea_pickle_counts_grow`,
+`turtle_egg_cracks_deepen`; an ATLAS_DUMP env hook on the coverage
+test for visual inspection. VLM-read of the cropped atlas region
+confirms the families/items/sprites read correctly.
+
+**Verified:** 504/504 workspace tests green (+4), wasm32 clean,
+release smoke green (boot → intro 2.64 s → title → world entry →
+pointer: confined → in-game click → exit 0).
+
+**Next:** the 1.14 Village & Pillage nature-half implementation
+(bamboo/sweet-berry-bush/campfire/barrel/fox) on the researched
+contract in docs/research/phase-v114-1.14-research.md.

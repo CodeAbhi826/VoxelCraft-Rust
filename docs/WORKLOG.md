@@ -1993,3 +1993,60 @@ queue — crosshair/hotbar/hearts verified, overlay gone. Screenshots
 saved as `docs/screenshots/startup-{intro,title-panorama,world-loading,
 gameplay}.png`; README gallery + maintenance note 4 updated. Panorama
 art itself VLM-verified (six faces: continuous horizon, no seams).
+
+## 2026-09-07 — exact 1.16.5 boot flow (structure-matched, clean-room) + 1.14 research round
+
+Commit c4a1d22. User ask: make the intro/panorama/loading EXACT like the
+real game (referencing replica-project practice), verify all prior jobs,
+keep everything legal, update docs, continue the plan.
+
+- **Live research** (minecraft.wiki, captured in-session): Panorama history
+  ("1.16 ... Changed panorama ... to reflect the Nether Update" — the 1.16.5
+  title background is NETHER-themed; 1.13 pre1 removed live gaussian blur;
+  slow 360-degree pan); Title screen (logo + splash + panorama + version
+  bottom-left + copyright bottom-right); Splash (yellow, 2 Hz pulse, tilted
+  ~20 degrees at the logo's bottom-right); Loading world screen (Java:
+  "Loading world" + percentage + a 35×35 chunk colormap over a
+  blurred+darkened panorama, with the page's EXACT status color table —
+  Empty 545454 / Biomes 80B252 / Full FFFFFF / Spawn F26060).
+- **Intro** → the real splash structure: solid studio-red field, dark
+  VOXELCRAFT STUDIOS wordmark, thin WHITE bar. No panorama behind it (was:
+  dark wash over blurred pano).
+- **Title** → vanilla layout: logo scale 12 (no dim band), new
+  `text_splash()` (glyph bitmap → rotated blit, −20 deg, right end up,
+  2 Hz sub-pixel pulse) — **my own new test caught the blit using R(θ)
+  instead of R(−θ): the splash tilted the WRONG WAY; fixed**; button stack
+  rebuilt to vanilla geometry (300×30 from half screen height:
+  SINGLEPLAYER / MULTIPLAYER [disabled until netcode] / half-width
+  OPTIONS + QUIT row); version "VoxelCraft 1.16.5" bottom-left.
+- **Loading** → `world_loading_screen()`: LOADING WORLD + percent + the
+  35×35 colormap (4px cells, wiki-exact colors, spawn cell red until
+  meshed), driven from the real pipeline (world.chunk()=generated →
+  renderer.has_chunk()=meshed).
+- **Panorama** → rethemed Nether (crimson fog sky, lava-glow horizon,
+  netherrack ground, denser+taller crimson-canopy tree belt, glowing lava
+  lake, no clouds); tests updated; PANORAMA_DUMP now sRGB-converts (dumps
+  previously showed raw linear — VLM under-read them; pixel-scan confirmed
+  3893 canopy pixels + lava band before believing the "flat" verdict).
+- **Menu blur** re-tuned: title/options/world screens 0.45 (the soft
+  pre-blurred-image look), world-entry loading 0.75 ("blurred and
+  darkened" per the wiki), travel keeps 0.35.
+- **Legal pass**: README Disclaimer rewritten to the Mojang fan-guidelines
+  wording ("NOT AN OFFICIAL MINECRAFT PRODUCT...") + ClassiCube precedent;
+  grep audit — no third-party names in user-facing strings; `minecraft:`
+  namespaced ids documented as format interop (never in the UI).
+- **Verification**: +5 screen tests (55 vc-render), 495/495 workspace
+  green, wasm32 lib clean; VLM pass on the dumps (fixed: em-dash rendered
+  as '?' in the 5×7 font → hyphen; disabled-button contrast). CI on
+  c4a1d22: CI + Build WASM + Linux Game (lavapipe smoke: intro → title →
+  world entry → gameplay, exit 0) ALL GREEN.
+- **1.14 Village & Pillage — research round landed** (nature half):
+  live captures for Bamboo / Campfire / Sweet Berry Bush / Fox / Barrel
+  saved (`voxelcraft/scripts/v114_page_*.json`) and distilled into
+  `docs/research/phase-v114-1.14-research.md` — the implementation
+  contract (growth 1/3 random-tick, bush damage 1 HP/half-second
+  moving-only + fox immunity, harvest 2–3/1–2, campfire 600-tick cooking
+  + 2-charcoal drop, barrel 27 slots, fox 10 HP/2–3 dmg/0.7×0.6 box,
+  taiga groups 2–4 + prey list). Implementation (registry V10 window →
+  art → gen → gameplay → tests) is the next round, per the repo's
+  research-then-implement discipline.

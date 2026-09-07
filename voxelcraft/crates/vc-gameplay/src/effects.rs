@@ -42,6 +42,14 @@ pub enum EffectKind {
     /// 5 s). No per-tick action; the buffer lives on the player struct
     /// and is cleared when the effect expires (the game layer's hook).
     Absorption,
+    /// 1.12 bracket (illusioner spell): Blindness — "Impairs vision by
+    /// adding close black fog and disables the ability to sprint and
+    /// critical hit" (VERIFIED w/Effect §Blindness, live 2026-09-07;
+    /// effect id 15, negative). No per-tick action: the render layer
+    /// pulls the fog in when active and the movement layer blocks
+    /// sprinting (the engine's 1.12 hooks). Critical hits are a
+    /// 1.9-combat detail the engine doesn't model — disclosed.
+    Blindness,
 }
 
 impl EffectKind {
@@ -58,6 +66,7 @@ impl EffectKind {
             EffectKind::Slowness => "minecraft:slowness",
             EffectKind::Hunger => "minecraft:hunger",
             EffectKind::Absorption => "minecraft:absorption",
+            EffectKind::Blindness => "minecraft:blindness",
         }
     }
 }

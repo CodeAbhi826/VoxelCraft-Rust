@@ -2742,8 +2742,9 @@ impl GameApp {
             return;
         }
         let tile = TILE_WITHER;
-        let tx = (tile % 16) as f32;
-        let ty = (tile / 16) as f32;
+        // [1.12 fix] 32-tile atlas rows (was %16//16)
+        let tx = (tile % 32) as f32;
+        let ty = (tile / 32) as f32;
         // hover bob + the charge-phase pulsing tint (black↔blue like the
         // vanilla charge — VERIFIED behavior note)
         let bob = (self.time * 1.2).sin() * 0.25;
@@ -2763,7 +2764,7 @@ impl GameApp {
                     -right[1] * half - up[1] * half,
                     -right[2] * half - up[2] * half,
                 ],
-                [tx / 16.0, ty / 16.0],
+                [tx / 32.0, ty / 32.0],
             ),
             (
                 [
@@ -2771,7 +2772,7 @@ impl GameApp {
                     right[1] * half - up[1] * half,
                     right[2] * half - up[2] * half,
                 ],
-                [(tx + 1.0) / 16.0, ty / 16.0],
+                [(tx + 1.0) / 32.0, ty / 32.0],
             ),
             (
                 [
@@ -2779,7 +2780,7 @@ impl GameApp {
                     right[1] * half + up[1] * half,
                     right[2] * half + up[2] * half,
                 ],
-                [(tx + 1.0) / 16.0, (ty + 1.0) / 16.0],
+                [(tx + 1.0) / 32.0, (ty + 1.0) / 32.0],
             ),
             (
                 [
@@ -2787,7 +2788,7 @@ impl GameApp {
                     -right[1] * half + up[1] * half,
                     -right[2] * half + up[2] * half,
                 ],
-                [tx / 16.0, (ty + 1.0) / 16.0],
+                [tx / 32.0, (ty + 1.0) / 32.0],
             ),
         ];
         for (v, uv) in corners.iter() {
@@ -2812,8 +2813,9 @@ impl GameApp {
                 continue;
             }
             let tile = TILE_END_CRYSTAL;
-            let tx = (tile % 16) as f32;
-            let ty = (tile / 16) as f32;
+            // [1.12 fix] 32-tile atlas rows (was %16//16)
+            let tx = (tile % 32) as f32;
+            let ty = (tile / 32) as f32;
             let bob = (self.time * 1.5 + c.pos[0]).sin() * 0.15;
             let half = 0.8f32;
             let col = [1.0f32, 0.95, 1.0];
@@ -2824,7 +2826,7 @@ impl GameApp {
                         -right[1] * half - up[1] * half,
                         -right[2] * half - up[2] * half,
                     ],
-                    [tx / 16.0, ty / 16.0],
+                    [tx / 32.0, ty / 32.0],
                 ),
                 (
                     [
@@ -2832,7 +2834,7 @@ impl GameApp {
                         right[1] * half - up[1] * half,
                         right[2] * half - up[2] * half,
                     ],
-                    [(tx + 1.0) / 16.0, ty / 16.0],
+                    [(tx + 1.0) / 32.0, ty / 32.0],
                 ),
                 (
                     [
@@ -2840,7 +2842,7 @@ impl GameApp {
                         right[1] * half + up[1] * half,
                         right[2] * half + up[2] * half,
                     ],
-                    [(tx + 1.0) / 16.0, (ty + 1.0) / 16.0],
+                    [(tx + 1.0) / 32.0, (ty + 1.0) / 32.0],
                 ),
                 (
                     [
@@ -2848,7 +2850,7 @@ impl GameApp {
                         -right[1] * half + up[1] * half,
                         -right[2] * half + up[2] * half,
                     ],
-                    [tx / 16.0, (ty + 1.0) / 16.0],
+                    [tx / 32.0, (ty + 1.0) / 32.0],
                 ),
             ];
             for ci in [0usize, 1, 2, 0, 2, 3] {
@@ -2868,8 +2870,9 @@ impl GameApp {
         // the dragon: a large billboard sprite, hurt-flash tinted
         if let Some(d) = self.sim.dragon.dragon.as_ref() {
             let tile = TILE_ENDERDRAGON;
-            let tx = (tile % 16) as f32;
-            let ty = (tile / 16) as f32;
+            // [1.12 fix] 32-tile atlas rows (was %16//16)
+            let tx = (tile % 32) as f32;
+            let ty = (tile / 32) as f32;
             let half = 3.0f32;
             let hurt = d.dying.is_none() && d.health < 200.0 && (d.health * 10.0) as i32 % 2 == 0;
             let col = if hurt {
@@ -2884,7 +2887,7 @@ impl GameApp {
                         -right[1] * half - up[1] * half,
                         -right[2] * half - up[2] * half,
                     ],
-                    [tx / 16.0, ty / 16.0],
+                    [tx / 32.0, ty / 32.0],
                 ),
                 (
                     [
@@ -2892,7 +2895,7 @@ impl GameApp {
                         right[1] * half - up[1] * half,
                         right[2] * half - up[2] * half,
                     ],
-                    [(tx + 1.0) / 16.0, ty / 16.0],
+                    [(tx + 1.0) / 32.0, ty / 32.0],
                 ),
                 (
                     [
@@ -2900,7 +2903,7 @@ impl GameApp {
                         right[1] * half + up[1] * half,
                         right[2] * half + up[2] * half,
                     ],
-                    [(tx + 1.0) / 16.0, (ty + 1.0) / 16.0],
+                    [(tx + 1.0) / 32.0, (ty + 1.0) / 32.0],
                 ),
                 (
                     [
@@ -2908,7 +2911,7 @@ impl GameApp {
                         -right[1] * half + up[1] * half,
                         -right[2] * half + up[2] * half,
                     ],
-                    [tx / 16.0, (ty + 1.0) / 16.0],
+                    [tx / 32.0, (ty + 1.0) / 32.0],
                 ),
             ];
             for ci in [0usize, 1, 2, 0, 2, 3] {
@@ -3331,6 +3334,22 @@ impl GameApp {
                 self.ui.dirty = true;
             }
         }
+        // ---- 1.12 (World of Color): the illusioner's blindness spell
+        // (VERIFIED w/Illusioner: "This spell gives a Blindness effect
+        // that lasts for 20 seconds upon first engaging a new player
+        // opponent") — applied to the player effect list; the render
+        // layer pulls the fog in and the movement layer blocks sprint
+        // (w/Effect §Blindness: "close black fog and disables the
+        // ability to sprint") ----
+        let blinds: Vec<i32> = self.sim.mobs.pending_player_blindness.drain(..).collect();
+        for ticks in blinds {
+            if !self.mode.invulnerable() && self.screen == Screen::Game {
+                self.player
+                    .effects
+                    .apply(vc_gameplay::effects::EffectKind::Blindness, 0, ticks);
+                self.ui.dirty = true;
+            }
+        }
         let deaths: Vec<(mobs::MobKind, [f32; 3], u8)> = self.sim.mobs.deaths.drain(..).collect();
         for (kind, pos, variant) in deaths {
             let d = mobs::def(kind);
@@ -3416,6 +3435,15 @@ impl GameApp {
                 // vex: no item drops (the iron sword never drops —
                 // VERIFIED w/Vex: HandDropChances 0)
                 mobs::MobKind::Vex => &[],
+                // ---- 1.12 (World of Color, VERIFIED live 2026-09-07) ----
+                // parrot: "Feather 1–2" at 100% (w/Parrot §Drops — the
+                // JE table's guaranteed 1-2 with Looting scaling out of
+                // scope, no Looting enchant)
+                mobs::MobKind::Parrot => &[(FEATHER, 2)],
+                // illusioner: naturally-spawned equipment drops at
+                // 8.5% (its bow — no bow item in the engine, disclosed)
+                // + 5 XP (w/Illusioner §Drops: "5XP experience orbs")
+                mobs::MobKind::Illusioner => &[],
             };
             // blaze rod is a 50% roll (VERIFIED), others roll count 1..max
             if kind == mobs::MobKind::Blaze {
@@ -3543,6 +3571,11 @@ impl GameApp {
             let xp = if kind == mobs::MobKind::MagmaCube {
                 mobs::magma_xp(mobs::magma_size(variant))
             } else if kind == mobs::MobKind::Ocelot {
+                1 + (self.audio_rng.next_f32() * 3.0) as i32
+            } else if kind == mobs::MobKind::Parrot {
+                // 1.12: parrots drop 1–3 XP (VERIFIED w/Parrot §Drops:
+                // "1–3XP experience orbs are dropped when parrots are
+                // killed by a player")
                 1 + (self.audio_rng.next_f32() * 3.0) as i32
             } else {
                 d.xp
@@ -7323,6 +7356,102 @@ impl GameApp {
                     self.open_container(Container::Trade { villager: vid });
                     self.place_timer = 0.3;
                 }
+                // ---- 1.12 (World of Color): parrot interactions — feed
+                // seeds (the 1/10 taming roll), the lethal cookie, and
+                // the right-click sit toggle on tamed ones. Vanilla
+                // interaction priority over blocks (the equine pattern).
+                // VERIFIED w/Parrot §Taming/§Cookies + 17w14a ----
+                else if let Some(eid) = self
+                    .sim
+                    .mobs
+                    .ray_hit(
+                        self.player.eye().to_array(),
+                        self.player.look_dir().to_array(),
+                        crate::player::REACH,
+                    )
+                    .filter(|&id| {
+                        self.sim
+                            .mobs
+                            .by_id(id)
+                            .map(|m| m.kind == vc_gameplay::mobs::MobKind::Parrot)
+                            .unwrap_or(false)
+                    })
+                {
+                    let held = self.player.held().block;
+                    let is_seeds_held = is_seeds(held);
+                    if held == COOKIE || is_seeds_held {
+                        // feed: seeds (taming roll) or cookie (death)
+                        let mut feed_rng =
+                            vc_rng::rng::Rng::new((self.sim.ticks as u64) ^ 0x1EAF_5EED);
+                        let outcome =
+                            self.sim.mobs.try_feed_parrot(eid, held, &mut feed_rng);
+                        if let Some(out) = outcome {
+                            if self.mode.depletes_items() {
+                                let h = self.player.held_mut();
+                                h.count -= 1;
+                                if h.count == 0 {
+                                    *h = vc_inventory::inventory::ItemStack::EMPTY;
+                                }
+                            }
+                            use vc_gameplay::mobs::ParrotFeedOutcome as Pfo;
+                            match out {
+                                Pfo::CookieDeath => {
+                                    // "causing it to emit poison particles"
+                                    // (VERIFIED 17w13a) — the clean-room
+                                    // poison puff: tinted green particles
+                                    // at the parrot's last position
+                                    let p = self
+                                        .sim
+                                        .mobs
+                                        .by_id(eid)
+                                        .map(|m| m.pos)
+                                        .unwrap_or([0.0; 3]);
+                                    for _ in 0..8 {
+                                        self.particles.push(vc_particles::particles::Particle {
+                                            pos: [
+                                                p[0] + (self.audio_rng.next_f32() - 0.5) * 0.6,
+                                                p[1] + 0.3 + self.audio_rng.next_f32() * 0.5,
+                                                p[2] + (self.audio_rng.next_f32() - 0.5) * 0.6,
+                                            ],
+                                            vel: [
+                                                (self.audio_rng.next_f32() - 0.5) * 0.1,
+                                                self.audio_rng.next_f32() * 0.06 + 0.02,
+                                                (self.audio_rng.next_f32() - 0.5) * 0.1,
+                                            ],
+                                            life: 14,
+                                            half: 0.05,
+                                            u0: (TILE_SNOW % 32) as f32 / 32.0,
+                                            v0: (TILE_SNOW / 32) as f32 / 32.0,
+                                            du: 0.25 / 32.0,
+                                            dv: 0.25 / 32.0,
+                                            light: 0.9,
+                                            // poison green (clean-room tint)
+                                            tint: [0.35, 0.75, 0.25],
+                                        });
+                                    }
+                                    self.play_event("entity.parrot.death", Some(p), 1.0);
+                                    vc_render::render::report_boot_log(
+                                        "e2e: cookie fed -> parrot dies + poison particles (VERIFIED w/Parrot)",
+                                    );
+                                }
+                                Pfo::Tamed => {
+                                    self.play_event("entity.parrot.ambient", None, 1.0);
+                                    vc_render::render::report_boot_log(
+                                        "e2e: seeds tamed the parrot (1/10 roll, VERIFIED w/Parrot)",
+                                    );
+                                }
+                                Pfo::Ate => {
+                                    self.play_event("entity.parrot.eat", None, 0.9);
+                                }
+                            }
+                            self.place_timer = 0.3;
+                        }
+                    } else if self.sim.mobs.toggle_parrot_sit(eid) {
+                        // right-click a tamed parrot → sit/stand toggle
+                        // (VERIFIED 17w14a)
+                        self.place_timer = 0.3;
+                    }
+                }
                 // ---- Phase E3 (1.5–1.6): equine interactions (mount /
                 // saddle / feed / lead) — vanilla interaction priority
                 // over blocks, the villager pattern ----
@@ -8044,6 +8173,33 @@ impl GameApp {
                                         2
                                     };
                                     log_axis_state(b, axis)
+                                } else if is_glazed_terracotta(b) {
+                                    // 1.12 (World of Color): glazed terracotta
+                                    // places facing the PLAYER'S look
+                                    // direction — 4 states per color (VERIFIED
+                                    // w/Glazed_Terracotta §Placement: "When
+                                    // placed, glazed terracotta's texture
+                                    // rotates relative to the direction the
+                                    // player is facing while placing the
+                                    // block" + the changelog's "Can be placed
+                                    // in 4 directions: north, south, west,
+                                    // and east"). Facing index 0..3 =
+                                    // N/E/S/W (the engine convention).
+                                    let yaw =
+                                        ((self.player.yaw.to_degrees() % 360.0) + 360.0) % 360.0;
+                                    // the player's LOOK direction (the
+                                    // forward vector is (sin yaw, 0, -cos
+                                    // yaw): yaw 0 = north, 90 = west)
+                                    let facing = match yaw {
+                                        315.0..=360.0 | 0.0..=45.0 => 0, // north
+                                        45.0..=135.0 => 1,               // west
+                                        135.0..=225.0 => 2,               // south
+                                        _ => 3,                           // east
+                                    };
+                                    glazed_terracotta_state(
+                                        (b - GLAZED_TERRACOTTA_BASE) as u8,
+                                        facing,
+                                    )
                                 } else if b == OAK_SLAB {
                                     // vanilla slabs: clicking the TOP of a block →
                                     // bottom slab; the UNDERSIDE → top slab

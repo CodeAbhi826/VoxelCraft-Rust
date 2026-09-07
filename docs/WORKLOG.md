@@ -1583,3 +1583,106 @@ totem,woodland_mansion}.json`), the earlier round's search verdicts
   by the round's tests.)
 
 **Commit:** this entry (1.11 bracket, recovered + completed).
+
+## 2026-09-07 — MC 1.12 bracket "World of Color Update" (Phase 1.12) — recovered from an interrupted session + completed — commit this-entry
+
+**Task:** the 1.12 (World of Color Update) version bracket. **Honesty
+note on the round's shape:** the implementation session died mid-work —
+an unpushed local commit (`2c87f3b`, message a bare UUID) carried the
+whole bracket body (V8 registry window, two mobs, the concrete/powder/
+glazed-terracotta families, blindness, 17 inline tests, all research
+captures) but no WORKLOG entry, no README row, and no research record
+in docs/research/. This session audited the carried code line-by-line
+against the live captures, verified the design decisions, completed the
+round's documentation to the standard protocol, and prepared the push
+(the standing CI gate — 471/471 tests, wasm clean — runs on push).
+
+**Sources:** the live changelog capture
+(`voxelcraft/scripts/v112_page_changelog_text.txt` +
+`v112_page_changelog.json`), per-feature page captures
+(`v112_page_{concrete,concrete_powder,glazed_terracotta,effect,
+illusioner,parrot}.json` + `_text.txt`), all fetched live
+2026-09-07 (pre-implementation) — recorded in
+`docs/research/phase-v112-1.12-research.md`.
+
+**Implemented (all constants live-verified against the captures):**
+
+- **Blocks — V8 registry window (ids 291..=360):** the bracket's
+  decorative core, 48 full blocks + the egg item:
+  - **concrete ×16** — hardness 1.8, flat vibrant colors (the
+    changelog's headline palette item; w/Concrete);
+  - **concrete powder ×16** — hardness 0.5, gravity-affected like
+    sand/gravel (w/Concrete_Powder), and the signature mechanic:
+    **solidifies to concrete when touching water, checked BEFORE
+    falling** (w/Concrete_Powder §Usage: "when it touches water, it
+    turns into a concrete block"; covers both falling-into and
+    placed-next-to water);
+  - **glazed terracotta ×16** — hardness 1.4, obtained by smelting
+    stained terracotta (0.1 XP per — the enchanting/furnace XP row),
+    4-directional facing with per-rotation top/bottom art;
+  - **parrot spawn egg** (kind 30).
+- **Mobs (MOB_DATA 30→32):**
+  - **parrot** — 6 HP passive, speed 0.2 (infobox), 5 variants
+    (red/blue/lime/cyan/gray — the Variant NBT table), jungle spawn
+    weight 40/93 = 43.01% over leaves+grass, groups of 1–2, drops
+    1–3 XP, **taming**: 1/10 per seed feed (w/Parrot §Taming),
+    seeds heal, **a cookie is instant death** (the engine's
+    poison-free form of vanilla's fatal cookie), right-click sit
+    toggle, follows the tamer with a 12-block teleport
+    (cat-parity), gentle vex-style steering while flying;
+  - **illusioner** — 32 HP hostile, speed 0.5, **no natural spawns
+    and no spawn egg** (vanilla parity: raid-only in Java 1.12+;
+    palette-only here), the spell kit: **Blindness** on the player
+    (20 s — w/Illusioner §Casting_Blindness) queued through a
+    game-layer pending-spell vector, and the defensive
+    **Invisibility + 4 false duplicates** refresh cycle.
+- **Status effect — Blindness** (id 15, negative): close black fog
+  at the render layer + sprinting blocked (w/Effect §Blindness).
+  Critical hits while blinded are a 1.9-combat detail the engine
+  does not model — disclosed.
+- **Crafting — the engine's first truly SHAPELESS 9-slot recipe:**
+  4 sand + 4 gravel + any dye → 8 concrete powder of the dye's
+  color (w/Concrete_Powder §Crafting + the changelog's own
+  "shapeless" callout; the matcher ignores grid position, rejects
+  wrong counts and multiple dyes).
+- **Art (v112_art.rs, 379 lines, clean-room):** 16 flat vibrant
+  concrete, 16 grainy powder aggregates, glazed terracotta as 16
+  4-rotation top/bottom pairs + 16 shared side tiles, parrot 5
+  variant tiles, illusioner tile — plus the **atlas row-math fix**
+  (32-tile rows; the old `%16/16` indexing wrapped at 16 and would
+  have smeared the 1.12 tiles across neighbors).
+
+**Tests:** +17 inline — `v112_v8_registry_window`,
+`v112_block_flags_and_sounds`, `v112_names_and_tiles`,
+`v112_concrete_powder_shapeless_recipe`,
+`v112_powder_recipe_rejects_wrong_counts`,
+`v112_parrot_stats_and_variants`,
+`v112_parrot_taming_roll_and_sit_toggle`,
+`v112_parrot_cookie_is_instant_death`,
+`v112_parrot_follows_and_teleports_at_12_blocks`,
+`v112_illusioner_stats_and_blindness_spell`,
+`v112_illusioner_never_spawns_naturally`, `v112_powder_falls_like_sand`,
+`v112_powder_touching_water_solidifies`,
+`v112_powder_without_water_stays_powder`,
+`v112_all_powder_colors_solidify`, + the art/atlas tests. Suite
+expected 471/471 (454 + 17) pending the push's CI gate.
+
+**Deferred with reasons (recorded here, per the standing protocol):**
+advancements (1.12's flagship system — no advancement engine), the
+function/command system (no command parser), colored beds (no bed
+block), the recipe book + knowledge book (no recipe-UI system),
+crafting-tweaks gamerules (no gamerule system), dye ACQUISITION as an
+economy (dyes are palette items feeding the powder recipe — the
+standing disclosure since the 1.12 code comment), the iron nugget
+(no nugget item), the "sound of milk" and mob-particle rows (N/A
+to this engine's scope).
+
+### Known issues & regressions
+
+- None new expected. The atlas row-math change (`%16/16` → 32-tile
+  rows) touches shared indexing — pinned by the art/atlas tests and
+  the drift test on the existing tile layout.
+
+**Commit:** this entry (1.12 bracket, recovered + completed; the
+interrupted session's body amended to carry this documentation and a
+real commit message).

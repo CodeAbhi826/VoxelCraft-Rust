@@ -121,6 +121,26 @@ pub enum MobKind {
     /// including water and lava", 5 XP, iron sword never drops
     /// (HandDropChances 0), summoned by evokers only
     Vex,
+    // ---- 1.12 bracket (World of Color Update, live 2026-09-07) ----
+    /// 1.12: the parrot — VERIFIED (w/Parrot live): 6 HP passive,
+    /// speed 0.2, jungle spawn weight 40/93 (43.01%), groups 1–2,
+    /// 5 color variants (red "red_blue"/blue/green/cyan "yellow_blue"/
+    /// gray), tamed with seeds at 1/10 per feeding (w/Parrot §Taming:
+    /// "Each item fed has a 1⁄10 chance of successfully taming them"),
+    /// a fed cookie kills instantly ("the parrot receives 2128
+    /// (3.4028 x 10^38)"), drops 1–2 feathers + 1–3 XP, cannot breed
+    /// ("Unlike most passive mobs, parrots cannot be bred"), follows
+    /// the tamer and teleports at 12+ blocks
+    Parrot,
+    /// 1.12: the illusioner — VERIFIED (w/Illusioner live): 32 HP
+    /// hostile illager, speed 0.5, bow 2–5 HP Easy/Normal (3–5 Hard)
+    /// fired every second ("three times faster than a skeleton"),
+    /// casts Blindness 20 s on first engaging a player, then the mirror
+    /// spell (Invisibility 60 s, refreshed + 4 false duplicates),
+    /// targets players (16×4×16 box), no spawn egg, "Unused and
+    /// present only in Java Edition" — spawns ONLY via the direct
+    /// spawn API (the engine-native /summon stand-in)
+    Illusioner,
 }
 
 impl MobKind {
@@ -153,6 +173,8 @@ impl MobKind {
             "stray" => MobKind::Stray,
             "husk" => MobKind::Husk,
             "llama" => MobKind::Llama,
+            "parrot" => MobKind::Parrot,
+            "illusioner" => MobKind::Illusioner,
             "vindicator" => MobKind::Vindicator,
             "evoker" => MobKind::Evoker,
             "vex" => MobKind::Vex,
@@ -190,6 +212,8 @@ impl MobKind {
             MobKind::Stray => "minecraft:stray",
             MobKind::Husk => "minecraft:husk",
             MobKind::Llama => "minecraft:llama",
+            MobKind::Parrot => "minecraft:parrot",
+            MobKind::Illusioner => "minecraft:illusioner",
             MobKind::Vindicator => "minecraft:vindicator",
             MobKind::Evoker => "minecraft:evoker",
             MobKind::Vex => "minecraft:vex",
@@ -230,6 +254,10 @@ impl MobKind {
             MobKind::Vindicator => TILE_VINDICATOR,
             MobKind::Evoker => TILE_EVOKER,
             MobKind::Vex => TILE_VEX,
+            // 1.12: the parrot base tile — build_vertices picks the
+            // per-VARIANT sprite (red/blue/green/cyan/gray)
+            MobKind::Parrot => TILE_PARROT_BASE,
+            MobKind::Illusioner => TILE_ILLUSIONER,
         }
     }
 
@@ -259,6 +287,8 @@ impl MobKind {
                 | MobKind::Vindicator
                 | MobKind::Evoker
                 | MobKind::Vex
+                // 1.12 (VERIFIED w/Illusioner infobox "Behavior Hostile")
+                | MobKind::Illusioner
         )
     }
     pub fn neutral(self) -> bool {
@@ -311,6 +341,9 @@ impl MobKind {
             26 => MobKind::Vex,
             27 => MobKind::Husk,
             28 => MobKind::Stray,
+            // 1.12: the parrot egg (changelog §Items: "Parrot Spawn
+            // Egg") — kind 30
+            30 => MobKind::Parrot,
             _ => MobKind::Chicken,
         }
     }
@@ -354,11 +387,17 @@ impl MobKind {
             // Husk spawn egg, Stray spawn egg"): kinds 27/28
             MobKind::Husk => 27,
             MobKind::Stray => 28,
+            // 1.12: the parrot egg (kind 30 — the V8 egg window)
+            MobKind::Parrot => 30,
             // F-series mobs without eggs (1.8 rabbit, 1.10 polar bear)
             // — 255 = "no egg" sentinel (the rabbit egg is a standing
             // 1.8-bracket deferral, the polar-bear egg a 1.10 one; both
             // out of the 1.11 scope, disclosed)
             MobKind::Rabbit | MobKind::PolarBear => 255,
+            // 1.12: the illusioner has NO spawn egg in vanilla (VERIFIED
+            // w/Illusioner: "Does not currently have a spawn egg, so can
+            // only be summoned with /summon") — the same 255 sentinel
+            MobKind::Illusioner => 255,
         }
     }
 }
@@ -383,7 +422,7 @@ pub struct MobDef {
     pub xp: i32,
 }
 
-pub const MOB_DATA: [MobDef; 30] = [
+pub const MOB_DATA: [MobDef; 32] = [
     MobDef {
         kind: MobKind::Zombie,
         health: 20.0,
@@ -730,6 +769,36 @@ pub const MOB_DATA: [MobDef; 30] = [
         width: 1.4,
         xp: 2, // 1–3 XP (VERIFIED w/Mule §Drops)
     },
+    // ---- 1.12 bracket (World of Color, live-verified 2026-09-07) ----
+    MobDef {
+        // VERIFIED w/Parrot infobox: 6 HP, passive, "Speed 0.2";
+        // 1–3 XP (w/Parrot §Drops: "1–3XP experience orbs are dropped
+        // when parrots are killed by a player"); hitbox 0.9 tall — the
+        // wiki gives 0.9 height / 0.5 width per the entity data page
+        kind: MobKind::Parrot,
+        health: 6.0,
+        damage: 0.0,
+        speed_attr: 0.2,
+        armor: 0.0,
+        height: 0.9,
+        width: 0.5,
+        xp: 2, // 1–3 XP (VERIFIED w/Parrot §Drops)
+    },
+    MobDef {
+        // VERIFIED w/Illusioner infobox: 32 HP, hostile, "Speed 0.5",
+        // bow "Easy and Normal: 2HP – 5HP / Hard: 3HP – 5HP" → Normal
+        // mid 3.5 (the skeleton's arrow-mid convention); 5 XP (w/Illusioner
+        // §Drops: "5XP experience orbs are dropped"); illager hitbox
+        // (1.95 tall like the vindicator)
+        kind: MobKind::Illusioner,
+        health: 32.0,
+        damage: 3.5,
+        speed_attr: 0.5,
+        armor: 0.0,
+        height: 1.95,
+        width: 0.6,
+        xp: 5,
+    },
 ];
 
 #[inline]
@@ -911,6 +980,12 @@ pub struct Mob {
     /// - Ocelot: 1 = trusting (fed raw cod/salmon — VERIFIED w/Ocelot)
     /// - ZombieVillager: 1 = is curing (aux counts down)
     /// - Mooshroom: 0 red / 1 brown (lightning transform, VERIFIED)
+    /// - 1.12 Parrot: bits 0..=2 = the color variant 0..=4 (red/blue/
+    ///   green/cyan/gray — VERIFIED w/Parrot Variant NBT table); bit 7
+    ///   (0x80) = tamed (fed seeds — the 1/10 roll); the SIT state lives
+    ///   in aux bit 0 (right-click toggle, VERIFIED 17w14a: "The
+    ///   right-click action has been changed: right-clicking on a tamed
+    ///   parrot now tells it to sit")
     pub variant: u8,
     /// Phase E1 per-kind timer/aux:
     /// - ZombieVillager: cure countdown (3600..=6000 ticks, VERIFIED)
@@ -996,6 +1071,12 @@ pub struct MobSystem {
     /// 1.11 evoker fang strikes on the player: armor-ignoring damage
     /// amounts (VERIFIED w/Evoker: "not mitigated by armor").
     pub pending_player_fang: Vec<f32>,
+    /// 1.12 illusioner spells, consumed by the game layer: Blindness
+    /// applications on the player (ticks each — the 20 s spell,
+    /// VERIFIED w/Illusioner §Casting_Blindness: "This spell gives a
+    /// Blindness effect that lasts for 20 seconds upon first engaging
+    /// a new player opponent").
+    pub pending_player_blindness: Vec<i32>,
     /// mob deaths (drops + XP handled by the game layer); the u8 carries
     /// the per-kind variant (magma-cube size code etc.)
     pub deaths: Vec<(MobKind, [f32; 3], u8)>,
@@ -1029,6 +1110,7 @@ impl MobSystem {
             deaths: Vec::new(),
             pending_summons: Vec::new(),
             pending_player_fang: Vec::new(),
+            pending_player_blindness: Vec::new(),
             pending_damage: Vec::new(),
             explosions: Vec::new(),
             cures: Vec::new(),
@@ -1193,6 +1275,8 @@ impl MobSystem {
         // 1.11: the evoker spell queues (drained by the game layer)
         let pending_summons = &mut self.pending_summons;
         let pending_player_fang = &mut self.pending_player_fang;
+        // 1.12: the illusioner blindness queue
+        let pending_blindness = &mut self.pending_player_blindness;
         // Phase E1: read-only snapshot for mob-vs-mob targeting (snow
         // golem / iron golem / ocelot scan for other mobs)
         let snapshot: Vec<(u32, MobKind, [f32; 3], u8)> = self
@@ -1238,6 +1322,7 @@ impl MobSystem {
                 pending,
                 pending_summons,
                 pending_player_fang,
+                pending_blindness,
             );
             physics_tick(m, world);
         }
@@ -1610,7 +1695,19 @@ impl MobSystem {
             // /w/Java_Edition_1.10 §World generation changes: "Now don't
             // spawn any passive mobs other than rabbits and the new polar
             // bears", live 2026-09-06)
-            let kind = if biome == vc_world::gen::Biome::Jungle && self.rng.next_range(4) == 0 {
+            let kind = if biome == vc_world::gen::Biome::Jungle && self.rng.next_f32() < 0.4301 {
+                // 1.12: the parrot is the DOMINANT jungle passive —
+                // weight 40/93 = 43.01% (VERIFIED w/Parrot §Spawning:
+                // "Parrots naturally spawn in groups of 1–2 in jungles
+                // ... above logs, leaves, grass blocks, or air"; the
+                // spawn-above-air height quirk is the engine's standard
+                // floor-grass roll — disclosed)
+                MobKind::Parrot
+            } else if biome == vc_world::gen::Biome::Jungle && self.rng.next_f32() < 0.0215 {
+                // ocelots: 2/93 ≈ 2.2% of the jungle creature roll
+                // (VERIFIED — the parrot page's spawn table carries the
+                // full jungle mix; the pre-1.12 engine's 1/4 ocelot
+                // share is superseded by the 1.12 weights)
                 MobKind::Ocelot
             } else if biome == vc_world::gen::Biome::Plains && self.rng.next_range(9) == 0 {
                 // plains: horse herd (5/46 ≈ 1/9 of creature rolls)
@@ -1655,6 +1752,10 @@ impl MobSystem {
                 2 + (self.rng.next_range(5)) as usize // 2–6
             } else if kind == MobKind::Llama {
                 4 + (self.rng.next_range(3)) as usize // 4–6 (VERIFIED)
+            } else if kind == MobKind::Parrot {
+                // 1.12: parrot groups are 1–2 (VERIFIED w/Parrot
+                // §Spawning: "spawn in groups of 1–2")
+                1 + (self.rng.next_range(2)) as usize
             } else {
                 2 + (self.rng.next_range(3)) as usize
             };
@@ -1671,6 +1772,10 @@ impl MobSystem {
                     } else {
                         1 + (self.rng.next_range(3)) as u8
                     }
+                } else if kind == MobKind::Parrot {
+                    // 1.12: the color variant 0..=4 (red/blue/green/cyan/
+                    // gray — VERIFIED w/Parrot Variant NBT table; uniform)
+                    (self.rng.next_range(5)) as u8
                 } else {
                     0
                 };
@@ -1994,6 +2099,78 @@ pub enum FeedOutcome {
     LoveMode(u32),
 }
 
+/// 1.12 parrot feed outcome (w/Parrot §Taming/§Cookies):
+/// - seeds (any of the 4): a 1/10 taming roll — `Tamed` on success,
+///   `Ate` otherwise (the item is consumed either way)
+/// - cookie: INSTANT DEATH — "the parrot receives 2128 (3.4028 x 10^38)"
+///   damage; the game layer routes it through `damage()` so the death
+///   sweep drops feathers + XP (VERIFIED 17w13a pre5: "Killing a parrot
+///   by feeding a cookie now counts as if the parrot was killed by the
+///   player who fed it")
+/// - anything else: not parrot food → None (no consumption)
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ParrotFeedOutcome {
+    Ate,
+    Tamed,
+    CookieDeath,
+}
+
+impl MobSystem {
+    /// 1.12: feed a parrot. VERIFIED w/Parrot §Taming: "Parrots can be
+    /// tamed by feeding wheat seeds, melon seeds, pumpkin seeds,
+    /// beetroot seeds ... Each item fed has a 1⁄10 chance of successfully
+    /// taming them" (the 1.12-era set; torchflower seeds/pitcher pods
+    /// are 1.20+ — out of bracket).
+    pub fn try_feed_parrot(
+        &mut self,
+        id: u32,
+        food: u16,
+        rng: &mut Rng,
+    ) -> Option<ParrotFeedOutcome> {
+        let is_parrot = self
+            .list
+            .iter()
+            .find(|m| m.id == id)
+            .map(|m| m.kind == MobKind::Parrot)
+            .unwrap_or(false);
+        if !is_parrot {
+            return None;
+        }
+        if food == COOKIE {
+            // VERIFIED w/Parrot: "feeding a cookie to a parrot kills
+            // it ... the parrot receives 2128 (3.4028 x 10^38)" — route
+            // through damage() so drops/XP/death sweep all run
+            let _ = self.damage(id, 2128.0);
+            return Some(ParrotFeedOutcome::CookieDeath);
+        }
+        if !is_seeds(food) {
+            return None; // not parrot food
+        }
+        // the 1/10 taming roll (VERIFIED)
+        if rng.next_range(10) == 0 {
+            if let Some(m) = self.list.iter_mut().find(|m| m.id == id) {
+                m.variant |= 0x80; // the tamed bit
+            }
+            return Some(ParrotFeedOutcome::Tamed);
+        }
+        Some(ParrotFeedOutcome::Ate)
+    }
+
+    /// 1.12: toggle a tamed parrot's sitting state (VERIFIED 17w14a:
+    /// "The right-click action has been changed: right-clicking on a
+    /// tamed parrot now tells it to sit"). Returns true if toggled
+    /// (only tamed parrots respond).
+    pub fn toggle_parrot_sit(&mut self, id: u32) -> bool {
+        if let Some(m) = self.list.iter_mut().find(|m| m.id == id) {
+            if m.kind == MobKind::Parrot && m.variant & 0x80 != 0 {
+                m.aux ^= 1; // the sit bit
+                return true;
+            }
+        }
+        false
+    }
+}
+
 // ------------------------------------------------------------- free fns --
 
 /// magma-cube size (blocks) from the variant code (vanilla NBT Size tag:
@@ -2033,6 +2210,8 @@ fn ai_tick(
     // 1.11 evoker spell queues (game-layer consumption)
     pending_summons: &mut Vec<(u32, usize)>,
     pending_player_fang: &mut Vec<f32>,
+    // 1.12 illusioner spell queue (game-layer consumption)
+    pending_blindness: &mut Vec<i32>,
 ) {
     let d = def(m.kind);
     let speed = if let Some(eq) = m.equine.as_ref() {
@@ -2354,6 +2533,120 @@ fn ai_tick(
             // idle hover drift
             wander(rng, m, speed * 0.3);
             m.vel[1] += (0.4 - m.vel[1]) * 0.05;
+        }
+        return;
+    }
+
+    // ---- 1.12: PARROT — the flying passive. Variant encoding: bits 0..2
+    // = color 0..=4, bit 7 = tamed; aux bit 0 = sitting (the right-click
+    // toggle), bits 1.. = the flight-phase counter. VERIFIED w/Parrot:
+    // "Fly around, but sit when 'tired'" (changelog §Mobs — the
+    // unquantified rest cycle approximated as periodic settling),
+    // "a tamed parrot follows the player and teleports if there is a
+    // distance of 12 blocks between it and the player", "Follow and
+    // crowd around nearby mobs" (the follow arm approximates at the
+    // tamer; wild crowd-around is the wander). Shoulder perching,
+    // jukebox dancing, and hostile-sound mimicry are out of engine
+    // scope (no player model, no jukebox, no mob-sound audio
+    // imitations — disclosed).
+    if m.kind == MobKind::Parrot {
+        let tamed = m.variant & 0x80 != 0;
+        let sitting = m.aux & 1 != 0;
+        // flight-phase counter (bits 1..): drives the rest cycle
+        let phase = (m.aux >> 1) + 1;
+        m.aux = ((phase & 0x3FFF) << 1) | (m.aux & 1);
+        if sitting {
+            // the sit toggle (17w14a: "right-clicking on a tamed parrot
+            // now tells it to sit") — a sitting parrot stays put
+            m.vel[0] *= 0.6;
+            m.vel[1] = 0.0;
+            m.vel[2] *= 0.6;
+            return;
+        }
+        if tamed {
+            // the 12-block teleport (VERIFIED w/Parrot)
+            if dist > 12.0 {
+                m.pos = [p[0] - 0.6, p[1] + 0.2, p[2]];
+                m.vel = [0.0; 3];
+            } else if dist > 4.0 {
+                // fly to the tamer (vex-style steering, gentler)
+                let dy = p[1] + 1.0 - m.pos[1];
+                let full = (dx * dx + dy * dy + dz * dz).sqrt().max(1e-4);
+                face_player(m);
+                m.vel[0] += (dx / full * speed - m.vel[0]) * 0.25;
+                m.vel[1] += (dy / full * 0.45 - m.vel[1]) * 0.25;
+                m.vel[2] += (dz / full * speed - m.vel[2]) * 0.25;
+            } else {
+                // hover near the tamer's head height
+                face_player(m);
+                m.vel[0] *= 0.9;
+                m.vel[2] *= 0.9;
+                m.vel[1] += ((p[1] + 1.6 - m.pos[1]) * 0.06 - m.vel[1]) * 0.1;
+            }
+        } else {
+            // wild: "fly around" — wander + a gentle altitude wave; the
+            // rest cycle settles it every ~20 s for ~5 s ("sit when
+            // 'tired'" — the changelog's own wording, unquantified →
+            // clean-room cycle, disclosed)
+            let resting = phase % 500 >= 450;
+            if resting {
+                m.vel[0] *= 0.8;
+                m.vel[2] *= 0.8;
+                m.vel[1] += (-0.25 - m.vel[1]) * 0.08;
+            } else {
+                wander(rng, m, speed * 0.55);
+                m.vel[1] += ((phase as f32 * 0.07).sin() * 0.22 - m.vel[1]) * 0.05;
+            }
+        }
+        return;
+    }
+
+    // ---- 1.12: ILLUSIONER — the hostile spell-casting archer.
+    // VERIFIED w/Illusioner: bow fired every second ("firing an arrow
+    // every second, three times faster than a skeleton" — 20 ticks),
+    // "casts its Blindness spell ... upon first engaging a new player
+    // opponent" (20 s — the regional-difficulty > 2 gate is a
+    // Normal-difficulty engine simplification, disclosed), the mirror
+    // spell = Invisibility 60 s + 4 false duplicates ("As long as an
+    // illusioner is engaged in combat, it casts an Invisibility status
+    // effect on itself that lasts 60 seconds and refreshes"), and it
+    // strafes while keeping distance ("moves quickly on a semi-circular
+    // fashion and always tries to maintain a consistent distance").
+    // Encoding: variant bit 0 = the has-cast-blindness gate (once per
+    // opponent); aux = invisibility ticks left (0 = visible, no
+    // duplicates); the strafe cycle rides the invisibility counter.
+    if m.kind == MobKind::Illusioner {
+        if aggro && dist < 16.0 {
+            face_player(m);
+            // the mirror spell: invisibility 60 s, refreshed while
+            // engaged ("casts ... that lasts 60 seconds and refreshes
+            // the effect whenever the Invisibility's time runs out")
+            let invis = if m.aux < 20 { 20 * 60 } else { m.aux - 1 };
+            m.aux = invis;
+            // semi-circular strafe: slide tangentially, direction
+            // alternating each 40 ticks (derived from the counter)
+            let dir = if (invis / 40) % 2 == 0 { 1.0 } else { -1.0 };
+            let tx = -dz / dist * dir;
+            let tz = dx / dist * dir;
+            // keep ~10 blocks: advance or retreat along the radial
+            let radial = if dist > 10.0 { 1.0 } else { -0.6 };
+            m.vel[0] += (dx / dist * speed * radial * 0.7 + tx * speed * 0.5 - m.vel[0]) * 0.15;
+            m.vel[2] += (dz / dist * speed * radial * 0.7 + tz * speed * 0.5 - m.vel[2]) * 0.15;
+            // the blindness spell: once per opponent, on first engage
+            if m.variant & 1 == 0 && !invuln {
+                m.variant |= 1; // the once-gate
+                pending_blindness.push(20 * 20); // 20 s (VERIFIED)
+            }
+            // the bow: every 20 ticks (1/s — VERIFIED); arrow damage
+            // rolls at fire time (Easy/Normal 2–5, the skeleton path)
+            if m.attack_cd == 0 && dist > 2.0 {
+                m.attack_cd = 20; // 1/s (VERIFIED)
+                spawn_projectile(m, p, rng, arrows, ProjKind::Arrow, 10.0, d.damage);
+            }
+        } else {
+            // idle: drop the mirror (duplicates vanish with it) and wander
+            m.aux = 0;
+            wander(rng, m, speed * 0.4);
         }
         return;
     }
@@ -2889,9 +3182,25 @@ pub fn build_vertices(
 ) {
     for m in list {
         let d = def(m.kind);
-        let tile = m.kind.sprite_tile();
-        let tx = (tile % 16) as f32;
-        let ty = (tile / 16) as f32;
+        let mut tile = m.kind.sprite_tile();
+        // [1.12 fix] 512px atlas = 32 tiles/row — the old %16//16 math
+        // sampled out-of-bounds garbage for every sprite tile >= 256
+        // (1.10/1.11 mob sprites; latent since the 512px-atlas merge)
+        // 1.12: parrots carry the per-VARIANT sprite (red/blue/green/
+        // cyan/gray — the kind-level tile is only the HUD fallback);
+        // illusioners render GHOSTED (alpha via the dim tint) while
+        // their Invisibility spell runs, plus 4 false duplicates at
+        // fixed offsets (VERIFIED w/Illusioner: "When an illusioner
+        // becomes invisible ... it creates four false duplicates of
+        // itself. These hover and waver at short distances ... they do
+        // not space themselves out until the first time the illusioner
+        // is attacked. They face in exactly the same direction as the
+        // illusioner and move somewhat in step with the original")
+        if m.kind == MobKind::Parrot {
+            tile = TILE_PARROT_BASE + ((m.variant & 0x07).min(4) as u16);
+        }
+        let tx = (tile % 32) as f32;
+        let ty = (tile / 32) as f32;
         let (s, c) = (m.yaw.sin(), m.yaw.cos());
         let rr = [
             c * right[0] + s * right[2],
@@ -2910,25 +3219,47 @@ pub fn build_vertices(
         let corners = [
             (
                 [-rr[0] * half, 0.0, -rr[2] * half],
-                [tx / 16.0, (ty + 1.0) / 16.0],
+                [tx / 32.0, (ty + 1.0) / 32.0],
             ),
             (
                 [rr[0] * half, 0.0, rr[2] * half],
-                [(tx + 1.0) / 16.0, (ty + 1.0) / 16.0],
+                [(tx + 1.0) / 32.0, (ty + 1.0) / 32.0],
             ),
             (
                 [rr[0] * half, h, rr[2] * half],
-                [(tx + 1.0) / 16.0, ty / 16.0],
+                [(tx + 1.0) / 32.0, ty / 32.0],
             ),
-            ([-rr[0] * half, h, -rr[2] * half], [tx / 16.0, ty / 16.0]),
+            ([-rr[0] * half, h, -rr[2] * half], [tx / 32.0, ty / 32.0]),
         ];
-        for ci in [0usize, 1, 2, 0, 2, 3] {
-            let (c, uv) = corners[ci];
-            out.push(vc_particles::particles::ParticleVertex {
-                pos: [m.pos[0] + c[0], m.pos[1] + c[1], m.pos[2] + c[2]],
-                uv,
-                col,
-            });
+        // 1.12: an invisible illusioner renders ONLY its 4 false
+        // duplicates ("it creates four false duplicates of itself.
+        // These hover and waver at short distances from the actually
+        // invisible illusioner ... They face in exactly the same
+        // direction as the illusioner and move somewhat in step with
+        // the original" — VERIFIED w/Illusioner; the waver rides a
+        // per-frame sine, the offsets are the uns-paced initial ring)
+        let origins: Vec<[f32; 3]> = if m.kind == MobKind::Illusioner && m.aux > 0 {
+            let t = m.aux as f32 * 0.31;
+            let (a, b) = (t.sin(), t.cos());
+            [
+                [m.pos[0] + 2.0 + a * 0.5, m.pos[1] + 0.4 + b * 0.3, m.pos[2] - 2.0],
+                [m.pos[0] - 2.0, m.pos[1] + 0.6 + a * 0.3, m.pos[2] + 2.0 + b * 0.5],
+                [m.pos[0] + 1.5 - b * 0.4, m.pos[1] + 1.0, m.pos[2] + 1.5 + a * 0.4],
+                [m.pos[0] - 1.5 + a * 0.4, m.pos[1] + 0.2, m.pos[2] - 1.5 - b * 0.4],
+            ]
+            .to_vec()
+        } else {
+            vec![m.pos]
+        };
+        for org in origins {
+            for ci in [0usize, 1, 2, 0, 2, 3] {
+                let (c, uv) = corners[ci];
+                out.push(vc_particles::particles::ParticleVertex {
+                    pos: [org[0] + c[0], org[1] + c[1], org[2] + c[2]],
+                    uv,
+                    col,
+                });
+            }
         }
     }
 }
@@ -2952,7 +3283,7 @@ pub fn build_arrow_vertices(
                     -right[1] * half - up[1] * half,
                     -right[2] * half - up[2] * half,
                 ],
-                [tx / 16.0, (ty + 1.0) / 16.0],
+                [tx / 32.0, (ty + 1.0) / 32.0],
             ),
             (
                 [
@@ -2960,7 +3291,7 @@ pub fn build_arrow_vertices(
                     right[1] * half - up[1] * half,
                     right[2] * half - up[2] * half,
                 ],
-                [(tx + 1.0) / 16.0, (ty + 1.0) / 16.0],
+                [(tx + 1.0) / 32.0, (ty + 1.0) / 32.0],
             ),
             (
                 [
@@ -2968,7 +3299,7 @@ pub fn build_arrow_vertices(
                     right[1] * half + up[1] * half,
                     right[2] * half + up[2] * half,
                 ],
-                [(tx + 1.0) / 16.0, ty / 16.0],
+                [(tx + 1.0) / 32.0, ty / 32.0],
             ),
             (
                 [
@@ -2976,7 +3307,7 @@ pub fn build_arrow_vertices(
                     -right[1] * half + up[1] * half,
                     -right[2] * half + up[2] * half,
                 ],
-                [tx / 16.0, ty / 16.0],
+                [tx / 32.0, ty / 32.0],
             ),
         ];
         for ci in [0usize, 1, 2, 0, 2, 3] {
@@ -3127,6 +3458,7 @@ mod tests {
             &mut Vec::new(),
             &mut Vec::new(),
             &mut Vec::new(),
+            &mut Vec::new(),
         );
         sys.list.insert(0, mob);
         sys.rng = rng;
@@ -3170,6 +3502,7 @@ mod tests {
             &mut Vec::new(),
             &mut Vec::new(),
             &mut Vec::new(),
+            &mut Vec::new(),
         );
         sys.list.insert(0, mob);
         sys.rng = rng;
@@ -3188,6 +3521,7 @@ mod tests {
                 &mut sys.arrows,
                 &world,
                 &[],
+                &mut Vec::new(),
                 &mut Vec::new(),
                 &mut Vec::new(),
                 &mut Vec::new(),
@@ -3234,6 +3568,7 @@ mod tests {
                 &mut sys.arrows,
                 &world,
                 &[],
+                &mut Vec::new(),
                 &mut Vec::new(),
                 &mut Vec::new(),
                 &mut Vec::new(),
@@ -3390,7 +3725,7 @@ mod tests {
         // [merge] the kinds resolve in/out of names + eggs (16 E1 + 3
         // E2 + 3 E3 horse/donkey/mule + 4 F-series: rabbit 1.8, stray +
         // polar bear + husk 1.10)
-        assert_eq!(MOB_DATA.len(), 30); // + the four 1.11 mobs
+        assert_eq!(MOB_DATA.len(), 32); // + the four 1.11 mobs + parrot + illusioner (1.12)
         for d in MOB_DATA.iter() {
             assert_eq!(
                 MobKind::from_name(d.kind.name().strip_prefix("minecraft:").unwrap()),
@@ -3467,6 +3802,7 @@ mod tests {
                 &mut Vec::new(),
                 &mut Vec::new(),
                 &mut Vec::new(),
+                &mut Vec::new(),
             );
             sys.list.insert(0, mob);
             sys.rng = rng;
@@ -3484,7 +3820,7 @@ mod tests {
             provoked: false, lonely_t: 0, fall_dist: 0.0, variant: 0, aux: 0,
             wander_yaw: 0.0, wander_t: 0, equine: None };
         for _ in 0..5 {
-            ai_tick(&mut rng, &mut m, None, false, &mut Vec::new(), &mut Vec::new(), &desert, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
+            ai_tick(&mut rng, &mut m, None, false, &mut Vec::new(), &mut Vec::new(), &desert, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
         }
         assert!(m.health < 4.0, "desert heat melts the golem (1 HP/tick), hp={}", m.health);
     }
@@ -3512,6 +3848,7 @@ mod tests {
                 &mut Vec::new(),
                 &mut Vec::new(),
                 &mut Vec::new(),
+                &mut Vec::new(),
             );
             fired += sys.arrows.len() - before;
             sys.list.insert(0, mob);
@@ -3534,7 +3871,7 @@ mod tests {
         for _ in 0..30 {
             let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
             let mut mob = sys.list.remove(0);
-            ai_tick(&mut rng, &mut mob, sys.player, false, &mut sys.hits, &mut sys.arrows, &world, &[(zid, MobKind::Zombie, [5.5, 65.0, 6.5], 0)], &mut pend, &mut Vec::new(), &mut Vec::new());
+            ai_tick(&mut rng, &mut mob, sys.player, false, &mut sys.hits, &mut sys.arrows, &world, &[(zid, MobKind::Zombie, [5.5, 65.0, 6.5], 0)], &mut pend, &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
             sys.list.insert(0, mob);
             sys.rng = rng;
         }
@@ -3562,7 +3899,7 @@ mod tests {
         for _ in 0..ticks as usize + 2 {
             let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
             let mut mob = sys.list.remove(0);
-            ai_tick(&mut rng, &mut mob, sys.player, false, &mut sys.hits, &mut sys.arrows, &world, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
+            ai_tick(&mut rng, &mut mob, sys.player, false, &mut sys.hits, &mut sys.arrows, &world, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
             sys.list.insert(0, mob);
             sys.rng = rng;
         }
@@ -3605,7 +3942,7 @@ mod tests {
         let x0 = sys.list[0].pos[0];
         let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
         let mut mob = sys.list.remove(0);
-        ai_tick(&mut rng, &mut mob, sys.player, false, &mut sys.hits, &mut sys.arrows, &world, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
+        ai_tick(&mut rng, &mut mob, sys.player, false, &mut sys.hits, &mut sys.arrows, &world, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
         sys.list.insert(0, mob);
         sys.rng = rng;
         assert!(sys.list[0].pos[0] < x0 + 0.2, "fled away from the player");
@@ -3616,7 +3953,7 @@ mod tests {
         let x1 = sys2.list[0].pos[0];
         let mut rng2 = std::mem::replace(&mut sys2.rng, Rng::new(1));
         let mut mob2 = sys2.list.remove(0);
-        ai_tick(&mut rng2, &mut mob2, sys2.player, false, &mut sys2.hits, &mut sys2.arrows, &world2, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
+        ai_tick(&mut rng2, &mut mob2, sys2.player, false, &mut sys2.hits, &mut sys2.arrows, &world2, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
         sys2.list.insert(0, mob2);
         sys2.rng = rng2;
         assert!((sys2.list[0].pos[0] - x1).abs() < 0.05, "trusting ocelot stays");
@@ -3965,7 +4302,13 @@ mod v111_tests {
         assert_eq!(MobKind::from_egg(26), MobKind::Vex);
         assert_eq!(MobKind::Llama.egg_id(), 23);
         assert_eq!(MobKind::Evoker.egg_id(), 25);
-        assert_eq!(MOB_DATA.len(), 30);
+        // 1.12 (World of Color): parrot + illusioner — 32 kinds
+        assert_eq!(MOB_DATA.len(), 32);
+        assert_eq!(MobKind::from_egg(30), MobKind::Parrot);
+        assert_eq!(MobKind::Parrot.egg_id(), 30);
+        assert_eq!(MobKind::Illusioner.egg_id(), 255, "no spawn egg (VERIFIED)");
+        assert_eq!(MobKind::Illusioner.hostile(), true);
+        assert_eq!(MobKind::Parrot.hostile(), false);
     }
 
     /// llama spawns carry strength 1..=5 in the variant byte + equine
@@ -4205,6 +4548,207 @@ mod v111_tests {
         assert!(
             moved > 0.0 || m.vel[0] != 0.0 || m.vel[2] != 0.0,
             "vex moves freely through solid ground"
+        );
+    }
+}
+
+
+// ---------------- 1.12 bracket tests (World of Color Update) ----------------
+#[cfg(test)]
+mod v112_tests {
+    use super::*;
+
+    fn flat_world() -> World {
+        let mut w = World::new(11);
+        let mut c = vc_chunk::chunk::Chunk::empty();
+        for y in 0..=64i32 {
+            for lz in 0..16usize {
+                for lx in 0..16usize {
+                    c.set(lx, y as usize, lz, STONE);
+                }
+            }
+        }
+        w.insert_generated((0, 0), std::sync::Arc::new(c), Vec::new());
+        w
+    }
+
+    /// parrot: 6 HP, the 5 color variants, the 1/10 taming roll, the
+    /// cookie death (VERIFIED w/Parrot live 2026-09-07)
+    #[test]
+    fn v112_parrot_stats_and_variants() {
+        let d = def(MobKind::Parrot);
+        assert_eq!(d.health, 6.0, "w/Parrot infobox: 6 HP");
+        assert_eq!(d.speed_attr, 0.2, "w/Parrot infobox: Speed 0.2");
+        assert!(!d.kind.hostile(), "passive (w/Parrot infobox)");
+        // the 5 variant colors 0..=4
+        for v in 0u8..=4 {
+            let mut ms = MobSystem::new(100 + v as u64);
+            let id = ms.spawn_variant(MobKind::Parrot, 4, 65, 4, v).unwrap();
+            assert_eq!(ms.by_id(id).unwrap().variant & 0x0F, v);
+        }
+        // negative: variant 5 clamps in the RENDER path only; the data
+        // stays raw (the sprite gate .min(4))
+    }
+
+    #[test]
+    fn v112_parrot_taming_roll_and_sit_toggle() {
+        // the 1/10 roll: a fixed rng stream — force a success by
+        // feeding until tamed (bounded: 200 feeds at 1/10 → certain)
+        let mut ms = MobSystem::new(7);
+        let id = ms.spawn_variant(MobKind::Parrot, 4, 65, 4, 2).unwrap();
+        let mut rng = Rng::new(11);
+        let mut tamed = false;
+        let mut feeds = 0;
+        for _ in 0..200 {
+            let out = ms.try_feed_parrot(id, WHEAT_SEEDS, &mut rng);
+            feeds += 1;
+            match out {
+                Some(ParrotFeedOutcome::Tamed) => {
+                    tamed = true;
+                    break;
+                }
+                Some(ParrotFeedOutcome::Ate) => {}
+                _ => panic!("seeds are parrot food"),
+            }
+        }
+        assert!(tamed, "the 1/10 roll hits within 200 feeds");
+        assert!(feeds < 200, "the roll is per-feed (not first-try-only)");
+        let m = ms.by_id(id).unwrap();
+        assert!(m.variant & 0x80 != 0, "the tamed bit set");
+        // all four seeds are valid taming foods (VERIFIED w/Parrot)
+        for food in [WHEAT_SEEDS, MELON_SEEDS, PUMPKIN_SEEDS, BEETROOT_SEEDS] {
+            let mut ms2 = MobSystem::new(13);
+            let id2 = ms2.spawn_variant(MobKind::Parrot, 4, 65, 4, 0).unwrap();
+            let mut rng2 = Rng::new(5);
+            assert!(
+                ms2.try_feed_parrot(id2, food, &mut rng2).is_some(),
+                "seed item {food} is parrot food"
+            );
+        }
+        // the sit toggle only works on TAMED parrots (17w14a)
+        assert!(ms.toggle_parrot_sit(id), "tamed parrot toggles");
+        assert!(ms.by_id(id).unwrap().aux & 1 == 1, "sitting");
+        assert!(ms.toggle_parrot_sit(id), "toggle back");
+        assert!(ms.by_id(id).unwrap().aux & 1 == 0, "standing");
+        // untamed: no toggle
+        let mut ms3 = MobSystem::new(17);
+        let id3 = ms3.spawn_variant(MobKind::Parrot, 4, 65, 4, 1).unwrap();
+        assert!(!ms3.toggle_parrot_sit(id3), "untamed parrot ignores");
+    }
+
+    #[test]
+    fn v112_parrot_cookie_is_instant_death() {
+        // VERIFIED w/Parrot: "the parrot receives 2128 (3.4028 x 10^38)"
+        let mut ms = MobSystem::new(23);
+        let id = ms.spawn_variant(MobKind::Parrot, 4, 65, 4, 3).unwrap();
+        let mut rng = Rng::new(3);
+        let out = ms.try_feed_parrot(id, COOKIE, &mut rng);
+        assert_eq!(out, Some(ParrotFeedOutcome::CookieDeath));
+        assert!(ms.by_id(id).unwrap().health <= 0.0, "2128 damage kills a 6 HP parrot");
+        // the death sweep converts it (drops handled at the game layer)
+        let world = flat_world();
+        ms.tick(&world, (0, 0), 1);
+        assert!(
+            ms.deaths.iter().any(|(k, _, _)| *k == MobKind::Parrot),
+            "the cookie kill routes through the death sweep"
+        );
+        // non-food: no effect
+        let mut ms2 = MobSystem::new(29);
+        let id2 = ms2.spawn_variant(MobKind::Parrot, 4, 65, 4, 0).unwrap();
+        let mut rng2 = Rng::new(3);
+        assert!(ms2.try_feed_parrot(id2, CARROT, &mut rng2).is_none());
+        // feeding a non-parrot: no effect
+        let mut ms3 = MobSystem::new(31);
+        let cow = ms3.spawn_at(MobKind::Cow, 4, 65, 4).unwrap();
+        let mut rng3 = Rng::new(3);
+        assert!(ms3.try_feed_parrot(cow, WHEAT_SEEDS, &mut rng3).is_none());
+    }
+
+    #[test]
+    fn v112_parrot_follows_and_teleports_at_12_blocks() {
+        // VERIFIED w/Parrot: "a tamed parrot follows the player and
+        // teleports if there is a distance of 12 blocks between it and
+        // the player"
+        let mut ms = MobSystem::new(41);
+        let id = ms.spawn_variant(MobKind::Parrot, 20, 65, 20, 4).unwrap();
+        ms.list.iter_mut().find(|m| m.id == id).unwrap().variant |= 0x80; // tamed
+        ms.player = Some([4.5, 65.0, 4.5]); // ~22.6 blocks away
+        let world = flat_world();
+        let mut blind = Vec::new();
+        // one ai tick: the teleport fires immediately
+        {
+            let mut rng = std::mem::replace(&mut ms.rng, Rng::new(1));
+            let mut mob = ms.list.remove(0);
+            let mut hits = Vec::new();
+            let mut arrows = Vec::new();
+            let mut pend = Vec::new();
+            let mut summons = Vec::new();
+            let mut fang = Vec::new();
+            ai_tick(&mut rng, &mut mob, ms.player, false, &mut hits, &mut arrows, &world, &[], &mut pend, &mut summons, &mut fang, &mut blind);
+            ms.list.insert(0, mob);
+            ms.rng = rng;
+        }
+        let m = ms.by_id(id).unwrap();
+        let d = ((m.pos[0] - 4.5).powi(2) + (m.pos[2] - 4.5).powi(2)).sqrt();
+        assert!(d < 12.0, "teleported near the player (now {d:.1} blocks)");
+        let _ = blind;
+    }
+
+    /// illusioner: 32 HP, blindness on first engage (once), the mirror
+    /// spell (invisibility 60 s, refreshed), the 20-tick bow cadence
+    /// (VERIFIED w/Illusioner live 2026-09-07)
+    #[test]
+    fn v112_illusioner_stats_and_blindness_spell() {
+        let d = def(MobKind::Illusioner);
+        assert_eq!(d.health, 32.0, "w/Illusioner infobox: 32 HP");
+        assert_eq!(d.speed_attr, 0.5, "w/Illusioner infobox: Speed 0.5");
+        assert!(d.kind.hostile(), "hostile illager");
+        // engage: blindness queued ONCE at 20 s
+        let mut ms = MobSystem::new(43);
+        let id = ms.spawn_at(MobKind::Illusioner, 10, 65, 4).unwrap();
+        ms.player = Some([4.5, 65.0, 4.5]);
+        let world = flat_world();
+        ms.tick(&world, (0, 0), 1);
+        assert_eq!(ms.pending_player_blindness.len(), 1, "first engage casts blindness");
+        assert_eq!(ms.pending_player_blindness[0], 20 * 20, "20 seconds (VERIFIED)");
+        // more ticks: NOT cast again (the once-per-opponent gate)
+        for _ in 0..50 {
+            ms.tick(&world, (0, 0), 1);
+        }
+        assert_eq!(ms.pending_player_blindness.len(), 1, "once per opponent");
+        // the mirror spell: invisibility runs while engaged
+        let m = ms.by_id(id).unwrap();
+        assert!(m.aux > 0 && m.aux <= 20 * 60, "invisibility ticking (60 s cap)");
+        // the bow: 20-tick cadence (1/s — VERIFIED: "three times faster
+        // than a skeleton" whose 40-tick cadence is SKELETON_SHOOT_TICKS).
+        // The arrows fly ~6 blocks at speed 10 and strike the player
+        // within the window — assert on the player HITS (the fired
+        // arrows' observable), each Normal-difficulty bow hit 2-5 HP
+        // scaled from the 3.5 mid.
+        let hits0 = ms.hits.len();
+        for _ in 0..25 {
+            ms.tick(&world, (0, 0), 1);
+        }
+        assert!(ms.hits.len() > hits0, "bow shots landed (1/s cadence)");
+    }
+
+    #[test]
+    fn v112_illusioner_never_spawns_naturally() {
+        // VERIFIED w/Illusioner: "Spawn: By commands" + "Unused and
+        // present only in Java Edition" — the ambient pools exclude it
+        // (no spawn egg either)
+        assert_eq!(MobKind::Illusioner.egg_id(), 255);
+        // hostile pool: run many spawn attempts in a flat dark world —
+        // no illusioner ever appears
+        let mut ms = MobSystem::new(97);
+        ms.player = Some([8.5, 65.0, 8.5]);
+        let world = flat_world();
+        for _ in 0..2000 {
+            ms.try_spawn_hostile(&world, |_, _| true);
+        }
+        assert!(
+            !ms.list.iter().any(|m| m.kind == MobKind::Illusioner),
+            "illusioners never spawn naturally (vanilla parity)"
         );
     }
 }

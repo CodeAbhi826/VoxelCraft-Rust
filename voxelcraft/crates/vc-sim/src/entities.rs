@@ -188,8 +188,9 @@ impl ItemSystem {
     ) {
         for it in self.items.iter() {
             let tile = state_tiles(it.block as u16)[3];
-            let tx = (tile % 16) as f32;
-            let ty = (tile / 16) as f32;
+            // [1.12 fix] 32-tile atlas rows (was %16//16)
+            let tx = (tile % 32) as f32;
+            let ty = (tile / 32) as f32;
             // spin: the right basis rotated around the world Y axis
             let ang = time * 1.6;
             let (s, c) = (ang.sin(), ang.cos());
@@ -213,7 +214,7 @@ impl ItemSystem {
                         -rr[1] * half - ru[1] * half,
                         -rr[2] * half - ru[2] * half,
                     ],
-                    [tx / 16.0, (ty + 1.0) / 16.0],
+                    [tx / 32.0, (ty + 1.0) / 32.0],
                 ),
                 (
                     [
@@ -221,7 +222,7 @@ impl ItemSystem {
                         rr[1] * half - ru[1] * half,
                         rr[2] * half - ru[2] * half,
                     ],
-                    [(tx + 1.0) / 16.0, (ty + 1.0) / 16.0],
+                    [(tx + 1.0) / 32.0, (ty + 1.0) / 32.0],
                 ),
                 (
                     [
@@ -229,7 +230,7 @@ impl ItemSystem {
                         rr[1] * half + ru[1] * half,
                         rr[2] * half + ru[2] * half,
                     ],
-                    [(tx + 1.0) / 16.0, ty / 16.0],
+                    [(tx + 1.0) / 32.0, ty / 32.0],
                 ),
                 (
                     [
@@ -237,7 +238,7 @@ impl ItemSystem {
                         -rr[1] * half + ru[1] * half,
                         -rr[2] * half + ru[2] * half,
                     ],
-                    [tx / 16.0, ty / 16.0],
+                    [tx / 32.0, ty / 32.0],
                 ),
             ];
             for ci in [0usize, 1, 2, 0, 2, 3] {
@@ -455,8 +456,9 @@ impl XpOrbSystem {
     ) {
         for o in self.orbs.iter() {
             let tile = if o.value >= 17 { TILE_XP_ORB_BIG } else { TILE_XP_ORB };
-            let tx = (tile % 16) as f32;
-            let ty = (tile / 16) as f32;
+            // [1.12 fix] 32-tile atlas rows (was %16//16)
+            let tx = (tile % 32) as f32;
+            let ty = (tile / 32) as f32;
             // green↔yellow flash (VERIFIED: "fade between green and yellow")
             let flash = 0.5 + 0.5 * (time * 3.0 + o.pos[0]).sin();
             let col = [
@@ -473,7 +475,7 @@ impl XpOrbSystem {
                         -right[1] * half - up[1] * half,
                         -right[2] * half - up[2] * half,
                     ],
-                    [tx / 16.0, ty / 16.0],
+                    [tx / 32.0, ty / 32.0],
                 ),
                 (
                     [
@@ -481,7 +483,7 @@ impl XpOrbSystem {
                         right[1] * half - up[1] * half,
                         right[2] * half - up[2] * half,
                     ],
-                    [(tx + 1.0) / 16.0, ty / 16.0],
+                    [(tx + 1.0) / 32.0, ty / 32.0],
                 ),
                 (
                     [
@@ -489,7 +491,7 @@ impl XpOrbSystem {
                         right[1] * half + up[1] * half,
                         right[2] * half + up[2] * half,
                     ],
-                    [(tx + 1.0) / 16.0, (ty + 1.0) / 16.0],
+                    [(tx + 1.0) / 32.0, (ty + 1.0) / 32.0],
                 ),
                 (
                     [
@@ -497,7 +499,7 @@ impl XpOrbSystem {
                         -right[1] * half + up[1] * half,
                         -right[2] * half + up[2] * half,
                     ],
-                    [tx / 16.0, (ty + 1.0) / 16.0],
+                    [tx / 32.0, (ty + 1.0) / 32.0],
                 ),
             ];
             for ci in [0usize, 1, 2, 0, 2, 3] {

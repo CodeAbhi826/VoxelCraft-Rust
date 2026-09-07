@@ -72,9 +72,18 @@ pub fn on_block_changed(sched: &mut TickScheduler, world: &World, x: i32, y: i32
             // the Overworld/End, 10 in the Nether)
             let rate = lava_tick_rate(world);
             sched.schedule([nx, ny, nz], rate);
-        } else if b == SAND || b == GRAVEL || b == ANVIL || b == CHIPPED_ANVIL || b == DAMAGED_ANVIL {
+        } else if b == SAND
+            || b == GRAVEL
+            || b == ANVIL
+            || b == CHIPPED_ANVIL
+            || b == DAMAGED_ANVIL
+            || is_concrete_powder(b)
+        {
             // Phase E2: anvils are gravity blocks (VERIFIED w/Anvil: falls
-            // like sand)
+            // like sand). 1.12: concrete powder rides the gravity channel
+            // (its tick also runs the water-contact solidification check —
+            // water placed next to a powder lands here, "placed next to"
+            // VERIFIED w/Concrete_Powder §Usage)
             sched.schedule([nx, ny, nz], GRAVITY_TICK_RATE);
         }
     }
@@ -296,11 +305,30 @@ pub fn lava_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z
 /// re-schedules; stops on support. (vanilla spawns a falling-block ENTITY;
 /// the block-wise fall is the documented progressive approximation —
 /// deterministic and visually close at 10 Hz falls.)
+/// 1.12 (World of Color Update): concrete powder joins the gravity set
+/// (VERIFIED w/Concrete_Powder: "Gravity affected (like sand and
+/// gravel)") — and the landing tick runs the water-contact
+/// solidification check ("Concrete powder falls when there is a
+/// non-solid block beneath it" + "If it lands next to water, it
+/// solidifies only after a block update").
 pub fn gravity_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z: i32) {
     let s = world.get_state(x, y, z);
     let b = state_block(s);
-    if b != SAND && b != GRAVEL && b != ANVIL && b != CHIPPED_ANVIL && b != DAMAGED_ANVIL {
+    if b != SAND
+        && b != GRAVEL
+        && b != ANVIL
+        && b != CHIPPED_ANVIL
+        && b != DAMAGED_ANVIL
+        && !is_concrete_powder(b)
+    {
         return; // stale entry
+    }
+    // 1.12: powder touching water solidifies BEFORE falling (covers
+    // the placed-into/placed-next-to-water cases; the landing check
+    // below covers fall-into-water)
+    if is_concrete_powder(b) && concrete_powder_touches_water(world, x, y, z) {
+        solidify_powder(world, sched, x, y, z, b);
+        return;
     }
     if y <= 0 {
         return;
@@ -311,7 +339,49 @@ pub fn gravity_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32
         world.set_block_state(x, y - 1, z, s);
         on_block_changed(sched, world, x, y, z);
         on_block_changed(sched, world, x, y - 1, z);
+        // 1.12: the landed powder re-checks water contact ("solidifies
+        // only after a block update" — the landing IS the update)
+        let landed = state_block(world.get_state(x, y - 1, z));
+        if is_concrete_powder(landed) && concrete_powder_touches_water(world, x, y - 1, z) {
+            solidify_powder(world, sched, x, y - 1, z, landed);
+        }
     }
+}
+
+/// true if any of the 6 face-adjacent cells (or the cell itself via its
+/// waterlog) is water of any level. VERIFIED w/Concrete_Powder §Usage:
+/// "the block has to be placed into, placed next to, or fall into
+/// flowing water, a water source block ... It does not solidify in
+/// midair falling past water" (the engine's powder is never in
+/// mid-fall — the block-wise gravity keeps it a block, so the
+/// mid-air exemption rides the same rule).
+pub fn concrete_powder_touches_water(world: &World, x: i32, y: i32, z: i32) -> bool {
+    for (dx, dy, dz) in [
+        (0i32, 1i32, 0i32),
+        (0, -1, 0),
+        (1, 0, 0),
+        (-1, 0, 0),
+        (0, 0, 1),
+        (0, 0, -1),
+    ] {
+        let n = world.get_state(x + dx, y + dy, z + dz);
+        if state_block(n) == WATER {
+            return true;
+        }
+    }
+    false
+}
+
+/// convert a concrete-powder block at (x,y,z) into the concrete of the
+/// same color (VERIFIED w/Concrete: "Created when concrete powder comes
+/// into contact with still or flowing water").
+pub fn solidify_powder(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z: i32, b: u16) {
+    let color = concrete_powder_color(b);
+    if color == 255 {
+        return;
+    }
+    world.set_block_state(x, y, z, concrete_state(color));
+    on_block_changed(sched, world, x, y, z);
 }
 
 /// random-tick plant behaviors (§26 progressive): grass dies under an
@@ -833,6 +903,87 @@ mod e2_tests {
                 255,
                 "lava at x={x} drained"
             );
+        }
+    }
+
+    // ---------------- 1.12 bracket tests (World of Color) ----------------
+
+    /// 1.12 concrete powder: gravity + water-contact solidification.
+    /// VERIFIED live (2026-09-07, minecraft.wiki/w/Concrete_Powder):
+    /// "Gravity affected (like sand and gravel)" + "If a concrete
+    /// powder block comes into contact with water, it solidifies into
+    /// a block of concrete" + "If it lands next to water, it solidifies
+    /// only after a block update".
+    #[test]
+    fn v112_powder_falls_like_sand() {
+        let mut w = flat_world(64);
+        let mut sched = TickScheduler::new();
+        // powder above air: falls
+        let p = concrete_powder(3); // light blue
+        w.set_block_state(0, 70, 0, concrete_powder_state(3));
+        on_block_changed(&mut sched, &w, 0, 70, 0);
+        drain(&mut w, &mut sched, 200);
+        assert_eq!(w.get_block(0, 65, 0), p, "powder lands on the shelf");
+        assert_eq!(w.get_block(0, 70, 0), AIR, "the fall cleared the origin");
+    }
+
+    #[test]
+    fn v112_powder_touching_water_solidifies() {
+        // water source on the shelf, powder placed adjacent → solidifies
+        let mut w = flat_world(64);
+        let mut sched = TickScheduler::new();
+        w.set_block_state(1, 65, 0, water_state(0));
+        w.set_block_state(0, 65, 0, concrete_powder_state(3));
+        on_block_changed(&mut sched, &w, 0, 65, 0);
+        drain(&mut w, &mut sched, 200);
+        assert_eq!(w.get_block(0, 65, 0), concrete(3), "water neighbor → concrete");
+        // powder falling INTO a water column solidifies on landing
+        let mut w2 = flat_world(64);
+        let mut sched2 = TickScheduler::new();
+        // water pocket in a hole at y=66..67
+        w2.set_block_state(0, 65, 1, AIR);
+        w2.set_block_state(0, 64, 1, AIR);
+        w2.set_block_state(0, 64, 1, water_state(0));
+        w2.set_block_state(0, 70, 1, concrete_powder_state(9));
+        on_block_changed(&mut sched2, &w2, 0, 70, 1);
+        drain(&mut w2, &mut sched2, 400);
+        // the powder converted somewhere in the column (above or in water)
+        let mut found = false;
+        for y in 60..70 {
+            if w2.get_block(0, y, 1) == concrete(9) {
+                found = true;
+            }
+        }
+        assert!(found, "falling powder solidifies into concrete(9)");
+    }
+
+    #[test]
+    fn v112_powder_without_water_stays_powder() {
+        // dry shelf: no conversion
+        let mut w = flat_world(64);
+        let mut sched = TickScheduler::new();
+        w.set_block_state(0, 65, 0, concrete_powder_state(0));
+        on_block_changed(&mut sched, &w, 0, 65, 0);
+        drain(&mut w, &mut sched, 200);
+        assert_eq!(
+            w.get_block(0, 65, 0),
+            concrete_powder(0),
+            "no water contact → stays powder"
+        );
+    }
+
+    #[test]
+    fn v112_all_powder_colors_solidify() {
+        // every color round-trips powder → concrete (the color index
+        // carries through the conversion)
+        for c in 0u8..16 {
+            let mut w = flat_world(64);
+            let mut sched = TickScheduler::new();
+            w.set_block_state(1, 65, 0, water_state(0));
+            w.set_block_state(0, 65, 0, concrete_powder_state(c));
+            on_block_changed(&mut sched, &w, 0, 65, 0);
+            drain(&mut w, &mut sched, 100);
+            assert_eq!(w.get_block(0, 65, 0), concrete(c), "color {c} converts");
         }
     }
 }

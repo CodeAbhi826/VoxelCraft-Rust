@@ -196,6 +196,14 @@ impl Sim {
                 vc_blocks::blocks::SAND | vc_blocks::blocks::GRAVEL => {
                     fluids::gravity_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
                 }
+                // 1.12 (World of Color): concrete powder — gravity like
+                // sand + the water-contact solidification check (VERIFIED
+                // w/Concrete_Powder: "Gravity affected (like sand and
+                // gravel). When it touches water, it turns into a
+                // concrete block")
+                b if vc_blocks::blocks::is_concrete_powder(b) => {
+                    fluids::gravity_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
+                }
                 vc_blocks::blocks::REDSTONE_WIRE => {
                     crate::redstone::wire_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
                 }

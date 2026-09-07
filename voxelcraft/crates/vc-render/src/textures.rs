@@ -12,6 +12,7 @@ mod e1_art;
 mod e2_art;
 mod e3_art;
 mod auditfix_art;
+mod v112_art;
 
 pub const ATLAS_SIZE: usize = 512;
 pub const TILE_PX: usize = 16;
@@ -4073,6 +4074,62 @@ pub fn generate_atlas() -> Vec<u8> {
                 let p = auditfix_art::V7_EGG_PALETTES[i];
                 e1_art::egg_art(&mut a, t, (p.0, p.1, p.2), (p.3, p.4, p.5))
             }
+            // ---- 1.12 bracket (World of Color Update) ----
+            // concrete: 16 flat vibrant colors
+            t if (TILE_CONCRETE_BASE..=TILE_CONCRETE_BASE + 15).contains(&t) => {
+                let c = (t - TILE_CONCRETE_BASE) as u8;
+                v112_art::concrete_art(&mut a, t, c, &mut rng)
+            }
+            // concrete powder: 16 grainy aggregates
+            t if (TILE_CONCRETE_POWDER_BASE..=TILE_CONCRETE_POWDER_BASE + 15).contains(&t) => {
+                let c = (t - TILE_CONCRETE_POWDER_BASE) as u8;
+                v112_art::concrete_powder_art(&mut a, t, c, &mut rng)
+            }
+            // glazed terracotta tops: rotation 0 painted fresh, 1-3 are
+            // pixel-rotated copies (the facing variants)
+            t if (TILE_GLAZED_TOP_BASE..=TILE_GLAZED_TOP_BASE + 63).contains(&t) => {
+                let off = (t - TILE_GLAZED_TOP_BASE) as u8;
+                if off % 4 == 0 {
+                    v112_art::glazed_top_art(&mut a, t, off / 4, &mut rng)
+                } else {
+                    v112_art::rotated_copy(&mut a, t - (off % 4) as u16, t, off % 4)
+                }
+            }
+            // glazed terracotta bottoms: same rotation scheme
+            t if (TILE_GLAZED_BOTTOM_BASE..=TILE_GLAZED_BOTTOM_BASE + 63).contains(&t) => {
+                let off = (t - TILE_GLAZED_BOTTOM_BASE) as u8;
+                if off % 4 == 0 {
+                    v112_art::glazed_bottom_art(&mut a, t, off / 4, &mut rng)
+                } else {
+                    v112_art::rotated_copy(&mut a, t - (off % 4) as u16, t, off % 4)
+                }
+            }
+            // glazed terracotta sides: one shared tile per color
+            t if (TILE_GLAZED_SIDE_BASE..=TILE_GLAZED_SIDE_BASE + 15).contains(&t) => {
+                let c = (t - TILE_GLAZED_SIDE_BASE) as u8;
+                v112_art::glazed_side_art(&mut a, t, c, &mut rng)
+            }
+            // 16 dye icons
+            t if (TILE_DYE_BASE..=TILE_DYE_BASE + 15).contains(&t) => {
+                let c = (t - TILE_DYE_BASE) as u8;
+                v112_art::dye_art(&mut a, t, c, &mut rng)
+            }
+            // 4 seed icons
+            t if (TILE_SEEDS_BASE..=TILE_SEEDS_BASE + 3).contains(&t) => {
+                let k = (t - TILE_SEEDS_BASE) as u8;
+                v112_art::seeds_art(&mut a, t, k)
+            }
+            TILE_COOKIE => v112_art::cookie_art(&mut a, t),
+            // parrot egg (egg-shaped — the egg-art convention)
+            TILE_PARROT_EGG => {
+                e1_art::egg_art(&mut a, t, (206, 48, 36), (250, 204, 68))
+            }
+            // 5 parrot variant sprites + the illusioner
+            t if (TILE_PARROT_BASE..=TILE_PARROT_BASE + 4).contains(&t) => {
+                let v = (t - TILE_PARROT_BASE) as u8;
+                v112_art::parrot_art(&mut a, t, v, &mut rng)
+            }
+            TILE_ILLUSIONER => v112_art::illusioner_art(&mut a, t, &mut rng),
             _ => {}
         }
     }

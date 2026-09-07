@@ -1195,6 +1195,238 @@ pub fn is_v7_state(s: u16) -> bool {
     (V7_STATE_BASE..V7_STATE_BASE + V7_COUNT).contains(&s)
 }
 
+// ---- 1.12 bracket (World of Color Update): ids 291..=360, V8 window ----
+// All values VERIFIED live 2026-09-07 (minecraft.wiki/w/Java_Edition_1.12
+// §Additions + the per-block pages; research record
+// docs/research/phase-v112-1.12-research.md):
+// * concrete — 16 colors; "Created when concrete powder comes into
+//   contact with still or flowing water"; hardness 1.8 (w/Concrete)
+// * concrete powder — 16 colors; "Gravity affected (like sand and
+//   gravel). When it touches water, it turns into a concrete block";
+//   hardness 0.5; recipe 4 sand + 4 gravel + 1 dye → 8, shapeless
+// * glazed terracotta — 16 colors; "Smelt any stained terracotta";
+//   4-directional facing; hardness 1.4
+// * parrot spawn egg (kind 30); 16 dyes + 4 seeds + cookie — the
+//   recipe/taming/cookie-death input items (palette-only; the dye
+//   ACQUISITION economy stays deferred, the standing disclosure)
+pub const CONCRETE_BASE: u16 = 291;
+pub const CONCRETE_END: u16 = 306;
+pub const CONCRETE_POWDER_BASE: u16 = 307;
+pub const CONCRETE_POWDER_END: u16 = 322;
+pub const GLAZED_TERRACOTTA_BASE: u16 = 323;
+pub const GLAZED_TERRACOTTA_END: u16 = 338;
+/// 1.12 parrot spawn egg (changelog §Items: "Parrot Spawn Egg — Spawns
+/// parrots"). Mob kind 30 (egg_mob/egg_id 30 — the V8 egg window).
+pub const SPAWN_EGG_PARROT: u16 = 339;
+/// 16 dye items, engine color order (= the stained-terracotta order).
+pub const DYE_BASE: u16 = 340;
+pub const DYE_END: u16 = 355;
+/// The 4 parrot-taming seeds (wheat/melon/pumpkin/beetroot).
+pub const WHEAT_SEEDS: u16 = 356;
+pub const MELON_SEEDS: u16 = 357;
+pub const PUMPKIN_SEEDS: u16 = 358;
+pub const BEETROOT_SEEDS: u16 = 359;
+/// Cookie (the toxic parrot food — VERIFIED w/Parrot: "feeding a cookie
+/// to a parrot kills it... the parrot receives 2128 (3.4028 x 10^38)").
+pub const COOKIE: u16 = 360;
+
+pub const V8_STATE_BASE: u16 = 497;
+// 70 ids: 291..=360 (16 concrete + 16 powder + 16 glazed + parrot egg
+// + 16 dyes + 4 seeds + cookie). States: concrete 497..=512, powder
+// 513..=528, glazed 529..=592 (4 facings per color), parrot egg 593,
+// dyes 594..=609, seeds 610..=613, cookie 614 (STATE_COUNT = 615).
+pub const V8_COUNT: u16 = 118;
+/// V8 state → block fold table. Index = state − V8_STATE_BASE. Glazed
+/// states occupy 64 consecutive entries (color*4 + facing) — the
+/// reverse mapping is `glazed_terracotta_state`/`glazed_decode`.
+pub const V8_STATE_TO_BLOCK: [u16; V8_COUNT as usize] = [
+    // concrete (16)
+    CONCRETE_BASE, CONCRETE_BASE + 1, CONCRETE_BASE + 2, CONCRETE_BASE + 3,
+    CONCRETE_BASE + 4, CONCRETE_BASE + 5, CONCRETE_BASE + 6, CONCRETE_BASE + 7,
+    CONCRETE_BASE + 8, CONCRETE_BASE + 9, CONCRETE_BASE + 10, CONCRETE_BASE + 11,
+    CONCRETE_BASE + 12, CONCRETE_BASE + 13, CONCRETE_BASE + 14, CONCRETE_BASE + 15,
+    // concrete powder (16)
+    CONCRETE_POWDER_BASE, CONCRETE_POWDER_BASE + 1, CONCRETE_POWDER_BASE + 2,
+    CONCRETE_POWDER_BASE + 3, CONCRETE_POWDER_BASE + 4, CONCRETE_POWDER_BASE + 5,
+    CONCRETE_POWDER_BASE + 6, CONCRETE_POWDER_BASE + 7, CONCRETE_POWDER_BASE + 8,
+    CONCRETE_POWDER_BASE + 9, CONCRETE_POWDER_BASE + 10, CONCRETE_POWDER_BASE + 11,
+    CONCRETE_POWDER_BASE + 12, CONCRETE_POWDER_BASE + 13, CONCRETE_POWDER_BASE + 14,
+    CONCRETE_POWDER_BASE + 15,
+    // glazed terracotta (64: color 0..15 × facing 0..3)
+    GLAZED_TERRACOTTA_BASE, GLAZED_TERRACOTTA_BASE, GLAZED_TERRACOTTA_BASE,
+    GLAZED_TERRACOTTA_BASE, GLAZED_TERRACOTTA_BASE + 1, GLAZED_TERRACOTTA_BASE + 1,
+    GLAZED_TERRACOTTA_BASE + 1, GLAZED_TERRACOTTA_BASE + 1,
+    GLAZED_TERRACOTTA_BASE + 2, GLAZED_TERRACOTTA_BASE + 2, GLAZED_TERRACOTTA_BASE + 2,
+    GLAZED_TERRACOTTA_BASE + 2, GLAZED_TERRACOTTA_BASE + 3, GLAZED_TERRACOTTA_BASE + 3,
+    GLAZED_TERRACOTTA_BASE + 3, GLAZED_TERRACOTTA_BASE + 3,
+    GLAZED_TERRACOTTA_BASE + 4, GLAZED_TERRACOTTA_BASE + 4, GLAZED_TERRACOTTA_BASE + 4,
+    GLAZED_TERRACOTTA_BASE + 4, GLAZED_TERRACOTTA_BASE + 5, GLAZED_TERRACOTTA_BASE + 5,
+    GLAZED_TERRACOTTA_BASE + 5, GLAZED_TERRACOTTA_BASE + 5,
+    GLAZED_TERRACOTTA_BASE + 6, GLAZED_TERRACOTTA_BASE + 6, GLAZED_TERRACOTTA_BASE + 6,
+    GLAZED_TERRACOTTA_BASE + 6, GLAZED_TERRACOTTA_BASE + 7, GLAZED_TERRACOTTA_BASE + 7,
+    GLAZED_TERRACOTTA_BASE + 7, GLAZED_TERRACOTTA_BASE + 7,
+    GLAZED_TERRACOTTA_BASE + 8, GLAZED_TERRACOTTA_BASE + 8, GLAZED_TERRACOTTA_BASE + 8,
+    GLAZED_TERRACOTTA_BASE + 8, GLAZED_TERRACOTTA_BASE + 9, GLAZED_TERRACOTTA_BASE + 9,
+    GLAZED_TERRACOTTA_BASE + 9, GLAZED_TERRACOTTA_BASE + 9,
+    GLAZED_TERRACOTTA_BASE + 10, GLAZED_TERRACOTTA_BASE + 10, GLAZED_TERRACOTTA_BASE + 10,
+    GLAZED_TERRACOTTA_BASE + 10, GLAZED_TERRACOTTA_BASE + 11, GLAZED_TERRACOTTA_BASE + 11,
+    GLAZED_TERRACOTTA_BASE + 11, GLAZED_TERRACOTTA_BASE + 11,
+    GLAZED_TERRACOTTA_BASE + 12, GLAZED_TERRACOTTA_BASE + 12, GLAZED_TERRACOTTA_BASE + 12,
+    GLAZED_TERRACOTTA_BASE + 12, GLAZED_TERRACOTTA_BASE + 13, GLAZED_TERRACOTTA_BASE + 13,
+    GLAZED_TERRACOTTA_BASE + 13, GLAZED_TERRACOTTA_BASE + 13,
+    GLAZED_TERRACOTTA_BASE + 14, GLAZED_TERRACOTTA_BASE + 14, GLAZED_TERRACOTTA_BASE + 14,
+    GLAZED_TERRACOTTA_BASE + 14, GLAZED_TERRACOTTA_BASE + 15, GLAZED_TERRACOTTA_BASE + 15,
+    GLAZED_TERRACOTTA_BASE + 15, GLAZED_TERRACOTTA_BASE + 15,
+    // parrot egg (1)
+    SPAWN_EGG_PARROT,
+    // dyes (16)
+    DYE_BASE, DYE_BASE + 1, DYE_BASE + 2, DYE_BASE + 3, DYE_BASE + 4,
+    DYE_BASE + 5, DYE_BASE + 6, DYE_BASE + 7, DYE_BASE + 8, DYE_BASE + 9,
+    DYE_BASE + 10, DYE_BASE + 11, DYE_BASE + 12, DYE_BASE + 13, DYE_BASE + 14,
+    DYE_BASE + 15,
+    // seeds (4)
+    WHEAT_SEEDS, MELON_SEEDS, PUMPKIN_SEEDS, BEETROOT_SEEDS,
+    // cookie (1)
+    COOKIE,
+];
+
+/// default V8 state of a block id (None outside the 1.12 window):
+/// concrete/powder are 1:1 (offsets 0..=31), glazed terracotta maps to
+/// its facing-0 state (4 states per color), and the egg/dyes/seeds/
+/// cookie items are 1:1 at offset 96+.
+#[inline]
+pub fn v8_state(b: u16) -> Option<u16> {
+    if (GLAZED_TERRACOTTA_BASE..=GLAZED_TERRACOTTA_END).contains(&b) {
+        Some(glazed_terracotta_state((b - GLAZED_TERRACOTTA_BASE) as u8, 0))
+    } else if (CONCRETE_BASE..=CONCRETE_POWDER_END).contains(&b) {
+        Some(V8_STATE_BASE + (b - CONCRETE_BASE) as u16)
+    } else if (SPAWN_EGG_PARROT..=COOKIE).contains(&b) {
+        Some(V8_STATE_BASE + 96 + (b - SPAWN_EGG_PARROT) as u16)
+    } else {
+        None
+    }
+}
+
+#[inline]
+pub fn is_v8_state(s: u16) -> bool {
+    (V8_STATE_BASE..V8_STATE_BASE + V8_COUNT).contains(&s)
+}
+
+// ---------------------------------------------------- 1.12 codecs --
+
+/// concrete block id for a color index (0..15, engine color order).
+#[inline]
+pub fn concrete(color: u8) -> u16 {
+    CONCRETE_BASE + color.min(15) as u16
+}
+
+/// concrete state id for a color index.
+#[inline]
+pub fn concrete_state(color: u8) -> u16 {
+    V8_STATE_BASE + color.min(15) as u16
+}
+
+/// color index of a concrete block (255 = not one).
+#[inline]
+pub fn concrete_color(b: u16) -> u8 {
+    if (CONCRETE_BASE..=CONCRETE_END).contains(&b) {
+        (b - CONCRETE_BASE) as u8
+    } else {
+        255
+    }
+}
+
+/// concrete-powder block id for a color index.
+#[inline]
+pub fn concrete_powder(color: u8) -> u16 {
+    CONCRETE_POWDER_BASE + color.min(15) as u16
+}
+
+/// concrete-powder state id for a color index.
+#[inline]
+pub fn concrete_powder_state(color: u8) -> u16 {
+    V8_STATE_BASE + 16 + color.min(15) as u16
+}
+
+/// color index of a concrete-powder block (255 = not one).
+#[inline]
+pub fn concrete_powder_color(b: u16) -> u8 {
+    if (CONCRETE_POWDER_BASE..=CONCRETE_POWDER_END).contains(&b) {
+        (b - CONCRETE_POWDER_BASE) as u8
+    } else {
+        255
+    }
+}
+
+/// glazed-terracotta block id for a color index.
+#[inline]
+pub fn glazed_terracotta(color: u8) -> u16 {
+    GLAZED_TERRACOTTA_BASE + color.min(15) as u16
+}
+
+/// glazed-terracotta state for (color, facing). Facing 0..3 =
+/// north/east/south/west (the engine's horizontal-facing convention —
+/// repeater/observer/dispenser). "Can be placed in 4 directions:
+/// north, south, west, and east" (VERIFIED changelog §Blocks).
+#[inline]
+pub fn glazed_terracotta_state(color: u8, facing: u8) -> u16 {
+    V8_STATE_BASE + 32 + (color.min(15) as u16) * 4 + (facing.min(3) as u16)
+}
+
+/// decode a glazed-terracotta state → (color, facing);
+/// None if the state is not in the glazed window.
+#[inline]
+pub fn glazed_decode(s: u16) -> Option<(u8, u8)> {
+    let lo = V8_STATE_BASE + 32;
+    if (lo..lo + 64).contains(&s) {
+        let off = s - lo;
+        Some(((off / 4) as u8, (off % 4) as u8))
+    } else {
+        None
+    }
+}
+
+/// dye item id for a color index (0..15, engine color order).
+#[inline]
+pub fn dye(color: u8) -> u16 {
+    DYE_BASE + color.min(15) as u16
+}
+
+/// color index of a dye item (255 = not one).
+#[inline]
+pub fn dye_color(b: u16) -> u8 {
+    if (DYE_BASE..=DYE_END).contains(&b) {
+        (b - DYE_BASE) as u8
+    } else {
+        255
+    }
+}
+
+/// true if the block is any concrete-powder color (the gravity set
+/// membership test used by the sim layer).
+#[inline]
+pub fn is_concrete_powder(b: u16) -> bool {
+    (CONCRETE_POWDER_BASE..=CONCRETE_POWDER_END).contains(&b)
+}
+
+/// true if the block is any concrete color.
+#[inline]
+pub fn is_concrete(b: u16) -> bool {
+    (CONCRETE_BASE..=CONCRETE_END).contains(&b)
+}
+
+/// true if the block is any glazed-terracotta color.
+#[inline]
+pub fn is_glazed_terracotta(b: u16) -> bool {
+    (GLAZED_TERRACOTTA_BASE..=GLAZED_TERRACOTTA_END).contains(&b)
+}
+
+/// true if the block is any of the 4 parrot-taming seed items.
+#[inline]
+pub fn is_seeds(b: u16) -> bool {
+    (WHEAT_SEEDS..=BEETROOT_SEEDS).contains(&b)
+}
+
 pub const BEEF_STATE: u16 = 130;
 pub const PORKCHOP_STATE: u16 = 131;
 pub const MUTTON_STATE: u16 = 132;
@@ -1580,7 +1812,7 @@ pub fn item_state_block(s: u16) -> Option<u16> {
     }
 }
 
-pub const BLOCK_COUNT: usize = 291;
+pub const BLOCK_COUNT: usize = 361; // 1.12: V8 window ids 291..=360 (concrete/powder/glazed + items)
 /// [merge renumber] acacia/dark-oak log axis states moved to 443..=446
 /// (past the E-series states, which end at 354; V2 base is now 400)
 /// acacia/dark-oak log axis states (the V2 log window — same pattern as
@@ -1617,7 +1849,7 @@ pub const DARK_OAK_LOG_Z: u16 = 446;
 /// items + eggs 20..=22 + the POWER-state ladders (317..=399)
 /// [merge renumber] F-series states: V2 400..=442 + log-axis 443..=446,
 /// V3 447..=465, V4 466..=475, V5 476..=479, V6 480..=485 (audit-fix)
-pub const STATE_COUNT: usize = 497;
+pub const STATE_COUNT: usize = 615; // 1.12: V8 states 497..=614 (concrete/powder/glazed + items)
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -1982,6 +2214,10 @@ pub fn default_state(b: u16) -> u16 {
         b if (282..282 + V7_COUNT as u16).contains(&b) => {
             V7_STATE_BASE + (b - 282) as u16
         }
+        // 1.12 (World of Color Update): concrete/powder/egg/dyes/seeds/
+        // cookie are 1:1; glazed terracotta defaults to facing 0
+        // (north — the placement path writes the player-facing state)
+        b if v8_state(b).is_some() => v8_state(b).unwrap(),
         b if (262..262 + V4_COUNT as u16).contains(&b) => {
             V4_STATE_BASE + (b - 262) as u16
         }
@@ -2295,6 +2531,12 @@ pub fn state_block(s: u16) -> u16 {
         s if is_v7_state(s) => {
             return V7_STATE_TO_BLOCK[(s - V7_STATE_BASE) as usize];
         }
+        // 1.12 (World of Color Update): the V8 window — 1:1 for
+        // concrete/powder/egg/dyes/seeds/cookie; glazed terracotta's
+        // 64 facing states fold to their color's block
+        s if is_v8_state(s) => {
+            return V8_STATE_TO_BLOCK[(s - V8_STATE_BASE) as usize];
+        }
         ACACIA_LOG_X | ACACIA_LOG_Z => return ACACIA_LOG,
         DARK_OAK_LOG_X | DARK_OAK_LOG_Z => return DARK_OAK_LOG,
         _ => {}
@@ -2351,6 +2593,9 @@ pub fn is_model_state(s: u16) -> bool {
         || is_v5_state(s)
         || is_v6_state(s)
         || is_v7_state(s)
+        // 1.12 V8 window: concrete/powder/glazed are greedy cubes (their
+        // BlockDef flags); the V8 items are cross/hud-only — never model
+        || is_v8_state(s)
         || s == SPAWNER_VINDICATOR
         || s == SPAWNER_EVOKER
         || s == ACACIA_LOG_X
@@ -2491,6 +2736,22 @@ pub fn state_tiles(s: u16) -> [u16; 4] {
             let t = if powered { TILE_TRIPWIRE_HOOK_ON } else { TILE_TRIPWIRE_HOOK };
             [t, t, t, t]
         }
+        // ---- 1.12: glazed terracotta — the facing selects the tile
+        // ROTATION (top/bottom carry 4 pixel-rotated variants per color;
+        // sides share one pattern — see TILE_GLAZED_*_BASE). "When
+        // placed, glazed terracotta's texture rotates relative to the
+        // direction the player is facing" (VERIFIED
+        // w/Glazed_Terracotta §Placement).
+        s if glazed_decode(s).is_some() => {
+            let (color, facing) = glazed_decode(s).unwrap();
+            let c = color as u16;
+            [
+                TILE_GLAZED_TOP_BASE + c * 4 + facing as u16,
+                TILE_GLAZED_BOTTOM_BASE + c * 4 + facing as u16,
+                TILE_GLAZED_SIDE_BASE + c,
+                TILE_GLAZED_SIDE_BASE + c,
+            ]
+        }
         _ => {
             // fold property states to their block (model geometry supplies
             // the real tiles; these are for the HUD/hotbar blit path)
@@ -2534,7 +2795,7 @@ pub fn log_axis_state(block: u16, axis: u8) -> u16 {
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
 // [merge] E-series tiles end at 243; the F-series (1.7.2-1.10) tiles
 // continue at 244..=325; the audit-fix round adds 326..=332
-pub const TILE_MAX: u16 = 345;
+pub const TILE_MAX: u16 = 549; // 1.12 (World of Color): tiles 346..=549
 /// 1.11 egg tiles (egg-shaped, egg order 23..=28 = llama, vindicator,
 /// evoker, vex, husk, stray) — the E1/E2/E3 egg-art convention
 /// (e1_art::egg_art + palettes), replacing the interrupted round's
@@ -2542,6 +2803,64 @@ pub const TILE_MAX: u16 = 345;
 /// keeps its pre-existing tile in the base egg window.
 pub const TILE_V7_EGG_BASE: u16 = 340;
 pub const TILE_V7_EGG_END: u16 = 345;
+
+// ---- 1.12 bracket tiles (World of Color Update, live 2026-09-07;
+// minecraft.wiki/w/Java_Edition_1.12 + w/Concrete, w/Concrete_Powder,
+// w/Glazed_Terracotta, w/Parrot, w/Illusioner — raw captures in
+// scripts/v112_page_*.json) ----
+/// 16 concrete tiles, engine color order (the vanilla dye-registry order
+/// — same as the E3 stained-terracotta set, VERIFIED w/Terracotta):
+/// white, orange, magenta, light blue, yellow, lime, pink, gray,
+/// light gray, cyan, purple, blue, brown, green, red, black.
+/// Concrete: hardness 1.8, blast 1.8 (VERIFIED w/Concrete infobox).
+pub const TILE_CONCRETE_BASE: u16 = 346;
+/// 16 concrete-powder tiles (hardness 0.5, blast 0.5, gravity-affected —
+/// VERIFIED w/Concrete_Powder infobox + "Concrete powder falls when
+/// there is a non-solid block beneath it").
+pub const TILE_CONCRETE_POWDER_BASE: u16 = 362;
+/// Glazed terracotta: 4 rotations per color for the TOP face (64 tiles,
+/// color*4 + rotation). "When placed, glazed terracotta's texture
+/// rotates relative to the direction the player is facing" (VERIFIED
+/// w/Glazed_Terracotta §Placement). Rotation variants are pixel-rotated
+/// copies of the base tile (v112_art::rotated_copy). Hardness 1.4.
+pub const TILE_GLAZED_TOP_BASE: u16 = 378;
+/// Glazed terracotta BOTTOM faces, 4 rotations per color (64 tiles).
+pub const TILE_GLAZED_BOTTOM_BASE: u16 = 442;
+/// Glazed terracotta side faces (16 tiles — all four sides share one
+/// clean-room pattern; vanilla's model y-rotation moves side textures
+/// between faces, which is invisible with a shared side tile — the
+/// observable (top-pattern rotation) is carried by the top/bottom
+/// rotation tiles).
+pub const TILE_GLAZED_SIDE_BASE: u16 = 506;
+/// 16 dye item icons. 1.12-era item names (the "White Dye" renames are
+/// 1.14+ — version-scoped out): Bone Meal, Orange Dye, Magenta Dye,
+/// Light Blue Dye, Dandelion Yellow, Lime Dye, Pink Dye, Gray Dye,
+/// Light Gray Dye, Cyan Dye, Purple Dye, Lapis Lazuli, Cocoa Beans,
+/// Cactus Green, Rose Red, Ink Sac. Acquisition economy (flowers, bone
+/// meal crafting, squids etc.) stays under the standing dye-economy
+/// deferral — palette-only items, consumed by the 1.12 concrete-powder
+/// recipe (4 sand + 4 gravel + 1 dye → 8, shapeless — VERIFIED
+/// changelog §Blocks + w/Concrete_Powder "The crafting recipe is
+/// shapeless; the order of ingredients does not matter").
+pub const TILE_DYE_BASE: u16 = 522;
+/// 4 seed item icons (wheat/melon/pumpkin/beetroot — the 1.12 parrot
+/// taming set, VERIFIED w/Parrot: "tamed by feeding wheat seeds, melon
+/// seeds, pumpkin seeds, beetroot seeds"; torchflower seeds and pitcher
+/// pods are 1.20+ additions, out of the bracket).
+pub const TILE_SEEDS_BASE: u16 = 538;
+/// Cookie item icon (the 1.12 parrot interaction: "Attempting to feed
+/// cookies to a parrot now instantly kills the parrot, causing it to
+/// emit poison particles" — VERIFIED w/Parrot §Cookies + 17w13a history).
+pub const TILE_COOKIE: u16 = 542;
+/// Parrot spawn-egg tile (egg-shaped, the E-series egg-art convention).
+pub const TILE_PARROT_EGG: u16 = 543;
+/// 5 parrot variant sprites (VERIFIED w/Parrot Variant NBT table:
+/// 0=red "red_blue", 1=blue, 2=green, 3=cyan "yellow_blue", 4=gray).
+pub const TILE_PARROT_BASE: u16 = 544;
+/// Illusioner sprite (VERIFIED w/Illusioner: 32 HP hostile illager —
+/// palette-only mob: vanilla has no spawn egg and it never spawns
+/// naturally, "Unused and present only in Java Edition").
+pub const TILE_ILLUSIONER: u16 = 549;
 
 /// inventory-only ITEM blocks (potions/bottles/books): never placeable in
 /// the world — right-click drinks (potions) / fills (glass bottle at water).
@@ -2576,7 +2895,13 @@ pub fn is_item_block(b: u16) -> bool {
             | RAW_RABBIT | COOKED_RABBIT | RABBIT_HIDE | RABBIT_FOOT
             | PRISMARINE_SHARD | PRISMARINE_CRYSTALS
             | CHORUS_FRUIT | ELYTRA | SHIELD
+            // ---- 1.12 item-blocks (World of Color): the 16 dye palette
+            // items + the 4 taming seeds + the cookie — inventory-only
+            // (concrete/powder/glazed are real placeable BLOCKS) ----
+            | COOKIE
     ) || is_spawn_egg(b)
+        || (DYE_BASE..=DYE_END).contains(&b)
+        || is_seeds(b)
 }
 
 /// true for the mob spawn-egg item ids (124..=143 + the E3 window
@@ -2588,6 +2913,8 @@ pub fn is_spawn_egg(b: u16) -> bool {
         // 1.11: the V7 egg window (llama/vindicator/evoker/vex + the
         // re-added husk/stray + the 5th new zombie-villager egg)
         || (SPAWN_EGG_LLAMA..=SPAWN_EGG_STRAY).contains(&b)
+        // 1.12: the V8 parrot egg (kind 30)
+        || b == SPAWN_EGG_PARROT
 }
 
 /// The mob this spawn-egg id spawns. Tile order in the BLOCK_TABLE egg
@@ -2607,6 +2934,10 @@ pub fn egg_mob(b: u16) -> Option<u8> {
     // spawn egg")
     if (SPAWN_EGG_LLAMA..=SPAWN_EGG_STRAY).contains(&b) {
         return Some(23 + (b - SPAWN_EGG_LLAMA) as u8);
+    }
+    // 1.12: the parrot egg — kind 30 (MobKind::Parrot::from_egg)
+    if b == SPAWN_EGG_PARROT {
+        return Some(30);
     }
     if !is_spawn_egg(b) {
         return None;
@@ -3055,6 +3386,90 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Vex Spawn Egg", [TILE_V7_EGG_BASE + 3, TILE_V7_EGG_BASE + 3, TILE_V7_EGG_BASE + 3], false, false, true, false, 0, SoundFamily::Stone),
     d("Husk Spawn Egg", [TILE_V7_EGG_BASE + 4, TILE_V7_EGG_BASE + 4, TILE_V7_EGG_BASE + 4], false, false, true, false, 0, SoundFamily::Stone),
     d("Stray Spawn Egg", [TILE_V7_EGG_BASE + 5, TILE_V7_EGG_BASE + 5, TILE_V7_EGG_BASE + 5], false, false, true, false, 0, SoundFamily::Stone),
+    // ---- 1.12 bracket (World of Color Update, live-verified 2026-09-07;
+    // concrete hardness 1.8 w/Concrete, powder 0.5 sand-sound family
+    // w/Concrete_Powder §Sounds "block.sand.*", glazed 1.4 stone family
+    // w/Glazed_Terracotta §Sounds "block.stone.*") ----
+    // concrete, 16 colors (solid, opaque, stone family)
+    d("White Concrete", [TILE_CONCRETE_BASE, TILE_CONCRETE_BASE, TILE_CONCRETE_BASE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Orange Concrete", [TILE_CONCRETE_BASE + 1, TILE_CONCRETE_BASE + 1, TILE_CONCRETE_BASE + 1], true, true, false, false, 0, SoundFamily::Stone),
+    d("Magenta Concrete", [TILE_CONCRETE_BASE + 2, TILE_CONCRETE_BASE + 2, TILE_CONCRETE_BASE + 2], true, true, false, false, 0, SoundFamily::Stone),
+    d("Light Blue Concrete", [TILE_CONCRETE_BASE + 3, TILE_CONCRETE_BASE + 3, TILE_CONCRETE_BASE + 3], true, true, false, false, 0, SoundFamily::Stone),
+    d("Yellow Concrete", [TILE_CONCRETE_BASE + 4, TILE_CONCRETE_BASE + 4, TILE_CONCRETE_BASE + 4], true, true, false, false, 0, SoundFamily::Stone),
+    d("Lime Concrete", [TILE_CONCRETE_BASE + 5, TILE_CONCRETE_BASE + 5, TILE_CONCRETE_BASE + 5], true, true, false, false, 0, SoundFamily::Stone),
+    d("Pink Concrete", [TILE_CONCRETE_BASE + 6, TILE_CONCRETE_BASE + 6, TILE_CONCRETE_BASE + 6], true, true, false, false, 0, SoundFamily::Stone),
+    d("Gray Concrete", [TILE_CONCRETE_BASE + 7, TILE_CONCRETE_BASE + 7, TILE_CONCRETE_BASE + 7], true, true, false, false, 0, SoundFamily::Stone),
+    d("Light Gray Concrete", [TILE_CONCRETE_BASE + 8, TILE_CONCRETE_BASE + 8, TILE_CONCRETE_BASE + 8], true, true, false, false, 0, SoundFamily::Stone),
+    d("Cyan Concrete", [TILE_CONCRETE_BASE + 9, TILE_CONCRETE_BASE + 9, TILE_CONCRETE_BASE + 9], true, true, false, false, 0, SoundFamily::Stone),
+    d("Purple Concrete", [TILE_CONCRETE_BASE + 10, TILE_CONCRETE_BASE + 10, TILE_CONCRETE_BASE + 10], true, true, false, false, 0, SoundFamily::Stone),
+    d("Blue Concrete", [TILE_CONCRETE_BASE + 11, TILE_CONCRETE_BASE + 11, TILE_CONCRETE_BASE + 11], true, true, false, false, 0, SoundFamily::Stone),
+    d("Brown Concrete", [TILE_CONCRETE_BASE + 12, TILE_CONCRETE_BASE + 12, TILE_CONCRETE_BASE + 12], true, true, false, false, 0, SoundFamily::Stone),
+    d("Green Concrete", [TILE_CONCRETE_BASE + 13, TILE_CONCRETE_BASE + 13, TILE_CONCRETE_BASE + 13], true, true, false, false, 0, SoundFamily::Stone),
+    d("Red Concrete", [TILE_CONCRETE_BASE + 14, TILE_CONCRETE_BASE + 14, TILE_CONCRETE_BASE + 14], true, true, false, false, 0, SoundFamily::Stone),
+    d("Black Concrete", [TILE_CONCRETE_BASE + 15, TILE_CONCRETE_BASE + 15, TILE_CONCRETE_BASE + 15], true, true, false, false, 0, SoundFamily::Stone),
+    // concrete powder, 16 colors (solid, opaque, SAND family — VERIFIED
+    // w/Concrete_Powder §Sounds: "block.sand.*")
+    d("White Concrete Powder", [TILE_CONCRETE_POWDER_BASE, TILE_CONCRETE_POWDER_BASE, TILE_CONCRETE_POWDER_BASE], true, true, false, false, 0, SoundFamily::Sand),
+    d("Orange Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 1, TILE_CONCRETE_POWDER_BASE + 1, TILE_CONCRETE_POWDER_BASE + 1], true, true, false, false, 0, SoundFamily::Sand),
+    d("Magenta Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 2, TILE_CONCRETE_POWDER_BASE + 2, TILE_CONCRETE_POWDER_BASE + 2], true, true, false, false, 0, SoundFamily::Sand),
+    d("Light Blue Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 3, TILE_CONCRETE_POWDER_BASE + 3, TILE_CONCRETE_POWDER_BASE + 3], true, true, false, false, 0, SoundFamily::Sand),
+    d("Yellow Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 4, TILE_CONCRETE_POWDER_BASE + 4, TILE_CONCRETE_POWDER_BASE + 4], true, true, false, false, 0, SoundFamily::Sand),
+    d("Lime Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 5, TILE_CONCRETE_POWDER_BASE + 5, TILE_CONCRETE_POWDER_BASE + 5], true, true, false, false, 0, SoundFamily::Sand),
+    d("Pink Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 6, TILE_CONCRETE_POWDER_BASE + 6, TILE_CONCRETE_POWDER_BASE + 6], true, true, false, false, 0, SoundFamily::Sand),
+    d("Gray Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 7, TILE_CONCRETE_POWDER_BASE + 7, TILE_CONCRETE_POWDER_BASE + 7], true, true, false, false, 0, SoundFamily::Sand),
+    d("Light Gray Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 8, TILE_CONCRETE_POWDER_BASE + 8, TILE_CONCRETE_POWDER_BASE + 8], true, true, false, false, 0, SoundFamily::Sand),
+    d("Cyan Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 9, TILE_CONCRETE_POWDER_BASE + 9, TILE_CONCRETE_POWDER_BASE + 9], true, true, false, false, 0, SoundFamily::Sand),
+    d("Purple Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 10, TILE_CONCRETE_POWDER_BASE + 10, TILE_CONCRETE_POWDER_BASE + 10], true, true, false, false, 0, SoundFamily::Sand),
+    d("Blue Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 11, TILE_CONCRETE_POWDER_BASE + 11, TILE_CONCRETE_POWDER_BASE + 11], true, true, false, false, 0, SoundFamily::Sand),
+    d("Brown Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 12, TILE_CONCRETE_POWDER_BASE + 12, TILE_CONCRETE_POWDER_BASE + 12], true, true, false, false, 0, SoundFamily::Sand),
+    d("Green Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 13, TILE_CONCRETE_POWDER_BASE + 13, TILE_CONCRETE_POWDER_BASE + 13], true, true, false, false, 0, SoundFamily::Sand),
+    d("Red Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 14, TILE_CONCRETE_POWDER_BASE + 14, TILE_CONCRETE_POWDER_BASE + 14], true, true, false, false, 0, SoundFamily::Sand),
+    d("Black Concrete Powder", [TILE_CONCRETE_POWDER_BASE + 15, TILE_CONCRETE_POWDER_BASE + 15, TILE_CONCRETE_POWDER_BASE + 15], true, true, false, false, 0, SoundFamily::Sand),
+    // glazed terracotta, 16 colors (def tiles = facing-0 rotations; the
+    // per-state tiles in state_tiles carry the full facing selection)
+    d("White Glazed Terracotta", [TILE_GLAZED_TOP_BASE, TILE_GLAZED_BOTTOM_BASE, TILE_GLAZED_SIDE_BASE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Orange Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 4, TILE_GLAZED_BOTTOM_BASE + 4, TILE_GLAZED_SIDE_BASE + 1], true, true, false, false, 0, SoundFamily::Stone),
+    d("Magenta Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 8, TILE_GLAZED_BOTTOM_BASE + 8, TILE_GLAZED_SIDE_BASE + 2], true, true, false, false, 0, SoundFamily::Stone),
+    d("Light Blue Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 12, TILE_GLAZED_BOTTOM_BASE + 12, TILE_GLAZED_SIDE_BASE + 3], true, true, false, false, 0, SoundFamily::Stone),
+    d("Yellow Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 16, TILE_GLAZED_BOTTOM_BASE + 16, TILE_GLAZED_SIDE_BASE + 4], true, true, false, false, 0, SoundFamily::Stone),
+    d("Lime Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 20, TILE_GLAZED_BOTTOM_BASE + 20, TILE_GLAZED_SIDE_BASE + 5], true, true, false, false, 0, SoundFamily::Stone),
+    d("Pink Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 24, TILE_GLAZED_BOTTOM_BASE + 24, TILE_GLAZED_SIDE_BASE + 6], true, true, false, false, 0, SoundFamily::Stone),
+    d("Gray Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 28, TILE_GLAZED_BOTTOM_BASE + 28, TILE_GLAZED_SIDE_BASE + 7], true, true, false, false, 0, SoundFamily::Stone),
+    d("Light Gray Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 32, TILE_GLAZED_BOTTOM_BASE + 32, TILE_GLAZED_SIDE_BASE + 8], true, true, false, false, 0, SoundFamily::Stone),
+    d("Cyan Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 36, TILE_GLAZED_BOTTOM_BASE + 36, TILE_GLAZED_SIDE_BASE + 9], true, true, false, false, 0, SoundFamily::Stone),
+    d("Purple Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 40, TILE_GLAZED_BOTTOM_BASE + 40, TILE_GLAZED_SIDE_BASE + 10], true, true, false, false, 0, SoundFamily::Stone),
+    d("Blue Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 44, TILE_GLAZED_BOTTOM_BASE + 44, TILE_GLAZED_SIDE_BASE + 11], true, true, false, false, 0, SoundFamily::Stone),
+    d("Brown Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 48, TILE_GLAZED_BOTTOM_BASE + 48, TILE_GLAZED_SIDE_BASE + 12], true, true, false, false, 0, SoundFamily::Stone),
+    d("Green Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 52, TILE_GLAZED_BOTTOM_BASE + 52, TILE_GLAZED_SIDE_BASE + 13], true, true, false, false, 0, SoundFamily::Stone),
+    d("Red Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 56, TILE_GLAZED_BOTTOM_BASE + 56, TILE_GLAZED_SIDE_BASE + 14], true, true, false, false, 0, SoundFamily::Stone),
+    d("Black Glazed Terracotta", [TILE_GLAZED_TOP_BASE + 60, TILE_GLAZED_BOTTOM_BASE + 60, TILE_GLAZED_SIDE_BASE + 15], true, true, false, false, 0, SoundFamily::Stone),
+    // 1.12 parrot spawn egg (kind 30)
+    d("Parrot Spawn Egg", [TILE_PARROT_EGG, TILE_PARROT_EGG, TILE_PARROT_EGG], false, false, true, false, 0, SoundFamily::Stone),
+    // 1.12-era dye items — the names are the pre-1.14 forms (the
+    // "White Dye"/"Black Dye" renames are 1.14 17w45a — version-scoped
+    // OUT of this bracket; VERIFIED w/Dye §History)
+    d("Bone Meal", [TILE_DYE_BASE, TILE_DYE_BASE, TILE_DYE_BASE], false, false, true, false, 0, SoundFamily::Grass),
+    d("Orange Dye", [TILE_DYE_BASE + 1, TILE_DYE_BASE + 1, TILE_DYE_BASE + 1], false, false, true, false, 0, SoundFamily::Grass),
+    d("Magenta Dye", [TILE_DYE_BASE + 2, TILE_DYE_BASE + 2, TILE_DYE_BASE + 2], false, false, true, false, 0, SoundFamily::Grass),
+    d("Light Blue Dye", [TILE_DYE_BASE + 3, TILE_DYE_BASE + 3, TILE_DYE_BASE + 3], false, false, true, false, 0, SoundFamily::Grass),
+    d("Dandelion Yellow", [TILE_DYE_BASE + 4, TILE_DYE_BASE + 4, TILE_DYE_BASE + 4], false, false, true, false, 0, SoundFamily::Grass),
+    d("Lime Dye", [TILE_DYE_BASE + 5, TILE_DYE_BASE + 5, TILE_DYE_BASE + 5], false, false, true, false, 0, SoundFamily::Grass),
+    d("Pink Dye", [TILE_DYE_BASE + 6, TILE_DYE_BASE + 6, TILE_DYE_BASE + 6], false, false, true, false, 0, SoundFamily::Grass),
+    d("Gray Dye", [TILE_DYE_BASE + 7, TILE_DYE_BASE + 7, TILE_DYE_BASE + 7], false, false, true, false, 0, SoundFamily::Grass),
+    d("Light Gray Dye", [TILE_DYE_BASE + 8, TILE_DYE_BASE + 8, TILE_DYE_BASE + 8], false, false, true, false, 0, SoundFamily::Grass),
+    d("Cyan Dye", [TILE_DYE_BASE + 9, TILE_DYE_BASE + 9, TILE_DYE_BASE + 9], false, false, true, false, 0, SoundFamily::Grass),
+    d("Purple Dye", [TILE_DYE_BASE + 10, TILE_DYE_BASE + 10, TILE_DYE_BASE + 10], false, false, true, false, 0, SoundFamily::Grass),
+    d("Lapis Lazuli", [TILE_DYE_BASE + 11, TILE_DYE_BASE + 11, TILE_DYE_BASE + 11], false, false, true, false, 0, SoundFamily::Stone),
+    d("Cocoa Beans", [TILE_DYE_BASE + 12, TILE_DYE_BASE + 12, TILE_DYE_BASE + 12], false, false, true, false, 0, SoundFamily::Grass),
+    d("Cactus Green", [TILE_DYE_BASE + 13, TILE_DYE_BASE + 13, TILE_DYE_BASE + 13], false, false, true, false, 0, SoundFamily::Grass),
+    d("Rose Red", [TILE_DYE_BASE + 14, TILE_DYE_BASE + 14, TILE_DYE_BASE + 14], false, false, true, false, 0, SoundFamily::Grass),
+    d("Ink Sac", [TILE_DYE_BASE + 15, TILE_DYE_BASE + 15, TILE_DYE_BASE + 15], false, false, true, false, 0, SoundFamily::Grass),
+    // the 4 parrot-taming seeds + the cookie
+    d("Wheat Seeds", [TILE_SEEDS_BASE, TILE_SEEDS_BASE, TILE_SEEDS_BASE], false, false, true, false, 0, SoundFamily::Grass),
+    d("Melon Seeds", [TILE_SEEDS_BASE + 1, TILE_SEEDS_BASE + 1, TILE_SEEDS_BASE + 1], false, false, true, false, 0, SoundFamily::Grass),
+    d("Pumpkin Seeds", [TILE_SEEDS_BASE + 2, TILE_SEEDS_BASE + 2, TILE_SEEDS_BASE + 2], false, false, true, false, 0, SoundFamily::Grass),
+    d("Beetroot Seeds", [TILE_SEEDS_BASE + 3, TILE_SEEDS_BASE + 3, TILE_SEEDS_BASE + 3], false, false, true, false, 0, SoundFamily::Grass),
+    d("Cookie", [TILE_COOKIE, TILE_COOKIE, TILE_COOKIE], false, false, true, false, 0, SoundFamily::Grass),
 ];
 
 #[inline]
@@ -3124,7 +3539,7 @@ pub fn face_visible(b: u16, n: u16) -> bool {
 /// (needs fluid sim to be fun). Potions are item-blocks — usable from the
 /// hotbar (drink), never placeable. Phase E1 adds the 1.0–1.2 bracket
 /// blocks/items + the 16 spawn eggs (creative-only items, w/Spawn_Egg).
-pub const PICKER_BLOCKS: [u16; 251] = [
+pub const PICKER_BLOCKS: [u16; 321] = [
     GRASS, DIRT, STONE, COBBLE, SMOOTH_STONE, STONE_BRICKS, BRICKS, MOSSY_COBBLE,
     GRANITE, DIORITE, ANDESITE, OBSIDIAN,
     SAND, GRAVEL, CLAY, TERRACOTTA,
@@ -3210,8 +3625,36 @@ pub const PICKER_BLOCKS: [u16; 251] = [
     HAY_BALE, DAYLIGHT_SENSOR, TRAPPED_CHEST,
     LIGHT_WEIGHTED_PLATE, HEAVY_WEIGHTED_PLATE, REDSTONE_BLOCK,
     LEAD, SADDLE,
-    
+
     E3_SPAWN_EGG_BASE, E3_SPAWN_EGG_BASE + 1, E3_SPAWN_EGG_BASE + 2,
+
+    // ---- 1.12 (World of Color Update): concrete 16 + powder 16 +
+    // glazed terracotta 16 + the parrot egg + the 16 dyes + 4 seeds +
+    // cookie (the engine's single creative palette — vanilla's
+    // "Materials merged with miscellaneous" tab-change is N/A) ----
+    CONCRETE_BASE, CONCRETE_BASE + 1, CONCRETE_BASE + 2, CONCRETE_BASE + 3,
+    CONCRETE_BASE + 4, CONCRETE_BASE + 5, CONCRETE_BASE + 6, CONCRETE_BASE + 7,
+    CONCRETE_BASE + 8, CONCRETE_BASE + 9, CONCRETE_BASE + 10, CONCRETE_BASE + 11,
+    CONCRETE_BASE + 12, CONCRETE_BASE + 13, CONCRETE_BASE + 14, CONCRETE_BASE + 15,
+    CONCRETE_POWDER_BASE, CONCRETE_POWDER_BASE + 1, CONCRETE_POWDER_BASE + 2,
+    CONCRETE_POWDER_BASE + 3, CONCRETE_POWDER_BASE + 4, CONCRETE_POWDER_BASE + 5,
+    CONCRETE_POWDER_BASE + 6, CONCRETE_POWDER_BASE + 7, CONCRETE_POWDER_BASE + 8,
+    CONCRETE_POWDER_BASE + 9, CONCRETE_POWDER_BASE + 10, CONCRETE_POWDER_BASE + 11,
+    CONCRETE_POWDER_BASE + 12, CONCRETE_POWDER_BASE + 13, CONCRETE_POWDER_BASE + 14,
+    CONCRETE_POWDER_BASE + 15,
+    GLAZED_TERRACOTTA_BASE, GLAZED_TERRACOTTA_BASE + 1, GLAZED_TERRACOTTA_BASE + 2,
+    GLAZED_TERRACOTTA_BASE + 3, GLAZED_TERRACOTTA_BASE + 4, GLAZED_TERRACOTTA_BASE + 5,
+    GLAZED_TERRACOTTA_BASE + 6, GLAZED_TERRACOTTA_BASE + 7, GLAZED_TERRACOTTA_BASE + 8,
+    GLAZED_TERRACOTTA_BASE + 9, GLAZED_TERRACOTTA_BASE + 10, GLAZED_TERRACOTTA_BASE + 11,
+    GLAZED_TERRACOTTA_BASE + 12, GLAZED_TERRACOTTA_BASE + 13, GLAZED_TERRACOTTA_BASE + 14,
+    GLAZED_TERRACOTTA_BASE + 15,
+    SPAWN_EGG_PARROT,
+    DYE_BASE, DYE_BASE + 1, DYE_BASE + 2, DYE_BASE + 3, DYE_BASE + 4,
+    DYE_BASE + 5, DYE_BASE + 6, DYE_BASE + 7, DYE_BASE + 8, DYE_BASE + 9,
+    DYE_BASE + 10, DYE_BASE + 11, DYE_BASE + 12, DYE_BASE + 13, DYE_BASE + 14,
+    DYE_BASE + 15,
+    WHEAT_SEEDS, MELON_SEEDS, PUMPKIN_SEEDS, BEETROOT_SEEDS,
+    COOKIE,
 ];
 
 /// default hotbar palette
@@ -3555,6 +3998,8 @@ mod state_tests {
                 || is_v5_state(s)
                 || is_v6_state(s)
                 || is_v7_state(s)
+                // 1.12 V8 (World of Color Update)
+                || is_v8_state(s)
                 || matches!(s, ACACIA_LOG_X | ACACIA_LOG_Z | DARK_OAK_LOG_X | DARK_OAK_LOG_Z)
             {
                 assert!(!is_model_state(s), "component/item state {s} never routes to models");
@@ -3587,6 +4032,28 @@ mod state_tests {
                 // 1.11 V7 (Exploration Update): same roundtrip contract
                 if is_v7_state(s) {
                     assert_eq!(default_state(b), s, "v7 state {s} roundtrip");
+                }
+                // 1.12 V8 (World of Color): 1:1 ids roundtrip; glazed
+                // facing states (4 per color) decode consistently —
+                // only facing 0 equals default_state (the placement
+                // path writes the player-facing state)
+                if is_v8_state(s) {
+                    if let Some((color, facing)) = glazed_decode(s) {
+                        assert_eq!(
+                            state_block(s),
+                            glazed_terracotta(color),
+                            "glazed state {s} folds to color {color}"
+                        );
+                        if facing == 0 {
+                            assert_eq!(
+                                default_state(glazed_terracotta(color)),
+                                s,
+                                "glazed color {color} default = facing 0"
+                            );
+                        }
+                    } else {
+                        assert_eq!(default_state(b), s, "v8 state {s} roundtrip");
+                    }
                 }
                 continue;
             }
@@ -3746,8 +4213,8 @@ mod state_tests {
         // with the 1.7.2–1.10 F-series: 276 blocks / 480 states
         // (E-series states end at 354; V2 400..=442, V3 447..=465,
         // V4 466..=475, V5 476..=479)
-        assert_eq!(BLOCK_COUNT, 291, "merged registry + audit-fix V6 + 1.11 V7 + re-added eggs");
-        assert_eq!(STATE_COUNT, 497, "merged state space, mansion spawner states end at 496");
+        assert_eq!(BLOCK_COUNT, 361, "merged registry + V6 + V7 + 1.12 V8 (World of Color)");
+        assert_eq!(STATE_COUNT, 615, "merged state space, V8 states end at 614");
         assert_eq!(BLOCK_TABLE.len(), BLOCK_COUNT);
         for want in [
             COAL_BLOCK,
@@ -3798,8 +4265,8 @@ mod v110_tests {
             assert_eq!(default_state(b), s);
             assert!(is_v5_state(s));
         }
-        assert_eq!(BLOCK_COUNT, 291);
-        assert_eq!(STATE_COUNT, 497);
+        assert_eq!(BLOCK_COUNT, 361); // 1.12: V8 window grew the registry
+        assert_eq!(STATE_COUNT, 615); // 1.12: V8 window grew the state space
     }
 
     /// magma emits light level 3 (VERIFIED — minecraft.wiki/w/Magma_Block,
@@ -3836,8 +4303,8 @@ mod auditfix_tests {
             assert!(!is_model_state(s), "V6 states are cube/cross defs, not model states");
         }
         assert_eq!(V6_COUNT, 6);
-        assert_eq!(BLOCK_COUNT, 291);
-        assert_eq!(STATE_COUNT, 497);
+        assert_eq!(BLOCK_COUNT, 361); // 1.12: V8 window grew the registry
+        assert_eq!(STATE_COUNT, 615); // 1.12: V8 window grew the state space
         // solidity classes: log/planks solid-opaque (hardness family 2
         // per w/Log + w/Planks), leaves see-through, vine/fern non-solid
         // cross plants (w/Vines: "climbable non-solid"; w/Fern:
@@ -3886,8 +4353,8 @@ mod v111_tests {
             assert_eq!(default_state(b), s, "block {b} default state");
             assert_eq!(state_block(s), b, "state {s} folds back");
         }
-        assert_eq!(BLOCK_COUNT, 291);
-        assert_eq!(STATE_COUNT, 497);
+        assert_eq!(BLOCK_COUNT, 361); // 1.12: V8 window grew the registry
+        assert_eq!(STATE_COUNT, 615); // 1.12: V8 window grew the state space
         // mansion spawner states fold to SPAWNER + decode their kinds
         assert_eq!(state_block(SPAWNER_VINDICATOR), SPAWNER);
         assert_eq!(state_block(SPAWNER_EVOKER), SPAWNER);
@@ -3929,5 +4396,142 @@ mod v111_tests {
         assert!(TILE_V7_EGG_END <= TILE_MAX, "egg tiles within the atlas guard");
         // shulker box is a solid placeable container
         assert!(is_solid(SHULKER_BOX) && is_opaque(SHULKER_BOX));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 1.12 bracket tests (World of Color Update, live round 2026-09-07)
+// ---------------------------------------------------------------------------
+#[cfg(test)]
+mod v112_tests {
+    use super::*;
+
+    /// the V8 window: 70 ids (16 concrete + 16 powder + 16 glazed + egg
+    /// + 16 dyes + 4 seeds + cookie) with their default states, plus the
+    /// registry/state-space bounds (VERIFIED live: minecraft.wiki
+    /// /w/Java_Edition_1.12 §Blocks/§Items)
+    #[test]
+    fn v112_v8_registry_window() {
+        // concrete: 1:1, colors 0..15
+        for c in 0u16..16 {
+            assert_eq!(concrete(c as u8), CONCRETE_BASE + c);
+            assert_eq!(default_state(CONCRETE_BASE + c), concrete_state(c as u8));
+            assert_eq!(state_block(concrete_state(c as u8)), CONCRETE_BASE + c);
+        }
+        // powder: 1:1
+        for c in 0u16..16 {
+            assert_eq!(concrete_powder(c as u8), CONCRETE_POWDER_BASE + c);
+            assert_eq!(
+                default_state(CONCRETE_POWDER_BASE + c),
+                concrete_powder_state(c as u8)
+            );
+            assert_eq!(
+                state_block(concrete_powder_state(c as u8)),
+                CONCRETE_POWDER_BASE + c
+            );
+        }
+        // glazed: 4 facing states per color, folding to the color block
+        for c in 0u16..16 {
+            for f in 0u16..4 {
+                let s = glazed_terracotta_state(c as u8, f as u8);
+                assert_eq!(glazed_decode(s), Some((c as u8, f as u8)));
+                assert_eq!(state_block(s), GLAZED_TERRACOTTA_BASE + c);
+            }
+            // default = facing 0 (the placement path writes player-facing)
+            assert_eq!(
+                default_state(GLAZED_TERRACOTTA_BASE + c),
+                glazed_terracotta_state(c as u8, 0)
+            );
+        }
+        // items: parrot egg + dyes + seeds + cookie, 1:1 at offset 96+
+        assert_eq!(default_state(SPAWN_EGG_PARROT), V8_STATE_BASE + 96);
+        for c in 0u16..16 {
+            assert_eq!(dye(c as u8), DYE_BASE + c);
+            assert_eq!(default_state(DYE_BASE + c), V8_STATE_BASE + 97 + c);
+        }
+        for (i, b) in [WHEAT_SEEDS, MELON_SEEDS, PUMPKIN_SEEDS, BEETROOT_SEEDS]
+            .iter()
+            .enumerate()
+        {
+            assert_eq!(default_state(*b), V8_STATE_BASE + 113 + i as u16);
+            assert!(is_seeds(*b), "seeds gate covers {b}");
+        }
+        assert_eq!(default_state(COOKIE), V8_STATE_BASE + 117);
+        // bounds
+        assert_eq!(BLOCK_COUNT, 361);
+        assert_eq!(STATE_COUNT, 615);
+        assert_eq!(CONCRETE_BASE + 15, CONCRETE_END);
+        assert_eq!(CONCRETE_POWDER_BASE + 15, CONCRETE_POWDER_END);
+        assert_eq!(GLAZED_TERRACOTTA_BASE + 15, GLAZED_TERRACOTTA_END);
+        assert_eq!(DYE_BASE + 15, DYE_END);
+    }
+
+    /// concrete/powder/glazed physical flags + the sound families
+    /// (VERIFIED live: w/Concrete 1.8 stone; w/Concrete_Powder §Sounds
+    /// "block.sand.*"; w/Glazed_Terracotta §Sounds "block.stone.*")
+    #[test]
+    fn v112_block_flags_and_sounds() {
+        for b in [CONCRETE_BASE, CONCRETE_BASE + 7, CONCRETE_END] {
+            let d = def(b);
+            assert!(d.solid && d.opaque, "concrete is a solid opaque cube");
+            assert_eq!(d.sound, SoundFamily::Stone);
+            assert!(!is_item_block(b));
+        }
+        for b in [CONCRETE_POWDER_BASE, CONCRETE_POWDER_END] {
+            let d = def(b);
+            assert!(d.solid && d.opaque, "powder is a solid opaque cube");
+            assert_eq!(d.sound, SoundFamily::Sand, "powder: block.sand.* family");
+        }
+        for b in [GLAZED_TERRACOTTA_BASE, GLAZED_TERRACOTTA_END] {
+            let d = def(b);
+            assert!(d.solid && d.opaque, "glazed is a solid opaque cube");
+            assert_eq!(d.sound, SoundFamily::Stone);
+            // glazed facing states are NOT model states (greedy cubes —
+            // the V8 arm in is_model_state)
+            let s = glazed_terracotta_state(0, 2);
+            assert!(!is_model_state(s));
+        }
+        // item-blocks: never placeable, picker-visible
+        assert!(is_item_block(COOKIE));
+        assert!(is_item_block(DYE_BASE + 11)); // Lapis Lazuli
+        assert!(is_item_block(WHEAT_SEEDS));
+        assert!(!is_item_block(CONCRETE_BASE));
+        // the parrot egg passes the use gate + decodes kind 30
+        assert!(is_spawn_egg(SPAWN_EGG_PARROT));
+        assert_eq!(egg_mob(SPAWN_EGG_PARROT), Some(30));
+    }
+
+    /// the 1.12 names — the dye names are the pre-1.14 forms (VERIFIED
+    /// w/Dye §History: the "White Dye"/"Black Dye" renames are 1.14
+    /// 17w45a, version-scoped out of this bracket)
+    #[test]
+    fn v112_names_and_tiles() {
+        assert_eq!(name(CONCRETE_BASE), "White Concrete");
+        assert_eq!(name(CONCRETE_POWDER_BASE), "White Concrete Powder");
+        assert_eq!(name(GLAZED_TERRACOTTA_BASE), "White Glazed Terracotta");
+        assert_eq!(name(DYE_BASE), "Bone Meal");
+        assert_eq!(name(DYE_BASE + 11), "Lapis Lazuli");
+        assert_eq!(name(DYE_BASE + 15), "Ink Sac");
+        assert_eq!(name(WHEAT_SEEDS), "Wheat Seeds");
+        assert_eq!(name(COOKIE), "Cookie");
+        // glazed facing picks the ROTATED tile variant (top/bottom), the
+        // shared side tile (VERIFIED w/Glazed_Terracotta §Placement: "the
+        // texture rotates relative to the direction the player is facing")
+        for f in 0u16..4 {
+            let t = state_tiles(glazed_terracotta_state(0, f as u8));
+            assert_eq!(t[0], TILE_GLAZED_TOP_BASE + f, "top rotation {f}");
+            assert_eq!(t[1], TILE_GLAZED_BOTTOM_BASE + f, "bottom rotation {f}");
+            assert_eq!(t[2], TILE_GLAZED_SIDE_BASE, "shared side");
+        }
+        // every 1.12 id is in the creative picker
+        for b in [
+            CONCRETE_BASE, CONCRETE_END, CONCRETE_POWDER_BASE, CONCRETE_POWDER_END,
+            GLAZED_TERRACOTTA_BASE, GLAZED_TERRACOTTA_END, SPAWN_EGG_PARROT,
+            DYE_BASE, DYE_END, WHEAT_SEEDS, BEETROOT_SEEDS, COOKIE,
+        ] {
+            assert!(PICKER_BLOCKS.contains(&b), "picker missing {b}");
+        }
+        assert!(TILE_MAX >= TILE_ILLUSIONER, "1.12 tiles within the atlas guard");
+        assert_eq!(PICKER_BLOCKS.len(), 321);
     }
 }

@@ -1,0 +1,3114 @@
+Parrot – Minecraft Wiki
+
+ 12 languagesDeutsch
+Español
+Français
+Italiano
+日本語
+한국어
+Nederlands
+Português
+Русский
+ไทย
+Українська
+中文
+
+ ParrotShare article feedback
+
+ From Minecraft Wiki
+
+ Jump to navigation
+ Jump to search
+ For other uses, see Parrot (disambiguation).
+
+Parrot
+
+Red
+Blue
+Green
+Cyan
+Gray
+
+View other renders
+
+ | Health points
+
+ | 6HP
+
+ | Behavior
+
+ | Passive
+
+ | Mob type
+
+ | Animal
+
+ | Hitbox size
+
+ | In Java Edition:
+
+Height: 0.9 blocks
+Width: 0.5 blocks
+In Bedrock Edition:
+
+Height: 1.0 block
+Width: 0.5 blocks
+
+ | Speed
+
+ | 0.2
+
+ | Spawn
+
+ | Jungle
+Bamboo Jungle
+Sparse Jungle‌[BE only]
+
+ | Usable items
+
+Wheat Seeds 
+
+Beetroot Seeds 
+
+Melon Seeds 
+
+Pumpkin Seeds 
+
+Torchflower Seeds 
+
+Pitcher Pod 
+
+Cookie (Toxic)
+
+Lead 
+
+Name tag
+
+{
+ "extratext": "[[#Gallery|View other renders]]",
+ "title": "Parrot",
+ "images": [
+ "Red Parrot.png",
+ "Blue Parrot.png",
+ "Green Parrot.png",
+ "Cyan Parrot.png",
+ "Gray Parrot.png"
+ ],
+ "rows": [
+ {
+ "field": "6<span class=\"hidden-alt-text\">HP</span><span class=\"nowrap mc-hearts\"><span class=\"iconbar pixel-image nowrap\" style=\"--icon-offset:-1px;\" title=\"3 hearts\">(link to File:Heart (icon).png article, displayed as 9px|link=|alt=❤️)(link to File:Heart (icon).png article, displayed as 9px|link=|alt=❤️)(link to File:Heart (icon).png article, displayed as 9px|link=|alt=❤️)</span></span>",
+ "label": "(link to Health article, displayed as Health points)"
+ },
+ {
+ "field": "Passive",
+ "label": "Behavior"
+ },
+ {
+ "field": "<span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:EntitySprite animal.png article, displayed as 16x16px|link=Animal|alt=|class=pixel-image|)</span>(link to Animal article, displayed as <span class=\"sprite-text\">Animal</span>)</span>",
+ "label": "(link to Mob type article, displayed as Mob type)"
+ },
+ {
+ "field": "'''In (link to Java Edition article, displayed as ''Java Edition''):'''<br>\nHeight: 0.9 blocks<br>Width: 0.5 blocks<br>'''In (link to Bedrock Edition article, displayed as ''Bedrock Edition''):'''<br>\nHeight: 1.0 block<br>Width: 0.5 blocks",
+ "label": "(link to Hitbox article, displayed as Hitbox size)"
+ },
+ {
+ "field": "0.2",
+ "label": "(link to Attribute#Movement_speed article, displayed as Speed)"
+ },
+ {
+ "field": "(values exceeds 1000 characters...)",
+ "label": "(link to Mob spawning article, displayed as Spawn)"
+ },
+ {
+ "field": "(values exceeds 1000 characters...)",
+ "label": "Usable items"
+ }
+ ],
+ "invimages": [
+ "Parrot Spawn Egg"
+ ]
+}
+
+A parrot is a tamable passive mob that spawns in jungle biomes. Parrots imitate sounds of nearby monsters and can perch on the player's shoulders.
+
+Contents
+
+1 Spawning
+
+2 Drops
+
+2.1 On death
+
+3 Behavior
+
+3.1 Sitting on a shoulder
+
+3.2 Imitating sounds
+
+3.3 Dancing
+
+4 Sounds
+
+4.1 Generic
+
+4.2 Imitations
+
+5 Data values
+
+5.1 ID
+
+5.2 Entity data
+
+6 Achievements
+
+7 Advancements
+
+8 History
+
+8.1 Development
+
+8.2 Java Edition
+
+8.3 Bedrock Edition
+
+8.4 Legacy Console Edition
+
+8.5 Data history
+
+9 Issues
+
+10 Trivia
+
+11 Gallery
+
+11.1 Renders
+
+11.1.1 Sitting
+
+11.1.2 Dancing
+
+11.1.3 Sitting on the player
+
+11.2 Screenshots
+
+11.3 Textures
+
+11.4 In other media
+
+12 References
+
+13 External links
+
+14 Navigation
+
+Spawning
+[edit | edit source]
+
+Parrots naturally spawn in groups of 1–2 in jungles, bamboo jungles, and sparse jungles‌[BE only] above logs, leaves, grass blocks, or air.
+
+Unlike most passive mobs, parrots cannot be bred.
+
+Parrot spawns in:[hide]
+ | Category: CreatureJava EditionBedrock Edition
+Spawn areaSpawn weightSpawn chanceGroup sizeSpawn weightGroup size
+Jungle40⁄93 | 43.01% | 1–2 | 40 | 1–2
+Bamboo Jungle40⁄170 | 23.53% | 1–2 | 40 | 1–2
+Sparse Jungle— | — | — | 40 | 1–2
+
+Drops
+[edit | edit source]
+
+On death
+[edit | edit source]
+
+Java Edition:
+Decimal
+Fraction
+Distribution
+Expectation
+
+ItemQuantity / Chance / Average
+DefaultLooting ILooting IILooting III
+ | | Feather1–2 | 100.00% | 1.501–3 | 100.00% | 2.001–4 | 100.00% | 2.501–5 | 100.00% | 3.00
+
+ItemQuantity / Chance / Average
+DefaultLooting ILooting IILooting III
+ | | Feather1–2 | 1 | 3⁄21–3 | 1 | 21–4 | 1 | 5⁄21–5 | 1 | 3
+
+ItemAmountProbability
+ | Default | Looting I | Looting II | Looting III
+Feather | 1 | 1⁄2 (50.00%) | 1⁄4 (25.00%) | 1⁄8 (12.50%) | 1⁄12 (8.33%)
+ | 2 | 1⁄2 (50.00%) | 1⁄2 (50.00%) | 3⁄8 (37.50%) | 1⁄4 (25.00%)
+ | 3 | 0 | 1⁄4 (25.00%) | 3⁄8 (37.50%) | 1⁄3 (33.33%)
+ | 4 | 0 | 0 | 1⁄8 (12.50%) | 1⁄4 (25.00%)
+ | 5 | 0 | 0 | 0 | 1⁄12 (8.33%)
+ | Average | 3⁄2 (1.50) | 2 (2.00) | 5⁄2 (2.50) | 3 (3.00)
+
+Killed
+ItemExpected Drops
+ | Default | Looting I | Looting II | Looting III
+ | | Feather | 1.50 | 2.00 | 2.50 | 3.00
+
+Bedrock Edition:
+Decimal
+Fraction
+Distribution
+Expectation
+
+ItemQuantity / Chance / Average
+DefaultLooting ILooting IILooting III
+ | | Feather1–2 | 100.00% | 1.501–2 | 100.00% | 1.501–2 | 100.00% | 1.501–2 | 100.00% | 1.50
+
+ItemQuantity / Chance / Average
+DefaultLooting ILooting IILooting III
+ | | Feather1–2 | 1 | 3⁄21–2 | 1 | 3⁄21–2 | 1 | 3⁄21–2 | 1 | 3⁄2
+
+ItemAmountProbability
+ | Default | Looting I | Looting II | Looting III
+Feather | 1 | 1⁄2 (50.00%) | 1⁄2 (50.00%) | 1⁄2 (50.00%) | 1⁄2 (50.00%)
+ | 2 | 1⁄2 (50.00%) | 1⁄2 (50.00%) | 1⁄2 (50.00%) | 1⁄2 (50.00%)
+ | Average | 3⁄2 (1.50) | 3⁄2 (1.50) | 3⁄2 (1.50) | 3⁄2 (1.50)
+
+Killed
+ItemExpected Drops
+ | Default | Looting I | Looting II | Looting III
+ | | Feather | 1.50 | 1.50 | 1.50 | 1.50
+
+1–3XP experience orbs are dropped when parrots are killed by a player or a tamed wolf.
+
+Behavior
+[edit | edit source]
+
+Parrots fly around idly under normal circumstances, landing frequently to rest.[1] They take interest in any nearby mobs, including those that are hostile to them, and follow them around closely. When attacked, they rapidly fly upward several blocks to flee.
+
+Parrots also flap their wings to swim, slow their falls, and prevent fall damage.
+
+Parrots can be tamed by feeding them wheat seeds, melon seeds, pumpkin seeds, beetroot seeds, torchflower seeds, or pitcher pods. Each item fed has a 1⁄10 chance of successfully taming them. Once tamed, interacting with a parrot makes it sit down and stand up.
+
+Unless told to sit, a tamed parrot follows the player and teleports if there is a distance of 12 blocks between it and the player.
+
+A death message is displayed to a parrot's owner upon its death. 
+
+Because a cookie contains cocoa beans (the main component of chocolate) and chocolate is toxic to real-life parrots, feeding a cookie to a parrot kills it. In Java Edition, the parrot receives 2128 (3.4028 x 1038) and emits Poison particles as it dies. In Bedrock Edition, a cookie inflicts Fatal Poison on the parrot, killing it after a few secionds.
+
+Unlike most animal mobs, parrots cannot breed and baby parrots do not exist.
+
+Sitting on a shoulder
+[edit | edit source]
+
+A player with a parrot on their shoulder.
+A tamed parrot on the ground can be made to perch on its player's shoulder by moving through the parrot. On its own, a tamed parrot can also fly to and perch on the player's shoulder, unless it has been told to sit. A player can have one parrot on each shoulder. Parrots always prefer a player's left shoulder first, if it is empty.
+
+in Java Edition, a parrot dismounts its player when the player:
+
+Lands on a higher surface (1⁄2 block up or higher)
+
+drops off a ledge of higher than 3⁄4 of a block
+
+takes damage
+
+touches water
+
+touches powder snow
+
+is in creative flying mode
+
+starts gliding with an elytra[2]
+
+sleeps on a bed
+
+submerges the player's head in lava (the parrot dismounts and burns even if the player has Fire Resistance)
+
+Parrots on a shoulder always look in the same direction the player's head is looking.
+
+A parrot riding on an entity cannot take any damage (except void and /kill).‌[Bedrock Edition only] 
+
+But it may get hurt as soon as it dismounts, as when dismounting a player submerged in lava.
+
+A parrot sitting on the shoulder appears in the inventory interface.
+
+In Bedrock Edition, a parrot sitting on a shoulder prevents the player from entering a nether portal.[3]
+
+If a player uses an ender pearl while parrots are on their shoulder, the parrots teleport with the player.
+
+Imitating sounds
+[edit | edit source]
+
+Parrots imitate the idle sounds of nearby monsters and in Bedrock Edition, a few neutral animals as well; they have a detection range of 20 blocks. The sound produced by the parrots is the same sound as the mob being mimicked at a higher pitch, the same pitch as the mob's baby variant. Occasionally, a parrot may imitate sounds of mobs that are not in the area.[4]
+
+In Bedrock Edition, they can also imitate neutral mobs such as endermen, polar bears, wolves and zombified piglins. In Java Edition, they can also imitate piglins, hoglins and piglin brutes. 
+
+In Java Edition, parrots attempt to imitate happy ghasts, but without using the corresponding sound event.
+
+Parrots don't imitate the sounds of skeleton horses.[5]
+
+Mobs that are imitated by parrots:
+
+Blaze
+
+Bogged
+
+Breeze
+
+Camel Husk
+
+Cave Spider
+
+Creaking
+
+Creeper
+
+Drowned
+
+Elder Guardian
+
+Ender Dragon
+
+Enderman‌[BE only]
+
+Endermite
+
+Evoker
+
+Ghast
+
+Guardian
+
+Hoglin‌[JE only]
+
+Husk
+
+Illusioner‌[JE only]
+
+Magma Cube
+
+Parched
+
+Phantom
+
+Piglin‌[JE only]
+
+Piglin Brute‌[JE only]
+
+Pillager
+
+Polar Bear‌[BE only]
+
+Ravager
+
+Shulker
+
+Silverfish
+
+Skeleton
+
+Slime
+
+Spider
+
+Stray
+
+Vex
+
+Vindicator
+
+Warden
+
+Witch
+
+Wither
+
+Wither Skeleton
+
+Wolf‌[BE only]
+
+Zoglin
+
+Zombie
+
+Zombie Horse‌[JE only]
+
+Zombie Nautilus‌[JE only]
+
+Zombie Villager
+
+Zombified Piglin‌[BE only]
+
+Dancing
+[edit | edit source]
+
+Parrots dance near a jukebox if a music disc is inside it. Parrots even have the ability to dance while on a player's shoulder.‌[BE only] This is a reference to the Party Parrot meme.[6] They stop dancing when the track ends.[7]
+
+The dancing radius is 3 blocks from the jukebox. If they dance and then fly beyond this radius, they stop dancing. A parrot does not dance if the music disc was inserted prior to it spawning, dismounting, or being within the 3 blocks range.[8]
+
+Sounds
+[edit | edit source]
+
+Generic
+[edit | edit source]
+
+Java Edition:
+
+[hide]Sounds
+ | Sound | Closed captions | Source | Description | Identifier | Translation key | Volume | Pitch | Attenuation
+distance
+ | ​Parrot talks | Friendly Mobs | Randomly | entity.parrot.ambient | subtitles.entity.parrot.ambient​ | 0.7 | 0.8–1.2 | 16
+ | ​Parrot eats | Friendly Mobs | When a parrot eats a non-cookie item | entity.parrot.eat | subtitles.entity.parrot.eats​ | 1.0 | 0.8–1.2 | 16
+ | ​Parrot dies | Friendly Mobs | When a parrot dies | entity.parrot.death | subtitles.entity.parrot.death​ | 1.0 | varies [sound 1] | 16
+ | ​Parrot hurts | Friendly Mobs | When a parrot is damaged | entity.parrot.hurt | subtitles.entity.parrot.hurts​ | 1.0 | varies [sound 2] | 16
+ | ​Parrot flutters | Friendly Mobs | While a parrot is flying | entity.parrot.fly | subtitles.entity.parrot.fly​ | 0.15 | 1.0 | 16
+ | None​[sound 3]​ | Friendly Mobs | While a parrot is walking | entity.parrot.step | None​[sound 3]​ | 0.15 | 1.0 | 16
+
+↑ 0.72-1.08 for all sounds except death4, which is 0.56-0.84
+
+↑ 0.72-1.08 for all sounds except hurt1, which is 0.64-0.96
+
+↑ Jump up to: a b ​MC-184616​
+
+Bedrock Edition:
+
+[hide]Sounds
+ | Sound | Closed captions | Source | Description | Identifier | Translation key | Volume | Pitch
+ | ​ ? | Friendly Mobs | Randomly | mob.parrot.idle | ​ ? | 0.7 | 0.8–1.2
+ | ​ ? | Friendly Mobs | When a parrot eats an item | mob.parrot.eat | ​ ? | 1.0 | 0.8–1.2
+ | ​ ? | Friendly Mobs | When a parrot dies | mob.parrot.death | ​ ? | 1.0 | 0.8–1.0
+ | ​ ? | Friendly Mobs | When a parrot is damaged | mob.parrot.hurt | ​ ? | 1.0 | 0.8–1.0
+ | ​ ? | Friendly Mobs | While a parrot is flying | mob.parrot.fly | ​ ? | 1.0 | 0.8–1.2
+ | ​ ? | Friendly Mobs | While a parrot is walking | mob.parrot.step | ​ ? | 1.0 | 0.8–1.2
+
+Imitations
+[edit | edit source]
+
+Note that these are the original mob sounds, and not the pitched up ones heard from parrots in-game.
+
+When making their ambient sound, parrots have a chance to trigger a random sound from this list if the difficulty is not Peaceful.
+
+hideSounds
+
+ | Sound
+
+ | Subtitles
+
+ | Source
+
+ | Mob
+
+ | Resource location
+
+ | Translation key
+
+ | Volume
+
+ | Pitch
+
+ | Attenuation
+distance ‌[JE only]
+
+ | Parrot breathes
+
+Friendly Mobs
+
+Blaze
+
+ | entity.parrot.imitate.blaze‌[JE only]
+
+ | subtitles.entity.parrot.imitate.blaze
+
+ | 1.0‌[JE only]
+
+ | 1.36-2.04‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.blaze‌[BE only]
+
+N/A
+
+ | 0.4‌[BE only]
+
+ | 1.80‌[BE only]
+
+N/A
+
+ | Parrot rattles
+
+Friendly Mobs
+
+Bogged
+
+ | entity.parrot.imitate.bogged‌[JE only]
+
+ | subtitles.entity.parrot.imitate.bogged
+
+ | 1.0‌[JE only]
+
+ | 1.36-2.04‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.bogged‌[BE only]
+
+N/A
+
+ | 0.7‌[BE only]
+
+ | 1.70‌[BE only]
+
+N/A
+
+ | Parrot whirs
+
+Friendly Mobs
+
+Breeze
+
+ | entity.parrot.imitate.breeze ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.breeze
+
+0.7
+
+1.7
+
+ | 16
+
+N/A
+
+ | mob.breeze.idle_ground ‌[BE only]
+
+N/A
+
+N/A
+
+ | Parrot hisses
+
+Friendly Mobs
+
+Cave Spider
+
+ | entity.parrot.imitate.spider ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.spider
+
+ | ? ‌[JE only]
+
+ | 1.44-2.16 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.spider‌[BE only]
+
+N/A
+
+ | 0.6 ‌[BE only]
+
+ | 1.8 ‌[BE only]
+
+N/A
+
+ | Parrot creaks
+
+Friendly Mobs
+
+Creaking
+
+ | entity.parrot.imitate.creaking
+
+ | subtitles.entity.parrot.imitate.creaking
+
+ | 0.7
+
+ | 0.8-1.2
+
+ | 16
+
+N/A
+
+ | mob.imitate.creaking ‌[BE only]
+
+N/A
+
+ | 1.0
+
+ | 1.0
+
+N/A
+
+ | Parrot hisses
+
+Friendly Mobs
+
+Creeper
+
+ | entity.parrot.imitate.creeper ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.creeper
+
+ | 0.42 ‌[JE only]
+
+ | 1.44-2.16 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | imitate.fuse ‌[BE only]
+
+N/A
+
+ | 0.6 ‌[BE only]
+
+ | 1.8 ‌[BE only]
+
+N/A
+
+ | Parrot gurgles
+
+Friendly Mobs
+
+Drowned
+
+ | entity.parrot.imitate.drowned ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.drowned
+
+ | 0.42 ‌[JE only]
+
+ | 1.44-2.16 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.drowned ‌[BE only]
+
+N/A
+
+ | 0.6 ‌[BE only]
+
+ | 1.8 ‌[BE only]
+
+N/A
+
+ | ‌[JE only]
+
+ | Parrot moans
+
+Friendly Mobs
+
+Elder guardian
+
+ | entity.parrot.imitate.elder_guardian ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.elder_guardian
+
+ | 0.49 ‌[JE only]
+
+ | 1.44-2.16 ‌[JE only]
+
+ | 16
+
+ | ‌[BE only]
+
+N/A
+
+ | mob.imitate.guardian ‌[BE only]
+
+N/A
+
+ | 0.7 ‌[BE only]
+
+ | 1.7 ‌[BE only]
+
+N/A
+
+ | Parrot roars
+
+Friendly Mobs
+
+Ender dragon
+
+ | entity.parrot.imitate.ender_dragon ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.ender_dragon
+
+ | 0.14 ‌[JE only]
+
+ | 1.44-2.16 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.enderdragon ‌[BE only]
+
+N/A
+
+ | 1.6 ‌[BE only]
+
+ | 1.8 ‌[BE only]
+
+N/A
+
+ | 
+
+N/A
+
+ | Friendly Mobs
+
+ | Enderman ‌[BE only]
+
+ | mob.imitate.endermen
+
+N/A
+
+ | 0.5
+
+ | 1.7
+
+N/A
+
+ | Parrot scuttles
+
+Friendly Mobs
+
+Endermite
+
+ | entity.parrot.imitate.endermite ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.endermite
+
+ | 0.49 ‌[JE only]
+
+ | 1.44-2.16 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.endermite ‌[BE only]
+
+N/A
+
+ | 0.7 ‌[BE only]
+
+ | 1.8 ‌[BE only]
+
+N/A
+
+ | ‌[JE only]
+
+ | Parrot murmurs
+
+Friendly Mobs
+
+Evoker
+
+ | entity.parrot.imitate.evoker ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.evoker
+
+ | 0.42 ‌[JE only]
+
+ | 1.44-2.16 ‌[JE only]
+
+ | 16
+
+ | ‌[BE only]
+
+N/A
+
+ | mob.imitate.evocation_illager ‌[BE only]
+
+N/A
+
+ | 0.6 ‌[BE only]
+
+ | 1.8 ‌[BE only]
+
+N/A
+
+ | Parrot cries
+
+Friendly Mobs
+
+Ghast
+
+ | entity.parrot.imitate.ghast ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.ghast
+
+ | 0.49 ‌[JE only]
+
+ | 1.44-2.16 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.ghast ‌[BE only]
+
+N/A
+
+ | 0.35 ‌[BE only]
+
+ | 1.8 ‌[BE only]
+
+N/A
+
+ | Parrot moans
+
+Friendly Mobs
+
+Guardian
+
+ | entity.parrot.imitate.guardian ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.guardian
+
+ | 0.28 ‌[JE only]
+
+ | 1.44-2.16 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.guardian ‌[BE only]
+
+N/A
+
+ | 0.7 ‌[BE only]
+
+ | 1.8 ‌[BE only]
+
+N/A
+
+ | 
+
+N/A
+
+ | Friendly Mobs
+
+ | Happy ghast ‌[BE only][verify]
+
+ | mob.imitate.happy_ghast
+
+N/A
+
+ | 1.0
+
+ | 1.7
+
+N/A
+
+ | 
+
+ | Parrot growls
+
+ | Friendly Mobs
+
+ | Hoglin ‌[JE only]
+
+ | entity.parrot.imitate.hoglin
+
+ | subtitles.entity.parrot.imitate.hoglin
+
+ | 0.42
+
+ | 1.52-2.28
+
+ | 16
+
+ | Parrot groans
+
+Friendly Mobs
+
+Husk
+
+ | entity.parrot.imitate.husk ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.husk
+
+ | 0.42 ‌[JE only]
+
+ | 1.44-2.16 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.husk ‌[BE only]
+
+N/A
+
+ | 0.6 ‌[BE only]
+
+ | 1.8 ‌[BE only]
+
+N/A
+
+ | ‌[JE only]
+
+ | Parrot murmurs
+
+ | Friendly Mobs
+
+ | Illusioner ‌[JE only]
+
+ | entity.parrot.imitate.illusioner ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.illusioner
+
+ | 0.49 ‌[JE only]
+
+ | 1.44-2.16 ‌[JE only]
+
+ | 16
+
+ | Parrot squishes
+
+Friendly Mobs
+
+Magma cube
+
+ | entity.parrot.imitate.magma_cube ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.magma_cube
+
+ | 0.42 ‌[JE only]
+
+ | 1.44-2.16 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.magmacube ‌[BE only]
+
+N/A
+
+ | 0.6 ‌[BE only]
+
+ | 1.8 ‌[BE only]
+
+N/A
+
+Parrot rattles
+
+Friendly Mobs
+
+Parched
+
+ | entity.parrot.imitate.parched ‌[JE only]
+
+subtitles.entity.parrot.imitate.parched
+
+ | 0.7 ‌[JE only]
+
+ | 1.36-2.04 ‌[JE only]
+
+ | 16
+
+ | mob.imitate.parched ‌[BE only]
+
+ | 0.7 ‌[BE only]
+
+ | 1.7 ‌[BE only]
+
+N/A
+
+ | Parrot screeches
+
+Friendly Mobs
+
+Phantom
+
+ | entity.parrot.imitate.phantom ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.phantom
+
+ | 0.42 ‌[JE only]
+
+ | 1.36-2.04 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.phantom ‌[BE only]
+
+N/A
+
+ | 0.7 ‌[BE only]
+
+ | 1.5 ‌[BE only]
+
+N/A
+
+ | 
+
+ | Parrot snorts
+
+ | Friendly Mobs
+
+ | Piglin ‌[JE only]
+
+ | entity.parrot.imitate.piglin
+
+ | subtitles.entity.parrot.imitate.piglin
+
+ | 0.42
+
+ | 1.44-2.16
+
+ | 16
+
+ | 
+
+ | Parrot snorts
+
+ | Friendly Mobs
+
+ | Piglin brute ‌[JE only]
+
+ | entity.parrot.imitate.piglin_brute
+
+ | subtitles.entity.parrot.imitate.piglin_brute
+
+ | 0.42
+
+ | 1.44-2.16
+
+ | 16
+
+ | Parrot murmurs
+
+Friendly Mobs
+
+Pillager
+
+ | entity.parrot.imitate.pillager ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.pillager
+
+ | 0.28 ‌[JE only]
+
+ | 1.44-2.16 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.pillager ‌[BE only]
+
+N/A
+
+ | 0.7 ‌[BE only]
+
+ | 1.8 ‌[BE only]
+
+N/A
+
+ | 
+
+N/A
+
+ | Friendly Mobs
+
+ | Polar bear ‌[BE only]
+
+ | mob.imitate.polarbear
+
+N/A
+
+ | 0.7
+
+ | 0.8
+
+N/A
+
+ | Parrot grunts
+
+Friendly Mobs
+
+Ravager
+
+ | entity.parrot.imitate.ravager ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.ravager
+
+ | 0.14 ‌[JE only]
+
+ | 1.44-2.16 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.ravager ‌[BE only]
+
+N/A
+
+ | 0.7 ‌[BE only]
+
+ | 1.7 ‌[BE only]
+
+N/A
+
+ | Parrot lurks
+
+Friendly Mobs
+
+Shulker
+
+ | entity.parrot.imitate.shulker ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.shulker
+
+ | 0.28 ‌[JE only]
+
+ | 1.36-2.04 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.shulker ‌[BE only]
+
+N/A
+
+ | 0.4 ‌[BE only]
+
+ | 1.7 ‌[BE only]
+
+N/A
+
+ | Parrot hisses
+
+Friendly Mobs
+
+Silverfish
+
+ | entity.parrot.imitate.silverfish ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.silverfish
+
+ | 0.49 ‌[JE only]
+
+ | 1.44-2.16 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.silverfish ‌[BE only]
+
+N/A
+
+ | 0.7 ‌[BE only]
+
+ | 1.8 ‌[BE only]
+
+N/A
+
+ | Parrot rattles
+
+Friendly Mobs
+
+Skeleton
+
+ | entity.parrot.imitate.skeleton ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.skeleton
+
+ | 0.7 ‌[JE only]
+
+ | 1.36-2.04 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.skeleton ‌[BE only]
+
+N/A
+
+ | 1.0 ‌[BE only]
+
+ | 1.7 ‌[BE only]
+
+N/A
+
+ | Parrot squishes
+
+Friendly Mobs
+
+Slime
+
+ | entity.parrot.imitate.slime ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.slime
+
+ | 0.42 ‌[JE only]
+
+ | 1.44-2.16 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.slime‌[BE only]
+
+N/A
+
+ | 0.6 ‌[BE only]
+
+ | 1.8 ‌[BE only]
+
+N/A
+
+ | Parrot hisses
+
+Friendly Mobs
+
+Spider
+
+ | entity.parrot.imitate.spider ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.spider
+
+ | ? ‌[JE only]
+
+ | 1.44-2.16 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.spider‌[BE only]
+
+N/A
+
+ | 0.6 ‌[BE only]
+
+ | 1.8 ‌[BE only]
+
+N/A
+
+ | Parrot rattles
+
+Friendly Mobs
+
+Stray
+
+ | entity.parrot.imitate.stray ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.stray
+
+ | 0.42 ‌[JE only]
+
+ | 1.28-1.92 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.stray ‌[BE only]
+
+N/A
+
+ | 0.6 ‌[BE only]
+
+ | 1.6 ‌[BE only]
+
+N/A
+
+ | Parrot vexes
+
+Friendly Mobs
+
+Vex
+
+ | entity.parrot.imitate.vex ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.vex
+
+ | 0.56 ‌[JE only]
+
+ | 1.28-1.92 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.vex ‌[BE only]
+
+N/A
+
+ | 0.8 ‌[BE only]
+
+ | 1.6 ‌[BE only]
+
+N/A
+
+ | ‌[JE only]
+
+ | Parrot mutters
+
+Friendly Mobs
+
+Vindicator
+
+ | entity.parrot.imitate.vindicator ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.vindicator
+
+ | 0.42 ‌[JE only]
+
+ | 1.36-2.04 ‌[JE only]
+
+ | 16
+
+ | ‌[BE only]
+
+N/A
+
+ | mob.imitate.vindicator ‌[BE only]
+
+N/A
+
+ | 0.6 ‌[BE only]
+
+ | 1.7 ‌[BE only]
+
+N/A
+
+ | Parrot whines
+
+Friendly Mobs
+
+Warden
+
+ | entity.parrot.imitate.warden ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.warden
+
+ | 0.56 ‌[JE only]
+
+ | 1.6-2.4 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.warden ‌[BE only]
+
+N/A
+
+ | 0.8 ‌[BE only]
+
+ | 1.8 ‌[BE only]
+
+N/A
+
+ | Parrot giggles
+
+Friendly Mobs
+
+Witch
+
+ | entity.parrot.imitate.witch ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.witch
+
+ | 0.35 ‌[JE only]
+
+ | 1.44-2.16 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.witch ‌[BE only]
+
+N/A
+
+ | 0.5 ‌[BE only]
+
+ | 1.8 [sound 1] ‌[BE only]
+
+N/A
+
+ | Parrot angers [9]
+
+Friendly Mobs
+
+Wither
+
+ | entity.parrot.imitate.wither ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.wither
+
+ | 0.14 ‌[JE only]
+
+ | 1.44-2.16 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.wither ‌[BE only]
+
+N/A
+
+ | 0.2 ‌[BE only]
+
+ | 1.8 ‌[BE only]
+
+N/A
+
+ | Parrot rattles
+
+Friendly Mobs
+
+Wither skeleton
+
+ | entity.parrot.imitate.wither_skeleton ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.wither_skeleton
+
+ | 0.49 ‌[JE only]
+
+ | 1.44-2.16 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.wither_skeleton ‌[BE only]
+
+N/A
+
+ | 0.7 ‌[BE only]
+
+ | 1.8 ‌[BE only]
+
+N/A
+
+ | 
+
+N/A
+
+ | Friendly Mobs
+
+ | Wolf ‌[BE only]
+
+ | mob.imitate.wolf
+
+N/A
+
+ | 0.6
+
+ | 1.8
+
+N/A
+
+ | Parrot growls
+
+Friendly Mobs
+
+Zoglin
+
+ | entity.parrot.imitate.zoglin
+‌[JE only]
+
+ | subtitles.entity.parrot.imitate.zoglin
+
+ | 0.42 ‌[JE only]
+
+ | 1.52-2.28 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.zoglin ‌[BE only]
+
+N/A
+
+ | 0.7 ‌[BE only]
+
+ | 1.7 ‌[BE only]
+
+N/A
+
+ | Parrot groans
+
+Friendly Mobs
+
+Zombie
+
+ | entity.parrot.imitate.zombie ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.zombie
+
+ | 0.42 ‌[JE only]
+
+ | 1.44-2.16 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.zombie ‌[BE only]
+
+N/A
+
+ | 0.6 ‌[BE only]
+
+ | 1.8 ‌[BE only]
+
+N/A
+
+ | Parrot groans
+
+Friendly Mobs
+
+Zombie villager
+
+ | entity.parrot.imitate.zombie_villager ‌[JE only]
+
+ | subtitles.entity.parrot.imitate.zombie_villager
+
+ | 0.42 ‌[JE only]
+
+ | 1.44-2.16 ‌[JE only]
+
+ | 16
+
+N/A
+
+ | mob.imitate.zombie_villager ‌[BE only]
+
+N/A
+
+ | 0.6 ‌[BE only]
+
+ | 1.8 ‌[BE only]
+
+N/A
+
+ | 
+
+N/A
+
+ | Friendly Mobs
+
+ | Zombified piglin ‌[BE only]
+
+ | mob.imitate.zombiepig
+
+N/A
+
+ | 0.4
+
+ | 1.8
+
+N/A
+
+↑ Except for the second copy of idle5, which is 1.26
+
+Data values
+[edit | edit source]
+
+ID
+[edit | edit source]
+
+Java Edition:
+
+NameIdentifierEntity tags
+[hide]Translation key
+ | Parrot | parrot | fall_damage_immune
+followable_friendly_mobs
+ | entity.minecraft.parrot
+
+Bedrock Edition:
+
+NameIdentifierNumeric ID 
+Family[hide]Translation key
+ | Parrot | parrot | 30
+ | mob
+parrot_tame
+parrot_wild | entity.parrot.name
+
+Entity data
+[edit | edit source]
+
+Parrots have entity data associated with them that contain various properties.
+
+Java Edition:
+
+Main article: Entity format
+
+[NBT Compound / JSON Object] Entity data
+
+Additional fields for mobs that can be tamed by players see Template:Nbt inherit/tameable/template[show]
+
+Tags common to all entities see Template:Nbt inherit/entity/template[show]
+
+Tags common to all mobs see Template:Nbt inherit/mob/template[show]
+
+[Int] Variant: Specifies the color variant of the parrot, default is 0. Represents the minecraft:parrot/variant component.
+
+ | Variant
+
+ | Numerical ID
+
+ | showIdentifier
+
+ | Red
+
+ | 0
+
+ | red_blue
+
+ | Blue
+
+ | 1
+
+ | blue
+
+ | Green
+
+ | 2
+
+ | green
+
+ | Cyan
+
+ | 3
+
+ | yellow_blue
+
+ | Gray
+
+ | 4
+
+ | gray
+
+When a parrot is resting on the player's shoulder, it ceases to be a distinct entity and its entity data is stored in the player's ShoulderEntityLeft or ShoulderEntityRight NBT. See also Player.dat format.
+
+Bedrock Edition:
+
+See Bedrock Edition level format/Entity format.
+Achievements
+[edit | edit source]
+
+[hide]
+IconAchievementIn-game descriptionActual requirements (if different)Gamerscore earnedTrophy type (PS)
+PS4Other
+ | It Spreads | Kill a mob next to a catalyst | Kill any mob that drops experience near a sculk catalyst, with the sole exception of the ender dragon. Mobs that drop no experience are ignored for this achievement. | 10 | Bronze
+
+Achievements that apply to all mobs:
+
+[show]
+[hide]
+IconAchievementIn-game descriptionActual requirements (if different)Gamerscore earnedTrophy type (PS)
+PS4Other
+ | Overkill | Deal nine hearts of damage in a single hit. | Damage can be dealt to any mob, even those that do not have nine hearts of health overall. | 30 | Bronze
+ | Over-Overkill | Deal 50 hearts of damage in a single hit using the Mace | Damage can be dealt to any mob, even those that do not have 50 hearts of health overall. | 20 | Silver
+ | Mob Kabob | Hit five mobs in the same Charge attack using the Spear. | Armor stands and players also count for this achievement as they are technically mobs. | 10 | Bronze
+
+Advancements
+[edit | edit source]
+
+ | Icon | Advancement | In-game description | [hide]Actual requirements (if different)
+ | | Is It a Bird? | Look at a Parrot through a Spyglass | —
+ | | It Spreads | Kill a mob near a Sculk Catalyst | Kill any mob that drops experience near a sculk catalyst, with the sole exception of the ender dragon. Mobs that drop no experience are ignored for this advancement.
+ | | Best Friends Forever | Tame an animal | Tame one of these 11 tameable animals:
+
+Cat
+
+Donkey
+
+Horse
+
+Llama
+
+Mule
+
+Nautilus
+
+Parrot
+
+Trader Llama
+
+Wolf
+
+Zombie Horse
+
+Zombie Nautilus
+
+Skeleton Horse can be tamed in the same way as a regular horse to gain this advancement with the ride command.
+
+Advancements that apply to all mobs:
+
+[show]
+ | Icon | Advancement | In-game description | [hide]Actual requirements (if different)
+ | | Adventure | Adventure, exploration and combat | Kill any mob, or be killed by any living entity.
+ | | A Throwaway Joke | Throw a Trident at something.
+Note: Throwing away your only weapon is not a good idea. | Hit a mob with a thrown trident.
+ | | Take Aim | Shoot something with an Arrow | Using a bow or a crossbow, shoot a mob with an arrow, tipped arrow, or spectral arrow.
+ | | Mob Kabob | Hit five mobs in the same Charge attack using the Spear. | Armor Stand and Mannequin also count for this advancement.
+ | | Arbalistic | Kill five unique mobs with one crossbow shot | Armor Stand and Mannequin also count for this advancement.
+This is a hidden advancement, meaning that it can be viewed by the player only after completing it, regardless of if its child advancement(s), if any, have been completed.
+ | | Over-Overkill | Deal 50 hearts of damage in a single hit using the Mace | Damage can be dealt to any mob, even those that do not have 50 hearts of health overall.
+
+History
+[edit | edit source]
+
+Development
+[edit | edit source]
+
+March 23, 2017
+ | Maria Lemón tweets that her new mob, created with the help of RazzleberryFox, will be showcased in the next snapshot. "It's flytastic!"
+
+ | Later the same day, she revealed that the new mob is the parrot.[10]
+March 26, 2017
+ | Maria reveals that parrots can copy the sounds of other mobs around it.
+
+ | Later the same day, she tweets an image of Steve "the parrot king" carrying parrots on his shoulder.[11]
+March 28, 2017
+ | Maria tweets another image of parrots, showcasing their ability to fly and slowly drift downward.
+March 30, 2017
+ | Shortly before the snapshot was released, Maria revealed that parrots are attracted to cookies. This is a reference to the popular phrase "Polly wants a cracker".[12] In real life, parrots should not be fed chocolate chip cookies, as chocolate is toxic to parrots.
+
+Java Edition
+[edit | edit source]
+
+[hide]Java Edition
+1.1217w13a
+ | Added parrots.
+17w13b
+ | Added gray-yellow parrot.
+17w14a
+ | The right-click action has been changed: right-clicking on a tamed parrot now tells it to sit.
+
+ | Having a parrot sit on the player's shoulders now require the player to walk through the parrot.
+
+ | Parrots now dance and cycle through the variants if music is playing on a nearby jukebox.
+
+ | Parrots now make sounds when sitting on the player's shoulders.
+17w15a
+ | Parrots no longer cycle through the variants while dancing.
+17w16a
+ | Parrots now dismount whenever the player is not touching the ground. This makes it impossible to keep the parrots on the shoulder while gliding.[13] Previously they only dismounted when moving upwards.
+pre3
+ | Parrots are now tamed with seeds, instead of cookies, after a post on Reddit.
+
+ | Attempting to feed cookies to a parrot now instantly kills the parrot, causing it to emit poison particles. In an e-mail to Motherboard, Jens Bergensten explained: "Our reasoning for originally using cookies was twofold; it gave cookies a reason to exist within Minecraft, and it was a subtle reference to the Nirvana song 'Polly.' However, we didn't consider what the chocolate ingredient would mean to real life parrots!"[14]
+pre5
+ | Killing a parrot by feeding it a cookie now counts as if the parrot was killed by the player who fed it. This affects death messages, causes the parrot to drop experience, take knockback and causes the looting enchantment to take affect.
+pre6
+ | Parrots no longer dismount the player when simply not touching the ground. Now the player needs to fall at least about 0.75 blocks.​[more information needed]
+1.1318w19a
+ | Parrots now imitate phantoms and drowned.
+1.1419w11a
+ | Parrots can now imitate ravagers, pillagers and pandas.
+1.14.2pre1
+ | Parrots no longer spawn on grass, but on grass blocks instead.
+1.1519w40a
+ | Parrots can now sit on a player's shoulder even while the player is riding something.
+19w41a
+ | Parrots no longer imitate pandas.
+19w44a
+ | Parrots no longer imitate polar bears, wolves, and zombie pigmen.
+19w45a
+ | Parrots no longer imitate endermen.
+1.1620w12a
+ | Parrots now imitate hostile mobs less often.
+
+ | Parrots no longer imitate hostile mobs when the difficulty is on Peaceful.
+1.18pre5
+ | The bottom texture of all parrots' wings has been flipped.
+1.19Deep Dark Experimental Snapshot 1
+ | Parrots can now imitate wardens.
+1.19.4Experiment
+
+Update 1.20pre1
+ | Parrots can now be fed using torchflower seeds.[15]
+1.2023w12a
+ | Parrots can now be fed using pitcher pods.
+1.20.5Experiment
+
+Update 1.2124w07a
+ | Parrots can now imitate bogged.
+1.20.524w11a
+ | Adjusted their flying behavior to keep them from overshooting their position when flying up and down.
+1.21.2Experiment
+
+Winter Drop24w40a
+ | Parrots can now imitate creakings.
+1.21.1125w44a
+ | Parrots can now imitate camel husks, parched, zombie horses and zombie nautiluses.
+
+Bedrock Edition
+[edit | edit source]
+
+[hide]Bedrock Edition
+1.2.0beta 1.2.0.2
+ | Added parrots.
+1.2.13beta 1.2.13.8
+ | Parrots can now imitate drowned sounds.
+?
+ | The sounds of the parrots have been changed to match Java Edition's.
+1.19.0Preview 1.19.0.21
+ | Parrots can now imitate wardens.
+1.21.20Preview 1.21.10.20
+ | Parrots can now imitate bogged.
+1.21.30Preview 1.21.30.23
+ | Parrots no longer imitate pandas.
+1.21.80Preview 1.21.80.20
+ | Parrots can now imitate guardians, phantoms, pillagers, ravagers, zoglins, and blazes.
+1.21.90Preview 1.21.90.23
+ | Parrots imitating wither skeletons now make wither skeleton sounds instead of skeleton sounds.
+
+ | Parrots imitating drowned now make drowned sounds instead of zombie sounds.
+
+Legacy Console Edition
+[edit | edit source]
+
+[hide]Legacy Console Edition
+Xbox 360Xbox OnePS3PS4PS VitaWii USwitch
+TU54CU441.521.521.52Patch 241.0.4
+ | Added parrots.
+TU56CU481.551.551.55Patch 261.0.6
+ | Players can no longer attack tamed parrots with player versus player disabled.
+TU57CU491.571.561.56Patch 271.0.7
+ | Looking at a parrot while holding a cookie now shows the "feed" tooltip.
+TU62CU521.661.661.66Patch 311.0.12
+ | Looking at a parrot while holding a cookie no longer shows the "feed" tooltip.
+ 1.88 
+ | All parrots – even unnamed parrots – now display death messages to their owner.
+
+Data history
+[edit | edit source]
+
+[hide]Java Edition
+1.1317w47a
+ | Prior to The Flattening, the entity's numeral ID was 105
+
+Issues
+[edit | edit source]
+
+Issues relating to "Parrot" are maintained on the bug tracker. Issues should be reported and viewed there.
+
+Trivia
+[edit | edit source]
+
+Red parrots are based on the real-life scarlet macaw "with a little Minecraft twist".[16] Similarly, blue parrots are based on hyacinth macaws, cyan parrots are based on blue-and-yellow macaws, green parrots are based on black-billed amazon parrots,[17] and gray parrots are based on cockatiels.
+
+The Minecraft team uses various party parrot emojis when communicating with each other on discord.[18]
+
+The advancement obtained for breeding two animals is called "The Parrots and the Bats", even though neither parrots nor bats can breed.
+
+The parrot's dancing animation is based on the party parrot emojis, that are in turn, based on the kākāpō.
+
+The "idle6" sound of the parrot is the English word "hello".[19]
+
+The artist and modeller for parrots, RazzleberryFox, originally designed ten parrots.[20]
+
+Gallery
+[edit | edit source]
+
+Renders
+[edit | edit source]
+
+Sitting
+[edit | edit source]
+
+ A sitting red parrot
+
+ A sitting blue parrot
+
+ A sitting green parrot
+
+ A sitting cyan parrot
+
+ A sitting gray parrot
+
+Dancing
+[edit | edit source]
+
+ A dancing red parrot
+
+ A dancing blue parrot
+
+ A dancing green parrot
+
+ A dancing cyan parrot
+
+ A dancing gray parrot
+
+ A dancing parrot in 17w14a
+
+Sitting on the player
+[edit | edit source]
+
+ Alex with a red parrot on their left shoulder
+
+ Alex with a blue parrot on their left shoulder
+
+ Alex with a green parrot on their left shoulder
+
+ Alex with a cyan parrot on their left shoulder
+
+ Alex with a grey parrot on their left shoulder
+
+ Ari with a red parrot on their left shoulder
+
+ Ari with a blue parrot on their left shoulder
+
+ Ari with a green parrot on their left shoulder
+
+ Ari with a cyan parrot on their left shoulder
+
+ Ari with a grey parrot on their left shoulder
+
+ Efe with a red parrot on their left shoulder
+
+ Efe with a blue parrot on their left shoulder
+
+ Efe with a green parrot on their left shoulder
+
+ Efe with a cyan parrot on their left shoulder
+
+ Efe with a grey parrot on their left shoulder
+
+ Kai with a red parrot on their left shoulder
+
+ Kai with a blue parrot on their left shoulder
+
+ Kai with a green parrot on their left shoulder
+
+ Kai with a cyan parrot on their left shoulder
+
+ Kai with a grey parrot on their left shoulder
+
+ Makena with a red parrot on their left shoulder
+
+ Makena with a blue parrot on their left shoulder
+
+ Makena with a green parrot on their left shoulder
+
+ Makena with a cyan parrot on their left shoulder
+
+ Makena with a grey parrot on their left shoulder
+
+ Noor with a red parrot on their left shoulder
+
+ Noor with a blue parrot on their left shoulder
+
+ Noor with a green parrot on their left shoulder
+
+ Noor with a cyan parrot on their left shoulder
+
+ Noor with a grey parrot on their left shoulder
+
+ Steve with a red parrot on their left shoulder
+
+ Steve with a blue parrot on their left shoulder
+
+ Steve with a green parrot on their left shoulder
+
+ Steve with a cyan parrot on their left shoulder
+
+ Steve with a grey parrot on their left shoulder
+
+ Sunny with a red parrot on their left shoulder
+
+ Sunny with a blue parrot on their left shoulder
+
+ Sunny with a green parrot on their left shoulder
+
+ Sunny with a cyan parrot on their left shoulder
+
+ Sunny with a grey parrot on their left shoulder
+
+ Zuri with a red parrot on their left shoulder
+
+ Zuri with a blue parrot on their left shoulder
+
+ Zuri with a green parrot on their left shoulder
+
+ Zuri with a cyan parrot on their left shoulder
+
+ Zuri with a grey parrot on their left shoulder
+
+Screenshots
+[edit | edit source]
+
+ The first image of parrots, tweeted by Maria Lemón
+
+ Another image of parrots tweeted by Maria Lemón
+
+ Parrots riding on the shoulders of Steve, "the parrot king", tweeted by Maria Lemón
+
+ Note how the parrots crowd around the villager in a tight circle
+
+ Parrots also crowd around hostile mobs, such as creepers
+
+ Poison particles appear if the player feeds cookies to parrots
+
+ Parrots in Bedrock Edition
+
+ A parrot seen through a spyglass
+
+ A gif of all parrot faces
+
+Textures
+[edit | edit source]
+
+ Red parrot texture file
+
+ Blue parrot texture file
+
+ Green parrot texture file
+
+ Cyan parrot texture file
+
+ Gray parrot texture file
+
+In other media
+[edit | edit source]
+
+ Parrots as shown in the World of Color Update artwork
+
+ Artwork of a parrot
+
+ Ditto but cut-out
+
+ A parrot in promotional artwork for the first Caves & Cliffs update
+
+ Parrots in official artwork
+
+ Animated parrot sticker from an official Wild Update stickerpack
+
+ Artwork of parrots with redstone
+
+ Artwork of every parrot, used for the 15th anniversary of Minecraft
+
+ Artwork of a red parrot with a turtle
+
+ Ari flying with several parrots
+
+ Pixel artwork of Noor fishing with several parrots
+
+ A Lego Minecraft parrot
+
+ A lego Minecraft cyan parrot
+
+ A Lego Minecraft green parrot
+
+ A golden parrot as it appears in Minecraft Dungeons
+
+ A parrot as it appears in Ghast in the Machine! 
+
+References
+[edit | edit source]
+
+↑ "Yes they fly, as high as they want to. :) But they do get tired and prefer to have somewhere to land." – @MiaLem_n (Maria Lemón) on X (formerly Twitter), March 29, 2017
+
+↑ MC-118003
+
+↑ MCPE-27950
+
+↑ MC-115509 – resolved as "Works as Intended".
+
+↑ MC-304373 – Parrots don't imitate skeleton horses, endermen and zombified piglins
+
+↑ "It took you no time at all to find the party parrot easter egg! But there is one more you haven't found..." – @MiaLem_n (Maria Lemón) on X (formerly Twitter), April 5, 2017
+
+↑ MC-157412 – resolved as "Fixed".
+
+↑ MC-115446 – resolved as "Won't Fix".
+
+↑ MC-212623
+
+↑ "Let me present the newest member of the Minecraft world! The parrot! Model by @RazzleberryFox" – @MiaLem_n (Maria Lemón) on X (formerly Twitter), March 23, 2017
+
+↑ "Steve is the parrot king!" – @MiaLem_n (Maria Lemón) on X (formerly Twitter), March 26, 2017
+
+↑ "+Michael sheehan it's just a reference to "Polly wants a cracker"." – slicedlime, March 31, 2017
+
+↑ MC-118003
+
+↑ 'Minecraft' Is Patching the Game So Kids Won’t Poison Their Pet Birds; Motherboard; May 16, 2017
+
+↑ MC-260035 – resolved as "Fixed".
+
+↑ "Macaws with a little Minecraft twist." – @MiaLem_n (Maria Lemón) on X (formerly Twitter), March 23, 2017
+
+↑ "I based it off a black-billed amazon parrot! :)" – @RazzleberryFox (Mariana Graham) on X (formerly Twitter), July 24, 2024
+
+↑ "Really. We have over 20 different party parrot emojis. :D" – HelenAngel, April 5, 2017
+
+↑ "Growth & Evolution - Part 3 - 15 Years of Minecraft" – Minecraft on YouTube, June 5, 2024
+
+↑ "So... I did not make 16, I only made 10 because I was told not to even bother with more. So there is only the 5 that you saw in the video! White, purple, grey, black and brown are missing.
+
+Maybe I can make the rest haha and release all the extras in a little resource pack!" – @RazzleberryFox (Mariana Graham) on X (formerly Twitter), April 17, 2026
+
+External links
+[edit | edit source]
+
+"Mob Menagerie: Parrot" by Duncan Geere – Minecraft.net, February 2, 2024.
+
+Navigation
+[edit | edit source]
+
+[hide]
+v
+
+t
+
+e
+
+Entities
+
+[hide]Mobs
+
+ | Passive
+
+ | 
+Allay
+
+Armadillo
+
+Axolotl
+
+Bat
+
+Camel
+
+Camel Husk
+
+Cat
+
+Chicken
+
+Cod
+
+Copper Golem
+
+Cow
+
+Donkey
+
+Frog
+
+Glow Squid
+
+Happy Ghast
+
+Horse
+
+Mooshroom
+
+Mule
+
+Ocelot
+
+Parrot
+
+Pig
+
+Rabbit
+
+Salmon
+
+Sheep
+
+Skeleton Horse
+
+Sniffer
+
+Snow Golem
+
+Squid
+
+Strider
+
+Sulfur Cube
+
+Tadpole
+
+Tropical Fish
+
+Turtle
+
+Villager
+
+Wandering Trader
+
+Zombie Horse
+
+ | BE & Edu only
+
+ | 
+Agent
+
+NPC
+
+ | Neutral
+
+ | 
+Bee
+
+Cave Spider
+
+Dolphin
+
+Drowned
+
+Enderman
+
+Fox
+
+Goat
+
+Iron Golem
+
+Llama
+
+Nautilus
+
+Panda
+
+Piglin
+
+Polar Bear
+
+Pufferfish
+
+Spider
+
+Trader Llama
+
+Wolf
+
+Zombie Nautilus
+
+Zombified Piglin
+
+ | Hostile
+
+ | 
+Blaze
+
+Bogged
+
+Breeze
+
+Creaking
+
+Creeper
+
+Elder Guardian
+
+Endermite
+
+Evoker
+
+Ghast
+
+Guardian
+
+Hoglin
+
+Husk
+
+Magma Cube
+
+Parched
+
+Phantom
+
+Piglin Brute
+
+Pillager
+
+Ravager
+
+Shulker
+
+Silverfish
+
+Skeleton
+
+Slime
+
+Stray
+
+Vex
+
+Vindicator
+
+Warden
+
+Witch
+
+Wither Skeleton
+
+Zoglin
+
+Zombie
+
+Zombie Villager
+
+ | Bosses
+
+ | 
+Ender Dragon
+
+Wither
+
+ | Mob types
+
+ | 
+Animal
+
+Aquatic
+
+Arthropod
+
+Illager
+
+Monster
+
+Undead
+
+ | Other
+
+ | 
+Baby
+
+Jockey
+Camel Husk
+
+Chicken
+
+Hoglin
+
+Ravager
+
+Skeleton Horseman
+
+Spider
+
+Strider
+
+Baby Strider
+
+Zombie Horseman
+
+Zombie Nautilus
+
+Mob variants
+
+[show] Other entities
+
+ | Player
+
+ | 
+Alex
+
+Ari
+
+Efe
+
+Kai
+
+Makena
+
+Noor
+
+Steve
+
+Sunny
+
+Zuri
+
+ | Blocks
+
+ | 
+Falling Blocks
+Anvil
+
+Concrete Powder
+
+Dragon Egg
+
+Gravel
+
+Pointed Dripstone
+
+Sand
+
+Red Sand
+
+Scaffolding
+
+Sulfur Spike
+
+Suspicious Gravel
+
+Suspicious Sand
+
+Primed TNT
+
+ | BE & Edu only
+
+ | 
+Falling Blocks
+Deprecated Anvil
+
+Snow
+
+Primed Underwater TNT
+
+ | Vehicles
+
+ | 
+Boat
+with Chest
+
+Minecart
+with Chest
+
+with Command Block
+
+with Hopper
+
+with TNT
+
+ | Java Edition only
+
+ | 
+Minecart with Furnace
+with Monster Spawner
+
+ | Projectiles
+
+ | 
+Fireball
+Small
+
+Dragon
+
+Launched Firework Rocket
+
+Llama Spit
+
+Shot Arrow
+Tipped
+
+Shulker Bullet
+
+Thrown Bottle o' Enchanting
+
+Thrown Egg
+
+Thrown Ender Pearl
+
+Thrown Eye of Ender
+
+Thrown Snowball
+
+Thrown Splash Potion
+Lingering Potion
+
+Thrown Trident
+
+Wind Charge
+
+Wither Skull
+
+ | Java Edition only
+
+ | 
+Shot Spectral Arrow
+
+ | BE & Edu only
+
+ | 
+Thrown Ice Bomb
+
+ | Stationary 
+objects
+
+ | 
+Cushion​[upcoming: Wilderness Bound]
+
+End Crystal
+
+Leash Knot
+
+Painting
+
+ | Java Edition only
+
+ | 
+Item Frame
+Glow
+
+ | Miscellaneous
+
+ | 
+Area Effect Cloud
+
+Armor Stand
+
+Evoker Fangs
+
+Experience Orb
+
+Fishing Bobber
+
+Items
+
+Lightning Bolt
+
+Ominous Item Spawner
+
+ | JE only
+
+ | 
+Mannequin
+
+ | BE & Edu only
+
+ | 
+Balloon
+
+Camera
+
+ | Technical 
+objects
+
+ | 
+
+ | JE only
+
+ | 
+Display
+Block
+
+Item
+
+Text
+
+Interaction
+
+Marker
+
+ | Editor only
+
+ | 
+Location Pointer Idle
+
+Location Pointer Selected
+
+Map Marker
+
+Ruler
+Idle
+
+[show]Unimplemented
+
+ | Unused
+
+ | 
+
+ | JE only
+
+ | 
+Giant
+
+Illusioner
+
+ | BE & Edu only
+
+ | 
+Elder Guardian Ghost
+
+Old Villager
+
+Old Zombie Villager
+
+ | Mentioned
+
+ | 
+Alpaca
+
+Barnacle
+
+Crab
+
+Firefly
+
+Glare
+
+Great Hunger
+
+Herobrine
+
+Iceologer
+
+Meerkat
+
+Minecart with Dispenser
+
+Moobloom
+
+Ostrich
+
+Penguin
+
+Pigman Bodyguard
+
+Rascal
+
+Red Dragon
+
+Shade
+
+Termite
+
+Tuff Golem
+
+Vulture
+
+Wildfire
+
+ | Removed
+
+ | 
+Builder
+
+Giant Jockey
+
+ MD3 Test Mob
+
+ Mob
+
+Monster
+
+Shot Purple Arrow
+
+Sign Entity
+
+[show]Joke
+
+ | Mobs
+
+ | 
+
+ | April Fools 2013
+
+ | 
+Diamond Chicken
+
+Horse
+
+Pony
+
+Pink Wither
+
+Redstone Bug
+
+ | April Fools 2015
+
+ | 
+Love Golem
+
+Friendly Wither
+
+Smiling Creeper
+
+ | April Fools 2019
+
+ | 
+Nerd Creeper
+
+ | April Fools 2023
+
+ | 
+Moon Cow
+
+Ray Tracing
+
+ | April Fools 2024
+
+ | 
+Batato
+
+Mega Spud
+
+Plaguewhale Slab
+
+Poisonous Potato Zombie
+
+Potato mob category
+
+Toxifin Slab
+
+ | April Fools 2025
+
+ | 
+Angry Ghast
+
+Spectator Villager
+
+Spectator Witch
+
+Traitor
+
+Warden (boss)
+
+ | Pet variants
+
+ | 
+Pet Armadillo
+
+Pet Axolotl
+
+Pet Bee
+
+Pet Cat
+
+Pet Chicken
+
+Pet Cow
+
+Pet Creeper
+
+Pet Fox
+
+Pet Frog
+
+Pet Mooshroom
+
+Pet Polar Bear
+
+Pet Slime
+
+Pet Turtle
+
+Pet Wolf
+
+ | April Fools 2026
+
+ | 
+Living Block
+
+ | Other entities
+
+ | 
+
+ | April Fools 2013
+
+ | 
+Pink Wither Skull
+
+ | April Fools 2015
+
+ | 
+Obsidian Boat
+
+Friendly Wither Skull
+
+ | April Fools 2023
+
+ | 
+Stencil Display
+
+ | April Fools 2024
+
+ | 
+Falling Block
+Gravtater
+
+Potato Eye
+
+ | April Fools 2026
+
+ | 
+Crafting Grid
+
+Hovering Item
+
+Living Block Command
+
+Retrieved from "https://minecraft.wiki/w/Parrot?oldid=3749144"
+
+ Categories: Entities
+Passive mobs
+Tameable mobs
+Animal mobs
+Flying mobs
+
+Hidden categories: Pages using simple calculator
+Pages with sound tables
+Pages with Java sound tables
+Pages with Bedrock subtitles missing
+Pages with Bedrock subtitle key missing
+Pages with Bedrock sound tables
+Verify
+Information needed
+Unknown Bedrock version history
+
+ Navigation menu
+
+ Personal tools
+
+Create account
+Log in
+
+ associated-pages
+
+ Page
+Talk
+
+ English
+
+ Views
+
+ Read
+Edit
+Edit source
+View history
+
+ More
+
+ Refresh
+
+ Search
+
+ Navigation
+
+ How to help
+Recent changes
+Random page
+in Minecraft
+in Dungeons
+in Dungeons II
+in Legends
+in Earth
+in Story Mode
+in Tutorial
+in Movie
+Wiki Discord
+
+ Wiki community
+
+ Community portal
+Wiki forum
+Projects
+Wiki rules
+Style guide
+Notability
+Sandbox
+Admin noticeboard
+
+ X
+
+ Franchise
+
+ Minecraft
+Minecraft Dungeons
+Minecraft Legends
+Minecraft Earth
+Minecraft: Story Mode
+A Minecraft Movie
+
+ Recent versions
+
+Java Edition
+
+Latest: 26.2
+
+Dev: 26.3-pre-2
+
+Upcoming: 26.3
+
+Bedrock Edition
+
+Latest: 26.45
+
+Preview: 26.60.21
+
+Upcoming: 26.50
+
+Upcoming: 26.60
+
+ Useful pages
+
+ Trading
+Brewing
+Enchantments
+Mobs
+Blocks
+Items
+Crafting
+Smelting
+Tutorials
+Resource packs
+Redstone circuits
+
+ Useful pages
+
+ Weapons
+Enchanting
+Armor
+Artifacts
+Missions
+
+ Useful pages
+
+ Weapons
+Enchanting
+Armor
+Artifact
+
+ Useful pages
+
+ Friendly units
+Piglins
+Resources
+Biomes
+Structures
+Lost Legends
+
+ Tools
+
+ What links here
+Related changes
+Printable version
+Permanent link
+Page information
+Special pages
+View buckets
+
+ Expand all
+
+ In other languages
+
+ Deutsch
+Español
+Français
+Italiano
+日本語
+한국어
+Nederlands
+Português
+Русский
+ไทย
+Українська
+中文
+
+Contents
+(Top)
+1 Spawning
+2 Drops
+
+2.1 On death
+
+3 Behavior
+
+3.1 Sitting on a shoulder
+
+3.2 Imitating sounds
+
+3.3 Dancing
+
+4 Sounds
+
+4.1 Generic
+
+4.2 Imitations
+
+5 Data values
+
+5.1 ID
+
+5.2 Entity data
+
+6 Achievements
+7 Advancements
+8 History
+
+8.1 Development
+
+8.2 Java Edition
+
+8.3 Bedrock Edition
+
+8.4 Legacy Console Edition
+
+8.5 Data history
+
+9 Issues
+10 Trivia
+11 Gallery
+
+11.1 Renders
+
+11.1.1 Sitting
+
+11.1.2 Dancing
+
+11.1.3 Sitting on the player
+
+11.2 Screenshots
+
+11.3 Textures
+
+11.4 In other media
+
+12 References
+13 External links
+14 Navigation
+
+ This page was last edited on 29 August 2026, at 15:58.
+
+ Content on this site is licensed under CC BY-NC-SA 3.0 unless otherwise noted; additional terms may apply.
+Not an official Minecraft website. We are not associated with Mojang or Microsoft.
+
+ Privacy policy
+
+ About Minecraft Wiki
+
+ Disclaimers
+
+ Terms of Use
+
+ Contact Weird Gloop
+
+ Mobile view
+
+Edit preview settings
+
+To leave feedback for the game, click here.
+
+Feedback will be posted anonymously and shared to our Discord.
+
+Something went wrong
+Dismiss

@@ -1156,7 +1156,15 @@ pub fn piston_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32,
             // the block beyond the head space (which we cleared on extend
             // — reconstruct: the block now sitting in the head's old spot)
             let pulled = world.get_block(hx + fx, hy + fy, hz + fz);
-            if pulled != AIR && !piston_unpushable(pulled) && !piston_breaks(pulled) {
+            // 1.12 (World of Color): glazed terracotta can be PUSHED but
+            // never PULLED (VERIFIED w/Glazed_Terracotta §Breaking/
+            // §Behavior: "it can be pushed by pistons and sticky pistons.
+            // It cannot be pulled by sticky pistons")
+            if pulled != AIR
+                && !piston_unpushable(pulled)
+                && !piston_breaks(pulled)
+                && !is_glazed_terracotta(pulled)
+            {
                 let _ = world.set_block(hx, hy, hz, pulled);
                 let _ = world.set_block(hx + fx, hy + fy, hz + fz, AIR);
                 on_block_changed(sched, world, hx, hy, hz);
@@ -1659,5 +1667,57 @@ mod e1_lamp_tests {
         trapped_chest_tick(&mut w, &mut sched, 0, 65, 0, false);
         drain(&mut w, &mut sched, 50);
         assert_eq!(wire_power(w.get_state(1, 65, 0)), 0, "closed chest");
+    }
+
+    /// 1.12 (World of Color): glazed terracotta is PUSHED by pistons but
+    /// never PULLED by sticky pistons (VERIFIED w/Glazed_Terracotta:
+    /// "it can be pushed by pistons and sticky pistons. It cannot be
+    /// pulled by sticky pistons").
+    #[test]
+    fn v112_glazed_pushable_but_not_pullable() {
+        // drive piston_tick directly (power = the lever state in world)
+        let mut w = flat_world();
+        let mut sched = TickScheduler::new();
+        // a sticky piston facing EAST pushes glazed terracotta fine
+        w.set_block_state(0, 65, 0, sticky_piston_state(1, false));
+        w.set_block_state(1, 65, 0, glazed_terracotta_state(2, 0));
+        // power it: a lever on top (the phase-3 piston-test pattern)
+        w.set_block_state(0, 66, 0, lever_state(true));
+        crate::redstone::on_block_changed(&mut sched, &w, 0, 66, 0);
+        for _ in 0..20 {
+            let due = sched.tick();
+            for pos in due {
+                let b = state_block(w.get_state(pos[0], pos[1], pos[2]));
+                match b {
+                    LEVER => lever_tick(&mut w, pos[0], pos[1], pos[2]),
+                    PISTON | STICKY_PISTON => piston_tick(&mut w, &mut sched, pos[0], pos[1], pos[2]),
+                    _ => {}
+                }
+            }
+        }
+        let (_, ext) = piston_decode(w.get_state(0, 65, 0));
+        assert!(ext, "glazed terracotta IS pushable");
+        assert_eq!(w.get_block(2, 65, 0), glazed_terracotta(2), "pushed east");
+        // break the torch → the sticky head retracts WITHOUT pulling it
+        w.set_block_state(0, 66, 0, lever_state(false));
+        crate::redstone::on_block_changed(&mut sched, &w, 0, 66, 0);
+        for _ in 0..40 {
+            let due = sched.tick();
+            for pos in due {
+                let b = state_block(w.get_state(pos[0], pos[1], pos[2]));
+                match b {
+                    LEVER => lever_tick(&mut w, pos[0], pos[1], pos[2]),
+                    PISTON | STICKY_PISTON => piston_tick(&mut w, &mut sched, pos[0], pos[1], pos[2]),
+                    _ => {}
+                }
+            }
+        }
+        let (_, ext2) = piston_decode(w.get_state(0, 65, 0));
+        assert!(!ext2, "retracted after unpowering");
+        assert_eq!(
+            w.get_block(2, 65, 0),
+            glazed_terracotta(2),
+            "glazed stays — NOT pulled by the sticky piston"
+        );
     }
 }

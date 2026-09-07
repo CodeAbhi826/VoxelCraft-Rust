@@ -569,10 +569,52 @@ pub const RECIPES: &[Recipe] = &[
     },
 ];
 
+/// 1.12 (World of Color): the concrete-powder recipe — the engine's
+/// first truly SHAPELESS 9-slot craft. VERIFIED changelog §Blocks:
+/// "Craftable using 4 sand, 4 gravel and one of any dye to get 8
+/// concrete powder blocks. The recipe is shapeless." + w/Concrete_
+/// Powder §Crafting: "The crafting recipe is shapeless; the order of
+/// ingredients does not matter." The output color follows the dye's
+/// color index (w/Concrete_Powder: any of the 16 dye colors).
+fn match_concrete_powder(slots: &[ItemStack], size: usize) -> Option<ItemStack> {
+    if size < 3 {
+        return None; // the 9-ingredient recipe needs the 3×3 table
+    }
+    let mut sand = 0;
+    let mut gravel = 0;
+    let mut dye_color: Option<u8> = None;
+    for s in slots {
+        if s.is_empty() {
+            continue;
+        }
+        match s.block {
+            SAND => sand += 1,
+            GRAVEL => gravel += 1,
+            b if (DYE_BASE..=DYE_END).contains(&b) => {
+                if dye_color.is_some() {
+                    return None; // more than one dye — not the recipe
+                }
+                dye_color = Some(vc_blocks::blocks::dye_color(b));
+            }
+            _ => return None, // any other ingredient breaks the multiset
+        }
+    }
+    if sand == 4 && gravel == 4 {
+        let c = dye_color?; // exactly one dye, 4 sand, 4 gravel
+        Some(ItemStack::new(concrete_powder(c), 8))
+    } else {
+        None
+    }
+}
+
 /// match a crafting grid (row-major, `size`×`size` of ItemStacks) → the
 /// recipe output. Trims to the bounding box first (vanilla grid-shape
 /// semantics: the pattern matches anywhere in the grid).
 pub fn match_grid(slots: &[ItemStack], size: usize) -> Option<ItemStack> {
+    // 1.12: the shapeless concrete-powder recipe (any arrangement)
+    if let Some(out) = match_concrete_powder(slots, size) {
+        return Some(out);
+    }
     for r in RECIPES {
         if r.size > size {
             continue;
@@ -826,5 +868,91 @@ mod auditfix_tests {
         let out_oak = match_grid(&oak, 1).expect("oak still matches");
         assert_eq!(out_oak.block, PLANKS);
         assert_eq!(out_oak.count, 4);
+    }
+}
+
+#[cfg(test)]
+mod v112_tests {
+    use super::*;
+
+    /// 1.12 (World of Color): the shapeless concrete-powder recipe —
+    /// 4 sand + 4 gravel + 1 dye → 8 powder of the dye's color, ANY
+    /// arrangement (VERIFIED changelog §Blocks + w/Concrete_Powder
+    /// §Crafting: "The crafting recipe is shapeless; the order of
+    /// ingredients does not matter")
+    #[test]
+    fn v112_concrete_powder_shapeless_recipe() {
+        // the canonical arrangement
+        let g = [
+            ItemStack::new(SAND, 1), ItemStack::new(SAND, 1),
+            ItemStack::new(SAND, 1), ItemStack::new(SAND, 1),
+            ItemStack::new(GRAVEL, 1), ItemStack::new(GRAVEL, 1),
+            ItemStack::new(GRAVEL, 1), ItemStack::new(GRAVEL, 1),
+            ItemStack::new(DYE_BASE + 11, 1), // Lapis Lazuli → blue
+        ];
+        let out = match_grid(&g, 3).unwrap();
+        assert_eq!(out.block, concrete_powder(11));
+        assert_eq!(out.count, 8, "8 powder per craft (VERIFIED)");
+
+        // a scrambled arrangement (the shapeless property)
+        let g2 = [
+            ItemStack::new(GRAVEL, 1), ItemStack::new(DYE_BASE, 1),
+            ItemStack::new(SAND, 1), ItemStack::new(GRAVEL, 1),
+            ItemStack::new(SAND, 1), ItemStack::new(SAND, 1),
+            ItemStack::new(GRAVEL, 1), ItemStack::new(SAND, 1),
+            ItemStack::new(GRAVEL, 1),
+        ];
+        let out2 = match_grid(&g2, 3).unwrap();
+        assert_eq!(out2.block, concrete_powder(0), "Bone Meal → white powder");
+        assert_eq!(out2.count, 8);
+
+        // every dye color routes to its powder color
+        for c in 0u16..16 {
+            let mut g3 = [ItemStack::EMPTY; 9];
+            for i in 0..4 {
+                g3[i] = ItemStack::new(SAND, 1);
+                g3[4 + i] = ItemStack::new(GRAVEL, 1);
+            }
+            g3[8] = ItemStack::new(DYE_BASE + c, 1);
+            let out3 = match_grid(&g3, 3).unwrap();
+            assert_eq!(out3.block, concrete_powder(c as u8), "dye {c}");
+        }
+    }
+
+    #[test]
+    fn v112_powder_recipe_rejects_wrong_counts() {
+        // 3 sand + 5 gravel: not the recipe
+        let g = [
+            ItemStack::new(SAND, 1), ItemStack::new(SAND, 1),
+            ItemStack::new(SAND, 1), ItemStack::new(GRAVEL, 1),
+            ItemStack::new(GRAVEL, 1), ItemStack::new(GRAVEL, 1),
+            ItemStack::new(GRAVEL, 1), ItemStack::new(GRAVEL, 1),
+            ItemStack::new(DYE_BASE, 1),
+        ];
+        assert!(match_grid(&g, 3).is_none(), "wrong sand count");
+        // two dyes: not the recipe
+        let g2 = [
+            ItemStack::new(SAND, 1), ItemStack::new(SAND, 1),
+            ItemStack::new(SAND, 1), ItemStack::new(SAND, 1),
+            ItemStack::new(GRAVEL, 1), ItemStack::new(GRAVEL, 1),
+            ItemStack::new(GRAVEL, 1), ItemStack::new(GRAVEL, 1),
+            ItemStack::new(DYE_BASE, 1),
+        ];
+        let mut g3 = g2;
+        g3[0] = ItemStack::new(DYE_BASE + 1, 1);
+        g3[1] = ItemStack::new(DYE_BASE + 1, 1);
+        g3[2] = ItemStack::new(SAND, 1);
+        g3[3] = ItemStack::new(SAND, 1);
+        // 3 sand + 1 dye swapped in — now sand is 3? recompute: slots
+        // [dye, dye, sand, sand, gravel×4, dye] — three dyes total
+        assert!(match_grid(&g3, 3).is_none(), "multiple dyes rejected");
+        // a foreign ingredient (cobble) breaks it
+        let mut g4 = g2;
+        g4[0] = ItemStack::new(COBBLE, 1);
+        g4[1] = ItemStack::new(SAND, 1);
+        assert!(match_grid(&g4, 3).is_none(), "foreign ingredient rejected");
+        // the 2×2 inventory grid can't fit 9 ingredients
+        let small = [ItemStack::new(SAND, 1); 4];
+        assert!(match_grid(&small, 2).is_none());
     }
 }

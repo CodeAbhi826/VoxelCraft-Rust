@@ -78,6 +78,15 @@ pub fn smelt_result(block: u16) -> Option<u16> {
         // 1.8: raw rabbit smelts to cooked rabbit (changelog §Items:
         // "Can be cooked into cooked rabbit")
         RAW_RABBIT => Some(COOKED_RABBIT),
+        // 1.12 (World of Color, VERIFIED changelog §Blocks: "Smelt any
+        // stained terracotta in a furnace to obtain the glazed
+        // terracotta of that color (not for regular terracotta)" +
+        // w/Glazed_Terracotta §Smelting: "Glazed terracotta can be
+        // obtained by smelting any stained terracotta. Unstained
+        // terracotta cannot be smelted.")
+        b if (STAINED_TERRACOTTA_BASE..=STAINED_TERRACOTTA_END).contains(&b) => {
+            Some(glazed_terracotta((b - STAINED_TERRACOTTA_BASE) as u8))
+        }
         _ => None,
     }
 }
@@ -427,5 +436,35 @@ mod tests {
             fs.tick(&mut w);
         }
         assert_eq!(w.get_state(8, 65, 8), FURNACE_STATE, "furnace cooled");
+    }
+}
+
+#[cfg(test)]
+mod v112_tests {
+    use super::*;
+
+    /// 1.12 (World of Color): stained terracotta smelts into the glazed
+    /// terracotta of the same color — regular terracotta does NOT
+    /// (VERIFIED changelog §Blocks: "Smelt any stained terracotta in a
+    /// furnace to obtain the glazed terracotta of that color (not for
+    /// regular terracotta)")
+    #[test]
+    fn v112_glazed_terracotta_smelting() {
+        for c in 0u16..16 {
+            assert_eq!(
+                smelt_result(STAINED_TERRACOTTA_BASE + c),
+                Some(glazed_terracotta(c as u8)),
+                "stained color {c} → glazed {c}"
+            );
+        }
+        // plain terracotta: NOT smeltable (the changelog's "(not for
+        // regular terracotta)" clause)
+        assert_eq!(smelt_result(TERRACOTTA), None);
+        // concrete/powder don't smelt (no such recipe in 1.12)
+        assert_eq!(smelt_result(CONCRETE_BASE), None);
+        assert_eq!(smelt_result(CONCRETE_POWDER_BASE), None);
+        // XP: 0.1 per glazed smelt (VERIFIED w/Glazed_Terracotta
+        // §Smelting: the table's 0.1)
+        assert_eq!(crate::enchanting::smelt_xp(STAINED_TERRACOTTA_BASE), 0.1);
     }
 }

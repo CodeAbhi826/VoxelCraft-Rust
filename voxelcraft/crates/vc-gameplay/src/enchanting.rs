@@ -451,6 +451,9 @@ pub fn smelt_xp(block: u16) -> f32 {
         // minecraft.wiki/w/Smelting: "smelting 1 coal ore and removing
         // the coal, the value is 0.1" — ten coal per XP on average)
         COAL_ORE => 0.1,
+        // 1.12 (World of Color, VERIFIED w/Glazed_Terracotta §Smelting:
+        // the smelting table's 0.1 XP per glazed terracotta)
+        b if (STAINED_TERRACOTTA_BASE..=STAINED_TERRACOTTA_END).contains(&b) => 0.1,
         _ => 0.0,
     }
 }

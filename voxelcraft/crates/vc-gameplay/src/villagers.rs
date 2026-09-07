@@ -1026,8 +1026,9 @@ pub fn build_vertices(
     out: &mut Vec<vc_particles::particles::ParticleVertex>,
 ) {
     let tile = TILE_VILLAGER as u16;
-    let tx = (tile % 16) as f32;
-    let ty = (tile / 16) as f32;
+    // [1.12 fix] 32-tile atlas rows (was %16//16 — see mobs.rs)
+    let tx = (tile % 32) as f32;
+    let ty = (tile / 32) as f32;
     for v in list {
         // face the movement direction (billboard around world Y)
         let yaw = v.yaw + time * 0.0; // no spin — grounded NPCs
@@ -1045,17 +1046,17 @@ pub fn build_vertices(
         let corners = [
             (
                 [-rr[0] * half, 0.0, -rr[2] * half],
-                [tx / 16.0, (ty + 1.0) / 16.0],
+                [tx / 32.0, (ty + 1.0) / 32.0],
             ),
             (
                 [rr[0] * half, 0.0, rr[2] * half],
-                [(tx + 1.0) / 16.0, (ty + 1.0) / 16.0],
+                [(tx + 1.0) / 32.0, (ty + 1.0) / 32.0],
             ),
             (
                 [rr[0] * half, h, rr[2] * half],
-                [(tx + 1.0) / 16.0, ty / 16.0],
+                [(tx + 1.0) / 32.0, ty / 32.0],
             ),
-            ([-rr[0] * half, h, -rr[2] * half], [tx / 16.0, ty / 16.0]),
+            ([-rr[0] * half, h, -rr[2] * half], [tx / 32.0, ty / 32.0]),
         ];
         for ci in [0usize, 1, 2, 0, 2, 3] {
             let (c, uv) = corners[ci];

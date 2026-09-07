@@ -1,0 +1,2493 @@
+Glazed Terracotta – Minecraft Wiki
+
+ Glazed Terracotta
+
+ From Minecraft Wiki
+
+ Jump to navigation
+ Jump to search
+ This article is about the dyed and glazed block. For the non-glazed variant, see Stained Terracotta. For the non-dyed and non-glazed form, see Terracotta.
+
+Glazed Terracotta
+
+Java Edition
+
+Bedrock Edition
+
+ | Renewable
+
+ | Yes
+
+ | Stackable
+
+ | Yes (64)
+
+ | Tool
+
+ | Blast resistance
+
+ | 1.4
+
+ | Hardness
+
+ | 1.4
+
+ | Luminous
+
+ | No
+
+ | Transparent
+
+ | No
+
+ | Flammable
+
+ | No
+
+ | Catches fire
+from lava
+
+ | No
+
+ | Map color
+
+ | 
+16 colors
+
+ 8 SNOW
+
+ 22 COLOR_LIGHT_GRAY
+
+ 21 COLOR_GRAY
+
+ 29 COLOR_BLACK
+
+ 26 COLOR_BROWN
+
+ 28 COLOR_RED
+
+ 15 COLOR_ORANGE
+
+ 18 COLOR_YELLOW 
+
+ 19 COLOR_LIGHT_GREEN 
+
+ 27 COLOR_GREEN 
+
+ 23 COLOR_CYAN
+
+ 17 COLOR_LIGHT_BLUE 
+
+ 25 COLOR_BLUE
+
+ 24 COLOR_PURPLE 
+
+ 16 COLOR_MAGENTA
+
+ 20 COLOR_PINK
+
+ | Note block instrument
+
+ | Bass Drum
+
+ | Sulfur cube archetype
+
+ | Slow Bouncy
+
+{
+ "title": "Glazed Terracotta",
+ "rows": [
+ {
+ "field": "Yes",
+ "label": "(link to Renewable resource article, displayed as Renewable)"
+ },
+ {
+ "field": "Yes (64)",
+ "label": "Stackable"
+ },
+ {
+ "field": "<span class=\"sprite-file\" style=\"height:32px;width:32px;--vertical-align:middle\">(link to File:Invicon Wooden Pickaxe.png article, displayed as 32x32px|link=|alt=Invicon Wooden Pickaxe.png: Sprite image for Wooden Pickaxe in Minecraft|class=pixel-image|A wooden pickaxe or better is required to mine this block)</span>",
+ "label": "Tool"
+ },
+ {
+ "field": "1.4",
+ "label": "(link to Explosion#Blast resistance article, displayed as Blast resistance)"
+ },
+ {
+ "field": "1.4",
+ "label": "(link to Breaking#Blocks by hardness article, displayed as Hardness)"
+ },
+ {
+ "field": "No",
+ "label": "(link to Light article, displayed as Luminous)"
+ },
+ {
+ "field": "No",
+ "label": "(link to Opacity article, displayed as Transparent)"
+ },
+ {
+ "field": "No",
+ "label": "(link to Fire#Flammable blocks article, displayed as Flammable)"
+ },
+ {
+ "field": "No",
+ "label": "Catches fire<br>from (link to lava article, displayed as lava)"
+ },
+ {
+ "field": "(values exceeds 1000 characters...)",
+ "label": "(link to Map item format#Color table article, displayed as Map color)"
+ },
+ {
+ "field": "Bass Drum",
+ "label": "(link to Note Block#Instruments article, displayed as Note block instrument)"
+ },
+ {
+ "field": "Slow Bouncy",
+ "label": "(link to Sulfur Cube#Archetypes article, displayed as Sulfur cube archetype)"
+ }
+ ],
+ "invimages": [
+ "White Glazed Terracotta",
+ "Light Gray Glazed Terracotta",
+ "Gray Glazed Terracotta",
+ "Black Glazed Terracotta",
+ "Brown Glazed Terracotta",
+ "Red Glazed Terracotta",
+ "Orange Glazed Terracotta",
+ "Yellow Glazed Terracotta",
+ "Lime Glazed Terracotta",
+ "Green Glazed Terracotta",
+ "Cyan Glazed Terracotta",
+ "Light Blue Glazed Terracotta",
+ "Blue Glazed Terracotta",
+ "Purple Glazed Terracotta",
+ "Magenta Glazed Terracotta",
+ "Pink Glazed Terracotta"
+ ],
+ "images": [
+ "White Glazed Terracotta.png",
+ "Light Gray Glazed Terracotta.png",
+ "Gray Glazed Terracotta.png",
+ "Black Glazed Terracotta.png",
+ "Brown Glazed Terracotta.png",
+ "Red Glazed Terracotta.png",
+ "Orange Glazed Terracotta.png",
+ "Yellow Glazed Terracotta.png",
+ "Lime Glazed Terracotta.png",
+ "Green Glazed Terracotta.png",
+ "Cyan Glazed Terracotta.png",
+ "Light Blue Glazed Terracotta.png",
+ "Blue Glazed Terracotta.png",
+ "Purple Glazed Terracotta.png",
+ "Purple Glazed Terracotta JE1 BE1.png",
+ "Magenta Glazed Terracotta.png",
+ "Pink Glazed Terracotta.png"
+ ]
+}
+
+Glazed terracotta is a vibrant solid block that comes in the sixteen regular dye colors, obtained by smelting stained terracotta. Glazed terracotta does not stick to slime blocks or honey blocks, and it cannot be pulled by sticky pistons, but it can be pushed by pistons.
+
+Contents
+
+1 Obtaining
+
+1.1 Breaking
+
+1.2 Natural generation
+
+1.3 Smelting
+
+1.4 Trading
+
+2 Usage
+
+2.1 Placement
+
+2.2 Texture
+
+3 Sounds
+
+4 Data values
+
+4.1 ID
+
+4.2 Block states
+
+5 Videos
+
+6 History
+
+6.1 Java Edition
+
+6.2 Bedrock Edition
+
+6.3 Legacy Console Edition
+
+6.4 New Nintendo 3DS Edition
+
+6.5 Data history
+
+7 Issues
+
+8 Trivia
+
+9 Gallery
+
+9.1 Screenshots
+
+9.2 In other media
+
+10 References
+
+11 External links
+
+12 Navigation
+
+Obtaining
+[edit | edit source]
+
+Breaking
+[edit | edit source]
+
+Glazed terracotta requires a pickaxe to be mined. When mined without a pickaxe, it drops nothing.
+
+ | Block
+
+ | Glazed Terracotta
+
+ | Hardness
+
+ | 1.4
+
+ | Tool
+
+ | 
+
+Breaking time (sec)[A]
+
+ | Default
+
+7
+
+Wooden
+
+1.05
+
+Stone
+
+0.55
+
+Copper
+
+0.45
+
+Iron
+
+0.35
+
+Diamond
+
+0.3
+
+Netherite
+
+0.25
+
+Golden
+
+0.2
+
+Options
+ | Efficiency000
+
+ | Haste0011JEBE
+
+Legend
+ incorrect tool, drops nothing
+
+ correct tool, drops nothing or something other than the block itself
+
+ correct tool, drops the block itself
+
+italicized can be instant mined
+
+↑ These durations ignore any other influential factors (e.g., Mining Fatigue) and are measured in seconds. For more information, see Breaking § Mining efficiency.
+
+Natural generation
+[edit | edit source]
+
+Purple glazed terracotta generates in some cold ocean ruins.
+
+Yellow glazed terracotta generates in mason houses in savanna villages.
+
+Orange glazed terracotta generates in savanna village armorer houses.
+
+White glazed terracotta generates in some desert village buildings.
+
+Lime glazed terracotta generates in one of the desert village temples.
+
+Light blue glazed terracotta generates in toolsmith houses in desert villages.
+
+Black, cyan, light blue, light gray, orange and yellow glazed terracotta can generate in trail ruins.
+
+Red glazed terracotta generate in altar-like structures with ominous vaults within trial chambers.
+
+Smelting
+[edit | edit source]
+
+Glazed terracotta can be obtained by smelting any stained terracotta. Unstained terracotta cannot be smelted.
+
+ | Ingredients
+ | Smelting recipe
+
+ | Matching Stained Terracotta +
+Any fuel
+
+0.1
+
+Trading
+[edit | edit source]
+
+VillagerProbabilityVillager wantsPlayer receivesTrades in
+stockVillager
+experiencePrice
+multiplier
+ | JE | BE
+Mason Expert | 74% | 50% | Emerald | 
+
+Any color Glazed Terracotta[t 1] | 12 | 15 | 0.05
+
+↑ Every color is a unique offer, meaning in Java Edition, villagers can offer multiple colors simultaneously.
+
+Usage
+[edit | edit source]
+
+All 16 terracotta colors in 4 possible patterns.
+Glazed terracotta does not stick to slime blocks or honey blocks, but unlike immovable blocks, it can be pushed by pistons and sticky pistons. It cannot be pulled by sticky pistons.
+
+Placement
+[edit | edit source]
+
+When placed, glazed terracotta's texture rotates relative to the direction the player is facing while placing the block. If several glazed terracotta blocks of the same color are placed in the "correct" orientation in a 2×2 or greater area, the textures align to create a singular image, as demonstrated in the image to the right.
+
+The magenta glazed terracotta pattern includes an arrow (⬆) design that can be used to point to things or direct players. A guide is shown below, in order to correctly place the arrow direction (based on testing).
+
+ | Facing
+ | Arrow direction
+
+ | Front
+ | Pointing right ►
+
+ | Left
+ | Pointing down ▼
+
+ | Right
+ | Pointing up ▲
+
+ | Above
+ | Pointing down ▼
+
+Translucent image of magenta terracotta.
+Several different 2×2 tile patterns.
+Texture
+[edit | edit source]
+
+Creeper face on cyan glazed terracotta.
+Glazed terracotta blocks are designed to form a larger, cohesive pattern when placed in the correct 2×2 configuration. Most textures have reflection symmetry along a diagonal line that goes from corner to corner, though the colors of individual pixels can differ slightly.
+
+Although the design of each individual glazed terracotta block is up for interpretation, there are some intentional details in certain blocks:
+
+Magenta blocks contain directional arrows.
+
+Cyan blocks contain a creeper's face.
+
+Purple blocks contain the hilt and handguard of a sword.
+
+Sounds
+[edit | edit source]
+
+Java Edition:
+
+v
+
+t
+
+e
+
+ stone sound type
+ | Sound | Closed captions | Source | Description | Identifier | Translation key | Volume | Pitch | Attenuation
+distance
+ | ​Block broken | Blocks | Once the block has broken | block.stone.break | subtitles.block.generic.break​ | 1.0 | 0.8 | 16
+ | ​Block placed | Blocks | When the block is placed | block.stone.place | subtitles.block.generic.place​ | 1.0 | 0.8 | 16
+ | ​Block breaking | Blocks | While the block is in the process of being broken | block.stone.hit | subtitles.block.generic.hit​ | 0.25 | 0.5 | 16
+ | ​Something falls on a block | Entity-Dependent | Falling on the block with fall damage | block.stone.fall | subtitles.block.generic.fall​ | 0.5 | 0.75 | 16
+ | ​Footsteps | Entity-Dependent | Walking on the block | block.stone.step | subtitles.block.generic.footsteps​ | 0.15 | 1.0 | 16
+
+Bedrock Edition:
+
+v
+
+t
+
+e
+
+ stone sound type
+ | Sound | Closed captions | Source | Description | Identifier | Translation key | Volume | Pitch
+ | ​Block broken | Blocks | Once the block has broken | dig.stone | subtitles.block.generic.break​ | 1.0 | 0.8–1.0
+ | ​Block placed | Blocks | When the block is placed | place.stone | subtitles.block.generic.place​ | 1.0 | 0.8–1.0
+ | ​Block breaking | Blocks | While the block is in the process of being broken | hit.stone | subtitles.block.generic.hit​ | 0.37 | 0.5
+ | ​Footsteps | Players | Falling on the block with fall damage | fall.stone | subtitles.block.generic.footsteps​ | 0.4 | 1.0
+ | ​Footsteps | Players | Walking on the block | step.stone | subtitles.block.generic.footsteps​ | 0.3 | 1.0
+ | ​Footsteps | Blocks | Jumping from the block | jump.stone | subtitles.block.generic.footsteps​ | 0.12 | 1.0
+ | ​Footsteps | Blocks | Falling on the block without fall damage | land.stone | subtitles.block.generic.footsteps​ | 0.22 | 1.0
+
+Data values
+[edit | edit source]
+
+ID
+[edit | edit source]
+
+Java Edition:
+
+ | Name | Identifier | Form | Block tags | Item tags
+ | Translation key
+ | White Glazed Terracotta | white_glazed_terracotta | Block & Item | glazed_terracotta
+mineable/pickaxe | glazed_terracotta
+ | block.minecraft.white_glazed_terracotta
+
+ | Orange Glazed Terracotta | orange_glazed_terracotta | Block & Item | glazed_terracotta
+mineable/pickaxe | glazed_terracotta
+ | block.minecraft.orange_glazed_terracotta
+
+ | Magenta Glazed Terracotta | magenta_glazed_terracotta | Block & Item | glazed_terracotta
+mineable/pickaxe | glazed_terracotta
+ | block.minecraft.magenta_glazed_terracotta
+
+ | Light Blue Glazed Terracotta | light_blue_glazed_terracotta | Block & Item | glazed_terracotta
+mineable/pickaxe | glazed_terracotta
+ | block.minecraft.light_blue_glazed_terracotta
+
+ | Yellow Glazed Terracotta | yellow_glazed_terracotta | Block & Item | glazed_terracotta
+mineable/pickaxe | glazed_terracotta
+ | block.minecraft.yellow_glazed_terracotta
+
+ | Lime Glazed Terracotta | lime_glazed_terracotta | Block & Item | glazed_terracotta
+mineable/pickaxe | glazed_terracotta
+ | block.minecraft.lime_glazed_terracotta
+
+ | Pink Glazed Terracotta | pink_glazed_terracotta | Block & Item | glazed_terracotta
+mineable/pickaxe | glazed_terracotta
+ | block.minecraft.pink_glazed_terracotta
+
+ | Gray Glazed Terracotta | gray_glazed_terracotta | Block & Item | glazed_terracotta
+mineable/pickaxe | glazed_terracotta
+ | block.minecraft.gray_glazed_terracotta
+
+ | Light Gray Glazed Terracotta | light_gray_glazed_terracotta | Block & Item | glazed_terracotta
+mineable/pickaxe | glazed_terracotta
+ | block.minecraft.light_gray_glazed_terracotta
+
+ | Cyan Glazed Terracotta | cyan_glazed_terracotta | Block & Item | glazed_terracotta
+mineable/pickaxe | glazed_terracotta
+ | block.minecraft.cyan_glazed_terracotta
+
+ | Purple Glazed Terracotta | purple_glazed_terracotta | Block & Item | glazed_terracotta
+mineable/pickaxe | glazed_terracotta
+ | block.minecraft.purple_glazed_terracotta
+
+ | Blue Glazed Terracotta | blue_glazed_terracotta | Block & Item | glazed_terracotta
+mineable/pickaxe | glazed_terracotta
+ | block.minecraft.blue_glazed_terracotta
+
+ | Brown Glazed Terracotta | brown_glazed_terracotta | Block & Item | glazed_terracotta
+mineable/pickaxe | glazed_terracotta
+ | block.minecraft.brown_glazed_terracotta
+
+ | Green Glazed Terracotta | green_glazed_terracotta | Block & Item | glazed_terracotta
+mineable/pickaxe | glazed_terracotta
+ | block.minecraft.green_glazed_terracotta
+
+ | Red Glazed Terracotta | red_glazed_terracotta | Block & Item | glazed_terracotta
+mineable/pickaxe | glazed_terracotta
+ | block.minecraft.red_glazed_terracotta
+
+ | Black Glazed Terracotta | black_glazed_terracotta | Block & Item | glazed_terracotta
+mineable/pickaxe | glazed_terracotta
+ | block.minecraft.black_glazed_terracotta
+
+Bedrock Edition:
+
+ | Name | Identifier | Numeric ID | Form | Item ID[i 1]
+ | Translation key
+ | White Glazed Terracotta | white_glazed_terracotta | 220 | Block & Giveable Item[i 2] | white_glazed_terracotta
+Alias ID: glazedterracotta.white
+ | tile.glazedTerracotta.white.name
+
+ | Orange Glazed Terracotta | orange_glazed_terracotta | 221 | Block & Giveable Item[i 2] | orange_glazed_terracotta
+Alias ID: glazedterracotta.orange
+ | tile.glazedTerracotta.orange.name
+
+ | Magenta Glazed Terracotta | magenta_glazed_terracotta | 222 | Block & Giveable Item[i 2] | magenta_glazed_terracotta
+Alias ID: glazedterracotta.magenta
+ | tile.glazedTerracotta.magenta.name
+
+ | Light Blue Glazed Terracotta | light_blue_glazed_terracotta | 223 | Block & Giveable Item[i 2] | light_blue_glazed_terracotta
+Alias ID: glazedterracotta.light_blue
+ | tile.glazedTerracotta.light_blue.name
+
+ | Yellow Glazed Terracotta | yellow_glazed_terracotta | 224 | Block & Giveable Item[i 2] | yellow_glazed_terracotta
+Alias ID: glazedterracotta.yellow
+ | tile.glazedTerracotta.yellow.name
+
+ | Lime Glazed Terracotta | lime_glazed_terracotta | 225 | Block & Giveable Item[i 2] | lime_glazed_terracotta
+Alias ID: glazedterracotta.lime
+ | tile.glazedTerracotta.lime.name
+
+ | Pink Glazed Terracotta | pink_glazed_terracotta | 226 | Block & Giveable Item[i 2] | pink_glazed_terracotta
+Alias ID: glazedterracotta.pink
+ | tile.glazedTerracotta.pink.name
+
+ | Gray Glazed Terracotta | gray_glazed_terracotta | 227 | Block & Giveable Item[i 2] | gray_glazed_terracotta
+Alias ID: glazedterracotta.gray
+ | tile.glazedTerracotta.gray.name
+
+ | Light Gray Glazed Terracotta | silver_glazed_terracotta | 228 | Block & Giveable Item[i 2] | silver_glazed_terracotta
+Alias ID: glazedterracotta.silver
+ | tile.glazedTerracotta.silver.name
+
+ | Cyan Glazed Terracotta | cyan_glazed_terracotta | 229 | Block & Giveable Item[i 2] | cyan_glazed_terracotta
+Alias ID: glazedterracotta.cyan
+ | tile.glazedTerracotta.cyan.name
+
+ | Purple Glazed Terracotta | purple_glazed_terracotta | 219 | Block & Giveable Item[i 2] | purple_glazed_terracotta
+Alias ID: glazedterracotta.purple
+ | tile.glazedTerracotta.purple.name
+
+ | Blue Glazed Terracotta | blue_glazed_terracotta | 231 | Block & Giveable Item[i 2] | blue_glazed_terracotta
+Alias ID: glazedterracotta.blue
+ | tile.glazedTerracotta.blue.name
+
+ | Brown Glazed Terracotta | brown_glazed_terracotta | 232 | Block & Giveable Item[i 2] | brown_glazed_terracotta
+Alias ID: glazedterracotta.brown
+ | tile.glazedTerracotta.brown.name
+
+ | Green Glazed Terracotta | green_glazed_terracotta | 233 | Block & Giveable Item[i 2] | green_glazed_terracotta
+Alias ID: glazedterracotta.green
+ | tile.glazedTerracotta.green.name
+
+ | Red Glazed Terracotta | red_glazed_terracotta | 234 | Block & Giveable Item[i 2] | red_glazed_terracotta
+Alias ID: glazedterracotta.red
+ | tile.glazedTerracotta.red.name
+
+ | Black Glazed Terracotta | black_glazed_terracotta | 235 | Block & Giveable Item[i 2] | black_glazed_terracotta
+Alias ID: glazedterracotta.black
+ | tile.glazedTerracotta.black.name
+
+↑ ID of block's direct item form, which is used in savegame files and addons.
+
+↑ a b c d e f g h i j k l m n o p Available with /give command.
+
+Block states
+[edit | edit source]
+
+See also: Block states 
+
+Java Edition:
+
+ | Name
+ | Default value
+ | Allowed values
+ | Description
+ 
+facingnorth | east
+north
+south
+west | The opposite from the direction the player faces while placing the block.
+
+Bedrock Edition:
+
+ | Name | Metadata Bits
+ | Default value
+ | Allowed values | Values for
+Metadata Bits
+ | Description
+ 
+facing_direction0x1
+0x2
+0x40 | 2
+3
+4
+5 | 2
+3
+4
+5 | The direction the block faces.
+Opposite from the direction a player faces when placing the block.
+2: North
+
+3: South
+
+4: West
+
+5: East
+
+ | 0
+1 | 0
+1 | Unused
+
+Videos
+[edit | edit source]
+
+History
+[edit | edit source]
+
+There is an associated page listing all historical changes related to the appearance and/or sounds associated with this block in further detail than below; see /Asset history.
+
+Java Edition
+[edit | edit source]
+
+Java Edition
+1.1217w06a
+ | Added glazed terracotta.
+17w13a
+ | The white, orange, cyan, and magenta block textures have now been changed. This change is to remove patterns that could contain offensive imagery.[1][2][3] However, it is still possible to create some; Mojang does not plan on fixing these cases[4]
+1.1318w09a
+ | Purple glazed terracotta now generates in some ocean ruins.
+1.1418w49a
+ | Orange and yellow glazed terracotta now generates in savanna villages.
+18w50a
+ | White, lime and light blue glazed terracotta now generate in desert villages.
+19w11a
+ | Glazed terracotta in all 16 colors are now sold by villagers of the new mason profession, making it renewable.
+1.2023w12a
+ | All types of glazed terracotta except green, magenta, and pink now generate in trail ruins.
+23w14a
+ | Changed texture for purple glazed terracotta.
+1.20.5Experiment
+
+Update 1.2124w13a
+ | Red glazed terracotta now generate in trial chambers next to ominous vaults.
+26.2snap1
+ | Added sulfur cubes, which have the ability to absorb glazed terracotta, providing the football/regular effect to the mob.
+snap6
+ | Changed effect from football/regular to slow bouncy.
+
+Bedrock Edition
+[edit | edit source]
+
+Pocket Edition
+1.1.0alpha 1.1.0.0
+ | Added glazed terracotta.
+alpha 1.1.0.3
+ | The textures of white, orange, cyan, and magenta glazed terracotta have been changed.
+Bedrock Edition
+1.4.0beta 1.2.20.1
+ | Purple glazed terracotta now generates naturally in ocean ruins.
+1.10.0beta 1.10.0.3
+ | White, lime and light blue glazed terracotta now generate in the new desert villages.
+
+ | Orange and yellow terracotta now generate in the new savanna villages.
+1.11.0beta 1.11.0.4
+ | Glazed terracotta can now be bought from stone mason villagers.
+26.20Experiment
+
+Drop 2 of 2026Preview 26.20.23
+ | Added sulfur cubes, which have the ability to absorb every color of glazed terracotta, providing the football/regular effect to the mob.
+26.30Preview 26.30.20
+ | Implemented all features from the "Drop 2 of 2026" experiment in vanilla gameplay.
+Preview 26.30.27
+ | Glazed terracotta's sulfur cube archetype has been changed from regular to slow bouncy.
+
+Legacy Console Edition
+[edit | edit source]
+
+Legacy Console Edition
+Xbox 360Xbox OnePS3PS4PS VitaWii USwitch
+TU53CU431.491.501.49Patch 231.0.3
+ | Added glazed terracotta.
+TU54CU441.521.521.52Patch 241.0.4
+ | Glazed terracotta can no longer be pulled by sticky pistons and no longer sticks to moving slime blocks.
+TU69 1.761.761.76Patch 38 
+ | Purple glazed terracotta now generates in some ocean ruins.
+ 1.91 
+ | Glazed terracotta can now be sold to stone mason villagers.
+1.95
+ | Stone mason villagers now sell 12 glazed terracotta for 1 emerald instead of buying it.
+
+New Nintendo 3DS Edition
+[edit | edit source]
+
+New Nintendo 3DS Edition
+1.9.19
+ | Added glazed terracotta.
+
+Data history
+[edit | edit source]
+
+Java Edition
+1.1317w47a
+ | The ID for light gray glazed terracotta has now been changed from silver_glazed_terracotta to light_gray_glazed_terracotta.
+
+ | Prior to The Flattening, these blocks' numeral IDs were 235 through 250.​[more information needed]
+
+Issues
+[edit | edit source]
+
+Issues relating to "Glazed Terracotta" are maintained on the bug tracker. Issues should be reported and viewed there.
+
+Trivia
+[edit | edit source]
+
+According to Jens Bergensten, the inspiration for glazed terracotta blocks came from a Moroccan-styled bathroom floor at a hotel in California.[5]
+
+Glazed terracotta blocks were designed by Johan Aronson.[6]
+
+Glazed terracotta is a material that exists in real life, known as glazed architectural terra cotta. It was used in historical buildings of the United States, UK, Canada, and Australia between the late 1800s and early 1900s. Its historical use was acknowledged by Duncan Geere in a Block of the Week article about glazed terracotta on Minecraft.net.[7]
+
+Gallery
+[edit | edit source]
+
+Screenshots
+[edit | edit source]
+
+ The first instance of glazed terracotta appears in this banner for snapshot 17w06a. (Magenta, top center of structure)
+
+ A complex terracotta pattern that uses multiple colors to achieve a rich carpet effect
+
+ Several more complex multi-color terracotta patterns
+
+ A terracotta pattern using 14 kinds of terracotta blocks
+
+ Purple glazed terracotta generating in ocean ruins
+
+ All of the radial glazed terracotta patterns, shown in a continuous arrangement next to their unglazed counterparts
+
+ A structure of lime glazed terracotta
+
+ Another structure of lime glazed terracotta
+
+In other media
+[edit | edit source]
+
+ Render of white, purple, light blue, and lime glazed terracotta used in Block of the Week
+
+ Official artwork of every type of glazed terracotta, used for the 15th anniversary of Minecraft[8]
+
+ A block of light blue glaced [sic] terracotta being called
+
+References
+[edit | edit source]
+
+↑ MC-113377 – New block Swastika – resolved as "Fixed".
+
+↑ MC-113844 – White Glazed Terracotta symbol (looks like the symbol of the Hungarian Nazi party) – resolved as "Fixed".
+
+↑ https://www.reddit.com/r/Minecraft/comments/5sspmk/minecraft_snapshot_17w06a/ddhjm42/?context=1
+
+↑ MC-120703 – You can make a Swastika using light blue terracotta patterns – resolved as "Won't Fix".
+
+↑ "I got the inspiration from a bathroom floor at a hotel in California. They had Moroccan style tiles that looked amazing" – @jeb_ (Jens Bergensten) on X (formerly Twitter), February 11, 2017
+
+↑ "Uh oh, we'll fix it for the next snapshot. You won't believe how much time and effort we (or rather, @JohanAronson) put into getting rid of accidental nazis out of these blocks." – u/Jeb on Reddit, February 8, 2017
+
+↑ https://www.minecraft.net/pt-br/article/block-week-glazed-terracotta%7C"And that's not the only building covered with the stuff. Many city buildings in the United States that date from between 1900 and 1930 are covered with glazed terracotta because it's sturdy, cheap and can easily be molded into pretty much whatever shape you'd like. Chicago, in particular, has loads of the stuff."
+
+↑ https://www.minecraft.net/en-us/15th-anniversary
+
+External links
+[edit | edit source]
+
+"Block of the Week: Glazed Terracotta" by Duncan Geere – Minecraft.net, January 19, 2018.
+
+Navigation
+[edit | edit source]
+
+v
+
+t
+
+e
+
+Dyed materials
+
+ | Dyes
+
+ | 
+White
+
+Light Gray
+
+Gray
+
+Black
+
+Brown
+
+Red
+
+Orange
+
+Yellow
+
+Lime
+
+Green
+
+Cyan
+
+Light Blue
+
+Blue
+
+Purple
+
+Magenta
+
+Pink
+
+ | Substitutes (BE & Edu)
+
+ | 
+Bone Meal
+
+Ink Sac
+
+Cocoa Beans
+
+Lapis Lazuli
+
+ | Blocks
+
+ | 
+Wool
+Stairs​[upcoming: Wilderness Bound]
+
+Slabs​[upcoming: Wilderness Bound]
+
+Carpets
+
+Stained Terracotta
+
+Glazed Terracotta
+
+Concrete Powder
+
+Concrete
+Stairs​[upcoming: Wilderness Bound]
+
+Slabs​[upcoming: Wilderness Bound]
+
+Stained Glass
+Panes
+
+Shulker Boxes
+
+Beds
+
+Candles
+
+Banners
+
+ | Dye-applicable
+
+ | 
+Cauldron‌[BE only]
+
+Sign
+Hanging
+
+ | BE & Edu only
+
+ | 
+Hardened Stained Glass
+Panes
+
+ | Items
+
+ | 
+Bundles
+
+Harnesses
+
+Cushions​[upcoming: Wilderness Bound]
+
+ | Dye-applicable
+
+ | 
+Firework Star
+
+Leather Cap
+
+Leather Tunic
+
+Leather Pants
+
+Leather Boots
+
+Leather Horse Armor
+
+Wolf Armor
+
+ | BE & Edu only
+
+ | 
+Balloons
+
+Glow Sticks
+
+ | Entities
+
+ | 
+Cat
+
+Sheep
+
+Wolf
+
+ | BE & Edu only
+
+ | 
+Shulker
+
+v
+
+t
+
+e
+
+Blocks
+
+ Structural
+
+ | Lumber
+
+ | 
+Logs
+Stripped
+
+Wood
+Stripped
+
+Stems
+Stripped
+
+Hyphae
+Stripped
+
+Block of Bamboo
+Stripped
+
+Bamboo Mosaic
+
+Planks
+
+ | Stone/Deepslate
+
+ | 
+Stone
+
+Cobblestone
+Mossy
+
+Smooth Stone
+
+Stone Bricks
+Chiseled
+
+Cracked
+
+Mossy
+
+Granite
+Polished
+
+Diorite
+Polished
+
+Andesite
+Polished
+
+Deepslate
+Chiseled
+
+Cobbled
+
+Polished
+
+Deepslate Bricks
+Cracked
+
+Deepslate Tiles
+Cracked
+
+Tuff
+Chiseled
+
+Polished
+
+Tuff Bricks
+Chiseled
+
+ | Overworld
+
+ | 
+Bricks
+
+Packed Mud
+Mud Bricks
+
+Resin Bricks
+Chiseled
+
+Sandstone
+Chiseled
+
+Cut
+
+Smooth
+
+Red Sandstone
+Chiseled
+
+Cut
+
+Smooth
+
+Cinnabar
+Chiseled
+
+Polished
+
+Bricks
+
+Sulfur
+Chiseled
+
+Polished
+
+Bricks
+
+Prismarine
+Bricks
+
+Dark
+
+ | The Nether
+
+ | 
+Netherrack
+
+Nether Bricks
+Chiseled
+
+Cracked
+
+Red
+
+Blackstone
+
+Polished Blackstone
+Chiseled
+
+Polished Blackstone Bricks
+Cracked
+
+Basalt
+Polished
+
+Smooth
+
+ | The End
+
+ | 
+End Stone
+Bricks
+
+Purpur Block
+Pillar
+
+ | Mineral
+
+ | 
+Block of Quartz
+Bricks
+
+Chiseled
+
+Pillar
+
+Smooth
+
+Block of Copper
+Chiseled
+
+Cut
+
+Grate
+
+Block of Iron
+
+Block of Gold
+
+Block of Amethyst
+
+Block of Coal
+
+Block of Diamond
+
+Block of Emerald
+
+Block of Lapis Lazuli
+
+Block of Netherite
+
+Block of Redstone
+
+ Ornamental
+
+ | Decorative
+
+ | 
+Crying Obsidian
+
+Gilded Blackstone
+
+Reinforced Deepslate
+
+ | Partial Block
+
+ | 
+Bars
+Iron
+
+Copper
+
+Chains
+Iron
+
+Copper
+
+Fences
+Wooden
+
+Nether Brick
+
+Slabs
+Cut Copper
+
+Wooden
+
+Stairs
+Cut Copper
+
+Wooden
+
+Walls
+
+ | Dyeable/Dyed
+
+ | 
+Wool
+Slab​[upcoming: Wilderness Bound]
+
+Stairs​[upcoming: Wilderness Bound]
+
+Carpets
+
+Terracotta
+Stained
+
+Glazed
+
+Concrete
+Slab​[upcoming: Wilderness Bound]
+
+Stairs​[upcoming: Wilderness Bound]
+
+Powder
+
+Glass
+Pane
+
+Tinted
+
+Stained Glass
+Pane
+
+ | Lighting
+
+ | 
+Candle
+Dyed
+
+End Rod
+
+Froglight
+
+Glowstone
+
+Jack o'Lantern
+
+Lantern
+Copper
+
+Soul
+
+Sea Lantern
+
+Torch
+Copper
+
+Soul
+
+ | BE & Edu only
+
+ | 
+Colored Torches
+
+Elements
+
+Hardened Glass
+Pane
+
+Hardened Stained Glass
+Pane
+
+ Natural
+
+ | Sediment/Soil
+
+ | 
+Clay
+
+Dirt
+Coarse
+
+Path
+
+Grass Block
+
+Mycelium
+
+Podzol
+
+Rooted
+
+Gravel
+
+Mud
+
+Nylium
+Crimson
+
+Warped
+
+Sand
+Red
+
+Soul Sand
+Soil
+
+ | Misc. rock
+
+ | 
+Bedrock
+
+Magma Block
+
+Obsidian
+
+Calcite
+
+Sulfur Spike
+
+Potent Sulfur
+
+Pointed Dripstone
+Block
+
+ | Ore/Mineral
+
+ | 
+Amethyst Bud
+Cluster
+
+Budding Amethyst
+
+Ancient Debris
+
+Coal Ore
+Deepslate
+
+Copper Ore
+Deepslate
+
+Raw Block
+
+Diamond Ore
+Deepslate
+
+Emerald Ore
+Deepslate
+
+Gold Ore
+Deepslate
+
+Nether
+
+Raw Block
+
+Iron Ore
+Deepslate
+
+Raw Block
+
+Lapis Lazuli Ore
+Deepslate
+
+Nether Quartz Ore
+
+Redstone Ore
+Deepslate
+
+ | Plant
+
+ | 
+Azalea
+Flowering
+
+Bamboo
+Shoot
+
+Big Dripleaf
+Small
+
+Bush
+
+Cactus
+
+Creaking Heart
+
+Dead Bush
+
+Fern
+Large
+
+Firefly Bush
+
+Hanging Roots
+
+Leaf Litter
+
+Leaves
+
+Mangrove Propagule
+
+Mangrove Roots
+Muddy
+
+Moss Block
+Carpet
+
+Pale Moss Block
+Carpet
+
+Hanging
+
+Red Shrub​[upcoming: Wilderness Bound]
+
+Resin Clump
+Block
+
+Saplings
+
+Short Dry Grass
+Tall
+
+Short Grass
+Tall
+
+Vines
+
+ | Flower
+
+ | 
+Allium
+
+Azure Bluet
+
+Blue Orchid
+
+Cactus Flower
+
+Cornflower
+
+Dandelion
+Golden
+
+Eyeblossom
+Closed
+
+Open
+
+Lilac
+
+Lily of the Valley
+
+Oxeye Daisy
+
+Peony
+
+Pink Petals
+
+Pitcher Plant
+Crop
+
+Poppy
+
+Rose Bush
+
+Spore Blossom
+
+Sunflower
+
+Torchflower
+Crop
+
+Tulips
+
+Wildflowers
+
+Wither Rose
+
+ | Crops & related
+
+ | 
+Beetroots
+
+Carrots
+
+Cave Vines
+
+Chorus Plant
+Flower
+
+Cocoa
+
+Melon
+Stem
+
+Potatoes
+
+Pumpkin
+Carved
+
+Stem
+
+Sugar Cane
+
+Sweet Berry Bush
+
+Wheat Crops
+Hay Bale
+
+ | Fungus & related
+
+ | 
+Brown Mushroom
+
+Red Mushroom
+
+Shelf Mushroom​[upcoming: Wilderness Bound]
+
+Mushroom Blocks
+
+Glow Lichen
+
+Crimson Fungus
+
+Warped Fungus
+
+Nether Wart
+
+Nether Sprouts
+
+Crimson Roots
+
+Warped Roots
+
+Nether Wart Block
+
+Warped Wart Block
+
+Shroomlight
+
+Twisting Vines
+
+Weeping Vines
+
+ | Fauna & Related
+
+ | 
+Bee Nest
+
+Honeycomb Block
+
+Bone Block
+
+Cobweb
+
+Dragon Egg
+
+Dried Ghast
+
+Infested Blocks
+
+Sniffer Egg
+
+Turtle Egg
+
+ | Aquatic
+
+ | 
+Coral
+Dead
+
+Coral Blocks
+Dead
+
+Coral Fans
+Dead
+
+Frogspawn
+
+Kelp
+Dried Block
+
+Lily Pad
+
+Sea Pickle
+
+Seagrass
+Tall
+
+ | Sculk
+
+ | 
+Sculk
+
+Sculk Catalyst
+
+Sculk Sensor
+Calibrated
+
+Sculk Shrieker
+
+Sculk Vein
+
+ | Fluid & Related
+
+ | 
+Lava
+
+Water
+Bubble Column
+
+Ice
+Blue
+
+Packed
+
+Snow
+Powder
+
+Block
+
+ | Non-physical
+
+ | 
+Air
+Cave‌[JE only]
+
+Void‌[JE only]
+
+Invisible Bedrock‌[BE & edu only]
+
+Fire
+Soul
+
+ Utility
+
+ | Interactable
+
+ | 
+Anvil
+Chipped
+
+Damaged
+
+Barrel
+
+Beacon
+
+Brewing Stand
+
+Cartography Table
+
+Chest
+Ender
+
+Copper
+
+Crafting Table
+
+Enchanting Table
+
+Furnace
+Blast
+
+Smoker
+
+Grindstone
+
+Lectern
+
+Loom
+
+Shulker Box
+Dyed
+
+Sign
+Hanging
+
+Smithing Table
+
+Stonecutter
+
+ | Utilizable
+
+ | 
+Banners
+Ominous
+
+Beehive
+
+Beds
+Straw​[upcoming: Wilderness Bound]
+
+Bell
+
+Bookshelf
+
+Cake
+with Candle
+
+Campfire
+Soul
+
+Cauldron
+
+Chiseled Bookshelf
+
+Composter
+
+Conduit
+
+Copper Golem Statue
+
+Decorated Pot
+
+End Gateway
+
+End Portal
+
+End Portal Frame
+
+Farmland
+
+Fletching Table
+
+Flower Pot
+
+Frosted Ice
+
+Heads
+Skeleton
+
+Wither Skeleton
+
+Zombie
+
+Creeper
+
+Piglin
+
+Dragon
+
+Heavy Core
+
+Jukebox
+
+Ladder
+
+Lodestone
+
+Monster Spawner
+
+Nether Portal
+
+Respawn Anchor
+
+Scaffolding
+
+Shelf
+
+Sponge
+Wet
+
+Suspicious Gravel
+
+Suspicious Sand
+
+TNT
+
+Trial Spawner
+Ominous
+
+Vault
+Ominous
+
+ | Redstone/
+Mechanical
+
+ | 
+Buttons
+Wooden
+
+Stone
+
+Polished Blackstone
+
+Copper Bulb
+
+Crafter
+
+Daylight Detector
+
+Dispenser
+
+Dropper
+
+Doors
+Copper
+
+Iron
+
+Wooden
+
+Honey Block
+
+Hopper
+
+Lever
+
+Lightning Rod
+
+Note Block
+
+Observer
+
+Piston
+Sticky
+
+Pressure Plates
+Wooden
+
+Stone
+
+Polished Blackstone
+
+Heavy Weighted
+
+Light Weighted
+
+Rail
+Activator
+
+Detector
+
+Powered
+
+Redstone Lamp
+
+Redstone Wire
+Comparator
+
+Repeater
+
+Torch
+
+Slime Block
+
+Target
+
+Trapped Chest
+
+Trapdoors
+Copper
+
+Iron
+
+Wooden
+
+Fence Gates
+
+Tripwire Hook
+Tripwire
+
+ | BE & Edu only
+
+ | 
+Allow
+
+Border
+
+Chalkboards
+
+Compound Creator
+
+Deny
+
+Element Constructor
+
+Heat Block
+
+Item Frame
+Glow
+
+Lab Table
+
+Material Reducer
+
+Underwater TNT
+
+Underwater Torch
+
+ Creative or commands only
+
+ | All editions
+
+ | 
+Barrier
+
+Command Block
+Chain
+
+Repeating
+
+Jigsaw Block
+
+Light
+
+Petrified Oak Slab
+
+Player Head
+
+Structure Block
+Void
+
+ | Java Edition only
+
+ | 
+Test Block
+
+Test Instance Block
+
+ | China Edition only
+
+ | 
+micro_block
+
+ Removed
+
+ | Java Edition only
+
+ | 
+Cloth
+
+Dead Coral Block
+
+Gear
+
+Infinite Lava Source
+
+Infinite Water Source
+
+Locked chest
+
+Rose
+Potted
+
+Shrub
+
+ | Bedrock Edition only
+
+ | 
+Blue Rose
+
+Duplicate Black Wool
+
+grass_carried
+
+leaves_carried
+
+Fern
+
+Fern
+
+Smooth Stone Bricks
+
+Structure Air
+
+mysterious_frame_slot
+
+ | China Edition only
+
+ | 
+mod_ore
+
+ | MinecraftEdu only
+
+ | 
+Big Sign
+
+Border block
+
+Build allow block
+
+Build disallow block
+
+Foundation block
+
+Home Block
+
+Information block
+
+Information Sign
+
+Number Block
+
+Spawn Block
+
+Steppe dirt
+
+Steppe sand
+
+Teleport Block
+
+Quiz Block
+
+ | Minecraft 4k only
+
+ | 
+ID 9 Dirt
+
+XOR Block
+
+ Unused
+
+ | BE & Edu only
+
+ | 
+Camera Block
+
+Chiseled Purpur
+
+tile.client_request_placeholder_block.name
+
+Deprecated Anvil
+
+tile.deprecated_purpur_block_2.name
+
+Glowing Obsidian
+
+tile.info_update.name
+tile.info_update2.name
+
+Nether Reactor Core
+
+tile.reserved6.name
+
+Stonecutter (old)
+
+Unknown
+
+ Unimplemented
+
+ | All editions
+
+ | 
+Branches
+
+Copper Button
+
+Colored Planks
+
+Coral Slab
+Dead
+
+Dirt Slab
+
+Empty Barrel
+Fish Barrel
+
+Furniture
+
+Paeonia
+
+Sculk Jaw
+
+Spike Block
+
+Wax Block
+
+Joke
+
+ | April Fools 2013
+
+ | 
+Block of Coal
+
+Etho Slab
+
+Tinted Glass
+
+Torch (Burnt-out)
+
+ | April Fools 2016
+
+ | 
+USB Charger Block
+
+ | April Fools 2020
+
+ | 
+An Ant
+
+Box of Infinite Books
+
+Cursor
+
+Funky Portal
+
+Leftover
+
+Swaggiest stairs ever
+
+ | April Fools 2022
+
+ | 
+How did we get here?
+
+ | April Fools 2023
+
+ | 
+Cheese
+
+Copper Sink
+Filled
+
+Copper Spleaves
+
+Golden Chest
+
+Other Portal
+
+Packed Air
+
+Pickaxe Block
+
+Place Block
+
+ | April Fools 2024
+
+ | 
+Baked Potato Bricks
+Expired
+
+Charred
+
+Big Brain
+
+Block of Amber
+
+Block of Potato Peels
+Corrupted
+
+Floatater
+
+Floatato
+
+Frying Table
+
+Gravtater
+
+Pedestal
+
+Peelgrass Block
+Corrupted
+
+Poison Farmland
+
+Poison Path
+
+Poisonous Mashed Potato
+
+Poisonous Potato Block
+Compressed
+
+Double Compressed
+
+Triple Compressed
+
+Quadruple Compressed
+
+Poisonous Potato Cutter
+
+Poisonous Potato Head Block
+
+Poisonous Potato Headpiece
+
+Poisonous Potato Ore
+Deepslate
+
+Potato Battery
+
+Potato Bud
+
+Potato flower
+
+Potato Fruit
+
+Potato Leaves
+
+Potato Pedicule
+
+Potato Portal
+
+Potato Refinery
+
+Potato Sprouts
+
+Potato Stem
+Planks
+
+Slab
+
+Stairs
+
+Door
+
+Trapdoor
+
+Button
+
+Pressure Plate
+
+Sign
+
+Hanging Sign
+
+Fence
+
+Fence Gate
+
+Potone
+Copper Ore
+
+Diamond Ore
+
+Gold Ore
+
+Iron Ore
+
+Lapis Lazuli Ore
+
+Redstone Ore
+
+Resin Ore
+
+Powerful Potato
+
+Strong Roots
+
+Taterstone
+
+Terre de Pomme
+
+Vicious Potato
+
+Weak Roots
+
+ | April Fools 2025
+
+ | 
+Dimension Control
+
+Mine Travelling Block
+
+Mine Revisitor
+
+Mine Crafter
+
+Mob Trophy
+
+Shimmering Door
+
+Sky
+
+Trophy
+
+ | April Fools 2026
+
+ | 
+Copper Trap
+
+Iron Trap
+
+ Extreme metadata variants
+
+ | All editions
+
+ | 
+Directionless Hopper
+
+Seamless Stone Slab
+
+Six-sided Hay Bale
+
+Six-sided Piston
+
+ | Java Edition only
+
+ | 
+Faceless Furnace
+
+Faceless Jack o'Lantern
+
+Green Shrub
+Potted
+
+Invisible stairs
+
+Misaligned torch
+Redstone
+
+Nether portal post
+
+Overripe Melon Stem
+Attached
+
+Overripe Pumpkin Stem
+Attached
+
+Overgrown Cocoa
+
+Overeaten Cake
+
+Overgrown Wheat Crops
+
+Potted non-flower block
+
+Snowy Dirt
+Coarse
+
+Strange buttons
+
+Invisible random ladders
+
+Others
+
+ | Bedrock Edition only
+
+ | 
+Bell Stand
+
+Diorite Bell
+
+Granite Bell
+Polished
+
+Six-sided Bone Block
+
+Six-sided Purpur Pillar
+
+Six-sided Quartz Pillar
+
+Smokeless Campfire
+
+Retrieved from "https://minecraft.wiki/w/Glazed_Terracotta?oldid=3752273"
+
+ Categories: Renewable resources
+Stackable resources
+Blocks
+Manufactured blocks
+Generated structure blocks
+
+Hidden categories: Pages using simple calculator
+Pages with sound tables
+Pages with Java sound tables
+Pages with Bedrock sound tables
+Pages with YouTube videos
+Information needed
+
+ Navigation menu
+
+ Personal tools
+
+ Create account
+Log in
+
+ associated-pages
+
+ Page
+Talk
+
+ English
+
+ Views
+
+ Read
+Edit
+Edit source
+View history
+
+ More
+
+ Search
+
+ Navigation
+
+ How to help
+Recent changes
+Random page
+in Minecraft
+in Dungeons
+in Dungeons II
+in Legends
+in Earth
+in Story Mode
+in Tutorial
+in Movie
+Wiki Discord
+
+ Wiki community
+
+ Community portal
+Wiki forum
+Projects
+Wiki rules
+Style guide
+Notability
+Sandbox
+Admin noticeboard
+
+ X
+
+ Franchise
+
+ Minecraft
+Minecraft Dungeons
+Minecraft Legends
+Minecraft Earth
+Minecraft: Story Mode
+A Minecraft Movie
+
+ Recent versions
+
+ Java Edition
+Latest: 26.2
+Dev: 26.3-pre-2
+Upcoming: 26.3
+Bedrock Edition
+Latest: 26.45
+Preview: 26.60.21
+Upcoming: 26.50
+Upcoming: 26.60
+
+ Useful pages
+
+ Trading
+Brewing
+Enchantments
+Mobs
+Blocks
+Items
+Crafting
+Smelting
+Tutorials
+Resource packs
+Redstone circuits
+
+ Useful pages
+
+ Weapons
+Enchanting
+Armor
+Artifacts
+Missions
+
+ Useful pages
+
+ Weapons
+Enchanting
+Armor
+Artifact
+
+ Useful pages
+
+ Friendly units
+Piglins
+Resources
+Biomes
+Structures
+Lost Legends
+
+ Tools
+
+ What links here
+Related changes
+Printable version
+Permanent link
+Page information
+Special pages
+View buckets
+
+ In other languages
+
+ Deutsch
+Español
+Français
+日本語
+한국어
+Nederlands
+Português
+Русский
+Українська
+中文
+
+ This page was last edited on 1 September 2026, at 01:29.
+
+ Content on this site is licensed under CC BY-NC-SA 3.0 unless otherwise noted; additional terms may apply.
+Not an official Minecraft website. We are not associated with Mojang or Microsoft.
+
+ Privacy policy
+
+ About Minecraft Wiki
+
+ Disclaimers
+
+ Terms of Use
+
+ Contact Weird Gloop
+
+ Mobile view

@@ -1,0 +1,3091 @@
+Concrete Powder – Minecraft Wiki
+
+ Concrete Powder
+
+ From Minecraft Wiki
+
+ Jump to navigation
+ Jump to search
+ For other uses, see Concrete (disambiguation).
+
+Concrete Powder
+
+ | Renewable
+
+ | Yes
+
+ | Stackable
+
+ | Yes (64)
+
+ | Tool
+
+ | Blast resistance
+
+ | 0.5
+
+ | Hardness
+
+ | 0.5
+
+ | Luminous
+
+ | No
+
+ | Transparent
+
+ | No
+
+ | Flammable
+
+ | No
+
+ | Catches fire
+from lava
+
+ | No
+
+ | Map color
+
+ | 
+16 colors
+
+ 8 SNOW
+
+ 22 COLOR_LIGHT_GRAY
+
+ 21 COLOR_GRAY
+
+ 29 COLOR_BLACK
+
+ 26 COLOR_BROWN
+
+ 28 COLOR_RED
+
+ 15 COLOR_ORANGE
+
+ 18 COLOR_YELLOW 
+
+ 19 COLOR_LIGHT_GREEN 
+
+ 27 COLOR_GREEN 
+
+ 23 COLOR_CYAN
+
+ 17 COLOR_LIGHT_BLUE 
+
+ 25 COLOR_BLUE
+
+ 24 COLOR_PURPLE 
+
+ 16 COLOR_MAGENTA
+
+ 20 COLOR_PINK
+
+ | Note block instrument
+
+ | Snare Drum
+
+ | Sulfur cube archetype
+
+ | Regular
+
+{
+ "title": "Concrete Powder",
+ "rows": [
+ {
+ "field": "Yes",
+ "label": "(link to Renewable resource article, displayed as Renewable)"
+ },
+ {
+ "field": "Yes (64)",
+ "label": "Stackable"
+ },
+ {
+ "field": "<span class=\"sprite-file\" style=\"height:32px;width:32px;--vertical-align:middle\">(link to File:SlotSprite Shovel Required.png article, displayed as 32x32px|link=|alt=SlotSprite Shovel Required.png: Sprite image for Shovel Required in Minecraft|class=pixel-image|)</span>",
+ "label": "Tool"
+ },
+ {
+ "field": "0.5",
+ "label": "(link to Explosion#Blast resistance article, displayed as Blast resistance)"
+ },
+ {
+ "field": "0.5",
+ "label": "(link to Breaking#Blocks by hardness article, displayed as Hardness)"
+ },
+ {
+ "field": "No",
+ "label": "(link to Light article, displayed as Luminous)"
+ },
+ {
+ "field": "No",
+ "label": "(link to Opacity article, displayed as Transparent)"
+ },
+ {
+ "field": "No",
+ "label": "(link to Fire#Flammable blocks article, displayed as Flammable)"
+ },
+ {
+ "field": "No",
+ "label": "Catches fire<br>from (link to lava article, displayed as lava)"
+ },
+ {
+ "field": "(values exceeds 1000 characters...)",
+ "label": "(link to Map item format#Color table article, displayed as Map color)"
+ },
+ {
+ "field": "Snare Drum",
+ "label": "(link to Note Block#Instruments article, displayed as Note block instrument)"
+ },
+ {
+ "field": "Regular",
+ "label": "(link to Sulfur Cube#Archetypes article, displayed as Sulfur cube archetype)"
+ }
+ ],
+ "invimages": [
+ "White Concrete Powder",
+ "Light Gray Concrete Powder",
+ "Gray Concrete Powder",
+ "Black Concrete Powder",
+ "Brown Concrete Powder",
+ "Red Concrete Powder",
+ "Orange Concrete Powder",
+ "Yellow Concrete Powder",
+ "Lime Concrete Powder",
+ "Green Concrete Powder",
+ "Cyan Concrete Powder",
+ "Light Blue Concrete Powder",
+ "Blue Concrete Powder",
+ "Purple Concrete Powder",
+ "Magenta Concrete Powder",
+ "Pink Concrete Powder"
+ ],
+ "images": [
+ "White Concrete Powder.png",
+ "Light Gray Concrete Powder.png",
+ "Gray Concrete Powder.png",
+ "Black Concrete Powder.png",
+ "Brown Concrete Powder.png",
+ "Red Concrete Powder.png",
+ "Orange Concrete Powder.png",
+ "Yellow Concrete Powder.png",
+ "Lime Concrete Powder.png",
+ "Green Concrete Powder.png",
+ "Cyan Concrete Powder.png",
+ "Light Blue Concrete Powder.png",
+ "Blue Concrete Powder.png",
+ "Purple Concrete Powder.png",
+ "Magenta Concrete Powder.png",
+ "Pink Concrete Powder.png"
+ ]
+}
+
+Concrete powder is a gravity-affected block that is converted to concrete when touching water. It comes in the sixteen dye colors.
+
+Contents
+
+1 Obtaining
+
+1.1 Breaking
+
+1.2 Crafting
+
+1.3 Renewability
+
+2 Usage
+
+2.1 Creating concrete
+
+3 Sounds
+
+3.1 Generic
+
+3.2 Unique
+
+4 Data values
+
+4.1 ID
+
+4.2 Falling block entity
+
+5 Videos
+
+6 History
+
+6.1 Tweet
+
+6.2 Java Edition
+
+6.3 Bedrock Edition
+
+6.4 Legacy Console Edition
+
+6.5 New Nintendo 3DS Edition
+
+6.6 Data history
+
+6.6.1 Java Edition
+
+6.6.2 Bedrock Edition
+
+7 Issues
+
+8 References
+
+9 External links
+
+10 Navigation
+
+Obtaining
+[edit | edit source]
+
+Breaking
+[edit | edit source]
+
+Concrete powder can be mined with any tool or by hand, but using a shovel is the quickest method.
+
+ | Block
+
+ | Concrete Powder
+
+ | Hardness
+
+ | 0.5
+
+ | Tool
+
+ | 
+
+Breaking time (sec)[A]
+
+ | Default
+
+0.75
+
+Wooden
+
+0.4
+
+Stone
+
+0.2
+
+Copper
+
+0.15
+
+Iron
+
+0.15
+
+Diamond
+
+0.1
+
+Netherite
+
+0.1
+
+Golden
+
+0.1
+
+Options
+ | Efficiency000
+
+ | Haste0011JEBE
+
+Legend
+ incorrect tool, drops nothing
+
+ correct tool, drops nothing or something other than the block itself
+
+ correct tool, drops the block itself
+
+italicized can be instant mined
+
+↑ These durations ignore any other influential factors (e.g., Mining Fatigue) and are measured in seconds. For more information, see Breaking § Mining efficiency.
+
+Crafting
+[edit | edit source]
+
+The crafting recipe is shapeless; the order of ingredients does not matter.
+
+ | Ingredients
+ | Crafting recipe
+Notes
+
+ | Matching Dye +
+Sand +
+Gravel
+
+8888888888888888
+
+ | Red sand cannot be used in place of sand.[1][2]
+
+ | Ingredients
+ | Crafting recipe
+Notes
+
+ | Bone Meal or 
+Lapis Lazuli or 
+Cocoa Beans or 
+Ink Sac +
+Sand +
+Gravel
+
+8888
+
+ | ‌[Bedrock Edition and Minecraft Education only]
+
+Renewability
+[edit | edit source]
+
+Concrete powder is renewable as all of its crafting ingredients are themselves renewable. However, without glitches, sand is renewably obtained only through the wandering trader, which spawns infrequently and allows a limited number of trades per spawn. Therefore, concrete powder is more easily obtained by simply harvesting naturally-occurring sand.
+
+Usage
+[edit | edit source]
+
+Normal sand falls through the water, while one of the pink concrete powder blocks solidifies immediately on contact with the water.
+Concrete powder falls when there is a non-solid block beneath it.
+
+Creating concrete
+[edit | edit source]
+
+Main article: Concrete
+
+If a concrete powder block comes into contact with water, it solidifies into a block of concrete. Specifically, the block has to be placed into, placed next to, or fall into flowing water, a water source block, or a waterlogged block‌[Java Edition only]. If placed next to a waterlogged block, it must be adjacent to the sides where water can flow out from, such as the open sides of stairs, but not the back side of stairs or any sides of waterlogged leaves. It does not solidify in midair falling past water. If it lands next to water, it solidifies only after a block update. Rain or splash water bottles also have no effect on concrete powder. Concrete powder in item form also does not become concrete. Concrete powder placed directly at water makes the placement sound of concrete.
+
+Sounds
+[edit | edit source]
+
+Generic
+[edit | edit source]
+
+Java Edition:
+
+v
+
+t
+
+e
+
+ sand sound type
+ | Sound | Closed captions | Source | Description | Identifier | Translation key | Volume | Pitch | Attenuation
+distance
+ | ​Block broken | Blocks | Once the block has broken | block.sand.break | subtitles.block.generic.break​ | 1.0 | 0.8 | 16
+ | ​Block placed | Blocks | When the block is placed | block.sand.place | subtitles.block.generic.place​ | 1.0 | 0.8 | 16
+ | ​Block breaking | Blocks | While the block is in the process of being broken | block.sand.hit | subtitles.block.generic.hit​ | 0.25 | 0.5 | 16
+ | ​Something falls on a block | Entity-Dependent | Falling on the block with fall damage | block.sand.fall | subtitles.block.generic.fall​ | 0.5 | 0.75 | 16
+ | ​Footsteps | Entity-Dependent | Walking on the block | block.sand.step | subtitles.block.generic.footsteps​ | 0.15 | 1.0 | 16
+
+Bedrock Edition:
+
+v
+
+t
+
+e
+
+ sand sound type
+ | Sound | Closed captions | Source | Description | Identifier | Translation key | Volume | Pitch
+ | ​ ? | Blocks | Once the block has broken | dig.sand | ​ ? | 1.0 | 0.8–1.0
+ | ​ ? | Blocks | When the block is placed | dig.sand | ​ ? | 1.0 | 0.8–1.0
+ | ​ ? | Blocks | While the block is in the process of being broken | hit.sand | ​ ? | 0.23 | 0.5
+ | ​ ? | Players | Falling on the block with fall damage | fall.sand | ​ ? | 0.4 | 1.0
+ | ​ ? | Players | Walking on the block | step.sand | ​ ? | 0.15 | 1.0
+ | ​ ? | Blocks | Jumping from the block | jump.sand | ​ ? | 0.05 | 1.0
+ | ​ ? | Blocks | Falling on the block without fall damage | land.sand | ​ ? | 0.14 | 1.0
+
+Unique
+[edit | edit source]
+
+Java Edition:
+
+Sounds
+ | Sound | Closed captions | Source | Description | Identifier | Translation key | Volume | Pitch | Attenuation
+distance
+ | ​Block placed | Blocks | When the block is placed in water | block.stone.place | subtitles.block.generic.place​ | 1.0 | 0.8 | 16
+
+Data values
+[edit | edit source]
+
+ID
+[edit | edit source]
+
+Java Edition:
+
+ | Name | Identifier | Form | Block tags
+ | Translation key
+ | White Concrete Powder | white_concrete_powder | Block & Item | concrete_powder
+ | block.minecraft.white_concrete_powder
+
+ | Orange Concrete Powder | orange_concrete_powder | Block & Item | concrete_powder
+ | block.minecraft.orange_concrete_powder
+
+ | Magenta Concrete Powder | magenta_concrete_powder | Block & Item | concrete_powder
+ | block.minecraft.magenta_concrete_powder
+
+ | Light Blue Concrete Powder | light_blue_concrete_powder | Block & Item | concrete_powder
+ | block.minecraft.light_blue_concrete_powder
+
+ | Yellow Concrete Powder | yellow_concrete_powder | Block & Item | concrete_powder
+ | block.minecraft.yellow_concrete_powder
+
+ | Lime Concrete Powder | lime_concrete_powder | Block & Item | concrete_powder
+ | block.minecraft.lime_concrete_powder
+
+ | Pink Concrete Powder | pink_concrete_powder | Block & Item | concrete_powder
+ | block.minecraft.pink_concrete_powder
+
+ | Gray Concrete Powder | gray_concrete_powder | Block & Item | concrete_powder
+ | block.minecraft.gray_concrete_powder
+
+ | Light Gray Concrete Powder | light_gray_concrete_powder | Block & Item | concrete_powder
+ | block.minecraft.light_gray_concrete_powder
+
+ | Cyan Concrete Powder | cyan_concrete_powder | Block & Item | concrete_powder
+ | block.minecraft.cyan_concrete_powder
+
+ | Purple Concrete Powder | purple_concrete_powder | Block & Item | concrete_powder
+ | block.minecraft.purple_concrete_powder
+
+ | Blue Concrete Powder | blue_concrete_powder | Block & Item | concrete_powder
+ | block.minecraft.blue_concrete_powder
+
+ | Brown Concrete Powder | brown_concrete_powder | Block & Item | concrete_powder
+ | block.minecraft.brown_concrete_powder
+
+ | Green Concrete Powder | green_concrete_powder | Block & Item | concrete_powder
+ | block.minecraft.green_concrete_powder
+
+ | Red Concrete Powder | red_concrete_powder | Block & Item | concrete_powder
+ | block.minecraft.red_concrete_powder
+
+ | Black Concrete Powder | black_concrete_powder | Block & Item | concrete_powder
+ | block.minecraft.black_concrete_powder
+
+Bedrock Edition:
+
+ | Name | Identifier | Alias ID | Numeric ID | Form | Item ID[i 1]
+ | Translation key
+ | White Concrete Powder | white_concrete_powder | concrete_powder / 0
+concretepowder / 0 | 237 | Block & Giveable Item[i 2] | Identical[i 3]
+
+ | tile.concretePowder.white.name
+
+ | Orange Concrete Powder | orange_concrete_powder | concrete_powder / 1
+concretepowder / 1 | 964 | Block & Giveable Item[i 2] | Identical[i 3]
+(Numeric: -709)
+ | tile.concretePowder.orange.name
+
+ | Magenta Concrete Powder | magenta_concrete_powder | concrete_powder / 2
+concretepowder / 2 | 965 | Block & Giveable Item[i 2] | Identical[i 3]
+(Numeric: -710)
+ | tile.concretePowder.magenta.name
+
+ | Light Blue Concrete Powder | light_blue_concrete_powder | concrete_powder / 3
+concretepowder / 3 | 966 | Block & Giveable Item[i 2] | Identical[i 3]
+(Numeric: -711)
+ | tile.concretePowder.lightBlue.name
+
+ | Yellow Concrete Powder | yellow_concrete_powder | concrete_powder / 4
+concretepowder / 4 | 967 | Block & Giveable Item[i 2] | Identical[i 3]
+(Numeric: -712)
+ | tile.concretePowder.yellow.name
+
+ | Lime Concrete Powder | lime_concrete_powder | concrete_powder / 5
+concretepowder / 5 | 968 | Block & Giveable Item[i 2] | Identical[i 3]
+(Numeric: -713)
+ | tile.concretePowder.lime.name
+
+ | Pink Concrete Powder | pink_concrete_powder | concrete_powder / 6
+concretepowder / 6 | 969 | Block & Giveable Item[i 2] | Identical[i 3]
+(Numeric: -714)
+ | tile.concretePowder.pink.name
+
+ | Gray Concrete Powder | gray_concrete_powder | concrete_powder / 7
+concretepowder / 7 | 970 | Block & Giveable Item[i 2] | Identical[i 3]
+(Numeric: -715)
+ | tile.concretePowder.gray.name
+
+ | Light Gray Concrete Powder | light_gray_concrete_powder | concrete_powder / 8
+concretepowder / 8 | 971 | Block & Giveable Item[i 2] | Identical[i 3]
+(Numeric: -716)
+ | tile.concretePowder.silver.name
+
+ | Cyan Concrete Powder | cyan_concrete_powder | concrete_powder / 9
+concretepowder / 9 | 972 | Block & Giveable Item[i 2] | Identical[i 3]
+(Numeric: -717)
+ | tile.concretePowder.cyan.name
+
+ | Purple Concrete Powder | purple_concrete_powder | concrete_powder / 10
+concretepowder / 10 | 973 | Block & Giveable Item[i 2] | Identical[i 3]
+(Numeric: -718)
+ | tile.concretePowder.purple.name
+
+ | Blue Concrete Powder | blue_concrete_powder | concrete_powder / 11
+concretepowder / 11 | 974 | Block & Giveable Item[i 2] | Identical[i 3]
+(Numeric: -719)
+ | tile.concretePowder.blue.name
+
+ | Brown Concrete Powder | brown_concrete_powder | concrete_powder / 12
+concretepowder / 12 | 975 | Block & Giveable Item[i 2] | Identical[i 3]
+(Numeric: -720)
+ | tile.concretePowder.brown.name
+
+ | Green Concrete Powder | green_concrete_powder | concrete_powder / 13
+concretepowder / 13 | 976 | Block & Giveable Item[i 2] | Identical[i 3]
+(Numeric: -721)
+ | tile.concretePowder.green.name
+
+ | Red Concrete Powder | red_concrete_powder | concrete_powder / 14
+concretepowder / 14 | 977 | Block & Giveable Item[i 2] | Identical[i 3]
+(Numeric: -722)
+ | tile.concretePowder.red.name
+
+ | Black Concrete Powder | black_concrete_powder | concrete_powder / 15
+concretepowder / 15 | 978 | Block & Giveable Item[i 2] | Identical[i 3]
+(Numeric: -723)
+ | tile.concretePowder.black.name
+
+↑ ID of block's direct item form, which is used in savegame files and addons.
+
+↑ a b c d e f g h i j k l m n o p Available with /give command.
+
+↑ a b c d e f g h i j k l m n o p The block's direct item form has the same ID as the block.
+
+Falling block entity
+[edit | edit source]
+
+Main article: Falling Block
+
+Falling Block
+
+ | Hitbox size
+
+ | Height: 0.98 blocks
+Width: 0.98 blocks
+
+{
+ "title": "Falling Block",
+ "rows": [
+ {
+ "field": "Height: 0.98 blocks<br>Width: 0.98 blocks",
+ "label": "(link to Hitbox article, displayed as Hitbox size)"
+ }
+ ],
+ "invimages": [],
+ "images": []
+}
+
+[NBT Compound / JSON Object] Dynamic block entity data
+
+Tags common to all entities see Template:Nbt inherit/entity/template
+
+[NBT Compound / JSON Object] BlockState: The falling block represented by this entity.
+
+Block state see Template:Nbt inherit/block state/template
+
+[NBT Compound / JSON Object] TileEntityData: Optional. The tags of the block entity for this block.
+
+Tags common to all block entities see Template:Nbt inherit/blockentity/template
+
+[Byte] CancelDrop: 1 or 0 (true/false) - true if the block should be destroyed instead of placed after landing on a solid block. When true, the block is not dropped as an item, even if the DropItem tag is set to true. However, if the entity is deleted due to its Time value being too high, this tag is ignored and an item is dropped depending on the DropItem tag. CancelDrop defaults to 1 for falling suspicious sand and suspicious gravel, and 0 for the other vanilla falling blocks and any summoned falling block.
+
+[Byte] DropItem: 1 or 0 (true/false) – true if the block should drop as an item when it breaks. Any block that does not have an item form with the same ID as the block does not drop even if this is set.
+
+[Float] FallHurtAmount: Multiplied by the FallDistance to calculate the amount of damage to inflict. By default this value is 2HP for anvils, and 6HP for pointed dripstone.
+
+[Int] FallHurtMax: The maximum hit points of damage to inflict on entities that intersect this falling block. For vanilla falling blocks, always 40HP × 20.
+
+[Byte] HurtEntities: 1 or 0 (true/false) – true if the block should hurt entities it falls on. Defaults to 1 for anvils and pointed dripstone and to 0 for the other vanilla falling blocks and any summoned falling block.
+
+[Int] Time: The number of ticks the entity has existed. When Time goes above 600, or above 100 while the block is at Y=-64 or is outside building height, the entity is deleted.
+
+Videos
+[edit | edit source]
+
+History
+[edit | edit source]
+
+Tweet
+[edit | edit source]
+
+February 02, 2017
+ | Jeb tweeted a video (archived) of a mysterious pink gravity-obeying block transforming into a solid gravity-defying block on contact with water.
+
+ | Jeb later added that it is to come in 16 different colors.[3]
+
+Java Edition
+[edit | edit source]
+
+Java Edition
+1.1217w06a
+ | Added concrete powder.
+pre1
+ | Concrete powder now converts to concrete when replacing a lava source.
+1.1317w47a
+ | Lava now turns concrete powder into concrete when coming into contact with said block, instead of converting concrete powder only when it fell into the lava's source block.[4]
+1.13.118w30a
+ | Lava no longer converts concrete powder.
+1.1620w07a
+ | As piglins offer gravel in bartering, concrete powder has become a renewable resource.
+26.2snap1
+ | Added sulfur cubes, which have the ability to absorb concrete powder, providing the football/regular effect to the mob.
+
+Bedrock Edition
+[edit | edit source]
+
+Pocket Edition
+1.1.0alpha 1.1.0.0
+ | Added concrete powder.
+Bedrock Edition
+1.16.0beta 1.16.0.57
+ | As piglins offer gravel in bartering, concrete powder has become a renewable resource.
+26.20Experiment
+
+Drop 2 of 2026Preview 26.20.23
+ | Added sulfur cubes, which have the ability to absorb every color of concrete powder, providing the football/regular effect to the mob.
+26.30Preview 26.30.20
+ | Implemented all features from the "Drop 2 of 2026" experiment in vanilla gameplay.
+
+Legacy Console Edition
+[edit | edit source]
+
+Legacy Console Edition
+Xbox 360Xbox OnePS3PS4PS VitaWii USwitch
+TU53CU431.491.501.49Patch 231.0.3
+ | Added concrete powder.
+
+New Nintendo 3DS Edition
+[edit | edit source]
+
+New Nintendo 3DS Edition
+1.9.19
+ | Added concrete powder.
+
+Data history
+[edit | edit source]
+
+Java Edition
+[edit | edit source]
+
+Java Edition
+1.1317w47a
+ | The different block states for the concrete_powder ID have been split up into their own IDs.
+
+ | Prior to The Flattening, this block's numeral ID was 252.
+
+Bedrock Edition
+[edit | edit source]
+
+Bedrock Edition
+1.18.30beta 1.18.30.26
+ | Concrete powder's ID is changed to concrete_powder.
+
+ | Before this version, Its ID was concretepowder while its direct item form's ID was concrete_powder.
+1.20.30Preview 1.20.30.20
+ | The different block states for the concrete_powder ID have been split up into their own IDs.
+
+Issues
+[edit | edit source]
+
+Issues relating to "Concrete Powder" are maintained on the bug tracker. Issues should be reported and viewed there.
+
+References
+[edit | edit source]
+
+↑ MC-150278
+
+↑ MCPE-175451
+
+↑ https://twitter.com/jeb_/status/827078378444488705
+
+↑ MC-118153
+
+External links
+[edit | edit source]
+
+Block of the Month: Concrete Powder- Minecraft.net on January 12, 2024
+
+Navigation
+[edit | edit source]
+
+v
+
+t
+
+e
+
+Dyed materials
+
+ | Dyes
+
+ | 
+White
+
+Light Gray
+
+Gray
+
+Black
+
+Brown
+
+Red
+
+Orange
+
+Yellow
+
+Lime
+
+Green
+
+Cyan
+
+Light Blue
+
+Blue
+
+Purple
+
+Magenta
+
+Pink
+
+ | Substitutes (BE & Edu)
+
+ | 
+Bone Meal
+
+Ink Sac
+
+Cocoa Beans
+
+Lapis Lazuli
+
+ | Blocks
+
+ | 
+Wool
+Stairs​[upcoming: Wilderness Bound]
+
+Slabs​[upcoming: Wilderness Bound]
+
+Carpets
+
+Stained Terracotta
+
+Glazed Terracotta
+
+Concrete Powder
+
+Concrete
+Stairs​[upcoming: Wilderness Bound]
+
+Slabs​[upcoming: Wilderness Bound]
+
+Stained Glass
+Panes
+
+Shulker Boxes
+
+Beds
+
+Candles
+
+Banners
+
+ | Dye-applicable
+
+ | 
+Cauldron‌[BE only]
+
+Sign
+Hanging
+
+ | BE & Edu only
+
+ | 
+Hardened Stained Glass
+Panes
+
+ | Items
+
+ | 
+Bundles
+
+Harnesses
+
+Cushions​[upcoming: Wilderness Bound]
+
+ | Dye-applicable
+
+ | 
+Firework Star
+
+Leather Cap
+
+Leather Tunic
+
+Leather Pants
+
+Leather Boots
+
+Leather Horse Armor
+
+Wolf Armor
+
+ | BE & Edu only
+
+ | 
+Balloons
+
+Glow Sticks
+
+ | Entities
+
+ | 
+Cat
+
+Sheep
+
+Wolf
+
+ | BE & Edu only
+
+ | 
+Shulker
+
+v
+
+t
+
+e
+
+Blocks
+
+ Structural
+
+ | Lumber
+
+ | 
+Logs
+Stripped
+
+Wood
+Stripped
+
+Stems
+Stripped
+
+Hyphae
+Stripped
+
+Block of Bamboo
+Stripped
+
+Bamboo Mosaic
+
+Planks
+
+ | Stone/Deepslate
+
+ | 
+Stone
+
+Cobblestone
+Mossy
+
+Smooth Stone
+
+Stone Bricks
+Chiseled
+
+Cracked
+
+Mossy
+
+Granite
+Polished
+
+Diorite
+Polished
+
+Andesite
+Polished
+
+Deepslate
+Chiseled
+
+Cobbled
+
+Polished
+
+Deepslate Bricks
+Cracked
+
+Deepslate Tiles
+Cracked
+
+Tuff
+Chiseled
+
+Polished
+
+Tuff Bricks
+Chiseled
+
+ | Overworld
+
+ | 
+Bricks
+
+Packed Mud
+Mud Bricks
+
+Resin Bricks
+Chiseled
+
+Sandstone
+Chiseled
+
+Cut
+
+Smooth
+
+Red Sandstone
+Chiseled
+
+Cut
+
+Smooth
+
+Cinnabar
+Chiseled
+
+Polished
+
+Bricks
+
+Sulfur
+Chiseled
+
+Polished
+
+Bricks
+
+Prismarine
+Bricks
+
+Dark
+
+ | The Nether
+
+ | 
+Netherrack
+
+Nether Bricks
+Chiseled
+
+Cracked
+
+Red
+
+Blackstone
+
+Polished Blackstone
+Chiseled
+
+Polished Blackstone Bricks
+Cracked
+
+Basalt
+Polished
+
+Smooth
+
+ | The End
+
+ | 
+End Stone
+Bricks
+
+Purpur Block
+Pillar
+
+ | Mineral
+
+ | 
+Block of Quartz
+Bricks
+
+Chiseled
+
+Pillar
+
+Smooth
+
+Block of Copper
+Chiseled
+
+Cut
+
+Grate
+
+Block of Iron
+
+Block of Gold
+
+Block of Amethyst
+
+Block of Coal
+
+Block of Diamond
+
+Block of Emerald
+
+Block of Lapis Lazuli
+
+Block of Netherite
+
+Block of Redstone
+
+ Ornamental
+
+ | Decorative
+
+ | 
+Crying Obsidian
+
+Gilded Blackstone
+
+Reinforced Deepslate
+
+ | Partial Block
+
+ | 
+Bars
+Iron
+
+Copper
+
+Chains
+Iron
+
+Copper
+
+Fences
+Wooden
+
+Nether Brick
+
+Slabs
+Cut Copper
+
+Wooden
+
+Stairs
+Cut Copper
+
+Wooden
+
+Walls
+
+ | Dyeable/Dyed
+
+ | 
+Wool
+Slab​[upcoming: Wilderness Bound]
+
+Stairs​[upcoming: Wilderness Bound]
+
+Carpets
+
+Terracotta
+Stained
+
+Glazed
+
+Concrete
+Slab​[upcoming: Wilderness Bound]
+
+Stairs​[upcoming: Wilderness Bound]
+
+Powder
+
+Glass
+Pane
+
+Tinted
+
+Stained Glass
+Pane
+
+ | Lighting
+
+ | 
+Candle
+Dyed
+
+End Rod
+
+Froglight
+
+Glowstone
+
+Jack o'Lantern
+
+Lantern
+Copper
+
+Soul
+
+Sea Lantern
+
+Torch
+Copper
+
+Soul
+
+ | BE & Edu only
+
+ | 
+Colored Torches
+
+Elements
+
+Hardened Glass
+Pane
+
+Hardened Stained Glass
+Pane
+
+ Natural
+
+ | Sediment/Soil
+
+ | 
+Clay
+
+Dirt
+Coarse
+
+Path
+
+Grass Block
+
+Mycelium
+
+Podzol
+
+Rooted
+
+Gravel
+
+Mud
+
+Nylium
+Crimson
+
+Warped
+
+Sand
+Red
+
+Soul Sand
+Soil
+
+ | Misc. rock
+
+ | 
+Bedrock
+
+Magma Block
+
+Obsidian
+
+Calcite
+
+Sulfur Spike
+
+Potent Sulfur
+
+Pointed Dripstone
+Block
+
+ | Ore/Mineral
+
+ | 
+Amethyst Bud
+Cluster
+
+Budding Amethyst
+
+Ancient Debris
+
+Coal Ore
+Deepslate
+
+Copper Ore
+Deepslate
+
+Raw Block
+
+Diamond Ore
+Deepslate
+
+Emerald Ore
+Deepslate
+
+Gold Ore
+Deepslate
+
+Nether
+
+Raw Block
+
+Iron Ore
+Deepslate
+
+Raw Block
+
+Lapis Lazuli Ore
+Deepslate
+
+Nether Quartz Ore
+
+Redstone Ore
+Deepslate
+
+ | Plant
+
+ | 
+Azalea
+Flowering
+
+Bamboo
+Shoot
+
+Big Dripleaf
+Small
+
+Bush
+
+Cactus
+
+Creaking Heart
+
+Dead Bush
+
+Fern
+Large
+
+Firefly Bush
+
+Hanging Roots
+
+Leaf Litter
+
+Leaves
+
+Mangrove Propagule
+
+Mangrove Roots
+Muddy
+
+Moss Block
+Carpet
+
+Pale Moss Block
+Carpet
+
+Hanging
+
+Red Shrub​[upcoming: Wilderness Bound]
+
+Resin Clump
+Block
+
+Saplings
+
+Short Dry Grass
+Tall
+
+Short Grass
+Tall
+
+Vines
+
+ | Flower
+
+ | 
+Allium
+
+Azure Bluet
+
+Blue Orchid
+
+Cactus Flower
+
+Cornflower
+
+Dandelion
+Golden
+
+Eyeblossom
+Closed
+
+Open
+
+Lilac
+
+Lily of the Valley
+
+Oxeye Daisy
+
+Peony
+
+Pink Petals
+
+Pitcher Plant
+Crop
+
+Poppy
+
+Rose Bush
+
+Spore Blossom
+
+Sunflower
+
+Torchflower
+Crop
+
+Tulips
+
+Wildflowers
+
+Wither Rose
+
+ | Crops & related
+
+ | 
+Beetroots
+
+Carrots
+
+Cave Vines
+
+Chorus Plant
+Flower
+
+Cocoa
+
+Melon
+Stem
+
+Potatoes
+
+Pumpkin
+Carved
+
+Stem
+
+Sugar Cane
+
+Sweet Berry Bush
+
+Wheat Crops
+Hay Bale
+
+ | Fungus & related
+
+ | 
+Brown Mushroom
+
+Red Mushroom
+
+Shelf Mushroom​[upcoming: Wilderness Bound]
+
+Mushroom Blocks
+
+Glow Lichen
+
+Crimson Fungus
+
+Warped Fungus
+
+Nether Wart
+
+Nether Sprouts
+
+Crimson Roots
+
+Warped Roots
+
+Nether Wart Block
+
+Warped Wart Block
+
+Shroomlight
+
+Twisting Vines
+
+Weeping Vines
+
+ | Fauna & Related
+
+ | 
+Bee Nest
+
+Honeycomb Block
+
+Bone Block
+
+Cobweb
+
+Dragon Egg
+
+Dried Ghast
+
+Infested Blocks
+
+Sniffer Egg
+
+Turtle Egg
+
+ | Aquatic
+
+ | 
+Coral
+Dead
+
+Coral Blocks
+Dead
+
+Coral Fans
+Dead
+
+Frogspawn
+
+Kelp
+Dried Block
+
+Lily Pad
+
+Sea Pickle
+
+Seagrass
+Tall
+
+ | Sculk
+
+ | 
+Sculk
+
+Sculk Catalyst
+
+Sculk Sensor
+Calibrated
+
+Sculk Shrieker
+
+Sculk Vein
+
+ | Fluid & Related
+
+ | 
+Lava
+
+Water
+Bubble Column
+
+Ice
+Blue
+
+Packed
+
+Snow
+Powder
+
+Block
+
+ | Non-physical
+
+ | 
+Air
+Cave‌[JE only]
+
+Void‌[JE only]
+
+Invisible Bedrock‌[BE & edu only]
+
+Fire
+Soul
+
+ Utility
+
+ | Interactable
+
+ | 
+Anvil
+Chipped
+
+Damaged
+
+Barrel
+
+Beacon
+
+Brewing Stand
+
+Cartography Table
+
+Chest
+Ender
+
+Copper
+
+Crafting Table
+
+Enchanting Table
+
+Furnace
+Blast
+
+Smoker
+
+Grindstone
+
+Lectern
+
+Loom
+
+Shulker Box
+Dyed
+
+Sign
+Hanging
+
+Smithing Table
+
+Stonecutter
+
+ | Utilizable
+
+ | 
+Banners
+Ominous
+
+Beehive
+
+Beds
+Straw​[upcoming: Wilderness Bound]
+
+Bell
+
+Bookshelf
+
+Cake
+with Candle
+
+Campfire
+Soul
+
+Cauldron
+
+Chiseled Bookshelf
+
+Composter
+
+Conduit
+
+Copper Golem Statue
+
+Decorated Pot
+
+End Gateway
+
+End Portal
+
+End Portal Frame
+
+Farmland
+
+Fletching Table
+
+Flower Pot
+
+Frosted Ice
+
+Heads
+Skeleton
+
+Wither Skeleton
+
+Zombie
+
+Creeper
+
+Piglin
+
+Dragon
+
+Heavy Core
+
+Jukebox
+
+Ladder
+
+Lodestone
+
+Monster Spawner
+
+Nether Portal
+
+Respawn Anchor
+
+Scaffolding
+
+Shelf
+
+Sponge
+Wet
+
+Suspicious Gravel
+
+Suspicious Sand
+
+TNT
+
+Trial Spawner
+Ominous
+
+Vault
+Ominous
+
+ | Redstone/
+Mechanical
+
+ | 
+Buttons
+Wooden
+
+Stone
+
+Polished Blackstone
+
+Copper Bulb
+
+Crafter
+
+Daylight Detector
+
+Dispenser
+
+Dropper
+
+Doors
+Copper
+
+Iron
+
+Wooden
+
+Honey Block
+
+Hopper
+
+Lever
+
+Lightning Rod
+
+Note Block
+
+Observer
+
+Piston
+Sticky
+
+Pressure Plates
+Wooden
+
+Stone
+
+Polished Blackstone
+
+Heavy Weighted
+
+Light Weighted
+
+Rail
+Activator
+
+Detector
+
+Powered
+
+Redstone Lamp
+
+Redstone Wire
+Comparator
+
+Repeater
+
+Torch
+
+Slime Block
+
+Target
+
+Trapped Chest
+
+Trapdoors
+Copper
+
+Iron
+
+Wooden
+
+Fence Gates
+
+Tripwire Hook
+Tripwire
+
+ | BE & Edu only
+
+ | 
+Allow
+
+Border
+
+Chalkboards
+
+Compound Creator
+
+Deny
+
+Element Constructor
+
+Heat Block
+
+Item Frame
+Glow
+
+Lab Table
+
+Material Reducer
+
+Underwater TNT
+
+Underwater Torch
+
+ Creative or commands only
+
+ | All editions
+
+ | 
+Barrier
+
+Command Block
+Chain
+
+Repeating
+
+Jigsaw Block
+
+Light
+
+Petrified Oak Slab
+
+Player Head
+
+Structure Block
+Void
+
+ | Java Edition only
+
+ | 
+Test Block
+
+Test Instance Block
+
+ | China Edition only
+
+ | 
+micro_block
+
+ Removed
+
+ | Java Edition only
+
+ | 
+Cloth
+
+Dead Coral Block
+
+Gear
+
+Infinite Lava Source
+
+Infinite Water Source
+
+Locked chest
+
+Rose
+Potted
+
+Shrub
+
+ | Bedrock Edition only
+
+ | 
+Blue Rose
+
+Duplicate Black Wool
+
+grass_carried
+
+leaves_carried
+
+Fern
+
+Fern
+
+Smooth Stone Bricks
+
+Structure Air
+
+mysterious_frame_slot
+
+ | China Edition only
+
+ | 
+mod_ore
+
+ | MinecraftEdu only
+
+ | 
+Big Sign
+
+Border block
+
+Build allow block
+
+Build disallow block
+
+Foundation block
+
+Home Block
+
+Information block
+
+Information Sign
+
+Number Block
+
+Spawn Block
+
+Steppe dirt
+
+Steppe sand
+
+Teleport Block
+
+Quiz Block
+
+ | Minecraft 4k only
+
+ | 
+ID 9 Dirt
+
+XOR Block
+
+ Unused
+
+ | BE & Edu only
+
+ | 
+Camera Block
+
+Chiseled Purpur
+
+tile.client_request_placeholder_block.name
+
+Deprecated Anvil
+
+tile.deprecated_purpur_block_2.name
+
+Glowing Obsidian
+
+tile.info_update.name
+tile.info_update2.name
+
+Nether Reactor Core
+
+tile.reserved6.name
+
+Stonecutter (old)
+
+Unknown
+
+ Unimplemented
+
+ | All editions
+
+ | 
+Branches
+
+Copper Button
+
+Colored Planks
+
+Coral Slab
+Dead
+
+Dirt Slab
+
+Empty Barrel
+Fish Barrel
+
+Furniture
+
+Paeonia
+
+Sculk Jaw
+
+Spike Block
+
+Wax Block
+
+Joke
+
+ | April Fools 2013
+
+ | 
+Block of Coal
+
+Etho Slab
+
+Tinted Glass
+
+Torch (Burnt-out)
+
+ | April Fools 2016
+
+ | 
+USB Charger Block
+
+ | April Fools 2020
+
+ | 
+An Ant
+
+Box of Infinite Books
+
+Cursor
+
+Funky Portal
+
+Leftover
+
+Swaggiest stairs ever
+
+ | April Fools 2022
+
+ | 
+How did we get here?
+
+ | April Fools 2023
+
+ | 
+Cheese
+
+Copper Sink
+Filled
+
+Copper Spleaves
+
+Golden Chest
+
+Other Portal
+
+Packed Air
+
+Pickaxe Block
+
+Place Block
+
+ | April Fools 2024
+
+ | 
+Baked Potato Bricks
+Expired
+
+Charred
+
+Big Brain
+
+Block of Amber
+
+Block of Potato Peels
+Corrupted
+
+Floatater
+
+Floatato
+
+Frying Table
+
+Gravtater
+
+Pedestal
+
+Peelgrass Block
+Corrupted
+
+Poison Farmland
+
+Poison Path
+
+Poisonous Mashed Potato
+
+Poisonous Potato Block
+Compressed
+
+Double Compressed
+
+Triple Compressed
+
+Quadruple Compressed
+
+Poisonous Potato Cutter
+
+Poisonous Potato Head Block
+
+Poisonous Potato Headpiece
+
+Poisonous Potato Ore
+Deepslate
+
+Potato Battery
+
+Potato Bud
+
+Potato flower
+
+Potato Fruit
+
+Potato Leaves
+
+Potato Pedicule
+
+Potato Portal
+
+Potato Refinery
+
+Potato Sprouts
+
+Potato Stem
+Planks
+
+Slab
+
+Stairs
+
+Door
+
+Trapdoor
+
+Button
+
+Pressure Plate
+
+Sign
+
+Hanging Sign
+
+Fence
+
+Fence Gate
+
+Potone
+Copper Ore
+
+Diamond Ore
+
+Gold Ore
+
+Iron Ore
+
+Lapis Lazuli Ore
+
+Redstone Ore
+
+Resin Ore
+
+Powerful Potato
+
+Strong Roots
+
+Taterstone
+
+Terre de Pomme
+
+Vicious Potato
+
+Weak Roots
+
+ | April Fools 2025
+
+ | 
+Dimension Control
+
+Mine Travelling Block
+
+Mine Revisitor
+
+Mine Crafter
+
+Mob Trophy
+
+Shimmering Door
+
+Sky
+
+Trophy
+
+ | April Fools 2026
+
+ | 
+Copper Trap
+
+Iron Trap
+
+ Extreme metadata variants
+
+ | All editions
+
+ | 
+Directionless Hopper
+
+Seamless Stone Slab
+
+Six-sided Hay Bale
+
+Six-sided Piston
+
+ | Java Edition only
+
+ | 
+Faceless Furnace
+
+Faceless Jack o'Lantern
+
+Green Shrub
+Potted
+
+Invisible stairs
+
+Misaligned torch
+Redstone
+
+Nether portal post
+
+Overripe Melon Stem
+Attached
+
+Overripe Pumpkin Stem
+Attached
+
+Overgrown Cocoa
+
+Overeaten Cake
+
+Overgrown Wheat Crops
+
+Potted non-flower block
+
+Snowy Dirt
+Coarse
+
+Strange buttons
+
+Invisible random ladders
+
+Others
+
+ | Bedrock Edition only
+
+ | 
+Bell Stand
+
+Diorite Bell
+
+Granite Bell
+Polished
+
+Six-sided Bone Block
+
+Six-sided Purpur Pillar
+
+Six-sided Quartz Pillar
+
+Smokeless Campfire
+
+v
+
+t
+
+e
+
+Entities
+
+Mobs
+
+ | Passive
+
+ | 
+Allay
+
+Armadillo
+
+Axolotl
+
+Bat
+
+Camel
+
+Camel Husk
+
+Cat
+
+Chicken
+
+Cod
+
+Copper Golem
+
+Cow
+
+Donkey
+
+Frog
+
+Glow Squid
+
+Happy Ghast
+
+Horse
+
+Mooshroom
+
+Mule
+
+Ocelot
+
+Parrot
+
+Pig
+
+Rabbit
+
+Salmon
+
+Sheep
+
+Skeleton Horse
+
+Sniffer
+
+Snow Golem
+
+Squid
+
+Strider
+
+Sulfur Cube
+
+Tadpole
+
+Tropical Fish
+
+Turtle
+
+Villager
+
+Wandering Trader
+
+Zombie Horse
+
+ | BE & Edu only
+
+ | 
+Agent
+
+NPC
+
+ | Neutral
+
+ | 
+Bee
+
+Cave Spider
+
+Dolphin
+
+Drowned
+
+Enderman
+
+Fox
+
+Goat
+
+Iron Golem
+
+Llama
+
+Nautilus
+
+Panda
+
+Piglin
+
+Polar Bear
+
+Pufferfish
+
+Spider
+
+Trader Llama
+
+Wolf
+
+Zombie Nautilus
+
+Zombified Piglin
+
+ | Hostile
+
+ | 
+Blaze
+
+Bogged
+
+Breeze
+
+Creaking
+
+Creeper
+
+Elder Guardian
+
+Endermite
+
+Evoker
+
+Ghast
+
+Guardian
+
+Hoglin
+
+Husk
+
+Magma Cube
+
+Parched
+
+Phantom
+
+Piglin Brute
+
+Pillager
+
+Ravager
+
+Shulker
+
+Silverfish
+
+Skeleton
+
+Slime
+
+Stray
+
+Vex
+
+Vindicator
+
+Warden
+
+Witch
+
+Wither Skeleton
+
+Zoglin
+
+Zombie
+
+Zombie Villager
+
+ | Bosses
+
+ | 
+Ender Dragon
+
+Wither
+
+ | Mob types
+
+ | 
+Animal
+
+Aquatic
+
+Arthropod
+
+Illager
+
+Monster
+
+Undead
+
+ | Other
+
+ | 
+Baby
+
+Jockey
+Camel Husk
+
+Chicken
+
+Hoglin
+
+Ravager
+
+Skeleton Horseman
+
+Spider
+
+Strider
+
+Baby Strider
+
+Zombie Horseman
+
+Zombie Nautilus
+
+Mob variants
+
+ Other entities
+
+ | Player
+
+ | 
+Alex
+
+Ari
+
+Efe
+
+Kai
+
+Makena
+
+Noor
+
+Steve
+
+Sunny
+
+Zuri
+
+ | Blocks
+
+ | 
+Falling Blocks
+Anvil
+
+Concrete Powder
+
+Dragon Egg
+
+Gravel
+
+Pointed Dripstone
+
+Sand
+
+Red Sand
+
+Scaffolding
+
+Sulfur Spike
+
+Suspicious Gravel
+
+Suspicious Sand
+
+Primed TNT
+
+ | BE & Edu only
+
+ | 
+Falling Blocks
+Deprecated Anvil
+
+Snow
+
+Primed Underwater TNT
+
+ | Vehicles
+
+ | 
+Boat
+with Chest
+
+Minecart
+with Chest
+
+with Command Block
+
+with Hopper
+
+with TNT
+
+ | Java Edition only
+
+ | 
+Minecart with Furnace
+with Monster Spawner
+
+ | Projectiles
+
+ | 
+Fireball
+Small
+
+Dragon
+
+Launched Firework Rocket
+
+Llama Spit
+
+Shot Arrow
+Tipped
+
+Shulker Bullet
+
+Thrown Bottle o' Enchanting
+
+Thrown Egg
+
+Thrown Ender Pearl
+
+Thrown Eye of Ender
+
+Thrown Snowball
+
+Thrown Splash Potion
+Lingering Potion
+
+Thrown Trident
+
+Wind Charge
+
+Wither Skull
+
+ | Java Edition only
+
+ | 
+Shot Spectral Arrow
+
+ | BE & Edu only
+
+ | 
+Thrown Ice Bomb
+
+ | Stationary 
+objects
+
+ | 
+Cushion​[upcoming: Wilderness Bound]
+
+End Crystal
+
+Leash Knot
+
+Painting
+
+ | Java Edition only
+
+ | 
+Item Frame
+Glow
+
+ | Miscellaneous
+
+ | 
+Area Effect Cloud
+
+Armor Stand
+
+Evoker Fangs
+
+Experience Orb
+
+Fishing Bobber
+
+Items
+
+Lightning Bolt
+
+Ominous Item Spawner
+
+ | JE only
+
+ | 
+Mannequin
+
+ | BE & Edu only
+
+ | 
+Balloon
+
+Camera
+
+ | Technical 
+objects
+
+ | 
+
+ | JE only
+
+ | 
+Display
+Block
+
+Item
+
+Text
+
+Interaction
+
+Marker
+
+ | Editor only
+
+ | 
+Location Pointer Idle
+
+Location Pointer Selected
+
+Map Marker
+
+Ruler
+Idle
+
+Unimplemented
+
+ | Unused
+
+ | 
+
+ | JE only
+
+ | 
+Giant
+
+Illusioner
+
+ | BE & Edu only
+
+ | 
+Elder Guardian Ghost
+
+Old Villager
+
+Old Zombie Villager
+
+ | Mentioned
+
+ | 
+Alpaca
+
+Barnacle
+
+Crab
+
+Firefly
+
+Glare
+
+Great Hunger
+
+Herobrine
+
+Iceologer
+
+Meerkat
+
+Minecart with Dispenser
+
+Moobloom
+
+Ostrich
+
+Penguin
+
+Pigman Bodyguard
+
+Rascal
+
+Red Dragon
+
+Shade
+
+Termite
+
+Tuff Golem
+
+Vulture
+
+Wildfire
+
+ | Removed
+
+ | 
+Builder
+
+Giant Jockey
+
+ MD3 Test Mob
+
+ Mob
+
+Monster
+
+Shot Purple Arrow
+
+Sign Entity
+
+Joke
+
+ | Mobs
+
+ | 
+
+ | April Fools 2013
+
+ | 
+Diamond Chicken
+
+Horse
+
+Pony
+
+Pink Wither
+
+Redstone Bug
+
+ | April Fools 2015
+
+ | 
+Love Golem
+
+Friendly Wither
+
+Smiling Creeper
+
+ | April Fools 2019
+
+ | 
+Nerd Creeper
+
+ | April Fools 2023
+
+ | 
+Moon Cow
+
+Ray Tracing
+
+ | April Fools 2024
+
+ | 
+Batato
+
+Mega Spud
+
+Plaguewhale Slab
+
+Poisonous Potato Zombie
+
+Potato mob category
+
+Toxifin Slab
+
+ | April Fools 2025
+
+ | 
+Angry Ghast
+
+Spectator Villager
+
+Spectator Witch
+
+Traitor
+
+Warden (boss)
+
+ | Pet variants
+
+ | 
+Pet Armadillo
+
+Pet Axolotl
+
+Pet Bee
+
+Pet Cat
+
+Pet Chicken
+
+Pet Cow
+
+Pet Creeper
+
+Pet Fox
+
+Pet Frog
+
+Pet Mooshroom
+
+Pet Polar Bear
+
+Pet Slime
+
+Pet Turtle
+
+Pet Wolf
+
+ | April Fools 2026
+
+ | 
+Living Block
+
+ | Other entities
+
+ | 
+
+ | April Fools 2013
+
+ | 
+Pink Wither Skull
+
+ | April Fools 2015
+
+ | 
+Obsidian Boat
+
+Friendly Wither Skull
+
+ | April Fools 2023
+
+ | 
+Stencil Display
+
+ | April Fools 2024
+
+ | 
+Falling Block
+Gravtater
+
+Potato Eye
+
+ | April Fools 2026
+
+ | 
+Crafting Grid
+
+Hovering Item
+
+Living Block Command
+
+Retrieved from "https://minecraft.wiki/w/Concrete_Powder?oldid=3749281"
+
+ Categories: Renewable resources
+Stackable resources
+Blocks
+Entities
+Manufactured blocks
+Falling blocks
+
+Hidden categories: Pages using simple calculator
+Pages with sound tables
+Pages with Java sound tables
+Pages with Bedrock subtitles missing
+Pages with Bedrock subtitle key missing
+Pages with Bedrock sound tables
+Pages with YouTube videos
+
+ Navigation menu
+
+ Personal tools
+
+ Create account
+Log in
+
+ associated-pages
+
+ Page
+Talk
+
+ English
+
+ Views
+
+ Read
+Edit
+Edit source
+View history
+
+ More
+
+ Search
+
+ Navigation
+
+ How to help
+Recent changes
+Random page
+in Minecraft
+in Dungeons
+in Dungeons II
+in Legends
+in Earth
+in Story Mode
+in Tutorial
+in Movie
+Wiki Discord
+
+ Wiki community
+
+ Community portal
+Wiki forum
+Projects
+Wiki rules
+Style guide
+Notability
+Sandbox
+Admin noticeboard
+
+ X
+
+ Franchise
+
+ Minecraft
+Minecraft Dungeons
+Minecraft Legends
+Minecraft Earth
+Minecraft: Story Mode
+A Minecraft Movie
+
+ Recent versions
+
+ Java Edition
+Latest: 26.2
+Dev: 26.3-pre-2
+Upcoming: 26.3
+Bedrock Edition
+Latest: 26.45
+Preview: 26.60.21
+Upcoming: 26.50
+Upcoming: 26.60
+
+ Useful pages
+
+ Trading
+Brewing
+Enchantments
+Mobs
+Blocks
+Items
+Crafting
+Smelting
+Tutorials
+Resource packs
+Redstone circuits
+
+ Useful pages
+
+ Weapons
+Enchanting
+Armor
+Artifacts
+Missions
+
+ Useful pages
+
+ Weapons
+Enchanting
+Armor
+Artifact
+
+ Useful pages
+
+ Friendly units
+Piglins
+Resources
+Biomes
+Structures
+Lost Legends
+
+ Tools
+
+ What links here
+Related changes
+Printable version
+Permanent link
+Page information
+Special pages
+View buckets
+
+ In other languages
+
+ Deutsch
+Español
+Français
+Italiano
+日本語
+한국어
+文言
+Nederlands
+Português
+Русский
+ไทย
+Українська
+中文
+
+ This page was last edited on 29 August 2026, at 17:26.
+
+ Content on this site is licensed under CC BY-NC-SA 3.0 unless otherwise noted; additional terms may apply.
+Not an official Minecraft website. We are not associated with Mojang or Microsoft.
+
+ Privacy policy
+
+ About Minecraft Wiki
+
+ Disclaimers
+
+ Terms of Use
+
+ Contact Weird Gloop
+
+ Mobile view

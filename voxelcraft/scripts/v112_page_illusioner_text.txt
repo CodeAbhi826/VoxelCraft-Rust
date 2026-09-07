@@ -1,0 +1,1552 @@
+Illusioner – Minecraft Wiki
+
+ Illusioner
+
+ From Minecraft Wiki
+
+ Jump to navigation
+ Jump to search
+ For the powerful mob in Minecraft Dungeons, see MCD:Illusioner.
+
+This feature is exclusive to Java Edition.
+
+Illusioner
+
+ | Health points
+
+ | 32HP × 16
+
+ | Behavior
+
+ | Hostile
+
+ | Mob type
+
+ | Illager
+Monster
+
+ | Attack
+strength
+
+ | Bow:
+
+Easy and Normal: 2HP – 5HP
+
+Hard: 3HP – 5HP
+
+ | Speed
+
+ | 0.5
+
+ | Spawn
+
+ | By commands
+
+ | Natural
+equipment
+
+Bow (right hand: 95%; left hand: 5%)
+
+{
+ "title": "Illusioner",
+ "rows": [
+ {
+ "field": "32<span class=\"hidden-alt-text\">HP</span><span class=\"nowrap mc-hearts\"><span class=\"iconbar pixel-image nowrap\" style=\"--icon-offset:-1px;\" title=\"1 heart\">(link to File:Heart (icon).png article, displayed as 9px|link=|alt=❤️)</span> × 16</span>",
+ "label": "(link to Health article, displayed as Health points)"
+ },
+ {
+ "field": "Hostile",
+ "label": "Behavior"
+ },
+ {
+ "field": "<span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:EntitySprite illager.png article, displayed as 16x16px|link=Illager|alt=|class=pixel-image|)</span>(link to Illager article, displayed as <span class=\"sprite-text\">Illager</span>)</span><br><span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:EntitySprite monster.png article, displayed as 16x16px|link=Monster|alt=|class=pixel-image|)</span>(link to Monster article, displayed as <span class=\"sprite-text\">Monster</span>)</span>",
+ "label": "(link to Mob type article, displayed as Mob type)"
+ },
+ {
+ "field": "(values exceeds 1000 characters...)",
+ "label": "Attack<br/>strength"
+ },
+ {
+ "field": "0.5",
+ "label": "(link to Attribute#Movement_speed article, displayed as Speed)"
+ },
+ {
+ "field": "By commands",
+ "label": "(link to Mob spawning article, displayed as Spawn)"
+ },
+ {
+ "field": "\n* <span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:ItemSprite bow.png article, displayed as 16x16px|link=Bow|alt=|class=pixel-image|)</span>(link to Bow article, displayed as <span class=\"sprite-text\">Bow</span>)</span> (right hand: 95%; left hand: 5%)",
+ "label": "(link to Drops#Equipped items article, displayed as Natural<br/>equipment)"
+ }
+ ],
+ "invimages": [],
+ "images": [
+ "Illusioner.png",
+ "Illusioner Casting.png"
+ ]
+}
+
+The illusioner is an unused illager armed with a bow. It attacks by firing arrows and creating illusions.
+
+Contents
+
+1 Spawning
+
+2 Drops
+
+3 Behavior
+
+3.1 Casting Blindness
+
+3.2 Summoning duplicates
+
+4 Sounds
+
+5 Data values
+
+5.1 ID
+
+5.2 Entity data
+
+6 Advancements
+
+7 History
+
+7.1 Java Edition
+
+7.2 Legacy Console Edition
+
+7.3 Data history
+
+8 Issues
+
+9 Trivia
+
+10 Gallery
+
+10.1 Renders
+
+10.2 Textures
+
+10.3 Screenshots
+
+10.4 In other media
+
+11 References
+
+12 Navigation
+
+Spawning
+[edit | edit source]
+
+Illusioners do not spawn naturally in any way without commands, nor do they have a spawn egg in the Creative inventory. An illusioner can be spawned only by using data packs or the /summon minecraft:illusioner in-game command. Illusioners despawn outside of simulation distance even if named with a name tag.
+
+Drops
+[edit | edit source]
+
+When an illusioner is killed by a player or a tamed wolf, any naturally spawned equipment, including its unenchanted bow, has an 8.5% chance of dropping (or 9.5% with Looting I, 10.5% with Looting II and 11.5% with Looting III) and drops with a random item durability. In addition, 5XP experience orbs are dropped on player or tamed wolf kills.
+
+The illusioner also drops one illager ominous banner and one ominous bottle if it is a raid captain.
+
+Behavior
+[edit | edit source]
+
+Although they do not naturally spawn in raids, illusioners spawned by the player attack players, adult villagers, iron golems, and wandering traders within a 16×4×16 cubic area. 
+
+An illusioner joins a nearby raid if it occurs or joins a patrol if sufficiently near a patrol captain. 
+
+The illusioner attacks with its spells and its bow, firing an arrow every second, three times faster than a skeleton. Unless the illusioner is summoned using commands, it cannot attack with a non-bow item in its hand, cannot use tipped arrows in its off-hand slot (but can use spectral arrows) and cannot use enchanted bows. Also, it is the only illager that can see its target through walls. 
+
+The illusioner moves quickly on a semi-circular fashion and always tries to maintain a consistent distance between itself and the player, strafing from left to right and vice versa, retreating if the player gets too close or advancing if the player retreats. 
+
+Finally, the illusioner has two spells: a spell that blinds its opponent and a spell that summons visual pseudo-duplicates and makes the illusioner invisible.
+
+If a bow is not in the illusioner's main hand, the illusioner does not attack players or villagers, but can still cast Blindness. An unarmed illusioner can be spawned with the command /summon minecraft:illusioner ~ ~ ~ {}.
+
+Casting Blindness
+[edit | edit source]
+
+An illusioner casting Blindness.
+The illusioner casts its Blindness spell only if the regional difficulty is greater than 2. As a result, the world difficulty setting, the inhabited time of the chunk, the total daytime in the world and the phase of the moon from the day-night cycle affects its ability.
+
+This spell gives a Blindness effect that lasts for 20 seconds upon first engaging a new player opponent. The illusioner signals this attack by raising its arms during a short-timed animation, making a low pitched sound and producing a black mist of particles (). Other entities (typically a wolf, a snow golem or an iron golem) do not trigger this magic. The illusioner does not cast this spell more than once on the same player opponent, unless it has first shifted its attention to another opponent and then back to that original opponent. 
+
+This spell resets the illusioner's spell cooldown to 1 second and resets the cooldown for the blinding spell to 9 seconds.
+
+Summoning duplicates
+[edit | edit source]
+
+An illusioner's four false duplicates. The real illusioner is invisible.
+As long as an illusioner is engaged in combat, it casts an Invisibility status effect on itself that lasts 60 seconds and refreshes the effect whenever the Invisibility's time runs out. The illusioner signals this spell by raising its arms, making a strange high pitched sound and producing a blue mist of particles called "mirror".
+
+When an illusioner becomes invisible through this or another method, it creates four false duplicates of itself. These hover and waver at short distances from the actually invisible illusioner, though they do not space themselves out until the first time the illusioner is attacked. They face in exactly the same direction as the illusioner and move somewhat in step with the original, appearing to phase through blocks like a vex does. Despite using the shooting animation whenever the original uses its bow, only the real illusioner can shoot and be damaged.
+
+The clones move to new positions if they were not triggered and are still bunched together. The illusioner can also do this once in a while to "refresh" the clones' positions.
+
+When the real illusioner is damaged, its duplicates all snap back to where the real illusioner is, then quickly snap back out to new positions, making a teleporting sound, signaling the hit.
+
+If an invisible illusioner receives the Glowing effect, all of the duplicates glow, while the true illusioner remains invisible. However, only the invisible illusioner burns when catching fire.
+
+When spectated, the illusioner's own duplicates are not shown, though duplicates of other illusioners are still visible.
+
+The duplicates disappear once the illusioner's Invisibility effect ends.
+
+This spell resets the illusioner's spell cooldown to 1 second and resets the cooldown for the invisibility spell to 17 seconds.
+
+Sounds
+[edit | edit source]
+
+Sounds
+ | Sound | Closed captions | Source | Description | Identifier | Translation key | Volume | Pitch | Attenuation
+distance
+ | ​Illusioner murmurs | Hostile Mobs | Randomly | entity.illusioner.ambient | subtitles.entity.illusioner.ambient​ | 1.0 | 0.8–1.2 | 16
+ | ​Illusioner casts spell | Hostile Mobs | When a spell is completed | entity.illusioner.cast_spell | subtitles.entity.illusioner.cast_spell​ | 1.0 | 1.0 | 16
+ | ​Illusioner dies | Hostile Mobs | When an illusioner dies | entity.illusioner.death | subtitles.entity.illusioner.death​ | 1.0 | 0.8–1.2 | 16
+ | ​Illusioner hurts | Hostile Mobs | When an illusioner is damaged | entity.illusioner.hurt | subtitles.entity.illusioner.hurt​ | 1.0 | 0.8–1.2 | 16
+ | ​Illusioner displaces | Hostile Mobs | When an illusioner's clones change position | entity.illusioner.mirror_move | subtitles.entity.illusioner.mirror_move​ | 1.0 | 1.0 | 16
+ | ​Illusioner prepares blindness | Hostile Mobs | When an illusioner is about to cast blindness on its target | entity.illusioner.prepare_blindness | subtitles.entity.illusioner.prepare_blindness​ | 1.0 | 1.0 | 16
+ | ​Illusioner prepares mirror image | Hostile Mobs | When an illusioner is about to summon duplicates | entity.illusioner.prepare_mirror | subtitles.entity.illusioner.prepare_mirror​ | 1.0 | 1.0 | 16
+ | ​Skeleton shoots [sound 1] | Hostile Mobs | When an illusioner shoots an arrow | entity.skeleton.shoot​[sound 1]​ | subtitles.entity.skeleton.shoot​​[sound 1]​ | 1.0 | 5⁄6-1.25 | 16
+
+↑ a b c MC-98316
+
+Data values
+[edit | edit source]
+
+ID
+[edit | edit source]
+
+ | Name | Identifier | Entity tags
+ | Translation key
+ | Illusioner | illusioner | illager
+illager_friends
+raiders
+ | entity.minecraft.illusioner
+
+Entity data
+[edit | edit source]
+
+See also: Entity format 
+
+Illusioners have entity data associated with them that contain various properties.
+
+[NBT Compound / JSON Object] Entity data
+
+Tags common to all entities see Template:Nbt inherit/entity/template
+
+Tags common to all mobs see Template:Nbt inherit/mob/template
+
+Tags common to all mobs spawnable in raids see Template:Nbt inherit/raidable/template
+
+[Int] SpellTicks: Number of ticks until a spell can be cast. Set to a positive value when a spell is cast, and decreases by 1 per tick.
+
+Advancements
+[edit | edit source]
+
+ | Icon | Advancement | In-game description | Actual requirements (if different)
+ | | Not Today, Thank You | Deflect a projectile with a Shield | Block any projectile with a shield.
+ | | Voluntary Exile | Kill a raid captain.
+Maybe consider staying away from villages for the time being... | Kill an entity in the #raiders entity tag wearing an ominous banner:
+
+Evoker
+
+Illusioner
+
+Pillager
+
+Vindicator
+
+This is a hidden advancement, meaning that it can be viewed by the player only after completing it, regardless of if its child advancement(s), if any, have been completed.
+ | | Hero of the Village | Successfully defend a village from a raid | Kill at least one raid mob during a raid and wait until it ends in victory.
+This is a hidden advancement, meaning that it can be viewed by the player only after completing it, regardless of if its child advancement(s), if any, have been completed.
+ | | It Spreads | Kill a mob near a Sculk Catalyst | Kill any mob that drops experience near a sculk catalyst, with the sole exception of the ender dragon. Mobs that drop no experience are ignored for this advancement.
+
+Advancements that apply to all mobs:
+
+ | Icon | Advancement | In-game description | Actual requirements (if different)
+ | | Adventure | Adventure, exploration and combat | Kill any mob, or be killed by any living entity.
+ | | A Throwaway Joke | Throw a Trident at something.
+Note: Throwing away your only weapon is not a good idea. | Hit a mob with a thrown trident.
+ | | Take Aim | Shoot something with an Arrow | Using a bow or a crossbow, shoot a mob with an arrow, tipped arrow, or spectral arrow.
+ | | Mob Kabob | Hit five mobs in the same Charge attack using the Spear. | Armor Stand and Mannequin also count for this advancement.
+ | | Arbalistic | Kill five unique mobs with one crossbow shot | Armor Stand and Mannequin also count for this advancement.
+This is a hidden advancement, meaning that it can be viewed by the player only after completing it, regardless of if its child advancement(s), if any, have been completed.
+ | | Over-Overkill | Deal 50 hearts of damage in a single hit using the Mace | Damage can be dealt to any mob, even those that do not have 50 hearts of health overall.
+
+History
+[edit | edit source]
+
+Java Edition
+[edit | edit source]
+
+Java Edition
+1.1217w16a
+ | Added illusioners.
+17w17a
+ | The illusioner's Blindness spell is now cast only if the regional difficulty is 3 or above.
+
+ | Illusioners now have new sound effects.
+17w17b
+ | The illusioner's blindness spell is now cast only if the regional difficulty is 2 or above.
+17w18b
+ | Illusioners are no longer a valid mob for earning the Monster Hunter advancement and are no longer required to complete the Monsters Hunted advancement.
+1.1418w43a
+ | The texture of illusioners has been changed. Illusioners now have green eyes.
+18w46a
+ | A loot table has been added to illusioners.
+19w13a
+ | If raiding illusioners killed all the villagers in the village or the beds were destroyed, illusioners celebrate their victory by cheering and jumping.
+September 29, 2019
+ | Illusioners were mentioned as potential candidates for addition to raids, in analogy to the implementation of brown mooshrooms as announced a year earlier.
+1.1821w37a
+ | Illusioners no longer attack baby villagers.
+pre5
+ | Illusioner texture was slightly changed, removed a few misplaced pixels.
+1.1922w17a
+ | Changed its models, now the last two rows of pixels on its robes can render.
+
+Legacy Console Edition
+[edit | edit source]
+
+Legacy Console Edition
+Xbox 360Xbox OnePS3PS4PS VitaWii USwitch
+TU54CU441.521.521.52Patch 241.0.4
+ | Added illusioners.
+???????
+ | Illusioners no longer have hoods.
+
+Data history
+[edit | edit source]
+
+Java Edition
+1.1317w47a
+ | Prior to The Flattening, this entity's numeral ID was 37.
+pre5
+ | The entity ID for illusioners has been changed from illusion_illager to illusioner.[1]
+
+Issues
+[edit | edit source]
+
+Illusioners are an unsupported mob and as such issues relating to them may not be fixed.
+
+Issues relating to "Illusioner" are maintained on the bug tracker. Issues should be reported and viewed there.
+
+Trivia
+[edit | edit source]
+
+The illusioner displace sound is almost the same as the traditional sound of teleportation via an ender pearl or chorus fruit, endermen or shulkers, albeit with a slight distortion at the end.
+
+Illusioners shoot backward when they are in a boat.[2]
+
+Illusioners hold bows in a different direction compared to skeletons or players, a little more diagonally.
+
+Despite being unused, the illusioner was present in a Minecraft video about every mob in the game.[3]
+As a result of being unused, an episode of The Story of Mobs gave instructions on how to spawn it to give context for what the mob is.[4]
+
+The original concept for the Illusioner was that it would create separate mobs, but this couldn't be done due to engine limitations.[5] This is also the reason why it remains unused.[6]
+
+Gallery
+[edit | edit source]
+
+Renders
+[edit | edit source]
+
+ An illusioner aiming.
+
+ An illusioner that is a raid captain.
+
+ A sitting illusioner.
+
+ An illusioner riding a ravager.
+
+ An illusioner without its second layer (this state cannot be seen in the game)
+
+Textures
+[edit | edit source]
+
+ Illusioner texture file.
+
+ Programmer Art texture file.
+
+Screenshots
+[edit | edit source]
+
+ Illusioner duplicates dying when the original illlusioner is killed.
+
+ An illusioner shooting an arrow at a villager with its bow.
+
+ An illusioner attacking villagers.
+
+ An illusioner preparing to cast its Blindness spell.
+
+ An illusioner killing a villager with its bow.
+
+ A few illusioner captains of illager patrol summoned using commands.
+
+ Illusioners using the wrong subtitles.[7] "Skeleton shoots"
+
+In other media
+[edit | edit source]
+
+ An illusioner from Minecraft Dungeons with the different outfit and eye coloring.
+
+References
+[edit | edit source]
+
+↑ MC-123540 – resolved as "Invalid".
+
+↑ MC-137793
+
+↑ "Which mobs did we miss?" – Minecraft on YouTube, January 19, 2024
+
+↑ "Easter Eggs Behind The...Sick Villagers? | The Story of the Illagers" – Minecraft on YouTube, October 27, 2024
+
+↑ Post by @jebox.bsky.social — Bluesky
+
+↑ Post by @jebox.bsky.social — Bluesky
+
+↑ MC-98316
+
+Navigation
+[edit | edit source]
+
+v
+
+t
+
+e
+
+Entities
+
+Mobs
+
+ | Passive
+
+ | 
+Allay
+
+Armadillo
+
+Axolotl
+
+Bat
+
+Camel
+
+Camel Husk
+
+Cat
+
+Chicken
+
+Cod
+
+Copper Golem
+
+Cow
+
+Donkey
+
+Frog
+
+Glow Squid
+
+Happy Ghast
+
+Horse
+
+Mooshroom
+
+Mule
+
+Ocelot
+
+Parrot
+
+Pig
+
+Rabbit
+
+Salmon
+
+Sheep
+
+Skeleton Horse
+
+Sniffer
+
+Snow Golem
+
+Squid
+
+Strider
+
+Sulfur Cube
+
+Tadpole
+
+Tropical Fish
+
+Turtle
+
+Villager
+
+Wandering Trader
+
+Zombie Horse
+
+ | BE & Edu only
+
+ | 
+Agent
+
+NPC
+
+ | Neutral
+
+ | 
+Bee
+
+Cave Spider
+
+Dolphin
+
+Drowned
+
+Enderman
+
+Fox
+
+Goat
+
+Iron Golem
+
+Llama
+
+Nautilus
+
+Panda
+
+Piglin
+
+Polar Bear
+
+Pufferfish
+
+Spider
+
+Trader Llama
+
+Wolf
+
+Zombie Nautilus
+
+Zombified Piglin
+
+ | Hostile
+
+ | 
+Blaze
+
+Bogged
+
+Breeze
+
+Creaking
+
+Creeper
+
+Elder Guardian
+
+Endermite
+
+Evoker
+
+Ghast
+
+Guardian
+
+Hoglin
+
+Husk
+
+Magma Cube
+
+Parched
+
+Phantom
+
+Piglin Brute
+
+Pillager
+
+Ravager
+
+Shulker
+
+Silverfish
+
+Skeleton
+
+Slime
+
+Stray
+
+Vex
+
+Vindicator
+
+Warden
+
+Witch
+
+Wither Skeleton
+
+Zoglin
+
+Zombie
+
+Zombie Villager
+
+ | Bosses
+
+ | 
+Ender Dragon
+
+Wither
+
+ | Mob types
+
+ | 
+Animal
+
+Aquatic
+
+Arthropod
+
+Illager
+
+Monster
+
+Undead
+
+ | Other
+
+ | 
+Baby
+
+Jockey
+Camel Husk
+
+Chicken
+
+Hoglin
+
+Ravager
+
+Skeleton Horseman
+
+Spider
+
+Strider
+
+Baby Strider
+
+Zombie Horseman
+
+Zombie Nautilus
+
+Mob variants
+
+ Other entities
+
+ | Player
+
+ | 
+Alex
+
+Ari
+
+Efe
+
+Kai
+
+Makena
+
+Noor
+
+Steve
+
+Sunny
+
+Zuri
+
+ | Blocks
+
+ | 
+Falling Blocks
+Anvil
+
+Concrete Powder
+
+Dragon Egg
+
+Gravel
+
+Pointed Dripstone
+
+Sand
+
+Red Sand
+
+Scaffolding
+
+Sulfur Spike
+
+Suspicious Gravel
+
+Suspicious Sand
+
+Primed TNT
+
+ | BE & Edu only
+
+ | 
+Falling Blocks
+Deprecated Anvil
+
+Snow
+
+Primed Underwater TNT
+
+ | Vehicles
+
+ | 
+Boat
+with Chest
+
+Minecart
+with Chest
+
+with Command Block
+
+with Hopper
+
+with TNT
+
+ | Java Edition only
+
+ | 
+Minecart with Furnace
+with Monster Spawner
+
+ | Projectiles
+
+ | 
+Fireball
+Small
+
+Dragon
+
+Launched Firework Rocket
+
+Llama Spit
+
+Shot Arrow
+Tipped
+
+Shulker Bullet
+
+Thrown Bottle o' Enchanting
+
+Thrown Egg
+
+Thrown Ender Pearl
+
+Thrown Eye of Ender
+
+Thrown Snowball
+
+Thrown Splash Potion
+Lingering Potion
+
+Thrown Trident
+
+Wind Charge
+
+Wither Skull
+
+ | Java Edition only
+
+ | 
+Shot Spectral Arrow
+
+ | BE & Edu only
+
+ | 
+Thrown Ice Bomb
+
+ | Stationary 
+objects
+
+ | 
+Cushion​[upcoming: Wilderness Bound]
+
+End Crystal
+
+Leash Knot
+
+Painting
+
+ | Java Edition only
+
+ | 
+Item Frame
+Glow
+
+ | Miscellaneous
+
+ | 
+Area Effect Cloud
+
+Armor Stand
+
+Evoker Fangs
+
+Experience Orb
+
+Fishing Bobber
+
+Items
+
+Lightning Bolt
+
+Ominous Item Spawner
+
+ | JE only
+
+ | 
+Mannequin
+
+ | BE & Edu only
+
+ | 
+Balloon
+
+Camera
+
+ | Technical 
+objects
+
+ | 
+
+ | JE only
+
+ | 
+Display
+Block
+
+Item
+
+Text
+
+Interaction
+
+Marker
+
+ | Editor only
+
+ | 
+Location Pointer Idle
+
+Location Pointer Selected
+
+Map Marker
+
+Ruler
+Idle
+
+Unimplemented
+
+ | Unused
+
+ | 
+
+ | JE only
+
+ | 
+Giant
+
+Illusioner
+
+ | BE & Edu only
+
+ | 
+Elder Guardian Ghost
+
+Old Villager
+
+Old Zombie Villager
+
+ | Mentioned
+
+ | 
+Alpaca
+
+Barnacle
+
+Crab
+
+Firefly
+
+Glare
+
+Great Hunger
+
+Herobrine
+
+Iceologer
+
+Meerkat
+
+Minecart with Dispenser
+
+Moobloom
+
+Ostrich
+
+Penguin
+
+Pigman Bodyguard
+
+Rascal
+
+Red Dragon
+
+Shade
+
+Termite
+
+Tuff Golem
+
+Vulture
+
+Wildfire
+
+ | Removed
+
+ | 
+Builder
+
+Giant Jockey
+
+ MD3 Test Mob
+
+ Mob
+
+Monster
+
+Shot Purple Arrow
+
+Sign Entity
+
+Joke
+
+ | Mobs
+
+ | 
+
+ | April Fools 2013
+
+ | 
+Diamond Chicken
+
+Horse
+
+Pony
+
+Pink Wither
+
+Redstone Bug
+
+ | April Fools 2015
+
+ | 
+Love Golem
+
+Friendly Wither
+
+Smiling Creeper
+
+ | April Fools 2019
+
+ | 
+Nerd Creeper
+
+ | April Fools 2023
+
+ | 
+Moon Cow
+
+Ray Tracing
+
+ | April Fools 2024
+
+ | 
+Batato
+
+Mega Spud
+
+Plaguewhale Slab
+
+Poisonous Potato Zombie
+
+Potato mob category
+
+Toxifin Slab
+
+ | April Fools 2025
+
+ | 
+Angry Ghast
+
+Spectator Villager
+
+Spectator Witch
+
+Traitor
+
+Warden (boss)
+
+ | Pet variants
+
+ | 
+Pet Armadillo
+
+Pet Axolotl
+
+Pet Bee
+
+Pet Cat
+
+Pet Chicken
+
+Pet Cow
+
+Pet Creeper
+
+Pet Fox
+
+Pet Frog
+
+Pet Mooshroom
+
+Pet Polar Bear
+
+Pet Slime
+
+Pet Turtle
+
+Pet Wolf
+
+ | April Fools 2026
+
+ | 
+Living Block
+
+ | Other entities
+
+ | 
+
+ | April Fools 2013
+
+ | 
+Pink Wither Skull
+
+ | April Fools 2015
+
+ | 
+Obsidian Boat
+
+Friendly Wither Skull
+
+ | April Fools 2023
+
+ | 
+Stencil Display
+
+ | April Fools 2024
+
+ | 
+Falling Block
+Gravtater
+
+Potato Eye
+
+ | April Fools 2026
+
+ | 
+Crafting Grid
+
+Hovering Item
+
+Living Block Command
+
+v
+
+t
+
+e
+
+Unused features
+
+ | Items
+
+ | 
+
+ | JE only
+
+ | 
+Uncraftable Potion
+Splash
+
+Lingering
+
+Arrow
+
+Potion of Luck
+Splash
+
+Lingering
+
+Arrow
+
+ | LCE only
+
+ | 
+debug_fourj_item
+
+ | Blocks
+
+ | 
+Petrified Oak Slab
+
+ | BE only
+
+ | 
+Chalkboard
+
+ | BE & Edu only
+
+ | 
+Camera
+
+Chiseled Purpur
+
+Deprecated Anvil
+
+Glowing Obsidian
+
+Nether Reactor Core
+
+tile.deprecated_purpur_block_2.name
+
+Old Stonecutter
+
+Unknown
+
+tile.reserved6.name
+
+tile.info_update.name
+
+tile.info_update2.name
+
+ | Entities
+
+ | 
+
+ | JE only
+
+ | 
+Giant
+
+Illusioner
+
+Killer Bunny
+
+Minecart with Monster Spawner
+
+ | BE only
+
+ | 
+Elder Guardian Ghost
+
+Old Villager
+Zombie
+
+Tripod Camera
+
+ | Biomes
+
+ | 
+
+ | BE only
+
+ | 
+Badlands Plateau
+Modified
+Wooded
+
+Birch Forest Hills
+
+Dark Forest Hills
+
+Deep Warm Ocean
+
+Desert Hills
+
+Desert Lakes
+
+Gravelly Mountains+
+
+Jungle Hills
+Bamboo
+
+Legacy Frozen Ocean
+
+Modified Jungle
+Edge
+
+Mountain Edge
+
+Mushroom Field Shore
+
+Shattered Savanna Plateau
+
+Snowy Mountains
+
+Swamp Hills
+
+Taiga Hills
+Giant Spruce
+
+Giant Tree
+
+Snowy
+
+Taiga Mountains
+Snowy
+
+Tall Birch Hills
+
+Wooded Hills
+
+ | Effects
+
+ | 
+Health Boost
+
+ | JE only
+
+ | 
+Luck
+
+Bad Luck
+
+v
+
+t
+
+e
+
+Villagers
+
+ | Villager professions
+
+ | 
+Armorer
+
+Butcher
+
+Cartographer
+
+Cleric
+
+Farmer
+
+Fisherman
+
+Fletcher
+
+Leatherworker
+
+Librarian
+
+Mason
+
+Shepherd
+
+Toolsmith
+
+Weaponsmith
+
+Nitwit
+
+ | Workstations
+
+ | 
+Blast Furnace
+
+Smoker
+
+Cartography Table
+
+Brewing Stand
+
+Composter
+
+Barrel
+
+Fletching Table
+
+Cauldron
+
+Lectern
+
+Stonecutter
+
+Loom
+
+Smithing Table
+
+Grindstone
+
+ | Mechanics
+
+ | 
+Raid
+
+Trading
+
+ | JE only
+
+ | 
+Zombie siege
+
+ | Structures
+
+ | 
+Igloo
+
+Pillager Outpost
+
+Swamp Hut
+
+Village
+
+Woodland Mansion
+
+ | Related mobs
+
+ | 
+Evoker
+
+Iron Golem
+
+Pillager
+
+Ravager
+
+Vex
+
+Vindicator
+
+Wandering Trader
+
+Witch
+
+Zombie Villager
+
+ | JE only
+
+ | 
+Illusioner
+
+ | BE & Edu only
+
+ | 
+NPC
+
+ | Mob types
+
+ | 
+Illager
+
+Retrieved from "https://minecraft.wiki/w/Illusioner?oldid=3750554"
+
+ Categories: Java Edition
+Entities
+Unused features
+Hostile mobs
+Unused mobs
+Illagers
+Monster mobs
+
+Hidden categories: Pages with sound tables
+Pages with Java sound tables
+Unknown Console version history
+
+ Navigation menu
+
+ Personal tools
+
+ Create account
+Log in
+
+ associated-pages
+
+ Page
+Talk
+
+ English
+
+ Views
+
+ Read
+Edit
+Edit source
+View history
+
+ More
+
+ Search
+
+ Navigation
+
+ How to help
+Recent changes
+Random page
+in Minecraft
+in Dungeons
+in Dungeons II
+in Legends
+in Earth
+in Story Mode
+in Tutorial
+in Movie
+Wiki Discord
+
+ Wiki community
+
+ Community portal
+Wiki forum
+Projects
+Wiki rules
+Style guide
+Notability
+Sandbox
+Admin noticeboard
+
+ X
+
+ Franchise
+
+ Minecraft
+Minecraft Dungeons
+Minecraft Legends
+Minecraft Earth
+Minecraft: Story Mode
+A Minecraft Movie
+
+ Recent versions
+
+ Java Edition
+Latest: 26.2
+Dev: 26.3-pre-2
+Upcoming: 26.3
+Bedrock Edition
+Latest: 26.45
+Preview: 26.60.21
+Upcoming: 26.50
+Upcoming: 26.60
+
+ Useful pages
+
+ Trading
+Brewing
+Enchantments
+Mobs
+Blocks
+Items
+Crafting
+Smelting
+Tutorials
+Resource packs
+Redstone circuits
+
+ Useful pages
+
+ Weapons
+Enchanting
+Armor
+Artifacts
+Missions
+
+ Useful pages
+
+ Weapons
+Enchanting
+Armor
+Artifact
+
+ Useful pages
+
+ Friendly units
+Piglins
+Resources
+Biomes
+Structures
+Lost Legends
+
+ Tools
+
+ What links here
+Related changes
+Printable version
+Permanent link
+Page information
+Special pages
+View buckets
+
+ In other languages
+
+ Deutsch
+Español
+Français
+Italiano
+日本語
+한국어
+文言
+Nederlands
+Português
+Русский
+ไทย
+Українська
+中文
+
+ This page was last edited on 30 August 2026, at 16:50.
+
+ Content on this site is licensed under CC BY-NC-SA 3.0 unless otherwise noted; additional terms may apply.
+Not an official Minecraft website. We are not associated with Mojang or Microsoft.
+
+ Privacy policy
+
+ About Minecraft Wiki
+
+ Disclaimers
+
+ Terms of Use
+
+ Contact Weird Gloop
+
+ Mobile view

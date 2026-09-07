@@ -36,6 +36,12 @@ pub enum EffectKind {
     /// 1.10 bracket (husk hits apply Hunger 7 s × regional difficulty;
     /// VERIFIED w/Husk) — food-poisoning drain flag
     Hunger,
+    /// 1.11 bracket (totem of undying): Absorption — grants a temporary
+    /// damage buffer (4 points per level; VERIFIED w/Effect §Absorption
+    /// + w/Totem_of_Undying: Absorption II = 8 points / 4 hearts for
+    /// 5 s). No per-tick action; the buffer lives on the player struct
+    /// and is cleared when the effect expires (the game layer's hook).
+    Absorption,
 }
 
 impl EffectKind {
@@ -51,6 +57,7 @@ impl EffectKind {
             EffectKind::Strength => "minecraft:strength",
             EffectKind::Slowness => "minecraft:slowness",
             EffectKind::Hunger => "minecraft:hunger",
+            EffectKind::Absorption => "minecraft:absorption",
         }
     }
 }
@@ -81,6 +88,8 @@ pub fn period_ticks(kind: EffectKind, amplifier: u8) -> i32 {
         EffectKind::Poison => (25 >> (amplifier as i32)).max(10),
         // Regeneration I: per 50 ticks (2.5 s — w/Effect)
         EffectKind::Regeneration => 50 >> (amplifier as i32).min(1),
+        // 1.11 Absorption: no periodic action (buffer effect)
+        EffectKind::Absorption => i32::MAX,
         _ => i32::MAX, // stat effects are continuous, no period
     }
 }

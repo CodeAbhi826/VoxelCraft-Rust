@@ -36,6 +36,21 @@ pub const RECIPES: &[Recipe] = &[
         grid: &[Ing::Block(JUNGLE_LOG)],
         out: ItemStack::new(JUNGLE_PLANKS, 4),
     },
+    // ---- 1.11 (VERIFIED changelog §Blocks: shulker boxes "Crafted in a
+    // crafting table as a single column, with a chest in the middle of
+    // the row and a shulker shell both above and below the chest") ----
+    // the engine's square-pattern matcher places 3×3 patterns at the
+    // top-left, so the column lives in the MIDDLE column (vanilla also
+    // accepts the side columns — a disclosed placement constraint)
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::None, Ing::Block(SHULKER_SHELL), Ing::None,
+            Ing::None, Ing::Block(CHEST), Ing::None,
+            Ing::None, Ing::Block(SHULKER_SHELL), Ing::None,
+        ],
+        out: ItemStack::new(SHULKER_BOX, 1),
+    },
     // ---- 1.8 bracket (VERIFIED minecraft.wiki/w/Java_Edition_1.8
     // §Blocks, live 2026-09-06) ----
     // "Polished variants of Diorite, Andesite & Granite — crafting recipe:

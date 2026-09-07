@@ -61,6 +61,9 @@ pub fn mob_kind(code: u8) -> MobKind {
         SPAWNER_SPIDER => MobKind::Spider,
         3 => MobKind::Blaze, // Phase E1 fortress spawner (SPAWNER_BLAZE)
         4 => MobKind::WitherSkeleton, // Phase E2 fortress platform
+        5 => MobKind::Vindicator, // 1.11 mansion (changelog: "Spawn in
+        // the woodland mansions upon generation. They don't respawn.")
+        6 => MobKind::Evoker, // 1.11 mansion upper floors (w/Evoker)
         _ => MobKind::Zombie,
     }
 }

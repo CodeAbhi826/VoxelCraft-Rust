@@ -3,7 +3,7 @@
 The engine is **14 independently usable libraries** plus the game
 application. Every library is a normal Rust crate in this workspace,
 documented in its own README, tested by `cargo test --workspace`
-(426 tests — the E1–E3 + 1.7–1.10 merged suite), and released as its
+(454 tests — the E1–E3 + 1.7–1.11 merged suite), and released as its
 **own separate archive** — there is
 deliberately **no all-in-one bundle**.
 
@@ -45,7 +45,7 @@ clone the repo once and use `path = "../VoxelCraft-Rust/voxelcraft/crates/vc-nbt
 ```sh
 git clone https://github.com/CodeAbhi826/VoxelCraft-Rust.git
 cd VoxelCraft-Rust/voxelcraft
-cargo test --workspace          # 426 tests across all libraries
+cargo test --workspace          # 454 tests across all libraries
 cargo run --release             # the game (from the workspace root)
 ```
 

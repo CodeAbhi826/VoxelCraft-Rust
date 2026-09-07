@@ -16,6 +16,20 @@ pub fn fuel_ticks(block: u16) -> i32 {
         // t — VERIFIED w/Log §Fuel: "Logs... can be used as a fuel in
         // furnaces"; the fuel table's log/plank row is 300 ticks)
         PLANKS | OAK_LOG | BIRCH_LOG | SPRUCE_LOG | JUNGLE_LOG | JUNGLE_PLANKS => 300,
+        // 1.11 (VERIFIED, changelog §Fuel: "1 Wool smelts 0.5 items"
+        // — 0.5 items × 200 ticks/item = 100 ticks).
+        WOOL_WHITE | WOOL_RED | WOOL_YELLOW | WOOL_BLUE | WOOL_BLACK => 100,
+        // 1.11 carpets (VERIFIED live 2026-09-07, search verdict
+        // minecraft.wiki/w/Carpet: "Carpet can be used as a fuel in
+        // furnaces, smelting 0.335 items per carpet item" — the
+        // changelog's "0.3 items" is the rounded form; the precise
+        // 0.335 × 200 = 67 ticks. Record:
+        // scripts/v111_search_carpetfuel.json. The remaining 1.11 fuel
+        // rows (ladder 1.5 / wooden button 0.5 / bow 1.5 / fishing rod
+        // 1.5 / sign 1 / bowl 0.5 / wooden door 1 / boat 2) are
+        // palette-absent — no such items in the engine — N/A, disclosed
+        // in the WORKLOG).
+        CARPET_WHITE | CARPET_RED | CARPET_YELLOW | CARPET_BLUE | CARPET_BLACK => 67,
         // OAK_SLAB = 150 ticks (VERIFIED 2026-09-06 live:
         // minecraft.wiki/w/Smelting — "Wooden Slab 7.5 [s], 150 ticks";
         // was 300, the planks value — half-length slabs burn half as
@@ -283,6 +297,15 @@ mod tests {
         assert_eq!(fuel_ticks(COAL_BLOCK), 16000, "block of coal: 800 s, 80 items");
         assert_eq!(fuel_ticks(COAL_ORE), 0, "ore is not a fuel in vanilla");
         assert_eq!(fuel_ticks(STONE), 0, "stone is not a fuel");
+        // 1.11 (VERIFIED live 2026-09-07):
+        // wool 0.5 items = 100 t (changelog §Fuel); carpet
+        // 0.335 items = 67 t (search verdict minecraft.wiki/w/Carpet,
+        // scripts/v111_search_carpetfuel.json — the changelog's "0.3
+        // items" is the rounded form)
+        assert_eq!(fuel_ticks(WOOL_WHITE), 100, "1 wool smelts 0.5 items");
+        assert_eq!(fuel_ticks(CARPET_WHITE), 67, "1 carpet smelts 0.335 items (67 t)");
+        assert_eq!(fuel_ticks(CARPET_RED), 67);
+        assert_eq!(fuel_ticks(CARPET_BLACK), 67);
     }
 
     /// Phase E3 (VERIFIED w/Block_of_Coal: 16000 ticks / 80 items —

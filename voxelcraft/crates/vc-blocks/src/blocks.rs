@@ -364,6 +364,23 @@ pub const TILE_VINE: u16 = 331;
 /// Fern (VERIFIED w/Fern: non-solid, hardness 0, 12.5% wheat-seed drop
 /// — no seeds item in engine, drops nothing).
 pub const TILE_FERN: u16 = 332;
+// ---- 1.11 bracket tiles (Exploration Update, live 2026-09-07) ----
+/// 1.11 mob sprites (w/Llama, /w/Vindicator, /w/Evoker, /w/Vex).
+pub const TILE_LLAMA: u16 = 333;
+pub const TILE_VINDICATOR: u16 = 334;
+pub const TILE_EVOKER: u16 = 335;
+pub const TILE_VEX: u16 = 336;
+/// Shulker box (VERIFIED w/Shulker_Box: hardness 2, 27 slots, keeps
+/// contents; craft = 2 shulker shells + chest column).
+pub const TILE_SHULKER_BOX: u16 = 337;
+/// Shulker shell (VERIFIED w/Shulker_Shell: 50% shulker drop — no
+/// shulkers in engine, picker-only, documented).
+pub const TILE_SHULKER_SHELL: u16 = 338;
+/// Totem of undying (VERIFIED w/Totem_of_Undying live: restores 1 HP,
+/// clears effects, Regeneration II 45 s + Absorption II 5 s — the Fire
+/// Resistance row is a 1.16.2 addition per §History, version-scoped out
+/// of this bracket).
+pub const TILE_TOTEM: u16 = 339;
 
 // mobs (Phase 2): entity sprites + drops' item tiles. Mob sprites are
 // clean-room pixel art (ours, not Mojang's) — distinct silhouettes/palettes
@@ -1064,6 +1081,46 @@ pub const VINE: u16 = 280;
 /// grass/dirt family (VERIFIED w/Fern §Placement).
 pub const FERN: u16 = 281;
 
+// ---- 1.11 bracket (Exploration Update): ids 282..=288, V7 window ----
+/// Shulker Box — container (VERIFIED w/Shulker_Box live: hardness 2,
+/// "All shulker boxes have 27 inventory slots, the same as a barrel, a
+/// single chest, or an ender chest"; "keep their items when broken";
+/// craft = "Shulker Shell + Chest" column; "cannot be placed inside
+/// another" shulker box; "drops itself as an item if pushed by
+/// pistons"). Engine adaptation: item entities carry no NBT, so a
+/// broken box spills its contents (the vanilla keep-inside-the-item
+/// needs item-NBT — disclosed); the no-nesting rule IS enforced.
+pub const SHULKER_BOX: u16 = 282;
+/// Shulker Shell — item (VERIFIED w/Shulker_Shell: 50% shulker drop; no
+/// shulkers/End cities in engine → picker-only, documented).
+pub const SHULKER_SHELL: u16 = 283;
+/// Totem of Undying — item (VERIFIED live w/Totem_of_Undying: revives
+/// the holder on lethal damage, "restores 1 HP, removes all existing
+/// status effects and grants" Regeneration II 45 s + Absorption II 5 s.
+/// Evoker drop ("Evokers always drop one of these upon death" — 1.11
+/// changelog). Fire Resistance I (0:40) is a 1.16.2 addition
+/// (w/Totem §History 20w28a) — version-scoped OUT of this bracket.
+pub const TOTEM_OF_UNDYING: u16 = 284;
+/// 1.11 spawn eggs (changelog §Items: "5 new spawn eggs" — Vindicator,
+/// Llama, Evoker, Vex, Zombie Villager): kinds 23..=26. The zombie-
+/// villager egg — the 5th of the new set — is ALREADY in the engine:
+/// the E2-era egg item at id 129 (egg kind 5, added with the zombie-
+/// villager cure round; an engine anachronism, disclosed in the WORKLOG
+/// — it satisfies the 1.11 requirement without a duplicate item).
+pub const SPAWN_EGG_LLAMA: u16 = 285;
+pub const SPAWN_EGG_VINDICATOR: u16 = 286;
+pub const SPAWN_EGG_EVOKER: u16 = 287;
+pub const SPAWN_EGG_VEX: u16 = 288;
+/// 1.11 re-added eggs (VERIFIED changelog §Items: "Eggs that were
+/// removed in Java Edition 1.10-pre2 are re-added, except the cat
+/// spawn egg, including: ... Husk spawn egg, Stray spawn egg"): husk
+/// kind 27, stray 28. The wither-skeleton re-add is covered by the
+/// existing kind 16; donkey/mule re-adds by kinds 21/22; skeleton
+/// horse / zombie horse / elder guardian eggs are palette-absent
+/// (those mobs don't exist — N/A, disclosed).
+pub const SPAWN_EGG_HUSK: u16 = 289;
+pub const SPAWN_EGG_STRAY: u16 = 290;
+
 pub const V5_STATE_BASE: u16 = 476;
 pub const V5_COUNT: u16 = 4; // ids 191..=194
 pub const V5_STATE_TO_BLOCK: [u16; V5_COUNT as usize] = [
@@ -1102,6 +1159,40 @@ pub fn v6_state(b: u16) -> Option<u16> {
 #[inline]
 pub fn is_v6_state(s: u16) -> bool {
     (V6_STATE_BASE..V6_STATE_BASE + V6_COUNT).contains(&s)
+}
+
+/// 1.11 mansion spawners: mob-kind code 5 (vindicator) — the
+/// woodland-mansion illager placement (engine-native adaptation;
+/// vanilla spawns them at generation without respawn — disclosed).
+pub const SPAWNER_VINDICATOR: u16 = 495;
+/// 1.11 mansion spawners: mob-kind code 6 (evoker, the two upper
+/// floors — VERIFIED w/Evoker: "Spawn in the two upper floors of
+/// woodland mansions upon generation").
+pub const SPAWNER_EVOKER: u16 = 496;
+
+pub const V7_STATE_BASE: u16 = 486;
+// 9 ids: 282..=290 (the 1.11 bracket + the completion round's
+// re-added husk/stray eggs). States 486..=494; the mansion spawner
+// states sit directly above at 495..=496 (STATE_COUNT = 497).
+pub const V7_COUNT: u16 = 9;
+pub const V7_STATE_TO_BLOCK: [u16; V7_COUNT as usize] = [
+    SHULKER_BOX, SHULKER_SHELL, TOTEM_OF_UNDYING, SPAWN_EGG_LLAMA,
+    SPAWN_EGG_VINDICATOR, SPAWN_EGG_EVOKER, SPAWN_EGG_VEX,
+    SPAWN_EGG_HUSK, SPAWN_EGG_STRAY,
+];
+
+#[inline]
+pub fn v7_state(b: u16) -> Option<u16> {
+    if (282..282 + V7_COUNT as u16).contains(&b) {
+        Some(V7_STATE_BASE + (b - 282) as u16)
+    } else {
+        None
+    }
+}
+
+#[inline]
+pub fn is_v7_state(s: u16) -> bool {
+    (V7_STATE_BASE..V7_STATE_BASE + V7_COUNT).contains(&s)
 }
 
 pub const BEEF_STATE: u16 = 130;
@@ -1489,7 +1580,7 @@ pub fn item_state_block(s: u16) -> Option<u16> {
     }
 }
 
-pub const BLOCK_COUNT: usize = 282;
+pub const BLOCK_COUNT: usize = 291;
 /// [merge renumber] acacia/dark-oak log axis states moved to 443..=446
 /// (past the E-series states, which end at 354; V2 base is now 400)
 /// acacia/dark-oak log axis states (the V2 log window — same pattern as
@@ -1526,7 +1617,7 @@ pub const DARK_OAK_LOG_Z: u16 = 446;
 /// items + eggs 20..=22 + the POWER-state ladders (317..=399)
 /// [merge renumber] F-series states: V2 400..=442 + log-axis 443..=446,
 /// V3 447..=465, V4 466..=475, V5 476..=479, V6 480..=485 (audit-fix)
-pub const STATE_COUNT: usize = 486;
+pub const STATE_COUNT: usize = 497;
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -1716,6 +1807,16 @@ pub fn spawner_state(mob: u8) -> u16 {
 pub fn spawner_mob(s: u16) -> u8 {
     if (SPAWNER_STATE_BASE..=SPAWNER_STATE_END).contains(&s) {
         (s - SPAWNER_STATE_BASE) as u8
+    } else if s == SPAWNER_BLAZE {
+        3 // fortress blaze (code 3 — fixes a LATENT Phase-E1 bug: the
+          // dedicated state 241 fell through to the zombie code and
+          // fortress spawners registered as zombie spawners)
+    } else if s == SPAWNER_WITHER_SKELETON {
+        4 // fortress platform 2 (same latent-bug fix)
+    } else if s == SPAWNER_VINDICATOR {
+        5 // 1.11 mansion
+    } else if s == SPAWNER_EVOKER {
+        6 // 1.11 mansion upper floors
     } else {
         SPAWNER_ZOMBIE
     }
@@ -1877,6 +1978,9 @@ pub fn default_state(b: u16) -> u16 {
         }
         b if (276..276 + V6_COUNT as u16).contains(&b) => {
             V6_STATE_BASE + (b - 276) as u16
+        }
+        b if (282..282 + V7_COUNT as u16).contains(&b) => {
+            V7_STATE_BASE + (b - 282) as u16
         }
         b if (262..262 + V4_COUNT as u16).contains(&b) => {
             V4_STATE_BASE + (b - 262) as u16
@@ -2147,6 +2251,9 @@ pub fn state_block(s: u16) -> u16 {
             return HEAVY_WEIGHTED_PLATE
         }
         SPAWNER_WITHER_SKELETON => return SPAWNER,
+        // 1.11 mansion illager spawner states
+        SPAWNER_VINDICATOR => return SPAWNER,
+        SPAWNER_EVOKER => return SPAWNER,
         ENCHANT_TABLE_STATE => return ENCHANT_TABLE,
         ENCHANTED_BOOK_STATE => return ENCHANTED_BOOK,
         BEEF_STATE => return BEEF,
@@ -2184,6 +2291,9 @@ pub fn state_block(s: u16) -> u16 {
         }
         s if is_v6_state(s) => {
             return V6_STATE_TO_BLOCK[(s - V6_STATE_BASE) as usize];
+        }
+        s if is_v7_state(s) => {
+            return V7_STATE_TO_BLOCK[(s - V7_STATE_BASE) as usize];
         }
         ACACIA_LOG_X | ACACIA_LOG_Z => return ACACIA_LOG,
         DARK_OAK_LOG_X | DARK_OAK_LOG_Z => return DARK_OAK_LOG,
@@ -2240,6 +2350,9 @@ pub fn is_model_state(s: u16) -> bool {
         || is_v4_state(s)
         || is_v5_state(s)
         || is_v6_state(s)
+        || is_v7_state(s)
+        || s == SPAWNER_VINDICATOR
+        || s == SPAWNER_EVOKER
         || s == ACACIA_LOG_X
         || s == ACACIA_LOG_Z
         || s == DARK_OAK_LOG_X
@@ -2421,7 +2534,14 @@ pub fn log_axis_state(block: u16, axis: u8) -> u16 {
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
 // [merge] E-series tiles end at 243; the F-series (1.7.2-1.10) tiles
 // continue at 244..=325; the audit-fix round adds 326..=332
-pub const TILE_MAX: u16 = 332;
+pub const TILE_MAX: u16 = 345;
+/// 1.11 egg tiles (egg-shaped, egg order 23..=28 = llama, vindicator,
+/// evoker, vex, husk, stray) — the E1/E2/E3 egg-art convention
+/// (e1_art::egg_art + palettes), replacing the interrupted round's
+/// mob-sprite reuse for egg items. The zombie-villager egg (kind 5)
+/// keeps its pre-existing tile in the base egg window.
+pub const TILE_V7_EGG_BASE: u16 = 340;
+pub const TILE_V7_EGG_END: u16 = 345;
 
 /// inventory-only ITEM blocks (potions/bottles/books): never placeable in
 /// the world — right-click drinks (potions) / fills (glass bottle at water).
@@ -2439,6 +2559,16 @@ pub fn is_item_block(b: u16) -> bool {
             // Phase E2 items (evolution 1.3-1.4)
             | EMERALD | NETHER_STAR | POTATO | BAKED_POTATO | CARROT | PUMPKIN_PIE
             | GOLDEN_CARROT
+            // 1.11 items (shulker shell, totem, the 4+1 new eggs and
+            // the re-added husk/stray eggs)
+            | SHULKER_SHELL
+            | TOTEM_OF_UNDYING
+            | SPAWN_EGG_LLAMA
+            | SPAWN_EGG_VINDICATOR
+            | SPAWN_EGG_EVOKER
+            | SPAWN_EGG_VEX
+            | SPAWN_EGG_HUSK
+            | SPAWN_EGG_STRAY
             // VERIFICATION-REPORT fix #4: the coal fuel item
             | COAL
             // ---- F-series item-blocks (1.7.2-1.10, merge-renumbered) ----
@@ -2455,6 +2585,9 @@ pub fn is_item_block(b: u16) -> bool {
 pub fn is_spawn_egg(b: u16) -> bool {
     (SPAWN_EGG_BASE..=SPAWN_EGG_MAX).contains(&b)
         || (E3_SPAWN_EGG_BASE..=E3_SPAWN_EGG_END).contains(&b)
+        // 1.11: the V7 egg window (llama/vindicator/evoker/vex + the
+        // re-added husk/stray + the 5th new zombie-villager egg)
+        || (SPAWN_EGG_LLAMA..=SPAWN_EGG_STRAY).contains(&b)
 }
 
 /// The mob this spawn-egg id spawns. Tile order in the BLOCK_TABLE egg
@@ -2466,6 +2599,14 @@ pub fn egg_mob(b: u16) -> Option<u8> {
     if (E3_SPAWN_EGG_BASE..=E3_SPAWN_EGG_END).contains(&b) {
         // kinds 20..=22 (horse/donkey/mule — MobKind::from_egg)
         return Some(20 + (b - E3_SPAWN_EGG_BASE) as u8);
+    }
+    // 1.11 bracket: kinds 23..=29 (the changelog's "5 new spawn eggs"
+    // — llama/vindicator/evoker/vex/zombie-villager — plus the re-added
+    // husk/stray eggs: "Eggs that were removed in Java Edition
+    // 1.10-pre2 are re-added ... including: ... Husk spawn egg, Stray
+    // spawn egg")
+    if (SPAWN_EGG_LLAMA..=SPAWN_EGG_STRAY).contains(&b) {
+        return Some(23 + (b - SPAWN_EGG_LLAMA) as u8);
     }
     if !is_spawn_egg(b) {
         return None;
@@ -2901,6 +3042,19 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Jungle Planks", [TILE_JUNGLE_PLANKS, TILE_JUNGLE_PLANKS, TILE_JUNGLE_PLANKS], true, true, false, false, 0, SoundFamily::Wood),
     d("Vine", [TILE_VINE, TILE_VINE, TILE_VINE], false, false, true, false, 0, SoundFamily::Grass),
     d("Fern", [TILE_FERN, TILE_FERN, TILE_FERN], false, false, true, false, 0, SoundFamily::Grass),
+    // ---- 1.11 bracket (Exploration Update) ----
+    d("Shulker Box", [TILE_SHULKER_BOX, TILE_SHULKER_BOX, TILE_SHULKER_BOX], true, true, false, false, 0, SoundFamily::Stone),
+    d("Shulker Shell", [TILE_SHULKER_SHELL, TILE_SHULKER_SHELL, TILE_SHULKER_SHELL], false, false, true, false, 0, SoundFamily::Stone),
+    d("Totem of Undying", [TILE_TOTEM, TILE_TOTEM, TILE_TOTEM], false, false, true, false, 0, SoundFamily::Grass),
+    // 1.11 egg items: egg-shaped tiles (TILE_V7_EGG_BASE order = the
+    // egg_mob kind order 23..=29), NOT the mob billboard sprites — the
+    // E1/E2/E3 egg convention
+    d("Llama Spawn Egg", [TILE_V7_EGG_BASE, TILE_V7_EGG_BASE, TILE_V7_EGG_BASE], false, false, true, false, 0, SoundFamily::Stone),
+    d("Vindicator Spawn Egg", [TILE_V7_EGG_BASE + 1, TILE_V7_EGG_BASE + 1, TILE_V7_EGG_BASE + 1], false, false, true, false, 0, SoundFamily::Stone),
+    d("Evoker Spawn Egg", [TILE_V7_EGG_BASE + 2, TILE_V7_EGG_BASE + 2, TILE_V7_EGG_BASE + 2], false, false, true, false, 0, SoundFamily::Stone),
+    d("Vex Spawn Egg", [TILE_V7_EGG_BASE + 3, TILE_V7_EGG_BASE + 3, TILE_V7_EGG_BASE + 3], false, false, true, false, 0, SoundFamily::Stone),
+    d("Husk Spawn Egg", [TILE_V7_EGG_BASE + 4, TILE_V7_EGG_BASE + 4, TILE_V7_EGG_BASE + 4], false, false, true, false, 0, SoundFamily::Stone),
+    d("Stray Spawn Egg", [TILE_V7_EGG_BASE + 5, TILE_V7_EGG_BASE + 5, TILE_V7_EGG_BASE + 5], false, false, true, false, 0, SoundFamily::Stone),
 ];
 
 #[inline]
@@ -2970,7 +3124,7 @@ pub fn face_visible(b: u16, n: u16) -> bool {
 /// (needs fluid sim to be fun). Potions are item-blocks — usable from the
 /// hotbar (drink), never placeable. Phase E1 adds the 1.0–1.2 bracket
 /// blocks/items + the 16 spawn eggs (creative-only items, w/Spawn_Egg).
-pub const PICKER_BLOCKS: [u16; 242] = [
+pub const PICKER_BLOCKS: [u16; 251] = [
     GRASS, DIRT, STONE, COBBLE, SMOOTH_STONE, STONE_BRICKS, BRICKS, MOSSY_COBBLE,
     GRANITE, DIORITE, ANDESITE, OBSIDIAN,
     SAND, GRAVEL, CLAY, TERRACOTTA,
@@ -3033,6 +3187,10 @@ pub const PICKER_BLOCKS: [u16; 242] = [
     WITHER_SKELETON_SKULL, COMMAND_BLOCK,
     EMERALD, NETHER_STAR, POTATO, BAKED_POTATO, CARROT, PUMPKIN_PIE,
     GOLDEN_CARROT, JUNGLE_LOG, JUNGLE_LEAVES, JUNGLE_PLANKS, VINE, FERN,
+
+    SHULKER_BOX, SHULKER_SHELL, TOTEM_OF_UNDYING,
+    SPAWN_EGG_LLAMA, SPAWN_EGG_VINDICATOR, SPAWN_EGG_EVOKER, SPAWN_EGG_VEX,
+    SPAWN_EGG_HUSK, SPAWN_EGG_STRAY,
     LAVA,
     
     
@@ -3381,6 +3539,8 @@ mod state_tests {
                 || s == LAVA_STATE
                 || (LAVA_FLOW_BASE..=LAVA_FLOW_END).contains(&s)
                 || s == SPAWNER_WITHER_SKELETON
+                || s == SPAWNER_VINDICATOR
+                || s == SPAWNER_EVOKER
                 // VERIFICATION-REPORT fix #4: the coal item state
                 || s == COAL_STATE
                 // Phase E3 dedicated world-block + item + egg + POWER states
@@ -3394,6 +3554,7 @@ mod state_tests {
                 || is_v4_state(s)
                 || is_v5_state(s)
                 || is_v6_state(s)
+                || is_v7_state(s)
                 || matches!(s, ACACIA_LOG_X | ACACIA_LOG_Z | DARK_OAK_LOG_X | DARK_OAK_LOG_Z)
             {
                 assert!(!is_model_state(s), "component/item state {s} never routes to models");
@@ -3422,6 +3583,10 @@ mod state_tests {
                 // same roundtrip contract
                 if is_v6_state(s) {
                     assert_eq!(default_state(b), s, "v6 state {s} roundtrip");
+                }
+                // 1.11 V7 (Exploration Update): same roundtrip contract
+                if is_v7_state(s) {
+                    assert_eq!(default_state(b), s, "v7 state {s} roundtrip");
                 }
                 continue;
             }
@@ -3581,8 +3746,8 @@ mod state_tests {
         // with the 1.7.2–1.10 F-series: 276 blocks / 480 states
         // (E-series states end at 354; V2 400..=442, V3 447..=465,
         // V4 466..=475, V5 476..=479)
-        assert_eq!(BLOCK_COUNT, 282, "E1+E2+E3+1.7–1.10 merged registry + audit-fix V6");
-        assert_eq!(STATE_COUNT, 486, "merged state space, V6 ends at 485");
+        assert_eq!(BLOCK_COUNT, 291, "merged registry + audit-fix V6 + 1.11 V7 + re-added eggs");
+        assert_eq!(STATE_COUNT, 497, "merged state space, mansion spawner states end at 496");
         assert_eq!(BLOCK_TABLE.len(), BLOCK_COUNT);
         for want in [
             COAL_BLOCK,
@@ -3633,8 +3798,8 @@ mod v110_tests {
             assert_eq!(default_state(b), s);
             assert!(is_v5_state(s));
         }
-        assert_eq!(BLOCK_COUNT, 282);
-        assert_eq!(STATE_COUNT, 486);
+        assert_eq!(BLOCK_COUNT, 291);
+        assert_eq!(STATE_COUNT, 497);
     }
 
     /// magma emits light level 3 (VERIFIED — minecraft.wiki/w/Magma_Block,
@@ -3671,8 +3836,8 @@ mod auditfix_tests {
             assert!(!is_model_state(s), "V6 states are cube/cross defs, not model states");
         }
         assert_eq!(V6_COUNT, 6);
-        assert_eq!(BLOCK_COUNT, 282);
-        assert_eq!(STATE_COUNT, 486);
+        assert_eq!(BLOCK_COUNT, 291);
+        assert_eq!(STATE_COUNT, 497);
         // solidity classes: log/planks solid-opaque (hardness family 2
         // per w/Log + w/Planks), leaves see-through, vine/fern non-solid
         // cross plants (w/Vines: "climbable non-solid"; w/Fern:
@@ -3690,5 +3855,79 @@ mod auditfix_tests {
         for b in [GOLDEN_CARROT, JUNGLE_LOG, JUNGLE_LEAVES, JUNGLE_PLANKS, VINE, FERN] {
             assert!(PICKER_BLOCKS.contains(&b), "picker missing {b}");
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 1.11 bracket tests (Exploration Update, live 2026-09-07)
+// ---------------------------------------------------------------------------
+#[cfg(test)]
+mod v111_tests {
+    use super::*;
+
+    /// the V7 window (ids 282..=290, states 486..=494) + the mansion
+    /// spawner states 495..=496 (the interrupted round had them at
+    /// 493..=494; the completion round's re-added husk/stray eggs
+    /// extended the V7 window past that point and pushed the spawner
+    /// states up — nothing was ever pushed under the old numbering)
+    #[test]
+    fn v111_v7_registry_and_spawner_states() {
+        for (b, s) in [
+            (SHULKER_BOX, 486u16),
+            (SHULKER_SHELL, 487),
+            (TOTEM_OF_UNDYING, 488),
+            (SPAWN_EGG_LLAMA, 489),
+            (SPAWN_EGG_VINDICATOR, 490),
+            (SPAWN_EGG_EVOKER, 491),
+            (SPAWN_EGG_VEX, 492),
+            (SPAWN_EGG_HUSK, 493),
+            (SPAWN_EGG_STRAY, 494),
+        ] {
+            assert_eq!(default_state(b), s, "block {b} default state");
+            assert_eq!(state_block(s), b, "state {s} folds back");
+        }
+        assert_eq!(BLOCK_COUNT, 291);
+        assert_eq!(STATE_COUNT, 497);
+        // mansion spawner states fold to SPAWNER + decode their kinds
+        assert_eq!(state_block(SPAWNER_VINDICATOR), SPAWNER);
+        assert_eq!(state_block(SPAWNER_EVOKER), SPAWNER);
+        assert_eq!(spawner_mob(SPAWNER_VINDICATOR), 5);
+        assert_eq!(spawner_mob(SPAWNER_EVOKER), 6);
+        // THE LATENT-BUG FIX: the fortress spawner states decode to their
+        // kinds (they previously fell through to the zombie code!)
+        assert_eq!(spawner_mob(SPAWNER_BLAZE), 3, "fortress blaze decodes");
+        assert_eq!(spawner_mob(SPAWNER_WITHER_SKELETON), 4, "fortress wither-skeleton decodes");
+        // eggs decode to the 1.11 kinds (new five + re-added two)
+        assert_eq!(egg_mob(SPAWN_EGG_LLAMA), Some(23));
+        assert_eq!(egg_mob(SPAWN_EGG_VINDICATOR), Some(24));
+        assert_eq!(egg_mob(SPAWN_EGG_EVOKER), Some(25));
+        assert_eq!(egg_mob(SPAWN_EGG_VEX), Some(26));
+        assert_eq!(egg_mob(SPAWN_EGG_HUSK), Some(27), "re-added husk egg");
+        assert_eq!(egg_mob(SPAWN_EGG_STRAY), Some(28), "re-added stray egg");
+        // the zombie-villager egg (the changelog's 5th new egg) is the
+        // pre-existing E2-era item at id 129 — anachronistic but present
+        assert_eq!(egg_mob(SPAWN_EGG_BASE + 5), Some(5));
+        // all six V7 eggs are usable eggs (the use-path gate)
+        for b in [
+            SPAWN_EGG_LLAMA, SPAWN_EGG_VINDICATOR, SPAWN_EGG_EVOKER,
+            SPAWN_EGG_VEX, SPAWN_EGG_HUSK, SPAWN_EGG_STRAY,
+        ] {
+            assert!(is_spawn_egg(b), "egg {b} must pass the use gate");
+        }
+        // item-blocks + picker
+        assert!(is_item_block(SHULKER_SHELL));
+        assert!(is_item_block(TOTEM_OF_UNDYING));
+        for b in [SHULKER_BOX, SHULKER_SHELL, TOTEM_OF_UNDYING,
+                  SPAWN_EGG_LLAMA, SPAWN_EGG_VINDICATOR, SPAWN_EGG_EVOKER, SPAWN_EGG_VEX,
+                  SPAWN_EGG_HUSK, SPAWN_EGG_STRAY] {
+            assert!(PICKER_BLOCKS.contains(&b), "picker missing {b}");
+        }
+        // egg items render the EGG tiles (the E1/E2/E3 convention), not
+        // the mob billboard sprites
+        assert_eq!(BLOCK_TABLE[SPAWN_EGG_LLAMA as usize].tiles[0], TILE_V7_EGG_BASE);
+        assert_eq!(BLOCK_TABLE[SPAWN_EGG_STRAY as usize].tiles[0], TILE_V7_EGG_BASE + 5);
+        assert!(TILE_V7_EGG_END <= TILE_MAX, "egg tiles within the atlas guard");
+        // shulker box is a solid placeable container
+        assert!(is_solid(SHULKER_BOX) && is_opaque(SHULKER_BOX));
     }
 }

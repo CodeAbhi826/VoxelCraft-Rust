@@ -953,6 +953,57 @@ pub fn builtin_structure_table(name: &str) -> Option<LootTable> {
                 },
             ],
         },
+        // 1.11: chests/woodland_mansion (VERIFIED live 2026-09-07,
+        // minecraft.wiki/w/Woodland_Mansion §Loot capture
+        // scripts/v111_page_woodland_mansion.json — "each woodland
+        // mansion chest contains items drawn from 4 pools"). Palette-
+        // limited with the page's own §History version-scoping: the
+        // Vex Armor Trim (1.20, 23w04a) and Resin Clump (1.21.4, 24w44a)
+        // rows are post-1.11 additions — scoped OUT of this bracket; the
+        // name tag (removed 26.1 snap11) and diamond hoe / chainmail /
+        // music discs / diamond chestplate / enchanted golden apple /
+        // wheat / bread / redstone dust / seeds / iron ingot / bucket /
+        // gold ingot rows are palette-absent — they don't roll (the
+        // established honest policy; surviving weights keep their live
+        // relative values).
+        "minecraft:chests/woodland_mansion" => LootTable {
+            pools: vec![
+                // pool 1: rolls 1-3 (live weights / 107)
+                LootPool {
+                    rolls: Rolls::Uniform { min: 1.0, max: 3.0 },
+                    entries: vec![
+                        loot_item_w(LEAD, 20, 1.0, 1.0),
+                        loot_item_w(GOLDEN_APPLE, 15, 1.0, 1.0),
+                        loot_item_w(ENCHANTED_BOOK, 10, 1.0, 1.0),
+                    ],
+                },
+                // pool 2: rolls 1-4 (live weights / 175 — only coal is
+                // palette-present)
+                LootPool {
+                    rolls: Rolls::Uniform { min: 1.0, max: 4.0 },
+                    entries: vec![
+                        loot_item_w(COAL, 15, 1.0, 4.0),
+                    ],
+                },
+                // pool 3: rolls 3 (live weights / 40, 1-8 each)
+                LootPool {
+                    rolls: Rolls::Fixed(3),
+                    entries: vec![
+                        loot_item_w(BONE, 10, 1.0, 8.0),
+                        loot_item_w(GUNPOWDER, 10, 1.0, 8.0),
+                        loot_item_w(ROTTEN_FLESH, 10, 1.0, 8.0),
+                        loot_item_w(STRING, 10, 1.0, 8.0),
+                    ],
+                },
+                // pool 4: rolls 1 — live shows Nothing (1/2) + Vex Armor
+                // Trim (1/2); the trim is a 1.20 addition (scoped out),
+                // leaving the empty partner
+                LootPool {
+                    rolls: Rolls::Fixed(1),
+                    entries: vec![LootEntry { weight: 1, kind: LootKind::Empty }],
+                },
+            ],
+        },
         _ => return None,
     };
     Some(table)
@@ -1790,4 +1841,44 @@ mod tests {
             }
         }
     }
+    /// 1.11: the woodland_mansion chest table — 4 pools (VERIFIED live
+    /// 2026-09-07, minecraft.wiki/w/Woodland_Mansion §Loot capture:
+    /// "each woodland mansion chest contains items drawn from 4 pools"),
+    /// palette-limited with the §History version-scoping (vex trim 1.20
+    /// / resin 1.21.4 / name-tag removal 26.1 all post-1.11)
+    #[test]
+    fn v111_woodland_mansion_table() {
+        let t = builtin_structure_table("minecraft:chests/woodland_mansion")
+            .expect("the mansion table exists");
+        assert_eq!(t.pools.len(), 4, "four pools (live page structure)");
+        // pool 3: rolls 3, the four 1-8 rows at weight 10
+        let p3 = &t.pools[2];
+        assert!(matches!(p3.rolls, Rolls::Fixed(3)));
+        assert_eq!(p3.entries.len(), 4, "bone/gunpowder/rotten flesh/string");
+        for e in &p3.entries {
+            assert_eq!(e.weight, 10);
+        }
+        // pool 1: lead 20 / golden apple 15 / enchanted book 10 — the
+        // palette-present subset of the live /107 weights
+        let p1 = &t.pools[0];
+        let w: Vec<u32> = p1.entries.iter().map(|e| e.weight).collect();
+        assert_eq!(w, vec![20, 15, 10]);
+        // pool 4: the single empty partner (the trim scoped out)
+        let p4 = &t.pools[3];
+        assert!(matches!(p4.entries[0].kind, LootKind::Empty));
+        // the loot roll actually produces items from pool 3's rows
+        // (LootTable::roll with the builtin-table lookup)
+        let mut rng = vc_rng::rng::Rng::new(31);
+        let lookup = |name: &str| builtin_structure_table(name);
+        let mut got_bone = false;
+        for _ in 0..40 {
+            for (id, _) in t.roll(&mut rng, &lookup) {
+                if id == BONE || id == GUNPOWDER || id == ROTTEN_FLESH || id == STRING {
+                    got_bone = true;
+                }
+            }
+        }
+        assert!(got_bone, "the mansion roll yields pool-3 drops");
+    }
+
 }

@@ -1,0 +1,724 @@
+ 
+ Pufferfish – Minecraft Wiki 
+ 11 languages Deutsch Español Français 日本語 한국어 Nederlands Português Русский ไทย Українська 中文 
+ Pufferfish 
+ From Minecraft Wiki 
+ Jump to navigation 
+ Jump to search 
+ This article is about the mob. For the item, see Pufferfish (item) . For other uses, see Fish (disambiguation) .
+ Pufferfish 
+ Small Medium Large 
+ Java Edition 
+ Bedrock Edition 
+ Java Edition 
+ Bedrock Edition 
+ Java Edition 
+ Bedrock Edition 
+ Health points 
+ 3 HP 
+ Behavior
+ Neutral
+ Mob type 
+ Animal Aquatic 
+ Attack strength
+ Contact: 
+ Semi-puffed: 
+Easy and Normal: 2 HP 
+Hard: 3 HP 
+ Fully puffed: 
+ In Java Edition : 
+Easy: 2.5 HP × 1.25 
+Normal: 3 HP 
+Hard: 4.5 HP × 2.25 
+ In Bedrock Edition : 
+Easy and Normal: 2 HP 
+Hard: 3 HP 
+ Venom: 
+ Semi-puffed: 
+ Poison for 3 seconds ( HP ) 
+ Fully puffed: 
+ In Java Edition : 
+ Poison for 6 seconds ( HP ) 
+ In Bedrock Edition : 
+ Poison for 10 seconds ( HP )
+ Hitbox size 
+ In Java Edition : Unpuffed: Height: 0.35 blocks Width: 0.35 blocks Semi-puffed: Height: 0.49 blocks Width: 0.49 blocks Fully puffed: Height: 0.7 blocks Width: 0.7 blocks 
+ In Bedrock Edition : 
+Height: 0.96 blocks Width: 0.96 blocks
+ Speed 
+ 0.7
+ Spawn 
+ Lukewarm Ocean Deep Lukewarm Ocean Warm Ocean 
+ Usable items
+ Water Bucket 
+ Name Tag 
+ {
+ "title": "Pufferfish",
+ "rows": [
+ {
+ "field": "3<span class=\"hidden-alt-text\">HP</span><span class=\"nowrap mc-hearts\"><span class=\"iconbar pixel-image nowrap\" style=\"--icon-offset:-1px;\" title=\"1.5 hearts\">(link to File:Heart (icon).png article, displayed as 9px|link=|alt=❤️)(link to File:Half Heart (icon).png article, displayed as 9px|link=|alt=💔)</span></span>",
+ "label": "(link to Health article, displayed as Health points)"
+ },
+ {
+ "field": "Neutral",
+ "label": "Behavior"
+ },
+ {
+ "field": "<span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:EntitySprite animal.png article, displayed as 16x16px|link=Animal|alt=|class=pixel-image|)</span>(link to Animal article, displayed as <span class=\"sprite-text\">Animal</span>)</span><br><span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:EntitySprite aquatic.png article, displayed as 16x16px|link=Aquatic|alt=|class=pixel-image|)</span>(link to Aquatic article, displayed as <span class=\"sprite-text\">Aquatic</span>)</span>",
+ "label": "(link to Mob type article, displayed as Mob type)"
+ },
+ {
+ "field": "(values exceeds 1000 characters...)",
+ "label": "Attack<br/>strength"
+ },
+ {
+ "field": "'''In (link to Java Edition article, displayed as ''Java Edition''):'''<br>'''Unpuffed:'''<br>Height: 0.35 blocks<br>Width: 0.35 blocks<br>'''Semi-puffed:'''<br>Height: 0.49 blocks<br>Width: 0.49 blocks<br>'''Fully puffed:'''<br>Height: 0.7 blocks<br>Width: 0.7 blocks<br>\n'''In (link to Bedrock Edition article, displayed as ''Bedrock Edition''):'''<br>\nHeight: 0.96 blocks<br>Width: 0.96 blocks",
+ "label": "(link to Hitbox article, displayed as Hitbox size)"
+ },
+ {
+ "field": "0.7",
+ "label": "(link to Attribute#Movement_speed article, displayed as Speed)"
+ },
+ {
+ "field": "<span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:BiomeSprite lukewarm-ocean.png article, displayed as 16x16px|link=Lukewarm Ocean|alt=|class=pixel-image|)</span>(link to Lukewarm Ocean article, displayed as <span class=\"sprite-text\">Lukewarm Ocean</span>)</span><br><span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:BiomeSprite deep-lukewarm-ocean.png article, displayed as 16x16px|link=Deep Lukewarm Ocean|alt=|class=pixel-image|)</span>(link to Deep Lukewarm Ocean article, displayed as <span class=\"sprite-text\">Deep Lukewarm Ocean</span>)</span><br><span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:BiomeSprite warm-ocean.png article, displayed as 16x16px|link=Warm Ocean|alt=|class=pixel-image|)</span>(link to Warm Ocean article, displayed as <span class=\"sprite-text\">Warm Ocean</span>)</span>",
+ "label": "(link to Mob spawning article, displayed as Spawn)"
+ },
+ {
+ "field": "\n* <span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:ItemSprite water-bucket.png article, displayed as 16x16px|link=Water Bucket|alt=|class=pixel-image|)</span>(link to Water Bucket article, displayed as <span class=\"sprite-text\">Water Bucket</span>)</span> \n* <span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:ItemSprite name-tag.png article, displayed as 16x16px|link=Name Tag|alt=|class=pixel-image|)</span>(link to Name Tag article, displayed as <span class=\"sprite-text\">Name Tag</span>)</span>",
+ "label": "Usable items"
+ }
+ ],
+ "invimages": [
+ "Pufferfish Spawn Egg",
+ "Bucket of Pufferfish"
+ ],
+ "images": [
+ "Pufferfish small.gif",
+ "Pufferfish BE.gif",
+ "Pufferfish medium.gif",
+ "Pufferfish medium BE.png",
+ "Pufferfish large.gif",
+ "Pufferfish large.png"
+ ]
+} 
+ Pufferfish are bucketable aquatic neutral mobs found in oceans . Although they never seek out mobs to attack, they defensively inflate themselves when approached too closely by players , axolotls , or non-aquatic mobs, dealing damage and inflicting Poison on them.
+ Contents 
+ 1 Spawning 
+ 2 Drops 
+ 2.1 On death 
+ 3 Behavior 
+ 3.1 Weaknesses 
+ 3.2 Defenses 
+ 4 Sounds 
+ 5 Data values 
+ 5.1 ID 
+ 5.2 Entity data 
+ 6 Achievements 
+ 7 Advancements 
+ 8 History 
+ 8.1 Development 
+ 8.2 Java Edition 
+ 8.3 Bedrock Edition 
+ 8.4 Legacy Console Edition 
+ 8.5 Minecraft Education 
+ 9 Issues 
+ 10 Trivia 
+ 11 Gallery 
+ 11.1 Screenshots 
+ 11.2 Textures 
+ 11.3 Other 
+ 11.4 In other media 
+ 12 See also 
+ 13 References 
+ 14 Navigation 
+ Spawning [ edit | edit source ] 
+ In Java Edition , pufferfish spawn in groups of 1-3 in warm, lukewarm, and deep lukewarm ocean biomes, subject to fish spawning requirements . If trying to spawn inside a waterlogged solid block, the pufferfish uses the bigger "puffed" size to determine if it collides with anything solid.
+ In Bedrock Edition , pufferfish spawn underwater at around 12–32 blocks away from the player in groups of 3–5 in warm ocean biomes, and only on the surface; that is, there must not be a spawnable block above the spawn location with a non-solid block on top. They are considerably rarer than tropical fish, with only 1 ⁄ 5 of fish groups or 2 ⁄ 9 individual fish (within the warm ocean biome) spawning as pufferfish.
+ Pufferfish spawns in: [ hide ] Category: Water ambient‌ [ JE only ] Water creature‌ [ BE only ] Java Edition Bedrock Edition Spawn area Spawn weight Spawn chance Group size Spawn weight Group size Warm Ocean 15 ⁄ 40 37.5% 1–3 25 3–5 Deep Lukewarm Ocean 5 ⁄ 38 13.16% 1–3 — — Lukewarm Ocean 5 ⁄ 45 11.11% 1–3 — — 
+ Drops [ edit | edit source ] 
+ On death [ edit | edit source ] 
+ Java Edition : Decimal Fraction Distribution Expectation 
+ Item Quantity / Chance / Average Default Looting I Looting II Looting III Pufferfish 1 100.00% 1.00 1 100.00% 1.00 1 100.00% 1.00 1 100.00% 1.00 Bone Meal 0–1 5.00% 0.05 0–1 5.00% 0.05 0–1 5.00% 0.05 0–1 5.00% 0.05 
+ Item Quantity / Chance / Average Default Looting I Looting II Looting III Pufferfish 1 1 1 1 1 1 1 1 1 1 1 1 Bone Meal 0–1 1 ⁄ 20 1 ⁄ 20 0–1 1 ⁄ 20 1 ⁄ 20 0–1 1 ⁄ 20 1 ⁄ 20 0–1 1 ⁄ 20 1 ⁄ 20 
+ Item Amount Probability Default Looting I Looting II Looting III Pufferfish 1 1 (100.00%) 1 (100.00%) 1 (100.00%) 1 (100.00%) Average 1 (1.00) 1 (1.00) 1 (1.00) 1 (1.00) Bone Meal 0 19 ⁄ 20 (95.00%) 19 ⁄ 20 (95.00%) 19 ⁄ 20 (95.00%) 19 ⁄ 20 (95.00%) 1 1 ⁄ 20 (5.00%) 1 ⁄ 20 (5.00%) 1 ⁄ 20 (5.00%) 1 ⁄ 20 (5.00%) Average 1 ⁄ 20 (0.05) 1 ⁄ 20 (0.05) 1 ⁄ 20 (0.05) 1 ⁄ 20 (0.05) 
+ Killed Item Expected Drops Default Looting I Looting II Looting III Pufferfish 1.00 1.00 1.00 1.00 Bone Meal 0.05 0.05 0.05 0.05 
+ Bedrock Edition : Decimal Fraction Distribution Expectation 
+ Item Quantity / Chance / Average Default Looting I Looting II Looting III Pufferfish 1 100.00% 1.00 1 100.00% 1.00 1 100.00% 1.00 1 100.00% 1.00 Bone 0–1 25.00% 0.25 0 / 2–3 26.00% 0.65 0 / 3–5 27.00% 1.08 0 / 4–7 28.00% 1.54 
+ Item Quantity / Chance / Average Default Looting I Looting II Looting III Pufferfish 1 1 1 1 1 1 1 1 1 1 1 1 Bone 0–1 1 ⁄ 4 1 ⁄ 4 0 / 2–3 13 ⁄ 50 13 ⁄ 20 0 / 3–5 27 ⁄ 100 27 ⁄ 25 0 / 4–7 7 ⁄ 25 77 ⁄ 50 
+ Item Amount Probability Default Looting I Looting II Looting III Pufferfish 1 1 (100.00%) 1 (100.00%) 1 (100.00%) 1 (100.00%) Average 1 (1.00) 1 (1.00) 1 (1.00) 1 (1.00) Bone 0 3 ⁄ 4 (75.00%) 37 ⁄ 50 (74.00%) 73 ⁄ 100 (73.00%) 18 ⁄ 25 (72.00%) 1 1 ⁄ 4 (25.00%) 0 0 0 2 0 13 ⁄ 100 (13.00%) 0 0 3 0 13 ⁄ 100 (13.00%) 27 ⁄ 400 (6.75%) 0 4 0 0 27 ⁄ 200 (13.50%) 7 ⁄ 150 (4.67%) 5 0 0 27 ⁄ 400 (6.75%) 7 ⁄ 75 (9.33%) 6 0 0 0 7 ⁄ 75 (9.33%) 7 0 0 0 7 ⁄ 150 (4.67%) Average 1 ⁄ 4 (0.25) 13 ⁄ 20 (0.65) 27 ⁄ 25 (1.08) 77 ⁄ 50 (1.54) 
+ Killed Item Expected Drops Default Looting I Looting II Looting III Pufferfish 1.00 1.00 1.00 1.00 Bone 0.25 0.65 1.08 1.54 
+ 1–3 XP when killed by a player or a tamed wolf . 
+ Behavior [ edit | edit source ] 
+ Unlike other fish , pufferfish don't swim in schools.
+ Pufferfish inflate themselves when approached by the player and most mobs, including tripod cameras ‌ [ BE & edu only ] and armor stands . [ 1 ] [ 2 ] 
+ The player may collect a fish by using a water bucket on it, giving the player a bucket of pufferfish . Fish placed with buckets do not despawn naturally. Using the bucket against a block empties the bucket, placing water with that fish swimming in it.
+ Pufferfish can not be bred and only spawn in designated biomes.
+ Weaknesses [ edit | edit source ] 
+ Like other fish, pufferfish cannot survive out of water. Outside of water, they flop around like guardians for a while until they start suffocating and then die like squid . In Bedrock Edition , they rotate when flopping. Fish cannot swim or breathe in cauldron water. [ 3 ] 
+ The Impaling enchantment affects pufferfish due to being aquatic‌ [ Java Edition only ] or simply being in water.‌ [ Bedrock Edition only ] 
+ Pufferfish are actively targeted by axolotls , nautiluses and zombie nautiluses .
+ Defenses [ edit | edit source ] 
+ A pufferfish inflates when approached by a player in Survival or Adventure mode, a drowned , an axolotl , or any non-water mob within 2 blocks of its hitbox, going from unpuffed, then semi-puffed, to fully puffed. Going near a semi-puffed or fully puffed pufferfish inflicts the player/mob with three or six seconds of Poison based on the inflation level, and touching one in its puffed or semi-puffed form deals damage separate from the Poison.
+ Pufferfish also instantly inflate to their fullest form after taking any kind of damage.‌ [ Bedrock Edition only ] After inflating, they slowly deflate to their normal shape as long as a threat is out of range. If the player/mob leaves the radius while the pufferfish is in its semi-puffed stage, it deflates back to normal.
+ Undead mobs are unaffected by the Poison effect, but they still take damage when they come into contact with pufferfish.
+ A pufferfish that inflicts damage on a mob other than a creeper or a ghast by touching it provokes that mob to retaliate.
+ In Peaceful difficulty, pufferfish do not inflict damage or Poison to player.‌ [ Java Edition only ] 
+ Pufferfish can deal damage to players at a longer distance compared to mobs. [ 4 ] 
+ If a pufferfish dies while in its semi-puffed or fully puffed form, it will still inflict damage and Poison to players, but not other entities. [ 5 ] 
+ Sounds [ edit | edit source ] 
+ Java Edition :
+ [ hide ] Sounds Sound Closed captions Source Description Identifier Translation key Volume Pitch Attenuation distance ​Pufferfish stings Friendly Mobs When a pufferfish attacks something entity .puffer_fish .sting ​ [ sound 1 ] ​ subtitles .entity .puffer_fish .sting ​​ [ sound 1 ] ​ 1.0 1.0 16 ​Pufferfish deflates Friendly Mobs When a pufferfish deflates entity .puffer_fish .blow_out ​ [ sound 1 ] ​ subtitles .entity .puffer_fish .blow_out ​​ [ sound 1 ] ​ 0.7 0.8–1.2 16 ​Pufferfish inflates Friendly Mobs When a pufferfish is threatened and inflates entity .puffer_fish .blow_up ​ [ sound 1 ] ​ subtitles .entity .puffer_fish .blow_up ​​ [ sound 1 ] ​ 0.45 0.8–1.2 16 ​Pufferfish dies Friendly Mobs When a pufferfish dies entity .puffer_fish .death ​ [ sound 1 ] ​ subtitles .entity .puffer_fish .death ​​ [ sound 1 ] ​ 1.0 0.8–1.2 16 ​Pufferfish hurts Friendly Mobs When a pufferfish is damaged entity .puffer_fish .hurt ​ [ sound 1 ] ​ subtitles .entity .puffer_fish .hurt ​​ [ sound 1 ] ​ 1.0 0.8–1.2 16 ​Pufferfish flops Friendly Mobs While a pufferfish is on land entity .puffer_fish .flop ​ [ sound 1 ] ​ subtitles .entity .puffer_fish .flop ​​ [ sound 1 ] ​ 0.3 0.8–1.2 16 ​Splashes Friendly Mobs While a pufferfish is swimming entity .fish .swim subtitles .entity .fish .swim ​ 0.0–1.0 [ sound 2 ] 0.6–1.4 16 
+ ↑ Jump up to: a b c d e f g h i j k l MC-221831 
+ ↑ The fish's momentum, with the horizontal axes' velocities multiplied by 0.2 (capped at 1.0) 
+ Bedrock Edition :
+ [ hide ] Sounds Sound Closed captions Source Description Identifier Translation key Volume Pitch ​ ? Friendly Mobs When a pufferfish dies mob .fish .hurt ​ ? 1.0 0.8–1.2 ​ ? Friendly Mobs When a pufferfish is damaged mob .fish .hurt ​ ? 1.0 0.8–1.2 ​ ? Friendly Mobs While a pufferfish is on land mob .fish .flop ​ ? 1.0 1.0 ​ ? Friendly Mobs While a pufferfish is swimming mob .fish .step ​ ? 0.15 1.0 
+ Data values [ edit | edit source ] 
+ ID [ edit | edit source ] 
+ Java Edition :
+ Name Identifier Entity tags 
+ [ hide ] Translation key Pufferfish pufferfish aquatic axolotl_hunt_targets can_breathe_under_water nautilus_hostiles not_scary_for_pufferfish sensitive_to_impaling 
+ entity .minecraft .pufferfish 
+ Bedrock Edition :
+ Name Identifier Numeric ID 
+ Family [ hide ] Translation key Pufferfish pufferfish 108 
+ aquatic fish pufferfish entity .pufferfish .name 
+ Entity data [ edit | edit source ] 
+ Pufferfish have entity data associated with them that contains various properties.
+ Java Edition :
+ Main article: Entity format 
+ [NBT Compound / JSON Object] Entity data
+ Tags common to all entities see Template:Nbt inherit/entity/template [ show ] 
+ Tags common to all mobs see Template:Nbt inherit/mob/template [ show ] 
+ [Byte]  FromBucket : 1 or 0 ( true / false ) - if true , the fish has been released from a bucket. 
+ [Int]  PuffState : A value from 0–2.
+ 0 means the fish is deflated 
+ 1 means it is halfway puffed-up 
+ 2 means it is fully puffed-up 
+ A pufferfish's damage and Poison time are directly related to its current PuffState data value, which can be changed using the / data command.
+ Bedrock Edition :
+ See Bedrock Edition level format/Entity format . 
+ Achievements [ edit | edit source ] 
+ [ hide ] Icon Achievement In-game description Actual requirements (if different) Gamerscore earned Trophy type ( PS ) PS4 Other I am a Marine Biologist Collect a fish in a bucket Use a water bucket on any fish mob by right-clicking. 20 Bronze It Spreads Kill a mob next to a catalyst Kill any mob that drops experience near a sculk catalyst, with the sole exception of the ender dragon . Mobs that drop no experience are ignored for this achievement. 10 Bronze 
+ Achievements that apply to all mobs:
+ [ show ] 
+ [ hide ] Icon Achievement In-game description Actual requirements (if different) Gamerscore earned Trophy type ( PS ) PS4 Other Overkill Deal nine hearts of damage in a single hit. Damage can be dealt to any mob, even those that do not have nine hearts of health overall. 30 Bronze Over-Overkill Deal 50 hearts of damage in a single hit using the Mace Damage can be dealt to any mob, even those that do not have 50 hearts of health overall. 20 Silver Mob Kabob Hit five mobs in the same Charge attack using the Spear. Armor stands and players also count for this achievement as they are technically mobs . 10 Bronze 
+ Advancements [ edit | edit source ] 
+ Icon Advancement In-game description [ hide ] Actual requirements (if different) It Spreads Kill a mob near a Sculk Catalyst Kill any mob that drops experience near a sculk catalyst , with the sole exception of the ender dragon . Mobs that drop no experience are ignored for this advancement. Tactical Fishing Catch a Fish ... without a Fishing Rod ! Use a water bucket on any fish mob. 
+ Advancements that apply to all mobs:
+ [ show ] 
+ Icon Advancement In-game description [ hide ] Actual requirements (if different) Adventure Adventure, exploration and combat Kill any mob , or be killed by any living entity . A Throwaway Joke Throw a Trident at something. Note: Throwing away your only weapon is not a good idea. Hit a mob with a thrown trident . Take Aim Shoot something with an Arrow Using a bow or a crossbow , shoot a mob with an arrow , tipped arrow , or spectral arrow . Mob Kabob Hit five mobs in the same Charge attack using the Spear. Armor Stand and Mannequin also count for this advancement. Arbalistic Kill five unique mobs with one crossbow shot Armor Stand and Mannequin also count for this advancement. This is a hidden advancement, meaning that it can be viewed by the player only after completing it, regardless of if its child advancement(s), if any, have been completed. Over-Overkill Deal 50 hearts of damage in a single hit using the Mace Damage can be dealt to any mob, even those that do not have 50 hearts of health overall. 
+ History [ edit | edit source ] 
+ Development [ edit | edit source ] 
+ June 28, 2010 
+ Notch mentioned that fish might be a feature of coral , if he were able to add coral: "... I do know that the corals will have tiny fish particles around them." October 4, 2010 
+ Fish were a passive mob that Notch showed interest in adding. In the promotional graphic for the Halloween Update , Notch indicated he would add fish. However, they were added only as an item ; there was no code for a fish mob. October 5, 2012 
+ Fish were jokingly teased in the fake snapshot 12marc40awesome , along with coral and "fish blocks". April 13, 2013 
+ When Jon Kågström was asked in his AMA on Reddit , "What mob would you like to implement into the game?" He responded, "I would like to add birds, fish and tree animals to make it more alive. However this will take some time before it can be done." July 31, 2013 
+ During Notch 's AMA on Reddit , when asked about what happened to his plans of adding fish as a mob , he responded, "Oh yeah, the fish!" 
+ Java Edition [ edit | edit source ] 
+ This section is missing information about: MC-166880's comments imply that the large sized pufferfish model was changed earlier than 24w33a  
+ Please expand the section to include this information. Further details may exist on the talk page . 
+ [ hide ] Java Edition 1.13 18w08b 
+ Added "puffer fish". 
+ Puffer fish have 20 HP × 10 health . 18w10a 
+ The health of puffer fish has been changed to 3 HP . [ 6 ] 18w19a 
+ "Puffer Fish" has been corrected to "Pufferfish". [ 7 ] 1.13.1 18w31a 
+ Pufferfish now have a 5% chance of dropping bone meal when killed. 1.18 21w40a 
+ Pufferfish now spawn between Y=50 and Y=63. 1.21.2 24w33a 
+ The spike models of the medium pufferfish has been changed as a fix for MC-166880 . 
+ Bedrock Edition [ edit | edit source ] 
+ [ hide ] Bedrock Edition 1.4.0 beta 1.2.14.2 
+ Added pufferfish mobs . 1.13.0 beta 1.13.0.9 
+ Pufferfish now drop experience when killed. 1.16.0 beta 1.15.0.51 
+ Pufferfish now semi-puff when the player draws near, and fully puff when the player is up against it. 1.17.10 beta 1.17.10.22 
+ Pufferfish no longer can be picked up with an empty bucket . 1.18.0 beta 1.18.0.21 
+ Pufferfish now spawn between y=50 and y=64. 1.19.10 Preview 1.19.10.23 
+ The health of pufferfish has been changed to 3 HP . 1.21.130 Preview 1.21.130.20 
+ Pufferfish can now spawn in Lukewarm Ocean and Deep Lukewarm Ocean biomes. 
+ Legacy Console Edition [ edit | edit source ] 
+ [ hide ] Legacy Console Edition Xbox 360 Xbox One PS3 PS4 PS Vita Wii U Switch TU69 1.76 1.76 1.76 Patch 38 
+ Added pufferfish mobs . 
+ Minecraft Education [ edit | edit source ] 
+ [ hide ] Minecraft Education 1.4.0 
+ Added pufferfish mobs . 
+ Issues [ edit | edit source ] 
+ Issues relating to "Pufferfish" are maintained on the bug tracker . Issues should be reported and viewed there .
+ Trivia [ edit | edit source ] 
+ In real life, pufferfish use their spikes for intimidation purposes and do not inject venom. Some of their organs and skin is toxic, which is reflected accurately in-game. 
+ There are three textures for the three different PuffState data values in Minecraft . A PuffState value greater than 2 does not visually increase the pufferfish size, but does create a bigger shadow on the ground. All sizes of pufferfish textures are contained in the same texture file. 
+ Gallery [ edit | edit source ] 
+ Screenshots [ edit | edit source ] 
+ A fully inflated pufferfish, with six deflated pufferfish and a school of cod behind it 
+ A dying pufferfish in Bedrock Edition 
+ A dying pufferfish in Java Edition 
+ An up-close screenshot of a completely deflated pufferfish 
+ A player being damaged by a pufferfish 
+ An ocean with some fish visible 
+ A cod and pufferfish taking damage because they are not in water 
+ A gif of the pufferfish stages 
+ Textures [ edit | edit source ] 
+ Pufferfish texture file 
+ Other [ edit | edit source ] 
+ The pufferfish spawn egg in Bedrock Edition beta 1.2.14.2 
+ In other media [ edit | edit source ] 
+ Artwork of a pufferfish 
+ Pufferfish in promotional artwork for the Update Aquatic 
+ Several pufferfish as they appear in the Trails & Tales trailer 
+ Official pufferfish artwork 
+ Lego Minecraft pufferfish 
+ Pufferfish artwork predating the actual addition of pufferfish mobs 
+ A pufferfish waving hello with its entire body 
+ A pufferfish as seen in Minecraft Dungeons 
+ See also [ edit | edit source ] 
+ Cod 
+ Salmon 
+ Tropical Fish 
+ References [ edit | edit source ] 
+ ↑ MC-132239  – resolved as "Works As Intended". 
+ ↑ MCPE-35807  – resolved as "Works As Intended". 
+ ↑ MC-126819  – fish bouncing and suffocating on top of the cauldron which fills with water – resolved as "Won't Fix". 
+ ↑ MC-265281  – Pufferfish attack range is inconsistent between mobs and players – resolved as "Works As Intended". 
+ ↑ MC-155509  – Dying puffed pufferfish can still sting players 
+ ↑ MC-126091  – Pufferfish have 20 health – resolved as "Fixed". 
+ ↑ MC-124190  – Some display names don't follow the id – resolved as "Invalid". 
+ Navigation [ edit | edit source ] 
+ [ hide ] 
+ v 
+ t 
+ e Ocean 
+ Biomes 
+ Ocean 
+ Deep 
+ Frozen Ocean 
+ Deep 
+ Cold Ocean 
+ Deep 
+ Lukewarm Ocean 
+ Deep 
+ Warm Ocean 
+ Environment
+ Ruins 
+ Cold 
+ Warm 
+ Shipwreck 
+ Monument 
+ Coral Reef 
+ Blocks
+ Water 
+ Gravel 
+ Sand 
+ Ice 
+ Coral 
+ Coral Block 
+ Coral Fan 
+ Sea Pickle 
+ Seagrass 
+ Kelp 
+ Magma Block 
+ Mobs
+ Cod 
+ Tropical Fish 
+ Drowned 
+ Dolphin 
+ Pufferfish 
+ Salmon 
+ Squid 
+ Nautilus 
+ Zombie Nautilus 
+ Coral 
+ Jockey 
+ [ hide ] 
+ v 
+ t 
+ e Entities 
+ [ hide ] Mobs 
+ Passive
+ Allay 
+ Armadillo 
+ Axolotl 
+ Bat 
+ Camel 
+ Camel Husk 
+ Cat 
+ Chicken 
+ Cod 
+ Copper Golem 
+ Cow 
+ Donkey 
+ Frog 
+ Glow Squid 
+ Happy Ghast 
+ Horse 
+ Mooshroom 
+ Mule 
+ Ocelot 
+ Parrot 
+ Pig 
+ Rabbit 
+ Salmon 
+ Sheep 
+ Skeleton Horse 
+ Sniffer 
+ Snow Golem 
+ Squid 
+ Strider 
+ Sulfur Cube 
+ Tadpole 
+ Tropical Fish 
+ Turtle 
+ Villager 
+ Wandering Trader 
+ Zombie Horse 
+ BE & Edu only
+ Agent 
+ NPC 
+ Neutral
+ Bee 
+ Cave Spider 
+ Dolphin 
+ Drowned 
+ Enderman 
+ Fox 
+ Goat 
+ Iron Golem 
+ Llama 
+ Nautilus 
+ Panda 
+ Piglin 
+ Polar Bear 
+ Pufferfish 
+ Spider 
+ Trader Llama 
+ Wolf 
+ Zombie Nautilus 
+ Zombified Piglin 
+ Hostile
+ Blaze 
+ Bogged 
+ Breeze 
+ Creaking 
+ Creeper 
+ Elder Guardian 
+ Endermite 
+ Evoker 
+ Ghast 
+ Guardian 
+ Hoglin 
+ Husk 
+ Magma Cube 
+ Parched 
+ Phantom 
+ Piglin Brute 
+ Pillager 
+ Ravager 
+ Shulker 
+ Silverfish 
+ Skeleton 
+ Slime 
+ Stray 
+ Vex 
+ Vindicator 
+ Warden 
+ Witch 
+ Wither Skeleton 
+ Zoglin 
+ Zombie 
+ Zombie Villager 
+ Bosses 
+ Ender Dragon 
+ Wither 
+ Mob types 
+ Animal 
+ Aquatic 
+ Arthropod 
+ Illager 
+ Monster 
+ Undead 
+ Other
+ Baby 
+ Jockey 
+ Camel Husk 
+ Chicken 
+ Hoglin 
+ Ravager 
+ Skeleton Horseman 
+ Spider 
+ Strider 
+ Baby Strider 
+ Zombie Horseman 
+ Zombie Nautilus 
+ Mob variants 
+ [ show ] Other entities 
+ Player 
+ Alex 
+ Ari 
+ Efe 
+ Kai 
+ Makena 
+ Noor 
+ Steve 
+ Sunny 
+ Zuri 
+ Blocks 
+ Falling Blocks 
+ Anvil 
+ Concrete Powder 
+ Dragon Egg 
+ Gravel 
+ Pointed Dripstone 
+ Sand 
+ Red Sand 
+ Scaffolding 
+ Sulfur Spike 
+ Suspicious Gravel 
+ Suspicious Sand 
+ Primed TNT 
+ BE & Edu only
+ Falling Blocks 
+ Deprecated Anvil 
+ Snow 
+ Primed Underwater TNT 
+ Vehicles 
+ Boat 
+ with Chest 
+ Minecart 
+ with Chest 
+ with Command Block 
+ with Hopper 
+ with TNT 
+ Java Edition only
+ Minecart with Furnace 
+ with Monster Spawner 
+ Projectiles 
+ Fireball 
+ Small 
+ Dragon 
+ Launched Firework Rocket 
+ Llama Spit 
+ Shot Arrow 
+ Tipped 
+ Shulker Bullet 
+ Thrown Bottle o' Enchanting 
+ Thrown Egg 
+ Thrown Ender Pearl 
+ Thrown Eye of Ender 
+ Thrown Snowball 
+ Thrown Splash Potion 
+ Lingering Potion 
+ Thrown Trident 
+ Wind Charge 
+ Wither Skull 
+ Java Edition only
+ Shot Spectral Arrow 
+ BE & Edu only
+ Thrown Ice Bomb 
+ Stationary objects
+ Cushion ​ [ upcoming: Wilderness Bound ] 
+ End Crystal 
+ Leash Knot 
+ Painting 
+ Java Edition only
+ Item Frame 
+ Glow 
+ Miscellaneous
+ Area Effect Cloud 
+ Armor Stand 
+ Evoker Fangs 
+ Experience Orb 
+ Fishing Bobber 
+ Items 
+ Lightning Bolt 
+ Ominous Item Spawner 
+ JE only
+ Mannequin 
+ BE & Edu only
+ Balloon 
+ Camera 
+ Technical objects
+ JE only
+ Display 
+ Block 
+ Item 
+ Text 
+ Interaction 
+ Marker 
+ Editor only
+ Location Pointer Idle 
+ Location Pointer Selected 
+ Map Marker 
+ Ruler 
+ Idle 
+ [ show ] Unimplemented 
+ Unused
+ JE only
+ Giant 
+ Illusioner 
+ BE & Edu only
+ Elder Guardian Ghost 
+ Old Villager 
+ Old Zombie Villager 
+ Mentioned 
+ Alpaca 
+ Barnacle 
+ Crab 
+ Firefly 
+ Glare 
+ Great Hunger 
+ Herobrine 
+ Iceologer 
+ Meerkat 
+ Minecart with Dispenser 
+ Moobloom 
+ Ostrich 
+ Penguin 
+ Pigman Bodyguard 
+ Rascal 
+ Red Dragon 
+ Shade 
+ Termite 
+ Tuff Golem 
+ Vulture 
+ Wildfire 
+ Removed
+ Builder 
+ Giant Jockey 
+ MD3 Test Mob 
+ Mob 
+ Monster 
+ Shot Purple Arrow 
+ Sign Entity 
+ [ show ] Joke 
+ Mobs
+ April Fools 2013 
+ Diamond Chicken 
+ Horse 
+ Pony 
+ Pink Wither 
+ Redstone Bug 
+ April Fools 2015 
+ Love Golem 
+ Friendly Wither 
+ Smiling Creeper 
+ April Fools 2019 
+ Nerd Creeper 
+ April Fools 2023 
+ Moon Cow 
+ Ray Tracing 
+ April Fools 2024 
+ Batato 
+ Mega Spud 
+ Plaguewhale Slab 
+ Poisonous Potato Zombie 
+ Potato mob category 
+ Toxifin Slab 
+ April Fools 2025 
+ Angry Ghast 
+ Spectator Villager 
+ Spectator Witch 
+ Traitor 
+ Warden (boss) 
+ Pet variants
+ Pet Armadillo 
+ Pet Axolotl 
+ Pet Bee 
+ Pet Cat 
+ Pet Chicken 
+ Pet Cow 
+ Pet Creeper 
+ Pet Fox 
+ Pet Frog 
+ Pet Mooshroom 
+ Pet Polar Bear 
+ Pet Slime 
+ Pet Turtle 
+ Pet Wolf 
+ April Fools 2026 
+ Living Block 
+ Other entities
+ April Fools 2013 
+ Pink Wither Skull 
+ April Fools 2015 
+ Obsidian Boat 
+ Friendly Wither Skull 
+ April Fools 2023 
+ Stencil Display 
+ April Fools 2024 
+ Falling Block 
+ Gravtater 
+ Potato Eye 
+ April Fools 2026 
+ Crafting Grid 
+ Hovering Item 
+ Living Block Command 
+ Retrieved from " https://minecraft.wiki/w/Pufferfish?oldid=3748158 " 
+ Categories : Entities Neutral mobs Aquatic mobs Animal mobs Hidden categories: Pages using simple calculator Pages with sound tables Pages with Java sound tables Pages with Bedrock subtitles missing Pages with Bedrock subtitle key missing Pages with Bedrock sound tables Articles to be expanded 
+ Navigation menu 
+ Personal tools 
+ Create account Log in 
+ associated-pages 
+ Page Talk 
+ English 
+ Views 
+ Read Edit Edit source View history 
+ More 
+ Refresh 
+ Search 
+ Navigation 
+ How to help Recent changes Random page in Minecraft in Dungeons in Dungeons II in Legends in Earth in Story Mode in Tutorial in Movie Wiki Discord 
+ Wiki community 
+ Community portal Wiki forum Projects Wiki rules Style guide Notability Sandbox Admin noticeboard 
+ X 
+ Franchise 
+ Minecraft Minecraft Dungeons Minecraft Legends Minecraft Earth Minecraft: Story Mode A Minecraft Movie 
+ Recent versions 
+ Java Edition 
+ Latest: 26.2 
+ Dev: 26.3-pre-2 
+ Upcoming: 26.3 
+ Bedrock Edition 
+ Latest: 26.45 
+ Preview: 26.60.21 
+ Upcoming: 26.50 
+ Upcoming: 26.60 
+ Useful pages 
+ Trading Brewing Enchantments Mobs Blocks Items Crafting Smelting Tutorials Resource packs Redstone circuits 
+ Useful pages 
+ Weapons Enchanting Armor Artifacts Missions 
+ Useful pages 
+ Weapons Enchanting Armor Artifact 
+ Useful pages 
+ Friendly units Piglins Resources Biomes Structures Lost Legends 
+ Tools 
+ What links here Related changes Printable version Permanent link Page information Special pages View buckets 
+ In other languages 
+ Deutsch Español Français 日本語 한국어 Nederlands Português Русский ไทย Українська 中文 
+ Contents (Top) 1 Spawning 2 Drops 
+ 2.1 On death 
+ 3 Behavior 
+ 3.1 Weaknesses 
+ 3.2 Defenses 
+ 4 Sounds 5 Data values 
+ 5.1 ID 
+ 5.2 Entity data 
+ 6 Achievements 7 Advancements 8 History 
+ 8.1 Development 
+ 8.2 Java Edition 
+ 8.3 Bedrock Edition 
+ 8.4 Legacy Console Edition 
+ 8.5 Minecraft Education 
+ 9 Issues 10 Trivia 11 Gallery 
+ 11.1 Screenshots 
+ 11.2 Textures 
+ 11.3 Other 
+ 11.4 In other media 
+ 12 See also 13 References 14 Navigation 
+ This page was last edited on 29 August 2026, at 01:34. 
+ Content on this site is licensed under CC BY-NC-SA 3.0 unless otherwise noted; additional terms may apply . Not an official Minecraft website. We are not associated with Mojang or Microsoft. 
+ Privacy policy 
+ About Minecraft Wiki 
+ Disclaimers 
+ Terms of Use 
+ Contact Weird Gloop 
+ Mobile view 
+ Edit preview settings 
+ 

@@ -44,6 +44,10 @@ pub fn fuel_ticks(block: u16) -> i32 {
         // stopgap (VERIFICATION-REPORT §6, disclosed) is retired now
         // that the coal item exists — vanilla coal ore is not a fuel.
         COAL => 1600,
+        // 1.13 (VERIFIED changelog §Blocks, dried kelp block: "Can be
+        // used as a fuel in a furnace. Smelts 20 items." — 20 × 200
+        // ticks/item = 4000 ticks)
+        DRIED_KELP_BLOCK => 4000,
         // Phase E3 (VERIFIED live 2026-09-06, minecraft.wiki/w/
         // Block_of_Coal: "One block of coal lasts 800 seconds (16000
         // ticks), which smelts 80 items" — 10× the coal item)
@@ -87,6 +91,11 @@ pub fn smelt_result(block: u16) -> Option<u16> {
         b if (STAINED_TERRACOTTA_BASE..=STAINED_TERRACOTTA_END).contains(&b) => {
             Some(glazed_terracotta((b - STAINED_TERRACOTTA_BASE) as u8))
         }
+        // 1.13 (VERIFIED changelog: kelp "Can be dried in a furnace to
+        // create dried kelp"; sea pickle "Can be smelted into lime
+        // dye")
+        KELP => Some(DRIED_KELP),
+        SEA_PICKLE => Some(DYE_BASE + 5), // lime dye (engine color 5)
         _ => None,
     }
 }
@@ -466,5 +475,22 @@ mod v112_tests {
         // XP: 0.1 per glazed smelt (VERIFIED w/Glazed_Terracotta
         // §Smelting: the table's 0.1)
         assert_eq!(crate::enchanting::smelt_xp(STAINED_TERRACOTTA_BASE), 0.1);
+    }
+
+    /// 1.13 (Update Aquatic) smelting + fuel — VERIFIED changelog
+    /// §Blocks: kelp "Can be dried in a furnace to create dried kelp";
+    /// sea pickle "Can be smelted into lime dye"; dried kelp block
+    /// "Can be used as a fuel in a furnace. Smelts 20 items."
+    #[test]
+    fn v113_aquatic_smelting_and_fuel() {
+        assert_eq!(smelt_result(KELP), Some(DRIED_KELP));
+        assert_eq!(smelt_result(SEA_PICKLE), Some(DYE_BASE + 5)); // lime
+        assert_eq!(smelt_result(DRIED_KELP), None, "dried kelp is terminal");
+        // 20 items × 200 ticks/item (VERIFIED)
+        assert_eq!(fuel_ticks(DRIED_KELP_BLOCK), 4000);
+        // dried kelp itself is NOT a fuel (vanilla has no such row)
+        assert_eq!(fuel_ticks(DRIED_KELP), 0);
+        // kelp is not a fuel either
+        assert_eq!(fuel_ticks(KELP), 0);
     }
 }

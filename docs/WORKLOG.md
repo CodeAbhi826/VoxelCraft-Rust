@@ -1686,3 +1686,199 @@ to this engine's scope).
 **Commit:** this entry (1.12 bracket, recovered + completed; the
 interrupted session's body amended to carry this documentation and a
 real commit message).
+
+## 2026-09-07 — MC 1.13 bracket "Update Aquatic" (Phase 1.13) — recovered from an interrupted session + completed — commit this-entry
+
+**Task:** the 1.13 (Update Aquatic) version bracket. **Honesty note on
+the round's shape:** the implementation session died mid-work AGAIN —
+two unpushed local commits (`2717898` and `7f18519`, messages bare
+UUIDs) carried the bracket body (the V9 registry window with
+coral/pickle/kelp/conduit blocks + items, the eight aquatic mobs'
+registry rows and spawn tables, four new effects, the ocean biome
+split, ~32k lines of research captures, the game-layer queues and ten
+TDD-style test functions) — but the work did not COMPILE: the tests
+referenced a `MobKind::Squid` classification marker and a
+`registry_id()` accessor that were never written, and seven of the ten
+new tests failed on behavioral gaps. This session audited the carried
+code line-by-line against the live captures, finished the
+implementation, fixed the failures (three real engine bugs among
+them), wired the remaining bracket systems the carried code had
+prepared but not connected (world-gen ocean flora, the conduit, the
+brewing/crafting/furnace/food rows, drink-time effect windows), and
+completed the documentation to the standard protocol.
+
+**Sources:** the live changelog capture
+(`voxelcraft/scripts/v113_page_changelog_text.txt` +
+`v113_page_changelog.json`), per-feature page captures
+(`v113_page_{blue_ice,conduit,coral_block,dead_coral_block,dolphin,
+dried_kelp_block,drowned,heart_of_the_sea,kelp,nautilus_shell,
+phantom,phantom_membrane,pufferfish,salmon,scute,sea_pickle,
+slow_falling,trident,tropical_fish,turtle,turtle_shell}.json` +
+`_text.txt`) — **cross-checked against the independent Fandom
+captures** (`v113_page_x_fandom_{113,drowned,phantom,trident}.*`, the
+user's standing multi-source verification directive), all fetched live
+2026-09-07 (pre-implementation).
+
+**Implemented (all constants live-verified against the captures):**
+
+- **World — the ocean temperature split** (changelog §World
+  generation): Warm/Lukewarm/Cold/Frozen ocean families (internal ids
+  19..=22) selected off the EXISTING climate temp field (VERIFIED:
+  "Added minecraft:warm_ocean ... minecraft:frozen_ocean now generates
+  again"); warm-side sand floors (the coral-reef substrate) vs
+  cold-side gravel; `Biome::is_ocean()` as the family gate.
+- **Ocean flora (this session):** kelp 2–4-block columns at 8%/floor
+  cell in every ocean family EXCEPT warm (VERIFIED: "Generate in ocean
+  biomes, except warm oceans ... Can grow multiple blocks high");
+  seagrass at 12%/cell + the swamp-pool 20% roll (VERIFIED: "Generates
+  in oceans ..., rivers, and swamplands"); coral reefs as patch-noise
+  fields in warm oceans (coral blocks ×5 as floor surface, coral
+  plants and fans ×5 above, at 35%/25%/18% of in-patch columns —
+  VERIFIED: "Naturally generate in coral reefs ... composed of coral,
+  coral blocks and coral fans"); sea-pickle clusters 1–4 counts on
+  12% of in-patch columns (VERIFIED: "generate in warm oceans,
+  especially around coral reefs ... Up to 4 of them can be placed on a
+  block"); the frozen-ocean ICE surface sheet; icebergs at 25%/chunk —
+  simplified pack-ice mounds with blue-ice cores (the full vanilla
+  iceberg shape grammar is out of scope, DISCLOSED).
+- **Eight new mobs (registry + spawns carried; behaviors completed):**
+  - **drowned** (w/Drowned): ocean/river water-column hostile
+    spawner in 1–2 packs; **zombies convert after 600 ticks of
+    continuous head submersion** (VERIFIED §Conversion: "If a zombie's
+    head ... is continuously submerged for 30 seconds"); 6.25% spawn
+    armed with a trident (§Equipment) thrown every 30 ticks at up to
+    20 blocks for 8 HP (VERIFIED §Attacking: "can throw it every 1.5
+    seconds, sending it up to 20 blocks away"), the trident dropping
+    at 8.5% on a player kill (w/Trident);
+  - **phantom** (w/Phantom): the insomnia spawner — packs above
+    players whose "Time Since Last Rest" ≥ 72000 ticks (1 in-game
+    hour), 12–20 blocks up, local pack cap 4, statistic reset by
+    player death (note_rest wired into the respawn path); the
+    **orbit-and-swoop cycle**: 200-tick orbit at 12 blocks above the
+    player (a dedicated damped altitude-hold controller — see the bug
+    list) then a 60-tick dive with the 2-HP swoop bite (the current
+    wiki's 1.14-pre3 value; the 1.13 original was 6 — version-scoped,
+    disclosed);
+  - **dolphin** (w/Dolphin): neutral pods of 1–2 (JE) spawning only
+    in non-frozen/cold oceans at Y 50–64; **Dolphin's Grace 5 s
+    banked for sprint-swimmers within 9 blocks**, replenished at most
+    1/s (VERIFIED);
+  - **cod / salmon / tropical fish** (w/ pages): the 3-HP passive
+    water-ambient pool with the verified biome families (warm =
+    tropical + pufferfish, lukewarm = cod + tropical, cold/frozen =
+    cod + salmon split; group sizes 3–6 / 3–5 / 1–2 per the pages),
+    out-of-water flopping + 1 HP/s suffocation (VERIFIED w/Cod:
+    "cannot survive out of water"), school 3D-wander;
+  - **pufferfish** (w/Pufferfish): neutral, inflates 0→1→2 one step
+    per 20 ticks as a player closes within 3 blocks; contact 2 HP +
+    3 s poison semi / 3 HP + 6 s fully (VERIFIED Java rows);
+  - **turtle** (w/Turtle + w/Scute): beach sand nester (groups ≤ 5,
+    5% babies with the 20-min maturity countdown); bred females
+    (variant bit 7) queue real TURTLE_EGG world edits on sand; babies
+    mature and queue SCUTE drops (VERIFIED w/Scute: "Dropped when baby
+    turtles grow up"). **Environmental execution:** egg-laying and
+    maturity run BEFORE the player-anchor early-return in ai_tick —
+    they are player-independent (the carried code had them after it,
+    dead with no player in range — this session's restructure).
+  - **MobKind::Squid** — a classification-only marker (no MOB_DATA
+    row, never spawns): the aquatic() gate is the 1.13
+    Update-Aquatic physics set, and the squid is pre-1.13 legacy
+    (Beta 1.2) that must NOT receive it (the carried tests' own
+    verdict: "the squid is pre-1.13 legacy").
+- **Aquatic physics:** buoyancy + drag for the aquatic set in water
+  (fish hover, turtles/dolphins glide), fish suffocation on land, the
+  water-ambient spawn category SEPARATE from the passive cap
+  (passives_alive() now excludes aquatic kinds — vanilla's
+  water_ambient/water_creature split, VERIFIED §Spawning).
+- **The conduit (this session):** placed conduits register in
+  `sim.conduits`; the game layer scans each for the 26-water 3×3×3
+  core (the waterlogged gate — VERIFIED w/Conduit: "A conduit won't
+  be activated if not waterlogged") and counts prismarine-family
+  frame blocks in the 5×5×5 shell (16 minimum to activate — VERIFIED:
+  "A minimum of 16 blocks are required"); players in water inside the
+  **32→96-block range ladder** (48@21/64@28/80@35/96@42 — the wiki's
+  own data points; the "every seven blocks" phrasing is its rounding)
+  receive **Conduit Power** (air frozen via the existing
+  water_breathing gate); a complete 42-block frame **hunts ONE wet
+  hostile within 8 blocks at 4 HP every 40 ticks** (VERIFIED:
+  "dealing 4 HP magic damage every 2 seconds", "attack only one mob
+  at a time"). The ring-shaped vanilla frame is approximated by the
+  shell count (clamped at 42) — DISCLOSED.
+- **Four status effects** (carried): Water Breathing (id 13 — the air
+  meter freezes), Slow Falling (id 28 — the −9.8 b/s terminal clamp +
+  fall-damage negation, VERIFIED w/Slow_Falling: "terminal velocity of
+  9.8 m/s, and is unable to take fall damage"), Conduit Power (id 29),
+  Dolphin's Grace (id 30 — ×2 swim multiplier; the wiki publishes no
+  scalar, DISCLOSED approximation).
+- **Brewing (this session):** awkward + phantom membrane → Slow
+  Falling (VERIFIED: "Brewed with phantom membrane"); awkward + turtle
+  shell → Turtle Master (VERIFIED: "from an awkward potion");
+  glowstone → Turtle Master II (VERIFIED: "Slowness VI and Resistance
+  IV"); `potion_effects()` maps the drink-time windows (slow falling
+  1:30 / extended 4:00 item row; turtle master Slowness IV +
+  Resistance III 1:00, II = VI + IV) — the right-click drink path
+  applies them for real.
+- **Crafting/furnace/food (this session):** turtle shell (5 scutes,
+  the helmet shape), dried kelp block (9 kelp) + reverse (→ 9 kelp),
+  the conduit ring (8 nautilus shells + heart of the sea), blue ice
+  (9 packed ice); kelp → dried kelp smelting, sea pickle → lime dye;
+  dried kelp block fuel = 4000 ticks (VERIFIED: "Smelts 20 items");
+  dried kelp food = 1 hunger (the engine's 0.5 HP row).
+
+**Bugs found and fixed by this session (the carried round's tests
+exposed them):**
+
+1. **Beach-turtle spawn scan used an empty range** —
+   `(p[1]+12 .. p[1]-12)` is `82..58`, an EMPTY range (start > end),
+   so the beach branch of try_spawn_aquatic NEVER fired. Bounds
+   swapped to scan down from +12 to −12.
+2. **Flying mobs took gravity** — vanilla FlyingMobs (phantom/vex/
+   bat/parrot) have none; the constant −1.568 b/s pull dragged the
+   phantom's orbit ~3 blocks below its 12-block spec height and
+   forced the vex/bat/parrot to fight gravity with velocity lerps.
+   New `MobKind::flies()`: no gravity, gentle 0.98 flight drag, no
+   fall-distance accumulation (a swooping phantom is flight, not a
+   fall).
+3. **The phantom's orbit altitude rode the shared 3D steer** — the
+   tangential chase ate the vertical authority; the orbit now uses a
+   dedicated damped P-controller (asymptotic approach — never sags
+   below the target height).
+
+**Test-setup corrections (the carried tests' own arithmetic/world
+slips, fixed in place with the intent preserved):** the phantom
+insomnia test's below-threshold window started 40 ticks short of the
+threshold (an 80-tick loop crossed it); the pufferfish test beached
+its fish on a stone flat-world (a fish out of water suffocates 1 HP/s
+and flops — moved to its native warm ocean with the wander pinned for
+determinism); the zombie conversion test's zombie could random-walk
+off the single loaded test chunk (head reads AIR outside it — wander
+pinned); the phantom aux assert sampled mid-countdown packs.
+
+**Tests:** +18 this round — the ten carried v113 mob tests
+(registry/flags/trident throw/conversion/orbit-swoop/pufferfish
+inflate-sting/dolphin grace/turtle eggs-scutes/insomnia
+spawning/drowned water spawns/water-ambient families) now green, plus
+this session's eight: `conduit_range_matches_the_java_ladder`,
+`v113_aquatic_recipes`, `v113_aquatic_smelting_and_fuel`,
+`v113_aquatic_brews`, `v113_potion_effect_windows`,
+`v113_ocean_flora_matches_the_biome_families`,
+`v113_kelp_columns_grow_multiple_blocks`,
+`v113_ocean_families_present_and_roundtrip`. Suite: **489/489** green
+(471 + 18), wasm32 lib check clean.
+
+**Deferred with reasons (recorded per the standing protocol):**
+advancements (the bracket's flagship system — no advancement engine),
+commands/Brigadier (no command parser), trident enchantments
+(Channeling/Impaling/Loyalty/Riptide — no enchantment-on-weapon
+mechanics), player trident throwing + the 9-HP melee row (no
+player-weapon or player-projectile system — the standing fists-only
+`held_attack` deferral), map markers (no map items), the
+redstone-extended potion brews (no redstone-dust item; the extended
+ITEM rows exist with correct windows), turtle-egg hatch stages +
+trampling (needs random block ticks), coral death-out-of-water (same
+tick system), bubble columns (needs waterlogged block states),
+stripped logs / debug stick / carved pumpkin / buffet world type
+(palette- and system-absent), buckets of fish (no mob-in-bucket
+items), Conduit Power's Night Vision + Haste halves (no darkness
+system; no per-block mining-time system — the standing deferrals),
+and the water-bucket-on-fish interactions (no bucket capture path).

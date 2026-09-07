@@ -1,0 +1,736 @@
+ 
+ Dolphin – Minecraft Wiki 
+ Dolphin 
+ From Minecraft Wiki 
+ Jump to navigation 
+ Jump to search 
+ For other uses, see Dolphin (disambiguation) .
+ Dolphin 
+ Adult
+ Baby
+ Health points 
+ 10 HP 
+ Behavior
+ Neutral (adult) Passive (baby)
+ Mob type 
+ Animal Aquatic 
+ Attack strength
+ Easy: 2.5 HP × 1.25 Normal: 3 HP Hard: 4.5 HP × 2.25 
+ Hitbox size 
+ Adult: Height: 0.6 blocks Width: 0.9 blocks 
+ Baby: Height: 0.39 blocks Width: 0.585 blocks
+ Speed 
+ 1.2
+ Spawn 
+ Lukewarm Ocean Deep Lukewarm Ocean Ocean Deep Ocean Warm Ocean 
+ Usable items
+ Lead 
+ Raw Cod 
+ Raw Salmon 
+ Tropical Fish 
+ Pufferfish 
+ Golden Dandelion (baby only) 
+ {
+ "title": "Dolphin",
+ "rows": [
+ {
+ "field": "10<span class=\"hidden-alt-text\">HP</span><span class=\"nowrap mc-hearts\"><span class=\"iconbar pixel-image nowrap\" style=\"--icon-offset:-1px;\" title=\"5 hearts\">(link to File:Heart (icon).png article, displayed as 9px|link=|alt=❤️)(link to File:Heart (icon).png article, displayed as 9px|link=|alt=❤️)(link to File:Heart (icon).png article, displayed as 9px|link=|alt=❤️)(link to File:Heart (icon).png article, displayed as 9px|link=|alt=❤️)(link to File:Heart (icon).png article, displayed as 9px|link=|alt=❤️)</span></span>",
+ "label": "(link to Health article, displayed as Health points)"
+ },
+ {
+ "field": "Neutral (adult)<br> Passive (baby)",
+ "label": "Behavior"
+ },
+ {
+ "field": "<span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:EntitySprite animal.png article, displayed as 16x16px|link=Animal|alt=|class=pixel-image|)</span>(link to Animal article, displayed as <span class=\"sprite-text\">Animal</span>)</span><br><span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:EntitySprite aquatic.png article, displayed as 16x16px|link=Aquatic|alt=|class=pixel-image|)</span>(link to Aquatic article, displayed as <span class=\"sprite-text\">Aquatic</span>)</span>",
+ "label": "(link to Mob type article, displayed as Mob type)"
+ },
+ {
+ "field": "Easy: 2.5<span class=\"hidden-alt-text\">HP</span><span class=\"nowrap mc-hearts\"><span class=\"iconbar pixel-image nowrap\" style=\"--icon-offset:-1px;\" title=\"1 heart\">(link to File:Heart (icon).png article, displayed as 9px|link=|alt=❤️)</span> × 1.25</span><br>Normal: 3<span class=\"hidden-alt-text\">HP</span><span class=\"nowrap mc-hearts\"><span class=\"iconbar pixel-image nowrap\" style=\"--icon-offset:-1px;\" title=\"1.5 hearts\">(link to File:Heart (icon).png article, displayed as 9px|link=|alt=❤️)(link to File:Half Heart (icon).png article, displayed as 9px|link=|alt=💔)</span></span><br>Hard: 4.5<span class=\"hidden-alt-text\">HP</span><span class=\"nowrap mc-hearts\"><span class=\"iconbar pixel-image nowrap\" style=\"--icon-offset:-1px;\" title=\"1 heart\">(link to File:Heart (icon).png article, displayed as 9px|link=|alt=❤️)</span> × 2.25</span>",
+ "label": "Attack<br/>strength"
+ },
+ {
+ "field": "'''Adult:'''<br>Height: 0.6 blocks<br>Width: 0.9 blocks<br>\n'''Baby:'''<br>Height: 0.39 blocks<br>Width: 0.585 blocks",
+ "label": "(link to Hitbox article, displayed as Hitbox size)"
+ },
+ {
+ "field": "1.2",
+ "label": "(link to Attribute#Movement_speed article, displayed as Speed)"
+ },
+ {
+ "field": "(values exceeds 1000 characters...)",
+ "label": "(link to Mob spawning article, displayed as Spawn)"
+ },
+ {
+ "field": "(values exceeds 1000 characters...)",
+ "label": "Usable items"
+ }
+ ],
+ "invimages": [
+ "Dolphin Spawn Egg"
+ ],
+ "images": [
+ "Dolphin.gif",
+ "Baby Dolphin.gif"
+ ]
+} 
+ Dolphins are aquatic neutral mobs that live in non-frozen oceans . They grant a speed boost to players that swim near them and follow the player while swimming.
+ Contents 
+ 1 Spawning 
+ 2 Drops 
+ 2.1 On death 
+ 3 Behavior 
+ 3.1 Weaknesses 
+ 3.2 Breeding 
+ 4 Sounds 
+ 5 Data values 
+ 5.1 ID 
+ 5.2 Entity data 
+ 6 Achievements 
+ 7 Advancements 
+ 8 History 
+ 8.1 Announcement 
+ 8.2 Java Edition 
+ 8.3 Bedrock Edition 
+ 8.4 Legacy Console Edition 
+ 9 Issues 
+ 10 Trivia 
+ 11 Gallery 
+ 11.1 Screenshots 
+ 11.2 Mojang screenshots 
+ 11.3 Textures 
+ 11.4 In other media 
+ 12 References 
+ 13 External links 
+ 14 Navigation 
+ Spawning [ edit | edit source ] 
+ Dolphins are found in groups (pods) of 1-2‌ [ JE only ] or 3-5‌ [ BE only ] in all ocean biomes, excluding frozen oceans and cold oceans. They spawn exclusively between levels 50 and 64.
+Dolphins continuously spawn as long as their spawn requirements are met, and naturally despawn if no players are nearby, similar to squid and nautiluses . 
+ In Java Edition , dolphins, squids, and nautiluses together make up the water creatures mob cap .
+ Dolphins have a 10% chance to spawn as a baby.
+ Dolphin spawns in: Category: Water creature‌ [ JE only ] Creature‌ [ BE only ] Java Edition Bedrock Edition Spawn area Spawn weight Spawn chance Group size Spawn weight Group size Deep Ocean 1 ⁄ 3 33.33% 1–2 7 3–5 Ocean 1 ⁄ 3 33.33% 1–2 7 3–5 Deep Lukewarm Ocean 2 ⁄ 12 16.67% 1–2 7 3–5 Lukewarm Ocean 2 ⁄ 14 14.29% 1–2 7 3–5 Warm Ocean 2 ⁄ 22 9.09% 1–2 7 3–5 Cold Ocean — — — 7 3–5 Deep Cold Ocean — — — 7 3–5 
+ Drops [ edit | edit source ] 
+ On death [ edit | edit source ] 
+ Java Edition : 
+ Item Quantity / Chance / Average Default Looting I Looting II Looting III Raw Cod [ A ] 0–1 50.00% 0.50 0–2 75.00% 1.00 0–3 87.50% 1.50 0–4 91.67% 2.00 Cooked Cod [ B ] 0–1 50.00% 0.50 0–2 75.00% 1.00 0–3 87.50% 1.50 0–4 91.67% 2.00 
+ Item Quantity / Chance / Average Default Looting I Looting II Looting III Raw Cod [ A ] 0–1 1 ⁄ 2 1 ⁄ 2 0–2 3 ⁄ 4 1 0–3 7 ⁄ 8 3 ⁄ 2 0–4 11 ⁄ 12 2 Cooked Cod [ B ] 0–1 1 ⁄ 2 1 ⁄ 2 0–2 3 ⁄ 4 1 0–3 7 ⁄ 8 3 ⁄ 2 0–4 11 ⁄ 12 2 
+ Item Amount Probability Default Looting I Looting II Looting III Raw Cod [ A ] 0 1 ⁄ 2 (50.00%) 1 ⁄ 4 (25.00%) 1 ⁄ 8 (12.50%) 1 ⁄ 12 (8.33%) 1 1 ⁄ 2 (50.00%) 1 ⁄ 2 (50.00%) 3 ⁄ 8 (37.50%) 1 ⁄ 4 (25.00%) 2 0 1 ⁄ 4 (25.00%) 3 ⁄ 8 (37.50%) 1 ⁄ 3 (33.33%) 3 0 0 1 ⁄ 8 (12.50%) 1 ⁄ 4 (25.00%) 4 0 0 0 1 ⁄ 12 (8.33%) Average 1 ⁄ 2 (0.50) 1 (1.00) 3 ⁄ 2 (1.50) 2 (2.00) Cooked Cod [ B ] 0 1 ⁄ 2 (50.00%) 1 ⁄ 4 (25.00%) 1 ⁄ 8 (12.50%) 1 ⁄ 12 (8.33%) 1 1 ⁄ 2 (50.00%) 1 ⁄ 2 (50.00%) 3 ⁄ 8 (37.50%) 1 ⁄ 4 (25.00%) 2 0 1 ⁄ 4 (25.00%) 3 ⁄ 8 (37.50%) 1 ⁄ 3 (33.33%) 3 0 0 1 ⁄ 8 (12.50%) 1 ⁄ 4 (25.00%) 4 0 0 0 1 ⁄ 12 (8.33%) Average 1 ⁄ 2 (0.50) 1 (1.00) 3 ⁄ 2 (1.50) 2 (2.00) 
+ Killed 1 Item Expected Drops Default Looting I Looting II Looting III Raw Cod [ A ] 0.50 1.00 1.50 2.00 Cooked Cod [ B ] 0.50 1.00 1.50 2.00 
+ ↑ Only when not on fire and not killed with a weapon enchanted with Fire Aspect . 
+ ↑ Only when on fire or killed with a weapon enchanted with Fire Aspect . 
+ Bedrock Edition : 
+ Item Quantity / Chance / Average Default Looting I Looting II Looting III Raw Cod [ A ] 0–1 50.00% 0.50 0–2 50.00% 0.75 0–3 50.00% 1.00 0–4 50.00% 1.25 Cooked Cod [ B ] 0–1 50.00% 0.50 0–2 50.00% 0.75 0–3 50.00% 1.00 0–4 50.00% 1.25 
+ Item Quantity / Chance / Average Default Looting I Looting II Looting III Raw Cod [ A ] 0–1 1 ⁄ 2 1 ⁄ 2 0–2 1 ⁄ 2 3 ⁄ 4 0–3 1 ⁄ 2 1 0–4 1 ⁄ 2 5 ⁄ 4 Cooked Cod [ B ] 0–1 1 ⁄ 2 1 ⁄ 2 0–2 1 ⁄ 2 3 ⁄ 4 0–3 1 ⁄ 2 1 0–4 1 ⁄ 2 5 ⁄ 4 
+ Item Amount Probability Default Looting I Looting II Looting III Raw Cod [ A ] 0 1 ⁄ 2 (50.00%) 1 ⁄ 2 (50.00%) 1 ⁄ 2 (50.00%) 1 ⁄ 2 (50.00%) 1 1 ⁄ 2 (50.00%) 1 ⁄ 4 (25.00%) 1 ⁄ 8 (12.50%) 1 ⁄ 12 (8.33%) 2 0 1 ⁄ 4 (25.00%) 1 ⁄ 4 (25.00%) 1 ⁄ 6 (16.67%) 3 0 0 1 ⁄ 8 (12.50%) 1 ⁄ 6 (16.67%) 4 0 0 0 1 ⁄ 12 (8.33%) Average 1 ⁄ 2 (0.50) 3 ⁄ 4 (0.75) 1 (1.00) 5 ⁄ 4 (1.25) Cooked Cod [ B ] 0 1 ⁄ 2 (50.00%) 1 ⁄ 2 (50.00%) 1 ⁄ 2 (50.00%) 1 ⁄ 2 (50.00%) 1 1 ⁄ 2 (50.00%) 1 ⁄ 4 (25.00%) 1 ⁄ 8 (12.50%) 1 ⁄ 12 (8.33%) 2 0 1 ⁄ 4 (25.00%) 1 ⁄ 4 (25.00%) 1 ⁄ 6 (16.67%) 3 0 0 1 ⁄ 8 (12.50%) 1 ⁄ 6 (16.67%) 4 0 0 0 1 ⁄ 12 (8.33%) Average 1 ⁄ 2 (0.50) 3 ⁄ 4 (0.75) 1 (1.00) 5 ⁄ 4 (1.25) 
+ Killed 1 Item Expected Drops Default Looting I Looting II Looting III Raw Cod [ A ] 0.50 0.75 1.00 1.25 Cooked Cod [ B ] 0.50 0.75 1.00 1.25 
+ ↑ Only when not on fire. 
+ ↑ Only when on fire. 
+ 1–3 XP , if kill credit is given to the player. 
+ Killing a baby dolphin yields neither items nor experience.
+ Behavior [ edit | edit source ] 
+ Dolphins jumping in water. 
+ Dolphins normally swim in pods, occasionally leaping out of the water to get air. They are also able to jump from one body of water to another. Additionally, they chase after players in boats but do not give the speed boost effect.
+ Players who sprint-swim within a 9 block spherical radius of a dolphin receive a swimming speed boost for 5 seconds, replenished as long as the player continues to sprint-swim within a 15 block spherical radius of a dolphin. Invisibility reduces both of these ranges like normal, based on the amount of armor the player is wearing. In Java Edition , the speed boost is granted by the Dolphin's Grace effect, while in Bedrock Edition the player simply gets the speed boost without a status effect. The dolphin keeps following the player as long as they are sprint-swimming, allowing the player to swim under the speed boost for long distances.
+ In Java Edition , dolphins are lured by dropped items that are inside nearby water blocks, picking them up, throwing around and chasing after them. If the dolphin is in, or on, a waterlogged bottom slab or chest with an air block above, or a bubble column, the dolphin is prevented from drowning. 
+ When a player or another mob hits a dolphin (unless the dolphin is killed in one hit in Java Edition ), the whole pod retaliates, attacking all at once, similar to wolves and zombified piglins . Hostile dolphins remain hostile even if they are fed fish. Hostile dolphins are far more dangerous in Bedrock Edition .
+ When dolphins are fed raw fish, they swim to the nearest shipwreck or ocean ruins ; in Java Edition , the structures a dolphin can locate are defined in the dolphin_located tag . Dolphins also avoid guardians and elder guardians .
+ Unlike most “animal” mobs, dolphins cannot breed . Baby dolphins can only be found when they naturally spawn. A baby dolphin eventually turns into an adult after 24000 ticks (20 minutes), and its growth time can be accelerated by 10% each time it is fed fish. A baby dolphin fed a fish once per second grows up in approximately 48 seconds using 47 fish.
+ Like many other baby mobs, a golden dandelion can be used on a baby dolphin to prevent it from growing up, or used a second time to resume its aging.
+ Dolphins do not deal any damage in Peaceful difficulty and are completely passive.
+ Unlike other neutral mobs, dolphins do not count towards the AngryAt tag. [ 1 ] [ 2 ] [ 3 ] 
+ Weaknesses [ edit | edit source ] 
+ If a dolphin leaves the water in dry weather, it starts taking suffocation damage after two minutes, and eventually dies. It takes no damage out of water during rain . Regardless of weather, a dolphin on land actively seeks out a body of water, or seeks its target if in a hostile state.
+ They cannot survive without air. If they stay submerged for about four minutes, they begin drowning . The Water Breathing effect prevents them from drowning.
+ Like most other aquatic mobs, dolphins cannot ride boats . However, they can be towed by a lead .
+ In Java Edition , the dolphin is an aquatic mob and is thus affected by the Impaling enchantment. In Bedrock Edition , it is only affected when in the water, as all mobs are.
+ Breeding [ edit | edit source ] 
+ Dolphins cannot be bred by the player. Baby dolphins only occur through natural spawning in the wild.
+ Sounds [ edit | edit source ] 
+ Java Edition :
+ Sounds Sound Closed captions Source Description Identifier Translation key Volume Pitch Attenuation distance ​Dolphin chirps Friendly Mobs Randomly while on land entity .dolphin .ambient subtitles .entity .dolphin .ambient ​ 1.0 0.8–1.2 (Baby: 1.3–1.7) 16 ​Dolphin whistles Friendly Mobs Randomly while in water entity .dolphin .ambient_water subtitles .entity .dolphin .ambient_water ​ 1.0 [ sound 1 ] 0.8–1.2 (Baby: 1.3–1.7) 16 ​Dolphin eats Friendly Mobs When a fish is fed to a dolphin entity .dolphin .eat subtitles .entity .dolphin .eat ​ 0.75 1.0 16 ​Dolphin attacks Friendly Mobs When a dolphin attacks something entity .dolphin .attack subtitles .entity .dolphin .attack ​ 1.0 1.0 16 ​Dolphin dies Friendly Mobs When a dolphin dies entity .dolphin .death subtitles .entity .dolphin .death ​ 1.0 0.8–1.2 (Baby: 1.3–1.7) 16 ​Dolphin hurts Friendly Mobs When a dolphin is damaged entity .dolphin .hurt subtitles .entity .dolphin .hurt ​ 1.0 0.8–1.2 (Baby: 1.3–1.7) 16 ​Dolphin jumps Friendly Mobs When a dolphin jumps entity .dolphin .jump subtitles .entity .dolphin .jump ​ 0.75 1.0 16 ​Dolphin plays Friendly Mobs Randomly when a dolphin finds an item entity .dolphin .play subtitles .entity .dolphin .play ​ 1.0 1.0 16 ​Dolphin splashes Friendly Mobs When a dolphin enters water entity .dolphin .splash subtitles .entity .dolphin .splash ​ Around 0.1 or 0.02 [ sound 2 ] 0.6–1.4 16 ​Dolphin swims Friendly Mobs While a dolphin is swimming entity .dolphin .swim subtitles .entity .dolphin .swim ​ Around 0.03 [ sound 3 ] 0.8–1.2 16 
+ ↑ Except idle_water1 and 10 , which are 0.8, and idle_water7 and 8 , which are 0.75 
+ ↑ Depends on the dolphin's motion, usually around 0.1 or 0.02. 
+ ↑ Depends on the dolphin's motion, usually around 0.03 
+ Bedrock Edition :
+ Sounds Sound Closed captions Source Description Identifier Translation key Volume Pitch ​ ? Friendly Mobs Randomly while on land mob .dolphin .idle ​ ? 1.0 0.8–1.2 (Baby: 1.3–1.7) ​ ? Friendly Mobs Randomly when in water mob .dolphin .idle_water ​ ? 1.0 0.8–1.2 (Baby: 1.3–1.7) ​ ? Friendly Mobs Unused sound event [ 4 ] mob .dolphin .attack ​ ? 1.0 0.8–1.2 (Baby: 1.3–1.7) ​ ? Friendly Mobs Randomly while on land mob .dolphin .blowhole ​ ? 1.0 0.8–1.2 (Baby: 1.3–1.7) ​ ? Friendly Mobs When a dolphin dies mob .dolphin .death ​ ? 1.0 0.8–1.2 (Baby: 1.3–1.7) ​ ? Friendly Mobs When a fish is fed to a dolphin mob .dolphin .eat ​ ? 0.7 1.0 ​ ? Friendly Mobs When a dolphin is damaged mob .dolphin .hurt ​ ? 1.0 0.8–1.2 (Baby: 1.3–1.7) ​ ? Friendly Mobs Unused sound event [ 4 ] mob .dolphin .jump ​ ? 0.7 1.0 ​ ? Friendly Mobs Unused sound event [ 4 ] mob .dolphin .play ​ ? 1.0 0.8–1.2 (Baby: 1.3–1.7) ​ ? Friendly Mobs When a dolphin enters water mob .dolphin .splash ​ ? 1.0 0.8–1.2 (Baby: 1.3–1.7) ​ ? Friendly Mobs While a dolphin is swimming mob .dolphin .swim ​ ? 1.0 0.8–1.2 (Baby: 1.3–1.7) 
+ Data values [ edit | edit source ] 
+ ID [ edit | edit source ] 
+ Java Edition :
+ Name Identifier Entity tags 
+ Translation key Dolphin dolphin aquatic not_scary_for_pufferfish sensitive_to_impaling 
+ entity .minecraft .dolphin 
+ Bedrock Edition :
+ Name Identifier Numeric ID 
+ Family Translation key Dolphin dolphin 31 
+ aquatic dolphin mob entity .dolphin .name 
+ Entity data [ edit | edit source ] 
+ Dolphins have entity data associated with them that contains various properties.
+ Java Edition :
+ Main article: Entity format 
+ [NBT Compound / JSON Object] Entity data
+ Additional fields for mobs that can breed see Template:Nbt inherit/breedable/template 
+ Tags common to all entities see Template:Nbt inherit/entity/template 
+ Tags common to all mobs see Template:Nbt inherit/mob/template 
+ [Int]  Moistness : How moist this dolphin is. Set to 2400 when in water or rain. Decreases by 1 every tick otherwise. The dolphin takes damage when 0 or below. 
+ [Byte]  GotFish : 1 or 0 (true/false) - if true, this dolphin got fish from a player. 
+ Bedrock Edition :
+ See Bedrock Edition level format/Entity format . 
+ Achievements [ edit | edit source ] 
+ Icon Achievement In-game description Actual requirements (if different) Gamerscore earned Trophy type ( PS ) PS4 Other Echolocation Feed a dolphin fish to have it lead you to treasure Feed a dolphin cod or salmon and have it lure you to treasure. 20 Silver It Spreads Kill a mob next to a catalyst Kill any mob that drops experience near a sculk catalyst, with the sole exception of the ender dragon . Mobs that drop no experience are ignored for this achievement. 10 Bronze 
+ Achievements that apply to all mobs:
+ Icon Achievement In-game description Actual requirements (if different) Gamerscore earned Trophy type ( PS ) PS4 Other Overkill Deal nine hearts of damage in a single hit. Damage can be dealt to any mob, even those that do not have nine hearts of health overall. 30 Bronze Over-Overkill Deal 50 hearts of damage in a single hit using the Mace Damage can be dealt to any mob, even those that do not have 50 hearts of health overall. 20 Silver Mob Kabob Hit five mobs in the same Charge attack using the Spear. Armor stands and players also count for this achievement as they are technically mobs . 10 Bronze 
+ Advancements [ edit | edit source ] 
+ Icon Advancement In-game description Actual requirements (if different) How Did We Get Here? Have every effect applied at the same time 
+ Have all of these 34 status effects applied to the player at the same time: 
+ Absorption 
+ Bad Omen 
+ Blindness 
+ Breath of the Nautilus 
+ Conduit Power 
+ Darkness 
+ Dolphin's Grace 
+ Fire Resistance 
+ Glowing 
+ Haste 
+ Hero of the Village 
+ Hunger 
+ Infested 
+ Invisibility 
+ Jump Boost 
+ Levitation 
+ Mining Fatigue 
+ Nausea 
+ Night Vision 
+ Oozing 
+ Poison 
+ Raid Omen 
+ Regeneration 
+ Resistance 
+ Slow Falling 
+ Slowness 
+ Speed 
+ Strength 
+ Trial Omen 
+ Water Breathing 
+ Weakness 
+ Weaving 
+ Wind Charged 
+ Wither 
+ The source of the effects is irrelevant for the purposes of this advancement. Other status effects may be applied to the player, but are ignored for this advancement. 
+ See also: Tutorial:Advancement guide/How Did We Get Here? 
+ This is a hidden advancement, meaning that it can be viewed by the player only after completing it, regardless of if its child advancement(s), if any, have been completed. It Spreads Kill a mob near a Sculk Catalyst Kill any mob that drops experience near a sculk catalyst , with the sole exception of the ender dragon . Mobs that drop no experience are ignored for this advancement. 
+ Advancements that apply to all mobs:
+ Icon Advancement In-game description Actual requirements (if different) Adventure Adventure, exploration and combat Kill any mob , or be killed by any living entity . A Throwaway Joke Throw a Trident at something. Note: Throwing away your only weapon is not a good idea. Hit a mob with a thrown trident . Take Aim Shoot something with an Arrow Using a bow or a crossbow , shoot a mob with an arrow , tipped arrow , or spectral arrow . Mob Kabob Hit five mobs in the same Charge attack using the Spear. Armor Stand and Mannequin also count for this advancement. Arbalistic Kill five unique mobs with one crossbow shot Armor Stand and Mannequin also count for this advancement. This is a hidden advancement, meaning that it can be viewed by the player only after completing it, regardless of if its child advancement(s), if any, have been completed. Over-Overkill Deal 50 hearts of damage in a single hit using the Mace Damage can be dealt to any mob, even those that do not have 50 hearts of health overall. 
+ History [ edit | edit source ] 
+ Announcement [ edit | edit source ] 
+ November 18, 2017 
+ Dolphins were shown in a video clip during MineCon Earth . 
+ Java Edition [ edit | edit source ] 
+ Java Edition 1.13 18w15a 
+ Added dolphins. 18w19a 
+ Dolphins now swim to the surface, if drowning .
+ Dolphins now give the player the "Dolphin's Grace" status effect that allows the player to swim faster, if the player swims near them. 18w19b 
+ Dolphins now drop experience . [ 5 ] 18w20c 
+ Dolphins on land now jump to try to get back into the water .
+ Dolphins now survive for two minutes out of water , instead of ten seconds. 18w21a 
+ Dolphins now lead players to buried treasure .
+ Dolphins can no longer wear armor . [ 6 ] 
+ Added the TreasurePosX , TreasurePosY , TreasurePosZ , GotFish and CanFindTreasure tags. pre2 
+ Dolphins can no longer sit in boats . [ 7 ] pre6 
+ Dolphins now bring the player to buried treasure more accurately. 
+ Removed the CanFindTreasure tag. 1.14 19w08a 
+ Dolphins can no longer have armor equipped onto them with a dispenser . 1.16 20w10a 
+ Firework damage now provokes dolphins. [ 8 ] 1.18 21w40a 
+ Dolphins now spawn only between Y=50 and Y=64. 1.21.2 24w33a 
+ Added baby variants of dolphins, to match parity with Bedrock Edition . 1.21.5 25w07a 
+ Removed TreasurePosX , TreasurePosY and TreasurePosZ tags. They were used to store the dolphin's X,Y and Z coordinate destination when leading a player to a treasure. 26.1 snap5 
+ The model and texture of baby dolphins have been changed.
+ Added golden dandelions , which can be used to prevent baby dolphins from growing up. pre2 
+ Dolphins can no longer despawn when attached to a lead . [ 9 ] 
+ Fixed a bug causing dolphins to drown even when air was readily available. [ 10 ] 
+ Bedrock Edition [ edit | edit source ] 
+ Bedrock Edition 1.4.0 beta 1.2.20.1 
+ Added dolphins and baby dolphins. beta 1.2.20.2 
+ The models of dolphins have been updated with minor adjustments to the orientation of their fins.
+ Dolphins now have sounds . 1.5.0 beta 1.5.0.0 
+ Dolphins now lead players to shipwrecks and underwater ruins . 1.16.100 beta 1.16.100.51 
+ Dolphins now dry out at the same rate as they do in Java Edition ; 120 seconds.
+ Dolphins on land now try to get back into the water . 1.18.0 beta 1.18.0.21 
+ Dolphins now spawn only between Y=50 and Y=64. 1.21.130 Preview 1.21.130.26 
+ Dolphins no longer spawn in cold ocean or deep cold ocean biomes. 26.0 Preview 26.0.23 
+ Mobs can no longer be leashed onto adult dolphins. 26.10 Preview 26.10.20 
+ The model and texture of baby dolphins have been changed. Preview 26.10.21 
+ Added golden dandelions , which can be used to prevent baby dolphins from growing up. 
+ Legacy Console Edition [ edit | edit source ] 
+ Legacy Console Edition Xbox 360 Xbox One PS3 PS4 PS Vita Wii U Switch TU69 1.76 1.76 1.76 Patch 38 
+ Added dolphins.
+ Baby dolphins can be spawned when the player uses its spawn egg on a dolphin. 
+ The maximum number of dolphins in a world is 18. 
+ Issues [ edit | edit source ] 
+ Issues relating to "Dolphin" are maintained on the bug tracker . Issues should be reported and viewed there .
+ Trivia [ edit | edit source ] 
+ To create the sounds that the dolphins make in the game, Mojang Studios ' lead sound designer, Samuel Åberg , went to Kolmården Wildlife Park to record real dolphins . [ 11 ] 
+ Dolphins originally had a separate head and body when shown in a clip at MINECON 2017 . It is also shown in artwork for Java Edition 1.13 , the Bundles of Bravery trailer, an episode of the AI Adventurers series, [ 12 ] Minecraft: Volume 2 , [ 13 ] and Minecraft Annual 2025 . 
+ Real-life dolphins don't suffocate outside of water; they breathe air like all mammals, although they can die of dehydration out of water. 
+ In 2018, a prediction poll was held in which Chinese users could vote on which Chinese animal they expected to see in Minecraft , to promote the release of Minecraft China. One of the options for voting was the possibly extinct baiji dolphin. The panda won the poll and was announced days later at MINECON Earth 2018 . [ 14 ] 
+ Mojang has considered and rejected the suggestion to allow dolphins to be tamed or ridden. They also decided against adding behaviors that deviate significantly from real-life dolphins, such as fleeing from drowned . [ 15 ] 
+ Gallery [ edit | edit source ] 
+ Screenshots [ edit | edit source ] 
+ A pod of dolphins 
+ A dolphin taking damage because it is not in water 
+ A Dolphin seen underwater 
+ Several dolphins attacking the player, after the player hit one of them 
+ Dolphins swimming with the player 
+ Mojang screenshots [ edit | edit source ] 
+ 2 dolphins leaping above the ocean at sunset 
+ A pod of four dolphins swimming above an ocean ravine and a coral reef 
+ Dolphins chasing after a raw cod item 
+ A dolphin in Bedrock Edition 
+ 2 baby dolphins in "every timeline" 
+ Textures [ edit | edit source ] 
+ Dolphin texture file 
+ Baby dolphin texture file 
+ In other media [ edit | edit source ] 
+ Dolphins in promotional artwork for the Update Aquatic 
+ Official dolphin artwork 
+ Animated dolphin artwork 
+ Dolphin in official artwork 
+ Ari following a dolphin 
+ Lego dolphin 
+ A dolphin on the cover of Minecraft: The Manga 
+ Noor , Kai and a tamed wolf watching several dolphins 
+ Dolphin figure of Flippin' Figs 
+ A dolphin as seen in A Minecraft Movie 
+ 2 dolphins breathing affectionately 
+ A hoodie featuring two dolphins 
+ A dolphin as seen in Minecraft Dungeons 
+ A dolphin and warm cow breaching 
+ The Gang reacting to a dolphin 
+ References [ edit | edit source ] 
+ ↑ MC-256289  – AngryAt tag is not used by certain neutral mobs, causing them to forget their target upon reloading game – resolved as "Invalid". 
+ ↑ MC-195278  – If the "universalAnger" is set to true, certain neutral mobs don't fight back when you attack them 
+ ↑ MC-187857  – New neutral mob behavior improvements were not implemented for llamas, dolphins, and spiders in the daylight 
+ ↑ a b c MCPE-53297 
+ ↑ MC-128681 
+ ↑ MC-128493 
+ ↑ MC-128241 
+ ↑ MC-111498  – Fireworks and water bottles damage don't make neutral mobs angry or hostile – resolved as "Fixed". 
+ ↑ MC-303749  – Dolphins can despawn when attached to leads. – resolved as "Fixed". 
+ ↑ MC-306658  – Dolphins let themselves drown even with ample access to air – resolved as "Fixed". 
+ ↑ "Talking Dolphins" by Marsh Davies – Minecraft.net , May 19, 2018. 
+ ↑ "AI for Good: Solving Problems with AI" – Minecraft on YouTube, September 3, 2024 
+ ↑ "It’s official! The second volume of the official Minecraft graphic novel that I wrote is now available and in stores! It’s a high-stakes high-sea adventure, with new friends and new enemies and maybe even...... some frenemies??? I am over the moon I got to team up with @sarahgraley, @johnjhill, and @lightningstef to make another Minecraft comic. I love this book and had so much fun making it- Sarah’s art brings it to life- and I hope you enjoy it, too!! (If you pick it up.... see if you can find a sneaky little reference to a certain skeleton somewhere in the script ;) ) You can get Minecraft Volume 2 wherever books are sold- but consider supporting your local comic book store- I guarantee you they’ll appreciate it!! Take care and stay safe everyone, remember to wear a mask 💙👁‍🗨✨. #minecraft #minecraftcomic #darkhorsecomics #graphicnovel #comic #mojang" – @sfemonster on Instagram, October 28, 2020 
+ ↑ https://mc.163.com/pe/client/activity/voteforanimalpc/ 
+ ↑ 
+ "(Archived) Previously Considered Suggestions" – Minecraft Feedback, May 7, 2020. 
+ External links [ edit | edit source ] 
+ "Meet the Dolphin" by Per Landin – Minecraft.net , April 19, 2018. 
+ Navigation [ edit | edit source ] 
+ v 
+ t 
+ e Ocean 
+ Biomes 
+ Ocean 
+ Deep 
+ Frozen Ocean 
+ Deep 
+ Cold Ocean 
+ Deep 
+ Lukewarm Ocean 
+ Deep 
+ Warm Ocean 
+ Environment
+ Ruins 
+ Cold 
+ Warm 
+ Shipwreck 
+ Monument 
+ Coral Reef 
+ Blocks
+ Water 
+ Gravel 
+ Sand 
+ Ice 
+ Coral 
+ Coral Block 
+ Coral Fan 
+ Sea Pickle 
+ Seagrass 
+ Kelp 
+ Magma Block 
+ Mobs
+ Cod 
+ Tropical Fish 
+ Drowned 
+ Dolphin 
+ Pufferfish 
+ Salmon 
+ Squid 
+ Nautilus 
+ Zombie Nautilus 
+ Coral 
+ Jockey 
+ v 
+ t 
+ e Entities 
+ Mobs 
+ Passive
+ Allay 
+ Armadillo 
+ Axolotl 
+ Bat 
+ Camel 
+ Camel Husk 
+ Cat 
+ Chicken 
+ Cod 
+ Copper Golem 
+ Cow 
+ Donkey 
+ Frog 
+ Glow Squid 
+ Happy Ghast 
+ Horse 
+ Mooshroom 
+ Mule 
+ Ocelot 
+ Parrot 
+ Pig 
+ Rabbit 
+ Salmon 
+ Sheep 
+ Skeleton Horse 
+ Sniffer 
+ Snow Golem 
+ Squid 
+ Strider 
+ Sulfur Cube 
+ Tadpole 
+ Tropical Fish 
+ Turtle 
+ Villager 
+ Wandering Trader 
+ Zombie Horse 
+ BE & Edu only
+ Agent 
+ NPC 
+ Neutral
+ Bee 
+ Cave Spider 
+ Dolphin 
+ Drowned 
+ Enderman 
+ Fox 
+ Goat 
+ Iron Golem 
+ Llama 
+ Nautilus 
+ Panda 
+ Piglin 
+ Polar Bear 
+ Pufferfish 
+ Spider 
+ Trader Llama 
+ Wolf 
+ Zombie Nautilus 
+ Zombified Piglin 
+ Hostile
+ Blaze 
+ Bogged 
+ Breeze 
+ Creaking 
+ Creeper 
+ Elder Guardian 
+ Endermite 
+ Evoker 
+ Ghast 
+ Guardian 
+ Hoglin 
+ Husk 
+ Magma Cube 
+ Parched 
+ Phantom 
+ Piglin Brute 
+ Pillager 
+ Ravager 
+ Shulker 
+ Silverfish 
+ Skeleton 
+ Slime 
+ Stray 
+ Vex 
+ Vindicator 
+ Warden 
+ Witch 
+ Wither Skeleton 
+ Zoglin 
+ Zombie 
+ Zombie Villager 
+ Bosses 
+ Ender Dragon 
+ Wither 
+ Mob types 
+ Animal 
+ Aquatic 
+ Arthropod 
+ Illager 
+ Monster 
+ Undead 
+ Other
+ Baby 
+ Jockey 
+ Camel Husk 
+ Chicken 
+ Hoglin 
+ Ravager 
+ Skeleton Horseman 
+ Spider 
+ Strider 
+ Baby Strider 
+ Zombie Horseman 
+ Zombie Nautilus 
+ Mob variants 
+ Other entities 
+ Player 
+ Alex 
+ Ari 
+ Efe 
+ Kai 
+ Makena 
+ Noor 
+ Steve 
+ Sunny 
+ Zuri 
+ Blocks 
+ Falling Blocks 
+ Anvil 
+ Concrete Powder 
+ Dragon Egg 
+ Gravel 
+ Pointed Dripstone 
+ Sand 
+ Red Sand 
+ Scaffolding 
+ Sulfur Spike 
+ Suspicious Gravel 
+ Suspicious Sand 
+ Primed TNT 
+ BE & Edu only
+ Falling Blocks 
+ Deprecated Anvil 
+ Snow 
+ Primed Underwater TNT 
+ Vehicles 
+ Boat 
+ with Chest 
+ Minecart 
+ with Chest 
+ with Command Block 
+ with Hopper 
+ with TNT 
+ Java Edition only
+ Minecart with Furnace 
+ with Monster Spawner 
+ Projectiles 
+ Fireball 
+ Small 
+ Dragon 
+ Launched Firework Rocket 
+ Llama Spit 
+ Shot Arrow 
+ Tipped 
+ Shulker Bullet 
+ Thrown Bottle o' Enchanting 
+ Thrown Egg 
+ Thrown Ender Pearl 
+ Thrown Eye of Ender 
+ Thrown Snowball 
+ Thrown Splash Potion 
+ Lingering Potion 
+ Thrown Trident 
+ Wind Charge 
+ Wither Skull 
+ Java Edition only
+ Shot Spectral Arrow 
+ BE & Edu only
+ Thrown Ice Bomb 
+ Stationary objects
+ Cushion ​ [ upcoming: Wilderness Bound ] 
+ End Crystal 
+ Leash Knot 
+ Painting 
+ Java Edition only
+ Item Frame 
+ Glow 
+ Miscellaneous
+ Area Effect Cloud 
+ Armor Stand 
+ Evoker Fangs 
+ Experience Orb 
+ Fishing Bobber 
+ Items 
+ Lightning Bolt 
+ Ominous Item Spawner 
+ JE only
+ Mannequin 
+ BE & Edu only
+ Balloon 
+ Camera 
+ Technical objects
+ JE only
+ Display 
+ Block 
+ Item 
+ Text 
+ Interaction 
+ Marker 
+ Editor only
+ Location Pointer Idle 
+ Location Pointer Selected 
+ Map Marker 
+ Ruler 
+ Idle 
+ Unimplemented 
+ Unused
+ JE only
+ Giant 
+ Illusioner 
+ BE & Edu only
+ Elder Guardian Ghost 
+ Old Villager 
+ Old Zombie Villager 
+ Mentioned 
+ Alpaca 
+ Barnacle 
+ Crab 
+ Firefly 
+ Glare 
+ Great Hunger 
+ Herobrine 
+ Iceologer 
+ Meerkat 
+ Minecart with Dispenser 
+ Moobloom 
+ Ostrich 
+ Penguin 
+ Pigman Bodyguard 
+ Rascal 
+ Red Dragon 
+ Shade 
+ Termite 
+ Tuff Golem 
+ Vulture 
+ Wildfire 
+ Removed
+ Builder 
+ Giant Jockey 
+ MD3 Test Mob 
+ Mob 
+ Monster 
+ Shot Purple Arrow 
+ Sign Entity 
+ Joke 
+ Mobs
+ April Fools 2013 
+ Diamond Chicken 
+ Horse 
+ Pony 
+ Pink Wither 
+ Redstone Bug 
+ April Fools 2015 
+ Love Golem 
+ Friendly Wither 
+ Smiling Creeper 
+ April Fools 2019 
+ Nerd Creeper 
+ April Fools 2023 
+ Moon Cow 
+ Ray Tracing 
+ April Fools 2024 
+ Batato 
+ Mega Spud 
+ Plaguewhale Slab 
+ Poisonous Potato Zombie 
+ Potato mob category 
+ Toxifin Slab 
+ April Fools 2025 
+ Angry Ghast 
+ Spectator Villager 
+ Spectator Witch 
+ Traitor 
+ Warden (boss) 
+ Pet variants
+ Pet Armadillo 
+ Pet Axolotl 
+ Pet Bee 
+ Pet Cat 
+ Pet Chicken 
+ Pet Cow 
+ Pet Creeper 
+ Pet Fox 
+ Pet Frog 
+ Pet Mooshroom 
+ Pet Polar Bear 
+ Pet Slime 
+ Pet Turtle 
+ Pet Wolf 
+ April Fools 2026 
+ Living Block 
+ Other entities
+ April Fools 2013 
+ Pink Wither Skull 
+ April Fools 2015 
+ Obsidian Boat 
+ Friendly Wither Skull 
+ April Fools 2023 
+ Stencil Display 
+ April Fools 2024 
+ Falling Block 
+ Gravtater 
+ Potato Eye 
+ April Fools 2026 
+ Crafting Grid 
+ Hovering Item 
+ Living Block Command 
+ Retrieved from " https://minecraft.wiki/w/Dolphin?oldid=3748074 " 
+ Categories : Entities Neutral mobs Aquatic mobs Animal mobs Hidden categories: Pages using simple calculator Pages with sound tables Pages with Java sound tables Pages with Bedrock subtitles missing Pages with Bedrock subtitle key missing Pages with Bedrock sound tables 
+ Navigation menu 
+ Personal tools 
+ Create account Log in 
+ associated-pages 
+ Page Talk 
+ English 
+ Views 
+ Read Edit Edit source View history 
+ More 
+ Search 
+ Navigation 
+ How to help Recent changes Random page in Minecraft in Dungeons in Dungeons II in Legends in Earth in Story Mode in Tutorial in Movie Wiki Discord 
+ Wiki community 
+ Community portal Wiki forum Projects Wiki rules Style guide Notability Sandbox Admin noticeboard 
+ X 
+ Franchise 
+ Minecraft Minecraft Dungeons Minecraft Legends Minecraft Earth Minecraft: Story Mode A Minecraft Movie 
+ Recent versions 
+ Java Edition Latest: 26.2 Dev: 26.3-pre-2 Upcoming: 26.3 Bedrock Edition Latest: 26.45 Preview: 26.60.21 Upcoming: 26.50 Upcoming: 26.60 
+ Useful pages 
+ Trading Brewing Enchantments Mobs Blocks Items Crafting Smelting Tutorials Resource packs Redstone circuits 
+ Useful pages 
+ Weapons Enchanting Armor Artifacts Missions 
+ Useful pages 
+ Weapons Enchanting Armor Artifact 
+ Useful pages 
+ Friendly units Piglins Resources Biomes Structures Lost Legends 
+ Tools 
+ What links here Related changes Printable version Permanent link Page information Special pages View buckets 
+ In other languages 
+ Deutsch Español Français Italiano 日本語 한국어 Nederlands Português Русский ไทย Українська 中文 
+ This page was last edited on 29 August 2026, at 01:05. 
+ Content on this site is licensed under CC BY-NC-SA 3.0 unless otherwise noted; additional terms may apply . Not an official Minecraft website. We are not associated with Mojang or Microsoft. 
+ Privacy policy 
+ About Minecraft Wiki 
+ Disclaimers 
+ Terms of Use 
+ Contact Weird Gloop 
+ Mobile view 
+ 

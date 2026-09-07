@@ -1,0 +1,808 @@
+ 
+ Drowned – Minecraft Wiki 
+ Sign In 
+ Create a Free Account 
+ Minecraft Wiki 
+ Explore 
+ Main Page 
+ All Pages 
+ Interactive Maps 
+ Games 
+ Minecraft 
+ Minecraft Dungeons 
+ Minecraft Legends 
+ Minecraft Earth 
+ Minecraft Story Mode 
+ Minecraft 
+ Blocks 
+ Items 
+ World 
+ Mobs 
+ Biomes 
+ Terrain features 
+ Structures 
+ Dimensions 
+ Mechanics 
+ Crafting 
+ Smelting 
+ Brewing 
+ Trading 
+ Enchanting 
+ Status effects 
+ Version history 
+ Java Edition 
+ Bedrock Edition 
+ Other editions 
+ Legacy Console Edition 
+ Simplified guides 
+ Java Edition 
+ Bedrock Edition 
+ Technical 
+ Redstone circuits 
+ Commands 
+ Resource packs 
+ Data packs 
+ Add-ons 
+ Servers 
+ Realms 
+ Realms Plus 
+ Bedrock Dedicated Server 
+ Bedrock featured servers 
+ Tutorials 
+ Minecraft Dungeons 
+ Items 
+ Weapons 
+ Armor 
+ Artifacts 
+ Consumables 
+ Cosmetics 
+ Locations 
+ Ancient Hunts 
+ Mechanics 
+ Enchanting 
+ Status effects 
+ Achievements 
+ Mobs 
+ Arcade 
+ Tutorials 
+ Wiki Community 
+ Rules and guidelines 
+ Wiki rules 
+ Video policy 
+ Talk page guidelines 
+ Style guide 
+ Wiki tools 
+ Recent changes 
+ Editing sandbox 
+ About the wiki 
+ Community portal 
+ Admin noticeboard 
+ Projects 
+ Discord 
+ Sign In 
+ Don't have an account? 
+ Create a Free Account 
+ Sign In 
+ Create a Free Account 
+ Home 
+ Explore 
+ Saved 
+ Progress 
+ History 
+ Utilities 
+ Blocksmith 
+ More 
+ Advertisement
+ Skip to content 
+ Minecraft Wiki 
+ 7,609 pages 
+ Explore 
+ Main Page 
+ All Pages 
+ Interactive Maps 
+ Games 
+ Minecraft 
+ Minecraft Dungeons 
+ Minecraft Legends 
+ Minecraft Earth 
+ Minecraft Story Mode 
+ Minecraft 
+ Blocks 
+ Items 
+ World 
+ Mobs 
+ Biomes 
+ Terrain features 
+ Structures 
+ Dimensions 
+ Mechanics 
+ Crafting 
+ Smelting 
+ Brewing 
+ Trading 
+ Enchanting 
+ Status effects 
+ Version history 
+ Java Edition 
+ Bedrock Edition 
+ Other editions 
+ Legacy Console Edition 
+ Simplified guides 
+ Java Edition 
+ Bedrock Edition 
+ Technical 
+ Redstone circuits 
+ Commands 
+ Resource packs 
+ Data packs 
+ Add-ons 
+ Servers 
+ Realms 
+ Realms Plus 
+ Bedrock Dedicated Server 
+ Bedrock featured servers 
+ Tutorials 
+ Minecraft Dungeons 
+ Items 
+ Weapons 
+ Armor 
+ Artifacts 
+ Consumables 
+ Cosmetics 
+ Locations 
+ Ancient Hunts 
+ Mechanics 
+ Enchanting 
+ Status effects 
+ Achievements 
+ Mobs 
+ Arcade 
+ Tutorials 
+ Wiki Community 
+ Rules and guidelines 
+ Wiki rules 
+ Video policy 
+ Talk page guidelines 
+ Style guide 
+ Wiki tools 
+ Recent changes 
+ Editing sandbox 
+ About the wiki 
+ Community portal 
+ Admin noticeboard 
+ Projects 
+ Discord 
+ in: 
+ Entities , Undead mobs , Monster mobs , 
+ and 
+ 3 more 
+ Neutral mobs 
+ Retaliating mobs 
+ Ranged-attack mobs 
+ English 
+ Deutsch 
+ Español 
+ Français 
+ Magyar 
+ Italiano 
+ 日本語 
+ 한국어 
+ Polski 
+ Português 
+ Русский 
+ ไทย 
+ Türkçe 
+ Українська 
+ 中文 
+ Drowned 
+ Sign In to Save 
+ Save 
+ View source 
+ History 
+ Purge 
+ Talk (159) 
+ For the mob in Minecraft Dungeons , see MCD:Drowned .
+ This article is about the zombie variant. For drowning, see Damage § Drowning . 
+ Drowned 
+ Adult
+ Targeting
+ With Trident
+ Throwing Trident
+ Baby
+ Targeting
+ With Trident
+ Throwing Trident
+ Health 
+ 20 × 10 
+ Classification 
+ Undead 
+ Behavior 
+ Hostile (during nighttime and to players touching water) Passive (to players not touching water during daytime) Neutral (if a player does not touch water during daytime, AND the drowned is equipped with a Trident) 
+ Spawn 
+ When a zombie drowns River Frozen River Cold Ocean Deep Cold Ocean Frozen Ocean Deep Frozen Ocean Lukewarm Ocean Deep Lukewarm Ocean Ocean Deep Ocean Warm Ocean Dripstone Caves 
+ Damage 
+ Melee: Easy: 2.5 × 1.25 Normal: 3 Hard: 4.5 × 2.25 Melee: (with trident)‌ [ BE only ] : Easy: 6 Normal: 11 × 5.5 Hard: 16 × 8 Ranged (with trident)‌ [ BE only ] : Easy: 7 Normal: 9 Hard: 12 × 6 Ranged (with trident)‌ [ JE only ] : Easy: 5 Normal: 8 Hard: 12 × 6 
+ Natural equipment 
+ Trident (6.25% chance in Java Edition and 15% chance in Bedrock Edition ) Fishing Rod (3.75% chance in Java Edition and 0.85% chance in Bedrock Edition ) Nautilus Shell (3% chance in Java Edition and 8% chance in Bedrock Edition ; appears in offhand only) 
+ Details 
+ Size 
+ In Java Edition : Adult: Height: 1.95 Blocks Width: 0.6 Blocks Baby: Height: 0.975 Blocks Width: 0.3 Blocks In Bedrock Edition : Adult: Height: 1.9 Blocks Width: 0.6 Blocks Baby: Height: 0.95 Blocks Width: 0.3 Blocks 
+ Armor 
+ 2 ( ) 
+ Drowned are common neutral underwater zombie variants that spawn in oceans , rivers and dripstone caves , or when zombies drown. They usually attack through melee attacks, but may also come armed with tridents that they throw. They are the only source of tridents, and the only renewable source of copper .
+ Contents 
+ 1 Spawning 
+ 1.1 Natural generation 
+ 1.2 Ocean ruins 
+ 1.3 Conversion 
+ 2 Drops 
+ 2.1 Naturally-spawned equipment 
+ 3 Farming 
+ 4 Behavior 
+ 4.1 Swimming 
+ 5 Sounds 
+ 6 Data values 
+ 6.1 ID 
+ 6.2 Entity data 
+ 7 Achievements 
+ 8 Advancements 
+ 9 History 
+ 10 Issues 
+ 11 Trivia 
+ 12 Gallery 
+ 12.1 Screenshots 
+ 12.2 In other media 
+ 12.3 Textures 
+ 13 References 
+ 14 External links 
+ Spawning [ ] 
+ Natural generation [ ] 
+ Drowned spawn naturally at light level of 0 in all ocean biomes , aquifiers in the dripstone caves biome, and river biomes. They spawn at higher rates in rivers and dripstone caves than in ocean biomes.
+ In Java Edition , drowned spawn individually inside flowing water or source water that is 2 blocks or taller (this can include waterlogged blocks). In ocean biomes, drowned spawn at Y < 58, or at least 6 blocks below sea level; this restriction does not apply to rivers. 
+ In Bedrock Edition , drowned spawn in groups of 2–4 inside flowing water or source water of any depth, but they spawn at higher rates in water that is 2 blocks or taller. [ more information needed ] They spawn only on the surface that is on the highest spawnable block at any given X, Z coordinate. They count toward the monster population control cap and also have their own density caps of 5 in oceans and 2 in rivers. 
+ Drowned have a chance to spawn with either a trident or a fishing rod , and occasionally with a nautilus shell . in Java Edition , they also have a small chance of spawning while riding a chicken, creating a drowned chicken jockey . They are the only zombie variant within the game that cannot spawn naturally with any armor. The only way drowned can spawn with armor is if they used to be a zombie with armor. Their eyes give off a glow effect, but not any light levels.
+ Ocean ruins [ ] 
+ Drowned spawn during the generation of certain ocean ruin structures. These drowned do not naturally despawn unless the world is set to Peaceful difficulty.
+ Conversion [ ] 
+ A zombie converting into a drowned. 
+ If a zombie 's head (not the legs) is submerged in water continuously for 30 seconds, it begins the process of converting to a drowned. It starts shaking, similar to the effect seen while a zombie villager is being cured. At this point, the process cannot be stopped, and 15 seconds later the zombie becomes drowned. The drowned appears with full health even if the previous zombie did not.
+ In Bedrock Edition only, an item being held or worn by a zombie when it becomes drowned, whether it was picked up or naturally spawned, has a 100% drop rate, which includes any naturally spawned equipment dropping with full durability.
+ Only normal zombies can transform, while zombie villagers and zombified piglin can not. For husks , they first transform into a regular zombie, and subsequently convert to a drowned in the usual fashion. The zombie that converted from a husk also always has full health even if converted from a damaged husk.
+ Drops [ ] 
+ Drowned drop 0–2 Rotten flesh after dying. The maximum drop is increased by 1 per level of Looting, for a maximum of 0-5 with Looting III.
+ Adult drowned drop 5 and an additional 1–3 per naturally-spawned equipment if killed by a player or tamed wolf. Baby drowned drop 12 and an additional 1–3 per naturally-spawned equipment if killed by a player or tamed wolf .
+ They can also drop:
+ 1 Copper ingot (11% chance, increased by 2% per Looting level) if killed by a player or tamed wolf . 
+ 1 Helmet , Chestplate , Leggings , and/or Boots .‌ [ Bedrock Edition only ] 
+ Any picked-up equipment has a 100% chance of dropping, and drops without changing the damage that has accumulated on it.
+ If a drowned is able to pick up equipment and is wielding a trident, it can trade its trident for a nautilus shell if it is not currently attacking anything. [ Bedrock Edition only ] 
+ Naturally-spawned equipment [ ] 
+ Java Edition 
+ For naturally-spawned drowned:
+ Main hand (mutually exclusive):
+ 6.25% spawn with a trident . May be enchanted. 
+ 3.75% spawn with a fishing rod . May be enchanted. 
+ Offhand:
+ 3% spawn with a nautilus shell in their offhand. 
+ Only 6.25% (or 1 in 16) drowned spawn with tridents. Of these, they have an 8.5% chance to drop their trident when killed by a player. The chance is increased by 1% for each level of looting up to a max of 11.5% with Looting III. This means the overall chance of obtaining a trident from any given drowned is 0.53125% (about 1 in 188) or 0.71875% with looting III (about 1 in 139).
+ Nautilus shells always drop.
+ Converted drowned are never equipped with any items.
+ Bedrock Edition 
+ For naturally-spawned drowned:
+ Main hand (mutually exclusive):
+ 15% spawn with a trident . 
+ 0.85% spawn with a fishing rod . 
+ Offhand:
+ 8% spawn with a nautilus shell in the offhand. 
+ Only 15% (or 3 in 20) drowned spawn with tridents. Of these, they have a 25% chance to drop their trident when killed by a player. This chance is increased by 4% for each level of looting up to a max of 37% with looting III. This means the overall chance of obtaining a trident from any given drowned is 3.75% (or 3 in 80) or 5.55% with looting III.
+ For converted drowned:
+ 1% spawn with a fishing rod in the main hand. 
+ 8% spawn with a nautilus shell in the offhand (same as naturally spawned drowned). 
+ Converted drowned are never equipped with tridents.
+ On Halloween, zombies may spawn wearing a carved pumpkin or jack o'lantern‌ [ Java Edition only ] . They do not drop this, even when killed with Looting.
+ Farming [ ] 
+ Main article: Tutorials/Drowned farming 
+ Farms that convert zombies into drowned produce all of naturally-spawned equipment dropped by zombies , as well as fishing rods , copper ingots , and (in Bedrock Edition) nautilus shells . A drowned farm must be designed to harvest naturally-spawned drowned to produce tridents in all game editions and nautilus shells in Java Edition .
+ Behavior [ ] 
+ A drowned swimming in Java Edition . 
+ Drowned have a melee attack, and if they spawn with a trident , they use it as a ranged weapon . A trident is thrown every 1.5 seconds at up to 20 blocks away. Thrown tridents cannot be picked up by the player for the same reason skeleton-shot arrows cannot be picked up by the player. In Bedrock Edition , drowned with tridents use a melee attack if the target is 3 blocks away or less.
+ They are always hostile toward axolotls , and like other zombie variants, they chase and attack villagers , wandering traders , snow golems ,‌ [ BE only ] baby turtles and iron golems at night or in dark areas.
+ Drowned detect turtle eggs within 10 blocks in Bedrock Edition and 24 blocks in Java Edition . They stomp on turtle eggs until the eggs break. Drowned can even jump over a 1-block gap to reach a turtle egg successfully, even if the egg is raised 1 block higher than the gap. 
+ If on land, drowned seek out nearby water. They sometimes step onto land but quickly return to the water. 
+ During the day, drowned swim only to attack players that are in any water; otherwise, they stay on the floor of the water body they are in, ignoring players on land, in a boat or that have attacked them or other drowned. Drowned equipped with tridents continue throwing them at the player even after the player leaves the water, or gets a long distance away. [ 1 ] They also attack players if they attack them or another drowned, unless the drowned is killed in one hit. [ 2 ] ‌ [ JE only ] Additionally, they may not always immediately become aggressive toward a player when they first enter water. At night or during thunderstorms, drowned swim to the surface and chase players as well as baby turtles, even outside the water, like regular zombies. 
+ If a drowned kills a villager , either with a melee attack or with a trident, the villager has a chance of turning into a zombie villager (with a 0% chance on Easy, 50% on Normal, and 100% on Hard).
+ Drowned break down wooden doors in Hard mode.‌ [ BE only ] 
+ They are immune to guardians or elder guardians attacks. They also have a small chance to be immune to knockback when damaged. [ 3 ] 
+ Some drowned spawn with the ability to pick up loot that is on the ground. That includes armor and weapons or tools just like regular zombies. Unlike zombies however, they can also pick up tridents, which they always prefer over anything else. They also can pick it up and throw it the wrong way.
+ Drowned can be damaged by a fully-powered conduit within 8 blocks.
+ If one drowned gets attacked by another drowned's trident, the attacked drowned ignores it. 
+ Swimming [ ] 
+ A drowned swimming in Bedrock Edition . 
+ A drowned in a river. 
+ This feature is exclusive to Bedrock Edition .  
+ Drowned use a swimming animation similar to the player . They use this animation whenever they try to pathfind to a player that is either below or above them; if the player is on the same ground level, the drowned simply walk toward them. Drowned also use this animation if they are tracking a player while they are not standing on a solid block. Their hitbox does not change when using this animation. Also, if they hold a nautilus shell or anything else in their offhand, their arms are in the same posture as a player's. When attacking, they use the player's attacking animation. Still, they use the same swimming animation when tracking a player underwater.
+ In Java Edition a Trident enchanted with Impaling does not do extra damage to Drowned because they're classified as undead and not aquatic. This does not apply in Bedrock Edition as instead a Trident enchanted with Impaling does extra damage to any mob in water or rain.
+ Sounds [ ] 
+ Java Edition : 
+Drowned use the Hostile Creatures sound category for entity-dependent sound events.
+ Sound Subtitles Source Description Resource location Translation key Volume Pitch Attenuation distance https://minecraft.fandom.com/wiki/File:Drowned_idle1.ogg https://minecraft.fandom.com/wiki/File:Drowned_idle2.ogg https://minecraft.fandom.com/wiki/File:Drowned_idle3.ogg https://minecraft.fandom.com/wiki/File:Drowned_idle4.ogg https://minecraft.fandom.com/wiki/File:Drowned_idle5.ogg Drowned gurgles Hostile Creatures Randomly while on land entity .drowned .ambient subtitles .entity .drowned .ambient 0.9 0.8-1.2 (Baby: 1.3-1.7) 16 
+ https://minecraft.fandom.com/wiki/File:Drowned_water_idle1.ogg https://minecraft.fandom.com/wiki/File:Drowned_water_idle2.ogg https://minecraft.fandom.com/wiki/File:Drowned_water_idle3.ogg https://minecraft.fandom.com/wiki/File:Drowned_water_idle4.ogg Drowned gurgles Hostile Creatures Randomly while in water entity .drowned .ambient_water subtitles .entity .drowned .ambient_water 0.9 0.8-1.2 (Baby: 1.3-1.7) 16 
+ https://minecraft.fandom.com/wiki/File:Drowned_death1.ogg https://minecraft.fandom.com/wiki/File:Drowned_death2.ogg Drowned dies Hostile Creatures When a drowned dies while on land entity .drowned .death subtitles .entity .drowned .death 0.9 0.8-1.2 (Baby: 1.3-1.7) 16 
+ https://minecraft.fandom.com/wiki/File:Drowned_water_death1.ogg https://minecraft.fandom.com/wiki/File:Drowned_water_death2.ogg Drowned dies Hostile Creatures When a drowned dies while in water entity .drowned .death_water subtitles .entity .drowned .death 0.9 0.8-1.2 (Baby: 1.3-1.7) 16 
+ https://minecraft.fandom.com/wiki/File:Drowned_hurt1.ogg https://minecraft.fandom.com/wiki/File:Drowned_hurt2.ogg https://minecraft.fandom.com/wiki/File:Drowned_hurt3.ogg Drowned hurts Hostile Creatures When a drowned is damaged while on land entity .drowned .hurt subtitles .entity .drowned .hurt 0.9 0.8-1.2 (Baby: 1.3-1.7) 16 
+ https://minecraft.fandom.com/wiki/File:Drowned_water_hurt1.ogg https://minecraft.fandom.com/wiki/File:Drowned_water_hurt2.ogg https://minecraft.fandom.com/wiki/File:Drowned_water_hurt3.ogg Drowned hurts Hostile Creatures When a drowned is damaged while in water entity .drowned .hurt_water subtitles .entity .drowned .hurt 0.9 0.8-1.2 (Baby: 1.3-1.7) 16 
+ https://minecraft.fandom.com/wiki/File:Trident_throw1.ogg https://minecraft.fandom.com/wiki/File:Trident_throw2.ogg Drowned throws Trident Hostile Creatures When a drowned throws a trident entity .drowned .shoot subtitles .entity .drowned .shoot 1.0 5 ⁄ 6 -1.25 16 
+ https://minecraft.fandom.com/wiki/File:Turtle_egg_jump1.ogg https://minecraft.fandom.com/wiki/File:Turtle_egg_jump2.ogg https://minecraft.fandom.com/wiki/File:Turtle_egg_jump3.ogg https://minecraft.fandom.com/wiki/File:Turtle_egg_jump4.ogg Turtle Egg stomped Hostile Creatures When a drowned is jumping on turtle eggs entity .zombie .destroy_egg subtitles .entity .zombie .destroy_egg 0.5 0.9-1.1 16 
+ https://minecraft.fandom.com/wiki/File:Drowned_step1.ogg https://minecraft.fandom.com/wiki/File:Drowned_step2.ogg https://minecraft.fandom.com/wiki/File:Drowned_step3.ogg https://minecraft.fandom.com/wiki/File:Drowned_step4.ogg https://minecraft.fandom.com/wiki/File:Drowned_step5.ogg Drowned steps [ sound 1 ] ‌ [ until JE 1.20.2 ] Footsteps ‌ [ upcoming: JE 1.20.2 ] Hostile Creatures While a drowned is walking on land entity .drowned .step subtitles .entity .drowned .step [ sound 1 ] ‌ [ until JE 1.20.2 ] subtitles.block.generic.footsteps ‌ [ upcoming: JE 1.20.2 ] 0.15 [ sound 2 ] 1.0 [ sound 2 ] 16 
+ https://minecraft.fandom.com/wiki/File:Swim1.ogg https://minecraft.fandom.com/wiki/File:Swim2.ogg https://minecraft.fandom.com/wiki/File:Swim3.ogg https://minecraft.fandom.com/wiki/File:Swim4.ogg https://minecraft.fandom.com/wiki/File:Swim5.ogg Drowned swims Hostile Creatures While a drowned is swimming entity .drowned .swim subtitles .entity .drowned .swim Around 0.003 [ sound 3 ] 0.6-1.4 16 
+ https://minecraft.fandom.com/wiki/File:Zombie_convert_to_drowned1.ogg https://minecraft.fandom.com/wiki/File:Zombie_convert_to_drowned2.ogg https://minecraft.fandom.com/wiki/File:Zombie_convert_to_drowned3.ogg Zombie converts to Drowned Hostile Creatures When a zombie converts to a drowned entity .zombie .converted_to_drowned subtitles .entity .zombie .converted_to_drowned 2.0 0.8-1.2 16 
+ ↑ a b MC-177110  — resolved as "Fixed". 
+ ↑ a b This variable is block-dependent, and varies depending upon the block 
+ ↑ Depends on the drowned's velocity, around 0.003 when moving around underwater with no target. The precise equation is the smaller of 1.0 or 0.35×(the momentum of the drowned, with the horizontal axes multiplied by 0.2) 
+ Bedrock Edition :
+ Sound Source Description Resource location Volume Pitch https://minecraft.fandom.com/wiki/File:Drowned_idle1.ogg https://minecraft.fandom.com/wiki/File:Drowned_idle2.ogg https://minecraft.fandom.com/wiki/File:Drowned_idle3.ogg https://minecraft.fandom.com/wiki/File:Drowned_idle4.ogg https://minecraft.fandom.com/wiki/File:Drowned_idle5.ogg Hostile Creatures Randomly while on land mob .drowned .say 1.0 0.8-1.2 (Baby: 1.3-1.7) 
+ https://minecraft.fandom.com/wiki/File:Drowned_water_idle1.ogg https://minecraft.fandom.com/wiki/File:Drowned_water_idle2.ogg https://minecraft.fandom.com/wiki/File:Drowned_water_idle3.ogg https://minecraft.fandom.com/wiki/File:Drowned_water_idle4.ogg Hostile Creatures Randomly while in water mob .drowned .say_water 1.0 0.8-1.2 (Baby: 1.3-1.7) 
+ https://minecraft.fandom.com/wiki/File:Zombie_hit_wood1.ogg https://minecraft.fandom.com/wiki/File:Zombie_hit_wood2.ogg https://minecraft.fandom.com/wiki/File:Zombie_hit_wood3.ogg https://minecraft.fandom.com/wiki/File:Zombie_hit_wood4.ogg Hostile Creatures While a drowned is breaking a wooden door mob .zombie .wood 1.0 1.0 
+ https://minecraft.fandom.com/wiki/File:Zombie_breaks_door.ogg Hostile Creatures When a drowned breaks a wooden door mob .zombie .woodbreak 1.0 1.0 
+ https://minecraft.fandom.com/wiki/File:Drowned_death1.ogg https://minecraft.fandom.com/wiki/File:Drowned_death2.ogg Hostile Creatures When a drowned dies while on land mob .drowned .death 1.0 0.8-1.2 (Baby: 1.3-1.7) 
+ https://minecraft.fandom.com/wiki/File:Drowned_water_death1.ogg https://minecraft.fandom.com/wiki/File:Drowned_water_death2.ogg Hostile Creatures When a drowned dies while in water mob .drowned .death_water 1.0 0.8-1.2 (Baby: 1.3-1.7) 
+ https://minecraft.fandom.com/wiki/File:Drowned_hurt1.ogg https://minecraft.fandom.com/wiki/File:Drowned_hurt2.ogg https://minecraft.fandom.com/wiki/File:Drowned_hurt3.ogg Hostile Creatures When a drowned is damaged while on land mob .drowned .hurt 1.0 0.8-1.2 (Baby: 1.3-1.7) 
+ https://minecraft.fandom.com/wiki/File:Drowned_water_hurt1.ogg https://minecraft.fandom.com/wiki/File:Drowned_water_hurt2.ogg https://minecraft.fandom.com/wiki/File:Drowned_water_hurt3.ogg Hostile Creatures When a drowned is damaged while in water mob .drowned .hurt_water 1.0 0.8-1.2 (Baby: 1.3-1.7) 
+ https://minecraft.fandom.com/wiki/File:Trident_throw1.ogg https://minecraft.fandom.com/wiki/File:Trident_throw2.ogg Hostile Creatures Unused sound event [ sound 1 ] mob .drowned .shoot 1.0 0.8-1.2 
+ https://minecraft.fandom.com/wiki/File:Turtle_egg_jump1.ogg https://minecraft.fandom.com/wiki/File:Turtle_egg_jump2.ogg https://minecraft.fandom.com/wiki/File:Turtle_egg_jump3.ogg https://minecraft.fandom.com/wiki/File:Turtle_egg_jump4.ogg Players When a drowned is jumping on turtle eggs fall .egg 0.5 0.9-1.0 
+ https://minecraft.fandom.com/wiki/File:Drowned_step1.ogg https://minecraft.fandom.com/wiki/File:Drowned_step2.ogg https://minecraft.fandom.com/wiki/File:Drowned_step3.ogg https://minecraft.fandom.com/wiki/File:Drowned_step4.ogg https://minecraft.fandom.com/wiki/File:Drowned_step5.ogg Hostile Creatures While a drowned is walking on land mob .drowned .step 1.0 0.8-1.2 (Baby: 1.3-1.7) 
+ https://minecraft.fandom.com/wiki/File:Swim1.ogg https://minecraft.fandom.com/wiki/File:Swim2.ogg https://minecraft.fandom.com/wiki/File:Swim3.ogg https://minecraft.fandom.com/wiki/File:Swim4.ogg https://minecraft.fandom.com/wiki/File:Swim5.ogg Hostile Creatures While a drowned is swimming mob .drowned .swim 1.0 0.8-1.2 
+ https://minecraft.fandom.com/wiki/File:Zombie_convert_to_drowned1.ogg https://minecraft.fandom.com/wiki/File:Zombie_convert_to_drowned2.ogg https://minecraft.fandom.com/wiki/File:Zombie_convert_to_drowned3.ogg Hostile Creatures Unused sound event [ sound 1 ] entity .zombie .converted_to_drowned 1.0 1.0 
+ None None Undefined sound event [ sound 1 ] mob .zombie .converted_to_drowned 1.0-2.0 0.3-1.0 
+ ↑ a b c MCPE-53297 
+ Data values [ ] 
+ ID [ ] 
+ Java Edition :
+ Name Identifier Entity tags Translation key Drowned drowned axolotl_tempted_hostiles entity.minecraft.drowned 
+ Bedrock Edition :
+ Name Identifier Numeric ID Translation key Drowned drowned 110 entity.drowned.name 
+ Entity data [ ] 
+ Drowned have entity data associated with them that contains various properties.
+ Java Edition :
+ Main article: Entity format 
+ Entity data
+ Tags common to all entities 
+ Tags common to all mobs 
+ Tags common to all zombies 
+ Bedrock Edition :
+ See Bedrock Edition level format/Entity format . 
+ Achievements [ ] 
+ Icon 
+ Achievement 
+ In-game description 
+ Actual requirements (if different) 
+ Gamerscore earned 
+ Trophy type (PS4) 
+ PS4 
+ Other 
+ Monster Hunter Attack and destroy a monster. Kill a hostile mob or one of the following neutral mobs: an enderman , a piglin , a zombified piglin , a spider , or a cave spider . 15G Bronze 
+ Advancements [ ] 
+ Icon 
+ Advancement 
+ In-game description 
+ Parent 
+ Actual requirements (if different) 
+ Resource location 
+ Adventure Adventure, exploration and combat
+ — Kill any entity , or be killed by any entity. adventure/root
+ Monster Hunter Kill any hostile monster
+ Adventure Kill one of these 41 mobs :
+ Blaze 
+ Bogged 
+ Breeze 
+ Camel Husk 
+ Cave Spider 
+ Creaking (requires destroying the creaking heart ) 
+ Creeper 
+ Drowned 
+ Elder Guardian 
+ Ender Dragon 
+ Enderman 
+ Endermite 
+ Evoker 
+ Ghast 
+ Guardian 
+ Hoglin 
+ Husk 
+ Magma Cube 
+ Parched 
+ Phantom 
+ Piglin 
+ Piglin Brute 
+ Pillager 
+ Ravager 
+ Shulker 
+ Silverfish 
+ Skeleton 
+ Slime 
+ Spider 
+ Stray 
+ Vex 
+ Vindicator 
+ Witch 
+ Wither 
+ Wither Skeleton 
+ Zoglin 
+ Zombie 
+ Zombie Horse 
+ Zombie Nautilus 
+ Zombie Villager 
+ Zombified Piglin 
+Only the riders of the chicken jockey s and skeleton horsemen are counted in this advancement. Other mobs like the warden may be killed, but are ignored for this advancement. adventure/kill_a_mob
+ A Throwaway Joke Throw a Trident at something. Note: Throwing away your only weapon is not a good idea.
+ Monster Hunter Hit a mob with a thrown trident . adventure/throw_trident
+ It Spreads Kill a mob near a Sculk Catalyst 
+ Monster Hunter Kill one of these 70 mobs near a sculk catalyst:
+ Axolotl 
+ Bee 
+ Blaze 
+ Bogged 
+ Breeze 
+ Camel 
+ Camel Husk 
+ Cat 
+ Cave Spider 
+ Chicken 
+ Chicken Jockey 
+ Cod 
+ Cow 
+ Creeper 
+ Donkey 
+ Dolphin 
+ Drowned 
+ Elder Guardian 
+ Enderman 
+ Endermite 
+ Evoker 
+ Fox 
+ Frog 
+ Ghast 
+ Goat 
+ Glow Squid 
+ Guardian 
+ Happy Ghast 
+ Hoglin 
+ Horse 
+ Husk 
+ Llama 
+ Magma Cube 
+ Mooshroom 
+ Nautilus 
+ Ocelot 
+ Panda 
+ Parrot 
+ Phantom 
+ Pig 
+ Piglin 
+ Piglin Brute 
+ Pillager 
+ Polar Bear 
+ Pufferfish 
+ Rabbit 
+ Ravager 
+ Salmon 
+ Sheep 
+ Shulker 
+ Silverfish 
+ Skeleton 
+ Skeleton Horse 
+ Skeleton Horseman 
+ Slime 
+ Sniffer 
+ Stray 
+ Spider 
+ Spider Jockey 
+ Squid 
+ Strider 
+ Trader Llama 
+ Tropical Fish 
+ Turtle 
+ Vex 
+ Vindicator 
+ Warden 
+ Witch 
+ Wither 
+ Wither Skeleton 
+ Wolf 
+ Zoglin 
+ Zombie 
+ Zombie Horse 
+ Zombie Nautilus 
+ Zombie Villager 
+ Zombified Piglin 
+ Mobs that drop no experience are ignored for this advancement. adventure/kill_mob_near_sculk_catalyst
+ Take Aim Shoot something with an Arrow
+ Monster Hunter Using a bow or a crossbow , shoot an entity with an arrow , tipped arrow , or spectral arrow . adventure/shoot_arrow
+ Monsters Hunted Kill one of every hostile monster
+ Monster Hunter Kill each of these 41 mobs :
+ Blaze 
+ Bogged 
+ Breeze 
+ Camel Husk 
+ Cave Spider 
+ Creaking (requires destroying the creaking heart ) 
+ Creeper 
+ Drowned 
+ Elder Guardian 
+ Ender Dragon 
+ Enderman 
+ Endermite 
+ Evoker 
+ Ghast 
+ Guardian 
+ Hoglin 
+ Husk 
+ Magma Cube 
+ Parched 
+ Phantom 
+ Piglin 
+ Piglin Brute 
+ Pillager 
+ Ravager 
+ Shulker 
+ Silverfish 
+ Skeleton 
+ Slime 
+ Spider 
+ Stray 
+ Vex 
+ Vindicator 
+ Witch 
+ Wither 
+ Wither Skeleton 
+ Zoglin 
+ Zombie 
+ Zombie Horse 
+ Zombie Nautilus 
+ Zombie Villager 
+ Zombified Piglin 
+Other mobs may be killed, but are ignored for this advancement. Only the riders of the chicken jockey s and skeleton horsemen are counted in this advancement. adventure/kill_all_mobs
+ File:Grid Mace.png Over-Overkill Deal 50 hearts of damage in a single hit using the Mace 
+ Minecraft: Trial(s) Edition Hit one of these mobs :
+ Axolotl 
+ Bee 
+ Blaze 
+ Bogged 
+ Breeze 
+ Camel 
+ Camel Husk 
+ Camel Husk Jockey 
+ Cat 
+ Cave Spider 
+ Chicken 
+ Chicken Jockey 
+ Cod 
+ Cow 
+ Creaking (naturally spawned creakings has no effect as they are linked with their creaking hearts ) 
+ Creeper 
+ Donkey 
+ Dolphin 
+ Drowned 
+ Elder Guardian 
+ Enderman 
+ Endermite 
+ Evoker 
+ Fox 
+ Frog 
+ Ghast 
+ Goat 
+ Glow Squid 
+ Guardian 
+ Happy Ghast 
+ Hoglin 
+ Horse 
+ Husk 
+ Llama 
+ Magma Cube 
+ Mannequin 
+ Mooshroom 
+ Nautilus 
+ Ocelot 
+ Panda 
+ Parrot 
+ Parched 
+ Phantom 
+ Pig 
+ Piglin 
+ Piglin Brute 
+ Pillager 
+ Polar Bear 
+ Pufferfish 
+ Rabbit 
+ Ravager 
+ Salmon 
+ Sheep 
+ Shulker 
+ Silverfish 
+ Skeleton 
+ Skeleton Horse 
+ Skeleton Horseman 
+ Slime 
+ Sniffer 
+ Stray 
+ Spider 
+ Spider Jockey 
+ Squid 
+ Strider 
+ Trader Llama 
+ Tropical Fish 
+ Turtle 
+ Vex 
+ Vindicator 
+ Warden 
+ Witch 
+ Wither 
+ Wither Skeleton 
+ Wolf 
+ Zoglin 
+ Zombie 
+ Zombie Horse 
+ Zombie Horseman 
+ Zombie Nautilus 
+ Zombie Nautilus Jockey 
+ Zombie Villager 
+ Zombified Piglin 
+Only the jockey riders are counted in this advancement. adventure/overoverkill
+ History [ ] 
+ This page would benefit from the addition of more images.  
+ Please remove this notice once you've added suitable images to the article. The specific instructions are: Render of drowned in Bedrock Edition . 
+ Java Edition 
+ 1.13 18w11a Added drowned mobs.
+ Zombies now convert into a drowned instead of dying from drowning . 
+ 18w15a Drowned now occasionally spawn with a nautilus shell . 
+ 18w16a Drowned now spawn in underwater ruins . 
+ 18w22a Drowned now have a swimming animation. 
+ 1.14 18w43a Drowned no longer spawn in swamps . 
+ 19w05a Drowned are now hostile toward the new wandering traders . 
+ 19w06a The drowned's trident throwing animation has been changed from to . 
+ 19w07a The drowned's trident throwing animation has been changed from to . [ 4 ] 
+ 19w14a Drowned no longer have a unique swimming animation. [ 5 ] 
+ 1.15 19w46a Baby drowned can be spawned using their spawn egg on the adult. 
+ 1.17 21w05a Drowned now drop copper ingots instead of gold ingots . 
+ 1.17.1 Pre-release 1 Increased the drop probability of copper ingots from 5% to 11%, and increased the drop probability of each level of Looting spell from 1% to 2%.
+ Drowned no longer pick up glow ink sacs . 
+ 1.18 21w37a Drowned are now able to spawn in warm oceans . [ 6 ] 
+ 21w39a Drowned are now able to spawn in aquifers inside dripstone caves . 
+ 1.19.4 23w05a Drowned now have a unique swimming animation again. [ 5 ] 
+ 1.21.11 25w41a Drowned can now spawn ride a Zombie Nautilius , forming a zombie nautilus jockey . This occasion happens rarely. 
+ Upcoming Java Edition 
+ 26.1 Baby drowned are officially renamed to "gurgles". 
+ Bedrock Edition 
+ 1.4.0 beta 1.2.13.8 Added drowned mobs as part of " Experimental Gameplay ."
+ Drowned use lower-pitched zombie sounds as a placeholder. 
+ beta 1.2.14.2 Added baby drowned.
+ The drowned's face now glow in the dark. Drowned now have their own sounds . 
+ beta 1.2.20.1 Drowned no longer drop sponge .
+ Baby drowned now burn in sunlight . 
+ 1.5.0 beta 1.5.0.0 Drowned are now present in normal gameplay, not just when experimental gameplay is enabled.
+ Drowned now sometimes hold nautilus shells . Zombies now turn into drowned when underwater. 
+ 1.10.0 beta 1.10.0.3 Drowned are now hostile toward the new wandering traders .
+ The number of drowned mobs that spawn has been reduced. Drowned no longer spawn in swamps . 
+ 1.16.0 beta 1.15.0.51 A converted Drowned can no longer generate with a trident.
+ Drowned without trident no longer drop a trident. 
+ beta 1.16.0.51 Drowned now have ability to pick up items . 
+ 1.16.210 beta 1.16.210.57 Drowned now drop copper ingots instead of gold ingots . 
+ 1.17.30 beta 1.17.30.20 Drowned no longer pick up glow ink sacs . 
+ Legacy Console Edition 
+ TU69 1.76 Patch 38 Added drowned mobs.
+ Zombies now turn into drowned when underwater for too long. 
+ 1.91 Drowned are now hostile toward the new wandering traders . 
+ Issues [ ] 
+ Issues relating to "Drowned" are maintained on the bug tracker . Report issues there .
+ Trivia [ ] 
+ Drowned are not considered as aquatic mobs; instead, they are considered as undead, unaffected by Impaling enchantment. [ 7 ] ‌ [ Java Edition only ] 
+ A drowned chicken jockey floats to the surface because the chicken it is riding floats, causing the drowned riding it to burn in sunlight during the day, resulting in a chicken in the middle of the ocean or river where the drowned jockey spawned in.‌ [ Java Edition only ] 
+ In Bedrock Edition , drowned have a 3D outer layer. This causes their heads and arms to look larger than in Java Edition and causes rendering conflicts with armor, particularly helmets. 
+ Like spiders and endermen , drowned have eyes that appear to glow, although they do not produce light. 
+ When given a spear via commands, drowned only use the jabbing animation with attacking with it. 
+ Gallery [ ] 
+ Screenshots [ ] 
+ An unreleased drowned texture. 
+ Three drowned mobs that spawned naturally in an ocean biome . 
+ A group of drowned attacking the player . 
+ Drowned within a coral reef . 
+ A drowned attacking a pufferfish after being attacked by it. 
+ Drowned can sometimes spawn in ocean ruins in positions that they can't get out of. 
+ A drowned wearing armor. This occurs only on drowned zombies, not naturally spawned drowned.‌ [ Java Edition only ] 
+ Same posture as a player's, when holding a nautilus shell or anything else in their offhand.‌ [ Bedrock Edition only ] 
+ Drowned wearing a pumpkin on Halloween. 
+ A drowned chicken jockey with a trident . 
+ A drowned with a fishing rod . 
+ A drowned holding both a trident and a nautilus shell . 
+ A drowned chicken jockey. 
+ A Left Handed Drowned holding Trident in wrong direction. 
+ Drowned with Loyalty Trident gets swarmed by his own tridents. 
+ A trident drowned in a savanna village. 
+ A creeper and drowned mixed together. 
+ A drowned riding a naturally spawned Zombie Nautilus . 
+ In other media [ ] 
+ Efe fighting several drowned underwater. 
+ https://minecraft.fandom.com/wiki/File:Drowned_Conversion.mp4 
+ An animation of a zombie converting into a drowned. [ 8 ] 
+ The Drowned as it appears in Minecraft Dungeons . 
+ The Drowned Necromancer , a unique variant that appears in Minecraft Dungeons . 
+ Lego Minecraft Drowned. 
+ Acid Drowned , an official T-shirt design. 
+ Textures [ ] 
+ References [ ] 
+ ↑ MC-187536  — Drowned with tridents try to throw tridents at players from an infinite distance 
+ ↑ MC-2432  — resolved as "Works As Intended". 
+ ↑ MC-68605 
+ ↑ MC-127296 
+ ↑ a b MC-147711 
+ ↑ MC-159025  — "Drowned do not spawn in warm ocean biomes" — resolved as "Fixed". 
+ ↑ MC-128249  — resolved as "Works As Intended". 
+ ↑ https://www.instagram.com/p/Bku8MXaDXtV/?taken-by=minecraft 
+ External links [ ] 
+ DANGER: SCARY MOB SPOTTED IN SEAS — Minecraft.net on July 2, 2018 
+ Entities   View at: Template:Entities/content [ edit ] 
+ Categories 
+ Categories : 
+ Entities 
+ Undead mobs 
+ Monster mobs 
+ Neutral mobs 
+ Retaliating mobs 
+ Ranged-attack mobs 
+ Languages 
+ Deutsch 
+ Español 
+ Français 
+ Magyar 
+ Italiano 
+ 日本語 
+ 한국어 
+ Polski 
+ Português 
+ Русский 
+ ไทย 
+ Türkçe 
+ Українська 
+ 中文 
+ Community content is available under CC BY-NC-SA unless otherwise noted. 
+ More Fandoms
+ Fantasy 
+ Minecraft 
+ Advertisement
+ Advertisement
+ Advertisement
+ Explore properties 
+ Fandom 
+ Fanatical 
+ GameSpot 
+ Metacritic 
+ TV Guide 
+ Honest Entertainment 
+ Follow Us 
+ Overview 
+ What is Fandom? 
+ Essentials 
+ About 
+ Careers 
+ Press 
+ Contact 
+ Terms of Use 
+ Privacy Policy 
+ Digital Services Act 
+ Global Sitemap 
+ Local Sitemap 
+ Cookie Preferences 
+ Community 
+ Community Central 
+ Support 
+ Help 
+ Accessibility Statement 
+ Advertise 
+ Media Kit 
+ Contact 
+ Fandom Apps 
+ Take your favorite fandoms with you and never miss a beat. 
+ Minecraft Wiki is a Fandom Games Community. 
+ View Mobile Site 
+ Cookie Preferences When you visit our website, we store cookies on your browser to collect information. The information collected might relate to you, your preferences or your device, and is mostly used to make the site work as you expect it to and to provide a more personalized web experience. Click on the different category headings to find out more. For more information about the First and Third Party Cookies used please follow this link.
+ Privacy Policy Allow All Categories & Purposes List Strictly Necessary Cookies These cookies are necessary for the website to function and cannot be switched off in our systems. They are usually only set in response to actions made by you which amount to a request for services, such as setting your privacy preferences, logging in or filling in forms. You can set your browser to block or alert you about these cookies, but some parts of the site will not then work. These cookies do not store any personally identifiable information. Functional Cookies Functional Cookies These cookies enable the website to provide enhanced functionality and personalisation. They may be set by us or by third party providers whose services we have added to our pages. If you do not allow these cookies then some or all of these services may not function properly. Performance Cookies Performance Cookies These cookies allow us to count visits and traffic sources so we can measure and improve the performance of our site. They help us to know which pages are the most and least popular and see how visitors move around the site. All information these cookies collect is aggregated and therefore anonymous. If you do not allow these cookies we will not know when you have visited our site, and will not be able to monitor its performance. Targeting Cookies Targeting Cookies These cookies may be set through our site by our advertising partners. They may be used by those companies to build a profile of your interests and show you relevant adverts on other sites. They do not store directly personal information, but are based on uniquely identifying your browser and internet device. If you do not allow these cookies, you will experience less targeted advertising. Social Media Cookies Social Media Cookies These cookies are set by a range of social media services that we have added to the site to enable you to share our content with your friends and networks. They are capable of tracking your browser across other sites and building up a profile of your interests. This may impact the content and messages you see on other websites you visit. If you do not allow these cookies you may not be able to use or see these sharing tools. Back Button Cookie List Search Icon Filter Icon Clear checkbox label label Apply Cancel Consent Leg.Interest checkbox label label checkbox label label checkbox label label Close 

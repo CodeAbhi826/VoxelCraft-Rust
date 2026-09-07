@@ -93,6 +93,14 @@ pub struct Sim {
     /// Phase E2: beacon states (position-keyed; the pyramid + powers,
     /// VERIFIED w/Beacon)
     pub beacons: std::collections::HashMap<[i32; 3], vc_gameplay::beacon::BeaconState>,
+    /// 1.13 (Update Aquatic): placed conduits (position-keyed; the
+    /// frame scan + Conduit Power application live in the game layer
+    /// — VERIFIED w/Conduit)
+    pub conduits: std::collections::HashSet<[i32; 3]>,
+    /// conduit attack cadence (full-frame attacks fire every 40
+    /// ticks / 2 s — VERIFIED w/Conduit §Usage: "dealing 4 damage
+    /// every 2 seconds")
+    pub conduit_attack_t: u64,
     /// containers (Phase 3): chests/dispensers/droppers/hoppers
     pub containers: crate::containers::Containers,
     /// dispenser/dropper previous powered state (rising-edge detect)
@@ -127,6 +135,8 @@ impl Sim {
             dragon: vc_gameplay::dragon::DragonSystem::new(seed ^ 0xDA60_0005),
             wither: vc_gameplay::wither::WitherSystem::new(seed ^ 0xB055_0002),
             beacons: std::collections::HashMap::new(),
+            conduits: std::collections::HashSet::new(),
+            conduit_attack_t: 0,
             containers: crate::containers::Containers::default(),
             dispenser_prev: std::collections::HashMap::new(),
             pending_eject: std::collections::HashMap::new(),

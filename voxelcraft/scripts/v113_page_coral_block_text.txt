@@ -1,0 +1,1137 @@
+ 
+ Coral Block – Minecraft Wiki 
+ 10 languages Deutsch Español Français Italiano 日本語 한국어 Nederlands Português Русский 中文 
+ Coral Block Share article feedback 
+ From Minecraft Wiki 
+ Jump to navigation 
+ Jump to search 
+ This article is about the live variant of the solid block. For the dead variant, see Dead Coral Block . For the non-solid block, see Coral . For other kinds of corals, see Coral (disambiguation) .
+ Coral Block 
+ Tube Brain Bubble Fire Horn 
+ Renewable 
+ Yes
+ Stackable
+ Yes (64)
+ Tool
+ Blast resistance 
+ 6
+ Hardness 
+ 1.5
+ Luminous 
+ 0
+ Transparent 
+ No
+ Flammable 
+ No
+ Catches fire from lava 
+ No
+ Map color 
+  25 COLOR _BLUE 
+  20 COLOR _PINK 
+  24 COLOR _PURPLE 
+  28 COLOR _RED 
+  18 COLOR _YELLOW 
+ Note block instrument 
+ Bass Drum
+ Sulfur cube archetype 
+ Fast Flat
+ {
+ "title": "Coral Block",
+ "rows": [
+ {
+ "field": "Yes",
+ "label": "(link to Renewable resource article, displayed as Renewable)"
+ },
+ {
+ "field": "Yes (64)",
+ "label": "Stackable"
+ },
+ {
+ "field": "<span class=\"sprite-file\" style=\"height:32px;width:32px;--vertical-align:middle\">(link to File:Invicon Wooden Pickaxe.png article, displayed as 32x32px|link=|alt=Invicon Wooden Pickaxe.png: Sprite image for Wooden Pickaxe in Minecraft|class=pixel-image|A wooden pickaxe or better is required to mine this block)</span>",
+ "label": "Tool"
+ },
+ {
+ "field": "6",
+ "label": "(link to Explosion#Blast resistance article, displayed as Blast resistance)"
+ },
+ {
+ "field": "1.5",
+ "label": "(link to Breaking#Blocks by hardness article, displayed as Hardness)"
+ },
+ {
+ "field": "0",
+ "label": "(link to Light article, displayed as Luminous)"
+ },
+ {
+ "field": "No",
+ "label": "(link to Opacity article, displayed as Transparent)"
+ },
+ {
+ "field": "No",
+ "label": "(link to Fire#Flammable blocks article, displayed as Flammable)"
+ },
+ {
+ "field": "No",
+ "label": "Catches fire<br>from (link to lava article, displayed as lava)"
+ },
+ {
+ "field": "(values exceeds 1000 characters...)",
+ "label": "(link to Map item format#Color table article, displayed as Map color)"
+ },
+ {
+ "field": "Bass Drum",
+ "label": "(link to Note Block#Instruments article, displayed as Note block instrument)"
+ },
+ {
+ "field": "Fast Flat",
+ "label": "(link to Sulfur Cube#Archetypes article, displayed as Sulfur cube archetype)"
+ }
+ ],
+ "invimages": [
+ "Tube Coral Block",
+ "Brain Coral Block",
+ "Bubble Coral Block",
+ "Fire Coral Block",
+ "Horn Coral Block"
+ ],
+ "images": [
+ "Tube Coral Block.png",
+ "Brain Coral Block.png",
+ "Bubble Coral Block.png",
+ "Fire Coral Block.png",
+ "Horn Coral Block.png"
+ ]
+} 
+ A coral block is a solid block that comes in five variants: tube, brain, bubble, fire, and horn.
+ Contents 
+ 1 Obtaining 
+ 1.1 Breaking 
+ 1.2 Natural generation 
+ 1.3 Trading 
+ 1.4 Mob loot 
+ 2 Usage 
+ 2.1 Placement 
+ 2.2 Sea pickle farm blocks 
+ 3 Sounds 
+ 4 Data values 
+ 4.1 ID 
+ 5 History 
+ 5.1 Java Edition 
+ 5.2 Bedrock Edition 
+ 5.3 Legacy Console Edition 
+ 5.4 Minecraft Education 
+ 6 Issues 
+ 7 Trivia 
+ 8 Gallery 
+ 8.1 Screenshots 
+ 8.2 Development images 
+ 8.3 In other media 
+ 9 References 
+ 10 External links 
+ 11 Navigation 
+ Obtaining [ edit | edit source ] 
+ Breaking [ edit | edit source ] 
+ Coral blocks can be obtained only with a pickaxe enchanted with Silk Touch ; if mined with a pickaxe not enchanted with Silk Touch, they drop the respective dead coral block .
+ Block
+ Coral Block 
+ Hardness
+ 1.5
+ Tool
+ Breaking time (sec) [ A ] 
+ Default
+ 7.5 
+ Wooden 
+ 1.15 
+ Stone 
+ 0.6 
+ Copper 
+ 0.45 
+ Iron 
+ 0.4 
+ Diamond 
+ 0.3 
+ Netherite 
+ 0.25 
+ Golden 
+ 0.2 
+ Options Efficiency 0 Haste 0 JE BE 
+ Legend 
+ incorrect tool, drops nothing 
+ correct tool, drops nothing or something other than the block itself 
+ correct tool, drops the block itself 
+ italicized can be instant mined 
+ ↑ These durations ignore any other influential factors (e.g., Mining Fatigue ) and are measured in seconds. For more information, see Breaking § Mining efficiency . 
+ Natural generation [ edit | edit source ] 
+ Coral blocks naturally generate in coral reef structures, which can be found in warm oceans .
+ Trading [ edit | edit source ] 
+ Wandering traders may sell 1 of any coral block for 3 emeralds .
+ Villager Probability Villager wants Player receives Trades in stock Villager experience Price multiplier JE BE Wandering Trader Ordinary 7% 7% 3 × Emerald Brain Coral Block 8 — — 7% 7% 3 × Emerald Bubble Coral Block 8 — — 7% 7% 3 × Emerald Fire Coral Block 8 — — 7% 7% 3 × Emerald Horn Coral Block 8 — — 7% 7% 3 × Emerald Tube Coral Block 8 — — 
+ Mob loot [ edit | edit source ] 
+ In Bedrock Edition , wandering traders have a chance of 25% (increased by 1% per level of Looting ) to drop 1 coral block when killed while showing the item as trade offer, if the player holds an emerald .
+ Usage [ edit | edit source ] 
+ North 
+ East 
+ South 
+ West 
+ Example 
+ Schematic of valid block placements for coral blocks with water around. Several ways are shown where the arrangement would cause coral blocks to stay alive or die. 
+ Coral blocks can be used for building or as decoration blocks.
+ Placement [ edit | edit source ] 
+ In order for a coral block to stay alive, at least one of the six directly adjacent blocks must be water or a waterlogged block . If placed outside of water, it transforms into its respective dead coral block after 3 to 4.95 seconds‌ [ Java Edition only ] or 2.25 seconds‌ [ Bedrock Edition only ] — a grayscale version of the coral block. A coral block still dies if the game rule randomTickSpeed is set to 0 . [ 1 ] Once a coral block dies, it is not possible to turn a dead coral block into a live coral block.
+ In Bedrock Edition , coral blocks do not die if they are surrounded by any non-air blocks. [ 2 ] 
+ Sea pickle farm blocks [ edit | edit source ] 
+ If sea pickles are planted on live coral blocks, using bone meal on the sea pickles increases the number of sea pickles and creates more sea pickles on nearby coral blocks. Specifically, they can spread to the original sea pickle's level or one level below, out to a horizontal taxicab distance of 2. This only works on living coral blocks, not dead coral blocks.
+ Sounds [ edit | edit source ] 
+ Java Edition :
+ [ hide ] 
+ v 
+ t 
+ e coral_block sound type Sound Closed captions Source Description Identifier Translation key Volume Pitch Attenuation distance ​Block broken Blocks Once the block has broken block .coral_block .break subtitles .block .generic .break ​ 1.0 0.8 16 ​Block placed Blocks When the block is placed block .coral_block .place subtitles .block .generic .place ​ 1.0 0.8 16 ​Block breaking Blocks While the block is in the process of being broken block .coral_block .hit subtitles .block .generic .hit ​ 0.25 0.5 16 ​Something falls on a block Entity-Dependent Falling on the block with fall damage block .coral_block .fall subtitles .block .generic .fall ​ 0.5 0.75 16 ​Footsteps Entity-Dependent Walking on the block block .coral_block .step subtitles .block .generic .footsteps ​ 0.15 1.5 16 
+ Bedrock Edition : [ sound 1 ] 
+ [ hide ] 
+ v 
+ t 
+ e stone sound type Sound Closed captions Source Description Identifier Translation key Volume Pitch ​Block broken Blocks Once the block has broken dig .stone subtitles .block .generic .break ​ 1.0 0.8–1.0 ​Block placed Blocks When the block is placed place .stone subtitles .block .generic .place ​ 1.0 0.8–1.0 ​Block breaking Blocks While the block is in the process of being broken hit .stone subtitles .block .generic .hit ​ 0.37 0.5 ​Footsteps Players Falling on the block with fall damage fall .stone subtitles .block .generic .footsteps ​ 0.4 1.0 ​Footsteps Players Walking on the block step .stone subtitles .block .generic .footsteps ​ 0.3 1.0 ​Footsteps Blocks Jumping from the block jump .stone subtitles .block .generic .footsteps ​ 0.12 1.0 ​Footsteps Blocks Falling on the block without fall damage land .stone subtitles .block .generic .footsteps ​ 0.22 1.0 
+ ↑ MCPE-76182  – Coral uses stone sounds 
+ Data values [ edit | edit source ] 
+ ID [ edit | edit source ] 
+ Java Edition :
+ Name Identifier Form Block tags 
+ [ hide ] Translation key Tube Coral Block tube_coral_block Block & Item coral_blocks mineable/pickaxe 
+ block .minecraft .tube_coral_block 
+ Brain Coral Block brain_coral_block Block & Item coral_blocks mineable/pickaxe 
+ block .minecraft .brain_coral_block 
+ Bubble Coral Block bubble_coral_block Block & Item coral_blocks mineable/pickaxe 
+ block .minecraft .bubble_coral_block 
+ Fire Coral Block fire_coral_block Block & Item coral_blocks mineable/pickaxe 
+ block .minecraft .fire_coral_block 
+ Horn Coral Block horn_coral_block Block & Item coral_blocks mineable/pickaxe 
+ block .minecraft .horn_coral_block 
+ Bedrock Edition :
+ Name Identifier Alias ID Numeric ID Form Item ID [ i 1 ] 
+ [ hide ] Translation key Tube Coral Block tube_coral_block coral_block / 0 -132 Block & Giveable Item [ i 2 ] Identical [ i 3 ] 
+ tile .coral_block .blue .name 
+ Brain Coral Block brain_coral_block coral_block / 1 -849 Block & Giveable Item [ i 2 ] Identical [ i 3 ] 
+ tile .coral_block .pink .name 
+ Bubble Coral Block bubble_coral_block coral_block / 2 -850 Block & Giveable Item [ i 2 ] Identical [ i 3 ] 
+ tile .coral_block .purple .name 
+ Fire Coral Block fire_coral_block coral_block / 3 -851 Block & Giveable Item [ i 2 ] Identical [ i 3 ] 
+ tile .coral_block .red .name 
+ Horn Coral Block horn_coral_block coral_block / 4 -852 Block & Giveable Item [ i 2 ] Identical [ i 3 ] 
+ tile .coral_block .yellow .name 
+ ↑ ID of block's direct item form, which is used in savegame files and addons. 
+ ↑ Jump up to: a b c d e Available with / give command. 
+ ↑ Jump up to: a b c d e The block's direct item form has the same ID as the block. 
+ History [ edit | edit source ] 
+ This section is missing information about: when something about coral slabs not being added mentioned by a dev  
+ Please expand the section to include this information. Further details may exist on the talk page . 
+ This section would benefit from the addition of more sounds.  
+ Please remove this notice once you have added suitable sounds to the section. The specific instructions are: Sounds before 1.13-pre6 
+ Java Edition [ edit | edit source ] 
+ [ hide ] Java Edition Classic May 21, 2009 
+ Notch expresses interest in a suggestion regarding corals by user "solarblade". [ hide ] Java Edition Infdev June 28, 2010 
+ Notch mentioned on his blog: "I tried adding corals, but it's really hard to draw a single block that looks like corals, since it's really more about crazy amounts of variation and diversity. But I do know that the corals will have tiny fish particles around them." 20100629 
+ A coral block texture is added to terrain.png . [ hide ] Java Edition Beta May 17, 2011 
+ An unused CoralTile class can be found in the jar file of a developer fork of Beta 1.2_02 . The coral block would receive a randomized color depending on its coordinates. [ hide ] Java Edition October 5, 2012 
+ Coral were jokingly teased in the fake snapshot 12marc40awesome , along with fish mobs and "fish blocks ". November 18, 2017 
+ Coral were shown in a clip at MINECON Earth .
+ Multicolored coral blocks were shown, alongside unimplemented slab variants. 1.13 18w09a 
+ Added coral. 18w10a 
+ Each coral block variant now uses a unique texture. 18w10d 
+ Added coral reefs , allowing coral to generate naturally. 18w14b 
+ What was previously named "Coral" has been renamed to "Coral Blocks", and what was previously named "Coral Plants" have been renamed to "Coral".
+ The blue, pink, purple, red, and yellow variants of all coral blocks have been renamed to tube, brain, bubble, fire, and horn, respectively. 18w16a 
+ Mining coral blocks now requires Silk Touch to drop them.
+ Coral blocks now have a short delay before dying.
+ Coral blocks no longer die as long as one side is touching water . pre6 
+ Living coral blocks now have new sound events: block.coral_block.break , block.coral_block.fall , block.coral_block.hit , block.coral_block.place , and block.coral_block.step . 1.14 19w05a 
+ Added wandering traders , which sell all types of coral blocks, making them renewable . 26.2 snap1 
+ Added sulfur cubes , which have the ability to absorb coral blocks, providing the golf ball/fast flat effect to the mob. 
+ Bedrock Edition [ edit | edit source ] 
+ [ hide ] Bedrock Edition 1.4.0 beta 1.2.14.2 
+ Added coral blocks.
+ Coral blocks currently die only if they touch air or void blocks , meaning that coral technically do not need water to stay alive. 
+ Coral blocks with a damage/metadata value of 13 would display the following name: ' tile.coral_block..name '. 1.4.0 beta 1.2.20.1 
+ Coral blocks with a damage/metadata value of 13 have had their name changed to ' tile.coral_block.blue_fan.name '. 1.5.0 beta 1.5.0.4 
+ Coral blocks no longer die as long as one side is touching water . 1.10.0 beta 1.10.0.3 
+ Coral blocks can now be bought from wandering traders .
+ The textures for brain and horn coral blocks have been changed to look the same as Java Edition ' s texture. 1.16.0 ? 
+ When buying from wandering traders, one emerald now purchases one coral block instead of three of the same type. 1.20.30 Preview 1.20.20.21 
+ Decreased the hardness of coral blocks from 7 to 1.5.
+ Increased the blast resistance of coral blocks from 0.9 to 6. 1.21.0 Preview 1.21.0.21 
+ The different block states for the coral_block ID have now been split up into their own IDs. 26.20 Experiment Drop 2 of 2026 Preview 26.20.23 
+ Added sulfur cubes , which have the ability to absorb coral blocks, providing the golf ball/fast flat effect to the mob. 26.30 Preview 26.30.20 
+ Implemented all features from the "Drop 2 of 2026" experiment in vanilla gameplay. 
+ Legacy Console Edition [ edit | edit source ] 
+ [ hide ] Legacy Console Edition Xbox 360 Xbox One PS3 PS4 PS Vita Wii U Switch TU69 1.76 1.76 1.76 Patch 38 
+ Added coral blocks. 1.91 
+ Added wandering traders , which sell all types of coral blocks, making them renewable . 
+ Minecraft Education [ edit | edit source ] 
+ [ hide ] Minecraft Education 1.4.0 
+ Added coral blocks. 
+ Issues [ edit | edit source ] 
+ Issues relating to "Coral Block" are maintained on the bug tracker . Issues should be reported and viewed there .
+ Trivia [ edit | edit source ] 
+ After players had placed 10 million coral blocks underwater in Bedrock Edition , Mojang donated US$100,000 to The Nature Conservancy to protect and restore coral reefs around the world. [ 3 ] 
+ Gallery [ edit | edit source ] 
+ Screenshots [ edit | edit source ] 
+ Coral blocks naturally generating in a coral reef 
+ All variants of coral blocks 
+ Coral blocks within a coral reef 
+ Development images [ edit | edit source ] 
+ Prototype corals shown in a clip from MINECON Earth 2017 
+ Unused code for a coral block can be found in a developer fork of Beta 1.2_02 . This is an example of how it would look in-game using the unused texture from Infdev 20100629 . 
+ In other media [ edit | edit source ] 
+ Coral blocks on the key art for Coral Crafters Skin Pack 
+ References [ edit | edit source ] 
+ ↑ MC-129942  – resolved as "Invalid". 
+ ↑ MCPE-62394 
+ ↑ "You helped us help the ocean!" by Tom Stone – Minecraft.net , June 26, 2018. 
+ External links [ edit | edit source ] 
+ "Block of the Week: Coral" by Duncan Geere – Minecraft.net , March 2, 2022. 
+ Navigation [ edit | edit source ] 
+ [ hide ] 
+ v 
+ t 
+ e Coral 
+ Feature
+ Coral Reef 
+ Mobs
+ Coral Zombie Nautilus 
+ Coral
+ Brain 
+ Bubble 
+ Fire 
+ Horn 
+ Tube 
+ Dead
+ Brain 
+ Bubble 
+ Fire 
+ Horn 
+ Tube 
+ Block
+ Brain 
+ Bubble 
+ Fire 
+ Horn 
+ Tube 
+ Dead
+ Brain 
+ Bubble 
+ Fire 
+ Horn 
+ Tube 
+ Fan
+ Brain 
+ Bubble 
+ Fire 
+ Horn 
+ Tube 
+ Dead
+ Brain 
+ Bubble 
+ Fire 
+ Horn 
+ Tube 
+ [ hide ] 
+ v 
+ t 
+ e Blocks 
+ [ show ] Structural 
+ Lumber 
+ Logs 
+ Stripped 
+ Wood 
+ Stripped 
+ Stems 
+ Stripped 
+ Hyphae 
+ Stripped 
+ Block of Bamboo 
+ Stripped 
+ Bamboo Mosaic 
+ Planks 
+ Stone / Deepslate 
+ Stone 
+ Cobblestone 
+ Mossy 
+ Smooth Stone 
+ Stone Bricks 
+ Chiseled 
+ Cracked 
+ Mossy 
+ Granite 
+ Polished 
+ Diorite 
+ Polished 
+ Andesite 
+ Polished 
+ Deepslate 
+ Chiseled 
+ Cobbled 
+ Polished 
+ Deepslate Bricks 
+ Cracked 
+ Deepslate Tiles 
+ Cracked 
+ Tuff 
+ Chiseled 
+ Polished 
+ Tuff Bricks 
+ Chiseled 
+ Overworld 
+ Bricks 
+ Packed Mud 
+ Mud Bricks 
+ Resin Bricks 
+ Chiseled 
+ Sandstone 
+ Chiseled 
+ Cut 
+ Smooth 
+ Red Sandstone 
+ Chiseled 
+ Cut 
+ Smooth 
+ Cinnabar 
+ Chiseled 
+ Polished 
+ Bricks 
+ Sulfur 
+ Chiseled 
+ Polished 
+ Bricks 
+ Prismarine 
+ Bricks 
+ Dark 
+ The Nether 
+ Netherrack 
+ Nether Bricks 
+ Chiseled 
+ Cracked 
+ Red 
+ Blackstone 
+ Polished Blackstone 
+ Chiseled 
+ Polished Blackstone Bricks 
+ Cracked 
+ Basalt 
+ Polished 
+ Smooth 
+ The End 
+ End Stone 
+ Bricks 
+ Purpur Block 
+ Pillar 
+ Mineral 
+ Block of Quartz 
+ Bricks 
+ Chiseled 
+ Pillar 
+ Smooth 
+ Block of Copper 
+ Chiseled 
+ Cut 
+ Grate 
+ Block of Iron 
+ Block of Gold 
+ Block of Amethyst 
+ Block of Coal 
+ Block of Diamond 
+ Block of Emerald 
+ Block of Lapis Lazuli 
+ Block of Netherite 
+ Block of Redstone 
+ [ show ] Ornamental 
+ Decorative
+ Crying Obsidian 
+ Gilded Blackstone 
+ Reinforced Deepslate 
+ Partial Block 
+ Bars 
+ Iron 
+ Copper 
+ Chains 
+ Iron 
+ Copper 
+ Fences 
+ Wooden 
+ Nether Brick 
+ Slabs 
+ Cut Copper 
+ Wooden 
+ Stairs 
+ Cut Copper 
+ Wooden 
+ Walls 
+ Dyeable /Dyed
+ Wool 
+ Slab ​ [ upcoming: Wilderness Bound ] 
+ Stairs ​ [ upcoming: Wilderness Bound ] 
+ Carpets 
+ Terracotta 
+ Stained 
+ Glazed 
+ Concrete 
+ Slab ​ [ upcoming: Wilderness Bound ] 
+ Stairs ​ [ upcoming: Wilderness Bound ] 
+ Powder 
+ Glass 
+ Pane 
+ Tinted 
+ Stained Glass 
+ Pane 
+ Lighting 
+ Candle 
+ Dyed 
+ End Rod 
+ Froglight 
+ Glowstone 
+ Jack o'Lantern 
+ Lantern 
+ Copper 
+ Soul 
+ Sea Lantern 
+ Torch 
+ Copper 
+ Soul 
+ BE & Edu only
+ Colored Torches 
+ Elements 
+ Hardened Glass 
+ Pane 
+ Hardened Stained Glass 
+ Pane 
+ [ hide ] Natural 
+ Sediment /Soil
+ Clay 
+ Dirt 
+ Coarse 
+ Path 
+ Grass Block 
+ Mycelium 
+ Podzol 
+ Rooted 
+ Gravel 
+ Mud 
+ Nylium 
+ Crimson 
+ Warped 
+ Sand 
+ Red 
+ Soul Sand 
+ Soil 
+ Misc. rock 
+ Bedrock 
+ Magma Block 
+ Obsidian 
+ Calcite 
+ Sulfur Spike 
+ Potent Sulfur 
+ Pointed Dripstone 
+ Block 
+ Ore /Mineral
+ Amethyst Bud 
+ Cluster 
+ Budding Amethyst 
+ Ancient Debris 
+ Coal Ore 
+ Deepslate 
+ Copper Ore 
+ Deepslate 
+ Raw Block 
+ Diamond Ore 
+ Deepslate 
+ Emerald Ore 
+ Deepslate 
+ Gold Ore 
+ Deepslate 
+ Nether 
+ Raw Block 
+ Iron Ore 
+ Deepslate 
+ Raw Block 
+ Lapis Lazuli Ore 
+ Deepslate 
+ Nether Quartz Ore 
+ Redstone Ore 
+ Deepslate 
+ Plant 
+ Azalea 
+ Flowering 
+ Bamboo 
+ Shoot 
+ Big Dripleaf 
+ Small 
+ Bush 
+ Cactus 
+ Creaking Heart 
+ Dead Bush 
+ Fern 
+ Large 
+ Firefly Bush 
+ Hanging Roots 
+ Leaf Litter 
+ Leaves 
+ Mangrove Propagule 
+ Mangrove Roots 
+ Muddy 
+ Moss Block 
+ Carpet 
+ Pale Moss Block 
+ Carpet 
+ Hanging 
+ Red Shrub ​ [ upcoming: Wilderness Bound ] 
+ Resin Clump 
+ Block 
+ Saplings 
+ Short Dry Grass 
+ Tall 
+ Short Grass 
+ Tall 
+ Vines 
+ Flower 
+ Allium 
+ Azure Bluet 
+ Blue Orchid 
+ Cactus Flower 
+ Cornflower 
+ Dandelion 
+ Golden 
+ Eyeblossom 
+ Closed 
+ Open 
+ Lilac 
+ Lily of the Valley 
+ Oxeye Daisy 
+ Peony 
+ Pink Petals 
+ Pitcher Plant 
+ Crop 
+ Poppy 
+ Rose Bush 
+ Spore Blossom 
+ Sunflower 
+ Torchflower 
+ Crop 
+ Tulips 
+ Wildflowers 
+ Wither Rose 
+ Crops & related
+ Beetroots 
+ Carrots 
+ Cave Vines 
+ Chorus Plant 
+ Flower 
+ Cocoa 
+ Melon 
+ Stem 
+ Potatoes 
+ Pumpkin 
+ Carved 
+ Stem 
+ Sugar Cane 
+ Sweet Berry Bush 
+ Wheat Crops 
+ Hay Bale 
+ Fungus & related
+ Brown Mushroom 
+ Red Mushroom 
+ Shelf Mushroom ​ [ upcoming: Wilderness Bound ] 
+ Mushroom Blocks 
+ Glow Lichen 
+ Crimson Fungus 
+ Warped Fungus 
+ Nether Wart 
+ Nether Sprouts 
+ Crimson Roots 
+ Warped Roots 
+ Nether Wart Block 
+ Warped Wart Block 
+ Shroomlight 
+ Twisting Vines 
+ Weeping Vines 
+ Fauna & Related
+ Bee Nest 
+ Honeycomb Block 
+ Bone Block 
+ Cobweb 
+ Dragon Egg 
+ Dried Ghast 
+ Infested Blocks 
+ Sniffer Egg 
+ Turtle Egg 
+ Aquatic
+ Coral 
+ Dead 
+ Coral Blocks 
+ Dead 
+ Coral Fans 
+ Dead 
+ Frogspawn 
+ Kelp 
+ Dried Block 
+ Lily Pad 
+ Sea Pickle 
+ Seagrass 
+ Tall 
+ Sculk 
+ Sculk 
+ Sculk Catalyst 
+ Sculk Sensor 
+ Calibrated 
+ Sculk Shrieker 
+ Sculk Vein 
+ Fluid & Related
+ Lava 
+ Water 
+ Bubble Column 
+ Ice 
+ Blue 
+ Packed 
+ Snow 
+ Powder 
+ Block 
+ Non-physical
+ Air 
+ Cave ‌ [ JE only ] 
+ Void ‌ [ JE only ] 
+ Invisible Bedrock ‌ [ BE & edu only ] 
+ Fire 
+ Soul 
+ [ show ] Utility 
+ Interactable 
+ Anvil 
+ Chipped 
+ Damaged 
+ Barrel 
+ Beacon 
+ Brewing Stand 
+ Cartography Table 
+ Chest 
+ Ender 
+ Copper 
+ Crafting Table 
+ Enchanting Table 
+ Furnace 
+ Blast 
+ Smoker 
+ Grindstone 
+ Lectern 
+ Loom 
+ Shulker Box 
+ Dyed 
+ Sign 
+ Hanging 
+ Smithing Table 
+ Stonecutter 
+ Utilizable
+ Banners 
+ Ominous 
+ Beehive 
+ Beds 
+ Straw ​ [ upcoming: Wilderness Bound ] 
+ Bell 
+ Bookshelf 
+ Cake 
+ with Candle 
+ Campfire 
+ Soul 
+ Cauldron 
+ Chiseled Bookshelf 
+ Composter 
+ Conduit 
+ Copper Golem Statue 
+ Decorated Pot 
+ End Gateway 
+ End Portal 
+ End Portal Frame 
+ Farmland 
+ Fletching Table 
+ Flower Pot 
+ Frosted Ice 
+ Heads 
+ Skeleton 
+ Wither Skeleton 
+ Zombie 
+ Creeper 
+ Piglin 
+ Dragon 
+ Heavy Core 
+ Jukebox 
+ Ladder 
+ Lodestone 
+ Monster Spawner 
+ Nether Portal 
+ Respawn Anchor 
+ Scaffolding 
+ Shelf 
+ Sponge 
+ Wet 
+ Suspicious Gravel 
+ Suspicious Sand 
+ TNT 
+ Trial Spawner 
+ Ominous 
+ Vault 
+ Ominous 
+ Redstone / Mechanical
+ Buttons 
+ Wooden 
+ Stone 
+ Polished Blackstone 
+ Copper Bulb 
+ Crafter 
+ Daylight Detector 
+ Dispenser 
+ Dropper 
+ Doors 
+ Copper 
+ Iron 
+ Wooden 
+ Honey Block 
+ Hopper 
+ Lever 
+ Lightning Rod 
+ Note Block 
+ Observer 
+ Piston 
+ Sticky 
+ Pressure Plates 
+ Wooden 
+ Stone 
+ Polished Blackstone 
+ Heavy Weighted 
+ Light Weighted 
+ Rail 
+ Activator 
+ Detector 
+ Powered 
+ Redstone Lamp 
+ Redstone Wire 
+ Comparator 
+ Repeater 
+ Torch 
+ Slime Block 
+ Target 
+ Trapped Chest 
+ Trapdoors 
+ Copper 
+ Iron 
+ Wooden 
+ Fence Gates 
+ Tripwire Hook 
+ Tripwire 
+ BE & Edu only
+ Allow 
+ Border 
+ Chalkboards 
+ Compound Creator 
+ Deny 
+ Element Constructor 
+ Heat Block 
+ Item Frame 
+ Glow 
+ Lab Table 
+ Material Reducer 
+ Underwater TNT 
+ Underwater Torch 
+ [ show ] Creative or commands only 
+ All editions
+ Barrier 
+ Command Block 
+ Chain 
+ Repeating 
+ Jigsaw Block 
+ Light 
+ Petrified Oak Slab 
+ Player Head 
+ Structure Block 
+ Void 
+ Java Edition only
+ Test Block 
+ Test Instance Block 
+ China Edition only
+ micro_block 
+ [ show ] Removed 
+ Java Edition only
+ Cloth 
+ Dead Coral Block 
+ Gear 
+ Infinite Lava Source 
+ Infinite Water Source 
+ Locked chest 
+ Rose 
+ Potted 
+ Shrub 
+ Bedrock Edition only
+ Blue Rose 
+ Duplicate Black Wool 
+ grass_carried 
+ leaves_carried 
+ Fern 
+ Fern 
+ Smooth Stone Bricks 
+ Structure Air 
+ mysterious_frame_slot 
+ China Edition only
+ mod_ore 
+ MinecraftEdu only
+ Big Sign 
+ Border block 
+ Build allow block 
+ Build disallow block 
+ Foundation block 
+ Home Block 
+ Information block 
+ Information Sign 
+ Number Block 
+ Spawn Block 
+ Steppe dirt 
+ Steppe sand 
+ Teleport Block 
+ Quiz Block 
+ Minecraft 4k only
+ ID 9 Dirt 
+ XOR Block 
+ [ show ] Unused 
+ BE & Edu only
+ Camera Block 
+ Chiseled Purpur 
+ tile.client_request_placeholder_block.name 
+ Deprecated Anvil 
+ tile.deprecated_purpur_block_2.name 
+ Glowing Obsidian 
+ tile.info_update.name 
+ tile.info_update2.name 
+ Nether Reactor Core 
+ tile.reserved6.name 
+ Stonecutter (old) 
+ Unknown 
+ [ show ] Unimplemented 
+ All editions
+ Branches 
+ Copper Button 
+ Colored Planks 
+ Coral Slab 
+ Dead 
+ Dirt Slab 
+ Empty Barrel 
+ Fish Barrel 
+ Furniture 
+ Paeonia 
+ Sculk Jaw 
+ Spike Block 
+ Wax Block 
+ [ show ] Joke 
+ April Fools 2013 
+ Block of Coal 
+ Etho Slab 
+ Tinted Glass 
+ Torch (Burnt-out) 
+ April Fools 2016 
+ USB Charger Block 
+ April Fools 2020 
+ An Ant 
+ Box of Infinite Books 
+ Cursor 
+ Funky Portal 
+ Leftover 
+ Swaggiest stairs ever 
+ April Fools 2022 
+ How did we get here? 
+ April Fools 2023 
+ Cheese 
+ Copper Sink 
+ Filled 
+ Copper Spleaves 
+ Golden Chest 
+ Other Portal 
+ Packed Air 
+ Pickaxe Block 
+ Place Block 
+ April Fools 2024 
+ Baked Potato Bricks 
+ Expired 
+ Charred 
+ Big Brain 
+ Block of Amber 
+ Block of Potato Peels 
+ Corrupted 
+ Floatater 
+ Floatato 
+ Frying Table 
+ Gravtater 
+ Pedestal 
+ Peelgrass Block 
+ Corrupted 
+ Poison Farmland 
+ Poison Path 
+ Poisonous Mashed Potato 
+ Poisonous Potato Block 
+ Compressed 
+ Double Compressed 
+ Triple Compressed 
+ Quadruple Compressed 
+ Poisonous Potato Cutter 
+ Poisonous Potato Head Block 
+ Poisonous Potato Headpiece 
+ Poisonous Potato Ore 
+ Deepslate 
+ Potato Battery 
+ Potato Bud 
+ Potato flower 
+ Potato Fruit 
+ Potato Leaves 
+ Potato Pedicule 
+ Potato Portal 
+ Potato Refinery 
+ Potato Sprouts 
+ Potato Stem 
+ Planks 
+ Slab 
+ Stairs 
+ Door 
+ Trapdoor 
+ Button 
+ Pressure Plate 
+ Sign 
+ Hanging Sign 
+ Fence 
+ Fence Gate 
+ Potone 
+ Copper Ore 
+ Diamond Ore 
+ Gold Ore 
+ Iron Ore 
+ Lapis Lazuli Ore 
+ Redstone Ore 
+ Resin Ore 
+ Powerful Potato 
+ Strong Roots 
+ Taterstone 
+ Terre de Pomme 
+ Vicious Potato 
+ Weak Roots 
+ April Fools 2025 
+ Dimension Control 
+ Mine Travelling Block 
+ Mine Revisitor 
+ Mine Crafter 
+ Mob Trophy 
+ Shimmering Door 
+ Sky 
+ Trophy 
+ April Fools 2026 
+ Copper Trap 
+ Iron Trap 
+ [ show ] Extreme metadata variants 
+ All editions
+ Directionless Hopper 
+ Seamless Stone Slab 
+ Six-sided Hay Bale 
+ Six-sided Piston 
+ Java Edition only
+ Faceless Furnace 
+ Faceless Jack o'Lantern 
+ Green Shrub 
+ Potted 
+ Invisible stairs 
+ Misaligned torch 
+ Redstone 
+ Nether portal post 
+ Overripe Melon Stem 
+ Attached 
+ Overripe Pumpkin Stem 
+ Attached 
+ Overgrown Cocoa 
+ Overeaten Cake 
+ Overgrown Wheat Crops 
+ Potted non-flower block 
+ Snowy Dirt 
+ Coarse 
+ Strange buttons 
+ Invisible random ladders 
+ Others 
+ Bedrock Edition only
+ Bell Stand 
+ Diorite Bell 
+ Granite Bell 
+ Polished 
+ Six-sided Bone Block 
+ Six-sided Purpur Pillar 
+ Six-sided Quartz Pillar 
+ Smokeless Campfire 
+ Retrieved from " https://minecraft.wiki/w/Coral_Block?oldid=3751018 " 
+ Categories : Renewable resources Stackable resources Articles missing historical information Pages needing historical sounds Blocks Animal blocks Natural blocks Hidden categories: Pages using simple calculator Pages using calculator Pages with sound tables Pages with Java sound tables Pages with Bedrock sound tables Unknown Bedrock version history 
+ Navigation menu 
+ Personal tools 
+ Create account Log in 
+ associated-pages 
+ Page Talk 
+ English 
+ Views 
+ Read Edit Edit source View history 
+ More 
+ Refresh 
+ Search 
+ Navigation 
+ How to help Recent changes Random page in Minecraft in Dungeons in Dungeons II in Legends in Earth in Story Mode in Tutorial in Movie Wiki Discord 
+ Wiki community 
+ Community portal Wiki forum Projects Wiki rules Style guide Notability Sandbox Admin noticeboard 
+ X 
+ Franchise 
+ Minecraft Minecraft Dungeons Minecraft Legends Minecraft Earth Minecraft: Story Mode A Minecraft Movie 
+ Recent versions 
+ Java Edition 
+ Latest: 26.2 
+ Dev: 26.3-pre-2 
+ Upcoming: 26.3 
+ Bedrock Edition 
+ Latest: 26.45 
+ Preview: 26.60.21 
+ Upcoming: 26.50 
+ Upcoming: 26.60 
+ Useful pages 
+ Trading Brewing Enchantments Mobs Blocks Items Crafting Smelting Tutorials Resource packs Redstone circuits 
+ Useful pages 
+ Weapons Enchanting Armor Artifacts Missions 
+ Useful pages 
+ Weapons Enchanting Armor Artifact 
+ Useful pages 
+ Friendly units Piglins Resources Biomes Structures Lost Legends 
+ Tools 
+ What links here Related changes Printable version Permanent link Page information Special pages View buckets 
+ In other languages 
+ Deutsch Español Français Italiano 日本語 한국어 Nederlands Português Русский 中文 
+ Contents (Top) 1 Obtaining 
+ 1.1 Breaking 
+ 1.2 Natural generation 
+ 1.3 Trading 
+ 1.4 Mob loot 
+ 2 Usage 
+ 2.1 Placement 
+ 2.2 Sea pickle farm blocks 
+ 3 Sounds 4 Data values 
+ 4.1 ID 
+ 5 History 
+ 5.1 Java Edition 
+ 5.2 Bedrock Edition 
+ 5.3 Legacy Console Edition 
+ 5.4 Minecraft Education 
+ 6 Issues 7 Trivia 8 Gallery 
+ 8.1 Screenshots 
+ 8.2 Development images 
+ 8.3 In other media 
+ 9 References 10 External links 11 Navigation 
+ This page was last edited on 30 August 2026, at 23:35. 
+ Content on this site is licensed under CC BY-NC-SA 3.0 unless otherwise noted; additional terms may apply . Not an official Minecraft website. We are not associated with Mojang or Microsoft. 
+ Privacy policy 
+ About Minecraft Wiki 
+ Disclaimers 
+ Terms of Use 
+ Contact Weird Gloop 
+ Mobile view 
+ Edit preview settings 
+ To leave feedback for the game, click here . Feedback will be posted anonymously and shared to our Discord . Something went wrong Dismiss 

@@ -1,0 +1,787 @@
+ 
+ Turtle – Minecraft Wiki 
+ Turtle 
+ From Minecraft Wiki 
+ Jump to navigation 
+ Jump to search 
+ For other uses, see Turtle (disambiguation) .
+ Turtle 
+ Adult
+ Baby
+ Health points 
+ 30 HP × 15 
+ Behavior
+ Passive
+ Mob type 
+ Animal Aquatic 
+ Hitbox size 
+ In Java Edition : 
+ Adult: Height: 0.4 blocks Width: 1.2 blocks 
+ Baby: Height: 0.12 blocks Width: 0.36 blocks 
+ In Bedrock Edition : 
+ Adult: Height: 0.4 blocks Width: 1.2 blocks 
+ Baby: Height: 0.032 blocks Width: 0.096 blocks
+ Speed 
+ 0.25
+ Spawn 
+ Beach When a turtle egg hatches (as a baby turtle).
+ Usable items
+ Seagrass 
+ Golden Dandelion (baby only) 
+ {
+ "title": "Turtle",
+ "rows": [
+ {
+ "field": "30<span class=\"hidden-alt-text\">HP</span><span class=\"nowrap mc-hearts\"><span class=\"iconbar pixel-image nowrap\" style=\"--icon-offset:-1px;\" title=\"1 heart\">(link to File:Heart (icon).png article, displayed as 9px|link=|alt=❤️)</span> × 15</span>",
+ "label": "(link to Health article, displayed as Health points)"
+ },
+ {
+ "field": "Passive",
+ "label": "Behavior"
+ },
+ {
+ "field": "<span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:EntitySprite animal.png article, displayed as 16x16px|link=Animal|alt=|class=pixel-image|)</span>(link to Animal article, displayed as <span class=\"sprite-text\">Animal</span>)</span><br><span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:EntitySprite aquatic.png article, displayed as 16x16px|link=Aquatic|alt=|class=pixel-image|)</span>(link to Aquatic article, displayed as <span class=\"sprite-text\">Aquatic</span>)</span>",
+ "label": "(link to Mob type article, displayed as Mob type)"
+ },
+ {
+ "field": "'''In (link to Java Edition article, displayed as ''Java Edition''):'''<br>\n'''Adult:'''<br>Height: 0.4 blocks<br>Width: 1.2 blocks<br>\n'''Baby:'''<br>Height: 0.12 blocks<br>Width: 0.36 blocks<br>\n'''In (link to Bedrock Edition article, displayed as ''Bedrock Edition''):'''<br>\n'''Adult:'''<br>Height: 0.4 blocks<br>Width: 1.2 blocks<br>\n'''Baby:'''<br>Height: 0.032 blocks<br>Width: 0.096 blocks",
+ "label": "(link to Hitbox article, displayed as Hitbox size)"
+ },
+ {
+ "field": "0.25",
+ "label": "(link to Attribute#Movement_speed article, displayed as Speed)"
+ },
+ {
+ "field": "<span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:BiomeSprite beach.png article, displayed as 16x16px|link=Beach|alt=|class=pixel-image|)</span>(link to Beach article, displayed as <span class=\"sprite-text\">Beach</span>)</span> <br> When a (link to turtle egg article, displayed as turtle egg) hatches (as a baby turtle).",
+ "label": "(link to Mob spawning article, displayed as Spawn)"
+ },
+ {
+ "field": "\n* <span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:BlockSprite seagrass.png article, displayed as 16x16px|link=Seagrass|alt=|class=pixel-image|)</span>(link to Seagrass article, displayed as <span class=\"sprite-text\">Seagrass</span>)</span> \n* <span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:BlockSprite golden-dandelion.png article, displayed as 16x16px|link=Golden Dandelion|alt=|class=pixel-image|)</span>(link to Golden Dandelion article, displayed as <span class=\"sprite-text\">Golden Dandelion</span>)</span> <small>(baby only)</small>",
+ "label": "Usable items"
+ }
+ ],
+ "invimages": [
+ "Turtle Spawn Egg"
+ ],
+ "images": [
+ "Turtle.png",
+ "Baby Turtle.png"
+ ]
+} 
+ There is a related tutorial page for this topic!  
+ See Tutorial:Turtle farming . 
+ Turtles are passive mobs found in beach biomes. They can be bred with seagrass and lay turtle eggs . They are the only source of turtle scutes , which drop from baby turtles when they mature into adults, and can be used to craft turtle shell helmets.
+ Contents 
+ 1 Spawning 
+ 2 Drops 
+ 2.1 Breeding 
+ 2.2 On death 
+ 2.3 Growth 
+ 3 Behavior 
+ 3.1 Moving to water 
+ 3.2 Predators 
+ 3.3 Home position 
+ 3.4 Breeding 
+ 3.4.1 Egg laying 
+ 3.4.2 Egg hatching 
+ 3.5 Babies 
+ 4 Sounds 
+ 4.1 Generic 
+ 4.2 Adult 
+ 4.3 Baby 
+ 5 Data values 
+ 5.1 ID 
+ 5.2 Entity data 
+ 6 Achievements 
+ 7 Advancements 
+ 8 History 
+ 8.1 Announcement 
+ 8.2 Java Edition 
+ 8.3 Bedrock Edition 
+ 8.4 Legacy Console Edition 
+ 8.5 Data history 
+ 9 Issues 
+ 10 Gallery 
+ 10.1 Mojang images 
+ 10.2 Screenshots 
+ 10.3 Textures 
+ 10.4 In other media 
+ 10.4.1 Social media 
+ 10.4.2 Other appearances 
+ 11 Notes 
+ 12 References 
+ 13 External links 
+ 14 Navigation 
+ Spawning [ edit | edit source ] 
+ Turtles occasionally spawn in small groups on the sand in beaches , but not in snowy beaches or stony shores .
+ Turtles have a 5% chance to spawn as babies.
+ In Java Edition , turtles spawn in groups of up to 5 individuals, y level less than 4 blocks above sea level (from y level -64 to 66, inclusive), and on blocks with the sand tag (sand, red sand, and suspicious sand).
+ In Bedrock Edition , turtles spawn in groups of 2–6, at Y=60–67.
+ Turtle spawns in: Category: Creature Java Edition Bedrock Edition Spawn area Spawn weight Spawn chance Group size Spawn weight Group size Beach 5 ⁄ 5 100% 2–5 8 2–6 
+ Drops [ edit | edit source ] 
+ Breeding [ edit | edit source ] 
+ Upon successful breeding , 1–7 XP is dropped.
+ On death [ edit | edit source ] 
+ Java Edition : 
+ Item Quantity / Chance / Average Default Looting I Looting II Looting III Seagrass [ A ] 0–2 66.67% 1.00 0–3 83.33% 1.50 0–4 91.67% 2.00 0–5 94.44% 2.50 Bowl [ B ] 1 100.00% 1.00 1 100.00% 1.00 1 100.00% 1.00 1 100.00% 1.00 
+ Item Quantity / Chance / Average Default Looting I Looting II Looting III Seagrass [ A ] 0–2 2 ⁄ 3 1 0–3 5 ⁄ 6 3 ⁄ 2 0–4 11 ⁄ 12 2 0–5 17 ⁄ 18 5 ⁄ 2 Bowl [ B ] 1 1 1 1 1 1 1 1 1 1 1 1 
+ Item Amount Probability Default Looting I Looting II Looting III Seagrass [ A ] 0 1 ⁄ 3 (33.33%) 1 ⁄ 6 (16.67%) 1 ⁄ 12 (8.33%) 1 ⁄ 18 (5.56%) 1 1 ⁄ 3 (33.33%) 1 ⁄ 3 (33.33%) 1 ⁄ 4 (25.00%) 1 ⁄ 6 (16.67%) 2 1 ⁄ 3 (33.33%) 1 ⁄ 3 (33.33%) 1 ⁄ 3 (33.33%) 5 ⁄ 18 (27.78%) 3 0 1 ⁄ 6 (16.67%) 1 ⁄ 4 (25.00%) 5 ⁄ 18 (27.78%) 4 0 0 1 ⁄ 12 (8.33%) 1 ⁄ 6 (16.67%) 5 0 0 0 1 ⁄ 18 (5.56%) Average 1 (1.00) 3 ⁄ 2 (1.50) 2 (2.00) 5 ⁄ 2 (2.50) Bowl [ B ] 1 1 (100.00%) 1 (100.00%) 1 (100.00%) 1 (100.00%) Average 1 (1.00) 1 (1.00) 1 (1.00) 1 (1.00) 
+ Killed 1 Item Expected Drops Default Looting I Looting II Looting III Seagrass [ A ] 1.00 1.50 2.00 2.50 Bowl [ B ] 1.00 1.00 1.00 1.00 
+ ↑ Only when not killed by lightning .‌ [ Bedrock Edition only ] 
+ ↑ Only when killed by lightning . In Java Edition , the tick after the turtle has been killed, the items get destroyed by the lightning bolt if they are within 3 blocks. 
+ Bedrock Edition : 
+ Item Quantity / Chance / Average Default Looting I Looting II Looting III Seagrass [ A ] 0–2 66.67% 1.00 0–3 66.67% 1.33 0–4 66.67% 1.67 0–5 66.67% 2.00 Bowl [ B ] 1 100.00% 1.00 1 100.00% 1.00 1 100.00% 1.00 1 100.00% 1.00 
+ Item Quantity / Chance / Average Default Looting I Looting II Looting III Seagrass [ A ] 0–2 2 ⁄ 3 1 0–3 2 ⁄ 3 4 ⁄ 3 0–4 2 ⁄ 3 5 ⁄ 3 0–5 2 ⁄ 3 2 Bowl [ B ] 1 1 1 1 1 1 1 1 1 1 1 1 
+ Item Amount Probability Default Looting I Looting II Looting III Seagrass [ A ] 0 1 ⁄ 3 (33.33%) 1 ⁄ 3 (33.33%) 1 ⁄ 3 (33.33%) 1 ⁄ 3 (33.33%) 1 1 ⁄ 3 (33.33%) 1 ⁄ 6 (16.67%) 1 ⁄ 12 (8.33%) 1 ⁄ 18 (5.56%) 2 1 ⁄ 3 (33.33%) 1 ⁄ 3 (33.33%) 1 ⁄ 4 (25.00%) 1 ⁄ 6 (16.67%) 3 0 1 ⁄ 6 (16.67%) 1 ⁄ 4 (25.00%) 2 ⁄ 9 (22.22%) 4 0 0 1 ⁄ 12 (8.33%) 1 ⁄ 6 (16.67%) 5 0 0 0 1 ⁄ 18 (5.56%) Average 1 (1.00) 4 ⁄ 3 (1.33) 5 ⁄ 3 (1.67) 2 (2.00) Bowl [ B ] 1 1 (100.00%) 1 (100.00%) 1 (100.00%) 1 (100.00%) Average 1 (1.00) 1 (1.00) 1 (1.00) 1 (1.00) 
+ Killed 1 Item Expected Drops Default Looting I Looting II Looting III Seagrass [ A ] 1.00 1.33 1.67 2.00 Bowl [ B ] 1.00 1.00 1.00 1.00 
+ ↑ Only when not killed by lightning .‌ [ Bedrock Edition only ] 
+ ↑ Only when killed by lightning . In Java Edition , the tick after the turtle has been killed, the items get destroyed by the lightning bolt if they are within 3 blocks. 
+ 1–3 XP , if killed by a player or tamed wolf . 
+ Baby turtles do not drop anything when they die .
+ Growth [ edit | edit source ] 
+ When a baby turtle matures into an adult, it drops 1 turtle scute .
+ Behavior [ edit | edit source ] 
+ A turtle swimming. 
+ Turtles can move around slowly on land and swim at a fast speed in water . Like other passive mobs, they move around aimlessly and flee when attacked. When on land, they generally attempt to move to near water, regardless if player made or natural. When in an enclosed area, such as a player-made enclosure, they generally swim in circles if the water is in the area, and rarely go on land to explore, if there is any.
+ Turtles cannot be attached to leads , [ 1 ] but they can be led by a player holding seagrass within 10 blocks of the turtle.
+ Turtles can be picked up by boats and minecarts .
+ Turtles are directly dealt 3.4×10 38 ( × 1.7×10 38 ) damage in Java Edition or take 200,000% of the base damage in Bedrock Edition when struck by lightning.
+ As with other aquatic mobs , turtles suffer extra damage when hit by a trident with the Impaling enchantment in Java Edition , and cannot drown regardless of version despite the fact that real-life turtles breathe air.
+ Moving to water [ edit | edit source ] 
+ In Java Edition , when a turtle is on land, it usually searches for water and then attempts to move toward it.
+ To find water, an expanding square search is conducted inside a 47×1×47 region centered two blocks below the turtle. Both source and flowing water blocks can be selected, but waterlogged blocks do not qualify. The selected water block doesn't require sky access, nor does it need to be reachable by the turtle.
+ Once a suitable water target is found, the turtle moves toward it. This behavior ends whenever it enters any water. However, in the case of an unreachable target, the turtle gives up after approximately one minute, although it may search for water again later.
+ Adult turtles do not use this behavior while carrying eggs or returning to their home position .
+ Predators [ edit | edit source ] 
+ Turtles and turtle eggs are attacked by the following mobs:
+ Mob
+ Attack baby turtles
+ Attack adult turtles
+ Attack turtle eggs
+ Bogged Fox 
+ Parched 
+ Skeleton Stray Stray cat Wild ocelot Wild wolf Wither Skeleton 
+ Yes
+ No
+ No
+ Drowned Husk Zombie Zombie Villager 
+ Yes
+ No
+ Yes
+ Goat 
+ Randomly
+ Randomly
+ No
+ Ravager 
+ No
+ No
+ No
+ Tamed wolf 
+ When owner attacks
+ When owner attacks
+ No
+ Vindicator named "Johnny" Warden Zoglin 
+ Yes
+ Yes
+ No
+ Wither 
+ Yes
+ Yes
+ Partial [ note 1 ] 
+ Zombified Piglin 
+ No
+ No
+ Yes
+ Zombies and their variants deliberately trample on turtle eggs, causing them to break. The range of detection is a 47×7×47‌‌ [ Java Edition only ] or 11×5×11‌‌ [ Bedrock Edition only ] box centered on the block the mob is standing on.
+ ↑ Unlike zombies, zombified piglins, and their variants, withers and ravagers do not intentionally break turtle eggs but are able to break turtle eggs if they are in its way. 
+ Home position [ edit | edit source ] 
+ A turtle remembers the block on which it spawned as its home position. No matter how far away the turtle is, it always attempts to return to its home position to lay its eggs after breeding .
+ If the player uses a tool enchanted with Silk Touch to obtain and move turtle eggs to a new location before hatching, the baby turtles remember the new hatching location as their home beach.
+ If a turtle is spawned from a spawn egg , summoned with the / summon command , or spawned by a monster spawner , it remembers the spawn location as its home position.
+ A turtle digs sand around the block on which it lays its eggs. 
+ Breeding [ edit | edit source ] 
+ A turtle lays eggs after digging. 
+ Feeding two turtles seagrass results in them entering love mode and one of the turtles becoming pregnant. The pregnant turtle has eggs in its body and is therefore about 0.2 blocks taller than normal.
+ Egg laying [ edit | edit source ] 
+ The turtle then travels back to its home position, which is where it first spawned. The turtle does not stop traveling until it is within a 9-block distance from its home position. Upon arrival, it seeks a nearby sand block on which to lay its eggs. Then, it spends a few seconds to a few minutes digging vigorously while turning 180 degrees a few times. Finally, it lays a cluster of 1–4 turtle eggs, as a single block. Turtles have a cooldown of 90 seconds (1800 game ticks ) after breeding in Bedrock Edition , or 5 minutes (300 seconds; 6000 game ticks ) in Java Edition .
+ Egg hatching [ edit | edit source ] 
+ Main article: Turtle Egg § Hatching 
+ Turtle eggs progress toward hatching by cracking. Cracking occurs during random ticks , and an egg hatches once it has cracked 3 times. When a cluster of eggs hatches, all eggs within the block hatch simultaneously. Eggs crack more often at night and typically take 4 to 5 in-game days to hatch. Mining a cluster of turtle eggs with Silk Touch causes it to drop one egg at a time, which the player can collect. Eggs do not preserve the cracking stage when harvested.
+ Turtle eggs can be placed on any block in clusters of up to 4; however, they only hatch on sand , red sand , or suspicious sand , above or below water. Eggs can be broken without tools and can also be trampled by living entities falling or walking on them. When a cluster is trampled, the eggs crack and break one at a time. A turtle can walk on turtle eggs without breaking them.
+ Babies [ edit | edit source ] 
+ With a height of 0.12 blocks, baby turtles are among the smallest mobs in the game. Baby turtles are small enough that when they walk on soul sand , they are entirely within the space at the top of the block .
+ Upon hatching, baby turtles attempt to reach water as described in Moving to water .
+ Baby turtles take one Minecraft day to grow up (20 minutes). The growth can be accelerated using seagrass . Each use reduces the remaining growth duration by 10%. Upon becoming an adult, the turtle drops a turtle scute .
+ Stray cats attack baby turtles within 15 blocks; tamed cats do not. The baby turtles make no attempt to flee from cats, even while being attacked.
+ The golden dandelion can be used on baby turtles to stop them from aging, and can be used on them again to resume their growth.
+ Sounds [ edit | edit source ] 
+ Generic [ edit | edit source ] 
+ Java Edition :
+ Sounds Sound Closed captions Source Description Identifier Translation key Volume Pitch Attenuation distance ​Turtle breathes [ sound 1 ] Friendly Mobs Randomly while on land entity .turtle .ambient_land ​ [ sound 1 ] ​ subtitles .entity .turtle .ambient_land ​​ [ sound 1 ] ​ 0.8 [ sound 2 ] 0.8–1.2 16 ​Turtle swims [ sound 1 ] Friendly Mobs Randomly while swimming entity .turtle .swim ​ [ sound 1 ] ​ subtitles .entity .turtle .swim ​​ [ sound 1 ] ​ varies [ sound 3 ] 0.8–1.2 16 
+ ↑ a b c d e f MC-98316  – Wrong subtitles caused by missing distinction 
+ ↑ Except idle2 , which is 0.7 
+ ↑ Multiplied by 0.6 for swim1 and swim4 , 0.3 for swim2 and swim5 , and 0.2 for swim3 
+ Bedrock Edition :
+ Sounds Sound Closed captions Source Description Identifier Translation key Volume Pitch ​ ? Friendly Mobs Randomly mob .turtle .ambient ​ ? 1.0 0.8–1.2 ​ ? Friendly Mobs While a turtle is swimming mob .turtle .swim ​ ? 1.0 0.6–1.4 
+ Adult [ edit | edit source ] 
+ Java Edition :
+ Sounds Sound Closed captions Source Description Identifier Translation key Volume Pitch Attenuation distance ​Turtle dies Friendly Mobs When a turtle dies entity .turtle .death subtitles .entity .turtle .death ​ 1.0 0.8–1.2 16 ​Turtle hurts Friendly Mobs When a turtle is damaged entity .turtle .hurt subtitles .entity .turtle .hurt ​ 1.0 0.8–1.2 16 ​Turtle lays egg Friendly Mobs When a turtle lays an egg entity .turtle .lay_egg subtitles .entity .turtle .lay_egg ​ 0.3 0.9–1.1 16 ​Turtle shambles Friendly Mobs While a turtle is walking on land entity .turtle .shamble subtitles .entity .turtle .shamble ​ 0.15 1.0 16 
+ Bedrock Edition :
+ Sounds Sound Closed captions Source Description Identifier Translation key Volume Pitch ​ ? Friendly Mobs When a turtle dies mob .turtle .death ​ ? 1.0 0.8–1.2 ​ ? Friendly Mobs When a turtle is damaged mob .turtle .hurt ​ ? 1.0 0.8–1.2 ​ ? Blocks When a turtle lays an egg block .turtle_egg .drop ​ ? 0.85 0.9 ​ ? Friendly Mobs While a turtle is walking mob .turtle .step ​ ? 1.0 1.0 
+ Baby [ edit | edit source ] 
+ Java Edition :
+ Sounds Sound Closed captions Source Description Identifier Translation key Volume Pitch Attenuation distance ​Baby Turtle dies Friendly Mobs When a baby turtle dies entity .turtle .death_baby ​ [ sound 1 ] ​ subtitles .entity .turtle .death_baby ​​ [ sound 1 ] ​ 1.0 1.3–1.7 16 ​Baby Turtle hurts Friendly Mobs When a baby turtle is damaged entity .turtle .hurt_baby ​ [ sound 1 ] ​ subtitles .entity .turtle .hurt_baby ​​ [ sound 1 ] ​ 1.0 1.3–1.7 16 ​Turtle Egg hatches Blocks When a baby turtle is hatched entity .turtle .egg_hatch subtitles .entity .turtle .egg_hatch ​ 0.7 0.9–1.1 ? ​Baby Turtle shambles Friendly Mobs While a baby turtle is walking on land entity .turtle .shamble_baby ​ [ sound 1 ] ​ subtitles .entity .turtle .shamble_baby ​​ [ sound 1 ] ​ 0.15 1.0 16 
+ ↑ a b c d e f MC-310390 
+ Bedrock Edition :
+ Sounds Sound Closed captions Source Description Identifier Translation key Volume Pitch ​ ? Friendly Mobs When a baby turtle dies mob .turtle_baby .death ​ ? 1.0 1.3–1.7 ​ ? Friendly Mobs When a baby turtle is damaged mob .turtle_baby .hurt ​ ? 1.0 1.3–1.7 ​ ? Friendly Mobs When a baby turtle is hatched mob .turtle_baby .born ​ ? 1.0 1.0 ​ ? Friendly Mobs While a baby turtle is walking mob .turtle_baby .step ​ ? 1.0 1.0 
+ Data values [ edit | edit source ] 
+ ID [ edit | edit source ] 
+ Java Edition :
+ Name Identifier Entity tags 
+ Translation key Turtle turtle aquatic can_breathe_under_water not_scary_for_pufferfish sensitive_to_impaling 
+ entity .minecraft .turtle 
+ Bedrock Edition :
+ Name Identifier Numeric ID 
+ Family Translation key Turtle turtle 74 
+ aquatic baby_turtle mob turtle entity .turtle .name 
+ Entity data [ edit | edit source ] 
+ Turtles have entity data associated with them that contains various properties.
+ Java Edition :
+ Main article: Entity format 
+ [NBT Compound / JSON Object] Entity data
+ Additional fields for mobs that can breed see Template:Nbt inherit/breedable/template 
+ Tags common to all entities see Template:Nbt inherit/entity/template 
+ Tags common to all mobs see Template:Nbt inherit/mob/template 
+ [Byte]  has_egg : 1 , or  0 ( true / false ) - true means the turtle is currently pregnant. 
+ Bedrock Edition :
+ See Bedrock Edition level format/Entity format . 
+ Achievements [ edit | edit source ] 
+ Icon Achievement In-game description Actual requirements (if different) Gamerscore earned Trophy type ( PS ) PS4 Other It Spreads Kill a mob next to a catalyst Kill any mob that drops experience near a sculk catalyst, with the sole exception of the ender dragon . Mobs that drop no experience are ignored for this achievement. 10 Bronze 
+ Achievements that apply to all mobs:
+ Icon Achievement In-game description Actual requirements (if different) Gamerscore earned Trophy type ( PS ) PS4 Other Overkill Deal nine hearts of damage in a single hit. Damage can be dealt to any mob, even those that do not have nine hearts of health overall. 30 Bronze Over-Overkill Deal 50 hearts of damage in a single hit using the Mace Damage can be dealt to any mob, even those that do not have 50 hearts of health overall. 20 Silver Mob Kabob Hit five mobs in the same Charge attack using the Spear. Armor stands and players also count for this achievement as they are technically mobs . 10 Bronze 
+ Advancements [ edit | edit source ] 
+ Icon Advancement In-game description Actual requirements (if different) It Spreads Kill a mob near a Sculk Catalyst Kill any mob that drops experience near a sculk catalyst , with the sole exception of the ender dragon . Mobs that drop no experience are ignored for this advancement. The Parrots and the Bats Breed two animals together 
+ Breed a pair of any of these 27 animals : 
+ Armadillo 
+ Axolotl 
+ Bee 
+ Camel 
+ Cat 
+ Chicken 
+ Cow 
+ Donkey 
+ Fox 
+ Frog 
+ Goat 
+ Hoglin 
+ Horse 
+ Llama 
+ Mooshroom 
+ Mule 
+ Nautilus 
+ Ocelot 
+ Panda 
+ Pig 
+ Rabbit 
+ Sheep 
+ Sniffer 
+ Strider 
+ Trader Llama 
+ Turtle 
+ Wolf 
+A mule must be the result of breeding a horse and a donkey for this advancement as they are not breedable together. Other breedable mobs are ignored for this advancement. Two by Two Breed all the animals! 
+ Breed a pair of each of these 26 animals : 
+ Armadillo 
+ Axolotl 
+ Bee 
+ Camel 
+ Cat 
+ Chicken 
+ Cow 
+ Donkey 
+ Fox 
+ Frog 
+ Goat 
+ Hoglin 
+ Horse 
+ Llama 
+ Mooshroom 
+ Mule 
+ Nautilus 
+ Ocelot 
+ Panda 
+ Pig 
+ Rabbit 
+ Sheep 
+ Sniffer 
+ Strider 
+ Turtle 
+ Wolf 
+A trader llama does not count as a llama , and a mule must be the result of breeding a horse and a donkey for this advancement as they are not breedable together. Other breedable mobs can be bred, but are ignored for this advancement. 
+ Advancements that apply to all mobs:
+ Icon Advancement In-game description Actual requirements (if different) Adventure Adventure, exploration and combat Kill any mob , or be killed by any living entity . A Throwaway Joke Throw a Trident at something. Note: Throwing away your only weapon is not a good idea. Hit a mob with a thrown trident . Take Aim Shoot something with an Arrow Using a bow or a crossbow , shoot a mob with an arrow , tipped arrow , or spectral arrow . Mob Kabob Hit five mobs in the same Charge attack using the Spear. Armor Stand and Mannequin also count for this advancement. Arbalistic Kill five unique mobs with one crossbow shot Armor Stand and Mannequin also count for this advancement. This is a hidden advancement, meaning that it can be viewed by the player only after completing it, regardless of if its child advancement(s), if any, have been completed. Over-Overkill Deal 50 hearts of damage in a single hit using the Mace Damage can be dealt to any mob, even those that do not have 50 hearts of health overall. 
+ History [ edit | edit source ] 
+ Announcement [ edit | edit source ] 
+ October 17, 2012 
+ On Reddit , Jeb was asked "I asked at pax about turtles, any work done about those?" and replied "No... I saw Mo' Creatures' turtles and got a bit demotivated to do my own ones. Maybe later..." September 19, 2012 
+ In a Reddit post anticipating the addition of another animal mob (which turned out to be the bat in 12w38a ), Jeb replied to confirm that it would not be a turtle: "The truth is that I'll maybe end up adding turtles one day, it's just that Mo's turtles are difficult to top." December 26, 2017 
+ Turtle mobs were announced on Minecraft.net. 
+ Java Edition [ edit | edit source ] 
+ Java Edition 1.13 18w07a 
+ Added turtles. 18w07b 
+ Turtles are now bred using seagrass , instead of raw cod . 18w11a 
+ Added drowned , which attack baby turtles. 1.14 18w44a 
+ Added stray cats , which attack baby turtles. 19w07a 
+ Added foxes , which attack baby turtles. 1.15 19w39a 
+ The turtle models have changed; adult and baby turtles look different from each other, rather than simply being scale differences. 19w40a 
+ The turtle models have reverted. [ 2 ] 1.16 pre7 
+ Turtles now spawn on any blocks with the sand block tag (sand and red sand). 1.18.2 22w03a 
+ Baby turtles no longer suffocate when on soul sand. [ 3 ] 1.19.3 22w44a 
+ Turtles now have a breeding delay like other mobs. [ 4 ] 1.19.4 Experiment Update 1.20 23w07a 
+ Turtles can now spawn on suspicious sand, which was added to the sand block tag behind the " Update 1.20 ". experimental data pack . 1.20 23w12a 
+ Turtles can spawn on suspicious sand without using the "Update 1.20" experimental datapack. 1.20.2 23w31a 
+ Turtles clearing away sand now emit an entity_action vibration of frequency 4 . [ 5 ] 1.20.5 23w51a 
+ The subtitles of baby turtles have been updated to be grammatically correct. [ 6 ] 26.1 snap5 
+ The model and texture of baby turtles have been changed.
+ Added golden dandelions , which can be used to prevent baby turtles from growing up. 
+ Bedrock Edition [ edit | edit source ] 
+ Bedrock Edition 1.5.0 beta 1.5.0.4 
+ Added turtles. 1.8.0 beta 1.8.0.8 
+ Added stray cats , which attack baby turtles. 1.13.0 beta 1.13.0.1 
+ Added foxes , which attack baby turtles. 1.16.100 beta 1.16.100.51 
+ Turtles now play a sound when they lay eggs. 1.19.80 Preview 1.19.80.20 
+ Turtles can now ride boats and boats with chests, to match Java Edition . 26.10 Preview 26.10.20 
+ The model and texture of baby turtles have been changed. Preview 26.10.21 
+ Added golden dandelions , which can be used to prevent baby turtles from growing up. 26.40 Preview 26.40.20 
+ Turtles can now be attached to balloons . 
+ Legacy Console Edition [ edit | edit source ] 
+ Legacy Console Edition Xbox 360 Xbox One PS3 PS4 PS Vita Wii U Switch TU69 1.76 1.76 1.76 Patch 38 
+ Added sea turtles and baby sea turtles. 
+ Data history [ edit | edit source ] 
+ Java Edition 1.21.5 25w07a 
+ The HomePosX , HomePosY and HomePosZ fields have been collected into a single home_pos field. 
+ Removed TravelPosX , TravelPosY , and TravelPosZ fields. They were used to represent the Coordinates that the turtle sometimes tries to swim to while in the water. They were chosen at random in order to make the turtle swim around randomly. 
+ The HasEgg field has been renamed to has_egg . 
+ Issues [ edit | edit source ] 
+ Issues relating to "Turtle" are maintained on the bug tracker . Issues should be reported and viewed there .
+ Gallery [ edit | edit source ] 
+ Mojang images [ edit | edit source ] 
+ The first released screenshot of a turtle 
+ Turtle in early development 
+ A baby turtle on top of the head of an adult 
+ Turtles in a screenshot to celebrate World Sea Turtle Day 
+ Sunny trying out the /ride command on a turtle [ 7 ] 
+ A turtle racing alongside a rabbit 
+ Baby turtles following Efe 
+ Screenshots [ edit | edit source ] 
+ A baby turtle moving on the beach after being hatched 
+ A turtle moving on land 
+ A turtle swimming in a small pool of water 
+ A skeleton attacking a baby turtle 
+ A wolf attacking a group of baby turtles 
+ Two turtles mating 
+ A player luring a group of turtles using seagrass 
+ Two turtles with some turtle eggs 
+ More turtles with eggs 
+ A turtle picked up by a boat 
+ A large number of turtles in an artificial lake 
+ An exhibit for turtles in a beach 
+ Textures [ edit | edit source ] 
+ Turtle texture file 
+ Baby Turtle texture file 
+ In other media [ edit | edit source ] 
+ Turtles as seen in the Update Aquatic artwork 
+ Artwork of a turtle 
+ Official turtle artwork 
+ Artwork of a baby turtle alongside several other animals [ 8 ] 
+ Artwork of baby turtles 
+ Artwork of a turtle with a red parrot 
+ Lego Minecraft turtle 
+ Mojang Studios ' animation showing when a turtle becomes a bowl 
+ A Turtle icon used in the Minecraft Minigames results icons 
+ A silhouette of a turtle as seen in A Minecraft Movie 
+ Unused turtle pixel art image from bedrock edition 
+ A turtle on sand 
+ Previous image but cutaway of a rabbit controlling the turtle 
+ Social media [ edit | edit source ] 
+ Other appearances [ edit | edit source ] 
+ A turtle as it appears in Minecraft Dungeons 
+ A turtle as it appears in Minecraft Legends 
+ A turtle as it appears in Minecraft Blast 
+ Notes [ edit | edit source ] 
+ References [ edit | edit source ] 
+ ↑ MC-125629  – Turtles can't be leashed – resolved as "Works As Intended". 
+ ↑ MC-161858 
+ ↑ MC-245416  – resolved as "Fixed". 
+ ↑ MC-137306  – resolved as "Fixed". 
+ ↑ MC-215768  – Sculk sensors do not detect turtles clearing away sand – resolved as "Fixed". 
+ ↑ MC-167375  – Baby turtle subtitles are grammatically incorrect – resolved as "Fixed". 
+ ↑ "Minecraft Java Edition 1.19.4" – Minecraft.net , March 14, 2023. 
+ ↑ "They bark! They moo! They oink! Yet we love them all equally. Today is the day to show our appreciation for all the world's amazing animals. Treat them to some wheat or feed them a well-deserved carrot. But above all else, be nice to them! #minecraft #worldanimalday" – @minecraft on Instagram, October 4, 2018 
+ External links [ edit | edit source ] 
+ "Mob Menagerie: Turtle" by Duncan Geere – Minecraft.net , June 1, 2023. 
+ Navigation [ edit | edit source ] 
+ v 
+ t 
+ e Entities 
+ Mobs 
+ Passive
+ Allay 
+ Armadillo 
+ Axolotl 
+ Bat 
+ Camel 
+ Camel Husk 
+ Cat 
+ Chicken 
+ Cod 
+ Copper Golem 
+ Cow 
+ Donkey 
+ Frog 
+ Glow Squid 
+ Happy Ghast 
+ Horse 
+ Mooshroom 
+ Mule 
+ Ocelot 
+ Parrot 
+ Pig 
+ Rabbit 
+ Salmon 
+ Sheep 
+ Skeleton Horse 
+ Sniffer 
+ Snow Golem 
+ Squid 
+ Strider 
+ Sulfur Cube 
+ Tadpole 
+ Tropical Fish 
+ Turtle 
+ Villager 
+ Wandering Trader 
+ Zombie Horse 
+ BE & Edu only
+ Agent 
+ NPC 
+ Neutral
+ Bee 
+ Cave Spider 
+ Dolphin 
+ Drowned 
+ Enderman 
+ Fox 
+ Goat 
+ Iron Golem 
+ Llama 
+ Nautilus 
+ Panda 
+ Piglin 
+ Polar Bear 
+ Pufferfish 
+ Spider 
+ Trader Llama 
+ Wolf 
+ Zombie Nautilus 
+ Zombified Piglin 
+ Hostile
+ Blaze 
+ Bogged 
+ Breeze 
+ Creaking 
+ Creeper 
+ Elder Guardian 
+ Endermite 
+ Evoker 
+ Ghast 
+ Guardian 
+ Hoglin 
+ Husk 
+ Magma Cube 
+ Parched 
+ Phantom 
+ Piglin Brute 
+ Pillager 
+ Ravager 
+ Shulker 
+ Silverfish 
+ Skeleton 
+ Slime 
+ Stray 
+ Vex 
+ Vindicator 
+ Warden 
+ Witch 
+ Wither Skeleton 
+ Zoglin 
+ Zombie 
+ Zombie Villager 
+ Bosses 
+ Ender Dragon 
+ Wither 
+ Mob types 
+ Animal 
+ Aquatic 
+ Arthropod 
+ Illager 
+ Monster 
+ Undead 
+ Other
+ Baby 
+ Jockey 
+ Camel Husk 
+ Chicken 
+ Hoglin 
+ Ravager 
+ Skeleton Horseman 
+ Spider 
+ Strider 
+ Baby Strider 
+ Zombie Horseman 
+ Zombie Nautilus 
+ Mob variants 
+ Other entities 
+ Player 
+ Alex 
+ Ari 
+ Efe 
+ Kai 
+ Makena 
+ Noor 
+ Steve 
+ Sunny 
+ Zuri 
+ Blocks 
+ Falling Blocks 
+ Anvil 
+ Concrete Powder 
+ Dragon Egg 
+ Gravel 
+ Pointed Dripstone 
+ Sand 
+ Red Sand 
+ Scaffolding 
+ Sulfur Spike 
+ Suspicious Gravel 
+ Suspicious Sand 
+ Primed TNT 
+ BE & Edu only
+ Falling Blocks 
+ Deprecated Anvil 
+ Snow 
+ Primed Underwater TNT 
+ Vehicles 
+ Boat 
+ with Chest 
+ Minecart 
+ with Chest 
+ with Command Block 
+ with Hopper 
+ with TNT 
+ Java Edition only
+ Minecart with Furnace 
+ with Monster Spawner 
+ Projectiles 
+ Fireball 
+ Small 
+ Dragon 
+ Launched Firework Rocket 
+ Llama Spit 
+ Shot Arrow 
+ Tipped 
+ Shulker Bullet 
+ Thrown Bottle o' Enchanting 
+ Thrown Egg 
+ Thrown Ender Pearl 
+ Thrown Eye of Ender 
+ Thrown Snowball 
+ Thrown Splash Potion 
+ Lingering Potion 
+ Thrown Trident 
+ Wind Charge 
+ Wither Skull 
+ Java Edition only
+ Shot Spectral Arrow 
+ BE & Edu only
+ Thrown Ice Bomb 
+ Stationary objects
+ Cushion ​ [ upcoming: Wilderness Bound ] 
+ End Crystal 
+ Leash Knot 
+ Painting 
+ Java Edition only
+ Item Frame 
+ Glow 
+ Miscellaneous
+ Area Effect Cloud 
+ Armor Stand 
+ Evoker Fangs 
+ Experience Orb 
+ Fishing Bobber 
+ Items 
+ Lightning Bolt 
+ Ominous Item Spawner 
+ JE only
+ Mannequin 
+ BE & Edu only
+ Balloon 
+ Camera 
+ Technical objects
+ JE only
+ Display 
+ Block 
+ Item 
+ Text 
+ Interaction 
+ Marker 
+ Editor only
+ Location Pointer Idle 
+ Location Pointer Selected 
+ Map Marker 
+ Ruler 
+ Idle 
+ Unimplemented 
+ Unused
+ JE only
+ Giant 
+ Illusioner 
+ BE & Edu only
+ Elder Guardian Ghost 
+ Old Villager 
+ Old Zombie Villager 
+ Mentioned 
+ Alpaca 
+ Barnacle 
+ Crab 
+ Firefly 
+ Glare 
+ Great Hunger 
+ Herobrine 
+ Iceologer 
+ Meerkat 
+ Minecart with Dispenser 
+ Moobloom 
+ Ostrich 
+ Penguin 
+ Pigman Bodyguard 
+ Rascal 
+ Red Dragon 
+ Shade 
+ Termite 
+ Tuff Golem 
+ Vulture 
+ Wildfire 
+ Removed
+ Builder 
+ Giant Jockey 
+ MD3 Test Mob 
+ Mob 
+ Monster 
+ Shot Purple Arrow 
+ Sign Entity 
+ Joke 
+ Mobs
+ April Fools 2013 
+ Diamond Chicken 
+ Horse 
+ Pony 
+ Pink Wither 
+ Redstone Bug 
+ April Fools 2015 
+ Love Golem 
+ Friendly Wither 
+ Smiling Creeper 
+ April Fools 2019 
+ Nerd Creeper 
+ April Fools 2023 
+ Moon Cow 
+ Ray Tracing 
+ April Fools 2024 
+ Batato 
+ Mega Spud 
+ Plaguewhale Slab 
+ Poisonous Potato Zombie 
+ Potato mob category 
+ Toxifin Slab 
+ April Fools 2025 
+ Angry Ghast 
+ Spectator Villager 
+ Spectator Witch 
+ Traitor 
+ Warden (boss) 
+ Pet variants
+ Pet Armadillo 
+ Pet Axolotl 
+ Pet Bee 
+ Pet Cat 
+ Pet Chicken 
+ Pet Cow 
+ Pet Creeper 
+ Pet Fox 
+ Pet Frog 
+ Pet Mooshroom 
+ Pet Polar Bear 
+ Pet Slime 
+ Pet Turtle 
+ Pet Wolf 
+ April Fools 2026 
+ Living Block 
+ Other entities
+ April Fools 2013 
+ Pink Wither Skull 
+ April Fools 2015 
+ Obsidian Boat 
+ Friendly Wither Skull 
+ April Fools 2023 
+ Stencil Display 
+ April Fools 2024 
+ Falling Block 
+ Gravtater 
+ Potato Eye 
+ April Fools 2026 
+ Crafting Grid 
+ Hovering Item 
+ Living Block Command 
+ Retrieved from " https://minecraft.wiki/w/Turtle?oldid=3742136 " 
+ Categories : Entities Passive mobs Aquatic mobs Animal mobs Hidden categories: Pages using simple calculator Pages missing sound volume Pages with sound tables Pages with Java sound tables Pages with Bedrock subtitles missing Pages with Bedrock subtitle key missing Pages with Bedrock sound tables Pages with Java sound attenuation distance missing 
+ Navigation menu 
+ Personal tools 
+ Create account Log in 
+ associated-pages 
+ Page Talk 
+ English 
+ Views 
+ Read Edit Edit source View history 
+ More 
+ Search 
+ Navigation 
+ How to help Recent changes Random page in Minecraft in Dungeons in Dungeons II in Legends in Earth in Story Mode in Tutorial in Movie Wiki Discord 
+ Wiki community 
+ Community portal Wiki forum Projects Wiki rules Style guide Notability Sandbox Admin noticeboard 
+ X 
+ Franchise 
+ Minecraft Minecraft Dungeons Minecraft Legends Minecraft Earth Minecraft: Story Mode A Minecraft Movie 
+ Recent versions 
+ Java Edition Latest: 26.2 Dev: 26.3-pre-2 Upcoming: 26.3 Bedrock Edition Latest: 26.45 Preview: 26.60.21 Upcoming: 26.50 Upcoming: 26.60 
+ Useful pages 
+ Trading Brewing Enchantments Mobs Blocks Items Crafting Smelting Tutorials Resource packs Redstone circuits 
+ Useful pages 
+ Weapons Enchanting Armor Artifacts Missions 
+ Useful pages 
+ Weapons Enchanting Armor Artifact 
+ Useful pages 
+ Friendly units Piglins Resources Biomes Structures Lost Legends 
+ Tools 
+ What links here Related changes Printable version Permanent link Page information Special pages View buckets 
+ In other languages 
+ Deutsch Español Français Italiano 日本語 한국어 Português Русский ไทย Українська 中文 
+ This page was last edited on 26 August 2026, at 01:00. 
+ Content on this site is licensed under CC BY-NC-SA 3.0 unless otherwise noted; additional terms may apply . Not an official Minecraft website. We are not associated with Mojang or Microsoft. 
+ Privacy policy 
+ About Minecraft Wiki 
+ Disclaimers 
+ Terms of Use 
+ Contact Weird Gloop 
+ Mobile view 
+ 

@@ -1,0 +1,322 @@
+ 
+ Slow Falling – Minecraft Wiki 
+ 8 languages Deutsch Español Français 日本語 文言 Português Русский 中文 
+ Slow Falling Share article feedback 
+ From Minecraft Wiki 
+ Jump to navigation 
+ Jump to search 
+ Not to be confused with Feather Falling .
+ Slow Falling 
+ Sources
+ See § Causes 
+ Particle
+ #F3CFB9 (cream)
+ Type
+ Positive [ note 1 ] 
+ {
+ "title": "Slow Falling",
+ "rows": [
+ {
+ "field": "See (link to #Causes article, displayed as <span style=\"white-space: nowrap;\">§ Causes</span>)",
+ "label": "Sources"
+ },
+ {
+ "field": "<span class=\"sprite-file\" style=\"height:18px;width:18px\">(link to File:EffectSprite particle-slow-falling.png article, displayed as 18x18px|link=|alt=EffectSprite particle-slow-falling.png: Sprite image for particle-slow-falling in Minecraft|class=pixel-image|)</span> #F3CFB9 (cream)",
+ "label": "Particle"
+ },
+ {
+ "field": "Positive",
+ "label": "Type"
+ }
+ ],
+ "invimages": [
+ "Potion of Slow Falling",
+ "Splash Potion of Slow Falling",
+ "Lingering Potion of Slow Falling",
+ "Arrow of Slow Falling"
+ ],
+ "images": [
+ "Slow Falling.png"
+ ]
+} 
+ Slow Falling is a status effect that causes midair entities to more gradually descend downward and avoid fall damage , but prevents critical hits and smash attacks .
+ Contents 
+ 1 Mechanics 
+ 2 Causes 
+ 3 Immune mobs 
+ 4 Data values 
+ 4.1 ID 
+ 5 Advancements 
+ 6 History 
+ 6.1 Java Edition 
+ 6.2 Bedrock Edition 
+ 6.3 Legacy Console Edition 
+ 7 Issues 
+ 8 Gallery 
+ 9 Notes 
+ 10 References 
+ 11 Navigation 
+ Mechanics [ edit | edit source ] 
+ The affected entity falls at a much slower rate than normal, with a terminal velocity of 9.8 m/s, and is unable to take fall damage when falling. However, the entity still takes damage from using an ender pearl. In addition, the entity cannot turn farmland into dirt by jumping on it.
+ Higher levels do not decrease fall speed further.
+ Effects on certain activities:
+ Sprinting with the Slow Falling effect allows the player to jump across a gap of 5 blocks (6 blocks with enough momentum), compared to 4 (5 blocks with enough momentum) blocks normally. 
+ Unboosted elytra flight is twice as efficient, but four times slower. Boosts work at normal speed, but the momentum gained doesn't last as long. 
+ The player cannot land a critical hit while having this effect. [ 1 ] 
+ The player cannot perform a smash attack with the mace while having this effect. 
+ Causes [ edit | edit source ] 
+ Cause
+ Potency
+ Length
+ Notes
+ Potion of Slow Falling 
+ I
+ 1:30
+ Potion of Slow Falling (extended)
+ I
+ 4:00
+ Splash Potion of Slow Falling 
+ I
+ 1:30
+ Splash Potion of Slow Falling (extended)
+ I
+ 4:00
+ Lingering Potion of Slow Falling 
+ I
+ 0:22
+ Lingering Potion of Slow Falling (extended)
+ I
+ 1:00
+ Arrow of Slow Falling 
+ I
+ 0:11
+ Arrow of Slow Falling (extended)
+ I
+ 0:30
+ Immune mobs [ edit | edit source ] 
+ Withers and ender dragons are immune to Slow Falling. 
+ Flying mobs, hovering blazes , and shulkers are unaffected by Slow Falling. 
+ Data values [ edit | edit source ] 
+ ID [ edit | edit source ] 
+ This section is about the effect IDs. For the IDs on potions, see Potion § Item data . For the IDs on tipped arrows, see Arrow § Metadata .
+ Java Edition :
+ Name Identifier 
+ [ hide ] Translation key Slow Falling slow_falling 
+ effect .minecraft .slow_falling 
+ Bedrock Edition :
+ Name Identifier Numeric ID 
+ [ hide ] Translation key Slow Falling slow_falling 27 
+ potion .slowFalling 
+ Advancements [ edit | edit source ] 
+ Icon Advancement In-game description [ hide ] Actual requirements (if different) A Furious Cocktail Have every potion effect applied at the same time 
+ Have all of these 17 status effects applied to the player at the same time: [ show ] 
+ Fire Resistance 
+ Infested 
+ Invisibility 
+ Jump Boost 
+ Night Vision 
+ Oozing 
+ Poison 
+ Regeneration 
+ Resistance 
+ Slow Falling 
+ Slowness 
+ Speed 
+ Strength 
+ Water Breathing 
+ Weakness 
+ Weaving 
+ Wind Charged 
+The source of the effects is irrelevant for the purposes of this advancement. Other status effects may be applied to the player, but are ignored for this advancement. How Did We Get Here? Have every effect applied at the same time 
+ Have all of these 34 status effects applied to the player at the same time: [ show ] 
+ Absorption 
+ Bad Omen 
+ Blindness 
+ Breath of the Nautilus 
+ Conduit Power 
+ Darkness 
+ Dolphin's Grace 
+ Fire Resistance 
+ Glowing 
+ Haste 
+ Hero of the Village 
+ Hunger 
+ Infested 
+ Invisibility 
+ Jump Boost 
+ Levitation 
+ Mining Fatigue 
+ Nausea 
+ Night Vision 
+ Oozing 
+ Poison 
+ Raid Omen 
+ Regeneration 
+ Resistance 
+ Slow Falling 
+ Slowness 
+ Speed 
+ Strength 
+ Trial Omen 
+ Water Breathing 
+ Weakness 
+ Weaving 
+ Wind Charged 
+ Wither 
+ The source of the effects is irrelevant for the purposes of this advancement. Other status effects may be applied to the player, but are ignored for this advancement. 
+ See also: Tutorial:Advancement guide/How Did We Get Here? 
+ This is a hidden advancement, meaning that it can be viewed by the player only after completing it, regardless of if its child advancement(s), if any, have been completed. 
+ History [ edit | edit source ] 
+ Java Edition [ edit | edit source ] 
+ [ hide ] Java Edition 1.13 18w14a 
+ Added Slow Falling. 18w14b 
+ Slow Falling is now required for the "A Furious Cocktail" and "How Did We Get Here?" advancements. 18w19a 
+ Changed the effect color from  #CEFFFF to  #FFEFD1 . 1.14 18w43a 
+ The sprite has accidentally been changed to the one used by Dolphin's Grace . 18w43b 
+ Reverted this erroneous texture change. 1.20 23w12a 
+ Changed the effect color from  #FFEFD1 to  #F3CFB9 to better distinguish it from Invisibility . 1.20.2 23w32a 
+ The game no longer uses numeric values when storing mob effects to world. Prior to the removal of numeric IDs, this effect's numeral ID was 28. 
+ Bedrock Edition [ edit | edit source ] 
+ [ hide ] Bedrock Edition 1.6.0 beta 1.6.0.1 
+ Added Slow Falling. 1.20.0 Preview 1.20.0.21 
+ Changed the effect color from  #FFEFD1 to  #F3CFB9 to better distinguish it from Invisibility . 
+ Legacy Console Edition [ edit | edit source ] 
+ [ hide ] Legacy Console Edition Xbox 360 Xbox One PS3 PS4 PS Vita Wii U Switch TU69 1.76 1.76 1.76 Patch 38 
+ Added Slow Falling. 
+ Issues [ edit | edit source ] 
+ Issues relating to "Slow Falling" are maintained on the bug tracker . Issues should be reported and viewed there .
+ Gallery [ edit | edit source ] 
+ A cauldron filled with the potion of Slow Falling .‌ [ Bedrock Edition only ] 
+ Notes [ edit | edit source ] 
+ ↑ While Slow Falling has negative attributes, it has the blue text color of a positive effect. 
+ References [ edit | edit source ] 
+ ↑ MC-190451  – resolved as "Works As Intended". 
+ Navigation [ edit | edit source ] 
+ [ hide ] 
+ v 
+ t 
+ e Effects 
+ Attack power
+ Strength 
+ Weakness 
+ Block breaking
+ Haste 
+ Mining Fatigue 
+ Health
+ Absorption 
+ Instant Damage 
+ Instant Health 
+ Poison 
+ Regeneration 
+ Wither 
+ BE only
+ Fatal Poison 
+ Unused
+ Health Boost 
+ Hunger
+ Hunger 
+ Saturation 
+ Loot
+ Hero of the Village 
+ Unused
+ JE & LCE only
+ Bad Luck 
+ Luck 
+ Movement
+ Jump Boost 
+ Levitation 
+ Slow Falling 
+ Slowness 
+ Speed 
+ JE only
+ Dolphin's Grace 
+ Ominous events 
+ Bad Omen 
+ Raid Omen 
+ Trial Omen 
+ Protective
+ Breath of the Nautilus 
+ Conduit Power 
+ Fire Resistance 
+ Resistance 
+ Water Breathing 
+ Spawns
+ Infested 
+ Oozing 
+ Weaving 
+ Wind Charged 
+ Visibility
+ Blindness 
+ Darkness 
+ Invisibility 
+ Nausea 
+ Night Vision 
+ JE & LCE only
+ Glowing 
+ Joke 
+ Big 
+ Caring 
+ It's very slippery 
+ Sharing 
+ Shazboots! 
+ Small 
+ Sticky 
+ Retrieved from " https://minecraft.wiki/w/Slow_Falling?oldid=3736951 " 
+ Categories : Effects Transport 
+ Navigation menu 
+ Personal tools 
+ Create account Log in 
+ associated-pages 
+ Page Talk 
+ English 
+ Views 
+ Read Edit Edit source View history 
+ More 
+ Refresh 
+ Search 
+ Navigation 
+ How to help Recent changes Random page in Minecraft in Dungeons in Dungeons II in Legends in Earth in Story Mode in Tutorial in Movie Wiki Discord 
+ Wiki community 
+ Community portal Wiki forum Projects Wiki rules Style guide Notability Sandbox Admin noticeboard 
+ X 
+ Franchise 
+ Minecraft Minecraft Dungeons Minecraft Legends Minecraft Earth Minecraft: Story Mode A Minecraft Movie 
+ Recent versions 
+ Java Edition 
+ Latest: 26.2 
+ Dev: 26.3-pre-2 
+ Upcoming: 26.3 
+ Bedrock Edition 
+ Latest: 26.45 
+ Preview: 26.60.21 
+ Upcoming: 26.50 
+ Upcoming: 26.60 
+ Useful pages 
+ Trading Brewing Enchantments Mobs Blocks Items Crafting Smelting Tutorials Resource packs Redstone circuits 
+ Useful pages 
+ Weapons Enchanting Armor Artifacts Missions 
+ Useful pages 
+ Weapons Enchanting Armor Artifact 
+ Useful pages 
+ Friendly units Piglins Resources Biomes Structures Lost Legends 
+ Tools 
+ What links here Related changes Printable version Permanent link Page information Special pages View buckets 
+ In other languages 
+ Deutsch Español Français 日本語 文言 Português Русский 中文 
+ Contents (Top) 1 Mechanics 2 Causes 3 Immune mobs 4 Data values 
+ 4.1 ID 
+ 5 Advancements 6 History 
+ 6.1 Java Edition 
+ 6.2 Bedrock Edition 
+ 6.3 Legacy Console Edition 
+ 7 Issues 8 Gallery 9 Notes 10 References 11 Navigation 
+ This page was last edited on 23 August 2026, at 18:14. 
+ Content on this site is licensed under CC BY-NC-SA 3.0 unless otherwise noted; additional terms may apply . Not an official Minecraft website. We are not associated with Mojang or Microsoft. 
+ Privacy policy 
+ About Minecraft Wiki 
+ Disclaimers 
+ Terms of Use 
+ Contact Weird Gloop 
+ Mobile view 
+ Edit preview settings 
+ To leave feedback for the game, click here . Feedback will be posted anonymously and shared to our Discord . Something went wrong Dismiss 

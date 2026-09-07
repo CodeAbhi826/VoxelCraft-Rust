@@ -1,0 +1,1007 @@
+ 
+ Tropical Fish – Minecraft Wiki 
+ Tropical Fish 
+ From Minecraft Wiki 
+ Jump to navigation 
+ Jump to search 
+ This article is about the mob in Minecraft . For the item, see Tropical Fish (item) . For other uses, see Fish (disambiguation) .
+ Tropical Fish 
+ View all renders 
+ Health points 
+ 3 HP 
+ Behavior
+ Passive
+ Mob type 
+ Animal Aquatic 
+ Hitbox size 
+ In Java Edition : 
+ Height: 0.4 blocks Width: 0.5 blocks 
+ In Bedrock Edition : 
+Height: 0.52 blocks Width: 0.52 blocks
+ Speed 
+ 0.7
+ Spawn 
+ Mangrove Swamp Lukewarm Ocean Deep Lukewarm Ocean Warm Ocean Lush Caves 
+ Usable items
+ Water Bucket 
+ {
+ "extratext": "[[#Gallery|View all renders]]",
+ "title": "Tropical Fish",
+ "images": [
+ "Clownfish.png",
+ "Ornate Butterfly.png"
+ ],
+ "rows": [
+ {
+ "field": "3<span class=\"hidden-alt-text\">HP</span><span class=\"nowrap mc-hearts\"><span class=\"iconbar pixel-image nowrap\" style=\"--icon-offset:-1px;\" title=\"1.5 hearts\">(link to File:Heart (icon).png article, displayed as 9px|link=|alt=❤️)(link to File:Half Heart (icon).png article, displayed as 9px|link=|alt=💔)</span></span>",
+ "label": "(link to Health article, displayed as Health points)"
+ },
+ {
+ "field": "Passive",
+ "label": "Behavior"
+ },
+ {
+ "field": "<span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:EntitySprite animal.png article, displayed as 16x16px|link=Animal|alt=|class=pixel-image|)</span>(link to Animal article, displayed as <span class=\"sprite-text\">Animal</span>)</span><br><span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:EntitySprite aquatic.png article, displayed as 16x16px|link=Aquatic|alt=|class=pixel-image|)</span>(link to Aquatic article, displayed as <span class=\"sprite-text\">Aquatic</span>)</span>",
+ "label": "(link to Mob type article, displayed as Mob type)"
+ },
+ {
+ "field": "'''In (link to Java Edition article, displayed as ''Java Edition''):'''<br>\nHeight: 0.4 blocks<br>Width: 0.5 blocks<br>\n'''In (link to Bedrock Edition article, displayed as ''Bedrock Edition''):'''<br>\nHeight: 0.52 blocks<br>Width: 0.52 blocks",
+ "label": "(link to Hitbox article, displayed as Hitbox size)"
+ },
+ {
+ "field": "0.7",
+ "label": "(link to Attribute#Movement_speed article, displayed as Speed)"
+ },
+ {
+ "field": "(values exceeds 1000 characters...)",
+ "label": "(link to Mob spawning article, displayed as Spawn)"
+ },
+ {
+ "field": "\n* <span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:ItemSprite water-bucket.png article, displayed as 16x16px|link=Water Bucket|alt=|class=pixel-image|)</span>(link to Water Bucket article, displayed as <span class=\"sprite-text\">Water Bucket</span>)</span>",
+ "label": "Usable items"
+ }
+ ],
+ "invimages": [
+ "Tropical Fish Spawn Egg",
+ "Bucket of Tropical Fish"
+ ]
+} 
+ Tropical fish are common bucketable aquatic passive mobs found in warm or lukewarm oceans , mangrove swamps , and lush caves . There are 2,700 naturally occurring variants of tropical fish of different colors and shapes with unique names in Bedrock Edition and 3,072 in Java Edition . [ 1 ] 
+ Contents 
+ 1 Spawning 
+ 2 Drops 
+ 2.1 On death 
+ 3 Behavior 
+ 3.1 Weaknesses 
+ 4 Varieties 
+ 4.1 Java Edition 
+ 4.2 Bedrock Edition 
+ 4.3 Names 
+ 5 Sounds 
+ 6 Data values 
+ 6.1 ID 
+ 6.2 Entity data 
+ 7 Achievements 
+ 8 Advancements 
+ 9 History 
+ 9.1 Announcement 
+ 9.2 Java Edition 
+ 9.3 Bedrock Edition 
+ 9.4 Legacy Console Edition 
+ 9.5 Minecraft Education 
+ 10 Issues 
+ 11 Gallery 
+ 11.1 Renders 
+ 11.2 Mojang screenshots 
+ 11.3 Screenshots 
+ 11.4 Textures 
+ 11.5 Other 
+ 11.6 In other media 
+ 12 See also 
+ 13 References 
+ 14 External links 
+ 15 Navigation 
+ Spawning [ edit | edit source ] 
+ A group of tropical fish in a lukewarm ocean . 
+ In Java Edition , random varieties of tropical fish spawn in groups of 8 in lukewarm or warm oceans (as well as their deep variants) and mangrove swamps at Y-level 50 to 63, and in lush caves in aquifers at any Y-level. They are subject to fish spawning requirements .
+ In Bedrock Edition , tropical fish spawn underwater at 12-32 blocks away from the player. Tropical fish spawn only in warm , lukewarm , deep lukewarm ocean biomes; lush caves , in groups of 3-5 for the same preset pattern, and in groups of 1-3 for a random pattern; and mangrove swamps. In addition, tropical fish in warm, lukewarm, and deep ocean variants can spawn only at Y levels between 50 and 64 and must be on the surface (i.e., there must not be a spawnable block above the spawn location with a non-solid block on top). Tropical fish in lush caves can spawn on aquifers at any Y levels but require underground.
+ Tropical Fish spawns in: Category: Water ambient‌ [ JE only ] Water creature‌ [ BE only ] Java Edition Bedrock Edition Spawn area Spawn weight Spawn chance Group size Spawn weight Group size Lush Caves [ spawn 1 ] 25 ⁄ 25 100% 8 75 3–5 Mangrove Swamp [ spawn 1 ] 25 ⁄ 25 100% 8 25 3–5 Deep Lukewarm Ocean [ spawn 1 ] 25 ⁄ 38 65.79% 8 75 3–5 Warm Ocean [ spawn 1 ] 25 ⁄ 40 62.5% 8 75 3–5 Lukewarm Ocean [ spawn 1 ] 25 ⁄ 45 55.56% 8 75 3–5 Mangrove Swamp [ spawn 1 ] — — — 25 1–3 Lush Caves [ spawn 1 ] — — — 25 1–3 Lukewarm Ocean [ spawn 1 ] — — — 25 1–3 Deep Lukewarm Ocean [ spawn 1 ] — — — 25 1–3 Warm Ocean [ spawn 1 ] — — — 25 1–3 
+ ↑ a b c d e f g h i j Tropical fish are spawned twice.‌ [ Bedrock Edition only ] 
+ Drops [ edit | edit source ] 
+ On death [ edit | edit source ] 
+ Java Edition : 
+ Item Quantity / Chance / Average Default Looting I Looting II Looting III Tropical Fish 1 100.00% 1.00 1 100.00% 1.00 1 100.00% 1.00 1 100.00% 1.00 Bone Meal 0–1 5.00% 0.05 0–1 5.00% 0.05 0–1 5.00% 0.05 0–1 5.00% 0.05 
+ Item Quantity / Chance / Average Default Looting I Looting II Looting III Tropical Fish 1 1 1 1 1 1 1 1 1 1 1 1 Bone Meal 0–1 1 ⁄ 20 1 ⁄ 20 0–1 1 ⁄ 20 1 ⁄ 20 0–1 1 ⁄ 20 1 ⁄ 20 0–1 1 ⁄ 20 1 ⁄ 20 
+ Item Amount Probability Default Looting I Looting II Looting III Tropical Fish 1 1 (100.00%) 1 (100.00%) 1 (100.00%) 1 (100.00%) Average 1 (1.00) 1 (1.00) 1 (1.00) 1 (1.00) Bone Meal 0 19 ⁄ 20 (95.00%) 19 ⁄ 20 (95.00%) 19 ⁄ 20 (95.00%) 19 ⁄ 20 (95.00%) 1 1 ⁄ 20 (5.00%) 1 ⁄ 20 (5.00%) 1 ⁄ 20 (5.00%) 1 ⁄ 20 (5.00%) Average 1 ⁄ 20 (0.05) 1 ⁄ 20 (0.05) 1 ⁄ 20 (0.05) 1 ⁄ 20 (0.05) 
+ Killed 1 Item Expected Drops Default Looting I Looting II Looting III Tropical Fish 1.00 1.00 1.00 1.00 Bone Meal 0.05 0.05 0.05 0.05 
+ Bedrock Edition : 
+ Item Quantity / Chance / Average Default Looting I Looting II Looting III Tropical Fish 1 100.00% 1.00 1 100.00% 1.00 1 100.00% 1.00 1 100.00% 1.00 Bone 0–1 25.00% 0.25 0 / 2–3 26.00% 0.65 0 / 3–5 27.00% 1.08 0 / 4–7 28.00% 1.54 
+ Item Quantity / Chance / Average Default Looting I Looting II Looting III Tropical Fish 1 1 1 1 1 1 1 1 1 1 1 1 Bone 0–1 1 ⁄ 4 1 ⁄ 4 0 / 2–3 13 ⁄ 50 13 ⁄ 20 0 / 3–5 27 ⁄ 100 27 ⁄ 25 0 / 4–7 7 ⁄ 25 77 ⁄ 50 
+ Item Amount Probability Default Looting I Looting II Looting III Tropical Fish 1 1 (100.00%) 1 (100.00%) 1 (100.00%) 1 (100.00%) Average 1 (1.00) 1 (1.00) 1 (1.00) 1 (1.00) Bone 0 3 ⁄ 4 (75.00%) 37 ⁄ 50 (74.00%) 73 ⁄ 100 (73.00%) 18 ⁄ 25 (72.00%) 1 1 ⁄ 4 (25.00%) 0 0 0 2 0 13 ⁄ 100 (13.00%) 0 0 3 0 13 ⁄ 100 (13.00%) 27 ⁄ 400 (6.75%) 0 4 0 0 27 ⁄ 200 (13.50%) 7 ⁄ 150 (4.67%) 5 0 0 27 ⁄ 400 (6.75%) 7 ⁄ 75 (9.33%) 6 0 0 0 7 ⁄ 75 (9.33%) 7 0 0 0 7 ⁄ 150 (4.67%) Average 1 ⁄ 4 (0.25) 13 ⁄ 20 (0.65) 27 ⁄ 25 (1.08) 77 ⁄ 50 (1.54) 
+ Killed 1 Item Expected Drops Default Looting I Looting II Looting III Tropical Fish 1.00 1.00 1.00 1.00 Bone 0.25 0.65 1.08 1.54 
+ 1–3 XP when killed by a player or tamed wolf . 
+ Behavior [ edit | edit source ] 
+ Tropical fish tend to swim in schools of fish with a maximum of 7 tropical fish per school. Tropical fish are also able to go against the water flow.
+ The player may collect a tropical fish by using a water bucket on it, which gives the player a bucket of tropical fish . Using that fish bucket against a block empties the bucket, placing water with that fish swimming in it. Tropical fish placed via buckets do not despawn naturally.
+ Tropical fish cannot be bred, but only spawn in designated biomes.
+ Weaknesses [ edit | edit source ] 
+ Tropical fish cannot survive out of water. Outside of water, they flop around for a while until eventually they suffocate and die. In Bedrock Edition , they rotate when flipping. Fish cannot swim or breathe in cauldron water. [ 2 ] 
+ Fish have a weakness to weapons that have the Impaling enchantment, which also affects aquatic mobs except drowned .‌ [ Java Edition only ] 
+ Varieties [ edit | edit source ] 
+ The 22 uniquely-named varieties of tropical fish in Java Edition . From top to bottom and left to right: Anemone, Black Tang, Blue Tang, Butterflyfish, Cichlid, Clownfish Cotton Candy Betta, Dottyback, Emperor Red Snapper, Goatfish, Moorish Idol, Ornate Butterflyfish Parrotfish, Queen Angelfish, Red Cichlid, Red Lipped Blenny, Red Snapper, Threadfin Tomato Clownfish, Triggerfish, Yellowtail Parrotfish, Yellow Tang 
+ All possible tropical fish variants. 
+ Java Edition [ edit | edit source ] 
+ When tropical fish spawn in the wild, 90% of the time they appear as schools of one of the 22 varieties in the first image, and the other 10% of the time their patterns, shape, and colors are completely random, drawn from any of 2 shapes, 6 patterns, 16 base colors, and 16 pattern colors. The color black is not supposed to appear on any naturally-spawned tropical fish, since the eyes are usually hard to see [ 3 ] , but due to a bug [ 1 ] black can be chosen randomly. This results in 3,072 naturally-occurring combinations, instead of the intended 2,880.
+ Tropical fish can be summoned with black as one or both of their colors, and/or without any visible pattern,​ [ more information needed ] though even without the pattern they can still have a pattern color, causing a further 884 possible combinations, 480 of which look the same due to the missing pattern.
+ Bedrock Edition [ edit | edit source ] 
+ Tropical fish do not have common varieties in Bedrock Edition . Instead, naturally spawned tropical fish have 2 spawn attempts: the first chooses one of the 22 preset variants, and the other uses randomly chosen patterns, sizes, shapes, and colors (except black).
+Tropical fish spawned from a spawn egg use randomly chosen patterns, sizes, shapes, and colors (except black).
+Using commands, tropical fish may be spawned as one of the 22 preset variants. Due to MCPE-117477 , yellowtail parrot fish do not spawn, therefore only 21 preset variants exist on Bedrock Edition.​ [ until: BE 26.50 ] The specific command used is / summon tropicalfish ~ ~ ~ ~ ~ minecraft:fish_name .
+ Names [ edit | edit source ] 
+ Tropical fish variants in buckets have names that are assigned based on their colors and type. In Bedrock Edition , the names are in the name of the bucket, giving names like "Bucket of Dottyback", "Bucket of Sky-Orange Snooper", or "Bucket of Orange-Lime Dasher". In Java Edition , the type, and colors are displayed as additional lines in the item tooltip. 
+ In Bedrock Edition , the following colors are renamed from their defaults when they refer to tropical fish. Parentheses indicate default name and color id - see § Entity data .
+ Sky (Light Blue; 3) 
+ Rose (Pink; 6) 
+ Silver (Light Gray; 8) 
+ Teal (Cyan; 9) 
+ Plum (Purple; 10) 
+ The base color is first, and the pattern color is next if it is different.
+ The fish type is determined according to the shape and pattern of the fish:
+ Flopper
+ Stripey
+ Glitter
+ Blockfish
+ Betty
+ Clayfish
+ Kob
+ Sunstreak [ n 1 ] 
+ Snooper
+ Dasher
+ Brinely
+ Spotty
+ Some varieties of tropical fish don't follow the normal naming system; instead, they reference real-life fish species. In Java Edition , these unique fish are limited to the 22 common varieties. In Bedrock Edition , there are also 22 uniquely-named tropical fish, though they are not all the same as in Java Edition . These uniquely-named tropical fish aren't different from regular tropical fish in terms of design or behavior.
+ These varieties are:
+ Name 
+ Type 
+ Image
+ Anemone 
+ Orange-Gray Stripey 
+ Black Tang 
+ Gray Flopper 
+ Blue Tang‌ [ JE only ] 
+ Gray-Blue Flopper 
+ Blue Dory‌ [ BE only ] 
+ Gray-Sky SunStreak 
+ Butterflyfish‌ [ JE only ] 
+ White-Gray Clayfish 
+ Butterfly Fish‌ [ BE only ] 
+ White-Gray Brinely 
+ Cichlid 
+ Blue-Gray Sunstreak‌ [ JE only ] Blue-Gray SunStreak‌ [ BE only ] 
+ Clownfish 
+ Orange-White Kob 
+ Cotton Candy Betta 
+ Pink-Light Blue Spotty‌ [ JE only ] Rose-Sky Spotty‌ [ BE only ] 
+ Dottyback‌ [ JE only ] 
+ Dog Fish‌ [ BE only ] 
+ Purple-Yellow Blockfish‌ [ JE only ] Plum-Yellow Blockfish‌ [ BE only ] 
+ Emperor Red Snapper 
+ White-Red Clayfish 
+ Goatfish 
+ White-Yellow Spotty 
+ Moorish Idol 
+ White-Gray Glitter 
+ Ornate Butterflyfish‌ [ JE only ] Ornate Butterfly‌ [ BE only ] 
+ White-Orange Clayfish 
+ Parrotfish 
+ Cyan-Pink Dasher‌ [ JE only ] Teal-Rose Dasher‌ [ BE only ] 
+ Queen Angelfish‌ [ JE only ] Queen Angel Fish‌ [ BE only ] 
+ Lime-Light Blue Brinely‌ [ JE only ] Lime-Sky Brinely‌ [ BE only ] 
+ Red Cichlid 
+ Red-White Betty 
+ Red Lipped Blenny 
+ Gray-Red Snooper 
+ Red Snapper 
+ Red-White Blockfish 
+ Threadfin 
+ White-Yellow Flopper 
+ Tomato Clownfish‌ [ JE only ] 
+ Red-White Kob 
+ Tomato Clown‌ [ BE only ] 
+ Red-White SunStreak 
+ Triggerfish 
+ Gray-White Sunstreak‌ [ JE only ] Gray-White SunStreak‌ [ BE only ] 
+ Yellowtail Parrotfish‌ [ JE only ] Yellowtail Parrot‌ [ BE only ] 
+ Cyan-Yellow Dasher‌ [ JE only ] Teal-Yellow Dasher‌ [ BE only ] 
+ Yellow Tang
+ Yellow Flopper‌ [ JE only ] 
+ Yellow Stripey ‌ [ BE only ] 
+ ↑ Sunstreak in Java Edition , SunStreak in Bedrock Edition . 
+ Sounds [ edit | edit source ] 
+ Java Edition :
+ Sounds Sound Closed captions Source Description Identifier Translation key Volume Pitch Attenuation distance None ​ None Friendly Mobs Randomly entity .tropical_fish .ambient None ​ 1.0 0.8–1.2 16 ​Tropical Fish dies Friendly Mobs When a tropical fish dies entity .tropical_fish .death subtitles .entity .tropical_fish .death ​ 1.0 0.64–0.96 16 ​Tropical Fish hurts Friendly Mobs When a tropical fish is damaged entity .tropical_fish .hurt subtitles .entity .tropical_fish .hurt ​ 1.0 0.8–1.2 16 ​Tropical Fish flops Friendly Mobs When a tropical fish is outside of water entity .tropical_fish .flop subtitles .entity .tropical_fish .flop ​ 0.3 0.8–1.2 16 ​Splashes Friendly Mobs While a tropical fish is swimming entity .fish .swim subtitles .entity .fish .swim ​ 0.0–1.0 [ sound 1 ] 0.6–1.4 16 
+ ↑ The fish's momentum, with the horizontal axes' velocities multiplied by 0.2 (capped at 1.0) 
+ Bedrock Edition :
+ Sounds Sound Closed captions Source Description Identifier Translation key Volume Pitch ​Player dies Friendly Mobs When a tropical fish dies mob .fish .hurt ​ ? 1.0 0.8–1.2 ​Cod hurts Friendly Mobs When a tropical fish is damaged mob .fish .hurt ​ ? 1.0 0.8–1.2 ​Cod flops Friendly Mobs While a tropical fish is on land mob .fish .flop ​ ? 1.0 1.0 ​Swimming Friendly Mobs While a tropical fish is swimming mob .fish .step ​ ? 0.15 1.0 
+ Data values [ edit | edit source ] 
+ ID [ edit | edit source ] 
+ Java Edition :
+ Name Identifier Entity tags 
+ Translation key Tropical Fish tropical_fish aquatic axolotl_hunt_targets can_breathe_under_water not_scary_for_pufferfish sensitive_to_impaling 
+ entity .minecraft .tropical_fish 
+ Bedrock Edition :
+ Name Identifier Numeric ID 
+ Family Translation key Tropical Fish tropicalfish 111 
+ aquatic fish tropicalfish entity .tropicalfish .name 
+ Entity data [ edit | edit source ] 
+ Tropical fish have entity data associated with them that contains various properties.
+ Bedrock Edition :
+ See Bedrock Edition level format/Entity format . 
+ Java Edition :
+ Main article: Entity format 
+ [NBT Compound / JSON Object] Entity data
+ Tags common to all entities see Template:Nbt inherit/entity/template 
+ Tags common to all mobs see Template:Nbt inherit/mob/template 
+ [Byte]  FromBucket : 1 or 0 (true/false) - Whether the fish had ever been released from a bucket. 
+ [Int]  Variant : A 4-byte integer. Encodes the minecraft:tropical_fish/base_color , minecraft:tropical_fish/pattern , and minecraft:tropical_fish/pattern_color components.
+ The least significant byte has a value of either 0 for a small fish, or 1 for a large fish. Values above 1 result in an invisible fish. 
+ The next byte has a value from 0–5, representing the pattern on the fish. Values above 5 result in a fish with no pattern. 
+ The next byte has a value from 0–15, representing the color of the fish's body. 
+ The most significant byte has a value from 0–15, representing the color of the fish's pattern. 
+ Color
+ Data value
+ White
+ 0 
+ Orange
+ 1 
+ Magenta
+ 2 
+ Light Blue
+ 3 
+ Yellow
+ 4 
+ Lime
+ 5 
+ Pink
+ 6 
+ Gray
+ 7 
+ Light Gray
+ 8 
+ Cyan
+ 9 
+ Purple
+ 10 
+ Blue
+ 11 
+ Brown
+ 12 
+ Green
+ 13 
+ Red
+ 14 
+ Black
+ 15 
+ The fish sizes and patterns are depicted in the following table, with white body color and dark-gray pattern color.
+ second-least byte
+ 0 
+ 1 
+ 2 
+ 3 
+ 4 
+ 5
+ least byte 
+ 1
+ Flopper
+ Glitter
+ Betty
+ Stripey
+ Blockfish
+ Clayfish
+ Kob
+ Snooper
+ Brinely
+ Sunstreak
+ Dasher
+ Spotty
+ 0
+ The 22 varieties of tropical fish most commonly found throughout the world have Variant tag values from the following table, which also lists what color/shape/patterns come from that value.
+ Shape 
+ Pattern 
+ Base color 
+ Pattern color 
+ Variant 
+ Type 
+ Name
+ 0 
+ 0 
+ 1 
+ 0 
+ 65536 
+ Orange-White Kob 
+ Clownfish 
+ 0 
+ 1 
+ 7 
+ 0 
+ 459008 
+ Gray-White Sunstreak 
+ Triggerfish 
+ 0 
+ 0 
+ 14 
+ 0 
+ 917504 
+ Red-White Kob 
+ Tomato Clownfish 
+ 1 
+ 3 
+ 14 
+ 0 
+ 918273 
+ Red-White Blockfish 
+ Red Snapper 
+ 1 
+ 4 
+ 14 
+ 0 
+ 918529 
+ Red-White Betty 
+ Red Cichlid 
+ 1 
+ 5 
+ 0 
+ 1 
+ 16778497 
+ White-Orange Clayfish 
+ Ornate Butterflyfish 
+ 0 
+ 4 
+ 5 
+ 3 
+ 50660352 
+ Lime-Light Blue Brinely 
+ Queen Angelfish 
+ 0 
+ 5 
+ 6 
+ 3 
+ 50726144 
+ Pink-Light Blue Spotty 
+ Cotton Candy Betta 
+ 1 
+ 0 
+ 0 
+ 4 
+ 67108865 
+ White-Yellow Flopper 
+ Threadfin 
+ 0 
+ 5 
+ 0 
+ 4 
+ 67110144 
+ White-Yellow Spotty 
+ Goatfish 
+ 1 
+ 0 
+ 4 
+ 4 
+ 67371009 
+ Yellow Flopper 
+ Yellow Tang 
+ 0 
+ 3 
+ 9 
+ 4 
+ 67699456 
+ Cyan-Yellow Dasher 
+ Yellowtail Parrotfish 
+ 1 
+ 3 
+ 10 
+ 4 
+ 67764993 
+ Purple-Yellow Blockfish 
+ Dottyback 
+ 0 
+ 3 
+ 9 
+ 6 
+ 101253888 
+ Cyan-Pink Dasher 
+ Parrotfish 
+ 1 
+ 2 
+ 0 
+ 7 
+ 117441025 
+ White-Gray Glitter 
+ Moorish Idol 
+ 1 
+ 5 
+ 0 
+ 7 
+ 117441793 
+ White-Gray Clayfish 
+ Butterflyfish 
+ 1 
+ 1 
+ 1 
+ 7 
+ 117506305 
+ Orange-Gray Stripey 
+ Anemone 
+ 1 
+ 0 
+ 7 
+ 7 
+ 117899265 
+ Gray Flopper 
+ Black Tang 
+ 0 
+ 1 
+ 11 
+ 7 
+ 118161664 
+ Blue-Gray SunStreak 
+ Cichlid 
+ 1 
+ 0 
+ 7 
+ 11 
+ 185008129 
+ Gray-Blue Flopper 
+ Blue Tang 
+ 1 
+ 5 
+ 0 
+ 14 
+ 234882305 
+ White-Red Clayfish 
+ Emperor Red Snapper 
+ 0 
+ 2 
+ 7 
+ 14 
+ 235340288 
+ Gray-Red Snooper 
+ Red Lipped Blenny 
+ The variant number is the sum of the most significant byte × 2 24 + second most significant byte × 2 16 + second least significant byte × 2 8 + least significant byte.
+ Achievements [ edit | edit source ] 
+ Icon Achievement In-game description Actual requirements (if different) Gamerscore earned Trophy type ( PS ) PS4 Other I am a Marine Biologist Collect a fish in a bucket Use a water bucket on any fish mob by right-clicking. 20 Bronze It Spreads Kill a mob next to a catalyst Kill any mob that drops experience near a sculk catalyst, with the sole exception of the ender dragon . Mobs that drop no experience are ignored for this achievement. 10 Bronze 
+ Achievements that apply to all mobs:
+ Icon Achievement In-game description Actual requirements (if different) Gamerscore earned Trophy type ( PS ) PS4 Other Overkill Deal nine hearts of damage in a single hit. Damage can be dealt to any mob, even those that do not have nine hearts of health overall. 30 Bronze Over-Overkill Deal 50 hearts of damage in a single hit using the Mace Damage can be dealt to any mob, even those that do not have 50 hearts of health overall. 20 Silver Mob Kabob Hit five mobs in the same Charge attack using the Spear. Armor stands and players also count for this achievement as they are technically mobs . 10 Bronze 
+ Advancements [ edit | edit source ] 
+ Icon Advancement In-game description Actual requirements (if different) It Spreads Kill a mob near a Sculk Catalyst Kill any mob that drops experience near a sculk catalyst , with the sole exception of the ender dragon . Mobs that drop no experience are ignored for this advancement. Tactical Fishing Catch a Fish ... without a Fishing Rod ! Use a water bucket on any fish mob. 
+ Advancements that apply to all mobs:
+ Icon Advancement In-game description Actual requirements (if different) Adventure Adventure, exploration and combat Kill any mob , or be killed by any living entity . A Throwaway Joke Throw a Trident at something. Note: Throwing away your only weapon is not a good idea. Hit a mob with a thrown trident . Take Aim Shoot something with an Arrow Using a bow or a crossbow , shoot a mob with an arrow , tipped arrow , or spectral arrow . Mob Kabob Hit five mobs in the same Charge attack using the Spear. Armor Stand and Mannequin also count for this advancement. Arbalistic Kill five unique mobs with one crossbow shot Armor Stand and Mannequin also count for this advancement. This is a hidden advancement, meaning that it can be viewed by the player only after completing it, regardless of if its child advancement(s), if any, have been completed. Over-Overkill Deal 50 hearts of damage in a single hit using the Mace Damage can be dealt to any mob, even those that do not have 50 hearts of health overall. 
+ History [ edit | edit source ] 
+ Announcement [ edit | edit source ] 
+ June 28, 2010 
+ Notch mentioned that fish might be a feature of coral, if he were able to add coral: "... I do know that the corals will have tiny fish particles around them." October 4, 2010 
+ Fish were a passive mob that Notch showed interest in adding. In the promotional graphic for the Halloween Update , Notch indicated he would add fish. However, they were added only as an item ; there was no code for a fish mob. October 5, 2012 
+ Fish were jokingly teased in the fake snapshot 12marc40awesome , along with coral and "fish blocks". April 13, 2013 
+ When Jon Kågström was asked in his AMA on Reddit , "What mob would you like to implement into the game?" He responded, "I would like to add birds, fish and tree animals to make it more alive. However this will take some time before it can be done." July 31, 2013 
+ During Notch 's AMA on Reddit, when asked about what happened to his plans of adding fish as a mob , he responded, "Oh yeah, the fish!" November 18, 2017 
+ Two fish mobs , presumably early tropical fish, were shown off in a clip presented at MineCon Earth . March 1, 2018 
+ ThorsHand11 states on the official Minecraft Discord about the addition of "more than a handful" of tropical fish. 
+ Java Edition [ edit | edit source ] 
+ Java Edition 1.13 18w10a 
+ Added tropical fish. 18w10b 
+ Tropical fish now make sounds and no longer use the player damage sound. 1.13.1 18w31a 
+ Fish now have a 5% chance of dropping bone meal when killed. 1.17 20w51a 
+ Tropical fish are now attacked by axolotls . 21w13a 
+ Tropical fish spawned from buckets in the creative inventory now spawn as only white kobs. [ 4 ] 1.17.1 pre2 
+ Tropical fish spawned from buckets in the creative inventory no longer spawn only as white kobs. 1.18 21w40a 
+ Tropical fish now spawn only between Y=50 and Y=64, with the exception of lush caves in which they can spawn at any height. 1.18.2 22w07a 
+ By fixing MC-244683 , tropical fish now also require above a full water block to spawn. 1.19 22w15a 
+ Tropical fish now spawn in mangrove swamps. 1.19.3 ? 
+ Black is now a valid base and pattern color for tropical fish. [ 3 ] 
+ Bedrock Edition [ edit | edit source ] 
+ Bedrock Edition 1.4.0 beta 1.2.14.2 
+ Added all 4 variants of fish mobs . 1.8.0 beta 1.8.0.8 
+ Tropical fish are now slightly bigger. 1.13.0 beta 1.13.0.9 
+ Tropical fish now drop experience when killed. 1.17.0 beta 1.16.230.52 
+ Tropical fish are now attacked by axolotls . 1.17.10 beta 1.17.10.22 
+ Tropical Fish no longer can be picked up with an empty bucket . 1.18.0 beta 1.18.0.21 
+ Tropical fish now spawn only between Y=50 and Y=64, with the exception of lush caves in which they can spawn at any height. 1.18.0 beta 1.18.0.22 
+ Tropical fish can now spawn in lukewarm ocean biomes. 1.19.10 Preview 1.19.10.23 
+ The health of tropical fish has been changed to 3 HP . 
+ Legacy Console Edition [ edit | edit source ] 
+ Legacy Console Edition Xbox 360 Xbox One PS3 PS4 PS Vita Wii U Switch TU69 1.76 1.76 1.76 Patch 38 
+ Added fish mobs . 
+ Minecraft Education [ edit | edit source ] 
+ Minecraft Education 1.4.0 
+ Added all 4 variants of fish mobs . 
+ Issues [ edit | edit source ] 
+ Issues relating to "Tropical fish" are maintained on the bug tracker . Issues should be reported and viewed there .
+ Gallery [ edit | edit source ] 
+ Renders [ edit | edit source ] 
+ Anemone 
+ Black tang 
+ Blue tang ‌ [ Java Edition only ] 
+ Blue dory ‌ [ Bedrock Edition only ] 
+ Butterflyfish ‌ [ Java Edition only ] 
+ Butterfly fish ‌ [ Bedrock Edition only ] 
+ Cichlid 
+ Clownfish 
+ Cotton candy betta 
+ Dottyback‌ [ Java Edition only ] Dog Fish‌ [ Bedrock Edition only ] 
+ Emperor red snapper 
+ Goatfish 
+ Moorish idol 
+ Ornate butterflyfish 
+ Parrotfish 
+ Queen angelfish 
+ Red cichlid 
+ Red lipped blenny 
+ Red snapper 
+ Threadfin 
+ Tomato clownfish ‌ [ Java Edition only ] 
+ Tomato clown ‌ [ Bedrock Edition only ] 
+ Triggerfish 
+ Yellowtail parrotfish 
+ Yellow tang ‌ [ Java Edition only ] 
+ Yellow tang ‌ [ Bedrock Edition only ] 
+ Mojang screenshots [ edit | edit source ] 
+ A school of fish in a coral reef 
+ Five tropical fishes swimming through a body of water 
+ Screenshots [ edit | edit source ] 
+ An ocean with some fish visible. 
+ Cod and tropical fish, along with a turtle and squid 
+ A screenshot of tropical fish up close 
+ Some tropical fish jumping on land 
+ Textures [ edit | edit source ] 
+ Tropical fish A texture file 
+ Tropical fish B texture file 
+ Tropical fish A pattern 1 
+ Tropical fish A pattern 2 
+ Tropical fish A pattern 3 
+ Tropical fish A pattern 4 
+ Tropical fish A pattern 5 
+ Tropical fish A pattern 6 
+ Tropical fish B pattern 1 
+ Tropical fish B pattern 2 
+ Tropical fish B pattern 3 
+ Tropical fish B pattern 4 
+ Tropical fish B pattern 5 
+ Tropical fish B pattern 6 
+ Other [ edit | edit source ] 
+ The tropical fish spawn egg in Bedrock Edition beta 1.2.14.2 
+ Unused clownfish texture 
+ A recreated render of the unused clownfish mob 
+ In other media [ edit | edit source ] 
+ Tropical Fish as shown in the Update Aquatic artwork 
+ Tropical Fish from Update Aquatic artwork 
+ Tropical Fish in promotional artwork for the first Caves & Cliffs update 
+ Tropical fish in official artwork for The Wild Update 
+ Ornate butterflyfish art 
+ Clownfish art 
+ Yellowtail parrotfish art 
+ Yellow tang art 
+ Teal-lime kob art 
+ Artwork of a clownfish entity, predating Update Aquatic 
+ A hoodie featuring tropical fish 
+ A tropical fish as it appears in Minecraft Earth 
+ A tropical fish as it appears in Minecraft Dungeons 
+ See also [ edit | edit source ] 
+ Cod 
+ Salmon 
+ Pufferfish 
+ References [ edit | edit source ] 
+ ↑ a b MC-261096  – Tropical fish spawn with black colors since 1.19.3 
+ ↑ MC-126819 – "fish bouncing and suffocating on top of the cauldron which fills with water" resolved as "Won't Fix" 
+ ↑ a b MC-169763  – Black-colored tropical fish never spawn naturally or using spawn eggs – resolved as "Works As Intended". 
+ ↑ MC-221656 
+ External links [ edit | edit source ] 
+ "Taking Inventory: Tropical fish" by Duncan Geere – Minecraft.net , June 27, 2025. 
+ Navigation [ edit | edit source ] 
+ v 
+ t 
+ e Ocean 
+ Biomes 
+ Ocean 
+ Deep 
+ Frozen Ocean 
+ Deep 
+ Cold Ocean 
+ Deep 
+ Lukewarm Ocean 
+ Deep 
+ Warm Ocean 
+ Environment
+ Ruins 
+ Cold 
+ Warm 
+ Shipwreck 
+ Monument 
+ Coral Reef 
+ Blocks
+ Water 
+ Gravel 
+ Sand 
+ Ice 
+ Coral 
+ Coral Block 
+ Coral Fan 
+ Sea Pickle 
+ Seagrass 
+ Kelp 
+ Magma Block 
+ Mobs
+ Cod 
+ Tropical Fish 
+ Drowned 
+ Dolphin 
+ Pufferfish 
+ Salmon 
+ Squid 
+ Nautilus 
+ Zombie Nautilus 
+ Coral 
+ Jockey 
+ v 
+ t 
+ e Entities 
+ Mobs 
+ Passive
+ Allay 
+ Armadillo 
+ Axolotl 
+ Bat 
+ Camel 
+ Camel Husk 
+ Cat 
+ Chicken 
+ Cod 
+ Copper Golem 
+ Cow 
+ Donkey 
+ Frog 
+ Glow Squid 
+ Happy Ghast 
+ Horse 
+ Mooshroom 
+ Mule 
+ Ocelot 
+ Parrot 
+ Pig 
+ Rabbit 
+ Salmon 
+ Sheep 
+ Skeleton Horse 
+ Sniffer 
+ Snow Golem 
+ Squid 
+ Strider 
+ Sulfur Cube 
+ Tadpole 
+ Tropical Fish 
+ Turtle 
+ Villager 
+ Wandering Trader 
+ Zombie Horse 
+ BE & Edu only
+ Agent 
+ NPC 
+ Neutral
+ Bee 
+ Cave Spider 
+ Dolphin 
+ Drowned 
+ Enderman 
+ Fox 
+ Goat 
+ Iron Golem 
+ Llama 
+ Nautilus 
+ Panda 
+ Piglin 
+ Polar Bear 
+ Pufferfish 
+ Spider 
+ Trader Llama 
+ Wolf 
+ Zombie Nautilus 
+ Zombified Piglin 
+ Hostile
+ Blaze 
+ Bogged 
+ Breeze 
+ Creaking 
+ Creeper 
+ Elder Guardian 
+ Endermite 
+ Evoker 
+ Ghast 
+ Guardian 
+ Hoglin 
+ Husk 
+ Magma Cube 
+ Parched 
+ Phantom 
+ Piglin Brute 
+ Pillager 
+ Ravager 
+ Shulker 
+ Silverfish 
+ Skeleton 
+ Slime 
+ Stray 
+ Vex 
+ Vindicator 
+ Warden 
+ Witch 
+ Wither Skeleton 
+ Zoglin 
+ Zombie 
+ Zombie Villager 
+ Bosses 
+ Ender Dragon 
+ Wither 
+ Mob types 
+ Animal 
+ Aquatic 
+ Arthropod 
+ Illager 
+ Monster 
+ Undead 
+ Other
+ Baby 
+ Jockey 
+ Camel Husk 
+ Chicken 
+ Hoglin 
+ Ravager 
+ Skeleton Horseman 
+ Spider 
+ Strider 
+ Baby Strider 
+ Zombie Horseman 
+ Zombie Nautilus 
+ Mob variants 
+ Other entities 
+ Player 
+ Alex 
+ Ari 
+ Efe 
+ Kai 
+ Makena 
+ Noor 
+ Steve 
+ Sunny 
+ Zuri 
+ Blocks 
+ Falling Blocks 
+ Anvil 
+ Concrete Powder 
+ Dragon Egg 
+ Gravel 
+ Pointed Dripstone 
+ Sand 
+ Red Sand 
+ Scaffolding 
+ Sulfur Spike 
+ Suspicious Gravel 
+ Suspicious Sand 
+ Primed TNT 
+ BE & Edu only
+ Falling Blocks 
+ Deprecated Anvil 
+ Snow 
+ Primed Underwater TNT 
+ Vehicles 
+ Boat 
+ with Chest 
+ Minecart 
+ with Chest 
+ with Command Block 
+ with Hopper 
+ with TNT 
+ Java Edition only
+ Minecart with Furnace 
+ with Monster Spawner 
+ Projectiles 
+ Fireball 
+ Small 
+ Dragon 
+ Launched Firework Rocket 
+ Llama Spit 
+ Shot Arrow 
+ Tipped 
+ Shulker Bullet 
+ Thrown Bottle o' Enchanting 
+ Thrown Egg 
+ Thrown Ender Pearl 
+ Thrown Eye of Ender 
+ Thrown Snowball 
+ Thrown Splash Potion 
+ Lingering Potion 
+ Thrown Trident 
+ Wind Charge 
+ Wither Skull 
+ Java Edition only
+ Shot Spectral Arrow 
+ BE & Edu only
+ Thrown Ice Bomb 
+ Stationary objects
+ Cushion ​ [ upcoming: Wilderness Bound ] 
+ End Crystal 
+ Leash Knot 
+ Painting 
+ Java Edition only
+ Item Frame 
+ Glow 
+ Miscellaneous
+ Area Effect Cloud 
+ Armor Stand 
+ Evoker Fangs 
+ Experience Orb 
+ Fishing Bobber 
+ Items 
+ Lightning Bolt 
+ Ominous Item Spawner 
+ JE only
+ Mannequin 
+ BE & Edu only
+ Balloon 
+ Camera 
+ Technical objects
+ JE only
+ Display 
+ Block 
+ Item 
+ Text 
+ Interaction 
+ Marker 
+ Editor only
+ Location Pointer Idle 
+ Location Pointer Selected 
+ Map Marker 
+ Ruler 
+ Idle 
+ Unimplemented 
+ Unused
+ JE only
+ Giant 
+ Illusioner 
+ BE & Edu only
+ Elder Guardian Ghost 
+ Old Villager 
+ Old Zombie Villager 
+ Mentioned 
+ Alpaca 
+ Barnacle 
+ Crab 
+ Firefly 
+ Glare 
+ Great Hunger 
+ Herobrine 
+ Iceologer 
+ Meerkat 
+ Minecart with Dispenser 
+ Moobloom 
+ Ostrich 
+ Penguin 
+ Pigman Bodyguard 
+ Rascal 
+ Red Dragon 
+ Shade 
+ Termite 
+ Tuff Golem 
+ Vulture 
+ Wildfire 
+ Removed
+ Builder 
+ Giant Jockey 
+ MD3 Test Mob 
+ Mob 
+ Monster 
+ Shot Purple Arrow 
+ Sign Entity 
+ Joke 
+ Mobs
+ April Fools 2013 
+ Diamond Chicken 
+ Horse 
+ Pony 
+ Pink Wither 
+ Redstone Bug 
+ April Fools 2015 
+ Love Golem 
+ Friendly Wither 
+ Smiling Creeper 
+ April Fools 2019 
+ Nerd Creeper 
+ April Fools 2023 
+ Moon Cow 
+ Ray Tracing 
+ April Fools 2024 
+ Batato 
+ Mega Spud 
+ Plaguewhale Slab 
+ Poisonous Potato Zombie 
+ Potato mob category 
+ Toxifin Slab 
+ April Fools 2025 
+ Angry Ghast 
+ Spectator Villager 
+ Spectator Witch 
+ Traitor 
+ Warden (boss) 
+ Pet variants
+ Pet Armadillo 
+ Pet Axolotl 
+ Pet Bee 
+ Pet Cat 
+ Pet Chicken 
+ Pet Cow 
+ Pet Creeper 
+ Pet Fox 
+ Pet Frog 
+ Pet Mooshroom 
+ Pet Polar Bear 
+ Pet Slime 
+ Pet Turtle 
+ Pet Wolf 
+ April Fools 2026 
+ Living Block 
+ Other entities
+ April Fools 2013 
+ Pink Wither Skull 
+ April Fools 2015 
+ Obsidian Boat 
+ Friendly Wither Skull 
+ April Fools 2023 
+ Stencil Display 
+ April Fools 2024 
+ Falling Block 
+ Gravtater 
+ Potato Eye 
+ April Fools 2026 
+ Crafting Grid 
+ Hovering Item 
+ Living Block Command 
+ Retrieved from " https://minecraft.wiki/w/Tropical_Fish?oldid=3747741 " 
+ Categories : Entities Passive mobs Aquatic mobs Animal mobs Hidden categories: Pages using simple calculator Information needed Upcoming Bedrock Edition upcoming tag Pages with sound tables Pages with Java sound tables Pages with Bedrock subtitle key missing Pages with Bedrock sound tables Unknown Java version history 
+ Navigation menu 
+ Personal tools 
+ Create account Log in 
+ associated-pages 
+ Page Talk 
+ English 
+ Views 
+ Read Edit Edit source View history 
+ More 
+ Search 
+ Navigation 
+ How to help Recent changes Random page in Minecraft in Dungeons in Dungeons II in Legends in Earth in Story Mode in Tutorial in Movie Wiki Discord 
+ Wiki community 
+ Community portal Wiki forum Projects Wiki rules Style guide Notability Sandbox Admin noticeboard 
+ X 
+ Franchise 
+ Minecraft Minecraft Dungeons Minecraft Legends Minecraft Earth Minecraft: Story Mode A Minecraft Movie 
+ Recent versions 
+ Java Edition Latest: 26.2 Dev: 26.3-pre-2 Upcoming: 26.3 Bedrock Edition Latest: 26.45 Preview: 26.60.21 Upcoming: 26.50 Upcoming: 26.60 
+ Useful pages 
+ Trading Brewing Enchantments Mobs Blocks Items Crafting Smelting Tutorials Resource packs Redstone circuits 
+ Useful pages 
+ Weapons Enchanting Armor Artifacts Missions 
+ Useful pages 
+ Weapons Enchanting Armor Artifact 
+ Useful pages 
+ Friendly units Piglins Resources Biomes Structures Lost Legends 
+ Tools 
+ What links here Related changes Printable version Permanent link Page information Special pages View buckets 
+ In other languages 
+ Deutsch Español Français Italiano 日本語 한국어 Nederlands Português Русский ไทย Українська 中文 
+ This page was last edited on 28 August 2026, at 19:14. 
+ Content on this site is licensed under CC BY-NC-SA 3.0 unless otherwise noted; additional terms may apply . Not an official Minecraft website. We are not associated with Mojang or Microsoft. 
+ Privacy policy 
+ About Minecraft Wiki 
+ Disclaimers 
+ Terms of Use 
+ Contact Weird Gloop 
+ Mobile view 
+ 

@@ -1,0 +1,569 @@
+ 
+ Trident – Minecraft Wiki 
+ Sign In 
+ Create a Free Account 
+ Minecraft Wiki 
+ Explore 
+ Main Page 
+ All Pages 
+ Interactive Maps 
+ Games 
+ Minecraft 
+ Minecraft Dungeons 
+ Minecraft Legends 
+ Minecraft Earth 
+ Minecraft Story Mode 
+ Minecraft 
+ Blocks 
+ Items 
+ World 
+ Mobs 
+ Biomes 
+ Terrain features 
+ Structures 
+ Dimensions 
+ Mechanics 
+ Crafting 
+ Smelting 
+ Brewing 
+ Trading 
+ Enchanting 
+ Status effects 
+ Version history 
+ Java Edition 
+ Bedrock Edition 
+ Other editions 
+ Legacy Console Edition 
+ Simplified guides 
+ Java Edition 
+ Bedrock Edition 
+ Technical 
+ Redstone circuits 
+ Commands 
+ Resource packs 
+ Data packs 
+ Add-ons 
+ Servers 
+ Realms 
+ Realms Plus 
+ Bedrock Dedicated Server 
+ Bedrock featured servers 
+ Tutorials 
+ Minecraft Dungeons 
+ Items 
+ Weapons 
+ Armor 
+ Artifacts 
+ Consumables 
+ Cosmetics 
+ Locations 
+ Ancient Hunts 
+ Mechanics 
+ Enchanting 
+ Status effects 
+ Achievements 
+ Mobs 
+ Arcade 
+ Tutorials 
+ Wiki Community 
+ Rules and guidelines 
+ Wiki rules 
+ Video policy 
+ Talk page guidelines 
+ Style guide 
+ Wiki tools 
+ Recent changes 
+ Editing sandbox 
+ About the wiki 
+ Community portal 
+ Admin noticeboard 
+ Projects 
+ Discord 
+ Sign In 
+ Don't have an account? 
+ Create a Free Account 
+ Sign In 
+ Create a Free Account 
+ Home 
+ Explore 
+ Saved 
+ Progress 
+ History 
+ Utilities 
+ Blocksmith 
+ More 
+ Advertisement
+ Skip to content 
+ Minecraft Wiki 
+ 7,609 pages 
+ Explore 
+ Main Page 
+ All Pages 
+ Interactive Maps 
+ Games 
+ Minecraft 
+ Minecraft Dungeons 
+ Minecraft Legends 
+ Minecraft Earth 
+ Minecraft Story Mode 
+ Minecraft 
+ Blocks 
+ Items 
+ World 
+ Mobs 
+ Biomes 
+ Terrain features 
+ Structures 
+ Dimensions 
+ Mechanics 
+ Crafting 
+ Smelting 
+ Brewing 
+ Trading 
+ Enchanting 
+ Status effects 
+ Version history 
+ Java Edition 
+ Bedrock Edition 
+ Other editions 
+ Legacy Console Edition 
+ Simplified guides 
+ Java Edition 
+ Bedrock Edition 
+ Technical 
+ Redstone circuits 
+ Commands 
+ Resource packs 
+ Data packs 
+ Add-ons 
+ Servers 
+ Realms 
+ Realms Plus 
+ Bedrock Dedicated Server 
+ Bedrock featured servers 
+ Tutorials 
+ Minecraft Dungeons 
+ Items 
+ Weapons 
+ Armor 
+ Artifacts 
+ Consumables 
+ Cosmetics 
+ Locations 
+ Ancient Hunts 
+ Mechanics 
+ Enchanting 
+ Status effects 
+ Achievements 
+ Mobs 
+ Arcade 
+ Tutorials 
+ Wiki Community 
+ Rules and guidelines 
+ Wiki rules 
+ Video policy 
+ Talk page guidelines 
+ Style guide 
+ Wiki tools 
+ Recent changes 
+ Editing sandbox 
+ About the wiki 
+ Community portal 
+ Admin noticeboard 
+ Projects 
+ Discord 
+ in: 
+ Renewable resources , Items , Entities , Combat 
+ English 
+ Deutsch 
+ Español 
+ Français 
+ 日本語 
+ 한국어 
+ Polski 
+ Português 
+ Русский 
+ ไทย 
+ 中文 
+ Trident 
+ Sign In to Save 
+ Save 
+ View source 
+ History 
+ Purge 
+ Talk (24) 
+ For the Hidden Depths DLC weapon in Minecraft Dungeons , see MCD:Trident .
+ Trident 
+ Item
+ Entity
+ Rarity color 
+ Rare 
+ Durability 
+ 250 
+ Stackable 
+ No 
+ Renewable 
+ Yes 
+ Size 
+ Height: 0.25 Blocks Width: 0.25 Blocks 
+ A trident is a weapon used in both melee and ranged combat and is a rare drop from drowned .
+ Contents 
+ 1 Obtaining 
+ 1.1 Mob loot 
+ 1.1.1 Java Edition 
+ 1.1.2 Bedrock Edition 
+ 1.2 Thrown tridents 
+ 2 Usage 
+ 2.1 Drowned 
+ 2.2 Melee attack 
+ 2.3 Ranged attack 
+ 2.4 Damage 
+ 2.4.1 Java Edition 
+ 2.4.2 Bedrock Edition 
+ 2.5 Elytra 
+ 2.6 Impaling damage 
+ 2.7 Enchantments 
+ 2.8 Repairing 
+ 3 Sounds 
+ 4 Data values 
+ 4.1 ID 
+ 4.2 Entity data 
+ 5 Achievements 
+ 6 Advancements 
+ 7 History 
+ 8 Issues 
+ 9 Trivia 
+ 10 Gallery 
+ 11 References 
+ 12 External Links 
+ Obtaining [ ] 
+ Tridents are not craftable. A trident can be obtained only when dropped by a drowned , or looted from trial chambers. Converted drowned are never equipped with tridents. 
+ Mob loot [ ] 
+ Java Edition [ ] 
+ 6.25% (or 1 in 16) of Drowned in Java Edition spawn with a trident of random durability as their natural weapon. They have an 8.5% chance to drop their trident when killed by a player. The chance is increased by 1% for each level of Looting up to a max of 11.5% with Looting III. This means the overall chance of obtaining a trident from any given drowned is 0.53125% (about 1 in 188) or 0.71875% (about 1 in 140) with looting III.
+ In Java Edition , a trident held by a drowned has a chance to be enchanted, but the trident's enchantments have no effects for drowned. [ 1 ] 
+ Bedrock Edition [ ] 
+ Only 15% (or 3 in 20) of Drowned in Bedrock Edition spawn with tridents. Of these, they have a 25% chance to drop their trident when killed by a player. This chance is increased by 4% for each level of looting up to a max of 37% with looting III. This means the overall chance of obtaining a trident from any given drowned is 3.75% (or 3 in 80) or 5.55% with looting III.
+ Thrown tridents [ ] 
+ Tridents thrown onto the ground by a player can be picked up; however, tridents thrown by drowned cannot be picked up, similar to arrows shot by skeletons , strays , and pillagers . When a trident is thrown in creative mode, only its owner can pick it up. Other players in creative mode also cannot pick up said trident.
+ Usage [ ] 
+ Drowned [ ] 
+ Main article: Drowned 
+ 15% of drowned in Bedrock Edition , and 6.25% in Java Edition , spawn with a trident as its natural weapon. It throws the trident at its opponent every 1.5 seconds, dealing 9 damage in normal difficulty. A drowned can throw unlimited tridents, and these tridents cannot be picked up by the player .
+ A villager can be turned into a zombie villager if it is killed by a trident thrown by a drowned: the chance of conversion is 0% on Easy difficulty , 50% on Normal, and 100% on Hard and Hardcore .
+ In Bedrock Edition , a drowned can use the trident's melee attack if its target is within three blocks. The melee attack deals 9 damage.
+ Melee attack [ ] 
+ Pressing attack while holding a trident deals damage to both mobs and players. Tridents deal 9 melee damage. A successful hit consumes durability of the trident.
+ Ranged attack [ ] 
+ Pressing and holding use while holding a trident charges it. When released at half charge or more, the trident is thrown and deals damage to any entity it hits. Note that it doesn't have to be full charge for the complete damage and length. It flies on a ballistic trajectory similar to that of an arrow , but at 80% strength. If the trident hits a block, it sticks to the block. If it hits an entity, it bounces off the entity and lands nearby. It is also blocked by shields and can be retrieved once it lands in the ground. Thrown tridents can trigger wooden buttons , wooden pressure plates , and target blocks. A trident can be thrown at a chorus flower or pointed dripstone to break it, which causes the block to be dropped as its respective item.
+ In Bedrock Edition and Java Edition Combat Test 4 , tridents can be shot by dispensers regardless of enchantment.
+ Tridents enchanted with Loyalty return to the thrower after hitting an entity‌ [ Java Edition only ] /hitting and bouncing off an entity then hitting a block‌ [ Bedrock Edition only ] [ 2 ] or just a block. A Loyalty-enchanted trident fired from a dispenser just sticks to the block it strikes. Higher levels of enchantment result in shorter recovery times. In Java Edition , throwing a trident enchanted with Loyalty into the void destroys it, [ 3 ] while in Bedrock Edition it automatically returns to the player. Tridents (if enchanted with Loyalty), can take fire damage but still return to the player if thrown in lava . This is especially helpful in the Nether should the player be using a trident instead of a bow . If a trident enchanted with Loyalty attempts to return to a player with no available inventory space, the trident floats near the player until inventory space becomes available.
+ Thrown tridents take 1 durability damage, regardless of whether it hit an entity or not. Tridents with 1 durability remaining cannot be thrown.
+ Tridents enchanted with Riptide launch the player a certain distance when thrown, with the distance increasing for higher enchantment levels. They can be thrown only if the player is standing in water , or if it is raining on the block they are standing on. If the player charges it but walks into a nearby dry area, the charge is canceled. If the player throws a Riptide trident and collides with a mob, the mob takes melee damage (including critical damage if the player is falling). In Java Edition tridents enchanted with Riptide take one durability damage upon throwing, and lose an additional 1 durability if it collides with an entity on both editions. Each level of Riptide increases the distance traveled by six blocks. The enchantment at level one launches the player nine blocks, fifteen blocks at level two, and twenty-one blocks at level three.
+ Tridents enchanted with Channeling summon a lightning bolt if there is a thunderstorm, although only upon hitting a mob or player standing in the rain as well as a lightning rod placed in the rain.
+ Unlike other projectiles, the trident does not slow down when thrown through water or lava.
+ In Java Edition , the Impaling enchantment affects all water mobs . In Bedrock Edition , it deals extra damage to players and mobs in water or rain.
+ Unlike arrows, thrown tridents do not despawn.‌ [ Bedrock Edition only ] Tridents despawn after 60 seconds if they are not picked up.‌ [ Java Edition only ] [ 4 ] 
+ Magical damage 
+ Using Riptide , nearby players or mobs are dealt splash damage within an 8.25×8.25×4.25 cubical area. It stacks with the Impaling enchantment and Strength effect. Critical hits do not increase splash damage, but affect the target. 
+ In Bedrock Edition , thrown tridents can damage the ender dragon while resting on the bedrock fountain. In Java Edition , they act just like arrows — deflected, but burn as if they had Flame .
+ Damage [ ] 
+ Thrown tridents and splashes deal 8 damage. The damage remains the same regardless of the trident's speed. It has a faster charging speed than a bow or crossbow (barring the Quick Charge enchantment.)
+ Java Edition [ ] 
+ In Java Edition , tridents have an attack speed of 1.1 and take ~0.91 seconds to recover .
+ Attack
+ Melee 
+ Melee (critical) 
+ Range 
+ Attack damage
+ 9 
+ 13.5 × 6.75 
+ 8 
+ Damage/Second (DPS) [ note 1 ] 
+ 9.9
+ 14.3
+ ?
+ Lifetime damage inflicted [ note 2 ] 
+ 2250 × 1125 
+ 3375 × 1687.5 
+ 2000 × 1000 
+ Durability
+ 250
+ ↑ This does not take travel time into account 
+ ↑ The formula to find the total lifetime damage is Durability × Damage per hit = Lifetime damage minimum (e.g., 250 × 9 = 2250). It ignores enchantments and critical hits, and assumes the trident is at maximum charge 
+ Bedrock Edition [ ] 
+ In Bedrock Edition , tridents have no attack cooldown and do the following damage:
+ Attack
+ Melee 
+ Range 
+ Attack damage
+ 9 
+ 8 
+ Lifetime damage inflicted [ note 1 ] 
+ 2259 × 1129.5 
+ 2008 × 1004 
+ Durability
+ 251
+ ↑ The formula to find the total lifetime damage is Durability × Damage per hit = Lifetime damage minimum . It excludes enchantments and critical hits. 
+ Elytra [ ] 
+ A trident with the Riptide enchantment can be used to propel a player with a pair of elytra , but only in rainy weather, during snowy weather in certain biomes [ 5 ] or while the player is in a body of water. A Riptide trident can boost the player to speeds as high as 125 blocks per second, [ 6 ] much faster than the 33.5 blocks-per-second speed achievable using firework rockets .
+ Impaling damage [ ] 
+ In Java Edition , the Impaling enchantment deals extra damage to all water mobs. In Bedrock Edition and in Java Edition Combat Test 3 , it deals extra damage to all players and mobs in water or rain.
+ Trident Damage by Impaling level
+ Level
+ Increase
+ Melee
+ Ranged
+ I
+ adds 2.5 × 1.25 
+ 11.5 × 5.75 
+ 10.5 × 5.25 
+ II
+ adds 5 
+ 14 × 7 
+ 13 × 6.5 
+ III
+ adds 7.5 × 3.75 
+ 16.5 × 8.25 
+ 15.5 × 7.75 
+ IV
+ adds 10 
+ 19 × 9.5 
+ 18 × 9 
+ V
+ adds 12.5 × 6.25 
+ 21.5 × 10.75 
+ 20.5 × 10.25 
+ Enchantments [ ] 
+ Tridents have a base enchantability of 1 and can receive the following enchantments :
+ Name
+ Max Level
+ Method 
+ Loyalty [ note 1 ] 
+ III
+ Channeling [ note 1 ] 
+ I
+ Riptide [ note 1 ] 
+ III
+ Impaling 
+ V
+ Unbreaking 
+ III
+ Mending 
+ I
+ Curse of Vanishing 
+ I
+ Notes 
+ ↑ a b c Loyalty and Channeling are mutually exclusive from Riptide, but not from each other. 
+ Repairing [ ] 
+ Tridents have the same durability as an iron sword . Whenever a trident deals damage, its durability decreases by 1.
+ Tridents can be repaired by:
+ combining two damaged tridents in a grindstone , or on a crafting table or the 2×2 inventory grid, which removes any enchantments except for Curse of Vanishing and Curse of Binding 
+ combining a damaged trident with another trident on an anvil , which preserves enchantments. 
+ applying the Mending enchantment. 
+ Sounds [ ] 
+ Java Edition : 
+Thrown tridents use the Friendly Creatures sound category for entity-dependent sound events.
+ Sound Subtitles Source Description Resource location Translation key Volume Pitch Attenuation distance https://minecraft.fandom.com/wiki/File:Trident_pierce1.ogg https://minecraft.fandom.com/wiki/File:Trident_pierce2.ogg https://minecraft.fandom.com/wiki/File:Trident_pierce3.ogg Trident stabs Friendly Creatures When a trident hits a mob item .trident .hit subtitles .item .trident .hit 1.0 1.0 16 
+ https://minecraft.fandom.com/wiki/File:Trident_ground_impact1.ogg https://minecraft.fandom.com/wiki/File:Trident_ground_impact2.ogg https://minecraft.fandom.com/wiki/File:Trident_ground_impact3.ogg https://minecraft.fandom.com/wiki/File:Trident_ground_impact4.ogg Trident vibrates Friendly Creatures When a trident hits the ground item .trident .hit_ground subtitles .item .trident .hit_ground 0.9 12 ⁄ 11 - 4 ⁄ 3 16 
+ https://minecraft.fandom.com/wiki/File:Trident_throw1.ogg https://minecraft.fandom.com/wiki/File:Trident_throw2.ogg Trident clangs Players When a player throws a trident item .trident .throw subtitles .item .trident .throw 1.0 1.0 16 
+ https://minecraft.fandom.com/wiki/File:Trident_thunder1.ogg https://minecraft.fandom.com/wiki/File:Trident_thunder2.ogg Trident thunder cracks Friendly Creatures When a Channeling trident hits a mob item .trident .thunder subtitles .item .trident .thunder 5.0 1.0 16 
+ Trident thunder cracks Weather When a trident with Channeling strikes a lightning rod item .trident .thunder subtitles .item .trident .thunder 5.0 1.0 16 
+ https://minecraft.fandom.com/wiki/File:Riptide_I.ogg Trident zooms Players When a Riptide I trident is used item .trident .riptide_1 subtitles .item .trident .riptide 1.0 1.0 16 
+ https://minecraft.fandom.com/wiki/File:Riptide_II.ogg Trident zooms Players When a Riptide II trident is used item .trident .riptide_2 subtitles .item .trident .riptide 1.0 1.0 16 
+ https://minecraft.fandom.com/wiki/File:Riptide_III.ogg Trident zooms Players When a Riptide III or higher trident is used item .trident .riptide_3 subtitles .item .trident .riptide 1.0 1.0 16 
+ https://minecraft.fandom.com/wiki/File:Trident_return1.ogg https://minecraft.fandom.com/wiki/File:Trident_return2.ogg https://minecraft.fandom.com/wiki/File:Trident_return3.ogg Trident returns Friendly Creatures When a trident starts returning [ sound 1 ] item .trident .return subtitles .item .trident .return 8.0 varies [ sound 2 ] 16 
+ https://minecraft.fandom.com/wiki/File:Trident_throw1.ogg https://minecraft.fandom.com/wiki/File:Trident_throw2.ogg Drowned throws Trident Hostile Creatures When a drowned shoots a trident entity .drowned .shoot subtitles .entity .drowned .shoot 1.0 5 ⁄ 6 -1.25 16 
+ https://minecraft.fandom.com/wiki/File:Random_break.ogg Item breaks Players When a trident's durability is exhausted entity .item .break subtitles .entity .item .break 0.8 0.8-1.2 16 
+ ↑ The first sound is only played 1 ⁄ 9 of the time, while the others are played 4 ⁄ 9 of the time 
+ ↑ 1.0 for return1 , 1.0/0.8/1.2/1.2 for return2 , and 1.0/0.8/0.8/1.2 for return3 
+ Bedrock Edition :
+ Sound Source Description Resource location Volume Pitch https://minecraft.fandom.com/wiki/File:Trident_pierce1.ogg https://minecraft.fandom.com/wiki/File:Trident_pierce2.ogg https://minecraft.fandom.com/wiki/File:Trident_pierce3.ogg Players When a trident hits a mob item .trident .hit 1.0 1.0 
+ https://minecraft.fandom.com/wiki/File:Trident_ground_impact1.ogg https://minecraft.fandom.com/wiki/File:Trident_ground_impact2.ogg https://minecraft.fandom.com/wiki/File:Trident_ground_impact3.ogg https://minecraft.fandom.com/wiki/File:Trident_ground_impact4.ogg Players When a trident hits the ground item .trident .hit_ground 0.9 1.0 
+ https://minecraft.fandom.com/wiki/File:Trident_throw1.ogg https://minecraft.fandom.com/wiki/File:Trident_throw2.ogg Players When a player throws a trident item .trident .throw 1.0 1.0 
+ https://minecraft.fandom.com/wiki/File:Trident_thunder1.ogg https://minecraft.fandom.com/wiki/File:Trident_thunder2.ogg Players When a trident with Channeling strikes a mob [ sound 1 ] [ sound 2 ] ‌ [ upcoming: BE 1.20.30 ] item .trident .thunder 1.0 ‌ [ until BE 1.20.30 ] 1000.0 ‌ [ upcoming: BE 1.20.30 ] 1.0 
+ https://minecraft.fandom.com/wiki/File:Riptide_I.ogg Players When a Riptide I trident is used item .trident .riptide_1 1.0 1.0 
+ https://minecraft.fandom.com/wiki/File:Riptide_II.ogg Players When a Riptide II trident is used item .trident .riptide_2 1.0 1.0 
+ https://minecraft.fandom.com/wiki/File:Riptide_III.ogg Players When a Riptide III trident is used item .trident .riptide_3 1.0 1.0 
+ https://minecraft.fandom.com/wiki/File:Trident_return1.ogg https://minecraft.fandom.com/wiki/File:Trident_return2.ogg https://minecraft.fandom.com/wiki/File:Trident_return3.ogg Players When a trident starts returning [ sound 3 ] item .trident .return 8.0 varies [ sound 4 ] 
+ https://minecraft.fandom.com/wiki/File:Trident_throw1.ogg https://minecraft.fandom.com/wiki/File:Trident_throw2.ogg Hostile Creatures When a drowned shoots a trident [ sound 5 ] ‌ [ upcoming: BE 1.20.30 ] mob .drowned .shoot 1.0 0.8-1.2 
+ ↑ MCPE-43402 
+ ↑ MCPE-173931  — Tridents don't make channeling sounds when striking a lightning rod 
+ ↑ The first sound is only played 1 ⁄ 9 of the time, while the others are played 4 ⁄ 9 of the time 
+ ↑ 1.0 for return1 , 1.0/0.8/1.2/1.2 for return2 , and 1.0/0.8/0.8/1.2 for return3 
+ ↑ MCPE-53297 
+ Data values [ ] 
+ ID [ ] 
+ Java Edition :
+ Name Identifier Form Translation key Trident trident Item item.minecraft.trident 
+ Name Identifier Entity tags Translation key Trident trident impact_projectiles entity.minecraft.trident 
+ Bedrock Edition :
+ Name Identifier Numeric ID Form Translation key Trident trident 546 Item item.trident.name 
+ Name Identifier Numeric ID Translation key Trident thrown_trident 73 entity.thrown_trident.name 
+ Entity data [ ] 
+ Tridents have entity data associated with them that contain various properties of the entity.
+ Java Edition :
+ Main article: Entity format 
+ Entity data
+ Tags common to all arrows 
+ Tags common to all entities 
+ Tags common to all projectiles 
+  DealtDamage : 1 or 0 (true/false) - true if the trident has already damaged an entity or been stuck in the ground for more than 4 ticks, in which case subsequent collisions with entities deal no damage and Loyalty tridents begin to return to the player. 
+  Trident : The tag representing the item that is given when the entity is picked up. 
+  IsUnderwater : 1 or 0 (true/false) - true if the trident is currently underwater.
+ Tags common to all items 
+ Bedrock Edition :
+ See Bedrock Edition level format/Entity format . 
+ Achievements [ ] 
+ Icon 
+ Achievement 
+ In-game description 
+ Actual requirements (if different) 
+ Gamerscore earned 
+ Trophy type (PS4) 
+ PS4 
+ Other 
+ Do a Barrel Roll! Use Riptide to give yourself a boost Obtain a trident enchanted with Riptide and launch yourself any distance with it. 30G Silver 
+ Bullseye Hit the bullseye of a Target block — 15G Bronze 
+ Advancements [ ] 
+ Icon 
+ Advancement 
+ In-game description 
+ Parent 
+ Actual requirements (if different) 
+ Resource location 
+ A Throwaway Joke Throw a Trident at something. Note: Throwing away your only weapon is not a good idea.
+ Monster Hunter Hit a mob with a thrown trident . adventure/throw_trident
+ Very Very Frightening Strike a Villager with lightning
+ A Throwaway Joke Hit a villager with lightning created by a trident with the Channeling enchantment. adventure/very_very_frightening
+ Sniper Duel Kill a Skeleton from at least 50 meters away
+ Take Aim Be at least 50 blocks away horizontally when a skeleton is killed by an arrow after the player has attacked it once. adventure/sniper_duel
+ Bullseye Hit the bullseye of a Target block from at least 30 meters away
+ Take Aim Be at least 30 blocks away horizontally when the center of a target is shot with a projectile by the player . adventure/bullseye
+ History [ ] 
+ Java Edition 
+ November 18, 2017 A trident was shown killing a zombie in a clip presented at MineCon Earth . 
+ 1.13 18w07a Added tridents, which are currently unobtainable in Survival . 
+ 18w10a Tridents now have a new texture in the inventory . 
+ 18w11a Added drowned mobs, which can spawn with a trident, allowing tridents to now become obtainable in Survival . 
+ 18w14a If the player is not in water and it is not raining , the player can no longer throw tridents enchanted with Riptide , but they can still deal melee damage . 
+ 18w20a Like with swords, tridents no longer can break blocks when held in Creative mode. [ 7 ] 
+ 1.14 18w43a Thrown tridents can now break chorus flowers . 
+ 1.15 19w39a Tridents that are enchanted now have a glint.
+ Trident items use a 3D model again. When dropped, it rotates off center [ 8 ] (like with beds at the time and shields currently). 
+ 19w42a Trident items now use the 2D sprite again. [ 9 ] 
+ 1.17 20w48a Thrown tridents can now break pointed dripstone . 
+ Upcoming Java Edition 
+ Villager Trade Rebalance (Experimental) 23w31a Trident-exclusive enchantments are no longer obtainable from villager trading . 
+ Combat Tests 1.14.3 - Combat Test The attack speed of tridents has been increased to 2.
+ The base damage of tridents has been decreased from 9 to 7 . The attack reach of tridents has been increased to 4 blocks . 
+ Combat Test 2 The damage of tridents has been increased to 8 . 
+ Combat Test 4 Tridents can now be shot from dispensers .
+ Tridents with Loyalty that fall into the void now return to their owner upon breaking in the void. Tridents with Impaling now deal enchantment damage to all mobs that are in water or rain . 
+ Combat Test 5 The damage of tridents has been decreased to 7 again. 
+ Bedrock Edition 
+ 1.4.0 beta 1.2.13.8 Added tridents.
+ Tridents are currently a part of Experimental Gameplay . 
+ beta 1.2.14.2 Tridents have been fully implemented. 
+ beta 1.2.20.1 A new animation has been added for tridents with Riptide when they are thrown. 
+ 1.5.0 beta 1.5.0.0 Tridents can now be enchanted with Mending and Unbreaking . 
+ beta 1.5.0.7 Tridents no longer break blocks in Creative mode. 
+ 1.10.0 beta 1.10.0.3 Thrown tridents can now break chorus flowers . 
+ 1.16.0 beta 1.15.0.51 Drowned can no longer have a trident when converted. Drowned that are not holding a trident are no longer able to drop one. 
+ 1.16.220 beta 1.16.220.50 Tridents are now able to break pointed dripstone. 
+ beta 1.16.220.51 Drowned now hold their tridents correctly when targeting a player. 
+ Legacy Console Edition 
+ TU69 1.76 Patch 38 Added tridents. 
+ Education Edition 
+ 1.4.0 Added tridents. 
+ Issues [ ] 
+ Issues relating to "Trident" are maintained on the bug tracker . Report issues there .
+ Trivia [ ] 
+ If a player throws a Loyalty-enchanted trident and the player's inventory subsequently fills, the trident hovers around or through the player's skin until an inventory slot opens, which it fills immediately. Multiple tridents can be 'queued' to re-enter the player's inventory in this manner. 
+ In Java Edition in Creative mode, sword enchantments can be applied to tridents. This includes Sharpness, Fire Aspect, and Looting. Sharpness, Smite, and Bane of Arthropods increases their damage against their specific mobs, as well. [ more information needed ] 
+ Thrown tridents pass through nether portal blocks without being transported to the Nether or the Overworld . 
+ Using a trident enchanted with Riptide while riding an entity cancels the charge and does nothing. 
+ Gallery [ ] 
+ Tridents are shown in a clip of Minecon Earth 2017. 
+ A trident enchanted with Loyalty returning to the player . 
+ A player "flying" high in the air after throwing a trident enchanted with Riptide III vertically upward. 
+ A trident stuck in sand . 
+ A drowned holding a trident and a nautilus shell . 
+ An enchanted trident. 
+ An official T-Shirt design of Alex with a trident. 
+ "Acid Drowned," an officially licensed T-Shirt featuring a drowned with a trident. 
+ First image of a trident in Bedrock Edition . 
+ References [ ] 
+ ↑ MC-127321 
+ ↑ MCPE-51726 
+ ↑ MC-125755  — resolved as "Works As Intended". 
+ ↑ MC-125817 
+ ↑ MC-128169 
+ ↑ MC-147173  — Using riptide tridents while elytra flying can boost the player to excessive speeds 
+ ↑ MC-126300 
+ ↑ MC-161886 
+ ↑ MC-161872 
+ External Links [ ] 
+ Taking Inventory: Trident – Minecraft.net on January 30, 2020 
+ Items   View at: Template:Items/content [ edit ] 
+ Entities   View at: Template:Entities/content [ edit ] 
+ Categories 
+ Categories : 
+ Renewable resources 
+ Items 
+ Entities 
+ Combat 
+ Languages 
+ Deutsch 
+ Español 
+ Français 
+ 日本語 
+ 한국어 
+ Polski 
+ Português 
+ Русский 
+ ไทย 
+ 中文 
+ Community content is available under CC BY-NC-SA unless otherwise noted. 
+ More Fandoms
+ Fantasy 
+ Minecraft 
+ Advertisement
+ Advertisement
+ Advertisement
+ Explore properties 
+ Fandom 
+ Fanatical 
+ GameSpot 
+ Metacritic 
+ TV Guide 
+ Honest Entertainment 
+ Follow Us 
+ Overview 
+ What is Fandom? 
+ Essentials 
+ About 
+ Careers 
+ Press 
+ Contact 
+ Terms of Use 
+ Privacy Policy 
+ Digital Services Act 
+ Global Sitemap 
+ Local Sitemap 
+ Do Not Sell My Personal Information 
+ Community 
+ Community Central 
+ Support 
+ Help 
+ Accessibility Statement 
+ Advertise 
+ Media Kit 
+ Contact 
+ Fandom Apps 
+ Take your favorite fandoms with you and never miss a beat. 
+ Minecraft Wiki is a Fandom Games Community. 
+ View Mobile Site 
+ When you visit our website, we may "share" or "sell" information about your use of our site with marketing and analytics partners, as those terms are defined by applicable law. You may opt out of this selling/sharing, and if you do, we will honor that decision and direct our partners to do the same. Privacy Policy Manage Options Do Not Sell or Share My Personal Data Opt-Out Request Honored Do Not Sell or Share My Personal Data Your Privacy Selling, Sharing, Personal Info for Targeted Advertising Strictly Necessary Cookies Functional Cookies Social Media Cookies Performance Cookies Your Privacy When you visit our website, we store cookies and other tracking technologies on your browser to collect information. The information collected might relate to you, your preferences, or your device, and is mostly used to make the site work as you expect it to and to provide a more personalized web experience. We may also “share” or “sell” information about your use of our site with our social media, advertising, and analytics partners, as those terms are defined by applicable privacy laws. You have the right to opt out of the selling or sharing of your personal information, and if you opt out this website will honor that decision and require its partners to do the same. You may also opt out of the use of certain categories of cookies and tracking technologies that enable the sale or sharing of your personal information, but you cannot opt out of the use of cookies that are deployed in order to ensure the proper functioning of our website (such as remembering your settings, logging you into your account, redirecting you when you log out, provision of permissible contextual advertising, etc.). If you have set your privacy preferences via Global Privacy Control (GPC) settings, this website will function in accordance with those preferences. Please be aware that even if you opt out of the sale and sharing of your personal information, you may continue to see advertising, including ads that may be based on contextual information and personal information processed before you opted out.
+For more information on the technologies we use, the categories of information we collect, the types of partners we may sell or share your personal information with, and your privacy rights, visit our Privacy Policy using this link.
+ Privacy Policy Selling, Sharing, Personal Info for Targeted Advertising Selling, Sharing, Personal Info for Targeted Advertising Active These cookies may be set through our site by our advertising partners. They may be used by those companies to build a profile of your interests and show you relevant adverts on other sites. They do not store directly personal information, but are based on uniquely identifying your browser and internet device. If you do not allow these cookies, you will experience less targeted advertising. Strictly Necessary Cookies Always Active These cookies are necessary for the website to function and cannot be switched off in our systems. They are usually only set in response to actions made by you which amount to a request for services, such as setting your privacy preferences, logging in or filling in forms. You can set your browser to block or alert you about these cookies, but some parts of the site will not then work. These cookies do not store any personally identifiable information. Functional Cookies Functional Cookies Active These cookies enable the website to provide enhanced functionality and personalisation. They may be set by us or by third party providers whose services we have added to our pages. If you do not allow these cookies then some or all of these services may not function properly. Social Media Cookies Social Media Cookies Active These cookies are set by a range of social media services that we have added to the site to enable you to share our content with your friends and networks. They are capable of tracking your browser across other sites and building up a profile of your interests. This may impact the content and messages you see on other websites you visit. If you do not allow these cookies you may not be able to use or see these sharing tools. Performance Cookies Performance Cookies Active These cookies allow us to count visits and traffic sources so we can measure and improve the performance of our site. They help us to know which pages are the most and least popular and see how visitors move around the site. All information these cookies collect is aggregated and therefore anonymous. If you do not allow these cookies we will not know when you have visited our site, and will not be able to monitor its performance. Back Button Cookie List Filter Button Consent Leg.Interest checkbox label label checkbox label label checkbox label label Clear checkbox label label Apply Cancel Confirm My Choices Reject All Allow All 

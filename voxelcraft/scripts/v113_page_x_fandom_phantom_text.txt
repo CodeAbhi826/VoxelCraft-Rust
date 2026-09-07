@@ -1,0 +1,631 @@
+ 
+ Phantom – Minecraft Wiki 
+ Sign In 
+ Create a Free Account 
+ Minecraft Wiki 
+ Explore 
+ Main Page 
+ All Pages 
+ Interactive Maps 
+ Games 
+ Minecraft 
+ Minecraft Dungeons 
+ Minecraft Legends 
+ Minecraft Earth 
+ Minecraft Story Mode 
+ Minecraft 
+ Blocks 
+ Items 
+ World 
+ Mobs 
+ Biomes 
+ Terrain features 
+ Structures 
+ Dimensions 
+ Mechanics 
+ Crafting 
+ Smelting 
+ Brewing 
+ Trading 
+ Enchanting 
+ Status effects 
+ Version history 
+ Java Edition 
+ Bedrock Edition 
+ Other editions 
+ Legacy Console Edition 
+ Simplified guides 
+ Java Edition 
+ Bedrock Edition 
+ Technical 
+ Redstone circuits 
+ Commands 
+ Resource packs 
+ Data packs 
+ Add-ons 
+ Servers 
+ Realms 
+ Realms Plus 
+ Bedrock Dedicated Server 
+ Bedrock featured servers 
+ Tutorials 
+ Minecraft Dungeons 
+ Items 
+ Weapons 
+ Armor 
+ Artifacts 
+ Consumables 
+ Cosmetics 
+ Locations 
+ Ancient Hunts 
+ Mechanics 
+ Enchanting 
+ Status effects 
+ Achievements 
+ Mobs 
+ Arcade 
+ Tutorials 
+ Wiki Community 
+ Rules and guidelines 
+ Wiki rules 
+ Video policy 
+ Talk page guidelines 
+ Style guide 
+ Wiki tools 
+ Recent changes 
+ Editing sandbox 
+ About the wiki 
+ Community portal 
+ Admin noticeboard 
+ Projects 
+ Discord 
+ Sign In 
+ Don't have an account? 
+ Create a Free Account 
+ Sign In 
+ Create a Free Account 
+ Home 
+ Explore 
+ Saved 
+ Progress 
+ History 
+ Utilities 
+ Blocksmith 
+ More 
+ Advertisement
+ Skip to content 
+ Minecraft Wiki 
+ 7,609 pages 
+ Explore 
+ Main Page 
+ All Pages 
+ Interactive Maps 
+ Games 
+ Minecraft 
+ Minecraft Dungeons 
+ Minecraft Legends 
+ Minecraft Earth 
+ Minecraft Story Mode 
+ Minecraft 
+ Blocks 
+ Items 
+ World 
+ Mobs 
+ Biomes 
+ Terrain features 
+ Structures 
+ Dimensions 
+ Mechanics 
+ Crafting 
+ Smelting 
+ Brewing 
+ Trading 
+ Enchanting 
+ Status effects 
+ Version history 
+ Java Edition 
+ Bedrock Edition 
+ Other editions 
+ Legacy Console Edition 
+ Simplified guides 
+ Java Edition 
+ Bedrock Edition 
+ Technical 
+ Redstone circuits 
+ Commands 
+ Resource packs 
+ Data packs 
+ Add-ons 
+ Servers 
+ Realms 
+ Realms Plus 
+ Bedrock Dedicated Server 
+ Bedrock featured servers 
+ Tutorials 
+ Minecraft Dungeons 
+ Items 
+ Weapons 
+ Armor 
+ Artifacts 
+ Consumables 
+ Cosmetics 
+ Locations 
+ Ancient Hunts 
+ Mechanics 
+ Enchanting 
+ Status effects 
+ Achievements 
+ Mobs 
+ Arcade 
+ Tutorials 
+ Wiki Community 
+ Rules and guidelines 
+ Wiki rules 
+ Video policy 
+ Talk page guidelines 
+ Style guide 
+ Wiki tools 
+ Recent changes 
+ Editing sandbox 
+ About the wiki 
+ Community portal 
+ Admin noticeboard 
+ Projects 
+ Discord 
+ in: 
+ Entities , Hostile mobs , Undead mobs , 
+ and 
+ 2 more 
+ Monster mobs 
+ Flying mobs 
+ English 
+ Deutsch 
+ Español 
+ Français 
+ Magyar 
+ Italiano 
+ 日本語 
+ 한국어 
+ Polski 
+ Português 
+ Русский 
+ ไทย 
+ Українська 
+ 中文 
+ Phantom 
+ Sign In to Save 
+ Save 
+ View source 
+ History 
+ Purge 
+ Talk (45) 
+ For the mob in Minecraft Dungeons , see MCD:Phantom .
+ Phantom 
+ Phantom (Java)
+ Phantom (Bedrock)
+ Health 
+ 20 × 10 
+ Classification 
+ Undead 
+ Behavior 
+ Hostile 
+ Spawn 
+ In the Overworld at nighttime or during thunderstorms, when player has not entered a bed for at least 3 ingame days. 
+ Damage 
+ Java Edition: Easy & Normal: 2 Hard: 3 Bedrock Edition: Easy: 4 Normal: 6 Hard: 9 
+ Details 
+ Size 
+ Height: 0.5 Blocks Width: 0.9 Blocks 
+ Phantoms are flying undead hostile mobs that spawn in the night sky when the player has not laid in a bed or died for three or more in-game days. They attack by diving at the player from the sky to bite them. Usually, they appear in trios.
+ Contents 
+ 1 Spawning 
+ 1.1 Bedrock Edition 
+ 1.2 Java Edition 
+ 2 Drops 
+ 3 Behavior 
+ 3.1 Undead 
+ 4 Sounds 
+ 5 Data values 
+ 5.1 ID 
+ 5.2 Entity data 
+ 6 Achievements 
+ 7 Advancements 
+ 8 History 
+ 9 Issues 
+ 10 Trivia 
+ 11 Gallery 
+ 11.1 Screenshots 
+ 11.2 Development images 
+ 11.3 In other media 
+ 12 References 
+ 13 External Links 
+ Spawning [ ] 
+ Two phantoms at night. 
+ Phantoms spawn unless the game rule doInsomnia is set to false . The spawning mechanics differ between Java and Bedrock editions. In both editions, they spawn in the Overworld above the player if the "Time Since Last Rest" statistic is at least 1 hour (72000 ticks or 3 in-game days). [ verify ] This statistic is reset when the player dies or enters a bed . Furthermore, the player must not have a block overhead that blocks light in any way; for example, leaves prevent phantoms from spawning as they have a light opacity of 2, but glass does not, as its light opacity is 0. Phantoms do not spawn in Spectator mode,‌ [ JE only ] but they do spawn in Creative mode. [ 1 ] 
+ Bedrock Edition [ ] 
+ Phantom spawning is similar to other monsters spawning: the spawn location must have a light level of 7 or less, and spawns are limited by the monster population cap. Phantoms are also subject to a density cap of 5. Phantom spawn attempts are made on surface blocks throughout the same spawn radius as other monsters. However, when a phantom spawn attempt succeeds the phantom appears somewhere in a 21×15×21 rectangular prism centered 28 blocks above the player instead of at the block where the spawn attempt occurred.
+ Java Edition [ ] 
+ Phantoms attempt to spawn every 1–2 minutes . They spawn only if it is night or a thunderstorm is happening, the player is above sea level (y=64) with sky access, and the local difficulty is greater than a randomly chosen value between 0.0 and 3.0. The chance of a successful spawn is x −72000 ⁄ x , where x is the number of ticks since the player last entered a bed or died. This roughly comes to a 1 ⁄ 4 (25.0%) chance on day 4, a 2 ⁄ 5 (40.0%) chance on day 5, a 3 ⁄ 6 ( 1 ⁄ 2 ) (50.0%) chance on day 6, 4 ⁄ 7 (about 57.1%) chance on day 7, and so on.
+ If all conditions are met, a group of phantoms attempt to spawn 20–34 blocks above the player, and off to the side by a taxicab distance of up to 10 blocks. The number of phantoms spawned is 1-2 in Easy difficulty, 1-3 in Normal , and 1-4 in Hard . Phantoms can spawn inside buildings, if the player is outside and the building is both near enough and the building has a large enough cavity for them to spawn inside.
+ Phantoms are counted toward the hostile mob cap, but they don't adhere to it when spawning. [ 2 ] Their spawning mechanic is based on the location of players in the world rather than by chance, unlike regular mob spawning . Phantom spawning is completely independent of the biome, meaning they can spawn in biomes that normally prevent hostile mob spawning such as mushroom fields [ 3 ] and the void [ 4 ] . Phantoms increase in number every consecutive night a player hasn't entered a bed and stop spawning when the player lies down in bed.
+ Drops [ ] 
+ Phantoms drop when killed:
+ 0–1 phantom membrane s when killed by a player or tamed wolf . Looting increases the maximum drops by 1 per level, for a maximum of 4 with Looting III. 
+ 5 when killed by the player or a tamed wolf. 
+ Behavior [ ] 
+ A phantom swooping at the player . 
+ When idle, phantoms fly around in a roughly circular pattern within 15 to 25 blocks of a player horizontally and within 24 to 35 blocks of a player vertically, leaving a trail of gray smoke while doing so. Their movement speed is one of the fastest of any mob, up to 20 blocks per second. They have a large search radius, targeting and following players from 64 blocks away‌ [ BE only ] [ more information needed ] . Once every 10-20 seconds‌ [ BE only ] [ more information needed ] they swoop down or up quickly to attack. If stopped or hurt during this action, the phantom retreats back to its original elevation. When a path to its original elevation is obstructed by a block, the phantom continues attempting to return to its original elevation until it either attacks or moves out from under the block. Phantoms do not attack an exposed player sleeping in a bed. 
+ Phantoms can move through water at their normal speed. In Bedrock Edition, a phantom underwater attempts to fly to the surface, and dies from drowning after 20 seconds if trapped underwater. Phantoms do not drown in Java Edition .
+ A phantom's body disappears when under the Invisibility effect, but its eyes and smoke particles are still visible.
+ Cats hiss at phantoms that are currently attacking players, and phantoms try to stay at least 64 blocks away from them. In Bedrock Edition , phantoms also avoid ocelots in the same manner.
+ Undead [ ] 
+ Like other undead mobs, phantoms are harmed by the Instant Health effect, healed by the Instant Damage effect, immune to the Poison and Regeneration effects, ignored by the wither , and affected by the Smite enchantment.
+ Like zombies and skeletons , phantoms burn in sunlight. They burn even when equipped with helmets through commands. [ 5 ] 
+ Sounds [ ] 
+ Java Edition : 
+Phantoms use the Hostile Creatures sound category for entity-dependent sound events.
+ Sound Subtitles Source Description Resource location Translation key Volume Pitch Attenuation distance https://minecraft.fandom.com/wiki/File:Phantom_idle1.ogg https://minecraft.fandom.com/wiki/File:Phantom_idle2.ogg https://minecraft.fandom.com/wiki/File:Phantom_idle3.ogg https://minecraft.fandom.com/wiki/File:Phantom_idle4.ogg https://minecraft.fandom.com/wiki/File:Phantom_idle5.ogg Phantom screeches Hostile Creatures Randomly entity .phantom .ambient subtitles .entity .phantom .ambient 0.8 0.8-1.2 16 
+ https://minecraft.fandom.com/wiki/File:Phantom_bite1.ogg https://minecraft.fandom.com/wiki/File:Phantom_bite2.ogg Phantom bites Hostile Creatures When a phantom attacks something entity .phantom .bite subtitles .entity .phantom .bite 0.3 0.9-1.0 16 
+ https://minecraft.fandom.com/wiki/File:Phantom_death1.ogg https://minecraft.fandom.com/wiki/File:Phantom_death2.ogg https://minecraft.fandom.com/wiki/File:Phantom_death3.ogg Phantom dies Hostile Creatures When a phantom dies entity .phantom .death subtitles .entity .phantom .death 1.0 0.8-1.2 16 
+ https://minecraft.fandom.com/wiki/File:Phantom_flap1.ogg https://minecraft.fandom.com/wiki/File:Phantom_flap2.ogg https://minecraft.fandom.com/wiki/File:Phantom_flap3.ogg https://minecraft.fandom.com/wiki/File:Phantom_flap4.ogg https://minecraft.fandom.com/wiki/File:Phantom_flap5.ogg https://minecraft.fandom.com/wiki/File:Phantom_flap6.ogg Phantom flaps Hostile Creatures Periodically entity .phantom .flap subtitles .entity .phantom .flap 0.95-1.0 0.95-1.0 16 
+ https://minecraft.fandom.com/wiki/File:Phantom_hurt1.ogg https://minecraft.fandom.com/wiki/File:Phantom_hurt2.ogg https://minecraft.fandom.com/wiki/File:Phantom_hurt3.ogg Phantom hurts Hostile Creatures When a phantom is damaged entity .phantom .hurt subtitles .entity .phantom .hurt 0.75 0.8-1.2 16 
+ https://minecraft.fandom.com/wiki/File:Phantom_swoop1.ogg https://minecraft.fandom.com/wiki/File:Phantom_swoop2.ogg https://minecraft.fandom.com/wiki/File:Phantom_swoop3.ogg https://minecraft.fandom.com/wiki/File:Phantom_swoop4.ogg Phantom swoops Hostile Creatures When a phantom dives down to attack entity .phantom .swoop subtitles .entity .phantom .swoop 7.0 0.95-1.05 16 
+ Bedrock Edition :
+ Sound Source Description Resource location Volume Pitch https://minecraft.fandom.com/wiki/File:Phantom_idle1.ogg https://minecraft.fandom.com/wiki/File:Phantom_idle2.ogg https://minecraft.fandom.com/wiki/File:Phantom_idle3.ogg https://minecraft.fandom.com/wiki/File:Phantom_idle4.ogg https://minecraft.fandom.com/wiki/File:Phantom_idle5.ogg Hostile Creatures Randomly mob .phantom .idle 10.0 0.8-1.2 
+ https://minecraft.fandom.com/wiki/File:Phantom_bite1.ogg https://minecraft.fandom.com/wiki/File:Phantom_bite2.ogg Hostile Creatures When a phantom attacks something mob .phantom .bite 10.0 0.8-1.2 
+ https://minecraft.fandom.com/wiki/File:Phantom_death1.ogg https://minecraft.fandom.com/wiki/File:Phantom_death2.ogg https://minecraft.fandom.com/wiki/File:Phantom_death3.ogg Hostile Creatures When a phantom dies mob .phantom .death 10.0 0.8-1.2 
+ https://minecraft.fandom.com/wiki/File:Phantom_flap1.ogg https://minecraft.fandom.com/wiki/File:Phantom_flap2.ogg https://minecraft.fandom.com/wiki/File:Phantom_flap3.ogg https://minecraft.fandom.com/wiki/File:Phantom_flap4.ogg https://minecraft.fandom.com/wiki/File:Phantom_flap5.ogg https://minecraft.fandom.com/wiki/File:Phantom_flap6.ogg Hostile Creatures Periodically mob .phantom .flap 10.0 0.8-1.2 
+ https://minecraft.fandom.com/wiki/File:Phantom_hurt1.ogg https://minecraft.fandom.com/wiki/File:Phantom_hurt2.ogg https://minecraft.fandom.com/wiki/File:Phantom_hurt3.ogg Hostile Creatures When a phantom is damaged mob .phantom .hurt 10.0 0.8-1.2 
+ https://minecraft.fandom.com/wiki/File:Phantom_swoop1.ogg https://minecraft.fandom.com/wiki/File:Phantom_swoop2.ogg https://minecraft.fandom.com/wiki/File:Phantom_swoop3.ogg https://minecraft.fandom.com/wiki/File:Phantom_swoop4.ogg Hostile Creatures When a phantom dives down to attack mob .phantom .swoop 10.0 0.95-1.05 
+ Data values [ ] 
+ ID [ ] 
+ Java Edition :
+ Name Identifier Translation key Phantom phantom entity.minecraft.phantom 
+ Bedrock Edition :
+ Name Identifier Numeric ID Translation key Phantom phantom 58 entity.phantom.name 
+ Entity data [ ] 
+ Phantoms have entity data associated with them that contains various properties.
+ Java Edition :
+ Main article: Entity format 
+ Entity data
+ Tags common to all entities 
+ Tags common to all mobs 
+  AX : The phantom, when not actively attacking, attempts to circle around X,Y,Z = AX , AY , AZ . Appears to reset to a point above the target player every time the phantom flies up after a swoop. Set to spawn location if not specified. 
+  AY : See AX . 
+  AZ : See AX . 
+  Size : The size of the phantom. Ranges from 0 to 64 , similar to slimes . Unlike slimes, phantoms always have a constant 20 × 10 HP, and deal 6 + Size damage. Naturally spawned phantoms are always size 0. 
+ Bedrock Edition :
+ See Bedrock Edition level format/Entity format . 
+ Achievements [ ] 
+ Icon 
+ Achievement 
+ In-game description 
+ Actual requirements (if different) 
+ Gamerscore earned 
+ Trophy type (PS4) 
+ PS4 
+ Other 
+ Monster Hunter Attack and destroy a monster. Kill a hostile mob or one of the following neutral mobs: an enderman , a piglin , a zombified piglin , a spider , or a cave spider . 15G Bronze 
+ Sound the Alarm! Ring the bell with a hostile enemy in the village. — 20G Bronze 
+ Advancements [ ] 
+ Icon 
+ Advancement 
+ In-game description 
+ Parent 
+ Actual requirements (if different) 
+ Resource location 
+ Adventure Adventure, exploration and combat
+ — Kill any entity , or be killed by any entity. adventure/root
+ Monster Hunter Kill any hostile monster
+ Adventure Kill one of these 41 mobs :
+ Blaze 
+ Bogged 
+ Breeze 
+ Camel Husk 
+ Cave Spider 
+ Creaking (requires destroying the creaking heart ) 
+ Creeper 
+ Drowned 
+ Elder Guardian 
+ Ender Dragon 
+ Enderman 
+ Endermite 
+ Evoker 
+ Ghast 
+ Guardian 
+ Hoglin 
+ Husk 
+ Magma Cube 
+ Parched 
+ Phantom 
+ Piglin 
+ Piglin Brute 
+ Pillager 
+ Ravager 
+ Shulker 
+ Silverfish 
+ Skeleton 
+ Slime 
+ Spider 
+ Stray 
+ Vex 
+ Vindicator 
+ Witch 
+ Wither 
+ Wither Skeleton 
+ Zoglin 
+ Zombie 
+ Zombie Horse 
+ Zombie Nautilus 
+ Zombie Villager 
+ Zombified Piglin 
+Only the riders of the chicken jockey s and skeleton horsemen are counted in this advancement. Other mobs like the warden may be killed, but are ignored for this advancement. adventure/kill_a_mob
+ It Spreads Kill a mob near a Sculk Catalyst 
+ Monster Hunter Kill one of these 70 mobs near a sculk catalyst:
+ Axolotl 
+ Bee 
+ Blaze 
+ Bogged 
+ Breeze 
+ Camel 
+ Camel Husk 
+ Cat 
+ Cave Spider 
+ Chicken 
+ Chicken Jockey 
+ Cod 
+ Cow 
+ Creeper 
+ Donkey 
+ Dolphin 
+ Drowned 
+ Elder Guardian 
+ Enderman 
+ Endermite 
+ Evoker 
+ Fox 
+ Frog 
+ Ghast 
+ Goat 
+ Glow Squid 
+ Guardian 
+ Happy Ghast 
+ Hoglin 
+ Horse 
+ Husk 
+ Llama 
+ Magma Cube 
+ Mooshroom 
+ Nautilus 
+ Ocelot 
+ Panda 
+ Parrot 
+ Phantom 
+ Pig 
+ Piglin 
+ Piglin Brute 
+ Pillager 
+ Polar Bear 
+ Pufferfish 
+ Rabbit 
+ Ravager 
+ Salmon 
+ Sheep 
+ Shulker 
+ Silverfish 
+ Skeleton 
+ Skeleton Horse 
+ Skeleton Horseman 
+ Slime 
+ Sniffer 
+ Stray 
+ Spider 
+ Spider Jockey 
+ Squid 
+ Strider 
+ Trader Llama 
+ Tropical Fish 
+ Turtle 
+ Vex 
+ Vindicator 
+ Warden 
+ Witch 
+ Wither 
+ Wither Skeleton 
+ Wolf 
+ Zoglin 
+ Zombie 
+ Zombie Horse 
+ Zombie Nautilus 
+ Zombie Villager 
+ Zombified Piglin 
+ Mobs that drop no experience are ignored for this advancement. adventure/kill_mob_near_sculk_catalyst
+ Monsters Hunted Kill one of every hostile monster
+ Monster Hunter Kill each of these 41 mobs :
+ Blaze 
+ Bogged 
+ Breeze 
+ Camel Husk 
+ Cave Spider 
+ Creaking (requires destroying the creaking heart ) 
+ Creeper 
+ Drowned 
+ Elder Guardian 
+ Ender Dragon 
+ Enderman 
+ Endermite 
+ Evoker 
+ Ghast 
+ Guardian 
+ Hoglin 
+ Husk 
+ Magma Cube 
+ Parched 
+ Phantom 
+ Piglin 
+ Piglin Brute 
+ Pillager 
+ Ravager 
+ Shulker 
+ Silverfish 
+ Skeleton 
+ Slime 
+ Spider 
+ Stray 
+ Vex 
+ Vindicator 
+ Witch 
+ Wither 
+ Wither Skeleton 
+ Zoglin 
+ Zombie 
+ Zombie Horse 
+ Zombie Nautilus 
+ Zombie Villager 
+ Zombified Piglin 
+Other mobs may be killed, but are ignored for this advancement. Only the riders of the chicken jockey s and skeleton horsemen are counted in this advancement. adventure/kill_all_mobs
+ History [ ] 
+ November 1, 2017 Phantoms are first shown on YouTube (back then known only as Mob B and The Monster of the Night Skies ). 
+ November 14, 2017 The article about the phantom was published, which introduced a community vote option for the phantom at MINECON Earth 2017 . 
+ November 18, 2017 The phantom wins the vote at MINECON Earth. It is the second of mobs that were added as a result of the community voting for it. 
+ Java Edition 
+ 1.13 18w07a Added phantoms with a placeholder drop of 1-4 leather . 
+ 18w09a Phantoms no longer spawn in the End .
+ Phantoms now despawn at daytime. 
+ 18w10a The phantom's model and texture have been changed. 
+ 18w10c Phantoms are now considered undead . 
+ 18w10d Phantoms now burn in sunlight like most undead mobs .
+ Phantoms no longer despawn at daytime. 
+ 18w14a Phantoms now drop 0-1 phantom membrane , instead of leather . 
+ 18w19a The phantom's animation has been changed to have the wings flap quicker and smoother.
+ Phantoms now drop experience . [ 6 ] 
+ pre1 Phantoms now have new flapping sounds . 
+ 1.14 18w44a Phantoms are now afraid of cats . 
+ pre3 The damage of phantoms has been reduced from 6 to 2 . [ 7 ] 
+ 1.15 19w36a Phantom spawning can now be toggled with the game rule doInsomnia . 
+ Bedrock Edition 
+ 1.6.0 beta 1.6.0.1 Added phantoms with the health of 10 , with a placeholder drop of 1-4 leather . [ verify ] 
+ beta 1.6.0.5 Phantoms now drop phantom membranes .
+ The phantom's health has been increased from 10 to 20 × 10 . Phantoms now burn in direct sunlight. Phantoms are now able to drown . 
+ 1.8.0 beta 1.8.0.8 Phantoms are now afraid of cats . 
+ Legacy Console Edition 
+ TU69 1.76 Patch 38 Added phantoms. 
+ Issues [ ] 
+ Issues relating to "Phantom" are maintained on the bug tracker . Report issues there .
+ Trivia [ ] 
+ The red phantom design was scrapped because it looked like a Nether mob. 
+ At one point before the release of 18w10a , the phantom texture was made red, but it was decided that it appeared too much like a Nether mob. [ 8 ] 
+ The phantom was originally going to have a mouth, like the drawing shown during MINECON Earth , but it was eventually scrapped because "it looked so much like a muppet". [ 8 ] Earlier designs can be seen on Minecraft 's Instagram account. [ 9 ] 
+ The sounds of the phantom were taken from Samuel Åberg 's baby son screaming. [ 10 ] 
+ Despite having the ability to fly, phantoms can destroy turtle eggs when on top of them. [ 11 ] 
+ The game rule that modifies Phantom spawning ( doInsomnia ) is probably a reference to the condition of spawning Phantom since "Insomnia" means "the state of being unable to sleep". 
+ Gallery [ ] 
+ Screenshots [ ] 
+ A phantom under the Invisibility effect. 
+ Phantoms exposed to sunlight and taking fire damage . 
+ The particles produced by the phantom's wings can be clearly seen. 
+ A phantom swooping down at a player at night leaving a trail of gray smoke. 
+ A phantom stuck in a player's boat, caught in the daylight. 
+ Noor riding a phantom. 
+ A player avoiding a phantom by using the Invisibility effect. 
+ A swarm of phantoms. 
+ Another swarm of phantoms. 
+ A phantom on fire. 
+ A phantom peeking through a wooden slab . 
+ Development images [ ] 
+ A phantom with a colorful texture. [ 12 ] 
+ A phantom with the missing texture. [ 13 ] 
+ Phantoms flying overhead. 
+ A phantom flying high in the air , using its model and texture from 18w07a. The smoke particles beside each of its wings can be seen. 
+ A phantom flying high in the air , using its model and texture from 18w07a. The smoke particles beside each of its wings can be seen. 
+ The phantom's poses. 
+ In other media [ ] 
+ The Mob B finally wins in Minecon Earth Mob vote. 
+ All the revisions of the phantom design, except for red revision. 
+ Concept sketches. 
+ A phantom , as depicted in Minecraft Dungeons . 
+ Phantom Armor , an armor set from Minecraft Dungeons. 
+ LEGO Minecraft Phantom. 
+ "Phantoms and Witches and Ghasts, Oh My," an officially licensed T-Shirt. 
+ Phantom Plush 
+ References [ ] 
+ ↑ MC-145177  — resolved as "Works As Intended". 
+ ↑ MC-198101 
+ ↑ MC-126778 
+ ↑ MC-127599 
+ ↑ MC-146985  — Helmeted phantoms will still burn under the sunlight 
+ ↑ MC-128712 
+ ↑ MC-154372  — resolved as "Works As Intended". 
+ ↑ a b "Meet the Phantom" – Minecraft.net, March 12, 2018 
+ ↑ https://www.instagram.com/p/BkdvBUXjqcD 
+ ↑ https://www.asoundeffect.com/minecraft-dungeons-game-audio/ 
+ ↑ MC-248332 
+ ↑ "Today I'm working on Mob B (the Phantom?)... baby steps..." – @jeb_ (Jens Bergensten) on X, December 13, 2017 
+ ↑ "Don't worry guys and gals, I've improved the texture!!!!111" – @jeb_ (Jens Bergensten) on X, December 13, 2017 
+ External Links [ ] 
+ Meet the Phantom – Minecraft.net on March 12, 2018 
+ Entities   View at: Template:Entities/content [ edit ] 
+ Categories 
+ Categories : 
+ Entities 
+ Hostile mobs 
+ Undead mobs 
+ Monster mobs 
+ Flying mobs 
+ Languages 
+ Deutsch 
+ Español 
+ Français 
+ Magyar 
+ Italiano 
+ 日本語 
+ 한국어 
+ Polski 
+ Português 
+ Русский 
+ ไทย 
+ Українська 
+ 中文 
+ Community content is available under CC BY-NC-SA unless otherwise noted. 
+ More Fandoms
+ Fantasy 
+ Minecraft 
+ Advertisement
+ Advertisement
+ Advertisement
+ Explore properties 
+ Fandom 
+ Fanatical 
+ GameSpot 
+ Metacritic 
+ TV Guide 
+ Honest Entertainment 
+ Follow Us 
+ Overview 
+ What is Fandom? 
+ Essentials 
+ About 
+ Careers 
+ Press 
+ Contact 
+ Terms of Use 
+ Privacy Policy 
+ Digital Services Act 
+ Global Sitemap 
+ Local Sitemap 
+ Do Not Sell My Personal Information 
+ Community 
+ Community Central 
+ Support 
+ Help 
+ Accessibility Statement 
+ Advertise 
+ Media Kit 
+ Contact 
+ Fandom Apps 
+ Take your favorite fandoms with you and never miss a beat. 
+ Minecraft Wiki is a Fandom Games Community. 
+ View Mobile Site 
+ When you visit our website, we may "share" or "sell" information about your use of our site with marketing and analytics partners, as those terms are defined by applicable law. You may opt out of this selling/sharing, and if you do, we will honor that decision and direct our partners to do the same. Privacy Policy Manage Options Do Not Sell or Share My Personal Data Opt-Out Request Honored Do Not Sell or Share My Personal Data Your Privacy Selling, Sharing, Personal Info for Targeted Advertising Strictly Necessary Cookies Functional Cookies Social Media Cookies Performance Cookies Your Privacy When you visit our website, we store cookies and other tracking technologies on your browser to collect information. The information collected might relate to you, your preferences, or your device, and is mostly used to make the site work as you expect it to and to provide a more personalized web experience. We may also “share” or “sell” information about your use of our site with our social media, advertising, and analytics partners, as those terms are defined by applicable privacy laws. You have the right to opt out of the selling or sharing of your personal information, and if you opt out this website will honor that decision and require its partners to do the same. You may also opt out of the use of certain categories of cookies and tracking technologies that enable the sale or sharing of your personal information, but you cannot opt out of the use of cookies that are deployed in order to ensure the proper functioning of our website (such as remembering your settings, logging you into your account, redirecting you when you log out, provision of permissible contextual advertising, etc.). If you have set your privacy preferences via Global Privacy Control (GPC) settings, this website will function in accordance with those preferences. Please be aware that even if you opt out of the sale and sharing of your personal information, you may continue to see advertising, including ads that may be based on contextual information and personal information processed before you opted out.
+For more information on the technologies we use, the categories of information we collect, the types of partners we may sell or share your personal information with, and your privacy rights, visit our Privacy Policy using this link.
+ Privacy Policy Selling, Sharing, Personal Info for Targeted Advertising Selling, Sharing, Personal Info for Targeted Advertising Active These cookies may be set through our site by our advertising partners. They may be used by those companies to build a profile of your interests and show you relevant adverts on other sites. They do not store directly personal information, but are based on uniquely identifying your browser and internet device. If you do not allow these cookies, you will experience less targeted advertising. Strictly Necessary Cookies Always Active These cookies are necessary for the website to function and cannot be switched off in our systems. They are usually only set in response to actions made by you which amount to a request for services, such as setting your privacy preferences, logging in or filling in forms. You can set your browser to block or alert you about these cookies, but some parts of the site will not then work. These cookies do not store any personally identifiable information. Functional Cookies Functional Cookies Active These cookies enable the website to provide enhanced functionality and personalisation. They may be set by us or by third party providers whose services we have added to our pages. If you do not allow these cookies then some or all of these services may not function properly. Social Media Cookies Social Media Cookies Active These cookies are set by a range of social media services that we have added to the site to enable you to share our content with your friends and networks. They are capable of tracking your browser across other sites and building up a profile of your interests. This may impact the content and messages you see on other websites you visit. If you do not allow these cookies you may not be able to use or see these sharing tools. Performance Cookies Performance Cookies Active These cookies allow us to count visits and traffic sources so we can measure and improve the performance of our site. They help us to know which pages are the most and least popular and see how visitors move around the site. All information these cookies collect is aggregated and therefore anonymous. If you do not allow these cookies we will not know when you have visited our site, and will not be able to monitor its performance. Back Button Cookie List Filter Button Consent Leg.Interest checkbox label label checkbox label label checkbox label label Clear checkbox label label Apply Cancel Confirm My Choices Reject All Allow All 

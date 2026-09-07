@@ -1,0 +1,715 @@
+ 
+ Nautilus Shell – Minecraft Wiki 
+ 13 languages Deutsch Español Français Italiano 日本語 한국어 文言 Nederlands Português Русский ไทย Українська 中文 
+ Nautilus Shell Share article feedback 
+ From Minecraft Wiki 
+ Jump to navigation 
+ Jump to search 
+ Nautilus Shell 
+ Rarity tier 
+   Uncommon
+ Renewable 
+ Yes
+ Stackable
+ Yes (64)
+ {
+ "title": "Nautilus Shell",
+ "rows": [
+ {
+ "field": "<span style=\"white-space: nowrap;\"><span style=\"display: inline-block; background-color: #ff5; border: 1px solid #888; border-radius: 0.3em; color: transparent; width: 1em; height: 1em; vertical-align: -0.36em; margin-right: -0.1em\"><br></span> </span> Uncommon",
+ "label": "(link to Rarity article, displayed as Rarity tier)"
+ },
+ {
+ "field": "Yes",
+ "label": "(link to Renewable resource article, displayed as Renewable)"
+ },
+ {
+ "field": "Yes (64)",
+ "label": "Stackable"
+ }
+ ],
+ "invimages": [
+ "Nautilus Shell"
+ ],
+ "images": [
+ "Nautilus Shell.png"
+ ]
+} 
+ A nautilus shell is an item that is rarely dropped by killed nautiluses , always dropped by drowned that hold them, and it can be fished out of water . Nautilus shells, along with hearts of the sea , are required to craft conduits .
+ Contents 
+ 1 Obtaining 
+ 1.1 Mob loot 
+ 1.2 Fishing 
+ 1.3 Trading 
+ 2 Usage 
+ 2.1 Crafting ingredient 
+ 3 Data values 
+ 3.1 ID 
+ 4 History 
+ 4.1 Java Edition 
+ 4.2 Bedrock Edition 
+ 4.3 Legacy Console Edition 
+ 5 Issues 
+ 6 Trivia 
+ 7 Gallery 
+ 7.1 In other media 
+ 8 See also 
+ 9 References 
+ 10 Navigation 
+ Obtaining [ edit | edit source ] 
+ Mob loot [ edit | edit source ] 
+ Drowned have a 3%‌ [ JE only ] or 8%‌ [ BE only ] chance to spawn with a nautilus shell in their off-hand, and they always drop that nautilus shell upon death . In Bedrock Edition , this also includes zombies converted into drowned.
+ In Bedrock Edition , wandering traders have a chance of 25% (increased by 1% per level of Looting ) to drop 1 nautilus shell when killed while showing the item as trade offer, if the player holds an emerald .
+ Java Edition : Decimal Fraction Distribution Expectation 
+ Mob Quantity / Chance / Average Default Looting I Looting II Looting III Nautilus [ A ] 0–1 5.00% 0.05 0–1 6.00% 0.06 0–1 7.00% 0.07 0–1 8.00% 0.08 
+ Mob Quantity / Chance / Average Default Looting I Looting II Looting III Nautilus [ A ] 0–1 1 ⁄ 20 1 ⁄ 20 0–1 3 ⁄ 50 3 ⁄ 50 0–1 7 ⁄ 100 7 ⁄ 100 0–1 2 ⁄ 25 2 ⁄ 25 
+ Mob Amount Probability Default Looting I Looting II Looting III Nautilus [ A ] 0 19 ⁄ 20 (95.00%) 47 ⁄ 50 (94.00%) 93 ⁄ 100 (93.00%) 23 ⁄ 25 (92.00%) 1 1 ⁄ 20 (5.00%) 3 ⁄ 50 (6.00%) 7 ⁄ 100 (7.00%) 2 ⁄ 25 (8.00%) Average 1 ⁄ 20 (0.05) 3 ⁄ 50 (0.06) 7 ⁄ 100 (0.07) 2 ⁄ 25 (0.08) 
+ Drops Mob Expected Number of Kills Default Looting I Looting II Looting III Nautilus [ A ] 20.00 16.67 14.29 12.50 
+ ↑ Only when killed by a player or a tamed wolf . 
+ Bedrock Edition : Decimal Fraction Distribution Expectation 
+ Mob Quantity / Chance / Average Default Looting I Looting II Looting III Nautilus [ A ] 0–1 5.00% 0.05 0–1 6.00% 0.06 0–1 7.00% 0.07 0–1 8.00% 0.08 
+ Mob Quantity / Chance / Average Default Looting I Looting II Looting III Nautilus [ A ] 0–1 1 ⁄ 20 1 ⁄ 20 0–1 3 ⁄ 50 3 ⁄ 50 0–1 7 ⁄ 100 7 ⁄ 100 0–1 2 ⁄ 25 2 ⁄ 25 
+ Mob Amount Probability Default Looting I Looting II Looting III Nautilus [ A ] 0 19 ⁄ 20 (95.00%) 47 ⁄ 50 (94.00%) 93 ⁄ 100 (93.00%) 23 ⁄ 25 (92.00%) 1 1 ⁄ 20 (5.00%) 3 ⁄ 50 (6.00%) 7 ⁄ 100 (7.00%) 2 ⁄ 25 (8.00%) Average 1 ⁄ 20 (0.05) 3 ⁄ 50 (0.06) 7 ⁄ 100 (0.07) 2 ⁄ 25 (0.08) 
+ Drops Mob Expected Number of Kills Default Looting I Looting II Looting III Nautilus [ A ] 20.00 16.67 14.29 12.50 
+ ↑ Only when killed by a player or a tamed wolf . 
+ Fishing [ edit | edit source ] 
+ Main article: Fishing § Items obtainable 
+ Nautilus shells are obtainable through fishing as a treasure item, with a 0.8% chance to obtain one, per catch, without Luck of the Sea . Like other treasure items, this chance is then increased to 1.2% with Luck of the Sea I, 1.5% with Luck of the Sea II, and 1.9% with Luck of the Sea III.
+ Trading [ edit | edit source ] 
+ Wandering traders may sell 1 nautilus shell for 5 emeralds .
+ Villager Probability Villager wants Player receives Trades in stock Villager experience Price multiplier JE BE Wandering Trader Ordinary 7% 7% 5 × Emerald Nautilus Shell 5 — — 
+ Usage [ edit | edit source ] 
+ In Bedrock Edition , a nautilus shell is one of the few items that can be held in the off-hand.
+ Crafting ingredient [ edit | edit source ] 
+ Name 
+ Ingredients 
+ [ hide ] Crafting recipe
+ Conduit 
+ Nautilus Shell  + Heart of the Sea 
+ Data values [ edit | edit source ] 
+ ID [ edit | edit source ] 
+ Java Edition :
+ Name Identifier Form 
+ [ hide ] Translation key Nautilus Shell nautilus_shell Item 
+ item .minecraft .nautilus_shell 
+ Bedrock Edition :
+ Name Identifier Numeric ID Form 
+ [ hide ] Translation key Nautilus Shell nautilus_shell 570 Item 
+ item .nautilus_shell .name 
+ History [ edit | edit source ] 
+ Java Edition [ edit | edit source ] 
+ [ hide ] Java Edition 1.13 18w15a 
+ Added nautilus shells. 1.14 19w05a 
+ Added wandering traders , which sell nautilus shells. 1.16 20w12a 
+ Nautilus shells can now only be caught when fishing in open water like any other treasure item. 1.21.2 24w33a 
+ The rarity of nautilus shells has been changed from "Common" to "Uncommon". 1.21.11 25w41a 
+ Added nautiluses , which can drop nautilus shells when killed. 
+ Bedrock Edition [ edit | edit source ] 
+ [ hide ] Bedrock Edition 1.4.0 Experiment Experimental Gameplay beta 1.2.20.1 
+ Added nautilus shells. 
+ They are currently only available with Experimental Gameplay enabled. beta 1.2.20.2 
+ The texture of nautilus shells has now been changed. 1.5.0 beta 1.5.0.0 
+ Drowned now sometimes spawn holding a nautilus shell.
+ Nautilus shells are no longer behind Experimental Gameplay . beta 1.5.0.1 
+ Nautilus shells can now be used to craft conduits . 1.10.0 beta 1.10.0.3 
+ Nautilus shells can now be obtained from trading with wandering traders . 1.21.30 Preview 1.21.30.21 
+ Changed rarity from "Common" to "Uncommon". 1.21.120 Preview 1.21.120.23 
+ Drowned no longer drop their held trident if given a nautilus shell. 1.21.130 Preview 1.21.130.20 
+ Added nautiluses , which can drop nautilus shells when killed. 
+ Legacy Console Edition [ edit | edit source ] 
+ [ hide ] Legacy Console Edition Xbox 360 Xbox One PS3 PS4 PS Vita Wii U Switch TU69 1.76 1.76 1.76 Patch 38 
+ Added nautilus shells. 1.91 
+ Nautilus shells can now be obtained from trading with wandering traders . 
+ Issues [ edit | edit source ] 
+ Issues relating to "Nautilus Shell" are maintained on the bug tracker . Issues should be reported and viewed there .
+ Trivia [ edit | edit source ] 
+ Prior to the addition of the nautilus mob to the game, in a Taking Inventory article on minecraft.net , Duncan Geere stated that nautiluses may have once existed in the Minecraft world, but became extinct. [ 1 ] 
+ Gallery [ edit | edit source ] 
+ In other media [ edit | edit source ] 
+ Nautilus shell as it appeared in Minecraft Earth 
+ A wandering trader bargaining a nautilus shell 
+ A nautilus shell as it appeared in 2022 Mob Vote Event 
+ See also [ edit | edit source ] 
+ Heart of the Sea 
+ Conduit 
+ Conduit Power 
+ Nautilus 
+ References [ edit | edit source ] 
+ ↑ "Taking Inventory: Nautilus Shell" by Duncan Geere – Minecraft.net , October 16, 2023. 
+ Navigation [ edit | edit source ] 
+ [ hide ] 
+ v 
+ t 
+ e Items 
+ [ show ] Equipment 
+ Tools 
+ Axe 
+ Brush 
+ Fishing Rod 
+ Carrot on a Stick 
+ Warped Fungus on a Stick 
+ Flint and Steel 
+ Hoe 
+ Pickaxe 
+ Shears 
+ Shield 
+ Shovel 
+ Weapons 
+ Axe 
+ Bow 
+ Crossbow 
+ Mace 
+ Spear 
+ Sword 
+ Trident 
+ Ammunition
+ Arrow 
+ Tipped 
+ Firework Rocket 
+ JE only
+ Spectral Arrow 
+ Wearable 
+ Player
+ Boots 
+ Chestplate 
+ Elytra 
+ Helmet 
+ Turtle Shell 
+ Leggings 
+ Animals 
+ Harness 
+ Horse Armor 
+ Nautilus Armor 
+ Saddle 
+ Wolf Armor 
+ [ show ] Utilities 
+ Display/storage
+ Armor Stand 
+ Item Frame 
+ Glow 
+ Painting 
+ Buckets 
+ Bucket 
+ Water 
+ Lava 
+ Milk 
+ Powder Snow 
+ Bucket of Mob 
+ Axolotl 
+ Cod 
+ Pufferfish 
+ Salmon 
+ Sulfur Cube 
+ Tadpole 
+ Tropical Fish 
+ Bottles
+ Glass Bottle 
+ Water 
+ Honey 
+ Potion 
+ Splash 
+ Lingering 
+ Bottle o' Enchanting 
+ Ominous Bottle 
+ Informational
+ Book and Quill 
+ Written 
+ Clock 
+ Compass 
+ Lodestone 
+ Recovery 
+ Eye of Ender 
+ Map 
+ Empty 
+ Explorer 
+ Spyglass 
+ Vehicles /mobility
+ Boat 
+ with Chest 
+ Ender Pearl 
+ Minecart 
+ with Chest 
+ with Hopper 
+ with TNT 
+ Wind Charge 
+ JE only
+ Minecart with Furnace 
+ Music discs 
+ 13 
+ cat 
+ blocks 
+ chirp 
+ far 
+ mall 
+ mellohi 
+ stal 
+ strad 
+ ward 
+ 11 
+ wait 
+ otherside 
+ 5 
+ Pigstep 
+ Relic 
+ Creator 
+ Music Box 
+ Precipice 
+ Tears 
+ Lava Chicken 
+ Bounce 
+ Other
+ Bone Meal 
+ Bowl 
+ Bundle 
+ Dyed 
+ Cushion ​ [ upcoming: Wilderness Bound ] 
+ Enchanted Book 
+ End Crystal 
+ Fire Charge 
+ Goat Horn 
+ Lead 
+ Name Tag 
+ Totem of Undying 
+ Trial Key 
+ Ominous 
+ Edu only
+ Balloon 
+ Glow Stick 
+ Ice Bomb 
+ Medicine 
+ Sparkler 
+ Super Fertilizer 
+ [ show ] Food 
+ Natural plant-based
+ Apple 
+ Beetroot 
+ Carrot 
+ Chorus Fruit 
+ Glow Berries 
+ Melon Slice 
+ Sweet Berries 
+ Supernatural 
+ Golden Apple 
+ Enchanted 
+ Golden Carrot 
+ Uncooked food 
+ Raw Beef 
+ Raw Chicken 
+ Raw Mutton 
+ Raw Porkchop 
+ Raw Rabbit 
+ Raw Cod 
+ Raw Salmon 
+ Potato 
+ Cooked food 
+ Steak 
+ Cooked Chicken 
+ Cooked Mutton 
+ Cooked Porkchop 
+ Cooked Rabbit 
+ Cooked Cod 
+ Cooked Salmon 
+ Baked Potato 
+ Dried Kelp 
+ Crafted 
+ Bread 
+ Cookie 
+ Stews 
+ Mushroom 
+ Rabbit 
+ Suspicious 
+ Beetroot Soup 
+ Pumpkin Pie 
+ Poisonous
+ Pufferfish 
+ Rotten Flesh 
+ Spider Eye 
+ Poisonous Potato 
+ Other
+ Tropical Fish 
+ [ hide ] Ingredients 
+ Seeds 
+ Beetroot Seeds 
+ Cocoa Beans 
+ Melon Seeds 
+ Nether Wart 
+ Pitcher Pod 
+ Pumpkin Seeds 
+ Torchflower Seeds 
+ Wheat Seeds 
+ Raw materials
+ Amethyst Shard 
+ Armadillo Scute 
+ Blaze Rod 
+ Bone 
+ Breeze Rod 
+ Clay Ball 
+ Coal 
+ Diamond 
+ Disc Fragment 5 
+ Dragon's Breath 
+ Echo Shard 
+ Egg 
+ Blue 
+ Brown 
+ Emerald 
+ Feather 
+ Flint 
+ Ghast Tear 
+ Glowstone Dust 
+ Gunpowder 
+ Heart of the Sea 
+ Honeycomb 
+ Ink Sac 
+ Glow 
+ Kelp 
+ Lapis Lazuli 
+ Leather 
+ Magma Cream 
+ Nautilus Shell 
+ Nether Quartz 
+ Nether Star 
+ Phantom Membrane 
+ Prismarine Shard 
+ Prismarine Crystals 
+ Rabbit Hide 
+ Rabbit's Foot 
+ Raw Copper 
+ Raw Gold 
+ Raw Iron 
+ Redstone Dust 
+ Resin Clump 
+ Shulker Shell 
+ Slimeball 
+ Snowball 
+ Stick 
+ String 
+ Turtle Scute 
+ Wheat 
+ Processed
+ Blaze Powder 
+ Book 
+ Brick 
+ Nether 
+ Resin 
+ Charcoal 
+ Copper Ingot 
+ Nugget 
+ Fermented Spider Eye 
+ Firework Star 
+ Glistering Melon Slice 
+ Gold Ingot 
+ Nugget 
+ Iron Ingot 
+ Nugget 
+ Netherite Ingot 
+ Scrap 
+ Paper 
+ Popped Chorus Fruit 
+ Sugar 
+ Edu only
+ Bleach 
+ Compounds 
+ Dyes 
+ White 
+ Light Gray 
+ Gray 
+ Black 
+ Brown 
+ Red 
+ Orange 
+ Yellow 
+ Lime 
+ Green 
+ Cyan 
+ Light Blue 
+ Blue 
+ Purple 
+ Magenta 
+ Pink 
+ Banner patterns 
+ Bordure Indented 
+ Creeper Charge 
+ Field Masoned 
+ Flow 
+ Flower Charge 
+ Globe 
+ Guster 
+ Skull Charge 
+ Snout 
+ Thing 
+ Pottery sherds 
+ Angler 
+ Archer 
+ Arms Up 
+ Blade 
+ Brewer 
+ Burn 
+ Danger 
+ Explorer 
+ Flow 
+ Friend 
+ Guster 
+ Heart 
+ Heartbreak 
+ Howl 
+ Miner 
+ Mourner 
+ Plenty 
+ Prize 
+ Scrape 
+ Sheaf 
+ Shelter 
+ Skull 
+ Snort 
+ Smithing templates 
+ Armor Trim 
+ Bolt 
+ Coast 
+ Dune 
+ Eye 
+ Flow 
+ Host 
+ Raiser 
+ Rib 
+ Sentry 
+ Shaper 
+ Silence 
+ Snout 
+ Spire 
+ Tide 
+ Vex 
+ Ward 
+ Wayfinder 
+ Wild 
+ Netherite Upgrade 
+ [ show ] Creative or commands only 
+ Creative only
+ Spawn Eggs 
+ JE only
+ Debug Stick 
+ Minecart with Command Block 
+ Unused paintings 
+ Edu only
+ Camera 
+ Photo 
+ Portfolio 
+ Commands only
+ Ender Dragon Spawn Egg 
+ Wither Spawn Egg 
+ JE only
+ Knowledge Book 
+ BE only
+ Minecart with Command Block 
+ China Edition only
+ Mod armor 
+ Mod (China Edition) 
+ [ show ] Removed 
+ Java Edition only
+ Technical blocks as Items 
+ Cauldron Potions 
+ Horse Saddle 
+ Reverted Potions 
+ Data-retaining minecarts 
+ Slowness arrows with own tag 
+ Bedrock Edition only
+ Copper Horn 
+ Removed Spawn Eggs 
+ MinecraftEdu only
+ Block Inspector 
+ [ show ] Unused 
+ Java Edition only
+ Potion of Luck 
+ Uncraftable Potion 
+ Bedrock Edition only
+ Camera 
+ Photo 
+ Portfolio 
+ Potion of Decay 
+ Unused Potions 
+ Legacy Console only
+ debug_fourj_item 
+ [ show ] Unimplemented 
+ All editions
+ Ruby 
+ Quiver 
+ Java Edition only
+ Crystallized Honey 
+ Minecart with Dispenser 
+ Studded Armor 
+ Bedrock Edition only
+ Minecart with Furnace 
+ Hoglin Meat 
+ [ show ] Joke 
+ April Fools 2015 
+ Obsidian Boat 
+ Potion of Caring 
+ Splash 
+ Potion of Sharing 
+ Splash 
+ April Fools 2016 
+ Smarter Watch 
+ Reality Vision 
+ Ankle Monitor 
+ April Fools 2019 
+ 3D 
+ Blue Key 
+ Red Key 
+ Yellow Key 
+ April Fools 2020 
+ Footprint 
+ A Very Fine Item 
+ April Fools 2023 
+ Air 
+ Bit 
+ Bottle of Entity 
+ Splash 
+ Bottle of Void 
+ La Baguette 
+ Le Tricolore 
+ minecraft:dupe_hack 
+ Moon Cow Spawn Egg 
+ New Thing Banner Pattern 
+ Longer String 
+ Potion of Big 
+ Splash 
+ Lingering 
+ Arrow 
+ Potion of Small 
+ Splash 
+ Lingering 
+ Arrow 
+ Tag 
+ April Fools 2024 
+ Amber Gem 
+ Batato Spawn Egg 
+ Dent 
+ Golden Poisonous Potato 
+ Enchanted 
+ Hash Browns 
+ Hot potato 
+ Lashing Potato 
+ Mega Spud Spawn Egg 
+ Plaguewhale Slab Spawn Egg 
+ Poisonous Polytra 
+ Poisonous Pota-Toes 
+ Poisonous Potato Chestplate 
+ Poisonous Potato Chips 
+ Poisonous Potato Fries 
+ Poisonous Potato Hammer 
+ Poisonous Potato Plant 
+ Poisonous Potato Slices 
+ Poisonous Potato Sticks 
+ Poisonous Potato Zombie Spawn Egg 
+ Potato Eye 
+ Potato of Knowledge 
+ Potion of Sticky 
+ Splash 
+ Lingering 
+ Arrow 
+ Potato Oil 
+ Poisonous 
+ Potato Oil (Potion) 
+ Splash 
+ Lingering 
+ Arrow 
+ Poisonous Potato Oil (Potion) 
+ Splash 
+ Lingering 
+ Arrow 
+ Potato Peeler 
+ Potato Peels 
+ Corrupted 
+ Potatiesh, Greatstaff of the Peasant 
+ Toxic Beam 
+ Toxic Resin 
+ Toxifin Slab Spawn Egg 
+ Venomous Potato 
+ April Fools 2025 
+ Displacement Wand 
+ Eye of Exit 
+ Fire Wand 
+ Grave 
+ Mine 
+ Mine Ingredient 
+ Music Disc And Action! 
+ Shazboots! 
+ Shimmering Key 
+ Sky Box 
+ Wind Wand 
+ April Fools 2026 
+ Attack / Mine 
+ Build 
+ Craft 
+ Follow Me 
+ Group / Ungroup 
+ Highlight 
+ Move 
+ Punch 
+ Retrieved from " https://minecraft.wiki/w/Nautilus_Shell?oldid=3745758 " 
+ Categories : Renewable resources Stackable resources Items Hidden category: Pages using simple calculator 
+ Navigation menu 
+ Personal tools 
+ Create account Log in 
+ associated-pages 
+ Page Talk 
+ English 
+ Views 
+ Read Edit Edit source View history 
+ More 
+ Refresh 
+ Search 
+ Navigation 
+ How to help Recent changes Random page in Minecraft in Dungeons in Dungeons II in Legends in Earth in Story Mode in Tutorial in Movie Wiki Discord 
+ Wiki community 
+ Community portal Wiki forum Projects Wiki rules Style guide Notability Sandbox Admin noticeboard 
+ X 
+ Franchise 
+ Minecraft Minecraft Dungeons Minecraft Legends Minecraft Earth Minecraft: Story Mode A Minecraft Movie 
+ Recent versions 
+ Java Edition 
+ Latest: 26.2 
+ Dev: 26.3-pre-2 
+ Upcoming: 26.3 
+ Bedrock Edition 
+ Latest: 26.45 
+ Preview: 26.60.21 
+ Upcoming: 26.50 
+ Upcoming: 26.60 
+ Useful pages 
+ Trading Brewing Enchantments Mobs Blocks Items Crafting Smelting Tutorials Resource packs Redstone circuits 
+ Useful pages 
+ Weapons Enchanting Armor Artifacts Missions 
+ Useful pages 
+ Weapons Enchanting Armor Artifact 
+ Useful pages 
+ Friendly units Piglins Resources Biomes Structures Lost Legends 
+ Tools 
+ What links here Related changes Printable version Permanent link Page information Special pages View buckets 
+ In other languages 
+ Deutsch Español Français Italiano 日本語 한국어 文言 Nederlands Português Русский ไทย Українська 中文 
+ Contents (Top) 1 Obtaining 
+ 1.1 Mob loot 
+ 1.2 Fishing 
+ 1.3 Trading 
+ 2 Usage 
+ 2.1 Crafting ingredient 
+ 3 Data values 
+ 3.1 ID 
+ 4 History 
+ 4.1 Java Edition 
+ 4.2 Bedrock Edition 
+ 4.3 Legacy Console Edition 
+ 5 Issues 6 Trivia 7 Gallery 
+ 7.1 In other media 
+ 8 See also 9 References 10 Navigation 
+ This page was last edited on 27 August 2026, at 16:54. 
+ Content on this site is licensed under CC BY-NC-SA 3.0 unless otherwise noted; additional terms may apply . Not an official Minecraft website. We are not associated with Mojang or Microsoft. 
+ Privacy policy 
+ About Minecraft Wiki 
+ Disclaimers 
+ Terms of Use 
+ Contact Weird Gloop 
+ Mobile view 
+ Edit preview settings 
+ To leave feedback for the game, click here . Feedback will be posted anonymously and shared to our Discord . Something went wrong Dismiss 

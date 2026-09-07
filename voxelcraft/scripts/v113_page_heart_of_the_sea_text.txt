@@ -1,0 +1,677 @@
+ 
+ Heart of the Sea – Minecraft Wiki 
+ Heart of the Sea 
+ From Minecraft Wiki 
+ Jump to navigation 
+ Jump to search 
+ Heart of the Sea 
+ Rarity tier 
+   Uncommon
+ Renewable 
+ No
+ Stackable
+ Yes (64)
+ {
+ "title": "Heart of the Sea",
+ "rows": [
+ {
+ "field": "<span style=\"white-space: nowrap;\"><span style=\"display: inline-block; background-color: #ff5; border: 1px solid #888; border-radius: 0.3em; color: transparent; width: 1em; height: 1em; vertical-align: -0.36em; margin-right: -0.1em\"><br></span> </span> Uncommon",
+ "label": "(link to Rarity article, displayed as Rarity tier)"
+ },
+ {
+ "field": "No",
+ "label": "(link to Renewable resource article, displayed as Renewable)"
+ },
+ {
+ "field": "Yes (64)",
+ "label": "Stackable"
+ }
+ ],
+ "invimages": [
+ "Heart of the Sea"
+ ],
+ "images": [
+ "Heart of the Sea.png"
+ ]
+} 
+ A heart of the sea is an item found only in buried treasure chests . It, alongside nautilus shells , is required to craft a conduit .
+ Contents 
+ 1 Obtaining 
+ 1.1 Generated loot 
+ 2 Usage 
+ 2.1 Crafting 
+ 3 Data values 
+ 3.1 ID 
+ 4 History 
+ 4.1 Java Edition 
+ 4.2 Bedrock Edition 
+ 4.3 Legacy Console Edition 
+ 4.4 Minecraft Education 
+ 5 Issues 
+ 6 Trivia 
+ 7 External links 
+ 8 See also 
+ 9 Navigation 
+ Obtaining [ edit | edit source ] 
+ A heart of the sea is only obtained from a buried treasure . The location is marked with a noticeable red X on a buried treasure map , which is found in ocean ruins and shipwrecks .
+ Generated loot [ edit | edit source ] 
+ Item
+ Structure
+ Container
+ Quantity
+ Chance
+ Java Edition and Bedrock Edition 
+ Heart of the Sea 
+ Buried Treasure 
+ Chest
+ 1
+ 100% { "item": "Heart of the Sea", "stacksize": 1, "chance": 1, "structure": "Buried Treasure", "container": "Chest" } 
+ Usage [ edit | edit source ] 
+ Crafting [ edit | edit source ] 
+ Name 
+ Ingredients 
+ Crafting recipe
+ Conduit 
+ Nautilus Shell  + Heart of the Sea 
+ Data values [ edit | edit source ] 
+ ID [ edit | edit source ] 
+ Java Edition :
+ Name Identifier Form 
+ Translation key Heart of the Sea heart_of_the_sea Item 
+ item .minecraft .heart_of_the_sea 
+ Bedrock Edition :
+ Name Identifier Numeric ID Form 
+ Translation key Heart of the Sea heart_of_the_sea 571 Item 
+ item .heart_of_the_sea .name 
+ History [ edit | edit source ] 
+ Java Edition [ edit | edit source ] 
+ Java Edition 1.13 18w15a 
+ Added heart of the sea. 18w19a 
+ Heart of the sea now generates in all buried treasure chests in a stack of 1. 18w21a 
+ The rarity of hearts of the sea has been changed from "Common" to "Uncommon". 
+ Bedrock Edition [ edit | edit source ] 
+ Bedrock Edition 1.4.0 beta 1.2.14.2 
+ An entry in the buried treasure loot table has been added named nautilus_core . It is unobtainable though since the nautilus_core has not been added into the game yet. beta 1.2.20.1 
+ Added heart of the sea as an item obtainable in buried treasure chests . It cannot be used to craft conduits yet. beta 1.2.20.2 
+ The texture of the heart of the sea has been changed to match Java Edition . 1.5.0 beta 1.5.0.1 
+ Heart of the sea can now be used to craft conduits . 1.21.30 Preview 1.21.30.21 
+ Heart of the sea rarity has been changed from "Common" to "Uncommon". 
+ Legacy Console Edition [ edit | edit source ] 
+ Legacy Console Edition Xbox 360 Xbox One PS3 PS4 PS Vita Wii U Switch TU69 1.76 1.76 1.76 Patch 38 
+ Added heart of the sea. 
+ Minecraft Education [ edit | edit source ] 
+ Minecraft Education 1.4.0 
+ Added heart of the sea. It generates in all buried treasure chests in a stack of 1. 
+ Issues [ edit | edit source ] 
+ Issues relating to "Heart of the Sea" are maintained on the bug tracker . Issues should be reported and viewed there .
+ Trivia [ edit | edit source ] 
+ Before the heart of the sea was added to Bedrock Edition , there was an entry found in the buried treasure chest loot table named nautilus_core , which was later revealed to be the heart of the sea. Despite the name change, the heart of the sea continues to be referred to as the nautilus_core in most game files. 
+ External links [ edit | edit source ] 
+ "Taking Inventory: Heart of the Sea" by Duncan Geere – Minecraft.net , August 31, 2023. 
+ See also [ edit | edit source ] 
+ Nautilus Shell 
+ Conduit 
+ Conduit Power 
+ Navigation [ edit | edit source ] 
+ v 
+ t 
+ e Items 
+ Equipment 
+ Tools 
+ Axe 
+ Brush 
+ Fishing Rod 
+ Carrot on a Stick 
+ Warped Fungus on a Stick 
+ Flint and Steel 
+ Hoe 
+ Pickaxe 
+ Shears 
+ Shield 
+ Shovel 
+ Weapons 
+ Axe 
+ Bow 
+ Crossbow 
+ Mace 
+ Spear 
+ Sword 
+ Trident 
+ Ammunition
+ Arrow 
+ Tipped 
+ Firework Rocket 
+ JE only
+ Spectral Arrow 
+ Wearable 
+ Player
+ Boots 
+ Chestplate 
+ Elytra 
+ Helmet 
+ Turtle Shell 
+ Leggings 
+ Animals 
+ Harness 
+ Horse Armor 
+ Nautilus Armor 
+ Saddle 
+ Wolf Armor 
+ Utilities 
+ Display/storage
+ Armor Stand 
+ Item Frame 
+ Glow 
+ Painting 
+ Buckets 
+ Bucket 
+ Water 
+ Lava 
+ Milk 
+ Powder Snow 
+ Bucket of Mob 
+ Axolotl 
+ Cod 
+ Pufferfish 
+ Salmon 
+ Sulfur Cube 
+ Tadpole 
+ Tropical Fish 
+ Bottles
+ Glass Bottle 
+ Water 
+ Honey 
+ Potion 
+ Splash 
+ Lingering 
+ Bottle o' Enchanting 
+ Ominous Bottle 
+ Informational
+ Book and Quill 
+ Written 
+ Clock 
+ Compass 
+ Lodestone 
+ Recovery 
+ Eye of Ender 
+ Map 
+ Empty 
+ Explorer 
+ Spyglass 
+ Vehicles /mobility
+ Boat 
+ with Chest 
+ Ender Pearl 
+ Minecart 
+ with Chest 
+ with Hopper 
+ with TNT 
+ Wind Charge 
+ JE only
+ Minecart with Furnace 
+ Music discs 
+ 13 
+ cat 
+ blocks 
+ chirp 
+ far 
+ mall 
+ mellohi 
+ stal 
+ strad 
+ ward 
+ 11 
+ wait 
+ otherside 
+ 5 
+ Pigstep 
+ Relic 
+ Creator 
+ Music Box 
+ Precipice 
+ Tears 
+ Lava Chicken 
+ Bounce 
+ Other
+ Bone Meal 
+ Bowl 
+ Bundle 
+ Dyed 
+ Cushion ​ [ upcoming: Wilderness Bound ] 
+ Enchanted Book 
+ End Crystal 
+ Fire Charge 
+ Goat Horn 
+ Lead 
+ Name Tag 
+ Totem of Undying 
+ Trial Key 
+ Ominous 
+ Edu only
+ Balloon 
+ Glow Stick 
+ Ice Bomb 
+ Medicine 
+ Sparkler 
+ Super Fertilizer 
+ Food 
+ Natural plant-based
+ Apple 
+ Beetroot 
+ Carrot 
+ Chorus Fruit 
+ Glow Berries 
+ Melon Slice 
+ Sweet Berries 
+ Supernatural 
+ Golden Apple 
+ Enchanted 
+ Golden Carrot 
+ Uncooked food 
+ Raw Beef 
+ Raw Chicken 
+ Raw Mutton 
+ Raw Porkchop 
+ Raw Rabbit 
+ Raw Cod 
+ Raw Salmon 
+ Potato 
+ Cooked food 
+ Steak 
+ Cooked Chicken 
+ Cooked Mutton 
+ Cooked Porkchop 
+ Cooked Rabbit 
+ Cooked Cod 
+ Cooked Salmon 
+ Baked Potato 
+ Dried Kelp 
+ Crafted 
+ Bread 
+ Cookie 
+ Stews 
+ Mushroom 
+ Rabbit 
+ Suspicious 
+ Beetroot Soup 
+ Pumpkin Pie 
+ Poisonous
+ Pufferfish 
+ Rotten Flesh 
+ Spider Eye 
+ Poisonous Potato 
+ Other
+ Tropical Fish 
+ Ingredients 
+ Seeds 
+ Beetroot Seeds 
+ Cocoa Beans 
+ Melon Seeds 
+ Nether Wart 
+ Pitcher Pod 
+ Pumpkin Seeds 
+ Torchflower Seeds 
+ Wheat Seeds 
+ Raw materials
+ Amethyst Shard 
+ Armadillo Scute 
+ Blaze Rod 
+ Bone 
+ Breeze Rod 
+ Clay Ball 
+ Coal 
+ Diamond 
+ Disc Fragment 5 
+ Dragon's Breath 
+ Echo Shard 
+ Egg 
+ Blue 
+ Brown 
+ Emerald 
+ Feather 
+ Flint 
+ Ghast Tear 
+ Glowstone Dust 
+ Gunpowder 
+ Heart of the Sea 
+ Honeycomb 
+ Ink Sac 
+ Glow 
+ Kelp 
+ Lapis Lazuli 
+ Leather 
+ Magma Cream 
+ Nautilus Shell 
+ Nether Quartz 
+ Nether Star 
+ Phantom Membrane 
+ Prismarine Shard 
+ Prismarine Crystals 
+ Rabbit Hide 
+ Rabbit's Foot 
+ Raw Copper 
+ Raw Gold 
+ Raw Iron 
+ Redstone Dust 
+ Resin Clump 
+ Shulker Shell 
+ Slimeball 
+ Snowball 
+ Stick 
+ String 
+ Turtle Scute 
+ Wheat 
+ Processed
+ Blaze Powder 
+ Book 
+ Brick 
+ Nether 
+ Resin 
+ Charcoal 
+ Copper Ingot 
+ Nugget 
+ Fermented Spider Eye 
+ Firework Star 
+ Glistering Melon Slice 
+ Gold Ingot 
+ Nugget 
+ Iron Ingot 
+ Nugget 
+ Netherite Ingot 
+ Scrap 
+ Paper 
+ Popped Chorus Fruit 
+ Sugar 
+ Edu only
+ Bleach 
+ Compounds 
+ Dyes 
+ White 
+ Light Gray 
+ Gray 
+ Black 
+ Brown 
+ Red 
+ Orange 
+ Yellow 
+ Lime 
+ Green 
+ Cyan 
+ Light Blue 
+ Blue 
+ Purple 
+ Magenta 
+ Pink 
+ Banner patterns 
+ Bordure Indented 
+ Creeper Charge 
+ Field Masoned 
+ Flow 
+ Flower Charge 
+ Globe 
+ Guster 
+ Skull Charge 
+ Snout 
+ Thing 
+ Pottery sherds 
+ Angler 
+ Archer 
+ Arms Up 
+ Blade 
+ Brewer 
+ Burn 
+ Danger 
+ Explorer 
+ Flow 
+ Friend 
+ Guster 
+ Heart 
+ Heartbreak 
+ Howl 
+ Miner 
+ Mourner 
+ Plenty 
+ Prize 
+ Scrape 
+ Sheaf 
+ Shelter 
+ Skull 
+ Snort 
+ Smithing templates 
+ Armor Trim 
+ Bolt 
+ Coast 
+ Dune 
+ Eye 
+ Flow 
+ Host 
+ Raiser 
+ Rib 
+ Sentry 
+ Shaper 
+ Silence 
+ Snout 
+ Spire 
+ Tide 
+ Vex 
+ Ward 
+ Wayfinder 
+ Wild 
+ Netherite Upgrade 
+ Creative or commands only 
+ Creative only
+ Spawn Eggs 
+ JE only
+ Debug Stick 
+ Minecart with Command Block 
+ Unused paintings 
+ Edu only
+ Camera 
+ Photo 
+ Portfolio 
+ Commands only
+ Ender Dragon Spawn Egg 
+ Wither Spawn Egg 
+ JE only
+ Knowledge Book 
+ BE only
+ Minecart with Command Block 
+ China Edition only
+ Mod armor 
+ Mod (China Edition) 
+ Removed 
+ Java Edition only
+ Technical blocks as Items 
+ Cauldron Potions 
+ Horse Saddle 
+ Reverted Potions 
+ Data-retaining minecarts 
+ Slowness arrows with own tag 
+ Bedrock Edition only
+ Copper Horn 
+ Removed Spawn Eggs 
+ MinecraftEdu only
+ Block Inspector 
+ Unused 
+ Java Edition only
+ Potion of Luck 
+ Uncraftable Potion 
+ Bedrock Edition only
+ Camera 
+ Photo 
+ Portfolio 
+ Potion of Decay 
+ Unused Potions 
+ Legacy Console only
+ debug_fourj_item 
+ Unimplemented 
+ All editions
+ Ruby 
+ Quiver 
+ Java Edition only
+ Crystallized Honey 
+ Minecart with Dispenser 
+ Studded Armor 
+ Bedrock Edition only
+ Minecart with Furnace 
+ Hoglin Meat 
+ Joke 
+ April Fools 2015 
+ Obsidian Boat 
+ Potion of Caring 
+ Splash 
+ Potion of Sharing 
+ Splash 
+ April Fools 2016 
+ Smarter Watch 
+ Reality Vision 
+ Ankle Monitor 
+ April Fools 2019 
+ 3D 
+ Blue Key 
+ Red Key 
+ Yellow Key 
+ April Fools 2020 
+ Footprint 
+ A Very Fine Item 
+ April Fools 2023 
+ Air 
+ Bit 
+ Bottle of Entity 
+ Splash 
+ Bottle of Void 
+ La Baguette 
+ Le Tricolore 
+ minecraft:dupe_hack 
+ Moon Cow Spawn Egg 
+ New Thing Banner Pattern 
+ Longer String 
+ Potion of Big 
+ Splash 
+ Lingering 
+ Arrow 
+ Potion of Small 
+ Splash 
+ Lingering 
+ Arrow 
+ Tag 
+ April Fools 2024 
+ Amber Gem 
+ Batato Spawn Egg 
+ Dent 
+ Golden Poisonous Potato 
+ Enchanted 
+ Hash Browns 
+ Hot potato 
+ Lashing Potato 
+ Mega Spud Spawn Egg 
+ Plaguewhale Slab Spawn Egg 
+ Poisonous Polytra 
+ Poisonous Pota-Toes 
+ Poisonous Potato Chestplate 
+ Poisonous Potato Chips 
+ Poisonous Potato Fries 
+ Poisonous Potato Hammer 
+ Poisonous Potato Plant 
+ Poisonous Potato Slices 
+ Poisonous Potato Sticks 
+ Poisonous Potato Zombie Spawn Egg 
+ Potato Eye 
+ Potato of Knowledge 
+ Potion of Sticky 
+ Splash 
+ Lingering 
+ Arrow 
+ Potato Oil 
+ Poisonous 
+ Potato Oil (Potion) 
+ Splash 
+ Lingering 
+ Arrow 
+ Poisonous Potato Oil (Potion) 
+ Splash 
+ Lingering 
+ Arrow 
+ Potato Peeler 
+ Potato Peels 
+ Corrupted 
+ Potatiesh, Greatstaff of the Peasant 
+ Toxic Beam 
+ Toxic Resin 
+ Toxifin Slab Spawn Egg 
+ Venomous Potato 
+ April Fools 2025 
+ Displacement Wand 
+ Eye of Exit 
+ Fire Wand 
+ Grave 
+ Mine 
+ Mine Ingredient 
+ Music Disc And Action! 
+ Shazboots! 
+ Shimmering Key 
+ Sky Box 
+ Wind Wand 
+ April Fools 2026 
+ Attack / Mine 
+ Build 
+ Craft 
+ Follow Me 
+ Group / Ungroup 
+ Highlight 
+ Move 
+ Punch 
+ Retrieved from " https://minecraft.wiki/w/Heart_of_the_Sea?oldid=3753999 " 
+ Categories : Non-renewable resources Stackable resources Items 
+ Navigation menu 
+ Personal tools 
+ Create account Log in 
+ associated-pages 
+ Page Talk 
+ English 
+ Views 
+ Read Edit Edit source View history 
+ More 
+ Search 
+ Navigation 
+ How to help Recent changes Random page in Minecraft in Dungeons in Dungeons II in Legends in Earth in Story Mode in Tutorial in Movie Wiki Discord 
+ Wiki community 
+ Community portal Wiki forum Projects Wiki rules Style guide Notability Sandbox Admin noticeboard 
+ X 
+ Contents (Top) 1 Obtaining 
+ 1.1 Generated loot 
+ 2 Usage 
+ 2.1 Crafting 
+ 3 Data values 
+ 3.1 ID 
+ 4 History 
+ 4.1 Java Edition 
+ 4.2 Bedrock Edition 
+ 4.3 Legacy Console Edition 
+ 4.4 Minecraft Education 
+ 5 Issues 6 Trivia 7 External links 8 See also 9 Navigation 
+ Franchise 
+ Minecraft Minecraft Dungeons Minecraft Legends Minecraft Earth Minecraft: Story Mode A Minecraft Movie 
+ Recent versions 
+ Java Edition Latest: 26.2 Dev: 26.3-pre-2 Upcoming: 26.3 Bedrock Edition Latest: 26.45 Preview: 26.60.21 Upcoming: 26.50 Upcoming: 26.60 
+ Useful pages 
+ Trading Brewing Enchantments Mobs Blocks Items Crafting Smelting Tutorials Resource packs Redstone circuits 
+ Useful pages 
+ Weapons Enchanting Armor Artifacts Missions 
+ Useful pages 
+ Weapons Enchanting Armor Artifact 
+ Useful pages 
+ Friendly units Piglins Resources Biomes Structures Lost Legends 
+ Tools 
+ What links here Related changes Printable version Permanent link Page information Special pages View buckets 
+ In other languages 
+ Deutsch Español Français Italiano 日本語 한국어 文言 Nederlands Português Русский ไทย Українська 中文 
+ This page was last edited on 1 September 2026, at 21:22. 
+ Content on this site is licensed under CC BY-NC-SA 3.0 unless otherwise noted; additional terms may apply . Not an official Minecraft website. We are not associated with Mojang or Microsoft. 
+ Privacy policy 
+ About Minecraft Wiki 
+ Disclaimers 
+ Terms of Use 
+ Contact Weird Gloop 
+ Mobile view 
+ 

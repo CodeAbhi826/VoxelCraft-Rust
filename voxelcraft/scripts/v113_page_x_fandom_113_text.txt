@@ -1,0 +1,2933 @@
+ 
+ Update Aquatic – Minecraft Wiki 
+ Sign In 
+ Create a Free Account 
+ Minecraft Wiki 
+ Explore 
+ Main Page 
+ All Pages 
+ Interactive Maps 
+ Games 
+ Minecraft 
+ Minecraft Dungeons 
+ Minecraft Legends 
+ Minecraft Earth 
+ Minecraft Story Mode 
+ Minecraft 
+ Blocks 
+ Items 
+ World 
+ Mobs 
+ Biomes 
+ Terrain features 
+ Structures 
+ Dimensions 
+ Mechanics 
+ Crafting 
+ Smelting 
+ Brewing 
+ Trading 
+ Enchanting 
+ Status effects 
+ Version history 
+ Java Edition 
+ Bedrock Edition 
+ Other editions 
+ Legacy Console Edition 
+ Simplified guides 
+ Java Edition 
+ Bedrock Edition 
+ Technical 
+ Redstone circuits 
+ Commands 
+ Resource packs 
+ Data packs 
+ Add-ons 
+ Servers 
+ Realms 
+ Realms Plus 
+ Bedrock Dedicated Server 
+ Bedrock featured servers 
+ Tutorials 
+ Minecraft Dungeons 
+ Items 
+ Weapons 
+ Armor 
+ Artifacts 
+ Consumables 
+ Cosmetics 
+ Locations 
+ Ancient Hunts 
+ Mechanics 
+ Enchanting 
+ Status effects 
+ Achievements 
+ Mobs 
+ Arcade 
+ Tutorials 
+ Wiki Community 
+ Rules and guidelines 
+ Wiki rules 
+ Video policy 
+ Talk page guidelines 
+ Style guide 
+ Wiki tools 
+ Recent changes 
+ Editing sandbox 
+ About the wiki 
+ Community portal 
+ Admin noticeboard 
+ Projects 
+ Discord 
+ Sign In 
+ Don't have an account? 
+ Create a Free Account 
+ Sign In 
+ Create a Free Account 
+ Home 
+ Explore 
+ Saved 
+ Progress 
+ History 
+ Utilities 
+ Blocksmith 
+ More 
+ Advertisement
+ Skip to content 
+ Minecraft Wiki 
+ 7,609 pages 
+ Explore 
+ Main Page 
+ All Pages 
+ Interactive Maps 
+ Games 
+ Minecraft 
+ Minecraft Dungeons 
+ Minecraft Legends 
+ Minecraft Earth 
+ Minecraft Story Mode 
+ Minecraft 
+ Blocks 
+ Items 
+ World 
+ Mobs 
+ Biomes 
+ Terrain features 
+ Structures 
+ Dimensions 
+ Mechanics 
+ Crafting 
+ Smelting 
+ Brewing 
+ Trading 
+ Enchanting 
+ Status effects 
+ Version history 
+ Java Edition 
+ Bedrock Edition 
+ Other editions 
+ Legacy Console Edition 
+ Simplified guides 
+ Java Edition 
+ Bedrock Edition 
+ Technical 
+ Redstone circuits 
+ Commands 
+ Resource packs 
+ Data packs 
+ Add-ons 
+ Servers 
+ Realms 
+ Realms Plus 
+ Bedrock Dedicated Server 
+ Bedrock featured servers 
+ Tutorials 
+ Minecraft Dungeons 
+ Items 
+ Weapons 
+ Armor 
+ Artifacts 
+ Consumables 
+ Cosmetics 
+ Locations 
+ Ancient Hunts 
+ Mechanics 
+ Enchanting 
+ Status effects 
+ Achievements 
+ Mobs 
+ Arcade 
+ Tutorials 
+ Wiki Community 
+ Rules and guidelines 
+ Wiki rules 
+ Video policy 
+ Talk page guidelines 
+ Style guide 
+ Wiki tools 
+ Recent changes 
+ Editing sandbox 
+ About the wiki 
+ Community portal 
+ Admin noticeboard 
+ Projects 
+ Discord 
+ Contents 
+ 1 Release 
+ 2 Notable features 
+ 2.1 Additions 
+ 2.2 Changes 
+ 3 Further revisions 
+ 3.1 Java Edition 
+ 3.2 Bedrock Edition 
+ 3.2.1 1.4 (Phase One) 
+ 3.2.2 1.5 (Phase Two) 
+ 4 Videos 
+ 4.1 Trailer 
+ 4.2 Showcases 
+ 4.2.1 Java Edition 
+ 4.2.2 Bedrock Edition 
+ 4.2.2.1 Phase One 
+ 4.2.2.2 Phase Two 
+ 4.3 Other 
+ 5 Trivia 
+ 6 Gallery 
+ 7 References 
+ 8 External links 
+ in: 
+ Named updates 
+ English 
+ Ελληνικά 
+ Español 
+ Italiano 
+ 日本語 
+ Português 
+ Русский 
+ Українська 
+ 中文 
+ Update Aquatic 
+ Talk (26) 
+ Sign In to Save 
+ Save 
+ View source 
+ History 
+ Purge 
+ Update Aquatic 
+ Release date 
+ July 18, 2018 ( Java Edition ) May 16, 2018 (Bedrock Edition, Phase One) July 10, 2018 (Bedrock Edition, Phase Two) 2018 (Education Edition) September 11, 2018 (Legacy Console Edition, excludes Xbox One and Nintendo Switch Editions) 
+ Major version 
+ Java Edition 1.13 Bedrock Edition 1.4.0 (Phase One) Bedrock Edition 1.5.0 (Phase Two) Education Edition 1.4 Xbox 360 Edition TU69 Wii U Edition Patch 38 PlayStation 3 Edition 1.76 PlayStation Vita Edition 1.76 PlayStation 4 Edition 1.76 
+ ◄ World of Color Update (Java) Better Together Update (Bedrock) 
+ Village & Pillage ► 
+ For a guide about all the additions and changes in this update, see Java Edition guides/Update Aquatic and Bedrock Edition guides/Update Aquatic .
+ “
+ Take a deep breath and dive into a vibrant new world beneath the surface! Full of marine life, new mobs and colourful sea-nery, Minecraft’s oceans get their biggest update yet! 
+ „
+ — minecraft.net on Update Aquatic 
+ The Update Aquatic is the name for a major update that was released for most versions of Minecraft in 2018, with the exception of the Xbox One , Nintendo Switch , and New Nintendo 3DS editions. The Update Aquatic focuses on revamping the oceans in Minecraft , adding many new aquatic mobs, blocks, items and structures. The update marks the advent of the trend of major themed content updates being released across certain editions relatively simultaneously, rather than across differently-titled, unrelated-sounding updates per edition.
+ The official name for the update, the Update Aquatic , was revealed on November 18, 2017, during the MINECON Earth 2017 live stream, at which time the Java Edition Update Aquatic was to be released as 1.14.
+On July 10, 2018, Mojang Studios released a trailer for the update. [ 1 ] 
+ On Java Edition , this update was previously titled Technically Updated , until the features of the Update Aquatic were added later on in the development of 1.13, starting from snapshot 18w07a . 
+ Contents 
+ 1 Release 
+ 2 Notable features 
+ 2.1 Additions 
+ 2.2 Changes 
+ 3 Further revisions 
+ 3.1 Java Edition 
+ 3.2 Bedrock Edition 
+ 3.2.1 1.4 (Phase One) 
+ 3.2.2 1.5 (Phase Two) 
+ 4 Videos 
+ 4.1 Trailer 
+ 4.2 Showcases 
+ 4.2.1 Java Edition 
+ 4.2.2 Bedrock Edition 
+ 4.2.2.1 Phase One 
+ 4.2.2.2 Phase Two 
+ 4.3 Other 
+ 5 Trivia 
+ 6 Gallery 
+ 7 References 
+ 8 External links 
+ Release [ ] 
+ The update was released for Java Edition on July 18, 2018 as version Java Edition 1.13 . [ 2 ] [ 3 ] 
+ The update was released for the Xbox 360 , PlayStation 3 , PlayStation 4 , PlayStation Vita , and Wii U editions, on September 11, 2018. [ 4 ] The Xbox One , Nintendo Switch , and New Nintendo 3DS editions were omitted from the update.
+ On Bedrock Edition , the Update Aquatic was split into two updates, with most of the features being released in Phase One as version 1.4.0 on May 16, 2018, [ 5 ] and more features released in Phase Two as version 1.5.0 on July 10, 2018. [ 6 ] Additional features were added in 1.6.0 on August 28, 2018.
+ Additionally, the Update Aquatic was released for Minecraft Education in the 1.4 update on June 12, 2018, [ 7 ] and additional features released in the 1.7 update on November 12, 2018. The update was also released for the China Edition ; it was released on mobile devices on July 6, 2018, and on Windows on July 10, 2018. [ 8 ] 
+ The first pre-release on Java Edition , 1.13-pre1 , was released on June 4, 2018, the second pre-release was released on June 15, the third on June 21, the fourth on June 26, the fifth on June 28, the sixth on July 4, the seventh on July 10, the eighth on July 13, the ninth on July 16, and the tenth on July 17.
+This update had 10 pre-releases for Java Edition , the largest number of pre-releases for any update.
+ Notable features [ ] 
+ Main articles: Java Edition 1.13 ; Bedrock Edition 1.4.0 , 1.5.0 , and 1.6.0 ; Education Edition 1.4 and 1.7 ; and Legacy Console Edition version history § Update Aquatic . 
+ See also: Java Edition guides/Update Aquatic 
+ Additions [ ] 
+ New blocks :
+ Trapdoors , pressure plates , and buttons for the other 5 types of wood besides oak 
+ 10 types of coral block , 5 types of corals , and 5 types of coral fans 
+ 5 types of dead coral fans 
+ Kelp 
+ Generate in ocean biomes, except warm oceans. 
+ Can be placed only underwater, requiring at least one water block above it 
+ Can grow multiple blocks high. 
+ Dried kelp block 
+ Smelts 20 items when used as fuel in a furnace . 
+ Crafted from dried kelp, and can also be crafted back into dried kelp. 
+ Seagrass 
+ Generates in oceans (including underwater caves), rivers, and swamplands. 
+ Drops from turtles when killed. 
+ Can be generated when using bone meal on any block underwater. 
+ Sea pickles 
+ Generate in warm oceans, especially around coral reefs. 
+ Up to 4 of them can be placed on a block. 
+ Each one adds 3 to the light level, but only when placed underwater. 
+ Can be smelted into lime dye . 
+ Turtle eggs 
+ Created by breeding turtles. 
+ Stepping on them breaks them. 
+ Zombies , zombie pigmen , and drowned intentionally step on turtle eggs. 
+ Blue ice 
+ Generates in icebergs. 
+ More slippery than ice and packed ice . 
+ Crafted using 9 packed ice. 
+ Conduit 
+ When active, affects nearby players in water with the Conduit Power effect. 
+ Emits a strong glow, at light level 15. 
+ Wood (previously available only using / setblock )
+ Now have an item form and appear in the creative inventory. 
+ They can now be crafted, 4 logs in a square yield 3 wood. 
+ Stripped logs 
+ A barkless variant of logs. 
+ Created by using an axe on a log block. 
+ Act as regular logs, and can still be used to craft planks . 
+ Bubble columns, created by magma blocks or soul sand in water
+ Magma block columns pull entities down and soul sand columns push entities up. 
+ Prismarine stairs and slabs
+ Comes in all 3 variants: prismarine, dark prismarine, and prismarine bricks. 
+ New items :
+ Trident 
+ Can be thrown by using it, or be used as a melee weapon by attacking, dealing 9 damage. 
+ Obtained by killing a drowned 
+ Scute 
+ Dropped when baby turtles grow up. 
+ Can be used to craft turtle shells. 
+ Turtle shell 
+ Can be used as a helmet , adding 2 armor points. 
+ Can be used to brew the potion of the Turtle Master. 
+ Dried kelp 
+ Obtained by smelting kelp. 
+ Can be eaten, restoring 1 ( ) hunger point. 
+ Phantom membrane 
+ Dropped by phantoms. 
+ Used to repair elytra . 
+ Used to brew potions of Slow Falling. 
+ Heart of the sea 
+ Found in all buried treasure chests in stacks of 1. 
+ Nautilus shell 
+ Obtained from fishing or Drowned 
+ Potion of the Turtle Master 
+ Gives Slowness IV and Resistance III. 
+ Arrow of the Turtle Master 
+ Gives the same effects as potion of the Turtle Master 
+ Potion of Slow Falling 
+ Grants the Slow Falling effect 
+ Arrow of Slow Falling 
+ Grants the Slow Falling effect 
+ Debug stick ‌ [ Java Edition only ] 
+ A technical item used to cycle between different block states. 
+ Buried treasure explorer map 
+ Leads the player to buried treasure. 
+ Spawn eggs for turtles, dolphins, phantoms, cod, salmon, pufferfish, tropical fish, and drowned 
+ Fish buckets : cod, salmon, pufferfish, and tropical fish 
+ New effects :
+ Slow Falling 
+ Prevents fall damage. 
+ Makes the player fall slower. 
+ Makes player unable to deal critical hits. 
+ Conduit Power 
+ Stops the breath meter from running out, gives underwater night vision, and increases mining speed. 
+ This is the first combined effect. It combines Water Breathing , Night Vision , and Haste . 
+ Dolphin's Grace ‌ [ Java Edition only ] 
+ Makes the player swim faster. 
+ Acquired by swimming near dolphins. 
+ New enchantments : Loyalty , Impaling , Riptide , and Channeling 
+ New mobs :
+ Phantom 
+ Spawns in the Overworld when players haven't slept in a while. 
+ Considered undead mobs. 
+ Dolphin 
+ Spawn in any ocean that isn't frozen. 
+ Neutral mobs. 
+ They can help players find buried treasure; when they are fed raw cod, they swim to the nearest shipwreck or underwater ruins. 
+ Turtles 
+ Spawn on warm beaches in small groups. 
+ Drop 0-2 seagrass upon death. 
+ Drowned 
+ Spawn in all oceans and rivers, as well as in swamps and underwater ruins. 
+ Zombies convert into drowned if submerged in water for a while. 
+ Fish mobs :
+ Cod , salmon , pufferfish , and 3,584 types of tropical fish 
+ New generated structures :
+ Shipwrecks 
+ Can be found in oceans and beaches. 
+ Contain 1–3 loot chests containing different types of loot depending on the ship. 
+ Can generate upright, sideways or upside down. 
+ Icebergs , [ 9 ] which generate in frozen ocean biomes 
+ Underwater ruins 
+ Have a cold and warm variant. 
+ Buried treasures 
+ Underwater caves and ravines 
+ Coral reefs 
+ Naturally generate in warm ocean biomes. 
+ Are composed of coral, coral blocks and coral fans. 
+ New biomes :
+ Warm, lukewarm, and cold variants of ocean and deep ocean biomes, as well as a deep frozen ocean biome. 
+ Divided the End up into separate biomes: Floating, Medium, High, and Barren islands.‌ [ Java Edition only ] 
+ World types:
+ Buffet mode‌ [ Java Edition only ] 
+ Data packs ‌ [ Java Edition only ] 
+ Custom recipes . 
+ Custom tags . 
+ Item forms for mushroom blocks , bark blocks, and double slabs .‌ [ Java Edition only ] 
+ 3 new commands : / data , / datapack , and / bossbar .‌ [ Java Edition only ] 
+ A command suggestion UI.‌ [ Java Edition only ] 
+ A smooth transition is applied to the camera when the player sneaks. 
+ Changed pumpkin texture, and renamed the old texture to "carved pumpkin", available when a pumpkin is right-clicked with shears . 
+ Water source blocks can now be placed inside of semi-transparent blocks such as stairs and slabs, called waterlogging . 
+ Added many new sounds and 3 new underwater music pieces by C418. 
+ Changes [ ] 
+ Magma blocks generate in ocean biomes, causing downward bubble columns 
+ Changed title screen to an Update Aquatic theme 
+ Dropped items in water now float toward the surface 
+ Replaced and changed many commands‌ [ Java Edition only ] 
+ The flattening ‌ [ Java Edition only ] 
+ New horse model 
+ New water texture 
+ Item frames can be placed on the floor and the ceiling‌ [ Java Edition only ] 
+ Squid now shoot ink when attacked‌ [ Java Edition only ] 
+ This feature was ported from Bedrock Edition 
+ The player 's oxygen no longer generates instantly when out of water 
+ Changed underwater visibility 
+ Maps can now be marked using banners ‌ [ Java Edition only ] 
+ Named banners show their names under that marker on the map 
+ Shulker boxes can now be undyed using a cauldron 
+ Elytra now requires phantom membrane to repair in an anvil instead of leather . 
+ Further revisions [ ] 
+ Java Edition [ ] 
+ 1.13.1 added a search bar to select world screens, re-added the punch-detonate TNT ability, allowed fish to drop bone meal , added dead coral , added a new / forceload command, significantly changed the spawning conditions of squid , and fixed bugs. 
+ 1.13.2 fixed several bugs. 
+ Bedrock Edition [ ] 
+ 1.4 (Phase One) [ ] 
+ 1.4.1 was released exclusively on Android and Fire OS to fix a bug involving players losing previously purchased items. 
+ 1.4.2 fixed several crash-related bugs. 
+ 1.4.3 was released exclusively on iOS devices to fix some bugs and added a new map by Blockceptions. 
+ 1.4.4 was released exclusively on Android and Fire OS to fix a bug that had issues with telemetry. 
+ 1.5 (Phase Two) [ ] 
+ 1.5.1 fixed several bugs present in the official release of 1.5.0. 
+ 1.5.2 fixed a lone bug regarding bitmap on low-end devices. 
+ 1.5.3 fixed the lost inventory bug along with several other bugs. 
+ Videos [ ] 
+ Trailer [ ] 
+ A trailer documenting some of the Update Aquatic's features was released on Mojang Studios' official YouTube channel on July 10, 2018. The trailer was made by Mojang Studios themselves instead of Hat Films, similar to the 2 previous trailers.
+ Note: The video's footage is taken from the Bedrock Edition. 
+ Update Aquatic – Dive in! ( view on YouTube )
+ [ show ] 
+ Showcases [ ] 
+ Videos made by slicedlime :
+ Java Edition [ ] 
+ What's New in Minecraft Java Edition 1.13 - The Update Aquatic? ( view on YouTube )
+ [ show ] 
+ Advanced Commands Tutorial - Command News in Minecraft 1.13 ( view on YouTube )
+ [ show ] 
+ Bedrock Edition [ ] 
+ Phase One [ ] 
+ What's New in Minecraft Bedrock Edition 1.4? ( view on YouTube )
+ [ show ] 
+ Phase Two [ ] 
+ What's New in Minecraft Bedrock Edition 1.5? ( view on YouTube )
+ [ show ] 
+ Other [ ] 
+ Update Aquatic: Ten Things You Probably Didn't Know About Minecraft ( view on YouTube )
+ [ show ] 
+ Trivia [ ] 
+ The Update Aquatic poster seen in the Minecraft Dungeons cross-platform play trailer. 
+ Jeb previously stated in a 2011 interview that he wanted to implement more sea life into the game. [ 10 ] 
+ The poster for this update can be seen in the Minecraft Dungeons : Cross-platform Play Trailer in the PS4 user's room. 
+ Gallery [ ] 
+ Update Aquatic logo 
+ Update Aquatic (Phase 1) artwork 
+ Update Aquatic final artwork 
+ References [ ] 
+ ↑ "Update Aquatic - Dive in!" – Minecraft on YouTube, July 10, 2018 
+ ↑ "Java Edition Technically Updated!" – Minecraft.net, January 24, 2018 
+ ↑ "Update Aquatic Out On Java!" by Adrian Östergård. Minecraft.net, July 18, 2018 
+ ↑ "An update for Minecraft Console Edition on Sony consoles is rolling out worldwide now, and later today/early tomorrow on Xbox 360 and Wii U !" – @4JStudios (4JStudios) on X, September 11, 2018 
+ ↑ "Update Aquatic Phase One is out now!" – Minecraft.net, May 16, 2018 
+ ↑ "Who is ready for #UpdateAquatic part 2? Switch players should start seeing the update right now, with other platforms diving in later today! Get ready for Turtles, Conduits, and more! #Minecraft" – @Mega_Spud on X, July 10, 2018 
+ ↑ "Update Aquatic Released for Minecraft: Education Edition" . 
+ ↑ "重磅来袭！《我的世界》海洋更新上线时间首次曝光！" . 
+ ↑ "MINECON Earth 2017 Livestream" , November 18, 2017 
+ ↑ "Interview mit Jeb! Ihr konntet die Fragen stellen!" – MineTimes. 
+ External links [ ] 
+ Minecraft Aquatic Update | Minecraft 
+ Collapse Named updates 
+ Java Edition 
+ Seecret Updates (2010) 
+ Halloween Update (2010) 
+ Adventure Update (2011) 
+ Pretty Scary Update (2012) 
+ Redstone Update (2013) 
+ Horse Update (2013) 
+ The Update that Changed the World (2013) 
+ Bountiful Update (2014) 
+ Combat Update (2016) 
+ Frostburn Update (2016) 
+ Exploration Update (2016) 
+ World of Color Update (2017) 
+ Bedrock Edition 
+ Overworld Update (2016) 
+ Friendly Update (2016) 
+ Boss Update (2016) 
+ Ender Update (2016) 
+ Discovery Update (2017) 
+ Better Together Update (2017) 
+ Multi-edition
+ Update Aquatic (2018) 
+ Texture Update (2019) 
+ Village & Pillage (2019) 
+ Buzzy Bees (2019) 
+ Nether Update (2020) 
+ Caves & Cliffs (2021) 
+ The Wild Update (2022) 
+ Trails & Tales (2023) 
+ Bats and Pots (2023) 
+ Armored Paws (2024) 
+ Tricky Trials (2024) 
+ Bundles of Bravery (2024) 
+ The Garden Awakens (2024) 
+ Spring to Life (2025) 
+ Chase the Skies (2025) 
+ The Copper Age (2025) 
+ Mounts of Mayhem (2025) 
+ Tiny Takeover (2026) 
+ Chaos Cubed (2026) 
+ Minecraft Education 
+ Chemistry Update (2018) 
+ Code Builder Update (2018) 
+ Spring Release (2019) 
+ Back to School Update (2019) 
+ Library Update (2019) 
+ Chromebook Release (2020) 
+ Learn to Code Update (2020) 
+ Camps & Clubs (2021) 
+ GOAT Update (2021) 
+ Mobile, Multiplayer & More (2022) 
+ Collapse Minecraft : Java Edition versions 
+ Particular versions
+ Demo 
+ Locations 
+ PC Gamer demo ( Beta 1.3 ) 
+ Classic remake ( 0.0.23a_01 ) 
+ Developer versions 
+ Missing versions ( Launcher ) 
+ Development cycle
+ Pre-Classic (2009) 
+ Classic (2009) 
+ Indev (2009–10) 
+ Infdev (2010) 
+ Alpha (2010) 
+ Beta (2010–11) 
+ Full Release (2011–present) 
+ Other updates
+ Launcher updates 
+ Beta Sound Update (2011) 
+ Music Update (2013) 
+ Texture Update (2019) 
+ Joke updates
+ 2.0 (2013) 
+ 15w14a (2015) 
+ 1.RV-Pre1 (2016) 
+ 3D Shareware v1.34 (2019) 
+ 20w14∞ (2020) 
+ 22w13oneBlockAtATime (2022) 
+ 23w13a_or_b* (2023) 
+ 24w14potato (2024) 
+ Combat Tests 
+ 1.14.3 - Combat Test 
+ Combat Test 2 
+ Combat Test 3 
+ Combat Test 4 
+ Combat Test 5 
+ Combat Test 6 
+ Combat Test 7c 
+ Combat Test 7 
+ Combat Test 7b 
+ Combat Test 8b 
+ Combat Test 8 
+ Combat Test 8c 
+ Expand Pre-Classic 
+ Version history 
+ Cave Game 
+ rd-131648 
+ rd-131655 
+ rd-132211 
+ rd-132328 
+ Minecraft: Order of the Stone 
+ rd-20090515 
+ Minecraft 
+ rd-160052 
+ rd-161348 
+ Minecraft Alpha 
+ mc-161607 
+ mc-161616 
+ mc-161625 
+ mc-161648 
+ Expand Classic 
+ Version history 
+ Early Classic 
+ Private Test Builds
+ 0.0.2a 
+ 0.0.3a 
+ 0.0.9a 
+ 0.0.10a 
+ 0.0.11a 
+ 0.0.12a 
+ Multiplayer Test 
+ Water Test 
+ Lava Test 
+ 0.0.12a_01 
+ 02 
+ 03* 
+ 0.0.13a 
+ World size test
+ 1 
+ 2 
+ Huge levels 
+ 0.0.13a_03 
+ 0.0.14a 
+ New blocks 
+ Water test 
+ Offset test 
+ 0.0.14a_01 
+ 03 
+ 04* 
+ 05* 
+ 06 
+ 07 
+ 08 
+ Multiplayer Test 
+ 0.0.15a Multiplayer Test 1 
+ Trees 
+ 0.0.15a Multiplayer Test 2 
+ 3 
+ 4 
+ 5 
+ 6 
+ 7 
+ 8 
+ _01 
+ _02 
+ _03 
+ 0.0.16a 
+ _01 
+ _02*** 
+ 0.0.17a 
+ 0.0.18a 
+ _01 
+ _02 
+ 0.0.19a 
+ New blocks showcase 
+ 0.0.19a_01 
+ 02 
+ 03 
+ 04 
+ 05 
+ 06* 
+ 0.0.20a 
+ _01 
+ _02 
+ 0.0.21a* 
+ _01 
+ 0.0.22a* 
+ _01 
+ _02 
+ _03 
+ _04 
+ _05 
+ 0.0.23a 
+ _01 
+ Survival Test 
+ 0.24_SURVIVAL_TEST 
+ Development ( View all ) 
+ 0.24_SURVIVAL_TEST_01 
+ 02* 
+ 03 
+ 0.25 SURVIVAL TEST 
+ _01 
+ _02 
+ _03 
+ _05 
+ 0.26 SURVIVAL TEST 
+ Development ( View all ) 
+ 0.27 SURVIVAL TEST 
+ Late Classic 
+ 0.28 
+ Sheep 
+ Bleached Sheep 
+ 0.28_01 
+ 0.29 
+ _01 
+ _02 
+ 0.30 
+ Server
+ 1.0 
+ 1.1 
+ 1.2 
+ 1.3 
+ 1.4* 
+ 1.4.1 
+ 1.5 
+ 1.6 
+ 1.7 
+ 1.8 
+ 1.8.1 
+ 1.8.2 
+ 1.8.3 
+ 1.9 
+ 1.9.1 
+ 1.10 
+ 1.10.1 
+ Expand Indev 
+ Version history 
+ 0.31 
+ December 2009
+ 23-1 
+ Development ( View all ) 
+ 23-2 
+ 31
+ 1 
+ 2 
+ January 2010
+ 04 
+ 06 
+ 07 
+ 09 
+ 10 
+ 11 
+ 12 
+ 13 
+ c 
+ 14 
+ 22 
+ 24
+ 1 
+ 2 
+ 25 
+ 28 
+ 29 
+ 30 
+ 31 
+ February 2010
+ 01
+ 1 
+ 2 
+ 02 
+ 04
+ 1 
+ 2 
+ 05 
+ Minecraft Indev 
+ February 2010
+ 06 * 
+ 07
+ 1 
+ 2 
+ 11 
+ 12
+ 1 
+ 2 
+ 13 
+ 14 
+ 18 
+ 19 
+ 23 
+ Expand Infdev 
+ Version history 
+ Minecraft Infdev ( Guide ) 
+ February 2010
+ 27-1 
+ Development ( View all ) 
+ 27-2 
+ March 2010
+ 13 
+ 16 
+ 20 
+ 21 
+ 25 
+ 27 
+ 30
+ 1 
+ 2 
+ April 2010
+ 13 
+ 14 
+ 15 
+ 20 
+ June 2010
+ 07 
+ 08 
+ 11 
+ 15 
+ 16
+ 1 
+ 2 
+ 17
+ 1 
+ 2 
+ 18 ( SF1 ) 
+ 24 
+ 25
+ 1 
+ 2 ( SF2 ) 
+ 27 
+ 29 
+ 30 
+ Expand Alpha 
+ Version history 
+ v1.0 ( Guide ) 
+ v1.0.0 
+ v1.0.1 ( SF3 )
+ _01 
+ v1.0.2 
+ _01 
+ 02 
+ v1.0.3 
+ v1.0.4 ( SF4 ) 
+ v1.0.5 * 
+ _01 
+ v1.0.6 ( SF5 )
+ _01 
+ 02 
+ 03 
+ v1.0.7 
+ v1.0.8 
+ _01 
+ v1.0.9 
+ v1.0.10 
+ v1.0.11 ( SF6 ) 
+ v1.0.12 
+ v1.0.13 
+ _01 * 
+ v1.0.14 * ( SF7 ) 
+ v1.0.15 
+ v1.0.16 
+ _01 
+ 02 
+ v1.0.17 ( SF8 )
+ _01 
+ 02 
+ 03 
+ 04 
+ v1.1 ( Guide ) 
+ v1.1.0 * ( SF9 ) 
+ v1.1.1 ( SS1 ) 
+ v1.1.2 
+ _01 
+ v1.2 Halloween Update ( Guide ) 
+ v1.2.0 
+ preview 
+ v1.2.0_01 
+ _02 
+ v1.2.1 
+ _01 
+ v1.2.2 
+ v1.2.3 
+ _01 
+ 02 
+ 04 
+ 05 
+ v1.2.4_01 
+ v1.2.5 
+ v1.2.6 
+ Server
+ 0.1.0 
+ 0.1.1 
+ 0.1.2 * 
+ _01 
+ 0.1.3 
+ 0.1.4 
+ 0.2.0 
+ _01 
+ 0.2.1 
+ 0.2.2 
+ _01 
+ 0.2.3 
+ 0.2.4 
+ 0.2.5 * 
+ _01 
+ 02 
+ 0.2.6 
+ _01 
+ 02 
+ 0.2.7 
+ 0.2.8 
+ Expand Beta 
+ Version history 
+ Development versions 
+ 1.0 ( Guide ) 
+ 1.0 
+ 1.0_01 
+ 1.0.2 
+ 1.1 ( Guide ) 
+ 1.1* 
+ 1.1_01 
+ 1.1_02 
+ 1.2 ( Guide ) 
+ 1.2 
+ 1.2_01 
+ 1.2_02 
+ 1.3 ( Guide ) 
+ 1.3 
+ 1.3_01 
+ 1.4 ( Guide ) 
+ 1.4* 
+ 1.4_01 
+ 1.5 ( Guide ) 
+ 1.5 
+ 1.5_01 
+ 1.5_02 
+ 1.6 ( Guide ) 
+ 1.6 
+ Test Build 3 
+ preview 
+ 1.6.1 
+ 1.6.2 
+ 1.6.3 
+ 1.6.4 
+ 1.6.5 
+ 1.6.6 
+ 1.7 ( Guide ) 
+ 1.7 
+ preview 
+ 1.7_01 
+ 1.7.2 
+ 1.7.3 
+ 1.8 Adventure Update (Part 1) ( Guide ) 
+ 1.8 
+ preview 
+ pre* 
+ pre2 
+ 1.8.1 
+ Expand Full Release (1.0 – 1.9) 
+ Version history 
+ Development versions 
+ 1.0 Adventure Update (Part 2) ( Guide ) 
+ 1.0.0 
+ pre 
+ pre2 
+ pre3** 
+ pre4* 
+ pre5 
+ pre6 
+ RC1 
+ RC2** 
+ 1.0.1 
+ 1.1 ( Guide ) 
+ 1.1 
+ 11w47a 
+ 11w48a 
+ 11w49a 
+ 11w50a 
+ 12w01a 
+ 1.2 ( Guide ) 
+ 1.2.1 
+ 12w03a 
+ 12w04a 
+ 12w05a* 
+ 12w05b 
+ 12w06a 
+ 12w07a 
+ 12w07b 
+ 12w08a 
+ 1.2 
+ 1.2.2 
+ 1.2.3 
+ 1.2.4 
+ 1.2.5 
+ 1.3 ( Guide ) 
+ 1.3.1 
+ 12w15a 
+ 12w16a 
+ 12w17a 
+ 12w18a 
+ 12w19a 
+ 12w21a 
+ 12w21b* 
+ 12w22a 
+ 12w23a 
+ 12w23b 
+ 12w24a 
+ 12w25a 
+ 12w26a 
+ 12w27a 
+ 12w30a 
+ 12w30b 
+ 12w30c 
+ 12w30d 
+ 12w30e 
+ 1.3 
+ 1.3.2 
+ 1.4 Pretty Scary Update ( Guide ) 
+ 1.4.2 
+ 12w32a 
+ 12w34a 
+ 12w34b 
+ 12w36a 
+ 12w37a 
+ 12w38a 
+ 12w38b 
+ 12w39a 
+ 12w39b 
+ 12w40a 
+ 12w40b 
+ 12w41a 
+ 12w41b 
+ 12w42a 
+ 12w42b 
+ 1.4 
+ 1.4.1 
+ 1.4.4 
+ 1.4.3 
+ 1.4.5* 
+ 1.4.6** 
+ 12w49a 
+ 12w50a 
+ 12w50b 
+ 1.4.7 
+ 1.5 Redstone Update ( Guide ) 
+ 1.5* 
+ 13w01a 
+ 13w01b 
+ 13w02a 
+ 13w02b 
+ 13w03a** 
+ 13w04a 
+ 13w05a* 
+ 13w05b 
+ 13w06a* 
+ 13w07a 
+ 13w09a 
+ 13w09b 
+ 13w09c 
+ 13w10a 
+ 13w10b 
+ 1.5.1* 
+ 13w11a 
+ 13w12~* 
+ 1.5.2* 
+ 1.6 Horse Update ( Guide ) 
+ 1.6.1 
+ 13w16a* 
+ 13w16b* 
+ 13w17a 
+ 13w18a 
+ 13w18b 
+ 13w18c 
+ 13w19a 
+ 13w21a 
+ 13w21b 
+ 13w22a* 
+ 13w23a 
+ 13w23b* 
+ 13w24a 
+ 13w24b 
+ 13w25a 
+ 13w25b 
+ 13w25c 
+ 13w26a 
+ 1.6* 
+ 1.6.2** 
+ 1.6.4 
+ 1.6.3* 
+ 1.7 The Update that Changed the World ( Guide ) 
+ 1.7.2 
+ 13w36a** 
+ 13w36b** 
+ 13w37a 
+ 13w37b 
+ 13w38a 
+ 13w38b 
+ 13w38c* 
+ 13w39a 
+ 13w39b 
+ 13w41a 
+ 13w41b* 
+ 13w42a 
+ 13w42b 
+ 13w43a 
+ 1.7 
+ 1.7.1 
+ 1.7.4 
+ 13w47a 
+ 13w47b 
+ 13w47c 
+ 13w47d 
+ 13w47e 
+ 13w48a 
+ 13w48b 
+ 13w49a 
+ 1.7.3 
+ 1.7.5 
+ 1.7.6 
+ pre1 
+ pre2 
+ 1.7.7 * 
+ 1.7.8 
+ 1.7.9 
+ 1.7.10 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ 1.8 Bountiful Update ( Guide ) 
+ 1.8 
+ 14w02a 
+ 14w02b 
+ 14w02c 
+ 14w03a 
+ 14w03b 
+ 14w04a* 
+ 14w04b* 
+ 14w05a 
+ 14w05b 
+ 14w06a 
+ 14w06b 
+ 14w07a 
+ 14w08a 
+ 14w10a 
+ 14w10b 
+ 14w10c* 
+ 14w11a 
+ 14w11b 
+ 14w17a 
+ 14w18a 
+ 14w18b 
+ 14w19a 
+ 14w20a 
+ 14w20b 
+ 14w21a 
+ 14w21b 
+ 14w25a 
+ 14w25b 
+ 14w26a 
+ 14w26b 
+ 14w26c 
+ 14w27a 
+ 14w27b 
+ 14w28a 
+ 14w28b 
+ 14w29a 
+ 14w29b 
+ 14w30a 
+ 14w30b 
+ 14w30c 
+ 14w31a 
+ 14w32a 
+ 14w32b 
+ 14w32c 
+ 14w32d 
+ 14w33a 
+ 14w33b 
+ 14w33c 
+ 14w34a 
+ 14w34b 
+ 14w34c 
+ 14w34d 
+ pre1 
+ pre2 
+ pre3 
+ 1.8.1 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ 1.8.2 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ pre6 
+ pre7 
+ 1.8.3 
+ 1.8.4 
+ 1.8.5 
+ 1.8.6 
+ 1.8.7 
+ 1.8.8 
+ 1.8.9 
+ 1.9 Combat Update ( Guide ) 
+ 1.9 
+ 15w31a 
+ 15w31b 
+ 15w31c 
+ 15w32a 
+ 15w32b 
+ 15w32c 
+ 15w33a 
+ 15w33b 
+ 15w33c 
+ 15w34a 
+ 15w34b 
+ 15w34c 
+ 15w34d 
+ 15w35a 
+ 15w35b 
+ 15w35c 
+ 15w35d 
+ 15w35e 
+ 15w36a 
+ 15w36b 
+ 15w36c 
+ 15w36d 
+ 15w37a 
+ 15w38a 
+ 15w38b 
+ 15w39a 
+ 15w39b 
+ 15w39c 
+ 15w40a 
+ 15w40b 
+ 15w41a 
+ 15w41b 
+ 15w42a 
+ 15w43a 
+ 15w43b 
+ 15w43c 
+ 15w44a 
+ 15w44b 
+ 15w45a 
+ 15w46a 
+ 15w47a 
+ 15w47b 
+ 15w47c 
+ 15w49a 
+ 15w49b 
+ 15w50a 
+ 15w51a 
+ 15w51b 
+ 16w02a 
+ 16w03a 
+ 16w04a 
+ 16w05a 
+ 16w05b 
+ 16w06a 
+ 16w07a 
+ 16w07b 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ 1.9.1 
+ pre1 
+ pre2 
+ pre3 
+ 1.9.2 
+ 1.9.3 
+ 16w14a 
+ 16w15a 
+ 16w15b 
+ pre1 
+ pre2 
+ pre3 
+ 1.9.4 
+ Collapse Full Release (1.10 – 1.19) 
+ Version history 
+ Development versions 
+ 1.10 Frostburn Update ( Guide ) 
+ 1.10 
+ 16w20a 
+ 16w21a 
+ 16w21b 
+ pre1 
+ pre2 
+ 1.10.1 
+ 1.10.2 
+ 1.11 Exploration Update ( Guide ) 
+ 1.11 
+ 16w32a 
+ 16w32b 
+ 16w33a 
+ 16w35a 
+ 16w36a 
+ 16w38a 
+ 16w39a 
+ 16w39b 
+ 16w39c 
+ 16w40a 
+ 16w41a 
+ 16w42a 
+ 16w43a 
+ 16w44a 
+ pre1 
+ 1.11.1 
+ 16w50a* 
+ 1.11.2 
+ 1.12 World of Color Update ( Guide ) 
+ 1.12 
+ 17w06a 
+ 17w13a* 
+ 17w13b 
+ 17w14a 
+ 17w15a 
+ 17w16a 
+ 17w16b 
+ 17w17a 
+ 17w17b 
+ 17w18a* 
+ 17w18b 
+ pre1 
+ pre2 
+ pre3* 
+ pre4 
+ pre5 
+ pre6 
+ pre7 
+ 1.12.1 
+ 17w31a 
+ pre1 
+ 1.12.2 
+ pre1 
+ pre2 
+ 1.13 Update Aquatic ( Guide ) 
+ 1.13 
+ 17w43a 
+ 17w43b 
+ 17w45a 
+ 17w45b 
+ 17w46a 
+ 17w47a 
+ 17w47b 
+ 17w48a 
+ 17w49a 
+ 17w49b 
+ 17w50a 
+ 18w01a 
+ 18w02a 
+ 18w03a 
+ 18w03b 
+ 18w05a 
+ 18w06a 
+ 18w07a 
+ 18w07b 
+ 18w07c 
+ 18w08a 
+ 18w08b 
+ 18w09a 
+ 18w10a 
+ 18w10b 
+ 18w10c 
+ 18w10d 
+ 18w11a 
+ 18w14a 
+ 18w14b 
+ 18w15a 
+ 18w16a 
+ 18w19a 
+ 18w19b 
+ 18w20a 
+ 18w20b 
+ 18w20c 
+ 18w21a 
+ 18w21b 
+ 18w22a 
+ 18w22b 
+ 18w22c 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ pre6 
+ pre7 
+ pre8 
+ pre9 
+ pre10 
+ 1.13.1 
+ 18w30a 
+ 18w30b 
+ 18w31a 
+ 18w32a 
+ 18w33a 
+ pre1 
+ pre2 
+ 1.13.2 
+ pre1 
+ pre2 
+ 1.14 Village & Pillage ( Guide ) 
+ 1.14 
+ 18w43a 
+ 18w43b 
+ 18w43c 
+ 18w44a 
+ 18w45a 
+ 18w46a 
+ 18w47a 
+ 18w47b 
+ 18w48a 
+ 18w48b 
+ 18w49a 
+ 18w50a 
+ 19w02a 
+ 19w03a 
+ 19w03b 
+ 19w03c 
+ 19w04a 
+ 19w04b 
+ 19w05a 
+ 19w06a 
+ 19w07a 
+ 19w08a 
+ 19w08b 
+ 19w09a 
+ 19w11a 
+ 19w11b 
+ 19w12a 
+ 19w12b 
+ 19w13a 
+ 19w13b* 
+ 19w14a 
+ 19w14b 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ 1.14.1 
+ pre1 
+ pre2 
+ 1.14.2 
+ pre1 
+ pre2 
+ pre3 
+ pre4* 
+ 1.14.3 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ 1.14.4 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ pre6 
+ pre7 
+ 1.15 Buzzy Bees ( Guide ) 
+ 1.15 
+ 19w34a 
+ 19w35a 
+ 19w36a 
+ 19w37a 
+ 19w38a 
+ 19w38b 
+ 19w39a 
+ 19w40a 
+ 19w41a 
+ 19w42a 
+ 19w44a 
+ 19w45a 
+ 19w45b 
+ 19w46a 
+ 19w46b 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ pre6 
+ pre7 
+ 1.15.1 
+ pre1 
+ 1.15.2 
+ pre1 
+ pre2 
+ 1.16 Nether Update ( Guide ) 
+ 1.16* 
+ 20w06a 
+ 20w07a 
+ 20w08a 
+ 20w09a 
+ 20w10a 
+ 20w11a 
+ 20w12a 
+ 20w13a 
+ 20w13b 
+ 20w14a 
+ 20w15a 
+ 20w16a 
+ 20w17a 
+ 20w18a 
+ 20w19a 
+ 20w20a 
+ 20w20b 
+ 20w21a 
+ 20w22a 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ pre6 
+ pre7 
+ pre8 
+ rc1 
+ 1.16.1 
+ 1.16.2 
+ 20w27a 
+ 20w28a 
+ 20w29a 
+ 20w30a 
+ pre1 
+ pre2 
+ pre3 
+ rc1 
+ rc2 
+ 1.16.3 
+ rc1 
+ 1.16.4 
+ pre1 
+ pre2 
+ rc1 
+ 1.16.5 
+ rc1* 
+ 1.17 Caves & Cliffs : Part I ( Guide ) 
+ 1.17 
+ 20w45a 
+ 20w46a 
+ 20w48a 
+ 20w49a 
+ 20w51a 
+ 21w03a 
+ 21w05a 
+ 21w05b 
+ 21w06a 
+ 21w07a 
+ 21w08a 
+ 21w08b 
+ 21w10a 
+ 21w11a 
+ 21w13a 
+ 21w14a 
+ 21w15a 
+ 21w16a 
+ 21w17a 
+ 21w18a 
+ 21w19a 
+ 21w20a 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ rc1 
+ rc2 
+ 1.17.1 
+ pre1 
+ pre2 
+ pre3 
+ rc1 
+ rc2 
+ 1.18 Caves & Cliffs : Part II ( Guide ) 
+ 1.18 
+ Experimental
+ 1 
+ 2 
+ 3 
+ 4 
+ 5 
+ 6 
+ 7 
+ 21w37a 
+ 21w38a 
+ 21w39a 
+ 21w40a 
+ 21w41a 
+ 21w42a 
+ 21w43a 
+ 21w44a 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ pre6 
+ pre7 
+ pre8 
+ rc1 
+ rc2 
+ rc3 
+ rc4 
+ 1.18.1 
+ pre1 
+ rc1 
+ rc2 
+ rc3 
+ 1.18.2 
+ 22w03a 
+ 22w05a 
+ 22w06a 
+ 22w07a 
+ pre1 
+ pre2 
+ pre3 
+ rc1 
+ 1.19 The Wild Update ( Guide ) 
+ 1.19 
+ Experimental 1 
+ 22w11a 
+ 22w12a 
+ 22w13a 
+ 22w14a 
+ 22w15a 
+ 22w16a 
+ 22w16b 
+ 22w17a 
+ 22w18a 
+ 22w19a 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ rc1 
+ rc2 
+ 1.19.1 
+ 22w24a 
+ pre1 
+ rc1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ pre6 
+ rc2 
+ rc3 
+ 1.19.2 
+ rc1 
+ rc2 
+ 1.19.3 
+ 22w42a 
+ 22w43a 
+ 22w44a 
+ 22w45a 
+ 22w46a 
+ pre1 
+ pre2 
+ pre3 
+ rc1 
+ rc2 
+ rc3 
+ 1.19.4 
+ 23w03a 
+ 23w04a 
+ 23w05a 
+ 23w06a 
+ 23w07a 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ rc1 
+ rc2 
+ rc3 
+ Expand Full Release (1.20+) 
+ Version history 
+ Development versions 
+ 1.20 Trails & Tales ( Guide ) 
+ 1.20 
+ 23w12a 
+ 23w13a 
+ 23w14a 
+ 23w16a 
+ 23w17a 
+ 23w18a 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ pre6 
+ pre7 
+ rc1 
+ 1.20.1 
+ rc1 
+ 1.20.2 
+ 23w31a 
+ 23w32a 
+ 23w33a 
+ 23w35a 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ rc1 
+ rc2 
+ 1.20.3 Bats and Pots ( Guide ) 
+ 1.20.3 
+ 23w40a 
+ 23w41a 
+ 23w42a 
+ 23w43a 
+ 23w43b 
+ 23w44a 
+ 23w45a 
+ 23w46a 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ rc1 
+ 1.20.4 
+ rc1 
+ 1.20.5 Armored Paws ( Guide ) 
+ 1.20.5 
+ 23w51a 
+ 23w51b 
+ 24w03a 
+ 24w03b 
+ 24w04a 
+ 24w05a 
+ 24w05b 
+ 24w06a 
+ 24w07a 
+ 24w09a 
+ 24w10a 
+ 24w11a 
+ 24w12a 
+ 24w13a 
+ 24w14a 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ rc1 
+ rc2 
+ rc3 
+ 1.20.6 
+ rc1 
+ 1.21 
+ 1.21 
+ 24w18a 
+ 24w19a 
+ 24w19b 
+ 24w20a 
+ 24w21a 
+ 24w21b 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ rc1 
+ 1.21.1 
+ rc1 
+ 1.21.2 Bundles of Bravery ( Guide ) 
+ 1.21.2 
+ 24w33a 
+ 24w34a 
+ 24w35a 
+ 24w36a 
+ 24w37a 
+ 24w38a 
+ 24w39a 
+ 24w40a 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ rc1 
+ rc2 
+ 1.21.3 
+ 1.21.4 The Garden Awakens ( Guide ) 
+ 1.21.4 
+ 24w44a 
+ 24w45a 
+ 24w46a 
+ pre1 
+ pre2 
+ pre3 
+ rc1 
+ rc2 
+ rc3 
+ 1.21.5 Spring to Life ( Guide ) 
+ 1.21.5 
+ 25w02a 
+ 25w03a 
+ 25w04a 
+ 25w05a 
+ 25w06a 
+ 25w07a 
+ 25w08a 
+ 25w09a 
+ 25w09b 
+ 25w10a 
+ pre1 
+ pre2 
+ pre3 
+ rc1 
+ rc2 
+ 1.21.6 Chase the Skies ( Guide ) 
+ 1.21.6 
+ 25w15a 
+ 25w16a 
+ 25w17a 
+ 25w18a 
+ 25w19a 
+ 25w20a 
+ 25w21a 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ rc1 
+ 1.21.7 
+ rc1 
+ rc2 
+ 1.21.8 
+ rc1 
+ 1.21.9 The Copper Age ( Guide ) 
+ 1.21.9 
+ 25w31a 
+ 25w32a 
+ 25w33a 
+ 25w34a 
+ 25w34b 
+ 25w35a 
+ 25w36a 
+ 25w36b 
+ 25w37a 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ rc1 
+ 1.21.10 
+ rc1 
+ Mounts of Mayhem ( Guide ) 
+ 1.21.11 
+ 25w41a 
+ 25w42a 
+ 25w43a 
+ 25w44a 
+ 25w45a 
+ 25w46a 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ rc1 
+ rc2 
+ rc3 
+ Collapse Full Release (2026–present) 
+ Version history 
+ Development versions 
+ Tiny Takeover ( Guide ) 
+ 26.1 
+ snap1 
+ snap2 
+ snap3 
+ snap4 
+ snap5 
+ snap6 
+ snap7 
+ snap8 
+ snap9 
+ snap10 
+ snap11 
+ pre1 
+ pre2 
+ pre3 
+ rc1 
+ rc2 
+ rc3 
+ 26.1.1 
+ rc1 
+ 26.1.2 
+ rc1 
+ Chaos Cubed ( Guide ) 
+ 26.2 
+ snap1 
+ snap2 
+ snap3 
+ * indicates a reupload 
+ Collapse Minecraft : Bedrock Edition versions 
+ Versions
+ Alpha Demo 
+ Development cycle
+ Alpha (2011–16) 
+ Full Release (2016–present) 
+ Bedrock Edition (2017–present) 
+ Asset updates
+ Texture Update (2019) 
+ Expand Alpha 
+ Version history 
+ Development versions 
+ Pre-release
+ Demo 
+ 0.1
+ v0.1.0 
+ Demo 
+ v0.1.1 
+ Demo 
+ j 
+ j Demo 
+ v0.1.2 
+ j 
+ j Demo 
+ Demo 
+ v0.1.3 
+ j 
+ Demo 
+ j Demo 
+ 0.2
+ v0.2.0 
+ j 
+ j Demo 
+ Demo 
+ v0.2.1 
+ j 
+ j Demo 
+ 2 
+ Demo 
+ v0.2.2 
+ 0.3
+ v0.3.0 
+ v0.3.2 
+ j 
+ v0.3.3 
+ j 
+ 0.4
+ v0.4.0 
+ j 
+ rev 2 
+ rev 3 
+ 0.5
+ v0.5.0 
+ j 
+ 0.6
+ v0.6.0 
+ v0.6.1 
+ 0.7
+ v0.7.0 
+ v0.6.2 
+ v0.7.1 
+ v0.7.2 
+ v0.7.3 
+ v0.7.4 
+ v0.7.5 
+ v0.7.6 
+ 0.8
+ v0.8.0 
+ build 1 
+ build 2 
+ build 3 
+ build 4 
+ build 5 
+ build 6 
+ build 7 
+ build 8 
+ v0.8.1 
+ v0.8.2 
+ 0.9
+ v0.9.0 
+ build 1 
+ build 2 
+ build 3 
+ build 4 
+ build 5 
+ build 6 
+ build 7 
+ build 8 
+ build 9 (RC1) 
+ build 10 (RC2) 
+ build 11 (RC3) 
+ build 12 (RC4) 
+ v0.9.1 
+ v0.9.2 
+ v0.9.3 
+ v0.9.4 
+ v0.9.5 
+ 0.10
+ v0.10.0 
+ build 1 
+ build 2 
+ build 3 
+ build 4 
+ build 5 
+ build 6 
+ build 7 
+ build 8 
+ build 9 
+ v0.10.1 
+ v0.10.2 
+ v0.10.3 
+ v0.10.4 
+ v0.10.5 
+ 0.11
+ v0.11.0 
+ build 1 
+ build 2 
+ build 3 
+ build 4 
+ build 5 
+ build 6 
+ build 7 
+ build 8 
+ build 9 
+ build 10 
+ build 11 
+ build 12 
+ build 13 
+ build 14 (RC) 
+ v0.11.1 
+ v0.11.2 
+ 0.12
+ v0.12.0 
+ v0.12.0.1 
+ v0.12.1 
+ build 1 
+ build 2 
+ build 3 
+ build 4 
+ build 5 
+ build 6 
+ build 7 
+ build 8 
+ build 9 
+ build 10 
+ build 11 
+ build 12 
+ build 13 
+ v0.12.2 
+ v0.12.3 
+ 0.13
+ v0.13.0 
+ build 1 
+ build 2 
+ build 3 
+ build 4 
+ build 5 
+ v0.13.1 
+ v0.13.2 
+ 0.14 Overworld Update 
+ v0.14.0 
+ build 1 
+ build 2 
+ build 3 
+ build 4 
+ build 5 
+ build 6 
+ build 7 
+ v0.14.1 
+ v0.14.2 
+ v0.14.3 
+ 0.15 Friendly Update 
+ v0.15.0 
+ Realms 
+ build 1 
+ build 2 
+ build 4 
+ build 1 
+ build 2 
+ build 3 
+ v0.15.1 
+ build 1 
+ v0.15.2 
+ v0.15.3 
+ v0.15.4 
+ v0.15.5 
+ v0.15.6 
+ v0.15.7 
+ v0.15.8 
+ v0.15.9 
+ v0.15.10 
+ 0.16 Boss Update 
+ v0.16.0 
+ build 1 
+ build 2 
+ build 3 
+ build 4 
+ build 5 
+ v0.16.1 
+ v0.16.2 
+ Expand Full Release 
+ Version history 
+ Development versions 
+ 1.0 Ender Update 
+ 1.0.0 
+ alpha 0.17.0.1 
+ alpha 0.17.0.2 
+ alpha 1.0.0.0 
+ alpha 1.0.0.1 
+ alpha 1.0.0.2 
+ alpha 1.0.0.7 
+ 1.0.1 
+ 1.0.2 
+ 1.0.3 
+ alpha 1.0.3.0 
+ 1.0.4 
+ alpha 1.0.4.0 
+ alpha 1.0.4.1 
+ 1.0.5 
+ alpha 1.0.5.0 
+ alpha 1.0.5.3 
+ alpha 1.0.5.11 
+ 1.0.6 
+ alpha 1.0.6.0 
+ 1.0.7 
+ 1.0.8 
+ 1.0.9 
+ 1.1 Discovery Update 
+ 1.1.0 
+ alpha 1.1.0.0 
+ alpha 1.1.0.1 
+ alpha 1.1.0.3 
+ alpha 1.1.0.4 
+ alpha 1.1.0.5 
+ alpha 1.1.0.8 
+ alpha 1.1.0.9 
+ 1.1.1 
+ alpha 1.1.1.0 
+ alpha 1.1.1.1 
+ 1.1.2 
+ 1.1.3 
+ alpha 1.1.3.0 
+ alpha 1.1.3.1 
+ 1.1.4 
+ 1.1.5 
+ 1.1.7 
+ Collapse Bedrock Edition (1.2.x – 1.9.x) 
+ Version history 
+ Development versions 
+ 1.2 Better Together Update 
+ 1.2.0 
+ beta 1.2.0.2 
+ beta 1.2.0.7 
+ beta 1.2.0.9 
+ beta 1.2.0.11 
+ beta 1.2.0.15 
+ beta 1.2.0.18 
+ beta 1.2.0.22 
+ beta 1.2.0.25 
+ beta 1.2.0.31 
+ 1.2.1 
+ 1.2.2 
+ 1.2.3 
+ beta 1.2.3.3 
+ 1.2.5 
+ beta 1.2.5.0 
+ beta 1.2.5.12 
+ beta 1.2.5.15 
+ 1.2.6 
+ beta 1.2.6.2 
+ 1.2.6.1 
+ 1.2.7 
+ 1.2.8 
+ 1.2.9 
+ 1.2.10 
+ beta 1.2.10.1 
+ 1.2.11 
+ 1.2.13 
+ beta 1.2.13.5 
+ beta 1.2.13.6 
+ 1.2.14 
+ 1.2.15 
+ 1.2.16 
+ 1.4 Update Aquatic (Phase One) 
+ 1.4.0 
+ beta 1.2.13.8 
+ beta 1.2.13.10 
+ beta 1.2.13.11 
+ beta 1.2.13.12 
+ beta 1.2.14.2 
+ beta 1.2.14.3 
+ beta 1.2.20.1 
+ beta 1.2.20.2 
+ 1.4.1 
+ 1.4.2 
+ 1.4.3 
+ 1.4.4 
+ 1.5 Update Aquatic (Phase Two) 
+ 1.5.0 
+ beta 1.5.0.0 
+ beta 1.5.0.1 
+ beta 1.5.0.4 
+ beta 1.5.0.7 
+ beta 1.5.0.10 
+ 1.5.1 
+ 1.5.2 
+ 1.5.3 
+ 1.6 ( Guide ) 
+ 1.6.0 
+ beta 1.6.0.1 
+ beta 1.6.0.5 
+ beta 1.6.0.6 
+ beta 1.6.0.8 
+ beta 1.6.0.30 
+ 1.6.1 
+ 1.6.2 
+ 1.7 ( Guide ) 
+ 1.7.0 
+ beta 1.7.0.2 
+ beta 1.7.0.3 
+ beta 1.7.0.5 
+ beta 1.7.0.7 
+ beta 1.7.0.9 
+ 1.7.1 
+ 1.8 ( Guide ) 
+ 1.8.0 
+ beta 1.8.0.8 
+ beta 1.8.0.10 
+ beta 1.8.0.11 
+ beta 1.8.0.13 
+ beta 1.8.0.14 
+ 1.8.1 
+ 1.9 ( Guide ) 
+ 1.9.0 
+ beta 1.9.0.0 
+ beta 1.9.0.2 
+ beta 1.9.0.3 
+ beta 1.9.0.5 
+ Expand Bedrock Edition (1.10.x – 1.19.x) 
+ Version history 
+ Development versions 
+ 1.10 Texture Update ( Guide ) 
+ 1.10.0 
+ beta 1.10.0.3 
+ beta 1.10.0.4 
+ 1.10.1 
+ 1.11 Village & Pillage ( Guide ) 
+ 1.11.0 
+ beta 1.11.0.1 
+ beta 1.11.0.3 
+ beta 1.11.0.4 
+ beta 1.11.0.5 
+ beta 1.11.0.7 
+ beta 1.11.0.8 
+ beta 1.11.0.9 
+ beta 1.11.0.10 
+ 1.11.1 
+ 1.11.2 
+ 1.11.3 
+ 1.11.4 
+ 1.12 ( Guide ) 
+ 1.12.0 
+ beta 1.12.0.2 
+ beta 1.12.0.3 
+ beta 1.12.0.4 
+ beta 1.12.0.6 
+ beta 1.12.0.9 
+ beta 1.12.0.10 
+ beta 1.12.0.11 
+ beta 1.12.0.12 
+ beta 1.12.0.13 
+ beta 1.12.0.14 
+ 1.12.1 
+ 1.13 ( Guide ) 
+ 1.13.0 
+ beta 1.13.0.1 
+ beta 1.13.0.2 
+ beta 1.13.0.3 
+ beta 1.13.0.4 
+ beta 1.13.0.5 
+ beta 1.13.0.6 
+ beta 1.13.0.9 
+ beta 1.13.0.13 
+ beta 1.13.0.15 
+ beta 1.13.0.16 
+ beta 1.13.0.17 
+ beta 1.13.0.18 
+ 1.13.1 
+ 1.13.2 
+ 1.13.3 
+ 1.14 Buzzy Bees ( Guide ) 
+ 1.14.0 
+ beta 1.14.0.1 
+ beta 1.14.0.2 
+ beta 1.14.0.3 
+ beta 1.14.0.4 
+ beta 1.14.0.5 
+ beta 1.14.0.6 
+ 1.14.0.12 
+ 1.14.1 
+ beta 1.14.0.50 
+ beta 1.14.0.51 
+ beta 1.14.0.52 
+ beta 1.14.1.2 
+ beta 1.14.1.3 
+ 1.14.20 
+ beta 1.14.2.50 
+ beta 1.14.2.51 
+ beta 1.14.25.1 
+ 1.14.21 
+ 1.14.30 
+ beta 1.14.30.51 
+ 1.14.41 
+ 1.14.60 
+ 1.16 Nether Update ( Guide ) 
+ 1.16.0 
+ beta 1.15.0.51 
+ beta 1.15.0.53 
+ beta 1.15.0.54 
+ beta 1.15.0.55 
+ beta 1.15.0.56 
+ beta 1.16.0.51 
+ beta 1.16.0.52 
+ beta 1.16.0.53 
+ beta 1.16.0.54 
+ beta 1.16.0.55 
+ beta 1.16.0.57 
+ beta 1.16.0.58 
+ beta 1.16.0.59 
+ beta 1.16.0.60 
+ beta 1.16.0.61 
+ beta 1.16.0.63 
+ beta 1.16.0.64 
+ beta 1.16.0.65 
+ beta 1.16.0.66 
+ beta 1.16.0.67 
+ beta 1.16.0.68 
+ 1.16.1 
+ 1.16.1.03 
+ 1.16.1.04 
+ 1.16.10 
+ 1.16.20 
+ beta 1.16.20.50 
+ beta 1.16.20.51 
+ beta 1.16.20.52 
+ beta 1.16.20.53 
+ beta 1.16.20.54 
+ 1.16.21 
+ 1.16.40 
+ 1.16.42 
+ 1.16.50 
+ 1.16.60 
+ 1.16.61 
+ 1.16.100 
+ beta 1.16.100.50 
+ beta 1.16.100.51 
+ beta 1.16.100.52 
+ beta 1.16.100.53 
+ beta 1.16.100.54 
+ beta 1.16.100.55 
+ beta 1.16.100.56 
+ beta 1.16.100.57 
+ beta 1.16.100.58 
+ beta 1.16.100.59 
+ beta 1.16.100.60 
+ 1.16.101 
+ 1.16.200 
+ RTX Beta 
+ beta 1.15.0.8 
+ beta 1.15.0.9 
+ beta 1.15.0.11 
+ beta 1.16.30.52 
+ beta 1.16.30.53 
+ beta 1.16.30.56 
+ beta 1.16.30.57 
+ beta 1.16.200.50 
+ beta 1.16.200.51 
+ beta 1.16.200.52 
+ beta 1.16.200.53 
+ beta 1.16.200.54 
+ beta 1.16.200.55 
+ beta 1.16.200.56 
+ beta 1.16.200.57 
+ 1.16.201 
+ 1.16.210 
+ beta 1.16.210.50 
+ beta 1.16.210.51 
+ beta 1.16.210.53 
+ beta 1.16.210.54 
+ beta 1.16.210.55 
+ beta 1.16.210.56 
+ beta 1.16.210.57 
+ beta 1.16.210.58 
+ beta 1.16.210.59 
+ beta 1.16.210.60 
+ beta 1.16.210.61 
+ 1.16.220 
+ beta 1.16.220.50 
+ beta 1.16.220.51 
+ beta 1.16.220.52 
+ 1.16.221 
+ 1.17 Caves & Cliffs : Part I ( Guide ) 
+ 1.17.0 
+ beta 1.16.230.50 
+ beta 1.16.230.52 
+ beta 1.16.230.54 
+ beta 1.16.230.56 
+ beta 1.17.0.50 
+ beta 1.17.0.52 
+ beta 1.17.0.54 
+ beta 1.17.0.56 
+ beta 1.17.0.58 
+ 1.17.1 
+ 1.17.2 
+ 1.17.10 
+ beta 1.17.10.20 
+ beta 1.17.10.21 
+ beta 1.17.10.22 
+ beta 1.17.10.23 
+ 1.17.11 
+ 1.17.30 
+ beta 1.17.20.20 
+ beta 1.17.20.21 
+ beta 1.17.20.22 
+ beta 1.17.20.23 
+ beta 1.17.30.20 
+ beta 1.17.30.21 
+ beta 1.17.30.22 
+ beta 1.17.30.23 
+ beta 1.17.30.24 
+ beta 1.17.30.25 
+ 1.17.32 
+ 1.17.33 
+ 1.17.34 
+ 1.17.40 
+ beta 1.17.40.20 
+ beta 1.17.40.21 
+ beta 1.17.40.23 
+ 1.17.41 
+ 1.18 Caves & Cliffs : Part II ( Guide ) 
+ 1.18.0 
+ beta 1.18.0.20 
+ beta 1.18.0.21 
+ beta 1.18.0.22 
+ beta 1.18.0.23 
+ beta 1.18.0.24 
+ beta 1.18.0.25* 
+ beta 1.18.0.27 
+ 1.18.1 
+ 1.18.2 
+ 1.18.10 
+ beta 1.18.10.20 
+ beta 1.18.10.21 
+ beta 1.18.10.22 
+ beta 1.18.10.24 
+ beta 1.18.10.26 
+ beta 1.18.10.27 
+ beta 1.18.10.28 
+ 1.18.11 
+ 1.18.12 
+ 1.18.30 
+ beta 1.18.20.21 
+ beta 1.18.20.23 
+ beta 1.18.20.25 
+ beta 1.18.20.27 
+ beta 1.18.20.29 
+ beta 1.18.30.20 
+ beta 1.18.30.22 
+ beta 1.18.30.26 
+ beta 1.18.30.28 
+ beta 1.18.30.30 
+ beta 1.18.30.32 
+ 1.18.31 
+ 1.18.32 
+ 1.18.33 
+ 1.19 The Wild Update ( Guide ) 
+ 1.19.0 
+ beta 1.19.0.20 
+ beta 1.19.0.24 
+ beta 1.19.0.26 
+ beta 1.19.0.28 
+ beta 1.19.0.30 
+ beta 1.19.0.32 
+ beta 1.19.0.34 
+ Preview 1.19.0.68 
+ 1.19.2 
+ 1.19.10 
+ beta 1.19.10.20 
+ beta 1.19.10.21 
+ beta 1.19.10.22 
+ beta 1.19.10.23 
+ beta 1.19.10.24 
+ 1.19.11 
+ 1.19.20 
+ beta 1.19.20.20 
+ beta 1.19.20.22 
+ beta 1.19.20.23 
+ beta 1.19.20.24 
+ 1.19.21 
+ 1.19.22 
+ 1.19.30 
+ beta 1.19.30.20 
+ beta 1.19.30.21 
+ beta 1.19.30.22 
+ beta 1.19.30.23 
+ Preview 1.19.30.24 
+ beta 1.19.30.25 
+ 1.19.31 
+ 1.19.40 
+ beta 1.19.40.20 
+ beta 1.19.40.21 
+ beta 1.19.40.22 
+ beta 1.19.40.23 
+ beta 1.19.40.24 
+ 1.19.41 
+ 1.19.50 
+ beta 1.19.50.20 
+ beta 1.19.50.21 
+ beta 1.19.50.22 
+ beta 1.19.50.23 
+ beta 1.19.50.24 
+ beta 1.19.50.25 
+ 1.19.51 
+ 1.19.60 
+ beta 1.19.60.20 
+ beta 1.19.60.22 
+ beta 1.19.60.23 
+ beta 1.19.60.24 
+ beta 1.19.60.25 
+ beta 1.19.60.26 
+ beta 1.19.60.27 
+ 1.19.62 
+ 1.19.63 
+ 1.19.70 
+ beta 1.19.70.20 
+ beta 1.19.70.21 
+ beta 1.19.70.22 
+ beta 1.19.70.23 
+ beta 1.19.70.24 
+ beta 1.19.70.26 
+ 1.19.71 
+ 1.19.72 
+ 1.19.73 
+ 1.19.80 
+ beta 1.19.80.20 
+ beta 1.19.80.21 
+ beta 1.19.80.22 
+ beta 1.19.80.23 
+ beta 1.19.80.24 
+ 1.19.81 
+ 1.19.83 
+ Expand Bedrock Edition (1.20.x – 1.21.x) 
+ Trails & Tales ( Guide ) 
+ 1.20.0 
+ beta 1.20.0.20 
+ beta 1.20.0.21 
+ beta 1.20.0.22 
+ beta 1.20.0.23 
+ beta 1.20.0.24 
+ beta 1.20.0.25 
+ 1.20.1 
+ 1.20.10 
+ beta 1.20.10.20 
+ beta 1.20.10.21 
+ beta 1.20.10.23 
+ beta 1.20.10.24 
+ beta 1.20.10.25 
+ 1.20.12 
+ 1.20.13 
+ 1.20.14 
+ 1.20.15 
+ 1.20.30 
+ beta 1.20.20.20 
+ beta 1.20.20.21 
+ beta 1.20.20.22 
+ beta 1.20.20.23 
+ beta 1.20.30.20 
+ beta 1.20.30.21 
+ beta 1.20.30.22 
+ beta 1.20.30.23 
+ beta 1.20.30.24 
+ beta 1.20.30.25 
+ 1.20.31 
+ 1.20.32 
+ 1.20.40 
+ beta 1.20.40.20 
+ beta 1.20.40.21 
+ beta 1.20.40.22 
+ 1.20.41 
+ Bats and Pots ( Guide ) 
+ 1.20.50 
+ beta 1.20.50.20 
+ beta 1.20.50.21 
+ beta 1.20.50.22 
+ beta 1.20.50.23 
+ beta 1.20.50.24 
+ 1.20.51 
+ 1.20.60 
+ beta 1.20.60.20 
+ beta 1.20.60.21 
+ beta 1.20.60.22 
+ beta 1.20.60.23 
+ beta 1.20.60.24 
+ beta 1.20.60.25 
+ beta 1.20.60.26 
+ 1.20.62 
+ 1.20.70 
+ beta 1.20.70.20 
+ beta 1.20.70.21 
+ beta 1.20.70.22 
+ beta 1.20.70.24 
+ beta 1.20.70.25 
+ 1.20.71 
+ 1.20.72 
+ 1.20.73 
+ Armored Paws ( Guide ) 
+ 1.20.80 
+ beta 1.20.80.20 
+ beta 1.20.80.21 
+ beta 1.20.80.22 
+ beta 1.20.80.23 
+ beta 1.20.80.24 
+ 1.20.81 
+ Tricky Trials ( Guide ) 
+ 1.21.0 
+ beta 1.21.0.20 
+ beta 1.21.0.21 
+ beta 1.21.0.22 
+ beta 1.21.0.23 
+ beta 1.21.0.24 
+ beta 1.21.0.25 
+ beta 1.21.0.26 
+ 1.21.1 
+ 1.21.2 
+ 1.21.3 
+ 1.21.20 
+ beta 1.21.10.20 
+ beta 1.21.10.21 
+ beta 1.21.10.22 
+ beta 1.21.10.23 
+ beta 1.21.10.24 
+ beta 1.21.20.21 
+ beta 1.21.20.22 
+ beta 1.21.20.23 
+ beta 1.21.20.24 
+ 1.21.21 
+ 1.21.22 
+ 1.21.23 
+ 1.21.30 
+ beta 1.21.30.21 
+ beta 1.21.30.22 
+ beta 1.21.30.23 
+ beta 1.21.30.24 
+ beta 1.21.30.25 
+ 1.21.31* 
+ Bundles of Bravery ( Guide ) 
+ 1.21.40 
+ beta 1.21.40.20 
+ beta 1.21.40.21 
+ beta 1.21.40.22 
+ beta 1.21.40.23 
+ beta 1.21.40.25 
+ 1.21.41 
+ 1.21.42 
+ 1.21.43 
+ 1.21.44 
+ The Garden Awakens ( Guide ) 
+ 1.21.50 
+ beta 1.21.50.20* 
+ beta 1.21.50.24 
+ beta 1.21.50.25 
+ beta 1.21.50.26 
+ beta 1.21.50.28 
+ beta 1.21.50.29 
+ beta 1.21.50.30 
+ 1.21.51 
+ 1.21.60 
+ beta 1.21.60.21 
+ beta 1.21.60.23 
+ beta 1.21.60.24 
+ beta 1.21.60.25 
+ beta 1.21.60.27 
+ beta 1.21.60.28 
+ 1.21.61 
+ 1.21.62 
+ Spring to Life ( Guide ) 
+ 1.21.70 
+ beta 1.21.70.20 
+ beta 1.21.70.22 
+ beta 1.21.70.23 
+ beta 1.21.70.24 
+ beta 1.21.70.25 
+ beta 1.21.70.26 
+ 1.21.71 
+ 1.21.72 
+ 1.21.73 
+ 1.21.80 
+ beta 1.21.80.20 
+ beta 1.21.80.21 
+ beta 1.21.80.22 
+ beta 1.21.80.25 
+ beta 1.21.80.27 
+ beta 1.21.80.28 
+ 1.21.81 
+ 1.21.82 
+ 1.21.84 
+ Chase the Skies ( Guide ) 
+ 1.21.90 
+ beta 1.21.90.20 
+ beta 1.21.90.21 
+ beta 1.21.90.23 
+ beta 1.21.90.25 
+ beta 1.21.90.26 
+ beta 1.21.90.27 
+ beta 1.21.90.28 
+ 1.21.91 
+ 1.21.92 
+ 1.21.93 
+ 1.21.94 
+ 1.21.100 
+ beta 1.21.100.20 
+ beta 1.21.100.21 
+ beta 1.21.100.22 
+ beta 1.21.100.23 
+ beta 1.21.100.24 
+ 1.21.101 
+ The Copper Age ( Guide ) 
+ 1.21.111 
+ beta 1.21.110.20 
+ beta 1.21.110.22 
+ beta 1.21.110.23 
+ beta 1.21.110.24 
+ beta 1.21.110.25 
+ beta 1.21.110.26 
+ 1.21.112 
+ 1.21.113 
+ 1.21.114 
+ 1.21.120 
+ beta 1.21.120.20 
+ beta 1.21.120.21 
+ beta 1.21.120.22 
+ beta 1.21.120.23 
+ beta 1.21.120.24 
+ beta 1.21.120.25 
+ 1.21.121 
+ 1.21.122 
+ 1.21.123 
+ 1.21.124 
+ Mounts of Mayhem ( Guide ) 
+ 1.21.130 
+ beta 1.21.130.20 
+ beta 1.21.130.22 
+ beta 1.21.130.24 
+ beta 1.21.130.25 
+ beta 1.21.130.26 
+ beta 1.21.130.27 
+ beta 1.21.130.28 
+ 1.21.131 
+ 1.21.132 
+ 26.0 
+ beta 26.0.23
+ beta 26.0.24 
+ beta 26.0.25 
+ beta 26.0.26 
+ beta 26.0.27 
+ beta 26.0.28 
+ beta 26.0.29 
+ 26.1 
+ 26.2 
+ 26.3 
+ Collapse Bedrock Edition (2026-present) 
+ Version history 
+ Development versions 
+ Tiny Takeover ( Guide ) 
+ 26.10 
+ beta 26.10.20 
+ beta 26.10.21 
+ beta 26.10.23 
+ beta 26.10.24 
+ beta 26.10.25 
+ beta 26.10.26 
+ beta 26.10.27 
+ 26.11 
+ 26.12 
+ 26.13 
+ 26.20 
+ beta 26.20.20 
+ beta 26.20.21 
+ beta 26.20.22 
+ Preview 26.20.23
+ beta 26.20.24 
+ beta 26.20.26 
+ beta 26.20.27 
+ beta 26.20.28 
+ 26.21 
+ 26.22 
+ 26.23 
+ Chaos Cubed ( Guide ) 
+ 26.30 
+ beta 26.30.20 
+ beta 26.30.25
+ Preview 26.30.26 
+ beta 26.30.27 
+ beta 26.30.28 
+ beta 26.30.29 
+ beta 26.30.31 
+ beta 26.30.32 
+ 26.31 
+ 26.32 
+ 26.33 
+ 26.34 
+ 26.35 
+ 26.40 
+ beta 26.40.20 
+ beta 26.40.22 
+ beta 26.40.26 
+ beta 26.40.27 
+ beta 26.40.30 
+ beta 26.40.31 
+ 26.41 
+ 26.42 
+ 26.44 
+ 26.45 
+ Wilderness Bound ( Guide ) 
+ 26.50 ‌ [ upcoming ] 
+ beta 26.50.20 
+ beta 26.50.22 
+ beta 26.50.24 
+ beta 26.50.25 
+ beta 26.50.26 
+ beta 26.50.27 
+ 26.60 ‌ [ upcoming ] 
+ beta 26.60.21 
+ Collapse Minecraft Education versions 
+ Version history 
+ Game client 
+ 1.0
+ 1.0.0 
+ 0.14.2 
+ 0.16.0 
+ 1.0.1 
+ 1.0.21 
+ 1.0.2 x Chemistry Update 
+ 1.0.27 
+ 1.0.28 
+ 1.4 Update Aquatic 
+ 1.4 * 
+ 1.7 Code Builder Update 
+ 1.7 
+ 1.9 Spring Release 
+ 1.9 
+ 1.8.0 
+ 1.12 Back to School Update 
+ 1.12.0 
+ 1.12.1 
+ 1.12.5 Library Update 
+ 1.12.5 
+ 1.12.3 
+ 1.12.60 
+ 1.14 Chromebook Release 
+ 1.14.31 
+ 1.14.30 
+ 1.14.32 
+ 1.14.50 Learn to Code Update 
+ 1.14.50 
+ 1.14.40 
+ 1.14.70 Camps & Clubs 
+ 1.14.70 
+ 1.14.60 
+ 1.17.30 GOAT Update 
+ 1.17.30* 
+ 1.17.30.2 
+ 1.17.31 
+ 1.17.32 
+ 1.18.32 Mobile, Multiplayer & More 
+ 1.18.32 
+ 1.18.10.04 
+ 1.18.30.0 
+ 1.18.31.0 
+ 1.18.42 
+ 1.18.45 
+ 1.19.52 The Wild Update 
+ 1.19.52 
+ 1.19.50.0 
+ 1.19.51.0 
+ 1.19.51.1 
+ 1.19.51.2 
+ 1.19.52.0 
+ 1.19.53 
+ 1.20.12 Trails & Tales 
+ 1.20.12 
+ 1.20.10.0 
+ 1.20.11.0 
+ 1.20.12.0 
+ Classroom Mode 
+ Classroom Mode 
+ Release 
+ 1.60 
+ 1.61 
+ 1.7 
+ 1.81 
+ Code Connection 
+ Code Connection 
+ Release 
+ Beta 
+ 1.40 
+ 1.41 
+ 1.50 
+ Categories 
+ Categories : 
+ Named updates 
+ Languages 
+ Ελληνικά 
+ Español 
+ Italiano 
+ 日本語 
+ Português 
+ Русский 
+ Українська 
+ 中文 
+ Community content is available under CC BY-NC-SA unless otherwise noted. 
+ More Fandoms
+ Fantasy 
+ Minecraft 
+ Advertisement
+ Advertisement
+ Advertisement
+ Advertisement
+ Explore properties 
+ Fandom 
+ Fanatical 
+ GameSpot 
+ Metacritic 
+ TV Guide 
+ Honest Entertainment 
+ Follow Us 
+ Overview 
+ What is Fandom? 
+ Essentials 
+ About 
+ Careers 
+ Press 
+ Contact 
+ Terms of Use 
+ Privacy Policy 
+ Digital Services Act 
+ Global Sitemap 
+ Local Sitemap 
+ Cookie Preferences 
+ Community 
+ Community Central 
+ Support 
+ Help 
+ Accessibility Statement 
+ Advertise 
+ Media Kit 
+ Contact 
+ Fandom Apps 
+ Take your favorite fandoms with you and never miss a beat. 
+ Minecraft Wiki is a Fandom Games Community. 
+ View Mobile Site 
+ Unlock Your Utilities 
+ Create an account to access exclusive tools and personalized features. 
+ Sign In 
+ Don't have an account? Register now 
+ Search this wiki Search all wikis Please help us personalize your experience! I'm an adult I'm a kid 
+ Cookie Preferences When you visit our website, we store cookies on your browser to collect information. The information collected might relate to you, your preferences or your device, and is mostly used to make the site work as you expect it to and to provide a more personalized web experience. Click on the different category headings to find out more. For more information about the First and Third Party Cookies used please follow this link.
+ Privacy Policy Allow All Categories & Purposes List Strictly Necessary Cookies These cookies are necessary for the website to function and cannot be switched off in our systems. They are usually only set in response to actions made by you which amount to a request for services, such as setting your privacy preferences, logging in or filling in forms. You can set your browser to block or alert you about these cookies, but some parts of the site will not then work. These cookies do not store any personally identifiable information. Functional Cookies Functional Cookies These cookies enable the website to provide enhanced functionality and personalisation. They may be set by us or by third party providers whose services we have added to our pages. If you do not allow these cookies then some or all of these services may not function properly. Performance Cookies Performance Cookies These cookies allow us to count visits and traffic sources so we can measure and improve the performance of our site. They help us to know which pages are the most and least popular and see how visitors move around the site. All information these cookies collect is aggregated and therefore anonymous. If you do not allow these cookies we will not know when you have visited our site, and will not be able to monitor its performance. Targeting Cookies Targeting Cookies These cookies may be set through our site by our advertising partners. They may be used by those companies to build a profile of your interests and show you relevant adverts on other sites. They do not store directly personal information, but are based on uniquely identifying your browser and internet device. If you do not allow these cookies, you will experience less targeted advertising. Social Media Cookies Social Media Cookies These cookies are set by a range of social media services that we have added to the site to enable you to share our content with your friends and networks. They are capable of tracking your browser across other sites and building up a profile of your interests. This may impact the content and messages you see on other websites you visit. If you do not allow these cookies you may not be able to use or see these sharing tools. Back Button Cookie List Search Icon Filter Icon Clear checkbox label label Apply Cancel Consent Leg.Interest checkbox label label checkbox label label checkbox label label Close 

@@ -1,0 +1,1589 @@
+ 
+ Kelp – Minecraft Wiki 
+ 12 languages Deutsch Español Français Italiano 日本語 한국어 Nederlands Português Русский ไทย Українська 中文 
+ Kelp 
+ From Minecraft Wiki 
+ Jump to navigation 
+ Jump to search 
+ For other uses, see Kelp (disambiguation) .
+ Kelp 
+ Renewable 
+ Yes
+ Stackable
+ Yes (64)
+ Tool
+ Any tool
+ Blast resistance 
+ 0
+ Hardness 
+ 0
+ Luminous 
+ No
+ Transparent 
+ Yes
+ Flammable 
+ No
+ Catches fire from lava 
+ No
+ Map color 
+  12 WATER 
+ Note block instrument 
+ Default (Harp)
+ {
+ "title": "Kelp",
+ "rows": [
+ {
+ "field": "Yes",
+ "label": "(link to Renewable resource article, displayed as Renewable)"
+ },
+ {
+ "field": "Yes (64)",
+ "label": "Stackable"
+ },
+ {
+ "field": "Any tool",
+ "label": "Tool"
+ },
+ {
+ "field": "0",
+ "label": "(link to Explosion#Blast resistance article, displayed as Blast resistance)"
+ },
+ {
+ "field": "0",
+ "label": "(link to Breaking#Blocks by hardness article, displayed as Hardness)"
+ },
+ {
+ "field": "No",
+ "label": "(link to Light article, displayed as Luminous)"
+ },
+ {
+ "field": "Yes",
+ "label": "(link to Opacity article, displayed as Transparent)"
+ },
+ {
+ "field": "No",
+ "label": "(link to Fire#Flammable blocks article, displayed as Flammable)"
+ },
+ {
+ "field": "No",
+ "label": "Catches fire<br>from (link to lava article, displayed as lava)"
+ },
+ {
+ "field": "<span style=\"white-space: nowrap;\"><span style=\"display: inline-block; background-color: rgb(64, 64, 255); border: 1px solid #888; border-radius: 0.3em; color: transparent; width: 1em; height: 1em; vertical-align: -0.36em; margin-right: -0.1em\"><br></span> 12 WATER</span>",
+ "label": "(link to Map item format#Color table article, displayed as Map color)"
+ },
+ {
+ "field": "Default (Harp)",
+ "label": "(link to Note Block#Instruments article, displayed as Note block instrument)"
+ }
+ ],
+ "invimages": [
+ "Kelp"
+ ],
+ "images": [
+ "Kelp.gif"
+ ]
+} 
+ Kelp is aquatic algae found in all oceans except for warm oceans , frozen oceans , and deep frozen oceans . It can be planted underwater and grows over time (though not forever) or from bone meal usage. Smelting it results in dried kelp , which is edible and craftable into dried kelp blocks .
+ Contents 
+ 1 Obtaining 
+ 1.1 Breaking 
+ 1.2 Natural generation 
+ 1.3 Trading 
+ 1.4 Mob loot 
+ 2 Usage 
+ 2.1 Smelting ingredient 
+ 2.2 Composting 
+ 2.3 Growth mechanics 
+ 2.4 Farming 
+ 3 Sounds 
+ 3.1 Generic 
+ 3.2 Unique 
+ 4 Data values 
+ 4.1 ID 
+ 4.2 Block states 
+ 5 History 
+ 5.1 Development 
+ 5.2 Java Edition 
+ 5.3 Bedrock Edition 
+ 5.4 Legacy Console Edition 
+ 6 Issues 
+ 7 Trivia 
+ 8 Gallery 
+ 8.1 Screenshots 
+ 9 References 
+ 10 External links 
+ 11 Navigation 
+ Obtaining [ edit | edit source ] 
+ Breaking [ edit | edit source ] 
+ Kelp can be mined instantly with any tool or with the player's fist. Removing water from the kelp block destroys the kelp, in Java Edition , the water cannot be removed by using a bucket . Breaking one part of a kelp stalk destroys all kelp blocks above it. Each block drops a kelp item .
+ Block
+ Kelp 
+ Hardness
+ 0
+ Breaking time (secs)
+ Default
+ 0.05 
+ Legend 
+ incorrect tool, drops nothing 
+ correct tool, drops nothing or something other than the block itself 
+ correct tool, drops the block itself 
+ italicized can be instant mined 
+ Natural generation [ edit | edit source ] 
+ Main article: Kelp (feature) 
+ Kelp naturally generates in any ocean biomes (except in frozen , deep frozen and warm ), near and around seagrass . Each chunk has 1 ⁄ 18 chance to generate a vegetation of kelp.
+ Trading [ edit | edit source ] 
+ Wandering traders may sell 1 kelp for 3 emeralds .
+ Villager Probability Villager wants Player receives Trades in stock Villager experience Price multiplier JE BE Wandering Trader Ordinary 7% 7% 3 × Emerald Kelp 12 — — 
+ Mob loot [ edit | edit source ] 
+ In Bedrock Edition , wandering traders have a chance of 25% (increased by 1% per level of Looting ) to drop 1 kelp when killed while showing the item as trade offer, if the player holds an emerald .
+ Usage [ edit | edit source ] 
+ Kelp can be placed underwater by hand, or anywhere by the use of commands such as / setblock . Placing it by hand gives it a random age value between 0 and 24. Kelp can be placed only in water source blocks or downward-flowing water, not horizontally flowing water.
+ When placed in downward-flowing water, the kelp becomes waterlogged, transforming the flowing water into a water source block, [ 1 ] which is useful for faster bubble column elevator creation.
+ Any building block can be placed on top of a kelp plant, which is useful for building structures over a deep ocean without needing to build from the ocean floor (see also lily pad ).
+ Smelting ingredient [ edit | edit source ] 
+ Name 
+ Ingredients 
+ [ hide ] Smelting recipe
+ Dried Kelp 
+ Kelp  + Any fuel 
+ 0.1 
+ Composting [ edit | edit source ] 
+ Placing kelp into a composter has a 30% chance of raising the compost level by 1.
+ Growth mechanics [ edit | edit source ] 
+ Kelp can be planted on a broad variety of blocks. It grows underwater if it has either a source block of water or flowing water above it. [ 2 ] Neither players nor dispensers can remove the water source block that kelp grows in without breaking the kelp first.
+ Kelp does not require any light level to grow. Kelp also grows without having sky access. Bone meal can be used to grow kelp by 1 block on each use.
+ When kelp is planted, it is generated with a randomly chosen age value, which can be checked when pressing F3 ‌ [ Java Edition only ] . The age value of a newly planted kelp plant varies randomly from 0 to 24. Each time the kelp grows in height by one block, the newly generated top of the kelp plant increases its age by 1. When the top block of the kelp plant reaches an age of 25, it stops growing. This means that kelp can naturally grow to a height between 2 (if the first kelp plant had an age of 24) and 26 blocks (if the first kelp plant had an age of 0). 
+ When a kelp plant block is broken, the age of the kelp plant block underneath is randomized to a value from 0 to 24 and the kelp continues growing until it reaches age 25. It is possible to use this mechanic to cultivate a kelp plant to increase its growth height beyond its natural maximum height of 26 blocks. This can be done by breaking the top-most block of the kelp plant each time it reaches age 25. A kelp plant cultivated by a player in this way repeatedly grows until it reaches the water surface.
+ Each time it receives a random tick , kelp has a 14% chance of growing. At default random tick speed (3), each plant grows on average every 9752 game ticks (487.6 seconds).
+ Using shears on the topmost block of kelp prevents further growth by setting its age value to 25 .
+ Farming [ edit | edit source ] 
+ Main article: Tutorial:Kelp farming 
+ Kelp farming is similar to farming sugar cane , although kelp must be placed underwater. Automation of harvest is easier because items float up in water source blocks.
+ Sounds [ edit | edit source ] 
+ Generic [ edit | edit source ] 
+ Java Edition :
+ [ hide ] 
+ v 
+ t 
+ e wet_grass sound type Sound Closed captions Source Description Identifier Translation key Volume Pitch Attenuation distance ​Block broken Blocks Once the block has broken block .wet_grass .break subtitles .block .generic .break ​ 0.8 0.8 16 ​Block placed Blocks When the block is placed block .wet_grass .place subtitles .block .generic .place ​ 0.8 0.8 16 ​Block breaking Blocks While the block is in the process of being broken block .wet_grass .hit subtitles .block .generic .hit ​ 0.25 0.5 16 ​Something falls on a block Entity-Dependent Falling on the block with fall damage block .wet_grass .fall subtitles .block .generic .fall ​ 0.5 0.75 16 ​Footsteps Entity-Dependent Walking on the block block .wet_grass .step subtitles .block .generic .footsteps ​ 0.15 1.0 16 
+ Bedrock Edition :
+ [ hide ] 
+ v 
+ t 
+ e grass sound type Sound Closed captions Source Description Identifier Translation key Volume Pitch ​Block broken Blocks Once the block has broken dig .grass subtitles .block .generic .break ​ 0.7 0.8–1.0 ​Block placed Blocks When the block is placed place .grass subtitles .block .generic .place ​ 0.8 0.8–1.0 ​Block breaking Blocks While the block is in the process of being broken hit .grass subtitles .block .generic .hit ​ 0.3 0.5 ​Footsteps Players Falling on the block with fall damage fall .grass subtitles .block .generic .footsteps ​ 0.4 1.0 ​Footsteps Players Walking on the block step .grass subtitles .block .generic .footsteps ​ 0.3 1.0 ​Shovel flattens Blocks When a shovel creates a dirt path use .grass subtitles .item .shovel .flatten ​ 1.0 0.8 ​Footsteps Blocks Jumping from the block jump .grass subtitles .block .generic .footsteps ​ 0.11 1.0 ​Footsteps Blocks Falling on the block without fall damage land .grass subtitles .block .generic .footsteps ​ 0.21 1.0 
+ Unique [ edit | edit source ] 
+ Java Edition 
+ [ hide ] Sounds Sound Closed captions Source Description Identifier Translation key Volume Pitch Attenuation distance ​Plant cropped Blocks When the tip of kelp is cropped with shears block .growing_plant .crop subtitles .block .growing_plant .crop ​ 1.0 1.0 16 
+ Bedrock Edition : None 
+ Data values [ edit | edit source ] 
+ ID [ edit | edit source ] 
+ Java Edition :
+ Name Identifier Form 
+ [ hide ] Translation key Kelp kelp Block & Item 
+ block .minecraft .kelp 
+ Kelp Plant kelp_plant Block 
+ block .minecraft .kelp_plant 
+ Bedrock Edition :
+ Kelp Identifier Numeric ID Form Item ID [ i 1 ] 
+ [ hide ] Translation key Item kelp 382 Item — 
+ item .kelp .name 
+ Block kelp 393 Block & Ungiveable Item [ i 2 ] item.kelp (Numeric: -138 ) 
+ — 
+ ↑ ID of block's direct item form, which is used in savegame files and addons. 
+ ↑ Unavailable with / give command 
+ Block states [ edit | edit source ] 
+ See also: Block states 
+ Java Edition : 
+Top kelp block:
+ Name 
+ Default value 
+ Allowed values 
+ [ hide ] Description 
+ age 0 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 A freshly planted kelp starts with a random age between 0 and 24. Below age 25, a kelp may try go grow more kelp above it with the same age value incremented by one. Kelp stops growing at age 25. 
+ Bedrock Edition :
+ Name Metadata Bits 
+ Default value 
+ Allowed values Values for Metadata Bits 
+ [ hide ] Description 
+ kelp_age 0x1 0x2 0x4 0x8 0 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 The age of the kelp. The kelp renders as a non-top piece if there's another kelp above it. 16 17 18 19 20 21 22 23 24 25 Unsupported Unused 
+ History [ edit | edit source ] 
+ This section would benefit from the addition of more sounds.  
+ Please remove this notice once you have added suitable sounds to the section. The specific instructions are: Sounds before 1.13-pre6 
+ There is an associated technical blocks page for the internal item form of this block; see Technical blocks/Kelp . 
+ Development [ edit | edit source ] 
+ May 21, 2009 
+ Notch shows interest in adding a " seaweed " block . November 18, 2017 
+ Kelp plants were shown in a clip of MineCon Earth . 
+ Java Edition [ edit | edit source ] 
+ [ hide ] Java Edition 1.13 18w07a 
+ Added kelp. 18w07b 
+ Kelp now behaves more like water , meaning mobs can no longer spawn within the plant under water nor can they replenish their breath by swimming through it. 18w10a 
+ The texture of kelp has been changed. 18w14a 
+ Top of the kelp textures have been shifted slightly downward.
+ The generation rules for kelp have been changed, it now mainly generates in cold ocean biomes and can no longer generate in warm oceans . 18w20a 
+ The kelp_top has been changed ID to kelp and kelp has been changed to kelp_plant , for both the block and item forms. pre2 
+ Kelp is now destroyed by sponges . [ 3 ] pre6 
+ Added 5 new sound events that apply to kelp: block.wet_grass.break , block.wet_grass.fall , block.wet_grass.hit , block.wet_grass.place , and block.wet_grass.step . 1.14 19w03a 
+ Placing kelp into a composter now has a 10% chance of raising the compost level by 1. 19w05a 
+ Kelp now has a 30% chance of increasing the compost level in a composter by 1.
+ Added wandering traders , which can sell kelp for 3 emeralds . 1.16 20w11a 
+ Kelp can now be grown with bone meal . 20w13a 
+ Kelp has been moved from the "Miscellaneous" tab to the "Decoration Blocks" tab in the Creative inventory . [ 4 ] 1.17 20w46a 
+ Kelp no longer generates on magma blocks. [ 5 ] 1.18 21w37a 
+ Kelp now stops growing if shears are used on the tip. 
+ Bedrock Edition [ edit | edit source ] 
+ [ hide ] Bedrock Edition 1.4.0 beta 1.2.14.2 
+ Added kelp. beta 1.2.20.1 
+ The kelp item texture has been updated to the Java Edition ' s. 1.5.0 beta 1.5.0.4 
+ The texture of the kelp plant has been updated. 1.10.0 beta 1.10.0.3 
+ Kelp can now be bought from wandering traders for 3 emeralds . 1.11.0 beta 1.11.0.1 
+ Kelp can now be used to fill composters . 1.21.50 Preview 1.21.50.25 
+ Removed the unintended darker tinting of kelp. 1.21.60 Preview 1.21.60.21 
+ Kelp now stops growing if shears are used on the tip. Preview 1.21.60.23 
+ Kelp generates more frequently and in denser patches in ocean biomes (except for frozen ocean ). Preview 1.21.60.27 
+ Kelp can now generate at any depth, leading to increased overall generation. 
+ Legacy Console Edition [ edit | edit source ] 
+ [ hide ] Legacy Console Edition Xbox 360 Xbox One PS3 PS4 PS Vita Wii U Switch TU69 1.76 1.76 1.76 Patch 38 
+ Added kelp. 1.91 
+ Kelp can now be bought from wandering traders for 3 emeralds . 
+ Issues [ edit | edit source ] 
+ Issues relating to "Kelp" are maintained on the bug tracker . Issues should be reported and viewed there .
+ Trivia [ edit | edit source ] 
+ In real life, kelp is not considered a plant . It is classified by scientists as a brown algae .
+ Kelp in real life absorbs nutrients directly from the water, instead of through its root-like structure, holdfast , which merely attaches it to the seabed. This is in accordance with kelp being able to grow on almost any solid block in Minecraft . 
+ Gallery [ edit | edit source ] 
+ Screenshots [ edit | edit source ] 
+ Kelp shown in a clip from MINECON Earth 2017 
+ Naturally generated kelp in an ocean biome 
+ Naturally generated kelp near the shore 
+ An ocean with kelp visible in the far distance 
+ Kelp placed outside of water using the / setblock command before 18w07b 
+ What kelp looks like without water (water removed using a resource pack ) 
+ Kelp that generated in mid-air due to an ocean monument 's water cutting through it 
+ Multiple kelps 
+ Without obstacles, kelp can grow all the way to building limit 
+ First image of kelp in Bedrock Edition 
+ References [ edit | edit source ] 
+ ↑ MC-133814 
+ ↑ MC-133354 
+ ↑ MC-127111 
+ ↑ MC-174434  – resolved as "Fixed". 
+ ↑ MC-185605  – resolved as "Fixed". 
+ External links [ edit | edit source ] 
+ "Taking Inventory: Kelp" by Duncan Geere – Minecraft.net , August 27, 2020. 
+ Navigation [ edit | edit source ] 
+ [ hide ] 
+ v 
+ t 
+ e Items 
+ [ show ] Equipment 
+ Tools 
+ Axe 
+ Brush 
+ Fishing Rod 
+ Carrot on a Stick 
+ Warped Fungus on a Stick 
+ Flint and Steel 
+ Hoe 
+ Pickaxe 
+ Shears 
+ Shield 
+ Shovel 
+ Weapons 
+ Axe 
+ Bow 
+ Crossbow 
+ Mace 
+ Spear 
+ Sword 
+ Trident 
+ Ammunition
+ Arrow 
+ Tipped 
+ Firework Rocket 
+ JE only
+ Spectral Arrow 
+ Wearable 
+ Player
+ Boots 
+ Chestplate 
+ Elytra 
+ Helmet 
+ Turtle Shell 
+ Leggings 
+ Animals 
+ Harness 
+ Horse Armor 
+ Nautilus Armor 
+ Saddle 
+ Wolf Armor 
+ [ show ] Utilities 
+ Display/storage
+ Armor Stand 
+ Item Frame 
+ Glow 
+ Painting 
+ Buckets 
+ Bucket 
+ Water 
+ Lava 
+ Milk 
+ Powder Snow 
+ Bucket of Mob 
+ Axolotl 
+ Cod 
+ Pufferfish 
+ Salmon 
+ Sulfur Cube 
+ Tadpole 
+ Tropical Fish 
+ Bottles
+ Glass Bottle 
+ Water 
+ Honey 
+ Potion 
+ Splash 
+ Lingering 
+ Bottle o' Enchanting 
+ Ominous Bottle 
+ Informational
+ Book and Quill 
+ Written 
+ Clock 
+ Compass 
+ Lodestone 
+ Recovery 
+ Eye of Ender 
+ Map 
+ Empty 
+ Explorer 
+ Spyglass 
+ Vehicles /mobility
+ Boat 
+ with Chest 
+ Ender Pearl 
+ Minecart 
+ with Chest 
+ with Hopper 
+ with TNT 
+ Wind Charge 
+ JE only
+ Minecart with Furnace 
+ Music discs 
+ 13 
+ cat 
+ blocks 
+ chirp 
+ far 
+ mall 
+ mellohi 
+ stal 
+ strad 
+ ward 
+ 11 
+ wait 
+ otherside 
+ 5 
+ Pigstep 
+ Relic 
+ Creator 
+ Music Box 
+ Precipice 
+ Tears 
+ Lava Chicken 
+ Bounce 
+ Other
+ Bone Meal 
+ Bowl 
+ Bundle 
+ Dyed 
+ Cushion ​ [ upcoming: Wilderness Bound ] 
+ Enchanted Book 
+ End Crystal 
+ Fire Charge 
+ Goat Horn 
+ Lead 
+ Name Tag 
+ Totem of Undying 
+ Trial Key 
+ Ominous 
+ Edu only
+ Balloon 
+ Glow Stick 
+ Ice Bomb 
+ Medicine 
+ Sparkler 
+ Super Fertilizer 
+ [ show ] Food 
+ Natural plant-based
+ Apple 
+ Beetroot 
+ Carrot 
+ Chorus Fruit 
+ Glow Berries 
+ Melon Slice 
+ Sweet Berries 
+ Supernatural 
+ Golden Apple 
+ Enchanted 
+ Golden Carrot 
+ Uncooked food 
+ Raw Beef 
+ Raw Chicken 
+ Raw Mutton 
+ Raw Porkchop 
+ Raw Rabbit 
+ Raw Cod 
+ Raw Salmon 
+ Potato 
+ Cooked food 
+ Steak 
+ Cooked Chicken 
+ Cooked Mutton 
+ Cooked Porkchop 
+ Cooked Rabbit 
+ Cooked Cod 
+ Cooked Salmon 
+ Baked Potato 
+ Dried Kelp 
+ Crafted 
+ Bread 
+ Cookie 
+ Stews 
+ Mushroom 
+ Rabbit 
+ Suspicious 
+ Beetroot Soup 
+ Pumpkin Pie 
+ Poisonous
+ Pufferfish 
+ Rotten Flesh 
+ Spider Eye 
+ Poisonous Potato 
+ Other
+ Tropical Fish 
+ [ hide ] Ingredients 
+ Seeds 
+ Beetroot Seeds 
+ Cocoa Beans 
+ Melon Seeds 
+ Nether Wart 
+ Pitcher Pod 
+ Pumpkin Seeds 
+ Torchflower Seeds 
+ Wheat Seeds 
+ Raw materials
+ Amethyst Shard 
+ Armadillo Scute 
+ Blaze Rod 
+ Bone 
+ Breeze Rod 
+ Clay Ball 
+ Coal 
+ Diamond 
+ Disc Fragment 5 
+ Dragon's Breath 
+ Echo Shard 
+ Egg 
+ Blue 
+ Brown 
+ Emerald 
+ Feather 
+ Flint 
+ Ghast Tear 
+ Glowstone Dust 
+ Gunpowder 
+ Heart of the Sea 
+ Honeycomb 
+ Ink Sac 
+ Glow 
+ Kelp 
+ Lapis Lazuli 
+ Leather 
+ Magma Cream 
+ Nautilus Shell 
+ Nether Quartz 
+ Nether Star 
+ Phantom Membrane 
+ Prismarine Shard 
+ Prismarine Crystals 
+ Rabbit Hide 
+ Rabbit's Foot 
+ Raw Copper 
+ Raw Gold 
+ Raw Iron 
+ Redstone Dust 
+ Resin Clump 
+ Shulker Shell 
+ Slimeball 
+ Snowball 
+ Stick 
+ String 
+ Turtle Scute 
+ Wheat 
+ Processed
+ Blaze Powder 
+ Book 
+ Brick 
+ Nether 
+ Resin 
+ Charcoal 
+ Copper Ingot 
+ Nugget 
+ Fermented Spider Eye 
+ Firework Star 
+ Glistering Melon Slice 
+ Gold Ingot 
+ Nugget 
+ Iron Ingot 
+ Nugget 
+ Netherite Ingot 
+ Scrap 
+ Paper 
+ Popped Chorus Fruit 
+ Sugar 
+ Edu only
+ Bleach 
+ Compounds 
+ Dyes 
+ White 
+ Light Gray 
+ Gray 
+ Black 
+ Brown 
+ Red 
+ Orange 
+ Yellow 
+ Lime 
+ Green 
+ Cyan 
+ Light Blue 
+ Blue 
+ Purple 
+ Magenta 
+ Pink 
+ Banner patterns 
+ Bordure Indented 
+ Creeper Charge 
+ Field Masoned 
+ Flow 
+ Flower Charge 
+ Globe 
+ Guster 
+ Skull Charge 
+ Snout 
+ Thing 
+ Pottery sherds 
+ Angler 
+ Archer 
+ Arms Up 
+ Blade 
+ Brewer 
+ Burn 
+ Danger 
+ Explorer 
+ Flow 
+ Friend 
+ Guster 
+ Heart 
+ Heartbreak 
+ Howl 
+ Miner 
+ Mourner 
+ Plenty 
+ Prize 
+ Scrape 
+ Sheaf 
+ Shelter 
+ Skull 
+ Snort 
+ Smithing templates 
+ Armor Trim 
+ Bolt 
+ Coast 
+ Dune 
+ Eye 
+ Flow 
+ Host 
+ Raiser 
+ Rib 
+ Sentry 
+ Shaper 
+ Silence 
+ Snout 
+ Spire 
+ Tide 
+ Vex 
+ Ward 
+ Wayfinder 
+ Wild 
+ Netherite Upgrade 
+ [ show ] Creative or commands only 
+ Creative only
+ Spawn Eggs 
+ JE only
+ Debug Stick 
+ Minecart with Command Block 
+ Unused paintings 
+ Edu only
+ Camera 
+ Photo 
+ Portfolio 
+ Commands only
+ Ender Dragon Spawn Egg 
+ Wither Spawn Egg 
+ JE only
+ Knowledge Book 
+ BE only
+ Minecart with Command Block 
+ China Edition only
+ Mod armor 
+ Mod (China Edition) 
+ [ show ] Removed 
+ Java Edition only
+ Technical blocks as Items 
+ Cauldron Potions 
+ Horse Saddle 
+ Reverted Potions 
+ Data-retaining minecarts 
+ Slowness arrows with own tag 
+ Bedrock Edition only
+ Copper Horn 
+ Removed Spawn Eggs 
+ MinecraftEdu only
+ Block Inspector 
+ [ show ] Unused 
+ Java Edition only
+ Potion of Luck 
+ Uncraftable Potion 
+ Bedrock Edition only
+ Camera 
+ Photo 
+ Portfolio 
+ Potion of Decay 
+ Unused Potions 
+ Legacy Console only
+ debug_fourj_item 
+ [ show ] Unimplemented 
+ All editions
+ Ruby 
+ Quiver 
+ Java Edition only
+ Crystallized Honey 
+ Minecart with Dispenser 
+ Studded Armor 
+ Bedrock Edition only
+ Minecart with Furnace 
+ Hoglin Meat 
+ [ show ] Joke 
+ April Fools 2015 
+ Obsidian Boat 
+ Potion of Caring 
+ Splash 
+ Potion of Sharing 
+ Splash 
+ April Fools 2016 
+ Smarter Watch 
+ Reality Vision 
+ Ankle Monitor 
+ April Fools 2019 
+ 3D 
+ Blue Key 
+ Red Key 
+ Yellow Key 
+ April Fools 2020 
+ Footprint 
+ A Very Fine Item 
+ April Fools 2023 
+ Air 
+ Bit 
+ Bottle of Entity 
+ Splash 
+ Bottle of Void 
+ La Baguette 
+ Le Tricolore 
+ minecraft:dupe_hack 
+ Moon Cow Spawn Egg 
+ New Thing Banner Pattern 
+ Longer String 
+ Potion of Big 
+ Splash 
+ Lingering 
+ Arrow 
+ Potion of Small 
+ Splash 
+ Lingering 
+ Arrow 
+ Tag 
+ April Fools 2024 
+ Amber Gem 
+ Batato Spawn Egg 
+ Dent 
+ Golden Poisonous Potato 
+ Enchanted 
+ Hash Browns 
+ Hot potato 
+ Lashing Potato 
+ Mega Spud Spawn Egg 
+ Plaguewhale Slab Spawn Egg 
+ Poisonous Polytra 
+ Poisonous Pota-Toes 
+ Poisonous Potato Chestplate 
+ Poisonous Potato Chips 
+ Poisonous Potato Fries 
+ Poisonous Potato Hammer 
+ Poisonous Potato Plant 
+ Poisonous Potato Slices 
+ Poisonous Potato Sticks 
+ Poisonous Potato Zombie Spawn Egg 
+ Potato Eye 
+ Potato of Knowledge 
+ Potion of Sticky 
+ Splash 
+ Lingering 
+ Arrow 
+ Potato Oil 
+ Poisonous 
+ Potato Oil (Potion) 
+ Splash 
+ Lingering 
+ Arrow 
+ Poisonous Potato Oil (Potion) 
+ Splash 
+ Lingering 
+ Arrow 
+ Potato Peeler 
+ Potato Peels 
+ Corrupted 
+ Potatiesh, Greatstaff of the Peasant 
+ Toxic Beam 
+ Toxic Resin 
+ Toxifin Slab Spawn Egg 
+ Venomous Potato 
+ April Fools 2025 
+ Displacement Wand 
+ Eye of Exit 
+ Fire Wand 
+ Grave 
+ Mine 
+ Mine Ingredient 
+ Music Disc And Action! 
+ Shazboots! 
+ Shimmering Key 
+ Sky Box 
+ Wind Wand 
+ April Fools 2026 
+ Attack / Mine 
+ Build 
+ Craft 
+ Follow Me 
+ Group / Ungroup 
+ Highlight 
+ Move 
+ Punch 
+ [ hide ] 
+ v 
+ t 
+ e Blocks 
+ [ show ] Structural 
+ Lumber 
+ Logs 
+ Stripped 
+ Wood 
+ Stripped 
+ Stems 
+ Stripped 
+ Hyphae 
+ Stripped 
+ Block of Bamboo 
+ Stripped 
+ Bamboo Mosaic 
+ Planks 
+ Stone / Deepslate 
+ Stone 
+ Cobblestone 
+ Mossy 
+ Smooth Stone 
+ Stone Bricks 
+ Chiseled 
+ Cracked 
+ Mossy 
+ Granite 
+ Polished 
+ Diorite 
+ Polished 
+ Andesite 
+ Polished 
+ Deepslate 
+ Chiseled 
+ Cobbled 
+ Polished 
+ Deepslate Bricks 
+ Cracked 
+ Deepslate Tiles 
+ Cracked 
+ Tuff 
+ Chiseled 
+ Polished 
+ Tuff Bricks 
+ Chiseled 
+ Overworld 
+ Bricks 
+ Packed Mud 
+ Mud Bricks 
+ Resin Bricks 
+ Chiseled 
+ Sandstone 
+ Chiseled 
+ Cut 
+ Smooth 
+ Red Sandstone 
+ Chiseled 
+ Cut 
+ Smooth 
+ Cinnabar 
+ Chiseled 
+ Polished 
+ Bricks 
+ Sulfur 
+ Chiseled 
+ Polished 
+ Bricks 
+ Prismarine 
+ Bricks 
+ Dark 
+ The Nether 
+ Netherrack 
+ Nether Bricks 
+ Chiseled 
+ Cracked 
+ Red 
+ Blackstone 
+ Polished Blackstone 
+ Chiseled 
+ Polished Blackstone Bricks 
+ Cracked 
+ Basalt 
+ Polished 
+ Smooth 
+ The End 
+ End Stone 
+ Bricks 
+ Purpur Block 
+ Pillar 
+ Mineral 
+ Block of Quartz 
+ Bricks 
+ Chiseled 
+ Pillar 
+ Smooth 
+ Block of Copper 
+ Chiseled 
+ Cut 
+ Grate 
+ Block of Iron 
+ Block of Gold 
+ Block of Amethyst 
+ Block of Coal 
+ Block of Diamond 
+ Block of Emerald 
+ Block of Lapis Lazuli 
+ Block of Netherite 
+ Block of Redstone 
+ [ show ] Ornamental 
+ Decorative
+ Crying Obsidian 
+ Gilded Blackstone 
+ Reinforced Deepslate 
+ Partial Block 
+ Bars 
+ Iron 
+ Copper 
+ Chains 
+ Iron 
+ Copper 
+ Fences 
+ Wooden 
+ Nether Brick 
+ Slabs 
+ Cut Copper 
+ Wooden 
+ Stairs 
+ Cut Copper 
+ Wooden 
+ Walls 
+ Dyeable /Dyed
+ Wool 
+ Slab ​ [ upcoming: Wilderness Bound ] 
+ Stairs ​ [ upcoming: Wilderness Bound ] 
+ Carpets 
+ Terracotta 
+ Stained 
+ Glazed 
+ Concrete 
+ Slab ​ [ upcoming: Wilderness Bound ] 
+ Stairs ​ [ upcoming: Wilderness Bound ] 
+ Powder 
+ Glass 
+ Pane 
+ Tinted 
+ Stained Glass 
+ Pane 
+ Lighting 
+ Candle 
+ Dyed 
+ End Rod 
+ Froglight 
+ Glowstone 
+ Jack o'Lantern 
+ Lantern 
+ Copper 
+ Soul 
+ Sea Lantern 
+ Torch 
+ Copper 
+ Soul 
+ BE & Edu only
+ Colored Torches 
+ Elements 
+ Hardened Glass 
+ Pane 
+ Hardened Stained Glass 
+ Pane 
+ [ hide ] Natural 
+ Sediment /Soil
+ Clay 
+ Dirt 
+ Coarse 
+ Path 
+ Grass Block 
+ Mycelium 
+ Podzol 
+ Rooted 
+ Gravel 
+ Mud 
+ Nylium 
+ Crimson 
+ Warped 
+ Sand 
+ Red 
+ Soul Sand 
+ Soil 
+ Misc. rock 
+ Bedrock 
+ Magma Block 
+ Obsidian 
+ Calcite 
+ Sulfur Spike 
+ Potent Sulfur 
+ Pointed Dripstone 
+ Block 
+ Ore /Mineral
+ Amethyst Bud 
+ Cluster 
+ Budding Amethyst 
+ Ancient Debris 
+ Coal Ore 
+ Deepslate 
+ Copper Ore 
+ Deepslate 
+ Raw Block 
+ Diamond Ore 
+ Deepslate 
+ Emerald Ore 
+ Deepslate 
+ Gold Ore 
+ Deepslate 
+ Nether 
+ Raw Block 
+ Iron Ore 
+ Deepslate 
+ Raw Block 
+ Lapis Lazuli Ore 
+ Deepslate 
+ Nether Quartz Ore 
+ Redstone Ore 
+ Deepslate 
+ Plant 
+ Azalea 
+ Flowering 
+ Bamboo 
+ Shoot 
+ Big Dripleaf 
+ Small 
+ Bush 
+ Cactus 
+ Creaking Heart 
+ Dead Bush 
+ Fern 
+ Large 
+ Firefly Bush 
+ Hanging Roots 
+ Leaf Litter 
+ Leaves 
+ Mangrove Propagule 
+ Mangrove Roots 
+ Muddy 
+ Moss Block 
+ Carpet 
+ Pale Moss Block 
+ Carpet 
+ Hanging 
+ Red Shrub ​ [ upcoming: Wilderness Bound ] 
+ Resin Clump 
+ Block 
+ Saplings 
+ Short Dry Grass 
+ Tall 
+ Short Grass 
+ Tall 
+ Vines 
+ Flower 
+ Allium 
+ Azure Bluet 
+ Blue Orchid 
+ Cactus Flower 
+ Cornflower 
+ Dandelion 
+ Golden 
+ Eyeblossom 
+ Closed 
+ Open 
+ Lilac 
+ Lily of the Valley 
+ Oxeye Daisy 
+ Peony 
+ Pink Petals 
+ Pitcher Plant 
+ Crop 
+ Poppy 
+ Rose Bush 
+ Spore Blossom 
+ Sunflower 
+ Torchflower 
+ Crop 
+ Tulips 
+ Wildflowers 
+ Wither Rose 
+ Crops & related
+ Beetroots 
+ Carrots 
+ Cave Vines 
+ Chorus Plant 
+ Flower 
+ Cocoa 
+ Melon 
+ Stem 
+ Potatoes 
+ Pumpkin 
+ Carved 
+ Stem 
+ Sugar Cane 
+ Sweet Berry Bush 
+ Wheat Crops 
+ Hay Bale 
+ Fungus & related
+ Brown Mushroom 
+ Red Mushroom 
+ Shelf Mushroom ​ [ upcoming: Wilderness Bound ] 
+ Mushroom Blocks 
+ Glow Lichen 
+ Crimson Fungus 
+ Warped Fungus 
+ Nether Wart 
+ Nether Sprouts 
+ Crimson Roots 
+ Warped Roots 
+ Nether Wart Block 
+ Warped Wart Block 
+ Shroomlight 
+ Twisting Vines 
+ Weeping Vines 
+ Fauna & Related
+ Bee Nest 
+ Honeycomb Block 
+ Bone Block 
+ Cobweb 
+ Dragon Egg 
+ Dried Ghast 
+ Infested Blocks 
+ Sniffer Egg 
+ Turtle Egg 
+ Aquatic
+ Coral 
+ Dead 
+ Coral Blocks 
+ Dead 
+ Coral Fans 
+ Dead 
+ Frogspawn 
+ Kelp 
+ Dried Block 
+ Lily Pad 
+ Sea Pickle 
+ Seagrass 
+ Tall 
+ Sculk 
+ Sculk 
+ Sculk Catalyst 
+ Sculk Sensor 
+ Calibrated 
+ Sculk Shrieker 
+ Sculk Vein 
+ Fluid & Related
+ Lava 
+ Water 
+ Bubble Column 
+ Ice 
+ Blue 
+ Packed 
+ Snow 
+ Powder 
+ Block 
+ Non-physical
+ Air 
+ Cave ‌ [ JE only ] 
+ Void ‌ [ JE only ] 
+ Invisible Bedrock ‌ [ BE & edu only ] 
+ Fire 
+ Soul 
+ [ show ] Utility 
+ Interactable 
+ Anvil 
+ Chipped 
+ Damaged 
+ Barrel 
+ Beacon 
+ Brewing Stand 
+ Cartography Table 
+ Chest 
+ Ender 
+ Copper 
+ Crafting Table 
+ Enchanting Table 
+ Furnace 
+ Blast 
+ Smoker 
+ Grindstone 
+ Lectern 
+ Loom 
+ Shulker Box 
+ Dyed 
+ Sign 
+ Hanging 
+ Smithing Table 
+ Stonecutter 
+ Utilizable
+ Banners 
+ Ominous 
+ Beehive 
+ Beds 
+ Straw ​ [ upcoming: Wilderness Bound ] 
+ Bell 
+ Bookshelf 
+ Cake 
+ with Candle 
+ Campfire 
+ Soul 
+ Cauldron 
+ Chiseled Bookshelf 
+ Composter 
+ Conduit 
+ Copper Golem Statue 
+ Decorated Pot 
+ End Gateway 
+ End Portal 
+ End Portal Frame 
+ Farmland 
+ Fletching Table 
+ Flower Pot 
+ Frosted Ice 
+ Heads 
+ Skeleton 
+ Wither Skeleton 
+ Zombie 
+ Creeper 
+ Piglin 
+ Dragon 
+ Heavy Core 
+ Jukebox 
+ Ladder 
+ Lodestone 
+ Monster Spawner 
+ Nether Portal 
+ Respawn Anchor 
+ Scaffolding 
+ Shelf 
+ Sponge 
+ Wet 
+ Suspicious Gravel 
+ Suspicious Sand 
+ TNT 
+ Trial Spawner 
+ Ominous 
+ Vault 
+ Ominous 
+ Redstone / Mechanical
+ Buttons 
+ Wooden 
+ Stone 
+ Polished Blackstone 
+ Copper Bulb 
+ Crafter 
+ Daylight Detector 
+ Dispenser 
+ Dropper 
+ Doors 
+ Copper 
+ Iron 
+ Wooden 
+ Honey Block 
+ Hopper 
+ Lever 
+ Lightning Rod 
+ Note Block 
+ Observer 
+ Piston 
+ Sticky 
+ Pressure Plates 
+ Wooden 
+ Stone 
+ Polished Blackstone 
+ Heavy Weighted 
+ Light Weighted 
+ Rail 
+ Activator 
+ Detector 
+ Powered 
+ Redstone Lamp 
+ Redstone Wire 
+ Comparator 
+ Repeater 
+ Torch 
+ Slime Block 
+ Target 
+ Trapped Chest 
+ Trapdoors 
+ Copper 
+ Iron 
+ Wooden 
+ Fence Gates 
+ Tripwire Hook 
+ Tripwire 
+ BE & Edu only
+ Allow 
+ Border 
+ Chalkboards 
+ Compound Creator 
+ Deny 
+ Element Constructor 
+ Heat Block 
+ Item Frame 
+ Glow 
+ Lab Table 
+ Material Reducer 
+ Underwater TNT 
+ Underwater Torch 
+ [ show ] Creative or commands only 
+ All editions
+ Barrier 
+ Command Block 
+ Chain 
+ Repeating 
+ Jigsaw Block 
+ Light 
+ Petrified Oak Slab 
+ Player Head 
+ Structure Block 
+ Void 
+ Java Edition only
+ Test Block 
+ Test Instance Block 
+ China Edition only
+ micro_block 
+ [ show ] Removed 
+ Java Edition only
+ Cloth 
+ Dead Coral Block 
+ Gear 
+ Infinite Lava Source 
+ Infinite Water Source 
+ Locked chest 
+ Rose 
+ Potted 
+ Shrub 
+ Bedrock Edition only
+ Blue Rose 
+ Duplicate Black Wool 
+ grass_carried 
+ leaves_carried 
+ Fern 
+ Fern 
+ Smooth Stone Bricks 
+ Structure Air 
+ mysterious_frame_slot 
+ China Edition only
+ mod_ore 
+ MinecraftEdu only
+ Big Sign 
+ Border block 
+ Build allow block 
+ Build disallow block 
+ Foundation block 
+ Home Block 
+ Information block 
+ Information Sign 
+ Number Block 
+ Spawn Block 
+ Steppe dirt 
+ Steppe sand 
+ Teleport Block 
+ Quiz Block 
+ Minecraft 4k only
+ ID 9 Dirt 
+ XOR Block 
+ [ show ] Unused 
+ BE & Edu only
+ Camera Block 
+ Chiseled Purpur 
+ tile.client_request_placeholder_block.name 
+ Deprecated Anvil 
+ tile.deprecated_purpur_block_2.name 
+ Glowing Obsidian 
+ tile.info_update.name 
+ tile.info_update2.name 
+ Nether Reactor Core 
+ tile.reserved6.name 
+ Stonecutter (old) 
+ Unknown 
+ [ show ] Unimplemented 
+ All editions
+ Branches 
+ Copper Button 
+ Colored Planks 
+ Coral Slab 
+ Dead 
+ Dirt Slab 
+ Empty Barrel 
+ Fish Barrel 
+ Furniture 
+ Paeonia 
+ Sculk Jaw 
+ Spike Block 
+ Wax Block 
+ [ show ] Joke 
+ April Fools 2013 
+ Block of Coal 
+ Etho Slab 
+ Tinted Glass 
+ Torch (Burnt-out) 
+ April Fools 2016 
+ USB Charger Block 
+ April Fools 2020 
+ An Ant 
+ Box of Infinite Books 
+ Cursor 
+ Funky Portal 
+ Leftover 
+ Swaggiest stairs ever 
+ April Fools 2022 
+ How did we get here? 
+ April Fools 2023 
+ Cheese 
+ Copper Sink 
+ Filled 
+ Copper Spleaves 
+ Golden Chest 
+ Other Portal 
+ Packed Air 
+ Pickaxe Block 
+ Place Block 
+ April Fools 2024 
+ Baked Potato Bricks 
+ Expired 
+ Charred 
+ Big Brain 
+ Block of Amber 
+ Block of Potato Peels 
+ Corrupted 
+ Floatater 
+ Floatato 
+ Frying Table 
+ Gravtater 
+ Pedestal 
+ Peelgrass Block 
+ Corrupted 
+ Poison Farmland 
+ Poison Path 
+ Poisonous Mashed Potato 
+ Poisonous Potato Block 
+ Compressed 
+ Double Compressed 
+ Triple Compressed 
+ Quadruple Compressed 
+ Poisonous Potato Cutter 
+ Poisonous Potato Head Block 
+ Poisonous Potato Headpiece 
+ Poisonous Potato Ore 
+ Deepslate 
+ Potato Battery 
+ Potato Bud 
+ Potato flower 
+ Potato Fruit 
+ Potato Leaves 
+ Potato Pedicule 
+ Potato Portal 
+ Potato Refinery 
+ Potato Sprouts 
+ Potato Stem 
+ Planks 
+ Slab 
+ Stairs 
+ Door 
+ Trapdoor 
+ Button 
+ Pressure Plate 
+ Sign 
+ Hanging Sign 
+ Fence 
+ Fence Gate 
+ Potone 
+ Copper Ore 
+ Diamond Ore 
+ Gold Ore 
+ Iron Ore 
+ Lapis Lazuli Ore 
+ Redstone Ore 
+ Resin Ore 
+ Powerful Potato 
+ Strong Roots 
+ Taterstone 
+ Terre de Pomme 
+ Vicious Potato 
+ Weak Roots 
+ April Fools 2025 
+ Dimension Control 
+ Mine Travelling Block 
+ Mine Revisitor 
+ Mine Crafter 
+ Mob Trophy 
+ Shimmering Door 
+ Sky 
+ Trophy 
+ April Fools 2026 
+ Copper Trap 
+ Iron Trap 
+ [ show ] Extreme metadata variants 
+ All editions
+ Directionless Hopper 
+ Seamless Stone Slab 
+ Six-sided Hay Bale 
+ Six-sided Piston 
+ Java Edition only
+ Faceless Furnace 
+ Faceless Jack o'Lantern 
+ Green Shrub 
+ Potted 
+ Invisible stairs 
+ Misaligned torch 
+ Redstone 
+ Nether portal post 
+ Overripe Melon Stem 
+ Attached 
+ Overripe Pumpkin Stem 
+ Attached 
+ Overgrown Cocoa 
+ Overeaten Cake 
+ Overgrown Wheat Crops 
+ Potted non-flower block 
+ Snowy Dirt 
+ Coarse 
+ Strange buttons 
+ Invisible random ladders 
+ Others 
+ Bedrock Edition only
+ Bell Stand 
+ Diorite Bell 
+ Granite Bell 
+ Polished 
+ Six-sided Bone Block 
+ Six-sided Purpur Pillar 
+ Six-sided Quartz Pillar 
+ Smokeless Campfire 
+ Retrieved from " https://minecraft.wiki/w/Kelp?oldid=3751028 " 
+ Categories : Renewable resources Stackable resources Pages needing historical sounds Items Blocks Plants Natural blocks Non-solid blocks Hidden categories: Pages using calculator Pages with sound tables Pages with Java sound tables Pages with Bedrock sound tables 
+ Navigation menu 
+ Personal tools 
+ Create account Log in 
+ associated-pages 
+ Page Talk 
+ English 
+ Views 
+ Read Edit Edit source View history 
+ More 
+ Refresh 
+ Search 
+ Navigation 
+ How to help Recent changes Random page in Minecraft in Dungeons in Dungeons II in Legends in Earth in Story Mode in Tutorial in Movie Wiki Discord 
+ Wiki community 
+ Community portal Wiki forum Projects Wiki rules Style guide Notability Sandbox Admin noticeboard 
+ X 
+ Franchise 
+ Minecraft Minecraft Dungeons Minecraft Legends Minecraft Earth Minecraft: Story Mode A Minecraft Movie 
+ Recent versions 
+ Java Edition 
+ Latest: 26.2 
+ Dev: 26.3-pre-2 
+ Upcoming: 26.3 
+ Bedrock Edition 
+ Latest: 26.45 
+ Preview: 26.60.21 
+ Upcoming: 26.50 
+ Upcoming: 26.60 
+ Useful pages 
+ Trading Brewing Enchantments Mobs Blocks Items Crafting Smelting Tutorials Resource packs Redstone circuits 
+ Useful pages 
+ Weapons Enchanting Armor Artifacts Missions 
+ Useful pages 
+ Weapons Enchanting Armor Artifact 
+ Useful pages 
+ Friendly units Piglins Resources Biomes Structures Lost Legends 
+ Tools 
+ What links here Related changes Printable version Permanent link Page information Special pages View buckets 
+ In other languages 
+ Deutsch Español Français Italiano 日本語 한국어 Nederlands Português Русский ไทย Українська 中文 
+ Contents (Top) 1 Obtaining 
+ 1.1 Breaking 
+ 1.2 Natural generation 
+ 1.3 Trading 
+ 1.4 Mob loot 
+ 2 Usage 
+ 2.1 Smelting ingredient 
+ 2.2 Composting 
+ 2.3 Growth mechanics 
+ 2.4 Farming 
+ 3 Sounds 
+ 3.1 Generic 
+ 3.2 Unique 
+ 4 Data values 
+ 4.1 ID 
+ 4.2 Block states 
+ 5 History 
+ 5.1 Development 
+ 5.2 Java Edition 
+ 5.3 Bedrock Edition 
+ 5.4 Legacy Console Edition 
+ 6 Issues 7 Trivia 8 Gallery 
+ 8.1 Screenshots 
+ 9 References 10 External links 11 Navigation 
+ This page was last edited on 30 August 2026, at 23:40. 
+ Content on this site is licensed under CC BY-NC-SA 3.0 unless otherwise noted; additional terms may apply . Not an official Minecraft website. We are not associated with Mojang or Microsoft. 
+ Privacy policy 
+ About Minecraft Wiki 
+ Disclaimers 
+ Terms of Use 
+ Contact Weird Gloop 
+ Mobile view 
+ Edit preview settings 
+ 

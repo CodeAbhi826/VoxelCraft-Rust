@@ -1,0 +1,791 @@
+ 
+ Phantom – Minecraft Wiki 
+ Phantom 
+ From Minecraft Wiki 
+ Jump to navigation 
+ Jump to search 
+ For other uses, see Phantom (disambiguation) .
+ Phantom 
+ Java Edition 
+ Bedrock Edition 
+ Health points 
+ 20 HP × 10 
+ Behavior
+ Hostile
+ Mob type 
+ Undead Monster 
+ Attack strength
+ In Java Edition : Easy and Normal: 2 HP Hard: 3 HP In Bedrock Edition [ 1 ] : Easy: 4 HP Normal: 6 HP Hard: 9 HP 
+ Hitbox size 
+ Height: 0.5 Blocks Width: 0.9 Blocks
+ Speed 
+ 0.7
+ Spawn 
+ In the Overworld at nighttime or during thunderstorms, when player has not entered a bed or straw bed​ [ upcoming: Wilderness Bound ] or died for ≥3 ingame days
+ {
+ "title": "Phantom",
+ "rows": [
+ {
+ "field": "20<span class=\"hidden-alt-text\">HP</span><span class=\"nowrap mc-hearts\"><span class=\"iconbar pixel-image nowrap\" style=\"--icon-offset:-1px;\" title=\"1 heart\">(link to File:Heart (icon).png article, displayed as 9px|link=|alt=❤️)</span> × 10</span>",
+ "label": "(link to Health article, displayed as Health points)"
+ },
+ {
+ "field": "Hostile",
+ "label": "Behavior"
+ },
+ {
+ "field": "<span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:EntitySprite undead.png article, displayed as 16x16px|link=Undead|alt=|class=pixel-image|)</span>(link to Undead article, displayed as <span class=\"sprite-text\">Undead</span>)</span><br><span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:EntitySprite monster.png article, displayed as 16x16px|link=Monster|alt=|class=pixel-image|)</span>(link to Monster article, displayed as <span class=\"sprite-text\">Monster</span>)</span>",
+ "label": "(link to Mob type article, displayed as Mob type)"
+ },
+ {
+ "field": "(values exceeds 1000 characters...)",
+ "label": "Attack<br/>strength"
+ },
+ {
+ "field": "'''Height:''' 0.5 Blocks <br> '''Width:''' 0.9 Blocks",
+ "label": "(link to Hitbox article, displayed as Hitbox size)"
+ },
+ {
+ "field": "0.7",
+ "label": "(link to Attribute#Movement_speed article, displayed as Speed)"
+ },
+ {
+ "field": "In the (link to Overworld article, displayed as Overworld) at nighttime or during thunderstorms, when player has not entered a bed or straw bed​<sup class=\" nowrap Inline-Template \" title=\"\">[<i><span title=\"This statement applies only to upcoming versions of Minecraft.\">upcoming:</span> (link to Wilderness Bound article, displayed as Wilderness Bound)</i>]</sup>(link to Category:Upcoming article, displayed as Category:Upcoming) or died for ≥3 ingame days",
+ "label": "(link to Mob spawning article, displayed as Spawn)"
+ }
+ ],
+ "invimages": [
+ "Phantom Spawn Egg"
+ ],
+ "images": [
+ "Phantom.gif",
+ "Phantom BE.gif"
+ ]
+} 
+ Phantoms are flying undead hostile mobs that spawn in the night sky when the player has not slept in a bed or straw bed ​ [ upcoming: Wilderness Bound ] or died for at least 3 in-game days. They attack by diving at the player from the sky to bite them.
+ Contents 
+ 1 Spawning 
+ 1.1 Bedrock Edition 
+ 1.2 Java Edition 
+ 2 Drops 
+ 2.1 On death 
+ 3 Behavior 
+ 4 Sounds 
+ 5 Data values 
+ 5.1 ID 
+ 5.2 Entity data 
+ 6 Achievements 
+ 7 Advancements 
+ 8 Videos 
+ 9 History 
+ 9.1 Development 
+ 9.2 Java Edition 
+ 9.3 Bedrock Edition 
+ 9.4 Legacy Console Edition 
+ 9.5 Data history 
+ 10 Issues 
+ 11 Trivia 
+ 12 Gallery 
+ 12.1 Renders 
+ 12.2 Screenshots 
+ 12.3 Mojang images 
+ 12.4 Development images 
+ 12.5 Concept artwork 
+ 12.6 Textures 
+ 12.7 In other media 
+ 13 References 
+ 14 Navigation 
+ Spawning [ edit | edit source ] 
+ Two phantoms at night. 
+ Phantoms spawn unless the game rule spawn_phantoms ‌ [ JE only ] or doInsomnia ‌ [ BE only ] is set to false . The spawning mechanics differ between Java and Bedrock editions. In both editions, they spawn in the Overworld above a player whose "Time Since Last Rest" statistic is at least 1 hour (72000 ticks or 3 in-game days). [ verify ] This statistic is reset when the player dies or enters a bed or straw bed .​ [ upcoming: Wilderness Bound ] This does not require skipping the night. Furthermore, the player must not have a block overhead that blocks light in any way; for example, leaves prevent phantoms from spawning as they have a light opacity of 2, but glass does not, as its light opacity is 0. Cherry planks work because they cannot be seen through. Phantoms do not spawn above players in Spectator mode, but they do spawn above players in Creative mode. [ 2 ] 
+ Bedrock Edition [ edit | edit source ] 
+ Phantom spawning is similar to other monsters spawning: the spawn location must have a light level of 7 or less, and spawns are limited by the monster population cap. Phantoms are also subject to a density cap of 5. Phantom spawn attempts are made on surface blocks throughout the same spawn radius as other monsters. However, when a phantom spawn attempt succeeds, the phantom appears somewhere in a 21×15×21 cube centered 28 blocks above the player instead of at the block where the spawn attempt occurred.
+ This means phantoms can also spawn during daytime as long as there are suitable blocks around players who are directly below the sky. The number of phantoms spawned is 1-2 in Easy difficulty, 1-3 in Normal , and 1-4 in Hard . Blocks that can spawn phantoms needs to count as surface, that is, they have to be the highest spawnable block having no solid blocks directly above them. A solid floor under a roof of leaves, with at least 8 air blocks in between, meets this criteria.
+ Java Edition [ edit | edit source ] 
+ The phantom's spawn range in Java Edition . The glass at the bottom indicates the player's position, the red stained glass indicates phantom spawning locations, and the blue stained glass indicates the bounding box of the spawn range. 
+ Phantoms attempt to spawn every 1–2 minutes . They spawn only if it is night or a thunderstorm is happening, the player is above sea level (y=64) with sky visible directly above (cobwebs do not block this), and the local difficulty is greater than a randomly chosen value between 0.0 and 3.0. The formula x −72000 ⁄ x represents the chance of a successful spawn, where x is the number of ticks since the player last entered a bed or straw bed​ [ upcoming: Wilderness Bound ] or died. This roughly comes to a 1 ⁄ 4 (25.0%) chance on day 4, a 2 ⁄ 5 (40.0%) chance on day 5, a 3 ⁄ 6 ( 1 ⁄ 2 ) (50.0%) chance on day 6, 4 ⁄ 7 (about 57.1%) chance on day 7, and so on.
+ If all conditions are met, a group of phantoms attempts to spawn 20–34 blocks above the player, and off to the side by a Chebyshev distance of up to 10 blocks. The number of phantoms spawned is 1-2 in Easy difficulty, 1-3 in Normal , and 1-4 in Hard . Phantoms can spawn inside buildings, if the player is outside and the building is both near enough and the building has a large enough cavity for them to spawn inside.
+ Phantoms count toward the hostile mob cap, but they do not adhere to it when spawning. [ 3 ] Their spawning mechanic is based on the location of players in the world rather than by chance, unlike regular mob spawning . Phantom spawning is completely independent of biome, meaning they can spawn in biomes that normally prevent hostile mob spawning such as mushroom fields [ 4 ] , deep dark [ 5 ] and the void . [ 6 ] The number of phantoms that spawn indirectly increase in number every consecutive night a player has not entered a bed or straw bed​ [ upcoming: Wilderness Bound ] , as there is a higher chance that phantoms spawn every time there is a spawn attempt. They then stop spawning when the player lies down in bed or straw bed​ [ upcoming: Wilderness Bound ] .
+ Drops [ edit | edit source ] 
+ On death [ edit | edit source ] 
+ Java Edition : 
+ Item Quantity / Chance / Average Default Looting I Looting II Looting III Phantom Membrane [ A ] 0–1 50.00% 0.50 0–2 75.00% 1.00 0–3 87.50% 1.50 0–4 91.67% 2.00 
+ Item Quantity / Chance / Average Default Looting I Looting II Looting III Phantom Membrane [ A ] 0–1 1 ⁄ 2 1 ⁄ 2 0–2 3 ⁄ 4 1 0–3 7 ⁄ 8 3 ⁄ 2 0–4 11 ⁄ 12 2 
+ Item Amount Probability Default Looting I Looting II Looting III Phantom Membrane [ A ] 0 1 ⁄ 2 (50.00%) 1 ⁄ 4 (25.00%) 1 ⁄ 8 (12.50%) 1 ⁄ 12 (8.33%) 1 1 ⁄ 2 (50.00%) 1 ⁄ 2 (50.00%) 3 ⁄ 8 (37.50%) 1 ⁄ 4 (25.00%) 2 0 1 ⁄ 4 (25.00%) 3 ⁄ 8 (37.50%) 1 ⁄ 3 (33.33%) 3 0 0 1 ⁄ 8 (12.50%) 1 ⁄ 4 (25.00%) 4 0 0 0 1 ⁄ 12 (8.33%) Average 1 ⁄ 2 (0.50) 1 (1.00) 3 ⁄ 2 (1.50) 2 (2.00) 
+ Killed 1 Item Expected Drops Default Looting I Looting II Looting III Phantom Membrane [ A ] 0.50 1.00 1.50 2.00 
+ ↑ Only when killed by a player or a tamed wolf . 
+ Bedrock Edition : 
+ Item Quantity / Chance / Average Default Looting I Looting II Looting III Phantom Membrane [ A ] 0–1 50.00% 0.50 0–2 50.00% 0.75 0–3 50.00% 1.00 0–4 50.00% 1.25 
+ Item Quantity / Chance / Average Default Looting I Looting II Looting III Phantom Membrane [ A ] 0–1 1 ⁄ 2 1 ⁄ 2 0–2 1 ⁄ 2 3 ⁄ 4 0–3 1 ⁄ 2 1 0–4 1 ⁄ 2 5 ⁄ 4 
+ Item Amount Probability Default Looting I Looting II Looting III Phantom Membrane [ A ] 0 1 ⁄ 2 (50.00%) 1 ⁄ 2 (50.00%) 1 ⁄ 2 (50.00%) 1 ⁄ 2 (50.00%) 1 1 ⁄ 2 (50.00%) 1 ⁄ 4 (25.00%) 1 ⁄ 8 (12.50%) 1 ⁄ 12 (8.33%) 2 0 1 ⁄ 4 (25.00%) 1 ⁄ 4 (25.00%) 1 ⁄ 6 (16.67%) 3 0 0 1 ⁄ 8 (12.50%) 1 ⁄ 6 (16.67%) 4 0 0 0 1 ⁄ 12 (8.33%) Average 1 ⁄ 2 (0.50) 3 ⁄ 4 (0.75) 1 (1.00) 5 ⁄ 4 (1.25) 
+ Killed 1 Item Expected Drops Default Looting I Looting II Looting III Phantom Membrane [ A ] 0.50 0.75 1.00 1.25 
+ ↑ Only when killed by a player . 
+ 5 XP when killed by the player or a tamed wolf. 
+ Behavior [ edit | edit source ] 
+ A phantom swooping at the player . In addition, a spider is stalking the player and a sheep , a plains village , and some pigs can be seen in the background. 
+ When idle, phantoms fly around in a roughly circular pattern within 15 to 25 blocks of a player horizontally and within 24 to 35 blocks of a player vertically. They leave a trail of gray smoke while they fly. Their movement speed when attacking is one of the fastest of any mob, up to 20 blocks per second. They have a large search radius, targeting and following players from 64 blocks away. Once every 10-20 seconds‌ [ BE only ] or every 8-12 seconds‌ [ JE only ] , they swoop in to attack.
+ If stopped or hurt during this action, the phantom retreats back to its original elevation. When a path to its original elevation is obstructed by a block, the phantom continues attempting to return - they will rarely attack or swoop down until they reach it. They will not pathfind to the elevation, simply flying up into a block, so they are relatively safe in this state. In the case of spawning under a high glass ceiling, phantoms spawn, immediately attack, and then fly up to the glass. 
+ Phantoms attack exposed players in beds or straw beds​ [ upcoming: Wilderness Bound ] , but do not attack players in creative mode . 
+ Phantoms switch targets if a player has spawned them but another player qualifies to be attacked, however they are neutralized if the spawning or targeted player resets their timer.
+ Phantoms can move through water at their normal speed and do not drown. They can be captured in a boat or minecart.
+ A phantom's body disappears when under the Invisibility effect, but its eyes and smoke particles are still visible.
+ Cats hiss at phantoms that are currently attacking players, and phantoms try to stay at least 16 blocks away from them, ignoring blocks obstructing line of sight. In Bedrock Edition , phantoms also avoid ocelots in the same manner.
+ Being an undead mob, they are: 
+ damaged by the status effect Instant Health and healed by the status effect Instant Damage . 
+ unaffected by the status effects Regeneration and Poison . 
+ ignored by the wither . 
+ affected by the Smite enchantment. 
+ unable to swim in water , but do not drown. 
+ a threat to armadillos , causing them to hide in their shell. 
+ Like zombies and skeletons , phantoms burn in sunlight. They burn even when equipped with helmets through commands. [ 7 ] 
+ The eyes of phantoms are emissive with Vibrant Visuals .
+ Sounds [ edit | edit source ] 
+ Java Edition :
+ Sounds Sound Closed captions Source Description Identifier Translation key Volume Pitch Attenuation distance ​Phantom screeches Hostile Mobs Randomly entity .phantom .ambient subtitles .entity .phantom .ambient ​ 0.8 0.8–1.2 16 ​Phantom flaps Hostile Mobs Periodically entity .phantom .flap subtitles .entity .phantom .flap ​ 0.95–1.0 0.95–1.0 16 ​Phantom hurts Hostile Mobs When a phantom is damaged entity .phantom .hurt subtitles .entity .phantom .hurt ​ 0.75 0.8–1.2 16 ​Phantom dies Hostile Mobs When a phantom dies entity .phantom .death subtitles .entity .phantom .death ​ 1.0 0.8–1.2 16 ​Phantom swoops Hostile Mobs When a phantom dives down to attack entity .phantom .swoop subtitles .entity .phantom .swoop ​ 7.0 0.95–1.05 16 ​Phantom bites Hostile Mobs When a phantom attacks something entity .phantom .bite subtitles .entity .phantom .bite ​ 0.3 0.9–1.0 16 
+ Bedrock Edition :
+ Sounds Sound Closed captions Source Description Identifier Translation key Volume Pitch ​ ? Hostile Mobs Randomly mob .phantom .idle ​ ? 10.0 0.8–1.2 ​ ? Hostile Mobs Periodically mob .phantom .flap ​ ? 10.0 0.8–1.2 ​ ? Hostile Mobs When a phantom is damaged mob .phantom .hurt ​ ? 10.0 0.8–1.2 ​ ? Hostile Mobs When a phantom dies mob .phantom .death ​ ? 10.0 0.8–1.2 ​ ? Hostile Mobs When a phantom dives down to attack mob .phantom .swoop ​ ? 10.0 0.95–1.05 ​ ? Hostile Mobs When a phantom attacks something mob .phantom .bite ​ ? 10.0 0.8–1.2 
+ Data values [ edit | edit source ] 
+ ID [ edit | edit source ] 
+ Java Edition :
+ Name Identifier Entity tags 
+ Translation key Phantom phantom burn_in_daylight can_breathe_under_water fall_damage_immune ignores_poison_and_regen inverted_healing_and_harm undead wither_friends sensitive_to_smite 
+ entity .minecraft .phantom 
+ Bedrock Edition :
+ Name Identifier Numeric ID 
+ Family Translation key Phantom phantom 58 
+ mob monster phantom undead entity .phantom .name 
+ Entity data [ edit | edit source ] 
+ Phantoms have entity data associated with them that contains various properties.
+ Java Edition :
+ Main article: Entity format 
+ [NBT Compound / JSON Object] Entity data
+ Tags common to all entities see Template:Nbt inherit/entity/template 
+ Tags common to all mobs see Template:Nbt inherit/mob/template 
+ [Int]  size : The size of the phantom. Ranges from 0 to 64 , similar to slimes . Unlike slimes, phantoms always have a constant 20 HP × 10 HP, and deal 6 HP + size damage. Naturally spawned phantoms are always size 0. 
+ [Int Array]  anchor_pos : The phantom, when not actively attacking, attempts to circle around X,Y,Z. Appears to reset to a point above the target player every time the phantom flies up after a swoop. Set to spawn location if not specified. 
+ Bedrock Edition :
+ See Bedrock Edition level format/Entity format . 
+ Achievements [ edit | edit source ] 
+ Icon Achievement In-game description Actual requirements (if different) Gamerscore earned Trophy type ( PS ) PS4 Other Monster Hunter Attack and destroy a monster. 
+ Kill one of these 41 monsters : 
+ Blaze 
+ Bogged 
+ Breeze 
+ Camel Husk 
+ Cave Spider 
+ Creaking (by destroying its creaking heart ) 
+ Creeper 
+ Drowned 
+ Elder Guardian 
+ Ender Dragon 
+ Enderman 
+ Endermite 
+ Evoker 
+ Ghast 
+ Guardian 
+ Hoglin 
+ Husk 
+ Magma Cube 
+ Parched 
+ Phantom 
+ Piglin 
+ Piglin Brute 
+ Pillager 
+ Ravager 
+ Shulker 
+ Silverfish 
+ Skeleton 
+ Slime 
+ Spider 
+ Stray 
+ Vex 
+ Vindicator 
+ Witch 
+ Wither 
+ Wither Skeleton 
+ Zoglin 
+ Zombie 
+ Zombie Horse 
+ Zombie Nautilus 
+ Zombie Villager 
+ Zombified Piglin 
+Other mobs may be killed, but are ignored for this achievement. 15 Bronze It Spreads Kill a mob next to a catalyst Kill any mob that drops experience near a sculk catalyst, with the sole exception of the ender dragon . Mobs that drop no experience are ignored for this achievement. 10 Bronze 
+ Achievements that apply to all mobs:
+ Icon Achievement In-game description Actual requirements (if different) Gamerscore earned Trophy type ( PS ) PS4 Other Overkill Deal nine hearts of damage in a single hit. Damage can be dealt to any mob, even those that do not have nine hearts of health overall. 30 Bronze Over-Overkill Deal 50 hearts of damage in a single hit using the Mace Damage can be dealt to any mob, even those that do not have 50 hearts of health overall. 20 Silver Mob Kabob Hit five mobs in the same Charge attack using the Spear. Armor stands and players also count for this achievement as they are technically mobs . 10 Bronze 
+ Advancements [ edit | edit source ] 
+ Icon Advancement In-game description Actual requirements (if different) Monster Hunter Kill any hostile monster 
+ Kill one of these 41 monsters : 
+ Blaze 
+ Bogged 
+ Breeze 
+ Camel Husk 
+ Cave Spider 
+ Creaking (by destroying its creaking heart ) 
+ Creeper 
+ Drowned 
+ Elder Guardian 
+ Ender Dragon 
+ Enderman 
+ Endermite 
+ Evoker 
+ Ghast 
+ Guardian 
+ Hoglin 
+ Husk 
+ Magma Cube 
+ Parched 
+ Phantom 
+ Piglin 
+ Piglin Brute 
+ Pillager 
+ Ravager 
+ Shulker 
+ Silverfish 
+ Skeleton 
+ Slime 
+ Spider 
+ Stray 
+ Vex 
+ Vindicator 
+ Witch 
+ Wither 
+ Wither Skeleton 
+ Zoglin 
+ Zombie 
+ Zombie Horse 
+ Zombie Nautilus 
+ Zombie Villager 
+ Zombified Piglin 
+Other mobs may be killed, but are ignored for this advancement. It Spreads Kill a mob near a Sculk Catalyst Kill any mob that drops experience near a sculk catalyst , with the sole exception of the ender dragon . Mobs that drop no experience are ignored for this advancement. Monsters Hunted Kill one of every hostile monster 
+ Kill each of these 41 monsters : 
+ Blaze 
+ Bogged 
+ Breeze 
+ Camel Husk 
+ Cave Spider 
+ Creaking (by destroying its creaking heart ) 
+ Creeper 
+ Drowned 
+ Elder Guardian 
+ Ender Dragon 
+ Enderman 
+ Endermite 
+ Evoker 
+ Ghast 
+ Guardian 
+ Hoglin 
+ Husk 
+ Magma Cube 
+ Parched 
+ Phantom 
+ Piglin 
+ Piglin Brute 
+ Pillager 
+ Ravager 
+ Shulker 
+ Silverfish 
+ Skeleton 
+ Slime 
+ Spider 
+ Stray 
+ Vex 
+ Vindicator 
+ Witch 
+ Wither 
+ Wither Skeleton 
+ Zoglin 
+ Zombie 
+ Zombie Horse 
+ Zombie Nautilus 
+ Zombie Villager 
+ Zombified Piglin 
+Other mobs may be killed, but are ignored for this advancement. Two Birds, One Arrow Kill two Phantoms with a piercing Arrow Use a crossbow enchanted with Piercing to kill two phantoms with a single arrow shot. 
+ Advancements that apply to all mobs:
+ Icon Advancement In-game description Actual requirements (if different) Adventure Adventure, exploration and combat Kill any mob , or be killed by any living entity . A Throwaway Joke Throw a Trident at something. Note: Throwing away your only weapon is not a good idea. Hit a mob with a thrown trident . Take Aim Shoot something with an Arrow Using a bow or a crossbow , shoot a mob with an arrow , tipped arrow , or spectral arrow . Mob Kabob Hit five mobs in the same Charge attack using the Spear. Armor Stand and Mannequin also count for this advancement. Arbalistic Kill five unique mobs with one crossbow shot Armor Stand and Mannequin also count for this advancement. This is a hidden advancement, meaning that it can be viewed by the player only after completing it, regardless of if its child advancement(s), if any, have been completed. Over-Overkill Deal 50 hearts of damage in a single hit using the Mace Damage can be dealt to any mob, even those that do not have 50 hearts of health overall. 
+ Videos [ edit | edit source ] 
+ History [ edit | edit source ] 
+ Development [ edit | edit source ] 
+ November 1, 2017 
+ Phantoms are first shown on YouTube (back then known only as Mob B and The Monster of the Night Skies ). The colored version later appeared after it won the vote. November 14, 2017 
+ The article about the phantom was published, which introduced a community vote option for the phantom at MINECON Earth 2017 . November 18, 2017 
+ The phantom wins the vote at MINECON Earth. It is the second of mobs that were added as a result of the community voting for it. December 13, 2017 
+ A newer version of the model is shown by jeb. Adrian Östergård jokingly refers to it as a Raybow. December 13, 2017 
+ Another version of the model is shown by jeb later that day with another model and a missing texture. ? 
+ At some point in development, the phantom’s model and texture resembled the final design. ? 
+ A texture almost identical to the final design with a red color. 
+ Java Edition [ edit | edit source ] 
+ Java Edition 1.13 18w07a 
+ Added phantoms with a placeholder drop of 1-4 leather . 18w09a 
+ Phantoms no longer spawn in the End .
+ Phantoms now despawn at daytime. 18w10a 
+ The model and texture of phantoms have been changed. 18w10c 
+ Phantoms are now considered undead . 18w10d 
+ Phantoms now burn in sunlight like most undead mobs .
+ Phantoms no longer despawn at daytime. 18w14a 
+ With the addition of phantom membranes , phantoms now drop 0-1 phantom membrane, instead of leather . 18w19a 
+ The phantom's animation has been changed to have the wings flap quicker and smoother.
+ Phantoms now drop experience . [ 8 ] pre1 
+ Phantoms now have new flapping sounds . 1.14 18w43a 
+ Phantoms are now required for the " Two Birds, One Arrow " advancement. 18w44a 
+ Phantoms are now afraid of cats . pre3 
+ The damage of phantoms has been reduced from 6 HP to 2 HP . [ 9 ] 1.15 19w36a 
+ Phantom spawning can now be toggled with the game rule doInsomnia . Upcoming Java Edition 26.3 snap3 
+ Added straw beds , which also prevent phantoms from spawning. 
+ Bedrock Edition [ edit | edit source ] 
+ Bedrock Edition 1.6.0 beta 1.6.0.1 
+ Added phantoms with the health of 10 HP , with a placeholder drop of 1-4 leather . [ verify ] beta 1.6.0.5 
+ Phantoms now drop phantom membranes .
+ The phantom's health has been increased from 10 HP to 20 HP × 10 .
+ Phantoms now burn in direct sunlight.
+ Due to a bug, phantoms are now able to drown . [ 10 ] beta 1.6.0.6 
+ Phantom spawning can now be toggled with the game rule doInsomnia . 1.8.0 beta 1.8.0.8 
+ Phantoms are now afraid of cats . 1.21.80 Preview 1.21.80.20 
+ Phantoms are now imitated by parrots . 1.21.130 Preview 1.21.130.22 
+ Phantoms are no longer able to drown. 26.40 Experiment Drop 3 of 2026 Preview 26.40.30 
+ Added straw beds, which also prevent phantoms from spawning. Upcoming Bedrock Edition 26.50 Preview 26.50.22 
+ All features from the "Drop 3 of 2026" experiment have been fully implemented. 
+ Legacy Console Edition [ edit | edit source ] 
+ Legacy Console Edition Xbox 360 Xbox One PS3 PS4 PS Vita Wii U Switch TU69 1.76 1.76 1.76 Patch 38 
+ Added phantoms.
+ Phantoms only have 10 health.
+ The maximum number of phantoms in a world is 5. 1.83 
+ Phantoms are now afraid of cats . 
+ Data history [ edit | edit source ] 
+ Java Edition 1.20.3 23w40a 
+ Phantoms are now part of the #can_breathe_under_water and #undead tags . 1.21.5 25w07a 
+ The Size field has been renamed to size . 
+ The AX , AY , and AZ fields have been collected into a single anchor_pos field. 
+ Issues [ edit | edit source ] 
+ Issues relating to "Phantom" are maintained on the bug tracker . Issues should be reported and viewed there .
+ Trivia [ edit | edit source ] 
+ The red phantom design was scrapped because it looked like a Nether mob. 
+ At one point before the release of 18w10a , the phantom texture was made red, but it was decided that it appeared too much like a Nether mob. [ 11 ] 
+ The unused red design was used later in Minecraft Dungeons as a pet phantom . 
+ The phantom was originally going to have a mouth, like the drawing shown during MINECON Earth , but it was eventually scrapped because "it looked so much like a muppet ". [ 11 ] Earlier designs can be seen on Minecraft 's Instagram account. [ 12 ] 
+ The sounds of the phantom were taken from Samuel Åberg 's son screaming. [ 13 ] [ 14 ] 
+ Despite being flying mobs, phantoms can destroy turtle eggs when on top of them. [ 15 ] 
+ In its Mob Menagerie , phantoms real-world parallel was stated to be bats , as well as mentions of the extinct pterosaur, quetzalcoatlus . [ 16 ] 
+ Gallery [ edit | edit source ] 
+ Renders [ edit | edit source ] 
+ Non-moving phantom (this state cannot be seen in-game) 
+ Screenshots [ edit | edit source ] 
+ A phantom under the Invisibility effect 
+ Phantoms exposed to sunlight and taking fire damage 
+ The particles produced by the phantom's wings can be clearly seen 
+ A phantom swooping down at a player at night leaving a trail of gray smoke 
+ A phantom stuck in a player's boat, caught in the daylight 
+ Mojang images [ edit | edit source ] 
+ A player avoiding a phantom by using the Invisibility effect 
+ A swarm of phantoms 
+ Another swarm of phantoms 
+ A phantom on fire 
+ A player riding a phantom 
+ Development images [ edit | edit source ] 
+ A phantom with a model template texture 
+ A phantom with no texture 
+ Phantoms flying overhead 
+ A phantom flying high in the air, using its model and texture from 18w07a 
+ A phantom flying high in the air, using its model and texture from 18w07a. The smoke particles beside each of its wings can be seen 
+ The phantom's poses 
+ Concept artwork [ edit | edit source ] 
+ Mob B alongside the other mobs 
+ Mob B finally wins in Minecon Earth Mob Vote 
+ All the revisions of the phantom design, except for the red revision 
+ The red phantom revision 
+ Concept sketches 
+ Textures [ edit | edit source ] 
+ Phantom texture file 
+ Old texture before 18w10a 
+ In other media [ edit | edit source ] 
+ Artwork of a phantom 
+ LEGO Minecraft Phantom 
+ "Phantoms and Witches and Ghasts, Oh My," an officially licensed T-Shirt 
+ Phantom Plush 
+ A demotivational poster of a phantom 
+ World Kindness Day artwork 
+ A phantom lunging at the Nitwit 
+ A phantom as seen in Minecraft Dungeons 
+ An action figure of a phantom 
+ The same figure, but unboxed. 
+ References [ edit | edit source ] 
+ ↑ MCPE-236190  – Phantom deals more damage than on Java Edition 
+ ↑ MC-145177  – resolved as "Works As Intended". 
+ ↑ MC-198101 
+ ↑ MC-126778 
+ ↑ MC-305640  – Phantoms can spawn in the deep dark 
+ ↑ MC-127599 
+ ↑ MC-146985  – Helmeted phantoms still burn under the sunlight 
+ ↑ MC-128712 
+ ↑ MC-154372  – resolved as "Works As Intended". 
+ ↑ MCPE-101541 
+ ↑ a b "Meet the Phantom" by Tom Stone – Minecraft.net , March 12, 2018. 
+ ↑ "The first mob to ever be voted into Minecraft by the community! Originally known as ‘Mob B - The Monster Of The Night Skies’, this creature won your heart - and your vote! And so it is that we now present you with the many development phases of the Phantom!" – @minecraft on Instagram, June 25, 2018 
+ ↑ "Spoopy and Serene - Making The Sound of 'Minecraft Dungeons' With Mojang's Audio Team" by Adriane Kuzminski – A Sound Effect, July 15, 2020. 
+ ↑ "Growth & Evolution - Part 3: 15 Years of Minecraft" – Minecraft on YouTube, June 5, 2024 
+ ↑ MC-248332  – Bees, ghasts, phantoms, and allays can destroy turtle eggs 
+ ↑ "Mob Menagerie: Phantom" by Duncan Geere – Minecraft.net , February 16, 2026. 
+ Navigation [ edit | edit source ] 
+ v 
+ t 
+ e Entities 
+ Mobs 
+ Passive
+ Allay 
+ Armadillo 
+ Axolotl 
+ Bat 
+ Camel 
+ Camel Husk 
+ Cat 
+ Chicken 
+ Cod 
+ Copper Golem 
+ Cow 
+ Donkey 
+ Frog 
+ Glow Squid 
+ Happy Ghast 
+ Horse 
+ Mooshroom 
+ Mule 
+ Ocelot 
+ Parrot 
+ Pig 
+ Rabbit 
+ Salmon 
+ Sheep 
+ Skeleton Horse 
+ Sniffer 
+ Snow Golem 
+ Squid 
+ Strider 
+ Sulfur Cube 
+ Tadpole 
+ Tropical Fish 
+ Turtle 
+ Villager 
+ Wandering Trader 
+ Zombie Horse 
+ BE & Edu only
+ Agent 
+ NPC 
+ Neutral
+ Bee 
+ Cave Spider 
+ Dolphin 
+ Drowned 
+ Enderman 
+ Fox 
+ Goat 
+ Iron Golem 
+ Llama 
+ Nautilus 
+ Panda 
+ Piglin 
+ Polar Bear 
+ Pufferfish 
+ Spider 
+ Trader Llama 
+ Wolf 
+ Zombie Nautilus 
+ Zombified Piglin 
+ Hostile
+ Blaze 
+ Bogged 
+ Breeze 
+ Creaking 
+ Creeper 
+ Elder Guardian 
+ Endermite 
+ Evoker 
+ Ghast 
+ Guardian 
+ Hoglin 
+ Husk 
+ Magma Cube 
+ Parched 
+ Phantom 
+ Piglin Brute 
+ Pillager 
+ Ravager 
+ Shulker 
+ Silverfish 
+ Skeleton 
+ Slime 
+ Stray 
+ Vex 
+ Vindicator 
+ Warden 
+ Witch 
+ Wither Skeleton 
+ Zoglin 
+ Zombie 
+ Zombie Villager 
+ Bosses 
+ Ender Dragon 
+ Wither 
+ Mob types 
+ Animal 
+ Aquatic 
+ Arthropod 
+ Illager 
+ Monster 
+ Undead 
+ Other
+ Baby 
+ Jockey 
+ Camel Husk 
+ Chicken 
+ Hoglin 
+ Ravager 
+ Skeleton Horseman 
+ Spider 
+ Strider 
+ Baby Strider 
+ Zombie Horseman 
+ Zombie Nautilus 
+ Mob variants 
+ Other entities 
+ Player 
+ Alex 
+ Ari 
+ Efe 
+ Kai 
+ Makena 
+ Noor 
+ Steve 
+ Sunny 
+ Zuri 
+ Blocks 
+ Falling Blocks 
+ Anvil 
+ Concrete Powder 
+ Dragon Egg 
+ Gravel 
+ Pointed Dripstone 
+ Sand 
+ Red Sand 
+ Scaffolding 
+ Sulfur Spike 
+ Suspicious Gravel 
+ Suspicious Sand 
+ Primed TNT 
+ BE & Edu only
+ Falling Blocks 
+ Deprecated Anvil 
+ Snow 
+ Primed Underwater TNT 
+ Vehicles 
+ Boat 
+ with Chest 
+ Minecart 
+ with Chest 
+ with Command Block 
+ with Hopper 
+ with TNT 
+ Java Edition only
+ Minecart with Furnace 
+ with Monster Spawner 
+ Projectiles 
+ Fireball 
+ Small 
+ Dragon 
+ Launched Firework Rocket 
+ Llama Spit 
+ Shot Arrow 
+ Tipped 
+ Shulker Bullet 
+ Thrown Bottle o' Enchanting 
+ Thrown Egg 
+ Thrown Ender Pearl 
+ Thrown Eye of Ender 
+ Thrown Snowball 
+ Thrown Splash Potion 
+ Lingering Potion 
+ Thrown Trident 
+ Wind Charge 
+ Wither Skull 
+ Java Edition only
+ Shot Spectral Arrow 
+ BE & Edu only
+ Thrown Ice Bomb 
+ Stationary objects
+ Cushion ​ [ upcoming: Wilderness Bound ] 
+ End Crystal 
+ Leash Knot 
+ Painting 
+ Java Edition only
+ Item Frame 
+ Glow 
+ Miscellaneous
+ Area Effect Cloud 
+ Armor Stand 
+ Evoker Fangs 
+ Experience Orb 
+ Fishing Bobber 
+ Items 
+ Lightning Bolt 
+ Ominous Item Spawner 
+ JE only
+ Mannequin 
+ BE & Edu only
+ Balloon 
+ Camera 
+ Technical objects
+ JE only
+ Display 
+ Block 
+ Item 
+ Text 
+ Interaction 
+ Marker 
+ Editor only
+ Location Pointer Idle 
+ Location Pointer Selected 
+ Map Marker 
+ Ruler 
+ Idle 
+ Unimplemented 
+ Unused
+ JE only
+ Giant 
+ Illusioner 
+ BE & Edu only
+ Elder Guardian Ghost 
+ Old Villager 
+ Old Zombie Villager 
+ Mentioned 
+ Alpaca 
+ Barnacle 
+ Crab 
+ Firefly 
+ Glare 
+ Great Hunger 
+ Herobrine 
+ Iceologer 
+ Meerkat 
+ Minecart with Dispenser 
+ Moobloom 
+ Ostrich 
+ Penguin 
+ Pigman Bodyguard 
+ Rascal 
+ Red Dragon 
+ Shade 
+ Termite 
+ Tuff Golem 
+ Vulture 
+ Wildfire 
+ Removed
+ Builder 
+ Giant Jockey 
+ MD3 Test Mob 
+ Mob 
+ Monster 
+ Shot Purple Arrow 
+ Sign Entity 
+ Joke 
+ Mobs
+ April Fools 2013 
+ Diamond Chicken 
+ Horse 
+ Pony 
+ Pink Wither 
+ Redstone Bug 
+ April Fools 2015 
+ Love Golem 
+ Friendly Wither 
+ Smiling Creeper 
+ April Fools 2019 
+ Nerd Creeper 
+ April Fools 2023 
+ Moon Cow 
+ Ray Tracing 
+ April Fools 2024 
+ Batato 
+ Mega Spud 
+ Plaguewhale Slab 
+ Poisonous Potato Zombie 
+ Potato mob category 
+ Toxifin Slab 
+ April Fools 2025 
+ Angry Ghast 
+ Spectator Villager 
+ Spectator Witch 
+ Traitor 
+ Warden (boss) 
+ Pet variants
+ Pet Armadillo 
+ Pet Axolotl 
+ Pet Bee 
+ Pet Cat 
+ Pet Chicken 
+ Pet Cow 
+ Pet Creeper 
+ Pet Fox 
+ Pet Frog 
+ Pet Mooshroom 
+ Pet Polar Bear 
+ Pet Slime 
+ Pet Turtle 
+ Pet Wolf 
+ April Fools 2026 
+ Living Block 
+ Other entities
+ April Fools 2013 
+ Pink Wither Skull 
+ April Fools 2015 
+ Obsidian Boat 
+ Friendly Wither Skull 
+ April Fools 2023 
+ Stencil Display 
+ April Fools 2024 
+ Falling Block 
+ Gravtater 
+ Potato Eye 
+ April Fools 2026 
+ Crafting Grid 
+ Hovering Item 
+ Living Block Command 
+ Retrieved from " https://minecraft.wiki/w/Phantom?oldid=3761323 " 
+ Categories : Entities Hostile mobs Undead mobs Monster mobs Flying mobs Hidden categories: Pages using simple calculator Upcoming Verify Pages with sound tables Pages with Java sound tables Pages with Bedrock subtitles missing Pages with Bedrock subtitle key missing Pages with Bedrock sound tables Pages with YouTube videos Java Edition upcoming Bedrock Edition upcoming 
+ Navigation menu 
+ Personal tools 
+ Create account Log in 
+ associated-pages 
+ Page Talk 
+ English 
+ Views 
+ Read Edit Edit source View history 
+ More 
+ Search 
+ Navigation 
+ How to help Recent changes Random page in Minecraft in Dungeons in Dungeons II in Legends in Earth in Story Mode in Tutorial in Movie Wiki Discord 
+ Wiki community 
+ Community portal Wiki forum Projects Wiki rules Style guide Notability Sandbox Admin noticeboard 
+ X 
+ Franchise 
+ Minecraft Minecraft Dungeons Minecraft Legends Minecraft Earth Minecraft: Story Mode A Minecraft Movie 
+ Recent versions 
+ Java Edition Latest: 26.2 Dev: 26.3-pre-2 Upcoming: 26.3 Bedrock Edition Latest: 26.45 Preview: 26.60.21 Upcoming: 26.50 Upcoming: 26.60 
+ Useful pages 
+ Trading Brewing Enchantments Mobs Blocks Items Crafting Smelting Tutorials Resource packs Redstone circuits 
+ Useful pages 
+ Weapons Enchanting Armor Artifacts Missions 
+ Useful pages 
+ Weapons Enchanting Armor Artifact 
+ Useful pages 
+ Friendly units Piglins Resources Biomes Structures Lost Legends 
+ Tools 
+ What links here Related changes Printable version Permanent link Page information Special pages View buckets 
+ In other languages 
+ Deutsch Español Français Italiano 日本語 한국어 Português Русский ไทย Українська 中文 
+ This page was last edited on 5 September 2026, at 21:54. 
+ Content on this site is licensed under CC BY-NC-SA 3.0 unless otherwise noted; additional terms may apply . Not an official Minecraft website. We are not associated with Mojang or Microsoft. 
+ Privacy policy 
+ About Minecraft Wiki 
+ Disclaimers 
+ Terms of Use 
+ Contact Weird Gloop 
+ Mobile view 
+ 

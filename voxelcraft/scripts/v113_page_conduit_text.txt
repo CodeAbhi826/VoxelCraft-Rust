@@ -1,0 +1,1242 @@
+ 
+ Conduit – Minecraft Wiki 
+ Conduit 
+ From Minecraft Wiki 
+ Jump to navigation 
+ Jump to search 
+ For other uses, see Conduit (disambiguation) .
+ Conduit 
+ Inactive
+ Active ( Java Edition )
+ Active ( Bedrock Edition )
+ Rarity tier 
+   Uncommon
+ Renewable 
+ No
+ Stackable
+ Yes (64)
+ Tool
+ Blast resistance 
+ 3
+ Hardness 
+ 3
+ Luminous 
+ Yes (15)
+ Transparent 
+ Yes
+ Waterloggable 
+ Yes
+ Flammable 
+ No
+ Catches fire from lava 
+ No
+ Map color 
+  31 DIAMOND 
+ Note block instrument 
+ Hat
+ {
+ "title": "Conduit",
+ "rows": [
+ {
+ "field": "<span style=\"white-space: nowrap;\"><span style=\"display: inline-block; background-color: #ff5; border: 1px solid #888; border-radius: 0.3em; color: transparent; width: 1em; height: 1em; vertical-align: -0.36em; margin-right: -0.1em\"><br></span> </span> Uncommon",
+ "label": "(link to Rarity article, displayed as Rarity tier)"
+ },
+ {
+ "field": "No",
+ "label": "(link to Renewable resource article, displayed as Renewable)"
+ },
+ {
+ "field": "Yes (64)",
+ "label": "Stackable"
+ },
+ {
+ "field": "<span class=\"sprite-file\" style=\"height:32px;width:32px;--vertical-align:middle\">(link to File:SlotSprite Pickaxe Required.png article, displayed as 32x32px|link=|alt=SlotSprite Pickaxe Required.png: Sprite image for Pickaxe Required in Minecraft|class=pixel-image|This block can be broken with any tool, but a pickaxe is the quickest)</span>",
+ "label": "Tool"
+ },
+ {
+ "field": "3",
+ "label": "(link to Explosion#Blast resistance article, displayed as Blast resistance)"
+ },
+ {
+ "field": "3",
+ "label": "(link to Breaking#Blocks by hardness article, displayed as Hardness)"
+ },
+ {
+ "field": "Yes (15)",
+ "label": "(link to Light article, displayed as Luminous)"
+ },
+ {
+ "field": "Yes",
+ "label": "(link to Opacity article, displayed as Transparent)"
+ },
+ {
+ "field": "Yes",
+ "label": "(link to Waterlogging article, displayed as Waterloggable)"
+ },
+ {
+ "field": "No",
+ "label": "(link to Fire#Flammable blocks article, displayed as Flammable)"
+ },
+ {
+ "field": "No",
+ "label": "Catches fire<br>from (link to lava article, displayed as lava)"
+ },
+ {
+ "field": "<span style=\"white-space: nowrap;\"><span style=\"display: inline-block; background-color: rgb(92, 219, 213); border: 1px solid #888; border-radius: 0.3em; color: transparent; width: 1em; height: 1em; vertical-align: -0.36em; margin-right: -0.1em\"><br></span> 31 DIAMOND</span>",
+ "label": "(link to Map item format#Color table article, displayed as Map color)"
+ },
+ {
+ "field": "Hat",
+ "label": "(link to Note Block#Instruments article, displayed as Note block instrument)"
+ }
+ ],
+ "invimages": [
+ "Conduit",
+ "Conduit BE"
+ ],
+ "images": [
+ "Conduit.png",
+ "Conduit.gif",
+ "Conduit BE.gif"
+ ]
+} 
+ A conduit is a block that can be placed underwater and surrounded by prismarine to activate it. Once active, it empowers nearby players touching water or rain , prevents them from drowning , and attacks wet monsters .
+ Contents 
+ 1 Obtaining 
+ 1.1 Breaking 
+ 1.2 Crafting 
+ 2 Usage 
+ 2.1 Conduit Power 
+ 2.2 Attacking mobs 
+ 2.3 Light source 
+ 3 Sounds 
+ 3.1 Generic 
+ 3.2 Unique 
+ 4 Data values 
+ 4.1 ID 
+ 4.2 Block states 
+ 4.3 Block data 
+ 5 Achievements 
+ 6 Advancements 
+ 7 History 
+ 7.1 Java Edition 
+ 7.2 Bedrock Edition 
+ 7.3 Legacy Console Edition 
+ 8 Issues 
+ 9 Trivia 
+ 10 Gallery 
+ 10.1 Renders 
+ 10.2 Screenshots 
+ 10.2.1 In other media 
+ 11 Notes 
+ 12 See also 
+ 13 External links 
+ 14 Navigation 
+ Obtaining [ edit | edit source ] 
+ There is a related tutorial page for this topic!  
+ See Tutorial:Acquiring a conduit . 
+ Breaking [ edit | edit source ] 
+ A conduit drops as an item when broken with any tool or by hand, but a pickaxe is the fastest way to break it.
+ Like other rare blocks such as beacons and shulker boxes , it always drops when destroyed by an explosion .
+ Block
+ Conduit 
+ Hardness
+ 3
+ Tool
+ Breaking time (sec) [ A ] 
+ Default
+ 4.5 
+ Wooden 
+ 2.25 
+ Stone 
+ 1.15 
+ Copper 
+ 0.9 
+ Iron 
+ 0.75 
+ Diamond 
+ 0.6 
+ Netherite 
+ 0.5 
+ Golden 
+ 0.4 
+ Options Efficiency 0 0 0 Haste 0 0 1 1 JE BE 
+ Legend 
+ incorrect tool, drops nothing 
+ correct tool, drops nothing or something other than the block itself 
+ correct tool, drops the block itself 
+ italicized can be instant mined 
+ ↑ These durations ignore any other influential factors (e.g., Mining Fatigue ) and are measured in seconds. For more information, see Breaking § Mining efficiency . 
+ Crafting [ edit | edit source ] 
+ Ingredients 
+ Crafting recipe
+ Nautilus Shell  + Heart of the Sea 
+ Usage [ edit | edit source ] 
+ Conduit Power [ edit | edit source ] 
+ 1 
+ 2 
+ 3 
+ 4 
+ 5 
+ Schematic of a conduit in an activation frame. Click the scale on the right to view the layers. The conduit and water are required. The frame must include 16-42 blocks of prismarine, dark prismarine, sea lanterns, and/or prismarine bricks. Unused frame-blocks and empty spaces can be anything.
+ When activated, conduits give the " Conduit Power " effect to all players in contact with rain or water , within a spherical range of 32-96 blocks. The effect has the same benefits as Water Breathing , Night Vision , and Haste , but does not stack with them. The effect is "ambient", which means that the effect in the HUD has a blue border, similar to effects from beacons . Fully-constructed conduits also damage any hostile mobs, like drowned , guardians , and elder guardians , within a range of 8 blocks of the conduit. Conduits can be activated in any biome and at any height or depth.
+ To activate, a conduit needs to be in the center of a 3×3×3 volume of water (26 source blocks, flowing water, and/or waterlogged blocks, with the conduit also waterlogged in the center), which must be enclosed within an activation frame. The frame can be built out of blocks in three 5×5 open squares centered on the conduit, one around each axis. Only prismarine , dark prismarine , prismarine bricks , and sea lantern blocks in the frame contribute to activation. A minimum of 16 blocks are required and produce an effective range of 32 blocks. Prismarine-type slabs (including double slabs), stairs , and walls cannot be used to activate the conduit. Any blocks (of any type) that are not part of the activation frame itself but are in the 5×5×5 outer shell likewise have no effect. Once activated, removing any blocks from the conduit (frame blocks) deactivates the conduit. [ note 1 ] 
+ The effective radius of the conduit is 16 blocks for every seven blocks in the frame, though the effect does not activate until the minimum of 16 blocks is included in the build. Thus, it extends to 48 at 21 blocks, 64 at 28 blocks, 80 at 35 blocks, and 96 with a complete frame of 42 blocks. When the frame is complete, the center of the conduit displays an orange iris-like shape.
+ Valid block placements for conduit activation; note that the conduit itself must also be surrounded by water . 
+ Basic arrangements of 16 prismarine bricks to activate a conduit. 
+ Adding additional blocks around a conduit can extend the range of effect. 
+ One possible setup to activate a conduit. 
+ An unusual, but valid setup of 16 prismarine blocks. 
+ Attacking mobs [ edit | edit source ] 
+ A complete frame also attacks hostile mob within 8 blocks, dealing 4 HP magic damage every 2 seconds if they are in contact with water or rain . [ note 2 ] 
+ Conduits attack only one mob at a time, moving on to the next once the current target dies or leaves range.
+ Creaking mobs will be targeted but can't be damaged, blocking conduits from targeting other monsters that night or until the creaking moves out of range.
+ Monsters that are attacked by the conduit:
+ Blaze 
+ Bogged 
+ Breeze 
+ Cave Spider 
+ Creaking 
+ Creeper 
+ Drowned 
+ Elder Guardian 
+ Ender Dragon 
+ Enderman 
+ Endermite 
+ Evoker 
+ Ghast 
+ Giant ‌ [ JE only ] 
+ Guardian 
+ Hoglin 
+ Husk 
+ Illusioner ‌ [ JE only ] 
+ Magma Cube 
+ Parched 
+ Phantom 
+ Piglin 
+ Piglin Brute 
+ Pillager 
+ Ravager 
+ Shulker 
+ Silverfish 
+ Skeleton 
+ Slime 
+ Spider 
+ Stray 
+ Vex 
+ Vindicator 
+ Warden 
+ Witch 
+ Wither 
+ Wither Skeleton 
+ Zoglin 
+ Zombie 
+ Zombie Villager 
+ Zombified Piglin 
+ Light source [ edit | edit source ] 
+ Conduits emit a light level of 15, the brightest light level in the game, whether activated or not, and even on land.
+ Sounds [ edit | edit source ] 
+ Generic [ edit | edit source ] 
+ Java Edition :
+ v 
+ t 
+ e stone sound type Sound Closed captions Source Description Identifier Translation key Volume Pitch Attenuation distance ​Block broken Blocks Once the block has broken block .stone .break subtitles .block .generic .break ​ 1.0 0.8 16 ​Block placed Blocks When the block is placed block .stone .place subtitles .block .generic .place ​ 1.0 0.8 16 ​Block breaking Blocks While the block is in the process of being broken block .stone .hit subtitles .block .generic .hit ​ 0.25 0.5 16 ​Something falls on a block Entity-Dependent Falling on the block with fall damage block .stone .fall subtitles .block .generic .fall ​ 0.5 0.75 16 ​Footsteps Entity-Dependent Walking on the block block .stone .step subtitles .block .generic .footsteps ​ 0.15 1.0 16 
+ Bedrock Edition :
+ v 
+ t 
+ e stone sound type Sound Closed captions Source Description Identifier Translation key Volume Pitch ​Block broken Blocks Once the block has broken dig .stone subtitles .block .generic .break ​ 1.0 0.8–1.0 ​Block placed Blocks When the block is placed place .stone subtitles .block .generic .place ​ 1.0 0.8–1.0 ​Block breaking Blocks While the block is in the process of being broken hit .stone subtitles .block .generic .hit ​ 0.37 0.5 ​Footsteps Players Falling on the block with fall damage fall .stone subtitles .block .generic .footsteps ​ 0.4 1.0 ​Footsteps Players Walking on the block step .stone subtitles .block .generic .footsteps ​ 0.3 1.0 ​Footsteps Blocks Jumping from the block jump .stone subtitles .block .generic .footsteps ​ 0.12 1.0 ​Footsteps Blocks Falling on the block without fall damage land .stone subtitles .block .generic .footsteps ​ 0.22 1.0 
+ Unique [ edit | edit source ] 
+ Java Edition :
+ Sounds Sound Closed captions Source Description Identifier Translation key Volume Pitch Attenuation distance ​Conduit activates Blocks When a conduit activates block .conduit .activate subtitles .block .conduit .activate ​ 0.9 1.0 16 ​Conduit pulses Blocks While a conduit is active block .conduit .ambient subtitles .block .conduit .ambient ​ 1.0 1.0 8 None ​ [ sound 1 ] ​ Blocks Periodically every 3–5 seconds while active block .conduit .ambient .short None ​ [ sound 1 ] ​ 1.0 1.0 8 ​Conduit attacks Blocks When a conduit attacks something block .conduit .attack .target subtitles .block .conduit .attack .target ​ 1.0 1.0 16 ​Conduit deactivates Blocks When a conduit deactivates block .conduit .deactivate subtitles .block .conduit .deactivate ​ 0.7 1.0 16 
+ ↑ a b ​ MC-218104 ​ 
+ Bedrock Edition :
+ Sounds Sound Closed captions Source Description Identifier Translation key Volume Pitch ​ ? Blocks When a conduit activates conduit .activate ​ ? 1.0 1.0 ​ ? Blocks While a conduit is active conduit .ambient ​ ? 1.0 1.0 ​ ? Blocks Randomly while active conduit .short ​ ? 1.0 1.0 ​ ? Blocks When a conduit attacks something conduit .attack ​ ? 1.0 1.0 ​ ? Blocks When a conduit deactivates [ sound 1 ] conduit .deactivate ​ ? 1.0 1.0 
+ ↑ MCPE-128117 
+ Data values [ edit | edit source ] 
+ ID [ edit | edit source ] 
+ Java Edition :
+ Name Identifier Form Block tags 
+ Translation key Conduit conduit Block & Item mineable/pickaxe 
+ block .minecraft .conduit 
+ Name Identifier 
+ Block entity conduit 
+ Bedrock Edition :
+ Name Identifier Numeric ID Form Item ID [ i 1 ] 
+ Translation key Conduit conduit 412 Block & Giveable Item [ i 2 ] Identical [ i 3 ] (Numeric: -157 ) 
+ tile .conduit .name 
+ ↑ ID of block's direct item form, which is used in savegame files and addons. 
+ ↑ Available with / give command. 
+ ↑ The block's direct item form has the same ID as the block. 
+ Name Savegame ID 
+ Block entity Conduit 
+ Block states [ edit | edit source ] 
+ See also: Block states 
+ This article is missing information about: Bedrock Edition's ability to rotate conduit like a mob head  
+ Please expand the article to include this information. Further details may exist on the talk page . 
+ Java Edition :
+ Name 
+ Default value 
+ Allowed values 
+ Description 
+ waterlogged true false true Whether or not there's water in the same place as this conduit. 
+ Block data [ edit | edit source ] 
+ A conduit has a block entity associated with it that holds additional data about the block.
+ Java Edition :
+ See also: Block entity format 
+ [NBT Compound / JSON Object] Block entity data
+ Tags common to all block entities see Template:Nbt inherit/blockentity/template 
+ [Int Array]  Target : The UUID of the hostile mob the conduit is currently attacking, stored as four ints. May not be present. 
+ Bedrock Edition :
+ See Bedrock Edition level format/Block entity format . 
+ Achievements [ edit | edit source ] 
+ Icon Achievement In-game description Actual requirements (if different) Gamerscore earned Trophy type ( PS ) PS4 Other Moskstraumen Activate a Conduit Place a conduit in a valid prismarine/sea lantern structure to activate it. 50 Gold 
+ Advancements [ edit | edit source ] 
+ Icon Advancement In-game description Actual requirements (if different) How Did We Get Here? Have every effect applied at the same time 
+ Have all of these 34 status effects applied to the player at the same time: 
+ Absorption 
+ Bad Omen 
+ Blindness 
+ Breath of the Nautilus 
+ Conduit Power 
+ Darkness 
+ Dolphin's Grace 
+ Fire Resistance 
+ Glowing 
+ Haste 
+ Hero of the Village 
+ Hunger 
+ Infested 
+ Invisibility 
+ Jump Boost 
+ Levitation 
+ Mining Fatigue 
+ Nausea 
+ Night Vision 
+ Oozing 
+ Poison 
+ Raid Omen 
+ Regeneration 
+ Resistance 
+ Slow Falling 
+ Slowness 
+ Speed 
+ Strength 
+ Trial Omen 
+ Water Breathing 
+ Weakness 
+ Weaving 
+ Wind Charged 
+ Wither 
+ The source of the effects is irrelevant for the purposes of this advancement. Other status effects may be applied to the player, but are ignored for this advancement. 
+ See also: Tutorial:Advancement guide/How Did We Get Here? 
+ This is a hidden advancement, meaning that it can be viewed by the player only after completing it, regardless of if its child advancement(s), if any, have been completed. 
+ History [ edit | edit source ] 
+ Java Edition [ edit | edit source ] 
+ Java Edition 1.13 18w15a 
+ Added conduits. 18w16a 
+ The particle effect for the conduit has been changed to the (previously unused) entity_core texture file. 18w19a 
+ Conduits now produce sounds . 18w20b 
+ The eye of the conduit now shows whether it's hunting for hostile mobs or not: it shows an open eye when it's looking out for hostile mobs, and a closed eye otherwise. 18w20c 
+ Dark prismarine can now be used to activate a conduit. 18w21a 
+ The rarity of conduits has been changed from "Common" to "Rare". 1.13.1 18w31a 
+ Conduits are now properly waterlogged . 1.18 pre1 
+ The assigned tool is now the pickaxe. 1.21.2 24w33a 
+ The rarity of conduits has been changed from "Rare" to "Uncommon". 
+ Bedrock Edition [ edit | edit source ] 
+ Bedrock Edition 1.5.0 beta 1.5.0.1 
+ Added conduits. beta 1.5.0.4 
+ Conduits now produce sounds . 1.16.0 beta 1.15.0.51 
+ Conduits can now give Conduit Power to nearby players in rain . 1.21.30 Preview 1.21.30.21 
+ The rarity of conduits has been changed from "Common" to "Uncommon". 26.0 Preview 26.0.27 
+ Conduits no longer damage camel husks , skeleton horses , zombie horses and zombie nautiluses . 
+ Legacy Console Edition [ edit | edit source ] 
+ Legacy Console Edition Xbox 360 Xbox One PS3 PS4 PS Vita Wii U Switch TU69 1.76 1.76 1.76 Patch 38 
+ Added conduits. 
+ Issues [ edit | edit source ] 
+ Issues relating to "Conduit" are maintained on the bug tracker . Issues should be reported and viewed there .
+ Trivia [ edit | edit source ] 
+ When it is activated, the conduit displays the heart of the sea 's texture in the center of its model. However, when all 42 blocks have been placed (when the conduit is fully activated) the heart opens like an orange eye. 
+ The achievement obtained by activating a conduit refers to the system of whirlpools in Nordland county, Norway . 
+ Gallery [ edit | edit source ] 
+ Renders [ edit | edit source ] 
+ A conduit with "Fancy Graphics" disabled in Bedrock Edition 
+ Screenshots [ edit | edit source ] 
+ Closer look at the activated conduit 
+ A conduit attacking a drowned 
+ Animation of an activated conduit (click to enlarge) 
+ Optimal placement of fully powered conduits around a central conduit. North should be negative Z 
+ A conduit won't be activated if not waterlogged 
+ In other media [ edit | edit source ] 
+ A conduit as seen in Minecraft Dungeons 
+ Notes [ edit | edit source ] 
+ ↑ Conduits can be activated only by full blocks by design; see MC-128661 
+ ↑ Completed conduits only damage one mob at a time; see MC-198923 
+ See also [ edit | edit source ] 
+ Beacon 
+ External links [ edit | edit source ] 
+ Taking Inventory: Conduit – Minecraft.net on April 30, 2020 
+ Navigation [ edit | edit source ] 
+ v 
+ t 
+ e Blocks 
+ Structural 
+ Lumber 
+ Logs 
+ Stripped 
+ Wood 
+ Stripped 
+ Stems 
+ Stripped 
+ Hyphae 
+ Stripped 
+ Block of Bamboo 
+ Stripped 
+ Bamboo Mosaic 
+ Planks 
+ Stone / Deepslate 
+ Stone 
+ Cobblestone 
+ Mossy 
+ Smooth Stone 
+ Stone Bricks 
+ Chiseled 
+ Cracked 
+ Mossy 
+ Granite 
+ Polished 
+ Diorite 
+ Polished 
+ Andesite 
+ Polished 
+ Deepslate 
+ Chiseled 
+ Cobbled 
+ Polished 
+ Deepslate Bricks 
+ Cracked 
+ Deepslate Tiles 
+ Cracked 
+ Tuff 
+ Chiseled 
+ Polished 
+ Tuff Bricks 
+ Chiseled 
+ Overworld 
+ Bricks 
+ Packed Mud 
+ Mud Bricks 
+ Resin Bricks 
+ Chiseled 
+ Sandstone 
+ Chiseled 
+ Cut 
+ Smooth 
+ Red Sandstone 
+ Chiseled 
+ Cut 
+ Smooth 
+ Cinnabar 
+ Chiseled 
+ Polished 
+ Bricks 
+ Sulfur 
+ Chiseled 
+ Polished 
+ Bricks 
+ Prismarine 
+ Bricks 
+ Dark 
+ The Nether 
+ Netherrack 
+ Nether Bricks 
+ Chiseled 
+ Cracked 
+ Red 
+ Blackstone 
+ Polished Blackstone 
+ Chiseled 
+ Polished Blackstone Bricks 
+ Cracked 
+ Basalt 
+ Polished 
+ Smooth 
+ The End 
+ End Stone 
+ Bricks 
+ Purpur Block 
+ Pillar 
+ Mineral 
+ Block of Quartz 
+ Bricks 
+ Chiseled 
+ Pillar 
+ Smooth 
+ Block of Copper 
+ Chiseled 
+ Cut 
+ Grate 
+ Block of Iron 
+ Block of Gold 
+ Block of Amethyst 
+ Block of Coal 
+ Block of Diamond 
+ Block of Emerald 
+ Block of Lapis Lazuli 
+ Block of Netherite 
+ Block of Redstone 
+ Ornamental 
+ Decorative
+ Crying Obsidian 
+ Gilded Blackstone 
+ Reinforced Deepslate 
+ Partial Block 
+ Bars 
+ Iron 
+ Copper 
+ Chains 
+ Iron 
+ Copper 
+ Fences 
+ Wooden 
+ Nether Brick 
+ Slabs 
+ Cut Copper 
+ Wooden 
+ Stairs 
+ Cut Copper 
+ Wooden 
+ Walls 
+ Dyeable /Dyed
+ Wool 
+ Slab ​ [ upcoming: Wilderness Bound ] 
+ Stairs ​ [ upcoming: Wilderness Bound ] 
+ Carpets 
+ Terracotta 
+ Stained 
+ Glazed 
+ Concrete 
+ Slab ​ [ upcoming: Wilderness Bound ] 
+ Stairs ​ [ upcoming: Wilderness Bound ] 
+ Powder 
+ Glass 
+ Pane 
+ Tinted 
+ Stained Glass 
+ Pane 
+ Lighting 
+ Candle 
+ Dyed 
+ End Rod 
+ Froglight 
+ Glowstone 
+ Jack o'Lantern 
+ Lantern 
+ Copper 
+ Soul 
+ Sea Lantern 
+ Torch 
+ Copper 
+ Soul 
+ BE & Edu only
+ Colored Torches 
+ Elements 
+ Hardened Glass 
+ Pane 
+ Hardened Stained Glass 
+ Pane 
+ Natural 
+ Sediment /Soil
+ Clay 
+ Dirt 
+ Coarse 
+ Path 
+ Grass Block 
+ Mycelium 
+ Podzol 
+ Rooted 
+ Gravel 
+ Mud 
+ Nylium 
+ Crimson 
+ Warped 
+ Sand 
+ Red 
+ Soul Sand 
+ Soil 
+ Misc. rock 
+ Bedrock 
+ Magma Block 
+ Obsidian 
+ Calcite 
+ Sulfur Spike 
+ Potent Sulfur 
+ Pointed Dripstone 
+ Block 
+ Ore /Mineral
+ Amethyst Bud 
+ Cluster 
+ Budding Amethyst 
+ Ancient Debris 
+ Coal Ore 
+ Deepslate 
+ Copper Ore 
+ Deepslate 
+ Raw Block 
+ Diamond Ore 
+ Deepslate 
+ Emerald Ore 
+ Deepslate 
+ Gold Ore 
+ Deepslate 
+ Nether 
+ Raw Block 
+ Iron Ore 
+ Deepslate 
+ Raw Block 
+ Lapis Lazuli Ore 
+ Deepslate 
+ Nether Quartz Ore 
+ Redstone Ore 
+ Deepslate 
+ Plant 
+ Azalea 
+ Flowering 
+ Bamboo 
+ Shoot 
+ Big Dripleaf 
+ Small 
+ Bush 
+ Cactus 
+ Creaking Heart 
+ Dead Bush 
+ Fern 
+ Large 
+ Firefly Bush 
+ Hanging Roots 
+ Leaf Litter 
+ Leaves 
+ Mangrove Propagule 
+ Mangrove Roots 
+ Muddy 
+ Moss Block 
+ Carpet 
+ Pale Moss Block 
+ Carpet 
+ Hanging 
+ Red Shrub ​ [ upcoming: Wilderness Bound ] 
+ Resin Clump 
+ Block 
+ Saplings 
+ Short Dry Grass 
+ Tall 
+ Short Grass 
+ Tall 
+ Vines 
+ Flower 
+ Allium 
+ Azure Bluet 
+ Blue Orchid 
+ Cactus Flower 
+ Cornflower 
+ Dandelion 
+ Golden 
+ Eyeblossom 
+ Closed 
+ Open 
+ Lilac 
+ Lily of the Valley 
+ Oxeye Daisy 
+ Peony 
+ Pink Petals 
+ Pitcher Plant 
+ Crop 
+ Poppy 
+ Rose Bush 
+ Spore Blossom 
+ Sunflower 
+ Torchflower 
+ Crop 
+ Tulips 
+ Wildflowers 
+ Wither Rose 
+ Crops & related
+ Beetroots 
+ Carrots 
+ Cave Vines 
+ Chorus Plant 
+ Flower 
+ Cocoa 
+ Melon 
+ Stem 
+ Potatoes 
+ Pumpkin 
+ Carved 
+ Stem 
+ Sugar Cane 
+ Sweet Berry Bush 
+ Wheat Crops 
+ Hay Bale 
+ Fungus & related
+ Brown Mushroom 
+ Red Mushroom 
+ Shelf Mushroom ​ [ upcoming: Wilderness Bound ] 
+ Mushroom Blocks 
+ Glow Lichen 
+ Crimson Fungus 
+ Warped Fungus 
+ Nether Wart 
+ Nether Sprouts 
+ Crimson Roots 
+ Warped Roots 
+ Nether Wart Block 
+ Warped Wart Block 
+ Shroomlight 
+ Twisting Vines 
+ Weeping Vines 
+ Fauna & Related
+ Bee Nest 
+ Honeycomb Block 
+ Bone Block 
+ Cobweb 
+ Dragon Egg 
+ Dried Ghast 
+ Infested Blocks 
+ Sniffer Egg 
+ Turtle Egg 
+ Aquatic
+ Coral 
+ Dead 
+ Coral Blocks 
+ Dead 
+ Coral Fans 
+ Dead 
+ Frogspawn 
+ Kelp 
+ Dried Block 
+ Lily Pad 
+ Sea Pickle 
+ Seagrass 
+ Tall 
+ Sculk 
+ Sculk 
+ Sculk Catalyst 
+ Sculk Sensor 
+ Calibrated 
+ Sculk Shrieker 
+ Sculk Vein 
+ Fluid & Related
+ Lava 
+ Water 
+ Bubble Column 
+ Ice 
+ Blue 
+ Packed 
+ Snow 
+ Powder 
+ Block 
+ Non-physical
+ Air 
+ Cave ‌ [ JE only ] 
+ Void ‌ [ JE only ] 
+ Invisible Bedrock ‌ [ BE & edu only ] 
+ Fire 
+ Soul 
+ Utility 
+ Interactable 
+ Anvil 
+ Chipped 
+ Damaged 
+ Barrel 
+ Beacon 
+ Brewing Stand 
+ Cartography Table 
+ Chest 
+ Ender 
+ Copper 
+ Crafting Table 
+ Enchanting Table 
+ Furnace 
+ Blast 
+ Smoker 
+ Grindstone 
+ Lectern 
+ Loom 
+ Shulker Box 
+ Dyed 
+ Sign 
+ Hanging 
+ Smithing Table 
+ Stonecutter 
+ Utilizable
+ Banners 
+ Ominous 
+ Beehive 
+ Beds 
+ Straw ​ [ upcoming: Wilderness Bound ] 
+ Bell 
+ Bookshelf 
+ Cake 
+ with Candle 
+ Campfire 
+ Soul 
+ Cauldron 
+ Chiseled Bookshelf 
+ Composter 
+ Conduit 
+ Copper Golem Statue 
+ Decorated Pot 
+ End Gateway 
+ End Portal 
+ End Portal Frame 
+ Farmland 
+ Fletching Table 
+ Flower Pot 
+ Frosted Ice 
+ Heads 
+ Skeleton 
+ Wither Skeleton 
+ Zombie 
+ Creeper 
+ Piglin 
+ Dragon 
+ Heavy Core 
+ Jukebox 
+ Ladder 
+ Lodestone 
+ Monster Spawner 
+ Nether Portal 
+ Respawn Anchor 
+ Scaffolding 
+ Shelf 
+ Sponge 
+ Wet 
+ Suspicious Gravel 
+ Suspicious Sand 
+ TNT 
+ Trial Spawner 
+ Ominous 
+ Vault 
+ Ominous 
+ Redstone / Mechanical
+ Buttons 
+ Wooden 
+ Stone 
+ Polished Blackstone 
+ Copper Bulb 
+ Crafter 
+ Daylight Detector 
+ Dispenser 
+ Dropper 
+ Doors 
+ Copper 
+ Iron 
+ Wooden 
+ Honey Block 
+ Hopper 
+ Lever 
+ Lightning Rod 
+ Note Block 
+ Observer 
+ Piston 
+ Sticky 
+ Pressure Plates 
+ Wooden 
+ Stone 
+ Polished Blackstone 
+ Heavy Weighted 
+ Light Weighted 
+ Rail 
+ Activator 
+ Detector 
+ Powered 
+ Redstone Lamp 
+ Redstone Wire 
+ Comparator 
+ Repeater 
+ Torch 
+ Slime Block 
+ Target 
+ Trapped Chest 
+ Trapdoors 
+ Copper 
+ Iron 
+ Wooden 
+ Fence Gates 
+ Tripwire Hook 
+ Tripwire 
+ BE & Edu only
+ Allow 
+ Border 
+ Chalkboards 
+ Compound Creator 
+ Deny 
+ Element Constructor 
+ Heat Block 
+ Item Frame 
+ Glow 
+ Lab Table 
+ Material Reducer 
+ Underwater TNT 
+ Underwater Torch 
+ Creative or commands only 
+ All editions
+ Barrier 
+ Command Block 
+ Chain 
+ Repeating 
+ Jigsaw Block 
+ Light 
+ Petrified Oak Slab 
+ Player Head 
+ Structure Block 
+ Void 
+ Java Edition only
+ Test Block 
+ Test Instance Block 
+ China Edition only
+ micro_block 
+ Removed 
+ Java Edition only
+ Cloth 
+ Dead Coral Block 
+ Gear 
+ Infinite Lava Source 
+ Infinite Water Source 
+ Locked chest 
+ Rose 
+ Potted 
+ Shrub 
+ Bedrock Edition only
+ Blue Rose 
+ Duplicate Black Wool 
+ grass_carried 
+ leaves_carried 
+ Fern 
+ Fern 
+ Smooth Stone Bricks 
+ Structure Air 
+ mysterious_frame_slot 
+ China Edition only
+ mod_ore 
+ MinecraftEdu only
+ Big Sign 
+ Border block 
+ Build allow block 
+ Build disallow block 
+ Foundation block 
+ Home Block 
+ Information block 
+ Information Sign 
+ Number Block 
+ Spawn Block 
+ Steppe dirt 
+ Steppe sand 
+ Teleport Block 
+ Quiz Block 
+ Minecraft 4k only
+ ID 9 Dirt 
+ XOR Block 
+ Unused 
+ BE & Edu only
+ Camera Block 
+ Chiseled Purpur 
+ tile.client_request_placeholder_block.name 
+ Deprecated Anvil 
+ tile.deprecated_purpur_block_2.name 
+ Glowing Obsidian 
+ tile.info_update.name 
+ tile.info_update2.name 
+ Nether Reactor Core 
+ tile.reserved6.name 
+ Stonecutter (old) 
+ Unknown 
+ Unimplemented 
+ All editions
+ Branches 
+ Copper Button 
+ Colored Planks 
+ Coral Slab 
+ Dead 
+ Dirt Slab 
+ Empty Barrel 
+ Fish Barrel 
+ Furniture 
+ Paeonia 
+ Sculk Jaw 
+ Spike Block 
+ Wax Block 
+ Joke 
+ April Fools 2013 
+ Block of Coal 
+ Etho Slab 
+ Tinted Glass 
+ Torch (Burnt-out) 
+ April Fools 2016 
+ USB Charger Block 
+ April Fools 2020 
+ An Ant 
+ Box of Infinite Books 
+ Cursor 
+ Funky Portal 
+ Leftover 
+ Swaggiest stairs ever 
+ April Fools 2022 
+ How did we get here? 
+ April Fools 2023 
+ Cheese 
+ Copper Sink 
+ Filled 
+ Copper Spleaves 
+ Golden Chest 
+ Other Portal 
+ Packed Air 
+ Pickaxe Block 
+ Place Block 
+ April Fools 2024 
+ Baked Potato Bricks 
+ Expired 
+ Charred 
+ Big Brain 
+ Block of Amber 
+ Block of Potato Peels 
+ Corrupted 
+ Floatater 
+ Floatato 
+ Frying Table 
+ Gravtater 
+ Pedestal 
+ Peelgrass Block 
+ Corrupted 
+ Poison Farmland 
+ Poison Path 
+ Poisonous Mashed Potato 
+ Poisonous Potato Block 
+ Compressed 
+ Double Compressed 
+ Triple Compressed 
+ Quadruple Compressed 
+ Poisonous Potato Cutter 
+ Poisonous Potato Head Block 
+ Poisonous Potato Headpiece 
+ Poisonous Potato Ore 
+ Deepslate 
+ Potato Battery 
+ Potato Bud 
+ Potato flower 
+ Potato Fruit 
+ Potato Leaves 
+ Potato Pedicule 
+ Potato Portal 
+ Potato Refinery 
+ Potato Sprouts 
+ Potato Stem 
+ Planks 
+ Slab 
+ Stairs 
+ Door 
+ Trapdoor 
+ Button 
+ Pressure Plate 
+ Sign 
+ Hanging Sign 
+ Fence 
+ Fence Gate 
+ Potone 
+ Copper Ore 
+ Diamond Ore 
+ Gold Ore 
+ Iron Ore 
+ Lapis Lazuli Ore 
+ Redstone Ore 
+ Resin Ore 
+ Powerful Potato 
+ Strong Roots 
+ Taterstone 
+ Terre de Pomme 
+ Vicious Potato 
+ Weak Roots 
+ April Fools 2025 
+ Dimension Control 
+ Mine Travelling Block 
+ Mine Revisitor 
+ Mine Crafter 
+ Mob Trophy 
+ Shimmering Door 
+ Sky 
+ Trophy 
+ April Fools 2026 
+ Copper Trap 
+ Iron Trap 
+ Extreme metadata variants 
+ All editions
+ Directionless Hopper 
+ Seamless Stone Slab 
+ Six-sided Hay Bale 
+ Six-sided Piston 
+ Java Edition only
+ Faceless Furnace 
+ Faceless Jack o'Lantern 
+ Green Shrub 
+ Potted 
+ Invisible stairs 
+ Misaligned torch 
+ Redstone 
+ Nether portal post 
+ Overripe Melon Stem 
+ Attached 
+ Overripe Pumpkin Stem 
+ Attached 
+ Overgrown Cocoa 
+ Overeaten Cake 
+ Overgrown Wheat Crops 
+ Potted non-flower block 
+ Snowy Dirt 
+ Coarse 
+ Strange buttons 
+ Invisible random ladders 
+ Others 
+ Bedrock Edition only
+ Bell Stand 
+ Diorite Bell 
+ Granite Bell 
+ Polished 
+ Six-sided Bone Block 
+ Six-sided Purpur Pillar 
+ Six-sided Quartz Pillar 
+ Smokeless Campfire 
+ v 
+ t 
+ e Environment 
+ Geography
+ Altitude 
+ Biome 
+ Chunks 
+ Daylight cycle 
+ Feature 
+ Light 
+ Nether roof 
+ Structure 
+ Terrain features 
+ Void 
+ World 
+ World border 
+ World boundary 
+ World generation 
+ Weather 
+ Rain 
+ Snowfall 
+ Thunderstorm 
+ Dimensions 
+ Overworld 
+ The Nether 
+ The End 
+ World types 
+ Default 
+ Superflat 
+ Single Biome 
+ JE only
+ Amplified 
+ Debug mode 
+ Large Biomes 
+ Editor only
+ Void 
+ Player constructions
+ Beacon pyramid 
+ Conduit frame 
+ Enchanting library 
+ Nether Portal 
+ Pre-generated
+ End portal 
+ Matter
+ Blocks 
+ Solid 
+ Liquid 
+ Gas 
+ Opacity 
+ Placement 
+ Entities 
+ Mobs 
+ Player 
+ Items 
+ Non-renewable resources 
+ Renewable resources 
+ Sound
+ Music 
+ Ambience 
+ Joke 
+ Dimensions 
+ Bridge 
+ Generated dimensions 
+ Hub 
+ Mine 
+ The Moon 
+ Potato 
+ Player constructions
+ Funky Portal 
+ Other Portal 
+ Pre-generated
+ Lunar Base 
+ Bugs
+ Distance effects 
+ Bedrock Edition 
+ Java Edition 
+ Removed
+ Far Lands 
+ Removed
+ Java Edition only
+ Custom 
+ Map theme 
+ Map shape 
+ Map type 
+ Infinite Map Visualizer 
+ Old Customized 
+ Winter mode 
+ Bedrock Edition only
+ Old 
+ Nether Reactor 
+ LCE & New 3DS only
+ World size 
+ LCE only
+ Amplified Worlds 
+ Retrieved from " https://minecraft.wiki/w/Conduit?oldid=3752345 " 
+ Categories : Non-renewable resources Stackable resources Blocks Environment Player-built structures Manufactured blocks Utility blocks Block entities Light sources Hazardous blocks Hidden categories: Pages using simple calculator Pages with sound tables Pages with Java sound tables Pages with Bedrock sound tables Pages with Bedrock subtitles missing Pages with Bedrock subtitle key missing Articles to be expanded 
+ Navigation menu 
+ Personal tools 
+ Create account Log in 
+ associated-pages 
+ Page Talk 
+ English 
+ Views 
+ Read Edit Edit source View history 
+ More 
+ Search 
+ Navigation 
+ How to help Recent changes Random page in Minecraft in Dungeons in Dungeons II in Legends in Earth in Story Mode in Tutorial in Movie Wiki Discord 
+ Wiki community 
+ Community portal Wiki forum Projects Wiki rules Style guide Notability Sandbox Admin noticeboard 
+ X 
+ Franchise 
+ Minecraft Minecraft Dungeons Minecraft Legends Minecraft Earth Minecraft: Story Mode A Minecraft Movie 
+ Recent versions 
+ Java Edition Latest: 26.2 Dev: 26.3-pre-2 Upcoming: 26.3 Bedrock Edition Latest: 26.45 Preview: 26.60.21 Upcoming: 26.50 Upcoming: 26.60 
+ Useful pages 
+ Trading Brewing Enchantments Mobs Blocks Items Crafting Smelting Tutorials Resource packs Redstone circuits 
+ Useful pages 
+ Weapons Enchanting Armor Artifacts Missions 
+ Useful pages 
+ Weapons Enchanting Armor Artifact 
+ Useful pages 
+ Friendly units Piglins Resources Biomes Structures Lost Legends 
+ Tools 
+ What links here Related changes Printable version Permanent link Page information Special pages View buckets 
+ In other languages 
+ Deutsch Español Français Italiano 日本語 한국어 Português Русский ไทย Українська 中文 
+ This page was last edited on 1 September 2026, at 02:27. 
+ Content on this site is licensed under CC BY-NC-SA 3.0 unless otherwise noted; additional terms may apply . Not an official Minecraft website. We are not associated with Mojang or Microsoft. 
+ Privacy policy 
+ About Minecraft Wiki 
+ Disclaimers 
+ Terms of Use 
+ Contact Weird Gloop 
+ Mobile view 
+ 

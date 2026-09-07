@@ -1,0 +1,930 @@
+ 
+ Turtle Shell – Minecraft Wiki 
+ Turtle Shell 
+ From Minecraft Wiki 
+ Jump to navigation 
+ Jump to search 
+ Turtle Shell 
+ Adult model
+ Baby model
+ Rarity tier 
+   Common
+ Armor 
+ 2 ( )
+ Armor toughness 
+ 0 ( )
+ Durability 
+ JE : 275 BE : 276
+ Enchantability 
+ 9
+ Knockback resistance 
+ 0
+ Renewable 
+ Yes
+ Stackable
+ No
+ {
+ "title": "Turtle Shell",
+ "rows": [
+ {
+ "field": "<span style=\"white-space: nowrap;\"><span style=\"display: inline-block; background-color: #fff; border: 1px solid #888; border-radius: 0.3em; color: transparent; width: 1em; height: 1em; vertical-align: -0.36em; margin-right: -0.1em\"><br></span> </span> Common",
+ "label": "(link to Rarity article, displayed as Rarity tier)"
+ },
+ {
+ "field": "2 (<span class=\"iconbar pixel-image nowrap\" style=\"--icon-offset:-1px;\" title=\"2 armor point\">(link to File:Armor (icon).png article, displayed as 9px|link=|alt=🛡)</span>)",
+ "label": "(link to Armor#Armor points article, displayed as Armor)"
+ },
+ {
+ "field": "0 (<span class=\"iconbar pixel-image nowrap\" style=\"--icon-offset:-1px;\" title=\"0 armor points\">(link to File:Empty Armor (icon).png article, displayed as 9px|link=|alt=🛡)</span>)",
+ "label": "(link to Armor toughness article, displayed as Armor toughness)"
+ },
+ {
+ "field": "'''(link to Java Edition article, displayed as JE):''' 275<br>'''(link to Bedrock Edition article, displayed as BE):''' 276",
+ "label": "(link to Durability article, displayed as Durability)"
+ },
+ {
+ "field": "9",
+ "label": "(link to Enchantability article, displayed as Enchantability)"
+ },
+ {
+ "field": "0",
+ "label": "(link to Knockback resistance article, displayed as Knockback resistance)"
+ },
+ {
+ "field": "Yes",
+ "label": "(link to Renewable resource article, displayed as Renewable)"
+ },
+ {
+ "field": "No",
+ "label": "Stackable"
+ }
+ ],
+ "invimages": [
+ "Turtle Shell"
+ ],
+ "images": [
+ "Turtle Shell.png",
+ "Baby Turtle Shell.png"
+ ]
+} 
+ A turtle shell is a variant of helmet that is crafted from turtle scutes . It is the third-highest tier of helmet, having the same armor points as golden , copper , iron , and chainmail helmets but with higher durability. When equipped, it grants ten seconds of Water Breathing to a player who enters water. It is also a brewing ingredient for potions of the Turtle Master .
+ Contents 
+ 1 Obtaining 
+ 1.1 Crafting 
+ 2 Usage 
+ 2.1 Turtle shell effect 
+ 2.2 Brewing ingredient 
+ 2.3 Repairing 
+ 2.3.1 Combining 
+ 2.3.2 Unit repair 
+ 2.4 Enchantments 
+ 2.5 Armor trimming 
+ 3 Sounds 
+ 4 Data values 
+ 4.1 ID 
+ 5 Advancements 
+ 6 History 
+ 6.1 Java Edition 
+ 6.2 Bedrock Edition 
+ 6.3 Legacy Console Edition 
+ 7 Issues 
+ 8 Trivia 
+ 9 Gallery 
+ 9.1 Renders 
+ 9.2 Mojang screenshots 
+ 9.3 In other media 
+ 10 References 
+ 11 External links 
+ 12 Navigation 
+ Obtaining [ edit | edit source ] 
+ Crafting [ edit | edit source ] 
+ Ingredients 
+ Crafting recipe
+ Turtle Scute 
+ Usage [ edit | edit source ] 
+ Turtle shell effect [ edit | edit source ] 
+ While equipped by a player , the turtle shell provides the Water Breathing status effect, allowing the wearer to remain underwater for an additional 10 seconds. The effect immediately recharges after exposure to air. It will continue refilling the air bubbles on the hotbar completely within seconds with the tiniest fraction ("instant re-breath, filling") of a second of air exposure, so including further underwater again. It does not recharge if the player enters a bubble column. The Water Breathing effect does not activate for other mobs .
+ Brewing ingredient [ edit | edit source ] 
+ Name 
+ Ingredients 
+ Brewing recipe
+ Potion of the Turtle Master 
+ Turtle Shell  + Awkward Potion 
+ Repairing [ edit | edit source ] 
+ Combining [ edit | edit source ] 
+ Ingredients 
+ Crafting recipe 
+ Notes
+ Damaged Turtle Shell 
+ The durability of the two shells is added together, plus an extra 5% durability.
+ Ingredients 
+ Grinding recipe 
+ Notes
+ 2x Damaged Turtle Shell 
+ The durability of the two shells is added together, plus an extra 5% durability.
+ Unit repair [ edit | edit source ] 
+ Main article: Anvil mechanics § Unit repair 
+ Ingredients 
+ Anvil recipe
+ Damaged Turtle Shell  + Turtle Scute 
+ Turtle Shell 
+ A turtle shell can be repaired in an anvil by adding turtle scutes , with each scute restoring 25% the turtle shell's maximum durability, rounded down. Two turtle shells can also be combined in an anvil. Both methods preserve the helmet's enchantments .
+ Enchantments [ edit | edit source ] 
+ Name
+ Description
+ Max Level
+ Method 
+ Weight
+ Protection [ note 1 ] 
+ Increases overall damage reduction.
+ IV
+ Enchanting Table Anvil 
+ 10
+ Projectile Protection [ note 1 ] 
+ Increases damage reduction against projectiles.
+ IV
+ Enchanting Table Anvil 
+ 5
+ Blast Protection [ note 1 ] 
+ Increases damage reduction against explosions.
+ IV
+ Enchanting Table Anvil 
+ 2
+ Fire Protection [ note 1 ] 
+ Increases damage reduction against fire.
+ IV
+ Enchanting Table Anvil 
+ 5
+ Thorns 
+ Deals returning damage to attackers.
+ III
+ Enchanting Table Anvil 
+ 1
+ Respiration 
+ Extends breathing time underwater.
+ III
+ Enchanting Table Anvil 
+ 2
+ Aqua Affinity 
+ Increases underwater mining speed.
+ I
+ Enchanting Table Anvil 
+ 2
+ Unbreaking 
+ Grants a chance to negate durability consumption.
+ III
+ Enchanting Table Anvil 
+ 5
+ Mending 
+ Repairs the turtle shell when obtaining experience .
+ I
+ Anvil 
+ 2
+ Curse of Vanishing 
+ The turtle shell vanishes on death, not dropping as an item.
+ I
+ Anvil 
+ 1
+ Curse of Binding 
+ Removes the ability to de-equip the turtle shell.
+ I
+ Anvil 
+ 1
+ ↑ a b c d Protection, Projectile Protection, Blast Protection, and Fire Protection are mutually exclusive. 
+ Armor trimming [ edit | edit source ] 
+ It is possible to upgrade turtle shells with trims. This requires a smithing template , a turtle shell, and an ingot or crystal ( iron ingot , copper ingot , gold ingot , netherite ingot , emerald , redstone dust , lapis lazuli , amethyst shard , nether quartz , diamond , or resin brick ).
+ These trims have no effect on the gameplay or strength of the armor. 
+ Ingredients 
+ Smithing recipe
+ Any Armor Trim + Turtle Shell + Any Ingot/Crystal
+ Sounds [ edit | edit source ] 
+ Java Edition : 
+ Sounds Sound Closed captions Source Description Identifier Translation key Volume Pitch Attenuation distance ​Turtle Shell thunks Players When a turtle shell is equipped item .armor .equip_turtle subtitles .item .armor .equip_turtle ​ 1.0 1.0/0.85/1.1 16 ​Item breaks Entity-Dependent When a helmet's durability is exhausted entity .item .break subtitles .entity .item .break ​ 0.8 0.8–1.2 16 
+ Bedrock Edition : 
+ Sounds Sound Closed captions Source Description Identifier Translation key Volume Pitch ​ ? Players When a turtle shell is equipped armor .equip_leather ​ ? 1.0 1.0 ​ ? Players When a helmet's durability is exhausted random .break ​ ? 1.0 0.9 
+ Data values [ edit | edit source ] 
+ ID [ edit | edit source ] 
+ Java Edition :
+ Name Identifier Form Item tags 
+ Translation key Turtle Shell turtle_helmet Item head_armor 
+ item .minecraft .turtle_helmet 
+ Bedrock Edition :
+ Name Identifier Numeric ID Form 
+ Translation key Turtle Shell turtle_helmet 573 Item 
+ item .turtle_helmet .name 
+ Advancements [ edit | edit source ] 
+ Icon Advancement In-game description Actual requirements (if different) A Furious Cocktail Have every potion effect applied at the same time 
+ Have all of these 17 status effects applied to the player at the same time: 
+ Fire Resistance 
+ Infested 
+ Invisibility 
+ Jump Boost 
+ Night Vision 
+ Oozing 
+ Poison 
+ Regeneration 
+ Resistance 
+ Slow Falling 
+ Slowness 
+ Speed 
+ Strength 
+ Water Breathing 
+ Weakness 
+ Weaving 
+ Wind Charged 
+The source of the effects is irrelevant for the purposes of this advancement. Other status effects may be applied to the player, but are ignored for this advancement. How Did We Get Here? Have every effect applied at the same time 
+ Have all of these 34 status effects applied to the player at the same time: 
+ Absorption 
+ Bad Omen 
+ Blindness 
+ Breath of the Nautilus 
+ Conduit Power 
+ Darkness 
+ Dolphin's Grace 
+ Fire Resistance 
+ Glowing 
+ Haste 
+ Hero of the Village 
+ Hunger 
+ Infested 
+ Invisibility 
+ Jump Boost 
+ Levitation 
+ Mining Fatigue 
+ Nausea 
+ Night Vision 
+ Oozing 
+ Poison 
+ Raid Omen 
+ Regeneration 
+ Resistance 
+ Slow Falling 
+ Slowness 
+ Speed 
+ Strength 
+ Trial Omen 
+ Water Breathing 
+ Weakness 
+ Weaving 
+ Wind Charged 
+ Wither 
+ The source of the effects is irrelevant for the purposes of this advancement. Other status effects may be applied to the player, but are ignored for this advancement. 
+ See also: Tutorial:Advancement guide/How Did We Get Here? 
+ This is a hidden advancement, meaning that it can be viewed by the player only after completing it, regardless of if its child advancement(s), if any, have been completed. 
+ History [ edit | edit source ] 
+ Java Edition [ edit | edit source ] 
+ Java Edition 1.13 18w07a 
+ Added turtle shells. 1.16 20w07a 
+ Turtle shells, when used by piglins and zombified piglins , have no associated texture file, and result in a prominent visual error . [ 1 ] Pre-release 3 
+ Turtle shells used by piglins and zombified piglins now use the same model as other entities, fixing the aforementioned bug. 1.19.4 Experiment Update 1.20 23w04a 
+ Turtle shells can now be trimmed using a smithing table . 26.1 snap7 
+ Added a specific texture and model for when the armor piece is worn by a humanoid baby mob.
+ If equipped on a "small"-type armor stand , it will appear broken; presumably the game is applying the adult armor texture to the baby mesh. snap10 
+ "Small" armor stands now display a scaled-down adult armor model as was done before snapshot 7. [ 2 ] 
+ Bedrock Edition [ edit | edit source ] 
+ Bedrock Edition 1.5.0 beta 1.5.0.4 
+ Added turtle shells. 1.19.80 Experiment Next Major Update Preview 1.19.80.21 
+ Turtle shells can now be trimmed using a smithing table . 26.10 Preview 26.10.23 
+ Added a specific texture and model for when the armor piece is worn by a humanoid baby mob. 
+ Legacy Console Edition [ edit | edit source ] 
+ Legacy Console Edition Xbox 360 Xbox One PS3 PS4 PS Vita Wii U Switch TU69 1.76 1.76 1.76 Patch 38 
+ Added turtle shells. 
+ Issues [ edit | edit source ] 
+ Issues relating to "Turtle Shell" are maintained on the bug tracker . Issues should be reported and viewed there .
+ Trivia [ edit | edit source ] 
+ The turtle shell is the only helmet that is not a part of a complete set. 
+ Defense point values exist in the code for all other pieces of a theoretical "turtle" armor set. These are: 6 ( ) for chestplates , 5 ( ) for leggings , and 2 ( ) for boots , which is identical to a full set of iron. 
+ It will continue refilling the air bubbles on the hotbar completely within seconds with the tiniest fraction ("instant re-breath, filling") of a second of air exposure, so including further underwater again. 
+ Gallery [ edit | edit source ] 
+ Renders [ edit | edit source ] 
+ Enchanted appearance when worn 
+ Enchanted appearance in inventory 
+ Steve wearing a turtle shell. 
+ Alex wearing a turtle shell. 
+ Mojang screenshots [ edit | edit source ] 
+ Zuri wearing a turtle shell 
+ In other media [ edit | edit source ] 
+ Makena wearing a turtle shell 
+ A turtle shell as seen in A Minecraft Movie 
+ References [ edit | edit source ] 
+ ↑ "[MC-172110] Texture of turtle shells is missing when worn by a piglin or zombified piglin – Jira" – Mojira , February 14, 2020. Resolved as "Fixed". 
+ ↑ MC-306376 
+ External links [ edit | edit source ] 
+ "Taking Inventory: Turtle Shell" by Duncan Geere – Minecraft.net , October 26, 2018. 
+ Navigation [ edit | edit source ] 
+ v 
+ t 
+ e Armor and other wearables 
+ Head slot
+ Leather 
+ Copper 
+ Chainmail 
+ Iron 
+ Golden 
+ Diamond 
+ Netherite 
+ Turtle Shell 
+ Carved Pumpkin 
+ Head 
+ Chest slot
+ Leather 
+ Copper 
+ Chainmail 
+ Iron 
+ Golden 
+ Diamond 
+ Netherite 
+ Elytra 
+ Legs slot
+ Leather 
+ Copper 
+ Chainmail 
+ Iron 
+ Golden 
+ Diamond 
+ Netherite 
+ Feet slot
+ Leather 
+ Copper 
+ Chainmail 
+ Iron 
+ Golden 
+ Diamond 
+ Netherite 
+ Full sets
+ Leather Armor 
+ Copper Armor 
+ Golden Armor 
+ Chainmail Armor 
+ Iron Armor 
+ Diamond Armor 
+ Netherite Armor 
+ Mob equipment
+ Horse Armor 
+ Leather 
+ Copper 
+ Iron 
+ Golden 
+ Diamond 
+ Netherite 
+ Nautilus Armor 
+ Copper 
+ Iron 
+ Golden 
+ Diamond 
+ Netherite 
+ Harness 
+ Saddle 
+ Wolf Armor 
+ Chest 
+ Carpet 
+ v 
+ t 
+ e Items 
+ Equipment 
+ Tools 
+ Axe 
+ Brush 
+ Fishing Rod 
+ Carrot on a Stick 
+ Warped Fungus on a Stick 
+ Flint and Steel 
+ Hoe 
+ Pickaxe 
+ Shears 
+ Shield 
+ Shovel 
+ Weapons 
+ Axe 
+ Bow 
+ Crossbow 
+ Mace 
+ Spear 
+ Sword 
+ Trident 
+ Ammunition
+ Arrow 
+ Tipped 
+ Firework Rocket 
+ JE only
+ Spectral Arrow 
+ Wearable 
+ Player
+ Boots 
+ Chestplate 
+ Elytra 
+ Helmet 
+ Turtle Shell 
+ Leggings 
+ Animals 
+ Harness 
+ Horse Armor 
+ Nautilus Armor 
+ Saddle 
+ Wolf Armor 
+ Utilities 
+ Display/storage
+ Armor Stand 
+ Item Frame 
+ Glow 
+ Painting 
+ Buckets 
+ Bucket 
+ Water 
+ Lava 
+ Milk 
+ Powder Snow 
+ Bucket of Mob 
+ Axolotl 
+ Cod 
+ Pufferfish 
+ Salmon 
+ Sulfur Cube 
+ Tadpole 
+ Tropical Fish 
+ Bottles
+ Glass Bottle 
+ Water 
+ Honey 
+ Potion 
+ Splash 
+ Lingering 
+ Bottle o' Enchanting 
+ Ominous Bottle 
+ Informational
+ Book and Quill 
+ Written 
+ Clock 
+ Compass 
+ Lodestone 
+ Recovery 
+ Eye of Ender 
+ Map 
+ Empty 
+ Explorer 
+ Spyglass 
+ Vehicles /mobility
+ Boat 
+ with Chest 
+ Ender Pearl 
+ Minecart 
+ with Chest 
+ with Hopper 
+ with TNT 
+ Wind Charge 
+ JE only
+ Minecart with Furnace 
+ Music discs 
+ 13 
+ cat 
+ blocks 
+ chirp 
+ far 
+ mall 
+ mellohi 
+ stal 
+ strad 
+ ward 
+ 11 
+ wait 
+ otherside 
+ 5 
+ Pigstep 
+ Relic 
+ Creator 
+ Music Box 
+ Precipice 
+ Tears 
+ Lava Chicken 
+ Bounce 
+ Other
+ Bone Meal 
+ Bowl 
+ Bundle 
+ Dyed 
+ Cushion ​ [ upcoming: Wilderness Bound ] 
+ Enchanted Book 
+ End Crystal 
+ Fire Charge 
+ Goat Horn 
+ Lead 
+ Name Tag 
+ Totem of Undying 
+ Trial Key 
+ Ominous 
+ Edu only
+ Balloon 
+ Glow Stick 
+ Ice Bomb 
+ Medicine 
+ Sparkler 
+ Super Fertilizer 
+ Food 
+ Natural plant-based
+ Apple 
+ Beetroot 
+ Carrot 
+ Chorus Fruit 
+ Glow Berries 
+ Melon Slice 
+ Sweet Berries 
+ Supernatural 
+ Golden Apple 
+ Enchanted 
+ Golden Carrot 
+ Uncooked food 
+ Raw Beef 
+ Raw Chicken 
+ Raw Mutton 
+ Raw Porkchop 
+ Raw Rabbit 
+ Raw Cod 
+ Raw Salmon 
+ Potato 
+ Cooked food 
+ Steak 
+ Cooked Chicken 
+ Cooked Mutton 
+ Cooked Porkchop 
+ Cooked Rabbit 
+ Cooked Cod 
+ Cooked Salmon 
+ Baked Potato 
+ Dried Kelp 
+ Crafted 
+ Bread 
+ Cookie 
+ Stews 
+ Mushroom 
+ Rabbit 
+ Suspicious 
+ Beetroot Soup 
+ Pumpkin Pie 
+ Poisonous
+ Pufferfish 
+ Rotten Flesh 
+ Spider Eye 
+ Poisonous Potato 
+ Other
+ Tropical Fish 
+ Ingredients 
+ Seeds 
+ Beetroot Seeds 
+ Cocoa Beans 
+ Melon Seeds 
+ Nether Wart 
+ Pitcher Pod 
+ Pumpkin Seeds 
+ Torchflower Seeds 
+ Wheat Seeds 
+ Raw materials
+ Amethyst Shard 
+ Armadillo Scute 
+ Blaze Rod 
+ Bone 
+ Breeze Rod 
+ Clay Ball 
+ Coal 
+ Diamond 
+ Disc Fragment 5 
+ Dragon's Breath 
+ Echo Shard 
+ Egg 
+ Blue 
+ Brown 
+ Emerald 
+ Feather 
+ Flint 
+ Ghast Tear 
+ Glowstone Dust 
+ Gunpowder 
+ Heart of the Sea 
+ Honeycomb 
+ Ink Sac 
+ Glow 
+ Kelp 
+ Lapis Lazuli 
+ Leather 
+ Magma Cream 
+ Nautilus Shell 
+ Nether Quartz 
+ Nether Star 
+ Phantom Membrane 
+ Prismarine Shard 
+ Prismarine Crystals 
+ Rabbit Hide 
+ Rabbit's Foot 
+ Raw Copper 
+ Raw Gold 
+ Raw Iron 
+ Redstone Dust 
+ Resin Clump 
+ Shulker Shell 
+ Slimeball 
+ Snowball 
+ Stick 
+ String 
+ Turtle Scute 
+ Wheat 
+ Processed
+ Blaze Powder 
+ Book 
+ Brick 
+ Nether 
+ Resin 
+ Charcoal 
+ Copper Ingot 
+ Nugget 
+ Fermented Spider Eye 
+ Firework Star 
+ Glistering Melon Slice 
+ Gold Ingot 
+ Nugget 
+ Iron Ingot 
+ Nugget 
+ Netherite Ingot 
+ Scrap 
+ Paper 
+ Popped Chorus Fruit 
+ Sugar 
+ Edu only
+ Bleach 
+ Compounds 
+ Dyes 
+ White 
+ Light Gray 
+ Gray 
+ Black 
+ Brown 
+ Red 
+ Orange 
+ Yellow 
+ Lime 
+ Green 
+ Cyan 
+ Light Blue 
+ Blue 
+ Purple 
+ Magenta 
+ Pink 
+ Banner patterns 
+ Bordure Indented 
+ Creeper Charge 
+ Field Masoned 
+ Flow 
+ Flower Charge 
+ Globe 
+ Guster 
+ Skull Charge 
+ Snout 
+ Thing 
+ Pottery sherds 
+ Angler 
+ Archer 
+ Arms Up 
+ Blade 
+ Brewer 
+ Burn 
+ Danger 
+ Explorer 
+ Flow 
+ Friend 
+ Guster 
+ Heart 
+ Heartbreak 
+ Howl 
+ Miner 
+ Mourner 
+ Plenty 
+ Prize 
+ Scrape 
+ Sheaf 
+ Shelter 
+ Skull 
+ Snort 
+ Smithing templates 
+ Armor Trim 
+ Bolt 
+ Coast 
+ Dune 
+ Eye 
+ Flow 
+ Host 
+ Raiser 
+ Rib 
+ Sentry 
+ Shaper 
+ Silence 
+ Snout 
+ Spire 
+ Tide 
+ Vex 
+ Ward 
+ Wayfinder 
+ Wild 
+ Netherite Upgrade 
+ Creative or commands only 
+ Creative only
+ Spawn Eggs 
+ JE only
+ Debug Stick 
+ Minecart with Command Block 
+ Unused paintings 
+ Edu only
+ Camera 
+ Photo 
+ Portfolio 
+ Commands only
+ Ender Dragon Spawn Egg 
+ Wither Spawn Egg 
+ JE only
+ Knowledge Book 
+ BE only
+ Minecart with Command Block 
+ China Edition only
+ Mod armor 
+ Mod (China Edition) 
+ Removed 
+ Java Edition only
+ Technical blocks as Items 
+ Cauldron Potions 
+ Horse Saddle 
+ Reverted Potions 
+ Data-retaining minecarts 
+ Slowness arrows with own tag 
+ Bedrock Edition only
+ Copper Horn 
+ Removed Spawn Eggs 
+ MinecraftEdu only
+ Block Inspector 
+ Unused 
+ Java Edition only
+ Potion of Luck 
+ Uncraftable Potion 
+ Bedrock Edition only
+ Camera 
+ Photo 
+ Portfolio 
+ Potion of Decay 
+ Unused Potions 
+ Legacy Console only
+ debug_fourj_item 
+ Unimplemented 
+ All editions
+ Ruby 
+ Quiver 
+ Java Edition only
+ Crystallized Honey 
+ Minecart with Dispenser 
+ Studded Armor 
+ Bedrock Edition only
+ Minecart with Furnace 
+ Hoglin Meat 
+ Joke 
+ April Fools 2015 
+ Obsidian Boat 
+ Potion of Caring 
+ Splash 
+ Potion of Sharing 
+ Splash 
+ April Fools 2016 
+ Smarter Watch 
+ Reality Vision 
+ Ankle Monitor 
+ April Fools 2019 
+ 3D 
+ Blue Key 
+ Red Key 
+ Yellow Key 
+ April Fools 2020 
+ Footprint 
+ A Very Fine Item 
+ April Fools 2023 
+ Air 
+ Bit 
+ Bottle of Entity 
+ Splash 
+ Bottle of Void 
+ La Baguette 
+ Le Tricolore 
+ minecraft:dupe_hack 
+ Moon Cow Spawn Egg 
+ New Thing Banner Pattern 
+ Longer String 
+ Potion of Big 
+ Splash 
+ Lingering 
+ Arrow 
+ Potion of Small 
+ Splash 
+ Lingering 
+ Arrow 
+ Tag 
+ April Fools 2024 
+ Amber Gem 
+ Batato Spawn Egg 
+ Dent 
+ Golden Poisonous Potato 
+ Enchanted 
+ Hash Browns 
+ Hot potato 
+ Lashing Potato 
+ Mega Spud Spawn Egg 
+ Plaguewhale Slab Spawn Egg 
+ Poisonous Polytra 
+ Poisonous Pota-Toes 
+ Poisonous Potato Chestplate 
+ Poisonous Potato Chips 
+ Poisonous Potato Fries 
+ Poisonous Potato Hammer 
+ Poisonous Potato Plant 
+ Poisonous Potato Slices 
+ Poisonous Potato Sticks 
+ Poisonous Potato Zombie Spawn Egg 
+ Potato Eye 
+ Potato of Knowledge 
+ Potion of Sticky 
+ Splash 
+ Lingering 
+ Arrow 
+ Potato Oil 
+ Poisonous 
+ Potato Oil (Potion) 
+ Splash 
+ Lingering 
+ Arrow 
+ Poisonous Potato Oil (Potion) 
+ Splash 
+ Lingering 
+ Arrow 
+ Potato Peeler 
+ Potato Peels 
+ Corrupted 
+ Potatiesh, Greatstaff of the Peasant 
+ Toxic Beam 
+ Toxic Resin 
+ Toxifin Slab Spawn Egg 
+ Venomous Potato 
+ April Fools 2025 
+ Displacement Wand 
+ Eye of Exit 
+ Fire Wand 
+ Grave 
+ Mine 
+ Mine Ingredient 
+ Music Disc And Action! 
+ Shazboots! 
+ Shimmering Key 
+ Sky Box 
+ Wind Wand 
+ April Fools 2026 
+ Attack / Mine 
+ Build 
+ Craft 
+ Follow Me 
+ Group / Ungroup 
+ Highlight 
+ Move 
+ Punch 
+ Retrieved from " https://minecraft.wiki/w/Turtle_Shell?oldid=3631572 " 
+ Categories : Renewable resources Non-stackable resources Items Armor Combat Hidden categories: Pages with sound tables Pages with Java sound tables Pages with Bedrock subtitles missing Pages with Bedrock subtitle key missing Pages with Bedrock sound tables 
+ Navigation menu 
+ Personal tools 
+ Create account Log in 
+ associated-pages 
+ Page Talk 
+ English 
+ Views 
+ Read Edit Edit source View history 
+ More 
+ Search 
+ Navigation 
+ How to help Recent changes Random page in Minecraft in Dungeons in Dungeons II in Legends in Earth in Story Mode in Tutorial in Movie Wiki Discord 
+ Wiki community 
+ Community portal Wiki forum Projects Wiki rules Style guide Notability Sandbox Admin noticeboard 
+ X 
+ Franchise 
+ Minecraft Minecraft Dungeons Minecraft Legends Minecraft Earth Minecraft: Story Mode A Minecraft Movie 
+ Recent versions 
+ Java Edition Latest: 26.2 Dev: 26.3-pre-2 Upcoming: 26.3 Bedrock Edition Latest: 26.45 Preview: 26.60.21 Upcoming: 26.50 Upcoming: 26.60 
+ Useful pages 
+ Trading Brewing Enchantments Mobs Blocks Items Crafting Smelting Tutorials Resource packs Redstone circuits 
+ Useful pages 
+ Weapons Enchanting Armor Artifacts Missions 
+ Useful pages 
+ Weapons Enchanting Armor Artifact 
+ Useful pages 
+ Friendly units Piglins Resources Biomes Structures Lost Legends 
+ Tools 
+ What links here Related changes Printable version Permanent link Page information Special pages View buckets 
+ In other languages 
+ Deutsch Español Français 日本語 한국어 Português Русский ไทย Українська 中文 
+ This page was last edited on 17 June 2026, at 12:37. 
+ Content on this site is licensed under CC BY-NC-SA 3.0 unless otherwise noted; additional terms may apply . Not an official Minecraft website. We are not associated with Mojang or Microsoft. 
+ Privacy policy 
+ About Minecraft Wiki 
+ Disclaimers 
+ Terms of Use 
+ Contact Weird Gloop 
+ Mobile view 
+ 

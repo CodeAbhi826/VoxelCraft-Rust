@@ -1,0 +1,634 @@
+ 
+ Cod – Minecraft Wiki 
+ Cod 
+ From Minecraft Wiki 
+ Jump to navigation 
+ Jump to search 
+ For other uses, see Fish (disambiguation) .
+ Not to be confused with Commands/code .
+ Cod 
+ Java Edition 
+ Bedrock Edition 
+ Health points 
+ 3 HP 
+ Behavior
+ Passive
+ Mob type 
+ Animal Aquatic 
+ Hitbox size 
+ In Java Edition : 
+ Height: 0.3 blocks Width: 0.5 blocks
+ In Bedrock Edition : 
+Height: 0.3 blocks Width: 0.6 blocks
+ Speed 
+ 0.7
+ Spawn 
+ Cold Ocean Deep Cold Ocean Lukewarm Ocean Deep Lukewarm Ocean Ocean Deep Ocean Frozen Ocean ‌ [ BE only ] Deep Frozen Ocean ‌ [ BE only ] 
+ Usable items
+ Water Bucket 
+ Name Tag 
+ {
+ "title": "Cod",
+ "rows": [
+ {
+ "field": "3<span class=\"hidden-alt-text\">HP</span><span class=\"nowrap mc-hearts\"><span class=\"iconbar pixel-image nowrap\" style=\"--icon-offset:-1px;\" title=\"1.5 hearts\">(link to File:Heart (icon).png article, displayed as 9px|link=|alt=❤️)(link to File:Half Heart (icon).png article, displayed as 9px|link=|alt=💔)</span></span>",
+ "label": "(link to Health article, displayed as Health points)"
+ },
+ {
+ "field": "Passive",
+ "label": "Behavior"
+ },
+ {
+ "field": "<span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:EntitySprite animal.png article, displayed as 16x16px|link=Animal|alt=|class=pixel-image|)</span>(link to Animal article, displayed as <span class=\"sprite-text\">Animal</span>)</span><br><span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:EntitySprite aquatic.png article, displayed as 16x16px|link=Aquatic|alt=|class=pixel-image|)</span>(link to Aquatic article, displayed as <span class=\"sprite-text\">Aquatic</span>)</span>",
+ "label": "(link to Mob type article, displayed as Mob type)"
+ },
+ {
+ "field": "'''In (link to Java Edition article, displayed as ''Java Edition''):'''<br>\nHeight: 0.3 blocks<br>Width: 0.5 blocks\n\n'''In (link to Bedrock Edition article, displayed as ''Bedrock Edition''):'''<br>\nHeight: 0.3 blocks<br>Width: 0.6 blocks",
+ "label": "(link to Hitbox article, displayed as Hitbox size)"
+ },
+ {
+ "field": "0.7",
+ "label": "(link to Attribute#Movement_speed article, displayed as Speed)"
+ },
+ {
+ "field": "(values exceeds 1000 characters...)",
+ "label": "(link to Mob spawning article, displayed as Spawn)"
+ },
+ {
+ "field": "\n* <span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:ItemSprite water-bucket.png article, displayed as 16x16px|link=Water Bucket|alt=|class=pixel-image|)</span>(link to Water Bucket article, displayed as <span class=\"sprite-text\">Water Bucket</span>)</span> \n* <span class=\"nowrap\"><span class=\"sprite-file\" style=\"\">(link to File:ItemSprite name-tag.png article, displayed as 16x16px|link=Name Tag|alt=|class=pixel-image|)</span>(link to Name Tag article, displayed as <span class=\"sprite-text\">Name Tag</span>)</span>",
+ "label": "Usable items"
+ }
+ ],
+ "invimages": [
+ "Cod Spawn Egg",
+ "Bucket of Cod"
+ ],
+ "images": [
+ "Cod.gif",
+ "Cod BE.gif"
+ ]
+} 
+ Cod are common bucketable aquatic passive mobs found in oceans that are a source of raw cod and, occasionally, bones ‌ [ Bedrock Edition only ] or bone meal .‌ [ Java Edition only ] 
+ Contents 
+ 1 Spawning 
+ 1.1 Java Edition 
+ 1.2 Bedrock Edition 
+ 2 Drops 
+ 2.1 On death 
+ 3 Behavior 
+ 3.1 Weaknesses 
+ 4 Sounds 
+ 5 Data values 
+ 5.1 ID 
+ 5.2 Entity data 
+ 6 Achievements 
+ 7 Advancements 
+ 8 History 
+ 8.1 Development 
+ 8.2 Java Edition 
+ 8.3 Bedrock Edition 
+ 8.4 Legacy Console Edition 
+ 8.5 Minecraft Education 
+ 9 Issues 
+ 10 Trivia 
+ 11 Gallery 
+ 11.1 Render 
+ 11.2 Screenshots 
+ 11.3 Textures 
+ 11.4 Other 
+ 12 See also 
+ 13 References 
+ 14 External links 
+ 15 Navigation 
+ Spawning [ edit | edit source ] 
+ Cod spawns in: Category: Water ambient‌ [ JE only ] Water creature‌ [ BE only ] Java Edition Bedrock Edition Spawn area Spawn weight Spawn chance Group size Spawn weight Group size Deep Ocean 10 ⁄ 10 100% 3–6 75 4–7 Ocean 10 ⁄ 10 100% 3–6 75 4–7 Cold Ocean 15 ⁄ 30 50% 3–6 75 4–7 Deep Cold Ocean 15 ⁄ 30 50% 3–6 75 4–7 Lukewarm Ocean 15 ⁄ 45 33.33% 3–6 75 4–7 Deep Lukewarm Ocean 8 ⁄ 38 21.05% 3–6 75 4–7 Deep Frozen Ocean — — — 75 4–7 Frozen Ocean — — — 75 4–7 
+ Java Edition [ edit | edit source ] 
+ Cod spawn underwater in normal, cold, and lukewarm oceans, and their deep variants, in groups of 3-6, subject to fish spawning requirements .
+ Bedrock Edition [ edit | edit source ] 
+ Cod spawn underwater 12–32 blocks away from the player in normal, cold, frozen, lukewarm oceans, and their deep variants, in groups of 4–7. In addition, cod spawn only on the surface; that is, there must not be a spawnable block above the spawn location with a non-solid block on top.
+ Drops [ edit | edit source ] 
+ On death [ edit | edit source ] 
+ Java Edition : 
+ Item Quantity / Chance / Average Default Looting I Looting II Looting III Raw Cod [ A ] 1 100.00% 1.00 1 100.00% 1.00 1 100.00% 1.00 1 100.00% 1.00 Cooked Cod [ B ] 1 100.00% 1.00 1 100.00% 1.00 1 100.00% 1.00 1 100.00% 1.00 Bone Meal 0–1 5.00% 0.05 0–1 5.00% 0.05 0–1 5.00% 0.05 0–1 5.00% 0.05 
+ Item Quantity / Chance / Average Default Looting I Looting II Looting III Raw Cod [ A ] 1 1 1 1 1 1 1 1 1 1 1 1 Cooked Cod [ B ] 1 1 1 1 1 1 1 1 1 1 1 1 Bone Meal 0–1 1 ⁄ 20 1 ⁄ 20 0–1 1 ⁄ 20 1 ⁄ 20 0–1 1 ⁄ 20 1 ⁄ 20 0–1 1 ⁄ 20 1 ⁄ 20 
+ Item Amount Probability Default Looting I Looting II Looting III Raw Cod [ A ] 1 1 (100.00%) 1 (100.00%) 1 (100.00%) 1 (100.00%) Average 1 (1.00) 1 (1.00) 1 (1.00) 1 (1.00) Cooked Cod [ B ] 1 1 (100.00%) 1 (100.00%) 1 (100.00%) 1 (100.00%) Average 1 (1.00) 1 (1.00) 1 (1.00) 1 (1.00) Bone Meal 0 19 ⁄ 20 (95.00%) 19 ⁄ 20 (95.00%) 19 ⁄ 20 (95.00%) 19 ⁄ 20 (95.00%) 1 1 ⁄ 20 (5.00%) 1 ⁄ 20 (5.00%) 1 ⁄ 20 (5.00%) 1 ⁄ 20 (5.00%) Average 1 ⁄ 20 (0.05) 1 ⁄ 20 (0.05) 1 ⁄ 20 (0.05) 1 ⁄ 20 (0.05) 
+ Killed 1 Item Expected Drops Default Looting I Looting II Looting III Raw Cod [ A ] 1.00 1.00 1.00 1.00 Cooked Cod [ B ] 1.00 1.00 1.00 1.00 Bone Meal 0.05 0.05 0.05 0.05 
+ ↑ Only when not on fire and not killed with a weapon enchanted with Fire Aspect . 
+ ↑ Only when on fire or killed with a weapon enchanted with Fire Aspect . 
+ Bedrock Edition : 
+ Item Quantity / Chance / Average Default Looting I Looting II Looting III Raw Cod [ A ] 1 100.00% 1.00 1 100.00% 1.00 1 100.00% 1.00 1 100.00% 1.00 Cooked Cod [ B ] 1 100.00% 1.00 1 100.00% 1.00 1 100.00% 1.00 1 100.00% 1.00 Bone 0–1 25.00% 0.25 0 / 2–3 26.00% 0.65 0 / 3–5 27.00% 1.08 0 / 4–7 28.00% 1.54 
+ Item Quantity / Chance / Average Default Looting I Looting II Looting III Raw Cod [ A ] 1 1 1 1 1 1 1 1 1 1 1 1 Cooked Cod [ B ] 1 1 1 1 1 1 1 1 1 1 1 1 Bone 0–1 1 ⁄ 4 1 ⁄ 4 0 / 2–3 13 ⁄ 50 13 ⁄ 20 0 / 3–5 27 ⁄ 100 27 ⁄ 25 0 / 4–7 7 ⁄ 25 77 ⁄ 50 
+ Item Amount Probability Default Looting I Looting II Looting III Raw Cod [ A ] 1 1 (100.00%) 1 (100.00%) 1 (100.00%) 1 (100.00%) Average 1 (1.00) 1 (1.00) 1 (1.00) 1 (1.00) Cooked Cod [ B ] 1 1 (100.00%) 1 (100.00%) 1 (100.00%) 1 (100.00%) Average 1 (1.00) 1 (1.00) 1 (1.00) 1 (1.00) Bone 0 3 ⁄ 4 (75.00%) 37 ⁄ 50 (74.00%) 73 ⁄ 100 (73.00%) 18 ⁄ 25 (72.00%) 1 1 ⁄ 4 (25.00%) 0 0 0 2 0 13 ⁄ 100 (13.00%) 0 0 3 0 13 ⁄ 100 (13.00%) 27 ⁄ 400 (6.75%) 0 4 0 0 27 ⁄ 200 (13.50%) 7 ⁄ 150 (4.67%) 5 0 0 27 ⁄ 400 (6.75%) 7 ⁄ 75 (9.33%) 6 0 0 0 7 ⁄ 75 (9.33%) 7 0 0 0 7 ⁄ 150 (4.67%) Average 1 ⁄ 4 (0.25) 13 ⁄ 20 (0.65) 27 ⁄ 25 (1.08) 77 ⁄ 50 (1.54) 
+ Killed 1 Item Expected Drops Default Looting I Looting II Looting III Raw Cod [ A ] 1.00 1.00 1.00 1.00 Cooked Cod [ B ] 1.00 1.00 1.00 1.00 Bone 0.25 0.65 1.08 1.54 
+ ↑ Only when not on fire. 
+ ↑ Only when on fire. 
+ 1–3 XP experience when killed by a player or tamed wolf . 
+ Behavior [ edit | edit source ] 
+ Cod tend to swim in schools with a maximum of 9 cod per school.
+ The player may collect a cod by using a water bucket on it, which gives the player a bucket of cod . Cod placed with buckets do not despawn naturally. When that fish bucket is used on a block, it empties the bucket, placing water with the cod swimming in it.
+ Cod cannot be bred, but only spawn in designated biomes.
+ Weaknesses [ edit | edit source ] 
+ A cod cannot survive outside of water. Outside of water, they flip around on their sides like guardians for a while trying to get back into the water until, after 10 seconds of time, they start taking suffocation damage and die. In Bedrock Edition , fish out of water rotate while flipping. They cannot swim or breathe in cauldron water. [ 1 ] They can swim in, but cannot survive in waterlogged blocks, most noticeably waterlogged slabs and stairs.
+ In Java Edition , cod are vulnerable to weapons that have the Impaling enchantment, which also affects other fish and aquatic mobs except drowned.
+ Axolotls always attack cod on sight.
+ Sounds [ edit | edit source ] 
+ Java Edition :
+ Sounds Sound Closed captions Source Description Identifier Translation key Volume Pitch Attenuation distance None None ​ [ sound 2 ] ​ Friendly Mobs Randomly entity .cod .ambient None ​ [ sound 2 ] ​ 1.0 0.8–1.2 16 ​Cod dies Friendly Mobs When a cod dies entity .cod .death subtitles .entity .cod .death ​ 1.0 0.8–1.2 16 ​Cod hurts Friendly Mobs When a cod is damaged entity .cod .hurt subtitles .entity .cod .hurt ​ 1.0 0.8–1.2 16 ​Cod flops Friendly Mobs While a cod is on land entity .cod .flop subtitles .entity .cod .flop ​ 0.3 0.8–1.2 16 ​Splashes Friendly Mobs While a cod is swimming entity .fish .swim subtitles .entity .fish .swim ​ 0.0–1.0 [ sound 1 ] 0.6–1.4 16 
+ ↑ The fish's momentum, with the horizontal axes' velocities multiplied by 0.2 (capped at 1.0) 
+ ↑ a b ​ MC-97521 ​ 
+ Bedrock Edition :
+ Sounds Sound Closed captions Source Description Identifier Translation key Volume Pitch ​ ? Friendly Mobs When a cod dies mob .fish .hurt ​ ? 1.0 0.8–1.2 ​ ? Friendly Mobs When a cod is damaged mob .fish .hurt ​ ? 1.0 0.8–1.2 ​ ? Friendly Mobs While a cod is on land mob .fish .flop ​ ? 1.0 1.0 ​ ? Friendly Mobs While a cod is swimming mob .fish .step ​ ? 0.15 1.0 
+ Data values [ edit | edit source ] 
+ ID [ edit | edit source ] 
+ Java Edition :
+ Name Identifier Entity tags 
+ Translation key Cod cod aquatic axolotl_hunt_targets can_breathe_under_water not_scary_for_pufferfish sensitive_to_impaling 
+ entity .minecraft .cod 
+ Bedrock Edition :
+ Name Identifier Numeric ID 
+ Family Translation key Cod cod 112 
+ aquatic cod fish entity .cod .name 
+ Entity data [ edit | edit source ] 
+ Cod have entity data associated with them that contain various properties.
+ Java Edition :
+ Main article: Entity format 
+ [NBT Compound / JSON Object] Entity data
+ Tags common to all entities see Template:Nbt inherit/entity/template 
+ Tags common to all mobs see Template:Nbt inherit/mob/template 
+ [Byte]  FromBucket : 1 or 0 ( true / false ) - Whether the fish had ever been released from a bucket. 
+ Bedrock Edition :
+ See Bedrock Edition level format/Entity format . 
+ Achievements [ edit | edit source ] 
+ Icon Achievement In-game description Actual requirements (if different) Gamerscore earned Trophy type ( PS ) PS4 Other I am a Marine Biologist Collect a fish in a bucket Use a water bucket on any fish mob by right-clicking. 20 Bronze It Spreads Kill a mob next to a catalyst Kill any mob that drops experience near a sculk catalyst, with the sole exception of the ender dragon . Mobs that drop no experience are ignored for this achievement. 10 Bronze 
+ Achievements that apply to all mobs:
+ Icon Achievement In-game description Actual requirements (if different) Gamerscore earned Trophy type ( PS ) PS4 Other Overkill Deal nine hearts of damage in a single hit. Damage can be dealt to any mob, even those that do not have nine hearts of health overall. 30 Bronze Over-Overkill Deal 50 hearts of damage in a single hit using the Mace Damage can be dealt to any mob, even those that do not have 50 hearts of health overall. 20 Silver Mob Kabob Hit five mobs in the same Charge attack using the Spear. Armor stands and players also count for this achievement as they are technically mobs . 10 Bronze 
+ Advancements [ edit | edit source ] 
+ Icon Advancement In-game description Actual requirements (if different) It Spreads Kill a mob near a Sculk Catalyst Kill any mob that drops experience near a sculk catalyst , with the sole exception of the ender dragon . Mobs that drop no experience are ignored for this advancement. Tactical Fishing Catch a Fish ... without a Fishing Rod ! Use a water bucket on any fish mob. 
+ Advancements that apply to all mobs:
+ Icon Advancement In-game description Actual requirements (if different) Adventure Adventure, exploration and combat Kill any mob , or be killed by any living entity . A Throwaway Joke Throw a Trident at something. Note: Throwing away your only weapon is not a good idea. Hit a mob with a thrown trident . Take Aim Shoot something with an Arrow Using a bow or a crossbow , shoot a mob with an arrow , tipped arrow , or spectral arrow . Mob Kabob Hit five mobs in the same Charge attack using the Spear. Armor Stand and Mannequin also count for this advancement. Arbalistic Kill five unique mobs with one crossbow shot Armor Stand and Mannequin also count for this advancement. This is a hidden advancement, meaning that it can be viewed by the player only after completing it, regardless of if its child advancement(s), if any, have been completed. Over-Overkill Deal 50 hearts of damage in a single hit using the Mace Damage can be dealt to any mob, even those that do not have 50 hearts of health overall. 
+ History [ edit | edit source ] 
+ Development [ edit | edit source ] 
+ June 28, 2010 
+ Notch mentioned that fish might be a feature of coral, if he were able to add coral: "... I do know that the corals will have tiny fish particles around them." October 4, 2010 
+ Fish were a passive mob that Notch showed interest in adding. In the promotional graphic for the Halloween Update , Notch indicated he would add fish. However, they were added only as an item ; there was no code for a fish mob. October 5, 2012 
+ Fish were jokingly teased in the fake snapshot 12marc40awesome , along with coral and "fish blocks". April 13, 2013 
+ When Jon Kågström was asked in his AMA on Reddit, "What mob would you like to implement into the game?" He responded, "I would like to add birds, fish and tree animals to make it more alive. However this will take some time before it can be done." July 31, 2013 
+ During Notch 's AMA on Reddit , when asked about what happened to his plans of adding fish as a mob , he responded, "Oh yeah, the fish!" 
+ Java Edition [ edit | edit source ] 
+ Java Edition 1.13 18w08b 
+ Added cod as a mob.
+ Cod have 20 HP × 10 health. 18w10a 
+ The health of cod has been changed to 3 HP . [ 2 ] 18w15a 
+ Cod now drop the cooked version of their item drops, if killed while on fire . 1.13.1 18w31a 
+ Cod now have a 5% chance of dropping bone meal when killed. 1.18 21w40a 
+ Cod now only spawn between y=50 and y=64. 
+ Bedrock Edition [ edit | edit source ] 
+ Bedrock Edition 1.4.0 beta 1.2.14.2 
+ Added cod. 1.13.0 beta 1.13.0.9 
+ Cod now drop experience when killed. 1.16.100 beta 1.16.100.52 
+ Cod now drop the cooked version of their item drops, if killed while on fire . 1.17.10 beta 1.17.10.22 
+ Cods no longer can be picked up with an empty bucket . 1.18.0 beta 1.18.0.21 
+ Cod now only spawn between y=50 and y=64. 1.19.10 Preview 1.19.10.23 
+ The max health of cod has been changed to 3 HP . 
+ Legacy Console Edition [ edit | edit source ] 
+ Legacy Console Edition Xbox 360 Xbox One PS3 PS4 PS Vita Wii U Switch TU69 1.76 1.76 1.76 Patch 38 
+ Added cod. 
+ Minecraft Education [ edit | edit source ] 
+ Minecraft Education 1.4.0 
+ Added cod. 
+ Issues [ edit | edit source ] 
+ Issues relating to "Cod" are maintained on the bug tracker . Issues should be reported and viewed there .
+ Trivia [ edit | edit source ] 
+ A cod in real life is any species of fish that belong in the genus Gadus , except for Alaska pollock which is the same genus but not called "cod". 
+ Gallery [ edit | edit source ] 
+ Render [ edit | edit source ] 
+ How a fish barrel would look if the unused texture, appearing to be filled with cod, was on its top 
+ Screenshots [ edit | edit source ] 
+ A school of 6 cod swimming in an ocean 
+ A fully inflated pufferfish , with six deflated pufferfish and a school of cod behind it 
+ An ocean with some fish visible 
+ A dying cod next to a pufferfish that is also taking damage due to the absence of water around them 
+ Cod and tropical fish , along with a turtle and squid 
+ First image of fish mobs in Bedrock Edition 
+ Textures [ edit | edit source ] 
+ Cod texture file 
+ Other [ edit | edit source ] 
+ The cod spawn egg in Bedrock Edition beta 1.2.14.2 
+ See also [ edit | edit source ] 
+ Salmon 
+ Tropical Fish 
+ Pufferfish 
+ References [ edit | edit source ] 
+ ↑ MC-126819 – "fish bouncing and suffocating on top of the cauldron which fills with water" resolved as "Won't Fix" 
+ ↑ MC-126091  – Fish mobs have 20 health – resolved as "Fixed". 
+ External links [ edit | edit source ] 
+ Cod article on Wikipedia 
+ Navigation [ edit | edit source ] 
+ v 
+ t 
+ e Ocean 
+ Biomes 
+ Ocean 
+ Deep 
+ Frozen Ocean 
+ Deep 
+ Cold Ocean 
+ Deep 
+ Lukewarm Ocean 
+ Deep 
+ Warm Ocean 
+ Environment
+ Ruins 
+ Cold 
+ Warm 
+ Shipwreck 
+ Monument 
+ Coral Reef 
+ Blocks
+ Water 
+ Gravel 
+ Sand 
+ Ice 
+ Coral 
+ Coral Block 
+ Coral Fan 
+ Sea Pickle 
+ Seagrass 
+ Kelp 
+ Magma Block 
+ Mobs
+ Cod 
+ Tropical Fish 
+ Drowned 
+ Dolphin 
+ Pufferfish 
+ Salmon 
+ Squid 
+ Nautilus 
+ Zombie Nautilus 
+ Coral 
+ Jockey 
+ v 
+ t 
+ e Entities 
+ Mobs 
+ Passive
+ Allay 
+ Armadillo 
+ Axolotl 
+ Bat 
+ Camel 
+ Camel Husk 
+ Cat 
+ Chicken 
+ Cod 
+ Copper Golem 
+ Cow 
+ Donkey 
+ Frog 
+ Glow Squid 
+ Happy Ghast 
+ Horse 
+ Mooshroom 
+ Mule 
+ Ocelot 
+ Parrot 
+ Pig 
+ Rabbit 
+ Salmon 
+ Sheep 
+ Skeleton Horse 
+ Sniffer 
+ Snow Golem 
+ Squid 
+ Strider 
+ Sulfur Cube 
+ Tadpole 
+ Tropical Fish 
+ Turtle 
+ Villager 
+ Wandering Trader 
+ Zombie Horse 
+ BE & Edu only
+ Agent 
+ NPC 
+ Neutral
+ Bee 
+ Cave Spider 
+ Dolphin 
+ Drowned 
+ Enderman 
+ Fox 
+ Goat 
+ Iron Golem 
+ Llama 
+ Nautilus 
+ Panda 
+ Piglin 
+ Polar Bear 
+ Pufferfish 
+ Spider 
+ Trader Llama 
+ Wolf 
+ Zombie Nautilus 
+ Zombified Piglin 
+ Hostile
+ Blaze 
+ Bogged 
+ Breeze 
+ Creaking 
+ Creeper 
+ Elder Guardian 
+ Endermite 
+ Evoker 
+ Ghast 
+ Guardian 
+ Hoglin 
+ Husk 
+ Magma Cube 
+ Parched 
+ Phantom 
+ Piglin Brute 
+ Pillager 
+ Ravager 
+ Shulker 
+ Silverfish 
+ Skeleton 
+ Slime 
+ Stray 
+ Vex 
+ Vindicator 
+ Warden 
+ Witch 
+ Wither Skeleton 
+ Zoglin 
+ Zombie 
+ Zombie Villager 
+ Bosses 
+ Ender Dragon 
+ Wither 
+ Mob types 
+ Animal 
+ Aquatic 
+ Arthropod 
+ Illager 
+ Monster 
+ Undead 
+ Other
+ Baby 
+ Jockey 
+ Camel Husk 
+ Chicken 
+ Hoglin 
+ Ravager 
+ Skeleton Horseman 
+ Spider 
+ Strider 
+ Baby Strider 
+ Zombie Horseman 
+ Zombie Nautilus 
+ Mob variants 
+ Other entities 
+ Player 
+ Alex 
+ Ari 
+ Efe 
+ Kai 
+ Makena 
+ Noor 
+ Steve 
+ Sunny 
+ Zuri 
+ Blocks 
+ Falling Blocks 
+ Anvil 
+ Concrete Powder 
+ Dragon Egg 
+ Gravel 
+ Pointed Dripstone 
+ Sand 
+ Red Sand 
+ Scaffolding 
+ Sulfur Spike 
+ Suspicious Gravel 
+ Suspicious Sand 
+ Primed TNT 
+ BE & Edu only
+ Falling Blocks 
+ Deprecated Anvil 
+ Snow 
+ Primed Underwater TNT 
+ Vehicles 
+ Boat 
+ with Chest 
+ Minecart 
+ with Chest 
+ with Command Block 
+ with Hopper 
+ with TNT 
+ Java Edition only
+ Minecart with Furnace 
+ with Monster Spawner 
+ Projectiles 
+ Fireball 
+ Small 
+ Dragon 
+ Launched Firework Rocket 
+ Llama Spit 
+ Shot Arrow 
+ Tipped 
+ Shulker Bullet 
+ Thrown Bottle o' Enchanting 
+ Thrown Egg 
+ Thrown Ender Pearl 
+ Thrown Eye of Ender 
+ Thrown Snowball 
+ Thrown Splash Potion 
+ Lingering Potion 
+ Thrown Trident 
+ Wind Charge 
+ Wither Skull 
+ Java Edition only
+ Shot Spectral Arrow 
+ BE & Edu only
+ Thrown Ice Bomb 
+ Stationary objects
+ Cushion ​ [ upcoming: Wilderness Bound ] 
+ End Crystal 
+ Leash Knot 
+ Painting 
+ Java Edition only
+ Item Frame 
+ Glow 
+ Miscellaneous
+ Area Effect Cloud 
+ Armor Stand 
+ Evoker Fangs 
+ Experience Orb 
+ Fishing Bobber 
+ Items 
+ Lightning Bolt 
+ Ominous Item Spawner 
+ JE only
+ Mannequin 
+ BE & Edu only
+ Balloon 
+ Camera 
+ Technical objects
+ JE only
+ Display 
+ Block 
+ Item 
+ Text 
+ Interaction 
+ Marker 
+ Editor only
+ Location Pointer Idle 
+ Location Pointer Selected 
+ Map Marker 
+ Ruler 
+ Idle 
+ Unimplemented 
+ Unused
+ JE only
+ Giant 
+ Illusioner 
+ BE & Edu only
+ Elder Guardian Ghost 
+ Old Villager 
+ Old Zombie Villager 
+ Mentioned 
+ Alpaca 
+ Barnacle 
+ Crab 
+ Firefly 
+ Glare 
+ Great Hunger 
+ Herobrine 
+ Iceologer 
+ Meerkat 
+ Minecart with Dispenser 
+ Moobloom 
+ Ostrich 
+ Penguin 
+ Pigman Bodyguard 
+ Rascal 
+ Red Dragon 
+ Shade 
+ Termite 
+ Tuff Golem 
+ Vulture 
+ Wildfire 
+ Removed
+ Builder 
+ Giant Jockey 
+ MD3 Test Mob 
+ Mob 
+ Monster 
+ Shot Purple Arrow 
+ Sign Entity 
+ Joke 
+ Mobs
+ April Fools 2013 
+ Diamond Chicken 
+ Horse 
+ Pony 
+ Pink Wither 
+ Redstone Bug 
+ April Fools 2015 
+ Love Golem 
+ Friendly Wither 
+ Smiling Creeper 
+ April Fools 2019 
+ Nerd Creeper 
+ April Fools 2023 
+ Moon Cow 
+ Ray Tracing 
+ April Fools 2024 
+ Batato 
+ Mega Spud 
+ Plaguewhale Slab 
+ Poisonous Potato Zombie 
+ Potato mob category 
+ Toxifin Slab 
+ April Fools 2025 
+ Angry Ghast 
+ Spectator Villager 
+ Spectator Witch 
+ Traitor 
+ Warden (boss) 
+ Pet variants
+ Pet Armadillo 
+ Pet Axolotl 
+ Pet Bee 
+ Pet Cat 
+ Pet Chicken 
+ Pet Cow 
+ Pet Creeper 
+ Pet Fox 
+ Pet Frog 
+ Pet Mooshroom 
+ Pet Polar Bear 
+ Pet Slime 
+ Pet Turtle 
+ Pet Wolf 
+ April Fools 2026 
+ Living Block 
+ Other entities
+ April Fools 2013 
+ Pink Wither Skull 
+ April Fools 2015 
+ Obsidian Boat 
+ Friendly Wither Skull 
+ April Fools 2023 
+ Stencil Display 
+ April Fools 2024 
+ Falling Block 
+ Gravtater 
+ Potato Eye 
+ April Fools 2026 
+ Crafting Grid 
+ Hovering Item 
+ Living Block Command 
+ Retrieved from " https://minecraft.wiki/w/Cod?oldid=3747633 " 
+ Categories : Entities Passive mobs Aquatic mobs Animal mobs Hidden categories: Pages using simple calculator Pages with sound tables Pages with Java sound tables Pages with Bedrock subtitles missing Pages with Bedrock subtitle key missing Pages with Bedrock sound tables 
+ Navigation menu 
+ Personal tools 
+ Create account Log in 
+ associated-pages 
+ Page Talk 
+ English 
+ Views 
+ Read Edit Edit source View history 
+ More 
+ Search 
+ Navigation 
+ How to help Recent changes Random page in Minecraft in Dungeons in Dungeons II in Legends in Earth in Story Mode in Tutorial in Movie Wiki Discord 
+ Wiki community 
+ Community portal Wiki forum Projects Wiki rules Style guide Notability Sandbox Admin noticeboard 
+ X 
+ Franchise 
+ Minecraft Minecraft Dungeons Minecraft Legends Minecraft Earth Minecraft: Story Mode A Minecraft Movie 
+ Recent versions 
+ Java Edition Latest: 26.2 Dev: 26.3-pre-2 Upcoming: 26.3 Bedrock Edition Latest: 26.45 Preview: 26.60.21 Upcoming: 26.50 Upcoming: 26.60 
+ Useful pages 
+ Trading Brewing Enchantments Mobs Blocks Items Crafting Smelting Tutorials Resource packs Redstone circuits 
+ Useful pages 
+ Weapons Enchanting Armor Artifacts Missions 
+ Useful pages 
+ Weapons Enchanting Armor Artifact 
+ Useful pages 
+ Friendly units Piglins Resources Biomes Structures Lost Legends 
+ Tools 
+ What links here Related changes Printable version Permanent link Page information Special pages View buckets 
+ In other languages 
+ Deutsch Español Français Italiano 日本語 한국어 文言 Nederlands Português Русский ไทย Українська 中文 
+ This page was last edited on 28 August 2026, at 18:07. 
+ Content on this site is licensed under CC BY-NC-SA 3.0 unless otherwise noted; additional terms may apply . Not an official Minecraft website. We are not associated with Mojang or Microsoft. 
+ Privacy policy 
+ About Minecraft Wiki 
+ Disclaimers 
+ Terms of Use 
+ Contact Weird Gloop 
+ Mobile view 
+ 

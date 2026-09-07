@@ -1,0 +1,3265 @@
+ 
+ Java Edition 1.13 – Minecraft Wiki 
+ Java Edition 1.13 
+ From Minecraft Wiki 
+ Jump to navigation 
+ Jump to search 
+ This page covers a release version that has a major issue under certain conditions.  
+ The dedicated server for this version has a security vulnerability in the Log4j library that could be used to perform a remote code execution exploit. It can be addressed by appending a certain JVM argument to the server startup command line. [ 1 ] 
+ Minecraft 1.13 
+ Edition 
+ Java Edition 
+ Official name
+ Update Aquatic [ 2 ] 
+ Release date
+ July 18, 2018
+ Development versions 
+ Snapshots (42) Pre-releases (10) ( View all ) 
+ Downloads 
+ Client ( .json ) Server 
+ Protocol version 
+ 393
+ Data version 
+ 1519
+ Resource pack format 
+ 4
+ Data pack format 
+ 4
+ Minimum Java version 
+ Java SE 8 
+ ◄ ◄  1.12 
+ 1.13 
+ 1.14  ► ► 
+ ◄  1.12.2 
+ 1.13.1 ► 
+ {
+ "title": "Minecraft 1.13",
+ "images": [
+ "Java Edition 1.13 menu.png"
+ ],
+ "rows": [
+ {
+ "field": "''(link to Java Edition article, displayed as Java Edition)''",
+ "label": "(link to Edition article, displayed as Edition)"
+ },
+ {
+ "field": "(link to Update Aquatic article, displayed as Update Aquatic)",
+ "label": "Official name"
+ },
+ {
+ "field": "July 18, 2018",
+ "label": "Release date"
+ },
+ {
+ "field": "<div class=\"hlist\"><span style=\"white-space:nowrap;\">(link to :Category:Java Edition 1.13 snapshots article, displayed as '''Snapshots''') (42) </span><br/><span style=\"white-space:nowrap;\">(link to :Category:Java Edition 1.13 pre-releases article, displayed as '''Pre-releases''') (10) </span><br/>((link to Java Edition 1.13/Development versions article, displayed as View all))</div>",
+ "label": "<span style=\"white-space: normal;\">Development versions</span>"
+ },
+ {
+ "field": "[https://piston-data.mojang.com/v1/objects/c0b970952cdd279912da384cdbfc0c26e6c6090b/client.jar Client] ([https://piston-meta.mojang.com/v1/packages/1efd5dfcae060b847706500e408a76674922de89/1.13.json .json])<br />[https://piston-data.mojang.com/v1/objects/d0caafb8438ebd206f99930cfaecfa6c9a13dca0/server.jar Server]",
+ "label": "(link to Tutorial:Installing a version#Manual version installation article, displayed as Downloads)"
+ },
+ {
+ "field": "393",
+ "label": "(link to Protocol version article, displayed as Protocol version)"
+ },
+ {
+ "field": "1519",
+ "label": "(link to Data version article, displayed as Data version)"
+ },
+ {
+ "field": "4",
+ "label": "<span style=\"white-space: normal;\">(link to Pack format#List of pack formats article, displayed as Resource pack format)</span>"
+ },
+ {
+ "field": "4",
+ "label": "<span style=\"white-space: normal;\">(link to Pack format#List of pack formats article, displayed as Data pack format)</span>"
+ },
+ {
+ "field": "<span class=\"plainlinks\">[https://en.wikipedia.org/wiki/Java_version_history#Java_SE_8_.28LTS.29 Java SE 8]</span>",
+ "label": "<span style=\"white-space: normal;\">Minimum Java version</span>"
+ }
+ ],
+ "invimages": [],
+ "footer": "<table style=\"margin: auto; word-break: break-word;\">\n<tr style=\"background: inherit;\">\n<td style=\"padding: 0.4em\" >[[Java Edition 1.12|<span style=\"margin-right:-0.35em\">◄</span>◄  1.12]]</td>\n<td rowspan=\"2\" style=\"padding: 0.4em\">'''1.13'''</td>\n<td style=\"padding: 0.4em\" >[[Java Edition 1.14| 1.14 <span style=\"margin-right:-0.35em\">►</span>►]]</td>\n</tr>\n<tr style=\"background: inherit;\">\n<td style=\"padding: 0.4em\">\n[[Java Edition 1.12.2|◄  1.12.2]]\n</td>\n\n<td style=\"padding: 0.4em\">\n[[Java Edition 1.13.1| 1.13.1 ►]]\n</td>\n</tr>\n</table>"
+} 
+ Other editions with a version " 1.13 ":  
+ Realms 
+ Bedrock Edition 
+ PlayStation 3 Edition 
+ PlayStation 4 Edition 
+ PlayStation Vita Edition 
+ Minecraft Legends 
+ There is a guide for this update!  
+ See Java Edition guides/Update Aquatic for a guide to all of the new features introduced in Update Aquatic. 
+ 1.13 , the release of the Update Aquatic , [ 3 ] is a major update to Java Edition released on July 18, 2018. It overhauls the ocean generation, and makes technical changes. [ 4 ] [ 5 ] Notably, new ocean-related blocks, such as coral , conduits , kelp , sea pickles , and turtle eggs were added, as well as new items such as buried treasure explorer maps , buckets of fish , hearts of the sea , phantom membranes , tridents , etc. In addition, dolphins , drowned , fish mobs , phantoms , and turtles were added, as well a new buffet world type and new technical aspects to data packs and tags . Due to the update's vast technical changes such as world generation, the update severely degraded the performance of Java Edition .
+ This update was originally intended to be released as two separate updates with 1.13, originally named Technically Updated , having the technical changes, and 1.14, originally to be called the Update Aquatic , having all the ocean features, however they were combined into one big update, [ 2 ] and as such snapshots from 17w43a to 18w06a mainly just added or modified commands.
+ The update was originally revealed during the MINECON Earth 2017 livestream on November 18, 2017. [ 6 ] 
+Initially, 1.13 was scheduled to be released on May 30, 2018. [ 7 ] However, the release was pushed back to July 18, 2018 to fix critical bugs. This is the first version released in 2018.
+ Contents 
+ 1 Additions 
+ 1.1 Blocks 
+ 1.2 Items 
+ 1.3 Mobs 
+ 1.4 World generation 
+ 1.5 Gameplay 
+ 1.6 Command format 
+ 1.7 General 
+ 2 Changes 
+ 2.1 Blocks 
+ 2.2 Items 
+ 2.3 Mobs 
+ 2.4 Non-mob entities 
+ 2.5 World generation 
+ 2.6 Gameplay 
+ 2.7 Command format 
+ 2.8 General 
+ 3 Fixes 
+ 4 Videos 
+ 5 Trivia 
+ 6 Gallery 
+ 7 References 
+ 8 Navigation 
+ Additions [ edit | edit source ] 
+ 1.13 block and item additions 
+ Blocks [ edit | edit source ] 
+ Air variants 
+ cave_air and void_air .
+ Both have the exact same properties as air . 
+ cave_air is generated in caves. 
+ void_air is used internally for blocks above (>255) and below (<0) the world, and in unloaded chunks. 
+ Carved pumpkins 
+ A new block that has the old pumpkin texture.
+ Normal pumpkin blocks no longer have a face. 
+ Right-clicking a pumpkin block with shears turns it into a carved pumpkin and make it spit out 4 pumpkin seeds . 
+ Buttons , pressure plates and trapdoors 
+ Now have separate textures for all 6 types of wood. 
+ Stripped logs 
+ A barkless variant of logs . 
+ Created by using an axe on a log block. 
+ Act as regular logs, and can still be used to craft planks . 
+ Bubble columns 
+ Created by magma blocks or soul sand in water as far up as all blocks are water sources.
+ Magma block columns pull entities down: they stop items from floating up in water and sink boats. 
+ Soul sand columns push entities up. 
+ Seagrass 
+ Like regular grass, seagrass also comes in a tall variant. 
+ Has animated textures. 
+ Generates in oceans (including underwater caves), rivers, and swamplands. 
+ Can additionally be generated when using bone meal on any block underwater. 
+ Drops from turtles when killed. 
+ Kelp 
+ Can only be placed underwater, requiring at least one water block above it.
+ Can be placed on dry land by using the / setblock command. 
+ Generate in ocean biomes, except warm oceans. 
+ Can grow multiple blocks high. 
+ Has animated textures. 
+ Can be smelted into dry kelp. 
+ Dried kelp blocks 
+ Can be used as fuel in a furnace
+ Smelts 20 items. 
+ Crafted from dried kelp , and can also be crafted back into dried kelp. 
+ Prismarine stairs and slabs 
+ Both come in all 3 variants: prismarine, dark prismarine, and prismarine bricks. 
+ Stairs can be crafted with 6 of their respective material. 
+ Slabs can be crafted with 3 of their respective material. 
+ Turtle eggs 
+ Created by breeding turtles . 
+ Stepping on turtle eggs breaks them.
+ Zombies , zombie pigmen , and drowned intentionally step on turtle eggs. 
+ After a while, they become slightly cracked and then very cracked.
+ Very cracked turtle eggs eventually hatch into baby turtles. 
+ Coral blocks 
+ Comes in the same 5 variants as coral: tube (blue), brain (pink), bubble (purple), fire (red), horn (yellow). 
+ Must be mined with a Silk Touch tool in order to drop itself, otherwise they drop a dead coral block.
+ Each variant has a dead (gray) counterpart. 
+ Turns into a dead coral block if none of its six sides are touching water, although not instantly. 
+ Like coral, it naturally generates in coral reefs . 
+ Dead coral blocks 
+ Comes in the same 5 variants as coral: tube, brain, bubble, fire, horn. 
+ Obtained when mining a coral block without a Silk Touch tool, or when none of the six sides of a coral block are touching the water. 
+ Cannot be turned back into coral. 
+ Coral 
+ Comes in 5 different variants, each with a different type: tube (blue), brain (pink), bubble (purple), fire (red), horn (yellow). 
+ Can only be placed underwater. 
+ Naturally generates in coral reefs . 
+ Can only be obtained with a tool enchanted with Silk Touch . 
+ Shulker boxes 
+ Added a non-dyed shulker box (purple). 
+ Coral fans 
+ Comes in the same 5 variants as coral: tube (blue), brain (pink), bubble (purple), fire (red), horn (yellow). 
+ Can be placed underwater on the sides and tops of blocks. 
+ Can be placed in air.
+ Turns into dead coral fans after a short moment if this is the case. 
+ Naturally generates on the sides of coral blocks in coral reefs . 
+ Can only be obtained with a tool enchanted with Silk Touch . 
+ Sea pickles 
+ They generate in warm oceans, especially around coral reefs . 
+ Up to 4 of them can be placed on a block. 
+ Each one adds 3 to the light level, but only when placed underwater. 
+ Can be smelted into lime dye . 
+ Blue ice 
+ Generates in icebergs . 
+ Slippier than ice and packed ice . 
+ Crafted using 9 packed ice. 
+ Conduits 
+ Crafted using 1 heart of the sea and 8 nautilus shells . 
+ Can be activated by placing prismarine , dark prismarine, prismarine bricks, and/or sea lanterns in 5×5 open squares around it.
+ When active, affects nearby players in water with the Conduit Power status effect.
+ Conduit Power stops the breath meter from running out, gives underwater night vision and increases mining speed. 
+ A complete structure fully powers the conduit.
+ When active at full power, the range increases and hostile mobs within 8 blocks take damage.
+ The eye of the conduit shows whether it's hunting for hostile mobs or not: it shows an open eye when it's looking out for hostile mobs, and a closed eye otherwise. 
+ Emits a strong glow, at light level 15. 
+ Stripped wood 
+ A variant of wood with the side texture of stripped logs on all faces. 
+ Created by using an axe on a wood block. 
+ Act as regular logs, and can still be used to craft planks . 
+ Dead coral fans 
+ Comes in the same 5 variants as coral: tube, brain, bubble, fire, horn. 
+ Coral fans turn into them when placed out of water. 
+ Can only be obtained with a tool enchanted with Silk Touch . 
+ Items [ edit | edit source ] 
+ Debug sticks 
+ A technical item used to cycle between different block states.
+ Left clicking cycles through states; right clicking cycles through values. Shift clicking cycles through the states or values in reverse order. 
+ Trident 
+ A new weapon. 
+ Can be thrown by using it, or be used as a melee weapon by attacking , dealing 9 HP damage. 
+ Obtainable by killing drowned . 
+ Kelp 
+ Can be used to place a kelp plant underwater. 
+ Can be dried in a furnace to create dried kelp. 
+ Dried kelp 
+ Obtained from smelting kelp . 
+ Can be eaten, restoring 1 ( ) hunger point. 
+ Can also be crafted into dried kelp blocks. 
+ It is eaten faster than other food. 
+ Scutes 
+ Dropped when baby turtles grow up. 
+ Can be used to craft turtle shells . 
+ Turtle shells 
+ Crafted from scutes . 
+ Can be used as a helmet, adding 2 armor points.
+ While equipped and out of water, it gives the player Water Breathing effect for 10 seconds, essentially giving the player 10 extra seconds of breath underwater. 
+ Can be used to brew the potion of the Turtle Master from an awkward potion . 
+ Potion of the Turtle Master 
+ Gives Slowness IV and Resistance III for 1 minute. 
+ Brewing it with redstone dust extends the effect duration to 3 minutes. 
+ Brewing it with glowstone dust enhances the effects to Slowness VI and Resistance IV. 
+ Like all potions, can be turned into splash potion and lingering potion, using gunpowder and dragon's breath. 
+ Arrow of the Turtle Master 
+ Functions the same as the potion of the Turtle Master. 
+ Buckets of fish 
+ Come in 4 variants: cod, salmon, pufferfish, and tropical fish buckets. 
+ Obtained by using a water bucket on a fish mob . 
+ When used , it places a water source block and spawn the corresponding fish inside it. 
+ Buried treasure explorer maps 
+ Found in ocean ruins or shipwrecks chests. 
+ Leads the player to buried treasure. 
+ Phantom membranes 
+ Dropped by phantoms . 
+ Is now used to repair elytra instead of using leather . 
+ Can be brewed into potions of Slow Falling. 
+ Potion of Slow Falling 
+ Brewed with phantom membrane. 
+ Gives the player the Slow Falling status effect for 1:30.
+ Prevents all fall damage. 
+ Makes the player fall slower. 
+ Prevents the player from trampling crops (even when jumping on top of them). 
+ Brewing it with redstone dust extends the effect duration to 4 minutes. 
+ Like all potions, can be turned into splash potion and lingering potion , using gunpowder and dragon's breath . 
+ Arrow of Slow Falling 
+ Gives the victim the Slow Falling status effect. 
+ Heart of the sea 
+ Used to craft conduits. 
+ They generate in buried treasure chests (in stacks of 1). 
+ Nautilus shells 
+ Used to craft conduits. 
+ Can be obtained by fishing. 
+ Drowned can spawn holding a nautilus shell. 
+ Mushroom blocks 
+ Now appear in the Creative inventory. 
+ Mushroom stems 
+ Have an item form and appear in the Creative inventory. 
+ Petrified oak slab 
+ Now has an item model. 
+ Smooth quartz , smooth red sandstone , smooth sandstone , and smooth stone 
+ Like wood, they now have an item form, which appears in the Creative inventory. 
+ Wood 
+ Now have an item form and appear in the Creative inventory.
+ This is true for all 6 types. 
+ They can now be crafted, 4 logs in a square yield 3 wood. 
+ They now follow identical placement rules to logs and other such blocks. 
+ Spawn eggs 
+ Phantom 
+ Spawns phantoms. 
+ Turtle 
+ Spawns turtles. 
+ Cod 
+ Spawns cod. 
+ Salmon 
+ Spawns salmons. 
+ Pufferfish 
+ Spawns pufferfishes. 
+ Tropical fish 
+ Spawns tropical fish. 
+ Drowned 
+ Spawns drowned. 
+ Dolphin 
+ Spawns dolphins. 
+ Mobs [ edit | edit source ] 
+ Phantom ( Mob B ) 
+ Was voted in by viewers of MINECON Earth . [ 6 ] 
+ Spawn in the Overworld at high altitudes, and swoops down in groups of around 3 or 4 to attack players that have not slept in a while. [ 6 ] 
+ The player must be above sea level. 
+ Are considered to be undead mobs.
+ This means that they are harmed by Healing potions, healed by Harming potions, ignored by the wither, and affected by Smite enchantment. 
+ Burn when exposed to sunlight. 
+ Drop 0-1 phantom membrane . 
+ Turtles 
+ Water mobs which make nests comprised of eggs on shorelines throughout various biomes. 
+ Have a baby variant, which hatch from the eggs, and move into the water when born. 
+ Can be bred using seagrass. 
+ Spawn on warm beaches in small groups. 
+ Lay eggs in their home beach.
+ Drowned and zombies pathfind to the eggs and try to crack them. 
+ Drop 0-2 seagrass upon death.
+ Drop 0-1 bowl when killed with a trident enchanted with Channeling . 
+ Fish 
+ Drop themselves when killed. 
+ Outside of water, they flop around before suffocating.
+ Slowly flop towards a water source. 
+ Can be caught with a water bucket. 
+ Come in 4 types: 
+ Cod 
+ Spawn in cold, normal, and lukewarm ocean biomes. 
+ Form in groups of up to 9. 
+ Salmon 
+ Spawn in frozen ocean, cold ocean and river biomes. 
+ Form in groups of up to 6. 
+ Pufferfish 
+ Spawn in lukewarm and warm ocean biomes. 
+ Inflate themselves when a player gets near. 
+ Causes 7 seconds of Poison to nearby players. 
+ Tropical fish 
+ Spawn in lukewarm and warm ocean biomes. 
+ Come in 14 different colors and patterns. 
+ Drowned 
+ Spawn in all oceans and rivers, as well as in swamps and ocean ruins . 
+ Zombies morph into drowned after a while if they are in water. 
+ Drowned can spawn with tridents and nautilus shells, allowing the player to get them in survival. 
+ Do not float, but can swim (although they prefer to walk). 
+ All drowned have a melee attack, and ones with tridents have a ranged attack. 
+ Like zombies, drowned attack baby turtles and stomp on and crack turtle eggs . 
+ Dolphins 
+ Spawn in any ocean that isn't frozen. 
+ Neutral mobs. Like wolves and zombie pigmen , dolphins attack in groups if one is angered. 
+ Can be fed using raw cod , but they don't breed.
+ Drop cod on death. 
+ Play with nearby items by picking them up and dropping them after a very short moment. 
+ Occasionally jump out of water like real-life dolphins.
+ Can also jump between disconnected bodies of water. 
+ Chase after boats and jump over water surfaces. 
+ They suffocate after spending too much time on land. 
+ If they start drowning, they swim to the surface. 
+ Give the player the Dolphin's Grace status effect when the player swims near them. 
+ They can help players find buried treasure; when they are fed raw cod, they swim to the nearest shipwreck or ocean ruins . 
+ World generation [ edit | edit source ] 
+ Biomes 
+ Added minecraft:small_end_islands (Small End Islands), minecraft:end_midlands (End Midlands), minecraft:end_highlands (End Highlands), and minecraft:end_barrens (End Barrens).
+ All 4 generate in different parts of the outer islands of the End , which previously just used the "The End" biome. 
+ Added minecraft:warm_ocean (Warm Ocean), minecraft:lukewarm_ocean (Lukewarm Ocean), minecraft:cold_ocean (Cold Ocean), minecraft:deep_warm_ocean (Deep Warm Ocean), minecraft:deep_lukewarm_ocean (Deep Lukewarm Ocean), minecraft:deep_cold_ocean (Deep Cold Ocean), and minecraft:deep_frozen_ocean (Deep Frozen Ocean), although warm deep oceans don't naturally generate. 
+ minecraft:frozen_ocean (Frozen Ocean) now generates again. 
+ Buffet 
+ New world type : can be created by selecting Buffet World as a world type. 
+ Creates single-biome worlds. 
+ Allows choosing between Overworld (as "Surface"), Nether (as "Caves") and End (as "Floating islands") terrain generation. 
+ Biome names are sorted alphabetically in the buffet menu. 
+ Another way to generate chunks (Checkerboard) is available by using an NBT Editor to open a Buffet world's "level.dat", and using the following code for the "generatorOptions": {"biome_source":{"type":"minecraft:checkerboard"}} . [ 8 ] 
+ Buried treasure 
+ A new structure that consists of a buried chest with loot in it. 
+ Has its own buried_treasure loot table. 
+ Maps found in ocean ruins can lead the player to them. 
+ Coral reef 
+ Naturally generate in warm ocean biomes . 
+ Are composed of coral , coral blocks and coral fans . 
+ Iceberg 
+ Generate on frozen oceans. 
+ Shipwrecks 
+ Can be found in oceans and beaches. 
+ Contain 1–3 loot chests containing different types of loot depending on the ship. 
+ Can generate upright, sideways or upside down. 
+ Underwater caves 
+ Come in many variants, including ravines.
+ Underwater ravines often contain magma blocks at the bottom, which create bubble columns, which drag players down and makes navigating through water more difficult and drowning more likely. 
+ Ocean ruins 
+ Come in many different shapes and sizes. 
+ Cold ruins can be found in cold and frozen ocean biomes - regardless of depth. 
+ Warm ruins can be found in warm, lukewarm, and deep lukewarm ocean biomes. 
+ Can generate alone or as part of a big ruined village. 
+ Can also generate out of the water, slightly underground or slightly above sea level. 
+ Gameplay [ edit | edit source ] 
+ Advancements 
+ Icon Advancement In-game description Actual requirements (if different) A Throwaway Joke Throw a Trident at something. Note: Throwing away your only weapon is not a good idea. Hit a mob with a thrown trident . Very Very Frightening Strike a Villager with lightning Hit a villager with lightning created by a trident with the Channeling enchantment, turning it into a witch . Fishy Business Catch a fish Reel in a fishing rod attached to any of these fish items: 
+ Raw Cod 
+ Raw Salmon 
+ Tropical Fish 
+ Pufferfish 
+The player need not to have actually fished to trigger this advancement. Tactical Fishing Catch a Fish ... without a Fishing Rod ! Use a water bucket on any fish mob. 
+ Added three new advancement triggers.
+ minecraft:fishing_rod_hooked triggers when a player reels in an item or entity. 
+ minecraft:channeled_lightning triggers when a player uses the Channeling enchantment to strike a mob. 
+ minecraft:filled_bucket triggers when a player fills a bucket. 
+ Enchantments 
+ Channeling 
+ Only has one level. 
+ Used on tridents to summon a lightning bolt on impact with a mob during storms or when in water.
+ Requires the target mob to be directly under an open sky and in a biome where it is raining. 
+ Impaling 
+ Goes up to level V. 
+ Used on tridents to deal more damage to aquatic mobs. 
+ Loyalty 
+ Goes up to level III. 
+ Used on tridents to make it return when thrown. 
+ Riptide 
+ Goes up to level III. 
+ Not compatible with Loyalty or Channeling . 
+ Used on tridents to launch the player when thrown while in water or rain. Riptide does not throw the trident, but instead launches the player forwards. 
+ If the player is not in water and it is not raining, the player is not able to throw tridents enchanted with Riptide, but they can still deal melee damage. 
+ Players display a spinning animation when dashing. 
+ Map markers 
+ Added the ability to put markers on maps.
+ Use on a banner with a map to add it to the map. 
+ Right click on the same banner again to remove it. 
+ That map shows the base color of the banner at that spot. 
+ Named banners show their name on the map. 
+ If a banner is destroyed, it disappears when the player gets close while holding the map. 
+ Uses the new banners nbt for maps. 
+ Movement 
+ When sprinting while in water, the player now swims on the surface.
+ Much faster than walking/running in water before. 
+ Pressing shift causes the player to rapidly dive down. 
+ Sprinting at the surface of water doesn't make the player swim, instead the player stays at the same altitude constantly. 
+ The players hitbox is only as large as 0.6×0.6 blocks (same as while flying with an elytra ) while swimming. 
+ Vertically and horizontally, the player can fit through a one block gap like this. 
+ Status effects 
+ Conduit Power 
+ Gives the player unlimited water breathing, night vision and increased mining speed while underwater. 
+ Acquired by being near a powered Conduit while underwater. 
+ Dolphin's Grace 
+ Makes the player swim faster. 
+ Acquired by swimming near dolphins . 
+ Slow Falling 
+ Causes the player to descend at a much slower rate, and not take any damage when hitting the ground. 
+ This allows the player to jump further than normal.
+ If the player is sprinting while under the Slow Falling status effect, they are able to jump across a gap of 5 blocks, 6 with a 1-block height difference, compared to 4 with normal sprinting. 
+ Crops don't get destroyed if the player lands on them with the Slow Falling status effect. 
+ Higher levels do not change the rate of descent. 
+ Command format [ edit | edit source ] 
+ General 
+ Added a command UI that shows when commands are typed in the chat.
+ Different components of commands are displayed in different colors. 
+ Errors are displayed in red without having to run the command. 
+ Added command suggestions for entity selectors. 
+ An nbt argument in target selectors. 
+ A new command parsing library known as "Brigadier". 
+ Coordinates 
+ Added a new local coordinate type in commands using ^ .
+ When specifying coordinates in a command, the player can now use ^ to specify local coordinates instead of world coordinates. 
+ The axes used for local coordinates are relative to the execution rotation, defaulting to 0,0 (south). 
+ Like world coordinates, they are by default measured from the base of an entity. 
+ The syntax is: ^left ^up ^forwards . 
+ left/up/forwards is the amount of blocks in the specified direction. 
+ Specific commands 
+ /bossbar 
+ /bossbar create <id> <name> creates a boss bar.
+ id is used to target the boss bar and is in the form namespace:name , for example: foo:bar . If no namespace is specified it defaults to minecraft . 
+ name is the display name of the boss bar and only accepts a JSON text component. 
+ /bossbar set <id> name <name> changes the name of the boss bar. 
+ /bossbar set <id> color <color> changes the color of the text (if no color was specified as part of a text component) and the boss bar, defaults to white . 
+ /bossbar set <id> style <style> changes the style of the boss bar, defaults to progress .
+ Available options are: notched_6 , notched_10 , notched_12 , notched_20 , and progress . 
+ notched sets the amount of segments. 
+ progress sets the amount of segments to 1. 
+ /bossbar set <id> value <value> changes the current value of the boss bar, defaults to 0 . 
+ /bossbar set <id> max <max> changes the maximum value of the boss bar, defaults to 100 . 
+ /bossbar set <id> visible <visible> changes the visibility of the boss bar, defaults to true . 
+ /bossbar set <id> players <players> changes which players can see the boss bar, defaults to none. 
+ /bossbar remove <id> removes the boss bar. 
+ /bossbar list displays a list of created boss bars. 
+ /bossbar get <id> (max|players|value|visible) returns the requested setting as a result of the command. 
+ / data 
+ A command that allows the player to get, merge, and remove entity and block nbt data. 
+ /data get block <pos> [<path>] [<scale>] 
+ Returns the NBT data from the block at pos . A path can be specified to only retrieve that nbt data. Numeric values are set as the result of the command, strings set the length of the string as the result , lists set the number of elements in the list as the result , and compounds set the number of tags that are directly in that compound as the result . An optional scale can be provided to scale the number retrieved. 
+ /data get entity <target> [<path>] [<scale>] 
+ Returns the NBT data from one target entity. A path can be specified to only retrieve that nbt data. Numeric values are set as the result of the command, strings set the length of the string as the result , lists set the number of elements in the list as the result , and compounds set the number of tags that are directly in that compound as the result . An optional scale can be provided to scale the number retrieved. 
+ /data merge block <pos> <nbt> 
+ Merges the block nbt data at pos with the specified nbt data. 
+ /data merge entity <target> <nbt> 
+ Merges the entity nbt data from target with the specified nbt data. Merging player nbt data is not allowed. 
+ /data remove block <pos> <path> 
+ Removes nbt data at path from the block at pos . 
+ /data remove entity <target> <path> 
+ Removes nbt data at path from one target entity. Removing player nbt data is not allowed. 
+ Data paths look like this: foo.bar[0]."A [crazy name]".baz .
+ foo.bar means foo's child called bar. 
+ bar[0] means element 0 of bar. 
+ "quoted strings" may be used if a name of a key needs to be escaped. 
+ Examples of old commands:
+ /entitydata <target> {} is now /data get entity <target> 
+ /blockdata <pos> <nbt> is now /data merge block <pos> <nbt> 
+ Examples of new functionalities:
+ /data get entity @e[type=pig,limit=1] Saddle 2 
+ /data remove block 17 45 34 Items 
+ / datapack 
+ A command to control loaded data packs. 
+ Has the following subcommands:
+ enable <name> - enables the specific pack. 
+ disable <name> - disables the specific pack. 
+ list [available|enabled] - lists all data packs, or only the available/enabled ones. 
+ Data packs are enabled by default, but if the player disables it, they can re-enable it with these commands:
+ enable <name> - enables the specific pack, putting it in its default position. 
+ enable <name> first - enables the specific pack, putting it before any other pack (lowest priority). 
+ enable <name> last - enables the specific pack, putting it after any other pack (highest priority). 
+ enable <name> before <existing> - enables the specific pack, putting it before (lower priority) <existing> pack. 
+ enable <name> after <existing> - enables the specific pack, putting it after (higher priority) <existing> pack. 
+ / locate 
+ Added a clickable teleport link to the command output. 
+ / scoreboard 
+ Added /scoreboard objectives modify <objective> rendertype hearts .
+ Makes health bars display as hearts, like this: . 
+ Added /scoreboard objectives modify <objective> rendertype integer .
+ Makes health bars display as yellow numbers, like this: 12 . 
+ / teleport 
+ Added facing .
+ /teleport [<targets>] (<location>|<destination>) facing (<facingEntity>|<facingLocation> . 
+ Rotates an entity to face either an entity or a location. 
+ / time 
+ Added noon and midnight to /time set . 
+ General [ edit | edit source ] 
+ Data packs 
+ Like resource packs , but for loot tables , advancements , functions , structures , recipes and tags .
+ Used by placing them into the datapacks folder of a world. 
+ Data packs are .zip files or folders, with a pack.mcmeta in the root. See: Tutorial:Creating a resource pack#pack.mcmeta . The packs are located in (world)/datapacks/ . 
+ Structures load from (world)/generated/structures/(namespace)/(file).nbt before checking data packs.
+ However, this directory should not be used to distribute structures. Instead, move these files into data packs. 
+ Reloadable using / reload . 
+ Structure: pack.mcmeta , data folder containing a namespace folder determining the namespace of its contents.
+ A namespace should only contain the following symbols: 0123456789abcdefghijklmnopqrstuvwxyz-_ . 
+ Inside the namespace folder, there can be folders for functions , loot_tables , advancements , structures , recipes and tags . 
+ Death messages 
+ Added a death message for when the player is blown up by a bed in the Nether or the End.
+ <player> was killed by [Intentional Game Design] 
+ Clicking on "[Intentional Game Design]" opens a link to MCPE-28723 . 
+ Added a death message for when a mob/player pushes someone into the void or when someone uses / kill after being attacked by a mob/player.
+ <player> didn't want to live in the same world as <killer> 
+ Added a death message for when the player is killed by somebody using a trident.
+ <player> was impaled by <killer> 
+ Debug screen 
+ F3  +  C now copies the player 's current location to clipboard.
+ Now gives a warning before forcing a debug crash. 
+ F3 debug overlay now shows the fluid the player is looking at, separately from blocks.
+ Player can be up to twenty blocks away for this to work now. 
+ Added "Targeted Entity". Displays information for entities up to 4 blocks away (counting from the entities hitbox). 
+ Added ⇧ Shift  +  F3  +  I to copy the client-side data of targeted block or entity. It can be used by anyone. 
+ Added F3  +  I to copy targeted block or entity server-side data to clipboard. It can only be used by operators. 
+ Added information about the time it takes for a tick on the integrated server (singleplayer only), server brand (multiplayer only), number of packets sent by the client (tx), and number of packets received by the client (rx). 
+ Loot tables 
+ Added the set_name function to loot tables. 
+ Music 
+ Three brand new pieces of underwater music by C418 have been added:
+ Shuniji , Dragon Fish and Axolotl . 
+ Their ID for commands is music.under_water . 
+ NBT tags 
+ Added the TreasurePosX , TreasurePosY , TreasurePosZ , GotFish , and CanFindTreasure NBT tags for dolphins . 
+ Added the AX , AY , AZ , and Size NBT tags for phantoms . 
+ Added the HomePosX , HomePosY , HomePosZ , TravelPosX , TravelPosY , TravelPosZ , and HasEgg NBT tags for turtles . 
+ Options 
+ "Fullscreen Resolution" to change the resolution while in fullscreen. 
+ Options when editing a world to make a backup and open the backups folder. 
+ Added "Biome Blend" distance video option. 
+ New options in options.txt :
+ autoSuggestions
+ An option in chat settings to toggle automatic command suggestions 
+ True if brigadier's command suggestion UI should always be shown, instead of just when pressing tab 
+ Defaults on, otherwise hit tab to bring them up 
+ glDebugVerbosity
+ LWJGL log info level (0: none, 1: HIGH, 2: MEDIUM, 3: LOW, 4: NOTIFICATION (only on some machines) ) 
+ mouseWheelSensitivity
+ Affects hotbar scroll speed 
+ Allows making the  Scroll Wheel more sensitive (1.0-10.0) 
+ Defaults to 1.0 
+ Letter keys in controls are now lowercase instead of being capitalized. 
+ When editing an existing Minecraft world, there is now a new "Optimize World" button, allowing the player to update old worlds to a newer format. 
+ Particles 
+ Added the minecraft:bubble_column_up , minecraft:bubble_pop , minecraft:current_down , and minecraft:squid_ink particles . 
+ Sounds 
+ Added a new sound effect of squid shooting ink. 
+ Added sound for husks converting to zombies. 
+ Added underwater ambience sounds. 
+ New cave ambience sound: Cave19.ogg. 
+ Added new sound events:
+ block.coral_block.break , block.coral_block.fall , block.coral_block.hit , block.coral_block.place , and block.coral_block.step 
+ Used for the living coral blocks . 
+ Most of these sounds like mixture of rocky [ 9 ] and high-pitched slimy [ 10 ] sounds. 
+ block.wet_grass.break , block.wet_grass.fall , block.wet_grass.hit , block.wet_grass.place , and block.wet_grass.step 
+ Used for seagrass , kelp , coral , and coral fans . 
+ Splashes 
+ Added "All rumors are true!" 
+ Added "Thanks for the fish!" 
+ Added "Truly gone fishing!" 
+ Statistics 
+ Added the time_since_rest statistic .
+ Used by phantoms. 
+ Reset when the player leaves their bed , and when the player dies. 
+ Tags 
+ Items, blocks and functions can be "tagged" with an ID.
+ Block tags can be used when testing for blocks in the world. 
+ Items tags can be used when testing for items in inventories. 
+ Function tags can be used when calling functions using commands or advancements.
+ Functions tagged in minecraft:tick runs every tick at the beginning of the tick. 
+ Functions tagged in minecraft:load runs once after a (re)load. 
+ Tags are created using data packs in data/(namespace)/tags/blocks , data/(namespace)/tags/items , and data/(namespace)/tags/functions .
+ When overriding a tag from a different data pack, the player can choose to replace or append.
+ By default all tags append if another data pack created the tag. 
+ Adding "replace": true to a tag's definition makes the tag overwrite instead. 
+ For example: data/(namespace)/tags/blocks/foo.json 
+ This creates a block tag called (namespace):foo . 
+ The json file contains a list of all blocks that should be "tagged".
+ This list can also contain other tags of the same type.
+ The player can add for example #foo:bar in a tag value list to reference another tag called foo:bar . 
+ Self referencing is not possible. 
+ There are 24 vanilla tags for both items and blocks: minecraft:acacia_logs , minecraft:banners , minecraft:birch_logs , minecraft:buttons , minecraft:carpets , minecraft:coral , minecraft:coral_plants , minecraft:dark_oak_logs , minecraft:doors , minecraft:jungle_logs , minecraft:logs , minecraft:oak_logs , minecraft:planks , minecraft:rails , minecraft:sand , minecraft:saplings , minecraft:spruce_logs , minecraft:stone_bricks , minecraft:wooden_buttons , minecraft:wooden_doors , minecraft:wooden_pressure_plates , minecraft:wooden_slabs , minecraft:wooden_stairs , and minecraft:wool . 
+ There are 7 extra vanilla tags for blocks: minecraft:anvil , minecraft:enderman_holdable , minecraft:flower_pots , impermeable , minecraft:slabs , minecraft:stairs and wall_corals .
+ Blocks in the impermeable tag are prevented from showing dripping liquid particles. By default, the tag contains glass and all stained glass blocks. 
+ There is 1 extra vanilla tag for items: minecraft:boats . 
+ Separated some of the logic for blocks and fluids. [ 11 ] 
+ Current fluids:
+ minecraft:empty 
+ minecraft:flowing_water 
+ minecraft:water 
+ minecraft:flowing_lava 
+ minecraft:lava 
+ The fluid at a location is currently dependent on the block at the location; currently there still are water and lava blocks. 
+ Added two new fluid tags : minecraft:lava and minecraft:water . 
+ This system is mostly internal; it cannot be directly interacted with yet. 
+ Advancement item predicates now support item tags. 
+ Waterlogging 
+ Water can now be placed in the following blocks: chests, trapped chests, stairs, slabs, fences, walls, iron bars, glass panes, ender chests, trapdoors, ladders, and signs.
+ Water can flow out of these blocks, but cannot flow into them. 
+ When full of water, they count as water blocks for all gameplay (such as swimming). 
+ Water flows out of all faces of the block except for solid faces. 
+ Removed the blocks flowing_water and flowing_lava . 
+ All of the blocks that water can be placed in now have the block state waterlogged . 
+ Blocks such as bubble column or kelp always count as a water source. 
+ When water spreads and would later turn into a source block, it now immediately just places a source block. 
+ Other 
+ New valid_spawn block tag for blocks that the player can spawn on. 
+ There is now a distinction between scheduled "liquid ticks" and "block ticks". 
+ Changes [ edit | edit source ] 
+ Blocks [ edit | edit source ] 
+ General 
+ The upper limit of the block ID has disappeared. 
+ Blocks which used to have no bottom texture (like repeaters, comparators, etc.) now have a bottom texture, not including redstone wire. 
+ Blocks with a collision box now have matching bounding boxes.
+ Affected: anvils, cauldrons, hoppers, fences, iron bars, glass panes, filled end portal frames, vines, lily pads, stairs, brewing stands, and pistons. 
+ Updated the collision box of anvils and hoppers. 
+ Does not affect blocks with a collision box smaller than their model, such as soul sand and snow layers. 
+ The outline for block hitboxes can now have other shapes than just one cuboid. This causes the outline of stairs and other blocks to match with the hitbox.
+ Banners 
+ Now make a sound when placed. 
+ Beacons 
+ Added new sounds. 
+ Beds 
+ Changed message shown when failing to use a bed to say "You can sleep only at night and during thunderstorms." 
+ Cacti 
+ Now break if signs or banners are placed directly next to them.
+ Previously, these blocks couldn't be placed like this. 
+ Chests and trapped chests 
+ They can be put directly next to their double variants instead of requiring one block between them.
+ Shift right-clicking a chest or trapped chest only makes it try to connect to the clicked chest or trapped chest if possible, else it becomes a single chest or trapped chest. 
+ Cocoa beans 
+ Can now be placed when aiming at blocks that it cannot be placed on if there is an adjacent block that they can be placed on. 
+ Can now replace replaceable blocks such as snow, fire or grass when placed by the player. 
+ Dispensers 
+ Crafting no longer requires a fully repaired bow . [ 12 ] 
+ Doors 
+ Can now be placed by aiming at the side of a block. 
+ Dragon heads 
+ Now held differently from other mob heads in third person. 
+ Ender chests 
+ Now change their texture when the computer time is set to the 24th to 26th of December to suit Christmas. 
+ Fence gates 
+ Placing them no longer requires a block below them. 
+ Heads 
+ Now make a sound when placed. 
+ Can no longer be placed inside entities. 
+ Infested blocks 
+ Now break instantly, no matter the tool.
+ When broken with Silk Touch , the non-infested counterpart of the block drops. 
+ Leaves 
+ Naturally-generated leaves now survive at a distance of up to 6 blocks from logs, instead of 4.
+ The block state for leaves changed from a check_decay and decayable Booleans to distance (ranging from 1 to 7) and a persistent Boolean. 
+ Levers 
+ Flicking a lever on now displays redstone particles. 
+ Levers placed on the floor or ceiling have their hitbox height reduced. 
+ Magma blocks 
+ Now generate at the bottom of ocean ravines, creating downward bubble columns. 
+ Packed ice 
+ Now can be crafted from 9 ice . [ 13 ] 
+ Pumpkins 
+ Placing them no longer requires a block below. 
+ Redstone dust 
+ Now makes a sound when placed. 
+ Signs 
+ Now make a sound when placed. 
+ Shulker boxes 
+ Changed the purple shulker box to the 1.12 snapshots' purple color. 
+ Dyed shulker boxes can now be undyed in a cauldron.
+ Use a shulker box on a filled cauldron. 
+ The water level in the cauldron decreases by 1. 
+ TNT 
+ Removed the explode block state (explode on punch). [ 14 ] 
+ Vines 
+ Multiple vines facing different directions, including on the bottom of blocks, can now be placed in the same block space. 
+ Water 
+ Has new colors, depending on the biome.
+ Dark purple for frozen, indigo for cold, blue/regular for medium (lush), light green for warm/dry biomes.
+ Swamps have a light green-gray hue, and lukewarm ocean a light teal. 
+ Now only blocks 1 light per block, instead of 3.
+ This only affects newly placed water (for now). 
+ Command blocks 
+ Removed explanation of selectors. 
+ Removed "Searge says ..." output when executing help , instead it runs normally. 
+ Items [ edit | edit source ] 
+ Carrot on a stick 
+ Can now be crafted with a fishing rod that does not have full durability. [ 12 ] 
+ Elytra 
+ Now require phantom membrane to be repaired instead of leather. 
+ Fish 
+ Item textures changed. 
+ Iron horse armor 
+ Changed the texture when equipped. 
+ Maps 
+ Maps changed slightly in regards to which blocks are shown and which blocks are not. [ 15 ] 
+ Spawn eggs 
+ Using them on blocks without collision box now spawns the mob inside that block rather than next to it. 
+ Mobs [ edit | edit source ] 
+ General 
+ Zombies , skeletons , ocelots , and wolves naturally attack baby turtles, and zombies and zombie pigmen seek out and trample turtle eggs. 
+ Undead mobs now sink in water. 
+ Horses 
+ The model has been changed to be more consistent with other mobs. [ 16 ] 
+ Some animations like opening its mouth when grazing have been removed from the model as well. 
+ Husks 
+ Now become a zombie instead of dying from drowning. 
+ Parrots 
+ Now imitate phantoms and drowned . 
+ Polar bears 
+ They can now spawn on top of ice . 
+ Skeleton horses 
+ Are now rideable underwater. 
+ Updated model to fix minor texture z-fighting , a glitch where textures overlap in an obtrusive and unintentional way. 
+ Squid 
+ Now shoot ink and flee quickly in response to being attacked. 
+ Zombie horses 
+ Updated model to fix extreme texture z-fighting, just like the skeleton horse. 
+ Zombies 
+ Now become a drowned instead of dying from drowning. 
+ Baby zombies now burn in sunlight. [ 17 ] 
+ Chicken jockeys now spawn correctly (also valid for zombie pigmen ). 
+ Non-mob entities [ edit | edit source ] 
+ General 
+ Items and experience orbs now float up in water. 
+ Changed the name of several entities: 
+ Old name 
+ New name
+ Block of TNT 
+ Primed TNT 
+ Bolt of Lightning 
+ Lightning Bolt 
+ Ender Crystal 
+ End Crystal 
+ Eye of Ender Signal 
+ Eye of Ender 
+ Evocation Fangs 
+ Evoker Fangs 
+ Armor stands 
+ Can now be placed inside water, lava and fire just like any other replaceable block. 
+ Can no longer step up blocks. 
+ Fishing bobbers 
+ Bobbers created by fishing rods have been given an entity ID, fishing_bobber .
+ This ID can only be used for testing, summoning is not possible. 
+ Item frames 
+ Item frames can now be put on floors and ceilings. 
+ Llama spit 
+ Hitbox has been decreased from using the player's hitbox to be 0.25x0.25x0.25 blocks. 
+ Paintings 
+ Paintings now use a resource location for their motive. 
+ World generation [ edit | edit source ] 
+ General 
+ Rewrote the world generation system. 
+ In the Nether , vertical air cavities – stretching from bedrock level to as far as Y=35, and filled with lava from bedrock level to Y=10 – now occur in chains across the bottom of the Nether, often forming extensive ravines. 
+ In newly generated chunks, the player is less likely to find frozen oceans next to warm oceans, etc. 
+ Biomes 
+ The F3 menu now shows the biome ID, rather than its name. 
+ Biome names are now translatable. 
+ Updated some biome names: 
+ Old name 
+ New name
+ Cold Beach 
+ Snowy Beach 
+ DesertHills 
+ Desert Hills 
+ Extreme Hills 
+ Mountains 
+ Extreme Hills+ 
+ Wooded Mountains 
+ ForestHills 
+ Wooded Hills 
+ FrozenOcean 
+ Frozen Ocean 
+ FrozenRiver 
+ Frozen River 
+ Hell 
+ Nether 
+ Ice Plains 
+ Snowy Tundra 
+ Ice Mountains 
+ Snowy Mountains 
+ JungleEdge 
+ Jungle Edge 
+ JungleHills 
+ Jungle Hills 
+ Mesa 
+ Badlands 
+ Mesa Plateau F 
+ Wooded Badlands Plateau 
+ Mesa Plateau 
+ Badlands Plateau 
+ MushroomIsland 
+ Mushroom Fields 
+ MushroomIslandShore 
+ Mushroom Field Shore 
+ Birch Forest M 
+ Tall Birch Forest 
+ Birch Forest Hills M 
+ Tall Birch Hills 
+ Desert M 
+ Desert Lakes 
+ Extreme Hills M 
+ Gravelly Mountains 
+ Extreme Hills+ M 
+ Gravelly Mountains+ 
+ Ice Plains Spikes 
+ Ice Spikes 
+ Jungle M 
+ Modified Jungle 
+ JungleEdge M 
+ Modified Jungle Edge 
+ Mesa (Bryce) 
+ Eroded Badlands 
+ Mesa Plateau M 
+ Modified Badlands Plateau 
+ Mesa Plateau F M 
+ Modified Wooded Badlands Plateau 
+ Mega Spruce Taiga 
+ Giant Spruce Taiga 
+ Redwood Taiga Hills M 
+ Giant Spruce Taiga Hills 
+ Roofed Forest M 
+ Dark Forest Hills 
+ Savanna M 
+ Shattered Savanna 
+ Savanna Plateau M 
+ Shattered Savanna Plateau 
+ Swampland M 
+ Swamp Hills 
+ Taiga M 
+ Taiga Mountains 
+ Cold Taiga M 
+ Snowy Taiga Mountains 
+ Mega Taiga 
+ Giant Tree Taiga 
+ Mega Taiga Hills 
+ Giant Tree Taiga Hills 
+ Roofed Forest 
+ Dark Forest 
+ Extreme Hills Edge 
+ Mountain Edge 
+ Stone Beach 
+ Stone Shore 
+ Swampland 
+ Swamp 
+ Cold Taiga 
+ Snowy Taiga 
+ Cold Taiga Hills 
+ Snowy Taiga Hills 
+ TaigaHills 
+ Taiga Hills 
+ Customized world type 
+ Removed. 
+ Superflat customization 
+ Preset strings no longer use a version number. 
+ Trees 
+ Large spruce trees now transform nearby grass blocks into podzol when they grow. 
+ Witch huts 
+ Now generate with a mushroom in the flower pot.
+ Previously, the flower pot was completely empty. 
+ Gameplay [ edit | edit source ] 
+ Camera 
+ A smooth transition is now applied to the camera when the player sneaks, flies with an elytra or swims. 
+ A smooth transition is now applied to the camera when entering or leaving a bed . 
+ Movement 
+ Pressing the jump button in flowing water at level=1 , level=2 and level=3 now does normal jumps instead of swimming up. 
+ Oxygen bar 
+ The player's oxygen bar no longer regenerates instantly when they get out of water . 
+ Sleep 
+ Players in creative mode can now sleep even if monsters are nearby. 
+ Visibility 
+ Changed natural water visibility.
+ The longer a player stays underwater, the better they are able to see. 
+ Water is darker at lower depths. 
+ The Water Breathing potion & Respiration enchantment no longer grant enhanced vision underwater. 
+ Every ocean biome has a unique water color, and the swamp water color has been changed. 
+ Visibility changes per biome. 
+ Command format [ edit | edit source ] 
+ General 
+ Commands and functions are much faster and more efficient. 
+ Most commands are now more case-sensitive. Lowercase is preferable wherever possible.
+ For example, this is no longer allowed: /scoreboard ObJeCtIvEs ... 
+ The output signal of a command block used to be its "success count", but now is its "result". 
+ Server commands ( functions , console, rcon) now run from world spawn in the Overworld, instead of at 0,0,0 . 
+ Errors during a command are now a nicer error message (with a tool tip for more info). 
+ Added commands to the profiler ( / debug ). 
+ Whitespaces are now allowed in entity selectors & blockstate arguments. 
+ Blockstate files:
+ "normal" for blocks without block states changed to an empty string ( "" ). 
+ Item frames now have "map=false" instead of "normal" and "map=true" instead of "map" . 
+ Model references no longer start at the models/block/ folder, but instead at models/ . 
+ Command UI 
+ A new prototype for the command UI. 
+ Functions 
+ Functions are now completely parsed and cached on load.
+ This means if a command is incorrect for any reason, the player knows about it on load. 
+ NBT 
+ The ench NBT tag of items is now called Enchantments , and no longer has number IDs in each compound. 
+ Thrower and Owner nbt keys of item entities are no longer strings, but are instead compounds with two longs named L and M . 
+ owner nbt keys of snowballs , eggs and ender pearls are no longer strings, but are instead compounds with two longs named L and M . 
+ Changed all custom names (blocks, items, entities, block entities) from raw strings to JSON text components (which can be translated).
+ For example, /summon pig ~ ~ ~ {CustomName:"Reuben"} is now /summon pig ~ ~ ~ {CustomName:"\"Reuben\""} or /summon pig ~ ~ ~ {CustomName:"{\"text\":\"Reuben\"}"} 
+ Specific commands 
+ / advancement 
+ Removed /advancement test in favor of entity selectors. 
+ / blockdata 
+ Removed in favor of / data . 
+ / clear 
+ The syntax has changed.
+ /clear [<target>] [<item>] [<data>] [<count>] [<nbt>] is now /clear [<target>] [<item>] [<count>] 
+ See the item argument type for more details. 
+ / clone 
+ The syntax has changed.
+ /clone <begin> <end> <destination> filtered [force|move|normal] [<block>] [<data>] is now /clone <begin> <end> <destination> filtered [<block>] [force|move|normal] 
+ /clone <begin> <end> <destination> [replace|masked] [force|move|normal] [<block>] [<data>] is now /clone <begin> <end> <destination> [replace|masked] [force|move|normal] 
+ / defaultgamemode and / gamemode 
+ Now only accept string IDs, not shorthand or numeric.
+ /gamemode 2 is now /gamemode adventure 
+ /defaultgamemode sp is now /defaultgamemode spectator 
+ / difficulty 
+ difficulty [<value>] now only accepts string IDs, not shorthand or numeric.
+ /difficulty 2 is now /difficulty normal 
+ /difficulty p is now /difficulty peaceful 
+ Players can now query for the current difficulty by using / difficulty without any arguments. 
+ / effect 
+ The syntax has been split off, to avoid ambiguity.
+ /effect <entity> <effect> is now /effect give <entity> <effect> 
+ /effect <entity> clear is now /effect clear <entity> [<effect>] 
+ Giving an effect now fails if it didn't actually do anything.
+ Some mobs are immune (for example the ender dragon ). 
+ Stronger existing effects prevent new weaker ones. 
+ / entitydata 
+ Removed in favor of / data . 
+ / execute 
+ The syntax has been split off.
+ Modifier sub-commands can change how the command is run:
+ /execute as <entity> <chained command> executes a command using the entity <entity> (but doesn't change position). 
+ /execute at <entity> <chained command> executes a command using the position, rotation, and dimension of the <entity> (but doesn't change entity). 
+ /execute positioned <pos> <chained command> executes a command using the position of <pos> . 
+ /execute positioned as <entity> <chained command> executes a command using the position (x y z) of the entity , but nothing else. 
+ /execute align <axes> <chained command> executes a command after aligning the current position to the block grid (rounding down), <axes> is any combination of x y and z (for example: x , xz , zyx and yz ).
+ Examples:
+ x=-1.8,y=2.3,z=5.9 using x becomes x=-2,y=2.3,z=5.9 
+ x=2.4,y=-1.1,z=3.8 using yxz becomes x=2,y=-2,z=3 
+ /execute facing <x y z> <chained command> executes a command as though the executor is facing x y z . 
+ /execute facing entity <entity> (eyes|feet) <chained command> executes a command as though the executor is facing the entity's eyes or feet. 
+ /execute rotated as <entity> <chained command> executes a command as though the executor is rotated in the direction of the entity. 
+ /execute rotated <y x> <chained command> runs the command as though the executor is rotated in the specified direction. 
+ /execute in (overworld|the_end|the_nether) <chained command> executes a command as though the executor is in the specified dimension. 
+ /execute anchored (feet|eyes) <chained command> makes the rest of this command use feet or eyes for ^ ^ ^ coordinates or facing commands. 
+ Conditional sub-commands can let the player prevent the command from running at all:
+ /execute (if|unless) block <pos> <block> <chained command> executes a command if (or unless) <pos> matches <block> . 
+ /execute (if|unless) blocks <begin> <end> <destination> (all|masked) <chained command> executes a command if (or unless) the region between <begin> and <end> matches <destination> . 
+ /execute (if|unless) entity <entity> <chained command> executes a command if (or unless) <entity> exists (returns 1 or more entities). 
+ /execute (if|unless) score <target> <targetObjective> (<|<=|=|>=|>) <source> <sourceObjective> <chained command> executes a command if (or unless) <target> 's score relates to <source> 's score based on the chosen criterion. 
+ /execute (if|unless) score <target> <objective> matches <range> <chained command> executes a command if (or unless) <target> 's score is in the range (ie 1 , 1..5 ). 
+ As replacement for / stats , a new sub-command store lets players store the result or success of a command somewhere:
+ result is the result of a command, which replaces these old stats: AffectedBlocks , AffectedEntities , AffectedItems , QueryResult . 
+ success is how many times the command was successful. This is usually 0 or 1 , but if the command split up (for example as @a ) then it may be more than 1 . This replaces SuccessCount . 
+ The value is stored when the full command has finished executing. 
+ If a command isn't successful ( success is 0 ), result is always set to 0 . 
+ It is made clear what the expected result of each command is. 
+ /execute store (result|success) score <name> <objective> <chained command> 
+ The value is stored into the scoreboard under <name> and <objective> . 
+ The objective must exist, but unlike with / stats the player doesn't need to set an initial value for <name> . 
+ /execute store (result|success) block <pos> <path> (byte|double|float|int|long|short) <scale> <chained command> 
+ The value is stored in the nbt data at path of the block at pos as a byte, double, float, int, long, or short. 
+ /execute store (result|success) entity <target> <path> (byte|double|float|int|long|short) <scale> <chained command> 
+ The value is stored in the nbt data at path of one target entity as a byte, double, float, int, long, or short. 
+ Like / data , /execute store can't modify player nbt. Nbt inside the tag key of items in the player's Inventory or EnderItems is an exception and can be modified by /execute store . [ 18 ] 
+ /execute store (result|success) bossbar <id> (value|max) <chained command> 
+ The value is stored in the value or max setting of the boss bar with ID id . 
+ Data paths look like this: foo.bar[0]."A [crazy name]".baz .
+ foo.bar means foo's child called bar. 
+ bar[0] means element 0 of bar. 
+ "quoted strings" may be used if a name of a key needs to be escaped. 
+ Examples:
+ /execute store success score @a foo run say hi 
+ /execute as @e[type=pig] at @s store success entity @s Saddle byte 1 if entity @p[distance=..5] 
+ The player can chain all sub-commands together.
+ After every sub-command the player needs to write another sub-command. 
+ When the player is done with chaining sub-commands, run lets them write the actual command to be executed.
+ / is no longer allowed before the command. 
+ /execute as somebody at somebody run say hi 
+ Example of old commands:
+ /execute @e ~ ~ ~ detect ~ ~ ~ stone 0 say Stone! is now /execute as @e at @s if block ~ ~ ~ stone run say Stone! 
+ /execute @e ~ ~ ~ detect ~ ~ ~ grass 0 summon pig is now /execute at @e if block ~ ~ ~ grass_block run summon pig 
+ /execute @e ~ ~ ~ say Hello! is now /execute as @e run say Hello! 
+ / experience 
+ / xp is now an alias for / experience . 
+ Split up into 3 different subcommands:
+ /experience add <players> <amount> [points|levels] 
+ Adds <amount> of either points or levels to the target <players> (defaults to points). 
+ Adding points can cause players to level up, as usual. 
+ Negative numbers are supported, to subtract points instead. 
+ Subtracting points can cause players to level down. 
+ /experience set <players> <amount> [points|levels] 
+ Sets <amount> of either points or levels on the target <players> (defaults to points). 
+ The player cannot set more points than their current level allows. 
+ When changing levels, points stay at the same percentage as the previous level. 
+ /experience query <player> (points|levels) 
+ Returns either the number of points or levels on the given <player> . 
+ / fill 
+ The syntax has changed.
+ /fill <begin> <end> <block> <data> replace [<replaceBlock>] [<replaceData>] is now /fill <begin> <end> <block> replace [<filter>] 
+ /fill <begin> <end> <block> [<data>] [destroy|hollow|keep|outline|replace] [<nbt>] is now /fill <begin> <end> <block> [destroy|hollow|keep|outline|replace] 
+ / function 
+ No longer accepts [if|unless] <entity> arguments.
+ This has been moved into / execute . 
+ /function foo if @e is now /execute if entity @e run function foo 
+ / gamerule 
+ No longer accepts unknown rules ("custom gamerules").
+ The player can use functions or scoreboards as replacements, with no loss of functionality. 
+ Existing custom gamerules are just not accessible. Only built-in rules are available. 
+ Values to / gamerule are now type checked (giving a string if it wants an int is a very obvious error). 
+ Removed the gameLoopFunction gamerule in favor of functions tagged in minecraft:tick . 
+ / give 
+ The syntax has changed.
+ /give <players> <item> [<count>] [<data>] [<nbt>] is now /give <players> <item> [<count>] 
+ See the item argument type for more details. 
+ / kill 
+ A target is now mandatory. 
+ / list 
+ Can now be used in singleplayer. 
+ / locate 
+ The Y-coordinate is now returned as ~ instead of ? . 
+ The result of the command, used by /execute store , is the absolute distance to the structure. 
+ Now accepts different structure names for all structures previously grouped under Temple : Desert_Pyramid , Igloo , Jungle_Pyramid , and Swamp_Hut . 
+ / op 
+ Now allows target selectors besides names. 
+ / particle 
+ The <params> argument has been removed, instead the parameters for particles like block can be specified right after the <name> argument using the new block argument.
+ /particle block polished_granite ~ ~ ~ 0 0 0 0 1 
+ /particle dust 1 1 1 1 ~ ~ ~ 0 0 0 0 1 
+ 1 1 1 1 are, in order, the three RGB color values (0-1) and the size of the particle. 
+ /particle <name> <pos> is now a valid shortcut. delta , speed , and count defaults to 0 . 
+ Particle names have been changed. 
+ old name -> new name 
+ mobSpellAmbient -> ambient_entity_effect 
+ angryVillager -> angry_villager 
+ blockdust, blockcrack -> block 
+ damageIndicator -> damage_indicator 
+ dragonbreath -> dragon_breath 
+ dripLava -> dripping_lava 
+ dripWater -> dripping_water 
+ reddust -> dust 
+ spell -> effect 
+ mobappearance -> elder_guardian 
+ enchantmenttable -> enchant 
+ magicCrit -> enchanted_hit 
+ endRod -> end_rod 
+ mobSpell -> entity_effect 
+ largeexplosion -> explosion 
+ hugeexplosion -> explosion_emitter 
+ fallingdust -> falling_dust 
+ fireworksSpark -> firework 
+ wake -> fishing 
+ happyVillager -> happy_villager 
+ instantSpell -> instant_effect 
+ iconcrack -> item 
+ slime -> item_slime 
+ snowballpoof -> item_snowball 
+ largesmoke -> large_smoke 
+ townaura -> mycelium 
+ explode, snowshovel -> poof 
+ droplet -> rain 
+ sweepAttack -> sweep_attack 
+ totem -> totem_of_undying 
+ suspended -> underwater 
+ witchMagic -> witch 
+ take -> removed 
+ footstep -> removed 
+ depthsuspend -> removed 
+ / playsound 
+ ↹ Tab auto-completes custom sound events. 
+ / replaceitem 
+ The syntax has changed.
+ /replaceitem block <pos> <slot> <item> [<count>] [<data>] [<nbt>] is now /replaceitem block <pos> <slot> <item> [<count>] 
+ /replaceitem entity <target> <slot> <item> [<count>] [<data>] [<nbt>] is now /replaceitem entity <target> <slot> <item> [<count>] 
+ See the item argument type for more details. 
+ The slot argument no longer requires slot. 
+ For example, slot.hotbar.1 now is hotbar.1 
+ / scoreboard 
+ Had [<dataTag>] removed from its commands in favor of the nbt argument in entity selectors. 
+ /scoreboard players tag and /scoreboard teams removed. Replaced by / tag and / team respectively. 
+ /scoreboard players test removed in favor of execute (if|unless) score , entity selectors and /scoreboard players get <target> <objective> 
+ Objective names are now text components, not raw strings. 
+ / seed 
+ The output can now be copied. 
+ / setblock 
+ The syntax has changed.
+ /setblock <pos> <block> [<data>] [<mode>] [<nbt>] is now /setblock <pos> <block> [<mode>] 
+ See the block argument type for more details. 
+ / stats 
+ Removed. Now part of / execute . 
+ The new / execute one isn't a direct replacement, the behavior has changed:
+ It's now per-command, instead of per-entity or per-block. 
+ There's only result and success , which covers all the old stat types. 
+ / stopsound 
+ * can now be used instead of source to stop all sounds with a certain name, across all sources. 
+ / tag 
+ Replaces /scoreboard players tag . 
+ Keeps the same syntax.
+ /tag <players> add <tag> to add <tag> to <players> . 
+ /tag <players> remove <tag> to remove <tag> from <players> . 
+ /tag <players> list to list all tags on players . 
+ / team 
+ Replaces /scoreboard teams . 
+ Keeps the same syntax.
+ /team add <team> [<displayname>] 
+ /team empty <team> 
+ /team join <team> [<members>] 
+ /team leave [<members>] 
+ /team list [<team>] 
+ /team modify <team> <option> <value> 
+ /team modify <team> [<displayname>] 
+ Teams can now have a prefix and a suffix.
+ /team modify <team> prefix <prefix> 
+ /team modify <team> suffix <suffix> 
+ Team names are now text components, not raw strings. 
+ / testfor , / testforblock and / testforblocks 
+ Removed. Now part of / execute . 
+ / toggledownfall 
+ Removed. It was always used to stop the rain, but rain usually quickly returned. 
+ Use / weather . 
+ / tp and / teleport 
+ / tp is now an alias of / teleport (much like / w , / msg and / tell ). 
+ / teleport has been simplified a bit, to avoid ambiguity.
+ /teleport <entity> doesn't allow rotation or facing, teleports the player to the entity. 
+ /teleport <x y z> doesn't allow rotation or facing, teleports the player to the position. 
+ /teleport <victim> <entity> doesn't allow rotation or facing, teleports victim to entity. 
+ /teleport <victim> <x y z> [yRot xRot] teleports victim to that position with optional rotation. 
+ /teleport <victim> <x y z> facing [xFacing yFacing zFacing] teleports victim to that position facing another position. 
+ /teleport <victim> <x y z> facing entity <entityFacing> [feet|eyes] teleports victim to that position facing an entity's feet or eyes (default feet). 
+ Teleporting to an entity in another dimension is now allowed. 
+ / trigger 
+ /trigger <objective> is a new syntax as a shortcut for /trigger <objective> add 1 . 
+ / weather 
+ If a time isn't specified, it now defaults to 5 minutes (previously random). 
+ Team 
+ Option friendlyfire capitalization changed to friendlyFire . 
+ Argument types 
+ Target selectors 
+ More error handling has been introduced.
+ Things like limit=0 , level=-10 , gamemode=purple are not allowed. 
+ Arguments may now be quoted. 
+ There are no longer separate "min" and "max" values; instead ranges are supported.
+ level=10 is level 10. 
+ level=10..12 is level 10, 11 or 12. 
+ level=5.. is anything level 5 or above. 
+ level=..15 is anything level 15 or below. 
+ The arcane shorthand names have been renamed.
+ m -> gamemode 
+ l or lm -> level 
+ r or rm -> distance 
+ rx or rxm -> x_rotation 
+ ry or rym -> y_rotation 
+ c -> limit 
+ x , y , z , distance , x_rotation and y_rotation are now doubles and allow values like 12.34 
+ x and z are no longer center-corrected.
+ This means x=0 no longer equates to x=0.5 . 
+ gamemode (previously m ) no longer allows numerical or shorthand IDs. 
+ limit (previously c ) no longer allows negative values.
+ Use sort=furthest instead. 
+ The name argument now supports spaces (as long as it's quoted). 
+ Multiple of the same argument in target selectors is now possible.
+ tag=foo,tag=bar,tag=!baz matches someone with foo , bar and not baz . 
+ type=!cow,type=!chicken matches something that isn't a cow and isn't a chicken. 
+ type=cow,type=chicken isn't allowed, because something cannot both be a cow and chicken. 
+ The player can specify the sorting.
+ sort=nearest is the old default, sorting by distance (default for @p ) 
+ sort=furthest is the reverse of that (previously, players would use c=-5 for this) 
+ sort=random for random sorting (default for @r ) 
+ sort=arbitrary is a new option to not sort the result (default for @e , @a ) 
+ Specifying scores now looks like scores={foo=1,bar=1..5} 
+ Players can test for advancements with advancements={foo=true,bar=false,custom:something={criterion=true}} 
+ true for "they completed the advancement", false for "they have not completed the advancement" 
+ Alternatively, pass a block of specific criteria to test for (again, true or false ) 
+ Blocks 
+ Wherever a <block> , optionally [<data>] and optionally [<nbt>] was required, it's now a single <block> argument that looks like this:
+ stone 
+ minecraft:redstone_wire[power=15,north=up,south=side] 
+ minecraft:jukebox{RecordItem:{...}} 
+ minecraft:furnace[facing=north]{BurnTime:200} 
+ ID is required (though just as before, if namespace isn't set it defaults to minecraft: ). 
+ States are inside [] , comma-separated and must be properties/values supported by the blocks. They are optional.
+ minecraft:stone[doesntexist=purpleberry] is a syntax error, because stone doesn't have doesntexist . 
+ minecraft:redstone_wire[power=tuesday] is a syntax error, because redstone_wire 's power is a number between 0 and 15. 
+ NBT tag is inside {}, and works just like players would expect. It's optional. 
+ In the context of "conditions"/testing for blocks, only the states the player provided are tested.
+ If players test redstone_wire[power=15] , it only checks power, but ignores other states such as north . 
+ In the context of setting blocks, any states the player provided are set, but anything missed out defaults depending on the block.
+ If players set redstone_wire[power=15] , it sets power to 15, but north is a default value (in this case, set to none ). 
+ There is no such thing as block data value in 1.13. It's either a different block, or a state. 
+ Items 
+ Wherever an <item> , optionally [<data>] and optionally [<nbt>] was required, it's now a single <item> argument that looks like this:
+ stone 
+ minecraft:stick{display:{Name:"\"Stick of Untruths\""}} 
+ ID is required (though just as before, if namespace isn't set it defaults to minecraft: ). 
+ NBT tag is inside {}, and works just like players would expect. It's optional. 
+ There is no such thing as item data value or item damage value in 1.13.
+ Damage, where applicable, is a property in nbt. 
+ Any other information is either a separate item or a property in nbt. 
+ General [ edit | edit source ] 
+ The Flattening 
+ Numeric block metadata completely phased out in favor of block states. 
+ Split, merged, created, deleted, and renamed a lot of blocks, blockstates and items.
+ Blocks and items previously differing because of damage value have gotten their own id, for example white_wool instead of wool:0 
+ Damage has been moved to the tag tag and is only used by tools and armor; maps use a map tag.
+ The damage predicate has been reversed - 0.6 now means 60% durability remaining, not 60% broken 
+ Files and commands no longer use data or set_data . 
+ Structures do not run an upgrade path for this.
+ To update structures, load them all in 1.12, then update to 1.13 and save all structures again. 
+ Title screen 
+ New title screen background, featuring many of the structures, blocks, and mobs that were added in the Update Aquatic.
+ The menu panorama uses seed 1458140401 at coordinates X=1553, Y=58, Z=-1162 
+ The comma is replaced with a dot in the copyright notice. 
+ Advancements 
+ Advancement descriptions now have colors:
+ Normal and goal advancements have green descriptions. 
+ Challenge advancements have purple descriptions. 
+ Controls 
+ The name of keybindings now describes the actual key (e.g. 'LBUTTON' -> 'Left Button', 'BACKSLASH' -> '\') 
+ Creative inventory 
+ Because of The "flattening" , certain blocks and items have been moved around in their respective groups, for example the purpur block is now after obsidian . 
+ Mushroom blocks , farmland , and grass paths are added to the inventory under the Decoration Blocks group. Additionally, blank firework rockets are added to the Miscellaneous group. 
+ Credits 
+ Updated the credits list to include all of the Mojang staff. 
+ Debug screen 
+ Left side: 
+ Added "Looking at liquid" row. Displays the targeted fluid's coordinates. 
+ "Looking at" row has been renamed "Looking at block" and now targets through liquids. 
+ Right side: 
+ "Targeted Block" information now targets through fluids. 
+ "Targeted Block" now displays information for blocks up to 16 blocks away. 
+ Fonts 
+ The Latin extended alphabet, along with Greek and Cyrillic, have been given their own "textured" font. However, some characters (such as kanji and script) still use the unicode font. 
+ Fonts are now saved as TrueType font files. 
+ Missing texture 
+ Changed from to , shifting the positions of each constituent square. 
+ Options 
+ Removed 3D Anaglyph completely. 
+ Option Fullscreen resolution capitalization changed to Fullscreen Resolution . 
+ Values for GUI scale has been renamed from "Small", "Medium" and "Large" to 1,2 and 3. GUI scaling also detects the resolution of monitors and offers even higher scaling options (4 for 1080p, 5 for 4k and so on). 
+ Particles 
+ Optimized particle rendering slightly. 
+ Dripping
+ Changed which blocks show dripping liquids. 
+ Drip particles are now generated by waterlogged blocks where appropriate. [ 19 ] 
+ Drip particles now snap to the hitbox of the block they appear on. [ 20 ] 
+ Added a new block tag to prevent all solid glass blocks from showing dripping liquid particles. See Tags . 
+ Recipes 
+ Custom recipes can now be loaded from data packs in data/(namespace)/recipes/(name).json 
+ Added a recipe book for the furnace. 
+ Furnace recipes have been moved to JSON files.
+ They use "type": "smelting" . 
+ cookingtime is used to determine the time it should take to smelt an item in the furnace. 
+ experience is used to determine the amount of experience a player should get when picking the resulting item out of the furnace manually. 
+ Fuel is not included and is still hardcoded. 
+ "Unlocked recipe" toasts now show an icon in the top left to specify whether the unlocked recipe is a crafting or smelting recipe. 
+ Resource packs 
+ Updated resource pack pack_format to 4 as the following has changed:
+ Most of the block and item textures have been renamed. See Java Edition 1.13/Resource pack changes for the list of file names changed. 
+ The resource pack folder textures/blocks got renamed to textures/block . 
+ The resource pack folder textures/items got renamed to textures/item . 
+ Statistics 
+ Statistics are being updated.
+ stat.(stat) is now minecraft.custom:minecraft.(stat) . 
+ stat.(stat).minecraft.(block/item/entity ID) is now minecraft.(stat):minecraft.(block/item/entity ID) . 
+ Tooltips 
+ Added (and fixed) rarity values for certain items. Items with a rarity value have their hotbar tooltips, which are displayed when scrolling over them in the hotbar, displayed as their respective colors when highlighted, rather than just being white. [ 21 ] 
+ Item 
+ New rarity
+ Beacon 
+ Rare
+ Chain command block 
+ Epic
+ Command block 
+ Epic
+ Conduit 
+ Rare
+ Creeper head 
+ Uncommon
+ Dragon egg 
+ Epic
+ Dragon head 
+ Uncommon
+ Dragon's breath 
+ Uncommon
+ Elytra 
+ Uncommon
+ Enchanted golden apple 
+ Epic
+ Enchanted books 
+ Uncommon
+ Enchanted items (excluding books) 
+ Rare
+ End crystal 
+ Rare
+ Bottle o' enchanting 
+ Uncommon
+ Golden apple 
+ Rare
+ Heart of the sea 
+ Uncommon
+ Music discs 
+ Rare
+ Nether star 
+ Uncommon
+ Player head 
+ Uncommon
+ Repeating command block 
+ Epic
+ Skeleton skull 
+ Uncommon
+ Structure block 
+ Epic
+ Totem of undying 
+ Uncommon
+ Wither skeleton skull 
+ Uncommon
+ Zombie head 
+ Uncommon
+ Additionally, attack speed and attack damage in tools' info are now  dark green . 
+ Other 
+ Game library updated to LWJGL 3.
+ Updated LWJGL from version 3.1.2 to 3.1.6. 
+ Loading or creating a world shows the percentages of the loading stages.
+ Preparing spawn area now shows as a loading stage. 
+ Crash reports now list what data packs are enabled. 
+ Data generators are now exposed, players can get a dump of all blocks/items/commands/etc from the game without opening it up. 
+ Changed translation files from .lang (key=value) to .json ("key": "value") .
+ Now supports newlines. 
+ Optimized cloud rendering. 
+ Optimized fog rendering. 
+ Optimized world spawn position–finding code. 
+ Removed skip_existing_chunks from explorer map loot table function. 
+ Upgrade path optics code is now in a separate library, DataFixerUpper . [ 22 ] 
+ Fixes [ edit | edit source ] 
+ 387 issues fixed 
+ LWJGL 2-related issues 
+ MC-1519 – Key gets stuck when toggling fullscreen . 
+ MC-3643 – ⎈ Control / ⌘ Command key get stuck on OS X/Text Box Backspace deletes whole word or whole line on Mac and Linux. 
+ MC-5520 – Crash when toggling fullscreen mode: Keyboard must be created before you can read events. 
+ MC-6436 – Incomplete support of dead keys on non U.S. QWERTY Keyboard on OS X. 
+ MC-7192 – The generation of "terrain" surface layer in Nether produces local straight artifacts/glitches. 
+ MC-9974 – Initialization of OpenAL fails sometimes. 
+ MC-29501 – Unable to rebind to F# Keys on devices that require pressing FN. 
+ MC-32327 – Half-resolution on MBP Retina. 
+ MC-40227 –  Fourth Mouse Button in combination with a modifier key is detected as  Fifth Mouse Button. 
+ MC-49755 – OS X: Pressing arrow or Fn keys in sign/command block/book and quill inserts invisible characters. 
+ MC-53549 – Minecraft can't be put in fullscreen mode in Linux. 
+ MC-55506 – Minecraft unloads monitor calibrations when closed. 
+ MC-60995 – Maps inconsistent over restarts. 
+ MC-68754 – Exiting fullscreen disables window resize. 
+ MC-71279 – Accentued character act like sticky keys for moving. 
+ MC-72856 – Control settings uses partwise US keyboard layout (on German keyboard layout). 
+ MC-77279 – Game sets monitor to half resolution on exit on Linux. 
+ MC-78394 – "Use Item" not working while sneaking and "Use Item" bound to NUMPAD0. 
+ MC-79733 – ⌥ Alt combinations don't work on chat. 
+ MC-80282 – On Linux in fullscreen, character sometimes cannot fully turn around. 
+ MC-81818 – When resizing the window, you may end up spinning around. 
+ MC-87205 – Colored names in command blocks lose colors with arrow keys. 
+ MC-89288 – Can't sneak and jump if the jump key is on the numpad. 
+ MC-90598 – Sneaking while swimming or gliding changes eye hight to outside the hitbox. 
+ MC-100556 – Alt Gr on keyboard becomes " ⎈ Left Control " in controls menu (interfering with " ⎈ Control "). 
+ MC-106650 – Minecraft does not release mouse focus. 
+ MC-109376 – Unsupported keys in inventory with foreign keyboard on Linux. 
+ MC-120989 – Screen goes blank on exit. 
+ From released versions before 1.11 
+ MC-96 – [1-9] clicking an item out of a furnace does not give XP. 
+ MC-258 – Most text boxes/chat/scroll bars revert when the window changes size, fullscreen mode is toggled, or fullscreened game is tabbed into. 
+ MC-1168 – Lily pad sometimes destroys water block. 
+ MC-1218 – Arrows shot at the top half of a door will float once the door is opened. 
+ MC-1390 – Upper slabs with water/lava on top makes midair dripping water/lava 
+ MC-1511 – Anvil can be placed in certain blocks. 
+ MC-1685 – Unable to write in a new blank Book and Quill after renaming it in an anvil. 
+ MC-1809 – Some trees generate with leaves too far from logs. 
+ MC-1875 – Snow layers don't drop themselves when harvested with a silk touch tool. 
+ MC-1947 – Pumpkins and Jack o' Lanterns can only be placed on solid blocks. 
+ MC-2208 – Blocks with special placement can be placed inside player/entity. 
+ MC-2340 – Redstone torches schedule updates when they should not, causing unreliable timings. 
+ MC-2399 – Transparent blocks visually use the brighter light level that they are next to. 
+ MC-2666 – Corner cobblestone wall has incorrect collision box. 
+ MC-3115 – Baby Zombies do not burn. 
+ MC-3794 – Chest direction placing glitch. 
+ MC-4381 – Water places behind tall grass. 
+ MC-4438 – Items dropped on unburnable blocks turn invisible when trying to ignite the block. 
+ MC-4504 – The hitbox of brewing stands is missing the blaze rod. 
+ MC-4581 – Fishing rod bobbers can go through Nether/End Portals, but disappear. 
+ MC-4923 – Flint and steel and fire charges can place fire at invalid positions. 
+ MC-5024 – Reticle/Crosshair not centered on the screen. 
+ MC-5037 – Riding a pig/horse with a cape causes it to not behave as expected. 
+ MC-5305 – Burning arrows in ground are not extinguished by rain. 
+ MC-5461 – Block stats doesn't count red mushrooms, sugar canes, etc... 
+ MC-5694 – High efficiency tools/fast mining destroys some blocks client-side only. 
+ MC-7908 – Spawning underwater/In the middle of an (lava) ocean. 
+ MC-8220 – Water/lava bucket can be used to destroy ladders. 
+ MC-8471 – Blocks cannot be placed on a block you are next to. 
+ MC-9186 – Water does not leak through leaves and regular stairs but upside down stairs. 
+ MC-9194 – A Comparator can lock a Repeater, but the Repeater doesn't look like it is locked. 
+ MC-9620 – F1 and open chat makes hotbar appear. 
+ MC-9669 – Player renders black in a 1x1 shaft with torch in upper block. 
+ MC-9704 – Sometimes randomly unable to place ladder while standing in the same block. 
+ MC-10632 – Boats show water splashes when falling from high places, even if not in water. 
+ MC-10880 – Comma or other symbol after @ selector does not work with command blocks. 
+ MC-11138 – Creative inventory GUI border are considered as exterior to the inventory. 
+ MC-11142 – Placing a Redstone Torch/Block next to a rail junction does not change the rail direction. 
+ MC-11208 – The big tree generator handles tree height variable incorrectly. 
+ MC-11242 – When you jump and place a fence post under you you will get inside the fence post. 
+ MC-12000 – The hitbox of corner fences isn't the same as the collision-box. 
+ MC-12269 – Various Particles glitchy movement. 
+ MC-12699 – Some PNGs using grayscale or tRNS are processed incorrectly. 
+ MC-13308 – Waterflow North/South Bug. 
+ MC-14502 – Special characters on splash text on title screen rendered wrong. 
+ MC-18903 – Villagers'/ Witchs' right arm doesn't have the texture flipped. 
+ MC-19966 – Fully grown pumpkin stems attach to pumpkin, even if another stem is already attached. 
+ MC-20974 – Default font is missing characters. 
+ MC-24390 – Books don't sign properly. 
+ MC-25866 – Splash Potion of Saturation has no effect. 
+ MC-26739 – Doors won't update with redstone. 
+ MC-29490 – 1.7+ lighting bug/black spots. 
+ MC-31038 – Double-tall plants do not cause updates when broken. 
+ MC-31222 – Crash on pressing the inventory close key and an item manipulation key at the same time in large chests. 
+ MC-31346 – When you light a cobblestone wall, it turns into a corner piece for a second. 
+ MC-32522 – Confusing error message when targeting a location in an unloaded chunk. 
+ MC-32539 – You can write on both the server name and the server address input field at the same time. 
+ MC-32972 – / summon accepts arguments that it will ignore. 
+ MC-33710 – Snow & Iron Golem, Ender Dragon, Illusioner, Giant, and Wither not in Mob statistics. 
+ MC-34365 – Triple Chest - Triple Bug. 
+ MC-35119 – Buttons for video settings to not make a sound. 
+ MC-35856 – Multiple background/title songs playing at one time/automatic music overlap (not Jukebox music). 
+ MC-36030 – Music playing despite music/jukebox slider set to OFF. 
+ MC-36191 – Missing stat.mineBlock for various blocks (mob spawners, cauldrons, beds, etc.). 
+ MC-39948 – Blocks/Items only different by data value are not listed separately in statistics. 
+ MC-41410 – Random text does not work in unicode. 
+ MC-47832 – Certain entities can't be selected by type. 
+ MC-48089 – When destroyed, end portal giving "missing texture" particles. 
+ MC-48522 – ⎈ Control + pick block on flower pot gives you the flower (+NBT) instead of the flower pot. 
+ MC-50640 – Big oak tree inconsistency. 
+ MC-50795 – CanDestroy and CanPlaceOn can be used with item ID's instead of the names. 
+ MC-52036 – using testfor in / execute command failure. 
+ MC-52974 – Host's skin not visible to other players when in LAN world. 
+ MC-53439 – The top block of a two-block plant temporarily becomes a peony/sunflower upon placing a block in the bottom. 
+ MC-53448 – Sliders cannot be adjusted accurately (tested in customized world settings). 
+ MC-55592 – The wildcard * fits into wrong commands without error. 
+ MC-55710 – Relative tp from a vehicle applies dismount offset. 
+ MC-55751 – Gamemode descriptions are off center. 
+ MC-55800 – Successful " /setblock air destroy " commands give error message and return 0 for result/success. 
+ MC-57332 – Number arguments in command have all int limitation. 
+ MC-58189 – Breaking piston extension gives missing texture particles. 
+ MC-58556 – Breaking a block being moved by a piston creates missing texture particles. 
+ MC-58809 – Scoreboard teams add " @e " doesn't work correctly. 
+ MC-59511 – Tellraw has incomplete error message when key determining text to display is missing. 
+ MC-59517 – TNT explode=true blockstate drops TNT item when fused by hit in survival mode. 
+ MC-59610 – Cactus has full block hitbox. 
+ MC-59691 – Inconsistent block/item names: brick(s) 
+ MC-59729 – / replaceitem doesn't work with chest or hopper minecarts. 
+ MC-60117 – Upper slabs can't be placed when standing on a lower slab 2 blocks below. 
+ MC-61821 – Digging Snow Layer yields one snow ball too much. 
+ MC-62093 – Double plants get generated without bottom part. 
+ MC-63714 – Zombie Pigmen get angry when hit in creative. 
+ MC-63748 – Commands with incorrect syntax executed for multiple entities prints error message multiple times. 
+ MC-63820 – Empty Flower Pot in Witch Hut. 
+ MC-64416 – Wrong matched block names / missing distinction between block names. 
+ MC-64455 – Translation missing for some blocks. 
+ MC-64537 – Gui zooming out when using some languages (unicode). 
+ MC-64539 – Spreadplayers respectTeams and player arguments have no tab completion. 
+ MC-64836 – Mobs "control" the minecart they are riding. 
+ MC-64919 – Ability to place a block through T-intersection glass panes, iron bars and fences when standing inside of hitbox. 
+ MC-65774 – Landing particles not showing when land on skulls. 
+ MC-65983 – Mouse cursor moves off-window when accessing inventory (or item contents). 
+ MC-68446 – Some entities have missing translations string in the lang files. 
+ MC-68565 – Monsters spawn at daytime at y=256 and don't burn. 
+ MC-68809 – Held Item renders black when in a 1 x 1 shaft with torch in upper block. 
+ MC-69042 – / summon coordinate syntax should be different. 
+ MC-69822 – Command help strings and feedback say "player" when entities are applicable as well. 
+ MC-69880 – / effect returns "cannot be found" for invalid entities. 
+ MC-70010 – Double plants can be placed at and grow at y = 255 resulting in incomplete double plant. 
+ MC-70188 – Some blocks cannot be placed facing a wall with / setblock or / fill + datavalues or block states. 
+ MC-71401 – Tab list ignores initial display name of players. 
+ MC-72634 – Lily Pad placement noise inconsistent. 
+ MC-72866 – Item shading inside item frames does not account for rotation. 
+ MC-72943 – Game freeze after closing an "Open to LAN" single player world. 
+ MC-73207 – Minecraft server list displays "Can't connect to server" on startup. 
+ MC-73344 – "Moss Stone" is name incorrectly, it should be called "Mossy Cobblestone". 
+ MC-73495 – Commands saying item names use incorrect/wrong item names. 
+ MC-73637 – Nether World Border Crash: Exception Ticking World. 
+ MC-74231 – Flower pot's blockdata won't visually update. 
+ MC-74703 – Redstone Ore does not produce particles on bottom side if not at height 0. 
+ MC-75193 – Target selectors don't work in server only commands. 
+ MC-75279 – Cape physics while sprint -flying. 
+ MC-75430 – Enderman held block not fully updated from old block ID system. 
+ MC-75940 – Block log2 and leaves2 crash the game when set to certain data values. 
+ MC-76044 – randomTickSpeed , spawnRadius , maxEntityCramming , and maxCommandChainLength gamerules accept non-integer value. 
+ MC-76312 – Testfor output doesn't show UUID or team color. 
+ MC-76356 – Bold unicode characters appear doubled. 
+ MC-76920 – Non-solid blocks don't show up on maps if the block below isn't solid. 
+ MC-77488 – TAB player list sorts player names based on ASCII values instead of alphabetically. 
+ MC-77570 – "and" doesn't get translated when listing entities. 
+ MC-77600 – Command block pick block with NBT and sendCommandFeedback is bugged. 
+ MC-78780 – /fill hollow and /fill destroy calculates number of blocks incorrectly. 
+ MC-78920 – Incorrect / gamerule syntax (typing only / gamerule doesn't return any error). 
+ MC-79255 – Using / trigger first time on player gives score of 0 but not displayed on scoreboard. 
+ MC-80096 – Insufficient handling of Damage tag. 
+ MC-80400 – Sizelimited entity selectors (@e with c=1,@r with type=!entity) in commands prefer players. 
+ MC-80856 – Command syntax inconsistencies. 
+ MC-80893 – Sender bias (c=1) applies when sender is not the closest entity to specified x/y/z origin. 
+ MC-80928 – Player sits too ahead when riding a (skeleton/zombie) horse/donkey/mule. 
+ MC-81746 – Falling block entities don't check for data values: converting sand to red sand. 
+ MC-81806 – worldborder add allows size >= 0 while worldborder set only allows size >= 1. 
+ MC-81876 – Number of characters before line cutoff in chat is not same when unicode mode is enabled and when it is off. 
+ MC-82703 – Block Entities are not properly removed when 64 or more blocks are changed at the same time in a single chunk. 
+ MC-83064 – Accumulated fall damage is not reset when levitation starts. 
+ MC-84173 – Trapdoors get a redstone update when being pushed/pulled next to a power source, but not when being pushed/pulled away from it. 
+ MC-85394 – Spawning 'crit' particle with speed >100 causes a extreme lagspike. 
+ MC-86016 – Some Mojang staff not mentioned in credits.txt. 
+ MC-86321 – Scoreboard players tag won't autofill/tab complete tag argument. 
+ MC-86980 – Placing some blocks at position and side of any replaceable block isn't possible. 
+ MC-87129 – Cannot save empty command for command block minecart. 
+ MC-87365 – Incorrect syntax for scoreboard players tag. 
+ MC-87559 – Gamerule missing indicator for affected gamerule. 
+ MC-87587 – Server kicks client when executing: /title @a title [] or /tellraw @a [] . 
+ MC-87799 – / execute detect functions inconsistently with semi- (snow layer, grass path, soul sand, farmland) blocks. 
+ MC-88230 – When feeding a tamed horse or llama with a golden apple/carrot or hay bale, the cursor moves to the right. 
+ MC-88481 – ' /worldborder set ' allows small decimal numbers but does not display them correctly in chat. 
+ MC-88632 – Unable to open command blocks & no particles when opening to LAN. 
+ MC-88674 – Growing cactus placed on blocks other than (red) sand drops two cacti instead of breaking. 
+ MC-89428 – Rails update other rails before checking if they are in a valid location when moved by pistons. 
+ MC-89634 – Spreadplayers favours the negative coordinates. 
+ MC-90072 – Witch in boat can't throw splash potion. 
+ MC-90174 – Carpet ghostblocks. 
+ MC-90265 – UI Accounts For Significant FPS Reduction. 
+ MC-90591 – Camera instantaneously changes position when elytra is deployed, rather than smoothly. 
+ MC-91245 – One character namespaces are treated as minecraft: . 
+ MC-91459 – / setblock at Y=256 shows unique message compared to using other outside-world setblock commands / Using / setblock at Y>256 says max building height is 256. 
+ MC-91727 – loot table "spreading large stacks" will overwrite existing items. 
+ MC-91759 – End dimension only: End crystals aren't actually pushed server-side, causing ender crystal location desync. 
+ MC-92061 – Full speed ridden boats generate water splash particles under the boat. 
+ MC-92255 – Singleplayer freezes instead of kicking a player. 
+ MC-92408 – Arrows/trident move slightly after a second after hitting the target. 
+ MC-92901 – End Crystals placed at high coordinates are placed with offset. 
+ MC-93129 – Falling sand behaves incorrectly in lazy chunks. 
+ MC-93468 – Water and lava flow affected by random ticks. 
+ MC-93908 – Fireball only flies in 1 direction when hitting it by bow/snowball while running a / tp command. 
+ MC-94027 – " carried " tag of Enderman reads value as string and short. 
+ MC-94186 – BlockDragonEgg does not extend BlockFalling . 
+ MC-94325 – Shadow of obfuscated text does not match with displayed character. 
+ MC-94487 – Ravines don't naturally cut through sand, sandstone, or terracotta upon generation, but other cave types do. 
+ MC-96321 – Mob cannot pathfinding in the daylight sensor. 
+ MC-96524 – Language specific letters don't look like they should. 
+ MC-96564 – Mobs don't rotate properly while walking on light sensor. 
+ MC-96911 – Iron golem / VillagerGolem killing monster it is riding has broken AI. 
+ MC-96929 – / enchant command missing indicator for affected entity and enchanting. 
+ MC-97196 – / spreadplayers shows wrong error message/large number in error message when no entities were spread. 
+ MC-97355 – Lily pads placed on ice plays wrong sound. 
+ MC-97952 – Enderdragon does not have a radii option. 
+ MC-98123 – Saturation with an AreaEffectCloud . 
+ MC-98244 – Same UUID infinite times possible + changing UUID possible via entitydata. 
+ MC-98823 – tipped arrows do not have a stat.craftItem statistic. 
+ MC-98928 – Snowballs launched from a boat destroyed instantly. 
+ MC-99057 – Cannot place corner vines. 
+ MC-99321 – Hoppers cannot pull items from double chests if second chest is blocked. 
+ MC-99342 – Private bytes (RAM usage) rising drastically when game window is minimized. 
+ MC-99434 – worldborder damage command not giving any feedback with invalid argument. 
+ MC-99748 – scoreboard teams join and leave not showing error message for missing player argument in command blocks. 
+ MC-101113 – / playsound command is not validating arguments correctly. 
+ MC-101135 – Confusing error message for relative coordinates with too high numbers. 
+ MC-101169 – Double slab creation over offhand 
+ MC-101232 – Big tree generator causes memory leak. 
+ MC-101332 – Can use the FallingSand to go through the cobblestone wall(mossy). 
+ MC-102403 – Persistent/unchangeable sounds after (re-)opening a world. 
+ MC-102440 – Large oak trees not spawning or spawning abnormally in forest. 
+ MC-102545 – There are 352 different flower pots in the debug world. 
+ MC-102682 – Horse shoes and horse leg are separated. 
+ MC-102896 – Mobs can't pathfind through open doors. 
+ MC-103023 – Village house overlap. 
+ MC-103035 – Dragon Egg doesn't create fallingdust particles. 
+ MC-103516 – Spider and chicken jockeys only spawn the additional mob. 
+ MC-103744 – Misaligned text in world creation page for Unicode fonts. 
+ MC-103913 – Auto jump on world border. 
+ MC-105050 – Some blocks are tracked in statistics/objectives for similar blocks despite having their own space to be tracked. 
+ MC-105139 – Entity head rotation not interpolating on Yaw axis. 
+ MC-105194 – Most of zombie villagers in a zombie village are babies. 
+ MC-105502 – Enabling clouds incurs a huge performance penalty. 
+ MC-105591 – Flint and Steel loses durability and fire charge is used up even if no fire was placed. 
+ MC-105820 – Relative decimal coordinates with block related commands are inconsistent. 
+ MC-105832 – Torch doesn't work in one block space. 
+ MC-105918 – Lose of item on kick while in anvil. 
+ MC-106024 – Fence gate does not update in_wall block state when placed by command. 
+ MC-106127 – Some blocks cannot be given certain block states. 
+ MC-106387 – Lava doesn't decrease SKY light. 
+ MC-106681 – Scoreboard teams leave doesn't work if first player fails. 
+ MC-107145 – Entity kill stat objectives using old/incorrect entity names. 
+ MC-107359 – You can replace loot tables and advancements, but not structure files. 
+ MC-107840 – You can place blocks behind the shulker box when it's closing. 
+ MC-108749 – Mushrooms and Crops cause double plants to drop; leaves "head" of plant behind. 
+ MC-108756 – Dungeons generating triple chests. 
+ MC-108967 – "Selector '<selector>' found nothing" message is missing for scoreboard teams join and scoreboard teams leave . 
+ MC-109348 – Game crashes on loading world with a java.lang.StackOverflowError after using structure blocks due to multiple block entities in the same location 
+ MC-109591 – Detecting the block states not saved in meta data does not work. 
+ MC-109659 – The observer only detected upgrade top of the door if opened/closed with energy (button, lever, etc.), but not with your hand. 
+ MC-109799 – Observer don't power when update and push by piston at the same time. 
+ MC-109829 – Observer keeps re-triggering when water observed 
+ MC-109958 – Shulkers teleport (and stay) below Y:0. 
+ MC-110566 – Failed /scoreboard players operation can still give a score of 0 . 
+ MC-110863 – Custom name of double chest is not set for both chests and is based on direction. 
+ MC-111288 – Opening a singleplayer world shows 0% for a short moment. 
+ MC-111341 – Plains village generating in desert. 
+ MC-111472 – Game doesn't save anywhere that a chest is a double chest. 
+ MC-111704 – You can input any value in [old block handling] of / setblock and / fill . 
+ MC-111755 – Minecraft can crash when failing to connect to a server. 
+ MC-112389 – Saturation Potions no longer work. 
+ MC-112394 – Numeral ids can still be used in some commands. 
+ MC-112693 – /scoreboard team colors use raw § formatting instead of text components. 
+ MC-112742 – Name of unnamed villager is rendered with TeamColor instead of prefix and suffix of scoreboard team. 
+ MC-112743 – Glowing outline and spectator GUI use prefix color instead of TeamColor. 
+ MC-112891 – Falling block entity drops block with metadata of item dropped when block would be mined causing malformed drops. 
+ MC-112929 – Beacon coloring issue. 
+ MC-112974 – Hostile mob doesn't teleport correctly when overworld/nether is already loaded. 
+ MC-112992 – Right clicking a command block minecart opens GUI and uses held item. 
+ MC-113001 – Some items act client-side always as if they were successfully used 
+ MC-113127 – Putting an item with invalid enchantments in the first slot of an anvil and an item with valid ones in the second one causes a crash. 
+ MC-113347 – Rails rotate when moved. 
+ MC-113420 – Boats can be placed outside the worldborder. 
+ MC-113577 – Mesa (Bryce) biome generates with seed of last world which generated the same biome before. 
+ MC-113880 – Items of replaceable blocks appear to successfully replace the same block in the world even though they do not. 
+ MC-113962 – Error message "Entity ... cannot be found" is shown when multiple entities match selector but only a single entity is expected. 
+ MC-114243 – / clone syntax help is missing filtered case. 
+ MC-114454 – Placing flowers in flower pots do not update the flower pot for nearby players. 
+ MC-114553 – ⌥ Alt  +  ↹ Tab while in fullscreen = crash. 
+ MC-114721 – / title treats invalid second argument as "title". 
+ MC-114722 – Projectiles collide with hitbox of block instead of with collision box. 
+ MC-114953 – Setting title times to negative values acts like /time ... clear . 
+ MC-114965 – Placed tripwire hook updates blocks around opposite facing tripwire hook on same axis. 
+ MC-115059 – Narrator reads scoreboard team color codes in player names. 
+ MC-115123 – Parrots keep moving their legs even if they are on shoulders. 
+ MC-115270 – Can use / publish to host multiple LAN worlds. 
+ MC-115322 – Updating string line in front of unattached tripwire hook that faces north or east updates blocks around the hook. 
+ MC-115799 – Colored bed flickers red when placing / destroying . 
+ MC-115913 – Attempting to fill an area with blocks consisting of multiple parts causes an unknown error. 
+ MC-115957 – Advancements, loot tables, resource packs and world folders don't require lower case. 
+ MC-115987 – Enderman sounds are entity.endermen.xx . 
+ MC-116045 – / banlist treats any non "IPs" argument as "players". 
+ MC-116254 – Players in Adventure mode can use some items even without CanPlaceOn tag. 
+ MC-116580 – Iron trapdoors stay on after breaking power source, until updated. 
+ MC-116758 – Enter/exit nether, server reports: <player> moved too quickly. 
+ MC-116928 – Command block and spawner minecart data fixer not working correctly. 
+ MC-117032 – "Done" button in statistics screen is offset. 
+ MC-117166 – Corner stairs with torch/lever/button etc. doesn't cause block update when near destroyed support stair. 
+ MC-117191 – Tab-completion list doesn't change when moving cursor with mouse. 
+ MC-117705 – Cannot click in Creative search bar to change cursor position. 
+ MC-117837 – Player- placed leaves update when log block breaks. 
+ MC-117906 – Elytra (plural) are called "an Elytra" in advancements. 
+ MC-117932 – Bed particles cause Z-fighting. 
+ MC-117933 – / clone command treats invalid optional arguments as if they were default. 
+ MC-118019 – / execute does not center absolute horizontal integer coordinates on block. 
+ MC-118037 – commandBlockOutput = false does not show command feedback of commands executed for player. 
+ MC-118072 – Redwood Taiga Hills M Biome misnamed. 
+ MC-118153 – Lava can only turn concrete powder into concrete when it falls into source block. 
+ MC-118194 – Ladders can be placed on any block when used with stairs. 
+ MC-118202 – Iron bars, glass panes, ... have incorrect selection hitbox on corners. 
+ MC-118221 – Vines cannot be placed below non-solid blocks. 
+ MC-118308 – Narrator is toggled when typing in some text fields. 
+ MC-118324 – One of magenta dye recipes is unlocked via getting Ink Sac. 
+ MC-118346 – Blocks that will be replaced when another block will be placed on them do not work with CanPlaceOn tag. 
+ MC-118372 – Faulty netty-4.1.9.Final release causes players to be kicked from the server. 
+ MC-118408 – Torches and redstone torches cannot be placed on top of a Jack o'Lantern but can be placed on pumpkin. 
+ MC-118416 – Recipe for bowl not unlocked until bowl or mushrooms are obtained. 
+ MC-118565 – Four negative signs in a selector which only has the potential to select one entity will attempt to parse as a UUID and fail. 
+ MC-118606 – Tame wolf will no longer fight after boat ride, until server is restarted. 
+ MC-118850 – Vines use opposite facing value when trying to spread in corners. 
+ MC-118998 – Cannot open URLs on Linux with X11. 
+ MC-119142 – You can't use multiple tags in a selector. 
+ MC-119741 – Relative directions in teleport are relative to player targets rather than executer. 
+ MC-120056 – Saving a structure to a sub folder fails if the folder does not exist yet. 
+ MC-120296 – F3  +  T doesn't reload the data in pack.mcmeta . 
+ MC-120524 – Signs controled by command blocks with scoreboards will make other block entities in the same chunk disappear after respawning. 
+ MC-120622 – Item loss with shift + click to fill up with picked up items. 
+ MC-120709 – Lava and water updates do not resolve completely when random ticking is disabled. 
+ MC-120747 – Stairs Change Hitbox While Moving (Piston). 
+ MC-120790 – Redstone lamps and wire update whether they are lit or not when setblocked, but no other blocks do. 
+ MC-120911 – Can't place snow_layer in adventure mode. 
+ MC-121196 – Overloaded servers pointlessly wait up to 50 ms every couple ticks. 
+ MC-121233 – Tab-completing a function name (with a ton of available functions) kicks the player. 
+ MC-121271 – Activator rails not updating. 
+ MC-121586 – Watchdog thread kills the server if average tick time is larger than max-tick-time/(15*20) ms for too long. 
+ MC-121719 – Enchantment GUI's book opening and closing animation is rendered at approximatly 20fps, even if actual framerate is higher. 
+ MC-121742 – block states can't be used in / give , / clear and / replaceitem , but can be used in / setblock , / fill , /execute detect and / testforblock . 
+ MC-121884 – Server->Client custom payload packets can leak resources. 
+ MC-121889 – Animated Texture Interpolate causing crashes. 
+ MC-121891 – Animated texture ignoring frames acting non-iteratively. 
+ MC-122000 – Items get deleted when the inventory is overflowed by using the recipe book to return items from a crafting table. 
+ MC-122053 –  Scroll Wheel/touchpad scroll amount is ignored. 
+ MC-122085 – Generating server icon leaks encoded data buffer. 
+ MC-122110 – BufferBuilder not expanding under specific conditions. 
+ MC-122195 – Collision box of cauldron and ender portal frame with ender eye inside is slightly wrong. 
+ MC-122257 – Item name above hotbar appears every time the durability of the item gets changed. 
+ MC-122740 – In full-screen mode, the mouse cannot leave the window/screen on a multi-monitor setup 
+ MC-123133 – Unicode characters are improperly aligned on different screen resolutions. 
+ MC-123365 – +2 block Cactus do not break with water (Inconsistency). 
+ MC-123524 – X amount of Command Blocks in a chunk glitches the chunk, structure blocks, entities, hitboxes and frame rate dramatically. 
+ MC-123708 – clearCustomName() , and hasDisplayName() inconsistent. 
+ MC-124469 – GUI scale size 3 displays as size 2 when Unicode font is forced. 
+ MC-124598 – Team option friendlyfire has incorrect capitalization. 
+ MC-124695 – Flint and steel in a dispenser loses durability when not igniting. 
+ MC-124815 – Mobs equipping items from dispensers can despawn. 
+ MC-124964 – Clicking into the armor slots or the first inventory slot cancels crafting recipe preview. 
+ MC-124991 – Flint and steel in a dispenser does not lose durability when used to ignite TNT. 
+ MC-125615 – Some end cities don't generate completely. 
+ MC-126084 – Cape render when sprinting underwater. 
+ MC-126479 – Tellraw command only applies team color if using selector to target more than one entity. 
+ MC-127334 – Superflat biome ID still uses numeral ID, rather than named ID. 
+ MC-127822 – Unicode on/off bug with another languages and english letters. 
+ MC-128561 – CommandBase.commandListener retains old server reference, preventing garbage collection. 
+ MC-129571 – Skeleton traps are incredibly rare. 
+ MC-129863 – "Crawling" underneath glass/grass paths/other transparent blocks causes bugs. 
+ MC-129980 – Some users cannot use F3-related features properly. 
+ MC-132579 – Inconsistent font. 
+ MC-132833 – Opening 1.5.2 world on 1.12.2 works perfectly but bed is transparent. 
+ From the previous development version 
+ MC-133797 – Optimizing a world doesn't update the version and the last accessed date displayed in the world list. 
+ MC-133863 – "Optimize World" screen has "world" with lowercase "w". 
+ Private issues 
+ MC-21073 – Private issue. 
+ MC-59509 – Private issue. 
+ MC-94675 – Private issue involving huge mushrooms. 
+ MC-100579 – Pistons do not account for block updates triggered by blocks broken by the extending piston when placing moved blocks, resulting in duplication issues [ 23 ] 
+ MC-111317 – Private security issue. 
+ MC-131152 – Private security issue. 
+ MC-131154 – Resource locations allow empty path pieces. [ 24 ] 
+ Videos [ edit | edit source ] 
+ Videos made by slicedlime : 
+ Trivia [ edit | edit source ] 
+ With a total of 10 pre-releases released, 1.13 has the most pre-releases of any update released so far. 
+ With a total of 42 snapshots released, 1.13 has the third most snapshots of any update released so far.
+ Bested by 1.9 , which has 56 snapshots, and 1.8 , which has 52 snapshots. 
+ 1.13 had the longest timespan of development versions for a major update, with the first snapshot, Java Edition 17w43a , being released on October 25, 2017, 266 days before the full release.
+ The previous longest was 1.8, with 236 days from the first snapshot to the final release. 
+ This update was the second longest wait for a major update, with 406 days having elapsed since 1.12 was released on June 7, 2017.
+ This is eclipsed by the wait between 1.8 and 1.9, having 545 days elapsed between them. 
+ This update had the most development versions between the first snapshot and the change of its panorama , with 17w43a at development version 1, while 1.13-pre1 was development version 43. 
+ Gallery [ edit | edit source ] 
+ Terrain in this version. 
+ References [ edit | edit source ] 
+ ↑ "Important Message: Security vulnerability in Java Edition" – Minecraft.net , December 10, 2021. 
+ ↑ a b "Java Edition Technically Updated" – Minecraft.net , January 24, 2018. 
+ ↑ "Update Aquatic Out On Java!" by Adrian Östergård – Minecraft.net , July 18, 2018. 
+ ↑ "It'll probably be in 1.13 at this point, I'm afraid :( It'll be a more bugfixy and technical update, so it will get more love then." – @Dinnerbone (Nathan Adams) on X (formerly Twitter), April 24, 2017 
+ ↑ "Remember that 1.13 is a technical update to make things crash less, run faster, & easier for us to add/change stuff later. Like new blocks!" – @Dinnerbone (Nathan Adams) on X (formerly Twitter), October 16, 2017 
+ ↑ a b c "The Update Aquatic Is Coming To Minecraft Spring 2018!" , November 18, 2017 
+ ↑ "Minecraft Update Aquatic was supposed to come out today. It is pushed back to make sure all crucial bugs are fixed. Awesome!" – @docm77 on X (formerly Twitter), May 30, 2018 
+ ↑ https://twitter.com/AgentM124/status/987315761923452928 
+ ↑ Rocky sounds are mainly used for stones. 
+ ↑ Slimy sounds are mainly used for slime blocks and sea pickles 
+ ↑ "Trying to extract parts of BlockState into StateHolder<T> and turn BlockStateDefinition into StateDefinition<T> so I can use the same system for liquids" – @Dinnerbone (Nathan Adams) on X (formerly Twitter), April 20, 2018 
+ ↑ a b MC-122844 (resolved as "Works as Intended") 
+ ↑ "Yes we also want to keep it hard to get, so you need 9 ice in order to create 1 packed ice. ^^" – @_LadyAgnes (Agnes Larsson) on X (formerly Twitter), June 7, 2018 
+ ↑ MC-122563 (resolved as "Works as Intended" at the time) 
+ ↑ https://www.reddit.com/r/Minecraft/comments/8xo1ex/minecraft_113_map_rendering_changes/ 
+ ↑ "Meet The Horse" – Minecraft.net , October 10, 2017. 
+ ↑ MC-127186 (resolved as "Works As Intended") 
+ ↑ MC-123307 
+ ↑ MC-127025 
+ ↑ MC-1390 
+ ↑ MC-130145 
+ ↑ https://libraries.minecraft.net/com/mojang/datafixerupper/1.0.3/datafixerupper-1.0.3.pom ; https://arxiv.org/ftp/arxiv/papers/1703/1703.10857.pdf for info on optics 
+ ↑ "Minecraft Snapshot 17w49a" – Minecraft.net , December 6, 2017. 
+ ↑ "Minecraft 1.13 pre-release 3" – Minecraft.net , June 4, 2018. 
+ Navigation [ edit | edit source ] 
+ v 
+ t 
+ e Minecraft: Java Edition versions 
+ Demo 
+ Classic Remake 
+ Developer builds 
+ Missing versions 
+ from the launcher 
+ Unobfuscated versions 
+ Seecret Updates 
+ Asset updates
+ Beta Sound Update (2011) 
+ Music Update (2013) 
+ Joke updates 
+ 2010s
+ 2.0 ‡‡‡ (2013) 
+ preview 
+ 15w14a (2015) 
+ 1.RV-Pre1 (2016) 
+ 3D Shareware v1.34 (2019) 
+ 2020s
+ 20w14∞ (2020) 
+ 22w13oneBlockAtATime (2022) 
+ 23w13a_or_b* (2023) 
+ 24w14potato* (2024) 
+ 25w14craftmine (2025) 
+ 26w14a (2026) 
+ Combat Tests 
+ 1.14.3 - Combat Test 
+ Combat Test 2 
+ Combat Test 3 
+ Combat Test 4 
+ Combat Test 5 
+ Combat Test 6 
+ Combat Test 7c 
+ Combat Test 7 
+ Combat Test 7b 
+ Combat Test 8b 
+ Combat Test 8 
+ Combat Test 8c 
+ Pre-Classic (2009) 
+ Version history 
+ Guide 
+ Cave Game 
+ Cave game tech test ( dev ) 
+ rd-132211 
+ rd-132328 
+ Minecraft: Order of the Stone 
+ rd-20090515 
+ rd-160052 
+ Minecraft 
+ rd-161348 
+ Classic (2009) 
+ Version history 
+ Guide 
+ Private alpha 
+ mc-161607 † 
+ mc-161616 † 
+ mc-161625 † 
+ mc-161648 † 
+ 0.0.2a † 
+ 0.0.3a † 
+ 0.0.9a † 
+ 0.0.10a † 
+ Early Classic 
+ 0.0.11a † 
+ 0.0.12a † ( dev )
+ _01 † 
+ 02 † 
+ 03* 
+ 0.0.13a † ( dev )
+ _03 
+ 0.0.14a † ( dev )
+ _01 † 
+ 03 † 
+ 04* † 
+ 05* † 
+ 06 † 
+ 07 † 
+ 08 
+ Multiplayer Test 
+ 0.0.15a Multiplayer Test 1 ( dev )
+ 2 † 
+ 3 † 
+ 4 † 
+ 5 † 
+ 6 † 
+ 7 † 
+ 8 † 
+ _01 † 
+ 02 † 
+ 03 † 
+ 0.0.16a † 
+ _01 † 
+ 02*** 
+ Middle Classic 
+ 0.0.17a 
+ 0.0.18a † 
+ _01 † 
+ 02 
+ 0.0.19a † ( dev )
+ _01 † 
+ 02 † 
+ 03 † 
+ 04 
+ 05 † 
+ 06* 
+ 0.0.20a † 
+ _01 
+ 02 
+ 0.0.21a* 
+ _01 † 
+ 0.0.22a* † 
+ _01 † 
+ 02 † 
+ 03 † 
+ 04 † 
+ 05 
+ 0.0.23a † 
+ _01 
+ HP Survival Test 
+ 0.24_SURVIVAL_TEST † ( dev )
+ _01 † 
+ 02* † 
+ 03 
+ 0.25 SURVIVAL TEST † 
+ #2 † 
+ #3 † 
+ #4 † 
+ _05 
+ 0.26 SURVIVAL TEST † ( dev ) 
+ 0.27 SURVIVAL TEST 
+ 0.30 (Survival)* 
+ Late Classic 
+ 0.28 † ( dev )
+ _01 
+ 0.29 
+ _01 
+ 02 
+ 0.30 (Creative)** 
+ Server
+ 1.0 † 
+ 1.1 † 
+ 1.2 
+ 1.3 
+ 1.4* 
+ 1.4.1 
+ 1.5 † 
+ 1.6 
+ 1.7 † 
+ 1.8 † 
+ 1.8.1 † 
+ 1.8.2 
+ 1.8.3 
+ 1.9 
+ 1.9.1 
+ 1.10 
+ 1.10.1 
+ Indev (2009–2010) 
+ Version history 
+ Guide 
+ 0.31 
+ December 2009
+ 23-0040 † ( dev ) 
+ 23-1459 
+ 31-1856 † 
+ 31-2004 † 
+ 31-2013 † 
+ 31-2033 † 
+ 31-2147 † 
+ 31-2255 
+ January 2010
+ 04-2154 † 
+ 04-2258 
+ 06-1655 † 
+ 06-2158 † 
+ 06-2220 † 
+ 07-1851 † 
+ 07-1947 † 
+ 07-2010 † 
+ 09-1939 † 
+ 09-2000 † 
+ 10 
+ 11-2207 † 
+ 11-2210 † 
+ 12-0826 † 
+ 12-1949 † 
+ 13-2015 † ‡ 
+ 13-2243 † 
+ 14 † 
+ 22-1708 † 
+ 22-2251 † 
+ 24-2119 † 
+ 24-2134 † 
+ 24-2310 
+ 25 
+ 28-2200 † 
+ 28-2304 
+ 29-1447 † 
+ 29-1452 
+ 29-2129 † 
+ 29-2134 † 
+ 29-2138 † 
+ 29-2158 † 
+ 29-2209 † 
+ 29-2332 † 
+ 30 
+ 31-2156** † 
+ 31-2241 † 
+ 31-2244 
+ February 2010
+ 01-0025 
+ 01-0038 † 
+ 01-2227 
+ 02*** 
+ 04-1541 † 
+ 04-2027 † 
+ 04-2153 † 
+ 05-1558 † 
+ 05-2241 † 
+ 06-1437 † 
+ Minecraft Indev 
+ 06-2034 † 
+ 06-2103 
+ 07-1057 † 
+ 07-1101 
+ 07-1647 † 
+ 07-1703 
+ 11-2327 † 
+ 11-2333 † 
+ 11-2340 † 
+ 12-1210 
+ 12-1622 
+ 13 
+ 14 
+ 18-0011 † 
+ 18-0016 
+ 19 
+ 23 
+ Infdev (2010) 
+ Version history 
+ Guide 
+ Minecraft Infdev 
+ Phase 1
+ 227-1414 † ( dev ) 
+ 227-1433 
+ 313 
+ 316 
+ 320 
+ 321 
+ 325-1545 † 
+ 325-1640 
+ Phase 2
+ 327 
+ 330-1203 † 
+ 330-1611 
+ 413-1951 † 
+ 413-1953 
+ 414 
+ 415 
+ 420 
+ Phase 3
+ 607 
+ 608 
+ 611 
+ 615 
+ 616-1808 
+ 616-2210 † 
+ 617-1205 
+ 617-1531 
+ SF1 
+ 618 
+ 624 
+ 625-0922 
+ SF2 
+ 625-1917 
+ 627 
+ Alpha 
+ 629 
+ 630-1340 
+ 630-1835 
+ Alpha (2010) 
+ Version history 
+ Development versions 
+ v1.0 ( Guide ) 
+ SF3 
+ v1.0.1 † 
+ _01 
+ v1.0.2 † 
+ _01 
+ 02 
+ v1.0.3 
+ SF4 
+ v1.0.4 
+ v1.0.5* 
+ _01 
+ SF5 
+ v1.0.6 
+ _01 
+ 02 † 
+ 03 
+ v1.0.7 
+ v1.0.8 † 
+ _01 
+ v1.0.9 
+ v1.0.10 
+ SF6 
+ v1.0.11 
+ v1.0.12 
+ v1.0.13 
+ _01 ‡ 
+ SF7 
+ v1.0.14* 
+ v1.0.15 
+ v1.0.16 
+ _01 
+ 02 
+ SF8 
+ v1.0.17 † 
+ _01 † 
+ 02 
+ 03 
+ 04 
+ v1.1 ( Guide ) 
+ SF9 
+ v1.1.0 ** 
+ SS1 
+ v1.1.1 
+ v1.1.2 
+ _01 
+ Halloween Update ( Guide ) 
+ v1.2.0 * 
+ preview 
+ v1.2.0_01 
+ _02 
+ v1.2.1 † 
+ _01 
+ v1.2.2 *‡ 
+ v1.2.3 
+ _01* 
+ 02 
+ 04 
+ 05 
+ v1.2.4 
+ _01 
+ v1.2.5 
+ v1.2.6 
+ Server
+ 0.1.0 
+ 0.1.1* 
+ 0.1.2* 
+ _01 
+ 0.1.3 
+ 0.1.4 
+ 0.2.0 
+ _01 
+ 0.2.1 
+ 0.2.2 
+ _01 
+ 0.2.3 
+ 0.2.4 
+ 0.2.5* 
+ _01 
+ 02 
+ 0.2.6 
+ _01 
+ 02 
+ 0.2.7 
+ 0.2.8 
+ Beta (2010–2011) 
+ Version history 
+ Development versions 
+ 1.0 ( Guide ) 
+ 1.0 
+ 1.0_01 
+ 1.0.2* 
+ 1.1 ( Guide ) 
+ 1.1 * 
+ 1.1_01 
+ 1.1_02 
+ 1.2 ( Guide ) 
+ 1.2 
+ 1.2_01 
+ 1.2_02 
+ 20110517 
+ 1.3 ( Guide ) 
+ 1.3 ** 
+ 1.3_01 
+ Demo 
+ 1.4 ( Guide ) 
+ 1.4 * ( dev ) 
+ 1.4_01 
+ 1.5 ( Guide ) 
+ 1.5 ( dev ) 
+ 1.5_01 
+ 1.5_02 
+ 1.6 ( Guide ) 
+ 1.6 
+ preview 
+ Test Build 3 
+ 1.6.1 
+ 1.6.2 
+ 1.6.3 
+ 1.6.4 
+ 1.6.5 
+ 1.6.6 
+ 1.7 ( Guide ) 
+ 1.7 
+ preview 
+ 1.7_01 
+ 1.7.2 
+ 1.7.3 
+ Adventure Update : Part I ( Guide ) 
+ 1.8 
+ PAX Prime 
+ preview 
+ pre* ( reupload ) 
+ pre2* 
+ 1.8.1 
+ Full Release (1.0–1.9) (2011–2016) 
+ Version history 
+ Development versions 
+ Adventure Update : Part II ( Guide ) 
+ 1.0.0 ‡ 
+ pre 
+ pre2 
+ Beta 2 
+ pre3* 
+ pre4** 
+ pre5 
+ pre6 
+ RC1 
+ RC2** 
+ 1.0.1 
+ 1.1 ( Guide ) 
+ 1.1 
+ 11w47a 
+ 11w48a 
+ 11w49a 
+ 11w50a 
+ 12w01a 
+ 1.2.1 ( Guide ) 
+ 1.2.1 
+ 12w03a 
+ 12w04a 
+ 12w05a* 
+ 12w05b 
+ 12w06a 
+ 12w07a 
+ 12w07b 
+ 12w08a 
+ 1.2 
+ 1.2.2 
+ 1.2.3 
+ 1.2.4 
+ 1.2.5 
+ 1.3.1 ( Guide ) 
+ 1.3.1 
+ 12w15a 
+ 12w16a 
+ 12w17a 
+ 12w18a 
+ 12w19a 
+ 12w21a 
+ 12w21b 
+ 12w22a 
+ 12w23a 
+ 12w23b 
+ 12w24a 
+ 12w25a 
+ 12w26a 
+ 12w27a 
+ 12w30a 
+ 12w30b 
+ 12w30c 
+ 12w30d 
+ 12w30e 
+ 1.3 
+ 1.3.2 
+ Pretty Scary Update ( Guide ) 
+ 1.4.2 
+ 12w32a 
+ 12w34a 
+ 12w34b 
+ 12w36a 
+ 12w37a 
+ 12w38a 
+ 12w38b 
+ 12w39a 
+ 12w39b 
+ 12w40a 
+ 12w40b 
+ 12w41a 
+ 12w41b 
+ 12w42a 
+ 12w42b 
+ 1.4 
+ 1.4.1* 
+ 1.4.4 
+ 1.4.3 
+ 1.4.5 
+ pre 
+ 1.4.6 
+ 12w49a 
+ 12w50a 
+ 12w50b 
+ pre* 
+ 1.4.7 
+ Redstone Update ( Guide ) 
+ 1.5 
+ 13w01a 
+ 13w01b 
+ 13w02a* 
+ 13w02b 
+ 13w03a** 
+ 13w04a* 
+ 13w05a* 
+ 13w05b 
+ 13w06a* 
+ 13w07a 
+ 13w09a 
+ 13w09b 
+ 13w09c 
+ 13w10a 
+ 13w10b 
+ pre 
+ 1.5.1 
+ 13w11a 
+ 13w12~* 
+ pre 
+ 1.5.2 
+ pre 
+ Horse Update ( Guide ) 
+ 1.6.1 
+ 13w16a*** 
+ 13w16b** 
+ 13w17a 
+ 13w18a 
+ 13w18b 
+ 13w18c 
+ 13w19a 
+ 13w21a 
+ 13w21b 
+ 13w22a* 
+ 13w23a 
+ 13w23b* 
+ 13w24a 
+ 13w24b 
+ 13w25a 
+ 13w25b 
+ 13w25c 
+ 13w26a 
+ 1.6* 
+ 1.6.2* 
+ pre** 
+ 1.6.4 
+ 1.6.3* 
+ The Update that Changed the World ( Guide ) 
+ 1.7.2 
+ 13w36a* 
+ 13w36b** 
+ 13w37a 
+ 13w37b 
+ 13w38a 
+ 13w38b 
+ 13w38c* 
+ 13w39a 
+ 13w39b 
+ 13w41a 
+ 13w41b* 
+ 13w42a 
+ 13w42b 
+ 13w43a 
+ 1.7* 
+ 1.7.1 
+ 1.7.4 
+ 13w47a 
+ 13w47b 
+ 13w47c 
+ 13w47d 
+ 13w47e 
+ 13w48a 
+ 13w48b 
+ 13w49a 
+ 1.7.3 
+ pre 
+ 1.7.5 
+ -wip 
+ 1.7.6 
+ pre1 
+ pre2 
+ 1.7.7 * 
+ 1.7.8 
+ 1.7.9 
+ 1.7.10 
+ pre1 
+ pre2* 
+ pre3 
+ pre4 
+ Bountiful Update ( Guide ) 
+ 1.8 
+ 14w02a 
+ 14w02b 
+ 14w02c 
+ 14w03a 
+ 14w03b 
+ 14w04a* 
+ 14w04b* 
+ 14w05a 
+ 14w05b 
+ 14w06a 
+ 14w06b 
+ 14w07a 
+ 14w08a 
+ 14w10a 
+ 14w10b 
+ 14w10c* 
+ 14w11a 
+ 14w11b* 
+ 14w17a 
+ 14w18a 
+ 14w18b 
+ 14w19a 
+ 14w20a 
+ 14w20b 
+ 14w21a 
+ 14w21b 
+ 14w25a 
+ 14w25b 
+ 14w26a 
+ 14w26b 
+ 14w26c 
+ 14w27a 
+ 14w27b* 
+ 14w28a 
+ 14w28b 
+ 14w29a 
+ 14w29b 
+ 14w30a 
+ 14w30b 
+ 14w30c 
+ 14w31a 
+ 14w32a 
+ 14w32b 
+ 14w32c 
+ 14w32d 
+ 14w33a 
+ 14w33b 
+ 14w33c 
+ 14w34a 
+ 14w34b 
+ 14w34c* 
+ 14w34d 
+ pre1 
+ pre2 
+ pre3 
+ 1.8.1 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ 1.8.2 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ pre6 
+ pre7 
+ 1.8.3 
+ 1.8.4 
+ 1.8.5 
+ 1.8.6 
+ 1.8.7 
+ 1.8.8 
+ 1.8.9 
+ Combat Update ( Guide ) 
+ 1.9 
+ 15w31a 
+ 15w31b 
+ 15w31c 
+ 15w32a 
+ 15w32b 
+ 15w32c 
+ 15w33a 
+ 15w33b 
+ 15w33c 
+ 15w34a 
+ 15w34b 
+ 15w34c 
+ 15w34d 
+ 15w35a 
+ 15w35b 
+ 15w35c 
+ 15w35d 
+ 15w35e 
+ 15w36a 
+ 15w36b 
+ 15w36c 
+ 15w36d 
+ 15w37a 
+ 15w38a 
+ 15w38b 
+ 15w39a 
+ 15w39b 
+ 15w39c 
+ 15w40a 
+ 15w40b 
+ 15w41a 
+ 15w41b 
+ 15w42a 
+ 15w43a 
+ 15w43b 
+ 15w43c 
+ 15w44a 
+ 15w44b 
+ 15w45a 
+ 15w46a 
+ 15w47a 
+ 15w47b 
+ 15w47c 
+ 15w49a 
+ 15w49b 
+ 15w50a 
+ 15w51a 
+ 15w51b 
+ 16w02a 
+ 16w03a 
+ 16w04a 
+ 16w05a 
+ 16w05b 
+ 16w06a 
+ 16w07a 
+ 16w07b 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ 1.9.1 
+ pre1 
+ pre2 
+ pre3 
+ 1.9.2 
+ 1.9.3 
+ 16w14a 
+ 16w15a 
+ 16w15b 
+ pre1 
+ pre2 
+ pre3 
+ 1.9.4 
+ Full Release (1.10–1.19) (2016–2023) 
+ Version history 
+ Development versions 
+ Frostburn Update ( Guide ) 
+ 1.10 
+ 16w20a 
+ 16w21a 
+ 16w21b 
+ pre1 
+ pre2 
+ 1.10.1 
+ 1.10.2 
+ Exploration Update ( Guide ) 
+ 1.11 
+ 16w32a 
+ 16w32b 
+ 16w33a 
+ 16w35a 
+ 16w36a 
+ 16w38a 
+ 16w39a 
+ 16w39b 
+ 16w39c 
+ 16w40a 
+ 16w41a 
+ 16w42a 
+ 16w43a 
+ 16w44a 
+ pre1 
+ 1.11.1 
+ pre 
+ 16w50a 
+ 1.11.2 
+ World of Color Update ( Guide ) 
+ 1.12 
+ 17w06a 
+ 17w13a* 
+ 17w13b 
+ 17w14a 
+ 17w15a 
+ 17w16a 
+ 17w16b 
+ 17w17a 
+ 17w17b 
+ 17w18a* 
+ 17w18b 
+ pre1 
+ pre2 
+ pre3* 
+ pre4 
+ pre5 
+ pre6 
+ pre7 
+ 1.12.1 
+ 17w31a 
+ pre1 
+ 1.12.2 
+ pre1 
+ pre2 
+ Update Aquatic ( Guide ) 
+ 1.13 
+ 17w43a 
+ 17w43b 
+ 17w45a 
+ 17w45b 
+ 17w46a 
+ 17w47a 
+ 17w47b 
+ 17w48a 
+ 17w49a 
+ 17w49b 
+ 17w50a 
+ 18w01a 
+ 18w02a 
+ 18w03a 
+ 18w03b 
+ 18w05a 
+ 18w06a 
+ 18w07a 
+ 18w07b 
+ 18w07c 
+ 18w08a 
+ 18w08b 
+ 18w09a 
+ 18w10a 
+ 18w10b 
+ 18w10c 
+ 18w10d 
+ 18w11a 
+ 18w14a 
+ 18w14b 
+ 18w15a 
+ 18w16a 
+ 18w19a 
+ 18w19b 
+ 18w20a 
+ 18w20b 
+ 18w20c 
+ 18w21a 
+ 18w21b 
+ 18w22a 
+ 18w22b 
+ 18w22c 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ pre6 
+ pre7 
+ pre8 
+ pre9 
+ pre10 
+ 1.13.1 
+ 18w30a 
+ 18w30b 
+ 18w31a 
+ 18w32a 
+ 18w33a 
+ pre1 
+ pre2 
+ 1.13.2 
+ pre1 
+ pre2 
+ Village & Pillage & Texture Update ( Guide ) 
+ 1.14 
+ 18w43a 
+ 18w43b 
+ 18w43c 
+ 18w44a 
+ 18w45a 
+ 18w46a 
+ 18w47a 
+ 18w47b 
+ 18w48a 
+ 18w48b 
+ 18w49a 
+ 18w50a 
+ 19w02a 
+ 19w03a 
+ 19w03b 
+ 19w03c 
+ 19w04a 
+ 19w04b 
+ 19w05a 
+ 19w06a 
+ 19w07a 
+ 19w08a 
+ 19w08b 
+ 19w09a 
+ 19w11a 
+ 19w11b 
+ 19w12a 
+ 19w12b 
+ 19w13a 
+ 19w13b* 
+ 19w14a 
+ 19w14b 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ 1.14.1 
+ pre1 
+ pre2 
+ 1.14.2 
+ pre1 
+ pre2 
+ pre3 
+ pre4* 
+ 1.14.3 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ 1.14.4 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ pre6 
+ pre7 
+ Buzzy Bees ( Guide ) 
+ 1.15 
+ 19w34a 
+ 19w35a 
+ 19w36a 
+ 19w37a 
+ 19w38a 
+ 19w38b 
+ 19w39a 
+ 19w40a 
+ 19w41a 
+ 19w42a 
+ 19w44a 
+ 19w45a 
+ 19w45b 
+ 19w46a 
+ 19w46b 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ pre6 
+ pre7 
+ 1.15.1 
+ pre1 
+ 1.15.2 
+ pre1 
+ pre2 
+ Nether Update ( Guide ) 
+ 1.16* 
+ 20w06a 
+ 20w07a 
+ 20w08a 
+ 20w09a 
+ 20w10a 
+ 20w11a 
+ 20w12a 
+ 20w13a 
+ 20w13b 
+ 20w14a 
+ 20w15a 
+ 20w16a 
+ 20w17a 
+ 20w18a 
+ 20w19a 
+ 20w20a 
+ 20w20b 
+ 20w21a 
+ 20w22a 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ pre6 
+ pre7 
+ pre8 
+ rc1 
+ 1.16.1 
+ 1.16.2 
+ 20w27a 
+ 20w28a 
+ 20w29a 
+ 20w30a 
+ pre1 
+ pre2 
+ pre3 
+ rc1 
+ rc2 
+ 1.16.3 
+ rc1 
+ 1.16.4 
+ pre1 
+ pre2 
+ rc1 
+ 1.16.5 
+ pre1 
+ rc1 
+ Caves & Cliffs : Part I ( Guide ) 
+ 1.17 
+ 20w45a 
+ 20w46a 
+ 20w48a 
+ 20w49a 
+ 20w51a 
+ 21w03a 
+ 21w05a 
+ 21w05b 
+ 21w06a 
+ 21w07a 
+ 21w08a 
+ 21w08b 
+ 21w10a 
+ 21w11a 
+ 21w13a 
+ 21w14a 
+ 21w15a 
+ 21w16a 
+ 21w17a 
+ 21w18a 
+ 21w19a 
+ 21w20a 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ rc1 
+ rc2 
+ 1.17.1 
+ pre1 
+ pre2 
+ pre3 
+ rc1 
+ rc2 
+ Caves & Cliffs : Part II ( Guide ) 
+ 1.18 
+ Experimental
+ 1 
+ 2 
+ 3 
+ 4 
+ 5 
+ 6 
+ gameplay-tweaks 
+ 7 
+ 21w37a 
+ 21w38a 
+ 21w39a 
+ 21w40a 
+ 21w41a 
+ 21w42a 
+ 21w43a 
+ 21w44a 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ pre6 
+ pre7 
+ pre8 
+ rc1 
+ rc2 
+ rc3 
+ rc4 
+ 1.18.1 
+ pre1 
+ rc1 
+ rc2 
+ rc3 
+ 1.18.2 
+ 22w03a 
+ 22w05a 
+ 22w06a 
+ 22w07a 
+ pre1 
+ pre2 
+ pre3 
+ rc1 
+ The Wild Update ( Guide ) 
+ 1.19 
+ Experimental 1 
+ 22w11a 
+ 22w12a 
+ 22w13a 
+ 22w14a 
+ 22w15a 
+ 22w16a 
+ 22w16b 
+ 22w17a 
+ 22w18a 
+ 22w19a 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ rc1 
+ rc2 
+ 1.19.1 
+ 22w24a 
+ pre1 
+ rc1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ pre6 
+ rc2 
+ rc3 
+ 1.19.2 
+ rc1 
+ rc2 
+ 1.19.3 
+ 22w42a 
+ 22w43a 
+ 22w44a 
+ 22w45a 
+ 22w46a 
+ pre1 
+ pre2 
+ pre3 
+ rc1 
+ rc2 
+ rc3 
+ 1.19.4 
+ 23w03a 
+ 23w04a 
+ 23w05a 
+ 23w06a 
+ 23w07a 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ rc1 
+ rc2 
+ rc3 
+ Full Release (1.20–1.21) (2023–2025) 
+ Version history 
+ Development versions 
+ Trails & Tales ( Guide ) 
+ 1.20 
+ 23w12a 
+ 23w13a 
+ 23w14a 
+ 23w16a 
+ 23w17a 
+ 23w18a 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ pre6 
+ pre7 
+ rc1 
+ 1.20.1 
+ rc1 
+ 1.20.2 
+ 23w31a 
+ 23w32a 
+ 23w33a 
+ 23w35a 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ rc1 
+ rc2 
+ Bats and Pots ( Guide ) 
+ 1.20.3 
+ 23w40a 
+ 23w41a 
+ 23w42a 
+ 23w43a 
+ 23w43b 
+ 23w44a 
+ 23w45a 
+ 23w46a 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ rc1 
+ 1.20.4 
+ rc1 
+ Armored Paws ( Guide ) 
+ 1.20.5 
+ 23w51a 
+ 23w51b 
+ 24w03a 
+ 24w03b 
+ 24w04a 
+ 24w05a 
+ 24w05b 
+ 24w06a 
+ 24w07a 
+ 24w09a 
+ 24w10a 
+ 24w11a 
+ 24w12a 
+ 24w13a 
+ 24w14a 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ rc1 
+ rc2 
+ rc3 
+ 1.20.6 
+ rc1 
+ Tricky Trials ( Guide ) 
+ 1.21 
+ 24w18a 
+ 24w19a 
+ 24w19b 
+ 24w20a 
+ 24w21a 
+ 24w21b 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ rc1 
+ 1.21.1 
+ rc1 
+ Bundles of Bravery ( Guide ) 
+ 1.21.2 
+ 24w33a 
+ 24w34a 
+ 24w35a 
+ 24w36a 
+ 24w37a 
+ 24w38a 
+ 24w39a 
+ 24w40a 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ rc1 
+ rc2 
+ 1.21.3 
+ The Garden Awakens ( Guide ) 
+ 1.21.4 
+ 24w44a 
+ 24w45a 
+ 24w46a 
+ pre1 
+ pre2 
+ pre3 
+ rc1 
+ rc2 
+ rc3 
+ Spring to Life ( Guide ) 
+ 1.21.5 
+ 25w02a 
+ 25w03a 
+ 25w04a 
+ 25w05a 
+ 25w06a 
+ 25w07a 
+ 25w08a 
+ 25w09a 
+ 25w09b 
+ 25w10a 
+ pre1 
+ pre2 
+ pre3 
+ rc1 
+ rc2 
+ Chase the Skies ( Guide ) 
+ 1.21.6 
+ 25w15a 
+ 25w16a 
+ 25w17a 
+ 25w18a 
+ 25w19a 
+ 25w20a 
+ 25w21a 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ rc1 
+ 1.21.7 
+ rc1 
+ rc2 
+ 1.21.8 
+ rc1 
+ The Copper Age ( Guide ) 
+ 1.21.9 
+ 25w31a 
+ 25w32a 
+ 25w33a 
+ 25w34a 
+ 25w34b 
+ 25w35a 
+ 25w36a 
+ 25w36b 
+ 25w37a 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ rc1 
+ 1.21.10 
+ rc1 
+ Mounts of Mayhem ( Guide ) 
+ 1.21.11 ‡ 
+ 25w41a 
+ 25w42a 
+ 25w43a 
+ 25w44a 
+ 25w45a ‡ 
+ 25w46a ‡ 
+ pre1 ‡ 
+ pre2 ‡ 
+ pre3 ‡ 
+ pre4 ‡ 
+ pre5 ‡ 
+ rc1 ‡ 
+ rc2 ‡ 
+ rc3 ‡ 
+ Full Release (2026–present) 
+ Version history 
+ Development versions 
+ Tiny Takeover ( Guide ) 
+ 26.1 
+ snap1 
+ snap2 
+ snap3 
+ snap4 
+ snap5 
+ snap6 
+ snap7 
+ snap8 
+ snap9 
+ snap10 
+ snap11 
+ pre1 
+ pre2 
+ pre3 
+ rc1 
+ rc2 
+ rc3 
+ 26.1.1 
+ rc1 
+ 26.1.2 
+ rc1 
+ Chaos Cubed ( Guide ) 
+ 26.2 
+ snap1 
+ snap2 
+ snap3 
+ snap4 
+ snap5 
+ snap6 
+ snap7 
+ snap8 
+ pre1 
+ pre2 
+ pre3 
+ pre4 
+ pre5 
+ pre6 
+ rc1 
+ rc2 
+ Wilderness Bound ( Guide ) 
+ 26.3 
+ snap1 
+ snap2 
+ snap3 
+ snap4 
+ snap5 
+ snap6 
+ snap7 
+ snap8 
+ snap9 
+ snap10 
+ pre1 
+ pre2 
+ * indicates a reupload  | †  indicates a lost version  | ‡  indicates a version with a variant 
+ Retrieved from " https://minecraft.wiki/w/Java_Edition_1.13?oldid=3751089 " 
+ Categories : Java Edition releases with vulnerabilities Java Edition versions Hidden category: Pages with YouTube videos 
+ Navigation menu 
+ Personal tools 
+ Create account Log in 
+ associated-pages 
+ Page Talk 
+ English 
+ Views 
+ Read Edit Edit source View history 
+ More 
+ Search 
+ Navigation 
+ How to help Recent changes Random page in Minecraft in Dungeons in Dungeons II in Legends in Earth in Story Mode in Tutorial in Movie Wiki Discord 
+ Wiki community 
+ Community portal Wiki forum Projects Wiki rules Style guide Notability Sandbox Admin noticeboard 
+ X 
+ Franchise 
+ Minecraft Minecraft Dungeons Minecraft Legends Minecraft Earth Minecraft: Story Mode A Minecraft Movie 
+ Recent versions 
+ Java Edition Latest: 26.2 Dev: 26.3-pre-2 Upcoming: 26.3 Bedrock Edition Latest: 26.45 Preview: 26.60.21 Upcoming: 26.50 Upcoming: 26.60 
+ Useful pages 
+ Trading Brewing Enchantments Mobs Blocks Items Crafting Smelting Tutorials Resource packs Redstone circuits 
+ Useful pages 
+ Weapons Enchanting Armor Artifacts Missions 
+ Useful pages 
+ Weapons Enchanting Armor Artifact 
+ Useful pages 
+ Friendly units Piglins Resources Biomes Structures Lost Legends 
+ Tools 
+ What links here Related changes Printable version Permanent link Page information Special pages View buckets 
+ In other languages 
+ Deutsch Español Français Italiano 日本語 한국어 Nederlands Português Русский ไทย Українська 中文 
+ This page was last edited on 31 August 2026, at 00:43. 
+ Content on this site is licensed under CC BY-NC-SA 3.0 unless otherwise noted; additional terms may apply . Not an official Minecraft website. We are not associated with Mojang or Microsoft. 
+ Privacy policy 
+ About Minecraft Wiki 
+ Disclaimers 
+ Terms of Use 
+ Contact Weird Gloop 
+ Mobile view 
+ 

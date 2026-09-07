@@ -567,6 +567,58 @@ pub const RECIPES: &[Recipe] = &[
         grid: &[Ing::Block(REDSTONE_BLOCK)],
         out: ItemStack::new(REDSTONE_WIRE, 9),
     },
+    // ---- 1.13 (Update Aquatic, VERIFIED changelog §Items live
+    // 2026-09-07) ----
+    // turtle shell: 5 scutes in the helmet shape (w/Turtle_Shell
+    // §Crafting: "Scutes x5" arranged like a helmet)
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(SCUTE), Ing::Block(SCUTE), Ing::Block(SCUTE),
+            Ing::Block(SCUTE), Ing::None,   Ing::Block(SCUTE),
+            Ing::None,       Ing::None,     Ing::None,
+        ],
+        out: ItemStack::new(TURTLE_SHELL, 1),
+    },
+    // dried kelp block: 9 dried kelp (w/Dried_Kelp_Block §Crafting)
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(DRIED_KELP), Ing::Block(DRIED_KELP), Ing::Block(DRIED_KELP),
+            Ing::Block(DRIED_KELP), Ing::Block(DRIED_KELP), Ing::Block(DRIED_KELP),
+            Ing::Block(DRIED_KELP), Ing::Block(DRIED_KELP), Ing::Block(DRIED_KELP),
+        ],
+        out: ItemStack::new(DRIED_KELP_BLOCK, 1),
+    },
+    // dried kelp block -> 9 dried kelp (the vanilla reverse craft —
+    // changelog: "can also be crafted back into dried kelp")
+    Recipe {
+        size: 1,
+        grid: &[Ing::Block(DRIED_KELP_BLOCK)],
+        out: ItemStack::new(DRIED_KELP, 9),
+    },
+    // conduit: heart of the sea + 8 nautilus shells (the ring —
+    // changelog: "Crafted using 1 heart of the sea and 8 nautilus
+    // shells")
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(NAUTILUS_SHELL), Ing::Block(NAUTILUS_SHELL), Ing::Block(NAUTILUS_SHELL),
+            Ing::Block(NAUTILUS_SHELL), Ing::Block(HEART_OF_THE_SEA), Ing::Block(NAUTILUS_SHELL),
+            Ing::Block(NAUTILUS_SHELL), Ing::Block(NAUTILUS_SHELL), Ing::Block(NAUTILUS_SHELL),
+        ],
+        out: ItemStack::new(CONDUIT, 1),
+    },
+    // blue ice: 9 packed ice (changelog: "Crafted using 9 packed ice")
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(PACKED_ICE), Ing::Block(PACKED_ICE), Ing::Block(PACKED_ICE),
+            Ing::Block(PACKED_ICE), Ing::Block(PACKED_ICE), Ing::Block(PACKED_ICE),
+            Ing::Block(PACKED_ICE), Ing::Block(PACKED_ICE), Ing::Block(PACKED_ICE),
+        ],
+        out: ItemStack::new(BLUE_ICE, 1),
+    },
 ];
 
 /// 1.12 (World of Color): the concrete-powder recipe — the engine's
@@ -954,5 +1006,50 @@ mod v112_tests {
         // the 2×2 inventory grid can't fit 9 ingredients
         let small = [ItemStack::new(SAND, 1); 4];
         assert!(match_grid(&small, 2).is_none());
+    }
+
+    /// 1.13 (Update Aquatic) recipes — VERIFIED changelog §Items (live
+    /// 2026-09-07): turtle shell (5 scutes, helmet shape), dried kelp
+    /// block (9 dried kelp) + the reverse, the conduit ring (8 shells
+    /// + heart of the sea), blue ice (9 packed ice).
+    #[test]
+    fn v113_aquatic_recipes() {
+        // turtle shell: the helmet-shaped 5-scute pattern
+        let mut g = vec![ItemStack::EMPTY; 9];
+        for i in [0usize, 1, 2, 3, 5] {
+            g[i] = ItemStack::new(SCUTE, 2);
+        }
+        let out = match_grid(&g, 3).unwrap();
+        assert_eq!(out.block, TURTLE_SHELL);
+        assert_eq!(out.count, 1);
+        // 4 scutes (missing a side) is not the helmet
+        let mut g2 = g.clone();
+        g2[5] = ItemStack::EMPTY;
+        assert!(match_grid(&g2, 3).is_none(), "4 scutes do not craft the shell");
+        // dried kelp block: 9 dried kelp
+        let g3 = vec![ItemStack::new(DRIED_KELP, 1); 9];
+        let out3 = match_grid(&g3, 3).unwrap();
+        assert_eq!(out3.block, DRIED_KELP_BLOCK);
+        // the reverse: one block -> 9 dried kelp
+        let g4 = vec![ItemStack::new(DRIED_KELP_BLOCK, 1)];
+        let out4 = match_grid(&g4, 1).unwrap();
+        assert_eq!(out4.block, DRIED_KELP);
+        assert_eq!(out4.count, 9);
+        // the conduit: 8 nautilus shells + heart of the sea (ring)
+        let mut g5 = vec![ItemStack::EMPTY; 9];
+        for i in [0usize, 1, 2, 3, 5, 6, 7, 8] {
+            g5[i] = ItemStack::new(NAUTILUS_SHELL, 1);
+        }
+        g5[4] = ItemStack::new(HEART_OF_THE_SEA, 1);
+        let out5 = match_grid(&g5, 3).unwrap();
+        assert_eq!(out5.block, CONDUIT);
+        // 8 shells + cobble center: not the conduit
+        let mut g6 = g5.clone();
+        g6[4] = ItemStack::new(COBBLE, 1);
+        assert!(match_grid(&g6, 3).is_none(), "the heart of the sea is required");
+        // blue ice: 9 packed ice
+        let g7 = vec![ItemStack::new(PACKED_ICE, 1); 9];
+        let out7 = match_grid(&g7, 3).unwrap();
+        assert_eq!(out7.block, BLUE_ICE);
     }
 }

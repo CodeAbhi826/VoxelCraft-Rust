@@ -10,12 +10,13 @@
 //!
 //! This module reproduces that architecture clean-room:
 //! - `paint_cubemap()` renders the six faces ONCE (at renderer init) from a
-//!   deterministic procedural scene — sky gradient, blocky sun, fbm clouds,
-//!   a rolling voxel-flavored hill line with a tree belt and a lake sector.
-//!   It is "pre-rendered" in the exact sense that matters: the menus never
-//!   touch the world/meshing pipeline, so a slow GPU mesher or heavy world
-//!   gen can never stall the title screen again (the user-reported
-//!   minute-long "loading" was exactly that coupling).
+//!   deterministic procedural scene — Nether-Update theme to match 1.16.x
+//!   (crimson fog sky, lava-glow horizon, netherrack ground, a crimson
+//!   canopy tree belt and a glowing lava lake sector; no clouds — the
+//!   Nether has none). It is "pre-rendered" in the exact sense that
+//!   matters: the menus never touch the world/meshing pipeline, so a slow
+//!   GPU mesher or heavy world gen can never stall the title screen again
+//!   (the user-reported minute-long "loading" was exactly that coupling).
 //! - `PanoResources` owns the cube texture + a fullscreen pass that ray
 //!   casts per pixel from a (yaw, pitch, fov) camera and samples the cube.
 //!   The existing post chain then applies the menu blur on top of it.
@@ -366,26 +367,32 @@ pub fn paint_cubemap(size: u32) -> Vec<u8> {
     let s = size as usize;
     let mut out = vec![0u8; 6 * s * s * 4];
 
-    // palette (sRGB, converted to linear below)
-    let zenith = lin([0.34, 0.56, 0.88]);
-    let horizon_sky = lin([0.72, 0.84, 0.94]);
-    let warm = lin([0.96, 0.90, 0.76]);
-    let sun_disc = lin([1.0, 0.99, 0.94]);
-    let sun_halo = lin([1.0, 0.86, 0.62]);
-    let cloud_lit = lin([0.97, 0.98, 1.0]);
-    let cloud_shade = lin([0.66, 0.71, 0.80]);
-    let hill_far = lin([0.46, 0.58, 0.62]);
-    let hill_near = lin([0.37, 0.52, 0.36]);
+    // palette (sRGB, converted to linear below) — NETHER-UPDATE THEME:
+    // the 1.16.x title panorama reflects the Nether Update (VERIFIED
+    // minecraft.wiki/w/Panorama history: "1.16 ... Changed panorama in all
+    // released 1.16 snapshots to reflect the Nether Update"). Clean-room
+    // approximation of that look: crimson fog sky, lava-glow horizon,
+    // netherrack ground, a dark tree belt with crimson canopies (crimson
+    // forest), and a glowing lava lake sector. No sampled assets.
+    let zenith = lin([0.30, 0.06, 0.07]); // dark maroon void above
+    let horizon_sky = lin([0.56, 0.14, 0.11]); // crimson fog at eye level
+    let warm = lin([0.82, 0.34, 0.10]); // lava-glow band on the horizon
+    let sun_disc = lin([1.0, 0.60, 0.22]); // distant lava-sea glow
+    let sun_halo = lin([0.90, 0.40, 0.13]);
+    let cloud_lit = lin([0.97, 0.98, 1.0]); // unused — the Nether has no
+    let cloud_shade = lin([0.66, 0.71, 0.80]); // clouds (gated off below)
+    let hill_far = lin([0.34, 0.10, 0.10]); // hazy crimson far ridge
+    let hill_near = lin([0.26, 0.07, 0.08]); // netherrack near ridge
     let grass = [
-        lin([0.44, 0.62, 0.30]),
-        lin([0.36, 0.54, 0.27]),
-        lin([0.30, 0.47, 0.24]),
+        lin([0.40, 0.12, 0.12]), // netherrack light
+        lin([0.33, 0.09, 0.10]), // netherrack dark
+        lin([0.30, 0.06, 0.10]), // deep shade toward the nadir
     ];
-    let tree_lit = lin([0.19, 0.37, 0.17]);
-    let tree_dark = lin([0.13, 0.28, 0.13]);
-    let trunk = lin([0.36, 0.26, 0.16]);
-    let water = lin([0.22, 0.42, 0.60]);
-    let sparkle = lin([0.80, 0.90, 1.0]);
+    let tree_lit = lin([0.68, 0.10, 0.13]); // crimson canopy, lit
+    let tree_dark = lin([0.52, 0.08, 0.11]); // crimson canopy, shade
+    let trunk = lin([0.16, 0.09, 0.08]); // dark nether trunk
+    let water = lin([0.88, 0.36, 0.07]); // glowing lava lake
+    let sparkle = lin([1.0, 0.76, 0.30]); // bright lava crust glints
 
     let sun_len = (SUN[0] * SUN[0] + SUN[1] * SUN[1] + SUN[2] * SUN[2]).sqrt();
 
@@ -414,22 +421,21 @@ pub fn paint_cubemap(size: u32) -> Vec<u8> {
                 let warm_t = smoothstep(0.10, 0.0, elev.abs()) * 0.35;
                 col = mix(col, warm, warm_t);
 
-                // ---- sun disc + halo
+                // ---- sun disc + halo (reads as a distant lava glow in
+                // the Nether theme — dimmer than the overworld sun)
                 let dot = (d[0] * SUN[0] + d[1] * SUN[1] + d[2] * SUN[2]) / sun_len;
                 if dot > 0.0 {
-                    let halo = dot.powf(220.0) * 0.55;
+                    let halo = dot.powf(220.0) * 0.4;
                     col = mix(col, sun_halo, halo);
                     if dot > 0.999_35 {
                         col = sun_disc;
                     }
                 }
 
-                // ---- clouds: seam-free fbm on the direction, quantized a
-                // touch for the blocky look; fade at the horizon
-                let cn = fbm3(d[0] * 2.3, d[1] * 2.3 + 7.0, d[2] * 2.3);
-                let cn_q = (cn * 14.0).floor() / 14.0;
-                let cover =
-                    smoothstep(0.52, 0.70, cn_q) * smoothstep(-0.02, 0.14, elev);
+                // ---- clouds: none in the Nether theme (the overworld
+                // painter's fbm clouds are gated off; the palette entries
+                // stay so the field remains documented)
+                let cover = 0.0f32;
                 if cover > 0.001 && elev > -0.02 {
                     let shade = smoothstep(0.50, 0.80, fbm3(d[0] * 4.0, d[1] * 4.0, d[2] * 4.0));
                     let cloud_col = mix(cloud_shade, cloud_lit, 0.35 + 0.65 * shade);
@@ -451,26 +457,29 @@ pub fn paint_cubemap(size: u32) -> Vec<u8> {
                         let gcol = mix(grass[g], grass[2], depth * 0.7);
                         let mut col2 = gcol;
                         // lake sector: where the lake noise is high, the
-                        // ground near the horizon is water
+                        // ground near the horizon is a glowing lava lake
+                        // (crust glints stay quantized-blocky)
                         let lake = fbm_circle(az + 4.0, 1.6);
-                        if lake > 0.58 && below < near_h + 0.055 {
+                        if lake > 0.52 && below < near_h + 0.055 {
                             let sp = vnoise3(d[0] * 40.0, d[1] * 40.0, d[2] * 40.0);
                             let sp2 = smoothstep(0.72, 0.95, sp) * 0.6;
                             col2 = mix(water, sparkle, sp2);
                         }
                         // ---- voxel tree belt standing on the near ridge
+                        // (crimson-forest stand: dense, tall — the canopies
+                        // must read as trees, not a hedge line)
                         let cells = 132.0;
                         let cell = ((az + std::f32::consts::PI)
                             / (std::f32::consts::TAU)
                             * cells)
                             .floor() as i32;
                         let h = hash3(cell, 77, 0);
-                        if h < 0.62 {
+                        if h < 0.78 {
                             let local = ((az + std::f32::consts::PI)
                                 / std::f32::consts::TAU
                                 * cells)
                                 .fract();
-                            let hgt = 0.018 + 0.038 * hash3(cell, 78, 0);
+                            let hgt = 0.04 + 0.14 * hash3(cell, 78, 0);
                             // canopy profile, quantized to two steps (blocky)
                             let prof =
                                 (std::f32::consts::PI * local).sin().clamp(0.0, 1.0);
@@ -531,30 +540,45 @@ mod tests {
             let i = (face * 64 * 64 + y * 64 + x) * 4;
             [a[i], a[i + 1], a[i + 2]]
         };
-        // side faces (+X, +Z): top rows are sky (blue-dominant), bottom rows
-        // are ground (green-dominant) — the cube orientation contract the
-        // ray-cast shader's face selection relies on
+        // side faces (+X, +Z): top rows are sky (red-dominant — the
+        // Nether theme's crimson fog), bottom rows are ground (dark
+        // netherrack: red dominant over green) — the cube orientation
+        // contract the ray-cast shader's face selection relies on
         for face in [0usize, 4] {
             let sky = px(face, 32, 2);
             let ground = px(face, 32, 61);
-            assert!(sky[2] > sky[0], "sky must be blue-dominant, got {sky:?}");
+            assert!(sky[0] > sky[2], "sky must be red-dominant, got {sky:?}");
             assert!(
-                ground[1] > ground[2],
-                "ground must be green-dominant, got {ground:?}"
+                ground[0] > ground[1] && ground[0] > ground[2],
+                "ground must be netherrack red-dominant, got {ground:?}"
             );
         }
         // up face center is sky-ish; down face center is ground-ish
         let up = px(2, 32, 32);
-        assert!(up[2] > up[0], "up face must be sky, got {up:?}");
+        assert!(up[0] > up[2], "up face must be crimson sky, got {up:?}");
         let down = px(3, 32, 32);
-        assert!(down[1] > down[0], "down face must be ground, got {down:?}");
+        assert!(down[0] > down[1], "down face must be netherrack, got {down:?}");
 
         // optional visual dump for inspection (never set in CI):
         //   PANORAMA_DUMP=/tmp/pano cargo test -p vc-render panorama
+        // (the dump applies linear->sRGB so it matches what the in-game
+        // sRGB surface shows — the raw face data is linear-space)
         if let Ok(dir) = std::env::var("PANORAMA_DUMP") {
             let data = paint_cubemap(384);
+            let srgb = |v: f32| {
+                if v <= 0.003_130_8 {
+                    v * 12.92
+                } else {
+                    1.055 * v.powf(1.0 / 2.4) - 0.055
+                }
+            };
             for face in 0..6usize {
-                let slice = data[face * 384 * 384 * 4..(face + 1) * 384 * 384 * 4].to_vec();
+                let mut slice = data[face * 384 * 384 * 4..(face + 1) * 384 * 384 * 4].to_vec();
+                for px in slice.chunks_exact_mut(4) {
+                    for c in px.iter_mut().take(3) {
+                        *c = (srgb(*c as f32 / 255.0) * 255.0).round() as u8;
+                    }
+                }
                 let img = image::RgbaImage::from_raw(384, 384, slice)
                     .expect("face buffer size");
                 let _ = img.save(format!("{dir}/pano_{face}.png"));

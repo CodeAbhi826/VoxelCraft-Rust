@@ -175,6 +175,10 @@ pub fn set_text(w: &mut Widget, text: &str) {
 pub const ID_TITLE_PLAY: u16 = 1;
 pub const ID_TITLE_OPTIONS: u16 = 2;
 pub const ID_TITLE_QUIT: u16 = 3;
+/// vanilla-layout MULTIPLAYER stub (disabled until netcode exists — the
+/// button keeps the 1.16.5 stack visually exact; vanilla also grays it out
+/// when multiplayer is unavailable)
+pub const ID_TITLE_MULTI: u16 = 4;
 // Phase 1: world-select + world-create + death screens
 pub const ID_WS_WORLD_BASE: u16 = 60; // world entries: 60..60+MAX_LISTED
 pub const ID_WS_CREATE: u16 = 90;
@@ -223,34 +227,70 @@ pub const ID_OPT_DONE2: u16 = 34;
 /// equivalent; labeled plainly, not with a vanilla options.txt name)
 pub const ID_OPT_GMESH: u16 = 35;
 
-/// Title screen layout (quit button only exists on native).
+/// Button with explicit height (vanilla title buttons are 200x20 at GUI
+/// scale 2 = 300x30 on the 960x540 canvas).
+pub fn btn_h(
+    id: u16,
+    x: i32,
+    y: i32,
+    w: i32,
+    h: i32,
+    label: &str,
+    value: &str,
+    enabled: bool,
+) -> Widget {
+    Widget {
+        id,
+        x,
+        y,
+        w,
+        h,
+        kind: WidgetKind::Button {
+            label: label.to_string(),
+            value: value.to_string(),
+            enabled,
+        },
+    }
+}
+
+/// Title screen layout — vanilla 1.16.5 button stack proportions (the
+/// button row starts at half the screen height; full-width buttons 300px,
+/// bottom row two half-width 146px buttons; MULTIPLAYER disabled until
+/// netcode exists). Quit only exists on native.
 pub fn layout_title(is_web: bool) -> Vec<Widget> {
+    let cx = (UI_W as i32 - 300) / 2;
     let mut v = vec![
-        btn(
-            ID_TITLE_PLAY,
-            (UI_W as i32 - 320) / 2,
-            296,
-            320,
-            "SINGLEPLAYER",
-            "",
-            true,
-        ),
-        btn(
+        btn_h(ID_TITLE_PLAY, cx, 225, 300, 30, "SINGLEPLAYER", "", true),
+        btn_h(ID_TITLE_MULTI, cx, 270, 300, 30, "MULTIPLAYER", "", false),
+    ];
+    if is_web {
+        v.push(btn_h(
             ID_TITLE_OPTIONS,
-            (UI_W as i32 - 320) / 2,
-            352,
-            320,
+            cx,
+            315,
+            300,
+            30,
             "OPTIONS...",
             "",
             true,
-        ),
-    ];
-    if !is_web {
-        v.push(btn(
+        ));
+    } else {
+        v.push(btn_h(
+            ID_TITLE_OPTIONS,
+            cx,
+            315,
+            146,
+            30,
+            "OPTIONS...",
+            "",
+            true,
+        ));
+        v.push(btn_h(
             ID_TITLE_QUIT,
-            (UI_W as i32 - 320) / 2,
-            408,
-            320,
+            cx + 154,
+            315,
+            146,
+            30,
             "QUIT GAME",
             "",
             true,
@@ -614,6 +654,113 @@ impl UiCanvas {
         self.text(x, y, s, c, scale)
     }
 
+    /// Vanilla-style splash text: yellow, tilted -20 degrees (right side
+    /// up), pulsing at 2 Hz (VERIFIED minecraft.wiki/w/Splash: "yellow
+    /// lines of text on the title screen... pulsates at a frequency of
+    /// 2 Hz"; the tilt is the classic ~20-degree rotation at the logo's
+    /// bottom-right corner). Clean-room technique: the glyph run is
+    /// rasterized into a small bitmap, then blitted through an inverse
+    /// rotation with a sub-pixel scale wobble (vanilla wobbles 1.7->1.8).
+    pub fn text_splash(&mut self, cx: i32, cy: i32, s: &str, t: f32) {
+        let scale = 2i32;
+        let n = s.chars().count() as i32;
+        let tw = n * 6 * scale;
+        let th = 7 * scale;
+        let pad = 2; // outline margin
+        let bw = tw + pad * 2;
+        let bh = th + pad * 2;
+
+        // source bitmap: yellow glyphs + 1px dark outline
+        let mut src = vec![[0u8; 4]; (bw * bh) as usize];
+        let mut glyph_px: Vec<(i32, i32)> = Vec::new();
+        let mut pen = pad;
+        for ch in s.chars() {
+            let mut ch = ch as usize;
+            if ch < 32 || ch > 126 {
+                ch = '?' as usize;
+            }
+            if ch >= 'a' as usize && ch <= 'z' as usize {
+                ch -= 32; // smallcaps look (matches the rest of the UI font)
+            }
+            let glyph = &FONT[ch - 32];
+            for gy in 0..7i32 {
+                for gx in 0..5i32 {
+                    if glyph[gy as usize] & (1 << (4 - gx)) != 0 {
+                        for sy in 0..scale {
+                            for sx in 0..scale {
+                                glyph_px.push((pen + gx * scale + sx, pad + gy * scale + sy));
+                            }
+                        }
+                    }
+                }
+            }
+            pen += 6 * scale;
+        }
+        let mut put = |x: i32, y: i32, c: Color| {
+            if x >= 0 && y >= 0 && x < bw && y < bh {
+                src[(y * bw + x) as usize] = c;
+            }
+        };
+        for &(x, y) in &glyph_px {
+            put(x, y, [255, 255, 0, 255]);
+        }
+        // 8-neighborhood outline in dark yellow-brown
+        let gset: std::collections::HashSet<(i32, i32)> = glyph_px.iter().copied().collect();
+        let mut border: Vec<(i32, i32)> = Vec::new();
+        for &(x, y) in &glyph_px {
+            for (dx, dy) in [
+                (-1, 0),
+                (1, 0),
+                (0, -1),
+                (0, 1),
+                (-1, -1),
+                (1, -1),
+                (-1, 1),
+                (1, 1),
+            ] {
+                let p = (x + dx, y + dy);
+                if !gset.contains(&p) {
+                    border.push(p);
+                }
+            }
+        }
+        for (x, y) in border {
+            put(x, y, [63, 50, 0, 255]);
+        }
+
+        // rotated blit: -20 deg, pulse 1.00..1.06 at 2 Hz
+        let theta = -(20.0_f32).to_radians();
+        let (sn, cs) = (theta.sin(), theta.cos());
+        let pulse = 1.0 + 0.06 * (t * std::f32::consts::TAU).sin().abs();
+        let hw = ((bw as f32 * cs).abs() + (bh as f32 * sn).abs()) * 0.5 * pulse;
+        let hh = ((bw as f32 * sn).abs() + (bh as f32 * cs).abs()) * 0.5 * pulse;
+        let w = (hw * 2.0).ceil() as i32;
+        let h = (hh * 2.0).ceil() as i32;
+        let x0 = cx - w / 2;
+        let y0 = cy - h / 2;
+        let scx = bw as f32 / 2.0;
+        let scy = bh as f32 / 2.0;
+        for dy in 0..h {
+            for dx in 0..w {
+                // dest offset from center -> inverse-rotated source offset
+                // (forward is dest = R(theta)*src with theta = -20 deg: the
+                // text's right end maps UP the screen; the inverse below
+                // must be R(-theta) = R(+20), not R(theta) again)
+                let ox = dx as f32 - w as f32 / 2.0;
+                let oy = dy as f32 - h as f32 / 2.0;
+                let sx = (ox * cs + oy * sn) / pulse + scx;
+                let sy = (-ox * sn + oy * cs) / pulse + scy;
+                if sx < 0.0 || sy < 0.0 || sx >= bw as f32 || sy >= bh as f32 {
+                    continue;
+                }
+                let c = src[(sy as i32 * bw + sx as i32) as usize];
+                if c[3] != 0 {
+                    self.set(x0 + dx, y0 + dy, c);
+                }
+            }
+        }
+    }
+
     /// Draw a pixel-art sprite from string rows with a char→color palette.
     pub fn sprite(&mut self, x: i32, y: i32, rows: &[&str], palette: &[(char, Color)], scale: i32) {
         for (ry, row) in rows.iter().enumerate() {
@@ -647,7 +794,7 @@ impl UiCanvas {
         let body: Color = if enabled {
             [96, 96, 96, 235]
         } else {
-            [70, 70, 70, 200]
+            [56, 56, 56, 215]
         };
         self.rect(w.x, w.y, w.w, w.h, body);
         // bevel: light top/left, dark bottom/right
@@ -664,7 +811,7 @@ impl UiCanvas {
             self.frame(w.x + 2, w.y + 2, w.w - 4, w.h - 4, [255, 255, 255, 130]);
         }
         let text_col: Color = if !enabled {
-            [160, 160, 160, 255]
+            [145, 145, 145, 255]
         } else if hover {
             [255, 255, 160, 255]
         } else {
@@ -820,51 +967,41 @@ impl UiCanvas {
 
     // ----------------------------------------------------- screens ----
 
-    /// Title screen overlay (drawn over the panorama).
+    /// Title screen overlay (drawn over the panorama) — vanilla 1.16.5
+    /// structure: big logo top-center, yellow splash tilted -20 degrees at
+    /// the logo's bottom-right corner pulsing at 2 Hz, button stack starting
+    /// at half screen height, version bottom-left, disclaimer bottom-right.
+    /// (VERIFIED minecraft.wiki/w/Title_screen + /w/Splash.)
     pub fn title_screen(&mut self, splash: &str, ws: &[Widget], hover: Option<u16>, time: f32) {
-        // dim band behind logo area so it reads over bright panorama
-        self.rect(0, 30, UI_W as i32, 120, [0, 0, 0, 60]);
-        // logo with outline + drop shadow
-        let scale = 7;
+        // logo: big blocky wordmark over the panorama (vanilla draws its
+        // logo with a dark outline — no dim band behind it)
+        let scale = 12;
         let logo = "VOXELCRAFT";
         let lw = Self::text_width(logo, scale);
         let lx = (UI_W as i32 - lw) / 2;
-        let ly = 52;
+        let ly = 18;
         // soft drop shadow
-        self.text(lx + 3, ly + 4, logo, [0, 0, 0, 160], scale);
+        self.text(lx + 4, ly + 6, logo, [0, 0, 0, 150], scale);
         // dark outline pass
         self.text_outlined(lx, ly, logo, [235, 235, 235, 255], [42, 42, 42, 255], scale);
-        self.text_center(
-            ly + 58,
-            "A 1.16.5-STYLE VOXEL ENGINE",
-            [200, 200, 200, 255],
-            1,
-        );
 
-        // splash: yellow, pulsing, tucked at the logo's right
-        let pulse = 0.5 + 0.5 * (time * 3.2).sin();
-        let alpha = (150.0 + 105.0 * pulse) as u8;
+        // splash: yellow, tilted -20 deg (right side up), pulsing 2 Hz,
+        // tucked at the logo's bottom-right corner
         let sw = Self::text_width(splash, 2);
-        let sx = (lx + lw - sw / 2).min(UI_W as i32 - sw - 8).max(8);
-        self.text_outlined(
-            sx,
-            ly + 44,
-            splash,
-            [255, 255, 60, alpha],
-            [60, 50, 0, alpha],
-            2,
-        );
+        let cx = (lx + lw - 30 - sw / 2).clamp(40, UI_W as i32 - 40);
+        let cy = ly + 62;
+        self.text_splash(cx, cy, splash, time);
 
         self.draw_widgets(ws, hover);
 
         self.text(
             8,
             UI_H as i32 - 20,
-            "VoxelCraft 2.0_beta (Rust + wgpu)",
+            "VoxelCraft 1.16.5",
             [220, 220, 220, 255],
             1,
         );
-        let vr = "100% PROCEDURAL — CLEAN-ROOM ASSETS";
+        let vr = "100% CLEAN-ROOM - NOT AN OFFICIAL GAME";
         let vw = Self::text_width(vr, 1);
         self.text(
             UI_W as i32 - vw - 8,
@@ -2007,68 +2144,87 @@ impl UiCanvas {
         self.text_center(UI_H as i32 / 2, sub, [200, 200, 200, 255], 1);
     }
 
-    /// Boot intro screen — the FIRST screen after opening the game:
-    /// logo + asset progress bar over a near-opaque dark wash (a faint
-    /// blurred-panorama glow reads through). No world exists behind it.
+    /// Boot intro screen — the FIRST screen after opening the game, in the
+    /// vanilla splash-screen structure: a solid studio-brand background, the
+    /// studio wordmark centered above mid-frame, and a thin white progress
+    /// bar (the only thing that animates). No panorama, no world, no text
+    /// caption — exactly the real boot screen's composition, clean-room.
     pub fn intro_screen(&mut self, progress: f32) {
-        self.rect(0, 0, UI_W as i32, UI_H as i32, [4, 6, 10, 238]);
-        // logo: same face as the title screen, centered mid-frame
-        let scale = 6;
+        // solid studio-brand red (clean-room color — not a sampled asset)
+        self.rect(0, 0, UI_W as i32, UI_H as i32, [239, 50, 61, 255]);
+        // studio wordmark: dark on the bright field, centered
+        let scale = 8;
         let logo = "VOXELCRAFT";
         let lw = Self::text_width(logo, scale);
         let lx = (UI_W as i32 - lw) / 2;
-        let ly = UI_H as i32 / 2 - 70;
-        self.text(lx + 3, ly + 4, logo, [0, 0, 0, 160], scale);
-        self.text_outlined(lx, ly, logo, [235, 235, 235, 255], [42, 42, 42, 255], scale);
-        self.text_center(
-            ly + 58,
-            "A 1.16.5-STYLE VOXEL ENGINE",
-            [170, 170, 170, 255],
-            1,
+        let ly = 196;
+        self.text(lx + 3, ly + 4, logo, [120, 22, 28, 200], scale);
+        self.text(lx, ly, logo, [54, 54, 54, 255], scale);
+        // studio sub-brand, letter-spaced under the wordmark
+        let sub = "S T U D I O S";
+        let suw = Self::text_width(sub, 3);
+        self.text(
+            (UI_W as i32 - suw) / 2 + 2,
+            ly + 70,
+            sub,
+            [54, 54, 54, 255],
+            3,
         );
-        // status + thin progress bar (stages completed are asset-side —
-        // pack, atlas, pipelines, audio — all done before the first frame)
-        self.text_center(
-            UI_H as i32 / 2 + 24,
-            "LOADING ASSETS",
-            [210, 210, 210, 255],
-            1,
-        );
-        let bw = 320;
+        // thin white progress bar, centered, just past mid-frame (the bar
+        // tracks the settled intro beat — assets all load in GameApp::new)
+        let bw = 200;
         let x0 = (UI_W as i32 - bw) / 2;
-        let y0 = UI_H as i32 / 2 + 52;
-        self.frame(x0, y0, bw, 10, [255, 255, 255, 180]);
+        let y0 = 342;
+        self.rect(x0 - 1, y0 - 1, bw + 2, 7, [190, 36, 45, 255]);
         self.rect(
-            x0 + 2,
-            y0 + 2,
-            ((bw - 4) as f32 * progress.clamp(0.0, 1.0)) as i32,
-            6,
-            [110, 200, 90, 255],
-        );
-        // footer: clean-room note (no third-party marks anywhere in-game)
-        self.text_center(
-            UI_H as i32 - 20,
-            "100% PROCEDURAL — CLEAN-ROOM ENGINE",
-            [150, 150, 150, 255],
-            1,
+            x0,
+            y0,
+            (bw as f32 * progress.clamp(0.0, 1.0)) as i32,
+            5,
+            [255, 255, 255, 255],
         );
     }
 
-    pub fn vignette_loading(&mut self, msg: &str, progress: f32) {
-        self.rect(0, 0, UI_W as i32, UI_H as i32, [10, 12, 16, 120]);
-        self.text_center(UI_H as i32 / 2 - 20, "VOXELCRAFT", [255, 255, 255, 255], 4);
-        self.text_center(UI_H as i32 / 2 + 30, msg, [210, 210, 210, 255], 1);
-        let bw = 360;
-        let x0 = (UI_W as i32 - bw) / 2;
-        let y0 = UI_H as i32 / 2 + 60;
-        self.frame(x0, y0, bw, 12, [255, 255, 255, 200]);
-        self.rect(
-            x0 + 2,
-            y0 + 2,
-            ((bw - 4) as f32 * progress.clamp(0.0, 1.0)) as i32,
-            8,
-            [110, 200, 90, 255],
-        );
+    /// World-loading screen — vanilla 1.16.5 Java structure (VERIFIED
+    /// minecraft.wiki/w/Loading_world_screen): "Loading world" centered at
+    /// the top, the load percentage under it, and a 35x35 chunk colormap in
+    /// the middle that populates outward as chunks generate/light/mesh —
+    /// each pixel is one chunk, colored by pipeline status. The background
+    /// behind this overlay (panorama darkened+blurred, or the live world
+    /// during dimension travel) is chosen by game.rs.
+    ///
+    /// Cell codes (vanilla status-color language, mapped to OUR pipeline):
+    /// 0 empty (0x545454) · 1 terrain generated (0x80B252 "biomes") ·
+    /// 2 meshed + on GPU (0xFFFFFF "full") · 3 spawn chunk pending
+    /// (0xF26060 "spawn"). Color values are the wiki's exact table.
+    pub fn world_loading_screen(&mut self, percent: i32, cells: &[u8], center: usize) {
+        self.rect(0, 0, UI_W as i32, UI_H as i32, [10, 12, 16, 140]);
+        self.text_center(84, "LOADING WORLD", [255, 255, 255, 255], 2);
+        let pct = format!("{percent}%");
+        self.text_center(118, &pct, [220, 220, 220, 255], 2);
+
+        // 35x35 colormap, 4px cells (140px square, vanilla-proportioned)
+        const N: i32 = 35;
+        const CELL: i32 = 4;
+        let x0 = (UI_W as i32 - N * CELL) / 2;
+        let y0 = 170;
+        for row in 0..N {
+            for col in 0..N {
+                let idx = (row * N + col) as usize;
+                let c = if idx == center && cells[idx] != 2 {
+                    3 // spawn chunk stays red until it is fully meshed
+                } else {
+                    cells.get(idx).copied().unwrap_or(0)
+                };
+                let color: Color = match c {
+                    1 => [128, 178, 82, 255],  // biomes/terrain
+                    2 => [255, 255, 255, 255], // full
+                    3 => [242, 96, 96, 255],   // spawn
+                    _ => [84, 84, 84, 255],    // empty
+                };
+                self.rect(x0 + col * CELL, y0 + row * CELL, CELL, CELL, color);
+            }
+        }
     }
 }
 
@@ -2461,5 +2617,186 @@ mod tests {
             }
         }
         n
+    }
+}
+
+// ----------------------------------------------------- screen tests --
+
+#[cfg(test)]
+mod screen_tests {
+    use super::*;
+
+    fn px(c: &UiCanvas, x: i32, y: i32) -> [u8; 3] {
+        let i = (y as usize * UI_W + x as usize) * 4;
+        [c.px[i], c.px[i + 1], c.px[i + 2]]
+    }
+
+    /// The boot splash is the vanilla structure: a SOLID studio background
+    /// (not a wash over the panorama), the dark wordmark above center, and
+    /// a thin white bar whose fill tracks progress.
+    #[test]
+    fn intro_screen_is_solid_splash_with_white_bar() {
+        let mut c = UiCanvas::new();
+        c.intro_screen(0.5);
+        // background is the solid studio red, everywhere away from art
+        assert_eq!(px(&c, 5, 5), [239, 50, 61]);
+        assert_eq!(px(&c, UI_W as i32 - 6, UI_H as i32 - 6), [239, 50, 61]);
+        // bar: white fill present mid-bar (fill spans x0..x0+progress*200)
+        assert_eq!(px(&c, UI_W as i32 / 2 - 50, 344), [255, 255, 255]);
+        // fill scales with progress: quarter bar is shorter than full
+        let mut q = UiCanvas::new();
+        q.intro_screen(0.25);
+        let mut f = UiCanvas::new();
+        f.intro_screen(1.0);
+        let white_row = |c: &UiCanvas| -> usize {
+            (385..575)
+                .map(|x| px(c, x, 344) == [255, 255, 255])
+                .filter(|b| *b)
+                .count()
+        };
+        assert!(white_row(&f) > white_row(&q) + 20);
+    }
+
+    /// The title splash text is yellow, sits at the logo's bottom-right,
+    /// and is TILTED so its right end is higher than its left end (the
+    /// classic -20 degree rotation).
+    #[test]
+    fn title_splash_is_yellow_and_tilted() {
+        let mut c = UiCanvas::new();
+        // paint only the splash so the logo cannot pollute the bounds
+        c.text_splash(UI_W as i32 / 2, 120, "SPLASH!", 0.25);
+        let mut yellows: Vec<(i32, i32)> = Vec::new();
+        for y in 0..UI_H as i32 {
+            for x in 0..UI_W as i32 {
+                let p = px(&c, x, y);
+                if p == [255, 255, 0] {
+                    yellows.push((x, y));
+                }
+            }
+        }
+        assert!(!yellows.is_empty(), "splash must paint yellow pixels");
+        let min_x = yellows.iter().map(|p| p.0).min().unwrap();
+        let max_x = yellows.iter().map(|p| p.0).max().unwrap();
+        let y_at = |x: i32| yellows.iter().find(|p| p.0 == x).map(|p| p.1);
+        // right end higher (smaller y) than left end — the -20 deg tilt
+        let left = y_at(min_x).unwrap();
+        let right = y_at(max_x).unwrap();
+        assert!(
+            right < left,
+            "splash right end must tilt up: left y={left}, right y={right}"
+        );
+        // pulse changes the splash size (vanilla 2 Hz scale wobble)
+        let mut p0 = UiCanvas::new();
+        p0.text_splash(200, 120, "WOBBLE", 0.0);
+        let mut p1 = UiCanvas::new();
+        p1.text_splash(200, 120, "WOBBLE", 0.25);
+        let count = |c: &UiCanvas| c.px.chunks(4).filter(|p| p[3] != 0).count();
+        assert!(
+            count(&p1) > count(&p0),
+            "pulse peak must paint more pixels than the trough"
+        );
+    }
+
+    /// The world-loading screen shows the vanilla chunk-colormap: exact
+    /// wiki status colors, spawn cell red until meshed, and the percentage
+    /// text above the map.
+    #[test]
+    fn world_loading_colormap_uses_status_colors() {
+        let mut cells = [0u8; 35 * 35];
+        cells[0] = 1; // generated
+        cells[34] = 2; // meshed
+        // center (17,17) left pending -> spawn red
+        let mut c = UiCanvas::new();
+        c.world_loading_screen(43, &cells, 17 * 35 + 17);
+        // map origin: (UI_W-140)/2, 170 — 4px cells
+        let x0 = (UI_W as i32 - 140) / 2;
+        let y0 = 170;
+        assert_eq!(px(&c, x0, y0), [128, 178, 82], "generated cell = biomes green");
+        assert_eq!(
+            px(&c, x0 + 4 * 34 + 2, y0 + 2),
+            [255, 255, 255],
+            "meshed cell = full white"
+        );
+        assert_eq!(
+            px(&c, x0 + 4 * 17 + 2, y0 + 4 * 17 + 2),
+            [242, 96, 96],
+            "pending spawn cell = spawn red"
+        );
+        assert_eq!(px(&c, x0 + 8, y0 + 8), [84, 84, 84], "empty cell = gray");
+        // meshed center flips off the spawn marker
+        cells[17 * 35 + 17] = 2;
+        let mut c2 = UiCanvas::new();
+        c2.world_loading_screen(100, &cells, 17 * 35 + 17);
+        assert_eq!(px(&c2, x0 + 4 * 17 + 2, y0 + 4 * 17 + 2), [255, 255, 255]);
+    }
+
+    /// Title layout: vanilla 1.16.5 stack — two full-width buttons then the
+    /// half-width Options/Quit pair, all 30px tall, MULTIPLAYER disabled.
+    #[test]
+    fn title_layout_is_vanilla_stack() {
+        let ws = layout_title(false);
+        assert_eq!(ws.len(), 4);
+        let play = ws.iter().find(|w| w.id == ID_TITLE_PLAY).unwrap();
+        assert_eq!((play.w, play.h), (300, 30));
+        assert_eq!(play.y, 225);
+        let multi = ws.iter().find(|w| w.id == ID_TITLE_MULTI).unwrap();
+        assert!(!matches!(
+            &multi.kind,
+            WidgetKind::Button { enabled: false, .. }
+        ) || true);
+        assert!(matches!(
+            &multi.kind,
+            WidgetKind::Button { enabled: false, .. }
+        ));
+        let opts = ws.iter().find(|w| w.id == ID_TITLE_OPTIONS).unwrap();
+        let quit = ws.iter().find(|w| w.id == ID_TITLE_QUIT).unwrap();
+        assert_eq!((opts.w, quit.w), (146, 146));
+        assert_eq!(opts.y, quit.y);
+        assert!(quit.x > opts.x + opts.w, "options left, quit right");
+        // web layout: no quit button, options full-width
+        let web = layout_title(true);
+        assert!(web.iter().all(|w| w.id != ID_TITLE_QUIT));
+    }
+
+    /// Optional visual dump for inspection (never set in CI):
+    ///   UI_DUMP=/tmp/uidump cargo test -p vc-render screen
+    #[test]
+    fn ui_screens_dump() {
+        let Ok(dir) = std::env::var("UI_DUMP") else {
+            return;
+        };
+        let dump = |c: &UiCanvas, name: &str| {
+            let img = image::RgbaImage::from_raw(UI_W as u32, UI_H as u32, c.px.clone())
+                .expect("canvas size");
+            let _ = img.save(format!("{dir}/{name}.png"));
+        };
+        let mut intro = UiCanvas::new();
+        intro.intro_screen(0.62);
+        dump(&intro, "intro");
+
+        let mut title = UiCanvas::new();
+        // stand-in backdrop so contrast reads in the dump (the real bg is
+        // the painted panorama cubemap + menu blur)
+        for y in 0..UI_H as i32 {
+            for x in 0..UI_W as i32 {
+                let t = y as f32 / UI_H as f32;
+                title.set(x, y, [(90.0 * (1.0 - t) + 40.0) as u8, 20, 18, 255]);
+            }
+        }
+        let ws = layout_title(false);
+        title.title_screen("Also try going outside!", &ws, None, 0.25);
+        dump(&title, "title");
+
+        let mut loading = UiCanvas::new();
+        let mut cells = [0u8; 35 * 35];
+        for dy in -6..=6i32 {
+            for dx in -6..=6i32 {
+                let r = ((dx * dx + dy * dy) as f32).sqrt();
+                let idx = ((dy + 17) * 35 + (dx + 17)) as usize;
+                cells[idx] = if r < 3.0 { 2 } else if r < 5.0 { 1 } else { 0 };
+            }
+        }
+        loading.world_loading_screen(43, &cells, 17 * 35 + 17);
+        dump(&loading, "world-loading");
     }
 }

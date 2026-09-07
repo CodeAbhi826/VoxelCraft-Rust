@@ -10011,17 +10011,39 @@ impl GameApp {
                 return;
             }
             Screen::Loading => {
+                // vanilla world-loading screen: percentage + 35x35 chunk
+                // colormap colored by pipeline status (empty gray ->
+                // terrain green -> meshed white; spawn cell red until full)
                 let pc = self.player_chunk();
+                let mut cells = [0u8; 35 * 35];
+                for dz in -17..=17i32 {
+                    for dx in -17..=17i32 {
+                        let pos = (pc.0 + dx, pc.1 + dz);
+                        let st = if self.renderer.has_chunk(pos) {
+                            2
+                        } else if self.world.chunk(pos).is_some() {
+                            1
+                        } else {
+                            0
+                        };
+                        cells[((dz + 17) * 35 + (dx + 17)) as usize] = st;
+                    }
+                }
+                // progress metric the gate uses: meshed 5x5 around spawn
                 let mut have = 0.0;
                 for dz in -2..=2 {
                     for dx in -2..=2 {
-                        if self.renderer.has_chunk((pc.0 + dx, pc.1 + dz)) {
+                        if self
+                            .renderer
+                            .has_chunk((pc.0 + dx, pc.1 + dz))
+                        {
                             have += 1.0;
                         }
                     }
                 }
                 let progress = (have / 9.0_f32).min(1.0);
-                self.ui.vignette_loading("Building terrain...", progress);
+                self.ui
+                    .world_loading_screen((progress * 100.0) as i32, &cells, 17 * 35 + 17);
                 return;
             }
             Screen::Title => {
@@ -10543,23 +10565,27 @@ impl GameApp {
         let mut panorama: Option<vc_render::panorama::PanoView> = None;
         let (cam, menu_blur, selection) = match self.screen {
             Screen::Intro => {
-                // boot beat: dark wash over the (blurred) panorama
-                panorama = Some(pano_view);
-                (menu_cam(), 0.55, None)
+                // boot beat: solid studio splash (the UI paints the whole
+                // canvas opaque) — no panorama, no world, exactly like the
+                // real first screen
+                (menu_cam(), 0.0, None)
             }
             Screen::Title => {
+                // title: the pre-rendered panorama, soft-blurred like the
+                // real 1.16 title images (panorama files themselves carry a
+                // mild depth-of-field look)
                 panorama = Some(pano_view);
-                (menu_cam(), 0.9, None)
+                (menu_cam(), 0.45, None)
             }
             Screen::Options if self.options_from == Screen::Title => {
                 panorama = Some(pano_view);
-                (menu_cam(), 0.9, None)
+                (menu_cam(), 0.45, None)
             }
             // Phase 1: world screens ride the panorama like the title —
             // the real world list also sits on the panorama background
             Screen::WorldSelect | Screen::WorldCreate => {
                 panorama = Some(pano_view);
-                (menu_cam(), 0.9, None)
+                (menu_cam(), 0.45, None)
             }
             // Phase 1: death screen — frozen first-person view behind a
             // heavy red wash (the UI overlay paints it)
@@ -10573,10 +10599,11 @@ impl GameApp {
                 (cam, 0.55, None)
             }
             Screen::Loading => {
-                // world-entry loading: the panorama behind the dark progress
-                // wash (the world is not rendered — it does not exist yet,
-                // exactly like the real loading overlay); §28 travel: the
-                // LIVE world streams behind the blur (it already exists)
+                // world-entry loading: the panorama blurred + darkened
+                // behind the chunk-map overlay (the world is not rendered —
+                // it does not exist yet, exactly like the real loading
+                // screen); §28 travel: the LIVE world streams behind the
+                // blur (it already exists)
                 if !self.traveling {
                     panorama = Some(pano_view);
                 }
@@ -10586,7 +10613,7 @@ impl GameApp {
                     pitch: self.player.pitch,
                     fov: self.player.fov_cur,
                 };
-                (cam, if self.traveling { 0.35 } else { 0.55 }, None)
+                (cam, if self.traveling { 0.35 } else { 0.75 }, None)
             }
             Screen::Pause | Screen::Options => {
                 let cam = Camera {

@@ -1952,3 +1952,44 @@ noise + fbm), paints linear-space values into the linear scene texture
 (post re-encodes sRGB once), and follows the standard cube face conventions
 (layer order +X −X +Y −Y +Z −Z, u right / v down, top-left origin) so
 hardware face selection reconstructs the view without seams.
+
+---
+
+## 2026-09-07 (b) — follow-up: two live bugs the CI smoke + browser run flushed out
+
+**Task:** turn the startup-flow CI round green; verify the browser build
+visually (screenshots for the README).
+
+**Bug 1 — native clock frozen (THE root cause of the original
+"stuck on loading >1 minute"):** `now_secs()` returned UNIX-epoch seconds
+as **f32**. At ~1.79e9 the 24-bit mantissa resolves only ~128–216 s, so
+every `dt` computed from it was 0 — frozen clock: no physics, no menu
+timers, no fps, no toasts, and every "X seconds" timeout silently became
+minutes. The hoisted 15 s loading escape hatch could NEVER fire on native
+(only `ready` paths worked, which is why lavapipe CI passed while the
+user's machine hung). The intro's 1.1 s handover exposed it immediately
+(CI: frames submitted, loop alive, intro never completed, `timeout 124`).
+Irony: the wasm branch of the same function already carried the fix with
+a comment describing exactly this symptom — native never got it. Fixed
+with process uptime via `Instant` (monotonic, exact in f32 for days).
+
+**Bug 2 — stale-UI race on screen transitions (live-observed in the
+browser):** after the world-entry gate handed over to gameplay, the
+"VOXELCRAFT / BUILDING TERRAIN…" overlay + a partial progress bar stayed
+STUCK over sharp live terrain — no crosshair, no hotbar, forever (loop
+alive, fps=10). Cause: the UI rebuild gate throttles on cadence; right
+after a 20 Hz progress-screen rebuild it SKIPS the repaint, and render()
+then uploads the STALE canvas and clears `ui.dirty` → nothing ever
+repaints. The 20 Hz loading heartbeat made the race fire every time
+(previously it only fired sometimes). Fix: `set_screen()` backdates
+`last_ui_t` so a transition forces the repaint in the same frame.
+
+**Verification:** CI green end-to-end at 6ef8992 (lavapipe smoke:
+`intro complete … title in 1.12s` → `smoke: title reached — entering
+world` → `loading complete: 8 chunks on GPU in 0.3s` → `smoke: game
+entered — exiting 0`, exit 0); local wasm rebuild (wasm-bindgen 0.2.127
++ glue patch) clicked through in headless Chromium with the input-event
+queue — crosshair/hotbar/hearts verified, overlay gone. Screenshots
+saved as `docs/screenshots/startup-{intro,title-panorama,world-loading,
+gameplay}.png`; README gallery + maintenance note 4 updated. Panorama
+art itself VLM-verified (six faces: continuous horizon, no seams).

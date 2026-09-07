@@ -41,13 +41,20 @@ pub struct PanoView {
     pub fov: f32,
 }
 
-const PANO_SHADER: &str = r#"
+/// The panorama pass WGSL (naga-validated by render.rs's shader test).
+pub const PANO_SHADER: &str = r#"
 struct PanoU { p: vec4<f32> };
 @group(0) @binding(0) var<uniform> u: PanoU;
 @group(0) @binding(1) var tex: texture_cube<f32>;
 @group(0) @binding(2) var samp: sampler;
 
-struct VOut { @builtin(position) pos: vec4f };
+struct VOut {
+    @builtin(position) pos: vec4f,
+    // NDC-space coords (y up): @builtin(position) in the FRAGMENT stage is
+    // framebuffer pixels, not NDC — so the ray basis interpolates this
+    // varying instead of deriving from pos
+    @location(0) ndc: vec2f,
+};
 
 @vertex
 fn vs(@builtin(vertex_index) vi: u32) -> VOut {
@@ -59,15 +66,16 @@ fn vs(@builtin(vertex_index) vi: u32) -> VOut {
     );
     var o: VOut;
     o.pos = vec4f(pos[vi], 0.0, 1.0);
+    o.ndc = pos[vi];
     return o;
 }
 
 @fragment
 fn fs(v: VOut) -> @location(0) vec4f {
-    // pixel → NDC (w=1, so clip xy IS ndc), NDC → camera ray through the
-    // yaw/pitch camera, then cubemap lookup. Same basis as the engine's
-    // Camera (yaw=0 faces −Z, +yaw turns right; pitch +up).
-    let ndc = v.pos.xy;
+    // NDC → camera ray through the yaw/pitch camera, then cubemap
+    // lookup. Same basis as the engine's Camera (yaw=0 faces −Z, +yaw
+    // turns right; pitch +up).
+    let ndc = v.ndc;
     let aspect = u.p.w;
     let tanf = u.p.z;
     let yaw = u.p.x;
@@ -504,4 +512,53 @@ pub fn paint_cubemap(size: u32) -> Vec<u8> {
         }
     }
     out
+}
+
+// ------------------------------------------------------------------ tests --
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn panorama_painter_is_deterministic_and_oriented() {
+        let a = paint_cubemap(64);
+        let b = paint_cubemap(64);
+        assert_eq!(a, b, "painter must be deterministic (no RNG)");
+        assert_eq!(a.len(), 6 * 64 * 64 * 4, "six 64px faces, RGBA");
+
+        let px = |face: usize, x: usize, y: usize| -> [u8; 3] {
+            let i = (face * 64 * 64 + y * 64 + x) * 4;
+            [a[i], a[i + 1], a[i + 2]]
+        };
+        // side faces (+X, +Z): top rows are sky (blue-dominant), bottom rows
+        // are ground (green-dominant) — the cube orientation contract the
+        // ray-cast shader's face selection relies on
+        for face in [0usize, 4] {
+            let sky = px(face, 32, 2);
+            let ground = px(face, 32, 61);
+            assert!(sky[2] > sky[0], "sky must be blue-dominant, got {sky:?}");
+            assert!(
+                ground[1] > ground[2],
+                "ground must be green-dominant, got {ground:?}"
+            );
+        }
+        // up face center is sky-ish; down face center is ground-ish
+        let up = px(2, 32, 32);
+        assert!(up[2] > up[0], "up face must be sky, got {up:?}");
+        let down = px(3, 32, 32);
+        assert!(down[1] > down[0], "down face must be ground, got {down:?}");
+
+        // optional visual dump for inspection (never set in CI):
+        //   PANORAMA_DUMP=/tmp/pano cargo test -p vc-render panorama
+        if let Ok(dir) = std::env::var("PANORAMA_DUMP") {
+            let data = paint_cubemap(384);
+            for face in 0..6usize {
+                let slice = data[face * 384 * 384 * 4..(face + 1) * 384 * 384 * 4].to_vec();
+                let img = image::RgbaImage::from_raw(384, 384, slice)
+                    .expect("face buffer size");
+                let _ = img.save(format!("{dir}/pano_{face}.png"));
+            }
+        }
+    }
 }

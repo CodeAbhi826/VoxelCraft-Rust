@@ -3,6 +3,7 @@
 //! light), water (blend + waves), selection wireframe, UI (bitmap canvas).
 
 use crate::draw::{self, ChunkGpu, DrawCmd, IndirectArgs, MeshSlot, SlotAlloc, VisEntry};
+use crate::panorama::{PanoResources, PanoUniform, PanoView};
 use crate::textures;
 use crate::ui::{UiCanvas, UI_H, UI_W};
 use glam::{Mat4, Vec3, Vec4};
@@ -1332,6 +1333,8 @@ pub struct Renderer {
     part_bgl: wgpu::BindGroupLayout,
     // post-processing
     post_targets: PostTargets,
+    /// title/menu panorama (pre-rendered cubemap; see panorama.rs)
+    pano: PanoResources,
     post_samp: wgpu::Sampler,
     post_buf: wgpu::Buffer,
     /// composite pipeline variant targeting the LINEAR pack handoff target
@@ -2995,6 +2998,8 @@ impl Renderer {
             report_boot_log("gpu meshing unavailable: adapter lacks compute (WebGL2-class)");
             None
         };
+        // pre-render the menu panorama cubemap (one-shot painter → cube)
+        let pano = PanoResources::new(&device, &queue);
         let renderer = Renderer {
             surface,
             device,
@@ -3007,6 +3012,7 @@ impl Renderer {
             atlas_data: atlas.to_vec(),
             mip_levels: 0,
             aniso: 1,
+            pano,
             globals_buf,
             world_bgl,
             world_bg,
@@ -4196,6 +4202,7 @@ impl Renderer {
         selection: Option<(i32, i32, i32)>,
         post: &PostParams,
         clouds: bool,
+        panorama: Option<PanoView>,
         particles: &[vc_particles::particles::ParticleVertex],
     ) -> RenderStats {
         let frame = match self.surface.get_current_texture() {
@@ -4212,6 +4219,15 @@ impl Renderer {
             .create_view(&wgpu::TextureViewDescriptor::default());
 
         let aspect = self.config.width as f32 / self.config.height as f32;
+        // menu panorama: refresh the ray-basis uniform (yaw/pitch/fov/aspect)
+        // — the pass below draws the cubemap instead of the world
+        if let Some(pv) = panorama {
+            let pu = PanoUniform {
+                p: [pv.yaw, pv.pitch, (pv.fov * 0.5).tan(), aspect],
+            };
+            self.queue
+                .write_buffer(&self.pano.uniform_buf, 0, bytemuck::bytes_of(&pu));
+        }
         let dir = Vec3::new(
             cam.yaw.sin() * cam.pitch.cos(),
             cam.pitch.sin(),
@@ -4333,8 +4349,9 @@ impl Renderer {
         // ──────────────────────────────── sun shadow camera + globals ──
         // Ortho box following the player, aligned to the sun. The light-space
         // center is snapped to shadow-map texels so camera movement doesn't
-        // make the shadows swim. Disabled at night / when strength = 0.
-        let sun_up = sky.sun_dir.y > 0.06;
+        // make the shadows swim. Disabled at night / when strength = 0 /
+        // while the menus run on the pre-rendered panorama (no world drawn).
+        let sun_up = sky.sun_dir.y > 0.06 && panorama.is_none();
         let sh_strength = if sun_up {
             post.shadows.clamp(0.0, 1.0)
         } else {
@@ -4601,11 +4618,14 @@ impl Renderer {
         // ─────────────────────────────────────────────── pass 1: scene ──
         // (sky + terrain + selection + water + clouds → offscreen LINEAR
         // scene texture — the composite encodes to srgb once at the end)
+        // In panorama mode (menus) this pass draws ONLY the pre-rendered
+        // cubemap: no world, no meshes, no clouds — the post chain's menu
+        // blur and the UI overlay go on top of it as usual.
         // Phase 6 §26: with MSAA on, the scene renders into a multisampled
         // color+depth pair and resolves into the scene target automatically
         // at pass end (driver resolve — the Rgba8Unorm+X4+RESOLVE support
         // was capability-checked at boot); the post chain stays 1x.
-        let msaa_on = self.msaa > 0 && self.msaa_view.is_some();
+        let msaa_on = panorama.is_none() && self.msaa > 0 && self.msaa_view.is_some();
         let color_view: &wgpu::TextureView = if msaa_on {
             self.msaa_view.as_ref().unwrap()
         } else {
@@ -4667,6 +4687,15 @@ impl Renderer {
                 occlusion_query_set: None,
             });
 
+            if panorama.is_some() {
+                // menu mode: the pre-rendered panorama cubemap IS the whole
+                // scene (no sky/terrain/water/particles/clouds) — the post
+                // chain blurs it and the UI overlay draws on top
+                pass.set_pipeline(&self.pano.pipeline);
+                pass.set_bind_group(0, &self.pano.bind_group, &[]);
+                pass.draw(0..3, 0..1);
+                stats.draws += 1;
+            } else {
             // 1. sky (§28: skipped in skyless dimensions — the nether's
             // fog-colored clear color IS the sky)
             if !sky.skyless {
@@ -4722,6 +4751,7 @@ impl Renderer {
                 pass.set_vertex_buffer(0, self.cloud_vb.slice(..));
                 pass.draw(0..6, 0..1);
             }
+            } // panorama else-branch (world passes)
         }
 
         // ─────────────────────────────────────── pass 2/3: bloom pyramid ──

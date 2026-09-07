@@ -92,15 +92,16 @@ jobs:
           # 4. size summary
           echo "single-file game: $(du -h "$BIN_NAME" | cut -f1) — $BIN_NAME"
 
-      - name: Smoke-test the executable (headless boot → title screen)
+      - name: Smoke-test the executable (headless boot → world entry)
         # BLOCKING-BUG REGRESSION GUARD: the first live runner of this
         # binary sat on "Building terrain…" forever (loading timeout was
         # unreachable with 0 GPU chunks — fixed in game.rs; GPU-mesher
         # readback stall watchdog in gpu_mesh.rs). The build used to stop
         # at file/ldd checks and never RAN the game it shipped; now the
         # binary must boot headless on lavapipe (software Vulkan under
-        # Xvfb), pass the loading gate, reach the title screen, and
-        # exit 0 via --smoke.
+        # Xvfb), run the REAL startup path — intro (asset bar) → title
+        # (pre-rendered panorama, no world gen) → world entry through the
+        # loading gate → gameplay — and exit 0 via --smoke.
         run: |
           # headless graphics stack: Xvfb (X11) + lavapipe (software
           # Vulkan ICD — wgpu's native path; compute included, so the GPU
@@ -120,12 +121,14 @@ jobs:
           set -e
           echo "smoke exit code: $CODE"
           if [ "$CODE" -ne 0 ]; then
-            echo "FAIL: binary did not reach the title screen cleanly (see log above)"
+            echo "FAIL: binary did not reach gameplay cleanly (see log above)"
             exit 1
           fi
+          grep -q "intro complete" smoke.log
           grep -q "smoke: title reached" smoke.log
           grep -qE "loading (complete|timeout)" smoke.log
-          echo "SMOKE OK — the single-file binary boots to the title screen headless (llvmpipe)"
+          grep -q "smoke: game entered" smoke.log
+          echo "SMOKE OK — the single-file binary boots (intro → panorama title) and enters a world headless (lavapipe)"
 
       - name: Upload artifact (the raw executable, no archive)
         uses: actions/upload-artifact@v4

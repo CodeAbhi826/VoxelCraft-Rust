@@ -228,6 +228,10 @@ impl Settings {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Screen {
+    /// Boot intro: the first screen after opening the game — logo + asset
+    /// progress bar over a dark beat (assets only, NO world generation;
+    /// vanilla-style startup). Hands over to the title panorama.
+    Intro,
     Loading,
     Title,
     Options,
@@ -267,6 +271,7 @@ pub enum Container {
 impl Screen {
     pub fn name(self) -> &'static str {
         match self {
+            Screen::Intro => "intro",
             Screen::Loading => "loading",
             Screen::Title => "title",
             Screen::Options => "options",
@@ -282,7 +287,8 @@ impl Screen {
     pub fn is_menu(self) -> bool {
         matches!(
             self,
-            Screen::Title
+            Screen::Intro
+                | Screen::Title
                 | Screen::Options
                 | Screen::Pause
                 | Screen::WorldSelect
@@ -294,7 +300,7 @@ impl Screen {
 
 const SPLASHES: [&str; 14] = [
     "100% Rust!",
-    "Also try Minecraft!",
+    "Also try going outside!",
     "Procedural everything!",
     "wgpu powered!",
     "Zero assets copied!",
@@ -639,9 +645,16 @@ pub struct GameApp {
     spawn_snapped: bool,
     faced_land: bool,
     load_start: f32,
-    /// CI smoke contract (linux-game.yml): exit(0) the moment the loading
-    /// gate completes and the title screen is reached — lets the workflow
-    /// prove the single-file binary actually boots headless (llvmpipe).
+    /// boot intro screen start (Screen::Intro → Title; the menus never
+    /// generate world data — they run on the pre-rendered panorama)
+    intro_start: f32,
+    /// CI smoke contract (linux-game.yml): boot headless and exit(0) once
+    /// GAMEPLAY is reached — stage 1 logs "smoke: title reached" at the
+    /// intro→title handover, then a world is created through the real
+    /// pipeline (reset_world → Loading gate), stage 2 is the gate's own
+    /// "loading (complete|timeout)" line, stage 3 logs "smoke: game
+    /// entered" and exits 0. Proves the single-file binary boots AND
+    /// enters a world headless (lavapipe) — covers the original hang path.
     pub smoke: bool,
     edits: u32,
     stats_t: f32,
@@ -1117,7 +1130,7 @@ impl GameApp {
             particles: vc_particles::particles::ParticleSystem::new(0x5EED_0042),
             particle_verts: Vec::new(),
             input: Input::default(),
-            screen: Screen::Loading,
+            screen: Screen::Intro,
             options_from: Screen::Title,
             options_page: 0,
             widgets: Vec::new(),
@@ -1164,6 +1177,7 @@ impl GameApp {
             spawn_snapped: false,
             faced_land: false,
             load_start: 0.0,
+            intro_start: now_secs(),
             smoke: false,
             edits: 0,
             stats_t: 0.0,
@@ -4077,6 +4091,10 @@ impl GameApp {
         use ui::*;
         let s = self.settings.clone();
         match self.screen {
+            Screen::Intro => {
+                // no widgets: the intro is a non-interactive boot beat
+                self.widgets = Vec::new();
+            }
             Screen::Title => {
                 self.widgets = layout_title(cfg!(target_arch = "wasm32"));
             }
@@ -5118,6 +5136,13 @@ impl GameApp {
             }
         }
 
+        // CI smoke contract, stage 3 (see the field doc): the world-entry
+        // loading gate has delivered gameplay — exit 0 headless
+        if self.smoke && self.screen == Screen::Game {
+            vc_render::render::report_boot_log("smoke: game entered — exiting 0");
+            std::process::exit(0);
+        }
+
         // Phase 4 §18: settle incremental light updates, then fold the
         // engine's EXACT changed sections into the §12 dirty map (replaces
         // the heuristic light regions from Phase 3)
@@ -5127,8 +5152,24 @@ impl GameApp {
                 .mark_sections_dirty(pos, mask, vc_world::world::CAUSE_LIGHT);
         }
 
-        // stream chunks (also during title/menus: the panorama keeps loading)
-        crate::phase!(self.phases, crate::bench::PHASE_STREAM, self.stream());
+        // stream chunks — ONLY while a world is actually in play: the
+        // world-entry loading screen, gameplay, pause/death, and in-game
+        // options. The menus run on the pre-rendered panorama (see
+        // vc-render/src/panorama.rs): NO chunk generation, meshing or GPU
+        // upload happens behind the title screen — vanilla generates the
+        // world only when it is entered, behind its own progress screen.
+        // The old always-on streaming built the whole spawn area before
+        // the title could even appear (the user-reported minute-long
+        // "loading" — chunks_gpu=0 on the Loading screen was this
+        // coupling, and the live-world menu background was its visual).
+        let world_active = matches!(
+            self.screen,
+            Screen::Loading | Screen::Game | Screen::Pause | Screen::Death
+        ) || (self.screen == Screen::Options
+            && self.options_from == Screen::Game);
+        if world_active {
+            crate::phase!(self.phases, crate::bench::PHASE_STREAM, self.stream());
+        }
 
         // particles: fixed 20 Hz sim against the live world (§16.2 pass 4)
         crate::phase!(self.phases, crate::bench::PHASE_SIM, {
@@ -7092,6 +7133,44 @@ impl GameApp {
             }
         }
 
+        // intro → title: the boot beat. Assets (builtin pack, atlas,
+        // pipelines, audio) all loaded in GameApp::new BEFORE the first
+        // frame; the intro screen is the vanilla-style first screen after
+        // opening the game (logo + asset progress bar) and hands over to
+        // the title panorama when the bar settles. No world generation
+        // runs here or behind the menus — chunks generate only when a
+        // world is entered (the Loading gate below).
+        if self.screen == Screen::Intro {
+            // progress screens animate: keep the UI canvas dirty so the
+            // asset bar redraws (menus rebuild at the 0.05 s cadence)
+            self.ui.dirty = true;
+            let t = self.time - self.intro_start;
+            if t > 1.1 {
+                vc_render::render::report_boot_log(&format!(
+                    "intro complete: assets ready, title in {:.2}s \
+                     (menus run on the pre-rendered panorama — no world gen)",
+                    t
+                ));
+                self.set_screen(Screen::Title);
+                // CI smoke contract, stage 1: title reached through the
+                // real boot path; then enter a world through the real
+                // pipeline (reset_world → Loading gate → start_game) so
+                // the smoke covers the world-entry path the original
+                // loading hang lived in
+                if self.smoke {
+                    vc_render::render::report_boot_log(
+                        "smoke: title reached — entering world",
+                    );
+                    self.reset_world(
+                        12345,
+                        vc_gameplay::modes::GameMode::Survival,
+                        "Smoke World".into(),
+                        None,
+                    );
+                }
+            }
+        }
+
         // loading → wait for spawn chunk, then snap to surface → title screen
         // BLOCKING-BUG FIX (user report: fall-through-world): the snap now
         // keys on chunk DATA, not the GPU mesh. On slow devices meshing can
@@ -7106,6 +7185,9 @@ impl GameApp {
             self.try_snap_to_surface();
         }
         if self.screen == Screen::Loading {
+            // the terrain progress bar animates as chunks land: keep the
+            // UI canvas dirty (rebuilt at the 0.05 s menu cadence)
+            self.ui.dirty = true;
             let pc = self.player_chunk();
             // BLOCKING-BUG FIX (user report: the single-file CI binary sat
             // on "Building terrain…" forever — chunks_gpu=0 for 60+ s). The
@@ -7161,8 +7243,9 @@ impl GameApp {
                         mesher.as_deref().unwrap_or("off")
                     ));
                 }
-                // boot → title screen; §28 travel → straight back to play;
-                // Phase 1 world create/play/respawn → into the game
+                // world-entry → into the game (create/play/respawn);
+                // §28 travel → straight back to play; a bare Loading (no
+                // pending_play/travel — e.g. a cancelled entry) → title
                 if self.traveling {
                     self.set_screen(Screen::Game);
                 } else if self.pending_play {
@@ -7170,15 +7253,6 @@ impl GameApp {
                     self.start_game();
                 } else {
                     self.set_screen(Screen::Title);
-                    // CI smoke contract (linux-game.yml): --smoke boots
-                    // headless and exits 0 right here — proves the loading
-                    // gate delivered on a clean machine
-                    if self.smoke {
-                        vc_render::render::report_boot_log(
-                            "smoke: title reached — exiting 0",
-                        );
-                        std::process::exit(0);
-                    }
                 }
                 self.traveling = false;
             }
@@ -9913,6 +9987,13 @@ impl GameApp {
         self.ui.clear();
 
         match self.screen {
+            Screen::Intro => {
+                // asset progress: assets load in GameApp::new, so the bar
+                // tracks the settled intro beat (0→1 over the screen)
+                let p = ((self.time - self.intro_start) / 1.1).clamp(0.0, 1.0);
+                self.ui.intro_screen(p);
+                return;
+            }
             Screen::Loading => {
                 let pc = self.player_chunk();
                 let mut have = 0.0;
@@ -10418,48 +10499,51 @@ impl GameApp {
                 (end * 0.55, end, fog)
             };
 
-        // camera: panorama on the title screen, player otherwise
+        // Menu background = the pre-rendered panorama cubemap (VERIFIED
+        // 2026-09-07 live, minecraft.wiki/w/Panorama: a slowly panning
+        // wide-angle view shown behind every menu that does not cover the
+        // whole background — six pre-rendered square faces, NOT the live
+        // world). The camera below is only a stand-in basis for billboard
+        // vertices in these screens (none tick in the menus). World-entry
+        // Loading rides the panorama darkened behind the progress bar;
+        // §28 travel keeps the live-world view (that world exists and
+        // keeps streaming).
+        let pano_view = vc_render::panorama::PanoView {
+            // vanilla-equivalent slow pan (~3.5 min per revolution)
+            yaw: self.time * 0.03,
+            pitch: -0.12,
+            fov: 1.2217,
+        };
+        let menu_cam = || Camera {
+            eye: Vec3::new(
+                self.player.pos.x,
+                self.player.pos.y + 14.0,
+                self.player.pos.z,
+            ),
+            yaw: pano_view.yaw,
+            pitch: pano_view.pitch,
+            fov: pano_view.fov,
+        };
+        let mut panorama: Option<vc_render::panorama::PanoView> = None;
         let (cam, menu_blur, selection) = match self.screen {
+            Screen::Intro => {
+                // boot beat: dark wash over the (blurred) panorama
+                panorama = Some(pano_view);
+                (menu_cam(), 0.55, None)
+            }
             Screen::Title => {
-                let cam = Camera {
-                    eye: Vec3::new(
-                        self.player.pos.x,
-                        self.player.pos.y + 14.0,
-                        self.player.pos.z,
-                    ),
-                    yaw: self.time * 0.06,
-                    pitch: -0.42,
-                    fov: 1.2217,
-                };
-                (cam, 0.9, None)
+                panorama = Some(pano_view);
+                (menu_cam(), 0.9, None)
             }
             Screen::Options if self.options_from == Screen::Title => {
-                let cam = Camera {
-                    eye: Vec3::new(
-                        self.player.pos.x,
-                        self.player.pos.y + 14.0,
-                        self.player.pos.z,
-                    ),
-                    yaw: self.time * 0.06,
-                    pitch: -0.42,
-                    fov: 1.2217,
-                };
-                (cam, 0.9, None)
+                panorama = Some(pano_view);
+                (menu_cam(), 0.9, None)
             }
-            // Phase 1: world screens ride the (blurred) panorama like the
-            // title/options screens — the world list previews the world
+            // Phase 1: world screens ride the panorama like the title —
+            // the real world list also sits on the panorama background
             Screen::WorldSelect | Screen::WorldCreate => {
-                let cam = Camera {
-                    eye: Vec3::new(
-                        self.player.pos.x,
-                        self.player.pos.y + 14.0,
-                        self.player.pos.z,
-                    ),
-                    yaw: self.time * 0.06,
-                    pitch: -0.42,
-                    fov: 1.2217,
-                };
-                (cam, 0.9, None)
+                panorama = Some(pano_view);
+                (menu_cam(), 0.9, None)
             }
             // Phase 1: death screen — frozen first-person view behind a
             // heavy red wash (the UI overlay paints it)
@@ -10473,13 +10557,20 @@ impl GameApp {
                 (cam, 0.55, None)
             }
             Screen::Loading => {
+                // world-entry loading: the panorama behind the dark progress
+                // wash (the world is not rendered — it does not exist yet,
+                // exactly like the real loading overlay); §28 travel: the
+                // LIVE world streams behind the blur (it already exists)
+                if !self.traveling {
+                    panorama = Some(pano_view);
+                }
                 let cam = Camera {
                     eye: self.player.eye(),
                     yaw: self.player.yaw,
                     pitch: self.player.pitch,
                     fov: self.player.fov_cur,
                 };
-                (cam, 0.35, None)
+                (cam, if self.traveling { 0.35 } else { 0.55 }, None)
             }
             Screen::Pause | Screen::Options => {
                 let cam = Camera {
@@ -10586,6 +10677,7 @@ impl GameApp {
                 sharpen: if self.settings.upscale > 0 { 0.6 } else { 0.0 },
             },
             self.settings.clouds && self.settings.graphics >= 1 && !nether,
+            panorama,
             &self.particle_verts,
         );
         self.phases

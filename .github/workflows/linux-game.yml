@@ -102,7 +102,12 @@ jobs:
         # Xvfb), pass the loading gate, reach the title screen, and
         # exit 0 via --smoke.
         run: |
-          sudo apt-get install -y xvfb libgl1-mesa-dri libegl-mesa0 libglx-mesa0
+          # llvmpipe software GL stack (EGL + GLX + DRI) + the X11
+          # keyboard libs winit needs — desktops ship all of these; the
+          # minimal runner image does not (the first smoke run caught
+          # libxkbcommon-x11 missing: winit panics without it)
+          sudo apt-get install -y xvfb libgl1-mesa-dri libegl-mesa0 \
+            libglx-mesa0 libgl1 libxkbcommon-x11-0 libxkbcommon0
           set -euo pipefail
           set +e
           timeout 180 xvfb-run -a -s "-screen 0 1280x720x24" \

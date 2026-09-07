@@ -9,19 +9,26 @@ copying the bundle into public/.
 Usage: python3 patch-wasm-glue.py [path/to/voxelcraft.js]
        (defaults to ./wasm-out/voxelcraft.js, patches in place)
 
-Why regex: the import identifier is `__wbg_pointerType_<hash>` where the
-hash covers the wasm module's whole import set — every round that adds a
-new web-sys/js-sys binding changes it (the 1.12 round did). Matching the
-name + body shape (not the literal hash) keeps the patch stable across
-rounds; the hash found in the file is preserved in the replacement.
+Why regex, and why TWO body shapes:
+* the import identifier is `__wbg_pointerType_<hash>` — the hash covers the
+  module's whole import set, so any round adding a web-sys/js-sys binding
+  can change it;
+* the argument handling depends on the wasm-bindgen codegen mode, which
+  follows the rustc toolchain (observed live: rustc 1.98.0 -> 1.98.1 flipped
+  this getter between externref-style `arg1.pointerType` and heap-index
+  style `getObject(arg1).pointerType`). Matching both keeps the patch
+  stable across toolchain drift; the exact import id found in the file is
+  preserved in the replacement.
 """
 import re
 import sys
 
-# name + typed-args header, hash-agnostic, whitespace-tolerant
+# name + typed-args header, hash-agnostic, whitespace-tolerant; body accepts
+# BOTH codegen modes (externref: arg1 is the object; heap: arg1 is an index
+# that getObject() unwraps)
 PATTERN = re.compile(
     r"(__wbg_pointerType_[0-9a-f]+: function\(arg0, arg1\) \{\s*\n)"
-    r"(\s*)const ret = arg1\.pointerType;"
+    r"(\s*)const ret = (getObject\(arg1\)|arg1)\.pointerType;"
 )
 
 PATCHED_BODY = """{header}{indent}// PATCHED: synthetic/automation events (CDP Input.dispatchMouseEvent,
@@ -30,13 +37,13 @@ PATCHED_BODY = """{header}{indent}// PATCHED: synthetic/automation events (CDP I
 {indent}// "Cannot read properties of undefined (reading 'length')".
 {indent}// Default to '' (winit classifies as generic pointer; the game's
 {indent}// input shim handles actual gameplay input anyway).
-{indent}const ret = arg1.pointerType || '';"""
+{indent}const ret = {expr}.pointerType || '';"""
 
 
 def main(path: str) -> int:
     with open(path, "r", encoding="utf-8") as f:
         s = f.read()
-    if re.search(r"const ret = arg1\.pointerType \|\| ''", s):
+    if re.search(r"const ret = (?:getObject\(arg1\)|arg1)\.pointerType \|\| ''", s):
         print(f"[patch-wasm-glue] {path}: already patched, nothing to do")
         return 0
     m = PATTERN.search(s)
@@ -44,12 +51,12 @@ def main(path: str) -> int:
         print(f"[patch-wasm-glue] {path}: WARNING — glue pattern not found "
               "(wasm-bindgen output shape changed?). Skipping.")
         return 2
-    header, indent = m.group(1), m.group(2)
-    s = s[: m.start()] + PATCHED_BODY.format(header=header, indent=indent) + s[m.end():]
+    header, indent, expr = m.group(1), m.group(2), m.group(3)
+    s = s[: m.start()] + PATCHED_BODY.format(header=header, indent=indent, expr=expr) + s[m.end():]
     with open(path, "w", encoding="utf-8") as f:
         f.write(s)
     print(f"[patch-wasm-glue] {path}: patched pointerType glue "
-          f"(import id: {m.group(1).split(':')[0]})")
+          f"(import id: {m.group(1).split(':')[0]}, mode: {expr})")
     return 0
 
 

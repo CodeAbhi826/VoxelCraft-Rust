@@ -734,17 +734,24 @@ pub struct GameApp {
 }
 
 pub fn now_secs() -> f32 {
+    // CRITICAL (native had the SAME f32-precision bug the wasm comment
+    // below documents): epoch seconds (~1.79e9) cannot be represented in
+    // f32 — the 24-bit mantissa gives ~128-216 s resolution, so every dt
+    // computed from it is 0 (frozen clock: no physics, no menus, no fps,
+    // no toasts) and every "X s" timeout (the 15 s loading escape, the
+    // 1.1 s intro handover) silently becomes minutes — the user-reported
+    // "stuck on loading >1 minute" on the native binary was exactly this.
+    // Native now uses process uptime (Instant, monotonic — starts at ~0,
+    // exact in f32 for days), same as the web.
     #[cfg(not(target_arch = "wasm32"))]
     {
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_secs_f32())
-            .unwrap_or(0.0)
+        use std::sync::OnceLock;
+        use std::time::Instant;
+        static START: OnceLock<Instant> = OnceLock::new();
+        let start = START.get_or_init(Instant::now);
+        start.elapsed().as_secs_f32()
     }
-    // CRITICAL: epoch seconds (~1.79e9) cannot be represented in f32 — the
-    // 24-bit mantissa gives ~128 s resolution there, so every dt computed
-    // from it is 0 (frozen clock: no physics, no menus, no fps, no toasts).
-    // Use page uptime instead (starts at ~0, exact in f32 for days).
+    // page uptime (js_sys), exact in f32 for days
     #[cfg(target_arch = "wasm32")]
     {
         use std::sync::OnceLock;

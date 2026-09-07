@@ -70,7 +70,29 @@ jobs:
             target/wasm32-unknown-unknown/release/voxelcraft.wasm
 
       - name: Patch JS glue (winit pointerType hardening)
-        run: python3 voxelcraft/patch-wasm-glue.py voxelcraft/wasm-out/voxelcraft.js
+        run: |
+          python3 voxelcraft/patch-wasm-glue.py voxelcraft/wasm-out/voxelcraft.js || {
+            echo "=== patch failed — dumping glue diagnostics ==="
+            wc -c voxelcraft/wasm-out/voxelcraft.js
+            echo "__wbg_ import count: $(grep -c '__wbg_' voxelcraft/wasm-out/voxelcraft.js || true)"
+            echo "--- pointerType lines ---"
+            grep -n "pointerType" voxelcraft/wasm-out/voxelcraft.js | head -6 || echo "(no pointerType anywhere)"
+            echo "--- first __wbg_pointerType context (or first __wbg_) ---"
+            grep -n -A4 "__wbg_pointerType" voxelcraft/wasm-out/voxelcraft.js | head -14 \
+              || grep -n -A4 "__wbg_" voxelcraft/wasm-out/voxelcraft.js | head -14
+            echo "--- file head (400 chars) ---"
+            head -c 400 voxelcraft/wasm-out/voxelcraft.js
+            exit 1
+          }
+
+      - name: Upload RAW glue (patch-debug aid)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: raw-wasm-glue
+          path: voxelcraft/wasm-out/voxelcraft.js
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Deploy bundle to public/
         run: |

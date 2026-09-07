@@ -639,6 +639,10 @@ pub struct GameApp {
     spawn_snapped: bool,
     faced_land: bool,
     load_start: f32,
+    /// CI smoke contract (linux-game.yml): exit(0) the moment the loading
+    /// gate completes and the title screen is reached — lets the workflow
+    /// prove the single-file binary actually boots headless (llvmpipe).
+    pub smoke: bool,
     edits: u32,
     stats_t: f32,
     pub pointer_locked: bool,
@@ -1058,8 +1062,21 @@ impl GameApp {
             #[cfg(not(target_arch = "wasm32"))]
             {
                 match native_audio::RodioOut::new() {
-                    Some(o) => Box::new(o),
-                    None => Box::new(vc_audio::sounds::SilentOut),
+                    Some(o) => {
+                        vc_render::render::report_boot_log("audio: output stream open");
+                        Box::new(o)
+                    }
+                    None => {
+                        // the ALSA/JACK console spam above is cpal probing
+                        // every backend before giving up — harmless; the
+                        // game just runs silent until a device appears
+                        vc_render::render::report_boot_log(
+                            "audio: no output device — running silent \
+                             (the ALSA/JACK console noise is the driver \
+                             probing, harmless)",
+                        );
+                        Box::new(vc_audio::sounds::SilentOut)
+                    }
                 }
             }
             #[cfg(target_arch = "wasm32")]
@@ -1147,6 +1164,7 @@ impl GameApp {
             spawn_snapped: false,
             faced_land: false,
             load_start: 0.0,
+            smoke: false,
             edits: 0,
             stats_t: 0.0,
             pointer_locked: false,
@@ -7089,31 +7107,80 @@ impl GameApp {
         }
         if self.screen == Screen::Loading {
             let pc = self.player_chunk();
-            if self.renderer.has_chunk(pc) {
-                let ready = {
-                    let mut count = 0;
-                    for dz in -1..=1 {
-                        for dx in -1..=1 {
-                            if self.renderer.has_chunk((pc.0 + dx, pc.1 + dz)) {
-                                count += 1;
-                            }
+            // BLOCKING-BUG FIX (user report: the single-file CI binary sat
+            // on "Building terrain…" forever — chunks_gpu=0 for 60+ s). The
+            // 15 s escape hatch used to be nested INSIDE
+            // `if self.renderer.has_chunk(pc)`: it only armed once the
+            // player chunk had a GPU mesh, so exactly when meshing was
+            // dead (GPU-mesher readback stall — see the watchdog in
+            // vc-render/src/gpu_mesh.rs) the timeout could never fire and
+            // the loading screen hung indefinitely. The timeout is now
+            // unconditional and `ready` degrades to false when no chunk
+            // ever arrived: the title screen is reachable in ≤ 15 s on ANY
+            // device, while the watchdog fail-over re-meshes on the CPU
+            // behind the menus.
+            let ready = self.renderer.has_chunk(pc) && {
+                let mut count = 0;
+                for dz in -1..=1 {
+                    for dx in -1..=1 {
+                        if self.renderer.has_chunk((pc.0 + dx, pc.1 + dz)) {
+                            count += 1;
                         }
                     }
-                    count >= 5 && self.mesh_near_count(pc) > 4
-                };
-                if ready || self.time - self.load_start > 15.0 {
-                    // boot → title screen; §28 travel → straight back to play;
-                    // Phase 1 world create/play/respawn → into the game
-                    if self.traveling {
-                        self.set_screen(Screen::Game);
-                    } else if self.pending_play {
-                        self.pending_play = false;
-                        self.start_game();
-                    } else {
-                        self.set_screen(Screen::Title);
-                    }
-                    self.traveling = false;
                 }
+                count >= 5 && self.mesh_near_count(pc) > 4
+            };
+            if ready || self.time - self.load_start > 15.0 {
+                // one boot log either way — "loading complete" carries the
+                // chunk count + wall time for user bug reports; the timeout
+                // line carries the whole pipeline state so a future stall
+                // can be pinned to gen / mesh / GPU-mesher at a glance
+                if ready {
+                    vc_render::render::report_boot_log(&format!(
+                        "loading complete: {} chunks on GPU in {:.1}s",
+                        self.renderer.chunks.len(),
+                        self.time - self.load_start
+                    ));
+                } else {
+                    let mesher = self.renderer.gpu_mesh.as_ref().map(|m| {
+                        format!(
+                            "queued={} busy={} strikes={}",
+                            m.queued(),
+                            m.busy(),
+                            m.stall_strikes()
+                        )
+                    });
+                    vc_render::render::report_boot_log(&format!(
+                        "loading timeout: {} chunks on GPU after {:.1}s — \
+                         gen_inflight={} mesh_inflight={} gpu_mesher={} — \
+                         entering title anyway (CPU remesh continues)",
+                        self.renderer.chunks.len(),
+                        self.time - self.load_start,
+                        self.gen_inflight.len(),
+                        self.mesh_inflight.len(),
+                        mesher.as_deref().unwrap_or("off")
+                    ));
+                }
+                // boot → title screen; §28 travel → straight back to play;
+                // Phase 1 world create/play/respawn → into the game
+                if self.traveling {
+                    self.set_screen(Screen::Game);
+                } else if self.pending_play {
+                    self.pending_play = false;
+                    self.start_game();
+                } else {
+                    self.set_screen(Screen::Title);
+                    // CI smoke contract (linux-game.yml): --smoke boots
+                    // headless and exits 0 right here — proves the loading
+                    // gate delivered on a clean machine
+                    if self.smoke {
+                        vc_render::render::report_boot_log(
+                            "smoke: title reached — exiting 0",
+                        );
+                        std::process::exit(0);
+                    }
+                }
+                self.traveling = false;
             }
         }
 
@@ -9592,8 +9659,17 @@ impl GameApp {
                     .unwrap_or_else(|| vec![None; 16]);
                 self.mesh_inflight.insert(pos, mask);
                 // Phase 7: GPU route when the setting is on AND the device
-                // has compute; run_job still falls back per-snapshot
-                let gpu = self.settings.gpu_meshing && self.renderer.gpu_mesh.is_some();
+                // has compute; run_job still falls back per-snapshot.
+                // Watchdog: once the mesher strikes out (stalled readbacks
+                // — see gpu_mesh.rs) everything routes back through the CPU
+                // rayon path for the rest of the session
+                let gpu = self.settings.gpu_meshing
+                    && self
+                        .renderer
+                        .gpu_mesh
+                        .as_ref()
+                        .map(|m| !m.stalled_out())
+                        .unwrap_or(false);
                 self.submit(Job::Mesh {
                     pos,
                     snap,

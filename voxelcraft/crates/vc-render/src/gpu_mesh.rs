@@ -646,6 +646,24 @@ pub struct GpuMeshDone {
 /// and keeps n_jobs*1536 workgroups well under the 65 535 dispatch limit
 const MAX_BATCH: usize = 16;
 
+/// BLOCKING-BUG FIX (user report: the single-file CI binary hung on
+/// "Building terrain…" forever with chunks_gpu=0): on some driver combos
+/// the advance() readback map below never becomes ready AND never errors —
+/// the batch parked in flight forever, the game's mesh-inflight markers
+/// never released, and no chunk ever reached the GPU. A batch with no
+/// progress for this long is declared stalled and dropped as LOST
+/// (game-side: inflight markers release, §12 dirty bits stay set, the CPU
+/// path remeshes). Native only (Instant; wasm keeps its no-watchdog path —
+/// WebGL2 adapters lack compute anyway, so gpu_meshing defaults off).
+#[cfg(not(target_arch = "wasm32"))]
+const STALL_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(6);
+
+/// watchdog strikes before the mesher refuses all further work for the
+/// session — GameApp::stream then routes every job through the CPU rayon
+/// path (see `stalled_out()`). Two strikes ride out a one-off driver hiccup
+/// without permanently losing GPU meshing on healthy devices.
+const STALL_LIMIT: u32 = 2;
+
 enum BatchStage {
     /// dispatch A submitted; waiting for the counts readback map
     Counts {
@@ -672,6 +690,9 @@ struct Batch {
     metas: Vec<GpuMeshJobMeta>,
     counts: Vec<u32>, // n*UNITS*2 — filled at the Counts→Outputs transition
     stage: BatchStage,
+    /// wall-clock batch start — the stall watchdog (native only)
+    #[cfg(not(target_arch = "wasm32"))]
+    started: std::time::Instant,
     // buffers kept alive for the batch lifetime
     _params: wgpu::Buffer,
     _blocks: wgpu::Buffer,
@@ -695,6 +716,12 @@ pub struct GpuMesher {
     queue_jobs: VecDeque<(GpuMeshJobMeta, MeshInputs)>,
     /// stats for F3/E2E: jobs completed since boot
     pub jobs_done: u64,
+    /// stall-watchdog strikes — see STALL_TIMEOUT / STALL_LIMIT
+    stalls: u32,
+    /// true while `wait_done` blocks on poll(Wait) — disables the stall
+    /// watchdog (the blocking contract guarantees completion; a slow but
+    /// honest software-GPU test run must not strike out)
+    blocking: bool,
 }
 
 /// deterministic offset table from the pass-A quad counts — the exact CPU
@@ -839,12 +866,26 @@ impl GpuMesher {
             batch: None,
             queue_jobs: VecDeque::new(),
             jobs_done: 0,
+            stalls: 0,
+            blocking: false,
         }
     }
 
     /// true while a batch is being processed (jobs pile up in the queue)
     pub fn busy(&self) -> bool {
         self.batch.is_some()
+    }
+
+    /// watchdog state: true once the mesher has struck out for this
+    /// session — GameApp::stream stops routing jobs here and the CPU
+    /// rayon path takes over for the rest of the session
+    pub fn stalled_out(&self) -> bool {
+        self.stalls >= STALL_LIMIT
+    }
+
+    /// watchdog strikes so far (diagnostics: the loading-timeout boot log)
+    pub fn stall_strikes(&self) -> u32 {
+        self.stalls
     }
 
     pub fn queued(&self) -> usize {
@@ -869,6 +910,20 @@ impl GpuMesher {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
     ) -> (Vec<GpuMeshDone>, Vec<(ChunkPos, u16)>) {
+        // 0. hard fail-over (watchdog): after STALL_LIMIT strikes the
+        // mesher refuses all further work for the session — drop any
+        // in-flight batch and drain the queue as LOST, releasing the
+        // game's inflight markers; every future mesh job routes through
+        // the CPU rayon path (the stalled_out() gate in GameApp::stream)
+        if self.stalls >= STALL_LIMIT {
+            self.batch = None;
+            let lost: Vec<(ChunkPos, u16)> = self
+                .queue_jobs
+                .drain(..)
+                .map(|(m, _)| (m.pos, m.mask))
+                .collect();
+            return (Vec::new(), lost);
+        }
         // 1. start a batch from queued jobs when idle
         if self.batch.is_none() && !self.queue_jobs.is_empty() {
             let take = self.queue_jobs.len().min(MAX_BATCH);
@@ -890,6 +945,25 @@ impl GpuMesher {
                     Err(TryRecvError::Empty) => {
                         #[cfg(not(target_arch = "wasm32"))]
                         device.poll(wgpu::Maintain::Poll);
+                        // stall watchdog (native): a readback that neither
+                        // completes nor errors — a driver quirk — would park
+                        // this batch forever. Drop it as LOST; the game clears
+                        // inflight + keeps the dirty bits → CPU remesh.
+                        // Armed only in frame-driven mode: wait_done blocks
+                        // on poll(Wait), where completion is the contract.
+                        #[cfg(not(target_arch = "wasm32"))]
+                        if !self.blocking && batch.started.elapsed() > STALL_TIMEOUT {
+                            self.stalls += 1;
+                            crate::render::report_boot_log(&format!(
+                                "gpu mesher: readback stalled {} ms — dropping \
+                                 {} jobs to the CPU path (strike {}/{})",
+                                batch.started.elapsed().as_millis(),
+                                batch.metas.len(),
+                                self.stalls,
+                                STALL_LIMIT
+                            ));
+                            lost = batch.metas.iter().map(|m| (m.pos, m.mask)).collect();
+                        }
                     }
                     Err(TryRecvError::Disconnected) => {
                         // counts map failed — the batch is unrecoverable
@@ -906,6 +980,20 @@ impl GpuMesher {
                     Err(TryRecvError::Empty) => {
                         #[cfg(not(target_arch = "wasm32"))]
                         device.poll(wgpu::Maintain::Poll);
+                        // stall watchdog — mirror of the Counts arm above
+                        #[cfg(not(target_arch = "wasm32"))]
+                        if !self.blocking && batch.started.elapsed() > STALL_TIMEOUT {
+                            self.stalls += 1;
+                            crate::render::report_boot_log(&format!(
+                                "gpu mesher: readback stalled {} ms — dropping \
+                                 {} jobs to the CPU path (strike {}/{})",
+                                batch.started.elapsed().as_millis(),
+                                batch.metas.len(),
+                                self.stalls,
+                                STALL_LIMIT
+                            ));
+                            lost = batch.metas.iter().map(|m| (m.pos, m.mask)).collect();
+                        }
                     }
                     Err(TryRecvError::Disconnected) => {
                         // outputs map failed — same recovery contract
@@ -925,6 +1013,9 @@ impl GpuMesher {
     /// (drives the device with `Maintain::Wait`). Returns completed jobs;
     /// panics if a readback fails (test contract: no silent degradation).
     pub fn wait_done(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<GpuMeshDone> {
+        // blocking mode: the watchdog stands down (poll(Wait) guarantees
+        // the readbacks complete; a slow software-GPU run must not strike)
+        self.blocking = true;
         let mut all = Vec::new();
         while self.batch.is_some() || !self.queue_jobs.is_empty() {
             #[cfg(not(target_arch = "wasm32"))]
@@ -935,6 +1026,7 @@ impl GpuMesher {
                 panic!("gpu mesh readback failed for {} jobs", lost.len());
             }
         }
+        self.blocking = false;
         all
     }
 
@@ -1038,6 +1130,8 @@ impl GpuMesher {
             metas,
             counts: vec![0u32; counts_words],
             stage: BatchStage::Counts { _bg: bg, rx },
+            #[cfg(not(target_arch = "wasm32"))]
+            started: std::time::Instant::now(),
             _params: params_buf,
             _blocks: blocks_buf,
             _sky: sky_buf,

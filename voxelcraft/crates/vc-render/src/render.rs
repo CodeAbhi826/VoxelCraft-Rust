@@ -1384,6 +1384,12 @@ pub struct Renderer {
     pub upscale: f32,
     /// adapter/backend description for the F3 overlay (e.g. "WebGPU (SwiftShader)")
     pub backend_name: String,
+    /// full adapter line for the F3 right column (driver + driver info —
+    /// the vanilla "4.6 (Compatibility Profile) Mesa …" analog)
+    pub adapter_desc: String,
+    /// raw adapter device name (first word feeds the vanilla "Display
+    /// 1920x1080 (Intel)" vendor tag)
+    pub adapter_name: String,
     pub chunks: HashMap<ChunkPos, ChunkGpu>,
     /// 8×8-chunk mesh-region arenas (Phase 9 §14: regional mega-buffers)
     regions: HashMap<(i32, i32), RegionArena>,
@@ -1923,6 +1929,22 @@ impl Renderer {
                 n
             }
         });
+        // F3 right-column GPU lines: device name + "driver driver_info"
+        // (the vanilla GL-renderer / GL-version pair, engine-adapted)
+        let adapter_name = if adapter_info.name.is_empty() {
+            "generic".to_string()
+        } else {
+            adapter_info.name.clone()
+        };
+        let adapter_desc = if adapter_info.driver_info.is_empty() {
+            format!("{:?} (wgpu)", adapter_info.backend)
+        } else {
+            format!(
+                "{} ({:?}, wgpu)",
+                adapter_info.driver_info,
+                adapter_info.backend
+            )
+        };
 
         // FSR-lite: start at native scale (1.0); the game raises it via
         // set_upscale() from the saved settings once running.
@@ -3070,6 +3092,8 @@ impl Renderer {
             particle_vb,
             upscale,
             backend_name,
+            adapter_desc,
+            adapter_name,
             chunks: HashMap::new(),
             regions: HashMap::new(),
             draw_mdi,
@@ -5100,13 +5124,50 @@ pub fn report_boot_error(msg: &str) {
     eprintln!("[voxelcraft] {msg}");
 }
 
-/// Best-effort diagnostic log (wasm: JS console, native: stderr).
+/// Optional native file-mirror for the diagnostic log: the first-run
+/// game folder's `logs/latest.log` (the vanilla-profile analog). Set up
+/// by the host crate's bootstrap before the first boot line; every
+/// `report_boot_log` line then lands in the file AND stderr. Append-only,
+/// best-effort — a read-only working dir just loses the mirror.
+#[cfg(not(target_arch = "wasm32"))]
+static FILE_LOG: std::sync::OnceLock<Option<std::sync::Mutex<std::fs::File>>> =
+    std::sync::OnceLock::new();
+
+/// Route boot diagnostics to `logs/latest.log` (created/truncated) in
+/// addition to stderr. Native only; idempotent (first call wins).
+#[cfg(not(target_arch = "wasm32"))]
+pub fn init_file_log(path: &std::path::Path) {
+    use std::io::Write;
+    if let Ok(f) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
+        let mut f = f;
+        let _ = writeln!(
+            f,
+            "---- session {} ----",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0)
+        );
+        let _ = FILE_LOG.set(Some(std::sync::Mutex::new(f)));
+    }
+}
+
+/// Best-effort diagnostic log (wasm: JS console, native: stderr + the
+/// optional `logs/latest.log` mirror).
 #[allow(dead_code)]
 pub fn report_boot_log(msg: &str) {
     #[cfg(target_arch = "wasm32")]
     web_sys::console::log_1(&wasm_bindgen::JsValue::from_str(msg));
     #[cfg(not(target_arch = "wasm32"))]
-    eprintln!("[voxelcraft] {msg}");
+    {
+        eprintln!("[voxelcraft] {msg}");
+        if let Some(Some(lock)) = FILE_LOG.get() {
+            use std::io::Write;
+            if let Ok(mut f) = lock.lock() {
+                let _ = writeln!(f, "{msg}");
+            }
+        }
+    }
 }
 
 #[cfg(test)]

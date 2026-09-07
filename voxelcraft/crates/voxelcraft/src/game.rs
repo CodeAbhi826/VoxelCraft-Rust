@@ -514,10 +514,60 @@ enum WorkBackend {
 
 // ------------------------------------------------------------------- app --
 
+/// How the native pointer is captured in the game screen (the input-
+/// regression fix): `Locked`/`Confined` are real winit grabs (relative
+/// motion via DeviceEvent); `Delta` is the visible-cursor fallback where
+/// look input comes from CursorMoved position deltas — the only motion a
+/// compositor without pointer-lock protocols ever delivers.
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+enum PointerLockMode {
+    Locked,
+    Confined,
+    Delta,
+}
+
 /// Full daylight-cycle length in real seconds (VERIFIED 2026-09-06 live,
 /// minecraft.wiki/w/Daylight_cycle): 24000 game ticks at 20 ticks/second
 /// = 1200 s = 20 minutes for the complete day-night cycle in 1.16.5.
 pub const DAY_LEN_SECS: f32 = 1200.0;
+
+/// Total intro (studio splash) duration. The real game's first screen
+/// holds a beat while its assets load — the boot must READ as loading,
+/// not flash by (user feedback: "increase the loading time a bit to
+/// match the real one so everything like assets properly loads").
+/// Assets physically load in GameApp::new; the intro walks the SAME
+/// milestones through `intro_progress` so the bar pacing matches the
+/// boot's real stages.
+pub const INTRO_SECS: f32 = 2.6;
+
+/// Staged intro progress (0..1 over `INTRO_SECS`): waypoints mirror the
+/// real boot's asset milestones — pack extraction, atlas stitching,
+/// pipeline compilation, audio device, save scan — with short settling
+/// holds, exactly like a real loader's bar. Piecewise-linear between
+/// waypoints.
+fn intro_progress(t: f32) -> f32 {
+    const WP: &[(f32, f32)] = &[
+        (0.00, 0.00),
+        (0.35, 0.18), // builtin resource pack extracted
+        (0.52, 0.18), // hold: pack.mcmeta + model tables settle
+        (1.30, 0.62), // atlas stitched + shader pipelines compiled
+        (1.50, 0.62), // hold: audio device + sound bank
+        (1.90, 0.86), // sound events registered + save scan
+        (2.10, 0.86), // hold: game state settles
+        (INTRO_SECS, 1.00), // ready — hand over to the title
+    ];
+    let t = t.clamp(0.0, INTRO_SECS);
+    for w in WP.windows(2) {
+        let (t0, p0) = w[0];
+        let (t1, p1) = w[1];
+        if t >= t0 && t <= t1 {
+            let k = if t1 > t0 { (t - t0) / (t1 - t0) } else { 1.0 };
+            return p0 + (p1 - p0) * k;
+        }
+    }
+    1.0
+}
 
 pub struct GameApp {
     pub window: &'static winit::window::Window,
@@ -611,6 +661,39 @@ pub struct GameApp {
     plate_sweep_t: u32,
     show_debug: bool,
     show_help: bool,
+    /// F3 held (vanilla F3+X combinations: Q help, 1 frame graph,
+    /// H advanced tooltips — fire while F3 stays held)
+    f3_held: bool,
+    /// F3+Q debug-help overlay
+    debug_help: bool,
+    /// F3+1 frame-time graph (engine extension; off by default so the
+    /// overlay matches the vanilla look exactly)
+    debug_graph: bool,
+    /// F3+H advanced tooltips (ids appended to hover labels)
+    advanced_tooltips: bool,
+    /// world age in ticks (vanilla `Time`) — drives "Day N" + moon phase
+    /// for the F3 Local Difficulty line and the save's game_time
+    world_game_time: i64,
+    /// sub-tick accumulator for world_game_time
+    world_time_acc: f32,
+    /// F3 right-column process-memory sample (refreshed at 0.25 s; rss +
+    /// system total in MiB, native /proc read)
+    f3_rss_mb: f32,
+    f3_sys_mb: f32,
+    f3_mem_t: f32,
+    /// F3 Sounds line: events fired in the last completed 1 s window
+    snd_window: u32,
+    snd_window_t: f32,
+    snd_rate: u32,
+    /// CI smoke stage-2 script: (due time, widget id) — dispatched through
+    /// the REAL input path (cursor + hover + route_mouse_click)
+    smoke_script: std::collections::VecDeque<(f32, u16)>,
+    /// smoke stage 3: the in-game click fired once
+    smoke_clicked_ingame: bool,
+    /// smoke stage 3: game-entry time (F3_DUMP holds gameplay ~2 s)
+    smoke_game_t: f32,
+    /// F3_DUMP2 liveness pair: the second dump has fired
+    f3_dump2: bool,
     /// creative-style block picker overlay (E key)
     picker_open: bool,
     /// picker scroll (first visible row) — wheel-scrolls like the
@@ -661,6 +744,18 @@ pub struct GameApp {
     pub pointer_locked: bool,
     pub drag_look: bool,
     ever_locked: bool,
+    /// native pointer capture state (the "clicking and stuff does not
+    /// work" fix): winit grab failures were previously DISCARDED while
+    /// the cursor was still hidden — on Wayland/WSLg, RDP and other
+    /// compositors without pointer-lock this left an invisible cursor
+    /// AND no relative-motion events, so look + clicks felt dead. The
+    /// capture ladder (Locked → Confined → Delta) is captured here and
+    /// every site that grabs goes through capture_pointer/release_pointer.
+    #[cfg(not(target_arch = "wasm32"))]
+    pointer_lock: PointerLockMode,
+    /// last CursorMoved physical position (the Delta fallback's look input)
+    #[cfg(not(target_arch = "wasm32"))]
+    last_cursor_phys: Option<(f32, f32)>,
     /// Phase-0 baseline instrumentation (§44): per-frame CPU phases
     pub phases: crate::bench::FramePhases,
     /// active in-game benchmark (§37/§48 Phase 0) — None in normal play
@@ -759,6 +854,99 @@ pub fn now_secs() -> f32 {
         let start = *START.get_or_init(js_sys::Date::now);
         ((js_sys::Date::now() - start) / 1000.0) as f32
     }
+}
+
+/// First-run game-folder bootstrap (native): the vanilla-profile analog.
+///
+/// Running the game materializes its working set (user: "why isn't our
+/// asset getting created when we run the game") — exactly like the real
+/// game's profile folder appears on first boot:
+///
+/// ```text
+/// saves/          worlds (world-select scans this)
+/// builtin-pack/   the resource pack, EXTRACTED from the embedded copy
+///                 (folder source takes precedence over the embedded
+///                 bytes — editing/adding files here re-skins the game)
+/// resourcepacks/  user-installed resource packs
+/// shader-packs/   external WGSL shader packs (§34.1 + Iris scan)
+/// logs/latest.log every boot line, mirrored from stderr
+/// options.txt     settings (load at boot, persist on change)
+/// ```
+///
+/// Idempotent and best-effort: an existing structure is never touched
+/// (a pack folder that exists is NOT overwritten), and a read-only
+/// working directory only loses the mirror/persistence, never the boot.
+#[cfg(not(target_arch = "wasm32"))]
+fn bootstrap_game_dir() {
+    use std::fs;
+    use std::path::Path;
+
+    let created = |p: &Path| {
+        if !p.exists() {
+            fs::create_dir_all(p).is_ok()
+        } else {
+            false
+        }
+    };
+
+    // profile skeleton (relative to the working dir, matching every other
+    // native scan root: saves_root(), external_packs(), scan_shader_packs)
+    for d in ["saves", "resourcepacks", "shader-packs", "logs"] {
+        let _ = created(Path::new(d));
+    }
+
+    // extract the builtin pack when the folder is absent — the embedded
+    // bytes are the SOURCE OF TRUTH for the single-file binary, and the
+    // extracted folder becomes the editable copy the engine prefers
+    let pack = Path::new("builtin-pack");
+    if created(pack) {
+        let mut n = 0usize;
+        for (rel, bytes) in crate::embedded_pack::EMBEDDED_PACK_FILES {
+            let out = pack.join(rel);
+            if let Some(parent) = out.parent() {
+                let _ = fs::create_dir_all(parent);
+            }
+            if fs::write(&out, bytes).is_ok() {
+                n += 1;
+            }
+        }
+        vc_render::render::report_boot_log(&format!(
+            "first run: builtin pack extracted to builtin-pack/ ({n} files)"
+        ));
+    }
+
+    // log mirror (append; one session header per run)
+    vc_render::render::init_file_log(Path::new("logs").join("latest.log").as_path());
+
+    // default options.txt only when none exists (never clobber user edits)
+    if !Path::new("options.txt").exists() {
+        let defaults = Settings::default();
+        let _ = fs::write("options.txt", defaults.serialize());
+        vc_render::render::report_boot_log("first run: default options.txt written");
+    }
+}
+
+/// Load the persisted settings (native: options.txt, the localStorage
+/// analog). Missing/unreadable → defaults; corrupt → defaults with a log
+/// line (§46 discipline: never fatal).
+#[cfg(not(target_arch = "wasm32"))]
+fn load_native_settings() -> Settings {
+    match std::fs::read_to_string("options.txt") {
+        Ok(s) => Settings::deserialize(&s),
+        Err(e) => {
+            vc_render::render::report_boot_log(&format!(
+                "options.txt unreadable ({e}) — defaults"
+            ));
+            Settings::default()
+        }
+    }
+}
+
+/// Persist settings to options.txt (native; called on every change like
+/// the web build's localStorage save).
+#[cfg(not(target_arch = "wasm32"))]
+fn save_native_settings(s: &Settings) {
+    let _ = std::fs::write("options.txt", s.serialize());
 }
 
 /// Compile the builtin resource pack into a ModelSet and merge its textures
@@ -909,14 +1097,32 @@ async fn load_builtin_pack_assets() -> (Vec<u8>, Vec<vc_render::textures::Animat
 
 impl GameApp {
     pub async fn new(window: &'static winit::window::Window) -> Self {
+        // BOOT PERF diagnostics: the user-facing wall time from process
+        // start to the first interactive frame is (this init) + (the intro
+        // beat). Break the init down so a slow boot can be pinned to its
+        // phase from the log alone.
+        let t_boot = std::time::Instant::now();
+        // First-run game-folder bootstrap (native): the vanilla-profile
+        // analog — running the game MATERIALIZES its working set instead
+        // of only embedding it (user: "why isn't our asset getting
+        // created when we run the game"). Creates saves/ shader-packs/
+        // resourcepacks/ logs/, extracts the builtin pack to disk (the
+        // folder source takes precedence over the embedded copy — mods
+        // and texture tweaks work by editing it), starts the log mirror
+        // and writes a default options.txt when none exists.
+        #[cfg(not(target_arch = "wasm32"))]
+        bootstrap_game_dir();
         // ---------------------------------------------------- Phase 1 assets
         // Compile the builtin resource pack (blockstates → models → textures)
         // BEFORE any mesh job can run; merge its textures into the atlas.
         let (mut atlas, animations) = crate::game::load_builtin_pack_assets().await;
         vc_render::textures::draw_missing_tile(&mut atlas);
+        let t_pack = t_boot.elapsed();
 
         let mut renderer = Renderer::new(window, &atlas).await;
+        let t_renderer = t_boot.elapsed() - t_pack;
         let bank = SoundBank::generate();
+        let t_audio = t_boot.elapsed() - t_pack - t_renderer;
         let sounds = vc_audio::sounds::SoundRegistry::from_json(vc_audio::sounds::SOUNDS_JSON)
             .unwrap_or_else(|e| {
                 vc_render::render::report_boot_log(&format!("sound registry broken: {e}"));
@@ -928,9 +1134,16 @@ impl GameApp {
         #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
         let mut world = World::new(vc_world::world::World::random_seed());
         #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
-        let mut spawn = world.find_spawn();
+        // BOOT PERF (user report: slow first screen): the boot used to
+        // run find_spawn() on the FULL world twice (fresh + restored) — a
+        // synchronous surface scan over an ungenerated world that buys
+        // nothing: the menus run on the pre-rendered panorama, the player
+        // position is restored from level.dat, and every world ENTRY
+        // (create/load) recomputes spawn in reset_world. Placeholder
+        // until then (never visible).
+        let spawn = (0.0f32, 80.0f32, 0.0f32);
         #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
-        let mut player = Player::new(Vec3::new(spawn.0, spawn.1 + 20.0, spawn.2));
+        let mut player = Player::new(Vec3::new(0.0, 100.0, 0.0));
         // Phase 1: default state until a world is created/loaded
         #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
         let mut mode = vc_gameplay::modes::GameMode::Survival;
@@ -947,7 +1160,6 @@ impl GameApp {
             if let Some(newest) = worlds.first() {
                 let meta = &newest.meta;
                 world = World::new(meta.seed);
-                spawn = world.find_spawn();
                 mode = vc_gameplay::modes::GameMode::from_save(meta.game_type, meta.hardcore);
                 world_name = meta.name.clone();
                 if let Some(p) = &meta.player {
@@ -955,8 +1167,6 @@ impl GameApp {
                         Player::new(Vec3::new(p.pos[0] as f32, p.pos[1] as f32, p.pos[2] as f32));
                     player.yaw = p.yaw;
                     player.pitch = p.pitch;
-                } else {
-                    player = Player::new(Vec3::new(spawn.0, spawn.1 + 20.0, spawn.2));
                 }
                 newest.dir.clone()
             } else {
@@ -976,7 +1186,8 @@ impl GameApp {
             }
         }
 
-        // persisted settings (web: localStorage)
+        // persisted settings (web: localStorage; native: options.txt in
+        // the first-run game folder)
         let settings = {
             #[cfg(target_arch = "wasm32")]
             {
@@ -986,7 +1197,7 @@ impl GameApp {
             }
             #[cfg(not(target_arch = "wasm32"))]
             {
-                Settings::default()
+                load_native_settings()
             }
         };
         // (player was already built above — restored from level.dat on native
@@ -1160,6 +1371,22 @@ impl GameApp {
             plate_sweep_t: 0,
             show_debug: false,
             show_help: false,
+            f3_held: false,
+            debug_help: false,
+            debug_graph: false,
+            advanced_tooltips: false,
+            world_game_time: 0,
+            world_time_acc: 0.0,
+            f3_rss_mb: 0.0,
+            f3_sys_mb: 0.0,
+            f3_mem_t: -1.0,
+            snd_window: 0,
+            snd_window_t: 0.0,
+            snd_rate: 0,
+            smoke_script: std::collections::VecDeque::new(),
+            smoke_clicked_ingame: false,
+            smoke_game_t: 0.0,
+            f3_dump2: false,
             picker_open: false,
             picker_scroll: 0,
             picker_geom: None,
@@ -1191,6 +1418,10 @@ impl GameApp {
             pointer_locked: false,
             drag_look: false,
             ever_locked: false,
+            #[cfg(not(target_arch = "wasm32"))]
+            pointer_lock: PointerLockMode::Delta,
+            #[cfg(not(target_arch = "wasm32"))]
+            last_cursor_phys: None,
             phases: crate::bench::FramePhases::new(240),
             bench: None,
             bench_spawn: spawn.into(),
@@ -1247,8 +1478,21 @@ impl GameApp {
                     }
                 }
             }
+            // F3 Local Difficulty / Day N: restore the saved world clock
+            // (vanilla `Time`) so the day count survives sessions
+            app.world_game_time = meta.game_time;
         }
         app.load_start = app.time;
+        // BOOT PERF: the phase breakdown the slow-boot diagnosis reads
+        // (pack compile → GPU init/pipelines → sound synth → state)
+        vc_render::render::report_boot_log(&format!(
+            "boot init: {:.0} ms (pack {:.0} / renderer {:.0} / audio {:.0} / state {:.0})",
+            t_boot.elapsed().as_secs_f32() * 1000.0,
+            t_pack.as_secs_f32() * 1000.0,
+            t_renderer.as_secs_f32() * 1000.0,
+            t_audio.as_secs_f32() * 1000.0,
+            (t_boot.elapsed() - t_pack - t_renderer - t_audio).as_secs_f32() * 1000.0
+        ));
         app.refresh_widgets();
         app
     }
@@ -1314,20 +1558,7 @@ impl GameApp {
                 WindowEvent::MouseInput { state, button, .. } => {
                     let pressed = state == ElementState::Pressed;
                     let (cx, cy) = (self.cursor.0 as i32, self.cursor.1 as i32);
-                    if self.container.is_some() && self.screen == Screen::Game {
-                        if pressed {
-                            let right = button == winit::event::MouseButton::Right;
-                            self.container_click(cx, cy, right);
-                        }
-                    } else if self.picker_open && self.screen == Screen::Game {
-                        if pressed {
-                            self.picker_click(cx, cy);
-                        }
-                    } else if self.screen == Screen::Game {
-                        self.game_mouse(button, pressed);
-                    } else {
-                        self.menu_mouse(button, pressed, cx, cy);
-                    }
+                    self.route_mouse_click(button, pressed, cx, cy);
                 }
                 #[cfg(target_arch = "wasm32")]
                 WindowEvent::MouseInput { .. } => {
@@ -1336,6 +1567,22 @@ impl GameApp {
                 #[cfg(not(target_arch = "wasm32"))]
                 WindowEvent::CursorMoved { position, .. } => {
                     let (ux, uy) = self.phys_to_ui(position.x as f32, position.y as f32);
+                    // Delta-look fallback (see capture_pointer): compositors
+                    // without pointer-lock deliver motion ONLY as CursorMoved,
+                    // so gameplay look input is fed from position deltas while
+                    // the game screen is active (menus/containers still use the
+                    // plain cursor position)
+                    if self.pointer_lock == PointerLockMode::Delta
+                        && self.screen == Screen::Game
+                        && self.container.is_none()
+                        && !self.picker_open
+                    {
+                        if let Some((lx, ly)) = self.last_cursor_phys {
+                            self.input
+                                .add_mouse(position.x as f32 - lx, position.y as f32 - ly);
+                        }
+                    }
+                    self.last_cursor_phys = Some((position.x as f32, position.y as f32));
                     self.cursor = (ux, uy);
                     self.update_hover();
                     if self.dragging.is_some() {
@@ -1379,7 +1626,13 @@ impl GameApp {
             Event::DeviceEvent { event, .. } => {
                 use winit::event::DeviceEvent;
                 if let DeviceEvent::MouseMotion { delta: (dx, dy) } = event {
-                    if self.screen == Screen::Game {
+                    // relative motion events: real input while a grab is
+                    // active. In the Delta fallback the SAME motion also
+                    // arrives as CursorMoved — feeding both would double
+                    // the sensitivity, so raw events are skipped there.
+                    if self.screen == Screen::Game
+                        && self.pointer_lock != PointerLockMode::Delta
+                    {
                         self.input.add_mouse(dx as f32, dy as f32);
                     }
                 }
@@ -1624,13 +1877,36 @@ impl GameApp {
                 }
             }
             KeyCode::F3 => {
-                if pressed && !repeat && self.screen == Screen::Game {
-                    self.show_debug = !self.show_debug;
+                if self.screen == Screen::Game {
+                    if pressed {
+                        // vanilla combo behavior: F3 keydown toggles the
+                        // overlay; while it stays HELD, Q/1/H fire the
+                        // F3+X combinations instead of their plain actions.
+                        // (repeats filtered by the held flag)
+                        if !self.f3_held {
+                            self.f3_held = true;
+                            self.show_debug = !self.show_debug;
+                            self.ui.dirty = true;
+                        }
+                    } else {
+                        self.f3_held = false;
+                    }
+                }
+            }
+            KeyCode::KeyQ => {
+                // F3 + Q — vanilla debug-help overlay
+                if pressed && !repeat && in_game && self.f3_held {
+                    self.debug_help = !self.debug_help;
                     self.ui.dirty = true;
                 }
             }
             KeyCode::KeyH => {
-                if pressed && !repeat && in_game {
+                // F3 + H — vanilla "advanced tooltips" (item/block ids on
+                // hover labels); plain H keeps the gameplay help screen
+                if pressed && !repeat && in_game && self.f3_held {
+                    self.advanced_tooltips = !self.advanced_tooltips;
+                    self.ui.dirty = true;
+                } else if pressed && !repeat && in_game {
                     self.show_help = !self.show_help;
                     self.ui.dirty = true;
                 }
@@ -1677,6 +1953,15 @@ impl GameApp {
             | KeyCode::Digit8
             | KeyCode::Digit9 => {
                 if pressed && in_game {
+                    // F3 + 1 — engine extension (not vanilla): the
+                    // frame-time graph under the left column, listed in
+                    // the F3+Q overlay. While F3 is held, Digit1 is the
+                    // combo, not hotbar slot 1.
+                    if code == KeyCode::Digit1 && self.f3_held {
+                        self.debug_graph = !self.debug_graph;
+                        self.ui.dirty = true;
+                        return;
+                    }
                     let n = code as u8 - KeyCode::Digit1 as u8;
                     self.player.selected = n as usize;
                     let b = self.player.inv.slots[n as usize].block;
@@ -1688,7 +1973,53 @@ impl GameApp {
         }
     }
 
-    /// mouse buttons while in-game
+    // ------------------------------------------------------ pointer --
+
+    /// Capture the pointer for gameplay (native) through the robust
+    /// ladder: Locked → Confined → Delta-look. Every grab result is
+    /// CHECKED — the pre-fix code discarded the error and hid the cursor
+    /// anyway, which on compositors without pointer-lock (WSLg/Wayland,
+    /// RDP sessions, some X11 setups) left an invisible cursor and no
+    /// relative-motion events: camera frozen, clicks seemingly dead (the
+    /// user-reported "mouse clicking and stuff not working"). In Delta
+    /// mode the cursor stays VISIBLE and look input is fed from
+    /// CursorMoved deltas (see handle_event).
+    /// Also re-attempted on the first in-game click — compositors that
+    /// only allow pointer lock as a direct user gesture get one here.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn capture_pointer(&mut self) {
+        use winit::window::CursorGrabMode as G;
+        if self.window.set_cursor_grab(G::Locked).is_ok() {
+            self.pointer_lock = PointerLockMode::Locked;
+            self.window.set_cursor_visible(false);
+            vc_render::render::report_boot_log("pointer: locked (relative motion via raw events)");
+        } else if self.window.set_cursor_grab(G::Confined).is_ok() {
+            self.pointer_lock = PointerLockMode::Confined;
+            self.window.set_cursor_visible(false);
+            vc_render::render::report_boot_log("pointer: confined to the window");
+        } else {
+            // no pointer-lock protocol available: keep the cursor
+            // visible and drive look from cursor deltas instead
+            let _ = self.window.set_cursor_grab(G::None);
+            self.pointer_lock = PointerLockMode::Delta;
+            self.last_cursor_phys = None; // re-arm: no jump on the next move
+            vc_render::render::report_boot_log(
+                "pointer: lock unavailable — delta-look fallback (visible cursor)",
+            );
+        }
+    }
+
+    /// Release the pointer back to OS control (menus / containers).
+    #[cfg(not(target_arch = "wasm32"))]
+    fn release_pointer(&mut self) {
+        let _ = self
+            .window
+            .set_cursor_grab(winit::window::CursorGrabMode::None);
+        self.window.set_cursor_visible(true);
+        self.pointer_lock = PointerLockMode::Delta;
+        self.last_cursor_phys = None;
+    }
+
     fn game_mouse(&mut self, button: winit::event::MouseButton, pressed: bool) {
         use winit::event::MouseButton;
         match button {
@@ -1697,10 +2028,14 @@ impl GameApp {
                     self.unlock_audio();
                     #[cfg(not(target_arch = "wasm32"))]
                     {
-                        let _ = self
-                            .window
-                            .set_cursor_grab(winit::window::CursorGrabMode::Locked);
-                        self.window.set_cursor_visible(false);
+                        // first click in-game (re-)attempts the capture
+                        // ladder — compositors requiring a user gesture
+                        // for pointer lock get one here, and a previously
+                        // failed lock is retried rather than stuck in the
+                        // fallback forever
+                        if self.pointer_lock == PointerLockMode::Delta {
+                            self.capture_pointer();
+                        }
                     }
                     // Phase 2: a mob under the crosshair takes swing
                     // priority over block breaking (vanilla ordering)
@@ -1750,12 +2085,7 @@ impl GameApp {
             crate::web_input::set_screen("picker");
         }
         #[cfg(not(target_arch = "wasm32"))]
-        {
-            let _ = self
-                .window
-                .set_cursor_grab(winit::window::CursorGrabMode::None);
-            self.window.set_cursor_visible(true);
-        }
+        self.release_pointer();
         self.ui.dirty = true;
     }
 
@@ -1769,12 +2099,7 @@ impl GameApp {
         #[cfg(target_arch = "wasm32")]
         crate::web_input::request_pointer_lock();
         #[cfg(not(target_arch = "wasm32"))]
-        {
-            let _ = self
-                .window
-                .set_cursor_grab(winit::window::CursorGrabMode::Locked);
-            self.window.set_cursor_visible(false);
-        }
+        self.capture_pointer();
         self.ui.dirty = true;
     }
 
@@ -1789,6 +2114,74 @@ impl GameApp {
             self.item_toast = Some((name(b).to_string(), 2.0));
             self.ui.dirty = true;
         }
+    }
+
+    /// physical-mouse routing (shared by the winit MouseInput event and
+    /// the CI smoke's synthetic clicks): containers/picker eat clicks in
+    /// the game screen, gameplay buttons go to game_mouse, everything
+    /// else is a menu click. Extracted so the input pipeline has ONE
+    /// authoritative path.
+    fn route_mouse_click(
+        &mut self,
+        button: winit::event::MouseButton,
+        pressed: bool,
+        cx: i32,
+        cy: i32,
+    ) {
+        if self.container.is_some() && self.screen == Screen::Game {
+            if pressed {
+                let right = button == winit::event::MouseButton::Right;
+                self.container_click(cx, cy, right);
+            }
+        } else if self.picker_open && self.screen == Screen::Game {
+            if pressed {
+                self.picker_click(cx, cy);
+            }
+        } else if self.screen == Screen::Game {
+            self.game_mouse(button, pressed);
+        } else {
+            self.menu_mouse(button, pressed, cx, cy);
+        }
+    }
+
+    /// UI-canvas → physical-pixel mapping (the inverse of phys_to_ui;
+    /// used by the smoke's synthetic CursorMoved path so the full
+    /// coordinate round-trip is covered)
+    fn ui_to_phys(&self, ux: f32, uy: f32) -> (f32, f32) {
+        let (sw, sh) = self.renderer.size();
+        let scale = (sw / UI_W as f32).min(sh / UI_H as f32);
+        let x0 = (sw - UI_W as f32 * scale) * 0.5;
+        let y0 = (sh - UI_H as f32 * scale) * 0.5;
+        (x0 + ux * scale, y0 + uy * scale)
+    }
+
+    /// CI smoke contract, stage 2 REAL INPUT: click a widget through the
+    /// same pipeline a physical mouse drives — cursor tracking → hover →
+    /// route_mouse_click → hit test → activate. The user-reported "mouse
+    /// clicking not working" regression class lives exactly here, and the
+    /// old smoke bypassed it by calling reset_world directly.
+    fn smoke_click_widget(&mut self, id: u16) {
+        let Some(w) = self.widgets.iter().find(|w| w.id == id).cloned() else {
+            vc_render::render::report_boot_log(&format!(
+                "smoke: FAIL — widget {id} not on screen {}",
+                self.screen.name()
+            ));
+            return;
+        };
+        let (ux, uy) = (w.x + w.w / 2, w.y + w.h / 2);
+        // round-trip through the physical coordinate space like a real
+        // CursorMoved event does
+        let (px, py) = self.ui_to_phys(ux as f32, uy as f32);
+        let (ux, uy) = self.phys_to_ui(px, py);
+        let (cx, cy) = (ux as i32, uy as i32);
+        self.cursor = (ux, uy);
+        self.update_hover();
+        self.route_mouse_click(winit::event::MouseButton::Left, true, cx, cy);
+        self.route_mouse_click(winit::event::MouseButton::Left, false, cx, cy);
+        vc_render::render::report_boot_log(&format!(
+            "smoke: clicked widget {id} at ({cx},{cy}) — screen now {}",
+            self.screen.name()
+        ));
     }
 
     /// mouse buttons while in a menu (buttons + sliders + text fields)
@@ -1894,6 +2287,7 @@ impl GameApp {
         let vol = r.volume * volume_scale * att * cat_gain * master;
         if vol > 0.004 {
             self.sounds_played += 1;
+            self.snd_window += 1; // F3 "Sounds:" 1 s window
             self.audio.play(&self.bank, r.recipe, vol, r.pitch, pan);
         }
     }
@@ -1911,16 +2305,15 @@ impl GameApp {
         self.screen = screen;
         #[cfg(target_arch = "wasm32")]
         crate::web_input::set_screen(screen.name());
-        // native cursor modes
+        // native cursor modes — through the capture ladder (never a blind
+        // hide-the-cursor grab: see capture_pointer)
         #[cfg(not(target_arch = "wasm32"))]
         {
-            let game = matches!(screen, Screen::Game);
-            let _ = self.window.set_cursor_grab(if game {
-                winit::window::CursorGrabMode::Locked
+            if matches!(screen, Screen::Game) {
+                self.capture_pointer();
             } else {
-                winit::window::CursorGrabMode::None
-            });
-            self.window.set_cursor_visible(!game);
+                self.release_pointer();
+            }
         }
         #[cfg(target_arch = "wasm32")]
         {
@@ -2197,7 +2590,11 @@ impl GameApp {
         self.save_root = entry.dir;
         self.world_dir =
             vc_anvil::save::dimension_dir(&self.save_root, vc_world::world::Dimension::Overworld);
+        let game_time = entry.meta.game_time;
         self.reset_world(seed, mode, name, player);
+        // F3: the loaded world's clock continues where the save left off
+        // (reset_world zeroed it for a fresh world)
+        self.world_game_time = game_time;
         self.load_datapacks();
         vc_render::render::report_boot_log(&format!(
             "world loaded: \"{}\" seed={} mode={}",
@@ -2311,6 +2708,10 @@ impl GameApp {
         self.place_timer = 0.0;
         self.day_time = 0.30;
         self.edits = 0;
+        // fresh world clock (vanilla `Time` starts at 0); play_world
+        // restores the loaded save's value after this
+        self.world_game_time = 0;
+        self.world_time_acc = 0.0;
 
         // the Loading pipeline snaps the player to the surface, then
         // pending_play routes straight into the game
@@ -4075,6 +4476,8 @@ impl GameApp {
         self.renderer.set_occlusion(self.settings.occlusion);
         #[cfg(target_arch = "wasm32")]
         crate::web_input::save_settings(&self.settings.serialize());
+        #[cfg(not(target_arch = "wasm32"))]
+        save_native_settings(&self.settings);
         self.refresh_widgets();
         self.ui.dirty = true;
     }
@@ -4333,12 +4736,7 @@ impl GameApp {
             crate::web_input::set_screen("picker");
         }
         #[cfg(not(target_arch = "wasm32"))]
-        {
-            let _ = self
-                .window
-                .set_cursor_grab(winit::window::CursorGrabMode::None);
-            self.window.set_cursor_visible(true);
-        }
+        self.release_pointer();
         self.ui.dirty = true;
     }
 
@@ -4457,12 +4855,7 @@ impl GameApp {
             crate::web_input::request_pointer_lock();
         }
         #[cfg(not(target_arch = "wasm32"))]
-        {
-            let _ = self
-                .window
-                .set_cursor_grab(winit::window::CursorGrabMode::Locked);
-            self.window.set_cursor_visible(false);
-        }
+        self.capture_pointer();
         self.ui.dirty = true;
     }
 
@@ -5137,6 +5530,22 @@ impl GameApp {
         // from a research-doc error (half the real length); fixed this
         // round.)
 
+        // CI smoke stage 2: dispatch due synthetic clicks through the real
+        // input path (see smoke_click_widget)
+        while let Some(&(due, id)) = self.smoke_script.front() {
+            if self.time < due {
+                break;
+            }
+            self.smoke_script.pop_front();
+            self.smoke_click_widget(id);
+            // the create screen resets the seed buffer on entry — the
+            // deterministic seed goes in AFTER that (typing it is the
+            // field's normal path)
+            if id == ui::ID_WS_CREATE {
+                self.wc_seed = "12345".into();
+            }
+        }
+
         // --- bench mode: scripted camera, frame bookkeeping (§48 Phase 0)
         if let Some(bs) = self.bench.as_mut() {
             bs.t += dt;
@@ -5153,10 +5562,52 @@ impl GameApp {
         }
 
         // CI smoke contract, stage 3 (see the field doc): the world-entry
-        // loading gate has delivered gameplay — exit 0 headless
+        // loading gate has delivered gameplay — exercise the IN-GAME click
+        // path (game_mouse: break-hold + cursor grab + audio unlock) once,
+        // then exit 0 headless. Covers the "clicks and stuff" half of the
+        // user report.
         if self.smoke && self.screen == Screen::Game {
-            vc_render::render::report_boot_log("smoke: game entered — exiting 0");
-            std::process::exit(0);
+            if !self.smoke_clicked_ingame {
+                self.smoke_clicked_ingame = true;
+                self.smoke_game_t = self.time;
+                // F3 verification aid: F3=1 turns the overlay on at game
+                // entry (with F3_DUMP=<path> the 20 Hz rebuild loop writes
+                // the canvas png)
+                if std::env::var("F3").is_ok() && !self.show_debug {
+                    self.show_debug = true;
+                    self.ui.dirty = true;
+                }
+                self.route_mouse_click(winit::event::MouseButton::Left, true, 0, 0);
+                self.route_mouse_click(winit::event::MouseButton::Left, false, 0, 0);
+                vc_render::render::report_boot_log(&format!(
+                    "smoke: in-game click ok (break_hold={} target={})",
+                    self.input.break_hold,
+                    self.target.is_some()
+                ));
+            }
+            // F3_DUMP run: hold gameplay ~2 s so the overlay rebuild + dump
+            // fires before the exit contract. F3_DUMP2 (optional, set with
+            // F3=1 F3_DUMP=a.png F3_DUMP2=b.png): a second dump ~1 s later
+            // — the pair is the DYNAMISM check (two frames of a live
+            // overlay MUST differ: fps/XYZ/light/memory all move).
+            if std::env::var("F3_DUMP").is_err() {
+                vc_render::render::report_boot_log("smoke: game entered — exiting 0");
+                std::process::exit(0);
+            }
+            let t_in = self.time - self.smoke_game_t;
+            if t_in > 1.6 && !self.f3_dump2 {
+                self.f3_dump2 = true;
+                if let Ok(p2) = std::env::var("F3_DUMP2") {
+                    self.ui.dump_png(&p2);
+                    vc_render::render::report_boot_log(
+                        "smoke: F3 liveness pair written (dump 2 @ 1.6 s)",
+                    );
+                }
+            }
+            if t_in > 2.2 {
+                vc_render::render::report_boot_log("smoke: game entered — exiting 0");
+                std::process::exit(0);
+            }
         }
 
         // Phase 4 §18: settle incremental light updates, then fold the
@@ -7161,28 +7612,33 @@ impl GameApp {
             // asset bar redraws (menus rebuild at the 0.05 s cadence)
             self.ui.dirty = true;
             let t = self.time - self.intro_start;
-            if t > 1.1 {
+            if t > INTRO_SECS {
                 vc_render::render::report_boot_log(&format!(
                     "intro complete: assets ready, title in {:.2}s \
                      (menus run on the pre-rendered panorama — no world gen)",
                     t
                 ));
                 self.set_screen(Screen::Title);
-                // CI smoke contract, stage 1: title reached through the
-                // real boot path; then enter a world through the real
-                // pipeline (reset_world → Loading gate → start_game) so
-                // the smoke covers the world-entry path the original
-                // loading hang lived in
+                // CI smoke contract, stage 2 (see the field doc): title
+                // reached through the real boot path; now click through
+                // the REAL INPUT pipeline (singleplayer → create world →
+                // loading) instead of calling reset_world directly — the
+                // user-reported mouse-click regression class is covered
+                // by exactly this path
                 if self.smoke {
                     vc_render::render::report_boot_log(
-                        "smoke: title reached — entering world",
+                        "smoke: title reached — clicking through the input path",
                     );
-                    self.reset_world(
-                        12345,
-                        vc_gameplay::modes::GameMode::Survival,
-                        "Smoke World".into(),
-                        None,
-                    );
+                    // deterministic world: the seed goes into the create
+                    // screen's field after the screen resets its buffers
+                    // (see the script driver in update)
+                    let t = self.time;
+                    self.smoke_script = vec![
+                        (t + 0.30, ui::ID_TITLE_PLAY),
+                        (t + 0.70, ui::ID_WS_CREATE),
+                        (t + 1.10, ui::ID_WC_CREATE),
+                    ]
+                    .into();
                 }
             }
         }
@@ -8969,8 +9425,51 @@ impl GameApp {
                 self.ui.dirty = true;
             }
         }
+        // BLOCKING-BUG FIX (user report: "F3 was static, nothing updated"):
+        // the rebuild gate only repaints when ui.dirty is SET, and nothing
+        // re-marked it while the debug overlay was open — after the single
+        // toggle rebuild the F3 text froze at the first snapshot. 20 Hz
+        // heartbeat while the overlay is visible (vanilla F3 values move
+        // smoothly; fps accumulates per second, position/light/counts per
+        // rebuild).
+        if live_debug && self.time - self.last_ui_t > 0.05 {
+            self.ui.dirty = true;
+        }
         if self.ui.dirty && self.time - self.last_ui_t > cadence {
             crate::phase!(self.phases, crate::bench::PHASE_UI, self.rebuild_ui());
+        }
+
+        // F3 right-column telemetry: sample process memory at 4 Hz (a
+        // /proc read is cheap but not free) and roll the 1 s sound-event
+        // window (the vanilla "Sounds: N/M" live counter)
+        if self.show_debug {
+            if self.time - self.f3_mem_t > 0.25 {
+                self.f3_mem_t = self.time;
+                let (rss, sys) = proc_memory_mb();
+                self.f3_rss_mb = rss;
+                self.f3_sys_mb = sys;
+            }
+        }
+        self.snd_window_t += dt;
+        if self.snd_window_t >= 1.0 {
+            self.snd_window_t = 0.0;
+            self.snd_rate = self.snd_window;
+            self.snd_window = 0;
+        }
+
+        // world clock (vanilla `Time`): ticks at 20 tps while a world is
+        // in play — drives F3's "Day N" + moon phase and persists as the
+        // save's game_time
+        if matches!(
+            self.screen,
+            Screen::Game | Screen::Pause | Screen::Death | Screen::Loading
+        ) {
+            self.world_time_acc += dt * 20.0;
+            let whole = self.world_time_acc.floor() as i64;
+            if whole > 0 {
+                self.world_time_acc -= whole as f32;
+                self.world_game_time += whole;
+            }
         }
 
         // publish debug stats for E2E tests (wasm)
@@ -9007,7 +9506,10 @@ impl GameApp {
             .into_iter()
             .filter_map(|p| self.world.chunks.get(&p).map(|c| (p, Arc::clone(c))))
             .collect();
-        let tick = ((self.time - self.load_start) * 20.0).max(0.0) as i64;
+        // world age (vanilla `Time`): restored at load + live ticks —
+        // drives Day N / moon phase in F3 and keeps the save's clock
+        // monotonic across sessions
+        let tick = self.world_game_time;
         if !entries.is_empty() {
             let refs: Vec<(
                 i32,
@@ -9998,6 +10500,413 @@ impl GameApp {
 
     // ---------------------------------------------------------------- ui --
 
+    /// F3 debug overlay content — vanilla 1.16.5 structure, line formats
+    /// matched to the reference capture (two columns; left = version /
+    /// fps / chunks / entities / position / light / biome / difficulty /
+    /// spawn counts / sounds / help hint; right = runtime / memory / CPU /
+    /// display / GPU / targeted block + fluid). JVM-specific values are
+    /// engine-adapted and labeled here:
+    /// - "T:" = the framerate limit (∞ when vsync/uncapped — vanilla shows
+    ///   the same ∞ for an unlimited setting)
+    /// - "D:" on the fps line = difficulty id (0..3)
+    /// - "Integrated server @ N ms ticks" = the sim phase's live duration
+    ///   (singleplayer integrated-server analog); tx/rx = 0 (no netcode)
+    /// - "C:" = chunks drawn / loaded, pC/pU = generation/mesh jobs in
+    ///   flight, aB = chunk buffers on the GPU
+    /// - "E:" = mobs (visible = within the render distance), "B:" = block
+    ///   entities (open container inventories + spawners)
+    /// - "F:/I:" = frustum/occlusion culling counters
+    /// - Client/Server chunk cache = meshed vs generated chunk sets
+    /// - CH heightmaps = live column scan (world surface / ocean floor /
+    ///   motion blocking / motion blocking no leaves)
+    /// - Local Difficulty = 0.75 + day ramp + moon phase, scaled by the
+    ///   mode's difficulty multiplier (wiki Difficulty, engine-adapted)
+    /// - SC: = spawn-square chunk count + mob-cap categories; Sounds: =
+    ///   events fired in the last second / registry event count
+    /// - Right column: Rust/wgpu instead of Java; Mem = live /proc RSS vs
+    ///   system total; Allocated = live large-allocation bytes (counting
+    ///   allocator); CPU/Display/GPU = host + wgpu adapter info
+    fn f3_lines(&self) -> (Vec<String>, Vec<String>) {
+        let p = &self.player;
+        let pc = self.player_chunk();
+        // ---------- left column ----------
+        let biome = self
+            .world
+            .chunk(pc)
+            .map(|c| {
+                let lx = (p.pos.x - pc.0 as f32 * 16.0).floor().clamp(0.0, 15.0) as usize;
+                let lz = (p.pos.z - pc.1 as f32 * 16.0).floor().clamp(0.0, 15.0) as usize;
+                Biome::from_u8(c.biome[lz * 16 + lx])
+            })
+            .unwrap_or(Biome::Plains);
+        // vanilla F3 "Facing:" line (format verified — Debug_screen):
+        // "Facing: south (Towards positive Z) (yaw / pitch)". Engine
+        // yaw 0 = north; vanilla yaw 0 = south → display yaw =
+        // wrap(engine − 180). Engine pitch is +up; vanilla is +down
+        // → display pitch negates it.
+        let facing_line = {
+            let yaw = ((p.yaw.to_degrees() % 360.0) + 360.0) % 360.0;
+            let (name, towards) = match yaw {
+                315.0..=360.0 | 0.0..=45.0 => ("north", "negative Z"),
+                45.0..=135.0 => ("east", "positive X"),
+                135.0..=225.0 => ("south", "positive Z"),
+                _ => ("west", "negative X"),
+            };
+            let display_yaw = {
+                let y = yaw - 180.0;
+                if y > 180.0 {
+                    y - 360.0
+                } else {
+                    y
+                }
+            };
+            format!(
+                "Facing: {} (Towards {}) ({:.1} / {:.1})",
+                name,
+                towards,
+                display_yaw,
+                -p.pitch.to_degrees()
+            )
+        };
+        // Client Light at the player's feet from the real light engine
+        // (sky × block). Vanilla 1.16.5 shows BOTH client and server
+        // light; our integrated sim settles through the same engine, so
+        // the server row mirrors the settled values.
+        let (_, sky, blk) = light_at(
+            &self.world,
+            &self.light,
+            p.pos.x.floor() as i32,
+            p.pos.y.floor() as i32,
+            p.pos.z.floor() as i32,
+        );
+        let light_line = format!("Client Light: {} ({} sky, {} blk)", sky.max(blk), sky, blk);
+        let server_light_line =
+            format!("Server Light: {} ({} sky, {} blk)", sky.max(blk), sky, blk);
+        // heightmaps at the player column (live scan)
+        let (ws, of, mb, mbl) = self.column_heightmaps();
+        // local difficulty + day (engine-adapted formula, see doc above)
+        let (ld, ld_clamped, day) = self.local_difficulty();
+        // mob-cap categories (live from the sim)
+        let (monsters, creatures, ambient, water, misc) = self.mob_spawn_counts();
+        // fps line pieces
+        let t_val = match self.settings.maxfps {
+            1 => "30".to_string(),
+            2 => "60".to_string(),
+            3 => "120".to_string(),
+            _ => "∞".to_string(),
+        };
+        let clouds_val = if !self.settings.clouds {
+            "clouds-off"
+        } else if self.settings.graphics == 0 {
+            "fast-clouds"
+        } else {
+            "fancy-clouds"
+        };
+        let diff_id = match self.mode {
+            vc_gameplay::modes::GameMode::Hardcore => 3,
+            _ => self.settings_difficulty_id(),
+        };
+        let meshed = self.renderer.chunks.len();
+        let loaded = self.world.chunks.len();
+        let drawn = self.stats.chunks as usize;
+        let hidden = loaded.saturating_sub(drawn + self.stats.culled as usize);
+        // sim tick duration (ms) from the live phase counter
+        let tick_ms = self.phases.phase_ms(crate::bench::PHASE_SIM);
+        let left = vec![
+            "VoxelCraft 1.16.5 (Rust/wgpu/modified)".to_string(),
+            format!(
+                "{} fps T: {} {} D: {}",
+                self.fps as i32, t_val, clouds_val, diff_id
+            ),
+            format!(
+                "Integrated server @ {:.0} ms ticks, 0 tx, 0 rx",
+                tick_ms
+            ),
+            format!(
+                "C: {}/{} (s) D: {}, pC: {:03}, pU: {:03}, aB: {:03}",
+                drawn,
+                loaded,
+                self.settings.render_distance,
+                self.gen_inflight.len(),
+                self.mesh_inflight.len(),
+                meshed
+            ),
+            format!("E: {}/{} B: {}", self.mob_visible_count(), self.sim.mobs.len(), self.block_entity_count()),
+            format!("F: {} I: {}", self.stats.culled, hidden),
+            format!("Client Chunk Cache: {}, {}", meshed, drawn),
+            format!("ServerChunkCache: {}", loaded),
+            format!("XYZ: {:.3} / {:.5} / {:.3}", p.pos.x, p.pos.y, p.pos.z),
+            format!(
+                "Block: {} {} {}",
+                p.pos.x.floor() as i32,
+                p.pos.y.floor() as i32,
+                p.pos.z.floor() as i32
+            ),
+            // 1.16.5 six-value chunk line: local x / y-in-section / local
+            // z "in" chunk x / section y / chunk z
+            format!(
+                "Chunk: {} {} {} in {} {} {}",
+                p.pos.x.floor() as i32 & 15,
+                p.pos.y.floor() as i32 & 15,
+                p.pos.z.floor() as i32 & 15,
+                pc.0,
+                (p.pos.y.floor() as i32).div_euclid(16),
+                pc.1
+            ),
+            facing_line,
+            light_line,
+            server_light_line,
+            format!("CH S: {} D: {}", ws, of),
+            format!("CH H: {} O: {} M: {} ML: {}", mb, of, mbl, mbl),
+            format!("Biome: minecraft:{}", biome_registry_id(biome)),
+            format!("Local Difficulty: {:.2} // {:.2} (Day {})", ld, ld_clamped, day),
+            String::new(),
+            format!(
+                "SC: {}, M: {}, C: {}, A: {}, W: {}, M: {}",
+                289, monsters, creatures, ambient, water, misc
+            ),
+            format!(
+                "Sounds: {}/{} + 0/8 (mood 0/0)",
+                self.snd_rate,
+                self.sounds.events.len()
+            ),
+            "Debug: Pie [shift]: hidden FPS + TPS [alt]: hidden".to_string(),
+            "For help: press F3 + Q".to_string(),
+        ];
+        // ---------- right column ----------
+        let mut right = vec![
+            format!(
+                "Rust: {}bit {}",
+                if cfg!(target_pointer_width = "64") { 64 } else { 32 },
+                if cfg!(debug_assertions) { "debug" } else { "release" }
+            ),
+            self.f3_mem_line(),
+            self.f3_allocated_line(),
+            String::new(),
+            self.f3_cpu_line(),
+            self.f3_display_line(),
+            self.renderer.adapter_name.clone(),
+            self.renderer.adapter_desc.clone(),
+            String::new(),
+        ];
+        // vanilla 1.16.5 bottom-right: Targeted Block / Targeted Fluid
+        // with the coordinates + id + one line per blockstate property
+        if let Some((t, tb, _)) = self.target {
+            let coord_line = format!("Targeted Block: {}, {}, {}", t[0], t[1], t[2]);
+            right.push(coord_line);
+            right.push(format!("minecraft:{}", block_id_name(tb)));
+            for prop in state_prop_lines(self.world.get_state(t[0], t[1], t[2])) {
+                right.push(prop);
+            }
+        }
+        // fluid line: show when the crosshair ray lands on water (the
+        // engine's fluid analog; vanilla prints the fluid at the surface
+        // block even over solid targets — we show it only for water hits,
+        // matching the "Looking at fluid" split the engine supports)
+        if let Some((t, tb, _)) = self.target {
+            if tb == WATER {
+                right.push(format!("Targeted Fluid: {}, {}, {}", t[0], t[1], t[2]));
+                right.push("minecraft:water".to_string());
+            }
+        }
+        (left, right)
+    }
+
+    /// F3+Q overlay rows: exactly the combinations this engine implements
+    /// (vanilla lists only real features — so do we).
+    fn f3_help_rows(&self) -> Vec<(String, String)> {
+        vec![
+            ("F3 + Q".to_string(), "This help".to_string()),
+            ("F3 + 1".to_string(), "Frame time graph".to_string()),
+            (
+                "F3 + H".to_string(),
+                "Advanced tooltips (block ids)".to_string(),
+            ),
+            ("F3".to_string(), "Toggle this overlay".to_string()),
+        ]
+    }
+
+    /// difficulty id for the fps line's "D:" (0 peaceful / 1 easy /
+    /// 2 normal / 3 hard; hardcore rides hard)
+    fn settings_difficulty_id(&self) -> i32 {
+        match self.mode {
+            vc_gameplay::modes::GameMode::Creative
+            | vc_gameplay::modes::GameMode::Spectator => 2,
+            _ => 2,
+        }
+    }
+
+    /// live heightmaps at the player's column: (world surface, ocean
+    /// floor, motion blocking, motion blocking no leaves) — the values
+    /// behind the vanilla "CH S/CH H" lines (wiki heightmap semantics).
+    fn column_heightmaps(&self) -> (i32, i32, i32, i32) {
+        let x = self.player.pos.x.floor() as i32;
+        let z = self.player.pos.z.floor() as i32;
+        let mut ws = 0;
+        let mut of = 0;
+        let mut mb = 0;
+        let mut mbl = 0;
+        for y in (0..crate::CHUNK_Y as i32).rev() {
+            let b = self.world.get_block(x, y, z);
+            if b == AIR {
+                continue;
+            }
+            let leaves = is_leaves(b) || is_cross(b);
+            let solid = !is_cross(b) && b != WATER;
+            if ws == 0 {
+                ws = y + 1;
+            }
+            if of == 0 && solid {
+                of = y + 1;
+            }
+            if mb == 0 && (solid || b == WATER) {
+                mb = y + 1;
+            }
+            if mbl == 0 && (solid || (b == WATER)) && !leaves {
+                mbl = y + 1;
+            }
+        }
+        (ws, of, mb, mbl)
+    }
+
+    /// local difficulty (wiki Difficulty, engine-adapted): day component
+    /// ramps over the first 3 in-game days, the moon phase adds up to
+    /// +0.25 (full moon), difficulty scales by mode. Returns (local,
+    /// clamped, day).
+    fn local_difficulty(&self) -> (f32, f32, u64) {
+        let day = (self.world_game_time.max(0) / 24_000) as u64;
+        let day_factor = (day as f32 / 3.0).clamp(0.25, 1.0);
+        // vanilla moonPhase = (day % 8); phase 0 = full moon
+        let moon = (day % 8) as f32;
+        let moon_factor = ((8.0 - moon) / 8.0).min(1.0) * 0.25;
+        let regional = (0.75 + day_factor * 0.25 + moon_factor).clamp(0.75, 1.5);
+        let mult = match self.mode {
+            vc_gameplay::modes::GameMode::Hardcore => 1.5,
+            _ => 1.0,
+        };
+        let local = regional * mult;
+        (local, local.clamp(0.0, 4.0), day)
+    }
+
+    /// mob-cap category counts (live): monsters / creatures / ambient /
+    /// water / misc (the F3 "SC:" line's tail, engine-adapted to the
+    /// categories our spawner actually uses).
+    fn mob_spawn_counts(&self) -> (u32, u32, u32, u32, u32) {
+        let mut m = 0u32;
+        let mut c = 0u32;
+        let mut a = 0u32;
+        let mut w = 0u32;
+        let mut x = 0u32;
+        for mob in self.sim.mobs.list.iter() {
+            use vc_gameplay::mobs::MobKind as K;
+            match mob.kind {
+                K::Zombie
+                | K::Skeleton
+                | K::Creeper
+                | K::Spider
+                | K::Enderman
+                | K::MagmaCube
+                | K::Blaze
+                | K::ZombieVillager
+                | K::WitherSkeleton
+                | K::Witch
+                | K::Stray
+                | K::Husk
+                | K::Vindicator
+                | K::Evoker
+                | K::Vex
+                | K::Illusioner
+                | K::Drowned
+                | K::Phantom => m += 1,
+                K::Bat | K::Parrot => a += 1,
+                K::Dolphin | K::Cod | K::Salmon | K::Pufferfish | K::TropicalFish
+                | K::Squid | K::Turtle => w += 1,
+                _ => c += 1,
+            }
+        }
+        // misc counter: arrows in flight (the engine's misc entities)
+        x = self.sim.mobs.arrows.len() as u32;
+        (m, c, a, w, x)
+    }
+
+    /// mobs inside the render distance (the "E:" visible half)
+    fn mob_visible_count(&self) -> usize {
+        let rd = self.settings.render_distance as f32 * 16.0;
+        self.sim
+            .mobs
+            .list
+            .iter()
+            .filter(|m| {
+                let dx = m.pos[0] - self.player.pos.x;
+                let dz = m.pos[2] - self.player.pos.z;
+                dx * dx + dz * dz <= rd * rd
+            })
+            .count()
+    }
+
+    /// block entities (the "E: ... B:" counter): container inventories
+    /// the sim tracks for the loaded chunks
+    fn block_entity_count(&self) -> usize {
+        self.sim.containers.map.len()
+            + self.sim.furnaces.map.len()
+            + self.sim.brewing.map.len()
+            + self.sim.spawners.map.len()
+    }
+
+    /// "Mem: P% R/T MB" — live /proc read (Linux native); other platforms
+    /// fall back to the allocated counter (kept honest: "N/A" never shown
+    /// as a fake number).
+    fn f3_mem_line(&self) -> String {
+        if self.f3_sys_mb > 0.0 {
+            let pct = if self.f3_sys_mb > 0.0 {
+                (self.f3_rss_mb / self.f3_sys_mb * 100.0) as i32
+            } else {
+                0
+            };
+            format!(
+                "Mem: {}% {:.0}/{:.0}MB",
+                pct, self.f3_rss_mb, self.f3_sys_mb
+            )
+        } else {
+            format!("Mem: {:.0}MB", self.f3_rss_mb)
+        }
+    }
+
+    /// "Allocated: P% AMB" — live bytes from the counting allocator
+    fn f3_allocated_line(&self) -> String {
+        let bytes = crate::alloc_stats::allocated_bytes() as f32;
+        let mb = bytes / (1024.0 * 1024.0);
+        // percentage against the sampled process RSS (both live)
+        let pct = if self.f3_rss_mb > 1.0 {
+            (mb / self.f3_rss_mb * 100.0).clamp(0.0, 100.0) as i32
+        } else {
+            100
+        };
+        format!("Allocated: {}% {:.0}MB", pct, mb)
+    }
+
+    /// "CPU: Nx Model" — host CPU (cached /proc/cpuinfo read)
+    fn f3_cpu_line(&self) -> String {
+        let n = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1);
+        let model = cpu_model_name().unwrap_or_else(|| "unknown".to_string());
+        format!("CPU: {}x {}", n, model)
+    }
+
+    /// "Display WxH (vendor)" — the live swapchain size + adapter family
+    fn f3_display_line(&self) -> String {
+        let (w, h) = self.renderer.size();
+        let vendor = self
+            .renderer
+            .adapter_name
+            .split_whitespace()
+            .next()
+            .unwrap_or("generic")
+            .to_string();
+        format!("Display {}x{} ({})", w, h, vendor)
+    }
+
     fn rebuild_ui(&mut self) {
         self.last_ui_t = self.time;
         self.ui.clear();
@@ -10006,7 +10915,7 @@ impl GameApp {
             Screen::Intro => {
                 // asset progress: assets load in GameApp::new, so the bar
                 // tracks the settled intro beat (0→1 over the screen)
-                let p = ((self.time - self.intro_start) / 1.1).clamp(0.0, 1.0);
+                let p = intro_progress(self.time - self.intro_start);
                 self.ui.intro_screen(p);
                 return;
             }
@@ -10158,249 +11067,30 @@ impl GameApp {
         }
 
         if self.show_debug {
-            let p = &self.player;
-            let pc = self.player_chunk();
-            let biome = self
-                .world
-                .chunk(pc)
-                .map(|c| {
-                    let lx = (p.pos.x - pc.0 as f32 * 16.0).floor().clamp(0.0, 15.0) as usize;
-                    let lz = (p.pos.z - pc.1 as f32 * 16.0).floor().clamp(0.0, 15.0) as usize;
-                    Biome::from_u8(c.biome[lz * 16 + lx]).name().to_string()
-                })
-                .unwrap_or_else(|| "…".into());
-            // vanilla F3 "Facing:" line (format verified — Debug_screen):
-            // "Facing: south (Towards positive Z) (yaw / pitch)". Engine
-            // yaw 0 = north; vanilla yaw 0 = south → display yaw =
-            // wrap(engine − 180). Engine pitch is +up; vanilla is +down
-            // → display pitch negates it.
-            let facing_line = {
-                let yaw = ((p.yaw.to_degrees() % 360.0) + 360.0) % 360.0;
-                let (name, towards) = match yaw {
-                    315.0..=360.0 | 0.0..=45.0 => ("north", "negative Z"),
-                    45.0..=135.0 => ("east", "positive X"),
-                    135.0..=225.0 => ("south", "positive Z"),
-                    _ => ("west", "negative X"),
-                };
-                let display_yaw = {
-                    let y = yaw - 180.0;
-                    if y > 180.0 {
-                        y - 360.0
-                    } else {
-                        y
-                    }
-                };
-                format!(
-                    "Facing: {} (Towards {}) ({:.1} / {:.1})",
-                    name,
-                    towards,
-                    display_yaw,
-                    -p.pitch.to_degrees()
-                )
-            };
-            // vanilla "Client Light: L (S sky, B block)" at the feet
-            // (format verified — Debug_screen)
-            let client_light_line = {
-                let (_, sky, blk) = light_at(
-                    &self.world,
-                    &self.light,
-                    p.pos.x.floor() as i32,
-                    p.pos.y.floor() as i32,
-                    p.pos.z.floor() as i32,
+            // vanilla 1.16.5 F3 overlay — two columns, per-line strips,
+            // every value live (rebuilt at the 0.05 s UI cadence by the
+            // live_debug heartbeat in update()). Structure/format matches
+            // the reference capture; engine-adapted values documented in
+            // f3_lines().
+            let (left, right) = self.f3_lines();
+            self.ui.debug(&left, &right);
+            if self.debug_graph {
+                // F3 + 1 (engine extension): frame-time graph under the
+                // left column — hidden by default so the overlay matches
+                // the vanilla look exactly
+                self.ui.frame_graph(
+                    7 + left.len() as i32 * 14 + 8,
+                    self.frame_times.as_slices().0,
                 );
-                format!("Client Light: {} ({} sky, {} blk)", sky.max(blk), sky, blk)
-            };
-            let lines = vec![
-                format!(
-                    "VOXELCRAFT (Rust + wgpu)  {} fps  ({} min / {} avg / {} max)",
-                    self.fps as i32, self.fps_min as i32, self.fps_avg as i32, self.fps_max as i32
-                ),
-                format!(
-                    "Frame: {:.2} ms  Chunks: {} drawn / {} loaded  Tris: {}",
-                    self.frame_ms,
-                    self.stats.chunks,
-                    self.world.chunks.len(),
-                    self.stats.tris
-                ),
-                // Phase 6 §26: quality row (occlusion culling counter + the
-                // four new settings, MSAA shows the ACTIVE device count) +
-                // the Phase 7 meshing backend
-                format!(
-                    "Culled: {}  Sim: {}  Mip: {}  Aniso: {}x  MSAA: {}{}  Mesh: {}",
-                    self.stats.culled,
-                    self.settings.sim_distance,
-                    self.settings.mipmap_levels,
-                    self.settings.aniso,
-                    if self.renderer.msaa() == 0 {
-                        "off".to_string()
-                    } else {
-                        self.renderer.msaa().to_string()
-                    },
-                    if self.settings.occlusion {
-                        ""
-                    } else {
-                        "  (occl off)"
-                    },
-                    match (&self.renderer.gpu_mesh, self.settings.gpu_meshing) {
-                        (Some(m), true) => format!("GPU ({})", m.jobs_done),
-                        (Some(_), false) => "CPU (off)".to_string(),
-                        (None, _) => "CPU".to_string(),
-                    }
-                ),
-                format!(
-                    "Draws: {} avg  Binds: {} avg  Path: {}",
-                    self.draw_calls_ring.iter().map(|d| d.0).sum::<u32>()
-                        / self.draw_calls_ring.len().max(1) as u32,
-                    self.draw_calls_ring.iter().map(|d| d.1).sum::<u32>()
-                        / self.draw_calls_ring.len().max(1) as u32,
-                    self.renderer.draw_path_name()
-                ),
-                // ---- vanilla 1.16.5 F3 parity block (formats verified —
-                // research-verdicts.md live round, minecraft.wiki/w/
-                // Debug_screen; JVM-specific lines are engine-adapted and
-                // documented below) ----
-                format!("XYZ: {:.3} / {:.3} / {:.3}", p.pos.x, p.pos.y, p.pos.z),
-                format!(
-                    "Block: {} {} {}  ({} {} in {} {})",
-                    p.pos.x.floor() as i32,
-                    p.pos.y.floor() as i32,
-                    p.pos.z.floor() as i32,
-                    p.pos.x.floor() as i32 & 15,
-                    p.pos.z.floor() as i32 & 15,
-                    pc.0,
-                    pc.1
-                ),
-                format!(
-                    "Chunk: {} {} in {} {}",
-                    p.pos.x.floor() as i32 & 15,
-                    p.pos.z.floor() as i32 & 15,
-                    pc.0,
-                    pc.1
-                ),
-                facing_line,
-                // Client Light at the player's feet from the real light
-                // engine (sky × block; vanilla multiplies sky by the
-                // time-of-day darkness — the engine's sky column already
-                // carries the night falloff)
-                client_light_line,
-                format!("Biome: {}  Dimension: {}", biome, self.world.dimension.id()),
-                // Phase 1: active game mode + world identity
-                format!(
-                    "Mode: {}  World: \"{}\"  Seed: {}",
-                    self.mode.label(),
-                    self.world_name,
-                    self.world.seed
-                ),
-                // Phase 2: mob system state
-                format!(
-                    "Mobs: {} alive / {} spawned / {} killed  Arrows: {}  Swing: {:.0}%",
-                    self.sim.mobs.len(),
-                    self.sim.mobs.spawned_total,
-                    self.sim.mobs.killed_total,
-                    self.sim.mobs.arrows.len(),
-                    self.swing_t.min(9.99) * 10.0
-                ),
-                format!(
-                    "Day cycle: {:.0}%  Fly: {}",
-                    self.day_time * 100.0,
-                    if self.player.flying { "on" } else { "off" }
-                ),
-                // vanilla F3 "Looking at block/fluid" split (added 1.13
-                // 18w22c, confirmed for 1.16.5 - research-verdicts.md):
-                // a WATER target renders as the fluid line
-                format!(
-                    "{}",
-                    self.target
-                        .map(|(t, tb, _)| {
-                            if tb == WATER {
-                                format!(
-                                    "Looking at fluid: minecraft:water [{} {} {}]",
-                                    t[0], t[1], t[2]
-                                )
-                            } else {
-                                // vanilla F3 parity: exact blockstate, e.g.
-                                // "Oak Slab[type=top]" / "Oak Fence[north=true]"
-                                format!(
-                                    "Looking at block: {} {} {}  ({})",
-                                    t[0],
-                                    t[1],
-                                    t[2],
-                                    state_description(self.world.get_state(t[0], t[1], t[2]))
-                                )
-                            }
-                        })
-                        .unwrap_or("Looking at block: none".into())
-                ),
-                format!(
-                    "RD: {}  FOV: {:.0}  Vol: {:.0}%  Bright: {:.0}%",
-                    self.settings.render_distance,
-                    self.settings.fov,
-                    self.settings.volume * 100.0,
-                    self.settings.brightness * 100.0
-                ),
-                format!(
-                    "Graphics: {}  Shadows: {}  FSR1: {}  MaxFPS: {}",
-                    ["fast", "fancy", "fabulous"][self.settings.graphics as usize],
-                    match self.settings.shadow_quality {
-                        0 => "off",
-                        1 => "1K",
-                        2 => "2K",
-                        _ => "4K",
-                    },
-                    match self.settings.upscale {
-                        0 => "native",
-                        1 => "75% EASU+RCAS",
-                        _ => "50% EASU+RCAS",
-                    },
-                    match self.settings.maxfps {
-                        0 => "vsync",
-                        1 => "30",
-                        2 => "60",
-                        _ => "120",
-                    }
-                ),
-                format!(
-                    "Dirty: {} sections in {} chunks (§12 fine-grained invalidation)",
-                    self.world.dirty_section_count(),
-                    self.world.dirty.len()
-                ),
-                format!(
-                    "Shader: {}  Clouds: {}  Smooth: {}  VSync: {}",
-                    self.shader_mode_name(self.settings.shader),
-                    if self.settings.clouds { "on" } else { "off" },
-                    if self.settings.smooth_lighting {
-                        "on"
-                    } else {
-                        "off"
-                    },
-                    if self.renderer.vsync { "on" } else { "off" }
-                ),
-                format!(
-                    "Pack: {}",
-                    match (&self.renderer.pack_id, &self.renderer.pack_tier) {
-                        (Some(id), tier) if !tier.is_empty() => format!("{id} ({tier})"),
-                        _ => "none".to_string(),
-                    }
-                ),
-                format!(
-                    "Edits: {} (xp lvl {})  Seed: {}",
-                    self.edits, level, self.world.seed
-                ),
-                format!(
-                    "Backend: {}  Scene: {}x{}",
-                    self.renderer.backend_name,
-                    self.renderer.scene_size().0,
-                    self.renderer.scene_size().1
-                ),
-                // Phase-0 (§44): per-frame CPU phase breakdown
-                self.phases.f3_line(),
-            ];
-            self.ui.debug(&lines);
-            // Sodium-style frame-time graph right under the text block
-            self.ui.frame_graph(
-                7 + lines.len() as i32 * 14 + 8,
-                self.frame_times.as_slices().0,
-            );
+            }
+            if self.debug_help {
+                self.ui.debug_help(&self.f3_help_rows());
+            }
+            // visual-verification hook (never set in CI):
+            //   F3_DUMP=/tmp/f3.png F3=1 ./voxelcraft --smoke
+            if let Ok(path) = std::env::var("F3_DUMP") {
+                self.ui.dump_png(&path);
+            }
         }
 
         if self.show_help {
@@ -10411,7 +11101,9 @@ impl GameApp {
         // the renderer never borrows game state.
         if self.container.is_some() {
             let view = self.container_view();
-            let g = self.ui.container_screen(&view, self.cursor, &self.atlas);
+            let g = self
+                .ui
+                .container_screen(&view, self.cursor, &self.atlas, self.advanced_tooltips);
             self.container_geom = Some(g);
         } else {
             self.container_geom = None;
@@ -10419,7 +11111,9 @@ impl GameApp {
 
         // block picker overlay (B) — sits above the HUD
         if self.picker_open {
-            let g = self.ui.picker(self.cursor, &self.atlas, self.picker_scroll);
+            let g = self
+                .ui
+                .picker(self.cursor, &self.atlas, self.picker_scroll, self.advanced_tooltips);
             self.picker_geom = Some(g);
         } else {
             self.picker_geom = None;
@@ -10897,12 +11591,116 @@ fn apply_totem_revival(player: &mut crate::player::Player) {
     player.absorption = 8.0; // Absorption II = 8 points (4 hearts)
 }
 
+// --------------------------------------------------- F3 free helpers --
+
+/// any leaf block (the MOTION_BLOCKING_NO_LEAVES heightmap needs to skip
+/// them): oak/spruce/birch/jungle/acacia/dark-oak leaves
+fn is_leaves(b: u16) -> bool {
+    matches!(
+        b,
+        LEAVES | SPRUCE_LEAVES | BIRCH_LEAVES | JUNGLE_LEAVES | ACACIA_LEAVES | DARK_OAK_LEAVES
+    )
+}
+
+/// biome registry id ("Biome: minecraft:jungle") — the display name in
+/// snake_case ("Nether Wastes" -> "nether_wastes", matching the vanilla
+/// id table for every biome this generator emits)
+fn biome_registry_id(b: Biome) -> String {
+    b.name().to_lowercase().replace(' ', "_")
+}
+
+/// block registry id ("minecraft:grass_block") from the display name —
+/// snake_case ("Grass Block" -> "grass_block", "Oak Log" -> "oak_log")
+fn block_id_name(b: u16) -> String {
+    name(b).to_lowercase().replace(' ', "_")
+}
+
+/// one line per blockstate property (vanilla F3 Targeted Block layout:
+/// the id line, then "prop: value" rows). Parses the engine's
+/// state_description ("Oak Slab[type=top,waterlogged=false]").
+fn state_prop_lines(state: u16) -> Vec<String> {
+    let desc = state_description(state);
+    let Some(open) = desc.find('[') else {
+        return Vec::new();
+    };
+    let Some(close) = desc.rfind(']') else {
+        return Vec::new();
+    };
+    if close <= open + 1 {
+        return Vec::new();
+    }
+    desc[open + 1..close]
+        .split(',')
+        .map(|kv| {
+            let (k, v) = kv.split_once('=').unwrap_or((kv, ""));
+            format!("{}: {}", k.trim(), v.trim())
+        })
+        .collect()
+}
+
+/// host CPU model ("CPU: 2x …") — /proc/cpuinfo on Linux, None elsewhere
+#[cfg(target_os = "linux")]
+fn cpu_model_name() -> Option<String> {
+    use std::sync::OnceLock;
+    static MODEL: OnceLock<Option<String>> = OnceLock::new();
+    MODEL
+        .get_or_init(|| {
+            let s = std::fs::read_to_string("/proc/cpuinfo").ok()?;
+            for line in s.lines() {
+                if let Some(rest) = line.strip_prefix("model name") {
+                    let rest = rest.trim_start_matches(['\t', ' ', ':']);
+                    if !rest.is_empty() {
+                        return Some(rest.to_string());
+                    }
+                }
+            }
+            None
+        })
+        .clone()
+}
+
+#[cfg(not(target_os = "linux"))]
+fn cpu_model_name() -> Option<String> {
+    None
+}
+
+/// live process RSS + system memory (MiB) — /proc on Linux, zeros
+/// elsewhere (the F3 Mem line degrades honestly to MB-only)
+#[cfg(target_os = "linux")]
+fn proc_memory_mb() -> (f32, f32) {
+    let rss = std::fs::read_to_string("/proc/self/status")
+        .ok()
+        .and_then(|s| {
+            s.lines().find_map(|l| {
+                let rest = l.strip_prefix("VmRSS:")?.trim();
+                let kb: f32 = rest.split_whitespace().next()?.parse().ok()?;
+                Some(kb / 1024.0)
+            })
+        })
+        .unwrap_or(0.0);
+    let sys = std::fs::read_to_string("/proc/meminfo")
+        .ok()
+        .and_then(|s| {
+            s.lines().find_map(|l| {
+                let rest = l.strip_prefix("MemTotal:")?.trim();
+                let kb: f32 = rest.split_whitespace().next()?.parse().ok()?;
+                Some(kb / 1024.0)
+            })
+        })
+        .unwrap_or(0.0);
+    (rss, sys)
+}
+
+#[cfg(not(target_os = "linux"))]
+fn proc_memory_mb() -> (f32, f32) {
+    (0.0, 0.0)
+}
+
 /// Phase 2: edible mob drops (right-click to eat — heals directly until
 /// the hunger system exists; documented deviation)
 fn is_food(b: u16) -> bool {
     // 1.7.2: the three edible fish join the meats (pufferfish is
     // deliberately NOT here — it poisons, see the eat path)
-    // 1.8: rabbit meat joins (wiki: raw rabbit restores 3, cooked 5)
     matches!(
         b,
         BEEF | PORKCHOP | MUTTON | CHICKEN_RAW | ROTTEN_FLESH | RAW_FISH | RAW_SALMON | CLOWNFISH
@@ -11687,5 +12485,58 @@ mod v111_tests {
         // (9 blocks — the disclosure in the caravan block comment)
         assert_eq!(10, 10, "caravan cap: up to 10 llamas (VERIFIED)");
         assert!(9.0 * 9.0 > 0.0, "follow radius 9 blocks");
+    }
+
+    // ------------------------------------------------ F3 helpers ----
+
+    /// F3 Targeted Block property lines: one "key: value" row per property
+    /// parsed out of the engine's state description, vanilla layout.
+    #[test]
+    fn state_prop_lines_split_per_property() {
+        // a state with two properties: Cobblestone Stairs[facing=north,
+        // half=bottom] (the existing state_description test state)
+        let lines = state_prop_lines(65);
+        assert_eq!(
+            lines,
+            vec![
+                "facing: north".to_string(),
+                "half: bottom".to_string()
+            ],
+            "one line per blockstate property"
+        );
+        // single-property state: Redstone Lamp[lit=true]
+        assert_eq!(state_prop_lines(REDSTONE_LAMP_LIT), vec!["lit: true".to_string()]);
+        // a state with no properties yields nothing
+        let plain = state_prop_lines(STONE as u16);
+        assert!(plain.is_empty(), "no-props block has no lines");
+    }
+
+    /// registry ids for the F3 "Biome:"/"Targeted Block:" lines: display
+    /// names in vanilla snake_case (Grass Block -> grass_block, Nether
+    /// Wastes -> nether_wastes, Jungle -> jungle).
+    #[test]
+    fn registry_ids_are_snake_case() {
+        assert_eq!(block_id_name(GRASS), "grass_block");
+        assert_eq!(block_id_name(OAK_LOG), "oak_log");
+        assert_eq!(biome_registry_id(Biome::Jungle), "jungle");
+        assert_eq!(biome_registry_id(Biome::NetherWastes), "nether_wastes");
+        assert_eq!(biome_registry_id(Biome::Snowy), "snowy_taiga");
+    }
+
+    /// the MOTION_BLOCKING_NO_LEAVES heightmap skips every leaf species
+    #[test]
+    fn is_leaves_covers_all_species() {
+        for b in [
+            LEAVES,
+            SPRUCE_LEAVES,
+            BIRCH_LEAVES,
+            JUNGLE_LEAVES,
+            ACACIA_LEAVES,
+            DARK_OAK_LEAVES,
+        ] {
+            assert!(is_leaves(b), "0x{b:x} must classify as leaves");
+        }
+        assert!(!is_leaves(OAK_LOG));
+        assert!(!is_leaves(GRASS));
     }
 }

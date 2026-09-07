@@ -67,3 +67,26 @@ voxelcraft/wasm-out/
 # voxelcraft build outputs (scripts/build-all.sh)
 dist/
 stage/
+
+# local headless-testing environment shims (mesa/lavapipe, xkb, ALSA stubs —
+# downloaded for this sandbox only, never shipped)
+voxelcraft/scripts/*.deb
+voxelcraft/scripts/*-dir.html
+voxelcraft/scripts/dirlist*.html
+voxelcraft/scripts/di*.html
+voxelcraft/scripts/lib-shim/
+voxelcraft/scripts/mesa-vk/
+voxelcraft/scripts/pc-shim/
+voxelcraft/scripts/vk-icd/
+voxelcraft/scripts/xkb-extract/
+voxelcraft/scripts/wl-dir.html
+
+# local test-run worlds (created by --smoke / manual runs)
+voxelcraft/saves/
+voxelcraft/scripts/xml2.html
+voxelcraft/scripts/xml2b.html
+
+# local first-run artifacts (created by running the game from a dev checkout)
+voxelcraft/options.txt
+voxelcraft/logs/
+voxelcraft/resourcepacks/

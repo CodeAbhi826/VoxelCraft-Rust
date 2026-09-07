@@ -6,6 +6,11 @@
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
+    // F3 "Allocated" telemetry: process-wide counting allocator (wraps the
+    // system allocator; only >=4 KiB allocations hit the atomic counters)
+    #[global_allocator]
+    static ALLOCATOR: voxelcraft::alloc_stats::Counting = voxelcraft::alloc_stats::Counting;
+
     let args: Vec<String> = std::env::args().collect();
 
     let event_loop = winit::event_loop::EventLoop::new().expect("event loop");

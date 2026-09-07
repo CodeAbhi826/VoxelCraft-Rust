@@ -551,6 +551,15 @@ impl UiCanvas {
         self.dirty = true;
     }
 
+    /// save the current canvas (RGBA, straight alpha) as a PNG — the
+    /// F3_DUMP visual-verification hook (never set in CI)
+    pub fn dump_png(&self, path: &str) {
+        if let Some(img) = image::RgbaImage::from_raw(UI_W as u32, UI_H as u32, self.px.clone())
+        {
+            let _ = img.save(path);
+        }
+    }
+
     #[inline]
     pub fn set(&mut self, x: i32, y: i32, c: Color) {
         if x < 0 || x >= UI_W as i32 || y < 0 || y >= UI_H as i32 {
@@ -616,6 +625,34 @@ impl UiCanvas {
 
     pub fn text_width(s: &str, scale: i32) -> i32 {
         s.chars().count() as i32 * 6 * scale
+    }
+
+    /// Glyphs without the 1-px drop shadow — the vanilla F3 overlay renders
+    /// its debug text flat (the dark per-line strip replaces the shadow).
+    pub fn text_flat(&mut self, x: i32, y: i32, s: &str, c: Color, scale: i32) {
+        let mut cx = x;
+        for ch in s.chars() {
+            let mut ch = ch as usize;
+            if ch < 32 || ch > 126 {
+                ch = '?' as usize;
+            }
+            if ch >= 'a' as usize && ch <= 'z' as usize {
+                ch -= 32;
+            }
+            let glyph = &FONT[ch - 32];
+            for gy in 0..7i32 {
+                for gx in 0..5i32 {
+                    if glyph[gy as usize] & (1 << (4 - gx)) != 0 {
+                        for sy in 0..scale {
+                            for sx in 0..scale {
+                                self.set(cx + gx * scale + sx, y + gy * scale + sy, c);
+                            }
+                        }
+                    }
+                }
+            }
+            cx += 6 * scale;
+        }
     }
 
     pub fn text_center(&mut self, y: i32, s: &str, c: Color, scale: i32) {
@@ -1498,6 +1535,7 @@ impl UiCanvas {
         view: &ContainerView,
         cursor_pos: (f32, f32),
         atlas: &[u8],
+        advanced_tooltips: bool,
     ) -> ContainerGeom {
         let kind = view.kind;
         // ---- shared bottom layout: 9-col storage (3 rows) + hotbar row ----
@@ -1937,15 +1975,21 @@ impl UiCanvas {
             self.draw_stack(&view.cursor, cx, cy, atlas);
         }
 
-        // hover label: name of the hovered slot's block
+        // hover label: name of the hovered slot's block (F3+H appends the
+        // registry id — vanilla "advanced tooltips")
         if let Some(s) = view.hovered_stack(cursor_pos.0 as i32, cursor_pos.1 as i32, &geom) {
             if !s.is_empty() {
-                let label = name(s.block);
-                let lw = Self::text_width(label, 1);
+                let label: String = if advanced_tooltips {
+                    let id: String = name(s.block).to_lowercase().replace(' ', "_");
+                    format!("{} (minecraft:{})", name(s.block), id)
+                } else {
+                    name(s.block).to_string()
+                };
+                let lw = Self::text_width(&label, 1);
                 self.text(
                     (UI_W as i32 - lw) / 2,
                     y0 - 44,
-                    label,
+                    &label,
                     [255, 255, 255, 255],
                     1,
                 );
@@ -1954,21 +1998,52 @@ impl UiCanvas {
         geom
     }
 
-    pub fn debug(&mut self, lines: &[String]) {
-        let mut max_w = 0i32;
-        for l in lines {
-            max_w = max_w.max(Self::text_width(l, 1) + 8);
+    /// Vanilla 1.16.5 F3 debug overlay: TWO columns — `left` anchored
+    /// top-left, `right` top-right and right-aligned to the screen edge.
+    /// Each text line sits on its own translucent dark strip (the chat-like
+    /// background, 0x90505050), text is flat white with NO drop shadow
+    /// (vanilla renders F3 text unshadowed on the strip). Empty strings are
+    /// blank spacer lines (no strip) — used for the vanilla group gaps.
+    pub fn debug(&mut self, left: &[String], right: &[String]) {
+        const BG: Color = [80, 80, 80, 144];
+        const FG: Color = [235, 235, 235, 255];
+        const LINE_H: i32 = 13;
+        for (i, l) in left.iter().enumerate() {
+            if l.is_empty() {
+                continue;
+            }
+            let y = 4 + i as i32 * LINE_H;
+            let w = Self::text_width(l, 1) + 2;
+            self.rect(4, y, w, 11, BG);
+            self.text_flat(6, y + 2, l, FG, 1);
         }
-        let line_h = 14;
-        self.rect(
-            4,
-            4,
-            max_w,
-            lines.len() as i32 * line_h + 6,
-            [80, 80, 80, 110],
-        );
-        for (i, l) in lines.iter().enumerate() {
-            self.text(7, 7 + i as i32 * line_h, l, [235, 235, 235, 255], 1);
+        for (i, l) in right.iter().enumerate() {
+            if l.is_empty() {
+                continue;
+            }
+            let y = 4 + i as i32 * LINE_H;
+            let w = Self::text_width(l, 1) + 2;
+            let x = UI_W as i32 - 4 - w;
+            self.rect(x, y, w, 11, BG);
+            self.text_flat(x + 2, y + 2, l, FG, 1);
+        }
+    }
+
+    /// Vanilla F3+Q help overlay: the key-combination list in a centered
+    /// box (like the real "Debug help" screen — rows of "F3 + X - action").
+    pub fn debug_help(&mut self, rows: &[(String, String)]) {
+        let w = 300;
+        let row_h = 14;
+        let h = rows.len() as i32 * row_h + 34;
+        let x0 = (UI_W as i32 - w) / 2;
+        let y0 = (UI_H as i32 - h) / 2;
+        self.rect(x0, y0, w, h, [12, 12, 14, 235]);
+        self.frame(x0, y0, w, h, [140, 140, 140, 200]);
+        self.text_flat(x0 + 10, y0 + 8, "DEBUG HELP", [255, 255, 255, 255], 2);
+        for (i, (k, d)) in rows.iter().enumerate() {
+            let y = y0 + 34 + i as i32 * row_h;
+            self.text_flat(x0 + 10, y, k, [170, 220, 170, 255], 1);
+            self.text_flat(x0 + 100, y, d, [235, 235, 235, 255], 1);
         }
     }
 
@@ -2019,7 +2094,13 @@ impl UiCanvas {
     /// Creative-style block picker (E key): centered grid of every placeable
     /// block; click → assigns to the selected hotbar slot. Returns the grid
     /// geometry so game.rs can hit-test clicks.
-    pub fn picker(&mut self, cursor: (f32, f32), atlas: &[u8], scroll: usize) -> PickerGeom {
+    pub fn picker(
+        &mut self,
+        cursor: (f32, f32),
+        atlas: &[u8],
+        scroll: usize,
+        advanced_tooltips: bool,
+    ) -> PickerGeom {
         let blocks = &PICKER_BLOCKS;
         // [merge scroll] the F-series (1.7.2-1.10) grew PICKER_BLOCKS to
         // 236 — 15 cols x 16 rows overflows the 540px canvas; the picker
@@ -2084,10 +2165,21 @@ impl UiCanvas {
             }
         }
 
-        // hovered block name on a bottom strip
-        let label = hovered.map(name).unwrap_or("");
-        let lw = Self::text_width(label, 1);
-        self.text(x0 + 4, y0 + grid_h - 18, label, [255, 255, 255, 255], 1);
+        // hovered block name on a bottom strip (F3+H appends the registry
+        // id — vanilla advanced tooltips)
+        let label = hovered
+            .map(name)
+            .map(|n| {
+                if advanced_tooltips {
+                    let id: String = n.to_lowercase().replace(' ', "_");
+                    format!("{n} (minecraft:{id})")
+                } else {
+                    n.to_string()
+                }
+            })
+            .unwrap_or_default();
+        let lw = Self::text_width(&label, 1);
+        self.text(x0 + 4, y0 + grid_h - 18, &label, [255, 255, 255, 255], 1);
         let _ = lw;
 
         PickerGeom { x0, y0, cell, cols, scroll, vis_rows }
@@ -2560,7 +2652,7 @@ mod tests {
     fn hopper_screen_is_five_slots_in_one_short_row() {
         let mut ui = UiCanvas::new();
         let view = hopper_view();
-        let geom = ui.container_screen(&view, (0.0, 0.0), &[]);
+        let geom = ui.container_screen(&view, (0.0, 0.0), &[], false);
         assert_eq!(geom.chest.len(), 5, "exactly 5 hopper slots");
         let ys: std::collections::HashSet<i32> = geom.chest.iter().map(|s| s.1).collect();
         assert_eq!(ys.len(), 1, "all 5 slots on ONE row (the 176x133 shape)");
@@ -2728,6 +2820,74 @@ mod screen_tests {
         let mut c2 = UiCanvas::new();
         c2.world_loading_screen(100, &cells, 17 * 35 + 17);
         assert_eq!(px(&c2, x0 + 4 * 17 + 2, y0 + 4 * 17 + 2), [255, 255, 255]);
+    }
+
+    /// F3 overlay: vanilla 1.16.5 two-column layout — left column at the
+    /// top-left, right column right-aligned at the top-right, EVERY text
+    /// line on its own translucent strip, blank lines paint nothing.
+    #[test]
+    fn f3_overlay_is_two_columns_with_per_line_strips() {
+        let mut c = UiCanvas::new();
+        let left = vec![
+            "LINE ONE".to_string(),
+            String::new(), // blank spacer — no strip
+            "LINE THREE".to_string(),
+        ];
+        let right = vec!["R1".to_string()];
+        c.debug(&left, &right);
+        // strip 1: dark translucent background under the text (a per-line
+        // box, not one tall panel) — glyphs span y 6..13, so y=13 is the
+        // strip-only band below the text ("LINE ONE" = 8*6 px + 2 pad)
+        let s1 = px(&c, 40, 13);
+        assert_eq!(s1, [80, 80, 80], "per-line strip color (0x505050)");
+        assert_eq!(c.px[(13 * UI_W + 40) * 4 + 3], 144, "strip alpha");
+        // the strip ends right after the text (per-line width)
+        assert_eq!(px(&c, 60, 9), [0, 0, 0], "past the line's strip");
+        // the blank second line paints NOTHING (spacer row stays empty)
+        let row = 4 + 13 + 8; // y inside line 2's band
+        let any = (0..UI_W).any(|x| c.px[(row * UI_W + x) * 4 + 3] != 0);
+        assert!(!any, "blank spacer line must not paint a strip");
+        // left text is FLAT (no drop-shadow pixel at +1,+1 of a glyph)
+        // — vanilla F3 is unshadowed
+        // find a text pixel in line 1 (white) and check its +1/+1 offset
+        // is strip color, not shadow black
+        let mut found = false;
+        for x in 6..80 {
+            let i = (9 * UI_W + x) * 4;
+            if c.px[i] == 235 && c.px[i + 3] == 255 {
+                let j = (10 * UI_W + x + 1) * 4;
+                if c.px[j + 3] == 144 && c.px[j] == 80 {
+                    found = true;
+                    break;
+                }
+            }
+        }
+        assert!(found, "text must render flat over its strip (no shadow)");
+        // right column: right-aligned — "R1" = 2*6 px + 2 pad wide, its
+        // strip hugs the right edge (x = UI_W - 4 - 14 .. UI_W - 4)
+        let y = 9;
+        assert_eq!(
+            px(&c, UI_W as i32 - 4 - 14 + 1, y),
+            [80, 80, 80],
+            "right column strip hugs the right edge"
+        );
+        // strip is only as wide as the text (+2 px pad), not full-width
+        assert_eq!(px(&c, UI_W as i32 - 4 - 40, y), [0, 0, 0]);
+    }
+
+    /// F3+Q help overlay: a centered box listing the key combinations.
+    #[test]
+    fn f3_help_overlay_is_centered_box() {
+        let mut c = UiCanvas::new();
+        let rows = vec![
+            ("F3 + Q".to_string(), "This help".to_string()),
+            ("F3 + 1".to_string(), "Frame time graph".to_string()),
+        ];
+        c.debug_help(&rows);
+        // panel fill near the center, empty far corners
+        let mid = px(&c, UI_W as i32 / 2, UI_H as i32 / 2);
+        assert!(mid != [0, 0, 0], "help box fills the center");
+        assert_eq!(px(&c, 5, 5), [0, 0, 0], "corner stays empty");
     }
 
     /// Title layout: vanilla 1.16.5 stack — two full-width buttons then the

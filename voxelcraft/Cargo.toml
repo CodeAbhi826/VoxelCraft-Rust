@@ -50,3 +50,6 @@ web-sys = "0.3"
 # keep the engine's release profile at the workspace root
 opt-level = 3
 lto = "thin"
+# single-file game releases (linux-game.yml) ship the raw binary —
+# stripped symbols keep the download small; debug builds are unaffected
+strip = true

@@ -1,6 +1,8 @@
 # CI Setup — Auto-build WASM on GitHub Actions
 
-**Status:** the workflow file ships at [`ci/wasm-build.yml`](../ci/wasm-build.yml) but is **not yet live** — the automation token currently has `repo` scope only, and GitHub refuses to let a token without `workflow` scope create files under `.github/workflows/` (verified via git push AND the REST API). One 30-second action activates it:
+**Status:** LIVE. The workflow runs from [`.github/workflows/wasm-build.yml`](../.github/workflows/wasm-build.yml) (the historical `ci/wasm-build.yml` copy below is retained as the original template). The automation token now carries `repo` + `workflow` scopes, so workflow files can be pushed directly — no web-UI step needed anymore.
+
+> The repo also runs two more workflows: `ci.yml` (the test gate — whole workspace, wasm check, headless bench) and `linux-game.yml` (the **single-file Linux game**: one executable with the builtin pack embedded, built on ubuntu-22.04; reusable via `workflow_call` so every Release ships it too). See `.github/workflows/`.
 
 ## Activate (30 seconds, no tools)
 
@@ -38,4 +40,4 @@ The loader at `public/voxelcraft.html` derives its cache-bust version from the w
 
 ## Keeping the template in sync
 
-`ci/wasm-build.yml` is the source of truth. If you edit it, also update the live copy at `.github/workflows/wasm-build.yml` (web UI edit, or a `workflow`-scoped token) — otherwise CI keeps running the old version.
+`ci/wasm-build.yml` is the historical template; `.github/workflows/wasm-build.yml` is the live source of truth (the token's `workflow` scope lets the assistant push updates to it directly).

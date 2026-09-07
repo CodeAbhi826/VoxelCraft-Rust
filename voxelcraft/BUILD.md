@@ -30,7 +30,12 @@ cargo run --release          # from the workspace root (this directory)
 
 The engine is a Cargo **workspace**: `crates/vc-*` are the 14 libraries,
 `crates/voxelcraft` is the application. Run everything from this root —
-`builtin-pack/` is resolved from the working directory.
+`builtin-pack/` is resolved from the working directory (and when the
+folder is absent, the pack baked into the binary at compile time by
+`crates/voxelcraft/build.rs` takes over — that is what makes the
+single-file release work: a lone `voxelcraft` executable with zero
+companion files still boots the full pack; a real folder next to the
+binary always overrides the embedded copy).
 
 - Linux audio needs ALSA dev headers: `sudo apt install -y libasound2-dev` (or the equivalent on your distro).
 - macOS / Windows work out of the box (CoreAudio / WASAPI).
@@ -139,9 +144,14 @@ Real browser pointer events always carry `pointerType` and are unaffected.
 
 The engine ships a clean-room **builtin pack** at `voxelcraft/builtin-pack/`
 (vanilla 1.16.5 layout: `pack.mcmeta` + `assets/minecraft/{blockstates,
-models,textures}`). Native reads the folder; WASM fetches the same files from
-`/voxelcraft-pack/` (CI deploys `public/voxelcraft-pack`). Any failure falls
-back to the procedural atlas + missing-texture tile (§46).
+models,textures}`). Native reads the folder — falling back to the **copy
+embedded in the binary at compile time** (`crates/voxelcraft/build.rs`
+packages the pack into `.rodata` via `include_bytes!`; the
+`linux-game.yml` workflow ships that as the single-file game) — and WASM
+fetches the same files from `/voxelcraft-pack/` (CI deploys
+`public/voxelcraft-pack`). Any failure falls back to the procedural atlas
++ missing-texture tile (§46). Precedence: real folder > embedded copy >
+procedural.
 
 Regenerate the PNG textures (procedural art → PNG strips) on demand:
 

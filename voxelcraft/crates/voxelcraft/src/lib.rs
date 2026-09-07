@@ -5,6 +5,13 @@
 //! the `vc-*` library crates of this workspace (see LIBRARIES.md).
 
 pub mod bench;
+/// the builtin resource pack, baked into the binary by build.rs (native
+/// only — the single-file release). Used when no `builtin-pack/` folder
+/// sits next to the binary; see build.rs for the precedence rules.
+#[cfg(not(target_arch = "wasm32"))]
+pub mod embedded_pack {
+    include!(concat!(env!("OUT_DIR"), "/embedded_pack.rs"));
+}
 pub mod game;
 pub mod player;
 #[cfg(target_arch = "wasm32")]

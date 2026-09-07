@@ -173,7 +173,12 @@ impl ParticleSystem {
         self.push(p);
     }
 
-    fn push(&mut self, p: Particle) {
+    /// Push a raw, fully-specified particle (public since the 1.12 round:
+    /// the game layer composes clean-room effect particles — the parrot
+    /// cookie-death poison puff, the illusioner's black blindness mist —
+    /// from their own atlas tiles + tints, which the typed spawn_* helpers
+    /// don't cover). Same cap + counter behavior as the internal path.
+    pub fn push(&mut self, p: Particle) {
         if self.parts.len() < MAX_PARTICLES {
             self.parts.push(p);
             self.spawned_total += 1;

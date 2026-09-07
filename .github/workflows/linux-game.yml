@@ -128,6 +128,42 @@ jobs:
           grep -q "smoke: title reached" smoke.log
           grep -qE "loading (complete|timeout)" smoke.log
           grep -q "smoke: game entered" smoke.log
+          # pointer-capture ladder engaged on the way in (Locked/Confined/
+          # Delta-look - any of the three; the pre-fix bug was a blind
+          # grab that left an invisible dead cursor on lock-less compositors)
+          grep -q "pointer:" smoke.log
+          echo "SMOKE OK - pointer ladder + boot + world entry all verified"
+
+          # F3 debug overlay regression guard (user-reported "everything in
+          # F3 was static"): same binary, FRESH directory (also proves the
+          # first-run profile bootstrap - "assets get created when we run
+          # the game"), overlay forced on, two PNG dumps ~1 s apart.
+          # The pair MUST differ (fps/XYZ/light/memory are all live) and
+          # the vanilla-profile folder structure MUST materialize.
+          mkdir -p run2 && pushd run2 >/dev/null
+          set +e
+          timeout 180 xvfb-run -a -s "-screen 0 1280x720x24" \
+            env WGPU_BACKEND=Vulkan F3=1 F3_DUMP=f3a.png F3_DUMP2=f3b.png \
+            "../$BIN_NAME" --smoke 2>&1 | tee ../smoke-f3.log
+          CODE=$?
+          set -e
+          popd >/dev/null
+          echo "f3 smoke exit code: $CODE"
+          if [ "$CODE" -ne 0 ]; then
+            echo "FAIL: F3 smoke run exited $CODE"
+            exit 1
+          fi
+          grep -q "F3 liveness pair written" smoke-f3.log
+          if cmp -s run2/f3a.png run2/f3b.png; then
+            echo "FAIL: F3 overlay is STATIC (the two dumps are identical)"
+            exit 1
+          fi
+          echo "F3 overlay LIVE - the two dumps differ"
+          for f in builtin-pack/pack.mcmeta options.txt logs/latest.log \
+                   saves resourcepacks shader-packs; do
+            test -e "run2/$f" || { echo "FAIL: first-run $f did not materialize"; exit 1; }
+          done
+          echo "FIRST-RUN OK - running the game creates its profile folder (builtin-pack extracted, options.txt, logs/latest.log)"
           echo "SMOKE OK — the single-file binary boots (intro → panorama title) and enters a world headless (lavapipe)"
 
       - name: Upload artifact (the raw executable, no archive)

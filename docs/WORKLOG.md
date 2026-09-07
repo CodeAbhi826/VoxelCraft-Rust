@@ -2050,3 +2050,89 @@ keep everything legal, update docs, continue the plan.
   taiga groups 2–4 + prey list). Implementation (registry V10 window →
   art → gen → gameplay → tests) is the next round, per the repo's
   research-then-implement discipline.
+
+## 2026-09-07 (session 16) — F3 vanilla overlay (live values), native pointer-capture ladder, staged intro, first-run profile folder
+
+**User reports addressed:**
+1. "F3 values were static / don't work" — every F3 value now live.
+2. "Mouse clicking and stuff not working in the latest executable" —
+   root cause: blind `set_cursor_grab(Locked)` with the error DISCARDED
+   while the cursor was hidden anyway. On lock-less compositors
+   (WSLg/Wayland, RDP, some X11) that left an invisible cursor with no
+   relative-motion events — camera frozen, clicks seemingly dead.
+3. "Increase the intro loading a bit so assets properly load, like the
+   real game" — splash now runs a staged ~2.6 s asset bar.
+4. "Why isn't our asset getting created when we run the game" — first
+   run now materializes the vanilla-profile-style folder next to the
+   executable.
+
+**F3 debug overlay (vanilla 1.16.5 structure):**
+- ui.rs: `debug()` → two columns, per-line 0x90505050 strips, FLAT
+  (unshadowed) text; `debug_help()` (F3+Q box); `text_flat()`;
+  `frame_graph()` extension (F3+1); F3+H advanced tooltips on the
+  picker + container hover labels (registry ids appended).
+- game.rs `f3_lines()`: left = version / `fps T: D:` / `Integrated
+  server @ N ms ticks` (live phase_ms(PHASE_SIM)) / `C: drawn/loaded
+  (s) D: rd, pC: pU: aB:` (jobs in flight + GPU buffers) / `E:
+  visible/loaded B:` / `F: I:` culling / client+server chunk caches /
+  XYZ (3/5/3 decimals) / Block / six-value Chunk line / Facing
+  (engine→vanilla yaw wrap + pitch negation) / Client+Server Light
+  (real light engine) / CH S+CH H (live column scans) / Biome /
+  Local Difficulty (0.75 + day ramp + moon phase × mode multiplier) /
+  SC mob-cap categories (live sim scan) / Sounds 1-s window + registry
+  / vanilla footer hints. Right = Rust 64bit release / Mem (% rss/sys
+  from /proc, 4 Hz) / Allocated (% of RSS, counting allocator) / CPU
+  (brand + cores) / Display WxH (adapter) / GPU name + driver line;
+  Targeted Block/Fluid with full blockstate property lines when the
+  crosshair hits.
+- alloc_stats.rs: process-wide counting allocator (>=4 KiB counts
+  only — small Vecs stay off the atomic path; chunk meshes/region
+  arenas dominate). Installed in main.rs (native) / lib.rs (wasm).
+- Liveness heartbeat: 0.05 s UI rebuild while the overlay is open.
+- Verification: F3_DUMP/F3_DUMP2 pair (frames 0.6 s / 1.6 s into
+  gameplay) — pixel-diff proves live values; VLM read of the dump
+  confirms the vanilla two-column layout. Screenshot:
+  docs/screenshots/f3-vanilla-live.png.
+
+**Native pointer capture (the input regression fix):**
+- `PointerLockMode { Locked, Confined, Delta }` + capture ladder
+  `capture_pointer()` / `release_pointer()`; every grab site
+  (set_screen, first in-game click, picker open/close, container
+  open/close) goes through it. Cursor hides ONLY on a successful grab.
+- Delta-look fallback: CursorMoved position deltas feed
+  `input.add_mouse` while in the game screen (menus/containers
+  unaffected); DeviceEvent raw motion is gated off in Delta mode so
+  the two never double-count.
+- Ladder re-attempted on the first in-game click (Wayland compositors
+  that only lock on user gesture). A `pointer:` boot-log line names
+  the mode (CI greps for it).
+
+**Intro pacing + first-run profile:**
+- `INTRO_SECS = 2.6` + `intro_progress()` staged waypoints (pack →
+  atlas/pipelines → audio → save scan, with settling holds).
+- `bootstrap_game_dir()` (native, GameApp::new): creates saves/,
+  resourcepacks/, shader-packs/, logs/; EXTRACTS the embedded builtin
+  pack to builtin-pack/ on first run (folder source wins over the
+  baked copy — editable re-skin path); mirrors every boot line to
+  logs/latest.log (init_file_log in vc-render); writes default
+  options.txt.
+- Settings persistence on native: load at boot / save on change
+  (options.txt = the localStorage analog; corrupt → defaults + log).
+
+**CI (linux-game.yml):**
+- Smoke now greps the `pointer:` ladder line.
+- Second smoke run in a fresh dir: F3=1 F3_DUMP=a F3_DUMP2=b —
+  asserts "F3 liveness pair written", the pair DIFFERS (cmp), and the
+  first-run folder structure materializes (builtin-pack/pack.mcmeta,
+  options.txt, logs/latest.log, saves/, resourcepacks/,
+  shader-packs/).
+
+**Verification:** 500/500 tests green, wasm32 clean, local lavapiipe
+smoke: boot 467 ms → intro 2.64 s → title → world entry (loading
+complete 8 chunks 0.3 s) → pointer: confined (ladder fallback engaged
+under Xvfb exactly as designed) → in-game click → F3 liveness pair →
+exit 0. First-run directory verified in a scratch folder (pack
+extracted + folder pack source loaded + options.txt + log mirror).
+
+**Next:** 1.14 Village & Pillage implementation round (research
+contract already landed: docs/research/phase-v114-1.14-research.md).

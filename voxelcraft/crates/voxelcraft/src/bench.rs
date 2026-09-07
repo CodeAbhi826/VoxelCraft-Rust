@@ -96,6 +96,14 @@ impl FramePhases {
         }
     }
 
+    /// live average of ONE phase over the ring (ms) — F3's integrated
+    /// server "@ N ms ticks" line reads the sim phase through this
+    pub fn phase_ms(&self, phase: usize) -> f32 {
+        let n = self.ring.len().max(1);
+        let sum: u64 = self.ring.iter().map(|f| f[phase]).sum();
+        sum as f32 / n as f32 / 1000.0
+    }
+
     /// EMA-style compact line for F3 (ms per phase over the ring)
     pub fn f3_line(&self) -> String {
         let n = self.ring.len().max(1) as f64;

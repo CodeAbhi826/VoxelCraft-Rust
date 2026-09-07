@@ -27,11 +27,12 @@ fn main() {
         app.start_bench(bench);
     }
 
-    // CI smoke contract (linux-game.yml): boot headless and exit(0) the
-    // moment the loading gate completes and the title screen is reached —
-    // proves the single-file binary actually runs end-to-end (pack embed →
-    // adapter → pipelines → chunk streaming → loading gate) on a clean
-    // machine (llvmpipe software GL under Xvfb).
+    // CI smoke contract (linux-game.yml): boot headless, run the REAL boot
+    // path (intro → title panorama), then enter a world through the real
+    // pipeline (world-entry loading gate → gameplay) and exit(0) — proves
+    // the single-file binary runs end-to-end (pack embed → adapter →
+    // pipelines → world streaming → loading gate → gameplay) on a clean
+    // machine (lavapipe software Vulkan under Xvfb).
     if args.iter().any(|a| a == "--smoke") {
         app.smoke = true;
     }

@@ -864,7 +864,7 @@ impl UiCanvas {
             [220, 220, 220, 255],
             1,
         );
-        let vr = "100% PROCEDURAL — NO MOJANG ASSETS";
+        let vr = "100% PROCEDURAL — CLEAN-ROOM ASSETS";
         let vw = Self::text_width(vr, 1);
         self.text(
             UI_W as i32 - vw - 8,
@@ -2005,6 +2005,53 @@ impl UiCanvas {
     pub fn center_msg(&mut self, title: &str, sub: &str) {
         self.text_center(UI_H as i32 / 2 - 40, title, [255, 255, 255, 255], 3);
         self.text_center(UI_H as i32 / 2, sub, [200, 200, 200, 255], 1);
+    }
+
+    /// Boot intro screen — the FIRST screen after opening the game:
+    /// logo + asset progress bar over a near-opaque dark wash (a faint
+    /// blurred-panorama glow reads through). No world exists behind it.
+    pub fn intro_screen(&mut self, progress: f32) {
+        self.rect(0, 0, UI_W as i32, UI_H as i32, [4, 6, 10, 238]);
+        // logo: same face as the title screen, centered mid-frame
+        let scale = 6;
+        let logo = "VOXELCRAFT";
+        let lw = Self::text_width(logo, scale);
+        let lx = (UI_W as i32 - lw) / 2;
+        let ly = UI_H as i32 / 2 - 70;
+        self.text(lx + 3, ly + 4, logo, [0, 0, 0, 160], scale);
+        self.text_outlined(lx, ly, logo, [235, 235, 235, 255], [42, 42, 42, 255], scale);
+        self.text_center(
+            ly + 58,
+            "A 1.16.5-STYLE VOXEL ENGINE",
+            [170, 170, 170, 255],
+            1,
+        );
+        // status + thin progress bar (stages completed are asset-side —
+        // pack, atlas, pipelines, audio — all done before the first frame)
+        self.text_center(
+            UI_H as i32 / 2 + 24,
+            "LOADING ASSETS",
+            [210, 210, 210, 255],
+            1,
+        );
+        let bw = 320;
+        let x0 = (UI_W as i32 - bw) / 2;
+        let y0 = UI_H as i32 / 2 + 52;
+        self.frame(x0, y0, bw, 10, [255, 255, 255, 180]);
+        self.rect(
+            x0 + 2,
+            y0 + 2,
+            ((bw - 4) as f32 * progress.clamp(0.0, 1.0)) as i32,
+            6,
+            [110, 200, 90, 255],
+        );
+        // footer: clean-room note (no third-party marks anywhere in-game)
+        self.text_center(
+            UI_H as i32 - 20,
+            "100% PROCEDURAL — CLEAN-ROOM ENGINE",
+            [150, 150, 150, 255],
+            1,
+        );
     }
 
     pub fn vignette_loading(&mut self, msg: &str, progress: f32) {

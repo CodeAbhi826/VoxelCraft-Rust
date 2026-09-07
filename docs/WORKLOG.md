@@ -1882,3 +1882,73 @@ stripped logs / debug stick / carved pumpkin / buffet world type
 items), Conduit Power's Night Vision + Haste halves (no darkness
 system; no per-block mining-time system — the standing deferrals),
 and the water-bucket-on-fish interactions (no bucket capture path).
+
+---
+
+## 2026-09-07 — startup flow rebuilt to the vanilla architecture (intro → panorama title → world entry)
+
+**Task:** user asked why the game renders the whole world in the intro
+instead of a pre-rendered vignette like the real title screen, asked for a
+web-verified implementation of the real startup sequence (first screen after
+opening + the loading screens), with no third-party names in-game. Also:
+verify all previous jobs were landed, and update docs.
+
+**Research (live, 2026-09-07):** minecraft.wiki/w/Panorama — the title/menu
+background is a **slowly panning wide-angle view shown as a cubemap of six
+pre-rendered square images** (four horizontal faces + up + down, ~1.08k
+square), displayed behind every menu that does not cover the whole
+background, with an adjustable blur; it is **not the live world**. The wiki's
+loading-screen pages confirm the boot order: logo/progress screen while
+resources load (no world), then the panorama title; chunks generate only
+when a world is entered, behind its own progress screen.
+
+**What the code did wrong:** `GameApp::new` created a world at boot and the
+Loading gate held the title screen until 5+ chunks around spawn were meshed
+and uploaded; the "panorama" camera was the live player world (`player.pos
++ 14`, rotating yaw, blur 0.9) and streaming ran in EVERY screen. So the
+title screen was coupled to the full generate/mesh/GPU-upload pipeline — on
+the user's machine that meant a minute+ before the home screen (and a dead
+mesher could stall it outright — the earlier 14bc3b7 watchdog papered over
+the symptom without removing the coupling).
+
+**Fix (vanilla architecture, clean-room):**
+
+1. **`Screen::Intro`** — the first screen after opening the game: logo +
+   asset progress bar over a near-opaque dark wash (a faint blurred-panorama
+   glow reads through). Assets (builtin pack, atlas, pipelines, audio) all
+   load in `GameApp::new` before the first frame; the intro is the settle
+   beat, then hands over to Title. No world generation anywhere in it.
+2. **Pre-rendered panorama** (`vc-render/src/panorama.rs`) — six
+   procedurally painted 384px cubemap faces (sky gradient, blocky sun + halo,
+   fbm clouds on the direction sphere — seam-free, a two-layer hill
+   silhouette from periodic azimuth noise, a voxel tree belt, a lake sector
+   with sparkle), painted ONCE at renderer init into a cube-viewed texture,
+   drawn per frame by a fullscreen ray-cast pass (yaw/pitch/fov/aspect
+   uniform → world ray → `textureSample` cube). Slow pan (~3.5 min per
+   revolution), existing menu blur on top via the post chain. Title,
+   Options-from-title, WorldSelect and WorldCreate all render it; the world
+   pass (terrain/water/clouds/particles/shadows/MSAA) is skipped entirely.
+3. **Streaming gated to active worlds** — `stream()` runs only in
+   Loading/Game/Pause/Death/in-game-Options. Menus do zero world work.
+   The world-entry loading screen keeps the chunk gate + 15 s timeout but
+   rides the panorama dimmed behind its terrain progress bar; §28 dimension
+   travel keeps the live-world blurred view (that world exists and streams).
+4. **CI smoke extended end-to-end** — `--smoke` now runs the REAL boot path
+   (intro → title panorama), then enters a world through the real pipeline
+   (`reset_world` → Loading gate → `start_game`) and exits 0 only in
+   gameplay. linux-game.yml greps `intro complete`, `smoke: title reached`,
+   `loading (complete|timeout)`, `smoke: game entered` — the workflow now
+   covers the exact path the original loading hang lived in, not just the
+   title.
+5. **In-game text scrubbed of third-party marks** — title corner text and
+   one splash (research citations in comments/docs unchanged).
+
+**Verified:** 43 tests green; `cargo check` native (--no-default-features,
+ALSA-less box) + wasm32 lib clean; smoke/world-entry path exercised by CI
+on lavapipe (see the linux-game run for this commit).
+
+**Art notes:** the panorama painter is deterministic (integer-hash value
+noise + fbm), paints linear-space values into the linear scene texture
+(post re-encodes sRGB once), and follows the standard cube face conventions
+(layer order +X −X +Y −Y +Z −Z, u right / v down, top-left origin) so
+hardware face selection reconstructs the view without seams.

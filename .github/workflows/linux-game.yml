@@ -98,20 +98,23 @@ jobs:
         # unreachable with 0 GPU chunks — fixed in game.rs; GPU-mesher
         # readback stall watchdog in gpu_mesh.rs). The build used to stop
         # at file/ldd checks and never RAN the game it shipped; now the
-        # binary must boot headless on llvmpipe (EGL + software GL under
+        # binary must boot headless on lavapipe (software Vulkan under
         # Xvfb), pass the loading gate, reach the title screen, and
         # exit 0 via --smoke.
         run: |
-          # llvmpipe software GL stack (EGL + GLX + DRI) + the X11
-          # keyboard libs winit needs — desktops ship all of these; the
-          # minimal runner image does not (the first smoke run caught
-          # libxkbcommon-x11 missing: winit panics without it)
-          sudo apt-get install -y xvfb libgl1-mesa-dri libegl-mesa0 \
-            libglx-mesa0 libgl1 libxkbcommon-x11-0 libxkbcommon0
+          # headless graphics stack: Xvfb (X11) + lavapipe (software
+          # Vulkan ICD — wgpu's native path; compute included, so the GPU
+          # mesh pipeline is exercised too) + the mesa GL/EGL fallback
+          # stack and winit's X11 keyboard libs. Desktops ship all of
+          # this; the minimal runner image does not (the first smoke
+          # runs caught libxkbcommon-x11 and the surface/ICD gap).
+          sudo apt-get install -y xvfb libxkbcommon-x11-0 libxkbcommon0 \
+            libgl1 libgl1-mesa-dri libegl-mesa0 libglx-mesa0 \
+            libvulkan1 mesa-vulkan-drivers
           set -euo pipefail
           set +e
           timeout 180 xvfb-run -a -s "-screen 0 1280x720x24" \
-            env WGPU_BACKEND=Gl LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe \
+            env WGPU_BACKEND=Vulkan \
             "./$BIN_NAME" --smoke 2>&1 | tee smoke.log
           CODE=$?
           set -e

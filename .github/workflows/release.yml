@@ -1,8 +1,11 @@
 name: Release
 
-# All-architecture build + SEPARATE library downloads:
+# All-architecture build + the single-file Linux game + SEPARATE library
+# downloads:
 #   * every desktop arch binary + the browser WASM bundle
 #     (Linux x86_64 + aarch64, Windows x86_64, macOS aarch64 + x86_64, WASM)
+#   * the SINGLE-FILE Linux game (linux-game.yml, reusable): one executable
+#     with the builtin pack embedded — download, chmod, run
 #   * every vc-* library packaged as its OWN source archive — there is
 #     deliberately NO all-in-one bundle; users download only what they need
 #     (see voxelcraft/LIBRARIES.md for the per-library instructions).
@@ -118,6 +121,15 @@ jobs:
           retention-days: 90
           if-no-files-found: error
 
+  # the single-file Linux game (builtin pack embedded, runs directly)
+  # — built by the reusable linux-game.yml workflow so the recipe lives
+  # in exactly one place
+  linux-single:
+    name: single-file Linux game (embedded pack)
+    uses: ./.github/workflows/linux-game.yml
+    permissions:
+      contents: read
+
   libraries:
     name: library source archives (one per library — no AIO)
     runs-on: ubuntu-latest
@@ -230,7 +242,7 @@ jobs:
 
   publish:
     name: publish GitHub release (tags only)
-    needs: [native, wasm, libraries]
+    needs: [native, wasm, libraries, linux-single]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
@@ -242,7 +254,9 @@ jobs:
       - name: Flatten + list
         run: |
           find dist -type f \( -name '*.zip' -o -name '*.tar.gz' -o -name '*.md' \) -exec mv {} . \;
-          ls -la *.zip *.tar.gz *.md
+          # the single-file game is a RAW executable, not an archive
+          find dist -type f -name 'voxelcraft-*-linux-x64' -exec chmod +x {} \; -exec mv {} . \;
+          ls -la *.zip *.tar.gz *.md voxelcraft-*-linux-x64
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -252,3 +266,4 @@ jobs:
             *.zip
             *.tar.gz
             vc-libraries-index.md
+            voxelcraft-*-linux-x64

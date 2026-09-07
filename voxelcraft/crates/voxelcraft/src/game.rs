@@ -768,10 +768,32 @@ async fn load_builtin_pack_assets() -> (Vec<u8>, Vec<vc_render::textures::Animat
                 }
             }
         } else {
-            vc_render::render::report_boot_log(
-                "no builtin pack folder (builtin-pack/) — procedural fallback",
-            );
-            None
+            // single-file release path: no builtin-pack/ folder next to the
+            // binary — fall back to the copy baked in at compile time by
+            // build.rs (crate::embedded_pack), so the game boots with zero
+            // companion files. Only when THAT is somehow unusable do we go
+            // fully procedural.
+            let mut mem = vc_pack::pack::MemorySource::new("builtin (embedded)");
+            for (path, bytes) in crate::embedded_pack::EMBEDDED_PACK_FILES {
+                mem.insert(path, bytes.to_vec());
+            }
+            match vc_pack::pack::open(std::sync::Arc::new(mem)) {
+                Ok((meta, src)) => {
+                    vc_render::render::report_boot_log(&format!(
+                        "builtin pack: {} (format {}, {}) — embedded, single-file mode",
+                        src.name(),
+                        meta.pack_format,
+                        meta.description
+                    ));
+                    Some(src)
+                }
+                Err(e) => {
+                    vc_render::render::report_boot_log(&format!(
+                        "builtin pack unavailable: {e} — procedural fallback"
+                    ));
+                    None
+                }
+            }
         }
     };
     #[cfg(target_arch = "wasm32")]

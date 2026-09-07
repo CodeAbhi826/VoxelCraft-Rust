@@ -1,0 +1,101 @@
+name: Linux Game (single file)
+
+# THE GAME as one self-contained Linux x86_64 executable.
+#
+#   voxelcraft-<ref>-linux-x64  —  the whole engine with the builtin
+#   resource pack EMBEDDED in the binary (crates/voxelcraft/build.rs),
+#   so it runs directly:
+#
+#       chmod +x voxelcraft-*-linux-x64
+#       ./voxelcraft-*-linux-x64
+#
+#   No crates to download, no pack folder, no Rust toolchain, no build
+#   step. (The per-library source archives live in release.yml — this
+#   workflow is only the game.)
+#
+# Triggers:
+#   * workflow_dispatch  — manual "run the actions" build
+#   * push to main that touches Rust code / this workflow
+#   * workflow_call      — release.yml reuses this job so every GitHub
+#                          Release also carries the single-file game
+#
+# Built on ubuntu-22.04 (glibc 2.35) so the binary also runs on Debian 12+,
+# Ubuntu 22.04+, Fedora 36+, Arch, etc. — not just the newest runners.
+
+on:
+  workflow_dispatch:
+  workflow_call:
+  push:
+    branches: [main]
+    paths:
+      - 'voxelcraft/**'
+      - '.github/workflows/linux-game.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-game-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  single-file:
+    name: build the single-file Linux game (x86_64, pack embedded)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: voxelcraft
+          key: linux-single
+
+      - name: Install ALSA headers (full audio)
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+
+      - name: Build release binary (builtin pack embedded by build.rs)
+        working-directory: voxelcraft
+        run: cargo build --release -p voxelcraft --bin voxelcraft
+
+      - name: Name + verify the artifact
+        working-directory: voxelcraft
+        run: |
+          set -euo pipefail
+          # tag builds (via release.yml) name after the tag; branch builds
+          # after main-<short sha>
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            BIN_NAME="voxelcraft-${GITHUB_REF_NAME}-linux-x64"
+          else
+            BIN_NAME="voxelcraft-main-${GITHUB_SHA:0:12}-linux-x64"
+          fi
+          echo "BIN_NAME=$BIN_NAME" >> "$GITHUB_ENV"
+          cp target/release/voxelcraft "../$BIN_NAME"
+          chmod +x "../$BIN_NAME"
+          cd ..
+          ls -la "$BIN_NAME"
+          # 1. it must be a real x86_64 ELF executable
+          file "$BIN_NAME"
+          # 2. the builtin pack must be INSIDE the binary (build.rs embed):
+          #    the pack.mcmeta description string is baked into .rodata
+          grep -a -o -m1 "VoxelCraft builtin pack" "$BIN_NAME" \
+            || { echo "FAIL: embedded-pack marker not found in the binary"; exit 1; }
+          # 3. show the shared-library surface (informational — every
+          #    desktop Linux ships these: glibc, X11/Wayland, ALSA)
+          ldd "$BIN_NAME" || true
+          # 4. size summary
+          echo "single-file game: $(du -h "$BIN_NAME" | cut -f1) — $BIN_NAME"
+
+      - name: Upload artifact (the raw executable, no archive)
+        uses: actions/upload-artifact@v4
+        with:
+          name: voxelcraft-linux-single-file
+          path: voxelcraft-*-linux-x64
+          retention-days: 90
+          if-no-files-found: error

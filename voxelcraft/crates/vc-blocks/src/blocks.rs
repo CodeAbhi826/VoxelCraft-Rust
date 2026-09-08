@@ -1598,6 +1598,89 @@ pub const SHEARS: u16 = 438;
 /// mob kind 41.
 pub const SPAWN_EGG_BEE: u16 = 439;
 
+// ---- 1.16 (Nether Update, PART 1 — the anchor family): the V13
+// block window, ids 440..=453. All values VERIFIED against the
+// captures v116_page_*.json (see the research record
+// docs/research/phase-v116-1.16-research.md). ----
+/// 1.16: soul soil — the nether's soul-fire host ("burns indefinitely
+/// when manually ignited on the top side only, creating soul fire",
+/// VERIFIED w/Soul_Soil). Hardness 0.5 / blast 0.5, shovel. The soul
+/// sand valley terrain component (this engine: soul patches in the
+/// Nether, the disclosed no-sub-biome adaptation).
+pub const SOUL_SOIL: u16 = 440;
+/// 1.16: basalt — hardness 1.25 / blast 4.2, pickaxe (VERIFIED
+/// w/Basalt). Pillars + blobs on the Nether body (the soul-sand-valley
+/// / basalt-deltas adaptation); polished/smooth variants ride the
+/// part-2 wood round with their crafting families.
+pub const BASALT: u16 = 441;
+/// 1.16: blackstone — hardness 1.5 / blast 6, pickaxe (VERIFIED
+/// w/Blackstone). "Small patches in all Nether biomes" (the 20w19a
+/// row) — the bastion source is part 2 with the piglins.
+pub const BLACKSTONE: u16 = 442;
+/// 1.16: gilded blackstone — the gold-flecked blackstone: "a 10%
+/// chance to drop 2–5 gold nuggets when mined with any pickaxe. If it
+/// does not drop gold nuggets, it drops itself as a block" (VERIFIED
+/// w/Gilded_Blackstone). Native to bastions; generates inside this
+/// engine's blackstone patches (disclosed adaptation). Gold nugget =
+/// the iron-nugget stand-in (the disclosed convention).
+pub const GILDED_BLACKSTONE: u16 = 443;
+/// 1.16: crying obsidian — the luminous (light 10) obsidian variant,
+/// hardness 50 / blast 1,200 (VERIFIED w/Crying_Obsidian). Obtained
+/// from piglin bartering / bastion loot (part 2) — here: world-gen
+/// trace in blackstone + the crafting path. Crafts the respawn anchor.
+pub const CRYING_OBSIDIAN: u16 = 444;
+/// 1.16: the respawn anchor — "a block that allows the player to set
+/// their spawn point in the Nether, provided it's fueled with
+/// glowstone blocks" (VERIFIED w/Respawn_Anchor). Charges 0..=4
+/// (blockstates): charge light 3/7/11/15; using it in the Nether sets
+/// the respawn point (needs ≥ 1 charge, each respawn consumes one);
+/// using it in the Overworld explodes it (power 5). Craft: 6 crying
+/// obsidian + 3 glowstone. Hardness 50 / blast 1,200.
+pub const RESPAWN_ANCHOR: u16 = 445;
+/// 1.16: the target block — "produces a temporary redstone signal when
+/// hit by a projectile" (VERIFIED w/Target): power 1..15 by proximity
+/// to the block center, 8 game ticks (20 for arrows/tridents — the
+/// stone-button row). Hardness 0.5 / blast 0.5. Craft: 4 redstone dust
+/// (the engine's redstone-block stand-in, disclosed) + 1 hay bale.
+pub const TARGET: u16 = 446;
+/// 1.16: nether gold ore — "drops 2–6 gold nuggets when mined with any
+/// pickaxe" (VERIFIED w/Nether_Gold_Ore; Fortune is absent —
+/// disclosed). Smelts to a gold ingot (the iron stand-in).
+pub const NETHER_GOLD_ORE: u16 = 447;
+/// 1.16: ancient debris — "generates in the Nether in the form of
+/// scatter ores which are never naturally exposed to air"; hardness
+/// 30 / blast 1,200 (VERIFIED w/Ancient_Debris). Java gen: one
+/// 0–3-cluster triangle y 8–24 (peak 16) + one 0–2-cluster even y
+/// 8–119 per chunk. Smelts into 1 netherite scrap + 2 XP.
+pub const ANCIENT_DEBRIS: u16 = 448;
+/// 1.16: the block of netherite — 9 ingots both ways (the disc row:
+/// blast 1,200, hardness 50 class). The gear-upgrade path needs the
+/// tool/armor system (the standing 1.11+ deferral) — the block is the
+/// material endpoint here.
+pub const NETHERITE_BLOCK: u16 = 449;
+/// 1.16: the chain — hardness 0.5 / blast 6, "a metallic decoration
+/// block made from ingots and nuggets" (VERIFIED w/Chain — the 1.16
+/// iron-only form; the copper variants are 1.21+). Craft: 2 iron
+/// nuggets + 1 iron ingot. Sits on block tops or hangs from undersides
+/// (the lantern's face-matched states, extended).
+pub const CHAIN: u16 = 450;
+/// 1.16: soul fire — "the fire inflicts damage at a rate of 2 HP per
+/// tick, twice as many as with the normal fire (although damage
+/// immunity reduces this to once every half-second)" (VERIFIED
+/// w/Soul_Fire) → 2 HP per half-second through the engine's shared
+/// damage-immunity window. Light 10; does not spread; generates on
+/// soul sand/soil (flint-and-steel ignition is not in the engine —
+/// disclosed).
+pub const SOUL_FIRE: u16 = 451;
+/// 1.16: netherite scrap — smelted from ancient debris ("which is
+/// found in the Nether"), crafts netherite ingots. Item-row (never
+/// placeable).
+pub const NETHERITE_SCRAP: u16 = 452;
+/// 1.16: netherite ingot — "crafting four netherite scraps and four
+/// gold ingots together" (VERIFIED w/Netherite_Ingot; gold = the
+/// engine's iron-ingot stand-in, the disclosed convention). Item-row.
+pub const NETHERITE_INGOT: u16 = 453;
+
 pub const V10_STATE_BASE: u16 = 676;
 // 13 states: bamboo stalk 1, shoot 1, berry bush 4 (age 0..3),
 // campfire 2 (unlit/lit), barrel 1, then the 4 item states (berries,
@@ -1747,6 +1830,128 @@ pub fn hive_state(b: u16, level: u8) -> u16 {
 #[inline]
 pub fn hive_full(s: u16) -> bool {
     honey_level(s) == 5 && is_v12_state(s) && (s as u16) < V12_STATE_BASE + 12
+}
+
+// ---- 1.16 (Nether Update, PART 1): the V13 state window ----
+pub const V13_STATE_BASE: u16 = 716;
+// 34 states: respawn anchor charges 0..=4 (5), target power 0..=15
+// (16), then the identity states (soul soil, basalt, blackstone,
+// gilded blackstone, crying obsidian, nether gold ore, ancient
+// debris, netherite block, chain sitting/hanging, soul fire, and the
+// 2 item rows). Every block >= 440 gets an explicit state slot (the
+// standing invariant since id 57: block ids never double as state
+// ids past the flat registry).
+pub const V13_COUNT: u16 = 34;
+/// V13 state -> block fold: the 5 anchor charge states and the 16
+/// target power states fold to their parents; the chain's hanging
+/// state folds like the lantern's.
+pub const V13_STATE_TO_BLOCK: [u16; V13_COUNT as usize] = [
+    RESPAWN_ANCHOR, RESPAWN_ANCHOR, RESPAWN_ANCHOR, RESPAWN_ANCHOR, RESPAWN_ANCHOR,
+    TARGET, TARGET, TARGET, TARGET, TARGET, TARGET, TARGET, TARGET,
+    TARGET, TARGET, TARGET, TARGET, TARGET, TARGET, TARGET, TARGET,
+    SOUL_SOIL,
+    BASALT,
+    BLACKSTONE,
+    GILDED_BLACKSTONE,
+    CRYING_OBSIDIAN,
+    NETHER_GOLD_ORE,
+    ANCIENT_DEBRIS,
+    NETHERITE_BLOCK,
+    CHAIN,
+    CHAIN,
+    SOUL_FIRE,
+    NETHERITE_SCRAP,
+    NETHERITE_INGOT,
+];
+
+#[inline]
+pub fn v13_state(b: u16) -> Option<u16> {
+    match b {
+        RESPAWN_ANCHOR => Some(V13_STATE_BASE),          // charge 0
+        TARGET => Some(V13_STATE_BASE + 5),              // power 0
+        SOUL_SOIL => Some(V13_STATE_BASE + 21),
+        BASALT => Some(V13_STATE_BASE + 22),
+        BLACKSTONE => Some(V13_STATE_BASE + 23),
+        GILDED_BLACKSTONE => Some(V13_STATE_BASE + 24),
+        CRYING_OBSIDIAN => Some(V13_STATE_BASE + 25),
+        NETHER_GOLD_ORE => Some(V13_STATE_BASE + 26),
+        ANCIENT_DEBRIS => Some(V13_STATE_BASE + 27),
+        NETHERITE_BLOCK => Some(V13_STATE_BASE + 28),
+        CHAIN => Some(V13_STATE_BASE + 29),              // sitting
+        SOUL_FIRE => Some(V13_STATE_BASE + 31),
+        NETHERITE_SCRAP => Some(V13_STATE_BASE + 32),
+        NETHERITE_INGOT => Some(V13_STATE_BASE + 33),
+        _ => None,
+    }
+}
+
+#[inline]
+pub fn is_v13_state(s: u16) -> bool {
+    (V13_STATE_BASE..V13_STATE_BASE + V13_COUNT).contains(&s)
+}
+
+/// 1.16: the respawn anchor's charge 0..=4 stored in its state
+/// ("fueled with glowstone blocks" — each glowstone adds one, max 4,
+/// VERIFIED w/Respawn_Anchor).
+#[inline]
+pub fn anchor_charge(s: u16) -> u8 {
+    if is_v13_state(s) && s < V13_STATE_BASE + 5 {
+        (s - V13_STATE_BASE) as u8
+    } else {
+        0
+    }
+}
+
+/// state id for a respawn anchor at a given charge (clamped 0..=4).
+#[inline]
+pub fn anchor_state(charge: u8) -> u16 {
+    V13_STATE_BASE + (charge.min(4)) as u16
+}
+
+/// 1.16: the anchor's light by charge — "the respawn anchor glow with
+/// a light level of 3. Each glowstone after the first increases the
+/// light level by 4, up to a maximum of 15" (VERIFIED w/Respawn_Anchor
+/// — charges 1/2/3/4 → light 3/7/11/15, the infobox row).
+#[inline]
+pub fn anchor_light(s: u16) -> u8 {
+    match anchor_charge(s) {
+        0 => 0,
+        1 => 3,
+        2 => 7,
+        3 => 11,
+        _ => 15,
+    }
+}
+
+/// 1.16: the target's power 0..=15 stored in its state (the JE
+/// blockstate — hit strength by center proximity, VERIFIED w/Target).
+#[inline]
+pub fn target_power(s: u16) -> u8 {
+    if is_v13_state(s) && (V13_STATE_BASE + 5..V13_STATE_BASE + 21).contains(&s) {
+        (s - (V13_STATE_BASE + 5)) as u8
+    } else {
+        0
+    }
+}
+
+/// state id for a target at a given power (clamped 0..=15).
+#[inline]
+pub fn target_state(power: u8) -> u16 {
+    V13_STATE_BASE + 5 + (power.min(15)) as u16
+}
+
+/// 1.16: is this V13 state the HANGING chain form (the lantern's
+/// face-matched pattern)?
+#[inline]
+pub fn chain_hanging(s: u16) -> bool {
+    s == V13_STATE_BASE + 30
+}
+
+/// 1.16: is this state the soul fire block? (the engine's first fire
+/// block — non-solid, non-opaque, cross-sprite, light 10.)
+#[inline]
+pub fn is_soul_fire(s: u16) -> bool {
+    s == V13_STATE_BASE + 31 || state_block(s) == SOUL_FIRE
 }
 
 /// 1.14: is this V11 state a LIT smelter (blast furnace / smoker)?
@@ -2410,7 +2615,7 @@ pub fn item_state_block(s: u16) -> Option<u16> {
     }
 }
 
-pub const BLOCK_COUNT: usize = 440; // 1.15 (Buzzy Bees): V12 window ids 432..=439 (nest/hive/honey/honeycomb blocks + comb/bottle/shears/egg items)
+pub const BLOCK_COUNT: usize = 454; // 1.16 (Nether Update, part 1): V13 window ids 440..=453 (soul soil, basalt, blackstone, gilded blackstone, crying obsidian, respawn anchor, target, nether gold ore, ancient debris, netherite block, chain, soul fire + scrap/ingot items)
 /// [merge renumber] acacia/dark-oak log axis states moved to 443..=446
 /// (past the E-series states, which end at 354; V2 base is now 400)
 /// acacia/dark-oak log axis states (the V2 log window — same pattern as
@@ -2447,7 +2652,7 @@ pub const DARK_OAK_LOG_Z: u16 = 446;
 /// items + eggs 20..=22 + the POWER-state ladders (317..=399)
 /// [merge renumber] F-series states: V2 400..=442 + log-axis 443..=446,
 /// V3 447..=465, V4 466..=475, V5 476..=479, V6 480..=485 (audit-fix)
-pub const STATE_COUNT: usize = 716; // 1.15 (Buzzy Bees): V12 states 698..=715 (nest levels 0..=5, hive levels 0..=5, honey/honeycomb blocks, comb/bottle/shears/egg items) (nest levels 0..=5, hive levels 0..=5, comb/bottle/shears/egg items)
+pub const STATE_COUNT: usize = 750; // 1.16 (Nether Update, part 1): V13 states 716..=749 (anchor charges 0..=4, target power 0..=15, 12 identity blocks with the chain's 2 forms, scrap/ingot items)
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -2832,6 +3037,11 @@ pub fn default_state(b: u16) -> u16 {
         // 1.15: nests/hives place at honey_level 0; the V12 items ride
         // their item states
         b if v12_state(b).is_some() => v12_state(b).unwrap(),
+        // 1.16 (Nether Update, part 1): the V13 window — the anchor
+        // places at charge 0, the target at power 0, the chain SITTING
+        // (the lantern convention; the placement path writes the
+        // hanging state on underside clicks), the rest identity
+        b if v13_state(b).is_some() => v13_state(b).unwrap(),
         b if (262..262 + V4_COUNT as u16).contains(&b) => {
             V4_STATE_BASE + (b - 262) as u16
         }
@@ -3174,6 +3384,13 @@ pub fn state_block(s: u16) -> u16 {
         s if is_v12_state(s) => {
             return V12_STATE_TO_BLOCK[(s - V12_STATE_BASE) as usize];
         }
+        // 1.16 (Nether Update, part 1): the V13 window — the anchor's
+        // 5 charge states and the target's 16 power states fold to
+        // their parents; the chain's hanging state folds like the
+        // lantern's
+        s if is_v13_state(s) => {
+            return V13_STATE_TO_BLOCK[(s - V13_STATE_BASE) as usize];
+        }
         ACACIA_LOG_X | ACACIA_LOG_Z => return ACACIA_LOG,
         DARK_OAK_LOG_X | DARK_OAK_LOG_Z => return DARK_OAK_LOG,
         _ => {}
@@ -3236,6 +3453,18 @@ pub fn state_description(s: u16) -> String {
     if is_v12_state(s) && (V12_STATE_BASE + 6..=V12_STATE_BASE + 11).contains(&s) {
         return format!("Beehive[honey_level={}]", honey_level(s));
     }
+    // 1.16 V13 properties: the anchor's charge, the target's power,
+    // the chain's hanging flag (the F3 Targeted Block property lines —
+    // the vanilla blockstate spellings)
+    if is_v13_state(s) && s < V13_STATE_BASE + 5 {
+        return format!("Respawn Anchor[charge={}]", anchor_charge(s));
+    }
+    if is_v13_state(s) && (V13_STATE_BASE + 5..V13_STATE_BASE + 21).contains(&s) {
+        return format!("Target[power={}]", target_power(s));
+    }
+    if is_v13_state(s) && (V13_STATE_BASE + 29..=V13_STATE_BASE + 30).contains(&s) {
+        return format!("Chain[hanging={}]", chain_hanging(s));
+    }
     if let Some((b, props)) = prop_state_decode(s) {
         if props.is_empty() {
             return name(b).to_string();
@@ -3279,6 +3508,10 @@ pub fn is_model_state(s: u16) -> bool {
         // 1.15 V12 window: same shape — nest/hive/honey/honeycomb-block
         // are greedy cubes (their BlockDef flags); the items ride flags
         || is_v12_state(s)
+        // 1.16 V13 window: same shape — the stone-family blocks are
+        // greedy cubes (their BlockDef flags); chain + soul fire + the
+        // items ride their flags
+        || is_v13_state(s)
         || s == SPAWNER_VINDICATOR
         || s == SPAWNER_EVOKER
         || s == ACACIA_LOG_X
@@ -3530,6 +3763,18 @@ pub fn state_tiles(s: u16) -> [u16; 4] {
             };
             [t, t, t, t]
         }
+        // ---- 1.16 (Nether Update, part 1): the anchor's charge art —
+        // the sides wake to the purple glow at charge >= 1 (the exact
+        // charge rides the F3 line + the light); every other V13 state
+        // is a plain identity fold through def().tiles ----
+        s if is_v13_state(s) && s < V13_STATE_BASE + 5 => {
+            let side = if anchor_charge(s) >= 1 {
+                TILE_ANCHOR_SIDE_CHARGED
+            } else {
+                TILE_ANCHOR_SIDE
+            };
+            [TILE_ANCHOR_TOP, TILE_ANCHOR_TOP, side, side]
+        }
         s if glazed_decode(s).is_some() => {
             let (color, facing) = glazed_decode(s).unwrap();
             let c = color as u16;
@@ -3583,7 +3828,7 @@ pub fn log_axis_state(block: u16, axis: u8) -> u16 {
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
 // [merge] E-series tiles end at 243; the F-series (1.7.2-1.10) tiles
 // continue at 244..=325; the audit-fix round adds 326..=332
-pub const TILE_MAX: u16 = 654; // 1.15 (Buzzy Bees): tiles 642..=654 (the V12 window — nest/hive faces + honey variants, honey/honeycomb, comb/bottle/shears/egg items, bee sprite)
+pub const TILE_MAX: u16 = 672; // 1.16 (Nether Update, part 1): tiles 655..=672 (the V13 window — soul soil, basalt pair, blackstone, gilded, crying obsidian, anchor trio, target, nether gold ore, debris pair, netherite block, chain, soul fire, scrap/ingot items)
 /// 1.11 egg tiles (egg-shaped, egg order 23..=28 = llama, vindicator,
 /// evoker, vex, husk, stray) — the E1/E2/E3 egg-art convention
 /// (e1_art::egg_art + palettes), replacing the interrupted round's
@@ -3788,6 +4033,37 @@ pub const TILE_BEEHIVE_FRONT_HONEY: u16 = 653;
 /// the bee mob billboard sprite (v115_art::bee_art).
 pub const TILE_MOB_BEE: u16 = 654;
 
+// ---- 1.16 (Nether Update, part 1): the V13 art window, tiles
+// 655..=672 — painted from day one in v116_art.rs (the 1.13 blank-
+// window lesson; the coverage guard auto-extends). ----
+pub const TILE_SOUL_SOIL: u16 = 655;
+pub const TILE_BASALT_SIDE: u16 = 656;
+pub const TILE_BASALT_TOP: u16 = 657;
+pub const TILE_BLACKSTONE: u16 = 658;
+pub const TILE_GILDED_BLACKSTONE: u16 = 659;
+pub const TILE_CRYING_OBSIDIAN: u16 = 660;
+/// respawn-anchor top — the dark ring portal face.
+pub const TILE_ANCHOR_TOP: u16 = 661;
+/// respawn-anchor sides, uncharged — the crying-obsidian-dark shell.
+pub const TILE_ANCHOR_SIDE: u16 = 662;
+/// respawn-anchor sides at charge >= 1 — the purple glow wakes
+/// (grows visually with charge via the emissive tint class; the F3
+/// line carries the exact charge).
+pub const TILE_ANCHOR_SIDE_CHARGED: u16 = 663;
+/// the target — the concentric-ring bullseye face.
+pub const TILE_TARGET: u16 = 664;
+pub const TILE_NETHER_GOLD_ORE: u16 = 665;
+pub const TILE_ANCIENT_DEBRIS_TOP: u16 = 666;
+pub const TILE_ANCIENT_DEBRIS_SIDE: u16 = 667;
+pub const TILE_NETHERITE_BLOCK: u16 = 668;
+/// the chain (sitting + hanging share the sprite; the placement
+/// state picks the offset — the lantern pattern).
+pub const TILE_CHAIN: u16 = 669;
+/// soul fire — the blue flame cross-sprite.
+pub const TILE_SOUL_FIRE: u16 = 670;
+pub const TILE_NETHERITE_SCRAP: u16 = 671;
+pub const TILE_NETHERITE_INGOT: u16 = 672;
+
 /// inventory-only ITEM blocks (potions/bottles/books): never placeable in
 /// the world — right-click drinks (potions) / fills (glass bottle at water).
 #[inline]
@@ -3856,6 +4132,11 @@ pub fn is_item_block(b: u16) -> bool {
             | HONEYCOMB
             | HONEY_BOTTLE
             | SHEARS
+            // ---- 1.16 (Nether Update, part 1): the netherite material
+            // items (never placeable — the ancient-debris smelt output
+            // and the ingot craft input) ----
+            | NETHERITE_SCRAP
+            | NETHERITE_INGOT
     ) || is_spawn_egg(b)
         || (DYE_BASE..=DYE_END).contains(&b)
         || is_seeds(b)
@@ -3945,6 +4226,14 @@ pub fn state_emissive(s: u16) -> u8 {
     // fold routes them to the same d() emission).
     if v11_smelter_lit(s) {
         return 13;
+    }
+    // 1.16 (Nether Update, part 1): the respawn anchor's charge light —
+    // "the respawn anchor glow with a light level of 3. Each glowstone
+    // after the first increases the light level by 4, up to a maximum of
+    // 15" (VERIFIED w/Respawn_Anchor: charges 1/2/3/4 → 3/7/11/15).
+    // Crying obsidian (10) and soul fire (10) ride their BLOCK rows.
+    if is_v13_state(s) && s < V13_STATE_BASE + 5 {
+        return anchor_light(s);
     }
     emissive(state_block(s))
 }
@@ -4575,6 +4864,27 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Honey Bottle", [TILE_HONEY_BOTTLE, TILE_HONEY_BOTTLE, TILE_HONEY_BOTTLE], false, false, true, false, 0, SoundFamily::Glass),
     d("Shears", [TILE_SHEARS, TILE_SHEARS, TILE_SHEARS], false, false, true, false, 0, SoundFamily::Wood),
     d("Bee Spawn Egg", [TILE_SPAWN_EGG_BEE, TILE_SPAWN_EGG_BEE, TILE_SPAWN_EGG_BEE], false, false, true, false, 0, SoundFamily::Grass),
+    // ---- 1.16 (Nether Update, part 1 — the V13 window): all VERIFIED
+    // against the v116 captures. soul soil is the soul-sand-textured
+    // fire host; basalt carries the pillar top/side pair; the anchor is
+    // an opaque cube (charge art through state_tiles); the target a
+    // full cube; chain + soul fire are non-solid decorations (chain
+    // offsets like the lantern, soul fire is the cross-sprite) ----
+    d("Soul Soil", [TILE_SOUL_SOIL, TILE_SOUL_SOIL, TILE_SOUL_SOIL], true, true, false, false, 0, SoundFamily::Sand),
+    d("Basalt", [TILE_BASALT_TOP, TILE_BASALT_TOP, TILE_BASALT_SIDE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Blackstone", [TILE_BLACKSTONE, TILE_BLACKSTONE, TILE_BLACKSTONE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Gilded Blackstone", [TILE_GILDED_BLACKSTONE, TILE_GILDED_BLACKSTONE, TILE_GILDED_BLACKSTONE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Crying Obsidian", [TILE_CRYING_OBSIDIAN, TILE_CRYING_OBSIDIAN, TILE_CRYING_OBSIDIAN], true, true, false, false, 10, SoundFamily::Stone),
+    d("Respawn Anchor", [TILE_ANCHOR_TOP, TILE_ANCHOR_TOP, TILE_ANCHOR_SIDE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Target", [TILE_TARGET, TILE_TARGET, TILE_TARGET], true, true, false, false, 0, SoundFamily::Grass),
+    d("Nether Gold Ore", [TILE_NETHER_GOLD_ORE, TILE_NETHER_GOLD_ORE, TILE_NETHER_GOLD_ORE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Ancient Debris", [TILE_ANCIENT_DEBRIS_TOP, TILE_ANCIENT_DEBRIS_TOP, TILE_ANCIENT_DEBRIS_SIDE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Block of Netherite", [TILE_NETHERITE_BLOCK, TILE_NETHERITE_BLOCK, TILE_NETHERITE_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
+    d("Chain", [TILE_CHAIN, TILE_CHAIN, TILE_CHAIN], false, false, true, false, 0, SoundFamily::Stone),
+    d("Soul Fire", [TILE_SOUL_FIRE, TILE_SOUL_FIRE, TILE_SOUL_FIRE], false, false, true, false, 10, SoundFamily::Grass),
+    // 1.16 items — the item-row pattern (non-placeable, cross-sprited)
+    d("Netherite Scrap", [TILE_NETHERITE_SCRAP, TILE_NETHERITE_SCRAP, TILE_NETHERITE_SCRAP], false, false, true, false, 0, SoundFamily::Stone),
+    d("Netherite Ingot", [TILE_NETHERITE_INGOT, TILE_NETHERITE_INGOT, TILE_NETHERITE_INGOT], false, false, true, false, 0, SoundFamily::Stone),
 ];
 
 #[inline]
@@ -4644,7 +4954,7 @@ pub fn face_visible(b: u16, n: u16) -> bool {
 /// (needs fluid sim to be fun). Potions are item-blocks — usable from the
 /// hotbar (drink), never placeable. Phase E1 adds the 1.0–1.2 bracket
 /// blocks/items + the 16 spawn eggs (creative-only items, w/Spawn_Egg).
-pub const PICKER_BLOCKS: [u16; 395] = [
+pub const PICKER_BLOCKS: [u16; 407] = [
     GRASS, DIRT, STONE, COBBLE, SMOOTH_STONE, STONE_BRICKS, BRICKS, MOSSY_COBBLE,
     GRANITE, DIORITE, ANDESITE, OBSIDIAN,
     SAND, GRAVEL, CLAY, TERRACOTTA,
@@ -4794,6 +5104,14 @@ pub const PICKER_BLOCKS: [u16; 395] = [
     // 1.15 (Buzzy Bees): the nest/hive/honey/honeycomb blocks (the
     // comb/bottle/shears/egg items are item-blocks, never placeable)
     BEE_NEST, BEEHIVE, HONEY_BLOCK, HONEYCOMB_BLOCK,
+    // ---- 1.16 (Nether Update, part 1 — the anchor family): the V13
+    // window's 12 placeable blocks (the scrap/ingot material items
+    // are item-blocks, never placeable — the standing convention;
+    // soul fire is the engine's only fire block, so the picker is the
+    // one manual placement path — the disclosed no-flint adaptation) ----
+    SOUL_SOIL, BASALT, BLACKSTONE, GILDED_BLACKSTONE, CRYING_OBSIDIAN,
+    RESPAWN_ANCHOR, TARGET, NETHER_GOLD_ORE, ANCIENT_DEBRIS,
+    NETHERITE_BLOCK, CHAIN, SOUL_FIRE,
 ];
 
 /// default hotbar palette
@@ -5146,6 +5464,8 @@ mod state_tests {
                 || is_v11_state(s)
                 // 1.15 V12 (Buzzy Bees)
                 || is_v12_state(s)
+                // 1.16 V13 (Nether Update, part 1)
+                || is_v13_state(s)
                 || matches!(s, ACACIA_LOG_X | ACACIA_LOG_Z | DARK_OAK_LOG_X | DARK_OAK_LOG_Z)
             {
                 assert!(!is_model_state(s), "component/item state {s} never routes to models");
@@ -5257,6 +5577,22 @@ mod state_tests {
                         assert_eq!(s, want, "hive state {s} re-encodes");
                     } else if let Some(db) = v12_state(b) {
                         assert_eq!(default_state(b), db, "v12 default for {b}");
+                    }
+                }
+                // 1.16 V13 (Nether Update, part 1): every state folds to
+                // its parent; the anchor's charge + the target's power
+                // re-encode; the defaults roundtrip (charge 0, power 0,
+                // chain SITTING, identities + items 1:1)
+                if is_v13_state(s) {
+                    assert_eq!(state_block(s), V13_STATE_TO_BLOCK[(s - V13_STATE_BASE) as usize]);
+                    if s < V13_STATE_BASE + 5 {
+                        let want = anchor_state(anchor_charge(s));
+                        assert_eq!(s, want, "anchor state {s} re-encodes");
+                    } else if (V13_STATE_BASE + 5..V13_STATE_BASE + 21).contains(&s) {
+                        let want = target_state(target_power(s));
+                        assert_eq!(s, want, "target state {s} re-encodes");
+                    } else if let Some(db) = v13_state(b) {
+                        assert_eq!(default_state(b), db, "v13 default for {b}");
                     }
                 }
                 continue;
@@ -5417,8 +5753,8 @@ mod state_tests {
         // with the 1.7.2–1.10 F-series: 276 blocks / 480 states
         // (E-series states end at 354; V2 400..=442, V3 447..=465,
         // V4 466..=475, V5 476..=479)
-        assert_eq!(BLOCK_COUNT, 440, "merged registry + V6..V11 + 1.15 V12 (Buzzy Bees)");
-        assert_eq!(STATE_COUNT, 716, "merged state space, V12 states end at 715");
+        assert_eq!(BLOCK_COUNT, 454, "merged registry + V6..V12 + 1.16 V13 (Nether Update, part 1)");
+        assert_eq!(STATE_COUNT, 750, "merged state space, V13 states end at 749");
         assert_eq!(BLOCK_TABLE.len(), BLOCK_COUNT);
         for want in [
             COAL_BLOCK,
@@ -5469,8 +5805,8 @@ mod v110_tests {
             assert_eq!(default_state(b), s);
             assert!(is_v5_state(s));
         }
-        assert_eq!(BLOCK_COUNT, 440); // 1.14: V10+V11 windows grew the registry
-        assert_eq!(STATE_COUNT, 716); // 1.14: V10+V11 windows grew the state space
+        assert_eq!(BLOCK_COUNT, 454); // 1.16 V13 grew the registry (block windows are cumulative)
+        assert_eq!(STATE_COUNT, 750); // 1.16 V13 grew the state space (state windows are cumulative)
     }
 
     /// magma emits light level 3 (VERIFIED — minecraft.wiki/w/Magma_Block,
@@ -5507,8 +5843,8 @@ mod auditfix_tests {
             assert!(!is_model_state(s), "V6 states are cube/cross defs, not model states");
         }
         assert_eq!(V6_COUNT, 6);
-        assert_eq!(BLOCK_COUNT, 440); // 1.14: V10+V11 windows grew the registry
-        assert_eq!(STATE_COUNT, 716); // 1.14: V10+V11 windows grew the state space
+        assert_eq!(BLOCK_COUNT, 454); // 1.16 V13 grew the registry (block windows are cumulative)
+        assert_eq!(STATE_COUNT, 750); // 1.16 V13 grew the state space (state windows are cumulative)
         // solidity classes: log/planks solid-opaque (hardness family 2
         // per w/Log + w/Planks), leaves see-through, vine/fern non-solid
         // cross plants (w/Vines: "climbable non-solid"; w/Fern:
@@ -5557,8 +5893,8 @@ mod v111_tests {
             assert_eq!(default_state(b), s, "block {b} default state");
             assert_eq!(state_block(s), b, "state {s} folds back");
         }
-        assert_eq!(BLOCK_COUNT, 440); // 1.14: V10+V11 windows grew the registry
-        assert_eq!(STATE_COUNT, 716); // 1.14: V10+V11 windows grew the state space
+        assert_eq!(BLOCK_COUNT, 454); // 1.16 V13 grew the registry (block windows are cumulative)
+        assert_eq!(STATE_COUNT, 750); // 1.16 V13 grew the state space (state windows are cumulative)
         // mansion spawner states fold to SPAWNER + decode their kinds
         assert_eq!(state_block(SPAWNER_VINDICATOR), SPAWNER);
         assert_eq!(state_block(SPAWNER_EVOKER), SPAWNER);
@@ -5662,8 +5998,8 @@ mod v112_tests {
         }
         assert_eq!(default_state(COOKIE), V8_STATE_BASE + 117);
         // bounds
-        assert_eq!(BLOCK_COUNT, 440);
-        assert_eq!(STATE_COUNT, 716);
+        assert_eq!(BLOCK_COUNT, 454);
+        assert_eq!(STATE_COUNT, 750);
         assert_eq!(CONCRETE_BASE + 15, CONCRETE_END);
         assert_eq!(CONCRETE_POWDER_BASE + 15, CONCRETE_POWDER_END);
         assert_eq!(GLAZED_TERRACOTTA_BASE + 15, GLAZED_TERRACOTTA_END);
@@ -5736,7 +6072,7 @@ mod v112_tests {
             assert!(PICKER_BLOCKS.contains(&b), "picker missing {b}");
         }
         assert!(TILE_MAX >= TILE_ILLUSIONER, "1.12 tiles within the atlas guard");
-        assert_eq!(PICKER_BLOCKS.len(), 395);
+        assert_eq!(PICKER_BLOCKS.len(), 407);
         // the V9 + V10 windows are all present (the picker-gap fix)
         for want in [SEA_PICKLE, CONDUIT, SPAWN_EGG_TURTLE, BAMBOO, CAMPFIRE, BARREL, SPAWN_EGG_FOX, STICK, CHARCOAL] {
             assert!(PICKER_BLOCKS.contains(&want), "picker missing {want}");
@@ -5802,8 +6138,8 @@ mod v114_tests {
             "unlit tile"
         );
         // bounds + window shape
-        assert_eq!(BLOCK_COUNT, 440);
-        assert_eq!(STATE_COUNT, 716);
+        assert_eq!(BLOCK_COUNT, 454);
+        assert_eq!(STATE_COUNT, 750);
         assert_eq!(V10_COUNT, 13);
         assert_eq!(BAMBOO, 417);
         assert_eq!(CHARCOAL, 425);
@@ -5904,8 +6240,8 @@ mod v114_tests {
         assert!(TILE_MAX >= TILE_LILY_OF_THE_VALLEY, "flower tiles within the atlas guard");
         // bounds + window shape
         assert_eq!(V11_COUNT, 9);
-        assert_eq!(BLOCK_COUNT, 440);
-        assert_eq!(STATE_COUNT, 716);
+        assert_eq!(BLOCK_COUNT, 454);
+        assert_eq!(STATE_COUNT, 750);
     }
 }
 
@@ -5990,8 +6326,156 @@ mod v115_tests {
         assert!(TILE_MAX >= TILE_BEEHIVE_FRONT_HONEY, "honey front within the atlas guard");
         // bounds + window shape
         assert_eq!(V12_COUNT, 18);
-        assert_eq!(BLOCK_COUNT, 440);
-        assert_eq!(STATE_COUNT, 716);
-        assert_eq!(PICKER_BLOCKS.len(), 395);
+        assert_eq!(BLOCK_COUNT, 454);
+        assert_eq!(STATE_COUNT, 750);
+        assert_eq!(PICKER_BLOCKS.len(), 407);
+    }
+}
+#[cfg(test)]
+mod v116_tests {
+    use super::*;
+
+    /// the V13 window (ids 440..=453, states 716..=749): the anchor's
+    /// charge + the target's power fold + re-encode; the chain's two
+    /// face-matched forms; the identity + item states 1:1 (all
+    /// VERIFIED against the v116 captures — the research record
+    /// docs/research/phase-v116-1.16-research.md)
+    #[test]
+    fn v116_v13_registry_window() {
+        // anchor charge roundtrip: every charge 0..=4, light ladder
+        // 0/3/7/11/15 (the infobox row — charge 0 unlit)
+        for c in 0u8..=5 {
+            let s = anchor_state(c);
+            assert_eq!(anchor_charge(s), c.min(4), "charge {c} clamps + decodes");
+            assert_eq!(state_block(s), RESPAWN_ANCHOR);
+            assert!(is_v13_state(s));
+        }
+        assert_eq!(anchor_light(anchor_state(0)), 0);
+        assert_eq!(anchor_light(anchor_state(1)), 3);
+        assert_eq!(anchor_light(anchor_state(2)), 7);
+        assert_eq!(anchor_light(anchor_state(3)), 11);
+        assert_eq!(anchor_light(anchor_state(4)), 15);
+        // target power roundtrip: every power 0..=15 (clamped)
+        for p in 0u8..=16 {
+            let s = target_state(p);
+            assert_eq!(target_power(s), p.min(15), "power {p} clamps + decodes");
+            assert_eq!(state_block(s), TARGET);
+            assert!(is_v13_state(s));
+        }
+        // defaults: charge 0, power 0, chain SITTING; identity + item
+        // states 1:1
+        for (b, s) in [
+            (RESPAWN_ANCHOR, V13_STATE_BASE),
+            (TARGET, V13_STATE_BASE + 5),
+            (SOUL_SOIL, V13_STATE_BASE + 21),
+            (BASALT, V13_STATE_BASE + 22),
+            (BLACKSTONE, V13_STATE_BASE + 23),
+            (GILDED_BLACKSTONE, V13_STATE_BASE + 24),
+            (CRYING_OBSIDIAN, V13_STATE_BASE + 25),
+            (NETHER_GOLD_ORE, V13_STATE_BASE + 26),
+            (ANCIENT_DEBRIS, V13_STATE_BASE + 27),
+            (NETHERITE_BLOCK, V13_STATE_BASE + 28),
+            (CHAIN, V13_STATE_BASE + 29),
+            (SOUL_FIRE, V13_STATE_BASE + 31),
+            (NETHERITE_SCRAP, V13_STATE_BASE + 32),
+            (NETHERITE_INGOT, V13_STATE_BASE + 33),
+        ] {
+            assert_eq!(default_state(b), s, "block {b} default state");
+            assert_eq!(state_block(s), b, "state {s} folds back");
+        }
+        // the chain's hanging form folds to the same parent (the
+        // lantern pattern); hanging is NOT the default
+        assert!(chain_hanging(V13_STATE_BASE + 30));
+        assert!(!chain_hanging(V13_STATE_BASE + 29));
+        assert_eq!(state_block(V13_STATE_BASE + 30), CHAIN);
+        // soul fire: cross-sprite, non-solid, light 10
+        assert!(is_soul_fire(V13_STATE_BASE + 31));
+        assert!(is_soul_fire(default_state(SOUL_FIRE)));
+        assert!(is_cross(SOUL_FIRE));
+        assert!(!is_solid(SOUL_FIRE));
+        assert_eq!(emissive(SOUL_FIRE), 10);
+        // crying obsidian light 10; the anchor's charge light rides
+        // state_emissive (the state-level ladder)
+        assert_eq!(emissive(CRYING_OBSIDIAN), 10);
+        assert_eq!(state_emissive(anchor_state(2)), 7);
+        assert_eq!(state_emissive(anchor_state(4)), 15);
+        assert_eq!(state_emissive(anchor_state(0)), 0);
+        // the F3 targeted-block property lines
+        assert_eq!(state_description(anchor_state(3)), "Respawn Anchor[charge=3]");
+        assert_eq!(state_description(target_state(12)), "Target[power=12]");
+        assert_eq!(state_description(V13_STATE_BASE + 30), "Chain[hanging=true]");
+        assert_eq!(state_description(default_state(SOUL_SOIL)), "Soul Soil");
+        // solidity classes: the stone-family blocks solid-opaque; the
+        // chain + soul fire are non-solid cross-sprite decorations
+        for cube in [
+            SOUL_SOIL,
+            BASALT,
+            BLACKSTONE,
+            GILDED_BLACKSTONE,
+            CRYING_OBSIDIAN,
+            RESPAWN_ANCHOR,
+            TARGET,
+            NETHER_GOLD_ORE,
+            ANCIENT_DEBRIS,
+            NETHERITE_BLOCK,
+        ] {
+            assert!(is_solid(cube), "block {cube} solid");
+            assert!(is_opaque(cube), "block {cube} opaque");
+        }
+        assert!(!is_solid(CHAIN) && !is_opaque(CHAIN));
+        assert!(is_cross(CHAIN), "chain cross sprite (the lantern class)");
+        // the material items are item-blocks, never picker blocks
+        for it in [NETHERITE_SCRAP, NETHERITE_INGOT] {
+            assert!(is_item_block(it), "item {it}");
+            assert!(is_cross(it), "item {it} cross sprite");
+            assert!(!PICKER_BLOCKS.contains(&it), "item {it} is not a picker block");
+        }
+        // the 12 placeables are picker blocks
+        for want in [
+            SOUL_SOIL,
+            BASALT,
+            BLACKSTONE,
+            GILDED_BLACKSTONE,
+            CRYING_OBSIDIAN,
+            RESPAWN_ANCHOR,
+            TARGET,
+            NETHER_GOLD_ORE,
+            ANCIENT_DEBRIS,
+            NETHERITE_BLOCK,
+            CHAIN,
+            SOUL_FIRE,
+        ] {
+            assert!(PICKER_BLOCKS.contains(&want), "picker missing {want}");
+        }
+        // the anchor's charge art switches at charge >= 1
+        let uncharged = state_tiles(anchor_state(0));
+        let charged = state_tiles(anchor_state(1));
+        assert_eq!(uncharged[3], TILE_ANCHOR_SIDE);
+        assert_eq!(charged[3], TILE_ANCHOR_SIDE_CHARGED);
+        // names (the F3 plain-name lines + the item hotbar)
+        assert_eq!(name(SOUL_SOIL), "Soul Soil");
+        assert_eq!(name(BASALT), "Basalt");
+        assert_eq!(name(BLACKSTONE), "Blackstone");
+        assert_eq!(name(GILDED_BLACKSTONE), "Gilded Blackstone");
+        assert_eq!(name(CRYING_OBSIDIAN), "Crying Obsidian");
+        assert_eq!(name(RESPAWN_ANCHOR), "Respawn Anchor");
+        assert_eq!(name(TARGET), "Target");
+        assert_eq!(name(NETHER_GOLD_ORE), "Nether Gold Ore");
+        assert_eq!(name(ANCIENT_DEBRIS), "Ancient Debris");
+        assert_eq!(name(NETHERITE_BLOCK), "Block of Netherite");
+        assert_eq!(name(CHAIN), "Chain");
+        assert_eq!(name(SOUL_FIRE), "Soul Fire");
+        assert_eq!(name(NETHERITE_SCRAP), "Netherite Scrap");
+        assert_eq!(name(NETHERITE_INGOT), "Netherite Ingot");
+        // tiles within the atlas guard
+        assert!(TILE_MAX >= TILE_SOUL_FIRE, "soul fire within the atlas guard");
+        assert!(TILE_MAX >= TILE_ANCHOR_SIDE_CHARGED, "anchor glow within the atlas guard");
+        assert!(TILE_MAX >= TILE_NETHERITE_INGOT, "ingot within the atlas guard");
+        // bounds + window shape
+        assert_eq!(V13_COUNT, 34);
+        assert_eq!(V13_STATE_BASE + V13_COUNT, 750);
+        assert_eq!(BLOCK_COUNT, 454);
+        assert_eq!(STATE_COUNT, 750);
+        assert_eq!(PICKER_BLOCKS.len(), 407);
     }
 }

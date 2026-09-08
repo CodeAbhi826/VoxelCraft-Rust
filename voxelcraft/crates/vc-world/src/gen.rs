@@ -2585,10 +2585,24 @@ impl TerrainGen {
                 };
                 if here_air && below == NETHERRACK {
                     // vanilla-ish: soul sand valley patches — replace the top
-                    // 1..2 floor blocks
+                    // 1..2 floor blocks. 1.16: a third of the patches are
+                    // SOUL SOIL (the valley's other floor — VERIFIED
+                    // w/Soul_Soil "naturally generates in soul sand
+                    // valleys"), and one-in-six carries a SOUL FIRE flame
+                    // on top (the eternal blue fires, VERIFIED w/Soul_Fire
+                    // "Soul fire ... generates naturally in soul sand
+                    // valley biomes"; flint-ignition is not in the engine,
+                    // disclosed)
+                    let wx2 = cx * 16 + lx;
+                    let wz2 = cz * 16 + lz;
+                    let soil = Rng::hash3(self.seed ^ 0x5011, wx2, y, wz2) % 3 == 0;
+                    let floor_b = if soil { SOUL_SOIL } else { SOUL_SAND };
                     let depth = 1 + rng.next_range(2) as i32;
                     for d in 0..depth {
-                        chunk.set(lx as usize, (y - 1 - d) as usize, lz as usize, SOUL_SAND);
+                        chunk.set(lx as usize, (y - 1 - d) as usize, lz as usize, floor_b);
+                    }
+                    if Rng::hash3(self.seed ^ 0xF1E5, wx2, y + 1, wz2) % 6 == 0 {
+                        chunk.set(lx as usize, y as usize, lz as usize, SOUL_FIRE);
                     }
                     break;
                 }
@@ -2637,11 +2651,189 @@ impl TerrainGen {
             }
         }
 
+        // 1.16 (Nether Update, part 1): the V13 nether decorations —
+        // basalt blobs + pillars, blackstone/gilded/crying patches,
+        // nether gold ore veins, ancient debris clusters
+        self.gen_v116_nether_decorations(&mut chunk, &mut rng, cx, cz);
+
         (Arc::new(chunk), outbound)
     }
 
-    /// §28: find a spawn position inside a nether cavern — spiral-scan
-    /// chunks from the origin for an open floor with headroom (the very
+    /// 1.16 (Nether Update, part 1): the V13 nether decorations —
+    /// basalt blobs + pillars, blackstone patches with gilded + crying
+    /// obsidian trace, nether gold ore veins, and the ancient-debris
+    /// clusters. Called at the end of generate_nether_chunk (the
+    /// chunk is fully materialized — the debris air-exposure check
+    /// needs that).
+    fn gen_v116_nether_decorations(&self, chunk: &mut Chunk, rng: &mut Rng, cx: i32, cz: i32) {
+        // ---- basalt blobs (the basalt-deltas adaptation — no nether
+        // sub-biomes in this engine, disclosed): 5 blobs/chunk y 20..90,
+        // radius 3..5, replacing netherrack (the magma-blob pattern).
+        // VERIFIED w/Basalt: "generate in blobs, which attempt to
+        // replace netherrack ... in basalt deltas biomes". ----
+        for _ in 0..5 {
+            let bx = rng.next_range(16) as i32;
+            let by = 20 + rng.next_range(70) as i32;
+            let bz = rng.next_range(16) as i32;
+            let r = 3 + rng.next_range(3) as i32; // 3..5
+            for dy in -r..=r {
+                for dz in -r..=r {
+                    for dx in -r..=r {
+                        if dx * dx + dy * dy + dz * dz > r * r {
+                            continue;
+                        }
+                        let x = (bx + dx).clamp(0, 15) as usize;
+                        let y = (by + dy).clamp(1, 126) as usize;
+                        let z = (bz + dz).clamp(0, 15) as usize;
+                        if chunk.get(x, y, z) == NETHERRACK {
+                            chunk.set(x, y, z, BASALT);
+                        }
+                    }
+                }
+            }
+        }
+
+        // ---- basalt pillars (the soul-sand-valley landmark): 2 per
+        // chunk — 1x1 columns 6..14 tall rising from a solid floor into
+        // air. ----
+        for _ in 0..2 {
+            let lx = rng.next_range(16) as i32;
+            let lz = rng.next_range(16) as i32;
+            let mut y = 20;
+            while y < 100 {
+                let below = chunk.get(lx as usize, y as usize, lz as usize);
+                let here = chunk.get(lx as usize, (y + 1) as usize, lz as usize);
+                if below != AIR && below != BEDROCK && here == AIR {
+                    let h = 6 + rng.next_range(9) as i32; // 6..14
+                    for d in 1..=h {
+                        let yy = y + d;
+                        if yy > 126 || chunk.get(lx as usize, yy as usize, lz as usize) != AIR {
+                            break;
+                        }
+                        chunk.set(lx as usize, yy as usize, lz as usize, BASALT);
+                    }
+                    break;
+                }
+                y += 1;
+            }
+        }
+
+        // ---- blackstone patches ("small patches in all Nether
+        // biomes", VERIFIED w/Blackstone 20w19a row): 3 blobs/chunk,
+        // low band y 5..55 (denser deep — vanilla's low-nether body is
+        // blackstone-rich under the bastion round's disclosure). Inside
+        // each blob: 1-2 gilded spots ("native to bastion remnants" —
+        // our patch adaptation, disclosed) + a 1-in-3-blob crying
+        // obsidian trace (the ruined-portal/bastion stand-in). ----
+        for bi in 0..3 {
+            let bx = rng.next_range(16) as i32;
+            let by = 5 + rng.next_range(50) as i32;
+            let bz = rng.next_range(16) as i32;
+            let r = 2 + rng.next_range(3) as i32; // 2..4
+            for dy in -r..=r {
+                for dz in -r..=r {
+                    for dx in -r..=r {
+                        if dx * dx + dy * dy + dz * dz > r * r {
+                            continue;
+                        }
+                        let x = (bx + dx).clamp(0, 15) as usize;
+                        let y = (by + dy).clamp(1, 126) as usize;
+                        let z = (bz + dz).clamp(0, 15) as usize;
+                        if chunk.get(x, y, z) == NETHERRACK {
+                            chunk.set(x, y, z, BLACKSTONE);
+                        }
+                    }
+                }
+            }
+            // the gilded spots: 1..2 inside the blob
+            let g = 1 + rng.next_range(2) as i32;
+            for _ in 0..g {
+                let x = (bx + rng.next_range((r * 2 + 1) as u32) as i32 - r).clamp(0, 15) as usize;
+                let y = (by + rng.next_range((r * 2 + 1) as u32) as i32 - r).clamp(1, 126) as usize;
+                let z = (bz + rng.next_range((r * 2 + 1) as u32) as i32 - r).clamp(0, 15) as usize;
+                if chunk.get(x, y, z) == BLACKSTONE {
+                    chunk.set(x, y, z, GILDED_BLACKSTONE);
+                }
+            }
+            // crying obsidian trace: 1-in-3 blobs carry a single spot
+            if bi == 0 && rng.next_range(3) == 0 {
+                let x = (bx + rng.next_range((r * 2 + 1) as u32) as i32 - r).clamp(0, 15) as usize;
+                let y = (by + rng.next_range((r * 2 + 1) as u32) as i32 - r).clamp(1, 126) as usize;
+                let z = (bz + rng.next_range((r * 2 + 1) as u32) as i32 - r).clamp(0, 15) as usize;
+                if chunk.get(x, y, z) == BLACKSTONE {
+                    chunk.set(x, y, z, CRYING_OBSIDIAN);
+                }
+            }
+        }
+
+        // ---- nether gold ore (VERIFIED w/Nether_Gold_Ore "generates
+        // in the Nether in the form of blobs"): hash-gated veins at
+        // quartz-like density, any y in the rock body ----
+        for z in 0..16usize {
+            for x in 0..16usize {
+                for y in 1..=126usize {
+                    if chunk.get(x, y, z) != NETHERRACK {
+                        continue;
+                    }
+                    let wx = cx * 16 + x as i32;
+                    let wz = cz * 16 + z as i32;
+                    let v = Rng::hash3(self.seed ^ 0x601D, wx, y as i32, wz);
+                    if (v % 100_000) as f32 / 100_000.0 < 0.009 {
+                        chunk.set(x, y, z, NETHER_GOLD_ORE);
+                    }
+                }
+            }
+        }
+
+        // ---- ancient debris (VERIFIED w/Ancient_Debris): Java gen —
+        // "up to two clusters may generate per chunk: one cluster of
+        // 0–3 ancient debris ... with a triangle distribution from
+        // levels 8 to 24 [peak 16]. An additional cluster of 0–2 ...
+        // evenly from levels 8 to 119." And "never naturally exposed
+        // to air"; "They can only replace netherrack, basalt, and
+        // blackstone" [Java]. ----
+        let solid_no_air = |c: &Chunk, x: usize, y: usize, z: usize| -> bool {
+            // all 6 neighbors must be non-air (never exposed)
+            let solid_at = |xx: i32, yy: i32, zz: i32| -> bool {
+                if xx < 0 || xx > 15 || zz < 0 || zz > 15 || yy < 1 || yy > 126 {
+                    return true; // out of local range counts as rock
+                }
+                c.get(xx as usize, yy as usize, zz as usize) != AIR
+            };
+            solid_at(x as i32 - 1, y as i32, z as i32)
+                && solid_at(x as i32 + 1, y as i32, z as i32)
+                && solid_at(x as i32, y as i32 - 1, z as i32)
+                && solid_at(x as i32, y as i32 + 1, z as i32)
+                && solid_at(x as i32, y as i32, z as i32 - 1)
+                && solid_at(x as i32, y as i32, z as i32 + 1)
+        };
+        let placeable = |b: u16| b == NETHERRACK || b == BASALT || b == BLACKSTONE;
+        // cluster A: 0..3, triangle y 8..24 (sum of two uniforms 0..8+0..8
+        // + 8 → peak at 16)
+        for _ in 0..(rng.next_range(4) as i32) {
+            let lx = rng.next_range(16) as i32;
+            let lz = rng.next_range(16) as i32;
+            let y = 8 + (rng.next_range(9) as i32 + rng.next_range(9) as i32);
+            if y <= 126
+                && placeable(chunk.get(lx as usize, y as usize, lz as usize))
+                && solid_no_air(chunk, lx as usize, y as usize, lz as usize)
+            {
+                chunk.set(lx as usize, y as usize, lz as usize, ANCIENT_DEBRIS);
+            }
+        }
+        // cluster B: 0..2, even y 8..119
+        for _ in 0..(rng.next_range(3) as i32) {
+            let lx = rng.next_range(16) as i32;
+            let lz = rng.next_range(16) as i32;
+            let y = 8 + rng.next_range(112) as i32;
+            if y <= 126
+                && placeable(chunk.get(lx as usize, y as usize, lz as usize))
+                && solid_no_air(chunk, lx as usize, y as usize, lz as usize)
+            {
+                chunk.set(lx as usize, y as usize, lz as usize, ANCIENT_DEBRIS);
+            }
+        }
+    }
     /// first chunk can be solid rock; caverns interleave with walls).
     pub fn find_nether_spawn(&self) -> (f32, f32, f32) {
         // ring-by-ring spiral over the first ~9×9 chunks
@@ -4263,6 +4455,8 @@ mod nether_tests {
     fn nether_is_netherrack_with_quartz() {
         let mut rack = 0usize;
         let mut quartz = 0usize;
+        let mut basalt = 0usize;
+        let mut blackstone = 0usize;
         let mut other = 0usize;
         for s in 0..16i32 {
             let gen = TerrainGen::for_dimension(0xCAFE_F00D, Dimension::Nether);
@@ -4276,12 +4470,19 @@ mod nether_tests {
                 match fold(chunk.get_idx(i)) {
                     NETHERRACK => rack += 1,
                     NETHER_QUARTZ_ORE => quartz += 1,
+                    BASALT => basalt += 1,
+                    BLACKSTONE | GILDED_BLACKSTONE | CRYING_OBSIDIAN => blackstone += 1,
                     // Phase E1: fortress materials (nether bricks, spawners,
                     // soul-sand wart gardens) are legitimate nether content;
                     // 1.10: magma blobs (4/chunk, Y 27-36, wiki
                     // /w/Magma_Block) joined the nether mass
                     NETHER_BRICKS | SPAWNER | NETHER_WART | MAGMA_BLOCK => {}
                     AIR | GLOWSTONE | SOUL_SAND => {}
+                    // 1.16 (Nether Update, part 1): the V13 nether body —
+                    // soul-valley floors (soil + the eternal fires), the
+                    // basalt blobs/pillars, the blackstone patch family,
+                    // gold veins and the never-air-exposed debris
+                    SOUL_SOIL | SOUL_FIRE | NETHER_GOLD_ORE | ANCIENT_DEBRIS => {}
                     _ => other += 1,
                 }
             }
@@ -4294,9 +4495,20 @@ mod nether_tests {
             quartz > 50,
             "quartz ore appears across seeds ({quartz} cells)"
         );
+        // 1.16: the basalt/blackstone terrain is present across seeds
+        // (5 blobs + 2 pillars per chunk / 3 blackstone blobs per chunk —
+        // 16 single-chunk samples)
+        assert!(
+            basalt > 200,
+            "basalt blobs + pillars appear across seeds ({basalt} cells)"
+        );
+        assert!(
+            blackstone > 50,
+            "blackstone patches appear across seeds ({blackstone} cells)"
+        );
         assert!(
             other == 0,
-            "the nether mass is ONLY netherrack/quartz/glowstone/soul-sand/magma (1.10) — got {other} others"
+            "the nether mass is ONLY the verified nether set (1.10 + 1.16 V13) — got {other} others"
         );
     }
 

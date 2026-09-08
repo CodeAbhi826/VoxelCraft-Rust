@@ -18,6 +18,7 @@ mod v114_art;
 mod v114b_art;
 mod v114c_art;
 mod v115_art;
+mod v116_art;
 
 pub const ATLAS_SIZE: usize = 512;
 pub const TILE_PX: usize = 16;
@@ -4256,6 +4257,25 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_BEE_NEST_FRONT_HONEY => v115_art::bee_nest_front_honey_art(&mut a, t, &mut rng),
             TILE_BEEHIVE_FRONT_HONEY => v115_art::beehive_front_honey_art(&mut a, t, &mut rng),
             TILE_MOB_BEE => v115_art::bee_art(&mut a, t, &mut rng),
+            // ---- 1.16 (Nether Update, part 1): the V13 art window ----
+            TILE_SOUL_SOIL => v116_art::soul_soil_art(&mut a, t, &mut rng),
+            TILE_BASALT_SIDE => v116_art::basalt_side_art(&mut a, t, &mut rng),
+            TILE_BASALT_TOP => v116_art::basalt_top_art(&mut a, t, &mut rng),
+            TILE_BLACKSTONE => v116_art::blackstone_art(&mut a, t, &mut rng),
+            TILE_GILDED_BLACKSTONE => v116_art::gilded_blackstone_art(&mut a, t, &mut rng),
+            TILE_CRYING_OBSIDIAN => v116_art::crying_obsidian_art(&mut a, t, &mut rng),
+            TILE_ANCHOR_TOP => v116_art::anchor_top_art(&mut a, t, &mut rng),
+            TILE_ANCHOR_SIDE => v116_art::anchor_side_art(&mut a, t, &mut rng),
+            TILE_ANCHOR_SIDE_CHARGED => v116_art::anchor_side_charged_art(&mut a, t, &mut rng),
+            TILE_TARGET => v116_art::target_art(&mut a, t, &mut rng),
+            TILE_NETHER_GOLD_ORE => v116_art::nether_gold_ore_art(&mut a, t, &mut rng),
+            TILE_ANCIENT_DEBRIS_TOP => v116_art::ancient_debris_top_art(&mut a, t, &mut rng),
+            TILE_ANCIENT_DEBRIS_SIDE => v116_art::ancient_debris_side_art(&mut a, t, &mut rng),
+            TILE_NETHERITE_BLOCK => v116_art::netherite_block_art(&mut a, t, &mut rng),
+            TILE_CHAIN => v116_art::chain_art(&mut a, t, &mut rng),
+            TILE_SOUL_FIRE => v116_art::soul_fire_art(&mut a, t, &mut rng),
+            TILE_NETHERITE_SCRAP => v116_art::netherite_scrap_art(&mut a, t, &mut rng),
+            TILE_NETHERITE_INGOT => v116_art::netherite_ingot_art(&mut a, t, &mut rng),
             _ => {}
         }
     }

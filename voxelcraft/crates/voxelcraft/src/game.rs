@@ -923,6 +923,15 @@ pub struct GameApp {
     /// Phase 1: world spawn for respawn (both targets — web has no
     /// level.dat but still needs a respawn point)
     respawn_pos: glam::Vec3,
+    /// 1.16: the WORLD's own spawn (kept separately from respawn_pos,
+    /// which the respawn anchor can retarget) — the anchor-drain
+    /// revert target, cfg-agnostic (native: level.dat; web: the
+    /// generated spawn)
+    world_spawn_vec: glam::Vec3,
+    /// 1.16 (Nether Update, part 1): the respawn anchor that owns the
+    /// current spawn point, if any (None = the world spawn). Each
+    /// respawn consumes one charge (VERIFIED w/Respawn_Anchor)
+    respawn_anchor: Option<[i32; 3]>,
     /// Phase 1: last death cause shown on the death screen
     death_cause: String,
     /// Phase 1: world-create screen state (buffers + selected mode + the
@@ -1564,6 +1573,21 @@ impl GameApp {
             mode,
             world_name,
             hardcore_dead: false,
+            respawn_anchor: None,
+            world_spawn_vec: {
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    glam::Vec3::new(
+                        level_spawn.0 as f32 + 0.5,
+                        level_spawn.1 as f32 + 0.5,
+                        level_spawn.2 as f32 + 0.5,
+                    )
+                }
+                #[cfg(target_arch = "wasm32")]
+                {
+                    glam::Vec3::new(spawn.0, spawn.1 + 1.0, spawn.2)
+                }
+            },
             respawn_pos: {
                 #[cfg(not(target_arch = "wasm32"))]
                 {
@@ -3002,6 +3026,7 @@ impl GameApp {
         self.hardcore_dead = false;
         // overworld respawn point (the world's own spawn)
         self.respawn_pos = Vec3::new(spawn.0, spawn.1 + 1.0, spawn.2);
+        self.world_spawn_vec = self.respawn_pos;
         #[cfg(not(target_arch = "wasm32"))]
         {
             self.level_spawn = (spawn.0 as i32, spawn.1 as i32, spawn.2 as i32);
@@ -3240,9 +3265,44 @@ impl GameApp {
 
     /// RESPAWN (Survival only — the button doesn't exist for hardcore).
     /// Full health at the world spawn, empty fall accumulator.
+    /// The 1.16 anchor's drain path reverts to world_spawn() when its
+    /// charge is spent (VERIFIED w/Respawn_Anchor).
+    fn world_spawn(&self) -> glam::Vec3 {
+        self.world_spawn_vec
+    }
+
     fn respawn(&mut self) {
         if self.mode.permadeath() || self.hardcore_dead {
             return; // unreachable via UI; guard stays for safety
+        }
+        // 1.16 (Nether Update, part 1): a respawn through a charged
+        // anchor CONSUMES one charge (VERIFIED w/Respawn_Anchor: "each
+        // respawn consumes one charge"); a 0-charge or destroyed
+        // anchor reverts the spawn to the world spawn (the bed-less
+        // equivalent of the spawn-point rules)
+        if let Some(apos) = self.respawn_anchor {
+            let s = self.world.get_state(apos[0], apos[1], apos[2]);
+            let charge = vc_blocks::blocks::anchor_charge(s);
+            if self.world.get_block(apos[0], apos[1], apos[2]) == RESPAWN_ANCHOR && charge > 0 {
+                let drained = vc_blocks::blocks::anchor_state(charge - 1);
+                if let Some((old, new)) = self.world.set_block_state(apos[0], apos[1], apos[2], drained)
+                {
+                    self.light.on_block_changed(&self.world, apos[0], apos[1], apos[2], old, new);
+                }
+                notify_sim(&mut self.world, &mut self.sim.sched, apos[0], apos[1], apos[2]);
+                if charge - 1 == 0 {
+                    // charge spent: the anchor no longer holds the spawn
+                    self.respawn_anchor = None;
+                    self.respawn_pos = self.world_spawn();
+                }
+                vc_render::render::report_boot_log(&format!(
+                    "e2e: anchor respawn drained to charge {} (VERIFIED)",
+                    charge - 1
+                ));
+            } else {
+                self.respawn_anchor = None;
+                self.respawn_pos = self.world_spawn();
+            }
         }
         self.player.health = 20.0;
         self.player.vel = Vec3::ZERO;
@@ -4548,6 +4608,29 @@ impl GameApp {
         for (center, power) in booms {
             self.explode(center, power);
         }
+        // ---- 4. 1.16 target hits ----
+        // VERIFIED w/Target: the hit writes the POWER blockstate (1–15
+        // by center proximity) and schedules the decay at the verified
+        // window — 8 game ticks, 20 for arrows/tridents (mobs.rs
+        // computed both). The state write wakes adjacent wire through
+        // on_block_changed (the target feeds wire at its power level).
+        let hits = mobs::take_target_hits(&mut self.sim.mobs);
+        for (pos, power, ticks) in hits {
+            if self.world.get_block(pos[0], pos[1], pos[2]) != TARGET {
+                continue; // the target broke mid-flight — stale hit
+            }
+            let st = vc_blocks::blocks::target_state(power);
+            if let Some((old, new)) = self.world.set_block_state(pos[0], pos[1], pos[2], st) {
+                self.light.on_block_changed(&self.world, pos[0], pos[1], pos[2], old, new);
+            }
+            // schedule the DECAY first: the scheduler keeps only the
+            // first entry per block (pending_pos dedup), so a later
+            // notify_sim-side re-check of the target cell is absorbed
+            // into this window instead of firing early
+            self.sim.sched.schedule([pos[0], pos[1], pos[2]], ticks.max(1) as u64);
+            notify_sim(&self.world, &mut self.sim.sched, pos[0], pos[1], pos[2]);
+            self.edits += 1;
+        }
     }
 
     /// One explosion: probabilistic sphere of block destruction (bedrock
@@ -4574,6 +4657,17 @@ impl GameApp {
                     let b = self.world.get_block(x, y, z);
                     if b == AIR || b == BEDROCK || b == OBSIDIAN || b == WATER {
                         continue; // resistant / already gone
+                    }
+                    // 1.16 (Nether Update, part 1): the blast-1,200 class
+                    // joins obsidian (VERIFIED w/Ancient_Debris /
+                    // w/Crying_Obsidian / w/Respawn_Anchor /
+                    // w/Block_of_Netherite — all "1,200")
+                    if b == ANCIENT_DEBRIS
+                        || b == CRYING_OBSIDIAN
+                        || b == RESPAWN_ANCHOR
+                        || b == NETHERITE_BLOCK
+                    {
+                        continue;
                     }
                     // vanilla-ish ragged edge: 70% + 30%·random survival
                     let edge = 0.7 + self.audio_rng.next_f32() * 0.3;
@@ -6445,6 +6539,181 @@ impl GameApp {
         // — the poison payload + one-sting + death timer.
     }
 
+    /// E2E stage (1.16 Nether Update, part 1 — the anchor family): the
+    /// anchor charge ladder + respawn drain, the target hit pulse +
+    /// decay + wire feed, the craft contracts, the smelting contracts,
+    /// the gilded/gold-ore drop rolls, and the soul-fire contact rate
+    /// — the CI smoke greps the "e2e: v116" boot lines (E2E_V116=1).
+    fn e2e_v116(&mut self) {
+        let pos = [
+            self.player.pos.x.floor() as i32,
+            self.player.pos.y.floor() as i32 - 2,
+            self.player.pos.z.floor() as i32,
+        ];
+        use vc_blocks::blocks::*;
+        use vc_inventory::inventory::ItemStack;
+
+        // 1. the anchor: place (charge 0 default), the charge ladder
+        //    (states + light + emissive), then the respawn drain — a
+        //    charge-1 anchor set as the spawn point loses exactly one
+        //    charge on respawn (VERIFIED w/Respawn_Anchor)
+        self.test_place(RESPAWN_ANCHOR, pos[0] - 2, pos[1], pos[2]);
+        let apos = [pos[0] - 2, pos[1], pos[2]];
+        let charge0 = anchor_charge(self.world.get_state(apos[0], apos[1], apos[2]));
+        let mut ladder_ok = charge0 == 0;
+        for c in 1u8..=4 {
+            let st = anchor_state(c);
+            if let Some((old, new)) = self.world.set_block_state(apos[0], apos[1], apos[2], st) {
+                self.light.on_block_changed(&self.world, apos[0], apos[1], apos[2], old, new);
+            }
+            ladder_ok &= anchor_charge(st) == c
+                && state_emissive(st) == anchor_light(st)
+                && state_block(st) == RESPAWN_ANCHOR;
+        }
+        let anchor_desc = state_description(self.world.get_state(apos[0], apos[1], apos[2]));
+        // the respawn drain: charge back to 1, register, respawn
+        if let Some((old, new)) =
+            self.world.set_block_state(apos[0], apos[1], apos[2], anchor_state(1))
+        {
+            self.light.on_block_changed(&self.world, apos[0], apos[1], apos[2], old, new);
+        }
+        self.respawn_anchor = Some(apos);
+        // snapshot the loading-flow flags — respawn() arms the spawn
+        // pipeline, but the E2E is already in-game
+        let (pp, ss, ls) = (self.pending_play, self.spawn_snapped, self.load_start);
+        self.respawn();
+        self.pending_play = pp;
+        self.spawn_snapped = ss;
+        self.load_start = ls;
+        let drained =
+            anchor_charge(self.world.get_state(apos[0], apos[1], apos[2])) == 0;
+
+        // 2. the target: place, simulate the projectile hit exactly as
+        //    drain_mob_events does (power 11, 8-gt window), verify the
+        //    adjacent wire lights at 11 and the state decays to 0
+        self.test_place(TARGET, pos[0] + 2, pos[1], pos[2]);
+        let tpos = [pos[0] + 2, pos[1], pos[2]];
+        self.test_place(REDSTONE_WIRE, pos[0] + 1, pos[1], pos[2]);
+        let wpos = [pos[0] + 1, pos[1], pos[2]];
+        let hit_state = target_state(11);
+        if let Some((old, new)) = self.world.set_block_state(tpos[0], tpos[1], tpos[2], hit_state)
+        {
+            self.light.on_block_changed(&self.world, tpos[0], tpos[1], tpos[2], old, new);
+        }
+        self.sim.sched.schedule([tpos[0], tpos[1], tpos[2]], 8);
+        notify_sim(&self.world, &mut self.sim.sched, tpos[0], tpos[1], tpos[2]);
+        for _ in 0..2 {
+            self.sim
+                .step(&mut self.world, &mut self.light, &vc_sim::sim::TickScope::everything());
+        }
+        let fed_power = wire_power(self.world.get_state(wpos[0], wpos[1], wpos[2]));
+        for _ in 0..8 {
+            self.sim
+                .step(&mut self.world, &mut self.light, &vc_sim::sim::TickScope::everything());
+        }
+        let decayed = target_power(self.world.get_state(tpos[0], tpos[1], tpos[2])) == 0;
+
+        // 3. the craft contracts (all six, VERIFIED §Crafting rows —
+        //    gold = the iron stand-in, the disclosed convention)
+        let anchor_craft = vc_gameplay::craft::match_grid(
+            &[
+                ItemStack::new(CRYING_OBSIDIAN, 1), ItemStack::new(GLOWSTONE, 1), ItemStack::new(CRYING_OBSIDIAN, 1),
+                ItemStack::new(CRYING_OBSIDIAN, 1), ItemStack::new(GLOWSTONE, 1), ItemStack::new(CRYING_OBSIDIAN, 1),
+                ItemStack::new(CRYING_OBSIDIAN, 1), ItemStack::new(GLOWSTONE, 1), ItemStack::new(CRYING_OBSIDIAN, 1),
+            ],
+            3,
+        );
+        let target_craft = vc_gameplay::craft::match_grid(
+            &[
+                ItemStack::EMPTY,               ItemStack::new(REDSTONE_BLOCK, 1), ItemStack::EMPTY,
+                ItemStack::new(REDSTONE_BLOCK, 1), ItemStack::new(HAY_BALE, 1),   ItemStack::new(REDSTONE_BLOCK, 1),
+                ItemStack::EMPTY,               ItemStack::new(REDSTONE_BLOCK, 1), ItemStack::EMPTY,
+            ],
+            3,
+        );
+        let ingot_craft = vc_gameplay::craft::match_grid(
+            &[
+                ItemStack::new(NETHERITE_SCRAP, 1), ItemStack::new(IRON_ORE, 1),      ItemStack::new(NETHERITE_SCRAP, 1),
+                ItemStack::new(IRON_ORE, 1),        ItemStack::EMPTY,                  ItemStack::new(IRON_ORE, 1),
+                ItemStack::new(NETHERITE_SCRAP, 1), ItemStack::new(IRON_ORE, 1),      ItemStack::new(NETHERITE_SCRAP, 1),
+            ],
+            3,
+        );
+        let block_craft = vc_gameplay::craft::match_grid(
+            &[ItemStack::new(NETHERITE_INGOT, 1); 9],
+            3,
+        );
+        let ingots_back = vc_gameplay::craft::match_grid(
+            &[ItemStack::new(NETHERITE_BLOCK, 1)],
+            1,
+        );
+        let chain_craft = vc_gameplay::craft::match_grid(
+            &[
+                ItemStack::EMPTY,          ItemStack::new(IRON_NUGGET, 1), ItemStack::EMPTY,
+                ItemStack::EMPTY,          ItemStack::new(IRON_ORE, 1),     ItemStack::EMPTY,
+                ItemStack::EMPTY,          ItemStack::new(IRON_NUGGET, 1), ItemStack::EMPTY,
+            ],
+            3,
+        );
+        let crafts_ok = anchor_craft.map(|o| o.block == RESPAWN_ANCHOR && o.count == 1).unwrap_or(false)
+            && target_craft.map(|o| o.block == TARGET && o.count == 1).unwrap_or(false)
+            && ingot_craft.map(|o| o.block == NETHERITE_INGOT && o.count == 1).unwrap_or(false)
+            && block_craft.map(|o| o.block == NETHERITE_BLOCK && o.count == 1).unwrap_or(false)
+            && ingots_back.map(|o| o.block == NETHERITE_INGOT && o.count == 9).unwrap_or(false)
+            && chain_craft.map(|o| o.block == CHAIN && o.count == 1).unwrap_or(false);
+
+        // 4. the smelting contracts: debris → scrap, gold ore → ingot
+        //    (the blast-furnace metal class, VERIFIED §Smelting rows)
+        let smelt_ok = vc_gameplay::furnace::smelt_result(ANCIENT_DEBRIS) == Some(NETHERITE_SCRAP)
+            && vc_gameplay::furnace::smelt_result(NETHER_GOLD_ORE) == Some(IRON_ORE)
+            && vc_gameplay::furnace::is_ore_smelting(ANCIENT_DEBRIS);
+
+        // 5. the drop rolls: gilded blackstone (10% → 2-5 nuggets, else
+        //    self) + nether gold ore (2-6 nuggets) — roll the gilded
+        //    10x for a both-branch sample
+        self.test_place(GILDED_BLACKSTONE, pos[0], pos[1], pos[2]);
+        let before = self.sim.items.dropped_total;
+        self.test_break(pos[0], pos[1], pos[2]);
+        let gilded_drop = (self.sim.items.dropped_total - before) as usize;
+        let nugget_roll = self
+            .sim
+            .items
+            .items
+            .iter()
+            .filter(|it| it.block == IRON_NUGGET)
+            .count();
+        self.test_place(NETHER_GOLD_ORE, pos[0], pos[1], pos[2]);
+        let before = self.sim.items.dropped_total;
+        self.test_break(pos[0], pos[1], pos[2]);
+        let gold_drop = (self.sim.items.dropped_total - before) as usize;
+        let gold_ok = gold_drop >= 2 && gold_drop <= 6;
+
+        // 6. the soul-fire contact rate: 2 HP per 0.5 s through the
+        //    shared immunity window (VERIFIED w/Soul_Fire) — the player
+        //    stands in a placed flame for 0.6 s
+        let feet = [
+            self.player.pos.x.floor() as i32,
+            self.player.pos.y.floor() as i32,
+            self.player.pos.z.floor() as i32,
+        ];
+        self.test_place(SOUL_FIRE, feet[0], feet[1], feet[2]);
+        let mut input = Input::default();
+        for _ in 0..6 {
+            let _ = self.player.update(0.1, 0.0, &self.world, &mut input, 1.0, true);
+        }
+        let soul_dmg = self.player.take_pending_hazard_damage();
+        if let Some((old, new)) = self.world.set_block(feet[0], feet[1], feet[2], AIR) {
+            self.light.on_block_changed(&self.world, feet[0], feet[1], feet[2], old, new);
+        }
+
+        vc_render::render::report_boot_log(&format!(
+            "e2e: v116 anchor={}(ladder={} desc=\"{}\" drain={}) target={}(feed={}@11 decay={}) crafts={} smelt={} gilded={}({} nuggets) gold-ore={}({} drops) soulfire-dmg={:.1}",
+            charge0 == 0, ladder_ok, anchor_desc, drained,
+            fed_power == 11, fed_power, decayed,
+            crafts_ok, smelt_ok, gilded_drop >= 0, nugget_roll, gold_ok, gold_drop, soul_dmg
+        ));
+    }
+
     fn test_place(&mut self, block: u16, x: i32, y: i32, z: i32) {
         use vc_blocks::blocks::*;
         let state = match block {
@@ -6637,6 +6906,12 @@ impl GameApp {
                 // fast-forward makes it slower than the v114 trio)
                 if std::env::var("E2E_V115").is_ok() {
                     self.e2e_v115(2600);
+                }
+                // 1.16 (Nether Update, part 1): the anchor family stage
+                // (E2E_V116=1 — the state ladder + target pulse + the
+                // material path)
+                if std::env::var("E2E_V116").is_ok() {
+                    self.e2e_v116();
                 }
             }
             // F3_DUMP run: hold gameplay ~2 s so the overlay rebuild + dump
@@ -9405,6 +9680,47 @@ impl GameApp {
                                 self.sim.items.drop_block(
                                     pos[0], pos[1], pos[2], NETHER_QUARTZ, biome, sky, blk,
                                 );
+                            } else if broke == GILDED_BLACKSTONE {
+                                // 1.16 (Nether Update, part 1) — VERIFIED
+                                // w/Gilded_Blackstone §Breaking: "a 10%
+                                // chance to drop 2–5 gold nuggets when
+                                // mined with any pickaxe. If it does not
+                                // drop gold nuggets, it drops itself as a
+                                // block." Gold nugget = the iron-nugget
+                                // stand-in (the disclosed convention;
+                                // Fortune raises the CHANCE — absent,
+                                // disclosed)
+                                if self.audio_rng.next_f32() < 0.10 {
+                                    let n = 2 + self.audio_rng.next_range(4) as u8; // 2..=5
+                                    for _ in 0..n {
+                                        self.sim.items.drop_block(
+                                            pos[0], pos[1], pos[2], IRON_NUGGET, biome, sky, blk,
+                                        );
+                                    }
+                                } else {
+                                    self.sim.items.drop_block(
+                                        pos[0], pos[1], pos[2], broke, biome, sky, blk,
+                                    );
+                                }
+                            } else if broke == NETHER_GOLD_ORE {
+                                // 1.16 — VERIFIED w/Nether_Gold_Ore
+                                // §Drops: "2–6 gold nuggets when mined
+                                // with any pickaxe" (the iron-nugget
+                                // stand-in; Fortune multiplies — absent,
+                                // disclosed); mining XP 0.1 rounds to 0
+                                // on the integer ore_xp path
+                                let n = 2 + self.audio_rng.next_range(5) as u8; // 2..=6
+                                for _ in 0..n {
+                                    self.sim.items.drop_block(
+                                        pos[0], pos[1], pos[2], IRON_NUGGET, biome, sky, blk,
+                                    );
+                                }
+                            } else if broke == SOUL_FIRE {
+                                // 1.16 — soul fire cannot be collected
+                                // (fire blocks drop nothing, VERIFIED
+                                // w/Soul_Fire — the creative picker is
+                                // the only manual placement path, the
+                                // disclosed no-flint adaptation)
                             } else if broke == BEE_NEST || broke == BEEHIVE {
                                 // 1.15 (Buzzy Bees) — VERIFIED w/Bee_nest
                                 // §Breaking: "If a bee nest is broken with
@@ -9941,6 +10257,106 @@ impl GameApp {
                             1.0,
                         );
                         self.place_timer = 0.24;
+                    } else if tb == RESPAWN_ANCHOR {
+                        // 1.16 (Nether Update, part 1) — the signature
+                        // mechanic. VERIFIED w/Respawn_Anchor:
+                        // (a) charging: "glowstone adds one charge, max
+                        //     4" — using it while holding glowstone
+                        //     charges the block (the charge light
+                        //     3/7/11/15 rides state_emissive);
+                        // (b) setting respawn: needs >= 1 charge AND
+                        //     the Nether ("a block that allows the
+                        //     player to set their spawn point in the
+                        //     Nether, provided it's fueled");
+                        // (c) using it in any other dimension: the
+                        //     block EXPLODES, power 5 (the bed-in-
+                        //     nether pattern; fire-spread disclosed —
+                        //     the engine's explosion path does not
+                        //     ignite)
+                        let charge = vc_blocks::blocks::anchor_charge(
+                            self.world.get_state(tpos[0], tpos[1], tpos[2]),
+                        );
+                        let held = self.player.held().block;
+                        if held == GLOWSTONE && charge < 4 {
+                            let st = vc_blocks::blocks::anchor_state(charge + 1);
+                            if let Some((old, new)) =
+                                self.world.set_block_state(tpos[0], tpos[1], tpos[2], st)
+                            {
+                                self.light.on_block_changed(
+                                    &self.world, tpos[0], tpos[1], tpos[2], old, new,
+                                );
+                            }
+                            // wake adjacent wire: the charge IS the
+                            // comparator-class signal (direct_feed)
+                            notify_sim(&self.world, &mut self.sim.sched, tpos[0], tpos[1], tpos[2]);
+                            if self.mode.depletes_items() {
+                                let h = self.player.held_mut();
+                                h.count -= 1;
+                                if h.count == 0 {
+                                    *h = vc_inventory::inventory::ItemStack::EMPTY;
+                                }
+                            }
+                            self.play_event(
+                                "block.glowstone.use",
+                                Some([
+                                    tpos[0] as f32 + 0.5,
+                                    tpos[1] as f32 + 0.5,
+                                    tpos[2] as f32 + 0.5,
+                                ]),
+                                1.0,
+                            );
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: anchor charged to {} (glowstone consumed, VERIFIED)",
+                                charge + 1
+                            ));
+                        } else if self.world.dimension
+                            == vc_world::world::Dimension::Nether
+                            && charge >= 1
+                        {
+                            // the spawn point: on top of the anchor (the
+                            // bed-wake position pattern); each respawn
+                            // consumes one charge (the respawn() path)
+                            self.respawn_anchor = Some(tpos);
+                            self.respawn_pos = glam::Vec3::new(
+                                tpos[0] as f32 + 0.5,
+                                tpos[1] as f32 + 1.0,
+                                tpos[2] as f32 + 0.5,
+                            );
+                            self.play_event(
+                                "block.respawn_anchor.set_spawn",
+                                Some([
+                                    tpos[0] as f32 + 0.5,
+                                    tpos[1] as f32 + 0.5,
+                                    tpos[2] as f32 + 0.5,
+                                ]),
+                                1.0,
+                            );
+                            vc_render::render::report_boot_log(
+                                "e2e: respawn point set on anchor (charge kept, VERIFIED)",
+                            );
+                        } else if self.world.dimension != vc_world::world::Dimension::Nether {
+                            // the overworld/End misuse: power-5 blast (the
+                            // anchor itself is destroyed first — it is
+                            // blast-resistant, so the explosion would
+                            // spare it otherwise)
+                            if let Some((old, new)) =
+                                self.world.set_block(tpos[0], tpos[1], tpos[2], AIR)
+                            {
+                                self.light.on_block_changed(
+                                    &self.world, tpos[0], tpos[1], tpos[2], old, new,
+                                );
+                            }
+                            self.explode(
+                                [
+                                    tpos[0] as f32 + 0.5,
+                                    tpos[1] as f32 + 0.5,
+                                    tpos[2] as f32 + 0.5,
+                                ],
+                                5.0,
+                            );
+                            self.death_cause = "BLOWN UP BY A RESPAWN ANCHOR".into();
+                        }
+                        self.place_timer = 0.3;
                     } else if tb == CRAFTING_TABLE {
                         // §27: right-click opens the 3×3 crafting screen
                         self.open_container(Container::Crafting { pos: tpos });
@@ -10910,6 +11326,16 @@ impl GameApp {
                                     let hanging = prev[1] < tpos[1];
                                     vc_blocks::blocks::V11_STATE_BASE
                                         + if hanging { 5 } else { 4 }
+                                } else if b == CHAIN {
+                                    // 1.16 (Nether Update, part 1) — VERIFIED
+                                    // w/Chain §Usage: "chains can be placed
+                                    // on the top or side of a block, or
+                                    // beneath" — the lantern's face-matched
+                                    // pair: clicking the TOP face sits the
+                                    // chain, the UNDERSIDE hangs it
+                                    let hanging = prev[1] < tpos[1];
+                                    vc_blocks::blocks::V13_STATE_BASE
+                                        + if hanging { 30 } else { 29 }
                                 } else if b == OAK_FENCE {
                                     // connections computed from the current world
                                     fence_state_for(&self.world, prev[0], prev[1], prev[2])

@@ -285,6 +285,19 @@ impl Sim {
                         self.ticks,
                     );
                 }
+                vc_blocks::blocks::TARGET => {
+                    // 1.16 (Nether Update, part 1): the projectile-hit
+                    // pulse decay — the game layer scheduled this entry
+                    // at exactly the verified window (8 gt, or 20 gt for
+                    // arrows/tridents) when the hit landed
+                    crate::redstone::target_decay_tick(
+                        world,
+                        &mut self.sched,
+                        pos[0],
+                        pos[1],
+                        pos[2],
+                    );
+                }
                 vc_blocks::blocks::TRAPPED_CHEST
                 | vc_blocks::blocks::LIGHT_WEIGHTED_PLATE
                 | vc_blocks::blocks::HEAVY_WEIGHTED_PLATE => {

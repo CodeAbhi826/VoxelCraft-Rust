@@ -50,6 +50,10 @@ pub fn is_component(s: u16) -> bool {
         || b == TRAPPED_CHEST
         || b == LIGHT_WEIGHTED_PLATE
         || b == HEAVY_WEIGHTED_PLATE
+        // 1.16 (Nether Update, part 1): the target's POWER state feeds
+        // wires — a neighbor change re-checks it, and its decay tick
+        // rides the scheduler
+        || b == TARGET
 }
 
 /// schedule redstone updates for a position and its neighbors after a
@@ -157,6 +161,24 @@ fn direct_feed(world: &World, x: i32, y: i32, z: i32) -> u8 {
             let p = plate_power(s) as u8;
             if p > 0 {
                 best = best.max(p);
+            }
+        }
+        // 1.16 (Nether Update, part 1): the target's hit POWER state
+        // feeds adjacent wire (VERIFIED w/Target: "produces a temporary
+        // redstone signal when hit by a projectile ... strength 1–15 by
+        // proximity"); a charged respawn anchor's comparator signal =
+        // its charge count (VERIFIED w/Respawn_Anchor — the E3
+        // viewer-signal pattern)
+        if b == TARGET {
+            let p = vc_blocks::blocks::target_power(s);
+            if p > 0 {
+                best = best.max(p);
+            }
+        }
+        if b == RESPAWN_ANCHOR {
+            let c = vc_blocks::blocks::anchor_charge(s);
+            if c > 0 {
+                best = best.max(c);
             }
         }
         // Phase 3: repeater/comparator/observer outputs power adjacent
@@ -443,6 +465,32 @@ pub fn trapped_chest_tick(
     }
 }
 
+/// 1.16 (Nether Update, part 1): target decay — the hit's POWER state
+/// drops back to 0 when its pulse window ends (VERIFIED w/Target: "the
+/// target emits redstone power for 8 game ticks ... Arrows and tridents
+/// instead cause the target to emit power for 20 game ticks"). The game
+/// layer schedules this at exactly the verified window (8 or 20 gt) when
+/// the projectile hit lands; a stale entry (block gone / already 0) is a
+/// no-op.
+pub fn target_decay_tick(
+    world: &mut World,
+    sched: &mut TickScheduler,
+    x: i32,
+    y: i32,
+    z: i32,
+) {
+    let s = world.get_state(x, y, z);
+    if state_block(s) != TARGET {
+        return; // stale entry: the block changed
+    }
+    let p = vc_blocks::blocks::target_power(s);
+    if p == 0 {
+        return; // already decayed (a later hit re-armed it)
+    }
+    world.set_block_state(x, y, z, vc_blocks::blocks::target_state(0));
+    on_block_changed(sched, world, x, y, z);
+}
+
 /// weighted-pressure-plate signal from the entity count (pure formula):
 /// light = 1 per entity (1..15); heavy = ceil(entities/10) (1..15) —
 /// both VERIFIED live (w/Light_Weighted_Pressure_Plate "signal
@@ -560,6 +608,7 @@ mod tests {
                     REDSTONE_TORCH => torch_tick(world, sched, pos[0], pos[1], pos[2]),
                     LEVER => lever_tick(world, pos[0], pos[1], pos[2]),
                     REDSTONE_LAMP => lamp_tick(world, sched, pos[0], pos[1], pos[2]),
+                    TARGET => target_decay_tick(world, sched, pos[0], pos[1], pos[2]),
                     _ => {}
                 }
             }
@@ -1550,6 +1599,7 @@ mod e1_lamp_tests {
                     REDSTONE_TORCH => torch_tick(w, sched, pos[0], pos[1], pos[2]),
                     LEVER => lever_tick(w, pos[0], pos[1], pos[2]),
                     REDSTONE_LAMP => lamp_tick(w, sched, pos[0], pos[1], pos[2]),
+                    TARGET => target_decay_tick(w, sched, pos[0], pos[1], pos[2]),
                     _ => {}
                 }
             }
@@ -1719,5 +1769,55 @@ mod e1_lamp_tests {
             glazed_terracotta(2),
             "glazed stays — NOT pulled by the sticky piston"
         );
+    }
+
+    /// 1.16 (Nether Update, part 1): a projectile hit on a TARGET writes
+    /// its POWER state, the adjacent wire lights at exactly that power,
+    /// and the scheduled decay returns the state (and the wire) to 0
+    /// after the verified window (8 gt here; 20 gt for arrows/tridents —
+    /// the game layer passes the delay through the scheduler)
+    #[test]
+    fn target_pulse_feeds_wire_and_decays() {
+        let mut w = flat_world();
+        let mut sched = TickScheduler::new();
+        w.set_block_state(0, 65, 0, vc_blocks::blocks::target_state(0));
+        w.set_block_state(1, 65, 0, wire_state(0));
+        // the hit lands: power 11, decay scheduled at 8 gt (exactly as
+        // drain_mob_events orders it — decay FIRST, then the notify, so
+        // the dedup absorbs the re-check into the 8-gt window)
+        w.set_block_state(0, 65, 0, vc_blocks::blocks::target_state(11));
+        sched.schedule([0, 65, 0], 8);
+        on_block_changed(&mut sched, &w, 0, 65, 0);
+        drain(&mut w, &mut sched, 2);
+        let fed = wire_power(w.get_state(1, 65, 0));
+        assert_eq!(fed, 11, "wire feeds at the hit power 11");
+        // 8 gt later the decay fires: the target drops to 0, the wire
+        // re-reads its inputs and dies
+        drain(&mut w, &mut sched, 8);
+        assert_eq!(
+            vc_blocks::blocks::target_power(w.get_state(0, 65, 0)),
+            0,
+            "target power decayed to 0"
+        );
+        assert_eq!(wire_power(w.get_state(1, 65, 0)), 0, "wire dropped with it");
+    }
+
+    /// 1.16: a charged respawn anchor feeds adjacent wire at its charge
+    /// count (VERIFIED w/Respawn_Anchor — the comparator-signal class,
+    /// the E3 viewer-signal pattern)
+    #[test]
+    fn anchor_charge_feeds_wire() {
+        let mut w = flat_world();
+        let mut sched = TickScheduler::new();
+        w.set_block_state(0, 65, 0, vc_blocks::blocks::anchor_state(3));
+        w.set_block_state(1, 65, 0, wire_state(0));
+        on_block_changed(&mut sched, &w, 0, 65, 0);
+        drain(&mut w, &mut sched, 2);
+        assert_eq!(wire_power(w.get_state(1, 65, 0)), 3, "charge 3 feeds wire at 3");
+        // charge 0: no signal
+        w.set_block_state(0, 65, 0, vc_blocks::blocks::anchor_state(0));
+        on_block_changed(&mut sched, &w, 0, 65, 0);
+        drain(&mut w, &mut sched, 4);
+        assert_eq!(wire_power(w.get_state(1, 65, 0)), 0, "uncharged anchor is silent");
     }
 }

@@ -2785,3 +2785,122 @@ Stage Summary:
   boot → settings → toggle → persist → world entry with zero panics
 - Next main-plan round: 1.15 "Buzzy Bees" (the bracket's nature half —
   bees, hives, honey)
+
+---
+
+## Session 2026-09-08 (f) — 1.15 "Buzzy Bees" complete (recovered from an interrupted session)
+
+The round was implemented in one push but committed by the session
+auto-save without its docs; this entry records what landed (all values
+live-verified against the captures `voxelcraft/scripts/v115_page_*.json`:
+Bee, Bee_nest, Beehive, Honey_Block, Honey_Bottle, Honeycomb,
+Honeycomb_Block; research record `docs/research/phase-v115-1.15-research.md`).
+
+**Registry — the V12 window (blocks 432..=439, states 698..=715, tiles
+642..=654, BLOCK_COUNT 440 / STATE_COUNT 716, WGSL mesh LUT resynced):**
+BEE_NEST + BEEHIVE (honey_level 0..=5 blockstates each — 12 states),
+HONEY_BLOCK, HONEYCOMB_BLOCK, and the items HONEYCOMB, HONEY_BOTTLE,
+SHEARS (the LEGACY-item precedent — first consumer is the harvest), and
+the bee spawn egg (mob kind 41).
+
+**The hive system** (`vc-gameplay/src/bees.rs`): lazy round-robin
+registration of nests/hives in the sim ring (one chunk per 20 ticks,
+the full 17x17 ring guaranteed), generated nests carry 2-3 bees with
+staggered work timers; the in-hive work clock (2400 ticks) with the
+daylight release gate; honey_level bumps ONLY for pollinated bees
+(+1, the 1% +2); capacity 3 with refusal; anger (the harvest/break
+swarm releases stored bees immediately); campfire pacification (the
+5-below check); honey_level readback for the harvest path.
+
+**The bee mob** (`mobs.rs` kind 41): 10 HP arthropod, spawns "in any
+difficulty including Peaceful", sting 2 HP (Easy/Normal) / 3 HP Hard
+with Poison I 10 s (Normal) / 18 s (Hard); one sting per bee then the
+1200-tick stinger-less death; anger propagation to nearby bees; the
+pollination loop (flower seek, crop pollination queues the growth
+bump); flies() — no gravity.
+
+**World gen**: bee nests on generated oak/birch trees at the verified
+per-biome chances (plains 5%, flower forest 2%, forest 0.2%) — placed
+against the trunk with the hash roll `0xBEE5`.
+
+**Honey-block physics** (`player.rs`): the 2.508 m/s walk clamp (0.58
+per-tick factor, the bush-slow pattern) + the 85% jump-height cut
+(0.39 velocity factor). Honey-bottle food + the honey-sliding
+disclosure: no slide-boost (the horizontal-velocity trick), only the
+verified slow/jump rows.
+
+**Crafting** (`craft.rs`): honeycomb block (4 combs), honey bottle x4
+(honey block + 4 glass bottles), shears (2 iron — the LEGACY window).
+
+**Art** (`v115_art.rs`): nest/hive front+top faces (the honey drip
+grows with honey_level), honey block, honeycomb block, the comb /
+bottle / shears / egg items, the bee billboard — coverage-guarded.
+
+**E2E**: the `E2E_V115=1` smoke stage (2600 ticks — hive registration,
+level 0/5 reads, the craft set, an entered bee's full work cycle,
+campfire pacify, swarm) prints `e2e: v115 ...` boot lines.
+
+**Test fix this session**: `hive_work_cycle_bumps_honey` entered two of
+its three bees WITHOUT nectar but asserted three honey bumps — vanilla
+bumps only for pollinated bees ("Every pollinated bee that leaves the
+hive after working increases the honey level by one"). The engine was
+right; the test setup now uses three nectar bees. 558/558 green.
+
+Deferred with reasons (the standing classes): piglin-less bartering is
+1.16; dispensers-with-shears (no dispenser interactions); waxing/
+candles (1.17); sugar-from-honey (1.21.2+); meadow/cherry/mangrove
+spawn-table rows (post-1.16.5 biomes); the pet-bee April-Fools forms.
+
+Stage Summary:
+- 1.15 Buzzy Bees is complete: hive system + bee mob + nest gen +
+  honey physics + recipes + art + E2E, all wiki-verified
+- The interrupted session's commit is now fully documented (this
+  entry + the README bracket note)
+- Full suite 558/558 green (the one failing test was a test-authoring
+  bug, fixed)
+
+---
+
+## Session 2026-09-08 (g) — web preview "loading engine" fix + verification sweep
+
+User report: the website preview stuck at "Loading engine…" with no
+error. Root cause (git archaeology): the settings commit e0bdf0f
+regenerated `public/voxelcraft.js` (new fullscreen imports + the
+`__wasm_bindgen_func_elem_*` table indices shifting with the new
+binding set) but never copied the matching `voxelcraft_bg.wasm` — the
+last binary was two commits older (ff7f244). The mismatched pair
+INSTANTIATES (extra glue imports are harmless) but winit's event-loop
+setup then calls a wrong-index function element and the engine dies
+silently before window creation: canvas stuck at 300x150, boot overlay
+never hides, zero console output — exactly the symptom. GitHub's Pages
+copy was healthy (CI's own rebuild f582eab is a matched pair); only
+THIS container's preview server (which serves the repo's public/ via
+Next.js) had the broken pair.
+
+**Fix**: full bundle rebuild from HEAD (settings tree + 1.15): wasm32
+release lib -> wasm-bindgen 0.2.127 -> `patch-wasm-glue.py` (the
+pointerType hardening, import id `__wbg_pointerType_b3dafa8fb9c97016`,
+getObject mode) -> all four files + the builtin pack copied to
+public/ -> committed as a proper fix (31cdc1c after rebase onto the
+CI bundle commit, -X theirs to keep the HEAD-built pair) -> pushed.
+
+**Browser-verified end to end on the preview server (localhost:3000,
+the same static path the public preview URL serves)**: boot -> title
+2.6 s -> SINGLEPLAYER click -> CREATE NEW WORLD click -> CREATE WORLD
+click (the REAL input pipeline, canvas 1280x577 scaled from the 960x540
+UI space — the play button centers at (640,256)) -> loading complete
+(5 chunks on GPU in 2.3 s) -> game screen, boot overlay hidden, zero
+console errors/panics. The mouse-click path the earlier regression
+complained about is live-verified working in the browser.
+
+**Toolchain note for future sessions**: this container started with NO
+Rust toolchain — rustup stable 1.98.1 + wasm32-unknown-unknown +
+wasm-bindgen-cli 0.2.127 (the lockfile pin; 0.2.108 was installed
+first and replaced — versions MUST match the crate or the glue hashes
+drift).
+
+Stage Summary:
+- Web preview fixed, verified, pushed (31cdc1c)
+- 558/558 tests green; the 1.15 test-authoring bug fixed (0088a75)
+- Next: the 1.16 Nether Update bracket (nothing of it exists yet —
+  no basalt/blackstone/soul soil/target/anchor/striders/piglins)

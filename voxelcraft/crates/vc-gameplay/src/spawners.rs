@@ -64,6 +64,11 @@ pub fn mob_kind(code: u8) -> MobKind {
         5 => MobKind::Vindicator, // 1.11 mansion (changelog: "Spawn in
         // the woodland mansions upon generation. They don't respawn.")
         6 => MobKind::Evoker, // 1.11 mansion upper floors (w/Evoker)
+        // the completeness audit: the mineshaft cave-spider spawner
+        // (replaces gen.rs's disclosed spider-spawner adaptation) and
+        // the stronghold portal-room silverfish spawner
+        7 => MobKind::CaveSpider,
+        8 => MobKind::Silverfish,
         _ => MobKind::Zombie,
     }
 }
@@ -315,5 +320,18 @@ mod tests {
         assert!(s.map.contains_key(&[1, 2, 3]));
         s.remove([1, 2, 3]);
         assert!(s.map.is_empty());
+    }
+
+    /// the completeness audit: the cave-spider (7) + silverfish (8)
+    /// spawner kinds decode to their mobs
+    #[test]
+    fn audit16_spawner_kinds() {
+        assert_eq!(mob_kind(7), MobKind::CaveSpider);
+        assert_eq!(mob_kind(8), MobKind::Silverfish);
+        // and the blocks.rs state constants agree (the roundtrip class)
+        assert_eq!(mob_kind(vc_blocks::blocks::spawner_mob(
+            vc_blocks::blocks::SPAWNER_CAVESPIDER)), MobKind::CaveSpider);
+        assert_eq!(mob_kind(vc_blocks::blocks::spawner_mob(
+            vc_blocks::blocks::SPAWNER_SILVERFISH)), MobKind::Silverfish);
     }
 }

@@ -248,6 +248,18 @@ impl Effects {
 
 /// Speed multiplier for movement (VERIFIED w/Effect §Speed: +20% per
 /// level). The player's base walk/sprint scales by this.
+/// Jump Boost launch bonus in b/s (VERIFIED w/Effect §Jump_Boost:
+/// "+0.1 blocks per tick per level" added to the 0.42 b/t launch —
+/// 0.1 b/t x 20 = +2.0 b/s per level; the engine's JUMP_VEL is 8.4
+/// b/s = 0.42 b/t, so level I launches at 10.4 b/s). Applied at the
+/// jump sites (player.rs).
+pub fn jump_boost_bonus(effects: &Effects) -> f32 {
+    effects
+        .amplifier(EffectKind::JumpBoost)
+        .map(|a| 2.0 * (a as f32 + 1.0))
+        .unwrap_or(0.0)
+}
+
 pub fn speed_multiplier(effects: &Effects) -> f32 {
     effects
         .amplifier(EffectKind::Speed)

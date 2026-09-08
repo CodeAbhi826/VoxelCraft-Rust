@@ -707,7 +707,16 @@ impl Player {
                 if input.jump && self.on_ground {
                     // 1.15: jumping off honey is the 3/16-block hop
                     // (the 85% height cut — VERIFIED w/Honey_Block)
-                    self.vel.y = if feet_on_honey { JUMP_VEL * HONEY_JUMP_CUT } else { JUMP_VEL };
+                    // the completeness audit: Jump Boost adds +0.1 b/t
+                    // per level to the launch (VERIFIED w/Effect
+                    // §Jump_Boost) — +2.0 b/s per level on JUMP_VEL
+                    let jb = vc_gameplay::effects::jump_boost_bonus(&self.effects);
+                    let base = if feet_on_honey {
+                        JUMP_VEL * HONEY_JUMP_CUT
+                    } else {
+                        JUMP_VEL
+                    };
+                    self.vel.y = base + jb;
                     self.on_ground = false;
                     if sprinting {
                         // sprint-jump boost: +0.2 b/t horizontally toward
@@ -832,7 +841,10 @@ impl Player {
                 Vec3::new(self.pos.x, feet_y + 1.9, self.pos.z),
             );
             if blocked && step_clear {
-                self.vel.y = JUMP_VEL;
+                // the completeness audit: Jump Boost rides the autojump
+                // too (the same launch, VERIFIED w/Effect §Jump_Boost)
+                let jb = vc_gameplay::effects::jump_boost_bonus(&self.effects);
+                self.vel.y = JUMP_VEL + jb;
                 self.on_ground = false;
                 self.autojump_cd = 0.3;
                 // phase-align the 20 Hz substep like the manual jump —

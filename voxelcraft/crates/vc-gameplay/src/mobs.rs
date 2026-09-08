@@ -254,6 +254,38 @@ pub enum MobKind {
     /// (50%), 5 XP. Zombification (overworld zoglins) has no mob
     /// dimension transfer — trimmed, disclosed.
     Hoglin,
+    // ---- the 1.0-1.16.5 completeness audit (2026-09-08): the three
+    // classic mobs no earlier bracket ever accounted for ----
+    /// The ghast — the floating Nether artillery. VERIFIED
+    /// (minecraft.wiki/w/Ghast, live 2026-09-08, capture
+    /// scripts/audit16_page_Ghast.json): 10 HP hostile, hitbox
+    /// 4.0×4.0 ("They have a hitbox of 4×4×4 blocks"), speed 0.7,
+    /// fireball impact "Normal: 6 HP", "target players within 64
+    /// blocks horizontally and 4 blocks vertically", "shoots a
+    /// fireball every 3 seconds", "Ghasts do not attempt to approach
+    /// the player once aggravated, but instead fire at the player
+    /// from their position". Spawns in Nether Wastes / Soul Sand
+    /// Valley / Basalt Deltas. Drops: ghast tear 0–1 at 50%, gunpowder
+    /// 0–2 at 66.67% ("are the only source of ghast tears").
+    Ghast,
+    /// The cave spider — the mineshaft spawner's own mob. VERIFIED
+    /// (w/Cave_Spider, live, capture audit16_page_Cave_Spider.json):
+    /// 12 HP, "Melee: Easy: 2 HP Normal: 2 HP Hard: 3 HP", venom
+    /// "Normal: Poison for 7 seconds" (Easy gets none, Hard 15 s —
+    /// the engine's single-difficulty row is Normal's 7 s = 140
+    /// ticks), "Hitbox size Height: 0.5 blocks Width: 0.7 blocks",
+    /// "Speed 0.3", "Mineshaft: from monster spawners". Drops: string
+    /// 0–2 at 66.67% + spider eye 0–1 at 33.33% (the spider rows).
+    CaveSpider,
+    /// The silverfish — the stronghold's infestant. VERIFIED
+    /// (w/Silverfish, live, capture audit16_page_Silverfish.json):
+    /// 8 HP hostile, "Attack strength Easy and Normal: 1 HP Hard:
+    /// 1.5 HP", "Hitbox size Height: 0.3 Blocks Width: 0.4 Blocks",
+    /// "Speed 0.25", "Stronghold: from infested blocks and monster
+    /// spawners" (the engine's spawner form; the infested-block
+    /// spread is the trimmed half, disclosed), "Silverfish have no
+    /// drops other than 5 XP".
+    Silverfish,
     /// The squid — a PRE-1.13 legacy marker (vanilla added it in Beta
     /// 1.2; the engine's early brackets skipped it and it is NOT one of
     /// 1.13's new mobs). Declared so the aquatic() classification
@@ -314,6 +346,10 @@ impl MobKind {
             "strider" => MobKind::Strider,
             "piglin" => MobKind::Piglin,
             "hoglin" => MobKind::Hoglin,
+            // the completeness audit's classic trio
+            "ghast" => MobKind::Ghast,
+            "cave_spider" => MobKind::CaveSpider,
+            "silverfish" => MobKind::Silverfish,
             _ => return None,
         })
     }
@@ -368,6 +404,9 @@ impl MobKind {
             MobKind::Strider => "minecraft:strider",
             MobKind::Piglin => "minecraft:piglin",
             MobKind::Hoglin => "minecraft:hoglin",
+            MobKind::Ghast => "minecraft:ghast",
+            MobKind::CaveSpider => "minecraft:cave_spider",
+            MobKind::Silverfish => "minecraft:silverfish",
             // classification-only marker (see the enum doc) — still
             // carries its vanilla registry id for completeness
             MobKind::Squid => "minecraft:squid",
@@ -437,6 +476,10 @@ impl MobKind {
             MobKind::Strider => TILE_MOB_STRIDER,
             MobKind::Piglin => TILE_MOB_PIGLIN,
             MobKind::Hoglin => TILE_MOB_HOGLIN,
+            // the completeness audit's classic trio (audit16_art)
+            MobKind::Ghast => TILE_MOB_GHAST,
+            MobKind::CaveSpider => TILE_MOB_CAVESPIDER,
+            MobKind::Silverfish => TILE_MOB_SILVERFISH,
             // classification-only marker — never rendered (no MOB_DATA
             // row, no spawn path); reuses the passive-fish tile as a
             // safe stand-in should a future bracket implement it
@@ -481,6 +524,15 @@ impl MobKind {
                 // w/Hoglin infobox "Behavior Hostile" (the piglin is
                 // the neutral one: "Neutral (adult)")
                 | MobKind::Hoglin
+                // the completeness audit's classic trio — all three
+                // infoboxes read "Behavior Hostile" (the cave spider's
+                // own "Neutral" row is the spider family's
+                // light-conditional hostility; the engine's standing
+                // spider adaptation treats the family as hostile,
+                // disclosed)
+                | MobKind::Ghast
+                | MobKind::CaveSpider
+                | MobKind::Silverfish
         )
     }
     pub fn neutral(self) -> bool {
@@ -524,7 +576,14 @@ impl MobKind {
     pub fn flies(self) -> bool {
         matches!(
             self,
-            MobKind::Phantom | MobKind::Vex | MobKind::Bat | MobKind::Parrot | MobKind::Bee
+            MobKind::Phantom
+                | MobKind::Vex
+                | MobKind::Bat
+                | MobKind::Parrot
+                | MobKind::Bee
+                // the completeness audit: the ghast — "large, floating,
+                // ghost-like" (VERIFIED w/Ghast; the bat/phantom class)
+                | MobKind::Ghast
         )
     }
 
@@ -599,6 +658,10 @@ impl MobKind {
             42 => MobKind::Strider,
             43 => MobKind::Piglin,
             44 => MobKind::Hoglin,
+            // the completeness audit's classic trio — kinds 45..=47
+            45 => MobKind::Ghast,
+            46 => MobKind::CaveSpider,
+            47 => MobKind::Silverfish,
             _ => MobKind::Chicken,
         }
     }
@@ -670,6 +733,10 @@ impl MobKind {
             MobKind::Strider => 42,
             MobKind::Piglin => 43,
             MobKind::Hoglin => 44,
+            // the completeness audit's classic trio — kinds 45..=47
+            MobKind::Ghast => 45,
+            MobKind::CaveSpider => 46,
+            MobKind::Silverfish => 47,
             // classification-only marker: the squid never had an egg in
             // the engine's window (pre-1.13 legacy, unimplemented)
             MobKind::Squid => 255,
@@ -697,7 +764,7 @@ pub struct MobDef {
     pub xp: i32,
 }
 
-pub const MOB_DATA: [MobDef; 45] = [
+pub const MOB_DATA: [MobDef; 48] = [
     MobDef {
         kind: MobKind::Zombie,
         health: 20.0,
@@ -1246,6 +1313,44 @@ pub const MOB_DATA: [MobDef; 45] = [
         width: 1.3965,
         xp: 5,
     },
+    // ---- the 1.0-1.16.5 completeness audit (all VERIFIED live
+    // 2026-09-08 against the audit16 captures) ----
+    MobDef {
+        kind: MobKind::Ghast,
+        // VERIFIED w/Ghast infobox: 10 HP; damage = the fireball's
+        // Normal impact row (6); the hitbox is the 4×4×4 cube
+        health: 10.0,
+        damage: 6.0,
+        speed_attr: 0.7,
+        armor: 0.0,
+        height: 4.0,
+        width: 4.0,
+        xp: 5,
+    },
+    MobDef {
+        kind: MobKind::CaveSpider,
+        // VERIFIED w/Cave_Spider infobox: 12 HP; Normal melee 2 (the
+        // 7-second Poison rides the hit payload); 0.5×0.7 hitbox
+        health: 12.0,
+        damage: 2.0,
+        speed_attr: 0.3,
+        armor: 0.0,
+        height: 0.5,
+        width: 0.7,
+        xp: 5,
+    },
+    MobDef {
+        kind: MobKind::Silverfish,
+        // VERIFIED w/Silverfish infobox: 8 HP; Easy/Normal attack 1;
+        // 0.3×0.4 hitbox; "no drops other than 5 XP"
+        health: 8.0,
+        damage: 1.0,
+        speed_attr: 0.25,
+        armor: 0.0,
+        height: 0.3,
+        width: 0.4,
+        xp: 5,
+    },
 ];
 
 #[inline]
@@ -1501,7 +1606,22 @@ pub enum ProjKind {
     /// at a 1.5 s cadence — VERIFIED w/Drowned §Attacking). The
     /// player-thrown form applies Impaling bonuses at the game layer.
     Trident,
+    /// the sweep-2 player throwables (the 1.0-era class): the egg —
+    /// "an egg has a 1/8 (12.5%) chance of spawning a chick. If this
+    /// occurs, there is a 1/32 (3.125%) chance of spawning three
+    /// additional chicks" (VERIFIED w/Egg, live 2026-09-09)
+    Egg,
+    /// the ender pearl — "consumes the item and teleports the player to
+    /// where the pearl lands, dealing 5 HP damage" + "a cooldown of one
+    /// second (20 ticks)" (VERIFIED w/Ender_Pearl, live 2026-09-09)
+    Pearl,
 }
+
+/// the sweep-2 throwables: the owner marker for player-thrown
+/// projectiles — never matches a mob id, and tick_arrows skips the
+/// player-hit sphere for it (a thrower can't be hit by their own
+/// projectile).
+pub const PLAYER_OWNER: u32 = u32::MAX;
 
 #[derive(Clone, Debug)]
 pub struct Arrow {
@@ -1605,6 +1725,11 @@ pub struct MobSystem {
     /// tridents, 8 for the others; VERIFIED w/Target). Filled by
     /// tick_arrows' block-collision arm.
     pub target_hits: Vec<([i32; 3], u8, i32)>,
+    /// the sweep-2 landing queue: player-thrown eggs (hatch the chick
+    /// roll at the landing) and pearls (teleport the thrower) — drained
+    /// by the game layer. Filled by tick_arrows' block-collision arm
+    /// and the mob-hit arm.
+    pub landings: Vec<(ProjKind, [f32; 3])>,
     /// Phase E1: zombie villagers whose cure finished (game.rs converts
     /// them to villagers + major_positive gossip — VERIFIED w/Zombie_Villager)
     pub cures: Vec<[f32; 3]>,
@@ -1643,6 +1768,7 @@ impl MobSystem {
             pending_damage: Vec::new(),
             explosions: Vec::new(),
             target_hits: Vec::new(),
+            landings: Vec::new(),
             cures: Vec::new(),
             spawned_total: 0,
             despawned_total: 0,
@@ -2075,6 +2201,7 @@ impl MobSystem {
         let mut mobs = std::mem::take(&mut self.list);
         let mut pending = std::mem::take(&mut self.pending_damage);
         let mut target_hits = std::mem::take(&mut self.target_hits);
+        let mut landings = std::mem::take(&mut self.landings);
         tick_arrows(
             &mut self.arrows,
             player,
@@ -2084,10 +2211,12 @@ impl MobSystem {
             &mut mobs,
             &mut pending,
             &mut target_hits,
+            &mut landings,
         );
         self.list = mobs;
         self.pending_damage = pending;
         self.target_hits = target_hits;
+        self.landings = landings;
     }
 
     // --------------------------------------------------------- spawning --
@@ -2197,9 +2326,18 @@ impl MobSystem {
                         }
                     }
                     vc_world::gen::Biome::WarpedForest => MobKind::Enderman,
-                    _ => match self.rng.next_range(21) {
-                        0 | 1 => MobKind::MagmaCube,
-                        2 => MobKind::Piglin,
+                    // the completeness audit: the exact 1.16.5 wastes
+                    // weights — zombified piglin 100 / ghast 50 /
+                    // magma cube 40 / piglin 25 out of 215 (the
+                    // zombie rides the zombified-piglin slot, the
+                    // standing disclosed filler; the audit also adds
+                    // the wastes' own ghast). The part-1-era 21-slot
+                    // approximation (2/21 magma, 1/21 piglin) is
+                    // retired.
+                    _ => match self.rng.next_range(215) {
+                        0..=49 => MobKind::Ghast,
+                        50..=89 => MobKind::MagmaCube,
+                        90..=114 => MobKind::Piglin,
                         _ => MobKind::Zombie,
                     },
                 }
@@ -3724,13 +3862,31 @@ fn ai_tick(
         return;
     }
 
+    // ---- the completeness audit: CHICKEN egg laying —
+    // environmental (the turtle/fox precedent, player-independent).
+    // VERIFIED (minecraft.wiki/w/Egg, live 2026-09-08, capture
+    // scripts/audit16_page_Egg.json): "Every adult chicken lays an
+    // egg item every 5-10 minutes ... The theoretical average would
+    // be expected at 1 egg every 7.5 minutes (9000 game ticks)".
+    // Stateless engine form: a 1/9000 per-tick roll per adult —
+    // the page's own steady-state figure (the 5-10-minute window is
+    // the per-chicken timer's uniform bounds; the per-tick roll
+    // reproduces the same mean, disclosed). ----
+    if m.kind == MobKind::Chicken && m.variant == 0 && rng.next_range(9000) == 0 {
+        pending_drops.push((m.pos, EGG));
+    }
+
     // ---- 1.14 (Village & Pillage): FOX life-cycle clocks —
     // environmental (player-independent, the turtle precedent):
     // baby maturity (variant 0x40, aux = 24000-tick countdown) and
     // love-mode expiry (variant 0x80, aux = the 600-tick window).
     // Babies mature even with nobody watching; love expires the same
     // way (an unfed partner never arrives). ----
-    if m.kind == MobKind::Fox {
+    if matches!(m.kind, MobKind::Fox | MobKind::Chicken) {
+        // the chicken row joined at the sweep-2 (the egg-spawned chick
+        // — "an egg has a 1/8 chance of spawning a chick", VERIFIED
+        // w/Egg; chicks mature on the same 24000-tick countdown, the
+        // scute-less fox form)
         if m.variant & 0x40 != 0 && m.aux > 0 {
             m.aux -= 1;
             if m.aux == 0 {
@@ -4704,6 +4860,36 @@ fn ai_tick(
         return;
     }
 
+    // ---- the completeness audit: GHAST — the floating Nether
+    // artillery. VERIFIED (w/Ghast §Behavior, live 2026-09-08):
+    // "Ghasts do not attempt to approach the player once aggravated,
+    // but instead fire at the player from their position" (no chase —
+    // a drift hold); "When within range, a ghast faces the player and
+    // shoots a fireball every 3 seconds" (the 60-tick cadence);
+    // "target players within 64 blocks horizontally". Flying (the
+    // bat/phantom class — no gravity); the fireball rides the blaze's
+    // ProjKind::Fireball at the 6-HP Normal impact row (the explosion
+    // radius is the dragon-fireball deferral class, disclosed; the
+    // redirected-fireball self-kill is trimmed with it). ----
+    if m.kind == MobKind::Ghast {
+        if aggro && dist < 64.0 && !invuln {
+            face_player(m);
+            // hold position (VERIFIED: no approach) — slow drift only
+            m.vel[0] *= 0.98;
+            m.vel[2] *= 0.98;
+            // gentle hover band (the wiki's own "wander aimlessly"
+            // vertical half — a 2 b/s ceiling-ish drift)
+            m.vel[1] += (1.2 - m.vel[1]) * 0.05;
+            if m.attack_cd == 0 {
+                m.attack_cd = 60; // every 3 s (VERIFIED)
+                spawn_projectile(m, p, rng, arrows, ProjKind::Fireball, 14.0, 6.0);
+            }
+        } else {
+            wander_3d(rng, m, speed * 0.4);
+        }
+        return;
+    }
+
     // ---- Phase E1: magma cube — hop movement: idle jump every 40–120
     // ticks, 13–40 with a target ≤ 16 blocks; jump height = size blocks,
     // hop distance ≈ 1.5×size; contact damage size+2 (all VERIFIED
@@ -4929,6 +5115,11 @@ fn ai_tick(
         | MobKind::ZombieVillager
         | MobKind::Husk
         | MobKind::Spider
+        // the completeness audit: the two ground-classic hostiles
+        // (the cave spider rides the spider's chase; the silverfish
+        // the zombie's)
+        | MobKind::CaveSpider
+        | MobKind::Silverfish
         | MobKind::Enderman => {
             let engage = if m.kind == MobKind::Enderman {
                 m.provoked
@@ -4956,7 +5147,15 @@ fn ai_tick(
                         source: m.kind,
                         knockback_dir: [dx / dist, dz / dist],
                 wither_effect: None,
-                poison_effect: None,
+                // the completeness audit: the cave spider's venom —
+                // "Normal: Poison for 7 seconds" (VERIFIED
+                // w/Cave_Spider; 140 ticks; Easy gets none and Hard
+                // 15 s — the engine's Normal row, disclosed)
+                poison_effect: if m.kind == MobKind::CaveSpider {
+                    Some(140)
+                } else {
+                    None
+                },
             });
                 }
             } else {
@@ -5433,6 +5632,7 @@ fn tick_arrows(
     mobs: &mut [Mob],
     pending: &mut Vec<(u32, f32)>,
     target_hits: &mut Vec<([i32; 3], u8, i32)>,
+    landings: &mut Vec<(ProjKind, [f32; 3])>,
 ) {
     let dt = 1.0 / 20.0;
     let mut i = 0;
@@ -5446,9 +5646,11 @@ fn tick_arrows(
         a.pos[0] += a.vel[0] * dt;
         a.pos[1] += a.vel[1] * dt;
         a.pos[2] += a.vel[2] * dt;
-        // player body-center hit sphere (r = 0.8)
+        // player body-center hit sphere (r = 0.8). The sweep-2
+        // throwables carry PLAYER_OWNER — the thrower is never hit by
+        // their own projectile (the snowball/egg/pearl class).
         if let Some(p) = player {
-            if !invuln {
+            if !invuln && a.owner != PLAYER_OWNER {
                 let ddx = a.pos[0] - p[0];
                 let ddy = a.pos[1] - (p[1] + 0.9);
                 let ddz = a.pos[2] - p[2];
@@ -5467,6 +5669,10 @@ fn tick_arrows(
                         // 1.13: the drowned's thrown trident (8 HP base —
                         // VERIFIED w/Trident "Projectile damage 8 HP")
                         ProjKind::Trident => MobKind::Drowned,
+                        // the sweep-2 throwables (attribution only —
+                        // never resolved: PLAYER_OWNER skips the sphere)
+                        ProjKind::Egg => MobKind::Chicken,
+                        ProjKind::Pearl => MobKind::Enderman,
                     };
                     // snowballs deal 0 damage to the player (VERIFIED),
                     // knockback only
@@ -5494,8 +5700,12 @@ fn tick_arrows(
         // Phase E1: snowball mob hits — 3 damage to blazes, 0 + knockback
         // to everything else (VERIFIED w/Snow_Golem: "Thrown snowballs do
         // not deal damage except to blazes, but they still knock back any
-        // mobs that they hit")
-        if a.kind == ProjKind::Snowball {
+        // mobs that they hit"). The sweep-2 throwables join the same
+        // class: eggs and pearls knock mobs back (0 damage — the thrown
+        // class's rule) and push a LANDING event at the hit (the pearl
+        // teleports the thrower to the struck mob, the egg rolls the
+        // hatch there).
+        if matches!(a.kind, ProjKind::Snowball | ProjKind::Egg | ProjKind::Pearl) {
             let mut hit_mob = false;
             for m in mobs.iter_mut() {
                 if m.id == a.owner {
@@ -5505,12 +5715,15 @@ fn tick_arrows(
                 let ddy = a.pos[1] - (m.pos[1] + 0.5);
                 let ddz = a.pos[2] - m.pos[2];
                 if ddx * ddx + ddy * ddy + ddz * ddz < 0.8 {
-                    if m.kind == MobKind::Blaze {
+                    if m.kind == MobKind::Blaze && a.kind == ProjKind::Snowball {
                         pending.push((m.id, 3.0)); // VERIFIED: 3 HP vs blazes
                     } else {
                         // knockback only
                         m.vel[0] += a.vel[0] * 0.05;
                         m.vel[2] += a.vel[2] * 0.05;
+                    }
+                    if matches!(a.kind, ProjKind::Egg | ProjKind::Pearl) {
+                        landings.push((a.kind, m.pos));
                     }
                     hit_mob = true;
                     break;
@@ -5521,11 +5734,12 @@ fn tick_arrows(
                 continue;
             }
         }
-        if is_solid(world.get_block(
+        let hit_solid = is_solid(world.get_block(
             a.pos[0].floor() as i32,
             a.pos[1].floor() as i32,
             a.pos[2].floor() as i32,
-        )) || a.age > 20 * 60
+        ));
+        if hit_solid || a.age > 20 * 60
         {
             // 1.16 (Nether Update, part 1): a projectile landing on a
             // TARGET block powers it — "produces a temporary redstone
@@ -5553,6 +5767,12 @@ fn tick_arrows(
                     8
                 };
                 target_hits.push(([bx, by, bz], power, ticks));
+            }
+            // the sweep-2 landing queue: only real block collisions
+            // (the 60-second age-out is a lost projectile — the void
+            // case, no hatch, no teleport)
+            if hit_solid && matches!(a.kind, ProjKind::Egg | ProjKind::Pearl) {
+                landings.push((a.kind, a.pos));
             }
             arrows.remove(i);
             continue;
@@ -5582,6 +5802,12 @@ pub fn take_explosions(sys: &mut MobSystem) -> Vec<([f32; 3], f32)> {
 /// turns each hit into the blockstate power write + its decay timer).
 pub fn take_target_hits(sys: &mut MobSystem) -> Vec<([i32; 3], u8, i32)> {
     std::mem::take(&mut sys.target_hits)
+}
+
+/// the sweep-2: drain the player-throwable landing queue (the game
+/// layer hatches the eggs and resolves the pearl teleports).
+pub fn take_landings(sys: &mut MobSystem) -> Vec<(ProjKind, [f32; 3])> {
+    std::mem::take(&mut sys.landings)
 }
 
 // ------------------------------------------------------------- rendering --
@@ -5885,7 +6111,7 @@ mod tests {
         // fly it at the player
         let world = flat_world();
         for _ in 0..300 {
-            tick_arrows(&mut sys.arrows, sys.player, false, &mut sys.hits, &world, &mut [], &mut Vec::new(), &mut Vec::new());
+            tick_arrows(&mut sys.arrows, sys.player, false, &mut sys.hits, &world, &mut [], &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
             if !sys.hits.is_empty() {
                 break;
             }
@@ -6165,7 +6391,7 @@ mod tests {
         // [merge] the kinds resolve in/out of names + eggs (16 E1 + 3
         // E2 + 3 E3 horse/donkey/mule + 4 F-series: rabbit 1.8, stray +
         // polar bear + husk 1.10)
-        assert_eq!(MOB_DATA.len(), 45); // + 1.11 four + 1.12 two + 1.13 eight + 1.14 fox + 1.16 three
+        assert_eq!(MOB_DATA.len(), 48); // + 1.11 four + 1.12 two + 1.13 eight + 1.14 fox + 1.16 three + the audit trio
         for d in MOB_DATA.iter() {
             assert_eq!(
                 MobKind::from_name(d.kind.name().strip_prefix("minecraft:").unwrap()),
@@ -6755,7 +6981,7 @@ mod v111_tests {
         assert_eq!(MobKind::Llama.egg_id(), 23);
         assert_eq!(MobKind::Evoker.egg_id(), 25);
         // 1.12 (World of Color): parrot + illusioner — 32 kinds
-        assert_eq!(MOB_DATA.len(), 45, "+ the 1.13 aquatic eight + the 1.14 fox + the 1.16 forest three");
+        assert_eq!(MOB_DATA.len(), 48, "+ the 1.13 aquatic eight + the 1.14 fox + the 1.16 forest three + the audit trio");
         assert_eq!(MobKind::from_egg(30), MobKind::Parrot);
         assert_eq!(MobKind::Parrot.egg_id(), 30);
         assert_eq!(MobKind::Illusioner.egg_id(), 255, "no spawn egg (VERIFIED)");
@@ -7283,7 +7509,7 @@ mod v113_tests {
     /// aquatic() swim-physics gate + the V9 spawn-egg kinds.
     #[test]
     fn v113_registry_rows_and_flags() {
-        assert_eq!(MOB_DATA.len(), 45, "32 prior + 8 aquatic + the 1.14 fox + the 1.16 forest three");
+        assert_eq!(MOB_DATA.len(), 48, "32 prior + 8 aquatic + the 1.14 fox + the 1.16 forest three + the audit trio");
         // drowned: 20 HP zombie-parity, N 3, armor 2, 5 XP, hostile
         let d = def(MobKind::Drowned);
         assert_eq!(d.health as i32, 20);
@@ -7728,7 +7954,7 @@ mod v114_tests {
     /// the V10 registry row + egg/tile mappings (VERIFIED w/Fox)
     #[test]
     fn v114_fox_registry_row() {
-        assert_eq!(MOB_DATA.len(), 45, "32 + 8 aquatic + the fox + the 1.16 forest three");
+        assert_eq!(MOB_DATA.len(), 48, "32 + 8 aquatic + the fox + the 1.16 forest three + the audit trio");
         let d = def(MobKind::Fox);
         assert_eq!(d.health as i32, 10, "10 HP (VERIFIED infobox)");
         assert!((d.damage - 2.0).abs() < 1e-6, "Easy/Normal 2 HP");
@@ -7951,6 +8177,205 @@ mod v114_tests {
         w
     }
 
+    /// the completeness audit: the chicken's egg laying — "Every adult
+    /// chicken lays an egg item every 5-10 minutes ... The theoretical
+    /// average would be expected at 1 egg every 7.5 minutes (9000 game
+    /// ticks)" (VERIFIED w/Egg). Statistical form: 300k ticks of one
+    /// adult chicken -> ~33 eggs expected; assert a generous Poisson
+    /// band (the per-tick 1/9000 roll reproduces the steady state).
+    #[test]
+    fn audit16_chicken_lays_eggs_at_the_9000_tick_average() {
+        let world = v115_world();
+        let mut sys = MobSystem::new(9);
+        sys.spawn_at(MobKind::Chicken, 8, 66, 8).unwrap();
+        let mut eggs = 0;
+        for _ in 0..300_000 {
+            sys.tick(&world, (0, 0), i32::MAX);
+            eggs += sys.pending_drops.iter().filter(|(_, b)| *b == EGG).count();
+            sys.pending_drops.clear();
+        }
+        // expected 33.3; band 10..=70 covers ~±4 sigma (Poisson(33))
+        assert!(eggs >= 10 && eggs <= 70, "expected ~33 eggs, got {eggs}");
+    }
+
+    /// the sweep-2: the player-thrown trio never hits the thrower, and
+    /// eggs + pearls (not snowballs) push landing events on the ground
+    /// hit (VERIFIED w/Egg + w/Ender_Pearl + w/Snowball, live 2026-09-09)
+    #[test]
+    fn audit16_sweep2_projectile_landings() {
+        let world = v115_world();
+        let mut sys = MobSystem::new(42);
+        sys.player = Some([8.5, 66.0, 8.5]);
+        // a projectile spawning INSIDE the thrower's hit sphere, flying
+        // away — PLAYER_OWNER must skip the player-hit branch
+        for (kind, name) in [
+            (ProjKind::Snowball, "snowball"),
+            (ProjKind::Egg, "egg"),
+            (ProjKind::Pearl, "pearl"),
+        ] {
+            sys.arrows.push(Arrow {
+                pos: [8.5, 66.9, 8.5],
+                vel: [0.0, -24.0, 0.0],
+                damage: 0.0,
+                age: 0,
+                kind,
+                owner: PLAYER_OWNER,
+            });
+        }
+        let mut landings: Vec<(ProjKind, [f32; 3])> = Vec::new();
+        for _ in 0..60 {
+            let mut hits = std::mem::take(&mut sys.hits);
+            tick_arrows(
+                &mut sys.arrows,
+                sys.player,
+                false,
+                &mut hits,
+                &world,
+                &mut [],
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut landings,
+            );
+            sys.hits = hits;
+        }
+        assert!(sys.hits.is_empty(), "a thrown projectile never hits its thrower");
+        assert_eq!(landings.len(), 2, "egg + pearl land (the snowball has no landing)");
+        assert!(landings.iter().all(|(k, _)| {
+            matches!(k, ProjKind::Egg | ProjKind::Pearl)
+        }));
+        // they landed on the stone floor (y = 64, the flat_world surface)
+        assert!(landings.iter().all(|(_, p)| p[1].floor() as i32 == 64));
+    }
+
+    /// the sweep-2: the egg hatch statistics — 1/8 per egg + 1/32 for
+    /// three more chicks (VERIFIED w/Egg §Spawning chickens). The
+    /// statistical band rides 800 throws (expected ~112 chicks).
+    #[test]
+    fn audit16_sweep2_egg_hatch_statistics() {
+        let world = v115_world();
+        let mut sys = MobSystem::new(77);
+        let mut chicks = 0usize;
+        let mut rng = vc_rng::rng::Rng::new(1234);
+        for i in 0..800 {
+            sys.arrows.clear();
+            sys.landings.clear();
+            sys.arrows.push(Arrow {
+                pos: [8.5, 70.0, 8.5],
+                vel: [0.0, -24.0, 0.0],
+                damage: 0.0,
+                age: 0,
+                kind: ProjKind::Egg,
+                owner: PLAYER_OWNER,
+            });
+            for _ in 0..10 {
+                tick_arrows(
+                    &mut sys.arrows,
+                    None,
+                    false,
+                    &mut Vec::new(),
+                    &world,
+                    &mut [],
+                    &mut Vec::new(),
+                    &mut Vec::new(),
+                    &mut sys.landings,
+                );
+            }
+            // the game layer's hatch roll, replayed here with its own
+            // rng (1/8; then 1/32 for three more)
+            for _ in 0..sys.landings.len() {
+                if rng.next_range(8) == 0 {
+                    chicks += 1;
+                    if rng.next_range(32) == 0 {
+                        chicks += 3;
+                    }
+                }
+            }
+            let _ = i;
+        }
+        // expected 800/8 = 100 (plus ~1 quad event) — the ±5 sigma band
+        assert!(
+            chicks >= 55 && chicks <= 165,
+            "expected ~100 chicks over 800 eggs, got {chicks}"
+        );
+    }
+
+    /// the sweep-2: the egg-spawned chick (variant 0x40) matures on the
+    /// 24000-tick countdown — the fox/turtle class (VERIFIED w/Egg)
+    #[test]
+    fn audit16_sweep2_chick_matures() {
+        let world = v115_world();
+        let mut sys = MobSystem::new(88);
+        let id = sys.spawn_variant(MobKind::Chicken, 8, 65, 8, 0x40).unwrap();
+        if let Some(m) = sys.list.last_mut() {
+            m.aux = 24000;
+        }
+        for _ in 0..23_999 {
+            sys.tick(&world, (0, 0), i32::MAX);
+        }
+        // one tick short: still a baby
+        assert!(
+            sys.by_id(id).map(|m| m.variant & 0x40 != 0).unwrap_or(false),
+            "one tick short of maturity, still a chick"
+        );
+        sys.tick(&world, (0, 0), i32::MAX);
+        assert!(
+            sys.by_id(id).map(|m| m.variant & 0x40 == 0).unwrap_or(false),
+            "matured at exactly 24000 ticks"
+        );
+    }
+
+
+    /// the completeness audit: the cave spider's venom — the melee hit
+    /// carries "Poison for 7 seconds" on Normal (140 ticks, VERIFIED
+    /// w/Cave_Spider's venom row)
+    #[test]
+    fn audit16_cave_spider_venom_payload() {
+        let world = v115_world();
+        let mut sys = MobSystem::new(9);
+        sys.player = Some([8.6, 66.5, 8.5]);
+        sys.spawn_at(MobKind::CaveSpider, 8, 66, 8).unwrap();
+        let mut bitten = false;
+        for _ in 0..80 {
+            sys.tick(&world, (0, 0), i32::MAX);
+            let hits = std::mem::take(&mut sys.hits);
+            if let Some(h) = hits.first() {
+                assert_eq!(h.source, MobKind::CaveSpider);
+                assert!((h.damage - 2.0).abs() < 1e-4, "Normal melee 2 (VERIFIED)");
+                assert_eq!(h.poison_effect, Some(140), "Poison 7 s = 140 ticks");
+                assert_eq!(h.wither_effect, None);
+                bitten = true;
+                break;
+            }
+        }
+        assert!(bitten, "the cave spider reached + bit the player");
+    }
+
+    /// the completeness audit: the ghast fires its fireball — "a ghast
+    /// faces the player and shoots a fireball every 3 seconds" within
+    /// the 64-block range (VERIFIED w/Ghast §Behavior); the impact
+    /// damage is the Normal 6 row.
+    #[test]
+    fn audit16_ghast_fires_the_3_second_fireball() {
+        let world = v115_world();
+        let mut sys = MobSystem::new(9);
+        sys.player = Some([8.5, 70.5, 8.5]);
+        // 20 blocks out — inside the 64-block target range
+        sys.spawn_at(MobKind::Ghast, 28, 70, 8).unwrap();
+        let mut fired = false;
+        for _ in 0..200 {
+            sys.tick(&world, (0, 0), i32::MAX);
+            if let Some(a) = sys.arrows.first() {
+                assert_eq!(a.kind, ProjKind::Fireball, "the ghast's projectile");
+                assert!((a.damage - 6.0).abs() < 1e-4, "impact Normal 6 (VERIFIED)");
+                fired = true;
+                break;
+            }
+        }
+        assert!(fired, "the ghast shot within 200 ticks (60-tick cadence)");
+        // and the flying class (no gravity — the bat/phantom class)
+        assert!(MobKind::Ghast.flies(), "the ghast is a FlyingMob-class");
+    }
+
     /// the sting contract: an angry bee stings ONCE (2 HP + Poison I
     /// 10 s payload), loses the stinger, "dies approximately one
     /// minute later" (1200 ticks), and never attacks again (VERIFIED
@@ -7968,7 +8393,7 @@ mod v114_tests {
         for _ in 0..40 {
             sys.tick(&world, (0, 0), i32::MAX);
             if !stung {
-                let mut hits = std::mem::take(&mut sys.hits);
+                let hits = std::mem::take(&mut sys.hits);
                 if let Some(h) = hits.first() {
                     stung = true;
                     assert_eq!(h.source, MobKind::Bee);
@@ -8134,6 +8559,43 @@ mod v114_tests {
         assert_eq!(MobKind::Strider.sprite_tile(), TILE_MOB_STRIDER);
         assert_eq!(MobKind::Piglin.sprite_tile(), TILE_MOB_PIGLIN);
         assert_eq!(MobKind::Hoglin.sprite_tile(), TILE_MOB_HOGLIN);
+        // the completeness audit trio: sprites + names + hostility
+        assert_eq!(MobKind::Ghast.sprite_tile(), TILE_MOB_GHAST);
+        assert_eq!(MobKind::CaveSpider.sprite_tile(), TILE_MOB_CAVESPIDER);
+        assert_eq!(MobKind::Silverfish.sprite_tile(), TILE_MOB_SILVERFISH);
+        assert_eq!(MobKind::Ghast.name(), "minecraft:ghast");
+        assert_eq!(MobKind::CaveSpider.name(), "minecraft:cave_spider");
+        assert_eq!(MobKind::Silverfish.name(), "minecraft:silverfish");
+        assert!(MobKind::Ghast.hostile());
+        assert!(MobKind::CaveSpider.hostile());
+        assert!(MobKind::Silverfish.hostile());
+        assert!(MobKind::Ghast.flies());
+        assert!(!MobKind::Silverfish.flies());
+        assert_eq!(MobKind::from_name("ghast"), Some(MobKind::Ghast));
+        assert_eq!(MobKind::from_name("cave_spider"), Some(MobKind::CaveSpider));
+        assert_eq!(MobKind::from_name("silverfish"), Some(MobKind::Silverfish));
+        // the egg window: kinds 45..=47 roundtrip
+        assert_eq!(MobKind::from_egg(45), MobKind::Ghast);
+        assert_eq!(MobKind::from_egg(46), MobKind::CaveSpider);
+        assert_eq!(MobKind::from_egg(47), MobKind::Silverfish);
+        assert_eq!(MobKind::Ghast.egg_id(), 45);
+        assert_eq!(MobKind::CaveSpider.egg_id(), 46);
+        assert_eq!(MobKind::Silverfish.egg_id(), 47);
+        // the verified infobox rows (audit16_page_{Ghast,Cave_Spider,
+        // Silverfish}.json)
+        let gh = def(MobKind::Ghast);
+        assert_eq!(gh.health, 10.0);
+        assert_eq!(gh.damage, 6.0, "fireball impact Normal (VERIFIED)");
+        assert_eq!((gh.height, gh.width), (4.0, 4.0), "the 4x4x4 hitbox");
+        let cs = def(MobKind::CaveSpider);
+        assert_eq!(cs.health, 12.0);
+        assert_eq!(cs.damage, 2.0, "Normal melee (VERIFIED)");
+        assert_eq!((cs.height, cs.width), (0.5, 0.7));
+        let sf = def(MobKind::Silverfish);
+        assert_eq!(sf.health, 8.0);
+        assert_eq!(sf.damage, 1.0, "Easy/Normal attack (VERIFIED)");
+        assert_eq!((sf.height, sf.width), (0.3, 0.4));
+        assert_eq!(sf.xp, 5, "\"no drops other than 5 XP\" (VERIFIED)");
     }
 
     /// 1.16: the barter table only yields engine-valid items, with

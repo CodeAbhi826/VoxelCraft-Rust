@@ -3100,3 +3100,56 @@ Stage Summary:
 - Next main-plan round: 1.17 Caves & Cliffs part 1 (copper, caves,
   the archaeology-free half) — 2 brackets remain (1.17/1.18 + the
   final polish pass)
+
+---
+Task ID: 15
+Agent: main (Super Z)
+Task: The 1.0-1.16.5 completeness audit round (bracket 15/16) — the
+full-era recheck the user demanded ("recheck from mc 1.0 to 1.16.5
+again to ensure u havent missed anything and have implemented
+everything without even missing a single minute stuff"). Recovered
+the interrupted first half from the prior session, then ran an
+independent second sweep and closed everything it found.
+
+Work Log:
+- Verified the in-flight state first: the prior session's V15 window
+  (patches a-g applied, 587/587 green, e2e_audit16 + CI grep in
+  place, uncommitted) — the round was code-complete but undocumented
+- Ran the independent recheck sweep: grepped every Food-page item
+  against is_food/food_heal, the mob-drop table, the eat-path effect
+  hooks, the use-path branches (throwables), the break chain, the
+  craft matcher, and the brewing set
+- Found and closed 8 gap classes: rotten flesh value+effect, spider
+  eye/chorus fruit/golden apple edibility, the melon slice chain,
+  and the missing snowball/egg/pearl player-throw family
+- Captured 9 fresh wiki pages live (Rotten_Flesh, Spider_Eye,
+  Chorus_Fruit, Golden_Apple, Melon_Slice, Melon, Ender_Pearl,
+  Snowball, Java_Edition_1.0) — scripts/audit16_capture_sweep2.sh
+- Applied patches h-m (registry +505/state 804/tile 735, the
+  kitchen matcher's melon rows, the food/effect rows, the
+  PLAYER_OWNER projectile class + landing queue, the egg hatch +
+  pearl teleport drain, the chorus destination fn, the melon break
+  row, the e2e_audit16b stage + CI grep, 6 new unit tests)
+- Fixed the two e2e-stage design bugs before running: the Sim path
+  (vc_sim::sim::Sim) and the melon-break reachability (test_break
+  bypasses the drop chain — the row rides the apple-roll class,
+  disclosed)
+- Bumped the 11 drift-guard count assertions (506/805/459/29) — the
+  guards caught the registry growth exactly as designed
+- Cleaned the audit art's 3 unused constants; all new code
+  warning-clean
+- Rebuilt the wasm bundle (matched pair, mtime-identical) and
+  browser-verified: title screen in 2.62 s, rendered content, zero
+  page errors (docs/screenshots/audit16-sweep2-title.png)
+- Wrote docs/research/audit16-completeness-research.md (both halves
+  + the sweep method + the full disclosed-deferral inventory) and
+  the README bracket 15/16 entry
+
+Stage Summary:
+- 593/593 tests green (587 + 6 new)
+- The audit round is complete: every in-capability gap from 1.0 to
+  1.16.5 closed; the out-of-capability class itemized in the
+  research doc (farming, buckets, glistering melon, projectile
+  gravity, the standing per-bracket deferrals)
+- 1 bracket remains in the 16-bracket plan (the final polish pass);
+  the user's "main course" is queued next

@@ -63,7 +63,9 @@ pub const JUNK_TABLE: [LootRow; 10] = [
     LootRow { item: ROTTEN_FLESH, name: "Rotten Flesh" },
     LootRow { item: STRING, name: "String" },
     LootRow { item: LEATHER, name: "Leather" },
-    LootRow { item: LOOT_NONE, name: "Bowl" },
+    // the completeness audit: the bowl item now exists (the V15
+    // window) — the junk row's palette-absent marker is retired
+    LootRow { item: BOWL, name: "Bowl" },
     LootRow { item: LOOT_NONE, name: "Stick" },
     LootRow { item: BONE, name: "Bone" },
     LootRow { item: LOOT_NONE, name: "Tripwire Hook" },
@@ -258,5 +260,13 @@ mod tests {
         }
         // enchanted book is the one treasure we CAN award today
         assert!(TREASURE_TABLE.iter().any(|r| r.item == ENCHANTED_BOOK));
+    }
+
+    /// the completeness audit: the bowl junk row is wired to the real
+    /// BOWL item (the palette-absent marker retired — "Bowls are
+    /// obtainable through fishing", VERIFIED w/Bowl §Fishing)
+    #[test]
+    fn audit16_bowl_junk_row() {
+        assert!(JUNK_TABLE.iter().any(|r| r.item == BOWL));
     }
 }

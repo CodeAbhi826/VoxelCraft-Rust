@@ -57,7 +57,21 @@ impl CampfireState {
     /// pairs the furnace actually ships: potato, raw rabbit, kelp.
     /// The set extends automatically when the meat forms land.
     pub fn accepts(block: u16) -> bool {
-        matches!(block, POTATO | RAW_RABBIT | KELP)
+        matches!(
+            block,
+            POTATO | RAW_RABBIT | KELP
+                // the completeness audit: the meat forms have landed —
+                // the set extends exactly as this deferral promised
+                // ("The set extends automatically when the meat forms
+                // land"); vanilla's campfire set is the smeltable
+                // FOODS (raw meats + potato + kelp)
+                | BEEF
+                | PORKCHOP
+                | CHICKEN_RAW
+                | MUTTON
+                | RAW_FISH
+                | RAW_SALMON
+        )
     }
 
     /// add a food item to the first free slot; false when full or the
@@ -220,5 +234,17 @@ mod tests {
         assert!(outs.contains(&BAKED_POTATO));
         assert!(outs.contains(&COOKED_RABBIT));
         assert!(outs.contains(&DRIED_KELP));
+    }
+
+    /// the completeness audit: the meat forms landed — the campfire's
+    /// set extends exactly as the deferral promised ("The set extends
+    /// automatically when the meat forms land")
+    #[test]
+    fn audit16_campfire_cooks_the_meats() {
+        for b in [BEEF, PORKCHOP, CHICKEN_RAW, MUTTON, RAW_FISH, RAW_SALMON] {
+            assert!(CampfireState::accepts(b), "campfire accepts {b}");
+        }
+        assert!(!CampfireState::accepts(STEAK), "cooked food does not recook");
+        assert!(!CampfireState::accepts(COBBLE));
     }
 }

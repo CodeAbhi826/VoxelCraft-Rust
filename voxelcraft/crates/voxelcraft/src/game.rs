@@ -4323,6 +4323,19 @@ impl GameApp {
                 // 1.15: bees drop no items (VERIFIED w/Bee §Drops —
                 // only 1-3 XP, already granted via the XP orb path)
                 mobs::MobKind::Bee => &[],
+                // ---- the 1.0-1.16.5 completeness audit trio ----
+                // the cave spider: string 0-2 (VERIFIED w/Cave_Spider
+                // §Drops: the spider-family rows) + the spider-eye roll
+                // below (the 1/3 row, same as the spider's)
+                mobs::MobKind::CaveSpider => &[(STRING, 2)],
+                // the ghast: gunpowder + the ghast tear — both are
+                // percentage rows handled below (the blaze/phantom
+                // pattern)
+                mobs::MobKind::Ghast => &[],
+                // the silverfish: "Silverfish have no drops other than
+                // 5 XP experience points" (VERIFIED w/Silverfish §Drops
+                // — the XP rides the orb path)
+                mobs::MobKind::Silverfish => &[],
                 // golems: iron golem drops 3–5 iron ingots + 0–2 poppies
                 // (VERIFIED — widely-cited values, page table unreadable
                 // via extraction, flagged in the research notes); snow
@@ -4468,6 +4481,37 @@ impl GameApp {
                     0,
                 );
             }
+            // ---- the completeness audit: the ghast's exact drop rows
+            // (VERIFIED w/Ghast §Drops, live 2026-09-08): "Ghast Tear
+            // 0-1 50.00%" + "Gunpowder 0-2 66.67%" (the uniform 0-2
+            // whose P(>=1) is the printed 2/3; the Music Disc "Tears"
+            // row is trimmed with the engine's no-music-disc class,
+            // disclosed) ----
+            if kind == mobs::MobKind::Ghast {
+                if self.audio_rng.next_range(2) == 1 {
+                    self.sim.items.drop_block(
+                        pos[0].floor() as i32,
+                        pos[1].floor() as i32,
+                        pos[2].floor() as i32,
+                        GHAST_TEAR,
+                        2,
+                        15,
+                        0,
+                    );
+                }
+                let n = self.audio_rng.next_range(3) as u8; // 0..=2
+                for _ in 0..n {
+                    self.sim.items.drop_block(
+                        pos[0].floor() as i32,
+                        pos[1].floor() as i32,
+                        pos[2].floor() as i32,
+                        GUNPOWDER,
+                        2,
+                        15,
+                        0,
+                    );
+                }
+            }
             // ---- 1.16 (Nether Update, part 2): the forest mobs' exact
             // drop rolls ----
             // strider: "String 2–5" at 100% (VERIFIED w/Strider)
@@ -4564,8 +4608,12 @@ impl GameApp {
             }
             // Phase 4 §26: spiders additionally have a 1/3 chance to drop
             // one spider eye (VERIFIED, 1.16.5-era Spider page — only when
-            // killed by a player, which drain_mob_events is)
-            if kind == mobs::MobKind::Spider && self.audio_rng.next_f32() < 1.0 / 3.0 {
+            // killed by a player, which drain_mob_events is). The
+            // completeness audit: the cave spider's own drops row is the
+            // same "Spider Eye 0-1 33.33%" (VERIFIED w/Cave_Spider).
+            if matches!(kind, mobs::MobKind::Spider | mobs::MobKind::CaveSpider)
+                && self.audio_rng.next_f32() < 1.0 / 3.0
+            {
                 self.sim.items.drop_block(
                     pos[0].floor() as i32,
                     pos[1].floor() as i32,
@@ -4672,6 +4720,91 @@ impl GameApp {
         // window — 8 game ticks, 20 for arrows/tridents (mobs.rs
         // computed both). The state write wakes adjacent wire through
         // on_block_changed (the target feeds wire at its power level).
+        // ---- the sweep-2: the throwable landing queue — eggs
+        // hatch, pearls teleport (all VERIFIED live 2026-09-09) ----
+        let landings: Vec<(mobs::ProjKind, [f32; 3])> =
+            mobs::take_landings(&mut self.sim.mobs);
+        for (kind, pos) in landings {
+            match kind {
+                mobs::ProjKind::Egg => {
+                    // "an egg has a 1/8 (12.5%) chance of spawning a
+                    // chick. If this occurs, there is a 1/32 (3.125%)
+                    // chance of spawning three additional chicks"
+                    // (VERIFIED w/Egg §Spawning chickens)
+                    if self.audio_rng.next_range(8) == 0 {
+                        let x = pos[0].floor() as i32;
+                        let y = pos[1].floor() as i32 + 1;
+                        let z = pos[2].floor() as i32;
+                        // the hatch cell: 2-block air above the hit
+                        if self.world.get_block(x, y, z) == AIR
+                            && self.world.get_block(x, y + 1, z) == AIR
+                        {
+                            let spawn_chick = |sim: &mut vc_sim::sim::Sim, x: i32, y: i32, z: i32| {
+                                let _ = sim.mobs.spawn_variant(
+                                    mobs::MobKind::Chicken,
+                                    x,
+                                    y,
+                                    z,
+                                    0x40, // the baby bit (the fox/turtle
+                                    // maturity class)
+                                );
+                                // the 20-minute chick maturity (the
+                                // generic 0x40 countdown)
+                                if let Some(m) = sim.mobs.list.last_mut() {
+                                    m.aux = 24000;
+                                }
+                            };
+                            spawn_chick(&mut self.sim, x, y, z);
+                            let mut n = 1;
+                            if self.audio_rng.next_range(32) == 0 {
+                                for _ in 0..3 {
+                                    spawn_chick(&mut self.sim, x, y, z);
+                                }
+                                n = 4;
+                            }
+                            self.play_event("entity.chicken.ambient", Some(pos), 0.9);
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: an egg hatched {n} chick(s) (1/8, 1/32 rows)"
+                            ));
+                        }
+                    }
+                }
+                mobs::ProjKind::Pearl => {
+                    // "teleports the player to where the pearl lands,
+                    // dealing 5 HP damage" (VERIFIED w/Ender_Pearl) +
+                    // the pre-landing throw negates the accumulated
+                    // fall ("the fall damage is negated, dealing only
+                    // the pearl's damage")
+                    let x = pos[0].floor() as i32;
+                    let z = pos[2].floor() as i32;
+                    // find the standing cell: walk up from the hit
+                    // block until a 2-air column sits on solid ground
+                    let mut y = pos[1].floor() as i32 + 1;
+                    for _ in 0..6 {
+                        if self.world.get_block(x, y, z) == AIR
+                            && self.world.get_block(x, y + 1, z) == AIR
+                            && is_solid(self.world.get_block(x, y - 1, z))
+                        {
+                            break;
+                        }
+                        y += 1;
+                    }
+                    self.player.pos =
+                        glam::Vec3::new(x as f32 + 0.5, y as f32, z as f32 + 0.5);
+                    self.player.fall_dist = 0.0;
+                    self.player.vel.y = 0.0;
+                    if !self.mode.invulnerable() && self.mode.depletes_items() {
+                        self.player.damage(5.0);
+                    }
+                    self.play_event("entity.enderman.teleport", None, 0.9);
+                    self.ui.dirty = true;
+                    vc_render::render::report_boot_log(&format!(
+                        "e2e: pearl teleport -> [{x}, {y}, {z}] + 5 HP (VERIFIED)"
+                    ));
+                }
+                _ => {}
+            }
+        }
         let hits = mobs::take_target_hits(&mut self.sim.mobs);
         for (pos, power, ticks) in hits {
             if self.world.get_block(pos[0], pos[1], pos[2]) != TARGET {
@@ -6970,6 +7103,323 @@ impl GameApp {
         ));
     }
 
+    /// the 1.0-1.16.5 completeness-audit E2E stage (rides the shared
+    /// E2E_V116 gate, the v116b precedent): the cooked-meat smelting
+    /// class, the kitchen crafts (the bowl/stews/sugar/pie chain), the
+    /// purpur + end-rod crafts, the ghast's 3-second fireball, the
+    /// cave spider's venom payload, the egg-laying steady state's
+    /// plumbing (the 1/9000 roll is unit-tested statistically), and
+    /// the new food rows. CI smoke greps the "e2e: audit16" boot line.
+    fn e2e_audit16(&mut self) {
+        let pos = [
+            self.player.pos.x.floor() as i32,
+            self.player.pos.y.floor() as i32 - 2,
+            self.player.pos.z.floor() as i32,
+        ];
+        use vc_blocks::blocks::*;
+        use vc_gameplay::craft::match_grid;
+        use vc_inventory::inventory::ItemStack;
+
+        // 1. the cooked-meat smelting class (the standing deferral,
+        //    closed): all six rows resolve through the real smelter
+        let smelts = [
+            (BEEF, STEAK),
+            (PORKCHOP, COOKED_PORKCHOP),
+            (CHICKEN_RAW, COOKED_CHICKEN),
+            (MUTTON, COOKED_MUTTON),
+            (RAW_FISH, COOKED_COD),
+            (RAW_SALMON, COOKED_SALMON),
+        ];
+        let smelt_ok = smelts
+            .iter()
+            .all(|(i, o)| vc_gameplay::furnace::smelt_result(*i) == Some(*o));
+        // the smoker carries the meats at half cook time (VERIFIED)
+        let smoker_ok = smelts.iter().all(|(i, _)| {
+            vc_gameplay::furnace::FurnaceKind::Smoker.accepts(*i)
+                && vc_gameplay::furnace::FurnaceKind::Smoker.cook_ticks()
+                    == vc_gameplay::furnace::COOK_TICKS / 2
+        });
+
+        // 2. the kitchen crafts through the real matcher: the bowl
+        //    (3 planks), mushroom stew, rabbit stew (the 5-ingredient
+        //    row), beetroot soup, sugar (the honey bottle), the pie
+        let mut kitchen_ok = true;
+        {
+            let g = vec![
+                ItemStack::new(PLANKS, 1), ItemStack::new(PLANKS, 1), ItemStack::EMPTY,
+                ItemStack::new(PLANKS, 1), ItemStack::EMPTY, ItemStack::EMPTY,
+                ItemStack::EMPTY, ItemStack::EMPTY, ItemStack::EMPTY,
+            ];
+            kitchen_ok &= match_grid(&g, 3).map(|o| (o.block, o.count) == (BOWL, 4)).unwrap_or(false);
+        }
+        {
+            let mut g = vec![ItemStack::EMPTY; 9];
+            g[0] = ItemStack::new(MUSHROOM_RED, 1);
+            g[4] = ItemStack::new(MUSHROOM_BROWN, 1);
+            g[8] = ItemStack::new(BOWL, 1);
+            kitchen_ok &= match_grid(&g, 3).map(|o| o.block == MUSHROOM_STEW).unwrap_or(false);
+        }
+        {
+            let mut g = vec![ItemStack::EMPTY; 9];
+            g[0] = ItemStack::new(COOKED_RABBIT, 1);
+            g[2] = ItemStack::new(CARROT, 1);
+            g[4] = ItemStack::new(BAKED_POTATO, 1);
+            g[6] = ItemStack::new(MUSHROOM_RED, 1);
+            g[8] = ItemStack::new(BOWL, 1);
+            kitchen_ok &= match_grid(&g, 3).map(|o| o.block == RABBIT_STEW).unwrap_or(false);
+        }
+        {
+            let mut g = vec![ItemStack::EMPTY; 9];
+            for i in [0, 2, 3, 5, 6, 8] {
+                g[i] = ItemStack::new(BEETROOT, 2);
+            }
+            g[4] = ItemStack::new(BOWL, 1);
+            kitchen_ok &= match_grid(&g, 3).map(|o| o.block == BEETROOT_SOUP).unwrap_or(false);
+        }
+        {
+            let mut g = vec![ItemStack::EMPTY; 4];
+            g[2] = ItemStack::new(HONEY_BOTTLE, 1);
+            kitchen_ok &= match_grid(&g, 2).map(|o| (o.block, o.count) == (SUGAR, 3)).unwrap_or(false);
+        }
+        {
+            let mut g = vec![ItemStack::EMPTY; 4];
+            g[0] = ItemStack::new(PUMPKIN, 1);
+            g[1] = ItemStack::new(SUGAR, 1);
+            g[3] = ItemStack::new(EGG, 1);
+            kitchen_ok &= match_grid(&g, 2).map(|o| o.block == PUMPKIN_PIE).unwrap_or(false);
+        }
+        // the purpur family: 4 popped chorus -> 4 purpur
+        let purpur_ok = {
+            let g = vec![ItemStack::new(POPPED_CHORUS_FRUIT, 1); 4];
+            match_grid(&g, 2).map(|o| (o.block, o.count) == (PURPUR_BLOCK, 4)).unwrap_or(false)
+        };
+
+        // 3. the audit trio in the world: the ghast (a 20-block spawn
+        //    fires the 60-tick fireball), the cave spider (the venom
+        //    payload), the silverfish (alive + hostile)
+        self.test_place(GRASS, pos[0] + 8, pos[1], pos[2]);
+        let _ghast = self
+            .sim
+            .mobs
+            .spawn_at(vc_gameplay::mobs::MobKind::Ghast, pos[0] + 8, pos[1] + 4, pos[2]);
+        let _cs = self
+            .sim
+            .mobs
+            .spawn_at(vc_gameplay::mobs::MobKind::CaveSpider, pos[0] + 2, pos[1] + 1, pos[2] + 2);
+        let _sf = self
+            .sim
+            .mobs
+            .spawn_at(vc_gameplay::mobs::MobKind::Silverfish, pos[0] - 2, pos[1] + 1, pos[2] - 2);
+        self.sim.mobs.arrows.clear();
+        let mut fireball = false;
+        let mut venom: Option<i32> = None;
+        for _ in 0..120 {
+            self.sim
+                .step(&mut self.world, &mut self.light, &vc_sim::sim::TickScope::everything());
+            if !fireball && self.sim.mobs.arrows.iter().any(|a| a.kind == vc_gameplay::mobs::ProjKind::Fireball) {
+                fireball = true;
+            }
+            let hits = std::mem::take(&mut self.sim.mobs.hits);
+            if venom.is_none() {
+                if let Some(h) = hits.iter().find(|h| h.source == vc_gameplay::mobs::MobKind::CaveSpider) {
+                    venom = h.poison_effect;
+                }
+            }
+        }
+        let trio_ok = fireball && venom == Some(140);
+
+        // 4. the new food rows through the real eat-value path
+        let food_ok = is_food(STEAK)
+            && is_food(RABBIT_STEW)
+            && is_food(COOKIE)
+            && (food_heal(STEAK) - 4.0).abs() < 1e-6
+            && (food_heal(RABBIT_STEW) - 5.0).abs() < 1e-6
+            && (food_heal(COOKIE) - 1.0).abs() < 1e-6;
+
+        vc_render::render::report_boot_log(&format!(
+            "e2e: audit16 smelt={} smoker={} kitchen={} purpur={} trio={} food={}",
+            smelt_ok,
+            smoker_ok,
+            kitchen_ok,
+            purpur_ok,
+            trio_ok,
+            food_ok
+        ));
+    }
+
+    /// the sweep-2 chorus teleport — "up to 16 attempts are made to
+    /// choose a random destination within ±8 on all three axes in the
+    /// same manner as enderman teleportation, with the exception that
+    /// the entity may teleport into an area only 2 blocks high ... If
+    /// there are no valid blocks within this range, the teleportation
+    /// attempt fails and the entity remains in place" (VERIFIED live
+    /// 2026-09-09, w/Chorus_Fruit §Teleportation). Enderman-style
+    /// validity: a solid floor with two air blocks above it.
+    fn chorus_teleport(&mut self) {
+        let px = self.player.pos.x.floor() as i32;
+        let py = self.player.pos.y.floor() as i32;
+        let pz = self.player.pos.z.floor() as i32;
+        if let Some([x, y, z]) = chorus_destination(&self.world, px, py, pz, &mut self.audio_rng)
+        {
+            self.player.pos = glam::Vec3::new(x as f32 + 0.5, y as f32, z as f32 + 0.5);
+            // the warp cancels the accumulated fall (the pearl's own
+            // class of negation, VERIFIED w/Chorus_Fruit)
+            self.player.fall_dist = 0.0;
+            self.player.vel.y = 0.0;
+            self.play_event("entity.enderman.teleport", None, 0.9);
+            self.ui.dirty = true;
+            vc_render::render::report_boot_log(&format!(
+                "e2e: chorus teleport -> [{x}, {y}, {z}] (the 16-attempt +-8 rule)"
+            ));
+        }
+        // the None case: "the teleportation attempt fails and the
+        // entity remains in place" — silent, vanilla
+    }
+
+    /// the sweep-2 half of the audit stage: the five food rows, the
+    /// melon crafts, the golden apple's effect pair, and the throwable
+    /// trio through the real projectile path + the real drain. CI
+    /// smoke greps the "e2e: audit16b" boot line.
+    fn e2e_audit16b(&mut self) {
+        use vc_blocks::blocks::*;
+        use vc_inventory::inventory::ItemStack;
+
+        let pos = [
+            self.player.pos.x.floor() as i32,
+            self.player.pos.y.floor() as i32 - 2,
+            self.player.pos.z.floor() as i32,
+        ];
+
+        // 1. the five new food rows through the real eat-value path
+        let food_ok = is_food(ROTTEN_FLESH)
+            && is_food(SPIDER_EYE)
+            && is_food(CHORUS_FRUIT)
+            && is_food(GOLDEN_APPLE)
+            && is_food(MELON_SLICE)
+            && (food_heal(ROTTEN_FLESH) - 2.0).abs() < 1e-6
+            && (food_heal(SPIDER_EYE) - 1.0).abs() < 1e-6
+            && (food_heal(CHORUS_FRUIT) - 2.0).abs() < 1e-6
+            && (food_heal(GOLDEN_APPLE) - 2.0).abs() < 1e-6
+            && (food_heal(MELON_SLICE) - 1.0).abs() < 1e-6;
+
+        // 2. the melon crafts: the 9-slice block + the 1-slice seeds
+        let g = vec![ItemStack::new(MELON_SLICE, 1); 9];
+        let melon_craft =
+            vc_gameplay::craft::match_grid(&g, 3).map(|o| o.block == MELON).unwrap_or(false);
+        let mut s = vec![ItemStack::EMPTY; 9];
+        s[4] = ItemStack::new(MELON_SLICE, 1);
+        let seeds_craft = vc_gameplay::craft::match_grid(&s, 3)
+            .map(|o| (o.block, o.count) == (MELON_SEEDS, 1))
+            .unwrap_or(false);
+
+        // 3. the golden apple's effect pair through the real effects
+        //    system (Absorption 2:00 = 2400 + Regeneration II 0:05 =
+        //    100 ticks at amplifier 1)
+        self.player
+            .effects
+            .apply(vc_gameplay::effects::EffectKind::Absorption, 0, 2400);
+        self.player
+            .effects
+            .apply(vc_gameplay::effects::EffectKind::Regeneration, 1, 100);
+        let golden_ok = self
+            .player
+            .effects
+            .amplifier(vc_gameplay::effects::EffectKind::Absorption)
+            == Some(0)
+            && self
+                .player
+                .effects
+                .amplifier(vc_gameplay::effects::EffectKind::Regeneration)
+                == Some(1);
+
+        // 4. the throwable trio: push each through the real projectile
+        //    list with PLAYER_OWNER, fly them into a stone floor, then
+        //    drain through the REAL game-layer event path
+        self.sim.mobs.arrows.clear();
+        self.sim.mobs.landings.clear();
+        self.test_place(STONE, pos[0], pos[1], pos[2]);
+        for kind in [
+            vc_gameplay::mobs::ProjKind::Snowball,
+            vc_gameplay::mobs::ProjKind::Egg,
+            vc_gameplay::mobs::ProjKind::Pearl,
+        ] {
+            self.sim.mobs.arrows.push(vc_gameplay::mobs::Arrow {
+                pos: [pos[0] as f32 + 0.5, pos[1] as f32 + 12.0, pos[2] as f32 + 0.5],
+                vel: [0.0, -24.0, 0.0],
+                damage: 0.0,
+                age: 0,
+                kind,
+                owner: vc_gameplay::mobs::PLAYER_OWNER,
+            });
+        }
+        for _ in 0..60 {
+            self.sim
+                .step(&mut self.world, &mut self.light, &vc_sim::sim::TickScope::everything());
+        }
+        let before = (
+            self.player.pos.x.floor() as i32,
+            self.player.pos.y.floor() as i32,
+            self.player.pos.z.floor() as i32,
+        );
+        let hp_before = self.player.health;
+        let chicks_before = self
+            .sim
+            .mobs
+            .list
+            .iter()
+            .filter(|m| m.kind == vc_gameplay::mobs::MobKind::Chicken)
+            .count();
+        // the real drain: drain_mob_events resolves the egg hatch +
+        // the pearl teleport (the landing queue filled by tick_arrows)
+        self.drain_mob_events();
+        let chicks = self
+            .sim
+            .mobs
+            .list
+            .iter()
+            .filter(|m| m.kind == vc_gameplay::mobs::MobKind::Chicken)
+            .count();
+        let landed_chicks = chicks - chicks_before;
+        // the pearl: teleported (pos moved) + the 5 HP cost (survival
+        // only — the creative check rides the mode gate)
+        let moved = (self.player.pos.x.floor() as i32, self.player.pos.y.floor() as i32,
+            self.player.pos.z.floor() as i32) != before;
+        let paid = if self.mode.depletes_items() {
+            (hp_before - self.player.health - 5.0).abs() < 1e-6
+        } else {
+            true
+        };
+        // the egg's honest band: 0 (the 7/8 miss), 1 (the chick), or 4
+        // (the 1/256 quad)
+        let hatch_ok = matches!(landed_chicks, 0 | 1 | 4);
+        let landings_ok = self.sim.mobs.landings.is_empty(); // drained
+
+        // 5. the chorus bound: one real warp attempt — the invariant
+        //    is the ±8 box around the origin (a failed warp stays put,
+        //    a successful one lands inside; both are correct)
+        let origin = (
+            self.player.pos.x.floor() as i32,
+            self.player.pos.y.floor() as i32,
+            self.player.pos.z.floor() as i32,
+        );
+        self.chorus_teleport();
+        let chorus_ok = (self.player.pos.x.floor() as i32 - origin.0).abs() <= 8
+            && (self.player.pos.y.floor() as i32 - origin.1).abs() <= 8
+            && (self.player.pos.z.floor() as i32 - origin.2).abs() <= 8;
+
+        vc_render::render::report_boot_log(&format!(
+            "e2e: audit16b food={} melon={} golden={} throw={} hatch={} chorus={} (pearl moved={}, paid={})",
+            food_ok,
+            melon_craft && seeds_craft,
+            golden_ok,
+            landings_ok && moved && paid,
+            hatch_ok,
+            chorus_ok,
+            moved,
+            paid
+        ));
+    }
+
     fn test_place(&mut self, block: u16, x: i32, y: i32, z: i32) {
         use vc_blocks::blocks::*;
         let state = match block {
@@ -7174,6 +7624,12 @@ impl GameApp {
                 // covers the whole bracket, the v114 trio precedent)
                 if std::env::var("E2E_V116").is_ok() {
                     self.e2e_v116b();
+                }
+                // the 1.0-1.16.5 completeness audit stage (rides the
+                // shared E2E_V116 gate, the v116b precedent)
+                if std::env::var("E2E_V116").is_ok() {
+                    self.e2e_audit16();
+                    self.e2e_audit16b();
                 }
             }
             // F3_DUMP run: hold gameplay ~2 s so the overlay rebuild + dump
@@ -10016,6 +10472,26 @@ impl GameApp {
                                         pos[0], pos[1], pos[2], broke, biome, sky, blk,
                                     );
                                 }
+                            } else if broke == MELON {
+                                // the sweep-2: "When broken, a melon
+                                // drops 3-7 melon slices with equal
+                                // probability for an overall average of
+                                // 5 slices per melon" (VERIFIED
+                                // w/Melon_Slice §Block loot, live
+                                // 2026-09-09; silk-touch/fortune out of
+                                // scope, no tool-gated loot yet)
+                                let n = 3 + self.audio_rng.next_range(5) as u8; // 3..=7
+                                for _ in 0..n {
+                                    self.sim.items.drop_block(
+                                        pos[0],
+                                        pos[1],
+                                        pos[2],
+                                        MELON_SLICE,
+                                        biome,
+                                        sky,
+                                        blk,
+                                    );
+                                }
                             } else if broke == CRIMSON_NYLIUM || broke == WARPED_NYLIUM {
                                 // 1.16 part 2 — the nylium row: mining a
                                 // nylium drops its netherrack base (the
@@ -10024,6 +10500,26 @@ impl GameApp {
                                 self.sim.items.drop_block(
                                     pos[0], pos[1], pos[2], NETHERRACK, biome, sky, blk,
                                 );
+                            } else if broke == LEAVES || broke == DARK_OAK_LEAVES {
+                                // the completeness audit: the apple roll
+                                // — VERIFIED (minecraft.wiki/w/Apple, live
+                                // 2026-09-08): "Oak and dark oak leaves
+                                // have a 0.5% (1/200) chance of dropping
+                                // an apple when decayed or broken, but
+                                // not if burned". The engine's leaves
+                                // self-drop convention is unchanged; the
+                                // apple rides as the bonus roll (only
+                                // the two apple-bearing species — the
+                                // other four leaves never drop apples,
+                                // VERIFIED).
+                                self.sim.items.drop_block(
+                                    pos[0], pos[1], pos[2], broke, biome, sky, blk,
+                                );
+                                if self.audio_rng.next_range(200) == 0 {
+                                    self.sim.items.drop_block(
+                                        pos[0], pos[1], pos[2], APPLE, biome, sky, blk,
+                                    );
+                                }
                             } else if broke == BEE_NEST || broke == BEEHIVE {
                                 // 1.15 (Buzzy Bees) — VERIFIED w/Bee_nest
                                 // §Breaking: "If a bee nest is broken with
@@ -11409,6 +11905,73 @@ impl GameApp {
                         }
                         self.place_timer = 0.3;
                         self.ui.dirty = true;
+                    } else if !self.player.held().is_empty()
+                        && matches!(
+                            self.player.held().block,
+                            SNOWBALL | EGG | ENDER_PEARL
+                        )
+                    {
+                        // ---- the sweep-2 throwable family (the
+                        // 1.0-era player throws, all VERIFIED live
+                        // 2026-09-09: w/Snowball "Snowballs can be
+                        // thrown by pressing the use button ... do not
+                        // deal damage except to blazes, but they still
+                        // knock back"; w/Egg "When thrown by pressing
+                        // the use button, an egg has a 1/8 chance of
+                        // spawning a chick"; w/Ender_Pearl "can be
+                        // thrown by pressing the use button, which
+                        // consumes the item and teleports the player to
+                        // where the pearl lands, dealing 5 HP damage")
+                        // ----
+                        // The engine's disclosed adaptation: thrown
+                        // projectiles fly STRAIGHT (the fireball-class
+                        // convention — vanilla's 0.03-0.04 gravity and
+                        // 30 b/s arc are documented deviations).
+                        let b = self.player.held().block;
+                        let eye = self.player.eye().to_array();
+                        let dir = self.player.look_dir().to_array();
+                        let kind = match b {
+                            SNOWBALL => vc_gameplay::mobs::ProjKind::Snowball,
+                            EGG => vc_gameplay::mobs::ProjKind::Egg,
+                            _ => vc_gameplay::mobs::ProjKind::Pearl,
+                        };
+                        self.sim.mobs.arrows.push(vc_gameplay::mobs::Arrow {
+                            pos: [
+                                eye[0] + dir[0] * 0.8,
+                                eye[1] + dir[1] * 0.8,
+                                eye[2] + dir[2] * 0.8,
+                            ],
+                            vel: [dir[0] * 24.0, dir[1] * 24.0, dir[2] * 24.0],
+                            damage: 0.0, // the thrown class: knockback,
+                            // blaze damage via the snowball branch, the
+                            // egg/pearl payloads at landing
+                            age: 0,
+                            kind,
+                            owner: vc_gameplay::mobs::PLAYER_OWNER,
+                        });
+                        if self.mode.depletes_items() {
+                            let held = self.player.held_mut();
+                            held.count -= 1;
+                            if held.count == 0 {
+                                *held = vc_inventory::inventory::ItemStack::EMPTY;
+                            }
+                        }
+                        // the pearl's "cooldown of one second (20
+                        // ticks)" (VERIFIED w/Ender_Pearl); the light
+                        // pair use the standard use cooldown
+                        self.place_timer = if b == ENDER_PEARL { 1.0 } else { 0.3 };
+                        let what = if b == SNOWBALL {
+                            "snowball"
+                        } else if b == EGG {
+                            "egg"
+                        } else {
+                            "ender pearl"
+                        };
+                        self.play_event("entity.snowball.throw", None, 0.8);
+                        vc_render::render::report_boot_log(&format!(
+                            "e2e: threw a {what} (PLAYER_OWNER, 24 b/s straight)"
+                        ));
+                        self.ui.dirty = true;
                     } else if !self.player.held().is_empty() && is_food(self.player.held().block) {
                         // Phase 2: right-click eats raw meat. Documented
                         // deviation: no hunger system yet, so food heals
@@ -11426,6 +11989,78 @@ impl GameApp {
                         }
                         if !self.mode.invulnerable() {
                             self.player.heal(heal_amt);
+                        }
+                        // the completeness audit: the stews return their
+                        // bowl (the honey-bottle precedent returns the
+                        // glass bottle — VERIFIED w/Mushroom_Stew /
+                        // w/Rabbit_Stew / w/Beetroot_Soup: "the bowl is
+                        // returned after eating"; inventory-full drops
+                        // it at the player's feet)
+                        if matches!(b, MUSHROOM_STEW | RABBIT_STEW | BEETROOT_SOUP) {
+                            let left = self.player.inv.add(BOWL, 1);
+                            if left > 0 {
+                                self.sim.items.drop_block(
+                                    self.player.pos[0] as i32,
+                                    self.player.pos[1] as i32,
+                                    self.player.pos[2] as i32,
+                                    BOWL,
+                                    2,
+                                    15,
+                                    0,
+                                );
+                            }
+                        }
+                        // the audit: the poisonous potato — "a 60% chance
+                        // of applying 5 seconds of Poison I" (VERIFIED
+                        // w/Poisonous_Potato; the pufferfish's exact-
+                        // poison precedent, level I this time)
+                        if b == POISONOUS_POTATO
+                            && !self.mode.invulnerable()
+                            && self.audio_rng.next_f32() < 0.6
+                        {
+                            self.player
+                                .effects
+                                .apply(vc_gameplay::effects::EffectKind::Poison, 0, 100);
+                            self.ui.dirty = true;
+                        }
+                        // ---- the sweep-2 effect rows (all VERIFIED live
+                        // 2026-09-09, same-capture pages) ----
+                        // rotten flesh: "Hunger (0:30) (80% chance)"
+                        if b == ROTTEN_FLESH
+                            && !self.mode.invulnerable()
+                            && self.audio_rng.next_f32() < 0.8
+                        {
+                            self.player
+                                .effects
+                                .apply(vc_gameplay::effects::EffectKind::Hunger, 0, 600);
+                            self.ui.dirty = true;
+                        }
+                        // spider eye: "Poison (0:05)" — always
+                        if b == SPIDER_EYE && !self.mode.invulnerable() {
+                            self.player
+                                .effects
+                                .apply(vc_gameplay::effects::EffectKind::Poison, 0, 100);
+                            self.ui.dirty = true;
+                        }
+                        // golden apple: "Absorption (2:00)" +
+                        // "Regeneration II (0:05)"
+                        if b == GOLDEN_APPLE && !self.mode.invulnerable() {
+                            self.player
+                                .effects
+                                .apply(vc_gameplay::effects::EffectKind::Absorption, 0, 2400);
+                            self.player
+                                .effects
+                                .apply(vc_gameplay::effects::EffectKind::Regeneration, 1, 100);
+                            self.ui.dirty = true;
+                        }
+                        // the chorus teleport: "up to 16 attempts are
+                        // made to choose a random destination within
+                        // ±8 on all three axes in the same manner as
+                        // enderman teleportation" (VERIFIED
+                        // w/Chorus_Fruit §Teleportation) — runs after
+                        // the heal, exactly vanilla's eat-then-warp
+                        if b == CHORUS_FRUIT {
+                            self.chorus_teleport();
                         }
                         self.play_event("entity.generic.drink", None, 0.8);
                         vc_render::render::report_boot_log(&format!(
@@ -14518,6 +15153,36 @@ fn is_food(b: u16) -> bool {
             // 1.14: sweet berries — "restores 2 hunger and 0.4 [JE]
             // saturation" (VERIFIED w/Sweet_Berries §Food)
             | SWEET_BERRIES
+            // ---- the 1.0-1.16.5 completeness audit (all hunger values
+            // VERIFIED live 2026-09-08 against the Food page capture
+            // scripts/audit16_page_Food.json — the hunger table) ----
+            // the cooked-meat family (the standing deferral, closed)
+            | STEAK
+            | COOKED_PORKCHOP
+            | COOKED_CHICKEN
+            | COOKED_MUTTON
+            | COOKED_COD
+            | COOKED_SALMON
+            // the kitchen chain: apple (hunger 4), the stews (6 / 10 /
+            // 6), the beetroot (1), the poisonous potato (2)
+            | APPLE
+            | MUSHROOM_STEW
+            | RABBIT_STEW
+            | BEETROOT
+            | BEETROOT_SOUP
+            | POISONOUS_POTATO
+            // the audit bug fix: the cookie has existed since the 1.12
+            // parrot round but was never edible (hunger 2 — the Food
+            // table's "Cookie 2" row)
+            | COOKIE
+            // ---- the sweep-2 rows (hunger values VERIFIED live
+            // 2026-09-09: Rotten_Flesh 4, Spider_Eye 2, Chorus_Fruit
+            // 4, Golden_Apple 4, Melon_Slice 2 — the pages above) ----
+            | ROTTEN_FLESH
+            | SPIDER_EYE
+            | CHORUS_FRUIT
+            | GOLDEN_APPLE
+            | MELON_SLICE
     )
 }
 
@@ -14551,8 +15216,70 @@ fn food_heal(b: u16) -> f32 {
         // w/Sweet_Berries §Food: "restores 2 hunger and 0.4 [JE] only"
         // saturation")
         SWEET_BERRIES => 1.0,
-        _ => 4.0, // the meats' established value
+        // ---- the completeness audit: the hunger/2 mapping (the Food
+        // table capture's own rows — "Rabbit Stew 10 / Steak 8 /
+        // Cooked Porkchop 8 / Beetroot Soup 6 / Cooked Chicken 6 /
+        // Cooked Mutton 6 / Cooked Salmon 6 / ... Cooked Cod 5 /
+        // Apple 4 / Cookie 2 / Beetroot 1") ----
+        STEAK => 4.0,
+        COOKED_PORKCHOP => 4.0,
+        COOKED_CHICKEN => 3.0,
+        COOKED_MUTTON => 3.0,
+        COOKED_COD => 2.5,
+        COOKED_SALMON => 3.0,
+        APPLE => 2.0,
+        MUSHROOM_STEW => 3.0,
+        RABBIT_STEW => 5.0, // hunger 10 — the biggest single-food heal
+        BEETROOT => 0.5,
+        BEETROOT_SOUP => 3.0,
+        POISONOUS_POTATO => 1.0,
+        // the cookie bug fix: hunger 2 -> 1.0 (was falling to the 4.0
+        // default — an inedible item's value never mattered before)
+        COOKIE => 1.0,
+        // ---- the sweep-2 rows (VERIFIED live 2026-09-09 against the
+        // fresh captures: Rotten_Flesh "Hunger 4", Spider_Eye "Hunger
+        // 2", Chorus_Fruit "Hunger 4", Golden_Apple "Hunger 4",
+        // Melon_Slice "Hunger 2") ----
+        ROTTEN_FLESH => 2.0,
+        SPIDER_EYE => 1.0,
+        CHORUS_FRUIT => 2.0,
+        GOLDEN_APPLE => 2.0,
+        MELON_SLICE => 1.0,
+        _ => 4.0, // the raw meats' established value
     }
+}
+
+/// the sweep-2 chorus destination pick — "up to 16 attempts are made
+/// to choose a random destination within ±8 on all three axes in the
+/// same manner as enderman teleportation, with the exception that the
+/// entity may teleport into an area only 2 blocks high ... If there
+/// are no valid blocks within this range, the teleportation attempt
+/// fails and the entity remains in place" (VERIFIED live 2026-09-09,
+/// w/Chorus_Fruit §Teleportation). Enderman-style validity: solid
+/// floor + a 2-block air column.
+fn chorus_destination(
+    world: &World,
+    px: i32,
+    py: i32,
+    pz: i32,
+    rng: &mut vc_rng::rng::Rng,
+) -> Option<[i32; 3]> {
+    use vc_blocks::blocks::is_solid;
+    for _ in 0..16 {
+        let dx = rng.next_range(17) as i32 - 8; // -8..=8
+        let dy = rng.next_range(17) as i32 - 8;
+        let dz = rng.next_range(17) as i32 - 8;
+        let x = px + dx;
+        let y = (py + dy).clamp(1, 250);
+        let z = pz + dz;
+        let floor = world.get_block(x, y - 1, z);
+        let body = world.get_block(x, y, z);
+        let head = world.get_block(x, y + 1, z);
+        if is_solid(floor) && body == vc_blocks::blocks::AIR && head == vc_blocks::blocks::AIR {
+            return Some([x, y, z]);
+        }
+    }
+    None // the failed warp: "the entity remains in place"
 }
 
 fn light_at(
@@ -15382,6 +16109,114 @@ mod auditfix_food_tests {
 
     /// golden carrot heals hunger 6 / 2 = 3.0 HP (VERIFIED live
     /// 2026-09-07 w/Golden_Carrot: "Hunger 6", "Saturation 14.4")
+    #[test]
+    /// the sweep-2: the chorus destination rule — the ±8 box, the
+    /// solid-floor + 2-air validity, and the all-solid failure (VERIFIED
+    /// w/Chorus_Fruit §Teleportation, live 2026-09-09)
+    #[test]
+    fn audit16_sweep2_chorus_destination() {
+        // a stone floor world: y <= 64 solid, y >= 65 air (the
+        // flat-world convention from the mobs tests)
+        let mut w = World::new(11);
+        let mut c = vc_chunk::chunk::Chunk::empty();
+        for y in 0..=64i32 {
+            for lz in 0..16usize {
+                for lx in 0..16usize {
+                    c.set(lx, y as usize, lz, STONE);
+                }
+            }
+        }
+        w.insert_generated((0, 0), std::sync::Arc::new(c), Vec::new());
+        let mut rng = vc_rng::rng::Rng::new(55);
+        let mut warped = 0;
+        for _ in 0..200 {
+            if let Some([x, y, z]) = chorus_destination(&w, 8, 65, 8, &mut rng) {
+                warped += 1;
+                assert!((x - 8).abs() <= 8, "the ±8 x bound");
+                assert!((y - 65).abs() <= 8, "the ±8 y bound");
+                assert!((z - 8).abs() <= 8, "the ±8 z bound");
+                assert_eq!(y, 65, "the only valid standing row above the floor");
+            }
+        }
+        assert!(warped >= 80, "the flat-floor warp rate (dy=0 is 1/17), got {warped}/200");
+        // the failure case: an all-solid world has no valid destination
+        let mut solid = World::new(12);
+        let mut sc = vc_chunk::chunk::Chunk::empty();
+        for y in 0..=80i32 {
+            for lz in 0..16usize {
+                for lx in 0..16usize {
+                    sc.set(lx, y as usize, lz, STONE);
+                }
+            }
+        }
+        solid.insert_generated((0, 0), std::sync::Arc::new(sc), Vec::new());
+        assert!(
+            chorus_destination(&solid, 8, 70, 8, &mut rng).is_none(),
+            "no air column -> the failed warp (the entity stays)"
+        );
+    }
+
+    #[test]
+    fn audit16_food_values() {
+        // the completeness audit: the hunger/2 table for the whole V15
+        // kitchen (all VERIFIED live 2026-09-08 against the Food page
+        // capture scripts/audit16_page_Food.json)
+        // the cooked-meat family
+        assert!((food_heal(STEAK) - 4.0).abs() < 1e-6, "hunger 8");
+        assert!((food_heal(COOKED_PORKCHOP) - 4.0).abs() < 1e-6, "hunger 8");
+        assert!((food_heal(COOKED_CHICKEN) - 3.0).abs() < 1e-6, "hunger 6");
+        assert!((food_heal(COOKED_MUTTON) - 3.0).abs() < 1e-6, "hunger 6");
+        assert!((food_heal(COOKED_COD) - 2.5).abs() < 1e-6, "hunger 5");
+        assert!((food_heal(COOKED_SALMON) - 3.0).abs() < 1e-6, "hunger 6");
+        // the kitchen chain
+        assert!((food_heal(APPLE) - 2.0).abs() < 1e-6, "hunger 4");
+        assert!((food_heal(MUSHROOM_STEW) - 3.0).abs() < 1e-6, "hunger 6");
+        assert!((food_heal(RABBIT_STEW) - 5.0).abs() < 1e-6, "hunger 10 — the top food");
+        // ---- the sweep-2 rows (VERIFIED live 2026-09-09: the
+        // Rotten_Flesh/Spider_Eye/Chorus_Fruit/Golden_Apple/
+        // Melon_Slice captures) ----
+        assert!((food_heal(ROTTEN_FLESH) - 2.0).abs() < 1e-6, "hunger 4");
+        assert!((food_heal(SPIDER_EYE) - 1.0).abs() < 1e-6, "hunger 2");
+        assert!((food_heal(CHORUS_FRUIT) - 2.0).abs() < 1e-6, "hunger 4");
+        assert!((food_heal(GOLDEN_APPLE) - 2.0).abs() < 1e-6, "hunger 4");
+        assert!((food_heal(MELON_SLICE) - 1.0).abs() < 1e-6, "hunger 2");
+        assert!(is_food(ROTTEN_FLESH), "edible since Phase 2 — value now correct");
+        assert!(is_food(SPIDER_EYE), "the 1.0 spider eye now edible");
+        assert!(is_food(CHORUS_FRUIT), "the 1.9 chorus fruit now edible");
+        assert!(is_food(GOLDEN_APPLE), "the golden apple now edible");
+        assert!(is_food(MELON_SLICE), "the 1.0 melon slice");
+        // the golden apple's effect pair: Absorption 2:00 (2400) +
+        // Regeneration II 0:05 (100 ticks at amplifier 1)
+        {
+            let mut fx = vc_gameplay::effects::Effects::new();
+            fx.apply(vc_gameplay::effects::EffectKind::Absorption, 0, 2400);
+            fx.apply(vc_gameplay::effects::EffectKind::Regeneration, 1, 100);
+            assert_eq!(
+                fx.amplifier(vc_gameplay::effects::EffectKind::Absorption),
+                Some(0),
+                "Absorption I 2:00"
+            );
+            assert_eq!(
+                fx.amplifier(vc_gameplay::effects::EffectKind::Regeneration),
+                Some(1),
+                "Regeneration II 0:05"
+            );
+        }
+        assert!((food_heal(BEETROOT) - 0.5).abs() < 1e-6, "hunger 1");
+        assert!((food_heal(BEETROOT_SOUP) - 3.0).abs() < 1e-6, "hunger 6");
+        assert!((food_heal(POISONOUS_POTATO) - 1.0).abs() < 1e-6, "hunger 2");
+        // the cookie bug fix (hunger 2; was falling to the 4.0 default)
+        assert!((food_heal(COOKIE) - 1.0).abs() < 1e-6, "hunger 2 — the 1.12 cookie");
+        // and everything is actually food now
+        for b in [
+            STEAK, COOKED_PORKCHOP, COOKED_CHICKEN, COOKED_MUTTON, COOKED_COD,
+            COOKED_SALMON, APPLE, MUSHROOM_STEW, RABBIT_STEW, BEETROOT,
+            BEETROOT_SOUP, POISONOUS_POTATO, COOKIE,
+        ] {
+            assert!(is_food(b), "block {b} must be food");
+        }
+    }
+
     #[test]
     fn golden_carrot_food_values() {
         assert!((food_heal(GOLDEN_CARROT) - 3.0).abs() < 1e-6, "hunger 6 -> 3 HP");

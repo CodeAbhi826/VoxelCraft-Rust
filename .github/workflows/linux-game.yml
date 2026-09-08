@@ -185,6 +185,12 @@ jobs:
           grep -q "strider-lava=true" smoke.log
           grep -q "hoglin-flee=true" smoke.log
           grep -q "barter=true" smoke.log
+          # the 1.0-1.16.5 completeness audit: the cooked-meat smelting
+          # class, the kitchen crafts, the purpur chain, the audit trio
+          # (the ghast's fireball + the cave spider's venom), and the
+          # new food rows
+          grep -q "e2e: audit16 smelt=true smoker=true kitchen=true purpur=true trio=true food=true" smoke.log
+          grep -q "e2e: audit16b food=true melon=true golden=true throw=true hatch=true chorus=true" smoke.log
 
           # the vanilla settings-tree E2E: click through Options → Video /
           # Engine / Packs / Accessibility via the REAL input path and

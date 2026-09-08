@@ -1546,6 +1546,58 @@ pub const CORNFLOWER: u16 = 430;
 /// (our set: Forest, BirchForest, FlowerForest).
 pub const LILY_OF_THE_VALLEY: u16 = 431;
 
+// ---- 1.15 bracket (Buzzy Bees). VERIFIED 2026-09-08 from the raw
+// captures scripts/v115_page_*.json (w/Bee, w/Beehive, w/Bee_nest,
+// w/Honey_Block, w/Honey_Bottle, w/Honeycomb, w/Honeycomb_Block).
+// docs/research/phase-v115-1.15-research.md is the value contract. ----
+/// 1.15: the bee nest — naturally generated on trees (plains/
+/// sunflower plains 5%, flower forest 2%, forest-family 0.2% — the
+/// 1.16.5 biome set; meadow/mangrove/cherry rows are post-1.16.5,
+// out of scope), spawns holding 2-3 bees, hardness 0.3 / blast 0.3,
+/// flammable 30, axe-quickest. NOT craftable. honey_level 0..=5 in
+/// the V12 state window (level 5 = honey oozing). Shears on a full
+/// nest drop 3 honeycomb (angering the bees inside unless a lit
+/// campfire sits within 5 blocks below); a glass bottle fills with
+/// honey. Broken without Silk Touch it drops NOTHING (bees emerge
+/// angry) — the disclosed no-Silk-Touch adaptation.
+pub const BEE_NEST: u16 = 432;
+/// 1.15: the beehive — the craftable twin (6 planks + 3 honeycomb),
+/// hardness 0.6 / blast 0.6, flammable 5, axe-quickest, note-block
+/// Bass. Same honey_level 0..=5 machinery as the nest; always drops
+/// itself when broken (bees inside released angry).
+pub const BEEHIVE: u16 = 433;
+/// 1.15: the honey block — "a storage block equivalent to the
+/// contents of four honey bottles". Hardness 0 / blast 0, any tool,
+/// non-flammable, translucent (diffuses sky light — the JE partial
+/// row). Movement: entities walk at ~2.508 m/s (60% slow), jump
+/// height cut to 3/16 blocks (85% reduction), fall damage reduced
+/// by 80%, entities pressed against the sides slide down slowly
+/// without fall damage. Crafted from 4 honey bottles and back into
+/// 4 bottles (both directions).
+pub const HONEY_BLOCK: u16 = 434;
+/// 1.15: the honeycomb block — decorative, hardness 0.6 / blast 0.6,
+/// any tool, non-flammable. Crafted from 4 honeycomb (2x2).
+pub const HONEYCOMB_BLOCK: u16 = 435;
+/// 1.15: honeycomb — the item shears pop out of a full nest/hive
+/// (3 per harvest). Crafts beehives + honeycomb blocks. (Copper
+/// waxing + candles are 1.17 — out of the 1.16.5 window.)
+pub const HONEYCOMB: u16 = 436;
+/// 1.15: the honey bottle — a drinkable food item: restores 6 hunger
+/// + 1.2 saturation, REMOVES Poison (and only Poison), returns the
+/// glass bottle when drunk. Obtained by using a glass bottle on a
+/// honey_level-5 nest/hive. Craft ingredient for the honey block.
+pub const HONEY_BOTTLE: u16 = 437;
+/// LEGACY item added in the 1.15 window (the stick/charcoal
+/// precedent): shears — vanilla is a Beta-era tool (2 iron ingots,
+/// diagonal). This round needs them for the honeycomb harvest.
+/// Durability 238 is NOT modeled (no tool-durability system,
+/// disclosed). Sheep-wool shearing + fast leaf/cobweb breaking are
+/// follow-ups (noted in the research record).
+pub const SHEARS: u16 = 438;
+/// 1.15: the bee spawn egg (changelog §Items: "Bee Spawn Egg") —
+/// mob kind 41.
+pub const SPAWN_EGG_BEE: u16 = 439;
+
 pub const V10_STATE_BASE: u16 = 676;
 // 13 states: bamboo stalk 1, shoot 1, berry bush 4 (age 0..3),
 // campfire 2 (unlit/lit), barrel 1, then the 4 item states (berries,
@@ -1620,6 +1672,81 @@ pub fn v11_state(b: u16) -> Option<u16> {
 #[inline]
 pub fn is_v11_state(s: u16) -> bool {
     (V11_STATE_BASE..V11_STATE_BASE + V11_COUNT).contains(&s)
+}
+
+// ---- 1.15 (Buzzy Bees): the V12 state window ----
+pub const V12_STATE_BASE: u16 = 698;
+// 18 states: bee nest honey_level 0..=5, beehive honey_level 0..=5,
+// the honey + honeycomb-block identity states (block ids >= 432 must
+// not ride identity states — they collide with the old F-series state
+// ids; the same invariant every block >= 57 respects), then the 4
+// item states (honeycomb, honey bottle, shears, bee egg).
+pub const V12_COUNT: u16 = 18;
+/// V12 state -> block fold: the 12 hive states fold to their parent
+/// blocks; level 1..=4 share the level-0 art and only level 5 swaps
+/// to the honey-oozing front tiles (state_tiles arm).
+pub const V12_STATE_TO_BLOCK: [u16; V12_COUNT as usize] = [
+    BEE_NEST, BEE_NEST, BEE_NEST, BEE_NEST, BEE_NEST, BEE_NEST,
+    BEEHIVE, BEEHIVE, BEEHIVE, BEEHIVE, BEEHIVE, BEEHIVE,
+    HONEY_BLOCK, HONEYCOMB_BLOCK,
+    HONEYCOMB, HONEY_BOTTLE, SHEARS, SPAWN_EGG_BEE,
+];
+
+#[inline]
+pub fn v12_state(b: u16) -> Option<u16> {
+    match b {
+        BEE_NEST => Some(V12_STATE_BASE),          // honey_level 0
+        BEEHIVE => Some(V12_STATE_BASE + 6),       // honey_level 0
+        HONEY_BLOCK => Some(V12_STATE_BASE + 12),
+        HONEYCOMB_BLOCK => Some(V12_STATE_BASE + 13),
+        HONEYCOMB => Some(V12_STATE_BASE + 14),
+        HONEY_BOTTLE => Some(V12_STATE_BASE + 15),
+        SHEARS => Some(V12_STATE_BASE + 16),
+        SPAWN_EGG_BEE => Some(V12_STATE_BASE + 17),
+        _ => None,
+    }
+}
+
+#[inline]
+pub fn is_v12_state(s: u16) -> bool {
+    (V12_STATE_BASE..V12_STATE_BASE + V12_COUNT).contains(&s)
+}
+
+/// 1.15: the honey_level 0..=5 stored in a nest/hive state (0 for
+/// non-hive states). VERIFIED w/Beehive: "Every pollinated bee that
+/// leaves the hive after working increases the honey level by one.
+/// When at level 5, honey can be bottled or honeycombs can be
+/// harvested."
+#[inline]
+pub fn honey_level(s: u16) -> u8 {
+    if is_v12_state(s) && (s as u16) < V12_STATE_BASE + 12 {
+        let off = s - V12_STATE_BASE;
+        if off >= 6 {
+            (off - 6) as u8
+        } else {
+            off as u8
+        }
+    } else {
+        0
+    }
+}
+
+/// state id for a nest/hive block at a given honey level (0..=5).
+#[inline]
+pub fn hive_state(b: u16, level: u8) -> u16 {
+    let base = if b == BEEHIVE {
+        V12_STATE_BASE + 6
+    } else {
+        V12_STATE_BASE
+    };
+    base + (level.min(5)) as u16
+}
+
+/// 1.15: is this state a honey_level-5 hive (the dripping/harvest
+/// form)?
+#[inline]
+pub fn hive_full(s: u16) -> bool {
+    honey_level(s) == 5 && is_v12_state(s) && (s as u16) < V12_STATE_BASE + 12
 }
 
 /// 1.14: is this V11 state a LIT smelter (blast furnace / smoker)?
@@ -2283,7 +2410,7 @@ pub fn item_state_block(s: u16) -> Option<u16> {
     }
 }
 
-pub const BLOCK_COUNT: usize = 432; // 1.14 (part 3): V11 window ids 426..=431 (smelters/lantern/nugget + the two flowers)
+pub const BLOCK_COUNT: usize = 440; // 1.15 (Buzzy Bees): V12 window ids 432..=439 (nest/hive/honey/honeycomb blocks + comb/bottle/shears/egg items)
 /// [merge renumber] acacia/dark-oak log axis states moved to 443..=446
 /// (past the E-series states, which end at 354; V2 base is now 400)
 /// acacia/dark-oak log axis states (the V2 log window — same pattern as
@@ -2320,7 +2447,7 @@ pub const DARK_OAK_LOG_Z: u16 = 446;
 /// items + eggs 20..=22 + the POWER-state ladders (317..=399)
 /// [merge renumber] F-series states: V2 400..=442 + log-axis 443..=446,
 /// V3 447..=465, V4 466..=475, V5 476..=479, V6 480..=485 (audit-fix)
-pub const STATE_COUNT: usize = 698; // 1.14 (part 3): V11 states 689..=697 (smelter 4 + lantern 2 + nugget + flowers 2)
+pub const STATE_COUNT: usize = 716; // 1.15 (Buzzy Bees): V12 states 698..=715 (nest levels 0..=5, hive levels 0..=5, honey/honeycomb blocks, comb/bottle/shears/egg items) (nest levels 0..=5, hive levels 0..=5, comb/bottle/shears/egg items)
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -2702,6 +2829,9 @@ pub fn default_state(b: u16) -> u16 {
         // the lantern places SITTING (the placement path writes the
         // hanging state on underside clicks)
         b if v11_state(b).is_some() => v11_state(b).unwrap(),
+        // 1.15: nests/hives place at honey_level 0; the V12 items ride
+        // their item states
+        b if v12_state(b).is_some() => v12_state(b).unwrap(),
         b if (262..262 + V4_COUNT as u16).contains(&b) => {
             V4_STATE_BASE + (b - 262) as u16
         }
@@ -3038,6 +3168,12 @@ pub fn state_block(s: u16) -> u16 {
         s if is_v11_state(s) => {
             return V11_STATE_TO_BLOCK[(s - V11_STATE_BASE) as usize];
         }
+        // 1.15 (Buzzy Bees): the V12 window — the nest/hive
+        // honey_level states fold to their parent blocks; the item
+        // states fold to their item ids
+        s if is_v12_state(s) => {
+            return V12_STATE_TO_BLOCK[(s - V12_STATE_BASE) as usize];
+        }
         ACACIA_LOG_X | ACACIA_LOG_Z => return ACACIA_LOG,
         DARK_OAK_LOG_X | DARK_OAK_LOG_Z => return DARK_OAK_LOG,
         _ => {}
@@ -3092,6 +3228,14 @@ pub fn state_description(s: u16) -> String {
     if is_v11_state(s) && (V11_STATE_BASE + 4..=V11_STATE_BASE + 5).contains(&s) {
         return format!("Lantern[hanging={}]", lantern_hanging(s));
     }
+    // 1.15 V12 properties: the nest/hive honey level (the F3 Targeted
+    // Block property line - a real vanilla blockstate)
+    if is_v12_state(s) && (V12_STATE_BASE..=V12_STATE_BASE + 5).contains(&s) {
+        return format!("Bee Nest[honey_level={}]", honey_level(s));
+    }
+    if is_v12_state(s) && (V12_STATE_BASE + 6..=V12_STATE_BASE + 11).contains(&s) {
+        return format!("Beehive[honey_level={}]", honey_level(s));
+    }
     if let Some((b, props)) = prop_state_decode(s) {
         if props.is_empty() {
             return name(b).to_string();
@@ -3132,6 +3276,9 @@ pub fn is_model_state(s: u16) -> bool {
         // 1.14 V11 window: same shape — the smelters are greedy cubes
         // (their BlockDef flags), the lantern + nugget item ride flags
         || is_v11_state(s)
+        // 1.15 V12 window: same shape — nest/hive/honey/honeycomb-block
+        // are greedy cubes (their BlockDef flags); the items ride flags
+        || is_v12_state(s)
         || s == SPAWNER_VINDICATOR
         || s == SPAWNER_EVOKER
         || s == ACACIA_LOG_X
@@ -3341,6 +3488,48 @@ pub fn state_tiles(s: u16) -> [u16; 4] {
             };
             [t, t, t, t]
         }
+        // ---- 1.15 (Buzzy Bees): the nest — honey_level 1..=4 share
+        // the level-0 art; level 5 swaps the side tiles to the
+        // honey-oozing front (VERIFIED w/Bee_nest: "Once it has the
+        // maximum honey level of 5, it changes its appearance to show
+        // honey oozing out") ----
+        s if is_v12_state(s) && (V12_STATE_BASE..=V12_STATE_BASE + 5).contains(&s) => {
+            let t = if honey_level(s) == 5 {
+                TILE_BEE_NEST_FRONT_HONEY
+            } else {
+                TILE_BEE_NEST_FRONT
+            };
+            [TILE_BEE_NEST_TOP, TILE_BEE_NEST_TOP, t, t]
+        }
+        // ---- 1.15: the beehive — the same level-5 side swap ----
+        s if is_v12_state(s)
+            && (V12_STATE_BASE + 6..=V12_STATE_BASE + 11).contains(&s) =>
+        {
+            let t = if honey_level(s) == 5 {
+                TILE_BEEHIVE_FRONT_HONEY
+            } else {
+                TILE_BEEHIVE_FRONT
+            };
+            [TILE_BEEHIVE_TOP, TILE_BEEHIVE_TOP, t, t]
+        }
+        // ---- 1.15: the honey + honeycomb blocks (identity states,
+        // the BlockDef tile triple) ----
+        s if is_v12_state(s) && s == V12_STATE_BASE + 12 => {
+            [TILE_HONEY, TILE_HONEY, TILE_HONEY, TILE_HONEY]
+        }
+        s if is_v12_state(s) && s == V12_STATE_BASE + 13 => {
+            [TILE_HONEYCOMB_BLOCK, TILE_HONEYCOMB_BLOCK, TILE_HONEYCOMB_BLOCK, TILE_HONEYCOMB_BLOCK]
+        }
+        // ---- 1.15: the item states — one sprite each ----
+        s if is_v12_state(s) && (V12_STATE_BASE + 14..=V12_STATE_BASE + 17).contains(&s) => {
+            let t = match s {
+                x if x == V12_STATE_BASE + 14 => TILE_HONEYCOMB,
+                x if x == V12_STATE_BASE + 15 => TILE_HONEY_BOTTLE,
+                x if x == V12_STATE_BASE + 16 => TILE_SHEARS,
+                _ => TILE_SPAWN_EGG_BEE,
+            };
+            [t, t, t, t]
+        }
         s if glazed_decode(s).is_some() => {
             let (color, facing) = glazed_decode(s).unwrap();
             let c = color as u16;
@@ -3394,7 +3583,7 @@ pub fn log_axis_state(block: u16, axis: u8) -> u16 {
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
 // [merge] E-series tiles end at 243; the F-series (1.7.2-1.10) tiles
 // continue at 244..=325; the audit-fix round adds 326..=332
-pub const TILE_MAX: u16 = 641; // 1.14 (part 3): tiles 634..=641 (the V11 window — smelters, lantern, nugget, the two flowers)
+pub const TILE_MAX: u16 = 654; // 1.15 (Buzzy Bees): tiles 642..=654 (the V12 window — nest/hive faces + honey variants, honey/honeycomb, comb/bottle/shears/egg items, bee sprite)
 /// 1.11 egg tiles (egg-shaped, egg order 23..=28 = llama, vindicator,
 /// evoker, vex, husk, stray) — the E1/E2/E3 egg-art convention
 /// (e1_art::egg_art + palettes), replacing the interrupted round's
@@ -3569,6 +3758,36 @@ pub const TILE_CORNFLOWER: u16 = 640;
 /// lily of the valley sprite (cross plant; white bell florets).
 pub const TILE_LILY_OF_THE_VALLEY: u16 = 641;
 
+// ---- 1.15 (Buzzy Bees): tiles 642..=654 (v115_art.rs) ----
+/// bee-nest top — the woven straw crown.
+pub const TILE_BEE_NEST_TOP: u16 = 642;
+/// bee-nest front — the straw wall with the dark entrance hole (the
+/// furnace-pattern side tile: all four sides show the entrance — no
+/// facing states in the engine, disclosed).
+pub const TILE_BEE_NEST_FRONT: u16 = 643;
+/// beehive top — the planked crown.
+pub const TILE_BEEHIVE_TOP: u16 = 644;
+/// beehive front — the plank wall with the entrance slot.
+pub const TILE_BEEHIVE_FRONT: u16 = 645;
+/// the honey block — amber translucent gel (the "sticky" block).
+pub const TILE_HONEY: u16 = 646;
+/// the honeycomb block — the hexagon-cell wall.
+pub const TILE_HONEYCOMB_BLOCK: u16 = 647;
+/// the honeycomb item sprite.
+pub const TILE_HONEYCOMB: u16 = 648;
+/// the honey bottle sprite (the amber flask).
+pub const TILE_HONEY_BOTTLE: u16 = 649;
+/// the shears sprite (the legacy iron tool).
+pub const TILE_SHEARS: u16 = 650;
+/// the bee spawn egg sprite (kind 41 — EGG_PALETTES family).
+pub const TILE_SPAWN_EGG_BEE: u16 = 651;
+/// bee-nest front at honey_level 5 — honey oozing from the hole.
+pub const TILE_BEE_NEST_FRONT_HONEY: u16 = 652;
+/// beehive front at honey_level 5 — honey oozing from the slot.
+pub const TILE_BEEHIVE_FRONT_HONEY: u16 = 653;
+/// the bee mob billboard sprite (v115_art::bee_art).
+pub const TILE_MOB_BEE: u16 = 654;
+
 /// inventory-only ITEM blocks (potions/bottles/books): never placeable in
 /// the world — right-click drinks (potions) / fills (glass bottle at water).
 #[inline]
@@ -3631,6 +3850,12 @@ pub fn is_item_block(b: u16) -> bool {
             // ---- 1.14 (part 2): the iron nugget (the lantern recipe's
             // material; 9:1 with the iron-ingot stand-in) ----
             | IRON_NUGGET
+            // ---- 1.15 (Buzzy Bees): honeycomb + the honey bottle
+            // (the drink branch + hive-harvest branch handle their
+            // uses) and shears (the hive-harvest tool) ----
+            | HONEYCOMB
+            | HONEY_BOTTLE
+            | SHEARS
     ) || is_spawn_egg(b)
         || (DYE_BASE..=DYE_END).contains(&b)
         || is_seeds(b)
@@ -3652,6 +3877,9 @@ pub fn is_spawn_egg(b: u16) -> bool {
         || (SPAWN_EGG_DROWNED..=SPAWN_EGG_TURTLE).contains(&b)
         // 1.14: the fox egg (kind 40)
         || b == SPAWN_EGG_FOX
+        // 1.15: the bee egg (kind 41 — changelog §Items: "Bee Spawn
+        // Egg")
+        || b == SPAWN_EGG_BEE
 }
 
 /// The mob this spawn-egg id spawns. Tile order in the BLOCK_TABLE egg
@@ -3683,6 +3911,10 @@ pub fn egg_mob(b: u16) -> Option<u8> {
     // 1.14: the fox egg — kind 40 (MobKind::Fox::from_egg)
     if b == SPAWN_EGG_FOX {
         return Some(40);
+    }
+    // 1.15: the bee egg — kind 41 (MobKind::Bee::from_egg)
+    if b == SPAWN_EGG_BEE {
+        return Some(41);
     }
     if !is_spawn_egg(b) {
         return None;
@@ -4328,6 +4560,21 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     // VERIFIED w/Cornflower + w/Lily_of_the_Valley) ----
     d("Cornflower", [TILE_CORNFLOWER, TILE_CORNFLOWER, TILE_CORNFLOWER], false, false, true, false, 0, SoundFamily::Grass),
     d("Lily of the Valley", [TILE_LILY_OF_THE_VALLEY, TILE_LILY_OF_THE_VALLEY, TILE_LILY_OF_THE_VALLEY], false, false, true, false, 0, SoundFamily::Grass),
+    // ---- 1.15 (Buzzy Bees) — VERIFIED w/Beehive + w/Bee_nest +
+    // w/Honey_Block + w/Honeycomb_Block: the nest/hive are full solid
+    // wood-sound blocks with the entrance on the side tiles (the
+    // furnace pattern); honey is solid but translucent (opaque false —
+    // the JE "partial (diffuses sky light)" row); honeycomb block is
+    // an opaque decorative. ----
+    d("Bee Nest", [TILE_BEE_NEST_TOP, TILE_BEE_NEST_TOP, TILE_BEE_NEST_FRONT], true, true, false, false, 0, SoundFamily::Wood),
+    d("Beehive", [TILE_BEEHIVE_TOP, TILE_BEEHIVE_TOP, TILE_BEEHIVE_FRONT], true, true, false, false, 0, SoundFamily::Wood),
+    d("Honey Block", [TILE_HONEY, TILE_HONEY, TILE_HONEY], true, false, false, false, 0, SoundFamily::Grass),
+    d("Honeycomb Block", [TILE_HONEYCOMB_BLOCK, TILE_HONEYCOMB_BLOCK, TILE_HONEYCOMB_BLOCK], true, true, false, false, 0, SoundFamily::Grass),
+    // 1.15 items — the item-row pattern (non-placeable, cross-sprited)
+    d("Honeycomb", [TILE_HONEYCOMB, TILE_HONEYCOMB, TILE_HONEYCOMB], false, false, true, false, 0, SoundFamily::Grass),
+    d("Honey Bottle", [TILE_HONEY_BOTTLE, TILE_HONEY_BOTTLE, TILE_HONEY_BOTTLE], false, false, true, false, 0, SoundFamily::Glass),
+    d("Shears", [TILE_SHEARS, TILE_SHEARS, TILE_SHEARS], false, false, true, false, 0, SoundFamily::Wood),
+    d("Bee Spawn Egg", [TILE_SPAWN_EGG_BEE, TILE_SPAWN_EGG_BEE, TILE_SPAWN_EGG_BEE], false, false, true, false, 0, SoundFamily::Grass),
 ];
 
 #[inline]
@@ -4397,7 +4644,7 @@ pub fn face_visible(b: u16, n: u16) -> bool {
 /// (needs fluid sim to be fun). Potions are item-blocks — usable from the
 /// hotbar (drink), never placeable. Phase E1 adds the 1.0–1.2 bracket
 /// blocks/items + the 16 spawn eggs (creative-only items, w/Spawn_Egg).
-pub const PICKER_BLOCKS: [u16; 391] = [
+pub const PICKER_BLOCKS: [u16; 395] = [
     GRASS, DIRT, STONE, COBBLE, SMOOTH_STONE, STONE_BRICKS, BRICKS, MOSSY_COBBLE,
     GRANITE, DIORITE, ANDESITE, OBSIDIAN,
     SAND, GRAVEL, CLAY, TERRACOTTA,
@@ -4544,6 +4791,9 @@ pub const PICKER_BLOCKS: [u16; 391] = [
     BLAST_FURNACE, SMOKER, LANTERN,
     // ---- 1.14 (part 3): the two new small flowers ----
     CORNFLOWER, LILY_OF_THE_VALLEY,
+    // 1.15 (Buzzy Bees): the nest/hive/honey/honeycomb blocks (the
+    // comb/bottle/shears/egg items are item-blocks, never placeable)
+    BEE_NEST, BEEHIVE, HONEY_BLOCK, HONEYCOMB_BLOCK,
 ];
 
 /// default hotbar palette
@@ -4894,6 +5144,8 @@ mod state_tests {
                 || is_v10_state(s)
                 // 1.14 V11 (nature half, part 2)
                 || is_v11_state(s)
+                // 1.15 V12 (Buzzy Bees)
+                || is_v12_state(s)
                 || matches!(s, ACACIA_LOG_X | ACACIA_LOG_Z | DARK_OAK_LOG_X | DARK_OAK_LOG_Z)
             {
                 assert!(!is_model_state(s), "component/item state {s} never routes to models");
@@ -4992,6 +5244,19 @@ mod state_tests {
                     assert_eq!(state_block(s), V11_STATE_TO_BLOCK[(s - V11_STATE_BASE) as usize]);
                     if let Some(db) = v11_state(b) {
                         assert_eq!(default_state(b), db, "v11 default for {b}");
+                    }
+                }
+                // 1.15 V12 (Buzzy Bees): every state folds to its
+                // parent; honey_level decodes on the 12 hive states
+                // (level 0 default roundtrip); the identity + item
+                // states 1:1
+                if is_v12_state(s) {
+                    assert_eq!(state_block(s), V12_STATE_TO_BLOCK[(s - V12_STATE_BASE) as usize]);
+                    if s < V12_STATE_BASE + 12 {
+                        let want = hive_state(state_block(s), honey_level(s));
+                        assert_eq!(s, want, "hive state {s} re-encodes");
+                    } else if let Some(db) = v12_state(b) {
+                        assert_eq!(default_state(b), db, "v12 default for {b}");
                     }
                 }
                 continue;
@@ -5152,8 +5417,8 @@ mod state_tests {
         // with the 1.7.2–1.10 F-series: 276 blocks / 480 states
         // (E-series states end at 354; V2 400..=442, V3 447..=465,
         // V4 466..=475, V5 476..=479)
-        assert_eq!(BLOCK_COUNT, 432, "merged registry + V6 + V7 + V8 + V9 + 1.14 V10/V11 (nature half, flowers)");
-        assert_eq!(STATE_COUNT, 698, "merged state space, V11 states end at 697");
+        assert_eq!(BLOCK_COUNT, 440, "merged registry + V6..V11 + 1.15 V12 (Buzzy Bees)");
+        assert_eq!(STATE_COUNT, 716, "merged state space, V12 states end at 715");
         assert_eq!(BLOCK_TABLE.len(), BLOCK_COUNT);
         for want in [
             COAL_BLOCK,
@@ -5204,8 +5469,8 @@ mod v110_tests {
             assert_eq!(default_state(b), s);
             assert!(is_v5_state(s));
         }
-        assert_eq!(BLOCK_COUNT, 432); // 1.14: V10+V11 windows grew the registry
-        assert_eq!(STATE_COUNT, 698); // 1.14: V10+V11 windows grew the state space
+        assert_eq!(BLOCK_COUNT, 440); // 1.14: V10+V11 windows grew the registry
+        assert_eq!(STATE_COUNT, 716); // 1.14: V10+V11 windows grew the state space
     }
 
     /// magma emits light level 3 (VERIFIED — minecraft.wiki/w/Magma_Block,
@@ -5242,8 +5507,8 @@ mod auditfix_tests {
             assert!(!is_model_state(s), "V6 states are cube/cross defs, not model states");
         }
         assert_eq!(V6_COUNT, 6);
-        assert_eq!(BLOCK_COUNT, 432); // 1.14: V10+V11 windows grew the registry
-        assert_eq!(STATE_COUNT, 698); // 1.14: V10+V11 windows grew the state space
+        assert_eq!(BLOCK_COUNT, 440); // 1.14: V10+V11 windows grew the registry
+        assert_eq!(STATE_COUNT, 716); // 1.14: V10+V11 windows grew the state space
         // solidity classes: log/planks solid-opaque (hardness family 2
         // per w/Log + w/Planks), leaves see-through, vine/fern non-solid
         // cross plants (w/Vines: "climbable non-solid"; w/Fern:
@@ -5292,8 +5557,8 @@ mod v111_tests {
             assert_eq!(default_state(b), s, "block {b} default state");
             assert_eq!(state_block(s), b, "state {s} folds back");
         }
-        assert_eq!(BLOCK_COUNT, 432); // 1.14: V10+V11 windows grew the registry
-        assert_eq!(STATE_COUNT, 698); // 1.14: V10+V11 windows grew the state space
+        assert_eq!(BLOCK_COUNT, 440); // 1.14: V10+V11 windows grew the registry
+        assert_eq!(STATE_COUNT, 716); // 1.14: V10+V11 windows grew the state space
         // mansion spawner states fold to SPAWNER + decode their kinds
         assert_eq!(state_block(SPAWNER_VINDICATOR), SPAWNER);
         assert_eq!(state_block(SPAWNER_EVOKER), SPAWNER);
@@ -5397,8 +5662,8 @@ mod v112_tests {
         }
         assert_eq!(default_state(COOKIE), V8_STATE_BASE + 117);
         // bounds
-        assert_eq!(BLOCK_COUNT, 432);
-        assert_eq!(STATE_COUNT, 698);
+        assert_eq!(BLOCK_COUNT, 440);
+        assert_eq!(STATE_COUNT, 716);
         assert_eq!(CONCRETE_BASE + 15, CONCRETE_END);
         assert_eq!(CONCRETE_POWDER_BASE + 15, CONCRETE_POWDER_END);
         assert_eq!(GLAZED_TERRACOTTA_BASE + 15, GLAZED_TERRACOTTA_END);
@@ -5471,7 +5736,7 @@ mod v112_tests {
             assert!(PICKER_BLOCKS.contains(&b), "picker missing {b}");
         }
         assert!(TILE_MAX >= TILE_ILLUSIONER, "1.12 tiles within the atlas guard");
-        assert_eq!(PICKER_BLOCKS.len(), 391);
+        assert_eq!(PICKER_BLOCKS.len(), 395);
         // the V9 + V10 windows are all present (the picker-gap fix)
         for want in [SEA_PICKLE, CONDUIT, SPAWN_EGG_TURTLE, BAMBOO, CAMPFIRE, BARREL, SPAWN_EGG_FOX, STICK, CHARCOAL] {
             assert!(PICKER_BLOCKS.contains(&want), "picker missing {want}");
@@ -5537,8 +5802,8 @@ mod v114_tests {
             "unlit tile"
         );
         // bounds + window shape
-        assert_eq!(BLOCK_COUNT, 432);
-        assert_eq!(STATE_COUNT, 698);
+        assert_eq!(BLOCK_COUNT, 440);
+        assert_eq!(STATE_COUNT, 716);
         assert_eq!(V10_COUNT, 13);
         assert_eq!(BAMBOO, 417);
         assert_eq!(CHARCOAL, 425);
@@ -5639,7 +5904,94 @@ mod v114_tests {
         assert!(TILE_MAX >= TILE_LILY_OF_THE_VALLEY, "flower tiles within the atlas guard");
         // bounds + window shape
         assert_eq!(V11_COUNT, 9);
-        assert_eq!(BLOCK_COUNT, 432);
-        assert_eq!(STATE_COUNT, 698);
+        assert_eq!(BLOCK_COUNT, 440);
+        assert_eq!(STATE_COUNT, 716);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 1.15 bracket tests (Buzzy Bees, live 2026-09-08)
+// ---------------------------------------------------------------------------
+#[cfg(test)]
+mod v115_tests {
+    use super::*;
+
+    /// the V12 window (ids 432..=439, states 698..=715): hive levels
+    /// fold + re-encode; the honey/honeycomb identity states; the item
+    /// states 1:1 (all VERIFIED w/Bee, w/Beehive, w/Bee_nest,
+    /// w/Honey_Block, w/Honey_Bottle, w/Honeycomb - the research
+    /// record docs/research/phase-v115-1.15-research.md)
+    #[test]
+    fn v115_v12_registry_window() {
+        // hive honey_level roundtrip: every level 0..=5 on both blocks
+        for lvl in 0u8..=5 {
+            let ns = hive_state(BEE_NEST, lvl);
+            let hs = hive_state(BEEHIVE, lvl);
+            assert_eq!(honey_level(ns), lvl, "nest level {lvl}");
+            assert_eq!(honey_level(hs), lvl, "hive level {lvl}");
+            assert_eq!(state_block(ns), BEE_NEST);
+            assert_eq!(state_block(hs), BEEHIVE);
+            assert!(is_v12_state(ns) && is_v12_state(hs));
+        }
+        // defaults: level 0 for both; the identity + item states 1:1
+        for (b, s) in [
+            (BEE_NEST, V12_STATE_BASE),
+            (BEEHIVE, V12_STATE_BASE + 6),
+            (HONEY_BLOCK, V12_STATE_BASE + 12),
+            (HONEYCOMB_BLOCK, V12_STATE_BASE + 13),
+            (HONEYCOMB, V12_STATE_BASE + 14),
+            (HONEY_BOTTLE, V12_STATE_BASE + 15),
+            (SHEARS, V12_STATE_BASE + 16),
+            (SPAWN_EGG_BEE, V12_STATE_BASE + 17),
+        ] {
+            assert_eq!(default_state(b), s, "block {b} default state");
+            assert_eq!(state_block(s), b, "state {s} folds back");
+        }
+        // the harvest gate: only honey_level 5 is full
+        assert!(!hive_full(hive_state(BEEHIVE, 4)));
+        assert!(hive_full(hive_state(BEEHIVE, 5)));
+        assert!(hive_full(hive_state(BEE_NEST, 5)));
+        assert!(!hive_full(hive_state(BEE_NEST, 4)));
+        assert!(!hive_full(V12_STATE_BASE + 12), "honey block is not a hive");
+        // the F3 targeted-block property lines
+        assert_eq!(state_description(hive_state(BEE_NEST, 3)), "Bee Nest[honey_level=3]");
+        assert_eq!(state_description(hive_state(BEEHIVE, 5)), "Beehive[honey_level=5]");
+        // solidity classes: nest/hive/honeycomb-block solid-opaque;
+        // honey solid but translucent (the JE partial row); the four
+        // items are cross-sprited item-blocks
+        assert!(is_solid(BEE_NEST) && is_opaque(BEE_NEST));
+        assert!(is_solid(BEEHIVE) && is_opaque(BEEHIVE));
+        assert!(is_solid(HONEY_BLOCK) && !is_opaque(HONEY_BLOCK));
+        assert!(is_solid(HONEYCOMB_BLOCK) && is_opaque(HONEYCOMB_BLOCK));
+        for it in [HONEYCOMB, HONEY_BOTTLE, SHEARS, SPAWN_EGG_BEE] {
+            assert!(is_item_block(it), "item {it}");
+            assert!(is_cross(it), "item {it} cross sprite");
+        }
+        // the bee egg decodes to mob kind 41
+        assert_eq!(egg_mob(SPAWN_EGG_BEE), Some(41));
+        assert!(is_spawn_egg(SPAWN_EGG_BEE));
+        // the placeables are picker blocks; the items are not
+        for want in [BEE_NEST, BEEHIVE, HONEY_BLOCK, HONEYCOMB_BLOCK] {
+            assert!(PICKER_BLOCKS.contains(&want), "picker missing {want}");
+        }
+        for no in [HONEYCOMB, HONEY_BOTTLE, SHEARS, SPAWN_EGG_BEE] {
+            assert!(!PICKER_BLOCKS.contains(&no), "item {no} is not a picker block");
+        }
+        // names (the F3 plain-name lines + the item hotbar)
+        assert_eq!(name(BEE_NEST), "Bee Nest");
+        assert_eq!(name(BEEHIVE), "Beehive");
+        assert_eq!(name(HONEY_BLOCK), "Honey Block");
+        assert_eq!(name(HONEYCOMB_BLOCK), "Honeycomb Block");
+        assert_eq!(name(HONEYCOMB), "Honeycomb");
+        assert_eq!(name(HONEY_BOTTLE), "Honey Bottle");
+        assert_eq!(name(SHEARS), "Shears");
+        // tiles within the atlas guard
+        assert!(TILE_MAX >= TILE_MOB_BEE, "bee sprite within the atlas guard");
+        assert!(TILE_MAX >= TILE_BEEHIVE_FRONT_HONEY, "honey front within the atlas guard");
+        // bounds + window shape
+        assert_eq!(V12_COUNT, 18);
+        assert_eq!(BLOCK_COUNT, 440);
+        assert_eq!(STATE_COUNT, 716);
+        assert_eq!(PICKER_BLOCKS.len(), 395);
     }
 }

@@ -3,6 +3,7 @@
 
 pub mod anvil;
 pub mod beacon;
+pub mod bees;
 pub mod brewing;
 pub mod campfire;
 pub mod effects;

@@ -89,6 +89,12 @@ pub struct Sim {
     /// mobs (Phase 2): spawn/AI/physics + arrows; hits, deaths and
     /// explosions queue here for the game layer to drain
     pub mobs: vc_gameplay::mobs::MobSystem,
+    /// 1.15 (Buzzy Bees): the hive registry + release/work clocks
+    /// (world writes + bee releases queue out for the game layer)
+    pub hives: vc_gameplay::bees::HiveSystem,
+    /// 1.15: the day flag (set by the game layer from the sun state —
+    /// drives the bees' night-return + the hives' day-release)
+    pub is_day: bool,
     /// Phase E1: the ender-dragon fight (End dimension only)
     pub dragon: vc_gameplay::dragon::DragonSystem,
     /// Phase E2: the wither fight (summonable in any dimension)
@@ -136,6 +142,8 @@ impl Sim {
             villagers: vc_gameplay::villagers::Villagers::new(seed ^ 0x315_7A9),
             spawners: vc_gameplay::spawners::Spawners::new(seed ^ 0x5C_0DE5),
             mobs: vc_gameplay::mobs::MobSystem::new(seed ^ 0x5C_0DE),
+            hives: vc_gameplay::bees::HiveSystem::new(seed ^ 0xBE_E5),
+            is_day: true,
             dragon: vc_gameplay::dragon::DragonSystem::new(seed ^ 0xDA60_0005),
             wither: vc_gameplay::wither::WitherSystem::new(seed ^ 0xB055_0002),
             beacons: std::collections::HashMap::new(),
@@ -360,7 +368,13 @@ impl Sim {
         // deaths, and explosions queue inside for game.rs to drain (the
         // game layer owns damage gating, drops, and world edits).
         // (Phase 6 §26: AI frozen + spawning clamped inside the ring)
+        // 1.15: the day flag feeds the bee AI (night-return) ...
+        self.mobs.is_day = self.is_day;
         self.mobs.tick(world, scope.center, scope.radius);
+        // ... and the hive system (lazy registration + the work
+        // clocks + the day-release gate). Honey-level writes and bee
+        // releases queue for the game layer.
+        self.hives.tick(world, scope.center, scope.radius, self.is_day);
 
         // 6b. spawners (Phase 5 §27): dungeon block entities — activation
         // gate, delay, 4-attempt cycles, 6-mob cap

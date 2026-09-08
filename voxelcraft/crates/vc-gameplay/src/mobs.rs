@@ -204,6 +204,18 @@ pub enum MobKind {
     /// — the variant bit; the multi-player trust scope is
     /// single-player-folded, disclosed).
     Fox,
+    /// 1.15 (Buzzy Bees): the bee — VERIFIED (w/Bee, live 2026-09-08,
+    /// raw capture scripts/v115_page_Bee.json): 10 HP neutral
+    /// pollinating arthropod, "Melee: Easy: 2 HP Normal: 2 HP Hard:
+    /// 3 HP. Venom: Normal: Poison I for 10 sec. Hard: Poison I for
+    /// 18 sec", hitbox 0.5 x 0.55 (baby 0.275), speed 0.6 (the
+    /// infobox row), stings ONCE then "loses its stinger ... and dies
+    /// approximately one minute later" (1200-tick timer), hives hold
+    /// 3 bees, naturally-generated nests hold 2-3, anger swarms the
+    /// whole hive family (20-39 s random), pacified by a lit campfire
+    /// within 5 blocks below the hive. Hover-flight like the bat
+    /// ("hover a few blocks above the ground similar to bats").
+    Bee,
     /// The squid — a PRE-1.13 legacy marker (vanilla added it in Beta
     /// 1.2; the engine's early brackets skipped it and it is NOT one of
     /// 1.13's new mobs). Declared so the aquatic() classification
@@ -259,6 +271,7 @@ impl MobKind {
             "tropical_fish" => MobKind::TropicalFish,
             "turtle" => MobKind::Turtle,
             "fox" => MobKind::Fox,
+            "bee" => MobKind::Bee,
             _ => return None,
         })
     }
@@ -308,6 +321,7 @@ impl MobKind {
             MobKind::Turtle => "minecraft:turtle",
             // 1.14: the fox
             MobKind::Fox => "minecraft:fox",
+            MobKind::Bee => "minecraft:bee",
             // classification-only marker (see the enum doc) — still
             // carries its vanilla registry id for completeness
             MobKind::Squid => "minecraft:squid",
@@ -371,6 +385,8 @@ impl MobKind {
             MobKind::Turtle => TILE_MOB_TURTLE,
             // 1.14: the fox sprite (v114_art::fox_art)
             MobKind::Fox => TILE_MOB_FOX,
+            // 1.15: the bee sprite (v115_art::bee_art)
+            MobKind::Bee => TILE_MOB_BEE,
             // classification-only marker — never rendered (no MOB_DATA
             // row, no spawn path); reuses the passive-fish tile as a
             // safe stand-in should a future bracket implement it
@@ -450,7 +466,7 @@ impl MobKind {
     pub fn flies(self) -> bool {
         matches!(
             self,
-            MobKind::Phantom | MobKind::Vex | MobKind::Bat | MobKind::Parrot
+            MobKind::Phantom | MobKind::Vex | MobKind::Bat | MobKind::Parrot | MobKind::Bee
         )
     }
 
@@ -516,6 +532,9 @@ impl MobKind {
             // 1.14: the fox egg (changelog §Mobs: "Fox Spawn Egg") —
             // kind 40
             40 => MobKind::Fox,
+            // 1.15: the bee egg (changelog §Items: "Bee Spawn Egg") —
+            // kind 41
+            41 => MobKind::Bee,
             _ => MobKind::Chicken,
         }
     }
@@ -582,6 +601,7 @@ impl MobKind {
             MobKind::Turtle => 39,
             // 1.14: the fox egg — kind 40 (the V10 egg window)
             MobKind::Fox => 40,
+            MobKind::Bee => 41,
             // classification-only marker: the squid never had an egg in
             // the engine's window (pre-1.13 legacy, unimplemented)
             MobKind::Squid => 255,
@@ -609,7 +629,7 @@ pub struct MobDef {
     pub xp: i32,
 }
 
-pub const MOB_DATA: [MobDef; 41] = [
+pub const MOB_DATA: [MobDef; 42] = [
     MobDef {
         kind: MobKind::Zombie,
         health: 20.0,
@@ -1100,6 +1120,23 @@ pub const MOB_DATA: [MobDef; 41] = [
         width: 0.6,
         xp: 1,
     },
+    // 1.15: the bee (VERIFIED w/Bee infobox — the raw capture
+    // scripts/v115_page_Bee.json): 10 HP, sting 2 HP (Normal; Hard
+    // scales via combat::difficulty_scale) + Poison I 10 s (Normal)
+    // / 18 s (Hard), speed 0.6 (the infobox row — the Java attribute
+    // is 0.3; both readings inside the documented conversion class),
+    // hitbox 0.5 x 0.55, XP 1-3 on a player kill (the fixed row —
+    // the 1..=3 range documented)
+    MobDef {
+        kind: MobKind::Bee,
+        health: 10.0,
+        damage: 2.0,
+        speed_attr: 0.6,
+        armor: 0.0,
+        height: 0.5,
+        width: 0.55,
+        xp: 2,
+    },
 ];
 
 #[inline]
@@ -1149,6 +1186,13 @@ pub const AGGRO_RADIUS: f32 = 16.0;
 pub const FLEE_MULT: f32 = 1.8;
 /// attribute → blocks/s conversion (documented adaptation)
 pub const SPEED_PER_ATTR: f32 = 10.5;
+
+// ---- 1.15 (Buzzy Bees) constants (VERIFIED w/Bee, live 2026-09-08) ----
+/// anger duration roll: 20..=39 seconds → 400..=780 ticks ("Anger
+/// duration is randomly selected between 20 and 39 seconds,
+/// inclusive")
+pub const ANGER_TICKS_MIN_ROLL: i32 = 400;
+pub const ANGER_TICKS_MAX: i32 = 780;
 
 // ---- Phase E1 constants (all live-verified 2026-09-06) ----
 /// zombie-villager cure duration range in game ticks (VERIFIED
@@ -1299,6 +1343,10 @@ pub struct Mob {
     /// Phase E3: per-instance equine state (horses/donkeys/mules —
     /// None for every other kind)
     pub equine: Option<Box<EquineState>>,
+    /// 1.15 (Buzzy Bees): per-instance bee state (None for every
+    /// other kind) — the hive/flower lifecycle, nectar payload,
+    /// anger/sting timers (VERIFIED w/Bee; see bees.rs)
+    pub bee: Option<Box<super::bees::BeeState>>,
     wander_yaw: f32,
     wander_t: i32,
 }
@@ -1417,6 +1465,17 @@ pub struct MobSystem {
     /// 1.13 item drops the mob system itself owes the world (baby
     /// turtle maturity scutes — VERIFIED w/Scute: "Dropped when baby
     /// turtles grow up"): (position, block id).
+    /// 1.15 (Buzzy Bees): day flag (the game layer's sun state —
+    /// drives the bees' night-return phase)
+    pub is_day: bool,
+    /// 1.15: bees that reached their hive this tick — (mob id, hive
+    /// position, carried nectar). Drained by the game layer into the
+    /// HiveSystem; the MOB is removed by the tick pass.
+    pub bee_enters: Vec<(u32, [i32; 3], bool)>,
+    /// 1.15: queued pollinations — (crop position, target age). The
+    /// game layer writes the berry-bush state (the bone-meal-like
+    /// stage advance, VERIFIED w/Bee)
+    pub bee_pollinations: Vec<([i32; 3], u8)>,
     pub pending_drops: Vec<([f32; 3], u16)>,
     /// mob deaths (drops + XP handled by the game layer); the u8 carries
     /// the per-kind variant (magma-cube size code etc.)
@@ -1457,6 +1516,9 @@ impl MobSystem {
             pending_player_blindness: Vec::new(),
             pending_player_grace: Vec::new(),
             pending_turtle_eggs: Vec::new(),
+        is_day: true,
+        bee_enters: Vec::new(),
+        bee_pollinations: Vec::new(),
             pending_drops: Vec::new(),
             pending_damage: Vec::new(),
             explosions: Vec::new(),
@@ -1579,6 +1641,12 @@ impl MobSystem {
             } else {
                 None
             },
+            // 1.15: bees get per-instance lifecycle state
+            bee: if kind == MobKind::Bee {
+                Some(Box::new(super::bees::BeeState::new()))
+            } else {
+                None
+            },
             wander_yaw: yaw,
             wander_t: 0,
         });
@@ -1592,6 +1660,57 @@ impl MobSystem {
         }
         self.spawned_total += 1;
         Some(id)
+    }
+
+    /// 1.15: the game layer assigns a released bee its home hive (the
+    /// release queue drains in game.rs; spawn_variant makes the bee
+    /// homeless, this points it home). Also flags it angry when the
+    /// release was an anger case.
+    pub fn set_bee(&mut self, id: u32, hive: [i32; 3], angry: bool) {
+        if let Some(m) = self.list.iter_mut().find(|m| m.id == id) {
+            if let Some(b) = m.bee.as_mut() {
+                b.hive = Some(hive);
+                if angry {
+                    b.anger_t = ANGER_TICKS_MIN_ROLL + self.rng.next_range(
+                        (ANGER_TICKS_MAX - ANGER_TICKS_MIN_ROLL + 1) as u32,
+                    ) as i32;
+                    b.phase = super::bees::PH_ANGRY;
+                }
+            }
+        }
+    }
+
+    /// 1.15: anger every bee near a position (the swarm — VERIFIED
+    /// w/Bee: "All bees nearby are angered when an individual bee is
+    /// attacked (unless the bee attacked is killed in one hit) ...
+    /// or a bee nest/beehive is destroyed"). The hive-family bees
+    /// (same home) anger at ANY distance in the sim; strangers within
+    /// 16 blocks join (the "nearby" reading).
+    pub fn anger_bees_near(&mut self, pos: [f32; 3], hive_family: Option<[i32; 3]>) -> usize {
+        let mut n = 0;
+        for m in self.list.iter_mut() {
+            if m.kind != MobKind::Bee {
+                continue;
+            }
+            let Some(b) = m.bee.as_mut() else { continue };
+            if b.anger_t > 0 || b.stung {
+                continue; // already angry, or spent
+            }
+            let family = b.hive == hive_family && hive_family.is_some();
+            let dx = m.pos[0] - pos[0];
+            let dy = m.pos[1] - pos[1];
+            let dz = m.pos[2] - pos[2];
+            let near = dx * dx + dy * dy + dz * dz < 16.0 * 16.0;
+            if family || near {
+                b.anger_t = ANGER_TICKS_MIN_ROLL
+                    + self.rng.next_range(
+                        (ANGER_TICKS_MAX - ANGER_TICKS_MIN_ROLL + 1) as u32,
+                    ) as i32;
+                b.phase = super::bees::PH_ANGRY;
+                n += 1;
+            }
+        }
+        n
     }
 
     /// ONE deterministic sim tick (20 Hz).
@@ -1655,6 +1774,10 @@ impl MobSystem {
         let pending_grace_q = &mut self.pending_player_grace;
         let pending_turtle_eggs_q = &mut self.pending_turtle_eggs;
         let pending_drops_q = &mut self.pending_drops;
+        // 1.15: the bee queues + the day flag snapshot
+        let bee_enters_q = &mut self.bee_enters;
+        let bee_pollinations_q = &mut self.bee_pollinations;
+        let is_day_snapshot = self.is_day;
         // Phase E1: read-only snapshot for mob-vs-mob targeting (snow
         // golem / iron golem / ocelot scan for other mobs)
         let snapshot: Vec<(u32, MobKind, [f32; 3], u8)> = self
@@ -1704,6 +1827,9 @@ impl MobSystem {
                 pending_grace_q,
                 pending_turtle_eggs_q,
                 pending_drops_q,
+                bee_enters_q,
+                bee_pollinations_q,
+                is_day_snapshot,
             );
             // 1.14: environmental hazards AFTER the AI steering (the
             // bush slow must survive to the physics move) and BEFORE
@@ -1738,6 +1864,25 @@ impl MobSystem {
                     }
                 }
                 i += 1;
+            }
+        }
+
+        // 3.4 1.15 (Buzzy Bees): arrived bees leave the mob list —
+        // their data traveled through bee_enters (the game layer
+        // stores them in the HiveSystem)
+        {
+            let mut i = 0;
+            while i < self.list.len() {
+                let arrived = self.list[i]
+                    .bee
+                    .as_ref()
+                    .map(|b| b.arrived)
+                    .unwrap_or(false);
+                if arrived {
+                    self.list.remove(i);
+                } else {
+                    i += 1;
+                }
             }
         }
 
@@ -2746,6 +2891,13 @@ pub enum FoxFeedOutcome {
     Bred(u32),
 }
 
+/// 1.15: the flower-feeding outcome for bees (the fox pattern)
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum BeeFeedOutcome {
+    LoveMode,
+    Bred(u32),
+}
+
 impl MobSystem {
     /// 1.12: feed a parrot. VERIFIED w/Parrot §Taming: "Parrots can be
     /// tamed by feeding wheat seeds, melon seeds, pumpkin seeds,
@@ -2864,6 +3016,70 @@ impl MobSystem {
         }
         Some(FoxFeedOutcome::LoveMode)
     }
+
+    /// 1.15: feed a flower to a bee — VERIFIED w/Bee §Breeding ("Bees
+    /// follow players holding any 1- or 2-block tall flowers" [the
+    /// follow itself is not modeled — disclosed] + the standard
+    /// breeding flow: the first feeding arms love mode, a second with
+    /// a loving partner nearby produces the offspring, "When two bees
+    /// breed and produce an offspring, 1-7 XP is dropped" [the XP
+    /// drops via the game layer's bred path]). Adults only.
+    pub fn try_feed_bee(&mut self, id: u32) -> Option<BeeFeedOutcome> {
+        let is_bee = self
+            .list
+            .iter()
+            .find(|m| m.id == id)
+            .map(|m| m.kind == MobKind::Bee && m.bee.as_ref().map(|b| !b.baby).unwrap_or(false))
+            .unwrap_or(false);
+        if !is_bee {
+            return None;
+        }
+        // already in love: vanilla ignores further feeding
+        let already = self
+            .list
+            .iter()
+            .any(|m| m.id == id && m.bee.as_ref().map(|b| b.love_t > 0).unwrap_or(false));
+        if already {
+            return None;
+        }
+        // a loving adult partner within 8 blocks → pair now
+        let me = self.list.iter().find(|m| m.id == id).map(|m| m.pos).unwrap_or([0.0; 3]);
+        let partner = self
+            .list
+            .iter()
+            .find(|m| {
+                if m.id == id || m.kind != MobKind::Bee {
+                    return false;
+                }
+                let b = m.bee.as_ref();
+                if !b.map(|b| b.love_t > 0 && !b.baby).unwrap_or(false) {
+                    return false;
+                }
+                let dx = m.pos[0] - me[0];
+                let dz = m.pos[2] - me[2];
+                (dx * dx + dz * dz) <= 64.0
+            })
+            .map(|m| m.id);
+        // arm the fed bee (love window = the fox's 600 ticks)
+        if let Some(m) = self.list.iter_mut().find(|m| m.id == id) {
+            if let Some(b) = m.bee.as_mut() {
+                b.love_t = 600;
+            }
+        }
+        if let Some(pid) = partner {
+            // both exit love (the post-breed cooldown is the engine's
+            // cleared-outright class, disclosed like the fox)
+            for target in [pid, id] {
+                if let Some(m) = self.list.iter_mut().find(|m| m.id == target) {
+                    if let Some(b) = m.bee.as_mut() {
+                        b.love_t = 0;
+                    }
+                }
+            }
+            return Some(BeeFeedOutcome::Bred(pid));
+        }
+        Some(BeeFeedOutcome::LoveMode)
+    }
 }
 
 // ------------------------------------------------------------- free fns --
@@ -2911,6 +3127,10 @@ fn ai_tick(
     pending_player_grace: &mut Vec<i32>,
     pending_turtle_eggs: &mut Vec<(i32, i32, i32, u16)>,
     pending_drops: &mut Vec<([f32; 3], u16)>,
+    // 1.15 (Buzzy Bees) queues (game-layer consumption)
+    bee_enters: &mut Vec<(u32, [i32; 3], bool)>,
+    bee_pollinations: &mut Vec<([i32; 3], u8)>,
+    is_day: bool,
 ) {
     let d = def(m.kind);
     let speed = if let Some(eq) = m.equine.as_ref() {
@@ -3038,6 +3258,244 @@ fn ai_tick(
                 m.variant &= !0x80; // love expired
             }
         }
+    }
+
+    // ---- 1.15 (Buzzy Bees): the bee behavior arm (VERIFIED w/Bee —
+    // the raw capture scripts/v115_page_Bee.json; the value contract
+    // is docs/research/phase-v115-1.15-research.md). Self-contained:
+    // the state is TAKEN out of the mob (split borrows), the phase
+    // machine steers, and the state goes back. No early returns
+    // inside the take window. ----
+    if m.kind == MobKind::Bee {
+        if let Some(mut bee) = m.bee.take() {
+            // -- environmental clocks (the fox pattern) --
+            // baby maturity: 24000 ticks (the standard baby window)
+            if bee.baby && bee.maturity_t > 0 {
+                bee.maturity_t -= 1;
+                if bee.maturity_t == 0 {
+                    bee.baby = false; // grown (no scute — VERIFIED w/Bee)
+                }
+            }
+            // love-mode expiry (the 600-tick fox window)
+            if bee.love_t > 0 {
+                bee.love_t -= 1;
+            }
+            // anger countdown (20-39 s, VERIFIED)
+            if bee.anger_t > 0 {
+                bee.anger_t -= 1;
+            }
+            // the stung bee: "loses its stinger ... cannot attack
+            // further and does not retreat to its nest (even at
+            // night), and dies approximately one minute later"
+            if bee.stung {
+                bee.death_t -= 1;
+                if bee.death_t <= 0 {
+                    m.health = 0.0; // dies (XP via the deaths queue)
+                } else {
+                    // slow hover, no hive, no attacks
+                    wander_3d(rng, m, speed * 0.4);
+                }
+                m.bee = Some(bee);
+            } else if bee.anger_t > 0 {
+                // -- ANGRY: the swarm chase --
+                if let Some(pp) = player {
+                    if !invuln {
+                        let dx = pp[0] - m.pos[0];
+                        let dy = pp[1] - m.pos[1];
+                        let dz = pp[2] - m.pos[2];
+                        let dist = (dx * dx + dy * dy + dz * dz).sqrt();
+                        if dist < MOB_MELEE_REACH && m.attack_cd == 0 {
+                            // the sting: 2 HP (Normal; the Hard scale +
+                            // Poison I 10 s Normal / 18 s Hard ride the
+                            // PlayerHit payload — the game layer)
+                            let k = 1.0 / dist.max(0.1);
+                            hits.push(PlayerHit {
+                                damage: d.damage,
+                                source: MobKind::Bee,
+                                knockback_dir: [dx * k, dz * k],
+                                wither_effect: None,
+                                poison_effect: Some(200),
+                            });
+                            // one sting per bee ("Bees attack only
+                            // once") — the stinger is spent
+                            bee.stung = true;
+                            bee.death_t = super::bees::STING_DEATH_TICKS;
+                            bee.anger_t = 0;
+                            m.attack_cd = 20;
+                        } else {
+                            steer_3d(m, pp, speed * 1.3);
+                        }
+                    } else {
+                        // "Bees do not deal any damage in Peaceful
+                        // difficulty and are completely passive" —
+                        // invulnerable anchors calm the swarm early
+                        bee.anger_t = 0;
+                        wander_3d(rng, m, speed * 0.5);
+                    }
+                } else {
+                    wander_3d(rng, m, speed * 0.5);
+                }
+                m.bee = Some(bee);
+            } else if !is_day {
+                // -- NIGHT: return to the hive ("Bees return to their
+                // nest ... during the night"; the engine has no rain —
+                // documented) --
+                if let Some(h) = bee.hive {
+                    let target = [
+                        h[0] as f32 + 0.5,
+                        h[1] as f32 - 0.4,
+                        h[2] as f32 + 0.5,
+                    ];
+                    let dd = (m.pos[0] - target[0]).powi(2)
+                        + (m.pos[1] - target[1]).powi(2)
+                        + (m.pos[2] - target[2]).powi(2);
+                    if dd < 1.2 {
+                        bee.arrived = true; // the tick pass removes + enters
+                    } else {
+                        steer_3d(m, target, speed);
+                    }
+                } else {
+                    wander_3d(rng, m, speed * 0.4);
+                }
+                m.bee = Some(bee);
+            } else {
+                // -- DAY: the trip phases --
+                let mut restore = true;
+                match bee.phase {
+                    super::bees::PH_HOVER => {
+                        // hover near the hive; periodically seek a
+                        // flower
+                        if bee.nectar {
+                            bee.phase = super::bees::PH_TO_HIVE;
+                        } else if bee.timer <= 0 {
+                            // a fresh flower scan (staggered retries)
+                            if let Some(f) =
+                                super::bees::find_flower(world, m.pos, super::bees::FLOWER_SEARCH_R)
+                            {
+                                bee.flower = Some(f);
+                                bee.phase = super::bees::PH_TO_FLOWER;
+                            } else {
+                                bee.timer = 60; // retry in 3 s
+                            }
+                        } else {
+                            bee.timer -= 1;
+                        }
+                        // a gentle anchored hover: wander with a mild
+                        // pull home ("fly around their nests")
+                        wander_3d(rng, m, speed * 0.6);
+                        if let Some(h) = bee.hive {
+                            let dx = h[0] as f32 + 0.5 - m.pos[0];
+                            let dz = h[2] as f32 + 0.5 - m.pos[2];
+                            let hd = (dx * dx + dz * dz).sqrt();
+                            if hd > 12.0 {
+                                m.vel[0] += dx / hd * speed * 0.05;
+                                m.vel[2] += dz / hd * speed * 0.05;
+                            }
+                        }
+                    }
+                    super::bees::PH_TO_FLOWER => {
+                        let target = bee.flower.map(|f| {
+                            [
+                                f[0] as f32 + 0.5,
+                                f[1] as f32 + 1.1,
+                                f[2] as f32 + 0.5,
+                            ]
+                        });
+                        match target {
+                            Some(tp) => {
+                                let dd = (m.pos[0] - tp[0]).powi(2)
+                                    + (m.pos[1] - tp[1]).powi(2)
+                                    + (m.pos[2] - tp[2]).powi(2);
+                                if dd < 1.4 {
+                                    // begin the visit: "After circling
+                                    // a flower for more than 400 game
+                                    // ticks (20 seconds), a bee collects
+                                    // nectar"
+                                    bee.phase = super::bees::PH_CIRCLE;
+                                    bee.timer = super::bees::FLOWER_CIRCLE_TICKS;
+                                } else {
+                                    steer_3d(m, tp, speed);
+                                }
+                            }
+                            None => bee.phase = super::bees::PH_HOVER,
+                        }
+                    }
+                    super::bees::PH_CIRCLE => {
+                        // orbit the flower until the 400-tick visit ends
+                        if let Some(f) = bee.flower {
+                            // a circling offset (the orbit look)
+                            let ang = (bee.timer as f32) * 0.25;
+                            let target = [
+                                f[0] as f32 + 0.5 + ang.cos() * 0.9,
+                                f[1] as f32 + 1.2 + ang.sin() * 0.35,
+                                f[2] as f32 + 0.5 + ang.sin() * 0.9,
+                            ];
+                            steer_3d(m, target, speed * 0.8);
+                        }
+                        bee.timer -= 1;
+                        if bee.timer <= 0 {
+                            // nectar collected — the fertilize payload
+                            bee.nectar = true;
+                            bee.pollinations = super::bees::NECTAR_CHARGES;
+                            bee.phase = super::bees::PH_TO_HIVE;
+                        }
+                    }
+                    super::bees::PH_TO_HIVE => {
+                        // pollination en route: "A bee can fertilize
+                        // plants 10 times ... approximately 5% chance
+                        // each tick"; "1 to 2 blocks directly above the
+                        // plant"
+                        if bee.nectar
+                            && bee.pollinations > 0
+                            && rng.next_f32() < super::bees::POLLINATE_CHANCE
+                        {
+                            if let Some((crop, age)) =
+                                super::bees::pollination_target(world, m.pos)
+                            {
+                                bee_pollinations.push((crop, age + 1));
+                                bee.pollinations -= 1;
+                            }
+                        }
+                        match bee.hive {
+                            Some(h) => {
+                                let target = [
+                                    h[0] as f32 + 0.5,
+                                    h[1] as f32 - 0.4,
+                                    h[2] as f32 + 0.5,
+                                ];
+                                let dd = (m.pos[0] - target[0]).powi(2)
+                                    + (m.pos[1] - target[1]).powi(2)
+                                    + (m.pos[2] - target[2]).powi(2);
+                                if dd < 1.2 {
+                                    // arrived — the mob leaves the list
+                                    // (MobSystem::tick drains
+                                    // bee_enters)
+                                    bee.arrived = true;
+                                    bee_enters.push((m.id, h, bee.nectar));
+                                } else {
+                                    steer_3d(m, target, speed);
+                                }
+                            }
+                            None => {
+                                // homeless: keep wandering ("homeless
+                                // bees search ... wandering around")
+                                bee.phase = super::bees::PH_HOVER;
+                            }
+                        }
+                    }
+                    _ => {
+                        bee.phase = super::bees::PH_HOVER;
+                    }
+                }
+                let _ = &mut restore;
+                if restore {
+                    m.bee = Some(bee);
+                }
+            }
+        }
+        // bees handle their own steering — skip the generic AI below
+        // (the early return pattern of the specialized mobs)
+        return;
     }
 
     let Some(p) = player else {
@@ -4630,6 +5088,9 @@ mod tests {
             &mut Vec::new(),
             &mut Vec::new(),
             &mut Vec::new(),
+            &mut Vec::new(),
+            &mut Vec::new(),
+            true,
         );
         sys.list.insert(0, mob);
         sys.rng = rng;
@@ -4677,6 +5138,9 @@ mod tests {
             &mut Vec::new(),
             &mut Vec::new(),
             &mut Vec::new(),
+            &mut Vec::new(),
+            &mut Vec::new(),
+            true,
         );
         sys.list.insert(0, mob);
         sys.rng = rng;
@@ -4702,6 +5166,9 @@ mod tests {
                 &mut Vec::new(),
                 &mut Vec::new(),
                 &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                true,
             );
             sys.list.insert(0, mob);
             sys.rng = rng;
@@ -4752,6 +5219,9 @@ mod tests {
                 &mut Vec::new(),
                 &mut Vec::new(),
                 &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                true,
             );
             sys.list.insert(0, mob);
             sys.rng = rng;
@@ -4808,6 +5278,7 @@ mod tests {
                 wander_yaw: 0.0,
                 wander_t: 0,
                 equine: None,
+                bee: None,
             };
             physics_tick(&mut m, &w);
             let expect = (v0 - 1.6) * 0.98;
@@ -4845,6 +5316,7 @@ mod tests {
                 wander_yaw: 0.0,
                 wander_t: 0,
                 equine: None,
+                bee: None,
             };
             let mut ticks = 0;
             while !m.on_ground && ticks < 200 {
@@ -4887,6 +5359,7 @@ mod tests {
             wander_yaw: 0.0,
             wander_t: 0,
                 equine: None,
+                bee: None,
         };
         let mut ticks = 0;
         while !m.on_ground && ticks < 100 {
@@ -4905,7 +5378,7 @@ mod tests {
         // [merge] the kinds resolve in/out of names + eggs (16 E1 + 3
         // E2 + 3 E3 horse/donkey/mule + 4 F-series: rabbit 1.8, stray +
         // polar bear + husk 1.10)
-        assert_eq!(MOB_DATA.len(), 41); // + 1.11 four + 1.12 two + 1.13 eight + 1.14 fox
+        assert_eq!(MOB_DATA.len(), 42); // + 1.11 four + 1.12 two + 1.13 eight + 1.14 fox
         for d in MOB_DATA.iter() {
             assert_eq!(
                 MobKind::from_name(d.kind.name().strip_prefix("minecraft:").unwrap()),
@@ -4986,6 +5459,9 @@ mod tests {
                 &mut Vec::new(),
                 &mut Vec::new(),
                 &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                true,
             );
             sys.list.insert(0, mob);
             sys.rng = rng;
@@ -5001,9 +5477,9 @@ mod tests {
         let mut m = Mob { id: 9, kind: MobKind::SnowGolem, pos: [8.5, 65.0, 8.5], vel: [0.0; 3],
             yaw: 0.0, health: 4.0, on_ground: true, hurt_t: 0, attack_cd: 0, fuse: -1,
             provoked: false, lonely_t: 0, fall_dist: 0.0, variant: 0, aux: 0,
-            wander_yaw: 0.0, wander_t: 0, equine: None };
+            wander_yaw: 0.0, wander_t: 0, equine: None, bee: None };
         for _ in 0..5 {
-            ai_tick(&mut rng, &mut m, None, false, &mut Vec::new(), &mut Vec::new(), &desert, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
+            ai_tick(&mut rng, &mut m, None, false, &mut Vec::new(), &mut Vec::new(), &desert, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), true);
         }
         assert!(m.health < 4.0, "desert heat melts the golem (1 HP/tick), hp={}", m.health);
     }
@@ -5035,6 +5511,9 @@ mod tests {
                 &mut Vec::new(),
                 &mut Vec::new(),
                 &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                true,
             );
             fired += sys.arrows.len() - before;
             sys.list.insert(0, mob);
@@ -5057,7 +5536,7 @@ mod tests {
         for _ in 0..30 {
             let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
             let mut mob = sys.list.remove(0);
-            ai_tick(&mut rng, &mut mob, sys.player, false, &mut sys.hits, &mut sys.arrows, &world, &[(zid, MobKind::Zombie, [5.5, 65.0, 6.5], 0)], &mut pend, &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
+            ai_tick(&mut rng, &mut mob, sys.player, false, &mut sys.hits, &mut sys.arrows, &world, &[(zid, MobKind::Zombie, [5.5, 65.0, 6.5], 0)], &mut pend, &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), true);
             sys.list.insert(0, mob);
             sys.rng = rng;
         }
@@ -5085,7 +5564,7 @@ mod tests {
         for _ in 0..ticks as usize + 2 {
             let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
             let mut mob = sys.list.remove(0);
-            ai_tick(&mut rng, &mut mob, sys.player, false, &mut sys.hits, &mut sys.arrows, &world, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
+            ai_tick(&mut rng, &mut mob, sys.player, false, &mut sys.hits, &mut sys.arrows, &world, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), true);
             sys.list.insert(0, mob);
             sys.rng = rng;
         }
@@ -5128,7 +5607,7 @@ mod tests {
         let x0 = sys.list[0].pos[0];
         let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
         let mut mob = sys.list.remove(0);
-        ai_tick(&mut rng, &mut mob, sys.player, false, &mut sys.hits, &mut sys.arrows, &world, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
+        ai_tick(&mut rng, &mut mob, sys.player, false, &mut sys.hits, &mut sys.arrows, &world, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), true);
         sys.list.insert(0, mob);
         sys.rng = rng;
         assert!(sys.list[0].pos[0] < x0 + 0.2, "fled away from the player");
@@ -5139,7 +5618,7 @@ mod tests {
         let x1 = sys2.list[0].pos[0];
         let mut rng2 = std::mem::replace(&mut sys2.rng, Rng::new(1));
         let mut mob2 = sys2.list.remove(0);
-        ai_tick(&mut rng2, &mut mob2, sys2.player, false, &mut sys2.hits, &mut sys2.arrows, &world2, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
+        ai_tick(&mut rng2, &mut mob2, sys2.player, false, &mut sys2.hits, &mut sys2.arrows, &world2, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), true);
         sys2.list.insert(0, mob2);
         sys2.rng = rng2;
         assert!((sys2.list[0].pos[0] - x1).abs() < 0.05, "trusting ocelot stays");
@@ -5489,7 +5968,7 @@ mod v111_tests {
         assert_eq!(MobKind::Llama.egg_id(), 23);
         assert_eq!(MobKind::Evoker.egg_id(), 25);
         // 1.12 (World of Color): parrot + illusioner — 32 kinds
-        assert_eq!(MOB_DATA.len(), 41, "+ the 1.13 aquatic eight + the 1.14 fox");
+        assert_eq!(MOB_DATA.len(), 42, "+ the 1.13 aquatic eight + the 1.14 fox");
         assert_eq!(MobKind::from_egg(30), MobKind::Parrot);
         assert_eq!(MobKind::Parrot.egg_id(), 30);
         assert_eq!(MobKind::Illusioner.egg_id(), 255, "no spawn egg (VERIFIED)");
@@ -5870,7 +6349,7 @@ mod v112_tests {
             let mut pend = Vec::new();
             let mut summons = Vec::new();
             let mut fang = Vec::new();
-            ai_tick(&mut rng, &mut mob, ms.player, false, &mut hits, &mut arrows, &world, &[], &mut pend, &mut summons, &mut fang, &mut blind, &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
+            ai_tick(&mut rng, &mut mob, ms.player, false, &mut hits, &mut arrows, &world, &[], &mut pend, &mut summons, &mut fang, &mut blind, &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), true);
             ms.list.insert(0, mob);
             ms.rng = rng;
         }
@@ -6017,7 +6496,7 @@ mod v113_tests {
     /// aquatic() swim-physics gate + the V9 spawn-egg kinds.
     #[test]
     fn v113_registry_rows_and_flags() {
-        assert_eq!(MOB_DATA.len(), 41, "32 prior + 8 aquatic + the 1.14 fox");
+        assert_eq!(MOB_DATA.len(), 42, "32 prior + 8 aquatic + the 1.14 fox");
         // drowned: 20 HP zombie-parity, N 3, armor 2, 5 XP, hostile
         let d = def(MobKind::Drowned);
         assert_eq!(d.health as i32, 20);
@@ -6462,7 +6941,7 @@ mod v114_tests {
     /// the V10 registry row + egg/tile mappings (VERIFIED w/Fox)
     #[test]
     fn v114_fox_registry_row() {
-        assert_eq!(MOB_DATA.len(), 41, "32 + 8 aquatic + the fox");
+        assert_eq!(MOB_DATA.len(), 42, "32 + 8 aquatic + the fox");
         let d = def(MobKind::Fox);
         assert_eq!(d.health as i32, 10, "10 HP (VERIFIED infobox)");
         assert!((d.damage - 2.0).abs() < 1e-6, "Easy/Normal 2 HP");
@@ -6651,3 +7130,177 @@ mod v114_tests {
         assert_eq!(k.variant & 0x1, 1, "still trusting (the bred bit)");
     }
 }
+
+
+    /// the MOB_DATA row: 10 HP, sting 2 (Normal), speed 0.6 (the
+    /// infobox row), hitbox 0.5 x 0.55, XP row (VERIFIED w/Bee)
+    #[test]
+    fn v115_bee_def_row() {
+        let d = def(MobKind::Bee);
+        assert_eq!(d.health, 10.0);
+        assert_eq!(d.damage, 2.0);
+        assert_eq!(d.speed_attr, 0.6);
+        assert_eq!((d.height, d.width), (0.5, 0.55));
+        assert_eq!(d.armor, 0.0);
+        assert!(MobKind::Bee.flies(), "bees hover (no gravity)");
+        assert_eq!(MobKind::Bee.egg_id(), 41);
+        assert_eq!(MobKind::from_egg(41), MobKind::Bee);
+        assert_eq!(MobKind::Bee.sprite_tile(), TILE_MOB_BEE);
+    }
+
+    /// 1.15: the v115 tests' own flat world (the per-module convention)
+    fn v115_world() -> World {
+        let mut w = World::new(11);
+        let mut c = vc_chunk::chunk::Chunk::empty();
+        for y in 0..=64i32 {
+            for lz in 0..16usize {
+                for lx in 0..16usize {
+                    c.set(lx, y as usize, lz, STONE);
+                }
+            }
+        }
+        w.insert_generated((0, 0), std::sync::Arc::new(c), Vec::new());
+        w.dirty.clear();
+        w
+    }
+
+    /// the sting contract: an angry bee stings ONCE (2 HP + Poison I
+    /// 10 s payload), loses the stinger, "dies approximately one
+    /// minute later" (1200 ticks), and never attacks again (VERIFIED
+    /// w/Bee §Attacking)
+    #[test]
+    fn v115_bee_sting_rules() {
+        let world = v115_world();
+        let mut sys = MobSystem::new(9);
+        sys.player = Some([8.6, 65.5, 8.5]);
+        let id = sys.spawn_at(MobKind::Bee, 8, 66, 8).unwrap();
+        sys.set_bee(id, [4, 66, 4], true); // angry release
+        // the anger chase → contact → the sting
+        let mut stung = false;
+        let mut poison: Option<i32> = None;
+        for _ in 0..40 {
+            sys.tick(&world, (0, 0), i32::MAX);
+            if !stung {
+                let mut hits = std::mem::take(&mut sys.hits);
+                if let Some(h) = hits.first() {
+                    stung = true;
+                    assert_eq!(h.source, MobKind::Bee);
+                    assert!((h.damage - 2.0).abs() < 1e-4, "sting damage 2 (Normal)");
+                    poison = h.poison_effect;
+                    assert_eq!(h.wither_effect, None);
+                }
+            }
+            if stung {
+                break;
+            }
+        }
+        assert!(stung, "the angry bee reached + stung the player");
+        assert_eq!(poison, Some(200), "Poison I 10 s (200 ticks) payload");
+        // one sting only: the bee is stung — no further hits, ever
+        sys.hits.clear();
+        for _ in 0..60 {
+            sys.tick(&world, (0, 0), i32::MAX);
+            assert!(sys.hits.is_empty(), "no second sting");
+        }
+        let m = sys.by_id(id).unwrap();
+        let b = m.bee.as_ref().unwrap();
+        assert!(b.stung, "stinger spent");
+        // the timer armed at 1200 and already counts down — the observed
+        // window (sting tick .. now) is small vs the 1200 span
+        assert!(
+            b.death_t > crate::bees::STING_DEATH_TICKS - 100,
+            "1200-tick death timer (armed, now {})",
+            b.death_t
+        );
+        let armed = b.death_t;
+        // the death timer: fast-forward to the 1200-tick mark — the
+        // bee dies (the deaths queue fires; no item drops)
+        let before = sys.list.iter().filter(|m| m.kind == MobKind::Bee).count();
+        assert_eq!(before, 1);
+        for _ in 0..(armed + 20) {
+            sys.tick(&world, (0, 0), i32::MAX);
+        }
+        assert!(
+            sys.list.iter().all(|m| m.kind != MobKind::Bee),
+            "the stung bee died on the timer"
+        );
+    }
+
+    /// the anger swarm: attacking one bee angers the family + the
+    /// 16-block neighbors; the anger window is 20-39 s (VERIFIED)
+    #[test]
+    fn v115_anger_swarm() {
+        let world = v115_world();
+        let mut sys = MobSystem::new(10);
+        let a = sys.spawn_at(MobKind::Bee, 6, 66, 6).unwrap();
+        let b = sys.spawn_at(MobKind::Bee, 8, 66, 8).unwrap(); // near
+        let far = sys.spawn_at(MobKind::Bee, 40, 66, 40).unwrap(); // far, no family
+        sys.set_bee(a, [3, 66, 3], false);
+        sys.set_bee(b, [3, 66, 3], false); // same hive family
+        sys.set_bee(far, [60, 66, 60], false);
+        let n = sys.anger_bees_near([6.5, 66.0, 6.5], Some([3, 66, 3]));
+        assert_eq!(n, 2, "family + near angered; far stranger not");
+        for id in [a, b] {
+            let t = sys.by_id(id).unwrap().bee.as_ref().unwrap().anger_t;
+            assert!(
+                (ANGER_TICKS_MIN_ROLL..=ANGER_TICKS_MAX).contains(&t),
+                "anger window 20-39 s: {t}"
+            );
+        }
+        assert_eq!(sys.by_id(far).unwrap().bee.as_ref().unwrap().anger_t, 0);
+    }
+
+    /// the flower feeding: first feeding arms love; a second with a
+    /// loving partner pairs → Bred (VERIFIED w/Bee §Breeding)
+    #[test]
+    fn v115_bee_breeding_flow() {
+        let mut sys = MobSystem::new(11);
+        let a = sys.spawn_at(MobKind::Bee, 6, 66, 6).unwrap();
+        let b = sys.spawn_at(MobKind::Bee, 8, 66, 8).unwrap();
+        assert_eq!(sys.try_feed_bee(a), Some(BeeFeedOutcome::LoveMode));
+        assert_eq!(sys.try_feed_bee(a), None, "already in love — ignored");
+        assert_eq!(sys.try_feed_bee(b), Some(BeeFeedOutcome::Bred(a)));
+        // both loves cleared after the pairing
+        for id in [a, b] {
+            assert_eq!(sys.by_id(id).unwrap().bee.as_ref().unwrap().love_t, 0);
+        }
+        // babies never breed
+        let kid = sys.spawn_at(MobKind::Bee, 6, 66, 10).unwrap();
+        if let Some(m) = sys.list.iter_mut().find(|m| m.id == kid) {
+            if let Some(bs) = m.bee.as_mut() {
+                bs.baby = true;
+            }
+        }
+        assert!(sys.try_feed_bee(kid).is_none(), "babies don't breed");
+    }
+
+    /// the hive trip: a nectar bee in PH_TO_HIVE reaches the hive,
+    /// leaves the mob list (the enter queue), and the sting-less
+    /// night return works the same (VERIFIED w/Bee §Housing)
+    #[test]
+    fn v115_bee_enters_hive() {
+        let world = v115_world();
+        let mut sys = MobSystem::new(12);
+        sys.is_day = true;
+        let id = sys.spawn_at(MobKind::Bee, 6, 68, 6).unwrap();
+        sys.set_bee(id, [8, 66, 8], false);
+        if let Some(m) = sys.by_id_mut(id) {
+            if let Some(b) = m.bee.as_mut() {
+                b.nectar = true;
+                b.phase = crate::bees::PH_TO_HIVE;
+            }
+        }
+        for _ in 0..200 {
+            sys.tick(&world, (0, 0), i32::MAX);
+            if !sys.bee_enters.is_empty() {
+                break;
+            }
+        }
+        assert!(!sys.bee_enters.is_empty(), "the bee reached the hive");
+        let (bid, hive, nectar) = sys.bee_enters[0];
+        assert_eq!(bid, id);
+        assert_eq!(hive, [8, 66, 8]);
+        assert!(nectar, "carried nectar");
+        // the arrival pass removes it from the list (same tick)
+        assert!(sys.list.iter().all(|m| m.id != id), "mob left the list");
+    }

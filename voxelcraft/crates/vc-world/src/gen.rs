@@ -1335,6 +1335,57 @@ impl TerrainGen {
                     }
                 }
             }
+            // ---- 1.15 (Buzzy Bees): bee nests on generated trees.
+            // VERIFIED w/Bee §Natural generation: oak + birch trees
+            // carry a nest by biome (JE: Plains/Sunflower Plains 5%,
+            // Flower Forest 2%, Forest/Birch Forest/Old Growth Birch
+            // Forest 0.2%; meadow/mangrove/cherry are post-1.16.5
+            // biomes — out of scope). The nest generates holding 2-3
+            // bees — the sim layer registers them lazily on first
+            // approach (deterministic per nest position, see
+            // vc-gameplay bees.rs). ----
+            // the roll is a PER-TREE POSITION hash (the Rng::hash3
+            // fossil pattern) — deterministic per tree and consumes NO
+            // chunk-rng stream draws, so the nest window cannot shift
+            // the downstream flora layout (the golden-determinism
+            // discipline)
+            let nest_roll = Rng::hash3(self.seed ^ 0xBEE5, ox + lx, 0, oz + lz) % 1000;
+            let nest_ok = match biome_here {
+                Biome::Plains | Biome::SunflowerPlains => nest_roll < 50,  // 5%
+                Biome::FlowerForest => nest_roll < 20,                     // 2%
+                Biome::Forest | Biome::BirchForest => nest_roll < 2,       // 0.2%
+                _ => false,
+            };
+            let oak_or_birch =
+                matches!((log, leaf), (OAK_LOG, LEAVES) | (BIRCH_LOG, BIRCH_LEAVES));
+            if nest_ok && oak_or_birch {
+                // a nest cell beside the trunk, mid-canopy height — the
+                // side + height are hash-derived too (no stream draws).
+                // The cell EMBEDS in the canopy (vanilla nests replace
+                // a leaf beside the trunk) — the in-chunk write replaces
+                // AIR or a leaf; border-tree cells going outbound would
+                // need the leaf-replace path that apply_gen_edit only
+                // grants logs, so those drop — disclosed simplification
+                // (~6% of trees sit on a chunk border).
+                let side = (Rng::hash3(self.seed ^ 0xBEE5, ox + lx, 1, oz + lz) % 4) as i32;
+                let (ndx, ndz) = match side {
+                    0 => (1, 0),
+                    1 => (0, 1),
+                    2 => (-1, 0),
+                    _ => (0, -1),
+                };
+                let span = (th.max(2) - 1).max(1) as u64;
+                let ny_off = (Rng::hash3(self.seed ^ 0xBEE5, ox + lx, 2, oz + lz) % span) as i32;
+                let ny = (y0 + 1 + ny_off).clamp(1, 254);
+                let nx = lx + ndx;
+                let nz = lz + ndz;
+                if (0..16).contains(&nx) && (0..16).contains(&nz) {
+                    let cur = chunk.get(nx as usize, ny as usize, nz as usize);
+                    if matches!(cur, AIR | LEAVES | BIRCH_LEAVES) {
+                        chunk.set(nx as usize, ny as usize, nz as usize, BEE_NEST);
+                    }
+                }
+            }
             // dirt under trunk
             if chunk.get(lx as usize, h as usize, lz as usize) == GRASS {
                 chunk.set(lx as usize, h as usize, lz as usize, DIRT);
@@ -1501,26 +1552,36 @@ impl TerrainGen {
                     }
                 }
             };
-            set_dec(
-                &mut chunk,
-                &mut outbound,
-                ox + lx,
-                h + 1,
-                oz + lz,
-                id,
-                false,
-            );
-            // two-block flowers: the upper half rides one block above
-            if tall_top != 0 {
+            // two-block flowers are ATOMIC: both cells must be open —
+            // a lower half under an obstructed top cell would strand a
+            // headless sunflower/lilac (the latent race the 1.15
+            // round's flora test caught; now the pair places only when
+            // both h+1 AND h+2 are air)
+            let tall_ok = tall_top == 0
+                || (h + 2 <= 255
+                    && chunk.get(lx as usize, (h + 2) as usize, lz as usize) == AIR);
+            if tall_ok {
                 set_dec(
                     &mut chunk,
                     &mut outbound,
                     ox + lx,
-                    h + 2,
+                    h + 1,
                     oz + lz,
-                    tall_top,
+                    id,
                     false,
                 );
+                // two-block flowers: the upper half rides one block above
+                if tall_top != 0 {
+                    set_dec(
+                        &mut chunk,
+                        &mut outbound,
+                        ox + lx,
+                        h + 2,
+                        oz + lz,
+                        tall_top,
+                        false,
+                    );
+                }
             }
         }
 
@@ -6090,5 +6151,110 @@ mod v113_tests {
                 }
             }
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 1.15 bracket tests (Buzzy Bees, live 2026-09-08 — the v115_page_*
+// captures; docs/research/phase-v115-1.15-research.md)
+// ---------------------------------------------------------------------------
+#[cfg(test)]
+mod v115_nest_tests {
+    use super::*;
+    use crate::world::World;
+
+    fn flat_world() -> World {
+        let mut w = World::new(11);
+        let mut c = Chunk::empty();
+        for y in 0..=64i32 {
+            for lz in 0..16usize {
+                for lx in 0..16usize {
+                    c.set(lx, y as usize, lz, STONE);
+                }
+            }
+        }
+        w.insert_generated((0, 0), std::sync::Arc::new(c), Vec::new());
+        w.dirty.clear();
+        w
+    }
+
+    fn find_biome(g: &TerrainGen, b: Biome) -> (i32, i32) {
+        for cz in -60..60 {
+            for cx in -60..60 {
+                let (chunk, _) = g.generate_chunk(cx, cz, Vec::new());
+                if Biome::from_u8(chunk.biome[8 * 16 + 8]) == b {
+                    return (cx, cz);
+                }
+            }
+        }
+        panic!("biome {} not found", b.name());
+    }
+
+    /// 1.15 (Buzzy Bees): bee nests generate on oak/birch trees at the
+    /// JE biome chances (plains/sunflower 5%, flower forest 2%,
+    /// forest-family 0.2% — VERIFIED w/Bee §Natural generation). The
+    /// rolls are per-tree POSITION hashes (no rng-stream draws), so
+    /// the flora layout is unshifted. The census over a 12x12-chunk
+    /// plains region: at 5% per tree with ~0-2 trees/chunk the count
+    /// must be > 0 and every nest must SIT BESIDE A TRUNK at the
+    /// documented band.
+    #[test]
+    fn v115_bee_nests_on_plains_trees() {
+        let g = TerrainGen::new(1234);
+        let (cx, cz) = find_biome(&g, Biome::Plains);
+        let mut nests = 0usize;
+        let mut trees = 0usize;
+        for dcx in 0..12 {
+            for dcz in 0..12 {
+                let (chunk, _) = g.generate_chunk(cx + dcx, cz + dcz, Vec::new());
+                for i in 0..CHUNK_LEN {
+                    let b = chunk.get_idx(i);
+                    if b == OAK_LOG || b == BIRCH_LOG {
+                        trees += 1;
+                    } else if b == BEE_NEST {
+                        nests += 1;
+                        // the nest sits beside a trunk: at least one of
+                        // the 4 horizontal neighbors at the same height
+                        // is a log
+                        let x = (i & 0x0F) as i32;
+                        let z = ((i >> 4) & 0x0F) as i32;
+                        let y = (i >> 8) as i32;
+                        let beside_trunk = [(1, 0), (-1, 0), (0, 1), (0, -1)].iter().any(
+                            |(dx, dz)| {
+                                let nx = x + dx;
+                                let nz = z + dz;
+                                (0..16).contains(&nx)
+                                    && (0..16).contains(&nz)
+                                    && matches!(
+                                        chunk.get(nx as usize, y as usize, nz as usize),
+                                        OAK_LOG | BIRCH_LOG
+                                    )
+                            },
+                        );
+                        assert!(beside_trunk, "nest at ({x},{y},{z}) beside a trunk");
+                    }
+                }
+            }
+        }
+        assert!(trees > 40, "the census region has trees (got {trees})");
+        assert!(nests > 0, "the 5% plains roll produces nests (got {nests} on {trees} trees)");
+        // the observed rate stays inside the wide binomial window
+        let rate = nests as f32 / trees.max(1) as f32;
+        assert!(rate < 0.25, "the nest rate stays plausible ({rate:.3})");
+    }
+
+    /// the honey_level blockstate roundtrips through the world: a nest
+    /// placed at level 5 reads back 5 (the V12 window contract from
+    /// the blocks side, exercised through the world API)
+    #[test]
+    fn v115_hive_state_roundtrip_in_world() {
+        let mut w = flat_world();
+        use vc_blocks::blocks::{honey_level, hive_full, hive_state, BEE_NEST, BEEHIVE};
+        w.set_block_state(8, 70, 8, hive_state(BEE_NEST, 5));
+        w.set_block_state(10, 70, 8, hive_state(BEEHIVE, 3));
+        assert_eq!(honey_level(w.get_state(8, 70, 8)), 5);
+        assert!(hive_full(w.get_state(8, 70, 8)));
+        assert_eq!(honey_level(w.get_state(10, 70, 8)), 3);
+        assert!(!hive_full(w.get_state(10, 70, 8)));
     }
 }

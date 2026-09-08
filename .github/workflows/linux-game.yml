@@ -115,7 +115,7 @@ jobs:
           set -euo pipefail
           set +e
           timeout 180 xvfb-run -a -s "-screen 0 1280x720x24" \
-            env WGPU_BACKEND=Vulkan E2E_V114=1 \
+            env WGPU_BACKEND=Vulkan E2E_V114=1 E2E_V115=1 \
             "./$BIN_NAME" --smoke --debug 2>&1 | tee smoke.log
           CODE=$?
           set -e
@@ -157,6 +157,15 @@ jobs:
           grep -q 'f3-corn="Cornflower" f3-lily="Lily of the Valley"' smoke.log
           grep -q "e2e: v114c flowers planted=true f3-corn" smoke.log
           grep -q "blue-dye=true white-dye=true instant-break=true" smoke.log
+          # 1.15 (Buzzy Bees) regression guard: the hive lifecycle ran at
+          # world entry (level states fold + re-encode, all five crafts
+          # resolve, the nectar bee entered the hive, worked 2400 ticks,
+          # exited with the honey bump, the lit campfire pacifies, the
+          # anger swarm arms)
+          grep -q "e2e: v115 hive level0=0 level5=5 full=true" smoke.log
+          grep -q "crafts=true" smoke.log
+          grep -q "lifecycle=true" smoke.log
+          grep -q "campfire-pacify=true" smoke.log
 
           # the vanilla settings-tree E2E: click through Options → Video /
           # Engine / Packs / Accessibility via the REAL input path and

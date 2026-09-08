@@ -2338,3 +2338,115 @@ and the updated registry bounds), wasm32 lib check clean, release
 profile clean. Local checks ran with `--no-default-features` (the
 sandbox lacks the ALSA dev headers for the rodio backend; CI builds
 the full audio path — the audio feature is untouched this round).
+
+---
+
+## Session 2026-09-08 (b) — F3 vanilla-look overhaul, --debug raw log, verification sweep
+
+Task ID: 1
+Agent: main (Z)
+Task: user asked to (a) verify everything previously built still
+works, (b) add a debugging switch to ALL versions ("attach --debug to
+activate it in the terminal to see the log"), (c) make the F3 overlay
+look like the real vanilla version "everything including the
+placement, font" (clean-room), same across versions, and (d) continue
+the main job.
+
+**Verification sweep (previous work all confirmed live):** GitHub
+Actions API: CI + Linux Game (single file) + Build WASM all green on
+the head commit 34a02a0 (the 1.14 nature half). Full workspace test
+suite re-run: **529/529 green** (527 + 2 new this session). wasm32
+lib check clean. Local end-to-end lavapipe smoke re-established in
+this sandbox (see below) and passes: first-run profile extraction,
+intro 2.66 s, title → worldselect → create → loading → game, pointer
+ladder (confined), in-game click, e2e v114 campfire/barrel/bush/fox,
+F3 liveness pair (two PNG dumps differ), exit 0.
+
+**F3 vanilla-look overhaul (the "placement, font" round):** the
+overlay's VALUES were already live (previous session); what still
+separated it from the vanilla 1.16.5 reference look was the TYPE
+RENDERING: the shared UI font is smallcaps (a-z remap to the A-Z
+slots, fixed 6 px advance) so F3 rendered ALL-CAPS at half the UI
+text size with 2 px gaps between the per-line strips. This round:
+- FONT extended 7 → **8 rows** (baseline row 6, descender row 7 —
+  vanilla font metrics; all existing smallcaps text unchanged, the
+  extra row is empty for every non-descender glyph)
+- the a-z slots now hold **true lowercase shapes** (x-height rows
+  2..6, ascenders 0..6, descenders 2..7; narrow b/d/h/n/u/p/q arches,
+  1-px i, footed l/t) — read ONLY by the new case renderer; the
+  smallcaps remap in text()/text_flat()/text_splash() is untouched so
+  the rest of the UI renders exactly as before
+- new `text_flat_case`/`text_width_case`: true-case, flat, and a
+  per-glyph VARIABLE advance (ink-extent width + 1; space 3) so
+  lowercase packs at vanilla density; '∞' (the fps line's unlimited
+  framerate) gets a dedicated 5-wide clean-room glyph
+- `debug()` restyled to the vanilla DebugHud metrics: per-line
+  0x90505050 strips now **CONTIGUOUS** (pitch == strip height —
+  vanilla stacks them seamlessly), flat **0xE0E0E0** text at the
+  standard UI font size (scale 2 — vanilla uses the same font as
+  every label; the old scale-1 was half size), 1 px strip padding,
+  left column strip x=2/text x=3, right column **right-aligned** to a
+  3 px margin, first strip at y=2; blank spacer rows advance the
+  pitch without painting (vanilla group gaps)
+- F3+Q help box restyled to the same case font; frame-time graph
+  repositioned for the 18 px pitch
+- tests: `f3_overlay_is_two_columns_with_per_line_strips` rewritten
+  for the new metrics (contiguity seam assertion, 0xE0E0E0 flat-text
+  check, right-margin check) + new
+  `f3_case_font_is_lowercase_with_descenders` (descender row must
+  paint; case 'p' ≠ smallcaps 'P'; 'i' 2 px advance; lowercase line
+  narrower than its smallcaps twin; ∞ paints)
+- overlay VLM-verified against the vanilla layout (two columns, right
+  column right-aligned, lowercase, contiguous strips, descenders
+  below baseline, no clipping); `docs/screenshots/f3-vanilla-live.png`
+  regenerated. The ∞ glyph's 5-px weave reads as the ASCII
+  approximation "~" (a full loop set is unreadable at 5 px —
+  disclosed here; a 3-row variant read worse, as an asterisk)
+
+**--debug (the raw diagnostic log, all versions):**
+- `vc-render`: `set_verbose`/`is_verbose` (AtomicBool, default OFF) +
+  `report_debug_log(cat, msg)` → `[t+  12.3s][cat] msg` through the
+  existing boot-log sinks (native stderr + logs/latest.log; wasm JS
+  console), timestamps anchored when the flag is set; unit test
+  `verbose_flag_defaults_off_and_toggles`
+- native: `--debug` parsed in main.rs before any boot line; `--help`
+  / `-h` prints a usage card (no-args / --debug / --smoke / --benchmark)
+- wasm: `?debug`/`?debug=1`/`?debug=true` URL param (read via the
+  same js interop as boot_log — no new web-sys features);
+  play.html's voxelcraftLog passes the raw [t+ lines un-prefixed
+- game.rs instrumentation (all zero-cost when the flag is off):
+  [screen] every set_screen transition; [input] every click routed
+  with screen + coords + what's under it (crosshair target block
+  in-game, widget id in menus — the input-regression detector);
+  [world] world entry (name/seed/spawn/mode, wasm uses the player
+  position — level_spawn is native-gated); [perf] first sample at
+  world entry + 1 Hz heartbeat (fps envelope, frame/sim ms, chunk
+  mesh/loaded/drawn, gen+mesh queue depths, mobs, edits); [save]
+  autosave ms; [f3] overlay + combo toggles; [exit] uptime/frames/
+  fps/edit summary on window close AND both smoke exits
+- linux-game.yml: the first smoke now runs `--smoke --debug` and
+  greps all five categories as blocking assertions
+
+**Local lavapiipe harness re-established** (the sandbox /tmp was
+wiped): scripts/mesa-vk + vk-icd (lavapipe ICD) restored, and the
+driver's missing transitive deps re-fetched and extracted into
+scripts/*-extract (lib-shim libxkbcommon-x11 + libasound + libX11-xcb,
+xkb-extract, llvm-extract libLLVM-21, di-extract libdisplay-info,
+xml-extract libxml2-16, wl-extract libwayland 1.26 — the lvp ICD
+needs the newer wl_fixes_interface symbol, which is why it silently
+dropped its surface extensions and wgpu failed with
+FailedToCreateSurfaceForAnyBackend before). Xvfb must run detached
+(setsid) — it dies with its parent shell otherwise, and a full /tmp
+once silently broke every background job (disk 100%).
+
+Stage Summary:
+- F3 overlay now vanilla-look (lowercase case-font, contiguous
+  strips, 0xE0E0E0 at standard UI size, right-aligned right column)
+  with all values live; same overlay across all version brackets
+- --debug / ?debug raw log on native + browser, five categories,
+  CI-grepped; --help usage card
+- 529/529 tests green, wasm32 clean, local smoke + F3 liveness green,
+  CI green at head, README + play.html document the debug channel
+- main plan: next round queued (1.14 deferred nature blocks — smooth
+  stone family / blast furnace / smoker / lantern / new flowers, then
+  1.15 Buzzy Bees)

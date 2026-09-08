@@ -90,3 +90,9 @@ voxelcraft/scripts/xml2b.html
 voxelcraft/options.txt
 voxelcraft/logs/
 voxelcraft/resourcepacks/
+# local lavapiipe/Xvfb smoke harness extracts (session tooling, not project code)
+voxelcraft/scripts/llvm-extract/
+voxelcraft/scripts/di-extract/
+voxelcraft/scripts/xml-extract/
+voxelcraft/scripts/wl-extract/
+voxelcraft/scripts/x11xcb-extract/

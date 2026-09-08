@@ -248,6 +248,9 @@ fn build_mask_cell(j: u32, d: u32, dir: i32, u: u32, v: u32, ylo: u32, sl: i32, 
         if smooth_on != 0u {
             if s1 && s2 { ao[ci] = 0u; }
             else { ao[ci] = 3u - (u32(s1) + u32(s2) + u32(cr)); }
+            // vanilla "Minimum": lift corners half way toward bright —
+            // the CPU mesher's (a + 3) / 2 remap, mirrored exactly
+            if smooth_on == 1u { ao[ci] = (ao[ci] + 3u) / 2u; }
         } else { ao[ci] = 3u; }
         var s = 0u;
         { var c = array<i32, 3>(ncell[0], ncell[1], ncell[2]);
@@ -634,7 +637,9 @@ pub struct GpuMeshJobMeta {
     pub pos: ChunkPos,
     /// sections to rebuild (§12 bitset; 0xFFFF = full chunk)
     pub mask: u16,
-    pub smooth: bool,
+    /// smooth lighting level 0..2 (vanilla Off/Minimum/Maximum — the
+    /// WGSL remap mirrors the CPU mesher's)
+    pub smooth: u8,
     /// cached section meshes to reuse for unmasked sections
     pub prev: Vec<Option<Arc<MeshData>>>,
     /// center chunk of the 3×3 snapshot (Phase 6 §26 occl computation)
@@ -1630,7 +1635,7 @@ mod tests {
     #[test]
     fn gpu_mesh_parity_bit_identical() {
         use vc_chunk::chunk::Chunk;
-        use vc_mesh::mesh::{build_mesh_inputs, mesh_chunk};
+        use vc_mesh::mesh::{build_mesh_inputs, mesh_sections};
         use vc_world::gen::TerrainGen;
         use vc_world::light::reference_lightdata;
 
@@ -1678,7 +1683,9 @@ mod tests {
         }
 
         let mut mesher = GpuMesher::new(&device, &queue);
-        for smooth in [true, false] {
+        // variant to cover all three vanilla smooth levels (the WGSL
+        // remap must track the CPU remap exactly)
+        for smooth in [2u8, 1, 0] {
             for (pos, chunk) in chunks.iter() {
                 // 3x3 snapshot: center + the other test chunks where they
                 // overlap, None elsewhere (absent-neighbor padding path)
@@ -1691,7 +1698,7 @@ mod tests {
                     }
                 }
                 let lsnap = reference_lightdata(&snap);
-                let want = mesh_chunk(*pos, &snap, &lsnap, smooth);
+                let want = mesh_sections(*pos, &snap, &lsnap, smooth, u16::MAX, &[], None).merged;
                 let inputs = build_mesh_inputs(&snap, &lsnap);
                 assert!(
                     !inputs.has_cross && !inputs.has_models,

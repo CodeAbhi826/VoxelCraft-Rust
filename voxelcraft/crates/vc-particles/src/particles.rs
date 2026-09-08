@@ -60,6 +60,9 @@ pub struct ParticleSystem {
     rng: Rng,
     /// total spawned (E2E/stat evidence)
     pub spawned_total: u64,
+    /// vanilla Particles density: 1.0 All, 0.5 Decreased, 0.25 Minimal —
+    /// rejection sampling at spawn keeps the shapes/velocities intact
+    pub density: f32,
 }
 
 impl ParticleSystem {
@@ -69,6 +72,7 @@ impl ParticleSystem {
             acc: 0.0,
             rng: Rng::new(seed),
             spawned_total: 0,
+            density: 1.0,
         }
     }
 
@@ -102,6 +106,10 @@ impl ParticleSystem {
         for gy in 0..BREAK_GRID {
             for gz in 0..BREAK_GRID {
                 for gx in 0..BREAK_GRID {
+                    // vanilla Particles setting (All/Decreased/Minimal)
+                    if self.rng.next_f32() >= self.density {
+                        continue;
+                    }
                     // random 4×4 px quarter of the tile
                     let qx = self.rng.next_range(4) as f32;
                     let qy = self.rng.next_range(4) as f32;
@@ -148,6 +156,10 @@ impl ParticleSystem {
         let tile = state_tiles(block as u16)[3];
         let tx = (tile % 32) as f32;
         let ty = (tile / 32) as f32;
+        // vanilla Particles setting: Minimal/Decreased thin these out too
+        if self.rng.next_f32() >= self.density {
+            return;
+        }
         let qx = self.rng.next_range(4) as f32;
         let qy = self.rng.next_range(4) as f32;
         let p = Particle {

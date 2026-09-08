@@ -2662,3 +2662,126 @@ Stage Summary:
   main-plan round: 1.15 Buzzy Bees
 - Standing lesson recorded: wasm32 "compiles but panics" APIs need a
   browser replay in CI, not just a compile gate (candidate follow-up)
+
+---
+
+## Session 2026-09-08 (e) — the exact vanilla 1.16.5 settings tree + hover tooltips
+
+User report: the settings screens had FEWER options than the real game, no
+hover hints, and two engine options (GPU chunk meshing, occlusion culling)
+nobody could look up. This round rebuilds the whole settings UI to the
+vanilla architecture — "not similar, exact".
+
+**Video Settings = the exact vanilla 1.16.5 screen** (`layout_video`): the
+full-width Render Distance slider, the four two-column cycling rows
+(Graphics Fast/Fancy/Fabulous! | Smooth Lighting
+OFF/Minimum/Maximum, GUI Scale Auto/1/2/3 | Clouds OFF/Fast/Fancy,
+Particles All/Decreased/Minimal | Full Screen ON/OFF, Use VSync ON/OFF |
+Entity Shadows ON/OFF), the UNLABELED Brightness slider (hover tooltip
+reads Moody/Bright from the live value — the vanilla behavior), the
+full-width Biome Blend slider, Done. 11 options, vanilla proportions on
+the 1.5x canvas: 150x20 vanilla buttons → 225x30, 310x20 → 465x30, 36px
+row pitch from y=72. New `text_frac` (fractional-scale nearest-neighbor
+font renderer) supplies the 1.5x-class widget text; the old 44px widgets
+render identically to before (fs = h*0.05 capped at 2).
+
+**Every option is functional:**
+- Smooth Lighting Minimum: the new half-strength AO level — the
+  `(a+3)/2` corner remap in the CPU mesher AND the WGSL compute mesher
+  (`smooth: bool` → `smooth: u8` through Job/GpuMeshPending/meta/params);
+  the gpu_mesh parity test now cycles all three levels and stays
+  bit-identical, and the golden terrain hash is unchanged at maximum.
+- Clouds Fast/Fancy: Fast keeps the solid opaque plane; Fancy is a new
+  `cloud_pipe_blend` (ALPHA_BLENDING) — the shader's 0.55 alpha finally
+  blends. MSAA pipe set carries both variants.
+- GUI Scale: `scale_widgets` re-scales every menu's widget rects around
+  the canvas center; `UiCanvas::widget_scale` drives matching fractional
+  text; hit tests share the scaled rects so input stays exact. Deferral
+  disclosed: the HUD's edge-anchored scaling is the remaining half.
+- Particles All/Decreased/Minimal: `ParticleSystem::density` (1.0/0.5/
+  0.25) as rejection sampling in spawn_block_break + spawn_hit.
+- Full Screen: real borderless winit fullscreen, applied at boot + on
+  toggle (persisted).
+- Use VSync: `Renderer::set_vsync` (Fifo vs AutoNoVsync/Mailbox/
+  Immediate fallback); MAX FPS left the vsync role (now UNCAPPED/30/60/
+  120 on the engine page).
+- Entity Shadows: `push_mob_shadows` — one blended ground quad per
+  visible mob (glass texel alpha + dark tint; ground scan ≤ 8 below the
+  feet), through the billboard pipeline.
+- Biome Blend: `blended_biome_pad` — the mesh-time tint pad becomes the
+  nearest-LUT-slot average of the neighborhood biomes' grass colors
+  (radius 1/2/3 for 3x3/5x5/7x7, world-side sampling via get_biome);
+  injected in `Job::Mesh::biomes` so the CPU and GPU paths share one
+  blend pass; remesh_all on change; default 3x3 (the vanilla look).
+- Graphics: the existing 0/1/2 Fast/Fancy/Fabulous! cycle IS the vanilla
+  1.16.5 cycle — relabeled and kept.
+
+**The hover hint system** (the user's ask): resting the pointer on any
+option draws 1-2 centered gray lines directly under the screen title —
+the vanilla hint slot. `tooltip_for` covers every option on every
+screen (unit-tested: `every_settings_option_has_tooltip`), with clean-
+room wording describing what each option does in THIS engine (GPU chunk
+meshing and occlusion culling finally explain themselves in-game).
+
+**Tree restructure**: main Options = the vanilla layout (Music|Sound,
+FOV|Sensitivity — "FOV: Quake Pro" at 110 — and the six sub-screen
+buttons; Chat/Language/Controls grayed stubs until their subsystems
+exist, the MULTIPLAYER pattern); **Resource Packs** = a real selectable
+list (engine shader modes + packs — replaces the old SHADERS cycle
+button); **Accessibility** hosts Auto-Jump (its true vanilla 1.16.5
+home); **Engine Settings** is the one disclosed extra page (GPU meshing,
+occlusion, mip/aniso/MSAA, sim distance, frame cap, FSR, sun shadows)
+so the vanilla screen stays exact. ESC returns sub-screens to Options;
+Done follows the vanilla parent chain; options_from drives the panorama
+backdrop consistently.
+
+**Persistence**: seven new serialize keys (smoothl/cloudsl/gui/part/fs/
+vsync/eshad/bblend; the legacy smooth/clouds bools still parse →
+levels, and the legacy clouds=1 maps to Fancy). Round-trip + legacy
+tests extended; the stats pairs expose the new values; wasm
+localStorage verified live in the browser.
+
+**E2E + CI**: the smoke suite gained `E2E_MENU=1` — a scripted click
+through Options → Video (toggles) → Engine → Packs → Access → back to
+the title via the REAL input path, exiting clean with
+"e2e: settings tree ok (video/engine/packs/access)". linux-game.yml
+runs it as a second blocking smoke stage with screen-transition greps.
+`UI_DUMP_DIR` renders every settings screen headlessly (pure-CPU UI
+canvas) — the docs screenshots
+`vanilla-{options-main,video-settings,engine-settings,resource-packs,
+accessibility}.png` come from the test, VLM-verified line-by-line
+(exact option sets, tooltip text, hover highlight, unlabeled
+brightness).
+
+**Verified end-to-end in the real browser** (agent-browser + local
+bundle rebuild → public/): boot → title → options → video → hover
+GRAPHICS (two-line hint live) → toggle to FABULOUS! → settings persisted
+with all new keys (`voxelcraft.settings`) → world entry with the
+default 3x3 biome-blended meshing, full HUD, zero page errors.
+
+Deferred with reasons: HUD edge-anchored GUI scaling (menus scale
+today), vanilla's two-pane resource-pack layout (single list),
+entity-shadow softness (quad, not the blob texture), full screen on
+web (winit canvas API — preference persists), the Chat/Language/
+Controls subsystems themselves.
+
+**Verification:** 543/543 workspace tests green (+4: vanilla video
+layout, tooltip coverage, GUI-scale math, new-key round trip, the dump
+helper), wasm32 lib clean, gpu-mesh parity extended to 3 levels, the
+golden terrain hash unchanged, browser replay green. Bundle rebuilt
+into public/ locally; CI rebuilds on push.
+
+Stage Summary:
+- The settings UI is now the vanilla 1.16.5 tree: exact Video screen
+  (11 functional options), vanilla main Options, Resource Packs,
+  Accessibility, one disclosed Engine page — every option with a hover
+  hint
+- Smooth Lighting is a real three-state AO level in BOTH meshers;
+  Biome Blend blends the tint pad for both meshers; Clouds Fast/Fancy
+  are two pipelines; GUI Scale, Particles, Full Screen, VSync, Entity
+  Shadows all live
+- E2E_MENU settings-tree click stage is a blocking CI gate; UI_DUMP_DIR
+  regenerates the docs screenshots headlessly; browser replay verified
+  boot → settings → toggle → persist → world entry with zero panics
+- Next main-plan round: 1.15 "Buzzy Bees" (the bracket's nature half —
+  bees, hives, honey)

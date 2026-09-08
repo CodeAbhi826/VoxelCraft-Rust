@@ -40,8 +40,26 @@ pub struct Settings {
     pub volume: f32,
     pub fov: f32,        // degrees, 30..110
     pub brightness: f32, // 0..1
-    pub smooth_lighting: bool,
-    pub clouds: bool,
+    /// vanilla 1.16.5 Smooth Lighting: 0 = off, 1 = minimum, 2 = maximum
+    /// (the vanilla three-state cycle; `smooth` was a bool before)
+    pub smooth_level: u8,
+    /// vanilla Clouds: 0 = off, 1 = fast (solid plane), 2 = fancy
+    /// (alpha-blended layer — the vanilla 1.16.5 cycle)
+    pub clouds_level: u8,
+    /// vanilla GUI Scale: 0 = auto, 1..=3 — menus + their text scale
+    /// around the canvas center (HUD edge-anchored scaling is the
+    /// disclosed remaining half)
+    pub gui_scale: u8,
+    /// vanilla Particles: 0 = all, 1 = decreased, 2 = minimal
+    pub particles: u8,
+    /// vanilla Full Screen (borderless)
+    pub fullscreen: bool,
+    /// vanilla Use VSync (Fifo present vs the fastest no-vsync mode)
+    pub vsync: bool,
+    /// vanilla Entity Shadows (soft ground shadows under creatures)
+    pub entity_shadows: bool,
+    /// vanilla Biome Blend: 0..4 → OFF / 1x1 / 3x3 / 5x5 / 7x7
+    pub biome_blend: u8,
     /// 0 = fast, 1 = fancy, 2 = fabulous (fancy + soft shadows + full post)
     pub graphics: u8,
     pub shader: u8, // 0 = off, 1 = vanilla+, 2 = cinematic
@@ -96,8 +114,14 @@ impl Default for Settings {
             volume: 0.7,
             fov: 70.0,
             brightness: 0.10,
-            smooth_lighting: true,
-            clouds: true,
+            smooth_level: 2,
+            clouds_level: 2,
+            gui_scale: 0,
+            particles: 0,
+            fullscreen: false,
+            vsync: true,
+            entity_shadows: true,
+            biome_blend: 2, // 3x3 — the vanilla default blend look
             graphics: 1,
             shader: 1,
             shadow_quality: 2,
@@ -154,10 +178,60 @@ impl Settings {
             _ => 0.0,
         }
     }
+    /// menu scale factor (GUI Scale): 1 = 0.72, 2 = 0.86, 3/auto = 1.0
+    /// (bigger value = bigger interface, vanilla semantics)
+    pub fn gui_scale_factor(&self) -> f32 {
+        match self.gui_scale {
+            1 => 0.72,
+            2 => 0.86,
+            _ => 1.0,
+        }
+    }
+    /// particle spawn density: All 100% / Decreased ~50% / Minimal ~25%
+    /// (clean-room approximation of the vanilla densities)
+    pub fn particle_density(&self) -> f32 {
+        match self.particles {
+            1 => 0.5,
+            2 => 0.25,
+            _ => 1.0,
+        }
+    }
+    /// biome-blend sampling radius: OFF/1x1 → 0, 3x3 → 1, 5x5 → 2, 7x7 → 3
+    pub fn biome_blend_radius(&self) -> i32 {
+        match self.biome_blend {
+            2 => 1,
+            3 => 2,
+            4 => 3,
+            _ => 0,
+        }
+    }
+    pub fn biome_blend_label(&self) -> &'static str {
+        match self.biome_blend {
+            0 => "OFF",
+            1 => "1X1",
+            2 => "3X3",
+            3 => "5X5",
+            _ => "7X7",
+        }
+    }
+    pub fn clouds_label(&self) -> &'static str {
+        match self.clouds_level {
+            0 => "OFF",
+            1 => "FAST",
+            _ => "FANCY",
+        }
+    }
+    pub fn smooth_label(&self) -> &'static str {
+        match self.smooth_level {
+            0 => "OFF",
+            1 => "MINIMUM",
+            _ => "MAXIMUM",
+        }
+    }
     /// serialize as k=v; pairs (parsed without serde)
     pub fn serialize(&self) -> String {
         format!(
-            "rd={};sd={};sens={:.3};vol={:.3};mvol={:.3};fov={:.1};bright={:.3};smooth={};clouds={};graphics={};shader={};shadowq={};upscale={};maxfps={};mip={};aniso={};msaa={};occl={};gmesh={}",
+            "rd={};sd={};sens={:.3};vol={:.3};mvol={:.3};fov={:.1};bright={:.3};smoothl={};cloudsl={};gui={};part={};fs={};vsync={};eshad={};bblend={};graphics={};shader={};shadowq={};upscale={};maxfps={};mip={};aniso={};msaa={};occl={};gmesh={}",
             self.render_distance,
             self.sim_distance,
             self.sensitivity,
@@ -165,8 +239,14 @@ impl Settings {
             self.music_volume,
             self.fov,
             self.brightness,
-            self.smooth_lighting as u8,
-            self.clouds as u8,
+            self.smooth_level,
+            self.clouds_level,
+            self.gui_scale,
+            self.particles,
+            self.fullscreen as u8,
+            self.vsync as u8,
+            self.entity_shadows as u8,
+            self.biome_blend,
             self.graphics,
             self.shader,
             self.shadow_quality,
@@ -193,8 +273,18 @@ impl Settings {
                 "mvol" => st.music_volume = v.parse().unwrap_or(st.music_volume).clamp(0.0, 1.0),
                 "fov" => st.fov = v.parse().unwrap_or(st.fov).clamp(30.0, 110.0),
                 "bright" => st.brightness = v.parse().unwrap_or(st.brightness).clamp(0.0, 1.0),
-                "smooth" => st.smooth_lighting = v == "1",
-                "clouds" => st.clouds = v == "1",
+                // legacy bool keys → vanilla three-state levels (the
+                // new level keys are distinct: smoothl / cloudsl)
+                "smooth" => st.smooth_level = if v == "1" { 2 } else { 0 },
+                "smoothl" => st.smooth_level = v.parse().unwrap_or(2).min(2),
+                "clouds" => st.clouds_level = if v == "1" { 2 } else { 0 },
+                "cloudsl" => st.clouds_level = v.parse().unwrap_or(2).min(2),
+                "gui" => st.gui_scale = v.parse().unwrap_or(0).min(3),
+                "part" => st.particles = v.parse().unwrap_or(0).min(2),
+                "fs" => st.fullscreen = v == "1",
+                "vsync" => st.vsync = v == "1",
+                "eshad" => st.entity_shadows = v == "1",
+                "bblend" => st.biome_blend = v.parse().unwrap_or(2).min(4),
                 // legacy key from older saves
                 "fancy" => st.graphics = if v == "1" { 1 } else { 0 },
                 "graphics" => st.graphics = v.parse().unwrap_or(st.graphics).min(2),
@@ -243,6 +333,13 @@ pub enum Screen {
     WorldCreate,
     /// Phase 1: death screen (respawn vs hardcore game-over)
     Death,
+    /// vanilla 1.16.5 settings sub-screens (reached from Options):
+    /// Video = the exact vanilla screen; Engine = our extras; Packs =
+    /// resource/shader pack list; Access = accessibility (auto-jump)
+    Video,
+    Engine,
+    Packs,
+    Access,
 }
 
 /// open container screens (Phase 7 §27/§29)
@@ -284,6 +381,10 @@ impl Screen {
             Screen::WorldSelect => "worldselect",
             Screen::WorldCreate => "create",
             Screen::Death => "death",
+            Screen::Video => "video",
+            Screen::Engine => "engine",
+            Screen::Packs => "packs",
+            Screen::Access => "access",
         }
     }
 
@@ -294,6 +395,10 @@ impl Screen {
             Screen::Intro
                 | Screen::Title
                 | Screen::Options
+                | Screen::Video
+                | Screen::Engine
+                | Screen::Packs
+                | Screen::Access
                 | Screen::Pause
                 | Screen::WorldSelect
                 | Screen::WorldCreate
@@ -335,7 +440,8 @@ enum Job {
         pos: ChunkPos,
         snap: [Option<Arc<vc_chunk::chunk::Chunk>>; 9],
         lsnap: [Option<Arc<vc_world::light::LightData>>; 9],
-        smooth: bool,
+        /// smooth lighting level: 0 off, 1 minimum, 2 maximum (vanilla)
+        smooth: u8,
         /// sections to rebuild (§12 bitset; 0xFFFF = full chunk)
         mask: u16,
         /// cached section meshes to reuse for unmasked sections
@@ -344,6 +450,9 @@ enum Job {
         /// checks the setting + device capability; run_job falls back to
         /// the CPU path when the snapshot needs the cross/model paths)
         gpu: bool,
+        /// vanilla Biome Blend: the pre-blended tint pad (nearest-LUT-slot
+        /// neighborhood average; None = the plain center-chunk copy)
+        biomes: Option<Box<[u8]>>,
     },
 }
 
@@ -371,7 +480,7 @@ enum JobResult {
     GpuMeshPending {
         pos: ChunkPos,
         mask: u16,
-        smooth: bool,
+        smooth: u8,
         prev: Vec<Option<Arc<MeshData>>>,
         center: Option<Arc<vc_chunk::chunk::Chunk>>,
         inputs: vc_mesh::mesh::MeshInputs,
@@ -472,6 +581,7 @@ fn run_job(job: Job) -> JobResult {
             mask,
             prev,
             gpu,
+            biomes,
         } => {
             // Phase 7: GPU route — build the shared padded inputs on the
             // worker; greedy-eligible snapshots go to the compute mesher,
@@ -479,8 +589,11 @@ fn run_job(job: Job) -> JobResult {
             // the full CPU mesh (the special paths stay CPU — documented
             // hybrid scope)
             if gpu {
-                let inputs = vc_mesh::mesh::build_mesh_inputs(&snap, &lsnap);
+                let mut inputs = vc_mesh::mesh::build_mesh_inputs(&snap, &lsnap);
                 if !inputs.has_cross && !inputs.has_models {
+                    if let Some(b) = biomes {
+                        inputs.biomes = b;
+                    }
                     return JobResult::GpuMeshPending {
                         pos,
                         mask,
@@ -491,7 +604,7 @@ fn run_job(job: Job) -> JobResult {
                     };
                 }
             }
-            let out = mesh_sections(pos, &snap, &lsnap, smooth, mask, &prev);
+            let out = mesh_sections(pos, &snap, &lsnap, smooth, mask, &prev, biomes);
             // Phase 6 §26: occlusion-graph data rides the mesh result
             let occl = chunk_occl(snap[4].as_ref(), &out.sections);
             JobResult::Mesh {
@@ -627,8 +740,6 @@ pub struct GameApp {
     input: Input,
     pub screen: Screen,
     options_from: Screen, // where Options was opened from
-    /// Phase 6 §26: options page (0 = general, 1 = video details)
-    options_page: u8,
     widgets: Vec<Widget>,
     hover: Option<u16>,
     dragging: Option<u16>,
@@ -745,6 +856,9 @@ pub struct GameApp {
     /// entered" and exits 0. Proves the single-file binary boots AND
     /// enters a world headless (lavapipe) — covers the original hang path.
     pub smoke: bool,
+    /// E2E_MENU=1 smoke mode: the settings-tree click script (exits at the
+    /// title after the tree round-trips)
+    smoke_menu_e2e: bool,
     edits: u32,
     stats_t: f32,
     pub pointer_locked: bool,
@@ -1360,7 +1474,6 @@ impl GameApp {
             input: Input::default(),
             screen: Screen::Intro,
             options_from: Screen::Title,
-            options_page: 0,
             widgets: Vec::new(),
             hover: None,
             dragging: None,
@@ -1424,6 +1537,7 @@ impl GameApp {
             load_start: 0.0,
             intro_start: now_secs(),
             smoke: false,
+            smoke_menu_e2e: false,
             edits: 0,
             stats_t: 0.0,
             pointer_locked: false,
@@ -1476,6 +1590,11 @@ impl GameApp {
             #[cfg(not(target_arch = "wasm32"))]
             autosave_in: 20.0,
         };
+        // boot-time settings effects: persisted VSync / Full Screen /
+        // particle density apply from the very first frame
+        app.renderer.set_vsync(app.settings.vsync);
+        app.particles.density = app.settings.particle_density();
+        app.apply_fullscreen();
         // Phase 5: restore container inventories (dungeon loot + the
         // player's touched chests/hoppers) into the fresh sim — native
         // only (web sessions regenerate; containers there are transient)
@@ -1863,6 +1982,10 @@ impl GameApp {
                         }
                         Screen::Pause => self.resume_game(),
                         Screen::Options => self.close_options(),
+                        Screen::Video | Screen::Engine | Screen::Packs | Screen::Access => {
+                            // vanilla: ESC on a sub-screen returns to Options
+                            self.set_screen(Screen::Options)
+                        }
                         Screen::WorldCreate => self.cancel_world_create(),
                         Screen::WorldSelect => self.set_screen(Screen::Title),
                         _ => {}
@@ -2417,7 +2540,6 @@ impl GameApp {
 
     fn open_options(&mut self, from: Screen) {
         self.options_from = from;
-        self.options_page = 0; // always land on the general page
         self.set_screen(Screen::Options);
     }
 
@@ -2428,6 +2550,102 @@ impl GameApp {
             Screen::Title
         };
         self.set_screen(back);
+    }
+
+    /// vanilla Full Screen: borderless fullscreen on the current monitor
+    /// (winit; on wasm this rides the canvas fullscreen API — failures are
+    /// ignored, the preference still persists)
+    fn apply_fullscreen(&mut self) {
+        let fs = if self.settings.fullscreen {
+            Some(winit::window::Fullscreen::Borderless(None))
+        } else {
+            None
+        };
+        let _ = self.window.set_fullscreen(fs);
+    }
+
+    /// CI/docs visual-verification hook (never set in normal play):
+    /// UI_DUMP_DIR=<dir> writes the rendered canvas of the CURRENT
+    /// settings screen as <dir>/<screen>.png
+    fn ui_dump_if_asked(&self) {
+        if let Ok(d) = std::env::var("UI_DUMP_DIR") {
+            let _ = std::fs::create_dir_all(&d);
+            self.ui
+                .dump_png(&format!("{}/{}.png", d, self.screen.name()));
+        }
+    }
+
+    /// vanilla hover tooltips: 1-2 short gray lines under the title while
+    /// the pointer rests on an option (the vanilla Video Settings hint
+    /// behavior, applied to every settings screen). Clean-room wording
+    /// that describes what each option does in THIS engine.
+    fn tooltip_lines(&self) -> Vec<String> {
+        let Some(id) = self.hover else {
+            return Vec::new();
+        };
+        Self::tooltip_for(id, &self.settings)
+    }
+
+    /// vanilla hover tooltips (see tooltip_lines) — free function so tests
+    /// can verify EVERY option on every screen carries its hint
+    fn tooltip_for(id: u16, s: &Settings) -> Vec<String> {
+        let l = |a: &str| vec![a.to_string()];
+        let l2 = |a: &str, b: &str| vec![a.to_string(), b.to_string()];
+        use ui::*;
+        match id {
+            ID_OPT_MUSIC => l("Volume of the music category. The sound volume still scales everything."),
+            ID_OPT_VOL => l("Master volume for every sound, music included."),
+            ID_OPT_FOV => l("Field of view in degrees. 70 is the classic look; 110 is Quake Pro."),
+            ID_OPT_SENS => l("How fast the view turns when the mouse moves."),
+            ID_OPT_CHAT | ID_OPT_LANG | ID_OPT_CONTROLS => {
+                l("Not implemented in this build yet.")
+            }
+            ID_OPT_PACKS => l("Pick the active shader pack or engine shader mode."),
+            ID_OPT_ACCESS => l("Accessibility options. Currently: Auto-Jump."),
+            ID_OPT_VIDEO => l("The video settings screen."),
+            ID_OPT_ENGINE => l("Engine-specific options: meshing, culling and quality knobs."),
+            ID_OPT_DONE | ID_OPT_DONE2 => l("Save and go back."),
+            ID_OPT_RD => l("How far terrain renders, in chunks. Fewer chunks render faster."),
+            ID_OPT_GRAPHICS => l2(
+                "Fast disables sun shadows and extras; Fancy balances quality.",
+                "Fabulous adds the full post-processing chain.",
+            ),
+            ID_OPT_SMOOTH => l2(
+                "Ambient occlusion softens block corners.",
+                "Minimum keeps half-strength corners; Maximum is the full effect.",
+            ),
+            ID_OPT_GUISCALE => l("Size of the interface. Auto keeps the default fit; 1 is smallest, 3 largest."),
+            ID_OPT_CLOUDS => l("Off hides clouds; Fast draws a solid layer; Fancy blends them softly."),
+            ID_OPT_PARTICLES => l("All spawns every effect; Decreased halves them; Minimal keeps a quarter."),
+            ID_OPT_FULLSCREEN => l("Toggles borderless full-screen output."),
+            ID_OPT_VSYNC => l("Sync frames to the display. Removes tearing, adds a little latency."),
+            ID_OPT_ENTSHADOW => l("Draws a soft ground shadow under each creature."),
+            ID_OPT_BRIGHT => {
+                // vanilla: the unlabeled slider hints Moody/Bright by value
+                l(if s.brightness < 0.5 { "Moody" } else { "Bright" })
+            }
+            ID_OPT_BIOME => l2(
+                "Blends biome colors across borders so grass and leaves",
+                "transition smoothly. Higher values cost a little meshing time.",
+            ),
+            ID_OPT_SIMDIST => l("Chunk radius that keeps entities and blocks ticking. 12 is the default."),
+            ID_OPT_MAXFPS => l("Frame-rate ceiling. Uncapped renders as fast as possible."),
+            ID_OPT_MIP => l("Texture mipmap levels. Reduces shimmer on far blocks."),
+            ID_OPT_ANISO => l("Anisotropic filtering sharpens textures viewed at steep angles."),
+            ID_OPT_MSAA => l("Anti-aliasing: smooths block edges. Device-gated."),
+            ID_OPT_OCCL => l("Skips terrain hidden behind hills and cave walls. Big wins underground."),
+            ID_OPT_GMESH => l2(
+                "Builds chunk geometry in GPU compute shaders instead of CPU threads.",
+                "Faster remeshing; falls back to the CPU path when unsupported.",
+            ),
+            ID_OPT_SHADOWS => l("Sun shadow map resolution. Higher is sharper but costs fill rate."),
+            ID_OPT_UPSCALE => l("Renders at a lower internal resolution and upscales with FSR."),
+            ID_OPT_AUTOJUMP => l("Automatically jumps one-block steps while walking."),
+            _ if (ID_PACK_BASE..ID_PACK_BASE + MAX_PACK_ENTRIES as u16).contains(&id) => {
+                l("Activate this shader mode / pack.")
+            }
+            _ => Vec::new(),
+        }
     }
 
     /// --debug [perf] line: fps envelope, frame/sim ms, chunk pipeline
@@ -2809,6 +3027,7 @@ impl GameApp {
         self.light = vc_world::light::LightEngine::new();
         self.sim = vc_sim::sim::Sim::new(seed);
         self.particles = vc_particles::particles::ParticleSystem::new(seed ^ 0x7EED);
+        self.particles.density = self.settings.particle_density();
         self.particle_verts.clear();
         self.container = None;
         self.container_geom = None;
@@ -4403,18 +4622,45 @@ impl GameApp {
             }
             ID_TITLE_OPTIONS => self.open_options(Screen::Title),
             ID_TITLE_QUIT => self.quit_requested = true,
-            ID_OPT_DONE | ID_OPT_DONE2 => self.close_options(),
-            // Phase 6 §26: options page navigation (vanilla-style Video
-            // Settings split)
-            ID_OPT_NEXT => {
-                self.options_page = 1;
+            // main options Done returns to its parent (title / pause);
+            // sub-screen Done returns to Options (vanilla navigation)
+            ID_OPT_DONE => self.close_options(),
+            ID_OPT_DONE2 => self.set_screen(Screen::Options),
+            // vanilla 1.16.5 settings sub-screens
+            ID_OPT_VIDEO => self.set_screen(Screen::Video),
+            ID_OPT_ENGINE => self.set_screen(Screen::Engine),
+            ID_OPT_PACKS => self.set_screen(Screen::Packs),
+            ID_OPT_ACCESS => self.set_screen(Screen::Access),
+            ID_OPT_GUISCALE => {
+                // vanilla GUI Scale cycle: Auto → 1 → 2 → 3 (menus + text)
+                self.settings.gui_scale = (self.settings.gui_scale + 1) % 4;
                 self.refresh_widgets();
                 self.ui.dirty = true;
             }
-            ID_OPT_PREV => {
-                self.options_page = 0;
-                self.refresh_widgets();
-                self.ui.dirty = true;
+            ID_OPT_PARTICLES => {
+                // vanilla Particles: All → Decreased → Minimal
+                self.settings.particles = (self.settings.particles + 1) % 3;
+                self.after_settings_change();
+            }
+            ID_OPT_FULLSCREEN => {
+                self.settings.fullscreen = !self.settings.fullscreen;
+                self.apply_fullscreen();
+                self.after_settings_change();
+            }
+            ID_OPT_VSYNC => {
+                self.settings.vsync = !self.settings.vsync;
+                self.renderer.set_vsync(self.settings.vsync);
+                self.after_settings_change();
+            }
+            ID_OPT_ENTSHADOW => {
+                self.settings.entity_shadows = !self.settings.entity_shadows;
+                self.after_settings_change();
+            }
+            ID_OPT_BIOME => {
+                // vanilla Biome Blend: OFF → 1x1 → 3x3 → 5x5 → 7x7
+                self.settings.biome_blend = (self.settings.biome_blend + 1) % 5;
+                self.remesh_all();
+                self.after_settings_change();
             }
             // ---- Phase 6 §26: video-detail buttons ----
             ID_OPT_MIP => {
@@ -4472,6 +4718,16 @@ impl GameApp {
                 }
                 self.after_settings_change();
             }
+            _ if (ID_PACK_BASE..ID_PACK_BASE + MAX_PACK_ENTRIES as u16).contains(&id) => {
+                // resource-pack row: select that shader mode / pack
+                // (0..2 engine modes, 3.. pack index)
+                let idx = id - ID_PACK_BASE;
+                let n = (3 + self.shader_packs.len()) as u16;
+                if idx < n {
+                    self.settings.shader = idx as u8;
+                    self.after_settings_change();
+                }
+            }
             ID_PAUSE_BACK => self.resume_game(),
             ID_PAUSE_OPTIONS => self.open_options(Screen::Pause),
             ID_PAUSE_QUIT => self.quit_to_title(),
@@ -4519,13 +4775,8 @@ impl GameApp {
                     }
                 }
             }
-            ID_OPT_SHADER => {
-                // Phase 11: off → vanilla+ → cinematic → <pack 0> … <pack N>
-                let n = 3 + self.shader_packs.len() as u8;
-                self.settings.shader = (self.settings.shader + 1) % n.max(3);
-                self.after_settings_change();
-            }
             ID_OPT_GRAPHICS => {
+                // vanilla 1.16.5 Graphics cycle: Fast → Fancy → Fabulous!
                 self.settings.graphics = (self.settings.graphics + 1) % 3;
                 self.after_settings_change();
             }
@@ -4546,12 +4797,17 @@ impl GameApp {
                 self.after_settings_change();
             }
             ID_OPT_SMOOTH => {
-                self.settings.smooth_lighting = !self.settings.smooth_lighting;
+                // vanilla 1.16.5 Smooth Lighting cycle: Off → Minimum →
+                // Maximum (AO strength changes → full remesh, both
+                // meshers read the level)
+                self.settings.smooth_level = (self.settings.smooth_level + 1) % 3;
                 self.remesh_all();
                 self.after_settings_change();
             }
             ID_OPT_CLOUDS => {
-                self.settings.clouds = !self.settings.clouds;
+                // vanilla Clouds cycle: Off → Fast (solid plane) → Fancy
+                // (alpha-blended layer)
+                self.settings.clouds_level = (self.settings.clouds_level + 1) % 3;
                 self.after_settings_change();
             }
             _ => {}
@@ -4572,6 +4828,16 @@ impl GameApp {
             // Phase 6 §26: VERIFIED range 5–32 (wiki simulationDistance)
             ID_OPT_SIMDIST => self.settings.sim_distance = 5 + (t * 27.0).round() as i32,
             ID_OPT_BRIGHT => self.settings.brightness = t,
+            ID_OPT_BIOME => {
+                // vanilla Biome Blend slider: five stops (drag remeshes —
+                // remesh_all is just the dirty-mark pass; meshing itself
+                // stays frame-budgeted)
+                let b = (t * 4.0).round() as u8;
+                if b != self.settings.biome_blend {
+                    self.settings.biome_blend = b.min(4);
+                    self.remesh_all();
+                }
+            }
             ID_OPT_VOL => self.settings.volume = t,
             ID_OPT_MUSIC => self.settings.music_volume = t,
             _ => {}
@@ -4582,6 +4848,9 @@ impl GameApp {
     /// persist + refresh widget labels + player fov
     fn after_settings_change(&mut self) {
         self.player.fov = self.settings.fov.to_radians();
+        // vanilla Use VSync + Particles apply live
+        self.renderer.set_vsync(self.settings.vsync);
+        self.particles.density = self.settings.particle_density();
         // Phase 11 §34: re-apply the shader selection (pack pipeline swap)
         self.apply_shader_selection();
         // Phase 6 §26: texture quality (mipmaps + aniso), MSAA, occlusion
@@ -4635,21 +4904,115 @@ impl GameApp {
             Screen::Pause => {
                 self.widgets = layout_pause();
             }
-            Screen::Options if self.options_page == 1 => {
-                // Phase 6 §26: page 2 — video details
-                let mut ws = layout_options2();
+            Screen::Options => {
+                let mut ws = layout_options();
+                for w in ws.iter_mut() {
+                    match w.id {
+                        ID_OPT_MUSIC => set_slider(
+                            w,
+                            &format!("MUSIC: {}%", (s.music_volume * 100.0).round() as i32),
+                            s.music_volume,
+                        ),
+                        ID_OPT_VOL => set_slider(
+                            w,
+                            &format!("SOUND: {}%", (s.volume * 100.0).round() as i32),
+                            s.volume,
+                        ),
+                        ID_OPT_FOV => {
+                            // vanilla FOV label: plain degrees, the classic
+                            // easter egg at the 110 top end
+                            let label = if s.fov >= 109.5 {
+                                "FOV: QUAKE PRO".to_string()
+                            } else {
+                                format!("FOV: {}", s.fov.round() as i32)
+                            };
+                            set_slider(w, &label, (s.fov - 30.0) / 80.0);
+                        }
+                        ID_OPT_SENS => set_slider(
+                            w,
+                            &format!("SENSITIVITY: {}%", (s.sensitivity * 100.0).round() as i32),
+                            (s.sensitivity - 0.1) / 1.9,
+                        ),
+                        _ => {}
+                    }
+                }
+                self.widgets = ws;
+            }
+            Screen::Video => {
+                // the exact vanilla 1.16.5 Video Settings screen
+                let mut ws = layout_video();
+                for w in ws.iter_mut() {
+                    match w.id {
+                        ID_OPT_RD => set_slider(
+                            w,
+                            &format!("RENDER DISTANCE: {} CHUNKS", s.render_distance),
+                            (s.render_distance - 2) as f32 / 30.0,
+                        ),
+                        ID_OPT_GRAPHICS => set_button_value(
+                            w,
+                            match s.graphics {
+                                0 => "FAST",
+                                2 => "FABULOUS!",
+                                _ => "FANCY",
+                            },
+                        ),
+                        ID_OPT_SMOOTH => set_button_value(w, s.smooth_label()),
+                        ID_OPT_GUISCALE => set_button_value(
+                            w,
+                            match s.gui_scale {
+                                1 => "1",
+                                2 => "2",
+                                3 => "3",
+                                _ => "AUTO",
+                            },
+                        ),
+                        ID_OPT_CLOUDS => set_button_value(w, s.clouds_label()),
+                        ID_OPT_PARTICLES => set_button_value(
+                            w,
+                            match s.particles {
+                                1 => "DECREASED",
+                                2 => "MINIMAL",
+                                _ => "ALL",
+                            },
+                        ),
+                        ID_OPT_FULLSCREEN => {
+                            set_button_value(w, if s.fullscreen { "ON" } else { "OFF" })
+                        }
+                        ID_OPT_VSYNC => set_button_value(w, if s.vsync { "ON" } else { "OFF" }),
+                        ID_OPT_ENTSHADOW => {
+                            set_button_value(w, if s.entity_shadows { "ON" } else { "OFF" })
+                        }
+                        // vanilla: the brightness slider is unlabeled (the
+                        // Moody/Bright hint rides the hover tooltip)
+                        ID_OPT_BRIGHT => set_slider(w, "", s.brightness),
+                        ID_OPT_BIOME => set_slider(
+                            w,
+                            &format!("BIOME BLEND: {}", s.biome_blend_label()),
+                            s.biome_blend as f32 / 4.0,
+                        ),
+                        _ => {}
+                    }
+                }
+                self.widgets = ws;
+            }
+            Screen::Engine => {
+                let mut ws = layout_engine();
                 let max_msaa = self.renderer.msaa_supported();
                 for w in ws.iter_mut() {
                     match w.id {
                         ID_OPT_SIMDIST => set_slider(
                             w,
-                            &format!("SIM DIST: {} CHUNKS", s.sim_distance),
+                            &format!("SIM DISTANCE: {} CHUNKS", s.sim_distance),
                             (s.sim_distance - 5) as f32 / 27.0,
                         ),
-                        ID_OPT_RD => set_slider(
+                        ID_OPT_MAXFPS => set_button_value(
                             w,
-                            &format!("RENDER DIST: {} CHUNKS", s.render_distance),
-                            (s.render_distance - 2) as f32 / 30.0,
+                            match s.maxfps {
+                                1 => "30",
+                                2 => "60",
+                                3 => "120",
+                                _ => "UNCAPPED",
+                            },
                         ),
                         ID_OPT_MIP => set_button_value(w, &format!("{}", s.mipmap_levels)),
                         ID_OPT_ANISO => set_button_value(
@@ -4677,9 +5040,6 @@ impl GameApp {
                             set_button_value(w, &label);
                         }
                         ID_OPT_OCCL => set_button_value(w, if s.occlusion { "ON" } else { "OFF" }),
-                        ID_OPT_AUTOJUMP => {
-                            set_button_value(w, if s.auto_jump { "ON" } else { "OFF" })
-                        }
                         ID_OPT_GMESH => set_button_value(
                             w,
                             if s.gpu_meshing && self.renderer.gpu_mesh.is_some() {
@@ -4688,57 +5048,6 @@ impl GameApp {
                                 "OFF"
                             } else {
                                 "N/A"
-                            },
-                        ),
-                        _ => {}
-                    }
-                }
-                self.widgets = ws;
-            }
-            Screen::Options => {
-                let mut ws = layout_options();
-                for w in ws.iter_mut() {
-                    match w.id {
-                        ID_OPT_FOV => set_slider(
-                            w,
-                            &format!("FOV: {}", s.fov.round() as i32),
-                            (s.fov - 30.0) / 80.0,
-                        ),
-                        ID_OPT_SENS => set_slider(
-                            w,
-                            &format!("MOUSE SENS: {}%", (s.sensitivity * 100.0).round() as i32),
-                            (s.sensitivity - 0.1) / 1.9,
-                        ),
-                        ID_OPT_RD => set_slider(
-                            w,
-                            &format!("RENDER DIST: {} CHUNKS", s.render_distance),
-                            (s.render_distance - 2) as f32 / 30.0,
-                        ),
-                        ID_OPT_BRIGHT => {
-                            let label = if s.brightness < 0.05 {
-                                "MOODY".to_string()
-                            } else {
-                                format!("{}%", (s.brightness * 100.0).round() as i32)
-                            };
-                            set_slider(w, &format!("BRIGHTNESS: {}", label), s.brightness)
-                        }
-                        ID_OPT_VOL => set_slider(
-                            w,
-                            &format!("VOLUME: {}%", (s.volume * 100.0).round() as i32),
-                            s.volume,
-                        ),
-                        ID_OPT_MUSIC => set_slider(
-                            w,
-                            &format!("MUSIC: {}%", (s.music_volume * 100.0).round() as i32),
-                            s.music_volume,
-                        ),
-                        ID_OPT_SHADER => set_button_value(w, &self.shader_mode_name(s.shader)),
-                        ID_OPT_GRAPHICS => set_button_value(
-                            w,
-                            match s.graphics {
-                                0 => "FAST",
-                                2 => "FABULOUS!",
-                                _ => "FANCY",
                             },
                         ),
                         ID_OPT_SHADOWS => set_button_value(
@@ -4758,20 +5067,25 @@ impl GameApp {
                                 _ => "OFF",
                             },
                         ),
-                        ID_OPT_MAXFPS => set_button_value(
-                            w,
-                            match s.maxfps {
-                                1 => "30",
-                                2 => "60",
-                                3 => "120",
-                                _ => "VSYNC",
-                            },
-                        ),
-                        ID_OPT_SMOOTH => {
-                            set_button_value(w, if s.smooth_lighting { "ON" } else { "OFF" })
-                        }
-                        ID_OPT_CLOUDS => set_button_value(w, if s.clouds { "ON" } else { "OFF" }),
                         _ => {}
+                    }
+                }
+                self.widgets = ws;
+            }
+            Screen::Packs => {
+                // engine shader modes + shader packs as one selectable list
+                let n = 3 + self.shader_packs.len();
+                let entries: Vec<String> = (0..n)
+                    .map(|i| self.shader_mode_name(i as u8).to_string())
+                    .collect();
+                let selected = (s.shader as usize).min(n - 1);
+                self.widgets = layout_packs(&entries, selected);
+            }
+            Screen::Access => {
+                let mut ws = layout_access();
+                for w in ws.iter_mut() {
+                    if w.id == ID_OPT_AUTOJUMP {
+                        set_button_value(w, if s.auto_jump { "ON" } else { "OFF" });
                     }
                 }
                 self.widgets = ws;
@@ -4819,6 +5133,102 @@ impl GameApp {
             }
             _ => self.widgets = Vec::new(),
         }
+        // GUI Scale: every menu's widget list scales around the canvas
+        // center (with matching text scale for the draw pass)
+        let gs = self.settings.gui_scale_factor();
+        ui::scale_widgets(&mut self.widgets, gs);
+        self.ui.widget_scale = gs;
+    }
+
+    /// vanilla Biome Blend: the mesh-time tint pad becomes the
+    /// nearest-LUT-slot average of the neighborhood biome grass colors
+    /// — both meshers (CPU + GPU compute) consume the pad, so one blend
+    /// pass covers every path. Sampling reads the live world map
+    /// (get_biome returns Plains for missing edge chunks).
+    fn blended_biome_pad(&self, pos: ChunkPos, r: i32) -> Box<[u8]> {
+        let mut pad = vec![0u8; 256];
+        for lz in 0..16i32 {
+            for lx in 0..16i32 {
+                let wx = pos.0 * 16 + lx;
+                let wz = pos.1 * 16 + lz;
+                let (mut ar, mut ag, mut ab) = (0.0f32, 0.0f32, 0.0f32);
+                let mut n = 0.0f32;
+                for dz in -r..=r {
+                    for dx in -r..=r {
+                        let b = self.world.get_biome(wx + dx, wz + dz);
+                        let c = vc_blocks::tint::grass_color(b);
+                        ar += c[0];
+                        ag += c[1];
+                        ab += c[2];
+                        n += 1.0;
+                    }
+                }
+                let mut best = 0u8;
+                let mut bd = f32::MAX;
+                for b in 0..14u8 {
+                    // 14 biomes (Phase 10) — tint rows are biome-keyed
+                    let c = vc_blocks::tint::grass_color(b);
+                    let d = (ar / n - c[0]).powi(2)
+                        + (ag / n - c[1]).powi(2)
+                        + (ab / n - c[2]).powi(2);
+                    if d < bd {
+                        bd = d;
+                        best = b;
+                    }
+                }
+                pad[(lz * 16 + lx) as usize] = best;
+            }
+        }
+        pad.into_boxed_slice()
+    }
+
+    /// vanilla Entity Shadows: one soft dark ground quad per visible mob.
+    /// The billboard pipeline alpha-blends; the glass texel's translucent
+    /// fill + a dark tint reads as a soft shadow (disclosed clean-room
+    /// approximation of the vanilla blob texture).
+    fn push_mob_shadows(&mut self) {
+        const TILE: u16 = TILE_GLASS; // 11
+        let uv = [((TILE % 32) as f32 + 0.5) / 32.0, ((TILE / 32) as f32 + 0.5) / 32.0];
+        let col = [0.30, 0.30, 0.34];
+        let quads: Vec<([f32; 3], f32, f32)> = self
+            .sim
+            .mobs
+            .list
+            .iter()
+            .filter_map(|m| {
+                let d = vc_gameplay::mobs::def(m.kind);
+                let g = self.mob_shadow_ground(m.pos[0], m.pos[1], m.pos[2])?;
+                let s = (d.width.max(0.5) * 0.45).clamp(0.28, 0.9);
+                Some((m.pos, s, g))
+            })
+            .collect();
+        for (pos, s, gy) in quads {
+            let (x, z) = (pos[0], pos[2]);
+            let v = |px: f32, pz: f32| vc_particles::particles::ParticleVertex {
+                pos: [px, gy, pz],
+                uv,
+                col,
+            };
+            let a = v(x - s, z - s);
+            let b = v(x + s, z - s);
+            let c = v(x + s, z + s);
+            let d = v(x - s, z + s);
+            self.particle_verts.extend_from_slice(&[a, b, c, a, c, d]);
+        }
+    }
+
+    /// ground height under a mob (for the entity shadow quad): first
+    /// non-air, non-water block within 8 below the feet
+    fn mob_shadow_ground(&self, x: f32, y: f32, z: f32) -> Option<f32> {
+        let bx = x.floor() as i32;
+        let bz = z.floor() as i32;
+        let start = (y.floor() as i32 - 1).clamp(0, 255);
+        let stop = (start - 8).max(0);
+        let by = (stop..=start).rev().find(|&yy| {
+            let b = self.world.get_block(bx, yy, bz);
+            b != AIR && b != WATER
+        })?;
+        Some(by as f32 + 1.0 + 0.03)
     }
 
     fn remesh_all(&mut self) {
@@ -5886,6 +6296,19 @@ impl GameApp {
             if id == ui::ID_WS_CREATE {
                 self.wc_seed = "12345".into();
             }
+        }
+
+        // E2E_MENU: the settings-tree script ran to the end — verify the
+        // tree round-tripped back to the title and exit clean
+        if self.smoke_menu_e2e
+            && self.smoke_script.is_empty()
+            && self.screen == Screen::Title
+        {
+            vc_render::render::report_boot_log(
+                "e2e: settings tree ok (video/engine/packs/access) — exiting 0",
+            );
+            self.dbg_exit_summary();
+            std::process::exit(0);
         }
 
         // --- bench mode: scripted camera, frame bookkeeping (§48 Phase 0)
@@ -7997,19 +8420,53 @@ impl GameApp {
                 // user-reported mouse-click regression class is covered
                 // by exactly this path
                 if self.smoke {
-                    vc_render::render::report_boot_log(
-                        "smoke: title reached — clicking through the input path",
-                    );
-                    // deterministic world: the seed goes into the create
-                    // screen's field after the screen resets its buffers
-                    // (see the script driver in update)
-                    let t = self.time;
-                    self.smoke_script = vec![
-                        (t + 0.30, ui::ID_TITLE_PLAY),
-                        (t + 0.70, ui::ID_WS_CREATE),
-                        (t + 1.10, ui::ID_WC_CREATE),
-                    ]
-                    .into();
+                    if std::env::var("E2E_MENU").is_ok() {
+                        // menu-tree E2E (linux-game.yml): click through the
+                        // whole vanilla settings tree via the REAL input
+                        // path, then exit clean at the title
+                        vc_render::render::report_boot_log(
+                            "smoke: title reached — running the settings-tree E2E",
+                        );
+                        let t = self.time;
+                        self.smoke_script = vec![
+                            (t + 0.30, ui::ID_TITLE_OPTIONS),
+                            (t + 0.60, ui::ID_OPT_VIDEO),
+                            (t + 0.85, ui::ID_OPT_GRAPHICS),
+                            (t + 1.05, ui::ID_OPT_SMOOTH),
+                            (t + 1.25, ui::ID_OPT_GUISCALE),
+                            (t + 1.45, ui::ID_OPT_CLOUDS),
+                            (t + 1.65, ui::ID_OPT_PARTICLES),
+                            (t + 1.85, ui::ID_OPT_VSYNC),
+                            (t + 2.05, ui::ID_OPT_DONE2),
+                            (t + 2.35, ui::ID_OPT_ENGINE),
+                            (t + 2.60, ui::ID_OPT_OCCL),
+                            (t + 2.80, ui::ID_OPT_GMESH),
+                            (t + 3.00, ui::ID_OPT_DONE2),
+                            (t + 3.30, ui::ID_OPT_PACKS),
+                            (t + 3.55, ui::ID_PACK_BASE),
+                            (t + 3.80, ui::ID_OPT_DONE2),
+                            (t + 4.10, ui::ID_OPT_ACCESS),
+                            (t + 4.35, ui::ID_OPT_AUTOJUMP),
+                            (t + 4.60, ui::ID_OPT_DONE2),
+                            (t + 4.90, ui::ID_OPT_DONE),
+                        ]
+                        .into();
+                        self.smoke_menu_e2e = true;
+                    } else {
+                        vc_render::render::report_boot_log(
+                            "smoke: title reached — clicking through the input path",
+                        );
+                        // deterministic world: the seed goes into the create
+                        // screen's field after the screen resets its buffers
+                        // (see the script driver in update)
+                        let t = self.time;
+                        self.smoke_script = vec![
+                            (t + 0.30, ui::ID_TITLE_PLAY),
+                            (t + 0.70, ui::ID_WS_CREATE),
+                            (t + 1.10, ui::ID_WC_CREATE),
+                        ]
+                        .into();
+                    }
                 }
             }
         }
@@ -10417,6 +10874,7 @@ impl GameApp {
         self.light = vc_world::light::LightEngine::new();
         self.sim = vc_sim::sim::Sim::new(self.world.seed ^ dim.seed_salt());
         self.particles = vc_particles::particles::ParticleSystem::new(self.world.seed ^ 0x7EED);
+        self.particles.density = self.settings.particle_density();
         self.particle_verts.clear();
         self.container = None;
         self.container_geom = None;
@@ -10636,8 +11094,13 @@ impl GameApp {
             ("vol", StatsVal::F(self.settings.volume)),
             ("bright", StatsVal::F(self.settings.brightness)),
             ("shader", StatsVal::F(self.settings.shader as f32)),
-            ("clouds", StatsVal::B(self.settings.clouds)),
-            ("smooth", StatsVal::B(self.settings.smooth_lighting)),
+            ("clouds", StatsVal::F(self.settings.clouds_level as f32)),
+            ("smooth", StatsVal::F(self.settings.smooth_level as f32)),
+            ("guiScale", StatsVal::F(self.settings.gui_scale as f32)),
+            ("particles", StatsVal::F(self.settings.particles as f32)),
+            ("vsync", StatsVal::B(self.settings.vsync)),
+            ("entityShadows", StatsVal::B(self.settings.entity_shadows)),
+            ("biomeBlend", StatsVal::F(self.settings.biome_blend as f32)),
             ("fancy", StatsVal::B(self.settings.graphics >= 1)),
             ("graphics", StatsVal::F(self.settings.graphics as f32)),
             (
@@ -11047,14 +11510,24 @@ impl GameApp {
                         .as_ref()
                         .map(|m| !m.stalled_out())
                         .unwrap_or(false);
+                // vanilla Biome Blend: pre-blend the tint pad when the
+                // radius is live (both meshers consume it — see
+                // blended_biome_pad)
+                let blend_r = self.settings.biome_blend_radius();
+                let biomes = if blend_r > 0 {
+                    Some(self.blended_biome_pad(pos, blend_r))
+                } else {
+                    None
+                };
                 self.submit(Job::Mesh {
                     pos,
                     snap,
                     lsnap,
-                    smooth: self.settings.smooth_lighting,
+                    smooth: self.settings.smooth_level,
                     mask,
                     prev,
                     gpu,
+                    biomes,
                 });
             }
         }
@@ -11380,9 +11853,9 @@ impl GameApp {
             3 => "120".to_string(),
             _ => "∞".to_string(),
         };
-        let clouds_val = if !self.settings.clouds {
+        let clouds_val = if self.settings.graphics == 0 || self.settings.clouds_level == 0 {
             "clouds-off"
-        } else if self.settings.graphics == 0 {
+        } else if self.settings.clouds_level == 1 {
             "fast-clouds"
         } else {
             "fancy-clouds"
@@ -11747,12 +12220,42 @@ impl GameApp {
                 return;
             }
             Screen::Options => {
-                let sub = if self.options_page == 1 {
-                    "VIDEO DETAILS - 2/2"
-                } else {
-                    "SETTINGS APPLY INSTANTLY AND ARE SAVED"
-                };
-                self.ui.options_screen(&self.widgets, self.hover, sub);
+                let tt = self.tooltip_lines();
+                self.ui
+                    .settings_screen(&self.widgets, self.hover, "OPTIONS", &tt);
+                self.ui_dump_if_asked();
+                return;
+            }
+            Screen::Video => {
+                let tt = self.tooltip_lines();
+                self.ui
+                    .settings_screen(&self.widgets, self.hover, "VIDEO SETTINGS", &tt);
+                self.ui_dump_if_asked();
+                return;
+            }
+            Screen::Engine => {
+                let tt = self.tooltip_lines();
+                self.ui
+                    .settings_screen(&self.widgets, self.hover, "ENGINE SETTINGS", &tt);
+                self.ui_dump_if_asked();
+                return;
+            }
+            Screen::Packs => {
+                let tt = self.tooltip_lines();
+                self.ui
+                    .settings_screen(&self.widgets, self.hover, "RESOURCE PACKS", &tt);
+                self.ui_dump_if_asked();
+                return;
+            }
+            Screen::Access => {
+                let tt = self.tooltip_lines();
+                self.ui.settings_screen(
+                    &self.widgets,
+                    self.hover,
+                    "ACCESSIBILITY SETTINGS",
+                    &tt,
+                );
+                self.ui_dump_if_asked();
                 return;
             }
             Screen::Pause => {
@@ -12060,6 +12563,14 @@ impl GameApp {
                 panorama = Some(pano_view);
                 (menu_cam(), 0.45, None)
             }
+            // settings sub-screens ride the same treatment as Options
+            // (panorama when the menu tree was opened from the title)
+            Screen::Video | Screen::Engine | Screen::Packs | Screen::Access => {
+                if self.options_from == Screen::Title {
+                    panorama = Some(pano_view);
+                }
+                (menu_cam(), 0.45, None)
+            }
             // Phase 1: world screens ride the panorama like the title —
             // the real world list also sits on the panorama background
             Screen::WorldSelect | Screen::WorldCreate => {
@@ -12163,6 +12674,11 @@ impl GameApp {
             );
             // Phase 2: mobs + skeleton arrows share the billboard pipeline
             vc_gameplay::mobs::build_vertices(&self.sim.mobs.list, right, &mut self.particle_verts);
+            // vanilla Entity Shadows: soft ground quads under the mobs
+            // (same blended billboard pipeline)
+            if self.settings.entity_shadows {
+                self.push_mob_shadows();
+            }
             // Phase E1: XP orbs + the dragon + end crystals (billboards
             // through the same particle stream)
             self.sim
@@ -12198,7 +12714,11 @@ impl GameApp {
                 // EASU already reconstructs most of the edge contrast)
                 sharpen: if self.settings.upscale > 0 { 0.6 } else { 0.0 },
             },
-            self.settings.clouds && self.settings.graphics >= 1 && !nether,
+            if self.settings.graphics >= 1 && !nether {
+                self.settings.clouds_level
+            } else {
+                0
+            },
             panorama,
             &self.particle_verts,
         );
@@ -12799,7 +13319,228 @@ fn report_datapacks(loaded: &vc_pack::datapack::LoadedData) {
 
 #[cfg(test)]
 mod settings_tests {
-    use super::Settings;
+    use super::{Settings, GameApp};
+
+    /// The vanilla 1.16.5 Video Settings screen: the EXACT option set —
+    /// the full-width Render Distance slider, four two-column cycling
+    /// rows (Graphics|Smooth Lighting, GUI Scale|Clouds, Particles|Full
+    /// Screen, Use VSync|Entity Shadows), the unlabeled Brightness
+    /// slider, the Biome Blend slider, Done. Geometry at the 1.5x canvas
+    /// scale: 150x20 vanilla buttons -> 225x30, 310x20 -> 465x30, 36px
+    /// row pitch from y=72.
+    #[test]
+    fn vanilla_video_screen_layout() {
+        let ws = vc_render::ui::layout_video();
+        let ids: Vec<u16> = ws.iter().map(|w| w.id).collect();
+        for wanted in [
+            vc_render::ui::ID_OPT_RD,
+            vc_render::ui::ID_OPT_GRAPHICS,
+            vc_render::ui::ID_OPT_SMOOTH,
+            vc_render::ui::ID_OPT_GUISCALE,
+            vc_render::ui::ID_OPT_CLOUDS,
+            vc_render::ui::ID_OPT_PARTICLES,
+            vc_render::ui::ID_OPT_FULLSCREEN,
+            vc_render::ui::ID_OPT_VSYNC,
+            vc_render::ui::ID_OPT_ENTSHADOW,
+            vc_render::ui::ID_OPT_BRIGHT,
+            vc_render::ui::ID_OPT_BIOME,
+            vc_render::ui::ID_OPT_DONE2,
+        ] {
+            assert!(ids.contains(&wanted), "video screen missing {wanted}");
+        }
+        assert_eq!(ids.len(), 12, "vanilla video = 11 options + done");
+        // vanilla proportions
+        let rd = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_RD).unwrap();
+        assert_eq!((rd.x, rd.y, rd.w, rd.h), (248, 72, 465, 30));
+        let g = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_GRAPHICS).unwrap();
+        assert_eq!((g.x, g.y, g.w, g.h), (248, 108, 225, 30));
+        let sl = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_SMOOTH).unwrap();
+        assert_eq!((sl.x, sl.y), (487, 108), "right column");
+        // the vanilla unlabeled Brightness slider
+        let b = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_BRIGHT).unwrap();
+        match &b.kind {
+            vc_render::ui::WidgetKind::Slider { label, .. } => assert_eq!(label, ""),
+            _ => panic!("brightness is a slider"),
+        }
+    }
+
+    /// every option on every settings screen carries a hover tooltip —
+    /// the vanilla hint behavior (Graphics hints two lines, Brightness
+    /// reads Moody/Bright from the live value)
+    #[test]
+    fn every_settings_option_has_tooltip() {
+        let s = Settings::default();
+        for ws in [
+            vc_render::ui::layout_options(),
+            vc_render::ui::layout_video(),
+            vc_render::ui::layout_engine(),
+            vc_render::ui::layout_access(),
+        ] {
+            for w in ws {
+                assert!(
+                    !GameApp::tooltip_for(w.id, &s).is_empty(),
+                    "option {} has no tooltip",
+                    w.id
+                );
+            }
+        }
+        let packs: Vec<String> = (0..5).map(|i| format!("PACK {i}")).collect();
+        for w in vc_render::ui::layout_packs(&packs, 0) {
+            assert!(
+                !GameApp::tooltip_for(w.id, &s).is_empty(),
+                "pack row {} has no tooltip",
+                w.id
+            );
+        }
+        let mut sb = Settings::default();
+        sb.brightness = 0.0;
+        assert!(GameApp::tooltip_for(vc_render::ui::ID_OPT_BRIGHT, &sb)[0].contains("Moody"));
+        sb.brightness = 1.0;
+        assert!(GameApp::tooltip_for(vc_render::ui::ID_OPT_BRIGHT, &sb)[0].contains("Bright"));
+        // two-line tooltips stay two lines (the vanilla 2-line hint slot)
+        assert_eq!(
+            GameApp::tooltip_for(vc_render::ui::ID_OPT_GRAPHICS, &s).len(),
+            2
+        );
+    }
+
+    /// GUI Scale: `scale_widgets` moves geometry around the canvas center
+    /// and text scaling follows (draw-side) — vanilla semantics
+    #[test]
+    fn gui_scale_scales_around_center() {
+        let mut ws = vc_render::ui::layout_video();
+        let before = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_GRAPHICS).unwrap().clone();
+        vc_render::ui::scale_widgets(&mut ws, 0.72);
+        let after = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_GRAPHICS).unwrap();
+        // center (480,270) stays fixed; distances shrink by 0.72 (the
+        // scale_widgets rounding, mirrored exactly)
+        assert_eq!((480.0 + (before.x - 480) as f32 * 0.72).round() as i32, after.x);
+        assert_eq!((before.w as f32 * 0.72).round() as i32, after.w);
+        assert_eq!((270.0 + (before.y - 270) as f32 * 0.72).round() as i32, after.y);
+    }
+
+    /// UI_DUMP_DIR=<dir> renders every settings screen on the CPU canvas
+    /// (no GPU — pure ui.rs) with live labels + a hover tooltip: the
+    /// headless, deterministic screenshot source for docs. Not set in CI.
+    #[test]
+    fn ui_settings_screens_dump() {
+        let Ok(dir) = std::env::var("UI_DUMP_DIR") else {
+            return;
+        };
+        use super::{set_button_value, set_slider};
+        use vc_render::ui::{UiCanvas, Widget};
+        let s = Settings::default();
+        let mut cases: Vec<(&str, Vec<Widget>, &str, Option<u16>)> = Vec::new();
+
+        let mut ws = vc_render::ui::layout_options();
+        for w in ws.iter_mut() {
+            match w.id {
+                x if x == vc_render::ui::ID_OPT_MUSIC => {
+                    set_slider(w, "MUSIC: 60%", s.music_volume)
+                }
+                x if x == vc_render::ui::ID_OPT_VOL => set_slider(w, "SOUND: 70%", s.volume),
+                x if x == vc_render::ui::ID_OPT_FOV => {
+                    set_slider(w, "FOV: 70", (s.fov - 30.0) / 80.0)
+                }
+                x if x == vc_render::ui::ID_OPT_SENS => {
+                    set_slider(w, "SENSITIVITY: 53%", (s.sensitivity - 0.1) / 1.9)
+                }
+                _ => {}
+            }
+        }
+        cases.push(("options", ws, "OPTIONS", Some(vc_render::ui::ID_OPT_VIDEO)));
+
+        let mut ws = vc_render::ui::layout_video();
+        for w in ws.iter_mut() {
+            match w.id {
+                x if x == vc_render::ui::ID_OPT_RD => set_slider(
+                    w,
+                    &format!("RENDER DISTANCE: {} CHUNKS", s.render_distance),
+                    (s.render_distance - 2) as f32 / 30.0,
+                ),
+                x if x == vc_render::ui::ID_OPT_GRAPHICS => set_button_value(w, "FANCY"),
+                x if x == vc_render::ui::ID_OPT_SMOOTH => set_button_value(w, "MAXIMUM"),
+                x if x == vc_render::ui::ID_OPT_GUISCALE => set_button_value(w, "AUTO"),
+                x if x == vc_render::ui::ID_OPT_CLOUDS => set_button_value(w, "FANCY"),
+                x if x == vc_render::ui::ID_OPT_PARTICLES => set_button_value(w, "ALL"),
+                x if x == vc_render::ui::ID_OPT_FULLSCREEN => set_button_value(w, "OFF"),
+                x if x == vc_render::ui::ID_OPT_VSYNC => set_button_value(w, "ON"),
+                x if x == vc_render::ui::ID_OPT_ENTSHADOW => set_button_value(w, "ON"),
+                x if x == vc_render::ui::ID_OPT_BRIGHT => set_slider(w, "", s.brightness),
+                x if x == vc_render::ui::ID_OPT_BIOME => {
+                    set_slider(w, "BIOME BLEND: 3X3", s.biome_blend as f32 / 4.0)
+                }
+                _ => {}
+            }
+        }
+        cases.push((
+            "video",
+            ws,
+            "VIDEO SETTINGS",
+            Some(vc_render::ui::ID_OPT_GRAPHICS),
+        ));
+
+        let mut ws = vc_render::ui::layout_engine();
+        for w in ws.iter_mut() {
+            match w.id {
+                x if x == vc_render::ui::ID_OPT_SIMDIST => set_slider(
+                    w,
+                    &format!("SIM DISTANCE: {} CHUNKS", s.sim_distance),
+                    (s.sim_distance - 5) as f32 / 27.0,
+                ),
+                x if x == vc_render::ui::ID_OPT_MAXFPS => set_button_value(w, "UNCAPPED"),
+                x if x == vc_render::ui::ID_OPT_MIP => set_button_value(w, "4"),
+                x if x == vc_render::ui::ID_OPT_ANISO => set_button_value(w, "4X"),
+                x if x == vc_render::ui::ID_OPT_MSAA => set_button_value(w, "OFF"),
+                x if x == vc_render::ui::ID_OPT_OCCL => set_button_value(w, "ON"),
+                x if x == vc_render::ui::ID_OPT_GMESH => set_button_value(w, "ON"),
+                x if x == vc_render::ui::ID_OPT_SHADOWS => set_button_value(w, "2K"),
+                x if x == vc_render::ui::ID_OPT_UPSCALE => set_button_value(w, "OFF"),
+                _ => {}
+            }
+        }
+        cases.push((
+            "engine",
+            ws,
+            "ENGINE SETTINGS",
+            Some(vc_render::ui::ID_OPT_GMESH),
+        ));
+
+        let packs: Vec<String> = ["OFF", "VANILLA+", "CINEMATIC", "MOONLIT", "WARM EVENING"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        let ws = vc_render::ui::layout_packs(&packs, 1);
+        cases.push((
+            "packs",
+            ws,
+            "RESOURCE PACKS",
+            Some(vc_render::ui::ID_PACK_BASE + 1),
+        ));
+
+        let mut ws = vc_render::ui::layout_access();
+        for w in ws.iter_mut() {
+            if w.id == vc_render::ui::ID_OPT_AUTOJUMP {
+                set_button_value(w, "ON");
+            }
+        }
+        cases.push((
+            "access",
+            ws,
+            "ACCESSIBILITY SETTINGS",
+            Some(vc_render::ui::ID_OPT_AUTOJUMP),
+        ));
+
+        let _ = std::fs::create_dir_all(&dir);
+        for (name, ws, title, hover) in cases {
+            let mut c = UiCanvas::new();
+            let tt = hover
+                .map(|id| GameApp::tooltip_for(id, &s))
+                .unwrap_or_default();
+            c.settings_screen(&ws, hover, title, &tt);
+            c.dump_png(&format!("{dir}/{name}.png"));
+        }
+    }
 
     /// Phase 6 §26: the new quality settings survive a serialize →
     /// deserialize round trip, and a legacy settings string (pre-Phase-6
@@ -12821,7 +13562,26 @@ mod settings_tests {
         // the pre-existing keys still round trip
         assert_eq!(restored.render_distance, s.render_distance);
         assert_eq!(restored.fov, s.fov);
-        assert_eq!(restored.smooth_lighting, s.smooth_lighting);
+        assert_eq!(restored.smooth_level, s.smooth_level);
+        assert_eq!(restored.clouds_level, s.clouds_level);
+        // the vanilla 1.16.5 video options round trip too
+        s.gui_scale = 2;
+        s.particles = 1;
+        s.fullscreen = true;
+        s.vsync = false;
+        s.entity_shadows = false;
+        s.biome_blend = 4;
+        s.smooth_level = 1;
+        s.clouds_level = 1;
+        let r2 = Settings::deserialize(&s.serialize());
+        assert_eq!(r2.gui_scale, 2);
+        assert_eq!(r2.particles, 1);
+        assert!(r2.fullscreen);
+        assert!(!r2.vsync);
+        assert!(!r2.entity_shadows);
+        assert_eq!(r2.biome_blend, 4);
+        assert_eq!(r2.smooth_level, 1);
+        assert_eq!(r2.clouds_level, 1);
     }
 
     /// legacy settings strings (Phase 5 era) keep parsing; the Phase 6 keys
@@ -12833,7 +13593,9 @@ mod settings_tests {
         assert_eq!(s.render_distance, 8);
         assert_eq!(s.fov, 80.0);
         assert_eq!(s.graphics, 2);
-        assert!(!s.clouds);
+        // legacy bool keys map to the vanilla three-state levels
+        assert_eq!(s.smooth_level, 2); // smooth=1 → maximum
+        assert_eq!(s.clouds_level, 0); // clouds=0 → off
         assert_eq!(s.upscale, 1);
         // Phase 6 keys → defaults
         assert_eq!(s.sim_distance, 12);

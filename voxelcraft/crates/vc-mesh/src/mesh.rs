@@ -138,7 +138,10 @@ pub fn mesh_chunk(
     lsnap: &[Option<Arc<vc_world::light::LightData>>; 9],
     smooth: bool,
 ) -> MeshData {
-    mesh_sections(pos, snap, lsnap, smooth, u16::MAX, &[]).merged
+    // tests/bench keep the bool API; the game path passes the vanilla
+    // three-state level directly (bool true = the old full-strength AO)
+    let smooth = if smooth { 2u8 } else { 0 };
+    mesh_sections(pos, snap, lsnap, smooth, u16::MAX, &[], None).merged
 }
 
 // padded 48 x 256 x 48 region covering the 3x3 snapshot
@@ -308,16 +311,23 @@ pub fn mesh_sections(
     pos: ChunkPos,
     snap: &[Option<Arc<Chunk>>; 9],
     lsnap: &[Option<Arc<vc_world::light::LightData>>; 9],
-    smooth: bool,
+    // smooth lighting level: 0 off, 1 minimum, 2 maximum (vanilla)
+    smooth: u8,
     mask: u16,
     prev: &[Option<Arc<MeshData>>],
+    // vanilla Biome Blend: caller's pre-blended tint pad (None = the
+    // plain center-chunk copy)
+    biomes: Option<Box<[u8]>>,
 ) -> MeshOut {
     let (_cx, _cz) = pos;
 
     // ------------------------------------------------ shared padded inputs
     // (Phase 7 extraction — byte-identical to the loops this replaced)
-    let MeshInputs { blocks, light, blight, biomes, has_cross, has_models } =
-        build_mesh_inputs(snap, lsnap);
+    let mut inputs = build_mesh_inputs(snap, lsnap);
+    if let Some(b) = biomes {
+        inputs.biomes = b;
+    }
+    let MeshInputs { blocks, light, blight, biomes, has_cross, has_models } = inputs;
     let biome_at = |lx: usize, lz: usize| biomes[lz * 16 + lx];
 
     // ------------------------------------------------ greedy meshing
@@ -435,11 +445,18 @@ pub fn mesh_sections(
                             let s1 = solid_at(h_side.0, h_side.1);
                             let s2 = solid_at(v_side.0, v_side.1);
                             let cr = solid_at(diag.0, diag.1);
-                            // smooth lighting OFF ("Fast" graphics) → flat AO
-                            ao[ci] = if smooth {
-                                if s1 && s2 { 0 } else { 3 - (s1 as u64 + s2 as u64 + cr as u64) }
+                            // vanilla Smooth Lighting level: 0 off (flat),
+                            // 1 minimum (half-strength corners), 2 maximum
+                            // (full AO) — the GPU mesher mirrors this remap
+                            let a = if s1 && s2 {
+                                0u64
                             } else {
-                                3
+                                3 - (s1 as u64 + s2 as u64 + cr as u64)
+                            };
+                            ao[ci] = match smooth {
+                                0 => 3,
+                                1 => (a + 3) / 2,
+                                _ => a,
                             };
                             let s = light_at(big_u - 1, big_v - 1)
                                 + light_at(big_u, big_v - 1)
@@ -584,7 +601,7 @@ pub fn mesh_sections(
                         &blocks,
                         &light,
                         &blight,
-                        smooth,
+                        smooth != 0,
                         biome_at(lx, lz),
                         solid_v,
                         solid_i,
@@ -1494,28 +1511,28 @@ mod phase3_tests {
         let (_, snap) = terrain_snap(0xC0FFEE);
         let pos = (0, 0);
         let lsnap = vc_world::light::reference_lightdata(&snap);
-        let full = mesh_sections(pos, &snap, &lsnap, true, u16::MAX, &[]);
+        let full = mesh_sections(pos, &snap, &lsnap, 2, u16::MAX, &[], None);
         assert!(full.merged.tri_count() > 0, "terrain must produce geometry");
 
         // single-section remesh
         let cache = full.sections.clone();
-        let p1 = mesh_sections(pos, &snap, &lsnap, true, 1 << 7, &cache);
+        let p1 = mesh_sections(pos, &snap, &lsnap, 2, 1 << 7, &cache, None);
         assert_eq!(p1.merged.solid.0, full.merged.solid.0, "vertices (solid) must match");
         assert_eq!(p1.merged.solid.1, full.merged.solid.1, "indices (solid) must match");
         assert_eq!(p1.merged.water.0, full.merged.water.0, "vertices (water) must match");
         assert_eq!(p1.merged.water.1, full.merged.water.1, "indices (water) must match");
 
         // multi-section remesh (a typical edit's light band)
-        let p3 = mesh_sections(pos, &snap, &lsnap, true, 0b111 << 4, &cache);
+        let p3 = mesh_sections(pos, &snap, &lsnap, 2, 0b111 << 4, &cache, None);
         assert_eq!(p3.merged.solid.1, full.merged.solid.1);
 
         // sequential partial remeshes through the cache also converge
         let mut cache2 = full.sections.clone();
         for k in [3usize, 8, 12, 4] {
-            let step = mesh_sections(pos, &snap, &lsnap, true, 1 << k, &cache2);
+            let step = mesh_sections(pos, &snap, &lsnap, 2, 1 << k, &cache2, None);
             cache2 = step.sections.clone();
         }
-        let final_merged = mesh_sections(pos, &snap, &lsnap, true, 0, &cache2).merged;
+        let final_merged = mesh_sections(pos, &snap, &lsnap, 2, 0, &cache2, None).merged;
         assert_eq!(final_merged.solid.1, full.merged.solid.1, "all-cached merge == full");
     }
 
@@ -1526,7 +1543,7 @@ mod phase3_tests {
         let (_, snap) = terrain_snap(0xABCD);
         let lsnap = vc_world::light::reference_lightdata(&snap);
         let a = mesh_chunk((0, 0), &snap, &lsnap, true);
-        let b = mesh_sections((0, 0), &snap, &lsnap, true, u16::MAX, &[]).merged;
+        let b = mesh_sections((0, 0), &snap, &lsnap, 2, u16::MAX, &[], None).merged;
         assert_eq!(a.solid.0.len(), b.solid.0.len());
         assert_eq!(a.solid.1, b.solid.1);
         assert_eq!(a.water.1, b.water.1);
@@ -1539,7 +1556,7 @@ mod phase3_tests {
         let (chunks, snap) = terrain_snap(0x1234);
         let pos = (0, 0);
         let lsnap = vc_world::light::reference_lightdata(&snap);
-        let full = mesh_sections(pos, &snap, &lsnap, true, u16::MAX, &[]);
+        let full = mesh_sections(pos, &snap, &lsnap, 2, u16::MAX, &[], None);
 
         // edit a block in section 8 (y 128..143) in the CENTER chunk only
         let mut c = (*chunks[4]).clone();
@@ -1548,7 +1565,7 @@ mod phase3_tests {
         snap2[4] = Some(Arc::new(c));
 
         let lsnap2 = vc_world::light::reference_lightdata(&snap2);
-        let part = mesh_sections(pos, &snap2, &lsnap2, true, 1 << 8, &full.sections);
+        let part = mesh_sections(pos, &snap2, &lsnap2, 2, 1 << 8, &full.sections, None);
         // section 7 untouched by the edit AND not masked → same Arc
         assert!(
             Arc::ptr_eq(

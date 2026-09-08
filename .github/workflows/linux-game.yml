@@ -151,6 +151,12 @@ jobs:
           grep -q "e2e: v114b blast furnace out=1 lit=true" smoke.log
           grep -q "e2e: v114b blast furnace out=1 lit=true (100-tick 2x cook), smoker out=1" smoke.log
           grep -q "e2e: v114b hanging lantern popped on support break=true" smoke.log
+          # 1.14 part-3 (flowers): planted on grass, F3 lines decode, the
+          # blue/white dye crafts resolve, instant-break holds
+          grep -q "e2e: v114c flowers planted=true" smoke.log
+          grep -q 'f3-corn="Cornflower" f3-lily="Lily of the Valley"' smoke.log
+          grep -q "e2e: v114c flowers planted=true f3-corn" smoke.log
+          grep -q "blue-dye=true white-dye=true instant-break=true" smoke.log
           echo "SMOKE OK - pointer ladder + boot + world entry + 1.14 nature-half all verified"
 
           # F3 debug overlay regression guard (user-reported "everything in

@@ -745,6 +745,21 @@ pub const RECIPES: &[Recipe] = &[
         ],
         out: ItemStack::new(IRON_ORE, 1),
     },
+    // ---- 1.14 (part 3): the flower→dye pair (VERIFIED w/Cornflower
+    // §Crafting ingredient: "Blue Dye — Cornflower"; w/Lily_of_the_
+    // Valley §Crafting ingredient: "White Dye — Lily of the Valley".
+    // Shapeless in vanilla; modeled as 1×1 shaped — the log→planks
+    // convention) ----
+    Recipe {
+        size: 1,
+        grid: &[Ing::Block(CORNFLOWER)],
+        out: ItemStack::new(DYE_BASE + 11, 1),
+    },
+    Recipe {
+        size: 1,
+        grid: &[Ing::Block(LILY_OF_THE_VALLEY)],
+        out: ItemStack::new(DYE_BASE, 1),
+    },
 ];
 
 /// 1.12 (World of Color): the concrete-powder recipe — the engine's
@@ -1315,5 +1330,26 @@ mod v112_tests {
         let nine = vec![ItemStack::new(IRON_NUGGET, 1); 9];
         let out = match_grid(&nine, 3).unwrap();
         assert_eq!((out.block, out.count), (IRON_ORE, 1));
+    }
+
+    /// 1.14 (part 3): the flower→dye pair (VERIFIED w/Cornflower
+    /// §Crafting ingredient "Blue Dye — Cornflower"; w/Lily_of_the_
+    /// Valley "White Dye — Lily of the Valley") — 1:1, like vanilla.
+    #[test]
+    fn v114c_flower_dye_recipes() {
+        // cornflower → blue dye (index 11, the lapis row)
+        let g = vec![ItemStack::new(CORNFLOWER, 1)];
+        let out = match_grid(&g, 1).unwrap();
+        assert_eq!((out.block, out.count), (DYE_BASE + 11, 1), "cornflower → blue dye");
+
+        // lily of the valley → white dye (index 0)
+        let g = vec![ItemStack::new(LILY_OF_THE_VALLEY, 1)];
+        let out = match_grid(&g, 1).unwrap();
+        assert_eq!((out.block, out.count), (DYE_BASE, 1), "lily of the valley → white dye");
+
+        // the 1.7 flowers do NOT dye (no such recipes — the 1.14 pair
+        // is the engine's first flower crafts, disclosed)
+        let g = vec![ItemStack::new(ALLIUM, 1)];
+        assert!(match_grid(&g, 1).is_none(), "allium has no dye recipe yet");
     }
 }

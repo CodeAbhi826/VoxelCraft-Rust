@@ -16,6 +16,7 @@ mod v112_art;
 mod v113_art;
 mod v114_art;
 mod v114b_art;
+mod v114c_art;
 
 pub const ATLAS_SIZE: usize = 512;
 pub const TILE_PX: usize = 16;
@@ -4235,6 +4236,11 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_SMOKER_SIDE_LIT => v114b_art::smoker_art(&mut a, t, true, &mut rng),
             TILE_LANTERN => v114b_art::lantern_art(&mut a, t, &mut rng),
             TILE_IRON_NUGGET => v114b_art::iron_nugget_art(&mut a, t, &mut rng),
+            // ---- 1.14 (part 3): the flower window 640..=641 — the
+            // cornflower + lily of the valley sprites (the allium
+            // cross-plant layout, painted from day one) ----
+            TILE_CORNFLOWER => v114c_art::cornflower_art(&mut a, t, &mut rng),
+            TILE_LILY_OF_THE_VALLEY => v114c_art::lily_of_the_valley_art(&mut a, t, &mut rng),
             _ => {}
         }
     }

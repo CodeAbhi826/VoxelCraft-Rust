@@ -22,6 +22,8 @@ vc-pack = { workspace = true }
 vc-particles = { workspace = true }
 vc-rng = { workspace = true }
 vc-world = { workspace = true }
+# --debug timestamp anchor: std::time panics on wasm32-unknown-unknown
+web-time = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 wgpu = { workspace = true }

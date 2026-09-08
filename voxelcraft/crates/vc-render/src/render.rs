@@ -5181,13 +5181,14 @@ static VERBOSE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::n
 
 /// Session-relative timestamp for the [t+SSS.s] debug prefixes — anchored
 /// when --debug is switched on (before the first boot line, so effectively
-/// process start).
-static DEBUG_START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+/// process start). web_time::Instant: the ?debug URL param makes wasm call
+/// Instant::now() too, and the std one panics on wasm32-unknown-unknown.
+static DEBUG_START: std::sync::OnceLock<web_time::Instant> = std::sync::OnceLock::new();
 
 /// Enable/disable the raw diagnostic stream (--debug).
 pub fn set_verbose(v: bool) {
     if v {
-        DEBUG_START.get_or_init(std::time::Instant::now);
+        DEBUG_START.get_or_init(web_time::Instant::now);
     }
     VERBOSE.store(v, std::sync::atomic::Ordering::Relaxed);
 }
@@ -5199,7 +5200,7 @@ pub fn is_verbose() -> bool {
 
 fn debug_since_start() -> f32 {
     DEBUG_START
-        .get_or_init(std::time::Instant::now)
+        .get_or_init(web_time::Instant::now)
         .elapsed()
         .as_secs_f32()
 }

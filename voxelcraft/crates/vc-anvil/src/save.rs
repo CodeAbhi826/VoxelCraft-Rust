@@ -684,7 +684,7 @@ pub fn write_level_dat(world_dir: &Path, meta: &WorldMeta) -> std::io::Result<()
     data.set("Time", Nbt::Long(meta.game_time));
     data.set(
         "LastPlayed",
-        Nbt::Long(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0)),
+        Nbt::Long(web_time::SystemTime::now().duration_since(web_time::UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0)),
     );
     let mut vc = Nbt::compound();
     if let Some(p) = &meta.player {

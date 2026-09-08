@@ -1107,7 +1107,11 @@ impl GameApp {
         // start to the first interactive frame is (this init) + (the intro
         // beat). Break the init down so a slow boot can be pinned to its
         // phase from the log alone.
-        let t_boot = std::time::Instant::now();
+        // web_time::Instant: std::time::Instant COMPILES on
+        // wasm32-unknown-unknown but panics at runtime ("time not
+        // implemented on this platform") — this call runs on every boot,
+        // including the browser preview, so it must be the web-time one.
+        let t_boot = web_time::Instant::now();
         // First-run game-folder bootstrap (native): the vanilla-profile
         // analog — running the game MATERIALIZES its working set instead
         // of only embedding it (user: "why isn't our asset getting
@@ -5797,6 +5801,55 @@ impl GameApp {
         ));
     }
 
+    /// 1.14 (part 3) E2E: the two new small flowers — planted on grass
+    /// (the vanilla plant-on-grass/dirt contract, VERIFIED w/Cornflower
+    /// + w/Lily_of_the_Valley §Usage), their states round-trip, the F3
+    /// targeted-block lines decode, both dye crafts resolve, and the
+    /// instant-break contract holds.
+    fn e2e_v114c(&mut self) {
+        let pos = [
+            self.player.pos.x.floor() as i32,
+            self.player.pos.y.floor() as i32 - 2,
+            self.player.pos.z.floor() as i32,
+        ];
+        // the plant contract: each flower sits on a grass block
+        self.test_place(GRASS, pos[0] - 2, pos[1], pos[2]);
+        self.test_place(GRASS, pos[0] - 4, pos[1], pos[2]);
+        self.test_place(CORNFLOWER, pos[0] - 2, pos[1] + 1, pos[2]);
+        self.test_place(LILY_OF_THE_VALLEY, pos[0] - 4, pos[1] + 1, pos[2]);
+        let corn = self.world.get_state(pos[0] - 2, pos[1] + 1, pos[2]);
+        let lily = self.world.get_state(pos[0] - 4, pos[1] + 1, pos[2]);
+        let planted = corn == vc_blocks::blocks::V11_STATE_BASE + 7
+            && lily == vc_blocks::blocks::V11_STATE_BASE + 8;
+        // the F3 targeted-block lines (no properties — plain names)
+        let corn_desc = vc_blocks::blocks::state_description(corn);
+        let lily_desc = vc_blocks::blocks::state_description(lily);
+        // the dye crafts (1:1, VERIFIED w/Cornflower §Crafting ingredient
+        // "Blue Dye — Cornflower"; w/Lily_of_the_Valley "White Dye")
+        let blue = vc_gameplay::craft::match_grid(
+            &[vc_inventory::inventory::ItemStack::new(CORNFLOWER, 1)],
+            1,
+        );
+        let white = vc_gameplay::craft::match_grid(
+            &[vc_inventory::inventory::ItemStack::new(LILY_OF_THE_VALLEY, 1)],
+            1,
+        );
+        let (blue_ok, white_ok) = match (blue, white) {
+            (Some(b), Some(w)) => (
+                b.block == vc_blocks::blocks::DYE_BASE + 11 && b.count == 1,
+                w.block == vc_blocks::blocks::DYE_BASE && w.count == 1,
+            ),
+            _ => (false, false),
+        };
+        // instant-break: the flower pops to AIR in one break
+        self.test_break(pos[0] - 2, pos[1] + 1, pos[2]);
+        let broke = self.world.get_block(pos[0] - 2, pos[1] + 1, pos[2]) == AIR;
+        vc_render::render::report_boot_log(&format!(
+            "e2e: v114c flowers planted={} f3-corn=\"{}\" f3-lily=\"{}\" blue-dye={} white-dye={} instant-break={}",
+            planted, corn_desc, lily_desc, blue_ok, white_ok, broke
+        ));
+    }
+
     fn test_place(&mut self, block: u16, x: i32, y: i32, z: i32) {
         use vc_blocks::blocks::*;
         let state = match block {
@@ -5885,6 +5938,11 @@ impl GameApp {
                 // rides the same env flag so CI's single run covers it)
                 if std::env::var("E2E_V114").is_ok() {
                     self.e2e_v114b(150);
+                }
+                // 1.14 (part 3): the flowers stage (the same shared
+                // E2E_V114 gate — one CI run covers the whole bracket)
+                if std::env::var("E2E_V114").is_ok() {
+                    self.e2e_v114c();
                 }
             }
             // F3_DUMP run: hold gameplay ~2 s so the overlay rebuild + dump

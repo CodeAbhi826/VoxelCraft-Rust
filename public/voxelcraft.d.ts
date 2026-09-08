@@ -22,12 +22,12 @@ export interface InitOutput {
     readonly wgpu_render_bundle_push_debug_group: (a: number, b: number) => void;
     readonly __wasm_bindgen_func_elem_11034: (a: number, b: number, c: number, d: number) => void;
     readonly __wasm_bindgen_func_elem_1021: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_4063: (a: number, b: number, c: number) => void;
     readonly __wasm_bindgen_func_elem_2586: (a: number, b: number, c: number) => void;
+    readonly __wasm_bindgen_func_elem_3058: (a: number, b: number, c: number) => void;
     readonly __wasm_bindgen_func_elem_1020: (a: number, b: number, c: number) => void;
     readonly __wasm_bindgen_func_elem_2586_5: (a: number, b: number, c: number) => void;
     readonly __wasm_bindgen_func_elem_1020_6: (a: number, b: number, c: number) => void;
-    readonly __wasm_bindgen_func_elem_4063_7: (a: number, b: number, c: number) => void;
+    readonly __wasm_bindgen_func_elem_3058_7: (a: number, b: number, c: number) => void;
     readonly __wasm_bindgen_func_elem_2586_8: (a: number, b: number, c: number) => void;
     readonly __wasm_bindgen_func_elem_2586_9: (a: number, b: number, c: number) => void;
     readonly __wasm_bindgen_func_elem_2586_10: (a: number, b: number, c: number) => void;

@@ -86,10 +86,13 @@ const MODEL_BASE: u32 = 63u;       // MODEL_STATE_BASE
 // 1.14 (Village & Pillage — nature half): STATE_COUNT=689 (V10
 // 676..=688: bamboo/shoot + bush 4 + campfire 2 + barrel + items),
 // BLOCK_COUNT=426 (V10 ids 417..=425)
-const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=689)
-const L_FL: u32 = 689u;            // lut: block flags           (BLOCK_COUNT=426)
-const L_TC: u32 = 1115u;           // lut: block tint class      (BLOCK_COUNT=426)
-const L_ST: u32 = 1541u;           // lut: state tiles, 4/state  (4·STATE_COUNT=2756)
+// 1.14 (nature half, part 2): STATE_COUNT=696 (V11 689..=695: blast
+// furnace 2 + smoker 2 + lantern 2 + iron nugget), BLOCK_COUNT=430
+// (V11 ids 426..=429)
+const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=696)
+const L_FL: u32 = 696u;            // lut: block flags           (BLOCK_COUNT=430)
+const L_TC: u32 = 1126u;           // lut: block tint class      (BLOCK_COUNT=430)
+const L_ST: u32 = 1556u;           // lut: state tiles, 4/state  (4·STATE_COUNT=2784)
 const P_N: u32 = 0u;               // params[0] = n_jobs
 const P_JOB: u32 = 2u;             // params job base = 2 + j*66
 const P_BIOME: u32 = 2u;           // biomes at job base + 2 (64 packed u32)
@@ -141,8 +144,8 @@ fn job_get_blk(j: u32, x: i32, y: i32, z: i32) -> u32 {
     let base = j * VOL_WORDS;
     return (blk_l[base + (p >> 2u)] >> ((p & 3u) * 8u)) & 0xFFu;
 }
-fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 688u)]; }
-fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 425u)]; }
+fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 695u)]; }
+fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 429u)]; }
 fn biome_at(j: u32, x: i32, z: i32) -> u32 {
     let c = u32(z * 16 + x);
     let w = params[P_JOB + j * 66u + P_BIOME + (c >> 2u)];
@@ -164,7 +167,7 @@ fn face_visible(bf: u32, fnb: u32) -> bool {
 // tint class -> packed tint byte (kind<<6 | slot), port of
 // vc_blocks::tint::block_face_tint_packed's block match
 fn tint_packed(b: u32, top: bool, biome: u32) -> u32 {
-    let tc = lut[L_TC + min(b, 425u)];
+    let tc = lut[L_TC + min(b, 429u)];
     var kind = 0u; var slot = 0u;
     if tc == 1u { if top { kind = 1u; slot = biome; } }          // GRASS top
     else if tc == 2u { kind = 1u; slot = biome; }                // TALL_GRASS

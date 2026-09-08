@@ -145,6 +145,12 @@ jobs:
           # 650-tick fast-forward completed the 600-tick campfire cook)
           grep -q "e2e: v114 campfire lit+fed=true" smoke.log
           grep -q "e2e: v114 campfire cooked 1 item(s)" smoke.log
+          # 1.14 part-2 (smelting trio + lantern): the blast furnace's
+          # 100-tick 2x ore cook, the smoker's 100-tick food cook, the
+          # lantern's sitting/hanging states + light, the support pop
+          grep -q "e2e: v114b blast furnace out=1 lit=true" smoke.log
+          grep -q "e2e: v114b blast furnace out=1 lit=true (100-tick 2x cook), smoker out=1" smoke.log
+          grep -q "e2e: v114b hanging lantern popped on support break=true" smoke.log
           echo "SMOKE OK - pointer ladder + boot + world entry + 1.14 nature-half all verified"
 
           # F3 debug overlay regression guard (user-reported "everything in

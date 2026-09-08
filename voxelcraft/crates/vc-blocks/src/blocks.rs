@@ -1516,6 +1516,24 @@ pub const STICK: u16 = 424;
 /// 2-charcoal drop. Fuel-identical to coal (1600 ticks).
 pub const CHARCOAL: u16 = 425;
 
+// ---- 1.14 (Village & Pillage — nature half, part 2): the smelting
+// trio + lantern. VERIFIED 2026-09-08 from the raw captures
+// scripts/v114b_page_*.json (w/Blast_Furnace, w/Smoker, w/Lantern,
+// w/Smooth_Stone). ----
+/// blast furnace: smelts the ORE/metal class 2x as fast (fuel burns
+/// 2x as fast too — same items per fuel). Lit state emits light 13.
+pub const BLAST_FURNACE: u16 = 426;
+/// smoker: cooks the FOOD class 2x as fast (5 s per item vs 10).
+/// Lit state emits light 13.
+pub const SMOKER: u16 = 427;
+/// lantern: light 15 (brighter than the torch's 14). Sits on top of
+/// blocks or hangs from their underside (the hanging state).
+pub const LANTERN: u16 = 428;
+/// iron nugget — the 1.11-era item the lantern recipe needed
+/// (8 nuggets + torch); crafts 9:1 with the engine's iron-ingot
+/// stand-in (IRON_ORE items, the disclosed convention).
+pub const IRON_NUGGET: u16 = 429;
+
 pub const V10_STATE_BASE: u16 = 676;
 // 13 states: bamboo stalk 1, shoot 1, berry bush 4 (age 0..3),
 // campfire 2 (unlit/lit), barrel 1, then the 4 item states (berries,
@@ -1556,6 +1574,50 @@ pub fn v10_state(b: u16) -> Option<u16> {
 #[inline]
 pub fn is_v10_state(s: u16) -> bool {
     (V10_STATE_BASE..V10_STATE_BASE + V10_COUNT).contains(&s)
+}
+
+pub const V11_STATE_BASE: u16 = 689;
+// 7 states: blast furnace unlit/lit, smoker unlit/lit, lantern
+// sitting/hanging, and the iron-nugget item state.
+pub const V11_COUNT: u16 = 7;
+/// V11 state -> block fold: the lit states fold to their parent
+/// blocks (per-state art rides state_tiles; the lit swap is the
+/// furnace pattern).
+pub const V11_STATE_TO_BLOCK: [u16; V11_COUNT as usize] = [
+    BLAST_FURNACE, BLAST_FURNACE,
+    SMOKER, SMOKER,
+    LANTERN, LANTERN,
+    IRON_NUGGET,
+];
+
+#[inline]
+pub fn v11_state(b: u16) -> Option<u16> {
+    match b {
+        BLAST_FURNACE => Some(V11_STATE_BASE), // unlit
+        SMOKER => Some(V11_STATE_BASE + 2),    // unlit
+        LANTERN => Some(V11_STATE_BASE + 4),   // sitting
+        IRON_NUGGET => Some(V11_STATE_BASE + 6),
+        _ => None,
+    }
+}
+
+#[inline]
+pub fn is_v11_state(s: u16) -> bool {
+    (V11_STATE_BASE..V11_STATE_BASE + V11_COUNT).contains(&s)
+}
+
+/// 1.14: is this V11 state a LIT smelter (blast furnace / smoker)?
+/// (the lit arm of the block swap — mirrors campfire_lit)
+#[inline]
+pub fn v11_smelter_lit(s: u16) -> bool {
+    is_v11_state(s)
+        && (s == V11_STATE_BASE + 1 || s == V11_STATE_BASE + 3)
+}
+
+/// 1.14: is this V11 state the HANGING lantern form?
+#[inline]
+pub fn lantern_hanging(s: u16) -> bool {
+    s == V11_STATE_BASE + 5
 }
 
 /// sweet berry bush growth age (0..3) from its storage state.
@@ -2205,7 +2267,7 @@ pub fn item_state_block(s: u16) -> Option<u16> {
     }
 }
 
-pub const BLOCK_COUNT: usize = 426; // 1.14: V10 window ids 417..=425 (bamboo/bush/campfire/barrel + berries/fox egg/stick/charcoal)
+pub const BLOCK_COUNT: usize = 430; // 1.14: V11 window ids 426..=429 (blast furnace/smoker/lantern + iron nugget)
 /// [merge renumber] acacia/dark-oak log axis states moved to 443..=446
 /// (past the E-series states, which end at 354; V2 base is now 400)
 /// acacia/dark-oak log axis states (the V2 log window — same pattern as
@@ -2242,7 +2304,7 @@ pub const DARK_OAK_LOG_Z: u16 = 446;
 /// items + eggs 20..=22 + the POWER-state ladders (317..=399)
 /// [merge renumber] F-series states: V2 400..=442 + log-axis 443..=446,
 /// V3 447..=465, V4 466..=475, V5 476..=479, V6 480..=485 (audit-fix)
-pub const STATE_COUNT: usize = 689; // 1.14: V10 states 676..=688 (bamboo/shoot + bush 4 + campfire 2 + barrel + 4 items)
+pub const STATE_COUNT: usize = 696; // 1.14: V11 states 689..=695 (blast furnace 2 + smoker 2 + lantern 2 + iron nugget item)
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -2619,6 +2681,11 @@ pub fn default_state(b: u16) -> u16 {
         // placement of a BAMBOO item on soil routes to the SHOOT form
         // via the game layer's plant branch
         b if v10_state(b).is_some() => v10_state(b).unwrap(),
+        // 1.14 (part 2): the V11 window — the smelters place UNLIT
+        // (the furnace convention; the lit swap rides the burn state),
+        // the lantern places SITTING (the placement path writes the
+        // hanging state on underside clicks)
+        b if v11_state(b).is_some() => v11_state(b).unwrap(),
         b if (262..262 + V4_COUNT as u16).contains(&b) => {
             V4_STATE_BASE + (b - 262) as u16
         }
@@ -2949,6 +3016,12 @@ pub fn state_block(s: u16) -> u16 {
         s if is_v10_state(s) => {
             return V10_STATE_TO_BLOCK[(s - V10_STATE_BASE) as usize];
         }
+        // 1.14 (nature half, part 2): the V11 window — the smelters'
+        // lit states and the lantern's hanging state fold to their
+        // parent blocks
+        s if is_v11_state(s) => {
+            return V11_STATE_TO_BLOCK[(s - V11_STATE_BASE) as usize];
+        }
         ACACIA_LOG_X | ACACIA_LOG_Z => return ACACIA_LOG,
         DARK_OAK_LOG_X | DARK_OAK_LOG_Z => return DARK_OAK_LOG,
         _ => {}
@@ -2992,6 +3065,17 @@ pub fn state_description(s: u16) -> String {
     if is_v10_state(s) && (V10_STATE_BASE + 6..=V10_STATE_BASE + 7).contains(&s) {
         return format!("Campfire[lit={}]", campfire_lit(s));
     }
+    // 1.14 V11 properties: the smelters' lit flag + the lantern's
+    // hanging flag (the F3 Targeted Block property lines)
+    if is_v11_state(s) && (V11_STATE_BASE..=V11_STATE_BASE + 1).contains(&s) {
+        return format!("Blast Furnace[lit={}]", v11_smelter_lit(s));
+    }
+    if is_v11_state(s) && (V11_STATE_BASE + 2..=V11_STATE_BASE + 3).contains(&s) {
+        return format!("Smoker[lit={}]", v11_smelter_lit(s));
+    }
+    if is_v11_state(s) && (V11_STATE_BASE + 4..=V11_STATE_BASE + 5).contains(&s) {
+        return format!("Lantern[hanging={}]", lantern_hanging(s));
+    }
     if let Some((b, props)) = prop_state_decode(s) {
         if props.is_empty() {
             return name(b).to_string();
@@ -3029,6 +3113,9 @@ pub fn is_model_state(s: u16) -> bool {
         // 1.14 V10 window: same shape — bamboo/bush cross plants,
         // campfire/barrel greedy cubes, items ride their flags
         || is_v10_state(s)
+        // 1.14 V11 window: same shape — the smelters are greedy cubes
+        // (their BlockDef flags), the lantern + nugget item ride flags
+        || is_v11_state(s)
         || s == SPAWNER_VINDICATOR
         || s == SPAWNER_EVOKER
         || s == ACACIA_LOG_X
@@ -3203,6 +3290,31 @@ pub fn state_tiles(s: u16) -> [u16; 4] {
             let t = if campfire_lit(s) { TILE_CAMPFIRE } else { TILE_CAMPFIRE_UNLIT };
             [t, t, t, t]
         }
+        // ---- 1.14 (part 2): the smelters — lit swaps the side tiles
+        // to the glowing variants (the FURNACE_LIT pattern), top stays
+        // the shared stone furnace top ----
+        s if is_v11_state(s) && (V11_STATE_BASE..=V11_STATE_BASE + 1).contains(&s) => {
+            let t = if v11_smelter_lit(s) {
+                TILE_BLAST_FURNACE_SIDE_LIT
+            } else {
+                TILE_BLAST_FURNACE_SIDE
+            };
+            [TILE_FURNACE_TOP, TILE_FURNACE_TOP, t, t]
+        }
+        s if is_v11_state(s) && (V11_STATE_BASE + 2..=V11_STATE_BASE + 3).contains(&s) => {
+            let t = if v11_smelter_lit(s) {
+                TILE_SMOKER_SIDE_LIT
+            } else {
+                TILE_SMOKER_SIDE
+            };
+            [TILE_FURNACE_TOP, TILE_FURNACE_TOP, t, t]
+        }
+        // ---- 1.14 (part 2): the lantern — one sprite for both forms
+        // (sitting + hanging; the model difference is future work,
+        // disclosed) ----
+        s if is_v11_state(s) && (V11_STATE_BASE + 4..=V11_STATE_BASE + 6).contains(&s) => {
+            [TILE_LANTERN, TILE_LANTERN, TILE_LANTERN, TILE_LANTERN]
+        }
         s if glazed_decode(s).is_some() => {
             let (color, facing) = glazed_decode(s).unwrap();
             let c = color as u16;
@@ -3256,7 +3368,7 @@ pub fn log_axis_state(block: u16, axis: u8) -> u16 {
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
 // [merge] E-series tiles end at 243; the F-series (1.7.2-1.10) tiles
 // continue at 244..=325; the audit-fix round adds 326..=332
-pub const TILE_MAX: u16 = 633; // 1.14 (Village & Pillage): tiles 619..=633 (the V10 window + the fox sprite)
+pub const TILE_MAX: u16 = 639; // 1.14 (Village & Pillage, part 2): tiles 634..=639 (the V11 window — smelters lit/unlit, lantern, iron nugget)
 /// 1.11 egg tiles (egg-shaped, egg order 23..=28 = llama, vindicator,
 /// evoker, vex, husk, stray) — the E1/E2/E3 egg-art convention
 /// (e1_art::egg_art + palettes), replacing the interrupted round's
@@ -3411,6 +3523,20 @@ pub const TILE_STICK: u16 = 632;
 /// charcoal item icon (the legacy item added with this window).
 pub const TILE_CHARCOAL: u16 = 633;
 
+// ---- 1.14 (Village & Pillage — nature half, part 2) tiles: 634..=639 ----
+/// blast furnace side/front (the dark iron furnace face).
+pub const TILE_BLAST_FURNACE_SIDE: u16 = 634;
+/// lit blast furnace side (the glowing opening).
+pub const TILE_BLAST_FURNACE_SIDE_LIT: u16 = 635;
+/// smoker side/front (the log-walled smoker face).
+pub const TILE_SMOKER_SIDE: u16 = 636;
+/// lit smoker side (the glowing vent).
+pub const TILE_SMOKER_SIDE_LIT: u16 = 637;
+/// the lantern sprite (cross-rendered, like the torch; item icon reuses).
+pub const TILE_LANTERN: u16 = 638;
+/// iron nugget item icon.
+pub const TILE_IRON_NUGGET: u16 = 639;
+
 /// inventory-only ITEM blocks (potions/bottles/books): never placeable in
 /// the world — right-click drinks (potions) / fills (glass bottle at water).
 #[inline]
@@ -3470,6 +3596,9 @@ pub fn is_item_block(b: u16) -> bool {
             | SWEET_BERRIES
             | STICK
             | CHARCOAL
+            // ---- 1.14 (part 2): the iron nugget (the lantern recipe's
+            // material; 9:1 with the iron-ingot stand-in) ----
+            | IRON_NUGGET
     ) || is_spawn_egg(b)
         || (DYE_BASE..=DYE_END).contains(&b)
         || is_seeds(b)
@@ -3543,6 +3672,15 @@ pub fn state_emissive(s: u16) -> u8 {
     // "Luminous Yes (15) when lit" — the unlit state stays 0)
     if is_v10_state(s) && campfire_lit(s) {
         return 15;
+    }
+    // 1.14 (part 2): a LIT blast furnace / smoker emits 13 (VERIFIED
+    // from the captures v114b_page_Blast_Furnace.json +
+    // v114b_page_Smoker.json infoboxes: "light: Yes (13) (when
+    // active)" — the idle state stays 0). The lantern is emissive 15
+    // through its BLOCK row in both sitting and hanging forms (the
+    // fold routes them to the same d() emission).
+    if v11_smelter_lit(s) {
+        return 13;
     }
     emissive(state_block(s))
 }
@@ -4144,6 +4282,15 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Fox Spawn Egg", [TILE_EGG_FOX, TILE_EGG_FOX, TILE_EGG_FOX], false, false, true, false, 0, SoundFamily::Grass),
     d("Stick", [TILE_STICK, TILE_STICK, TILE_STICK], false, false, true, false, 0, SoundFamily::Wood),
     d("Charcoal", [TILE_CHARCOAL, TILE_CHARCOAL, TILE_CHARCOAL], false, false, true, false, 0, SoundFamily::Stone),
+    // ---- 1.14 (Village & Pillage — nature half, part 2): the V11
+    // window. VERIFIED w/Blast_Furnace + w/Smoker + w/Lantern
+    // infoboxes (all "tool: wooden pickaxe" — the engine has no tool
+    // tiers, the standing disclosed deferral; lantern light 15 = the
+    // infobox "light: Yes (15)", brighter than the torch's 14). ----
+    d("Blast Furnace", [TILE_FURNACE_TOP, TILE_FURNACE_TOP, TILE_BLAST_FURNACE_SIDE], true, true, false, false, 0, SoundFamily::Stone),
+    d("Smoker", [TILE_FURNACE_TOP, TILE_FURNACE_TOP, TILE_SMOKER_SIDE], true, true, false, false, 0, SoundFamily::Wood),
+    d("Lantern", [TILE_LANTERN, TILE_LANTERN, TILE_LANTERN], false, false, true, false, 15, SoundFamily::Wood),
+    d("Iron Nugget", [TILE_IRON_NUGGET, TILE_IRON_NUGGET, TILE_IRON_NUGGET], false, false, true, false, 0, SoundFamily::Stone),
 ];
 
 #[inline]
@@ -4213,7 +4360,7 @@ pub fn face_visible(b: u16, n: u16) -> bool {
 /// (needs fluid sim to be fun). Potions are item-blocks — usable from the
 /// hotbar (drink), never placeable. Phase E1 adds the 1.0–1.2 bracket
 /// blocks/items + the 16 spawn eggs (creative-only items, w/Spawn_Egg).
-pub const PICKER_BLOCKS: [u16; 386] = [
+pub const PICKER_BLOCKS: [u16; 389] = [
     GRASS, DIRT, STONE, COBBLE, SMOOTH_STONE, STONE_BRICKS, BRICKS, MOSSY_COBBLE,
     GRANITE, DIORITE, ANDESITE, OBSIDIAN,
     SAND, GRAVEL, CLAY, TERRACOTTA,
@@ -4356,6 +4503,8 @@ pub const PICKER_BLOCKS: [u16; 386] = [
     // ---- 1.14 (Village & Pillage — nature half): the V10 window ----
     BAMBOO, BAMBOO_SHOOT, SWEET_BERRY_BUSH, CAMPFIRE, BARREL,
     SWEET_BERRIES, SPAWN_EGG_FOX, STICK, CHARCOAL,
+    // ---- 1.14 (part 2): the V11 window — the smelters + lantern ----
+    BLAST_FURNACE, SMOKER, LANTERN,
 ];
 
 /// default hotbar palette
@@ -4704,6 +4853,8 @@ mod state_tests {
                 || is_v9_state(s)
                 // 1.14 V10 (Village & Pillage — nature half)
                 || is_v10_state(s)
+                // 1.14 V11 (nature half, part 2)
+                || is_v11_state(s)
                 || matches!(s, ACACIA_LOG_X | ACACIA_LOG_Z | DARK_OAK_LOG_X | DARK_OAK_LOG_Z)
             {
                 assert!(!is_model_state(s), "component/item state {s} never routes to models");
@@ -4793,6 +4944,15 @@ mod state_tests {
                         assert_eq!(state_block(s), CAMPFIRE);
                     } else {
                         assert_eq!(default_state(b), s, "v10 state {s} roundtrip");
+                    }
+                }
+                // 1.14 V11 (nature half, part 2): every state folds to
+                // its parent; the defaults roundtrip (smelters UNLIT,
+                // lantern SITTING, nugget item state)
+                if is_v11_state(s) {
+                    assert_eq!(state_block(s), V11_STATE_TO_BLOCK[(s - V11_STATE_BASE) as usize]);
+                    if let Some(db) = v11_state(b) {
+                        assert_eq!(default_state(b), db, "v11 default for {b}");
                     }
                 }
                 continue;
@@ -4953,8 +5113,8 @@ mod state_tests {
         // with the 1.7.2–1.10 F-series: 276 blocks / 480 states
         // (E-series states end at 354; V2 400..=442, V3 447..=465,
         // V4 466..=475, V5 476..=479)
-        assert_eq!(BLOCK_COUNT, 426, "merged registry + V6 + V7 + V8 + V9 + 1.14 V10 (nature half)");
-        assert_eq!(STATE_COUNT, 689, "merged state space, V10 states end at 688");
+        assert_eq!(BLOCK_COUNT, 430, "merged registry + V6 + V7 + V8 + V9 + 1.14 V10/V11 (nature half)");
+        assert_eq!(STATE_COUNT, 696, "merged state space, V11 states end at 695");
         assert_eq!(BLOCK_TABLE.len(), BLOCK_COUNT);
         for want in [
             COAL_BLOCK,
@@ -5005,8 +5165,8 @@ mod v110_tests {
             assert_eq!(default_state(b), s);
             assert!(is_v5_state(s));
         }
-        assert_eq!(BLOCK_COUNT, 426); // 1.14: V10 window grew the registry
-        assert_eq!(STATE_COUNT, 689); // 1.14: V10 window grew the state space
+        assert_eq!(BLOCK_COUNT, 430); // 1.14: V10+V11 windows grew the registry
+        assert_eq!(STATE_COUNT, 696); // 1.14: V10+V11 windows grew the state space
     }
 
     /// magma emits light level 3 (VERIFIED — minecraft.wiki/w/Magma_Block,
@@ -5043,8 +5203,8 @@ mod auditfix_tests {
             assert!(!is_model_state(s), "V6 states are cube/cross defs, not model states");
         }
         assert_eq!(V6_COUNT, 6);
-        assert_eq!(BLOCK_COUNT, 426); // 1.14: V10 window grew the registry
-        assert_eq!(STATE_COUNT, 689); // 1.14: V10 window grew the state space
+        assert_eq!(BLOCK_COUNT, 430); // 1.14: V10+V11 windows grew the registry
+        assert_eq!(STATE_COUNT, 696); // 1.14: V10+V11 windows grew the state space
         // solidity classes: log/planks solid-opaque (hardness family 2
         // per w/Log + w/Planks), leaves see-through, vine/fern non-solid
         // cross plants (w/Vines: "climbable non-solid"; w/Fern:
@@ -5093,8 +5253,8 @@ mod v111_tests {
             assert_eq!(default_state(b), s, "block {b} default state");
             assert_eq!(state_block(s), b, "state {s} folds back");
         }
-        assert_eq!(BLOCK_COUNT, 426); // 1.14: V10 window grew the registry
-        assert_eq!(STATE_COUNT, 689); // 1.14: V10 window grew the state space
+        assert_eq!(BLOCK_COUNT, 430); // 1.14: V10+V11 windows grew the registry
+        assert_eq!(STATE_COUNT, 696); // 1.14: V10+V11 windows grew the state space
         // mansion spawner states fold to SPAWNER + decode their kinds
         assert_eq!(state_block(SPAWNER_VINDICATOR), SPAWNER);
         assert_eq!(state_block(SPAWNER_EVOKER), SPAWNER);
@@ -5198,8 +5358,8 @@ mod v112_tests {
         }
         assert_eq!(default_state(COOKIE), V8_STATE_BASE + 117);
         // bounds
-        assert_eq!(BLOCK_COUNT, 426);
-        assert_eq!(STATE_COUNT, 689);
+        assert_eq!(BLOCK_COUNT, 430);
+        assert_eq!(STATE_COUNT, 696);
         assert_eq!(CONCRETE_BASE + 15, CONCRETE_END);
         assert_eq!(CONCRETE_POWDER_BASE + 15, CONCRETE_POWDER_END);
         assert_eq!(GLAZED_TERRACOTTA_BASE + 15, GLAZED_TERRACOTTA_END);
@@ -5272,7 +5432,7 @@ mod v112_tests {
             assert!(PICKER_BLOCKS.contains(&b), "picker missing {b}");
         }
         assert!(TILE_MAX >= TILE_ILLUSIONER, "1.12 tiles within the atlas guard");
-        assert_eq!(PICKER_BLOCKS.len(), 386);
+        assert_eq!(PICKER_BLOCKS.len(), 389);
         // the V9 + V10 windows are all present (the picker-gap fix)
         for want in [SEA_PICKLE, CONDUIT, SPAWN_EGG_TURTLE, BAMBOO, CAMPFIRE, BARREL, SPAWN_EGG_FOX, STICK, CHARCOAL] {
             assert!(PICKER_BLOCKS.contains(&want), "picker missing {want}");
@@ -5338,8 +5498,8 @@ mod v114_tests {
             "unlit tile"
         );
         // bounds + window shape
-        assert_eq!(BLOCK_COUNT, 426);
-        assert_eq!(STATE_COUNT, 689);
+        assert_eq!(BLOCK_COUNT, 430);
+        assert_eq!(STATE_COUNT, 696);
         assert_eq!(V10_COUNT, 13);
         assert_eq!(BAMBOO, 417);
         assert_eq!(CHARCOAL, 425);
@@ -5379,5 +5539,58 @@ mod v114_tests {
         assert!(TILE_MAX >= TILE_CHARCOAL, "1.14 tiles within the atlas guard");
         assert_eq!(TILE_BERRY_BUSH_BASE + 3, 624);
         assert_eq!(TILE_MOB_FOX, 631);
+    }
+    /// 1.14 (nature half, part 2): the V11 window — the smelting trio +
+    /// lantern + iron nugget. VERIFIED from the v114b captures: the
+    /// smelters' lit states emit 13, the lantern 15 in BOTH forms
+    /// (sitting + hanging), the smelters place unlit, the lantern
+    /// places sitting, and the F3 property lines decode.
+    #[test]
+    fn v114b_v11_registry_window() {
+        // 1:1 defaults: smelters UNLIT, lantern SITTING, nugget item
+        for (b, s) in [
+            (BLAST_FURNACE, V11_STATE_BASE),
+            (SMOKER, V11_STATE_BASE + 2),
+            (LANTERN, V11_STATE_BASE + 4),
+            (IRON_NUGGET, V11_STATE_BASE + 6),
+        ] {
+            assert_eq!(default_state(b), s, "block {b} default state");
+            assert_eq!(state_block(s), b, "state {s} folds back");
+        }
+        // the lit states fold back too (written by the burn swap)
+        for (s, b) in [
+            (V11_STATE_BASE + 1, BLAST_FURNACE),
+            (V11_STATE_BASE + 3, SMOKER),
+            (V11_STATE_BASE + 5, LANTERN),
+        ] {
+            assert_eq!(state_block(s), b, "lit state {s} folds to {b}");
+        }
+        // emission: lit smelters 13, the lantern 15 in both forms, the
+        // idle smelters + nugget 0 (VERIFIED infobox rows)
+        assert_eq!(state_emissive(V11_STATE_BASE + 1), 13, "lit blast furnace");
+        assert_eq!(state_emissive(V11_STATE_BASE + 3), 13, "lit smoker");
+        assert_eq!(state_emissive(V11_STATE_BASE), 0, "idle blast furnace");
+        assert_eq!(state_emissive(V11_STATE_BASE + 2), 0, "idle smoker");
+        assert_eq!(state_emissive(V11_STATE_BASE + 4), 15, "sitting lantern");
+        assert_eq!(state_emissive(V11_STATE_BASE + 5), 15, "hanging lantern");
+        assert_eq!(emissive(LANTERN), 15, "lantern block row");
+        // the F3 targeted-block property lines
+        assert_eq!(state_description(V11_STATE_BASE + 1), "Blast Furnace[lit=true]");
+        assert_eq!(state_description(V11_STATE_BASE), "Blast Furnace[lit=false]");
+        assert_eq!(state_description(V11_STATE_BASE + 3), "Smoker[lit=true]");
+        assert_eq!(state_description(V11_STATE_BASE + 5), "Lantern[hanging=true]");
+        assert_eq!(state_description(V11_STATE_BASE + 4), "Lantern[hanging=false]");
+        // the window is in the picker; the nugget is an item-block
+        for want in [BLAST_FURNACE, SMOKER, LANTERN] {
+            assert!(PICKER_BLOCKS.contains(&want), "picker missing {want}");
+        }
+        assert!(!PICKER_BLOCKS.contains(&IRON_NUGGET), "the nugget is an item, not a picker block");
+        assert!(is_item_block(IRON_NUGGET), "nugget is an item-block");
+        // tiles within the atlas guard
+        assert!(TILE_MAX >= TILE_IRON_NUGGET);
+        // bounds + window shape
+        assert_eq!(V11_COUNT, 7);
+        assert_eq!(BLOCK_COUNT, 430);
+        assert_eq!(STATE_COUNT, 696);
     }
 }

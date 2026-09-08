@@ -5540,6 +5540,19 @@ impl GameApp {
             Some([x as f32 + 0.5, y as f32 + 0.5, z as f32 + 0.5]),
             1.0,
         );
+        // 1.14 (part 2, VERIFIED w/Lantern §Usage: "if a lantern exists
+        // on an invalid surface, the lantern will break and drop itself
+        // upon the invalid surface receiving a block update") — breaking
+        // a block pops the lantern that HUNG from it (above) or SAT on
+        // it (below): both lose their support at this cell (the
+        // depth-chained cascade of a lantern column rides the recursion
+        // naturally)
+        for dy in [1i32, -1] {
+            let p = [x, y + dy, z];
+            if self.world.get_block(p[0], p[1], p[2]) == LANTERN {
+                self.test_break(p[0], p[1], p[2]);
+            }
+        }
         self.edits += 1;
     }
 
@@ -5573,7 +5586,10 @@ impl GameApp {
         if broke == CONDUIT {
             self.sim.conduits.remove(&pos);
         }
-        if broke == FURNACE {
+        if matches!(broke, FURNACE | BLAST_FURNACE | SMOKER) {
+            // 1.14 (part 2, VERIFIED w/Blast_Furnace + w/Smoker
+            // §Breaking: "drop their contents when broken") — the
+            // smelters spill through the same furnace path
             if let Some(f) = self.sim.furnaces.map.remove(&pos) {
                 let (biome, sky, blk) =
                     light_at(&self.world, &self.light, pos[0], pos[1] + 1, pos[2]);
@@ -5689,6 +5705,98 @@ impl GameApp {
         }
     }
 
+    /// E2E stage (1.14 nature half, part 2 — the smelting trio + lantern):
+    /// a blast furnace fed coal ore and a smoker fed a potato at world
+    /// entry, both fast-forwarded past their 100-tick cooks; a lantern
+    /// placed sitting on a block and another hung from a support, with
+    /// the support's break popping the hanging one (VERIFIED contracts
+    /// from the v114b captures).
+    fn e2e_v114b(&mut self, ticks: u64) {
+        let pos = [
+            self.player.pos.x.floor() as i32,
+            self.player.pos.y.floor() as i32 - 2,
+            self.player.pos.z.floor() as i32,
+        ];
+        // 1. a blast furnace (unlit V11 state, VERIFIED) + coal ore + fuel
+        self.test_place(BLAST_FURNACE, pos[0] - 2, pos[1], pos[2]);
+        let bf = self.sim.furnaces.map.entry([pos[0] - 2, pos[1], pos[2]]).or_default();
+        bf.kind = vc_gameplay::furnace::FurnaceKind::Blast;
+        bf.input = vc_inventory::inventory::ItemStack::new(COAL_ORE, 2);
+        bf.fuel = vc_inventory::inventory::ItemStack::new(COAL, 1);
+        // 2. a smoker + potato + fuel
+        self.test_place(SMOKER, pos[0] - 4, pos[1], pos[2]);
+        let sm = self.sim.furnaces.map.entry([pos[0] - 4, pos[1], pos[2]]).or_default();
+        sm.kind = vc_gameplay::furnace::FurnaceKind::Smoker;
+        sm.input = vc_inventory::inventory::ItemStack::new(POTATO, 2);
+        sm.fuel = vc_inventory::inventory::ItemStack::new(PLANKS, 1);
+        // 3. a lantern SITTING on a block (light 15, VERIFIED) and one
+        // HANGING from a support; breaking the support pops the hanger
+        self.test_place(STONE, pos[0] - 6, pos[1], pos[2]);
+        if let Some((old, new)) = self.world.set_block_state(
+            pos[0] - 6, pos[1] + 1, pos[2],
+            vc_blocks::blocks::V11_STATE_BASE + 4, // sitting
+        ) {
+            self.light.on_block_changed(&self.world, pos[0] - 6, pos[1] + 1, pos[2], old, new);
+        }
+        self.test_place(STONE, pos[0] - 8, pos[1] + 4, pos[2]);
+        if let Some((old, new)) = self.world.set_block_state(
+            pos[0] - 8, pos[1] + 3, pos[2],
+            vc_blocks::blocks::V11_STATE_BASE + 5, // hanging
+        ) {
+            self.light.on_block_changed(&self.world, pos[0] - 8, pos[1] + 3, pos[2], old, new);
+        }
+        // fast-forward the sim (the furnaces tick inside the step), then
+        // settle the light queue — the game loop's pump() call, without
+        // which on_block_changed seeds stay pending and light reads 0
+        for _ in 0..ticks {
+            self.sim.step(
+                &mut self.world,
+                &mut self.light,
+                &vc_sim::sim::TickScope::everything(),
+            );
+        }
+        self.light.pump(&mut self.world, 8_000);
+        let (bf_out, bf_lit) = match self.sim.furnaces.map.get(&[pos[0] - 2, pos[1], pos[2]]) {
+            Some(f) => (f.output.count, f.is_burning()),
+            None => (0, false),
+        };
+        let sm_out = self
+            .sim
+            .furnaces
+            .map
+            .get(&[pos[0] - 4, pos[1], pos[2]])
+            .map(|f| f.output.count)
+            .unwrap_or(0);
+        let sitting_state = self.world.get_state(pos[0] - 6, pos[1] + 1, pos[2]);
+        let hang_state = self.world.get_state(pos[0] - 8, pos[1] + 3, pos[2]);
+        // the lantern's light from the real light engine, read at the
+        // AIR cell above it (the engine keeps the emitter's own cell at
+        // 0 — the reference rule; a 15-emitter lights its neighbors at
+        // 15 − 1 = 14). Block light only — the sky column would mask it.
+        let (_, _sky, blk_l) = light_at(
+            &self.world,
+            &self.light,
+            pos[0] - 6,
+            pos[1] + 2,
+            pos[2],
+        );
+        vc_render::render::report_boot_log(&format!(
+            "e2e: v114b blast furnace out={} lit={} (100-tick 2x cook), smoker out={} (100-tick cook), lantern sitting={} neighbor-block-light={} hanging={}",
+            bf_out, bf_lit, sm_out,
+            sitting_state == vc_blocks::blocks::V11_STATE_BASE + 4,
+            blk_l,
+            hang_state == vc_blocks::blocks::V11_STATE_BASE + 5,
+        ));
+        // the support-break pop (VERIFIED): break the stone the hanging
+        // lantern is attached UNDER — the lantern must drop
+        self.test_break(pos[0] - 8, pos[1] + 4, pos[2]);
+        let popped = self.world.get_block(pos[0] - 8, pos[1] + 3, pos[2]) != LANTERN;
+        vc_render::render::report_boot_log(&format!(
+            "e2e: v114b hanging lantern popped on support break={}",
+            popped
+        ));
+    }
+
     fn test_place(&mut self, block: u16, x: i32, y: i32, z: i32) {
         use vc_blocks::blocks::*;
         let state = match block {
@@ -5771,6 +5879,12 @@ impl GameApp {
                 // "e2e: v114" boot lines
                 if std::env::var("E2E_V114").is_ok() {
                     self.e2e_v114(650);
+                }
+                // 1.14 (part 2): the smelting-trio + lantern E2E stage
+                // (E2E_V114=1 gates BOTH stages — the v114b contract
+                // rides the same env flag so CI's single run covers it)
+                if std::env::var("E2E_V114").is_ok() {
+                    self.e2e_v114b(150);
                 }
             }
             // F3_DUMP run: hold gameplay ~2 s so the overlay rebuild + dump
@@ -8946,6 +9060,22 @@ impl GameApp {
                         self.sim.furnaces.map.entry(tpos).or_default();
                         self.open_container(Container::Furnace { pos: tpos });
                         self.place_timer = 0.3;
+                    } else if tb == BLAST_FURNACE {
+                        // 1.14 (part 2, VERIFIED w/Blast_Furnace §Usage:
+                        // the same GUI as the furnace) — the entity is
+                        // kind-tagged at first use (the placement wrote
+                        // the unlit V11 state)
+                        let e = self.sim.furnaces.map.entry(tpos).or_default();
+                        e.kind = vc_gameplay::furnace::FurnaceKind::Blast;
+                        self.open_container(Container::Furnace { pos: tpos });
+                        self.place_timer = 0.3;
+                    } else if tb == SMOKER {
+                        // 1.14 (part 2, VERIFIED w/Smoker §Usage: the
+                        // same GUI as the furnace)
+                        let e = self.sim.furnaces.map.entry(tpos).or_default();
+                        e.kind = vc_gameplay::furnace::FurnaceKind::Smoker;
+                        self.open_container(Container::Furnace { pos: tpos });
+                        self.place_timer = 0.3;
                     } else if tb == BREWING_STAND {
                         // §29: right-click opens the brewing screen; the
                         // block entity is created on first use (empty state)
@@ -9700,6 +9830,20 @@ impl GameApp {
                                     let half = if prev[1] < tpos[1] { "top" } else { "bottom" };
                                     prop_state_encode(b, &[("facing", facing), ("half", half)])
                                         .unwrap_or(b as u16)
+                                } else if b == LANTERN {
+                                    // 1.14 (part 2, VERIFIED w/Lantern
+                                    // §Usage: "lanterns can either be
+                                    // placed on top of, or hung from, the
+                                    // bottom of, the surfaces of most
+                                    // solid blocks" — clicking the TOP
+                                    // face of a block sits the lantern,
+                                    // clicking the UNDERSIDE hangs it (the
+                                    // slab-half face pattern: prev is the
+                                    // placement cell, tpos the clicked
+                                    // block)
+                                    let hanging = prev[1] < tpos[1];
+                                    vc_blocks::blocks::V11_STATE_BASE
+                                        + if hanging { 5 } else { 4 }
                                 } else if b == OAK_FENCE {
                                     // connections computed from the current world
                                     fence_state_for(&self.world, prev[0], prev[1], prev[2])

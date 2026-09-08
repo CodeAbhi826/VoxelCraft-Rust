@@ -2450,3 +2450,86 @@ Stage Summary:
 - main plan: next round queued (1.14 deferred nature blocks — smooth
   stone family / blast furnace / smoker / lantern / new flowers, then
   1.15 Buzzy Bees)
+
+---
+
+## Session 2026-09-08 (c) — 1.14 nature half, part 2: the smelting trio + lantern
+
+Task ID: 1 (continuation)
+Agent: main (Z)
+Task: continue the main plan — the 1.14 deferred nature blocks
+(smooth stone / blast furnace / smoker / lantern, the "next nature
+rounds" from the V10 deferral list).
+
+**Research:** the four wiki pages captured via the minecraft.wiki
+API into scripts/v114b_page_{Smooth_Stone,Blast_Furnace,Smoker,
+Lantern}.json. Verified contracts: stone smelts into smooth stone
+(0.1 XP); blast furnace = 5 iron + furnace + 3 smooth stone, smelts
+ONLY the ore/metal class at 2x speed with fuel burning at double
+rate (same items-per-fuel), lit state light 13, drops contents when
+broken; smoker = 4 logs (cross) around a furnace, cooks ONLY food at
+2x (5 s per item), lit 13; lantern = 8 iron nuggets + torch, light 15
+("brighter than a torch"), sits on tops or hangs from undersides,
+pops on invalid support at the next block update.
+
+**Registry (V11 window, ids 426..=429, states 689..=695, tiles
+634..=639):** BLAST_FURNACE, SMOKER, LANTERN + IRON_NUGGET (the
+1.11-era item the lantern recipe needed); 7 states (smelters unlit/lit
+pairs, lantern sitting/hanging, nugget item). BLOCK_COUNT 426→430,
+STATE_COUNT 689→696, TILE_MAX 633→639, PICKER_BLOCKS 386→389, WGSL
+mesh LUT + clamps resynced (the drift test caught it, working as
+designed). F3 targeted-block property lines decode
+("Blast Furnace[lit=true]", "Lantern[hanging=false]").
+
+**Furnace family (vc-gameplay/furnace.rs):** FurnaceKind
+(Furnace/Blast/Smoker) — cook_ticks 200/100/100, burn_rate 1x/2x, and
+a class filter (blast accepts is_ore_smelting = COAL_ORE today; smoker
+accepts is_food_smelting = potato/raw rabbit/kelp; rejected inputs
+never ignite and never spend fuel). The world lit-swap is per-kind
+(FURNACE_STATE/FURNACE_LIT for the base; the V11 pairs for the
+smelters). The STONE → SMOOTH_STONE smelting row (0.1 XP) + the
+smelters' contents-spill on break ride the existing paths.
+
+**Crafting (VERIFIED grids):** blast furnace (iron top+sides,
+furnace center, smooth stone bottom), smoker (the 4-log cross),
+lantern (nugget ring + torch), and the 9:1 nugget ↔ iron round-trip.
+Disclosed stand-ins: IRON_ORE items for the iron ingots (the engine's
+existing convention), REDSTONE_TORCH (light 7) for the recipe's torch
+(the engine's only torch).
+
+**Lantern gameplay:** placement writes sitting (top face) or hanging
+(underside — the slab-half face pattern); light 15 through the block
+row in both forms; breaking a support pops the lantern above/below
+(the verified invalid-surface rule, recursion-chained down lantern
+columns); water does NOT break lanterns (they are waterloggable in
+vanilla — the no-waterlogging-path deferral covers it).
+
+**Art (v114b_art.rs, painted from day one):** the blast furnace's
+dark-iron face (unlit + glowing lit), the smoker's log-walled face
+(unlit + lit), the lantern sprite (chain handle, iron frame, warm
+glass + flame — cross-rendered like the torch; the sitting/hanging
+model difference is disclosed future work), the iron nugget icon.
+Guards: v114b_tiles_all_painted (the art-gap coverage) +
+v114b_smelter_lit_glows (lit faces must carry warm-glow pixels, unlit
+none).
+
+**E2E/CI:** the E2E_V114 smoke stage gained e2e_v114b (blast furnace
+fed coal ore + smoker fed potato — both out=1 lit=true at the 100-tick
+2x cook; lantern sitting + hanging + block-light; the support-break
+pop) — includes the light-engine pump() call the game loop normally
+makes (a direct-sim fast-forward leaves seeds pending, light reads 0).
+linux-game.yml greps the three v114b lines as blocking assertions.
+
+**Deferred with reasons:** lantern waterlogging (no waterlogging
+placement path), the smelters as villager job-site blocks (armorer /
+butcher professions — the village half), blast-furnace metal-tool/
+armor smelting (no tool items), gold ore → gold ingot (no gold ingot
+item; the iron-ore-as-ingot stand-in convention makes iron-ore
+smelting degenerate — the ore class grows with a future ingot round),
+smoker chorus-fruit row (no chorus), lantern chain-connect rendering.
+
+**Verification:** 537/537 workspace tests green (+8: furnace 3 + craft
+1 + render 2 + blocks 1 + the smooth-stone smelt), wasm32 lib clean,
+release build clean, local lavapiipe smoke green end-to-end with the
+v114b stage (out=1/lit=true/100-tick cooks, neighbor-block-light=15,
+popped=true).

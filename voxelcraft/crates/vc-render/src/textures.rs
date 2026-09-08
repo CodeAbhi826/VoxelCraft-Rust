@@ -15,6 +15,7 @@ mod auditfix_art;
 mod v112_art;
 mod v113_art;
 mod v114_art;
+mod v114b_art;
 
 pub const ATLAS_SIZE: usize = 512;
 pub const TILE_PX: usize = 16;
@@ -4225,6 +4226,15 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_MOB_FOX => v114_art::fox_art(&mut a, t, &mut rng),
             TILE_STICK => v114_art::stick_art(&mut a, t, &mut rng),
             TILE_CHARCOAL => v114_art::charcoal_art(&mut a, t, &mut rng),
+            // ---- 1.14 (nature half, part 2): the V11 window 634..=639
+            // — the smelters' lit/unlit faces, the lantern sprite, the
+            // iron nugget icon (painted from day one, same as V10) ----
+            TILE_BLAST_FURNACE_SIDE => v114b_art::blast_furnace_art(&mut a, t, false, &mut rng),
+            TILE_BLAST_FURNACE_SIDE_LIT => v114b_art::blast_furnace_art(&mut a, t, true, &mut rng),
+            TILE_SMOKER_SIDE => v114b_art::smoker_art(&mut a, t, false, &mut rng),
+            TILE_SMOKER_SIDE_LIT => v114b_art::smoker_art(&mut a, t, true, &mut rng),
+            TILE_LANTERN => v114b_art::lantern_art(&mut a, t, &mut rng),
+            TILE_IRON_NUGGET => v114b_art::iron_nugget_art(&mut a, t, &mut rng),
             _ => {}
         }
     }
@@ -5136,7 +5146,7 @@ mod v113_art_tests {
     #[test]
     fn v114_tiles_all_painted() {
         let atlas = generate_atlas();
-        for t in 619..=TILE_MAX {
+        for t in 619..=633 {
             let tx = (t % 32) as usize;
             let ty = (t / 32) as usize;
             let mut painted = 0usize;
@@ -5153,6 +5163,57 @@ mod v113_art_tests {
                 "tile {t} is BLANK ({painted} painted pixels) — a painter is missing (the art-gap regression)"
             );
         }
+    }
+
+    /// 1.14 (nature half, part 2): every V11 tile 634..=639 is painted
+    /// — the same art-gap guard for the smelting-trio + lantern window.
+    #[test]
+    fn v114b_tiles_all_painted() {
+        let atlas = generate_atlas();
+        for t in 634..=TILE_MAX {
+            let tx = (t % 32) as usize;
+            let ty = (t / 32) as usize;
+            let mut painted = 0usize;
+            for y in 0..TILE_PX {
+                for x in 0..TILE_PX {
+                    let src = ((ty * TILE_PX + y) * ATLAS_SIZE + tx * TILE_PX + x) * 4 + 3;
+                    if atlas[src] > 0 {
+                        painted += 1;
+                    }
+                }
+            }
+            assert!(
+                painted >= 4,
+                "tile {t} is BLANK ({painted} painted pixels) — a painter is missing (the art-gap regression)"
+            );
+        }
+    }
+
+    /// 1.14 (part 2): the LIT smelter faces carry glow pixels (warm
+    /// orange) the unlit faces do not have — the "lit must show fire"
+    /// guard (VERIFIED w/Blast_Furnace + w/Smoker infobox light rows).
+    #[test]
+    fn v114b_smelter_lit_glows() {
+        let atlas = generate_atlas();
+        let warm = |t: u16| -> usize {
+            let tx = (t % 32) as usize;
+            let ty = (t / 32) as usize;
+            let mut n = 0;
+            for y in 0..TILE_PX {
+                for x in 0..TILE_PX {
+                    let i = ((ty * TILE_PX + y) * ATLAS_SIZE + tx * TILE_PX + x) * 4;
+                    // warm glow: red strongly above green, both bright
+                    if atlas[i] > 200 && atlas[i + 1] > 120 && atlas[i + 2] < 120 {
+                        n += 1;
+                    }
+                }
+            }
+            n
+        };
+        assert!(warm(TILE_BLAST_FURNACE_SIDE_LIT) >= 20, "lit blast furnace glows");
+        assert!(warm(TILE_BLAST_FURNACE_SIDE) == 0, "unlit blast furnace has no glow");
+        assert!(warm(TILE_SMOKER_SIDE_LIT) >= 20, "lit smoker glows");
+        assert!(warm(TILE_SMOKER_SIDE) == 0, "unlit smoker has no glow");
     }
 
     /// the berry-bush stages gain red berry pixels as they mature

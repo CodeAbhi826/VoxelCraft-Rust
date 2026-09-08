@@ -686,6 +686,65 @@ pub const RECIPES: &[Recipe] = &[
         ],
         out: ItemStack::new(BARREL, 1),
     },
+    // ---- 1.14 (nature half, part 2): the smelting trio + lantern.
+    // VERIFIED 2026-09-08 from the raw captures v114b_page_*.json. ----
+    // blast furnace: "5 iron ingots, 1 furnace and 3 smooth stone"
+    // (w/Blast_Furnace §Crafting: iron across the top + both sides of
+    // the middle, furnace center, smooth stone across the bottom). The
+    // engine's IRON_ORE items stand in for the ingots (the disclosed
+    // convention — the engine has no iron-ingot item; ore items are
+    // the material).
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(IRON_ORE),  Ing::Block(IRON_ORE),  Ing::Block(IRON_ORE),
+            Ing::Block(IRON_ORE),  Ing::Block(FURNACE),   Ing::Block(IRON_ORE),
+            Ing::Block(SMOOTH_STONE), Ing::Block(SMOOTH_STONE), Ing::Block(SMOOTH_STONE),
+        ],
+        out: ItemStack::new(BLAST_FURNACE, 1),
+    },
+    // smoker: "4 logs, stripped or not, or wood, around a furnace"
+    // (w/Smoker §Crafting: the diamond/cross placement — logs at top
+    // center, middle left, middle right, bottom center). The engine's
+    // AnyWood = the 6-log set.
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::None,    Ing::AnyWood, Ing::None,
+            Ing::AnyWood, Ing::Block(FURNACE), Ing::AnyWood,
+            Ing::None,    Ing::AnyWood, Ing::None,
+        ],
+        out: ItemStack::new(SMOKER, 1),
+    },
+    // lantern: "8 iron nuggets and 1 torch" (w/Lantern §Crafting: the
+    // nugget ring around the torch center). The engine's torch
+    // (REDSTONE_TORCH, light 7) is the torch stand-in, disclosed.
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(IRON_NUGGET), Ing::Block(IRON_NUGGET), Ing::Block(IRON_NUGGET),
+            Ing::Block(IRON_NUGGET), Ing::Block(REDSTONE_TORCH), Ing::Block(IRON_NUGGET),
+            Ing::Block(IRON_NUGGET), Ing::Block(IRON_NUGGET), Ing::Block(IRON_NUGGET),
+        ],
+        out: ItemStack::new(LANTERN, 1),
+    },
+    // iron nuggets from the ingot stand-in (vanilla w/Iron_Nugget
+    // §Crafting: 1 iron ingot → 9 nuggets; 9 nuggets → 1 ingot — the
+    // engine's 9:1 back-craft uses the IRON_ORE stand-in, disclosed)
+    Recipe {
+        size: 1,
+        grid: &[Ing::Block(IRON_ORE)],
+        out: ItemStack::new(IRON_NUGGET, 9),
+    },
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(IRON_NUGGET), Ing::Block(IRON_NUGGET), Ing::Block(IRON_NUGGET),
+            Ing::Block(IRON_NUGGET), Ing::Block(IRON_NUGGET), Ing::Block(IRON_NUGGET),
+            Ing::Block(IRON_NUGGET), Ing::Block(IRON_NUGGET), Ing::Block(IRON_NUGGET),
+        ],
+        out: ItemStack::new(IRON_ORE, 1),
+    },
 ];
 
 /// 1.12 (World of Color): the concrete-powder recipe — the engine's
@@ -1194,5 +1253,67 @@ mod v112_tests {
         // a missing slab cap breaks it
         g[7] = ItemStack::EMPTY;
         assert!(match_grid(&g, 3).is_none(), "one slab is not two");
+    }
+    /// 1.14 (nature half, part 2) recipes — VERIFIED 2026-09-08 from
+    /// the raw captures v114b_page_*.json: blast furnace (5 iron +
+    /// furnace + 3 smooth stone), smoker (the 4-log cross around a
+    /// furnace), lantern (8 nuggets + torch), and the 9:1 nugget
+    /// round-trips with the iron-ingot stand-in.
+    #[test]
+    fn v114b_smelter_lantern_recipes() {
+        // blast furnace: iron top+sides, furnace center, smooth stone bottom
+        let mut g = vec![ItemStack::EMPTY; 9];
+        for i in [0usize, 1, 2, 3, 5] {
+            g[i] = ItemStack::new(IRON_ORE, 1);
+        }
+        g[4] = ItemStack::new(FURNACE, 1);
+        for i in [6usize, 7, 8] {
+            g[i] = ItemStack::new(SMOOTH_STONE, 1);
+        }
+        let out = match_grid(&g, 3).unwrap();
+        assert_eq!((out.block, out.count), (BLAST_FURNACE, 1));
+        // 4 iron (a side missing) is not the recipe
+        let mut bad = g.clone();
+        bad[3] = ItemStack::EMPTY;
+        assert!(match_grid(&bad, 3).is_none(), "4 iron is not the recipe");
+        // cobble instead of smooth stone in the bottom row: rejected
+        let mut bad2 = g.clone();
+        bad2[7] = ItemStack::new(COBBLE, 1);
+        assert!(match_grid(&bad2, 3).is_none(), "cobble bottom is not the recipe");
+
+        // smoker: the 4-log cross around the furnace (any of the 6 woods)
+        let mut s = vec![ItemStack::EMPTY; 9];
+        s[1] = ItemStack::new(OAK_LOG, 1);
+        s[3] = ItemStack::new(JUNGLE_LOG, 1);
+        s[4] = ItemStack::new(FURNACE, 1);
+        s[5] = ItemStack::new(BIRCH_LOG, 1);
+        s[7] = ItemStack::new(DARK_OAK_LOG, 1);
+        let out = match_grid(&s, 3).unwrap();
+        assert_eq!((out.block, out.count), (SMOKER, 1));
+        // a corner log breaks the cross
+        let mut bad3 = s.clone();
+        bad3[0] = ItemStack::new(OAK_LOG, 1);
+        assert!(match_grid(&bad3, 3).is_none(), "corner log is not the recipe");
+
+        // lantern: the 8-nugget ring around the torch
+        let mut l = vec![ItemStack::EMPTY; 9];
+        for i in [0usize, 1, 2, 3, 5, 6, 7, 8] {
+            l[i] = ItemStack::new(IRON_NUGGET, 1);
+        }
+        l[4] = ItemStack::new(REDSTONE_TORCH, 1);
+        let out = match_grid(&l, 3).unwrap();
+        assert_eq!((out.block, out.count), (LANTERN, 1));
+        // a nugget missing breaks the ring
+        let mut bad4 = l.clone();
+        bad4[0] = ItemStack::EMPTY;
+        assert!(match_grid(&bad4, 3).is_none(), "7 nuggets is not the recipe");
+
+        // the nugget round-trips with the iron-ingot stand-in
+        let one = vec![ItemStack::new(IRON_ORE, 1)];
+        let out = match_grid(&one, 1).unwrap();
+        assert_eq!((out.block, out.count), (IRON_NUGGET, 9));
+        let nine = vec![ItemStack::new(IRON_NUGGET, 1); 9];
+        let out = match_grid(&nine, 3).unwrap();
+        assert_eq!((out.block, out.count), (IRON_ORE, 1));
     }
 }

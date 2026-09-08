@@ -11,6 +11,8 @@ vc-blocks = { workspace = true }
 vc-chunk = { workspace = true }
 vc-nbt = { workspace = true }
 vc-world = { workspace = true }
+# save timestamps: native == std re-export, wasm-safe if ever un-gated
+web-time = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 flate2 = { workspace = true }

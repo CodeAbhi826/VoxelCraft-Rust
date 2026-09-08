@@ -69,8 +69,9 @@ fn be3_to_u32(b: &[u8]) -> u32 {
 }
 
 fn now_secs() -> u32 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
+    // web_time: wasm-safe SystemTime (native == std re-export)
+    web_time::SystemTime::now()
+        .duration_since(web_time::UNIX_EPOCH)
         .map(|d| d.as_secs() as u32)
         .unwrap_or(0)
 }

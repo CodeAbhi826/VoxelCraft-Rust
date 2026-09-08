@@ -45,6 +45,11 @@ wasm-bindgen-futures = "0.4"
 console_error_panic_hook = "0.1.7"
 js-sys = "0.3"
 web-sys = "0.3"
+# std::time::Instant/SystemTime PANIC on wasm32-unknown-unknown ("time not
+# implemented on this platform") even though they compile. web-time is the
+# drop-in the whole wgpu ecosystem uses: std re-export on native,
+# performance.now()/Date on wasm. Already in the tree via wgpu.
+web-time = "0.2"
 
 [profile.release]
 # keep the engine's release profile at the workspace root

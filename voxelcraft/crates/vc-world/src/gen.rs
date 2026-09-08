@@ -1384,8 +1384,11 @@ impl TerrainGen {
             let (id, tall_top) = match b_here {
                 Biome::FlowerForest => {
                     if r < 0.50 {
-                        // the small-flower mix (weighted by the wiki's list)
-                        let s = rng.next_range(8) as u8;
+                        // the small-flower mix (weighted by the wiki's list;
+                        // 1.14 18w43a: + cornflower, lily of the valley —
+                        // VERIFIED w/Cornflower §Natural generation "flower
+                        // forest" + w/Lily_of_the_Valley "flower forest")
+                        let s = rng.next_range(10) as u8;
                         let small = match s {
                             0 => ALLIUM,
                             1 => OXEYE_DAISY,
@@ -1394,7 +1397,9 @@ impl TerrainGen {
                             4 => RED_TULIP,
                             5 => PINK_TULIP,
                             6 => AZURE_BLUET,
-                            _ => BLUE_ORCHID,
+                            7 => BLUE_ORCHID,
+                            8 => CORNFLOWER,
+                            _ => LILY_OF_THE_VALLEY,
                         };
                         (small, 0u16)
                     } else if r < 0.62 {
@@ -1416,8 +1421,13 @@ impl TerrainGen {
                         (TALL_GRASS, 0u16)
                     } else if r < 0.93 {
                         (FLOWER_RED, 0u16)
-                    } else {
+                    } else if r < 0.97 {
                         (OXEYE_DAISY, 0u16)
+                    } else {
+                        // 1.14: cornflower joins the plains flora
+                        // (w/Cornflower §Natural generation: "plains,
+                        // sunflower plains, ...")
+                        (CORNFLOWER, 0u16)
                     }
                 }
                 // audit-fix: ferns (VERIFIED w/Fern — "non-solid plant
@@ -1448,6 +1458,37 @@ impl TerrainGen {
                         (FLOWER_RED, 0u16)
                     } else {
                         (FLOWER_YELLOW, 0u16)
+                    }
+                }
+                // 1.14: cornflower joins the plains flora (VERIFIED
+                // w/Cornflower §Natural generation: "plains, sunflower
+                // plains, flower forest, and meadow biomes" — our biome
+                // set has Plains; meadow is 1.17-era, out of bracket)
+                Biome::Plains => {
+                    if r < 0.72 {
+                        (TALL_GRASS, 0u16)
+                    } else if r < 0.84 {
+                        (FLOWER_RED, 0u16)
+                    } else if r < 0.90 {
+                        (FLOWER_YELLOW, 0u16)
+                    } else {
+                        (CORNFLOWER, 0u16)
+                    }
+                }
+                // 1.14: lily of the valley joins the forest floors
+                // (VERIFIED w/Lily_of_the_Valley §Natural generation:
+                // "forest, flower forest, birch forest, old growth
+                // birch forest, and dark forest" — our Forest +
+                // BirchForest; dark forest is out of bracket)
+                Biome::Forest | Biome::BirchForest => {
+                    if r < 0.70 {
+                        (TALL_GRASS, 0u16)
+                    } else if r < 0.80 {
+                        (FLOWER_RED, 0u16)
+                    } else if r < 0.90 {
+                        (FLOWER_YELLOW, 0u16)
+                    } else {
+                        (LILY_OF_THE_VALLEY, 0u16)
                     }
                 }
                 _ => {
@@ -5039,6 +5080,58 @@ mod v172_tests {
         assert_eq!(
             lower, upper,
             "every sunflower carries its upper half"
+        );
+    }
+
+    /// 1.14 (part 3): the two new flowers generate in their vanilla
+    /// biomes (VERIFIED w/Cornflower §Natural generation — plains,
+    /// sunflower plains, flower forest; w/Lily_of_the_Valley — forest,
+    /// birch forest, flower forest). Multi-chunk scans because a single
+    /// 16×16 chunk can easily roll zero of a ~6-8% floor flower.
+    #[test]
+    fn v114_flowers_generate_in_biomes() {
+        let g = gen();
+
+        // cornflower: plains + flower forest (both listed for it)
+        let mut corn_plains = 0usize;
+        let (cx, cz) = find_biome(&g, Biome::Plains);
+        for dx in 0..8 {
+            let (chunk, _) = g.generate_chunk(cx + dx, cz, Vec::new());
+            for i in 0..CHUNK_LEN {
+                if chunk.get_idx(i) == CORNFLOWER {
+                    corn_plains += 1;
+                }
+            }
+        }
+        assert!(corn_plains > 0, "cornflower in plains (got {corn_plains})");
+
+        // lily of the valley: forest family
+        let mut lily_forest = 0usize;
+        let (cx, cz) = find_biome(&g, Biome::Forest);
+        for dx in 0..8 {
+            let (chunk, _) = g.generate_chunk(cx + dx, cz, Vec::new());
+            for i in 0..CHUNK_LEN {
+                if chunk.get_idx(i) == LILY_OF_THE_VALLEY {
+                    lily_forest += 1;
+                }
+            }
+        }
+        assert!(lily_forest > 0, "lily of the valley in forest (got {lily_forest})");
+
+        // both join the flower-forest mix (the 10-way small-flower roll)
+        let (cx, cz) = find_biome(&g, Biome::FlowerForest);
+        let (mut corn_ff, mut lily_ff) = (0usize, 0usize);
+        let (chunk, _) = g.generate_chunk(cx, cz, Vec::new());
+        for i in 0..CHUNK_LEN {
+            match chunk.get_idx(i) {
+                CORNFLOWER => corn_ff += 1,
+                LILY_OF_THE_VALLEY => lily_ff += 1,
+                _ => {}
+            }
+        }
+        assert!(
+            corn_ff + lily_ff > 0,
+            "the 1.14 flowers in the flower-forest mix (corn {corn_ff} lily {lily_ff})"
         );
     }
 

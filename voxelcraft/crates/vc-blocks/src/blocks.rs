@@ -1533,6 +1533,18 @@ pub const LANTERN: u16 = 428;
 /// (8 nuggets + torch); crafts 9:1 with the engine's iron-ingot
 /// stand-in (IRON_ORE items, the disclosed convention).
 pub const IRON_NUGGET: u16 = 429;
+// ---- 1.14 (part 3): the two new small flowers (18w43a). VERIFIED
+// 2026-09-08 from the raw captures scripts/v114c_page_*.json
+// (w/Cornflower, w/Lily_of_the_Valley). ----
+/// cornflower: non-solid cross plant, instant-break, drops itself;
+/// crafts into BLUE dye; generates in plains / sunflower plains /
+/// flower forest on grass-dirt (our biome set: Plains, SunflowerPlains,
+/// FlowerForest).
+pub const CORNFLOWER: u16 = 430;
+/// lily of the valley: non-solid cross plant, instant-break, drops
+/// itself; crafts into WHITE dye; generates in forest-family biomes
+/// (our set: Forest, BirchForest, FlowerForest).
+pub const LILY_OF_THE_VALLEY: u16 = 431;
 
 pub const V10_STATE_BASE: u16 = 676;
 // 13 states: bamboo stalk 1, shoot 1, berry bush 4 (age 0..3),
@@ -1577,9 +1589,10 @@ pub fn is_v10_state(s: u16) -> bool {
 }
 
 pub const V11_STATE_BASE: u16 = 689;
-// 7 states: blast furnace unlit/lit, smoker unlit/lit, lantern
-// sitting/hanging, and the iron-nugget item state.
-pub const V11_COUNT: u16 = 7;
+// 9 states: blast furnace unlit/lit, smoker unlit/lit, lantern
+// sitting/hanging, the iron-nugget item state, and the two 1.14
+// flowers (one state each — no properties).
+pub const V11_COUNT: u16 = 9;
 /// V11 state -> block fold: the lit states fold to their parent
 /// blocks (per-state art rides state_tiles; the lit swap is the
 /// furnace pattern).
@@ -1588,6 +1601,7 @@ pub const V11_STATE_TO_BLOCK: [u16; V11_COUNT as usize] = [
     SMOKER, SMOKER,
     LANTERN, LANTERN,
     IRON_NUGGET,
+    CORNFLOWER, LILY_OF_THE_VALLEY,
 ];
 
 #[inline]
@@ -1597,6 +1611,8 @@ pub fn v11_state(b: u16) -> Option<u16> {
         SMOKER => Some(V11_STATE_BASE + 2),    // unlit
         LANTERN => Some(V11_STATE_BASE + 4),   // sitting
         IRON_NUGGET => Some(V11_STATE_BASE + 6),
+        CORNFLOWER => Some(V11_STATE_BASE + 7),
+        LILY_OF_THE_VALLEY => Some(V11_STATE_BASE + 8),
         _ => None,
     }
 }
@@ -2267,7 +2283,7 @@ pub fn item_state_block(s: u16) -> Option<u16> {
     }
 }
 
-pub const BLOCK_COUNT: usize = 430; // 1.14: V11 window ids 426..=429 (blast furnace/smoker/lantern + iron nugget)
+pub const BLOCK_COUNT: usize = 432; // 1.14 (part 3): V11 window ids 426..=431 (smelters/lantern/nugget + the two flowers)
 /// [merge renumber] acacia/dark-oak log axis states moved to 443..=446
 /// (past the E-series states, which end at 354; V2 base is now 400)
 /// acacia/dark-oak log axis states (the V2 log window — same pattern as
@@ -2304,7 +2320,7 @@ pub const DARK_OAK_LOG_Z: u16 = 446;
 /// items + eggs 20..=22 + the POWER-state ladders (317..=399)
 /// [merge renumber] F-series states: V2 400..=442 + log-axis 443..=446,
 /// V3 447..=465, V4 466..=475, V5 476..=479, V6 480..=485 (audit-fix)
-pub const STATE_COUNT: usize = 696; // 1.14: V11 states 689..=695 (blast furnace 2 + smoker 2 + lantern 2 + iron nugget item)
+pub const STATE_COUNT: usize = 698; // 1.14 (part 3): V11 states 689..=697 (smelter 4 + lantern 2 + nugget + flowers 2)
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -3315,6 +3331,16 @@ pub fn state_tiles(s: u16) -> [u16; 4] {
         s if is_v11_state(s) && (V11_STATE_BASE + 4..=V11_STATE_BASE + 6).contains(&s) => {
             [TILE_LANTERN, TILE_LANTERN, TILE_LANTERN, TILE_LANTERN]
         }
+        // ---- 1.14 (part 3): the flowers — one sprite each, one state
+        // each ----
+        s if is_v11_state(s) && (V11_STATE_BASE + 7..=V11_STATE_BASE + 8).contains(&s) => {
+            let t = if s == V11_STATE_BASE + 7 {
+                TILE_CORNFLOWER
+            } else {
+                TILE_LILY_OF_THE_VALLEY
+            };
+            [t, t, t, t]
+        }
         s if glazed_decode(s).is_some() => {
             let (color, facing) = glazed_decode(s).unwrap();
             let c = color as u16;
@@ -3368,7 +3394,7 @@ pub fn log_axis_state(block: u16, axis: u8) -> u16 {
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
 // [merge] E-series tiles end at 243; the F-series (1.7.2-1.10) tiles
 // continue at 244..=325; the audit-fix round adds 326..=332
-pub const TILE_MAX: u16 = 639; // 1.14 (Village & Pillage, part 2): tiles 634..=639 (the V11 window — smelters lit/unlit, lantern, iron nugget)
+pub const TILE_MAX: u16 = 641; // 1.14 (part 3): tiles 634..=641 (the V11 window — smelters, lantern, nugget, the two flowers)
 /// 1.11 egg tiles (egg-shaped, egg order 23..=28 = llama, vindicator,
 /// evoker, vex, husk, stray) — the E1/E2/E3 egg-art convention
 /// (e1_art::egg_art + palettes), replacing the interrupted round's
@@ -3536,6 +3562,12 @@ pub const TILE_SMOKER_SIDE_LIT: u16 = 637;
 pub const TILE_LANTERN: u16 = 638;
 /// iron nugget item icon.
 pub const TILE_IRON_NUGGET: u16 = 639;
+
+// ---- 1.14 (part 3): the flower tiles 640..=641 ----
+/// cornflower sprite (cross plant; the deep-blue petals + stem).
+pub const TILE_CORNFLOWER: u16 = 640;
+/// lily of the valley sprite (cross plant; white bell florets).
+pub const TILE_LILY_OF_THE_VALLEY: u16 = 641;
 
 /// inventory-only ITEM blocks (potions/bottles/books): never placeable in
 /// the world — right-click drinks (potions) / fills (glass bottle at water).
@@ -4291,6 +4323,11 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Smoker", [TILE_FURNACE_TOP, TILE_FURNACE_TOP, TILE_SMOKER_SIDE], true, true, false, false, 0, SoundFamily::Wood),
     d("Lantern", [TILE_LANTERN, TILE_LANTERN, TILE_LANTERN], false, false, true, false, 15, SoundFamily::Wood),
     d("Iron Nugget", [TILE_IRON_NUGGET, TILE_IRON_NUGGET, TILE_IRON_NUGGET], false, false, true, false, 0, SoundFamily::Stone),
+    // ---- 1.14 (part 3): the two new small flowers — the allium
+    // pattern (cross plant, non-solid, instant-break, drops itself;
+    // VERIFIED w/Cornflower + w/Lily_of_the_Valley) ----
+    d("Cornflower", [TILE_CORNFLOWER, TILE_CORNFLOWER, TILE_CORNFLOWER], false, false, true, false, 0, SoundFamily::Grass),
+    d("Lily of the Valley", [TILE_LILY_OF_THE_VALLEY, TILE_LILY_OF_THE_VALLEY, TILE_LILY_OF_THE_VALLEY], false, false, true, false, 0, SoundFamily::Grass),
 ];
 
 #[inline]
@@ -4360,7 +4397,7 @@ pub fn face_visible(b: u16, n: u16) -> bool {
 /// (needs fluid sim to be fun). Potions are item-blocks — usable from the
 /// hotbar (drink), never placeable. Phase E1 adds the 1.0–1.2 bracket
 /// blocks/items + the 16 spawn eggs (creative-only items, w/Spawn_Egg).
-pub const PICKER_BLOCKS: [u16; 389] = [
+pub const PICKER_BLOCKS: [u16; 391] = [
     GRASS, DIRT, STONE, COBBLE, SMOOTH_STONE, STONE_BRICKS, BRICKS, MOSSY_COBBLE,
     GRANITE, DIORITE, ANDESITE, OBSIDIAN,
     SAND, GRAVEL, CLAY, TERRACOTTA,
@@ -4505,6 +4542,8 @@ pub const PICKER_BLOCKS: [u16; 389] = [
     SWEET_BERRIES, SPAWN_EGG_FOX, STICK, CHARCOAL,
     // ---- 1.14 (part 2): the V11 window — the smelters + lantern ----
     BLAST_FURNACE, SMOKER, LANTERN,
+    // ---- 1.14 (part 3): the two new small flowers ----
+    CORNFLOWER, LILY_OF_THE_VALLEY,
 ];
 
 /// default hotbar palette
@@ -5113,8 +5152,8 @@ mod state_tests {
         // with the 1.7.2–1.10 F-series: 276 blocks / 480 states
         // (E-series states end at 354; V2 400..=442, V3 447..=465,
         // V4 466..=475, V5 476..=479)
-        assert_eq!(BLOCK_COUNT, 430, "merged registry + V6 + V7 + V8 + V9 + 1.14 V10/V11 (nature half)");
-        assert_eq!(STATE_COUNT, 696, "merged state space, V11 states end at 695");
+        assert_eq!(BLOCK_COUNT, 432, "merged registry + V6 + V7 + V8 + V9 + 1.14 V10/V11 (nature half, flowers)");
+        assert_eq!(STATE_COUNT, 698, "merged state space, V11 states end at 697");
         assert_eq!(BLOCK_TABLE.len(), BLOCK_COUNT);
         for want in [
             COAL_BLOCK,
@@ -5165,8 +5204,8 @@ mod v110_tests {
             assert_eq!(default_state(b), s);
             assert!(is_v5_state(s));
         }
-        assert_eq!(BLOCK_COUNT, 430); // 1.14: V10+V11 windows grew the registry
-        assert_eq!(STATE_COUNT, 696); // 1.14: V10+V11 windows grew the state space
+        assert_eq!(BLOCK_COUNT, 432); // 1.14: V10+V11 windows grew the registry
+        assert_eq!(STATE_COUNT, 698); // 1.14: V10+V11 windows grew the state space
     }
 
     /// magma emits light level 3 (VERIFIED — minecraft.wiki/w/Magma_Block,
@@ -5203,8 +5242,8 @@ mod auditfix_tests {
             assert!(!is_model_state(s), "V6 states are cube/cross defs, not model states");
         }
         assert_eq!(V6_COUNT, 6);
-        assert_eq!(BLOCK_COUNT, 430); // 1.14: V10+V11 windows grew the registry
-        assert_eq!(STATE_COUNT, 696); // 1.14: V10+V11 windows grew the state space
+        assert_eq!(BLOCK_COUNT, 432); // 1.14: V10+V11 windows grew the registry
+        assert_eq!(STATE_COUNT, 698); // 1.14: V10+V11 windows grew the state space
         // solidity classes: log/planks solid-opaque (hardness family 2
         // per w/Log + w/Planks), leaves see-through, vine/fern non-solid
         // cross plants (w/Vines: "climbable non-solid"; w/Fern:
@@ -5253,8 +5292,8 @@ mod v111_tests {
             assert_eq!(default_state(b), s, "block {b} default state");
             assert_eq!(state_block(s), b, "state {s} folds back");
         }
-        assert_eq!(BLOCK_COUNT, 430); // 1.14: V10+V11 windows grew the registry
-        assert_eq!(STATE_COUNT, 696); // 1.14: V10+V11 windows grew the state space
+        assert_eq!(BLOCK_COUNT, 432); // 1.14: V10+V11 windows grew the registry
+        assert_eq!(STATE_COUNT, 698); // 1.14: V10+V11 windows grew the state space
         // mansion spawner states fold to SPAWNER + decode their kinds
         assert_eq!(state_block(SPAWNER_VINDICATOR), SPAWNER);
         assert_eq!(state_block(SPAWNER_EVOKER), SPAWNER);
@@ -5358,8 +5397,8 @@ mod v112_tests {
         }
         assert_eq!(default_state(COOKIE), V8_STATE_BASE + 117);
         // bounds
-        assert_eq!(BLOCK_COUNT, 430);
-        assert_eq!(STATE_COUNT, 696);
+        assert_eq!(BLOCK_COUNT, 432);
+        assert_eq!(STATE_COUNT, 698);
         assert_eq!(CONCRETE_BASE + 15, CONCRETE_END);
         assert_eq!(CONCRETE_POWDER_BASE + 15, CONCRETE_POWDER_END);
         assert_eq!(GLAZED_TERRACOTTA_BASE + 15, GLAZED_TERRACOTTA_END);
@@ -5432,7 +5471,7 @@ mod v112_tests {
             assert!(PICKER_BLOCKS.contains(&b), "picker missing {b}");
         }
         assert!(TILE_MAX >= TILE_ILLUSIONER, "1.12 tiles within the atlas guard");
-        assert_eq!(PICKER_BLOCKS.len(), 389);
+        assert_eq!(PICKER_BLOCKS.len(), 391);
         // the V9 + V10 windows are all present (the picker-gap fix)
         for want in [SEA_PICKLE, CONDUIT, SPAWN_EGG_TURTLE, BAMBOO, CAMPFIRE, BARREL, SPAWN_EGG_FOX, STICK, CHARCOAL] {
             assert!(PICKER_BLOCKS.contains(&want), "picker missing {want}");
@@ -5498,8 +5537,8 @@ mod v114_tests {
             "unlit tile"
         );
         // bounds + window shape
-        assert_eq!(BLOCK_COUNT, 430);
-        assert_eq!(STATE_COUNT, 696);
+        assert_eq!(BLOCK_COUNT, 432);
+        assert_eq!(STATE_COUNT, 698);
         assert_eq!(V10_COUNT, 13);
         assert_eq!(BAMBOO, 417);
         assert_eq!(CHARCOAL, 425);
@@ -5547,12 +5586,15 @@ mod v114_tests {
     /// places sitting, and the F3 property lines decode.
     #[test]
     fn v114b_v11_registry_window() {
-        // 1:1 defaults: smelters UNLIT, lantern SITTING, nugget item
+        // 1:1 defaults: smelters UNLIT, lantern SITTING, nugget item,
+        // the flowers their single state
         for (b, s) in [
             (BLAST_FURNACE, V11_STATE_BASE),
             (SMOKER, V11_STATE_BASE + 2),
             (LANTERN, V11_STATE_BASE + 4),
             (IRON_NUGGET, V11_STATE_BASE + 6),
+            (CORNFLOWER, V11_STATE_BASE + 7),
+            (LILY_OF_THE_VALLEY, V11_STATE_BASE + 8),
         ] {
             assert_eq!(default_state(b), s, "block {b} default state");
             assert_eq!(state_block(s), b, "state {s} folds back");
@@ -5579,18 +5621,25 @@ mod v114_tests {
         assert_eq!(state_description(V11_STATE_BASE), "Blast Furnace[lit=false]");
         assert_eq!(state_description(V11_STATE_BASE + 3), "Smoker[lit=true]");
         assert_eq!(state_description(V11_STATE_BASE + 5), "Lantern[hanging=true]");
+        // the flowers carry no properties — plain names in the F3 line
+        assert_eq!(state_description(V11_STATE_BASE + 7), "Cornflower");
+        assert_eq!(state_description(V11_STATE_BASE + 8), "Lily of the Valley");
         assert_eq!(state_description(V11_STATE_BASE + 4), "Lantern[hanging=false]");
-        // the window is in the picker; the nugget is an item-block
-        for want in [BLAST_FURNACE, SMOKER, LANTERN] {
+        // the window is in the picker; the nugget is an item-block;
+        // the flowers are placeable picker blocks (not items)
+        for want in [BLAST_FURNACE, SMOKER, LANTERN, CORNFLOWER, LILY_OF_THE_VALLEY] {
             assert!(PICKER_BLOCKS.contains(&want), "picker missing {want}");
         }
         assert!(!PICKER_BLOCKS.contains(&IRON_NUGGET), "the nugget is an item, not a picker block");
         assert!(is_item_block(IRON_NUGGET), "nugget is an item-block");
+        assert!(!is_item_block(CORNFLOWER), "cornflower is placeable");
+        assert!(!is_item_block(LILY_OF_THE_VALLEY), "lily of the valley is placeable");
         // tiles within the atlas guard
         assert!(TILE_MAX >= TILE_IRON_NUGGET);
+        assert!(TILE_MAX >= TILE_LILY_OF_THE_VALLEY, "flower tiles within the atlas guard");
         // bounds + window shape
-        assert_eq!(V11_COUNT, 7);
-        assert_eq!(BLOCK_COUNT, 430);
-        assert_eq!(STATE_COUNT, 696);
+        assert_eq!(V11_COUNT, 9);
+        assert_eq!(BLOCK_COUNT, 432);
+        assert_eq!(STATE_COUNT, 698);
     }
 }

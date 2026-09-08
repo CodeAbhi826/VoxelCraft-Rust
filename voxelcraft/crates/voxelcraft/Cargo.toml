@@ -50,6 +50,8 @@ vc-render = { workspace = true }
 vc-rng = { workspace = true }
 vc-sim = { workspace = true }
 vc-world = { workspace = true }
+# boot-phase timers + ?debug timestamps must work on wasm too
+web-time = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 rayon = { workspace = true }

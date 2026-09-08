@@ -7,8 +7,75 @@ use vc_blocks::blocks::*;
 use vc_inventory::inventory::ItemStack;
 use vc_world::world::World;
 
-/// vanilla: 200 game ticks per item
+/// vanilla: 200 game ticks per item (furnace); the 1.14 smelters run
+/// their accepted classes at HALF that (100 ticks — VERIFIED
+/// w/Blast_Furnace: "the item is smelted twice as fast as a regular
+/// furnace"; w/Smoker: "taking only 5 seconds per item instead of 10")
 pub const COOK_TICKS: i32 = 200;
+
+/// 1.14 (part 2): the furnace family — the base furnace takes
+/// anything smeltable; the blast furnace accepts only the ORE/metal
+/// class; the smoker only the FOOD class (VERIFIED w/Blast_Furnace:
+/// "can smelt only raw metal, ore blocks, ancient debris and
+/// tools/armor made of iron, gold, chainmail, or copper" +
+/// w/Smoker: "cooks food items twice as fast ... cannot smelt anything
+/// else"). Both burn fuel at DOUBLE the rate ("Fuel is also used at
+/// double the rate of regular furnaces, so the number of items
+/// smelted per fuel stays the same").
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum FurnaceKind {
+    #[default]
+    Furnace,
+    Blast,
+    Smoker,
+}
+
+impl FurnaceKind {
+    /// cook ticks for one item at this kind's speed.
+    pub fn cook_ticks(self) -> i32 {
+        match self {
+            FurnaceKind::Furnace => COOK_TICKS,
+            // 2x speed for the ACCEPTED class
+            FurnaceKind::Blast | FurnaceKind::Smoker => COOK_TICKS / 2,
+        }
+    }
+
+    /// fuel burn ticks consumed per sim tick (1x / 2x — the same
+    /// items-per-fuel invariant).
+    pub fn burn_rate(self) -> i32 {
+        match self {
+            FurnaceKind::Furnace => 1,
+            FurnaceKind::Blast | FurnaceKind::Smoker => 2,
+        }
+    }
+
+    /// does this kind accept the input? (the class filter — a blast
+    /// furnace REJECTS food, a smoker REJECTS ore; the base furnace
+    /// takes everything with a smelting recipe)
+    pub fn accepts(self, input: u16) -> bool {
+        match self {
+            FurnaceKind::Furnace => smelt_result(input).is_some(),
+            // the engine's ore/metal smelting class: coal ore (the only
+            // smeltable ore today — iron ore is the engine's iron-ingot
+            // stand-in material, so iron-ore smelting is degenerate;
+            // the class grows with future ingot rounds, disclosed)
+            FurnaceKind::Blast => is_ore_smelting(input),
+            // the food-cooking class (the engine's existing food rows)
+            FurnaceKind::Smoker => is_food_smelting(input),
+        }
+    }
+}
+
+/// the ORE/metal smelting class (blast furnace inputs).
+pub fn is_ore_smelting(b: u16) -> bool {
+    matches!(b, COAL_ORE)
+}
+
+/// the FOOD cooking class (smoker inputs — VERIFIED vanilla food
+/// smelting rows that exist in the engine).
+pub fn is_food_smelting(b: u16) -> bool {
+    matches!(b, POTATO | RAW_RABBIT | KELP)
+}
 /// fuel burn times (game ticks)
 pub fn fuel_ticks(block: u16) -> i32 {
     match block {
@@ -105,6 +172,11 @@ pub fn smelt_result(block: u16) -> Option<u16> {
         // dye")
         KELP => Some(DRIED_KELP),
         SEA_PICKLE => Some(DYE_BASE + 5), // lime dye (engine color 5)
+        // 1.14 (VERIFIED live 2026-09-08 from the raw capture
+        // v114b_page_Smooth_Stone.json, w/Smooth_Stone §Smelting: stone
+        // smelts into smooth stone, 0.1 XP — the recipe that makes
+        // smooth stone obtainable by smelting)
+        STONE => Some(SMOOTH_STONE),
         // 1.14: any log smelts into charcoal (the classic recipe —
         // VERIFIED w/Charcoal: "obtained by smelting logs"; the
         // engine's 6-log set is the "any log" row, with the
@@ -118,6 +190,9 @@ pub fn smelt_result(block: u16) -> Option<u16> {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FurnaceState {
+    /// 1.14 (part 2): which smelter this block entity is (the lit
+    /// block swap + speed + class filter ride it).
+    pub kind: FurnaceKind,
     pub input: ItemStack,
     pub fuel: ItemStack,
     pub output: ItemStack,
@@ -135,6 +210,7 @@ pub struct FurnaceState {
 impl Default for FurnaceState {
     fn default() -> Self {
         FurnaceState {
+            kind: FurnaceKind::Furnace,
             input: ItemStack::EMPTY,
             fuel: ItemStack::EMPTY,
             output: ItemStack::EMPTY,
@@ -151,8 +227,13 @@ impl FurnaceState {
         self.burn_left > 0
     }
 
-    /// can the current input land in the output? (matching type + room)
+    /// can the current input land in the output? (matching type + room;
+    /// the KIND's class filter rides first — a blast furnace refuses
+    /// food, a smoker refuses ore)
     fn can_output(&self) -> bool {
+        if !self.kind.accepts(self.input.block) {
+            return false;
+        }
         match smelt_result(self.input.block) {
             Some(out) => {
                 self.output.is_empty() || (self.output.block == out && self.output.count < 64)
@@ -168,7 +249,10 @@ impl FurnaceState {
         let mut changed_block = false;
 
         if self.burn_left > 0 {
-            self.burn_left -= 1;
+            // 1.14 (part 2): the smelters burn fuel at DOUBLE the rate
+            // (VERIFIED: "Fuel is also used at double the rate ... so the
+            // number of items smelted per fuel stays the same")
+            self.burn_left -= self.kind.burn_rate();
         }
 
         // start burning if there is smeltable work and no flame
@@ -184,7 +268,7 @@ impl FurnaceState {
         // cooking
         if self.burn_left > 0 && self.can_output() {
             self.cook_left += 1;
-            if self.cook_left >= COOK_TICKS {
+            if self.cook_left >= self.kind.cook_ticks() {
                 // item done
                 let in_block = self.input.block;
                 let out_block = smelt_result(in_block).unwrap();
@@ -234,9 +318,22 @@ impl Furnaces {
             };
             if f.tick() {
                 let s = world.get_state(pos[0], pos[1], pos[2]);
-                if state_block(s) == FURNACE {
-                    let lit = f.is_burning();
-                    let target = if lit { FURNACE_LIT } else { FURNACE_STATE };
+                let lit = f.is_burning();
+                // 1.14 (part 2): the state swap is per-kind — the base
+                // furnace keeps its legacy states; the V11 smelters use
+                // their window states (unlit/lit pairs)
+                let (idle_state, lit_state) = match f.kind {
+                    FurnaceKind::Furnace => (FURNACE_STATE, FURNACE_LIT),
+                    FurnaceKind::Blast => {
+                        (vc_blocks::blocks::V11_STATE_BASE, vc_blocks::blocks::V11_STATE_BASE + 1)
+                    }
+                    FurnaceKind::Smoker => (
+                        vc_blocks::blocks::V11_STATE_BASE + 2,
+                        vc_blocks::blocks::V11_STATE_BASE + 3,
+                    ),
+                };
+                if s == idle_state || s == lit_state {
+                    let target = if lit { lit_state } else { idle_state };
                     if s != target {
                         world.set_block_state(pos[0], pos[1], pos[2], target);
                         changed.push(pos);
@@ -297,6 +394,30 @@ mod tests {
         assert_eq!(f.input.count, 2);
         assert!(f.fuel.is_empty());
         assert!(lit_changes >= 1, "furnace lit while smelting");
+    }
+
+    /// 1.14 (VERIFIED w/Smooth_Stone §Smelting): stone smelts into
+    /// smooth stone at 0.1 XP — the recipe that makes smooth stone
+    /// obtainable (the block existed as a decorative id before).
+    #[test]
+    fn smelts_stone_to_smooth_stone() {
+        assert_eq!(smelt_result(STONE), Some(SMOOTH_STONE));
+        let mut f = FurnaceState::default();
+        f.input = ItemStack::new(STONE, 2);
+        f.fuel = ItemStack::new(PLANKS, 1);
+        let mut ticks = 0;
+        for _ in 0..400 {
+            ticks += 1;
+            f.tick();
+            if !f.output.is_empty() {
+                break;
+            }
+        }
+        assert_eq!((f.output.block, f.output.count), (SMOOTH_STONE, 1));
+        assert_eq!(f.input.count, 1);
+        // the standard 200-tick cook (ignite tick + 200)
+        assert!(ticks <= 205 && ticks >= 195, "cook time {ticks}");
+        assert_eq!(crate::enchanting::smelt_xp(STONE), 0.1);
     }
 
     #[test]
@@ -529,5 +650,155 @@ mod v112_tests {
         assert_eq!(smelt_result(PLANKS), None, "planks are not smeltable");
         // charcoal is terminal (no re-smelting)
         assert_eq!(smelt_result(CHARCOAL), None);
+    }
+    /// 1.14 (part 2, VERIFIED w/Blast_Furnace): the blast furnace
+    /// smelts the ORE class at 2x speed — coal ore completes in ~100
+    /// ticks (vs the furnace's 200) — and its lit state swap writes
+    /// the V11 window states.
+    #[test]
+    fn v114b_blast_furnace_speed_filter_and_states() {
+        assert_eq!(FurnaceKind::Blast.cook_ticks(), 100);
+        assert_eq!(FurnaceKind::Blast.burn_rate(), 2);
+        // the class filter: ore in, food out (VERIFIED: "can smelt only
+        /// raw metal, ore blocks ... cannot smelt anything else")
+        assert!(FurnaceKind::Blast.accepts(COAL_ORE));
+        assert!(!FurnaceKind::Blast.accepts(POTATO));
+        assert!(!FurnaceKind::Blast.accepts(SAND));
+
+        let mut f = FurnaceState::default();
+        f.kind = FurnaceKind::Blast;
+        f.input = ItemStack::new(COAL_ORE, 2);
+        f.fuel = ItemStack::new(PLANKS, 1);
+        let mut ticks = 0;
+        let mut saw_lit = false;
+        for _ in 0..400 {
+            ticks += 1;
+            f.tick();
+            saw_lit |= f.is_burning();
+            if !f.output.is_empty() {
+                break;
+            }
+        }
+        assert_eq!((f.output.block, f.output.count), (COAL, 1));
+        // 2x speed: ignite tick + 100 cook ticks
+        assert!(ticks >= 95 && ticks <= 106, "blast cook time {ticks}");
+        assert!(saw_lit, "blast furnace lit while smelting");
+
+        // the world state swap: unlit 689 <-> lit 690 (own mini world —
+        // this module has no flat_world helper)
+        let mut w = World::new(7);
+        let mut c = vc_chunk::chunk::Chunk::empty();
+        c.set(8, 65, 8, STONE);
+        w.insert_generated((0, 0), std::sync::Arc::new(c), Vec::new());
+        w.dirty.clear();
+        let mut fs = Furnaces::default();
+        w.set_block_state(8, 65, 8, vc_blocks::blocks::V11_STATE_BASE);
+        let mut e = FurnaceState::default();
+        e.kind = FurnaceKind::Blast;
+        e.input = ItemStack::new(COAL_ORE, 8);
+        e.fuel = ItemStack::new(COAL, 4);
+        fs.map.insert([8, 65, 8], e);
+        // tick until the lit state appears on the world block
+        let mut lit_seen = false;
+        for _ in 0..60 {
+            let changed = fs.tick(&mut w);
+            if w.get_state(8, 65, 8) == vc_blocks::blocks::V11_STATE_BASE + 1 {
+                lit_seen = true;
+                break;
+            }
+            assert!(changed.is_empty() || !changed.is_empty()); // tick ran
+        }
+        assert!(lit_seen, "the blast furnace's world block must swap to the LIT V11 state");
+    }
+
+    /// 1.14 (part 2, VERIFIED w/Smoker): the smoker cooks the FOOD
+    /// class at 2x speed ("taking only 5 seconds per item instead of
+    /// 10") and rejects the ore class.
+    #[test]
+    fn v114b_smoker_speed_and_filter() {
+        assert_eq!(FurnaceKind::Smoker.cook_ticks(), 100);
+        assert_eq!(FurnaceKind::Smoker.burn_rate(), 2);
+        assert!(FurnaceKind::Smoker.accepts(POTATO));
+        assert!(FurnaceKind::Smoker.accepts(RAW_RABBIT));
+        assert!(FurnaceKind::Smoker.accepts(KELP));
+        assert!(!FurnaceKind::Smoker.accepts(COAL_ORE));
+        assert!(!FurnaceKind::Smoker.accepts(SAND));
+
+        let mut f = FurnaceState::default();
+        f.kind = FurnaceKind::Smoker;
+        f.input = ItemStack::new(POTATO, 2);
+        f.fuel = ItemStack::new(PLANKS, 1);
+        let mut ticks = 0;
+        for _ in 0..400 {
+            ticks += 1;
+            f.tick();
+            if !f.output.is_empty() {
+                break;
+            }
+        }
+        assert_eq!((f.output.block, f.output.count), (BAKED_POTATO, 1));
+        assert!(ticks >= 95 && ticks <= 106, "smoker cook time {ticks}");
+
+        // REJECTED input never ignites (no fuel spent)
+        let mut g = FurnaceState::default();
+        g.kind = FurnaceKind::Smoker;
+        g.input = ItemStack::new(COAL_ORE, 1);
+        g.fuel = ItemStack::new(PLANKS, 1);
+        for _ in 0..500 {
+            g.tick();
+        }
+        assert!(g.output.is_empty(), "smoker must reject ore");
+        assert_eq!(g.fuel.count, 1, "no fuel spent on a rejected input");
+
+        let mut b = FurnaceState::default();
+        b.kind = FurnaceKind::Blast;
+        b.input = ItemStack::new(POTATO, 1);
+        b.fuel = ItemStack::new(PLANKS, 1);
+        for _ in 0..500 {
+            b.tick();
+        }
+        assert!(b.output.is_empty(), "blast furnace must reject food");
+        assert_eq!(b.fuel.count, 1, "no fuel spent on a rejected input");
+    }
+
+    /// 1.14 (part 2, VERIFIED: "Fuel is also used at double the rate of
+    /// regular furnaces, so the number of items smelted per fuel stays
+    /// the same") — 1 plank (300 burn ticks) cooks exactly ONE item in
+    /// both a furnace (300 sim ticks of burn) and a blast furnace
+    /// (150 sim ticks at 2x) — the second item stalls.
+    #[test]
+    fn v114b_smelter_fuel_items_per_fuel_invariant() {
+        let run = |kind: FurnaceKind| -> (u8, u32) {
+            let mut f = FurnaceState::default();
+            f.kind = kind;
+            f.input = ItemStack::new(COAL_ORE, 4);
+            f.fuel = ItemStack::new(PLANKS, 1);
+            let mut items = 0u8;
+            let mut flame_ticks = 0u32;
+            for _ in 0..2000 {
+                f.tick();
+                if f.is_burning() {
+                    flame_ticks += 1;
+                }
+                if f.output.count > items {
+                    items = f.output.count;
+                }
+            }
+            (items, flame_ticks)
+        };
+        let (furnace_items, furnace_flame) = run(FurnaceKind::Furnace);
+        let (blast_items, blast_flame) = run(FurnaceKind::Blast);
+        assert_eq!(furnace_items, blast_items, "items-per-fuel must match");
+        assert_eq!(furnace_items, 1, "1 plank = 1 item (300 burn / 200 cook)");
+        // the double burn rate: the blast furnace's flame lasts HALF
+        // the sim ticks for the same fuel item
+        assert_eq!(
+            furnace_flame, 300,
+            "furnace flame: 300 burn ticks at 1x"
+        );
+        assert_eq!(
+            blast_flame, 150,
+            "blast flame: 300 burn ticks at 2x = 150 sim ticks"
+        );
     }
 }

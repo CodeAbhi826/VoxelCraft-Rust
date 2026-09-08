@@ -18,6 +18,12 @@ pub struct Recipe {
 pub enum Ing {
     None,
     AnyLog,
+    /// 1.14: any of the engine's 6 log blocks (vanilla's campfire
+    /// recipe takes "Any Log or Stem or ..." — the 6-log engine set)
+    AnyWood,
+    /// 1.14: any planks (vanilla's stick/barrel recipes take "Any
+    /// Planks" — the engine's oak + jungle pair)
+    AnyPlanks,
     Block(u16),
 }
 
@@ -619,6 +625,67 @@ pub const RECIPES: &[Recipe] = &[
         ],
         out: ItemStack::new(BLUE_ICE, 1),
     },
+    // ---- 1.14 (Village & Pillage — nature half, VERIFIED live
+    // 2026-09-08 from the raw captures v114_page_*.json) ----
+    // stick: 2 planks stacked → 4 sticks (the classic recipe; "Any
+    // Planks" per slot — the engine's oak + jungle pair). Both
+    // orientations ship as separate patterns (the matcher has no
+    // rotation pass — the shulker-column precedent discloses this
+    // class of constraint).
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::AnyPlanks, Ing::None,
+            Ing::AnyPlanks, Ing::None,
+        ],
+        out: ItemStack::new(STICK, 4),
+    },
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::AnyPlanks, Ing::AnyPlanks,
+            Ing::None,       Ing::None,
+        ],
+        out: ItemStack::new(STICK, 4),
+    },
+    // campfire: "Stick + Coal or Charcoal + Any Log" (VERIFIED
+    // w/Campfire §Crafting; counts 3 sticks / 1 fuel / 3 logs — the
+    // vanilla grid: sticks across the top, fuel in the middle center,
+    // logs across the bottom; coal and charcoal are two recipe rows
+    // — vanilla's "Coal or Charcoal")
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(STICK), Ing::Block(STICK),    Ing::Block(STICK),
+            Ing::None,         Ing::Block(COAL),     Ing::None,
+            Ing::AnyWood,      Ing::AnyWood,         Ing::AnyWood,
+        ],
+        out: ItemStack::new(CAMPFIRE, 1),
+    },
+    // the charcoal-fueled campfire row
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(STICK),   Ing::Block(STICK),   Ing::Block(STICK),
+            Ing::None,           Ing::Block(CHARCOAL), Ing::None,
+            Ing::AnyWood,        Ing::AnyWood,        Ing::AnyWood,
+        ],
+        out: ItemStack::new(CAMPFIRE, 1),
+    },
+    // barrel: "6 wood planks and 2 wood slabs" (VERIFIED w/Barrel
+    // §Crafting "Any Planks + Any Wooden Slab" + the 18w50a history
+    // row "crafted using 6 wood planks and 2 wood slabs"; the vanilla
+    // grid: planks left+right columns, slabs top+bottom center — the
+    // engine's single OAK_SLAB is the "any slab" stand-in, disclosed)
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::AnyPlanks, Ing::Block(OAK_SLAB), Ing::AnyPlanks,
+            Ing::AnyPlanks, Ing::None,           Ing::AnyPlanks,
+            Ing::AnyPlanks, Ing::Block(OAK_SLAB), Ing::AnyPlanks,
+        ],
+        out: ItemStack::new(BARREL, 1),
+    },
 ];
 
 /// 1.12 (World of Color): the concrete-powder recipe — the engine's
@@ -683,6 +750,17 @@ pub fn match_grid(slots: &[ItemStack], size: usize) -> Option<ItemStack> {
                         Ing::Block(b) => s.block == *b && !s.is_empty(),
                         Ing::AnyLog => {
                             !s.is_empty() && matches!(s.block, OAK_LOG | BIRCH_LOG | SPRUCE_LOG)
+                        }
+                        Ing::AnyWood => {
+                            !s.is_empty()
+                                && matches!(
+                                    s.block,
+                                    OAK_LOG | BIRCH_LOG | SPRUCE_LOG | ACACIA_LOG
+                                        | DARK_OAK_LOG | JUNGLE_LOG
+                                )
+                        }
+                        Ing::AnyPlanks => {
+                            !s.is_empty() && matches!(s.block, PLANKS | JUNGLE_PLANKS)
                         }
                     };
                     if !ok {
@@ -1051,5 +1129,70 @@ mod v112_tests {
         let g7 = vec![ItemStack::new(PACKED_ICE, 1); 9];
         let out7 = match_grid(&g7, 3).unwrap();
         assert_eq!(out7.block, BLUE_ICE);
+    }
+
+    /// 1.14 (Village & Pillage — nature half): the stick, campfire and
+    /// barrel recipes (VERIFIED live 2026-09-08 from the raw captures
+    /// v114_page_*.json).
+    #[test]
+    fn v114_nature_recipes() {
+        // stick: 2 planks stacked → 4 sticks (either orientation; any
+        // of the engine's planks)
+        for (planks, vertical) in [(PLANKS, true), (JUNGLE_PLANKS, true), (PLANKS, false)] {
+            let mut g = vec![ItemStack::EMPTY; 4];
+            if vertical {
+                g[0] = ItemStack::new(planks, 1);
+                g[2] = ItemStack::new(planks, 1);
+            } else {
+                g[0] = ItemStack::new(planks, 1);
+                g[1] = ItemStack::new(planks, 1);
+            }
+            let out = match_grid(&g, 2).unwrap();
+            assert_eq!(out.block, STICK);
+            assert_eq!(out.count, 4, "the classic 2-plank → 4-stick row");
+        }
+        // one plank alone: nothing (two are required for sticks)
+        let g1 = vec![ItemStack::new(PLANKS, 1)];
+        assert!(match_grid(&g1, 1).is_none(), "one plank crafts nothing");
+        // campfire: 3 sticks / coal / 3 logs (any of the 6 woods)
+        let mut g = vec![ItemStack::EMPTY; 9];
+        for i in [0usize, 1, 2] {
+            g[i] = ItemStack::new(STICK, 1);
+        }
+        g[4] = ItemStack::new(COAL, 1);
+        for i in [6usize, 7, 8] {
+            g[i] = ItemStack::new(JUNGLE_LOG, 1);
+        }
+        let out = match_grid(&g, 3).unwrap();
+        assert_eq!(out.block, CAMPFIRE);
+        assert_eq!(out.count, 1);
+        // mixed woods in the bottom row still craft (any log)
+        g[7] = ItemStack::new(SPRUCE_LOG, 1);
+        assert_eq!(match_grid(&g, 3).unwrap().block, CAMPFIRE);
+        // charcoal replaces coal as the fuel (vanilla: "Coal or
+        // Charcoal")
+        g[4] = ItemStack::new(CHARCOAL, 1);
+        assert_eq!(match_grid(&g, 3).unwrap().block, CAMPFIRE);
+        // a missing stick breaks the pattern
+        g[2] = ItemStack::EMPTY;
+        assert!(match_grid(&g, 3).is_none(), "2 sticks is not the recipe");
+        // barrel: planks columns + slab caps (6 planks + 2 slabs)
+        let mut g = vec![ItemStack::EMPTY; 9];
+        for i in [0usize, 2, 3, 5, 6, 8] {
+            g[i] = ItemStack::new(PLANKS, 1);
+        }
+        g[1] = ItemStack::new(OAK_SLAB, 1);
+        g[7] = ItemStack::new(OAK_SLAB, 1);
+        let out = match_grid(&g, 3).unwrap();
+        assert_eq!(out.block, BARREL);
+        assert_eq!(out.count, 1);
+        // jungle planks also work (any planks)
+        for i in [0usize, 2, 3, 5, 6, 8] {
+            g[i] = ItemStack::new(JUNGLE_PLANKS, 1);
+        }
+        assert_eq!(match_grid(&g, 3).unwrap().block, BARREL);
+        // a missing slab cap breaks it
+        g[7] = ItemStack::EMPTY;
+        assert!(match_grid(&g, 3).is_none(), "one slab is not two");
     }
 }

@@ -151,3 +151,33 @@ Source: `v114_page_fox.json` (minecraft.wiki/w/Fox).
 6. **Tests**: growth contract, damage gating (stage 1+, moving-only, fox
    immune), harvest counts, campfire cook timing (600 ticks) + drop,
    barrel slot count + craft, fox stats/spawns/prey.
+
+## Implementation cross-check (2026-09-08 — the round that landed)
+
+Every flagged "re-verify at implementation time" item was answered
+from the raw captures before coding:
+
+- bush slow: **34.05%** (w/Sweet_Berry_Bush: "slow down to about
+  34.05% of their normal speed") → `BUSH_SLOW_FACTOR`
+- bamboo fuel: **0.25 items = 50 ticks** (w/Bamboo §Fuel) → the
+  furnace fuel row
+- campfire grid: **Stick + Coal or Charcoal + Any Log**, 3/1/3 →
+  two recipe rows (coal + charcoal)
+- barrel grid: **6 planks + 2 slabs** (the 18w50a history row) →
+  planks columns + slab caps
+- berry-bush gen: **1/12 per chunk**, taiga + snowy taiga → the gen
+  patch roll
+- bamboo gen: **"widely scattered single shoots within jungle
+  biomes"** → the 20% patch adaptation (no bamboo-jungle sub-biome)
+- harvest: **1–2 third stage / 2–3 mature, revert to the second
+  growth stage** → the right-click harvest path
+- bush damage: **1 HP/tick → once every half-second, moving only,
+  stage 1+** → the shared hazard accumulator + mob hazard tick
+
+Shipped: registry V10 (417..=425 / 676..=688 / 619..=633), art
+(v114_art.rs + coverage guards), gen, growth ticks, the bush hazard
+contract, the campfire (cooking/damage/drops/extinguish/smoke), the
+barrel container, crafting, furnace rows, the food, the fox (stats/
+spawns/prey/immunity/breeding), the picker V9+V10 rows, the F3
+property lines, and the E2E_V114 CI stage. 527/527 tests green,
+wasm32 clean. The village half remains deferred (see the WORKLOG).

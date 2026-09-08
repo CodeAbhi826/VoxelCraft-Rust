@@ -192,6 +192,18 @@ pub enum MobKind {
     /// slow on land / fast in water, adults drop 0-2 seagrass;
     /// zombies/drowned/husks actively trample the eggs.
     Turtle,
+    /// 1.14: the fox — VERIFIED (w/Fox live 2026-09-08, raw capture
+    /// scripts/v114_page_fox.json): 10 HP passive, "Easy and Normal:
+    /// 2 HP, Hard: 3 HP" attack (prey only — "Foxes don't attack
+    /// players"), hitbox 0.7/0.6 (baby 0.42/0.36), speed 0.3, spawns
+    /// in groups of 2–4 in taiga/snowy taiga, "Foxes attack chickens,
+    /// rabbits, cod, salmon and tropical fish, and baby turtles while
+    /// they are on land", "take no damage or speed reduction while
+    /// moving through sweet berry bushes" (the round's plant/mob
+    /// interlock), bred with sweet berries (babies trust the breeder
+    /// — the variant bit; the multi-player trust scope is
+    /// single-player-folded, disclosed).
+    Fox,
     /// The squid — a PRE-1.13 legacy marker (vanilla added it in Beta
     /// 1.2; the engine's early brackets skipped it and it is NOT one of
     /// 1.13's new mobs). Declared so the aquatic() classification
@@ -246,6 +258,7 @@ impl MobKind {
             "pufferfish" => MobKind::Pufferfish,
             "tropical_fish" => MobKind::TropicalFish,
             "turtle" => MobKind::Turtle,
+            "fox" => MobKind::Fox,
             _ => return None,
         })
     }
@@ -293,6 +306,8 @@ impl MobKind {
             MobKind::Pufferfish => "minecraft:pufferfish",
             MobKind::TropicalFish => "minecraft:tropical_fish",
             MobKind::Turtle => "minecraft:turtle",
+            // 1.14: the fox
+            MobKind::Fox => "minecraft:fox",
             // classification-only marker (see the enum doc) — still
             // carries its vanilla registry id for completeness
             MobKind::Squid => "minecraft:squid",
@@ -354,6 +369,8 @@ impl MobKind {
             MobKind::Pufferfish => TILE_MOB_PUFFERFISH,
             MobKind::TropicalFish => TILE_MOB_TROPICAL_FISH,
             MobKind::Turtle => TILE_MOB_TURTLE,
+            // 1.14: the fox sprite (v114_art::fox_art)
+            MobKind::Fox => TILE_MOB_FOX,
             // classification-only marker — never rendered (no MOB_DATA
             // row, no spawn path); reuses the passive-fish tile as a
             // safe stand-in should a future bracket implement it
@@ -496,6 +513,9 @@ impl MobKind {
             37 => MobKind::Pufferfish,
             38 => MobKind::TropicalFish,
             39 => MobKind::Turtle,
+            // 1.14: the fox egg (changelog §Mobs: "Fox Spawn Egg") —
+            // kind 40
+            40 => MobKind::Fox,
             _ => MobKind::Chicken,
         }
     }
@@ -560,6 +580,8 @@ impl MobKind {
             MobKind::Pufferfish => 37,
             MobKind::TropicalFish => 38,
             MobKind::Turtle => 39,
+            // 1.14: the fox egg — kind 40 (the V10 egg window)
+            MobKind::Fox => 40,
             // classification-only marker: the squid never had an egg in
             // the engine's window (pre-1.13 legacy, unimplemented)
             MobKind::Squid => 255,
@@ -587,7 +609,7 @@ pub struct MobDef {
     pub xp: i32,
 }
 
-pub const MOB_DATA: [MobDef; 40] = [
+pub const MOB_DATA: [MobDef; 41] = [
     MobDef {
         kind: MobKind::Zombie,
         health: 20.0,
@@ -1062,6 +1084,22 @@ pub const MOB_DATA: [MobDef; 40] = [
         width: 1.2,
         xp: 1,
     },
+    // 1.14: the fox (VERIFIED w/Fox infobox — the raw capture
+    // scripts/v114_page_fox.json): 10 HP, attack "Easy and Normal:
+    // 2 HP, Hard: 3 HP" (the NORMAL row here; Hard scales via
+    // combat::difficulty_scale), speed 0.3, hitbox 0.7 × 0.6, XP 1–3
+    // (the engine's fixed passive row — the random 1..=3 range is
+    // documented)
+    MobDef {
+        kind: MobKind::Fox,
+        health: 10.0,
+        damage: 2.0,
+        speed_attr: 0.3,
+        armor: 0.0,
+        height: 0.7,
+        width: 0.6,
+        xp: 1,
+    },
 ];
 
 #[inline]
@@ -1327,6 +1365,12 @@ pub struct MobSystem {
     /// 1.13: water-ambient spawn cadence counter (the fish/dolphin/
     /// turtle attempt, 1/40 ticks — the bat pattern)
     aquatic_spawn_t: u64,
+    /// 1.14: environmental-hazard cadence counter — the berry-bush
+    /// and campfire damage windows fire on `hazard_t % 10 == 0` (the
+    /// vanilla 0.5 s damage-immunity cadence, VERIFIED
+    /// w/Sweet_Berry_Bush + w/Campfire: "1 HP every tick (although
+    /// damage immunity reduces this to once every half-second)")
+    hazard_t: u64,
     /// 1.13: "Time Since Last Rest" — ticks since the player last died
     /// (or slept, when beds exist). At ≥ 72000 (3 in-game days) phantoms
     /// start spawning above the player (VERIFIED w/Phantom §Spawning:
@@ -1400,6 +1444,7 @@ impl MobSystem {
             rng: Rng::new(seed ^ 0xB0B_5EED),
             bats_spawn_t: 0,
             aquatic_spawn_t: 0,
+            hazard_t: 0,
             rest_t: 0,
             ridden: None,
             next_id: 1,
@@ -1556,6 +1601,10 @@ impl MobSystem {
     /// mob spawning and despawning, and tick updates" — wiki). Despawn
     /// runs regardless (distance-based bookkeeping, cheap).
     pub fn tick(&mut self, world: &World, sim_center: (i32, i32), sim_radius: i32) {
+        // 1.14: the hazard clock ticks with the sim (bush + campfire
+        // damage windows key off it)
+        self.hazard_t += 1;
+        let hazard_window = self.hazard_t % 10 == 0;
         let sim_ring = |cx: i32, cz: i32| {
             cx.wrapping_sub(sim_center.0)
                 .saturating_abs()
@@ -1656,6 +1705,10 @@ impl MobSystem {
                 pending_turtle_eggs_q,
                 pending_drops_q,
             );
+            // 1.14: environmental hazards AFTER the AI steering (the
+            // bush slow must survive to the physics move) and BEFORE
+            // physics_tick
+            hazard_tick(m, world, hazard_window);
             physics_tick(m, world);
         }
 
@@ -2283,13 +2336,27 @@ impl MobSystem {
             } else if biome == vc_world::gen::Biome::Snowy
                 || biome == vc_world::gen::Biome::IceSpikes
             {
-                // the icy family: polar bear (30%) or rabbit — and NOTHING
-                // else (the 1.10 restriction)
-                if self.rng.next_f32() < 0.3 {
+                // the icy family: polar bear (30%) or rabbit — and
+                // formerly NOTHING else (the 1.10 restriction).
+                // 1.14 amendment (VERIFIED w/Fox §Spawning: "Snowy
+                // Taiga" is a fox biome): foxes are the one later-
+                // bracket addition to the icy family, at a 20% share —
+                // the 1.10 restriction's own wiki note carries the
+                // version-scoped exceptions
+                if self.rng.next_f32() < 0.20 {
+                    MobKind::Fox
+                } else if self.rng.next_f32() < 0.3 {
                     MobKind::PolarBear
                 } else {
                     MobKind::Rabbit
                 }
+            } else if biome == vc_world::gen::Biome::Taiga
+                && self.rng.next_f32() < 0.25
+            {
+                // 1.14 (VERIFIED w/Fox §Spawning: taiga is the fox's
+                // primary biome): a quarter of taiga passive rolls
+                // are fox packs (groups 2–4 — the herd size below)
+                MobKind::Fox
             } else {
                 match self.rng.next_range(5) {
                     0 => MobKind::Cow,
@@ -2668,6 +2735,17 @@ pub enum ParrotFeedOutcome {
     CookieDeath,
 }
 
+/// 1.14: the fox feeding outcome (sweet berries — VERIFIED
+/// w/Sweet_Berries §Breeding).
+#[derive(Debug)]
+pub enum FoxFeedOutcome {
+    /// entered love mode (waiting for a partner, 30 s)
+    LoveMode,
+    /// paired with the loving partner `id` — the game layer spawns
+    /// the trusting cub
+    Bred(u32),
+}
+
 impl MobSystem {
     /// 1.12: feed a parrot. VERIFIED w/Parrot §Taming: "Parrots can be
     /// tamed by feeding wheat seeds, melon seeds, pumpkin seeds,
@@ -2721,6 +2799,70 @@ impl MobSystem {
             }
         }
         false
+    }
+
+    /// 1.14: feed a fox sweet berries (VERIFIED w/Sweet_Berries
+    /// §Breeding: "Sweet berries can be fed to foxes to breed them";
+    /// the 30 s love window is the vanilla love-mode clock). Feeding
+    /// the FIRST adult enters love mode; feeding a second adult while
+    /// a loving partner is within 8 blocks pairs them — the game
+    /// layer spawns the cub (trusting, the wiki's "baby foxes trust
+    /// the player" simplified to the single breeder, disclosed).
+    pub fn try_feed_fox(&mut self, id: u32) -> Option<FoxFeedOutcome> {
+        let is_fox = self
+            .list
+            .iter()
+            .find(|m| m.id == id)
+            .map(|m| m.kind == MobKind::Fox && m.variant & 0x40 == 0) // adults only
+            .unwrap_or(false);
+        if !is_fox {
+            return None;
+        }
+        // already in love: vanilla ignores further feeding
+        let already = self
+            .list
+            .iter()
+            .any(|m| m.id == id && m.variant & 0x80 != 0);
+        if already {
+            return None;
+        }
+        // a loving adult partner within 8 blocks → pair now
+        let me = self.list.iter().find(|m| m.id == id).map(|m| m.pos).unwrap_or([0.0; 3]);
+        let partner = self
+            .list
+            .iter()
+            .find(|m| {
+                if m.id == id
+                    || m.kind != MobKind::Fox
+                    || m.variant & 0x80 == 0
+                    || m.variant & 0x40 != 0
+                {
+                    return false;
+                }
+                let dx = m.pos[0] - me[0];
+                let dz = m.pos[2] - me[2];
+                (dx * dx + dz * dz) <= 64.0
+            })
+            .map(|m| m.id);
+        // arm the fed fox
+        if let Some(m) = self.list.iter_mut().find(|m| m.id == id) {
+            m.variant |= 0x80; // love
+            m.aux = 600; // 30 s (VERIFIED love-mode window)
+        }
+        if let Some(pid) = partner {
+            // both exit love (vanilla post-breed cooldown — the engine
+            // clears outright, the 5-minute cooldown is disclosed)
+            if let Some(m) = self.list.iter_mut().find(|m| m.id == pid) {
+                m.variant &= !0x80;
+                m.aux = 0;
+            }
+            if let Some(m) = self.list.iter_mut().find(|m| m.id == id) {
+                m.variant &= !0x80;
+                m.aux = 0;
+            }
+            return Some(FoxFeedOutcome::Bred(pid));
+        }
+        Some(FoxFeedOutcome::LoveMode)
     }
 }
 
@@ -2874,6 +3016,28 @@ fn ai_tick(
             wander(rng, m, speed);
         }
         return;
+    }
+
+    // ---- 1.14 (Village & Pillage): FOX life-cycle clocks —
+    // environmental (player-independent, the turtle precedent):
+    // baby maturity (variant 0x40, aux = 24000-tick countdown) and
+    // love-mode expiry (variant 0x80, aux = the 600-tick window).
+    // Babies mature even with nobody watching; love expires the same
+    // way (an unfed partner never arrives). ----
+    if m.kind == MobKind::Fox {
+        if m.variant & 0x40 != 0 && m.aux > 0 {
+            m.aux -= 1;
+            if m.aux == 0 {
+                m.variant &= !0x40; // grown (a scute-less maturity —
+                // foxes drop nothing on maturity, VERIFIED w/Fox)
+            }
+        }
+        if m.variant & 0x80 != 0 && m.variant & 0x40 == 0 && m.aux > 0 {
+            m.aux -= 1;
+            if m.aux == 0 {
+                m.variant &= !0x80; // love expired
+            }
+        }
     }
 
     let Some(p) = player else {
@@ -3184,6 +3348,72 @@ fn ai_tick(
                     return;
                 }
             }
+        }
+        wander(rng, m, speed * 0.5);
+        return;
+    }
+
+    // ---- 1.14 (Village & Pillage): FOX — the taiga predator.
+    // VERIFIED w/Fox: "Foxes attack chickens, rabbits, cod, salmon and
+    // tropical fish, and baby turtles while they are on land"; "Foxes
+    // don't attack players"; wild foxes flee approaching players while
+    // trusting ones (bred babies, variant bit 0) stay. The pounce
+    // animation folds into the chase (no lunge-animation system,
+    // disclosed). The life-cycle clocks (baby/love countdowns) run in
+    // the environmental section above. ----
+    if m.kind == MobKind::Fox {
+        // wild foxes flee the approaching player (the ocelot's 6-block
+        // scare radius is the engine precedent — the wiki gives no
+        // fox-specific figure, disclosed approximation)
+        if m.variant & 0x1 == 0 && dist < 6.0 && !invuln {
+            m.yaw = (-dz).atan2(-dx) - std::f32::consts::FRAC_PI_2;
+            let f = speed * FLEE_MULT;
+            m.vel[0] += (-dx / dist * f - m.vel[0]) * 0.4;
+            m.vel[2] += (-dz / dist * f - m.vel[2]) * 0.4;
+            return;
+        }
+        // prey scan (VERIFIED list): chickens + rabbits anywhere; the
+        // fish kinds + baby turtles only ON LAND ("while they are on
+        // land" — a beached fish is exactly when a fox takes it)
+        let mut best: Option<(u32, [f32; 3], f32)> = None;
+        for (id, k, pos, variant) in snapshot.iter() {
+            if *id == m.id {
+                continue;
+            }
+            let prey = match k {
+                MobKind::Chicken | MobKind::Rabbit => true,
+                MobKind::Cod | MobKind::Salmon | MobKind::TropicalFish => {
+                    // fish count only out of water (flopping on land)
+                    world.get_block(pos[0] as i32, pos[1] as i32, pos[2] as i32) != WATER
+                }
+                // baby turtles (variant bit 0x40) on land
+                MobKind::Turtle => (variant & 0x40 != 0) && world.get_block(
+                    pos[0] as i32,
+                    pos[1] as i32,
+                    pos[2] as i32,
+                ) != WATER,
+                _ => false,
+            };
+            if !prey {
+                continue;
+            }
+            let sx = pos[0] - m.pos[0];
+            let sz = pos[2] - m.pos[2];
+            let dd = (sx * sx + sz * sz).sqrt();
+            if dd <= 12.0 && best.map(|(_, _, bd)| dd < bd).unwrap_or(true) {
+                best = Some((*id, *pos, dd));
+            }
+        }
+        if let Some((tid, tpos, tdist)) = best {
+            face_target(m, tpos);
+            if tdist > 1.0 {
+                m.vel[0] += ((tpos[0] - m.pos[0]) / tdist * speed * 1.3 - m.vel[0]) * 0.4;
+                m.vel[2] += ((tpos[2] - m.pos[2]) / tdist * speed * 1.3 - m.vel[2]) * 0.4;
+            } else if m.attack_cd == 0 {
+                m.attack_cd = MOB_MELEE_TICKS;
+                pending.push((tid, d.damage)); // 2 HP (Easy/Normal row)
+            }
+            return;
         }
         wander(rng, m, speed * 0.5);
         return;
@@ -3722,6 +3952,63 @@ fn wander(rng: &mut Rng, m: &mut Mob, speed: f32) {
         m.vel[2] *= 0.8;
     }
 }
+
+/// 1.14 (Village & Pillage — nature half): environmental hazards,
+/// applied between the AI steering and the physics move.
+///
+/// - **Sweet berry bush** (VERIFIED w/Sweet_Berry_Bush §Entity
+///   movement): "A sweet berry bush (at any stage) slows down all
+///   entities (except items) passing through it. At stage 1 and
+///   higher, it causes damage" — "deal 1 HP damage every tick
+///   (although damage immunity reduces this to once every
+///   half-second), only if the entity is moving in the hitbox of the
+///   bush", and entities "slow down to about 34.05% of their normal
+///   speed". Foxes are immune to BOTH (VERIFIED w/Fox: "take no
+///   damage or speed reduction while moving through sweet berry
+///   bushes") — the round's plant/mob interlock.
+/// - **Lit campfire** (VERIFIED w/Campfire §Damage): "If lit,
+///   campfires damage mobs standing on top of them ... 1 HP every
+///   tick (although damage immunity reduces this to once every
+///   half-second)".
+///
+/// The damage windows ride the 10-tick hazard clock (0.5 s); the
+/// slow scales the CURRENT tick's velocity after the AI wrote it, so
+/// the steady-state pace through a bush is the 34.05% row.
+fn hazard_tick(m: &mut Mob, world: &World, damage_window: bool) {
+    // berry bush at the feet cell
+    if m.kind != MobKind::Fox {
+        let bx = m.pos[0].floor() as i32;
+        let by = m.pos[1].floor() as i32;
+        let bz = m.pos[2].floor() as i32;
+        let s = world.get_state(bx, by, bz);
+        if state_block(s) == SWEET_BERRY_BUSH && berry_bush_age(s) >= 1 {
+            let moving = m.vel[0] * m.vel[0] + m.vel[2] * m.vel[2] > 0.01;
+            if moving {
+                // 34.05% (VERIFIED) — one scale per tick against the
+                // AI's freshly-written velocity
+                m.vel[0] *= BUSH_SLOW_FACTOR;
+                m.vel[2] *= BUSH_SLOW_FACTOR;
+                if damage_window {
+                    m.health -= 1.0;
+                }
+            }
+        }
+    }
+    // lit campfire underfoot (standing ON it)
+    if m.on_ground {
+        let gx = m.pos[0].floor() as i32;
+        let gy = (m.pos[1] - 0.1).floor() as i32;
+        let gz = m.pos[2].floor() as i32;
+        let gs = world.get_state(gx, gy, gz);
+        if state_block(gs) == CAMPFIRE && campfire_lit(gs) && damage_window {
+            m.health -= 1.0;
+        }
+    }
+}
+
+/// the verified bush movement factor (w/Sweet_Berry_Bush: "slow down
+/// to about 34.05% of their normal speed")
+pub const BUSH_SLOW_FACTOR: f32 = 0.3405;
 
 /// gravity + axis collision with 1-block step-ups (villager primitive).
 fn physics_tick(m: &mut Mob, world: &World) {
@@ -4618,7 +4905,7 @@ mod tests {
         // [merge] the kinds resolve in/out of names + eggs (16 E1 + 3
         // E2 + 3 E3 horse/donkey/mule + 4 F-series: rabbit 1.8, stray +
         // polar bear + husk 1.10)
-        assert_eq!(MOB_DATA.len(), 40); // + 1.11 four + 1.12 two + 1.13 eight (Update Aquatic)
+        assert_eq!(MOB_DATA.len(), 41); // + 1.11 four + 1.12 two + 1.13 eight + 1.14 fox
         for d in MOB_DATA.iter() {
             assert_eq!(
                 MobKind::from_name(d.kind.name().strip_prefix("minecraft:").unwrap()),
@@ -5202,7 +5489,7 @@ mod v111_tests {
         assert_eq!(MobKind::Llama.egg_id(), 23);
         assert_eq!(MobKind::Evoker.egg_id(), 25);
         // 1.12 (World of Color): parrot + illusioner — 32 kinds
-        assert_eq!(MOB_DATA.len(), 40, "+ the 1.13 aquatic eight");
+        assert_eq!(MOB_DATA.len(), 41, "+ the 1.13 aquatic eight + the 1.14 fox");
         assert_eq!(MobKind::from_egg(30), MobKind::Parrot);
         assert_eq!(MobKind::Parrot.egg_id(), 30);
         assert_eq!(MobKind::Illusioner.egg_id(), 255, "no spawn egg (VERIFIED)");
@@ -5730,7 +6017,7 @@ mod v113_tests {
     /// aquatic() swim-physics gate + the V9 spawn-egg kinds.
     #[test]
     fn v113_registry_rows_and_flags() {
-        assert_eq!(MOB_DATA.len(), 40, "32 prior + 8 Update Aquatic kinds");
+        assert_eq!(MOB_DATA.len(), 41, "32 prior + 8 aquatic + the 1.14 fox");
         // drowned: 20 HP zombie-parity, N 3, armor 2, 5 XP, hostile
         let d = def(MobKind::Drowned);
         assert_eq!(d.health as i32, 20);
@@ -6149,5 +6436,218 @@ mod v113_tests {
         // the water-ambient pool ignores the passive cap: 12+ aquatics
         // with zero passives alive is fine (the categories are separate)
         assert!(sys2.passives_alive() == 0);
+    }
+}
+
+// ---------------- 1.14 bracket tests (Village & Pillage — nature half) ----------------
+#[cfg(test)]
+mod v114_tests {
+    use super::*;
+
+    fn flat_world() -> World {
+        let mut w = World::new(11);
+        let mut c = vc_chunk::chunk::Chunk::empty();
+        for y in 0..=64i32 {
+            for lz in 0..16usize {
+                for lx in 0..16usize {
+                    c.set(lx, y as usize, lz, STONE);
+                }
+            }
+        }
+        w.insert_generated((0, 0), std::sync::Arc::new(c), Vec::new());
+        w.dirty.clear();
+        w
+    }
+
+    /// the V10 registry row + egg/tile mappings (VERIFIED w/Fox)
+    #[test]
+    fn v114_fox_registry_row() {
+        assert_eq!(MOB_DATA.len(), 41, "32 + 8 aquatic + the fox");
+        let d = def(MobKind::Fox);
+        assert_eq!(d.health as i32, 10, "10 HP (VERIFIED infobox)");
+        assert!((d.damage - 2.0).abs() < 1e-6, "Easy/Normal 2 HP");
+        assert!((d.speed_attr - 0.3).abs() < 1e-6, "speed 0.3");
+        assert!((d.height - 0.7).abs() < 1e-6, "hitbox height 0.7");
+        assert!((d.width - 0.6).abs() < 1e-6, "hitbox width 0.6");
+        assert_eq!(d.xp, 1);
+        // passive, not hostile/neutral/aquatic (the creature category)
+        assert!(!d.kind.hostile() && !d.kind.neutral() && !d.kind.aquatic());
+        // egg + name roundtrips
+        assert_eq!(MobKind::from_egg(40), MobKind::Fox);
+        assert_eq!(MobKind::Fox.egg_id(), 40);
+        assert_eq!(MobKind::from_name("fox"), Some(MobKind::Fox));
+        assert_eq!(MobKind::Fox.name(), "minecraft:fox");
+        // the sprite tile
+        assert_eq!(MobKind::Fox.sprite_tile(), TILE_MOB_FOX);
+    }
+
+    /// VERIFIED w/Fox §Behavior: "Foxes attack chickens ... while they
+    /// are on land" — a fox with a chicken in range chases and damages
+    /// it; the damage lands through the pending queue.
+    #[test]
+    fn v114_fox_hunts_chickens() {
+        let world = flat_world();
+        let mut sys = MobSystem::new(9);
+        let fox = sys.spawn_at(MobKind::Fox, 8, 65, 8).unwrap();
+        let chicken = sys.spawn_at(MobKind::Chicken, 10, 65, 10).unwrap();
+        // a player 20 blocks away: present (hunting needs the anchor)
+        // but beyond the 6-block flee radius
+        sys.player = Some([28.0, 65.0, 28.0]);
+        for _ in 0..200 {
+            sys.tick(&world, (0, 0), i32::MAX);
+        }
+        // the fox's 2 HP bites kill a 4 HP chicken in two hits — the
+        // prey either died or is wounded
+        let chicken_alive = sys.list.iter().find(|m| m.id == chicken);
+        match chicken_alive {
+            Some(c) => assert!(
+                c.health < 4.0,
+                "the fox damaged the chicken (hp {})",
+                c.health
+            ),
+            None => assert!(
+                sys.deaths.iter().any(|d| d.0 == MobKind::Chicken),
+                "the chicken died to the fox (a deaths entry)"
+            ),
+        }
+        let f = sys.list.iter().find(|m| m.id == fox).unwrap();
+        assert!((f.pos[0] - 10.0).abs() < 3.0, "fox closed on the prey");
+    }
+
+    /// VERIFIED w/Sweet_Berry_Bush + w/Fox: entities moving through a
+    /// stage-1+ bush take 1 HP per half-second and slow to 34.05%;
+    /// foxes take neither ("take no damage or speed reduction").
+    #[test]
+    fn v114_bush_slows_and_damages_except_foxes() {
+        let mut w = flat_world();
+        // a mature bush at (8, 65, 8)
+        let _ = w.set_block_state(8, 65, 8, berry_bush_state(3));
+        let mut sys = MobSystem::new(3);
+        let zid = sys.spawn_at(MobKind::Zombie, 8, 65, 8).unwrap();
+        let fid = sys.spawn_at(MobKind::Fox, 8, 65, 9).unwrap();
+        // walk the zombie INTO the bush cell with a live velocity
+        {
+            let z = sys.list.iter_mut().find(|m| m.id == zid).unwrap();
+            z.pos = [8.5, 65.0, 8.5];
+            z.vel = [1.0, 0.0, 0.0]; // moving
+        }
+        {
+            let f = sys.list.iter_mut().find(|m| m.id == fid).unwrap();
+            f.pos = [8.5, 65.0, 8.5];
+            f.vel = [1.0, 0.0, 0.0]; // moving, same cell
+        }
+        hazard_tick(sys.list.iter_mut().find(|m| m.id == zid).unwrap(), &w, true);
+        hazard_tick(sys.list.iter_mut().find(|m| m.id == fid).unwrap(), &w, true);
+        let z = sys.list.iter().find(|m| m.id == zid).unwrap();
+        let f = sys.list.iter().find(|m| m.id == fid).unwrap();
+        assert_eq!(z.health, 19.0, "the zombie took the 1 HP window hit");
+        assert!(z.vel[0] < 0.5, "the zombie was slowed to 34.05% (vel {})", z.vel[0]);
+        assert_eq!(f.health, 10.0, "the fox took NO damage (VERIFIED immunity)");
+        assert_eq!(f.vel[0], 1.0, "the fox was NOT slowed (VERIFIED immunity)");
+        // stage 0 (sapling) never damages
+        let _ = w.set_block_state(8, 65, 8, berry_bush_state(0));
+        {
+            let z = sys.list.iter_mut().find(|m| m.id == zid).unwrap();
+            z.health = 20.0;
+            z.vel = [1.0, 0.0, 0.0];
+        }
+        hazard_tick(sys.list.iter_mut().find(|m| m.id == zid).unwrap(), &w, true);
+        assert_eq!(sys.list.iter().find(|m| m.id == zid).unwrap().health, 20.0);
+    }
+
+    /// VERIFIED w/Campfire §Damage: "If lit, campfires damage mobs
+    /// standing on top of them" — 1 HP per 0.5 s window; unlit never.
+    #[test]
+    fn v114_campfire_standing_damage() {
+        let mut w = flat_world();
+        let _ = w.set_block_state(8, 65, 8, campfire_state(true));
+        let mut sys = MobSystem::new(4);
+        let cid = sys.spawn_at(MobKind::Sheep, 8, 66, 8).unwrap();
+        // place the sheep ON the campfire, grounded
+        {
+            let s = sys.list.iter_mut().find(|m| m.id == cid).unwrap();
+            s.pos = [8.5, 66.0, 8.5];
+            s.on_ground = true;
+        }
+        hazard_tick(sys.list.iter_mut().find(|m| m.id == cid).unwrap(), &w, true);
+        assert_eq!(
+            sys.list.iter().find(|m| m.id == cid).unwrap().health,
+            7.0,
+            "sheep 8 HP - 1: the lit campfire burned it"
+        );
+        // unlit: nothing
+        let _ = w.set_block_state(8, 65, 8, campfire_state(false));
+        hazard_tick(sys.list.iter_mut().find(|m| m.id == cid).unwrap(), &w, true);
+        assert_eq!(
+            sys.list.iter().find(|m| m.id == cid).unwrap().health,
+            7.0,
+            "the extinguished campfire is inert"
+        );
+        // not standing on it: nothing
+        let _ = w.set_block_state(8, 65, 8, campfire_state(true));
+        {
+            let s = sys.list.iter_mut().find(|m| m.id == cid).unwrap();
+            s.pos = [4.5, 66.0, 8.5]; // 4 blocks aside
+        }
+        hazard_tick(sys.list.iter_mut().find(|m| m.id == cid).unwrap(), &w, true);
+        assert_eq!(
+            sys.list.iter().find(|m| m.id == cid).unwrap().health,
+            7.0,
+            "off the campfire: no damage"
+        );
+    }
+
+    /// VERIFIED w/Sweet_Berries §Breeding: feed two adults → the second
+    /// feeding pairs them; the cub is the game layer's to spawn.
+    #[test]
+    fn v114_fox_breeding_flow() {
+        let mut sys = MobSystem::new(6);
+        let a = sys.spawn_at(MobKind::Fox, 8, 65, 8).unwrap();
+        let b = sys.spawn_at(MobKind::Fox, 10, 65, 8).unwrap();
+        // feeding a non-fox: nothing
+        let cow = sys.spawn_at(MobKind::Cow, 12, 65, 8).unwrap();
+        assert!(sys.try_feed_fox(cow).is_none());
+        // first feeding: love mode
+        match sys.try_feed_fox(a) {
+            Some(FoxFeedOutcome::LoveMode) => {}
+            other => panic!("first feeding should enter love mode: {other:?}"),
+        }
+        assert!(sys.list.iter().find(|m| m.id == a).unwrap().variant & 0x80 != 0);
+        assert_eq!(sys.list.iter().find(|m| m.id == a).unwrap().aux, 600);
+        // feeding the loving fox again: ignored (vanilla)
+        assert!(sys.try_feed_fox(a).is_none());
+        // second feeding pairs them
+        match sys.try_feed_fox(b) {
+            Some(FoxFeedOutcome::Bred(pid)) => assert_eq!(pid, a),
+            other => panic!("second feeding should pair: {other:?}"),
+        }
+        // both loves cleared
+        assert_eq!(sys.list.iter().find(|m| m.id == a).unwrap().variant & 0x80, 0);
+        assert_eq!(sys.list.iter().find(|m| m.id == b).unwrap().variant & 0x80, 0);
+        // a baby never breeds
+        let kid = sys
+            .spawn_variant(MobKind::Fox, 12, 65, 10, 0x41)
+            .unwrap();
+        assert!(sys.try_feed_fox(kid).is_none(), "babies don't breed");
+    }
+
+    /// the fox cub maturity countdown (variant 0x40, aux 24000 → grown)
+    #[test]
+    fn v114_fox_cub_grows() {
+        let world = flat_world();
+        let mut sys = MobSystem::new(7);
+        let kid = sys
+            .spawn_variant(MobKind::Fox, 8, 65, 8, 0x41)
+            .unwrap();
+        {
+            let k = sys.list.iter_mut().find(|m| m.id == kid).unwrap();
+            k.aux = 3; // short countdown for the test
+        }
+        for _ in 0..3 {
+            sys.tick(&world, (0, 0), i32::MAX);
+        }
+        let k = sys.list.iter().find(|m| m.id == kid).unwrap();
+        assert_eq!(k.variant & 0x40, 0, "grown after the countdown");
+        assert_eq!(k.variant & 0x1, 1, "still trusting (the bred bit)");
     }
 }

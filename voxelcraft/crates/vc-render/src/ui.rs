@@ -1547,6 +1547,8 @@ impl UiCanvas {
             ContainerKind::Inventory => 96, // 2x2 craft + arrow + output
             ContainerKind::Crafting => 140, // 3x3 craft + arrow + output
             ContainerKind::Chest => 132,    // 3 rows of 9 slots
+            // the barrel shares the chest grid (VERIFIED: 27 slots)
+            ContainerKind::Barrel => 132, // 3 rows of 9 slots
             // vanilla ratio: hopper 133/166 of a chest's height — one
             // content row instead of three (2×40px shorter than the chest)
             ContainerKind::Hopper => 52,   // 1 row of 5 slots
@@ -1575,6 +1577,8 @@ impl UiCanvas {
             ContainerKind::Inventory => "INVENTORY  (E / ESC to close)",
             ContainerKind::Crafting => "CRAFTING TABLE",
             ContainerKind::Chest => "CHEST",
+            // 1.14: the barrel's own label (the vanilla GUI title)
+            ContainerKind::Barrel => "BARREL",
             // VERIFIED vanilla GUI label: "Item Hopper"
             ContainerKind::Hopper => "ITEM HOPPER",
             ContainerKind::Furnace => "FURNACE",
@@ -1643,8 +1647,9 @@ impl UiCanvas {
                 self.slot_well(ox, oy, &view.craft_out, atlas);
                 geom.craft_out = (ox, oy);
             }
-            ContainerKind::Chest => {
-                // Phase 3: 3 rows of 9 slots, centered
+            ContainerKind::Chest | ContainerKind::Barrel => {
+                // Phase 3: 3 rows of 9 slots, centered (the barrel shares
+                // the chest grid — VERIFIED w/Barrel: same 27 slots)
                 let total = 9 * 40;
                 let cx = x0 + (grid_w - total) / 2;
                 let cy = y0 + 8;
@@ -2381,6 +2386,10 @@ pub enum ContainerKind {
     Trade,
     /// Phase 3: generic container (chest: 3 rows of 9)
     Chest,
+    /// 1.14: barrel container (3 rows of 9 — VERIFIED w/Barrel: "the
+    /// same as a single chest"; shares the chest grid geometry, own
+    /// title)
+    Barrel,
     /// hopper container: 5 slots in one row — the verdict-corrected
     /// 176×133 vanilla screen (research doc's blanket 176×166 was
     /// confirmed wrong; see docs/research/research-verdicts.md — a hopper

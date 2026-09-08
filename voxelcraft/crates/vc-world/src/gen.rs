@@ -1483,6 +1483,76 @@ impl TerrainGen {
             }
         }
 
+        // ───────── 1.14 (Village & Pillage — nature half) flora ────
+        // Bamboo: VERIFIED w/Bamboo §Natural_generation: "Bamboo
+        // generates in widely scattered single shoots within jungle
+        // biomes. Bamboo generates much more densely in the bamboo
+        // jungles, covering large areas of the landscape. Bamboo does
+        // not generate in sparse jungles." The engine has no
+        // bamboo-jungle sub-biome, so the adaptation is a per-chunk
+        // patch roll (~20%) of scattered 1-5-tall shoots on grass —
+        // disclosed (the alternative, per-column single-shoot
+        // salt-and-pepper, reads worse at chunk scale).
+        {
+            let b = Biome::from_u8(chunk.biome[8 * 16 + 8]);
+            if b == Biome::Jungle && rng.next_f32() < 0.20 {
+                let shoots = 4 + rng.next_range(7) as i32; // 4..10
+                for _ in 0..shoots {
+                    let lx = rng.next_range(16) as i32;
+                    let lz = rng.next_range(16) as i32;
+                    let col_idx = lz as usize * 16 + lx as usize;
+                    let h = chunk.height[col_idx] as i32;
+                    let floor = chunk.get(lx as usize, h as usize, lz as usize);
+                    if floor != GRASS && floor != DIRT && floor != PODZOL {
+                        continue;
+                    }
+                    if chunk.get(lx as usize, (h + 1) as usize, lz as usize) != AIR {
+                        continue;
+                    }
+                    // vanilla jungle shoots are short (1-3 commonly);
+                    // a rare 5-tall one gives the canopy-side skyline
+                    let bh = 1 + rng.next_range(4) as i32; // 1..4
+                    for dy in 1..=bh {
+                        let y = h + dy;
+                        if y < 255 && chunk.get(lx as usize, y as usize, lz as usize) == AIR {
+                            chunk.set(lx as usize, y as usize, lz as usize, BAMBOO);
+                        }
+                    }
+                }
+            }
+        }
+        // Sweet berry bushes: VERIFIED w/Sweet_Berry_Bush §Natural
+        // generation: "only generate in taiga and snowy taiga biomes.
+        // Each chunk has a 1/12 chance to generate sweet berry bushes
+        // in random patches." (The old-growth taiga rows fold into the
+        // engine's single Taiga, same as the fern rule.) Patches of
+        // 3-6 bushes at random ages 1..=3 — mostly recognizable as
+        // bearing berries at generation, matching the harvestable
+        // wild-bush feel.
+        {
+            let b = Biome::from_u8(chunk.biome[8 * 16 + 8]);
+            if (b == Biome::Taiga || b == Biome::Snowy)
+                && rng.next_f32() < 1.0 / 12.0
+            {
+                let bushes = 3 + rng.next_range(4) as i32; // 3..6
+                for _ in 0..bushes {
+                    let lx = rng.next_range(16) as i32;
+                    let lz = rng.next_range(16) as i32;
+                    let col_idx = lz as usize * 16 + lx as usize;
+                    let h = chunk.height[col_idx] as i32;
+                    let floor = chunk.get(lx as usize, h as usize, lz as usize);
+                    if floor != GRASS && floor != SNOW_GRASS && floor != PODZOL && floor != DIRT {
+                        continue;
+                    }
+                    if chunk.get(lx as usize, (h + 1) as usize, lz as usize) != AIR {
+                        continue;
+                    }
+                    let age = 1 + rng.next_range(3) as u8; // 1..=3
+                    chunk.set(lx as usize, (h + 1) as usize, lz as usize, berry_bush_state(age));
+                }
+            }
+        }
+
         // 1.7.2: ice plains spikes — "tall spires made of packed ice"
         // (wiki); 1-2 spires per chunk, 5-15 tall, plus-shaped bases
         {
@@ -5831,5 +5901,101 @@ mod v113_tests {
         assert!(Biome::FrozenOcean.is_ocean());
         assert!(!Biome::Beach.is_ocean());
         assert!(!Biome::Plains.is_ocean());
+    }
+
+    /// 1.14 (Village & Pillage — nature half): bamboo generates in
+    /// jungle columns ("Bamboo generates in widely scattered single
+    /// shoots within jungle biomes" — VERIFIED w/Bamboo §Natural
+    /// generation), and never outside them.
+    #[test]
+    fn v114_jungle_carries_bamboo() {
+        let g = gen();
+        // jungle: across a 7x7 chunk field the 20% patch rolls must
+        // land at least one patch (49 chunks × 20% ≈ 10 patches)
+        let (cx, cz) = find_biome(&g, Biome::Jungle);
+        let mut bamboo = 0usize;
+        for dcx in -3..=3 {
+            for dcz in -3..=3 {
+                let (chunk, _) = g.generate_chunk(cx + dcx, cz + dcz, Vec::new());
+                for i in 0..CHUNK_LEN {
+                    if chunk.get_idx(i) == BAMBOO {
+                        bamboo += 1;
+                    }
+                }
+            }
+        }
+        assert!(bamboo > 0, "jungle fields carry bamboo shoots (got {bamboo})");
+        // never outside: taiga + snowy + plains + desert windows
+        for b in [Biome::Taiga, Biome::Snowy, Biome::Plains, Biome::Desert] {
+            let (cx, cz) = find_biome(&g, b);
+            for dcx in -1..=1 {
+                for dcz in -1..=1 {
+                    let (chunk, _) = g.generate_chunk(cx + dcx, cz + dcz, Vec::new());
+                    for i in 0..CHUNK_LEN {
+                        assert!(
+                            chunk.get_idx(i) != BAMBOO,
+                            "bamboo never generates in {} columns",
+                            b.name()
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// 1.14: sweet berry bushes generate in taiga/snowy-taiga patches
+    /// ("Each chunk has a 1/12 chance" — VERIFIED w/Sweet_Berry_Bush
+    /// §Natural generation) at bearing ages 1..=3, and never outside.
+    #[test]
+    fn v114_taiga_carries_berry_bushes() {
+        let g = gen();
+        for b in [Biome::Taiga, Biome::Snowy] {
+            let (cx, cz) = find_biome(&g, b);
+            let mut bushes = 0usize;
+            // a 13x13 window: 169 chunks × 1/12 ≈ 14 patches — the
+            // patch roll is chunk-center-keyed (the whole chunk is one
+            // biome), so neighboring chunks of the same biome count
+            for dcx in -6..=6 {
+                for dcz in -6..=6 {
+                    let (chunk, _) = g.generate_chunk(cx + dcx, cz + dcz, Vec::new());
+                    for i in 0..CHUNK_LEN {
+                        // get_idx returns the FOLDED block id (Chunk::get
+                        // folds raw states) — the raw state for the age
+                        // check comes from get_state
+                        let b = chunk.get_idx(i);
+                        if b == SWEET_BERRY_BUSH {
+                            bushes += 1;
+                            let raw = chunk.get_state(i & 15, (i >> 8) & 0xFF, (i >> 4) & 15);
+                            let age = berry_bush_age(raw);
+                            assert!(
+                                (1..=3).contains(&age),
+                                "generated bushes are bearing age 1..=3 (got {age})"
+                            );
+                        }
+                    }
+                }
+            }
+            assert!(
+                bushes > 0,
+                "{} fields carry sweet berry bushes (got {bushes})",
+                b.name()
+            );
+        }
+        // never outside: jungle + plains + forest + savanna
+        for b in [Biome::Jungle, Biome::Plains, Biome::Forest, Biome::Savanna] {
+            let (cx, cz) = find_biome(&g, b);
+            for dcx in -1..=1 {
+                for dcz in -1..=1 {
+                    let (chunk, _) = g.generate_chunk(cx + dcx, cz + dcz, Vec::new());
+                    for i in 0..CHUNK_LEN {
+                        assert!(
+                            chunk.get_idx(i) != SWEET_BERRY_BUSH,
+                            "berry bushes never generate in {} columns",
+                            b.name()
+                        );
+                    }
+                }
+            }
+        }
     }
 }

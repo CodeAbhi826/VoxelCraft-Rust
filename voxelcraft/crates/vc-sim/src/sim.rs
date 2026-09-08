@@ -73,6 +73,9 @@ pub struct Sim {
     /// furnace block entities (Phase 7 §27) — ticked at the sim rate so
     /// COOK_TICKS = 200 means the vanilla 10 seconds
     pub furnaces: vc_gameplay::furnace::Furnaces,
+    /// 1.14 campfire block entities (Village & Pillage) — the 4-slot
+    /// fuel-less 600-tick cookers; `done` is drained by the game layer
+    pub campfires: vc_gameplay::campfire::Campfires,
     /// brewing-stand block entities (Phase 7 §29) — BREW_TICKS = 400 means
     /// the vanilla 20 seconds
     pub brewing: vc_gameplay::brewing::Brewings,
@@ -127,6 +130,7 @@ impl Sim {
             items: ItemSystem::new(seed ^ 0xD00_0042),
             xp_orbs: XpOrbSystem::new(seed ^ 0x0DB_5EED),
             furnaces: vc_gameplay::furnace::Furnaces::default(),
+            campfires: vc_gameplay::campfire::Campfires::default(),
             brewing: vc_gameplay::brewing::Brewings::default(),
             enchants: vc_gameplay::enchanting::Enchants::default(),
             villagers: vc_gameplay::villagers::Villagers::new(seed ^ 0x315_7A9),
@@ -315,6 +319,11 @@ impl Sim {
         // dirty marking; visual-only light — FURNACE_STATE/LIT both map to
         // the FURNACE block id so the light engine sees no delta)
         let _changed = self.furnaces.tick(world);
+
+        // 3a. 1.14 campfires: the 4-slot fuel-less cookers (600 ticks,
+        // VERIFIED w/Campfire; cooking only while LIT — the world state
+        // the game layer swaps carries the gate)
+        self.campfires.tick(world);
 
         // 3b. brewing stands (§29): brew cycles; `completed` positions are
         // drained by game.rs for the bubble sound + stats

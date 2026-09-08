@@ -105,6 +105,15 @@ pub fn water_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, 
         sched.schedule([x, y - 1, z], WATER_TICK_RATE);
         return;
     }
+    // 1.14: falling water onto a LIT campfire extinguishes it
+    // (VERIFIED w/Campfire §Extinguishing: "A campfire can be
+    // extinguished by waterlogging it (placing water in the same
+    // block space)" — the engine's water never enters the non-air
+    // cell, so the contact itself carries the extinguish)
+    if y > 0 && state_block(below) == CAMPFIRE && campfire_lit(below) {
+        world.set_block_state(x, y - 1, z, campfire_state(false));
+        on_block_changed(sched, world, x, y - 1, z);
+    }
 
     // 2. re-derive this block's level from its feeders
     if level > 0 {
@@ -162,6 +171,13 @@ pub fn water_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, 
         if below_solid_or_water {
             for (dx, dz) in [(1i32, 0i32), (-1, 0), (0, 1), (0, -1)] {
                 let n = world.get_state(x + dx, y, z + dz);
+                // 1.14: a LIT campfire neighbor extinguishes on water
+                // contact (the VERIFIED waterlog rule, contact form)
+                if state_block(n) == CAMPFIRE && campfire_lit(n) {
+                    world.set_block_state(x + dx, y, z + dz, campfire_state(false));
+                    on_block_changed(sched, world, x + dx, y, z + dz);
+                    continue;
+                }
                 if flowable(n) {
                     world.set_block_state(x + dx, y, z + dz, water_state(spread as u8));
                     on_block_changed(sched, world, x + dx, y, z + dz);
@@ -451,6 +467,53 @@ pub fn random_plant_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y
                 on_block_changed(sched, world, x, y, z);
             }
         }
+        // ---- 1.14 (Village & Pillage — nature half) growth ----
+        // BAMBOO_SHOOT: "Upon receiving a random tick, bamboo has a
+        // 1/3 chance of growing" — the shoot graduates into its first
+        // stalk (VERIFIED w/Bamboo §Farming; light gate: "The top of a
+        // bamboo plant requires a client light level of 9 or above")
+        BAMBOO_SHOOT => {
+            if light_ge_9(world, x, y, z) && world_random_3(world, x, y, z) {
+                world.set_block_state(x, y, z, default_state(BAMBOO));
+                on_block_changed(sched, world, x, y, z);
+            }
+        }
+        // BAMBOO stalk: column growth — 1/3 per random tick, capped at
+        // 16 ("can grow up to 12-16 blocks tall"; the default world's
+        // 16 max), same light gate at the would-be top cell
+        BAMBOO => {
+            // only the TOP cell of the column rolls (a mid-column tick
+            // finds bamboo above and stands down)
+            if world.get_block(x, y + 1, z) == BAMBOO {
+                return;
+            }
+            let mut top = y;
+            while top > 0 && world.get_block(x, top - 1, z) == BAMBOO {
+                top -= 1;
+            }
+            let height = y - top + 1;
+            if height >= 16 {
+                return; // the 12-16 window's engine cap
+            }
+            if world.get_block(x, y + 1, z) == AIR
+                && light_ge_9(world, x, y + 1, z)
+                && world_random_3(world, x, y, z)
+            {
+                world.set_block_state(x, y + 1, z, default_state(BAMBOO));
+                on_block_changed(sched, world, x, y + 1, z);
+            }
+        }
+        // SWEET_BERRY_BUSH: "grow via Random Ticks with a 20% chance
+        // per random tick on the block if it is not fully grown"
+        // (VERIFIED w/Sweet_Berry_Bush §Growth; light-independent)
+        SWEET_BERRY_BUSH => {
+            let s = world.get_state(x, y, z);
+            let age = berry_bush_age(s);
+            if age < 3 && world_random_5(world, x, y, z) {
+                world.set_block_state(x, y, z, berry_bush_state(age + 1));
+                on_block_changed(sched, world, x, y, z);
+            }
+        }
         _ => {}
     }
 }
@@ -491,6 +554,45 @@ fn spread_mycelium(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32,
 fn world_random_10(world: &World, x: i32, y: i32, z: i32) -> bool {
     let v = vc_rng::rng::Rng::hash3(world.seed ^ 0x0A17, x, y, z);
     v % 10 == 0
+}
+
+/// 1.14: the bamboo 1-in-3 random-tick growth roll (VERIFIED w/Bamboo
+/// §Farming: "a 1/3 chance of growing"). A per-position hash keeps it
+/// deterministic like the wart roll.
+fn world_random_3(world: &World, x: i32, y: i32, z: i32) -> bool {
+    let v = vc_rng::rng::Rng::hash3(world.seed ^ 0x0B2E, x, y, z);
+    v % 3 == 0
+}
+
+/// 1.14: the berry-bush 20% random-tick growth roll (VERIFIED
+/// w/Sweet_Berry_Bush §Growth: "a 20% chance per random tick").
+fn world_random_5(world: &World, x: i32, y: i32, z: i32) -> bool {
+    let v = vc_rng::rng::Rng::hash3(world.seed ^ 0x0B5A, x, y, z);
+    v % 5 == 0
+}
+
+/// 1.14: client light (max of sky and block channels) at a position,
+/// read straight from the world's settled light map — the bamboo
+/// growth gate ("requires a client light level of 9 or above",
+/// VERIFIED w/Bamboo). Unlit/unloaded chunks read as full sky (the
+/// generous default — matches the mesh snapshot fallback).
+fn light_ge_9(world: &World, x: i32, y: i32, z: i32) -> bool {
+    let cx = x.div_euclid(16);
+    let cz = z.div_euclid(16);
+    let lx = (x - cx * 16) as usize;
+    let lz = (z - cz * 16) as usize;
+    let y = y.clamp(0, 255);
+    let sec = (y / 16) as usize;
+    let yy = (y % 16) as usize;
+    let idx = (yy << 8) | (lz << 4) | lx;
+    world
+        .light
+        .get(&(cx, cz))
+        .and_then(|ld| {
+            ld.sections[sec].as_ref().map(|s| (s.sky[idx], s.blk[idx]))
+        })
+        .map(|(sky, blk)| sky.max(blk) >= 9)
+        .unwrap_or(true)
 }
 
 #[cfg(test)]
@@ -985,5 +1087,121 @@ mod e2_tests {
             drain(&mut w, &mut sched, 100);
             assert_eq!(w.get_block(0, 65, 0), concrete(c), "color {c} converts");
         }
+    }
+
+    /// 1.14 (Village & Pillage — nature half): random-tick growth
+    /// contracts. Bamboo: the shoot graduates into a stalk and stalks
+    /// grow columns (1/3 per roll, max 16, light 9+); berry bushes age
+    /// toward 3 (20% per roll). The rolls are per-position hashes, so
+    /// walking neighbor positions finds a passing one deterministically.
+    fn lit_flat_world() -> World {
+        let mut w = World::new(21);
+        let mut c = vc_chunk::chunk::Chunk::empty();
+        for y in 0..=64usize {
+            for lz in 0..16usize {
+                for lx in 0..16usize {
+                    c.set(lx, y, lz, GRASS);
+                }
+            }
+        }
+        w.insert_generated((0, 0), std::sync::Arc::new(c), Vec::new());
+        w.dirty.clear();
+        w
+    }
+
+    #[test]
+    fn v114_bamboo_shoot_graduates_to_a_stalk() {
+        let mut w = lit_flat_world();
+        let mut sched = TickScheduler::new();
+        // the 1/3 roll is a fixed per-position hash — plant the shoot
+        // on each column until one passes (expected ~1/3 of columns)
+        let mut grown = false;
+        for tx in 0..16i32 {
+            for tz in 0..16i32 {
+                w.set_block_state(tx, 65, tz, default_state(BAMBOO_SHOOT));
+                random_plant_tick(&mut w, &mut sched, tx, 65, tz);
+                if w.get_block(tx, 65, tz) == BAMBOO {
+                    grown = true;
+                    break;
+                }
+                w.set_block_state(tx, 65, tz, 0);
+            }
+            if grown {
+                break;
+            }
+        }
+        assert!(grown, "some shoot position rolls the 1/3 growth");
+    }
+
+    #[test]
+    fn v114_bamboo_column_grows_and_caps_at_16() {
+        let mut w = lit_flat_world();
+        let mut sched = TickScheduler::new();
+        let (x, z) = (8, 8);
+        // a 16-tall column (the cap): the top cell never grows
+        for dy in 0..16 {
+            w.set_block_state(x, 65 + dy, z, default_state(BAMBOO));
+        }
+        let top = 65 + 15;
+        for _ in 0..40 {
+            random_plant_tick(&mut w, &mut sched, x, top, z);
+        }
+        assert_eq!(w.get_block(x, top + 1, z), AIR, "the 16 cap holds");
+        // clear the tall column; a 1-tall stalk grows on a passing
+        // column (the per-position 1/3 roll)
+        for dy in 0..16 {
+            w.set_block_state(x, 65 + dy, z, 0);
+        }
+        let mut grew = false;
+        for tx in 0..16i32 {
+            for tz in 0..16i32 {
+                w.set_block_state(tx, 65, tz, default_state(BAMBOO));
+                random_plant_tick(&mut w, &mut sched, tx, 65, tz);
+                if w.get_block(tx, 66, tz) == BAMBOO {
+                    grew = true;
+                    break;
+                }
+                w.set_block_state(tx, 65, tz, 0);
+            }
+            if grew {
+                break;
+            }
+        }
+        assert!(grew, "some 1-tall stalk position rolls a growth");
+    }
+
+    /// does a bush of `age` at SOME in-chunk position advance one age
+    /// on its random tick? (the 20% roll is a fixed per-position hash —
+    /// with 256 columns ~51 pass)
+    fn bush_advances_somewhere(w: &mut World, age: u8) -> bool {
+        let mut sched = TickScheduler::new();
+        for tx in 0..16i32 {
+            for tz in 0..16i32 {
+                w.set_block_state(tx, 65, tz, berry_bush_state(age));
+                random_plant_tick(w, &mut sched, tx, 65, tz);
+                if berry_bush_age(w.get_state(tx, 65, tz)) == age + 1 {
+                    return true;
+                }
+                w.set_block_state(tx, 65, tz, 0);
+            }
+        }
+        false
+    }
+
+    #[test]
+    fn v114_berry_bush_ages_to_three_and_stops() {
+        let mut w = lit_flat_world();
+        // ages 0 → 1 → 2 all find passing positions (20% × 256)
+        for age in 0u8..3 {
+            assert!(
+                bush_advances_somewhere(&mut w, age),
+                "age {age} advances somewhere"
+            );
+        }
+        // mature (age 3) never advances: the age < 3 gate
+        assert!(
+            !bush_advances_somewhere(&mut w, 3),
+            "age 3 is terminal (VERIFIED: not fully grown only)"
+        );
     }
 }

@@ -527,9 +527,12 @@ mod tests {
         let hive = [8, 70, 8];
         sys.hives.insert(hive, HiveData { bees: Vec::new(), natural: false });
         assert!(sys.enter(hive, 10.0, true), "enter at capacity");
+        // three nectar bees inside (the honey bump only comes from
+        // pollinated bees — "Every pollinated bee that leaves the hive
+        // after working increases the honey level by one", VERIFIED)
+        sys.enter(hive, 10.0, true);
+        sys.enter(hive, 10.0, true);
         // 1 above capacity: 4th bee refused (VERIFIED: "up to 3 bees")
-        sys.enter(hive, 10.0, false);
-        sys.enter(hive, 10.0, false);
         sys.enter(hive, 10.0, false);
         assert_eq!(sys.hives[&hive].bees.len(), 3);
         // night: no release until day ("waits for daylight")

@@ -181,6 +181,47 @@ pub fn slider(id: u16, x: i32, y: i32, w: i32, label: &str, value: f32) -> Widge
     }
 }
 
+/// Slider with explicit height — the vanilla 1.16.5 settings screens use
+/// 150x20 buttons (→ 225x30 on this 1.5x canvas); an empty label draws
+/// the vanilla unlabeled slider (Brightness).
+pub fn slider_h(
+    id: u16,
+    x: i32,
+    y: i32,
+    w: i32,
+    h: i32,
+    label: &str,
+    value: f32,
+) -> Widget {
+    Widget {
+        id,
+        x,
+        y,
+        w,
+        h,
+        kind: WidgetKind::Slider {
+            label: label.to_string(),
+            value: value.clamp(0.0, 1.0),
+        },
+    }
+}
+
+/// GUI Scale: re-scale a widget list around the canvas center (vanilla
+/// semantics — the whole interface grows/shrinks; hit tests use the same
+/// scaled rects, so input stays consistent for free).
+pub fn scale_widgets(ws: &mut [Widget], s: f32) {
+    if (s - 1.0).abs() < 0.01 {
+        return;
+    }
+    let (cx, cy) = (UI_W as f32 / 2.0, UI_H as f32 / 2.0);
+    for w in ws.iter_mut() {
+        w.x = (cx + (w.x as f32 - cx) * s).round() as i32;
+        w.y = (cy + (w.y as f32 - cy) * s).round() as i32;
+        w.w = (w.w as f32 * s).round() as i32;
+        w.h = (w.h as f32 * s).round() as i32;
+    }
+}
+
 /// Phase 1: a single-line text entry field.
 pub fn text_field(
     id: u16,
@@ -269,6 +310,28 @@ pub const ID_OPT_DONE2: u16 = 34;
 /// equivalent; labeled plainly, not with a vanilla options.txt name)
 pub const ID_OPT_GMESH: u16 = 35;
 
+/// The vanilla-1.16.5 settings tree: Options → Video Settings (the exact
+/// vanilla screen), Resource Packs, Accessibility, plus our Engine page.
+/// 37..=46 options, 47..=49 disabled vanilla stubs, 50.. pack rows.
+pub const ID_OPT_VIDEO: u16 = 37;
+pub const ID_OPT_ENGINE: u16 = 38;
+pub const ID_OPT_PACKS: u16 = 39;
+pub const ID_OPT_ACCESS: u16 = 40;
+pub const ID_OPT_GUISCALE: u16 = 41;
+pub const ID_OPT_PARTICLES: u16 = 42;
+pub const ID_OPT_FULLSCREEN: u16 = 43;
+pub const ID_OPT_VSYNC: u16 = 44;
+pub const ID_OPT_ENTSHADOW: u16 = 45;
+pub const ID_OPT_BIOME: u16 = 46;
+/// vanilla stub buttons kept in the layout (grayed like MULTIPLAYER until
+/// their subsystem exists — vanilla grays unavailable features too)
+pub const ID_OPT_CHAT: u16 = 47;
+pub const ID_OPT_LANG: u16 = 48;
+pub const ID_OPT_CONTROLS: u16 = 49;
+pub const ID_PACK_BASE: u16 = 50;
+/// pack rows available (3 engine shader modes + up to 5 packs)
+pub const MAX_PACK_ENTRIES: usize = 8;
+
 /// Button with explicit height (vanilla title buttons are 200x20 at GUI
 /// scale 2 = 300x30 on the 960x540 canvas).
 pub fn btn_h(
@@ -341,43 +404,44 @@ pub fn layout_title(is_web: bool) -> Vec<Widget> {
     v
 }
 
-/// Options screen layout. Values are 0..1 for sliders (game.rs normalizes).
+/// Main Options screen — the vanilla 1.16.5 layout at 1.5x canvas scale:
+/// Music|Sound and FOV|Sensitivity slider pairs, three rows of sub-screen
+/// buttons (Chat Settings / Resource Packs / Language / Accessibility /
+/// Video Settings / Controls), Done at the bottom. Chat, Language and
+/// Controls are grayed stubs until those subsystems exist — the same
+/// vanilla-grayed pattern as the title screen's MULTIPLAYER button.
+/// ENGINE SETTINGS is the one disclosed deviation (our extra subsystems
+/// need a home; vanilla has no equivalent page).
 pub fn layout_options() -> Vec<Widget> {
-    let col1 = 72;
-    let col2 = 496;
-    let w = 392;
-    let rows = [62, 110, 158, 206, 254, 302, 350];
+    let (l, r, bw) = (248, 487, 225);
+    let rows = [72, 108, 144, 180, 216];
     vec![
-        slider(ID_OPT_FOV, col1, rows[0], w, "FOV", 0.5),
-        slider(ID_OPT_BRIGHT, col2, rows[0], w, "BRIGHTNESS", 0.1),
-        slider(ID_OPT_SENS, col1, rows[1], w, "MOUSE SENSITIVITY", 0.45),
-        slider(ID_OPT_VOL, col2, rows[1], w, "MASTER VOLUME", 0.7),
-        slider(ID_OPT_RD, col1, rows[2], w, "RENDER DISTANCE", 0.4),
-        btn(ID_OPT_SHADER, col2, rows[2], w, "SHADERS", "OFF", true),
-        btn(ID_OPT_GRAPHICS, col1, rows[3], w, "GRAPHICS", "FANCY", true),
-        btn(ID_OPT_SHADOWS, col2, rows[3], w, "SHADOWS", "ON", true),
-        btn(
-            ID_OPT_SMOOTH,
-            col1,
-            rows[4],
-            w,
-            "SMOOTH LIGHTING",
-            "ON",
+        slider_h(ID_OPT_MUSIC, l, rows[0], bw, 30, "MUSIC", 0.6),
+        slider_h(ID_OPT_VOL, r, rows[0], bw, 30, "SOUND", 0.7),
+        slider_h(ID_OPT_FOV, l, rows[1], bw, 30, "FOV", 0.5),
+        slider_h(ID_OPT_SENS, r, rows[1], bw, 30, "MOUSE SENSITIVITY", 0.45),
+        btn_h(ID_OPT_CHAT, l, rows[2], bw, 30, "CHAT SETTINGS...", "", false),
+        btn_h(ID_OPT_PACKS, r, rows[2], bw, 30, "RESOURCE PACKS...", "", true),
+        btn_h(ID_OPT_LANG, l, rows[3], bw, 30, "LANGUAGE...", "", false),
+        btn_h(
+            ID_OPT_ACCESS,
+            r,
+            rows[3],
+            bw,
+            30,
+            "ACCESSIBILITY SETTINGS...",
+            "",
             true,
         ),
-        btn(ID_OPT_UPSCALE, col2, rows[4], w, "UPSCALING", "OFF", true),
-        btn(ID_OPT_CLOUDS, col1, rows[5], w, "CLOUDS", "ON", true),
-        btn(ID_OPT_MAXFPS, col2, rows[5], w, "MAX FPS", "VSYNC", true),
-        // §21: the music category rides its own slider (master still scales it)
-        slider(ID_OPT_MUSIC, col1, rows[6], w, "MUSIC", 0.6),
-        // Phase 6 §26: page 2 = video detail (vanilla splits Video Settings
-        // to its own screen — same idea)
-        btn(ID_OPT_NEXT, col2, rows[6], w, "VIDEO DETAILS >", "", true),
-        btn(
+        btn_h(ID_OPT_VIDEO, l, rows[4], bw, 30, "VIDEO SETTINGS...", "", true),
+        btn_h(ID_OPT_CONTROLS, r, rows[4], bw, 30, "CONTROLS...", "", false),
+        btn_h(ID_OPT_ENGINE, 248, 252, 465, 30, "ENGINE SETTINGS...", "", true),
+        btn_h(
             ID_OPT_DONE,
-            (UI_W as i32 - 320) / 2,
+            (UI_W as i32 - 300) / 2,
             470,
-            320,
+            300,
+            30,
             "DONE",
             "",
             true,
@@ -385,61 +449,137 @@ pub fn layout_options() -> Vec<Widget> {
     ]
 }
 
-/// Phase 6 §26: options page 2 — simulation distance + the rendering
-/// quality set (mipmaps, aniso, MSAA, occlusion). Values are placeholders;
-/// game.rs rewrites the labels + positions via `refresh_widgets`.
-pub fn layout_options2() -> Vec<Widget> {
-    let col1 = 72;
-    let col2 = 496;
-    let w = 392;
-    let rows = [62, 110, 158, 206, 254];
+/// Video Settings — the EXACT vanilla 1.16.5 screen: full-width Render
+/// Distance slider on top, four two-column cycling rows (Graphics |
+/// Smooth Lighting, GUI Scale | Clouds, Particles | Full Screen, Use
+/// VSync | Entity Shadows), the unlabeled full-width Brightness slider
+/// (hover shows Moody/Bright), the full-width Biome Blend slider, Done.
+pub fn layout_video() -> Vec<Widget> {
+    let (l, r, bw) = (248, 487, 225);
+    let rows = [108, 144, 180, 216];
     vec![
-        slider(ID_OPT_SIMDIST, col1, rows[0], w, "SIM DISTANCE", 0.0),
-        slider(ID_OPT_RD, col2, rows[0], w, "RENDER DISTANCE", 0.4),
-        btn(ID_OPT_MIP, col1, rows[1], w, "MIPMAP LEVELS", "4", true),
-        btn(ID_OPT_ANISO, col2, rows[1], w, "ANISOTROPIC", "4X", true),
-        btn(ID_OPT_MSAA, col1, rows[2], w, "MSAA", "OFF", true),
-        btn(
-            ID_OPT_OCCL,
-            col2,
-            rows[2],
-            w,
-            "OCCLUSION CULLING",
-            "ON",
+        slider_h(ID_OPT_RD, 248, 72, 465, 30, "RENDER DISTANCE", 0.4),
+        btn_h(ID_OPT_GRAPHICS, l, rows[0], bw, 30, "GRAPHICS", "FANCY", true),
+        btn_h(
+            ID_OPT_SMOOTH,
+            r,
+            rows[0],
+            bw,
+            30,
+            "SMOOTH LIGHTING",
+            "MAXIMUM",
             true,
         ),
-        btn(
-            ID_OPT_GMESH,
-            col1,
-            rows[3],
-            w,
-            "GPU CHUNK MESHING",
-            "ON",
-            true,
-        ),
-        // 1.10: the auto-jump toggle (wiki: "Enabled by default; can be
-        // disabled in options")
-        btn(
-            ID_OPT_AUTOJUMP,
-            col2,
-            rows[3],
-            w,
-            "AUTO-JUMP",
-            "ON",
-            true,
-        ),
-        btn(ID_OPT_PREV, col1, rows[4], 242, "< GENERAL", "", true),
-        btn(
+        btn_h(ID_OPT_GUISCALE, l, rows[1], bw, 30, "GUI SCALE", "AUTO", true),
+        btn_h(ID_OPT_CLOUDS, r, rows[1], bw, 30, "CLOUDS", "FANCY", true),
+        btn_h(ID_OPT_PARTICLES, l, rows[2], bw, 30, "PARTICLES", "ALL", true),
+        btn_h(ID_OPT_FULLSCREEN, r, rows[2], bw, 30, "FULL SCREEN", "OFF", true),
+        btn_h(ID_OPT_VSYNC, l, rows[3], bw, 30, "USE VSYNC", "ON", true),
+        btn_h(ID_OPT_ENTSHADOW, r, rows[3], bw, 30, "ENTITY SHADOWS", "ON", true),
+        // vanilla brightness slider carries NO label; the hover tooltip
+        // reads Moody/Bright from the live value
+        slider_h(ID_OPT_BRIGHT, 248, 252, 465, 30, "", 0.1),
+        slider_h(ID_OPT_BIOME, 248, 288, 465, 30, "BIOME BLEND", 0.5),
+        btn_h(
             ID_OPT_DONE2,
-            (UI_W as i32 - 320) / 2,
+            (UI_W as i32 - 300) / 2,
             470,
-            320,
+            300,
+            30,
             "DONE",
             "",
             true,
         ),
     ]
 }
+
+/// Engine Settings — our extra subsystems (GPU meshing, occlusion,
+/// texture/AA quality, sim distance, frame cap, upscaling, sun shadows)
+/// live on their own page so the Video screen stays vanilla-exact.
+pub fn layout_engine() -> Vec<Widget> {
+    let (l, r, bw) = (248, 487, 225);
+    let rows = [72, 108, 144, 180, 216];
+    vec![
+        slider_h(ID_OPT_SIMDIST, l, rows[0], bw, 30, "SIM DISTANCE", 0.25),
+        btn_h(ID_OPT_MAXFPS, r, rows[0], bw, 30, "MAX FPS", "UNCAPPED", true),
+        btn_h(ID_OPT_MIP, l, rows[1], bw, 30, "MIPMAP LEVELS", "4", true),
+        btn_h(ID_OPT_ANISO, r, rows[1], bw, 30, "ANISOTROPIC", "4X", true),
+        btn_h(ID_OPT_MSAA, l, rows[2], bw, 30, "MSAA", "OFF", true),
+        btn_h(ID_OPT_OCCL, r, rows[2], bw, 30, "OCCLUSION CULLING", "ON", true),
+        btn_h(
+            ID_OPT_GMESH,
+            l,
+            rows[3],
+            bw,
+            30,
+            "GPU CHUNK MESHING",
+            "ON",
+            true,
+        ),
+        btn_h(ID_OPT_SHADOWS, r, rows[3], bw, 30, "SUN SHADOWS", "2K", true),
+        btn_h(ID_OPT_UPSCALE, l, rows[4], bw, 30, "UPSCALING", "OFF", true),
+        btn_h(
+            ID_OPT_DONE2,
+            (UI_W as i32 - 300) / 2,
+            470,
+            300,
+            30,
+            "DONE",
+            "",
+            true,
+        ),
+    ]
+}
+
+/// Resource Packs — a vanilla-styled selectable list (engine shader
+/// modes + shader packs; the two-pane vanilla screen reduces to one list
+/// here, disclosed). `selected` marks the active entry.
+pub fn layout_packs(entries: &[String], selected: usize) -> Vec<Widget> {
+    let mut v = Vec::new();
+    for (i, name) in entries.iter().take(MAX_PACK_ENTRIES).enumerate() {
+        v.push(btn_h(
+            ID_PACK_BASE + i as u16,
+            248,
+            72 + i as i32 * 40,
+            465,
+            30,
+            name,
+            if i == selected { "SELECTED" } else { "" },
+            true,
+        ));
+    }
+    v.push(btn_h(
+        ID_OPT_DONE2,
+        (UI_W as i32 - 300) / 2,
+        470,
+        300,
+        30,
+        "DONE",
+        "",
+        true,
+    ));
+    v
+}
+
+/// Accessibility Settings — vanilla 1.16.5 home of the Auto-Jump toggle
+/// (the screen's other entries land with their subsystems).
+pub fn layout_access() -> Vec<Widget> {
+    vec![
+        btn_h(ID_OPT_AUTOJUMP, 248, 72, 465, 30, "AUTO-JUMP", "ON", true),
+        btn_h(
+            ID_OPT_DONE2,
+            (UI_W as i32 - 300) / 2,
+            470,
+            300,
+            30,
+            "DONE",
+            "",
+            true,
+        ),
+    ]
+}
+
+
 
 pub fn layout_pause() -> Vec<Widget> {
     vec![
@@ -578,6 +718,9 @@ pub fn layout_death(hardcore: bool) -> Vec<Widget> {
 pub struct UiCanvas {
     pub px: Vec<u8>,
     pub dirty: bool,
+    /// GUI Scale factor applied to widget text (set alongside
+    /// [`scale_widgets`] — geometry scaling and text scaling move together)
+    pub widget_scale: f32,
 }
 
 impl UiCanvas {
@@ -585,6 +728,7 @@ impl UiCanvas {
         UiCanvas {
             px: vec![0u8; UI_W * UI_H * 4],
             dirty: true,
+            widget_scale: 1.0,
         }
     }
 
@@ -668,6 +812,42 @@ impl UiCanvas {
 
     pub fn text_width(s: &str, scale: i32) -> i32 {
         s.chars().count() as i32 * 6 * scale
+    }
+
+    /// Smallcaps text at a FRACTIONAL scale (nearest-neighbor glyph
+    /// sampling — the pixel-art look survives; GUI Scale and the vanilla
+    /// 30px button proportions need 1.5x-class text). Shadow like text().
+    pub fn text_frac(&mut self, x: i32, y: i32, s: &str, c: Color, scale: f32) -> i32 {
+        let mut cx = x as f32;
+        let gw = (5.0 * scale).ceil() as i32;
+        let gh = (8.0 * scale).ceil() as i32;
+        for ch in s.chars() {
+            let mut ch = ch as usize;
+            if ch < 32 || ch > 126 {
+                ch = '?' as usize;
+            }
+            if ch >= 'a' as usize && ch <= 'z' as usize {
+                ch -= 32; // smallcaps look
+            }
+            let glyph = &FONT[ch - 32];
+            let bx = cx as i32;
+            for gy in 0..gh {
+                for gx in 0..gw {
+                    let sx = ((gx as f32) / scale) as i32;
+                    let sy = ((gy as f32) / scale) as i32;
+                    if sy < 8 && sx < 5 && glyph[sy as usize] & (1 << (4 - sx)) != 0 {
+                        self.set(bx + gx + 1, y + gy + 1, [0, 0, 0, c[3]]);
+                        self.set(bx + gx, y + gy, c);
+                    }
+                }
+            }
+            cx += 6.0 * scale;
+        }
+        (cx - x as f32) as i32
+    }
+
+    pub fn text_width_frac(s: &str, scale: f32) -> i32 {
+        (s.chars().count() as f32 * 6.0 * scale).round() as i32
     }
 
     /// Glyphs without the 1-px drop shadow — the vanilla F3 overlay renders
@@ -950,13 +1130,18 @@ impl UiCanvas {
         } else {
             format!("{}: {}", label, value)
         };
-        let tw = Self::text_width(&full, 2);
-        self.text(
+        // vanilla proportions: a 20px vanilla button carries a 9px font
+        // (45%); our 30px buttons take fs=1.5, the legacy 44px widgets
+        // keep fs=2 (identical to the pre-vanilla rendering)
+        let fs = (w.h as f32 * 0.05).min(2.0) * self.widget_scale;
+        let tw = Self::text_width_frac(&full, fs);
+        let th = (8.0 * fs) as i32;
+        self.text_frac(
             w.x + (w.w - tw) / 2,
-            w.y + (w.h - 14) / 2,
+            w.y + (w.h - th) / 2,
             &full,
             text_col,
-            2,
+            fs,
         );
     }
 
@@ -982,20 +1167,25 @@ impl UiCanvas {
         if hover {
             self.frame(kx + 1, ty - 3, 14, th + 6, [255, 255, 255, 110]);
         }
-        // label centered over the track
-        let text_col: Color = if hover {
-            [255, 255, 160, 255]
-        } else {
-            [240, 240, 240, 255]
-        };
-        let tw = Self::text_width(&label, 2);
-        self.text(
-            w.x + (w.w - tw) / 2,
-            w.y + (w.h - 14) / 2 - 1,
-            &label,
-            text_col,
-            2,
-        );
+        // label centered over the track (empty label = the vanilla
+        // unlabeled slider, e.g. Brightness)
+        if !label.is_empty() {
+            let text_col: Color = if hover {
+                [255, 255, 160, 255]
+            } else {
+                [240, 240, 240, 255]
+            };
+            let fs = (w.h as f32 * 0.05).min(2.0) * self.widget_scale;
+            let tw = Self::text_width_frac(&label, fs);
+            let th = (8.0 * fs) as i32;
+            self.text_frac(
+                w.x + (w.w - tw) / 2,
+                w.y + (w.h - th) / 2 - 1,
+                &label,
+                text_col,
+                fs,
+            );
+        }
     }
 
     /// Phase 1: text-entry field — vanilla look: small caps label above an
@@ -1022,22 +1212,25 @@ impl UiCanvas {
             self.frame(w.x + 1, w.y + 1, w.w - 2, w.h - 2, [255, 255, 255, 170]);
         }
         // contents: typed text, else placeholder in gray
-        let shown = Self::field_visible_text(w.w, &text);
+        let fs = 2.0 * self.widget_scale;
+        let shown = Self::field_visible_text_f(w.w, &text, fs);
         if !shown.is_empty() {
             let col: Color = if focused {
                 [255, 255, 255, 255]
             } else {
                 [230, 230, 230, 255]
             };
-            self.text(w.x + 16, w.y + (w.h - 14) / 2, shown, col, 2);
+            let th = (8.0 * fs) as i32;
+            self.text_frac(w.x + 16, w.y + (w.h - th) / 2, shown, col, fs);
         } else {
-            let pshown = Self::field_visible_text(w.w, &placeholder);
-            self.text(
+            let pshown = Self::field_visible_text_f(w.w, &placeholder, fs);
+            let th = (8.0 * fs) as i32;
+            self.text_frac(
                 w.x + 16,
-                w.y + (w.h - 14) / 2,
+                w.y + (w.h - th) / 2,
                 pshown,
                 [130, 130, 130, 255],
-                2,
+                fs,
             );
         }
     }
@@ -1070,22 +1263,26 @@ impl UiCanvas {
             } = &w.kind
             {
                 if (time * 2.2).fract() < 0.6 {
-                    let shown = Self::field_visible_text(w.w, text);
-                    let tw = Self::text_width(shown, 2);
-                    self.rect(w.x + 16 + tw + 1, w.y + 12, 2, 20, [240, 240, 240, 255]);
+                    let fs = 2.0 * self.widget_scale;
+                    let shown = Self::field_visible_text_f(w.w, text, fs);
+                    let tw = Self::text_width_frac(shown, fs);
+                    let pad = (16.0 * self.widget_scale) as i32;
+                    let ch = (20.0 * self.widget_scale) as i32;
+                    self.rect(w.x + pad + tw + 1, w.y + (12.0 * self.widget_scale) as i32, 2, ch, [240, 240, 240, 255]);
                 }
             }
         }
     }
 
-    /// Truncate text to what fits in a field's inner width (5x7 font, scale 2).
-    fn field_visible_text(w: i32, text: &str) -> &str {
-        let max_chars = ((w - 36) / 12).max(0) as usize;
+    /// Truncate text to what fits in a field's inner width (5x7 font,
+    /// fractional scale).
+    fn field_visible_text_f(w: i32, text: &str, fs: f32) -> &str {
+        let max_chars = (((w as f32) - 36.0 * fs) / (6.0 * fs)).max(0.0) as usize;
         let mut end = text.len();
-        while text[..end].chars().count() > max_chars {
+        while text[..end].chars().count() > max_chars && end > 0 {
             // walk back one char boundary
             let mut new_end = end - 1;
-            while !text.is_char_boundary(new_end) {
+            while !text.is_char_boundary(new_end) && new_end > 0 {
                 new_end -= 1;
             }
             end = new_end;
@@ -1140,11 +1337,23 @@ impl UiCanvas {
         );
     }
 
-    pub fn options_screen(&mut self, ws: &[Widget], hover: Option<u16>, sub: &str) {
+    /// Generic settings screen (the vanilla 1.16.5 pattern): dark
+    /// backdrop, big centered title, then the vanilla hover-tooltip slot
+    /// — up to two centered gray hint lines drawn directly under the
+    /// title while the pointer rests on an option, exactly where the
+    /// original shows them.
+    pub fn settings_screen(
+        &mut self,
+        ws: &[Widget],
+        hover: Option<u16>,
+        title: &str,
+        tooltip: &[String],
+    ) {
         self.rect(0, 0, UI_W as i32, UI_H as i32, [8, 8, 10, 110]);
-        self.text_center(18, "OPTIONS", [255, 255, 255, 255], 3);
-        let sw = Self::text_width(sub, 1);
-        self.text((UI_W as i32 - sw) / 2, 46, sub, [150, 150, 150, 255], 1);
+        self.text_center(18, title, [255, 255, 255, 255], 3);
+        for (i, line) in tooltip.iter().take(2).enumerate() {
+            self.text_center(46 + i as i32 * 12, line, [170, 170, 170, 255], 1);
+        }
         self.draw_widgets(ws, hover);
     }
 

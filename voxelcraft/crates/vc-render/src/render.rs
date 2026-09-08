@@ -1310,6 +1310,8 @@ pub struct Renderer {
     // clouds
     cloud_bg: wgpu::BindGroup,
     cloud_pipe: wgpu::RenderPipeline,
+    /// vanilla Clouds "Fancy" variant — same plane, alpha-blended
+    cloud_pipe_blend: wgpu::RenderPipeline,
     cloud_vb: wgpu::Buffer,
     // ui
     ui_tex: wgpu::Texture,
@@ -1463,6 +1465,8 @@ struct ScenePipes {
     line: wgpu::RenderPipeline,
     part: wgpu::RenderPipeline,
     cloud: wgpu::RenderPipeline,
+    /// vanilla Clouds "Fancy" variant (alpha-blended)
+    cloud_blend: wgpu::RenderPipeline,
 }
 
 /// build one full scene-pipeline set at `samples` (1 or 4/8). Shader
@@ -1783,6 +1787,43 @@ fn build_scene_pipes(
         cache: None,
     });
 
+    // vanilla Clouds "Fancy": the same plane through an alpha-blending
+    // pipeline — a translucent layer instead of the solid Fast plane (the
+    // shader's 0.55 alpha finally blends through)
+    let cloud_blend = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("cloud-pipe-blend"),
+        layout: Some(&cloud_pl),
+        vertex: wgpu::VertexState {
+            module: &cloud_mod,
+            entry_point: "vs_main",
+            compilation_options: Default::default(),
+            buffers: &cloud_vbl,
+        },
+        fragment: Some(wgpu::FragmentState {
+            module: &cloud_mod,
+            entry_point: "fs_main",
+            compilation_options: Default::default(),
+            targets: &[Some(wgpu::ColorTargetState {
+                format: scene_format,
+                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: None,
+            polygon_mode: wgpu::PolygonMode::Fill,
+            unclipped_depth: false,
+            conservative: false,
+        },
+        depth_stencil: Some(depth_state(false, wgpu::CompareFunction::Less)),
+        multisample: ms,
+        multiview: None,
+        cache: None,
+    });
+
     ScenePipes {
         terrain,
         water,
@@ -1790,6 +1831,7 @@ fn build_scene_pipes(
         line,
         part,
         cloud,
+        cloud_blend,
     }
 }
 
@@ -3044,6 +3086,7 @@ impl Renderer {
             sky_pipe: scene.sky,
             cloud_bg,
             cloud_pipe: scene.cloud,
+            cloud_pipe_blend: scene.cloud_blend,
             cloud_vb,
             ui_tex,
             ui_view,
@@ -3744,6 +3787,30 @@ impl Renderer {
         self.mesh_rev = self.mesh_rev.wrapping_add(1);
     }
 
+    /// vanilla Use VSync: set the present mode explicitly (Fifo when on;
+    /// the fastest available no-vsync mode when off). Video Settings
+    /// toggles this directly.
+    pub fn set_vsync(&mut self, on: bool) {
+        if on == self.vsync {
+            return;
+        }
+        let target = if on {
+            wgpu::PresentMode::Fifo
+        } else {
+            *[
+                wgpu::PresentMode::AutoNoVsync,
+                wgpu::PresentMode::Mailbox,
+                wgpu::PresentMode::Immediate,
+            ]
+            .iter()
+            .find(|m| self.present_modes.contains(m))
+            .unwrap_or(&wgpu::PresentMode::Fifo)
+        };
+        self.vsync = on;
+        self.config.present_mode = target;
+        self.surface.configure(&self.device, &self.config);
+    }
+
     pub fn toggle_vsync(&mut self) {
         let target = if self.vsync {
             if self.present_modes.contains(&wgpu::PresentMode::AutoNoVsync) {
@@ -4225,7 +4292,7 @@ impl Renderer {
         ui: &mut UiCanvas,
         selection: Option<(i32, i32, i32)>,
         post: &PostParams,
-        clouds: bool,
+        clouds: u8,
         panorama: Option<PanoView>,
         particles: &[vc_particles::particles::ParticleVertex],
     ) -> RenderStats {
@@ -4688,9 +4755,17 @@ impl Renderer {
         };
 
         // pipeline set: the MSAA variants when active, else the 1x set
-        let (sky_p, terrain_p, line_p, water_p, part_p, cloud_p) =
+        let (sky_p, terrain_p, line_p, water_p, part_p, cloud_p, cloud_blend_p) =
             if let (true, Some(p)) = (msaa_on, &self.msaa_pipes) {
-                (&p.sky, &p.terrain, &p.line, &p.water, &p.part, &p.cloud)
+                (
+                    &p.sky,
+                    &p.terrain,
+                    &p.line,
+                    &p.water,
+                    &p.part,
+                    &p.cloud,
+                    &p.cloud_blend,
+                )
             } else {
                 (
                     &self.sky_pipe,
@@ -4699,6 +4774,7 @@ impl Renderer {
                     &self.water_pipe,
                     &self.part_pipe,
                     &self.cloud_pipe,
+                    &self.cloud_pipe_blend,
                 )
             };
 
@@ -4775,9 +4851,10 @@ impl Renderer {
                 stats.particles += n / 6;
             }
 
-            // 5. clouds (translucent plane above the world)
-            if clouds {
-                pass.set_pipeline(cloud_p);
+            // 5. clouds — the vanilla 3-state: OFF hidden; Fast = the
+            // solid opaque plane; Fancy = the alpha-blended translucent layer
+            if clouds > 0 {
+                pass.set_pipeline(if clouds > 1 { cloud_blend_p } else { cloud_p });
                 pass.set_bind_group(0, &self.cloud_bg, &[]);
                 pass.set_vertex_buffer(0, self.cloud_vb.slice(..));
                 pass.draw(0..6, 0..1);

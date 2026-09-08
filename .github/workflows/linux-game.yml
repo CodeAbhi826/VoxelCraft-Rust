@@ -157,7 +157,29 @@ jobs:
           grep -q 'f3-corn="Cornflower" f3-lily="Lily of the Valley"' smoke.log
           grep -q "e2e: v114c flowers planted=true f3-corn" smoke.log
           grep -q "blue-dye=true white-dye=true instant-break=true" smoke.log
-          echo "SMOKE OK - pointer ladder + boot + world entry + 1.14 nature-half all verified"
+
+          # the vanilla settings-tree E2E: click through Options → Video /
+          # Engine / Packs / Accessibility via the REAL input path and
+          # round-trip back to the title (the exact-screen replication guard)
+          set +e
+          timeout 120 xvfb-run -a -s "-screen 0 1280x720x24" \
+            env WGPU_BACKEND=Vulkan E2E_MENU=1 \
+            "./$BIN_NAME" --smoke --debug 2>&1 | tee menu.log
+          CODE=$?
+          set -e
+          echo "menu smoke exit code: $CODE"
+          if [ "$CODE" -ne 0 ]; then
+            echo "FAIL: settings-tree E2E did not round-trip cleanly (see menu.log)"
+            exit 1
+          fi
+          grep -q "running the settings-tree E2E" menu.log
+          grep -q "\[screen\] title -> options" menu.log
+          grep -q "\[screen\] options -> video" menu.log
+          grep -q "\[screen\] options -> engine" menu.log
+          grep -q "\[screen\] options -> packs" menu.log
+          grep -q "\[screen\] options -> access" menu.log
+          grep -q "e2e: settings tree ok (video/engine/packs/access)" menu.log
+          echo "SMOKE OK - pointer ladder + boot + world entry + 1.14 nature-half + settings tree all verified"
 
           # F3 debug overlay regression guard (user-reported "everything in
           # F3 was static"): same binary, FRESH directory (also proves the

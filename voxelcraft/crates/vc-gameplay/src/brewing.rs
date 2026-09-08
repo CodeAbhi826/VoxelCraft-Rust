@@ -117,6 +117,39 @@ pub const BREW_RECIPES: &[BrewRecipe] = &[
     // turtle master 3:00) are palette-absent — the engine has no
     // redstone-dust ITEM (disclosed; POTION_SLOW_FALLING_EXT exists as
     // a registry row for future rounds)
+    // ---- the 1.0-1.16.5 completeness audit: the 1.8 rabbit's-foot
+    // deferral, unblocked (the foot item landed in 1.8; the 1.8 round
+    // deferred "Potion of Leaping (brewing needs the rabbit's-foot
+    // recipe hook)" — the hook is this table). VERIFIED (live
+    // 2026-09-08, capture scripts/audit16_page_Potion.json — the
+    // ingredient chart lists Rabbit's Foot and Ghast Tear; the
+    // glowstone-enhanced forms follow the healing family's pattern) ----
+    // leaping: awkward + rabbit's foot -> Potion of Leaping (3:00)
+    BrewRecipe {
+        input: POTION_AWKWARD,
+        ingredient: RABBIT_FOOT,
+        output: POTION_LEAPING,
+    },
+    // leaping II: glowstone enhancement (1:30)
+    BrewRecipe {
+        input: POTION_LEAPING,
+        ingredient: GLOWSTONE,
+        output: POTION_LEAPING_II,
+    },
+    // regeneration: awkward + ghast tear -> Potion of Regeneration
+    // (0:45) — "Ghasts ... are the only source of ghast tears"
+    // (VERIFIED w/Ghast; the ghast itself lands this round)
+    BrewRecipe {
+        input: POTION_AWKWARD,
+        ingredient: GHAST_TEAR,
+        output: POTION_REGEN,
+    },
+    // regeneration II: glowstone enhancement (0:22)
+    BrewRecipe {
+        input: POTION_REGEN,
+        ingredient: GLOWSTONE,
+        output: POTION_REGEN_II,
+    },
 ];
 
 /// look up the brew result for an (input, ingredient) pair
@@ -132,8 +165,23 @@ pub fn brew_result(input: u16, ingredient: u16) -> Option<u16> {
 /// applied when the potion is drunk. The instant heal/harm family
 /// rides [`potion_heal`] instead.
 pub fn potion_effects(b: u16) -> &'static [(EffectKind, u8, i32)] {
-    use EffectKind::{Resistance, Slowness, SlowFalling};
+    use EffectKind::{JumpBoost, Regeneration, Resistance, Slowness, SlowFalling};
     match b {
+        // ---- the completeness audit: the leaping + regeneration
+        // families (the 1.8 deferral, unblocked) ----
+        // "Gives the player Jump Boost I for 3:00" (the vanilla row)
+        POTION_LEAPING => &[(JumpBoost, 0, 3600)],
+        // Jump Boost II, 1:30 (the glowstone-enhanced form)
+        POTION_LEAPING_II => &[(JumpBoost, 1, 1800)],
+        // redstone-extended 8:00 (the registry-row convention, gated)
+        POTION_LEAPING_LONG => &[(JumpBoost, 0, 9600)],
+        // Regeneration I, 0:45 ("applied every 25 ticks" per the
+        // engine's effect tick — the level-I row)
+        POTION_REGEN => &[(Regeneration, 0, 900)],
+        // Regeneration II, 0:22 (the glowstone-enhanced form)
+        POTION_REGEN_II => &[(Regeneration, 1, 440)],
+        // redstone-extended 1:30 (registry row, redstone-gated)
+        POTION_REGEN_LONG => &[(Regeneration, 0, 1800)],
         // "Gives the player the Slow Falling status effect for 1:30"
         POTION_SLOW_FALLING => &[(SlowFalling, 0, 1800)],
         // redstone-extended 4:00 (the item row exists; brewing it is
@@ -570,5 +618,38 @@ mod tests {
         // the instant family carries no duration rows
         assert!(potion_effects(POTION_HEALING).is_empty());
         assert!(potion_effects(POTION_WATER).is_empty());
+    }
+
+    /// the completeness audit: the 1.8 rabbit's-foot deferral, unblocked
+    /// — the leaping + regeneration families (VERIFIED live 2026-09-08
+    /// against the audit16_page_Potion.json capture)
+    #[test]
+    fn audit16_leaping_and_regen_brews() {
+        // leaping: awkward + rabbit's foot -> 3:00 Jump Boost I
+        assert_eq!(brew_result(POTION_AWKWARD, RABBIT_FOOT), Some(POTION_LEAPING));
+        // glowstone enhances: 1:30 Jump Boost II
+        assert_eq!(brew_result(POTION_LEAPING, GLOWSTONE), Some(POTION_LEAPING_II));
+        // regeneration: awkward + ghast tear -> 0:45 Regeneration I
+        assert_eq!(brew_result(POTION_AWKWARD, GHAST_TEAR), Some(POTION_REGEN));
+        // glowstone enhances: 0:22 Regeneration II
+        assert_eq!(brew_result(POTION_REGEN, GLOWSTONE), Some(POTION_REGEN_II));
+        // the effect rows: durations exact (3:00 = 3600, 1:30 = 1800,
+        // 0:45 = 900, 0:22 = 440; the long rows are registry-gated)
+        use crate::effects::EffectKind;
+        assert_eq!(potion_effects(POTION_LEAPING), &[(EffectKind::JumpBoost, 0, 3600)]);
+        assert_eq!(potion_effects(POTION_LEAPING_II), &[(EffectKind::JumpBoost, 1, 1800)]);
+        assert_eq!(potion_effects(POTION_LEAPING_LONG), &[(EffectKind::JumpBoost, 0, 9600)]);
+        assert_eq!(potion_effects(POTION_REGEN), &[(EffectKind::Regeneration, 0, 900)]);
+        assert_eq!(potion_effects(POTION_REGEN_II), &[(EffectKind::Regeneration, 1, 440)]);
+        assert_eq!(potion_effects(POTION_REGEN_LONG), &[(EffectKind::Regeneration, 0, 1800)]);
+        // no redstone item: the long rows are registry-only (the
+        // SLOW_FALLING_EXT convention — nothing brews them)
+        for ing in [GLOWSTONE, RABBIT_FOOT, GHAST_TEAR, MUSHROOM_RED] {
+            assert_eq!(brew_result(POTION_LEAPING, ing), if ing == GLOWSTONE {
+                Some(POTION_LEAPING_II)
+            } else {
+                None
+            });
+        }
     }
 }

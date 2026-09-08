@@ -22,7 +22,8 @@ pub enum Ing {
     /// recipe takes "Any Log or Stem or ..." — the 6-log engine set)
     AnyWood,
     /// 1.14: any planks (vanilla's stick/barrel recipes take "Any
-    /// Planks" — the engine's oak + jungle pair)
+    /// Planks" — the completeness audit extends the oak+jungle pair to
+    /// the 1.16 crimson/warped planks, vanilla-exact)
     AnyPlanks,
     Block(u16),
 }
@@ -951,6 +952,33 @@ pub const RECIPES: &[Recipe] = &[
     // powder pattern). The soul lantern follows from it: 8 iron
     // nuggets + 1 soul torch (VERIFIED w/Soul_Torch §Crafting
     // ingredient table: "Soul Lantern — Iron Nugget + Soul Torch").
+    // ---- the 1.0-1.16.5 completeness audit (VERIFIED live 2026-09-08
+    // against the audit16 captures) ----
+    // purpur block: 4 popped chorus fruit -> 4 (the 2x2 stone-family
+    // pattern; w/Popped_Chorus_Fruit: "used to craft End rods and
+    // purpur blocks" — the 1.9 purpur family finally crafts from its
+    // own ingredient instead of being picker-only)
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(POPPED_CHORUS_FRUIT), Ing::Block(POPPED_CHORUS_FRUIT),
+            Ing::Block(POPPED_CHORUS_FRUIT), Ing::Block(POPPED_CHORUS_FRUIT),
+        ],
+        out: ItemStack::new(PURPUR_BLOCK, 4),
+    },
+    // end rod: blaze rod + popped chorus fruit -> 4 (VERIFIED
+    // w/End_Rod §Crafting; the 1.9 end-rod's first recipe — the
+    // rod-over-chorus pair as the top row of the 2x2 window)
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(BLAZE_ROD),
+            Ing::Block(POPPED_CHORUS_FRUIT),
+            Ing::None,
+            Ing::None,
+        ],
+        out: ItemStack::new(END_ROD, 4),
+    },
 ];
 
 /// 1.16 (Nether Update, part 2): the shapeless SOUL-TORCH recipe —
@@ -960,6 +988,110 @@ pub const RECIPES: &[Recipe] = &[
 /// 8 iron nuggets + 1 soul torch (VERIFIED w/Soul_Torch §Crafting
 /// ingredient table: "Soul Lantern — Iron Nugget + Soul Torch" —
 /// the vanilla lantern recipe's soul form).
+/// the completeness audit: the shapeless KITCHEN chain (all VERIFIED
+/// live 2026-09-08 against the audit16 captures — the Bowl, Sugar,
+/// Mushroom_Stew, Rabbit_Stew, Beetroot_Soup, Pumpkin_Pie pages):
+/// - bowl: 3 "Any Planks" -> 4 (w/Bowl §Crafting: "Any Planks" -> 4)
+/// - sugar: 1 honey bottle -> 3 (the 1.15 craft; the empty-bottle
+///   grid-return is a no-container-return engine trim, disclosed —
+///   the drink path returns its bottle)
+/// - mushroom stew: 1 red + 1 brown + 1 bowl -> 1 (w/Mushroom_Stew
+///   §Crafting: "Red Mushroom + Brown Mushroom + Bowl")
+/// - rabbit stew: 1 cooked rabbit + 1 carrot + 1 baked potato + 1
+///   red-OR-brown mushroom + 1 bowl -> 1 (w/Rabbit_Stew §Crafting)
+/// - beetroot soup: 6 beetroot + 1 bowl -> 1 (w/Beetroot_Soup
+///   §Crafting: "Beetroot + Bowl", the 6-root set)
+/// - pumpkin pie: 1 pumpkin + 1 sugar + 1 egg -> 1 (w/Pumpkin_Pie
+///   §Crafting: "Pumpkin + Sugar + Any Egg")
+fn match_kitchen(slots: &[ItemStack], _size: usize) -> Option<ItemStack> {
+    let mut planks = 0;
+    let mut bowl = 0;
+    let mut red = 0;
+    let mut brown = 0;
+    let mut carrot = 0;
+    let mut baked = 0;
+    let mut rabbit = 0;
+    let mut beetroot = 0;
+    let mut pumpkin = 0;
+    let mut sugar = 0;
+    let mut egg = 0;
+    let mut honey = 0;
+    let mut melon_slice = 0;
+    let mut other = 0;
+    for s in slots {
+        match s.block {
+            PLANKS | JUNGLE_PLANKS | CRIMSON_PLANKS | WARPED_PLANKS if !s.is_empty() => planks += 1,
+            BOWL if !s.is_empty() => bowl += 1,
+            MUSHROOM_RED if !s.is_empty() => red += 1,
+            MUSHROOM_BROWN if !s.is_empty() => brown += 1,
+            CARROT if !s.is_empty() => carrot += 1,
+            BAKED_POTATO if !s.is_empty() => baked += 1,
+            COOKED_RABBIT if !s.is_empty() => rabbit += 1,
+            BEETROOT if !s.is_empty() => beetroot += 1,
+            PUMPKIN if !s.is_empty() => pumpkin += 1,
+            SUGAR if !s.is_empty() => sugar += 1,
+            EGG if !s.is_empty() => egg += 1,
+            HONEY_BOTTLE if !s.is_empty() => honey += 1,
+            MELON_SLICE if !s.is_empty() => melon_slice += 1,
+            MELON_SLICE if !s.is_empty() => melon_slice += 1,
+            _ if !s.is_empty() => other += 1,
+            _ => {}
+        }
+    }
+    if other > 0 {
+        return None;
+    }
+    let total = planks + bowl + red + brown + carrot + baked + rabbit
+        + beetroot + pumpkin + sugar + egg + honey + melon_slice;
+    // bowl: exactly 3 planks (the V-shape's 3 items, shapeless)
+    if planks == 3
+        && bowl == 0 && red == 0 && brown == 0 && carrot == 0 && baked == 0
+        && rabbit == 0 && beetroot == 0 && pumpkin == 0 && sugar == 0
+        && egg == 0 && honey == 0 && melon_slice == 0
+    {
+        return Some(ItemStack::new(BOWL, 4));
+    }
+    // sugar: exactly 1 honey bottle
+    if honey == 1 && total == 1 {
+        return Some(ItemStack::new(SUGAR, 3));
+    }
+    // mushroom stew: 1 red + 1 brown + 1 bowl
+    if red == 1 && brown == 1 && bowl == 1 && total == 3 {
+        return Some(ItemStack::new(MUSHROOM_STEW, 1));
+    }
+    // rabbit stew: 1 cooked rabbit + 1 carrot + 1 baked potato +
+    // exactly one mushroom (red or brown) + 1 bowl
+    if rabbit == 1
+        && carrot == 1
+        && baked == 1
+        && bowl == 1
+        && red + brown == 1
+        && total == 5
+    {
+        return Some(ItemStack::new(RABBIT_STEW, 1));
+    }
+    // beetroot soup: 6 beetroot + 1 bowl
+    if beetroot == 6 && bowl == 1 && total == 7 {
+        return Some(ItemStack::new(BEETROOT_SOUP, 1));
+    }
+    // pumpkin pie: 1 pumpkin + 1 sugar + 1 egg
+    if pumpkin == 1 && sugar == 1 && egg == 1 && total == 3 {
+        return Some(ItemStack::new(PUMPKIN_PIE, 1));
+    }
+    // ---- the sweep-2 melon rows (VERIFIED w/Melon_Slice §Crafting,
+    // live 2026-09-09: "Melon | Melon Slice" (the 3x3 nine-slice
+    // recipe) and "Melon Seeds | Melon Slice" (1:1)) ----
+    // the melon block: exactly 9 slices (the 3x3 grid)
+    if melon_slice == 9 && total == 9 {
+        return Some(ItemStack::new(MELON, 1));
+    }
+    // melon seeds: exactly 1 slice
+    if melon_slice == 1 && total == 1 {
+        return Some(ItemStack::new(MELON_SEEDS, 1));
+    }
+    None
+}
+
 fn match_soul_torch(slots: &[ItemStack], _size: usize) -> Option<ItemStack> {
     let mut fuel = 0; // coal or charcoal (exactly one)
     let mut stick_n = 0;
@@ -1032,6 +1164,11 @@ fn match_concrete_powder(slots: &[ItemStack], size: usize) -> Option<ItemStack> 
 /// recipe output. Trims to the bounding box first (vanilla grid-shape
 /// semantics: the pattern matches anywhere in the grid).
 pub fn match_grid(slots: &[ItemStack], size: usize) -> Option<ItemStack> {
+    // the completeness audit: the shapeless kitchen chain (the bowl /
+    // sugar / stew / pie recipes, any arrangement)
+    if let Some(out) = match_kitchen(slots, size) {
+        return Some(out);
+    }
     // 1.16 (Nether Update, part 2): the shapeless soul-torch +
     // soul-lantern recipes (any arrangement)
     if let Some(out) = match_soul_torch(slots, size) {
@@ -1067,7 +1204,14 @@ pub fn match_grid(slots: &[ItemStack], size: usize) -> Option<ItemStack> {
                                 )
                         }
                         Ing::AnyPlanks => {
-                            !s.is_empty() && matches!(s.block, PLANKS | JUNGLE_PLANKS)
+                            // the completeness audit: vanilla's "Any
+                            // Planks" covers every species — the 1.14-era
+                            // oak+jungle pair extended to the 1.16 woods
+                            !s.is_empty()
+                                && matches!(
+                                    s.block,
+                                    PLANKS | JUNGLE_PLANKS | CRIMSON_PLANKS | WARPED_PLANKS
+                                )
                         }
                     };
                     if !ok {
@@ -1106,6 +1250,113 @@ pub fn consume_grid(slots: &mut [ItemStack]) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// the completeness audit: the kitchen chain + the purpur family
+    /// (all VERIFIED live 2026-09-08 against the audit16 captures —
+    /// Bowl/Sugar/Mushroom_Stew/Rabbit_Stew/Beetroot_Soup/Pumpkin_Pie/
+    /// Popped_Chorus_Fruit)
+    #[test]
+    /// the sweep-2 melon crafts: 9 slices -> the melon block, 1 slice
+    /// -> melon seeds (VERIFIED w/Melon_Slice §Crafting, live 2026-09-09)
+    #[test]
+    fn audit16_sweep2_melon_crafts() {
+        let g = vec![ItemStack::new(MELON_SLICE, 1); 9];
+        let out = match_grid(&g, 3).expect("the 3x3 nine-slice recipe");
+        assert_eq!(out.block, MELON);
+        assert_eq!(out.count, 1);
+        // a partial grid (8 slices) must NOT craft
+        let mut partial = vec![ItemStack::EMPTY; 9];
+        for i in 0..8 {
+            partial[i] = ItemStack::new(MELON_SLICE, 1);
+        }
+        assert!(match_grid(&partial, 3).is_none(), "8 slices craft nothing");
+        // 1 slice -> 1 melon seed
+        let mut one = vec![ItemStack::EMPTY; 9];
+        one[4] = ItemStack::new(MELON_SLICE, 1);
+        let out = match_grid(&one, 3).expect("the slice-to-seeds row");
+        assert_eq!(out.block, MELON_SEEDS);
+        assert_eq!(out.count, 1);
+    }
+
+    fn audit16_kitchen_chain() {
+        // bowl: 3 planks -> 4 (shapeless — the V shape's 3 items)
+        let mut g = vec![ItemStack::new(PLANKS, 3); 9];
+        g[3] = ItemStack::new(DIRT, 1); // must be EXACTLY 3 planks
+        assert!(match_grid(&g, 3).is_none(), "stray dirt blocks the bowl");
+        let g = vec![
+            ItemStack::new(PLANKS, 1), ItemStack::new(PLANKS, 1), ItemStack::EMPTY,
+            ItemStack::new(PLANKS, 1), ItemStack::EMPTY, ItemStack::EMPTY,
+            ItemStack::EMPTY, ItemStack::EMPTY, ItemStack::EMPTY,
+        ];
+        let out = match_grid(&g, 3).unwrap();
+        assert_eq!((out.block, out.count), (BOWL, 4));
+        // crimson planks make bowls too (the "Any Planks" row)
+        let g = vec![
+            ItemStack::new(CRIMSON_PLANKS, 1), ItemStack::new(CRIMSON_PLANKS, 1), ItemStack::new(CRIMSON_PLANKS, 1),
+            ItemStack::EMPTY, ItemStack::EMPTY, ItemStack::EMPTY,
+            ItemStack::EMPTY, ItemStack::EMPTY, ItemStack::EMPTY,
+        ];
+        let out = match_grid(&g, 3).unwrap();
+        assert_eq!((out.block, out.count), (BOWL, 4));
+        // sugar: 1 honey bottle -> 3
+        let mut g = vec![ItemStack::EMPTY; 4];
+        g[2] = ItemStack::new(HONEY_BOTTLE, 1);
+        let out = match_grid(&g, 2).unwrap();
+        assert_eq!((out.block, out.count), (SUGAR, 3));
+        // mushroom stew: red + brown + bowl (shapeless)
+        let mut g = vec![ItemStack::EMPTY; 9];
+        g[0] = ItemStack::new(MUSHROOM_RED, 1);
+        g[4] = ItemStack::new(MUSHROOM_BROWN, 1);
+        g[8] = ItemStack::new(BOWL, 1);
+        let out = match_grid(&g, 3).unwrap();
+        assert_eq!((out.block, out.count), (MUSHROOM_STEW, 1));
+        // rabbit stew: cooked rabbit + carrot + baked potato + mushroom
+        // + bowl (VERIFIED w/Rabbit_Stew: the 5-ingredient row)
+        let mut g = vec![ItemStack::EMPTY; 9];
+        g[0] = ItemStack::new(COOKED_RABBIT, 1);
+        g[2] = ItemStack::new(CARROT, 1);
+        g[4] = ItemStack::new(BAKED_POTATO, 1);
+        g[6] = ItemStack::new(MUSHROOM_BROWN, 1);
+        g[8] = ItemStack::new(BOWL, 1);
+        let out = match_grid(&g, 3).unwrap();
+        assert_eq!((out.block, out.count), (RABBIT_STEW, 1));
+        // beetroot soup: 6 beetroot + bowl (SLOT counts — the ring
+        // pattern of the 3x3 minus the corners)
+        let mut g = vec![ItemStack::EMPTY; 9];
+        for i in [0, 2, 3, 5, 6, 8] {
+            g[i] = ItemStack::new(BEETROOT, 2);
+        }
+        g[4] = ItemStack::new(BOWL, 1);
+        let out = match_grid(&g, 3).unwrap();
+        assert_eq!((out.block, out.count), (BEETROOT_SOUP, 1));
+        // pumpkin pie: pumpkin + sugar + egg (shapeless)
+        let mut g = vec![ItemStack::EMPTY; 4];
+        g[0] = ItemStack::new(PUMPKIN, 1);
+        g[1] = ItemStack::new(SUGAR, 1);
+        g[3] = ItemStack::new(EGG, 1);
+        let out = match_grid(&g, 2).unwrap();
+        assert_eq!((out.block, out.count), (PUMPKIN_PIE, 1));
+    }
+
+    /// the audit: the purpur + end-rod crafts (the 1.9 purpur family
+    /// finally crafts from popped chorus)
+    #[test]
+    fn audit16_purpur_and_end_rod() {
+        // 4 popped chorus -> 4 purpur (2x2)
+        let g = vec![ItemStack::new(POPPED_CHORUS_FRUIT, 1); 4];
+        let out = match_grid(&g, 2).unwrap();
+        assert_eq!((out.block, out.count), (PURPUR_BLOCK, 4));
+        // blaze rod + popped chorus -> 4 end rods (the top row of the
+        // 2x2 window)
+        let g = vec![
+            ItemStack::new(BLAZE_ROD, 1),
+            ItemStack::new(POPPED_CHORUS_FRUIT, 1),
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
+        ];
+        let out = match_grid(&g, 2).unwrap();
+        assert_eq!((out.block, out.count), (END_ROD, 4));
+    }
 
     #[test]
     fn log_to_planks_at_any_position() {

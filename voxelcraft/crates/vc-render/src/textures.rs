@@ -20,6 +20,7 @@ mod v114c_art;
 mod v115_art;
 mod v116_art;
 mod v116b_art;
+mod audit16_art;
 
 pub const ATLAS_SIZE: usize = 512;
 pub const TILE_PX: usize = 16;
@@ -4311,6 +4312,42 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_MOB_STRIDER => v116b_art::strider_art(&mut a, t, &mut rng),
             TILE_MOB_PIGLIN => v116b_art::piglin_art(&mut a, t, &mut rng),
             TILE_MOB_HOGLIN => v116b_art::hoglin_art(&mut a, t, &mut rng),
+            // ---- the 1.0-1.16.5 completeness audit: the V15 window ----
+            TILE_STEAK => audit16_art::steak_art(&mut a, t, &mut rng),
+            TILE_COOKED_PORKCHOP => audit16_art::cooked_porkchop_art(&mut a, t, &mut rng),
+            TILE_COOKED_CHICKEN => audit16_art::cooked_chicken_art(&mut a, t, &mut rng),
+            TILE_COOKED_MUTTON => audit16_art::cooked_mutton_art(&mut a, t, &mut rng),
+            TILE_COOKED_COD => audit16_art::cooked_cod_art(&mut a, t, &mut rng),
+            TILE_COOKED_SALMON => audit16_art::cooked_salmon_art(&mut a, t, &mut rng),
+            TILE_APPLE => audit16_art::apple_art(&mut a, t, &mut rng),
+            TILE_BOWL => audit16_art::bowl_art(&mut a, t, &mut rng),
+            TILE_MUSHROOM_STEW => audit16_art::mushroom_stew_art(&mut a, t, &mut rng),
+            TILE_RABBIT_STEW => audit16_art::rabbit_stew_art(&mut a, t, &mut rng),
+            TILE_BEETROOT => audit16_art::beetroot_art(&mut a, t, &mut rng),
+            TILE_BEETROOT_SOUP => audit16_art::beetroot_soup_art(&mut a, t, &mut rng),
+            TILE_SUGAR => audit16_art::sugar_art(&mut a, t, &mut rng),
+            TILE_EGG => audit16_art::egg_art(&mut a, t, &mut rng),
+            TILE_POISONOUS_POTATO => audit16_art::poisonous_potato_art(&mut a, t, &mut rng),
+            TILE_POPPED_CHORUS => audit16_art::popped_chorus_art(&mut a, t, &mut rng),
+            TILE_GHAST_TEAR => audit16_art::ghast_tear_art(&mut a, t, &mut rng),
+            // the leaping + regeneration potions ride the shared helper
+            // (leaping: the cyan family; regeneration: the pink family —
+            // the glow flag follows the turtle/slow-falling II/EXT rows)
+            TILE_POTION_LEAPING => potion_art(&mut a, t, (40, 200, 200), false),
+            TILE_POTION_LEAPING_II => potion_art(&mut a, t, (80, 230, 230), true),
+            TILE_POTION_LEAPING_LONG => potion_art(&mut a, t, (30, 170, 180), true),
+            TILE_POTION_REGEN => potion_art(&mut a, t, (240, 120, 160), false),
+            TILE_POTION_REGEN_II => potion_art(&mut a, t, (250, 150, 180), true),
+            TILE_POTION_REGEN_LONG => potion_art(&mut a, t, (200, 90, 130), true),
+            // the classic trio's eggs + mob sprites
+            TILE_SPAWN_EGG_GHAST => audit16_art::ghast_egg_art(&mut a, t, &mut rng),
+            TILE_SPAWN_EGG_CAVESPIDER => audit16_art::cave_spider_egg_art(&mut a, t, &mut rng),
+            TILE_SPAWN_EGG_SILVERFISH => audit16_art::silverfish_egg_art(&mut a, t, &mut rng),
+            TILE_MOB_GHAST => audit16_art::ghast_art(&mut a, t, &mut rng),
+            TILE_MOB_CAVESPIDER => audit16_art::cave_spider_art(&mut a, t, &mut rng),
+            TILE_MOB_SILVERFISH => audit16_art::silverfish_art(&mut a, t, &mut rng),
+            // the sweep-2 food row: the melon slice
+            TILE_MELON_SLICE => audit16_art::melon_slice_art(&mut a, t, &mut rng),
             _ => {}
         }
     }

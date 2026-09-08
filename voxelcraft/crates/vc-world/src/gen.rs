@@ -3329,8 +3329,9 @@ impl TerrainGen {
     // cobwebbed side passages; chest loot = chests/abandoned_mineshaft.
     // ADAPTED (palette): oak instead of vanilla mixed timber; chest as a
     // plain CHEST block (no chest-minecart entity); no rails/cobwebs
-    // (palette-absent, honestly documented); cave-spider spawner → the
-    // registry's spider spawner (no distinct cave-spider mob).
+    // (palette-absent, honestly documented); the cave-spider spawner
+    // landed its own mob in the 1.0-1.16.5 completeness audit (the old
+    // spider-spawner stand-in retired, 2026-09-08).
 
     /// every mineshaft whose layout can reach the chunk containing world
     /// position (ox, oz) — the 7×7-chunk neighborhood covers the longest
@@ -3497,7 +3498,12 @@ impl TerrainGen {
             let lxi = (sx - ox) as usize;
             let lzi = (sz - oz) as usize;
             if lxi < 16 && lzi < 16 {
-                chunk.set_state(lxi, ms.y as usize, lzi, spawner_state(2));
+                // the completeness audit: the REAL cave-spider
+                // spawner (VERIFIED w/Cave_Spider: "Mineshaft: from
+                // monster spawners") — replacing the disclosed
+                // spider-spawner adaptation ("no distinct cave-spider
+                // mob"); the cobweb nest around it stays palette-absent
+                chunk.set_state(lxi, ms.y as usize, lzi, SPAWNER_CAVESPIDER);
             }
             // a chest near the far end (chests/abandoned_mineshaft seam)
             if len > 20 {
@@ -3779,12 +3785,24 @@ impl TerrainGen {
         // spawners on the upper two (VERIFIED "Spawn in the two upper
         // floors" for evokers; vindicators mansion-wide) — the engine's
         // spawner-block adaptation of vanilla's generation-time spawn
-        // (no-respawn nuance disclosed in the WORKLOG)
-        put(chunk, wx - 3, base + 6, wz - 3, SPAWNER_VINDICATOR);
-        put(chunk, wx + 3, base + 6, wz + 3, SPAWNER_VINDICATOR);
-        put(chunk, wx - 2, base + 11, wz + 2, SPAWNER_EVOKER);
-        put(chunk, wx + 2, base + 16, wz - 2, SPAWNER_EVOKER);
-        put(chunk, wx, base + 16, wz, SPAWNER_VINDICATOR);
+        // (no-respawn nuance disclosed in the WORKLOG). The completeness
+        // audit fix: these DEDICATED STATE ids now ride set_state (the
+        // fortress/dungeon pattern) — the old put()-as-block form leaned
+        // on default_state's identity fall-through, which the audit's
+        // V15 block window (GHAST_TEAR = 495) broke; states never route
+        // through the block-id path again.
+        let mut put_state = |chunk: &mut Chunk, x: i32, y: i32, z: i32, st: u16| {
+            let lxi = x - ox;
+            let lzi = z - oz;
+            if (0..16).contains(&lxi) && (0..16).contains(&lzi) && (0..256).contains(&y) {
+                chunk.set_state(lxi as usize, y as usize, lzi as usize, st);
+            }
+        };
+        put_state(chunk, wx - 3, base + 6, wz - 3, SPAWNER_VINDICATOR);
+        put_state(chunk, wx + 3, base + 6, wz + 3, SPAWNER_VINDICATOR);
+        put_state(chunk, wx - 2, base + 11, wz + 2, SPAWNER_EVOKER);
+        put_state(chunk, wx + 2, base + 16, wz - 2, SPAWNER_EVOKER);
+        put_state(chunk, wx, base + 16, wz, SPAWNER_VINDICATOR);
         // a couple of loot chests in the foyer
         put(chunk, wx - 4, base + 2, wz + 4, CHEST);
         put(chunk, wx + 4, base + 12, wz - 4, CHEST);
@@ -3970,6 +3988,22 @@ impl TerrainGen {
             put(chunk, px + (i - 1), y + 1, pz + 2, END_PORTAL_FRAME);
             put(chunk, px - 2, y + 1, pz + (i - 1), END_PORTAL_FRAME);
             put(chunk, px + 2, y + 1, pz + (i - 1), END_PORTAL_FRAME);
+        }
+        // the completeness audit: the stronghold's silverfish spawner —
+        // VERIFIED (minecraft.wiki/w/Silverfish, live 2026-09-08, capture
+        // scripts/audit16_page_Silverfish.json): "Stronghold: from
+        // infested blocks and monster spawners". The engine form: one
+        // spawner in the portal room's upper center (vanilla's own
+        // placement class — the ledge above the lava pool; the exact
+        // vanilla offset is per-stronghold random, the room center is
+        // the engine's deterministic stand-in, disclosed). The
+        // infested-block family is palette-absent, disclosed.
+        {
+            let lxi = px - ox;
+            let lzi = pz - oz;
+            if (0..16).contains(&lxi) && (0..16).contains(&lzi) && (0..256).contains(&(y + 4)) {
+                chunk.set_state(lxi as usize, (y + 4) as usize, lzi as usize, SPAWNER_SILVERFISH);
+            }
         }
         // doorway from the corridor into the portal room
         put(chunk, wx - 12, y + 1, wz, AIR);

@@ -77,7 +77,20 @@ pub fn is_ore_smelting(b: u16) -> bool {
 /// the FOOD cooking class (smoker inputs — VERIFIED vanilla food
 /// smelting rows that exist in the engine).
 pub fn is_food_smelting(b: u16) -> bool {
-    matches!(b, POTATO | RAW_RABBIT | KELP)
+    matches!(
+        b,
+        POTATO | RAW_RABBIT | KELP
+            // the completeness audit: the raw-meat rows (the standing
+            // cooked-meat deferral, closed — the smoker class VERIFIED
+            // w/Smoker: "cooks food items twice as fast"; vanilla's
+            // food-smelting rows)
+            | BEEF
+            | PORKCHOP
+            | CHICKEN_RAW
+            | MUTTON
+            | RAW_FISH
+            | RAW_SALMON
+    )
 }
 /// fuel burn times (game ticks)
 pub fn fuel_ticks(block: u16) -> i32 {
@@ -194,6 +207,24 @@ pub fn smelt_result(block: u16) -> Option<u16> {
         // IRON_ORE ingot stand-in, the disclosed gold convention)
         ANCIENT_DEBRIS => Some(NETHERITE_SCRAP),
         NETHER_GOLD_ORE => Some(IRON_ORE),
+        // ---- the 1.0-1.16.5 completeness audit (all VERIFIED live
+        // 2026-09-08 against the audit16 captures / the vanilla food
+        // smelting rows) ----
+        // the cooked-meat family: the standing deferral, closed
+        // ("Steak ... 8" hunger, w/Food; smelting raw beef -> steak
+        // etc. — the vanilla furnace rows)
+        BEEF => Some(STEAK),
+        PORKCHOP => Some(COOKED_PORKCHOP),
+        CHICKEN_RAW => Some(COOKED_CHICKEN),
+        MUTTON => Some(COOKED_MUTTON),
+        RAW_FISH => Some(COOKED_COD),
+        RAW_SALMON => Some(COOKED_SALMON),
+        // 1.9: popped chorus fruit — "obtained by smelting chorus
+        // fruit" (VERIFIED w/Popped_Chorus_Fruit)
+        CHORUS_FRUIT => Some(POPPED_CHORUS_FRUIT),
+        // the classic cactus -> green dye row (Cactus Green = the
+        // engine's DYE_BASE + 13, the 1.12 palette's green)
+        CACTUS => Some(DYE_BASE + 13),
         _ => None,
     }
 }
@@ -826,5 +857,34 @@ mod v112_tests {
         // the material items never smelt (already refined)
         assert_eq!(smelt_result(NETHERITE_SCRAP), None);
         assert_eq!(smelt_result(NETHERITE_INGOT), None);
+    }
+
+    /// the 1.0-1.16.5 completeness audit: the cooked-meat family + the
+    /// chorus + cactus rows (all VERIFIED against the audit16 captures)
+    #[test]
+    fn audit16_cooked_meat_and_chorus_smelts() {
+        // the six cooked-meat rows (the standing deferral, closed)
+        assert_eq!(smelt_result(BEEF), Some(STEAK));
+        assert_eq!(smelt_result(PORKCHOP), Some(COOKED_PORKCHOP));
+        assert_eq!(smelt_result(CHICKEN_RAW), Some(COOKED_CHICKEN));
+        assert_eq!(smelt_result(MUTTON), Some(COOKED_MUTTON));
+        assert_eq!(smelt_result(RAW_FISH), Some(COOKED_COD));
+        assert_eq!(smelt_result(RAW_SALMON), Some(COOKED_SALMON));
+        // 1.9: chorus fruit -> popped ("obtained by smelting chorus
+        // fruit", VERIFIED w/Popped_Chorus_Fruit)
+        assert_eq!(smelt_result(CHORUS_FRUIT), Some(POPPED_CHORUS_FRUIT));
+        // the classic cactus -> green dye row (Cactus Green is the
+        // DYE_BASE + 13 palette entry)
+        assert_eq!(smelt_result(CACTUS), Some(DYE_BASE + 13));
+        // the smoker class now carries the raw meats
+        assert!(is_food_smelting(BEEF));
+        assert!(is_food_smelting(RAW_SALMON));
+        assert!(!is_food_smelting(CHORUS_FRUIT), "chorus is not smoker food");
+        // the furnace accepts everything with a recipe; the blast
+        // furnace still rejects food (VERIFIED w/Blast_Furnace)
+        use crate::furnace::FurnaceKind;
+        assert!(FurnaceKind::Furnace.accepts(BEEF));
+        assert!(!FurnaceKind::Blast.accepts(BEEF));
+        assert!(FurnaceKind::Smoker.accepts(BEEF));
     }
 }

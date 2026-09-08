@@ -1486,6 +1486,11 @@ pub struct MobSystem {
     /// explosion requests (center, power) — game.rs owns world edits so
     /// the light engine updates ride along
     pub explosions: Vec<([f32; 3], f32)>,
+    /// 1.16: projectile hits on TARGET blocks, drained by the game
+    /// layer (position, power 1..=15, ticks_left — 20 for arrows/
+    /// tridents, 8 for the others; VERIFIED w/Target). Filled by
+    /// tick_arrows' block-collision arm.
+    pub target_hits: Vec<([i32; 3], u8, i32)>,
     /// Phase E1: zombie villagers whose cure finished (game.rs converts
     /// them to villagers + major_positive gossip — VERIFIED w/Zombie_Villager)
     pub cures: Vec<[f32; 3]>,
@@ -1522,6 +1527,7 @@ impl MobSystem {
             pending_drops: Vec::new(),
             pending_damage: Vec::new(),
             explosions: Vec::new(),
+            target_hits: Vec::new(),
             cures: Vec::new(),
             spawned_total: 0,
             despawned_total: 0,
@@ -1942,6 +1948,7 @@ impl MobSystem {
         // 5. arrows + snowball/fireball mob hits
         let mut mobs = std::mem::take(&mut self.list);
         let mut pending = std::mem::take(&mut self.pending_damage);
+        let mut target_hits = std::mem::take(&mut self.target_hits);
         tick_arrows(
             &mut self.arrows,
             player,
@@ -1950,9 +1957,11 @@ impl MobSystem {
             world,
             &mut mobs,
             &mut pending,
+            &mut target_hits,
         );
         self.list = mobs;
         self.pending_damage = pending;
+        self.target_hits = target_hits;
     }
 
     // --------------------------------------------------------- spawning --
@@ -4679,6 +4688,7 @@ fn tick_arrows(
     world: &World,
     mobs: &mut [Mob],
     pending: &mut Vec<(u32, f32)>,
+    target_hits: &mut Vec<([i32; 3], u8, i32)>,
 ) {
     let dt = 1.0 / 20.0;
     let mut i = 0;
@@ -4773,6 +4783,33 @@ fn tick_arrows(
             a.pos[2].floor() as i32,
         )) || a.age > 20 * 60
         {
+            // 1.16 (Nether Update, part 1): a projectile landing on a
+            // TARGET block powers it — "produces a temporary redstone
+            // signal when hit by a projectile"; "The strength of the
+            // signal depends on how close the projectile is to the
+            // center of the block, from 1 to 15"; "When struck by most
+            // projectiles, the target emits redstone power for 8 game
+            // ticks ... Arrows and tridents instead cause the target to
+            // emit power for 20 game ticks" (VERIFIED w/Target). Power
+            // from the hit point's distance to the cell center: 15 at
+            // dead-center, 1 at the face edge (the adaptation of the
+            // proximity rule).
+            let bx = a.pos[0].floor() as i32;
+            let by = a.pos[1].floor() as i32;
+            let bz = a.pos[2].floor() as i32;
+            if world.get_block(bx, by, bz) == TARGET {
+                let fx = (a.pos[0] - bx as f32 - 0.5).abs();
+                let fy = (a.pos[1] - by as f32 - 0.5).abs();
+                let fz = (a.pos[2] - bz as f32 - 0.5).abs();
+                let d = fx.max(fy).max(fz) * 2.0; // 0..1 from center
+                let power = (15.0 - d * 14.0).round().clamp(1.0, 15.0) as u8;
+                let ticks = if matches!(a.kind, ProjKind::Arrow | ProjKind::Trident) {
+                    20
+                } else {
+                    8
+                };
+                target_hits.push(([bx, by, bz], power, ticks));
+            }
             arrows.remove(i);
             continue;
         }
@@ -4795,6 +4832,12 @@ pub fn take_explosions(sys: &mut MobSystem) -> Vec<([f32; 3], f32)> {
         }
     }
     out
+}
+
+/// 1.16: drain the projectile-on-target hit queue (the game layer
+/// turns each hit into the blockstate power write + its decay timer).
+pub fn take_target_hits(sys: &mut MobSystem) -> Vec<([i32; 3], u8, i32)> {
+    std::mem::take(&mut sys.target_hits)
 }
 
 // ------------------------------------------------------------- rendering --
@@ -5098,7 +5141,7 @@ mod tests {
         // fly it at the player
         let world = flat_world();
         for _ in 0..300 {
-            tick_arrows(&mut sys.arrows, sys.player, false, &mut sys.hits, &world, &mut [], &mut Vec::new());
+            tick_arrows(&mut sys.arrows, sys.player, false, &mut sys.hits, &world, &mut [], &mut Vec::new(), &mut Vec::new());
             if !sys.hits.is_empty() {
                 break;
             }

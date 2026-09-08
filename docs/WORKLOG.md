@@ -2904,3 +2904,84 @@ Stage Summary:
 - 558/558 tests green; the 1.15 test-authoring bug fixed (0088a75)
 - Next: the 1.16 Nether Update bracket (nothing of it exists yet —
   no basalt/blackstone/soul soil/target/anchor/striders/piglins)
+
+---
+
+## Session 2026-09-08 (h) — 1.16 Nether Update, part 1 (the anchor family)
+
+Starting point: the auto-committed WIP `010a4d5` (~2.4k lines, the
+previous session's interrupted work — blocks/state window/art/gen/
+recipes/smelting/target-hit detection all present but UNTESTED and
+with real integration gaps). This session turned it into a verified
+round.
+
+**Test baseline first**: `cargo test --workspace` (audio off — the
+container lacks ALSA headers; `--no-default-features` on the app
+crate) failed 11 vc-blocks invariant tests + 1 vc-world nether test.
+
+**Real engine bugs found in the WIP and fixed**:
+1. `default_state()` had NO V13 arm — every 1.16 block fell to the
+   identity catch-all, so `default_state(SOUL_SOIL)=440` collided
+   with an old F-series STATE id (folded back to Raw Salmon). The
+   exact collision class the §28 invariant test exists for.
+2. `is_model_state()` had no V13 guard — V13 states would have
+   routed through the JSON-model path instead of BlockDef flags.
+3. The picker wrongly contained the four 1.15 ITEM blocks + the two
+   netherite items (the standing item-exclusion convention), and
+   `is_item_block()` never learned NETHERITE_SCRAP/NETHERITE_INGOT.
+4. `prop_states_roundtrip`'s window guard + per-window branches
+   needed the V13 case (charge/power re-encode, chain fold).
+
+**The gameplay layer (all this session, all wiki-verified against the
+v116 captures — research `docs/research/phase-v116-1.16-research.md`)**:
+- **Respawn anchor**: right-click with glowstone charges (+1, max 4,
+  consumes the item, state write + light via the 3/7/11/15 emissive
+  ladder); in the Nether with charge >= 1 the use sets the spawn
+  point (respawn_pos + a respawn_anchor ref); each respawn CONSUMES
+  one charge (0 left or anchor destroyed -> revert to world spawn);
+  used in any other dimension the block explodes power 5 (destroyed
+  first — it is blast-resistant) with the bed-in-nether death cause.
+  The charge also feeds adjacent redstone wire at exactly its count
+  (the comparator-signal class, direct_feed).
+- **Target block**: mobs.rs's projectile-hit detection (power 1..15
+  by center proximity, 8 gt / 20 gt for arrows+tridents) now drains
+  through the game layer into the POWER blockstate + a scheduler
+  entry at the verified window; `target_decay_tick` (vc-sim
+  redstone.rs) drops the state back to 0 and re-wakes wire. The
+  power feeds adjacent wire at its level.
+- **Soul fire**: contact damage 2 HP per 0.5 s (the campfire class
+  doubled) through the player's hazard queue — own accumulator, so
+  the two rates never alias.
+- **Drops**: gilded blackstone (10% -> 2-5 iron-nugget stand-ins,
+  else self), nether gold ore (2-6 nuggets), soul fire drops nothing
+  (uncollectable, like fire). Blast-1200 class (debris, crying
+  obsidian, anchor, netherite block) added to the explosion
+  resistance set.
+- **Chain**: placement writes the sitting/hanging V13 pair on
+  top-face/underside clicks (the lantern pattern).
+
+**E2E**: the `E2E_V116` stage (anchor ladder + respawn drain, target
+pulse -> wire feed 11 -> decay, the six craft contracts, the two
+smelt contracts, the nugget drop rolls, the soul-fire damage rate)
++ CI smoke greps in linux-game.yml. Unit tests: the V13 registry
+window test (blocks), target pulse/decay + anchor charge feed
+(vc-sim), soul-fire contact rate (player), the anchor-family
+recipes + nether smelting (vc-gameplay).
+
+**Local-run note**: this container has no libxkbcommon-x11 and no
+sudo, so the native X11 smoke cannot run locally — the E2E_V116
+stage rides CI (lavapipe). The unit layer covers the same contracts
+headlessly.
+
+**Total: 564/564 tests green** (558 + 6 new). Native check clean;
+wasm rebuild + browser verification in this session's bundle step.
+
+Stage Summary:
+- 1.16 part 1 (the anchor family) is feature-complete: registry,
+  gen, art, recipes, smelting, drops, anchor mechanics, target
+  redstone, soul fire, chain placement
+- The WIP's four real integration bugs fixed (default_state V13,
+  is_model_state V13, picker items, item-block list)
+- Part 2 (next): the mobs (strider, piglin, hoglin) + the
+  crimson/warped wood families; lodestone still deferred (no
+  compass item)

@@ -179,6 +179,9 @@ pub struct Player {
     /// "1 HP every tick (although damage immunity reduces this to once
     /// every half-second)")
     pending_hazard_dmg: f32,
+    /// 1.16: soul-fire contact accumulator (2 HP per 0.5 s — twice
+    /// the campfire rate, the shared damage-immunity window)
+    soulfire_accum: f32,
     /// 1.10: auto-jump hop cooldown (seconds) — one hop per obstacle
     autojump_cd: f32,
     /// 1.10: magma-contact accumulator (seconds; 1 HP per full second)
@@ -243,6 +246,7 @@ impl Player {
             autojump_cd: 0.0,
             magma_accum: 0.0,
             pending_hazard_dmg: 0.0,
+            soulfire_accum: 0.0,
             hazard_accum: 0.0,
             air: AIR_MAX,
             tick_accum: 0.0,
@@ -546,6 +550,28 @@ impl Player {
             }
         } else {
             self.hazard_accum = 0.0;
+        }
+
+        // ---- 1.16 (Nether Update, part 1): soul fire contact. VERIFIED
+        // w/Soul_Fire: "the fire inflicts damage at a rate of 2 HP per
+        // tick, twice as many as with the normal fire (although damage
+        // immunity reduces this to once every half-second)" → 2 HP per
+        // 0.5 s through the shared immunity window (the bush/campfire
+        // class, doubled). Soul fire fills the whole cell (a cross
+        // plant) — the feet cell is the contact test. ----
+        let in_soul_fire = vc_blocks::blocks::is_soul_fire(world.get_state(
+            self.pos.x.floor() as i32,
+            self.pos.y.floor() as i32,
+            self.pos.z.floor() as i32,
+        ));
+        if in_soul_fire {
+            self.soulfire_accum += dt;
+            while self.soulfire_accum >= 0.5 {
+                self.soulfire_accum -= 0.5;
+                self.pending_hazard_dmg += 2.0;
+            }
+        } else {
+            self.soulfire_accum = 0.0;
         }
 
         // wish direction (horizontal)
@@ -1985,4 +2011,57 @@ mod auditfix_tests {
         assert!(p.vel.y.abs() < 0.5, "hanging, not falling (vy={})", p.vel.y);
         assert!((p.pos.y - 70.0).abs() < 0.2, "held position (y={})", p.pos.y);
     }
+
+#[cfg(test)]
+mod v116_tests {
+    use super::*;
+    use std::sync::Arc;
+
+    fn flat_floor() -> World {
+        let mut w = World::new(7);
+        for dz in -1i32..=1 {
+            for dx in -1i32..=1 {
+                let mut c = vc_chunk::chunk::Chunk::empty();
+                for y in 0..=64i32 {
+                    for lz in 0..16usize {
+                        for lx in 0..16usize {
+                            c.set(lx, y as usize, lz, vc_blocks::blocks::STONE);
+                        }
+                    }
+                }
+                w.insert_generated((dx, dz), Arc::new(c), Vec::new());
+            }
+        }
+        w.dirty.clear();
+        w
+    }
+
+    /// 1.16 (Nether Update, part 1): soul fire contact — 2 HP per
+    /// half-second through the shared damage-immunity window (VERIFIED
+    /// w/Soul_Fire: "the fire inflicts damage at a rate of 2 HP per tick,
+    /// twice as many as with the normal fire (although damage immunity
+    /// reduces this to once every half-second)"). 0.6 s of standing in
+    /// the flame queues exactly one 2.0 HP packet.
+    #[test]
+    fn soul_fire_contact_doubles_the_campfire_rate() {
+        let mut w = flat_floor();
+        let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
+        p.flying = false;
+        let mut input = Input::default();
+        w.set_block(0, 65, 0, vc_blocks::blocks::SOUL_FIRE);
+        // 0.6 s at 60 Hz: the first 0.5 s window fires (2.0 HP), the
+        // remainder accumulates but has not fired yet
+        for _ in 0..36 {
+            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+        }
+        let dmg = p.take_pending_hazard_damage();
+        assert_eq!(dmg, 2.0, "soul fire queues 2 HP per 0.5 s window, got {dmg}");
+        // leaving the flame resets the accumulator (no bleed-over packet)
+        w.set_block(0, 65, 0, vc_blocks::blocks::AIR);
+        for _ in 0..6 {
+            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+        }
+        assert_eq!(p.take_pending_hazard_damage(), 0.0, "no damage after leaving");
+    }
+}
 }

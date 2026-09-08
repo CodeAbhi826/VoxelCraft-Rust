@@ -115,7 +115,7 @@ jobs:
           set -euo pipefail
           set +e
           timeout 180 xvfb-run -a -s "-screen 0 1280x720x24" \
-            env WGPU_BACKEND=Vulkan E2E_V114=1 E2E_V115=1 \
+            env WGPU_BACKEND=Vulkan E2E_V114=1 E2E_V115=1 E2E_V116=1 \
             "./$BIN_NAME" --smoke --debug 2>&1 | tee smoke.log
           CODE=$?
           set -e
@@ -166,6 +166,15 @@ jobs:
           grep -q "crafts=true" smoke.log
           grep -q "lifecycle=true" smoke.log
           grep -q "campfire-pacify=true" smoke.log
+          # 1.16 (Nether Update, part 1): the anchor family — the charge
+          # ladder + respawn drain, the target's hit pulse (wire feed at
+          # 11, decay to 0), the six craft contracts, the smelting path,
+          # the nugget drop rolls, and the 2 HP/0.5 s soul-fire rate
+          grep -q "e2e: v116 anchor=true" smoke.log
+          grep -q "ladder=true" smoke.log
+          grep -q "drain=true" smoke.log
+          grep -q "decay=true" smoke.log
+          grep -q "soulfire-dmg=2.0" smoke.log
 
           # the vanilla settings-tree E2E: click through Options → Video /
           # Engine / Packs / Accessibility via the REAL input path and

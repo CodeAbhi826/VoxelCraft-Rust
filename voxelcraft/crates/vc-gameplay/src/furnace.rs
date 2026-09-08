@@ -68,7 +68,10 @@ impl FurnaceKind {
 
 /// the ORE/metal smelting class (blast furnace inputs).
 pub fn is_ore_smelting(b: u16) -> bool {
-    matches!(b, COAL_ORE)
+    // 1.16: ancient debris + nether gold ore join the metal class
+    // (ancient debris is THE blast-furnace case — "twice as fast" is
+    // the documented vanilla usage; VERIFIED w/Ancient_Debris)
+    matches!(b, COAL_ORE | ANCIENT_DEBRIS | NETHER_GOLD_ORE)
 }
 
 /// the FOOD cooking class (smoker inputs — VERIFIED vanilla food
@@ -184,6 +187,13 @@ pub fn smelt_result(block: u16) -> Option<u16> {
         OAK_LOG | BIRCH_LOG | SPRUCE_LOG | ACACIA_LOG | DARK_OAK_LOG | JUNGLE_LOG => {
             Some(CHARCOAL)
         }
+        // 1.16 (Nether Update, part 1 — VERIFIED w/Ancient_Debris
+        // §Smelting: "Ancient Debris + Any fuel → Netherite Scrap" —
+        // 2 XP per scrap (the page's reward row); w/Nether_Gold_Ore
+        // §Smelting: smelts into a gold ingot — the engine's
+        // IRON_ORE ingot stand-in, the disclosed gold convention)
+        ANCIENT_DEBRIS => Some(NETHERITE_SCRAP),
+        NETHER_GOLD_ORE => Some(IRON_ORE),
         _ => None,
     }
 }
@@ -800,5 +810,21 @@ mod v112_tests {
             blast_flame, 150,
             "blast flame: 300 burn ticks at 2x = 150 sim ticks"
         );
+    }
+
+    /// 1.16 (Nether Update, part 1): ancient debris smelts to netherite
+    /// scrap (the blast-furnace case) and nether gold ore to a gold
+    /// ingot (the iron stand-in) — both VERIFIED §Smelting rows
+    #[test]
+    fn v116_nether_smelting() {
+        assert_eq!(smelt_result(ANCIENT_DEBRIS), Some(NETHERITE_SCRAP));
+        assert_eq!(smelt_result(NETHER_GOLD_ORE), Some(IRON_ORE));
+        // both join the metal class (the blast furnace accepts them —
+        // ancient debris is THE documented blast-furnace case)
+        assert!(is_ore_smelting(ANCIENT_DEBRIS));
+        assert!(is_ore_smelting(NETHER_GOLD_ORE));
+        // the material items never smelt (already refined)
+        assert_eq!(smelt_result(NETHERITE_SCRAP), None);
+        assert_eq!(smelt_result(NETHERITE_INGOT), None);
     }
 }

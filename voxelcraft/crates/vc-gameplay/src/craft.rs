@@ -814,6 +814,75 @@ pub const RECIPES: &[Recipe] = &[
         ],
         out: ItemStack::new(SHEARS, 1),
     },
+    // ---- 1.16 (Nether Update, part 1 — the anchor family): all
+    // VERIFIED against the v116 captures. ----
+    // respawn anchor: "6 crying obsidian + 3 glowstone" (w/Respawn_
+    // Anchor §Crafting — the crying obsidian ring around the
+    // glowstone column)
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(CRYING_OBSIDIAN), Ing::Block(GLOWSTONE), Ing::Block(CRYING_OBSIDIAN),
+            Ing::Block(CRYING_OBSIDIAN), Ing::Block(GLOWSTONE), Ing::Block(CRYING_OBSIDIAN),
+            Ing::Block(CRYING_OBSIDIAN), Ing::Block(GLOWSTONE), Ing::Block(CRYING_OBSIDIAN),
+        ],
+        out: ItemStack::new(RESPAWN_ANCHOR, 1),
+    },
+    // target: "4 redstone dust + 1 hay bale" (w/Target §Crafting —
+    // the dust cross around the hay bale center; the engine has no
+    // redstone-dust ITEM — the REDSTONE_BLOCK stand-in occupies the
+    // dust slots, disclosed)
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::None,              Ing::Block(REDSTONE_BLOCK), Ing::None,
+            Ing::Block(REDSTONE_BLOCK), Ing::Block(HAY_BALE),   Ing::Block(REDSTONE_BLOCK),
+            Ing::None,              Ing::Block(REDSTONE_BLOCK), Ing::None,
+        ],
+        out: ItemStack::new(TARGET, 1),
+    },
+    // netherite ingot: "crafting four netherite scraps and four gold
+    // ingots together" (VERIFIED w/Netherite_Ingot — gold is the
+    // engine's IRON_ORE ingot stand-in, the disclosed convention)
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(NETHERITE_SCRAP), Ing::Block(IRON_ORE),     Ing::Block(NETHERITE_SCRAP),
+            Ing::Block(IRON_ORE),        Ing::None,                 Ing::Block(IRON_ORE),
+            Ing::Block(NETHERITE_SCRAP), Ing::Block(IRON_ORE),     Ing::Block(NETHERITE_SCRAP),
+        ],
+        out: ItemStack::new(NETHERITE_INGOT, 1),
+    },
+    // block of netherite: 9 ingots (the storage-block convention,
+    // VERIFIED w/Block_of_Netherite) ...
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(NETHERITE_INGOT), Ing::Block(NETHERITE_INGOT), Ing::Block(NETHERITE_INGOT),
+            Ing::Block(NETHERITE_INGOT), Ing::Block(NETHERITE_INGOT), Ing::Block(NETHERITE_INGOT),
+            Ing::Block(NETHERITE_INGOT), Ing::Block(NETHERITE_INGOT), Ing::Block(NETHERITE_INGOT),
+        ],
+        out: ItemStack::new(NETHERITE_BLOCK, 1),
+    },
+    // ... and back into 9 (both directions, the storage convention)
+    Recipe {
+        size: 1,
+        grid: &[Ing::Block(NETHERITE_BLOCK)],
+        out: ItemStack::new(NETHERITE_INGOT, 9),
+    },
+    // chain: "iron nuggets + iron ingot" (VERIFIED w/Chain — the 1.16
+    // iron-only form; the copper halves of the current wiki row are
+    // 1.21+ additions, out of bracket). Vertical: 1 nugget over the
+    // ingot over 1 nugget.
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::None, Ing::Block(IRON_NUGGET), Ing::None,
+            Ing::None, Ing::Block(IRON_ORE),    Ing::None,
+            Ing::None, Ing::Block(IRON_NUGGET), Ing::None,
+        ],
+        out: ItemStack::new(CHAIN, 1),
+    },
 ];
 
 /// 1.12 (World of Color): the concrete-powder recipe — the engine's
@@ -1405,5 +1474,60 @@ mod v112_tests {
         // is the engine's first flower crafts, disclosed)
         let g = vec![ItemStack::new(ALLIUM, 1)];
         assert!(match_grid(&g, 1).is_none(), "allium has no dye recipe yet");
+    }
+
+    /// 1.16 (Nether Update, part 1): the anchor family's six craft
+    /// contracts (all VERIFIED against the v116 captures — gold = the
+    /// iron-ingot stand-in, redstone dust = the redstone block, both
+    /// the disclosed conventions)
+    #[test]
+    fn v116_anchor_family_recipes() {
+        // respawn anchor: 6 crying obsidian + 3 glowstone (the ring
+        // around the column)
+        let g = vec![
+            ItemStack::new(CRYING_OBSIDIAN, 1), ItemStack::new(GLOWSTONE, 1), ItemStack::new(CRYING_OBSIDIAN, 1),
+            ItemStack::new(CRYING_OBSIDIAN, 1), ItemStack::new(GLOWSTONE, 1), ItemStack::new(CRYING_OBSIDIAN, 1),
+            ItemStack::new(CRYING_OBSIDIAN, 1), ItemStack::new(GLOWSTONE, 1), ItemStack::new(CRYING_OBSIDIAN, 1),
+        ];
+        let out = match_grid(&g, 3).unwrap();
+        assert_eq!((out.block, out.count), (RESPAWN_ANCHOR, 1));
+
+        // target: 4 redstone dust (block stand-in) around 1 hay bale
+        let g = vec![
+            ItemStack::EMPTY,               ItemStack::new(REDSTONE_BLOCK, 1), ItemStack::EMPTY,
+            ItemStack::new(REDSTONE_BLOCK, 1), ItemStack::new(HAY_BALE, 1),   ItemStack::new(REDSTONE_BLOCK, 1),
+            ItemStack::EMPTY,               ItemStack::new(REDSTONE_BLOCK, 1), ItemStack::EMPTY,
+        ];
+        let out = match_grid(&g, 3).unwrap();
+        assert_eq!((out.block, out.count), (TARGET, 1));
+
+        // netherite ingot: 4 scrap + 4 gold (iron stand-in) in the
+        // checker board
+        let g = vec![
+            ItemStack::new(NETHERITE_SCRAP, 1), ItemStack::new(IRON_ORE, 1), ItemStack::new(NETHERITE_SCRAP, 1),
+            ItemStack::new(IRON_ORE, 1),        ItemStack::EMPTY,           ItemStack::new(IRON_ORE, 1),
+            ItemStack::new(NETHERITE_SCRAP, 1), ItemStack::new(IRON_ORE, 1), ItemStack::new(NETHERITE_SCRAP, 1),
+        ];
+        let out = match_grid(&g, 3).unwrap();
+        assert_eq!((out.block, out.count), (NETHERITE_INGOT, 1));
+
+        // block of netherite: 9 ingots, and back into 9
+        let g = vec![ItemStack::new(NETHERITE_INGOT, 1); 9];
+        let out = match_grid(&g, 3).unwrap();
+        assert_eq!((out.block, out.count), (NETHERITE_BLOCK, 1));
+        let g = vec![ItemStack::new(NETHERITE_BLOCK, 1)];
+        let out = match_grid(&g, 1).unwrap();
+        assert_eq!((out.block, out.count), (NETHERITE_INGOT, 9));
+
+        // chain: 1 nugget over the ingot over 1 nugget, down the
+        // middle column of the 3x3 grid (the 1.16 iron-only form; the
+        // copper variants are 1.21+)
+        let g = vec![
+            ItemStack::EMPTY,           ItemStack::new(IRON_NUGGET, 1), ItemStack::EMPTY,
+            ItemStack::EMPTY,           ItemStack::new(IRON_ORE, 1),     ItemStack::EMPTY,
+            ItemStack::EMPTY,           ItemStack::new(IRON_NUGGET, 1), ItemStack::EMPTY,
+        ];
+        let out = match_grid(&g, 3).unwrap();
+        assert_eq!((out.block, out.count), (CHAIN, 1));
     }
 }

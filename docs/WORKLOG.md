@@ -2533,3 +2533,132 @@ smoker chorus-fruit row (no chorus), lantern chain-connect rendering.
 release build clean, local lavapiipe smoke green end-to-end with the
 v114b stage (out=1/lit=true/100-tick cooks, neighbor-block-light=15,
 popped=true).
+
+---
+
+## Session 2026-09-08 (d) — web-preview panic fix + 1.14 part-3 flowers
+
+Task ID: 1 (panic fix) + 2 (main-plan continuation)
+Agent: main (Z)
+Task: (1) fix the website preview dying at boot with "Engine error:
+panicked … time not implemented on this platform"; (2) continue the
+main plan — the last deferred 1.14 nature item, the flowers.
+
+**Reproduction:** headless browser against the dev server (port 3000)
+— the boot overlay showed `Engine error: panicked at
+library/std/src/sys/time/unsupported.rs:13:9: time not implemented on
+this platform`, with the stack pointing into the wasm bundle.
+
+**Root cause:** `std::time::Instant::now()` COMPILES on
+wasm32-unknown-unknown but PANICS at runtime. Two wasm-reachable call
+sites shipped in commit 2c29757's auto-rebuilt bundle: (a) the boot
+diagnostics timer `t_boot = std::time::Instant::now()` in
+`GameApp::new` (added with the staged intro — fires on EVERY boot,
+the reported crash), and (b) the `--debug`/`?debug` timestamp anchor
+`DEBUG_START.get_or_init(std::time::Instant::now)` in vc-render
+(fires only with the flag on). The CI compile gate can't catch this
+class (it compiles), the native smoke runs the same code where
+std::time works, and the wasm auto-rebuild workflow pushes its bundle
+with [skip ci] — no browser replay anywhere. All other time sites
+were already cfg-gated correctly (boot_uptime, random_seed, autosave,
+the gpu_mesh stall watchdog, bench micros — each with its wasm arm).
+
+**Fix (web-time):** the `web-time` crate — wgpu's own solution, a
+`std` re-export on native and `performance.now()`/`Date` on wasm —
+already in Cargo.lock 0.2.4 via wgpu's dependency tree, so no new
+resolution. Added as a workspace dependency and swapped in at:
+- `voxelcraft/game.rs` — the boot timer (t_boot)
+- `vc-render/render.rs` — the DEBUG_START anchor (type + both
+  get_or_init sites)
+- `vc-anvil` `now_secs()` + the level.dat LastPlayed stamp (native-
+  only today, but the same trap if saves ever un-gate — defense in
+  depth)
+
+**Local toolchain (this sandbox had none):** rustup stable +
+wasm32-unknown-unknown target + wasm-bindgen-cli 0.2.127 (pinned to
+the crate), matching CI. Local wasm build via
+scripts/build-wasm-bundle.sh (the CI recipe verbatim: cargo release
+lib -> wasm-bindgen --target web -> patch-wasm-glue.py -> public/).
+Native tests needed ALSA headers without root: apt-get download
+libasound2-dev + dpkg -x into ~/alsa-dev, patched alsa.pc paths,
+PKG_CONFIG_PATH (alsa-sys is pkg-config-only).
+
+**Browser verification (agent-browser, after the fix):** clean boot
+(overlay hides, canvas 1280x577 live, "intro complete … title in
+2.62s"), ZERO panics in the console, `?debug` streams live
+`[t+ 8.3s][screen] intro -> title` (the second panic site fixed), and
+a full interactive replay through the input shim: title -> options
+-> title -> create -> loading -> **world entered** ("New World" seed
+12846350442853681743 spawn (0,19,0) mode Survival) with the [perf]
+heartbeat live (fps/chunk/mob counters). Screenshots:
+docs/screenshots/web-preview-fixed-{boot,gameplay}.png. (Also
+root-caused a display artifact along the way: the Bash output pipeline
+eats literal "[h" sequences — "Lantern[hanging=true]" READS as
+"Lanternanging=true]" in terminal output; the files were always
+correct. Do not "fix" strings from terminal display — verify with the
+Read tool first.)
+
+**1.14 part-3 flowers (the main-plan continuation):** research
+captures scripts/v114c_page_{Cornflower,Lily_of_the_Valley}.json
+(minecraft.wiki, clean-room). Verified contracts: both 18w43a,
+non-solid cross plants, instant-break, drop themselves, plantable on
+the grass/dirt family; cornflower crafts 1:1 into blue dye and
+generates in plains/sunflower plains/flower forest; lily of the
+valley crafts 1:1 into white dye and generates in the forest family
+(forest, birch, flower forest; dark forest out of bracket).
+
+Registry: V11 window grown to ids 426..=431 (CORNFLOWER 430,
+LILY_OF_THE_VALLEY 431), states 689..=697 (one per flower, no
+properties), tiles 640..=641; BLOCK_COUNT 432, STATE_COUNT 698,
+TILE_MAX 641, PICKER_BLOCKS 391 (both flowers in the creative
+picker; not item-blocks). The WGSL gpu-mesh LUT offsets + defensive
+clamps resynced (L_FL 698, L_TC 1130, L_ST 1562, min(s,697),
+min(b,431)) — the wgsl_lut_offsets_match_rust drift test green. All
+14 registry-count drift asserts bumped (the audit trail's 430/696
+hardcodes).
+
+Gen: the flower-forest small-flower mix grew 8-way -> 10-way
+(cornflower slot 8, lily slot 9); a dedicated Plains arm (tall grass
+72% / poppy / dandelion / cornflower 10%); a Forest|BirchForest arm
+(lily 10%). First test draft flaked (10 plant attempts x 8% lily over
+4 chunks rolled zero on the fixed world seed) — lily slice raised to
+10% and the test scans 8 chunks; green 4/4.
+
+Crafting: the flower->dye pair as 1x1 shaped recipes (the
+log->planks convention): CORNFLOWER -> DYE_BASE+11 (blue, the lapis
+row), LILY_OF_THE_VALLEY -> DYE_BASE (white). The engine's first
+flower dye recipes — the 1.7 flowers remain unwired (disclosed
+deferral).
+
+Art: vc-render/src/textures/v114c_art.rs — the allium cross-plant
+layout; cornflower (deep-blue petal cluster D/B/W tones, stem +
+paired leaves), lily (white bell florets W/w along the stem, broad
+basal leaves). Dispatch arms in textures.rs; the
+v114b_tiles_all_painted coverage guard auto-extends to 641.
+
+E2E: e2e_v114c stage (rides the shared E2E_V114 gate) — both flowers
+planted on grass, states round-trip, F3 targeted-block lines decode
+the plain names, both dye crafts resolve via match_grid, and the
+instant-break contract; one consolidated boot-log line, with four
+new blocking greps in linux-game.yml.
+
+Deferred with reasons: wither rose (needs the entity-damage aura +
+wither-kill acquisition), suspicious stew (no stew system),
+bone-meal post-generation (no composter), flower pots for the new
+pair (the engine's pot is decorative-only), 1.7-flower dye recipes.
+
+**Verification:** 539/539 workspace tests green (+2: the flower dye
+pair + the biome gen test; the v11 registry test extended in place),
+wasm32 lib clean, the browser preview verified end-to-end as above.
+Bundle in public/ rebuilt locally (CI rebuilds on push). Pushed with
+README bracket 11c + maintenance note 8.
+
+Stage Summary:
+- Web preview fixed: web-time replaces every wasm-reachable
+  std::time call; preview verified boot -> title -> world entry in
+  a real browser with zero panics and ?debug live
+- 1.14 nature half COMPLETE (parts 1-3): bamboo/berry/campfire/
+  barrel/fox + smelters/lantern/nugget + cornflower/lily — next
+  main-plan round: 1.15 Buzzy Bees
+- Standing lesson recorded: wasm32 "compiles but panics" APIs need a
+  browser replay in CI, not just a compile gate (candidate follow-up)

@@ -16,12 +16,12 @@ export const wgpu_render_bundle_set_index_buffer: (a: number, b: bigint, c: numb
 export const wgpu_render_bundle_push_debug_group: (a: number, b: number) => void;
 export const __wasm_bindgen_func_elem_11155: (a: number, b: number, c: number, d: number) => void;
 export const __wasm_bindgen_func_elem_856: (a: number, b: number, c: number, d: number) => void;
-export const __wasm_bindgen_func_elem_4182: (a: number, b: number, c: number) => void;
 export const __wasm_bindgen_func_elem_2705: (a: number, b: number, c: number) => void;
+export const __wasm_bindgen_func_elem_3177: (a: number, b: number, c: number) => void;
 export const __wasm_bindgen_func_elem_855: (a: number, b: number, c: number) => void;
 export const __wasm_bindgen_func_elem_2705_5: (a: number, b: number, c: number) => void;
 export const __wasm_bindgen_func_elem_855_6: (a: number, b: number, c: number) => void;
-export const __wasm_bindgen_func_elem_4182_7: (a: number, b: number, c: number) => void;
+export const __wasm_bindgen_func_elem_3177_7: (a: number, b: number, c: number) => void;
 export const __wasm_bindgen_func_elem_2705_8: (a: number, b: number, c: number) => void;
 export const __wasm_bindgen_func_elem_2705_9: (a: number, b: number, c: number) => void;
 export const __wasm_bindgen_func_elem_2705_10: (a: number, b: number, c: number) => void;

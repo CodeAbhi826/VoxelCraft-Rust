@@ -1454,6 +1454,138 @@ pub fn sea_pickle_state(count: u8) -> u16 {
     V9_STATE_BASE + 30 + (count.saturating_sub(1)).min(3) as u16
 }
 
+// ---- 1.14 bracket (Village & Pillage — NATURE HALF): ids 417..=425,
+// the V10 window. All values VERIFIED live 2026-09-08 from the raw
+// captures scripts/v114_page_*.json (bamboo, sweetberrybush, campfire,
+// barrel, fox — minecraft.wiki) — the research record
+// docs/research/phase-v114-1.14-research.md:
+// * bamboo stalk — "a versatile, fast-growing plant found primarily in
+//   jungles"; growth "Upon receiving a random tick, bamboo has a 1/3
+//   chance of growing"; "The top of a bamboo plant requires a client
+//   light level of 9 or above"; "can grow up to 12-16 blocks tall"
+// * bamboo shoot — "the initial non-solid sapling form of planted
+//   bamboo"
+// * sweet berry bush — age 0..3 ("third growth stage" = age 2,
+//   "mature" = age 3); "A sweet berry bush (at any stage) slows down
+//   all entities (except items) passing through it. At stage 1 and
+//   higher, it causes damage"; damage "1 HP every tick (although
+//   damage immunity reduces this to once every half-second), only if
+//   the entity is moving"; slow "to about 34.05% of their normal
+//   speed"; growth "a 20% chance per random tick"; taiga/snowy-taiga
+//   generation at "a 1/12 chance" per chunk
+// * sweet berries (item) — food "restores 2 hunger and 0.4 [JE]
+//   saturation"; plants a bush on grass-family blocks; fox breeding
+//   food (VERIFIED w/Sweet_Berries §Breeding)
+// * campfire — hardness 2, "Luminous Yes (15) when lit"; breaking
+//   "drops 2 charcoal"; "deal 1 HP every tick (although damage
+//   immunity reduces this to once every half-second)" to mobs
+//   STANDING ON a lit one; cooking "30 seconds (600 ticks)" across
+//   4 food slots, "campfires do not require any kind of fuel";
+//   smoke "floats up around 10 blocks" (24 over a hay bale)
+// * barrel — "a container inventory with 27 slots, which is the same
+//   as a single chest"; "the action of opening a barrel is never
+//   prevented"; hardness 2.5; crafted from "6 wood planks and 2 wood
+//   slabs" (the 18w50a history row)
+// * fox spawn egg (kind 40) + STICK and CHARCOAL — two LEGACY items
+//   added late (see the row docs below): the first recipes that
+//   consume a stick (the campfire) and produce charcoal (log
+//   smelting + the campfire drop) arrive in THIS bracket, so the
+//   1.14 window carries them. Disclosed.
+//
+// The village half of 1.14 (villages/pillager/raids/crossbow/bell/
+// wandering trader/loom/stonecutter/...) is deferred until the engine
+// has village+raid scaffolding — same deferral class as prior brackets.
+pub const BAMBOO: u16 = 417;
+pub const BAMBOO_SHOOT: u16 = 418;
+pub const SWEET_BERRY_BUSH: u16 = 419;
+pub const CAMPFIRE: u16 = 420;
+pub const BARREL: u16 = 421;
+/// 1.14: sweet berries — the food + planting item (inventory-only;
+/// the plant branch in the game layer turns a use on soil into a bush).
+pub const SWEET_BERRIES: u16 = 422;
+/// 1.14: the fox spawn egg (kind 40 — the next egg window slot).
+pub const SPAWN_EGG_FOX: u16 = 423;
+/// LEGACY item added in the 1.14 window: the stick (an Alpha-era item
+/// the engine never needed until the campfire recipe — 3 sticks per
+/// campfire, VERIFIED w/Campfire §Crafting "Stick + Coal or Charcoal
+/// + Any Log..."). Crafted 2 planks (vertical) -> 4 sticks.
+pub const STICK: u16 = 424;
+/// LEGACY item added in the 1.14 window: charcoal (smelted from any
+/// log since Indev — the engine's furnace round predates cooked-meat
+/// forms and never added it). Sources: log smelting + the campfire's
+/// 2-charcoal drop. Fuel-identical to coal (1600 ticks).
+pub const CHARCOAL: u16 = 425;
+
+pub const V10_STATE_BASE: u16 = 676;
+// 13 states: bamboo stalk 1, shoot 1, berry bush 4 (age 0..3),
+// campfire 2 (unlit/lit), barrel 1, then the 4 item states (berries,
+// fox egg, stick, charcoal).
+pub const V10_COUNT: u16 = 13;
+/// V10 state -> block fold: the bush's 4 age states and the campfire's
+/// 2 lit states fold to their parent blocks (per-state art rides
+/// state_tiles).
+pub const V10_STATE_TO_BLOCK: [u16; V10_COUNT as usize] = [
+    BAMBOO,
+    BAMBOO_SHOOT,
+    // sweet berry bush: 4 age states
+    SWEET_BERRY_BUSH, SWEET_BERRY_BUSH, SWEET_BERRY_BUSH, SWEET_BERRY_BUSH,
+    // campfire: unlit, lit
+    CAMPFIRE, CAMPFIRE,
+    BARREL,
+    // item states
+    SWEET_BERRIES, SPAWN_EGG_FOX, STICK, CHARCOAL,
+];
+
+#[inline]
+pub fn v10_state(b: u16) -> Option<u16> {
+    match b {
+        BAMBOO => Some(V10_STATE_BASE),
+        BAMBOO_SHOOT => Some(V10_STATE_BASE + 1),
+        SWEET_BERRY_BUSH => Some(V10_STATE_BASE + 2), // age 0
+        // vanilla places campfires LIT (extinguished later by water)
+        CAMPFIRE => Some(V10_STATE_BASE + 7),
+        BARREL => Some(V10_STATE_BASE + 8),
+        SWEET_BERRIES => Some(V10_STATE_BASE + 9),
+        SPAWN_EGG_FOX => Some(V10_STATE_BASE + 10),
+        STICK => Some(V10_STATE_BASE + 11),
+        CHARCOAL => Some(V10_STATE_BASE + 12),
+        _ => None,
+    }
+}
+
+#[inline]
+pub fn is_v10_state(s: u16) -> bool {
+    (V10_STATE_BASE..V10_STATE_BASE + V10_COUNT).contains(&s)
+}
+
+/// sweet berry bush growth age (0..3) from its storage state.
+#[inline]
+pub fn berry_bush_age(s: u16) -> u8 {
+    if (V10_STATE_BASE + 2..=V10_STATE_BASE + 5).contains(&s) {
+        (s - (V10_STATE_BASE + 2)) as u8
+    } else {
+        0
+    }
+}
+
+/// state for a berry bush at a given age (clamped 0..3).
+#[inline]
+pub fn berry_bush_state(age: u8) -> u16 {
+    V10_STATE_BASE + 2 + (age.min(3)) as u16
+}
+
+/// is the campfire storage state the LIT one?
+#[inline]
+pub fn campfire_lit(s: u16) -> bool {
+    s == V10_STATE_BASE + 7
+}
+
+/// state for a campfire (lit or extinguished).
+#[inline]
+pub fn campfire_state(lit: bool) -> u16 {
+    V10_STATE_BASE + 6 + if lit { 1 } else { 0 }
+}
+
 /// the 5 coral colors (tube/brain/bubble/fire/horn — the changelog's
 /// own list; VERIFIED w/Coral_Block).
 pub const CORAL_NAMES: [&str; 5] = ["Tube", "Brain", "Bubble", "Fire", "Horn"];
@@ -2073,7 +2205,7 @@ pub fn item_state_block(s: u16) -> Option<u16> {
     }
 }
 
-pub const BLOCK_COUNT: usize = 417; // 1.13: V9 window ids 361..=416 (coral/pickle/kelp/conduit + items)
+pub const BLOCK_COUNT: usize = 426; // 1.14: V10 window ids 417..=425 (bamboo/bush/campfire/barrel + berries/fox egg/stick/charcoal)
 /// [merge renumber] acacia/dark-oak log axis states moved to 443..=446
 /// (past the E-series states, which end at 354; V2 base is now 400)
 /// acacia/dark-oak log axis states (the V2 log window — same pattern as
@@ -2110,7 +2242,7 @@ pub const DARK_OAK_LOG_Z: u16 = 446;
 /// items + eggs 20..=22 + the POWER-state ladders (317..=399)
 /// [merge renumber] F-series states: V2 400..=442 + log-axis 443..=446,
 /// V3 447..=465, V4 466..=475, V5 476..=479, V6 480..=485 (audit-fix)
-pub const STATE_COUNT: usize = 676; // 1.13: V9 states 615..=675 (coral 30 + pickle 4 + 27 + items)
+pub const STATE_COUNT: usize = 689; // 1.14: V10 states 676..=688 (bamboo/shoot + bush 4 + campfire 2 + barrel + 4 items)
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -2482,6 +2614,11 @@ pub fn default_state(b: u16) -> u16 {
         // 1.13 (Update Aquatic): the V9 window — 1:1 defaults; the sea
         // pickle places with 1 pickle, the turtle egg at stage 0
         b if v9_state(b).is_some() => v9_state(b).unwrap(),
+        // 1.14 (Village & Pillage): the V10 window — the berry bush
+        // places at age 0; campfires place LIT (extinguished later);
+        // placement of a BAMBOO item on soil routes to the SHOOT form
+        // via the game layer's plant branch
+        b if v10_state(b).is_some() => v10_state(b).unwrap(),
         b if (262..262 + V4_COUNT as u16).contains(&b) => {
             V4_STATE_BASE + (b - 262) as u16
         }
@@ -2806,6 +2943,12 @@ pub fn state_block(s: u16) -> u16 {
         s if is_v9_state(s) => {
             return V9_STATE_TO_BLOCK[(s - V9_STATE_BASE) as usize];
         }
+        // 1.14 (Village & Pillage nature half): the V10 window — the
+        // bush's 4 age states and the campfire's 2 lit states fold to
+        // their parent
+        s if is_v10_state(s) => {
+            return V10_STATE_TO_BLOCK[(s - V10_STATE_BASE) as usize];
+        }
         ACACIA_LOG_X | ACACIA_LOG_Z => return ACACIA_LOG,
         DARK_OAK_LOG_X | DARK_OAK_LOG_Z => return DARK_OAK_LOG,
         _ => {}
@@ -2833,6 +2976,21 @@ pub fn state_description(s: u16) -> String {
     }
     if s == END_PORTAL_FRAME_EYE {
         return "End Portal Frame[eye=true]".into();
+    }
+    // 1.13 V9 properties (F3 targeted-block lines): the pickle's count
+    // and the egg's hatch stage are real vanilla blockstates
+    if (V9_STATE_BASE + 30..=V9_STATE_BASE + 33).contains(&s) {
+        return format!("Sea Pickle[pickles={}]", 1 + (s - (V9_STATE_BASE + 30)));
+    }
+    if (V9_STATE_BASE + 39..=V9_STATE_BASE + 41).contains(&s) {
+        return format!("Turtle Egg[hatch={}]", s - (V9_STATE_BASE + 39));
+    }
+    // 1.14 V10 properties: berry bush age + campfire lit
+    if (V10_STATE_BASE + 2..=V10_STATE_BASE + 5).contains(&s) {
+        return format!("Sweet Berry Bush[age={}]", berry_bush_age(s));
+    }
+    if is_v10_state(s) && (V10_STATE_BASE + 6..=V10_STATE_BASE + 7).contains(&s) {
+        return format!("Campfire[lit={}]", campfire_lit(s));
     }
     if let Some((b, props)) = prop_state_decode(s) {
         if props.is_empty() {
@@ -2868,6 +3026,9 @@ pub fn is_model_state(s: u16) -> bool {
         // 1.13 V9 window: same shape — greedy cubes for the solids,
         // cross plants/items ride their BlockDef flags
         || is_v9_state(s)
+        // 1.14 V10 window: same shape — bamboo/bush cross plants,
+        // campfire/barrel greedy cubes, items ride their flags
+        || is_v10_state(s)
         || s == SPAWNER_VINDICATOR
         || s == SPAWNER_EVOKER
         || s == ACACIA_LOG_X
@@ -3029,6 +3190,19 @@ pub fn state_tiles(s: u16) -> [u16; 4] {
             let t = TILE_TURTLE_EGG_BASE + off;
             [t, t, t, t]
         }
+        // ---- 1.14: sweet berry bush — the age state selects the tile
+        // (0 = sapling shrub .. 3 = mature berry-laden bush) ----
+        s if (V10_STATE_BASE + 2..=V10_STATE_BASE + 5).contains(&s) => {
+            let off = s - (V10_STATE_BASE + 2);
+            let t = TILE_BERRY_BUSH_BASE + off;
+            [t, t, t, t]
+        }
+        // ---- 1.14: campfire — lit shows the glowing-coal tile, the
+        // extinguished one the ash tile ----
+        s if (V10_STATE_BASE + 6..=V10_STATE_BASE + 7).contains(&s) => {
+            let t = if campfire_lit(s) { TILE_CAMPFIRE } else { TILE_CAMPFIRE_UNLIT };
+            [t, t, t, t]
+        }
         s if glazed_decode(s).is_some() => {
             let (color, facing) = glazed_decode(s).unwrap();
             let c = color as u16;
@@ -3082,7 +3256,7 @@ pub fn log_axis_state(block: u16, axis: u8) -> u16 {
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
 // [merge] E-series tiles end at 243; the F-series (1.7.2-1.10) tiles
 // continue at 244..=325; the audit-fix round adds 326..=332
-pub const TILE_MAX: u16 = 618; // 1.13 (Update Aquatic): tiles 550..=618 (the V9 window + 8 mob sprites)
+pub const TILE_MAX: u16 = 633; // 1.14 (Village & Pillage): tiles 619..=633 (the V10 window + the fox sprite)
 /// 1.11 egg tiles (egg-shaped, egg order 23..=28 = llama, vindicator,
 /// evoker, vex, husk, stray) — the E1/E2/E3 egg-art convention
 /// (e1_art::egg_art + palettes), replacing the interrupted round's
@@ -3211,6 +3385,32 @@ pub const TILE_MOB_PUFFERFISH: u16 = 616;
 pub const TILE_MOB_TROPICAL_FISH: u16 = 617;
 pub const TILE_MOB_TURTLE: u16 = 618;
 
+// ---- 1.14 (Village & Pillage — nature half) tiles: 619..=633 ----
+/// bamboo stalk (the segmented green culm, cross-rendered).
+pub const TILE_BAMBOO: u16 = 619;
+/// bamboo shoot (the planted sapling form).
+pub const TILE_BAMBOO_SHOOT: u16 = 620;
+/// sweet berry bush tiles ×4 (the age 0..3 growth stages).
+pub const TILE_BERRY_BUSH_BASE: u16 = 621;
+/// lit campfire (logs + glowing coals).
+pub const TILE_CAMPFIRE: u16 = 625;
+/// extinguished campfire (logs + ash).
+pub const TILE_CAMPFIRE_UNLIT: u16 = 626;
+/// barrel top/bottom faces (the banded lid).
+pub const TILE_BARREL_TOP: u16 = 627;
+/// barrel side faces (the staves).
+pub const TILE_BARREL_SIDE: u16 = 628;
+/// sweet berries item icon.
+pub const TILE_SWEET_BERRIES: u16 = 629;
+/// fox spawn egg (the E-series egg-art convention).
+pub const TILE_EGG_FOX: u16 = 630;
+/// the fox mob sprite.
+pub const TILE_MOB_FOX: u16 = 631;
+/// stick item icon (the legacy item added with this window).
+pub const TILE_STICK: u16 = 632;
+/// charcoal item icon (the legacy item added with this window).
+pub const TILE_CHARCOAL: u16 = 633;
+
 /// inventory-only ITEM blocks (potions/bottles/books): never placeable in
 /// the world — right-click drinks (potions) / fills (glass bottle at water).
 #[inline]
@@ -3263,6 +3463,13 @@ pub fn is_item_block(b: u16) -> bool {
             | POTION_SLOW_FALLING_EXT
             | POTION_TURTLE_MASTER
             | POTION_TURTLE_MASTER_II
+            // ---- 1.14 item-blocks (Village & Pillage): the berries
+            // (food + planting — the plant branch handles soil uses),
+            // the fox egg (caught by is_spawn_egg too), and the two
+            // late-arriving legacy items stick + charcoal ----
+            | SWEET_BERRIES
+            | STICK
+            | CHARCOAL
     ) || is_spawn_egg(b)
         || (DYE_BASE..=DYE_END).contains(&b)
         || is_seeds(b)
@@ -3282,6 +3489,8 @@ pub fn is_spawn_egg(b: u16) -> bool {
         // 1.13: the V9 egg window (kinds 32..=39 — drowned/phantom/
         // dolphin/cod/salmon/pufferfish/tropical fish/turtle)
         || (SPAWN_EGG_DROWNED..=SPAWN_EGG_TURTLE).contains(&b)
+        // 1.14: the fox egg (kind 40)
+        || b == SPAWN_EGG_FOX
 }
 
 /// The mob this spawn-egg id spawns. Tile order in the BLOCK_TABLE egg
@@ -3310,6 +3519,10 @@ pub fn egg_mob(b: u16) -> Option<u8> {
     if (SPAWN_EGG_DROWNED..=SPAWN_EGG_TURTLE).contains(&b) {
         return Some(32 + (b - SPAWN_EGG_DROWNED) as u8);
     }
+    // 1.14: the fox egg — kind 40 (MobKind::Fox::from_egg)
+    if b == SPAWN_EGG_FOX {
+        return Some(40);
+    }
     if !is_spawn_egg(b) {
         return None;
     }
@@ -3324,6 +3537,11 @@ pub fn egg_mob(b: u16) -> Option<u8> {
 #[inline]
 pub fn state_emissive(s: u16) -> u8 {
     if s == REDSTONE_LAMP_LIT {
+        return 15;
+    }
+    // 1.14: a LIT campfire emits 15 (VERIFIED w/Campfire infobox:
+    // "Luminous Yes (15) when lit" — the unlit state stays 0)
+    if is_v10_state(s) && campfire_lit(s) {
         return 15;
     }
     emissive(state_block(s))
@@ -3908,6 +4126,24 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Pufferfish Spawn Egg", [TILE_EGG_V113_BASE + 5, TILE_EGG_V113_BASE + 5, TILE_EGG_V113_BASE + 5], false, false, true, false, 0, SoundFamily::Grass),
     d("Tropical Fish Spawn Egg", [TILE_EGG_V113_BASE + 6, TILE_EGG_V113_BASE + 6, TILE_EGG_V113_BASE + 6], false, false, true, false, 0, SoundFamily::Grass),
     d("Turtle Spawn Egg", [TILE_EGG_V113_BASE + 7, TILE_EGG_V113_BASE + 7, TILE_EGG_V113_BASE + 7], false, false, true, false, 0, SoundFamily::Grass),
+    // ---- 1.14 bracket (Village & Pillage — nature half): ids 417..=425,
+    // the V10 window. Campfire: solid, NOT opaque (a ~7/16-high partial
+    // block — full-cube collision is the engine's standing partial-
+    // geometry approximation; entities stand ON it, which is the damage
+    // gate). Barrel: solid AND opaque (w/Barrel infobox "Transparent
+    // No"). Bamboo renders as a cross (the kelp-column adaptation:
+    // vanilla's 2-px stalk collision can't be expressed yet — disclosed).
+    // Berry bush: cross, non-solid (walk-through — the slow/damage hook
+    // lives in the movement paths) ----
+    d("Bamboo", [TILE_BAMBOO, TILE_BAMBOO, TILE_BAMBOO], false, false, true, false, 0, SoundFamily::Wood),
+    d("Bamboo Shoot", [TILE_BAMBOO_SHOOT, TILE_BAMBOO_SHOOT, TILE_BAMBOO_SHOOT], false, false, true, false, 0, SoundFamily::Grass),
+    d("Sweet Berry Bush", [TILE_BERRY_BUSH_BASE, TILE_BERRY_BUSH_BASE, TILE_BERRY_BUSH_BASE], false, false, true, false, 0, SoundFamily::Grass),
+    d("Campfire", [TILE_CAMPFIRE, TILE_CAMPFIRE, TILE_CAMPFIRE], true, false, false, false, 0, SoundFamily::Wood),
+    d("Barrel", [TILE_BARREL_TOP, TILE_BARREL_TOP, TILE_BARREL_SIDE], true, true, false, false, 0, SoundFamily::Wood),
+    d("Sweet Berries", [TILE_SWEET_BERRIES, TILE_SWEET_BERRIES, TILE_SWEET_BERRIES], false, false, true, false, 0, SoundFamily::Grass),
+    d("Fox Spawn Egg", [TILE_EGG_FOX, TILE_EGG_FOX, TILE_EGG_FOX], false, false, true, false, 0, SoundFamily::Grass),
+    d("Stick", [TILE_STICK, TILE_STICK, TILE_STICK], false, false, true, false, 0, SoundFamily::Wood),
+    d("Charcoal", [TILE_CHARCOAL, TILE_CHARCOAL, TILE_CHARCOAL], false, false, true, false, 0, SoundFamily::Stone),
 ];
 
 #[inline]
@@ -3977,7 +4213,7 @@ pub fn face_visible(b: u16, n: u16) -> bool {
 /// (needs fluid sim to be fun). Potions are item-blocks — usable from the
 /// hotbar (drink), never placeable. Phase E1 adds the 1.0–1.2 bracket
 /// blocks/items + the 16 spawn eggs (creative-only items, w/Spawn_Egg).
-pub const PICKER_BLOCKS: [u16; 321] = [
+pub const PICKER_BLOCKS: [u16; 386] = [
     GRASS, DIRT, STONE, COBBLE, SMOOTH_STONE, STONE_BRICKS, BRICKS, MOSSY_COBBLE,
     GRANITE, DIORITE, ANDESITE, OBSIDIAN,
     SAND, GRAVEL, CLAY, TERRACOTTA,
@@ -4093,6 +4329,33 @@ pub const PICKER_BLOCKS: [u16; 321] = [
     DYE_BASE + 15,
     WHEAT_SEEDS, MELON_SEEDS, PUMPKIN_SEEDS, BEETROOT_SEEDS,
     COOKIE,
+    // ---- 1.13 (Update Aquatic): the V9 window — coral families 30 +
+    // the sea blocks + the craft items + potions + 8 spawn eggs (the
+    // picker-gap fix that rode along with the 1.14 window: the 1.13
+    // rounds shipped the blocks but never the picker rows) ----
+    CORAL_BLOCK_BASE, CORAL_BLOCK_BASE + 1, CORAL_BLOCK_BASE + 2,
+    CORAL_BLOCK_BASE + 3, CORAL_BLOCK_BASE + 4,
+    DEAD_CORAL_BLOCK_BASE, DEAD_CORAL_BLOCK_BASE + 1, DEAD_CORAL_BLOCK_BASE + 2,
+    DEAD_CORAL_BLOCK_BASE + 3, DEAD_CORAL_BLOCK_BASE + 4,
+    CORAL_PLANT_BASE, CORAL_PLANT_BASE + 1, CORAL_PLANT_BASE + 2,
+    CORAL_PLANT_BASE + 3, CORAL_PLANT_BASE + 4,
+    DEAD_CORAL_PLANT_BASE, DEAD_CORAL_PLANT_BASE + 1, DEAD_CORAL_PLANT_BASE + 2,
+    DEAD_CORAL_PLANT_BASE + 3, DEAD_CORAL_PLANT_BASE + 4,
+    CORAL_FAN_BASE, CORAL_FAN_BASE + 1, CORAL_FAN_BASE + 2,
+    CORAL_FAN_BASE + 3, CORAL_FAN_BASE + 4,
+    DEAD_CORAL_FAN_BASE, DEAD_CORAL_FAN_BASE + 1, DEAD_CORAL_FAN_BASE + 2,
+    DEAD_CORAL_FAN_BASE + 3, DEAD_CORAL_FAN_BASE + 4,
+    SEA_PICKLE, BLUE_ICE, DRIED_KELP_BLOCK, KELP, SEAGRASS, CONDUIT, TURTLE_EGG,
+    HEART_OF_THE_SEA, NAUTILUS_SHELL, SCUTE, TRIDENT, PHANTOM_MEMBRANE,
+    DRIED_KELP, TURTLE_SHELL,
+    POTION_SLOW_FALLING, POTION_SLOW_FALLING_EXT,
+    POTION_TURTLE_MASTER, POTION_TURTLE_MASTER_II,
+    SPAWN_EGG_DROWNED, SPAWN_EGG_PHANTOM, SPAWN_EGG_DOLPHIN, SPAWN_EGG_COD,
+    SPAWN_EGG_SALMON, SPAWN_EGG_PUFFERFISH, SPAWN_EGG_TROPICAL_FISH,
+    SPAWN_EGG_TURTLE,
+    // ---- 1.14 (Village & Pillage — nature half): the V10 window ----
+    BAMBOO, BAMBOO_SHOOT, SWEET_BERRY_BUSH, CAMPFIRE, BARREL,
+    SWEET_BERRIES, SPAWN_EGG_FOX, STICK, CHARCOAL,
 ];
 
 /// default hotbar palette
@@ -4439,6 +4702,8 @@ mod state_tests {
                 // 1.12 V8 (World of Color Update)
                 || is_v8_state(s)
                 || is_v9_state(s)
+                // 1.14 V10 (Village & Pillage — nature half)
+                || is_v10_state(s)
                 || matches!(s, ACACIA_LOG_X | ACACIA_LOG_Z | DARK_OAK_LOG_X | DARK_OAK_LOG_Z)
             {
                 assert!(!is_model_state(s), "component/item state {s} never routes to models");
@@ -4512,6 +4777,22 @@ mod state_tests {
                         }
                     } else {
                         assert_eq!(default_state(b), s, "v9 state {s} roundtrip");
+                    }
+                }
+                // 1.14 V10 (Village & Pillage nature half): 1:1 ids
+                // roundtrip; the bush's 4 age states and the campfire's
+                // unlit state fold to their parent (campfire places LIT —
+                // the extinguished state is written by the water path)
+                if is_v10_state(s) {
+                    if (V10_STATE_BASE + 2..=V10_STATE_BASE + 5).contains(&s) {
+                        assert_eq!(state_block(s), SWEET_BERRY_BUSH);
+                        if s == V10_STATE_BASE + 2 {
+                            assert_eq!(default_state(SWEET_BERRY_BUSH), s);
+                        }
+                    } else if s == V10_STATE_BASE + 6 {
+                        assert_eq!(state_block(s), CAMPFIRE);
+                    } else {
+                        assert_eq!(default_state(b), s, "v10 state {s} roundtrip");
                     }
                 }
                 continue;
@@ -4672,8 +4953,8 @@ mod state_tests {
         // with the 1.7.2–1.10 F-series: 276 blocks / 480 states
         // (E-series states end at 354; V2 400..=442, V3 447..=465,
         // V4 466..=475, V5 476..=479)
-        assert_eq!(BLOCK_COUNT, 417, "merged registry + V6 + V7 + 1.12 V8 + 1.13 V9 (Update Aquatic)");
-        assert_eq!(STATE_COUNT, 676, "merged state space, V9 states end at 675");
+        assert_eq!(BLOCK_COUNT, 426, "merged registry + V6 + V7 + V8 + V9 + 1.14 V10 (nature half)");
+        assert_eq!(STATE_COUNT, 689, "merged state space, V10 states end at 688");
         assert_eq!(BLOCK_TABLE.len(), BLOCK_COUNT);
         for want in [
             COAL_BLOCK,
@@ -4724,8 +5005,8 @@ mod v110_tests {
             assert_eq!(default_state(b), s);
             assert!(is_v5_state(s));
         }
-        assert_eq!(BLOCK_COUNT, 417); // 1.13: V9 window grew the registry
-        assert_eq!(STATE_COUNT, 676); // 1.13: V9 window grew the state space
+        assert_eq!(BLOCK_COUNT, 426); // 1.14: V10 window grew the registry
+        assert_eq!(STATE_COUNT, 689); // 1.14: V10 window grew the state space
     }
 
     /// magma emits light level 3 (VERIFIED — minecraft.wiki/w/Magma_Block,
@@ -4762,8 +5043,8 @@ mod auditfix_tests {
             assert!(!is_model_state(s), "V6 states are cube/cross defs, not model states");
         }
         assert_eq!(V6_COUNT, 6);
-        assert_eq!(BLOCK_COUNT, 417); // 1.13: V9 window grew the registry
-        assert_eq!(STATE_COUNT, 676); // 1.13: V9 window grew the state space
+        assert_eq!(BLOCK_COUNT, 426); // 1.14: V10 window grew the registry
+        assert_eq!(STATE_COUNT, 689); // 1.14: V10 window grew the state space
         // solidity classes: log/planks solid-opaque (hardness family 2
         // per w/Log + w/Planks), leaves see-through, vine/fern non-solid
         // cross plants (w/Vines: "climbable non-solid"; w/Fern:
@@ -4812,8 +5093,8 @@ mod v111_tests {
             assert_eq!(default_state(b), s, "block {b} default state");
             assert_eq!(state_block(s), b, "state {s} folds back");
         }
-        assert_eq!(BLOCK_COUNT, 417); // 1.13: V9 window grew the registry
-        assert_eq!(STATE_COUNT, 676); // 1.13: V9 window grew the state space
+        assert_eq!(BLOCK_COUNT, 426); // 1.14: V10 window grew the registry
+        assert_eq!(STATE_COUNT, 689); // 1.14: V10 window grew the state space
         // mansion spawner states fold to SPAWNER + decode their kinds
         assert_eq!(state_block(SPAWNER_VINDICATOR), SPAWNER);
         assert_eq!(state_block(SPAWNER_EVOKER), SPAWNER);
@@ -4917,8 +5198,8 @@ mod v112_tests {
         }
         assert_eq!(default_state(COOKIE), V8_STATE_BASE + 117);
         // bounds
-        assert_eq!(BLOCK_COUNT, 417);
-        assert_eq!(STATE_COUNT, 676);
+        assert_eq!(BLOCK_COUNT, 426);
+        assert_eq!(STATE_COUNT, 689);
         assert_eq!(CONCRETE_BASE + 15, CONCRETE_END);
         assert_eq!(CONCRETE_POWDER_BASE + 15, CONCRETE_POWDER_END);
         assert_eq!(GLAZED_TERRACOTTA_BASE + 15, GLAZED_TERRACOTTA_END);
@@ -4991,6 +5272,112 @@ mod v112_tests {
             assert!(PICKER_BLOCKS.contains(&b), "picker missing {b}");
         }
         assert!(TILE_MAX >= TILE_ILLUSIONER, "1.12 tiles within the atlas guard");
-        assert_eq!(PICKER_BLOCKS.len(), 321);
+        assert_eq!(PICKER_BLOCKS.len(), 386);
+        // the V9 + V10 windows are all present (the picker-gap fix)
+        for want in [SEA_PICKLE, CONDUIT, SPAWN_EGG_TURTLE, BAMBOO, CAMPFIRE, BARREL, SPAWN_EGG_FOX, STICK, CHARCOAL] {
+            assert!(PICKER_BLOCKS.contains(&want), "picker missing {want}");
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 1.14 bracket tests (Village & Pillage — nature half, live round 2026-09-08)
+// ---------------------------------------------------------------------------
+#[cfg(test)]
+mod v114_tests {
+    use super::*;
+
+    /// the V10 window: ids 417..=425, states 676..=688. Blocks fold 1:1
+    /// except the berry bush's 4 age states and the campfire's 2 lit
+    /// states (VERIFIED from the raw captures v114_page_*.json).
+    #[test]
+    fn v114_v10_registry_window() {
+        // 1:1 blocks (shoot/stalk/barrel/items)
+        for (b, s) in [
+            (BAMBOO, V10_STATE_BASE),
+            (BAMBOO_SHOOT, V10_STATE_BASE + 1),
+            (BARREL, V10_STATE_BASE + 8),
+            (SWEET_BERRIES, V10_STATE_BASE + 9),
+            (SPAWN_EGG_FOX, V10_STATE_BASE + 10),
+            (STICK, V10_STATE_BASE + 11),
+            (CHARCOAL, V10_STATE_BASE + 12),
+        ] {
+            assert_eq!(default_state(b), s, "block {b} default state");
+            assert_eq!(state_block(s), b, "state {s} folds back");
+            assert!(is_v10_state(s));
+        }
+        // berry bush: 4 age states, age decode/encode roundtrip
+        for age in 0u8..4 {
+            let s = berry_bush_state(age);
+            assert_eq!(berry_bush_age(s), age, "age {age} roundtrip");
+            assert_eq!(state_block(s), SWEET_BERRY_BUSH, "bush state {s} folds");
+            assert_eq!(state_tiles(s)[0], TILE_BERRY_BUSH_BASE + age as u16, "per-age art");
+        }
+        assert_eq!(default_state(SWEET_BERRY_BUSH), berry_bush_state(0));
+        // clamped encode
+        assert_eq!(berry_bush_state(9), berry_bush_state(3));
+        // campfire: unlit/lit pair, placed LIT (vanilla), light on lit only
+        assert_eq!(campfire_state(true), V10_STATE_BASE + 7);
+        assert_eq!(campfire_state(false), V10_STATE_BASE + 6);
+        assert!(campfire_lit(campfire_state(true)));
+        assert!(!campfire_lit(campfire_state(false)));
+        for lit in [true, false] {
+            assert_eq!(state_block(campfire_state(lit)), CAMPFIRE);
+        }
+        assert_eq!(default_state(CAMPFIRE), campfire_state(true), "placed lit");
+        assert_eq!(state_emissive(campfire_state(true)), 15, "lit emits 15");
+        assert_eq!(state_emissive(campfire_state(false)), 0, "unlit is dark");
+        assert_eq!(
+            state_tiles(campfire_state(true))[0],
+            TILE_CAMPFIRE,
+            "lit tile"
+        );
+        assert_eq!(
+            state_tiles(campfire_state(false))[0],
+            TILE_CAMPFIRE_UNLIT,
+            "unlit tile"
+        );
+        // bounds + window shape
+        assert_eq!(BLOCK_COUNT, 426);
+        assert_eq!(STATE_COUNT, 689);
+        assert_eq!(V10_COUNT, 13);
+        assert_eq!(BAMBOO, 417);
+        assert_eq!(CHARCOAL, 425);
+    }
+
+    /// the 1.14 physical flags (VERIFIED w/Barrel "Transparent No",
+    /// w/Campfire "Transparent Yes ... Luminous Yes (15) when lit",
+    /// w/Bamboo "non-solid sapling form", w/Sweet_Berry_Bush the
+    /// walk-through slow/damage contract)
+    #[test]
+    fn v114_block_flags_and_eggs() {
+        // plants: cross, non-solid, walk-through
+        for b in [BAMBOO, BAMBOO_SHOOT, SWEET_BERRY_BUSH] {
+            assert!(is_cross(b), "{b} renders as a cross");
+            assert!(!is_solid(b), "{b} is non-solid");
+            assert!(!is_opaque(b));
+        }
+        // campfire: solid (stand ON it — the damage gate), not opaque
+        assert!(is_solid(CAMPFIRE));
+        assert!(!is_opaque(CAMPFIRE));
+        // barrel: solid opaque cube (w/Barrel infobox)
+        assert!(is_solid(BARREL) && is_opaque(BARREL));
+        // items: inventory-only
+        for b in [SWEET_BERRIES, STICK, CHARCOAL, SPAWN_EGG_FOX] {
+            assert!(is_item_block(b), "{b} is an item-block");
+        }
+        // the fox egg passes the use gate + decodes kind 40
+        assert!(is_spawn_egg(SPAWN_EGG_FOX));
+        assert_eq!(egg_mob(SPAWN_EGG_FOX), Some(40));
+        // F3-style state descriptions (the targeted-block property lines)
+        assert_eq!(
+            state_description(berry_bush_state(2)),
+            "Sweet Berry Bush[age=2]"
+        );
+        assert_eq!(state_description(campfire_state(false)), "Campfire[lit=false]");
+        // tiles within the atlas guard (the Phase-4 blank-tile regression)
+        assert!(TILE_MAX >= TILE_CHARCOAL, "1.14 tiles within the atlas guard");
+        assert_eq!(TILE_BERRY_BUSH_BASE + 3, 624);
+        assert_eq!(TILE_MOB_FOX, 631);
     }
 }

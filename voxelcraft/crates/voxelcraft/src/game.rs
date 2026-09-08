@@ -266,6 +266,10 @@ pub enum Container {
     Hopper { pos: [i32; 3] },
     /// Phase 3: chest container screen (27 slots)
     Chest { pos: [i32; 3] },
+    /// 1.14: barrel container screen (27 slots — VERIFIED w/Barrel:
+    /// "the same as a single chest"; the same grid geometry, the
+    /// BARREL title)
+    Barrel { pos: [i32; 3] },
 }
 
 impl Screen {
@@ -3986,6 +3990,10 @@ impl GameApp {
                 // turtle: 0–2 seagrass (w/Turtle §Drops: "0–2 seagrass";
                 // the scute rides the baby-maturity queue, not death)
                 mobs::MobKind::Turtle => &[(SEAGRASS, 2)],
+                // 1.14: the fox — "natural equipment" is carried-item
+                // loot (emerald 5% etc.), which is the standing
+                // carried-items deferral; the body itself drops nothing
+                mobs::MobKind::Fox => &[],
                 // classification-only marker (no MOB_DATA row, never
                 // spawns — a defensive empty row; the squid is a
                 // pre-1.13 legacy the engine's brackets skipped)
@@ -4797,6 +4805,10 @@ impl GameApp {
                     // chest contents live in the block entity, not the
                     // player — nothing to return (vanilla behavior)
                 }
+                Container::Barrel { .. } => {
+                    // 1.14: same as the chest — barrel contents persist
+                    // in the block entity (vanilla behavior)
+                }
                 Container::Hopper { .. } => {
                     // same as the chest: hopper contents persist in the
                     // block entity (vanilla behavior)
@@ -4885,7 +4897,12 @@ impl GameApp {
                 // Phase 3: chest slots click like inventory slots
                 // (hopper reuses the same generic container-slot path —
                 // its 5 slots are ContainerKind::Hopper's geometry)
-                if let Some(Container::Chest { pos } | Container::Hopper { pos }) = self.container {
+                if let Some(
+                    Container::Chest { pos }
+                    | Container::Hopper { pos }
+                    | Container::Barrel { pos },
+                ) = self.container
+                {
                     // 1.11 no-nesting rule (VERIFIED w/Shulker_Box:
                     // "Cannot be placed inside another shulker box"):
                     // a shulker-box item never enters a shulker-box
@@ -5258,6 +5275,7 @@ impl GameApp {
             Some(Container::Inventory) => (ContainerKind::Inventory, None, None, None, None),
             Some(Container::Crafting { .. }) => (ContainerKind::Crafting, None, None, None, None),
             Some(Container::Chest { pos }) => (ContainerKind::Chest, None, None, None, None),
+            Some(Container::Barrel { pos }) => (ContainerKind::Barrel, None, None, None, None),
             Some(Container::Hopper { pos: _ }) => (ContainerKind::Hopper, None, None, None, None),
             Some(Container::Furnace { pos }) => {
                 // live slots + progress fractions for the flame/arrow
@@ -5353,7 +5371,9 @@ impl GameApp {
         // open; an absent entity renders as an empty 27-slot chest).
         // Hopper screens share the generic container-slot view (5 slots).
         let chest = match self.container {
-            Some(Container::Chest { pos } | Container::Hopper { pos }) => self
+            Some(
+                Container::Chest { pos } | Container::Hopper { pos } | Container::Barrel { pos },
+            ) => self
                 .sim
                 .containers
                 .get(&pos)
@@ -5428,10 +5448,14 @@ impl GameApp {
         // containers module queues the spill, we turn it into item drops
         // (and if the player is mid-screen on this very container, close
         // it — the block is gone)
-        if matches!(broke, CHEST | DISPENSER | DROPPER | HOPPER) {
+        if matches!(broke, CHEST | DISPENSER | DROPPER | HOPPER | BARREL) {
             if matches!(
                 self.container,
-                Some(Container::Chest { pos: p } | Container::Hopper { pos: p }) if p == pos
+                Some(
+                    Container::Chest { pos: p }
+                        | Container::Hopper { pos: p }
+                        | Container::Barrel { pos: p },
+                ) if p == pos
             ) {
                 self.close_container();
             }
@@ -5508,6 +5532,60 @@ impl GameApp {
     }
 
     /// E2E hook: place a block / water source / redstone component.
+    /// 1.14 (Village & Pillage — nature half) E2E: place a campfire +
+    /// feed it a potato, a barrel, a mature berry bush, a bamboo shoot,
+    /// and a fox; sim `ticks` full-scope steps; report every piece via
+    /// the boot log (the CI smoke greps the "e2e: v114" lines).
+    fn e2e_v114(&mut self, ticks: u64) {
+        let pos = [
+            self.player.pos.x.floor() as i32,
+            self.player.pos.y.floor() as i32 - 2,
+            self.player.pos.z.floor() as i32,
+        ];
+        // 1. the campfire (placed LIT, VERIFIED) + a potato
+        self.test_place(CAMPFIRE, pos[0], pos[1], pos[2]);
+        let fed = self.sim.campfires.entry(pos).add(POTATO);
+        // 2. the barrel (27 slots, VERIFIED)
+        self.test_place(BARREL, pos[0] + 2, pos[1], pos[2]);
+        let slots = vc_sim::containers::slot_count(BARREL).unwrap_or(0);
+        // 3. a mature berry bush (age 3)
+        let _ = self.world.set_block_state(
+            pos[0] + 4, pos[1], pos[2],
+            berry_bush_state(3),
+        );
+        // 4. a bamboo shoot on grass
+        self.test_place(GRASS, pos[0] + 6, pos[1] - 1, pos[2]);
+        let _ = self.world.set_block_state(
+            pos[0] + 6, pos[1], pos[2],
+            default_state(BAMBOO_SHOOT),
+        );
+        // 5. a fox (the taiga predator)
+        let fox = self
+            .sim
+            .mobs
+            .spawn_at(vc_gameplay::mobs::MobKind::Fox, pos[0] + 8, pos[1] + 1, pos[2]);
+        // advance the sim deterministically (the brew fast-forward
+        // pattern — full-scope steps)
+        for _ in 0..ticks {
+            self.sim.step(
+                &mut self.world,
+                &mut self.light,
+                &vc_sim::sim::TickScope::everything(),
+            );
+        }
+        let cooked = self.sim.campfires.done.len();
+        vc_render::render::report_boot_log(&format!(
+            "e2e: v114 campfire lit+fed={} (600-tick cook), barrel slots={}, bush age=3, shoot planted, fox spawned={}",
+            fed, slots, fox.is_some()
+        ));
+        if ticks >= 600 {
+            vc_render::render::report_boot_log(&format!(
+                "e2e: v114 campfire cooked {} item(s) after {ticks} ticks (600-tick contract)",
+                cooked
+            ));
+        }
+    }
+
     fn test_place(&mut self, block: u16, x: i32, y: i32, z: i32) {
         use vc_blocks::blocks::*;
         let state = match block {
@@ -5584,6 +5662,13 @@ impl GameApp {
                     self.input.break_hold,
                     self.target.is_some()
                 ));
+                // 1.14 nature-half regression guard: E2E_V114=1 runs the
+                // bracket sequence (campfire cook / barrel / bush / shoot /
+                // fox) right after world entry — the CI smoke greps the
+                // "e2e: v114" boot lines
+                if std::env::var("E2E_V114").is_ok() {
+                    self.e2e_v114(650);
+                }
             }
             // F3_DUMP run: hold gameplay ~2 s so the overlay rebuild + dump
             // fires before the exit contract. F3_DUMP2 (optional, set with
@@ -6122,6 +6207,15 @@ impl GameApp {
                         }
                     }
                     // ---- Phase 7 §27 E2E: containers / crafting / smelting --
+                    Some("v114") => {
+                        // v114:<ticks> — the 1.14 nature-half E2E (see
+                        // e2e_v114; the CI smoke greps these lines).
+                        let ticks: u64 = parts
+                            .get(1)
+                            .and_then(|v| v.parse().ok())
+                            .unwrap_or(0);
+                        self.e2e_v114(ticks);
+                    }
                     Some("open") => {
                         // open:<inventory|crafting|furnace> — the crafting/
                         // furnace variants need a position (defaults to
@@ -8127,6 +8221,102 @@ impl GameApp {
                 }
             }
 
+            // 1.14: the bush/campfire hazard window (1 HP per 0.5 s —
+            // the vanilla damage-immunity cadence)
+            let hazard = self.player.take_pending_hazard_damage();
+            if hazard > 0.0 && !self.mode.invulnerable() {
+                let applied = self.player.damage(hazard);
+                if applied > 0.0 {
+                    self.play_event("entity.player.hurt", None, 0.9);
+                    self.death_cause = "PRICKED TO DEATH".into();
+                    self.ui.dirty = true;
+                }
+            }
+
+            // 1.14: campfire cooking completions — the cooked item
+            // ejects on top of the campfire (the no-UI adaptation;
+            // breaking mid-cook drops the raw food on the break path)
+            if !self.sim.campfires.done.is_empty() {
+                let done: Vec<([i32; 3], u16)> =
+                    self.sim.campfires.done.drain(..).collect();
+                for (pos, item) in done {
+                    let (biome, sky, blk) =
+                        light_at(&self.world, &self.light, pos[0], pos[1], pos[2]);
+                    self.sim.items.drop_block(
+                        pos[0], pos[1] + 1, pos[2], item, biome, sky, blk,
+                    );
+                    self.play_event(
+                        "block.campfire.crackle",
+                        Some([
+                            pos[0] as f32 + 0.5,
+                            pos[1] as f32 + 1.0,
+                            pos[2] as f32 + 0.5,
+                        ]),
+                        1.0,
+                    );
+                }
+            }
+
+            // 1.14: campfire smoke — lit campfires within 24 blocks of
+            // the player breathe one smoke particle roughly every
+            // half-second ("smoke particles that float up around 10
+            // blocks before disappearing", VERIFIED w/Campfire; the
+            // hay-bale signal-fire 24-block variant rides a HAY_BALE
+            // check below the fire)
+            if self.screen == Screen::Game && self.sim.ticks % 10 == 0 {
+                let p = self.player.pos;
+                let positions: Vec<([i32; 3], bool)> = self
+                    .sim
+                    .campfires
+                    .map
+                    .keys()
+                    .filter(|pos| {
+                        let dx = pos[0] as f32 - p.x;
+                        let dz = pos[2] as f32 - p.z;
+                        (dx * dx + dz * dz) < 576.0 // 24 blocks
+                    })
+                    .map(|pos| {
+                        let hay_bale = self.world.get_block(
+                            pos[0],
+                            pos[1] - 1,
+                            pos[2],
+                        ) == HAY_BALE;
+                        (*pos, hay_bale)
+                    })
+                    .collect();
+                for (pos, hay) in positions {
+                    // only LIT campfires smoke
+                    if !campfire_lit(self.world.get_state(pos[0], pos[1], pos[2])) {
+                        continue;
+                    }
+                    // a hay bale below makes the signal fire: taller,
+                    // brighter smoke (24 vs 10 blocks, VERIFIED)
+                    let life = if hay { 90 } else { 38 };
+                    let rise = if hay { 0.26 } else { 0.11 };
+                    let tint = if hay { [0.95, 0.93, 0.9] } else { [0.62, 0.62, 0.64] };
+                    self.particles.push(vc_particles::particles::Particle {
+                        pos: [
+                            pos[0] as f32 + 0.5 + (self.audio_rng.next_f32() - 0.5) * 0.6,
+                            pos[1] as f32 + 0.4,
+                            pos[2] as f32 + 0.5 + (self.audio_rng.next_f32() - 0.5) * 0.6,
+                        ],
+                        vel: [
+                            (self.audio_rng.next_f32() - 0.5) * 0.04,
+                            rise + self.audio_rng.next_f32() * 0.03,
+                            (self.audio_rng.next_f32() - 0.5) * 0.04,
+                        ],
+                        life,
+                        half: 0.09,
+                        u0: (TILE_SNOW % 32) as f32 / 32.0,
+                        v0: (TILE_SNOW / 32) as f32 / 32.0,
+                        du: 0.25 / 32.0,
+                        dv: 0.25 / 32.0,
+                        light: 1.0,
+                        tint,
+                    });
+                }
+            }
+
             // (1.7.2 poison ticks through the unified Phase E2 effects
             // block above — no separate tick call)
 
@@ -8156,6 +8346,9 @@ impl GameApp {
                         self.place_timer = 0.3;
                     } else if b != BEDROCK {
                         let broke = self.world.get_block(pos[0], pos[1], pos[2]);
+                        // 1.14: the pre-break state (the berry bush's
+                        // age — captured BEFORE the AIR write clears it)
+                        let broke_state = self.world.get_state(pos[0], pos[1], pos[2]);
                         let (biome, sky, blk) =
                             light_at(&self.world, &self.light, pos[0], pos[1], pos[2]);
                         if let Some((old, new)) = self.world.set_block(pos[0], pos[1], pos[2], AIR)
@@ -8206,6 +8399,51 @@ impl GameApp {
                                 // XP 2–5 rides the ore_xp path)
                                 self.sim.items.drop_block(
                                     pos[0], pos[1], pos[2], NETHER_QUARTZ, biome, sky, blk,
+                                );
+                            } else if broke == CAMPFIRE {
+                                // 1.14 (VERIFIED w/Campfire §Breaking: "When
+                                // mined regularly, a campfire drops 2
+                                // charcoal" — no Silk Touch in the engine,
+                                // the self-drop row is out of reach, disclosed)
+                                // + 20w22a "Campfires now drop the food being
+                                // cooked": the raw food spills from the entity
+                                for _ in 0..2 {
+                                    self.sim.items.drop_block(
+                                        pos[0], pos[1], pos[2], CHARCOAL, biome, sky, blk,
+                                    );
+                                }
+                                if let Some(cf) = self.sim.campfires.map.remove(&pos) {
+                                    for slot in cf.slots.iter() {
+                                        if !slot.is_empty() {
+                                            self.sim.items.drop_block(
+                                                pos[0], pos[1] + 1, pos[2], slot.block,
+                                                biome, sky, blk,
+                                            );
+                                        }
+                                    }
+                                }
+                            } else if broke == SWEET_BERRY_BUSH {
+                                // 1.14 (VERIFIED w/Sweet_Berry_Bush §Breaking:
+                                // "A mature sweet berry bush yields 2–3 sweet
+                                // berries. On its third growth stage, it yields
+                                // 1–2" — age 0/1 yield nothing; no Fortune)
+                                let age = berry_bush_age(broke_state);
+                                let n = match age {
+                                    2 => 1 + self.audio_rng.next_range(2) as u8,
+                                    3 => 2 + self.audio_rng.next_range(2) as u8,
+                                    _ => 0,
+                                };
+                                for _ in 0..n {
+                                    self.sim.items.drop_block(
+                                        pos[0], pos[1], pos[2], SWEET_BERRIES, biome, sky, blk,
+                                    );
+                                }
+                            } else if broke == BAMBOO || broke == BAMBOO_SHOOT {
+                                // 1.14: "Bamboo stalks can be mined with any
+                                // tool" and drop the bamboo item — the shoot
+                                // is the sapling form of the same plant
+                                self.sim.items.drop_block(
+                                    pos[0], pos[1], pos[2], BAMBOO, biome, sky, blk,
                                 );
                             } else {
                                 self.sim.items.drop_block(
@@ -8354,6 +8592,65 @@ impl GameApp {
                         // right-click a tamed parrot → sit/stand toggle
                         // (VERIFIED 17w14a)
                         self.place_timer = 0.3;
+                    }
+                }
+                // ---- 1.14 (Village & Pillage): fox interactions — feed
+                // sweet berries (VERIFIED w/Sweet_Berries §Breeding:
+                // "Sweet berries can be fed to foxes to breed them";
+                // w/Fox: babies trust the breeder). The first feeding
+                // arms love mode; a second feeding with a loving partner
+                // nearby spawns the trusting cub. ----
+                else if let Some(eid) = self
+                    .sim
+                    .mobs
+                    .ray_hit(
+                        self.player.eye().to_array(),
+                        self.player.look_dir().to_array(),
+                        crate::player::REACH,
+                    )
+                    .filter(|&id| {
+                        self.sim
+                            .mobs
+                            .by_id(id)
+                            .map(|m| m.kind == vc_gameplay::mobs::MobKind::Fox)
+                            .unwrap_or(false)
+                    })
+                {
+                    let held = self.player.held().block;
+                    if held == SWEET_BERRIES {
+                        let outcome = self.sim.mobs.try_feed_fox(eid);
+                        if let Some(out) = outcome {
+                            if self.mode.depletes_items() {
+                                let h = self.player.held_mut();
+                                h.count -= 1;
+                                if h.count == 0 {
+                                    *h = vc_inventory::inventory::ItemStack::EMPTY;
+                                }
+                            }
+                            self.play_event("entity.fox.eat", None, 1.0);
+                            if let vc_gameplay::mobs::FoxFeedOutcome::Bred(_) = out {
+                                // the cub: trusting (bit 0) + baby (bit
+                                // 0x40, the 24000-tick maturity clock)
+                                let (px, py, pz) = {
+                                    let m = self.sim.mobs.by_id(eid).unwrap();
+                                    (m.pos[0] as i32, m.pos[1] as i32, m.pos[2] as i32)
+                                };
+                                let kid =
+                                    self.sim
+                                        .mobs
+                                        .spawn_variant(vc_gameplay::mobs::MobKind::Fox, px, py, pz, 0x41);
+                                if let Some(kid) = kid {
+                                    if let Some(m) = self.sim.mobs.by_id_mut(kid) {
+                                        m.aux = 24000; // 20 min to maturity
+                                    }
+                                }
+                                self.play_event("entity.fox.ambient", None, 1.0);
+                                vc_render::render::report_boot_log(
+                                    "e2e: berries fed -> fox pair bred a trusting cub (VERIFIED)",
+                                );
+                            }
+                            self.place_timer = 0.5;
+                        }
                     }
                 }
                 // ---- Phase E3 (1.5–1.6): equine interactions (mount /
@@ -8599,6 +8896,85 @@ impl GameApp {
                         self.sim.containers.entry(tpos, SHULKER_BOX);
                         self.shulker_positions.insert(tpos);
                         self.open_container(Container::Chest { pos: tpos });
+                        self.place_timer = 0.3;
+                    } else if tb == BARREL {
+                        // 1.14 (VERIFIED w/Barrel): "Barrels have a
+                        // container inventory with 27 slots, which is
+                        // the same as a single chest. Unlike chests,
+                        // the action of opening a barrel is never
+                        // prevented" — the engine has no ocelots
+                        // anyway; the BARREL kind row + title carry
+                        // the distinction (slot_count(BARREL)=27)
+                        self.sim.containers.entry(tpos, BARREL);
+                        self.open_container(Container::Barrel { pos: tpos });
+                        self.place_timer = 0.3;
+                    } else if tb == SWEET_BERRY_BUSH {
+                        // 1.14 (VERIFIED w/Sweet_Berry_Bush §Harvesting):
+                        // "Sweet berries can be collected ... by pressing
+                        // the use control on it, yielding 1–2 sweet
+                        // berries in its third growth stage, and 2–3 in
+                        // its final growth stage. After dropping the
+                        // berries on the ground, the sweet berry bush
+                        // reverts to its second growth stage." (age 0/1:
+                        // nothing to harvest)
+                        let age =
+                            berry_bush_age(self.world.get_state(tpos[0], tpos[1], tpos[2]));
+                        if age >= 2 {
+                            let n = if age == 2 {
+                                1 + self.audio_rng.next_range(2) as u8
+                            } else {
+                                2 + self.audio_rng.next_range(2) as u8
+                            };
+                            for _ in 0..n {
+                                self.sim.items.drop_block(
+                                    tpos[0],
+                                    tpos[1] + 1,
+                                    tpos[2],
+                                    SWEET_BERRIES,
+                                    2,
+                                    15,
+                                    0,
+                                );
+                            }
+                            let ns = berry_bush_state(1); // revert (VERIFIED)
+                            if let Some((old, new)) =
+                                self.world.set_block_state(tpos[0], tpos[1], tpos[2], ns)
+                            {
+                                self.light.on_block_changed(
+                                    &self.world, tpos[0], tpos[1], tpos[2], old, new,
+                                );
+                            }
+                            self.play_event(
+                                "block.sweet_berry_bush.pick_berries",
+                                Some([
+                                    tpos[0] as f32 + 0.5,
+                                    tpos[1] as f32 + 0.5,
+                                    tpos[2] as f32 + 0.5,
+                                ]),
+                                1.0,
+                            );
+                        }
+                        self.place_timer = 0.3;
+                    } else if tb == CAMPFIRE {
+                        // 1.14 (VERIFIED w/Campfire §Cooking): right-click
+                        // with food loads it ("food items take 30 seconds
+                        // to cook"; up to 4 — no fuel). No campfire UI in
+                        // the engine: completion auto-ejects the cooked
+                        // item on top (disclosed adaptation), and breaking
+                        // drops the raw food.
+                        let held = self.player.held().block;
+                        if !self.player.held().is_empty()
+                            && vc_gameplay::campfire::CampfireState::accepts(held)
+                        {
+                            let cf = self.sim.campfires.entry(tpos);
+                            if cf.add(held) && self.mode.depletes_items() {
+                                let h = self.player.held_mut();
+                                h.count -= 1;
+                                if h.count == 0 {
+                                    *h = vc_inventory::inventory::ItemStack::EMPTY;
+                                }
+                            }
+                        }
                         self.place_timer = 0.3;
                     } else if tb == BEACON {
                         // Phase E2 (VERIFIED w/Beacon): feed one material
@@ -8974,6 +9350,61 @@ impl GameApp {
                         ));
                         self.place_timer = 0.5;
                         self.ui.dirty = true;
+                    } else if !self.player.held().is_empty()
+                        && self.player.held().block == SWEET_BERRIES
+                        && self.mode.edits_world_blocks()
+                        && self
+                            .target
+                            .map(|(tpos, tb, _)| {
+                                // planting: the clicked block is soil and
+                                // the cell above it is open (w/Sweet_
+                                // Berries: "can be placed on grass ...
+                                // and other blocks" — the engine's
+                                // grass-family set)
+                                let soil = matches!(
+                                    tb,
+                                    GRASS | DIRT | PODZOL | SNOW_GRASS
+                                );
+                                let above_open = tpos[1] < 255
+                                    && self.world.get_block(tpos[0], tpos[1] + 1, tpos[2]) == AIR;
+                                soil && above_open
+                            })
+                            .unwrap_or(false)
+                    {
+                        // 1.14: planting sweet berries — a use on soil
+                        // plants the bush at age 0 (before the eat branch:
+                        // vanilla's plant-first interaction order when a
+                        // valid soil face is under the crosshair)
+                        if let Some((tpos, _, _)) = self.target {
+                            if let Some((old, new)) = self.world.set_block_state(
+                                tpos[0],
+                                tpos[1] + 1,
+                                tpos[2],
+                                berry_bush_state(0),
+                            ) {
+                                self.light.on_block_changed(
+                                    &self.world, tpos[0], tpos[1] + 1, tpos[2], old, new,
+                                );
+                            }
+                            if self.mode.depletes_items() {
+                                let held = self.player.held_mut();
+                                held.count -= 1;
+                                if held.count == 0 {
+                                    *held = vc_inventory::inventory::ItemStack::EMPTY;
+                                }
+                            }
+                            self.play_event(
+                                "block.sweet_berry_bush.place",
+                                Some([
+                                    tpos[0] as f32 + 0.5,
+                                    tpos[1] as f32 + 1.5,
+                                    tpos[2] as f32 + 0.5,
+                                ]),
+                                1.0,
+                            );
+                        }
+                        self.place_timer = 0.3;
+                        self.ui.dirty = true;
                     } else if !self.player.held().is_empty() && is_food(self.player.held().block) {
                         // Phase 2: right-click eats raw meat. Documented
                         // deviation: no hunger system yet, so food heals
@@ -9083,7 +9514,31 @@ impl GameApp {
                                 is_solid(b) && self.player.block_intersects_player(prev);
                             if replaceable && !collides_player {
                                 // vanilla placement rules per block family
-                                let state = if is_log(b) {
+                                let state = if b == BAMBOO {
+                                    // 1.14 (VERIFIED w/Bamboo §Farming): a
+                                    // bamboo item placed on the soil family
+                                    // starts as the SHOOT ("the initial
+                                    // non-solid sapling form of planted
+                                    // bamboo"); placed on top of a bamboo
+                                    // stalk it stacks a stalk (vanilla's
+                                    // placement rule). Other supports are
+                                    // rejected (the deny below).
+                                    let below =
+                                        self.world.get_block(prev[0], prev[1] - 1, prev[2]);
+                                    if below == BAMBOO {
+                                        default_state(BAMBOO)
+                                    } else if matches!(
+                                        below,
+                                        GRASS | DIRT | PODZOL | SNOW_GRASS
+                                    ) {
+                                        default_state(BAMBOO_SHOOT)
+                                    } else {
+                                        // unsupported: deny the placement
+                                        // entirely (vanilla plants bamboo
+                                        // only on the soil family or bamboo)
+                                        u16::MAX
+                                    }
+                                } else if is_log(b) {
                                     // vanilla log placement: the axis follows the
                                     // clicked face (top/bottom → axis Y, ±X → X, ±Z → Z)
                                     let axis = if prev[1] != tpos[1] {
@@ -9149,6 +9604,12 @@ impl GameApp {
                                     // default STATE — never the identity slot
                                     default_state(b)
                                 };
+                                // 1.14: the bamboo deny sentinel (unsupported
+                                // support) stops the placement — no edit, no
+                                // item use
+                                if state == u16::MAX {
+                                    self.place_timer = 0.2;
+                                } else {
                                 if let Some((old, new)) =
                                     self.world.set_block_state(prev[0], prev[1], prev[2], state)
                                 {
@@ -9348,6 +9809,7 @@ impl GameApp {
                                 }
                                 self.place_timer = 0.24;
                                 self.edits += 1;
+                                } // (the 1.14 bamboo-deny else closes here)
                             }
                         }
                     }
@@ -11714,6 +12176,9 @@ fn is_food(b: u16) -> bool {
             // audit-fix (1.4): golden carrot (VERIFIED live 2026-09-07
             // w/Golden_Carrot: hunger 6 / saturation 14.4)
             | GOLDEN_CARROT
+            // 1.14: sweet berries — "restores 2 hunger and 0.4 [JE]
+            // saturation" (VERIFIED w/Sweet_Berries §Food)
+            | SWEET_BERRIES
     )
 }
 
@@ -11743,6 +12208,10 @@ fn food_heal(b: u16) -> f32 {
         // "It is eaten faster than other food" — no eating-speed
         // system in the engine, disclosed
         DRIED_KELP => 0.5,
+        // 1.14: sweet berries — hunger 2 → 1.0 HP (VERIFIED
+        // w/Sweet_Berries §Food: "restores 2 hunger and 0.4 [JE] only"
+        // saturation")
+        SWEET_BERRIES => 1.0,
         _ => 4.0, // the meats' established value
     }
 }

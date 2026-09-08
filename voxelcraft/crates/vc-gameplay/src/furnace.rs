@@ -48,6 +48,15 @@ pub fn fuel_ticks(block: u16) -> i32 {
         // used as a fuel in a furnace. Smelts 20 items." — 20 × 200
         // ticks/item = 4000 ticks)
         DRIED_KELP_BLOCK => 4000,
+        // 1.14 (VERIFIED live 2026-09-08 from the raw capture
+        // v114_page_bamboo.json, w/Bamboo §Fuel: "Each bamboo item
+        // smelts 0.25 items. (it costs 4 bamboo items to smelt 1
+        // item)" — 0.25 × 200 = 50 ticks)
+        BAMBOO => 50,
+        // 1.14: charcoal — fuel-identical to coal (the classic
+        // Indev-era parity; w/Charcoal §Fuel = the coal row: "1600
+        // [ticks], 8 [items]")
+        CHARCOAL => 1600,
         // Phase E3 (VERIFIED live 2026-09-06, minecraft.wiki/w/
         // Block_of_Coal: "One block of coal lasts 800 seconds (16000
         // ticks), which smelts 80 items" — 10× the coal item)
@@ -96,6 +105,13 @@ pub fn smelt_result(block: u16) -> Option<u16> {
         // dye")
         KELP => Some(DRIED_KELP),
         SEA_PICKLE => Some(DYE_BASE + 5), // lime dye (engine color 5)
+        // 1.14: any log smelts into charcoal (the classic recipe —
+        // VERIFIED w/Charcoal: "obtained by smelting logs"; the
+        // engine's 6-log set is the "any log" row, with the
+        // log→planks craft untouched)
+        OAK_LOG | BIRCH_LOG | SPRUCE_LOG | ACACIA_LOG | DARK_OAK_LOG | JUNGLE_LOG => {
+            Some(CHARCOAL)
+        }
         _ => None,
     }
 }
@@ -492,5 +508,26 @@ mod v112_tests {
         assert_eq!(fuel_ticks(DRIED_KELP), 0);
         // kelp is not a fuel either
         assert_eq!(fuel_ticks(KELP), 0);
+    }
+
+    /// 1.14 (Village & Pillage — nature half): bamboo fuel (0.25 items
+    /// = 50 ticks, VERIFIED w/Bamboo §Fuel), charcoal parity with coal,
+    /// and log smelting into charcoal (VERIFIED w/Charcoal).
+    #[test]
+    fn v114_bamboo_charcoal_fuel_and_smelt() {
+        // bamboo: 0.25 items × 200 ticks = 50 (VERIFIED: "Each bamboo
+        // item smelts 0.25 items")
+        assert_eq!(fuel_ticks(BAMBOO), 50);
+        assert_eq!(fuel_ticks(BAMBOO_SHOOT), 0, "shoots are not a fuel row");
+        // charcoal: fuel-identical to coal (1600 ticks / 8 items)
+        assert_eq!(fuel_ticks(CHARCOAL), 1600);
+        assert_eq!(fuel_ticks(CHARCOAL), fuel_ticks(COAL));
+        // every log smelts into charcoal; planks never do
+        for log in [OAK_LOG, BIRCH_LOG, SPRUCE_LOG, ACACIA_LOG, DARK_OAK_LOG, JUNGLE_LOG] {
+            assert_eq!(smelt_result(log), Some(CHARCOAL), "log {log} → charcoal");
+        }
+        assert_eq!(smelt_result(PLANKS), None, "planks are not smeltable");
+        // charcoal is terminal (no re-smelting)
+        assert_eq!(smelt_result(CHARCOAL), None);
     }
 }

@@ -4,6 +4,7 @@
 pub mod anvil;
 pub mod beacon;
 pub mod brewing;
+pub mod campfire;
 pub mod effects;
 pub mod combat;
 pub mod craft;

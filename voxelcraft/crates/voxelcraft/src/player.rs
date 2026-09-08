@@ -166,10 +166,19 @@ pub struct Player {
     /// 1.10: magma damage queued for the game layer (1 HP per second of
     /// contact — wiki /w/Magma_Block, live 2026-09-06)
     pending_magma_dmg: f32,
+    /// 1.14: bush + campfire hazard damage queued for the game layer (1
+    /// HP per HALF-second — VERIFIED w/Sweet_Berry_Bush + w/Campfire:
+    /// "1 HP every tick (although damage immunity reduces this to once
+    /// every half-second)")
+    pending_hazard_dmg: f32,
     /// 1.10: auto-jump hop cooldown (seconds) — one hop per obstacle
     autojump_cd: f32,
     /// 1.10: magma-contact accumulator (seconds; 1 HP per full second)
     magma_accum: f32,
+    /// 1.14: hazard accumulator (seconds; 1 HP per full 0.5 s — the
+    /// vanilla damage-immunity window, shared by the bush and campfire
+    /// sources exactly like vanilla's global immunity)
+    hazard_accum: f32,
     /// air supply 0..300 (over-depletes to −20, then resets on damage).
     /// 300 = full (10 bubbles × 30).
     pub air: f32,
@@ -225,6 +234,8 @@ impl Player {
             pending_magma_dmg: 0.0,
             autojump_cd: 0.0,
             magma_accum: 0.0,
+            pending_hazard_dmg: 0.0,
+            hazard_accum: 0.0,
             air: AIR_MAX,
             tick_accum: 0.0,
             air_accum: 0.0,
@@ -253,6 +264,14 @@ impl Player {
     pub fn take_pending_magma_damage(&mut self) -> f32 {
         let d = self.pending_magma_dmg;
         self.pending_magma_dmg = 0.0;
+        d
+    }
+
+    /// 1.14: drain queued bush/campfire hazard damage (1 HP per 0.5 s —
+    /// the vanilla damage-immunity cadence).
+    pub fn take_pending_hazard_damage(&mut self) -> f32 {
+        let d = self.pending_hazard_dmg;
+        self.pending_hazard_dmg = 0.0;
         d
     }
 
@@ -447,6 +466,56 @@ impl Player {
             }
         } else {
             self.magma_accum = 0.0;
+        }
+
+        // ---- 1.14 (Village & Pillage — nature half): environmental
+        // hazards. VERIFIED w/Sweet_Berry_Bush §Entity movement +
+        // w/Campfire §Damage: both deal "1 HP every tick (although
+        // damage immunity reduces this to once every half-second)" —
+        // the shared accumulator models vanilla's GLOBAL immunity
+        // window (a bush and a campfire together still cost 1 HP per
+        // 0.5 s). The bush needs the player to be MOVING ("only if the
+        // entity is moving in the hitbox of the bush") at stage 1+,
+        // and slows to 34.05%; the campfire needs standing on a LIT
+        // one (no sneak exemption — unlike magma). ----
+        let hazard_active = {
+            let feet_state = world.get_state(
+                self.pos.x.floor() as i32,
+                self.pos.y.floor() as i32,
+                self.pos.z.floor() as i32,
+            );
+            let in_bush = state_block(feet_state) == SWEET_BERRY_BUSH
+                && berry_bush_age(feet_state) >= 1
+                && (input.fwd || input.back || input.left || input.right);
+            let on_campfire = state_block(
+                world.get_state(
+                    self.pos.x.floor() as i32,
+                    (self.pos.y - 0.1).floor() as i32,
+                    self.pos.z.floor() as i32,
+                ),
+            ) == CAMPFIRE
+                && campfire_lit(world.get_state(
+                    self.pos.x.floor() as i32,
+                    (self.pos.y - 0.1).floor() as i32,
+                    self.pos.z.floor() as i32,
+                ))
+                && self.on_ground;
+            // the bush slow (VERIFIED 34.05%): scale this tick's
+            // horizontal velocity — steady-state pace = the 34.05% row
+            if in_bush {
+                self.vel.x *= vc_gameplay::mobs::BUSH_SLOW_FACTOR;
+                self.vel.z *= vc_gameplay::mobs::BUSH_SLOW_FACTOR;
+            }
+            in_bush || on_campfire
+        };
+        if hazard_active {
+            self.hazard_accum += dt;
+            while self.hazard_accum >= 0.5 {
+                self.hazard_accum -= 0.5;
+                self.pending_hazard_dmg += 1.0;
+            }
+        } else {
+            self.hazard_accum = 0.0;
         }
 
         // wish direction (horizontal)

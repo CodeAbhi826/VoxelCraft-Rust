@@ -19,6 +19,9 @@ pub fn slot_count(block: u16) -> Option<usize> {
         // inventory slots, the same as a barrel, a single chest, or an
         // ender chest")
         SHULKER_BOX => 27,
+        // 1.14 (VERIFIED w/Barrel: "Barrels have a container inventory
+        // with 27 slots, which is the same as a single chest")
+        BARREL => 27,
         DISPENSER | DROPPER => 9,
         HOPPER => 5,
         _ => return None,

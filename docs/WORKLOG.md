@@ -2180,3 +2180,161 @@ pointer: confined → in-game click → exit 0).
 **Next:** the 1.14 Village & Pillage nature-half implementation
 (bamboo/sweet-berry-bush/campfire/barrel/fox) on the researched
 contract in docs/research/phase-v114-1.14-research.md.
+
+## 2026-09-08 (session 17) — 1.14 Village & Pillage, the NATURE HALF (bracket 11/16)
+
+**Task:** continue the main plan — the 1.14 implementation round on the
+research contract landed last session
+(docs/research/phase-v114-1.14-research.md, raw captures
+`voxelcraft/scripts/v114_page_*.json`). The village half (villages/
+pillager/raids/crossbow/bell/trader/crafting-stations) stays deferred
+until the engine has village+raid scaffolding — the same deferral class
+as prior brackets; this round ships everything that grows, burns,
+stores, and prowls.
+
+**Re-verification pass (the research doc's own flagged items):** the
+captures already on disk answered every "re-verify at implementation
+time" flag — bush slow **"34.05% of their normal speed"** (the doc had
+"re-verify the exact multiplier"), bamboo fuel **"smelts 0.25 items"**
+(50 ticks), campfire ingredients **"Stick + Coal or Charcoal + Any
+Log"** (3/1/3 grid), barrel **"6 wood planks and 2 wood slabs"** (the
+18w50a history row), berry-bush gen **"a 1/12 chance"** per chunk,
+bamboo **"widely scattered single shoots within jungle biomes"** (the
+20% jungle-edge figure replaced by the patch-roll adaptation),
+harvest **"1–2 in its third growth stage, 2–3 in its final"** with the
+**revert to the second growth stage** after harvest, and the bush
+damage **"1 HP every tick (although damage immunity reduces this to
+once every half-second), only if the entity is moving"**.
+
+**Registry (V10 window — blocks 417..=425, states 676..=688, tiles
+619..=633):**
+- BAMBOO (417, stalk) + BAMBOO_SHOOT (418) — cross-rendered
+  non-solid columns (vanilla's 2-px stalk collision can't be expressed
+  in the engine's binary-solid model — the kelp-column adaptation,
+  disclosed)
+- SWEET_BERRY_BUSH (419) — 4 age states (0..3)
+- CAMPFIRE (420) — unlit/lit states; **placed LIT**; `state_emissive`
+  carries 15 on the lit state (the REDSTONE_LAMP_LIT pattern)
+- BARREL (421) — solid + opaque (w/Barrel infobox "Transparent No")
+- SWEET_BERRIES (422, item), SPAWN_EGG_FOX (423, kind 40)
+- STICK (424) + CHARCOAL (425) — **two legacy items added late**:
+  the stick is an Alpha-era item the engine never needed until the
+  campfire recipe consumed one; charcoal until log-smelting + the
+  campfire drop produced it. Both disclosed as late arrivals in the
+  1.14 window.
+- BLOCK_COUNT 417→426, STATE_COUNT 676→689, TILE_MAX 618→633, the
+  WGSL mesh LUT resynced (L_FL/L_TC/L_ST + the min() clamps — the
+  drift test caught it immediately, working as designed)
+- F3: `state_description` now decodes the V9 pickle/egg AND V10
+  bush/campfire property states for the Targeted Block lines
+  ("Sweet Berry Bush[age=2]", "Campfire[lit=true]")
+
+**Art (v114_art.rs, painted from day one):** bamboo stalk (segmented
+culm + node rings + leaf blades), shoot, berry bush ×4 stages (the
+berry pixels must GROW with the stage — test), lit/unlit campfire
+(the lit one must show glowing coals, the unlit none — test), barrel
+lid (plank cross + hoop band) + stave side, sweet berries icon, fox
+sprite (orange/white/black), stick + charcoal icons; the fox egg on
+the e1 egg-art convention. Guards: `v114_tiles_all_painted` (619..=633
+must have ≥4 painted pixels — the 1.13 blank-window lesson baked in
+WITH the window), `v114_berry_bush_berries_grow`,
+`v114_campfire_lit_glows`.
+
+**Gen:** bamboo patches (20%/chunk in Jungle, 4–10 shoots 1..4 tall on
+grass/dirt/podzol — the no-bamboo-jungle-sub-biome adaptation,
+disclosed); berry-bush patches in Taiga + Snowy at the VERIFIED 1/12
+chunk roll, 3–6 bushes at bearing ages 1..=3. Both biome-scoped both
+ways (present in-family, absent outside — tests).
+
+**Gameplay:**
+- random ticks: shoot→stalk (1/3 + light 9), stalk column growth
+  (top-cell-only roll, 1/3, cap 16, light gate at the would-be top),
+  bush aging (20% per tick, terminal at 3) — the per-position hash
+  rolls of the nether-wart pattern
+- berry bush full contract: player — moving-only, stage-1+, 1 HP per
+  0.5 s on the SHARED hazard accumulator (vanilla's global immunity
+  window — a bush + a campfire together still cost 1 HP per 0.5 s),
+  horizontal velocity scaled 34.05%; mobs — the same through
+  `hazard_tick` (AI steering → hazard scale → physics move, so the
+  steady-state pace is the verified row); FOXES IMMUNE to both halves
+- campfire: 4-slot fuel-less 600-tick cooking
+  (`vc-gameplay/src/campfire.rs`, cooking gated on the LIT world
+  state), completions auto-eject on top (the no-campfire-UI
+  adaptation — disclosed; vanilla extracts via hopper), breaking
+  drops the raw food + 2 charcoal (no Silk Touch — the self-drop row
+  unreachable, disclosed), water contact extinguishes (BOTH the
+  falling and horizontal flow arms — VERIFIED "waterlogging it"),
+  smoke particles (10 blocks / 24 over a hay bale — the signal fire,
+  tinted + taller)
+- the player's standing-on-lit-campfire damage rides the same shared
+  accumulator (no sneak exemption — unlike magma)
+- barrel: 27 slots on the containers path (`slot_count(BARREL)`), own
+  `Container::Barrel` + `ContainerKind::Barrel` (the BARREL title, the
+  chest grid geometry), hoppers interact for free through the
+  containers map
+- crafting: stick ×2 orientations (the no-rotation-pass constraint
+  disclosed per the shulker-column precedent), campfire ×2 rows (coal
+  + charcoal fuels, AnyWood = the 6 logs, AnyPlanks = oak + jungle),
+  barrel (6 any-planks + 2 OAK_SLAB caps — the single-slab registry
+  is the "any slab" stand-in, disclosed)
+- furnace: BAMBOO 50-tick fuel, CHARCOAL 1600 (coal parity), the 6
+  logs smelt into charcoal
+- food: SWEET_BERRIES (2 hunger → 1.0 HP); planting on
+  grass/dirt/podzol/snow-grass before the eat branch (the plant-first
+  interaction order)
+- bamboo placement: soil → SHOOT, on bamboo → stalk, other supports
+  DENIED (the u16::MAX sentinel through the placement chain)
+
+**The fox (MobKind::Fox, MOB_DATA row 41):** 10 HP / 2 HP (E/N — 3 on
+Hard via difficulty_scale) / 0.3 speed / 0.7×0.6 / 1 XP. Spawning:
+taiga packs at a 25% roll + the Snowy 20% share (the 1.10
+icy-family-only restriction's one later-bracket exception —
+disclosed). AI (the ocelot pattern): wild flee (the 6-block ocelot
+scare radius — the wiki gives no fox-specific figure, disclosed
+approximation; trusting bit 0 stays), prey scan for chickens +
+rabbits anywhere and beached cod/salmon/tropical-fish + baby turtles
+("while they are on land" — the exact vanilla gate), 2-HP bites on
+contact. Life-cycle clocks (environmental, the turtle precedent):
+baby 0x40 matures on the 24000-tick aux countdown; love 0x80 expires
+at 600. Breeding: `try_feed_fox` — first feeding arms love, a second
+feeding with a loving adult within 8 blocks pairs them (both loves
+clear; the vanilla 5-min cooldown simplified to a clean clear —
+disclosed), the game layer spawns the trusting cub (0x41 + aux
+24000). Death drops nothing (the body's loot is carried-item
+equipment — the standing carried-items deferral).
+
+**The picker gap fix that rode along:** the 1.13 rounds shipped the
+V9 blocks but never added creative-picker rows — this round adds
+BOTH windows (V9's 61 + V10's 9; PICKER_BLOCKS 321→386, every entry
+reachable through the scrollable grid).
+
+**E2E/CI:** the wasm command console grew `v114:<ticks>`; the native
+smoke grew the `E2E_V114=1` env stage (the same sequence at world
+entry — campfire fed a potato, barrel, mature bush, shoot, fox; a
+650-tick full-scope fast-forward), and linux-game.yml now greps
+"e2e: v114 campfire lit+fed=true" + "cooked 1 item(s)" as blocking
+assertions.
+
+**Deferred with reasons (recorded per the standing protocol):** the
+village half of 1.14 (village rework, pillager + outposts, ravager,
+raids/Bad Omen/Hero of the Village, crossbow, bell, wandering trader,
+loom/stonecutter/fletching/cartography/smithing/grindstone — needs
+village/raid scaffolding), smooth stone / blast furnace / smoker /
+lantern / new flowers (unresearched — the next nature rounds),
+sweet-berry composting (no composter), pandas (no mob; bamboo
+breeding lands with them), fox carried-item loot + pounce animation
+(standing carried-items/animation deferrals), fox flee radius exact
+value (no wiki figure), post-breed 5-minute cooldown, campfire
+shovel-extinguish (no shovel item) + Silk-Touch self-drop,
+water-bucket-on-campfire (no bucket capture path), berry-bush
+Fortune rows (no Fortune), the new mob sounds (the parrot/horse
+precedent — unregistered events are silent no-ops until an audio
+round adds recipes).
+
+**Verification:** 527/527 workspace tests green (+23 this round:
+vc-blocks 2, vc-render 3, vc-world 2, vc-sim 3, vc-gameplay 16 —
+campfire 5 + mob 8 + craft 1 + furnace 1 + containers implicit —
+and the updated registry bounds), wasm32 lib check clean, release
+profile clean. Local checks ran with `--no-default-features` (the
+sandbox lacks the ALSA dev headers for the rodio backend; CI builds
+the full audio path — the audio feature is untouched this round).

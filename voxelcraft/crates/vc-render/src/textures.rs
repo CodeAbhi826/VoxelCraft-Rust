@@ -14,6 +14,7 @@ mod e3_art;
 mod auditfix_art;
 mod v112_art;
 mod v113_art;
+mod v114_art;
 
 pub const ATLAS_SIZE: usize = 512;
 pub const TILE_PX: usize = 16;
@@ -4204,6 +4205,26 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_MOB_PUFFERFISH => v113_art::pufferfish_art(&mut a, t, &mut rng),
             TILE_MOB_TROPICAL_FISH => v113_art::tropical_fish_art(&mut a, t, &mut rng),
             TILE_MOB_TURTLE => v113_art::turtle_art(&mut a, t, &mut rng),
+            // ---- 1.14 bracket (Village & Pillage — nature half): the
+            // V10 window 619..=633. Painted from day one this time (the
+            // 1.13 art-gap lesson — guarded by v114_tiles_all_painted). ----
+            TILE_BAMBOO => v114_art::bamboo_art(&mut a, t, &mut rng),
+            TILE_BAMBOO_SHOOT => v114_art::bamboo_shoot_art(&mut a, t, &mut rng),
+            t if (TILE_BERRY_BUSH_BASE..=TILE_BERRY_BUSH_BASE + 3).contains(&t) => {
+                let stage = (t - TILE_BERRY_BUSH_BASE) as u8;
+                v114_art::berry_bush_art(&mut a, t, stage, &mut rng)
+            }
+            TILE_CAMPFIRE => v114_art::campfire_art(&mut a, t, true, &mut rng),
+            TILE_CAMPFIRE_UNLIT => v114_art::campfire_art(&mut a, t, false, &mut rng),
+            TILE_BARREL_TOP => v114_art::barrel_top_art(&mut a, t, &mut rng),
+            TILE_BARREL_SIDE => v114_art::barrel_side_art(&mut a, t, &mut rng),
+            TILE_SWEET_BERRIES => v114_art::sweet_berries_art(&mut a, t, &mut rng),
+            TILE_EGG_FOX => {
+                e1_art::egg_art(&mut a, t, (240, 240, 240), (204, 96, 42))
+            }
+            TILE_MOB_FOX => v114_art::fox_art(&mut a, t, &mut rng),
+            TILE_STICK => v114_art::stick_art(&mut a, t, &mut rng),
+            TILE_CHARCOAL => v114_art::charcoal_art(&mut a, t, &mut rng),
             _ => {}
         }
     }
@@ -5107,5 +5128,83 @@ mod v113_art_tests {
             stages[0] <= stages[1] && stages[1] <= stages[2] && stages[2] > stages[0],
             "crack pixels must grow with the hatch stage: {stages:?}"
         );
+    }
+
+    /// 1.14 (Village & Pillage — nature half): every V10 tile 619..=633
+    /// is painted (>= 4 pixels) — the art-gap regression guard, this
+    /// time written WITH the window (the 1.13 round shipped blank).
+    #[test]
+    fn v114_tiles_all_painted() {
+        let atlas = generate_atlas();
+        for t in 619..=TILE_MAX {
+            let tx = (t % 32) as usize;
+            let ty = (t / 32) as usize;
+            let mut painted = 0usize;
+            for y in 0..TILE_PX {
+                for x in 0..TILE_PX {
+                    let src = ((ty * TILE_PX + y) * ATLAS_SIZE + tx * TILE_PX + x) * 4 + 3;
+                    if atlas[src] > 0 {
+                        painted += 1;
+                    }
+                }
+            }
+            assert!(
+                painted >= 4,
+                "tile {t} is BLANK ({painted} painted pixels) — a painter is missing (the art-gap regression)"
+            );
+        }
+    }
+
+    /// the berry-bush stages gain red berry pixels as they mature
+    /// (stage 0 = the green sapling; stage 3 = the berry-laden bush —
+    /// VERIFIED w/Sweet_Berry_Bush §Growth).
+    #[test]
+    fn v114_berry_bush_berries_grow() {
+        let atlas = generate_atlas();
+        let reds = |t: u16| {
+            let tx = (t % 32) as usize;
+            let ty = (t / 32) as usize;
+            (0..TILE_PX)
+                .flat_map(move |y| (0..TILE_PX).map(move |x| (x, y)))
+                .filter(|(x, y)| {
+                    let src = ((ty * TILE_PX + y) * ATLAS_SIZE + tx * TILE_PX + x) * 4;
+                    // berry-red pixels: red channel dominant + dark-ish
+                    atlas[src + 3] > 0
+                        && atlas[src] > 130
+                        && atlas[src + 1] < 90
+                        && atlas[src + 2] < 90
+                })
+                .count()
+        };
+        let s0 = reds(TILE_BERRY_BUSH_BASE);
+        let s2 = reds(TILE_BERRY_BUSH_BASE + 2);
+        let s3 = reds(TILE_BERRY_BUSH_BASE + 3);
+        assert_eq!(s0, 0, "stage 0 is the green sapling — no berries");
+        assert!(s2 > 0, "stage 2 carries the first berries");
+        assert!(s3 > s2, "the mature bush carries more berries: {s3} > {s2}");
+    }
+
+    /// the lit campfire tile shows glowing coals (bright warm pixels)
+    /// the unlit one lacks (VERIFIED w/Campfire: "Luminous Yes (15)
+    /// when lit").
+    #[test]
+    fn v114_campfire_lit_glows() {
+        let atlas = generate_atlas();
+        let warm = |t: u16| {
+            let tx = (t % 32) as usize;
+            let ty = (t / 32) as usize;
+            (0..TILE_PX)
+                .flat_map(move |y| (0..TILE_PX).map(move |x| (x, y)))
+                .filter(|(x, y)| {
+                    let src = ((ty * TILE_PX + y) * ATLAS_SIZE + tx * TILE_PX + x) * 4;
+                    // coal pixels: red > 200, green 100..190
+                    atlas[src + 3] > 0 && atlas[src] > 200 && (90..200).contains(&atlas[src + 1])
+                })
+                .count()
+        };
+        let lit = warm(TILE_CAMPFIRE);
+        let unlit = warm(TILE_CAMPFIRE_UNLIT);
+        assert!(lit >= 10, "lit campfire has glowing coals: {lit}");
+        assert_eq!(unlit, 0, "unlit campfire is cold ash: {unlit}");
     }
 }

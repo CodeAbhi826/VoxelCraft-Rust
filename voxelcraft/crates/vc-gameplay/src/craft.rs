@@ -883,7 +883,112 @@ pub const RECIPES: &[Recipe] = &[
         ],
         out: ItemStack::new(CHAIN, 1),
     },
+    // ---- 1.16 (Nether Update, part 2 — the crimson/warped families):
+    // all VERIFIED against the v116b captures. ----
+    // crimson stem → 4 crimson planks (the universal log→planks rule,
+    // VERIFIED w/Crimson_Planks §Crafting: "crimson planks can be
+    // crafted from crimson stems")
+    Recipe {
+        size: 1,
+        grid: &[Ing::Block(CRIMSON_STEM)],
+        out: ItemStack::new(CRIMSON_PLANKS, 4),
+    },
+    // crimson hyphae → 4 crimson planks (the same 1:4 rule — the
+    // "any log or stem or hyphae" row of the universal planks recipe)
+    Recipe {
+        size: 1,
+        grid: &[Ing::Block(CRIMSON_HYPHAE)],
+        out: ItemStack::new(CRIMSON_PLANKS, 4),
+    },
+    // warped stem → 4 warped planks
+    Recipe {
+        size: 1,
+        grid: &[Ing::Block(WARPED_STEM)],
+        out: ItemStack::new(WARPED_PLANKS, 4),
+    },
+    // warped hyphae → 4 warped planks
+    Recipe {
+        size: 1,
+        grid: &[Ing::Block(WARPED_HYPHAE)],
+        out: ItemStack::new(WARPED_PLANKS, 4),
+    },
+    // polished basalt: 4 basalt → 4 (VERIFIED w/Polished_Basalt
+    // §Crafting: the 2x2 stone family — the part-1 BASALT doc's
+    // deferred family, delivered here)
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(BASALT), Ing::Block(BASALT),
+            Ing::Block(BASALT), Ing::Block(BASALT),
+        ],
+        out: ItemStack::new(POLISHED_BASALT, 4),
+    },
+    // polished blackstone: 4 blackstone → 4 (VERIFIED
+    // w/Polished_Blackstone §Crafting)
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(BLACKSTONE), Ing::Block(BLACKSTONE),
+            Ing::Block(BLACKSTONE), Ing::Block(BLACKSTONE),
+        ],
+        out: ItemStack::new(POLISHED_BLACKSTONE, 4),
+    },
+    // polished blackstone bricks: 4 polished blackstone → 4 (VERIFIED
+    // w/Polished_Blackstone_Bricks §Crafting)
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(POLISHED_BLACKSTONE), Ing::Block(POLISHED_BLACKSTONE),
+            Ing::Block(POLISHED_BLACKSTONE), Ing::Block(POLISHED_BLACKSTONE),
+        ],
+        out: ItemStack::new(POLISHED_BLACKSTONE_BRICKS, 4),
+    },
+    // soul torch: charcoal/coal + stick + soul soil or soul sand → 4
+    // — SHAPELESS (VERIFIED w/Soul_Torch §Crafting: "a torch crafted
+    // with the addition of soul soil or soul sand"; the coal and
+    // charcoal halves of the current wiki row are both valid in the
+    // 1.16 window). Rides the shapeless matcher below (the concrete-
+    // powder pattern). The soul lantern follows from it: 8 iron
+    // nuggets + 1 soul torch (VERIFIED w/Soul_Torch §Crafting
+    // ingredient table: "Soul Lantern — Iron Nugget + Soul Torch").
 ];
+
+/// 1.16 (Nether Update, part 2): the shapeless SOUL-TORCH recipe —
+/// 1 charcoal or coal + 1 stick + 1 soul soil or soul sand → 4 soul
+/// torches (VERIFIED w/Soul_Torch §Crafting; the coal and charcoal
+/// halves are both valid). The soul lantern rides the shaped path:
+/// 8 iron nuggets + 1 soul torch (VERIFIED w/Soul_Torch §Crafting
+/// ingredient table: "Soul Lantern — Iron Nugget + Soul Torch" —
+/// the vanilla lantern recipe's soul form).
+fn match_soul_torch(slots: &[ItemStack], _size: usize) -> Option<ItemStack> {
+    let mut fuel = 0; // coal or charcoal (exactly one)
+    let mut stick_n = 0;
+    let mut soul = 0; // soul soil or soul sand (exactly one)
+    let mut torch = 0; // the soul-lantern path: exactly one soul torch
+    let mut nuggets = 0;
+    for s in slots {
+        if s.is_empty() {
+            continue;
+        }
+        match s.block {
+            CHARCOAL | COAL => fuel += 1,
+            STICK => stick_n += 1,
+            SOUL_SOIL | SOUL_SAND => soul += 1,
+            SOUL_TORCH => torch += 1,
+            IRON_NUGGET => nuggets += 1,
+            _ => return None, // any other ingredient breaks the multiset
+        }
+    }
+    // the soul lantern: 8 nuggets + 1 soul torch (the lantern ring)
+    if nuggets == 8 && torch == 1 && fuel == 0 && stick_n == 0 && soul == 0 {
+        return Some(ItemStack::new(SOUL_LANTERN, 1));
+    }
+    // the soul torch: 1 fuel + 1 stick + 1 soul block
+    if fuel == 1 && stick_n == 1 && soul == 1 && torch == 0 && nuggets == 0 {
+        return Some(ItemStack::new(SOUL_TORCH, 4));
+    }
+    None
+}
 
 /// 1.12 (World of Color): the concrete-powder recipe — the engine's
 /// first truly SHAPELESS 9-slot craft. VERIFIED changelog §Blocks:
@@ -927,6 +1032,11 @@ fn match_concrete_powder(slots: &[ItemStack], size: usize) -> Option<ItemStack> 
 /// recipe output. Trims to the bounding box first (vanilla grid-shape
 /// semantics: the pattern matches anywhere in the grid).
 pub fn match_grid(slots: &[ItemStack], size: usize) -> Option<ItemStack> {
+    // 1.16 (Nether Update, part 2): the shapeless soul-torch +
+    // soul-lantern recipes (any arrangement)
+    if let Some(out) = match_soul_torch(slots, size) {
+        return Some(out);
+    }
     // 1.12: the shapeless concrete-powder recipe (any arrangement)
     if let Some(out) = match_concrete_powder(slots, size) {
         return Some(out);
@@ -1529,5 +1639,80 @@ mod v112_tests {
         ];
         let out = match_grid(&g, 3).unwrap();
         assert_eq!((out.block, out.count), (CHAIN, 1));
+    }
+
+    /// 1.16 (Nether Update, part 2): the crimson/warped families'
+    /// craft contracts (all VERIFIED against the v116b captures —
+    /// the research record docs/research/phase-v116b-1.16-research.md)
+    #[test]
+    fn v116b_forest_family_recipes() {
+        // the stems → 4 planks each (the universal log→planks rule)
+        for (stem, planks) in [
+            (CRIMSON_STEM, CRIMSON_PLANKS),
+            (CRIMSON_HYPHAE, CRIMSON_PLANKS),
+            (WARPED_STEM, WARPED_PLANKS),
+            (WARPED_HYPHAE, WARPED_PLANKS),
+        ] {
+            let g = vec![ItemStack::new(stem, 1)];
+            let out = match_grid(&g, 1).unwrap();
+            assert_eq!(
+                (out.block, out.count),
+                (planks, 4),
+                "{stem} -> 4 planks (the 1:4 rule)"
+            );
+        }
+
+        // the polished stone 2x2 family: basalt / blackstone / bricks
+        let g = vec![
+            ItemStack::new(BASALT, 1), ItemStack::new(BASALT, 1),
+            ItemStack::new(BASALT, 1), ItemStack::new(BASALT, 1),
+        ];
+        let out = match_grid(&g, 2).unwrap();
+        assert_eq!((out.block, out.count), (POLISHED_BASALT, 4));
+
+        let g = vec![
+            ItemStack::new(BLACKSTONE, 1), ItemStack::new(BLACKSTONE, 1),
+            ItemStack::new(BLACKSTONE, 1), ItemStack::new(BLACKSTONE, 1),
+        ];
+        let out = match_grid(&g, 2).unwrap();
+        assert_eq!((out.block, out.count), (POLISHED_BLACKSTONE, 4));
+
+        let g = vec![
+            ItemStack::new(POLISHED_BLACKSTONE, 1), ItemStack::new(POLISHED_BLACKSTONE, 1),
+            ItemStack::new(POLISHED_BLACKSTONE, 1), ItemStack::new(POLISHED_BLACKSTONE, 1),
+        ];
+        let out = match_grid(&g, 2).unwrap();
+        assert_eq!((out.block, out.count), (POLISHED_BLACKSTONE_BRICKS, 4));
+
+        // the soul torch: SHAPELESS — 1 charcoal + 1 stick + 1 soul
+        // soil (any arrangement; the coal + soul-sand halves too)
+        for fuel in [CHARCOAL, COAL] {
+            for soul in [SOUL_SOIL, SOUL_SAND] {
+                let g = vec![
+                    ItemStack::new(fuel, 1),  ItemStack::EMPTY,           ItemStack::new(STICK, 1),
+                    ItemStack::EMPTY,           ItemStack::new(soul, 1),  ItemStack::EMPTY,
+                    ItemStack::EMPTY,           ItemStack::EMPTY,           ItemStack::EMPTY,
+                ];
+                let out = match_grid(&g, 3).unwrap();
+                assert_eq!((out.block, out.count), (SOUL_TORCH, 4));
+            }
+        }
+
+        // the soul lantern: 8 iron nuggets + 1 soul torch (the ring)
+        let g = vec![
+            ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1),
+            ItemStack::new(IRON_NUGGET, 1), ItemStack::new(SOUL_TORCH, 1),  ItemStack::new(IRON_NUGGET, 1),
+            ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1),
+        ];
+        let out = match_grid(&g, 3).unwrap();
+        assert_eq!((out.block, out.count), (SOUL_LANTERN, 1));
+
+        // negative: 7 nuggets + a soul torch is NOT the recipe
+        let g = vec![
+            ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1),
+            ItemStack::new(IRON_NUGGET, 1), ItemStack::new(SOUL_TORCH, 1),  ItemStack::EMPTY,
+            ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1),
+        ];
+        assert!(match_grid(&g, 3).is_none(), "the 8-nugget ring is exact");
     }
 }

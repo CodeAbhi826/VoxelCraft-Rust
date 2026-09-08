@@ -175,6 +175,16 @@ jobs:
           grep -q "drain=true" smoke.log
           grep -q "decay=true" smoke.log
           grep -q "soulfire-dmg=2.0" smoke.log
+          # 1.16 (Nether Update, part 2): the forest families — the V14
+          # registry + placement, the soul-lantern pair, the soul
+          # lights, the family crafts, the strider's lava physics, the
+          # hoglin's warped-fungus flee, the piglin barter + the
+          # gold-mining anger
+          grep -q "e2e: v116b family=true" smoke.log
+          grep -q "lantern-pair=true" smoke.log
+          grep -q "strider-lava=true" smoke.log
+          grep -q "hoglin-flee=true" smoke.log
+          grep -q "barter=true" smoke.log
 
           # the vanilla settings-tree E2E: click through Options → Video /
           # Engine / Packs / Accessibility via the REAL input path and

@@ -216,6 +216,44 @@ pub enum MobKind {
     /// within 5 blocks below the hive. Hover-flight like the bat
     /// ("hover a few blocks above the ground similar to bats").
     Bee,
+    /// 1.16 (Nether Update, part 2): the strider — VERIFIED (w/Strider,
+    /// live 2026-09-08, raw capture scripts/v116b_page_Strider.json):
+    /// 20 HP passive animal, "Hitbox size Adult: Height: 1.7 blocks
+    /// Width: 0.9 blocks" (baby 0.85/0.45), speed 0.175, "Lava does
+    /// not damage striders, and they can walk on top of it without
+    /// sinking", damaged by water ("1 HP per ... half-second in
+    /// water"), "Groups of 2 to 4 striders spawn on spaces of lava
+    /// that have an air block above" with attempts every 400 gt,
+    /// drops 2-5 string (100%), "can be fed warped fungus to breed".
+    /// Riding (saddle + fungus-on-a-stick) is the standing deferral —
+    /// no mount system for striders, disclosed.
+    Strider,
+    /// 1.16: the piglin — VERIFIED (w/Piglin, live 2026-09-08, raw
+    /// capture scripts/v116b_page_Piglin.json): 16 HP "Neutral (adult)"
+    /// monster, hitbox 1.95 x 0.6, speed 0.35, "Melee: Golden Sword:
+    /// ... Normal: 8 HP" (the engine's melee row; the crossbow's
+    /// 2-5 is the ranged row — melee-only here, disclosed), spawns
+    /// in Nether Wastes + Crimson Forest in groups of 3-4 (the
+    /// w/Crimson_Forest row), bartering: "take gold ingots ... The
+    /// piglin 'examines' the ingot for six seconds, then drops a
+    /// random item from the chart" (the trimmed engine table,
+    /// VERIFIED w/Bartering). Gold-armor pacification needs a wearable
+    /// armor system — the engine's adaptation is neutral-until-provoked
+    /// + the gold-mining anger hook (disclosed).
+    Piglin,
+    /// 1.16: the hoglin — VERIFIED (w/Hoglin, live 2026-09-08, raw
+    /// capture scripts/v116b_page_Hoglin.json): 40 HP hostile Animal
+    /// "Monster", hitbox 1.4 x 1.3965 (JE row), speed 0.3, knockback
+    /// resistance 60% (no knockback stat in the engine — disclosed),
+    /// "Attack strength Adult in Java Edition: ... Normal: 3 HP to
+    /// 8 HP" (engine takes the 5.5 midpoint, disclosed), "Hoglins
+    /// avoid being within 7 blocks of warped fungi ... and respawn
+    /// anchors", spawn in the Crimson Forest (the only natural biome,
+    /// w/Crimson_Forest) in 3-4 packs with 20% JE babies, bred with
+    /// crimson fungus, drops raw porkchop 2-4 (100%) + leather 0-1
+    /// (50%), 5 XP. Zombification (overworld zoglins) has no mob
+    /// dimension transfer — trimmed, disclosed.
+    Hoglin,
     /// The squid — a PRE-1.13 legacy marker (vanilla added it in Beta
     /// 1.2; the engine's early brackets skipped it and it is NOT one of
     /// 1.13's new mobs). Declared so the aquatic() classification
@@ -272,6 +310,10 @@ impl MobKind {
             "turtle" => MobKind::Turtle,
             "fox" => MobKind::Fox,
             "bee" => MobKind::Bee,
+            // 1.16 (Nether Update, part 2)
+            "strider" => MobKind::Strider,
+            "piglin" => MobKind::Piglin,
+            "hoglin" => MobKind::Hoglin,
             _ => return None,
         })
     }
@@ -322,6 +364,10 @@ impl MobKind {
             // 1.14: the fox
             MobKind::Fox => "minecraft:fox",
             MobKind::Bee => "minecraft:bee",
+            // 1.16 (Nether Update, part 2)
+            MobKind::Strider => "minecraft:strider",
+            MobKind::Piglin => "minecraft:piglin",
+            MobKind::Hoglin => "minecraft:hoglin",
             // classification-only marker (see the enum doc) — still
             // carries its vanilla registry id for completeness
             MobKind::Squid => "minecraft:squid",
@@ -387,6 +433,10 @@ impl MobKind {
             MobKind::Fox => TILE_MOB_FOX,
             // 1.15: the bee sprite (v115_art::bee_art)
             MobKind::Bee => TILE_MOB_BEE,
+            // 1.16 part 2: the forest-mob sprites (v116b_art)
+            MobKind::Strider => TILE_MOB_STRIDER,
+            MobKind::Piglin => TILE_MOB_PIGLIN,
+            MobKind::Hoglin => TILE_MOB_HOGLIN,
             // classification-only marker — never rendered (no MOB_DATA
             // row, no spawn path); reuses the passive-fish tile as a
             // safe stand-in should a future bracket implement it
@@ -427,17 +477,25 @@ impl MobKind {
                 // is the infobox's own framing; the phantom is undead)
                 | MobKind::Drowned
                 | MobKind::Phantom
+                // 1.16 (Nether Update, part 2): the hoglin — VERIFIED
+                // w/Hoglin infobox "Behavior Hostile" (the piglin is
+                // the neutral one: "Neutral (adult)")
+                | MobKind::Hoglin
         )
     }
     pub fn neutral(self) -> bool {
         // 1.11: the llama — VERIFIED w/Llama infobox "Neutral"
         // 1.13: dolphin + pufferfish — VERIFIED infoboxes "Neutral"
         // (the pufferfish's contact defense is not an attack)
+        // 1.16: the piglin — VERIFIED w/Piglin infobox "Neutral (adult)"
+        // (the gold-armor pacification is the no-armor adaptation,
+        // disclosed — the enderman class: neutral until provoked)
         self == MobKind::Enderman
             || self == MobKind::IronGolem
             || self == MobKind::Llama
             || self == MobKind::Dolphin
             || self == MobKind::Pufferfish
+            || self == MobKind::Piglin
     }
 
     /// 1.13: aquatic mobs — swim physics (buoyancy, 3D steering),
@@ -535,6 +593,12 @@ impl MobKind {
             // 1.15: the bee egg (changelog §Items: "Bee Spawn Egg") —
             // kind 41
             41 => MobKind::Bee,
+            // 1.16: the V14 egg window — kinds 42..=44 (the changelog's
+            // own spawn-egg list; the zoglin/piglin-brute eggs are
+            // trimmed with their mobs, disclosed)
+            42 => MobKind::Strider,
+            43 => MobKind::Piglin,
+            44 => MobKind::Hoglin,
             _ => MobKind::Chicken,
         }
     }
@@ -602,6 +666,10 @@ impl MobKind {
             // 1.14: the fox egg — kind 40 (the V10 egg window)
             MobKind::Fox => 40,
             MobKind::Bee => 41,
+            // 1.16: the V14 egg window — kinds 42..=44
+            MobKind::Strider => 42,
+            MobKind::Piglin => 43,
+            MobKind::Hoglin => 44,
             // classification-only marker: the squid never had an egg in
             // the engine's window (pre-1.13 legacy, unimplemented)
             MobKind::Squid => 255,
@@ -629,7 +697,7 @@ pub struct MobDef {
     pub xp: i32,
 }
 
-pub const MOB_DATA: [MobDef; 42] = [
+pub const MOB_DATA: [MobDef; 45] = [
     MobDef {
         kind: MobKind::Zombie,
         health: 20.0,
@@ -1137,6 +1205,47 @@ pub const MOB_DATA: [MobDef; 42] = [
         width: 0.55,
         xp: 2,
     },
+    // ---- 1.16 (Nether Update, part 2): the three nether-forest mobs
+    // (all VERIFIED against the v116b captures) ----
+    MobDef {
+        // w/Strider: 20 HP, passive, hitbox 1.7 x 0.9, speed 0.175,
+        // 1-3 XP (the "Experience Orb" row) — drops ride the deaths
+        // queue (2-5 string, 100%)
+        kind: MobKind::Strider,
+        health: 20.0,
+        damage: 0.0,
+        speed_attr: 0.175,
+        armor: 0.0,
+        height: 1.7,
+        width: 0.9,
+        xp: 2,
+    },
+    MobDef {
+        // w/Piglin: 16 HP, neutral, hitbox 1.95 x 0.6, speed 0.35,
+        // golden-sword Normal 8 (the melee row; the crossbow's 2-5 is
+        // the ranged half, melee-only in the engine, disclosed), 5 XP
+        kind: MobKind::Piglin,
+        health: 16.0,
+        damage: 8.0,
+        speed_attr: 0.35,
+        armor: 0.0,
+        height: 1.95,
+        width: 0.6,
+        xp: 5,
+    },
+    MobDef {
+        // w/Hoglin: 40 HP, hostile, hitbox 1.4 x 1.3965 (JE), speed
+        // 0.3, attack "Normal: 3 HP to 8 HP" — the 5.5 midpoint,
+        // disclosed; 5 XP ("5 XP if killed by a player")
+        kind: MobKind::Hoglin,
+        health: 40.0,
+        damage: 5.5,
+        speed_attr: 0.3,
+        armor: 0.0,
+        height: 1.4,
+        width: 1.3965,
+        xp: 5,
+    },
 ];
 
 #[inline]
@@ -1413,6 +1522,11 @@ pub struct MobSystem {
     /// 1.13: water-ambient spawn cadence counter (the fish/dolphin/
     /// turtle attempt, 1/40 ticks — the bat pattern)
     aquatic_spawn_t: u64,
+    /// 1.16 (Nether Update, part 2): strider spawn cadence counter —
+    /// "In Java Edition, striders are the only passive mob in the
+    /// Nether, so spawning attempts are made every 400 game ticks"
+    /// (VERIFIED w/Strider)
+    strider_spawn_t: u64,
     /// 1.14: environmental-hazard cadence counter — the berry-bush
     /// and campfire damage windows fire on `hazard_t % 10 == 0` (the
     /// vanilla 0.5 s damage-immunity cadence, VERIFIED
@@ -1508,6 +1622,7 @@ impl MobSystem {
             rng: Rng::new(seed ^ 0xB0B_5EED),
             bats_spawn_t: 0,
             aquatic_spawn_t: 0,
+            strider_spawn_t: 0,
             hazard_t: 0,
             rest_t: 0,
             ridden: None,
@@ -1754,6 +1869,17 @@ impl MobSystem {
         self.aquatic_spawn_t += 1;
         if self.aquatic_spawn_t % 40 == 0 {
             self.try_spawn_aquatic(world, sim_ring);
+        }
+        // 1.16 (Nether Update, part 2): the strider lava-sea pool —
+        // "Groups of 2 to 4 striders spawn on spaces of lava that have
+        // an air block above", attempts every 400 gt (VERIFIED
+        // w/Strider §Spawning) — nether-only, passive-cap-free (the
+        // strider is the nether's only passive mob, its own category)
+        self.strider_spawn_t += 1;
+        if self.strider_spawn_t % 400 == 0
+            && world.dimension == vc_world::world::Dimension::Nether
+        {
+            self.try_spawn_striders(world, sim_ring);
         }
         // 1.13: phantom insomnia spawns — every 20 ticks while "Time
         // Since Last Rest" ≥ 72000 (VERIFIED w/Phantom §Spawning: the
@@ -2051,13 +2177,31 @@ impl MobSystem {
                 return;
             }
             let kind = if nether {
-                // Phase E1: Nether Wastes — magma cubes are rare there
-                // (weight 2/168 — VERIFIED table) with zombie/skeleton
-                // filling the rest (engine adaptation: no zombified
-                // piglins yet, 1.16 bracket)
-                match self.rng.next_range(21) {
-                    0 | 1 => MobKind::MagmaCube,
-                    _ => MobKind::Zombie,
+                // 1.16 (Nether Update, part 2): the biome-aware nether
+                // roll — Crimson Forest: piglins ("often seen in this
+                // biome in groups of 3-4", VERIFIED w/Crimson_Forest)
+                // + hoglins ("the only biome where hoglins naturally
+                // spawn outside of bastion remnants"); Warped Forest:
+                // "hostile mobs do not spawn naturally" — endermen
+                // are the exception ("Endermen are common in this
+                // biome", VERIFIED w/Warped_Forest); Wastes: the
+                // part-1 roll (magma cubes 2/21 + the zombie filler,
+                // piglins join at their wastes weight — VERIFIED
+                // w/Piglin §Spawning "Nether Wastes")
+                match vc_world::gen::Biome::from_u8(world.get_biome(wx, wz)) {
+                    vc_world::gen::Biome::CrimsonForest => {
+                        if self.rng.next_range(5) < 3 {
+                            MobKind::Piglin
+                        } else {
+                            MobKind::Hoglin
+                        }
+                    }
+                    vc_world::gen::Biome::WarpedForest => MobKind::Enderman,
+                    _ => match self.rng.next_range(21) {
+                        0 | 1 => MobKind::MagmaCube,
+                        2 => MobKind::Piglin,
+                        _ => MobKind::Zombie,
+                    },
                 }
             } else {
                 // Phase E2: witches join the monster pool at their verified
@@ -2134,6 +2278,28 @@ impl MobSystem {
                     (kind, 0)
                 };
                 let _ = self.spawn_variant(spawn_kind, wx, y, wz, variant);
+                // 1.16 part 2: the forest packs extend to 3-4 (VERIFIED
+                // w/Crimson_Forest "groups of 3-4" + w/Hoglin's spawn
+                // table) — one extra mob per loop pass while the pack
+                // roll lasts, hoglin babies at the 20% row (VERIFIED
+                // w/Hoglin "20% of hoglins spawn as babies")
+                if (spawn_kind == MobKind::Piglin || spawn_kind == MobKind::Hoglin)
+                    && self.rng.next_range(2) == 0
+                {
+                    let v = if spawn_kind == MobKind::Hoglin
+                        && self.rng.next_f32() < 0.2
+                    {
+                        0x40u8 // baby (20%, VERIFIED)
+                    } else {
+                        0
+                    };
+                    let _ = self.spawn_variant(spawn_kind, wx, y, wz, v);
+                    if v != 0 {
+                        if let Some(m) = self.list.last_mut() {
+                            m.aux = 24000; // the 20-minute maturity
+                        }
+                    }
+                }
             }
             return; // one attempt per tick
         }
@@ -2329,6 +2495,64 @@ impl MobSystem {
                 let _ = self.spawn_variant(kind, wx, y, wz, 0);
             }
             return; // one attempt per cadence tick
+        }
+    }
+
+    /// 1.16 (Nether Update, part 2): strider lava-sea spawn — "Striders
+    /// can spawn in every Nether biome. Groups of 2 to 4 striders spawn
+    /// on spaces of lava that have an air block above" (VERIFIED
+    /// w/Strider §Spawning). The 1-in-10 jockey/baby row: "For every
+    /// strider that spawns, there is a 1 in 10 chance for an additional
+    /// baby strider to spawn riding on top of it" — the riding half is
+    /// the mount-system deferral; the BABY half rides the 0x40 bit
+    /// (disclosed: the baby spawns alongside, not on top). Also
+    /// "If a strider spawns under lava, it rises out of the lava" —
+    /// the physics layer handles the ascent.
+    fn try_spawn_striders(&mut self, world: &World, sim_ring: impl Fn(i32, i32) -> bool) {
+        let Some(p) = self.player else { return };
+        if world.dimension != vc_world::world::Dimension::Nether {
+            return;
+        }
+        let striders = self
+            .list
+            .iter()
+            .filter(|m| m.kind == MobKind::Strider)
+            .count();
+        if striders >= 10 {
+            return; // the nether's passive-category cap (the bat class)
+        }
+        let cx = (p[0] / 16.0).floor() as i32 + (self.rng.next_range(17) as i32) - 8;
+        let cz = (p[2] / 16.0).floor() as i32 + (self.rng.next_range(17) as i32) - 8;
+        if !sim_ring(cx, cz) || world.chunk((cx, cz)).is_none() {
+            return;
+        }
+        let lx = self.rng.next_range(16) as i32;
+        let lz = self.rng.next_range(16) as i32;
+        let wx = cx * 16 + lx;
+        let wz = cz * 16 + lz;
+        // the lava sea: scan the lower body for lava-with-air columns
+        // (the nether's lava sits at the sea level, y <= 32)
+        for y in (1..=40i32).rev() {
+            if world.get_block(wx, y, wz) != LAVA {
+                continue;
+            }
+            if world.get_block(wx, y + 1, wz) != AIR {
+                continue;
+            }
+            // a lava surface with air above — spawn the group ON it
+            let group = 2 + (self.rng.next_range(3)) as usize; // 2..4 (VERIFIED)
+            for _ in 0..group {
+                // the 1-in-10 baby row (the jockey's riding half is the
+                // mount deferral — the baby rides alongside, disclosed)
+                let baby = self.rng.next_range(10) == 0;
+                let (variant, aux) = if baby { (0x40u8, 24000) } else { (0, 0) };
+                let _ = self.spawn_variant(MobKind::Strider, wx, y + 1, wz, variant);
+                if let Some(m) = self.list.last_mut() {
+                    m.pos[1] = y as f32 + 1.0; // stand on the surface
+                    m.aux = aux;
+                }
+            }
+            return; // one group per attempt
         }
     }
 
@@ -2907,6 +3131,23 @@ pub enum BeeFeedOutcome {
     Bred(u32),
 }
 
+/// 1.16 (Nether Update, part 2): the warped-fungus feeding outcome
+/// for striders ("They can be fed warped fungus to breed", VERIFIED
+/// w/Strider — the fox/bee pattern)
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum StriderFeedOutcome {
+    LoveMode,
+    Bred(u32),
+}
+
+/// 1.16: the crimson-fungus feeding outcome for hoglins ("Hoglins
+/// can be bred with crimson fungi", VERIFIED w/Hoglin)
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum HoglinFeedOutcome {
+    LoveMode,
+    Bred(u32),
+}
+
 impl MobSystem {
     /// 1.12: feed a parrot. VERIFIED w/Parrot §Taming: "Parrots can be
     /// tamed by feeding wheat seeds, melon seeds, pumpkin seeds,
@@ -3089,6 +3330,242 @@ impl MobSystem {
         }
         Some(BeeFeedOutcome::LoveMode)
     }
+
+    /// 1.16 (Nether Update, part 2): feed a strider — "They can be fed
+    /// warped fungus to breed" (VERIFIED w/Strider §Breeding). The
+    /// fox/bee pattern: first feeding arms love (the 600-tick window);
+    /// a loving adult partner within 8 blocks pairs them (the game
+    /// layer spawns the baby on Bred).
+    pub fn try_feed_strider(&mut self, id: u32, food: u16) -> Option<StriderFeedOutcome> {
+        if food != WARPED_FUNGUS {
+            return None; // not strider food
+        }
+        let is_adult = self
+            .list
+            .iter()
+            .find(|m| m.id == id)
+            .map(|m| m.kind == MobKind::Strider && m.variant & 0x40 == 0)
+            .unwrap_or(false);
+        if !is_adult {
+            // baby feeding (growth acceleration) is the trimmed half —
+            // babies mature on the 24000-tick clock, disclosed
+            return None;
+        }
+        // already in love: vanilla ignores further feeding
+        let already = self
+            .list
+            .iter()
+            .any(|m| m.id == id && m.variant & 0x80 != 0);
+        if already {
+            return None;
+        }
+        // a loving adult partner within 8 blocks → pair now
+        let me = self.list.iter().find(|m| m.id == id).map(|m| m.pos).unwrap_or([0.0; 3]);
+        let partner = self
+            .list
+            .iter()
+            .find(|m| {
+                if m.id == id || m.kind != MobKind::Strider {
+                    return false;
+                }
+                if m.variant & 0x80 == 0 || m.variant & 0x40 != 0 {
+                    return false;
+                }
+                let dx = m.pos[0] - me[0];
+                let dz = m.pos[2] - me[2];
+                (dx * dx + dz * dz) <= 64.0
+            })
+            .map(|m| m.id);
+        // arm the fed strider (love window = the fox's 600 ticks)
+        if let Some(m) = self.list.iter_mut().find(|m| m.id == id) {
+            m.variant |= 0x80;
+            m.aux = 600;
+        }
+        if let Some(pid) = partner {
+            for target in [pid, id] {
+                if let Some(m) = self.list.iter_mut().find(|m| m.id == target) {
+                    m.variant &= !0x80; // both exit love
+                }
+            }
+            return Some(StriderFeedOutcome::Bred(pid));
+        }
+        Some(StriderFeedOutcome::LoveMode)
+    }
+
+    /// 1.16: feed a hoglin — "Hoglins can be bred with crimson fungi"
+    /// (VERIFIED w/Hoglin §Breeding; the crimson fungus is the food).
+    /// "Hoglins cannot be bred when they are running away from warped
+    /// fungi" — the feed refuses while a warped fungus/anchor repel
+    /// source is within 7 blocks (the AI-side scan duplicated here —
+    /// the disclosed single-source simplification).
+    pub fn try_feed_hoglin(
+        &mut self,
+        id: u32,
+        food: u16,
+        world: &World,
+    ) -> Option<HoglinFeedOutcome> {
+        if food != CRIMSON_FUNGUS {
+            return None; // not hoglin food
+        }
+        let is_adult = self
+            .list
+            .iter()
+            .find(|m| m.id == id)
+            .map(|m| m.kind == MobKind::Hoglin && m.variant & 0x40 == 0)
+            .unwrap_or(false);
+        if !is_adult {
+            return None;
+        }
+        // the flee gate: no breeding while repelled
+        if let Some(m) = self.list.iter().find(|m| m.id == id) {
+            for sy in -1..=1i32 {
+                for sz in -7..=7i32 {
+                    for sx in -7..=7i32 {
+                        let b = world.get_block(
+                            m.pos[0] as i32 + sx,
+                            m.pos[1] as i32 + sy,
+                            m.pos[2] as i32 + sz,
+                        );
+                        if b == WARPED_FUNGUS || b == RESPAWN_ANCHOR {
+                            return None; // fleeing — no breeding
+                        }
+                    }
+                }
+            }
+        }
+        let already = self
+            .list
+            .iter()
+            .any(|m| m.id == id && m.variant & 0x80 != 0);
+        if already {
+            return None;
+        }
+        let me = self.list.iter().find(|m| m.id == id).map(|m| m.pos).unwrap_or([0.0; 3]);
+        let partner = self
+            .list
+            .iter()
+            .find(|m| {
+                if m.id == id || m.kind != MobKind::Hoglin {
+                    return false;
+                }
+                if m.variant & 0x80 == 0 || m.variant & 0x40 != 0 {
+                    return false;
+                }
+                let dx = m.pos[0] - me[0];
+                let dz = m.pos[2] - me[2];
+                (dx * dx + dz * dz) <= 64.0
+            })
+            .map(|m| m.id);
+        if let Some(m) = self.list.iter_mut().find(|m| m.id == id) {
+            m.variant |= 0x80;
+            m.aux = 600;
+        }
+        if let Some(pid) = partner {
+            for target in [pid, id] {
+                if let Some(m) = self.list.iter_mut().find(|m| m.id == target) {
+                    m.variant &= !0x80;
+                }
+            }
+            return Some(HoglinFeedOutcome::Bred(pid));
+        }
+        Some(HoglinFeedOutcome::LoveMode)
+    }
+
+    /// 1.16: barter with a piglin — the game layer calls this on a
+    /// gold-ingot use while looking at an adult piglin ("Adult piglins
+    /// take gold ingots, whether dropped nearby or when a player uses
+    /// one while looking at them", VERIFIED w/Piglin §Bartering). Arms
+    /// the 6-second (120 gt) examine countdown; the drop surfaces via
+    /// pending_drops at the AI's countdown end.
+    pub fn try_barter_piglin(&mut self, id: u32, item: u16) -> bool {
+        // gold ingot = the engine's IRON_ORE stand-in (the disclosed
+        // convention since the golden-apple round)
+        if item != IRON_ORE {
+            return false;
+        }
+        let is_piglin = self
+            .list
+            .iter()
+            .find(|m| m.id == id)
+            .map(|m| m.kind == MobKind::Piglin)
+            .unwrap_or(false);
+        if !is_piglin {
+            return false;
+        }
+        if let Some(m) = self.list.iter_mut().find(|m| m.id == id) {
+            if m.aux > 0 {
+                return false; // already examining
+            }
+            m.aux = 120; // the six-second examine (VERIFIED)
+        }
+        true
+    }
+
+    /// 1.16: the gold-mining anger hook — piglins get angry when the
+    /// player mines nether gold ore / gilded blackstone ("If the player
+    /// mines ... gold-related blocks ... nearby piglins become angry",
+    /// the w/Piglin aggravation rows). Angered piglins get the
+    /// provoked flag (the neutral-until-provoked class).
+    pub fn anger_piglins_near(&mut self, pos: [f32; 3], radius: f32) -> usize {
+        let r2 = radius * radius;
+        let mut angered = 0;
+        for m in self.list.iter_mut() {
+            if m.kind != MobKind::Piglin || m.provoked {
+                continue;
+            }
+            let dx = m.pos[0] - pos[0];
+            let dz = m.pos[2] - pos[2];
+            if dx * dx + dz * dz <= r2 {
+                m.provoked = true;
+                angered += 1;
+            }
+        }
+        angered
+    }
+}
+
+/// 1.16 (Nether Update, part 2): the piglin barter table — the trimmed
+/// engine form of the VERIFIED w/Bartering chart (the current wiki
+/// table's /469 weights). Potions, enchanted books/boots, spectral
+/// arrows, water bottles and the 1.21-era dried ghast need systems the
+/// engine doesn't have — trimmed, disclosed; the remaining weights keep
+/// their vanilla ratios so crying obsidian stays the ~8.53% headline.
+/// Gold = the iron-ore/nugget stand-ins (the disclosed convention).
+pub fn piglin_barter_roll(rng: &mut Rng) -> (u16, u8) {
+    // trimmed table: total weight 158 of vanilla's 469
+    // 40/469 classes: obsidian (1), crying obsidian (1-3), gravel
+    // (8-16), blackstone (8-16), leather (2-4), soul sand (2-8)
+    // 20/469: string (3-9), nether quartz (5-12)
+    // 10/469: iron nugget (10-36), ender pearl (2-4)
+    match rng.next_range(158) {
+        w if w < 40 => {
+            // the 40-class pick: crying obsidian is the headliner
+            match rng.next_range(6) {
+                0 => (CRYING_OBSIDIAN, (1 + rng.next_range(3)) as u8),   // 1-3
+                1 => (OBSIDIAN, 1),
+                2 => (GRAVEL, (8 + rng.next_range(9)) as u8),            // 8-16
+                3 => (BLACKSTONE, (8 + rng.next_range(9)) as u8),        // 8-16
+                4 => (LEATHER, (2 + rng.next_range(3)) as u8),           // 2-4
+                _ => (SOUL_SAND, (2 + rng.next_range(7)) as u8),         // 2-8
+            }
+        }
+        w if w < 60 => {
+            // the 20-class pick
+            if rng.next_range(2) == 0 {
+                (STRING, (3 + rng.next_range(7)) as u8) // 3-9
+            } else {
+                (NETHER_QUARTZ, (5 + rng.next_range(8)) as u8) // 5-12
+            }
+        }
+        _ => {
+            // the 10-class pick
+            if rng.next_range(2) == 0 {
+                (IRON_NUGGET, (10 + rng.next_range(27)) as u8) // 10-36
+            } else {
+                (ENDER_PEARL, (2 + rng.next_range(3)) as u8) // 2-4
+            }
+        }
+    }
 }
 
 // ------------------------------------------------------------- free fns --
@@ -3265,6 +3742,48 @@ fn ai_tick(
             m.aux -= 1;
             if m.aux == 0 {
                 m.variant &= !0x80; // love expired
+            }
+        }
+    }
+
+    // ---- 1.16 (Nether Update, part 2): the forest mobs' life-cycle
+    // clocks (the fox pattern — environmental, player-independent):
+    // strider/hoglin baby maturity (24000 ticks, "All babies
+    // obtained through breeding take 20 minutes to grow up", VERIFIED
+    // w/Strider) + love-mode expiry (the 600-tick fox window) + the
+    // piglin's 6-second barter countdown. ----
+    if matches!(m.kind, MobKind::Strider | MobKind::Hoglin) {
+        // baby: variant 0x40, aux counts down to maturity
+        if m.variant & 0x40 != 0 && m.aux > 0 {
+            m.aux -= 1;
+            if m.aux == 0 {
+                m.variant &= !0x40; // grown
+            }
+        }
+        // love: variant 0x80 (adults only — a baby never loves), the
+        // 600-tick window
+        if m.variant & 0x80 != 0 && m.variant & 0x40 == 0 && m.aux > 0 {
+            m.aux -= 1;
+            if m.aux == 0 {
+                m.variant &= !0x80; // love expired ("striders have a
+                // cooldown of about 5 minutes before they can breed
+                // again" — the engine's cleared-outright class,
+                // disclosed)
+            }
+        }
+    }
+    // PIGLIN barter countdown: "The piglin 'examines' the ingot for
+    // six seconds, then drops a random item from the chart" (VERIFIED
+    // w/Piglin) — 120 game ticks, then the loot roll surfaces through
+    // pending_drops (the piglin throws it; the game layer's item
+    // entity handles pickup — one entity per item, so a 1-3 roll
+    // drops 1-3 entities). Needs no player anchor.
+    if m.kind == MobKind::Piglin && m.aux > 0 {
+        m.aux -= 1;
+        if m.aux == 0 {
+            let (item, count) = piglin_barter_roll(rng);
+            for _ in 0..count.max(1) {
+                pending_drops.push((m.pos, item));
             }
         }
     }
@@ -4240,6 +4759,172 @@ fn ai_tick(
     }
 
     match m.kind {
+        // ---- 1.16 (Nether Update, part 2): STRIDER — the lava-walking
+        // passive. Wanders on lava or land (the physics layer keeps
+        // them on the surface); flees briefly when harmed ("Upon being
+        // harmed by another mob, striders attempt to flee for a few
+        // seconds", VERIFIED w/Strider). Babies just wander. ----
+        MobKind::Strider => {
+            if m.hurt_t > 0 {
+                m.yaw = (-dz).atan2(-dx) - std::f32::consts::FRAC_PI_2;
+                let f = speed * FLEE_MULT;
+                m.vel[0] += (-dx / dist * f - m.vel[0]) * 0.4;
+                m.vel[2] += (-dz / dist * f - m.vel[2]) * 0.4;
+            } else {
+                wander(rng, m, speed * 0.4);
+            }
+        }
+        // ---- 1.16: PIGLIN — the neutral barterer. Neutral until
+        // provoked ("It is hostile to players unless they wear at least
+        // one piece of golden armor" — no wearable armor in the engine,
+        // the enderman class, disclosed); "Soul torches repel piglins"
+        // (VERIFIED w/Soul_Torch) + soul fire carries the same blue-
+        // flame class → flee within 8 blocks; provoked → melee chase
+        // (the zombie pattern at the piglin's verified 0.35 speed).
+        // The barter countdown runs in the environmental section
+        // above (no player anchor needed). ----
+        MobKind::Piglin => {
+            // the soul-flame repel: scan the 8-block cube for soul
+            // torches / soul fire ("Soul torches repel piglins")
+            let mut repel: Option<[f32; 3]> = None;
+            for sy in -1..=1i32 {
+                for sz in -8..=8i32 {
+                    for sx in -8..=8i32 {
+                        let b = world.get_block(
+                            m.pos[0] as i32 + sx,
+                            m.pos[1] as i32 + sy,
+                            m.pos[2] as i32 + sz,
+                        );
+                        if b == SOUL_TORCH || b == SOUL_FIRE || b == SOUL_LANTERN {
+                            repel = Some([
+                                m.pos[0] as f32 + sx as f32,
+                                0.0,
+                                m.pos[2] as f32 + sz as f32,
+                            ]);
+                            break;
+                        }
+                    }
+                    if repel.is_some() {
+                        break;
+                    }
+                }
+                if repel.is_some() {
+                    break;
+                }
+            }
+            if let Some(r) = repel {
+                // steer away from the soul light ("repel")
+                let rx = m.pos[0] - r[0];
+                let rz = m.pos[2] - r[2];
+                let rd = (rx * rx + rz * rz).sqrt().max(1e-4);
+                m.yaw = (-rz).atan2(rx) - std::f32::consts::FRAC_PI_2;
+                m.vel[0] += (rx / rd * speed * 1.3 - m.vel[0]) * 0.4;
+                m.vel[2] += (rz / rd * speed * 1.3 - m.vel[2]) * 0.4;
+                return;
+            }
+            if m.provoked && !invuln && dist < AGGRO_RADIUS {
+                face_player(m);
+                if dist > MOB_MELEE_REACH * 0.8 {
+                    m.vel[0] += (dx / dist * speed - m.vel[0]) * 0.3;
+                    m.vel[2] += (dz / dist * speed - m.vel[2]) * 0.3;
+                } else {
+                    m.vel[0] *= 0.7;
+                    m.vel[2] *= 0.7;
+                }
+                if dist < MOB_MELEE_REACH && m.attack_cd == 0 {
+                    m.attack_cd = MOB_MELEE_TICKS;
+                    hits.push(PlayerHit {
+                        damage: d.damage, // golden sword Normal 8 (VERIFIED)
+                        source: m.kind,
+                        knockback_dir: [dx / dist, dz / dist],
+                        wither_effect: None,
+                        poison_effect: None,
+                    });
+                }
+            } else {
+                wander(rng, m, speed * 0.5);
+            }
+        }
+        // ---- 1.16: HOGLIN — the hostile forest boar. "Hoglins avoid
+        // being within 7 blocks of warped fungi ... and respawn
+        // anchors" (VERIFIED w/Hoglin) → flee (takes priority over
+        // fighting, the wiki's own ordering); otherwise the hostile
+        // melee chase + the tusk thrust (Normal 3-8, the 5.5 midpoint
+        // row); babies (0x40) flee when hurt instead of fighting
+        // ("Baby hoglins ... flee when hit", VERIFIED). ----
+        MobKind::Hoglin => {
+            // the warped-fungus / respawn-anchor repel (7 blocks)
+            let mut repel: Option<[f32; 3]> = None;
+            for sy in -1..=1i32 {
+                for sz in -7..=7i32 {
+                    for sx in -7..=7i32 {
+                        let b = world.get_block(
+                            m.pos[0] as i32 + sx,
+                            m.pos[1] as i32 + sy,
+                            m.pos[2] as i32 + sz,
+                        );
+                        if b == WARPED_FUNGUS || b == RESPAWN_ANCHOR {
+                            repel = Some([
+                                m.pos[0] as f32 + sx as f32,
+                                0.0,
+                                m.pos[2] as f32 + sz as f32,
+                            ]);
+                            break;
+                        }
+                    }
+                    if repel.is_some() {
+                        break;
+                    }
+                }
+                if repel.is_some() {
+                    break;
+                }
+            }
+            let baby = m.variant & 0x40 != 0;
+            if let Some(r) = repel {
+                // "Hoglins cannot be bred when they are running away
+                // from warped fungi" — the flee outranks everything
+                let rx = m.pos[0] - r[0];
+                let rz = m.pos[2] - r[2];
+                let rd = (rx * rx + rz * rz).sqrt().max(1e-4);
+                m.yaw = (-rz).atan2(rx) - std::f32::consts::FRAC_PI_2;
+                m.vel[0] += (rx / rd * speed * 1.4 - m.vel[0]) * 0.4;
+                m.vel[2] += (rz / rd * speed * 1.4 - m.vel[2]) * 0.4;
+                return;
+            }
+            if baby {
+                // babies flee when hit, otherwise tag along
+                if m.hurt_t > 0 {
+                    m.yaw = (-dz).atan2(-dx) - std::f32::consts::FRAC_PI_2;
+                    let f = speed * FLEE_MULT;
+                    m.vel[0] += (-dx / dist * f - m.vel[0]) * 0.4;
+                    m.vel[2] += (-dz / dist * f - m.vel[2]) * 0.4;
+                } else {
+                    wander(rng, m, speed * 0.5);
+                }
+            } else if aggro && dist < AGGRO_RADIUS {
+                face_player(m);
+                if dist > MOB_MELEE_REACH * 0.8 {
+                    m.vel[0] += (dx / dist * speed - m.vel[0]) * 0.3;
+                    m.vel[2] += (dz / dist * speed - m.vel[2]) * 0.3;
+                } else {
+                    m.vel[0] *= 0.7;
+                    m.vel[2] *= 0.7;
+                }
+                if dist < MOB_MELEE_REACH && m.attack_cd == 0 {
+                    m.attack_cd = MOB_MELEE_TICKS;
+                    hits.push(PlayerHit {
+                        damage: d.damage, // Normal 3-8 midpoint (VERIFIED)
+                        source: m.kind,
+                        knockback_dir: [dx / dist, dz / dist],
+                        wither_effect: None,
+                        poison_effect: None,
+                    });
+                }
+            } else {
+                wander(rng, m, speed * 0.5);
+            }
+        }
         MobKind::Zombie
         | MobKind::ZombieVillager
         | MobKind::Husk
@@ -4471,6 +5156,18 @@ fn hazard_tick(m: &mut Mob, world: &World, damage_window: bool) {
             m.health -= 1.0;
         }
     }
+    // 1.16 (Nether Update, part 2): striders are damaged by water —
+    // "1 HP per ... half-second in water or rain" (VERIFIED w/Strider;
+    // the engine has no rain — the water-contact half only). The
+    // damage rides the shared 0.5 s immunity window.
+    if m.kind == MobKind::Strider {
+        let wx = m.pos[0].floor() as i32;
+        let wy = m.pos[1].floor() as i32;
+        let wz = m.pos[2].floor() as i32;
+        if world.get_block(wx, wy, wz) == WATER && damage_window {
+            m.health -= 1.0;
+        }
+    }
 }
 
 /// the verified bush movement factor (w/Sweet_Berry_Bush: "slow down
@@ -4480,6 +5177,53 @@ pub const BUSH_SLOW_FACTOR: f32 = 0.3405;
 /// gravity + axis collision with 1-block step-ups (villager primitive).
 fn physics_tick(m: &mut Mob, world: &World) {
     let d = def(m.kind);
+    // ---- 1.16 (Nether Update, part 2): STRIDER lava physics —
+    // "Lava does not damage striders, and they can walk on top of it
+    // without sinking" (VERIFIED w/Strider). Feet in lava + air above
+    // = standing on the surface (gravity neutralized, no sink);
+    // fully submerged = "If a strider spawns under lava, it rises out
+    // of the lava" (VERIFIED) — a buoyant ascent. ----
+    if m.kind == MobKind::Strider {
+        let feet = world.get_block(
+            m.pos[0].floor() as i32,
+            m.pos[1].floor() as i32,
+            m.pos[2].floor() as i32,
+        );
+        let above = world.get_block(
+            m.pos[0].floor() as i32,
+            (m.pos[1] + 1.0).floor() as i32,
+            m.pos[2].floor() as i32,
+        );
+        if feet == LAVA {
+            if above != LAVA {
+                // on the surface: stand (no gravity, no fall distance)
+                m.vel[1] = 0.0;
+                m.on_ground = true;
+                m.fall_dist = 0.0;
+                // lava drag on the stroll
+                m.vel[0] *= 0.9;
+                m.vel[2] *= 0.9;
+            } else {
+                // submerged: rise out (VERIFIED)
+                m.vel[1] = 2.0;
+            }
+            // skip the regular gravity+collision pass below — the
+            // strider is on the lava sea, not in the block grid
+            let half = d.width * 0.5;
+            let (nx, nz) = (
+                m.pos[0] + m.vel[0] * (1.0 / 20.0),
+                m.pos[2] + m.vel[2] * (1.0 / 20.0),
+            );
+            if !collides(world, nx, m.pos[1], nz, half, d.height) {
+                m.pos[0] = nx;
+                m.pos[2] = nz;
+            } else {
+                m.vel[0] *= 0.5;
+                m.vel[2] *= 0.5;
+            }
+            return;
+        }
+    }
     // ---- 1.13 (Update Aquatic): aquatic swim physics. In water the
     // aquatic kinds get buoyancy + drag instead of gravity (fish hover,
     // turtles/dolphins glide); out of water the fish family
@@ -5421,7 +6165,7 @@ mod tests {
         // [merge] the kinds resolve in/out of names + eggs (16 E1 + 3
         // E2 + 3 E3 horse/donkey/mule + 4 F-series: rabbit 1.8, stray +
         // polar bear + husk 1.10)
-        assert_eq!(MOB_DATA.len(), 42); // + 1.11 four + 1.12 two + 1.13 eight + 1.14 fox
+        assert_eq!(MOB_DATA.len(), 45); // + 1.11 four + 1.12 two + 1.13 eight + 1.14 fox + 1.16 three
         for d in MOB_DATA.iter() {
             assert_eq!(
                 MobKind::from_name(d.kind.name().strip_prefix("minecraft:").unwrap()),
@@ -6011,7 +6755,7 @@ mod v111_tests {
         assert_eq!(MobKind::Llama.egg_id(), 23);
         assert_eq!(MobKind::Evoker.egg_id(), 25);
         // 1.12 (World of Color): parrot + illusioner — 32 kinds
-        assert_eq!(MOB_DATA.len(), 42, "+ the 1.13 aquatic eight + the 1.14 fox");
+        assert_eq!(MOB_DATA.len(), 45, "+ the 1.13 aquatic eight + the 1.14 fox + the 1.16 forest three");
         assert_eq!(MobKind::from_egg(30), MobKind::Parrot);
         assert_eq!(MobKind::Parrot.egg_id(), 30);
         assert_eq!(MobKind::Illusioner.egg_id(), 255, "no spawn egg (VERIFIED)");
@@ -6539,7 +7283,7 @@ mod v113_tests {
     /// aquatic() swim-physics gate + the V9 spawn-egg kinds.
     #[test]
     fn v113_registry_rows_and_flags() {
-        assert_eq!(MOB_DATA.len(), 42, "32 prior + 8 aquatic + the 1.14 fox");
+        assert_eq!(MOB_DATA.len(), 45, "32 prior + 8 aquatic + the 1.14 fox + the 1.16 forest three");
         // drowned: 20 HP zombie-parity, N 3, armor 2, 5 XP, hostile
         let d = def(MobKind::Drowned);
         assert_eq!(d.health as i32, 20);
@@ -6984,7 +7728,7 @@ mod v114_tests {
     /// the V10 registry row + egg/tile mappings (VERIFIED w/Fox)
     #[test]
     fn v114_fox_registry_row() {
-        assert_eq!(MOB_DATA.len(), 42, "32 + 8 aquatic + the fox");
+        assert_eq!(MOB_DATA.len(), 45, "32 + 8 aquatic + the fox + the 1.16 forest three");
         let d = def(MobKind::Fox);
         assert_eq!(d.health as i32, 10, "10 HP (VERIFIED infobox)");
         assert!((d.damage - 2.0).abs() < 1e-6, "Easy/Normal 2 HP");
@@ -7346,4 +8090,257 @@ mod v114_tests {
         assert!(nectar, "carried nectar");
         // the arrival pass removes it from the list (same tick)
         assert!(sys.list.iter().all(|m| m.id != id), "mob left the list");
+    }
+
+    // ------------- 1.16 (Nether Update, part 2) tests -------------
+
+    /// the MOB_DATA rows (all VERIFIED against the v116b captures)
+    #[test]
+    fn v116b_forest_mob_def_rows() {
+        let s = def(MobKind::Strider);
+        assert_eq!(s.health, 20.0);
+        assert_eq!(s.damage, 0.0);
+        assert_eq!(s.speed_attr, 0.175);
+        assert_eq!((s.height, s.width), (1.7, 0.9));
+        let p = def(MobKind::Piglin);
+        assert_eq!(p.health, 16.0);
+        assert_eq!(p.damage, 8.0); // the golden-sword Normal row
+        assert_eq!(p.speed_attr, 0.35);
+        assert_eq!((p.height, p.width), (1.95, 0.6));
+        let h = def(MobKind::Hoglin);
+        assert_eq!(h.health, 40.0);
+        assert_eq!(h.damage, 5.5); // the 3-8 Normal midpoint, disclosed
+        assert_eq!(h.speed_attr, 0.3);
+        assert_eq!((h.height, h.width), (1.4, 1.3965));
+        // the classification rows
+        assert!(MobKind::Strider.neutral() == false && !MobKind::Strider.hostile());
+        assert!(MobKind::Piglin.neutral(), "piglins are the neutral (adult) row");
+        assert!(!MobKind::Piglin.hostile());
+        assert!(MobKind::Hoglin.hostile(), "hoglins are the hostile row");
+        assert!(!MobKind::Hoglin.neutral());
+        // the registry + egg mapping (kinds 42..=44)
+        assert_eq!(MobKind::Strider.name(), "minecraft:strider");
+        assert_eq!(MobKind::Piglin.name(), "minecraft:piglin");
+        assert_eq!(MobKind::Hoglin.name(), "minecraft:piglin".replace("piglin", "hoglin"));
+        assert_eq!(MobKind::from_name("strider"), Some(MobKind::Strider));
+        assert_eq!(MobKind::from_name("piglin"), Some(MobKind::Piglin));
+        assert_eq!(MobKind::from_name("hoglin"), Some(MobKind::Hoglin));
+        assert_eq!(MobKind::Strider.egg_id(), 42);
+        assert_eq!(MobKind::Piglin.egg_id(), 43);
+        assert_eq!(MobKind::Hoglin.egg_id(), 44);
+        assert_eq!(MobKind::from_egg(42), MobKind::Strider);
+        assert_eq!(MobKind::from_egg(43), MobKind::Piglin);
+        assert_eq!(MobKind::from_egg(44), MobKind::Hoglin);
+        assert_eq!(MobKind::Strider.sprite_tile(), TILE_MOB_STRIDER);
+        assert_eq!(MobKind::Piglin.sprite_tile(), TILE_MOB_PIGLIN);
+        assert_eq!(MobKind::Hoglin.sprite_tile(), TILE_MOB_HOGLIN);
+    }
+
+    /// 1.16: the barter table only yields engine-valid items, with
+    /// vanilla-count ranges (VERIFIED w/Bartering)
+    #[test]
+    fn v116b_barter_table_items() {
+        let mut rng = Rng::new(99);
+        for _ in 0..500 {
+            let (item, count) = piglin_barter_roll(&mut rng);
+            assert!(matches!(
+                item,
+                CRYING_OBSIDIAN
+                    | OBSIDIAN
+                    | GRAVEL
+                    | BLACKSTONE
+                    | LEATHER
+                    | SOUL_SAND
+                    | STRING
+                    | NETHER_QUARTZ
+                    | IRON_NUGGET
+                    | ENDER_PEARL
+            ));
+            assert!(count >= 1 && count <= 36, "count {count} in range");
+        }
+    }
+
+    /// 1.16: the piglin barter flow — a gold-ingot use arms the
+    /// 120-tick examine, the countdown ends in a pending_drops entry
+    /// (the piglin "throws" the bartered item, VERIFIED w/Piglin)
+    #[test]
+    fn v116b_piglin_barter_flow() {
+        let world = v115_world();
+        let mut sys = MobSystem::new(21);
+        let id = sys.spawn_at(MobKind::Piglin, 8, 65, 8).unwrap();
+        // the wrong item is refused
+        assert!(!sys.try_barter_piglin(id, STRING));
+        // gold (the iron-ore stand-in) arms the examine
+        assert!(sys.try_barter_piglin(id, IRON_ORE));
+        {
+            let m = sys.list.iter().find(|m| m.id == id).unwrap();
+            assert_eq!(m.aux, 120, "the 6-second examine countdown");
+        }
+        // a second offer while examining is refused
+        assert!(!sys.try_barter_piglin(id, IRON_ORE));
+        // run the countdown out with the player nearby (the AI ticks)
+        sys.player = Some([8.0, 65.0, 10.0]);
+        for _ in 0..130 {
+            sys.tick(&world, (0, 0), i32::MAX);
+            if !sys.pending_drops.is_empty() {
+                break;
+            }
+        }
+        assert!(
+            !sys.pending_drops.is_empty(),
+            "the barter item surfaced through pending_drops"
+        );
+    }
+
+    /// 1.16: the gold-mining anger hook (VERIFIED w/Piglin's
+    /// aggravation rows — mining gold-related blocks angers nearby
+    /// piglins within 16 blocks)
+    #[test]
+    fn v116b_piglin_gold_mining_anger() {
+        let mut sys = MobSystem::new(22);
+        let near = sys.spawn_at(MobKind::Piglin, 8, 65, 8).unwrap();
+        let far = sys.spawn_at(MobKind::Piglin, 40, 65, 40).unwrap();
+        let _strider = sys.spawn_at(MobKind::Strider, 9, 65, 8).unwrap();
+        let n = sys.anger_piglins_near([8.0, 65.0, 8.0], 16.0);
+        assert_eq!(n, 1, "only the nearby piglin angered");
+        assert!(sys.list.iter().find(|m| m.id == near).unwrap().provoked);
+        assert!(!sys.list.iter().find(|m| m.id == far).unwrap().provoked);
+        // the strider is untouched (piglins only)
+        assert!(!sys.list.iter().find(|m| m.id == _strider).unwrap().provoked);
+    }
+
+    /// 1.16: strider breeding — the warped fungus arms love, the pair
+    /// breeds (VERIFIED w/Strider §Breeding)
+    #[test]
+    fn v116b_strider_feeding_and_breeding() {
+        let world = v115_world();
+        let mut sys = MobSystem::new(23);
+        let a = sys.spawn_at(MobKind::Strider, 8, 65, 8).unwrap();
+        let b = sys.spawn_at(MobKind::Strider, 9, 65, 9).unwrap();
+        // the wrong food is refused
+        assert!(sys.try_feed_strider(a, CRIMSON_FUNGUS).is_none());
+        // the first feeding arms love
+        assert_eq!(sys.try_feed_strider(a, WARPED_FUNGUS), Some(StriderFeedOutcome::LoveMode));
+        {
+            let m = sys.list.iter().find(|m| m.id == a).unwrap();
+            assert!(m.variant & 0x80 != 0, "in love");
+        }
+        // the second feeding with a loving partner pairs them
+        assert_eq!(sys.try_feed_strider(b, WARPED_FUNGUS), Some(StriderFeedOutcome::Bred(a)));
+        for id in [a, b] {
+            let m = sys.list.iter().find(|m| m.id == id).unwrap();
+            assert_eq!(m.variant & 0x80, 0, "both exited love");
+        }
+        // a baby strider cannot be fed (maturity-only, disclosed)
+        let kid = sys.spawn_variant(MobKind::Strider, 10, 65, 10, 0x40).unwrap();
+        assert!(sys.try_feed_strider(kid, WARPED_FUNGUS).is_none());
+        // the baby matures on the countdown (the fox pattern)
+        {
+            let m = sys.list.iter_mut().find(|m| m.id == kid).unwrap();
+            m.aux = 2; // short countdown for the test
+        }
+        for _ in 0..3 {
+            sys.tick(&world, (0, 0), i32::MAX);
+        }
+        let m = sys.list.iter().find(|m| m.id == kid).unwrap();
+        assert_eq!(m.variant & 0x40, 0, "grown after the countdown");
+    }
+
+    /// 1.16: hoglin breeding is flee-gated — a warped fungus within 7
+    /// blocks refuses the crimson-fungus feed ("Hoglins cannot be bred
+    /// when they are running away from warped fungi", VERIFIED w/Hoglin)
+    #[test]
+    fn v116b_hoglin_flee_gate() {
+        let mut world = v115_world();
+        let mut sys = MobSystem::new(24);
+        let a = sys.spawn_at(MobKind::Hoglin, 8, 65, 8).unwrap();
+        let b = sys.spawn_at(MobKind::Hoglin, 9, 65, 9).unwrap();
+        // no repel source: the feed flows
+        assert_eq!(
+            sys.try_feed_hoglin(a, CRIMSON_FUNGUS, &world),
+            Some(HoglinFeedOutcome::LoveMode)
+        );
+        // a stays in love (the pairing state); the gate tests below
+        // feed a SECOND hoglin under the repel sources
+        // plant the warped fungus 3 blocks away → the feed refuses
+        let _ = world.set_block(11, 65, 11, WARPED_FUNGUS);
+        assert!(sys.try_feed_hoglin(a, CRIMSON_FUNGUS, &world).is_none());
+        // the respawn anchor repels too (VERIFIED w/Hoglin)
+        let _ = world.set_block(11, 65, 11, RESPAWN_ANCHOR);
+        assert!(sys.try_feed_hoglin(a, CRIMSON_FUNGUS, &world).is_none());
+        let _ = world.set_block(11, 65, 11, 0);
+        // and the pair completes without the repel source
+        assert_eq!(
+            sys.try_feed_hoglin(b, CRIMSON_FUNGUS, &world),
+            Some(HoglinFeedOutcome::Bred(a))
+        );
+    }
+
+    /// 1.16: the strider's lava physics — feet in lava with air above
+    /// = standing on the surface ("walk on top of it without sinking",
+    /// VERIFIED w/Strider); fully submerged = the buoyant ascent
+    #[test]
+    fn v116b_strider_lava_physics() {
+        let mut world = v115_world();
+        // a lava pond at the stone surface
+        for dz in 7..=9i32 {
+            for dx in 7..=9i32 {
+                let _ = world.set_block(dx, 64, dz, LAVA);
+            }
+        }
+        let mut sys = MobSystem::new(25);
+        let id = sys.spawn_at(MobKind::Strider, 8, 64, 8).unwrap();
+        {
+            let m = sys.list.iter_mut().find(|m| m.id == id).unwrap();
+            m.pos = [8.5, 64.0, 8.5]; // feet in the lava cell
+            m.vel = [0.0, -8.0, 0.0]; // a hard sink attempt
+        }
+        sys.tick(&world, (0, 0), i32::MAX);
+        let m = sys.list.iter().find(|m| m.id == id).unwrap();
+        assert!(m.on_ground, "standing on the lava surface");
+        assert_eq!(m.vel[1], 0.0, "no sinking");
+        assert!((m.pos[1] - 64.0).abs() < 0.1, "still at the surface");
+        // submerged: rises out (VERIFIED)
+        {
+            let m = sys.list.iter_mut().find(|m| m.id == id).unwrap();
+            m.pos = [8.5, 64.0, 8.5];
+        }
+        // cover the cell above with lava too → submerged → ascent
+        for dz in 7..=9i32 {
+            for dx in 7..=9i32 {
+                let _ = world.set_block(dx, 65, dz, LAVA);
+            }
+        }
+        sys.tick(&world, (0, 0), i32::MAX);
+        let m = sys.list.iter().find(|m| m.id == id).unwrap();
+        assert!(m.vel[1] > 0.0, "rising out of the lava (vel {})", m.vel[1]);
+    }
+
+    /// 1.16: striders take water damage at the 0.5 s cadence ("1 HP
+    /// per ... half-second in water", VERIFIED w/Strider)
+    #[test]
+    fn v116b_strider_water_damage() {
+        let mut world = v115_world();
+        for dz in 7..=9i32 {
+            for dx in 7..=9i32 {
+                let _ = world.set_block(dx, 64, dz, WATER);
+                let _ = world.set_block(dx, 65, dz, WATER);
+            }
+        }
+        let mut sys = MobSystem::new(26);
+        let id = sys.spawn_at(MobKind::Strider, 8, 64, 8).unwrap();
+        let hp0 = def(MobKind::Strider).health;
+        for _ in 0..10 {
+            sys.tick(&world, (0, 0), i32::MAX);
+        }
+        let m = sys.list.iter().find(|m| m.id == id).unwrap();
+        assert!(m.health < hp0, "water damages striders (hp {})", m.health);
+        // the control: a piglin in water is untouched (the strider rule)
+        let pid = sys.spawn_at(MobKind::Piglin, 8, 64, 9).unwrap();
+        let php0 = def(MobKind::Piglin).health;
+        for _ in 0..10 {
+            sys.tick(&world, (0, 0), i32::MAX);
+        }
+        let p = sys.list.iter().find(|m| m.id == pid).unwrap();
+        assert_eq!(p.health, php0, "piglins take no water damage");
     }

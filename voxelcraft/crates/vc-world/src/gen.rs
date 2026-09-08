@@ -55,6 +55,20 @@ pub enum Biome {
     LukewarmOcean = 20,
     ColdOcean = 21,
     FrozenOcean = 22,
+    /// 1.16 (Nether Update, part 2): the crimson forest — the piglin/
+    /// hoglin home (VERIFIED w/Crimson_Forest live: "the second most
+    /// common Nether biome, making up 22% of the Nether by volume";
+    /// "This is the only biome where hoglins naturally spawn outside
+    /// of bastion remnants"). Internal id 23 (vanilla registry id 171
+    /// — renumbered into the engine's internal sequence, the standing
+    /// disclosed convention).
+    CrimsonForest = 23,
+    /// 1.16: the warped forest — the enderman-fungus home (VERIFIED
+    /// w/Warped_Forest live: "the rarest of the five biomes in the
+    /// Nether, making up around 8% of the Nether by volume";
+    /// "hostile mobs do not spawn naturally" — endermen are the
+    /// exception). Internal id 24 (vanilla registry id 172).
+    WarpedForest = 24,
 }
 
 impl Biome {
@@ -83,6 +97,8 @@ impl Biome {
             Biome::LukewarmOcean => "Lukewarm Ocean",
             Biome::ColdOcean => "Cold Ocean",
             Biome::FrozenOcean => "Frozen Ocean",
+            Biome::CrimsonForest => "Crimson Forest",
+            Biome::WarpedForest => "Warped Forest",
         }
     }
 
@@ -110,8 +126,17 @@ impl Biome {
             20 => Biome::LukewarmOcean,
             21 => Biome::ColdOcean,
             22 => Biome::FrozenOcean,
+            23 => Biome::CrimsonForest,
+            24 => Biome::WarpedForest,
             _ => Biome::Ocean,
         }
+    }
+
+    /// 1.16 (Nether Update, part 2): the nether biome family — the
+    /// wastes + the two forests (region gates for mob spawning and
+    /// the snow-golem heat rule: every nether flavor is "hot").
+    pub fn is_nether(self) -> bool {
+        matches!(self, Biome::NetherWastes | Biome::CrimsonForest | Biome::WarpedForest)
     }
 
     /// 1.13: the ocean temperature family gate (any ocean-flavored
@@ -409,6 +434,27 @@ fn floor_div(a: i32, b: i32) -> i32 {
         q - 1
     } else {
         q
+    }
+}
+
+/// 1.16 (Nether Update, part 2): the nether region biome â a
+/// deterministic 2x2-chunk cell hash (contiguous forest regions, not
+/// per-column confetti). Shares VERIFIED against the wiki infobox
+/// rows: crimson forest "22% of the Nether by volume", warped forest
+/// "around 8% of the Nether by volume" (the rarest of the five);
+/// the nether wastes fill the rest. The region scale is the engine's
+/// disclosed adaptation â vanilla's 3D biome climate sampler needs
+/// the full multi-noise stack.
+pub fn nether_region_biome(seed: u64, cx: i32, cz: i32) -> Biome {
+    let region_x = floor_div(cx, 2);
+    let region_z = floor_div(cz, 2);
+    let v = Rng::hash3(seed ^ 0xF0E7, region_x, 0, region_z) % 100;
+    if v < 22 {
+        Biome::CrimsonForest
+    } else if v < 30 {
+        Biome::WarpedForest
+    } else {
+        Biome::NetherWastes
     }
 }
 
@@ -2466,7 +2512,15 @@ impl TerrainGen {
                 let wx = cx * 16 + x as i32;
                 let wz = cz * 16 + z as i32;
                 let col_idx = z * 16 + x;
-                chunk.biome[col_idx] = Biome::NetherWastes as u8;
+                // 1.16 (Nether Update, part 2): the nether biome split —
+                // region cells of 2x2 chunks (contiguous forests, not
+                // per-column confetti): crimson ~22% of the volume,
+                // warped ~8%, wastes the rest (VERIFIED shares, the
+                // w/Crimson_Forest + w/Warped_Forest infobox rows;
+                // region scale is the engine's disclosed adaptation —
+                // vanilla's 3D biome sampler needs the full climate
+                // stack)
+                chunk.biome[col_idx] = nether_region_biome(self.seed, cx, cz) as u8;
                 let fb = 1 + floor_bed(wx, wz);
                 let cb = 127 - ceil_bed(wx, wz);
                 chunk.height[col_idx] = 127; // highest opaque = the bedrock roof
@@ -2656,7 +2710,202 @@ impl TerrainGen {
         // nether gold ore veins, ancient debris clusters
         self.gen_v116_nether_decorations(&mut chunk, &mut rng, cx, cz);
 
+        // 1.16 (Nether Update, part 2): the V14 forest families — the
+        // nylium floors, huge fungi, shroomlights, vines + undergrowth
+        self.gen_v116b_nether_forests(&mut chunk, &mut rng, cx, cz);
+
         (Arc::new(chunk), outbound)
+    }
+
+    /// 1.16 (Nether Update, part 2): the nether forest generation —
+    /// the crimson/warped region's signature look, all in-chunk:
+    /// nylium floors ("The forest floor is mostly covered with
+    /// crimson nylium", VERIFIED w/Crimson_Forest), huge fungi (the
+    /// stem + wart-cap + shroomlight "trees"), the undergrowth
+    /// tufts, weeping vines hanging under crimson canopies + twisting
+    /// vines climbing from warped ground (VERIFIED w/Weeping_Vines +
+    /// w/Twisting_Vines "Post-generation" rows). Adaptations,
+    /// disclosed: no bone-meal growth path (no nylium-spreading sim);
+    /// the huge fungi are the engine's tree-generator pattern trimmed
+    /// to the two families.
+    fn gen_v116b_nether_forests(&self, chunk: &mut Chunk, rng: &mut Rng, cx: i32, cz: i32) {
+        use vc_blocks::blocks::{
+            CRIMSON_FUNGUS, CRIMSON_NYLIUM, CRIMSON_ROOTS, NETHER_SPROUTS, NETHER_WART_BLOCK,
+            SHROOMLIGHT, TWISTING_VINES, WARPED_FUNGUS, WARPED_NYLIUM, WARPED_ROOTS,
+            WEEPING_VINES, WARPED_WART_BLOCK, CRIMSON_STEM, WARPED_STEM, NETHERRACK,
+        };
+        let region = nether_region_biome(self.seed, cx, cz);
+        if region == Biome::NetherWastes {
+            return; // the wastes keep their part-1 look
+        }
+        let crimson = region == Biome::CrimsonForest;
+        let (nylium, stem, wart_cap) = if crimson {
+            (CRIMSON_NYLIUM, CRIMSON_STEM, NETHER_WART_BLOCK)
+        } else {
+            (WARPED_NYLIUM, WARPED_STEM, WARPED_WART_BLOCK)
+        };
+
+        // ---- the nylium floor: every netherrack surface with air
+        // above (y 20..110) turns nylium; ~30% of the columns keep
+        // bare netherrack ("with some netherrack ... generating on the
+        // surface as well", VERIFIED) ----
+        for z in 0..16usize {
+            for x in 0..16usize {
+                let wx = cx * 16 + x as i32;
+                let wz = cz * 16 + z as i32;
+                let bare = Rng::hash3(self.seed ^ 0xBA4E, wx, 0, wz) % 10 < 3;
+                if bare {
+                    continue;
+                }
+                for y in (20..110usize).rev() {
+                    let below = chunk.get(x, y, z);
+                    if below == NETHERRACK && chunk.get(x, y + 1, z) == 0 {
+                        // plant the nylium block (Chunk::set routes
+                        // through default_state)
+                        chunk.set(x, y, z, nylium);
+                        // the undergrowth: ~45% of nylium columns sprout
+                        // a tuft (fungi/roots crimson; roots/sprouts/
+                        // fungi warped — "The most frequent vegetation
+                        // ... includes crimson fungi, crimson roots",
+                        // VERIFIED w/Crimson_Forest)
+                        if Rng::hash3(self.seed ^ 0xF106, wx, y as i32, wz) % 100 < 45 {
+                            let plant = if crimson {
+                                match Rng::hash3(self.seed ^ 0xC407, wx, y as i32, wz) % 3 {
+                                    0 => CRIMSON_FUNGUS,
+                                    _ => CRIMSON_ROOTS,
+                                }
+                            } else {
+                                match Rng::hash3(self.seed ^ 0x9A0E, wx, y as i32, wz) % 4 {
+                                    0 => WARPED_FUNGUS,
+                                    1 => WARPED_ROOTS,
+                                    2 => NETHER_SPROUTS,
+                                    _ => WARPED_ROOTS,
+                                }
+                            };
+                            chunk.set(x, y + 1, z, plant);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        // ---- the huge fungi (the forest's "trees"): 3 attempts per
+        // chunk — a 4..9-tall stem from a nylium floor, a 3..5-wide
+        // wart cap, one shroomlight in the cap, and (crimson only)
+        // weeping-vine strands hanging from the cap's rim; (warped)
+        // twisting-vine columns climbing 2..6 from the ground nearby
+        // ----
+        for _ in 0..3 {
+            let lx = rng.next_range(16) as i32;
+            let lz = rng.next_range(16) as i32;
+            // find a nylium floor (only forests themselves host the
+            // huge fungi — VERIFIED w/Crimson_Forest: "This is the
+            // only place where huge crimson fungus trees grow
+            // naturally")
+            let mut base = 0i32;
+            for y in (20..110usize).rev() {
+                let b = chunk.get(lx as usize, y, lz as usize);
+                if b != 0 && vc_blocks::blocks::is_solid(b) {
+                    base = y as i32;
+                    break;
+                }
+            }
+            if base < 20 {
+                continue;
+            }
+            let floor = chunk.get(lx as usize, base as usize, lz as usize);
+            if floor != nylium {
+                continue; // not a forest floor — skip this attempt
+            }
+            let h = 4 + rng.next_range(6) as i32; // 4..9
+            let mut top = base;
+            for d in 1..=h {
+                let yy = base + d;
+                if yy > 125 || chunk.get(lx as usize, yy as usize, lz as usize) != 0 {
+                    break;
+                }
+                chunk.set(lx as usize, yy as usize, lz as usize, stem as u16);
+                top = yy;
+            }
+            if top <= base + 1 {
+                continue; // the stem never made it out of the floor
+            }
+            // the cap: a disc of wart blocks + the shroomlight core
+            let r = 2 + rng.next_range(2) as i32; // 2..3 → caps 3..5 wide
+            let cy = (top + 1).min(125);
+            for dz in -r..=r {
+                for dx in -r..=r {
+                    if dx * dx + dz * dz > r * r + 1 {
+                        continue;
+                    }
+                    let x = (lx + dx).clamp(0, 15) as usize;
+                    let z = (lz + dz).clamp(0, 15) as usize;
+                    if chunk.get(x, cy as usize, z) == 0 {
+                        chunk.set(x, cy as usize, z, wart_cap as u16);
+                    }
+                }
+            }
+            // the shroomlight: the cap's center ("Shroomlights ...
+            // generate in huge fungi", VERIFIED w/Shroomlight)
+            let x = lx.clamp(0, 15) as usize;
+            let z = lz.clamp(0, 15) as usize;
+            if chunk.get(x, cy as usize, z) == wart_cap as u16 {
+                chunk.set(x, cy as usize, z, SHROOMLIGHT as u16);
+            }
+            // crimson: weeping vines hang from the cap's rim (1..4
+            // strands, 2..5 long — "generate naturally ... on huge
+            // crimson fungi", VERIFIED w/Weeping_Vines)
+            if crimson {
+                for _ in 0..1 + rng.next_range(4) as i32 {
+                    let dx = (rng.next_range((r * 2 + 1) as u32) as i32 - r).clamp(-r, r);
+                    let dz = (rng.next_range((r * 2 + 1) as u32) as i32 - r).clamp(-r, r);
+                    let x = (lx + dx).clamp(0, 15) as usize;
+                    let z = (lz + dz).clamp(0, 15) as usize;
+                    let len = 2 + rng.next_range(4) as i32; // 2..5
+                    for d in 0..len {
+                        let yy = cy - 1 - d;
+                        if yy < 2 {
+                            break;
+                        }
+                        if chunk.get(x, yy as usize, z) != 0 {
+                            break;
+                        }
+                        chunk.set(x, yy as usize, z, WEEPING_VINES as u16);
+                    }
+                }
+            }
+        }
+
+        // warped only: twisting-vine columns from the ground ("twisting
+        // vines growing from the ground", VERIFIED w/Warped_Forest) —
+        // 2 columns per chunk, 2..7 tall
+        if !crimson {
+            for _ in 0..2 {
+                let lx = rng.next_range(16) as i32;
+                let lz = rng.next_range(16) as i32;
+                let mut base = 0i32;
+                for y in (20..110usize).rev() {
+                    let b = chunk.get(lx as usize, y, lz as usize);
+                    if b != 0 && vc_blocks::blocks::is_solid(b) {
+                        base = y as i32;
+                        break;
+                    }
+                }
+                let floor = chunk.get(lx as usize, base as usize, lz as usize);
+                if base < 20 || floor != nylium {
+                    continue;
+                }
+                let len = 2 + rng.next_range(6) as i32; // 2..7
+                for d in 1..=len {
+                    let yy = base + d;
+                    if yy > 125 || chunk.get(lx as usize, yy as usize, lz as usize) != 0 {
+                        break;
+                    }
+                    chunk.set(lx as usize, yy as usize, lz as usize, TWISTING_VINES as u16);
+                }
+            }
+        }
     }
 
     /// 1.16 (Nether Update, part 1): the V13 nether decorations —
@@ -4483,6 +4732,17 @@ mod nether_tests {
                     // basalt blobs/pillars, the blackstone patch family,
                     // gold veins and the never-air-exposed debris
                     SOUL_SOIL | SOUL_FIRE | NETHER_GOLD_ORE | ANCIENT_DEBRIS => {}
+                    // 1.16 (Nether Update, part 2): the V14 forest
+                    // families — nylium floors, huge-fungi stems + wart
+                    // caps + shroomlights, the undergrowth tufts and the
+                    // weeping/twisting vines
+                    CRIMSON_NYLIUM | WARPED_NYLIUM
+                    | CRIMSON_STEM | WARPED_STEM
+                    | NETHER_WART_BLOCK | WARPED_WART_BLOCK
+                    | SHROOMLIGHT
+                    | CRIMSON_FUNGUS | WARPED_FUNGUS
+                    | CRIMSON_ROOTS | WARPED_ROOTS | NETHER_SPROUTS
+                    | WEEPING_VINES | TWISTING_VINES => {}
                     _ => other += 1,
                 }
             }
@@ -4642,11 +4902,78 @@ mod nether_tests {
     /// §28: the biome field is Nether Wastes everywhere
     #[test]
     fn nether_biome_field() {
+        // 1.16 part 2: the field is region-uniform (the 2x2-chunk
+        // cell hash) and always a nether-family biome — the wastes is
+        // no longer the only flavor
         let gen = TerrainGen::for_dimension(0xFEED_1234, Dimension::Nether);
         let (chunk, _) = gen.generate_chunk(3, -4, Vec::new());
+        let first = chunk.biome[0];
         for i in 0..256usize {
-            assert_eq!(chunk.biome[i], Biome::NetherWastes as u8, "biome[{i}]");
+            assert_eq!(chunk.biome[i], first, "biome[{i}] region-uniform");
+            assert!(
+                Biome::from_u8(chunk.biome[i]).is_nether(),
+                "biome[{i}] in the nether family"
+            );
         }
+    }
+
+    /// 1.16 part 2: the forest families — crimson/warped regions
+    /// exist across seeds, their floors turn nylium, the huge fungi
+    /// (stem + wart cap + shroomlight) grow, and the vines hang/climb
+    /// (the region shares: crimson ~22%, warped ~8%, verified scan)
+    #[test]
+    fn nether_forest_regions_and_families() {
+        let mut crimson_regions = 0;
+        let mut warped_regions = 0;
+        let mut total = 0;
+        let mut saw_crimson_stem = false;
+        let mut saw_warped_stem = false;
+        let mut saw_shroomlight = false;
+        let mut saw_nylium = false;
+        for s in 0..12u64 {
+            let gen = TerrainGen::for_dimension(0xC0FFEE + s, Dimension::Nether);
+            // sample 9 regions around the origin
+            for rx in -1..=1i32 {
+                for rz in -1..=1i32 {
+                    let cx = rx * 2; // region = 2x2 chunks
+                    let cz = rz * 2;
+                    total += 1;
+                    let region = nether_region_biome(gen.seed, cx, cz);
+                    match region {
+                        Biome::CrimsonForest => crimson_regions += 1,
+                        Biome::WarpedForest => warped_regions += 1,
+                        _ => {}
+                    }
+                    let (chunk, _) = gen.generate_chunk(cx, cz, Vec::new());
+                    // region-uniform biome field
+                    for i in 0..256usize {
+                        assert_eq!(chunk.biome[i], region as u8, "region-uniform at {cx},{cz}");
+                    }
+                    if region != Biome::NetherWastes {
+                        // the family blocks appear (scan the whole chunk)
+                        for i in 0..16 * 16 * 128usize {
+                            let b = chunk.get_idx(i);
+                            match b {
+                                x if x == CRIMSON_STEM => saw_crimson_stem = true,
+                                x if x == WARPED_STEM => saw_warped_stem = true,
+                                x if x == SHROOMLIGHT => saw_shroomlight = true,
+                                x if x == CRIMSON_NYLIUM || x == WARPED_NYLIUM => saw_nylium = true,
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // the shares: crimson ~22%, warped ~8% of 108 samples (with
+        // generous tolerance — the hash is deterministic but coarse)
+        assert!(crimson_regions >= 8, "crimson regions appear ({crimson_regions}/108)");
+        assert!(warped_regions >= 2, "warped regions appear ({warped_regions}/108)");
+        // the families generate their signature blocks
+        assert!(saw_crimson_stem, "huge crimson fungi generate");
+        assert!(saw_warped_stem, "huge warped fungi generate");
+        assert!(saw_shroomlight, "shroomlights generate in the caps");
+        assert!(saw_nylium, "forest floors turn nylium");
     }
 }
 

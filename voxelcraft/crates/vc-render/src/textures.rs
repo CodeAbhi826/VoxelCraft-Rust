@@ -19,6 +19,7 @@ mod v114b_art;
 mod v114c_art;
 mod v115_art;
 mod v116_art;
+mod v116b_art;
 
 pub const ATLAS_SIZE: usize = 512;
 pub const TILE_PX: usize = 16;
@@ -4276,6 +4277,40 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_SOUL_FIRE => v116_art::soul_fire_art(&mut a, t, &mut rng),
             TILE_NETHERITE_SCRAP => v116_art::netherite_scrap_art(&mut a, t, &mut rng),
             TILE_NETHERITE_INGOT => v116_art::netherite_ingot_art(&mut a, t, &mut rng),
+            // ---- 1.16 (Nether Update, part 2): the V14 art window ----
+            TILE_CRIMSON_STEM_SIDE => v116b_art::crimson_stem_side_art(&mut a, t, &mut rng),
+            TILE_CRIMSON_STEM_TOP => v116b_art::crimson_stem_top_art(&mut a, t, &mut rng),
+            TILE_CRIMSON_HYPHAE => v116b_art::crimson_hyphae_art(&mut a, t, &mut rng),
+            TILE_CRIMSON_PLANKS => v116b_art::crimson_planks_art(&mut a, t, &mut rng),
+            TILE_CRIMSON_NYLIUM_TOP => v116b_art::crimson_nylium_top_art(&mut a, t, &mut rng),
+            TILE_CRIMSON_NYLIUM_SIDE => v116b_art::crimson_nylium_side_art(&mut a, t, &mut rng),
+            TILE_CRIMSON_FUNGUS => v116b_art::crimson_fungus_art(&mut a, t, &mut rng),
+            TILE_CRIMSON_ROOTS => v116b_art::crimson_roots_art(&mut a, t, &mut rng),
+            TILE_WEEPING_VINES => v116b_art::weeping_vines_art(&mut a, t, &mut rng),
+            TILE_WARPED_STEM_SIDE => v116b_art::warped_stem_side_art(&mut a, t, &mut rng),
+            TILE_WARPED_STEM_TOP => v116b_art::warped_stem_top_art(&mut a, t, &mut rng),
+            TILE_WARPED_HYPHAE => v116b_art::warped_hyphae_art(&mut a, t, &mut rng),
+            TILE_WARPED_PLANKS => v116b_art::warped_planks_art(&mut a, t, &mut rng),
+            TILE_WARPED_NYLIUM_TOP => v116b_art::warped_nylium_top_art(&mut a, t, &mut rng),
+            TILE_WARPED_NYLIUM_SIDE => v116b_art::warped_nylium_side_art(&mut a, t, &mut rng),
+            TILE_WARPED_FUNGUS => v116b_art::warped_fungus_art(&mut a, t, &mut rng),
+            TILE_WARPED_ROOTS => v116b_art::warped_roots_art(&mut a, t, &mut rng),
+            TILE_TWISTING_VINES => v116b_art::twisting_vines_art(&mut a, t, &mut rng),
+            TILE_WARPED_WART_BLOCK => v116b_art::warped_wart_block_art(&mut a, t, &mut rng),
+            TILE_SHROOMLIGHT => v116b_art::shroomlight_art(&mut a, t, &mut rng),
+            TILE_NETHER_SPROUTS => v116b_art::nether_sprouts_art(&mut a, t, &mut rng),
+            TILE_POLISHED_BASALT_SIDE => v116b_art::polished_basalt_side_art(&mut a, t, &mut rng),
+            TILE_POLISHED_BASALT_TOP => v116b_art::polished_basalt_top_art(&mut a, t, &mut rng),
+            TILE_POLISHED_BLACKSTONE => v116b_art::polished_blackstone_art(&mut a, t, &mut rng),
+            TILE_POLISHED_BLACKSTONE_BRICKS => v116b_art::polished_blackstone_bricks_art(&mut a, t, &mut rng),
+            TILE_SOUL_TORCH => v116b_art::soul_torch_art(&mut a, t, &mut rng),
+            TILE_SOUL_LANTERN => v116b_art::soul_lantern_art(&mut a, t, &mut rng),
+            TILE_SPAWN_EGG_STRIDER => v116b_art::strider_egg_art(&mut a, t, &mut rng),
+            TILE_SPAWN_EGG_PIGLIN => v116b_art::piglin_egg_art(&mut a, t, &mut rng),
+            TILE_SPAWN_EGG_HOGLIN => v116b_art::hoglin_egg_art(&mut a, t, &mut rng),
+            TILE_MOB_STRIDER => v116b_art::strider_art(&mut a, t, &mut rng),
+            TILE_MOB_PIGLIN => v116b_art::piglin_art(&mut a, t, &mut rng),
+            TILE_MOB_HOGLIN => v116b_art::hoglin_art(&mut a, t, &mut rng),
             _ => {}
         }
     }

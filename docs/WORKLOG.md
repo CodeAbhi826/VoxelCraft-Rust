@@ -2985,3 +2985,118 @@ Stage Summary:
 - Part 2 (next): the mobs (strider, piglin, hoglin) + the
   crimson/warped wood families; lodestone still deferred (no
   compass item)
+
+---
+
+## Session 2026-09-08 (i) — 1.16 Nether Update, part 2 (the forest families)
+
+Starting point: part 1 (the anchor family) committed at 5e6aab0 with
+564/564 tests green and the main/origin in sync. This round delivered
+the second half of the Nether Update bracket: the three forest mobs,
+the crimson/warped block families, the two forest biomes, piglin
+bartering, and the polished-stone + soul-torch families part 1 had
+deferred to "the part-2 wood round".
+
+**Research first** (the standing convention): 24 live wiki captures
+`scripts/v116b_page_*.json` (Strider, Piglin, Hoglin, Bartering, the
+twelve crimson/warped family pages, the forest-biome pages, the
+soul-torch/lantern pages, the polished-stone trio, the 1.16
+changelog) + the extract script `scripts/v116b_extract.py`; the value
+contract is `docs/research/phase-v116b-1.16-research.md`.
+
+**Registry — the V14 window (ids 454..=478, states 750..=775, tiles
+673..=705; BLOCK_COUNT 479, STATE_COUNT 776, TILE_MAX 705, WGSL mesh
+LUT resynced)**: 22 placeable blocks (the crimson + warped stem/
+hyphae/planks/nylium quartets, fungi/roots/sprouts cross plants,
+weeping + twisting vines, the warped wart block, shroomlight (light
+15), polished basalt/blackstone/bricks, soul torch + soul lantern
+(light 10, the lantern's sitting/hanging pair)) + the 3 spawn eggs
+(kinds 42..=44). All the standing window guards extended: the
+fold tables, default_state, is_model_state, the roundtrip loop, the
+picker, egg_mob. One real integration bug caught by my own new test:
+`is_forest_plant` first routed raw block ids through `state_block`
+— V14 ids collide with legacy property states (446+ is the V2 log
+window); the fix decodes V14 states through the window table and
+treats raw V14 block ids as self-describing.
+
+**The three mobs (all live-verified)**:
+- **Strider**: 20 HP passive; the lava-surface physics (feet-in-lava
+  + air above = standing, no gravity, no sink; submerged = the
+  verified buoyant ascent); water damages at 1 HP per half-second
+  (hazard window); spawns in groups of 2-4 on lava-with-air-above at
+  the 400-gt cadence (its own passive-category pass); bred with
+  warped fungus (the fox/bee pattern, variant bits + aux windows);
+  drops 2-5 string.
+- **Piglin**: 16 HP neutral (the no-armor adaptation of "hostile
+  unless wearing gold" — neutral-until-provoked + the anger hooks);
+  melee 8; **bartering** (a gold-ingot use arms the 120-gt examine,
+  then a trimmed /469-ratio table roll drops 1-N item entities via
+  pending_drops); **gold-mining anger** (breaking nether gold ore /
+  gilded blackstone provokes piglins within 16 blocks);
+  **soul-flame repel** (soul torch/lantern/fire within 8 blocks).
+- **Hoglin**: 40 HP hostile (attack Normal 3-8, the disclosed 5.5
+  midpoint); **the warped-fungus + respawn-anchor flee** (7 blocks,
+  outranking fighting and breeding — the feed is flee-gated);
+  crimson-fungus breeding; 3-4 packs at 20% babies (maturity clock);
+  drops 2-4 porkchop + 50% 0-1 leather.
+
+**The forest biomes — the nether's first sub-biomes**: CrimsonForest
+(22% of the volume) + WarpedForest (8%, enderman-only) as
+deterministic 2x2-chunk region cells (the disclosed multi-noise
+adaptation); the generation paints nylium floors (70% of columns,
+30% keep bare netherrack — the wiki's own "with some netherrack"
+row), huge fungi (4-9 stems, 3-5-wide wart caps + the shroomlight
+core), weeping-vine strands under crimson canopies, twisting-vine
+columns from warped ground, and 45%-column undergrowth. The spawn
+table is biome-aware (crimson: piglin 3/5 vs hoglin; warped:
+endermen; wastes: part 1's roll + piglins at their wastes weight).
+
+**Crafting**: the four 1:4 stem→planks recipes, the three 2x2
+polished stones, and the two SHAPELESS soul recipes (the torch:
+charcoal-or-coal + stick + soul-soil-or-sand → 4; the lantern: the
+8-nugget ring — the concrete-powder matcher pattern, both in one
+`match_soul_torch`). Placement mirrors the growth rules (forest
+plants root on the ground family; weeping vines hang from ceilings,
+twisting vines climb; the soul lantern's underside-click hangs).
+
+**Art day one** (`v116b_art.rs`, the coverage guard auto-extended to
+tile 705): the stem/hyphae/plank/nylium families, the fungi/roots/
+sprouts/vines sprites, shroomlight, the polished stones, the soul
+pair, the 3 eggs + the 3 mob billboards.
+
+**A pre-existing F3 bug fixed by the round's tests**: the chain's
+Targeted-Block line rendered "Chainanging=true]" — a broken format
+string whose own test had been written to match the typo (green
+tests, wrong output). Both now read "Chain[hanging=true]".
+
+**E2E**: the `e2e_v116b` stage (the 20-block family placement round
+trip, the lantern pair + the soul lights, the nine craft contracts,
+the strider's lava stand, the hoglin's flee vector, the piglin
+barter round trip + the mining-anger count) + the CI smoke greps
+(family/lantern-pair/lights/crafts/strider-lava/hoglin-flee/barter),
+riding the shared E2E_V116 gate.
+
+**Local-run note**: libxkbcommon-x11 is still absent in this
+container, so the native X11 smoke (and with it the e2e_v116b
+browser-style replay) rides CI; the unit layer covers the same
+contracts headlessly (8 new mob tests + the craft test + the blocks
+window test + the gen forest test). The wasm bundle was rebuilt
+locally (matched pair, mtime-identical) and browser-verified: boot
+to the title screen in 2.61 s with rendered content.
+
+**Total: 575/575 tests green** (564 + 11 new). Native check clean;
+WGSL LUT + clamps resynced (the drift guard caught the STATE_COUNT
+bump exactly as designed).
+
+Stage Summary:
+- 1.16 part 2 is feature-complete: the three mobs, the crimson/
+  warped families, the two forest biomes, bartering, the polished
+  stones + soul torch/lantern
+- The nether gained sub-biomes (the wastes/forest split) and
+  biome-aware spawning
+- The standing window guards all extended to V14 without incident;
+  the one integration bug (is_forest_plant routing) was caught by
+  the new tests before commit
+- Next main-plan round: 1.17 Caves & Cliffs part 1 (copper, caves,
+  the archaeology-free half) — 2 brackets remain (1.17/1.18 + the
+  final polish pass)

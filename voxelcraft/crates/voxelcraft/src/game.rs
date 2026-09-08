@@ -4426,6 +4426,19 @@ impl GameApp {
                 // spawns — a defensive empty row; the squid is a
                 // pre-1.13 legacy the engine's brackets skipped)
                 mobs::MobKind::Squid => &[],
+                // ---- 1.16 (Nether Update, part 2) ----
+                // strider: "String 2–5 100.00%" (VERIFIED w/Strider
+                // §Drops) — the exact 2-5 roll rides the special-case
+                // path below
+                mobs::MobKind::Strider => &[],
+                // piglin: drops nothing but equipment (the golden
+                // sword's 8.5% hand-drop — no sword items in the
+                // engine, disclosed; VERIFIED w/Piglin §Drops)
+                mobs::MobKind::Piglin => &[],
+                // hoglin: "Raw Porkchop 2–4 100.00%" + "Leather 0–1
+                // 50.00%" (VERIFIED w/Hoglin §Drops) — both exact rolls
+                // ride the special-case path below
+                mobs::MobKind::Hoglin => &[],
             };
             // blaze rod is a 50% roll (VERIFIED), others roll count 1..max
             if kind == mobs::MobKind::Blaze {
@@ -4454,6 +4467,51 @@ impl GameApp {
                     15,
                     0,
                 );
+            }
+            // ---- 1.16 (Nether Update, part 2): the forest mobs' exact
+            // drop rolls ----
+            // strider: "String 2–5" at 100% (VERIFIED w/Strider)
+            if kind == mobs::MobKind::Strider {
+                let n = 2 + (self.audio_rng.next_f32() * 4.0) as u8; // 2..=5
+                for _ in 0..n {
+                    self.sim.items.drop_block(
+                        pos[0].floor() as i32,
+                        pos[1].floor() as i32,
+                        pos[2].floor() as i32,
+                        STRING,
+                        2,
+                        15,
+                        0,
+                    );
+                }
+            }
+            // hoglin: "Raw Porkchop 2–4" at 100% + "Leather 0–1" at 50%
+            // (VERIFIED w/Hoglin; the cooked-if-on-fire variant is the
+            // no-fire-on-entities deferral, disclosed)
+            if kind == mobs::MobKind::Hoglin {
+                let n = 2 + (self.audio_rng.next_f32() * 3.0) as u8; // 2..=4
+                for _ in 0..n {
+                    self.sim.items.drop_block(
+                        pos[0].floor() as i32,
+                        pos[1].floor() as i32,
+                        pos[2].floor() as i32,
+                        PORKCHOP,
+                        2,
+                        15,
+                        0,
+                    );
+                }
+                if self.audio_rng.next_f32() < 0.5 {
+                    self.sim.items.drop_block(
+                        pos[0].floor() as i32,
+                        pos[1].floor() as i32,
+                        pos[2].floor() as i32,
+                        LEATHER,
+                        2,
+                        15,
+                        0,
+                    );
+                }
             }
             // 1.13: the drowned's held trident at 8.5% (VERIFIED
             // w/Trident §Drops — the armed bit in the death variant);
@@ -6714,6 +6772,204 @@ impl GameApp {
         ));
     }
 
+    /// 1.16 (Nether Update, part 2) E2E stage — the forest families:
+    /// the V14 registry + placement (the soul lantern's sitting/hanging
+    /// pair), the soul lights (10/15), the six forest crafts + the two
+    /// shapeless soul recipes, the strider's lava physics, the hoglin's
+    /// warped-fungus flee, and the piglin's barter round trip (the
+    /// gold examine → the thrown item). CI smoke greps the
+    /// "e2e: v116b" boot lines (rides the shared E2E_V116 gate — one
+    /// CI run covers the whole bracket, the v114 trio precedent).
+    fn e2e_v116b(&mut self) {
+        let pos = [
+            self.player.pos.x.floor() as i32,
+            self.player.pos.y.floor() as i32 - 2,
+            self.player.pos.z.floor() as i32,
+        ];
+        use vc_blocks::blocks::*;
+        use vc_inventory::inventory::ItemStack;
+
+        // 1. the registry + placement: the family blocks place and fold
+        //    back (stems/nylium/planks/fungi/vines/wart/shroomlight);
+        //    the soul lantern carries its sitting/hanging pair
+        let mut family_ok = true;
+        for (i, b) in [
+            CRIMSON_STEM, CRIMSON_HYPHAE, CRIMSON_PLANKS, CRIMSON_NYLIUM,
+            CRIMSON_FUNGUS, CRIMSON_ROOTS, WEEPING_VINES,
+            WARPED_STEM, WARPED_HYPHAE, WARPED_PLANKS, WARPED_NYLIUM,
+            WARPED_FUNGUS, WARPED_ROOTS, TWISTING_VINES, WARPED_WART_BLOCK,
+            SHROOMLIGHT, NETHER_SPROUTS,
+            POLISHED_BASALT, POLISHED_BLACKSTONE, POLISHED_BLACKSTONE_BRICKS,
+        ]
+        .iter()
+        .enumerate()
+        {
+            let p = [pos[0] - 4, pos[1] + 1, pos[2] - 4 + i as i32];
+            self.test_place(*b, p[0], p[1], p[2]);
+            let s = self.world.get_state(p[0], p[1], p[2]);
+            family_ok &= state_block(s) == *b && default_state(*b) == s;
+        }
+        // the soul lantern's two forms: sitting places, hanging folds
+        self.test_place(SOUL_LANTERN, pos[0] + 4, pos[1], pos[2]);
+        let sitting = self.world.get_state(pos[0] + 4, pos[1], pos[2]);
+        let lantern_pair = !soul_lantern_hanging(sitting)
+            && state_block(sitting) == SOUL_LANTERN
+            && soul_lantern_hanging(v14_state(SOUL_LANTERN).unwrap() + 1)
+            && state_description(v14_state(SOUL_LANTERN).unwrap() + 1) == "Soul Lantern[hanging=true]";
+        // the soul lights: torch + lantern 10, shroomlight 15
+        let lights_ok = emissive(SOUL_TORCH) == 10
+            && emissive(SOUL_LANTERN) == 10
+            && state_emissive(sitting) == 10
+            && emissive(SHROOMLIGHT) == 15;
+
+        // 2. the crafts: the four 1:4 plank recipes + the three 2x2
+        //    polished stones + the two shapeless soul recipes
+        let mut crafts_ok = true;
+        for (stem, planks) in [
+            (CRIMSON_STEM, CRIMSON_PLANKS),
+            (CRIMSON_HYPHAE, CRIMSON_PLANKS),
+            (WARPED_STEM, WARPED_PLANKS),
+            (WARPED_HYPHAE, WARPED_PLANKS),
+        ] {
+            let out = vc_gameplay::craft::match_grid(&[ItemStack::new(stem, 1)], 1).unwrap();
+            crafts_ok &= out.block == planks && out.count == 4;
+        }
+        for (ing, out_b) in [
+            (BASALT, POLISHED_BASALT),
+            (BLACKSTONE, POLISHED_BLACKSTONE),
+            (POLISHED_BLACKSTONE, POLISHED_BLACKSTONE_BRICKS),
+        ] {
+            let g = vec![ItemStack::new(ing, 1); 4];
+            let out = vc_gameplay::craft::match_grid(&g, 2).unwrap();
+            crafts_ok &= out.block == out_b && out.count == 4;
+        }
+        let st = vc_gameplay::craft::match_grid(
+            &[
+                ItemStack::new(CHARCOAL, 1), ItemStack::EMPTY, ItemStack::new(STICK, 1),
+                ItemStack::EMPTY, ItemStack::new(SOUL_SOIL, 1), ItemStack::EMPTY,
+                ItemStack::EMPTY, ItemStack::EMPTY, ItemStack::EMPTY,
+            ],
+            3,
+        )
+        .unwrap();
+        let sl = vc_gameplay::craft::match_grid(
+            &[
+                ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1),
+                ItemStack::new(IRON_NUGGET, 1), ItemStack::new(SOUL_TORCH, 1), ItemStack::new(IRON_NUGGET, 1),
+                ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1),
+            ],
+            3,
+        )
+        .unwrap();
+        crafts_ok &= st.block == SOUL_TORCH && st.count == 4;
+        crafts_ok &= sl.block == SOUL_LANTERN && sl.count == 1;
+
+        // 3. the strider's lava physics: a lava pad + a strider on it
+        //    (feet in lava + air above = standing, VERIFIED w/Strider)
+        let lava_p = [pos[0] + 6, pos[1], pos[2] + 6];
+        for dz in -1..=1i32 {
+            for dx in -1..=1i32 {
+                let _ = self
+                    .world
+                    .set_block(lava_p[0] + dx, lava_p[1], lava_p[2] + dz, LAVA);
+            }
+        }
+        let strider = self
+            .sim
+            .mobs
+            .spawn_at(vc_gameplay::mobs::MobKind::Strider, lava_p[0], lava_p[1], lava_p[2])
+            .unwrap();
+        if let Some(m) = self.sim.mobs.by_id_mut(strider) {
+            m.pos = [lava_p[0] as f32 + 0.5, lava_p[1] as f32, lava_p[2] as f32 + 0.5];
+            m.vel[1] = -8.0; // a hard sink attempt
+        }
+        let mut input = Input::default();
+        let _ = self.player.update(0.1, 0.0, &self.world, &mut input, 1.0, true);
+        self.sim
+            .step(&mut self.world, &mut self.light, &vc_sim::sim::TickScope::everything());
+        let strider_stands = self
+            .sim
+            .mobs
+            .by_id(strider)
+            .map(|m| m.on_ground && m.vel[1] == 0.0)
+            .unwrap_or(false);
+
+        // 4. the hoglin's warped-fungus flee: place the fungus near a
+        //    hoglin, tick, its velocity points AWAY (the 7-block rule)
+        let hog_p = [pos[0] - 6, pos[1] + 1, pos[2] + 6];
+        self.test_place(GRASS, hog_p[0], hog_p[1] - 1, hog_p[2]); // a floor
+        let hoglin = self
+            .sim
+            .mobs
+            .spawn_at(vc_gameplay::mobs::MobKind::Hoglin, hog_p[0], hog_p[1], hog_p[2])
+            .unwrap();
+        if let Some(m) = self.sim.mobs.by_id_mut(hoglin) {
+            m.pos = [hog_p[0] as f32 + 0.5, hog_p[1] as f32, hog_p[2] as f32 + 0.5];
+        }
+        self.test_place(WARPED_FUNGUS, hog_p[0] + 3, hog_p[1], hog_p[2]);
+        // the player anchor must exist for the AI arm to run
+        self.sim.mobs.player = Some([hog_p[0] as f32 - 20.0, hog_p[1] as f32, hog_p[2] as f32]);
+        for _ in 0..4 {
+            self.sim
+                .step(&mut self.world, &mut self.light, &vc_sim::sim::TickScope::everything());
+        }
+        let hoglin_flees = self
+            .sim
+            .mobs
+            .by_id(hoglin)
+            .map(|m| {
+                // the flee velocity points away from the fungus
+                // (fungus at +x from the hoglin → flee has -x component)
+                m.vel[0] < -0.01
+            })
+            .unwrap_or(false);
+        let _ = self
+            .world
+            .set_block(hog_p[0] + 3, hog_p[1], hog_p[2], AIR);
+
+        // 5. the piglin's barter round trip: hand the gold (the
+        //    iron-ore stand-in), the 120-gt examine ends in a dropped
+        //    item entity (VERIFIED w/Piglin §Bartering)
+        let pig_p = [pos[0] + 6, pos[1] + 1, pos[2] - 6];
+        self.test_place(GRASS, pig_p[0], pig_p[1] - 1, pig_p[2]);
+        let piglin = self
+            .sim
+            .mobs
+            .spawn_at(vc_gameplay::mobs::MobKind::Piglin, pig_p[0], pig_p[1], pig_p[2])
+            .unwrap();
+        let items_before = self.sim.items.len();
+        let barter_armed = self.sim.mobs.try_barter_piglin(piglin, IRON_ORE);
+        for _ in 0..125 {
+            self.sim
+                .step(&mut self.world, &mut self.light, &vc_sim::sim::TickScope::everything());
+            // the pending_drops drain happens in drain_mob_events; run
+            // it so the item entities materialize
+            self.drain_mob_events();
+            if self.sim.items.len() > items_before {
+                break;
+            }
+        }
+        let barter_delivered = self.sim.items.len() > items_before;
+        // the mining anger hook: nearby piglins provoke on gold mining
+        let angered = self.sim.mobs.anger_piglins_near(
+            [pig_p[0] as f32, pig_p[1] as f32, pig_p[2] as f32],
+            16.0,
+        );
+
+        vc_render::render::report_boot_log(&format!(
+            "e2e: v116b family={} lantern-pair={} lights={} crafts={} strider-lava={} hoglin-flee={} barter={}(delivered={} angered={})",
+            family_ok,
+            lantern_pair,
+            lights_ok,
+            crafts_ok,
+            strider_stands,
+            hoglin_flees,
+            barter_armed && barter_delivered,
+            barter_delivered,
+            angered > 0
+        ));
+    }
+
     fn test_place(&mut self, block: u16, x: i32, y: i32, z: i32) {
         use vc_blocks::blocks::*;
         let state = match block {
@@ -6912,6 +7168,12 @@ impl GameApp {
                 // material path)
                 if std::env::var("E2E_V116").is_ok() {
                     self.e2e_v116();
+                }
+                // 1.16 (Nether Update, part 2): the forest-families
+                // stage (rides the shared E2E_V116 gate — one CI run
+                // covers the whole bracket, the v114 trio precedent)
+                if std::env::var("E2E_V116").is_ok() {
+                    self.e2e_v116b();
                 }
             }
             // F3_DUMP run: hold gameplay ~2 s so the overlay rebuild + dump
@@ -9702,6 +9964,15 @@ impl GameApp {
                                         pos[0], pos[1], pos[2], broke, biome, sky, blk,
                                     );
                                 }
+                                // 1.16 part 2: the piglin gold-mining anger
+                                // hook — mining gold-related blocks angers
+                                // nearby piglins (the w/Piglin aggravation
+                                // rows; the 16-block medium-aggravation
+                                // range, disclosed)
+                                let _ = self
+                                    .sim
+                                    .mobs
+                                    .anger_piglins_near([pos[0] as f32 + 0.5, pos[1] as f32, pos[2] as f32 + 0.5], 16.0);
                             } else if broke == NETHER_GOLD_ORE {
                                 // 1.16 — VERIFIED w/Nether_Gold_Ore
                                 // §Drops: "2–6 gold nuggets when mined
@@ -9715,12 +9986,44 @@ impl GameApp {
                                         pos[0], pos[1], pos[2], IRON_NUGGET, biome, sky, blk,
                                     );
                                 }
+                                // 1.16 part 2: the piglin gold-mining anger
+                                // hook (the same aggravation class)
+                                let _ = self
+                                    .sim
+                                    .mobs
+                                    .anger_piglins_near([pos[0] as f32 + 0.5, pos[1] as f32, pos[2] as f32 + 0.5], 16.0);
                             } else if broke == SOUL_FIRE {
                                 // 1.16 — soul fire cannot be collected
                                 // (fire blocks drop nothing, VERIFIED
                                 // w/Soul_Fire — the creative picker is
                                 // the only manual placement path, the
                                 // disclosed no-flint adaptation)
+                            } else if broke == NETHER_SPROUTS {
+                                // 1.16 part 2 — VERIFIED w/Nether_Sprouts:
+                                // drops nothing when broken without
+                                // shears (no tool-gated drops in the
+                                // engine — the empty-handed result,
+                                // disclosed)
+                            } else if broke == WEEPING_VINES || broke == TWISTING_VINES {
+                                // 1.16 part 2 — VERIFIED w/Weeping_Vines
+                                // + w/Twisting_Vines: "These blocks have
+                                // a 1/3 chance of dropping themselves"
+                                // (shears make it certain — the shears
+                                // item's block-breaking use is the
+                                // trimmed half, disclosed)
+                                if self.audio_rng.next_range(3) == 0 {
+                                    self.sim.items.drop_block(
+                                        pos[0], pos[1], pos[2], broke, biome, sky, blk,
+                                    );
+                                }
+                            } else if broke == CRIMSON_NYLIUM || broke == WARPED_NYLIUM {
+                                // 1.16 part 2 — the nylium row: mining a
+                                // nylium drops its netherrack base (the
+                                // grass-block-to-dirt class; silk-touch
+                                // absent, disclosed)
+                                self.sim.items.drop_block(
+                                    pos[0], pos[1], pos[2], NETHERRACK, biome, sky, blk,
+                                );
                             } else if broke == BEE_NEST || broke == BEEHIVE {
                                 // 1.15 (Buzzy Bees) — VERIFIED w/Bee_nest
                                 // §Breaking: "If a bee nest is broken with
@@ -10075,6 +10378,165 @@ impl GameApp {
                                     "e2e: berries fed -> fox pair bred a trusting cub (VERIFIED)",
                                 );
                             }
+                            self.place_timer = 0.5;
+                        }
+                    }
+                }
+                // ---- 1.16 (Nether Update, part 2): the forest-mob
+                // interactions — strider feeding (warped fungus),
+                // hoglin feeding (crimson fungus, the flee-gated
+                // form) + piglin bartering ("Use a gold ingot on an
+                // adult piglin", VERIFIED w/Piglin §Bartering; gold =
+                // the iron-ingot stand-in, the disclosed convention).
+                // First feeding arms love mode; a second with a loving
+                // partner spawns the baby (the fox/bee pattern). ----
+                else if let Some(eid) = self
+                    .sim
+                    .mobs
+                    .ray_hit(
+                        self.player.eye().to_array(),
+                        self.player.look_dir().to_array(),
+                        crate::player::REACH,
+                    )
+                    .filter(|&id| {
+                        self.sim
+                            .mobs
+                            .by_id(id)
+                            .map(|m| {
+                                matches!(
+                                    m.kind,
+                                    vc_gameplay::mobs::MobKind::Strider
+                                        | vc_gameplay::mobs::MobKind::Hoglin
+                                        | vc_gameplay::mobs::MobKind::Piglin
+                                )
+                            })
+                            .unwrap_or(false)
+                    })
+                {
+                    let held = self.player.held().block;
+                    // (1) STRIDER: warped fungus ("They can be fed
+                    // warped fungus to breed", VERIFIED w/Strider)
+                    if held == WARPED_FUNGUS
+                        && self
+                            .sim
+                            .mobs
+                            .by_id(eid)
+                            .map(|m| m.kind == vc_gameplay::mobs::MobKind::Strider)
+                            .unwrap_or(false)
+                    {
+                        if let Some(out) = self.sim.mobs.try_feed_strider(eid, held) {
+                            if self.mode.depletes_items() {
+                                let h = self.player.held_mut();
+                                h.count -= 1;
+                                if h.count == 0 {
+                                    *h = vc_inventory::inventory::ItemStack::EMPTY;
+                                }
+                            }
+                            self.play_event("entity.strider.eat", None, 1.0);
+                            if let vc_gameplay::mobs::StriderFeedOutcome::Bred(_) = out {
+                                let (px, py, pz) = {
+                                    let m = self.sim.mobs.by_id(eid).unwrap();
+                                    (m.pos[0] as i32, m.pos[1] as i32, m.pos[2] as i32)
+                                };
+                                // the calf: baby bit + the 24000-tick
+                                // maturity clock ("All babies obtained
+                                // through breeding take 20 minutes to
+                                // grow up", VERIFIED w/Strider)
+                                let kid = self.sim.mobs.spawn_variant(
+                                    vc_gameplay::mobs::MobKind::Strider,
+                                    px,
+                                    py,
+                                    pz,
+                                    0x40,
+                                );
+                                if let Some(kid) = kid {
+                                    if let Some(m) = self.sim.mobs.by_id_mut(kid) {
+                                        m.aux = 24000;
+                                    }
+                                }
+                                self.play_event("entity.strider.ambient", None, 1.0);
+                                vc_render::render::report_boot_log(
+                                    "e2e: warped fungus fed -> strider pair bred a calf (VERIFIED)",
+                                );
+                            }
+                            self.place_timer = 0.5;
+                        }
+                    }
+                    // (2) HOGLIN: crimson fungus ("Hoglins can be bred
+                    // with crimson fungi", VERIFIED w/Hoglin — the
+                    // warped-fungus flee gate is inside the feed)
+                    else if held == CRIMSON_FUNGUS
+                        && self
+                            .sim
+                            .mobs
+                            .by_id(eid)
+                            .map(|m| m.kind == vc_gameplay::mobs::MobKind::Hoglin)
+                            .unwrap_or(false)
+                    {
+                        let outcome = {
+                            // split borrow: mobs (mut) + world (shared)
+                            let mobs = &mut self.sim.mobs;
+                            let world = &self.world;
+                            mobs.try_feed_hoglin(eid, held, world)
+                        };
+                        if let Some(out) = outcome {
+                            if self.mode.depletes_items() {
+                                let h = self.player.held_mut();
+                                h.count -= 1;
+                                if h.count == 0 {
+                                    *h = vc_inventory::inventory::ItemStack::EMPTY;
+                                }
+                            }
+                            self.play_event("entity.hoglin.ambient", None, 1.0);
+                            if let vc_gameplay::mobs::HoglinFeedOutcome::Bred(_) = out {
+                                let (px, py, pz) = {
+                                    let m = self.sim.mobs.by_id(eid).unwrap();
+                                    (m.pos[0] as i32, m.pos[1] as i32, m.pos[2] as i32)
+                                };
+                                let kid = self.sim.mobs.spawn_variant(
+                                    vc_gameplay::mobs::MobKind::Hoglin,
+                                    px,
+                                    py,
+                                    pz,
+                                    0x40,
+                                );
+                                if let Some(kid) = kid {
+                                    if let Some(m) = self.sim.mobs.by_id_mut(kid) {
+                                        m.aux = 24000;
+                                    }
+                                }
+                                vc_render::render::report_boot_log(
+                                    "e2e: crimson fungus fed -> hoglin pair bred a piglet (VERIFIED)",
+                                );
+                            }
+                            self.place_timer = 0.5;
+                        }
+                    }
+                    // (3) PIGLIN: the gold-ingot barter (the iron-ore
+                    // stand-in) — arms the 6-second examine; the loot
+                    // surfaces via pending_drops when the countdown
+                    // ends ("then drops a random item from the chart",
+                    // VERIFIED w/Piglin)
+                    else if held == IRON_ORE
+                        && self
+                            .sim
+                            .mobs
+                            .by_id(eid)
+                            .map(|m| m.kind == vc_gameplay::mobs::MobKind::Piglin)
+                            .unwrap_or(false)
+                    {
+                        if self.sim.mobs.try_barter_piglin(eid, held) {
+                            if self.mode.depletes_items() {
+                                let h = self.player.held_mut();
+                                h.count -= 1;
+                                if h.count == 0 {
+                                    *h = vc_inventory::inventory::ItemStack::EMPTY;
+                                }
+                            }
+                            self.play_event("entity.piglin.admiring_item", None, 1.0);
+                            vc_render::render::report_boot_log(
+                                "e2e: gold ingot handed -> piglin examines (6 s), barter follows (VERIFIED)",
+                            );
                             self.place_timer = 0.5;
                         }
                     }
@@ -11255,6 +11717,53 @@ impl GameApp {
                                         // only on the soil family or bamboo)
                                         u16::MAX
                                     }
+                                } else if is_forest_plant(b) {
+                                    // 1.16 (Nether Update, part 2) — the
+                                    // forest plants root on the nether
+                                    // ground family (VERIFIED w/Crimson_
+                                    // Fungus §Placement: the nylium family;
+                                    // the overworld soil family joins for
+                                    // creative transplanting, disclosed) —
+                                    // a solid floor below or deny
+                                    let below =
+                                        self.world.get_block(prev[0], prev[1] - 1, prev[2]);
+                                    if matches!(
+                                        below,
+                                        CRIMSON_NYLIUM
+                                            | WARPED_NYLIUM
+                                            | NETHERRACK
+                                            | SOUL_SOIL
+                                            | SOUL_SAND
+                                            | GRASS
+                                            | DIRT
+                                            | PODZOL
+                                            | SNOW_GRASS
+                                    ) {
+                                        default_state(b)
+                                    } else {
+                                        u16::MAX
+                                    }
+                                } else if b == WEEPING_VINES {
+                                    // 1.16 part 2 — the hanging vine needs
+                                    // a support above it (the growth rule
+                                    // mirrored for placement)
+                                    let above =
+                                        self.world.get_block(prev[0], prev[1] + 1, prev[2]);
+                                    if is_solid(above) || above == WEEPING_VINES {
+                                        default_state(b)
+                                    } else {
+                                        u16::MAX
+                                    }
+                                } else if b == TWISTING_VINES {
+                                    // 1.16 part 2 — the climbing vine roots
+                                    // on solid ground (or stacks on itself)
+                                    let below =
+                                        self.world.get_block(prev[0], prev[1] - 1, prev[2]);
+                                    if is_solid(below) || below == TWISTING_VINES {
+                                        default_state(b)
+                                    } else {
+                                        u16::MAX
+                                    }
                                 } else if is_log(b) {
                                     // vanilla log placement: the axis follows the
                                     // clicked face (top/bottom → axis Y, ±X → X, ±Z → Z)
@@ -11336,6 +11845,16 @@ impl GameApp {
                                     let hanging = prev[1] < tpos[1];
                                     vc_blocks::blocks::V13_STATE_BASE
                                         + if hanging { 30 } else { 29 }
+                                } else if b == SOUL_LANTERN {
+                                    // 1.16 (Nether Update, part 2) — VERIFIED
+                                    // w/Soul_Lantern §Usage: "To hang a soul
+                                    // lantern from the bottom of a block,
+                                    // aim at the block's bottom face, and
+                                    // press use" — the lantern/chain
+                                    // face-matched pair
+                                    let hanging = prev[1] < tpos[1];
+                                    vc_blocks::blocks::V14_STATE_BASE
+                                        + if hanging { 22 } else { 21 }
                                 } else if b == OAK_FENCE {
                                     // connections computed from the current world
                                     fence_state_for(&self.world, prev[0], prev[1], prev[2])

@@ -97,10 +97,14 @@ const MODEL_BASE: u32 = 63u;       // MODEL_STATE_BASE
 // anchor charges 0..=4, target power 0..=15, 12 identity blocks with
 // the chain's 2 forms, scrap/ingot items), BLOCK_COUNT=454 (ids
 // 440..=453)
-const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=750)
-const L_FL: u32 = 750u;            // lut: block flags           (BLOCK_COUNT=454)
-const L_TC: u32 = 1204u;           // lut: block tint class      (BLOCK_COUNT=454)
-const L_ST: u32 = 1658u;           // lut: state tiles, 4/state  (4·STATE_COUNT=3000)
+// 1.16 (Nether Update, part 2): STATE_COUNT=776 (V14 750..=775: the
+// 22 crimson/warped family identity states + the soul lantern's
+// sitting/hanging pair + the 3 spawn-egg rows), BLOCK_COUNT=479 (ids
+// 454..=478)
+const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=776)
+const L_FL: u32 = 776u;            // lut: block flags           (BLOCK_COUNT=479)
+const L_TC: u32 = 1255u;           // lut: block tint class      (BLOCK_COUNT=479)
+const L_ST: u32 = 1734u;           // lut: state tiles, 4/state  (4·STATE_COUNT=3104)
 const P_N: u32 = 0u;               // params[0] = n_jobs
 const P_JOB: u32 = 2u;             // params job base = 2 + j*66
 const P_BIOME: u32 = 2u;           // biomes at job base + 2 (64 packed u32)
@@ -152,8 +156,8 @@ fn job_get_blk(j: u32, x: i32, y: i32, z: i32) -> u32 {
     let base = j * VOL_WORDS;
     return (blk_l[base + (p >> 2u)] >> ((p & 3u) * 8u)) & 0xFFu;
 }
-fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 749u)]; }
-fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 453u)]; }
+fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 775u)]; }
+fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 478u)]; }
 fn biome_at(j: u32, x: i32, z: i32) -> u32 {
     let c = u32(z * 16 + x);
     let w = params[P_JOB + j * 66u + P_BIOME + (c >> 2u)];
@@ -175,7 +179,7 @@ fn face_visible(bf: u32, fnb: u32) -> bool {
 // tint class -> packed tint byte (kind<<6 | slot), port of
 // vc_blocks::tint::block_face_tint_packed's block match
 fn tint_packed(b: u32, top: bool, biome: u32) -> u32 {
-    let tc = lut[L_TC + min(b, 453u)];
+    let tc = lut[L_TC + min(b, 478u)];
     var kind = 0u; var slot = 0u;
     if tc == 1u { if top { kind = 1u; slot = biome; } }          // GRASS top
     else if tc == 2u { kind = 1u; slot = biome; }                // TALL_GRASS

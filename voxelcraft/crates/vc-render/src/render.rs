@@ -5170,6 +5170,50 @@ pub fn report_boot_log(msg: &str) {
     }
 }
 
+/// --debug (raw diagnostics) flag: set by the host crate's CLI parse
+/// (native: `--debug` argument; wasm: `?debug` URL param) before the
+/// first boot line. When off, report_debug_log() is a no-op — the
+/// always-on boot lines are unaffected. When on, the raw event stream
+/// (input, screen transitions, world streaming, perf samples, saves)
+/// lands in the same sinks as the boot log: native stderr +
+/// logs/latest.log, wasm JS console.
+static VERBOSE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Session-relative timestamp for the [t+SSS.s] debug prefixes — anchored
+/// when --debug is switched on (before the first boot line, so effectively
+/// process start).
+static DEBUG_START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+
+/// Enable/disable the raw diagnostic stream (--debug).
+pub fn set_verbose(v: bool) {
+    if v {
+        DEBUG_START.get_or_init(std::time::Instant::now);
+    }
+    VERBOSE.store(v, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// Is the raw diagnostic stream (--debug) enabled?
+pub fn is_verbose() -> bool {
+    VERBOSE.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+fn debug_since_start() -> f32 {
+    DEBUG_START
+        .get_or_init(std::time::Instant::now)
+        .elapsed()
+        .as_secs_f32()
+}
+
+/// Raw diagnostic line (--debug): `[t+  12.3s][cat] msg` to the same sinks
+/// as report_boot_log. Zero-cost no-op while the flag is off.
+#[allow(dead_code)]
+pub fn report_debug_log(cat: &str, msg: &str) {
+    if !is_verbose() {
+        return;
+    }
+    report_boot_log(&format!("[t+{:8.1}s][{}] {}", debug_since_start(), cat, msg));
+}
+
 #[cfg(test)]
 mod shader_tests {
     use super::*;
@@ -5290,5 +5334,21 @@ mod shader_tests {
             let w = tap((off.0 - pp.0, off.1 - pp.1));
             assert!(w.abs() < 1e-6, "tap {off:?} weight {w} (must be 0)");
         }
+    }
+
+    /// --debug contract: the raw stream is OFF by default (normal boots
+    /// stay quiet) and the flag flips it. The verbose-gated
+    /// report_debug_log() formatting itself is exercised by the
+    /// integration smoke (linux-game.yml greps the [t+ line).
+    #[test]
+    fn verbose_flag_defaults_off_and_toggles() {
+        // NOTE: process-global state — save and restore so this test is
+        // order-independent with any future verbose test
+        let prev = is_verbose();
+        set_verbose(false);
+        assert!(!is_verbose(), "--debug must default to OFF");
+        set_verbose(true);
+        assert!(is_verbose(), "--debug flips the raw stream on");
+        set_verbose(prev);
     }
 }

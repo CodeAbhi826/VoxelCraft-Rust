@@ -721,6 +721,8 @@ pub struct GameApp {
     fps: f32,
     frames: u32,
     fps_t: f32,
+    /// --debug: 1 Hz cadence accumulator for the [perf] summary line
+    dbg_t: f32,
     /// rolling 100-frame window: min / avg / max fps + last frame ms
     fps_min: f32,
     fps_avg: f32,
@@ -1406,6 +1408,7 @@ impl GameApp {
             fps: 0.0,
             frames: 0,
             fps_t: now_secs(),
+            dbg_t: 1.0,
             fps_min: 0.0,
             fps_avg: 0.0,
             fps_max: 0.0,
@@ -1517,6 +1520,8 @@ impl GameApp {
         match event {
             Event::WindowEvent { event, .. } => match event {
                 WindowEvent::CloseRequested => {
+                    // --debug: the exit summary a bug report ends on
+                    self.dbg_exit_summary();
                     #[cfg(not(target_arch = "wasm32"))]
                     if self.bench.is_none() {
                         self.save_world(); // final flush on window close (§28)
@@ -1890,6 +1895,10 @@ impl GameApp {
                         if !self.f3_held {
                             self.f3_held = true;
                             self.show_debug = !self.show_debug;
+                            vc_render::render::report_debug_log(
+                                "f3",
+                                &format!("overlay {}", if self.show_debug { "on" } else { "off" }),
+                            );
                             self.ui.dirty = true;
                         }
                     } else {
@@ -2132,6 +2141,37 @@ impl GameApp {
         cx: i32,
         cy: i32,
     ) {
+        // --debug: every click routed — button, state, screen, canvas
+        // coords + what is under it (game: crosshair target block; menus:
+        // the hit widget id or "no widget"). This is the input-regression
+        // detector (the "mouse clicking not working" class).
+        if vc_render::render::is_verbose() {
+            let b = match button {
+                winit::event::MouseButton::Left => "left",
+                winit::event::MouseButton::Middle => "middle",
+                winit::event::MouseButton::Right => "right",
+                _ => "other",
+            };
+            let under = if self.screen == Screen::Game {
+                match self.target {
+                    Some((p, blk, _)) => format!("target block {} at {:?}", vc_blocks::blocks::def(blk).name, p),
+                    None => "no crosshair target".to_string(),
+                }
+            } else {
+                match self.widgets.iter().find(|w| w.hit(cx, cy)) {
+                    Some(w) => format!("widget {}", w.id),
+                    None => "no widget".to_string(),
+                }
+            };
+            vc_render::render::report_debug_log(
+                "input",
+                &format!(
+                    "click {b} {} at ({cx},{cy}) on {} — {under}",
+                    if pressed { "down" } else { "up" },
+                    self.screen.name()
+                ),
+            );
+        }
         if self.container.is_some() && self.screen == Screen::Game {
             if pressed {
                 let right = button == winit::event::MouseButton::Right;
@@ -2306,6 +2346,12 @@ impl GameApp {
     // ------------------------------------------------------ screen flow --
 
     fn set_screen(&mut self, screen: Screen) {
+        // --debug: every screen transition (the boot flow + menu tree in
+        // the raw log — the first thing a bug report wants)
+        vc_render::render::report_debug_log(
+            "screen",
+            &format!("{} -> {}", self.screen.name(), screen.name()),
+        );
         self.screen = screen;
         #[cfg(target_arch = "wasm32")]
         crate::web_input::set_screen(screen.name());
@@ -2380,7 +2426,64 @@ impl GameApp {
         self.set_screen(back);
     }
 
+    /// --debug [perf] line: fps envelope, frame/sim ms, chunk pipeline
+    /// depths, mob count — the steady-state heartbeat for bug reports.
+    fn dbg_perf_line(&self) -> String {
+        format!(
+            "fps {:.0} (avg {:.0} min {:.0} max {:.0}) frame {:.1}ms sim {:.1}ms | chunks meshed {} loaded {} drawn {} gen-queue {} mesh-queue {} | mobs {} edits {}",
+            self.fps,
+            self.fps_avg,
+            self.fps_min,
+            self.fps_max,
+            self.frame_ms,
+            self.phases.phase_ms(crate::bench::PHASE_SIM),
+            self.renderer.chunks.len(),
+            self.world.chunks.len(),
+            self.stats.chunks,
+            self.gen_inflight.len(),
+            self.mesh_inflight.len(),
+            self.sim.mobs.len(),
+            self.edits
+        )
+    }
+
+    /// --debug [exit] summary: uptime, frames, fps envelope, world edits —
+    /// the line a bug report ends on (window close AND the smoke exits).
+    fn dbg_exit_summary(&self) {
+        vc_render::render::report_debug_log(
+            "exit",
+            &format!(
+                "uptime {:.0}s, {} frames, fps avg {:.0} (min {:.0} max {:.0}), {} edits",
+                self.time, self.frames, self.fps_avg, self.fps_min, self.fps_max, self.edits
+            ),
+        );
+    }
+
     fn start_game(&mut self) {
+        // --debug: world entry — the save identity + where the player
+        // lands (ties the [screen] loading->game transition to the world),
+        // plus the first [perf] sample right here (the 1 Hz heartbeat
+        // starts on the next update — this immediate line guarantees the
+        // entry-state is captured even in the shortest session)
+        #[cfg(not(target_arch = "wasm32"))]
+        let spawn = format!(
+            " spawn ({},{},{})",
+            self.level_spawn.0, self.level_spawn.1, self.level_spawn.2
+        );
+        #[cfg(target_arch = "wasm32")]
+        let spawn = format!(
+            " spawn ({:.0},{:.0},{:.0})",
+            self.player.pos.x, self.player.pos.y, self.player.pos.z
+        );
+        vc_render::render::report_debug_log(
+            "world",
+            &format!(
+                "entered: {:?} seed {}{} mode {:?}",
+                self.world_name, self.world.seed, spawn, self.mode
+            ),
+        );
+        vc_render::render::report_debug_log("perf", &self.dbg_perf_line());
+        self.dbg_t = 1.0;
         // Face the most interesting direction on first entry: sample terrain
         // height around the spawn and aim the camera at LAND, not the ocean
         // (spawning while staring at open water reads as a blank/void world).
@@ -5677,6 +5780,7 @@ impl GameApp {
             // overlay MUST differ: fps/XYZ/light/memory all move).
             if std::env::var("F3_DUMP").is_err() {
                 vc_render::render::report_boot_log("smoke: game entered — exiting 0");
+                self.dbg_exit_summary();
                 std::process::exit(0);
             }
             let t_in = self.time - self.smoke_game_t;
@@ -5691,6 +5795,7 @@ impl GameApp {
             }
             if t_in > 2.2 {
                 vc_render::render::report_boot_log("smoke: game entered — exiting 0");
+                self.dbg_exit_summary();
                 std::process::exit(0);
             }
         }
@@ -9943,6 +10048,17 @@ impl GameApp {
             }
         }
 
+        // --debug: 1 Hz raw perf + world-streaming summary while playing
+        // (the [perf] line: fps envelope, frame/sim ms, chunk pipeline
+        // depths, mob count — the steady-state heartbeat for bug reports)
+        if self.screen == Screen::Game && vc_render::render::is_verbose() {
+            self.dbg_t -= dt;
+            if self.dbg_t <= 0.0 {
+                self.dbg_t = 1.0;
+                vc_render::render::report_debug_log("perf", &self.dbg_perf_line());
+            }
+        }
+
         // native autosave (§28): 20 s cadence while a world is in play.
         // Benchmarks never touch the save dir.
         #[cfg(not(target_arch = "wasm32"))]
@@ -9952,7 +10068,12 @@ impl GameApp {
                 self.autosave_in -= dt;
                 if self.autosave_in <= 0.0 {
                     self.autosave_in = 20.0;
+                    let t0 = std::time::Instant::now();
                     self.save_world();
+                    vc_render::render::report_debug_log(
+                        "save",
+                        &format!("autosave in {:.0}ms", t0.elapsed().as_secs_f32() * 1000.0),
+                    );
                 }
             }
         }
@@ -11539,9 +11660,9 @@ impl GameApp {
             if self.debug_graph {
                 // F3 + 1 (engine extension): frame-time graph under the
                 // left column — hidden by default so the overlay matches
-                // the vanilla look exactly
+                // the vanilla look exactly (18px line pitch, 2px top)
                 self.ui.frame_graph(
-                    7 + left.len() as i32 * 14 + 8,
+                    2 + left.len() as i32 * 18 + 8,
                     self.frame_times.as_slices().0,
                 );
             }

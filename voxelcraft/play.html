@@ -101,9 +101,14 @@
     window.voxelcraftReady = function () {
       window.dispatchEvent(new CustomEvent('voxelcraft:ready'));
     };
-    // exposed for the Rust side (panic hook / fatal init errors / diagnostics)
+    // exposed for the Rust side (panic hook / fatal init errors /
+    // diagnostics). ?debug on this page's URL = the native --debug flag:
+    // the engine routes its raw [t+s][category] diagnostic stream here
+    // (see README); plain lines keep the [voxelcraft] prefix.
     window.voxelcraftBootError = bootError;
-    window.voxelcraftLog = function (msg) { console.log('[voxelcraft] ' + msg); };
+    window.voxelcraftLog = function (msg) {
+      console.log(msg.indexOf('[t+') === 0 ? msg : '[voxelcraft] ' + msg);
+    };
 
     // safety net: if the canvas is live (wgpu configured its backing size)
     // but the ready event never arrived, hide the overlay after ~3 s.

@@ -116,7 +116,7 @@ jobs:
           set +e
           timeout 180 xvfb-run -a -s "-screen 0 1280x720x24" \
             env WGPU_BACKEND=Vulkan E2E_V114=1 \
-            "./$BIN_NAME" --smoke 2>&1 | tee smoke.log
+            "./$BIN_NAME" --smoke --debug 2>&1 | tee smoke.log
           CODE=$?
           set -e
           echo "smoke exit code: $CODE"
@@ -128,6 +128,14 @@ jobs:
           grep -q "smoke: title reached" smoke.log
           grep -qE "loading (complete|timeout)" smoke.log
           grep -q "smoke: game entered" smoke.log
+          # --debug regression guard: the raw diagnostic stream engaged and
+          # produced its categories (screen transitions, input routing, the
+          # 1 Hz perf heartbeat, the exit summary) — the bug-report channel
+          grep -q "raw debug stream enabled (--debug)" smoke.log
+          grep -q "\[screen\] intro -> title" smoke.log
+          grep -q "\[input\] click left down" smoke.log
+          grep -q "\[perf\] fps" smoke.log
+          grep -q "\[exit\] uptime" smoke.log
           # pointer-capture ladder engaged on the way in (Locked/Confined/
           # Delta-look - any of the three; the pre-fix bug was a blind
           # grab that left an invisible dead cursor on lock-less compositors)

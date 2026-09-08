@@ -72,6 +72,25 @@ pub fn start() -> Result<(), JsValue> {
         let _ = c.focus();
     }
 
+    // ?debug / ?debug=1: the browser-build equivalent of the native
+    // --debug flag — routes the raw diagnostic stream to the JS console
+    // (same [t+s][cat] lines; see play.html for the hint text). Read via
+    // the same JS interop as boot_log (no extra web-sys features).
+    let w: JsValue = window.into();
+    let search = js_sys::Reflect::get(&w, &"location".into())
+        .ok()
+        .and_then(|loc| js_sys::Reflect::get(&loc, &"search".into()).ok())
+        .and_then(|s| s.as_string())
+        .unwrap_or_default();
+    if search
+        .trim_start_matches('?')
+        .split('&')
+        .any(|kv| matches!(kv.trim(), "debug" | "debug=1" | "debug=true"))
+    {
+        vc_render::render::set_verbose(true);
+        boot_log("raw debug stream enabled (?debug) — [t+s][category] lines follow");
+    }
+
     wasm_bindgen_futures::spawn_local(async move {
         let event_loop = match winit::event_loop::EventLoop::new() {
             Ok(el) => el,

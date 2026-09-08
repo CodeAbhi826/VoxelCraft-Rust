@@ -760,6 +760,60 @@ pub const RECIPES: &[Recipe] = &[
         grid: &[Ing::Block(LILY_OF_THE_VALLEY)],
         out: ItemStack::new(DYE_BASE, 1),
     },
+    // ---- 1.15 (Buzzy Bees) — VERIFIED w/Beehive/w/Honey_Block/
+    // w/Honeycomb/w/Honeycomb_Block §Crafting + the shears precedent
+    // (2 iron ingots diagonal — the engine's IRON_ORE ingot stand-in,
+    // the disclosed blast-furnace convention) ----
+    // beehive: "Any Planks + Honeycomb" — the grid is planks×3 top,
+    // honeycomb×3 middle, planks×3 bottom (6 planks + 3 honeycomb)
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::AnyPlanks, Ing::AnyPlanks, Ing::AnyPlanks,
+            Ing::Block(HONEYCOMB), Ing::Block(HONEYCOMB), Ing::Block(HONEYCOMB),
+            Ing::AnyPlanks, Ing::AnyPlanks, Ing::AnyPlanks,
+        ],
+        out: ItemStack::new(BEEHIVE, 1),
+    },
+    // honeycomb block: 4 honeycomb (2x2)
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(HONEYCOMB), Ing::Block(HONEYCOMB),
+            Ing::Block(HONEYCOMB), Ing::Block(HONEYCOMB),
+        ],
+        out: ItemStack::new(HONEYCOMB_BLOCK, 1),
+    },
+    // honey block: 4 honey bottles (2x2). VERIFIED w/Honey_Block
+    // §Crafting: "Honey Bottle ... Empty bottles remain in the crafting
+    // grid after crafting the honey block" — the engine's grid consumes
+    // ingredients, so the 4 returning glass bottles are granted by the
+    // game layer's craft-application hook (documented adaptation).
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(HONEY_BOTTLE), Ing::Block(HONEY_BOTTLE),
+            Ing::Block(HONEY_BOTTLE), Ing::Block(HONEY_BOTTLE),
+        ],
+        out: ItemStack::new(HONEY_BLOCK, 1),
+    },
+    // honey block back into 4 bottles (the reverse recipe, both ways
+    // in vanilla)
+    Recipe {
+        size: 1,
+        grid: &[Ing::Block(HONEY_BLOCK)],
+        out: ItemStack::new(HONEY_BOTTLE, 4),
+    },
+    // shears (LEGACY item, the stick/charcoal window precedent): 2
+    // iron ingots diagonal
+    Recipe {
+        size: 2,
+        grid: &[
+            Ing::Block(IRON_ORE), Ing::None,
+            Ing::None,           Ing::Block(IRON_ORE),
+        ],
+        out: ItemStack::new(SHEARS, 1),
+    },
 ];
 
 /// 1.12 (World of Color): the concrete-powder recipe — the engine's

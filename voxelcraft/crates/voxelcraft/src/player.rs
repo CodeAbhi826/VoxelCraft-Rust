@@ -13,6 +13,14 @@ pub const GRAVITY: f32 = 32.0; // 0.08 b/tick² × 20² — reference constant
 /// vanilla jump velocity 0.42 blocks/tick × 20 (§23; with the exact
 /// per-tick drag integration this yields the vanilla 1.25-block apex)
 pub const JUMP_VEL: f32 = 8.4;
+/// 1.15 (Buzzy Bees): the honey-block walk factor — entities "walking
+/// on honey blocks move at 2.508 m/s" (VERIFIED w/Honey_Block), the
+/// 4.317 base x 0.58; applied per tick like the bush slow.
+pub const HONEY_SLOW_FACTOR: f32 = 0.58;
+/// 1.15: the honey-block jump cut — "can jump about 3/16 blocks high
+/// on honey; this is an 85% reduction" (VERIFIED w/Honey_Block). Jump
+/// height scales v-squared: sqrt(3/16 / 1.25) ≈ 0.39 of the velocity.
+pub const HONEY_JUMP_CUT: f32 = 0.39;
 pub const TERMINAL: f32 = 78.4; // 3.92 b/tick × 20 — inherent fixed point of the drag formula
 /// research-verdicts.md live round (minecraft.wiki/w/Transportation):
 /// still-water surface swim 2.20 b/s, underwater 1.97 b/s,
@@ -506,8 +514,30 @@ impl Player {
                 self.vel.x *= vc_gameplay::mobs::BUSH_SLOW_FACTOR;
                 self.vel.z *= vc_gameplay::mobs::BUSH_SLOW_FACTOR;
             }
+            // 1.15 (Buzzy Bees): standing on a honey block — "Entities
+            // ... walking on honey blocks move at 2.508 m/s" (VERIFIED
+            // w/Honey_Block §Slowing down entities). Per-tick factor,
+            // the bush-slow pattern; the steady state lands on the
+            // ~2.5 m/s row.
+            let on_honey = self.on_ground
+                && world.get_block(
+                    self.pos.x.floor() as i32,
+                    (self.pos.y - 0.1).floor() as i32,
+                    self.pos.z.floor() as i32,
+                ) == HONEY_BLOCK;
+            if on_honey {
+                self.vel.x *= HONEY_SLOW_FACTOR;
+                self.vel.z *= HONEY_SLOW_FACTOR;
+            }
             in_bush || on_campfire
         };
+        // the honey probe is reused by the jump cut below — snapshot it
+        let feet_on_honey = self.on_ground
+            && world.get_block(
+                self.pos.x.floor() as i32,
+                (self.pos.y - 0.1).floor() as i32,
+                self.pos.z.floor() as i32,
+            ) == HONEY_BLOCK;
         if hazard_active {
             self.hazard_accum += dt;
             while self.hazard_accum >= 0.5 {
@@ -649,7 +679,9 @@ impl Player {
                 self.tick_accum = 0.0;
             } else {
                 if input.jump && self.on_ground {
-                    self.vel.y = JUMP_VEL;
+                    // 1.15: jumping off honey is the 3/16-block hop
+                    // (the 85% height cut — VERIFIED w/Honey_Block)
+                    self.vel.y = if feet_on_honey { JUMP_VEL * HONEY_JUMP_CUT } else { JUMP_VEL };
                     self.on_ground = false;
                     if sprinting {
                         // sprint-jump boost: +0.2 b/t horizontally toward
@@ -915,7 +947,10 @@ impl Player {
                     self.pos.z.floor() as i32,
                 );
             let dmg = self.fall_dist - 3.0;
-            self.pending_fall_dmg += if landed_on == HAY_BALE {
+            self.pending_fall_dmg += if landed_on == HAY_BALE || landed_on == HONEY_BLOCK {
+                // 1.15: "As with hay bales, falling onto a honey block
+                // reduces fall damage by 80%" (VERIFIED w/Honey_Block
+                // §Falling — the same 20% row)
                 dmg * 0.2
             } else {
                 dmg

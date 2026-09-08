@@ -224,6 +224,26 @@ impl Effects {
         self.active.clear();
         self.acc.clear();
     }
+
+    /// 1.15 (Buzzy Bees): remove ONE effect kind — the honey bottle's
+    /// Poison cure ("Consuming the item also has the benefit of
+    /// removing any Poison effect applied to the player. Unlike
+    /// drinking milk, other applied effects are not removed."
+    /// VERIFIED w/Honey_Bottle). Returns true when one was removed.
+    pub fn remove_one(&mut self, kind: EffectKind) -> bool {
+        let mut removed = false;
+        let mut i = 0;
+        while i < self.active.len() {
+            if self.active[i].kind == kind {
+                self.active.swap_remove(i);
+                self.acc.swap_remove(i); // the parallel accumulator
+                removed = true;
+                continue;
+            }
+            i += 1;
+        }
+        removed
+    }
 }
 
 /// Speed multiplier for movement (VERIFIED w/Effect §Speed: +20% per

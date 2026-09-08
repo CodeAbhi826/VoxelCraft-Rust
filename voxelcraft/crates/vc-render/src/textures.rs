@@ -17,6 +17,7 @@ mod v113_art;
 mod v114_art;
 mod v114b_art;
 mod v114c_art;
+mod v115_art;
 
 pub const ATLAS_SIZE: usize = 512;
 pub const TILE_PX: usize = 16;
@@ -4241,6 +4242,20 @@ pub fn generate_atlas() -> Vec<u8> {
             // cross-plant layout, painted from day one) ----
             TILE_CORNFLOWER => v114c_art::cornflower_art(&mut a, t, &mut rng),
             TILE_LILY_OF_THE_VALLEY => v114c_art::lily_of_the_valley_art(&mut a, t, &mut rng),
+            // ---- 1.15 (Buzzy Bees): the V12 art window ----
+            TILE_BEE_NEST_TOP => v115_art::bee_nest_top_art(&mut a, t, &mut rng),
+            TILE_BEE_NEST_FRONT => v115_art::bee_nest_front_art(&mut a, t, &mut rng),
+            TILE_BEEHIVE_TOP => v115_art::beehive_top_art(&mut a, t, &mut rng),
+            TILE_BEEHIVE_FRONT => v115_art::beehive_front_art(&mut a, t, &mut rng),
+            TILE_HONEY => v115_art::honey_block_art(&mut a, t, &mut rng),
+            TILE_HONEYCOMB_BLOCK => v115_art::honeycomb_block_art(&mut a, t, &mut rng),
+            TILE_HONEYCOMB => v115_art::honeycomb_art(&mut a, t, &mut rng),
+            TILE_HONEY_BOTTLE => v115_art::honey_bottle_art(&mut a, t, &mut rng),
+            TILE_SHEARS => v115_art::shears_art(&mut a, t, &mut rng),
+            TILE_SPAWN_EGG_BEE => v115_art::bee_egg_art(&mut a, t, &mut rng),
+            TILE_BEE_NEST_FRONT_HONEY => v115_art::bee_nest_front_honey_art(&mut a, t, &mut rng),
+            TILE_BEEHIVE_FRONT_HONEY => v115_art::beehive_front_honey_art(&mut a, t, &mut rng),
+            TILE_MOB_BEE => v115_art::bee_art(&mut a, t, &mut rng),
             _ => {}
         }
     }

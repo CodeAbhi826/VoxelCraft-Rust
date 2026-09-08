@@ -720,6 +720,8 @@ pub struct GameApp {
     /// fixed-step simulation (Phase 6: scheduled ticks, fluids, gravity,
     /// random ticks, item entities)
     sim: vc_sim::sim::Sim,
+    /// 1.15 (Buzzy Bees): crops advanced by bee pollination (E2E stat)
+    hives_stats_pollinated: u64,
     /// open container screen (Phase 7): inventory crafting grid, crafting
     /// table, or furnace
     container: Option<Container>,
@@ -1464,6 +1466,7 @@ impl GameApp {
             section_meshes: HashMap::new(),
             light: vc_world::light::LightEngine::new(),
             sim: vc_sim::sim::Sim::new(0xC0FF_EE01),
+            hives_stats_pollinated: 0,
             container: None,
             container_geom: None,
             cursor_stack: vc_inventory::inventory::ItemStack::EMPTY,
@@ -3026,6 +3029,7 @@ impl GameApp {
         self.gen_inflight.clear();
         self.light = vc_world::light::LightEngine::new();
         self.sim = vc_sim::sim::Sim::new(seed);
+        self.hives_stats_pollinated = 0;
         self.particles = vc_particles::particles::ParticleSystem::new(seed ^ 0x7EED);
         self.particles.density = self.settings.particle_density();
         self.particle_verts.clear();
@@ -3458,6 +3462,9 @@ impl GameApp {
         };
         let kind = m.kind;
         let armor = vc_gameplay::mobs::def(kind).armor;
+        // 1.15: snapshot for the post-damage bee-anger block (the `m`
+        // borrow ends here — damage() needs &mut)
+        let m_pos = m.pos;
         // cooldown recovery fraction p
         let (_, atk_speed) = combat::held_attack(self.player.held().block);
         let period = combat::attack_cooldown_ticks(atk_speed) / 20.0; // seconds
@@ -3468,6 +3475,25 @@ impl GameApp {
         let outcome =
             combat::player_melee(self.player.held().block, p, falling, sprinting, armor, 0.0);
         let applied = self.sim.mobs.damage(id, outcome.damage);
+        // 1.15 (Buzzy Bees): "All bees nearby are angered when an
+        // individual bee is attacked (unless the bee attacked is
+        // killed in one hit)" — the family + the 16-block neighbors
+        // swarm (VERIFIED w/Bee §Attacking)
+        if kind == vc_gameplay::mobs::MobKind::Bee
+            && applied > 0.0
+            && self.sim.mobs.by_id(id).is_some()
+        {
+            let hive_family = self
+                .sim
+                .mobs
+                .by_id(id)
+                .and_then(|bm| bm.bee.as_ref().and_then(|b| b.hive));
+            self.sim.mobs.anger_bees_near(m_pos, hive_family);
+            if let Some(hp) = hive_family {
+                let _n = self.sim.hives.anger(hp);
+            }
+            self.play_event("entity.bee.loop_aggressive", Some(m_pos), 1.0);
+        }
         if applied > 0.0 {
             self.play_event("entity.generic.death", None, 0.6); // hurt grunt
             vc_render::render::report_boot_log(&format!(
@@ -3934,6 +3960,8 @@ impl GameApp {
                 self.play_event("entity.player.levelup", None, 1.0);
             }
         }
+        // ---- 1.15 (Buzzy Bees): the hive queues ----
+        self.drain_bee_queues();
         let cures: Vec<[f32; 3]> = self.sim.mobs.cures.drain(..).collect();
         for pos in cures {
             // VERIFIED w/Zombie_Villager + w/Villager §Gossiping: a cured
@@ -4070,6 +4098,17 @@ impl GameApp {
             //   equal to 7 × floor(regional difficulty) seconds" — our
             //   regional difficulty proxy is the difficulty tier
             //   (Normal 1.5 rounds to 1 → 7 s; Hard 3 → 21 s)
+            // 1.15 (Buzzy Bees): the bee sting — "Venom: Normal:
+            // Poison I for 10 sec. Hard: Poison I for 18 sec"
+            // (VERIFIED w/Bee infobox; the 200-tick payload rides the
+            // hit, Hard doubles to 360)
+            if h.source == mobs::MobKind::Bee {
+                let dur = if difficulty == Difficulty::Hard { 360 } else { 200 };
+                self.player
+                    .effects
+                    .apply(vc_gameplay::effects::EffectKind::Poison, 0, dur);
+                self.ui.dirty = true;
+            }
             if h.source == mobs::MobKind::Stray {
                 // Slowness I for 0:30 (amplifier 0 = level I)
                 self.player
@@ -4221,6 +4260,9 @@ impl GameApp {
                 mobs::MobKind::ZombieVillager => &[(ROTTEN_FLESH, 2)],
                 // mooshroom drops = cow loot (VERIFIED w/Mooshroom)
                 mobs::MobKind::Mooshroom => &[(BEEF, 3), (LEATHER, 2)],
+                // 1.15: bees drop no items (VERIFIED w/Bee §Drops —
+                // only 1-3 XP, already granted via the XP orb path)
+                mobs::MobKind::Bee => &[],
                 // golems: iron golem drops 3–5 iron ingots + 0–2 poppies
                 // (VERIFIED — widely-cited values, page table unreadable
                 // via extraction, flagged in the research notes); snow
@@ -5457,6 +5499,24 @@ impl GameApp {
                             self.cursor_stack.count += out.count;
                         }
                         vc_gameplay::craft::consume_grid(&mut self.craft_grid[..size * size]);
+                        // 1.15 (Buzzy Bees): the honey-block craft's
+                        // bottle byproduct — "Empty bottles remain in
+                        // the crafting grid after crafting the honey
+                        // block" (VERIFIED w/Honey_Block §Crafting).
+                        // The engine's grid consumes them, so the 4
+                        // glass bottles return to the inventory (a
+                        // documented grid-model adaptation).
+                        if out.block == HONEY_BLOCK {
+                            let left = self.player.inv.add(POTION_EMPTY, 4);
+                            if left > 0 {
+                                self.sim.items.drop_block(
+                                    self.player.pos.x.floor() as i32,
+                                    self.player.pos.y.floor() as i32,
+                                    self.player.pos.z.floor() as i32,
+                                    POTION_EMPTY, 2, 15, 0,
+                                );
+                            }
+                        }
                         self.play_event("block.wood.dig", None, 0.8);
                     }
                 }
@@ -6260,6 +6320,131 @@ impl GameApp {
         ));
     }
 
+    /// E2E stage (1.15 Buzzy Bees): the hive lifecycle + the craft
+    /// contracts + the anger/sting rules — the CI smoke greps the
+    /// "e2e: v115" boot lines (E2E_V115=1).
+    fn e2e_v115(&mut self, ticks: u64) {
+        let pos = [
+            self.player.pos.x.floor() as i32,
+            self.player.pos.y.floor() as i32 - 2,
+            self.player.pos.z.floor() as i32,
+        ];
+        use vc_inventory::inventory::ItemStack;
+
+        // 1. the hive blocks: a placed BEEHIVE (level 0) + one set to
+        //    honey_level 5 (the V12 states fold + re-encode)
+        self.test_place(BEEHIVE, pos[0] - 2, pos[1], pos[2]);
+        let s0 = self.world.get_state(pos[0] - 2, pos[1], pos[2]);
+        let level0 = vc_blocks::blocks::honey_level(s0);
+        if let Some((old, new)) = self.world.set_block_state(
+            pos[0] - 2, pos[1], pos[2],
+            vc_blocks::blocks::hive_state(BEEHIVE, 5),
+        ) {
+            self.light.on_block_changed(&self.world, pos[0] - 2, pos[1], pos[2], old, new);
+        }
+        let s5 = self.world.get_state(pos[0] - 2, pos[1], pos[2]);
+        let level5 = vc_blocks::blocks::honey_level(s5);
+        let full = vc_blocks::blocks::hive_full(s5);
+        let desc = vc_blocks::blocks::state_description(s5);
+
+        // 2. the craft contracts (all five, VERIFIED §Crafting rows)
+        let hive_craft = vc_gameplay::craft::match_grid(
+            &[
+                ItemStack::new(PLANKS, 1), ItemStack::new(PLANKS, 1), ItemStack::new(PLANKS, 1),
+                ItemStack::new(HONEYCOMB, 1), ItemStack::new(HONEYCOMB, 1), ItemStack::new(HONEYCOMB, 1),
+                ItemStack::new(PLANKS, 1), ItemStack::new(PLANKS, 1), ItemStack::new(PLANKS, 1),
+            ],
+            3,
+        );
+        let comb_block_craft = vc_gameplay::craft::match_grid(
+            &[
+                ItemStack::new(HONEYCOMB, 1), ItemStack::new(HONEYCOMB, 1),
+                ItemStack::new(HONEYCOMB, 1), ItemStack::new(HONEYCOMB, 1),
+            ],
+            2,
+        );
+        let honey_craft = vc_gameplay::craft::match_grid(
+            &[
+                ItemStack::new(HONEY_BOTTLE, 1), ItemStack::new(HONEY_BOTTLE, 1),
+                ItemStack::new(HONEY_BOTTLE, 1), ItemStack::new(HONEY_BOTTLE, 1),
+            ],
+            2,
+        );
+        let bottles_craft =
+            vc_gameplay::craft::match_grid(&[ItemStack::new(HONEY_BLOCK, 1)], 1);
+        let shears_craft = vc_gameplay::craft::match_grid(
+            &[
+                ItemStack::new(IRON_ORE, 1), ItemStack::EMPTY,
+                ItemStack::EMPTY, ItemStack::new(IRON_ORE, 1),
+            ],
+            2,
+        );
+        let crafts_ok = hive_craft.map(|o| o.block == BEEHIVE && o.count == 1).unwrap_or(false)
+            && comb_block_craft.map(|o| o.block == HONEYCOMB_BLOCK && o.count == 1).unwrap_or(false)
+            && honey_craft.map(|o| o.block == HONEY_BLOCK && o.count == 1).unwrap_or(false)
+            && bottles_craft.map(|o| o.block == HONEY_BOTTLE && o.count == 4).unwrap_or(false)
+            && shears_craft.map(|o| o.block == SHEARS && o.count == 1).unwrap_or(false);
+
+        // 3. the hive lifecycle: register the placed hive, spawn a bee
+        //    with nectar + the return phase, fast-forward — it must
+        //    enter, work 2400 ticks, exit, and the honey level bumps
+        let hive_pos = [pos[0] - 2, pos[1], pos[2]];
+        self.sim.hives.hives.insert(
+            hive_pos,
+            vc_gameplay::bees::HiveData { bees: Vec::new(), natural: false },
+        );
+        let bee_id = self
+            .sim
+            .mobs
+            .spawn_at(vc_gameplay::mobs::MobKind::Bee, pos[0] - 2, pos[1] + 3, pos[2]);
+        let mut bee_armed = false;
+        if let Some(id) = bee_id {
+            self.sim.mobs.set_bee(id, hive_pos, false);
+            if let Some(m) = self.sim.mobs.by_id_mut(id) {
+                if let Some(b) = m.bee.as_mut() {
+                    b.nectar = true;
+                    b.phase = vc_gameplay::bees::PH_TO_HIVE;
+                    bee_armed = true;
+                }
+            }
+        }
+        // the fast-forward: bee flies in, works, exits, honey bumps
+        for _ in 0..ticks {
+            self.sim.step(
+                &mut self.world,
+                &mut self.light,
+                &vc_sim::sim::TickScope::everything(),
+            );
+        }
+        // drain the queues exactly like update() does
+        self.drain_bee_queues();
+        let entered_then_left = bee_armed
+            && self.sim.mobs.list.iter().all(|m| m.kind != vc_gameplay::mobs::MobKind::Bee);
+        let level_after = vc_blocks::blocks::honey_level(
+            self.world.get_state(hive_pos[0], hive_pos[1], hive_pos[2]),
+        );
+        let released = self.sim.hives.released_total > 0;
+
+        // 4. the campfire pacify contract: a lit campfire under the
+        //    hive pacifies the harvest
+        self.test_place(CAMPFIRE, pos[0] - 2, pos[1] - 1, pos[2]);
+        let pacified =
+            vc_gameplay::bees::HiveSystem::campfire_pacifies(&self.world, hive_pos);
+
+        // 5. the anger swarm + sting payload (the mob-side rules)
+        let anger_pos = [pos[0] as f32 + 0.5, pos[1] as f32, pos[2] as f32 + 0.5];
+        let swarm = self.sim.mobs.anger_bees_near(anger_pos, Some(hive_pos));
+
+        vc_render::render::report_boot_log(&format!(
+            "e2e: v115 hive level0={} level5={} full={} desc=\"{}\" crafts={} lifecycle={}(entered+left={} level={} released={}) campfire-pacify={} swarm={}",
+            level0, level5, full, desc, crafts_ok,
+            entered_then_left && level_after >= 1, entered_then_left, level_after, released,
+            pacified, swarm
+        ));
+        // the sting contract is unit-tested (mobs::v115_bee_sting_rules)
+        // — the poison payload + one-sting + death timer.
+    }
+
     fn test_place(&mut self, block: u16, x: i32, y: i32, z: i32) {
         use vc_blocks::blocks::*;
         let state = match block {
@@ -6273,9 +6458,89 @@ impl GameApp {
         self.edits += 1;
     }
 
+    /// 1.15 (Buzzy Bees): drain the hive queues — honey-level state
+    /// writes, bee releases, arrivals, pollinations (the game layer
+    /// owns world edits + mob spawning, the established split).
+    /// Called from update() every frame and from the E2E stage after
+    /// its fast-forward steps.
+    fn drain_bee_queues(&mut self) {
+            // honey-level state writes (the +1/+2 bumps)
+            let levels: Vec<([i32; 3], u8)> = self.sim.hives.pending_hive_levels.drain(..).collect();
+            for (pos, bump) in levels {
+                let s = self.world.get_state(pos[0], pos[1], pos[2]);
+                let b = vc_blocks::blocks::state_block(s);
+                if b == vc_blocks::blocks::BEE_NEST || b == vc_blocks::blocks::BEEHIVE {
+                    let cur = vc_blocks::blocks::honey_level(s);
+                    let next = (cur + bump).min(5);
+                    let want = vc_blocks::blocks::hive_state(b, next);
+                    if want != s {
+                        if let Some((old, new)) =
+                            self.world.set_block_state(pos[0], pos[1], pos[2], want)
+                        {
+                            self.light.on_block_changed(
+                                &self.world, pos[0], pos[1], pos[2], old, new,
+                            );
+                        }
+                    }
+                }
+            }
+            // bee releases: spawn at the hive front, point home, flag angry
+            let releases: Vec<([i32; 3], vc_gameplay::bees::StoredBee)> =
+                self.sim.hives.releases.drain(..).collect();
+            for (hive, sb) in releases {
+                let spawn = vc_gameplay::bees::HiveSystem::release_pos(&self.world, hive);
+                let bx = spawn[0].floor() as i32;
+                let by = spawn[1].floor() as i32;
+                let bz = spawn[2].floor() as i32;
+                if let Some(id) = self.sim.mobs.spawn_at(vc_gameplay::mobs::MobKind::Bee, bx, by, bz) {
+                    self.sim.mobs.set_bee(id, hive, sb.angry);
+                    if let Some(m) = self.sim.mobs.by_id_mut(id) {
+                        m.health = sb.health;
+                        if let Some(bs) = m.bee.as_mut() {
+                            bs.nectar = sb.nectar;
+                        }
+                    }
+                }
+            }
+            // arrivals: store the bee inside the hive (capacity 3)
+            let enters: Vec<(u32, [i32; 3], bool)> =
+                self.sim.mobs.bee_enters.drain(..).collect();
+            for (_id, hive, nectar) in enters {
+                let _ = self.sim.hives.enter(hive, 10.0, nectar);
+                self.play_event(
+                    "block.beehive.enter",
+                    Some([hive[0] as f32 + 0.5, hive[1] as f32, hive[2] as f32 + 0.5]),
+                    0.6,
+                );
+            }
+            // pollinations: the bone-meal-like crop stage advance
+            let pollinations: Vec<([i32; 3], u8)> =
+                self.sim.mobs.bee_pollinations.drain(..).collect();
+            for (pos, age) in pollinations {
+                let s = self.world.get_state(pos[0], pos[1], pos[2]);
+                if vc_blocks::blocks::state_block(s) == vc_blocks::blocks::SWEET_BERRY_BUSH {
+                    let want = vc_blocks::blocks::berry_bush_state(age.min(3));
+                    if want != s {
+                        if let Some((old, new)) =
+                            self.world.set_block_state(pos[0], pos[1], pos[2], want)
+                        {
+                            self.light.on_block_changed(
+                                &self.world, pos[0], pos[1], pos[2], old, new,
+                            );
+                            self.hives_stats_pollinated += 1;
+                        }
+                    }
+                }
+            }
+    }
+
     fn update(&mut self, dt: f32) {
         self.time += dt;
         self.day_time = (self.day_time + dt / DAY_LEN_SECS).max(0.0) % 1.0;
+        // 1.15 (Buzzy Bees): the day flag for the sim — day_time 0..=0.5
+        // is the sun-up half of the cycle (sun_dir.y > 0 at noon; the
+        // bees' night-return + the hives' day-release gate)
+        self.sim.is_day = self.day_time < 0.5 || self.world.dimension == vc_world::world::Dimension::Nether;
         // DAY_LEN_SECS = 1200 = the vanilla 1.16.5 full daylight cycle
         // (VERIFIED 2026-09-06 live: minecraft.wiki/w/Daylight_cycle —
         // 24000 ticks at 20 tps = 20 minutes. The old 600 s value came
@@ -6366,6 +6631,12 @@ impl GameApp {
                 // E2E_V114 gate — one CI run covers the whole bracket)
                 if std::env::var("E2E_V114").is_ok() {
                     self.e2e_v114c();
+                }
+                // 1.15 (Buzzy Bees): the hive lifecycle + craft stage
+                // (E2E_V115=1 — its own gate: 2600 ticks of
+                // fast-forward makes it slower than the v114 trio)
+                if std::env::var("E2E_V115").is_ok() {
+                    self.e2e_v115(2600);
                 }
             }
             // F3_DUMP run: hold gameplay ~2 s so the overlay rebuild + dump
@@ -9134,6 +9405,35 @@ impl GameApp {
                                 self.sim.items.drop_block(
                                     pos[0], pos[1], pos[2], NETHER_QUARTZ, biome, sky, blk,
                                 );
+                            } else if broke == BEE_NEST || broke == BEEHIVE {
+                                // 1.15 (Buzzy Bees) — VERIFIED w/Bee_nest
+                                // §Breaking: "If a bee nest is broken with
+                                // a tool not enchanted with Silk Touch, it
+                                // drops NOTHING and any bees inside emerge
+                                // angry at the player" (no Silk Touch in
+                                // the engine — the adaptation, disclosed);
+                                // the beehive always drops itself (the
+                                // standard block rule) with its bees
+                                // released angry (w/Beehive §Breaking)
+                                if broke == BEEHIVE {
+                                    self.sim.items.drop_block(
+                                        pos[0], pos[1], pos[2], BEEHIVE, biome, sky, blk,
+                                    );
+                                }
+                                // the angry swarm: stored bees release
+                                // angry + the out family joins
+                                let _n_in = self.sim.hives.anger(pos);
+                                let _n_out = self.sim.mobs.anger_bees_near(
+                                    [pos[0] as f32 + 0.5, pos[1] as f32, pos[2] as f32 + 0.5],
+                                    Some(pos),
+                                );
+                                // the registry entry drops with the block
+                                self.sim.hives.hives.remove(&pos);
+                                self.play_event(
+                                    "entity.bee.loop_aggressive",
+                                    Some([pos[0] as f32 + 0.5, pos[1] as f32, pos[2] as f32 + 0.5]),
+                                    1.0,
+                                );
                             } else if broke == CAMPFIRE {
                                 // 1.14 (VERIFIED w/Campfire §Breaking: "When
                                 // mined regularly, a campfire drops 2
@@ -9326,6 +9626,82 @@ impl GameApp {
                         // right-click a tamed parrot → sit/stand toggle
                         // (VERIFIED 17w14a)
                         self.place_timer = 0.3;
+                    }
+                }
+                // ---- 1.15 (Buzzy Bees): bee interactions — feed a
+                // flower (VERIFIED w/Bee §Breeding: "Bees follow
+                // players holding any 1- or 2-block tall flowers" —
+                // the follow-tempting itself is not modeled, the
+                // FEEDING + pairing is). First feeding arms love mode;
+                // a second with a loving partner spawns the baby bee
+                // (24000-tick maturity, no drops on maturity — the
+                // fox/turtle pattern). ----
+                else if let Some(eid) = self
+                    .sim
+                    .mobs
+                    .ray_hit(
+                        self.player.eye().to_array(),
+                        self.player.look_dir().to_array(),
+                        crate::player::REACH,
+                    )
+                    .filter(|&id| {
+                        self.sim
+                            .mobs
+                            .by_id(id)
+                            .map(|m| m.kind == vc_gameplay::mobs::MobKind::Bee)
+                            .unwrap_or(false)
+                    })
+                {
+                    let held = self.player.held().block;
+                    let flower_held = vc_gameplay::bees::is_flower(held);
+                    if flower_held {
+                        let outcome = self.sim.mobs.try_feed_bee(eid);
+                        if outcome.is_some() {
+                            if self.mode.depletes_items() {
+                                let h = self.player.held_mut();
+                                h.count -= 1;
+                                if h.count == 0 {
+                                    *h = vc_inventory::inventory::ItemStack::EMPTY;
+                                }
+                            }
+                            self.play_event("entity.bee.pollinate", None, 0.9);
+                            if let Some(vc_gameplay::mobs::BeeFeedOutcome::Bred(_)) = outcome {
+                                // the baby bee (baby bit + the maturity
+                                // clock); inherits the parent's hive
+                                let (px, py, pz, hive) = {
+                                    let m = self.sim.mobs.by_id(eid).unwrap();
+                                    let hive = m.bee.as_ref().and_then(|b| b.hive);
+                                    (
+                                        m.pos[0] as i32,
+                                        m.pos[1] as i32,
+                                        m.pos[2] as i32,
+                                        hive,
+                                    )
+                                };
+                                let kid =
+                                    self.sim.mobs.spawn_at(vc_gameplay::mobs::MobKind::Bee, px, py, pz);
+                                if let Some(kid) = kid {
+                                    self.sim.mobs.set_bee(kid, hive.unwrap_or([px, py, pz]), false);
+                                    if let Some(m) = self.sim.mobs.by_id_mut(kid) {
+                                        if let Some(b) = m.bee.as_mut() {
+                                            b.baby = true;
+                                            b.maturity_t = 24000; // 20 min
+                                        }
+                                    }
+                                }
+                                // "When two bees breed and produce an
+                                // offspring, 1-7 XP is dropped" — the
+                                // engine's fixed 4 midpoint (the random
+                                // 1..=7 range documented)
+                                let _ = self.player.add_xp(4);
+                                self.play_event("entity.bee.ambient", None, 1.0);
+                                vc_render::render::report_boot_log(
+                                    "e2e: flower fed -> bee pair bred a baby bee (VERIFIED)",
+                                );
+                            }
+                            self.place_timer = 0.5;
+                            self.ui.dirty = true;
+                        }
                     }
                 }
                 // ---- 1.14 (Village & Pillage): fox interactions — feed
@@ -10180,6 +10556,181 @@ impl GameApp {
                             self.player.health
                         ));
                         self.place_timer = 0.5;
+                        self.ui.dirty = true;
+                    } else if !self.player.held().is_empty()
+                        && self.player.held().block == SHEARS
+                        && self
+                            .target
+                            .map(|(tpos, tb, _)| {
+                                matches!(tb, vc_blocks::blocks::BEE_NEST | vc_blocks::blocks::BEEHIVE)
+                                    && vc_blocks::blocks::hive_full(
+                                        self.world.get_state(tpos[0], tpos[1], tpos[2]),
+                                    )
+                            })
+                            .unwrap_or(false)
+                    {
+                        // 1.15: shears on a honey_level-5 hive — "it
+                        // drops 3 honeycombs and angers any bees
+                        // inside ... Having a lit campfire ... underneath
+                        // the nest or hive prevents the bees from
+                        // becoming hostile" (VERIFIED w/Honeycomb). The
+                        // level resets to 0 ("resets back to 0 when a
+                        // honeycomb or honey bottle is harvested").
+                        if let Some((tpos, tb, _)) = self.target {
+                            let hive_pos = [tpos[0], tpos[1], tpos[2]];
+                            let pacified =
+                                vc_gameplay::bees::HiveSystem::campfire_pacifies(&self.world, hive_pos);
+                            // the harvest
+                            let want = vc_blocks::blocks::hive_state(tb, 0);
+                            if let Some((old, new)) =
+                                self.world.set_block_state(tpos[0], tpos[1], tpos[2], want)
+                            {
+                                self.light.on_block_changed(&self.world, tpos[0], tpos[1], tpos[2], old, new);
+                            }
+                            // 3 honeycomb pops (as item drops at the
+                            // hive front — "The honeycomb pops out as a
+                            // dropped item")
+                            let (biome, sky, blk) =
+                                light_at(&self.world, &self.light, tpos[0], tpos[1], tpos[2]);
+                            for _ in 0..3 {
+                                self.sim.items.drop_block(
+                                    tpos[0], tpos[1] - 1, tpos[2],
+                                    HONEYCOMB, biome, sky, blk,
+                                );
+                            }
+                            self.play_event(
+                                "block.beehive.shear",
+                                Some([tpos[0] as f32 + 0.5, tpos[1] as f32, tpos[2] as f32 + 0.5]),
+                                0.9,
+                            );
+                            if !pacified {
+                                // the swarm: stored bees exit angry + the
+                                // out family joins
+                                let _angry_in = self.sim.hives.anger(hive_pos);
+                                let _angry_out = self
+                                    .sim
+                                    .mobs
+                                    .anger_bees_near([tpos[0] as f32, tpos[1] as f32, tpos[2] as f32], Some(hive_pos));
+                                self.play_event(
+                                    "entity.bee.loop_aggressive",
+                                    Some([tpos[0] as f32 + 0.5, tpos[1] as f32, tpos[2] as f32 + 0.5]),
+                                    1.0,
+                                );
+                            }
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: sheared full hive at {tpos:?} -> 3 honeycomb, pacified={pacified}"
+                            ));
+                            self.place_timer = 0.4;
+                            self.ui.dirty = true;
+                        }
+                    } else if !self.player.held().is_empty()
+                        && self.player.held().block == POTION_EMPTY
+                        && self
+                            .target
+                            .map(|(tpos, tb, _)| {
+                                matches!(tb, vc_blocks::blocks::BEE_NEST | vc_blocks::blocks::BEEHIVE)
+                                    && vc_blocks::blocks::hive_full(
+                                        self.world.get_state(tpos[0], tpos[1], tpos[2]),
+                                    )
+                            })
+                            .unwrap_or(false)
+                    {
+                        // 1.15: glass bottle on a honey_level-5 hive —
+                        // the honey bottle fills ("obtainable by using a
+                        // glass bottle on a full beehive or bee nest",
+                        // VERIFIED w/Honey_Bottle), level resets, bees
+                        // anger unless a campfire pacifies below.
+                        if let Some((tpos, tb, _)) = self.target {
+                            let hive_pos = [tpos[0], tpos[1], tpos[2]];
+                            let pacified =
+                                vc_gameplay::bees::HiveSystem::campfire_pacifies(&self.world, hive_pos);
+                            let want = vc_blocks::blocks::hive_state(tb, 0);
+                            if let Some((old, new)) =
+                                self.world.set_block_state(tpos[0], tpos[1], tpos[2], want)
+                            {
+                                self.light.on_block_changed(&self.world, tpos[0], tpos[1], tpos[2], old, new);
+                            }
+                            // the empty bottle becomes a honey bottle
+                            if self.mode.depletes_items() {
+                                let held = self.player.held_mut();
+                                held.count -= 1;
+                                if held.count == 0 {
+                                    *held = vc_inventory::inventory::ItemStack::EMPTY;
+                                }
+                            }
+                            let left = self.player.inv.add(HONEY_BOTTLE, 1);
+                            if left > 0 {
+                                let (biome, sky, blk) =
+                                    light_at(&self.world, &self.light, tpos[0], tpos[1], tpos[2]);
+                                self.sim.items.drop_block(
+                                    tpos[0], tpos[1] - 1, tpos[2],
+                                    HONEY_BOTTLE, biome, sky, blk,
+                                );
+                            }
+                            self.play_event(
+                                "item.bottle.fill",
+                                Some([tpos[0] as f32 + 0.5, tpos[1] as f32, tpos[2] as f32 + 0.5]),
+                                1.0,
+                            );
+                            if !pacified {
+                                let _angry_in = self.sim.hives.anger(hive_pos);
+                                let _angry_out = self
+                                    .sim
+                                    .mobs
+                                    .anger_bees_near([tpos[0] as f32, tpos[1] as f32, tpos[2] as f32], Some(hive_pos));
+                                self.play_event(
+                                    "entity.bee.loop_aggressive",
+                                    Some([tpos[0] as f32 + 0.5, tpos[1] as f32, tpos[2] as f32 + 0.5]),
+                                    1.0,
+                                );
+                            }
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: bottled full hive at {tpos:?} -> honey bottle, pacified={pacified}"
+                            ));
+                            self.place_timer = 0.4;
+                            self.ui.dirty = true;
+                        }
+                    } else if !self.player.held().is_empty()
+                        && self.player.held().block == HONEY_BOTTLE
+                        && self.mode.edits_world_blocks()
+                    {
+                        // 1.15: drink the honey bottle — VERIFIED
+                        // w/Honey_Bottle: "Drinking one restores 6 hunger
+                        // and 1.2 hunger saturation and returns a glass
+                        // bottle. Consuming the item also has the benefit
+                        // of removing any Poison effect applied to the
+                        // player. Unlike drinking milk, other applied
+                        // effects are not removed." (Engine: the food
+                        // convention heals hunger/2 = 3.0 HP; the
+                        // Poison-removal is exact; the bottle returns.)
+                        if self.mode.depletes_items() {
+                            let held = self.player.held_mut();
+                            held.count -= 1;
+                            if held.count == 0 {
+                                *held = vc_inventory::inventory::ItemStack::EMPTY;
+                            }
+                        }
+                        self.player.heal(3.0);
+                        // remove Poison — and ONLY Poison (the milk
+                        // contrast, VERIFIED)
+                        let had_poison = self
+                            .player
+                            .effects
+                            .remove_one(vc_gameplay::effects::EffectKind::Poison);
+                        let left = self.player.inv.add(POTION_EMPTY, 1);
+                        if left > 0 {
+                            self.sim.items.drop_block(
+                                self.player.pos.x.floor() as i32,
+                                self.player.pos.y.floor() as i32,
+                                self.player.pos.z.floor() as i32,
+                                POTION_EMPTY, 2, 15, 0,
+                            );
+                        }
+                        self.play_event("entity.generic.drink", None, 0.9);
+                        vc_render::render::report_boot_log(&format!(
+                            "e2e: drank honey bottle (+3.0 hp, poison cleared={had_poison})"
+                        ));
+                        self.place_timer = 0.3;
                         self.ui.dirty = true;
                     } else if !self.player.held().is_empty()
                         && is_item_block(self.player.held().block)

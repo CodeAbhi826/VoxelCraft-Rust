@@ -4144,13 +4144,13 @@ fn ai_tick(
                             Some(h) => {
                                 let target = [
                                     h[0] as f32 + 0.5,
-                                    h[1] as f32 - 0.4,
+                                    h[1] as f32 + 0.5,
                                     h[2] as f32 + 0.5,
                                 ];
                                 let dd = (m.pos[0] - target[0]).powi(2)
                                     + (m.pos[1] - target[1]).powi(2)
                                     + (m.pos[2] - target[2]).powi(2);
-                                if dd < 1.2 {
+                                if dd < 2.5 {
                                     // arrived — the mob leaves the list
                                     // (MobSystem::tick drains
                                     // bee_enters)

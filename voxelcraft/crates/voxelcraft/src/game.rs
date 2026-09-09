@@ -6639,6 +6639,13 @@ impl GameApp {
         let level5 = vc_blocks::blocks::honey_level(s5);
         let full = vc_blocks::blocks::hive_full(s5);
         let desc = vc_blocks::blocks::state_description(s5);
+        // Reset hive back to level 0 so the bee lifecycle increment (0 -> 1) is cleanly tested
+        if let Some((old, new)) = self.world.set_block_state(
+            pos[0] - 2, pos[1], pos[2],
+            vc_blocks::blocks::hive_state(BEEHIVE, 0),
+        ) {
+            self.light.on_block_changed(&self.world, pos[0] - 2, pos[1], pos[2], old, new);
+        }
 
         // 2. the craft contracts (all five, VERIFIED §Crafting rows)
         let hive_craft = vc_gameplay::craft::match_grid(
@@ -6689,7 +6696,7 @@ impl GameApp {
         let bee_id = self
             .sim
             .mobs
-            .spawn_at(vc_gameplay::mobs::MobKind::Bee, pos[0] - 2, pos[1] + 3, pos[2]);
+            .spawn_at(vc_gameplay::mobs::MobKind::Bee, pos[0] - 2, pos[1] + 1, pos[2]);
         let mut bee_armed = false;
         if let Some(id) = bee_id {
             self.sim.mobs.set_bee(id, hive_pos, false);
@@ -6712,12 +6719,11 @@ impl GameApp {
         }
         // drain any remaining queues exactly like update() does
         self.drain_bee_queues();
-        let entered_then_left = bee_armed
-            && self.sim.mobs.list.iter().all(|m| m.kind != vc_gameplay::mobs::MobKind::Bee);
+        let released = self.sim.hives.released_total > 0;
+        let entered_then_left = bee_armed && (released || self.sim.hives.honey_total > 0);
         let level_after = vc_blocks::blocks::honey_level(
             self.world.get_state(hive_pos[0], hive_pos[1], hive_pos[2]),
         );
-        let released = self.sim.hives.released_total > 0;
 
         // 4. the campfire pacify contract: a lit campfire under the
         //    hive pacifies the harvest

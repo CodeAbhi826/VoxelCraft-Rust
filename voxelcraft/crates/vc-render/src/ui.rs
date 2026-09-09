@@ -1341,9 +1341,9 @@ impl UiCanvas {
     pub fn draw_dirt_background(&mut self) {
         for y in 0..UI_H as i32 {
             for x in 0..UI_W as i32 {
-                let tx = (x / 2) % 16;
-                let ty = (y / 2) % 16;
-                let hash = ((tx * 374761393 + ty * 668265263) as u32).rotate_left(5) as usize;
+                let tx = ((x / 2) % 16) as u32;
+                let ty = ((y / 2) % 16) as u32;
+                let hash = tx.wrapping_mul(374761393).wrapping_add(ty.wrapping_mul(668265263)).rotate_left(5) as usize;
                 let shade = match hash % 4 {
                     0 => [64, 46, 32, 255],
                     1 => [56, 40, 27, 255],

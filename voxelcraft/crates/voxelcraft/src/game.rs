@@ -14363,6 +14363,7 @@ impl GameApp {
                 let splash = splash_for(self.time);
                 self.ui
                     .title_screen(splash, &self.widgets, self.hover, self.time);
+                self.ui_dump_if_asked();
                 return;
             }
             Screen::Options => {
@@ -14406,6 +14407,7 @@ impl GameApp {
             }
             Screen::Pause => {
                 self.ui.pause_screen(&self.widgets, self.hover);
+                self.ui_dump_if_asked();
                 return;
             }
             #[cfg(not(target_arch = "wasm32"))]
@@ -14419,6 +14421,7 @@ impl GameApp {
                     shown,
                     total,
                 );
+                self.ui_dump_if_asked();
                 return;
             }
             // wasm: the select screen is unreachable (no save list); the
@@ -14430,6 +14433,7 @@ impl GameApp {
             Screen::WorldCreate => {
                 self.ui
                     .world_create_screen(&self.widgets, self.hover, self.time);
+                self.ui_dump_if_asked();
                 return;
             }
             Screen::Death => {
@@ -14562,6 +14566,8 @@ impl GameApp {
                     .center_msg("", "CLICK THE CANVAS TO CAPTURE THE MOUSE");
             }
         }
+
+        self.ui_dump_if_asked();
     }
 
     // -------------------------------------------------------------- draw --

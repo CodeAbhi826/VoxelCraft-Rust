@@ -5056,17 +5056,17 @@ impl GameApp {
                 self.settings.auto_jump = !self.settings.auto_jump;
             }
             ID_OPT_GMESH => {
-                // Phase 7: GPU compute meshing toggle — remeshes everything
-                // through the new backend (mirrors the smooth-lighting
-                // toggle's remesh_all semantics: cached section meshes
-                // were built by the other backend). N/A (no compute
-                // adapter): flip the stored preference but skip the
-                // remesh — nothing renders differently.
+                // Phase 7: GPU compute meshing toggle. 2026-09-09: NO
+                // remesh_all — the CPU and GPU meshers are bit-identical by
+                // the parity contract (gpu_mesh.rs), so cached meshes built
+                // by the other backend are already correct; only FUTURE
+                // dirty sections route differently. The old remesh_all made
+                // the whole world vanish and slowly rebuild (a 30-60 s
+                // hole on the wasm CPU path) the moment the option was
+                // flipped — the visible half of the "GPU meshing breaks
+                // rendering" report.
                 let avail = self.renderer.gpu_mesh.is_some();
                 self.settings.gpu_meshing = !self.settings.gpu_meshing && avail;
-                if avail {
-                    self.remesh_all();
-                }
                 self.after_settings_change();
             }
             _ if (ID_PACK_BASE..ID_PACK_BASE + MAX_PACK_ENTRIES as u16).contains(&id) => {
@@ -9560,14 +9560,15 @@ impl GameApp {
                         // gmesh:<0|1|2> — Phase 7 GPU compute meshing toggle.
                         // 2 = force-GPU even on SwiftShader (same as 1 today —
                         // documented; the flag exists so E2E scripts can
-                        // express intent). Toggling remeshes every loaded
-                        // chunk through the NEW backend; the e2e log reports
-                        // the mesher's completed-job counter (gpumesh stat)
-                        // so the harness can verify chunks actually flowed
-                        // through the compute path.
+                        // express intent). 2026-09-09: NO remesh_all — the
+                        // meshers are bit-identical (parity contract), cached
+                        // meshes stay valid, only future dirty sections
+                        // change route. The e2e log reports the mesher's
+                        // completed-job counter (gpumesh stat) so the harness
+                        // can verify chunks actually flowed through the
+                        // compute path.
                         if let Some(v) = parts.get(1) {
                             self.settings.gpu_meshing = *v != "0";
-                            self.remesh_all();
                             self.after_settings_change();
                             let backend = match (&self.renderer.gpu_mesh, self.settings.gpu_meshing)
                             {

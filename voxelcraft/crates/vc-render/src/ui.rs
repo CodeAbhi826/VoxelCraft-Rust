@@ -52,14 +52,14 @@ const FONT: [[u8; 8]; 96] = [
     [0x08,0x04,0x00,0x00,0x00,0x00,0x00,0x00], [0x00,0x00,0x0E,0x01,0x0F,0x11,0x0F,0x00],
     [0x10,0x10,0x1C,0x12,0x12,0x12,0x1C,0x00], [0x00,0x00,0x0E,0x11,0x10,0x11,0x0E,0x00],
     [0x02,0x02,0x0E,0x12,0x12,0x12,0x0E,0x00], [0x00,0x00,0x0E,0x11,0x1F,0x10,0x0E,0x00],
-    [0x0C,0x04,0x1E,0x04,0x04,0x04,0x04,0x00], [0x00,0x00,0x0E,0x11,0x11,0x0E,0x01,0x0F],
+    [0x0E,0x08,0x1C,0x08,0x08,0x08,0x08,0x00], [0x00,0x00,0x0E,0x11,0x11,0x0E,0x01,0x0F],
     [0x10,0x10,0x1C,0x12,0x12,0x12,0x12,0x00], [0x00,0x04,0x00,0x04,0x04,0x04,0x04,0x00],
     [0x00,0x04,0x00,0x04,0x04,0x04,0x04,0x0C], [0x10,0x10,0x12,0x14,0x18,0x14,0x12,0x00],
     [0x04,0x04,0x04,0x04,0x04,0x04,0x06,0x00], [0x00,0x00,0x1B,0x15,0x15,0x15,0x15,0x00],
     [0x00,0x00,0x1C,0x12,0x12,0x12,0x12,0x00], [0x00,0x00,0x0E,0x11,0x11,0x11,0x0E,0x00],
     [0x10,0x10,0x1C,0x12,0x12,0x12,0x1C,0x10], [0x02,0x02,0x0E,0x12,0x12,0x12,0x0E,0x02],
     [0x00,0x00,0x1C,0x14,0x10,0x10,0x10,0x00], [0x00,0x00,0x0F,0x10,0x0E,0x01,0x1E,0x00],
-    [0x04,0x0E,0x04,0x04,0x04,0x04,0x06,0x00], [0x00,0x00,0x12,0x12,0x12,0x12,0x1E,0x00],
+    [0x00,0x08,0x1C,0x08,0x08,0x08,0x06,0x00], [0x00,0x00,0x12,0x12,0x12,0x12,0x1E,0x00],
     [0x00,0x00,0x11,0x11,0x11,0x0A,0x04,0x00], [0x00,0x00,0x11,0x11,0x11,0x15,0x0A,0x00],
     [0x00,0x00,0x11,0x0A,0x04,0x0A,0x11,0x00], [0x00,0x00,0x11,0x11,0x11,0x0A,0x04,0x0C],
     [0x00,0x00,0x1F,0x02,0x04,0x08,0x1F,0x00], [0x06,0x08,0x08,0x0C,0x08,0x08,0x06,0x00],
@@ -1337,6 +1337,26 @@ impl UiCanvas {
         );
     }
 
+    /// Vanilla repeating dirt background for options/settings screens (darkened options_background.png pattern).
+    pub fn draw_dirt_background(&mut self) {
+        for y in 0..UI_H as i32 {
+            for x in 0..UI_W as i32 {
+                let tx = (x / 2) % 16;
+                let ty = (y / 2) % 16;
+                let hash = ((tx * 374761393 + ty * 668265263) as u32).rotate_left(5) as usize;
+                let shade = match hash % 4 {
+                    0 => [64, 46, 32, 255],
+                    1 => [56, 40, 27, 255],
+                    2 => [70, 52, 36, 255],
+                    _ => [50, 36, 24, 255],
+                };
+                self.set(x, y, shade);
+            }
+        }
+        self.rect(0, 0, UI_W as i32, 36, [0, 0, 0, 100]);
+        self.rect(0, UI_H as i32 - 40, UI_W as i32, 40, [0, 0, 0, 120]);
+    }
+
     /// Generic settings screen (the vanilla 1.16.5 pattern): dark
     /// backdrop, big centered title, then the vanilla hover-tooltip slot
     /// — up to two centered gray hint lines drawn directly under the
@@ -1349,7 +1369,7 @@ impl UiCanvas {
         title: &str,
         tooltip: &[String],
     ) {
-        self.rect(0, 0, UI_W as i32, UI_H as i32, [8, 8, 10, 110]);
+        self.draw_dirt_background();
         self.text_center(18, title, [255, 255, 255, 255], 3);
         for (i, line) in tooltip.iter().take(2).enumerate() {
             self.text_center(46 + i as i32 * 12, line, [170, 170, 170, 255], 1);
@@ -1373,7 +1393,7 @@ impl UiCanvas {
         count_shown: usize,
         total: usize,
     ) {
-        self.rect(0, 0, UI_W as i32, UI_H as i32, [8, 8, 10, 200]);
+        self.draw_dirt_background();
         self.text_center(18, "SELECT WORLD", [255, 255, 255, 255], 3);
         if total == 0 {
             self.text_center(
@@ -1397,7 +1417,7 @@ impl UiCanvas {
 
     /// Phase 1: world-create screen (shared native/web).
     pub fn world_create_screen(&mut self, ws: &[Widget], hover: Option<u16>, time: f32) {
-        self.rect(0, 0, UI_W as i32, UI_H as i32, [8, 8, 10, 200]);
+        self.draw_dirt_background();
         self.text_center(18, "CREATE NEW WORLD", [255, 255, 255, 255], 3);
         self.text_center(
             64,
@@ -1426,30 +1446,45 @@ impl UiCanvas {
 
     // -------------------------------------------------------- HUD ----
 
-    /// Vanilla-style crosshair: white plus with dark outline.
+    /// Vanilla-style crosshair: 15x15 white plus with dark outline.
     pub fn crosshair(&mut self) {
         let cx = (UI_W / 2) as i32;
         let cy = (UI_H / 2) as i32;
-        let arm = 8;
-        let th = 2;
-        let white: Color = [238, 238, 238, 185];
-        let dark: Color = [10, 10, 10, 90];
+        let arm = 7;
+        let white: Color = [240, 240, 240, 220];
+        let dark: Color = [15, 15, 15, 110];
+        // horizontal bar outline
+        self.rect(cx - arm - 1, cy - 1, arm * 2 + 3, 3, dark);
+        // vertical bar outline
+        self.rect(cx - 1, cy - arm - 1, 3, arm * 2 + 3, dark);
         // horizontal bar
-        self.rect(cx - arm, cy - th / 2 - 1, arm * 2, 1, dark);
-        self.rect(cx - arm, cy + th / 2 + 1, arm * 2, 1, dark);
-        self.rect(cx - arm, cy - th / 2, arm * 2, th, white);
+        self.rect(cx - arm, cy, arm * 2 + 1, 1, white);
         // vertical bar
-        self.rect(cx - th / 2 - 1, cy - arm, 1, arm * 2, dark);
-        self.rect(cx + th / 2 + 1, cy - arm, 1, arm * 2, dark);
-        self.rect(cx - th / 2, cy - arm, th, arm * 2, white);
+        self.rect(cx, cy - arm, 1, arm * 2 + 1, white);
     }
 
     const HEART: [&'static str; 6] = [
         ".OO..OO.", "ORROORRO", "ORHRRRRO", "ORRRRRRO", ".ORRRRO.", "..ORRO..",
     ];
 
+    const HALF_HEART: [&'static str; 6] = [
+        ".OO..OO.", "ORROODDO", "ORHRODDO", "ORRRODDO", ".ORRDDD.", "..ORDD..",
+    ];
+
     const FOOD: [&'static str; 7] = [
         ".OOOO...", "OMMMMO..", "OMMMMO..", "OMMMMO..", ".OMMO...", "..OWO...", "...OO...",
+    ];
+
+    const HALF_FOOD: [&'static str; 7] = [
+        "..OO....", "..OMMO..", "..OMMO..", "..OMMO..", "..OMO...", "..OWO...", "...OO...",
+    ];
+
+    const ARMOR: [&'static str; 6] = [
+        ".OM..MO.", "OIIOOIIO", "OIMMMIDO", ".OMMMDO.", "..OMDO..", "...OO...",
+    ];
+
+    const HALF_ARMOR: [&'static str; 6] = [
+        ".OM.....", "OIIO....", "OIMM....", ".OMM....", "..OM....", "...O....",
     ];
 
     /// clean-room bubble icon (8×8, original art — not vanilla's
@@ -1467,25 +1502,32 @@ impl UiCanvas {
         let hb_y = UI_H as i32 - 48;
 
         // hearts row
-        let heart_pal: [(char, Color); 4] = [
+        let heart_pal: [(char, Color); 5] = [
             ('O', [46, 6, 6, 255]),
             ('R', [227, 27, 13, 255]),
             ('H', [255, 116, 116, 255]),
             ('W', [255, 255, 255, 255]),
+            ('D', [70, 70, 70, 200]),
         ];
+        let dim: [(char, Color); 5] = [
+            ('O', [30, 30, 30, 200]),
+            ('R', [70, 70, 70, 200]),
+            ('H', [90, 90, 90, 200]),
+            ('W', [110, 110, 110, 200]),
+            ('D', [70, 70, 70, 200]),
+        ];
+
+        let hp = if health <= 1.0 && health > 0.0 { health * 20.0 } else { health };
         for i in 0..10i32 {
             let x = hb_x + 2 + i * 17;
             let y = hb_y - 26;
-            // background outline (empty heart) then fill
-            if health >= (i + 1) as f32 / 10.0 {
+            let full_threshold = (i + 1) as f32 * 2.0;
+            let half_threshold = i as f32 * 2.0 + 1.0;
+            if hp >= full_threshold {
                 self.sprite(x, y, &Self::HEART, &heart_pal, 2);
+            } else if hp >= half_threshold {
+                self.sprite(x, y, &Self::HALF_HEART, &heart_pal, 2);
             } else {
-                let dim: [(char, Color); 4] = [
-                    ('O', [30, 30, 30, 200]),
-                    ('R', [70, 70, 70, 200]),
-                    ('H', [90, 90, 90, 200]),
-                    ('W', [110, 110, 110, 200]),
-                ];
                 self.sprite(x, y, &Self::HEART, &dim, 2);
             }
         }
@@ -1497,19 +1539,25 @@ impl UiCanvas {
             ('W', [222, 222, 222, 255]),
             ('H', [255, 255, 255, 255]),
         ];
+        let dim_food: [(char, Color); 4] = [
+            ('O', [30, 30, 30, 200]),
+            ('M', [70, 70, 70, 200]),
+            ('W', [110, 110, 110, 200]),
+            ('H', [110, 110, 110, 200]),
+        ];
+        let food_pts = if food <= 1.0 && food > 0.0 { food * 20.0 } else { food };
         for i in 0..10i32 {
             let x = hb_x + hb_w - 4 - (i + 1) * 17;
             let y = hb_y - 28;
-            if food >= (i + 1) as f32 / 10.0 {
+            let full_threshold = (i + 1) as f32 * 2.0;
+            let half_threshold = i as f32 * 2.0 + 1.0;
+            if food_pts >= full_threshold {
                 self.sprite(x, y, &Self::FOOD, &food_pal, 2);
+            } else if food_pts >= half_threshold {
+                self.sprite(x, y, &Self::FOOD, &dim_food, 2);
+                self.sprite(x, y, &Self::HALF_FOOD, &food_pal, 2);
             } else {
-                let dim: [(char, Color); 4] = [
-                    ('O', [30, 30, 30, 200]),
-                    ('M', [70, 70, 70, 200]),
-                    ('W', [110, 110, 110, 200]),
-                    ('H', [110, 110, 110, 200]),
-                ];
-                self.sprite(x, y, &Self::FOOD, &dim, 2);
+                self.sprite(x, y, &Self::FOOD, &dim_food, 2);
             }
         }
 
@@ -1553,6 +1601,44 @@ impl UiCanvas {
                 [20, 40, 8, 255],
                 2,
             );
+        }
+    }
+
+    /// Armor bar: row of up to 10 chestplate icons above hearts (left side).
+    /// Each full armor icon represents 2 defense points (20 defense points total).
+    pub fn armor_bar(&mut self, armor: f32) {
+        if armor <= 0.0 {
+            return;
+        }
+        let hb_w = 9 * 40 + 4;
+        let hb_x = (UI_W as i32 - hb_w) / 2;
+        let hb_y = UI_H as i32 - 48;
+        let pts = if armor <= 1.0 && armor > 0.0 { armor * 20.0 } else { armor };
+
+        let armor_pal: [(char, Color); 4] = [
+            ('O', [30, 30, 30, 255]),
+            ('I', [225, 225, 225, 255]),
+            ('M', [165, 165, 165, 255]),
+            ('D', [105, 105, 105, 255]),
+        ];
+        let armor_dim: [(char, Color); 4] = [
+            ('O', [30, 30, 30, 200]),
+            ('I', [70, 70, 70, 200]),
+            ('M', [60, 60, 60, 200]),
+            ('D', [50, 50, 50, 200]),
+        ];
+
+        for i in 0..10i32 {
+            let x = hb_x + 2 + i * 17;
+            let y = hb_y - 38;
+            let full_threshold = (i + 1) as f32 * 2.0;
+            let half_threshold = i as f32 * 2.0 + 1.0;
+            if pts >= full_threshold {
+                self.sprite(x, y, &Self::ARMOR, &armor_pal, 2);
+            } else if pts >= half_threshold {
+                self.sprite(x, y, &Self::ARMOR, &armor_dim, 2);
+                self.sprite(x, y, &Self::HALF_ARMOR, &armor_pal, 2);
+            }
         }
     }
 

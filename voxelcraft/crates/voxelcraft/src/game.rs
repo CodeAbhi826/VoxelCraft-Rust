@@ -6708,8 +6708,9 @@ impl GameApp {
                 &mut self.light,
                 &vc_sim::sim::TickScope::everything(),
             );
+            self.drain_bee_queues();
         }
-        // drain the queues exactly like update() does
+        // drain any remaining queues exactly like update() does
         self.drain_bee_queues();
         let entered_then_left = bee_armed
             && self.sim.mobs.list.iter().all(|m| m.kind != vc_gameplay::mobs::MobKind::Bee);
@@ -6895,7 +6896,11 @@ impl GameApp {
             self.player.pos.y.floor() as i32,
             self.player.pos.z.floor() as i32,
         ];
+        self.test_place(STONE, feet[0], feet[1] - 1, feet[2]);
         self.test_place(SOUL_FIRE, feet[0], feet[1], feet[2]);
+        self.player.pos = glam::Vec3::new(feet[0] as f32 + 0.5, feet[1] as f32, feet[2] as f32 + 0.5);
+        self.player.vel = glam::Vec3::ZERO;
+        self.player.on_ground = true;
         let mut input = Input::default();
         for _ in 0..6 {
             let _ = self.player.update(0.1, 0.0, &self.world, &mut input, 1.0, true);
@@ -7205,6 +7210,7 @@ impl GameApp {
         // 3. the audit trio in the world: the ghast (a 20-block spawn
         //    fires the 60-tick fireball), the cave spider (the venom
         //    payload), the silverfish (alive + hostile)
+        self.sim.mobs.player = Some([pos[0] as f32 + 0.5, pos[1] as f32 + 1.0, pos[2] as f32 + 0.5]);
         self.test_place(GRASS, pos[0] + 8, pos[1], pos[2]);
         let _ghast = self
             .sim
@@ -7345,14 +7351,14 @@ impl GameApp {
         //    drain through the REAL game-layer event path
         self.sim.mobs.arrows.clear();
         self.sim.mobs.landings.clear();
-        self.test_place(STONE, pos[0], pos[1], pos[2]);
+        self.test_place(STONE, pos[0] + 4, pos[1], pos[2]);
         for kind in [
             vc_gameplay::mobs::ProjKind::Snowball,
             vc_gameplay::mobs::ProjKind::Egg,
             vc_gameplay::mobs::ProjKind::Pearl,
         ] {
             self.sim.mobs.arrows.push(vc_gameplay::mobs::Arrow {
-                pos: [pos[0] as f32 + 0.5, pos[1] as f32 + 12.0, pos[2] as f32 + 0.5],
+                pos: [pos[0] as f32 + 4.5, pos[1] as f32 + 12.0, pos[2] as f32 + 0.5],
                 vel: [0.0, -24.0, 0.0],
                 damage: 0.0,
                 age: 0,
@@ -14455,6 +14461,7 @@ impl GameApp {
         } else {
             self.ui
                 .status_bars(self.player.health, 20.0, xp, level, self.player.air);
+            self.ui.armor_bar(self.player.armor);
         }
 
         // Phase E1: the dragon boss bar while the fight is live (VERIFIED:
@@ -15902,7 +15909,7 @@ mod settings_tests {
     /// `demo_pack_end_to_end` test so drift breaks one of the two.
     #[test]
     fn datapack_demo_e2e_claims_hold() {
-        use vc_pack::datapack::{GridItem, MemoryFiles, PackFiles};
+        use vc_pack::datapack::{GridItem, MemoryFiles};
         let files = MemoryFiles::demo();
         let report = vc_pack::datapack::scan_pack("demo", &files).expect("demo pack valid");
         assert_eq!(report.pack_format, vc_pack::datapack::PACK_FORMAT_1_16_5);
@@ -16111,9 +16118,6 @@ mod tests {
 mod auditfix_food_tests {
     use super::*;
 
-    /// golden carrot heals hunger 6 / 2 = 3.0 HP (VERIFIED live
-    /// 2026-09-07 w/Golden_Carrot: "Hunger 6", "Saturation 14.4")
-    #[test]
     /// the sweep-2: the chorus destination rule — the ±8 box, the
     /// solid-floor + 2-air validity, and the all-solid failure (VERIFIED
     /// w/Chorus_Fruit §Teleportation, live 2026-09-09)

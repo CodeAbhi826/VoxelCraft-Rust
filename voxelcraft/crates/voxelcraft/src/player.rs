@@ -330,8 +330,8 @@ impl Player {
     /// damage clamped to 0; returns the ACTUAL damage applied
     pub fn damage(&mut self, amount: f32) -> f32 {
         // 1.11: the absorption buffer eats damage first (VERIFIED
-        /// w/Effect §Absorption — the yellow hearts absorb incoming
-        /// damage before health)
+        // w/Effect §Absorption — the yellow hearts absorb incoming
+        // damage before health)
         let mut amt = amount;
         if self.absorption > 0.0 {
             let eaten = self.absorption.min(amt);
@@ -1182,7 +1182,7 @@ pub fn raycast(
     let mut tmz = dist_to_boundary(eye.z, dir.z).max(0.0);
 
     let mut prev = [x, y, z];
-    let mut t = 0.0f32;
+    let mut t: f32;
     for _ in 0..256 {
         let b = world.get_block(x, y, z);
         if b != AIR && b != WATER {

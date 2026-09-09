@@ -19,7 +19,7 @@ const STEM: [i32; 3] = [62, 124, 52];
 const LEAF: [i32; 3] = [78, 144, 66];
 /// lily of the valley whites (bell body + shaded rim).
 const LILY_W: [i32; 3] = [246, 248, 250];
-const LILY_w: [i32; 3] = [212, 216, 224];
+const LILY_W_SHADE: [i32; 3] = [212, 216, 224];
 
 /// cornflower — the 1.14 deep-blue small flower (cross plant, the
 /// allium layout: petal blob at the crown, stem with paired leaves).
@@ -77,7 +77,7 @@ pub(super) fn lily_of_the_valley_art(a: &mut [u8], t: u16, _rng: &mut Rng) {
     ];
     art(a, t, rows, &|c| match c {
         'W' => Some((LILY_W[0], LILY_W[1], LILY_W[2], 255)),
-        'w' => Some((LILY_w[0], LILY_w[1], LILY_w[2], 255)),
+        'w' => Some((LILY_W_SHADE[0], LILY_W_SHADE[1], LILY_W_SHADE[2], 255)),
         'S' => Some((STEM[0], STEM[1], STEM[2], 255)),
         'g' => Some((LEAF[0], LEAF[1], LEAF[2], 255)),
         _ => None,

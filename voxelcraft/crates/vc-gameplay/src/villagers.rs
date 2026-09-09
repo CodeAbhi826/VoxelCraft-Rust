@@ -1022,7 +1022,7 @@ pub fn build_vertices(
     list: &[Villager],
     time: f32,
     right: [f32; 3],
-    up: [f32; 3],
+    _up: [f32; 3],
     out: &mut Vec<vc_particles::particles::ParticleVertex>,
 ) {
     let tile = TILE_VILLAGER as u16;

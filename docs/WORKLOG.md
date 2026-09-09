@@ -3153,3 +3153,47 @@ Stage Summary:
   gravity, the standing per-bracket deferrals)
 - 1 bracket remains in the 16-bracket plan (the final polish pass);
   the user's "main course" is queued next
+
+---
+Task ID: 16
+Agent: main (Super Z)
+Task: The final polish pass (bracket 16/16) — era closeout. Also
+recovered the session environment (the container lost the whole Rust
+toolchain between sessions) and landed the unpushed audit-16 commit.
+
+Work Log:
+- Recovered state: the audit-16 commit was complete but unpushed with a
+  UUID message; amended to a proper message, rebased over the CI bundle
+  rebuild (5001415, conflict resolved to our browser-verified bundle),
+  pushed as cf9a813
+- Restored the toolchain from scratch: rustup stable 1.98.1 (the exact
+  prior version), wasm32-unknown-unknown target, wasm-bindgen-cli
+  0.2.127; re-verified the 593/593 baseline green in the new environment
+- Eliminated all 50 lint warnings (42 native + 8 wasm32-mirror):
+  scripts/polish_fix_warnings.py (validate-then-apply, 54 edits) +
+  scripts/polish_fix_warnings_wasm.py — GPU keep-alive fields annotated
+  with the reason at each field, target-gated fields/variants annotated,
+  dead code deleted (duplicate emerald arm, two no-op drops, dead lets,
+  unused palette constants), LootFn if-let -> exhaustive match, L_SB now
+  exercised by build_lut, present_mode wildcard kept + acknowledged
+- Fixed two real latent bugs the sweep flushed out: gilded_drop >= 0 on
+  usize was vacuously true (now > 0 — the intended e2e self-check), and
+  the browser boot page error (exitFullscreen "Document not active" in
+  headless) — patch-wasm-glue.py now hardens a second import (best-effort
+  try/catch at the API boundary, the pointerType patch's philosophy)
+- Rebuilt the wasm bundle from the new HEAD (matched pair,
+  mtime-identical), deployed to public/, and browser-verified live:
+  title screen in 2.66 s, rendered content, ZERO page errors
+  (docs/screenshots/polish16-title.png)
+- README: the bracket 16/16 entry + the era-coverage table (the whole
+  1.0 -> 1.16.5 plan at a glance, 16 rows; verified every row against
+  the registry before writing it — LODESTONE corrected out of the 1.16
+  row, TARGET/netherite confirmed in)
+
+Stage Summary:
+- 593/593 tests green (unchanged — polish only); cargo check ZERO
+  warnings on native AND wasm32; both fix scripts persisted under
+  voxelcraft/scripts/
+- The 16-bracket version-evolution plan (1.0 -> 1.16.5) is CLOSED
+- The engine is era-complete, warning-clean, and browser-verified; the
+  user's "main course" is the only queued work

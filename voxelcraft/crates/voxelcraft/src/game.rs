@@ -619,11 +619,15 @@ fn run_job(job: Job) -> JobResult {
 }
 
 enum WorkBackend {
+    /// the native-only backend (wasm constructs Inline below)
+    #[allow(dead_code)]
     Threading {
         tx: std::sync::mpsc::Sender<JobResult>,
         rx: std::sync::mpsc::Receiver<JobResult>,
         inflight: usize,
     },
+    /// the wasm32-only backend (native uses the threaded pool above)
+    #[allow(dead_code)]
     Inline {
         jobs: VecDeque<Job>,
     },
@@ -862,9 +866,11 @@ pub struct GameApp {
     /// title after the tree round-trips)
     smoke_menu_e2e: bool,
     edits: u32,
+    #[allow(dead_code)] // read only on wasm32 (the E2E stats publisher)
     stats_t: f32,
     pub pointer_locked: bool,
     pub drag_look: bool,
+    #[allow(dead_code)] // read only on wasm32 (the web pointer-lock path)
     ever_locked: bool,
     /// native pointer capture state (the "clicking and stuff does not
     /// work" fix): winit grab failures were previously DISCARDED while
@@ -891,6 +897,7 @@ pub struct GameApp {
     /// they are deliberately NOT in `shader_packs` because they cannot be
     /// applied: GLSL translation ships in the vc-iris sister project and
     /// plugs in through the IrisTranslator seam (vc-render/src/iris.rs).
+    #[allow(dead_code)] // scanned at boot, not yet surfaced in a screen
     iris_packs: Vec<vc_render::iris::IrisPackInfo>,
     /// Phase 9: the active world's data packs (Mojang official format —
     /// recipes + loot tables + tags; scanned from `<world>/datapacks/`,
@@ -945,8 +952,10 @@ pub struct GameApp {
     /// the web build goes straight to world-create)
     #[cfg(not(target_arch = "wasm32"))]
     worlds: Vec<vc_anvil::save::WorldEntry>,
+    #[allow(dead_code)] // the world-select state (native-only UI)
     ws_selected: Option<usize>,
     /// Phase 1: web text-entry shift state (codes arrive without case)
+    #[allow(dead_code)] // read only on wasm32 (the web keyboard path)
     web_shift: bool,
     /// Phase 2: seconds since the last melee swing (attack-cooldown
     /// recovery — feeds combat::cooldown_damage_scale)
@@ -1282,6 +1291,7 @@ impl GameApp {
         // Phase 1: default state until a world is created/loaded
         #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
         let mut mode = vc_gameplay::modes::GameMode::Survival;
+        #[cfg_attr(target_arch = "wasm32", allow(unused_mut))] // native scan below
         let mut world_name = String::from("VoxelCraft");
 
         // native: scan every saved world (Phase 1) and restore the most
@@ -1352,6 +1362,7 @@ impl GameApp {
 
         // Phase 11 §34: discover shader packs (builtin embedded + native
         // external dir) and apply the persisted selection before frame 1
+        #[cfg_attr(target_arch = "wasm32", allow(unused_mut))] // native append below
         let mut shader_packs = vc_render::shaders::builtin_packs();
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -3176,11 +3187,11 @@ impl GameApp {
         // otherwise-lethal damage — "restores 1 HP, removes all existing
         // status effects and grants" Regeneration II for 45 s (1 HP/25
         // ticks) + Absorption II for 5 s. Engine adaptation: "either
-        /// hand" = the selected/hotbar item (no offhand slot —
-        /// disclosed); Fire Resistance I (0:40) is a 1.16.2 addition
-        /// (§History 20w28a) — version-scoped out of this bracket. The
-        /// void//kill exceptions are moot (no void damage system, no
-        /// commands).
+        // hand" = the selected/hotbar item (no offhand slot —
+        // disclosed); Fire Resistance I (0:40) is a 1.16.2 addition
+        // (§History 20w28a) — version-scoped out of this bracket. The
+        // void//kill exceptions are moot (no void damage system, no
+        // commands).
         if self.player.held().block == TOTEM_OF_UNDYING && !self.player.held().is_empty() {
             if self.mode.depletes_items() {
                 let h = self.player.held_mut();
@@ -3382,7 +3393,6 @@ impl GameApp {
                     }
                 }
                 if ok {
-                    use vc_gameplay::mobs;
                     let (_, atk_speed) = combat::held_attack(self.player.held().block);
                     let period = combat::attack_cooldown_ticks(atk_speed) / 20.0;
                     let p = (self.swing_t / period).min(1.0);
@@ -3461,7 +3471,6 @@ impl GameApp {
                     if ok {
                         // player melee only (the engine's only verified
                         // dragon damage source besides explosions)
-                        use vc_gameplay::mobs;
                         let (_, atk_speed) = combat::held_attack(self.player.held().block);
                         let period = combat::attack_cooldown_ticks(atk_speed) / 20.0;
                         let p = (self.swing_t / period).min(1.0);
@@ -6028,7 +6037,6 @@ impl GameApp {
                     .by_id(villager)
                     .map(|v| vc_gameplay::villagers::give_count_adjusted(v, i))
                     .unwrap_or(tr.give.1);
-                let (get, get_n) = tr.get;
                 if (self.player.inv.count_of(give) as u8) < give_n {
                     self.click_sound();
                     return; // cannot afford
@@ -6136,8 +6144,8 @@ impl GameApp {
         let (kind, furnace, brewing, enchant, trade) = match self.container {
             Some(Container::Inventory) => (ContainerKind::Inventory, None, None, None, None),
             Some(Container::Crafting { .. }) => (ContainerKind::Crafting, None, None, None, None),
-            Some(Container::Chest { pos }) => (ContainerKind::Chest, None, None, None, None),
-            Some(Container::Barrel { pos }) => (ContainerKind::Barrel, None, None, None, None),
+            Some(Container::Chest { .. }) => (ContainerKind::Chest, None, None, None, None),
+            Some(Container::Barrel { .. }) => (ContainerKind::Barrel, None, None, None, None),
             Some(Container::Hopper { pos: _ }) => (ContainerKind::Hopper, None, None, None, None),
             Some(Container::Furnace { pos }) => {
                 // live slots + progress fractions for the flame/arrow
@@ -6901,7 +6909,7 @@ impl GameApp {
             "e2e: v116 anchor={}(ladder={} desc=\"{}\" drain={}) target={}(feed={}@11 decay={}) crafts={} smelt={} gilded={}({} nuggets) gold-ore={}({} drops) soulfire-dmg={:.1}",
             charge0 == 0, ladder_ok, anchor_desc, drained,
             fed_power == 11, fed_power, decayed,
-            crafts_ok, smelt_ok, gilded_drop >= 0, nugget_roll, gold_ok, gold_drop, soul_dmg
+            crafts_ok, smelt_ok, gilded_drop > 0, nugget_roll, gold_ok, gold_drop, soul_dmg
         ));
     }
 
@@ -8338,7 +8346,6 @@ impl GameApp {
                                         vc_inventory::inventory::ItemStack::new(MUSHROOM_RED, 1);
                                 }
                                 entry.fuel = vc_inventory::inventory::ItemStack::new(NETHERRACK, 1);
-                                drop(entry);
                                 // advance the sim deterministically (the
                                 // full 1.16.5-unticked scope — E2E brew
                                 // fast-forward must behave like live play)
@@ -8432,7 +8439,6 @@ impl GameApp {
                             Some("bookshelf") => Some(BOOKSHELF),
                             // Phase 5: trade-payment items (E2E trade flows)
                             Some("rotten_flesh") => Some(ROTTEN_FLESH),
-                            Some("emerald") => Some(EMERALD_ORE),
                             _ => None,
                         };
                         let n: u8 = parts.get(2).and_then(|s| s.parse().ok()).unwrap_or(1);
@@ -8498,7 +8504,6 @@ impl GameApp {
                         }
                         let before = e.options[row];
                         let level_before = self.player.xp_level;
-                        drop(e);
                         self.open_container(Container::Enchant { pos });
                         // apply through the same can_apply/apply logic the
                         // option click uses (geometry-driven click is
@@ -12264,7 +12269,6 @@ impl GameApp {
                         if empty {
                             *held = vc_inventory::inventory::ItemStack::EMPTY;
                         }
-                        drop(held);
                         if let Some(h) = heal {
                             // Phase 1: potions never damage Creative (mode
                             // immunity); positive healing still applies
@@ -14185,7 +14189,6 @@ impl GameApp {
         let mut c = 0u32;
         let mut a = 0u32;
         let mut w = 0u32;
-        let mut x = 0u32;
         for mob in self.sim.mobs.list.iter() {
             use vc_gameplay::mobs::MobKind as K;
             match mob.kind {
@@ -14214,7 +14217,7 @@ impl GameApp {
             }
         }
         // misc counter: arrows in flight (the engine's misc entities)
-        x = self.sim.mobs.arrows.len() as u32;
+        let x = self.sim.mobs.arrows.len() as u32;
         (m, c, a, w, x)
     }
 
@@ -15178,7 +15181,6 @@ fn is_food(b: u16) -> bool {
             // ---- the sweep-2 rows (hunger values VERIFIED live
             // 2026-09-09: Rotten_Flesh 4, Spider_Eye 2, Chorus_Fruit
             // 4, Golden_Apple 4, Melon_Slice 2 — the pages above) ----
-            | ROTTEN_FLESH
             | SPIDER_EYE
             | CHORUS_FRUIT
             | GOLDEN_APPLE
@@ -15508,6 +15510,8 @@ fn set_button_value(w: &mut Widget, value: &str) {
 /// palette gaps, unsupported content) as its own reason line. Never
 /// fatal: vanilla prompts Safe Mode for broken packs; the engine has no
 /// pack-selection screen, so it degrades to the working parts + reports.
+/// native-only callers (the wasm boot has no datapack filesystem)
+#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
 fn report_datapacks(loaded: &vc_pack::datapack::LoadedData) {
     if loaded.packs.is_empty() {
         return; // no packs — no log noise

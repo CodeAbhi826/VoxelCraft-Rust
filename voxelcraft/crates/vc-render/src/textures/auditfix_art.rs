@@ -7,7 +7,7 @@ use super::{art, jit, noise_fill, put, Rng};
 
 /// Golden carrot item sprite: a diagonal golden-orange root with green
 /// fronds at the top (item-block, cross-rendered like the other foods).
-pub(super) fn golden_carrot(a: &mut [u8], t: u16, rng: &mut Rng) {
+pub(super) fn golden_carrot(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "................",
         "..........gG....",
@@ -136,7 +136,7 @@ pub(super) fn jungle_planks(a: &mut [u8], t: u16, rng: &mut Rng) {
 
 /// Vine: hanging green strands on transparency (cross-rendered
 /// adaptation of the wall-attached vanilla plant).
-pub(super) fn vine(a: &mut [u8], t: u16, rng: &mut Rng) {
+pub(super) fn vine(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "................",
         "..a....b........",
@@ -165,7 +165,7 @@ pub(super) fn vine(a: &mut [u8], t: u16, rng: &mut Rng) {
 
 /// Fern: radiating fronds from a base — a bushier silhouette than tall
 /// grass, with a distinct center stem.
-pub(super) fn fern(a: &mut [u8], t: u16, rng: &mut Rng) {
+pub(super) fn fern(a: &mut [u8], t: u16, _rng: &mut Rng) {
     let rows = [
         "................",
         "................",

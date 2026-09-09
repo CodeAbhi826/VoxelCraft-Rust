@@ -81,20 +81,25 @@ struct PostTargets {
     scene_view: wgpu::TextureView,
     /// FSR 1.0 EASU output — FULL surface resolution (the composite + RCAS
     /// read this; scene stays at the internal render scale)
+    #[allow(dead_code)] // GPU keep-alive (the _view / bind groups hold it)
     up: wgpu::Texture,
     up_view: wgpu::TextureView,
     /// shader-pack composite handoff target (full res, LINEAR) — the engine
     /// composite writes here when a pack stage is active, the pack pass
     /// then writes the srgb surface (Phase 11 §34)
+    #[allow(dead_code)] // GPU keep-alive (pack_view / the composite pass)
     pack: wgpu::Texture,
     pack_view: wgpu::TextureView,
     /// bright-pass output (1/4 res)
+    #[allow(dead_code)] // GPU keep-alive (q_view / the bright pass)
     q: wgpu::Texture,
     q_view: wgpu::TextureView,
     /// blur ping (1/8 res)
+    #[allow(dead_code)] // GPU keep-alive (b1_view / blur ping)
     b1: wgpu::Texture,
     b1_view: wgpu::TextureView,
     /// blur pong (1/8 res)
+    #[allow(dead_code)] // GPU keep-alive (b2_view / blur pong)
     b2: wgpu::Texture,
     b2_view: wgpu::TextureView,
 }
@@ -1315,7 +1320,9 @@ pub struct Renderer {
     cloud_vb: wgpu::Buffer,
     // ui
     ui_tex: wgpu::Texture,
+    #[allow(dead_code)] // GPU keep-alive (bound via ui_bg at init)
     ui_view: wgpu::TextureView,
+    #[allow(dead_code)] // GPU keep-alive (bound via ui_bg at init)
     ui_samp: wgpu::Sampler,
     ui_buf: wgpu::Buffer,
     ui_bg: wgpu::BindGroup,
@@ -1376,6 +1383,7 @@ pub struct Renderer {
     /// current shadow map resolution (px per side) — §17 quality setting
     pub shadow_px: u32,
     // §18 biome tint LUT (row = kind, col = slot)
+    #[allow(dead_code)] // GPU keep-alive (the scene bind group owns it)
     tint_tex: wgpu::Texture,
     tint_view: wgpu::TextureView,
     // particles (§16.2 pass 4)
@@ -3827,6 +3835,7 @@ impl Renderer {
     }
 
     /// current present mode, human-readable (benchmark report context)
+    #[allow(unreachable_patterns)] // `_` arm kept for wgpu PresentMode drift
     pub fn present_mode_name(&self) -> String {
         let name = match self.config.present_mode {
             wgpu::PresentMode::Fifo => "Fifo (vsync)",

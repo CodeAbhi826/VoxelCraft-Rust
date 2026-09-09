@@ -884,8 +884,8 @@ impl TerrainGen {
         let ravines = self.ravines_near_chunk(cx, cz);
 
         // pass 1: terrain columns
-        for z in 0..CHUNK_Z_CHUNK() {
-            for x in 0..CHUNK_X_CHUNK() {
+        for z in 0..chunk_z_chunk() {
+            for x in 0..chunk_x_chunk() {
                 let wx = cx * 16 + x as i32;
                 let wz = cz * 16 + z as i32;
                 let col = self.column(wx, wz);
@@ -992,7 +992,7 @@ impl TerrainGen {
         // pass 3: decorations (trees, plants) — deterministic per chunk
         let ox = cx * 16;
         let oz = cz * 16;
-        let mut set_dec = |chunk: &mut Chunk,
+        let set_dec = |chunk: &mut Chunk,
                            outbound: &mut Vec<(i32, i32, i32, u16)>,
                            wx: i32,
                            wy: i32,
@@ -3791,7 +3791,7 @@ impl TerrainGen {
         // on default_state's identity fall-through, which the audit's
         // V15 block window (GHAST_TEAR = 495) broke; states never route
         // through the block-id path again.
-        let mut put_state = |chunk: &mut Chunk, x: i32, y: i32, z: i32, st: u16| {
+        let put_state = |chunk: &mut Chunk, x: i32, y: i32, z: i32, st: u16| {
             let lxi = x - ox;
             let lzi = z - oz;
             if (0..16).contains(&lxi) && (0..16).contains(&lzi) && (0..256).contains(&y) {
@@ -3920,7 +3920,7 @@ impl TerrainGen {
         let y = 20;
         let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x57_0E, wx, 1, wz));
         // room helper: hollow box of stone bricks
-        let mut room =
+        let room =
             |chunk: &mut Chunk, x0: i32, z0: i32, w: i32, h: i32, d: i32, y: i32, rng: &mut Rng| {
                 for dx in 0..w {
                     for dz in 0..d {
@@ -4499,11 +4499,11 @@ impl TerrainGen {
 }
 
 #[inline]
-fn CHUNK_X_CHUNK() -> usize {
+fn chunk_x_chunk() -> usize {
     16
 }
 #[inline]
-fn CHUNK_Z_CHUNK() -> usize {
+fn chunk_z_chunk() -> usize {
     16
 }
 

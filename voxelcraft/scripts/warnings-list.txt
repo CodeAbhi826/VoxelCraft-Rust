@@ -1,0 +1,42 @@
+crates/vc-gameplay/src/mobs.rs:8165:8: warning: function `v115_world` is never used
+crates/vc-gameplay/src/villagers.rs:1025:5: warning: unused variable: `up`: help: if this is intentional, prefix it with an underscore: `_up`
+crates/vc-pack/src/datapack.rs:683:32: warning: irrefutable `if let` pattern
+crates/vc-render/src/gpu_mesh.rs:587:7: warning: constant `L_SB` is never used
+crates/vc-render/src/render.rs:1318:5: warning: fields `ui_view`, `ui_samp`, and `tint_tex` are never read
+crates/vc-render/src/render.rs:3838:13: warning: unreachable pattern: no value can reach this
+crates/vc-render/src/render.rs:84:5: warning: fields `up`, `pack`, `q`, `b1`, and `b2` are never read
+crates/vc-render/src/textures.rs:3509:18: warning: unused variable: `bx`: help: if this is intentional, prefix it with an underscore: `_bx`
+crates/vc-render/src/textures.rs:3509:22: warning: unused variable: `by`: help: if this is intentional, prefix it with an underscore: `_by`
+crates/vc-render/src/textures/auditfix_art.rs:10:51: warning: unused variable: `rng`: help: if this is intentional, prefix it with an underscore: `_rng`
+crates/vc-render/src/textures/auditfix_art.rs:139:42: warning: unused variable: `rng`: help: if this is intentional, prefix it with an underscore: `_rng`
+crates/vc-render/src/textures/auditfix_art.rs:168:42: warning: unused variable: `rng`: help: if this is intentional, prefix it with an underscore: `_rng`
+crates/vc-render/src/textures/v113_art.rs:210:21: warning: unnecessary parentheses around function argument
+crates/vc-render/src/textures/v113_art.rs:211:21: warning: unnecessary parentheses around function argument
+crates/vc-render/src/textures/v113_art.rs:212:21: warning: unnecessary parentheses around function argument
+crates/vc-render/src/textures/v113_art.rs:224:17: warning: unnecessary parentheses around function argument
+crates/vc-render/src/textures/v113_art.rs:225:17: warning: unnecessary parentheses around function argument
+crates/vc-render/src/textures/v113_art.rs:226:17: warning: unnecessary parentheses around function argument
+crates/vc-render/src/textures/v114c_art.rs:22:7: warning: constant `LILY_w` should have an upper case name
+crates/vc-render/src/textures/v116b_art.rs:62:7: warning: constant `SF_OUT` is never used
+crates/vc-render/src/textures/v116b_art.rs:64:7: warning: constant `IRON_M` is never used
+crates/vc-render/src/textures/v116b_art.rs:65:7: warning: constant `IRON_D` is never used
+crates/vc-world/src/gen.rs:3794:13: warning: variable does not need to be mutable
+crates/vc-world/src/gen.rs:3923:13: warning: variable does not need to be mutable
+crates/vc-world/src/gen.rs:4502:4: warning: function `CHUNK_X_CHUNK` should have a snake case name: help: convert the identifier to snake case: `chunk_x_chunk`
+crates/vc-world/src/gen.rs:4506:4: warning: function `CHUNK_Z_CHUNK` should have a snake case name: help: convert the identifier to snake case: `chunk_z_chunk`
+crates/vc-world/src/gen.rs:995:13: warning: variable does not need to be mutable
+crates/voxelcraft/src/game.rs:12267:25: warning: calls to `std::mem::drop` with a reference instead of an owned value does nothing
+crates/voxelcraft/src/game.rs:14188:21: warning: value assigned to `x` is never read: this value is reassigned later and never used
+crates/voxelcraft/src/game.rs:15181:15: warning: unreachable pattern: no value can reach this
+crates/voxelcraft/src/game.rs:3179:9: warning: unused doc comment
+crates/voxelcraft/src/game.rs:3385:25: warning: unused import: `vc_gameplay::mobs`
+crates/voxelcraft/src/game.rs:3464:29: warning: unused import: `vc_gameplay::mobs`
+crates/voxelcraft/src/game.rs:6031:22: warning: unused variable: `get`: help: if this is intentional, prefix it with an underscore: `_get`
+crates/voxelcraft/src/game.rs:6031:27: warning: unused variable: `get_n`: help: if this is intentional, prefix it with an underscore: `_get_n`
+crates/voxelcraft/src/game.rs:6139:37: warning: unused variable: `pos`: help: try ignoring the field: `pos: _`
+crates/voxelcraft/src/game.rs:6140:38: warning: unused variable: `pos`: help: try ignoring the field: `pos: _`
+crates/voxelcraft/src/game.rs:627:5: warning: variant `Inline` is never constructed
+crates/voxelcraft/src/game.rs:6904:34: warning: comparison is useless due to type limits
+crates/voxelcraft/src/game.rs:865:5: warning: fields `stats_t`, `ever_locked`, `iris_packs`, and `web_shift` are never read
+crates/voxelcraft/src/player.rs:1185:17: warning: value assigned to `t` is never read: this value is reassigned later and never used
+crates/voxelcraft/src/player.rs:333:9: warning: unused doc comment

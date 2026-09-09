@@ -147,6 +147,8 @@ pub struct Player {
     /// health points (0..20, vanilla half-heart scale ×2; §29 potions act
     /// on this, the HUD renders it as the real health bar)
     pub health: f32,
+    /// Armor points (0..20, vanilla half-chestplate scale x2)
+    pub armor: f32,
     /// XP points progress within the current level (§29)
     pub xp_points: i32,
     /// XP level (§29; enchanting pays 1..3 of these per option)
@@ -252,7 +254,13 @@ impl Player {
             tick_accum: 0.0,
             air_accum: 0.0,
             was_on_ground: false,
+            armor: 0.0,
         }
+    }
+
+    /// Current armor points (0..20)
+    pub fn armor_points(&self) -> f32 {
+        self.armor
     }
 
     /// Phase 1: drain queued fall damage (HP). One-shot: landing converts
@@ -561,7 +569,7 @@ impl Player {
         // plant) — the feet cell is the contact test. ----
         let in_soul_fire = vc_blocks::blocks::is_soul_fire(world.get_state(
             self.pos.x.floor() as i32,
-            self.pos.y.floor() as i32,
+            (self.pos.y + 0.1).floor() as i32,
             self.pos.z.floor() as i32,
         ));
         if in_soul_fire {
@@ -666,6 +674,16 @@ impl Player {
                 // no per-tick gravity while buoyant — also freeze the
                 // substep accumulator so leaving water starts fresh
                 self.tick_accum = 0.0;
+
+                // Vanilla flowing water push vector
+                let (fx, fz) = vc_sim::fluids::water_flow_vector(
+                    world,
+                    self.pos.x.floor() as i32,
+                    (self.pos.y + 0.1).floor() as i32,
+                    self.pos.z.floor() as i32,
+                );
+                self.vel.x += fx * 2.8 * dt;
+                self.vel.z += fz * 2.8 * dt;
             } else if on_vine {
                 // ---- audit-fix: vine climbing (the "collisionless
                 // ladder" physics). Up while jump held (~2.35 b/s,
@@ -798,9 +816,15 @@ impl Player {
         let step = delta / steps as f32;
         self.on_ground = false;
         for _ in 0..steps {
-            self.move_axis(world, 0, step.x);
-            self.move_axis(world, 1, step.y);
-            self.move_axis(world, 2, step.z);
+            if step.y > 0.0 {
+                self.move_axis(world, 1, step.y);
+                self.move_axis(world, 0, step.x);
+                self.move_axis(world, 2, step.z);
+            } else {
+                self.move_axis(world, 0, step.x);
+                self.move_axis(world, 1, step.y);
+                self.move_axis(world, 2, step.z);
+            }
         }
         // grounded check: small downward probe
         if !self.flying && self.vel.y <= 0.0 {
@@ -1048,6 +1072,37 @@ impl Player {
         if !Self::collides(world, p) {
             self.pos = p;
             return;
+        }
+        // Step-up check (vanilla 0.6 block step height for slabs/stairs/small ledges):
+        // When moving horizontally on the ground, check if stepping up allows smooth transit
+        if (axis == 0 || axis == 2) && self.on_ground && !self.flying {
+            let step_h = 0.6f32;
+            let mut p_step = self.pos;
+            p_step.y += step_h;
+            if !Self::collides(world, p_step) {
+                match axis {
+                    0 => p_step.x += d,
+                    _ => p_step.z += d,
+                }
+                if !Self::collides(world, p_step) {
+                    // Succeeded in stepping forward; step down to floor
+                    let mut best_y = p_step.y;
+                    let num_sub = 6;
+                    let dy = step_h / num_sub as f32;
+                    for _ in 0..num_sub {
+                        let mut test_p = p_step;
+                        test_p.y = best_y - dy;
+                        if Self::collides(world, test_p) {
+                            break;
+                        }
+                        best_y -= dy;
+                    }
+                    p_step.y = best_y;
+                    self.pos = p_step;
+                    self.on_ground = true;
+                    return;
+                }
+            }
         }
         // clamp against the block boundary we penetrated
         let eps = 0.001;
@@ -1604,7 +1659,7 @@ mod tests {
     fn fall_damage_is_distance_minus_three() {
         let mut input = Input::default();
         // drop from 7 blocks onto the flat floor: expect 7 − 3 = 4 HP
-        let mut w = flat_floor();
+        let w = flat_floor();
         let top = chunk_top(&w) as f32;
         let mut p = Player::new(Vec3::new(0.5, top + 7.0 + 1.0, 0.5));
         p.flying = false;
@@ -1767,7 +1822,6 @@ mod v18_tests {
 #[cfg(test)]
 mod v19_tests {
     use super::*;
-    use vc_blocks::blocks::*;
 
     /// 1.9 elytra: the glide constants preserve the wiki's 10:1 ratio
     /// ("approximately 10 blocks of horizontal distance for each block of
@@ -1925,7 +1979,6 @@ mod v110_tests {
 mod auditfix_tests {
     use super::*;
     use std::sync::Arc;
-    use vc_blocks::blocks::*;
 
     /// a vine column: solid walls both sides at x=0/x=2, vines at (1, y)
     /// for y in 66..=76 — the classic 1×1 climbable shaft (the ladder

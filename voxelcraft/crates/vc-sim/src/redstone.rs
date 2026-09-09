@@ -76,15 +76,12 @@ pub fn on_block_changed(sched: &mut TickScheduler, world: &World, x: i32, y: i32
             // lands after exactly that long
             let (_, delay, _) = repeater_decode(ns);
             sched.schedule([nx, ny, nz], delay as u64 * REDSTONE_TICK_RATE);
-        } else if is_component(ns) && state_block(ns) != OBSERVER {
-            // OBSERVER is deliberately EXCLUDED here: for every other
-            // component a scheduled entry means "re-check your inputs"
-            // (idempotent — a stale entry settles to a no-op); for the
-            // observer it means TOGGLE, so scheduling it on its own
-            // state change would oscillate forever (a free-running
-            // 2gt clock with an ever-growing queue — caught live in the
-            // Phase 3 E2E: a probed observer sat powered=true minutes
-            // after its single pulse)
+        } else if is_component(ns) && state_block(ns) != OBSERVER && state_block(ns) != TARGET {
+            // OBSERVER and TARGET are deliberately EXCLUDED here: for
+            // receiver components a scheduled entry means "re-check your
+            // inputs"; the observer toggles on tick, and the target is an
+            // emitter whose decay window is scheduled exclusively by
+            // projectile hits.
             sched.schedule([nx, ny, nz], REDSTONE_TICK_RATE);
         }
         // a torch ALSO re-checks when its support block changes

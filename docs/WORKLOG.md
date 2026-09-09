@@ -3197,3 +3197,72 @@ Stage Summary:
 - The 16-bracket version-evolution plan (1.0 -> 1.16.5) is CLOSED
 - The engine is era-complete, warning-clean, and browser-verified; the
   user's "main course" is the only queued work
+
+---
+Task ID: 17
+Agent: main (Super Z)
+Task: The user's "main course" — the master-checklist audit. Two uploaded
+third-party checklists (chat-Minecraft Clone Development Checklist.txt,
+~1,200 items; checklist_MASTER_CHECKLIST.md, S00-S22+L) were to be fully
+read, NOT trusted blindly, fact-checked against the codebase and live
+primary sources, corrected, and turned into this project's own verified
+checklist with per-item status + reasons. Legal posture reviewed and
+updated. README/worklog accuracy pass.
+
+Work Log:
+- Read both uploaded files end-to-end (1180 + 1355 lines) and extracted
+  every factual claim
+- Verified the repo at HEAD 61a92f9: re-ran the workspace tests locally
+  (593/593 green, 0 failed, 1 ignored, --no-default-features build since
+  the container lacks ALSA headers; CI covers the full-featured build)
+- Counted ground truth from code: 506 blocks / 805 states / 735 tiles,
+  52 mob types (49 MobKind + dragon + wither + villager), 25 biomes + the
+  End, 16 of 32 status effects, 38 enchantments, 81 recipe rows, 41 sound
+  events, 10 structure families, F3 combos = +Q/+1/+H only, 14 original
+  splash strings, Apache-2.0 + exact Mojang-requested disclaimer wording
+- Proved the big discrepancies: file B's raid/patrol/wandering-trader
+  section, soul sand valley, basalt deltas, 32-effects, 600-sounds,
+  13-discs, and F3/control claims are all FALSE at HEAD (the code itself
+  documents the village half of 1.14 as deferred); file A's snapshot is
+  ~9 rounds stale (its "3 mobs / no End / 15-20%" era)
+- Fetched and verified live primary sources (2026-09-09): minecraft.wiki
+  Villager (gossip table — our implementation matches the live wiki
+  five-for-five: trading 4/2/20/25/1, major_positive 20/0/100/20/5,
+  minor_positive 25/1/5/25/1, minor_negative 25/20/20/200/-1,
+  major_negative 25/10/10/100/-5; plus the 20-min decay, share-cost
+  semantics, and the full sale-price formula where our term is the exact
+  reputation component), Trading (full formula), Weather (rain 10-20 min
+  on / 0.5-7.5-day clear — both uploaded files garbled this), Critical_hit
+  (falling + >=84.8% + not sprinting — our code comment is exactly right),
+  Painting (26 in the 1.16.5 era; 47 today because of the 2024
+  anniversary additions — file B right, file A wrong), Villager
+  professions (13 + nitwit + unemployed = 15)
+- Legal (live minecraft.net usage-guidelines, 2023 EULA rewrite context):
+  confirmed our disclaimer string is Mojang's exact requested wording,
+  "Minecraft" appears only as permitted secondary/descriptive use, assets
+  remain 100% procedural, End Poem correctly absent; documented the 2023
+  "any community sharing is a commercial thing" reframing and why it
+  changes nothing for this repo; corrected both files' overstatements
+  (Creeper "trademark", EULA-scope, patent-safety language)
+- Wrote docs/CHECKLIST-VERIFIED-AUDIT.md: verdicts on both source files
+  (with the specific corrected facts), the full subsystem-by-subsystem
+  verified checklist (done/partial/not + why/why-not per item), the
+  honest coverage scorecard (~35-45% of a 1.16.5 behavioral replica;
+  file A's 15-20% stale, file B's 70% checkbox-inflation), and a
+  10-item priority backlog
+- README accuracy pass: fixed the stale World section (10-min day ->
+  20-min with the 24,000-tick citation, "18 block types" -> 506/805,
+  5-biome list -> 25+End, added the audit-doc pointer)
+- Saved a user copy of the audit to /home/z/my-project/download/
+
+Stage Summary:
+- The verified checklist is the single source of truth now: every row
+  carries status + the documented reason; both third-party files are
+  formally graded (file A: factually decent, 9 rounds stale; file B:
+  current-aware, systematically over-optimistic with invented values)
+- Real gaps the code itself discloses were consolidated: weather, the
+  1.14 village half (raids/pillagers/traders), farming, doors/beds/TNT,
+  buckets/compass/clock/maps, the two missing nether biomes, entity mesh
+  pipeline, boats/minecarts, sound-event scale
+- 593/593 still green; no code changes (doc-accuracy round only); the
+  README no longer contradicts the code on day length or block counts

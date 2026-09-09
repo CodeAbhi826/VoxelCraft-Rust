@@ -681,10 +681,22 @@ const MAX_BATCH: usize = 16;
 /// never released, and no chunk ever reached the GPU. A batch with no
 /// progress for this long is declared stalled and dropped as LOST
 /// (game-side: inflight markers release, §12 dirty bits stay set, the CPU
-/// path remeshes). Native only (Instant; wasm keeps its no-watchdog path —
-/// WebGL2 adapters lack compute anyway, so gpu_meshing defaults off).
-#[cfg(not(target_arch = "wasm32"))]
-const STALL_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(6);
+/// path remeshes).
+///
+/// 2026-09-09 (the "GPU chunk meshing breaks the whole preview" report):
+/// the watchdog now ALSO runs on wasm — `web_time::Instant` replaces the
+/// native-only `std::time::Instant` (which panics/returns dummy values on
+/// wasm32-unknown-unknown). The reproduced web failure mode: wgpu 22's
+/// browser backends do NOT deliver buffer-map callbacks from the JS event
+/// loop alone — they queue them for the next `Device::poll` — and the old
+/// code cfg-gated every poll call to native, so the FIRST batch's readback
+/// never fired: `gmeshDone` stayed 0 forever, dirty sections piled up, and
+/// a persisted `gmesh=1` made every boot load ~16 chunks and stop ("full
+/// rendering gets broken"). Poll now runs on ALL platforms each frame (see
+/// advance()), and this watchdog is the safety net if a browser still
+/// refuses to deliver: two strikes → the session routes back to the CPU
+/// mesher and the world finishes loading.
+const STALL_TIMEOUT: web_time::Duration = web_time::Duration::from_secs(6);
 
 /// watchdog strikes before the mesher refuses all further work for the
 /// session — GameApp::stream then routes every job through the CPU rayon
@@ -718,9 +730,9 @@ struct Batch {
     metas: Vec<GpuMeshJobMeta>,
     counts: Vec<u32>, // n*UNITS*2 — filled at the Counts→Outputs transition
     stage: BatchStage,
-    /// wall-clock batch start — the stall watchdog (native only)
-    #[cfg(not(target_arch = "wasm32"))]
-    started: std::time::Instant,
+    /// wall-clock batch start — the stall watchdog (web_time works on
+    /// native AND wasm: performance.now() on the web)
+    started: web_time::Instant,
     // buffers kept alive for the batch lifetime
     _params: wgpu::Buffer,
     _blocks: wgpu::Buffer,
@@ -971,15 +983,22 @@ impl GpuMesher {
                         self.to_emit_stage(device, queue, &mut batch);
                     }
                     Err(TryRecvError::Empty) => {
-                        #[cfg(not(target_arch = "wasm32"))]
-                        device.poll(wgpu::Maintain::Poll);
-                        // stall watchdog (native): a readback that neither
-                        // completes nor errors — a driver quirk — would park
-                        // this batch forever. Drop it as LOST; the game clears
-                        // inflight + keeps the dirty bits → CPU remesh.
-                        // Armed only in frame-driven mode: wait_done blocks
-                        // on poll(Wait), where completion is the contract.
-                        #[cfg(not(target_arch = "wasm32"))]
+                        // 2026-09-09: poll on ALL platforms. wgpu 22's
+                        // browser backends queue buffer-map callbacks for
+                        // the next Device::poll instead of firing them from
+                        // the JS event loop — without this call the web
+                        // build's readbacks never completed and the whole
+                        // mesh pipeline parked forever (the preview's
+                        // "GPU meshing breaks rendering" bug). Poll is a
+                        // cheap "drain whatever is ready" on every backend.
+                        let _ = device.poll(wgpu::Maintain::Poll);
+                        // stall watchdog: a readback that neither completes
+                        // nor errors — a driver/browser quirk — would park
+                        // this batch forever. Drop it as LOST; the game
+                        // clears inflight + keeps the dirty bits → CPU
+                        // remesh. Armed only in frame-driven mode:
+                        // wait_done blocks on poll(Wait) native-only, where
+                        // completion is the contract.
                         if !self.blocking && batch.started.elapsed() > STALL_TIMEOUT {
                             self.stalls += 1;
                             crate::render::report_boot_log(&format!(
@@ -994,7 +1013,26 @@ impl GpuMesher {
                         }
                     }
                     Err(TryRecvError::Disconnected) => {
-                        // counts map failed — the batch is unrecoverable
+                        // counts map FAILED (the mapAsync promise rejected).
+                        // 2026-09-09: on the browser backend a rejected
+                        // readback is not a one-off — wgpu 22 web devices can
+                        // fail EVERY mapAsync with "A valid external Instance
+                        // reference no longer exists" (reproduced live,
+                        // headless Chrome 151: 5995/5995 rejections, while
+                        // hand-made JS devices on the same page map fine).
+                        // Treat it as a watchdog strike so the session stops
+                        // churning batches (each one re-allocates ~30 MB) and
+                        // falls back to the CPU mesher after STALL_LIMIT —
+                        // the world keeps loading instead of spinning.
+                        self.stalls += 1;
+                        crate::render::report_boot_log(&format!(
+                            "gpu mesher: readback FAILED (map rejected) — \
+                             dropping {} jobs to the CPU path \
+                             (strike {}/{})",
+                            batch.metas.len(),
+                            self.stalls,
+                            STALL_LIMIT
+                        ));
                         lost = batch.metas.iter().map(|m| (m.pos, m.mask)).collect();
                     }
                 },
@@ -1006,10 +1044,9 @@ impl GpuMesher {
                         consumed = true;
                     }
                     Err(TryRecvError::Empty) => {
-                        #[cfg(not(target_arch = "wasm32"))]
-                        device.poll(wgpu::Maintain::Poll);
+                        // poll on all platforms (see the Counts arm)
+                        let _ = device.poll(wgpu::Maintain::Poll);
                         // stall watchdog — mirror of the Counts arm above
-                        #[cfg(not(target_arch = "wasm32"))]
                         if !self.blocking && batch.started.elapsed() > STALL_TIMEOUT {
                             self.stalls += 1;
                             crate::render::report_boot_log(&format!(
@@ -1024,7 +1061,16 @@ impl GpuMesher {
                         }
                     }
                     Err(TryRecvError::Disconnected) => {
-                        // outputs map failed — same recovery contract
+                        // outputs map failed — same recovery contract (see
+                        // the Counts arm: a strike stops the churn)
+                        self.stalls += 1;
+                        crate::render::report_boot_log(&format!(
+                            "gpu mesher: output readback FAILED — dropping \
+                             {} jobs to the CPU path (strike {}/{})",
+                            batch.metas.len(),
+                            self.stalls,
+                            STALL_LIMIT
+                        ));
                         lost = batch.metas.iter().map(|m| (m.pos, m.mask)).collect();
                     }
                 },
@@ -1090,12 +1136,24 @@ impl GpuMesher {
             metas.push(meta);
         }
 
+        // 2026-09-09 wasm fix: create_buffer_init uses the
+        // mappedAtCreation + getMappedRange write path — on wgpu 22's
+        // browser backend that path silently kills the winit event loop
+        // mid-callback (no panic, no JS exception; reproduced live: the
+        // loop deschedules at the FIRST create_buffer_init of a batch and
+        // the page freezes with the JS thread free). The renderer's own
+        // uploads use plain queue.write_buffer — the battle-tested path
+        // on the web — so the batch inputs do the same. (All input sizes
+        // are multiples of COPY_BUFFER_ALIGNMENT=4.)
         let mk_in = |label: &str, data: &[u8]| {
-            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            let buf = device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some(label),
-                contents: data,
+                size: data.len().max(16) as u64,
                 usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-            })
+                mapped_at_creation: false,
+            });
+            queue.write_buffer(&buf, 0, data);
+            buf
         };
         let params_buf = mk_in("gpu-mesh-params", bytemuck::cast_slice(&params));
         let blocks_buf = mk_in("gpu-mesh-blocks", bytemuck::cast_slice(&blocks));
@@ -1158,8 +1216,7 @@ impl GpuMesher {
             metas,
             counts: vec![0u32; counts_words],
             stage: BatchStage::Counts { _bg: bg, rx },
-            #[cfg(not(target_arch = "wasm32"))]
-            started: std::time::Instant::now(),
+            started: web_time::Instant::now(),
             _params: params_buf,
             _blocks: blocks_buf,
             _sky: sky_buf,

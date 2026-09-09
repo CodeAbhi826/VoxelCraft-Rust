@@ -95,6 +95,13 @@ pub struct Sim {
     /// 1.15: the day flag (set by the game layer from the sun state —
     /// drives the bees' night-return + the hives' day-release)
     pub is_day: bool,
+    /// Backlog round (weather): the weather sky-light factor (1.0
+    /// clear, 12/15 rain, 10/15 thunder — VERIFIED w/Weather; set by
+    /// the game layer). The daylight sensor reads it: "Inclement
+    /// weather reduces the sky light level" + the wiki's Daylight
+    /// Detector row ("time of day, the weather, the detector's
+    /// exposure to the sky, and the internal sky light level").
+    pub sky_factor: f32,
     /// Phase E1: the ender-dragon fight (End dimension only)
     pub dragon: vc_gameplay::dragon::DragonSystem,
     /// Phase E2: the wither fight (summonable in any dimension)
@@ -144,6 +151,7 @@ impl Sim {
             mobs: vc_gameplay::mobs::MobSystem::new(seed ^ 0x5C_0DE),
             hives: vc_gameplay::bees::HiveSystem::new(seed ^ 0xBE_E5),
             is_day: true,
+            sky_factor: 1.0,
             dragon: vc_gameplay::dragon::DragonSystem::new(seed ^ 0xDA60_0005),
             wither: vc_gameplay::wither::WitherSystem::new(seed ^ 0xB055_0002),
             beacons: std::collections::HashMap::new(),
@@ -275,7 +283,9 @@ impl Sim {
                     // signal = sky light × day brightness (VERIFIED
                     // w/Daylight_Detector; the sky-light mapping is the
                     // disclosed engine adaptation); self-reschedules
-                    // every 20gt so dawn/dusk sweep
+                    // every 20gt so dawn/dusk sweep. The weather factor
+                    // rides in (backlog round — "Inclement weather
+                    // reduces the sky light level", VERIFIED w/Weather)
                     crate::redstone::daylight_sensor_tick(
                         world,
                         &mut self.sched,
@@ -283,6 +293,7 @@ impl Sim {
                         pos[1],
                         pos[2],
                         self.ticks,
+                        self.sky_factor,
                     );
                 }
                 vc_blocks::blocks::TARGET => {
@@ -297,6 +308,14 @@ impl Sim {
                         pos[1],
                         pos[2],
                     );
+                }
+                // ---- backlog round (weather): the fire burnout — the
+                // lightning/flint-and-steel fire expires on its
+                // scheduled tick ("the rain usually puts the fire out
+                // before it can spread", VERIFIED w/Weather — the
+                // scheduled delay IS the rain-doused burn window)
+                vc_blocks::blocks::FIRE => {
+                    world.set_block_state(pos[0], pos[1], pos[2], vc_blocks::blocks::AIR);
                 }
                 vc_blocks::blocks::TRAPPED_CHEST
                 | vc_blocks::blocks::LIGHT_WEIGHTED_PLATE

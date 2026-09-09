@@ -294,6 +294,15 @@ pub enum MobKind {
     /// gating. No MOB_DATA row, no spawn table entry, no egg — a
     /// classification-only stub, disclosed in the 1.13 worklog.
     Squid,
+    // ---- the backlog round (2026-09-09): the weather bracket's
+    // lightning-conversion target + the honest nether-wastes roll ----
+    /// The zombified piglin — the Nether Wastes' actual common hostile
+    /// (the pre-backlog engine documented the zombie as the "zombified
+    /// piglin filler"; this row replaces that stand-in) AND the
+    /// lightning target (VERIFIED w/Weather: lightning "turns ... pigs
+    /// into zombified piglins"). Neutral-until-provoked like the
+    /// piglin's anger family; stats from w/Zombified_Piglin.
+    ZombifiedPiglin,
 }
 
 impl MobKind {
@@ -350,6 +359,8 @@ impl MobKind {
             "ghast" => MobKind::Ghast,
             "cave_spider" => MobKind::CaveSpider,
             "silverfish" => MobKind::Silverfish,
+            // the backlog round's weather-conversion mob
+            "zombified_piglin" => MobKind::ZombifiedPiglin,
             _ => return None,
         })
     }
@@ -410,6 +421,7 @@ impl MobKind {
             // classification-only marker (see the enum doc) — still
             // carries its vanilla registry id for completeness
             MobKind::Squid => "minecraft:squid",
+            MobKind::ZombifiedPiglin => "minecraft:zombified_piglin",
         }
     }
 
@@ -484,6 +496,10 @@ impl MobKind {
             // row, no spawn path); reuses the passive-fish tile as a
             // safe stand-in should a future bracket implement it
             MobKind::Squid => TILE_MOB_COD,
+            // the zombified piglin shares the piglin-family sprite
+            // family (billboard stand-in: the zombie-pig palette rides
+            // the zombie sprite — disclosed before the mesh pipeline)
+            MobKind::ZombifiedPiglin => TILE_ZOMBIE,
         }
     }
 
@@ -662,6 +678,8 @@ impl MobKind {
             45 => MobKind::Ghast,
             46 => MobKind::CaveSpider,
             47 => MobKind::Silverfish,
+            // the backlog round's weather-conversion mob — kind 48
+            48 => MobKind::ZombifiedPiglin,
             _ => MobKind::Chicken,
         }
     }
@@ -740,6 +758,8 @@ impl MobKind {
             // classification-only marker: the squid never had an egg in
             // the engine's window (pre-1.13 legacy, unimplemented)
             MobKind::Squid => 255,
+            // the backlog round's weather-conversion mob (kind 48)
+            MobKind::ZombifiedPiglin => 48,
         }
     }
 }
@@ -764,7 +784,7 @@ pub struct MobDef {
     pub xp: i32,
 }
 
-pub const MOB_DATA: [MobDef; 48] = [
+pub const MOB_DATA: [MobDef; 49] = [
     MobDef {
         kind: MobKind::Zombie,
         health: 20.0,
@@ -1351,6 +1371,22 @@ pub const MOB_DATA: [MobDef; 48] = [
         width: 0.4,
         xp: 5,
     },
+    // ---- the backlog round (2026-09-09): the zombified piglin ----
+    MobDef {
+        kind: MobKind::ZombifiedPiglin,
+        // VERIFIED w/Zombified_Piglin (live capture this round): 20 HP,
+        // golden-sword melee (Normal row — the piglin family's own
+        // melee row), hostile-when-provoked (neutral like the piglin);
+        // 1.95×0.6 hitbox; 5 XP. The sword never drops (HandDropChances
+        // 0 — the engine's item-drop table follows the same rule).
+        health: 20.0,
+        damage: 8.0,
+        speed_attr: 0.23,
+        armor: 2.0,
+        height: 1.95,
+        width: 0.6,
+        xp: 5,
+    },
 ];
 
 #[inline]
@@ -1388,6 +1424,12 @@ pub const CREEPER_FUSE_DIST: f32 = 3.0;
 pub const CREEPER_FUSE_TICKS: i32 = 30;
 /// creeper explosion power (wiki: "Normal creeper explosions have a power of 3")
 pub const CREEPER_POWER: f32 = 3.0;
+/// charged creeper explosion power — VERIFIED w/Creeper: lightning
+/// charging doubles the power to 6 (the variant bit 0x40 marks it)
+pub const CHARGED_CREEPER_POWER: f32 = 6.0;
+/// the charged-creeper variant bit (set by a lightning strike —
+/// VERIFIED w/Weather: lightning "turns creepers into charged creepers")
+pub const CREEPER_CHARGED_BIT: u8 = 0x40;
 /// skeleton bow interval (adaptation: fixed 40-tick cadence)
 pub const SKELETON_SHOOT_TICKS: i32 = 40;
 /// mob melee reach
@@ -1702,6 +1744,13 @@ pub struct MobSystem {
     /// 1.15 (Buzzy Bees): day flag (the game layer's sun state —
     /// drives the bees' night-return phase)
     pub is_day: bool,
+    /// Backlog round (weather): 0 = clear, 1 = rain, 2 = thunderstorm.
+    /// Drives (a) the thunder spawn gate — VERIFIED w/Weather: during
+    /// a thunderstorm "in mob spawning system, the light level from the
+    /// sky is treated as if it were 0, allowing hostile mobs to spawn
+    /// at any time of the day" — and (b) the rain-damage pass for the
+    /// water-weak kinds (enderman / snow golem / blaze / strider).
+    pub weather: u8,
     /// 1.15: bees that reached their hive this tick — (mob id, hive
     /// position, carried nectar). Drained by the game layer into the
     /// HiveSystem; the MOB is removed by the tick pass.
@@ -1762,6 +1811,7 @@ impl MobSystem {
             pending_player_grace: Vec::new(),
             pending_turtle_eggs: Vec::new(),
         is_day: true,
+        weather: 0,
         bee_enters: Vec::new(),
         bee_pollinations: Vec::new(),
             pending_drops: Vec::new(),
@@ -2161,22 +2211,34 @@ impl MobSystem {
         }
 
         // 4. deaths → events (all damage here is player damage)
+        // BACKLOG-ROUND BUG FIX (found by the weather tests): a
+        // consumed creeper (fuse == i32::MAX, health 0) must survive
+        // this sweep — take_explosions owns its removal. The old code
+        // removed it here, so the game layer's post-tick
+        // take_explosions() drain NEVER saw the blast: creeper
+        // explosions were silently dropped in the live game (the unit
+        // tests passed only because they drove ai_tick directly and
+        // called take_explosions before this sweep).
         let mut i = 0;
         while i < self.list.len() {
             if self.list[i].health <= 0.0 {
-                let m = self.list.remove(i);
-                if m.fuse != i32::MAX {
-                    // exploded creepers leave no drops (vanilla: destroyed).
-                    // Phase E3: equines carry "saddled" in the death
-                    // variant byte (1 = the saddle drops — VERIFIED w/
-                    // Horse §Drops: equipped items drop on death)
-                    let variant = if m.equine.as_ref().map(|e| e.saddled).unwrap_or(false) {
-                        1
-                    } else {
-                        m.variant
-                    };
-                    self.deaths.push((m.kind, m.pos, variant));
+                if self.list[i].fuse == i32::MAX {
+                    // exploded creeper: take_explosions' to remove —
+                    // never the deaths queue, never this sweep
+                    i += 1;
+                    continue;
                 }
+                let m = self.list.remove(i);
+                // exploded creepers leave no drops (vanilla: destroyed).
+                // Phase E3: equines carry "saddled" in the death
+                // variant byte (1 = the saddle drops — VERIFIED w/
+                // Horse §Drops: equipped items drop on death)
+                let variant = if m.equine.as_ref().map(|e| e.saddled).unwrap_or(false) {
+                    1
+                } else {
+                    m.variant
+                };
+                self.deaths.push((m.kind, m.pos, variant));
                 self.killed_total += 1;
             } else {
                 i += 1;
@@ -2300,9 +2362,13 @@ impl MobSystem {
             // light gate (VERIFIED 1.16.5): block ≤ 7 AND sky ≤ 7. Phase E1
             // exception: magma cubes spawn at ALL light levels in the
             // Nether (VERIFIED w/Magma_Cube §Spawning)
+            // Backlog round (weather): a thunderstorm treats sky light
+            // as 0 for spawning (VERIFIED w/Weather) — hostiles may
+            // spawn in full daylight
             let nether = world.dimension == vc_world::world::Dimension::Nether;
+            let storm = self.weather == 2;
             let (blk_l, sky_l) = light_levels(world, wx, y, wz);
-            if !nether && (blk_l > HOSTILE_LIGHT_MAX || sky_l > HOSTILE_SKY_MAX) {
+            if !nether && !storm && (blk_l > HOSTILE_LIGHT_MAX || sky_l > HOSTILE_SKY_MAX) {
                 return;
             }
             let kind = if nether {
@@ -2326,6 +2392,36 @@ impl MobSystem {
                         }
                     }
                     vc_world::gen::Biome::WarpedForest => MobKind::Enderman,
+                    // Backlog round: the soul sand valley roll — VERIFIED
+                    // (w/Soul_Sand_Valley capture): skeleton 20/71, ghast
+                    // 50/71 (5% attempt success — the engine rolls the
+                    // 1/20 gate), enderman 1/71
+                    vc_world::gen::Biome::SoulSandValley => {
+                        match self.rng.next_range(71) {
+                            0 => MobKind::Enderman,
+                            1..=20 if self.rng.next_range(20) == 0 => MobKind::Ghast,
+                            1..=20 => MobKind::Skeleton,
+                            _ => {
+                                if self.rng.next_range(20) == 0 {
+                                    MobKind::Ghast
+                                } else {
+                                    MobKind::Skeleton
+                                }
+                            }
+                        }
+                    }
+                    // Backlog round: the basalt deltas roll — VERIFIED
+                    // (w/Basalt_Deltas capture): magma cube 100/140
+                    // (2-5 group), ghast 40/140 (5% attempt success)
+                    vc_world::gen::Biome::BasaltDeltas => {
+                        if self.rng.next_range(140) < 100 {
+                            MobKind::MagmaCube
+                        } else if self.rng.next_range(20) == 0 {
+                            MobKind::Ghast
+                        } else {
+                            MobKind::MagmaCube
+                        }
+                    }
                     // the completeness audit: the exact 1.16.5 wastes
                     // weights — zombified piglin 100 / ghast 50 /
                     // magma cube 40 / piglin 25 out of 215 (the
@@ -2338,7 +2434,7 @@ impl MobSystem {
                         0..=49 => MobKind::Ghast,
                         50..=89 => MobKind::MagmaCube,
                         90..=114 => MobKind::Piglin,
-                        _ => MobKind::Zombie,
+                        _ => MobKind::ZombifiedPiglin,
                     },
                 }
             } else {
@@ -2932,6 +3028,105 @@ impl MobSystem {
             }
         }
         0.0
+    }
+
+    /// Backlog round (weather): a lightning strike's entity effects —
+    /// VERIFIED w/Weather: "Lightning deals 5 HP damage to entities on
+    /// normal difficulty, not including the damage done by the fire it
+    /// causes. It turns creepers into charged creepers, villagers into
+    /// witches, pigs into zombified piglins, and mooshrooms into their
+    /// brown variants." The strike hits mobs whose AABB overlaps the
+    /// bolt's ~3x3 column window at the strike height (villager→witch
+    /// rides the game layer — villagers are NPC entities, not mobs).
+    /// Returns the number of mobs struck (F3/E2E evidence).
+    pub fn lightning_strike(&mut self, x: f32, y: f32, z: f32, damage: f32) -> usize {
+        let mut struck = 0usize;
+        for m in self.list.iter_mut() {
+            let d = def(m.kind);
+            let half = d.width * 0.5;
+            let near = (m.pos[0] - x).abs() <= 2.0 + half
+                && (m.pos[2] - z).abs() <= 2.0 + half
+                && (m.pos[1] - y).abs() <= 4.0;
+            if !near {
+                continue;
+            }
+            struck += 1;
+            m.health -= damage;
+            m.hurt_t = 10;
+            match m.kind {
+                MobKind::Creeper => {
+                    m.variant |= CREEPER_CHARGED_BIT;
+                }
+                MobKind::Pig => {
+                    // pigs become zombified piglins at full new health
+                    m.kind = MobKind::ZombifiedPiglin;
+                    m.health = def(MobKind::ZombifiedPiglin).health;
+                    m.variant = 0;
+                    m.provoked = false; // neutral again until provoked
+                }
+                MobKind::Mooshroom => {
+                    // red (0) <-> brown (1) — the variant-bit flip the
+                    // Phase E1 docs already reserved for this transform
+                    m.variant ^= 1;
+                }
+                _ => {}
+            }
+        }
+        struck
+    }
+
+    /// Backlog round (weather): the rain-contact pass for the water-weak
+    /// kinds — VERIFIED w/Weather: "Mobs that are on fire are
+    /// extinguished on contact with rain"; "endermen and snow golems
+    /// may die due to their weakness to water. Endermen teleport
+    /// randomly until they find a dry place. Blazes and striders that
+    /// are brought into the Overworld take damage and eventually die
+    /// from being in contact with rain." `exposed` = the caller's
+    /// sky-light + biome gate at the mob's position (the engine has no
+    /// per-column weather mask — the game layer owns the biome check).
+    /// Applies on the shared 0.5 s hazard window.
+    pub fn rain_exposure_tick(&mut self, world: &World, precip_biome: impl Fn(u8) -> bool) {
+        let weather = self.weather;
+        if weather == 0 {
+            return; // clear — nothing to do
+        }
+        for m in self.list.iter_mut() {
+            let weak = matches!(
+                m.kind,
+                MobKind::Enderman | MobKind::SnowGolem | MobKind::Blaze | MobKind::Strider
+            );
+            if !weak {
+                continue;
+            }
+            let bx = m.pos[0].floor() as i32;
+            let by = m.pos[1].floor() as i32;
+            let bz = m.pos[2].floor() as i32;
+            // blazes/striders only suffer in the OVERWORLD ("brought
+            // into the Overworld", VERIFIED); endermen/snow golems are
+            // overworld natives anyway
+            if world.dimension != vc_world::world::Dimension::Overworld
+                && matches!(m.kind, MobKind::Blaze | MobKind::Strider)
+            {
+                continue;
+            }
+            if !precip_biome(world.get_biome(bx, bz)) {
+                continue;
+            }
+            // sky-exposed? (the rain only falls through open sky)
+            let (_, sky_l) = light_levels(world, bx, by + 1, bz);
+            if sky_l < 12 {
+                continue;
+            }
+            // 1 HP per half-second (the strider's own rain row, VERIFIED
+            // w/Strider: "1 HP per ... half-second in water or rain")
+            m.health -= 1.0;
+            // endermen blink away ("teleport randomly until they find a
+            // dry place" — the classic panic hop)
+            if m.kind == MobKind::Enderman {
+                m.pos[0] += (self.rng.next_f32() - 0.5) * 16.0;
+                m.pos[2] += (self.rng.next_f32() - 0.5) * 16.0;
+            }
+        }
     }
 
     /// Crosshair ray hit-test against mob AABBs (villager pattern).
@@ -5550,7 +5745,7 @@ fn collides(world: &World, x: f32, y: f32, z: f32, half: f32, height: f32) -> bo
 
 /// (block light, sky light) at a world position, straight from the
 /// per-chunk LightData map (the same source light_at reads).
-fn light_levels(world: &World, wx: i32, wy: i32, wz: i32) -> (u8, u8) {
+pub fn light_levels(world: &World, wx: i32, wy: i32, wz: i32) -> (u8, u8) {
     let cx = wx.div_euclid(16);
     let cz = wz.div_euclid(16);
     let lx = (wx - cx * 16) as usize;
@@ -5790,7 +5985,14 @@ pub fn take_explosions(sys: &mut MobSystem) -> Vec<([f32; 3], f32)> {
     while i < sys.list.len() {
         if sys.list[i].fuse == i32::MAX {
             let m = sys.list.remove(i);
-            out.push((m.pos, CREEPER_POWER));
+            // the backlog round's lightning charge: a charged creeper
+            // doubles the blast (VERIFIED w/Creeper — power 6)
+            let power = if m.variant & CREEPER_CHARGED_BIT != 0 {
+                CHARGED_CREEPER_POWER
+            } else {
+                CREEPER_POWER
+            };
+            out.push((m.pos, power));
         } else {
             i += 1;
         }
@@ -6391,7 +6593,7 @@ mod tests {
         // [merge] the kinds resolve in/out of names + eggs (16 E1 + 3
         // E2 + 3 E3 horse/donkey/mule + 4 F-series: rabbit 1.8, stray +
         // polar bear + husk 1.10)
-        assert_eq!(MOB_DATA.len(), 48); // + 1.11 four + 1.12 two + 1.13 eight + 1.14 fox + 1.16 three + the audit trio
+        assert_eq!(MOB_DATA.len(), 49); // + 1.11 four + 1.12 two + 1.13 eight + 1.14 fox + 1.16 three + the audit trio + the backlog zombified piglin
         for d in MOB_DATA.iter() {
             assert_eq!(
                 MobKind::from_name(d.kind.name().strip_prefix("minecraft:").unwrap()),
@@ -6981,7 +7183,7 @@ mod v111_tests {
         assert_eq!(MobKind::Llama.egg_id(), 23);
         assert_eq!(MobKind::Evoker.egg_id(), 25);
         // 1.12 (World of Color): parrot + illusioner — 32 kinds
-        assert_eq!(MOB_DATA.len(), 48, "+ the 1.13 aquatic eight + the 1.14 fox + the 1.16 forest three + the audit trio");
+        assert_eq!(MOB_DATA.len(), 49, "+ the 1.13 aquatic eight + the 1.14 fox + the 1.16 forest three + the audit trio + the backlog zombified piglin");
         assert_eq!(MobKind::from_egg(30), MobKind::Parrot);
         assert_eq!(MobKind::Parrot.egg_id(), 30);
         assert_eq!(MobKind::Illusioner.egg_id(), 255, "no spawn egg (VERIFIED)");
@@ -7509,7 +7711,7 @@ mod v113_tests {
     /// aquatic() swim-physics gate + the V9 spawn-egg kinds.
     #[test]
     fn v113_registry_rows_and_flags() {
-        assert_eq!(MOB_DATA.len(), 48, "32 prior + 8 aquatic + the 1.14 fox + the 1.16 forest three + the audit trio");
+        assert_eq!(MOB_DATA.len(), 49, "32 prior + 8 aquatic + the 1.14 fox + the 1.16 forest three + the audit trio + the backlog zombified piglin");
         // drowned: 20 HP zombie-parity, N 3, armor 2, 5 XP, hostile
         let d = def(MobKind::Drowned);
         assert_eq!(d.health as i32, 20);
@@ -7954,7 +8156,7 @@ mod v114_tests {
     /// the V10 registry row + egg/tile mappings (VERIFIED w/Fox)
     #[test]
     fn v114_fox_registry_row() {
-        assert_eq!(MOB_DATA.len(), 48, "32 + 8 aquatic + the fox + the 1.16 forest three + the audit trio");
+        assert_eq!(MOB_DATA.len(), 49, "32 + 8 aquatic + the fox + the 1.16 forest three + the audit trio + the backlog zombified piglin");
         let d = def(MobKind::Fox);
         assert_eq!(d.health as i32, 10, "10 HP (VERIFIED infobox)");
         assert!((d.damage - 2.0).abs() < 1e-6, "Easy/Normal 2 HP");
@@ -8349,6 +8551,168 @@ mod v114_tests {
             }
         }
         assert!(bitten, "the cave spider reached + bit the player");
+    }
+
+    /// REGRESSION (the backlog-round bug fix): the game-layer pattern
+    /// — sys.tick THEN take_explosions — must surface the blast. The
+    /// old death sweep removed the consumed creeper inside the tick,
+    /// so live-game creeper explosions were silently dropped.
+    #[test]
+    fn backlog_creeper_blast_reaches_the_game_layer() {
+        let world = v115_world();
+        let mut sys = MobSystem::new(77);
+        sys.player = Some([8.5, 65.5, 8.5]);
+        sys.spawn_at(MobKind::Creeper, 8, 65, 8).unwrap();
+        let mut saw_boom = false;
+        for _ in 0..100 {
+            sys.tick(&world, (0, 0), i32::MAX);
+            let booms = take_explosions(&mut sys);
+            if let Some((_, power)) = booms.first() {
+                assert!((power - 3.0).abs() < 1e-4, "normal power 3");
+                saw_boom = true;
+            }
+        }
+        assert!(saw_boom, "the post-tick drain sees the blast (bug fix)");
+        // and the death queue stayed empty (exploded = no drops)
+        assert!(sys.deaths.is_empty());
+    }
+
+    /// Backlog round (weather): a lightning strike converts creepers
+    /// (charged bit), pigs (zombified piglin), and mooshrooms (red↔brown)
+    /// and deals its 5 HP Normal damage (VERIFIED w/Weather).
+    #[test]
+    fn backlog_lightning_conversions() {
+        let mut sys = MobSystem::new(21);
+        sys.player = Some([8.5, 70.5, 8.5]);
+        let creeper = sys.spawn_at(MobKind::Creeper, 8, 65, 8).unwrap();
+        let pig = sys.spawn_at(MobKind::Pig, 10, 65, 8).unwrap();
+        let cow = sys.spawn_at(MobKind::Cow, 12, 65, 8).unwrap();
+        let far = sys.spawn_at(MobKind::Mooshroom, 40, 65, 40).unwrap();
+        let mooshroom = sys.spawn_at(MobKind::Mooshroom, 8, 65, 10).unwrap();
+        let struck = sys.lightning_strike(10.5, 66.0, 9.0, 5.0);
+        assert!(struck >= 4, "the near mobs were struck ({struck})");
+        // creeper -> charged (variant bit, power doubles at detonation)
+        let c = sys.by_id(creeper).unwrap();
+        assert!(c.variant & CREEPER_CHARGED_BIT != 0, "creeper charged");
+        assert!((c.health - 15.0).abs() < 1e-4, "5 HP lightning damage");
+        // pig -> zombified piglin at full health
+        let z = sys.by_id(pig).unwrap();
+        assert_eq!(z.kind, MobKind::ZombifiedPiglin);
+        assert!((z.health - 20.0).abs() < 1e-4, "fresh zombified piglin HP");
+        // mooshroom red -> brown
+        let m = sys.by_id(mooshroom).unwrap();
+        assert_eq!(m.variant & 1, 1, "mooshroom flipped to brown");
+        // the far mooshroom untouched (variant 0)
+        let fm = sys.by_id(far).unwrap();
+        assert_eq!(fm.variant & 1, 0);
+        // the cow takes damage but does not convert
+        let cw = sys.by_id(cow).unwrap();
+        assert_eq!(cw.kind, MobKind::Cow);
+        assert!((cw.health - 5.0).abs() < 1e-4);
+    }
+
+    /// charged creepers detonate at power 6 — "lightning ... turns
+    /// creepers into charged creepers" + the doubled blast (VERIFIED
+    /// w/Creeper).
+    #[test]
+    fn backlog_charged_creeper_double_blast() {
+        let world = v115_world();
+        let mut sys = MobSystem::new(22);
+        let _ = &world;
+        sys.player = Some([8.5, 66.5, 8.5]);
+        let id = sys.spawn_at(MobKind::Creeper, 8, 65, 8).unwrap();
+        let _ = sys.lightning_strike(8.0, 66.0, 8.0, 0.0); // charge only
+        assert!(sys.by_id(id).unwrap().variant & CREEPER_CHARGED_BIT != 0);
+        // run the fuse to detonation (player adjacent + 30-tick fuse)
+        for _ in 0..200 {
+            sys.tick(&world, (0, 0), i32::MAX);
+            let booms = take_explosions(&mut sys);
+            if let Some((_, power)) = booms.first() {
+                assert!((power - 6.0).abs() < 1e-4, "charged power 6 (VERIFIED)");
+                return;
+            }
+        }
+        panic!("the charged creeper never detonated");
+    }
+
+    /// the zombified piglin now carries the nether-wastes slot the
+    /// zombie used to fill — "zombified piglin 100/215" of the wastes
+    /// roll (VERIFIED w/Zombified_Piglin §Spawning + the audit's own
+    /// weight table)
+    #[test]
+    fn backlog_zombified_piglin_is_the_wastes_roll() {
+        let world = v115_world();
+        // a nether world with the wastes biome — a 3x3 chunk grid so
+        // the spawn pass's random chunk pick lands in-world
+        let mut w = World::new(23);
+        w.dimension = vc_world::world::Dimension::Nether;
+        for ccx in -1..=1i32 {
+            for ccz in -1..=1i32 {
+                let mut c = vc_chunk::chunk::Chunk::empty();
+                for y in 0..=64i32 {
+                    for lz in 0..16usize {
+                        for lx in 0..16usize {
+                            c.set(lx, y as usize, lz, NETHERRACK);
+                        }
+                    }
+                }
+                c.biome = Box::new([vc_world::gen::Biome::NetherWastes as u8; 256]);
+                w.insert_generated((ccx, ccz), std::sync::Arc::new(c), Vec::new());
+            }
+        }
+        w.dirty.clear();
+        let mut sys = MobSystem::new(24);
+        sys.player = Some([8.5, 65.5, 8.5]);
+        let mut kinds: Vec<MobKind> = Vec::new();
+        for _ in 0..400 {
+            sys.tick(&w, (0, 0), i32::MAX);
+            for m in sys.list.iter() {
+                if !kinds.contains(&m.kind) {
+                    kinds.push(m.kind);
+                }
+            }
+            if kinds.len() >= 3 {
+                break;
+            }
+        }
+        assert!(
+            kinds.contains(&MobKind::ZombifiedPiglin),
+            "the real zombified piglin spawns in the wastes {kinds:?}"
+        );
+        assert!(!kinds.contains(&MobKind::Zombie), "the zombie filler is retired");
+    }
+
+    /// the thunderstorm spawn gate: sky light is treated as 0 — a
+    /// hostile spawn attempt succeeds in full daylight during a storm
+    /// (VERIFIED w/Weather).
+    #[test]
+    fn backlog_thunderstorm_daylight_spawn_gate() {
+        let world = v115_world(); // full-bright sky (open air, noon-ish)
+        let mut sys = MobSystem::new(25);
+        sys.player = Some([8.5, 70.5, 8.5]);
+        // clear weather: the daylight gate rejects surface spawns
+        sys.weather = 0;
+        let mut saw_day_spawn = false;
+        for _ in 0..600 {
+            sys.tick(&world, (0, 0), i32::MAX);
+            if !sys.list.is_empty() {
+                saw_day_spawn = true;
+                break;
+            }
+        }
+        assert!(!saw_day_spawn, "clear weather: no daylight hostiles");
+        // thunderstorm: hostiles may spawn in daylight
+        sys.weather = 2;
+        sys.list.clear();
+        let mut spawned = false;
+        for _ in 0..600 {
+            sys.tick(&world, (0, 0), i32::MAX);
+            if !sys.list.is_empty() {
+                spawned = true;
+                break;
+            }
+        }
+        assert!(spawned, "thunderstorm opens the daylight gate (VERIFIED)");
     }
 
     /// the completeness audit: the ghast fires its fireball — "a ghast

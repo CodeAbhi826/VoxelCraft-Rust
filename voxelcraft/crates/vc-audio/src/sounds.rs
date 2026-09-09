@@ -398,6 +398,34 @@ fn eerie_recipe() -> Vec<f32> {
         .collect()
 }
 
+/// Backlog round (weather): thunder — a clean-room rumble. A noise
+/// burst low-passed hard (one-pole at ~150 Hz), a sub-bass thump at
+/// 45 Hz, and a slow double-decay tail (~2.5 s). Not any vanilla
+/// recording; the recipe shape only (rumble + crack).
+fn thunder_recipe() -> Vec<f32> {
+    let dur = 2.6;
+    let n = (dur * RATE as f32) as usize;
+    let mut out = Vec::with_capacity(n);
+    let mut lp = 0.0f32;
+    let mut rng = vc_rng::rng::Rng::new(0x7A_0DE9);
+    for i in 0..n {
+        let t = i as f32 / RATE as f32;
+        // the crack: first 80 ms louder + brighter
+        let crack = (-(t * 18.0)).exp();
+        // the rolling tail: two decays (near + far echo)
+        let tail = (-(t * 0.9)).exp() * 0.6 + (-(t * 0.35)).exp() * 0.4;
+        // 45 Hz sub thump with its own fast decay
+        let sub = (2.0 * std::f32::consts::PI * 45.0 * t).sin() * (-(t * 2.2)).exp() * 0.8;
+        // white noise -> aggressive one-pole low-pass (~150 Hz)
+        let noise = rng.next_f32() * 2.0 - 1.0;
+        let a = 150.0 / RATE as f32;
+        lp += a * (noise - lp);
+        let v = lp * (tail + crack * 2.0) * 1.6 + sub;
+        out.push(v.clamp(-1.0, 1.0));
+    }
+    out
+}
+
 /// procedural music pad: a slow chord progression of low-passed sines with
 /// a gentle tremolo. `minor` picks the night variant. ~24 s, streaming
 /// category (played sparsely by the scheduler).
@@ -478,6 +506,7 @@ impl SoundBank {
             ("entity/item/pickup", pop_recipe()),
             ("block/lever", lever_recipe()),
             ("ambient/eerie", eerie_recipe()),
+            ("ambient/thunder", thunder_recipe()),
             ("music/pad_day", music_pad(false)),
             ("music/pad_night", music_pad(true)),
             ("block/brewing_bubble", bubble_recipe()),
@@ -753,6 +782,7 @@ pub const SOUNDS_JSON: &str = r##"{
   "ui.click":            {"category": "players", "volume": 0.35, "pitch": [1.5, 1.7], "sounds": [{"name": "ui/click"}]},
   "entity.item.pickup":  {"category": "players", "volume": 0.45, "pitch": [0.9, 1.3], "sounds": [{"name": "entity/item/pickup"}]},
   "ambient.eerie":       {"category": "ambient", "volume": 0.55, "pitch": [0.85, 1.3], "attenuation": 0, "sounds": [{"name": "ambient/eerie"}]},
+  "ambient.thunder":     {"category": "ambient", "volume": 1.0, "pitch": [0.9, 1.1], "attenuation": 0, "sounds": [{"name": "ambient/thunder"}]},
   "music.pad.day":       {"category": "music", "volume": 0.5, "sounds": [{"name": "music/pad_day", "stream": true}]},
   "music.pad.night":     {"category": "music", "volume": 0.5, "sounds": [{"name": "music/pad_night", "stream": true}]},
   "block.brewing_stand.bubble": {"category": "blocks", "volume": 0.7, "pitch": [0.9, 1.15], "attenuation": 12, "sounds": [{"name": "block/brewing_bubble"}]},

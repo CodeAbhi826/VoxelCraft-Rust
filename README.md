@@ -117,10 +117,15 @@ All 16×16 textures and every sound are **synthesized procedurally at startup** 
 
 ## World
 
-- Procedural terrain: simplex 2D/3D noise, biomes (plains / forest / desert / snow / ocean), caves, trees
-- Day/night cycle (10 min), dynamic sun/moon/stars, sunset band, fog
-- Water with wave animation, glass, 18 block types
-- 16×256×16 chunks streamed around the player
+- Procedural terrain: simplex 2D/3D noise, 25 biomes (overworld families + the 1.16 nether trio + the End), caves, trees, 10 structure families
+- Day/night cycle (20 min — 24,000 game ticks, like vanilla), 8-phase moon, stars, sunset band, fog
+- Water with wave animation, 506 registered block/item entries (805 block states)
+- 16×256×16 chunks streamed around the player (correct 1.16.5 dimensions)
+
+> **Status fact-check:** the verified, source-checked status of every subsystem
+> (what is done, what is partial, what is deferred and *why*) lives in
+> [`docs/CHECKLIST-VERIFIED-AUDIT.md`](docs/CHECKLIST-VERIFIED-AUDIT.md) —
+> maintained against the live wiki and the code, not against marketing.
 
 ## Roadmap progress
 

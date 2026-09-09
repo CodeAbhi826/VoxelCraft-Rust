@@ -2290,6 +2290,8 @@ pub fn v15_state(b: u16) -> Option<u16> {
         SPAWN_EGG_CAVE_SPIDER => Some(V15_STATE_BASE + 24),
         SPAWN_EGG_SILVERFISH => Some(V15_STATE_BASE + 25),
         MELON_SLICE => Some(V15_STATE_BASE + 28),
+        // ---- backlog round (V16 window) ----
+        FIRE => Some(V16_STATE_BASE),
         _ => None,
     }
 }
@@ -2297,6 +2299,20 @@ pub fn v15_state(b: u16) -> Option<u16> {
 #[inline]
 pub fn is_v15_state(s: u16) -> bool {
     (V15_STATE_BASE..V15_STATE_BASE + V15_COUNT).contains(&s)
+}
+
+/// Backlog round (2026-09-09): the V16 state window — the weather/
+/// farming/door/bed/TNT/jukebox brackets' state allocations.
+pub const V16_STATE_BASE: u16 = 805;
+pub const V16_COUNT: u16 = 1;
+/// V16 state -> block fold: index = state − V16_STATE_BASE.
+pub const V16_STATE_TO_BLOCK: [u16; V16_COUNT as usize] = [
+    FIRE, // 805 — the fire block's identity state
+];
+
+#[inline]
+pub fn is_v16_state(s: u16) -> bool {
+    (V16_STATE_BASE..V16_STATE_BASE + V16_COUNT).contains(&s)
 }
 
 /// the 1.0-1.16.5 audit's cave-spider spawner state (kind code 7 —
@@ -2992,7 +3008,7 @@ pub fn item_state_block(s: u16) -> Option<u16> {
     }
 }
 
-pub const BLOCK_COUNT: usize = 506; // the 1.0-1.16.5 completeness audit: V15 window ids 479..=505 (the cooked-meat family, the kitchen chain — apple/bowl/mushroom-rabbit-beetroot stews/sugar/egg/poisonous potato — popped chorus, ghast tear, the leaping/regeneration potions, the ghast/cave-spider/silverfish spawn eggs, and the sweep-2 melon slice)
+pub const BLOCK_COUNT: usize = 507; // + the backlog round's Fire (506 — lightning ignition + flint-and-steel source)
 /// [merge renumber] acacia/dark-oak log axis states moved to 443..=446
 /// (past the E-series states, which end at 354; V2 base is now 400)
 /// acacia/dark-oak log axis states (the V2 log window — same pattern as
@@ -3029,7 +3045,7 @@ pub const DARK_OAK_LOG_Z: u16 = 446;
 /// items + eggs 20..=22 + the POWER-state ladders (317..=399)
 /// [merge renumber] F-series states: V2 400..=442 + log-axis 443..=446,
 /// V3 447..=465, V4 466..=475, V5 476..=479, V6 480..=485 (audit-fix)
-pub const STATE_COUNT: usize = 805; // the completeness audit: V15 states 776..=804 (27 identity item states + the cave-spider/silverfish spawner states)
+pub const STATE_COUNT: usize = 806; // the backlog round's V16 window: 805 = fire (V15 states 776..=804)
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -3789,6 +3805,9 @@ pub fn state_block(s: u16) -> u16 {
         // the 1.0-1.16.5 completeness audit: the V15 window — 26
         // identity item folds + the two spawner states folding to the
         // Monster Spawner block
+        s if is_v16_state(s) => {
+            return V16_STATE_TO_BLOCK[(s - V16_STATE_BASE) as usize];
+        }
         s if is_v15_state(s) => {
             return V15_STATE_TO_BLOCK[(s - V15_STATE_BASE) as usize];
         }
@@ -3927,6 +3946,7 @@ pub fn is_model_state(s: u16) -> bool {
         // flags; the two spawner states fold to the spawner block
         // (the SPAWNER_VINDICATOR/SPAWNER_EVOKER pattern)
         || is_v15_state(s)
+        || is_v16_state(s)
         || s == SPAWNER_CAVESPIDER
         || s == SPAWNER_SILVERFISH
         || s == SPAWNER_VINDICATOR
@@ -4245,7 +4265,7 @@ pub fn log_axis_state(block: u16, axis: u8) -> u16 {
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
 // [merge] E-series tiles end at 243; the F-series (1.7.2-1.10) tiles
 // continue at 244..=325; the audit-fix round adds 326..=332
-pub const TILE_MAX: u16 = 735; // the completeness audit: tiles 706..=735 (the V15 window — the cooked meats, the kitchen items, the leaping/regen potions, the ghast/cave-spider/silverfish eggs + mob sprites, the sweep-2 melon slice)
+pub const TILE_MAX: u16 = 738; // the backlog round: 736/737 = rain streak + snowflake particle sprites, 738 = fire (weather bracket)
 /// 1.11 egg tiles (egg-shaped, egg order 23..=28 = llama, vindicator,
 /// evoker, vex, husk, stray) — the E1/E2/E3 egg-art convention
 /// (e1_art::egg_art + palettes), replacing the interrupted round's
@@ -4599,6 +4619,19 @@ pub const TILE_MOB_SILVERFISH: u16 = 734;
 /// the melon slice item sprite (audit16_art::melon_slice_art) — the
 /// sweep-2 food row.
 pub const TILE_MELON_SLICE: u16 = 735;
+/// the rain streak particle sprite (backlog round: weather). A tall
+/// 2×10-px droplet — NOT a vanilla asset (clean-room procedural art,
+/// weather_art::rain_streak_art).
+pub const TILE_RAIN_PARTICLE: u16 = 736;
+/// the snowflake particle sprite (backlog round: weather) — a 5-px
+/// soft flake (weather_art::snow_flake_art).
+pub const TILE_SNOW_PARTICLE: u16 = 737;
+/// the fire block sprite (backlog round: weather + flint-and-steel) —
+/// clean-room flame art (weather_art::fire_art).
+pub const TILE_FIRE: u16 = 738;
+/// the fire block (id 506 — lightning ignition + flint-and-steel
+/// source; VERIFIED w/Weather §Lightning).
+pub const FIRE: u16 = 506;
 
 /// inventory-only ITEM blocks (potions/bottles/books): never placeable in
 /// the world — right-click drinks (potions) / fills (glass bottle at water).
@@ -5549,6 +5582,14 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Cave Spider Spawn Egg", [TILE_SPAWN_EGG_CAVESPIDER, TILE_SPAWN_EGG_CAVESPIDER, TILE_SPAWN_EGG_CAVESPIDER], false, false, true, false, 0, SoundFamily::Grass),
     d("Silverfish Spawn Egg", [TILE_SPAWN_EGG_SILVERFISH, TILE_SPAWN_EGG_SILVERFISH, TILE_SPAWN_EGG_SILVERFISH], false, false, true, false, 0, SoundFamily::Grass),
     d("Melon Slice", [TILE_MELON_SLICE, TILE_MELON_SLICE, TILE_MELON_SLICE], false, false, true, false, 0, SoundFamily::Grass),
+    // ---- backlog round (weather, 2026-09-09): the fire block ----
+    // VERIFIED w/Weather §Lightning: lightning "creating fires where it
+    // strikes, igniting any nearby flammable materials, but the rain
+    // usually puts the fire out before it can spread". Cross-rendered
+    // like soul fire, emissive 15 (vanilla fire light level), burns out
+    // on random ticks — the burnout timer lives in the game layer's
+    // random-tick hook (rain-accelerated).
+    d("Fire", [TILE_FIRE, TILE_FIRE, TILE_FIRE], false, false, true, false, 15, SoundFamily::Grass),
 ];
 
 #[inline]
@@ -6153,6 +6194,7 @@ mod state_tests {
                 || is_v14_state(s)
                 // the completeness audit V15
                 || is_v15_state(s)
+        || is_v16_state(s)
                 || matches!(s, ACACIA_LOG_X | ACACIA_LOG_Z | DARK_OAK_LOG_X | DARK_OAK_LOG_Z)
             {
                 assert!(!is_model_state(s), "component/item state {s} never routes to models");
@@ -6459,8 +6501,8 @@ mod state_tests {
         // with the 1.7.2–1.10 F-series: 276 blocks / 480 states
         // (E-series states end at 354; V2 400..=442, V3 447..=465,
         // V4 466..=475, V5 476..=479)
-        assert_eq!(BLOCK_COUNT, 506, "merged registry + V6..V14 + the completeness-audit V15 window");
-        assert_eq!(STATE_COUNT, 805, "merged state space, V15 states end at 804");
+        assert_eq!(BLOCK_COUNT, 507, "merged registry + V6..V14 + the audit V15 window + the backlog fire");
+        assert_eq!(STATE_COUNT, 806, "merged state space + the backlog V16 window (805 = fire)");
         assert_eq!(BLOCK_TABLE.len(), BLOCK_COUNT);
         for want in [
             COAL_BLOCK,
@@ -6511,8 +6553,8 @@ mod v110_tests {
             assert_eq!(default_state(b), s);
             assert!(is_v5_state(s));
         }
-        assert_eq!(BLOCK_COUNT, 506); // the audit V15 window grew the registry (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 805); // the audit V15 window grew the state space (state windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 507); // + the backlog fire (block windows are cumulative)
+        assert_eq!(STATE_COUNT, 806); // + the backlog V16 fire state (state windows are cumulative)
     }
 
     /// magma emits light level 3 (VERIFIED — minecraft.wiki/w/Magma_Block,
@@ -6549,8 +6591,8 @@ mod auditfix_tests {
             assert!(!is_model_state(s), "V6 states are cube/cross defs, not model states");
         }
         assert_eq!(V6_COUNT, 6);
-        assert_eq!(BLOCK_COUNT, 506); // the audit V15 window grew the registry (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 805); // the audit V15 window grew the state space (state windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 507); // + the backlog fire (block windows are cumulative)
+        assert_eq!(STATE_COUNT, 806); // + the backlog V16 fire state (state windows are cumulative)
         // solidity classes: log/planks solid-opaque (hardness family 2
         // per w/Log + w/Planks), leaves see-through, vine/fern non-solid
         // cross plants (w/Vines: "climbable non-solid"; w/Fern:
@@ -6599,8 +6641,8 @@ mod v111_tests {
             assert_eq!(default_state(b), s, "block {b} default state");
             assert_eq!(state_block(s), b, "state {s} folds back");
         }
-        assert_eq!(BLOCK_COUNT, 506); // the audit V15 window grew the registry (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 805); // the audit V15 window grew the state space (state windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 507); // + the backlog fire (block windows are cumulative)
+        assert_eq!(STATE_COUNT, 806); // + the backlog V16 fire state (state windows are cumulative)
         // mansion spawner states fold to SPAWNER + decode their kinds
         assert_eq!(state_block(SPAWNER_VINDICATOR), SPAWNER);
         assert_eq!(state_block(SPAWNER_EVOKER), SPAWNER);
@@ -6704,8 +6746,8 @@ mod v112_tests {
         }
         assert_eq!(default_state(COOKIE), V8_STATE_BASE + 117);
         // bounds
-        assert_eq!(BLOCK_COUNT, 506);
-        assert_eq!(STATE_COUNT, 805);
+        assert_eq!(BLOCK_COUNT, 507);
+        assert_eq!(STATE_COUNT, 806);
         assert_eq!(CONCRETE_BASE + 15, CONCRETE_END);
         assert_eq!(CONCRETE_POWDER_BASE + 15, CONCRETE_POWDER_END);
         assert_eq!(GLAZED_TERRACOTTA_BASE + 15, GLAZED_TERRACOTTA_END);
@@ -6844,8 +6886,8 @@ mod v114_tests {
             "unlit tile"
         );
         // bounds + window shape
-        assert_eq!(BLOCK_COUNT, 506);
-        assert_eq!(STATE_COUNT, 805);
+        assert_eq!(BLOCK_COUNT, 507);
+        assert_eq!(STATE_COUNT, 806);
         assert_eq!(V10_COUNT, 13);
         assert_eq!(BAMBOO, 417);
         assert_eq!(CHARCOAL, 425);
@@ -6946,8 +6988,8 @@ mod v114_tests {
         assert!(TILE_MAX >= TILE_LILY_OF_THE_VALLEY, "flower tiles within the atlas guard");
         // bounds + window shape
         assert_eq!(V11_COUNT, 9);
-        assert_eq!(BLOCK_COUNT, 506);
-        assert_eq!(STATE_COUNT, 805);
+        assert_eq!(BLOCK_COUNT, 507);
+        assert_eq!(STATE_COUNT, 806);
     }
 }
 
@@ -7032,8 +7074,8 @@ mod v115_tests {
         assert!(TILE_MAX >= TILE_BEEHIVE_FRONT_HONEY, "honey front within the atlas guard");
         // bounds + window shape
         assert_eq!(V12_COUNT, 18);
-        assert_eq!(BLOCK_COUNT, 506);
-        assert_eq!(STATE_COUNT, 805);
+        assert_eq!(BLOCK_COUNT, 507);
+        assert_eq!(STATE_COUNT, 806);
         assert_eq!(PICKER_BLOCKS.len(), 459);
     }
 }
@@ -7180,8 +7222,8 @@ mod v116_tests {
         // bounds + window shape
         assert_eq!(V13_COUNT, 34);
         assert_eq!(V13_STATE_BASE + V13_COUNT, 750);
-        assert_eq!(BLOCK_COUNT, 506);
-        assert_eq!(STATE_COUNT, 805);
+        assert_eq!(BLOCK_COUNT, 507);
+        assert_eq!(STATE_COUNT, 806);
         assert_eq!(PICKER_BLOCKS.len(), 459);
     }
 
@@ -7363,8 +7405,8 @@ mod v116_tests {
         // spawner states)
         assert_eq!(V15_COUNT, 29);
         assert_eq!(V15_STATE_BASE + V15_COUNT, 805);
-        assert_eq!(BLOCK_COUNT, 506);
-        assert_eq!(STATE_COUNT, 805);
+        assert_eq!(BLOCK_COUNT, 507);
+        assert_eq!(STATE_COUNT, 806);
         assert_eq!(PICKER_BLOCKS.len(), 459);
     }
 

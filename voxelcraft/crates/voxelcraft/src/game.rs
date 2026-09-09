@@ -741,6 +741,13 @@ pub struct GameApp {
     craft_grid: [vc_inventory::inventory::ItemStack; 9],
     /// block particles (Phase 5 §16.2 pass 4)
     particles: vc_particles::particles::ParticleSystem,
+    /// Backlog round (weather): the Java two-flag weather machine
+    /// (VERIFIED w/Weather — see vc_gameplay::weather). Ticked at the
+    /// sim rate; the render darkening, rain/snow particles, lightning
+    /// strikes and the mob gates all read it.
+    weather: vc_gameplay::weather::WeatherSystem,
+    /// weather fixed-step accumulator (seconds)
+    weather_acc: f32,
     /// billboard vertex scratch (rebuilt per frame against the camera basis)
     particle_verts: Vec<vc_particles::particles::ParticleVertex>,
     input: Input,
@@ -1493,6 +1500,8 @@ impl GameApp {
             shulker_positions: std::collections::HashSet::new(),
             craft_grid: [vc_inventory::inventory::ItemStack::EMPTY; 9],
             particles: vc_particles::particles::ParticleSystem::new(0x5EED_0042),
+            weather: vc_gameplay::weather::WeatherSystem::new(0x4EA7_0000),
+            weather_acc: 0.0,
             particle_verts: Vec::new(),
             input: Input::default(),
             screen: Screen::Intro,
@@ -3068,6 +3077,8 @@ impl GameApp {
         self.hives_stats_pollinated = 0;
         self.particles = vc_particles::particles::ParticleSystem::new(seed ^ 0x7EED);
         self.particles.density = self.settings.particle_density();
+        self.weather = vc_gameplay::weather::WeatherSystem::new(seed ^ 0x4EA7);
+        self.weather_acc = 0.0;
         self.particle_verts.clear();
         self.container = None;
         self.container_geom = None;
@@ -4327,6 +4338,10 @@ impl GameApp {
                 mobs::MobKind::Blaze => &[(BLAZE_ROD, 1)],
                 // zombie villager drops = zombie loot (VERIFIED)
                 mobs::MobKind::ZombieVillager => &[(ROTTEN_FLESH, 2)],
+                // backlog round (weather): the zombified piglin —
+                // rotten flesh like the zombie family (its gold-nugget
+                // drop waits on the gold-nugget item, disclosed)
+                mobs::MobKind::ZombifiedPiglin => &[(ROTTEN_FLESH, 2)],
                 // mooshroom drops = cow loot (VERIFIED w/Mooshroom)
                 mobs::MobKind::Mooshroom => &[(BEEF, 3), (LEATHER, 2)],
                 // 1.15: bees drop no items (VERIFIED w/Bee §Drops —
@@ -7517,6 +7532,198 @@ impl GameApp {
             }
     }
 
+    /// Backlog round (weather): the per-frame weather pass — ticks the
+    /// two-flag machine at the 20 Hz sim rate (in-game, overworld-only
+    /// effects), spawns the rain/snow particle columns around the
+    /// player, and fires lightning strikes on the 30 s cadence with
+    /// the wiki's mob conversions + fire ignition. All numbers VERIFIED
+    /// against minecraft.wiki/w/Weather (live 2026-09-09, capture
+    /// scripts/backlog_page_Weather.json — see vc_gameplay::weather).
+    fn weather_update(&mut self, dt: f32) {
+        // the machine advances with the sim clock while playing (any
+        // dimension — the flags are global like vanilla's; the visual +
+        // strike effects are overworld-only)
+        if self.screen == Screen::Game {
+            self.weather_acc += dt.min(0.25);
+            let step = 1.0 / 20.0;
+            while self.weather_acc >= step {
+                self.weather_acc -= step;
+                self.weather.tick();
+            }
+        }
+        let overworld = self.world.dimension == vc_world::world::Dimension::Overworld;
+        let raining = self.weather.is_raining();
+        // the mob gates: thunder spawning (sky light treated as 0) +
+        // the water-weak rain pass every 10 ticks
+        self.sim.mobs.weather = if self.weather.is_thunderstorm() {
+            2
+        } else if raining {
+            1
+        } else {
+            0
+        };
+        // the daylight sensor's sky term carries the weather factor
+        self.sim.sky_factor = self.weather.sky_factor();
+        if overworld && raining && self.screen == Screen::Game {
+            let world_ptr: *const vc_world::world::World = &self.world;
+            // SAFETY: rain_exposure_tick only reads the world
+            let world_ref = unsafe { &*world_ptr };
+            self.sim
+                .mobs
+                .rain_exposure_tick(world_ref, |b: u8| {
+                    vc_world::gen::Biome::from_u8(b).precipitation()
+                        == vc_world::gen::Precip::Rain
+                });
+        }
+
+        if !overworld || self.screen != Screen::Game || !raining {
+            return;
+        }
+        // ---- the precipitation particles: a few columns per frame in
+        // the ring around the player, only where the column is
+        // rain-exposed (sky light high) and the biome precipitates
+        let (px, py, pz) = (
+            self.player.pos[0],
+            self.player.pos[1],
+            self.player.pos[2],
+        );
+        let player_biome = vc_world::gen::Biome::from_u8(
+            self.world.get_biome(px as i32, pz as i32),
+        );
+        let precip = player_biome.precipitation();
+        if precip != vc_world::gen::Precip::None {
+            let count = 4;
+            for _ in 0..count {
+                let ox = (self.audio_rng.next_f32() - 0.5) * 28.0;
+                let oz = (self.audio_rng.next_f32() - 0.5) * 28.0;
+                let x = px + ox;
+                let z = pz + oz;
+                let bx = x.floor() as i32;
+                let bz = z.floor() as i32;
+                let by = (py + 6.0 + self.audio_rng.next_f32() * 6.0) as i32;
+                // sky-exposed column? (the rain only falls through open
+                // sky — VERIFIED "Rain occurs only in blocks ... exposed")
+                let (_, sky) =
+                    vc_gameplay::mobs::light_levels(&self.world, bx, by, bz);
+                if sky < 12 {
+                    continue;
+                }
+                let biome = vc_world::gen::Biome::from_u8(self.world.get_biome(bx, bz));
+                match biome.precipitation() {
+                    vc_world::gen::Precip::Snow => {
+                        self.particles.spawn_snow_flake(x, py + 10.0, z, 15, 0);
+                    }
+                    vc_world::gen::Precip::Rain => {
+                        self.particles.spawn_rain_streak(x, py + 10.0, z, sky, 0);
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        // ---- the lightning strike: thunderstorm + the 30 s cadence
+        // ("There is a 30 second delay between flashes", VERIFIED)
+        if self.weather.can_strike() {
+            // pick a rain-exposed column near the player
+            for _ in 0..8 {
+                let ox = (self.audio_rng.next_f32() - 0.5) * 48.0;
+                let oz = (self.audio_rng.next_f32() - 0.5) * 48.0;
+                let bx = (px + ox).floor() as i32;
+                let bz = (pz + oz).floor() as i32;
+                // "Lightning does not occur naturally in biomes that are
+                // too hot or dry to have rain or so cold that it snows"
+                // (VERIFIED)
+                let biome = vc_world::gen::Biome::from_u8(self.world.get_biome(bx, bz));
+                if biome.precipitation() != vc_world::gen::Precip::Rain {
+                    continue;
+                }
+                // find the sky-exposed surface (first solid from the top)
+                let mut top: Option<(i32, i32, i32)> = None;
+                for y in (1..250).rev() {
+                    let b = self.world.get_block(bx, y, bz);
+                    if b != vc_blocks::blocks::AIR
+                        && vc_blocks::blocks::is_solid(b)
+                        && b != vc_blocks::blocks::WATER
+                    {
+                        // require open sky at the cell above
+                        let (_, sky) =
+                            vc_gameplay::mobs::light_levels(&self.world, bx, y + 1, bz);
+                        if sky >= 12 {
+                            top = Some((bx, y, bz));
+                        }
+                        break;
+                    }
+                }
+                let Some((sx, sy, sz)) = top else { continue };
+                self.weather.strike_fired();
+                // 1. entity effects: 5 HP damage + the conversions
+                // (difficulty-scaled like every damage source)
+                // difficulty-scaled like every damage source (the
+                // engine's mode mapping: hardcore -> Hard, else Normal)
+                let diff = if self.mode.permadeath() {
+                    vc_gameplay::combat::Difficulty::Hard
+                } else {
+                    vc_gameplay::combat::Difficulty::Normal
+                };
+                let dmg = 5.0 * vc_gameplay::combat::difficulty_scale(1.0, diff);
+                let struck = self.sim.mobs.lightning_strike(
+                    sx as f32 + 0.5,
+                    sy as f32 + 1.0,
+                    sz as f32 + 0.5,
+                    dmg,
+                );
+                let _ = struck;
+                // 2. villager -> witch (villagers are NPC entities —
+                // the conversion lives here, VERIFIED w/Weather)
+                let mut witch_pos: Option<[f32; 3]> = None;
+                self.sim.villagers.list.retain(|v| {
+                    let near = (v.pos[0] - sx as f32).abs() <= 2.5
+                        && (v.pos[2] - sz as f32).abs() <= 2.5
+                        && (v.pos[1] - sy as f32).abs() <= 4.0;
+                    if near {
+                        witch_pos = Some(v.pos);
+                        false
+                    } else {
+                        true
+                    }
+                });
+                if let Some(wp) = witch_pos {
+                    let _ = self.sim.mobs.spawn_at(
+                        vc_gameplay::mobs::MobKind::Witch,
+                        wp[0] as i32,
+                        wp[1] as i32,
+                        wp[2] as i32,
+                    );
+                }
+                // 3. fire at the strike ("creating fires where it
+                // strikes", VERIFIED) — on the solid surface, then a
+                // scheduled burnout (the rain "usually puts the fire
+                // out before it can spread" — 1..4 s of burn)
+                let fx = sx;
+                let fy = sy + 1;
+                let fz = sz;
+                if self.world.get_block(fx, fy, fz) == vc_blocks::blocks::AIR {
+                    let fire_state = vc_blocks::blocks::default_state(vc_blocks::blocks::FIRE);
+                    if let Some((old, new)) = self.world.set_block_state(fx, fy, fz, fire_state)
+                    {
+                        self.light.on_block_changed(
+                            &self.world, fx, fy, fz, old, new,
+                        );
+                        let burn = 20 + self.audio_rng.next_range(60) as u64;
+                        self.sim.sched.schedule([fx, fy, fz], burn);
+                    }
+                }
+                // 4. thunder sound
+                self.play_event(
+                    "ambient.thunder",
+                    Some([sx as f32 + 0.5, sy as f32 + 1.0, sz as f32 + 0.5]),
+                    1.0,
+                );
+                break;
+            }
+        }
+    }
+
     fn update(&mut self, dt: f32) {
         self.time += dt;
         self.day_time = (self.day_time + dt / DAY_LEN_SECS).max(0.0) % 1.0;
@@ -7524,6 +7731,8 @@ impl GameApp {
         // is the sun-up half of the cycle (sun_dir.y > 0 at noon; the
         // bees' night-return + the hives' day-release gate)
         self.sim.is_day = self.day_time < 0.5 || self.world.dimension == vc_world::world::Dimension::Nether;
+        // Backlog round (weather): the machine + particles + strikes
+        self.weather_update(dt);
         // DAY_LEN_SECS = 1200 = the vanilla 1.16.5 full daylight cycle
         // (VERIFIED 2026-09-06 live: minecraft.wiki/w/Daylight_cycle —
         // 24000 ticks at 20 tps = 20 minutes. The old 600 s value came
@@ -10316,6 +10525,7 @@ impl GameApp {
                         dv: 0.25 / 32.0,
                         light: 1.0,
                         tint,
+                        grav: 0.0,
                     });
                 }
             }
@@ -10723,6 +10933,7 @@ impl GameApp {
                                             light: 0.9,
                                             // poison green (clean-room tint)
                                             tint: [0.35, 0.75, 0.25],
+                                            grav: 0.02,
                                         });
                                     }
                                     self.play_event("entity.parrot.death", Some(p), 1.0);
@@ -14624,7 +14835,7 @@ impl GameApp {
         } else {
             let theta = self.day_time * std::f32::consts::TAU;
             let sun_dir = Vec3::new(theta.cos() * 0.85, theta.sin(), -0.4).normalize();
-            let day_light = 0.16 + 0.84 * smoothstep(-0.10, 0.14, sun_dir.y);
+            let mut day_light = 0.16 + 0.84 * smoothstep(-0.10, 0.14, sun_dir.y);
             let sunset = (1.0 - (sun_dir.y * 4.0).abs()).clamp(0.0, 1.0)
                 * (day_light.clamp(0.2, 0.8) - 0.2)
                 / 0.6;
@@ -14638,6 +14849,25 @@ impl GameApp {
             fog[0] += 0.65 * sunset;
             fog[1] += 0.22 * sunset;
             fog[2] -= 0.02 * sunset;
+            // Backlog round (weather): inclement weather darkens the
+            // sky and grays the fog — "The sky itself darkens and gray
+            // fog increases" (VERIFIED w/Weather). The sky-light factor
+            // is the machine's own 12/15 rain, 10/15 thunder row; the
+            // sunset band washes out under cloud cover.
+            let w = self.weather.weather();
+            if w != vc_gameplay::weather::Weather::Clear {
+                let f = self.weather.sky_factor();
+                day_light *= f;
+                let gray = [fog[0] * 0.35 + 0.25, fog[1] * 0.35 + 0.25, fog[2] * 0.38 + 0.27];
+                let storm = if w == vc_gameplay::weather::Weather::Thunder {
+                    1.0
+                } else {
+                    0.0
+                };
+                for c in 0..3 {
+                    fog[c] = fog[c] * (0.6 - 0.15 * storm) + gray[c] * (0.4 + 0.15 * storm);
+                }
+            }
             (sun_dir, day_light, fog)
         };
 

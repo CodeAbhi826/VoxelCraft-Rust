@@ -680,10 +680,12 @@ impl LootTable {
                     LootKind::Item { id, functions } => {
                         let mut count = 1u8;
                         for f in functions {
-                            if let LootFn::SetCount { min, max } = f {
-                                let t = rng.next_f32();
-                                let v = min + (max - min) * t;
-                                count = v.round().clamp(1.0, 64.0) as u8;
+                            match f {
+                                LootFn::SetCount { min, max } => {
+                                    let t = rng.next_f32();
+                                    let v = min + (max - min) * t;
+                                    count = v.round().clamp(1.0, 64.0) as u8;
+                                }
                             }
                         }
                         out.push((*id, count));

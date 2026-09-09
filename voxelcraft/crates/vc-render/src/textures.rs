@@ -3506,7 +3506,6 @@ fn prismarine_bricks_art(a: &mut [u8], t: u16) {
     let dark = (74, 124, 118);
     for y in 0..16 {
         for x in 0..16 {
-            let (bx, by) = (x / 4, y / 8);
             let mortar = x % 4 == 0 || y % 8 == 0 || (y / 8 == 1 && (x + 4) % 8 < 1);
             let c = if mortar { dark } else { base };
             put(a, t, x, y, c.0, c.1, c.2, 255);

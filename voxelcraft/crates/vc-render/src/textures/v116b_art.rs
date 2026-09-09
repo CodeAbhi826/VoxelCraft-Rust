@@ -59,10 +59,6 @@ const PBL_L: [i32; 3] = [76, 71, 80];
 /// the soul flame: the blue fire (torch + lantern share it).
 const SF_IN: [i32; 3] = [214, 240, 252];
 const SF_M: [i32; 3] = [108, 168, 232];
-const SF_OUT: [i32; 3] = [44, 96, 200];
-/// iron gray (the soul lantern frame).
-const IRON_M: [i32; 3] = [146, 150, 156];
-const IRON_D: [i32; 3] = [96, 100, 106];
 /// the strider: crimson quadruped on stilt legs.
 const ST_BODY: [i32; 3] = [138, 44, 42];
 const ST_BODY_D: [i32; 3] = [102, 30, 30];

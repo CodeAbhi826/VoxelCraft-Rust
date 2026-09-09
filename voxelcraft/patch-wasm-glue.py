@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
-"""Post wasm-bindgen patch: harden the generated JS glue against events that
-lack pointerType (synthetic / CDP-dispatched events).
+"""Post wasm-bindgen patch: harden the generated JS glue against browser /
+automation quirks. Two patches, each idempotent and independently applied:
+
+1. pointerType: synthetic / CDP-dispatched events lack pointerType.
+2. exitFullscreen: Document.exitFullscreen() can throw (headless /
+   automation contexts report "Document not active" even when the call
+   would be a no-op in a real browser). The game treats fullscreen as
+   best-effort, so the throw is swallowed at the API boundary.
 
 wasm-bindgen regenerates voxelcraft.js on every rebuild, wiping manual edits,
 so this script re-applies the patch. Run it AFTER wasm-bindgen, BEFORE
@@ -39,25 +45,60 @@ PATCHED_BODY = """{header}{indent}// PATCHED: synthetic/automation events (CDP I
 {indent}// input shim handles actual gameplay input anyway).
 {indent}const ret = {expr}.pointerType || '';"""
 
+# Document.exitFullscreen() import — hash-agnostic (same drift reasoning
+# as the pointerType import). Body is a single statement in every observed
+# wasm-bindgen codegen mode, so one shape suffices.
+EXIT_FS_PATTERN = re.compile(
+    r"(__wbg_exitFullscreen_[0-9a-f]+: function\(arg0\) \{\s*\n)"
+    r"(\s*)(getObject\(arg0\))\.exitFullscreen\(\);"
+)
+
+EXIT_FS_BODY = """{header}{indent}// PATCHED: exitFullscreen can throw in headless/automation contexts
+{indent}// ("Document not active") where a real browser would no-op it. The
+{indent}// game treats fullscreen as best-effort (winit Result ignored on the
+{indent}// Rust side) — swallow here instead of surfacing a page error.
+{indent}try {{ {expr}.exitFullscreen(); }} catch (_) {{}}"""
+
 
 def main(path: str) -> int:
     with open(path, "r", encoding="utf-8") as f:
         s = f.read()
+    rc = 0
+
+    # --- patch 1: pointerType hardening ---------------------------------
     if re.search(r"const ret = (?:getObject\(arg1\)|arg1)\.pointerType \|\| ''", s):
-        print(f"[patch-wasm-glue] {path}: already patched, nothing to do")
-        return 0
-    m = PATTERN.search(s)
-    if not m:
-        print(f"[patch-wasm-glue] {path}: WARNING — glue pattern not found "
-              "(wasm-bindgen output shape changed?). Skipping.")
-        return 2
-    header, indent, expr = m.group(1), m.group(2), m.group(3)
-    s = s[: m.start()] + PATCHED_BODY.format(header=header, indent=indent, expr=expr) + s[m.end():]
+        print(f"[patch-wasm-glue] {path}: pointerType already patched")
+    else:
+        m = PATTERN.search(s)
+        if not m:
+            print(f"[patch-wasm-glue] {path}: WARNING — pointerType pattern "
+                  "not found (wasm-bindgen output shape changed?). Skipping.")
+            rc = 2
+        else:
+            header, indent, expr = m.group(1), m.group(2), m.group(3)
+            s = s[: m.start()] + PATCHED_BODY.format(
+                header=header, indent=indent, expr=expr) + s[m.end():]
+            print(f"[patch-wasm-glue] {path}: patched pointerType glue "
+                  f"(import id: {m.group(1).split(':')[0]}, mode: {expr})")
+
+    # --- patch 2: exitFullscreen best-effort -----------------------------
+    if "// PATCHED: exitFullscreen can throw" in s:
+        print(f"[patch-wasm-glue] {path}: exitFullscreen already patched")
+    else:
+        m = EXIT_FS_PATTERN.search(s)
+        if not m:
+            print(f"[patch-wasm-glue] {path}: WARNING — exitFullscreen "
+                  "pattern not found (no fullscreen binding?). Skipping.")
+        else:
+            header, indent, expr = m.group(1), m.group(2), m.group(3)
+            s = s[: m.start()] + EXIT_FS_BODY.format(
+                header=header, indent=indent, expr=expr) + s[m.end():]
+            print(f"[patch-wasm-glue] {path}: patched exitFullscreen glue "
+                  f"(import id: {m.group(1).split(':')[0]})")
+
     with open(path, "w", encoding="utf-8") as f:
         f.write(s)
-    print(f"[patch-wasm-glue] {path}: patched pointerType glue "
-          f"(import id: {m.group(1).split(':')[0]}, mode: {expr})")
-    return 0
+    return rc
 
 
 if __name__ == "__main__":

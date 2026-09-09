@@ -8162,6 +8162,7 @@ mod v114_tests {
     }
 
     /// 1.15: the v115 tests' own flat world (the per-module convention)
+    #[cfg(test)]  // used only by the tests below (the per-module convention)
     fn v115_world() -> World {
         let mut w = World::new(11);
         let mut c = vc_chunk::chunk::Chunk::empty();

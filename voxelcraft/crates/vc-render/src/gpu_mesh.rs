@@ -594,7 +594,7 @@ fn build_lut() -> Vec<u32> {
     use vc_blocks::blocks::{is_cross, is_opaque, state_block, state_tiles};
     let mut lut = vec![0u32; LUT_WORDS];
     for s in 0..STATE_COUNT {
-        lut[s] = state_block(s as u16) as u32;
+        lut[L_SB + s] = state_block(s as u16) as u32;
     }
     for b in 0..BLOCK_COUNT {
         let id = b as u16;

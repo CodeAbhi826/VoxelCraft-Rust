@@ -207,9 +207,9 @@ pub(super) fn sea_pickle_art(a: &mut [u8], t: u16, count: u8, _rng: &mut Rng) {
                     t,
                     x + dy - 1,
                     y,
-                    (GREEN[0]),
-                    (GREEN[1]),
-                    (GREEN[2]),
+                    GREEN[0],
+                    GREEN[1],
+                    GREEN[2],
                     255,
                 );
             }
@@ -221,9 +221,9 @@ pub(super) fn sea_pickle_art(a: &mut [u8], t: u16, count: u8, _rng: &mut Rng) {
                 t,
                 x + hx,
                 hy,
-                (LIGHT[0]),
-                (LIGHT[1]),
-                (LIGHT[2]),
+                LIGHT[0],
+                LIGHT[1],
+                LIGHT[2],
                 255,
             );
         }

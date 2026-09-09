@@ -405,7 +405,8 @@ pub fn mesh_sections(
                                 let wt = vc_blocks::tint::block_face_tint_packed(
                                     b, false, biome_at(cell[0] as usize, cell[2] as usize),
                                 ) as u64;
-                                wmask[vi * du + ui] = 1 | (l << 1) | (aw << 6) | (bl << 7) | (wt << 11);
+                                let wlvl = (vc_blocks::blocks::water_level(bs) & 0xf) as u64;
+                                wmask[vi * du + ui] = 1 | (l << 1) | (aw << 6) | (bl << 7) | (wt << 11) | (wlvl << 19);
                             }
                             continue;
                         }
@@ -889,7 +890,7 @@ fn greedy_merge(
                 h += 1;
             }
 
-            let (state, ao_pack, sky_pack, water_aw, bl_pack, tint) = if is_solid {
+            let (state, ao_pack, sky_pack, water_aw, bl_pack, tint, water_lvl) = if is_solid {
                 (
                     ((key >> 28) & 0xff) as u16, // STATE id
                     (key >> 20) & 0xff,
@@ -897,16 +898,23 @@ fn greedy_merge(
                     0u64,
                     key & 0xf,
                     ((key >> 36) & 0xff) as u8, // §18 biome tint
+                    0u16,
                 )
             } else {
                 let l = (key >> 1) & 0xf;
+                let lvl = ((key >> 19) & 0xf) as u16;
                 (
-                    WATER as u16,
+                    if lvl > 0 && lvl <= 7 {
+                        vc_blocks::blocks::water_state(lvl as u8)
+                    } else {
+                        WATER as u16
+                    },
                     0xffu64,
                     (l << 12) | (l << 8) | (l << 4) | l,
                     (key >> 6) & 1,
                     (key >> 7) & 0xf,
                     ((key >> 11) & 0xff) as u8,
+                    lvl,
                 )
             };
 
@@ -958,12 +966,23 @@ fn greedy_merge(
                 p[u] = c[0] + off_u as f32;
                 p[v] = c[1] + off_v as f32;
                 if !is_solid {
-                    if d == 1 && dir > 0 {
-                        p[1] -= 0.125; // water surface at 14/16
-                    } else if d == 0 && c[0] == (ui + w) as f32 && water_top_open {
-                        p[1] -= 0.125; // top edge of side face (u axis = Y for d=0)
-                    } else if d == 2 && c[1] == (vi + h) as f32 && water_top_open {
-                        p[1] -= 0.125; // top edge of side face (v axis = Y for d=2)
+                    let drop = if water_top_open {
+                        if water_lvl == 0 || water_lvl > 7 {
+                            0.125f32
+                        } else {
+                            1.0 - (8.0 - water_lvl as f32) / 9.0
+                        }
+                    } else {
+                        0.0f32
+                    };
+                    if drop > 0.0 {
+                        if d == 1 && dir > 0 {
+                            p[1] -= drop; // stepped water surface
+                        } else if d == 0 && c[0] == (ui + w) as f32 && water_top_open {
+                            p[1] -= drop; // top edge of side face (u axis = Y for d=0)
+                        } else if d == 2 && c[1] == (vi + h) as f32 && water_top_open {
+                            p[1] -= drop; // top edge of side face (v axis = Y for d=2)
+                        }
                     }
                 }
                 p

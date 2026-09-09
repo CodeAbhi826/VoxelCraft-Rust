@@ -170,7 +170,7 @@ fn main() {
                     vc_render::gpu_mesh::GpuMeshJobMeta {
                         pos,
                         mask: u16::MAX,
-                        smooth: true,
+                        smooth: 2,
                         prev: vec![None; 16],
                         center: snap[4].clone(),
                     },
@@ -203,12 +203,12 @@ fn main() {
     for &pos in meshable.iter() {
         let snap = snapshot(&by_pos, pos);
         let lsnap = vc_world::light::reference_lightdata(&snap);
-        let full = mesh_sections(pos, &snap, &lsnap, true, u16::MAX, &[]);
+        let full = mesh_sections(pos, &snap, &lsnap, 2, u16::MAX, &[], None);
         let cache = full.sections.clone();
         // sections 4–6 (typical terrain band, y 64–111)
         let mask: u16 = 0b111 << 4;
         let t0 = Instant::now();
-        let part = mesh_sections(pos, &snap, &lsnap, true, mask, &cache);
+        let part = mesh_sections(pos, &snap, &lsnap, 2, mask, &cache, None);
         remesh3_ms.push(t0.elapsed().as_secs_f32() * 1000.0);
         // the partial result must reproduce the full mesh bit-for-bit
         // (unmasked sections reused verbatim, masked rebuilt deterministically)

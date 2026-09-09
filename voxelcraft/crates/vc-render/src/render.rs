@@ -1317,6 +1317,9 @@ pub struct Renderer {
     /// external Instance reference no longer exists" (reproduced live:
     /// 5995/5995 GPU-mesher readback rejections → the batch churn loop
     /// that froze GPU meshing). Holding it here pins it for the session.
+    /// (Never READ — that is the point: the field is a GC keepalive, so
+    /// allow(dead_code) keeps the zero-warning workspace contract.)
+    #[allow(dead_code)]
     instance: wgpu::Instance,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,

@@ -203,6 +203,12 @@ pub struct Player {
     tick_accum: f32,
     air_accum: f32,
     was_on_ground: bool,
+    /// backlog round (farming, 2026-09-09): farmland-trample request —
+    /// set on landing on FARMLAND with a real fall (the position),
+    /// drained by the game layer (which owns the world edits + drops).
+    /// VERIFIED w/Farmland §Decay: "The player or any mob jumps/falls on
+    /// the block" → dirt; the roll happens in the game layer.
+    pending_trample: Option<[i32; 3]>,
 }
 
 impl Player {
@@ -252,6 +258,7 @@ impl Player {
             tick_accum: 0.0,
             air_accum: 0.0,
             was_on_ground: false,
+            pending_trample: None,
         }
     }
 
@@ -285,6 +292,12 @@ impl Player {
         let d = self.pending_hazard_dmg;
         self.pending_hazard_dmg = 0.0;
         d
+    }
+
+    /// backlog round (farming): drain the farmland-trample request (the
+    /// landed-on farmland position, if any). One-shot per landing.
+    pub fn take_pending_trample(&mut self) -> Option<[i32; 3]> {
+        self.pending_trample.take()
     }
 
     /// Reset fall accumulation (spawn snap / respawn / mode change).
@@ -961,6 +974,18 @@ impl Player {
             self.pos.z.floor() as i32,
         );
         let landed_on_slime = under == SLIME_BLOCK;
+        // backlog round (farming): landing on farmland queues a trample
+        // request — the game layer rolls "distance fallen − 0.5" and
+        // converts to dirt (VERIFIED w/Farmland §Decay). Any real fall
+        // (≥ the 0.5 vanilla grace) counts; the queue only carries the
+        // position so this stays physics-side.
+        if landed_this_frame && under == FARMLAND && self.fall_dist > 0.5 {
+            self.pending_trample = Some([
+                self.pos.x.floor() as i32,
+                (self.pos.y - 0.4).floor() as i32,
+                self.pos.z.floor() as i32,
+            ]);
+        }
         if landed_this_frame && landed_on_slime && !input.sneak && self.fall_dist > 0.6 {
             // bounce: convert the fall into an upward launch, skip damage
             let impact = (2.0 * GRAVITY * self.fall_dist).sqrt(); // b/s
@@ -2076,4 +2101,82 @@ mod v116_tests {
         assert_eq!(p.take_pending_hazard_damage(), 0.0, "no damage after leaving");
     }
 }
+}
+
+#[cfg(test)]
+mod farm_player_tests {
+    use super::*;
+    use std::sync::Arc;
+
+    fn flat_floor() -> World {
+        let mut w = World::new(7);
+        for dz in -1i32..=1 {
+            for dx in -1i32..=1 {
+                let mut c = vc_chunk::chunk::Chunk::empty();
+                for y in 0..=64i32 {
+                    for lz in 0..16usize {
+                        for lx in 0..16usize {
+                            c.set(lx, y as usize, lz, vc_blocks::blocks::STONE);
+                        }
+                    }
+                }
+                w.insert_generated((dx, dz), Arc::new(c), Vec::new());
+            }
+        }
+        w.dirty.clear();
+        w
+    }
+
+    fn chunk_top(world: &World) -> i32 {
+        for y in (0..=255i32).rev() {
+            if world.get_block(0, y, 0) != vc_blocks::blocks::AIR {
+                return y + 1;
+            }
+        }
+        0
+    }
+
+    /// backlog round (farming): landing on farmland queues the trample
+    /// request (the physics-side half; the game layer converts to dirt
+    /// + pops the crop). VERIFIED w/Farmland §Decay.
+    #[test]
+    fn landing_on_farmland_queues_a_trample() {
+        let mut input = Input::default();
+        let mut w = flat_floor();
+        let top = chunk_top(&w) as f32;
+        // convert the floor's top layer to farmland under the landing spot
+        let ty = (top - 1.0) as i32;
+        for lx in 0..16i32 {
+            for lz in 0..16i32 {
+                w.set_block_state(lx, ty, lz, vc_blocks::blocks::farmland_state(7));
+            }
+        }
+        let mut p = Player::new(Vec3::new(0.5, top + 4.0, 0.5));
+        p.flying = false;
+        let mut frames = 0;
+        while !p.on_ground && frames < 600 {
+            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+            frames += 1;
+        }
+        assert!(p.on_ground, "must land");
+        let trample = p.take_pending_trample();
+        assert!(trample.is_some(), "the farmland landing queued a trample");
+        assert_eq!(trample.unwrap(), [0, ty, 0]);
+        // one-shot: drains once
+        assert!(p.take_pending_trample().is_none());
+
+        // a gentle 0.5-block step does NOT queue (the vanilla grace)
+        let mut p2 = Player::new(Vec3::new(0.5, top + 0.3, 0.5));
+        p2.flying = false;
+        let mut frames = 0;
+        while !p2.on_ground && frames < 300 {
+            let _ = p2.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+            frames += 1;
+        }
+        assert!(p2.on_ground);
+        assert!(
+            p2.take_pending_trample().is_none(),
+            "sub-0.5 fall on farmland is free"
+        );
+    }
 }

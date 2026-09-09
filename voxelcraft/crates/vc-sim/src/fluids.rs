@@ -514,7 +514,148 @@ pub fn random_plant_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y
                 on_block_changed(sched, world, x, y, z);
             }
         }
+        // ---- backlog round (farming, 2026-09-09) ----
+        // FARMLAND hydration/dry-out/decay (VERIFIED w/Farmland
+        // §Hydration: water "up to four blocks away horizontally
+        // (including diagonally)... at the same level or one block
+        // above"; §Decay: "eventually decays into normal dirt if it's
+        // dehydrated and nothing is planted in it").
+        FARMLAND => {
+            let s = world.get_state(x, y, z);
+            let m = farmland_moisture(s);
+            let planted = is_crop(state_block(world.get_state(x, y + 1, z)));
+            let wet = has_hydrating_water(world, x, y, z);
+            if m < 7 && wet {
+                // hydrate straight to 7 (vanilla climbs 0→7 one step per
+                // hydrate event; a single random tick with water present
+                // is that event — the visual reads wet from 1 on)
+                world.set_block_state(x, y, z, farmland_state(7));
+                on_block_changed(sched, world, x, y, z);
+            } else if m > 0 && !wet {
+                if !planted && world_random_5(world, x, y, z) {
+                    // dehydrated + unplanted: decay to dirt (the
+                    // random-tick-paced "eventually"); any crop above
+                    // pops with its harvest drops (VERIFIED §Decay:
+                    // "crops growing on the block are dropped as items,
+                    // as if they were harvested" — the sim has no item
+                    // system, so the pop itself is the engine's
+                    // adaptation; interactive trampling drops properly)
+                    world.set_block_state(x, y, z, default_state(DIRT));
+                    if is_crop(state_block(world.get_state(x, y + 1, z))) {
+                        world.set_block_state(x, y + 1, z, default_state(AIR));
+                        on_block_changed(sched, world, x, y + 1, z);
+                    }
+                } else {
+                    // planted (or the decay roll failed): dry one step
+                    world.set_block_state(x, y, z, farmland_state(m - 1));
+                }
+                on_block_changed(sched, world, x, y, z);
+            }
+        }
+        // the four crops — the verified speed-level formula (see
+        // grow_crop: Tutorial:Crop_farming §Growth rate, captured
+        // 2026-09-09)
+        WHEAT_CROP | CARROTS | POTATOES | BEETROOTS => {
+            grow_crop(world, sched, x, y, z, b);
+        }
         _ => {}
+    }
+}
+
+/// is this block one of the four farming crops?
+#[inline]
+pub fn is_crop(b: u16) -> bool {
+    matches!(b, WHEAT_CROP | CARROTS | POTATOES | BEETROOTS)
+}
+
+/// the farmland hydration scan: water within 4 blocks horizontally
+/// (diagonals included), at the farmland's own level or one above
+/// (VERIFIED w/Farmland §Hydration — "The blocks between the farmland
+/// block and the water make no difference", so this is a plain scan).
+fn has_hydrating_water(world: &World, x: i32, y: i32, z: i32) -> bool {
+    for dy in 0..=1i32 {
+        for dx in -4..=4i32 {
+            for dz in -4..=4i32 {
+                if dx.abs().max(dz.abs()) > 4 {
+                    continue; // Chebyshev distance ≤ 4 (incl. diagonals)
+                }
+                let b = world.get_block(x + dx, y + dy, z + dz);
+                if b == WATER {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+/// the crop growth roll — the vanilla speed-level formula, VERIFIED
+/// live 2026-09-09 w/Tutorial:Crop_farming §Growth rate:
+/// * light ≥ 9 AT the plant block ("growth requires a light level of
+///   at least 9 at the plant block, not in the block above it")
+/// * speed level = 2 (dry farmland below) or 4 (hydrated)
+///   + 0.25 per surrounding dry farmland / 0.75 per hydrated (the 8
+///   cells of the 3×3 around the below block)
+/// * crowding: same crop on a diagonal, OR same crop in BOTH the N-S
+///   and E-W axes → speed level HALVED ("If the same crop is planted
+///   on a diagonal or if the same crop is found in both the north-south
+///   and east-west directions")
+/// * growth chance = 1/(floor(25/speedLevel) + 1) per random tick
+///   (the wiki table: solo hydrated 14.29% = 1/7, solo dry 7.69% = 1/13,
+///   fully-hydrated farm 33.33% = 1/3 — all reproduced by this formula)
+fn grow_crop(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z: i32, b: u16) {
+    // support check first: farmland below (vanilla pops the crop on
+    // farmland loss — the game layer's break cascade handles the drop;
+    // here we only stand down if the support is gone)
+    let below = world.get_block(x, y - 1, z);
+    if below != FARMLAND {
+        return;
+    }
+    let s = world.get_state(x, y, z);
+    let age = crop_age(s);
+    let max = crop_max_age(b);
+    if age >= max {
+        return; // fully grown
+    }
+    if !light_ge_9(world, x, y, z) {
+        return; // the light gate
+    }
+    // speed level (in quarter-points to stay in integers):
+    // farmland below: 4 dry / 16 wet (×4); surroundings: 1 dry / 3 wet
+    let below_state = world.get_state(x, y - 1, z);
+    let below_wet = farmland_moisture(below_state) > 0;
+    let mut q = if below_wet { 16 } else { 4 };
+    // the 8 surrounding farmland cells (the 3×3 around the below block)
+    for (dx, dz) in [
+        (1i32, 0i32), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1),
+    ] {
+        let nb = world.get_block(x + dx, y - 1, z + dz);
+        if nb == FARMLAND {
+            let ns = world.get_state(x + dx, y - 1, z + dz);
+            q += if farmland_moisture(ns) > 0 { 3 } else { 1 };
+        }
+    }
+    // crowding: same crop on a diagonal, or in both N-S and E-W
+    let same = |dx: i32, dz: i32| world.get_block(x + dx, y, z + dz) == b;
+    let diagonal = same(1, 1) || same(1, -1) || same(-1, 1) || same(-1, -1);
+    let ns = same(1, 0) || same(-1, 0);
+    let ew = same(0, 1) || same(0, -1);
+    if diagonal || (ns && ew) {
+        q /= 2; // halved (integer quarters stay honest at odd values)
+    }
+    // chance = 1/(floor(25/speedLevel)+1); speedLevel = q/4
+    let speed_level_x4 = q.max(4) as u32; // the wiki's 1..10 range floor
+    let denom = 25 * 4 / speed_level_x4 + 1;
+    // 1-in-denom roll — deterministic per (position, TICK): unlike the
+    // wart convention's fixed per-position hash (where a given wart
+    // either grows on every tick or never), the crop ladder needs the
+    // roll to VARY tick to tick or a field would freeze forever on a
+    // bad hash draw. Mixing sched.now() keeps runs reproducible (same
+    // tick + same position → same roll) while re-rolling each tick.
+    let v = vc_rng::rng::Rng::hash3(world.seed ^ 0x0F41 ^ sched.now(), x, y, z) as u64;
+    if v % denom as u64 == 0 {
+        world.set_block_state(x, y, z, crop_state(b, age + 1));
+        on_block_changed(sched, world, x, y, z);
     }
 }
 
@@ -1203,5 +1344,175 @@ mod e2_tests {
             !bush_advances_somewhere(&mut w, 3),
             "age 3 is terminal (VERIFIED: not fully grown only)"
         );
+    }
+}
+
+// ---- backlog round (farming, 2026-09-09) tests ----
+#[cfg(test)]
+mod farm_tests {
+    use super::*;
+    use crate::ticks::TickScheduler;
+    use vc_blocks::blocks::*;
+    use vc_world::world::World;
+
+    /// the flat fully-lit test world (the e2_tests helper, local copy)
+    fn lit_flat_world() -> World {
+        let mut w = World::new(21);
+        let mut c = vc_chunk::chunk::Chunk::empty();
+        for y in 0..=64usize {
+            for lz in 0..16usize {
+                for lx in 0..16usize {
+                    c.set(lx, y, lz, GRASS);
+                }
+            }
+        }
+        w.insert_generated((0, 0), std::sync::Arc::new(c), Vec::new());
+        w.dirty.clear();
+        w
+    }
+
+
+    /// the vanilla speed-level denominators, VERIFIED against the
+    /// Tutorial:Crop_farming table: solo dry 1/13, solo hydrated 1/7,
+    /// fully-hydrated farm 1/3 — the growth roll math itself
+    #[test]
+    fn farm_growth_denominators_match_the_wiki_table() {
+        // (q in quarter-points, expected denominator)
+        // solo dry: base 2 → q=8 → floor(100/8)=12 → 13
+        // solo hydrated: base 4 → q=16 → floor(100/16)=6 → 7
+        // full farm: 4 + 8×0.75 = 10 → q=40 → floor(100/40)=2 → 3
+        // full dry farm: 2 + 8×0.25 = 4 → q=16 → 7 (the 14.29% row)
+        for (q, denom) in [(8u32, 13u32), (16, 7), (40, 3)] {
+            assert_eq!(25 * 4 / q + 1, denom, "q={q} (speedLevel={})", q as f32 / 4.0);
+        }
+    }
+
+    /// farmland hydrates when water sits at the 4-block Chebyshev
+    /// boundary, and only at the same level or one above (VERIFIED
+    /// w/Farmland §Hydration)
+    #[test]
+    fn farm_farmland_hydrates_within_the_boundary() {
+        let mut w = lit_flat_world();
+        let mut sched = TickScheduler::new();
+        // carve the farmland at (8, 64, 8): grass → farmland
+        w.set_block_state(8, 64, 8, farmland_state(0));
+        // water 4 blocks out on X (the exact boundary, same level)
+        w.set_block_state(4, 64, 8, default_state(WATER));
+        random_plant_tick(&mut w, &mut sched, 8, 64, 8);
+        assert_eq!(
+            farmland_moisture(w.get_state(8, 64, 8)),
+            7,
+            "water at Chebyshev 4 hydrates"
+        );
+        // 5 blocks out does NOT (reset + re-test)
+        w.set_block_state(8, 64, 8, farmland_state(0));
+        w.set_block_state(4, 64, 8, GRASS);
+        w.set_block_state(3, 64, 8, default_state(WATER));
+        random_plant_tick(&mut w, &mut sched, 8, 64, 8);
+        assert_eq!(
+            farmland_moisture(w.get_state(8, 64, 8)),
+            0,
+            "water at 5 blocks stays dry"
+        );
+        // one ABOVE at 4 blocks hydrates too
+        w.set_block_state(3, 64, 8, GRASS);
+        w.set_block_state(4, 65, 8, default_state(WATER));
+        random_plant_tick(&mut w, &mut sched, 8, 64, 8);
+        assert_eq!(
+            farmland_moisture(w.get_state(8, 64, 8)),
+            7,
+            "water one above at 4 hydrates"
+        );
+    }
+
+    /// the crops grow on farmland through the random-tick hook — wheat
+    /// reaches age 7 with enough ticks on hydrated farmland, and stops
+    /// at the ladder top (beetroots mature at 3, VERIFIED)
+    #[test]
+    fn farm_wheat_grows_to_maturity_on_hydrated_farmland() {
+        let mut w = lit_flat_world();
+        let mut sched = TickScheduler::new();
+        // water source beside the farmland (hydration)
+        w.set_block_state(4, 64, 8, default_state(WATER));
+        w.set_block_state(8, 64, 8, farmland_state(0));
+        w.set_block_state(8, 65, 8, crop_state(WHEAT_CROP, 0));
+        // pump ticks: 1/7 chance per tick hydrated → ~49 ticks for 7
+        // stages; 4000 ticks is overwhelmingly enough (the sched.now()
+        // mix re-rolls each tick)
+        let mut max_age = 0;
+        for _ in 0..4000 {
+            let _ = sched.tick(); // advance the tick clock (the sim does)
+            random_plant_tick(&mut w, &mut sched, 8, 64, 8); // farmland
+            random_plant_tick(&mut w, &mut sched, 8, 65, 8); // wheat
+            max_age = max_age.max(crop_age(w.get_state(8, 65, 8)));
+        }
+        assert_eq!(crop_age(w.get_state(8, 65, 8)), 7, "wheat reaches 7");
+        assert_eq!(max_age, 7);
+        // the ladder is terminal
+        random_plant_tick(&mut w, &mut sched, 8, 65, 8);
+        assert_eq!(crop_age(w.get_state(8, 65, 8)), 7, "age 7 is terminal");
+
+        // beetroots mature at 3 (the half ladder)
+        w.set_block_state(8, 65, 8, crop_state(BEETROOTS, 0));
+        for _ in 0..4000 {
+            let _ = sched.tick();
+            random_plant_tick(&mut w, &mut sched, 8, 65, 8);
+        }
+        assert_eq!(crop_age(w.get_state(8, 65, 8)), 3, "beetroots cap at 3");
+        assert_eq!(crop_max_age(BEETROOTS), 3);
+    }
+
+    /// a crop without farmland below never grows (the support gate)
+    #[test]
+    fn farm_crop_without_farmland_stands_still() {
+        let mut w = lit_flat_world();
+        let mut sched = TickScheduler::new();
+        // planted straight on grass — no farmland below
+        w.set_block_state(8, 65, 8, crop_state(WHEAT_CROP, 0));
+        for _ in 0..2000 {
+            let _ = sched.tick();
+            random_plant_tick(&mut w, &mut sched, 8, 65, 8);
+        }
+        assert_eq!(
+            crop_age(w.get_state(8, 65, 8)),
+            0,
+            "no farmland → no growth"
+        );
+        assert!(is_crop(WHEAT_CROP));
+    }
+
+    /// dehydrated + unplanted farmland decays to dirt; planted farmland
+    /// only dries (VERIFIED w/Farmland §Decay)
+    #[test]
+    fn farm_dry_unplanted_farmland_decays() {
+        let mut w = lit_flat_world();
+        let mut sched = TickScheduler::new();
+        // no water anywhere → the decay roll (1/5 per tick, per-position
+        // hash varies by sched.now) fires quickly across 2000 ticks
+        w.set_block_state(8, 64, 8, farmland_state(7));
+        let mut decayed = false;
+        for _ in 0..2000 {
+            random_plant_tick(&mut w, &mut sched, 8, 64, 8);
+            if w.get_block(8, 64, 8) == DIRT {
+                decayed = true;
+                break;
+            }
+        }
+        assert!(decayed, "dry unplanted farmland decays to dirt");
+
+        // planted: the crop protects the farmland (only dries, never
+        // converts while a crop rides it)
+        w.set_block_state(8, 64, 8, farmland_state(7));
+        w.set_block_state(8, 65, 8, crop_state(WHEAT_CROP, 0));
+        let mut stayed = true;
+        for _ in 0..2000 {
+            random_plant_tick(&mut w, &mut sched, 8, 64, 8);
+            random_plant_tick(&mut w, &mut sched, 8, 65, 8);
+            if w.get_block(8, 64, 8) == DIRT {
+                stayed = false;
+                break;
+            }
+        }
+        assert!(stayed, "planted farmland never converts while cropped");
     }
 }

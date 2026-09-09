@@ -3266,3 +3266,112 @@ Stage Summary:
   pipeline, boats/minecarts, sound-event scale
 - 593/593 still green; no code changes (doc-accuracy round only); the
   README no longer contradicts the code on day length or block counts
+
+---
+
+## 2026-09-09 — render-bug triage round: "block outlines everywhere" + beach water + GPU meshing breaks the web preview
+
+**Task:** user attached a live screenshot reporting three issues: (1) block
+outline/grid visible on all distant blocks, (2) water artifacts at a beach,
+(3) turning the GPU Chunk Meshing option on in the web preview breaks
+rendering entirely ("idk why"). Full live reproduction + root-cause + fix
+for each.
+
+**Method:** VLM screenshot analysis → source audit → live reproduction in
+headless Chrome 151 + WebGPU (the preview's real backend) driven via the
+`__vcCmds` E2E queue, with pre-boot JS hooks on
+`requestAdapter`/`requestDevice`/`GPUQueue.submit`/`GPUBuffer.mapAsync` to
+trace exactly which GPU calls the engine makes and what fails.
+
+**Bug 1 — "block outlines on all distant blocks" (was: texture-atlas
+sampling, two stacked defects):**
+- The `textureSampleGrad` gradient was **32× too large**: the atlas
+  coordinate is `tuv = (tile + fract(uv)) / 32` over the 512×512 atlas, so
+  its screen derivative is `dpdx(uv) / 512` — the code passed
+  `dpdx(uv) / 16` (the *within-tile* derivative), selecting mips ~5 levels
+  too deep for any distance beyond a couple of blocks. With the default
+  Mipmap 4 + Aniso 4, deep mips average whole tiles AND their atlas
+  neighbors → a dark grid over mid/far terrain that reads as "outlines on
+  every block". Fixed to `/ 512` in both TERRAIN_SHADER and WATER_SHADER.
+- The inset upper bound `0.96875` (t = 15.5 texels) sits exactly ON the
+  texel-15/16 boundary: bilinear/aniso blending there pulls **50% of the
+  neighboring atlas tile** into the outer half-texel of every face — a thin
+  dark line at every block edge. Fixed to `15/16` (pure texel 15; the lower
+  bound 0.5/16 was already safe — it blends texels 0+1, both in-tile).
+- Drift-guard test updated to the new constants + two new guards
+  (`!src.contains("dpdx(in.uv) / vec2<f32>(16.0, 16.0)")` and the flat-water
+  guard below).
+
+**Bug 2 — beach water ("stacked cubes at varying heights", visible walls
+through the surface, dark navy double-tint):**
+- Removed the per-vertex sine wobble (±0.07): vanilla 1.16.5 water is a
+  FLAT surface at 14/16 with all motion in the scrolling texture; at
+  distance the per-vertex waves alias into exactly the "stacked cubes"
+  jaggedness the VLM described.
+- Water pipeline depth-write ON: water regions draw far→near with no cull,
+  so without depth writes every fragment blended (the same wall tinted
+  twice through front+back faces, far walls visible through the near
+  surface — "cube edges behind other water blocks"). Write-ON +
+  CompareFunction::Less makes each fragment blend exactly once and layers
+  near-over-far correctly; the draw order (terrain → selection → water)
+  keeps submerged outlines visible, matching the vanilla-critical case.
+  Disclosed trade-off in the pipeline comment: particles/clouds drawn
+  after water are now depth-occluded by the surface (vanilla instead does
+  per-quad translucent sorting, which region buffers can't express).
+
+**Bug 3 — GPU meshing breaks the web preview (THREE stacked causes, all
+reproduced live):**
+1. **The freeze** (the actual "full rendering gets broken"): wgpu 22's
+   browser backend silently kills the winit event loop inside
+   `create_buffer_init` — the `mappedAtCreation`+`getMappedRange` write
+   path. Reproduced with binary-search instrumentation: the loop dies at
+   the FIRST `mk_in` call of a batch (a 4 KB params buffer!), with no
+   panic, no JS exception, page thread alive but the event loop descheduled
+   (stats object stops being republished; even real canvas events can't
+   revive it). A persisted `gmesh=1` made every boot freeze mid-loading.
+   Fix: `create_buffer` + `queue.write_buffer` (the path the renderer's
+   own uploads use — battle-tested on the web).
+2. **The readback stall/churn**: on this device every `mapAsync` rejects
+   with "A valid external Instance reference no longer exists" (5995/5995
+   readback rejections measured; hand-made JS devices on the same page map
+   fine — a wgpu-22 browser-context lifetime limitation, not our bug).
+   Each rejection previously dropped the batch silently → infinite
+   resubmit churn (~30 MB of buffers per cycle). Fix: a rejected readback
+   (rx Disconnected) now counts as a watchdog strike → after 2 strikes the
+   session routes all meshing through the CPU path (self-healing; the
+   world finishes loading instead of spinning). The watchdog also now runs
+   on wasm via `web_time::Instant` (std Instant is unusable there), and
+   `Device::poll(Poll)` runs on all platforms.
+3. **The vanish**: toggling gmesh called `remesh_all()`, clearing every
+   GPU mesh (drawn 67→18 live) for a 30–60 s CPU rebuild hole — the
+   visible half of "breaks rendering". The two meshers are bit-identical
+   by the parity contract, so the remesh was unnecessary: removed from
+   both the options-screen toggle and the e2e `gmesh` command (future
+   dirty sections simply route differently). Toggling is now instant and
+   visually a no-op.
+- Also pinned the `wgpu::Instance` in the Renderer (dropped after init on
+  the browser backend its JS objects become GC-eligible — suspected in the
+  mapAsync failure; harmless hardening).
+
+**Verification:** live in headless Chrome+WebGPU with the rebuilt bundle —
+`gmesh:1` toggle: drawn stays 51 (no vanish), fps ~50 (no freeze), setting
+round-trips, block edits flow; the strike/fallback path proven in the
+pre-fix builds (strike 1/2 + 2/2 logged, world recovers). Native suite:
+465 lib tests green across all crates (the game crate's native binary
+can't link in this sandbox — alsa-sys headers; wasm32 lib compiles clean
+and the CI stage covers it). Web bundle rebuilt + deployed to `public/`
+(the locked pair). Visual verification of bugs 1–2 is analytic + test
+guarded: headless SwiftShader can't composite the WebGPU canvas to a
+screenshot (SharedImage mailbox errors) — the proof is the math (the
+atlas-coordinate derivative + texel-boundary inset) plus the updated
+drift guards; the user's real-GPU preview is the final check.
+
+Stage Summary:
+- Three user-visible render bugs root-caused and fixed: atlas gradient
+  32× scale + boundary inset (the distant-block "outlines"), flat water +
+  depth-write (the beach artifacts), and the three-part GPU-meshing web
+  fix (no-freeze buffer path, self-healing readback fallback, no
+  remesh_all churn)
+- New/updated test guards: seam-guard constants (0.9375 / 512.0 + the
+  anti-regression /16 check), flat-water guard
+- 465/465 lib tests green; wasm bundle rebuilt and deployed

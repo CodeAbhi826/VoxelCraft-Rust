@@ -429,6 +429,33 @@ fn thunder_recipe() -> Vec<f32> {
 /// procedural music pad: a slow chord progression of low-passed sines with
 /// a gentle tremolo. `minor` picks the night variant. ~24 s, streaming
 /// category (played sparsely by the scheduler).
+
+/// Backlog round (farming, 2026-09-09): the hoe-till "thock" — a
+/// clean-room short soil-thump: a 90 Hz body with a fast decay, a
+/// bright noise scrape for the blade cut, and a duller 55 Hz tail for
+/// the soil settle. Not any vanilla recording; the recipe shape only.
+fn hoe_till_recipe() -> Vec<f32> {
+    let dur = 0.28;
+    let n = (dur * RATE as f32) as usize;
+    let mut out = Vec::with_capacity(n);
+    let mut hp = 0.0f32;
+    let mut rng = vc_rng::rng::Rng::new(0x0F_41D1);
+    for i in 0..n {
+        let t = i as f32 / RATE as f32;
+        // the body: 90 Hz thump, gone in ~120 ms
+        let body = (2.0 * std::f32::consts::PI * 90.0 * t).sin() * (-(t * 18.0)).exp();
+        // the cut: high-passed noise burst (the blade through soil)
+        let noise = rng.next_f32() * 2.0 - 1.0;
+        hp += 0.35 * (noise - hp);
+        let cut = (noise - hp) * (-(t * 30.0)).exp() * 0.8;
+        // the settle: a 55 Hz tail under everything
+        let settle = (2.0 * std::f32::consts::PI * 55.0 * t).sin() * (-(t * 6.0)).exp() * 0.5;
+        let v = body * 1.1 + cut * 0.5 + settle;
+        out.push(v.clamp(-1.0, 1.0));
+    }
+    out
+}
+
 fn music_pad(minor: bool) -> Vec<f32> {
     // two-chord progression, root A3/F3 (night) and C4/F4-ish (day)
     let chords: [[f32; 4]; 2] = if minor {
@@ -507,6 +534,8 @@ impl SoundBank {
             ("block/lever", lever_recipe()),
             ("ambient/eerie", eerie_recipe()),
             ("ambient/thunder", thunder_recipe()),
+            // backlog round (farming): the hoe-till thock
+            ("item/hoe/till", hoe_till_recipe()),
             ("music/pad_day", music_pad(false)),
             ("music/pad_night", music_pad(true)),
             ("block/brewing_bubble", bubble_recipe()),
@@ -783,6 +812,7 @@ pub const SOUNDS_JSON: &str = r##"{
   "entity.item.pickup":  {"category": "players", "volume": 0.45, "pitch": [0.9, 1.3], "sounds": [{"name": "entity/item/pickup"}]},
   "ambient.eerie":       {"category": "ambient", "volume": 0.55, "pitch": [0.85, 1.3], "attenuation": 0, "sounds": [{"name": "ambient/eerie"}]},
   "ambient.thunder":     {"category": "ambient", "volume": 1.0, "pitch": [0.9, 1.1], "attenuation": 0, "sounds": [{"name": "ambient/thunder"}]},
+  "item.hoe.till":       {"category": "blocks", "volume": 0.8, "pitch": [0.9, 1.15], "attenuation": 12, "sounds": [{"name": "item/hoe/till"}]},
   "music.pad.day":       {"category": "music", "volume": 0.5, "sounds": [{"name": "music/pad_day", "stream": true}]},
   "music.pad.night":     {"category": "music", "volume": 0.5, "sounds": [{"name": "music/pad_night", "stream": true}]},
   "block.brewing_stand.bubble": {"category": "blocks", "volume": 0.7, "pitch": [0.9, 1.15], "attenuation": 12, "sounds": [{"name": "block/brewing_bubble"}]},

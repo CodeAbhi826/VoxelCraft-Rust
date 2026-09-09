@@ -2290,8 +2290,18 @@ pub fn v15_state(b: u16) -> Option<u16> {
         SPAWN_EGG_CAVE_SPIDER => Some(V15_STATE_BASE + 24),
         SPAWN_EGG_SILVERFISH => Some(V15_STATE_BASE + 25),
         MELON_SLICE => Some(V15_STATE_BASE + 28),
-        // ---- backlog round (V16 window) ----
+        // ---- backlog round (farming, 2026-09-09) ----
         FIRE => Some(V16_STATE_BASE),
+        FARMLAND => Some(V16_FARMLAND_BASE), // moisture 0
+        WHEAT_CROP => Some(V16_WHEAT_BASE),  // age 0
+        CARROTS => Some(V16_CARROTS_BASE),
+        POTATOES => Some(V16_POTATOES_BASE),
+        BEETROOTS => Some(V16_BEETROOTS_BASE),
+        // the farming ITEM identity states (inventory-only, never
+        // world-stored — the melon-slice pattern)
+        WHEAT => Some(V16_STATE_BASE + 37),
+        BREAD => Some(V16_STATE_BASE + 38),
+        HOE => Some(V16_STATE_BASE + 39),
         _ => None,
     }
 }
@@ -2303,12 +2313,100 @@ pub fn is_v15_state(s: u16) -> bool {
 
 /// Backlog round (2026-09-09): the V16 state window — the weather/
 /// farming/door/bed/TNT/jukebox brackets' state allocations.
+/// 805 = fire; 806..=813 farmland moisture 0..7; 814..=821 wheat age
+/// 0..7; 822..=829 carrots age 0..7; 830..=837 potatoes age 0..7;
+/// 838..=841 beetroots age 0..3 (farming bracket, 2026-09-09).
 pub const V16_STATE_BASE: u16 = 805;
-pub const V16_COUNT: u16 = 1;
+pub const V16_COUNT: u16 = 40;
 /// V16 state -> block fold: index = state − V16_STATE_BASE.
 pub const V16_STATE_TO_BLOCK: [u16; V16_COUNT as usize] = [
-    FIRE, // 805 — the fire block's identity state
+    FIRE,       // 805 — the fire block's identity state
+    FARMLAND,   // 806..=813 — moisture 0..7
+    FARMLAND, FARMLAND, FARMLAND, FARMLAND, FARMLAND, FARMLAND, FARMLAND,
+    WHEAT_CROP, // 814..=821 — age 0..7
+    WHEAT_CROP, WHEAT_CROP, WHEAT_CROP, WHEAT_CROP, WHEAT_CROP, WHEAT_CROP, WHEAT_CROP,
+    CARROTS,    // 822..=829 — age 0..7
+    CARROTS, CARROTS, CARROTS, CARROTS, CARROTS, CARROTS, CARROTS,
+    POTATOES,   // 830..=837 — age 0..7
+    POTATOES, POTATOES, POTATOES, POTATOES, POTATOES, POTATOES, POTATOES,
+    BEETROOTS,  // 838..=841 — age 0..3
+    BEETROOTS, BEETROOTS, BEETROOTS,
+    WHEAT,      // 842 — the wheat item identity state
+    BREAD,      // 843 — the bread item identity state
+    HOE,        // 844 — the hoe item identity state
 ];
+
+/// farmland state-window offsets (moisture 0..7 — >0 = hydrated,
+/// VERIFIED w/Farmland §Block states: moisture 0-7).
+pub const V16_FARMLAND_BASE: u16 = V16_STATE_BASE + 1; // 806
+pub const V16_WHEAT_BASE: u16 = V16_STATE_BASE + 9; // 814
+pub const V16_CARROTS_BASE: u16 = V16_STATE_BASE + 17; // 822
+pub const V16_POTATOES_BASE: u16 = V16_STATE_BASE + 25; // 830
+pub const V16_BEETROOTS_BASE: u16 = V16_STATE_BASE + 33; // 838
+
+/// farmland state at a given moisture (clamped 0..7).
+#[inline]
+pub fn farmland_state(moisture: u8) -> u16 {
+    V16_FARMLAND_BASE + (moisture.min(7)) as u16
+}
+
+/// farmland moisture (0..7) from its storage state.
+#[inline]
+pub fn farmland_moisture(s: u16) -> u8 {
+    if is_v16_state(s) {
+        (s - V16_FARMLAND_BASE).min(7) as u8
+    } else {
+        0
+    }
+}
+
+/// crop age from a farming-bracket state (wheat/carrots/potatoes 0..7,
+/// beetroots 0..3; non-crop states fold to 0).
+#[inline]
+pub fn crop_age(s: u16) -> u8 {
+    if !is_v16_state(s) {
+        return 0;
+    }
+    match s {
+        s if (V16_WHEAT_BASE..=V16_WHEAT_BASE + 7).contains(&s) => {
+            (s - V16_WHEAT_BASE) as u8
+        }
+        s if (V16_CARROTS_BASE..=V16_CARROTS_BASE + 7).contains(&s) => {
+            (s - V16_CARROTS_BASE) as u8
+        }
+        s if (V16_POTATOES_BASE..=V16_POTATOES_BASE + 7).contains(&s) => {
+            (s - V16_POTATOES_BASE) as u8
+        }
+        s if (V16_BEETROOTS_BASE..=V16_BEETROOTS_BASE + 3).contains(&s) => {
+            (s - V16_BEETROOTS_BASE) as u8
+        }
+        _ => 0,
+    }
+}
+
+/// the max age of a crop block (beetroots 3, the wheat ladder 7).
+#[inline]
+pub fn crop_max_age(block: u16) -> u8 {
+    if block == BEETROOTS {
+        3
+    } else {
+        7
+    }
+}
+
+/// state for a crop block at a given age (clamped to the block's ladder).
+#[inline]
+pub fn crop_state(block: u16, age: u8) -> u16 {
+    let max = crop_max_age(block);
+    let a = age.min(max) as u16;
+    match block {
+        WHEAT_CROP => V16_WHEAT_BASE + a,
+        CARROTS => V16_CARROTS_BASE + a,
+        POTATOES => V16_POTATOES_BASE + a,
+        BEETROOTS => V16_BEETROOTS_BASE + a,
+        _ => farmland_state(0),
+    }
+}
 
 #[inline]
 pub fn is_v16_state(s: u16) -> bool {
@@ -3008,7 +3106,7 @@ pub fn item_state_block(s: u16) -> Option<u16> {
     }
 }
 
-pub const BLOCK_COUNT: usize = 507; // + the backlog round's Fire (506 — lightning ignition + flint-and-steel source)
+pub const BLOCK_COUNT: usize = 515; // + the backlog fire (506) + the farming set (507-514: farmland, 4 crops, wheat, bread, hoe)
 /// [merge renumber] acacia/dark-oak log axis states moved to 443..=446
 /// (past the E-series states, which end at 354; V2 base is now 400)
 /// acacia/dark-oak log axis states (the V2 log window — same pattern as
@@ -3045,7 +3143,7 @@ pub const DARK_OAK_LOG_Z: u16 = 446;
 /// items + eggs 20..=22 + the POWER-state ladders (317..=399)
 /// [merge renumber] F-series states: V2 400..=442 + log-axis 443..=446,
 /// V3 447..=465, V4 466..=475, V5 476..=479, V6 480..=485 (audit-fix)
-pub const STATE_COUNT: usize = 806; // the backlog round's V16 window: 805 = fire (V15 states 776..=804)
+pub const STATE_COUNT: usize = 845; // the V16 window: 805 fire + 806-841 farming states + 842-844 the item identity states
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -3851,6 +3949,23 @@ pub fn state_description(s: u16) -> String {
     if (V10_STATE_BASE + 2..=V10_STATE_BASE + 5).contains(&s) {
         return format!("Sweet Berry Bush[age={}]", berry_bush_age(s));
     }
+    // ---- backlog round (farming, 2026-09-09): the V16 property lines
+    // (the F3 Targeted Block rows — vanilla blockstate names) ----
+    if is_v16_state(s) && (V16_FARMLAND_BASE..=V16_FARMLAND_BASE + 7).contains(&s) {
+        return format!("Farmland[moisture={}]", farmland_moisture(s));
+    }
+    if is_v16_state(s) && (V16_WHEAT_BASE..=V16_WHEAT_BASE + 7).contains(&s) {
+        return format!("Wheat Crop[age={}]", crop_age(s));
+    }
+    if is_v16_state(s) && (V16_CARROTS_BASE..=V16_CARROTS_BASE + 7).contains(&s) {
+        return format!("Carrots[age={}]", crop_age(s));
+    }
+    if is_v16_state(s) && (V16_POTATOES_BASE..=V16_POTATOES_BASE + 7).contains(&s) {
+        return format!("Potatoes[age={}]", crop_age(s));
+    }
+    if is_v16_state(s) && (V16_BEETROOTS_BASE..=V16_BEETROOTS_BASE + 3).contains(&s) {
+        return format!("Beetroots[age={}]", crop_age(s));
+    }
     if is_v10_state(s) && (V10_STATE_BASE + 6..=V10_STATE_BASE + 7).contains(&s) {
         return format!("Campfire[lit={}]", campfire_lit(s));
     }
@@ -4222,6 +4337,41 @@ pub fn state_tiles(s: u16) -> [u16; 4] {
                 TILE_GLAZED_SIDE_BASE + c,
             ]
         }
+        // ---- backlog round (farming, 2026-09-09) ----
+        // farmland: the moisture state selects dry vs wet soil
+        // (visual is binary, VERIFIED w/Farmland — moisture 0 dry,
+        // 1..7 wet)
+        s if is_v16_state(s) && (V16_FARMLAND_BASE..=V16_FARMLAND_BASE + 7).contains(&s) => {
+            let t = if farmland_moisture(s) > 0 {
+                TILE_FARMLAND_WET
+            } else {
+                TILE_FARMLAND_DRY
+            };
+            [t, t, t, t]
+        }
+        // wheat: age 0..7 — one tile per stage (the golden tint at
+        // maturity, VERIFIED w/Wheat_Crops §Block states)
+        s if is_v16_state(s) && (V16_WHEAT_BASE..=V16_WHEAT_BASE + 7).contains(&s) => {
+            let t = TILE_WHEAT_BASE + (s - V16_WHEAT_BASE);
+            [t, t, t, t]
+        }
+        // carrots/potatoes: 8-stage ladder mapped onto 4 tiles (stage =
+        // age/2, vanilla's own texture mapping)
+        s if is_v16_state(s) && (V16_CARROTS_BASE..=V16_CARROTS_BASE + 7).contains(&s) => {
+            let stage = (s - V16_CARROTS_BASE) / 2;
+            let t = TILE_CARROTS_BASE + stage;
+            [t, t, t, t]
+        }
+        s if is_v16_state(s) && (V16_POTATOES_BASE..=V16_POTATOES_BASE + 7).contains(&s) => {
+            let stage = (s - V16_POTATOES_BASE) / 2;
+            let t = TILE_POTATOES_BASE + stage;
+            [t, t, t, t]
+        }
+        // beetroots: age 0..3, one tile per stage
+        s if is_v16_state(s) && (V16_BEETROOTS_BASE..=V16_BEETROOTS_BASE + 3).contains(&s) => {
+            let t = TILE_BEETROOTS_BASE + (s - V16_BEETROOTS_BASE);
+            [t, t, t, t]
+        }
         _ => {
             // fold property states to their block (model geometry supplies
             // the real tiles; these are for the HUD/hotbar blit path)
@@ -4265,7 +4415,32 @@ pub fn log_axis_state(block: u16, axis: u8) -> u16 {
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
 // [merge] E-series tiles end at 243; the F-series (1.7.2-1.10) tiles
 // continue at 244..=325; the audit-fix round adds 326..=332
-pub const TILE_MAX: u16 = 738; // the backlog round: 736/737 = rain streak + snowflake particle sprites, 738 = fire (weather bracket)
+pub const TILE_MAX: u16 = 763; // the backlog round: 736/737 rain+snow sprites, 738 fire, 739-763 the farming set (farming bracket)
+
+// ---- the farming bracket's tiles (739..=763, 2026-09-09) — all
+// clean-room procedural art (farming_art.rs), NOT vanilla assets ----
+/// dry farmland (moisture 0) — light tilled rows.
+pub const TILE_FARMLAND_DRY: u16 = 739;
+/// hydrated farmland (moisture 1..7) — the dark wet soil variant.
+pub const TILE_FARMLAND_WET: u16 = 740;
+/// wheat growth stage art (741..=748 — age 0..7, one tile per stage;
+/// the golden tint arrives with the mature stages).
+pub const TILE_WHEAT_BASE: u16 = 741;
+/// carrot stage art (749..=752 — 4 tiles mapped onto the 8-stage ladder
+/// like vanilla: stage = age/2; the leafy tops + orange root shoulders).
+pub const TILE_CARROTS_BASE: u16 = 749;
+/// potato stage art (753..=756 — same 4-tile/8-stage mapping; the bushy
+/// tops + tan root shoulders).
+pub const TILE_POTATOES_BASE: u16 = 753;
+/// beetroot stage art (757..=760 — age 0..3, one tile per stage; the
+/// purple-tinged leaves + the beet shoulders at maturity).
+pub const TILE_BEETROOTS_BASE: u16 = 757;
+/// the wheat item sprite (761 — three golden stalks).
+pub const TILE_WHEAT_ITEM: u16 = 761;
+/// the bread item sprite (762 — the classic loaf silhouette).
+pub const TILE_BREAD: u16 = 762;
+/// the hoe item sprite (763 — wooden-handled tilling blade).
+pub const TILE_HOE: u16 = 763;
 /// 1.11 egg tiles (egg-shaped, egg order 23..=28 = llama, vindicator,
 /// evoker, vex, husk, stray) — the E1/E2/E3 egg-art convention
 /// (e1_art::egg_art + palettes), replacing the interrupted round's
@@ -4633,6 +4808,39 @@ pub const TILE_FIRE: u16 = 738;
 /// source; VERIFIED w/Weather §Lightning).
 pub const FIRE: u16 = 506;
 
+// ---- backlog round (farming, 2026-09-09): the 1.16.5 farming set —
+// FARMLAND + the four seed crops (VERIFIED live 2026-09-09 against the
+// minecraft.wiki captures: Farmland/Wheat_Crops/Beetroot/Carrot/Potato/
+// Tutorial:Crop_farming — see scripts/backlog_page_*.json) ----
+/// farmland — created by a hoe on dirt/grass (moisture 0..7 state row;
+/// >0 = hydrated, VERIFIED w/Farmland §Hydration: water "up to four
+/// blocks away horizontally (including diagonally)... at the same level
+/// or one block above"; dehydrated+empty farmland decays to dirt §Decay).
+pub const FARMLAND: u16 = 507;
+/// wheat crop — 8 growth stages (age 0..7, "Fully grown" at 7,
+/// VERIFIED w/Wheat_Crops §Block states: age 0-7).
+pub const WHEAT_CROP: u16 = 508;
+/// carrots crop — age 0..7 (same 8-stage ladder as wheat, VERIFIED
+/// w/Carrot §Block states).
+pub const CARROTS: u16 = 509;
+/// potatoes crop — age 0..7 (VERIFIED w/Potato §Block states).
+pub const POTATOES: u16 = 510;
+/// beetroots crop — age 0..3, mature at 3 (VERIFIED w/Beetroot_Seeds
+/// §Block states: age 0-3 — HALF the wheat ladder).
+pub const BEETROOTS: u16 = 511;
+/// wheat — the harvest item (inedible; crafts into bread/hay/cake,
+// breeds cows/sheeps/mooshrooms. VERIFIED w/Wheat_Crops §Breeding).
+pub const WHEAT: u16 = 512;
+/// bread — the first farmable food (hunger 5 → 2.5 HP on the engine's
+/// hunger/2 scale, VERIFIED w/Bread: "Restores 5 hunger points");
+/// crafted 3 wheat in a row.
+pub const BREAD: u16 = 513;
+/// the hoe — the tilling tool ("Farmland is a block created by using a
+/// hoe on most types of dirt", VERIFIED w/Farmland §Obtaining; the
+/// engine's single generic hoe = vanilla's wooden tier, no durability
+/// system — disclosed).
+pub const HOE: u16 = 514;
+
 /// inventory-only ITEM blocks (potions/bottles/books): never placeable in
 /// the world — right-click drinks (potions) / fills (glass bottle at water).
 #[inline]
@@ -4734,6 +4942,12 @@ pub fn is_item_block(b: u16) -> bool {
             | POTION_REGEN
             | POTION_REGEN_II
             | POTION_REGEN_LONG
+            // ---- backlog round (farming, 2026-09-09): the wheat +
+            // bread food/craft items and the hoe (the tilling tool —
+            // the till branch catches its use; never placeable) ----
+            | WHEAT
+            | BREAD
+            | HOE
     ) || is_spawn_egg(b)
         || (DYE_BASE..=DYE_END).contains(&b)
         || is_seeds(b)
@@ -5590,6 +5804,23 @@ pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     // on random ticks — the burnout timer lives in the game layer's
     // random-tick hook (rain-accelerated).
     d("Fire", [TILE_FIRE, TILE_FIRE, TILE_FIRE], false, false, true, false, 15, SoundFamily::Grass),
+    // ---- backlog round (farming, 2026-09-09): the farming set ----
+    // farmland: solid but NOT full-height (vanilla 15/16 — the crop
+    // support + the hydration/decay/ladder states live in the sim's
+    // random-tick hook; VERIFIED w/Farmland: hardness 0.6, shovel).
+    // Modeled full-height solid (the engine's no-partial-height
+    // convention, disclosed).
+    d("Farmland", [TILE_FARMLAND_DRY, TILE_FARMLAND_DRY, TILE_FARMLAND_DRY], true, true, false, false, 0, SoundFamily::Dirt),
+    // the four crops: non-solid cross plants like the berry bush
+    d("Wheat Crop", [TILE_WHEAT_BASE, TILE_WHEAT_BASE, TILE_WHEAT_BASE], false, false, true, false, 0, SoundFamily::Grass),
+    d("Carrots", [TILE_CARROTS_BASE, TILE_CARROTS_BASE, TILE_CARROTS_BASE], false, false, true, false, 0, SoundFamily::Grass),
+    d("Potatoes", [TILE_POTATOES_BASE, TILE_POTATOES_BASE, TILE_POTATOES_BASE], false, false, true, false, 0, SoundFamily::Grass),
+    d("Beetroots", [TILE_BEETROOTS_BASE, TILE_BEETROOTS_BASE, TILE_BEETROOTS_BASE], false, false, true, false, 0, SoundFamily::Grass),
+    // the items: wheat (crafting/breeding), bread (hunger-5 food), the
+    // hoe (tilling tool) — cross-rendered item sprites
+    d("Wheat", [TILE_WHEAT_ITEM, TILE_WHEAT_ITEM, TILE_WHEAT_ITEM], false, false, true, false, 0, SoundFamily::Grass),
+    d("Bread", [TILE_BREAD, TILE_BREAD, TILE_BREAD], false, false, true, false, 0, SoundFamily::Grass),
+    d("Hoe", [TILE_HOE, TILE_HOE, TILE_HOE], false, false, true, false, 0, SoundFamily::Wood),
 ];
 
 #[inline]
@@ -5659,7 +5890,7 @@ pub fn face_visible(b: u16, n: u16) -> bool {
 /// (needs fluid sim to be fun). Potions are item-blocks — usable from the
 /// hotbar (drink), never placeable. Phase E1 adds the 1.0–1.2 bracket
 /// blocks/items + the 16 spawn eggs (creative-only items, w/Spawn_Egg).
-pub const PICKER_BLOCKS: [u16; 459] = [
+pub const PICKER_BLOCKS: [u16; 467] = [
     GRASS, DIRT, STONE, COBBLE, SMOOTH_STONE, STONE_BRICKS, BRICKS, MOSSY_COBBLE,
     GRANITE, DIORITE, ANDESITE, OBSIDIAN,
     SAND, GRAVEL, CLAY, TERRACOTTA,
@@ -5836,6 +6067,9 @@ pub const PICKER_BLOCKS: [u16; 459] = [
     POTION_LEAPING, POTION_LEAPING_II, POTION_LEAPING_LONG,
     POTION_REGEN, POTION_REGEN_II, POTION_REGEN_LONG,
     SPAWN_EGG_GHAST, SPAWN_EGG_CAVE_SPIDER, SPAWN_EGG_SILVERFISH,
+    // ---- backlog round (farming, 2026-09-09) ----
+    FARMLAND, WHEAT_CROP, CARROTS, POTATOES, BEETROOTS,
+    WHEAT, BREAD, HOE,
 ];
 
 /// default hotbar palette
@@ -6501,8 +6735,8 @@ mod state_tests {
         // with the 1.7.2–1.10 F-series: 276 blocks / 480 states
         // (E-series states end at 354; V2 400..=442, V3 447..=465,
         // V4 466..=475, V5 476..=479)
-        assert_eq!(BLOCK_COUNT, 507, "merged registry + V6..V14 + the audit V15 window + the backlog fire");
-        assert_eq!(STATE_COUNT, 806, "merged state space + the backlog V16 window (805 = fire)");
+        assert_eq!(BLOCK_COUNT, 515, "merged registry + V6..V14 + the audit V15 window + the backlog fire + the farming set");
+        assert_eq!(STATE_COUNT, 845, "merged state space + the V16 window (fire + farming + item identities)");
         assert_eq!(BLOCK_TABLE.len(), BLOCK_COUNT);
         for want in [
             COAL_BLOCK,
@@ -6553,8 +6787,8 @@ mod v110_tests {
             assert_eq!(default_state(b), s);
             assert!(is_v5_state(s));
         }
-        assert_eq!(BLOCK_COUNT, 507); // + the backlog fire (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 806); // + the backlog V16 fire state (state windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 515); // + the backlog fire (block windows are cumulative)
+        assert_eq!(STATE_COUNT, 845); // + the backlog V16 fire state (state windows are cumulative)
     }
 
     /// magma emits light level 3 (VERIFIED — minecraft.wiki/w/Magma_Block,
@@ -6591,8 +6825,8 @@ mod auditfix_tests {
             assert!(!is_model_state(s), "V6 states are cube/cross defs, not model states");
         }
         assert_eq!(V6_COUNT, 6);
-        assert_eq!(BLOCK_COUNT, 507); // + the backlog fire (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 806); // + the backlog V16 fire state (state windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 515); // + the backlog fire (block windows are cumulative)
+        assert_eq!(STATE_COUNT, 845); // + the backlog V16 fire state (state windows are cumulative)
         // solidity classes: log/planks solid-opaque (hardness family 2
         // per w/Log + w/Planks), leaves see-through, vine/fern non-solid
         // cross plants (w/Vines: "climbable non-solid"; w/Fern:
@@ -6641,8 +6875,8 @@ mod v111_tests {
             assert_eq!(default_state(b), s, "block {b} default state");
             assert_eq!(state_block(s), b, "state {s} folds back");
         }
-        assert_eq!(BLOCK_COUNT, 507); // + the backlog fire (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 806); // + the backlog V16 fire state (state windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 515); // + the backlog fire (block windows are cumulative)
+        assert_eq!(STATE_COUNT, 845); // + the backlog V16 fire state (state windows are cumulative)
         // mansion spawner states fold to SPAWNER + decode their kinds
         assert_eq!(state_block(SPAWNER_VINDICATOR), SPAWNER);
         assert_eq!(state_block(SPAWNER_EVOKER), SPAWNER);
@@ -6746,8 +6980,8 @@ mod v112_tests {
         }
         assert_eq!(default_state(COOKIE), V8_STATE_BASE + 117);
         // bounds
-        assert_eq!(BLOCK_COUNT, 507);
-        assert_eq!(STATE_COUNT, 806);
+        assert_eq!(BLOCK_COUNT, 515);
+        assert_eq!(STATE_COUNT, 845);
         assert_eq!(CONCRETE_BASE + 15, CONCRETE_END);
         assert_eq!(CONCRETE_POWDER_BASE + 15, CONCRETE_POWDER_END);
         assert_eq!(GLAZED_TERRACOTTA_BASE + 15, GLAZED_TERRACOTTA_END);
@@ -6820,7 +7054,7 @@ mod v112_tests {
             assert!(PICKER_BLOCKS.contains(&b), "picker missing {b}");
         }
         assert!(TILE_MAX >= TILE_ILLUSIONER, "1.12 tiles within the atlas guard");
-        assert_eq!(PICKER_BLOCKS.len(), 459);
+        assert_eq!(PICKER_BLOCKS.len(), 467);
         // the V9 + V10 windows are all present (the picker-gap fix)
         for want in [SEA_PICKLE, CONDUIT, SPAWN_EGG_TURTLE, BAMBOO, CAMPFIRE, BARREL, SPAWN_EGG_FOX, STICK, CHARCOAL] {
             assert!(PICKER_BLOCKS.contains(&want), "picker missing {want}");
@@ -6886,8 +7120,8 @@ mod v114_tests {
             "unlit tile"
         );
         // bounds + window shape
-        assert_eq!(BLOCK_COUNT, 507);
-        assert_eq!(STATE_COUNT, 806);
+        assert_eq!(BLOCK_COUNT, 515);
+        assert_eq!(STATE_COUNT, 845);
         assert_eq!(V10_COUNT, 13);
         assert_eq!(BAMBOO, 417);
         assert_eq!(CHARCOAL, 425);
@@ -6988,8 +7222,8 @@ mod v114_tests {
         assert!(TILE_MAX >= TILE_LILY_OF_THE_VALLEY, "flower tiles within the atlas guard");
         // bounds + window shape
         assert_eq!(V11_COUNT, 9);
-        assert_eq!(BLOCK_COUNT, 507);
-        assert_eq!(STATE_COUNT, 806);
+        assert_eq!(BLOCK_COUNT, 515);
+        assert_eq!(STATE_COUNT, 845);
     }
 }
 
@@ -7074,9 +7308,9 @@ mod v115_tests {
         assert!(TILE_MAX >= TILE_BEEHIVE_FRONT_HONEY, "honey front within the atlas guard");
         // bounds + window shape
         assert_eq!(V12_COUNT, 18);
-        assert_eq!(BLOCK_COUNT, 507);
-        assert_eq!(STATE_COUNT, 806);
-        assert_eq!(PICKER_BLOCKS.len(), 459);
+        assert_eq!(BLOCK_COUNT, 515);
+        assert_eq!(STATE_COUNT, 845);
+        assert_eq!(PICKER_BLOCKS.len(), 467);
     }
 }
 #[cfg(test)]
@@ -7222,9 +7456,9 @@ mod v116_tests {
         // bounds + window shape
         assert_eq!(V13_COUNT, 34);
         assert_eq!(V13_STATE_BASE + V13_COUNT, 750);
-        assert_eq!(BLOCK_COUNT, 507);
-        assert_eq!(STATE_COUNT, 806);
-        assert_eq!(PICKER_BLOCKS.len(), 459);
+        assert_eq!(BLOCK_COUNT, 515);
+        assert_eq!(STATE_COUNT, 845);
+        assert_eq!(PICKER_BLOCKS.len(), 467);
     }
 
     /// the V14 window (ids 454..=478, states 750..=775): the
@@ -7405,9 +7639,9 @@ mod v116_tests {
         // spawner states)
         assert_eq!(V15_COUNT, 29);
         assert_eq!(V15_STATE_BASE + V15_COUNT, 805);
-        assert_eq!(BLOCK_COUNT, 507);
-        assert_eq!(STATE_COUNT, 806);
-        assert_eq!(PICKER_BLOCKS.len(), 459);
+        assert_eq!(BLOCK_COUNT, 515);
+        assert_eq!(STATE_COUNT, 845);
+        assert_eq!(PICKER_BLOCKS.len(), 467);
     }
 
     /// the V15 window (ids 479..=504, states 776..=803): the
@@ -7469,5 +7703,147 @@ mod v116_tests {
         assert_eq!(name(POTION_LEAPING), "Potion of Leaping");
         // tiles within the atlas guard
         assert!(TILE_MAX >= TILE_MOB_SILVERFISH, "silverfish sprite within the atlas guard");
+    }
+}
+
+#[cfg(test)]
+mod farming_tests {
+    use super::*;
+
+    /// the farming registry window: 5 blocks + 3 items, all identity
+    /// states folding back (the default_states_never_collide contract
+    /// for the V16 farming rows)
+    #[test]
+    fn farming_registry_window() {
+        // defaults 1:1 for the crop ladders + farmland moisture 0
+        for (b, s) in [
+            (FARMLAND, V16_FARMLAND_BASE),
+            (WHEAT_CROP, V16_WHEAT_BASE),
+            (CARROTS, V16_CARROTS_BASE),
+            (POTATOES, V16_POTATOES_BASE),
+            (BEETROOTS, V16_BEETROOTS_BASE),
+            (WHEAT, V16_STATE_BASE + 37),
+            (BREAD, V16_STATE_BASE + 38),
+            (HOE, V16_STATE_BASE + 39),
+        ] {
+            assert_eq!(default_state(b), s, "default for block {b}");
+            assert_eq!(state_block(s), b, "state {s} folds back");
+        }
+        // every V16 state folds to a valid farming block
+        for s in V16_STATE_BASE..V16_STATE_BASE + V16_COUNT {
+            let b = state_block(s);
+            assert!(
+                matches!(
+                    b,
+                    FIRE
+                        | FARMLAND
+                        | WHEAT_CROP
+                        | CARROTS
+                        | POTATOES
+                        | BEETROOTS
+                        | WHEAT
+                        | BREAD
+                        | HOE
+                ),
+                "state {s} folds to {b}"
+            );
+        }
+    }
+
+    /// the age ladders: wheat/carrots/potatoes 0..=7, beetroots 0..=3
+    /// (VERIFIED w/Wheat_Crops + Beetroot_Seeds §Block states)
+    #[test]
+    fn crop_age_ladders() {
+        for (b, max) in [(WHEAT_CROP, 7u8), (CARROTS, 7), (POTATOES, 7), (BEETROOTS, 3)] {
+            for age in 0..=max {
+                let s = crop_state(b, age);
+                assert_eq!(crop_age(s), age, "{b} age {age} roundtrip");
+                assert_eq!(state_block(s), b, "crop state folds");
+            }
+            // over-max clamps to max
+            assert_eq!(crop_age(crop_state(b, max + 1)), max, "{b} clamps");
+        }
+        // non-crop states fold to 0
+        assert_eq!(crop_age(0), 0);
+        assert_eq!(crop_age(V16_FARMLAND_BASE), 0);
+    }
+
+    /// farmland moisture: 0..7 roundtrip + the wet/dry tile split
+    #[test]
+    fn farmland_moisture_ladder() {
+        for m in 0..=7u8 {
+            let s = farmland_state(m);
+            assert_eq!(farmland_moisture(s), m, "moisture {m} roundtrip");
+            assert_eq!(state_block(s), FARMLAND);
+        }
+        assert_eq!(farmland_state(8), farmland_state(7), "clamps at 7");
+        // dry → the dry tile; ≥1 → the wet tile (the visual split)
+        assert_eq!(state_tiles(farmland_state(0))[0], TILE_FARMLAND_DRY);
+        for m in 1..=7u8 {
+            assert_eq!(state_tiles(farmland_state(m))[0], TILE_FARMLAND_WET);
+        }
+    }
+
+    /// per-stage tiles: wheat 1/stage; carrots/potatoes 4-over-8; beets 1
+    #[test]
+    fn crop_stage_tiles() {
+        for age in 0..=7u8 {
+            let s = crop_state(WHEAT_CROP, age);
+            assert_eq!(
+                state_tiles(s)[0],
+                TILE_WHEAT_BASE + age as u16,
+                "wheat age {age} has its own tile"
+            );
+            // the 4-over-8 mapping (stage = age/2, vanilla's texture rule)
+            let sc = state_tiles(crop_state(CARROTS, age))[0];
+            assert_eq!(sc, TILE_CARROTS_BASE + (age / 2) as u16);
+            let sp = state_tiles(crop_state(POTATOES, age))[0];
+            assert_eq!(sp, TILE_POTATOES_BASE + (age / 2) as u16);
+        }
+        for age in 0..=3u8 {
+            let s = crop_state(BEETROOTS, age);
+            assert_eq!(
+                state_tiles(s)[0],
+                TILE_BEETROOTS_BASE + age as u16,
+                "beetroot age {age}"
+            );
+        }
+    }
+
+    /// F3 targeted-block lines carry the vanilla blockstate names
+    #[test]
+    fn farming_state_descriptions() {
+        assert_eq!(
+            state_description(farmland_state(7)),
+            "Farmland[moisture=7]"
+        );
+        assert_eq!(
+            state_description(crop_state(WHEAT_CROP, 7)),
+            "Wheat Crop[age=7]"
+        );
+        assert_eq!(state_description(crop_state(CARROTS, 3)), "Carrots[age=3]");
+        assert_eq!(
+            state_description(crop_state(POTATOES, 5)),
+            "Potatoes[age=5]"
+        );
+        assert_eq!(
+            state_description(crop_state(BEETROOTS, 2)),
+            "Beetroots[age=2]"
+        );
+    }
+
+    /// the farming items are inventory-only (never placeable blocks)
+    #[test]
+    fn farming_items_are_item_blocks() {
+        assert!(is_item_block(WHEAT));
+        assert!(is_item_block(BREAD));
+        assert!(is_item_block(HOE));
+        // the crops/farmland are real placeable world blocks
+        assert!(!is_item_block(FARMLAND));
+        assert!(!is_item_block(WHEAT_CROP));
+        // the picker carries the whole farming set
+        for b in [FARMLAND, WHEAT_CROP, CARROTS, POTATOES, BEETROOTS, WHEAT, BREAD, HOE] {
+            assert!(PICKER_BLOCKS.contains(&b), "picker missing {b}");
+        }
     }
 }

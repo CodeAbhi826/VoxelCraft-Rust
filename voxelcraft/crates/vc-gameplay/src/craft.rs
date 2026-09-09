@@ -979,6 +979,43 @@ pub const RECIPES: &[Recipe] = &[
         ],
         out: ItemStack::new(END_ROD, 4),
     },
+    // ---- backlog round (farming, 2026-09-09): the farming recipes
+    // (all VERIFIED live 2026-09-09 w/Bread, Hay_Bale, Hoe captures) ----
+    // bread: 3 wheat in a row -> 1 (the classic first-farm recipe;
+    // "Bread can be crafted from 3 units of wheat")
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(WHEAT), Ing::Block(WHEAT), Ing::Block(WHEAT),
+            Ing::None, Ing::None, Ing::None,
+            Ing::None, Ing::None, Ing::None,
+        ],
+        out: ItemStack::new(BREAD, 1),
+    },
+    // hay bale: 3x3 wheat -> 1 (VERIFIED w/Hay_Bale §Crafting: nine
+    // wheat pieces; the block exists since the 1.6 era — its recipe
+    // arrives with the farming bracket)
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::Block(WHEAT), Ing::Block(WHEAT), Ing::Block(WHEAT),
+            Ing::Block(WHEAT), Ing::Block(WHEAT), Ing::Block(WHEAT),
+            Ing::Block(WHEAT), Ing::Block(WHEAT), Ing::Block(WHEAT),
+        ],
+        out: ItemStack::new(HAY_BALE, 1),
+    },
+    // hoe (wooden tier): 2 planks over 2 sticks — vanilla's material-
+    // material / -stick- / -stick- column (the engine's single generic
+    // hoe; mirrored L-shapes rotate under the existing matcher)
+    Recipe {
+        size: 3,
+        grid: &[
+            Ing::AnyPlanks, Ing::AnyPlanks, Ing::None,
+            Ing::None, Ing::Block(STICK), Ing::None,
+            Ing::None, Ing::Block(STICK), Ing::None,
+        ],
+        out: ItemStack::new(HOE, 1),
+    },
 ];
 
 /// 1.16 (Nether Update, part 2): the shapeless SOUL-TORCH recipe —
@@ -1965,5 +2002,51 @@ mod v112_tests {
             ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1),
         ];
         assert!(match_grid(&g, 3).is_none(), "the 8-nugget ring is exact");
+    }
+}
+
+#[cfg(test)]
+mod farm_recipe_tests {
+    use super::*;
+
+    /// backlog round (farming): bread — 3 wheat in a row → 1
+    /// (VERIFIED w/Bread §Crafting)
+    #[test]
+    fn bread_crafts_from_three_wheat() {
+        let g = vec![
+            ItemStack::new(WHEAT, 1), ItemStack::new(WHEAT, 1), ItemStack::new(WHEAT, 1),
+            ItemStack::EMPTY, ItemStack::EMPTY, ItemStack::EMPTY,
+            ItemStack::EMPTY, ItemStack::EMPTY, ItemStack::EMPTY,
+        ];
+        let out = match_grid(&g, 3).unwrap();
+        assert_eq!((out.block, out.count), (BREAD, 1));
+        // negative: 2 wheat is not bread
+        let g = vec![
+            ItemStack::new(WHEAT, 1), ItemStack::new(WHEAT, 1), ItemStack::EMPTY,
+            ItemStack::EMPTY, ItemStack::EMPTY, ItemStack::EMPTY,
+            ItemStack::EMPTY, ItemStack::EMPTY, ItemStack::EMPTY,
+        ];
+        assert!(match_grid(&g, 3).is_none(), "2 wheat ≠ bread");
+    }
+
+    /// hay bale: the 3×3 wheat block → 1 (VERIFIED w/Hay_Bale)
+    #[test]
+    fn hay_bale_crafts_from_nine_wheat() {
+        let g: Vec<ItemStack> = (0..9).map(|_| ItemStack::new(WHEAT, 1)).collect();
+        let out = match_grid(&g, 3).unwrap();
+        assert_eq!((out.block, out.count), (HAY_BALE, 1));
+    }
+
+    /// the hoe: 2 planks over 2 sticks → 1 (the wooden-tier column,
+    /// VERIFIED w/Hoe §Crafting — mirrored L accepted via rotation)
+    #[test]
+    fn hoe_crafts_from_planks_and_sticks() {
+        let g = vec![
+            ItemStack::new(PLANKS, 1), ItemStack::new(PLANKS, 1), ItemStack::EMPTY,
+            ItemStack::EMPTY, ItemStack::new(STICK, 1), ItemStack::EMPTY,
+            ItemStack::EMPTY, ItemStack::new(STICK, 1), ItemStack::EMPTY,
+        ];
+        let out = match_grid(&g, 3).unwrap();
+        assert_eq!((out.block, out.count), (HOE, 1));
     }
 }

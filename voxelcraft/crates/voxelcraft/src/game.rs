@@ -6338,6 +6338,49 @@ impl GameApp {
         self.edits += 1;
     }
 
+    /// backlog round (farming, 2026-09-09): the crop harvest drop — the
+    /// per-crop mature/early split, VERIFIED live 2026-09-09:
+    /// * wheat: mature (age 7) 1 WHEAT + 1-4 WHEAT_SEEDS; early 1 seed
+    ///   (w/Wheat_Crops: "Breaking the final stage produces 1 to 4 wheat
+    ///   seeds ... and 1 wheat. If they are harvested early, they drop 1
+    ///   seed without any wheat")
+    /// * carrots: mature (7) 2-5 CARROT; early 1 (w/Carrot §Breaking)
+    /// * potatoes: mature (7) 2-5 POTATO + a 2% POISONOUS_POTATO roll
+    ///   (w/Potato §Breaking: "2% chance of dropping a poisonous
+    ///   potato"); early 1
+    /// * beetroots: mature (3) 1 BEETROOT + 1-4 BEETROOT_SEEDS; early
+    ///   1 seed (w/Beetroot_Seeds: "drops 1 beetroot ... and 1 to 4
+    ///   beetroot seeds. If a crop is harvested before it is fully
+    ///   grown, it just drops one seed")
+    fn drop_crop_harvest(&mut self, x: i32, y: i32, z: i32, s: u16, biome: u8, sky: u8, blk: u8) {
+        let b = state_block(s);
+        let age = crop_age(s);
+        let mature = age >= crop_max_age(b);
+        let mut roll = |n: u8| 1 + self.audio_rng.next_range(n as u32) as u8;
+        let drops: Vec<(u16, u8)> = match (b, mature) {
+            (WHEAT_CROP, true) => vec![(WHEAT, 1), (WHEAT_SEEDS, roll(4))],
+            (WHEAT_CROP, false) => vec![(WHEAT_SEEDS, 1)],
+            (CARROTS, true) => vec![(CARROT, 2 + self.audio_rng.next_range(4) as u8)],
+            (CARROTS, false) => vec![(CARROT, 1)],
+            (POTATOES, true) => {
+                let mut v = vec![(POTATO, 2 + self.audio_rng.next_range(4) as u8)];
+                if self.audio_rng.next_range(50) == 0 {
+                    v.push((POISONOUS_POTATO, 1)); // the 2% roll
+                }
+                v
+            }
+            (POTATOES, false) => vec![(POTATO, 1)],
+            (BEETROOTS, true) => vec![(BEETROOT, 1), (BEETROOT_SEEDS, roll(4))],
+            (BEETROOTS, false) => vec![(BEETROOT_SEEDS, 1)],
+            _ => vec![],
+        };
+        for (item, n) in drops {
+            for _ in 0..n {
+                self.sim.items.drop_block(x, y, z, item, biome, sky, blk);
+            }
+        }
+    }
+
     /// §27/§29/§26: breaking a container block drops its contents and
     /// removes the block entity (vanilla behavior — also fixes the latent
     /// entity leak where broken furnaces stayed in the sim map forever)
@@ -8356,6 +8399,63 @@ impl GameApp {
                             self.test_place(WATER, p[0], p[1], p[2]);
                         }
                     }
+                    Some("farm") => {
+                        // farm:x:y:z — the backlog farming E2E: water at
+                        // the 4-block hydration boundary → till → plant →
+                        // pump the REAL random-tick hook (the same
+                        // random_plant_tick the sim's RandomTicker drives)
+                        // → report moisture + the growth ladder.
+                        let p = coords();
+                        if p.len() == 3 {
+                            let (x, y, z) = (p[0], p[1], p[2]);
+                            // (a) the water source exactly 4 blocks out
+                            // (Chebyshev 4 — the hydration boundary)
+                            let _ = self
+                                .world
+                                .set_block_state(x + 4, y, z, default_state(WATER));
+                            // (b) till: any dirt-family cell → farmland
+                            // (moisture 0 — the hoe path's state write)
+                            let o = self.world.get_state(x, y, z);
+                            let nf = farmland_state(0);
+                            if let Some((old, new)) =
+                                self.world.set_block_state(x, y, z, nf)
+                            {
+                                let _ = (old, new);
+                            }
+                            self.light.on_block_changed(&self.world, x, y, z, o, nf);
+                            // (c) plant wheat above (age 0)
+                            let o2 = self.world.get_state(x, y + 1, z);
+                            let nw = crop_state(WHEAT_CROP, 0);
+                            let _ = self.world.set_block_state(x, y + 1, z, nw);
+                            self.light.on_block_changed(&self.world, x, y + 1, z, o2, nw);
+                            // (d) ~600 simulated random ticks on BOTH the
+                            // farmland (hydration) and the crop (growth)
+                            for _ in 0..600 {
+                                vc_sim::fluids::random_plant_tick(
+                                    &mut self.world,
+                                    &mut self.sim.sched,
+                                    x,
+                                    y,
+                                    z,
+                                );
+                                vc_sim::fluids::random_plant_tick(
+                                    &mut self.world,
+                                    &mut self.sim.sched,
+                                    x,
+                                    y + 1,
+                                    z,
+                                );
+                            }
+                            let ms = self.world.get_state(x, y, z);
+                            let ws = self.world.get_state(x, y + 1, z);
+                            vc_render::render::report_boot_log(&format!(
+                                "e2e: farm moisture={} (water@4) wheat_age={}/7 mature={}",
+                                farmland_moisture(ms),
+                                crop_age(ws),
+                                crop_age(ws) >= 7
+                            ));
+                        }
+                    }
                     Some("lever") => {
                         let p = coords();
                         if p.len() == 3 {
@@ -10146,6 +10246,50 @@ impl GameApp {
                 }
             }
 
+            // backlog round (farming, 2026-09-09): farmland trampling —
+            // a landing on farmland converts it to dirt and pops the
+            // crop with its drops (VERIFIED w/Farmland §Decay: "The
+            // player or any mob jumps/falls on the block (with chance
+            // equal to distance fallen - 0.5)" — the engine always
+            // tramples a real fall (≥0.5 b), a disclosed simplification
+            // that keeps the survival rule honest: don't jump on farms)
+            if let Some(tp) = self.player.take_pending_trample() {
+                let b = self.world.get_block(tp[0], tp[1], tp[2]);
+                if b == FARMLAND {
+                    let (biome, sky, blk) = light_at(&self.world, &self.light, tp[0], tp[1], tp[2]);
+                    if let Some((old, new)) =
+                        self.world.set_block_state(tp[0], tp[1], tp[2], default_state(DIRT))
+                    {
+                        self.light
+                            .on_block_changed(&self.world, tp[0], tp[1], tp[2], old, new);
+                    }
+                    // the crop above pops WITH drops ("crops growing on
+                    // the block are dropped as items, as if they were
+                    // harvested")
+                    let crop = self.world.get_state(tp[0], tp[1] + 1, tp[2]);
+                    if vc_sim::fluids::is_crop(state_block(crop)) {
+                        self.drop_crop_harvest(tp[0], tp[1] + 1, tp[2], crop, biome, sky, blk);
+                        if let Some((old, new)) =
+                            self.world.set_block_state(tp[0], tp[1] + 1, tp[2], default_state(AIR))
+                        {
+                            self.light
+                                .on_block_changed(&self.world, tp[0], tp[1] + 1, tp[2], old, new);
+                        }
+                        notify_sim(&self.world, &mut self.sim.sched, tp[0], tp[1] + 1, tp[2]);
+                    }
+                    notify_sim(&self.world, &mut self.sim.sched, tp[0], tp[1], tp[2]);
+                    self.play_event(
+                        "item.hoe.till",
+                        Some([
+                            tp[0] as f32 + 0.5,
+                            tp[1] as f32 + 0.5,
+                            tp[2] as f32 + 0.5,
+                        ]),
+                        0.9,
+                    );
+                }
+            }
+
             // Phase E2 (VERIFIED w/Lava): contact damage 4 HP per 10
             // ticks (the every-tick 4 HP is reduced by the half-second
             // damage-immunity window); creative is immune. Fire
@@ -10810,6 +10954,52 @@ impl GameApp {
                                 self.sim.items.drop_block(
                                     pos[0], pos[1], pos[2], BAMBOO, biome, sky, blk,
                                 );
+                            } else if vc_sim::fluids::is_crop(broke) {
+                                // ---- backlog round (farming, 2026-09-09):
+                                // the four crops — the verified per-crop
+                                // mature/early drop split (see
+                                // drop_crop_harvest for the citations) ----
+                                self.drop_crop_harvest(pos[0], pos[1], pos[2], broke_state, biome, sky, blk);
+                            } else if broke == FARMLAND {
+                                // ---- backlog round (farming): farmland
+                                // drops 1 dirt when destroyed (VERIFIED
+                                // w/Farmland §Breaking: "Farmland drops 1
+                                // dirt block when it's destroyed"), and the
+                                // crop above pops with its harvest ----
+                                self.sim.items.drop_block(
+                                    pos[0], pos[1], pos[2], DIRT, biome, sky, blk,
+                                );
+                                let crop = self.world.get_state(pos[0], pos[1] + 1, pos[2]);
+                                if vc_sim::fluids::is_crop(state_block(crop)) {
+                                    self.drop_crop_harvest(pos[0], pos[1] + 1, pos[2], crop, biome, sky, blk);
+                                    if let Some((old, new)) = self
+                                        .world
+                                        .set_block_state(pos[0], pos[1] + 1, pos[2], default_state(AIR))
+                                    {
+                                        self.light.on_block_changed(
+                                            &self.world, pos[0], pos[1] + 1, pos[2], old, new,
+                                        );
+                                    }
+                                    notify_sim(
+                                        &self.world,
+                                        &mut self.sim.sched,
+                                        pos[0],
+                                        pos[1] + 1,
+                                        pos[2],
+                                    );
+                                }
+                            } else if broke == TALL_GRASS || broke == FERN {
+                                // ---- backlog round (farming): grass plants
+                                // drop wheat seeds 1/8 (VERIFIED live
+                                // 2026-09-09 w/Tutorial:Crop_farming:
+                                // "Each grass plant has only a 1/8 chance
+                                // of dropping seeds") — the survival seed
+                                // source ----
+                                if self.audio_rng.next_range(8) == 0 {
+                                    self.sim.items.drop_block(
+                                        pos[0], pos[1], pos[2], WHEAT_SEEDS, biome, sky, blk,
+                                    );
+                                }
                             } else {
                                 self.sim.items.drop_block(
                                     pos[0], pos[1], pos[2], broke, biome, sky, blk,
@@ -12068,6 +12258,126 @@ impl GameApp {
                         self.place_timer = 0.5;
                         self.ui.dirty = true;
                     } else if !self.player.held().is_empty()
+                        && self.player.held().block == HOE
+                        && self.mode.edits_world_blocks()
+                        && self
+                            .target
+                            .map(|(tpos, tb, _)| {
+                                // tilling: the clicked block is the dirt
+                                // family and the cell above is open
+                                // (VERIFIED w/Farmland §Obtaining: "created
+                                // by using a hoe on most types of dirt" +
+                                // the 12w07a rule: "unable to till dirt or
+                                // grass block when there is a block on top
+                                // of them"; the hoe also converts coarse
+                                // dirt — the 14w32a row)
+                                let tillable = matches!(tb, GRASS | DIRT | COARSE_DIRT);
+                                let above_open = tpos[1] < 255
+                                    && !is_solid(self.world.get_block(tpos[0], tpos[1] + 1, tpos[2]));
+                                tillable && above_open
+                            })
+                            .unwrap_or(false)
+                    {
+                        // ---- backlog round (farming, 2026-09-09): hoe
+                        // tilling — grass/dirt/coarse dirt → dry farmland
+                        // (moisture 0; the hydration climb is the sim's
+                        // random-tick hook). No durability system in the
+                        // engine — the hoe never wears, disclosed. ----
+                        if let Some((tpos, _, _)) = self.target {
+                            if let Some((old, new)) =
+                                self.world.set_block_state(tpos[0], tpos[1], tpos[2], farmland_state(0))
+                            {
+                                self.light
+                                    .on_block_changed(&self.world, tpos[0], tpos[1], tpos[2], old, new);
+                            }
+                            notify_sim(&self.world, &mut self.sim.sched, tpos[0], tpos[1], tpos[2]);
+                            self.edits += 1;
+                            self.play_event(
+                                "item.hoe.till",
+                                Some([
+                                    tpos[0] as f32 + 0.5,
+                                    tpos[1] as f32 + 0.5,
+                                    tpos[2] as f32 + 0.5,
+                                ]),
+                                1.0,
+                            );
+                        }
+                        self.place_timer = 0.25;
+                        self.ui.dirty = true;
+                    } else if !self.player.held().is_empty()
+                        && self.mode.edits_world_blocks()
+                        && self
+                            .target
+                            .map(|(tpos, tb, _)| {
+                                // planting: the clicked block is FARMLAND
+                                // and the cell above is open (w/Wheat_
+                                // Seeds: seeds are planted on farmland)
+                                let held = self.player.held().block;
+                                let plantable = matches!(
+                                    held,
+                                    WHEAT_SEEDS
+                                        | BEETROOT_SEEDS
+                                        | CARROT
+                                        | POTATO
+                                        | MELON_SEEDS
+                                        | PUMPKIN_SEEDS
+                                );
+                                let above_open = tpos[1] < 255
+                                    && self.world.get_block(tpos[0], tpos[1] + 1, tpos[2]) == AIR;
+                                tb == FARMLAND && plantable && above_open
+                            })
+                            .unwrap_or(false)
+                    {
+                        // ---- backlog round (farming): seed planting on
+                        // farmland — wheat/beetroot seeds plant their
+                        // crops; carrot/potato items ARE the seed; the
+                        // melon/pumpkin stems are not in the engine's
+                        // plantable set (they stay food-less crafting
+                        // items, disclosed) — deny those so the item
+                        // doesn't place a stem block ----
+                        let held = self.player.held().block;
+                        let crop = match held {
+                            WHEAT_SEEDS => Some(WHEAT_CROP),
+                            BEETROOT_SEEDS => Some(BEETROOTS),
+                            CARROT => Some(CARROTS),
+                            POTATO => Some(POTATOES),
+                            _ => None,
+                        };
+                        if let (Some((tpos, _, _)), Some(crop)) = (self.target, crop) {
+                            if let Some((old, new)) =
+                                self.world.set_block_state(tpos[0], tpos[1] + 1, tpos[2], crop_state(crop, 0))
+                            {
+                                self.light.on_block_changed(
+                                    &self.world, tpos[0], tpos[1] + 1, tpos[2], old, new,
+                                );
+                            }
+                            notify_sim(
+                                &self.world,
+                                &mut self.sim.sched,
+                                tpos[0],
+                                tpos[1] + 1,
+                                tpos[2],
+                            );
+                            if self.mode.depletes_items() {
+                                let h = self.player.held_mut();
+                                h.count -= 1;
+                                if h.count == 0 {
+                                    *h = vc_inventory::inventory::ItemStack::EMPTY;
+                                }
+                            }
+                            self.play_event(
+                                vc_audio::sounds::family_event(SoundFamily::Grass, false),
+                                Some([
+                                    tpos[0] as f32 + 0.5,
+                                    tpos[1] as f32 + 1.5,
+                                    tpos[2] as f32 + 0.5,
+                                ]),
+                                0.9,
+                            );
+                        }
+                        self.place_timer = 0.25;
+                        self.ui.dirty = true;
+                    } else if !self.player.held().is_empty()
                         && self.player.held().block == SWEET_BERRIES
                         && self.mode.edits_world_blocks()
                         && self
@@ -12566,6 +12876,19 @@ impl GameApp {
                                         // unsupported: deny the placement
                                         // entirely (vanilla plants bamboo
                                         // only on the soil family or bamboo)
+                                        u16::MAX
+                                    }
+                                } else if vc_sim::fluids::is_crop(b) {
+                                    // backlog round (farming, 2026-09-09):
+                                    // the picker/creative crop placement —
+                                    // crops root ONLY on farmland (w/Wheat_
+                                    // Crops: seeds planted on farmland;
+                                    // every other support is denied)
+                                    let below =
+                                        self.world.get_block(prev[0], prev[1] - 1, prev[2]);
+                                    if below == FARMLAND {
+                                        crop_state(b, 0)
+                                    } else {
                                         u16::MAX
                                     }
                                 } else if is_forest_plant(b) {
@@ -15387,6 +15710,10 @@ fn is_food(b: u16) -> bool {
             // 1.14: sweet berries — "restores 2 hunger and 0.4 [JE]
             // saturation" (VERIFIED w/Sweet_Berries §Food)
             | SWEET_BERRIES
+            // backlog round (farming, 2026-09-09): bread — the first
+            // farmable food ("Restores 5 hunger points" + 6 saturation,
+            // VERIFIED w/Bread §Food)
+            | BREAD
             // ---- the 1.0-1.16.5 completeness audit (all hunger values
             // VERIFIED live 2026-09-08 against the Food page capture
             // scripts/audit16_page_Food.json — the hunger table) ----
@@ -15449,6 +15776,9 @@ fn food_heal(b: u16) -> f32 {
         // w/Sweet_Berries §Food: "restores 2 hunger and 0.4 [JE] only"
         // saturation")
         SWEET_BERRIES => 1.0,
+        // backlog round (farming): bread — hunger 5 → 2.5 HP (VERIFIED
+        // w/Bread §Food: "Restores 5 hunger points")
+        BREAD => 2.5,
         // ---- the completeness audit: the hunger/2 mapping (the Food
         // table capture's own rows — "Rabbit Stew 10 / Steak 8 /
         // Cooked Porkchop 8 / Beetroot Soup 6 / Cooked Chicken 6 /
@@ -16658,5 +16988,20 @@ mod v111_tests {
         }
         assert!(!is_leaves(OAK_LOG));
         assert!(!is_leaves(GRASS));
+    }
+}
+
+#[cfg(test)]
+mod farm_game_tests {
+    use super::*;
+    use vc_blocks::blocks::*;
+
+    /// bread heals hunger 5 → 2.5 HP on the hunger/2 scale (VERIFIED
+    /// w/Bread §Food: "Restores 5 hunger points and 6 saturation")
+    #[test]
+    fn farm_bread_food_value() {
+        assert!((food_heal(BREAD) - 2.5).abs() < 1e-6, "bread = hunger 5");
+        // wheat itself is inedible (never reaches the eat branch's set)
+        assert!(!is_food(WHEAT));
     }
 }

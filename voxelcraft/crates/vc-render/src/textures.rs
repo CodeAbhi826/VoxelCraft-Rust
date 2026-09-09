@@ -22,6 +22,7 @@ mod v116_art;
 mod v116b_art;
 mod audit16_art;
 mod weather_art;
+mod farming_art;
 
 pub const ATLAS_SIZE: usize = 512;
 pub const TILE_PX: usize = 16;
@@ -4352,6 +4353,24 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_RAIN_PARTICLE => weather_art::rain_streak(&mut a, t, &mut rng),
             TILE_SNOW_PARTICLE => weather_art::snow_flake(&mut a, t, &mut rng),
             TILE_FIRE => weather_art::fire_art(&mut a, t, &mut rng),
+            // ---- backlog round (farming, 2026-09-09): the farming set ----
+            TILE_FARMLAND_DRY => farming_art::farmland_art(&mut a, t, false),
+            TILE_FARMLAND_WET => farming_art::farmland_art(&mut a, t, true),
+            t if (TILE_WHEAT_BASE..=TILE_WHEAT_BASE + 7).contains(&t) => {
+                farming_art::wheat_art(&mut a, t, (t - TILE_WHEAT_BASE) as u8, &mut rng)
+            }
+            t if (TILE_CARROTS_BASE..=TILE_CARROTS_BASE + 3).contains(&t) => {
+                farming_art::root_crop_art(&mut a, t, true, (t - TILE_CARROTS_BASE) as u8, &mut rng)
+            }
+            t if (TILE_POTATOES_BASE..=TILE_POTATOES_BASE + 3).contains(&t) => {
+                farming_art::root_crop_art(&mut a, t, false, (t - TILE_POTATOES_BASE) as u8, &mut rng)
+            }
+            t if (TILE_BEETROOTS_BASE..=TILE_BEETROOTS_BASE + 3).contains(&t) => {
+                farming_art::beetroot_art(&mut a, t, (t - TILE_BEETROOTS_BASE) as u8, &mut rng)
+            }
+            TILE_WHEAT_ITEM => farming_art::wheat_item_art(&mut a, t, &mut rng),
+            TILE_BREAD => farming_art::bread_art(&mut a, t, &mut rng),
+            TILE_HOE => farming_art::hoe_art(&mut a, t, &mut rng),
             _ => {}
         }
     }

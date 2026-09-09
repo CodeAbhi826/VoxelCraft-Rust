@@ -105,11 +105,13 @@ const MODEL_BASE: u32 = 63u;       // MODEL_STATE_BASE
 // the 26 audit item identity states + the cave-spider/silverfish
 // spawner states), BLOCK_COUNT=505 (ids 479..=504)
 // the backlog round: STATE_COUNT=806 (V16 805: fire), BLOCK_COUNT=507
-// (id 506: fire)
-const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=806)
-const L_FL: u32 = 806u;            // lut: block flags           (BLOCK_COUNT=507)
-const L_TC: u32 = 1313u;           // lut: block tint class      (BLOCK_COUNT=507)
-const L_ST: u32 = 1820u;           // lut: state tiles, 4/state  (4·STATE_COUNT=3224)
+// (id 506: fire); the farming bracket: STATE_COUNT=845 (V16 806..=841
+// farmland+4 crops, 842..=844 the wheat/bread/hoe item identities),
+// BLOCK_COUNT=515 (ids 507..=514)
+const L_SB: u32 = 0u;              // lut: state -> block        (STATE_COUNT=845)
+const L_FL: u32 = 845u;            // lut: block flags           (BLOCK_COUNT=515)
+const L_TC: u32 = 1360u;           // lut: block tint class      (BLOCK_COUNT=515)
+const L_ST: u32 = 1875u;           // lut: state tiles, 4/state  (4·STATE_COUNT=3380)
 const P_N: u32 = 0u;               // params[0] = n_jobs
 const P_JOB: u32 = 2u;             // params job base = 2 + j*66
 const P_BIOME: u32 = 2u;           // biomes at job base + 2 (64 packed u32)
@@ -161,8 +163,8 @@ fn job_get_blk(j: u32, x: i32, y: i32, z: i32) -> u32 {
     let base = j * VOL_WORDS;
     return (blk_l[base + (p >> 2u)] >> ((p & 3u) * 8u)) & 0xFFu;
 }
-fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 805u)]; }
-fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 506u)]; }
+fn sb(s: u32) -> u32 { return lut[L_SB + min(s, 844u)]; }
+fn fl(b: u32) -> u32 { return lut[L_FL + min(b, 514u)]; }
 fn biome_at(j: u32, x: i32, z: i32) -> u32 {
     let c = u32(z * 16 + x);
     let w = params[P_JOB + j * 66u + P_BIOME + (c >> 2u)];

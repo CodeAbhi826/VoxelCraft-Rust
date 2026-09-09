@@ -9,6 +9,15 @@ use vc_chunk::chunk::Chunk;
 use vc_chunk::chunk::CHUNK_LEN;
 use vc_rng::rng::Rng;
 
+/// Backlog round (weather): the biome's precipitation form
+/// (VERIFIED w/Weather — see `Biome::precipitation`).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Precip {
+    None,
+    Rain,
+    Snow,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Biome {
     Ocean = 0,
@@ -69,6 +78,20 @@ pub enum Biome {
     /// "hostile mobs do not spawn naturally" — endermen are the
     /// exception). Internal id 24 (vanilla registry id 172).
     WarpedForest = 24,
+    /// Backlog round (2026-09-09): the soul sand valley — VERIFIED
+    /// (w/Soul_Sand_Valley live, capture backlog_page_Soul_Sand_Valley.json):
+    /// "makes up around 17% of the Nether by volume, making it the
+    /// third most common biome"; "mostly composed of soul sand and
+    /// soul soil, with gravel found on its coastlines"; "Soul fire is
+    /// scattered throughout the biome and Nether fossils poke out of
+    /// the terrain"; "Its fog is cyan"; spawns: skeleton 20/71,
+    /// ghast 50/71 (5% attempt success), enderman 1/71. Internal id 25
+    /// (vanilla registry id 170).
+    SoulSandValley = 25,
+    /// Backlog round: the basalt deltas — the basalt-pillar wastes
+    /// (stats from the w/Basalt_Deltas capture). Internal id 26
+    /// (vanilla registry id 173).
+    BasaltDeltas = 26,
 }
 
 impl Biome {
@@ -99,6 +122,8 @@ impl Biome {
             Biome::FrozenOcean => "Frozen Ocean",
             Biome::CrimsonForest => "Crimson Forest",
             Biome::WarpedForest => "Warped Forest",
+            Biome::SoulSandValley => "Soul Sand Valley",
+            Biome::BasaltDeltas => "Basalt Deltas",
         }
     }
 
@@ -128,6 +153,8 @@ impl Biome {
             22 => Biome::FrozenOcean,
             23 => Biome::CrimsonForest,
             24 => Biome::WarpedForest,
+            25 => Biome::SoulSandValley,
+            26 => Biome::BasaltDeltas,
             _ => Biome::Ocean,
         }
     }
@@ -135,8 +162,36 @@ impl Biome {
     /// 1.16 (Nether Update, part 2): the nether biome family — the
     /// wastes + the two forests (region gates for mob spawning and
     /// the snow-golem heat rule: every nether flavor is "hot").
+    /// The backlog round adds the valley + deltas (all five now).
     pub fn is_nether(self) -> bool {
-        matches!(self, Biome::NetherWastes | Biome::CrimsonForest | Biome::WarpedForest)
+        matches!(
+            self,
+            Biome::NetherWastes
+                | Biome::CrimsonForest
+                | Biome::WarpedForest
+                | Biome::SoulSandValley
+                | Biome::BasaltDeltas
+        )
+    }
+
+    /// Backlog round (weather): the biome's precipitation form —
+    /// VERIFIED w/Weather: "Rain occurs only in blocks with a
+    /// temperature higher than 0.15 and not in certain dry biomes
+    /// (deserts, savannas, and badlands)"; "Snowfall occurs only in
+    /// biomes with a base temperature less than 0.15". The engine's
+    /// temperature model is the biome family itself (documented
+    /// adaptation — vanilla samples climate per column).
+    pub fn precipitation(self) -> Precip {
+        match self {
+            // dry — no rain, no snow
+            Biome::Desert | Biome::Savanna | Biome::Badlands => Precip::None,
+            // cold — snow instead of rain
+            Biome::Snowy | Biome::IceSpikes | Biome::FrozenOcean => Precip::Snow,
+            // nether/end flavors never see weather (the game layer's
+            // dimension gate is primary; this is belt-and-braces)
+            b if b.is_nether() => Precip::None,
+            _ => Precip::Rain,
+        }
     }
 
     /// 1.13: the ocean temperature family gate (any ocean-flavored
@@ -448,11 +503,20 @@ fn floor_div(a: i32, b: i32) -> i32 {
 pub fn nether_region_biome(seed: u64, cx: i32, cz: i32) -> Biome {
     let region_x = floor_div(cx, 2);
     let region_z = floor_div(cz, 2);
+    // Backlog round: the five-biome roll at the wiki-verified volumes —
+    // wastes 37% (the remainder), crimson 22% (w/Crimson_Forest "22% of
+    // the Nether by volume"), SSV 17% (w/Soul_Sand_Valley "around 17%"),
+    // basalt deltas 16% (w/Basalt_Deltas "around 16%"), warped 8%
+    // (w/Warped_Forest "around 8% ... the rarest of the five")
     let v = Rng::hash3(seed ^ 0xF0E7, region_x, 0, region_z) % 100;
-    if v < 22 {
-        Biome::CrimsonForest
-    } else if v < 30 {
+    if v < 8 {
         Biome::WarpedForest
+    } else if v < 24 {
+        Biome::BasaltDeltas
+    } else if v < 41 {
+        Biome::SoulSandValley
+    } else if v < 63 {
+        Biome::CrimsonForest
     } else {
         Biome::NetherWastes
     }
@@ -2714,7 +2778,190 @@ impl TerrainGen {
         // nylium floors, huge fungi, shroomlights, vines + undergrowth
         self.gen_v116b_nether_forests(&mut chunk, &mut rng, cx, cz);
 
+        // backlog round: the two missing Nether regions — the soul sand
+        // valley + the basalt deltas (all five 1.16 nether biomes now)
+        self.gen_backlog_nether_regions(&mut chunk, &mut rng, cx, cz);
+
         (Arc::new(chunk), outbound)
+    }
+
+    /// Backlog round (2026-09-09): the two missing Nether regions —
+    /// the soul sand valley and the basalt deltas, closing the five-
+    /// biome 1.16 Nether map.
+    ///
+    /// Soul Sand Valley (VERIFIED w/Soul_Sand_Valley, capture
+    /// backlog_page_Soul_Sand_Valley.json): "mostly composed of soul
+    /// sand and soul soil, with gravel found on its coastlines"; "Soul
+    /// fire is scattered throughout the biome and Nether fossils poke
+    /// out of the terrain"; "Giant columns of basalt called basalt
+    /// pillars can be found stretching from the floor to the ceiling";
+    /// native vegetation = crimson roots + mushrooms.
+    ///
+    /// Basalt Deltas (VERIFIED w/Basalt_Deltas, capture
+    /// backlog_page_Basalt_Deltas.json): the "second rarest Nether
+    /// biome, making up around 16% of the Nether by volume"; the
+    /// wasteland body is basalt + blackstone + magma (the deltas'
+    /// surface is the engine's netherrack body converted to basalt —
+    /// the documented column-carver adaptation).
+    fn gen_backlog_nether_regions(&self, chunk: &mut Chunk, rng: &mut Rng, cx: i32, cz: i32) {
+        use vc_blocks::blocks::{
+            BASALT, BLACKSTONE, BONE_BLOCK, MAGMA_BLOCK, NETHERRACK, SOUL_SAND, SOUL_SOIL,
+            SOUL_FIRE, CRIMSON_ROOTS, MUSHROOM_RED, MUSHROOM_BROWN,
+        };
+        let region = nether_region_biome(self.seed, cx, cz);
+        if region == Biome::SoulSandValley {
+            // ---- the soul floor: netherrack surface -> soul sand (60%)
+            // or soul soil (40%) — the "mostly composed of" row ----
+            for z in 0..16usize {
+                for x in 0..16usize {
+                    let wx = cx * 16 + x as i32;
+                    let wz = cz * 16 + z as i32;
+                    for y in (20..110usize).rev() {
+                        let below = chunk.get(x, y, z);
+                        if below == NETHERRACK && chunk.get(x, y + 1, z) == 0 {
+                            let sand = Rng::hash3(self.seed ^ 0x50F1, wx, y as i32, wz) % 10 < 6;
+                            let floor = if sand { SOUL_SAND } else { SOUL_SOIL };
+                            chunk.set(x, y, z, floor);
+                            // the nether fossils: ~1 in 8 surface columns
+                            // sprouts a bone rib arc right at the floor
+                            // ("Nether fossils poke out of the terrain",
+                            // VERIFIED — placement on known surface
+                            // columns instead of a separate random scan,
+                            // so fossils always land on real terrain)
+                            if Rng::hash3(self.seed ^ 0xB0A5, wx, y as i32, wz) % 8 == 0 {
+                                let dir: i32 = if Rng::hash3(self.seed ^ 0xB0A6, wx, 0, wz) % 2 == 0 { 1 } else { -1 };
+                                let len = 4 + (Rng::hash3(self.seed ^ 0xB0A7, wx, y as i32, wz) % 4) as i32;
+                                for d in 0..len {
+                                    let fx = (x as i32 + d * dir).clamp(0, 15) as usize;
+                                    let fz = z;
+                                    let fy = (y as i32 + 1 - (d / 3) + (d == 0) as i32).clamp(1, 126) as usize;
+                                    if chunk.get(fx, fy, fz) == 0 {
+                                        chunk.set(fx, fy, fz, BONE_BLOCK);
+                                    }
+                                }
+                            }
+                            // soul fire on soul soil ("scattered
+                            // throughout", VERIFIED — soul fire burns on
+                            // soul soil only, the soul_fire placement rule)
+                            if !sand
+                                && Rng::hash3(self.seed ^ 0x50F2, wx, y as i32, wz) % 60 == 0
+                            {
+                                chunk.set(x, y + 1, z, SOUL_FIRE);
+                            } else if Rng::hash3(self.seed ^ 0x50F3, wx, y as i32, wz) % 40 == 0 {
+                                // the sparse native vegetation: crimson
+                                // roots + mushrooms (VERIFIED row)
+                                let plant = match Rng::hash3(
+                                    self.seed ^ 0x50F4,
+                                    wx,
+                                    y as i32,
+                                    wz,
+                                ) % 3
+                                {
+                                    0 => CRIMSON_ROOTS,
+                                    1 => MUSHROOM_RED,
+                                    _ => MUSHROOM_BROWN,
+                                };
+                                chunk.set(x, y + 1, z, plant);
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // ---- the giant basalt pillars: floor to ceiling —
+            // stretch from a floor toward the ceiling band ----
+            for _ in 0..3 {
+                let lx = rng.next_range(16) as i32;
+                let lz = rng.next_range(16) as i32;
+                // find the floor, then run a tall column (air above —
+                // same pattern)
+                let mut fy = 20i32;
+                for y in (20..110usize).rev() {
+                    let b = chunk.get(lx as usize, y, lz as usize);
+                    let above = chunk.get(lx as usize, (y + 1).min(127), lz as usize);
+                    if b != 0 && vc_blocks::blocks::is_solid(b) && above == 0 {
+                        fy = y as i32;
+                        break;
+                    }
+                }
+                if fy < 20 {
+                    continue;
+                }
+                let top = 90 + rng.next_range(30) as i32; // into the ceiling band
+                for yy in fy + 1..=top {
+                    if yy > 126 || chunk.get(lx as usize, yy as usize, lz as usize) != 0 {
+                        break;
+                    }
+                    chunk.set(lx as usize, yy as usize, lz as usize, BASALT);
+                }
+            }
+        } else if region == Biome::BasaltDeltas {
+            // ---- the deltas floor: netherrack surface -> basalt (70%)
+            // with blackstone (20%) + magma (10%) — the deltas' basalt
+            // body (the wiki's own composition: basalt, blackstone,
+            // magma) ----
+            for z in 0..16usize {
+                for x in 0..16usize {
+                    let wx = cx * 16 + x as i32;
+                    let wz = cz * 16 + z as i32;
+                    for y in (20..110usize).rev() {
+                        let below = chunk.get(x, y, z);
+                        if below == NETHERRACK && chunk.get(x, y + 1, z) == 0 {
+                            let v = Rng::hash3(self.seed ^ 0xBA2A, wx, y as i32, wz) % 10;
+                            let floor = if v < 7 {
+                                BASALT
+                            } else if v < 9 {
+                                BLACKSTONE
+                            } else {
+                                MAGMA_BLOCK
+                            };
+                            chunk.set(x, y, z, floor);
+                            break;
+                        }
+                    }
+                }
+            }
+            // ---- the deltas' signature short thick basalt columns:
+            // 6 per chunk, 4..10 tall (denser + shorter than the
+            // valley's giants — the deltas' look) ----
+            for _ in 0..6 {
+                let lx = rng.next_range(16) as i32;
+                let lz = rng.next_range(16) as i32;
+                let mut base = 20i32;
+                for y in (20..110usize).rev() {
+                    let b = chunk.get(lx as usize, y, lz as usize);
+                    let above = chunk.get(lx as usize, (y + 1).min(127), lz as usize);
+                    if b != 0 && vc_blocks::blocks::is_solid(b) && above == 0 {
+                        base = y as i32;
+                        break;
+                    }
+                }
+                if base < 20 {
+                    continue;
+                }
+                let h = 4 + rng.next_range(7) as i32;
+                let thick = rng.next_range(2) == 0; // half are 2x2
+                for d in 1..=h {
+                    let yy = (base + d).min(126) as usize;
+                    let x = lx.clamp(0, 15) as usize;
+                    let z = lz.clamp(0, 15) as usize;
+                    if chunk.get(x, yy, z) == 0 {
+                        chunk.set(x, yy, z, BASALT);
+                    }
+                    if thick {
+                        let x2 = (lx + 1).clamp(0, 15) as usize;
+                        let z2 = (lz + 1).clamp(0, 15) as usize;
+                        if chunk.get(x2, yy, z) == 0 {
+                            chunk.set(x2, yy, z, BASALT);
+                        }
+                        if chunk.get(x, yy, z2) == 0 {
+                            chunk.set(x, yy, z2, BASALT);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /// 1.16 (Nether Update, part 2): the nether forest generation —
@@ -4712,6 +4959,118 @@ mod nether_tests {
         s
     }
 
+    /// Backlog round: all five 1.16 nether biomes appear in the region
+    /// roll at roughly their wiki-verified volumes (SSV 17%, BD 16%,
+    /// crimson 22%, warped 8%, wastes the remainder).
+    #[test]
+    fn backlog_five_nether_biomes_all_appear() {
+        let mut counts = [0usize; 5]; // [wastes, crimson, warped, ssv, deltas]
+        for rx in -30..30 {
+            for rz in -30..30 {
+                let b = nether_region_biome(0xBE11, rx * 2, rz * 2);
+                let i = match b {
+                    Biome::NetherWastes => 0,
+                    Biome::CrimsonForest => 1,
+                    Biome::WarpedForest => 2,
+                    Biome::SoulSandValley => 3,
+                    Biome::BasaltDeltas => 4,
+                    _ => panic!("non-nether region biome {b:?}"),
+                };
+                counts[i] += 1;
+            }
+        }
+        let total: usize = counts.iter().sum();
+        for c in counts {
+            assert!(c > 0, "every nether biome must appear in the roll");
+        }
+        // the volume shares (±6% tolerance — a 60x60 sample)
+        let ssv = counts[3] as f64 / total as f64;
+        let bd = counts[4] as f64 / total as f64;
+        let warped = counts[2] as f64 / total as f64;
+        assert!((ssv - 0.17).abs() < 0.06, "SSV share {ssv:.2}");
+        assert!((bd - 0.16).abs() < 0.06, "deltas share {bd:.2}");
+        assert!((warped - 0.08).abs() < 0.05, "warped share {warped:.2}");
+    }
+
+    /// The soul sand valley floor is soul sand + soul soil, carries
+    /// fossils, and grows giant basalt pillars (VERIFIED
+    /// w/Soul_Sand_Valley capture). Samples several SSV regions —
+    /// surface density varies per chunk with the cavern carver.
+    #[test]
+    fn backlog_soul_valley_has_soul_floor_and_fossils() {
+        let mut soul = 0usize;
+        let mut fossils = 0usize;
+        let mut pillars = 0usize;
+        let mut regions_sampled = 0usize;
+        'seeds: for seed in 1..24u64 {
+            // find a chunk of this seed's SSV
+            for c in 0..40i32 {
+                let cx = c * 2;
+                let cz = c * 2;
+                if nether_region_biome(seed, cx, cz) != Biome::SoulSandValley {
+                    continue;
+                }
+                let gen = TerrainGen::for_dimension(seed, Dimension::Nether);
+                for (dx, dz) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
+                    let (chunk, _) = gen.generate_chunk(cx + dx, cz + dz, Vec::new());
+                    for i in 0..vc_chunk::chunk::CHUNK_LEN {
+                        match chunk.get_idx(i) {
+                            SOUL_SAND | SOUL_SOIL => soul += 1,
+                            BONE_BLOCK => fossils += 1,
+                            BASALT => pillars += 1,
+                            _ => {}
+                        }
+                    }
+                }
+                regions_sampled += 1;
+                if regions_sampled >= 6 {
+                    break 'seeds;
+                }
+                break; // one region per seed
+            }
+        }
+        assert!(regions_sampled >= 3, "found SSV regions ({regions_sampled})");
+        assert!(soul > 40, "the soul floor exists ({soul} cells)");
+        assert!(fossils > 0, "nether fossils poke out ({fossils} bone cells)");
+        assert!(pillars > 30, "giant basalt pillars ({pillars} cells)");
+    }
+
+    /// The basalt deltas floor is the basalt/blackstone/magma trio
+    /// (VERIFIED w/Basalt_Deltas capture).
+    #[test]
+    fn backlog_basalt_deltas_floor_trio() {
+        let mut seed = 1u64;
+        let (cx, cz) = loop {
+            let found = (0..64).find(|&c| {
+                nether_region_biome(seed, c * 2, c * 2) == Biome::BasaltDeltas
+            });
+            if let Some(c) = found {
+                break (c * 2, c * 2);
+            }
+            seed += 1;
+            if seed > 200 {
+                panic!("no deltas region found");
+            }
+        };
+        let gen = TerrainGen::for_dimension(seed, Dimension::Nether);
+        let mut basalt = 0usize;
+        let mut blackstone = 0usize;
+        let mut magma = 0usize;
+        for (dx, dz) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
+            let (chunk, _) = gen.generate_chunk(cx + dx, cz + dz, Vec::new());
+            for i in 0..vc_chunk::chunk::CHUNK_LEN {
+                match chunk.get_idx(i) {
+                    BASALT => basalt += 1,
+                    BLACKSTONE | GILDED_BLACKSTONE => blackstone += 1,
+                    MAGMA_BLOCK => magma += 1,
+                    _ => {}
+                }
+            }
+        }
+        assert!(basalt > 200, "the deltas are basalt-dominated ({basalt} cells)");
+        assert!(blackstone > 0 || magma > 0, "the trio appears (bs {blackstone}, magma {magma})");
+    }
+
     /// §28: the nether shell — bedrock floor + roof, nothing above 127
     #[test]
     fn nether_bedrock_shell() {
@@ -4761,6 +5120,14 @@ mod nether_tests {
                     // /w/Magma_Block) joined the nether mass
                     NETHER_BRICKS | SPAWNER | NETHER_WART | MAGMA_BLOCK => {}
                     AIR | GLOWSTONE | SOUL_SAND => {}
+                    // backlog round: the valley + deltas content —
+                    // soul soil floors, soul fire, the fossil bone
+                    // blocks, the deltas' floor trio (basalt is counted
+                    // in its own bucket above) and the valley plants
+                    // (crimson roots + mushrooms, VERIFIED
+                    // w/Soul_Sand_Valley §vegetation)
+                    SOUL_SOIL | SOUL_FIRE | BONE_BLOCK | CRIMSON_ROOTS
+                    | MUSHROOM_RED | MUSHROOM_BROWN => {}
                     // 1.16 (Nether Update, part 1): the V13 nether body —
                     // soul-valley floors (soil + the eternal fires), the
                     // basalt blobs/pillars, the blackstone patch family,
@@ -5830,13 +6197,20 @@ mod v110_tests {
             }
         }
         assert!(total >= 12, "magma present across nether chunks ({total})");
-        // and only in the Y band (127-high nether; idx y = i >> 8)
+        // and only in the Y band (127-high nether; idx y = i >> 8) —
+        // unless the chunk is a basalt-deltas region, where magma is
+        // a floor material (the backlog round's verified composition:
+        // basalt/blackstone/magma surface)
         let g2 = TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Nether);
         let (chunk, _) = g2.generate_chunk(3, 2, Vec::new());
+        let deltas = nether_region_biome(0x10C0_C0DE, 3, 2) == Biome::BasaltDeltas;
         for i in 0..CHUNK_LEN {
             if chunk.get_idx(i) == MAGMA_BLOCK {
                 let y = (i >> 8) as i32;
-                assert!((27..=36).contains(&y), "magma at y={y} outside the wiki band");
+                assert!(
+                    (27..=36).contains(&y) || deltas,
+                    "magma at y={y} outside the wiki band (and not a deltas floor)"
+                );
             }
         }
     }

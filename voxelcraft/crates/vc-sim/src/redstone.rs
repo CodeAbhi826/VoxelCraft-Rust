@@ -424,6 +424,7 @@ pub fn daylight_sensor_tick(
     y: i32,
     z: i32,
     sim_ticks: u64,
+    weather_factor: f32,
 ) {
     let s = world.get_state(x, y, z);
     if state_block(s) != DAYLIGHT_SENSOR {
@@ -431,7 +432,9 @@ pub fn daylight_sensor_tick(
     }
     let sky = sky_light_at(world, x, y, z);
     let day = day_brightness(sim_ticks);
-    let signal = ((sky as f32 * day).round() as u8).min(15);
+    // backlog round (weather): the sky term carries the weather factor
+    // (rain 12/15, thunder 10/15 — VERIFIED w/Weather)
+    let signal = ((sky as f32 * day * weather_factor).round() as u8).min(15);
     let new = daylight_sensor_state(signal);
     if new != s {
         world.set_block_state(x, y, z, new);
@@ -1692,12 +1695,12 @@ mod e1_lamp_tests {
         // the flat-world test fixture has no light data — the sensor
         // reads the "no light data = 15" default; midday ticks
         on_block_changed(&mut sched, &w, 0, 65, 0);
-        daylight_sensor_tick(&mut w, &mut sched, 0, 65, 0, 6000);
+        daylight_sensor_tick(&mut w, &mut sched, 0, 65, 0, 6000, 1.0);
         drain(&mut w, &mut sched, 50);
         assert_eq!(wire_power(w.get_state(1, 65, 0)), 15, "full sky at noon");
         // midnight: signal 0 (the sensor drops to its idle state, the
         // wire decays through its own tick)
-        daylight_sensor_tick(&mut w, &mut sched, 0, 65, 0, 18000);
+        daylight_sensor_tick(&mut w, &mut sched, 0, 65, 0, 18000, 1.0);
         drain(&mut w, &mut sched, 50);
         assert_eq!(wire_power(w.get_state(1, 65, 0)), 0, "dark at midnight");
     }

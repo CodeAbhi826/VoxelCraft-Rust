@@ -42,6 +42,10 @@ pub struct Particle {
     pub light: f32,
     /// baked tint color (biome grass/foliage, else white)
     pub tint: [f32; 3],
+    /// per-particle gravity magnitude (blocks/tick²) — 0.04 vanilla for
+    /// break/hit particles; weather particles use their own (rain = 0,
+    /// constant fall speed; snow = 0.004 slow drift)
+    pub grav: f32,
 }
 
 /// billboard vertex — 8 floats: pos.xyz, atlas uv, rgb (light * tint)
@@ -134,6 +138,7 @@ impl ParticleSystem {
                         dv: 0.25 / 32.0,
                         light,
                         tint: tint_col,
+                        grav: 0.04,
                     };
                     self.push(p);
                 }
@@ -181,6 +186,69 @@ impl ParticleSystem {
             dv: 0.25 / 32.0,
             light: particle_light(sky, blk),
             tint: tint::block_tint_color(block, biome),
+            grav: 0.04,
+        };
+        self.push(p);
+    }
+
+    /// Backlog round (weather): one rain streak — a tall droplet quad
+    /// spawned above the player in a rain-exposed column. Rain falls at
+    /// a constant speed (no acceleration — vanilla's weather renderer
+    /// streams streaks, not physics particles; disclosed adaptation:
+    /// these ride the particle pool). VERIFIED w/Weather: rain needs
+    /// temperature > 0.15 and skips desert/savanna/badlands (the game
+    /// layer picks the column — here we just draw the streak).
+    pub fn spawn_rain_streak(&mut self, x: f32, y: f32, z: f32, sky: u8, blk: u8) {
+        if self.rng.next_f32() >= self.density {
+            return;
+        }
+        let tile = TILE_RAIN_PARTICLE;
+        let tx = (tile % 32) as f32;
+        let ty = (tile / 32) as f32;
+        let p = Particle {
+            pos: [x + self.rng.next_f32(), y, z + self.rng.next_f32()],
+            // slight wind drift; constant fall — 0.9 blocks/tick = 18 b/s
+            vel: [(self.rng.next_f32() - 0.5) * 0.08, -0.9, (self.rng.next_f32() - 0.5) * 0.08],
+            life: 16 + self.rng.next_range(8) as i32,
+            half: 0.5,
+            u0: tx / 32.0,
+            v0: ty / 32.0,
+            du: 1.0 / 32.0,
+            dv: 1.0 / 32.0,
+            light: particle_light(sky, blk),
+            tint: [1.0, 1.0, 1.0],
+            grav: 0.0,
+        };
+        self.push(p);
+    }
+
+    /// Backlog round (weather): one snowflake — slow drifting flake
+    /// (VERIFIED w/Weather §Snowfall: snow instead of rain when the
+    /// biome temperature < 0.15).
+    pub fn spawn_snow_flake(&mut self, x: f32, y: f32, z: f32, sky: u8, blk: u8) {
+        if self.rng.next_f32() >= self.density {
+            return;
+        }
+        let tile = TILE_SNOW_PARTICLE;
+        let tx = (tile % 32) as f32;
+        let ty = (tile / 32) as f32;
+        let p = Particle {
+            pos: [x + self.rng.next_f32(), y, z + self.rng.next_f32()],
+            // gentle flutter: slow fall + lateral drift
+            vel: [
+                (self.rng.next_f32() - 0.5) * 0.06,
+                -0.1,
+                (self.rng.next_f32() - 0.5) * 0.06,
+            ],
+            life: 60 + self.rng.next_range(30) as i32,
+            half: 0.06,
+            u0: tx / 32.0,
+            v0: ty / 32.0,
+            du: 1.0 / 32.0,
+            dv: 1.0 / 32.0,
+            light: particle_light(sky, blk),
+            tint: [1.0, 1.0, 1.0],
+            grav: 0.0,
         };
         self.push(p);
     }
@@ -222,7 +290,7 @@ impl ParticleSystem {
             ) == WATER;
 
             // gravity / buoyancy
-            p.vel[1] += if in_water { 0.02 } else { -0.04 };
+            p.vel[1] += if in_water { 0.02 } else { -p.grav };
 
             // per-axis move with world collision
             for axis in 0..3 {

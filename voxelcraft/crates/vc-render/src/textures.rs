@@ -21,6 +21,7 @@ mod v115_art;
 mod v116_art;
 mod v116b_art;
 mod audit16_art;
+mod weather_art;
 
 pub const ATLAS_SIZE: usize = 512;
 pub const TILE_PX: usize = 16;
@@ -4347,6 +4348,10 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_MOB_SILVERFISH => audit16_art::silverfish_art(&mut a, t, &mut rng),
             // the sweep-2 food row: the melon slice
             TILE_MELON_SLICE => audit16_art::melon_slice_art(&mut a, t, &mut rng),
+            // ---- backlog round (2026-09-09): weather particle sprites ----
+            TILE_RAIN_PARTICLE => weather_art::rain_streak(&mut a, t, &mut rng),
+            TILE_SNOW_PARTICLE => weather_art::snow_flake(&mut a, t, &mut rng),
+            TILE_FIRE => weather_art::fire_art(&mut a, t, &mut rng),
             _ => {}
         }
     }

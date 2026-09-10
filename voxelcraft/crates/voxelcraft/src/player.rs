@@ -149,6 +149,14 @@ pub struct Player {
     pub health: f32,
     /// Armor points (0..20, vanilla half-chestplate scale x2)
     pub armor: f32,
+    /// 4 armor equipment slots (0: helmet, 1: chestplate, 2: leggings, 3: boots)
+    pub armor_slots: [vc_inventory::inventory::ItemStack; 4],
+    /// Offhand shield / item slot
+    pub offhand_slot: vc_inventory::inventory::ItemStack,
+    /// Walking bobbing phase accumulator
+    pub bob_t: f32,
+    /// Attack swing animation timer (0.0..1.0)
+    pub swing_t: f32,
     /// XP points progress within the current level (§29)
     pub xp_points: i32,
     /// XP level (§29; enchanting pays 1..3 of these per option)
@@ -255,7 +263,32 @@ impl Player {
             air_accum: 0.0,
             was_on_ground: false,
             armor: 0.0,
+            armor_slots: [vc_inventory::inventory::ItemStack::EMPTY; 4],
+            offhand_slot: vc_inventory::inventory::ItemStack::EMPTY,
+            bob_t: 0.0,
+            swing_t: 0.0,
         }
+    }
+
+    /// Trigger first-person attack/mine swing animation
+    pub fn swing(&mut self) {
+        if self.swing_t <= 0.05 {
+            self.swing_t = 1.0;
+        }
+    }
+
+    /// Update player armor defense points from equipped armor
+    pub fn update_armor_points(&mut self) {
+        let mut pts = 0.0f32;
+        for s in &self.armor_slots {
+            if s.count > 0 && s.block != AIR {
+                pts += match s.block {
+                    SHIELD => 1.0,
+                    _ => 2.0,
+                };
+            }
+        }
+        self.armor = pts.min(20.0);
     }
 
     /// Current armor points (0..20)
@@ -1045,6 +1078,15 @@ impl Player {
             }
         } else {
             self.step_accum = 0.0;
+        }
+
+        // update walking bobbing and attack swing animation
+        let horiz = (self.vel.x * self.vel.x + self.vel.z * self.vel.z).sqrt() * dt;
+        if self.on_ground && !self.flying {
+            self.bob_t += horiz * 2.5;
+        }
+        if self.swing_t > 0.0 {
+            self.swing_t = (self.swing_t - dt * 5.0).max(0.0);
         }
 
         sounds

@@ -4368,16 +4368,34 @@ pub fn blit_tile(
     for y in 0..TILE_PX {
         for x in 0..TILE_PX {
             let src = ((ty * TILE_PX + y) * ATLAS_SIZE + tx * TILE_PX + x) * 4;
+            let a = atlas[src + 3] as u32;
+            if a == 0 {
+                continue;
+            }
+            let sr = atlas[src] as u32;
+            let sg = atlas[src + 1] as u32;
+            let sb = atlas[src + 2] as u32;
             for dy in 0..scale {
                 for dx in 0..scale {
                     let dxp = ox + x * scale + dx;
                     let dyp = oy + y * scale + dy;
                     let dst = (dyp * out_w + dxp) * 4;
                     if dst + 3 < out.len() {
-                        out[dst] = atlas[src];
-                        out[dst + 1] = atlas[src + 1];
-                        out[dst + 2] = atlas[src + 2];
-                        out[dst + 3] = atlas[src + 3];
+                        if a == 255 {
+                            out[dst] = sr as u8;
+                            out[dst + 1] = sg as u8;
+                            out[dst + 2] = sb as u8;
+                            out[dst + 3] = 255;
+                        } else {
+                            let inv_a = 255 - a;
+                            let dr = out[dst] as u32;
+                            let dg = out[dst + 1] as u32;
+                            let db = out[dst + 2] as u32;
+                            out[dst] = ((sr * a + dr * inv_a) / 255) as u8;
+                            out[dst + 1] = ((sg * a + dg * inv_a) / 255) as u8;
+                            out[dst + 2] = ((sb * a + db * inv_a) / 255) as u8;
+                            out[dst + 3] = 255;
+                        }
                     }
                 }
             }

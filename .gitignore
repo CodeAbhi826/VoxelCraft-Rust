@@ -101,3 +101,11 @@ voxelcraft/scripts/di-extract/
 voxelcraft/scripts/xml-extract/
 voxelcraft/scripts/wl-extract/
 voxelcraft/scripts/x11xcb-extract/
+
+# local benchmark and test build artifacts
+bench_run.json
+build-artifact/
+.agents/sentinel_*
+.agents/teamwork_*
+
+

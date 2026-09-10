@@ -820,6 +820,8 @@ pub struct GameApp {
     /// picker scroll (first visible row) — wheel-scrolls like the
     /// vanilla creative grid since the merged registry outgrew one page
     picker_scroll: usize,
+    picker_tab: usize,
+    picker_search: String,
     /// last pickr grid geometry for hit-testing clicks
     picker_geom: Option<vc_render::ui::PickerGeom>,
     /// rolling frame times (ms) for the F3 frame-time graph
@@ -1535,6 +1537,8 @@ impl GameApp {
             f3_dump2: false,
             picker_open: false,
             picker_scroll: 0,
+            picker_tab: 0,
+            picker_search: String::new(),
             picker_geom: None,
             frame_times: std::collections::VecDeque::new(),
             draw_calls_ring: std::collections::VecDeque::new(),
@@ -1712,6 +1716,21 @@ impl GameApp {
                             if ate {
                                 return;
                             }
+                        }
+                    }
+                    if pressed
+                        && self.picker_open
+                        && self.picker_tab == vc_render::ui::CREATIVE_TAB_SEARCH
+                    {
+                        if let winit::keyboard::Key::Character(s) = &event.logical_key {
+                            for ch in s.chars() {
+                                if !ch.is_control() && self.picker_search.len() < 24 {
+                                    self.picker_search.push(ch);
+                                    self.picker_scroll = 0;
+                                    self.ui.dirty = true;
+                                }
+                            }
+                            return;
                         }
                     }
                     let code = match event.physical_key {
@@ -1998,6 +2017,13 @@ impl GameApp {
                 // Phase 1: text-field editing (world name / seed)
                 if pressed && self.screen == Screen::WorldCreate {
                     self.backspace_field();
+                } else if pressed
+                    && self.picker_open
+                    && self.picker_tab == vc_render::ui::CREATIVE_TAB_SEARCH
+                {
+                    self.picker_search.pop();
+                    self.picker_scroll = 0;
+                    self.ui.dirty = true;
                 }
             }
             KeyCode::Enter | KeyCode::NumpadEnter => {
@@ -2203,6 +2229,7 @@ impl GameApp {
         match button {
             MouseButton::Left => {
                 if pressed {
+                    self.player.swing();
                     self.unlock_audio();
                     #[cfg(not(target_arch = "wasm32"))]
                     {
@@ -2281,16 +2308,73 @@ impl GameApp {
         self.ui.dirty = true;
     }
 
-    /// click inside the picker grid → assign that block to the selected slot
+    /// click inside the creative tabbed inventory / picker
     fn picker_click(&mut self, ux: i32, uy: i32) {
         self.unlock_audio();
         let Some(g) = &self.picker_geom else { return };
-        if let Some(idx) = g.slot_at(ux, uy) {
-            let b = PICKER_BLOCKS[idx];
+
+        // 1. Category tabs (0..12)
+        if let Some(tab) = g.tab_at(ux, uy) {
+            self.picker_tab = tab;
+            self.picker_scroll = 0;
+            self.ui.dirty = true;
+            return;
+        }
+
+        // 2. Trash slot (Red X) -> clears held/selected hotbar slot
+        if g.trash_hit(ux, uy) {
+            self.player.inv.slots[self.player.selected] =
+                vc_inventory::inventory::ItemStack::EMPTY;
+            self.ui.dirty = true;
+            return;
+        }
+
+        // 3. Hotbar slot clicked -> change selected hotbar slot
+        if let Some(slot) = g.hotbar_at(ux, uy) {
+            self.player.selected = slot;
+            self.ui.dirty = true;
+            return;
+        }
+
+        // 4. Armor slot clicked in survival tab -> swap with held slot
+        if let Some(armor_idx) = g.armor_at(ux, uy) {
+            let held = self.player.inv.slots[self.player.selected];
+            let current = self.player.armor_slots[armor_idx];
+            self.player.armor_slots[armor_idx] = held;
+            self.player.inv.slots[self.player.selected] = current;
+            self.player.update_armor_points();
+            self.ui.dirty = true;
+            return;
+        }
+
+        // 5. Offhand slot clicked in survival tab -> swap with held slot
+        if g.offhand_hit(ux, uy) {
+            let held = self.player.inv.slots[self.player.selected];
+            let current = self.player.offhand_slot;
+            self.player.offhand_slot = held;
+            self.player.inv.slots[self.player.selected] = current;
+            self.ui.dirty = true;
+            return;
+        }
+
+        // 6. Block in active grid clicked
+        if let Some(b) = g.block_at(ux, uy) {
             self.player.inv.slots[self.player.selected] =
                 vc_inventory::inventory::ItemStack::new(b, 64);
             self.item_toast = Some((name(b).to_string(), 2.0));
             self.ui.dirty = true;
+            return;
+        }
+
+        // 7. Fallback legacy slot_at
+        if let Some(idx) = g.slot_at(ux, uy) {
+            if idx < PICKER_BLOCKS.len() {
+                let b = PICKER_BLOCKS[idx];
+                self.player.inv.slots[self.player.selected] =
+                    vc_inventory::inventory::ItemStack::new(b, 64);
+                self.item_toast = Some((name(b).to_string(), 2.0));
+                self.ui.dirty = true;
+            }
         }
     }
 
@@ -2435,9 +2519,9 @@ impl GameApp {
         // the open picker eats the wheel (scroll rows, vanilla creative
         // grid); the hotbar cycle below stays for the in-world case
         if self.picker_open {
-            let cols = 15usize;
+            let cols = 9usize;
             let total = (PICKER_BLOCKS.len() + cols - 1) / cols;
-            let max_scroll = total.saturating_sub(11);
+            let max_scroll = total.saturating_sub(5);
             let cur = self.picker_scroll as i32 - d.signum() as i32;
             self.picker_scroll = cur.clamp(0, max_scroll as i32) as usize;
             self.ui.dirty = true;
@@ -2679,6 +2763,13 @@ impl GameApp {
             ID_OPT_SHADOWS => l("Sun shadow map resolution. Higher is sharper but costs fill rate."),
             ID_OPT_UPSCALE => l("Renders at a lower internal resolution and upscales with FSR."),
             ID_OPT_AUTOJUMP => l("Automatically jumps one-block steps while walking."),
+            ID_OPT_FS_RES => l("Fullscreen display resolution."),
+            ID_OPT_BOBBING => l("Toggles view-bobbing camera motion while walking."),
+            ID_OPT_ATTACK_IND => l("Toggles the weapon cooldown attack indicator."),
+            ID_OPT_MIPMAP => l("Mipmap levels for texture anti-aliasing."),
+            ID_OPT_DISTORTION => l("Nausea and portal screen distortion effect intensity."),
+            ID_OPT_ENT_DIST => l("Entity rendering distance multiplier."),
+            ID_OPT_FOV_EFF => l("Speed and status effect FOV changes."),
             _ if (ID_PACK_BASE..ID_PACK_BASE + MAX_PACK_ENTRIES as u16).contains(&id) => {
                 l("Activate this shader mode / pack.")
             }
@@ -5068,7 +5159,24 @@ impl GameApp {
             ID_PAUSE_OPTIONS => self.open_options(Screen::Pause),
             ID_PAUSE_QUIT => self.quit_to_title(),
             // ---- Phase 1: world select / create / death screens ----
+            ID_WS_PLAY => {
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    let sel = self.ws_selected.unwrap_or(0);
+                    if let Some(w) = self.worlds.get(sel) {
+                        if !w.meta.hardcore_dead {
+                            self.play_world(sel);
+                        }
+                    }
+                }
+            }
             ID_WS_CREATE => self.open_world_create(),
+            ID_WS_EDIT => {
+                self.refresh_widgets();
+            }
+            ID_WS_RECREATE => {
+                self.open_world_create();
+            }
             ID_WS_CANCEL => self.set_screen(Screen::Title),
             ID_WS_DELETE => {
                 #[cfg(not(target_arch = "wasm32"))]
@@ -5093,21 +5201,21 @@ impl GameApp {
             ID_DEATH_TITLE => self.death_quit_to_title(false),
             ID_DEATH_DELETE => self.death_quit_to_title(true),
             _ if (ID_WS_WORLD_BASE..ID_WS_WORLD_BASE + MAX_LISTED_WORLDS as u16).contains(&id) => {
-                // clicking a row selects it; a live world also plays
-                // (WorldSelect is native-only — unreachable on wasm)
+                // clicking a row selects it; clicking already selected row plays
                 #[cfg(not(target_arch = "wasm32"))]
                 {
                     let idx = (id - ID_WS_WORLD_BASE) as usize;
-                    self.ws_selected = Some(idx);
                     let dead = self
                         .worlds
                         .get(idx)
                         .map(|w| w.meta.hardcore_dead)
                         .unwrap_or(false);
-                    if !dead {
+                    if self.ws_selected == Some(idx) && !dead {
                         self.play_world(idx);
                     } else {
+                        self.ws_selected = Some(idx);
                         self.refresh_widgets();
+                        self.ui.dirty = true;
                     }
                 }
             }
@@ -14448,6 +14556,13 @@ impl GameApp {
             Screen::Game => {}
         }
 
+        // first-person hand & held item (media_1788974345702.jpg parity)
+        if self.screen == Screen::Game && !self.picker_open && self.container.is_none() {
+            let held = self.player.held();
+            self.ui
+                .first_person_hand(&held, self.player.bob_t, self.player.swing_t, &self.atlas);
+        }
+
         // in-game HUD
         self.ui.crosshair();
         let toast = self
@@ -14548,11 +14663,19 @@ impl GameApp {
             self.container_geom = None;
         }
 
-        // block picker overlay (B) — sits above the HUD
+        // creative tabbed inventory overlay (E) — sits above the HUD
         if self.picker_open {
-            let g = self
-                .ui
-                .picker(self.cursor, &self.atlas, self.picker_scroll, self.advanced_tooltips);
+            let g = self.ui.creative_tabbed_inventory(
+                self.picker_tab,
+                self.cursor,
+                &self.atlas,
+                self.picker_scroll,
+                &self.picker_search,
+                &self.player.inv,
+                &self.player.armor_slots,
+                &self.player.offhand_slot,
+                self.advanced_tooltips,
+            );
             self.picker_geom = Some(g);
         } else {
             self.picker_geom = None;
@@ -15579,29 +15702,37 @@ mod settings_tests {
         let ws = vc_render::ui::layout_video();
         let ids: Vec<u16> = ws.iter().map(|w| w.id).collect();
         for wanted in [
-            vc_render::ui::ID_OPT_RD,
-            vc_render::ui::ID_OPT_GRAPHICS,
-            vc_render::ui::ID_OPT_SMOOTH,
-            vc_render::ui::ID_OPT_GUISCALE,
-            vc_render::ui::ID_OPT_CLOUDS,
-            vc_render::ui::ID_OPT_PARTICLES,
-            vc_render::ui::ID_OPT_FULLSCREEN,
-            vc_render::ui::ID_OPT_VSYNC,
-            vc_render::ui::ID_OPT_ENTSHADOW,
-            vc_render::ui::ID_OPT_BRIGHT,
+            vc_render::ui::ID_OPT_FS_RES,
             vc_render::ui::ID_OPT_BIOME,
+            vc_render::ui::ID_OPT_GRAPHICS,
+            vc_render::ui::ID_OPT_RD,
+            vc_render::ui::ID_OPT_SMOOTH,
+            vc_render::ui::ID_OPT_MAXFPS,
+            vc_render::ui::ID_OPT_VSYNC,
+            vc_render::ui::ID_OPT_BOBBING,
+            vc_render::ui::ID_OPT_GUISCALE,
+            vc_render::ui::ID_OPT_ATTACK_IND,
+            vc_render::ui::ID_OPT_BRIGHT,
+            vc_render::ui::ID_OPT_CLOUDS,
+            vc_render::ui::ID_OPT_FULLSCREEN,
+            vc_render::ui::ID_OPT_PARTICLES,
+            vc_render::ui::ID_OPT_MIPMAP,
+            vc_render::ui::ID_OPT_ENTSHADOW,
+            vc_render::ui::ID_OPT_DISTORTION,
+            vc_render::ui::ID_OPT_ENT_DIST,
+            vc_render::ui::ID_OPT_FOV_EFF,
             vc_render::ui::ID_OPT_DONE2,
         ] {
             assert!(ids.contains(&wanted), "video screen missing {wanted}");
         }
-        assert_eq!(ids.len(), 12, "vanilla video = 11 options + done");
+        assert_eq!(ids.len(), 20, "vanilla video = 19 options + done");
         // vanilla proportions
-        let rd = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_RD).unwrap();
-        assert_eq!((rd.x, rd.y, rd.w, rd.h), (248, 72, 465, 30));
+        let fs = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_FS_RES).unwrap();
+        assert_eq!((fs.x, fs.y, fs.w, fs.h), (248, 36, 465, 30));
         let g = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_GRAPHICS).unwrap();
         assert_eq!((g.x, g.y, g.w, g.h), (248, 108, 225, 30));
-        let sl = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_SMOOTH).unwrap();
-        assert_eq!((sl.x, sl.y), (487, 108), "right column");
+        let rd = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_RD).unwrap();
+        assert_eq!((rd.x, rd.y), (487, 108), "right column");
         // the vanilla unlabeled Brightness slider
         let b = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_BRIGHT).unwrap();
         match &b.kind {

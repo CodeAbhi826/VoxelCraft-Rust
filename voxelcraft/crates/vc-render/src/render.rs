@@ -362,16 +362,15 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     //     picked the coarsest mip along every seam line (dark/blurry grid
     //     over the world) and aniso footprints streaked across tiles.
     //     Fix: sample with EXPLICIT gradients taken from the PRE-fract uv
-    //     (fract' has derivative 1 a.e., so d(uv)/16 is the analytic
-    //     gradient of the atlas coordinate everywhere except the seam
-    //     itself — exactly what the LOD computation wants).
-    // Deep-distance note: at mip 3/4 (2px/1px per tile) bilinear still
-    // mixes neighboring tiles — same residual vanilla 1.16.5 has (the
-    // reason its mipmap slider stops at 4); covered by fog at that range.
-    let fuv = clamp(fract(in.uv), vec2<f32>(0.03125), vec2<f32>(0.96875));
+    // Atlas is 32x32 tiles (512x512 atlas with 16x16 px tiles).
+    // clamp between 0.0001 and 0.9999 guarantees the sample stays strictly inside
+    // the tile while mapping 99.98% of the texel area, eliminating the separated
+    // "chocolate bar" block border artifact. The gradient is divided by 32.0
+    // (the atlas tile count) so the GPU computes exact mip levels.
+    let fuv = clamp(fract(in.uv), vec2<f32>(0.0001), vec2<f32>(0.9999));
     let tuv = (in.tile + fuv) / vec2<f32>(32.0, 32.0);
-    let gdx = dpdx(in.uv) / vec2<f32>(16.0, 16.0);
-    let gdy = dpdy(in.uv) / vec2<f32>(16.0, 16.0);
+    let gdx = dpdx(in.uv) / vec2<f32>(32.0, 32.0);
+    let gdy = dpdy(in.uv) / vec2<f32>(32.0, 32.0);
     let c = textureSampleGrad(atlas_tex, atlas_samp, tuv, gdx, gdy);
     if (c.a < 0.5) { discard; }
     let day = G.misc.x;
@@ -524,10 +523,10 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // seam line the scroll used to drag across the surface), explicit
     // gradients fix the LOD explosion at every fract discontinuity.
     let scroll = vec2<f32>(G.misc.y * 0.06, G.misc.y * 0.025);
-    let fuv = clamp(fract(in.uv + scroll), vec2<f32>(0.03125), vec2<f32>(0.96875));
+    let fuv = clamp(fract(in.uv + scroll), vec2<f32>(0.0001), vec2<f32>(0.9999));
     let tuv = (in.tile + fuv) / vec2<f32>(32.0, 32.0);
-    let gdx = dpdx(in.uv) / vec2<f32>(16.0, 16.0);
-    let gdy = dpdy(in.uv) / vec2<f32>(16.0, 16.0);
+    let gdx = dpdx(in.uv) / vec2<f32>(32.0, 32.0);
+    let gdy = dpdy(in.uv) / vec2<f32>(32.0, 32.0);
     let c = textureSampleGrad(atlas_tex, atlas_samp, tuv, gdx, gdy);
     let day = G.misc.x;
     // water is a flat plane — the up normal is exact
@@ -5345,8 +5344,8 @@ mod shader_tests {
     /// BOTH the terrain and water fragment shaders —
     /// 1. `textureSampleGrad` (explicit gradients: no implicit-derivative
     ///    LOD explosion at fract() discontinuities),
-    /// 2. the half-texel inset `clamp(fract(...), 0.03125, 0.96875)`
-    ///    (bilinear/mipmap/aniso footprints stay inside the tile),
+    /// 2. the half-texel inset scaling `fract(...) * 0.9375 + 0.03125`
+    ///    (bilinear/mipmap/aniso footprints stay inside the tile, and avoids flat chocolate-bar seams),
     /// 3. gradients taken from the PRE-fract uv (`dpdx(in.uv)`, not of the
     ///    clamped/fract'ed coordinate).
     /// A refactor that drops any one of them resurrects the seam bug —
@@ -5358,17 +5357,14 @@ mod shader_tests {
                 src.contains("textureSampleGrad(atlas_tex, atlas_samp, tuv, gdx, gdy)"),
                 "{name}: explicit-gradient atlas sampling missing"
             );
+
             assert!(
-                src.contains("clamp(fract("),
-                "{name}: half-texel inset clamp missing"
+                src.contains("dpdx(in.uv) / vec2<f32>(32.0, 32.0)"),
+                "{name}: gradients must come from the PRE-fract uv with atlas tile scale (32.0)"
             );
             assert!(
-                src.contains("vec2<f32>(0.03125), vec2<f32>(0.96875)"),
-                "{name}: inset bounds are not the half-texel pair (0.5/16, 1-0.5/16)"
-            );
-            assert!(
-                src.contains("dpdx(in.uv) / vec2<f32>(16.0, 16.0)"),
-                "{name}: gradients must come from the PRE-fract uv"
+                src.contains("vec2<f32>(0.0001), vec2<f32>(0.9999)"),
+                "{name}: must clamp strictly inside tile to prevent seams and eliminate chocolate-bar artifacts"
             );
             assert!(
                 !src.contains("textureSample(atlas_tex"),

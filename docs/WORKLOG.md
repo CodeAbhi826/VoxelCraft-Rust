@@ -3375,3 +3375,102 @@ Stage Summary:
 - New/updated test guards: seam-guard constants (0.9375 / 512.0 + the
   anti-regression /16 check), flat-water guard
 - 465/465 lib tests green; wasm bundle rebuilt and deployed
+
+---
+
+## 2026-09-10 — commit forensics: the two undocumented backlog rounds recovered into the record
+
+**Task:** the user asked to check the repo and audit the latest commits
+made by *other* sessions — "what changes occurred there". The tree was
+clean but **3 commits ahead of origin**, with one foreign commit and one
+mislabeled commit whose feature work was recorded nowhere (no WORKLOG
+entry, no README update — a standing-accuracy violation this entry
+closes).
+
+**Attribution method:** every commit shares the container identity "Z
+User", so attribution was done by message pattern. Exactly three commits
+in history carry bare-UUID messages (the interrupted-session signature —
+the session's own id as the commit text): `22213eb` (2026-09-02, early
+furnace/craft/inventory — recovered + documented long ago), `493f27a`
+(2026-09-08, the 1.15 Buzzy Bees round — recovered + documented as
+session 17f), and **`62ca070` (2026-09-09 02:41 — never documented)**.
+Plus `b0529ca` ("docs+bundle") silently carried a second undocumented
+feature round beyond its message's claim.
+
+**What the foreign backlog round (`62ca070`, 21 files, +2901) changed —
+verified by reading the diff and running its tests:**
+- **The Java weather machine** (`vc-gameplay/src/weather.rs`, new): the
+  two-flag rain/thunder state machine, every constant a wiki row from
+  minecraft.wiki/w/Weather (rain ON 12,000–24,000gt / OFF
+  12,000–180,000gt; thunder ON 3,600–15,600gt; the 600gt minimum flash
+  gap; 5 HP lightning damage; sky factors 12/15 rain, 10/15 thunder;
+  clear-on-new-world; sleep resets to clear but not the timers), with
+  `force_clear/force_rain/force_thunder` test handles and the
+  `can_strike()/strike_fired()` cadence pair the game layer drives.
+- **Nether biome closure**: `SoulSandValley` (id 25, cyan fog, soul
+  floor + nether fossils, skeleton/ghast/enderman spawn rows) +
+  `BasaltDeltas` (id 26, the basalt floor trio) — the five-nether-biome
+  set is complete (priority-backlog item 2).
+- **The fire block** (id 506, state 805, tile 738): lightning ignition +
+  the flint-and-steel source, emissive 15, cross-rendered like soul
+  fire, burn-out; WGSL mesh LUT resynced 805→806 / 506→507 (the
+  drift-guard class held — no hand-maintained constants diverged).
+- **Mob-side weather**: a per-mob weather field, `lightning_strike()`
+  (Creeper→charged via the 0x40 variant bit, Pig→ZombifiedPiglin,
+  Mooshroom red↔brown flip, 5 HP + the 2-block/4-block proximity box),
+  `rain_exposure_tick()` (extinguishing/wetting hooks), and the
+  thunderstorm daylight spawn gate (hostiles any time of day — the wiki
+  "treated as if it were 0" row).
+- **Weather rendering**: rain-streak + snowflake sprites (tiles
+  736/737, `weather_art.rs`), rain constant-fall / snow 0.004 drift
+  particles, rain sound rows, and the game layer's fixed-step
+  `weather_update` + rain/sky darkening (the sky_factor term feeding
+  the daylight sensor and the fog/tint pass).
+
+**What the farming round (hidden inside `b0529ca`) changed (21 files,
++2411):** the V16 registry window grew to **BLOCK_COUNT 515 /
+STATE_COUNT 845** — farmland (moisture 0..7, states 806–813, hydration
+by the 4-block boundary rule + dry decay), wheat/carrots/potatoes (age
+0..7, states 814–837), beetroots (age 0..3, 838–841), the
+wheat/bread/hoe identity states (842–844) with `farming_art.rs` (301
+lines) painted day one; growth denominators per the wiki crop tables;
+hoe tilling, planting on farmland, the bread (3 wheat) / hay bale
+(9 wheat) / hoe crafts, landing-trample, and the player-side food
+value. The same commit carried the **every-settings-option sweep**
+(17 screenshots under `docs/screenshots/settings-sweep/`: gmesh
+on/off, msaa 0/4/8, mip 0/4, aniso 1/16, occlusion on/off, shader
+packs 0/2, sim distance, both dimensions — the user's "test with every
+option" instruction) and the **preview recheck** pair (boot + title).
+
+**Verification (this session, fresh container):** the Rust toolchain
+had vanished with the container reset — reinstalled (rustup stable
+1.98.1). Full suite at HEAD: **628 lib tests green, 0 failed, 1
+ignored** (572 across the 14 library crates + 56 in the game crate with
+its `audio` feature off — the alsa headers are absent in this container,
+the documented sandbox limitation; CI's native stage covers the rest).
+The new backlog tests confirmed by name: 5 mob-weather
+(`backlog_lightning_conversions`, `backlog_charged_creeper_double_blast`,
+`backlog_zombified_piglin_is_the_wastes_roll`,
+`backlog_thunderstorm_daylight_spawn_gate`,
+`backlog_creeper_blast_reaches_the_game_layer`), 3 nether-biome
+(`backlog_five_nether_biomes_all_appear`,
+`backlog_soul_valley_has_soul_floor_and_fossils`,
+`backlog_basalt_deltas_floor_trio`), 7 farm tests across
+fluids/game/player, 3 weather-art. Bundle pair intact (all four
+`public/` files mtime-matched; wasm 5,689,251 bytes = the committed
+binary) and the preview serves it (root / voxelcraft.html / wasm all
+HTTP 200). Docs brought current: README (27 biomes, 515/845, the
+flat-water correction, weather + farming features, maintenance note
+12), CHECKLIST-VERIFIED-AUDIT (the weather/biome/farming rows + backlog
+items 1–3 closed), this entry.
+
+Stage Summary:
+- The repo at HEAD is sound: every foreign and mislabeled commit's
+  changes are test-covered and green (628/628 lib)
+- Two undocumented rounds recovered into the record: the weather/biome
+  backlog round (a foreign session's `62ca070`) and the farming +
+  settings-sweep round (hidden inside `b0529ca`'s "docs+bundle"
+  message) — both were already in the deployed bundle, only the record
+  was missing
+- 3 local commits remain unpushed (origin is 3 behind; the CI
+  auto-rebuild + Pages refresh happen on push)

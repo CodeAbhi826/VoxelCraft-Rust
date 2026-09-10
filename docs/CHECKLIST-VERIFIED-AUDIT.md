@@ -25,7 +25,7 @@
 
 | Problem class | Finding |
 |---|---|
-| **Stale status** | Every "Repo Status" cell reflects a repo state ~9 rounds old. Current truth: 188 commits, **593/593 tests green** (re-run locally today), 506 blocks, 25 overworld+nether biomes + the End, 52 mob types, 3 dimensions. Dozens of its "❌ Missing" items are ✅ now (The End + dragon fight, combat cooldown/crits/sweep, armor formula, weather-independent spawning rules, 15 villager types, brewing, enchanting, most redstone components, pistons, observers, daylight sensors, comparators, campfires, sweet berries, coral, kelp, bees, the entire 1.16 set…). |
+| **Stale status** | Every "Repo Status" cell reflects a repo state ~9 rounds old. Current truth (updated 2026-09-10 forensics round): 193 commits, **628/628 lib tests green** (re-run locally on a fresh toolchain), 515 blocks / 845 states, 27 overworld+nether biomes + the End, 49 mob defs (50 MobKind — the backlog round added the zombified piglin), 3 dimensions, weather + farming landed. Dozens of its "❌ Missing" items are ✅ now (The End + dragon fight, combat cooldown/crits/sweep, armor formula, weather-independent spawning rules, 15 villager types, brewing, enchanting, most redstone components, pistons, observers, daylight sensors, comparators, campfires, sweet berries, coral, kelp, bees, the entire 1.16 set…). |
 | **Version anachronisms** | Lists **1.17+/1.19 content as 1.16.5**: glow squid (6.1.9), goat (6.2.9), frog/tadpole (6.1.32/33), powder-snow bucket (4.3.13), freeze overlay (12.1.22), allay in pillager outposts (2.4.12), "drowned drop copper" (6.2.10 — copper is 1.17). |
 | **Factual errors** | Oxygen "300 (15 bubbles)" (3.1.14) — the HUD shows **10** bubbles (its own §12.1.6 agrees); weather "rain 0.5–7.5 days" (10.4.6) — rain *lasts 10–20 min*; the *clear* period is 0.5–7.5 in-game days (live wiki, Weather §Java Edition mechanics); "30 painting variants" (4.3.37) — 1.16.5 has **26**; villager "13 professions" (6.1.16/7.1) — 13 *employable* + nitwit + unemployed = **15 types** (the repo's own framing). |
 | **What it got right** | The villager **gossip table values are exactly correct** (verified against the live wiki — see §6.2 below); Ghast **10 HP** (File B says 16 — wrong); crit conditions (falling + ≥84.8% cooldown) correct; sword damage table, fall-damage formula, terminal velocity, ladder speeds all correct; the legal section's framework is sound. |
@@ -80,7 +80,7 @@ native + wasm32, 113 screenshots, 15 research documents.
 | Render/simulation distance split | ✅ | Independent settings. |
 | Sky: gradient, sun, moon (8 phases), stars, fog, clouds (Fast/Fancy), sunset band | ✅ | Moon 8-phase cycle = 8 in-game days (File B's "4 day" is wrong). |
 | First-person hand / held-item 3D render; F5 third person | ❌ | No player model at all (billboard mobs, billboard-free player). Why not: the renderer has no skeletal/entity mesh pipeline yet — the single largest visual-fidelity gap. |
-| Weather rendering (rain/thunder/lightning/snow) | ❌ | No weather system (see 2.9). |
+| Weather rendering (rain/thunder/lightning/snow) | ✅ | The two-flag Java weather machine (2026-09-09 backlog round): rain/thunder at the wiki cadences, lightning strikes with mob conversions, rain/snow particles, storm sky-darkening. |
 | Post-chain extras (bloom/vignette/ACES/chromatic aberration) | ✅ | Cinematic mode set. |
 
 ### 2.2 World generation
@@ -89,7 +89,7 @@ native + wasm32, 113 screenshots, 15 research documents.
 |---|---|---|
 | Seeded deterministic terrain (simplex 2D/3D, multi-octave) | ✅ | Java-LCG-compatible RNG crate (`vc-rng`). |
 | Overworld biomes — 22 of ~61 | 🟡 | Have: ocean, beach, plains, forest, desert, snowy, mountains, taiga, birch, jungle, savanna, swamp, badlands, mushroom fields, flower forest, sunflower plains, ice spikes, dark forest, warm/lukewarm/cold/frozen ocean. Missing: river, snowy taiga, snowy beach, stone shore, giant taiga, windswept variants, jungle edge, deep-ocean variants (disclosed as folded into the temperature families). |
-| Nether biomes — 3 of 5 | 🟡 | Have: nether wastes, crimson forest, warped forest. **Missing: Soul Sand Valley, Basalt Deltas** (File B claims both "In repo" — false). Why not: bracket 14 shipped the two forest families; the valley/deltas were never claimed by any round — the honest gap. |
+| Nether biomes — 5 of 5 | ✅ | All five: nether wastes, crimson forest, warped forest, **Soul Sand Valley, Basalt Deltas** (the last two landed in the 2026-09-09 backlog round — soul floor + fossils, the basalt floor trio, biome fog/spawn rows). |
 | The End dimension | ✅ | Central island, obsidian pillars, end crystals, dragon fight, gateway, dragon egg. End *cities/ships* ❌ (no chorus-fruit outer islands, no shulkers, no elytra-in-frame). |
 | Structures — 10 of ~19 | 🟡 | ✅ villages, mineshafts, ravines, desert pyramids, jungle temples, strongholds (12-frame end portal), dungeons, woodland mansions, nether fortresses, the End island. ❌ bastion remnants (blob stand-in), ruined portals (obsidian-trace stand-in), ocean monuments, ocean ruins, shipwrecks, buried treasure, pillager outposts, igloos, witch huts, fossils, end cities. |
 | Ore distribution | ✅ | Coal/iron/gold/redstone/lapis/diamond/emerald/nether quartz/nether gold/ancient debris — per-wiki y-ranges and vein sizes, ancient debris blast-resistance honored. |
@@ -182,7 +182,7 @@ turtle, fox, bee, strider, piglin, hoglin + **ender dragon, wither, villager**.
 | Quasi-connectivity | 🟡 | Documented behavior differences where the update graph differs — disclosed. |
 | Fluids: water/lava 8-4-3 source rules, flow levels, obsidian/cobble/stone interactions, waterlogging, bubble columns, lava light | ✅ | 20 Hz sim; File B's claim that this is "too fast" vs vanilla is unproven — the tick cadence is documented per-recipe. |
 | Interactive blocks: doors, trapdoors (iron trapdoor places), beds, TNT, campfire cooking, respawn anchor, lodestone, soul fire, sponge | 🟡 | Iron trapdoor ✅ (redstone-gated opening is the documented deferral); campfire ✅ (4-slot 600-tick cooking, soul variant); respawn anchor ✅ (4 charges, comparator signal, Nether-only respawn); sponge ❌ (no absorb system); **wood doors ❌, beds ❌, TNT ❌** — the standing disclosed deferral. Why not: multi-block placeable entities need a block-entity + multi-cell state layer. |
-| Farmland/crops (wheat/carrot/potato/beetroot) | ❌ | No farming system (hoe, tilling, hydration, crop growth) — the single most-missed survival loop. Nether wart & beetroot *items* exist; sweet berry bushes do grow in-world (4 stages). |
+| Farmland/crops (wheat/carrot/potato/beetroot) | ✅ | The farming system landed (2026-09-09 backlog round): hoe tilling, farmland moisture 0..7 with the 4-block hydration boundary, wheat/carrot/potato age 0..7 + beetroot age 0..3 growth at the wiki denominators, trampling, dry decay, bread/hay-bale/hoe crafts. |
 
 ### 2.9 World events, time, weather
 
@@ -190,7 +190,7 @@ turtle, fox, bee, strider, piglin, hoglin + **ender dragon, wither, villager**.
 |---|---|---|
 | 24000-tick day = 20 real minutes | ✅ | **Code correct and unit-tested** (`DAY_LEN_SECS == 1200`); the README's "10 min" line was stale doc text — fixed in this round. File B caught the README symptom, wrong about the code. |
 | Sun/moon/stars, 8-phase moon over 8 days, sleep… | 🟡 | Day/night + moon ✅; **sleeping to skip night ❌, beds ❌**; phantoms spawn on insomnia timer ✅ (their anti-sleep prey loop is N/A without beds). |
-| Weather: rain, thunder, lightning, snow | ❌ | Not implemented at all (no weather flag state). Why not: needs particle + sound + sky-darkening + lightning-conversion systems; explicitly outside the current bracket set. File B's S19 "In repo" rows are false. |
+| Weather: rain, thunder, lightning, snow | ✅ | Implemented (2026-09-09 backlog round): the two-flag state machine at the exact wiki cadences, 5 HP lightning with creeper-charging / pig→zombified-piglin / mooshroom-flip conversions and fire ignition, thunderstorm all-day hostile spawning, rain/snow particles + sound + sky factors. (File B's S19 "In repo" claim became true a day after this audit first wrote "false" — the round closed it.) |
 | Raids, bad omen, patrols, hero of the village, wandering traders, zombie sieges | ❌ | All deferred (the 1.14 "village half"). File B's entire S18 is false for this repo. |
 | Game rules, commands, /time etc. | 🟡 | No chat/commands; gamerules as engine settings only. |
 | Difficulty (peaceful→hard) with damage/spawning scaling | ✅ | |
@@ -327,12 +327,14 @@ correctly says.)
 
 ## Part 5 — Priority backlog (what "next" actually means)
 
-1. **Weather** (rain/thunder/lightning) — high player-visible value, medium
-   effort (sky state + particles + conversion hooks already exist per-mob).
+1. **Weather** (rain/thunder/lightning) — ✅ **DONE** (2026-09-09 backlog
+   round `62ca070`, verified 2026-09-10: 628/628 lib tests, the 5
+   mob-weather tests by name).
 2. **The two missing Nether biomes** (Soul Sand Valley, Basalt Deltas) —
-   closes the 1.16 map completely; basalt/soul art already exists.
-3. **Farming** (hoe→farmland→wheat/carrot/potato/beetroot growth) — unlocks
-   the bread/cake/hay recipes and villager-farmer AI.
+   ✅ **DONE** (same round; the five-biome set is complete).
+3. **Farming** (hoe→farmland→wheat/carrot/potato/beetroot growth) — ✅
+   **DONE** (2026-09-09 farming round inside `b0529ca`; bread/hay-bale/hoe
+   crafts included, villager-farmer AI remains part of item 6).
 4. **Doors, beds, TNT** — the multi-block entity class; beds unlock sleep,
    spawn points, and the phantom prey loop.
 5. **Remaining 16 status effects + splash/lingering potions** — most are

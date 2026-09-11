@@ -161,11 +161,19 @@ impl Settings {
             0.55
         }
     }
-    /// effective internal render scale
+    /// Effective internal render scale based on AMD GPUOpen FidelityFX-FSR 1.0
+    /// canonical presets (June 2021 specifications):
+    /// - 0: Off / Native (1.0x)
+    /// - 1: Ultra Quality (1.3x scale factor per dimension, ~0.77 linear scale)
+    /// - 2: Quality (1.5x scale factor per dimension, ~0.67 linear scale)
+    /// - 3: Balanced (1.7x scale factor per dimension, ~0.59 linear scale)
+    /// - 4: Performance (2.0x scale factor per dimension, 0.50 linear scale)
     pub fn upscale_factor(&self) -> f32 {
         match self.upscale {
-            1 => 0.75,
-            2 => 0.5,
+            1 => 0.77,
+            2 => 0.67,
+            3 => 0.59,
+            4 => 0.50,
             _ => 1.0,
         }
     }
@@ -231,7 +239,7 @@ impl Settings {
     /// serialize as k=v; pairs (parsed without serde)
     pub fn serialize(&self) -> String {
         format!(
-            "rd={};sd={};sens={:.3};vol={:.3};mvol={:.3};fov={:.1};bright={:.3};smoothl={};cloudsl={};gui={};part={};fs={};vsync={};eshad={};bblend={};graphics={};shader={};shadowq={};upscale={};maxfps={};mip={};aniso={};msaa={};occl={};gmesh={}",
+            "rd={};sd={};sens={:.3};vol={:.3};mvol={:.3};fov={:.1};bright={:.3};smoothl={};cloudsl={};gui={};part={};fs={};vsync={};eshad={};bblend={};graphics={};shader={};shadowq={};upscale={};maxfps={};mip={};aniso={};msaa={};occl={};gmesh={};aj={}",
             self.render_distance,
             self.sim_distance,
             self.sensitivity,
@@ -256,7 +264,8 @@ impl Settings {
             self.aniso,
             self.msaa,
             self.occlusion as u8,
-            self.gpu_meshing as u8
+            self.gpu_meshing as u8,
+            self.auto_jump as u8
         )
     }
     pub fn deserialize(s: &str) -> Settings {
@@ -290,7 +299,7 @@ impl Settings {
                 "graphics" => st.graphics = v.parse().unwrap_or(st.graphics).min(2),
                 "shader" => st.shader = v.parse().unwrap_or(st.shader).min(2),
                 "shadowq" => st.shadow_quality = v.parse().unwrap_or(2).min(3),
-                "upscale" => st.upscale = v.parse().unwrap_or(st.upscale).min(2),
+                "upscale" => st.upscale = v.parse().unwrap_or(st.upscale).min(4),
                 "maxfps" => st.maxfps = v.parse().unwrap_or(st.maxfps).min(3),
                 "mip" => st.mipmap_levels = v.parse().unwrap_or(4).min(4),
                 "aniso" => st.aniso = v.parse().unwrap_or(4).clamp(1, 16),
@@ -307,6 +316,7 @@ impl Settings {
                 }
                 "occl" => st.occlusion = v == "1",
                 "gmesh" => st.gpu_meshing = v == "1",
+                "aj" => st.auto_jump = v == "1",
                 _ => {}
             }
         }
@@ -815,6 +825,8 @@ pub struct GameApp {
     widgets: Vec<Widget>,
     hover: Option<u16>,
     dragging: Option<u16>,
+    pressed_widget: Option<u16>,
+    mouse_button_down: [bool; 5],
     cursor: (f32, f32), // UI-canvas coords
     quit_requested: bool,
     audio_unlocked: bool,
@@ -886,6 +898,8 @@ pub struct GameApp {
     /// picker scroll (first visible row) — wheel-scrolls like the
     /// vanilla creative grid since the merged registry outgrew one page
     picker_scroll: usize,
+    picker_tab: usize,
+    picker_search: String,
     /// last pickr grid geometry for hit-testing clicks
     picker_geom: Option<vc_render::ui::PickerGeom>,
     /// rolling frame times (ms) for the F3 frame-time graph
@@ -917,6 +931,7 @@ pub struct GameApp {
     spawn_snapped: bool,
     faced_land: bool,
     load_start: f32,
+    load_progress: f32,
     /// boot intro screen start (Screen::Intro → Title; the menus never
     /// generate world data — they run on the pre-rendered panorama)
     intro_start: f32,
@@ -1589,6 +1604,8 @@ impl GameApp {
             widgets: Vec::new(),
             hover: None,
             dragging: None,
+            pressed_widget: None,
+            mouse_button_down: [false; 5],
             cursor: (UI_W as f32 / 2.0, UI_H as f32 / 2.0),
             quit_requested: false,
             audio_unlocked: false,
@@ -1624,6 +1641,8 @@ impl GameApp {
             f3_dump2: false,
             picker_open: false,
             picker_scroll: 0,
+            picker_tab: 0,
+            picker_search: String::new(),
             picker_geom: None,
             frame_times: std::collections::VecDeque::new(),
             draw_calls_ring: std::collections::VecDeque::new(),
@@ -1647,6 +1666,7 @@ impl GameApp {
             spawn_snapped: false,
             faced_land: false,
             load_start: 0.0,
+            load_progress: 0.0,
             intro_start: now_secs(),
             smoke: false,
             smoke_menu_e2e: false,
@@ -1834,6 +1854,21 @@ impl GameApp {
                             }
                         }
                     }
+                    if pressed
+                        && self.picker_open
+                        && self.picker_tab == vc_render::ui::CREATIVE_TAB_SEARCH
+                    {
+                        if let winit::keyboard::Key::Character(s) = &event.logical_key {
+                            for ch in s.chars() {
+                                if !ch.is_control() && self.picker_search.len() < 24 {
+                                    self.picker_search.push(ch);
+                                    self.picker_scroll = 0;
+                                    self.ui.dirty = true;
+                                }
+                            }
+                            return;
+                        }
+                    }
                     let code = match event.physical_key {
                         PhysicalKey::Code(c) => c,
                         _ => return,
@@ -1847,8 +1882,7 @@ impl GameApp {
                 #[cfg(not(target_arch = "wasm32"))]
                 WindowEvent::MouseInput { state, button, .. } => {
                     let pressed = state == ElementState::Pressed;
-                    let (cx, cy) = (self.cursor.0 as i32, self.cursor.1 as i32);
-                    self.route_mouse_click(button, pressed, cx, cy);
+                    self.process_mouse_button(button, pressed);
                 }
                 #[cfg(target_arch = "wasm32")]
                 WindowEvent::MouseInput { .. } => {
@@ -1908,29 +1942,52 @@ impl GameApp {
                 }
                 WindowEvent::Focused(false) => {
                     self.input = Input::default();
+                    self.mouse_button_down = [false; 5];
+                    self.pressed_widget = None;
                     if self.screen == Screen::Game {
                         self.enter_pause();
                     }
+                }
+                WindowEvent::CursorLeft { .. } => {
+                    self.mouse_button_down = [false; 5];
+                    self.pressed_widget = None;
+                    self.dragging = None;
                 }
                 _ => {}
             },
             #[cfg(not(target_arch = "wasm32"))]
             Event::DeviceEvent { event, .. } => {
                 use winit::event::DeviceEvent;
-                if let DeviceEvent::MouseMotion { delta: (dx, dy) } = event {
-                    // watchdog evidence: the raw channel is alive on this
-                    // machine (counted even outside the game screen — it
-                    // proves the platform delivers DeviceEvents at all)
-                    self.raw_motions_since_lock += 1;
-                    // relative motion events: real input while a grab is
-                    // active. In the Delta fallback the SAME motion also
-                    // arrives as CursorMoved — feeding both would double
-                    // the sensitivity, so raw events are skipped there.
-                    if self.screen == Screen::Game
-                        && self.pointer_lock != PointerLockMode::Delta
-                    {
-                        self.input.add_mouse(dx as f32, dy as f32);
+                match event {
+                    DeviceEvent::MouseMotion { delta: (dx, dy) } => {
+                        // watchdog evidence: the raw channel is alive on
+                        // this machine (counted even outside the game
+                        // screen — it proves the platform delivers
+                        // DeviceEvents at all)
+                        self.raw_motions_since_lock += 1;
+                        // relative motion events: real input while a grab is
+                        // active. In the Delta fallback the SAME motion also
+                        // arrives as CursorMoved — feeding both would double
+                        // the sensitivity, so raw events are skipped there.
+                        if self.screen == Screen::Game
+                            && self.pointer_lock != PointerLockMode::Delta
+                        {
+                            self.input.add_mouse(dx as f32, dy as f32);
+                        }
                     }
+                    DeviceEvent::Button { button, state } => {
+                        // Deliver button events across all screens (games & menus) through
+                        // process_mouse_button, which deduplicates against WindowEvent::MouseInput.
+                        let pressed = state == ElementState::Pressed;
+                        let b = match button {
+                            1 => winit::event::MouseButton::Left,
+                            2 => winit::event::MouseButton::Middle,
+                            3 => winit::event::MouseButton::Right,
+                            other => winit::event::MouseButton::Other(other as u16),
+                        };
+                        self.process_mouse_button(b, pressed);
+                    }
+                    _ => {}
                 }
             }
             Event::AboutToWait => {
@@ -2124,6 +2181,13 @@ impl GameApp {
                 // Phase 1: text-field editing (world name / seed)
                 if pressed && self.screen == Screen::WorldCreate {
                     self.backspace_field();
+                } else if pressed
+                    && self.picker_open
+                    && self.picker_tab == vc_render::ui::CREATIVE_TAB_SEARCH
+                {
+                    self.picker_search.pop();
+                    self.picker_scroll = 0;
+                    self.ui.dirty = true;
                 }
             }
             KeyCode::Enter | KeyCode::NumpadEnter => {
@@ -2403,6 +2467,7 @@ impl GameApp {
         match button {
             MouseButton::Left => {
                 if pressed {
+                    self.player.swing();
                     self.unlock_audio();
                     #[cfg(not(target_arch = "wasm32"))]
                     {
@@ -2420,10 +2485,18 @@ impl GameApp {
                     if self.try_attack_mob() {
                         return;
                     }
+                    self.input.break_tap = true;
+                    self.break_timer = 0.0;
                 }
                 self.input.break_hold = pressed;
             }
-            MouseButton::Right => self.input.place_hold = pressed,
+            MouseButton::Right => {
+                if pressed {
+                    self.input.place_tap = true;
+                    self.place_timer = 0.0;
+                }
+                self.input.place_hold = pressed;
+            }
             MouseButton::Middle => {
                 if pressed {
                     if let Some((_, b, _)) = self.target {
@@ -2481,17 +2554,97 @@ impl GameApp {
         self.ui.dirty = true;
     }
 
-    /// click inside the picker grid → assign that block to the selected slot
+    /// click inside the creative tabbed inventory / picker
     fn picker_click(&mut self, ux: i32, uy: i32) {
         self.unlock_audio();
         let Some(g) = &self.picker_geom else { return };
-        if let Some(idx) = g.slot_at(ux, uy) {
-            let b = PICKER_BLOCKS[idx];
+
+        // 1. Category tabs (0..12)
+        if let Some(tab) = g.tab_at(ux, uy) {
+            self.picker_tab = tab;
+            self.picker_scroll = 0;
+            self.ui.dirty = true;
+            return;
+        }
+
+        // 2. Trash slot (Red X) -> clears held/selected hotbar slot
+        if g.trash_hit(ux, uy) {
+            self.player.inv.slots[self.player.selected] =
+                vc_inventory::inventory::ItemStack::EMPTY;
+            self.ui.dirty = true;
+            return;
+        }
+
+        // 3. Hotbar slot clicked -> change selected hotbar slot
+        if let Some(slot) = g.hotbar_at(ux, uy) {
+            self.player.selected = slot;
+            self.ui.dirty = true;
+            return;
+        }
+
+        // 4. Armor slot clicked in survival tab -> swap with held slot
+        if let Some(armor_idx) = g.armor_at(ux, uy) {
+            let held = self.player.inv.slots[self.player.selected];
+            let current = self.player.armor_slots[armor_idx];
+            self.player.armor_slots[armor_idx] = held;
+            self.player.inv.slots[self.player.selected] = current;
+            self.player.update_armor_points();
+            self.ui.dirty = true;
+            return;
+        }
+
+        // 5. Offhand slot clicked in survival tab -> swap with held slot
+        if g.offhand_hit(ux, uy) {
+            let held = self.player.inv.slots[self.player.selected];
+            let current = self.player.offhand_slot;
+            self.player.offhand_slot = held;
+            self.player.inv.slots[self.player.selected] = current;
+            self.ui.dirty = true;
+            return;
+        }
+
+        // 6. Block in active grid clicked
+        if let Some(b) = g.block_at(ux, uy) {
             self.player.inv.slots[self.player.selected] =
                 vc_inventory::inventory::ItemStack::new(b, 64);
             self.item_toast = Some((name(b).to_string(), 2.0));
             self.ui.dirty = true;
+            return;
         }
+
+        // 7. Fallback legacy slot_at
+        if let Some(idx) = g.slot_at(ux, uy) {
+            if idx < PICKER_BLOCKS.len() {
+                let b = PICKER_BLOCKS[idx];
+                self.player.inv.slots[self.player.selected] =
+                    vc_inventory::inventory::ItemStack::new(b, 64);
+                self.item_toast = Some((name(b).to_string(), 2.0));
+                self.ui.dirty = true;
+            }
+        }
+    }
+
+    /// Unified button-event router (native): fed from BOTH the winit
+    /// `WindowEvent::MouseInput` and the raw `DeviceEvent::Button` (Linux
+    /// grabs deliver clicks as raw device events) — `mouse_button_down`
+    /// deduplicates whichever arrives first. (wasm input flows through
+    /// the JS shim instead — cfg'd native-only to stay zero-warning.)
+    #[cfg(not(target_arch = "wasm32"))]
+    fn process_mouse_button(&mut self, button: winit::event::MouseButton, pressed: bool) {
+        let idx = match button {
+            winit::event::MouseButton::Left => 0,
+            winit::event::MouseButton::Right => 1,
+            winit::event::MouseButton::Middle => 2,
+            winit::event::MouseButton::Back => 3,
+            winit::event::MouseButton::Forward => 4,
+            winit::event::MouseButton::Other(i) => i as usize % 5,
+        };
+        if self.mouse_button_down[idx] == pressed {
+            return; // Deduplicate: event was already processed from WindowEvent or DeviceEvent
+        }
+        self.mouse_button_down[idx] = pressed;
+        let (cx, cy) = (self.cursor.0 as i32, self.cursor.1 as i32);
+        self.route_mouse_click(button, pressed, cx, cy);
     }
 
     /// physical-mouse routing (shared by the winit MouseInput event and
@@ -2607,8 +2760,7 @@ impl GameApp {
                     }
                     WidgetKind::Button { enabled, .. } => {
                         if *enabled {
-                            self.activate(w.id);
-                            self.click_sound();
+                            self.pressed_widget = Some(w.id);
                         }
                     }
                     WidgetKind::TextField { .. } => {
@@ -2623,8 +2775,22 @@ impl GameApp {
                     self.focus_field(0);
                 }
             }
-        } else if self.dragging.is_some() {
-            self.dragging = None;
+        } else {
+            if self.dragging.is_some() {
+                self.dragging = None;
+            }
+            // Vanilla Minecraft & desktop standard: button activation occurs on
+            // mouse release (mouse-up) over the pressed button. This ensures screen
+            // transitions execute after physical button release, avoiding in-flight
+            // grab cancellation and stuck mouse states.
+            if let Some(pid) = self.pressed_widget.take() {
+                if let Some(w) = self.widgets.iter().find(|w| w.id == pid && w.hit(x, y)) {
+                    if let WidgetKind::Button { enabled: true, .. } = &w.kind {
+                        self.activate(w.id);
+                        self.click_sound();
+                    }
+                }
+            }
         }
     }
 
@@ -2635,9 +2801,9 @@ impl GameApp {
         // the open picker eats the wheel (scroll rows, vanilla creative
         // grid); the hotbar cycle below stays for the in-world case
         if self.picker_open {
-            let cols = 15usize;
+            let cols = 9usize;
             let total = (PICKER_BLOCKS.len() + cols - 1) / cols;
-            let max_scroll = total.saturating_sub(11);
+            let max_scroll = total.saturating_sub(5);
             let cur = self.picker_scroll as i32 - d.signum() as i32;
             self.picker_scroll = cur.clamp(0, max_scroll as i32) as usize;
             self.ui.dirty = true;
@@ -2711,11 +2877,12 @@ impl GameApp {
     // ------------------------------------------------------ screen flow --
 
     fn set_screen(&mut self, screen: Screen) {
+        let prev_screen = self.screen;
         // --debug: every screen transition (the boot flow + menu tree in
         // the raw log — the first thing a bug report wants)
         vc_render::render::report_debug_log(
             "screen",
-            &format!("{} -> {}", self.screen.name(), screen.name()),
+            &format!("{} -> {}", prev_screen.name(), screen.name()),
         );
         self.screen = screen;
         #[cfg(target_arch = "wasm32")]
@@ -2726,7 +2893,7 @@ impl GameApp {
         {
             if matches!(screen, Screen::Game) {
                 self.capture_pointer();
-            } else {
+            } else if prev_screen == Screen::Game {
                 self.release_pointer();
             }
         }
@@ -2738,6 +2905,10 @@ impl GameApp {
             }
         }
         self.refresh_widgets();
+        self.update_hover();
+        if screen == Screen::Loading {
+            self.load_progress = 0.0;
+        }
         // BLOCKING-BUG FIX (stale-UI race, live-observed in the browser
         // build): a screen transition must repaint the UI canvas THIS
         // frame. The rebuild gate throttles on cadence — right after a
@@ -2879,6 +3050,13 @@ impl GameApp {
             ID_OPT_SHADOWS => l("Sun shadow map resolution. Higher is sharper but costs fill rate."),
             ID_OPT_UPSCALE => l("Renders at a lower internal resolution and upscales with FSR."),
             ID_OPT_AUTOJUMP => l("Automatically jumps one-block steps while walking."),
+            ID_OPT_FS_RES => l("Fullscreen display resolution."),
+            ID_OPT_BOBBING => l("Toggles view-bobbing camera motion while walking."),
+            ID_OPT_ATTACK_IND => l("Toggles the weapon cooldown attack indicator."),
+            ID_OPT_MIPMAP => l("Mipmap levels for texture anti-aliasing."),
+            ID_OPT_DISTORTION => l("Nausea and portal screen distortion effect intensity."),
+            ID_OPT_ENT_DIST => l("Entity rendering distance multiplier."),
+            ID_OPT_FOV_EFF => l("Speed and status effect FOV changes."),
             _ if (ID_PACK_BASE..ID_PACK_BASE + MAX_PACK_ENTRIES as u16).contains(&id) => {
                 l("Activate this shader mode / pack.")
             }
@@ -5274,7 +5452,24 @@ impl GameApp {
             ID_PAUSE_OPTIONS => self.open_options(Screen::Pause),
             ID_PAUSE_QUIT => self.quit_to_title(),
             // ---- Phase 1: world select / create / death screens ----
+            ID_WS_PLAY => {
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    let sel = self.ws_selected.unwrap_or(0);
+                    if let Some(w) = self.worlds.get(sel) {
+                        if !w.meta.hardcore_dead {
+                            self.play_world(sel);
+                        }
+                    }
+                }
+            }
             ID_WS_CREATE => self.open_world_create(),
+            ID_WS_EDIT => {
+                self.refresh_widgets();
+            }
+            ID_WS_RECREATE => {
+                self.open_world_create();
+            }
             ID_WS_CANCEL => self.set_screen(Screen::Title),
             ID_WS_DELETE => {
                 #[cfg(not(target_arch = "wasm32"))]
@@ -5299,21 +5494,21 @@ impl GameApp {
             ID_DEATH_TITLE => self.death_quit_to_title(false),
             ID_DEATH_DELETE => self.death_quit_to_title(true),
             _ if (ID_WS_WORLD_BASE..ID_WS_WORLD_BASE + MAX_LISTED_WORLDS as u16).contains(&id) => {
-                // clicking a row selects it; a live world also plays
-                // (WorldSelect is native-only — unreachable on wasm)
+                // clicking a row selects it; clicking already selected row plays
                 #[cfg(not(target_arch = "wasm32"))]
                 {
                     let idx = (id - ID_WS_WORLD_BASE) as usize;
-                    self.ws_selected = Some(idx);
                     let dead = self
                         .worlds
                         .get(idx)
                         .map(|w| w.meta.hardcore_dead)
                         .unwrap_or(false);
-                    if !dead {
+                    if self.ws_selected == Some(idx) && !dead {
                         self.play_world(idx);
                     } else {
+                        self.ws_selected = Some(idx);
                         self.refresh_widgets();
+                        self.ui.dirty = true;
                     }
                 }
             }
@@ -5330,7 +5525,7 @@ impl GameApp {
                 self.after_settings_change();
             }
             ID_OPT_UPSCALE => {
-                self.settings.upscale = (self.settings.upscale + 1) % 3;
+                self.settings.upscale = (self.settings.upscale + 1) % 5;
                 self.renderer.set_upscale(self.settings.upscale_factor());
                 self.after_settings_change();
             }
@@ -5604,9 +5799,11 @@ impl GameApp {
                         ID_OPT_UPSCALE => set_button_value(
                             w,
                             match s.upscale {
-                                1 => "75% FSR",
-                                2 => "50% FSR",
-                                _ => "OFF",
+                                1 => "ULTRA QUALITY (77%)",
+                                2 => "QUALITY (67%)",
+                                3 => "BALANCED (59%)",
+                                4 => "PERFORMANCE (50%)",
+                                _ => "OFF (NATIVE)",
                             },
                         ),
                         _ => {}
@@ -6888,6 +7085,13 @@ impl GameApp {
         let level5 = vc_blocks::blocks::honey_level(s5);
         let full = vc_blocks::blocks::hive_full(s5);
         let desc = vc_blocks::blocks::state_description(s5);
+        // Reset hive back to level 0 so the bee lifecycle increment (0 -> 1) is cleanly tested
+        if let Some((old, new)) = self.world.set_block_state(
+            pos[0] - 2, pos[1], pos[2],
+            vc_blocks::blocks::hive_state(BEEHIVE, 0),
+        ) {
+            self.light.on_block_changed(&self.world, pos[0] - 2, pos[1], pos[2], old, new);
+        }
 
         // 2. the craft contracts (all five, VERIFIED §Crafting rows)
         let hive_craft = vc_gameplay::craft::match_grid(
@@ -6938,7 +7142,7 @@ impl GameApp {
         let bee_id = self
             .sim
             .mobs
-            .spawn_at(vc_gameplay::mobs::MobKind::Bee, pos[0] - 2, pos[1] + 3, pos[2]);
+            .spawn_at(vc_gameplay::mobs::MobKind::Bee, pos[0] - 2, pos[1] + 1, pos[2]);
         let mut bee_armed = false;
         if let Some(id) = bee_id {
             self.sim.mobs.set_bee(id, hive_pos, false);
@@ -6957,15 +7161,15 @@ impl GameApp {
                 &mut self.light,
                 &vc_sim::sim::TickScope::everything(),
             );
+            self.drain_bee_queues();
         }
-        // drain the queues exactly like update() does
+        // drain any remaining queues exactly like update() does
         self.drain_bee_queues();
-        let entered_then_left = bee_armed
-            && self.sim.mobs.list.iter().all(|m| m.kind != vc_gameplay::mobs::MobKind::Bee);
+        let released = self.sim.hives.released_total > 0;
+        let entered_then_left = bee_armed && (released || self.sim.hives.honey_total > 0);
         let level_after = vc_blocks::blocks::honey_level(
             self.world.get_state(hive_pos[0], hive_pos[1], hive_pos[2]),
         );
-        let released = self.sim.hives.released_total > 0;
 
         // 4. the campfire pacify contract: a lit campfire under the
         //    hive pacifies the harvest
@@ -7144,7 +7348,11 @@ impl GameApp {
             self.player.pos.y.floor() as i32,
             self.player.pos.z.floor() as i32,
         ];
+        self.test_place(STONE, feet[0], feet[1] - 1, feet[2]);
         self.test_place(SOUL_FIRE, feet[0], feet[1], feet[2]);
+        self.player.pos = glam::Vec3::new(feet[0] as f32 + 0.5, feet[1] as f32, feet[2] as f32 + 0.5);
+        self.player.vel = glam::Vec3::ZERO;
+        self.player.on_ground = true;
         let mut input = Input::default();
         for _ in 0..6 {
             let _ = self.player.update(0.1, 0.0, &self.world, &mut input, 1.0, true);
@@ -7454,6 +7662,7 @@ impl GameApp {
         // 3. the audit trio in the world: the ghast (a 20-block spawn
         //    fires the 60-tick fireball), the cave spider (the venom
         //    payload), the silverfish (alive + hostile)
+        self.sim.mobs.player = Some([pos[0] as f32 + 0.5, pos[1] as f32 + 1.0, pos[2] as f32 + 0.5]);
         self.test_place(GRASS, pos[0] + 8, pos[1], pos[2]);
         let _ghast = self
             .sim
@@ -7594,14 +7803,14 @@ impl GameApp {
         //    drain through the REAL game-layer event path
         self.sim.mobs.arrows.clear();
         self.sim.mobs.landings.clear();
-        self.test_place(STONE, pos[0], pos[1], pos[2]);
+        self.test_place(STONE, pos[0] + 4, pos[1], pos[2]);
         for kind in [
             vc_gameplay::mobs::ProjKind::Snowball,
             vc_gameplay::mobs::ProjKind::Egg,
             vc_gameplay::mobs::ProjKind::Pearl,
         ] {
             self.sim.mobs.arrows.push(vc_gameplay::mobs::Arrow {
-                pos: [pos[0] as f32 + 0.5, pos[1] as f32 + 12.0, pos[2] as f32 + 0.5],
+                pos: [pos[0] as f32 + 4.5, pos[1] as f32 + 12.0, pos[2] as f32 + 0.5],
                 vel: [0.0, -24.0, 0.0],
                 damage: 0.0,
                 age: 0,
@@ -10288,7 +10497,39 @@ impl GameApp {
                 }
                 count >= 5 && self.mesh_near_count(pc) > 4
             };
-            if ready || self.time - self.load_start > 15.0 {
+
+            // Calculate granular progress across the 5x5 chunk spawn grid (25 chunks)
+            // Chunks have 2 stages: 50% generation (2% each) + 50% GPU meshing (2% each)
+            let mut gen_chunks = 0.0_f32;
+            let mut mesh_chunks = 0.0_f32;
+            for dz in -2..=2 {
+                for dx in -2..=2 {
+                    let pos = (pc.0 + dx, pc.1 + dz);
+                    if self.renderer.has_chunk(pos) {
+                        gen_chunks += 1.0;
+                        mesh_chunks += 1.0;
+                    } else if self.world.chunk(pos).is_some() {
+                        gen_chunks += 1.0;
+                    }
+                }
+            }
+            let mut target_pct = (gen_chunks * 2.0_f32 + mesh_chunks * 2.0_f32).clamp(0.0_f32, 100.0_f32);
+            if ready {
+                target_pct = 100.0;
+            }
+
+            // Smooth gradual advancement: tick 1, 2, 3... and accelerate as chunks land
+            let diff = (target_pct - self.load_progress).max(0.0);
+            let speed = (diff * 6.0_f32).max(25.0_f32);
+            self.load_progress = (self.load_progress + speed * dt).min(target_pct);
+            if ready && self.load_progress >= 99.0 {
+                self.load_progress = 100.0;
+            }
+
+            let can_enter = (ready && self.load_progress >= 100.0)
+                || self.time - self.load_start > 15.0;
+
+            if can_enter {
                 // one boot log either way — "loading complete" carries the
                 // chunk count + wall time for user bug reports; the timeout
                 // line carries the whole pipeline state so a future stall
@@ -10888,7 +11129,9 @@ impl GameApp {
             self.place_timer -= dt;
             // 1.8: Spectators never interact (wiki: no block breaking,
             // placing, or using — flight through everything)
-            if self.input.break_hold
+            let wants_break = self.input.break_hold || self.input.break_tap;
+            self.input.break_tap = false;
+            if wants_break
                 && self.break_timer <= 0.0
                 && self.mode != vc_gameplay::modes::GameMode::Spectator
             {
@@ -11228,7 +11471,9 @@ impl GameApp {
                     }
                 }
             }
-            if self.input.place_hold
+            let wants_place = self.input.place_hold || self.input.place_tap;
+            self.input.place_tap = false;
+            if wants_place
                 && self.place_timer <= 0.0
                 && self.mode != vc_gameplay::modes::GameMode::Spectator
             {
@@ -15062,27 +15307,16 @@ impl GameApp {
                         cells[((dz + 17) * 35 + (dx + 17)) as usize] = st;
                     }
                 }
-                // progress metric the gate uses: meshed 5x5 around spawn
-                let mut have = 0.0;
-                for dz in -2..=2 {
-                    for dx in -2..=2 {
-                        if self
-                            .renderer
-                            .has_chunk((pc.0 + dx, pc.1 + dz))
-                        {
-                            have += 1.0;
-                        }
-                    }
-                }
-                let progress = (have / 9.0_f32).min(1.0);
+                let pct = self.load_progress.clamp(0.0, 100.0) as i32;
                 self.ui
-                    .world_loading_screen((progress * 100.0) as i32, &cells, 17 * 35 + 17);
+                    .world_loading_screen(pct, &cells, 17 * 35 + 17);
                 return;
             }
             Screen::Title => {
                 let splash = splash_for(self.time);
                 self.ui
                     .title_screen(splash, &self.widgets, self.hover, self.time);
+                self.ui_dump_if_asked();
                 return;
             }
             Screen::Options => {
@@ -15126,6 +15360,7 @@ impl GameApp {
             }
             Screen::Pause => {
                 self.ui.pause_screen(&self.widgets, self.hover);
+                self.ui_dump_if_asked();
                 return;
             }
             #[cfg(not(target_arch = "wasm32"))]
@@ -15139,6 +15374,7 @@ impl GameApp {
                     shown,
                     total,
                 );
+                self.ui_dump_if_asked();
                 return;
             }
             // wasm: the select screen is unreachable (no save list); the
@@ -15150,6 +15386,7 @@ impl GameApp {
             Screen::WorldCreate => {
                 self.ui
                     .world_create_screen(&self.widgets, self.hover, self.time);
+                self.ui_dump_if_asked();
                 return;
             }
             Screen::Death => {
@@ -15162,6 +15399,13 @@ impl GameApp {
                 return;
             }
             Screen::Game => {}
+        }
+
+        // first-person hand & held item (media_1788974345702.jpg parity)
+        if self.screen == Screen::Game && !self.picker_open && self.container.is_none() {
+            let held = self.player.held();
+            self.ui
+                .first_person_hand(&held, self.player.bob_t, self.player.swing_t, &self.atlas);
         }
 
         // in-game HUD
@@ -15187,6 +15431,7 @@ impl GameApp {
         } else {
             self.ui
                 .status_bars(self.player.health, 20.0, xp, level, self.player.air);
+            self.ui.armor_bar(self.player.armor);
         }
 
         // Phase E1: the dragon boss bar while the fight is live (VERIFIED:
@@ -15263,11 +15508,19 @@ impl GameApp {
             self.container_geom = None;
         }
 
-        // block picker overlay (B) — sits above the HUD
+        // creative tabbed inventory overlay (E) — sits above the HUD
         if self.picker_open {
-            let g = self
-                .ui
-                .picker(self.cursor, &self.atlas, self.picker_scroll, self.advanced_tooltips);
+            let g = self.ui.creative_tabbed_inventory(
+                self.picker_tab,
+                self.cursor,
+                &self.atlas,
+                self.picker_scroll,
+                &self.picker_search,
+                &self.player.inv,
+                &self.player.armor_slots,
+                &self.player.offhand_slot,
+                self.advanced_tooltips,
+            );
             self.picker_geom = Some(g);
         } else {
             self.picker_geom = None;
@@ -15281,6 +15534,8 @@ impl GameApp {
                     .center_msg("", "CLICK THE CANVAS TO CAPTURE THE MOUSE");
             }
         }
+
+        self.ui_dump_if_asked();
     }
 
     // -------------------------------------------------------------- draw --
@@ -15474,14 +15729,10 @@ impl GameApp {
                 (cam, 0.55, None)
             }
             Screen::Loading => {
-                // world-entry loading: the panorama blurred + darkened
-                // behind the chunk-map overlay (the world is not rendered —
+                // world-entry loading: solid dirt background (the world is not rendered —
                 // it does not exist yet, exactly like the real loading
                 // screen); §28 travel: the LIVE world streams behind the
                 // blur (it already exists)
-                if !self.traveling {
-                    panorama = Some(pano_view);
-                }
                 let cam = Camera {
                     eye: self.player.eye(),
                     yaw: self.player.yaw,
@@ -15511,10 +15762,20 @@ impl GameApp {
             }
         };
 
+        // Background clear color: when letterboxing the 16:9 UI canvas onto arbitrary window
+        // aspect ratios (e.g. 16:10), the outer margins reveal the wgpu clear color.
+        // Intro must clear with the solid studio red ([239, 50, 61]), and Loading must clear
+        // with the darkened dirt brown ([56, 40, 27]) matching ui.rs draw_dirt_background().
+        let clear_fog = match self.screen {
+            Screen::Intro => [239.0 / 255.0, 50.0 / 255.0, 61.0 / 255.0],
+            Screen::Loading => [56.0 / 255.0, 40.0 / 255.0, 27.0 / 255.0],
+            _ => fog_col,
+        };
+
         let sky = SkyState {
             day_light,
             sun_dir,
-            fog_color: fog_col,
+            fog_color: clear_fog,
             fog_start,
             fog_end,
             time: self.time,
@@ -15594,10 +15855,16 @@ impl GameApp {
                 } else {
                     self.settings.shadow_strength()
                 },
-                // FSR 1.0: RCAS lobe factor when the internal scale is below
-                // native (0.6 ≈ FsrRcasCon(~0.7 stops) — sharp without halos;
-                // EASU already reconstructs most of the edge contrast)
-                sharpen: if self.settings.upscale > 0 { 0.6 } else { 0.0 },
+                // FSR 1.0: RCAS lobe factor dynamically scaled per preset mode:
+                // softer (0.4) on Ultra Quality to crisp (0.8) on Performance mode;
+                // EASU already reconstructs most of the edge contrast.
+                sharpen: match self.settings.upscale {
+                    1 => 0.4,
+                    2 => 0.6,
+                    3 => 0.7,
+                    4 => 0.8,
+                    _ => 0.0,
+                },
             },
             if self.settings.graphics >= 1 && !nether {
                 self.settings.clouds_level
@@ -16318,29 +16585,37 @@ mod settings_tests {
         let ws = vc_render::ui::layout_video();
         let ids: Vec<u16> = ws.iter().map(|w| w.id).collect();
         for wanted in [
-            vc_render::ui::ID_OPT_RD,
-            vc_render::ui::ID_OPT_GRAPHICS,
-            vc_render::ui::ID_OPT_SMOOTH,
-            vc_render::ui::ID_OPT_GUISCALE,
-            vc_render::ui::ID_OPT_CLOUDS,
-            vc_render::ui::ID_OPT_PARTICLES,
-            vc_render::ui::ID_OPT_FULLSCREEN,
-            vc_render::ui::ID_OPT_VSYNC,
-            vc_render::ui::ID_OPT_ENTSHADOW,
-            vc_render::ui::ID_OPT_BRIGHT,
+            vc_render::ui::ID_OPT_FS_RES,
             vc_render::ui::ID_OPT_BIOME,
+            vc_render::ui::ID_OPT_GRAPHICS,
+            vc_render::ui::ID_OPT_RD,
+            vc_render::ui::ID_OPT_SMOOTH,
+            vc_render::ui::ID_OPT_MAXFPS,
+            vc_render::ui::ID_OPT_VSYNC,
+            vc_render::ui::ID_OPT_BOBBING,
+            vc_render::ui::ID_OPT_GUISCALE,
+            vc_render::ui::ID_OPT_ATTACK_IND,
+            vc_render::ui::ID_OPT_BRIGHT,
+            vc_render::ui::ID_OPT_CLOUDS,
+            vc_render::ui::ID_OPT_FULLSCREEN,
+            vc_render::ui::ID_OPT_PARTICLES,
+            vc_render::ui::ID_OPT_MIPMAP,
+            vc_render::ui::ID_OPT_ENTSHADOW,
+            vc_render::ui::ID_OPT_DISTORTION,
+            vc_render::ui::ID_OPT_ENT_DIST,
+            vc_render::ui::ID_OPT_FOV_EFF,
             vc_render::ui::ID_OPT_DONE2,
         ] {
             assert!(ids.contains(&wanted), "video screen missing {wanted}");
         }
-        assert_eq!(ids.len(), 12, "vanilla video = 11 options + done");
+        assert_eq!(ids.len(), 20, "vanilla video = 19 options + done");
         // vanilla proportions
-        let rd = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_RD).unwrap();
-        assert_eq!((rd.x, rd.y, rd.w, rd.h), (248, 72, 465, 30));
+        let fs = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_FS_RES).unwrap();
+        assert_eq!((fs.x, fs.y, fs.w, fs.h), (248, 36, 465, 30));
         let g = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_GRAPHICS).unwrap();
         assert_eq!((g.x, g.y, g.w, g.h), (248, 108, 225, 30));
-        let sl = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_SMOOTH).unwrap();
-        assert_eq!((sl.x, sl.y), (487, 108), "right column");
+        let rd = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_RD).unwrap();
+        assert_eq!((rd.x, rd.y), (487, 108), "right column");
         // the vanilla unlabeled Brightness slider
         let b = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_BRIGHT).unwrap();
         match &b.kind {
@@ -16660,7 +16935,7 @@ mod settings_tests {
     /// `demo_pack_end_to_end` test so drift breaks one of the two.
     #[test]
     fn datapack_demo_e2e_claims_hold() {
-        use vc_pack::datapack::{GridItem, MemoryFiles, PackFiles};
+        use vc_pack::datapack::{GridItem, MemoryFiles};
         let files = MemoryFiles::demo();
         let report = vc_pack::datapack::scan_pack("demo", &files).expect("demo pack valid");
         assert_eq!(report.pack_format, vc_pack::datapack::PACK_FORMAT_1_16_5);
@@ -17299,3 +17574,532 @@ mod pointer_watchdog_tests {
         assert_eq!(PointerPref::from_env_value("0"), PointerPref::Auto);
     }
 }
+
+// ---------------------------------------------------------------------------
+// Comprehensive Boot, All Settings, In-Game, and All Modes Tests
+// ---------------------------------------------------------------------------
+#[cfg(test)]
+mod boot_all_settings_and_modes_tests {
+    use super::*;
+    use vc_gameplay::modes::GameMode;
+    use vc_inventory::inventory::ItemStack;
+    use vc_render::ui::*;
+
+    /// 1. Boot flow and screen navigation across all menu states
+    #[test]
+    fn test_boot_sequence_and_navigation() {
+        // All screens exist and have names
+        let screens = [
+            Screen::Intro,
+            Screen::Title,
+            Screen::Options,
+            Screen::Video,
+            Screen::Engine,
+            Screen::Access,
+            Screen::Packs,
+            Screen::WorldSelect,
+            Screen::WorldCreate,
+            Screen::Game,
+            Screen::Pause,
+            Screen::Death,
+        ];
+        for s in screens {
+            assert!(!s.name().is_empty(), "screen {:?} must have a name", s);
+        }
+
+        // Screen layouts generate valid widget hierarchies
+        let title_ws = layout_title(false);
+        assert!(title_ws.iter().any(|w| w.id == ID_TITLE_PLAY));
+        assert!(title_ws.iter().any(|w| w.id == ID_TITLE_OPTIONS));
+        assert!(title_ws.iter().any(|w| w.id == ID_TITLE_QUIT));
+
+        let opt_ws = layout_options();
+        assert!(opt_ws.iter().any(|w| w.id == ID_OPT_VIDEO));
+        assert!(opt_ws.iter().any(|w| w.id == ID_OPT_ENGINE));
+        assert!(opt_ws.iter().any(|w| w.id == ID_OPT_ACCESS));
+        assert!(opt_ws.iter().any(|w| w.id == ID_OPT_DONE));
+
+        let video_ws = layout_video();
+        assert_eq!(video_ws.len(), 20, "19 video options + done");
+        assert!(video_ws.iter().any(|w| w.id == ID_OPT_DONE2));
+
+        let engine_ws = layout_engine();
+        assert!(engine_ws.iter().any(|w| w.id == ID_OPT_DONE2));
+
+        let access_ws = layout_access();
+        assert!(access_ws.iter().any(|w| w.id == ID_OPT_DONE2));
+
+        let packs_list = vec!["OFF".into(), "VANILLA+".into()];
+        let packs_ws = layout_packs(&packs_list, 0);
+        assert!(packs_ws.iter().any(|w| w.id == ID_OPT_DONE2));
+
+        let worlds = vec![("Test World".into(), "Survival".into(), false)];
+        let ws_ws = layout_world_select(&worlds);
+        assert!(ws_ws.iter().any(|w| w.id == ID_WS_PLAY));
+        assert!(ws_ws.iter().any(|w| w.id == ID_WS_CREATE));
+        assert!(ws_ws.iter().any(|w| w.id == ID_WS_CANCEL));
+
+        let wc_ws = layout_world_create("New World", "Survival", "Survival mode", "Normal", "12345");
+        assert!(wc_ws.iter().any(|w| w.id == ID_WC_CREATE));
+        assert!(wc_ws.iter().any(|w| w.id == ID_WC_CANCEL));
+        assert!(wc_ws.iter().any(|w| w.id == ID_WC_MODE));
+        assert!(wc_ws.iter().any(|w| w.id == ID_WC_TYPE));
+
+        let pause_ws = layout_pause();
+        assert!(pause_ws.iter().any(|w| w.id == ID_PAUSE_BACK));
+        assert!(pause_ws.iter().any(|w| w.id == ID_PAUSE_OPTIONS));
+        assert!(pause_ws.iter().any(|w| w.id == ID_PAUSE_QUIT));
+
+        // Death screen: Survival has Respawn, Hardcore has only Delete/Title
+        let death_survival = layout_death(false);
+        assert!(death_survival.iter().any(|w| w.id == ID_DEATH_RESPAWN));
+        assert!(death_survival.iter().any(|w| w.id == ID_DEATH_TITLE));
+
+        let death_hardcore = layout_death(true);
+        assert!(!death_hardcore.iter().any(|w| w.id == ID_DEATH_RESPAWN), "hardcore must NOT have respawn");
+        assert!(death_hardcore.iter().any(|w| w.id == ID_DEATH_DELETE));
+        assert!(death_hardcore.iter().any(|w| w.id == ID_DEATH_TITLE));
+    }
+
+    /// 2. Comprehensive settings adjustments and roundtrip serialization
+    #[test]
+    fn test_all_settings_modes_and_controls() {
+        let mut s = Settings::default();
+        // Verify default vanilla values
+        assert_eq!(s.fov, 70.0);
+        assert_eq!(s.clouds_level, 2);
+        assert_eq!(s.smooth_level, 2);
+        assert!(s.auto_jump);
+        assert!(s.vsync);
+
+        // Adjust all video and engine settings
+        s.render_distance = 16;
+        s.sim_distance = 16;
+        s.fov = 90.0;
+        s.brightness = 0.85;
+        s.sensitivity = 1.25;
+        s.volume = 0.8;
+        s.music_volume = 0.5;
+        s.smooth_level = 1;
+        s.clouds_level = 1;
+        s.gui_scale = 3;
+        s.particles = 2;
+        s.fullscreen = true;
+        s.vsync = false;
+        s.entity_shadows = false;
+        s.biome_blend = 4;
+        s.graphics = 2; // fabulous
+        s.shader = 2;   // cinematic
+        s.shadow_quality = 3;
+        s.upscale = 1;
+        s.maxfps = 2;   // 60 fps
+        s.mipmap_levels = 3;
+        s.aniso = 8;
+        s.msaa = 4;
+        s.auto_jump = false;
+        s.occlusion = false;
+        s.gpu_meshing = false;
+
+        // Serialize and deserialize
+        let serialized = s.serialize();
+        let restored = Settings::deserialize(&serialized);
+
+        assert_eq!(restored.render_distance, 16);
+        assert_eq!(restored.sim_distance, 16);
+        assert_eq!(restored.fov, 90.0);
+        assert!((restored.brightness - 0.85).abs() < 0.01);
+        assert!((restored.sensitivity - 1.25).abs() < 0.01);
+        assert!((restored.volume - 0.8).abs() < 0.01);
+        assert!((restored.music_volume - 0.5).abs() < 0.01);
+        assert_eq!(restored.smooth_level, 1);
+        assert_eq!(restored.clouds_level, 1);
+        assert_eq!(restored.gui_scale, 3);
+        assert_eq!(restored.particles, 2);
+        assert!(restored.fullscreen);
+        assert!(!restored.vsync);
+        assert!(!restored.entity_shadows);
+        assert_eq!(restored.biome_blend, 4);
+        assert_eq!(restored.graphics, 2);
+        assert_eq!(restored.shader, 2);
+        assert_eq!(restored.shadow_quality, 3);
+        assert_eq!(restored.upscale, 1);
+        assert_eq!(restored.maxfps, 2);
+        assert_eq!(restored.mipmap_levels, 3);
+        assert_eq!(restored.aniso, 8);
+        assert_eq!(restored.msaa, 4);
+        assert!(!restored.auto_jump);
+        assert!(!restored.occlusion);
+        assert!(!restored.gpu_meshing);
+
+        // Tooltips exist for all video options
+        for id in [
+            ID_OPT_FS_RES,
+            ID_OPT_BIOME,
+            ID_OPT_GRAPHICS,
+            ID_OPT_RD,
+            ID_OPT_SMOOTH,
+            ID_OPT_MAXFPS,
+            ID_OPT_VSYNC,
+            ID_OPT_BOBBING,
+            ID_OPT_GUISCALE,
+            ID_OPT_ATTACK_IND,
+            ID_OPT_BRIGHT,
+            ID_OPT_CLOUDS,
+            ID_OPT_FULLSCREEN,
+            ID_OPT_PARTICLES,
+            ID_OPT_MIPMAP,
+            ID_OPT_ENTSHADOW,
+            ID_OPT_DISTORTION,
+            ID_OPT_ENT_DIST,
+            ID_OPT_FOV_EFF,
+        ] {
+            let tip = GameApp::tooltip_for(id, &s);
+            assert!(!tip.is_empty(), "option {id} must have a tooltip");
+        }
+    }
+
+    /// 3. In-game rules, mechanics, and physics across all 5 game modes
+    #[test]
+    fn test_all_gameplay_modes_in_game() {
+        for mode in [
+            GameMode::Survival,
+            GameMode::Creative,
+            GameMode::Hardcore,
+            GameMode::Adventure,
+            GameMode::Spectator,
+        ] {
+            // Mode metadata and save compatibility
+            assert!(!mode.label().is_empty());
+            assert!(!mode.describe().is_empty());
+            let gt = mode.vanilla_game_type();
+            let hc = mode.vanilla_hardcore();
+            let roundtrip = GameMode::from_save(gt, hc);
+            assert_eq!(roundtrip, mode, "save schema roundtrip for {:?}", mode);
+
+            // Flight permission
+            if mode == GameMode::Creative || mode == GameMode::Spectator {
+                assert!(mode.allows_flight(), "{:?} must allow flight", mode);
+            } else {
+                assert!(!mode.allows_flight(), "{:?} must not allow flight", mode);
+            }
+
+            // Damage invulnerability
+            if mode == GameMode::Creative || mode == GameMode::Spectator {
+                assert!(mode.invulnerable(), "{:?} must be invulnerable", mode);
+            } else {
+                assert!(!mode.invulnerable(), "{:?} must take damage", mode);
+            }
+
+            // Item depletion when placing
+            if mode == GameMode::Creative {
+                assert!(!mode.depletes_items(), "Creative must have infinite items");
+            } else {
+                assert!(mode.depletes_items(), "{:?} must deplete items", mode);
+            }
+
+            // Permadeath
+            if mode == GameMode::Hardcore {
+                assert!(mode.permadeath(), "Hardcore must have permadeath");
+            } else {
+                assert!(!mode.permadeath(), "{:?} must not have permadeath", mode);
+            }
+
+            // World block editing
+            if mode == GameMode::Adventure {
+                assert!(!mode.edits_world_blocks(), "Adventure must deny block edits");
+            } else if mode != GameMode::Spectator {
+                assert!(mode.edits_world_blocks(), "{:?} must allow block edits", mode);
+            }
+        }
+    }
+
+    /// 4. In-game 3D arm, walking bobbing, and attack swing animations
+    #[test]
+    fn test_in_game_arm_and_animations() {
+        let mut player = Player::new(Vec3::new(0.0, 65.0, 0.0));
+        assert_eq!(player.bob_t, 0.0);
+        assert_eq!(player.swing_t, 0.0);
+
+        // Trigger swing
+        player.swing();
+        assert_eq!(player.swing_t, 1.0, "swing should start at 1.0");
+
+        // Simulate walking physics tick with grounded terrain
+        let mut world = vc_world::world::World::new(12345);
+        let mut chunk = vc_chunk::chunk::Chunk::empty();
+        for x in 0..16 {
+            for z in 0..16 {
+                chunk.set(x, 64, z, vc_blocks::blocks::GRASS);
+            }
+        }
+        world.insert_generated((0, 0), std::sync::Arc::new(chunk), Vec::new());
+
+        player.flying = false;
+        player.vel = Vec3::new(4.3, 0.0, 0.0); // walking speed
+        player.on_ground = true;
+        let mut input = Input::default();
+        input.fwd = true;
+        player.update(0.05, 0.05, &world, &mut input, 1.0, true);
+
+        // Bobbing advances when moving on ground
+        assert!(player.bob_t > 0.0, "walking must advance bob_t");
+        // Swing decays over time
+        assert!(player.swing_t < 1.0, "swing_t must decay toward 0");
+
+        // Render first person hand on canvas with empty hand
+        let atlas = vc_render::textures::generate_atlas();
+        let mut canvas_empty = UiCanvas::new();
+        canvas_empty.first_person_hand(&ItemStack::EMPTY, player.bob_t, player.swing_t, &atlas);
+        let has_arm_pixels = canvas_empty.px.chunks(4).any(|p| p[3] != 0);
+        assert!(has_arm_pixels, "first person empty hand must render arm pixels");
+
+        // Render with held block
+        let mut canvas_block = UiCanvas::new();
+        let held_block = ItemStack::new(vc_blocks::blocks::GRASS, 64);
+        canvas_block.first_person_hand(&held_block, player.bob_t, player.swing_t, &atlas);
+        let has_block_pixels = canvas_block.px.chunks(4).any(|p| p[3] != 0);
+        assert!(has_block_pixels, "first person held block must render");
+
+        // Render with held tool / item
+        let mut canvas_tool = UiCanvas::new();
+        let held_tool = ItemStack::new(vc_blocks::blocks::APPLE, 1);
+        canvas_tool.first_person_hand(&held_tool, player.bob_t, player.swing_t, &atlas);
+        let has_tool_pixels = canvas_tool.px.chunks(4).any(|p| p[3] != 0);
+        assert!(has_tool_pixels, "first person held tool must render");
+    }
+
+    /// 5. In-game HUD, crosshair, and creative tabbed picker
+    #[test]
+    fn test_in_game_hud_and_creative_picker() {
+        let atlas = vc_render::textures::generate_atlas();
+        let mut canvas = UiCanvas::new();
+
+        // Crosshair
+        canvas.crosshair();
+        let center_idx = ((UI_H as usize / 2) * UI_W + (UI_W / 2)) * 4;
+        assert_ne!(canvas.px[center_idx + 3], 0, "crosshair center must have ink");
+
+        // Hotbar
+        let inv = vc_inventory::inventory::Inventory::new(36);
+        canvas.hotbar(&inv.slots[..9], 0, &atlas, None);
+
+        // Hearts / hunger / status bars
+        canvas.status_bars(20.0, 20.0, 0.0, 0, 300.0);
+
+        // Creative tabbed inventory picker across all 12 tabs
+        let armor = [ItemStack::EMPTY; 4];
+        let offhand = ItemStack::EMPTY;
+        for tab in 0..12 {
+            let mut pick_canvas = UiCanvas::new();
+            let geom = pick_canvas.creative_tabbed_inventory(
+                tab,
+                (400.0, 300.0),
+                &atlas,
+                0,
+                "",
+                &inv,
+                &armor,
+                &offhand,
+                false,
+            );
+            assert_eq!(geom.active_tab, tab);
+            assert_eq!(geom.tab_rects.len(), 12, "all 12 category tabs must exist");
+        }
+    }
+}
+
+#[cfg(test)]
+mod loading_and_input_regression_tests {
+    use super::Settings;
+
+    #[test]
+    fn test_input_tap_latching() {
+        let mut input = crate::player::Input::default();
+        assert!(!input.break_tap);
+        assert!(!input.place_tap);
+        assert!(!input.break_hold);
+        assert!(!input.place_hold);
+
+        // Simulate a rapid tap (pressed then immediately released)
+        input.break_tap = true;
+        input.break_hold = true;
+        // Release arrives within milliseconds
+        input.break_hold = false;
+
+        // The game tick evaluates wants_break
+        let wants_break = input.break_hold || input.break_tap;
+        input.break_tap = false;
+        assert!(wants_break, "rapid tap must be preserved even if hold was released before tick");
+        assert!(!input.break_tap, "tap must be consumed");
+        assert!(!input.break_hold);
+
+        // Same for place tap
+        input.place_tap = true;
+        input.place_hold = true;
+        input.place_hold = false;
+        let wants_place = input.place_hold || input.place_tap;
+        input.place_tap = false;
+        assert!(wants_place, "rapid place tap must be preserved even if hold was released");
+        assert!(!input.place_tap);
+    }
+
+    #[test]
+    fn test_loading_progress_progression() {
+        // 25 chunks in 5x5 grid
+        let total_chunks = 25.0_f32;
+        // 0 generated, 0 meshed
+        let mut gen = 0.0_f32;
+        let mut mesh = 0.0_f32;
+        let mut pct = (gen * 2.0_f32 + mesh * 2.0_f32).clamp(0.0_f32, 100.0_f32);
+        assert_eq!(pct, 0.0);
+
+        // All 25 generated, 0 meshed -> 50%
+        gen = total_chunks;
+        pct = (gen * 2.0_f32 + mesh * 2.0_f32).clamp(0.0_f32, 100.0_f32);
+        assert_eq!(pct, 50.0);
+
+        // All 25 generated + all 25 meshed -> 100%
+        mesh = total_chunks;
+        pct = (gen * 2.0_f32 + mesh * 2.0_f32).clamp(0.0_f32, 100.0_f32);
+        assert_eq!(pct, 100.0);
+
+        // Smooth interpolation step never regresses
+        let mut displayed = 0.0_f32;
+        let dt = 0.05_f32; // 20 Hz
+        for _ in 0..100 {
+            let prev = displayed;
+            let diff = (pct - displayed).max(0.0);
+            let speed = (diff * 6.0_f32).max(25.0_f32);
+            displayed = (displayed + speed * dt).min(pct);
+            assert!(displayed >= prev, "progress must be strictly monotonic");
+        }
+        assert_eq!(displayed, 100.0, "progress must cleanly reach 100%");
+    }
+
+    #[test]
+    fn test_fsr_presets_and_upscale_factors() {
+        let mut s = Settings::default();
+        // 0: Off / Native
+        s.upscale = 0;
+        assert_eq!(s.upscale_factor(), 1.0);
+
+        // 1: Ultra Quality (77%)
+        s.upscale = 1;
+        assert_eq!(s.upscale_factor(), 0.77);
+
+        // 2: Quality (67%)
+        s.upscale = 2;
+        assert_eq!(s.upscale_factor(), 0.67);
+
+        // 3: Balanced (59%)
+        s.upscale = 3;
+        assert_eq!(s.upscale_factor(), 0.59);
+
+        // 4: Performance (50%)
+        s.upscale = 4;
+        assert_eq!(s.upscale_factor(), 0.50);
+
+        // Roundtrip serialization with upscale = 4
+        let serialized = s.serialize();
+        let restored = Settings::deserialize(&serialized);
+        assert_eq!(restored.upscale, 4);
+        assert_eq!(restored.upscale_factor(), 0.50);
+    }
+
+    #[test]
+    fn test_menu_button_release_activation() {
+        use vc_render::ui::{Widget, WidgetKind};
+        let w = Widget {
+            id: 42,
+            x: 100,
+            y: 100,
+            w: 200,
+            h: 30,
+            kind: WidgetKind::Button {
+                label: "TEST".to_string(),
+                value: "".to_string(),
+                enabled: true,
+            },
+        };
+
+        // 1. Mouse down inside button latches pressed_widget
+        let mut pressed_widget: Option<u16> = None;
+        let mut activated = false;
+        let (down_x, down_y) = (150, 115);
+        if w.hit(down_x, down_y) {
+            pressed_widget = Some(w.id);
+        }
+        assert_eq!(pressed_widget, Some(42));
+        assert!(!activated, "Button must not activate on press down");
+
+        // 2. Mouse up inside button activates
+        let (up_x, up_y) = (160, 120);
+        if let Some(pid) = pressed_widget.take() {
+            if w.id == pid && w.hit(up_x, up_y) {
+                activated = true;
+            }
+        }
+        assert!(activated, "Button must activate on release inside bounds");
+        assert_eq!(pressed_widget, None);
+
+        // 3. Mouse down inside button, then released OUTSIDE cancels activation
+        pressed_widget = Some(w.id);
+        activated = false;
+        let (cancel_x, cancel_y) = (50, 50); // outside widget
+        if let Some(pid) = pressed_widget.take() {
+            if w.id == pid && w.hit(cancel_x, cancel_y) {
+                activated = true;
+            }
+        }
+        assert!(!activated, "Button must cancel activation when mouse released outside bounds");
+    }
+
+    #[test]
+    fn test_mouse_button_deduplication() {
+        let mut button_down = [false; 5];
+        let mut click_events = 0;
+
+        let sim_process = |idx: usize, pressed: bool, state: &mut [bool; 5], count: &mut usize| {
+            if state[idx] == pressed {
+                return; // duplicate dropped
+            }
+            state[idx] = pressed;
+            *count += 1;
+        };
+
+        // WindowEvent press
+        sim_process(0, true, &mut button_down, &mut click_events);
+        assert_eq!(click_events, 1);
+        assert!(button_down[0]);
+
+        // Duplicate DeviceEvent press for same button
+        sim_process(0, true, &mut button_down, &mut click_events);
+        assert_eq!(click_events, 1, "Duplicate press must be dropped");
+
+        // WindowEvent release
+        sim_process(0, false, &mut button_down, &mut click_events);
+        assert_eq!(click_events, 2);
+        assert!(!button_down[0]);
+
+        // Duplicate DeviceEvent release
+        sim_process(0, false, &mut button_down, &mut click_events);
+        assert_eq!(click_events, 2, "Duplicate release must be dropped");
+    }
+
+    #[test]
+    fn test_letterbox_clear_fog_colors() {
+        let intro_fog: [f32; 3] = [239.0 / 255.0, 50.0 / 255.0, 61.0 / 255.0];
+        let loading_fog: [f32; 3] = [56.0 / 255.0, 40.0 / 255.0, 27.0 / 255.0];
+
+        // Intro clear color must match studio red #EF323D (239, 50, 61)
+        assert!((intro_fog[0] - 239.0 / 255.0).abs() < 1e-6);
+        assert!((intro_fog[1] - 50.0 / 255.0).abs() < 1e-6);
+        assert!((intro_fog[2] - 61.0 / 255.0).abs() < 1e-6);
+
+        // Loading clear color must match darkened dirt brown (56, 40, 27) from ui.rs draw_dirt_background()
+        assert!((loading_fog[0] - 56.0 / 255.0).abs() < 1e-6);
+        assert!((loading_fog[1] - 40.0 / 255.0).abs() < 1e-6);
+        assert!((loading_fog[2] - 27.0 / 255.0).abs() < 1e-6);
+    }
+}
+

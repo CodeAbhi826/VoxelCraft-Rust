@@ -90,9 +90,22 @@ voxelcraft/scripts/xml2b.html
 voxelcraft/options.txt
 voxelcraft/logs/
 voxelcraft/resourcepacks/
+/builtin-pack/
+/downloaded_build/
+/options.txt
+/saves/
+/screenshots/
 # local lavapiipe/Xvfb smoke harness extracts (session tooling, not project code)
 voxelcraft/scripts/llvm-extract/
 voxelcraft/scripts/di-extract/
 voxelcraft/scripts/xml-extract/
 voxelcraft/scripts/wl-extract/
 voxelcraft/scripts/x11xcb-extract/
+
+# local benchmark and test build artifacts
+bench_run.json
+build-artifact/
+.agents/sentinel_*
+.agents/teamwork_*
+
+

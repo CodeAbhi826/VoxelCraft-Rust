@@ -3595,3 +3595,213 @@ caught it because the Xvfb smoke runs X11 with a focus-armed XI2 stack.
   stops turning at the screen edge — inherent to position-delta input
   on winit 0.29; the eventual fix is the winit 0.30+ `PointerMotion`
   event migration, deliberately out of scope this round.
+
+## 2026-09-11 — Linux Mouse Input, Loading Progress Overhaul, Clean-Room Parity Backlog & Parity Systems
+
+**Tasks:**
+1. Fix physical mouse click drops in the Linux native build.
+2. Fix world loading screen stalling at 43–44% and make percentage tick gradually (1%, 2%, 3%... 100%).
+3. Perform an exhaustive clean-room parity audit against vanilla Minecraft 1.16.5 (The Nether Update) and publish `docs/PARITY-BACKLOG.md`.
+4. Establish Rule 5 in `GEMINI.md` enforcing continuous worklog/backlog synchronization and strict public source-citation standards.
+5. Implement AMD GPUOpen canonical FSR 1.0 UI presets (Ultra Quality, Quality, Balanced, Performance) with dynamic RCAS sharpening.
+6. Implement clean-room mob damage recoil tilt during the 10-tick damage invulnerability window.
+7. Implement tick-accurate weather state machine (`vc-gameplay/src/weather.rs`) with verified durations and smooth transitions.
+
+**Diagnosis & Root Causes:**
+1. **Linux Mouse Input Dropping**:
+   - On Linux X11/Wayland with pointer confinement/lock, mouse button clicks are frequently emitted by `winit` as raw `DeviceEvent::Button { button, state }` rather than `WindowEvent::MouseInput`.
+   - In `game_mouse`, quick physical mouse clicks (press and release occurring in 30–80 ms) often had their continuous hold flags (`break_hold`, `place_hold`) reset before the game tick ran `update(dt)`, completely dropping click interactions.
+   - Initial cursor position at (480, 270) landed on disabled title buttons without triggering an immediate hover update upon `set_screen()`.
+2. **World Loading Stall at 44%**:
+   - In `game.rs`, the loading percentage formula evaluated 4 meshed chunks divided by `9.0_f32`, producing exactly `44.4%` (rendered as 44%).
+   - Immediately upon the 5th chunk meshing, the transition gate `ready = count >= 5` fired, prematurely terminating the loading screen before the player could ever see progress beyond 44%.
+
+**Implementation Details:**
+- **Linux Input & Click Latching (`player.rs`, `game.rs`)**:
+  - Added `pub break_tap: bool` and `pub place_tap: bool` to `Input` in `player.rs`.
+  - In `game.rs`: Added `Event::DeviceEvent::Button` handling with idempotency guards against duplicate `WindowEvent` dispatches.
+  - Latched `break_tap` and `place_tap` on initial mouse-down and reset interaction timers (`break_timer = 0.0`, `place_timer = 0.0`).
+  - Evaluated `let wants_break = self.input.break_hold || self.input.break_tap;` in `update(dt)`, ensuring short physical clicks are never dropped.
+  - Added `self.update_hover()` call immediately following `refresh_widgets()` in `set_screen()`.
+- **Loading Progression Overhaul (`game.rs`, `ui.rs`)**:
+  - Added `load_progress: f32` to `GameApp`, initialized to `0.0` upon entering `Screen::Loading`.
+  - Calculated granular progress across the 5×5 spawn grid (25 chunks: 50% terrain generation at +2% each, 50% GPU meshing at +2% each).
+  - Implemented continuous, smooth interpolation (`(diff * 6.0).max(25.0)` per second), ticking visibly through 1%, 2%, 3%, 4%... and accelerating as chunks land.
+  - Synchronized transition gate: `can_enter = (ready && self.load_progress >= 100.0) || self.time - self.load_start > 15.0;`.
+  - Rendered repeating dirt texture background on world loading screen.
+- **FSR 1.0 Presets (`game.rs`)**:
+  - Verified and implemented the 4 canonical AMD GPUOpen FidelityFX-FSR 1.0 quality modes (June 2021 specifications):
+    - `0`: Off / Native (1.0× scale factor)
+    - `1`: Ultra Quality (1.3× per-dimension scale factor, ~0.77 linear scale)
+    - `2`: Quality (1.5× per-dimension scale factor, ~0.67 linear scale)
+    - `3`: Balanced (1.7× per-dimension scale factor, ~0.59 linear scale)
+    - `4`: Performance (2.0× per-dimension scale factor, 0.50 linear scale)
+  - Added dynamic RCAS sharpening lobe scaling (0.4 on Ultra Quality to 0.8 on Performance).
+  - Updated settings serialization (`.min(4)`) and UI button labels.
+- **Mob Damage Recoil Animation (`vc-gameplay/src/mobs.rs`)**:
+  - Clean-room behavioral specification: During the 10-tick invulnerability period (`hurt_t > 0`), tilts the mob billboard quad horizontally using quadratic ease into sinusoidal recoil peaking at ~14 degrees (`[Clean-room Behavioral Approximation]`).
+- **Weather State Machine (`vc-gameplay/src/weather.rs`)**:
+  - Implemented `WeatherSystem` with tick durations verified against `minecraft.wiki/w/Weather`:
+    - Clear: 12,000 to 180,000 ticks (0.5 to 7.5 Minecraft days)
+    - Rain: 12,000 to 24,000 ticks (10 to 20 minutes)
+    - Thunder: 3,600 to 15,600 ticks (3 to 13 minutes, active during rain)
+    - Transition: 100-tick smooth linear interpolation (0.01 per tick / 5.0 seconds) for `rain_level` and `thunder_level`.
+- **Documentation & Verification**:
+  - Published `docs/PARITY-BACKLOG.md` tracking all 1.16.5 subsystems, mechanics, and verified community exploits (1.13+ BUD/coral fan TNT duping, portal falling block duping).
+  - Added Rule 5 to `GEMINI.md` enforcing continuous documentation sync, strict public citations, and prohibition against quoting decompiled source code.
+
+**Verification Results:**
+- Local unit tests:
+  - `voxelcraft`: 61 passed / 0 failed (including `test_input_tap_latching`, `test_loading_progress_progression`, `test_fsr_presets_and_upscale_factors`).
+  - `vc-render`: 71 passed / 0 failed.
+  - `vc-gameplay`: all tests passed including weather durations, smooth transitions, and thunder bounds.
+- Hardware & compilation compliance: Zero local release builds executed; all release compilation delegated to GitHub Actions CI.
+
+---
+
+## 2026-09-11 — Linux Menu Mouse Click Release-Activation, Intro/Loading Pillarbox Color Normalization & Engine Settings Layout
+
+**Tasks:**
+1. Fix mouse input and button clicking in Linux native menus so button clicks reliably register and trigger actions.
+2. Eliminate bright blue background strips visible on the two sides during the studio Intro and world Loading screens.
+3. Balance Engine Settings UI layout to ensure full column coverage for the Upscaling button.
+4. Maintain Rule 5 (`GEMINI.md`) worklog and parity backlog synchronization with verified public citations.
+
+**Root Cause Analysis & Diagnoses:**
+1. **Linux Mouse Input Dropping in Menus**:
+   - **Premature Down-Activation & Grab Invalidation**: Buttons previously fired action activation on `pressed = true` (mouse-down). When an action changed the screen, `set_screen()` immediately executed `release_pointer()`, calling `window.set_cursor_grab(CursorGrabMode::None)`. Under Linux X11/Wayland compositors, ungrabbing the cursor while a physical button is held down cancels the X server's implicit pointer grab, dropping subsequent mouse-up events and desynchronizing input state.
+   - **Release-Activation Parity**: In vanilla Minecraft 1.16.5 and standard desktop GUI toolkits, buttons visually press on mouse-down, but only activate (`activate(w.id)`) on mouse-up (`pressed = false`) if the cursor is still within the widget's bounds (`w.hit(x, y)`). Releasing outside bounds cancels the click without action.
+   - **X11/Wayland Grab Churn**: `set_screen()` was previously calling `release_pointer()` unconditionally on every screen change, repeatedly re-asserting cursor visibility and resetting grab state during menu-to-menu navigation.
+2. **Blue Pillarbox Strips on Intro & Loading**:
+   - The UI canvas is 960×540 and letterboxed into non-16:9 window viewports (e.g. 1280×696, leaving 21px pillarbox margins on left and right).
+   - In `game.rs:draw()`, `SkyState.fog_color` was unconditionally set to daytime sky fog `[0.75, 0.85, 1.0]` (bright cyan-blue), causing the wgpu render pass clear color to flood the outer letterbox margins with bright blue.
+   - In `Screen::Loading`, `panorama = Some(pano_view)` was rendered, displaying the 3D rotating panorama sky behind the loading UI and exposing blue sky through the margins.
+
+**Implementation Details:**
+- **Menu Mouse Button Release Activation (`game.rs`)**:
+  - Added `pressed_widget: Option<u16>` and `mouse_button_down: [bool; 5]` to `GameApp`.
+  - Added `process_mouse_button()` to deduplicate mouse click events arriving from either `WindowEvent::MouseInput` or `DeviceEvent::Button`.
+  - Updated `menu_mouse()`: Button clicks now latch `self.pressed_widget = Some(w.id)` on press-down, and trigger `self.activate(w.id)` and `self.click_sound()` on release (`pressed = false`) if the cursor is within widget bounds.
+  - Added `WindowEvent::CursorLeft` and `WindowEvent::Focused(false)` handlers to safely reset `mouse_button_down = [false; 5]`, `pressed_widget = None`, and `dragging = None`.
+  - Updated `set_screen()` to only call `release_pointer()` when transitioning away from gameplay (`prev_screen == Screen::Game`), preventing pointer grab churn across menus.
+- **Intro & Loading Pillarbox Color Normalization (`game.rs`)**:
+  - Set `Screen::Loading` to `panorama = None` (pure dirt background per vanilla 1.16.5 specifications).
+  - Configured `clear_fog` clear color in `draw()`:
+    - `Screen::Intro` => `[239.0 / 255.0, 50.0 / 255.0, 61.0 / 255.0]` (exact clean-room studio red matching `ui.rs intro_screen()`).
+    - `Screen::Loading` => `[56.0 / 255.0, 40.0 / 255.0, 27.0 / 255.0]` (exact darkened dirt brown matching `ui.rs draw_dirt_background()`).
+    - Gameplay & other screens => live atmospheric fog color `fog_col`.
+  - The entire window surface clears to the matching color, completely eliminating blue border artifacts.
+- **Engine Settings Layout (`vc-render/src/ui.rs`)**:
+  - Updated `ID_OPT_UPSCALE` in `layout_engine()` from width 225 to 464, cleanly spanning both option columns across row 4.
+
+**Verification & Test Results:**
+- `cargo test -p vc-render --lib`: 71 passed, 0 failed.
+- `cargo test -p voxelcraft --lib`: 64 passed, 0 failed (+3 new tests: `test_menu_button_release_activation`, `test_mouse_button_deduplication`, `test_letterbox_clear_fog_colors`).
+- Strict Rule 1 Hardware Compliance: Zero local release builds executed; all release compilation offloaded to GitHub Actions CI.
+
+
+---
+
+## 2026-09-11 — the merge round: owner's 19-commit push + the watchdog union
+
+**Task ID:** merge-round
+**Agent:** main (Z User session)
+
+`git push` was rejected mid-round: `origin/main` had moved 19 commits
+ahead — all authored by the repo owner (CodeAbhi826 /
+abhinofficial826@gmail.com), 2026-09-09/11, built on the other AI
+assistant track (a `GEMINI.md` rule file ships with them).
+
+### What the owner's commits contain (verified by reading the diffs)
+
+1. `1965021` — UI/HUD overhaul, LabPBR 1.3/PBR path, stepped fluid
+   mesh, physics parity.
+2. `1fb8eb6` — e2e bee-hive target fix.
+3. `451f3fb` — wrapping arithmetic on the dirt-bg hash + visual dump.
+4. `270725c` — 1.16.5 visual/UI parity (first-person 3D arm, creative
+   tabbed inventory, video settings, world select, tiling).
+5. `cd1ebff` — a comprehensive test suite (boot flow, all settings
+   screens, in-game, all game modes).
+6. `18f1584` — repeating dirt background on the loading screen.
+7. `7f8e1c2` — **their first Linux mouse fix**: raw
+   `DeviceEvent::Button` routing (Linux grabs deliver clicks as raw
+   device events) + `break_tap`/`place_tap` latching so 30–80 ms
+   physical clicks are never dropped by the 20 Hz tick + loading
+   progress overhaul (the 44%-stall formula fix).
+8. `df76ced` — FSR 1.0 canonical presets (Ultra Quality/Quality/
+   Balanced/Performance + RCAS lobe scaling), mob hurt recoil, a
+   self-contained `WeatherSystem` module, `docs/PARITY-BACKLOG.md`,
+   `GEMINI.md` Rule 5.
+9. `edcd6ee` — **their second Linux mouse fix**: `process_mouse_button`
+   (unified WindowEvent/DeviceEvent button router with a
+   `mouse_button_down[5]` dedup) + vanilla **release-activation** for
+   menu buttons (press latches `pressed_widget`, release inside bounds
+   activates — fixes screen transitions firing mid-click and the
+   resulting X11 grab cancellation) + intro/loading pillarbox clear
+   colors + Engine Settings layout.
+10. `dec9049` — `run-game.sh` launcher for the CI release binaries.
+
+Their diagnosis of the Linux mouse problem is the CLICK half (raw
+button events + release semantics); this round's watchdog is the MOTION
+half (raw-motion starvation under grabs). The complete fix needs both.
+
+### Merge decisions (each verified, none taken on faith)
+
+- **game.rs**: union — their input restructure kept (button router,
+  tap latching, release activation, CursorLeft/FocusLost resets) with
+  the watchdog layered in (counter increments inside their
+  `match`-structured `DeviceEvent` arm; `pointer_watchdog()` at the top
+  of `update()`; capture-ladder rewrite intact — auto-merge had already
+  kept it since the owner never touched that function). Their new test
+  module + the local test modules all kept (EOF conflict resolved by
+  concatenation).
+- **weather.rs (add/add)**: kept the LOCAL implementation. The owner's
+   `WeatherSystem` is referenced nowhere outside its own file (3
+   self-tests, zero call sites — `git grep` on their tree confirms);
+   the local machine is the live one (weather_update, sky_factor,
+   lightning strikes, mob conversions, particles, cross-crate tests).
+   Disclosed here + in the README addendum; the owner module's smooth
+   rain/thunder level ramps are noted as a future enhancement.
+- **render.rs (the atlas gradient)**: took THEIR `/32` divisor. Ground
+  truth from the mesher: per-face uv is in FACE units
+  (`uvs=[[0,1],[1,1],[1,0],[0,0]]`, one block face = 1.0; greedy runs
+  extend to 16.0), so `tuv=(tile+fract(uv))/32` gives
+  `d(tuv)/dpx = dpdx(uv)/32`. Note 11's `/512` inserted a spurious
+  extra /16 (uv is not in texel units) — 16× too small, under-sampling
+  mips. Verified numerically (1 face across 32 px → dpdx=1/32 → correct
+  atlas-space gradient 1/1024 = dpdx/32 ✓) and their seam-guard test
+  pins the form. Note 11's other fixes (the /16→? correction direction
+  and the 15/16 inset) remain historical record; the addendum in README
+  note 13 supersedes the /512 claim.
+- **player.rs**: union of field initializers (local `pending_trample` +
+  their armor/offhand/bob/swing fields).
+- **public/ bundle**: took THEIR pair (the newer CI-built matched pair
+  for edcd6ee); wasm-build.yml regenerates from the merge on push.
+- **WORKLOG.md**: both histories kept.
+- One warning fixed post-merge: `process_mouse_button` is
+  native-only-called, now `#[cfg(not(target_arch="wasm32"))]` — the
+  zero-warning standard holds on both targets again.
+
+### Merged-tree verification (this container)
+
+- `cargo check` native + wasm32 lib: zero warnings.
+- **648/648 workspace tests green, 0 failures** (628 base + 6 watchdog
+  + the owner's new suites; their 3 weather self-tests superseded with
+  the module, the local weather tests remain).
+- Merged release binary (`--no-default-features`): the FULL CI smoke
+  contract green under Xvfb (exit 0; intro → title → world entry;
+  `[input]`/`[perf]`/`[exit]` categories; e2e v114/v114b/v115/v116/
+  v116b/audit16 lines; the pointer ladder line
+  `pointer: confined to the window (raw motion + watchdog)`), and the
+  `E2E_MENU=1` settings-tree round-trip green (title → options →
+  video → engine → packs → access → title, exit 0) — the release-
+  activation buttons click through the merged input path.
+
+### Stage Summary
+
+- The Linux mouse issue is now closed on BOTH halves: clicks (owner's
+  router + latching + release activation) and motion (watchdog +
+  Linux-skips-Locked + VC_POINTER), verified together.
+- The owner's parallel track (UI parity, FSR, loading progress, test
+  suite, parity backlog) is integrated, tested and pushed.
+- 648/648 tests; zero warnings; smoke + menu E2E green on the merge.

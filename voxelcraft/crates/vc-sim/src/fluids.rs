@@ -117,6 +117,22 @@ pub fn water_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, 
 
     // 2. re-derive this block's level from its feeders
     if level > 0 {
+        // Vanilla infinite water source formation:
+        // When two or more horizontal neighbors are water sources (level 0),
+        // and the block beneath is solid or a water source, form a permanent source block (level 0).
+        let mut source_count = 0;
+        for (dx, dz) in [(1i32, 0i32), (-1, 0), (0, 1), (0, -1)] {
+            if water_at(world, x + dx, y, z + dz) == Some(0) {
+                source_count += 1;
+            }
+        }
+        let floor_solid_or_source = !flowable(below) || water_at(world, x, y - 1, z) == Some(0);
+        if source_count >= 2 && floor_solid_or_source {
+            world.set_block_state(x, y, z, water_state(0));
+            on_block_changed(sched, world, x, y, z);
+            return;
+        }
+
         let mut feed: Option<u16> = None;
         // fed from above by any water → strongest feed (vanilla: falling
         // full column)
@@ -184,6 +200,54 @@ pub fn water_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, 
                 }
             }
         }
+    }
+}
+
+/// Computes the horizontal flow vector for entities (players, mobs, items) in water.
+/// Flow is directed along the negative height gradient (from higher water to lower water or air).
+pub fn water_flow_vector(world: &World, x: i32, y: i32, z: i32) -> (f32, f32) {
+    let s = world.get_state(x, y, z);
+    if state_block(s) != WATER {
+        return (0.0, 0.0);
+    }
+    let level = water_level(s);
+    if level == 255 {
+        return (0.0, 0.0);
+    }
+
+    let eff_h = |lvl: u16| -> f32 {
+        if lvl == 0 {
+            8.0
+        } else {
+            (8 - (lvl.min(7))) as f32
+        }
+    };
+    let h_center = eff_h(level);
+
+    let mut dx_flow = 0.0f32;
+    let mut dz_flow = 0.0f32;
+
+    for (dx, dz) in [(1i32, 0i32), (-1, 0), (0, 1), (0, -1)] {
+        let ns = world.get_state(x + dx, y, z + dz);
+        let nb = state_block(ns);
+        if nb == WATER {
+            let nl = water_level(ns);
+            if nl != 255 {
+                let diff = eff_h(nl) - h_center;
+                dx_flow -= dx as f32 * diff;
+                dz_flow -= dz as f32 * diff;
+            }
+        } else if flowable(ns) {
+            dx_flow += dx as f32 * h_center;
+            dz_flow += dz as f32 * h_center;
+        }
+    }
+
+    let len = (dx_flow * dx_flow + dz_flow * dz_flow).sqrt();
+    if len > 1e-4 {
+        (dx_flow / len, dz_flow / len)
+    } else {
+        (0.0, 0.0)
     }
 }
 
@@ -1344,6 +1408,36 @@ mod e2_tests {
             !bush_advances_somewhere(&mut w, 3),
             "age 3 is terminal (VERIFIED: not fully grown only)"
         );
+    }
+
+    #[test]
+    fn test_infinite_water_source_formation() {
+        let mut w = flat_world(64);
+        let mut sched = TickScheduler::new();
+        // Place two sources at (0, 65, 0) and (2, 65, 0) separated by 1 air block
+        w.set_block_state(0, 65, 0, water_state(0));
+        w.set_block_state(2, 65, 0, water_state(0));
+        on_block_changed(&mut sched, &w, 0, 65, 0);
+        on_block_changed(&mut sched, &w, 2, 65, 0);
+        drain(&mut w, &mut sched, 20);
+
+        // The center cell (1, 65, 0) has 2 adjacent sources over a solid block -> forms source (level 0)!
+        let center_level = water_level(w.get_state(1, 65, 0));
+        assert_eq!(center_level, 0, "infinite water source created at (1, 65, 0)");
+    }
+
+    #[test]
+    fn test_water_flow_vector_points_away_from_source() {
+        let mut w = flat_world(64);
+        let mut sched = TickScheduler::new();
+        w.set_block_state(0, 65, 0, water_state(0));
+        on_block_changed(&mut sched, &w, 0, 65, 0);
+        drain(&mut w, &mut sched, 20);
+
+        // Flow at (1, 65, 0) should point along +X (away from source at x=0 toward air/lower water)
+        let (fx, fz) = water_flow_vector(&w, 1, 65, 0);
+        assert!(fx > 0.5, "flow vector X should point in +X direction, got {fx}");
+        assert!(fz.abs() < 1e-4, "flow vector Z should be near 0, got {fz}");
     }
 }
 

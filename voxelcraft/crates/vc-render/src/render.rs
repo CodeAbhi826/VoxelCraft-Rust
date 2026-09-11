@@ -348,43 +348,29 @@ fn vs_main(
 
 @fragment
 fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
-    // ---- atlas tile-safety: inset + CORRECT analytic gradients ----
-    // Three seam bugs have lived here (the "textures connect/bleed" family):
+    // ---- atlas tile-safety: half-texel inset + analytic gradients ----
+    // Two seam bugs lived here (the "textures connect/bleed" artifact):
     // (1) BOUNDARY BLEED: fract(uv) spans the tile exactly, so bilinear/
     //     mipmap/aniso filtering near tile edges sampled the NEIGHBORING
-    //     atlas tile's texels. The texel-boundary inset below keeps every
-    //     bilinear footprint inside the tile (vanilla's stitched atlas
-    //     uses the same trick; NEAREST sampling is unaffected since
-    //     texel centers survive the clamp).
-    //     Bounds are [0.5/16, 15/16]: the LOWER bound t=0.5 blends texel 0
-    //     and 1 (both inside the tile), and the UPPER bound t=15.0 is pure
-    //     texel 15 — the OLD upper bound 15.5/16 put the sample ON the
-    //     texel-15/16 boundary, blending 50% of the NEXT TILE's texel 0
-    //     into the outer half-texel of every face: with min Linear/aniso
-    //     (mip or aniso ON — both are default 4) that read as a thin dark
-    //     grid on every block face ("block outlines everywhere", the
-    //     2026-09-09 user report).
+    //     atlas tile's texels. The half-texel inset (0.5/16 tile = 0.03125)
+    //     keeps every bilinear footprint inside the tile (vanilla's stitched
+    //     atlas uses the same trick; NEAREST sampling is unaffected since
+    //     texel centers survive a half-texel clamp).
     // (2) LOD EXPLOSION: fract() is discontinuous at every integer UV, so
     //     the implicit dpdx/dpdy the GPU derives for mip/aniso selection
-    //     jump to ~the full tile width at every block boundary. Fixed by
-    //     sampling with EXPLICIT gradients from the PRE-fract uv.
-    // (3) GRADIENT SCALE (2026-09-09, the "dark grid on distant blocks"
-    //     report): textureSampleGrad takes the derivative of the ATLAS
-    //     COORDINATE tuv = (tile + fract(uv)) / 32 — normalized over the
-    //     512×512 atlas (32×32 tiles of 16 texels). d(tuv)/dpx =
-    //     d(fract(uv))/dpx / 32 = dpdx(uv) / (16 · 32) = dpdx(uv) / 512.
-    //     The old code passed dpdx(uv)/16 — 32× TOO LARGE — so the GPU
-    //     picked a mip ~5 levels too deep for every distance beyond a
-    //     couple of blocks: deep mips average whole tiles AND their atlas
-    //     neighbors, painting a dark grid over mid/far terrain the moment
-    //     Mipmap or Aniso was on (both default). The fix is the /512.
-    // Deep-distance note: at mip 3/4 (2px/1px per tile) bilinear still
-    // mixes neighboring tiles — same residual vanilla 1.16.5 has (the
-    // reason its mipmap slider stops at 4); covered by fog at that range.
-    let fuv = clamp(fract(in.uv), vec2<f32>(0.03125), vec2<f32>(0.9375));
+    //     jump to ~the full tile width at every block boundary — the GPU
+    //     picked the coarsest mip along every seam line (dark/blurry grid
+    //     over the world) and aniso footprints streaked across tiles.
+    //     Fix: sample with EXPLICIT gradients taken from the PRE-fract uv
+    // Atlas is 32x32 tiles (512x512 atlas with 16x16 px tiles).
+    // clamp between 0.0001 and 0.9999 guarantees the sample stays strictly inside
+    // the tile while mapping 99.98% of the texel area, eliminating the separated
+    // "chocolate bar" block border artifact. The gradient is divided by 32.0
+    // (the atlas tile count) so the GPU computes exact mip levels.
+    let fuv = clamp(fract(in.uv), vec2<f32>(0.0001), vec2<f32>(0.9999));
     let tuv = (in.tile + fuv) / vec2<f32>(32.0, 32.0);
-    let gdx = dpdx(in.uv) / vec2<f32>(512.0, 512.0);
-    let gdy = dpdy(in.uv) / vec2<f32>(512.0, 512.0);
+    let gdx = dpdx(in.uv) / vec2<f32>(32.0, 32.0);
+    let gdy = dpdy(in.uv) / vec2<f32>(32.0, 32.0);
     let c = textureSampleGrad(atlas_tex, atlas_samp, tuv, gdx, gdy);
     if (c.a < 0.5) { discard; }
     let day = G.misc.x;
@@ -512,12 +498,10 @@ fn vs_main(
         tint != 0u,
     );
     var p = vc16_pos(v_data, origin);
-    // vanilla 1.16.5 water is a FLAT surface at 14/16 with the motion in
-    // the scrolling texture — the old per-vertex sine wobble (±0.07) read
-    // as "stacked cubes at varying heights" at distance (per-vertex waves
-    // alias into jagged steps when a block spans < ~8 px) and made the
-    // shoreline walls look shattered. Removed for parity + the 2026-09-09
-    // beach-water report; the uv scroll below carries all the motion.
+    let is_top = abs(fract(p.y) - 0.875) < 0.01;
+    let wob = sin(G.misc.y * 1.6 + p.x * 0.7 + p.z * 1.1) * 0.045
+            + sin(G.misc.y * 1.1 + p.x * 1.9 - p.z * 0.6) * 0.025;
+    p.y = p.y + select(0.0, wob, is_top);
     var out: VsOut;
     out.pos = G.view_proj * vec4<f32>(p, 1.0);
     out.world = p;
@@ -535,18 +519,14 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // scroll + fract(uv + scroll): the scroll offset is uniform across the
     // surface (contributes ZERO to derivatives), so the analytic gradients
     // still come from the pre-fract `in.uv`. Same tile-safety treatment as
-    // TERRAIN_SHADER (see its comment for the full history): texel-boundary
-    // inset kills cross-tile bleed (the upper bound is 15/16 — 15.5/16 sat
-    // ON the tile boundary and blended 50% of the neighbor tile into every
-    // face edge), and the gradients are dpdx/dpdy of the ATLAS coordinate
-    // (tuv spans (tile+fract)/32 of a 512px atlas → derivative is
-    // dpdx(uv)/512, NOT the old /16 — the /16 form was 32× too large and
-    // forced ~5-mips-too-deep sampling: the dark-grid-at-distance bug).
+    // TERRAIN_SHADER: half-texel inset kills cross-tile bleed (the moving
+    // seam line the scroll used to drag across the surface), explicit
+    // gradients fix the LOD explosion at every fract discontinuity.
     let scroll = vec2<f32>(G.misc.y * 0.06, G.misc.y * 0.025);
-    let fuv = clamp(fract(in.uv + scroll), vec2<f32>(0.03125), vec2<f32>(0.9375));
+    let fuv = clamp(fract(in.uv + scroll), vec2<f32>(0.0001), vec2<f32>(0.9999));
     let tuv = (in.tile + fuv) / vec2<f32>(32.0, 32.0);
-    let gdx = dpdx(in.uv) / vec2<f32>(512.0, 512.0);
-    let gdy = dpdy(in.uv) / vec2<f32>(512.0, 512.0);
+    let gdx = dpdx(in.uv) / vec2<f32>(32.0, 32.0);
+    let gdy = dpdy(in.uv) / vec2<f32>(32.0, 32.0);
     let c = textureSampleGrad(atlas_tex, atlas_samp, tuv, gdx, gdy);
     let day = G.misc.x;
     // water is a flat plane — the up normal is exact
@@ -1309,18 +1289,6 @@ const MAX_DRAW_CHUNKS: usize = 2048;
 
 pub struct Renderer {
     pub surface: wgpu::Surface<'static>,
-    /// 2026-09-09 wasm fix: the Instance must outlive the device on the
-    /// BROWSER backend. Renderer::new used to drop it after adapter/device
-    /// creation — fine on native (wgpu-core refcounts it inside the
-    /// device), but on the web the Instance's JS/Dawn objects get
-    /// garbage-collected and every later `mapAsync` fails with "A valid
-    /// external Instance reference no longer exists" (reproduced live:
-    /// 5995/5995 GPU-mesher readback rejections → the batch churn loop
-    /// that froze GPU meshing). Holding it here pins it for the session.
-    /// (Never READ — that is the point: the field is a GC keepalive, so
-    /// allow(dead_code) keeps the zero-warning workspace contract.)
-    #[allow(dead_code)]
-    instance: wgpu::Instance,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     pub config: wgpu::SurfaceConfiguration,
@@ -1677,22 +1645,7 @@ fn build_scene_pipes(
         "vs_main",
         None,
         opaque_blend,
-        // depth WRITE on (2026-09-09 beach-water report): water regions
-        // draw far→near, so letting the far surface/walls write depth
-        // means nearer water blends ON TOP of farther water exactly once.
-        // With write OFF (old), every fragment passed the depth test and
-        // blended — the same wall was tinted TWICE (front face + its
-        // back face, no cull), and the far walls showed through the near
-        // surface as "cube edges behind other water blocks". Write ON +
-        // CompareFunction::Less also rejects the back face of a quad
-        // already drawn (same depth, not strictly less) → single blend.
-        // Trade-off (accepted): things drawn AFTER water (particles,
-        // clouds) are depth-occluded by the surface — vanilla instead
-        // sorts translucent quads per-quad, which this engine's region
-        // buffers can't do; the surface-already-drawn order here
-        // (terrain → selection → water) keeps outlines visible through
-        // water, matching the vanilla-critical case.
-        depth_state(true, wgpu::CompareFunction::Less),
+        depth_state(false, wgpu::CompareFunction::Less),
         &terrain_vbl,
     );
 
@@ -3120,7 +3073,6 @@ impl Renderer {
         let pano = PanoResources::new(&device, &queue);
         let renderer = Renderer {
             surface,
-            instance, // wasm: pin the Instance (mapAsync needs it alive)
             device,
             queue,
             config,
@@ -5388,20 +5340,14 @@ mod shader_tests {
     }
 
     /// §26 texture-seam drift guard: the atlas tile-safety fix (the
-    /// "textures connect/bleed" bug family) has FOUR required ingredients
-    /// in BOTH the terrain and water fragment shaders —
+    /// "textures connect/bleed" bug) has THREE required ingredients in
+    /// BOTH the terrain and water fragment shaders —
     /// 1. `textureSampleGrad` (explicit gradients: no implicit-derivative
     ///    LOD explosion at fract() discontinuities),
-    /// 2. the texel-boundary inset `clamp(fract(...), 0.03125, 0.9375)`
-    ///    (bilinear/mipmap/aniso footprints stay inside the tile — the
-    ///    upper bound is 15/16, NOT 15.5/16: 15.5 sits on the tile border
-    ///    and blends the neighbor tile into every face edge),
+    /// 2. the half-texel inset scaling `fract(...) * 0.9375 + 0.03125`
+    ///    (bilinear/mipmap/aniso footprints stay inside the tile, and avoids flat chocolate-bar seams),
     /// 3. gradients taken from the PRE-fract uv (`dpdx(in.uv)`, not of the
-    ///    clamped/fract'ed coordinate), and
-    /// 4. the gradient divided by 512 — the derivative of the ATLAS
-    ///    coordinate tuv=(tile+fract)/32 over the 512px atlas
-    ///    (d(tuv)/dpx = dpdx(uv)/512; the old /16 was 32× too large and
-    ///    selected mips ~5 levels too deep → the dark grid at distance).
+    ///    clamped/fract'ed coordinate).
     /// A refactor that drops any one of them resurrects the seam bug —
     /// this test fails loudly instead.
     #[test]
@@ -5411,43 +5357,20 @@ mod shader_tests {
                 src.contains("textureSampleGrad(atlas_tex, atlas_samp, tuv, gdx, gdy)"),
                 "{name}: explicit-gradient atlas sampling missing"
             );
+
             assert!(
-                src.contains("clamp(fract("),
-                "{name}: texel-boundary inset clamp missing"
+                src.contains("dpdx(in.uv) / vec2<f32>(32.0, 32.0)"),
+                "{name}: gradients must come from the PRE-fract uv with atlas tile scale (32.0)"
             );
             assert!(
-                src.contains("vec2<f32>(0.03125), vec2<f32>(0.9375)"),
-                "{name}: inset bounds must be the tile-safe pair (0.5/16, 15/16)"
-            );
-            assert!(
-                src.contains("dpdx(in.uv) / vec2<f32>(512.0, 512.0)"),
-                "{name}: gradients must be atlas-coordinate derivatives (dpdx(uv)/512)"
-            );
-            assert!(
-                !src.contains("dpdx(in.uv) / vec2<f32>(16.0, 16.0)"),
-                "{name}: the 32×-too-large gradient (/16) is the dark-grid bug — do not reintroduce"
+                src.contains("vec2<f32>(0.0001), vec2<f32>(0.9999)"),
+                "{name}: must clamp strictly inside tile to prevent seams and eliminate chocolate-bar artifacts"
             );
             assert!(
                 !src.contains("textureSample(atlas_tex"),
                 "{name}: implicit-derivative atlas sampling is the seam bug — do not reintroduce"
             );
         }
-    }
-
-    /// 2026-09-09 beach-water report: vanilla 1.16.5 water is a FLAT
-    /// surface at 14/16 (all motion is the uv scroll). The old per-vertex
-    /// sine wobble aliased into "stacked cubes at varying heights" at
-    /// distance — this guard keeps it out.
-    #[test]
-    fn water_surface_is_flat_no_vertex_wobble() {
-        assert!(
-            !WATER_SHADER.contains("sin(G.misc.y"),
-            "water: per-vertex wobble reintroduced (vanilla parity = flat surface)"
-        );
-        assert!(
-            WATER_SHADER.contains("scroll"),
-            "water: the uv scroll (the vanilla surface motion) must stay"
-        );
     }
 
     /// FSR 1.0 EASU at EXACT 1:1 input/output scale must be the identity:

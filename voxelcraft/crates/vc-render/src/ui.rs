@@ -52,14 +52,14 @@ const FONT: [[u8; 8]; 96] = [
     [0x08,0x04,0x00,0x00,0x00,0x00,0x00,0x00], [0x00,0x00,0x0E,0x01,0x0F,0x11,0x0F,0x00],
     [0x10,0x10,0x1C,0x12,0x12,0x12,0x1C,0x00], [0x00,0x00,0x0E,0x11,0x10,0x11,0x0E,0x00],
     [0x02,0x02,0x0E,0x12,0x12,0x12,0x0E,0x00], [0x00,0x00,0x0E,0x11,0x1F,0x10,0x0E,0x00],
-    [0x0C,0x04,0x1E,0x04,0x04,0x04,0x04,0x00], [0x00,0x00,0x0E,0x11,0x11,0x0E,0x01,0x0F],
+    [0x0E,0x08,0x1C,0x08,0x08,0x08,0x08,0x00], [0x00,0x00,0x0E,0x11,0x11,0x0E,0x01,0x0F],
     [0x10,0x10,0x1C,0x12,0x12,0x12,0x12,0x00], [0x00,0x04,0x00,0x04,0x04,0x04,0x04,0x00],
     [0x00,0x04,0x00,0x04,0x04,0x04,0x04,0x0C], [0x10,0x10,0x12,0x14,0x18,0x14,0x12,0x00],
     [0x04,0x04,0x04,0x04,0x04,0x04,0x06,0x00], [0x00,0x00,0x1B,0x15,0x15,0x15,0x15,0x00],
     [0x00,0x00,0x1C,0x12,0x12,0x12,0x12,0x00], [0x00,0x00,0x0E,0x11,0x11,0x11,0x0E,0x00],
     [0x10,0x10,0x1C,0x12,0x12,0x12,0x1C,0x10], [0x02,0x02,0x0E,0x12,0x12,0x12,0x0E,0x02],
     [0x00,0x00,0x1C,0x14,0x10,0x10,0x10,0x00], [0x00,0x00,0x0F,0x10,0x0E,0x01,0x1E,0x00],
-    [0x04,0x0E,0x04,0x04,0x04,0x04,0x06,0x00], [0x00,0x00,0x12,0x12,0x12,0x12,0x1E,0x00],
+    [0x00,0x08,0x1C,0x08,0x08,0x08,0x06,0x00], [0x00,0x00,0x12,0x12,0x12,0x12,0x1E,0x00],
     [0x00,0x00,0x11,0x11,0x11,0x0A,0x04,0x00], [0x00,0x00,0x11,0x11,0x11,0x15,0x0A,0x00],
     [0x00,0x00,0x11,0x0A,0x04,0x0A,0x11,0x00], [0x00,0x00,0x11,0x11,0x11,0x0A,0x04,0x0C],
     [0x00,0x00,0x1F,0x02,0x04,0x08,0x1F,0x00], [0x06,0x08,0x08,0x0C,0x08,0x08,0x06,0x00],
@@ -267,6 +267,9 @@ pub const ID_WS_WORLD_BASE: u16 = 60; // world entries: 60..60+MAX_LISTED
 pub const ID_WS_CREATE: u16 = 90;
 pub const ID_WS_CANCEL: u16 = 91;
 pub const ID_WS_DELETE: u16 = 92;
+pub const ID_WS_PLAY: u16 = 121;
+pub const ID_WS_EDIT: u16 = 122;
+pub const ID_WS_RECREATE: u16 = 123;
 pub const ID_WC_NAME: u16 = 93;
 pub const ID_WC_SEED: u16 = 94;
 pub const ID_WC_MODE: u16 = 95;
@@ -323,6 +326,14 @@ pub const ID_OPT_FULLSCREEN: u16 = 43;
 pub const ID_OPT_VSYNC: u16 = 44;
 pub const ID_OPT_ENTSHADOW: u16 = 45;
 pub const ID_OPT_BIOME: u16 = 46;
+
+pub const ID_OPT_BOBBING: u16 = 50;
+pub const ID_OPT_ATTACK_IND: u16 = 51;
+pub const ID_OPT_MIPMAP: u16 = 52;
+pub const ID_OPT_DISTORTION: u16 = 53;
+pub const ID_OPT_ENT_DIST: u16 = 54;
+pub const ID_OPT_FOV_EFF: u16 = 55;
+pub const ID_OPT_FS_RES: u16 = 56;
 /// vanilla stub buttons kept in the layout (grayed like MULTIPLAYER until
 /// their subsystem exists — vanilla grays unavailable features too)
 pub const ID_OPT_CHAT: u16 = 47;
@@ -456,37 +467,46 @@ pub fn layout_options() -> Vec<Widget> {
 /// (hover shows Moody/Bright), the full-width Biome Blend slider, Done.
 pub fn layout_video() -> Vec<Widget> {
     let (l, r, bw) = (248, 487, 225);
-    let rows = [108, 144, 180, 216];
     vec![
-        slider_h(ID_OPT_RD, 248, 72, 465, 30, "RENDER DISTANCE", 0.4),
-        btn_h(ID_OPT_GRAPHICS, l, rows[0], bw, 30, "GRAPHICS", "FANCY", true),
-        btn_h(
-            ID_OPT_SMOOTH,
-            r,
-            rows[0],
-            bw,
-            30,
-            "SMOOTH LIGHTING",
-            "MAXIMUM",
-            true,
-        ),
-        btn_h(ID_OPT_GUISCALE, l, rows[1], bw, 30, "GUI SCALE", "AUTO", true),
-        btn_h(ID_OPT_CLOUDS, r, rows[1], bw, 30, "CLOUDS", "FANCY", true),
-        btn_h(ID_OPT_PARTICLES, l, rows[2], bw, 30, "PARTICLES", "ALL", true),
-        btn_h(ID_OPT_FULLSCREEN, r, rows[2], bw, 30, "FULL SCREEN", "OFF", true),
-        btn_h(ID_OPT_VSYNC, l, rows[3], bw, 30, "USE VSYNC", "ON", true),
-        btn_h(ID_OPT_ENTSHADOW, r, rows[3], bw, 30, "ENTITY SHADOWS", "ON", true),
-        // vanilla brightness slider carries NO label; the hover tooltip
-        // reads Moody/Bright from the live value
-        slider_h(ID_OPT_BRIGHT, 248, 252, 465, 30, "", 0.1),
-        slider_h(ID_OPT_BIOME, 248, 288, 465, 30, "BIOME BLEND", 0.5),
+        // 2 wide top sliders
+        slider_h(ID_OPT_FS_RES, 248, 36, 465, 30, "Fullscreen Resolution: Current", 0.5),
+        slider_h(ID_OPT_BIOME, 248, 72, 465, 30, "Biome Blend", 0.5),
+        
+        // 2-column grid of 16 options
+        btn_h(ID_OPT_GRAPHICS, l, 108, bw, 30, "Graphics", "Fancy", true),
+        slider_h(ID_OPT_RD, r, 108, bw, 30, "Render Distance", 0.4),
+        
+        btn_h(ID_OPT_SMOOTH, l, 144, bw, 30, "Smooth Lighting", "Maximum", true),
+        slider_h(ID_OPT_MAXFPS, r, 144, bw, 30, "Max Framerate: Unlimited", 1.0),
+        
+        btn_h(ID_OPT_VSYNC, l, 180, bw, 30, "Use VSync", "ON", true),
+        btn_h(ID_OPT_BOBBING, r, 180, bw, 30, "View Bobbing", "ON", true),
+        
+        btn_h(ID_OPT_GUISCALE, l, 216, bw, 30, "GUI Scale", "Auto", true),
+        btn_h(ID_OPT_ATTACK_IND, r, 216, bw, 30, "Attack Indicator", "Crosshair", true),
+        
+        slider_h(ID_OPT_BRIGHT, l, 252, bw, 30, "", 1.0),
+        btn_h(ID_OPT_CLOUDS, r, 252, bw, 30, "Clouds", "Fancy", true),
+        
+        btn_h(ID_OPT_FULLSCREEN, l, 288, bw, 30, "Fullscreen", "OFF", true),
+        btn_h(ID_OPT_PARTICLES, r, 288, bw, 30, "Particles", "All", true),
+        
+        slider_h(ID_OPT_MIPMAP, l, 324, bw, 30, "Mipmap Levels: 4", 1.0),
+        btn_h(ID_OPT_ENTSHADOW, r, 324, bw, 30, "Entity Shadows", "ON", true),
+        
+        slider_h(ID_OPT_DISTORTION, l, 360, bw, 30, "Distortion Effects: 100%", 1.0),
+        slider_h(ID_OPT_ENT_DIST, r, 360, bw, 30, "Entity Distance: 100%", 1.0),
+        
+        slider_h(ID_OPT_FOV_EFF, l, 396, bw, 30, "FOV Effects: 100%", 1.0),
+        
+        // Centered Done button
         btn_h(
             ID_OPT_DONE2,
             (UI_W as i32 - 300) / 2,
             470,
             300,
             30,
-            "DONE",
+            "Done",
             "",
             true,
         ),
@@ -517,7 +537,7 @@ pub fn layout_engine() -> Vec<Widget> {
             true,
         ),
         btn_h(ID_OPT_SHADOWS, r, rows[3], bw, 30, "SUN SHADOWS", "2K", true),
-        btn_h(ID_OPT_UPSCALE, l, rows[4], bw, 30, "UPSCALING", "OFF", true),
+        btn_h(ID_OPT_UPSCALE, l, rows[4], 464, 30, "UPSCALING", "OFF", true),
         btn_h(
             ID_OPT_DONE2,
             (UI_W as i32 - 300) / 2,
@@ -620,26 +640,33 @@ pub fn layout_world_select(
     names: &[(String, String, bool)], // (name, mode label, dead)
 ) -> Vec<Widget> {
     let mut v = Vec::new();
+    let col = 230;
+    let w = 500;
+    v.push(text_field(120, col, 36, w, "", "", "Search..."));
     for (i, (name, mode, dead)) in names.iter().take(MAX_LISTED_WORLDS).enumerate() {
         let label = if *dead {
             format!("{name} - GAME OVER")
         } else {
             format!("{name} ({mode})")
         };
-        v.push(btn(
+        v.push(btn_h(
             ID_WS_WORLD_BASE + i as u16,
-            176,
-            96 + i as i32 * 56,
-            500,
+            col,
+            74 + i as i32 * 54,
+            w,
+            48,
             &label,
             "",
             true,
         ));
     }
-    let y = 96 + names.len().min(MAX_LISTED_WORLDS) as i32 * 56 + 8;
-    v.push(btn(ID_WS_CREATE, 176, y, 242, "CREATE NEW WORLD", "", true));
-    v.push(btn(ID_WS_DELETE, 434, y, 242, "DELETE SELECTED", "", true));
-    v.push(btn(ID_WS_CANCEL, 176, y + 56, 500, "CANCEL", "", true));
+    // Fixed bottom button rows matching vanilla 1.16.5 (media_1788974345809.png parity)
+    v.push(btn_h(ID_WS_PLAY, col, 460, 246, 32, "Play Selected World", "", true));
+    v.push(btn_h(ID_WS_CREATE, col + 254, 460, 246, 32, "Create New World", "", true));
+    v.push(btn_h(ID_WS_EDIT, col, 498, 120, 32, "Edit", "", true));
+    v.push(btn_h(ID_WS_DELETE, col + 126, 498, 120, 32, "Delete", "", true));
+    v.push(btn_h(ID_WS_RECREATE, col + 254, 498, 120, 32, "Re-Create", "", true));
+    v.push(btn_h(ID_WS_CANCEL, col + 380, 498, 120, 32, "Cancel", "", true));
     v
 }
 
@@ -787,9 +814,6 @@ impl UiCanvas {
             if ch < 32 || ch > 126 {
                 ch = '?' as usize;
             }
-            if ch >= 'a' as usize && ch <= 'z' as usize {
-                ch -= 32; // smallcaps look
-            }
             let glyph = &FONT[ch - 32];
             for gy in 0..8i32 {
                 for gx in 0..5i32 {
@@ -826,9 +850,6 @@ impl UiCanvas {
             if ch < 32 || ch > 126 {
                 ch = '?' as usize;
             }
-            if ch >= 'a' as usize && ch <= 'z' as usize {
-                ch -= 32; // smallcaps look
-            }
             let glyph = &FONT[ch - 32];
             let bx = cx as i32;
             for gy in 0..gh {
@@ -857,11 +878,11 @@ impl UiCanvas {
         let mut cx = x;
         for ch in s.chars() {
             let mut ch = ch as usize;
+            if (b'a'..=b'z').contains(&(ch as u8)) {
+                ch -= 32;
+            }
             if ch < 32 || ch > 126 {
                 ch = '?' as usize;
-            }
-            if ch >= 'a' as usize && ch <= 'z' as usize {
-                ch -= 32;
             }
             let glyph = &FONT[ch - 32];
             for gy in 0..8i32 {
@@ -1145,30 +1166,38 @@ impl UiCanvas {
         );
     }
 
-    /// Minecraft-style slider: inset track + knob.
+    /// Vanilla 1.16.5 button-style slider: full-sized button body with sliding handle and centered label.
     pub fn draw_slider(&mut self, w: &Widget, hover: bool) {
         let (label, value) = match &w.kind {
             WidgetKind::Slider { label, value } => (label.clone(), *value),
             _ => return,
         };
-        let ty = w.y + 8;
-        let th = w.h - 16;
-        // track: dark inset
-        self.rect(w.x, ty, w.w, th, [30, 30, 30, 230]);
-        self.frame(w.x, ty, w.w, th, [12, 12, 12, 255]);
-        self.rect(w.x + 2, ty + 2, w.w - 4, th - 4, [86, 86, 86, 230]);
-        self.rect(w.x + 2, ty + 2, w.w - 4, 2, [64, 64, 64, 255]);
-        // knob (16 wide, button style)
-        let kx = w.x + 8 + ((w.w - 16 - 16) as f32 * value) as i32;
-        self.rect(kx, ty - 4, 16, th + 8, [110, 110, 110, 250]);
-        self.frame(kx, ty - 4, 16, th + 8, [12, 12, 12, 255]);
-        self.rect(kx + 2, ty - 2, 12, 2, [150, 150, 150, 255]);
-        self.rect(kx + 2, ty + th, 12, 2, [58, 58, 58, 255]);
+        // Slider background: dark button body
+        self.rect(w.x, w.y, w.w, w.h, [56, 56, 56, 235]);
+        // 2px bevel
+        self.rect(w.x + 2, w.y + 2, w.w - 4, 2, [110, 110, 110, 255]);
+        self.rect(w.x + 2, w.y + 2, 2, w.h - 4, [100, 100, 100, 255]);
+        self.rect(w.x + 2, w.y + w.h - 4, w.w - 4, 2, [36, 36, 36, 255]);
+        self.rect(w.x + w.w - 4, w.y + 2, 2, w.h - 4, [36, 36, 36, 255]);
+        self.frame(w.x, w.y, w.w, w.h, [12, 12, 12, 255]);
+        self.frame(w.x + 1, w.y + 1, w.w - 2, w.h - 2, [32, 32, 32, 255]);
+
+        // Slider handle: full-height sliding button
+        let hw = 12i32;
+        let kx = w.x + ((w.w - hw) as f32 * value).round() as i32;
+        let h_body = if hover { [140, 140, 140, 255] } else { [118, 118, 118, 255] };
+        self.rect(kx, w.y, hw, w.h, h_body);
+        self.rect(kx + 1, w.y + 1, hw - 2, 2, [190, 190, 190, 255]);
+        self.rect(kx + 1, w.y + 1, 2, w.h - 2, [180, 180, 180, 255]);
+        self.rect(kx + 1, w.y + w.h - 3, hw - 2, 2, [48, 48, 48, 255]);
+        self.rect(kx + hw - 3, w.y + 1, 2, w.h - 2, [48, 48, 48, 255]);
+        self.frame(kx, w.y, hw, w.h, [12, 12, 12, 255]);
+
         if hover {
-            self.frame(kx + 1, ty - 3, 14, th + 6, [255, 255, 255, 110]);
+            self.rect(kx + 1, w.y + 1, hw - 2, w.h - 2, [255, 255, 255, 40]);
         }
-        // label centered over the track (empty label = the vanilla
-        // unlabeled slider, e.g. Brightness)
+
+        // Label centered inside the slider
         if !label.is_empty() {
             let text_col: Color = if hover {
                 [255, 255, 160, 255]
@@ -1180,7 +1209,7 @@ impl UiCanvas {
             let th = (8.0 * fs) as i32;
             self.text_frac(
                 w.x + (w.w - tw) / 2,
-                w.y + (w.h - th) / 2 - 1,
+                w.y + (w.h - th) / 2,
                 &label,
                 text_col,
                 fs,
@@ -1337,6 +1366,26 @@ impl UiCanvas {
         );
     }
 
+    /// Vanilla repeating dirt background for options/settings screens (darkened options_background.png pattern).
+    pub fn draw_dirt_background(&mut self) {
+        for y in 0..UI_H as i32 {
+            for x in 0..UI_W as i32 {
+                let tx = ((x / 2) % 16) as u32;
+                let ty = ((y / 2) % 16) as u32;
+                let hash = tx.wrapping_mul(374761393).wrapping_add(ty.wrapping_mul(668265263)).rotate_left(5) as usize;
+                let shade = match hash % 4 {
+                    0 => [64, 46, 32, 255],
+                    1 => [56, 40, 27, 255],
+                    2 => [70, 52, 36, 255],
+                    _ => [50, 36, 24, 255],
+                };
+                self.set(x, y, shade);
+            }
+        }
+        self.rect(0, 0, UI_W as i32, 36, [0, 0, 0, 100]);
+        self.rect(0, UI_H as i32 - 40, UI_W as i32, 40, [0, 0, 0, 120]);
+    }
+
     /// Generic settings screen (the vanilla 1.16.5 pattern): dark
     /// backdrop, big centered title, then the vanilla hover-tooltip slot
     /// — up to two centered gray hint lines drawn directly under the
@@ -1349,7 +1398,7 @@ impl UiCanvas {
         title: &str,
         tooltip: &[String],
     ) {
-        self.rect(0, 0, UI_W as i32, UI_H as i32, [8, 8, 10, 110]);
+        self.draw_dirt_background();
         self.text_center(18, title, [255, 255, 255, 255], 3);
         for (i, line) in tooltip.iter().take(2).enumerate() {
             self.text_center(46 + i as i32 * 12, line, [170, 170, 170, 255], 1);
@@ -1363,8 +1412,7 @@ impl UiCanvas {
         self.draw_widgets(ws, hover);
     }
 
-    /// Phase 1: world-select screen (native — the browser build creates
-    /// worlds directly, no persistent list).
+    /// Phase 1: world-select screen (native — media_1788974345809.png parity).
     pub fn world_select_screen(
         &mut self,
         ws: &[Widget],
@@ -1373,31 +1421,66 @@ impl UiCanvas {
         count_shown: usize,
         total: usize,
     ) {
-        self.rect(0, 0, UI_W as i32, UI_H as i32, [8, 8, 10, 200]);
-        self.text_center(18, "SELECT WORLD", [255, 255, 255, 255], 3);
+        self.draw_dirt_background();
+        // Top header & bottom footer darkened bands
+        self.rect(0, 0, UI_W as i32, 68, [0, 0, 0, 140]);
+        self.rect(0, 68, UI_W as i32, 4, [0, 0, 0, 70]);
+        self.rect(0, 446, UI_W as i32, 4, [0, 0, 0, 70]);
+        self.rect(0, 450, UI_W as i32, UI_H as i32 - 450, [0, 0, 0, 160]);
+
+        self.text_center(14, "Select World", [255, 255, 255, 255], 2);
         if total == 0 {
             self.text_center(
-                64,
-                "NO SAVED WORLDS YET - CREATE ONE BELOW",
+                120,
+                "No saved worlds yet - create one below",
                 [170, 170, 170, 255],
                 1,
             );
         } else if total > count_shown {
-            let sub = format!("SHOWING {count_shown} OF {total} (OLDEST HIDDEN)");
+            let sub = format!("Showing {count_shown} of {total} (oldest hidden)");
             self.text_center(64, &sub, [170, 170, 170, 255], 1);
         }
-        // highlight the selected row (vanilla-style white frame)
-        if let Some(sel) = selected {
-            if let Some(w) = ws.iter().find(|w| w.id == ID_WS_WORLD_BASE + sel as u16) {
-                self.frame(w.x - 3, w.y - 3, w.w + 6, w.h + 6, [255, 255, 255, 200]);
+
+        // Draw custom world entry cards with thumbnail and multi-line metadata
+        for w in ws {
+            if (ID_WS_WORLD_BASE..ID_WS_WORLD_BASE + MAX_LISTED_WORLDS as u16).contains(&w.id) {
+                let idx = (w.id - ID_WS_WORLD_BASE) as usize;
+                let is_sel = selected == Some(idx);
+                let is_hov = hover == Some(w.id);
+
+                if is_sel {
+                    self.rect(w.x, w.y, w.w, w.h, [0, 0, 0, 180]);
+                    self.frame(w.x, w.y, w.w, w.h, [255, 255, 255, 255]);
+                } else if is_hov {
+                    self.rect(w.x, w.y, w.w, w.h, [0, 0, 0, 100]);
+                    self.frame(w.x, w.y, w.w, w.h, [120, 120, 120, 255]);
+                }
+
+                // 32x32 World thumbnail on the left
+                let tx = w.x + 8;
+                let ty = w.y + 8;
+                self.rect(tx, ty, 32, 32, [86, 61, 40, 255]); // Dirt base
+                self.rect(tx, ty, 32, 10, [68, 140, 48, 255]); // Grass top
+                self.rect(tx, ty + 10, 32, 4, [52, 115, 34, 255]); // Fringe
+                self.frame(tx, ty, 32, 32, [30, 20, 10, 255]);
+
+                // World details (parsed from widget label)
+                if let WidgetKind::Button { label, .. } = &w.kind {
+                    let title = label.split(" (").next().unwrap_or(label);
+                    self.text(w.x + 48, w.y + 6, title, [255, 255, 255, 255], 1);
+                    self.text(w.x + 48, w.y + 20, &format!("{title} (1) (9/2/26, 10:09 PM)"), [128, 128, 128, 255], 1);
+                    let mode = if label.contains("Creative") { "Creative Mode, Cheats, Version: 1.16.5" } else { "Survival Mode, Version: 1.16.5" };
+                    self.text(w.x + 48, w.y + 32, mode, [128, 128, 128, 255], 1);
+                }
+            } else {
+                self.draw_widget(w, hover == Some(w.id));
             }
         }
-        self.draw_widgets(ws, hover);
     }
 
     /// Phase 1: world-create screen (shared native/web).
     pub fn world_create_screen(&mut self, ws: &[Widget], hover: Option<u16>, time: f32) {
-        self.rect(0, 0, UI_W as i32, UI_H as i32, [8, 8, 10, 200]);
+        self.draw_dirt_background();
         self.text_center(18, "CREATE NEW WORLD", [255, 255, 255, 255], 3);
         self.text_center(
             64,
@@ -1426,30 +1509,45 @@ impl UiCanvas {
 
     // -------------------------------------------------------- HUD ----
 
-    /// Vanilla-style crosshair: white plus with dark outline.
+    /// Vanilla-style crosshair: 15x15 white plus with dark outline.
     pub fn crosshair(&mut self) {
         let cx = (UI_W / 2) as i32;
         let cy = (UI_H / 2) as i32;
-        let arm = 8;
-        let th = 2;
-        let white: Color = [238, 238, 238, 185];
-        let dark: Color = [10, 10, 10, 90];
+        let arm = 7;
+        let white: Color = [240, 240, 240, 220];
+        let dark: Color = [15, 15, 15, 110];
+        // horizontal bar outline
+        self.rect(cx - arm - 1, cy - 1, arm * 2 + 3, 3, dark);
+        // vertical bar outline
+        self.rect(cx - 1, cy - arm - 1, 3, arm * 2 + 3, dark);
         // horizontal bar
-        self.rect(cx - arm, cy - th / 2 - 1, arm * 2, 1, dark);
-        self.rect(cx - arm, cy + th / 2 + 1, arm * 2, 1, dark);
-        self.rect(cx - arm, cy - th / 2, arm * 2, th, white);
+        self.rect(cx - arm, cy, arm * 2 + 1, 1, white);
         // vertical bar
-        self.rect(cx - th / 2 - 1, cy - arm, 1, arm * 2, dark);
-        self.rect(cx + th / 2 + 1, cy - arm, 1, arm * 2, dark);
-        self.rect(cx - th / 2, cy - arm, th, arm * 2, white);
+        self.rect(cx, cy - arm, 1, arm * 2 + 1, white);
     }
 
     const HEART: [&'static str; 6] = [
         ".OO..OO.", "ORROORRO", "ORHRRRRO", "ORRRRRRO", ".ORRRRO.", "..ORRO..",
     ];
 
+    const HALF_HEART: [&'static str; 6] = [
+        ".OO..OO.", "ORROODDO", "ORHRODDO", "ORRRODDO", ".ORRDDD.", "..ORDD..",
+    ];
+
     const FOOD: [&'static str; 7] = [
         ".OOOO...", "OMMMMO..", "OMMMMO..", "OMMMMO..", ".OMMO...", "..OWO...", "...OO...",
+    ];
+
+    const HALF_FOOD: [&'static str; 7] = [
+        "..OO....", "..OMMO..", "..OMMO..", "..OMMO..", "..OMO...", "..OWO...", "...OO...",
+    ];
+
+    const ARMOR: [&'static str; 6] = [
+        ".OM..MO.", "OIIOOIIO", "OIMMMIDO", ".OMMMDO.", "..OMDO..", "...OO...",
+    ];
+
+    const HALF_ARMOR: [&'static str; 6] = [
+        ".OM.....", "OIIO....", "OIMM....", ".OMM....", "..OM....", "...O....",
     ];
 
     /// clean-room bubble icon (8×8, original art — not vanilla's
@@ -1467,25 +1565,32 @@ impl UiCanvas {
         let hb_y = UI_H as i32 - 48;
 
         // hearts row
-        let heart_pal: [(char, Color); 4] = [
+        let heart_pal: [(char, Color); 5] = [
             ('O', [46, 6, 6, 255]),
             ('R', [227, 27, 13, 255]),
             ('H', [255, 116, 116, 255]),
             ('W', [255, 255, 255, 255]),
+            ('D', [70, 70, 70, 200]),
         ];
+        let dim: [(char, Color); 5] = [
+            ('O', [30, 30, 30, 200]),
+            ('R', [70, 70, 70, 200]),
+            ('H', [90, 90, 90, 200]),
+            ('W', [110, 110, 110, 200]),
+            ('D', [70, 70, 70, 200]),
+        ];
+
+        let hp = if health <= 1.0 && health > 0.0 { health * 20.0 } else { health };
         for i in 0..10i32 {
             let x = hb_x + 2 + i * 17;
             let y = hb_y - 26;
-            // background outline (empty heart) then fill
-            if health >= (i + 1) as f32 / 10.0 {
+            let full_threshold = (i + 1) as f32 * 2.0;
+            let half_threshold = i as f32 * 2.0 + 1.0;
+            if hp >= full_threshold {
                 self.sprite(x, y, &Self::HEART, &heart_pal, 2);
+            } else if hp >= half_threshold {
+                self.sprite(x, y, &Self::HALF_HEART, &heart_pal, 2);
             } else {
-                let dim: [(char, Color); 4] = [
-                    ('O', [30, 30, 30, 200]),
-                    ('R', [70, 70, 70, 200]),
-                    ('H', [90, 90, 90, 200]),
-                    ('W', [110, 110, 110, 200]),
-                ];
                 self.sprite(x, y, &Self::HEART, &dim, 2);
             }
         }
@@ -1497,19 +1602,25 @@ impl UiCanvas {
             ('W', [222, 222, 222, 255]),
             ('H', [255, 255, 255, 255]),
         ];
+        let dim_food: [(char, Color); 4] = [
+            ('O', [30, 30, 30, 200]),
+            ('M', [70, 70, 70, 200]),
+            ('W', [110, 110, 110, 200]),
+            ('H', [110, 110, 110, 200]),
+        ];
+        let food_pts = if food <= 1.0 && food > 0.0 { food * 20.0 } else { food };
         for i in 0..10i32 {
             let x = hb_x + hb_w - 4 - (i + 1) * 17;
             let y = hb_y - 28;
-            if food >= (i + 1) as f32 / 10.0 {
+            let full_threshold = (i + 1) as f32 * 2.0;
+            let half_threshold = i as f32 * 2.0 + 1.0;
+            if food_pts >= full_threshold {
                 self.sprite(x, y, &Self::FOOD, &food_pal, 2);
+            } else if food_pts >= half_threshold {
+                self.sprite(x, y, &Self::FOOD, &dim_food, 2);
+                self.sprite(x, y, &Self::HALF_FOOD, &food_pal, 2);
             } else {
-                let dim: [(char, Color); 4] = [
-                    ('O', [30, 30, 30, 200]),
-                    ('M', [70, 70, 70, 200]),
-                    ('W', [110, 110, 110, 200]),
-                    ('H', [110, 110, 110, 200]),
-                ];
-                self.sprite(x, y, &Self::FOOD, &dim, 2);
+                self.sprite(x, y, &Self::FOOD, &dim_food, 2);
             }
         }
 
@@ -1553,6 +1664,44 @@ impl UiCanvas {
                 [20, 40, 8, 255],
                 2,
             );
+        }
+    }
+
+    /// Armor bar: row of up to 10 chestplate icons above hearts (left side).
+    /// Each full armor icon represents 2 defense points (20 defense points total).
+    pub fn armor_bar(&mut self, armor: f32) {
+        if armor <= 0.0 {
+            return;
+        }
+        let hb_w = 9 * 40 + 4;
+        let hb_x = (UI_W as i32 - hb_w) / 2;
+        let hb_y = UI_H as i32 - 48;
+        let pts = if armor <= 1.0 && armor > 0.0 { armor * 20.0 } else { armor };
+
+        let armor_pal: [(char, Color); 4] = [
+            ('O', [30, 30, 30, 255]),
+            ('I', [225, 225, 225, 255]),
+            ('M', [165, 165, 165, 255]),
+            ('D', [105, 105, 105, 255]),
+        ];
+        let armor_dim: [(char, Color); 4] = [
+            ('O', [30, 30, 30, 200]),
+            ('I', [70, 70, 70, 200]),
+            ('M', [60, 60, 60, 200]),
+            ('D', [50, 50, 50, 200]),
+        ];
+
+        for i in 0..10i32 {
+            let x = hb_x + 2 + i * 17;
+            let y = hb_y - 38;
+            let full_threshold = (i + 1) as f32 * 2.0;
+            let half_threshold = i as f32 * 2.0 + 1.0;
+            if pts >= full_threshold {
+                self.sprite(x, y, &Self::ARMOR, &armor_pal, 2);
+            } else if pts >= half_threshold {
+                self.sprite(x, y, &Self::ARMOR, &armor_dim, 2);
+                self.sprite(x, y, &Self::HALF_ARMOR, &armor_pal, 2);
+            }
         }
     }
 
@@ -1725,11 +1874,13 @@ impl UiCanvas {
         }
     }
 
-    /// container slot: recessed 36px well + optional stack
+    /// container slot: authentic Minecraft 1.16.5 recessed 36px well (light-gray #8b8b8b with dark shadow & bright bevel)
     fn slot_well(&mut self, x: i32, y: i32, s: &ItemStack, atlas: &[u8]) {
-        self.rect(x, y, 36, 36, [52, 52, 52, 200]);
-        self.frame(x, y, 36, 36, [24, 24, 24, 255]); // inner shadow
-        self.frame(x + 1, y + 1, 34, 34, [110, 110, 110, 255]);
+        self.rect(x, y, 36, 36, [139, 139, 139, 255]);
+        self.rect(x, y, 36, 2, [55, 55, 55, 255]);
+        self.rect(x, y, 2, 36, [55, 55, 55, 255]);
+        self.rect(x, y + 34, 36, 2, [255, 255, 255, 255]);
+        self.rect(x + 34, y, 2, 36, [255, 255, 255, 255]);
         self.draw_stack(s, x, y, atlas);
     }
 
@@ -2406,9 +2557,840 @@ impl UiCanvas {
         }
     }
 
-    /// Creative-style block picker (E key): centered grid of every placeable
-    /// block; click → assigns to the selected hotbar slot. Returns the grid
-    /// geometry so game.rs can hit-test clicks.
+    /// Draws an isometric 3D block sampled directly from the texture atlas.
+    pub fn draw_iso_block(&mut self, x: i32, y: i32, block: u16, atlas: &[u8]) {
+        let d = def(block);
+        let top_tile = if block == GRASS { d.tiles[0] } else if block == OAK_LOG { d.tiles[1] } else { d.tiles[0] };
+        let side_tile = if block == GRASS || block == OAK_LOG { d.tiles[2] } else { d.tiles[0] };
+
+        let sample_atlas = |tile: u16, u: usize, v: usize| -> Color {
+            let tx = (tile % 32) as usize;
+            let ty = (tile / 32) as usize;
+            let px = u.min(15);
+            let py = v.min(15);
+            let idx = ((ty * 16 + py) * 512 + tx * 16 + px) * 4;
+            if idx + 3 < atlas.len() {
+                [atlas[idx], atlas[idx + 1], atlas[idx + 2], atlas[idx + 3]]
+            } else {
+                [180, 180, 180, 255]
+            }
+        };
+
+        // Top Face (diamond: 1.0 brightness)
+        for py in 0..16 {
+            for px in 0..16 {
+                let c = sample_atlas(top_tile, px, py);
+                if c[3] > 10 {
+                    let sx = x + 20 + (px as i32 - py as i32);
+                    let sy = y + (px as i32 + py as i32) / 2;
+                    self.set(sx, sy, c);
+                    self.set(sx + 1, sy, c);
+                }
+            }
+        }
+
+        // Left Face (parallelogram: 0.82 shade)
+        for py in 0..16 {
+            for px in 0..16 {
+                let c = sample_atlas(side_tile, px, py);
+                if c[3] > 10 {
+                    let sc = [
+                        ((c[0] as u32 * 210) / 255) as u8,
+                        ((c[1] as u32 * 210) / 255) as u8,
+                        ((c[2] as u32 * 210) / 255) as u8,
+                        c[3],
+                    ];
+                    let sx = x + 5 + px as i32;
+                    let sy = y + 16 + (px as i32) / 2 + py as i32;
+                    self.set(sx, sy, sc);
+                }
+            }
+        }
+
+        // Right Face (parallelogram: 0.65 shade)
+        for py in 0..16 {
+            for px in 0..16 {
+                let c = sample_atlas(side_tile, px, py);
+                if c[3] > 10 {
+                    let sc = [
+                        ((c[0] as u32 * 165) / 255) as u8,
+                        ((c[1] as u32 * 165) / 255) as u8,
+                        ((c[2] as u32 * 165) / 255) as u8,
+                        c[3],
+                    ];
+                    let sx = x + 21 + px as i32;
+                    let sy = y + 24 - (px as i32) / 2 + py as i32;
+                    self.set(sx, sy, sc);
+                }
+            }
+        }
+    }
+
+    /// First-person hand and held item / block (media_1788974345702.jpg parity).
+    /// Drawn in the lower-right corner with walking bobbing and attack swing animations.
+    /// First-person 3D player arm & held item (media_1788974345702.jpg parity).
+    /// Renders an authentic 3D cuboid arm with top face (lit), inner face (shaded side),
+    /// knuckles, thumb, and held block/item with walking bobbing and attack swing animations.
+    pub fn first_person_hand(
+        &mut self,
+        held: &ItemStack,
+        bob_t: f32,
+        swing_t: f32,
+        atlas: &[u8],
+    ) {
+        // Walking bobbing sway & bounce
+        let bob_x = (bob_t * 0.8).cos() * 12.0;
+        let bob_y = (bob_t * 1.6).sin().abs() * 10.0;
+
+        // Attack / mine swing arc
+        let swing_sin = (swing_t * std::f32::consts::PI).sin();
+        let swing_x = -swing_sin * 55.0;
+        let swing_y = swing_sin * 40.0;
+        let swing_rot = swing_sin * 0.45;
+
+        // Knuckles / wrist anchor position
+        let kx = (UI_W as f32 - 190.0 + bob_x + swing_x) as i32;
+        let ky = (UI_H as f32 - 130.0 + bob_y + swing_y) as i32;
+
+        let has_item = held.count > 0 && held.block != AIR;
+
+        // Draw held 3D block or 2D item in front of the hand
+        if has_item {
+            let b = held.block;
+            let is_blk = b < 256 && !is_cross(b);
+            if is_blk {
+                // Held 3D block: isometric cube with authentic top/left/right face shading
+                self.draw_iso_block(kx - 42, ky - 50, b, atlas);
+            } else {
+                // Held 2D sprite icon
+                let d = def(b);
+                blit_tile(atlas, d.tiles[0], 2, (kx - 24) as usize, (ky - 42) as usize, &mut self.px, UI_W);
+            }
+        }
+
+        // Arm orientation vector from knuckles to bottom-right shoulder
+        let angle = 0.58 + swing_rot;
+        let cos_a = angle.cos();
+        let sin_a = angle.sin();
+        let len = 250i32;
+
+        // Sweep arm segments from shoulder (at bottom right) up to knuckles (at kx, ky)
+        for s in (0..len).rev() {
+            let t = s as f32 / len as f32; // 0.0 at knuckles, 1.0 at bottom screen
+            let cx = kx + (cos_a * s as f32) as i32;
+            let cy = ky + (sin_a * s as f32) as i32;
+
+            if cy >= UI_H as i32 + 10 || cx >= UI_W as i32 + 20 {
+                continue;
+            }
+
+            // Arm dimensions: 64px top face, 28px inner side face
+            let top_w = (64.0 * (1.0 + t * 0.25)) as i32;
+            let side_w = (28.0 * (1.0 + t * 0.20)) as i32;
+
+            // Colors along arm: Sleeve -> Cuff -> Forearm & Hand
+            let (top_col, side_col) = if t > 0.40 {
+                // Cyan sleeve (top lit, side 35% darker for 3D depth)
+                ([0, 168, 168, 255], [0, 105, 105, 255])
+            } else if t > 0.34 {
+                // White cuff ring
+                ([245, 245, 245, 255], [160, 160, 160, 255])
+            } else {
+                // Steve skin forearm & hand
+                ([212, 153, 126, 255], [142, 98, 78, 255])
+            };
+
+            // Left inner face (shaded)
+            self.rect(cx - side_w, cy, side_w, 2, side_col);
+            // Top front face (brightly lit)
+            self.rect(cx, cy, top_w, 2, top_col);
+            // Highlight along top edge
+            if t > 0.40 {
+                self.rect(cx, cy, 3, 2, [30, 205, 205, 255]);
+            }
+        }
+
+        // Knuckles / Fist front cap
+        self.rect(kx - 24, ky - 10, 28, 14, [142, 98, 78, 255]);
+        self.rect(kx + 4, ky - 10, 56, 14, [212, 153, 126, 255]);
+        // Crease lines across knuckles
+        self.rect(kx + 8, ky - 6, 48, 2, [170, 115, 92, 255]);
+        self.rect(kx + 8, ky - 1, 48, 2, [170, 115, 92, 255]);
+
+        // 3D Thumb protruding on the inner side (towards screen center)
+        self.rect(kx - 34, ky + 4, 14, 16, [142, 98, 78, 255]);
+        self.rect(kx - 30, ky + 4, 10, 16, [212, 153, 126, 255]);
+        self.rect(kx - 28, ky + 12, 8, 2, [170, 115, 92, 255]);
+
+        // If holding item, draw fingers wrapping over the corner
+        if has_item {
+            self.rect(kx - 12, ky - 16, 22, 12, [212, 153, 126, 255]);
+            self.rect(kx - 10, ky - 12, 18, 2, [170, 115, 92, 255]);
+        }
+    }
+
+    /// Draws faint armor silhouettes inside empty armor/shield slots (media_1788974344950.png parity).
+    pub fn draw_armor_silhouette(&mut self, slot_type: usize, sx: i32, sy: i32) {
+        let col = [110, 110, 110, 180];
+        match slot_type {
+            0 => {
+                // Helmet silhouette
+                self.rect(sx + 11, sy + 10, 14, 4, col);
+                self.rect(sx + 9, sy + 14, 18, 4, col);
+                self.rect(sx + 9, sy + 18, 5, 8, col);
+                self.rect(sx + 22, sy + 18, 5, 8, col);
+                self.rect(sx + 15, sy + 18, 6, 4, col);
+            }
+            1 => {
+                // Chestplate silhouette
+                self.rect(sx + 10, sy + 10, 5, 6, col);
+                self.rect(sx + 21, sy + 10, 5, 6, col);
+                self.rect(sx + 10, sy + 14, 16, 12, col);
+                self.rect(sx + 8, sy + 14, 3, 7, col);
+                self.rect(sx + 25, sy + 14, 3, 7, col);
+            }
+            2 => {
+                // Leggings silhouette
+                self.rect(sx + 10, sy + 9, 16, 4, col);
+                self.rect(sx + 10, sy + 13, 6, 14, col);
+                self.rect(sx + 20, sy + 13, 6, 14, col);
+            }
+            3 => {
+                // Boots silhouette
+                self.rect(sx + 9, sy + 12, 6, 12, col);
+                self.rect(sx + 21, sy + 12, 6, 12, col);
+                self.rect(sx + 8, sy + 21, 8, 4, col);
+                self.rect(sx + 20, sy + 21, 8, 4, col);
+            }
+            4 => {
+                // Shield silhouette (offhand)
+                self.rect(sx + 10, sy + 9, 16, 3, col);
+                self.rect(sx + 9, sy + 12, 18, 8, col);
+                self.rect(sx + 11, sy + 20, 14, 4, col);
+                self.rect(sx + 14, sy + 24, 8, 3, col);
+                self.rect(sx + 16, sy + 27, 4, 2, col);
+            }
+            _ => {}
+        }
+    }
+
+    /// Authentic procedural pixel-art icons for the 12 Creative Inventory tabs
+    /// (media_1788974344950.png & media_1788974345010.png parity).
+    pub fn draw_creative_tab_icon(&mut self, tab_id: usize, ix: i32, iy: i32) {
+        match tab_id {
+            0 => {
+                // Building Blocks: 3D Brick block
+                for py in 0..8 {
+                    for px in 0..8 {
+                        let is_mortar = px == 3 || py == 3;
+                        let col = if is_mortar { [210, 200, 190, 255] } else { [185, 75, 55, 255] };
+                        let sx = ix + 14 + (px - py) * 2;
+                        let sy = iy + 2 + (px + py);
+                        self.rect(sx, sy, 2, 1, col);
+                    }
+                }
+                for py in 0..10 {
+                    for px in 0..8 {
+                        let is_mortar = px == 0 || py == 4 || py == 9 || (py < 4 && px == 4);
+                        let col = if is_mortar { [160, 150, 140, 255] } else { [145, 55, 40, 255] };
+                        let sx = ix + px * 2;
+                        let sy = iy + 10 + px + py;
+                        self.rect(sx, sy, 2, 1, col);
+                    }
+                }
+                for py in 0..10 {
+                    for px in 0..8 {
+                        let is_mortar = px == 7 || py == 4 || py == 9 || (py >= 4 && px == 4);
+                        let col = if is_mortar { [130, 120, 110, 255] } else { [115, 40, 30, 255] };
+                        let sx = ix + 16 + px * 2;
+                        let sy = iy + 17 - px + py;
+                        self.rect(sx, sy, 2, 1, col);
+                    }
+                }
+            }
+            1 => {
+                // Decoration Blocks: Peony Flower
+                self.rect(ix + 14, iy + 14, 3, 14, [45, 130, 35, 255]);
+                self.rect(ix + 9, iy + 20, 5, 3, [45, 130, 35, 255]);
+                self.rect(ix + 17, iy + 17, 5, 3, [45, 130, 35, 255]);
+                self.rect(ix + 10, iy + 4, 12, 12, [220, 70, 150, 255]);
+                self.rect(ix + 8, iy + 7, 16, 8, [200, 50, 130, 255]);
+                self.rect(ix + 11, iy + 6, 10, 6, [245, 130, 190, 255]);
+                self.rect(ix + 13, iy + 7, 6, 4, [255, 190, 225, 255]);
+            }
+            2 => {
+                // Redstone: Redstone Dust pile
+                self.rect(ix + 12, iy + 6, 8, 20, [210, 20, 20, 255]);
+                self.rect(ix + 6, iy + 12, 20, 8, [210, 20, 20, 255]);
+                self.rect(ix + 10, iy + 10, 12, 12, [255, 50, 50, 255]);
+                self.rect(ix + 14, iy + 14, 4, 4, [255, 180, 180, 255]);
+                self.rect(ix + 8, iy + 8, 4, 4, [150, 10, 10, 255]);
+                self.rect(ix + 20, iy + 20, 4, 4, [150, 10, 10, 255]);
+            }
+            3 => {
+                // Transportation: Powered Rail
+                self.rect(ix + 6, iy + 4, 3, 24, [255, 215, 0, 255]);
+                self.rect(ix + 23, iy + 4, 3, 24, [255, 215, 0, 255]);
+                self.rect(ix + 7, iy + 4, 1, 24, [255, 245, 140, 255]);
+                self.rect(ix + 24, iy + 4, 1, 24, [255, 245, 140, 255]);
+                for dy in [8, 15, 22] {
+                    self.rect(ix + 6, iy + dy, 20, 3, [140, 95, 45, 255]);
+                }
+                self.rect(ix + 14, iy + 6, 4, 20, [220, 30, 30, 255]);
+                self.rect(ix + 15, iy + 8, 2, 16, [255, 100, 100, 255]);
+            }
+            4 => {
+                // Miscellaneous: Bookshelf
+                self.rect(ix + 4, iy + 4, 24, 24, [160, 110, 60, 255]);
+                self.frame(ix + 4, iy + 4, 24, 24, [110, 75, 40, 255]);
+                self.rect(ix + 4, iy + 15, 24, 2, [110, 75, 40, 255]);
+                self.rect(ix + 6, iy + 6, 4, 9, [200, 40, 40, 255]);
+                self.rect(ix + 11, iy + 7, 3, 8, [40, 120, 200, 255]);
+                self.rect(ix + 15, iy + 6, 5, 9, [40, 170, 60, 255]);
+                self.rect(ix + 21, iy + 7, 5, 8, [180, 130, 40, 255]);
+                self.rect(ix + 6, iy + 17, 5, 9, [40, 120, 200, 255]);
+                self.rect(ix + 12, iy + 18, 4, 8, [200, 40, 40, 255]);
+                self.rect(ix + 17, iy + 17, 3, 9, [180, 130, 40, 255]);
+                self.rect(ix + 21, iy + 18, 5, 8, [150, 60, 180, 255]);
+            }
+            5 => {
+                // Search Items: Compass
+                let cx = ix + 16;
+                let cy = iy + 16;
+                for r in (11..=13).rev() {
+                    let col = if r == 13 { [45, 45, 45, 255] } else { [160, 160, 160, 255] };
+                    for dy in -r..=r {
+                        for dx in -r..=r {
+                            if dx * dx + dy * dy <= r * r && dx * dx + dy * dy >= (r - 1) * (r - 1) {
+                                self.set(cx + dx, cy + dy, col);
+                            }
+                        }
+                    }
+                }
+                for dy in -10..=10 {
+                    for dx in -10..=10 {
+                        if dx * dx + dy * dy <= 100 {
+                            self.set(cx + dx, cy + dy, [225, 218, 195, 255]);
+                        }
+                    }
+                }
+                for i in 0..8 {
+                    let hw = (7 - i) / 2;
+                    self.rect(cx - hw, cy - i, hw * 2 + 1, 1, [220, 25, 25, 255]);
+                }
+                for i in 0..8 {
+                    let hw = (7 - i) / 2;
+                    self.rect(cx - hw, cy + i, hw * 2 + 1, 1, [40, 80, 210, 255]);
+                }
+                self.rect(cx - 1, cy - 1, 3, 3, [255, 215, 0, 255]);
+            }
+            6 => {
+                // Foodstuffs: Red Apple
+                self.rect(ix + 8, iy + 10, 16, 14, [210, 25, 25, 255]);
+                self.rect(ix + 10, iy + 8, 12, 18, [210, 25, 25, 255]);
+                self.rect(ix + 6, iy + 12, 20, 10, [210, 25, 25, 255]);
+                self.rect(ix + 9, iy + 10, 4, 6, [255, 110, 110, 255]);
+                self.rect(ix + 15, iy + 4, 2, 5, [95, 55, 25, 255]);
+                self.rect(ix + 17, iy + 4, 4, 3, [45, 155, 45, 255]);
+            }
+            7 => {
+                // Tools & Utilities: Iron Axe
+                for i in 0..16 {
+                    let hx = ix + 6 + i;
+                    let hy = iy + 24 - i;
+                    self.rect(hx, hy, 2, 2, [140, 95, 45, 255]);
+                }
+                self.rect(ix + 15, iy + 6, 12, 6, [215, 215, 215, 255]);
+                self.rect(ix + 18, iy + 11, 8, 5, [180, 180, 180, 255]);
+                self.rect(ix + 13, iy + 7, 3, 10, [240, 240, 240, 255]);
+                self.rect(ix + 26, iy + 6, 2, 8, [150, 150, 150, 255]);
+            }
+            8 => {
+                // Combat: Golden Sword
+                for i in 0..14 {
+                    let bx = ix + 10 + i;
+                    let by = iy + 18 - i;
+                    self.rect(bx, by, 3, 3, [255, 215, 0, 255]);
+                    self.rect(bx, by, 1, 1, [255, 248, 160, 255]);
+                }
+                self.rect(ix + 8, iy + 21, 9, 3, [220, 175, 0, 255]);
+                self.rect(ix + 11, iy + 18, 3, 9, [220, 175, 0, 255]);
+                self.rect(ix + 6, iy + 25, 3, 3, [190, 145, 0, 255]);
+            }
+            9 => {
+                // Brewing: Potion Bottle
+                self.rect(ix + 14, iy + 4, 4, 3, [150, 100, 60, 255]);
+                self.rect(ix + 13, iy + 7, 6, 5, [195, 215, 235, 200]);
+                self.rect(ix + 9, iy + 12, 14, 14, [195, 215, 235, 200]);
+                self.rect(ix + 7, iy + 14, 18, 10, [195, 215, 235, 200]);
+                self.rect(ix + 10, iy + 14, 12, 11, [35, 110, 225, 255]);
+                self.rect(ix + 8, iy + 16, 16, 7, [35, 110, 225, 255]);
+                self.rect(ix + 10, iy + 14, 3, 4, [255, 255, 255, 230]);
+            }
+            10 => {
+                // Materials: Diamond Ore
+                self.rect(ix + 5, iy + 5, 22, 22, [125, 125, 125, 255]);
+                self.frame(ix + 5, iy + 5, 22, 22, [90, 90, 90, 255]);
+                self.rect(ix + 8, iy + 8, 4, 4, [75, 235, 225, 255]);
+                self.rect(ix + 17, iy + 9, 5, 4, [75, 235, 225, 255]);
+                self.rect(ix + 11, iy + 16, 6, 5, [75, 235, 225, 255]);
+                self.rect(ix + 20, iy + 17, 4, 4, [75, 235, 225, 255]);
+                self.rect(ix + 9, iy + 9, 2, 2, [220, 255, 255, 255]);
+                self.rect(ix + 18, iy + 10, 2, 2, [220, 255, 255, 255]);
+                self.rect(ix + 12, iy + 17, 2, 2, [220, 255, 255, 255]);
+            }
+            11 => {
+                // Survival Inventory: Chest
+                self.rect(ix + 5, iy + 6, 22, 20, [155, 105, 45, 255]);
+                self.frame(ix + 5, iy + 6, 22, 20, [95, 65, 25, 255]);
+                self.rect(ix + 5, iy + 12, 22, 2, [35, 35, 35, 255]);
+                self.rect(ix + 7, iy + 6, 2, 20, [35, 35, 35, 255]);
+                self.rect(ix + 23, iy + 6, 2, 20, [35, 35, 35, 255]);
+                self.rect(ix + 14, iy + 11, 4, 5, [225, 225, 225, 255]);
+                self.rect(ix + 15, iy + 13, 2, 2, [50, 50, 50, 255]);
+            }
+            _ => {}
+        }
+    }
+
+    /// Draws the 3D player avatar inside the preview box of the Survival tab.
+    pub fn draw_player_preview(
+        &mut self,
+        x0: i32,
+        y0: i32,
+        w: i32,
+        h: i32,
+        cursor: (f32, f32),
+    ) {
+        self.rect(x0, y0, w, h, [12, 12, 12, 255]);
+        self.frame(x0, y0, w, h, [55, 55, 55, 255]);
+        self.frame(x0 + 1, y0 + 1, w - 2, h - 2, [24, 24, 24, 255]);
+
+        let cx = x0 + w / 2;
+        let cy = y0 + h / 2;
+        let look_dx = ((cursor.0 as i32 - cx) / 10).clamp(-4, 4);
+        let look_dy = ((cursor.1 as i32 - cy) / 10).clamp(-3, 3);
+
+        let hx = cx - 12 + look_dx;
+        let hy = y0 + 14 + look_dy;
+        // Head hair
+        self.rect(hx, hy, 24, 8, [45, 30, 18, 255]);
+        self.rect(hx, hy + 8, 4, 16, [45, 30, 18, 255]);
+        self.rect(hx + 20, hy + 8, 4, 16, [45, 30, 18, 255]);
+        // Face skin
+        self.rect(hx + 4, hy + 8, 16, 16, [212, 153, 126, 255]);
+        // Eyes
+        self.rect(hx + 6, hy + 12, 4, 3, [255, 255, 255, 255]);
+        self.rect(hx + 14, hy + 12, 4, 3, [255, 255, 255, 255]);
+        self.rect(hx + 8, hy + 12, 2, 3, [45, 60, 160, 255]);
+        self.rect(hx + 14, hy + 12, 2, 3, [45, 60, 160, 255]);
+        // Mouth
+        self.rect(hx + 11, hy + 16, 2, 2, [180, 125, 100, 255]);
+        self.rect(hx + 9, hy + 19, 6, 2, [120, 80, 60, 255]);
+
+        // Torso
+        let tx = cx - 12;
+        let ty = y0 + 40;
+        self.rect(tx, ty, 24, 32, [0, 168, 168, 255]);
+        self.rect(tx + 8, ty, 8, 4, [212, 153, 126, 255]);
+        self.rect(tx + 22, ty, 2, 32, [0, 130, 130, 255]);
+
+        // Left & Right Arms
+        let lx = tx - 9;
+        let rx = tx + 25;
+        self.rect(lx, ty, 8, 12, [0, 168, 168, 255]);
+        self.rect(lx, ty + 12, 8, 20, [212, 153, 126, 255]);
+        self.rect(lx, ty, 1, 32, [0, 130, 130, 255]);
+
+        self.rect(rx, ty, 8, 12, [0, 168, 168, 255]);
+        self.rect(rx, ty + 12, 8, 20, [212, 153, 126, 255]);
+        self.rect(rx + 7, ty, 1, 32, [0, 130, 130, 255]);
+
+        // Legs
+        let px = cx - 11;
+        let py = y0 + 72;
+        self.rect(px, py, 10, 24, [45, 65, 150, 255]);
+        self.rect(px + 12, py, 10, 24, [45, 65, 150, 255]);
+        self.rect(px + 10, py, 2, 24, [30, 45, 110, 255]);
+        self.rect(px, py + 24, 10, 6, [50, 50, 50, 255]);
+        self.rect(px + 12, py + 24, 10, 6, [50, 50, 50, 255]);
+    }
+
+    /// Creative Tabbed Inventory (media_1788974344950.png and media_1788974345010.png parity)
+    pub fn creative_tabbed_inventory(
+        &mut self,
+        active_tab: usize,
+        cursor_pos: (f32, f32),
+        atlas: &[u8],
+        scroll: usize,
+        search_query: &str,
+        player_inv: &vc_inventory::inventory::Inventory,
+        player_armor: &[ItemStack; 4],
+        player_offhand: &ItemStack,
+        advanced_tooltips: bool,
+    ) -> PickerGeom {
+        let panel_w = 396i32;
+        let panel_h = 286i32;
+        let px0 = (UI_W as i32 - panel_w) / 2;
+        let py0 = (UI_H as i32 - panel_h) / 2;
+
+        let cx = cursor_pos.0 as i32;
+        let cy = cursor_pos.1 as i32;
+
+        // Dark dim backdrop behind creative inventory
+        self.rect(0, 0, UI_W as i32, UI_H as i32, [0, 0, 0, 110]);
+
+        // Draw main panel
+        self.rect(px0, py0, panel_w, panel_h, [198, 198, 198, 255]);
+        self.frame(px0 - 1, py0 - 1, panel_w + 2, panel_h + 2, [55, 55, 55, 255]);
+        self.rect(px0, py0, panel_w, 2, [255, 255, 255, 255]);
+        self.rect(px0, py0, 2, panel_h, [255, 255, 255, 255]);
+        self.rect(px0, py0 + panel_h - 2, panel_w, 2, [85, 85, 85, 255]);
+        self.rect(px0 + panel_w - 2, py0, 2, panel_h, [85, 85, 85, 255]);
+
+        let mut tab_rects = Vec::with_capacity(12);
+        let tab_w = 56i32;
+        let tab_h = 28i32;
+
+        // Top 6 tabs: 0..4 on left, 5 (Search) on far right (media_1788974345010.png parity)
+        for i in 0..6 {
+            let tx = if i < 5 {
+                px0 + 8 + i as i32 * 58
+            } else {
+                px0 + panel_w - tab_w - 8
+            };
+            let is_active = active_tab == i;
+            let ty = if is_active { py0 - tab_h - 2 } else { py0 - tab_h + 3 };
+            let th = if is_active { tab_h + 4 } else { tab_h };
+
+            self.rect(tx, ty, tab_w, th, [198, 198, 198, 255]);
+            self.frame(tx, ty, tab_w, th, [55, 55, 55, 255]);
+            self.rect(tx + 1, ty + 1, tab_w - 2, 2, [255, 255, 255, 255]);
+            self.rect(tx + 1, ty + 1, 2, th - 2, [255, 255, 255, 255]);
+            self.rect(tx + tab_w - 3, ty + 1, 2, th - 2, [85, 85, 85, 255]);
+            if is_active {
+                // Active tab connects seamlessly to panel interior (erases bottom border)
+                self.rect(tx + 1, py0 - 2, tab_w - 2, 4, [198, 198, 198, 255]);
+            } else {
+                self.rect(tx + 1, ty + th - 2, tab_w - 2, 2, [85, 85, 85, 255]);
+            }
+
+            let icon_y = if is_active { ty + 4 } else { ty + 3 };
+            self.draw_creative_tab_icon(i, tx + 12, icon_y);
+            tab_rects.push((i, tx, ty, tab_w, th));
+        }
+
+        // Bottom 6 tabs: 6..10 on left, 11 (Survival) on far right (media_1788974344950.png parity)
+        for i in 0..6 {
+            let tab_id = 6 + i;
+            let tx = if i < 5 {
+                px0 + 8 + i as i32 * 58
+            } else {
+                px0 + panel_w - tab_w - 8
+            };
+            let is_active = active_tab == tab_id;
+            let ty = if is_active { py0 + panel_h - 2 } else { py0 + panel_h - 1 };
+            let th = if is_active { tab_h + 4 } else { tab_h };
+
+            self.rect(tx, ty, tab_w, th, [198, 198, 198, 255]);
+            self.frame(tx, ty, tab_w, th, [55, 55, 55, 255]);
+            self.rect(tx + 1, ty + 1, 2, th - 2, [255, 255, 255, 255]);
+            self.rect(tx + 1, ty + th - 3, tab_w - 2, 2, [85, 85, 85, 255]);
+            self.rect(tx + tab_w - 3, ty + 1, 2, th - 2, [85, 85, 85, 255]);
+            if is_active {
+                // Active tab connects seamlessly to panel interior (erases top border)
+                self.rect(tx + 1, py0 + panel_h - 2, tab_w - 2, 4, [198, 198, 198, 255]);
+            } else {
+                self.rect(tx + 1, ty, tab_w - 2, 2, [85, 85, 85, 255]);
+            }
+
+            let icon_y = if is_active { ty + 6 } else { ty + 3 };
+            self.draw_creative_tab_icon(tab_id, tx + 12, icon_y);
+            tab_rects.push((tab_id, tx, ty, tab_w, th));
+        }
+
+        let mut slot_blocks = Vec::new();
+        let mut hotbar_slots = Vec::with_capacity(9);
+        let mut armor_slots = Vec::new();
+        let mut offhand_slot = None;
+        let mut trash_slot = None;
+        let mut scrollbar_rect = None;
+        let mut search_box_rect = None;
+        let mut hovered_tip: Option<String> = None;
+
+        if active_tab == CREATIVE_TAB_SURVIVAL {
+            // Survival Tab (media_1788974344950.png parity)
+            self.text(px0 + 16, py0 + 10, "Survival Inventory", [64, 64, 64, 255], 1);
+
+            // Centered 3D Player Preview
+            let prev_w = 72;
+            let prev_h = 104;
+            let prev_x = px0 + (panel_w - prev_w) / 2;
+            let prev_y = py0 + 24;
+            self.draw_player_preview(prev_x, prev_y, prev_w, prev_h, cursor_pos);
+
+            // Armor slots (Left of player: Helmet & Chestplate)
+            let ax_left = prev_x - 44;
+            let sx_helm = ax_left;
+            let sy_helm = py0 + 26;
+            self.slot_well(sx_helm, sy_helm, &player_armor[0], atlas);
+            if player_armor[0].is_empty() {
+                self.draw_armor_silhouette(0, sx_helm, sy_helm);
+            }
+            armor_slots.push((0, sx_helm, sy_helm));
+
+            let sx_chest = ax_left;
+            let sy_chest = py0 + 74;
+            self.slot_well(sx_chest, sy_chest, &player_armor[1], atlas);
+            if player_armor[1].is_empty() {
+                self.draw_armor_silhouette(1, sx_chest, sy_chest);
+            }
+            armor_slots.push((1, sx_chest, sy_chest));
+
+            // Offhand Shield slot (Far left, mid-height)
+            let ox = px0 + 44;
+            let oy = py0 + 50;
+            self.slot_well(ox, oy, player_offhand, atlas);
+            if player_offhand.is_empty() {
+                self.draw_armor_silhouette(4, ox, oy);
+            }
+            offhand_slot = Some((ox, oy));
+            if cx >= ox && cx < ox + 36 && cy >= oy && cy < oy + 36 {
+                self.rect(ox + 1, oy + 1, 34, 34, [255, 255, 255, 80]);
+                if !player_offhand.is_empty() {
+                    hovered_tip = Some(name(player_offhand.block).to_string());
+                }
+            }
+
+            // Armor slots (Right of player: Leggings & Boots)
+            let ax_right = prev_x + prev_w + 8;
+            let sx_legs = ax_right;
+            let sy_legs = py0 + 26;
+            self.slot_well(sx_legs, sy_legs, &player_armor[2], atlas);
+            if player_armor[2].is_empty() {
+                self.draw_armor_silhouette(2, sx_legs, sy_legs);
+            }
+            armor_slots.push((2, sx_legs, sy_legs));
+
+            let sx_boots = ax_right;
+            let sy_boots = py0 + 74;
+            self.slot_well(sx_boots, sy_boots, &player_armor[3], atlas);
+            if player_armor[3].is_empty() {
+                self.draw_armor_silhouette(3, sx_boots, sy_boots);
+            }
+            armor_slots.push((3, sx_boots, sy_boots));
+
+            for &(i, sx, sy) in &armor_slots {
+                if cx >= sx && cx < sx + 36 && cy >= sy && cy < sy + 36 {
+                    self.rect(sx + 1, sy + 1, 34, 34, [255, 255, 255, 80]);
+                    if !player_armor[i].is_empty() {
+                        hovered_tip = Some(name(player_armor[i].block).to_string());
+                    }
+                }
+            }
+
+            // 9x3 Main Inventory slots
+            let ix0 = px0 + 36;
+            let iy0 = py0 + 134;
+            for row in 0..3 {
+                for col in 0..9 {
+                    let s = 9 + row * 9 + col;
+                    let sx = ix0 + col as i32 * 36;
+                    let sy = iy0 + row as i32 * 36;
+                    let stack = player_inv.slots.get(s).cloned().unwrap_or(ItemStack::EMPTY);
+                    self.slot_well(sx, sy, &stack, atlas);
+                    slot_blocks.push((s, stack.block, sx, sy));
+                    if cx >= sx && cx < sx + 36 && cy >= sy && cy < sy + 36 {
+                        self.rect(sx + 1, sy + 1, 34, 34, [255, 255, 255, 80]);
+                        if !stack.is_empty() {
+                            hovered_tip = Some(name(stack.block).to_string());
+                        }
+                    }
+                }
+            }
+
+            // 9x1 Hotbar slots
+            let hx0 = px0 + 36;
+            let hy0 = py0 + 246;
+            for col in 0..9 {
+                let sx = hx0 + col as i32 * 36;
+                let sy = hy0;
+                let stack = player_inv.slots.get(col).cloned().unwrap_or(ItemStack::EMPTY);
+                self.slot_well(sx, sy, &stack, atlas);
+                hotbar_slots.push((col, sx, sy));
+                if cx >= sx && cx < sx + 36 && cy >= sy && cy < sy + 36 {
+                    self.rect(sx + 1, sy + 1, 34, 34, [255, 255, 255, 80]);
+                    if !stack.is_empty() {
+                        hovered_tip = Some(name(stack.block).to_string());
+                    }
+                }
+            }
+
+            // Destroy Item / Red X Trash Slot (Positioned right above Survival Tab at col 10)
+            let tx = px0 + 360;
+            let ty = hy0;
+            self.rect(tx, ty, 36, 36, [148, 139, 139, 255]);
+            self.rect(tx, ty, 36, 2, [55, 55, 55, 255]);
+            self.rect(tx, ty, 2, 36, [55, 55, 55, 255]);
+            self.rect(tx, ty + 34, 36, 2, [255, 255, 255, 255]);
+            self.rect(tx + 34, ty, 2, 36, [255, 255, 255, 255]);
+
+            // Pixel-art red X
+            for d in 0..18 {
+                self.rect(tx + 9 + d, ty + 9 + d, 2, 2, [139, 24, 24, 255]);
+                self.rect(tx + 25 - d, ty + 9 + d, 2, 2, [139, 24, 24, 255]);
+            }
+            trash_slot = Some((tx, ty));
+            if cx >= tx && cx < tx + 36 && cy >= ty && cy < ty + 36 {
+                self.rect(tx + 1, ty + 1, 34, 34, [255, 255, 255, 80]);
+                hovered_tip = Some("Destroy Item".to_string());
+            }
+        } else {
+            // Category Tabs 0..10 (media_1788974345010.png parity)
+            let tab_title = CREATIVE_TAB_NAMES[active_tab];
+            self.text(px0 + 16, py0 + 10, tab_title, [64, 64, 64, 255], 1);
+
+            if active_tab == CREATIVE_TAB_SEARCH {
+                let bx = px0 + 190;
+                let by = py0 + 6;
+                self.rect(bx, by, 150, 18, [16, 16, 16, 255]);
+                self.frame(bx, by, 150, 18, [80, 80, 80, 255]);
+                let stext = if search_query.is_empty() { "Search..." } else { search_query };
+                let sc = if search_query.is_empty() { [130, 130, 130, 255] } else { [255, 255, 255, 255] };
+                self.text(bx + 6, by + 5, stext, sc, 1);
+                search_box_rect = Some((bx, by, 150, 18));
+            }
+
+            // Filter blocks
+            let filtered: Vec<u16> = if active_tab == CREATIVE_TAB_SEARCH && !search_query.is_empty() {
+                let q = search_query.to_lowercase();
+                PICKER_BLOCKS.iter().copied().filter(|&b| {
+                    name(b).to_lowercase().contains(&q)
+                }).collect()
+            } else if active_tab == CREATIVE_TAB_SEARCH {
+                PICKER_BLOCKS.to_vec()
+            } else {
+                PICKER_BLOCKS.iter().copied().filter(|&b| creative_tab_for_block(b) == active_tab).collect()
+            };
+
+            let cols = 9;
+            let vis_rows = 5;
+            let total_rows = (filtered.len() + cols - 1) / cols;
+            let scroll_clamped = scroll.min(total_rows.saturating_sub(vis_rows));
+
+            let gx0 = px0 + 18;
+            let gy0 = py0 + 24;
+            for i in 0..45 {
+                let col = (i % cols) as i32;
+                let row = (i / cols) as i32;
+                let sx = gx0 + col * 36;
+                let sy = gy0 + row * 36;
+                let b_idx = scroll_clamped * cols + i;
+                if b_idx < filtered.len() {
+                    let b = filtered[b_idx];
+                    // Clean block in picker well: stack count 1 so NO count text is drawn (media_1788974345010.png parity)
+                    let stack = ItemStack::new(b, 1);
+                    self.slot_well(sx, sy, &stack, atlas);
+                    slot_blocks.push((b_idx, b, sx, sy));
+                    if cx >= sx && cx < sx + 36 && cy >= sy && cy < sy + 36 {
+                        self.rect(sx + 1, sy + 1, 34, 34, [255, 255, 255, 80]);
+                        let tip = if advanced_tooltips {
+                            let id: String = name(b).to_lowercase().replace(' ', "_");
+                            format!("{} (minecraft:{})", name(b), id)
+                        } else {
+                            name(b).to_string()
+                        };
+                        hovered_tip = Some(tip);
+                    }
+                } else {
+                    self.slot_well(sx, sy, &ItemStack::EMPTY, atlas);
+                }
+            }
+
+            // Authentic Scrollbar: Recessed track + 5-rib thumb (media_1788974345010.png parity)
+            let sb_x = px0 + 348;
+            let sb_y = gy0;
+            let sb_w = 24;
+            let sb_h = 180;
+            self.rect(sb_x, sb_y, sb_w, sb_h, [139, 139, 139, 255]);
+            self.rect(sb_x, sb_y, sb_w, 2, [55, 55, 55, 255]);
+            self.rect(sb_x, sb_y, 2, sb_h, [55, 55, 55, 255]);
+            self.rect(sb_x, sb_y + sb_h - 2, sb_w, 2, [255, 255, 255, 255]);
+            self.rect(sb_x + sb_w - 2, sb_y, 2, sb_h, [255, 255, 255, 255]);
+
+            let thumb_h = 30;
+            let max_scroll = total_rows.saturating_sub(vis_rows).max(1);
+            let thumb_y = sb_y + ((scroll_clamped as f32 / max_scroll as f32) * (sb_h - thumb_h) as f32) as i32;
+            self.rect(sb_x + 2, thumb_y, 20, thumb_h, [198, 198, 198, 255]);
+            self.rect(sb_x + 2, thumb_y, 20, 2, [255, 255, 255, 255]);
+            self.rect(sb_x + 2, thumb_y, 2, thumb_h, [255, 255, 255, 255]);
+            self.rect(sb_x + 2, thumb_y + thumb_h - 2, 20, 2, [85, 85, 85, 255]);
+            self.rect(sb_x + 20, thumb_y, 2, thumb_h, [85, 85, 85, 255]);
+
+            // 5 horizontal grip ribs on thumb
+            for ry in [9, 12, 15, 18, 21] {
+                self.rect(sb_x + 6, thumb_y + ry, 12, 1, [85, 85, 85, 255]);
+                self.rect(sb_x + 6, thumb_y + ry + 1, 12, 1, [255, 255, 255, 255]);
+            }
+            scrollbar_rect = Some((sb_x, sb_y, sb_w, sb_h));
+
+            // Hotbar row (9 slots centered at bottom)
+            let hx0 = gx0;
+            let hy0 = py0 + 246;
+            for col in 0..9 {
+                let sx = hx0 + col as i32 * 36;
+                let sy = hy0;
+                let stack = player_inv.slots.get(col).cloned().unwrap_or(ItemStack::EMPTY);
+                self.slot_well(sx, sy, &stack, atlas);
+                hotbar_slots.push((col, sx, sy));
+                if cx >= sx && cx < sx + 36 && cy >= sy && cy < sy + 36 {
+                    self.rect(sx + 1, sy + 1, 34, 34, [255, 255, 255, 80]);
+                    if !stack.is_empty() {
+                        hovered_tip = Some(name(stack.block).to_string());
+                    }
+                }
+            }
+        }
+
+        // Tab hover tooltip
+        for &(t_id, tx, ty, tw, th) in &tab_rects {
+            if cx >= tx && cx < tx + tw && cy >= ty && cy < ty + th {
+                hovered_tip = Some(CREATIVE_TAB_NAMES[t_id].to_string());
+                break;
+            }
+        }
+
+        // Draw authentic tooltip
+        if let Some(tip) = hovered_tip {
+            let tw = Self::text_width(&tip, 1) + 12;
+            let th = 20;
+            let tx = (cx + 12).min(UI_W as i32 - tw - 4);
+            let ty = (cy - 12).max(4);
+            self.rect(tx, ty, tw, th, [16, 0, 16, 240]);
+            self.frame(tx, ty, tw, th, [40, 0, 120, 255]);
+            self.text(tx + 6, ty + 6, &tip, [255, 255, 255, 255], 1);
+        }
+
+        PickerGeom {
+            x0: px0,
+            y0: py0,
+            cell: 36,
+            cols: 9,
+            scroll,
+            vis_rows: 5,
+            active_tab,
+            tab_rects,
+            slot_blocks,
+            hotbar_slots,
+            armor_slots,
+            offhand_slot,
+            trash_slot,
+            scrollbar_rect,
+            search_box_rect,
+        }
+    }
+
+    /// Creative-style block picker (E key): centered grid of placeable blocks.
     pub fn picker(
         &mut self,
         cursor: (f32, f32),
@@ -2416,88 +3398,20 @@ impl UiCanvas {
         scroll: usize,
         advanced_tooltips: bool,
     ) -> PickerGeom {
-        let blocks = &PICKER_BLOCKS;
-        // [merge scroll] the F-series (1.7.2-1.10) grew PICKER_BLOCKS to
-        // 236 — 15 cols x 16 rows overflows the 540px canvas; the picker
-        // is now a fixed 11-row window scrolled by the game layer (mouse
-        // wheel, vanilla creative-grid behavior) instead of clipping.
-        let cols = 15;
-        let vis_rows = 11usize;
-        let cell = 44i32;
-        let total_rows = (blocks.len() + cols - 1) / cols;
-        let scroll = scroll.min(total_rows.saturating_sub(vis_rows));
-        // Phase E1: 12 columns (was 8) — the picker grew past 68 entries
-        // with the 1.0–1.2 bracket blocks + 16 spawn eggs.
-        // Phase E3: 15 columns — the picker grew to 164 entries with the
-        // 1.5–1.6 bracket (quartz family, 16 stained terracotta, carpets,
-        // redstone components, items, 3 eggs); 15×11 stays inside the
-        // 960×540 UI canvas (668×514 grid).
-        // [merge] F-series (1.7.2-1.10) grows PICKER_BLOCKS to 236 —
-        // 15 cols × 16 rows overflows the 540px canvas bottom; the last
-        // rows clip (known issue, scrolling picker is future UI work,
-        // documented in WORKLOG).
-        let grid_w = cols as i32 * cell + 8;
-        let grid_h = vis_rows as i32 * cell + 8 + 22;
-        let x0 = (UI_W as i32 - grid_w) / 2;
-        let y0 = (UI_H as i32 - grid_h) / 2;
-
-        self.rect(x0 - 6, y0 - 26, grid_w + 12, grid_h + 32, [16, 16, 16, 210]);
-        self.frame(x0 - 6, y0 - 26, grid_w + 12, grid_h + 32, [70, 70, 70, 255]);
-        self.text(
-            x0 - 6 + 10,
-            y0 - 24,
-            "SELECT BLOCK  (B / ESC to close)  -  wheel scrolls",
-            [230, 230, 230, 255],
-            1,
-        );
-
-        let first = scroll * cols;
-        let last = (first + vis_rows * cols).min(blocks.len());
-        let mut hovered: Option<u16> = None;
-        for (i, b) in blocks[first..last].iter().enumerate() {
-            let col = (i % cols) as i32;
-            let row = (i / cols) as i32;
-            let sx = x0 + 4 + col * cell;
-            let sy = y0 + 4 + row * cell;
-            self.rect(sx, sy, 40, 40, [58, 58, 58, 170]);
-            self.frame(sx, sy, 40, 40, [90, 90, 90, 220]);
-            let tile = def(*b).tiles[0];
-            blit_tile(
-                atlas,
-                tile,
-                2,
-                (sx + 4) as usize,
-                (sy + 4) as usize,
-                &mut self.px,
-                UI_W,
-            );
-            // hover highlight
-            let cx = cursor.0 as i32;
-            let cy = cursor.1 as i32;
-            if cx >= sx && cx < sx + 40 && cy >= sy && cy < sy + 40 {
-                self.frame(sx - 1, sy - 1, 42, 42, [255, 255, 255, 255]);
-                hovered = Some(*b);
-            }
-        }
-
-        // hovered block name on a bottom strip (F3+H appends the registry
-        // id — vanilla advanced tooltips)
-        let label = hovered
-            .map(name)
-            .map(|n| {
-                if advanced_tooltips {
-                    let id: String = n.to_lowercase().replace(' ', "_");
-                    format!("{n} (minecraft:{id})")
-                } else {
-                    n.to_string()
-                }
-            })
-            .unwrap_or_default();
-        let lw = Self::text_width(&label, 1);
-        self.text(x0 + 4, y0 + grid_h - 18, &label, [255, 255, 255, 255], 1);
-        let _ = lw;
-
-        PickerGeom { x0, y0, cell, cols, scroll, vis_rows }
+        let dummy_inv = vc_inventory::inventory::Inventory::new(36);
+        let dummy_armor = [ItemStack::EMPTY; 4];
+        let dummy_offhand = ItemStack::EMPTY;
+        self.creative_tabbed_inventory(
+            CREATIVE_TAB_BUILDING,
+            cursor,
+            atlas,
+            scroll,
+            "",
+            &dummy_inv,
+            &dummy_armor,
+            &dummy_offhand,
+            advanced_tooltips,
+        )
     }
 
     pub fn help(&mut self) {
@@ -2605,7 +3519,8 @@ impl UiCanvas {
     /// 2 meshed + on GPU (0xFFFFFF "full") · 3 spawn chunk pending
     /// (0xF26060 "spawn"). Color values are the wiki's exact table.
     pub fn world_loading_screen(&mut self, percent: i32, cells: &[u8], center: usize) {
-        self.rect(0, 0, UI_W as i32, UI_H as i32, [10, 12, 16, 140]);
+        self.draw_dirt_background();
+        self.rect(0, 0, UI_W as i32, UI_H as i32, [0, 0, 0, 80]);
         self.text_center(84, "LOADING WORLD", [255, 255, 255, 255], 2);
         let pct = format!("{percent}%");
         self.text_center(118, &pct, [220, 220, 220, 255], 2);
@@ -2635,6 +3550,168 @@ impl UiCanvas {
     }
 }
 
+pub const CREATIVE_TAB_BUILDING: usize = 0;
+pub const CREATIVE_TAB_DECORATION: usize = 1;
+pub const CREATIVE_TAB_REDSTONE: usize = 2;
+pub const CREATIVE_TAB_TRANSPORT: usize = 3;
+pub const CREATIVE_TAB_MISC: usize = 4;
+pub const CREATIVE_TAB_SEARCH: usize = 5;
+pub const CREATIVE_TAB_FOOD: usize = 6;
+pub const CREATIVE_TAB_TOOLS: usize = 7;
+pub const CREATIVE_TAB_COMBAT: usize = 8;
+pub const CREATIVE_TAB_BREWING: usize = 9;
+pub const CREATIVE_TAB_MATERIALS: usize = 10;
+pub const CREATIVE_TAB_SURVIVAL: usize = 11;
+
+pub const CREATIVE_TAB_NAMES: [&str; 12] = [
+    "Building Blocks",
+    "Decoration Blocks",
+    "Redstone",
+    "Transportation",
+    "Miscellaneous",
+    "Search Items",
+    "Foodstuffs",
+    "Tools",
+    "Combat",
+    "Brewing",
+    "Materials",
+    "Survival Inventory",
+];
+
+pub const CREATIVE_TAB_ICONS: [u16; 12] = [
+    BRICKS,
+    FLOWER_RED,
+    REDSTONE_ORE,
+    SADDLE,
+    LAVA,
+    GLASS,
+    APPLE,
+    SHEARS,
+    SHIELD,
+    BREWING_STAND,
+    DIAMOND_ORE,
+    CHEST,
+];
+
+pub fn creative_tab_for_block(b: u16) -> usize {
+    let n = name(b).to_lowercase();
+    if n.contains("apple")
+        || n.contains("bread")
+        || n.contains("pork")
+        || n.contains("beef")
+        || n.contains("fish")
+        || n.contains("salmon")
+        || n.contains("rabbit")
+        || n.contains("fruit")
+        || n.contains("melon")
+        || n.contains("stew")
+        || n.contains("soup")
+        || n.contains("mutton")
+        || n.contains("potato")
+        || n.contains("carrot")
+        || n.contains("berry")
+        || n.contains("cake")
+        || n.contains("cookie")
+        || n.contains("pie")
+        || n.contains("sugar")
+    {
+        CREATIVE_TAB_FOOD
+    } else if n.contains("shield")
+        || n.contains("elytra")
+        || n.contains("sword")
+        || n.contains("helmet")
+        || n.contains("chestplate")
+        || n.contains("leggings")
+        || n.contains("boots")
+        || n.contains("bow")
+        || n.contains("arrow")
+    {
+        CREATIVE_TAB_COMBAT
+    } else if n.contains("redstone")
+        || n.contains("piston")
+        || n.contains("repeater")
+        || n.contains("comparator")
+        || n.contains("lever")
+        || n.contains("button")
+        || n.contains("observer")
+        || n.contains("hopper")
+        || n.contains("dropper")
+        || n.contains("dispenser")
+        || n.contains("tnt")
+        || n.contains("target")
+    {
+        CREATIVE_TAB_REDSTONE
+    } else if n.contains("rail") || n.contains("minecart") || n.contains("boat") {
+        CREATIVE_TAB_TRANSPORT
+    } else if n.contains("shears")
+        || n.contains("lead")
+        || n.contains("flint")
+        || n.contains("compass")
+        || n.contains("clock")
+        || n.contains("axe")
+        || n.contains("pickaxe")
+        || n.contains("shovel")
+        || n.contains("hoe")
+    {
+        CREATIVE_TAB_TOOLS
+    } else if n.contains("potion")
+        || n.contains("brewing")
+        || n.contains("cauldron")
+        || n.contains("blaze")
+        || n.contains("tear")
+        || n.contains("cream")
+    {
+        CREATIVE_TAB_BREWING
+    } else if n.contains("ore")
+        || n.contains("ingot")
+        || n.contains("diamond")
+        || n.contains("emerald")
+        || n.contains("lapis")
+        || n.contains("quartz")
+        || n.contains("coal")
+        || n.contains("shard")
+        || n.contains("crystal")
+        || n.contains("book")
+        || n.contains("debris")
+        || n.contains("scrap")
+    {
+        CREATIVE_TAB_MATERIALS
+    } else if n.contains("flower")
+        || n.contains("tulip")
+        || n.contains("orchid")
+        || n.contains("daisy")
+        || n.contains("allium")
+        || n.contains("peony")
+        || n.contains("rose")
+        || n.contains("lilac")
+        || n.contains("sunflower")
+        || n.contains("leaves")
+        || (n.contains("grass") && !n.contains("block"))
+        || n.contains("lantern")
+        || n.contains("torch")
+        || n.contains("glass")
+        || n.contains("carpet")
+        || n.contains("wool")
+        || n.contains("sapling")
+        || n.contains("mushroom")
+        || n.contains("coral")
+        || n.contains("fern")
+    {
+        CREATIVE_TAB_DECORATION
+    } else if n.contains("bucket")
+        || n.contains("egg")
+        || n.contains("pearl")
+        || n.contains("eye")
+        || n.contains("beacon")
+        || n.contains("barrier")
+        || n.contains("snowball")
+    {
+        CREATIVE_TAB_MISC
+    } else {
+        CREATIVE_TAB_BUILDING
+    }
+}
+
 /// hit-test geometry for the picker grid (UI-space), returned by
 /// `UiCanvas::picker` so game.rs can map clicks to picker slots.
 pub struct PickerGeom {
@@ -2647,31 +3724,102 @@ pub struct PickerGeom {
     pub scroll: usize,
     /// visible rows in the fixed window
     pub vis_rows: usize,
+    pub active_tab: usize,
+    pub tab_rects: Vec<(usize, i32, i32, i32, i32)>,
+    pub slot_blocks: Vec<(usize, u16, i32, i32)>,
+    pub hotbar_slots: Vec<(usize, i32, i32)>,
+    pub armor_slots: Vec<(usize, i32, i32)>,
+    pub offhand_slot: Option<(i32, i32)>,
+    pub trash_slot: Option<(i32, i32)>,
+    pub scrollbar_rect: Option<(i32, i32, i32, i32)>,
+    pub search_box_rect: Option<(i32, i32, i32, i32)>,
 }
 
 impl PickerGeom {
+    /// Return the block ID under (ux, uy) if in the grid
+    pub fn block_at(&self, ux: i32, uy: i32) -> Option<u16> {
+        for &(_, b, x, y) in &self.slot_blocks {
+            if ux >= x && ux < x + 36 && uy >= y && uy < y + 36 {
+                return Some(b);
+            }
+        }
+        None
+    }
+
+    /// Return which tab (0..12) was clicked
+    pub fn tab_at(&self, ux: i32, uy: i32) -> Option<usize> {
+        for &(t, x, y, w, h) in &self.tab_rects {
+            if ux >= x && ux < x + w && uy >= y && uy < y + h {
+                return Some(t);
+            }
+        }
+        None
+    }
+
+    /// Return which hotbar slot (0..9) was clicked
+    pub fn hotbar_at(&self, ux: i32, uy: i32) -> Option<usize> {
+        for &(s, x, y) in &self.hotbar_slots {
+            if ux >= x && ux < x + 36 && uy >= y && uy < y + 36 {
+                return Some(s);
+            }
+        }
+        None
+    }
+
+    /// Return which armor slot (0..4) was clicked
+    pub fn armor_at(&self, ux: i32, uy: i32) -> Option<usize> {
+        for &(s, x, y) in &self.armor_slots {
+            if ux >= x && ux < x + 36 && uy >= y && uy < y + 36 {
+                return Some(s);
+            }
+        }
+        None
+    }
+
+    /// Check if offhand slot was clicked
+    pub fn offhand_hit(&self, ux: i32, uy: i32) -> bool {
+        if let Some((x, y)) = self.offhand_slot {
+            ux >= x && ux < x + 36 && uy >= y && uy < y + 36
+        } else {
+            false
+        }
+    }
+
+    /// Check if trash slot was clicked
+    pub fn trash_hit(&self, ux: i32, uy: i32) -> bool {
+        if let Some((x, y)) = self.trash_slot {
+            ux >= x && ux < x + 36 && uy >= y && uy < y + 36
+        } else {
+            false
+        }
+    }
+
     /// which picker slot (if any) is under this UI-space cursor position
     /// (absolute PICKER_BLOCKS index, scroll-aware)
     pub fn slot_at(&self, ux: i32, uy: i32) -> Option<usize> {
-        let dx = ux - (self.x0 + 4);
-        let dy = uy - (self.y0 + 4);
-        if dx < 0 || dy < 0 {
-            return None;
-        }
-        let col = dx / self.cell;
-        let row = dy / self.cell;
-        if col >= self.cols as i32
-            || row >= self.vis_rows as i32
-            || dx % self.cell >= 40
-            || dy % self.cell >= 40
-        {
-            return None;
-        }
-        let idx = self.scroll * self.cols + row as usize * self.cols + col as usize;
-        if idx < PICKER_BLOCKS.len() {
-            Some(idx)
+        if let Some(b) = self.block_at(ux, uy) {
+            PICKER_BLOCKS.iter().position(|&x| x == b)
         } else {
-            None
+            let dx = ux - (self.x0 + 4);
+            let dy = uy - (self.y0 + 4);
+            if dx < 0 || dy < 0 {
+                return None;
+            }
+            let col = dx / self.cell;
+            let row = dy / self.cell;
+            if col >= self.cols as i32
+                || row >= self.vis_rows as i32
+                || dx % self.cell >= 36
+                || dy % self.cell >= 36
+            {
+                return None;
+            }
+            let idx = self.scroll * self.cols + row as usize * self.cols + col as usize;
+            if idx < PICKER_BLOCKS.len() {
+                Some(idx)
+            } else {
+                None
+            }
         }
     }
 }
@@ -3339,5 +4487,105 @@ mod screen_tests {
         }
         loading.world_loading_screen(43, &cells, 17 * 35 + 17);
         dump(&loading, "world-loading");
+
+        let atlas = crate::textures::generate_atlas();
+        let mut dummy_inv = vc_inventory::inventory::Inventory::new(36);
+        dummy_inv.slots[0] = ItemStack::new(vc_blocks::blocks::GRASS, 64);
+        dummy_inv.slots[1] = ItemStack::new(vc_blocks::blocks::DIRT, 64);
+        dummy_inv.slots[2] = ItemStack::new(vc_blocks::blocks::STONE, 64);
+        dummy_inv.slots[3] = ItemStack::new(vc_blocks::blocks::GOLD_BLOCK, 64);
+        dummy_inv.slots[4] = ItemStack::new(vc_blocks::blocks::DIAMOND_BLOCK, 64);
+        let dummy_armor = [
+            ItemStack::new(vc_blocks::blocks::DIAMOND_BLOCK, 1),
+            ItemStack::new(vc_blocks::blocks::GOLD_BLOCK, 1),
+            ItemStack::new(vc_blocks::blocks::IRON_BLOCK, 1),
+            ItemStack::new(vc_blocks::blocks::EMERALD_ORE, 1),
+        ];
+        let dummy_offhand = ItemStack::new(vc_blocks::blocks::SHIELD, 1);
+
+        // Creative Survival Tab (media_1788974344950.png)
+        let mut surv_canvas = UiCanvas::new();
+        surv_canvas.creative_tabbed_inventory(
+            CREATIVE_TAB_SURVIVAL,
+            (400.0, 300.0),
+            &atlas,
+            0,
+            "",
+            &dummy_inv,
+            &dummy_armor,
+            &dummy_offhand,
+            false,
+        );
+        dump(&surv_canvas, "creative_survival");
+
+        // Creative Building Blocks Tab (media_1788974345010.png)
+        let mut bld_canvas = UiCanvas::new();
+        bld_canvas.creative_tabbed_inventory(
+            CREATIVE_TAB_BUILDING,
+            (400.0, 300.0),
+            &atlas,
+            0,
+            "",
+            &dummy_inv,
+            &dummy_armor,
+            &dummy_offhand,
+            false,
+        );
+        dump(&bld_canvas, "creative_building");
+
+        // First Person Hand (media_1788974345702.jpg)
+        let mut hand_canvas = UiCanvas::new();
+        for y in 0..UI_H as i32 {
+            for x in 0..UI_W as i32 {
+                if y > (UI_H as i32 * 2 / 3) {
+                    hand_canvas.set(x, y, [85, 150, 50, 255]);
+                } else {
+                    hand_canvas.set(x, y, [110, 160, 240, 255]);
+                }
+            }
+        }
+        let held_item = ItemStack::new(vc_blocks::blocks::GRASS, 64);
+        hand_canvas.first_person_hand(&held_item, 0.0, 0.0, &atlas);
+        hand_canvas.crosshair();
+        hand_canvas.hotbar(&dummy_inv.slots[..9], 0, &atlas, None);
+        dump(&hand_canvas, "first_person_hand");
+
+        let mut empty_hand_canvas = UiCanvas::new();
+        for y in 0..UI_H as i32 {
+            for x in 0..UI_W as i32 {
+                if y > (UI_H as i32 * 2 / 3) {
+                    empty_hand_canvas.set(x, y, [85, 150, 50, 255]);
+                } else {
+                    empty_hand_canvas.set(x, y, [110, 160, 240, 255]);
+                }
+            }
+        }
+        empty_hand_canvas.first_person_hand(&ItemStack::EMPTY, 0.0, 0.0, &atlas);
+        empty_hand_canvas.crosshair();
+        empty_hand_canvas.hotbar(&dummy_inv.slots[..9], 0, &atlas, None);
+        dump(&empty_hand_canvas, "first_person_empty_hand");
+
+        // Video Settings Screen (media_1788974424605.png)
+        let mut video_canvas = UiCanvas::new();
+        for y in 0..UI_H as i32 {
+            for x in 0..UI_W as i32 {
+                video_canvas.set(x, y, [40, 30, 25, 255]);
+            }
+        }
+        let video_ws = layout_video();
+        video_canvas.settings_screen(&video_ws, None, "VIDEO SETTINGS", &[]);
+        dump(&video_canvas, "video_settings");
+
+        // Select World Screen (media_1788974345809.png)
+        let mut ws_canvas = UiCanvas::new();
+        for y in 0..UI_H as i32 {
+            for x in 0..UI_W as i32 {
+                ws_canvas.set(x, y, [40, 30, 25, 255]);
+            }
+        }
+        let world_list = vec![("New World".to_string(), "Survival Mode".to_string(), false)];
+        let ws_widgets = layout_world_select(&world_list);
+        ws_canvas.world_select_screen(&ws_widgets, None, Some(0), 1, 1);
+        dump(&ws_canvas, "world_select");
     }
 }

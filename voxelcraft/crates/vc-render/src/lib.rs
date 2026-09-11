@@ -6,6 +6,7 @@ pub mod draw;
 pub mod gpu_mesh;
 pub mod panorama;
 pub mod iris;
+pub mod pbr;
 pub mod render;
 pub mod shaders;
 pub mod textures;

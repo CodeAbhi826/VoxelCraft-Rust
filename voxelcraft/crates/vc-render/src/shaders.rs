@@ -256,30 +256,9 @@ pub fn validate_wgsl(src: &str) -> Result<(), String> {
 
 // ------------------------------------------------------------- builtin --
 
-/// demo pack 1 — pure grade + warmth curve (clean-room, our own art)
-const WARM_EVENING_JSON: &str = include_str!("../../../shader-packs/warm-evening/shaders.json");
-const WARM_EVENING_WGSL: &str = include_str!("../../../shader-packs/warm-evening/composite.wgsl");
-/// demo pack 2 — time-varying grain + blue shift (proves uniforms flow)
-const MOONLIT_JSON: &str = include_str!("../../../shader-packs/moonlit/shaders.json");
-const MOONLIT_WGSL: &str = include_str!("../../../shader-packs/moonlit/composite.wgsl");
-
-/// the engine's clean-room demo packs — explicitly tested (§48 Phase-11
-/// gate: "demonstrated compatibility with explicitly tested packs")
+/// builtin_packs returns engine-embedded shader packs (all built-in demo packs removed per clean-room parity)
 pub fn builtin_packs() -> Vec<ShaderPack> {
-    let mut out = Vec::new();
-    match parse_pack("warm-evening", WARM_EVENING_JSON, Some(WARM_EVENING_WGSL)) {
-        Ok(p) => out.push(p),
-        Err(e) => crate::render::report_boot_log(&format!(
-            "builtin pack warm-evening failed validation: {e}"
-        )),
-    }
-    match parse_pack("moonlit", MOONLIT_JSON, Some(MOONLIT_WGSL)) {
-        Ok(p) => out.push(p),
-        Err(e) => {
-            crate::render::report_boot_log(&format!("builtin pack moonlit failed validation: {e}"))
-        }
-    }
-    out
+    Vec::new()
 }
 
 /// native-only: also load packs from a `shader-packs/` directory next to
@@ -335,17 +314,16 @@ fn packGrade(uv: vec2<f32>, scene: vec3<f32>, bloom: vec3<f32>, u: PackU) -> vec
 "#;
 
     #[test]
-    fn builtin_packs_parse_and_validate() {
-        let packs = builtin_packs();
-        assert_eq!(packs.len(), 2, "both demo packs must load");
-        for p in &packs {
-            assert_eq!(p.tier, "SHADER-PACK-API");
-            assert!(p.composite.is_some());
-            // the WRAPPED module must pass the real naga validation
-            validate_wgsl(&wrap_composite(p.composite.as_ref().unwrap())).unwrap();
-        }
-        assert!(packs.iter().any(|p| p.id == "warm-evening"));
-        assert!(packs.iter().any(|p| p.id == "moonlit"));
+    fn sample_pack_parse_and_validate() {
+        let json = r#"{
+            "name": "Validation Pack",
+            "description": "Clean-room test",
+            "grade": { "saturation": 1.0, "bloom": 0.0, "exposure": 1.0, "vignette": 0.0 }
+        }"#;
+        let p = parse_pack("validation", json, Some(GOOD)).unwrap();
+        assert_eq!(p.tier, "SHADER-PACK-API");
+        assert!(p.composite.is_some());
+        validate_wgsl(&wrap_composite(p.composite.as_ref().unwrap())).unwrap();
     }
 
     #[test]

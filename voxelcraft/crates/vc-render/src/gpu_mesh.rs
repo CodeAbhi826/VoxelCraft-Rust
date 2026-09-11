@@ -1566,7 +1566,7 @@ mod tests {
     #[test]
 
     fn lut_mirrors_vc_blocks() {
-        use vc_blocks::blocks::{is_cross, is_opaque, state_block, state_tiles, AIR};
+        use vc_blocks::blocks::{is_cross, state_block, state_tiles, AIR};
         use vc_blocks::tint::{KIND_FOLIAGE, KIND_GRASS, KIND_WATER, SLOT_BIRCH, SLOT_SPRUCE};
         let lut = build_lut();
         // state -> block
@@ -1673,7 +1673,7 @@ mod tests {
         // strictly non-overlapping unit ranges in iteration order
         for g in 0..n * UNITS - 1 {
             let sq = counts[g * 2] as usize;
-            let wq = counts[g * 2 + 1] as usize;
+            let _wq = counts[g * 2 + 1] as usize;
             assert_eq!(
                 offsets[g * 6] + (sq * 16) as u32,
                 offsets[(g + 1) * 6],

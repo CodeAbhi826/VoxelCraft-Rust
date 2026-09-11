@@ -231,7 +231,7 @@ impl Settings {
     /// serialize as k=v; pairs (parsed without serde)
     pub fn serialize(&self) -> String {
         format!(
-            "rd={};sd={};sens={:.3};vol={:.3};mvol={:.3};fov={:.1};bright={:.3};smoothl={};cloudsl={};gui={};part={};fs={};vsync={};eshad={};bblend={};graphics={};shader={};shadowq={};upscale={};maxfps={};mip={};aniso={};msaa={};occl={};gmesh={}",
+            "rd={};sd={};sens={:.3};vol={:.3};mvol={:.3};fov={:.1};bright={:.3};smoothl={};cloudsl={};gui={};part={};fs={};vsync={};eshad={};bblend={};graphics={};shader={};shadowq={};upscale={};maxfps={};mip={};aniso={};msaa={};occl={};gmesh={};aj={}",
             self.render_distance,
             self.sim_distance,
             self.sensitivity,
@@ -256,7 +256,8 @@ impl Settings {
             self.aniso,
             self.msaa,
             self.occlusion as u8,
-            self.gpu_meshing as u8
+            self.gpu_meshing as u8,
+            self.auto_jump as u8
         )
     }
     pub fn deserialize(s: &str) -> Settings {
@@ -307,6 +308,7 @@ impl Settings {
                 }
                 "occl" => st.occlusion = v == "1",
                 "gmesh" => st.gpu_meshing = v == "1",
+                "aj" => st.auto_jump = v == "1",
                 _ => {}
             }
         }
@@ -16574,5 +16576,338 @@ mod v111_tests {
         }
         assert!(!is_leaves(OAK_LOG));
         assert!(!is_leaves(GRASS));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Comprehensive Boot, All Settings, In-Game, and All Modes Tests
+// ---------------------------------------------------------------------------
+#[cfg(test)]
+mod boot_all_settings_and_modes_tests {
+    use super::*;
+    use vc_gameplay::modes::GameMode;
+    use vc_inventory::inventory::ItemStack;
+    use vc_render::ui::*;
+
+    /// 1. Boot flow and screen navigation across all menu states
+    #[test]
+    fn test_boot_sequence_and_navigation() {
+        // All screens exist and have names
+        let screens = [
+            Screen::Intro,
+            Screen::Title,
+            Screen::Options,
+            Screen::Video,
+            Screen::Engine,
+            Screen::Access,
+            Screen::Packs,
+            Screen::WorldSelect,
+            Screen::WorldCreate,
+            Screen::Game,
+            Screen::Pause,
+            Screen::Death,
+        ];
+        for s in screens {
+            assert!(!s.name().is_empty(), "screen {:?} must have a name", s);
+        }
+
+        // Screen layouts generate valid widget hierarchies
+        let title_ws = layout_title(false);
+        assert!(title_ws.iter().any(|w| w.id == ID_TITLE_PLAY));
+        assert!(title_ws.iter().any(|w| w.id == ID_TITLE_OPTIONS));
+        assert!(title_ws.iter().any(|w| w.id == ID_TITLE_QUIT));
+
+        let opt_ws = layout_options();
+        assert!(opt_ws.iter().any(|w| w.id == ID_OPT_VIDEO));
+        assert!(opt_ws.iter().any(|w| w.id == ID_OPT_ENGINE));
+        assert!(opt_ws.iter().any(|w| w.id == ID_OPT_ACCESS));
+        assert!(opt_ws.iter().any(|w| w.id == ID_OPT_DONE));
+
+        let video_ws = layout_video();
+        assert_eq!(video_ws.len(), 20, "19 video options + done");
+        assert!(video_ws.iter().any(|w| w.id == ID_OPT_DONE2));
+
+        let engine_ws = layout_engine();
+        assert!(engine_ws.iter().any(|w| w.id == ID_OPT_DONE2));
+
+        let access_ws = layout_access();
+        assert!(access_ws.iter().any(|w| w.id == ID_OPT_DONE2));
+
+        let packs_list = vec!["OFF".into(), "VANILLA+".into()];
+        let packs_ws = layout_packs(&packs_list, 0);
+        assert!(packs_ws.iter().any(|w| w.id == ID_OPT_DONE2));
+
+        let worlds = vec![("Test World".into(), "Survival".into(), false)];
+        let ws_ws = layout_world_select(&worlds);
+        assert!(ws_ws.iter().any(|w| w.id == ID_WS_PLAY));
+        assert!(ws_ws.iter().any(|w| w.id == ID_WS_CREATE));
+        assert!(ws_ws.iter().any(|w| w.id == ID_WS_CANCEL));
+
+        let wc_ws = layout_world_create("New World", "Survival", "Survival mode", "Normal", "12345");
+        assert!(wc_ws.iter().any(|w| w.id == ID_WC_CREATE));
+        assert!(wc_ws.iter().any(|w| w.id == ID_WC_CANCEL));
+        assert!(wc_ws.iter().any(|w| w.id == ID_WC_MODE));
+        assert!(wc_ws.iter().any(|w| w.id == ID_WC_TYPE));
+
+        let pause_ws = layout_pause();
+        assert!(pause_ws.iter().any(|w| w.id == ID_PAUSE_BACK));
+        assert!(pause_ws.iter().any(|w| w.id == ID_PAUSE_OPTIONS));
+        assert!(pause_ws.iter().any(|w| w.id == ID_PAUSE_QUIT));
+
+        // Death screen: Survival has Respawn, Hardcore has only Delete/Title
+        let death_survival = layout_death(false);
+        assert!(death_survival.iter().any(|w| w.id == ID_DEATH_RESPAWN));
+        assert!(death_survival.iter().any(|w| w.id == ID_DEATH_TITLE));
+
+        let death_hardcore = layout_death(true);
+        assert!(!death_hardcore.iter().any(|w| w.id == ID_DEATH_RESPAWN), "hardcore must NOT have respawn");
+        assert!(death_hardcore.iter().any(|w| w.id == ID_DEATH_DELETE));
+        assert!(death_hardcore.iter().any(|w| w.id == ID_DEATH_TITLE));
+    }
+
+    /// 2. Comprehensive settings adjustments and roundtrip serialization
+    #[test]
+    fn test_all_settings_modes_and_controls() {
+        let mut s = Settings::default();
+        // Verify default vanilla values
+        assert_eq!(s.fov, 70.0);
+        assert_eq!(s.clouds_level, 2);
+        assert_eq!(s.smooth_level, 2);
+        assert!(s.auto_jump);
+        assert!(s.vsync);
+
+        // Adjust all video and engine settings
+        s.render_distance = 16;
+        s.sim_distance = 16;
+        s.fov = 90.0;
+        s.brightness = 0.85;
+        s.sensitivity = 1.25;
+        s.volume = 0.8;
+        s.music_volume = 0.5;
+        s.smooth_level = 1;
+        s.clouds_level = 1;
+        s.gui_scale = 3;
+        s.particles = 2;
+        s.fullscreen = true;
+        s.vsync = false;
+        s.entity_shadows = false;
+        s.biome_blend = 4;
+        s.graphics = 2; // fabulous
+        s.shader = 2;   // cinematic
+        s.shadow_quality = 3;
+        s.upscale = 1;
+        s.maxfps = 2;   // 60 fps
+        s.mipmap_levels = 3;
+        s.aniso = 8;
+        s.msaa = 4;
+        s.auto_jump = false;
+        s.occlusion = false;
+        s.gpu_meshing = false;
+
+        // Serialize and deserialize
+        let serialized = s.serialize();
+        let restored = Settings::deserialize(&serialized);
+
+        assert_eq!(restored.render_distance, 16);
+        assert_eq!(restored.sim_distance, 16);
+        assert_eq!(restored.fov, 90.0);
+        assert!((restored.brightness - 0.85).abs() < 0.01);
+        assert!((restored.sensitivity - 1.25).abs() < 0.01);
+        assert!((restored.volume - 0.8).abs() < 0.01);
+        assert!((restored.music_volume - 0.5).abs() < 0.01);
+        assert_eq!(restored.smooth_level, 1);
+        assert_eq!(restored.clouds_level, 1);
+        assert_eq!(restored.gui_scale, 3);
+        assert_eq!(restored.particles, 2);
+        assert!(restored.fullscreen);
+        assert!(!restored.vsync);
+        assert!(!restored.entity_shadows);
+        assert_eq!(restored.biome_blend, 4);
+        assert_eq!(restored.graphics, 2);
+        assert_eq!(restored.shader, 2);
+        assert_eq!(restored.shadow_quality, 3);
+        assert_eq!(restored.upscale, 1);
+        assert_eq!(restored.maxfps, 2);
+        assert_eq!(restored.mipmap_levels, 3);
+        assert_eq!(restored.aniso, 8);
+        assert_eq!(restored.msaa, 4);
+        assert!(!restored.auto_jump);
+        assert!(!restored.occlusion);
+        assert!(!restored.gpu_meshing);
+
+        // Tooltips exist for all video options
+        for id in [
+            ID_OPT_FS_RES,
+            ID_OPT_BIOME,
+            ID_OPT_GRAPHICS,
+            ID_OPT_RD,
+            ID_OPT_SMOOTH,
+            ID_OPT_MAXFPS,
+            ID_OPT_VSYNC,
+            ID_OPT_BOBBING,
+            ID_OPT_GUISCALE,
+            ID_OPT_ATTACK_IND,
+            ID_OPT_BRIGHT,
+            ID_OPT_CLOUDS,
+            ID_OPT_FULLSCREEN,
+            ID_OPT_PARTICLES,
+            ID_OPT_MIPMAP,
+            ID_OPT_ENTSHADOW,
+            ID_OPT_DISTORTION,
+            ID_OPT_ENT_DIST,
+            ID_OPT_FOV_EFF,
+        ] {
+            let tip = GameApp::tooltip_for(id, &s);
+            assert!(!tip.is_empty(), "option {id} must have a tooltip");
+        }
+    }
+
+    /// 3. In-game rules, mechanics, and physics across all 5 game modes
+    #[test]
+    fn test_all_gameplay_modes_in_game() {
+        for mode in [
+            GameMode::Survival,
+            GameMode::Creative,
+            GameMode::Hardcore,
+            GameMode::Adventure,
+            GameMode::Spectator,
+        ] {
+            // Mode metadata and save compatibility
+            assert!(!mode.label().is_empty());
+            assert!(!mode.describe().is_empty());
+            let gt = mode.vanilla_game_type();
+            let hc = mode.vanilla_hardcore();
+            let roundtrip = GameMode::from_save(gt, hc);
+            assert_eq!(roundtrip, mode, "save schema roundtrip for {:?}", mode);
+
+            // Flight permission
+            if mode == GameMode::Creative || mode == GameMode::Spectator {
+                assert!(mode.allows_flight(), "{:?} must allow flight", mode);
+            } else {
+                assert!(!mode.allows_flight(), "{:?} must not allow flight", mode);
+            }
+
+            // Damage invulnerability
+            if mode == GameMode::Creative || mode == GameMode::Spectator {
+                assert!(mode.invulnerable(), "{:?} must be invulnerable", mode);
+            } else {
+                assert!(!mode.invulnerable(), "{:?} must take damage", mode);
+            }
+
+            // Item depletion when placing
+            if mode == GameMode::Creative {
+                assert!(!mode.depletes_items(), "Creative must have infinite items");
+            } else {
+                assert!(mode.depletes_items(), "{:?} must deplete items", mode);
+            }
+
+            // Permadeath
+            if mode == GameMode::Hardcore {
+                assert!(mode.permadeath(), "Hardcore must have permadeath");
+            } else {
+                assert!(!mode.permadeath(), "{:?} must not have permadeath", mode);
+            }
+
+            // World block editing
+            if mode == GameMode::Adventure {
+                assert!(!mode.edits_world_blocks(), "Adventure must deny block edits");
+            } else if mode != GameMode::Spectator {
+                assert!(mode.edits_world_blocks(), "{:?} must allow block edits", mode);
+            }
+        }
+    }
+
+    /// 4. In-game 3D arm, walking bobbing, and attack swing animations
+    #[test]
+    fn test_in_game_arm_and_animations() {
+        let mut player = Player::new(Vec3::new(0.0, 65.0, 0.0));
+        assert_eq!(player.bob_t, 0.0);
+        assert_eq!(player.swing_t, 0.0);
+
+        // Trigger swing
+        player.swing();
+        assert_eq!(player.swing_t, 1.0, "swing should start at 1.0");
+
+        // Simulate walking physics tick with grounded terrain
+        let mut world = vc_world::world::World::new(12345);
+        let mut chunk = vc_chunk::chunk::Chunk::empty();
+        for x in 0..16 {
+            for z in 0..16 {
+                chunk.set(x, 64, z, vc_blocks::blocks::GRASS);
+            }
+        }
+        world.insert_generated((0, 0), std::sync::Arc::new(chunk), Vec::new());
+
+        player.flying = false;
+        player.vel = Vec3::new(4.3, 0.0, 0.0); // walking speed
+        player.on_ground = true;
+        let mut input = Input::default();
+        input.fwd = true;
+        player.update(0.05, 0.05, &world, &mut input, 1.0, true);
+
+        // Bobbing advances when moving on ground
+        assert!(player.bob_t > 0.0, "walking must advance bob_t");
+        // Swing decays over time
+        assert!(player.swing_t < 1.0, "swing_t must decay toward 0");
+
+        // Render first person hand on canvas with empty hand
+        let atlas = vc_render::textures::generate_atlas();
+        let mut canvas_empty = UiCanvas::new();
+        canvas_empty.first_person_hand(&ItemStack::EMPTY, player.bob_t, player.swing_t, &atlas);
+        let has_arm_pixels = canvas_empty.px.chunks(4).any(|p| p[3] != 0);
+        assert!(has_arm_pixels, "first person empty hand must render arm pixels");
+
+        // Render with held block
+        let mut canvas_block = UiCanvas::new();
+        let held_block = ItemStack::new(vc_blocks::blocks::GRASS, 64);
+        canvas_block.first_person_hand(&held_block, player.bob_t, player.swing_t, &atlas);
+        let has_block_pixels = canvas_block.px.chunks(4).any(|p| p[3] != 0);
+        assert!(has_block_pixels, "first person held block must render");
+
+        // Render with held tool / item
+        let mut canvas_tool = UiCanvas::new();
+        let held_tool = ItemStack::new(vc_blocks::blocks::APPLE, 1);
+        canvas_tool.first_person_hand(&held_tool, player.bob_t, player.swing_t, &atlas);
+        let has_tool_pixels = canvas_tool.px.chunks(4).any(|p| p[3] != 0);
+        assert!(has_tool_pixels, "first person held tool must render");
+    }
+
+    /// 5. In-game HUD, crosshair, and creative tabbed picker
+    #[test]
+    fn test_in_game_hud_and_creative_picker() {
+        let atlas = vc_render::textures::generate_atlas();
+        let mut canvas = UiCanvas::new();
+
+        // Crosshair
+        canvas.crosshair();
+        let center_idx = ((UI_H as usize / 2) * UI_W + (UI_W / 2)) * 4;
+        assert_ne!(canvas.px[center_idx + 3], 0, "crosshair center must have ink");
+
+        // Hotbar
+        let inv = vc_inventory::inventory::Inventory::new(36);
+        canvas.hotbar(&inv.slots[..9], 0, &atlas, None);
+
+        // Hearts / hunger / status bars
+        canvas.status_bars(20.0, 20.0, 0.0, 0, 300.0);
+
+        // Creative tabbed inventory picker across all 12 tabs
+        let armor = [ItemStack::EMPTY; 4];
+        let offhand = ItemStack::EMPTY;
+        for tab in 0..12 {
+            let mut pick_canvas = UiCanvas::new();
+            let geom = pick_canvas.creative_tabbed_inventory(
+                tab,
+                (400.0, 300.0),
+                &atlas,
+                0,
+                "",
+                &inv,
+                &armor,
+                &offhand,
+                false,
+            );
+            assert_eq!(geom.active_tab, tab);
+            assert_eq!(geom.tab_rects.len(), 12, "all 12 category tabs must exist");
+        }
     }
 }

@@ -3474,3 +3474,124 @@ Stage Summary:
   was missing
 - 3 local commits remain unpushed (origin is 3 behind; the CI
   auto-rebuild + Pages refresh happen on push)
+
+---
+
+## 2026-09-11 — Linux native mouse fix: the pointer-starvation watchdog
+
+**Task ID:** linux-mouse-round
+**Agent:** main (Z User session)
+
+User report: "check the latest state of the repo and the mouse not
+working issue, in the linux build btw" — the single-file Linux binary
+from `linux-game.yml` with a dead-feeling mouse.
+
+### Repo state on entry
+
+- Working tree clean; `main` 4 commits ahead of `origin/main`
+  (`9a95e9e` render fixes → `b0529ca` docs+bundle → `62ca070` the
+  foreign weather round → `f49fb7b` forensics docs). All four were
+  already audited and documented by the 2026-09-10 forensics round.
+- The Next.js preview server (repo root, port 3000) was up and serving
+  (GET / 200 in `dev.log`); no action needed this round.
+
+### Root-cause (read from the vendored winit-0.29.15 source, not guessed)
+
+A winit grab returning `Ok` does NOT guarantee motion delivery:
+
+1. **X11**: `set_cursor_grab(Locked)` → `Err(NotSupported)` outright
+   (`x11/window.rs` line 1611) — the old ladder always landed on
+   `Confined` (XGrabPointer). Look input then rides exclusively on XI2
+   raw `DeviceEvent::MouseMotion`, which is armed focus-gated
+   (`update_listen_device_events`, `DeviceEvents::WhenFocused` default)
+   and is silently absent over SSH-X11/X2Go/some VNC stacks → hidden
+   cursor, zero look events.
+2. **Wayland**: `lock_pointer` issues the zwp constraint request and
+   returns `Ok(())` immediately (`wayland/window/state.rs`) — activation
+   is asynchronous and compositor-dependent, while relative motion
+   additionally needs the `zwp_relative_pointer` global (absent on some
+   compositors); a pending/activated lock freezes `wl_pointer` motion
+   (`CursorMoved`) too → total event death.
+
+Both dead ends present identically: cursor hidden, camera frozen,
+clicks at an invisible position — "the mouse is not working". CI never
+caught it because the Xvfb smoke runs X11 with a focus-armed XI2 stack.
+
+### The fix (all in `crates/voxelcraft/src/game.rs`, native-only cfg)
+
+1. **Linux never asks for `Locked`**: X11 cannot honor it; Wayland's
+   `Confined` delivers the identical raw relative motion
+   (XInput2 / zwp_relative_pointer) AND keeps `CursorMoved` flowing as
+   the recovery channel. Windows/macOS keep the real lock APIs.
+2. **Pointer-starvation watchdog**: each capture re-arms an evidence
+   window — `cursor_moves_since_lock` (CursorMoved handler) and
+   `raw_motions_since_lock` (DeviceEvent handler) counters; `update()`
+   calls `pointer_watchdog()` every frame, and
+   `should_demote_to_delta(mode, secs, cursor_moves, raw_motions)`
+   (pure, unit-tested) demotes the grab to delta-look when the user is
+   demonstrably moving the mouse (≥3 CursorMoved) but not one raw event
+   has arrived >1 s into the capture. Demotion releases the grab, makes
+   the cursor visible, re-arms `last_cursor_phys`, and sets sticky
+   `grab_unreliable` so later captures skip the broken rung.
+3. **`VC_POINTER=auto|delta|confined|locked`** env override (parsed at
+   `GameApp::new`, logged) — the documented escape hatch + the first
+   diagnostic step for future input bug reports.
+4. **Boot-log session line**: `pointer env: session=linux
+   wayland_display=… winit_unix_backend=… VC_POINTER=…` — input bug
+   reports now self-describe their environment.
+5. In passing: removed a duplicated `#[test]` attribute on
+   `audit16_sweep2_chorus_destination` (the test had been
+   double-registered — 62 → 61 in the game-crate binary).
+
+### Verification (fresh container: rustup stable 1.98.1 installed this round)
+
+- `cargo check -p voxelcraft` (+ `--no-default-features`): zero
+  warnings. `--lib --target wasm32-unknown-unknown`: clean — the fix is
+  entirely `#[cfg(not(target_arch = "wasm32"))]`, the web input path is
+  untouched (CI's wasm bundle rebuild is therefore safe).
+- **634/634 workspace lib tests green** (628 + 6 new watchdog tests:
+  demote-on-starvation, healthy-channel-never-demotes,
+  idle-user-not-starvation, grace-period, delta-immune,
+  VC_POINTER parsing).
+- **Full CI smoke contract, live-run under Xvfb**: release binary
+  (`--no-default-features`, no ALSA in sandbox), software stack
+  assembled without root (apt-get download + dpkg -x: libxkbcommon-x11,
+  libxcb-xkb, libxtst, libegl1, libegl-mesa0…; SwiftShader Vulkan ICD
+  rejected — no VK_KHR_xlib_surface — so the GL/EGL path with Mesa
+  swrast + `__EGL_VENDOR_LIBRARY_FILENAMES`). Result: exit 0 with every
+  CI grep assertion green (`intro complete`, `smoke: title reached`,
+  `loading complete`, `smoke: game entered`, the `[input]`/`[perf]`/
+  `[exit]` categories, the e2e lines) **and the new ladder line**
+  `pointer: confined to the window (raw motion + watchdog)`; first-run
+  profile folder materializes.
+- Disclosed NOT-run: a bench-mode E2E demotion probe (XTEST motion
+  injection via a compiled `xtest_keepalive` injector) — under WM-less
+  Xvfb the window never gains focus, `Focused(false)` auto-pauses the
+  bench before the watchdog window, and llvmpipe runs ~3 fps. This is an
+  Xvfb-without-WM artifact, not a real-desktop condition; the demotion
+  decision itself is exhaustively unit-tested.
+- Test artifacts kept under `/home/z/my-project/scripts/` (smoke-run/,
+  bench-run/, debs/, xtest_inject*.c, xtest_keepalive.c).
+
+### Docs
+
+- BUILD.md: new "Linux input (mouse / pointer capture) — troubleshooting"
+  section (ladder explanation, `--debug` pointer lines, `VC_POINTER`,
+  `WINIT_UNIX_BACKEND=x11` for a true lock on Wayland, the delta-mode
+  edge-stop disclosure).
+- README.md: maintenance note 13 (full root-cause + fix + verification
+  record).
+- This entry.
+
+### Stage Summary
+
+- The Linux "mouse not working" class is closed three ways: Linux skips
+  the untrustworthy `Locked` rung, a watchdog self-heals any starved
+  grab within ~1 s of positive starvation evidence, and `VC_POINTER`
+  gives users a documented manual override.
+- 634/634 tests, zero warnings native+wasm32, Xvfb smoke contract
+  fully green on the patched binary.
+- Remaining known input limitation (disclosed in BUILD.md): delta-look
+  stops turning at the screen edge — inherent to position-delta input
+  on winit 0.29; the eventual fix is the winit 0.30+ `PointerMotion`
+  event migration, deliberately out of scope this round.

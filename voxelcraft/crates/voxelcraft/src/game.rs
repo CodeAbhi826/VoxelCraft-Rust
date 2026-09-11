@@ -161,11 +161,19 @@ impl Settings {
             0.55
         }
     }
-    /// effective internal render scale
+    /// Effective internal render scale based on AMD GPUOpen FidelityFX-FSR 1.0
+    /// canonical presets (June 2021 specifications):
+    /// - 0: Off / Native (1.0x)
+    /// - 1: Ultra Quality (1.3x scale factor per dimension, ~0.77 linear scale)
+    /// - 2: Quality (1.5x scale factor per dimension, ~0.67 linear scale)
+    /// - 3: Balanced (1.7x scale factor per dimension, ~0.59 linear scale)
+    /// - 4: Performance (2.0x scale factor per dimension, 0.50 linear scale)
     pub fn upscale_factor(&self) -> f32 {
         match self.upscale {
-            1 => 0.75,
-            2 => 0.5,
+            1 => 0.77,
+            2 => 0.67,
+            3 => 0.59,
+            4 => 0.50,
             _ => 1.0,
         }
     }
@@ -291,7 +299,7 @@ impl Settings {
                 "graphics" => st.graphics = v.parse().unwrap_or(st.graphics).min(2),
                 "shader" => st.shader = v.parse().unwrap_or(st.shader).min(2),
                 "shadowq" => st.shadow_quality = v.parse().unwrap_or(2).min(3),
-                "upscale" => st.upscale = v.parse().unwrap_or(st.upscale).min(2),
+                "upscale" => st.upscale = v.parse().unwrap_or(st.upscale).min(4),
                 "maxfps" => st.maxfps = v.parse().unwrap_or(st.maxfps).min(3),
                 "mip" => st.mipmap_levels = v.parse().unwrap_or(4).min(4),
                 "aniso" => st.aniso = v.parse().unwrap_or(4).clamp(1, 16),
@@ -5279,7 +5287,7 @@ impl GameApp {
                 self.after_settings_change();
             }
             ID_OPT_UPSCALE => {
-                self.settings.upscale = (self.settings.upscale + 1) % 3;
+                self.settings.upscale = (self.settings.upscale + 1) % 5;
                 self.renderer.set_upscale(self.settings.upscale_factor());
                 self.after_settings_change();
             }
@@ -5553,9 +5561,11 @@ impl GameApp {
                         ID_OPT_UPSCALE => set_button_value(
                             w,
                             match s.upscale {
-                                1 => "75% FSR",
-                                2 => "50% FSR",
-                                _ => "OFF",
+                                1 => "ULTRA QUALITY (77%)",
+                                2 => "QUALITY (67%)",
+                                3 => "BALANCED (59%)",
+                                4 => "PERFORMANCE (50%)",
+                                _ => "OFF (NATIVE)",
                             },
                         ),
                         _ => {}
@@ -15056,10 +15066,16 @@ impl GameApp {
                 } else {
                     self.settings.shadow_strength()
                 },
-                // FSR 1.0: RCAS lobe factor when the internal scale is below
-                // native (0.6 ≈ FsrRcasCon(~0.7 stops) — sharp without halos;
-                // EASU already reconstructs most of the edge contrast)
-                sharpen: if self.settings.upscale > 0 { 0.6 } else { 0.0 },
+                // FSR 1.0: RCAS lobe factor dynamically scaled per preset mode:
+                // softer (0.4) on Ultra Quality to crisp (0.8) on Performance mode;
+                // EASU already reconstructs most of the edge contrast.
+                sharpen: match self.settings.upscale {
+                    1 => 0.4,
+                    2 => 0.6,
+                    3 => 0.7,
+                    4 => 0.8,
+                    _ => 0.0,
+                },
             },
             if self.settings.graphics >= 1 && !nether {
                 self.settings.clouds_level
@@ -16983,6 +16999,8 @@ mod boot_all_settings_and_modes_tests {
 
 #[cfg(test)]
 mod loading_and_input_regression_tests {
+    use super::Settings;
+
     #[test]
     fn test_input_tap_latching() {
         let mut input = crate::player::Input::default();
@@ -17045,6 +17063,36 @@ mod loading_and_input_regression_tests {
             assert!(displayed >= prev, "progress must be strictly monotonic");
         }
         assert_eq!(displayed, 100.0, "progress must cleanly reach 100%");
+    }
+
+    #[test]
+    fn test_fsr_presets_and_upscale_factors() {
+        let mut s = Settings::default();
+        // 0: Off / Native
+        s.upscale = 0;
+        assert_eq!(s.upscale_factor(), 1.0);
+
+        // 1: Ultra Quality (77%)
+        s.upscale = 1;
+        assert_eq!(s.upscale_factor(), 0.77);
+
+        // 2: Quality (67%)
+        s.upscale = 2;
+        assert_eq!(s.upscale_factor(), 0.67);
+
+        // 3: Balanced (59%)
+        s.upscale = 3;
+        assert_eq!(s.upscale_factor(), 0.59);
+
+        // 4: Performance (50%)
+        s.upscale = 4;
+        assert_eq!(s.upscale_factor(), 0.50);
+
+        // Roundtrip serialization with upscale = 4
+        let serialized = s.serialize();
+        let restored = Settings::deserialize(&serialized);
+        assert_eq!(restored.upscale, 4);
+        assert_eq!(restored.upscale_factor(), 0.50);
     }
 }
 

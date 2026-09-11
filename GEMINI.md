@@ -25,3 +25,13 @@
 - **Video Settings**: Exact 19-option 1.16.5 layout with 2 top wide sliders, 2-column 16-option grid, and bottom Done button.
 - **World Selection**: Darkened dirt background, top search box, scrollable world cards, and bottom action bar.
 - **F3 Debug Screen**: Two-column layout with real-time FPS, coordinates, biome, chunk cache, and Targeted Block/Fluid properties.
+
+## 5. Continuous Documentation, Worklog Sync & Clean-Room Verification
+- **Continuous Worklog Maintenance**: Append detailed, factual work units to `docs/WORKLOG.md` in every session, documenting all architectural changes, bug fixes, test results, and benchmark metrics.
+- **Parity Backlog Maintenance**: Keep `docs/PARITY-BACKLOG.md` synchronized with the verified clean-room parity status against Minecraft 1.16.5.
+- **Strict Clean-Room Verification & Source Citations**:
+  - Every numerical constant, formula, tick timing, or gameplay mechanic added to code or documentation MUST cite an authoritative public source (e.g., live `minecraft.wiki`, vendor specifications like AMD GPUOpen, or open clean-room implementations like Luanti).
+  - Any values without an authoritative public source MUST be explicitly flagged as `[ESTIMATED / APPROXIMATION]` rather than asserted as fact.
+  - **Zero Decompiled Code Transcription**: Strictly forbid copying, reproducing, or transcribing proprietary decompiled source code, variable names, or pseudocode into repository comments or documentation; express all mechanics purely as clean-room behavioral descriptions.
+- **Repository Documentation Sync**: All documentation files (`docs/WORKLOG.md`, `docs/PARITY-BACKLOG.md`, `GEMINI.md`, and README) must be committed and pushed to GitHub alongside code changes.
+

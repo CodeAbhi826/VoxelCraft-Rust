@@ -18,3 +18,4 @@ pub mod mobs;
 pub mod modes;
 pub mod spawners;
 pub mod villagers;
+pub mod weather;

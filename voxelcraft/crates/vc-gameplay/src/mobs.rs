@@ -5855,20 +5855,36 @@ pub fn build_vertices(
         if m.fuse >= 0 && m.fuse != i32::MAX && (m.fuse / 3) % 2 == 0 {
             col = [1.6, 1.6, 1.6];
         }
+        // [Clean-room Behavioral Approximation]
+        // Replicates vanilla damage recoil: during the 10-tick invulnerability period
+        // (hurt_t > 0), tilts the entity billboard with a quadratic ease into a sinusoidal
+        // impulse peaking at approximately 14 degrees.
+        let (tilt_s, tilt_c) = if m.hurt_t > 0 {
+            let f = (m.hurt_t as f32) / 10.0;
+            let tilt_rad = (f * f * std::f32::consts::PI).sin() * (14.0_f32).to_radians();
+            (tilt_rad.sin(), tilt_rad.cos())
+        } else {
+            (0.0_f32, 1.0_f32)
+        };
+        let (x_bl, y_bl) = (-half * tilt_c, -half * tilt_s);
+        let (x_br, y_br) = (half * tilt_c, half * tilt_s);
+        let (x_tr, y_tr) = (half * tilt_c - h * tilt_s, half * tilt_s + h * tilt_c);
+        let (x_tl, y_tl) = (-half * tilt_c - h * tilt_s, -half * tilt_s + h * tilt_c);
+
         let corners = [
             (
-                [-rr[0] * half, 0.0, -rr[2] * half],
+                [x_bl * rr[0], y_bl.max(0.0), x_bl * rr[2]],
                 [tx / 32.0, (ty + 1.0) / 32.0],
             ),
             (
-                [rr[0] * half, 0.0, rr[2] * half],
+                [x_br * rr[0], y_br.max(0.0), x_br * rr[2]],
                 [(tx + 1.0) / 32.0, (ty + 1.0) / 32.0],
             ),
             (
-                [rr[0] * half, h, rr[2] * half],
+                [x_tr * rr[0], y_tr, x_tr * rr[2]],
                 [(tx + 1.0) / 32.0, ty / 32.0],
             ),
-            ([-rr[0] * half, h, -rr[2] * half], [tx / 32.0, ty / 32.0]),
+            ([x_tl * rr[0], y_tl, x_tl * rr[2]], [tx / 32.0, ty / 32.0]),
         ];
         // 1.12: an invisible illusioner renders ONLY its 4 false
         // duplicates ("it creates four false duplicates of itself.

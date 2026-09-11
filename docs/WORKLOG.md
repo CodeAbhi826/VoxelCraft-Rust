@@ -3266,3 +3266,66 @@ Stage Summary:
   pipeline, boats/minecarts, sound-event scale
 - 593/593 still green; no code changes (doc-accuracy round only); the
   README no longer contradicts the code on day length or block counts
+
+---
+
+## 2026-09-11 — Linux Mouse Input, Loading Progress Overhaul, Clean-Room Parity Backlog & Parity Systems
+
+**Tasks:**
+1. Fix physical mouse click drops in the Linux native build.
+2. Fix world loading screen stalling at 43–44% and make percentage tick gradually (1%, 2%, 3%... 100%).
+3. Perform an exhaustive clean-room parity audit against vanilla Minecraft 1.16.5 (The Nether Update) and publish `docs/PARITY-BACKLOG.md`.
+4. Establish Rule 5 in `GEMINI.md` enforcing continuous worklog/backlog synchronization and strict public source-citation standards.
+5. Implement AMD GPUOpen canonical FSR 1.0 UI presets (Ultra Quality, Quality, Balanced, Performance) with dynamic RCAS sharpening.
+6. Implement clean-room mob damage recoil tilt during the 10-tick damage invulnerability window.
+7. Implement tick-accurate weather state machine (`vc-gameplay/src/weather.rs`) with verified durations and smooth transitions.
+
+**Diagnosis & Root Causes:**
+1. **Linux Mouse Input Dropping**:
+   - On Linux X11/Wayland with pointer confinement/lock, mouse button clicks are frequently emitted by `winit` as raw `DeviceEvent::Button { button, state }` rather than `WindowEvent::MouseInput`.
+   - In `game_mouse`, quick physical mouse clicks (press and release occurring in 30–80 ms) often had their continuous hold flags (`break_hold`, `place_hold`) reset before the game tick ran `update(dt)`, completely dropping click interactions.
+   - Initial cursor position at (480, 270) landed on disabled title buttons without triggering an immediate hover update upon `set_screen()`.
+2. **World Loading Stall at 44%**:
+   - In `game.rs`, the loading percentage formula evaluated 4 meshed chunks divided by `9.0_f32`, producing exactly `44.4%` (rendered as 44%).
+   - Immediately upon the 5th chunk meshing, the transition gate `ready = count >= 5` fired, prematurely terminating the loading screen before the player could ever see progress beyond 44%.
+
+**Implementation Details:**
+- **Linux Input & Click Latching (`player.rs`, `game.rs`)**:
+  - Added `pub break_tap: bool` and `pub place_tap: bool` to `Input` in `player.rs`.
+  - In `game.rs`: Added `Event::DeviceEvent::Button` handling with idempotency guards against duplicate `WindowEvent` dispatches.
+  - Latched `break_tap` and `place_tap` on initial mouse-down and reset interaction timers (`break_timer = 0.0`, `place_timer = 0.0`).
+  - Evaluated `let wants_break = self.input.break_hold || self.input.break_tap;` in `update(dt)`, ensuring short physical clicks are never dropped.
+  - Added `self.update_hover()` call immediately following `refresh_widgets()` in `set_screen()`.
+- **Loading Progression Overhaul (`game.rs`, `ui.rs`)**:
+  - Added `load_progress: f32` to `GameApp`, initialized to `0.0` upon entering `Screen::Loading`.
+  - Calculated granular progress across the 5×5 spawn grid (25 chunks: 50% terrain generation at +2% each, 50% GPU meshing at +2% each).
+  - Implemented continuous, smooth interpolation (`(diff * 6.0).max(25.0)` per second), ticking visibly through 1%, 2%, 3%, 4%... and accelerating as chunks land.
+  - Synchronized transition gate: `can_enter = (ready && self.load_progress >= 100.0) || self.time - self.load_start > 15.0;`.
+  - Rendered repeating dirt texture background on world loading screen.
+- **FSR 1.0 Presets (`game.rs`)**:
+  - Verified and implemented the 4 canonical AMD GPUOpen FidelityFX-FSR 1.0 quality modes (June 2021 specifications):
+    - `0`: Off / Native (1.0× scale factor)
+    - `1`: Ultra Quality (1.3× per-dimension scale factor, ~0.77 linear scale)
+    - `2`: Quality (1.5× per-dimension scale factor, ~0.67 linear scale)
+    - `3`: Balanced (1.7× per-dimension scale factor, ~0.59 linear scale)
+    - `4`: Performance (2.0× per-dimension scale factor, 0.50 linear scale)
+  - Added dynamic RCAS sharpening lobe scaling (0.4 on Ultra Quality to 0.8 on Performance).
+  - Updated settings serialization (`.min(4)`) and UI button labels.
+- **Mob Damage Recoil Animation (`vc-gameplay/src/mobs.rs`)**:
+  - Clean-room behavioral specification: During the 10-tick invulnerability period (`hurt_t > 0`), tilts the mob billboard quad horizontally using quadratic ease into sinusoidal recoil peaking at ~14 degrees (`[Clean-room Behavioral Approximation]`).
+- **Weather State Machine (`vc-gameplay/src/weather.rs`)**:
+  - Implemented `WeatherSystem` with tick durations verified against `minecraft.wiki/w/Weather`:
+    - Clear: 12,000 to 180,000 ticks (0.5 to 7.5 Minecraft days)
+    - Rain: 12,000 to 24,000 ticks (10 to 20 minutes)
+    - Thunder: 3,600 to 15,600 ticks (3 to 13 minutes, active during rain)
+    - Transition: 100-tick smooth linear interpolation (0.01 per tick / 5.0 seconds) for `rain_level` and `thunder_level`.
+- **Documentation & Verification**:
+  - Published `docs/PARITY-BACKLOG.md` tracking all 1.16.5 subsystems, mechanics, and verified community exploits (1.13+ BUD/coral fan TNT duping, portal falling block duping).
+  - Added Rule 5 to `GEMINI.md` enforcing continuous documentation sync, strict public citations, and prohibition against quoting decompiled source code.
+
+**Verification Results:**
+- Local unit tests:
+  - `voxelcraft`: 61 passed / 0 failed (including `test_input_tap_latching`, `test_loading_progress_progression`, `test_fsr_presets_and_upscale_factors`).
+  - `vc-render`: 71 passed / 0 failed.
+  - `vc-gameplay`: all tests passed including weather durations, smooth transitions, and thunder bounds.
+- Hardware & compilation compliance: Zero local release builds executed; all release compilation delegated to GitHub Actions CI.

@@ -79,6 +79,8 @@ pub struct Input {
     pub sprint: bool,
     pub break_hold: bool,
     pub place_hold: bool,
+    pub break_tap: bool,
+    pub place_tap: bool,
     mouse_dx: f32,
     mouse_dy: f32,
 }

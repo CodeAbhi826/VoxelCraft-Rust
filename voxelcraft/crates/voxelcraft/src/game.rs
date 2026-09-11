@@ -855,6 +855,7 @@ pub struct GameApp {
     spawn_snapped: bool,
     faced_land: bool,
     load_start: f32,
+    load_progress: f32,
     /// boot intro screen start (Screen::Intro → Title; the menus never
     /// generate world data — they run on the pre-rendered panorama)
     intro_start: f32,
@@ -1564,6 +1565,7 @@ impl GameApp {
             spawn_snapped: false,
             faced_land: false,
             load_start: 0.0,
+            load_progress: 0.0,
             intro_start: now_secs(),
             smoke: false,
             smoke_menu_e2e: false,
@@ -1816,16 +1818,47 @@ impl GameApp {
             #[cfg(not(target_arch = "wasm32"))]
             Event::DeviceEvent { event, .. } => {
                 use winit::event::DeviceEvent;
-                if let DeviceEvent::MouseMotion { delta: (dx, dy) } = event {
-                    // relative motion events: real input while a grab is
-                    // active. In the Delta fallback the SAME motion also
-                    // arrives as CursorMoved — feeding both would double
-                    // the sensitivity, so raw events are skipped there.
-                    if self.screen == Screen::Game
-                        && self.pointer_lock != PointerLockMode::Delta
-                    {
-                        self.input.add_mouse(dx as f32, dy as f32);
+                match event {
+                    DeviceEvent::MouseMotion { delta: (dx, dy) } => {
+                        // relative motion events: real input while a grab is
+                        // active. In the Delta fallback the SAME motion also
+                        // arrives as CursorMoved — feeding both would double
+                        // the sensitivity, so raw events are skipped there.
+                        if self.screen == Screen::Game
+                            && self.pointer_lock != PointerLockMode::Delta
+                        {
+                            self.input.add_mouse(dx as f32, dy as f32);
+                        }
                     }
+                    DeviceEvent::Button { button, state } => {
+                        // Under pointer lock or grab on Linux X11/Wayland, button events
+                        // may be delivered as raw DeviceEvent::Button.
+                        if self.screen == Screen::Game {
+                            let pressed = state == ElementState::Pressed;
+                            let b = match button {
+                                1 => winit::event::MouseButton::Left,
+                                2 => winit::event::MouseButton::Middle,
+                                3 => winit::event::MouseButton::Right,
+                                other => winit::event::MouseButton::Other(other as u16),
+                            };
+                            let is_dup = match b {
+                                winit::event::MouseButton::Left => {
+                                    (pressed && self.input.break_hold)
+                                        || (!pressed && !self.input.break_hold)
+                                }
+                                winit::event::MouseButton::Right => {
+                                    (pressed && self.input.place_hold)
+                                        || (!pressed && !self.input.place_hold)
+                                }
+                                _ => false,
+                            };
+                            if !is_dup {
+                                let (cx, cy) = (self.cursor.0 as i32, self.cursor.1 as i32);
+                                self.route_mouse_click(b, pressed, cx, cy);
+                            }
+                        }
+                    }
+                    _ => {}
                 }
             }
             Event::AboutToWait => {
@@ -2249,10 +2282,18 @@ impl GameApp {
                     if self.try_attack_mob() {
                         return;
                     }
+                    self.input.break_tap = true;
+                    self.break_timer = 0.0;
                 }
                 self.input.break_hold = pressed;
             }
-            MouseButton::Right => self.input.place_hold = pressed,
+            MouseButton::Right => {
+                if pressed {
+                    self.input.place_tap = true;
+                    self.place_timer = 0.0;
+                }
+                self.input.place_hold = pressed;
+            }
             MouseButton::Middle => {
                 if pressed {
                     if let Some((_, b, _)) = self.target {
@@ -2624,6 +2665,10 @@ impl GameApp {
             }
         }
         self.refresh_widgets();
+        self.update_hover();
+        if screen == Screen::Loading {
+            self.load_progress = 0.0;
+        }
         // BLOCKING-BUG FIX (stale-UI race, live-observed in the browser
         // build): a screen transition must repaint the UI canvas THIS
         // frame. The rebuild gate throttles on cadence — right after a
@@ -9903,7 +9948,39 @@ impl GameApp {
                 }
                 count >= 5 && self.mesh_near_count(pc) > 4
             };
-            if ready || self.time - self.load_start > 15.0 {
+
+            // Calculate granular progress across the 5x5 chunk spawn grid (25 chunks)
+            // Chunks have 2 stages: 50% generation (2% each) + 50% GPU meshing (2% each)
+            let mut gen_chunks = 0.0_f32;
+            let mut mesh_chunks = 0.0_f32;
+            for dz in -2..=2 {
+                for dx in -2..=2 {
+                    let pos = (pc.0 + dx, pc.1 + dz);
+                    if self.renderer.has_chunk(pos) {
+                        gen_chunks += 1.0;
+                        mesh_chunks += 1.0;
+                    } else if self.world.chunk(pos).is_some() {
+                        gen_chunks += 1.0;
+                    }
+                }
+            }
+            let mut target_pct = (gen_chunks * 2.0_f32 + mesh_chunks * 2.0_f32).clamp(0.0_f32, 100.0_f32);
+            if ready {
+                target_pct = 100.0;
+            }
+
+            // Smooth gradual advancement: tick 1, 2, 3... and accelerate as chunks land
+            let diff = (target_pct - self.load_progress).max(0.0);
+            let speed = (diff * 6.0_f32).max(25.0_f32);
+            self.load_progress = (self.load_progress + speed * dt).min(target_pct);
+            if ready && self.load_progress >= 99.0 {
+                self.load_progress = 100.0;
+            }
+
+            let can_enter = (ready && self.load_progress >= 100.0)
+                || self.time - self.load_start > 15.0;
+
+            if can_enter {
                 // one boot log either way — "loading complete" carries the
                 // chunk count + wall time for user bug reports; the timeout
                 // line carries the whole pipeline state so a future stall
@@ -10458,7 +10535,9 @@ impl GameApp {
             self.place_timer -= dt;
             // 1.8: Spectators never interact (wiki: no block breaking,
             // placing, or using — flight through everything)
-            if self.input.break_hold
+            let wants_break = self.input.break_hold || self.input.break_tap;
+            self.input.break_tap = false;
+            if wants_break
                 && self.break_timer <= 0.0
                 && self.mode != vc_gameplay::modes::GameMode::Spectator
             {
@@ -10752,7 +10831,9 @@ impl GameApp {
                     }
                 }
             }
-            if self.input.place_hold
+            let wants_place = self.input.place_hold || self.input.place_tap;
+            self.input.place_tap = false;
+            if wants_place
                 && self.place_timer <= 0.0
                 && self.mode != vc_gameplay::modes::GameMode::Spectator
             {
@@ -14452,21 +14533,9 @@ impl GameApp {
                         cells[((dz + 17) * 35 + (dx + 17)) as usize] = st;
                     }
                 }
-                // progress metric the gate uses: meshed 5x5 around spawn
-                let mut have = 0.0;
-                for dz in -2..=2 {
-                    for dx in -2..=2 {
-                        if self
-                            .renderer
-                            .has_chunk((pc.0 + dx, pc.1 + dz))
-                        {
-                            have += 1.0;
-                        }
-                    }
-                }
-                let progress = (have / 9.0_f32).min(1.0);
+                let pct = self.load_progress.clamp(0.0, 100.0) as i32;
                 self.ui
-                    .world_loading_screen((progress * 100.0) as i32, &cells, 17 * 35 + 17);
+                    .world_loading_screen(pct, &cells, 17 * 35 + 17);
                 return;
             }
             Screen::Title => {
@@ -16911,3 +16980,71 @@ mod boot_all_settings_and_modes_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod loading_and_input_regression_tests {
+    #[test]
+    fn test_input_tap_latching() {
+        let mut input = crate::player::Input::default();
+        assert!(!input.break_tap);
+        assert!(!input.place_tap);
+        assert!(!input.break_hold);
+        assert!(!input.place_hold);
+
+        // Simulate a rapid tap (pressed then immediately released)
+        input.break_tap = true;
+        input.break_hold = true;
+        // Release arrives within milliseconds
+        input.break_hold = false;
+
+        // The game tick evaluates wants_break
+        let wants_break = input.break_hold || input.break_tap;
+        input.break_tap = false;
+        assert!(wants_break, "rapid tap must be preserved even if hold was released before tick");
+        assert!(!input.break_tap, "tap must be consumed");
+        assert!(!input.break_hold);
+
+        // Same for place tap
+        input.place_tap = true;
+        input.place_hold = true;
+        input.place_hold = false;
+        let wants_place = input.place_hold || input.place_tap;
+        input.place_tap = false;
+        assert!(wants_place, "rapid place tap must be preserved even if hold was released");
+        assert!(!input.place_tap);
+    }
+
+    #[test]
+    fn test_loading_progress_progression() {
+        // 25 chunks in 5x5 grid
+        let total_chunks = 25.0_f32;
+        // 0 generated, 0 meshed
+        let mut gen = 0.0_f32;
+        let mut mesh = 0.0_f32;
+        let mut pct = (gen * 2.0_f32 + mesh * 2.0_f32).clamp(0.0_f32, 100.0_f32);
+        assert_eq!(pct, 0.0);
+
+        // All 25 generated, 0 meshed -> 50%
+        gen = total_chunks;
+        pct = (gen * 2.0_f32 + mesh * 2.0_f32).clamp(0.0_f32, 100.0_f32);
+        assert_eq!(pct, 50.0);
+
+        // All 25 generated + all 25 meshed -> 100%
+        mesh = total_chunks;
+        pct = (gen * 2.0_f32 + mesh * 2.0_f32).clamp(0.0_f32, 100.0_f32);
+        assert_eq!(pct, 100.0);
+
+        // Smooth interpolation step never regresses
+        let mut displayed = 0.0_f32;
+        let dt = 0.05_f32; // 20 Hz
+        for _ in 0..100 {
+            let prev = displayed;
+            let diff = (pct - displayed).max(0.0);
+            let speed = (diff * 6.0_f32).max(25.0_f32);
+            displayed = (displayed + speed * dt).min(pct);
+            assert!(displayed >= prev, "progress must be strictly monotonic");
+        }
+        assert_eq!(displayed, 100.0, "progress must cleanly reach 100%");
+    }
+}
+

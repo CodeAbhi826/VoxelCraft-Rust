@@ -3519,7 +3519,8 @@ impl UiCanvas {
     /// 2 meshed + on GPU (0xFFFFFF "full") · 3 spawn chunk pending
     /// (0xF26060 "spawn"). Color values are the wiki's exact table.
     pub fn world_loading_screen(&mut self, percent: i32, cells: &[u8], center: usize) {
-        self.rect(0, 0, UI_W as i32, UI_H as i32, [10, 12, 16, 140]);
+        self.draw_dirt_background();
+        self.rect(0, 0, UI_W as i32, UI_H as i32, [0, 0, 0, 80]);
         self.text_center(84, "LOADING WORLD", [255, 255, 255, 255], 2);
         let pct = format!("{percent}%");
         self.text_center(118, &pct, [220, 220, 220, 255], 2);

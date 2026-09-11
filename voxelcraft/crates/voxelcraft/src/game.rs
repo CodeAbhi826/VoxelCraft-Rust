@@ -648,6 +648,65 @@ enum PointerLockMode {
     Delta,
 }
 
+/// User-forced capture mode (the `VC_POINTER` env var — the Linux input
+/// escape hatch + bug-report tool). `Auto` (default) runs the ladder
+/// (see capture_pointer); the others pin one rung for machines where the
+/// auto-detection needs a manual nudge.
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+enum PointerPref {
+    Auto,
+    Delta,
+    Confined,
+    Locked,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl PointerPref {
+    /// `VC_POINTER=delta|confined|locked|auto` (case-insensitive;
+    /// anything unrecognized = Auto — the raw value is still printed by
+    /// the boot `pointer env:` line, so typos are visible in logs).
+    fn from_env_value(raw: &str) -> Self {
+        match raw.trim().to_ascii_lowercase().as_str() {
+            "delta" => Self::Delta,
+            "confined" => Self::Confined,
+            "locked" => Self::Locked,
+            "auto" => Self::Auto,
+            _ => Self::Auto,
+        }
+    }
+}
+
+/// Pointer-starvation watchdog decision (pure — unit-tested below):
+/// demote a grabbed mode (Locked/Confined) to delta-look when the user
+/// IS moving the mouse (CursorMoved positions keep arriving) but NOT ONE
+/// raw DeviceEvent::MouseMotion has arrived since the capture. A winit
+/// grab returning Ok does NOT guarantee motion delivery:
+/// - X11: raw XI2 motion is delivered only while focused and is not
+///   forwarded by SSH-X11/X2Go/some VNC stacks (the Confined grab
+///   succeeds; look input then starves with a hidden cursor);
+/// - Wayland: the constraint activates asynchronously (or never) and
+///   relative motion needs the zwp_relative_pointer global — absent on
+///   some compositors — while a *pending* lock still lets CursorMoved
+///   flow.
+/// The cursor keeps moving under Confined/pending-lock, so "positions
+/// arriving + zero raw events" is positive proof of a dead channel, not
+/// an idle user. Requiring several moves keeps a single stray enter/leave
+/// warp from triggering a demotion, and the 1 s floor gives the platform
+/// a moment to deliver its first raw event.
+#[cfg(not(target_arch = "wasm32"))]
+fn should_demote_to_delta(
+    mode: PointerLockMode,
+    secs_since_capture: f32,
+    cursor_moves: u32,
+    raw_motions: u32,
+) -> bool {
+    mode != PointerLockMode::Delta
+        && secs_since_capture > 1.0
+        && cursor_moves >= 3
+        && raw_motions == 0
+}
+
 /// Full daylight-cycle length in real seconds (VERIFIED 2026-09-06 live,
 /// minecraft.wiki/w/Daylight_cycle): 24000 game ticks at 20 ticks/second
 /// = 1200 s = 20 minutes for the complete day-night cycle in 1.16.5.
@@ -891,6 +950,27 @@ pub struct GameApp {
     /// last CursorMoved physical position (the Delta fallback's look input)
     #[cfg(not(target_arch = "wasm32"))]
     last_cursor_phys: Option<(f32, f32)>,
+    /// ---- pointer-starvation watchdog state (the Linux "mouse not
+    /// working" fix; see should_demote_to_delta) ----
+    /// wall-clock time of the current capture (0 = no active capture)
+    #[cfg(not(target_arch = "wasm32"))]
+    lock_since_t: f32,
+    /// CursorMoved events since the current capture — evidence the user
+    /// is actively moving the mouse
+    #[cfg(not(target_arch = "wasm32"))]
+    cursor_moves_since_lock: u32,
+    /// raw DeviceEvent::MouseMotion events since the current capture —
+    /// the channel a grabbed mode depends on for look input
+    #[cfg(not(target_arch = "wasm32"))]
+    raw_motions_since_lock: u32,
+    /// sticky: this machine already proved it starves raw motion under
+    /// grabs — later captures skip straight to the Delta fallback instead
+    /// of re-entering the broken mode every screen change
+    #[cfg(not(target_arch = "wasm32"))]
+    grab_unreliable: bool,
+    /// VC_POINTER user override (Auto by default)
+    #[cfg(not(target_arch = "wasm32"))]
+    pointer_pref: PointerPref,
     /// Phase-0 baseline instrumentation (§44): per-frame CPU phases
     pub phases: crate::bench::FramePhases,
     /// active in-game benchmark (§37/§48 Phase 0) — None in normal play
@@ -1579,6 +1659,18 @@ impl GameApp {
             pointer_lock: PointerLockMode::Delta,
             #[cfg(not(target_arch = "wasm32"))]
             last_cursor_phys: None,
+            #[cfg(not(target_arch = "wasm32"))]
+            lock_since_t: 0.0,
+            #[cfg(not(target_arch = "wasm32"))]
+            cursor_moves_since_lock: 0,
+            #[cfg(not(target_arch = "wasm32"))]
+            raw_motions_since_lock: 0,
+            #[cfg(not(target_arch = "wasm32"))]
+            grab_unreliable: false,
+            #[cfg(not(target_arch = "wasm32"))]
+            pointer_pref: PointerPref::from_env_value(
+                &std::env::var("VC_POINTER").unwrap_or_default(),
+            ),
             phases: crate::bench::FramePhases::new(240),
             bench: None,
             bench_spawn: spawn.into(),
@@ -1671,6 +1763,25 @@ impl GameApp {
             (t_boot.elapsed() - t_pack - t_renderer - t_audio).as_secs_f32() * 1000.0
         ));
         app.refresh_widgets();
+        // input-platform boot line (bug-report triage): which session
+        // winit picked + the pointer override, so "mouse not working"
+        // reports self-describe their environment
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let wl = std::env::var("WAYLAND_DISPLAY")
+                .ok()
+                .unwrap_or_default();
+            let backend = std::env::var("WINIT_UNIX_BACKEND")
+                .ok()
+                .unwrap_or_default();
+            if !wl.is_empty() || !backend.is_empty() {
+                vc_render::render::report_boot_log(&format!(
+                    "pointer env: session=linux wayland_display={wl:?} \
+                     winit_unix_backend={backend:?} VC_POINTER={:?}",
+                    std::env::var("VC_POINTER").unwrap_or_default()
+                ));
+            }
+        }
         app
     }
 
@@ -1746,6 +1857,8 @@ impl GameApp {
                 #[cfg(not(target_arch = "wasm32"))]
                 WindowEvent::CursorMoved { position, .. } => {
                     let (ux, uy) = self.phys_to_ui(position.x as f32, position.y as f32);
+                    // watchdog evidence: the user is moving the mouse
+                    self.cursor_moves_since_lock += 1;
                     // Delta-look fallback (see capture_pointer): compositors
                     // without pointer-lock deliver motion ONLY as CursorMoved,
                     // so gameplay look input is fed from position deltas while
@@ -1805,6 +1918,10 @@ impl GameApp {
             Event::DeviceEvent { event, .. } => {
                 use winit::event::DeviceEvent;
                 if let DeviceEvent::MouseMotion { delta: (dx, dy) } = event {
+                    // watchdog evidence: the raw channel is alive on this
+                    // machine (counted even outside the game screen — it
+                    // proves the platform delivers DeviceEvents at all)
+                    self.raw_motions_since_lock += 1;
                     // relative motion events: real input while a grab is
                     // active. In the Delta fallback the SAME motion also
                     // arrives as CursorMoved — feeding both would double
@@ -2163,35 +2280,108 @@ impl GameApp {
     // ------------------------------------------------------ pointer --
 
     /// Capture the pointer for gameplay (native) through the robust
-    /// ladder: Locked → Confined → Delta-look. Every grab result is
-    /// CHECKED — the pre-fix code discarded the error and hid the cursor
-    /// anyway, which on compositors without pointer-lock (WSLg/Wayland,
-    /// RDP sessions, some X11 setups) left an invisible cursor and no
-    /// relative-motion events: camera frozen, clicks seemingly dead (the
-    /// user-reported "mouse clicking and stuff not working"). In Delta
-    /// mode the cursor stays VISIBLE and look input is fed from
-    /// CursorMoved deltas (see handle_event).
+    /// ladder: Confined → Delta-look (Locked is attempted only on
+    /// non-Linux platforms — see below). Every grab result is CHECKED and
+    /// every grabbed capture is WATCHED (pointer_watchdog): a grab that
+    /// returns Ok still may not deliver motion events, and the watchdog
+    /// demotes to the delta fallback on positive proof of starvation.
+    ///
+    /// Why Linux never asks for Locked (the 2026-09-11 "mouse not
+    /// working in the Linux build" fix): winit 0.29's X11 backend
+    /// rejects Locked outright (`Err(NotSupported)` — X11 has no lock
+    /// protocol), and its Wayland backend returns Ok for a lock
+    /// constraint that activates asynchronously — or never — while a
+    /// NOT-yet-activated lock freezes wl_pointer motion, leaving a
+    /// hidden cursor with zero usable events. Confined delivers the
+    /// exact same raw relative motion (XInput2 / zwp_relative_pointer)
+    /// on both window systems, AND keeps CursorMoved flowing as the
+    /// watchdog's evidence channel — strictly more recoverable.
+    ///
     /// Also re-attempted on the first in-game click — compositors that
     /// only allow pointer lock as a direct user gesture get one here.
     #[cfg(not(target_arch = "wasm32"))]
     fn capture_pointer(&mut self) {
         use winit::window::CursorGrabMode as G;
-        if self.window.set_cursor_grab(G::Locked).is_ok() {
+        // re-arm the watchdog's evidence window for this capture
+        self.lock_since_t = now_secs();
+        self.cursor_moves_since_lock = 0;
+        self.raw_motions_since_lock = 0;
+
+        let pref = self.pointer_pref;
+        // a machine that already starved raw motion under a grab will do
+        // it again — auto mode goes straight to the visible-cursor
+        // fallback (an explicit VC_POINTER pin overrides even this)
+        let auto_delta = pref == PointerPref::Auto && self.grab_unreliable;
+        let want_grab = pref != PointerPref::Delta && !auto_delta;
+        // Linux: skip Locked (X11 rejects it; Wayland's Ok means nothing
+        // — see the method doc). Windows/macOS keep the real lock APIs.
+        let try_locked = pref == PointerPref::Locked
+            || (pref == PointerPref::Auto && !cfg!(target_os = "linux"));
+
+        if try_locked && want_grab && self.window.set_cursor_grab(G::Locked).is_ok() {
             self.pointer_lock = PointerLockMode::Locked;
             self.window.set_cursor_visible(false);
             vc_render::render::report_boot_log("pointer: locked (relative motion via raw events)");
-        } else if self.window.set_cursor_grab(G::Confined).is_ok() {
+        } else if want_grab && self.window.set_cursor_grab(G::Confined).is_ok() {
             self.pointer_lock = PointerLockMode::Confined;
             self.window.set_cursor_visible(false);
-            vc_render::render::report_boot_log("pointer: confined to the window");
+            vc_render::render::report_boot_log(
+                "pointer: confined to the window (raw motion + watchdog)",
+            );
         } else {
-            // no pointer-lock protocol available: keep the cursor
-            // visible and drive look from cursor deltas instead
+            // no pointer-lock protocol available (or forced/prior-starved):
+            // keep the cursor visible and drive look from cursor deltas
             let _ = self.window.set_cursor_grab(G::None);
             self.pointer_lock = PointerLockMode::Delta;
             self.last_cursor_phys = None; // re-arm: no jump on the next move
-            vc_render::render::report_boot_log(
-                "pointer: lock unavailable — delta-look fallback (visible cursor)",
+            self.lock_since_t = 0.0; // no grab to watch
+            let why = match pref {
+                PointerPref::Delta => " (VC_POINTER=delta)",
+                _ if auto_delta => " (raw-motion starvation earlier this run)",
+                _ => "",
+            };
+            vc_render::render::report_boot_log(&format!(
+                "pointer: lock unavailable — delta-look fallback (visible cursor){why}"
+            ));
+        }
+    }
+
+    /// Pointer-starvation watchdog (runs every frame while a grab is
+    /// active): see should_demote_to_delta. Demotion makes the cursor
+    /// VISIBLE and look input flow from CursorMoved deltas — the
+    /// guaranteed-delivery channel — and marks the machine's grabs
+    /// unreliable so future captures skip the broken rung.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn pointer_watchdog(&mut self) {
+        if self.pointer_lock == PointerLockMode::Delta || self.lock_since_t <= 0.0 {
+            return;
+        }
+        if self.screen != Screen::Game {
+            return; // grabs are only active on the game screen anyway
+        }
+        let secs = now_secs() - self.lock_since_t;
+        if should_demote_to_delta(
+            self.pointer_lock,
+            secs,
+            self.cursor_moves_since_lock,
+            self.raw_motions_since_lock,
+        ) {
+            use winit::window::CursorGrabMode as G;
+            let was = format!("{:?}", self.pointer_lock);
+            let _ = self.window.set_cursor_grab(G::None);
+            self.window.set_cursor_visible(true);
+            self.pointer_lock = PointerLockMode::Delta;
+            self.last_cursor_phys = None; // re-arm: no jump on next move
+            self.lock_since_t = 0.0;
+            self.grab_unreliable = true; // sticky for this process
+            vc_render::render::report_debug_log(
+                "input",
+                &format!(
+                    "pointer: demoted {was} → delta-look — the grab returned Ok but \
+                     zero raw motion events arrived while the cursor moved {}x in \
+                     {:.1}s (see should_demote_to_delta; VC_POINTER can pin a mode)",
+                    self.cursor_moves_since_lock, secs
+                ),
             );
         }
     }
@@ -2205,6 +2395,7 @@ impl GameApp {
         self.window.set_cursor_visible(true);
         self.pointer_lock = PointerLockMode::Delta;
         self.last_cursor_phys = None;
+        self.lock_since_t = 0.0; // nothing to watch while released
     }
 
     fn game_mouse(&mut self, button: winit::event::MouseButton, pressed: bool) {
@@ -7769,6 +7960,12 @@ impl GameApp {
 
     fn update(&mut self, dt: f32) {
         self.time += dt;
+        // native pointer-starvation watchdog: demotes a grabbed capture
+        // to delta-look when the cursor moves but raw motion never
+        // arrives (the Linux "mouse not working" fix — see
+        // should_demote_to_delta)
+        #[cfg(not(target_arch = "wasm32"))]
+        self.pointer_watchdog();
         self.day_time = (self.day_time + dt / DAY_LEN_SECS).max(0.0) % 1.0;
         // 1.15 (Buzzy Bees): the day flag for the sim — day_time 0..=0.5
         // is the sun-up half of the cycle (sun_dir.y > 0 at noon; the
@@ -16674,8 +16871,7 @@ mod auditfix_food_tests {
 
     /// golden carrot heals hunger 6 / 2 = 3.0 HP (VERIFIED live
     /// 2026-09-07 w/Golden_Carrot: "Hunger 6", "Saturation 14.4")
-    #[test]
-    /// the sweep-2: the chorus destination rule — the ±8 box, the
+    /// + the sweep-2: the chorus destination rule — the ±8 box, the
     /// solid-floor + 2-air validity, and the all-solid failure (VERIFIED
     /// w/Chorus_Fruit §Teleportation, live 2026-09-09)
     #[test]
@@ -17003,5 +17199,103 @@ mod farm_game_tests {
         assert!((food_heal(BREAD) - 2.5).abs() < 1e-6, "bread = hunger 5");
         // wheat itself is inedible (never reaches the eat branch's set)
         assert!(!is_food(WHEAT));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pointer-capture watchdog tests (the 2026-09-11 "mouse not working in the
+// Linux build" fix — see should_demote_to_delta / capture_pointer)
+// ---------------------------------------------------------------------------
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod pointer_watchdog_tests {
+    use super::*;
+
+    /// The core contract: a grabbed mode with the cursor actively moving
+    /// (>= 3 CursorMoved) but ZERO raw DeviceEvents in > 1 s is a starved
+    /// input channel — demote to delta-look.
+    #[test]
+    fn demotes_when_cursor_moves_but_raw_never_arrives() {
+        assert!(should_demote_to_delta(
+            PointerLockMode::Confined,
+            1.5,
+            5,
+            0
+        ));
+        assert!(should_demote_to_delta(PointerLockMode::Locked, 2.0, 3, 0));
+    }
+
+    /// Raw motion flowing (the healthy X11 desktop case) must NEVER
+    /// demote — that's the normal Confined grab, not starvation.
+    #[test]
+    fn healthy_raw_channel_never_demotes() {
+        assert!(!should_demote_to_delta(
+            PointerLockMode::Confined,
+            60.0,
+            500,
+            1
+        ));
+        // even a single raw event proves the channel works
+        assert!(!should_demote_to_delta(PointerLockMode::Locked, 60.0, 500, 1));
+    }
+
+    /// An idle user (no cursor moves) is not starvation — no demotion,
+    /// even after a long quiet stretch.
+    #[test]
+    fn idle_user_is_not_starvation() {
+        assert!(!should_demote_to_delta(
+            PointerLockMode::Confined,
+            120.0,
+            0,
+            0
+        ));
+        assert!(!should_demote_to_delta(
+            PointerLockMode::Confined,
+            120.0,
+            2,
+            0
+        ));
+    }
+
+    /// The 1 s floor: give the platform a moment to deliver its first
+    /// raw event before judging (avoids racing event batches).
+    #[test]
+    fn grace_period_blocks_premature_demotion() {
+        assert!(!should_demote_to_delta(
+            PointerLockMode::Confined,
+            0.5,
+            10,
+            0
+        ));
+    }
+
+    /// Delta mode is already the fallback — nothing to demote.
+    #[test]
+    fn delta_mode_is_immune() {
+        assert!(!should_demote_to_delta(
+            PointerLockMode::Delta,
+            100.0,
+            100,
+            0
+        ));
+    }
+
+    /// VC_POINTER parsing: the four documented pins + case/whitespace
+    /// tolerance + the Auto default for anything else.
+    #[test]
+    fn pointer_pref_env_parsing() {
+        assert_eq!(PointerPref::from_env_value("auto"), PointerPref::Auto);
+        assert_eq!(PointerPref::from_env_value("delta"), PointerPref::Delta);
+        assert_eq!(
+            PointerPref::from_env_value("confined"),
+            PointerPref::Confined
+        );
+        assert_eq!(PointerPref::from_env_value("locked"), PointerPref::Locked);
+        // tolerant: case + surrounding whitespace
+        assert_eq!(PointerPref::from_env_value(" Delta "), PointerPref::Delta);
+        assert_eq!(PointerPref::from_env_value("LOCKED"), PointerPref::Locked);
+        // typos and empty fall back to Auto
+        assert_eq!(PointerPref::from_env_value(""), PointerPref::Auto);
+        assert_eq!(PointerPref::from_env_value("deltta"), PointerPref::Auto);
+        assert_eq!(PointerPref::from_env_value("0"), PointerPref::Auto);
     }
 }

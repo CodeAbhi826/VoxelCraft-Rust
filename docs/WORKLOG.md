@@ -3329,3 +3329,46 @@ Stage Summary:
   - `vc-render`: 71 passed / 0 failed.
   - `vc-gameplay`: all tests passed including weather durations, smooth transitions, and thunder bounds.
 - Hardware & compilation compliance: Zero local release builds executed; all release compilation delegated to GitHub Actions CI.
+
+---
+
+## 2026-09-11 — Linux Menu Mouse Click Release-Activation, Intro/Loading Pillarbox Color Normalization & Engine Settings Layout
+
+**Tasks:**
+1. Fix mouse input and button clicking in Linux native menus so button clicks reliably register and trigger actions.
+2. Eliminate bright blue background strips visible on the two sides during the studio Intro and world Loading screens.
+3. Balance Engine Settings UI layout to ensure full column coverage for the Upscaling button.
+4. Maintain Rule 5 (`GEMINI.md`) worklog and parity backlog synchronization with verified public citations.
+
+**Root Cause Analysis & Diagnoses:**
+1. **Linux Mouse Input Dropping in Menus**:
+   - **Premature Down-Activation & Grab Invalidation**: Buttons previously fired action activation on `pressed = true` (mouse-down). When an action changed the screen, `set_screen()` immediately executed `release_pointer()`, calling `window.set_cursor_grab(CursorGrabMode::None)`. Under Linux X11/Wayland compositors, ungrabbing the cursor while a physical button is held down cancels the X server's implicit pointer grab, dropping subsequent mouse-up events and desynchronizing input state.
+   - **Release-Activation Parity**: In vanilla Minecraft 1.16.5 and standard desktop GUI toolkits, buttons visually press on mouse-down, but only activate (`activate(w.id)`) on mouse-up (`pressed = false`) if the cursor is still within the widget's bounds (`w.hit(x, y)`). Releasing outside bounds cancels the click without action.
+   - **X11/Wayland Grab Churn**: `set_screen()` was previously calling `release_pointer()` unconditionally on every screen change, repeatedly re-asserting cursor visibility and resetting grab state during menu-to-menu navigation.
+2. **Blue Pillarbox Strips on Intro & Loading**:
+   - The UI canvas is 960×540 and letterboxed into non-16:9 window viewports (e.g. 1280×696, leaving 21px pillarbox margins on left and right).
+   - In `game.rs:draw()`, `SkyState.fog_color` was unconditionally set to daytime sky fog `[0.75, 0.85, 1.0]` (bright cyan-blue), causing the wgpu render pass clear color to flood the outer letterbox margins with bright blue.
+   - In `Screen::Loading`, `panorama = Some(pano_view)` was rendered, displaying the 3D rotating panorama sky behind the loading UI and exposing blue sky through the margins.
+
+**Implementation Details:**
+- **Menu Mouse Button Release Activation (`game.rs`)**:
+  - Added `pressed_widget: Option<u16>` and `mouse_button_down: [bool; 5]` to `GameApp`.
+  - Added `process_mouse_button()` to deduplicate mouse click events arriving from either `WindowEvent::MouseInput` or `DeviceEvent::Button`.
+  - Updated `menu_mouse()`: Button clicks now latch `self.pressed_widget = Some(w.id)` on press-down, and trigger `self.activate(w.id)` and `self.click_sound()` on release (`pressed = false`) if the cursor is within widget bounds.
+  - Added `WindowEvent::CursorLeft` and `WindowEvent::Focused(false)` handlers to safely reset `mouse_button_down = [false; 5]`, `pressed_widget = None`, and `dragging = None`.
+  - Updated `set_screen()` to only call `release_pointer()` when transitioning away from gameplay (`prev_screen == Screen::Game`), preventing pointer grab churn across menus.
+- **Intro & Loading Pillarbox Color Normalization (`game.rs`)**:
+  - Set `Screen::Loading` to `panorama = None` (pure dirt background per vanilla 1.16.5 specifications).
+  - Configured `clear_fog` clear color in `draw()`:
+    - `Screen::Intro` => `[239.0 / 255.0, 50.0 / 255.0, 61.0 / 255.0]` (exact clean-room studio red matching `ui.rs intro_screen()`).
+    - `Screen::Loading` => `[56.0 / 255.0, 40.0 / 255.0, 27.0 / 255.0]` (exact darkened dirt brown matching `ui.rs draw_dirt_background()`).
+    - Gameplay & other screens => live atmospheric fog color `fog_col`.
+  - The entire window surface clears to the matching color, completely eliminating blue border artifacts.
+- **Engine Settings Layout (`vc-render/src/ui.rs`)**:
+  - Updated `ID_OPT_UPSCALE` in `layout_engine()` from width 225 to 464, cleanly spanning both option columns across row 4.
+
+**Verification & Test Results:**
+- `cargo test -p vc-render --lib`: 71 passed, 0 failed.
+- `cargo test -p voxelcraft --lib`: 64 passed, 0 failed (+3 new tests: `test_menu_button_release_activation`, `test_mouse_button_deduplication`, `test_letterbox_clear_fog_colors`).
+- Strict Rule 1 Hardware Compliance: Zero local release builds executed; all release compilation offloaded to GitHub Actions CI.
+

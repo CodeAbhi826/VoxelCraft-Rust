@@ -537,7 +537,7 @@ pub fn layout_engine() -> Vec<Widget> {
             true,
         ),
         btn_h(ID_OPT_SHADOWS, r, rows[3], bw, 30, "SUN SHADOWS", "2K", true),
-        btn_h(ID_OPT_UPSCALE, l, rows[4], bw, 30, "UPSCALING", "OFF", true),
+        btn_h(ID_OPT_UPSCALE, l, rows[4], 464, 30, "UPSCALING", "OFF", true),
         btn_h(
             ID_OPT_DONE2,
             (UI_W as i32 - 300) / 2,

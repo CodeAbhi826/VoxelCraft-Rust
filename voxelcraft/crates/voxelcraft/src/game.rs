@@ -759,6 +759,8 @@ pub struct GameApp {
     widgets: Vec<Widget>,
     hover: Option<u16>,
     dragging: Option<u16>,
+    pressed_widget: Option<u16>,
+    mouse_button_down: [bool; 5],
     cursor: (f32, f32), // UI-canvas coords
     quit_requested: bool,
     audio_unlocked: bool,
@@ -1513,6 +1515,8 @@ impl GameApp {
             widgets: Vec::new(),
             hover: None,
             dragging: None,
+            pressed_widget: None,
+            mouse_button_down: [false; 5],
             cursor: (UI_W as f32 / 2.0, UI_H as f32 / 2.0),
             quit_requested: false,
             audio_unlocked: false,
@@ -1758,8 +1762,7 @@ impl GameApp {
                 #[cfg(not(target_arch = "wasm32"))]
                 WindowEvent::MouseInput { state, button, .. } => {
                     let pressed = state == ElementState::Pressed;
-                    let (cx, cy) = (self.cursor.0 as i32, self.cursor.1 as i32);
-                    self.route_mouse_click(button, pressed, cx, cy);
+                    self.process_mouse_button(button, pressed);
                 }
                 #[cfg(target_arch = "wasm32")]
                 WindowEvent::MouseInput { .. } => {
@@ -1817,9 +1820,16 @@ impl GameApp {
                 }
                 WindowEvent::Focused(false) => {
                     self.input = Input::default();
+                    self.mouse_button_down = [false; 5];
+                    self.pressed_widget = None;
                     if self.screen == Screen::Game {
                         self.enter_pause();
                     }
+                }
+                WindowEvent::CursorLeft { .. } => {
+                    self.mouse_button_down = [false; 5];
+                    self.pressed_widget = None;
+                    self.dragging = None;
                 }
                 _ => {}
             },
@@ -1839,32 +1849,16 @@ impl GameApp {
                         }
                     }
                     DeviceEvent::Button { button, state } => {
-                        // Under pointer lock or grab on Linux X11/Wayland, button events
-                        // may be delivered as raw DeviceEvent::Button.
-                        if self.screen == Screen::Game {
-                            let pressed = state == ElementState::Pressed;
-                            let b = match button {
-                                1 => winit::event::MouseButton::Left,
-                                2 => winit::event::MouseButton::Middle,
-                                3 => winit::event::MouseButton::Right,
-                                other => winit::event::MouseButton::Other(other as u16),
-                            };
-                            let is_dup = match b {
-                                winit::event::MouseButton::Left => {
-                                    (pressed && self.input.break_hold)
-                                        || (!pressed && !self.input.break_hold)
-                                }
-                                winit::event::MouseButton::Right => {
-                                    (pressed && self.input.place_hold)
-                                        || (!pressed && !self.input.place_hold)
-                                }
-                                _ => false,
-                            };
-                            if !is_dup {
-                                let (cx, cy) = (self.cursor.0 as i32, self.cursor.1 as i32);
-                                self.route_mouse_click(b, pressed, cx, cy);
-                            }
-                        }
+                        // Deliver button events across all screens (games & menus) through
+                        // process_mouse_button, which deduplicates against WindowEvent::MouseInput.
+                        let pressed = state == ElementState::Pressed;
+                        let b = match button {
+                            1 => winit::event::MouseButton::Left,
+                            2 => winit::event::MouseButton::Middle,
+                            3 => winit::event::MouseButton::Right,
+                            other => winit::event::MouseButton::Other(other as u16),
+                        };
+                        self.process_mouse_button(b, pressed);
                     }
                     _ => {}
                 }
@@ -2429,6 +2423,23 @@ impl GameApp {
         }
     }
 
+    fn process_mouse_button(&mut self, button: winit::event::MouseButton, pressed: bool) {
+        let idx = match button {
+            winit::event::MouseButton::Left => 0,
+            winit::event::MouseButton::Right => 1,
+            winit::event::MouseButton::Middle => 2,
+            winit::event::MouseButton::Back => 3,
+            winit::event::MouseButton::Forward => 4,
+            winit::event::MouseButton::Other(i) => i as usize % 5,
+        };
+        if self.mouse_button_down[idx] == pressed {
+            return; // Deduplicate: event was already processed from WindowEvent or DeviceEvent
+        }
+        self.mouse_button_down[idx] = pressed;
+        let (cx, cy) = (self.cursor.0 as i32, self.cursor.1 as i32);
+        self.route_mouse_click(button, pressed, cx, cy);
+    }
+
     /// physical-mouse routing (shared by the winit MouseInput event and
     /// the CI smoke's synthetic clicks): containers/picker eat clicks in
     /// the game screen, gameplay buttons go to game_mouse, everything
@@ -2542,8 +2553,7 @@ impl GameApp {
                     }
                     WidgetKind::Button { enabled, .. } => {
                         if *enabled {
-                            self.activate(w.id);
-                            self.click_sound();
+                            self.pressed_widget = Some(w.id);
                         }
                     }
                     WidgetKind::TextField { .. } => {
@@ -2558,8 +2568,22 @@ impl GameApp {
                     self.focus_field(0);
                 }
             }
-        } else if self.dragging.is_some() {
-            self.dragging = None;
+        } else {
+            if self.dragging.is_some() {
+                self.dragging = None;
+            }
+            // Vanilla Minecraft & desktop standard: button activation occurs on
+            // mouse release (mouse-up) over the pressed button. This ensures screen
+            // transitions execute after physical button release, avoiding in-flight
+            // grab cancellation and stuck mouse states.
+            if let Some(pid) = self.pressed_widget.take() {
+                if let Some(w) = self.widgets.iter().find(|w| w.id == pid && w.hit(x, y)) {
+                    if let WidgetKind::Button { enabled: true, .. } = &w.kind {
+                        self.activate(w.id);
+                        self.click_sound();
+                    }
+                }
+            }
         }
     }
 
@@ -2646,11 +2670,12 @@ impl GameApp {
     // ------------------------------------------------------ screen flow --
 
     fn set_screen(&mut self, screen: Screen) {
+        let prev_screen = self.screen;
         // --debug: every screen transition (the boot flow + menu tree in
         // the raw log — the first thing a bug report wants)
         vc_render::render::report_debug_log(
             "screen",
-            &format!("{} -> {}", self.screen.name(), screen.name()),
+            &format!("{} -> {}", prev_screen.name(), screen.name()),
         );
         self.screen = screen;
         #[cfg(target_arch = "wasm32")]
@@ -2661,7 +2686,7 @@ impl GameApp {
         {
             if matches!(screen, Screen::Game) {
                 self.capture_pointer();
-            } else {
+            } else if prev_screen == Screen::Game {
                 self.release_pointer();
             }
         }
@@ -14946,14 +14971,10 @@ impl GameApp {
                 (cam, 0.55, None)
             }
             Screen::Loading => {
-                // world-entry loading: the panorama blurred + darkened
-                // behind the chunk-map overlay (the world is not rendered —
+                // world-entry loading: solid dirt background (the world is not rendered —
                 // it does not exist yet, exactly like the real loading
                 // screen); §28 travel: the LIVE world streams behind the
                 // blur (it already exists)
-                if !self.traveling {
-                    panorama = Some(pano_view);
-                }
                 let cam = Camera {
                     eye: self.player.eye(),
                     yaw: self.player.yaw,
@@ -14983,10 +15004,20 @@ impl GameApp {
             }
         };
 
+        // Background clear color: when letterboxing the 16:9 UI canvas onto arbitrary window
+        // aspect ratios (e.g. 16:10), the outer margins reveal the wgpu clear color.
+        // Intro must clear with the solid studio red ([239, 50, 61]), and Loading must clear
+        // with the darkened dirt brown ([56, 40, 27]) matching ui.rs draw_dirt_background().
+        let clear_fog = match self.screen {
+            Screen::Intro => [239.0 / 255.0, 50.0 / 255.0, 61.0 / 255.0],
+            Screen::Loading => [56.0 / 255.0, 40.0 / 255.0, 27.0 / 255.0],
+            _ => fog_col,
+        };
+
         let sky = SkyState {
             day_light,
             sun_dir,
-            fog_color: fog_col,
+            fog_color: clear_fog,
             fog_start,
             fog_end,
             time: self.time,
@@ -17093,6 +17124,102 @@ mod loading_and_input_regression_tests {
         let restored = Settings::deserialize(&serialized);
         assert_eq!(restored.upscale, 4);
         assert_eq!(restored.upscale_factor(), 0.50);
+    }
+
+    #[test]
+    fn test_menu_button_release_activation() {
+        use vc_render::ui::{Widget, WidgetKind};
+        let w = Widget {
+            id: 42,
+            x: 100,
+            y: 100,
+            w: 200,
+            h: 30,
+            kind: WidgetKind::Button {
+                label: "TEST".to_string(),
+                value: "".to_string(),
+                enabled: true,
+            },
+        };
+
+        // 1. Mouse down inside button latches pressed_widget
+        let mut pressed_widget: Option<u16> = None;
+        let mut activated = false;
+        let (down_x, down_y) = (150, 115);
+        if w.hit(down_x, down_y) {
+            pressed_widget = Some(w.id);
+        }
+        assert_eq!(pressed_widget, Some(42));
+        assert!(!activated, "Button must not activate on press down");
+
+        // 2. Mouse up inside button activates
+        let (up_x, up_y) = (160, 120);
+        if let Some(pid) = pressed_widget.take() {
+            if w.id == pid && w.hit(up_x, up_y) {
+                activated = true;
+            }
+        }
+        assert!(activated, "Button must activate on release inside bounds");
+        assert_eq!(pressed_widget, None);
+
+        // 3. Mouse down inside button, then released OUTSIDE cancels activation
+        pressed_widget = Some(w.id);
+        activated = false;
+        let (cancel_x, cancel_y) = (50, 50); // outside widget
+        if let Some(pid) = pressed_widget.take() {
+            if w.id == pid && w.hit(cancel_x, cancel_y) {
+                activated = true;
+            }
+        }
+        assert!(!activated, "Button must cancel activation when mouse released outside bounds");
+    }
+
+    #[test]
+    fn test_mouse_button_deduplication() {
+        let mut button_down = [false; 5];
+        let mut click_events = 0;
+
+        let sim_process = |idx: usize, pressed: bool, state: &mut [bool; 5], count: &mut usize| {
+            if state[idx] == pressed {
+                return; // duplicate dropped
+            }
+            state[idx] = pressed;
+            *count += 1;
+        };
+
+        // WindowEvent press
+        sim_process(0, true, &mut button_down, &mut click_events);
+        assert_eq!(click_events, 1);
+        assert!(button_down[0]);
+
+        // Duplicate DeviceEvent press for same button
+        sim_process(0, true, &mut button_down, &mut click_events);
+        assert_eq!(click_events, 1, "Duplicate press must be dropped");
+
+        // WindowEvent release
+        sim_process(0, false, &mut button_down, &mut click_events);
+        assert_eq!(click_events, 2);
+        assert!(!button_down[0]);
+
+        // Duplicate DeviceEvent release
+        sim_process(0, false, &mut button_down, &mut click_events);
+        assert_eq!(click_events, 2, "Duplicate release must be dropped");
+    }
+
+    #[test]
+    fn test_letterbox_clear_fog_colors() {
+        let intro_fog: [f32; 3] = [239.0 / 255.0, 50.0 / 255.0, 61.0 / 255.0];
+        let loading_fog: [f32; 3] = [56.0 / 255.0, 40.0 / 255.0, 27.0 / 255.0];
+
+        // Intro clear color must match studio red #EF323D (239, 50, 61)
+        assert!((intro_fog[0] - 239.0 / 255.0).abs() < 1e-6);
+        assert!((intro_fog[1] - 50.0 / 255.0).abs() < 1e-6);
+        assert!((intro_fog[2] - 61.0 / 255.0).abs() < 1e-6);
+
+        // Loading clear color must match darkened dirt brown (56, 40, 27) from ui.rs draw_dirt_background()
+        assert!((loading_fog[0] - 56.0 / 255.0).abs() < 1e-6);
+        assert!((loading_fog[1] - 40.0 / 255.0).abs() < 1e-6);
+        assert!((loading_fog[2] - 27.0 / 255.0).abs() < 1e-6);
     }
 }
 

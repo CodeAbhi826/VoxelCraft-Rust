@@ -856,13 +856,26 @@ impl GuiRenderer {
         for (tex, first, count) in groups {
             let bg = match &self.bind_groups[tex as usize] {
                 Some(bg) => bg,
-                None => continue, // sheet not uploaded — skip cleanly
+                None => {
+                    // sheet not uploaded — skip cleanly (logged: this
+                    // was the silent icon-atlas bug class)
+                    crate::render::report_boot_log(&format!(
+                        "gui quads: SKIPPED {count} quads — no bind group for {tex:?}"
+                    ));
+                    continue;
+                }
             };
             pass.set_bind_group(0, bg, &[]);
-            let first_v = first * 4;
+            // the static index buffer lays out 6 indices per quad
+            // (positions q*6..q*6+6 referencing vertices q*4..q*4+4) —
+            // the draw range must be INDEX positions, i.e. first*6.
+            // (first*4 drew the wrong quads for every group but the
+            // first: single-group screens looked right, the multi-group
+            // Game HUD garbled)
+            let first_i = first * 6;
             let n_idx = count * 6;
             pass.draw_indexed(
-                first_v..first_v + n_idx,
+                first_i..first_i + n_idx,
                 0,
                 0..1,
             );

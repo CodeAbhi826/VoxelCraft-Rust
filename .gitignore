@@ -98,3 +98,4 @@ voxelcraft/scripts/di-extract/
 voxelcraft/scripts/xml-extract/
 voxelcraft/scripts/wl-extract/
 voxelcraft/scripts/x11xcb-extract/
+crates/vc-render/target/

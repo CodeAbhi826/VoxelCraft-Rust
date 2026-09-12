@@ -537,6 +537,113 @@ mod tests {
         a
     }
 
+    /// ground-truth dump: bake a real block with the REAL procedural
+    /// atlas and write the 64x64 icon to target/icon-dump-<block>.png
+    /// (inspection only — run with --nocapture off, then eyeball)
+    #[test]
+    fn dump_baked_icons_for_inspection() {
+        let atlas = crate::textures::generate_atlas();
+        for (block, name) in [(3u16, "dirt"), (1u16, "stone"), (5u16, "planks")] {
+            let mut out = [0u8; 64 * 64 * 4];
+            let ok = bake_block_icon(&atlas, block, &mut out);
+            assert!(ok, "{name} must bake");
+            let dir = format!("{}/target", env!("CARGO_MANIFEST_DIR"));
+            let _ = std::fs::create_dir_all(&dir);
+            let path = format!("{dir}/icon-dump-{name}.png");
+            if let Some(img) = image::RgbaImage::from_raw(64, 64, out.to_vec()) {
+                let _ = img.save(&path);
+            }
+        }
+    }
+
+    /// GPU ground truth: create a real device, run one bake, read the
+    /// atlas cell back and verify pixels landed (pollster is a
+    /// dev-dependency; skipped when no adapter — headless CI safe)
+    #[test]
+    fn gpu_upload_lands_in_the_sampled_cell() {
+        let r = pollster::block_on(async {
+            let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::default());
+            let adapter = instance
+                .request_adapter(&wgpu::RequestAdapterOptions::default())
+                .await?;
+            let (device, queue) = adapter
+                .request_device(&wgpu::DeviceDescriptor::default(), None)
+                .await
+                .ok()?;
+            let atlas = crate::textures::generate_atlas();
+            let mut cache = ItemIconCache::new(&device, &queue, 512);
+            cache.get_or_queue(3); // dirt
+            let baked = cache.run_bakes(&queue, &atlas, 4);
+            assert_eq!(baked, 1);
+            // cell for dirt
+            let cells = cache.ready_cells().clone();
+            let [col, row] = *cells.get(&3)?;
+            // read back the 64x64 cell
+            let dst = device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("readback"),
+                size: wgpu::Extent3d { width: 64, height: 64, depth_or_array_layers: 1 },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            });
+            let mut encoder = device.create_command_encoder(&Default::default());
+            encoder.copy_texture_to_texture(
+                wgpu::ImageCopyTexture {
+                    texture: cache.texture(),
+                    mip_level: 0,
+                    origin: wgpu::Origin3d { x: col as u32 * 64, y: row as u32 * 64, z: 0 },
+                    aspect: wgpu::TextureAspect::All,
+                },
+                wgpu::ImageCopyTexture {
+                    texture: &dst,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                wgpu::Extent3d { width: 64, height: 64, depth_or_array_layers: 1 },
+            );
+            let buf = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("rb-buf"),
+                size: 64 * 64 * 4,
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                mapped_at_creation: false,
+            });
+            encoder.copy_texture_to_buffer(
+                wgpu::ImageCopyTexture {
+                    texture: &dst,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                wgpu::ImageCopyBuffer {
+                    buffer: &buf,
+                    layout: wgpu::ImageDataLayout {
+                        offset: 0,
+                        bytes_per_row: Some(64 * 4),
+                        rows_per_image: Some(64),
+                    },
+                },
+                wgpu::Extent3d { width: 64, height: 64, depth_or_array_layers: 1 },
+            );
+            queue.submit(Some(encoder.finish()));
+            let slice = buf.slice(..);
+            let (tx, rx) = std::sync::mpsc::channel();
+            slice.map_async(wgpu::MapMode::Read, move |r| { let _ = tx.send(r); });
+            device.poll(wgpu::Maintain::Wait);
+            let _ = rx.recv();
+            let data = slice.get_mapped_range().to_vec();
+            buf.unmap();
+            let painted = data.as_chunks::<4>().0.iter().filter(|c| c[3] != 0).count();
+            Some((painted, data.len() / 4))
+        });
+        if let Some((painted, total)) = r {
+            assert!(painted > 200, "cell nearly empty: {painted}/{total} painted");
+        }
+    }
+
     #[test]
     fn cube_icon_bakes_non_empty_with_clear_margin() {
         let atlas = fake_atlas();

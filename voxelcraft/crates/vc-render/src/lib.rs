@@ -5,6 +5,7 @@
 pub mod draw;
 pub mod gpu_mesh;
 pub mod gui;
+pub mod gui_render;
 pub mod panorama;
 pub mod iris;
 pub mod render;

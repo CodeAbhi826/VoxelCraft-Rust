@@ -702,6 +702,10 @@ pub struct GameApp {
     /// (Phase 4). Nothing drew from it in Phase 1 — infrastructure
     /// only, per the phase's "build, validate, sit" contract.
     pub gui_set: vc_render::gui::GuiTextureSet,
+    /// UI-overhaul Phase 3: cached 3D item icons (CPU-baked isometric
+    /// models in a 2048x2048 GPU atlas; LRU 512, 4 bakes/frame).
+    /// Falls back to flat blit_tile sprites for un-baked/unknown blocks.
+    icon_cache: vc_render::item_icon_cache::ItemIconCache,
     pub bank: SoundBank,
     /// §21 data-driven sound-event registry (parsed from sounds::SOUNDS_JSON)
     pub sounds: vc_audio::sounds::SoundRegistry,
@@ -1524,6 +1528,17 @@ impl GameApp {
             }
         ));
 
+        // UI-overhaul Phase 3 (D2/D6): the item-icon cache — CPU-baked
+        // isometric block models into a shared GPU atlas (yaw 45/pitch
+        // 30, VERIFIED w/Model), 4 bakes/frame, LRU 512. Flat
+        // blit_tile stays the fallback for unknown blocks + pop-in
+        // frames.
+        let icon_cache = renderer.create_icon_cache(512);
+        renderer.set_icon_atlas(&icon_cache);
+        vc_render::render::report_boot_log(
+            "item icon cache armed: 2048x2048 atlas, LRU 512, budget 4/frame",
+        );
+
         let mut app = GameApp {
             window,
             renderer,
@@ -1532,6 +1547,7 @@ impl GameApp {
             ui: UiCanvas::new(),
             atlas,
             gui_set,
+            icon_cache,
             bank,
             sounds,
             shader_packs,
@@ -2771,9 +2787,69 @@ impl GameApp {
 
     /// --debug [perf] line: fps envelope, frame/sim ms, chunk pipeline
     /// depths, mob count — the steady-state heartbeat for bug reports.
+    /// Phase 3: queue icons for every item the CURRENT screen can show
+    /// (hotbar 9 + open-container slots + visible picker window). The
+    /// cache dedupes; misses enqueue for baking.
+    fn request_visible_icons(&mut self) {
+        if self.screen != Screen::Game {
+            return; // menus show no items
+        }
+        for s in &self.player.inv.slots[..vc_inventory::inventory::INV_SLOTS.min(9)] {
+            if s.count > 0 && s.block != vc_blocks::blocks::AIR {
+                self.icon_cache.get_or_queue(s.block);
+            }
+        }
+        if self.container.is_some() {
+            let view = self.container_view();
+            for s in view
+                .inv
+                .iter()
+                .chain(view.grid.iter())
+                .chain(view.chest.iter())
+                .chain(std::iter::once(&view.craft_out))
+                .chain(std::iter::once(&view.cursor))
+            {
+                if s.count > 0 && s.block != vc_blocks::blocks::AIR {
+                    self.icon_cache.get_or_queue(s.block);
+                }
+            }
+            if let Some((input, fuel, output, _, _)) = &view.furnace {
+                for s in [input, fuel, output] {
+                    if s.count > 0 && s.block != vc_blocks::blocks::AIR {
+                        self.icon_cache.get_or_queue(s.block);
+                    }
+                }
+            }
+            if let Some((ing, fuel, bottles, _, _)) = &view.brewing {
+                for s in std::iter::once(ing)
+                    .chain(std::iter::once(fuel))
+                    .chain(bottles.iter())
+                {
+                    if s.count > 0 && s.block != vc_blocks::blocks::AIR {
+                        self.icon_cache.get_or_queue(s.block);
+                    }
+                }
+            }
+        }
+        if self.picker_open {
+            // the visible 15x11 window of the creative grid
+            const COLS: usize = 15;
+            const VIS: usize = 11 * COLS;
+            let start = self.picker_scroll * COLS;
+            for &b in vc_blocks::blocks::PICKER_BLOCKS
+                .iter()
+                .skip(start)
+                .take(VIS)
+            {
+                self.icon_cache.get_or_queue(b);
+            }
+        }
+    }
+
     fn dbg_perf_line(&self) -> String {
+        let icon_stats = self.icon_cache.stats();
         format!(
-            "fps {:.0} (avg {:.0} min {:.0} max {:.0}) frame {:.1}ms sim {:.1}ms | chunks meshed {} loaded {} drawn {} gen-queue {} mesh-queue {} | mobs {} edits {}",
+            "fps {:.0} (avg {:.0} min {:.0} max {:.0}) frame {:.1}ms sim {:.1}ms | chunks meshed {} loaded {} drawn {} gen-queue {} mesh-queue {} | mobs {} edits {} | icons {} (h/m/e {}/{}/{}) gui-quads {}",
             self.fps,
             self.fps_avg,
             self.fps_min,
@@ -2786,7 +2862,12 @@ impl GameApp {
             self.gen_inflight.len(),
             self.mesh_inflight.len(),
             self.sim.mobs.len(),
-            self.edits
+            self.edits,
+            self.icon_cache.len(),
+            icon_stats.0,
+            icon_stats.1,
+            icon_stats.2,
+            self.stats.gui_quads
         )
     }
 
@@ -15454,6 +15535,25 @@ impl GameApp {
             );
         }
 
+        // UI-overhaul Phase 3 (D6 amortization): bake up to 4 queued
+        // item icons this frame and publish the ready-cell snapshot to
+        // the canvas when new icons landed. The quad pass then draws
+        // them OVER the flat fallback tiles (pop-in on a later frame).
+        {
+            self.request_visible_icons();
+            let budget = self.icon_cache.bake_budget_per_frame;
+            let baked = self
+                .icon_cache
+                .run_bakes(self.renderer.queue(), &self.atlas, budget);
+            if baked > 0 {
+                vc_render::render::report_debug_log(
+                    "perf",
+                    &format!("item icons: baked {baked} this frame"),
+                );
+                self.ui
+                    .set_icon_cells(std::sync::Arc::new(self.icon_cache.ready_cells().clone()));
+            }
+        }
         self.stats = self.renderer.render(
             &cam,
             &sky,

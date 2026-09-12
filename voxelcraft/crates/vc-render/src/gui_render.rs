@@ -53,6 +53,8 @@ pub enum QuadTexture {
     Dirt,
     /// ignore texture, use tint only (1x1 white binding)
     Solid,
+    /// Phase 3: the 64px-cell item icon atlas (2048x2048)
+    IconAtlas,
 }
 
 /// One textured quad. `src` is in TEXTURE pixels (integer source rect);
@@ -329,6 +331,20 @@ impl GuiFrame {
         );
     }
 
+    /// Phase 3: one 3D item icon (32x32 dst from a 64x64 atlas cell).
+    /// Drawn OVER the flat fallback tile (same rect) — the icon pops in
+    /// once baked; until then the blit_tile shows through.
+    pub fn icon_quad(&mut self, x: i32, y: i32, cell: [u8; 2]) {
+        let (col, row) = (cell[0] as i32, cell[1] as i32);
+        let c64 = crate::item_icon_cache::ICON_CELL_PX as i32;
+        self.push(
+            QuadTexture::IconAtlas,
+            Rect::new(x, y, 32, 32),
+            Rect::new(col * c64, row * c64, c64, c64),
+            WHITE,
+        );
+    }
+
     /// Hotbar background: one stretched 182x22 quad (364x44).
     pub fn hotbar_background(&mut self, x: i32, y: i32) {
         self.push(
@@ -453,8 +469,8 @@ impl GuiFrame {
 pub struct GuiRenderer {
     pipe: wgpu::RenderPipeline,
     /// bind groups indexed by QuadTexture discriminant order
-    bind_groups: [Option<wgpu::BindGroup>; 9],
-    sheet_dims: [(u32, u32); 9],
+    bind_groups: [Option<wgpu::BindGroup>; 10],
+    sheet_dims: [(u32, u32); 10],
     vb: Option<wgpu::Buffer>,
     ib: wgpu::Buffer,
     capacity: u32,
@@ -555,7 +571,7 @@ impl GuiRenderer {
         Ok(GuiRenderer {
             pipe,
             bind_groups: std::array::from_fn(|_| None),
-            sheet_dims: [(1, 1); 9],
+            sheet_dims: [(1, 1); 10],
             vb: None,
             ib,
             capacity: 0,
@@ -708,6 +724,44 @@ impl GuiRenderer {
         });
         self.bind_groups[QuadTexture::Solid as usize] = Some(bg);
         Ok(())
+    }
+
+    /// Phase 3: bind the item-icon atlas (owned by the game's
+    /// ItemIconCache) as the QuadTexture::IconAtlas sheet.
+    pub fn set_icon_atlas(
+        &mut self,
+        device: &wgpu::Device,
+        ui_bgl: &wgpu::BindGroupLayout,
+        ui_buf: &wgpu::Buffer,
+        sampler: &wgpu::Sampler,
+        texture: &wgpu::Texture,
+    ) {
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("gui-icon-bg"),
+            layout: ui_bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: ui_buf,
+                        offset: 0,
+                        size: None,
+                    }),
+                },
+            ],
+        });
+        self.bind_groups[QuadTexture::IconAtlas as usize] = Some(bg);
+        self.sheet_dims[QuadTexture::IconAtlas as usize] =
+            (crate::item_icon_cache::ICON_ATLAS_PX, crate::item_icon_cache::ICON_ATLAS_PX);
     }
 
     /// clear the staging vertices (start of frame)

@@ -733,6 +733,10 @@ pub struct UiCanvas {
     /// the same draw methods that raster chrome (they always push;
     /// the Renderer decides whether to draw them).
     pub gui_frame: crate::gui_render::GuiFrame,
+    /// UI-overhaul Phase 3: ready 3D icons (block id -> icon-atlas cell),
+    /// snapshotted from the game's ItemIconCache whenever a new icon
+    /// finishes baking. None/absent = flat blit_tile fallback.
+    pub icon_cells: Option<std::sync::Arc<std::collections::HashMap<u16, [u8; 2]>>>,
 }
 
 impl Default for UiCanvas {
@@ -749,7 +753,15 @@ impl UiCanvas {
             widget_scale: 1.0,
             chrome_enabled: true,
             gui_frame: crate::gui_render::GuiFrame::default(),
+            icon_cells: None,
         }
+    }
+
+    /// Phase 3: install the ready-icon snapshot (called by the game
+    /// whenever the icon cache's version moves)
+    pub fn set_icon_cells(&mut self, cells: std::sync::Arc<std::collections::HashMap<u16, [u8; 2]>>) {
+        self.icon_cells = Some(cells);
+        self.dirty = true;
     }
 
     pub fn clear(&mut self) {
@@ -1815,6 +1827,17 @@ impl UiCanvas {
                 &mut self.px,
                 UI_W,
             );
+            // Phase 3: the cached 3D icon rides ON TOP of the flat tile
+            // (same 32x32 rect, drawn by the quad pass) — the flat tile
+            // is the pop-in placeholder and the permanent fallback for
+            // blocks the baker cannot model
+            if let Some(cell) = self
+                .icon_cells
+                .as_ref()
+                .and_then(|m| m.get(&b).copied())
+            {
+                self.gui_frame.icon_quad(sx + 2, sy + 2, cell);
+            }
         }
         if s.count > 1 {
             let label = s.count.to_string();

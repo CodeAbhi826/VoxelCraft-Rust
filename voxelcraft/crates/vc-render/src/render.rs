@@ -3893,6 +3893,30 @@ impl Renderer {
         self.gui_quads_enabled && self.gui.is_some()
     }
 
+    /// Phase 3 (D2): create the item-icon cache (2048x2048 atlas) using
+    /// the Renderer's device/queue.
+    pub fn create_icon_cache(&self, max_entries: usize) -> crate::item_icon_cache::ItemIconCache {
+        crate::item_icon_cache::ItemIconCache::new(&self.device, &self.queue, max_entries)
+    }
+
+    /// Phase 3: bind the icon cache's atlas into the quad pass.
+    pub fn set_icon_atlas(&mut self, cache: &crate::item_icon_cache::ItemIconCache) {
+        if let Some(gui) = self.gui.as_mut() {
+            gui.set_icon_atlas(
+                &self.device,
+                &self.ui_bgl,
+                &self.ui_buf,
+                &self.ui_samp,
+                cache.texture(),
+            );
+        }
+    }
+
+    /// the shared queue handle (icon bakes upload through it)
+    pub fn queue(&self) -> &wgpu::Queue {
+        &self.queue
+    }
+
     /// drop all GPU chunk meshes (full re-mesh, e.g. smooth-lighting toggle)
     pub fn clear_meshes(&mut self) {
         self.chunks.clear();

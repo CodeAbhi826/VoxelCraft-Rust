@@ -10,7 +10,7 @@
 //!   1-byte sector count; zero = chunk absent) followed by 1024
 //!   big-endian u32 timestamps = 8 KiB = sectors 0 and 1;
 //! * chunk payload record = 4-byte big-endian length (of what follows)
-//!   + 1-byte compression type + `length − 1` compressed bytes;
+//!   with 1-byte compression type and `length − 1` compressed bytes;
 //!   types: 1 = GZip, **2 = zlib (what vanilla 1.16.5 writes)**, 3 = none;
 //! * chunk slot index = `(x & 31) + 32 * (z & 31)`.
 //!
@@ -192,8 +192,9 @@ pub fn write_chunk(world_dir: &Path, cx: i32, cz: i32, nbt_bytes: &[u8]) -> std:
 /// mid-save leaves either the old or the new file, never a torn header.
 pub fn write_chunks(world_dir: &Path, entries: &[(i32, i32, Vec<u8>)]) -> std::io::Result<()> {
     // group by region file (r.X.Z.mca), deterministic order
-    let mut by_region: std::collections::BTreeMap<(i32, i32), Vec<(i32, i32, &[u8])>> =
-        std::collections::BTreeMap::new();
+    /// region coords → that region's (cx, cz, nbt) entries
+    type ByRegion<'a> = std::collections::BTreeMap<(i32, i32), Vec<(i32, i32, &'a [u8])>>;
+    let mut by_region: ByRegion<'_> = ByRegion::new();
     for (cx, cz, nbt) in entries {
         let key = (cx.div_euclid(32), cz.div_euclid(32));
         by_region.entry(key).or_default().push((*cx, *cz, nbt.as_slice()));
@@ -218,7 +219,7 @@ fn rewrite_region(path: &Path, chunks: &[(i32, i32, &[u8])]) -> std::io::Result<
     let mut timestamps = vec![0u32; CHUNKS_PER_SIDE * CHUNKS_PER_SIDE];
     let mut existing: Vec<u8> = Vec::new();
     if path.exists() {
-        existing = fs::read(&path)?;
+        existing = fs::read(path)?;
         if existing.len() >= 2 * SECTOR_BYTES {
             for slot in 0..CHUNKS_PER_SIDE * CHUNKS_PER_SIDE {
                 let loc = &existing[slot * 4..slot * 4 + 4];
@@ -310,7 +311,7 @@ fn rewrite_region(path: &Path, chunks: &[(i32, i32, &[u8])]) -> std::io::Result<
     // 4. atomic replace
     let tmp = path.with_extension("mca.tmp");
     fs::write(&tmp, &out)?;
-    fs::rename(&tmp, &path)?;
+    fs::rename(&tmp, path)?;
     Ok(())
 }
 

@@ -900,8 +900,8 @@ pub const V2_STATE_TO_BLOCK: [u16; V2_COUNT as usize] = [
 /// Returns None for pre-V2 blocks.
 #[inline]
 pub fn v2_state(b: u16) -> Option<u16> {
-    if (200..200 + V2_COUNT as u16).contains(&b) {
-        Some(V2_STATE_BASE + (b - 200) as u16)
+    if (200..200 + V2_COUNT).contains(&b) {
+        Some(V2_STATE_BASE + (b - 200))
     } else {
         None
     }
@@ -958,8 +958,8 @@ pub const V3_STATE_TO_BLOCK: [u16; V3_COUNT as usize] = [
 
 #[inline]
 pub fn v3_state(b: u16) -> Option<u16> {
-    if (243..243 + V3_COUNT as u16).contains(&b) {
-        Some(V3_STATE_BASE + (b - 243) as u16)
+    if (243..243 + V3_COUNT).contains(&b) {
+        Some(V3_STATE_BASE + (b - 243))
     } else {
         None
     }
@@ -1009,8 +1009,8 @@ pub const V4_STATE_TO_BLOCK: [u16; V4_COUNT as usize] = [
 
 #[inline]
 pub fn v4_state(b: u16) -> Option<u16> {
-    if (262..262 + V4_COUNT as u16).contains(&b) {
-        Some(V4_STATE_BASE + (b - 262) as u16)
+    if (262..262 + V4_COUNT).contains(&b) {
+        Some(V4_STATE_BASE + (b - 262))
     } else {
         None
     }
@@ -1129,8 +1129,8 @@ pub const V5_STATE_TO_BLOCK: [u16; V5_COUNT as usize] = [
 
 #[inline]
 pub fn v5_state(b: u16) -> Option<u16> {
-    if (272..272 + V5_COUNT as u16).contains(&b) {
-        Some(V5_STATE_BASE + (b - 272) as u16)
+    if (272..272 + V5_COUNT).contains(&b) {
+        Some(V5_STATE_BASE + (b - 272))
     } else {
         None
     }
@@ -1149,8 +1149,8 @@ pub const V6_STATE_TO_BLOCK: [u16; V6_COUNT as usize] = [
 
 #[inline]
 pub fn v6_state(b: u16) -> Option<u16> {
-    if (276..276 + V6_COUNT as u16).contains(&b) {
-        Some(V6_STATE_BASE + (b - 276) as u16)
+    if (276..276 + V6_COUNT).contains(&b) {
+        Some(V6_STATE_BASE + (b - 276))
     } else {
         None
     }
@@ -1183,8 +1183,8 @@ pub const V7_STATE_TO_BLOCK: [u16; V7_COUNT as usize] = [
 
 #[inline]
 pub fn v7_state(b: u16) -> Option<u16> {
-    if (282..282 + V7_COUNT as u16).contains(&b) {
-        Some(V7_STATE_BASE + (b - 282) as u16)
+    if (282..282 + V7_COUNT).contains(&b) {
+        Some(V7_STATE_BASE + (b - 282))
     } else {
         None
     }
@@ -1385,16 +1385,16 @@ pub const V9_STATE_TO_BLOCK: [u16; V9_COUNT as usize] = [
 #[inline]
 pub fn v9_state(b: u16) -> Option<u16> {
     if (CORAL_BLOCK_BASE..=DEAD_CORAL_FAN_END).contains(&b) {
-        Some(V9_STATE_BASE + (b - CORAL_BLOCK_BASE) as u16)
+        Some(V9_STATE_BASE + (b - CORAL_BLOCK_BASE))
     } else if b == SEA_PICKLE {
         // default placement: one pickle
         Some(V9_STATE_BASE + 30)
     } else if (BLUE_ICE..=CONDUIT).contains(&b) {
-        Some(V9_STATE_BASE + 34 + (b - BLUE_ICE) as u16)
+        Some(V9_STATE_BASE + 34 + (b - BLUE_ICE))
     } else if b == TURTLE_EGG {
         Some(V9_STATE_BASE + 39)
     } else if (HEART_OF_THE_SEA..=SPAWN_EGG_TURTLE).contains(&b) {
-        Some(V9_STATE_BASE + 42 + (b - HEART_OF_THE_SEA) as u16)
+        Some(V9_STATE_BASE + 42 + (b - HEART_OF_THE_SEA))
     } else {
         None
     }
@@ -1583,7 +1583,7 @@ pub const HONEYCOMB_BLOCK: u16 = 435;
 /// waxing + candles are 1.17 — out of the 1.16.5 window.)
 pub const HONEYCOMB: u16 = 436;
 /// 1.15: the honey bottle — a drinkable food item: restores 6 hunger
-/// + 1.2 saturation, REMOVES Poison (and only Poison), returns the
+/// and 1.2 saturation, REMOVES Poison (and only Poison), returns the
 /// glass bottle when drunk. Obtained by using a glass bottle on a
 /// honey_level-5 nest/hive. Craft ingredient for the honey block.
 pub const HONEY_BOTTLE: u16 = 437;
@@ -1991,7 +1991,7 @@ pub fn is_v12_state(s: u16) -> bool {
 /// harvested."
 #[inline]
 pub fn honey_level(s: u16) -> u8 {
-    if is_v12_state(s) && (s as u16) < V12_STATE_BASE + 12 {
+    if is_v12_state(s) && s < V12_STATE_BASE + 12 {
         let off = s - V12_STATE_BASE;
         if off >= 6 {
             (off - 6) as u8
@@ -2018,7 +2018,7 @@ pub fn hive_state(b: u16, level: u8) -> u16 {
 /// form)?
 #[inline]
 pub fn hive_full(s: u16) -> bool {
-    honey_level(s) == 5 && is_v12_state(s) && (s as u16) < V12_STATE_BASE + 12
+    honey_level(s) == 5 && is_v12_state(s) && s < V12_STATE_BASE + 12
 }
 
 // ---- 1.16 (Nether Update, PART 1): the V13 state window ----
@@ -2593,9 +2593,9 @@ pub fn v8_state(b: u16) -> Option<u16> {
     if (GLAZED_TERRACOTTA_BASE..=GLAZED_TERRACOTTA_END).contains(&b) {
         Some(glazed_terracotta_state((b - GLAZED_TERRACOTTA_BASE) as u8, 0))
     } else if (CONCRETE_BASE..=CONCRETE_POWDER_END).contains(&b) {
-        Some(V8_STATE_BASE + (b - CONCRETE_BASE) as u16)
+        Some(V8_STATE_BASE + (b - CONCRETE_BASE))
     } else if (SPAWN_EGG_PARROT..=COOKIE).contains(&b) {
-        Some(V8_STATE_BASE + 96 + (b - SPAWN_EGG_PARROT) as u16)
+        Some(V8_STATE_BASE + 96 + (b - SPAWN_EGG_PARROT))
     } else {
         None
     }
@@ -2930,7 +2930,7 @@ pub fn daylight_sensor_state(p: u8) -> u16 {
 #[inline]
 pub fn daylight_sensor_power(s: u16) -> u16 {
     if (DAYLIGHT_POWER_BASE..=DAYLIGHT_POWER_END).contains(&s) {
-        (s - DAYLIGHT_POWER_BASE + 1) as u16
+        s - DAYLIGHT_POWER_BASE + 1
     } else {
         0
     }
@@ -2959,9 +2959,9 @@ pub fn plate_state(block: u16, p: u8) -> u16 {
 #[inline]
 pub fn plate_power(s: u16) -> u16 {
     if (LIGHT_PLATE_POWER_BASE..=LIGHT_PLATE_POWER_END).contains(&s) {
-        (s - LIGHT_PLATE_POWER_BASE + 1) as u16
+        s - LIGHT_PLATE_POWER_BASE + 1
     } else if (HEAVY_PLATE_POWER_BASE..=HEAVY_PLATE_POWER_END).contains(&s) {
-        (s - HEAVY_PLATE_POWER_BASE + 1) as u16
+        s - HEAVY_PLATE_POWER_BASE + 1
     } else {
         0
     }
@@ -2971,7 +2971,7 @@ pub fn plate_power(s: u16) -> u16 {
 #[inline]
 pub fn e3_item_block_state(b: u16) -> Option<u16> {
     if (NETHER_QUARTZ..=SADDLE).contains(&b) {
-        Some(NETHER_QUARTZ_STATE + (b - NETHER_QUARTZ) as u16)
+        Some(NETHER_QUARTZ_STATE + (b - NETHER_QUARTZ))
     } else {
         None
     }
@@ -2980,7 +2980,7 @@ pub fn e3_item_block_state(b: u16) -> Option<u16> {
 #[inline]
 pub fn e3_item_state_block(s: u16) -> Option<u16> {
     if (NETHER_QUARTZ_STATE..=SADDLE_STATE).contains(&s) {
-        Some(NETHER_QUARTZ + (s - NETHER_QUARTZ_STATE) as u16)
+        Some(NETHER_QUARTZ + (s - NETHER_QUARTZ_STATE))
     } else {
         None
     }
@@ -2990,7 +2990,7 @@ pub fn e3_item_state_block(s: u16) -> Option<u16> {
 #[inline]
 pub fn e3_egg_block_state(b: u16) -> Option<u16> {
     if (E3_SPAWN_EGG_BASE..=E3_SPAWN_EGG_END).contains(&b) {
-        Some(E3_EGG_STATE_BASE + (b - E3_SPAWN_EGG_BASE) as u16)
+        Some(E3_EGG_STATE_BASE + (b - E3_SPAWN_EGG_BASE))
     } else {
         None
     }
@@ -2999,7 +2999,7 @@ pub fn e3_egg_block_state(b: u16) -> Option<u16> {
 #[inline]
 pub fn e3_egg_state_block(s: u16) -> Option<u16> {
     if (E3_EGG_STATE_BASE..=E3_EGG_STATE_END).contains(&s) {
-        Some(E3_SPAWN_EGG_BASE + (s - E3_EGG_STATE_BASE) as u16)
+        Some(E3_SPAWN_EGG_BASE + (s - E3_EGG_STATE_BASE))
     } else {
         None
     }
@@ -3022,7 +3022,7 @@ pub fn stained_terracotta_state(color: u8) -> u16 {
 #[inline]
 pub fn stained_terracotta_color(s: u16) -> u16 {
     if (TERRACOTTA_STAINED_STATE_BASE..=TERRACOTTA_STAINED_STATE_END).contains(&s) {
-        (s - TERRACOTTA_STAINED_STATE_BASE) as u16
+        s - TERRACOTTA_STAINED_STATE_BASE
     } else {
         255
     }
@@ -3044,7 +3044,7 @@ pub fn lava_level(s: u16) -> u16 {
     if s == LAVA_STATE {
         0
     } else if (LAVA_FLOW_BASE..=LAVA_FLOW_END).contains(&s) {
-        (s - LAVA_FLOW_BASE + 1) as u16
+        s - LAVA_FLOW_BASE + 1
     } else {
         255
     }
@@ -3072,7 +3072,7 @@ pub fn tripwire_hook_decode(s: u16) -> (usize, bool) {
 #[inline]
 pub fn e2_item_block_state(b: u16) -> Option<u16> {
     if (EMERALD..=PUMPKIN_PIE).contains(&b) {
-        Some(E2_ITEM_STATE_BASE + (b - EMERALD) as u16)
+        Some(E2_ITEM_STATE_BASE + (b - EMERALD))
     } else {
         None
     }
@@ -3081,7 +3081,7 @@ pub fn e2_item_block_state(b: u16) -> Option<u16> {
 #[inline]
 pub fn e2_item_state_block(s: u16) -> Option<u16> {
     if (E2_ITEM_STATE_BASE..=E2_ITEM_STATE_END).contains(&s) {
-        Some(EMERALD + (s - E2_ITEM_STATE_BASE) as u16)
+        Some(EMERALD + (s - E2_ITEM_STATE_BASE))
     } else {
         None
     }
@@ -3091,7 +3091,7 @@ pub fn e2_item_state_block(s: u16) -> Option<u16> {
 #[inline]
 pub fn item_block_state(b: u16) -> Option<u16> {
     if (END_CRYSTAL..=SPAWN_EGG_MAX).contains(&b) {
-        Some(ITEM_STATE_BASE + (b - END_CRYSTAL) as u16)
+        Some(ITEM_STATE_BASE + (b - END_CRYSTAL))
     } else {
         None
     }
@@ -3100,7 +3100,7 @@ pub fn item_block_state(b: u16) -> Option<u16> {
 #[inline]
 pub fn item_state_block(s: u16) -> Option<u16> {
     if (ITEM_STATE_BASE..=ITEM_STATE_END).contains(&s) {
-        Some(END_CRYSTAL + (s - ITEM_STATE_BASE) as u16)
+        Some(END_CRYSTAL + (s - ITEM_STATE_BASE))
     } else {
         None
     }
@@ -3137,7 +3137,7 @@ pub const DARK_OAK_LOG_Z: u16 = 446;
 /// Phase E1: lamp/wart/spawner-blaze/frame-eye + dedicated world-block and
 /// item states (140..=141, 236..=253, 256..=278)
 /// Phase E2: anvil/beacon/wall/ender-chest/frame/tripwire/skull/command
-/// + E2 items + eggs 17..=20 + lava (283..=314)
+/// with E2 items, eggs 17..=20 and lava (283..=314)
 /// Phase E3: quartz family + stained terracotta (16) + carpets (5) +
 /// hay/sensor/trapped-chest/plates/redstone-block + quartz/lead/saddle
 /// items + eggs 20..=22 + the POWER-state ladders (317..=399)
@@ -3369,7 +3369,7 @@ pub fn full_facing_vec(f: usize) -> [i32; 3] {
 #[inline]
 pub fn wire_power(s: u16) -> u16 {
     if is_wire_power(s) {
-        (s - WIRE_POWER_BASE) as u16
+        s - WIRE_POWER_BASE
     } else {
         255
     }
@@ -3493,7 +3493,7 @@ pub fn default_state(b: u16) -> u16 {
         b if (STAINED_TERRACOTTA_BASE..=STAINED_TERRACOTTA_END).contains(&b) => {
             stained_terracotta_state((b - STAINED_TERRACOTTA_BASE) as u8)
         }
-        b if (CARPET_WHITE..=CARPET_BLACK).contains(&b) => CARPET_STATE_BASE + (b - CARPET_WHITE) as u16,
+        b if (CARPET_WHITE..=CARPET_BLACK).contains(&b) => CARPET_STATE_BASE + (b - CARPET_WHITE),
         HAY_BALE => HAY_BALE_STATE,
         DAYLIGHT_SENSOR => DAYLIGHT_SENSOR_STATE,
         TRAPPED_CHEST => TRAPPED_CHEST_STATE,
@@ -3501,17 +3501,17 @@ pub fn default_state(b: u16) -> u16 {
         HEAVY_WEIGHTED_PLATE => HEAVY_PLATE_STATE,
         REDSTONE_BLOCK => REDSTONE_BLOCK_STATE,
         // ---- F-series defaults (V2..V5 windows, merge-renumbered 2026-09-06) ----
-        b if (200..200 + V2_COUNT as u16).contains(&b) => {
-            V2_STATE_BASE + (b - 200) as u16
+        b if (200..200 + V2_COUNT).contains(&b) => {
+            V2_STATE_BASE + (b - 200)
         }
-        b if (243..243 + V3_COUNT as u16).contains(&b) => {
-            V3_STATE_BASE + (b - 243) as u16
+        b if (243..243 + V3_COUNT).contains(&b) => {
+            V3_STATE_BASE + (b - 243)
         }
-        b if (276..276 + V6_COUNT as u16).contains(&b) => {
-            V6_STATE_BASE + (b - 276) as u16
+        b if (276..276 + V6_COUNT).contains(&b) => {
+            V6_STATE_BASE + (b - 276)
         }
-        b if (282..282 + V7_COUNT as u16).contains(&b) => {
-            V7_STATE_BASE + (b - 282) as u16
+        b if (282..282 + V7_COUNT).contains(&b) => {
+            V7_STATE_BASE + (b - 282)
         }
         // 1.12 (World of Color Update): concrete/powder/egg/dyes/seeds/
         // cookie are 1:1; glazed terracotta defaults to facing 0
@@ -3545,11 +3545,11 @@ pub fn default_state(b: u16) -> u16 {
         b if v14_state(b).is_some() => v14_state(b).unwrap(),
         // the completeness audit: V15 identity item states
         b if v15_state(b).is_some() => v15_state(b).unwrap(),
-        b if (262..262 + V4_COUNT as u16).contains(&b) => {
-            V4_STATE_BASE + (b - 262) as u16
+        b if (262..262 + V4_COUNT).contains(&b) => {
+            V4_STATE_BASE + (b - 262)
         }
-        b if (272..272 + V5_COUNT as u16).contains(&b) => {
-            V5_STATE_BASE + (b - 272) as u16
+        b if (272..272 + V5_COUNT).contains(&b) => {
+            V5_STATE_BASE + (b - 272)
         }
         OAK_SLAB => 63,     // PROP_BLOCKS[0].base_state (half=bottom)
         COBBLE_STAIRS => 65, // base_state (facing=north, half=bottom)
@@ -3561,7 +3561,7 @@ pub fn default_state(b: u16) -> u16 {
             .or_else(|| e2_item_block_state(b))
             .or_else(|| e3_item_block_state(b))
             .or_else(|| e3_egg_block_state(b))
-            .unwrap_or(b as u16),
+            .unwrap_or(b),
     }
 }
 
@@ -3574,10 +3574,10 @@ pub fn is_water_flow(s: u16) -> bool {
 /// water level of a state: 0 = source, 1..7 = flowing, 255 = not water
 #[inline]
 pub fn water_level(s: u16) -> u16 {
-    if s == WATER as u16 {
+    if s == WATER {
         0
     } else if is_water_flow(s) {
-        (s - WATER_FLOW_BASE + 1) as u16
+        s - WATER_FLOW_BASE + 1
     } else {
         255
     }
@@ -3587,9 +3587,9 @@ pub fn water_level(s: u16) -> u16 {
 #[inline]
 pub fn water_state(level: u8) -> u16 {
     if level == 0 {
-        WATER as u16
+        WATER
     } else {
-        (WATER_FLOW_BASE + level.min(7) as u16 - 1) as u16
+        WATER_FLOW_BASE + level.min(7) as u16 - 1
     }
 }
 
@@ -3789,7 +3789,7 @@ pub fn state_block(s: u16) -> u16 {
             return stained_terracotta((s - TERRACOTTA_STAINED_STATE_BASE) as u8)
         }
         s if (CARPET_STATE_BASE..=CARPET_STATE_END).contains(&s) => {
-            return CARPET_BASE + (s - CARPET_STATE_BASE) as u16
+            return CARPET_BASE + (s - CARPET_STATE_BASE)
         }
         HAY_BALE_STATE => return HAY_BALE,
         DAYLIGHT_SENSOR_STATE => return DAYLIGHT_SENSOR,
@@ -3920,7 +3920,7 @@ pub fn state_block(s: u16) -> u16 {
         OAK_LOG_X | OAK_LOG_Z => OAK_LOG,
         BIRCH_LOG_X | BIRCH_LOG_Z => BIRCH_LOG,
         SPRUCE_LOG_X | SPRUCE_LOG_Z => SPRUCE_LOG,
-        _ => s as u16, // identity for 0..=56
+        _ => s, // identity for 0..=56
     }
 }
 
@@ -4139,7 +4139,7 @@ pub fn is_model_state(s: u16) -> bool {
 /// true if this block id has property-driven model states
 #[inline]
 pub fn is_model_block(b: u16) -> bool {
-    b >= OAK_SLAB && b <= OAK_FENCE
+    (OAK_SLAB..=OAK_FENCE).contains(&b)
 }
 
 /// per-state tiles: [top(+Y), bottom(−Y), side_x(±X), side_z(±Z)].
@@ -4402,7 +4402,7 @@ pub fn log_axis_state(block: u16, axis: u8) -> u16 {
         (ACACIA_LOG, 2) => ACACIA_LOG_Z,
         (DARK_OAK_LOG, 0) => DARK_OAK_LOG_X,
         (DARK_OAK_LOG, 2) => DARK_OAK_LOG_Z,
-        _ => block as u16,
+        _ => block,
     }
 }
 
@@ -4814,8 +4814,8 @@ pub const FIRE: u16 = 506;
 // Tutorial:Crop_farming — see scripts/backlog_page_*.json) ----
 /// farmland — created by a hoe on dirt/grass (moisture 0..7 state row;
 /// >0 = hydrated, VERIFIED w/Farmland §Hydration: water "up to four
-/// blocks away horizontally (including diagonally)... at the same level
-/// or one block above"; dehydrated+empty farmland decays to dirt §Decay).
+/// > blocks away horizontally (including diagonally)... at the same level
+/// > or one block above"; dehydrated+empty farmland decays to dirt §Decay).
 pub const FARMLAND: u16 = 507;
 /// wheat crop — 8 growth stages (age 0..7, "Fully grown" at 7,
 /// VERIFIED w/Wheat_Crops §Block states: age 0-7).
@@ -5087,10 +5087,9 @@ pub fn state_emissive(s: u16) -> u8 {
 #[inline]
 pub fn wart_age(s: u16) -> u16 {
     if (WART_STATE_BASE..=WART_STATE_END).contains(&s) {
-        (s - WART_STATE_BASE) as u16
-    } else if state_block(s) == NETHER_WART {
-        0
+        s - WART_STATE_BASE
     } else {
+        // a non-crop nether-wart state (or anything else) is age 0
         0
     }
 }
@@ -5111,6 +5110,10 @@ pub struct BlockDef {
     pub sound: SoundFamily,
 }
 
+// 8 fields, one per BlockDef column — the table below reads far
+// better with positional args than a builder; the lint is silenced
+// deliberately (same call site count as BLOCK_TABLE).
+#[allow(clippy::too_many_arguments)]
 const fn d(
     name: &'static str,
     tiles: [u16; 3],
@@ -5124,7 +5127,7 @@ const fn d(
     BlockDef { name, tiles, solid, opaque, cross, fluid, emissive, sound }
 }
 
-pub const BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
+pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Air", [0, 0, 0], false, false, false, false, 0, SoundFamily::None),
     d("Grass Block", [TILE_GRASS_TOP, TILE_DIRT, TILE_GRASS_SIDE], true, true, false, false, 0, SoundFamily::Grass),
     d("Dirt", [TILE_DIRT, TILE_DIRT, TILE_DIRT], true, true, false, false, 0, SoundFamily::Dirt),

@@ -44,7 +44,7 @@ fn water_at(world: &World, x: i32, y: i32, z: i32) -> Option<u16> {
 /// is a documented delta — we stop at plants)
 #[inline]
 fn flowable(s: u16) -> bool {
-    s == AIR as u16
+    s == AIR
 }
 
 /// schedule a fluid/gravity update for a position and its 6 neighbors
@@ -132,7 +132,7 @@ pub fn water_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, 
         match feed {
             None => {
                 // no feeder: the flow drains away
-                world.set_block_state(x, y, z, AIR as u16);
+                world.set_block_state(x, y, z, AIR);
                 on_block_changed(sched, world, x, y, z);
                 return;
             }
@@ -147,7 +147,7 @@ pub fn water_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, 
                 let target = (f + 1).min(8);
                 if target > 7 {
                     // feed too weak — decay
-                    world.set_block_state(x, y, z, AIR as u16);
+                    world.set_block_state(x, y, z, AIR);
                     on_block_changed(sched, world, x, y, z);
                     return;
                 }
@@ -269,7 +269,7 @@ pub fn lava_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z
         }
         match feed {
             None => {
-                world.set_block_state(x, y, z, AIR as u16);
+                world.set_block_state(x, y, z, AIR);
                 on_block_changed(sched, world, x, y, z);
                 return;
             }
@@ -284,7 +284,7 @@ pub fn lava_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z
                 let target = f + drop as u16;
                 if target > 7 {
                     // too weak: decay
-                    world.set_block_state(x, y, z, AIR as u16);
+                    world.set_block_state(x, y, z, AIR);
                     on_block_changed(sched, world, x, y, z);
                     return;
                 }
@@ -351,7 +351,7 @@ pub fn gravity_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32
     }
     let below = state_block(world.get_state(x, y - 1, z));
     if below == AIR || below == WATER || below == LAVA {
-        world.set_block_state(x, y, z, AIR as u16);
+        world.set_block_state(x, y, z, AIR);
         world.set_block_state(x, y - 1, z, s);
         on_block_changed(sched, world, x, y, z);
         on_block_changed(sched, world, x, y - 1, z);
@@ -414,7 +414,7 @@ pub fn random_plant_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y
             // die: opaque block directly above (vanilla turns it to dirt)
             let above = state_block(world.get_state(x, y + 1, z));
             if is_opaque(above) {
-                world.set_block_state(x, y, z, DIRT as u16);
+                world.set_block_state(x, y, z, DIRT);
                 on_block_changed(sched, world, x, y, z);
             }
         }
@@ -436,7 +436,7 @@ pub fn random_plant_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y
                     n == GRASS || n == SNOW_GRASS
                 });
                 if grassy {
-                    world.set_block_state(x, y, z, GRASS as u16);
+                    world.set_block_state(x, y, z, GRASS);
                     on_block_changed(sched, world, x, y, z);
                 }
             }
@@ -453,7 +453,7 @@ pub fn random_plant_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y
         MYCELIUM => {
             let above = state_block(world.get_state(x, y + 1, z));
             if is_opaque(above) {
-                world.set_block_state(x, y, z, DIRT as u16);
+                world.set_block_state(x, y, z, DIRT);
                 on_block_changed(sched, world, x, y, z);
             }
         }
@@ -593,8 +593,8 @@ fn has_hydrating_water(world: &World, x: i32, y: i32, z: i32) -> bool {
 /// live 2026-09-09 w/Tutorial:Crop_farming §Growth rate:
 /// * light ≥ 9 AT the plant block ("growth requires a light level of
 ///   at least 9 at the plant block, not in the block above it")
-/// * speed level = 2 (dry farmland below) or 4 (hydrated)
-///   + 0.25 per surrounding dry farmland / 0.75 per hydrated (the 8
+/// * speed level = 2 (dry farmland below) or 4 (hydrated), adding
+///   0.25 per surrounding dry farmland / 0.75 per hydrated (the 8
 ///   cells of the 3×3 around the below block)
 /// * crowding: same crop on a diagonal, OR same crop in BOTH the N-S
 ///   and E-W axes → speed level HALVED ("If the same crop is planted
@@ -652,8 +652,8 @@ fn grow_crop(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z: i3
     // roll to VARY tick to tick or a field would freeze forever on a
     // bad hash draw. Mixing sched.now() keeps runs reproducible (same
     // tick + same position → same roll) while re-rolling each tick.
-    let v = vc_rng::rng::Rng::hash3(world.seed ^ 0x0F41 ^ sched.now(), x, y, z) as u64;
-    if v % denom as u64 == 0 {
+    let v = vc_rng::rng::Rng::hash3(world.seed ^ 0x0F41 ^ sched.now(), x, y, z);
+    if v.is_multiple_of(denom as u64) {
         world.set_block_state(x, y, z, crop_state(b, age + 1));
         on_block_changed(sched, world, x, y, z);
     }
@@ -694,7 +694,7 @@ fn spread_mycelium(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32,
 /// growth chance (VERIFIED 10% w/Nether_Wart)
 fn world_random_10(world: &World, x: i32, y: i32, z: i32) -> bool {
     let v = vc_rng::rng::Rng::hash3(world.seed ^ 0x0A17, x, y, z);
-    v % 10 == 0
+    v.is_multiple_of(10)
 }
 
 /// 1.14: the bamboo 1-in-3 random-tick growth roll (VERIFIED w/Bamboo
@@ -702,14 +702,14 @@ fn world_random_10(world: &World, x: i32, y: i32, z: i32) -> bool {
 /// deterministic like the wart roll.
 fn world_random_3(world: &World, x: i32, y: i32, z: i32) -> bool {
     let v = vc_rng::rng::Rng::hash3(world.seed ^ 0x0B2E, x, y, z);
-    v % 3 == 0
+    v.is_multiple_of(3)
 }
 
 /// 1.14: the berry-bush 20% random-tick growth roll (VERIFIED
 /// w/Sweet_Berry_Bush §Growth: "a 20% chance per random tick").
 fn world_random_5(world: &World, x: i32, y: i32, z: i32) -> bool {
     let v = vc_rng::rng::Rng::hash3(world.seed ^ 0x0B5A, x, y, z);
-    v % 5 == 0
+    v.is_multiple_of(5)
 }
 
 /// 1.14: client light (max of sky and block channels) at a position,

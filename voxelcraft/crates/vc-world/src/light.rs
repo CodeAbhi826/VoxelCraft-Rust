@@ -40,9 +40,18 @@ pub struct LightSection {
 /// * block section empty (all air)  → sky 15, blk 0
 /// * block section present, never written → sky 0, blk 0 (dark interior;
 ///   any nonzero write materializes the section)
-#[derive(Default)]
 pub struct LightData {
     pub sections: Vec<Option<Box<LightSection>>>,
+}
+
+impl Default for LightData {
+    /// 16 section slots, all None (the never-written state) — the same
+    /// as [`LightData::new`]. The derived form would be an EMPTY Vec
+    /// (len 0), which every `sections[sy]` access would panic on; the
+    /// manual impl keeps `or_default()` and `new()` interchangeable.
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl LightData {
@@ -221,7 +230,7 @@ impl LightEngine {
                     let (wx, wy, wz) = (pos.0 * 16 + lx as i32, y as i32, pos.1 * 16 + lz as i32);
                     for (dx, dy, dz) in NEIGHBORS {
                         let (nx, ny, nz) = (wx + dx, wy + dy, wz + dz);
-                        if ny < 0 || ny > 255 {
+                        if !(0..=255).contains(&ny) {
                             continue;
                         }
                         if !self.opaque_at(world, nx, ny, nz) {
@@ -242,10 +251,10 @@ impl LightEngine {
         let ld = LightData::from_flat(arr_sky, arr_blk);
         for sy in 0..16usize {
             if let Some(sec) = &ld.sections[sy] {
-                let s = self.working.entry(pos).or_insert_with(LightData::new);
+                let s = self.working.entry(pos).or_default();
                 s.sections[sy] = Some(Box::new(LightSection {
-                    sky: Box::new(**(&sec.sky)),
-                    blk: Box::new(**(&sec.blk)),
+                    sky: Box::new(*sec.sky),
+                    blk: Box::new(*sec.blk),
                 }));
                 self.changed.entry(pos).or_insert(0);
                 *self.changed.get_mut(&pos).unwrap() |= 1 << sy;
@@ -386,7 +395,7 @@ impl LightEngine {
             let lvl = e_new.min(15);
             for (dx, dy, dz) in NEIGHBORS {
                 let (nx, ny, nz) = (wx + dx, wy + dy, wz + dz);
-                if ny < 0 || ny > 255 {
+                if !(0..=255).contains(&ny) {
                     continue;
                 }
                 if !self.opaque_at(world, nx, ny, nz) {
@@ -398,7 +407,7 @@ impl LightEngine {
             // source removed: vanilla removal from each lit neighbor
             for (dx, dy, dz) in NEIGHBORS {
                 let (nx, ny, nz) = (wx + dx, wy + dy, wz + dz);
-                if ny < 0 || ny > 255 {
+                if !(0..=255).contains(&ny) {
                     continue;
                 }
                 let l = self.get_blk(world, nx, ny, nz);
@@ -417,7 +426,7 @@ impl LightEngine {
                 // opened: pull light in from lit neighbors
                 for (dx, dy, dz) in NEIGHBORS {
                     let (nx, ny, nz) = (wx + dx, wy + dy, wz + dz);
-                    if ny < 0 || ny > 255 {
+                    if !(0..=255).contains(&ny) {
                         continue;
                     }
                     let nl = self.get_blk(world, nx, ny, nz);
@@ -517,7 +526,7 @@ impl LightEngine {
         }
         for (dx, dy, dz) in NEIGHBORS {
             let (nx, ny, nz) = (x + dx, y + dy, z + dz);
-            if ny < 0 || ny > 255 {
+            if !(0..=255).contains(&ny) {
                 continue;
             }
             let nl = match ch {
@@ -559,7 +568,7 @@ impl LightEngine {
         let nl = lvl - 1;
         for (dx, dy, dz) in NEIGHBORS {
             let (nx, ny, nz) = (x + dx, y + dy, z + dz);
-            if ny < 0 || ny > 255 {
+            if !(0..=255).contains(&ny) {
                 continue;
             }
             if self.opaque_at(world, nx, ny, nz) {
@@ -588,7 +597,7 @@ impl LightEngine {
 
     #[inline]
     fn opaque_at(&self, world: &World, wx: i32, wy: i32, wz: i32) -> bool {
-        if wy < 0 || wy > 255 {
+        if !(0..=255).contains(&wy) {
             return false; // outside vertical range: not a blocker
         }
         let cx = wx.div_euclid(16);
@@ -598,7 +607,7 @@ impl LightEngine {
                 (wx - cx * 16) as usize,
                 wy as usize,
                 (wz - cz * 16) as usize,
-            ) as u16)),
+            ))),
             None => false,
         }
     }
@@ -625,7 +634,7 @@ impl LightEngine {
     }
 
     fn get_blk(&self, world: &World, wx: i32, wy: i32, wz: i32) -> u8 {
-        if wy < 0 || wy > 255 {
+        if !(0..=255).contains(&wy) {
             return 0;
         }
         let (cx, cz) = (wx.div_euclid(16), wz.div_euclid(16));
@@ -650,7 +659,7 @@ impl LightEngine {
         let lx16 = (wx - cx * 16) as usize;
         let i = ((wy as usize & 15) << 8) | (lz16 << 4) | lx16;
         // seed the working copy from the shared snapshot on first touch
-        if !self.working.contains_key(&(cx, cz)) {
+        self.working.entry((cx, cz)).or_insert_with(|| {
             let base = world.light.get(&(cx, cz)).cloned();
             let mut ld = match base {
                 Some(a) => LightData::clone_from(a.as_ref()),
@@ -660,8 +669,8 @@ impl LightEngine {
             // air-default): dark interiors read as 0 which is already the
             // None representation — only the WRITE path below materializes
             let _ = &mut ld;
-            self.working.insert((cx, cz), ld);
-        }
+            ld
+        });
         let ld = self.working.get_mut(&(cx, cz)).unwrap();
         ld.set_sky(sy, i, v);
         *self.changed.entry((cx, cz)).or_insert(0) |= 1 << sy;
@@ -673,14 +682,14 @@ impl LightEngine {
         let lz16 = (wz - cz * 16) as usize;
         let lx16 = (wx - cx * 16) as usize;
         let i = ((wy as usize & 15) << 8) | (lz16 << 4) | lx16;
-        if !self.working.contains_key(&(cx, cz)) {
+        self.working.entry((cx, cz)).or_insert_with(|| {
             let base = world.light.get(&(cx, cz)).cloned();
             let ld = match base {
                 Some(a) => LightData::clone_from(a.as_ref()),
                 None => LightData::new(),
             };
-            self.working.insert((cx, cz), ld);
-        }
+            ld
+        });
         let ld = self.working.get_mut(&(cx, cz)).unwrap();
         ld.set_blk(sy, i, v);
         *self.changed.entry((cx, cz)).or_insert(0) |= 1 << sy;
@@ -762,7 +771,7 @@ pub fn reference_light(blocks: &[u8]) -> (Vec<u8>, Vec<u8>) {
     // surface-bounded seeding left sharp shadow edges; the engine's
     // complete seeding smooths them, which the upgrade bakes in).
     let mut queue: VecDeque<(usize, u8)> = VecDeque::new();
-    let mut surface = surface; // (kept: heightmap consumers)
+    // (`surface` is kept live for the heightmap consumers downstream)
     for y in 0..256usize {
         for z in 0..pad {
             for x in 0..pad {
@@ -801,7 +810,6 @@ pub fn reference_light(blocks: &[u8]) -> (Vec<u8>, Vec<u8>) {
             }
         }
     }
-    let _ = &mut surface;
     // BFS (all 6 directions, decay 1)
     while let Some((p, l)) = queue.pop_front() {
         if l < 2 {

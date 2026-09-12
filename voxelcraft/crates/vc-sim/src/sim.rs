@@ -374,7 +374,7 @@ impl Sim {
 
         // 4b. Phase E1: XP orbs — attraction + pickup (the player anchor
         // rides the mob system's anchor; None when no player)
-        let feet = self.mobs.player.map(|p| p);
+        let feet = self.mobs.player;
         self.xp_orbs.tick(world, feet);
 
         // 4c. Phase E1: the ender-dragon fight (End only; the fight is

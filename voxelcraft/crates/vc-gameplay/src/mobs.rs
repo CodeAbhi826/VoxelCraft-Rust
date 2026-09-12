@@ -2020,7 +2020,7 @@ impl MobSystem {
         // 1.14: the hazard clock ticks with the sim (bush + campfire
         // damage windows key off it)
         self.hazard_t += 1;
-        let hazard_window = self.hazard_t % 10 == 0;
+        let hazard_window = self.hazard_t.is_multiple_of(10);
         let sim_ring = |cx: i32, cz: i32| {
             cx.wrapping_sub(sim_center.0)
                 .saturating_abs()
@@ -2034,7 +2034,7 @@ impl MobSystem {
         // Phase E2: ambient bats (VERIFIED w/Bat: light <= 3, below sea
         // level, groups of 8, not counted toward the passive cap)
         self.bats_spawn_t += 1;
-        if self.bats_spawn_t % 40 == 0 {
+        if self.bats_spawn_t.is_multiple_of(40) {
             self.try_spawn_bats(world, sim_ring);
         }
             self.try_spawn_passive(world, sim_ring);
@@ -2043,7 +2043,7 @@ impl MobSystem {
         // cap — the vanilla water_ambient/water_creature categories are
         // separate, VERIFIED w/Java_Edition_1.13 §Spawning)
         self.aquatic_spawn_t += 1;
-        if self.aquatic_spawn_t % 40 == 0 {
+        if self.aquatic_spawn_t.is_multiple_of(40) {
             self.try_spawn_aquatic(world, sim_ring);
         }
         // 1.16 (Nether Update, part 2): the strider lava-sea pool —
@@ -2052,7 +2052,7 @@ impl MobSystem {
         // w/Strider §Spawning) — nether-only, passive-cap-free (the
         // strider is the nether's only passive mob, its own category)
         self.strider_spawn_t += 1;
-        if self.strider_spawn_t % 400 == 0
+        if self.strider_spawn_t.is_multiple_of(400)
             && world.dimension == vc_world::world::Dimension::Nether
         {
             self.try_spawn_striders(world, sim_ring);
@@ -2061,7 +2061,7 @@ impl MobSystem {
         // Since Last Rest" ≥ 72000 (VERIFIED w/Phantom §Spawning: the
         // 1–4 local pack; engine rolls one per attempt)
         self.rest_t += 1;
-        if self.rest_t % 20 == 0 && self.rest_t >= 72000 {
+        if self.rest_t.is_multiple_of(20) && self.rest_t >= 72000 {
             self.try_spawn_phantom(world, sim_ring);
         }
         }
@@ -3927,6 +3927,10 @@ pub fn magma_xp(size: u8) -> i32 {
 /// AI decision + steering for one mob (free fn: splits borrows).
 /// Phase E1: `snapshot` = read-only view of all mobs (mob-vs-mob
 /// targeting), `pending` = queued mob-vs-mob damage.
+// 18 params: the per-mob AI tick takes the whole frame's queues and
+// views — this is the hot path where a context struct would only add
+// indirection; silenced deliberately.
+#[allow(clippy::too_many_arguments)]
 fn ai_tick(
     rng: &mut Rng,
     m: &mut Mob,
@@ -4560,15 +4564,14 @@ fn ai_tick(
     // the 6.25% armed roll (VERIFIED w/Drowned §Attacking: "A drowned
     // with a trident can throw it every 1.5 seconds, sending it up to
     // 20 blocks away")
-    if m.kind == MobKind::Drowned {
-        if m.variant & 1 != 0 && aggro && dist <= 20.0 && dist > 4.0 && m.attack_cd == 0 {
+    if m.kind == MobKind::Drowned
+        && m.variant & 1 != 0 && aggro && dist <= 20.0 && dist > 4.0 && m.attack_cd == 0 {
             m.attack_cd = 30; // 1.5 s (VERIFIED)
             face_player(m);
             spawn_projectile(m, p, rng, arrows, ProjKind::Trident, 20.0, 8.0);
             return;
         }
         // falls through to the generic hostile melee chase below
-    }
 
     // 1.13: the zombie→drowned conversion moved ABOVE the
     // player-anchor early return (environmental — see the 1.13 section).
@@ -5178,9 +5181,9 @@ fn ai_tick(
                         );
                         if b == SOUL_TORCH || b == SOUL_FIRE || b == SOUL_LANTERN {
                             repel = Some([
-                                m.pos[0] as f32 + sx as f32,
+                                m.pos[0] + sx as f32,
                                 0.0,
-                                m.pos[2] as f32 + sz as f32,
+                                m.pos[2] + sz as f32,
                             ]);
                             break;
                         }
@@ -5246,9 +5249,9 @@ fn ai_tick(
                         );
                         if b == WARPED_FUNGUS || b == RESPAWN_ANCHOR {
                             repel = Some([
-                                m.pos[0] as f32 + sx as f32,
+                                m.pos[0] + sx as f32,
                                 0.0,
-                                m.pos[2] as f32 + sz as f32,
+                                m.pos[2] + sz as f32,
                             ]);
                             break;
                         }
@@ -5324,11 +5327,9 @@ fn ai_tick(
             if engage && dist < AGGRO_RADIUS {
                 face_player(m);
                 if dist > MOB_MELEE_REACH * 0.8 {
-                    let chase = if m.kind == MobKind::Enderman {
-                        speed
-                    } else {
-                        speed
-                    };
+                    // all mobs chase at the same base speed here; the
+                    // enderman's teleport is handled above
+                    let chase = speed;
                     m.vel[0] += (dx / dist * chase - m.vel[0]) * 0.3;
                     m.vel[2] += (dz / dist * chase - m.vel[2]) * 0.3;
                 } else {
@@ -5818,6 +5819,8 @@ fn spawn_projectile(
     });
 }
 
+// 9 params: same queue-pipeline shape as ai_tick above.
+#[allow(clippy::too_many_arguments)]
 fn tick_arrows(
     arrows: &mut Vec<Arrow>,
     player: Option<[f32; 3]>,

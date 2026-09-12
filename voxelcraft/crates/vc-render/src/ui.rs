@@ -3152,6 +3152,42 @@ impl ContainerGeom {
 }
 
 #[cfg(test)]
+mod phase3_icon_tests {
+    use super::*;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    #[test]
+    fn draw_stack_pushes_icon_quad_when_cell_ready() {
+        let mut ui = UiCanvas::new();
+        let atlas = vec![128u8; 512 * 512 * 4];
+        // a hotbar-style stack of dirt (block 3)
+        let s = ItemStack {
+            block: 3,
+            count: 1,
+            ench: 0,
+        };
+        let before = ui.gui_frame.quads.len();
+        ui.draw_stack(&s, 100, 100, &atlas);
+        assert_eq!(ui.gui_frame.quads.len(), before, "no icon without cells");
+        // publish a ready cell for block 3
+        let mut cells = HashMap::new();
+        cells.insert(3u16, [2u8, 1u8]);
+        ui.set_icon_cells(Arc::new(cells));
+        ui.clear();
+        ui.draw_stack(&s, 100, 100, &atlas);
+        assert_eq!(ui.gui_frame.quads.len(), 1, "icon quad pushed");
+        let q = ui.gui_frame.quads[0];
+        assert_eq!(q.texture, crate::gui_render::QuadTexture::IconAtlas);
+        assert_eq!(q.dst.x, 102);
+        assert_eq!(q.dst.y, 102);
+        assert_eq!((q.dst.w, q.dst.h), (32, 32));
+        // cell (2,1) -> src (128, 64) in the 2048 atlas
+        assert_eq!((q.src.x, q.src.y), (128, 64));
+    }
+}
+
+#[cfg(test)]
 mod phase5_font_tests {
     use super::*;
 

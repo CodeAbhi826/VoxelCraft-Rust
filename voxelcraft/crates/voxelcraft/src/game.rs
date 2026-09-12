@@ -1485,6 +1485,8 @@ impl GameApp {
         // wiring: scan resourcepacks/, resolve highest-priority-first,
         // fall back to builtin per texture). §46: a bad pack never
         // aborts boot — it is logged and skipped.
+        // (mut only for the native pack-override merge below)
+        #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
         let mut gui_set = vc_render::gui::GuiTextureSet::build_builtin();
         #[cfg(not(target_arch = "wasm32"))]
         {
@@ -1548,7 +1550,6 @@ impl GameApp {
         // blit_tile stays the fallback for unknown blocks + pop-in
         // frames.
         let icon_cache = renderer.create_icon_cache(512);
-        renderer.set_icon_atlas(&icon_cache);
         vc_render::render::report_boot_log(
             "item icon cache armed: 2048x2048 atlas, LRU 512, budget 4/frame",
         );
@@ -1741,6 +1742,10 @@ impl GameApp {
                 ));
             } else {
                 app.renderer.set_gui_quads_enabled(gui_cfg.quads_enabled);
+                // Phase 3: the icon atlas binds INTO the gui renderer —
+                // only possible now that it exists (binding before its
+                // creation was a silent no-op and icon quads were skipped)
+                app.renderer.set_icon_atlas(&app.icon_cache);
                 vc_render::render::report_boot_log(
                     "gui quad renderer armed: chrome -> GPU quads (canvas chrome off)",
                 );
@@ -2862,8 +2867,15 @@ impl GameApp {
 
     fn dbg_perf_line(&self) -> String {
         let icon_stats = self.icon_cache.stats();
+        let icon_quads = self
+            .ui
+            .gui_frame
+            .quads
+            .iter()
+            .filter(|q| q.texture == vc_render::gui_render::QuadTexture::IconAtlas)
+            .count();
         format!(
-            "fps {:.0} (avg {:.0} min {:.0} max {:.0}) frame {:.1}ms sim {:.1}ms | chunks meshed {} loaded {} drawn {} gen-queue {} mesh-queue {} | mobs {} edits {} | icons {} (h/m/e {}/{}/{}) gui-quads {}",
+            "fps {:.0} (avg {:.0} min {:.0} max {:.0}) frame {:.1}ms sim {:.1}ms | chunks meshed {} loaded {} drawn {} gen-queue {} mesh-queue {} | mobs {} edits {} | icons {} (h/m/e {}/{}/{}) gui-quads {} icon-quads {}",
             self.fps,
             self.fps_avg,
             self.fps_min,
@@ -2881,7 +2893,8 @@ impl GameApp {
             icon_stats.0,
             icon_stats.1,
             icon_stats.2,
-            self.stats.gui_quads
+            self.stats.gui_quads,
+            icon_quads
         )
     }
 
@@ -15566,6 +15579,14 @@ impl GameApp {
                 );
                 self.ui
                     .set_icon_cells(std::sync::Arc::new(self.icon_cache.ready_cells().clone()));
+                // STALE-UI RACE (the set_screen class): set_icon_cells
+                // marks dirty HERE, in the render phase — but render()
+                // consumes dirty right after uploading the OLD canvas,
+                // so a dirty flag alone dies without a rebuild and the
+                // icons never reach the frame. Bakes are rare bursts
+                // (a few frames per new item), so rebuilding the UI
+                // canvas RIGHT NOW is both correct and cheap.
+                self.rebuild_ui();
             }
         }
         self.stats = self.renderer.render(

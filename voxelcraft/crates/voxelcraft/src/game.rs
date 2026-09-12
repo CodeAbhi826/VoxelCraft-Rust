@@ -1520,6 +1520,16 @@ impl GameApp {
                 }
             }
         }
+        // Phase 5 (D5): a pack-provided 128x48 glyph sheet becomes the
+        // ACTIVE font (set once at boot — no hot reload, documented)
+        if let Some(glyphs) = gui_set.font.png_glyphs() {
+            if vc_render::ui::set_font_override(glyphs) {
+                vc_render::render::report_debug_log(
+                    "screen",
+                    "font: resource-pack glyph sheet active (variable advance)",
+                );
+            }
+        }
         vc_render::render::report_boot_log(&format!(
             "gui texture set built: hearts {}x{}, widgets {}x{}, font {}",
             gui_set.hearts.w,

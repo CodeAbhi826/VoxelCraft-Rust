@@ -63,6 +63,38 @@ pub enum FontSource {
     Png(Vec<u8>),
 }
 
+impl FontSource {
+    /// decode the PNG sheet into the engine's `[[u8; 8]; 96]` glyph
+    /// form (Phase 5 D5 — the text renderer reads the ACTIVE source):
+    /// glyph i lives in the 8x8 cell at (col*8, row*8) with
+    /// col = i % 16, row = i / 16; ink = alpha >= 128; cell columns
+    /// 0..4 map to the engine's 5-px ink field (the renderer only
+    /// draws five columns — the builtin's 5x7-in-8 design). Returns
+    /// None for BuiltinArray (callers keep `ui::FONT`).
+    pub fn png_glyphs(&self) -> Option<Box<[[u8; 8]; 96]>> {
+        let FontSource::Png(px) = self else {
+            return None;
+        };
+        if px.len() != 128 * 48 * 4 {
+            return None;
+        }
+        let mut glyphs = Box::new([[0u8; 8]; 96]);
+        for (i, g) in glyphs.iter_mut().enumerate() {
+            let col = (i % 16) * 8;
+            let row = (i / 16) * 8;
+            for (gy, grow) in g.iter_mut().enumerate() {
+                for gx in 0..5usize {
+                    let idx = (row + gy) * 128 + col + gx;
+                    if px.get(idx..idx + 4).map(|p| p[3] >= 128).unwrap_or(false) {
+                        *grow |= 1 << (4 - gx);
+                    }
+                }
+            }
+        }
+        Some(glyphs)
+    }
+}
+
 /// Typed, non-panicking GUI texture errors (loader + pack override).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GuiTextureError {

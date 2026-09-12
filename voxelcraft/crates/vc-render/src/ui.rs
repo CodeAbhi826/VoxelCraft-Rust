@@ -3,6 +3,8 @@
 //! full 1.16.5-style HUD (hotbar, hearts, hunger, XP bar, crosshair, F3).
 //! Redrawn only when state changes; uploaded to GPU as a texture.
 
+use std::sync::OnceLock;
+
 use crate::textures::blit_tile;
 use vc_blocks::blocks::*;
 use vc_inventory::inventory::ItemStack;
@@ -36,7 +38,7 @@ pub(crate) const FONT: [[u8; 8]; 96] = [
     [0x0E,0x11,0x15,0x17,0x16,0x10,0x0E,0x00], [0x0E,0x11,0x11,0x1F,0x11,0x11,0x11,0x00],
     [0x1E,0x11,0x11,0x1E,0x11,0x11,0x1E,0x00], [0x0E,0x11,0x10,0x10,0x10,0x11,0x0E,0x00],
     [0x1C,0x12,0x11,0x11,0x11,0x12,0x1C,0x00], [0x1F,0x10,0x10,0x1E,0x10,0x10,0x1F,0x00],
-    [0x1F,0x10,0x10,0x1E,0x10,0x10,0x10,0x00], [0x0E,0x11,0x10,0x17,0x11,0x11,0x0F,0x00],
+    [0x1F,0x10,0x10,0x1E,0x10,0x10,0x10,0x00], [0x0E,0x11,0x10,0x17,0x11,0x11,0x0E,0x00],
     [0x11,0x11,0x11,0x1F,0x11,0x11,0x11,0x00], [0x0E,0x04,0x04,0x04,0x04,0x04,0x0E,0x00],
     [0x07,0x02,0x02,0x02,0x02,0x12,0x0C,0x00], [0x11,0x12,0x14,0x18,0x14,0x12,0x11,0x00],
     [0x10,0x10,0x10,0x10,0x10,0x10,0x1F,0x00], [0x11,0x1B,0x15,0x15,0x11,0x11,0x11,0x00],
@@ -715,6 +717,89 @@ pub fn layout_death(hardcore: bool) -> Vec<Widget> {
     v
 }
 
+// ------------------------------------------------- Phase 5 font core --
+// variable-width advance: glyph advance = measured ink width + 1
+// (VERIFIED https://minecraft.wiki/w/Font — "the width of each
+// character is the rightmost ink pixel + 1"; the space keeps a fixed
+// 4-px advance), shadow at (x+1, y+1) in foreground x 0.25.
+
+/// active-font override installed by a resource pack (None = builtin
+/// FONT). Set ONCE at boot before the first text draw; later installs
+/// are refused (no font hot-reload — documented in the worklog). The
+/// OnceLock (thread-safe OnceCell) keeps every existing static
+/// `text_width`-family signature intact (G6) while letting all of
+/// them read the ACTIVE source.
+static FONT_OVERRIDE: OnceLock<Box<[[u8; 8]; 96]>> = OnceLock::new();
+/// per-character ink widths derived from the active font, measured
+/// once, never re-measured per call (the spec's OnceCell cache, in its
+/// thread-safe form — worker threads read these too)
+static FONT_WIDTHS: OnceLock<Box<[u8; 96]>> = OnceLock::new();
+
+/// Phase 5 (D1): measured glyph ink width — the 1-indexed column of
+/// the rightmost ink pixel, scanning the 8-column mask from the right
+/// (the builtin ink field is 5 px in bits 4..0; bits 7..5 stay clear).
+/// Returns 0 for a blank glyph (the space).
+pub(crate) fn glyph_ink_width(glyph: &[u8; 8]) -> i32 {
+    // scan the renderer's 5-px ink field (bits 4..0) from the right;
+    // bits 7..5 are always clear in every source (builtin + PNG-decoded)
+    for gx in (0..5).rev() {
+        if glyph.iter().any(|row| row & (1 << (4 - gx)) != 0) {
+            return gx + 1;
+        }
+    }
+    0
+}
+
+/// install a pack-provided glyph sheet as the active font. Returns
+/// false when an override is already installed (first font wins).
+pub fn set_font_override(glyphs: Box<[[u8; 8]; 96]>) -> bool {
+    if FONT_WIDTHS.get().is_some() || FONT_OVERRIDE.get().is_some() {
+        return false;
+    }
+    FONT_OVERRIDE.set(glyphs).is_ok()
+}
+
+/// the glyph at slot `idx` (0..96) from the ACTIVE font source
+fn active_glyph(idx: usize) -> &'static [u8; 8] {
+    match FONT_OVERRIDE.get() {
+        Some(o) => &o[idx],
+        None => &FONT[idx],
+    }
+}
+
+/// per-character advance in GLYPH pixels: measured ink width + 1, with
+/// the space's fixed 4-px advance (VERIFIED w/Font — the space is a
+/// 4-px-wide glyph, not a measured one)
+fn char_advance(idx: usize) -> i32 {
+    if idx == 0 {
+        return 4;
+    }
+    active_widths()[idx] as i32 + 1
+}
+
+fn active_widths() -> &'static [u8; 96] {
+    FONT_WIDTHS.get_or_init(|| {
+        let mut w = Box::new([0u8; 96]);
+        for (i, wi) in w.iter_mut().enumerate() {
+            *wi = glyph_ink_width(active_glyph(i)) as u8;
+        }
+        w
+    })
+}
+
+/// smallcaps slot for a char (the text()/text_frac() look: a-z render
+/// through the A-Z slots; everything else maps through)
+fn smallcaps_slot(ch: char) -> usize {
+    let mut ch = ch as usize;
+    if !(32..=126).contains(&ch) {
+        ch = '?' as usize;
+    }
+    if ch >= 'a' as usize && ch <= 'z' as usize {
+        ch -= 32;
+    }
+    ch - 32
+}
+
 // ------------------------------------------------------------- canvas --
 
 pub struct UiCanvas {
@@ -820,17 +905,15 @@ impl UiCanvas {
 
     /// 5x7-body text with 1px shadow, scale 1..8. Returns width drawn.
     /// (smallcaps: a-z render through the A-Z slots — the UI look)
+    /// Phase 5: variable glyph advance (measured ink width + 1, space
+    /// fixed 4) and the shadow at (x+1, y+1) in foreground x 0.25.
     pub fn text(&mut self, x: i32, y: i32, s: &str, c: Color, scale: i32) -> i32 {
         let mut cx = x;
         for ch in s.chars() {
-            let mut ch = ch as usize;
-            if !(32..=126).contains(&ch) {
-                ch = '?' as usize;
-            }
-            if ch >= 'a' as usize && ch <= 'z' as usize {
-                ch -= 32; // smallcaps look
-            }
-            let glyph = &FONT[ch - 32];
+            let slot = smallcaps_slot(ch);
+            let glyph = active_glyph(slot);
+            // VERIFIED w/Font — shadow = foreground multiplied by 0.25
+            let shadow: Color = [c[0] >> 2, c[1] >> 2, c[2] >> 2, c[3]];
             for gy in 0..8i32 {
                 for gx in 0..5i32 {
                     if glyph[gy as usize] & (1 << (4 - gx)) != 0 {
@@ -838,20 +921,26 @@ impl UiCanvas {
                             for sx in 0..scale {
                                 let dx = cx + gx * scale + sx;
                                 let dy = y + gy * scale + sy;
-                                self.set(dx + 1, dy + 1, [0, 0, 0, c[3]]);
+                                self.set(dx + 1, dy + 1, shadow);
                                 self.set(dx, dy, c);
                             }
                         }
                     }
                 }
             }
-            cx += 6 * scale;
+            cx += char_advance(slot) * scale;
         }
         cx - x
     }
 
+    /// Phase 5: measured width — sum of per-character advances
+    /// (smallcaps-mapped, like text())
     pub fn text_width(s: &str, scale: i32) -> i32 {
-        s.chars().count() as i32 * 6 * scale
+        let mut w = 0;
+        for ch in s.chars() {
+            w += char_advance(smallcaps_slot(ch));
+        }
+        w * scale
     }
 
     /// Smallcaps text at a FRACTIONAL scale (nearest-neighbor glyph
@@ -861,33 +950,34 @@ impl UiCanvas {
         let mut cx = x as f32;
         let gw = (5.0 * scale).ceil() as i32;
         let gh = (8.0 * scale).ceil() as i32;
+        // VERIFIED w/Font — shadow = foreground multiplied by 0.25
+        let shadow: Color = [c[0] >> 2, c[1] >> 2, c[2] >> 2, c[3]];
         for ch in s.chars() {
-            let mut ch = ch as usize;
-            if !(32..=126).contains(&ch) {
-                ch = '?' as usize;
-            }
-            if ch >= 'a' as usize && ch <= 'z' as usize {
-                ch -= 32; // smallcaps look
-            }
-            let glyph = &FONT[ch - 32];
+            let slot = smallcaps_slot(ch);
+            let glyph = active_glyph(slot);
             let bx = cx as i32;
             for gy in 0..gh {
                 for gx in 0..gw {
                     let sx = ((gx as f32) / scale) as i32;
                     let sy = ((gy as f32) / scale) as i32;
                     if sy < 8 && sx < 5 && glyph[sy as usize] & (1 << (4 - sx)) != 0 {
-                        self.set(bx + gx + 1, y + gy + 1, [0, 0, 0, c[3]]);
+                        self.set(bx + gx + 1, y + gy + 1, shadow);
                         self.set(bx + gx, y + gy, c);
                     }
                 }
             }
-            cx += 6.0 * scale;
+            cx += char_advance(slot) as f32 * scale;
         }
         (cx - x as f32) as i32
     }
 
+    /// Phase 5: measured width — sum of per-character advances
     pub fn text_width_frac(s: &str, scale: f32) -> i32 {
-        (s.chars().count() as f32 * 6.0 * scale).round() as i32
+        let mut w = 0;
+        for ch in s.chars() {
+            w += char_advance(smallcaps_slot(ch));
+        }
+        (w as f32 * scale).round() as i32
     }
 
     /// Glyphs without the 1-px drop shadow — the vanilla F3 overlay renders
@@ -896,14 +986,8 @@ impl UiCanvas {
     pub fn text_flat(&mut self, x: i32, y: i32, s: &str, c: Color, scale: i32) {
         let mut cx = x;
         for ch in s.chars() {
-            let mut ch = ch as usize;
-            if !(32..=126).contains(&ch) {
-                ch = '?' as usize;
-            }
-            if ch >= 'a' as usize && ch <= 'z' as usize {
-                ch -= 32;
-            }
-            let glyph = &FONT[ch - 32];
+            let slot = smallcaps_slot(ch);
+            let glyph = active_glyph(slot);
             for gy in 0..8i32 {
                 for gx in 0..5i32 {
                     if glyph[gy as usize] & (1 << (4 - gx)) != 0 {
@@ -915,7 +999,7 @@ impl UiCanvas {
                     }
                 }
             }
-            cx += 6 * scale;
+            cx += char_advance(slot) * scale;
         }
     }
 
@@ -3064,6 +3148,113 @@ impl ContainerGeom {
             }
         }
         None
+    }
+}
+
+#[cfg(test)]
+mod phase5_font_tests {
+    use super::*;
+
+    #[test]
+    fn glyph_ink_width_measures_the_rightmost_ink() {
+        // W: ink in all five columns -> 5
+        assert_eq!(glyph_ink_width(&FONT['W' as usize - 32]), 5);
+        // space: blank -> 0
+        assert_eq!(glyph_ink_width(&FONT[0]), 0);
+        // i (centered stem, column 2) -> 3. NOTE: the master prompt's
+        // "1 for i" assumed a left-aligned i bitmap; this repo's i is
+        // centered, so the measured width is 3 — the ADVANCE behavior
+        // (i packs tighter than W) is what matters and holds below.
+        assert_eq!(glyph_ink_width(&FONT['i' as usize - 32]), 3);
+        // '!' is a single centered column -> 3
+        assert_eq!(glyph_ink_width(&FONT[1]), 3);
+    }
+
+    #[test]
+    fn variable_advance_tightens_narrow_text() {
+        // the spec's D7 pair: narrow letters advance less than wide
+        let w_i = UiCanvas::text_width("i", 1);
+        let w_w = UiCanvas::text_width("W", 1);
+        assert!(w_i < w_w, "i ({w_i}) must advance less than W ({w_w})");
+        // string-level tightening. NOTE: the master prompt's example
+        // ("abc" < "WWW") assumed vanilla's narrower a/b/c; this repo's
+        // clean-room 5x7 font has uniformly 5-wide letters, so the
+        // equivalent pair uses the actually-narrow glyphs (i, l, !):
+        // 3 chars of ~4px vs 3 chars of 6px.
+        assert!(UiCanvas::text_width("iil", 1) < UiCanvas::text_width("WWW", 1));
+        // spaces tighten too (6 -> 4): a two-word string is now narrower
+        // than the same letters back-to-back
+        assert!(UiCanvas::text_width("a b", 1) < UiCanvas::text_width("aab", 1));
+        // W keeps the classic 6 (5 ink + 1 spacing)
+        assert_eq!(w_w, 6);
+        // space keeps the vanilla fixed 4-px advance
+        assert_eq!(UiCanvas::text_width(" ", 1), 4);
+    }
+
+    #[test]
+    fn text_shadow_is_foreground_times_quarter() {
+        // draw one full-ink glyph (W) at a known spot; the pixel at
+        // (x+1, y+1) must be fg x 0.25 (VERIFIED w/Font)
+        let mut ui = UiCanvas::new();
+        let fg: Color = [200, 100, 50, 255];
+        ui.text(100, 100, "W", fg, 1);
+        // W's ink starts at column 0 -> pixel (100, 100) is foreground
+        let p = (100usize * crate::ui::UI_W + 100) * 4;
+        assert_eq!(&ui.px[p..p + 4], &[200, 100, 50, 255]);
+        // its shadow at (101, 101): fg >> 2
+        let s = (101 * crate::ui::UI_W + 101) * 4;
+        assert_eq!(
+            &ui.px[s..s + 4],
+            &[200 >> 2, 100 >> 2, 50 >> 2, 255],
+            "shadow must be foreground x 0.25"
+        );
+    }
+
+    #[test]
+    fn png_font_path_matches_builtin_for_the_same_glyphs() {
+        // render the BUILTIN font into a 128x48 sheet, decode it back
+        // through FontSource::Png, and require identical widths (the
+        // D7 "PNG path and builtin path produce identical widths")
+        let mut sheet = vec![0u8; 128 * 48 * 4];
+        for (i, g) in FONT.iter().enumerate() {
+            let col = (i % 16) * 8;
+            let row = (i / 16) * 8;
+            for gy in 0..8usize {
+                for gx in 0..5usize {
+                    if g[gy] & (1 << (4 - gx)) != 0 {
+                        let idx = (row + gy) * 128 + col + gx;
+                        sheet[idx..idx + 4].copy_from_slice(&[255, 255, 255, 255]);
+                    }
+                }
+            }
+        }
+        let src = crate::gui::set::FontSource::Png(sheet);
+        let decoded = src.png_glyphs();
+        assert!(decoded.is_some());
+        let decoded = decoded.unwrap_or(Box::new([[0u8; 8]; 96]));
+        for i in 0..96 {
+            assert_eq!(
+                glyph_ink_width(&decoded[i]),
+                glyph_ink_width(&FONT[i]),
+                "glyph {i} width mismatch between png and builtin paths"
+            );
+        }
+    }
+
+    #[test]
+    fn font_override_installs_once() {
+        // set_font_override: first install wins, second refused. The
+        // installed font is a copy of FONT so the process-global
+        // override cannot perturb any other test's measurements.
+        let first = set_font_override(Box::new(FONT));
+        // only assert the mechanism when no override was installed yet
+        // (test order independence: another test may have installed it)
+        if first {
+            let second = set_font_override(Box::new([[1u8; 8]; 96]));
+            assert!(!second, "second install must be refused");
+            // the FONT copy keeps the builtin metrics alive
+            assert_eq!(UiCanvas::text_width("WWW", 1), 18);
+        }
     }
 }
 

@@ -218,6 +218,9 @@ pub struct RenderStats {
     pub binds: u32,
     /// Phase 6 §26: frustum-visible chunks removed by the occlusion flood
     pub culled: u32,
+    /// UI-overhaul Phase 2 (A4 perf trace): GUI chrome quads drawn this
+    /// frame (0 = quad pass off / no chrome on screen)
+    pub gui_quads: u32,
 }
 
 // ---------------------------------------------------------------- shaders
@@ -1356,10 +1359,18 @@ pub struct Renderer {
     #[allow(dead_code)] // GPU keep-alive (bound via ui_bg at init)
     ui_samp: wgpu::Sampler,
     ui_buf: wgpu::Buffer,
+    ui_bgl: wgpu::BindGroupLayout,
     ui_bg: wgpu::BindGroup,
     ui_pipe: wgpu::RenderPipeline,
     ui_vb: wgpu::Buffer,
     ui_ib: wgpu::Buffer,
+    // UI-overhaul Phase 2: the GUI chrome quad pass (None until
+    // set_gui_textures uploads the sprite sheets — the game then keeps
+    // the canvas chrome on, a self-healing fallback)
+    gui: Option<crate::gui_render::GuiRenderer>,
+    /// Phase 2 D5: master switch for the quad pass (canvas chrome is
+    /// the mirror flag on UiCanvas, driven by GuiRenderConfig)
+    gui_quads_enabled: bool,
     // selection lines
     line_buf: wgpu::Buffer,
     line_vb: wgpu::Buffer,
@@ -3156,10 +3167,13 @@ impl Renderer {
             ui_view,
             ui_samp,
             ui_buf,
+            ui_bgl,
             ui_bg,
             ui_pipe,
             ui_vb,
             ui_ib,
+            gui: None,
+            gui_quads_enabled: true,
             line_buf,
             line_vb,
             line_pipe: scene.line,
@@ -3840,6 +3854,43 @@ impl Renderer {
     /// current surface size in physical px (UI coordinate mapping)
     pub fn size(&self) -> (f32, f32) {
         (self.config.width as f32, self.config.height as f32)
+    }
+
+    /// UI-overhaul Phase 2 (D6): upload the GUI sprite sheets and create
+    /// the chrome quad pipeline. On failure the game keeps the canvas
+    /// chrome rasterized (§46 self-healing — callers log + fall back).
+    pub fn set_gui_textures(
+        &mut self,
+        set: &crate::gui::set::GuiTextureSet,
+    ) -> Result<(), crate::gui_render::GuiError> {
+        let mut gui = crate::gui_render::GuiRenderer::new(
+            &self.device,
+            &self.queue,
+            &self.ui_bgl,
+            self.config.format,
+        )?;
+        gui.set_textures(
+            &self.device,
+            &self.queue,
+            &self.ui_bgl,
+            &self.ui_buf,
+            &self.ui_samp,
+            set,
+        )?;
+        self.gui = Some(gui);
+        Ok(())
+    }
+
+    /// Phase 2 D5: master switch for the quad pass. The canvas-side
+    /// mirror (`UiCanvas::set_chrome_enabled`) is driven by the same
+    /// `GuiRenderConfig`.
+    pub fn set_gui_quads_enabled(&mut self, enabled: bool) {
+        self.gui_quads_enabled = enabled;
+    }
+
+    /// Phase 2: is the quad pass armed (sheets uploaded + enabled)?
+    pub fn gui_quads_ready(&self) -> bool {
+        self.gui_quads_enabled && self.gui.is_some()
     }
 
     /// drop all GPU chunk meshes (full re-mesh, e.g. smooth-lighting toggle)
@@ -5103,6 +5154,45 @@ impl Renderer {
             pass.set_vertex_buffer(0, self.ui_vb.slice(..));
             pass.set_index_buffer(self.ui_ib.slice(..), wgpu::IndexFormat::Uint32);
             pass.draw_indexed(0..6, 0, 0..1);
+        }
+
+        // ─────────────── pass 6: GUI chrome quads → surface (Phase 2) ──
+        // (textured chrome drawn AFTER the canvas: buttons/slots/panels/
+        // HUD sprite chrome/hotbar chrome + the options dirt background;
+        // text and item icons stay on the canvas)
+        if self.gui_quads_enabled && !ui.gui_frame.quads.is_empty() {
+            if let Some(gui) = self.gui.as_mut() {
+                let att = wgpu::RenderPassColorAttachment {
+                    view: &frame_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                };
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("gui-quads"),
+                    color_attachments: &[Some(att)],
+                    depth_stencil_attachment: None,
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                });
+                match gui.draw(
+                    &self.device,
+                    &self.queue,
+                    &mut pass,
+                    &ui.gui_frame.quads,
+                ) {
+                    Ok(()) => {
+                        stats.gui_quads = ui.gui_frame.quads.len() as u32;
+                    }
+                    Err(e) => {
+                        // §46: a failed quad pass drops chrome for THIS
+                        // frame only — logged, never fatal
+                        report_boot_log(&format!("gui quad pass failed: {e:?}"));
+                    }
+                }
+            }
         }
 
         self.queue.submit(Some(encoder.finish()));

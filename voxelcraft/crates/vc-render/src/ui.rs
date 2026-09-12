@@ -723,6 +723,16 @@ pub struct UiCanvas {
     /// GUI Scale factor applied to widget text (set alongside
     /// [`scale_widgets`] — geometry scaling and text scaling move together)
     pub widget_scale: f32,
+    /// UI-overhaul Phase 2: when false, the canvas draw methods skip
+    /// their CHROME raster (buttons/slots/panels/HUD sprite chrome/
+    /// hotbar chrome) because the GPU quad pass draws it instead.
+    /// Text, icons, values are unaffected. Default true — existing
+    /// callers render exactly as before (G6).
+    pub chrome_enabled: bool,
+    /// UI-overhaul Phase 2: the per-frame GUI quad list, populated by
+    /// the same draw methods that raster chrome (they always push;
+    /// the Renderer decides whether to draw them).
+    pub gui_frame: crate::gui_render::GuiFrame,
 }
 
 impl Default for UiCanvas {
@@ -737,12 +747,22 @@ impl UiCanvas {
             px: vec![0u8; UI_W * UI_H * 4],
             dirty: true,
             widget_scale: 1.0,
+            chrome_enabled: true,
+            gui_frame: crate::gui_render::GuiFrame::default(),
         }
     }
 
     pub fn clear(&mut self) {
         self.px.iter_mut().for_each(|p| *p = 0);
+        self.gui_frame.clear();
         self.dirty = true;
+    }
+
+    /// Phase 2 D2: suppress the canvas CHROME raster (the GPU quad pass
+    /// draws it). Text/icons/values keep drawing. Default is true so the
+    /// pre-quad rendering path is byte-identical (A2).
+    pub fn set_chrome_enabled(&mut self, enabled: bool) {
+        self.chrome_enabled = enabled;
     }
 
     /// save the current canvas (RGBA, straight alpha) as a PNG — the
@@ -1107,6 +1127,13 @@ impl UiCanvas {
             } => (label.clone(), value.clone(), *enabled),
             _ => return,
         };
+        // Phase 2: chrome quads are ALWAYS pushed; the raster below is
+        // gated so nothing double-draws when the quad pass is active
+        self.gui_frame.button(w, hover);
+        if !self.chrome_enabled {
+            self.draw_button_text(w, &label, &value, enabled, hover);
+            return;
+        }
         let body: Color = if enabled {
             [96, 96, 96, 235]
         } else {
@@ -1126,6 +1153,19 @@ impl UiCanvas {
             self.rect(w.x + 2, w.y + 2, w.w - 4, w.h - 4, tint);
             self.frame(w.x + 2, w.y + 2, w.w - 4, w.h - 4, [255, 255, 255, 130]);
         }
+        self.draw_button_text(w, &label, &value, enabled, hover);
+    }
+
+    /// the button LABEL (text stays on the canvas in every mode —
+    /// Phase 2 splits it out of the chrome body)
+    fn draw_button_text(
+        &mut self,
+        w: &Widget,
+        label: &str,
+        value: &str,
+        enabled: bool,
+        hover: bool,
+    ) {
         let text_col: Color = if !enabled {
             [145, 145, 145, 255]
         } else if hover {
@@ -1134,7 +1174,7 @@ impl UiCanvas {
             [240, 240, 240, 255]
         };
         let full = if value.is_empty() {
-            label
+            label.to_string()
         } else {
             format!("{}: {}", label, value)
         };
@@ -1161,6 +1201,9 @@ impl UiCanvas {
         };
         let ty = w.y + 8;
         let th = w.h - 16;
+        // Phase 2: quads always pushed, raster gated
+        self.gui_frame.slider(w, hover);
+        if self.chrome_enabled {
         // track: dark inset
         self.rect(w.x, ty, w.w, th, [30, 30, 30, 230]);
         self.frame(w.x, ty, w.w, th, [12, 12, 12, 255]);
@@ -1175,6 +1218,7 @@ impl UiCanvas {
         if hover {
             self.frame(kx + 1, ty - 3, 14, th + 6, [255, 255, 255, 110]);
         }
+        } // chrome_enabled
         // label centered over the track (empty label = the vanilla
         // unlabeled slider, e.g. Brightness)
         if !label.is_empty() {
@@ -1211,6 +1255,9 @@ impl UiCanvas {
         };
         // label (small, above the tray)
         self.text(w.x + 2, w.y - 12, &label, [180, 180, 180, 255], 1);
+        // Phase 2: quads always pushed, raster gated
+        self.gui_frame.text_field(w, _hover);
+        if self.chrome_enabled {
         // inset tray
         self.rect(w.x, w.y, w.w, w.h, [16, 16, 16, 235]);
         self.frame(w.x, w.y, w.w, w.h, [12, 12, 12, 255]);
@@ -1219,6 +1266,7 @@ impl UiCanvas {
         if focused {
             self.frame(w.x + 1, w.y + 1, w.w - 2, w.h - 2, [255, 255, 255, 170]);
         }
+        } // chrome_enabled
         // contents: typed text, else placeholder in gray
         let fs = 2.0 * self.widget_scale;
         let shown = Self::field_visible_text_f(w.w, &text, fs);
@@ -1357,6 +1405,11 @@ impl UiCanvas {
         title: &str,
         tooltip: &[String],
     ) {
+        // Phase 2: the vanilla options background (16x16 dirt tiles at
+        // 0.25 brightness) rides the quad pass; the canvas dark rect
+        // stays as the no-quads fallback
+        self.gui_frame
+            .dirt_background(UI_W as i32, UI_H as i32);
         self.rect(0, 0, UI_W as i32, UI_H as i32, [8, 8, 10, 110]);
         self.text_center(18, title, [255, 255, 255, 255], 3);
         for (i, line) in tooltip.iter().take(2).enumerate() {
@@ -1484,6 +1537,19 @@ impl UiCanvas {
         for i in 0..10i32 {
             let x = hb_x + 2 + i * 17;
             let y = hb_y - 26;
+            // Phase 2: the 9x9 quad sprite (18x18 drawn) always pushed;
+            // the legacy canvas sprite raster is gated
+            let variant = if health >= (i + 1) as f32 / 10.0 {
+                crate::textures::gui_art::HeartVariant::Full
+            } else if health > i as f32 / 10.0 {
+                crate::textures::gui_art::HeartVariant::Half
+            } else {
+                crate::textures::gui_art::HeartVariant::Empty
+            };
+            self.gui_frame.heart(x, y, variant);
+            if !self.chrome_enabled {
+                continue;
+            }
             // background outline (empty heart) then fill
             if health >= (i + 1) as f32 / 10.0 {
                 self.sprite(x, y, &Self::HEART, &heart_pal, 2);
@@ -1508,6 +1574,18 @@ impl UiCanvas {
         for i in 0..10i32 {
             let x = hb_x + hb_w - 4 - (i + 1) * 17;
             let y = hb_y - 28;
+            // Phase 2: quad sprite always pushed (right row mirrors)
+            let variant = if food >= (i + 1) as f32 / 10.0 {
+                crate::textures::gui_art::HungerVariant::Full
+            } else if food > i as f32 / 10.0 {
+                crate::textures::gui_art::HungerVariant::Half
+            } else {
+                crate::textures::gui_art::HungerVariant::Empty
+            };
+            self.gui_frame.hunger(x, y, variant);
+            if !self.chrome_enabled {
+                continue;
+            }
             if food >= (i + 1) as f32 / 10.0 {
                 self.sprite(x, y, &Self::FOOD, &food_pal, 2);
             } else {
@@ -1535,7 +1613,11 @@ impl UiCanvas {
             for i in 0..bubbles.min(10) {
                 let x = hb_x + hb_w - 4 - (i + 1) * 17;
                 let y = hb_y - 48;
-                self.sprite(x, y, &Self::BUBBLE, &bubble_pal, 2);
+                self.gui_frame
+                    .bubble(x, y, crate::textures::gui_art::BubbleVariant::Full);
+                if self.chrome_enabled {
+                    self.sprite(x, y, &Self::BUBBLE, &bubble_pal, 2);
+                }
             }
         }
 
@@ -1674,19 +1756,30 @@ impl UiCanvas {
         let bw = n * slot + 4;
         let x0 = (UI_W as i32 - bw) / 2;
         let y0 = UI_H as i32 - 48;
-        self.rect(x0, y0, bw, 44, [12, 12, 12, 190]);
-        self.frame(x0, y0, bw, 44, [8, 8, 8, 255]);
+        // Phase 2: hotbar chrome quads (bg + selection) always pushed,
+        // raster gated. Item icons + counts stay on the canvas (Phase 3
+        // migrates icons).
+        self.gui_frame.hotbar_background(x0, y0 - 2);
+        let sel = x0 + 2 + selected as i32 * slot;
+        self.gui_frame.hotbar_selection(sel - 2, y0 - 3);
+        if self.chrome_enabled {
+            self.rect(x0, y0, bw, 44, [12, 12, 12, 190]);
+            self.frame(x0, y0, bw, 44, [8, 8, 8, 255]);
+        }
         for (i, stack) in slots.iter().enumerate() {
             let sx = x0 + 2 + i as i32 * slot;
             let sy = y0 + 2;
-            self.rect(sx, sy, 36, 36, [58, 58, 58, 160]);
-            self.frame(sx, sy, 36, 36, [90, 90, 90, 220]);
+            if self.chrome_enabled {
+                self.rect(sx, sy, 36, 36, [58, 58, 58, 160]);
+                self.frame(sx, sy, 36, 36, [90, 90, 90, 220]);
+            }
             self.draw_stack(stack, sx, sy, atlas);
         }
         // selection: chunky white frame extending past the slot
-        let sel = x0 + 2 + selected as i32 * slot;
-        self.frame(sel - 2, y0, 40, 40, [255, 255, 255, 255]);
-        self.frame(sel - 3, y0 - 1, 42, 42, [200, 200, 200, 140]);
+        if self.chrome_enabled {
+            self.frame(sel - 2, y0, 40, 40, [255, 255, 255, 255]);
+            self.frame(sel - 3, y0 - 1, 42, 42, [200, 200, 200, 140]);
+        }
 
         if let Some((name, alpha)) = item_name {
             let w = name.len() as i32 * 12;

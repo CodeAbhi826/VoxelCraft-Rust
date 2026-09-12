@@ -91,6 +91,10 @@ impl ParticleSystem {
     /// vanilla break burst: a 4×4×4 grid of sub-tile particles across the
     /// block volume, launched with randomized velocities. `sky`/`blk` are
     /// the light levels at the block (baked brightness), `biome` its column.
+    // 8 params: the vanilla break burst carries position, block, biome
+    // and the two baked light levels — a struct here would just mirror
+    // the call site, so the lint is silenced deliberately.
+    #[allow(clippy::too_many_arguments)]
     pub fn spawn_block_break(
         &mut self,
         wx: i32,
@@ -101,7 +105,7 @@ impl ParticleSystem {
         sky: u8,
         blk: u8,
     ) {
-        let state = block as u16;
+        let state = block;
         let tile = state_tiles(state)[3]; // side tile like vanilla (top for grass tops)
         let tint_col = tint::block_tint_color(block, biome);
         let light = particle_light(sky, blk);
@@ -158,7 +162,7 @@ impl ParticleSystem {
         sky: u8,
         blk: u8,
     ) {
-        let tile = state_tiles(block as u16)[3];
+        let tile = state_tiles(block)[3];
         let tx = (tile % 32) as f32;
         let ty = (tile / 32) as f32;
         // vanilla Particles setting: Minimal/Decreased thin these out too

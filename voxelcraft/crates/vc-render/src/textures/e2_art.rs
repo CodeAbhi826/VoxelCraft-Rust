@@ -82,9 +82,9 @@ pub(super) fn beacon_art(a: &mut [u8], t: u16, rng: &mut Rng) {
 /// Beacon beam — the vertical light column rendered as a bright
 /// translucent streak (billboard quads stack this tile).
 pub(super) fn beacon_beam_art(a: &mut [u8], t: u16) {
-    for y in 0..16 {
-        for x in 0..16 {
-            let d = ((x - 8) as i32).abs();
+    for y in 0..16i32 {
+        for x in 0..16i32 {
+            let d = (x - 8).abs();
             let a_ = if d < 2 { 210 } else if d < 4 { 130 } else { 60 };
             put(a, t, x, y, 240, 250, 255, a_);
         }
@@ -318,10 +318,10 @@ pub(super) fn emerald_art(a: &mut [u8], t: u16) {
 /// Nether star — pale four-point star with a warm core (the wither's
 /// drop, VERIFIED w/Wither).
 pub(super) fn nether_star_art(a: &mut [u8], t: u16) {
-    for y in 0..16 {
-        for x in 0..16 {
-            let dx = (x as i32 - 8).abs();
-            let dy = (y as i32 - 8).abs();
+    for y in 0..16i32 {
+        for x in 0..16i32 {
+            let dx = (x - 8).abs();
+            let dy = (y - 8).abs();
             // four-point star: |dx|+|dy| small on the diagonals
             let m = dx + dy;
             if m < 3 {

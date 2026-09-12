@@ -187,7 +187,7 @@ impl ItemSystem {
         out: &mut Vec<vc_particles::particles::ParticleVertex>,
     ) {
         for it in self.items.iter() {
-            let tile = state_tiles(it.block as u16)[3];
+            let tile = state_tiles(it.block)[3];
             // [1.12 fix] 32-tile atlas rows (was %16//16)
             let tx = (tile % 32) as f32;
             let ty = (tile / 32) as f32;

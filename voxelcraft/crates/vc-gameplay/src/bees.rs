@@ -29,7 +29,7 @@ pub const HIVE_CAPACITY: usize = 3;
 /// a bee collects nectar" (VERIFIED w/Bee)
 pub const FLOWER_CIRCLE_TICKS: i32 = 400;
 /// "It takes about 2 minutes for the bee to do this [make honey]"
-/// + "They stay in their nest or hive for at least 2400 game ticks
+/// and "They stay in their nest or hive for at least 2400 game ticks
 /// (2 minutes) before coming back out" (VERIFIED w/Bee)
 pub const HIVE_WORK_TICKS: i32 = 2400;
 /// "dies approximately one minute later" after losing its stinger
@@ -114,6 +114,13 @@ pub struct BeeState {
     /// MobSystem::tick removes the mob and hands it to the game layer
     /// (the enter queue)
     pub arrived: bool,
+}
+
+impl Default for BeeState {
+    /// delegates to [`BeeState::new`] — a fresh homeless adult bee
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl BeeState {
@@ -223,7 +230,7 @@ impl HiveSystem {
         //    register empty. The deterministic-count rule: 2 or 3
         //    (VERIFIED w/Bee).
         if self.scan_t % 20 == 0 {
-            let k = (self.scan_t / 20) as i32;
+            let k = self.scan_t / 20;
             let cx = sim_center.0 + (k % 17) - 8;
             let cz = sim_center.1 + ((k / 17) % 17) - 8;
             let in_ring = cx.wrapping_sub(sim_center.0).saturating_abs().max(

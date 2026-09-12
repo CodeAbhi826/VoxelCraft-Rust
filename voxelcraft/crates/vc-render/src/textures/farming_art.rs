@@ -112,7 +112,7 @@ pub(super) fn wheat_art(a: &mut [u8], t: u16, stage: u8, _rng: &mut Rng) {
         _ => {
             // stalk columns + heads at the top when ripening
             for (i, x) in [3usize, 6, 9, 12].iter().enumerate() {
-                let sway = if (s + i as u8) % 2 == 0 { 1i32 } else { -1 };
+                let sway = if (s + i as u8).is_multiple_of(2) { 1i32 } else { -1 };
                 for y in top..base {
                     // slight sway toward the top third
                     let dx = if y < top + h / 3 { sway } else { 0 };

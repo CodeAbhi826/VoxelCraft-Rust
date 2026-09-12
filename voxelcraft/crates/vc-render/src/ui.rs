@@ -16,7 +16,7 @@ pub const UI_H: usize = 540;
 // baseline); row 7 = the descender row (g j p q y ,). The a-z slots
 // hold TRUE lowercase shapes — only the case renderer (F3 overlay)
 // reads them; text()/text_flat() remap a-z→A (smallcaps UI look).
-const FONT: [[u8; 8]; 96] = [
+pub(crate) const FONT: [[u8; 8]; 96] = [
     [0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00], [0x04,0x04,0x04,0x04,0x04,0x00,0x04,0x00],
     [0x0A,0x0A,0x00,0x00,0x00,0x00,0x00,0x00], [0x0A,0x1F,0x0A,0x1F,0x0A,0x00,0x00,0x00],
     [0x04,0x0F,0x14,0x0E,0x05,0x1F,0x04,0x00], [0x18,0x19,0x02,0x04,0x08,0x13,0x03,0x00],
@@ -88,7 +88,7 @@ fn case_glyph(ch: char) -> Option<([u8; 8], i32, i32)> {
         return Some((INFINITY, 0, 5));
     }
     let mut ch = ch as usize;
-    if ch < 32 || ch > 126 {
+    if !(32..=126).contains(&ch) {
         ch = b'?' as usize;
     }
     let g = &FONT[ch - 32];
@@ -147,8 +147,7 @@ impl Widget {
         x >= self.x && x < self.x + self.w && y >= self.y && y < self.y + self.h
     }
     pub fn slider_value_at(&self, px: i32) -> f32 {
-        let t = ((px - self.x - 8) as f32 / (self.w - 16) as f32).clamp(0.0, 1.0);
-        t
+        ((px - self.x - 8) as f32 / (self.w - 16) as f32).clamp(0.0, 1.0)
     }
 }
 
@@ -334,6 +333,9 @@ pub const MAX_PACK_ENTRIES: usize = 8;
 
 /// Button with explicit height (vanilla title buttons are 200x20 at GUI
 /// scale 2 = 300x30 on the 960x540 canvas).
+// 8 params mirror `btn` + the explicit height column; silenced
+// deliberately.
+#[allow(clippy::too_many_arguments)]
 pub fn btn_h(
     id: u16,
     x: i32,
@@ -723,6 +725,12 @@ pub struct UiCanvas {
     pub widget_scale: f32,
 }
 
+impl Default for UiCanvas {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl UiCanvas {
     pub fn new() -> Self {
         UiCanvas {
@@ -784,7 +792,7 @@ impl UiCanvas {
         let mut cx = x;
         for ch in s.chars() {
             let mut ch = ch as usize;
-            if ch < 32 || ch > 126 {
+            if !(32..=126).contains(&ch) {
                 ch = '?' as usize;
             }
             if ch >= 'a' as usize && ch <= 'z' as usize {
@@ -823,7 +831,7 @@ impl UiCanvas {
         let gh = (8.0 * scale).ceil() as i32;
         for ch in s.chars() {
             let mut ch = ch as usize;
-            if ch < 32 || ch > 126 {
+            if !(32..=126).contains(&ch) {
                 ch = '?' as usize;
             }
             if ch >= 'a' as usize && ch <= 'z' as usize {
@@ -857,7 +865,7 @@ impl UiCanvas {
         let mut cx = x;
         for ch in s.chars() {
             let mut ch = ch as usize;
-            if ch < 32 || ch > 126 {
+            if !(32..=126).contains(&ch) {
                 ch = '?' as usize;
             }
             if ch >= 'a' as usize && ch <= 'z' as usize {
@@ -984,7 +992,7 @@ impl UiCanvas {
         let mut pen = pad;
         for ch in s.chars() {
             let mut ch = ch as usize;
-            if ch < 32 || ch > 126 {
+            if !(32..=126).contains(&ch) {
                 ch = '?' as usize;
             }
             if ch >= 'a' as usize && ch <= 'z' as usize {
@@ -1668,12 +1676,12 @@ impl UiCanvas {
         let y0 = UI_H as i32 - 48;
         self.rect(x0, y0, bw, 44, [12, 12, 12, 190]);
         self.frame(x0, y0, bw, 44, [8, 8, 8, 255]);
-        for i in 0..n as usize {
+        for (i, stack) in slots.iter().enumerate() {
             let sx = x0 + 2 + i as i32 * slot;
             let sy = y0 + 2;
             self.rect(sx, sy, 36, 36, [58, 58, 58, 160]);
             self.frame(sx, sy, 36, 36, [90, 90, 90, 220]);
-            self.draw_stack(&slots[i], sx, sy, atlas);
+            self.draw_stack(stack, sx, sy, atlas);
         }
         // selection: chunky white frame extending past the slot
         let sel = x0 + 2 + selected as i32 * slot;
@@ -2164,7 +2172,7 @@ impl UiCanvas {
                 self.rect(bx, y0 - 28, 108, 10, [20, 20, 24, 255]);
                 self.frame(bx, y0 - 28, 108, 10, [70, 70, 76, 255]);
                 if let Some(next) = tv.xp_next {
-                    let prev = vc_gameplay::villagers::LEVEL_XP[(tv.level - 1) as usize] as u32;
+                    let prev = vc_gameplay::villagers::LEVEL_XP[(tv.level - 1) as usize];
                     let frac =
                         ((tv.xp - prev) as f32 / (next - prev).max(1) as f32).clamp(0.0, 1.0);
                     self.rect(
@@ -2424,7 +2432,7 @@ impl UiCanvas {
         let cols = 15;
         let vis_rows = 11usize;
         let cell = 44i32;
-        let total_rows = (blocks.len() + cols - 1) / cols;
+        let total_rows = blocks.len().div_ceil(cols);
         let scroll = scroll.min(total_rows.saturating_sub(vis_rows));
         // Phase E1: 12 columns (was 8) — the picker grew past 68 entries
         // with the 1.0–1.2 bracket blocks + 16 spawn eggs.

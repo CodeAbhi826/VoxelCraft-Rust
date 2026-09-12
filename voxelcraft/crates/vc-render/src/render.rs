@@ -2084,9 +2084,11 @@ impl Renderer {
         );
         let atlas_view = atlas_tex.create_view(&wgpu::TextureViewDescriptor::default());
 
-        let mut samp = wgpu::SamplerDescriptor::default();
-        samp.mag_filter = wgpu::FilterMode::Nearest;
-        samp.min_filter = wgpu::FilterMode::Nearest;
+        let samp = wgpu::SamplerDescriptor {
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        };
         let sampler = device.create_sampler(&samp);
 
         // world bind group
@@ -2199,11 +2201,13 @@ impl Renderer {
             view_formats: &[],
         });
         let shadow_depth = shadow_depth_tex.create_view(&wgpu::TextureViewDescriptor::default());
-        let mut shadow_samp_d = wgpu::SamplerDescriptor::default();
-        shadow_samp_d.mag_filter = wgpu::FilterMode::Nearest;
-        shadow_samp_d.min_filter = wgpu::FilterMode::Nearest;
-        shadow_samp_d.address_mode_u = wgpu::AddressMode::ClampToEdge;
-        shadow_samp_d.address_mode_v = wgpu::AddressMode::ClampToEdge;
+        let shadow_samp_d = wgpu::SamplerDescriptor {
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            ..Default::default()
+        };
         let shadow_samp = device.create_sampler(&shadow_samp_d);
         let shadow_buf = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("shadow-globals"),
@@ -2512,9 +2516,11 @@ impl Renderer {
             view_formats: &[],
         });
         let ui_view = ui_tex.create_view(&wgpu::TextureViewDescriptor::default());
-        let mut usamp = wgpu::SamplerDescriptor::default();
-        usamp.mag_filter = wgpu::FilterMode::Nearest;
-        usamp.min_filter = wgpu::FilterMode::Nearest;
+        let usamp = wgpu::SamplerDescriptor {
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        };
         let ui_samp = device.create_sampler(&usamp);
 
         let ui_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -2751,11 +2757,14 @@ impl Renderer {
             cloud_size,
         );
         let cloud_view = cloud_tex.create_view(&wgpu::TextureViewDescriptor::default());
-        let mut csamp = wgpu::SamplerDescriptor::default();
-        csamp.mag_filter = wgpu::FilterMode::Nearest; // crisp vanilla-style cloud edges
-        csamp.min_filter = wgpu::FilterMode::Nearest;
-        csamp.address_mode_u = wgpu::AddressMode::Repeat;
-        csamp.address_mode_v = wgpu::AddressMode::Repeat;
+        // crisp vanilla-style cloud edges
+        let csamp = wgpu::SamplerDescriptor {
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
+            address_mode_u: wgpu::AddressMode::Repeat,
+            address_mode_v: wgpu::AddressMode::Repeat,
+            ..Default::default()
+        };
         let cloud_samp = device.create_sampler(&csamp);
 
         let cloud_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -3893,7 +3902,7 @@ impl Renderer {
             wgpu::PresentMode::AutoNoVsync => "AutoNoVsync",
             _ => "other",
         };
-        format!("{name}{}", if self.vsync { "" } else { "" })
+        name.to_string()
     }
 
     /// overwrite one 16×16 atlas tile (animated textures: frame update path —

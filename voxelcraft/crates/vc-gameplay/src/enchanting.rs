@@ -533,7 +533,7 @@ fn pick_enchant(rng: &mut Rng) -> u8 {
 /// enchant level for an option: scales with the row level toward the max
 /// (option level 30 → the enchant's max level; ~half → ~half the levels)
 fn ench_level_for(def: &EnchantDef, level: u8) -> u8 {
-    let l = (level as u32 * def.max_level as u32 + 29) / 30;
+    let l = (level as u32 * def.max_level as u32).div_ceil(30);
     l.max(1).min(def.max_level as u32) as u8
 }
 

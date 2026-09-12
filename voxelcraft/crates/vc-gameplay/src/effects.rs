@@ -38,7 +38,7 @@ pub enum EffectKind {
     Hunger,
     /// 1.11 bracket (totem of undying): Absorption — grants a temporary
     /// damage buffer (4 points per level; VERIFIED w/Effect §Absorption
-    /// + w/Totem_of_Undying: Absorption II = 8 points / 4 hearts for
+    /// and w/Totem_of_Undying: Absorption II = 8 points / 4 hearts for
     /// 5 s). No per-tick action; the buffer lives on the player struct
     /// and is cleared when the effect expires (the game layer's hook).
     Absorption,

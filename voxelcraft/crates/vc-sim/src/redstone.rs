@@ -292,8 +292,7 @@ pub fn torch_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, 
 /// one lever update: levers only change by interaction (right-click);
 /// this tick exists so a re-scheduled entry no-ops cleanly
 pub fn lever_tick(world: &World, x: i32, y: i32, z: i32) {
-    if state_block(world.get_state(x, y, z)) != LEVER {
-        return; // stale
+    if state_block(world.get_state(x, y, z)) != LEVER {// stale
     }
 }
 
@@ -974,7 +973,7 @@ pub fn piston_unpushable(b: u16) -> bool {
             | FURNACE
             | BREWING_STAND
             | WATER
-    ) || (b >= REPEATER && b <= COMPARATOR) // directional plates ride the
+    ) || (REPEATER..=COMPARATOR).contains(&b) // directional plates ride the
                                             // floor in vanilla; ours stay put (documented simplification)
 }
 
@@ -1004,7 +1003,7 @@ pub fn repeater_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i3
             let [sfx, _, sfz] = horiz_facing_vec(sf);
             // its output points at us when its facing equals our offset
             // from it (output cell = source − facing = us)
-            if sp && (sfx, sfz) == (side[0] as i32, side[2] as i32) {
+            if sp && (sfx, sfz) == ({ side[0] }, { side[2] }) {
                 is_locked = true;
             }
         }

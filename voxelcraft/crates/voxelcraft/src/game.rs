@@ -1698,6 +1698,26 @@ impl GameApp {
         app.renderer.set_vsync(app.settings.vsync);
         app.particles.density = app.settings.particle_density();
         app.apply_fullscreen();
+        // UI-overhaul Phase 2 (D5/D6): arm the GUI quad pass with the
+        // built texture set and apply the migration config. Shipping
+        // default: quads ON, canvas chrome OFF. If the upload failed,
+        // the canvas keeps rasterizing chrome (self-healing fallback —
+        // chrome never disappears because of a GPU hiccup).
+        {
+            let gui_cfg = vc_render::gui_render::GuiRenderConfig::default();
+            if let Err(e) = app.renderer.set_gui_textures(&app.gui_set) {
+                vc_render::render::report_boot_log(&format!(
+                    "gui quad renderer unavailable: {e:?} — canvas chrome kept"
+                ));
+            } else {
+                app.renderer.set_gui_quads_enabled(gui_cfg.quads_enabled);
+                vc_render::render::report_boot_log(
+                    "gui quad renderer armed: chrome -> GPU quads (canvas chrome off)",
+                );
+            }
+            app.ui
+                .set_chrome_enabled(gui_cfg.chrome_in_canvas || !app.renderer.gui_quads_ready());
+        }
         // Phase 5: restore container inventories (dungeon loot + the
         // player's touched chests/hoppers) into the fresh sim — native
         // only (web sessions regenerate; containers there are transient)

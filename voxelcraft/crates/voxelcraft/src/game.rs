@@ -1478,42 +1478,46 @@ impl GameApp {
             }
         };
 
-        // -------------------------------------------------- UI Phase 1
+        // ------------------------------------------- UI Phases 1 + 4
         // (D6): build the procedural GUI texture set (G9 — painted in
-        // memory at boot, never read from disk) and merge a user
-        // override from resourcepacks/gui when present. Pure
-        // infrastructure this phase: nothing consumes the set yet — it
-        // builds, validates, and sits on the app.
+        // memory at boot, never read from disk), then let user resource
+        // packs override any sheet through the vc-pack pipeline (Phase 4
+        // wiring: scan resourcepacks/, resolve highest-priority-first,
+        // fall back to builtin per texture). §46: a bad pack never
+        // aborts boot — it is logged and skipped.
         let mut gui_set = vc_render::gui::GuiTextureSet::build_builtin();
         #[cfg(not(target_arch = "wasm32"))]
         {
-            use std::path::Path;
-            match vc_render::gui::loader::load_override(Path::new("resourcepacks/gui")) {
-                Ok(Some(s)) => {
-                    gui_set = s;
-                    vc_render::render::report_debug_log(
-                        "screen",
-                        "gui textures: resourcepacks/gui override applied",
-                    );
+            let packs = vc_pack::pack::scan_user_packs(std::path::Path::new("resourcepacks"));
+            if !packs.is_empty() {
+                let mut stack = vc_pack::pack::PackStack::new();
+                for pack in packs {
+                    stack.push_front(pack);
                 }
-                Ok(None) => {}
-                Err(e) => {
-                    // §46 resilience: a bad override never aborts boot —
-                    // log it (screen category) and keep the builtin set
-                    vc_render::render::report_debug_log(
-                        "screen",
-                        &format!("gui texture override rejected: {e:?} — builtin kept"),
-                    );
+                match vc_render::gui::loader::load_from_pack(&stack) {
+                    Ok(Some(s)) => {
+                        gui_set = s;
+                        vc_render::render::report_debug_log(
+                            "screen",
+                            &format!(
+                                "gui textures: {} user pack(s) applied over builtin",
+                                stack.len()
+                            ),
+                        );
+                    }
+                    Ok(None) => {
+                        vc_render::render::report_debug_log(
+                            "screen",
+                            "gui textures: user packs provide no gui sheets — builtin kept",
+                        );
+                    }
+                    Err(e) => {
+                        vc_render::render::report_debug_log(
+                            "screen",
+                            &format!("gui texture pack rejected: {e:?} — builtin kept"),
+                        );
+                    }
                 }
-            }
-            if vc_render::gui::loader::load_font_png_if_present(
-                &mut gui_set,
-                Path::new("resourcepacks/gui/font.png"),
-            ) {
-                vc_render::render::report_debug_log(
-                    "screen",
-                    "gui font: resourcepacks/gui/font.png active",
-                );
             }
         }
         vc_render::render::report_boot_log(&format!(

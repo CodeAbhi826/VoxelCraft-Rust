@@ -289,6 +289,144 @@ fn collect_str_field_recursive(v: &serde_json::Value, field: &str, out: &mut Vec
     }
 }
 
+
+// ------------------------------------------------------- UI Phase 4 --
+// GUI texture overrides through the resource-pack pipeline (Master
+// Prompt Phase 4: a WIRING task — this crate already owns pack
+// discovery/validation; nothing here duplicates the resolver).
+
+/// Ordered resource-pack stack, HIGHEST priority first. The builtin
+/// procedural GUI set is NOT a member — it is the fallback BELOW the
+/// stack (the loader merges user-pack sheets over builtin).
+pub struct PackStack {
+    sources: Vec<Arc<dyn PackSource>>,
+}
+
+impl Default for PackStack {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PackStack {
+    pub fn new() -> Self {
+        PackStack { sources: Vec::new() }
+    }
+
+    /// add a source at the given priority position: index 0 = highest
+    /// (applied last in scan order, vanilla-style "top of the list")
+    pub fn push_front(&mut self, source: Arc<dyn PackSource>) {
+        self.sources.insert(0, source);
+    }
+
+    /// read `path` from the highest-priority source that provides it
+    /// (returns the bytes + the source name for logs)
+    pub fn read_first(&self, path: &str) -> Option<(Vec<u8>, String)> {
+        for s in &self.sources {
+            if let Some(bytes) = s.read(path) {
+                return Some((bytes, s.name()));
+            }
+        }
+        None
+    }
+
+    pub fn len(&self) -> usize {
+        self.sources.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.sources.is_empty()
+    }
+}
+
+/// A `.zip` resource pack. Reuses the Phase 9 zip reader (flate2, zero
+/// new dependencies).
+pub struct ZipSource {
+    files: crate::zip::ZipFiles,
+    label: String,
+}
+
+impl ZipSource {
+    /// open a zip pack from disk (None when unreadable as a zip)
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn from_path(path: &std::path::Path) -> Option<Self> {
+        let bytes = std::fs::read(path).ok()?;
+        let files = crate::zip::ZipFiles::from_bytes(&bytes)?;
+        Some(ZipSource {
+            files,
+            label: path.display().to_string(),
+        })
+    }
+
+    /// open from in-memory zip bytes (tests)
+    pub fn from_bytes(bytes: &[u8], label: &str) -> Option<Self> {
+        let files = crate::zip::ZipFiles::from_bytes(bytes)?;
+        Some(ZipSource {
+            files,
+            label: label.to_string(),
+        })
+    }
+}
+
+impl PackSource for ZipSource {
+    fn read(&self, path: &str) -> Option<Vec<u8>> {
+        self.files.read_file(path)
+    }
+
+    fn name(&self) -> String {
+        format!("zip:{}", self.label)
+    }
+}
+
+/// Discover user packs under `dir`: every sub-folder WITH a pack.mcmeta
+/// plus every `.zip`. Alphabetical order — the LAST name lands on top
+/// (highest priority), matching vanilla's list-on-top-wins behavior.
+/// Unreadable entries are skipped silently (§46: a broken pack never
+/// breaks boot).
+#[cfg(not(target_arch = "wasm32"))]
+pub fn scan_user_packs(dir: &std::path::Path) -> Vec<Arc<dyn PackSource>> {
+    let mut found: Vec<(String, Arc<dyn PackSource>)> = Vec::new();
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return Vec::new();
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+            continue;
+        };
+        let name = name.to_string();
+        if path.is_dir() {
+            let folder = FolderSource::new(path.clone(), &name);
+            if folder.exists() {
+                if let Ok((_meta, src)) = open(Arc::new(folder)) {
+                    found.push((name, src));
+                }
+            }
+        } else if path.extension().and_then(|e| e.to_str()) == Some("zip") {
+            if let Some(zip) = ZipSource::from_path(&path) {
+                if let Ok((_meta, src)) = open(Arc::new(zip)) {
+                    found.push((name, src));
+                }
+            }
+        }
+    }
+    found.sort_by(|a, b| a.0.cmp(&b.0));
+    // build the stack: later names are pushed first (front) = higher
+    let mut stack = Vec::new();
+    for (_name, src) in found.into_iter().rev() {
+        stack.push(src);
+    }
+    stack
+}
+
+/// logical GUI texture name -> pack-relative path:
+/// "hearts" -> "assets/minecraft/textures/gui/hearts.png" (the
+/// `minecraft` namespace so packs written for MC 1.16.5 work unchanged;
+/// custom namespaces resolve only through explicit "ns:name" requests)
+pub fn gui_texture_path(name: &str) -> String {
+    crate::model::texture_path(&format!("gui/{name}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -320,5 +458,168 @@ mod tests {
         assert_eq!(mem.read("a/b.txt"), Some(b"hello".to_vec()));
         assert_eq!(mem.read("missing"), None);
         assert_eq!(mem.len(), 1);
+    }
+
+    #[test]
+    fn gui_texture_path_uses_the_minecraft_namespace() {
+        assert_eq!(
+            gui_texture_path("hearts"),
+            "assets/minecraft/textures/gui/hearts.png"
+        );
+        assert_eq!(
+            gui_texture_path("options_background"),
+            "assets/minecraft/textures/gui/options_background.png"
+        );
+    }
+
+    #[test]
+    fn pack_stack_resolves_highest_priority_first() {
+        let mut low = MemorySource::new("low");
+        low.insert("assets/minecraft/textures/gui/hearts.png", b"low".to_vec());
+        low.insert("assets/minecraft/textures/gui/hunger.png", b"low".to_vec());
+        let mut high = MemorySource::new("high");
+        high.insert("assets/minecraft/textures/gui/hearts.png", b"high".to_vec());
+        let mut stack = PackStack::new();
+        stack.push_front(Arc::new(high));
+        stack.push_front(Arc::new(low)); // low pushed to front = now highest
+        // low wins hearts AND hunger; high's hearts is shadowed
+        let (hearts, name) = stack
+            .read_first("assets/minecraft/textures/gui/hearts.png")
+            .unwrap_or_else(|| (Vec::new(), String::new()));
+        assert_eq!(hearts, b"low".to_vec());
+        assert!(name.contains("low"));
+        let (hunger, _) = stack
+            .read_first("assets/minecraft/textures/gui/hunger.png")
+            .unwrap_or_else(|| (Vec::new(), String::new()));
+        assert_eq!(hunger, b"low".to_vec());
+        // nothing provides widgets
+        assert!(stack
+            .read_first("assets/minecraft/textures/gui/widgets.png")
+            .is_none());
+    }
+
+    #[test]
+    fn empty_stack_reads_nothing() {
+        let stack = PackStack::new();
+        assert!(stack.is_empty());
+        assert!(stack.read_first("pack.mcmeta").is_none());
+    }
+
+    /// a real zip built in-memory: the ZipSource reads the same paths a
+    /// folder pack would (zip-vs-folder parity, D8)
+    #[test]
+    fn zip_source_resolves_the_same_paths_as_a_folder_pack() {
+        // build a minimal zip via the `zip` writer? we have no writer —
+        // hand-assemble a STORED (method 0) zip with one file.
+        // layout: local header + data + central directory + EOCD
+        fn le16(v: u16) -> [u8; 2] {
+            [v as u8, (v >> 8) as u8]
+        }
+        fn le32(v: u32) -> [u8; 4] {
+            [
+                v as u8,
+                (v >> 8) as u8,
+                (v >> 16) as u8,
+                (v >> 24) as u8,
+            ]
+        }
+        let name = b"assets/minecraft/textures/gui/hearts.png";
+        let data = b"zip-heart".to_vec();
+        let crc = crc32(&data);
+        let mut out: Vec<u8> = Vec::new();
+        let local_offset = 0u32;
+        out.extend_from_slice(&[0x50, 0x4B, 0x03, 0x04]); // local sig
+        out.extend_from_slice(&le16(20)); // version
+        out.extend_from_slice(&le16(0)); // flags
+        out.extend_from_slice(&le16(0)); // method 0 = stored
+        out.extend_from_slice(&le16(0)); // time
+        out.extend_from_slice(&le16(0)); // date
+        out.extend_from_slice(&le32(crc));
+        out.extend_from_slice(&le32(data.len() as u32));
+        out.extend_from_slice(&le32(data.len() as u32));
+        out.extend_from_slice(&le16(name.len() as u16));
+        out.extend_from_slice(&le16(0)); // extra len
+        out.extend_from_slice(name);
+        out.extend_from_slice(&data);
+        let cd_offset = out.len() as u32;
+        out.extend_from_slice(&[0x50, 0x4B, 0x01, 0x02]); // CD sig
+        out.extend_from_slice(&le16(20)); // version made by
+        out.extend_from_slice(&le16(20)); // version needed
+        out.extend_from_slice(&le16(0)); // flags
+        out.extend_from_slice(&le16(0)); // method
+        out.extend_from_slice(&le16(0)); // time
+        out.extend_from_slice(&le16(0)); // date
+        out.extend_from_slice(&le32(crc));
+        out.extend_from_slice(&le32(data.len() as u32));
+        out.extend_from_slice(&le32(data.len() as u32));
+        out.extend_from_slice(&le16(name.len() as u16));
+        out.extend_from_slice(&le16(0)); // extra
+        out.extend_from_slice(&le16(0)); // comment
+        out.extend_from_slice(&le16(0)); // disk
+        out.extend_from_slice(&le16(0)); // int attrs
+        out.extend_from_slice(&le32(0)); // ext attrs
+        out.extend_from_slice(&le32(local_offset));
+        out.extend_from_slice(name);
+        let eocd_offset = out.len() as u32;
+        out.extend_from_slice(&[0x50, 0x4B, 0x05, 0x06]); // EOCD
+        out.extend_from_slice(&le16(0)); // disk
+        out.extend_from_slice(&le16(0)); // cd disk
+        out.extend_from_slice(&le16(1)); // entries this disk
+        out.extend_from_slice(&le16(1)); // total entries
+        out.extend_from_slice(&le32(eocd_offset - cd_offset)); // cd size
+        out.extend_from_slice(&le32(cd_offset)); // cd offset
+        out.extend_from_slice(&le16(0)); // comment len
+
+        let Some(zip) = ZipSource::from_bytes(&out, "test.zip") else {
+            panic!("hand-built zip must parse");
+        };
+        let src: Arc<dyn PackSource> = Arc::new(zip);
+        assert_eq!(
+            src.read("assets/minecraft/textures/gui/hearts.png"),
+            Some(b"zip-heart".to_vec())
+        );
+        // folder parity: the same logical path through a MemorySource
+        let mut folder_like = MemorySource::new("folder-like");
+        folder_like.insert(
+            "assets/minecraft/textures/gui/hearts.png",
+            b"zip-heart".to_vec(),
+        );
+        assert_eq!(
+            folder_like.read("assets/minecraft/textures/gui/hearts.png"),
+            src.read("assets/minecraft/textures/gui/hearts.png")
+        );
+    }
+
+    /// CRC-32 (IEEE) for the hand-built zip above
+    fn crc32(data: &[u8]) -> u32 {
+        let mut crc = 0xFFFF_FFFFu32;
+        for &b in data {
+            crc ^= b as u32;
+            for _ in 0..8 {
+                let mask = (crc & 1).wrapping_neg();
+                crc = (crc >> 1) ^ (0xEDB8_8320 & mask);
+            }
+        }
+        !crc
+    }
+
+    /// a wrong pack_format only WARNS (the repo's §46 policy — VERIFIED
+    /// minecraft.wiki: pack_format 6 is 1.16.2-1.16.5, NOT the 5 the
+    /// master prompt claims) and the pack still opens
+    #[test]
+    fn wrong_pack_format_warns_but_opens() {
+        let mut mem = MemorySource::new("fmt");
+        mem.insert(
+            "pack.mcmeta",
+            br#"{"pack":{"pack_format":99,"description":"future"}}"#.to_vec(),
+        );
+        let src: Arc<dyn PackSource> = Arc::new(mem);
+        let r = open(src);
+        assert!(r.is_ok(), "mismatched pack_format must not reject (§46)");
+        let (meta, _) = r.unwrap_or((PackMeta {
+            pack_format: 0,
+            description: String::new(),
+        }, Arc::new(MemorySource::new("x"))));
+        assert_eq!(meta.pack_format, 99);
     }
 }

@@ -1,7 +1,7 @@
-//! `gui` — GUI texture set, loaders and (Phase 2+) the quad frame
-//! types for the UI overhaul. Phase 1 is purely additive infrastructure:
-//! nothing consumes these textures yet.
+//! `gui` — GUI texture set, loaders, the Luanti-style runtime font
+//! engine and the quad frame types for the UI overhaul.
 
+pub mod font;
 pub mod loader;
 pub mod set;
 

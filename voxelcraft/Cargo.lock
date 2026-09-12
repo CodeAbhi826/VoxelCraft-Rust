@@ -2149,6 +2149,7 @@ dependencies = [
 name = "vc-render"
 version = "0.3.0"
 dependencies = [
+ "ab_glyph",
  "bytemuck",
  "glam",
  "image",

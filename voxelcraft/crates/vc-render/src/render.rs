@@ -1358,6 +1358,13 @@ pub struct Renderer {
     ui_view: wgpu::TextureView,
     #[allow(dead_code)] // GPU keep-alive (bound via ui_bg at init)
     ui_samp: wgpu::Sampler,
+    /// Luanti font round: LINEAR sampler for the glyph atlas (AA
+    /// rasters — the sprite sheets keep the NEAREST pixel-art sampler)
+    glyph_samp: wgpu::Sampler,
+    /// Luanti font round: the letterbox scale (device px per UI px),
+    /// refreshed every render — the game feeds it back into the
+    /// UiCanvas so glyph rasters land on real device pixels
+    ui_device_scale: f32,
     ui_buf: wgpu::Buffer,
     ui_bgl: wgpu::BindGroupLayout,
     ui_bg: wgpu::BindGroup,
@@ -2533,6 +2540,12 @@ impl Renderer {
             ..Default::default()
         };
         let ui_samp = device.create_sampler(&usamp);
+        let glyph_samp = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("glyph-samp"),
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
 
         let ui_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ui-bgl"),
@@ -3166,6 +3179,8 @@ impl Renderer {
             ui_tex,
             ui_view,
             ui_samp,
+            glyph_samp,
+            ui_device_scale: 1.0,
             ui_buf,
             ui_bgl,
             ui_bg,
@@ -3893,6 +3908,14 @@ impl Renderer {
         self.gui_quads_enabled && self.gui.is_some()
     }
 
+    /// Luanti font round: the letterbox scale (device px per UI px)
+    /// from the last rendered frame — feed into
+    /// `UiCanvas::set_device_scale` so glyph rasters land on device
+    /// pixels at any window size.
+    pub fn ui_device_scale(&self) -> f32 {
+        self.ui_device_scale
+    }
+
     /// Phase 3 (D2): create the item-icon cache (2048x2048 atlas) using
     /// the Renderer's device/queue.
     pub fn create_icon_cache(&self, max_entries: usize) -> crate::item_icon_cache::ItemIconCache {
@@ -4494,6 +4517,10 @@ impl Renderer {
         let sw = self.config.width as f32;
         let sh = self.config.height as f32;
         let scale = (sw / UI_W as f32).min(sh / UI_H as f32);
+        // Luanti font round: publish the letterbox scale (device px per
+        // UI px) — the game feeds it back into the UiCanvas each frame
+        // so the font engine rasterizes glyphs at true device size
+        self.ui_device_scale = scale;
         let x0 = (sw - UI_W as f32 * scale) * 0.5;
         let y0 = (sh - UI_H as f32 * scale) * 0.5;
         let ui_map = UiUniform {
@@ -5155,35 +5182,23 @@ impl Renderer {
             pass.draw(0..3, 0..1);
         }
 
-        // ───────────────────────────────────── pass 5: UI → surface ──
-        // (crisp, unblurred, alpha-blended over the final composited image)
-        {
-            let att = wgpu::RenderPassColorAttachment {
-                view: &frame_view,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Load,
-                    store: wgpu::StoreOp::Store,
-                },
-            };
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("ui"),
-                color_attachments: &[Some(att)],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-            });
-            pass.set_pipeline(&self.ui_pipe);
-            pass.set_bind_group(0, &self.ui_bg, &[]);
-            pass.set_vertex_buffer(0, self.ui_vb.slice(..));
-            pass.set_index_buffer(self.ui_ib.slice(..), wgpu::IndexFormat::Uint32);
-            pass.draw_indexed(0..6, 0, 0..1);
+        // ─────── pass 5: GUI chrome quads → surface (Phase 2 + the
+        // Luanti font round) — drawn BEFORE the canvas blit so the
+        // canvas content (flat icon tiles, fallback chrome, splash
+        // bitmap, F3 strips, crosshair) composites over the chrome
+        // glyph-atlas upkeep: upload glyphs rasterized while the UI was
+        // rebuilt this frame (no-op when unchanged). NOT gated on the
+        // chrome list — a text-only screen (loading) still needs its
+        // glyphs uploaded before pass 7.
+        if let Some(gui) = self.gui.as_mut() {
+            gui.sync_glyph_atlas(
+                &self.device,
+                &self.queue,
+                &self.ui_bgl,
+                &self.ui_buf,
+                &self.glyph_samp,
+            );
         }
-
-        // ─────────────── pass 6: GUI chrome quads → surface (Phase 2) ──
-        // (textured chrome drawn AFTER the canvas: buttons/slots/panels/
-        // HUD sprite chrome/hotbar chrome + the options dirt background;
-        // text and item icons stay on the canvas)
         if self.gui_quads_enabled && !ui.gui_frame.quads.is_empty() {
             if let Some(gui) = self.gui.as_mut() {
                 let att = wgpu::RenderPassColorAttachment {
@@ -5214,6 +5229,73 @@ impl Renderer {
                         // §46: a failed quad pass drops chrome for THIS
                         // frame only — logged, never fatal
                         report_boot_log(&format!("gui quad pass failed: {e:?}"));
+                    }
+                }
+            }
+        }
+
+        // ───────────────────────────── pass 6: UI canvas → surface ──
+        // (crisp, unblurred, alpha-blended over the chrome quads: the
+        // canvas holds the flat icon tiles, the splash bitmap, F3
+        // strips, crosshair and the CPU-fallback chrome/text)
+        {
+            let att = wgpu::RenderPassColorAttachment {
+                view: &frame_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            };
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("ui"),
+                color_attachments: &[Some(att)],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+            });
+            pass.set_pipeline(&self.ui_pipe);
+            pass.set_bind_group(0, &self.ui_bg, &[]);
+            pass.set_vertex_buffer(0, self.ui_vb.slice(..));
+            pass.set_index_buffer(self.ui_ib.slice(..), wgpu::IndexFormat::Uint32);
+            pass.draw_indexed(0..6, 0, 0..1);
+        }
+
+        // ───── pass 7: GLYPH TEXT quads → surface (the Luanti font
+        // round) — AFTER the canvas blit: every label, stack count and
+        // debug line composites on top of both the chrome quads and the
+        // canvas content, so text can never hide under an opaque fill
+        // (the z-order bug class is structurally closed)
+        if self.gui_quads_enabled && !ui.gui_frame.text_quads.is_empty() {
+            if let Some(gui) = self.gui.as_mut() {
+                let att = wgpu::RenderPassColorAttachment {
+                    view: &frame_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                };
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("gui-text"),
+                    color_attachments: &[Some(att)],
+                    depth_stencil_attachment: None,
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                });
+                match gui.draw(
+                    &self.device,
+                    &self.queue,
+                    &mut pass,
+                    &ui.gui_frame.text_quads,
+                ) {
+                    Ok(()) => {
+                        stats.gui_quads += ui.gui_frame.text_quads.len() as u32;
+                    }
+                    Err(e) => {
+                        // §46: text drops for THIS frame only — logged,
+                        // never fatal
+                        report_boot_log(&format!("gui text pass failed: {e:?}"));
                     }
                 }
             }

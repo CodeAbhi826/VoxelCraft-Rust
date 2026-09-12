@@ -3580,3 +3580,89 @@ approved: push, then the deferred items — armor HUD wiring (needs
 player armor slots), hot-reload for resource packs, and the Phase 3
 A-verification items that need a real GPU (frame-time traces, 60 s
 cache stress).
+
+---
+
+## 2026-09-12 — Luanti-replication round 1: the fractional-scale font fix + drumstick hunger art
+
+**Task:** user judged the build "fully shit" — rendering, assets, and
+mainly the FONT and the HUD — and directed replicating Luanti's
+rendering approach (device-resolution fonts, clean HUD) with
+permission for fundamental changes.
+
+**Live diagnosis (agent-browser + VLM, not guesswork):**
+
+1. **Title screen** — passable (VLM: logo crisp, buttons vanilla-like).
+2. **In-game at 960×540 and 1920×1080 (integer 2×)** — text crisp,
+   hearts clean, hotbar vanilla-like. Monocraft glyph-quads path IS
+   armed (`gui quad renderer armed`, engine parses the embedded TTF).
+3. **In-game at 1440×810 (1.5× fractional)** — the smoking gun: ALL
+   text mushy/ragged ("sub-pixel AA smear, uneven glyph weights"),
+   hearts/hotbar soft. Root cause found in `GuiFrame::text`: glyph
+   rasters are DEVICE-resolution (correct, Luanti-style) but their
+   quad dst rects were quantized to INTEGER UI pixels
+   (`(w/k).round()`, pen `.round()`) — the letterbox uniform then
+   re-scaled them by 1.5, resizing every glyph by up to half a device
+   pixel and landing edges between device pixels. Any browser window
+   that isn't an exact 2× multiple of 960×540 (e.g. 125% OS scaling →
+   1536×864) sees exactly this mush — the user's "font is shit".
+4. **Hunger icons** — v1 clean-room art read as "potatoes/orange
+   ovals", not drumsticks (VLM at 3× zoom).
+5. **Terrain claims from the first full-screen VLM pass DISPROVEN at
+   zoom**: AO IS present (smooth gradients at inner corners — the CPU
+   mesher computes vanilla per-corner AO with smooth_level=2 and the
+   terrain shader applies 0.42/0.62/0.80/1.0 factors), textures
+   correct, geometry sealed, leaves alpha-cutout. The 1.16 crimson
+   panorama is intentional parity (Nether Update title screen).
+
+**Fixes (this session, on top of 2d6266a):**
+
+- `vc-render/src/gui_render.rs` — **RectF**: `GuiQuad.dst` is now a
+  fractional f32 rect. `GuiFrame::push` converts integer chrome rects
+  (seam-free adjacency unchanged); new `push_f` for the text layer.
+  **`GuiFrame::text` rewritten for device-exact placement**: glyph
+  origin snapped to whole DEVICE pixels (`round(pen·k)`,
+  `round(y·k + baseline·k + top)`), dst size EXACTLY the raster size,
+  expressed as fractional UI px the uniform maps back 1:1 — texel→pixel
+  mapping at ANY window size (Luanti's fontengine architecture).
+  Shadow offset snapped to whole device px too. Vertex emit is float
+  end-to-end.
+- `vc-render/src/textures/gui_art.rs` — hunger masks v2: teardrop meat
+  blob top-right tapering into a white bone shaft down-left with a
+  knob end; palette H = lighter meat (was pure white), W = 231³. VLM
+  validated the silhouette at 16× zoom ("reads clearly as a drumstick,
+  no floating pixels, no broken outlines") before porting.
+- New regression test
+  `fractional_scale_places_glyphs_on_device_pixels` (dst·k == raster
+  size, origins on the device grid at k=1.5); float-aware rewrites of
+  the 6 dst-comparing tests.
+
+**Verification:**
+
+- Workspace: **704 tests pass / 0 failures** (703 baseline + 1 new).
+  (Note: docs claimed 672, the Master Prompt claimed 648 — the real
+  count was already 703 before this session; no tests were deleted.)
+- clippy: no new warnings from the changed code (pre-existing style
+  warnings only).
+- wasm bundle rebuilt (locked js+wasm pair, mtimes match).
+- E2E (agent-browser, SwiftShader): in-game at 1440×810 before/after —
+  VLM verdict: text "pixel-perfect glyph edges with sharp clean stems"
+  vs before's "mushy sub-pixel artifacts"; hunger icons "clearly
+  drumsticks, meat distinct from white bone"; hearts "sharp clean
+  outlines". Heart-row zoom: 10 full hearts, no artifacts (a transient
+  "1 heart" VLM reading was game state, re-verified clean).
+- Integer-scale regression: 1920×1080 + title at 960×540 — all crisp,
+  splash readable, no clipping.
+
+**Known remaining (candidate next rounds):**
+
+- Canvas-space content (splash bitmap, crosshair, F3 strips) still
+  rides the 960×540 NEAREST letterbox — pixel-art raggedness at
+  fractional scale (authentic MC look; move to quads if unwanted).
+- Clouds render as flat planes (vanilla-parity nitpick).
+- Headless `exitFullscreen` TypeError spam (document not active) —
+  cosmetic, browser-only.
+- Worklog doc-vs-actual test-count drift (672 vs 704).
+
+**Not committed/pushed** — awaiting explicit user approval, per the
+standing instruction.

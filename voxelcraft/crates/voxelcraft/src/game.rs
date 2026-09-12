@@ -1752,6 +1752,14 @@ impl GameApp {
             }
             app.ui
                 .set_chrome_enabled(gui_cfg.chrome_in_canvas || !app.renderer.gui_quads_ready());
+            // Luanti font round: arm the GPU text path (Monocraft glyph
+            // quads) alongside the chrome quads — same self-healing rule:
+            // if the quad pass (or the embedded font) is unavailable the
+            // canvas keeps the bitmap-font text
+            vc_render::ui::set_text_quads_active(
+                app.renderer.gui_quads_ready()
+                    && vc_render::gui::font::engine().is_some(),
+            );
         }
         // Phase 5: restore container inventories (dungeon loot + the
         // player's touched chests/hoppers) into the fresh sim — native
@@ -15016,6 +15024,9 @@ impl GameApp {
     fn rebuild_ui(&mut self) {
         self.last_ui_t = self.time;
         self.ui.clear();
+        // Luanti font round: refresh the device scale so glyph rasters
+        // land on real screen pixels at the current window size
+        self.ui.set_device_scale(self.renderer.ui_device_scale());
 
         match self.screen {
             Screen::Intro => {

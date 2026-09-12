@@ -323,10 +323,10 @@ pub fn resolve_model(
         }
     }
     // elements: the most-derived (first in chain order) non-None set wins
-    let elements: Vec<ElementJson> = match chain.iter().find_map(|j| j.elements.clone()) {
-        Some(e) => e,
-        None => Vec::new(),
-    };
+    let elements: Vec<ElementJson> = chain
+        .iter()
+        .find_map(|j| j.elements.clone())
+        .unwrap_or_default();
 
     // resolve texture variables (#ref chains, depth cap)
     let resolve_var = |name: &str| -> String {
@@ -541,7 +541,7 @@ pub fn apply_variant_rotation(m: &CompiledModel, x_rot: i32, y_rot: i32) -> Comp
     if x_rot == 0 && y_rot == 0 {
         return m.clone();
     }
-    let y_steps = ((y_rot / 90).rem_euclid(4)) as i32;
+    let y_steps = (y_rot / 90).rem_euclid(4);
     let flip_y = (x_rot / 90).rem_euclid(4) == 2;
     let rot_pt = |p: &[f32; 3]| -> [f32; 3] {
         let mut x = p[0];
@@ -652,7 +652,7 @@ pub fn compile_block_dispatch(
         if let Some(m) = cache.get(&loc) {
             return Ok(Arc::clone(m));
         }
-        let m = Arc::new(resolve_model(&loc, &|p| read(&p))?);
+        let m = Arc::new(resolve_model(&loc, &|p| read(p))?);
         cache.insert(loc, Arc::clone(&m));
         Ok(m)
     };

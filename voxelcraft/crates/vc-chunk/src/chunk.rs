@@ -197,19 +197,19 @@ impl Section {
         let mut out = [0u8; SECTION_LEN];
         if self.bits == 16 {
             let epl = self.epl() as usize;
-            for i in 0..SECTION_LEN {
+            for (i, slot) in out.iter_mut().enumerate() {
                 let word = i / epl;
                 let shift = (i % epl) * 16;
-                out[i] = ((self.data[word] >> shift) & 0xFFFF) as u8;
+                *slot = ((self.data[word] >> shift) & 0xFFFF) as u8;
             }
         } else {
             let epl = self.epl() as usize;
             let mask = (1u64 << self.bits) - 1;
-            for i in 0..SECTION_LEN {
+            for (i, slot) in out.iter_mut().enumerate() {
                 let word = i / epl;
                 let shift = (i % epl) * self.bits as usize;
                 let pi = ((self.data[word] >> shift) & mask) as usize;
-                out[i] = self.palette[pi] as u8;
+                *slot = self.palette[pi] as u8;
             }
         }
         out
@@ -221,18 +221,18 @@ impl Section {
         let mut out = [0u16; SECTION_LEN];
         if self.bits == 16 {
             let epl = self.epl() as usize;
-            for i in 0..SECTION_LEN {
+            for (i, slot) in out.iter_mut().enumerate() {
                 let word = i / epl;
                 let shift = (i % epl) * 16;
-                out[i] = ((self.data[word] >> shift) & 0xFFFF) as u16;
+                *slot = ((self.data[word] >> shift) & 0xFFFF) as u16;
             }
         } else {
             let epl = self.epl() as usize;
             let mask = (1u64 << self.bits) - 1;
-            for i in 0..SECTION_LEN {
+            for (i, slot) in out.iter_mut().enumerate() {
                 let word = i / epl;
                 let shift = (i % epl) * self.bits as usize;
-                out[i] = self.palette[((self.data[word] >> shift) & mask) as usize];
+                *slot = self.palette[((self.data[word] >> shift) & mask) as usize];
             }
         }
         out

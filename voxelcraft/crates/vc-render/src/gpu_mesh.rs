@@ -896,8 +896,8 @@ impl GpuMesher {
                 usage: wgpu::BufferUsages::STORAGE,
             })
         };
-        let dummy_v = mk_dummy(&device);
-        let dummy_i = mk_dummy(&device);
+        let dummy_v = mk_dummy(device);
+        let dummy_i = mk_dummy(device);
         GpuMesher {
             pipeline_count,
             pipeline_emit,
@@ -982,7 +982,7 @@ impl GpuMesher {
                     Ok(()) => {
                         // counts mapped: read, compute offsets, dispatch B
                         // (the batch stays alive in its Outputs stage)
-                        self.to_emit_stage(device, queue, &mut batch);
+                        self.emit_stage(device, queue, &mut batch);
                     }
                     Err(TryRecvError::Empty) => {
                         // 2026-09-09: poll on ALL platforms. wgpu 22's
@@ -1228,6 +1228,9 @@ impl GpuMesher {
         });
     }
 
+    // 9 params: the wgpu bind-group assembly mirrors the layout's slot
+    // order — silenced deliberately.
+    #[allow(clippy::too_many_arguments)]
     fn make_bind_group(
         &self,
         device: &wgpu::Device,
@@ -1282,7 +1285,7 @@ impl GpuMesher {
 
     /// counts readback complete → read counts, compute the deterministic
     /// offset table, allocate exact output buffers, dispatch the emit pass
-    fn to_emit_stage(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, batch: &mut Batch) {
+    fn emit_stage(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, batch: &mut Batch) {
         let n = batch.metas.len();
         // read the mapped counts
         {
@@ -1293,8 +1296,10 @@ impl GpuMesher {
             } = batch;
             let data = _counts_stage.slice(..).get_mapped_range();
             let words: Vec<u32> = data
-                .chunks_exact(4)
-                .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .map(|b| u32::from_le_bytes(*b))
                 .collect();
             drop(data);
             _counts_stage.unmap();
@@ -1406,8 +1411,10 @@ impl GpuMesher {
         };
         let data = out_stage.slice(..).get_mapped_range();
         let words: Vec<u32> = data
-            .chunks_exact(4)
-            .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|b| u32::from_le_bytes(*b))
             .collect();
         drop(data);
         out_stage.unmap();

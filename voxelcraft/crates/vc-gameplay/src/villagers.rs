@@ -569,7 +569,7 @@ impl Villagers {
     pub fn new(seed: u64) -> Self {
         Villagers {
             list: Vec::with_capacity(32),
-            rng: Rng::new(seed ^ 0x1A11A_9E),
+            rng: Rng::new(seed ^ 0x01A1_1A9E),
             next_id: 1,
             populated: HashSet::new(),
             trades_done: 0,
@@ -666,11 +666,10 @@ impl Villagers {
             // horizontal distance to the axis + vertical containment
             let hd2 = (px - v.pos[0]).powi(2) + (pz - v.pos[2]).powi(2);
             let v_ok = py >= v.pos[1] - 0.1 && py <= v.pos[1] + 1.9;
-            if hd2 < 0.45 * 0.45 && v_ok {
-                if best.map(|(bt, _)| t < bt).unwrap_or(true) {
+            if hd2 < 0.45 * 0.45 && v_ok
+                && best.map(|(bt, _)| t < bt).unwrap_or(true) {
                     best = Some((t, v.id));
                 }
-            }
         }
         best.map(|(_, id)| id)
     }
@@ -867,7 +866,7 @@ impl Villagers {
         self.restock_pass(sim_ticks);
         self.gossip_decay_pass(sim_ticks);
         self.share_t = self.share_t.wrapping_add(1);
-        if self.share_t % 20 == 0 {
+        if self.share_t.is_multiple_of(20) {
             self.gossip_share_pass();
         }
         let ring = |p: [f32; 3]| {
@@ -1025,7 +1024,7 @@ pub fn build_vertices(
     _up: [f32; 3],
     out: &mut Vec<vc_particles::particles::ParticleVertex>,
 ) {
-    let tile = TILE_VILLAGER as u16;
+    let tile = TILE_VILLAGER;
     // [1.12 fix] 32-tile atlas rows (was %16//16 — see mobs.rs)
     let tx = (tile % 32) as f32;
     let ty = (tile / 32) as f32;

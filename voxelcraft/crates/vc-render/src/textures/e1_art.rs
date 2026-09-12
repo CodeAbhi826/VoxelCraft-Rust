@@ -119,7 +119,7 @@ pub(super) fn cut_sandstone(a: &mut [u8], t: u16, rng: &mut Rng) {
         for x in 0..16 {
             let band = (y / 4) % 2 == 1;
             let groove = y % 4 == 0;
-            let c = if groove { cut } else if band { cut } else { base };
+            let c = if groove || band { cut } else { base };
             put(a, t, x, y, jit(c[0], 6, rng), jit(c[1], 6, rng), jit(c[2], 6, rng), 255);
         }
     }

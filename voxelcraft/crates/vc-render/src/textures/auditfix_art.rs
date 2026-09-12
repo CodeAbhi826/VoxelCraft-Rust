@@ -203,7 +203,7 @@ pub(super) fn llama(a: &mut [u8], t: u16, rng: &mut Rng) {
             if y < 6 && x > 8 {
                 put(a, t, x, y, face[0], face[1], face[2], 255);
             } else {
-                put(a, t, x, y, body[0] as i32, body[1] as i32, body[2] as i32, 255);
+                put(a, t, x, y, body[0], body[1], body[2], 255);
             }
         }
     }
@@ -221,9 +221,9 @@ pub(super) fn vindicator(a: &mut [u8], t: u16, rng: &mut Rng) {
     for y in 2..14 {
         for x in 4..12 {
             if y < 7 {
-                put(a, t, x, y, skin[0] as i32, skin[1], skin[2], 255);
+                put(a, t, x, y, skin[0], skin[1], skin[2], 255);
             } else {
-                put(a, t, x, y, robe[0] as i32, robe[1], robe[2], 255);
+                put(a, t, x, y, robe[0], robe[1], robe[2], 255);
             }
         }
     }
@@ -241,9 +241,9 @@ pub(super) fn evoker(a: &mut [u8], t: u16, rng: &mut Rng) {
     for y in 2..14 {
         for x in 4..12 {
             if y < 7 {
-                put(a, t, x, y, skin[0] as i32, skin[1], skin[2], 255);
+                put(a, t, x, y, skin[0], skin[1], skin[2], 255);
             } else {
-                put(a, t, x, y, robe[0] as i32, robe[1], robe[2], 255);
+                put(a, t, x, y, robe[0], robe[1], robe[2], 255);
             }
         }
     }
@@ -259,7 +259,7 @@ pub(super) fn vex(a: &mut [u8], t: u16, rng: &mut Rng) {
     let body = [196 + jit(0, 14, rng), 206, 216];
     for y in 4..12 {
         for x in 5..11 {
-            put(a, t, x, y, body[0] as i32, body[1], body[2], 255);
+            put(a, t, x, y, body[0], body[1], body[2], 255);
         }
     }
     put(a, t, 6, 6, 40, 30, 30, 255);
@@ -278,7 +278,7 @@ pub(super) fn shulker_box(a: &mut [u8], t: u16, rng: &mut Rng) {
             if y < 6 {
                 put(a, t, x, y, lid[0], lid[1], lid[2], 255);
             } else {
-                put(a, t, x, y, shell[0] as i32, shell[1], shell[2], 255);
+                put(a, t, x, y, shell[0], shell[1], shell[2], 255);
             }
         }
     }
@@ -300,7 +300,7 @@ pub(super) fn shulker_shell(a: &mut [u8], t: u16, rng: &mut Rng) {
             if edge {
                 put(a, t, x, y, 108, 80, 132, 255);
             } else {
-                put(a, t, x, y, shell[0] as i32, shell[1], shell[2], 255);
+                put(a, t, x, y, shell[0], shell[1], shell[2], 255);
             }
         }
     }
@@ -311,7 +311,7 @@ pub(super) fn totem(a: &mut [u8], t: u16, rng: &mut Rng) {
     let gold = [232 + jit(0, 12, rng), 190, 62];
     for y in 3..14 {
         for x in 5..11 {
-            put(a, t, x, y, gold[0] as i32, gold[1], gold[2], 255);
+            put(a, t, x, y, gold[0], gold[1], gold[2], 255);
         }
     }
     // emerald eyes
@@ -319,8 +319,8 @@ pub(super) fn totem(a: &mut [u8], t: u16, rng: &mut Rng) {
     put(a, t, 9, 6, 60, 200, 120, 255);
     // arms out
     for y in 8..10 {
-        put(a, t, 4, y, gold[0] as i32, gold[1], gold[2], 255);
-        put(a, t, 11, y, gold[0] as i32, gold[1], gold[2], 255);
+        put(a, t, 4, y, gold[0], gold[1], gold[2], 255);
+        put(a, t, 11, y, gold[0], gold[1], gold[2], 255);
     }
 }
 

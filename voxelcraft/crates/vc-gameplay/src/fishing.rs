@@ -10,9 +10,9 @@
 //! - loot classes (1.7.2 changelog §Fishing):
 //!   Fish: raw fish (cod), raw salmon, clownfish, pufferfish
 //!   Treasure: enchanted fishing rods, enchanted bows, enchanted books,
-//!             name tags, tripwire hooks, lily pads, saddles
+//!   name tags, tripwire hooks, lily pads, saddles
 //!   Junk: damaged fishing rods, water bottles, rotten flesh, string,
-//!         leather, bowls, sticks, bones, tripwire hooks, 10 ink sacs
+//!   leather, bowls, sticks, bones, tripwire hooks, 10 ink sacs
 //!
 //! Palette adaptation (documented): the engine has no rod/bow/name-tag/
 //! bowl/stick/lily-pad/saddle/ink-sac items yet, so the TABLES carry the

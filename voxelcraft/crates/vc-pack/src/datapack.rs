@@ -359,7 +359,7 @@ impl JsonRecipe {
                     return false;
                 }
                 'outer: for oy in 0..=(size - ph) {
-                    for ox in 0..=(size - pw) {
+                    if let Some(ox) = (0..=(size - pw)).next() {
                         for (ry, row) in pattern.iter().enumerate() {
                             for (rx, cell) in row.iter().enumerate() {
                                 let s = &grid[(oy + ry) * size + (ox + rx)];
@@ -468,11 +468,13 @@ fn ing_matches(ing: &Ingredient, s: &GridItem, tags: &TagStore) -> bool {
 /// apply (unknown item, non-crafting type, bad pattern) — the pack scan
 /// records it and continues (§46 resilience).
 pub fn parse_recipe(id: &str, json: &serde_json::Value) -> Result<JsonRecipe, String> {
+    /// shaped recipe grid: rows of optional ingredient slots
+    type ShapedGrid = Vec<Vec<Option<Ingredient>>>;
     let r#type = json
         .get("type")
         .and_then(|t| t.as_str())
         .ok_or("missing type")?;
-    let (shaped, shapeless): (Option<Vec<Vec<Option<Ingredient>>>>, Vec<Ingredient>) =
+    let (shaped, shapeless): (Option<ShapedGrid>, Vec<Ingredient>) =
         match r#type {
             "minecraft:crafting_shaped" => {
                 let pattern = json
@@ -665,7 +667,7 @@ impl LootTable {
             }
             for _ in 0..n {
                 // weighted draw: uniform over the cumulative weights
-                let mut pick = (rng.next_u64() % total) as u64;
+                let mut pick = rng.next_u64() % total;
                 let mut chosen: Option<&LootEntry> = None;
                 for e in &pool.entries {
                     if pick < e.weight as u64 {
@@ -1325,10 +1327,10 @@ pub fn scan_datapacks(root: &Path) -> LoadedData {
                 .unwrap_or("pack")
                 .to_string();
             if let Some(folder) = FolderFiles::new(&path) {
-                match scan_pack(&id, &folder) {
-                    Some(r) => reports.push(r),
-                    None => {} // not a pack (no pack.mcmeta) — vanilla also
-                               // refuses these silently
+                // not a pack (no pack.mcmeta) — vanilla also refuses
+                // these silently
+                if let Some(r) = scan_pack(&id, &folder) {
+                    reports.push(r);
                 }
             }
         } else if path.extension().and_then(|e| e.to_str()) == Some("zip") {
@@ -1338,13 +1340,7 @@ pub fn scan_datapacks(root: &Path) -> LoadedData {
                 .unwrap_or("pack")
                 .to_string();
             if let Ok(bytes) = std::fs::read(&path) {
-                match crate::zip::ZipFiles::from_bytes(&bytes) {
-                    Some(zf) => match scan_pack(&id, &zf) {
-                        Some(r) => reports.push(r),
-                        None => {}
-                    },
-                    None => {}
-                }
+                if let Some(zf) = crate::zip::ZipFiles::from_bytes(&bytes) { if let Some(r) = scan_pack(&id, &zf) { reports.push(r) } }
             }
         }
     }

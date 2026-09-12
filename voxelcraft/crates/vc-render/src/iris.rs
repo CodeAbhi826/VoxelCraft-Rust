@@ -185,7 +185,7 @@ fn ends_with_continuation(line: &str) -> bool {
 
 /// split `key = value` (first `=` or `:`; Java properties allows both)
 fn split_kv(line: &str) -> Option<(String, String)> {
-    let idx = line.find(|c| c == '=' || c == ':')?;
+    let idx = line.find(['=', ':'])?;
     let key = line[..idx].trim().to_string();
     if key.is_empty() || key.contains(char::is_whitespace) {
         return None;
@@ -831,7 +831,7 @@ pub fn analyze_pack(dir: &Path) -> Option<IrisPackInfo> {
             if let Ok(src) = std::fs::read_to_string(path) {
                 for name in uniforms_declared(&src) {
                     if reference.contains(&name.as_str())
-                        && !uniforms_used.iter().any(|u| *u == name)
+                        && !uniforms_used.contains(&name)
                     {
                         uniforms_used.push(name);
                     }

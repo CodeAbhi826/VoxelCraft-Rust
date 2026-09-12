@@ -91,6 +91,7 @@ impl CampfireState {
     }
 }
 
+#[derive(Default)]
 pub struct Campfires {
     /// keyed by the campfire block position
     pub map: HashMap<[i32; 3], CampfireState>,
@@ -99,14 +100,6 @@ pub struct Campfires {
     pub done: Vec<([i32; 3], u16)>,
 }
 
-impl Default for Campfires {
-    fn default() -> Self {
-        Campfires {
-            map: HashMap::new(),
-            done: Vec::new(),
-        }
-    }
-}
 
 impl Campfires {
     /// entry for a position, creating it on first use

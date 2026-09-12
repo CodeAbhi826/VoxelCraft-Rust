@@ -135,10 +135,10 @@ pub(super) fn hay_top_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     noise_fill(a, t, [172, 140, 64], 10, rng);
     for r in 2..8 {
         let rr = r * r;
-        for y in 0..16 {
-            for x in 0..16 {
-                let dx = x as i32 - 8;
-                let dy = y as i32 - 8;
+        for y in 0..16i32 {
+            for x in 0..16i32 {
+                let dx = x - 8;
+                let dy = y - 8;
                 let d = dx * dx + dy * dy;
                 if (d - rr).abs() < 2 {
                     put(a, t, x, y, 148, 116, 48, 255);

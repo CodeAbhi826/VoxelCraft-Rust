@@ -56,7 +56,7 @@ const STATUS_FULL: &str = "full";
 
 /// our Biome id → vanilla 1.16.5 numeric biome id
 /// (Ocean, Beach, Plains, Forest, Desert, Snowy, Mountains,
-///  + Phase 10: Taiga, BirchForest, Jungle, Savanna, Swamp, Badlands —
+///  plus Phase 10: Taiga, BirchForest, Jungle, Savanna, Swamp, Badlands —
 ///  the vanilla ids live-verified from the wiki Biome page: taiga=5,
 ///  swamp=6, jungle=21, birch_forest=27, savanna=35, badlands=37)
 const BIOME_TO_VANILLA: [i32; 14] = [
@@ -230,9 +230,9 @@ fn vanilla_to_state(name: &str, props: &[(String, String)]) -> Option<u16> {
     // log axis variants (per-log state triples — the axis offsets differ
     // per species, so decode via explicit constants)
     if let Some((block, x_state, z_state)) = match name {
-        "minecraft:oak_log" => Some((blocks::OAK_LOG as u16, OAK_LOG_X, OAK_LOG_Z)),
-        "minecraft:birch_log" => Some((blocks::BIRCH_LOG as u16, BIRCH_LOG_X, BIRCH_LOG_Z)),
-        "minecraft:spruce_log" => Some((blocks::SPRUCE_LOG as u16, SPRUCE_LOG_X, SPRUCE_LOG_Z)),
+        "minecraft:oak_log" => Some((blocks::OAK_LOG, OAK_LOG_X, OAK_LOG_Z)),
+        "minecraft:birch_log" => Some((blocks::BIRCH_LOG, BIRCH_LOG_X, BIRCH_LOG_Z)),
+        "minecraft:spruce_log" => Some((blocks::SPRUCE_LOG, SPRUCE_LOG_X, SPRUCE_LOG_Z)),
         _ => None,
     } {
         return match prop("axis") {
@@ -468,9 +468,9 @@ fn pack_nibbles(data: &[u8; 4096]) -> Vec<i8> {
 /// unpack a vanilla nibble array (missing/short arrays read as 0)
 fn unpack_nibbles(data: &[i8]) -> [u8; 4096] {
     let mut out = [0u8; 4096];
-    for i in 0..4096 {
+    for (i, slot) in out.iter_mut().enumerate() {
         let b = data.get(i >> 1).copied().unwrap_or(0) as u8;
-        out[i] = (b >> ((i & 1) * 4)) & 0xF;
+        *slot = (b >> ((i & 1) * 4)) & 0xF;
     }
     out
 }
@@ -535,7 +535,7 @@ pub fn chunk_from_nbt(data: &[u8]) -> Result<(Chunk, Option<vc_world::light::Lig
                     let bits = bits as usize;
                     let epl = 64 / bits;
                     let mask = (1u64 << bits) - 1;
-                    for i in 0..SECTION_LEN {
+                    for (i, slot) in flat.iter_mut().enumerate() {
                         let word = i / epl;
                         if word >= longs.len() {
                             break;
@@ -543,7 +543,7 @@ pub fn chunk_from_nbt(data: &[u8]) -> Result<(Chunk, Option<vc_world::light::Lig
                         let shift = (i % epl) * bits;
                         let pi = ((longs[word] >> shift) as u64 & mask) as usize;
                         // out-of-range index (corrupt/trailing junk) → air
-                        flat[i] = palette.get(pi).copied().unwrap_or(0);
+                        *slot = palette.get(pi).copied().unwrap_or(0);
                     }
                 }
             }
@@ -557,9 +557,9 @@ pub fn chunk_from_nbt(data: &[u8]) -> Result<(Chunk, Option<vc_world::light::Lig
                             blk: Box::new([0u8; 4096]),
                         })
                     });
-                lsec.sky = Box::new(unpack_nibbles(sky));
+                *lsec.sky = unpack_nibbles(sky);
                 if let Some(blk) = sec.get("BlockLight").and_then(|d| d.as_i8_slice()) {
-                    lsec.blk = Box::new(unpack_nibbles(blk));
+                    *lsec.blk = unpack_nibbles(blk);
                 }
                 any_light = true;
             }
@@ -572,8 +572,8 @@ pub fn chunk_from_nbt(data: &[u8]) -> Result<(Chunk, Option<vc_world::light::Lig
 
     // ---- biomes ----
     if let Some(bi) = level.get("Biomes").and_then(|b| b.as_i32_slice()) {
-        for i in 0..256usize.min(bi.len()) {
-            chunk.biome[i] = vanilla_biome_to_ours(bi[i]);
+        for (slot, b) in chunk.biome.iter_mut().zip(bi.iter()) {
+            *slot = vanilla_biome_to_ours(*b);
         }
     }
 
@@ -959,7 +959,7 @@ pub fn list_worlds() -> Vec<WorldEntry> {
             out.push(WorldEntry { dir, meta, last_played });
         }
     }
-    out.sort_by(|a, b| b.last_played.cmp(&a.last_played));
+    out.sort_by_key(|e| std::cmp::Reverse(e.last_played));
     out
 }
 

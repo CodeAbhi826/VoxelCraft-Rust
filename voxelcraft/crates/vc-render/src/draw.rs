@@ -22,7 +22,7 @@
 //!     wgpu-hal 22's gles/mod.rs: GL/GLES/WebGL2 emulate non-zero
 //!     `first_instance` on *direct* draws by offsetting the instance
 //!     attribute, so the same vertex shader + origin buffer work on every
-//!   backend unchanged.
+//!     backend unchanged.
 //! * **Ordering** — region-major near→far (`order_by_region`): chunks are
 //!   grouped into contiguous per-region runs (one bind per run) while
 //!   keeping an approximately front-to-back order for early-z. Water

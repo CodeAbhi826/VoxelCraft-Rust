@@ -112,7 +112,7 @@ fn thump(freq: f32, dur: f32, amp: f32) -> Vec<f32> {
         .collect()
 }
 
-fn mix_into(a: &mut Vec<f32>, b: &[f32], gain: f32) {
+fn mix_into(a: &mut [f32], b: &[f32], gain: f32) {
     for i in 0..b.len() {
         if i < a.len() {
             a[i] += b[i] * gain;
@@ -426,10 +426,6 @@ fn thunder_recipe() -> Vec<f32> {
     out
 }
 
-/// procedural music pad: a slow chord progression of low-passed sines with
-/// a gentle tremolo. `minor` picks the night variant. ~24 s, streaming
-/// category (played sparsely by the scheduler).
-
 /// Backlog round (farming, 2026-09-09): the hoe-till "thock" — a
 /// clean-room short soil-thump: a 90 Hz body with a fast decay, a
 /// bright noise scrape for the blade cut, and a duller 55 Hz tail for
@@ -456,6 +452,9 @@ fn hoe_till_recipe() -> Vec<f32> {
     out
 }
 
+/// procedural music pad: a slow chord progression of low-passed sines with
+/// a gentle tremolo. `minor` picks the night variant. ~24 s, streaming
+/// category (played sparsely by the scheduler).
 fn music_pad(minor: bool) -> Vec<f32> {
     // two-chord progression, root A3/F3 (night) and C4/F4-ish (day)
     let chords: [[f32; 4]; 2] = if minor {

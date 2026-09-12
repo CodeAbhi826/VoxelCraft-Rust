@@ -39,7 +39,7 @@ impl ItemStack {
 
     /// encode an enchant onto this stack (id < 256, level 1..=255)
     pub fn set_enchant(&mut self, id: u8, level: u8) {
-        self.ench = ((id as u16) << 8) | level.min(255) as u16;
+        self.ench = ((id as u16) << 8) | level as u16;
     }
 
     pub fn is_empty(&self) -> bool {

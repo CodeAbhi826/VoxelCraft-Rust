@@ -34,10 +34,8 @@ fn main() {
     let debug_on = args.iter().any(|a| a == "--debug");
     if debug_on {
         vc_render::render::set_verbose(true);
-        vc_render::render::report_boot_log(&format!(
-            "raw debug stream enabled (--debug) — lines: [t+s][category] message; \
-             categories: input screen world perf save f3"
-        ));
+        vc_render::render::report_boot_log("raw debug stream enabled (--debug) — lines: [t+s][category] message; \
+             categories: input screen world perf save f3");
     }
 
     let event_loop = winit::event_loop::EventLoop::new().expect("event loop");

@@ -23,15 +23,21 @@ mod v116b_art;
 mod audit16_art;
 mod weather_art;
 mod farming_art;
+/// UI-overhaul Phase 1: GUI chrome + HUD sprites (public so the
+/// `gui` module's set/loader can call the painters)
+pub mod gui_art;
 
 pub const ATLAS_SIZE: usize = 512;
 pub const TILE_PX: usize = 16;
 
 #[inline]
+// 8 scalar params — the whole atlas-painter vocabulary (300+ call
+// sites) is written against this shape; silenced deliberately.
+#[allow(clippy::too_many_arguments)]
 fn put(a: &mut [u8], t: u16, x: i32, y: i32, r: i32, g: i32, b: i32, al: i32) {
     let tx = (t % 32) as i32;
     let ty = (t / 32) as i32;
-    if x < 0 || x > 15 || y < 0 || y > 15 {
+    if !(0..=15).contains(&x) || !(0..=15).contains(&y) {
         return;
     }
     let idx = ((ty * 16 + y) as usize * ATLAS_SIZE + (tx * 16 + x) as usize) * 4;
@@ -2222,7 +2228,7 @@ fn ice(a: &mut [u8], t: u16, rng: &mut Rng) {
 
 fn cactus_side(a: &mut [u8], t: u16, rng: &mut Rng) {
     for x in 0..16 {
-        let edge = x < 2 || x > 13;
+        let edge = !(2..=13).contains(&x);
         let s = if edge { -26 } else { 0 };
         for y in 0..16 {
             put(
@@ -2517,9 +2523,9 @@ fn stained_glass_art(a: &mut [u8], t: u16, rgb: (i32, i32, i32)) {
         }
     }
     for i in 0..16 {
-        let f = ((rgb.0 + 40) as i32).min(255);
-        let g = ((rgb.1 + 40) as i32).min(255);
-        let b = ((rgb.2 + 40) as i32).min(255);
+        let f = (rgb.0 + 40).min(255);
+        let g = (rgb.1 + 40).min(255);
+        let b = (rgb.2 + 40).min(255);
         put(a, t, i, 0, f, g, b, 220);
         put(a, t, i, 15, f, g, b, 220);
         put(a, t, 0, i, f, g, b, 220);
@@ -2897,7 +2903,7 @@ fn fish_art(a: &mut [u8], t: u16, back: (i32, i32, i32), belly: (i32, i32, i32),
     }
     // tail
     for i in 0..3 {
-        put(a, t, 13 - 0, 7 - i, back.0, back.1, back.2, 255);
+        put(a, t, 13, 7 - i, back.0, back.1, back.2, 255);
         put(a, t, 13, 9 + i, belly.0, belly.1, belly.2, 255);
     }
     for i in 0..2 {
@@ -4098,7 +4104,7 @@ pub fn generate_atlas() -> Vec<u8> {
             // pixel-rotated copies (the facing variants)
             t if (TILE_GLAZED_TOP_BASE..=TILE_GLAZED_TOP_BASE + 63).contains(&t) => {
                 let off = (t - TILE_GLAZED_TOP_BASE) as u8;
-                if off % 4 == 0 {
+                if off.is_multiple_of(4) {
                     v112_art::glazed_top_art(&mut a, t, off / 4, &mut rng)
                 } else {
                     v112_art::rotated_copy(&mut a, t - (off % 4) as u16, t, off % 4)
@@ -4107,7 +4113,7 @@ pub fn generate_atlas() -> Vec<u8> {
             // glazed terracotta bottoms: same rotation scheme
             t if (TILE_GLAZED_BOTTOM_BASE..=TILE_GLAZED_BOTTOM_BASE + 63).contains(&t) => {
                 let off = (t - TILE_GLAZED_BOTTOM_BASE) as u8;
-                if off % 4 == 0 {
+                if off.is_multiple_of(4) {
                     v112_art::glazed_bottom_art(&mut a, t, off / 4, &mut rng)
                 } else {
                     v112_art::rotated_copy(&mut a, t - (off % 4) as u16, t, off % 4)
@@ -4657,7 +4663,8 @@ pub fn merge_pack_textures(
                     // smooth 0 → peak → 0 pulse over the 4 frames, so
                     // frame 0 == the base tile exactly (seamless loop)
                     let amp = 40.0 * (std::f32::consts::PI * f as f32 / 4.0).sin();
-                    for px in frame.chunks_exact_mut(4) {
+                    let (px4, _rest) = frame.as_chunks_mut::<4>();
+                    for px in px4 {
                         if px[0] > 140 {
                             // brighten R, keep G/B slightly trailing (hot glow)
                             px[0] = (px[0] as f32 + amp).clamp(0.0, 255.0) as u8;
@@ -4861,10 +4868,7 @@ pub fn generate_cloud_atlas() -> Vec<u8> {
     const CELLS: usize = 64;
     let hash = |x: i32, y: i32| -> f32 {
         let n = ((x.wrapping_mul(73856093)) ^ (y.wrapping_mul(19349663))) as f64;
-        let s = (n * 0.0001).fract().abs();
-        let _ = s;
-        let v = (n.sin() * 43758.5453).fract().abs() as f32;
-        v
+        (n.sin() * 43758.5453).fract().abs() as f32
     };
     let cell = |cx: usize, cy: usize| -> bool {
         // wrap → seamless tiling over CELLS

@@ -1,5 +1,5 @@
 //! Greedy mesher + voxel lighting (skylight column scan + lateral BFS) + AO
-//! + JSON-model path (blockstate dispatch, Phase 1).
+//! with the JSON-model path (blockstate dispatch, Phase 1).
 //! Pure function over a 3x3 chunk snapshot → safe on worker threads.
 
 use vc_blocks::blocks::*;
@@ -62,6 +62,9 @@ pub struct Vertex {
     pub w3: u32,
 }
 
+// 12 scalar params — the hot inner-loop vertex packer; a builder would
+// only add overhead, so the lint is silenced deliberately.
+#[allow(clippy::too_many_arguments)]
 #[inline]
 fn pack_vertex(
     x: f32,
@@ -290,7 +293,7 @@ pub fn build_mesh_inputs(
 
 #[inline]
 fn getb(blocks: &[u16], gx: i32, y: i32, gz: i32) -> u16 {
-    if y < 0 || y > 255 {
+    if !(0..=255).contains(&y) {
         return AIR;
     }
     blocks[pidx((gx + 16) as usize, y as usize, (gz + 16) as usize)]
@@ -357,7 +360,7 @@ pub fn mesh_sections(
         let dv = 16usize;
 
         for dir in [1i32, -1i32] {
-            for sec in 0..16usize {
+            for (sec, o) in outs.iter_mut().enumerate() {
                 if mask & (1 << sec) == 0 {
                     continue;
                 }
@@ -366,7 +369,6 @@ pub fn mesh_sections(
                 // at the section base (absolute Y reaches the vertices)
                 let off_u = if u == 1 { ylo } else { 0 };
                 let off_v = if v == 1 { ylo } else { 0 };
-                let o = &mut outs[sec];
                 // slice along d: absolute Y for Y-sweeps, local X/Z otherwise
                 let sls: Box<dyn Iterator<Item = usize>> =
                     if d == 1 { Box::new(ylo..ylo + 16) } else { Box::new(0..16) };
@@ -499,13 +501,12 @@ pub fn mesh_sections(
 
     // ------------------------------------------------ cross plants
     if has_cross {
-        for sec in 0..16usize {
+        for (sec, o) in outs.iter_mut().enumerate() {
             if mask & (1 << sec) == 0 {
                 continue;
             }
             // shadowed names keep the per-cell body unchanged (§12: only
             // the dirty section's output is rebuilt)
-            let o = &mut outs[sec];
             let (solid_v, solid_i) = (&mut o.sv, &mut o.si);
             for ly in (sec * 16)..(sec * 16 + 16) {
             for lz in 0..16usize {
@@ -516,7 +517,7 @@ pub fn mesh_sections(
                     }
                     let sky = getl(&light, lx as i32, ly as i32, lz as i32) as u32;
                     let bl = getl(&blight, lx as i32, ly as i32, lz as i32) as u32;
-                    let tile_i = state_tiles(bs as u16)[3];
+                    let tile_i = state_tiles(bs)[3];
                     // §18: grass-family cross plants take the biome grass tint
                     let tint = vc_blocks::tint::block_face_tint_packed(
                         sb(bs), true, biome_at(lx, lz),
@@ -551,7 +552,7 @@ pub fn mesh_sections(
                                 tile_i, 6, /* normal = cross (shade 0.85) */
                                 3,          /* ao = full */
                                 sky.min(15), bl.min(15),
-                                bs as u16,
+                                bs,
                                 tint,
                             ));
                         }
@@ -571,16 +572,15 @@ pub fn mesh_sections(
     // dispatch (model.rs): partial cuboids, rotations, multipart, cullface.
     // The dispatch is precomputed at boot — zero JSON work per mesh (§5.2).
     if let Some(models) = vc_pack::model::models().filter(|_| has_models) {
-        for sec in 0..16usize {
+        for (sec, o) in outs.iter_mut().enumerate() {
             if mask & (1 << sec) == 0 {
                 continue;
             }
-            let o = &mut outs[sec];
             let (solid_v, solid_i) = (&mut o.sv, &mut o.si);
             for ly in (sec * 16)..(sec * 16 + 16) {
             for lz in 0..16usize {
                 for lx in 0..16usize {
-                    let bs = getb(&blocks, lx as i32, ly as i32, lz as i32) as u16;
+                    let bs = getb(&blocks, lx as i32, ly as i32, lz as i32);
                     if !is_model_state(bs) {
                         continue;
                     }
@@ -621,9 +621,9 @@ pub fn mesh_sections(
         solid: (Vec::new(), Vec::new()),
         water: (Vec::new(), Vec::new()),
     };
-    for sec in 0..16usize {
+    for (sec, o_slot) in outs.iter_mut().enumerate() {
         if mask & (1 << sec) != 0 {
-            let o = std::mem::take(&mut outs[sec]);
+            let o = std::mem::take(o_slot);
             let md = Arc::new(MeshData {
                 solid: (o.sv, o.si),
                 water: (o.wv, o.wi),
@@ -689,7 +689,7 @@ fn emit_model_block(
 }
 
 /// weighted pick among a choice's alternatives
-fn pick_weighted<'a>(choice: &'a vc_pack::model::ModelChoice, hash: u64) -> &'a vc_pack::model::AppliedModel {
+fn pick_weighted(choice: &vc_pack::model::ModelChoice, hash: u64) -> &vc_pack::model::AppliedModel {
     let total: u32 = choice.alts.iter().map(|a| a.weight).sum();
     if choice.alts.len() == 1 || total == 0 {
         return &choice.alts[0];
@@ -740,9 +740,9 @@ fn emit_model_faces(
             }
             // light sampled at the outward neighbor cell (flat per face;
             // per-corner AO below supplies the gradient)
-            let nx = (wx + n[0] as i32) as i32;
-            let ny = (wy + n[1] as i32) as i32;
-            let nz = (wz + n[2] as i32) as i32;
+            let nx = wx + n[0] as i32;
+            let ny = wy + n[1] as i32;
+            let nz = wz + n[2] as i32;
             let sky = getl(light, nx, ny, nz).min(15) as u32;
             let bl = getl(blight, nx, ny, nz).min(15) as u32;
             let tile = models
@@ -901,7 +901,7 @@ fn greedy_merge(
             } else {
                 let l = (key >> 1) & 0xf;
                 (
-                    WATER as u16,
+                    WATER,
                     0xffu64,
                     (l << 12) | (l << 8) | (l << 4) | l,
                     (key >> 6) & 1,

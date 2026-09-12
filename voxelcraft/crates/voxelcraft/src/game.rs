@@ -697,6 +697,11 @@ pub struct GameApp {
     pub player: Player,
     pub ui: UiCanvas,
     pub atlas: Vec<u8>,
+    /// UI-overhaul Phase 1: the procedural GUI texture set (chrome +
+    /// HUD sprites + font source), built at boot and pack-overridable
+    /// (Phase 4). Nothing drew from it in Phase 1 — infrastructure
+    /// only, per the phase's "build, validate, sit" contract.
+    pub gui_set: vc_render::gui::GuiTextureSet,
     pub bank: SoundBank,
     /// §21 data-driven sound-event registry (parsed from sounds::SOUNDS_JSON)
     pub sounds: vc_audio::sounds::SoundRegistry,
@@ -1377,7 +1382,7 @@ impl GameApp {
             shader_packs.append(&mut ext);
         }
         if let Some(n) = shader_mode_pack_index(settings.shader, shader_packs.len()) {
-            renderer.set_shader_pack(shader_packs.get(n).map(|p| p));
+            renderer.set_shader_pack(shader_packs.get(n));
             if let Some(p) = shader_packs.get(n) {
                 vc_render::render::report_boot_log(&format!(
                     "shader pack active: {} ({})",
@@ -1469,6 +1474,56 @@ impl GameApp {
             }
         };
 
+        // -------------------------------------------------- UI Phase 1
+        // (D6): build the procedural GUI texture set (G9 — painted in
+        // memory at boot, never read from disk) and merge a user
+        // override from resourcepacks/gui when present. Pure
+        // infrastructure this phase: nothing consumes the set yet — it
+        // builds, validates, and sits on the app.
+        let mut gui_set = vc_render::gui::GuiTextureSet::build_builtin();
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            use std::path::Path;
+            match vc_render::gui::loader::load_override(Path::new("resourcepacks/gui")) {
+                Ok(Some(s)) => {
+                    gui_set = s;
+                    vc_render::render::report_debug_log(
+                        "screen",
+                        "gui textures: resourcepacks/gui override applied",
+                    );
+                }
+                Ok(None) => {}
+                Err(e) => {
+                    // §46 resilience: a bad override never aborts boot —
+                    // log it (screen category) and keep the builtin set
+                    vc_render::render::report_debug_log(
+                        "screen",
+                        &format!("gui texture override rejected: {e:?} — builtin kept"),
+                    );
+                }
+            }
+            if vc_render::gui::loader::load_font_png_if_present(
+                &mut gui_set,
+                Path::new("resourcepacks/gui/font.png"),
+            ) {
+                vc_render::render::report_debug_log(
+                    "screen",
+                    "gui font: resourcepacks/gui/font.png active",
+                );
+            }
+        }
+        vc_render::render::report_boot_log(&format!(
+            "gui texture set built: hearts {}x{}, widgets {}x{}, font {}",
+            gui_set.hearts.w,
+            gui_set.hearts.h,
+            gui_set.widgets.w,
+            gui_set.widgets.h,
+            match &gui_set.font {
+                vc_render::gui::FontSource::BuiltinArray => "builtin",
+                vc_render::gui::FontSource::Png(_) => "png",
+            }
+        ));
+
         let mut app = GameApp {
             window,
             renderer,
@@ -1476,12 +1531,13 @@ impl GameApp {
             player,
             ui: UiCanvas::new(),
             atlas,
+            gui_set,
             bank,
             sounds,
             shader_packs,
             iris_packs,
             data,
-            audio_rng: vc_rng::rng::Rng::new(0x50_0D_5EED),
+            audio_rng: vc_rng::rng::Rng::new(0x500D_5EED),
             sounds_played: 0,
             music_next: 12.0,
             ambient_next: 4.0,
@@ -2138,8 +2194,8 @@ impl GameApp {
             | KeyCode::Digit6
             | KeyCode::Digit7
             | KeyCode::Digit8
-            | KeyCode::Digit9 => {
-                if pressed && in_game {
+            | KeyCode::Digit9
+                if pressed && in_game => {
                     // F3 + 1 — engine extension (not vanilla): the
                     // frame-time graph under the left column, listed in
                     // the F3+Q overlay. While F3 is held, Digit1 is the
@@ -2155,7 +2211,6 @@ impl GameApp {
                     self.item_toast = Some((name(b).to_string(), 2.0));
                     self.ui.dirty = true;
                 }
-            }
             _ => {}
         }
     }
@@ -2233,8 +2288,8 @@ impl GameApp {
                 self.input.break_hold = pressed;
             }
             MouseButton::Right => self.input.place_hold = pressed,
-            MouseButton::Middle => {
-                if pressed {
+            MouseButton::Middle
+                if pressed => {
                     if let Some((_, b, _)) = self.target {
                         if let Some(slot) = self
                             .player
@@ -2252,7 +2307,6 @@ impl GameApp {
                         self.ui.dirty = true;
                     }
                 }
-            }
             _ => {}
         }
     }
@@ -2445,7 +2499,7 @@ impl GameApp {
         // grid); the hotbar cycle below stays for the in-world case
         if self.picker_open {
             let cols = 15usize;
-            let total = (PICKER_BLOCKS.len() + cols - 1) / cols;
+            let total = PICKER_BLOCKS.len().div_ceil(cols);
             let max_scroll = total.saturating_sub(11);
             let cur = self.picker_scroll as i32 - d.signum() as i32;
             self.picker_scroll = cur.clamp(0, max_scroll as i32) as usize;
@@ -2608,7 +2662,7 @@ impl GameApp {
         } else {
             None
         };
-        let _ = self.window.set_fullscreen(fs);
+        self.window.set_fullscreen(fs);
     }
 
     /// CI/docs visual-verification hook (never set in normal play):
@@ -2880,7 +2934,7 @@ impl GameApp {
         }
         .to_string();
         let seed = vc_gameplay::modes::parse_seed(&self.wc_seed)
-            .unwrap_or_else(|| vc_world::world::World::random_seed());
+            .unwrap_or_else(vc_world::world::World::random_seed);
         let mode = self.wc_mode;
         // native: a fresh directory per world (unique-ified on collision)
         #[cfg(not(target_arch = "wasm32"))]
@@ -3311,7 +3365,7 @@ impl GameApp {
                 {
                     self.light.on_block_changed(&self.world, apos[0], apos[1], apos[2], old, new);
                 }
-                notify_sim(&mut self.world, &mut self.sim.sched, apos[0], apos[1], apos[2]);
+                notify_sim(&self.world, &mut self.sim.sched, apos[0], apos[1], apos[2]);
                 if charge - 1 == 0 {
                     // charge spent: the anchor no longer holds the spawn
                     self.respawn_anchor = None;
@@ -3849,7 +3903,7 @@ impl GameApp {
     /// 2026-09-06; see docs/research/phase1-1.0-1.2-research.md).
     fn drain_dragon_events(&mut self) {
         use vc_gameplay::dragon::DragonEvent;
-        let events: Vec<DragonEvent> = self.sim.dragon_events.drain(..).collect();
+        let events: Vec<DragonEvent> = std::mem::take(&mut self.sim.dragon_events);
         for ev in events {
             match ev {
                 DragonEvent::Fireball(from, target) => {
@@ -3926,7 +3980,7 @@ impl GameApp {
     /// docs/research/phase2-1.3-1.4-research.md).
     fn drain_wither_events(&mut self) {
         use vc_gameplay::wither::WitherEvent;
-        let events: Vec<WitherEvent> = self.sim.wither_events.drain(..).collect();
+        let events: Vec<WitherEvent> = std::mem::take(&mut self.sim.wither_events);
         for ev in events {
             match ev {
                 WitherEvent::BirthExplosion(center) => {
@@ -4032,7 +4086,7 @@ impl GameApp {
         use vc_gameplay::mobs;
         // ---- 0. Phase E1: XP-orb pickups (10/s gate inside the orb system)
         // + finished zombie-villager cures (villager + cure gossip) ----
-        let collected: Vec<i32> = self.sim.xp_orbs.collected.drain(..).collect();
+        let collected: Vec<i32> = std::mem::take(&mut self.sim.xp_orbs.collected);
         if !collected.is_empty() {
             let total: i32 = collected.iter().sum();
             let gained = self.player.add_xp(total);
@@ -4042,7 +4096,7 @@ impl GameApp {
         }
         // ---- 1.15 (Buzzy Bees): the hive queues ----
         self.drain_bee_queues();
-        let cures: Vec<[f32; 3]> = self.sim.mobs.cures.drain(..).collect();
+        let cures: Vec<[f32; 3]> = std::mem::take(&mut self.sim.mobs.cures);
         for pos in cures {
             // VERIFIED w/Zombie_Villager + w/Villager §Gossiping: a cured
             // zombie villager returns as a villager with major_positive
@@ -4141,7 +4195,7 @@ impl GameApp {
             && self.input.place_hold
             && self.screen == Screen::Game;
         // ---- 1. hits on the player ----
-        let hits: Vec<mobs::PlayerHit> = self.sim.mobs.hits.drain(..).collect();
+        let hits: Vec<mobs::PlayerHit> = std::mem::take(&mut self.sim.mobs.hits);
         for h in hits {
             if self.mode.invulnerable()
                 || shield_up
@@ -4229,7 +4283,7 @@ impl GameApp {
         // player (6 HP, armor-ignoring — VERIFIED w/Evoker: "not
         // mitigated by armor"; fangs ride the raw-damage path, armor
         // skipped by design)
-        let summons: Vec<(u32, usize)> = self.sim.mobs.pending_summons.drain(..).collect();
+        let summons: Vec<(u32, usize)> = std::mem::take(&mut self.sim.mobs.pending_summons);
         for (eid, count) in summons {
             let (ex, ey, ez) = self
                 .sim
@@ -4246,7 +4300,7 @@ impl GameApp {
             }
             vc_render::render::report_boot_log("e2e: evoker summon spell -> vexes (VERIFIED w/Evoker)");
         }
-        let fangs: Vec<f32> = self.sim.mobs.pending_player_fang.drain(..).collect();
+        let fangs: Vec<f32> = std::mem::take(&mut self.sim.mobs.pending_player_fang);
         for dmg in fangs {
             if !self.mode.invulnerable() && self.screen == Screen::Game {
                 // armor-bypassing (VERIFIED); difficulty-scaled like melee
@@ -4266,7 +4320,7 @@ impl GameApp {
         // layer pulls the fog in and the movement layer blocks sprint
         // (w/Effect §Blindness: "close black fog and disables the
         // ability to sprint") ----
-        let blinds: Vec<i32> = self.sim.mobs.pending_player_blindness.drain(..).collect();
+        let blinds: Vec<i32> = std::mem::take(&mut self.sim.mobs.pending_player_blindness);
         for ticks in blinds {
             if !self.mode.invulnerable() && self.screen == Screen::Game {
                 self.player
@@ -4282,7 +4336,7 @@ impl GameApp {
         // Applied to the player effect list; the movement layer's swim
         // target scales by the DolphinsGrace multiplier (the engine's
         // proximity form of "sprint-swimming" is disclosed in mobs.rs) ----
-        let graces: Vec<i32> = self.sim.mobs.pending_player_grace.drain(..).collect();
+        let graces: Vec<i32> = std::mem::take(&mut self.sim.mobs.pending_player_grace);
         for ticks in graces {
             if !self.mode.invulnerable() && self.screen == Screen::Game {
                 self.player.effects.apply(
@@ -4298,7 +4352,7 @@ impl GameApp {
         // beach) — the world edit rides the light engine like every
         // other game-layer block change ----
         let eggs: Vec<(i32, i32, i32, u16)> =
-            self.sim.mobs.pending_turtle_eggs.drain(..).collect();
+            std::mem::take(&mut self.sim.mobs.pending_turtle_eggs);
         for (x, y, z, _stage) in eggs {
             if let Some((old, new)) = self.world.set_block(x, y, z, TURTLE_EGG) {
                 self.light.on_block_changed(&self.world, x, y, z, old, new);
@@ -4306,7 +4360,7 @@ impl GameApp {
         }
         // ---- 1.13: mob-system-owed drops (baby turtle scutes — VERIFIED
         // w/Scute: "Dropped when baby turtles grow up") ----
-        let mob_drops: Vec<([f32; 3], u16)> = self.sim.mobs.pending_drops.drain(..).collect();
+        let mob_drops: Vec<([f32; 3], u16)> = std::mem::take(&mut self.sim.mobs.pending_drops);
         for (pos, item) in mob_drops {
             self.sim.items.drop_block(
                 pos[0].floor() as i32,
@@ -4318,7 +4372,7 @@ impl GameApp {
                 0,
             );
         }
-        let deaths: Vec<(mobs::MobKind, [f32; 3], u8)> = self.sim.mobs.deaths.drain(..).collect();
+        let deaths: Vec<(mobs::MobKind, [f32; 3], u8)> = std::mem::take(&mut self.sim.mobs.deaths);
         for (kind, pos, variant) in deaths {
             let d = mobs::def(kind);
             // vanilla-common loot ranges [adaptation: fixed min..max per
@@ -4478,8 +4532,8 @@ impl GameApp {
                 mobs::MobKind::Hoglin => &[],
             };
             // blaze rod is a 50% roll (VERIFIED), others roll count 1..max
-            if kind == mobs::MobKind::Blaze {
-                if self.audio_rng.next_f32() < 0.5 {
+            if kind == mobs::MobKind::Blaze
+                && self.audio_rng.next_f32() < 0.5 {
                     self.sim.items.drop_block(
                         pos[0].floor() as i32,
                         pos[1].floor() as i32,
@@ -4490,7 +4544,6 @@ impl GameApp {
                         0,
                     );
                 }
-            }
             // 1.13: phantom membrane — 0–1 at 50% (VERIFIED w/Phantom
             // §Drops: the "0–1" row on a player kill; Looting out of
             // scope, no enchantment system yet)
@@ -4865,7 +4918,7 @@ impl GameApp {
             for dz in -r..=r {
                 for dx in -r..=r {
                     let dist = ((dx * dx + dy * dy + dz * dz) as f32).sqrt();
-                    if dist > power as f32 {
+                    if dist > power {
                         continue;
                     }
                     let (x, y, z) = (cx + dx, cy + dy, cz + dz);
@@ -4886,7 +4939,7 @@ impl GameApp {
                     }
                     // vanilla-ish ragged edge: 70% + 30%·random survival
                     let edge = 0.7 + self.audio_rng.next_f32() * 0.3;
-                    if dist / power as f32 > edge {
+                    if dist / power > edge {
                         continue;
                     }
                     if let Some((old, new)) = self.world.set_block(x, y, z, AIR) {
@@ -5381,7 +5434,7 @@ impl GameApp {
                                 format!(
                                     "{}X{}",
                                     self.renderer.msaa(),
-                                    if (self.renderer.msaa() as u8) < max_msaa {
+                                    if self.renderer.msaa() < max_msaa {
                                         " (MAX)"
                                     } else {
                                         ""
@@ -6352,6 +6405,10 @@ impl GameApp {
     ///   1 seed (w/Beetroot_Seeds: "drops 1 beetroot ... and 1 to 4
     ///   beetroot seeds. If a crop is harvested before it is fully
     ///   grown, it just drops one seed")
+    // 8 params: the harvest drops need position, state, biome and the
+    // two light levels (matching the particle/API tick shape); silenced
+    // deliberately.
+    #[allow(clippy::too_many_arguments)]
     fn drop_crop_harvest(&mut self, x: i32, y: i32, z: i32, s: u16, biome: u8, sky: u8, blk: u8) {
         let b = state_block(s);
         let age = crop_age(s);
@@ -6624,7 +6681,7 @@ impl GameApp {
 
     /// 1.14 (part 3) E2E: the two new small flowers — planted on grass
     /// (the vanilla plant-on-grass/dirt contract, VERIFIED w/Cornflower
-    /// + w/Lily_of_the_Valley §Usage), their states round-trip, the F3
+    /// and w/Lily_of_the_Valley §Usage), their states round-trip, the F3
     /// targeted-block lines decode, both dye crafts resolve, and the
     /// instant-break contract holds.
     fn e2e_v114c(&mut self) {
@@ -6943,7 +7000,7 @@ impl GameApp {
         let before = self.sim.items.dropped_total;
         self.test_break(pos[0], pos[1], pos[2]);
         let gold_drop = (self.sim.items.dropped_total - before) as usize;
-        let gold_ok = gold_drop >= 2 && gold_drop <= 6;
+        let gold_ok = (2..=6).contains(&gold_drop);
 
         // 6. the soul-fire contact rate: 2 HP per 0.5 s through the
         //    shared immunity window (VERIFIED w/Soul_Fire) — the player
@@ -7506,7 +7563,7 @@ impl GameApp {
     /// its fast-forward steps.
     fn drain_bee_queues(&mut self) {
             // honey-level state writes (the +1/+2 bumps)
-            let levels: Vec<([i32; 3], u8)> = self.sim.hives.pending_hive_levels.drain(..).collect();
+            let levels: Vec<([i32; 3], u8)> = std::mem::take(&mut self.sim.hives.pending_hive_levels);
             for (pos, bump) in levels {
                 let s = self.world.get_state(pos[0], pos[1], pos[2]);
                 let b = vc_blocks::blocks::state_block(s);
@@ -7527,7 +7584,7 @@ impl GameApp {
             }
             // bee releases: spawn at the hive front, point home, flag angry
             let releases: Vec<([i32; 3], vc_gameplay::bees::StoredBee)> =
-                self.sim.hives.releases.drain(..).collect();
+                std::mem::take(&mut self.sim.hives.releases);
             for (hive, sb) in releases {
                 let spawn = vc_gameplay::bees::HiveSystem::release_pos(&self.world, hive);
                 let bx = spawn[0].floor() as i32;
@@ -7545,7 +7602,7 @@ impl GameApp {
             }
             // arrivals: store the bee inside the hive (capacity 3)
             let enters: Vec<(u32, [i32; 3], bool)> =
-                self.sim.mobs.bee_enters.drain(..).collect();
+                std::mem::take(&mut self.sim.mobs.bee_enters);
             for (_id, hive, nectar) in enters {
                 let _ = self.sim.hives.enter(hive, 10.0, nectar);
                 self.play_event(
@@ -7556,7 +7613,7 @@ impl GameApp {
             }
             // pollinations: the bone-meal-like crop stage advance
             let pollinations: Vec<([i32; 3], u8)> =
-                self.sim.mobs.bee_pollinations.drain(..).collect();
+                std::mem::take(&mut self.sim.mobs.bee_pollinations);
             for (pos, age) in pollinations {
                 let s = self.world.get_state(pos[0], pos[1], pos[2]);
                 if vc_blocks::blocks::state_block(s) == vc_blocks::blocks::SWEET_BERRY_BUSH {
@@ -8136,7 +8193,7 @@ impl GameApp {
                 // signal (VERIFIED formulas; counts mobs + the player —
                 // items ride the item system's positions too)
                 self.plate_sweep_t = self.plate_sweep_t.wrapping_add(1);
-                if self.plate_sweep_t % 10 == 0 && !self.plates.is_empty() {
+                if self.plate_sweep_t.is_multiple_of(10) && !self.plates.is_empty() {
                     let mut ents: Vec<[f32; 3]> =
                         self.sim.mobs.list.iter().map(|m| m.pos).collect();
                     ents.push(self.player.pos.to_array());
@@ -8185,7 +8242,7 @@ impl GameApp {
         // §29: brewing completions → bubble sound at the stand (drained
         // here so the audio path stays on the game thread, not the sim)
         if !self.sim.brewing.completed.is_empty() {
-            let done: Vec<[i32; 3]> = self.sim.brewing.completed.drain(..).collect();
+            let done: Vec<[i32; 3]> = std::mem::take(&mut self.sim.brewing.completed);
             for pos in done {
                 self.play_event(
                     "block.brewing_stand.bubble",
@@ -10169,7 +10226,7 @@ impl GameApp {
                     .unwrap_or(false);
                 if ridden_ok {
                     // keep look-control + timers, freeze movement physics
-                    let mut still = self.input.clone();
+                    let mut still = self.input;
                     still.fwd = false;
                     still.back = false;
                     still.left = false;
@@ -10294,8 +10351,8 @@ impl GameApp {
             // ticks (the every-tick 4 HP is reduced by the half-second
             // damage-immunity window); creative is immune. Fire
             // (300-tick burn after leaving) is deferred — no fire system.
-            if self.player.in_lava && self.lava_t % 10 == 0 {
-                if !self.mode.invulnerable() {
+            if self.player.in_lava && self.lava_t.is_multiple_of(10)
+                && !self.mode.invulnerable() {
                     let applied = self.player.damage(4.0);
                     if applied > 0.0 {
                         self.play_event("entity.player.hurt", None, 1.0);
@@ -10303,7 +10360,6 @@ impl GameApp {
                         self.ui.dirty = true;
                     }
                 }
-            }
             self.lava_t += 1;
 
             // Phase E2 (+ 1.7.2 pufferfish poison, unified): timed status
@@ -10422,8 +10478,7 @@ impl GameApp {
                     let player_wet = self.player.in_water || self.player.head_in_water;
                     self.sim.conduit_attack_t += 1;
                     let attack_window =
-                        self.sim.conduit_attack_t % vc_gameplay::beacon::CONDUIT_ATTACK_TICKS
-                            == 0;
+                        self.sim.conduit_attack_t.is_multiple_of(vc_gameplay::beacon::CONDUIT_ATTACK_TICKS);
                     for pos in conduits {
                         // activation: 26 water cells in the 3×3×3 core
                         // (the conduit itself occupies the center)
@@ -10595,7 +10650,7 @@ impl GameApp {
             // breaking mid-cook drops the raw food on the break path)
             if !self.sim.campfires.done.is_empty() {
                 let done: Vec<([i32; 3], u16)> =
-                    self.sim.campfires.done.drain(..).collect();
+                    std::mem::take(&mut self.sim.campfires.done);
                 for (pos, item) in done {
                     let (biome, sky, blk) =
                         light_at(&self.world, &self.light, pos[0], pos[1], pos[2]);
@@ -10620,7 +10675,7 @@ impl GameApp {
             // blocks before disappearing", VERIFIED w/Campfire; the
             // hay-bale signal-fire 24-block variant rides a HAY_BALE
             // check below the fire)
-            if self.screen == Screen::Game && self.sim.ticks % 10 == 0 {
+            if self.screen == Screen::Game && self.sim.ticks.is_multiple_of(10) {
                 let p = self.player.pos;
                 let positions: Vec<([i32; 3], bool)> = self
                     .sim
@@ -11079,7 +11134,7 @@ impl GameApp {
                     if held == COOKIE || is_seeds_held {
                         // feed: seeds (taming roll) or cookie (death)
                         let mut feed_rng =
-                            vc_rng::rng::Rng::new((self.sim.ticks as u64) ^ 0x1EAF_5EED);
+                            vc_rng::rng::Rng::new(self.sim.ticks ^ 0x1EAF_5EED);
                         let outcome =
                             self.sim.mobs.try_feed_parrot(eid, held, &mut feed_rng);
                         if let Some(out) = outcome {
@@ -11427,8 +11482,7 @@ impl GameApp {
                             .by_id(eid)
                             .map(|m| m.kind == vc_gameplay::mobs::MobKind::Piglin)
                             .unwrap_or(false)
-                    {
-                        if self.sim.mobs.try_barter_piglin(eid, held) {
+                        && self.sim.mobs.try_barter_piglin(eid, held) {
                             if self.mode.depletes_items() {
                                 let h = self.player.held_mut();
                                 h.count -= 1;
@@ -11442,7 +11496,6 @@ impl GameApp {
                             );
                             self.place_timer = 0.5;
                         }
-                    }
                 }
                 // ---- Phase E3 (1.5–1.6): equine interactions (mount /
                 // saddle / feed / lead) — vanilla interaction priority
@@ -11510,7 +11563,7 @@ impl GameApp {
                     // VERIFIED w/Hay_Bale §Food)
                     else if held == GOLDEN_APPLE || held == HAY_BALE || held == GOLDEN_CARROT {
                         let mut feed_rng =
-                            vc_rng::rng::Rng::new((self.sim.ticks as u64) ^ 0x5EED_1EAD);
+                            vc_rng::rng::Rng::new(self.sim.ticks ^ 0x5EED_1EAD);
                         let outcome =
                             self.sim.mobs.try_feed(eid, held, &mut feed_rng);
                         if let Some(out) = outcome {
@@ -11530,7 +11583,7 @@ impl GameApp {
                                     (m.pos[0] as i32, m.pos[1] as i32, m.pos[2] as i32)
                                 };
                                 let mut foal_rng = vc_rng::rng::Rng::new(
-                                    (self.sim.ticks as u64) ^ 0xF0A1,
+                                    self.sim.ticks ^ 0xF0A1,
                                 );
                                 let foal = self.sim.mobs.spawn_foal(
                                     eid, partner, px, py + 1, pz, &mut foal_rng,
@@ -11570,7 +11623,7 @@ impl GameApp {
                         // use the not-adventure rule from modes.rs)
                         if self.mode.label() != "Adventure" {
                             let mut tame_rng =
-                                vc_rng::rng::Rng::new((self.sim.ticks as u64) ^ 0x7A1E);
+                                vc_rng::rng::Rng::new(self.sim.ticks ^ 0x7A1E);
                             match self.sim.mobs.try_mount(eid, &mut tame_rng) {
                                 Some(true) => {
                                     self.riding = Some(eid);
@@ -12036,7 +12089,7 @@ impl GameApp {
                             let mid = mob_hit.unwrap().0;
                             // begin the cure (VERIFIED 3600..=6000 ticks)
                             let mut cure_rng = vc_rng::rng::Rng::new(
-                                (self.sim.ticks as u64) ^ 0xC0_FFEE,
+                                self.sim.ticks ^ 0xC0_FFEE,
                             );
                             if let Some(m) =
                                 self.sim.mobs.list.iter_mut().find(|m| m.id == mid)
@@ -12980,7 +13033,7 @@ impl GameApp {
                                     // vanilla slabs: clicking the TOP of a block →
                                     // bottom slab; the UNDERSIDE → top slab
                                     let half = if prev[1] < tpos[1] { "top" } else { "bottom" };
-                                    prop_state_encode(b, &[("half", half)]).unwrap_or(b as u16)
+                                    prop_state_encode(b, &[("half", half)]).unwrap_or(b)
                                 } else if b == COBBLE_STAIRS {
                                     // vanilla stairs: face AWAY from the player
                                     // (the ascent direction); half like slabs
@@ -12994,7 +13047,7 @@ impl GameApp {
                                     };
                                     let half = if prev[1] < tpos[1] { "top" } else { "bottom" };
                                     prop_state_encode(b, &[("facing", facing), ("half", half)])
-                                        .unwrap_or(b as u16)
+                                        .unwrap_or(b)
                                 } else if b == LANTERN {
                                     // 1.14 (part 2, VERIFIED w/Lantern
                                     // §Usage: "lanterns can either be
@@ -13032,7 +13085,7 @@ impl GameApp {
                                 } else if b == OAK_FENCE {
                                     // connections computed from the current world
                                     fence_state_for(&self.world, prev[0], prev[1], prev[2])
-                                        .unwrap_or(b as u16)
+                                        .unwrap_or(b)
                                 } else {
                                     // sim blocks (wire/furnace/…) get their proper
                                     // default STATE — never the identity slot
@@ -13316,11 +13369,10 @@ impl GameApp {
         // containers animate: mark the UI dirty on a 5 Hz heartbeat while a
         // furnace screen is open (craft/inventory screens are static between
         // clicks — clicks already set dirty)
-        if container_live && matches!(self.container, Some(Container::Furnace { .. })) {
-            if self.time - self.last_ui_t > 0.2 {
+        if container_live && matches!(self.container, Some(Container::Furnace { .. }))
+            && self.time - self.last_ui_t > 0.2 {
                 self.ui.dirty = true;
             }
-        }
         // BLOCKING-BUG FIX (user report: "F3 was static, nothing updated"):
         // the rebuild gate only repaints when ui.dirty is SET, and nothing
         // re-marked it while the debug overlay was open — after the single
@@ -13338,14 +13390,13 @@ impl GameApp {
         // F3 right-column telemetry: sample process memory at 4 Hz (a
         // /proc read is cheap but not free) and roll the 1 s sound-event
         // window (the vanilla "Sounds: N/M" live counter)
-        if self.show_debug {
-            if self.time - self.f3_mem_t > 0.25 {
+        if self.show_debug
+            && self.time - self.f3_mem_t > 0.25 {
                 self.f3_mem_t = self.time;
                 let (rss, sys) = proc_memory_mb();
                 self.f3_rss_mb = rss;
                 self.f3_sys_mb = sys;
             }
-        }
         self.snd_window_t += dt;
         if self.snd_window_t >= 1.0 {
             self.snd_window_t = 0.0;
@@ -13646,9 +13697,9 @@ impl GameApp {
         let mut best: Option<i32> = None;
         let mut best_dist = f32::MAX;
         for y in 6..120usize {
-            let feet = state_block(chunk.get(lx, y, lz) as u16);
-            let head = state_block(chunk.get(lx, y + 1, lz) as u16);
-            let floor = state_block(chunk.get(lx, y - 1, lz) as u16);
+            let feet = state_block(chunk.get(lx, y, lz));
+            let head = state_block(chunk.get(lx, y + 1, lz));
+            let floor = state_block(chunk.get(lx, y - 1, lz));
             if !is_solid(floor) || is_solid(feet) || is_solid(head) {
                 continue;
             }
@@ -14276,7 +14327,7 @@ impl GameApp {
                     // actually registered, because the fast-skip compared
                     // raw states against block ids. Fixed with the Phase 10
                     // loot seam that builds on this scan.]
-                    let b = state_block(chunk.get(x, y, z) as u16);
+                    let b = state_block(chunk.get(x, y, z));
                     if b != SPAWNER && b != CHEST {
                         continue; // fast skip — `get` on empty sections is cheap
                     }
@@ -15543,7 +15594,7 @@ fn fill_structure_chest(
     pos: [i32; 3],
 ) {
     let mut rng = vc_rng::rng::Rng::new(vc_rng::rng::Rng::hash3(
-        seed ^ 0xDCC_E5,
+        seed ^ 0x000D_CCE5,
         pos[0],
         pos[1],
         pos[2],
@@ -15911,7 +15962,9 @@ fn neighbor_geometry_bands(world: &World, pos: ChunkPos) -> Vec<(ChunkPos, u16)>
         return out;
     };
     // per-direction shared-face columns (in the NEW chunk's local coords)
-    let faces: [(i32, i32, Vec<(usize, usize)>); 8] = [
+    /// (dx, dz, the 16 shared-face cells as (x, z) pairs)
+    type FaceCols = (i32, i32, Vec<(usize, usize)>);
+    let faces: [FaceCols; 8] = [
         (1, 0, (0..16).map(|t| (15, t)).collect()),
         (-1, 0, (0..16).map(|t| (0, t)).collect()),
         (0, 1, (0..16).map(|t| (t, 15)).collect()),

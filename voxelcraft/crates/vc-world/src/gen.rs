@@ -9,6 +9,10 @@ use vc_chunk::chunk::Chunk;
 use vc_chunk::chunk::CHUNK_LEN;
 use vc_rng::rng::Rng;
 
+/// the chunk-generator return: the finished chunk + queued cross-chunk
+/// edits (world pos, state) for neighbors to apply on their next pass
+type GenOut = (Arc<Chunk>, Vec<(i32, i32, i32, u16)>);
+
 /// Backlog round (weather): the biome's precipitation form
 /// (VERIFIED w/Weather — see `Biome::precipitation`).
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -225,10 +229,10 @@ const GRAD3: [[f32; 3]; 12] = [
     [0.0, -1.0, -1.0],
 ];
 
-const F2: f32 = 0.3660254037844386; // 0.5 * (sqrt(3) - 1)
-const G2: f32 = 0.2113248654051871; // (sqrt(3) - 1) / 6
-const F3: f32 = 0.3333333333333333;
-const G3: f32 = 0.1666666666666667;
+const F2: f32 = 0.366_025_42; // 0.5 * (sqrt(3) - 1)
+const G2: f32 = 0.211_324_87; // (sqrt(3) - 1) / 6
+const F3: f32 = 0.333_333_34;
+const G3: f32 = 0.166_666_67;
 
 pub struct Noise {
     perm: Box<[u8; 512]>,
@@ -239,8 +243,8 @@ impl Noise {
     pub fn new(seed: u64) -> Self {
         let mut rng = Rng::new(seed);
         let mut p = [0u8; 256];
-        for i in 0..256 {
-            p[i] = i as u8;
+        for (i, slot) in p.iter_mut().enumerate() {
+            *slot = i as u8;
         }
         for i in (1..256).rev() {
             let j = rng.next_range((i + 1) as u32) as usize;
@@ -898,7 +902,7 @@ impl TerrainGen {
         cx: i32,
         cz: i32,
         inbound: Vec<(u16, u16)>, // (block idx, id) edits queued from neighbors
-    ) -> (Arc<Chunk>, Vec<(i32, i32, i32, u16)>) {
+    ) -> GenOut {
         match self.dim {
             Dimension::Overworld => self.generate_overworld_chunk(cx, cz, inbound),
             Dimension::Nether => self.generate_nether_chunk(cx, cz, inbound),
@@ -913,7 +917,7 @@ impl TerrainGen {
         cx: i32,
         cz: i32,
         inbound: Vec<(u16, u16)>, // (block idx, id) edits queued from neighbors
-    ) -> (Arc<Chunk>, Vec<(i32, i32, i32, u16)>) {
+    ) -> GenOut {
         let mut chunk = Chunk::empty();
         let mut rng = Rng::new(Rng::hash3(self.seed, cx, 0, cz));
         let sea = vc_chunk::SEA_LEVEL;
@@ -967,9 +971,7 @@ impl TerrainGen {
                 let top_y = h.max(sea).min(255) as usize;
                 for y in 0..=top_y {
                     let yi = y as i32;
-                    let b: u16 = if y == 0 {
-                        BEDROCK
-                    } else if y <= 2 && rng.next_f32() < 0.35 {
+                    let b: u16 = if y == 0 || (y <= 2 && rng.next_f32() < 0.35) {
                         BEDROCK
                     } else if yi > h {
                         WATER
@@ -1063,12 +1065,12 @@ impl TerrainGen {
                            wz: i32,
                            id: u16,
                            replace_leaves: bool| {
-            if wy < 0 || wy > 255 {
+            if !(0..=255).contains(&wy) {
                 return;
             }
             let lxi = wx - ox;
             let lzi = wz - oz;
-            if lxi >= 0 && lxi < 16 && lzi >= 0 && lzi < 16 {
+            if (0..16).contains(&lxi) && (0..16).contains(&lzi) {
                 let cur = chunk.get(lxi as usize, wy as usize, lzi as usize);
                 let trunk = id == OAK_LOG
                     || id == DARK_OAK_LOG
@@ -1219,7 +1221,7 @@ impl TerrainGen {
             // canopy (the wiki's signature acacia silhouette)
             if biome_here == Biome::Savanna {
                 let base_h = 2 + rng.next_range(2) as i32; // vertical part
-                let lean = (rng.next_range(4) as i32) - 0; // 0..3 = +x,+z,-x,-z
+                let lean = rng.next_range(4) as i32; // 0..3 = +x,+z,-x,-z
                 let (ldx, ldz) = match lean {
                     0 => (1, 0),
                     1 => (0, 1),
@@ -1241,7 +1243,7 @@ impl TerrainGen {
                     let by = y0 + base_h - 1 + i;
                     let lxi_i = bx - ox;
                     let lzi_i = bz - oz;
-                    if lxi_i >= 0 && lxi_i < 16 && lzi_i >= 0 && lzi_i < 16 {
+                    if (0..16).contains(&lxi_i) && (0..16).contains(&lzi_i) {
                         let axis = if ldx != 0 { 0u8 } else { 2u8 };
                         chunk.set_state(
                             lxi_i as usize,
@@ -1310,7 +1312,7 @@ impl TerrainGen {
                         for dz in -r..=r + 1 {
                             let cdx = dx - 1; // canopy centered on the 2×2
                             let cdz = dz - 1;
-                            if cdx >= 0 && cdx <= 1 && cdz >= 0 && cdz <= 1 && dy < 2 {
+                            if (0..=1).contains(&cdx) && (0..=1).contains(&cdz) && dy < 2 {
                                 continue; // trunk spot
                             }
                             let corner = cdx.abs() == r || cdz.abs() == r;
@@ -1497,9 +1499,8 @@ impl TerrainGen {
                 }
             }
             // dirt under trunk
-            if chunk.get(lx as usize, h as usize, lz as usize) == GRASS {
-                chunk.set(lx as usize, h as usize, lz as usize, DIRT);
-            } else if chunk.get(lx as usize, h as usize, lz as usize) == SNOW_GRASS {
+            let under = chunk.get(lx as usize, h as usize, lz as usize);
+            if under == GRASS || under == SNOW_GRASS {
                 chunk.set(lx as usize, h as usize, lz as usize, DIRT);
             }
         }
@@ -1822,7 +1823,7 @@ impl TerrainGen {
         {
             let b = Biome::from_u8(chunk.biome[8 * 16 + 8]);
             if (b == Biome::Desert || b == Biome::Swamp)
-                && Rng::hash3(self.seed ^ 0xF055, cx, 0, cz) % 64 == 0
+                && Rng::hash3(self.seed ^ 0xF055, cx, 0, cz).is_multiple_of(64)
             {
                 let fx = 3 + rng.next_range(10) as i32;
                 let fz = 3 + rng.next_range(10) as i32;
@@ -2057,7 +2058,7 @@ impl TerrainGen {
                     let lz = rng.next_range(16) as i32;
                     let col_idx = lz as usize * 16 + lx as usize;
                     let h = chunk.height[col_idx] as i32;
-                    if h < vc_chunk::SEA_LEVEL - 2 || h > vc_chunk::SEA_LEVEL + 1 {
+                    if !(vc_chunk::SEA_LEVEL - 2..=vc_chunk::SEA_LEVEL + 1).contains(&h) {
                         continue;
                     }
                     if chunk.get(lx as usize, h as usize, lz as usize) == SAND {
@@ -2100,7 +2101,7 @@ impl TerrainGen {
                     let col_idx = lz as usize * 16 + lx as usize;
                     let h = chunk.height[col_idx] as i32;
                     // only in the flat swamp band, and not already water
-                    if h < vc_chunk::SEA_LEVEL || h > vc_chunk::SEA_LEVEL + 2 {
+                    if !(vc_chunk::SEA_LEVEL..=vc_chunk::SEA_LEVEL + 2).contains(&h) {
                         continue;
                     }
                     if chunk.get(lx as usize, h as usize, lz as usize) == GRASS
@@ -2126,7 +2127,7 @@ impl TerrainGen {
                 let lx = rng.next_range(16) as i32;
                 let lz = rng.next_range(16) as i32;
                 let col_idx = lz as usize * 16 + lx as usize;
-                let hmax = (chunk.height[col_idx] as i32 - 6).max(8).min(40);
+                let hmax = (chunk.height[col_idx] as i32 - 6).clamp(8, 40);
                 if hmax <= 10 {
                     continue;
                 }
@@ -2280,7 +2281,7 @@ impl TerrainGen {
                             }
                             let px = bx + dx;
                             let pz = bz + dz;
-                            if px < 0 || px > 15 || pz < 0 || pz > 15 {
+                            if !(0..=15).contains(&px) || !(0..=15).contains(&pz) {
                                 continue;
                             }
                             let y = (sea + dy) as usize;
@@ -2554,7 +2555,7 @@ impl TerrainGen {
         cx: i32,
         cz: i32,
         inbound: Vec<(u16, u16)>,
-    ) -> (Arc<Chunk>, Vec<(i32, i32, i32, u16)>) {
+    ) -> GenOut {
         let mut chunk = Chunk::empty();
         let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x0D1D, cx, 0, cz));
         // the nether has no cross-chunk decorations (structures are
@@ -2632,7 +2633,7 @@ impl TerrainGen {
                 let fb = 1 + floor_bed(wx, wz);
                 let cb = 127 - ceil_bed(wx, wz);
                 for y in 0..=127i32 {
-                    let is_bed = y <= fb.saturating_sub(1) || y >= cb + 1 || y == 0 || y == 127;
+                    let is_bed = y <= fb.saturating_sub(1) || y > cb || y == 0 || y == 127;
                     let solid =
                         is_bed || nether[(y.max(0) * 256 + z as i32 * 16 + x as i32) as usize];
                     if !solid {
@@ -2713,13 +2714,13 @@ impl TerrainGen {
                     // disclosed)
                     let wx2 = cx * 16 + lx;
                     let wz2 = cz * 16 + lz;
-                    let soil = Rng::hash3(self.seed ^ 0x5011, wx2, y, wz2) % 3 == 0;
+                    let soil = Rng::hash3(self.seed ^ 0x5011, wx2, y, wz2).is_multiple_of(3);
                     let floor_b = if soil { SOUL_SOIL } else { SOUL_SAND };
                     let depth = 1 + rng.next_range(2) as i32;
                     for d in 0..depth {
                         chunk.set(lx as usize, (y - 1 - d) as usize, lz as usize, floor_b);
                     }
-                    if Rng::hash3(self.seed ^ 0xF1E5, wx2, y + 1, wz2) % 6 == 0 {
+                    if Rng::hash3(self.seed ^ 0xF1E5, wx2, y + 1, wz2).is_multiple_of(6) {
                         chunk.set(lx as usize, y as usize, lz as usize, SOUL_FIRE);
                     }
                     break;
@@ -2828,8 +2829,8 @@ impl TerrainGen {
                             // VERIFIED — placement on known surface
                             // columns instead of a separate random scan,
                             // so fossils always land on real terrain)
-                            if Rng::hash3(self.seed ^ 0xB0A5, wx, y as i32, wz) % 8 == 0 {
-                                let dir: i32 = if Rng::hash3(self.seed ^ 0xB0A6, wx, 0, wz) % 2 == 0 { 1 } else { -1 };
+                            if Rng::hash3(self.seed ^ 0xB0A5, wx, y as i32, wz).is_multiple_of(8) {
+                                let dir: i32 = if Rng::hash3(self.seed ^ 0xB0A6, wx, 0, wz).is_multiple_of(2) { 1 } else { -1 };
                                 let len = 4 + (Rng::hash3(self.seed ^ 0xB0A7, wx, y as i32, wz) % 4) as i32;
                                 for d in 0..len {
                                     let fx = (x as i32 + d * dir).clamp(0, 15) as usize;
@@ -2844,10 +2845,10 @@ impl TerrainGen {
                             // throughout", VERIFIED — soul fire burns on
                             // soul soil only, the soul_fire placement rule)
                             if !sand
-                                && Rng::hash3(self.seed ^ 0x50F2, wx, y as i32, wz) % 60 == 0
+                                && Rng::hash3(self.seed ^ 0x50F2, wx, y as i32, wz).is_multiple_of(60)
                             {
                                 chunk.set(x, y + 1, z, SOUL_FIRE);
-                            } else if Rng::hash3(self.seed ^ 0x50F3, wx, y as i32, wz) % 40 == 0 {
+                            } else if Rng::hash3(self.seed ^ 0x50F3, wx, y as i32, wz).is_multiple_of(40) {
                                 // the sparse native vegetation: crimson
                                 // roots + mushrooms (VERIFIED row)
                                 let plant = match Rng::hash3(
@@ -3072,7 +3073,7 @@ impl TerrainGen {
                 if yy > 125 || chunk.get(lx as usize, yy as usize, lz as usize) != 0 {
                     break;
                 }
-                chunk.set(lx as usize, yy as usize, lz as usize, stem as u16);
+                chunk.set(lx as usize, yy as usize, lz as usize, stem);
                 top = yy;
             }
             if top <= base + 1 {
@@ -3089,7 +3090,7 @@ impl TerrainGen {
                     let x = (lx + dx).clamp(0, 15) as usize;
                     let z = (lz + dz).clamp(0, 15) as usize;
                     if chunk.get(x, cy as usize, z) == 0 {
-                        chunk.set(x, cy as usize, z, wart_cap as u16);
+                        chunk.set(x, cy as usize, z, wart_cap);
                     }
                 }
             }
@@ -3097,8 +3098,8 @@ impl TerrainGen {
             // generate in huge fungi", VERIFIED w/Shroomlight)
             let x = lx.clamp(0, 15) as usize;
             let z = lz.clamp(0, 15) as usize;
-            if chunk.get(x, cy as usize, z) == wart_cap as u16 {
-                chunk.set(x, cy as usize, z, SHROOMLIGHT as u16);
+            if chunk.get(x, cy as usize, z) == wart_cap {
+                chunk.set(x, cy as usize, z, SHROOMLIGHT);
             }
             // crimson: weeping vines hang from the cap's rim (1..4
             // strands, 2..5 long — "generate naturally ... on huge
@@ -3118,7 +3119,7 @@ impl TerrainGen {
                         if chunk.get(x, yy as usize, z) != 0 {
                             break;
                         }
-                        chunk.set(x, yy as usize, z, WEEPING_VINES as u16);
+                        chunk.set(x, yy as usize, z, WEEPING_VINES);
                     }
                 }
             }
@@ -3149,7 +3150,7 @@ impl TerrainGen {
                     if yy > 125 || chunk.get(lx as usize, yy as usize, lz as usize) != 0 {
                         break;
                     }
-                    chunk.set(lx as usize, yy as usize, lz as usize, TWISTING_VINES as u16);
+                    chunk.set(lx as usize, yy as usize, lz as usize, TWISTING_VINES);
                 }
             }
         }
@@ -3291,7 +3292,7 @@ impl TerrainGen {
         let solid_no_air = |c: &Chunk, x: usize, y: usize, z: usize| -> bool {
             // all 6 neighbors must be non-air (never exposed)
             let solid_at = |xx: i32, yy: i32, zz: i32| -> bool {
-                if xx < 0 || xx > 15 || zz < 0 || zz > 15 || yy < 1 || yy > 126 {
+                if !(0..=15).contains(&xx) || !(0..=15).contains(&zz) || !(1..=126).contains(&yy) {
                     return true; // out of local range counts as rock
                 }
                 c.get(xx as usize, yy as usize, zz as usize) != AIR
@@ -3471,7 +3472,7 @@ impl TerrainGen {
         let put = |chunk: &mut Chunk, x: i32, y: i32, z: i32, id: u16| {
             let lx = x - ox;
             let lz = z - oz;
-            if lx >= 0 && lx < 16 && lz >= 0 && lz < 16 && (0..256).contains(&y) {
+            if (0..16).contains(&lx) && (0..16).contains(&lz) && (0..256).contains(&y) {
                 chunk.set(lx as usize, y as usize, lz as usize, id);
             }
         };
@@ -3802,7 +3803,7 @@ impl TerrainGen {
     }
 
     fn emit_pyramid(&self, chunk: &mut Chunk, wx: i32, wz: i32, ox: i32, oz: i32) {
-        let base = self.column(wx, wz).height as i32; // ground level
+        let base = self.column(wx, wz).height; // ground level
         let put = |chunk: &mut Chunk, x: i32, y: i32, z: i32, id: u16| {
             let lxi = x - ox;
             let lzi = z - oz;
@@ -3967,7 +3968,7 @@ impl TerrainGen {
     }
 
     fn emit_woodland_mansion(&self, chunk: &mut Chunk, wx: i32, wz: i32, ox: i32, oz: i32) {
-        let base = self.column(wx, wz).height as i32;
+        let base = self.column(wx, wz).height;
         let put = |chunk: &mut Chunk, x: i32, y: i32, z: i32, id: u16| {
             let lxi = x - ox;
             let lzi = z - oz;
@@ -4056,7 +4057,7 @@ impl TerrainGen {
     }
 
     fn emit_jungle_temple(&self, chunk: &mut Chunk, wx: i32, wz: i32, ox: i32, oz: i32) {
-        let base = self.column(wx, wz).height as i32;
+        let base = self.column(wx, wz).height;
         let put = |chunk: &mut Chunk, x: i32, y: i32, z: i32, id: u16| {
             let lxi = x - ox;
             let lzi = z - oz;
@@ -4272,7 +4273,7 @@ impl TerrainGen {
         for dcx in -5..=5 {
             for dcz in -5..=5 {
                 let (cx, cz) = (cx + dcx, cz + dcz);
-                let mut rng = Rng::new(Rng::hash3(self.seed ^ 0xCA_E, cx, 0, cz));
+                let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x0CAE, cx, 0, cz));
                 if rng.next_f32() >= RAVINE_CHANCE {
                     continue;
                 }
@@ -4283,7 +4284,7 @@ impl TerrainGen {
                 let half_w = 2.0 + rng.next_f32() * 5.0; // < 15 wide total
                 let depth = 40 + rng.next_range(23) as i32; // ≤ 62
                                                             // top: terrain height at the start, clamped to 10..=72
-                let h = self.column(x0, z0).height as i32;
+                let h = self.column(x0, z0).height;
                 let top = h.clamp(10, 72);
                 out.push(Ravine {
                     x0,
@@ -4370,7 +4371,7 @@ impl TerrainGen {
         cx: i32,
         cz: i32,
         _inbound: Vec<(u16, u16)>,
-    ) -> (Arc<Chunk>, Vec<(i32, i32, i32, u16)>) {
+    ) -> GenOut {
         let mut chunk = Chunk::empty();
         let outbound: Vec<(i32, i32, i32, u16)> = Vec::new();
         let ox = cx * 16;

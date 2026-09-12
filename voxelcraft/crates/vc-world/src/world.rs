@@ -191,7 +191,7 @@ impl World {
 
     #[inline]
     pub fn get_block(&self, wx: i32, wy: i32, wz: i32) -> u16 {
-        if wy < 0 || wy > 255 {
+        if !(0..=255).contains(&wy) {
             return AIR;
         }
         let cx = wx.div_euclid(16);
@@ -209,7 +209,7 @@ impl World {
     /// raw state id at a position (property variants included)
     #[inline]
     pub fn get_state(&self, wx: i32, wy: i32, wz: i32) -> u16 {
-        if wy < 0 || wy > 255 {
+        if !(0..=255).contains(&wy) {
             return 0;
         }
         let cx = wx.div_euclid(16);
@@ -268,15 +268,13 @@ impl World {
     /// dirty (§12 geometry region — the light engine marks light regions).
     /// Returns (old_state, new_state).
     pub fn set_block_state(&mut self, wx: i32, wy: i32, wz: i32, state: u16) -> Option<(u16, u16)> {
-        if wy < 0 || wy > 255 {
+        if !(0..=255).contains(&wy) {
             return None;
         }
         let cx = wx.div_euclid(16);
         let cz = wz.div_euclid(16);
         let pos = (cx, cz);
-        let Some(old) = self.chunks.get(&pos) else {
-            return None;
-        };
+        let old = self.chunks.get(&pos)?;
         let old = Arc::clone(old);
         let lx = (wx - cx * 16) as usize;
         let lz = (wz - cz * 16) as usize;
@@ -308,8 +306,8 @@ impl World {
         let new_b = state_block(new_state);
         let cx = wx.div_euclid(16);
         let cz = wz.div_euclid(16);
-        let lx = (wx - cx * 16) as i32;
-        let lz = (wz - cz * 16) as i32;
+        let lx = wx - cx * 16;
+        let lz = wz - cz * 16;
         let sy = (wy / 16) as usize;
         let own_sec = 1u16 << sy;
 
@@ -376,7 +374,7 @@ impl World {
 
     /// Apply a generation-time outbound edit (tree canopy crossing borders).
     pub fn apply_gen_edit(&mut self, wx: i32, wy: i32, wz: i32, id: u16) {
-        if wy < 0 || wy > 255 {
+        if !(0..=255).contains(&wy) {
             return;
         }
         let cx = wx.div_euclid(16);

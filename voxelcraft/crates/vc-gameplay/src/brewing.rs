@@ -265,15 +265,14 @@ impl BrewingState {
     pub fn tick(&mut self) -> bool {
         // fuel refill: only when there is work and the pool is dry (the
         // vanilla "blaze powder consumed only when needed" behavior)
-        if self.fuel_charges <= 0 && self.can_brew() && !self.fuel.is_empty() {
-            if is_fuel(self.fuel.block) {
+        if self.fuel_charges <= 0 && self.can_brew() && !self.fuel.is_empty()
+            && is_fuel(self.fuel.block) {
                 self.fuel_charges = FUEL_OPERATIONS;
                 self.fuel.count -= 1;
                 if self.fuel.count == 0 {
                     self.fuel = ItemStack::EMPTY;
                 }
             }
-        }
 
         // vanilla quirk: pulling the ingredient mid-cycle resets progress
         // (same reset rule as the furnace input)

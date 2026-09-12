@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "NO, the screenshot does not show an F3 debug overlay.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789220714,
+  "id": "20260912214509e680d05c15f542d9",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260912214509e680d05c15f542d9",
+  "usage": {
+    "completion_tokens": 14,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1508,
+    "prompt_tokens_details": {
+      "cached_tokens": 2
+    },
+    "total_tokens": 1522
+  }
+}

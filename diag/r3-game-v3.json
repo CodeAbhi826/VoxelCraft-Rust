@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Based on the image provided, here is the description:\n\n*   **Time of Day:** The sky is a deep, solid red/orange color. This resembles the **Nether** dimension in Minecraft (or a sunset/sunrise in a heavily modded or custom environment), rather than the standard blue sky of the Overworld.\n*   **Biome/Terrain:** The terrain consists of dark, silhouetted landmasses against the red sky. It looks like a **Nether-like biome** (possibly resembling the Nether Wastes or a custom \"Hell\" map) with jagged horizon lines.\n*   **Player Position:** This is **not** an in-game gameplay screenshot from a player's perspective. It is the **Main Menu** screen of the game (titled \"VOXELCRAFT\"). Therefore, there is no specific player position like \"underground\" or \"looking at the horizon\" in a gameplay sense; it is a static background scene.\n*   **Crosshair:** **No**, there is **no crosshair** visible at the center of the screen. Instead, the center of the screen features the main menu buttons (\"Singleplayer\", \"Multiplayer\", \"Options\").",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789227972,
+  "id": "20260912234606e320af49058d4797",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260912234606e320af49058d4797",
+  "usage": {
+    "completion_tokens": 249,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1505,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1754
+  }
+}

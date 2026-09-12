@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "**Visible Buttons/Text:**\n*   **Title:** CREATE NEW WORLD\n*   **Subtext:** SEED: NUMBER = ITSELF. TEXT = JAVA HASH. BLANK = RANDOM\n*   **Labels:** NAME, SEED\n*   **Input Fields:** \"New World\", \"15021848223028507307\"\n*   **Buttons:** GAME MODE: SURVIVAL, WORLD TYPE: NORMAL, CREATE WORLD: DEPLETING STACKS. REAL DAMAGE. RESPAWN, CANCEL\n\n**Saved Worlds:** No saved worlds are listed (this is the creation menu).\n\n**CREATE NEW WORLD Button:** It is not present as a button labeled \"Create New World\". Instead, the action is performed by the button at the bottom of the list labeled **\"CREATE WORLD: DEPLETING STACKS. REAL DAMAGE. RESPAWN\"**.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789220440,
+  "id": "20260912214033f6934bccb978458e",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260912214033f6934bccb978458e",
+  "usage": {
+    "completion_tokens": 180,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1498,
+    "prompt_tokens_details": {
+      "cached_tokens": 2
+    },
+    "total_tokens": 1678
+  }
+}

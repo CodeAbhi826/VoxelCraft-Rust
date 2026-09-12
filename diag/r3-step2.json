@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "This is the **world-create form**.\n\nIt is not the world-select list, so there are no world entries or selection buttons to list. The screen shows the \"CREATE NEW WORLD\" interface with input fields for Name and Seed, and buttons for Game Mode, World Type, Create World, and Cancel.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789228000,
+  "id": "2026091223463866b2773f8bec4755",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "2026091223463866b2773f8bec4755",
+  "usage": {
+    "completion_tokens": 63,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1509,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1572
+  }
+}

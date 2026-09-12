@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "This is the **main menu** screen, displaying the title **\"VOXELCRAFT\"**, the text **\"100% Rust!\"** and **\"100% CLEAN-ROOM - NOT AN OFFICIAL GAME\"**, along with buttons for **\"SINGLEPLAYER\"**, **\"MULTIPLAYER\"**, and **\"OPTIONS...\"**.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789221688,
+  "id": "20260912220126b4bc07a52bc541df",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260912220126b4bc07a52bc541df",
+  "usage": {
+    "completion_tokens": 72,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1485,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1557
+  }
+}

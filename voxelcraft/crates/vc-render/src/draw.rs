@@ -239,6 +239,23 @@ impl ChunkOccl {
     }
 }
 
+/// AABB-vs-6-planes frustum test (p-vertex): the box is visible unless
+/// some plane rejects it. Pure so the frustum half of the split culling
+/// counters is unit-testable without a GPU (G3) — the render loop's
+/// per-chunk column test (16×256×16 AABB) delegates here.
+pub fn aabb_visible(min: &[f32; 3], max: &[f32; 3], planes: &[[f32; 4]; 6]) -> bool {
+    for p in planes.iter() {
+        // p-vertex: the box corner FARTHEST along the plane normal
+        let px = if p[0] >= 0.0 { max[0] } else { min[0] };
+        let py = if p[1] >= 0.0 { max[1] } else { min[1] };
+        let pz = if p[2] >= 0.0 { max[2] } else { min[2] };
+        if p[0] * px + p[1] * py + p[2] * pz + p[3] < 0.0 {
+            return false;
+        }
+    }
+    true
+}
+
 /// Chunk-graph visibility flood from the camera's section.
 ///
 /// Returns `None` when the camera's chunk has no GPU mesh yet (boot,
@@ -536,6 +553,47 @@ mod tests {
             i_cap: ic,
             n,
         }
+    }
+
+    // ---- Luanti-style split culling counters: the frustum half ------
+
+    #[test]
+    fn aabb_visible_accepts_interior_and_rejects_outside() {
+        // a box fully inside a generous axis-aligned frustum: visible
+        let inside: [[f32; 4]; 6] = [
+            [1.0, 0.0, 0.0, 100.0],   // x >= -100
+            [-1.0, 0.0, 0.0, 100.0],  // x <= 100
+            [0.0, 1.0, 0.0, 100.0],   // y >= -100
+            [0.0, -1.0, 0.0, 100.0],  // y <= 100
+            [0.0, 0.0, 1.0, 100.0],   // z >= -100
+            [0.0, 0.0, -1.0, 100.0],  // z <= 100
+        ];
+        assert!(aabb_visible(&[0.0, 0.0, 0.0], &[16.0, 256.0, 16.0], &inside));
+        // fully beyond the +x limit: rejected by exactly that plane
+        assert!(!aabb_visible(&[200.0, 0.0, 0.0], &[216.0, 256.0, 16.0], &inside));
+        // STRADDLING the x=100 boundary: still visible (p-vertex passes)
+        assert!(aabb_visible(&[50.0, 0.0, 0.0], &[150.0, 256.0, 16.0], &inside));
+    }
+
+    #[test]
+    fn aabb_visible_p_vertex_picks_the_far_corner() {
+        // a single plane tilted diagonally: only the corner farthest
+        // along the normal decides — the classic p-vertex semantics.
+        // plane: x + z + 8 >= 0 (a 45° cut); a box whose EVERY corner
+        // fails it is rejected, one whose p-vertex clears it passes.
+        let planes: [[f32; 4]; 6] = [
+            [1.0, 0.0, 1.0, 8.0],
+            [-1.0, 0.0, 0.0, 1000.0],
+            [0.0, 1.0, 0.0, 1000.0],
+            [0.0, -1.0, 0.0, 1000.0],
+            [0.0, 0.0, 1.0, 1000.0],
+            [0.0, 0.0, -1.0, 1000.0],
+        ];
+        // p-vertex (8, 8, 0): 8 + 0 + 8 = 16 ≥ 0 → visible
+        assert!(aabb_visible(&[0.0, 0.0, 0.0], &[8.0, 8.0, 0.0], &planes));
+        // every corner deep in x+z < -8 (p-vertex (-84, 8, -84):
+        // -84 + -84 + 8 = -160 < 0) → rejected by that one plane
+        assert!(!aabb_visible(&[-100.0, 0.0, -100.0], &[-84.0, 8.0, -84.0], &planes));
     }
 
     #[test]

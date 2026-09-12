@@ -103,7 +103,13 @@ const QUAD_TEX_COUNT: usize = 11;
 /// `dst` is in UI pixels (fractional — glyph quads carry device-exact
 /// geometry, chrome quads are integer-aligned); `tint` multiplies the
 /// sampled texel; `z` is the ascending draw order (the pass draws in
-/// submission order).
+/// submission order); `rot` is a rotation around the dst CENTER in
+/// radians (0 = axis-aligned — the splash text's -20-degree tilt);
+/// `invert` routes the quad to the INVERT-blend pipeline —
+/// result.rgb = src.rgb * (1 − dst.rgb), i.e. a white quad inverts the
+/// background (the vanilla 1.16.5 crosshair's difference blending: the
+/// plus is dark against a bright sky/snow and light against dark
+/// terrain, so it never disappears into the background).
 #[derive(Copy, Clone, Debug)]
 pub struct GuiQuad {
     pub texture: QuadTexture,
@@ -111,6 +117,13 @@ pub struct GuiQuad {
     pub src: Rect,
     pub tint: [f32; 4],
     pub z: f32,
+    /// rotation around the dst center (radians, CW in UI space:
+    /// +x right, +y down). 0 for every axis-aligned quad.
+    pub rot: f32,
+    /// draw with invert (difference) blending instead of alpha — the
+    /// crosshair class. Overlapping invert quads cancel (invert twice
+    /// = identity), so invert geometry must never overlap itself.
+    pub invert: bool,
 }
 
 /// Typed GUI renderer failures (no panics — G2).
@@ -219,6 +232,8 @@ impl GuiFrame {
             src,
             tint,
             z,
+            rot: 0.0,
+            invert: false,
         });
     }
 
@@ -232,7 +247,84 @@ impl GuiFrame {
             src,
             tint,
             z,
+            rot: 0.0,
+            invert: false,
         });
+    }
+
+    /// push a ROTATED fractional-dst quad into the over-canvas text
+    /// layer (the splash run: one glyph-atlas strip tilted around its
+    /// center). `dst` is the UNROTATED bounding rect in UI px.
+    fn push_rot(&mut self, texture: QuadTexture, dst: RectF, src: Rect, tint: [f32; 4], rot: f32) {
+        let z = self.text_quads.len() as f32;
+        self.text_quads.push(GuiQuad {
+            texture,
+            dst,
+            src,
+            tint,
+            z,
+            rot,
+            invert: false,
+        });
+    }
+
+    /// Fractional solid-tint rect in the CHROME layer (under the
+    /// canvas blit) — the F3 strip class: engine-measured fractional
+    /// widths that must not quantize to the 960x540 integer grid.
+    pub fn solid_rect_f(&mut self, x: f32, y: f32, w: f32, h: f32, tint: [f32; 4]) {
+        self.quads.push(GuiQuad {
+            texture: QuadTexture::Solid,
+            dst: RectF::new(x, y, w, h),
+            src: Rect::new(0, 0, 1, 1),
+            tint,
+            z: self.quads.len() as f32,
+            rot: 0.0,
+            invert: false,
+        });
+    }
+
+    /// Fractional solid-tint rect in the OVER-CANVAS text layer — the
+    /// crosshair class: device-snapped geometry that must composite
+    /// above everything the canvas still draws.
+    pub fn solid_over(&mut self, x: f32, y: f32, w: f32, h: f32, tint: [f32; 4]) {
+        self.text_quads.push(GuiQuad {
+            texture: QuadTexture::Solid,
+            dst: RectF::new(x, y, w, h),
+            src: Rect::new(0, 0, 1, 1),
+            tint,
+            z: self.text_quads.len() as f32,
+            rot: 0.0,
+            invert: false,
+        });
+    }
+
+    /// White INVERT-blend rect in the OVER-canvas text layer — the
+    /// vanilla crosshair class: dst in UI px (device-snapped by the
+    /// caller); drawn by the invert pipeline (result = 1 − dst), so a
+    /// white quad becomes dark over bright backgrounds and light over
+    /// dark ones. Tint is fixed WHITE — the whole point is |1 − bg|.
+    /// Overlapping invert quads cancel; callers must keep them
+    /// disjoint (the crosshair's H bar is split around its V bar for
+    /// exactly this reason).
+    pub fn solid_invert(&mut self, x: f32, y: f32, w: f32, h: f32) {
+        self.text_quads.push(GuiQuad {
+            texture: QuadTexture::Solid,
+            dst: RectF::new(x, y, w, h),
+            src: Rect::new(0, 0, 1, 1),
+            tint: WHITE,
+            z: self.text_quads.len() as f32,
+            rot: 0.0,
+            invert: true,
+        });
+    }
+
+    /// One ROTATED glyph-atlas quad in the over-canvas text layer —
+    /// the splash run: `dst` is the UNROTATED bounding rect (UI px,
+    /// already pulse-scaled), `src` the cached run strip's atlas rect,
+    /// `rot` the tilt in radians (the vanilla -20 degrees). Tint is
+    /// white: the strip carries its own baked colors.
+    pub fn rotated_glyph_quad(&mut self, dst: RectF, src: Rect, rot: f32) {
+        self.push_rot(QuadTexture::GlyphAtlas, dst, src, WHITE, rot);
     }
 
     /// Widget chrome for a button: 9-slice of the matching variant
@@ -657,6 +749,14 @@ impl GuiFrame {
 /// canvas chrome on (self-healing fallback).
 pub struct GuiRenderer {
     pipe: wgpu::RenderPipeline,
+    /// the INVERT-blend twin of `pipe` (same shader/layout, blend
+    /// src=OneMinusDst dst=Zero): a white quad writes 1 − dst — the
+    /// vanilla crosshair's difference blending (technique reference:
+    /// minecraft.wiki/w/Crosshair documents the invert-style blend;
+    /// the GL blend-factor formulation src=GL_ONE_MINUS_DST_COLOR is
+    /// the classic implementation of that behavior, re-expressed here
+    /// in wgpu's BlendFactor::OneMinusDst).
+    invert_pipe: wgpu::RenderPipeline,
     /// bind groups indexed by QuadTexture discriminant order
     bind_groups: [Option<wgpu::BindGroup>; QUAD_TEX_COUNT],
     sheet_dims: [(u32, u32); QUAD_TEX_COUNT],
@@ -748,7 +848,7 @@ impl GuiRenderer {
                 module: &module,
                 entry_point: "vs_main",
                 compilation_options: Default::default(),
-                buffers: &[vbl],
+                buffers: std::slice::from_ref(&vbl),
             },
             fragment: Some(wgpu::FragmentState {
                 module: &module,
@@ -757,6 +857,41 @@ impl GuiRenderer {
                 targets: &[Some(wgpu::ColorTargetState {
                     format: out_format,
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            primitive: wgpu::PrimitiveState::default(),
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        });
+        // the invert twin — identical except the blend equation:
+        // result.rgb = src.rgb * (1 − dst.rgb) + dst.rgb * 0
+        // (white src ⇒ full channel inversion; alpha replaces).
+        let invert_pipe = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("gui-invert-pipe"),
+            layout: Some(&pll),
+            vertex: wgpu::VertexState {
+                module: &module,
+                entry_point: "vs_main",
+                compilation_options: Default::default(),
+                buffers: &[vbl],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &module,
+                entry_point: "fs_main",
+                compilation_options: Default::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: out_format,
+                    blend: Some(wgpu::BlendState {
+                        color: wgpu::BlendComponent {
+                            src_factor: wgpu::BlendFactor::OneMinusDst,
+                            dst_factor: wgpu::BlendFactor::Zero,
+                            operation: wgpu::BlendOperation::Add,
+                        },
+                        alpha: wgpu::BlendComponent::REPLACE,
+                    }),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
@@ -783,6 +918,7 @@ impl GuiRenderer {
 
         Ok(GuiRenderer {
             pipe,
+            invert_pipe,
             bind_groups: std::array::from_fn(|_| None),
             sheet_dims: [(1, 1); QUAD_TEX_COUNT],
             vb_pool: Vec::new(),
@@ -880,18 +1016,28 @@ impl GuiRenderer {
             self.bind_groups[idx] = Some(bg);
             self.sheet_dims[idx] = (sheet.w as u32, sheet.h as u32);
         }
-        // Solid: 1x1 opaque white
+        // Solid: 2x2 opaque white. NOT 1x1: browser E2E (SwiftShader,
+        // downlevel WebGPU) silently sampled the 1x1 texture as
+        // transparent — every Solid-tint quad (XP track, F3 strips,
+        // crosshair, frame graph) discarded in the fragment shader
+        // while every REAL sheet (hearts/hotbar/icons) rendered — the
+        // 1x1-extent texture was the only structural difference. 2x2
+        // dodges the 1x1 edge case and any uv/center half-texel
+        // weirdness; every texel is white so src (0,0,1,1) is exact.
+        // Non-sRGB: the tint is a linear vertex value; white is white
+        // either way, and the format matches how the value is used.
+        let solid_px = [255u8, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255];
         let white = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("gui-solid"),
             size: wgpu::Extent3d {
-                width: 1,
-                height: 1,
+                width: 2,
+                height: 2,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            format: wgpu::TextureFormat::Rgba8Unorm,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         });
@@ -902,15 +1048,15 @@ impl GuiRenderer {
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            &[255u8, 255, 255, 255],
+            &solid_px,
             wgpu::ImageDataLayout {
                 offset: 0,
-                bytes_per_row: Some(4),
-                rows_per_image: Some(1),
+                bytes_per_row: Some(8),
+                rows_per_image: Some(2),
             },
             wgpu::Extent3d {
-                width: 1,
-                height: 1,
+                width: 2,
+                height: 2,
                 depth_or_array_layers: 1,
             },
         );
@@ -938,6 +1084,8 @@ impl GuiRenderer {
             ],
         });
         self.bind_groups[QuadTexture::Solid as usize] = Some(bg);
+        // the 2x2 white solid sheet (src (0,0,1,1) = the whole texture)
+        self.sheet_dims[QuadTexture::Solid as usize] = (2, 2);
         Ok(())
     }
 
@@ -1079,7 +1227,9 @@ impl GuiRenderer {
     }
 
     /// append one quad's 4 vertices (positions in UI px, UVs from src /
-    /// sheet dims). Returns TooManyQuads past the cap.
+    /// sheet dims). Returns TooManyQuads past the cap. A nonzero `rot`
+    /// rotates the corners around the dst CENTER (UI space, CW for
+    /// +y-down) — the splash run's -20-degree tilt.
     pub fn push(&mut self, q: &GuiQuad) -> Result<(), GuiError> {
         if self.vertex_staging.len() / 4 >= MAX_QUADS {
             return Err(GuiError::TooManyQuads);
@@ -1098,13 +1248,14 @@ impl GuiRenderer {
         let y0 = q.dst.y;
         let x1 = q.dst.x + q.dst.w;
         let y1 = q.dst.y + q.dst.h;
-        let corners = [
-            ([x0, y0], [u0, v0]),
-            ([x1, y0], [u1, v0]),
-            ([x1, y1], [u1, v1]),
-            ([x0, y1], [u0, v1]),
+        let corners = rotated_corners(x0, y0, x1, y1, q.rot);
+        let uvs = [
+            [u0, v0],
+            [u1, v0],
+            [u1, v1],
+            [u0, v1],
         ];
-        for (pos, uv) in corners {
+        for (pos, uv) in corners.into_iter().zip(uvs) {
             self.vertex_staging.push(GuiVertex {
                 pos,
                 uv,
@@ -1128,13 +1279,13 @@ impl GuiRenderer {
             return Ok(());
         }
         self.begin();
-        let mut groups: Vec<(QuadTexture, u32, u32)> = Vec::new(); // (tex, first quad, count)
+        let mut groups: Vec<(QuadTexture, bool, u32, u32)> = Vec::new(); // (tex, invert, first quad, count)
         for (i, q) in quads.iter().enumerate() {
             match groups.last_mut() {
-                Some((tex, _, count)) if *tex == q.texture => {
+                Some((tex, inv, _, count)) if *tex == q.texture && *inv == q.invert => {
                     *count += 1;
                 }
-                _ => groups.push((q.texture, i as u32, 1)),
+                _ => groups.push((q.texture, q.invert, i as u32, 1)),
             }
             self.push(q)?;
         }
@@ -1178,7 +1329,19 @@ impl GuiRenderer {
         pass.set_pipeline(&self.pipe);
         pass.set_index_buffer(self.ib.slice(..), wgpu::IndexFormat::Uint32);
         pass.set_vertex_buffer(0, vb.slice(..));
-        for (tex, first, count) in groups {
+        let mut pipe_invert = false; // which pipeline is currently bound
+        for (tex, invert, first, count) in groups {
+            // switch blend mode when the group's class changes (alpha ↔
+            // invert) — the crosshair's 3 white quads draw through the
+            // invert pipeline, everything else through alpha
+            if invert != pipe_invert {
+                pass.set_pipeline(if invert {
+                    &self.invert_pipe
+                } else {
+                    &self.pipe
+                });
+                pipe_invert = invert;
+            }
             let bg = match &self.bind_groups[tex as usize] {
                 Some(bg) => bg,
                 None => {
@@ -1207,6 +1370,28 @@ impl GuiRenderer {
         }
         Ok(())
     }
+}
+
+/// The 4 quad corners in emission order (TL, TR, BR, BL), rotated by
+/// `rot` radians around the rect center. Pure so the geometry is
+/// unit-testable without a GPU (G3): identity at rot=0, center
+/// invariant at any angle, corners stay on the circle of radius
+/// half-diagonal.
+fn rotated_corners(x0: f32, y0: f32, x1: f32, y1: f32, rot: f32) -> [[f32; 2]; 4] {
+    let raw = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+    if rot == 0.0 {
+        return raw;
+    }
+    let (s, c) = (rot.sin(), rot.cos());
+    let cx = (x0 + x1) * 0.5;
+    let cy = (y0 + y1) * 0.5;
+    let mut out = [[0f32; 2]; 4];
+    for (i, [x, y]) in raw.into_iter().enumerate() {
+        let dx = x - cx;
+        let dy = y - cy;
+        out[i] = [cx + dx * c - dy * s, cy + dx * s + dy * c];
+    }
+    out
 }
 
 /// The GUI quad shader — samples the sheet, multiplies by vertex tint,
@@ -1606,5 +1791,80 @@ mod tests {
             ]),
             "label glyphs present"
         );
+    }
+
+    // ---- Luanti round 2: rotation + fractional solid helpers ------
+
+    #[test]
+    fn rotated_corners_identity_center_and_circle() {
+        // rot=0 is the exact axis-aligned emission order TL,TR,BR,BL
+        let id = rotated_corners(10.0, 20.0, 30.0, 40.0, 0.0);
+        assert_eq!(id, [[10.0, 20.0], [30.0, 20.0], [30.0, 40.0], [10.0, 40.0]]);
+        // any angle: center invariant, every corner stays on the circle
+        // of radius half-diagonal (a rigid rotation, no shear/scale)
+        let rot = -(20.0_f32).to_radians();
+        let cs = rotated_corners(10.0, 20.0, 30.0, 40.0, rot);
+        let (cx, cy) = (20.0f32, 30.0f32);
+        let r2 = 10.0f32 * 10.0 + 10.0 * 10.0; // half-diagonal squared
+        for [x, y] in cs {
+            assert!(x.is_finite() && y.is_finite(), "finite corners");
+            let d2 = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+            assert!((d2 - r2).abs() < 1e-3, "corner on the circle ({d2} vs {r2})");
+        }
+        // -20 deg in +y-down UI space: the TL corner moves BELOW its
+        // axis-aligned position (the text's right end tips UP — the
+        // vanilla splash tilt direction)
+        assert!(cs[0][1] > 20.0, "TL drops below y=20 (right end up)");
+        assert!(cs[1][1] < 20.0, "TR rises above y=20");
+        // 90 degrees swaps the rect's axes around the center
+        let q = rotated_corners(0.0, 0.0, 20.0, 10.0, std::f32::consts::FRAC_PI_2);
+        let w: f32 = q.iter().map(|c| c[0]).fold(f32::MIN, f32::max)
+            - q.iter().map(|c| c[0]).fold(f32::MAX, f32::min);
+        let h: f32 = q.iter().map(|c| c[1]).fold(f32::MIN, f32::max)
+            - q.iter().map(|c| c[1]).fold(f32::MAX, f32::min);
+        assert!((w - 10.0).abs() < 1e-3 && (h - 20.0).abs() < 1e-3, "90 deg swaps extents");
+    }
+
+    #[test]
+    fn rotated_glyph_quad_lands_in_text_layer_with_tilt() {
+        // the splash entry point: one GlyphAtlas quad in the OVER-canvas
+        // text layer, white tint (the strip carries baked colors), the
+        // requested tilt, z ascending
+        let mut f = GuiFrame::default();
+        f.solid_over(1.0, 2.0, 3.0, 4.0, [0.5; 4]);
+        f.rotated_glyph_quad(
+            RectF::new(100.0, 100.0, 50.0, 20.0),
+            Rect::new(4, 8, 50, 20),
+            -(20.0_f32).to_radians(),
+        );
+        assert_eq!(f.quads.len(), 0, "splash never lands in the chrome layer");
+        assert_eq!(f.text_quads.len(), 2);
+        let q = f.text_quads[1];
+        assert_eq!(q.texture, QuadTexture::GlyphAtlas);
+        assert_eq!(q.tint, WHITE);
+        assert_eq!(q.dst, RectF::new(100.0, 100.0, 50.0, 20.0));
+        assert_eq!(q.src, Rect::new(4, 8, 50, 20));
+        assert!((q.rot - (-(20.0_f32).to_radians())).abs() < 1e-6);
+        assert!(q.z > f.text_quads[0].z, "submission order");
+        // every default quad stays axis-aligned (rot 0) — the chrome
+        // paths never accidentally rotate
+        f.solid_rect_f(0.0, 0.0, 1.0, 1.0, WHITE);
+        assert_eq!(f.quads[0].rot, 0.0);
+    }
+
+    #[test]
+    fn solid_layers_split_chrome_from_over_canvas() {
+        // solid_rect_f → the chrome layer (under the canvas blit — the
+        // F3 strip class); solid_over → the text layer (over the canvas
+        // — the crosshair class)
+        let mut f = GuiFrame::default();
+        f.solid_rect_f(2.0, 4.0, 96.5, 18.0, [0.3; 4]);
+        f.solid_over(10.25, 20.5, 3.5, 2.25, [0.9; 4]);
+        assert_eq!(f.quads.len(), 1);
+        assert_eq!(f.text_quads.len(), 1);
+        assert_eq!(f.quads[0].dst.w, 96.5, "fractional width survives (no int quantize)");
+        assert_eq!(f.text_quads[0].dst.x, 10.25, "fractional origin survives");
+        assert_eq!(f.quads[0].texture, QuadTexture::Solid);
+        assert_eq!(f.text_quads[0].texture, QuadTexture::Solid);
     }
 }

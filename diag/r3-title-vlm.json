@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Based on the image provided (1440x810 pixels), here are the details for the visible elements:\n\n**Visible Buttons:**\n1.  **Singleplayer:** Centered at approximately **(507, 442)**\n2.  **Multiplayer:** Centered at approximately **(507, 530)**\n3.  **Options...:** Centered at approximately **(507, 615)**\n\n**Yellow Splash Text:**\n*   **Position:** Located in the upper right area, overlapping the end of the title \"VOXELCRAFT\". Its approximate center is around **(792, 140)**.\n*   **Tilt:** Yes, the text (\"100% Rust!\") is visibly tilted/rotated slightly counter-clockwise (to the left).",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789226546,
+  "id": "20260912232222baae1cd8aca64b04",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260912232222baae1cd8aca64b04",
+  "usage": {
+    "completion_tokens": 166,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1508,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1674
+  }
+}

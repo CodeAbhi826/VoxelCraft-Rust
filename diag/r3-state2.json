@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "This is the **world creation / setup screen** (a sub-menu of the title menu, specifically for configuring a new world before generating it).\n\n**Brief description:**  \nThe screen displays the heading **\"CREATE NEW WORLD\"** and includes input fields for the world **Name** (\"New World\") and **Seed** (a long number). Below are buttons to select **Game Mode** (Survival), **World Type** (Normal), a **\"Create World\"** button (with modifiers like \"Depleting Stacks, Real Damage, Respawn\"), and a **Cancel** button. The background shows a dark, reddish, pixelated landscape. This is where players configure settings *before* the game generates/loads the actual world.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789226599,
+  "id": "202609122323132fccd0d79e4343af",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202609122323132fccd0d79e4343af",
+  "usage": {
+    "completion_tokens": 153,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1489,
+    "prompt_tokens_details": {
+      "cached_tokens": 2
+    },
+    "total_tokens": 1642
+  }
+}

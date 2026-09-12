@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "ISOMETRIC. The icon displays a 3D cube with a visible green top face (shaped as a rhombus/diamond) and visible brown side faces, rather than a flat, single-face texture tile.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789221420,
+  "id": "2026091221565784424ddbf1ae46a8",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "2026091221565784424ddbf1ae46a8",
+  "usage": {
+    "completion_tokens": 46,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 177,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 223
+  }
+}

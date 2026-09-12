@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Yes, there is text in the top-left region. It displays debug information including the game version (\"VoxelCraft 1.16.5\"), performance metrics (fps, server ticks), memory usage, and player coordinates. There is no text visible in the upper-right corner.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789221039,
+  "id": "202609122150378111d2ca401140fe",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202609122150378111d2ca401140fe",
+  "usage": {
+    "completion_tokens": 57,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1086,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1143
+  }
+}

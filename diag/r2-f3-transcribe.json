@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "VoxelCraft 1.16.5 (Rust/wgpu/modified)\n10 fps T: ∞ fancy-clouds D: 2",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789221187,
+  "id": "20260912215301158bd0e9d23e42b5",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260912215301158bd0e9d23e42b5",
+  "usage": {
+    "completion_tokens": 31,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 705,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 736
+  }
+}

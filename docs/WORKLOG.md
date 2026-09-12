@@ -3666,3 +3666,111 @@ permission for fundamental changes.
 
 **Not committed/pushed** — awaiting explicit user approval, per the
 standing instruction.
+
+## 2026-09-12 — Luanti-replication round 2 (canvas→quad migration) + the vanilla invert crosshair
+
+**Task:** continue the font/HUD/rendering repair the user ordered
+("fully shit → fix rendering and assets, mainly the FONT and the HUD,
+replicate Luanti, fundamental changes allowed") — finish the round the
+previous session left uncommitted and unverified, then apply the
+STRICT PROTOCOL EXTENSION (Rendering/Asset/HUD Conversion Toward Real
+Minecraft Parity, Using Luanti as a Legal Architectural Reference).
+
+**Inherited state verified first (protocol §7: re-verify before
+implementing):** the uncommitted working tree held a complete round 2
+(canvas-space HUD content migrated to the device-exact GUI quad
+renderer) with tests already written: splash = one cached rotated
+glyph-atlas strip (baked once at DEVICE resolution, -20° tilt +
+pulse as pure vertex geometry), crosshair = device-snapped solid
+quads, F3 debug strips = fractional solid quads matching
+engine-measured widths, boss bar / XP bar / frame graph = solid
+quads, plus a browser-critical fix (the 1×1 Solid texture silently
+sampled as transparent on SwiftShader/downlevel WebGPU — now 2×2
+Rgba8Unorm). Tests: 716 pass / 0 fail (704 + 12 new). Clippy: no new
+warnings from the changed code.
+
+**E2E verification of round 2 (agent-browser at 1440×810, the
+fractional 1.5× scale that exposed the original font mush):**
+- F3 overlay: text crisp, translucent background strips present
+  (vanilla style), crosshair clean, hearts/hunger/hotbar/XP all clean,
+  no artifacts (VLM verdict).
+- Pixel-forensics of the earlier "crosshair incomplete on the right"
+  VLM verdict: FALSE ALARM — arms complete and symmetric (H x 708–732,
+  V y 393–416, 3-px white + 2-px dark outlines), the zoom crop had
+  been off-center. The sRGB-correct alpha-blend math reproduced the
+  measured values exactly (single white over terrain ≈ 215–219;
+  V-over-H overlap ≈ 241).
+
+**Real bugs found by that forensics, fixed this session:**
+1. **Center double-blend** — the V bar alpha-stacked over the H bar
+   (241 vs 215: a visibly brighter 3×3 center; vanilla's plus is
+   uniform). Fixed by splitting the H bar into two segments around
+   the V bar's window.
+2. **Crosshair invisible against bright backgrounds** (the fix that
+   mattered): a fresh world spawned onto SNOW — white arms at
+   (241,245,249) against snow (224,240,255) were indistinguishable.
+   Vanilla 1.16.5 solves this with difference blending; implemented as
+   a second render pipeline (same shader/layout, blend
+   `src=OneMinusDst dst=Zero` — wgpu's re-expression of the classic
+   GL_ONE_MINUS_DST_COLOR invert), a `GuiQuad.invert` flag routed per
+   texture-group run in `GuiRenderer::draw`, and `solid_invert()` on
+   GuiFrame. The crosshair is now THREE disjoint white invert quads
+   (H split ×2 + V; disjointness is a hard requirement — overlapping
+   inverts cancel to identity), no outline (vanilla has none).
+   Verified live: arms (253,248,255) against dark-green terrain
+   (~(26,56,0)) — bright where the background is dark, dark where it
+   is bright, visible on everything but exact mid-gray.
+3. Final QA (F3 on, 1440×810): crisp text, strips present, clean
+   plus, clean hearts/hunger, 9-slot hotbar with isometric icons +
+   stack numbers, green XP bar — **VLM verdict: PASS, "no mushy,
+   ragged, or blurred UI elements" at 1.5×**.
+
+**Protocol §5 confirmations (cheap wins, both already true):**
+- Shared quad-index pattern: terrain mesher emits the constant
+  `[0,1,2,0,2,3]` per quad; the GUI renderer draws from a static
+  `{0,1,2,2,3,0}` index buffer — the same technique Luanti's
+  content_mapblock.cpp uses (constant per-quad indices), already in
+  place.
+- 16³ section-granularity meshing: confirmed in vc-mesh ("greedy runs
+  never cross 16×16×16 section boundaries") — already aligned with
+  Luanti's MapBlock granularity; no change.
+
+**Protocol §1 (atlas) honored by NOT changing it:** the fixed 2048px
+procedural atlas is the correct architecture for an engine-bounded
+procedural tile set — no dynamic stitcher introduced.
+
+**Protocol §6 (font):** Monocraft (OFL-1.1) confirmed INTEGRATED
+(commit c801cb6: embedded TTF + OFL license text, gui/font.rs engine);
+the hand-built 5×7 canvas font remains only as the no-GPU fallback.
+
+### Luanti-referenced techniques
+
+- Studied: Luanti's fontengine architecture (device-resolution glyph
+  rasters positioned device-exactly — round 1's fix, carried into
+  round 2's splash/crosshair/F3 migration). Technique reference:
+  Luanti's `src/client/fontengine.cpp`, studied 2026-09-12 (round 1);
+  applied here as the same device-exact placement principle for the
+  remaining canvas-space HUD elements.
+- Studied: Luanti's GUI draw layers (chrome under, text over) — the
+  two z-layer GuiFrame model (quads / text_quads) mirrors that
+  layering shape. Technique reference: Luanti's
+  `src/gui/guiFormSpecMenu.cpp` draw ordering, studied 2026-09-12.
+- Independently reimplemented in Rust/wgpu: cached run strips in the
+  glyph atlas (own ShelfPacker design), rotated quad emission
+  (`rotated_corners`), the invert-blend pipeline (from the documented
+  vanilla crosshair behavior, NOT from Luanti — Luanti does not use
+  invert blending for its crosshair), and the group-run pipeline
+  switching. No Luanti C++ source was copied, transcribed, or closely
+  paraphrased; all code is original Rust expressing the techniques.
+
+**Verification:** 716 workspace tests pass / 0 fail; clippy clean on
+all changed files (3 pre-existing warnings elsewhere, unchanged);
+wasm bundle rebuilt (locked js+wasm pair, mtimes match, deployed);
+live browser E2E at 1440×810 with pixel-level forensics + VLM QA
+(PASS).
+
+**Not committed/pushed** — awaiting explicit user approval, per the
+standing instruction. Next: protocol §2 (occlusion culling with
+occluded-vs-frustum split counters, Luanti ClientMap draw-list as the
+technique reference) and §4 (entity bone/joint hierarchy + named
+animation ranges).

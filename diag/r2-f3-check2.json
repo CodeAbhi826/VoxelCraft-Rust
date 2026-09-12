@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "NO. There is no F3 debug overlay visible in the screenshot. The screen only shows the standard gameplay HUD, which includes the crosshair in the center, the health and hunger bars at the bottom center, and the hotbar with various blocks and items.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789220584,
+  "id": "20260912214301e271ff7b82254992",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260912214301e271ff7b82254992",
+  "usage": {
+    "completion_tokens": 53,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1502,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1555
+  }
+}

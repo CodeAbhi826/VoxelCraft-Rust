@@ -157,6 +157,11 @@ pub struct FontEngine {
     ink: HashMap<char, f32>,
     /// rasterized glyphs keyed by (char, device cell px)
     glyphs: HashMap<(char, u32), CachedGlyph>,
+    /// cached multi-glyph RUN strips keyed by (key string, device cell)
+    /// — the splash text's colored outlined run, uploaded once and
+    /// drawn as a single rotated quad. Cleared with the glyphs on
+    /// every atlas reset (stale rects must never survive).
+    runs: HashMap<(String, u32), CachedGlyph>,
     packer: ShelfPacker,
     pending: Vec<PendingUpload>,
     /// bumps on every rasterization/reset — the renderer re-uploads
@@ -173,6 +178,7 @@ impl FontEngine {
             cap_ratio: 0.78125, // patched from 'H' below (Monocraft: 840/1080 em)
             ink: HashMap::new(),
             glyphs: HashMap::new(),
+            runs: HashMap::new(),
             packer: ShelfPacker::new(GLYPH_ATLAS_PX, GLYPH_ATLAS_PX),
             pending: Vec::new(),
             version: 0,
@@ -424,6 +430,7 @@ impl FontEngine {
             None => {
                 // atlas full — Luanti-style cache reset, then re-pack
                 self.glyphs.clear();
+                self.runs.clear();
                 self.packer.reset();
                 self.resets += 1;
                 self.version += 1;
@@ -491,6 +498,56 @@ impl FontEngine {
             }
         }
         (out, w, h)
+    }
+
+    /// Cache a pre-baked RUN strip (arbitrary RGBA — the splash's
+    /// colored outlined run) in the glyph atlas under `key`, sized
+    /// `w × h` DEVICE px. `bake` only runs on a cache miss (or after
+    /// an atlas reset re-cleared the strip) — it RECEIVES the engine
+    /// (`&mut FontEngine`) so it can call `bake_bitmap` without
+    /// fighting the outer `&mut self` borrow; the per-frame cost of a
+    /// hit is one HashMap lookup. Returns the atlas rect for a
+    /// rotated quad. `None` only when the strip cannot pack (larger
+    /// than the atlas) or bakes empty.
+    pub fn cache_run(
+        &mut self,
+        key: &str,
+        cell_dev: u32,
+        bake: impl FnOnce(&mut Self) -> (Vec<u8>, u32, u32),
+    ) -> Option<CachedGlyph> {
+        if let Some(&g) = self.runs.get(&(key.to_string(), cell_dev)) {
+            return Some(g);
+        }
+        let (bytes, w, h) = bake(self);
+        if w == 0 || h == 0 || bytes.len() != (w as usize) * (h as usize) * 4 {
+            return None;
+        }
+        let (x, y) = match self.packer.alloc(w, h) {
+            Some(p) => p,
+            None => {
+                // atlas full — the same Luanti-style reset as glyphs
+                // (stale run rects are cleared with everything else);
+                // if it still cannot pack it is bigger than a fresh
+                // atlas — bail with None
+                self.glyphs.clear();
+                self.runs.clear();
+                self.packer.reset();
+                self.resets += 1;
+                self.version += 1;
+                self.packer.alloc(w, h)?
+            }
+        };
+        let g = CachedGlyph {
+            atlas_x: x,
+            atlas_y: y,
+            w,
+            h,
+            top_rel_baseline: 0.0, // run strips position by center, not baseline
+        };
+        self.pending.push(PendingUpload { x, y, w, h, bytes });
+        self.version += 1;
+        self.runs.insert((key.to_string(), cell_dev), g);
+        Some(g)
     }
 
     // -------------------------------------------------------- upkeep --
@@ -672,6 +729,53 @@ mod tests {
         assert!((cap - 14.0).abs() < 0.5, "cap ≈ 0.875 × cell (got {cap})");
         let b = e.baseline_for_cell(16.0);
         assert!((b - 15.0).abs() < 0.75, "baseline ≈ 15 at cell 16 (got {b})");
+    }
+
+    // ---- Luanti round 2: cached run strips (the splash) ------------
+
+    #[test]
+    fn cache_run_bakes_once_and_hits_thereafter() {
+        // two calls with the same key+cell: ONE bake (closure count 1),
+        // the SAME atlas rect back, and the second call adds no pending
+        // upload (the renderer sync already drained the first)
+        let eng = engine().expect("engine");
+        let mut e = eng.lock().unwrap_or_else(|p| p.into_inner());
+        let bakes = std::cell::Cell::new(0u32);
+        let strip = |e: &mut FontEngine| -> (Vec<u8>, u32, u32) {
+            bakes.set(bakes.get() + 1);
+            e.bake_bitmap("Hi!", 16.0, [255, 255, 0, 255])
+        };
+        let g1 = e.cache_run("t1", 16, strip).expect("packs");
+        let pending1 = e.take_pending();
+        assert_eq!(pending1.len(), 1, "one upload on the miss");
+        assert_eq!(pending1[0].w, g1.w);
+        let g2 = e.cache_run("t1", 16, strip).expect("cached");
+        assert_eq!(bakes.get(), 1, "bake ran exactly once");
+        assert_eq!(
+            (g1.atlas_x, g1.atlas_y, g1.w, g1.h),
+            (g2.atlas_x, g2.atlas_y, g2.w, g2.h),
+            "stable rect on the hit"
+        );
+        assert!(e.take_pending().is_empty(), "no upload on the hit");
+    }
+
+    #[test]
+    fn cache_run_keys_on_cell_and_rejects_empty() {
+        // a different cell is a different entry (device-scale change →
+        // re-bake at the new resolution); an empty bake returns None
+        let eng = engine().expect("engine");
+        let mut e = eng.lock().unwrap_or_else(|p| p.into_inner());
+        let a = e
+            .cache_run("k", 16, |e| e.bake_bitmap("A", 16.0, [255, 255, 0, 255]))
+            .expect("16 packs");
+        let b = e
+            .cache_run("k", 24, |e| e.bake_bitmap("A", 24.0, [255, 255, 0, 255]))
+            .expect("24 packs");
+        assert_ne!((a.w, a.h), (b.w, b.h), "cell-keyed: 24-cell run is larger");
+        let none = e.cache_run("empty", 16, |_| (Vec::new(), 0, 0));
+        assert!(none.is_none(), "empty bake rejected");
+        let bad = e.cache_run("bad", 16, |_| (vec![9u8; 10], 2, 2));
+        assert!(bad.is_none(), "byte-length mismatch rejected (10 != 2*2*4)");
     }
 }
 

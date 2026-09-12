@@ -126,17 +126,98 @@ pub fn load_font_png_if_present(set: &mut GuiTextureSet, path: &Path) -> bool {
     true
 }
 
+
+/// Phase 4 (D2): resolve GUI textures through the `vc-pack` stack.
+/// Resolution order per sheet: highest-priority user pack first, then
+/// lower packs, then the builtin set. A pack that provides only
+/// `gui/hearts` overrides hearts and nothing else. Decode failures are
+/// typed errors (the caller logs + keeps builtin); a stack providing
+/// nothing returns Ok(None).
+pub fn load_from_pack(
+    stack: &vc_pack::pack::PackStack,
+) -> Result<Option<GuiTextureSet>, GuiTextureError> {
+    if stack.is_empty() {
+        return Ok(None);
+    }
+    let mut set = GuiTextureSet::build_builtin();
+    let mut overridden = 0usize;
+    let mut applied: Vec<String> = Vec::new();
+
+    for (name, ew, eh) in SHEET_DIMS {
+        let path = vc_pack::pack::gui_texture_path(name);
+        let Some((bytes, source)) = stack.read_first(&path) else {
+            continue; // no pack provides this texture -> builtin stays
+        };
+        let file_label: &'static str = match *name {
+            "hearts" => "hearts.png",
+            "hunger" => "hunger.png",
+            "armor" => "armor.png",
+            "bubbles" => "bubbles.png",
+            "widgets" => "widgets.png",
+            "hotbar" => "hotbar.png",
+            "hotbar_sel" => "hotbar_sel.png",
+            "options_background" => "options_background.png",
+            _ => "font.png",
+        };
+        let (px, w, h) = decode_png(&bytes).map_err(|_| GuiTextureError::Decode {
+            file: file_label,
+        })?;
+        if (w, h) != (*ew, *eh) {
+            return Err(GuiTextureError::WrongDimensions {
+                file: file_label,
+                expected: (*ew, *eh),
+                got: (w, h),
+            });
+        }
+        match *name {
+            "hearts" => set.hearts = sheet_from_rgba(px, w, h, 9),
+            "hunger" => set.hunger = sheet_from_rgba(px, w, h, 9),
+            "armor" => set.armor = sheet_from_rgba(px, w, h, 9),
+            "bubbles" => set.bubbles = sheet_from_rgba(px, w, h, 9),
+            "widgets" => set.widgets = sheet_from_rgba(px, w, h, 20),
+            "hotbar" => set.hotbar_bg = sheet_from_rgba(px, w, h, 182),
+            "hotbar_sel" => set.hotbar_sel = sheet_from_rgba(px, w, h, 24),
+            "options_background" => set.dirt = sheet_from_rgba(px, w, h, 16),
+            _ => {
+                // font.png: 128x48 glyph sheet takes over as FontSource
+                set.font = FontSource::Png(px);
+            }
+        }
+        overridden += 1;
+        applied.push(format!("{name} <- {source}"));
+    }
+
+    if overridden == 0 {
+        return Ok(None);
+    }
+    // the caller logs which sheets came from which pack
+    let _ = &applied;
+    Ok(Some(set))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::fs;
 
-    /// write a flat-color PNG of the given size to dir/name.png
+    /// encode a flat-color RGBA PNG sheet of the given size
+    fn flat_png(w: u32, h: u32, color: [u8; 4]) -> Vec<u8> {
+        let img = image::RgbaImage::from_fn(w, h, |_, _| image::Rgba(color));
+        let mut out = Vec::new();
+        let enc = image::codecs::png::PngEncoder::new(std::io::Cursor::new(&mut out));
+        let _ = image::ImageEncoder::write_image(
+            enc,
+            img.as_raw(),
+            w,
+            h,
+            image::ExtendedColorType::Rgba8,
+        );
+        out
+    }
+
+    /// write a flat-color PNG to dir/name.png
     fn write_flat_png(dir: &Path, name: &str, w: u32, h: u32, color: [u8; 4]) {
-        let img = image::RgbaImage::from_fn(w, h, |_, _| {
-            image::Rgba([color[0], color[1], color[2], color[3]])
-        });
-        let _ = img.save(dir.join(format!("{name}.png")));
+        let _ = std::fs::write(dir.join(format!("{name}.png")), flat_png(w, h, color));
     }
 
     #[test]
@@ -162,8 +243,7 @@ mod tests {
         let _ = fs::create_dir_all(&tmp);
         // hearts must be 27x9 — write a 9x9 instead
         write_flat_png(&tmp, "hearts", 9, 9, [255, 0, 0, 255]);
-        let r = load_override(&tmp);
-        match r {
+        match load_override(&tmp) {
             Err(GuiTextureError::WrongDimensions {
                 file,
                 expected,
@@ -188,7 +268,7 @@ mod tests {
         assert!(r.is_ok());
         let set = r.ok().flatten();
         assert!(set.is_some(), "override set expected");
-        let set = set.unwrap_or_else(|| GuiTextureSet::build_builtin());
+        let set = set.unwrap_or_else(GuiTextureSet::build_builtin);
         // hearts overridden: first pixel is red, NOT the builtin shell
         assert_eq!(&set.hearts.px[0..4], &[255, 0, 0, 255]);
         // everything else still builtin: hunger's first pixel is NOT the
@@ -214,14 +294,20 @@ mod tests {
         let tmp = std::env::temp_dir().join("vc_gui_test_font");
         let _ = fs::create_dir_all(&tmp);
         // a 128x48 sheet with a distinct first pixel
-        let img = image::RgbaImage::from_fn(128, 48, |x, y| {
-            if x == 0 && y == 0 {
-                image::Rgba([1, 2, 3, 255])
-            } else {
-                image::Rgba([200, 200, 200, 255])
-            }
-        });
-        let _ = img.save(tmp.join("font.png"));
+        let mut px = vec![200u8, 200, 200, 255];
+        px.reserve(128 * 48 * 4 - 4);
+        let mut img = image::RgbaImage::from_pixel(128, 48, image::Rgba([200, 200, 200, 255]));
+        img.put_pixel(0, 0, image::Rgba([1, 2, 3, 255]));
+        let mut png = Vec::new();
+        let enc = image::codecs::png::PngEncoder::new(std::io::Cursor::new(&mut png));
+        let _ = image::ImageEncoder::write_image(
+            enc,
+            img.as_raw(),
+            128,
+            48,
+            image::ExtendedColorType::Rgba8,
+        );
+        let _ = std::fs::write(tmp.join("font.png"), png);
         let mut set = GuiTextureSet::build_builtin();
         let changed = load_font_png_if_present(&mut set, &tmp.join("font.png"));
         assert!(changed);
@@ -233,5 +319,110 @@ mod tests {
             FontSource::BuiltinArray => panic!("font PNG did not take over"),
         }
         let _ = fs::remove_dir_all(&tmp);
+    }
+
+    // -------------------------------------------------- Phase 4 ----
+
+    /// a MemorySource pack carrying one gui sheet as a real PNG
+    fn pack_with_sheet(name: &str, w: u32, h: u32, color: [u8; 4]) -> vc_pack::pack::MemorySource {
+        let mut pack = vc_pack::pack::MemorySource::new("test-pack");
+        pack.insert(
+            &vc_pack::pack::gui_texture_path(name),
+            flat_png(w, h, color),
+        );
+        pack
+    }
+
+    #[test]
+    fn load_from_pack_overrides_only_provided_textures() {
+        // a pack providing ONLY gui/hearts: hearts overridden, hunger
+        // stays builtin, result is Some(set)
+        let mut stack = vc_pack::pack::PackStack::new();
+        stack.push_front(std::sync::Arc::new(pack_with_sheet(
+            "hearts",
+            27,
+            9,
+            [10, 200, 90, 255],
+        )));
+        let r = load_from_pack(&stack);
+        assert!(r.is_ok());
+        let set = r.ok().flatten();
+        assert!(set.is_some(), "partial override returns a set");
+        let set = set.unwrap_or_else(GuiTextureSet::build_builtin);
+        assert_eq!(&set.hearts.px[0..4], &[10, 200, 90, 255]);
+        // hunger untouched by the hearts-only pack
+        assert!(
+            !(set.hunger.px[0] == 10 && set.hunger.px[1] == 200 && set.hunger.px[3] == 255),
+            "hunger must stay builtin"
+        );
+    }
+
+    #[test]
+    fn load_from_pack_on_empty_stack_returns_none() {
+        let stack = vc_pack::pack::PackStack::new();
+        let r = load_from_pack(&stack);
+        assert!(r.is_ok());
+        assert!(r.ok().flatten().is_none());
+    }
+
+    #[test]
+    fn load_from_pack_wrong_dimensions_is_a_typed_error() {
+        let mut stack = vc_pack::pack::PackStack::new();
+        // armor must be 27x9 — a 9x9 sheet is rejected loudly
+        stack.push_front(std::sync::Arc::new(pack_with_sheet(
+            "armor",
+            9,
+            9,
+            [1, 2, 3, 255],
+        )));
+        match load_from_pack(&stack) {
+            Err(GuiTextureError::WrongDimensions { file, expected, got }) => {
+                assert_eq!(file, "armor.png");
+                assert_eq!(expected, (27, 9));
+                assert_eq!(got, (9, 9));
+            }
+            other => panic!("expected WrongDimensions, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn load_from_pack_priority_highest_pack_wins() {
+        // two packs both provide hearts: the one at the FRONT of the
+        // stack wins
+        let mut stack = vc_pack::pack::PackStack::new();
+        // blue first, then red lands AT the front = highest priority
+        stack.push_front(std::sync::Arc::new(pack_with_sheet(
+            "hearts", 27, 9, [0, 0, 255, 255],
+        )));
+        stack.push_front(std::sync::Arc::new(pack_with_sheet(
+            "hearts", 27, 9, [255, 0, 0, 255],
+        )));
+        let set = load_from_pack(&stack)
+            .ok()
+            .flatten()
+            .unwrap_or_else(GuiTextureSet::build_builtin);
+        assert_eq!(&set.hearts.px[0..4], &[255, 0, 0, 255], "front pack wins");
+    }
+
+    #[test]
+    fn load_from_pack_font_sheet_takes_over_as_png_source() {
+        let mut stack = vc_pack::pack::PackStack::new();
+        stack.push_front(std::sync::Arc::new(pack_with_sheet(
+            "font",
+            128,
+            48,
+            [9, 8, 7, 255],
+        )));
+        let set = load_from_pack(&stack)
+            .ok()
+            .flatten()
+            .unwrap_or_else(GuiTextureSet::build_builtin);
+        match &set.font {
+            FontSource::Png(px) => {
+                assert_eq!(px.len(), 128 * 48 * 4);
+                assert_eq!(&px[0..4], &[9, 8, 7, 255]);
+            }
+            FontSource::BuiltinArray => panic!("pack font.png did not take over"),
+        }
     }
 }

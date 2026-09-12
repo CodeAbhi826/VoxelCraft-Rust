@@ -141,6 +141,15 @@ impl ZipFiles {
     }
 }
 
+impl ZipFiles {
+    /// read one file by its archive path (None when absent/undecodable) —
+    /// the resource-pack source adapter (UI Phase 4) uses this directly
+    pub fn read_file(&self, path: &str) -> Option<Vec<u8>> {
+        let entry = self.entries.iter().find(|e| e.name == path)?;
+        self.read_entry(entry)
+    }
+}
+
 impl super::datapack::PackFiles for ZipFiles {
     fn read(&self, path: &str) -> Option<Vec<u8>> {
         let entry = self.entries.iter().find(|e| e.name == path)?;

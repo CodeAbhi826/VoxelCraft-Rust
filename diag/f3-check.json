@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "1) Yes, the F3 debug text is present in image 1. The first 3 lines are:\n- VoxelCraft 1.16.5 (Rust/wgpu/modified)\n- 10 fps T: ∞ fancy-clouds D: 2\n- Integrated server @ 0 ms ticks, 0 tx, 0 rx\nThe font is a crisp pixel font.\n\n2) Yes, there is an item name above the hotbar in image 2. It says \"Dirt\". The text looks like a crisp, white pixelated font with a slight shadow or outline effect for better visibility against the background.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789198927,
+  "id": "2026091215420493632ecfae724793",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "2026091215420493632ecfae724793",
+  "usage": {
+    "completion_tokens": 132,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2046,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 2178
+  }
+}

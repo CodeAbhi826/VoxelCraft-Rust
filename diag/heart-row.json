@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Based on the image provided, here is the exact description of the HUD elements:\n\n**Health Hearts Row:**\n*   **Count:** There are exactly **10 hearts** visible in a horizontal row.\n*   **State:** All 10 hearts are **full red**. There are no half-hearts or empty black/gray shells.\n*   **Rendering Artifacts:** The rendering appears clean. There are no missing icons, no black boxes, and no misalignment. The row is perfectly straight.\n\n**Hunger Icons Row:**\n*   **Visibility:** The hunger icon row (which typically sits directly below the health hearts) is **not visible** in this image.\n*   **Reason:** The image is cropped such that the bottom of the heart sprites touches the top border of the hotbar inventory slots, leaving no space for the hunger bar to be displayed.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789200032,
+  "id": "20260912160027f70b2876a50f4c53",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260912160027f70b2876a50f4c53",
+  "usage": {
+    "completion_tokens": 176,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 667,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 843
+  }
+}

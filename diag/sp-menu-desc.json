@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "This is the **\"Create New World\"** screen from Minecraft (likely a modded version or specific edition given the custom difficulty text).\n\n**Visible elements and approximate Y positions (in a 960×540 image):**\n\n*   **Title:** \"CREATE NEW WORLD\" — **Y: ~35-75**\n*   **Seed info text** (SEED: NUMBER = ITSELF...) — **Y: ~105-125**\n*   **NAME label & input field** (\"New World\") — **Y: ~145-245**\n*   **SEED label & input field** (\"1180916...\") — **Y: ~255-355**\n*   **GAME MODE: SURVIVAL button** — **Y: ~385-450**\n*   **WORLD TYPE: NORMAL button** — **Y: ~470-535**\n*   **CREATE WORLD text** (DEPLETING STACKS. REAL DAMAGE. RESPAWN) — **Y: ~650-685**\n*   **CANCEL button** — **Y: ~745-810**\n\n*Note: The Y coordinates assume standard UI scaling where the main buttons are centered vertically, with the additional modded difficulty description and cancel button positioned below the typical viewport center.*",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789198765,
+  "id": "20260912153914240ab529ae644ec8",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260912153914240ab529ae644ec8",
+  "usage": {
+    "completion_tokens": 266,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 758,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1024
+  }
+}

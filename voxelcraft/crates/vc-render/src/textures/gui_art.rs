@@ -187,45 +187,48 @@ const HEART_HALF_MASK: [&str; 9] = [
     "....O....",
 ];
 
-// CLEAN-ROOM — hand-drawn from scratch
+// CLEAN-ROOM — hand-drawn from scratch. v2 (the Luanti-replication
+// round): teardrop meat blob top-right tapering into a white bone
+// shaft down-left with a knob end — the drumstick silhouette VLM-
+// validated at 16x zoom (the v1 oval read as a "potato").
 const HUNGER_MASK: [&str; 9] = [
-    "...OOOO..",
-    "..OMMMMO.",
-    ".OMMHMMMO",
-    "OWMMMMMMO",
-    "OWMMMMMO.",
-    ".OWOMMO..",
-    "..OWWO...",
-    ".OW.OWO..",
-    "..O...O..",
+    "....OOOO.",
+    "...OMMMMO",
+    "..OMHMMMO",
+    "..OMMMMMO",
+    "...OMMMO.",
+    "..OWOMMO.",
+    ".OWWOOO..",
+    "OWWO.....",
+    "OOO......",
 ];
 
-// CLEAN-ROOM — hand-drawn from scratch
+// CLEAN-ROOM — hand-drawn from scratch (same silhouette, dark shell)
 const HUNGER_EMPTY_MASK: [&str; 9] = [
-    "...OOOO..",
-    "..ODDDDO.",
-    ".ODDDDDDO",
-    "ODDDDDDDO",
-    "ODDDDDDO.",
-    ".ODODDO..",
-    "..ODDO...",
-    ".OD.ODO..",
-    "..O...O..",
+    "....OOOO.",
+    "...ODDDDO",
+    "..ODDDDDO",
+    "..ODDDDDO",
+    "...ODDDO.",
+    "..ODODDO.",
+    ".ODDOOO..",
+    "ODDO.....",
+    "OOO......",
 ];
 
 // half hunger: right half of the meat filled (vanilla hunger halves
 // empty from the left of the icon as it drains)
 // CLEAN-ROOM — hand-drawn from scratch
 const HUNGER_HALF_MASK: [&str; 9] = [
-    "...OOOO..",
-    "..OMDDDO.",
-    ".OMHDDDDO",
-    "OWMDDDDDO",
-    "OWMDDDDO.",
-    ".OWODDO..",
-    "..OWWO...",
-    ".OW.OWO..",
-    "..O...O..",
+    "....OOOO.",
+    "...ODDDDO",
+    "..ODHDDDO",
+    "..ODDDDDO",
+    "...ODDDO.",
+    "..ODODDO.",
+    ".ODDOOO..",
+    "ODDO.....",
+    "OOO......",
 ];
 
 // CLEAN-ROOM — hand-drawn from scratch
@@ -317,15 +320,15 @@ const HEART_PAL_SHELL: [(char, Px); 4] = [
 const HUNGER_PAL_FULL: [(char, Px); 4] = [
     ('O', [43, 26, 4, 255]),
     ('M', [186, 106, 38, 255]),
-    ('W', [222, 222, 222, 255]),
-    ('H', [255, 255, 255, 255]),
+    ('W', [231, 231, 231, 255]),
+    ('H', [222, 160, 90, 255]),
 ];
 const HUNGER_PAL_SHELL: [(char, Px); 5] = [
     ('O', [43, 26, 4, 255]),
     ('D', [70, 70, 70, 200]),
-    ('W', [222, 222, 222, 255]),
+    ('W', [231, 231, 231, 255]),
     ('M', [186, 106, 38, 255]),
-    ('H', [255, 255, 255, 255]),
+    ('H', [222, 160, 90, 255]),
 ];
 
 const ARMOR_PAL_FULL: [(char, Px); 3] = [
@@ -672,7 +675,7 @@ mod tests {
         draw_widget(&mut buf, 18, WidgetVariant::SlotEmpty);
         let body = (9 * 18 + 9) * 4;
         assert_eq!(&buf[body..body + 4], &[0x8B, 0x8B, 0x8B, 255]);
-        let top = (0 * 18 + 9) * 4;
+        let top = 9 * 4;
         assert_eq!(&buf[top..top + 4], &[0x37, 0x37, 0x37, 255]);
         let bottom = (17 * 18 + 9) * 4;
         assert_eq!(&buf[bottom..bottom + 4], &[255, 255, 255, 255]);
@@ -685,7 +688,7 @@ mod tests {
         draw_widget(&mut buf, 20, WidgetVariant::Panel);
         let body = (10 * 20 + 10) * 4;
         assert_eq!(&buf[body..body + 4], &[0xC6, 0xC6, 0xC6, 255]);
-        let outer = (0 * 20 + 10) * 4;
+        let outer = 10 * 4;
         assert_eq!(&buf[outer..outer + 4], &[0x55, 0x55, 0x55, 255]);
         let inner = (1 * 20 + 10) * 4;
         assert_eq!(&buf[inner..inner + 4], &[255, 255, 255, 255]);

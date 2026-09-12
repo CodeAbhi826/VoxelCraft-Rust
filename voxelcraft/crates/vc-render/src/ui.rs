@@ -3,6 +3,7 @@
 //! full 1.16.5-style HUD (hotbar, hearts, hunger, XP bar, crosshair, F3).
 //! Redrawn only when state changes; uploaded to GPU as a texture.
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
 
 use crate::textures::blit_tile;
@@ -11,6 +12,44 @@ use vc_inventory::inventory::ItemStack;
 
 pub const UI_W: usize = 960;
 pub const UI_H: usize = 540;
+
+// ------------------------------------------------- quad-text switch --
+// The Luanti-style font round: when armed, every text* method routes
+// through the runtime font engine (embedded Monocraft, glyph quads on
+// the GPU — see gui/font.rs) instead of rasterizing the 5×7 bitmap
+// into the canvas. A process-wide AtomicBool because the text_width
+// family is STATIC (layout code measures before any canvas exists);
+// default OFF keeps the bitmap path byte-identical for every existing
+// caller and test (G6). The game arms it at boot when the GUI quad
+// pass is ready; tests that exercise the quad path reset it after.
+static TEXT_QUADS_ACTIVE: AtomicBool = AtomicBool::new(false);
+
+/// arm/disarm the GPU text path (the game calls this once at boot)
+pub fn set_text_quads_active(active: bool) {
+    TEXT_QUADS_ACTIVE.store(active, Ordering::Relaxed);
+}
+
+/// is the GPU text path armed?
+pub fn text_quads_active() -> bool {
+    TEXT_QUADS_ACTIVE.load(Ordering::Relaxed)
+}
+
+/// measure `s` with the ACTIVE source at `scale` — the shared helper
+/// for the static text_width family (engine metrics when armed, the
+/// bitmap advances otherwise)
+fn measure_active(s: &str, cell: f32) -> i32 {
+    if text_quads_active() {
+        if let Some(eng) = crate::gui::font::engine() {
+            let mut e = eng.lock().unwrap_or_else(|p| p.into_inner());
+            return e.measure(s, cell).round() as i32;
+        }
+    }
+    let mut w = 0;
+    for ch in s.chars() {
+        w += char_advance(smallcaps_slot(ch));
+    }
+    (w as f32 * (cell / 8.0)).round() as i32
+}
 
 #[rustfmt::skip]
 // 5x8 font, rows top→bottom, bit 4 = leftmost pixel. ASCII 32..127.
@@ -788,8 +827,9 @@ fn active_widths() -> &'static [u8; 96] {
 }
 
 /// smallcaps slot for a char (the text()/text_frac() look: a-z render
-/// through the A-Z slots; everything else maps through)
-fn smallcaps_slot(ch: char) -> usize {
+/// through the A-Z slots; everything else maps through).
+/// `pub(crate)` — the font engine's bitmap-fallback path shares it.
+pub(crate) fn smallcaps_slot(ch: char) -> usize {
     let mut ch = ch as usize;
     if !(32..=126).contains(&ch) {
         ch = '?' as usize;
@@ -822,12 +862,125 @@ pub struct UiCanvas {
     /// snapshotted from the game's ItemIconCache whenever a new icon
     /// finishes baking. None/absent = flat blit_tile fallback.
     pub icon_cells: Option<std::sync::Arc<std::collections::HashMap<u16, [u8; 2]>>>,
+    /// The Luanti-style font round: the canvas letterbox scale
+    /// (device px per UI px). The GPU text path rasterizes glyphs at
+    /// `cell × device_scale` so the AA edges land on real screen
+    /// pixels at ANY window size. Default 1.0; the game refreshes it
+    /// every frame from the Renderer before `rebuild_ui`.
+    device_scale: f32,
 }
 
 impl Default for UiCanvas {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// tight yellow ink for the splash text from the ACTIVE source:
+/// the runtime engine's `bake_bitmap` when armed, the clean-room
+/// bitmap font at scale 2 otherwise. Returns flat RGBA bytes + dims.
+fn splash_ink(s: &str) -> (Vec<u8>, i32, i32) {
+    const YELLOW: [u8; 4] = [255, 255, 0, 255];
+    if text_quads_active() {
+        if let Some(eng) = crate::gui::font::engine() {
+            let mut e = eng.lock().unwrap_or_else(|p| p.into_inner());
+            let (bytes, w, h) = e.bake_bitmap(s, 16.0, YELLOW);
+            if w > 0 {
+                return (bytes, w as i32, h as i32);
+            }
+        }
+    }
+    // bitmap path: fixed 6-px advance at scale 2 (the original look)
+    let scale = 2i32;
+    let n = s.chars().count() as i32;
+    let tw = (n * 6 * scale).max(1);
+    let th = 8 * scale;
+    let mut out = vec![0u8; (tw * th * 4) as usize];
+    let mut pen = 0i32;
+    for ch in s.chars() {
+        let mut slot = ch as usize;
+        if !(32..=126).contains(&slot) {
+            slot = b'?' as usize;
+        }
+        if slot >= b'a' as usize && slot <= b'z' as usize {
+            slot -= 32; // smallcaps look (the bitmap font's UI style)
+        }
+        let glyph = &FONT[slot - 32];
+        for gy in 0..8i32 {
+            for gx in 0..5i32 {
+                if glyph[gy as usize] & (1 << (4 - gx)) != 0 {
+                    for sy in 0..scale {
+                        for sx in 0..scale {
+                            let px = pen + gx * scale + sx;
+                            let py = gy * scale + sy;
+                            if px >= 0 && py >= 0 && px < tw && py < th {
+                                let i = ((py * tw + px) * 4) as usize;
+                                out[i..i + 4].copy_from_slice(&YELLOW);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        pen += 6 * scale;
+    }
+    (out, tw, th)
+}
+
+/// the splash source bitmap: tight yellow glyphs + a 1-px dark
+/// yellow-brown 8-neighborhood outline, 2-px pad all around.
+fn splash_source(s: &str) -> (Vec<[u8; 4]>, i32, i32) {
+    const YELLOW: [u8; 4] = [255, 255, 0, 255];
+    const OUTLINE: [u8; 4] = [63, 50, 0, 255];
+    let pad = 2; // outline margin
+    let (tight, tw, th) = splash_ink(s);
+    let bw = tw + pad * 2;
+    let bh = th + pad * 2;
+    let mut src = vec![[0u8; 4]; (bw * bh) as usize];
+    let ink = |x: i32, y: i32| -> bool {
+        x >= 0 && y >= 0 && x < tw && y < th && {
+            let i = ((y * tw + x) * 4 + 3) as usize;
+            tight[i] != 0
+        }
+    };
+    // glyph pass
+    for y in 0..th {
+        for x in 0..tw {
+            if ink(x, y) {
+                src[((y + pad) * bw + x + pad) as usize] = YELLOW;
+            }
+        }
+    }
+    // 8-neighborhood outline on empty pixels
+    for y in -1..=th {
+        for x in -1..=tw {
+            let sx = x + pad;
+            let sy = y + pad;
+            if sx < 0 || sy < 0 || sx >= bw || sy >= bh {
+                continue;
+            }
+            let di = (sy * bw + sx) as usize;
+            if src[di][3] != 0 {
+                continue;
+            }
+            let touches = [
+                (-1, 0),
+                (1, 0),
+                (0, -1),
+                (0, 1),
+                (-1, -1),
+                (1, -1),
+                (-1, 1),
+                (1, 1),
+            ]
+            .iter()
+            .any(|&(dx, dy)| ink(x + dx, y + dy));
+            if touches {
+                src[di] = OUTLINE;
+            }
+        }
+    }
+    (src, bw, bh)
 }
 
 impl UiCanvas {
@@ -839,7 +992,14 @@ impl UiCanvas {
             chrome_enabled: true,
             gui_frame: crate::gui_render::GuiFrame::default(),
             icon_cells: None,
+            device_scale: 1.0,
         }
+    }
+
+    /// the device scale (device px per UI px) for the GPU text path —
+    /// set per frame from the Renderer's letterbox uniform
+    pub fn set_device_scale(&mut self, k: f32) {
+        self.device_scale = k.max(0.05);
     }
 
     /// Phase 3: install the ready-icon snapshot (called by the game
@@ -907,7 +1067,16 @@ impl UiCanvas {
     /// (smallcaps: a-z render through the A-Z slots — the UI look)
     /// Phase 5: variable glyph advance (measured ink width + 1, space
     /// fixed 4) and the shadow at (x+1, y+1) in foreground x 0.25.
+    /// Luanti font round: when the GPU text path is armed this routes
+    /// to `GuiFrame::text` — Monocraft glyph quads rasterized at
+    /// device resolution, drawn OVER the chrome quads (true-case
+    /// rendering — Monocraft has real lowercase, the 1.16 look).
     pub fn text(&mut self, x: i32, y: i32, s: &str, c: Color, scale: i32) -> i32 {
+        if text_quads_active() {
+            return self
+                .gui_frame
+                .text(x, y, s, c, 8.0 * scale as f32, self.device_scale, true);
+        }
         let mut cx = x;
         for ch in s.chars() {
             let slot = smallcaps_slot(ch);
@@ -934,19 +1103,24 @@ impl UiCanvas {
     }
 
     /// Phase 5: measured width — sum of per-character advances
-    /// (smallcaps-mapped, like text())
+    /// (smallcaps-mapped, like text()). Luanti font round: engine
+    /// metrics when the quad path is armed.
     pub fn text_width(s: &str, scale: i32) -> i32 {
-        let mut w = 0;
-        for ch in s.chars() {
-            w += char_advance(smallcaps_slot(ch));
-        }
-        w * scale
+        measure_active(s, 8.0 * scale as f32)
     }
 
     /// Smallcaps text at a FRACTIONAL scale (nearest-neighbor glyph
     /// sampling — the pixel-art look survives; GUI Scale and the vanilla
     /// 30px button proportions need 1.5x-class text). Shadow like text().
+    /// Luanti font round: routes to the engine when armed (the engine
+    /// rasterizes at device resolution — fractional UI cells land
+    /// cleanly).
     pub fn text_frac(&mut self, x: i32, y: i32, s: &str, c: Color, scale: f32) -> i32 {
+        if text_quads_active() {
+            return self
+                .gui_frame
+                .text(x, y, s, c, 8.0 * scale, self.device_scale, true);
+        }
         let mut cx = x as f32;
         let gw = (5.0 * scale).ceil() as i32;
         let gh = (8.0 * scale).ceil() as i32;
@@ -973,17 +1147,19 @@ impl UiCanvas {
 
     /// Phase 5: measured width — sum of per-character advances
     pub fn text_width_frac(s: &str, scale: f32) -> i32 {
-        let mut w = 0;
-        for ch in s.chars() {
-            w += char_advance(smallcaps_slot(ch));
-        }
-        (w as f32 * scale).round() as i32
+        measure_active(s, 8.0 * scale)
     }
 
     /// Glyphs without the 1-px drop shadow — the vanilla F3 overlay renders
     /// its debug text flat (the dark per-line strip replaces the shadow).
     /// (smallcaps, like text())
+    /// Luanti font round: engine route when armed (shadow off).
     pub fn text_flat(&mut self, x: i32, y: i32, s: &str, c: Color, scale: i32) {
+        if text_quads_active() {
+            self.gui_frame
+                .text(x, y, s, c, 8.0 * scale as f32, self.device_scale, false);
+            return;
+        }
         let mut cx = x;
         for ch in s.chars() {
             let slot = smallcaps_slot(ch);
@@ -1009,7 +1185,14 @@ impl UiCanvas {
     /// per-glyph variable advance (width + 1; space 3) so narrow
     /// letters (i l t) pack tight like the vanilla font. '∞' gets a
     /// dedicated 5-wide glyph. Returns the drawn width.
+    /// Luanti font round: the engine renders TRUE case natively
+    /// (Monocraft has real lowercase) — routed when armed.
     pub fn text_flat_case(&mut self, x: i32, y: i32, s: &str, c: Color, scale: i32) -> i32 {
+        if text_quads_active() {
+            return self
+                .gui_frame
+                .text(x, y, s, c, 8.0 * scale as f32, self.device_scale, false);
+        }
         let mut cx = x;
         for ch in s.chars() {
             match case_glyph(ch) {
@@ -1039,7 +1222,11 @@ impl UiCanvas {
 
     /// Measured width of text_flat_case (advances included) — the F3
     /// right-column right-alignment and strip sizing.
+    /// Luanti font round: engine metrics when armed.
     pub fn text_width_case(s: &str, scale: i32) -> i32 {
+        if text_quads_active() {
+            return measure_active(s, 8.0 * scale as f32);
+        }
         let mut w = 0;
         for ch in s.chars() {
             match case_glyph(ch) {
@@ -1094,71 +1281,13 @@ impl UiCanvas {
     /// rasterized into a small bitmap, then blitted through an inverse
     /// rotation with a sub-pixel scale wobble (vanilla wobbles 1.7->1.8).
     pub fn text_splash(&mut self, cx: i32, cy: i32, s: &str, t: f32) {
-        let scale = 2i32;
-        let n = s.chars().count() as i32;
-        let tw = n * 6 * scale;
-        let th = 7 * scale;
-        let pad = 2; // outline margin
-        let bw = tw + pad * 2;
-        let bh = th + pad * 2;
-
-        // source bitmap: yellow glyphs + 1px dark outline
-        let mut src = vec![[0u8; 4]; (bw * bh) as usize];
-        let mut glyph_px: Vec<(i32, i32)> = Vec::new();
-        let mut pen = pad;
-        for ch in s.chars() {
-            let mut ch = ch as usize;
-            if !(32..=126).contains(&ch) {
-                ch = '?' as usize;
-            }
-            if ch >= 'a' as usize && ch <= 'z' as usize {
-                ch -= 32; // smallcaps look (matches the rest of the UI font)
-            }
-            let glyph = &FONT[ch - 32];
-            for gy in 0..8i32 {
-                for gx in 0..5i32 {
-                    if glyph[gy as usize] & (1 << (4 - gx)) != 0 {
-                        for sy in 0..scale {
-                            for sx in 0..scale {
-                                glyph_px.push((pen + gx * scale + sx, pad + gy * scale + sy));
-                            }
-                        }
-                    }
-                }
-            }
-            pen += 6 * scale;
-        }
-        let mut put = |x: i32, y: i32, c: Color| {
-            if x >= 0 && y >= 0 && x < bw && y < bh {
-                src[(y * bw + x) as usize] = c;
-            }
-        };
-        for &(x, y) in &glyph_px {
-            put(x, y, [255, 255, 0, 255]);
-        }
-        // 8-neighborhood outline in dark yellow-brown
-        let gset: std::collections::HashSet<(i32, i32)> = glyph_px.iter().copied().collect();
-        let mut border: Vec<(i32, i32)> = Vec::new();
-        for &(x, y) in &glyph_px {
-            for (dx, dy) in [
-                (-1, 0),
-                (1, 0),
-                (0, -1),
-                (0, 1),
-                (-1, -1),
-                (1, -1),
-                (-1, 1),
-                (1, 1),
-            ] {
-                let p = (x + dx, y + dy);
-                if !gset.contains(&p) {
-                    border.push(p);
-                }
-            }
-        }
-        for (x, y) in border {
-            put(x, y, [63, 50, 0, 255]);
-        }
+        // source bitmap: yellow glyphs + 1px dark outline, 2-px pad.
+        // Luanti font round: the runtime engine bakes the glyph run
+        // (Monocraft at the 16-px cell — the same size the old 5x7
+        // bitmap had at scale 2) when the quad path is armed; the
+        // clean-room bitmap otherwise. The outline/rotation technique
+        // below is unchanged.
+        let (src, bw, bh) = splash_source(s);
 
         // rotated blit: -20 deg, pulse 1.00..1.06 at 2 Hz
         let theta = -(20.0_f32).to_radians();
@@ -1717,16 +1846,40 @@ impl UiCanvas {
             }
         }
 
-        // XP bar
+        // XP bar — Luanti font round: Solid quads (pixel-crisp at any
+        // window size, and immune to the canvas/quad z-order class of
+        // bugs); the canvas raster stays as the no-GPU-pass fallback
         let xp_w = hb_w;
         let xp_x = hb_x;
         let xp_y = hb_y - 10;
-        self.rect(xp_x, xp_y, xp_w, 8, [16, 16, 16, 220]);
-        self.frame(xp_x, xp_y, xp_w, 8, [60, 60, 60, 255]);
         let fill = ((xp_w - 4) as f32 * xp.clamp(0.0, 1.0)) as i32;
+        let ct = |c: Color| -> [f32; 4] {
+            [
+                c[0] as f32 / 255.0,
+                c[1] as f32 / 255.0,
+                c[2] as f32 / 255.0,
+                c[3] as f32 / 255.0,
+            ]
+        };
+        self.gui_frame.solid_rect(xp_x, xp_y, xp_w, 8, ct([16, 16, 16, 220]));
+        self.gui_frame.solid_rect(xp_x, xp_y, xp_w, 1, ct([60, 60, 60, 255]));
+        self.gui_frame.solid_rect(xp_x, xp_y + 7, xp_w, 1, ct([60, 60, 60, 255]));
+        self.gui_frame.solid_rect(xp_x, xp_y, 1, 8, ct([60, 60, 60, 255]));
+        self.gui_frame
+            .solid_rect(xp_x + xp_w - 1, xp_y, 1, 8, ct([60, 60, 60, 255]));
         if fill > 0 {
-            self.rect(xp_x + 2, xp_y + 2, fill, 4, [128, 255, 32, 255]);
-            self.rect(xp_x + 2, xp_y + 2, fill, 1, [190, 255, 130, 255]);
+            self.gui_frame
+                .solid_rect(xp_x + 2, xp_y + 2, fill, 4, ct([128, 255, 32, 255]));
+            self.gui_frame
+                .solid_rect(xp_x + 2, xp_y + 2, fill, 1, ct([190, 255, 130, 255]));
+        }
+        if self.chrome_enabled {
+            self.rect(xp_x, xp_y, xp_w, 8, [16, 16, 16, 220]);
+            self.frame(xp_x, xp_y, xp_w, 8, [60, 60, 60, 255]);
+            if fill > 0 {
+                self.rect(xp_x + 2, xp_y + 2, fill, 4, [128, 255, 32, 255]);
+                self.rect(xp_x + 2, xp_y + 2, fill, 1, [190, 255, 130, 255]);
+            }
         }
         if level > 0 {
             let s = format!("{}", level);
@@ -1902,42 +2055,54 @@ impl UiCanvas {
                     d.tiles[0]
                 }
             };
-            blit_tile(
-                atlas,
-                tile,
-                2,
-                (sx + 2) as usize,
-                (sy + 2) as usize,
-                &mut self.px,
-                UI_W,
-            );
-            // Phase 3: the cached 3D icon rides ON TOP of the flat tile
-            // (same 32x32 rect, drawn by the quad pass) — the flat tile
-            // is the pop-in placeholder and the permanent fallback for
-            // blocks the baker cannot model
-            if let Some(cell) = self
+            // Phase 3 + the Luanti font round: the cached 3D icon quad
+            // and the canvas flat tile are now MUTUALLY EXCLUSIVE — the
+            // canvas blits AFTER the quad pass, so an always-rasterized
+            // tile would cover the icon quad. No cached icon yet → the
+            // flat tile is the pop-in placeholder and the permanent
+            // fallback for blocks the baker cannot model.
+            match self
                 .icon_cells
                 .as_ref()
                 .and_then(|m| m.get(&b).copied())
             {
-                self.gui_frame.icon_quad(sx + 2, sy + 2, cell);
+                Some(cell) => self.gui_frame.icon_quad(sx + 2, sy + 2, cell),
+                None => blit_tile(
+                    atlas,
+                    tile,
+                    2,
+                    (sx + 2) as usize,
+                    (sy + 2) as usize,
+                    &mut self.px,
+                    UI_W,
+                ),
             }
         }
         if s.count > 1 {
+            // Luanti font round: the count renders at the vanilla size
+            // (the regular font at GUI scale = 16-px cell in our 2x UI
+            // space — the old scale-1 text was half-size and unreadable)
+            // and right-aligns through the ACTIVE font's metrics
             let label = s.count.to_string();
-            let w = label.len() as i32 * 6;
+            let w = Self::text_width(&label, 2);
             let tx = sx + 34 - w;
-            let ty = sy + 27;
-            self.text(tx + 1, ty + 1, &label, [0, 0, 0, 190], 1);
-            self.text(tx, ty, &label, [255, 255, 255, 255], 1);
+            let ty = sy + 18;
+            self.text(tx, ty, &label, [255, 255, 255, 255], 2);
         }
     }
 
     /// container slot: recessed 36px well + optional stack
     fn slot_well(&mut self, x: i32, y: i32, s: &ItemStack, atlas: &[u8]) {
-        self.rect(x, y, 36, 36, [52, 52, 52, 200]);
-        self.frame(x, y, 36, 36, [24, 24, 24, 255]); // inner shadow
-        self.frame(x + 1, y + 1, 34, 34, [110, 110, 110, 255]);
+        // Phase-2 pattern + the Luanti font round: the 18x18 slot
+        // sprite quad always; the canvas well raster only when the
+        // canvas draws chrome (the canvas blits after the quad pass —
+        // an ungated raster would cover the sprite)
+        self.gui_frame.slot(x, y, false);
+        if self.chrome_enabled {
+            self.rect(x, y, 36, 36, [52, 52, 52, 200]);
+            self.frame(x, y, 36, 36, [24, 24, 24, 255]); // inner shadow
+            self.frame(x + 1, y + 1, 34, 34, [110, 110, 110, 255]);
+        }
         self.draw_stack(s, x, y, atlas);
     }
 
@@ -3179,9 +3344,9 @@ mod phase3_icon_tests {
         assert_eq!(ui.gui_frame.quads.len(), 1, "icon quad pushed");
         let q = ui.gui_frame.quads[0];
         assert_eq!(q.texture, crate::gui_render::QuadTexture::IconAtlas);
-        assert_eq!(q.dst.x, 102);
-        assert_eq!(q.dst.y, 102);
-        assert_eq!((q.dst.w, q.dst.h), (32, 32));
+        assert_eq!(q.dst.x, 102.0);
+        assert_eq!(q.dst.y, 102.0);
+        assert_eq!((q.dst.w, q.dst.h), (32.0, 32.0));
         // cell (2,1) -> src (128, 64) in the 2048 atlas
         assert_eq!((q.src.x, q.src.y), (128, 64));
     }
@@ -3690,5 +3855,103 @@ mod screen_tests {
         }
         loading.world_loading_screen(43, &cells, 17 * 35 + 17);
         dump(&loading, "world-loading");
+    }
+
+    // ---- Luanti font round: HUD quads + splash bake ----------------
+
+    struct QuadTextGuard;
+    impl QuadTextGuard {
+        fn arm() -> Self {
+            crate::ui::set_text_quads_active(true);
+            QuadTextGuard
+        }
+    }
+    impl Drop for QuadTextGuard {
+        fn drop(&mut self) {
+            crate::ui::set_text_quads_active(false);
+        }
+    }
+
+    #[test]
+    fn xp_bar_pushes_solid_quads_with_canvas_fallback() {
+        let _g = QuadTextGuard::arm();
+        let mut ui = UiCanvas::new();
+        // quad path ON (chrome_enabled = false mirrors the game's
+        // shipping config): the XP bar lands as Solid quads
+        ui.set_chrome_enabled(false);
+        ui.status_bars(0.8, 0.8, 0.5, 3, 300.0);
+        let solids: Vec<_> = ui
+            .gui_frame
+            .quads
+            .iter()
+            .filter(|q| q.texture == crate::gui_render::QuadTexture::Solid)
+            .collect();
+        // bg + 4 border edges + fill + highlight = 7 (hearts/hunger are
+        // sprite quads, not Solid)
+        assert_eq!(solids.len(), 7, "bg + 4 edges + 2 fill layers");
+        // the fill is green
+        assert!(solids.iter().any(|q| q.tint[1] > 0.9 && q.tint[0] < 0.6));
+        // XP bar sits above the hotbar band
+        let xp = solids
+            .iter()
+            .min_by(|a, b| a.dst.y.partial_cmp(&b.dst.y).unwrap_or(std::cmp::Ordering::Equal))
+            .unwrap();
+        assert_eq!(xp.dst.h, 8.0, "8-px bar");
+        // level number routes through the engine's TEXT layer (pass 7)
+        assert!(
+            ui.gui_frame
+                .text_quads
+                .iter()
+                .any(|q| q.texture == crate::gui_render::QuadTexture::GlyphAtlas),
+            "level 3 text present as glyph quads"
+        );
+    }
+
+    #[test]
+    fn splash_source_bakes_engine_ink_when_armed() {
+        let _g = QuadTextGuard::arm();
+        let (src, bw, bh) = splash_source("100% RUST!");
+        assert!(bw > 0 && bh > 0);
+        assert_eq!(src.len(), (bw * bh) as usize);
+        let colors: std::collections::HashSet<_> = src
+            .iter()
+            .filter(|c| c[3] > 0)
+            .map(|c| (c[0], c[1], c[2]))
+            .collect();
+        // yellow ink + the dark yellow-brown outline
+        assert!(colors.contains(&(255, 255, 0)), "yellow ink");
+        assert!(colors.contains(&(63, 50, 0)), "outline");
+        // both sources agree on the bitmap-fallback shape: disarm and
+        // bake again — same dims class (16-px cell both paths)
+        let (src2, bw2, bh2) = {
+            crate::ui::set_text_quads_active(false);
+            let r = splash_source("100% RUST!");
+            crate::ui::set_text_quads_active(true);
+            r
+        };
+        assert_eq!(bw2 > 0 && bh2 > 0, true);
+        assert!(src2.iter().any(|c| c[3] > 0), "bitmap path also inks");
+    }
+
+    #[test]
+    fn stack_count_renders_at_vanilla_size_when_armed() {
+        // the count is the regular font at the 16-px cell — the
+        // half-size scale-1 text was the "garbled x4" complaint
+        let _g = QuadTextGuard::arm();
+        let mut ui = UiCanvas::new();
+        let stack = ItemStack::new(vc_blocks::blocks::DIRT, 64);
+        let atlas = vec![128u8; crate::textures::ATLAS_SIZE * crate::textures::ATLAS_SIZE * 4];
+        ui.draw_stack(&stack, 100, 100, &atlas);
+        let glyphs: Vec<_> = ui
+            .gui_frame
+            .text_quads
+            .iter()
+            .filter(|q| q.texture == crate::gui_render::QuadTexture::GlyphAtlas)
+            .collect();
+        assert!(!glyphs.is_empty(), "count glyphs pushed");
+        // "64" = 2 chars * (glyph + shadow) = 4 quads
+        assert_eq!(glyphs.len(), 4);
+        // cell 16: cap-height ink ≈ 14 px
+        assert!(glyphs.iter().all(|q| q.dst.h <= 16.0 && q.dst.h >= 8.0));
     }
 }

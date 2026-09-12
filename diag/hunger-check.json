@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "**Yes, the left icon reads clearly as a drumstick.**\n\n*   **Clarity:** The teardrop meat shape and the diagonal bone are immediately recognizable as the classic Minecraft chicken icon.\n*   **Bone Distinction:** The white bone is highly distinct against both the orange meat and the dark grey background.\n*   **Pixel Flaws:** There are no floating pixels or broken outlines. The silhouette is solid and clean. The single-pixel highlight on the meat (at 3,2) is correctly placed inside the shape to give it volume.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789199694,
+  "id": "20260912155452a582d086f7404b3a",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260912155452a582d086f7404b3a",
+  "usage": {
+    "completion_tokens": 114,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 157,
+    "prompt_tokens_details": {
+      "cached_tokens": 2
+    },
+    "total_tokens": 271
+  }
+}

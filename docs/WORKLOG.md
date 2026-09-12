@@ -3474,3 +3474,109 @@ Stage Summary:
   was missing
 - 3 local commits remain unpushed (origin is 3 behind; the CI
   auto-rebuild + Pages refresh happen on push)
+
+---
+
+## 2026-09-12 — UI overhaul: Master Prompt phases 1–5 (verified-then-implemented)
+
+**Task:** the user pasted the 5-phase "VoxelCraft UI Overhaul — Master
+Prompt" and asked for a full verification pass against the repo first,
+then implementation of everything genuinely missing ("do a full check
+in this above pasted and verify it and maybe do it also"; "complete all
+the phase said in the readme or the pasted stuff").
+
+**Section 1 verification (mismatches reported BEFORE implementing):**
+the container reset had wiped the previous session's UI-round commits
+entirely (reflog confirms a different lineage; the "forensics" round
+recovered other work but not the UI round) — so all five phases were
+implemented fresh. Claim-vs-repo mismatches found: test total is 628,
+not the prompt's 648 (README-era number; floor set at 628); no armor
+HUD row exists (sprites shipped, wiring deferred — no player armor
+slots); no first-person hand/item-model renderer to refactor (Phase 3
+built the clean-room CPU baker the prompt's own fallback clause
+allows); pack_format is 6 for 1.16.2–1.16.5 (the prompt's "5" is
+factually wrong — the repo's warn-not-reject §46 policy kept and now
+test-covered); WGSL lives as inline consts (no .wgsl aggregator);
+`png` crate absent but `image` already a dependency (used instead —
+zero new deps); no PARITY-BACKLOG.md (CHECKLIST-VERIFIED-AUDIT.md is
+the live backlog doc); the font is the hand-built 5×7 bitmap, no
+Monocraft anywhere (answering the standing open question from the
+user's research analysis — grep-verified zero matches).
+
+**What landed (one commit per phase + one E2E-fix commit + one lint
+sweep, all LOCAL — nothing pushed, per the standing approval gate):**
+
+- **Phase 1** — `textures/gui_art.rs` (clean-room 9×9 heart/hunger/
+  armor/bubble masks, 20×20 9-slice button/panel chrome, 18×18 slots,
+  182×22 hotbar, 24×22 selection, darkened 16×16 dirt tile; the
+  `gui_tiles_all_painted` coverage guard per G5), `gui/set.rs`
+  (GuiTextureSet/SpriteSheet/FontSource/SHEET_DIMS + build_builtin),
+  `gui/loader.rs` (filesystem override loader, typed errors),
+  `bin/gen_gui_assets.rs` (dev-only PNG emitter, byte-idempotent),
+  boot wiring into game.rs (§46 never-abort). ui.rs diff: one line
+  (FONT → pub(crate)).
+- **Phase 2** — `gui_render.rs`: GuiFrame (9-slice buttons — same quad
+  count at any width, VERIFIED hover overlay [1,1,1,0.2], sliders,
+  slots, HUD sprites, hotbar chrome, 32px dirt tiling) + GuiRenderer
+  (wgpu pipeline riding the canvas letterbox uniform, per-sheet bind
+  groups, dynamic vertex buffer). UiCanvas gained
+  chrome_enabled/set_chrome_enabled gating the chrome raster in every
+  draw method; render.rs pass 6 draws quads after the canvas blit;
+  RenderStats.gui_quads; GuiRenderConfig shipping defaults (quads on,
+  canvas chrome off, self-healing fallback to canvas chrome).
+- **Phase 3** — `item_icon_cache.rs`: CPU isometric baker (yaw 45 /
+  pitch 30 orthographic — VERIFIED w/Model; exact parallelogram
+  affine-inverse rasterization; cross blocks bake their flat sprite),
+  2048×2048 icon atlas, LRU 512, bake budget 4/frame,
+  hits/misses/evictions in the F3 perf line. draw_stack pushes icon
+  quads over the flat blit_tile fallback (pop-in + permanent fallback
+  for unbakeable blocks).
+- **Phase 4** — vc-pack wiring (no parallel system): PackStack,
+  ZipSource (reuses the Phase 9 flate2 zip reader), scan_user_packs
+  (folders + zips under resourcepacks/, alphabetical later-on-top),
+  gui_texture_path (minecraft namespace), loader::load_from_pack
+  (per-sheet merge-over-builtin, partial overrides apply
+  individually); .gitignore resourcepacks/* with .gitkeep + README.md
+  exceptions; the README documents every sheet, pack_format 6, and the
+  no-hot-reload backlog note.
+- **Phase 5** — glyph_ink_width + variable advance (ink width + 1,
+  space fixed 4 — VERIFIED w/Font), shadow recolored to foreground ×
+  0.25, FONT_OVERRIDE/set_font_override + FontSource::png_glyphs
+  (128×48 sheet decode), all text/measure paths read the ACTIVE
+  source. Glyph audit by direct bitmap decode: only G had a wrong
+  pixel (one-px bottom bar, fixed); M/W/k/y/comma/p/q were already
+  correct — the "8 bad glyphs" claim was stale. Honest deviation: this
+  clean-room font's letters are mostly 5-wide, so tightening comes
+  from narrow glyphs + spaces; tests assert the mechanism with i/l/
+  space pairs and document why the prompt's "abc < WWW" example
+  cannot hold for this font.
+- **E2E fixes (live-browser verification)** — three integration bugs
+  no unit test could catch: (1) draw_indexed group offsets used
+  vertex math on the index buffer (first×4 → first×6) — single-group
+  screens drew fine, the multi-group Game HUD garbled (invisible
+  icons, partial hearts); (2) the set_screen-class stale-UI race on
+  icon publication (dirty consumed by render() without a rebuild —
+  fixed by rebuilding directly on bake frames); (3) the icon atlas
+  bound before the GuiRenderer existed (silent no-op → clean skip).
+  All three fixed, plus a bind-group-skip diagnostic log kept as a
+  guard, a dump test writing real-atlas bakes to PNGs, and a GPU
+  readback test (vacuous in this sandbox, active on GPU machines).
+
+**Verification:** 686 lib tests green (628 baseline + 58 new; every
+phase adds same-file tests per G3), clippy -D warnings clean
+(including a ~120-site sweep for the fresh clippy 1.98's new lints —
+behavior-preserving except LightData's derived Default, which was NOT
+equivalent to new() and had silently broken 3 light tests; the manual
+Default now delegates to new()), wasm bundle rebuilt (locked pair,
+mtime-matched) and deployed. Live browser E2E: boot logs confirm all
+three systems armed; VLM screenshot analysis confirms Minecraft-style
+beveled buttons with hover overlay, hearts/hunger/hotbar chrome, and
+3D isometric item icons ("green top face angled as a diamond/rhombus
+with darker dirt sides").
+
+**Standing state:** 9 local commits unpushed (lint sweep + phases 1–5
++ E2E fixes), per the user's approval gate. Next natural steps when
+approved: push, then the deferred items — armor HUD wiring (needs
+player armor slots), hot-reload for resource packs, and the Phase 3
+A-verification items that need a real GPU (frame-time traces, 60 s
+cache stress).

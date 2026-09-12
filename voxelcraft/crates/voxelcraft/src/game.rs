@@ -13912,6 +13912,12 @@ impl GameApp {
             ),
             ("occl", StatsVal::B(self.settings.occlusion)),
             ("culled", StatsVal::F(self.stats.culled as f32)),
+            // Luanti-style split: frustum-culled kept separate from the
+            // occlusion flood's `culled` count (the before/after metric)
+            (
+                "frustumCull",
+                StatsVal::F(self.stats.frustum_culled as f32),
+            ),
             // Phase 7: GPU meshing backend + throughput counters
             (
                 "gmesh",
@@ -14748,6 +14754,15 @@ impl GameApp {
             ),
             format!("E: {}/{} B: {}", self.mob_visible_count(), self.sim.mobs.len(), self.block_entity_count()),
             format!("F: {} I: {}", self.stats.culled, hidden),
+            // Luanti-style split culling counters (occlusion vs frustum
+            // tracked separately — the before/after metric that proves
+            // the occlusion flood actually did something this frame)
+            format!(
+                "Culling: occl {} frust {} (of {} meshed)",
+                self.stats.culled,
+                self.stats.frustum_culled,
+                meshed
+            ),
             format!("Client Chunk Cache: {}, {}", meshed, drawn),
             format!("ServerChunkCache: {}", loaded),
             format!("XYZ: {:.3} / {:.5} / {:.3}", p.pos.x, p.pos.y, p.pos.z),
@@ -15550,8 +15565,16 @@ impl GameApp {
                 up,
                 &mut self.particle_verts,
             );
-            // Phase 2: mobs + skeleton arrows share the billboard pipeline
-            vc_gameplay::mobs::build_vertices(&self.sim.mobs.list, right, &mut self.particle_verts);
+            // Phase 2 + entity-models round: modeled mobs draw as
+            // jointed 3D boxes (bone/joint hierarchy — view_dir drives
+            // the painter back-to-front face order); the rest keep the
+            // billboard sprite path
+            vc_gameplay::mobs::build_vertices(
+                &self.sim.mobs.list,
+                right,
+                dir,
+                &mut self.particle_verts,
+            );
             // vanilla Entity Shadows: soft ground quads under the mobs
             // (same blended billboard pipeline)
             if self.settings.entity_shadows {

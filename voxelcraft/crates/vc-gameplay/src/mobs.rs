@@ -50,7 +50,8 @@ pub const MAX_MOBS: usize = 128;
 
 /// Mob kinds. The full 1.16.5 registry (102 mob-like
 /// entities per Dossier Part 4 §21) is deliberately NOT attempted at once.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+/// Hash: the entity-model rig cache keys on the kind.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum MobKind {
     Zombie,
     Skeleton,
@@ -1575,6 +1576,13 @@ pub struct Mob {
     /// blocks fallen since last landing (vanilla `fallDistance`; the
     /// landing tick converts it via MC-12357: damage = fall − 3)
     pub fall_dist: f32,
+    /// accumulated walk phase (radians) — the vanilla limb-swing
+    /// accumulator shape: advanced by horizontal distance per tick,
+    /// sampled by the entity-model walk range
+    pub anim_walk: f32,
+    /// attack-swing countdown (ticks, 6→0) — set when a melee hit
+    /// lands; drives the entity-model `attack` range
+    pub attack_anim: i32,
     /// Phase E1 per-kind variant payload:
     /// - MagmaCube: the vanilla NBT Size code — 0 (size 1), 1 (size 2),
     ///   3 (size 4). Health/damage/armor scale from it (VERIFIED).
@@ -1899,6 +1907,8 @@ impl MobSystem {
             provoked: false,
             lonely_t: 0,
             fall_dist: 0.0,
+            anim_walk: 0.0,
+            attack_anim: 0,
             variant,
             aux: 0,
             // Phase E3: equines get per-instance stats (VERIFIED
@@ -2113,6 +2123,12 @@ impl MobSystem {
             // can strike immediately; a 20-tick cooldown counts
             // 19..=0 then re-fires on the 20th tick.
             m.attack_cd = (m.attack_cd - 1).max(0);
+            // entity-model animation state: the limb-swing accumulator
+            // (vanilla shape — advanced by horizontal distance) and the
+            // 6-tick attack-swing countdown
+            let hs = (m.vel[0] * m.vel[0] + m.vel[2] * m.vel[2]).sqrt();
+            m.anim_walk += hs * 3.5;
+            m.attack_anim = (m.attack_anim - 1).max(0);
             // Phase E3: the ridden mount's AI is suspended — the game
             // layer drives its velocity (physics still applies)
             if self.ridden == Some(m.id) {
@@ -4205,6 +4221,7 @@ fn ai_tick(
                             bee.death_t = super::bees::STING_DEATH_TICKS;
                             bee.anger_t = 0;
                             m.attack_cd = 20;
+                            m.attack_anim = 6;
                         } else {
                             steer_3d(m, pp, speed * 1.3);
                         }
@@ -4458,6 +4475,7 @@ fn ai_tick(
             .sqrt();
             if !invuln && d3 < 1.4 && m.attack_cd == 0 {
                 m.attack_cd = 20;
+                m.attack_anim = 6;
                 hits.push(PlayerHit {
                     damage: d.damage, // E/N 2 (VERIFIED, 1.14-pre3 value)
                     source: m.kind,
@@ -4484,6 +4502,7 @@ fn ai_tick(
         // inflate/deflate one step per 20 ticks
         if m.attack_cd == 0 {
             m.attack_cd = 20;
+            m.attack_anim = 6;
             if near && m.variant < 2 {
                 m.variant += 1;
             } else if !near && m.variant > 0 {
@@ -4533,6 +4552,7 @@ fn ai_tick(
         }
         if m.provoked && !invuln && dist < MOB_MELEE_REACH + 0.8 && m.attack_cd == 0 {
             m.attack_cd = MOB_MELEE_TICKS;
+            m.attack_anim = 6;
             face_player(m);
             hits.push(PlayerHit {
                 damage: d.damage, // N 3 (VERIFIED)
@@ -4636,6 +4656,7 @@ fn ai_tick(
                 m.vel[2] += ((tpos[2] - m.pos[2]) / tdist * speed - m.vel[2]) * 0.3;
             } else if m.attack_cd == 0 {
                 m.attack_cd = MOB_MELEE_TICKS;
+                m.attack_anim = 6;
                 pending.push((tid, d.damage));
             }
             return;
@@ -4643,6 +4664,7 @@ fn ai_tick(
         // provoked by the player → melee (retaliation, vanilla)
         if m.provoked && !invuln && dist < MOB_MELEE_REACH + 0.8 && m.attack_cd == 0 {
             m.attack_cd = MOB_MELEE_TICKS;
+            m.attack_anim = 6;
             face_player(m);
             hits.push(PlayerHit {
                 damage: d.damage,
@@ -4682,6 +4704,7 @@ fn ai_tick(
                         m.vel[2] += (sz / dd * speed * 1.4 - m.vel[2]) * 0.4;
                     } else if m.attack_cd == 0 {
                         m.attack_cd = MOB_MELEE_TICKS;
+                        m.attack_anim = 6;
                         // a chicken has 4 HP — one pounce kills (vanilla)
                         pending.push((*id, 4.0));
                     }
@@ -4751,6 +4774,7 @@ fn ai_tick(
                 m.vel[2] += ((tpos[2] - m.pos[2]) / tdist * speed * 1.3 - m.vel[2]) * 0.4;
             } else if m.attack_cd == 0 {
                 m.attack_cd = MOB_MELEE_TICKS;
+                m.attack_anim = 6;
                 pending.push((tid, d.damage)); // 2 HP (Easy/Normal row)
             }
             return;
@@ -4787,6 +4811,7 @@ fn ai_tick(
         }
         if m.provoked && !invuln && m.attack_cd == 0 && dist < 10.0 {
             m.attack_cd = 20;
+            m.attack_anim = 6;
             face_player(m);
             spawn_projectile(m, p, rng, arrows, ProjKind::LlamaSpit, 18.0, 1.0);
             return;
@@ -4807,6 +4832,7 @@ fn ai_tick(
             m.vel[2] += (dz / dist * speed - m.vel[2]) * 0.35;
             if dist < MOB_MELEE_REACH && m.attack_cd == 0 {
                 m.attack_cd = MOB_MELEE_TICKS;
+                m.attack_anim = 6;
                 hits.push(PlayerHit {
                     damage: d.damage,
                     source: m.kind,
@@ -4887,6 +4913,7 @@ fn ai_tick(
             m.vel[2] += (dz / full * speed - m.vel[2]) * 0.4;
             if dist < MOB_MELEE_REACH + 0.6 && m.attack_cd == 0 {
                 m.attack_cd = MOB_MELEE_TICKS;
+                m.attack_anim = 6;
                 hits.push(PlayerHit {
                     damage: d.damage,
                     source: m.kind,
@@ -5043,6 +5070,7 @@ fn ai_tick(
             // close-range contact (VERIFIED: contact Normal 6)
             if dist < MOB_MELEE_REACH + 0.4 && m.attack_cd == 0 {
                 m.attack_cd = MOB_MELEE_TICKS;
+                m.attack_anim = 6;
                 hits.push(PlayerHit {
                     damage: 6.0,
                     source: m.kind,
@@ -5217,6 +5245,7 @@ fn ai_tick(
                 }
                 if dist < MOB_MELEE_REACH && m.attack_cd == 0 {
                     m.attack_cd = MOB_MELEE_TICKS;
+                    m.attack_anim = 6;
                     hits.push(PlayerHit {
                         damage: d.damage, // golden sword Normal 8 (VERIFIED)
                         source: m.kind,
@@ -5297,6 +5326,7 @@ fn ai_tick(
                 }
                 if dist < MOB_MELEE_REACH && m.attack_cd == 0 {
                     m.attack_cd = MOB_MELEE_TICKS;
+                    m.attack_anim = 6;
                     hits.push(PlayerHit {
                         damage: d.damage, // Normal 3-8 midpoint (VERIFIED)
                         source: m.kind,
@@ -5338,6 +5368,7 @@ fn ai_tick(
                 }
                 if dist < MOB_MELEE_REACH && m.attack_cd == 0 {
                     m.attack_cd = MOB_MELEE_TICKS;
+                    m.attack_anim = 6;
                     hits.push(PlayerHit {
                         damage: d.damage,
                         source: m.kind,
@@ -5373,6 +5404,7 @@ fn ai_tick(
                 }
                 if m.attack_cd == 0 {
                     m.attack_cd = SKELETON_SHOOT_TICKS;
+                    m.attack_anim = 6;
                     spawn_arrow(m, p, rng, arrows);
                 }
             } else {
@@ -6017,15 +6049,123 @@ pub fn take_landings(sys: &mut MobSystem) -> Vec<(ProjKind, [f32; 3])> {
 
 // ------------------------------------------------------------- rendering --
 
-/// Mob sprites as camera-facing quads (the villager pattern), sized per
-/// kind, red-tinted while hurt; creepers blink white while priming.
+/// The modeled kinds (protocol: entity bone/joint hierarchy) — the rig
+/// per kind, cached process-wide (models are code-generated constants;
+/// building each once is the whole point of the cache).
+fn model_for(kind: MobKind) -> Option<&'static crate::entity_model::EntityModel> {
+    use crate::entity_model::{creeper, enderman, humanoid, spider};
+    use std::collections::HashMap;
+    use std::sync::OnceLock;
+    static MODELS: OnceLock<HashMap<MobKind, &'static crate::entity_model::EntityModel>> =
+        OnceLock::new();
+    let map = MODELS.get_or_init(|| {
+        // Box::leak: the models live for the process lifetime by design
+        // (a bounded, per-kind-constant set — 12 rigs)
+        let mut m: HashMap<MobKind, &'static crate::entity_model::EntityModel> =
+            HashMap::new();
+        let put = |m: &mut HashMap<MobKind, &'static crate::entity_model::EntityModel>,
+                   k: MobKind,
+                   model: crate::entity_model::EntityModel| {
+            m.insert(k, Box::leak(Box::new(model)));
+        };
+        // humanoid family (zombie arms forward, skeletons hang)
+        put(&mut m, MobKind::Zombie, humanoid(TILE_ZOMBIE, true));
+        put(&mut m, MobKind::ZombifiedPiglin, humanoid(TILE_ZOMBIE, true));
+        put(
+            &mut m,
+            MobKind::ZombieVillager,
+            humanoid(TILE_ZOMBIEVILLAGER, true),
+        );
+        put(&mut m, MobKind::Husk, humanoid(TILE_HUSK, true));
+        put(&mut m, MobKind::Drowned, humanoid(TILE_MOB_DROWNED, true));
+        put(&mut m, MobKind::Skeleton, humanoid(TILE_SKELETON, false));
+        put(&mut m, MobKind::Stray, humanoid(TILE_STRAY, false));
+        put(
+            &mut m,
+            MobKind::WitherSkeleton,
+            humanoid(TILE_WITHER_SKELETON, false),
+        );
+        // bespoke rigs
+        put(&mut m, MobKind::Creeper, creeper(TILE_CREEPER));
+        put(&mut m, MobKind::Spider, spider(TILE_SPIDER));
+        put(&mut m, MobKind::CaveSpider, spider(TILE_MOB_CAVESPIDER));
+        put(&mut m, MobKind::Enderman, enderman(TILE_ENDERMAN));
+        m
+    });
+    map.get(&kind).copied()
+}
+
+/// ONE active range per mob (the Luanti single-timeline model — no
+/// blending, by design): hurt > attack > walk > idle.
+fn active_range(m: &Mob) -> (&'static str, f32) {
+    if m.hurt_t > 0 {
+        // 10-tick hurt window: phase runs 0 → 1 as the flash decays
+        ("hurt", 1.0 - (m.hurt_t as f32 / 10.0).clamp(0.0, 1.0))
+    } else if m.attack_anim > 0 {
+        ("attack", 1.0 - m.attack_anim as f32 / 6.0)
+    } else {
+        let hs = (m.vel[0] * m.vel[0] + m.vel[2] * m.vel[2]).sqrt();
+        if hs > 0.05 {
+            (
+                "walk",
+                (m.anim_walk / std::f32::consts::TAU).fract(),
+            )
+        } else {
+            ("idle", 0.0)
+        }
+    }
+}
+
+/// the modeled render path: CPU-skinned jointed boxes through the
+/// billboard vertex stream (see entity_model.rs for the technique
+/// references and the depth-write limitation note)
+fn build_model_vertices(
+    m: &Mob,
+    model: &crate::entity_model::EntityModel,
+    view_dir: [f32; 3],
+    out: &mut Vec<vc_particles::particles::ParticleVertex>,
+) {
+    let d = def(m.kind);
+    let (name, phase) = active_range(m);
+    let rots = crate::entity_model::sample_anim(model, name, phase);
+    let scale = d.height / model.px_height;
+    let mut tint = [0.92f32, 0.92, 0.92];
+    if m.hurt_t > 0 {
+        tint = [1.0, 0.35, 0.35];
+    }
+    if m.fuse >= 0 && m.fuse != i32::MAX && (m.fuse / 3) % 2 == 0 {
+        tint = [1.6, 1.6, 1.6];
+    }
+    crate::entity_model::emit_model_vertices(
+        model,
+        m.pos,
+        m.yaw,
+        &rots,
+        scale,
+        tint,
+        view_dir,
+        out,
+    );
+}
+
+/// Mob rendering: the modeled kinds draw as jointed 3D boxes (the
+/// bone/joint hierarchy — walk/attack/hurt ranges driven by mob
+/// state); every other kind keeps the camera-facing sprite quad
+/// (sized per kind, red-tinted while hurt; creepers blink white while
+/// priming). `view_dir` is the camera forward (painter ordering for
+/// the box path).
 pub fn build_vertices(
     list: &[Mob],
     right: [f32; 3],
+    view_dir: [f32; 3],
     out: &mut Vec<vc_particles::particles::ParticleVertex>,
 ) {
     for m in list {
         let d = def(m.kind);
+        if let Some(model) = model_for(m.kind) {
+            build_model_vertices(m, model, view_dir, out);
+            continue;
+        }
         let mut tile = m.kind.sprite_tile();
         // [1.12 fix] 512px atlas = 32 tiles/row — the old %16//16 math
         // sampled out-of-bounds garbage for every sprite tile >= 256
@@ -6491,6 +6631,8 @@ mod tests {
                 provoked: false,
                 lonely_t: 0,
                 fall_dist: 0.0,
+                anim_walk: 0.0,
+                attack_anim: 0,
                 variant: 0,
                 aux: 0,
                 wander_yaw: 0.0,
@@ -6529,6 +6671,8 @@ mod tests {
                 provoked: false,
                 lonely_t: 0,
                 fall_dist: 0.0,
+                anim_walk: 0.0,
+                attack_anim: 0,
                 variant: 0,
                 aux: 0,
                 wander_yaw: 0.0,
@@ -6572,6 +6716,8 @@ mod tests {
             provoked: false,
             lonely_t: 0,
             fall_dist: 55.0,
+            anim_walk: 0.0,
+            attack_anim: 0,
             variant: 0,
             aux: 0,
             wander_yaw: 0.0,
@@ -6694,7 +6840,7 @@ mod tests {
         let mut rng = Rng::new(1);
         let mut m = Mob { id: 9, kind: MobKind::SnowGolem, pos: [8.5, 65.0, 8.5], vel: [0.0; 3],
             yaw: 0.0, health: 4.0, on_ground: true, hurt_t: 0, attack_cd: 0, fuse: -1,
-            provoked: false, lonely_t: 0, fall_dist: 0.0, variant: 0, aux: 0,
+            provoked: false, lonely_t: 0, fall_dist: 0.0, anim_walk: 0.0, attack_anim: 0, variant: 0, aux: 0,
             wander_yaw: 0.0, wander_t: 0, equine: None, bee: None };
         for _ in 0..5 {
             ai_tick(&mut rng, &mut m, None, false, &mut Vec::new(), &mut Vec::new(), &desert, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), true);
@@ -7898,6 +8044,7 @@ mod v113_tests {
             m.pos = [8.5, 71.0, 8.5]; // at the player's chest
             m.variant |= 1; // stay diving
             m.attack_cd = 0;
+            m.attack_anim = 6;
         }
         let hits0 = sys.hits.len();
         sys.tick(&world, (0, 0), i32::MAX);

@@ -218,10 +218,30 @@ pub struct RenderStats {
     pub binds: u32,
     /// Phase 6 §26: frustum-visible chunks removed by the occlusion flood
     pub culled: u32,
+    /// Occlusion-parity round (Luanti-style split counters): meshed
+    /// chunk columns removed by the FRUSTUM test alone — kept separate
+    /// from `culled` (the occlusion flood's count) so F3/bench stats
+    /// read as a real before/after metric the same way Luanti's
+    /// ClientMap tracks occlusion-culled and frustum-culled as distinct
+    /// internal counters (technique reference: Luanti's
+    /// `src/client/map.cpp` draw-list accounting, studied 2026-09-12;
+    /// independently re-expressed as two RenderStats fields).
+    pub frustum_culled: u32,
     /// UI-overhaul Phase 2 (A4 perf trace): GUI chrome quads drawn this
     /// frame (0 = quad pass off / no chrome on screen)
     pub gui_quads: u32,
 }
+
+/// The shared billboard-stream vertex budget (particles + modeled
+/// entity boxes + items/villagers/arrows/orbs):
+/// 4096 particles × 6 verts + 128 mobs × 360 verts (the 10-box spider
+/// rig worst case: 10 boxes × 6 faces × 6 verts) + 8192 margin.
+/// The buffer is sized to this AND the per-frame write is clamped to
+/// it — the old particles-only size was overflowable the moment mobs
+/// and items joined the stream (write_buffer with an oversized slice
+/// is a wgpu validation error), and the jointed entity models would
+/// have tripped it routinely.
+const PARTICLE_VERT_BUDGET: usize = 4096 * 6 + 128 * 360 + 8192;
 
 // ---------------------------------------------------------------- shaders
 
@@ -2509,10 +2529,18 @@ impl Renderer {
                 },
             ],
         });
-        // dynamic billboard buffer: MAX_PARTICLES quads × 6 verts × 32 B
+        // dynamic billboard buffer — the ENTITY-VIEW vertex budget:
+        // particles (MAX_PARTICLES×6) + the modeled-mob worst case
+        // (MAX_MOBS spider rigs: 10 boxes × 6 faces × 6 verts = 360
+        // verts/mob) + items/villagers/arrows/orbs margin. The OLD size
+        // (particles only) was already overflowable once mobs/items
+        // joined this stream, and the entity box models would trip it
+        // routinely — the write is now CLAMPED to the budget too
+        // (write_buffer with an oversized slice is a wgpu validation
+        // error, i.e. a device panic).
         let particle_vb = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("particle-vb"),
-            size: (vc_particles::particles::MAX_PARTICLES * 6 * 32) as u64,
+            size: (PARTICLE_VERT_BUDGET * 32) as u64,
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -4688,16 +4716,7 @@ impl Renderer {
             .filter(|(pos, _)| {
                 let min = [pos.0 as f32 * 16.0, 0.0, pos.1 as f32 * 16.0];
                 let max = [min[0] + 16.0, 256.0, min[2] + 16.0];
-                for p in planes.iter() {
-                    // p-vertex test
-                    let px = if p[0] >= 0.0 { max[0] } else { min[0] };
-                    let py = if p[1] >= 0.0 { max[1] } else { min[1] };
-                    let pz = if p[2] >= 0.0 { max[2] } else { min[2] };
-                    if p[0] * px + p[1] * py + p[2] * pz + p[3] < 0.0 {
-                        return false;
-                    }
-                }
-                true
+                draw::aabb_visible(&min, &max, &planes)
             })
             .map(|(pos, _)| {
                 let dx = pos.0 as f32 * 16.0 + 8.0 - cam.eye.x;
@@ -4705,8 +4724,12 @@ impl Renderer {
                 (*pos, dx * dx + dz * dz)
             })
             .collect();
+        // Luanti-style split counter #1: how many meshed columns the
+        // FRUSTUM alone removed (the occlusion flood's count is `culled`)
+        let frustum_culled = (self.chunks.len() - visible.len()) as u32;
 
         let mut stats = RenderStats::default();
+        stats.frustum_culled = frustum_culled;
 
         // Sort once (near → far) — the per-frame origin rows are indexed by
         // this order (identical in all three passes, as before). `visible`
@@ -5007,13 +5030,19 @@ impl Renderer {
             // frame, alpha-blended, depth-tested but not written — after
             // the translucent water pass, before clouds
             if !particles.is_empty() {
-                let bytes = bytemuck::cast_slice(particles);
+                // CLAMPED write: the budget is the buffer size — an
+                // over-full scene drops its tail verts instead of
+                // panicking the device (the draw clamp below already
+                // had this semantics; the write did not)
+                let n_verts = particles
+                    .len()
+                    .min(PARTICLE_VERT_BUDGET);
+                let bytes = bytemuck::cast_slice(&particles[..n_verts]);
                 self.queue.write_buffer(&self.particle_vb, 0, bytes);
                 pass.set_pipeline(part_p);
                 pass.set_bind_group(0, &self.part_bg, &[]);
                 pass.set_vertex_buffer(0, self.particle_vb.slice(..));
-                let n =
-                    (particles.len() as u32).min(vc_particles::particles::MAX_PARTICLES as u32 * 6);
+                let n = n_verts as u32;
                 pass.draw(0..n, 0..1);
                 stats.particles += n / 6;
             }

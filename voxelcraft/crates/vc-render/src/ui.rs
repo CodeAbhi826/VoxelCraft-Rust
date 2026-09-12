@@ -3,7 +3,6 @@
 //! full 1.16.5-style HUD (hotbar, hearts, hunger, XP bar, crosshair, F3).
 //! Redrawn only when state changes; uploaded to GPU as a texture.
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
 
 use crate::textures::blit_tile;
@@ -17,21 +16,28 @@ pub const UI_H: usize = 540;
 // The Luanti-style font round: when armed, every text* method routes
 // through the runtime font engine (embedded Monocraft, glyph quads on
 // the GPU — see gui/font.rs) instead of rasterizing the 5×7 bitmap
-// into the canvas. A process-wide AtomicBool because the text_width
-// family is STATIC (layout code measures before any canvas exists);
+// into the canvas. THREAD-LOCAL because the text_width family is
+// STATIC (layout code measures before any canvas exists) and the
+// game loop that arms/reads it is single-threaded (update + UI
+// rebuild on one thread — the engine's documented threading model);
 // default OFF keeps the bitmap path byte-identical for every existing
 // caller and test (G6). The game arms it at boot when the GUI quad
-// pass is ready; tests that exercise the quad path reset it after.
-static TEXT_QUADS_ACTIVE: AtomicBool = AtomicBool::new(false);
+// pass is ready. Thread-locality also isolates parallel `cargo test`
+// threads: an armed test can never stomp a disarmed test's draw in
+// another thread (the process-global AtomicBool made the flag a
+// cross-test race — the f3 descender test lost that lottery once).
+thread_local! {
+    static TEXT_QUADS_ACTIVE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
 
 /// arm/disarm the GPU text path (the game calls this once at boot)
 pub fn set_text_quads_active(active: bool) {
-    TEXT_QUADS_ACTIVE.store(active, Ordering::Relaxed);
+    TEXT_QUADS_ACTIVE.with(|f| f.set(active));
 }
 
 /// is the GPU text path armed?
 pub fn text_quads_active() -> bool {
-    TEXT_QUADS_ACTIVE.load(Ordering::Relaxed)
+    TEXT_QUADS_ACTIVE.with(|f| f.get())
 }
 
 /// measure `s` with the ACTIVE source at `scale` — the shared helper
@@ -884,9 +890,9 @@ fn splash_ink(s: &str) -> (Vec<u8>, i32, i32) {
     if text_quads_active() {
         if let Some(eng) = crate::gui::font::engine() {
             let mut e = eng.lock().unwrap_or_else(|p| p.into_inner());
-            let (bytes, w, h) = e.bake_bitmap(s, 16.0, YELLOW);
+            let (bytes, w, h) = splash_ink_at(s, 16.0, &mut e);
             if w > 0 {
-                return (bytes, w as i32, h as i32);
+                return (bytes, w, h);
             }
         }
     }
@@ -927,16 +933,29 @@ fn splash_ink(s: &str) -> (Vec<u8>, i32, i32) {
     (out, tw, th)
 }
 
-/// the splash source bitmap: tight yellow glyphs + a 1-px dark
-/// yellow-brown 8-neighborhood outline, 2-px pad all around.
-fn splash_source(s: &str) -> (Vec<[u8; 4]>, i32, i32) {
+/// engine-backed tight yellow ink at an explicit (device) cell —
+/// shared by the canvas fallback (16 UI px) and the rotated-quad
+/// path (16 × device_scale, so the strip bakes at DEVICE resolution).
+fn splash_ink_at(
+    s: &str,
+    cell: f32,
+    e: &mut crate::gui::font::FontEngine,
+) -> (Vec<u8>, i32, i32) {
+    const YELLOW: [u8; 4] = [255, 255, 0, 255];
+    let (bytes, w, h) = e.bake_bitmap(s, cell, YELLOW);
+    (bytes, w as i32, h as i32)
+}
+
+/// the outlined splash strip (flat RGBA): tight yellow ink + a 1-px
+/// dark yellow-brown 8-neighborhood outline, 2-px pad all around —
+/// the shared builder for the canvas blit and the cached run strip.
+fn outlined_strip(tight: &[u8], tw: i32, th: i32) -> (Vec<u8>, i32, i32) {
     const YELLOW: [u8; 4] = [255, 255, 0, 255];
     const OUTLINE: [u8; 4] = [63, 50, 0, 255];
     let pad = 2; // outline margin
-    let (tight, tw, th) = splash_ink(s);
     let bw = tw + pad * 2;
     let bh = th + pad * 2;
-    let mut src = vec![[0u8; 4]; (bw * bh) as usize];
+    let mut src = vec![0u8; (bw * bh * 4) as usize];
     let ink = |x: i32, y: i32| -> bool {
         x >= 0 && y >= 0 && x < tw && y < th && {
             let i = ((y * tw + x) * 4 + 3) as usize;
@@ -947,7 +966,8 @@ fn splash_source(s: &str) -> (Vec<[u8; 4]>, i32, i32) {
     for y in 0..th {
         for x in 0..tw {
             if ink(x, y) {
-                src[((y + pad) * bw + x + pad) as usize] = YELLOW;
+                let di = (((y + pad) * bw + x + pad) * 4) as usize;
+                src[di..di + 4].copy_from_slice(&YELLOW);
             }
         }
     }
@@ -959,8 +979,8 @@ fn splash_source(s: &str) -> (Vec<[u8; 4]>, i32, i32) {
             if sx < 0 || sy < 0 || sx >= bw || sy >= bh {
                 continue;
             }
-            let di = (sy * bw + sx) as usize;
-            if src[di][3] != 0 {
+            let di = ((sy * bw + sx) * 4) as usize;
+            if src[di + 3] != 0 {
                 continue;
             }
             let touches = [
@@ -976,11 +996,25 @@ fn splash_source(s: &str) -> (Vec<[u8; 4]>, i32, i32) {
             .iter()
             .any(|&(dx, dy)| ink(x + dx, y + dy));
             if touches {
-                src[di] = OUTLINE;
+                src[di..di + 4].copy_from_slice(&OUTLINE);
             }
         }
     }
     (src, bw, bh)
+}
+
+/// the splash source bitmap: tight yellow glyphs + a 1-px dark
+/// yellow-brown 8-neighborhood outline, 2-px pad all around.
+fn splash_source(s: &str) -> (Vec<[u8; 4]>, i32, i32) {
+    let (tight, tw, th) = splash_ink(s);
+    let (flat, bw, bh) = outlined_strip(&tight, tw, th);
+    // flat RGBA → per-pixel arrays for the canvas rotated blit
+    let mut out = vec![[0u8; 4]; (bw * bh) as usize];
+    for (i, o) in out.iter_mut().enumerate() {
+        let b = i * 4;
+        *o = [flat[b], flat[b + 1], flat[b + 2], flat[b + 3]];
+    }
+    (out, bw, bh)
 }
 
 impl UiCanvas {
@@ -1277,10 +1311,23 @@ impl UiCanvas {
     /// up), pulsing at 2 Hz (VERIFIED minecraft.wiki/w/Splash: "yellow
     /// lines of text on the title screen... pulsates at a frequency of
     /// 2 Hz"; the tilt is the classic ~20-degree rotation at the logo's
-    /// bottom-right corner). Clean-room technique: the glyph run is
-    /// rasterized into a small bitmap, then blitted through an inverse
-    /// rotation with a sub-pixel scale wobble (vanilla wobbles 1.7->1.8).
+    /// bottom-right corner).
+    ///
+    /// Luanti round 2: when the quad path is armed the outlined run is
+    /// baked at DEVICE resolution ONCE (cached in the font engine's
+    /// glyph atlas) and drawn as a single ROTATED quad — the glyph
+    /// edges land on real screen pixels at any window size and the
+    /// tilt/pulse are pure vertex geometry (the old canvas path
+    /// inverse-rotated a 960×540 blit, mushy at fractional scales).
+    /// The canvas fallback keeps the clean-room bitmap technique.
     pub fn text_splash(&mut self, cx: i32, cy: i32, s: &str, t: f32) {
+        if text_quads_active() {
+            if let Some(eng) = crate::gui::font::engine() {
+                if self.splash_quad(cx, cy, s, t, eng) {
+                    return;
+                }
+            }
+        }
         // source bitmap: yellow glyphs + 1px dark outline, 2-px pad.
         // Luanti font round: the runtime engine bakes the glyph run
         // (Monocraft at the 16-px cell — the same size the old 5x7
@@ -1320,6 +1367,54 @@ impl UiCanvas {
                 }
             }
         }
+    }
+
+    /// the armed splash: bake the outlined yellow run at DEVICE
+    /// resolution, cache it in the glyph atlas (one upload — the pulse
+    /// only rescales the dst rect, never re-bakes), and draw it as one
+    /// rotated quad. Returns false to fall back to the canvas blit
+    /// (engine bake failure / unpackable strip).
+    fn splash_quad(
+        &mut self,
+        cx: i32,
+        cy: i32,
+        s: &str,
+        t: f32,
+        eng: &'static std::sync::Mutex<crate::gui::font::FontEngine>,
+    ) -> bool {
+        let k = self.device_scale.max(0.05);
+        // the vanilla cell is 16 UI px (the old scale-2 bitmap look);
+        // device-res so the AA edges land on screen pixels
+        let cell_dev = (16.0 * k).round().max(2.0) as u32;
+        let mut e = eng.lock().unwrap_or_else(|p| p.into_inner());
+        let run = e.cache_run(&format!("splash:{s}"), cell_dev, |e| {
+            let (tight, tw, th) = splash_ink_at(s, cell_dev as f32, e);
+            let (bytes, w, h) = outlined_strip(&tight, tw, th);
+            (bytes, w as u32, h as u32)
+        });
+        let Some(g) = run else {
+            return false;
+        };
+        // pulse 1.00..1.06 at 2 Hz around the CENTER, then the -20 deg
+        // tilt — both pure vertex geometry on the cached strip
+        let pulse = 1.0 + 0.06 * (t * std::f32::consts::TAU).sin().abs();
+        let w_ui = g.w as f32 / k * pulse;
+        let h_ui = g.h as f32 / k * pulse;
+        let dst = crate::gui_render::RectF::new(
+            cx as f32 - w_ui * 0.5,
+            cy as f32 - h_ui * 0.5,
+            w_ui,
+            h_ui,
+        );
+        let src = crate::gui_render::Rect::new(
+            g.atlas_x as i32,
+            g.atlas_y as i32,
+            g.w as i32,
+            g.h as i32,
+        );
+        self.gui_frame
+            .rotated_glyph_quad(dst, src, -(20.0_f32).to_radians());
+        true
     }
 
     /// Draw a pixel-art sprite from string rows with a char→color palette.
@@ -1712,8 +1807,30 @@ impl UiCanvas {
 
     // -------------------------------------------------------- HUD ----
 
-    /// Vanilla-style crosshair: white plus with dark outline.
+    /// Vanilla-style crosshair: an inverted (difference-blended) plus.
+    ///
+    /// Luanti round 2 + vanilla-blend round: when the quad path is
+    /// armed the plus is DEVICE-SNAPPED white INVERT quads in the
+    /// over-canvas layer — every edge lands on a whole device pixel at
+    /// ANY window size (the old canvas raster rode the 960×540 NEAREST
+    /// letterbox, and its 1-2 UI-px arms went ragged/uneven at
+    /// fractional scales like 1.5×: a 2-px arm became 3 px on some
+    /// columns and 2 on others) — and the result is
+    /// 1 − background per channel, the
+    /// documented vanilla 1.16.5 crosshair behavior (technique
+    /// reference: minecraft.wiki/w/Crosshair — the classic
+    /// GL_ONE_MINUS_DST_COLOR blend re-expressed as wgpu
+    /// BlendFactor::OneMinusDst). The plus is DARK against a bright
+    /// sky/snow and LIGHT against dark terrain, so it never disappears
+    /// into the background the way an alpha-white crosshair does
+    /// (found live: arms at (241,245,249) against snow (224,240,255)
+    /// were invisible). The canvas fallback keeps the old white+outline
+    /// look for the no-GPU-pass boot path.
     pub fn crosshair(&mut self) {
+        if text_quads_active() {
+            self.crosshair_quads();
+            return;
+        }
         let cx = (UI_W / 2) as i32;
         let cy = (UI_H / 2) as i32;
         let arm = 8;
@@ -1728,6 +1845,56 @@ impl UiCanvas {
         self.rect(cx - th / 2 - 1, cy - arm, 1, arm * 2, dark);
         self.rect(cx + th / 2 + 1, cy - arm, 1, arm * 2, dark);
         self.rect(cx - th / 2, cy - arm, th, arm * 2, white);
+    }
+
+    /// the armed crosshair: geometry computed in DEVICE px (half-up
+    /// rounding — `.5` rounds up, not banker's), expressed as
+    /// fractional UI rects (`device / k`) so the letterbox uniform maps
+    /// each edge back onto the exact device pixel it was computed for.
+    /// THREE disjoint white invert quads: the H bar split into two
+    /// segments around the V bar's x-window (overlapping invert quads
+    /// cancel — invert∘invert = identity — so disjointness is a
+    /// hard requirement, not a polish), plus the V bar. No outline:
+    /// vanilla's crosshair has none, and inversion already guarantees
+    /// contrast on every background but exact mid-gray.
+    fn crosshair_quads(&mut self) {
+        let k = self.device_scale.max(0.05);
+        // half-up round (f32 → whole device px)
+        let snap = |v: f32| (v + 0.5).floor();
+        let cxd = snap(UI_W as f32 * 0.5 * k);
+        let cyd = snap(UI_H as f32 * 0.5 * k);
+        let ha = (snap(8.0 * k) as i32).max(4); // half-arm (device px)
+        let ht = (snap(2.0 * k) as i32).max(2); // arm thickness
+        // bar top/left snapped so the arm covers whole device px
+        // (odd thickness sits 1 px heavy toward +x/+y — invisible on
+        // a symmetric-plus crosshair, and every edge stays crisp)
+        let wy = cyd as i32 - (ht + 1) / 2;
+        let wx = cxd as i32 - (ht + 1) / 2;
+        // device-px rect → fractional UI rect (dst = device / k)
+        let q = |x: i32, y: i32, w: i32, h: i32, f: &mut Self| {
+            f.gui_frame.solid_invert(
+                x as f32 / k,
+                y as f32 / k,
+                w as f32 / k,
+                h as f32 / k,
+            );
+        };
+        // horizontal bar SPLIT into two segments around the vertical
+        // bar's [wx, wx+ht) window — disjoint invert geometry
+        let hx = (cxd - ha as f32) as i32;
+        let hw = ha * 2;
+        let cut_l = wx - hx; // device px from H start to V bar start
+        let cut_r = hx + hw - (wx + ht); // from V bar end to H end
+        if cut_l > 0 {
+            q(hx, wy, cut_l, ht, self);
+        }
+        if cut_r > 0 {
+            q(wx + ht, wy, cut_r, ht, self);
+        }
+        // vertical bar
+        let vy = (cyd - ha as f32) as i32;
+        let vh = ha * 2;
+        q(wx, vy, ht, vh, self);
     }
 
     const HEART: [&'static str; 6] = [
@@ -1913,13 +2080,36 @@ impl UiCanvas {
             [235, 220, 245, 255],
             1,
         );
-        // track + light-purple fill (VERIFIED color family)
-        self.rect(x, y, w, 12, [16, 12, 20, 220]);
-        self.frame(x, y, w, 12, [90, 70, 110, 255]);
+        // track + light-purple fill (VERIFIED color family).
+        // Luanti round 2: solid quads (crisp edges at any window
+        // size — the status_bars XP pattern); canvas raster gated to
+        // the no-GPU-pass fallback
+        let ct = |c: Color| -> [f32; 4] {
+            [
+                c[0] as f32 / 255.0,
+                c[1] as f32 / 255.0,
+                c[2] as f32 / 255.0,
+                c[3] as f32 / 255.0,
+            ]
+        };
+        self.gui_frame.solid_rect(x, y, w, 12, ct([16, 12, 20, 220]));
+        // 1-px frame (the canvas `frame` decomposition)
+        self.gui_frame.solid_rect(x, y, w, 1, ct([90, 70, 110, 255]));
+        self.gui_frame.solid_rect(x, y + 11, w, 1, ct([90, 70, 110, 255]));
+        self.gui_frame.solid_rect(x, y, 1, 12, ct([90, 70, 110, 255]));
+        self.gui_frame.solid_rect(x + w - 1, y, 1, 12, ct([90, 70, 110, 255]));
         let fill = ((w - 4) as f32 * frac.clamp(0.0, 1.0)) as i32;
         if fill > 0 {
-            self.rect(x + 2, y + 2, fill, 8, [190, 90, 220, 255]);
-            self.rect(x + 2, y + 2, fill, 2, [230, 150, 250, 255]);
+            self.gui_frame.solid_rect(x + 2, y + 2, fill, 8, ct([190, 90, 220, 255]));
+            self.gui_frame.solid_rect(x + 2, y + 2, fill, 2, ct([230, 150, 250, 255]));
+        }
+        if self.chrome_enabled {
+            self.rect(x, y, w, 12, [16, 12, 20, 220]);
+            self.frame(x, y, w, 12, [90, 70, 110, 255]);
+            if fill > 0 {
+                self.rect(x + 2, y + 2, fill, 8, [190, 90, 220, 255]);
+                self.rect(x + 2, y + 2, fill, 2, [230, 150, 250, 255]);
+            }
         }
     }
 
@@ -1935,12 +2125,37 @@ impl UiCanvas {
         let xp_w = hb_w;
         let xp_x = hb_x;
         let xp_y = hb_y - 10;
-        self.rect(xp_x, xp_y, xp_w, 8, [16, 16, 16, 220]);
-        self.frame(xp_x, xp_y, xp_w, 8, [60, 60, 60, 255]);
+        // Luanti round 2: solid quads — the exact XP block the survival
+        // `status_bars` renders (pixel-crisp at any window size, immune
+        // to the canvas/quad z-order bug class); canvas raster gated
+        let ct = |c: Color| -> [f32; 4] {
+            [
+                c[0] as f32 / 255.0,
+                c[1] as f32 / 255.0,
+                c[2] as f32 / 255.0,
+                c[3] as f32 / 255.0,
+            ]
+        };
+        self.gui_frame.solid_rect(xp_x, xp_y, xp_w, 8, ct([16, 16, 16, 220]));
+        self.gui_frame.solid_rect(xp_x, xp_y, xp_w, 1, ct([60, 60, 60, 255]));
+        self.gui_frame.solid_rect(xp_x, xp_y + 7, xp_w, 1, ct([60, 60, 60, 255]));
+        self.gui_frame.solid_rect(xp_x, xp_y, 1, 8, ct([60, 60, 60, 255]));
+        self.gui_frame
+            .solid_rect(xp_x + xp_w - 1, xp_y, 1, 8, ct([60, 60, 60, 255]));
         let fill = ((xp_w - 4) as f32 * xp.clamp(0.0, 1.0)) as i32;
         if fill > 0 {
-            self.rect(xp_x + 2, xp_y + 2, fill, 4, [128, 255, 32, 255]);
-            self.rect(xp_x + 2, xp_y + 2, fill, 1, [190, 255, 130, 255]);
+            self.gui_frame
+                .solid_rect(xp_x + 2, xp_y + 2, fill, 4, ct([128, 255, 32, 255]));
+            self.gui_frame
+                .solid_rect(xp_x + 2, xp_y + 2, fill, 1, ct([190, 255, 130, 255]));
+        }
+        if self.chrome_enabled {
+            self.rect(xp_x, xp_y, xp_w, 8, [16, 16, 16, 220]);
+            self.frame(xp_x, xp_y, xp_w, 8, [60, 60, 60, 255]);
+            if fill > 0 {
+                self.rect(xp_x + 2, xp_y + 2, fill, 4, [128, 255, 32, 255]);
+                self.rect(xp_x + 2, xp_y + 2, fill, 1, [190, 255, 130, 255]);
+            }
         }
         if level > 0 {
             let s = format!("{}", level);
@@ -1954,7 +2169,9 @@ impl UiCanvas {
                 2,
             );
         }
-        // oxygen bubbles also render in creative (vanilla shows them)
+        // oxygen bubbles also render in creative (vanilla shows them) —
+        // the 9x9 quad sprite always pushed (the status_bars pattern),
+        // canvas raster gated
         if air < 299.0 {
             let bubble_pal: [(char, Color); 4] = [
                 ('o', [26, 46, 78, 255]),
@@ -1966,7 +2183,11 @@ impl UiCanvas {
             for i in 0..bubbles.min(10) {
                 let x = hb_x + hb_w - 4 - (i + 1) * 17;
                 let y = hb_y - 48;
-                self.sprite(x, y, &Self::BUBBLE, &bubble_pal, 2);
+                self.gui_frame
+                    .bubble(x, y, crate::textures::gui_art::BubbleVariant::Full);
+                if self.chrome_enabled {
+                    self.sprite(x, y, &Self::BUBBLE, &bubble_pal, 2);
+                }
             }
         }
     }
@@ -2695,13 +2916,45 @@ impl UiCanvas {
         const BG: Color = [80, 80, 80, 144]; // 0x90505050
         const FG: Color = [224, 224, 224, 255]; // 0xE0E0E0
         const LINE_H: i32 = 18; // glyph 16 (8 rows x scale 2) + 1px pad top+bottom
+        // Luanti round 2: strips are fractional solid quads measured
+        // with the ACTIVE font's real metrics — the strip hugs the
+        // device-exact text at any window size instead of quantizing
+        // to the 960x540 integer grid (text already rides glyph quads).
+        // They ride the OVER-CANVAS text layer (pushed immediately
+        // before their line's text, so the text still composites on
+        // top) — the canvas is empty at the strip region in armed
+        // mode, and the text layer is the proven-visible Solid path
+        // (the crosshair class; browser E2E caught the chrome-layer
+        // draw silently dropping them).
+        let strip_quads = text_quads_active() && crate::gui::font::engine().is_some();
+        let bg_tint: [f32; 4] = [
+            BG[0] as f32 / 255.0,
+            BG[1] as f32 / 255.0,
+            BG[2] as f32 / 255.0,
+            BG[3] as f32 / 255.0,
+        ];
+        let measure = |s: &str| -> f32 {
+            match crate::gui::font::engine() {
+                Some(eng) => {
+                    let mut e = eng.lock().unwrap_or_else(|p| p.into_inner());
+                    e.measure(s, 16.0)
+                }
+                None => Self::text_width_case(s, 2) as f32,
+            }
+        };
         for (i, l) in left.iter().enumerate() {
             if l.is_empty() {
                 continue;
             }
             let y = 2 + i as i32 * LINE_H;
-            let w = Self::text_width_case(l, 2);
-            self.rect(2, y, w + 2, LINE_H, BG);
+            if strip_quads {
+                let w = measure(l);
+                self.gui_frame
+                    .solid_over(2.0, y as f32, w + 2.0, LINE_H as f32, bg_tint);
+            } else {
+                let w = Self::text_width_case(l, 2);
+                self.rect(2, y, w + 2, LINE_H, BG);
+            }
             self.text_flat_case(3, y + 1, l, FG, 2);
         }
         for (i, l) in right.iter().enumerate() {
@@ -2709,10 +2962,20 @@ impl UiCanvas {
                 continue;
             }
             let y = 2 + i as i32 * LINE_H;
-            let w = Self::text_width_case(l, 2);
-            let x = UI_W as i32 - 3 - w; // text ends 3px from the right edge
-            self.rect(x - 1, y, w + 2, LINE_H, BG);
-            self.text_flat_case(x, y + 1, l, FG, 2);
+            if strip_quads {
+                let w = measure(l);
+                // text ends 3px from the right edge; the strip extends
+                // 1 UI px past both ends of the fractional text width
+                let x = UI_W as f32 - 3.0 - w;
+                self.gui_frame
+                    .solid_over(x - 1.0, y as f32, w + 2.0, LINE_H as f32, bg_tint);
+                self.text_flat_case(x.round() as i32, y + 1, l, FG, 2);
+            } else {
+                let w = Self::text_width_case(l, 2);
+                let x = UI_W as i32 - 3 - w; // text ends 3px from the right edge
+                self.rect(x - 1, y, w + 2, LINE_H, BG);
+                self.text_flat_case(x, y + 1, l, FG, 2);
+            }
         }
     }
 
@@ -2737,6 +3000,9 @@ impl UiCanvas {
 
     /// Sodium-style rolling frame-time graph under the F3 text block.
     /// `times_ms` = last N frame times; green bars, 50 ms scale, 2 px/bar.
+    /// Luanti round 2: solid quads when armed (one quad per bar — the
+    /// bg, guide line and every bar land on crisp GPU geometry at any
+    /// window size); the canvas per-pixel raster stays as the fallback.
     /// single-pixel set with bounds clamp (graph bars)
     fn px_set(&mut self, x: i32, y: i32, c: Color) {
         self.set(x, y, c);
@@ -2750,9 +3016,49 @@ impl UiCanvas {
         let w = (n as i32 * 2).min(360);
         let x0 = 4;
         let h = 40;
-        self.rect(x0, y, w + 4, h + 4, [80, 80, 80, 110]);
+        let ct = |c: Color| -> [f32; 4] {
+            [
+                c[0] as f32 / 255.0,
+                c[1] as f32 / 255.0,
+                c[2] as f32 / 255.0,
+                c[3] as f32 / 255.0,
+            ]
+        };
         // 16.7 ms guide line (60 fps target)
         let guide_y = y + 2 + h - ((16.7f32 / 50.0) * h as f32) as i32;
+        let bar_color = |t: f32| -> Color {
+            if t <= 20.0 {
+                [60, 220, 90, 230]
+            } else if t <= 40.0 {
+                [240, 200, 40, 230]
+            } else {
+                [235, 70, 50, 230]
+            }
+        };
+        if text_quads_active() {
+            self.gui_frame
+                .solid_over(x0 as f32, y as f32, (w + 4) as f32, (h + 4) as f32, ct([80, 80, 80, 110]));
+            self.gui_frame
+                .solid_over(x0 as f32 + 2.0, guide_y as f32, w as f32, 1.0, ct([255, 255, 255, 70]));
+            for (i, t) in times_ms.iter().rev().enumerate() {
+                let x = x0 + 2 + i as i32 * 2;
+                if x >= x0 + 2 + w {
+                    break;
+                }
+                let th = ((t / 50.0).clamp(0.0, 1.0) * h as f32) as i32;
+                if th > 0 {
+                    self.gui_frame.solid_over(
+                        x as f32,
+                        (y + 2 + h - th) as f32,
+                        2.0,
+                        th as f32,
+                        ct(bar_color(*t)),
+                    );
+                }
+            }
+            return;
+        }
+        self.rect(x0, y, w + 4, h + 4, [80, 80, 80, 110]);
         for dx in 0..w {
             let x = x0 + 2 + dx;
             if x < x0 + 2 + w {
@@ -2765,13 +3071,7 @@ impl UiCanvas {
                 break;
             }
             let th = ((t / 50.0).clamp(0.0, 1.0) * h as f32) as i32;
-            let color: Color = if *t <= 20.0 {
-                [60, 220, 90, 230]
-            } else if *t <= 40.0 {
-                [240, 200, 40, 230]
-            } else {
-                [235, 70, 50, 230]
-            };
+            let color = bar_color(*t);
             for dy in 0..th {
                 self.px_set(x, y + 2 + h - 1 - dy, color);
                 self.px_set(x + 1, y + 2 + h - 1 - dy, color);
@@ -3953,5 +4253,253 @@ mod screen_tests {
         assert_eq!(glyphs.len(), 4);
         // cell 16: cap-height ink ≈ 14 px
         assert!(glyphs.iter().all(|q| q.dst.h <= 16.0 && q.dst.h >= 8.0));
+    }
+
+    // ---- Luanti round 2: the full device-resolution HUD ------------
+
+    #[test]
+    fn crosshair_is_device_snapped_quads_at_fractional_scale() {
+        // THE fractional-scale crosshair fix: at k=1.5 every edge of
+        // every arm quad lands on a whole DEVICE pixel (the old canvas
+        // raster rode the 960x540 NEAREST letterbox — 2-px arms became
+        // 3-px on some columns, ragged plus)
+        let _g = QuadTextGuard::arm();
+        let mut ui = UiCanvas::new();
+        ui.set_device_scale(1.5);
+        ui.clear();
+        ui.crosshair();
+        // 3 solid INVERT quads in the OVER-canvas layer: the horizontal
+        // bar split into 2 disjoint segments + the vertical bar
+        assert_eq!(ui.gui_frame.text_quads.len(), 3, "H split into 2 disjoint segments + 1 V bar");
+        assert!(ui.gui_frame.quads.is_empty(), "crosshair never lands in the chrome layer");
+        let k = 1.5f32;
+        for q in &ui.gui_frame.text_quads {
+            assert_eq!(q.texture, crate::gui_render::QuadTexture::Solid);
+            // the vanilla-blend contract: every crosshair quad is an
+            // INVERT quad with white tint (result = 1 − dst)
+            assert!(q.invert, "crosshair quads draw through the invert pipeline");
+            assert_eq!(q.tint, [1.0, 1.0, 1.0, 1.0], "white tint — full inversion");
+            for v in [
+                q.dst.x * k,
+                q.dst.y * k,
+                (q.dst.x + q.dst.w) * k,
+                (q.dst.y + q.dst.h) * k,
+            ] {
+                assert!((v - v.round()).abs() < 1e-3, "edge {v} on the device grid");
+            }
+        }
+        // DISJOINTNESS (hard requirement: overlapping invert quads
+        // cancel — invert∘invert = identity): the two H segments and
+        // the V bar must not overlap each other
+        {
+            let qs = &ui.gui_frame.text_quads;
+            for i in 0..qs.len() {
+                for j in (i + 1)..qs.len() {
+                    let (a, b) = (&qs[i], &qs[j]);
+                    let sep_x = a.dst.x + a.dst.w <= b.dst.x + 1e-6
+                        || b.dst.x + b.dst.w <= a.dst.x + 1e-6;
+                    let sep_y = a.dst.y + a.dst.h <= b.dst.y + 1e-6
+                        || b.dst.y + b.dst.h <= a.dst.y + 1e-6;
+                    assert!(
+                        sep_x || sep_y,
+                        "invert quads {i} and {j} overlap — they would cancel"
+                    );
+                }
+            }
+        }
+        // the arms cover the exact device center (720, 405 at
+        // 1440x810): the horizontal segments' y window straddles it
+        let hw: Vec<_> = ui
+            .gui_frame
+            .text_quads
+            .iter()
+            .filter(|q| q.dst.w > q.dst.h)
+            .collect();
+        assert_eq!(hw.len(), 2, "the split horizontal segments");
+        let cy_dev = 270.0 * k;
+        assert!(hw.iter().all(|q| q.dst.y * k <= cy_dev && (q.dst.y + q.dst.h) * k >= cy_dev));
+        let vw = ui
+            .gui_frame
+            .text_quads
+            .iter()
+            .find(|q| q.dst.h > q.dst.w)
+            .expect("vertical bar");
+        let cx_dev = 480.0 * k;
+        assert!(vw.dst.x * k <= cx_dev && (vw.dst.x + vw.dst.w) * k >= cx_dev);
+        // the canvas fallback did NOT rasterize (no double-draw)
+        let cidx = (270usize * crate::ui::UI_W + 480usize) * 4;
+        assert_eq!(ui.px[cidx + 3], 0, "canvas center clear — quads only");
+    }
+
+    #[test]
+    fn crosshair_canvas_fallback_unchanged() {
+        // disarm → the classic canvas plus (white center, dark outline)
+        let mut ui = UiCanvas::new();
+        ui.clear();
+        ui.crosshair();
+        assert!(ui.gui_frame.text_quads.is_empty(), "no quads disarmed");
+        let cidx = (270usize * crate::ui::UI_W + 480usize) * 4;
+        assert_eq!(ui.px[cidx + 3], 185, "white center on canvas");
+    }
+
+    #[test]
+    fn splash_is_one_cached_rotated_quad() {
+        // the armed splash: ONE glyph-atlas quad, tilted -20 degrees,
+        // baked at DEVICE resolution and CACHED (the font-engine tests
+        // prove bake-once in isolation; here the CACHE CONTRACT shows
+        // as the same atlas rect across frames while the 2 Hz pulse
+        // only rescales the dst rect)
+        let _g = QuadTextGuard::arm();
+        let mut ui = UiCanvas::new();
+        ui.set_device_scale(1.5);
+        ui.clear();
+        ui.text_splash(480, 200, "100% RUST!", 0.0);
+        assert_eq!(ui.gui_frame.text_quads.len(), 1, "one run quad");
+        let q = ui.gui_frame.text_quads[0];
+        assert_eq!(q.texture, crate::gui_render::QuadTexture::GlyphAtlas);
+        assert!(
+            (q.rot - (-(20.0_f32).to_radians())).abs() < 1e-4,
+            "the vanilla -20 degree tilt, rot={}",
+            q.rot
+        );
+        assert_eq!(q.tint, [1.0, 1.0, 1.0, 1.0], "strip carries its own colors");
+        // second frame: cache hit — SAME atlas rect (no re-bake), and
+        // t=0.25 is the pulse peak (|sin(pi/2)| = 1 → 1.06×) so the dst
+        // rect grows around the SAME center
+        ui.clear();
+        ui.text_splash(480, 200, "100% RUST!", 0.25);
+        let q2 = ui.gui_frame.text_quads[0];
+        assert_eq!(
+            (q.src.x, q.src.y, q.src.w, q.src.h),
+            (q2.src.x, q2.src.y, q2.src.w, q2.src.h),
+            "cache hit — stable atlas rect"
+        );
+        assert!(q2.dst.w > q.dst.w && q2.dst.h > q.dst.h, "pulse scales the dst");
+        let c = |r: &crate::gui_render::RectF| (r.x + r.w * 0.5, r.y + r.h * 0.5);
+        let (ax, ay) = c(&q.dst);
+        let (bx, by) = c(&q2.dst);
+        assert!((ax - bx).abs() < 1e-3 && (ay - by).abs() < 1e-3, "center invariant");
+        // the device-res bake: at k=1.5 the strip is ~1.5× the UI-cell
+        // raster (the old canvas path baked at 16 and upscaled mushy)
+        assert!(q.src.w as f32 >= 16.0, "device-res strip (w={})", q.src.w);
+        // the canvas fallback did NOT rasterize (no double-draw): the
+        // strip's bounding area stays clear
+        let idx = (205usize * crate::ui::UI_W + 480usize) * 4;
+        assert_eq!(ui.px[idx + 3], 0, "canvas clear — quads only");
+    }
+
+    #[test]
+    fn debug_strips_are_fractional_quads_matching_engine_metrics() {
+        // armed: strips ride SOLID quads with the engine's fractional
+        // widths (hugging the device-exact text) and the canvas stays
+        // clear; disarmed: the classic integer canvas strips
+        let _g = QuadTextGuard::arm();
+        let mut ui = UiCanvas::new();
+        ui.clear();
+        let left = vec!["VoxelCraft 1.16.5".to_string()];
+        let right = vec!["60 fps".to_string()];
+        ui.debug(&left, &right);
+        let strips: Vec<_> = ui
+            .gui_frame
+            .text_quads
+            .iter()
+            .filter(|q| q.texture == crate::gui_render::QuadTexture::Solid)
+            .collect();
+        assert_eq!(strips.len(), 2, "one strip per column line");
+        // the left strip's width = engine measure + 2 UI px (pad)
+        let w_engine = match crate::gui::font::engine() {
+            Some(eng) => {
+                let mut e = eng.lock().unwrap_or_else(|p| p.into_inner());
+                e.measure("VoxelCraft 1.16.5", 16.0)
+            }
+            None => panic!("engine required"),
+        };
+        assert!((strips[0].dst.w - (w_engine + 2.0)).abs() < 1e-3);
+        // the right strip is right-aligned: right edge = UI_W - 2
+        let r = strips[1].dst.x + strips[1].dst.w;
+        assert!((r - (crate::ui::UI_W as f32 - 2.0)).abs() < 1e-3);
+        // canvas clear where the strip sits (top-left line body)
+        let idx = (3usize * crate::ui::UI_W + 30usize) * 4;
+        assert_eq!(ui.px[idx + 3], 0, "canvas strip region clear when armed");
+    }
+
+    #[test]
+    fn boss_bar_pushes_solid_quads_with_gated_canvas() {
+        // quads always pushed (track + 4 frame edges + fill pair at
+        // frac>0); the canvas raster only when chrome_enabled
+        let mut ui = UiCanvas::new();
+        ui.set_chrome_enabled(false);
+        ui.clear();
+        ui.boss_bar(0.5);
+        let solids: Vec<_> = ui
+            .gui_frame
+            .quads
+            .iter()
+            .filter(|q| q.texture == crate::gui_render::QuadTexture::Solid)
+            .collect();
+        // 1 track + 4 frame + 2 fill = 7 (label rides glyph quads)
+        assert_eq!(solids.len(), 7, "track + frame edges + fill pair");
+        // canvas suppressed at the track body (y=24..36, center x)
+        let idx = (30usize * crate::ui::UI_W + 480usize) * 4;
+        assert_eq!(ui.px[idx + 3], 0, "canvas suppressed when chrome off");
+        // fallback: chrome on → the canvas track paints AND quads stay
+        ui.set_chrome_enabled(true);
+        ui.clear();
+        ui.boss_bar(0.5);
+        assert_eq!(ui.px[idx + 3], 220, "canvas track painted in fallback");
+        assert!(!ui.gui_frame.quads.is_empty(), "quads still pushed (A/B)");
+    }
+
+    #[test]
+    fn xp_bar_only_pushes_solid_quads_and_bubble_sprites() {
+        // the creative XP block now matches status_bars: solid quads
+        // always, canvas gated; low air also pushes bubble quads
+        let mut ui = UiCanvas::new();
+        ui.set_chrome_enabled(false);
+        ui.clear();
+        ui.xp_bar_only(0.75, 7, 150.0);
+        let solids: Vec<_> = ui
+            .gui_frame
+            .quads
+            .iter()
+            .filter(|q| q.texture == crate::gui_render::QuadTexture::Solid)
+            .collect();
+        // bg + 4 frame edges + fill pair = 7; plus 5 bubble sprites
+        assert_eq!(solids.len(), 7, "XP track block");
+        let bubbles: Vec<_> = ui
+            .gui_frame
+            .quads
+            .iter()
+            .filter(|q| q.texture == crate::gui_render::QuadTexture::Bubbles)
+            .collect();
+        assert_eq!(bubbles.len(), 5, "ceil(150/30) bubbles");
+        // canvas XP track suppressed
+        let xp_y = (crate::ui::UI_H as i32 - 48 - 10) as usize;
+        let idx = (xp_y * crate::ui::UI_W + 480usize) * 4;
+        assert_eq!(ui.px[idx + 3], 0, "canvas XP suppressed when chrome off");
+    }
+
+    #[test]
+    fn frame_graph_bars_are_quads_when_armed() {
+        // armed: bg + guide + one quad per bar; disarmed: canvas raster
+        let _g = QuadTextGuard::arm();
+        let mut ui = UiCanvas::new();
+        ui.clear();
+        let times = vec![10.0f32, 25.0, 55.0, 8.0];
+        ui.frame_graph(100, &times);
+        let solids: Vec<_> = ui
+            .gui_frame
+            .text_quads
+            .iter()
+            .filter(|q| q.texture == crate::gui_render::QuadTexture::Solid)
+            .collect();
+        // bg + guide + 4 bars (8 ms clamps to a >0 bar too)
+        assert_eq!(solids.len(), 6, "bg + guide line + one quad per bar");
+        // the 10 ms bar: th = 10/50*40 = 8 px tall, 2 px wide
+        let bar = solids.iter().find(|q| q.dst.h == 8.0 && q.dst.w == 2.0);
+        assert!(bar.is_some(), "10 ms bar is 8 px tall");
+        // canvas clear at the graph body
+        let idx = (110usize * crate::ui::UI_W + 30usize) * 4;
+        assert_eq!(ui.px[idx + 3], 0, "canvas graph clear when armed");
     }
 }

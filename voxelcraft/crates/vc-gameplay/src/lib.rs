@@ -7,6 +7,7 @@ pub mod bees;
 pub mod brewing;
 pub mod campfire;
 pub mod effects;
+pub mod entity_model;
 pub mod combat;
 pub mod craft;
 pub mod dragon;

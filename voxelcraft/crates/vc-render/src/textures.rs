@@ -4974,7 +4974,7 @@ mod pack_merge_tests {
             let side = ATLAS_SIZE >> level;
             let tile_side = TILE_PX >> level;
             for t in [0usize, 1usize] {
-                let px = mip[(0 * side + t * tile_side) * 4]; // first px of tile (t, 0)
+                let px = mip[(t * tile_side) * 4]; // first px of tile (t, 0)
                 let want = if t == 0 { 255 } else { 0 };
                 // every pixel of the tile must stay pure (uniform source tiles)
                 for y in 0..tile_side {

@@ -3774,3 +3774,102 @@ standing instruction. Next: protocol §2 (occlusion culling with
 occluded-vs-frustum split counters, Luanti ClientMap draw-list as the
 technique reference) and §4 (entity bone/joint hierarchy + named
 animation ranges).
+
+## 2026-09-13 — protocol §7 re-verification round: all catch-up systems confirmed done; F3 split-counter line recovered from an adapter-string collision
+
+**Task:** continue per the Strict Protocol Extension — its own §7 mandates
+re-verifying every claim live against the codebase before implementing
+anything. This session performed that re-verification, recovered the
+toolchain (the container was reset: cargo, wasm32 target and
+wasm-bindgen 0.2.127 all reinstalled; workspace target/ wiped, full
+rebuild), then ran the standing verify-after-everything chain.
+
+**§7 re-verification verdict — every implementation item was already
+done at HEAD (uncommitted-worklog gap, not a code gap):**
+- **§2 occlusion culling + split counters: DONE** (Phase 6 §26 +
+  fe70cd9's flood cache; the final commit 5136398 also added the pure
+  `aabb_visible` p-vertex frustum test with G3 unit tests).
+  `RenderStats.culled` (occlusion flood) and `RenderStats.frustum_culled`
+  are distinct fields, surfaced as the F3 line
+  `Culling: occl {} frust {} (of {} meshed)`.
+- **§4 entity bone/joint models: DONE** (`vc-gameplay/src/entity_model.rs`,
+  1282 lines, commit 5136398): own Rust hierarchy, named single-timeline
+  ranges (walk/attack/hurt/idle), linear keyframe lerp, no B3D/glTF
+  parsing, pos+uv+color vertices, wired through `mobs.rs`
+  (`model_for`/`sample_anim`/`emit_model_vertices`).
+- **§6 Monocraft: DONE** (commit c801cb6: embedded TTF + OFL-1.1 text,
+  `gui/font.rs` engine, 5×7 canvas font only as the no-GPU fallback).
+- **§1 atlas / §3 smooth lighting / §5 quad indices + 16³ sections:**
+  honored by NOT changing (fixed 2048px procedural atlas intact; BFS
+  light + AO untouched; mesher emits the constant `[0,1,2,0,2,3]` per
+  quad — same diagonal/winding as Luanti's `{0,1,2,2,3,0}` — and greedy
+  runs never cross 16×16×16 section boundaries).
+- **Stale citations found:** `parity_backlog.md` no longer exists
+  (absorbed by completed work); ROADMAP-ANALYSIS's "occlusion deferred"
+  predates Phase 6. The last worklog entry ended "Next: §2 and §4" —
+  that work had already been committed as 5136398 without a worklog
+  entry; this entry closes that documentation gap.
+
+**Baseline after toolchain recovery:** 730 tests / 0 fail / 33 binaries
+(the "648 vs 672" question is resolved as snapshot staleness: the suite
+grew 648 → 672 → 716 → 726 → 730 with each feature round). Clippy
+1.98.1 lib-only: 4 warnings, all in the newest protocol code — fixed
+(entity_model.rs doc-comment reflow so no line begins with a list-marker
+`+`; two `#[allow(clippy::too_many_arguments)]` on the emitter functions
+matching the 20 workspace precedents; render.rs
+`field_reassign_with_default` → struct-literal `..Default::default()`).
+
+**Live-browser round 4 (agent-browser at 1440×810, SwiftShader
+software Vulkan):** title → SINGLEPLAYER (canvas button hit-tests mapped
+from `layout_title` UI coords ×1.5) → CREATE WORLD → game boots clean.
+F3 overlay pixel-forensics found a REAL bug: the right column's runtime
+adapter strings (SwiftShader's is 66 chars ≈ 830 UI px wide) start at UI
+x≈125 and OVERDRAW the left column's lower rows — the new
+`Culling: occl … frust …` line rendered underneath as unreadable
+garbage. Fixed in `ui::debug()`: every right-column line is now clamped
+to the half-screen mark by `fit_line()` (char-boundary-safe truncation
+with an ASCII `...` tail, both the glyph-quad and canvas-font paths,
+4 unit tests). Vanilla never shows such strings; our engine extension
+now truncates long renderer lines rather than colliding — the same
+spirit as vanilla's own truncation of over-long debug lines.
+
+**Post-fix live verification (fresh bundle, locked js+wasm pair):**
+- `Culling: occl 0 frust 2 (of 7 meshed)` renders cleanly — protocol §2's
+  before/after counters visible in the real browser F3 (occl 0 = surface
+  view, nothing flood-culled; frust 2 of 9 meshed columns removed by the
+  frustum alone).
+- §4 entity models: 9 mobs spawned through the REAL e2e command queue
+  (`window.__vcCmds`, `mob:<kind>:<n>`): `E: 9/9` in F3; visible mobs
+  (pig, others) are MULTI-PART 3D BOXY MODELS (separate head/body/limbs)
+  — not billboards. The hostile set (zombie ×2, skeleton, spider,
+  enderman, creeper ×2) promptly killed the bare-handed player — the
+  death screen also renders cleanly (crisp "You Died!" + centered
+  RESEND/RESPAWN buttons).
+- HUD after respawn (+ passive mobs): VLM verdict PASS — clean symmetric
+  crosshair, 10 crisp hearts, 10 hunger drumsticks, green XP bar with
+  level number, 9-slot hotbar with isometric block icons, no mushy/
+  ragged/blurry elements at the 1.5× fractional scale.
+- Env quirk recorded: the Next dev server's Fast Refresh reloads the
+  iframe mid-session (kills in-game state); verify on
+  `/voxelcraft.html` directly for uninterrupted runs.
+
+### Luanti-referenced techniques
+
+- Verified live (no new code needed): the ClientMap-style SPLIT culling
+  counters — occlusion-flood-removed vs frustum-removed tracked as
+  distinct stats. Technique reference: Luanti's
+  `src/client/clientmap.cpp` draw-list + visibility-walk counter split,
+  studied 2026-09-12 (round 1 of the protocol); VoxelCraft's
+  implementation is independent Rust in `vc-render/src/render.rs` (§26
+  flood) + `draw.rs` (`aabb_visible`).
+- The F3 `fit_line` clamp is NOT a Luanti technique — it is a
+  vanilla-parity decision (vanilla truncates over-long debug lines
+  rather than letting columns collide); cited against the minecraft.wiki
+  Debug screen behavior, consulted 2026-09-13.
+
+**Final state:** 730 tests / 0 fail; clippy lib-only 0 warnings
+(all-targets still carries ~200 older test-code warnings under the
+newer 1.98.1 lint set — pre-existing, unchanged by this round); wasm
+bundle rebuilt and deployed (matched pair, 08:35). **Not committed or
+pushed** — awaiting explicit user approval, per the standing
+instruction.

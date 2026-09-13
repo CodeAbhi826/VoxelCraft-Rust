@@ -123,6 +123,32 @@ pub type Color = [u8; 4];
 #[rustfmt::skip]
 const INFINITY: [u8; 8] = [0x00,0x00,0x00,0x00,0x0A,0x15,0x00,0x00];
 
+/// Truncate `s` — with an ASCII `...` tail — until its measured width
+/// fits `max_w` (the F3 right-column half-screen clamp: software-renderer
+/// adapter strings run ~830 UI px wide and would otherwise overdraw the
+/// left column). Char-boundary-safe for any UTF-8 content; measures at
+/// most once per byte on the overflow path (strings here are short and
+/// the overlay rebuilds at 0.05 s cadence, so the lock traffic is
+/// negligible).
+fn fit_line(s: &str, max_w: f32, mut measure: impl FnMut(&str) -> f32) -> String {
+    if measure(s) <= max_w {
+        return s.to_string();
+    }
+    let mut end = s.len();
+    while end > 0 {
+        if !s.is_char_boundary(end) {
+            end -= 1;
+            continue;
+        }
+        let cand = format!("{}...", &s[..end]);
+        if measure(&cand) <= max_w {
+            return cand;
+        }
+        end -= 1;
+    }
+    "...".to_string()
+}
+
 /// Glyph lookup for the true-case (F3) renderer: real lowercase slots, '∞'
 /// mapped to its own glyph, everything else as-is; unknown → '?'.
 /// Returns (glyph, left bearing, ink width) — the advance source
@@ -2962,19 +2988,30 @@ impl UiCanvas {
                 continue;
             }
             let y = 2 + i as i32 * LINE_H;
+            // Round-4 fix (live-browser forensics): software-renderer
+            // adapter strings run ~66 chars ≈ 830 UI px wide, so the
+            // right-aligned line starts at UI x≈125 and overdraws the
+            // LEFT column's lower rows into unreadable garbage (the
+            // Culling counter line vanished under SwiftShader's name).
+            // No right line may cross the half-screen mark: truncate to
+            // the measured width with an ASCII "..." tail (vanilla
+            // truncates its own long renderer lines rather than wrap).
+            let half = UI_W as f32 / 2.0 - 12.0;
             if strip_quads {
-                let w = measure(l);
+                let line = fit_line(l, half, |s| measure(s));
+                let w = measure(&line);
                 // text ends 3px from the right edge; the strip extends
                 // 1 UI px past both ends of the fractional text width
                 let x = UI_W as f32 - 3.0 - w;
                 self.gui_frame
                     .solid_over(x - 1.0, y as f32, w + 2.0, LINE_H as f32, bg_tint);
-                self.text_flat_case(x.round() as i32, y + 1, l, FG, 2);
+                self.text_flat_case(x.round() as i32, y + 1, &line, FG, 2);
             } else {
-                let w = Self::text_width_case(l, 2);
+                let line = fit_line(l, half, |s| Self::text_width_case(s, 2) as f32);
+                let w = Self::text_width_case(&line, 2);
                 let x = UI_W as i32 - 3 - w; // text ends 3px from the right edge
                 self.rect(x - 1, y, w + 2, LINE_H, BG);
-                self.text_flat_case(x, y + 1, l, FG, 2);
+                self.text_flat_case(x, y + 1, &line, FG, 2);
             }
         }
     }
@@ -3762,6 +3799,46 @@ mod phase5_font_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ---- F3 right-column half-screen clamp (round-4 forensics fix) ----
+
+    /// A short line passes through unchanged — no "..." tail.
+    #[test]
+    fn fit_line_short_line_untouched() {
+        let out = fit_line("Display 1440x810 (ANGLE)", 468.0, |s| s.len() as f32 * 9.0);
+        assert_eq!(out, "Display 1440x810 (ANGLE)");
+    }
+
+    /// A SwiftShader-length adapter string (66 chars, ~594 px at 9/char)
+    /// is truncated to the clamp width with an ASCII "..." tail and never
+    /// exceeds it.
+    #[test]
+    fn fit_line_long_adapter_truncated_with_ellipsis() {
+        let s = "Google: Vulkan 1.3.0 (SwiftShader) Device (Subzero) (0x00000C0DE)";
+        let out = fit_line(s, 468.0, |t| t.len() as f32 * 9.0);
+        assert!(out.ends_with("..."), "must end with the ASCII tail: {out}");
+        assert!(out.len() < s.len(), "must actually cut something");
+        // 9 px/char measure: 468/9 = 52 total chars → 49 content + 3 dots
+        assert_eq!(out.len(), 52);
+        assert!(out.starts_with("Google: Vulkan 1.3.0 (SwiftShader) Dev"));
+    }
+
+    /// Multi-byte content (the ∞ glyph, CJK) truncates on char boundaries —
+    /// never panics on a sliced UTF-8 boundary.
+    #[test]
+    fn fit_line_multibyte_safe() {
+        let s = "∞∞∞∞∞∞∞∞∞∞";
+        let out = fit_line(s, 40.0, |t| t.chars().count() as f32 * 9.0);
+        assert!(out.ends_with("..."));
+        assert!(out.chars().all(|c| c == '∞' || c == '.'));
+    }
+
+    /// Degenerate clamp: nothing fits → just the tail.
+    #[test]
+    fn fit_line_degenerates_to_ellipsis() {
+        let out = fit_line("SwiftShader driver", 2.0, |t| t.len() as f32 * 9.0);
+        assert_eq!(out, "...");
+    }
 
     fn hopper_view() -> ContainerView {
         ContainerView {

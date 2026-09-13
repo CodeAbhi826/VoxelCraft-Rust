@@ -11,9 +11,9 @@
 //! (position + uv + color — color carries the baked directional face
 //! shading, even leaner than Luanti's position/normal/uv), and
 //! per-mob named ranges (`walk`, `attack`, `hurt`, `idle`).
-//! Technique reference: Luanti's `docs.luanti.org/for-creators/models`
-//! + `src/client/content_cao.cpp`, studied 2026-09-12; independently
-//! reimplemented.
+//! Technique reference: Luanti's
+//! `docs.luanti.org/for-creators/models` + `src/client/content_cao.cpp`,
+//! studied 2026-09-12; independently reimplemented.
 //!
 //! Vanilla 1.16.5 reference for the PROPORTIONS (documented mechanical
 //! behavior): humanoid mobs are 32 model px tall (8×8×8 head, 8×12×4
@@ -192,6 +192,7 @@ const FACE_SHADE: [f32; 6] = [0.72, 0.72, 1.0, 0.55, 0.85, 0.85];
 /// * `tint` — hurt flash / creeper fuse multiplier (rgb)
 /// * `view_dir` — camera forward (unit); painter's back-to-front face
 ///   ordering within the mob
+#[allow(clippy::too_many_arguments)] // emitter convention, see the 20 precedents workspace-wide
 pub fn emit_model_vertices(
     model: &EntityModel,
     pos: [f32; 3],
@@ -265,6 +266,7 @@ pub fn emit_model_vertices(
 }
 
 /// emit one box's 6 faces, back-to-front by face-center view distance
+#[allow(clippy::too_many_arguments)] // emitter convention, same as emit_model_vertices
 fn emit_box(
     b: &BoxDef,
     pos: [f32; 3],

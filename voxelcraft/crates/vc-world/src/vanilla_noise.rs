@@ -39,14 +39,14 @@ pub struct JavaRandom {
 impl JavaRandom {
     pub fn new(seed: u64) -> Self {
         JavaRandom {
-            seed: (seed ^ 0x5DEECE_66D) & ((1u64 << 48) - 1),
+            seed: (seed ^ 0x5DE_ECE_66D) & ((1u64 << 48) - 1),
         }
     }
 
     fn next_bits(&mut self, bits: u32) -> u32 {
         self.seed = self
             .seed
-            .wrapping_mul(0x5DEECE_66D)
+            .wrapping_mul(0x5DE_ECE_66D)
             .wrapping_add(0xB)
             & ((1u64 << 48) - 1);
         (self.seed >> (48 - bits)) as u32

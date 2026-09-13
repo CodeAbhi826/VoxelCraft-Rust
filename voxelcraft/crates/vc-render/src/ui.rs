@@ -403,6 +403,25 @@ pub const ID_OPT_CONTROLS: u16 = 49;
 pub const ID_PACK_BASE: u16 = 50;
 /// pack rows available (3 engine shader modes + up to 5 packs)
 pub const MAX_PACK_ENTRIES: usize = 8;
+/// 2026-09-14 round: the REAL Resource Packs screen (vanilla two-pane
+/// Available/Selected — the old shader-mode list moved to a dedicated
+/// Shader Packs screen reached from Video Settings, Iris-style).
+pub const ID_OPT_SHADERS: u16 = 51; // Video Settings → SHADER PACKS...
+/// vanilla "View Bobbing" toggle (Options screen, default ON)
+pub const ID_OPT_BOB: u16 = 52;
+/// available (left pane) pack rows
+pub const ID_RPACK_AVAIL_BASE: u16 = 60;
+/// selected (right pane) pack rows
+pub const ID_RPACK_SEL_BASE: u16 = 70;
+/// the pinned DEFAULT row at the bottom of the Selected pane (vanilla:
+/// "Selected by default, can't be unselected")
+pub const ID_RPACK_DEFAULT: u16 = 78;
+/// move-up arrow per selected row (higher = higher priority)
+pub const ID_RPACK_UP_BASE: u16 = 80;
+/// move-down arrow per selected row
+pub const ID_RPACK_DOWN_BASE: u16 = 90;
+/// max rows per pane (layout clips beyond this)
+pub const MAX_RPACK_ENTRIES: usize = 8;
 
 /// Button with explicit height (vanilla title buttons are 200x20 at GUI
 /// scale 2 = 300x30 on the 960x540 canvas).
@@ -511,6 +530,9 @@ pub fn layout_options() -> Vec<Widget> {
         btn_h(ID_OPT_VIDEO, l, rows[4], bw, 30, "VIDEO SETTINGS...", "", true),
         btn_h(ID_OPT_CONTROLS, r, rows[4], bw, 30, "CONTROLS...", "", false),
         btn_h(ID_OPT_ENGINE, 248, 252, 465, 30, "ENGINE SETTINGS...", "", true),
+        // vanilla 1.16.5 Options-screen option (default ON): the walk-cycle
+        // camera/hand sway
+        btn_h(ID_OPT_BOB, 248, 292, 465, 30, "VIEW BOBBING", "ON", true),
         btn_h(
             ID_OPT_DONE,
             (UI_W as i32 - 300) / 2,
@@ -555,6 +577,20 @@ pub fn layout_video() -> Vec<Widget> {
         // reads Moody/Bright from the live value
         slider_h(ID_OPT_BRIGHT, 248, 252, 465, 30, "", 0.1),
         slider_h(ID_OPT_BIOME, 248, 288, 465, 30, "BIOME BLEND", 0.5),
+        // 2026-09-14: SHADER PACKS lives HERE (Iris-style — vanilla
+        // 1.16.5 has no shader screen; Iris/OptiFine add theirs to Video
+        // Settings), not on the Options page where it used to squat
+        // mislabeled as "RESOURCE PACKS..."
+        btn_h(
+            ID_OPT_SHADERS,
+            248,
+            324,
+            465,
+            30,
+            "SHADER PACKS...",
+            "",
+            true,
+        ),
         btn_h(
             ID_OPT_DONE2,
             (UI_W as i32 - 300) / 2,
@@ -606,9 +642,14 @@ pub fn layout_engine() -> Vec<Widget> {
     ]
 }
 
-/// Resource Packs — a vanilla-styled selectable list (engine shader
-/// modes + shader packs; the two-pane vanilla screen reduces to one list
-/// here, disclosed). `selected` marks the active entry.
+/// Shader Packs — the Iris-style shader selection screen (engine shader
+/// modes OFF/VANILLA+/CINEMATIC + WGSL shader packs). Moved here from the
+/// old mislabeled "RESOURCE PACKS" screen in the 2026-09-14 round: the
+/// RESOURCE PACKS entry on the Options screen now opens the real
+/// resource-pack manager (`layout_resource_packs`), because vanilla
+/// 1.16.5 has NO shader-pack screen at all — shaders are an Iris/OptiFine
+/// concept, so this list lives on its own page reached from Video
+/// Settings. `selected` marks the active entry.
 pub fn layout_packs(entries: &[String], selected: usize) -> Vec<Widget> {
     let mut v = Vec::new();
     for (i, name) in entries.iter().take(MAX_PACK_ENTRIES).enumerate() {
@@ -623,6 +664,94 @@ pub fn layout_packs(entries: &[String], selected: usize) -> Vec<Widget> {
             true,
         ));
     }
+    v.push(btn_h(
+        ID_OPT_DONE2,
+        (UI_W as i32 - 300) / 2,
+        470,
+        300,
+        30,
+        "DONE",
+        "",
+        true,
+    ));
+    v
+}
+
+/// Resource Packs — the vanilla 1.16.5 two-pane manager (VERIFIED live
+/// 2026-09-14, minecraft.wiki/w/Resource_pack §Behavior: packs "can be
+/// moved between 'Available' (disabled) and 'Selected' (enabled), and
+/// reordered"; "The bottom-most pack loads first, then each pack above it
+/// replaces or merges loaded assets"; Default is "Selected by default,
+/// can't be unselected").
+///
+/// * LEFT pane — `avail`: disabled packs (Programmer Art + user packs
+///   from resourcepacks/). Click a row to select it.
+/// * RIGHT pane — `sel`: enabled packs, TOP = highest priority, plus the
+///   pinned DEFAULT row at the bottom. Click a row to deselect; the ▲▼
+///   arrows reorder within the list.
+///
+/// The pane backgrounds + headers are painted by
+/// `UiCanvas::resource_pack_screen`; the DONE button applies the edits.
+pub fn layout_resource_packs(avail: &[String], sel: &[String]) -> Vec<Widget> {
+    let mut v = Vec::new();
+    for (i, name) in avail.iter().take(MAX_RPACK_ENTRIES).enumerate() {
+        v.push(btn_h(
+            ID_RPACK_AVAIL_BASE + i as u16,
+            30,
+            92 + i as i32 * 34,
+            420,
+            28,
+            name,
+            "",
+            true,
+        ));
+    }
+    for (i, name) in sel.iter().take(MAX_RPACK_ENTRIES).enumerate() {
+        v.push(btn_h(
+            ID_RPACK_SEL_BASE + i as u16,
+            510,
+            92 + i as i32 * 34,
+            352,
+            28,
+            name,
+            "",
+            true,
+        ));
+        // reorder arrows (not on the pinned DEFAULT row — caller never
+        // passes Default inside `sel`; it gets its own immovable row)
+        v.push(btn_h(
+            ID_RPACK_UP_BASE + i as u16,
+            866,
+            92 + i as i32 * 34,
+            30,
+            28,
+            "^",
+            "",
+            true,
+        ));
+        v.push(btn_h(
+            ID_RPACK_DOWN_BASE + i as u16,
+            898,
+            92 + i as i32 * 34,
+            30,
+            28,
+            "v",
+            "",
+            true,
+        ));
+    }
+    // the pinned DEFAULT row closes the Selected pane
+    let dy = 92 + sel.len().min(MAX_RPACK_ENTRIES) as i32 * 34;
+    v.push(btn_h(
+        ID_RPACK_DEFAULT,
+        510,
+        dy,
+        352,
+        28,
+        "DEFAULT",
+        "(REQUIRED)",
+        false,
+    ));
     v.push(btn_h(
         ID_OPT_DONE2,
         (UI_W as i32 - 300) / 2,
@@ -1761,6 +1890,29 @@ impl UiCanvas {
         for (i, line) in tooltip.iter().take(2).enumerate() {
             self.text_center(46 + i as i32 * 12, line, [170, 170, 170, 255], 1);
         }
+        self.draw_widgets(ws, hover);
+    }
+
+    /// Resource Packs — the vanilla 1.16.5 two-pane layout: AVAILABLE
+    /// (left) / SELECTED (right) headers over dark inset list panels,
+    /// tooltip lines under the title, DONE at the bottom (the widgets
+    /// themselves carry the rows + arrows).
+    pub fn resource_pack_screen(&mut self, ws: &[Widget], hover: Option<u16>, tooltip: &[String]) {
+        self.gui_frame
+            .dirt_background(UI_W as i32, UI_H as i32);
+        self.rect(0, 0, UI_W as i32, UI_H as i32, [8, 8, 10, 110]);
+        self.text_center(18, "RESOURCE PACKS", [255, 255, 255, 255], 3);
+        for (i, line) in tooltip.iter().take(2).enumerate() {
+            self.text_center(46 + i as i32 * 12, line, [170, 170, 170, 255], 1);
+        }
+        // pane headers
+        let aw = Self::text_width("AVAILABLE", 2);
+        self.text((450 - aw) / 2, 62, "AVAILABLE", [255, 255, 255, 255], 2);
+        let sw = Self::text_width("SELECTED", 2);
+        self.text((720 - sw) / 2 + 210, 62, "SELECTED", [255, 255, 255, 255], 2);
+        // dark inset panels behind the rows (vanilla's sunken list look)
+        self.rect(26, 86, 428, 348, [0, 0, 0, 130]);
+        self.rect(506, 86, 428, 348, [0, 0, 0, 130]);
         self.draw_widgets(ws, hover);
     }
 

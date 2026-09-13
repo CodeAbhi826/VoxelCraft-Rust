@@ -13,6 +13,16 @@ pub mod bench;
 pub mod embedded_pack {
     include!(concat!(env!("OUT_DIR"), "/embedded_pack.rs"));
 }
+/// The Programmer Art builtin pack, baked into the native binary (the
+/// vanilla "pre-1.14 textures" analog — clean-room look-alikes generated
+/// by scripts/gen_programmer_art.py). Preferred at runtime as the
+/// extracted `builtin-packs/programmer-art/` folder; this embedded table
+/// is the single-file fallback. Wasm fetches it from
+/// `/voxelcraft-pack-programmer-art/` instead (pack.rs).
+#[cfg(not(target_arch = "wasm32"))]
+pub mod embedded_programmer_art {
+    include!(concat!(env!("OUT_DIR"), "/embedded_programmer_art.rs"));
+}
 pub mod game;
 pub mod player;
 #[cfg(target_arch = "wasm32")]

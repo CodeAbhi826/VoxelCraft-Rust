@@ -229,14 +229,18 @@ impl Player {
             health: 20.0,
             xp_points: 0,
             xp_level: 0,
-            inv: {
-                let mut inv =
-                    vc_inventory::inventory::Inventory::new(vc_inventory::inventory::INV_SLOTS);
-                for (i, &b) in PALETTE.iter().enumerate() {
-                    inv.slots[i] = vc_inventory::inventory::ItemStack::new(b, 64);
-                }
-                inv
-            },
+            // vanilla parity (2026-09-14 round): BOTH Survival and Creative
+            // start with an empty inventory — vanilla `PlayerList`/
+            // `loadInventory` writes nothing for a fresh world; creative
+            // players pull from the creative picker (E), survival players
+            // punch blocks (minecraft.wiki/w/Inventory, §Initial state:
+            // "a new player ... starts with no items"). The old 9-slot
+            // debug starter palette (Phase 2 sandbox crutch, back when
+            // mobs/food did not exist) is retired — every progression
+            // system it papered over has since shipped.
+            inv: vc_inventory::inventory::Inventory::new(
+                vc_inventory::inventory::INV_SLOTS,
+            ),
             selected: 0,
             fov: 1.2217, // 70 degrees
             fov_cur: 1.2217,

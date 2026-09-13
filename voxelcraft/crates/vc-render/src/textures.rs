@@ -4377,6 +4377,13 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_WHEAT_ITEM => farming_art::wheat_item_art(&mut a, t, &mut rng),
             TILE_BREAD => farming_art::bread_art(&mut a, t, &mut rng),
             TILE_HOE => farming_art::hoe_art(&mut a, t, &mut rng),
+            // ---- 2026-09-14 round: the vanilla destroy_stage_0..9 crack
+            // overlays (procedural, clean-room; overridable by packs) and
+            // the first-person arm skin tile ----
+            t if (TILE_DESTROY_BASE..=TILE_DESTROY_BASE + 9).contains(&t) => {
+                destroy_stage_art(&mut a, t, (t - TILE_DESTROY_BASE) as u8)
+            }
+            TILE_ARM => arm_art(&mut a, t),
             _ => {}
         }
     }
@@ -4522,6 +4529,171 @@ pub struct AnimatedTile {
     pub current: usize,
     pub timer: f32,
 }
+
+/// The ten vanilla destroy-stage crack overlays, clean-room procedural
+/// (VERIFIED live 2026-09-14, minecraft.wiki/w/Breaking: mining shows
+/// "crack animations ... 10 stages"). Stage s draws `2 + 2s` deterministic
+/// random-walk cracks of growing length/darkness — later stages strictly
+/// CONTAIN the earlier ones (same fixed-seed walk stream), so the overlay
+/// deepens like vanilla instead of re-randomizing every stage. Background
+/// stays fully transparent (the block itself shows through; drawn by the
+/// alpha-blended billboard pass).
+fn destroy_stage_art(a: &mut [u8], tile: u16, stage: u8) {
+    let tx = (tile % 32) as usize;
+    let ty = (tile / 32) as usize;
+    // clear the slot first (generate_atlas leaves zeros, but pack flips
+    // re-run this painter — idempotency keeps re-applied stages clean)
+    for y in 0..TILE_PX {
+        for x in 0..TILE_PX {
+            let i = ((ty * TILE_PX + y) * ATLAS_SIZE + tx * TILE_PX + x) * 4;
+            a[i] = 0;
+            a[i + 1] = 0;
+            a[i + 2] = 0;
+            a[i + 3] = 0;
+        }
+    }
+    let cracks = 2 + 2 * stage as usize; // 2..=20 walks
+    let len = 5 + stage as usize * 2; // 5..=23 px per walk
+    let mut rng = Rng::new(0x0FF1CE + stage as u64); // per-stage seed
+    let mut px = |x: i32, y: i32, dark: u8| {
+        if !(0..TILE_PX as i32).contains(&x) || !(0..TILE_PX as i32).contains(&y) {
+            return;
+        }
+        let i = ((ty * TILE_PX + y as usize) * ATLAS_SIZE + tx * TILE_PX + x as usize) * 4;
+        // near-black crack with per-pixel alpha (lighter thinned tips)
+        a[i] = 20;
+        a[i + 1] = 18;
+        a[i + 2] = 16;
+        a[i + 3] = dark;
+    };
+    for _ in 0..cracks {
+        // walk from a random interior start, drifting like a fracture
+        let mut x = 2 + (rng.next_f32() * 12.0) as i32;
+        let mut y = 2 + (rng.next_f32() * 12.0) as i32;
+        for step in 0..len {
+            let dark = (110u32 + stage as u32 * 14 + (step as u32 % 3) * 12).min(235) as u8;
+            px(x, y, dark);
+            // occasionally branch one pixel (feathered cracks)
+            if step % 4 == 3 {
+                px(x + 1, y, dark.saturating_sub(40));
+            }
+            match rng.next_f32() {
+                v if v < 0.25 => x += 1,
+                v if v < 0.5 => x -= 1,
+                v if v < 0.75 => y += 1,
+                _ => y -= 1,
+            }
+        }
+    }
+}
+
+/// The first-person right-arm skin tile — a generic procedural skin tone
+/// with subtle fabric cuff rows at the base (clean-room: NOT the vanilla
+/// Steve arm texture, just a plausible look-alike for the held-item view
+/// model).
+fn arm_art(a: &mut [u8], tile: u16) {
+    let tx = (tile % 32) as usize;
+    let ty = (tile / 32) as usize;
+    let mut rng = Rng::new(0xA2D5);
+    for y in 0..TILE_PX {
+        for x in 0..TILE_PX {
+            // base skin tone with soft noise
+            let n = (rng.next_f32() - 0.5) * 14.0;
+            let (mut r, mut g, mut b) = (194.0 + n, 152.0 + n, 108.0 + n);
+            // sleeve cuff: the bottom quarter reads as a teal shirt cuff
+            if y >= 12 {
+                let c = ((rng.next_f32() - 0.5) * 10.0) as f32;
+                r = 42.0 + c;
+                g = 96.0 + c;
+                b = 90.0 + c;
+            }
+            let i = ((ty * TILE_PX + y) * ATLAS_SIZE + tx * TILE_PX + x) * 4;
+            a[i] = r.clamp(0.0, 255.0) as u8;
+            a[i + 1] = g.clamp(0.0, 255.0) as u8;
+            a[i + 2] = b.clamp(0.0, 255.0) as u8;
+            a[i + 3] = 255;
+        }
+    }
+}
+
+/// Apply a resource pack's TEXTURE OVERRIDES onto the procedural atlas
+/// slots (2026-09-14 round — the "real resource packs" bridge).
+///
+/// For every entry of `vc_blocks::blocks::PACK_OVERRIDABLE` whose PNG the
+/// pack provides, the resampled 16×16 pixels are blitted ONTO the listed
+/// procedural tile slot — every consumer (mesher, particles, icons, HUD,
+/// held-item) picks the art up with zero routing changes. Animated strips
+/// targeting a procedural slot become AnimatedTiles on that slot. Callers
+/// must merge packs in APPLICATION order (lowest priority first) so the
+/// highest-priority pack's blit lands last and wins — the vanilla
+/// Selected-list semantics (VERIFIED live 2026-09-14,
+/// minecraft.wiki/w/Resource_pack §Behavior: "The bottom-most pack loads
+/// first, then each pack above it replaces or merges loaded assets").
+///
+/// Returns the animations found (caller drives their frames).
+pub fn merge_pack_tile_overrides(
+    atlas: &mut [u8],
+    source: &dyn vc_pack::pack::PackSource,
+) -> Vec<AnimatedTile> {
+    let mut animations = Vec::new();
+    for (loc, tile) in vc_blocks::blocks::PACK_OVERRIDABLE {
+        let path = vc_pack::model::texture_path(loc);
+        let Some(bytes) = source.read(&path) else { continue };
+        let Ok(img) = image::load_from_memory(&bytes) else { continue };
+        let rgba = img.to_rgba8();
+        let (w, h) = rgba.dimensions();
+        // animation metadata? (same semantics as the model-texture merge)
+        let mcmeta: Option<serde_json::Value> = source
+            .read(&format!("{path}.mcmeta"))
+            .and_then(|b| serde_json::from_slice(&b).ok());
+        let anim = mcmeta.as_ref().and_then(|m| m.get("animation")).cloned();
+        let strip = anim.is_some() && w > 0 && h > w && (h % w == 0);
+        if strip && w <= 64 {
+            let frames_n = (h / w) as usize;
+            let frametime = anim
+                .as_ref()
+                .and_then(|a| a.get("frametime"))
+                .and_then(|f| f.as_u64())
+                .unwrap_or(1) as f32;
+            let order: Vec<usize> = anim
+                .as_ref()
+                .and_then(|a| a.get("frames"))
+                .and_then(|f| f.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| {
+                            v.as_u64().map(|i| i as usize).or_else(|| {
+                                v.get("index").and_then(|i| i.as_u64()).map(|i| i as usize)
+                            })
+                        })
+                        .collect()
+                })
+                .unwrap_or_else(|| (0..frames_n).collect());
+            let mut frames: Vec<Vec<u8>> = Vec::with_capacity(order.len());
+            for fi in order.iter() {
+                if *fi < frames_n {
+                    frames.push(resample_strip_frame(&rgba, *fi, w as usize));
+                }
+            }
+            if !frames.is_empty() {
+                blit_16(atlas, *tile, &frames[0]);
+                animations.push(AnimatedTile {
+                    tile: *tile,
+                    frames,
+                    frametime: (frametime / 20.0).max(0.05),
+                    current: 0,
+                    timer: 0.0,
+                });
+            }
+            continue;
+        }
+        // static texture: nearest-resample to 16×16 and overwrite the slot
+        let frame = resample_full(&rgba, w as usize, h as usize);
+        blit_16(atlas, *tile, &frame);
+    }
+    animations
+}
+
 
 /// Merge pack textures into the procedural atlas + fill the ModelSet's
 /// tile registry. Returns the animations to drive per frame.

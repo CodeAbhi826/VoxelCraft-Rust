@@ -69,8 +69,6 @@ fn main() {
     println!("frozen-ocean columns in ±64 chunks: {frozen}");
 
     // climate field distribution (dark-forest bracket diagnosis)
-    let mut t_hist = [0usize; 10];
-    let mut h_hist = [0usize; 10];
     let mut land = 0usize;
     for cz in -64..64i32 {
         for cx in -64..64i32 {

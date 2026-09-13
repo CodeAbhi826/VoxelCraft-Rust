@@ -7,6 +7,7 @@ use vc_blocks::blocks::*;
 use vc_chunk::chunk::Chunk;
 #[cfg(test)]
 use vc_chunk::chunk::CHUNK_LEN;
+use crate::vanilla_noise::VanillaTerrain;
 use vc_rng::rng::Rng;
 
 /// the chunk-generator return: the finished chunk + queued cross-chunk
@@ -96,6 +97,11 @@ pub enum Biome {
     /// (stats from the w/Basalt_Deltas capture). Internal id 26
     /// (vanilla registry id 173).
     BasaltDeltas = 26,
+    /// Vanilla-parity terrain round (2026-09-14): the river biome —
+    /// bands carved by the ridged-noise river field (the disclosed
+    /// adaptation of vanilla's layer-stack rivers; vanilla registry id 7).
+    /// Depth −0.5 / scale 0.0 (vanilla river.json, misode/mcmeta 1.16.5).
+    River = 27,
 }
 
 impl Biome {
@@ -128,6 +134,7 @@ impl Biome {
             Biome::WarpedForest => "Warped Forest",
             Biome::SoulSandValley => "Soul Sand Valley",
             Biome::BasaltDeltas => "Basalt Deltas",
+            Biome::River => "River",
         }
     }
 
@@ -159,6 +166,7 @@ impl Biome {
             24 => Biome::WarpedForest,
             25 => Biome::SoulSandValley,
             26 => Biome::BasaltDeltas,
+            27 => Biome::River,
             _ => Biome::Ocean,
         }
     }
@@ -429,6 +437,11 @@ fn fbm2(noise: &Noise, x: f32, z: f32, octaves: u32, lac: f32, gain: f32) -> f32
     sum / norm
 }
 
+#[inline]
+fn lerp64(a: f64, b: f64, t: f64) -> f64 {
+    a + (b - a) * t
+}
+
 fn smoothstep(a: f32, b: f32, x: f32) -> f32 {
     let t = ((x - a) / (b - a)).clamp(0.0, 1.0);
     t * t * (3.0 - 2.0 * t)
@@ -568,6 +581,21 @@ pub struct DungeonRoom {
     pub chest_count: usize,
 }
 
+/// One perlin-worm cave carver, anchored in its start chunk (the
+/// vanilla-parity replacement for the 1.18-style noise-sheet caves;
+/// deterministic from the seed + start chunk alone).
+#[derive(Clone, Debug)]
+pub struct CaveWorm {
+    /// start position (world coords)
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+    /// initial heading
+    pub yaw: f64,
+    /// worm step count (4 blocks per step)
+    pub steps: u32,
+}
+
 pub struct TerrainGen {
     pub seed: u64,
     /// §28: which dimension this generator produces
@@ -579,15 +607,22 @@ pub struct TerrainGen {
     /// the engine's flat mode generates NO structures, disclosed
     /// adaptation).
     pub flat: bool,
+    /// continental shelf field (~750–3000-block scale) — drives the
+    /// land/ocean split of the density stack
     n_cont: Noise,
+    /// mountain-region mask (~475-block scale) — where high, the density
+    /// stack gains the vanilla mountains-biome response (depth 1.0 /
+    /// scale 0.5, misode/mcmeta 1.16.5 mountains.json)
     n_mfac: Noise,
-    n_ridge: Noise,
-    n_detail: Noise,
     n_temp: Noise,
     n_humid: Noise,
-    n_cave1: Noise,
-    n_cave2: Noise,
-    n_cave3: Noise,
+    /// Vanilla-parity terrain round (2026-09-14): the 1.16.5-structured
+    /// density noise stack — improved-Perlin fBm samplers wired with the
+    /// vanilla constants (see vanilla_noise.rs for the cited sources).
+    vterrain: VanillaTerrain,
+    /// River band: ridged low-frequency field (the disclosed adaptation
+    /// of vanilla's layer-stack rivers).
+    n_river: Noise,
     /// §28 nether: cavern pair (bigger scale than overworld caves)
     n_neth1: Noise,
     n_neth2: Noise,
@@ -616,13 +651,10 @@ impl TerrainGen {
             flat: false,
             n_cont: Noise::new(seed ^ 0x1000),
             n_mfac: Noise::new(seed ^ 0x2000),
-            n_ridge: Noise::new(seed ^ 0x3000),
-            n_detail: Noise::new(seed ^ 0x4000),
             n_temp: Noise::new(seed ^ 0x5000),
             n_humid: Noise::new(seed ^ 0x6000),
-            n_cave1: Noise::new(seed ^ 0x7000),
-            n_cave2: Noise::new(seed ^ 0x8000),
-            n_cave3: Noise::new(seed ^ 0x9000),
+            vterrain: VanillaTerrain::new(seed ^ 0xB100),
+            n_river: Noise::new(seed ^ 0xA500),
             n_neth1: Noise::new(seed ^ 0xA100),
             n_neth2: Noise::new(seed ^ 0xA200),
             n_neth3: Noise::new(seed ^ 0xA300),
@@ -639,51 +671,11 @@ impl TerrainGen {
         g
     }
 
-    pub fn column(&self, x: i32, z: i32) -> ColumnInfo {
+    /// The climate fields (temperature / humidity / variant) — the
+    /// pre-rewrite scales, unchanged.
+    pub fn climate_fields(&self, x: i32, z: i32) -> (f32, f32, f32) {
         let xf = x as f32;
         let zf = z as f32;
-        let cont = fbm2(&self.n_cont, xf / 1500.0, zf / 1500.0, 4, 2.0, 0.5);
-        let base = 64.0 + cont * 26.0;
-
-        let mut ridge = 1.0 - self.n_ridge.noise2(xf / 230.0, zf / 230.0).abs();
-        ridge = ridge * ridge;
-        let mfac = smoothstep(
-            0.15,
-            0.55,
-            fbm2(
-                &self.n_mfac,
-                (xf + 700.0) / 950.0,
-                (zf - 300.0) / 950.0,
-                2,
-                2.0,
-                0.5,
-            ),
-        );
-        let detail = fbm2(&self.n_detail, xf / 60.0, zf / 60.0, 3, 2.0, 0.5) * 4.0;
-
-        let h = (base + ridge * 52.0 * mfac + detail)
-            .clamp(8.0, 170.0)
-            .floor() as i32;
-
-        // Phase E1: the mushroom-island override (VERIFIED w/Mushroom_Fields:
-        // ~0.15% of the overworld, islands in the ocean, mycelium surface).
-        // A dedicated low-frequency field; where it clears the threshold the
-        // column becomes a gentle island above sea level regardless of the
-        // climate pick below. Threshold tuned so the field covers roughly
-        // the verified fraction (a > 0.63 window of a ±1 noise ≈ 0.15%).
-        let mush = self.n_mush.noise2(xf / 400.0, zf / 400.0);
-        if self.dim == Dimension::Overworld && mush > 0.63 {
-            let h = (vc_chunk::SEA_LEVEL as f32 + 1.0 + (mush - 0.63) * 30.0)
-                .floor()
-                .min(vc_chunk::SEA_LEVEL as f32 + 6.0) as i32;
-            return ColumnInfo {
-                height: h,
-                biome: Biome::MushroomFields,
-                top: MYCELIUM,
-                filler: DIRT,
-            };
-        }
-
         let temp = fbm2(
             &self.n_temp,
             (xf + 3000.0) / 1700.0,
@@ -711,13 +703,110 @@ impl TerrainGen {
             2.0,
             0.5,
         );
+        (temp, humid, var)
+    }
 
-        // 1.13 (Update Aquatic): the ocean temperature split — the
-        // same temp field that picks land biomes now divides the ocean
-        // into its four 1.13 families (VERIFIED changelog §World
-        // generation). Floor materials: warm/lukewarm = sand (the
-        // coral-reef substrate), cold/frozen/neutral-deep = gravel
-        // (the wiki's ocean floor bands).
+    /// The land-climate biome's vanilla depth/scale pair (misode/mcmeta
+    /// 1.16.5 biome JSONs, live 2026-09-14: plains 0.125/0.05, forest
+    /// 0.1/0.2, taiga 0.2/0.2, desert 0.125/0.05, snowy tundra
+    /// 0.125/0.05, ice spikes 0.425/0.45, jungle 0.1/0.2, savanna
+    /// 0.125/0.05, swamp −0.2/0.1, badlands 0.1/0.2, birch 0.1/0.2,
+    /// flower forest 0.1/0.4, dark forest 0.1/0.2, mushroom fields
+    /// 0.2/0.3). The brackets mirror the climate classification below
+    /// (height-independent, so the density stack can use them before the
+    /// final classification).
+    fn climate_depth_scale(&self, x: i32, z: i32) -> (f64, f64) {
+        let (temp, humid, var) = self.climate_fields(x, z);
+        if temp < -0.32 {
+            if var > 0.58 {
+                (0.425, 0.45) // ice spikes
+            } else {
+                (0.125, 0.05) // snowy tundra
+            }
+        } else if temp < -0.1 {
+            (0.2, 0.2) // taiga
+        } else if temp > 0.25 && humid < -0.12 {
+            (0.1, 0.2) // badlands
+        } else if temp > 0.3 && humid < 0.05 {
+            (0.125, 0.05) // desert
+        } else if temp > 0.25 && humid > 0.3 {
+            (0.1, 0.2) // jungle
+        } else if temp > 0.35 {
+            (0.125, 0.05) // savanna
+        } else if humid > 0.45 {
+            (-0.2, 0.1) // swamp
+        } else if humid > 0.12 && temp < 0.2 {
+            if var > 0.42 {
+                (0.1, 0.4) // flower forest
+            } else {
+                (0.1, 0.2) // birch forest
+            }
+        } else if humid > 0.12 && temp <= 0.32 {
+            (0.1, 0.2) // dark forest / forest
+        } else if humid > 0.12 {
+            (0.1, 0.2) // forest
+        } else {
+            (0.125, 0.05) // plains / sunflower plains
+        }
+    }
+
+    /// The per-column density drivers (shared by `column()`'s direct
+    /// root-solve and the chunk pipeline's 4×8×4 lattice — the vanilla
+    /// 1.16.5 noise-settings semantics; see vanilla_noise.rs).
+    ///
+    /// Effective height = base 68 (depthBaseSize 8.5 × 8) + continental
+    /// shelf (steeper below sea level so deep oceans floor at ~35–45,
+    /// the vanilla deep-ocean depth −1.8 response) + mountain-region
+    /// mask (the mountains-biome depth 1.0 response) + depth-noise
+    /// wobble + the climate biome's depth response. Amplification scales
+    /// the 3D limit-noise field by biome variation + the mountain mask
+    /// (1 density unit ≈ 8 blocks of surface wobble). The river carve
+    /// bends the column toward a 58-high bed inside the band.
+    fn density_params(&self, x: i32, z: i32, bd: f64, bv: f64) -> (f64, f64, f32) {
+        let xf = x as f32;
+        let zf = z as f32;
+        let cont = fbm2(&self.n_cont, xf / 1500.0, zf / 1500.0, 4, 2.0, 0.5) * 1.7;
+        let mmask = smoothstep(
+            0.3,
+            0.6,
+            fbm2(
+                &self.n_mfac,
+                (xf + 700.0) / 950.0,
+                (zf - 300.0) / 950.0,
+                2,
+                2.0,
+                0.5,
+            ),
+        ) as f64;
+        let depth_n = self.vterrain.depth_noise(x as f64, z as f64);
+        let cont_resp = if cont < 0.0 { 22.0 } else { 14.0 };
+        let mut h_eff = 68.0 + cont as f64 * cont_resp + mmask * 18.0 + depth_n * 5.0 + bd * 14.0;
+        let amp = 1.0 + bv * 1.8 + mmask * 2.2;
+
+        // river carve: ridged field; bed 58 at the core, banks blending
+        // out to the natural height by |rv| = 0.06 (~8-block water bands)
+        let rv = self.n_river.noise2(xf / 640.0, zf / 640.0);
+        if rv.abs() < 0.06 {
+            let t = smoothstep(0.006, 0.06, rv.abs()) as f64;
+            let bed = 58.0 + t * (h_eff - 58.0);
+            h_eff = h_eff.min(bed);
+        }
+        (h_eff, amp, rv)
+    }
+
+    /// The random density offset — JSON `random_density_offset: true`,
+    /// drawn per noise column (4-block lattice) in [−0.1875, 0.0625]
+    /// (the recalled vanilla draw range; hash-based, disclosed
+    /// adaptation of the per-column chunk-random draw).
+    fn random_density_offset(&self, x: i32, z: i32) -> f64 {
+        let v = (Rng::hash3(self.seed ^ 0xD345, x, 0x11, z) % 4096) as f64 / 4096.0;
+        v * 0.25 - 0.1875
+    }
+
+    /// Column classification (the pre-rewrite bracket chain, heights now
+    /// from the density stack; the river band inserted between ocean and
+    /// beach).
+    fn classify(&self, temp: f32, humid: f32, var: f32, h: i32, rv: f32) -> (Biome, u16, u16) {
         let (biome, top, filler) = if h < vc_chunk::SEA_LEVEL - 1 {
             let deep = h < vc_chunk::SEA_LEVEL - 6;
             if temp > 0.35 {
@@ -732,7 +821,13 @@ impl TerrainGen {
                 // the neutral temperate ocean (the pre-1.13 "Ocean")
                 (Biome::Ocean, if deep { GRAVEL } else { SAND }, GRAVEL)
             }
-        } else if h <= vc_chunk::SEA_LEVEL + 1 {
+        } else if rv.abs() < 0.01 && h <= vc_chunk::SEA_LEVEL {
+            // Vanilla-parity terrain round: the river band — carved by
+            // the ridged river field (disclosed adaptation of vanilla's
+            // layer-stack rivers); sand-over-dirt bed, water fills to
+            // sea level through the standard fluid fill.
+            (Biome::River, SAND, DIRT)
+} else if h <= vc_chunk::SEA_LEVEL + 1 {
             (Biome::Beach, SAND, SAND)
         } else if h > 96 {
             if h > 112 {
@@ -823,7 +918,60 @@ impl TerrainGen {
                 (Biome::Plains, GRASS, DIRT)
             }
         };
+        (biome, top, filler)
+    }
 
+    /// Terrain height + climate classification for one column.
+    ///
+    /// Vanilla-parity terrain round (2026-09-14): the height now comes
+    /// from the 1.16.5-structured density stack (see vanilla_noise.rs)
+    /// via a direct Newton root-solve at this column — the chunk
+    /// pipeline interpolates the same field on the 4×8×4 lattice, and
+    /// the two agree within ~1 block.
+    pub fn column(&self, x: i32, z: i32) -> ColumnInfo {
+        let xf = x as f32;
+        let zf = z as f32;
+
+        // Phase E1: the mushroom-island override (VERIFIED
+        // w/Mushroom_Fields: ~0.15% of the overworld, islands in the
+        // ocean, mycelium surface). A dedicated low-frequency field;
+        // where it clears the threshold the column becomes a gentle
+        // island above sea level regardless of the climate pick below.
+        let mush = self.n_mush.noise2(xf / 400.0, zf / 400.0);
+        if self.dim == Dimension::Overworld && mush > 0.63 {
+            let h = (vc_chunk::SEA_LEVEL as f32 + 1.0 + (mush - 0.63) * 30.0)
+                .floor()
+                .min(vc_chunk::SEA_LEVEL as f32 + 6.0) as i32;
+            return ColumnInfo {
+                height: h,
+                biome: Biome::MushroomFields,
+                top: MYCELIUM,
+                filler: DIRT,
+            };
+        }
+
+        // ---- the vanilla-structured density stack ----
+        let (temp, humid, var) = self.climate_fields(x, z);
+        let (bd, bv) = self.climate_depth_scale(x, z);
+        let (h_eff, amp, rv) = self.density_params(x, z, bd, bv);
+        let rnd_off = self.random_density_offset(x, z);
+        // Newton root-solve of the surface (two passes; 1 density unit
+        // ≈ 8 blocks of height)
+        let mut y_surf = h_eff;
+        for _ in 0..2 {
+            let d = self.vterrain.density(
+                x as f64,
+                y_surf.clamp(0.0, 200.0),
+                z as f64,
+                h_eff,
+                amp,
+                rnd_off,
+            );
+            y_surf = (y_surf + d * 8.0).clamp(4.0, 200.0);
+        }
+        let h = y_surf.round().clamp(4.0, 200.0) as i32;
+
+        let (biome, top, filler) = self.classify(temp, humid, var, h, rv);
         ColumnInfo {
             height: h,
             biome,
@@ -832,69 +980,246 @@ impl TerrainGen {
         }
     }
 
-    /// Is the block at (x,y,z) carved by a cave? Only called underground.
-    fn cave(&self, x: i32, y: i32, z: i32) -> bool {
-        if y < 7 {
-            return false;
-        }
-        let xf = x as f32;
-        let yf = y as f32;
-        let zf = z as f32;
-        let n1 = self.n_cave1.noise3(xf / 110.0, yf / 55.0, zf / 110.0);
-        let n2 = self
-            .n_cave2
-            .noise3((xf + 800.0) / 110.0, yf / 55.0, (zf - 800.0) / 110.0);
-        // spaghetti tunnels: intersection of two noise "sheets"
-        if n1 * n1 + n2 * n2 < 0.010 {
-            return true;
-        }
-        // cheese caverns, deep
-        if y < 42 && self.n_cave3.noise3(xf / 170.0, yf / 90.0, zf / 170.0) > 0.62 {
-            return true;
-        }
-        false
-    }
-
-    /// Deterministic ore / stone-variant picker for deep stone. Called for
-    /// every STONE block — pure hash, no noise evaluation (fast).
-    fn stone_variant(&self, x: i32, y: i32, z: i32) -> u16 {
-        // stone-family blobs (granite/diorite/andesite) — hash-based patches
-        let v = Rng::hash3(self.seed ^ 0xA000, x >> 3, y >> 3, z >> 3);
-        let patch = (v % 100) as u32;
-        let variant = match patch {
-            0..=7 => Some(GRANITE),
-            8..=15 => Some(DIORITE),
-            16..=23 => Some(ANDESITE),
-            _ => None,
-        };
-        if let Some(s) = variant {
-            // smooth the blob edges: blend by finer hash
-            let edge = Rng::hash3(self.seed ^ 0xA001, x, y, z) % 4;
-            if edge != 0 {
-                return s;
+    /// Vanilla-parity cave carvers (2026-09-14): perlin-worm tunnels
+    /// replacing the 1.18-style noise-sheet caves. Roll: probability
+    /// 0.14285715 (1/7) per chunk — the vanilla 1.16.5
+    /// configured_carver/cave.json value (misode/mcmeta, live 2026-09-14).
+    /// Worm: 10..28 steps of 4 blocks, drifting yaw/pitch, width 1..5
+    /// with entrance rooms on the first two steps; y span 8..128; carved
+    /// cells at/below y=10 become LAVA (the carver lava level); bedrock
+    /// never carved; a liquid guard keeps tunnels from opening into
+    /// water columns (ocean/beach/river border columns keep a 12-block
+    /// floor margin where the neighbor chunk can't be inspected —
+    /// disclosed). Shape: chain of ellipsoids along the path — the
+    /// documented pre-1.18 "carver cave" structure (minecraft.wiki
+    /// w/Cave §Carver caves).
+    fn cave_worms_near(&self, cx: i32, cz: i32) -> Vec<CaveWorm> {
+        const CAVE_PROB: f32 = 0.14285715;
+        const SCAN: i32 = 8;
+        let mut out = Vec::new();
+        for dz in -SCAN..=SCAN {
+            for dx in -SCAN..=SCAN {
+                let scx = cx + dx;
+                let scz = cz + dz;
+                let mut rng = Rng::new(Rng::hash3(self.seed ^ 0xCA7E, scx, 0, scz));
+                if rng.next_f32() >= CAVE_PROB {
+                    continue;
+                }
+                let x = scx * 16 + rng.next_range(16) as i32;
+                let z = scz * 16 + rng.next_range(16) as i32;
+                let y = 8 + rng.next_range(120); // 8..128
+                let yaw = rng.next_f32() as f64 * std::f64::consts::TAU;
+                let steps = 10 + rng.next_range(18);
+                out.push(CaveWorm {
+                    x: x as f64 + 0.5,
+                    y: y as f64,
+                    z: z as f64 + 0.5,
+                    yaw,
+                    steps,
+                });
             }
         }
+        out
+    }
 
-        // ores by depth (1.16.5-ish distributions)
-        let o = Rng::hash3(self.seed ^ 0xB000, x, y, z);
-        let p = (o % 100_000) as f32 / 100_000.0;
-        if p < 0.0012 && y <= 14 {
-            DIAMOND_ORE
-        } else if p < 0.0024 && y <= 30 {
-            LAPIS_ORE
-        } else if p < 0.0035 && y <= 32 {
-            GOLD_ORE
-        } else if p < 0.0055 && y <= 16 {
-            REDSTONE_ORE
-        } else if p < 0.013 && y <= 64 {
-            IRON_ORE
-        } else if p < 0.024 && y <= 96 {
-            COAL_ORE
-        } else {
-            STONE
+    /// The worm's full ellipsoid path: (x, y, z, half-width) per step.
+    /// Pure and deterministic — re-derives the start-chunk rng stream
+    /// (the roll draws are re-consumed to reach the drift stream).
+    fn worm_path(&self, worm: &CaveWorm) -> Vec<(f64, f64, f64, f64)> {
+        let scx = (worm.x.floor() as i32) >> 4;
+        let scz = (worm.z.floor() as i32) >> 4;
+        let mut rng = Rng::new(Rng::hash3(self.seed ^ 0xCA7E, scx, 0, scz));
+        // re-consume the roll draws (probability, x, z, y, yaw, steps)
+        let _ = rng.next_f32();
+        let _ = rng.next_range(16);
+        let _ = rng.next_range(16);
+        let _ = rng.next_range(120);
+        let _ = rng.next_f32();
+        let _ = rng.next_range(18);
+        let mut path = Vec::with_capacity(worm.steps as usize);
+        let mut x = worm.x;
+        let mut y = worm.y;
+        let mut z = worm.z;
+        let mut yaw = worm.yaw;
+        let mut pitch = 0.0;
+        let mut width = 1.5 + rng.next_f32() as f64;
+        for step in 0..worm.steps {
+            yaw += (rng.next_f32() as f64 - 0.5) * 0.7;
+            pitch = (pitch + (rng.next_f32() as f64 - 0.5) * 0.35).clamp(-0.6, 0.6);
+            x += yaw.cos() * 4.0;
+            z += yaw.sin() * 4.0;
+            y = (y + pitch * 4.0).clamp(8.0, 126.0);
+            width += (rng.next_f32() as f64 - 0.42) * 0.8;
+            width = width.clamp(1.0, 5.0);
+            let w = if step < 2 { width + 1.5 } else { width }; // entrance rooms
+            path.push((x, y, z, w));
+        }
+        path
+    }
+
+    /// Carve every worm that reaches this chunk (ellipsoid chain).
+    fn carve_caves(&self, chunk: &mut Chunk, cx: i32, cz: i32) {
+        let ox = cx * 16;
+        let oz = cz * 16;
+        let worms = self.cave_worms_near(cx, cz);
+        for worm in &worms {
+            for &(px, py, pz, w) in &self.worm_path(worm) {
+                let h = w; // vertical half-height ≈ horizontal
+                let bx0 = (px - w).floor() as i32;
+                let bx1 = (px + w).ceil() as i32;
+                let bz0 = (pz - w).floor() as i32;
+                let bz1 = (pz + w).ceil() as i32;
+                let by0 = (py - h).floor().max(5.0) as i32;
+                let by1 = (py + h).ceil().min(128.0) as i32;
+                for bx in bx0.max(ox)..=bx1.min(ox + 15) {
+                    for bz in bz0.max(oz)..=bz1.min(oz + 15) {
+                        let lx = (bx - ox) as usize;
+                        let lz = (bz - oz) as usize;
+                        // fast reject: the column's ellipsoid xz test
+                        let dxr = (bx as f64 + 0.5 - px) / w;
+                        let dzr = (bz as f64 + 0.5 - pz) / w;
+                        if dxr * dxr + dzr * dzr > 1.0 {
+                            continue;
+                        }
+                        let col_idx = lz * 16 + lx;
+                        let col_biome = Biome::from_u8(chunk.biome[col_idx]);
+                        let is_border = lx == 0 || lx == 15 || lz == 0 || lz == 15;
+                        let border_margin = is_border
+                            && (col_biome.is_ocean()
+                                || col_biome == Biome::Beach
+                                || col_biome == Biome::River)
+                            && col_biome != Biome::NetherWastes;
+                        for by in by0..=by1 {
+                            let cur = chunk.get(lx, by as usize, lz);
+                            if cur == AIR || cur == WATER || cur == BEDROCK || cur == LAVA {
+                                continue; // only carve solids
+                            }
+                            // liquid guard: never carve adjacent to water
+                            let near_water = (lx > 0 && chunk.get(lx - 1, by as usize, lz) == WATER)
+                                || (lx < 15
+                                    && chunk.get(lx + 1, by as usize, lz) == WATER)
+                                || (lz > 0
+                                    && chunk.get(lx, by as usize, lz - 1) == WATER)
+                                || (lz < 15
+                                    && chunk.get(lx, by as usize, lz + 1) == WATER)
+                                || (by > 0
+                                    && chunk.get(lx, (by - 1) as usize, lz) == WATER)
+                                || (by < 127
+                                    && chunk.get(lx, (by + 1) as usize, lz) == WATER);
+                            if near_water {
+                                continue;
+                            }
+                            if border_margin
+                                && by > chunk.height[col_idx] as i32 - 12
+                            {
+                                continue;
+                            }
+                            let dy = (by as f64 + 0.5 - py) / h;
+                            if dxr * dxr + dy * dy + dzr * dzr <= 1.0 {
+                                let b = if by <= 10 { LAVA } else { AIR };
+                                chunk.set(lx, by as usize, lz, b);
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
+    /// Vanilla-parity ore veins (2026-09-14): per-chunk feature placement
+    /// with the exact vanilla 1.16.5 table (misode/mcmeta 1.16.5
+    /// configured_feature/ore_*.json + the biome feature stage 6 order,
+    /// live 2026-09-14): dirt 10×33 y0..255, gravel 8×33 y0..255,
+    /// granite/diorite/andesite 10×33 y0..79, coal 20×17 y0..127, iron
+    /// 20×9 y0..63, gold 2×9 y0..31, redstone 8×8 y0..15, diamond 1×8
+    /// y0..15, lapis 1×7 y16±8 (depth_average baseline 16, spread 16).
+    /// Vein shape: the vanilla ellipsoid blob (rotated in xz, per-block
+    /// hash edge-jitter), replacing base-stone only (the vanilla target
+    /// tag base_stone_overworld = stone + the three variants).
+    fn place_ores(&self, chunk: &mut Chunk, rng: &mut Rng) {
+        const VEINS: [(u16, u32, u32, i32, i32); 11] = [
+            (DIRT, 10, 33, 0, 255),
+            (GRAVEL, 8, 33, 0, 255),
+            (GRANITE, 10, 33, 0, 79),
+            (DIORITE, 10, 33, 0, 79),
+            (ANDESITE, 10, 33, 0, 79),
+            (COAL_ORE, 20, 17, 0, 127),
+            (IRON_ORE, 20, 9, 0, 63),
+            (GOLD_ORE, 2, 9, 0, 31),
+            (REDSTONE_ORE, 8, 8, 0, 15),
+            (DIAMOND_ORE, 1, 8, 0, 15),
+            (LAPIS_ORE, 1, 7, 8, 24), // depth_average(16, 16) -> y16±8
+        ];
+        for &(state, count, size, y_min, y_max) in &VEINS {
+            for _ in 0..count {
+                // the vanilla placement: square (anywhere in the chunk) +
+                // range (uniform y in [y_min, y_max])
+                let cx0 = rng.next_range(16) as i32;
+                let cz0 = rng.next_range(16) as i32;
+                let cy0 = y_min + rng.next_range((y_max - y_min + 1) as u32) as i32;
+                self.ore_blob(chunk, cx0, cy0, cz0, state, size);
+            }
+        }
+    }
+
+    /// One vanilla-style ellipsoid ore blob at the chunk-local center,
+    /// replacing base-stone only; edge jitter is a per-position hash so
+    /// the blob shape is stream-order independent.
+    fn ore_blob(
+        &self,
+        chunk: &mut Chunk,
+        cx: i32,
+        cy: i32,
+        cz: i32,
+        state: u16,
+        size: u32,
+    ) {
+        let a = size as f64 / 8.0;
+        let mut rng = Rng::new(Rng::hash3(
+            self.seed ^ 0x0BE5,
+            cx * 16 + cy,
+            0,
+            cz * 16 + (size as i32),
+        ));
+        let hx = a * (0.7 + rng.next_f32() as f64 * 0.6);
+        let hy = a * (0.5 + rng.next_f32() as f64 * 0.5);
+        let hz = a * (0.7 + rng.next_f32() as f64 * 0.6);
+        let theta = rng.next_f32() as f64 * std::f64::consts::PI;
+        let (st, ct) = (theta.sin(), theta.cos());
+        let r_out = ((a * 1.35).ceil() as i32) + 1;
+        for dy in -r_out..=r_out {
+            let by = cy + dy;
+            if !(1..=250).contains(&by) {
+                continue;
+            }
+            for dx in -r_out..=r_out {
+                for dz in -r_out..=r_out {
+                    let bx = cx + dx;
+                    let bz = cz + dz;
+                    if !(0..16).contains(&bx) || !(0..16).contains(&bz) {
+                        continue;
+                    }
+                    let cur = chunk.get(bx as usize, by as usize, bz as usize);
+                    let base_stone =
+                        cur == STONE || cur == GRANITE || cur == DIORITE || cur == ANDESITE;
+                    if !base_stone {
+                        continue;
+                    }
+                    // ellipsoid test in the theta-rotated xz frame
+                    let fx = dx as f64 * ct + dz as f64 * st;
+                    let fz = -dx as f64 * st + dz as f64 * ct;
+                    let v = (fx / hx) * (fx / hx)
+                        + (dy as f64 / hy) * (dy as f64 / hy)
+                        + (fz / hz) * (fz / hz);
+                    // per-position edge jitter (±0.15 on the radius)
+                    let j = (Rng::hash3(self.seed ^ 0x0BE6, bx, by, bz) % 1000) as f64 / 1000.0;
+                    if v <= 1.0 + (j - 0.5) * 0.3 {
+                        chunk.set(bx as usize, by as usize, bz as usize, state);
+                    }
+                }
+            }
+        }
+    }
     /// Generate one chunk column (dimension-dispatched). Pure: returns
     /// chunk + edits for neighbors (tree canopies crossing chunk borders).
     pub fn generate_chunk(
@@ -951,98 +1276,267 @@ impl TerrainGen {
         // it, exactly like the village/mineshaft region queries)
         let ravines = self.ravines_near_chunk(cx, cz);
 
-        // pass 1: terrain columns
-        for z in 0..chunk_z_chunk() {
-            for x in 0..chunk_x_chunk() {
-                let wx = cx * 16 + x as i32;
-                let wz = cz * 16 + z as i32;
-                let col = self.column(wx, wz);
-                let h = col.height;
-                let col_idx = z * 16 + x;
-                chunk.height[col_idx] = h.min(255) as u8;
-                chunk.biome[col_idx] = col.biome as u8;
-                // the ravine cut interval for this column (None = no cut)
-                let rv_cut = if ravines.is_empty() {
-                    None
+        // ---- Vanilla-parity terrain round (2026-09-14): the 1.16.5
+        // density stack sampled on the 4×8×4 noise lattice (5×33×5 per
+        // chunk), trilinearly interpolated per block (see
+        // vanilla_noise.rs for the cited constants), then the surface
+        // builder, the bedrock floor, the worm carvers, and the ore
+        // features — the vanilla generation order (noise → surface →
+        // carvers → features). ----
+        let ox = cx * 16;
+        let oz = cz * 16;
+
+        // climate biome depth/scale grid (7×7 at 4-block steps; the 3×3
+        // neighborhood around each lattice column smooths the biome
+        // response — the vanilla squoze-biome behavior)
+        let mut climate = [[(0f64, 0f64); 7]; 7];
+        for gz in 0..7usize {
+            for gx in 0..7usize {
+                climate[gz][gx] =
+                    self.climate_depth_scale(ox + (gx as i32 - 1) * 4, oz + (gz as i32 - 1) * 4);
+            }
+        }
+
+        // per-lattice-column drivers (5×5 at 4-block steps)
+        struct LatCol {
+            h_eff: f64,
+            amp: f64,
+            rnd: f64,
+            mush_island: Option<f64>,
+        }
+        let mut lat: Vec<LatCol> = Vec::with_capacity(25);
+        for lz in 0..5usize {
+            for lx in 0..5usize {
+                let wx = ox + lx as i32 * 4;
+                let wz = oz + lz as i32 * 4;
+                let mut bd = 0.0;
+                let mut bv = 0.0;
+                for dz in 0..3usize {
+                    for dx in 0..3usize {
+                        bd += climate[lz + dz][lx + dx].0;
+                        bv += climate[lz + dz][lx + dx].1;
+                    }
+                }
+                bd /= 9.0;
+                bv /= 9.0;
+                let mush = self.n_mush.noise2(wx as f32 / 400.0, wz as f32 / 400.0);
+                let island = if self.dim == Dimension::Overworld && mush > 0.63 {
+                    Some(
+                        (vc_chunk::SEA_LEVEL as f64 + 1.0 + (mush as f64 - 0.63) * 30.0)
+                            .min(vc_chunk::SEA_LEVEL as f64 + 6.0),
+                    )
                 } else {
-                    self.ravine_cut(&ravines, wx, wz, h)
+                    None
                 };
+                let (h_eff, amp, _) = self.density_params(wx, wz, bd, bv);
+                let rnd = self.random_density_offset(wx, wz);
+                lat.push(LatCol {
+                    h_eff,
+                    amp,
+                    rnd,
+                    mush_island: island,
+                });
+            }
+        }
 
-                let top_y = h.max(sea).min(255) as usize;
-                for y in 0..=top_y {
-                    let yi = y as i32;
-                    let b: u16 = if y == 0 || (y <= 2 && rng.next_f32() < 0.35) {
-                        BEDROCK
-                    } else if yi > h {
-                        WATER
-                    } else if yi == h {
-                        // [merge 1.7.2] the badlands FLOOR is red sand
-                        // (1.7.2, VERIFIED wiki: "floor similar to a
-                        // desert, but made of red sand") — the E3-era
-                        // surface override is retired: stained terracotta
-                        // bands live in the STRATA below the 1.8
-                        // red-sandstone filler, not on the surface
-                        col.top
-                    } else if yi > h - 4 {
-                        // 1.8: red sandstone directly under the badlands
-                        // red-sand floor (VERIFIED w/Red_Sandstone:
-                        // generates beneath red sand); other biomes keep
-                        // their filler
-                        col.filler
-                    } else if col.biome == Biome::Badlands && yi > h - 16 {
-                        // Phase E3 (VERIFIED w/Terracotta + w/Badlands:
-                        // "found abundantly in badlands biomes" as banded
-                        // colored layers): the strata band through the 16
-                        // stained-terracotta colors by absolute y with a
-                        // per-seed offset (vanilla's exact seed-shifted
-                        // layer table is not published — deterministic
-                        // clean-room banding, disclosed adaptation)
-                        // the deeper banded strata (vanilla badlands
-                        // terracotta runs deep; 16 blocks below the
-                        // surface — clean-room depth, disclosed)
-                        stained_terracotta(badlands_band_color(self.seed, yi))
-                    } else if col.biome == Biome::Mountains
-                        && (4..=31).contains(&yi)
-                        && emerald_ore(self.seed, wx, yi, wz)
-                    {
-                        // Phase E2 (VERIFIED w/Emerald_Ore): emerald ore
-                        // generates ONLY in mountains-family biomes, as
-                        // single blocks (12w22a "blob size reduced to 1"),
-                        // y 4..=31, can be exposed to the sky. The engine's
-                        // hash-ore convention lands ~a few per chunk.
-                        EMERALD_ORE
-                    } else {
-                        self.stone_variant(wx, yi, wz)
+        // density lattice 5×33×5 (y cells of 8 blocks)
+        let mut dens = [0f64; 5 * 33 * 5];
+        for ly in 0..33usize {
+            for lz in 0..5usize {
+                for lx in 0..5usize {
+                    let c = &lat[lz * 5 + lx];
+                    let wx = (ox + lx as i32 * 4) as f64;
+                    let wz = (oz + lz as i32 * 4) as f64;
+                    let d = match c.mush_island {
+                        Some(isl) => (isl - (ly * 8) as f64) / 8.0,
+                        None => self.vterrain.density(
+                            wx,
+                            (ly * 8) as f64,
+                            wz,
+                            c.h_eff,
+                            c.amp,
+                            c.rnd,
+                        ),
                     };
+                    dens[(ly * 5 + lz) * 5 + lx] = d;
+                }
+            }
+        }
+        let getdens = |lxx: usize, lyy: usize, lzz: usize| -> f64 {
+            dens[(lyy * 5 + lzz) * 5 + lxx]
+        };
 
-                    // cave carving (never through bedrock; stay well below surface,
-                    // extra margin under oceans so caves don't flood)
-                    if b != BEDROCK && b != WATER && yi <= h {
-                        let margin = if col.biome == Biome::Ocean || col.biome == Biome::Beach {
-                            10
-                        } else {
-                            5
-                        };
-                        if h - yi > margin && self.cave(wx, yi, wz) {
-                            continue; // leave air
-                        }
-                        // Phase 10: ravine carve — the V-cut interval for
-                        // this column; never through bedrock or water
-                        // (deep bottoms expose stone + ores in the walls,
-                        // the wiki-verified look; vanilla's lava-flooded
-                        // floors are palette-sim-out-of-scope, documented)
-                        if let Some((rv_top, rv_bottom)) = rv_cut {
-                            if yi <= rv_top && yi > rv_bottom {
-                                continue; // leave air
+        // per-block fill
+        for z in 0..16usize {
+            for x in 0..16usize {
+                let wx = ox + x as i32;
+                let wz = oz + z as i32;
+                let lxi = x / 4;
+                let lzi = z / 4;
+                let fx = (x % 4) as f64 / 4.0;
+                let fz = (z % 4) as f64 / 4.0;
+
+                // highest cell with any solid corner → scan start
+                let mut top_cell = 0usize;
+                'cells: for ly in (0..33usize).rev() {
+                    for czz in lzi..=lzi + 1 {
+                        for cxx in lxi..=lxi + 1 {
+                            if getdens(cxx, ly, czz) > -0.6 {
+                                top_cell = ly;
+                                break 'cells;
                             }
                         }
                     }
-                    if b != AIR {
-                        chunk.set(x, y, z, b);
+                }
+                let top_y = ((top_cell + 1) * 8).min(255);
+
+                let mut surf: i32 = 0;
+                for y in (0..=top_y).rev() {
+                    let ly = y / 8;
+                    let fy = (y % 8) as f64 / 8.0;
+                    // trilinear over the 8 cell corners
+                    let c000 = getdens(lxi, ly, lzi);
+                    let c100 = getdens(lxi + 1, ly, lzi);
+                    let c010 = getdens(lxi, ly, lzi + 1);
+                    let c110 = getdens(lxi + 1, ly, lzi + 1);
+                    let c001 = getdens(lxi, ly + 1, lzi);
+                    let c101 = getdens(lxi + 1, ly + 1, lzi);
+                    let c011 = getdens(lxi, ly + 1, lzi + 1);
+                    let c111 = getdens(lxi + 1, ly + 1, lzi + 1);
+                    let dx0 = lerp64(c000, c100, fx);
+                    let dx1 = lerp64(c010, c110, fx);
+                    let dxy = lerp64(dx0, dx1, fz);
+                    let ex0 = lerp64(c001, c101, fx);
+                    let ex1 = lerp64(c011, c111, fx);
+                    let exy = lerp64(ex0, ex1, fz);
+                    let d = lerp64(dxy, exy, fy);
+
+                    if d > 0.0 {
+                        chunk.set(x, y, z, STONE);
+                        if y as i32 > surf {
+                            surf = y as i32;
+                        }
+                    } else if (y as i32) < sea {
+                        chunk.set(x, y, z, WATER);
+                    }
+                }
+
+                // ---- classification + surface builder ----
+                // (BEFORE the bedrock/ravine/carver passes: vanilla biome
+                // selection is climate-driven and never depends on carved
+                // height — a ravine canyon keeps its surface biome)
+                let col_idx = z * 16 + x;
+                let mush = self.n_mush.noise2(wx as f32 / 400.0, wz as f32 / 400.0);
+                let (biome, top, filler) = if self.dim == Dimension::Overworld && mush > 0.63 {
+                    (Biome::MushroomFields, MYCELIUM, DIRT)
+                } else {
+                    let (temp, humid, var) = self.climate_fields(wx, wz);
+                    let rv = self.n_river.noise2(wx as f32 / 640.0, wz as f32 / 640.0);
+                    self.classify(temp, humid, var, surf, rv)
+                };
+                chunk.biome[col_idx] = biome as u8;
+                chunk.height[col_idx] = surf.clamp(0, 255) as u8;
+
+                // surface band: top + filler with the patchy surface-depth
+                // noise (dirt 3..6), desert/beach sandstone under the sand,
+                // badlands terracotta strata (all pre-rewrite materials)
+                let sd = self.vterrain.surface_depth(wx as f64, wz as f64);
+                let dirt_depth = 3 + ((sd * 1.5 + 0.5).max(0.0) as i32);
+                let band_top = surf.min(255);
+                // badlands strata run 16 deep (the pre-rewrite,
+                // wiki-cited banding); other biomes only need the
+                // top+filler band
+                let band_bot = if biome == Biome::Badlands {
+                    (surf - 16).max(1)
+                } else {
+                    (surf - 9).max(1)
+                };
+                for y in (band_bot..=band_top).rev() {
+                    let yi = y as usize;
+                    let cur = chunk.get(x, yi, z);
+                    let is_stone =
+                        cur == STONE || cur == GRANITE || cur == DIORITE || cur == ANDESITE;
+                    if !is_stone {
+                        continue; // water / bedrock / carved air stay
+                    }
+                    let b = if y == surf {
+                        top
+                    } else if y > surf - dirt_depth {
+                        filler
+                    } else if biome == Biome::Badlands && y > surf - 16 {
+                        // the banded terracotta strata (pre-rewrite,
+                        // wiki-cited)
+                        stained_terracotta(badlands_band_color(self.seed, y))
+                    } else {
+                        break; // below the strata band: keep stone
+                    };
+                    chunk.set(x, yi, z, b);
+                }
+                // Phase E2 (VERIFIED w/Emerald_Ore): emerald ore only in
+                // mountains-family biomes as single blocks y 4..=31
+                if biome == Biome::Mountains {
+                    for y in 4..=31 {
+                        if y >= surf {
+                            break;
+                        }
+                        if chunk.get(x, y as usize, z) == STONE
+                            && emerald_ore(self.seed, wx, y, wz)
+                        {
+                            chunk.set(x, y as usize, z, EMERALD_ORE);
+                        }
+                    }
+                }
+
+                // bedrock floor (vanilla shape): y=0 always; y=1..4 with
+                // the decreasing per-column chance (draw r ∈ 0..4;
+                // bedrock for y ≤ r — the 100/80/60/40/20% stack,
+                // minecraft.wiki/w/Bedrock: "the five bottommost layers
+                // ... in a rough pattern"; hash-based draw, disclosed)
+                let br = (Rng::hash3(self.seed ^ 0xBED0, wx, 0, wz) % 5) as i32;
+                for y in 0..=br.min(4) {
+                    chunk.set(x, y as usize, z, BEDROCK);
+                }
+
+                // ravine carve (the existing region system; interval from
+                // the pre-carve surface down, never through bedrock or
+                // water; blocks only — the biome stays as classified)
+                if !ravines.is_empty() {
+                    if let Some((rv_top, rv_bottom)) = self.ravine_cut(&ravines, wx, wz, surf) {
+                        for y in (rv_bottom + 1)..=(rv_top.min(surf)) {
+                            let cur = chunk.get(x, y as usize, z);
+                            if cur != BEDROCK && cur != WATER && cur != AIR {
+                                chunk.set(x, y as usize, z, AIR);
+                            }
+                        }
                     }
                 }
             }
         }
+
+        // worm carvers (after the surface pass, like vanilla)
+        self.carve_caves(&mut chunk, cx, cz);
+
+        // recompute heights after carving (cave entrances / ravine
+        // floors expose the true surface)
+        for z in 0..16usize {
+            for x in 0..16usize {
+                let col_idx = z * 16 + x;
+                let mut y = chunk.height[col_idx] as i32;
+                while y > 0 {
+                    let c = chunk.get(x, y as usize, z);
+                    if c != AIR && c != WATER {
+                        break;
+                    }
+                    y -= 1;
+                }
+                chunk.height[col_idx] = y.clamp(0, 255) as u8;
+            }
+        }
+
+        // vanilla ore veins (feature stage 6 — after carving, replacing
+        // base stone only)
+        self.place_ores(&mut chunk, &mut rng);
+
 
         // pass 2: inbound edits from neighbors (trees poking into this chunk)
         for (idx, id) in inbound {
@@ -1056,8 +1550,6 @@ impl TerrainGen {
         }
 
         // pass 3: decorations (trees, plants) — deterministic per chunk
-        let ox = cx * 16;
-        let oz = cz * 16;
         let set_dec = |chunk: &mut Chunk,
                            outbound: &mut Vec<(i32, i32, i32, u16)>,
                            wx: i32,
@@ -1111,11 +1603,8 @@ impl TerrainGen {
                     }
                 }
                 Biome::Savanna => {
-                    if rng.next_f32() < 0.6 {
-                        1
-                    } else {
-                        0
-                    }
+                    // vanilla savanna: scattered acacias (~1-2 per chunk)
+                    1 + (rng.next_f32() < 0.4) as i32
                 }
                 Biome::Plains => {
                     if rng.next_f32() < 0.5 {
@@ -2257,11 +2746,12 @@ impl TerrainGen {
                     }
                 }
             }
-            // icebergs: 25% of frozen-ocean chunks carry one — a
+            // icebergs: 40% of frozen-ocean chunks carry one — a
             // pack-ice mound with a blue-ice core rising above the
-            // sheet (simplified vanilla shape, disclosed)
+            // sheet (simplified vanilla shape, disclosed; vanilla frozen
+            // oceans carry frequent icebergs)
             if Biome::from_u8(chunk.biome[8 * 16 + 8]) == Biome::FrozenOcean
-                && rng.next_f32() < 0.25
+                && rng.next_f32() < 0.40
             {
                 let bx = 3 + rng.next_range(10) as i32;
                 let bz = 3 + rng.next_range(10) as i32;
@@ -2368,23 +2858,46 @@ impl TerrainGen {
 
     /// raw-terrain solidity at underground (x,y,z) — replicates exactly
     /// what the terrain pass leaves behind (stone unless carved / under
-    /// the surface; air above it)
-    fn gen_solid(&self, x: i32, y: i32, z: i32) -> bool {
-        let col = self.column(x, z);
-        let h = col.height;
-        if y > h {
-            return false; // above the terrain surface: air (or water)
+    /// raw-terrain solidity at underground (x,y,z) — replicates exactly
+    /// what the terrain pass leaves behind: the density stack (positive
+    /// ⇒ solid), minus the worm carvers' ellipsoids. The worm paths are
+    /// passed in by the caller (they are expensive to re-derive per
+    /// query — `dungeon_in_chunk` computes them once).
+    fn gen_solid(&self, x: i32, y: i32, z: i32, worms: &[(CaveWorm, Vec<(f64, f64, f64, f64)>)]) -> bool {
+        if y <= 0 {
+            return true; // the flat bedrock floor
         }
-        if y == 0 || y <= 2 {
-            return true; // bedrock layers
+        if y > 200 {
+            return false;
         }
-        let margin = if col.biome == Biome::Ocean || col.biome == Biome::Beach {
-            10
-        } else {
-            5
-        };
-        if h - y > margin && self.cave(x, y, z) {
-            return false; // carved
+        // mushroom islands: solid below the island height
+        let xf = x as f32;
+        let zf = z as f32;
+        let mush = self.n_mush.noise2(xf / 400.0, zf / 400.0);
+        if self.dim == Dimension::Overworld && mush > 0.63 {
+            let isl = (vc_chunk::SEA_LEVEL as f64 + 1.0 + (mush as f64 - 0.63) * 30.0)
+                .min(vc_chunk::SEA_LEVEL as f64 + 6.0);
+            return (y as f64) <= isl;
+        }
+        let (bd, bv) = self.climate_depth_scale(x, z);
+        let (h_eff, amp, _) = self.density_params(x, z, bd, bv);
+        let rnd = self.random_density_offset(x, z);
+        let d = self.vterrain.density(x as f64, y as f64, z as f64, h_eff, amp, rnd);
+        if d <= 0.0 {
+            return false;
+        }
+        // carver ellipsoids (bedrock region excluded)
+        if (5..=128).contains(&y) {
+            for (_worm, path) in worms {
+                for &(px, py, pz, w) in path {
+                    let dx = (x as f64 + 0.5 - px) / w;
+                    let dy = (y as f64 + 0.5 - py) / w;
+                    let dz = (z as f64 + 0.5 - pz) / w;
+                    if dx * dx + dy * dy + dz * dz <= 1.0 {
+                        return false;
+                    }
+                }
+            }
         }
         true
     }
@@ -2394,6 +2907,16 @@ impl TerrainGen {
     /// any caller: generation, tests, E2E)
     pub fn dungeon_in_chunk(&self, cx: i32, cz: i32) -> Option<DungeonRoom> {
         let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x0D66, cx, 0, cz));
+        // the carver worms that can reach this chunk, paths precomputed
+        // once (gen_solid tests their ellipsoids per query)
+        let worms: Vec<(CaveWorm, Vec<(f64, f64, f64, f64)>)> = self
+            .cave_worms_near(cx, cz)
+            .into_iter()
+            .map(|w| {
+                let p = self.worm_path(&w);
+                (w, p)
+            })
+            .collect();
         for _ in 0..Self::DUNGEON_ATTEMPTS {
             // size roll: 7 / 9 / 11 (VERIFIED open-area set)
             let size = match rng.next_range(3) {
@@ -2416,13 +2939,13 @@ impl TerrainGen {
             // ---- validation (VERIFIED rules) ----
             // floor area incl. under walls: entirely solid
             let floor_ok = (-1..=size)
-                .all(|dx| (-1..=size).all(|dz| self.gen_solid(wx0 + dx, y0 - 1, wz0 + dz)));
+                .all(|dx| (-1..=size).all(|dz| self.gen_solid(wx0 + dx, y0 - 1, wz0 + dz, &worms)));
             if !floor_ok {
                 continue;
             }
             // ceiling area incl. over walls: entirely solid
             let ceil_ok = (-1..=size)
-                .all(|dx| (-1..=size).all(|dz| self.gen_solid(wx0 + dx, y0 + 5, wz0 + dz)));
+                .all(|dx| (-1..=size).all(|dz| self.gen_solid(wx0 + dx, y0 + 5, wz0 + dz, &worms)));
             if !ceil_ok {
                 continue;
             }
@@ -2435,8 +2958,8 @@ impl TerrainGen {
                     if !on_ring {
                         continue;
                     }
-                    let air2 = !self.gen_solid(wx0 + dx, y0, wz0 + dz)
-                        && !self.gen_solid(wx0 + dx, y0 + 1, wz0 + dz);
+                    let air2 = !self.gen_solid(wx0 + dx, y0, wz0 + dz, &worms)
+                        && !self.gen_solid(wx0 + dx, y0 + 1, wz0 + dz, &worms);
                     if air2 {
                         openings += 1;
                     }
@@ -3625,6 +4148,16 @@ impl TerrainGen {
 
     /// emit every part of `ms` that falls inside the chunk (ox, oz)
     fn emit_mineshaft(&self, chunk: &mut Chunk, ms: &Mineshaft, ox: i32, oz: i32) {
+        // carver worms that can reach the shaft (paths precomputed once —
+        // gen_solid tests their ellipsoids per floor query)
+        let worms: Vec<(CaveWorm, Vec<(f64, f64, f64, f64)>)> = self
+            .cave_worms_near(ms.x >> 4, ms.z >> 4)
+            .into_iter()
+            .map(|w| {
+                let p = self.worm_path(&w);
+                (w, p)
+            })
+            .collect();
         let put = |chunk: &mut Chunk, wx: i32, wy: i32, wz: i32, id: u16| {
             let lxi = wx - ox;
             let lzi = wz - oz;
@@ -3682,7 +4215,7 @@ impl TerrainGen {
                             // floor: plank bridge ONLY where the terrain
                             // was carved/absent (vanilla corridors bridge
                             // over caves); solid ground keeps its stone
-                            let ground = self.gen_solid(wx, ms.y, wz);
+                            let ground = self.gen_solid(wx, ms.y, wz, &worms);
                             if !ground {
                                 put(chunk, wx, ms.y, wz, PLANKS);
                             }
@@ -3717,7 +4250,7 @@ impl TerrainGen {
                             wz,
                             if off == 0 { AIR } else { OAK_FENCE },
                         );
-                        let below = self.gen_solid(wx, ms.y, wz);
+                        let below = self.gen_solid(wx, ms.y, wz, &worms);
                         if !below {
                             put(chunk, wx, ms.y, wz, OAK_LOG); // pillar down
                         }
@@ -4746,14 +5279,6 @@ impl TerrainGen {
     }
 }
 
-#[inline]
-fn chunk_x_chunk() -> usize {
-    16
-}
-#[inline]
-fn chunk_z_chunk() -> usize {
-    16
-}
 
 /// Phase E3: the badlands stained-terracotta band color for an absolute
 /// y level. Vanilla generates seed-shifted colored-terracotta layers in
@@ -5703,15 +6228,15 @@ mod phase10_tests {
         let g = gen();
         // find a pyramid region
         let mut found = None;
-        'outer: for rx in -8..8 {
-            for rz in -8..8 {
+        'outer: for rx in -16..16 {
+            for rz in -16..16 {
                 if let Some(c) = g.pyramid_center_pub(rx, rz) {
                     found = Some(c);
                     break 'outer;
                 }
             }
         }
-        let (wx, wz) = found.expect("a desert pyramid within ±8 regions");
+        let (wx, wz) = found.expect("a desert pyramid within ±16 regions");
         // force-emit the center chunk + register what's inside
         let cx = wx >> 4;
         let cz = wz >> 4;
@@ -5921,11 +6446,19 @@ mod v172_tests {
 
     /// find a chunk whose center biome is `b` within ±64 chunks
     fn find_biome(g: &TerrainGen, b: Biome) -> (i32, i32) {
+        // Vanilla-parity terrain note (2026-09-14): column() is a direct
+        // density root-solve and can differ from the chunk's
+        // lattice-interpolated surface by a block at biome thresholds —
+        // so a column-hit is verified against the generated chunk's
+        // center biome (vanilla's own biome queries read chunk data).
         for cx in -64..64 {
             for cz in -64..64 {
                 let col = g.column(cx * 16 + 8, cz * 16 + 8);
                 if col.biome == b {
-                    return (cx, cz);
+                    let (probe, _) = g.generate_chunk(cx, cz, Vec::new());
+                    if Biome::from_u8(probe.biome[8 * 16 + 8]) == b {
+                        return (cx, cz);
+                    }
                 }
             }
         }
@@ -5954,21 +6487,33 @@ mod v172_tests {
         let g = gen();
         let (cx, cz) = find_biome(&g, Biome::Badlands);
         let (chunk, _) = g.generate_chunk(cx, cz, Vec::new());
-        let col = g.column(cx * 16 + 8, cz * 16 + 8);
-        let h = col.height as usize;
-        // center column: top is red sand
-        assert_eq!(chunk.get(8, h, 8), RED_SAND, "badlands surface");
+        // find an uncarved badlands column (carver cuts legitimately
+        // expose strata; the floor intent needs a surviving surface)
+        let mut h = None;
+        'col: for czi in 0..16usize {
+            for cxi in 0..16usize {
+                if chunk.biome[czi * 16 + cxi] != Biome::Badlands as u8 {
+                    continue;
+                }
+                let hi = chunk.height[czi * 16 + cxi] as usize;
+                if chunk.get(cxi, hi, czi) == RED_SAND {
+                    h = Some((hi, cxi, czi));
+                    break 'col;
+                }
+            }
+        }
+        let (h, lx, lz) = h.unwrap_or_else(|| panic!("no uncarved badlands floor column"));
         // the banding window below contains at least 3 distinct band
         // colors (the sedimentary look). 1.8: the 4-layer filler directly
         // under the floor is red sandstone now — the band check starts
         // below it.
         let mut distinct = std::collections::HashSet::new();
         for y in (h - 14)..(h - 4) {
-            let b = chunk.get(8, y, 8);
+            let b = chunk.get(lx, y, lz);
             distinct.insert(b);
         }
         // 1.8: red sandstone is the filler between red sand and banding
-        assert_eq!(chunk.get(8, h - 2, 8), RED_SANDSTONE, "1.8 red-sand filler");
+        assert_eq!(chunk.get(lx, h - 2, lz), RED_SANDSTONE, "1.8 red-sand filler");
         assert!(
             distinct.len() >= 3,
             "banded terracotta layers (got {} colors)",
@@ -6436,19 +6981,34 @@ mod e2_tests {
     #[test]
     fn emerald_ore_generates_in_mountains_only() {
         let gen = TerrainGen::for_dimension(1234, Dimension::Overworld);
+        // anchor the scan on actual mountains (the vanilla-parity
+        // terrain's mountain regions are seed-dependent; a fixed 0..24
+        // window can sit on an empty plain)
+        let mut anchor = None;
+        'find: for cz in -64..64i32 {
+            for cx in -64..64i32 {
+                if gen.column(cx * 16 + 8, cz * 16 + 8).biome == Biome::Mountains {
+                    anchor = Some((cx, cz));
+                    break 'find;
+                }
+            }
+        }
+        let (acx, acz) = anchor.expect("mountains exist within ±64 chunks");
         let mut emerald_cells = 0usize;
         let mut on_mountain_columns = 0usize;
-        for cx in 0..24i32 {
-            for cz in 0..24i32 {
+        for cx in (acx - 12)..(acx + 12) {
+            for cz in (acz - 12)..(acz + 12) {
                 let (chunk, _) = gen.generate_chunk(cx, cz, Vec::new());
                 for i in 0..vc_chunk::chunk::CHUNK_LEN {
                     if chunk.get_idx(i) == EMERALD_ORE {
                         emerald_cells += 1;
-                        // the cell's own column must be Mountains
-                        let x = cx * 16 + (i & 15) as i32;
-                        let z = cz * 16 + ((i >> 4) & 15) as i32;
-                        let col = gen.column(x, z);
-                        if col.biome == Biome::Mountains {
+                        // the cell's own column must be Mountains —
+                        // checked against the chunk's biome field (the
+                        // same data that drove placement; column()'s
+                        // root-solve can sit a block off the lattice at
+                        // the h>96 threshold)
+                        let col_biome = chunk.biome[((i >> 4) & 15) * 16 + (i & 15)];
+                        if Biome::from_u8(col_biome) == Biome::Mountains {
                             on_mountain_columns += 1;
                         }
                     }
@@ -6515,9 +7075,30 @@ mod e2_tests {
             z.div_euclid(16),
             Vec::new(),
         );
-        let lx = (x - x.div_euclid(16) * 16) as usize;
-        let lz = (z - z.div_euclid(16) * 16) as usize;
-        let surface = chunk.get(lx, h.clamp(0, 255) as usize, lz);
+        // scan the chunk for an uncarved badlands column (carver cuts
+        // legitimately expose strata; the floor intent needs a column
+        // whose surface survived)
+        let mut surface = None;
+        let mut h = 0usize;
+        let mut lx = 0usize;
+        let mut lz = 0usize;
+        'col: for czi in 0..16usize {
+            for cxi in 0..16usize {
+                if chunk.biome[czi * 16 + cxi] != Biome::Badlands as u8 {
+                    continue;
+                }
+                let hi = chunk.height[czi * 16 + cxi] as usize;
+                if chunk.get(cxi, hi, czi) == RED_SAND {
+                    surface = Some(RED_SAND);
+                    h = hi;
+                    lx = cxi;
+                    lz = czi;
+                    break 'col;
+                }
+            }
+        }
+        let surface = surface
+            .unwrap_or_else(|| panic!("no uncarved badlands floor column in the chunk"));
         // [merge 1.7.2] the SURFACE is red sand (1.7.2's verified floor);
         // the stained-terracotta banding the E3 bracket added lives in
         // the strata below the 1.8 red-sandstone filler — check the deep
@@ -6707,27 +7288,36 @@ mod v111_tests {
     /// evokers")
     #[test]
     fn woodland_mansions_generate_with_illagers() {
-        let g = gen();
+        // vanilla mansions are genuinely rare (the wiki: mansions
+        // generate "rarely" in dark forests) — scan seeds until one
+        // lands in the window (the villages-test pattern)
         let mut found = None;
-        'scan: for rx in -40..40 {
-            for rz in -40..40 {
-                for mx in 0..8 {
-                    for mz in 0..8 {
-                        let cx = rx * 8 + mx;
-                        let cz = rz * 8 + mz;
-                        if g.column(cx * 16 + 8, cz * 16 + 8).biome != Biome::DarkForest {
-                            continue;
-                        }
-                        if !g.woodland_mansions_near(cx * 16, cz * 16).is_empty() {
-                            found = Some((cx, cz));
-                            break 'scan;
+        let mut g = gen();
+        'seeds: for s in 0..16u64 {
+            g = TerrainGen::for_dimension(
+                0x10C0_C0DEu64.wrapping_add(s.wrapping_mul(0x9E37_79B9_7F4A_7C15u64)),
+                Dimension::Overworld,
+            );
+            'scan: for rx in -40..40 {
+                for rz in -40..40 {
+                    for mx in 0..8 {
+                        for mz in 0..8 {
+                            let cx = rx * 8 + mx;
+                            let cz = rz * 8 + mz;
+                            if g.column(cx * 16 + 8, cz * 16 + 8).biome != Biome::DarkForest {
+                                continue;
+                            }
+                            if !g.woodland_mansions_near(cx * 16, cz * 16).is_empty() {
+                                found = Some((cx, cz));
+                                break 'seeds;
+                            }
                         }
                     }
                 }
             }
         }
         let Some((cx, cz)) = found else {
-            panic!("no mansion found in the scan window (rarity + biome)");
+            panic!("no mansion found across 16 seeds (rarity + biome)");
         };
         // the near-query may surface a mansion anchored in a NEIGHBOR
         // chunk — generate the anchor's own chunk (anchor = center+8)
@@ -6806,10 +7396,15 @@ mod v113_tests {
     }
 
     fn find_biome(g: &TerrainGen, b: Biome) -> (i32, i32) {
+        // column-hit verified against the chunk center (see the v172
+        // find_biome note — column() can miss by a block at thresholds)
         for cx in -64..64 {
             for cz in -64..64 {
                 if g.column(cx * 16 + 8, cz * 16 + 8).biome == b {
-                    return (cx, cz);
+                    let (probe, _) = g.generate_chunk(cx, cz, Vec::new());
+                    if Biome::from_u8(probe.biome[8 * 16 + 8]) == b {
+                        return (cx, cz);
+                    }
                 }
             }
         }
@@ -6887,8 +7482,8 @@ mod v113_tests {
         // ---- frozen ocean: the ice sheet + iceberg blue ice ----
         let (cx, cz) = find_biome(&g, Biome::FrozenOcean);
         let (mut ice_sheet, mut blue_ice) = (0usize, 0usize);
-        for dcx in -3..3 {
-            for dcz in -3..3 {
+        for dcx in -5..5 {
+            for dcz in -5..5 {
                 let (chunk, _) = g.generate_chunk(cx + dcx, cz + dcz, Vec::new());
                 for lz in 0..16usize {
                     for lx in 0..16usize {
@@ -6915,7 +7510,7 @@ mod v113_tests {
         );
         assert!(
             blue_ice > 0,
-            "icebergs carry blue ice (got {blue_ice} across 36 chunks)"
+            "icebergs carry blue ice (got {blue_ice} across 100 chunks)"
         );
     }
 
@@ -7102,11 +7697,15 @@ mod v115_nest_tests {
     }
 
     fn find_biome(g: &TerrainGen, b: Biome) -> (i32, i32) {
+        // column-first scan with chunk-center verification (the direct
+        // chunk scan this helper replaced cost ~14 ms per probe)
         for cz in -60..60 {
             for cx in -60..60 {
-                let (chunk, _) = g.generate_chunk(cx, cz, Vec::new());
-                if Biome::from_u8(chunk.biome[8 * 16 + 8]) == b {
-                    return (cx, cz);
+                if g.column(cx * 16 + 8, cz * 16 + 8).biome == b {
+                    let (probe, _) = g.generate_chunk(cx, cz, Vec::new());
+                    if Biome::from_u8(probe.biome[8 * 16 + 8]) == b {
+                        return (cx, cz);
+                    }
                 }
             }
         }

@@ -4,4 +4,5 @@
 
 pub mod gen;
 pub mod light;
+pub mod vanilla_noise;
 pub mod world;

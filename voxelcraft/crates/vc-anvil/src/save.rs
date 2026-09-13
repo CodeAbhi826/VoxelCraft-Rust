@@ -59,7 +59,7 @@ const STATUS_FULL: &str = "full";
 ///  plus Phase 10: Taiga, BirchForest, Jungle, Savanna, Swamp, Badlands —
 ///  the vanilla ids live-verified from the wiki Biome page: taiga=5,
 ///  swamp=6, jungle=21, birch_forest=27, savanna=35, badlands=37)
-const BIOME_TO_VANILLA: [i32; 14] = [
+const BIOME_TO_VANILLA: [i32; 28] = [
     0, 16, 1, 4, 2, 12, 3,
     8,  // Nether Wastes
     5,  // Taiga
@@ -68,25 +68,29 @@ const BIOME_TO_VANILLA: [i32; 14] = [
     35, // Savanna
     6,  // Swamp
     37, // Badlands
+    14,  // Mushroom Fields (live-verified in gen.rs)
+    132, // Flower Forest (Bedrock-classic value; Java unverified, disclosed)
+    130, // Sunflower Plains (Bedrock-classic; Java unverified, disclosed)
+    140, // Ice Spikes (Bedrock-classic; Java unverified, disclosed)
+    29,  // Dark Forest (roofed_forest)
+    44,  // Warm Ocean (gen.rs live-verified)
+    45,  // Lukewarm Ocean (gen.rs live-verified)
+    46,  // Cold Ocean (gen.rs live-verified)
+    10,  // Frozen Ocean (gen.rs live-verified)
+    171, // Crimson Forest (gen.rs live-verified)
+    172, // Warped Forest (gen.rs live-verified)
+    170, // Soul Sand Valley (gen.rs live-verified)
+    173, // Basalt Deltas (gen.rs live-verified)
+    7,   // River (classic, both editions)
 ];
 /// vanilla biome id → ours; unknown → Plains (2)
 fn vanilla_biome_to_ours(v: i32) -> u8 {
-    match v {
-        0 => 0, // Ocean
-        16 => 1, // Beach
-        1 => 2,  // Plains
-        4 => 3,  // Forest
-        2 => 4,  // Desert
-        12 => 5, // Snowy (taiga/tundra family)
-        3 => 6,  // Mountains
-        5 => 8,  // Taiga
-        27 => 9, // Birch Forest
-        21 => 10, // Jungle
-        35 => 11, // Savanna
-        6 => 12,  // Swamp
-        37 => 13, // Badlands
-        _ => 2,  // unknown → Plains (safe, always valid)
+    for (ours, &vanilla) in BIOME_TO_VANILLA.iter().enumerate() {
+        if vanilla == v {
+            return ours as u8;
+        }
     }
+    2 // unknown → Plains (safe, always valid)
 }
 
 /// flat block ids (0..=56) → vanilla registry names. Index 14 ("Snowy
@@ -198,9 +202,39 @@ fn state_to_vanilla(s: u16) -> (String, Vec<(String, String)>) {
     if idx < VANILLA_NAMES.len() {
         (VANILLA_NAMES[idx].to_string(), Vec::new())
     } else {
-        // unmapped runtime state — degrade to air (never hit today)
-        ("minecraft:air".to_string(), Vec::new())
+        // Vanilla-parity terrain round (2026-09-14): blocks beyond the
+        // Phase-1 table (kelp, seagrass, ferns, bamboo, the 1.7+ flora,
+        // stained terracotta, …) previously degraded to AIR on save —
+        // derive the registry name from the block's display name
+        // (lowercase, spaces → underscores, prefixed minecraft:). The
+        // reverse path scans the same derivation, so roundtrips stay
+        // closed; any name collision resolves first-wins (asserted
+        // collision-free by the roundtrip test).
+        match derived_registry_name(s) {
+            Some(name) => (name, Vec::new()),
+            None => ("minecraft:air".to_string(), Vec::new()),
+        }
     }
+}
+
+/// `minecraft:`-prefixed registry name derived from the block's display
+/// name (Identity blocks only — property/axis/snowy states are handled
+/// by the earlier branches).
+fn derived_registry_name(s: u16) -> Option<String> {
+    let display = blocks::name(blocks::state_block(s));
+    if display == "Air" {
+        return None;
+    }
+    let mut name = String::with_capacity(display.len() + 10);
+    name.push_str("minecraft:");
+    for ch in display.chars() {
+        if ch == ' ' {
+            name.push('_');
+        } else {
+            name.extend(ch.to_lowercase());
+        }
+    }
+    Some(name)
 }
 
 /// vanilla palette entry → our state id; `None` = unknown name (→ air).
@@ -242,10 +276,31 @@ fn vanilla_to_state(name: &str, props: &[(String, String)]) -> Option<u16> {
         };
     }
     // flat blocks (skip 14 — handled above via grass_block+snowy)
-    VANILLA_NAMES
+    if let Some(i) = VANILLA_NAMES
         .iter()
         .position(|&n| n == name && n != "minecraft:grass_block")
-        .map(|i| i as u16)
+    {
+        return Some(i as u16);
+    }
+    // derived names (see state_to_vanilla): scan ids ≥ the table up to
+    // the top of the registry state space (V16_STATE_BASE + V16_COUNT)
+    // — the Phase-1 table stays authoritative for ids 0..=56. Sections
+    // store STATES: a match on a state id returns itself; a match on an
+    // identity block id returns its default state (e.g. seagrass block
+    // 395 ↔ state 652 — state_block folds states back to blocks).
+    let state_ceiling = blocks::V16_STATE_BASE + blocks::V16_COUNT;
+    for id in VANILLA_NAMES.len() as u16..=state_ceiling {
+        if let Some(n) = derived_registry_name(id) {
+            if n == name {
+                return Some(if blocks::state_block(id) == id {
+                    blocks::default_state(id)
+                } else {
+                    id
+                });
+            }
+        }
+    }
+    None
 }
 
 // ---------------------------------------------------------------------------
@@ -1451,6 +1506,13 @@ mod tests {
                 for x in 0..16usize {
                     if (x, y, z) != (8, 70, 8) && loaded.get(x, y, z) != fresh.get(x, y, z) {
                         mismatches += 1;
+                        if mismatches < 6 {
+                            eprintln!(
+                                "MISMATCH at ({x},{y},{z}): loaded={} fresh={}",
+                                loaded.get(x, y, z),
+                                fresh.get(x, y, z)
+                            );
+                        }
                     }
                 }
             }

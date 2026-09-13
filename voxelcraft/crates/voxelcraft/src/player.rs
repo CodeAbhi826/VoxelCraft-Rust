@@ -1310,8 +1310,10 @@ mod tests {
         let w = flat_floor();
         let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
         p.flying = false;
-        let mut input = Input::default();
-        input.fwd = true;
+        let mut input = Input {
+            fwd: true,
+            ..Default::default()
+        };
         // 3 seconds at 60 Hz — acceleration converges (rate 12 on ground)
         for _ in 0..180 {
             let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
@@ -1333,9 +1335,11 @@ mod tests {
         let w = flat_floor();
         let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
         p.flying = false;
-        let mut input = Input::default();
-        input.fwd = true;
-        input.sprint = true;
+        let mut input = Input {
+            fwd: true,
+            sprint: true,
+            ..Default::default()
+        };
         for _ in 0..180 {
             let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
         }
@@ -1381,10 +1385,12 @@ mod tests {
         let w = flat_runway();
         let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
         p.flying = false;
-        let mut input = Input::default();
-        input.fwd = true;
-        input.sprint = true;
-        input.jump = true;
+        let mut input = Input {
+            fwd: true,
+            sprint: true,
+            jump: true,
+            ..Default::default()
+        };
         // settle into the steady sprint-jump cycle (4 s), then measure
         // the displacement over 30 s
         for _ in 0..240 {
@@ -1425,8 +1431,10 @@ mod tests {
         let w = flat_floor();
         let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
         p.flying = false;
-        let mut input = Input::default();
-        input.jump = true;
+        let mut input = Input {
+            jump: true,
+            ..Default::default()
+        };
         let start = p.pos.y;
         let mut apex = start;
         for _ in 0..120 {
@@ -1577,8 +1585,10 @@ mod tests {
         }
         let mut p = Player::new(Vec3::new(0.5, 66.0, 0.5));
         p.flying = false;
-        let mut input = Input::default();
-        input.fwd = true;
+        let mut input = Input {
+            fwd: true,
+            ..Default::default()
+        };
         for _ in 0..120 {
             let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
         }
@@ -1595,9 +1605,11 @@ mod tests {
         // sprint-swim converges to the verified 3.918 b/s
         let mut p2 = Player::new(Vec3::new(0.5, 66.0, 0.5));
         p2.flying = false;
-        let mut input2 = Input::default();
-        input2.fwd = true;
-        input2.sprint = true;
+        let mut input2 = Input {
+            fwd: true,
+            sprint: true,
+            ..Default::default()
+        };
         for _ in 0..120 {
             let _ = p2.update(1.0 / 60.0, 0.0, &w, &mut input2, 1.0, true);
         }
@@ -1629,7 +1641,7 @@ mod tests {
     fn fall_damage_is_distance_minus_three() {
         let mut input = Input::default();
         // drop from 7 blocks onto the flat floor: expect 7 − 3 = 4 HP
-        let mut w = flat_floor();
+        let w = flat_floor();
         let top = chunk_top(&w) as f32;
         let mut p = Player::new(Vec3::new(0.5, top + 7.0 + 1.0, 0.5));
         p.flying = false;
@@ -1792,7 +1804,7 @@ mod v18_tests {
 #[cfg(test)]
 mod v19_tests {
     use super::*;
-    use vc_blocks::blocks::*;
+
 
     /// 1.9 elytra: the glide constants preserve the wiki's 10:1 ratio
     /// ("approximately 10 blocks of horizontal distance for each block of
@@ -1882,8 +1894,10 @@ mod v110_tests {
         let w = magma_floor();
         let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
         p.flying = false;
-        let mut input = Input::default();
-        input.sneak = true;
+        let mut input = Input {
+            sneak: true,
+            ..Default::default()
+        };
         for _ in 0..180 {
             let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
         }
@@ -1928,8 +1942,10 @@ mod v110_tests {
         let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
         p.flying = false;
         p.auto_jump = true;
-        let mut input = Input::default();
-        input.fwd = true;
+        let mut input = Input {
+            fwd: true,
+            ..Default::default()
+        };
         let mut max_y = p.pos.y;
         for _ in 0..240 {
             let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
@@ -1950,7 +1966,7 @@ mod v110_tests {
 mod auditfix_tests {
     use super::*;
     use std::sync::Arc;
-    use vc_blocks::blocks::*;
+
 
     /// a vine column: solid walls both sides at x=0/x=2, vines at (1, y)
     /// for y in 66..=76 — the classic 1×1 climbable shaft (the ladder
@@ -1988,8 +2004,10 @@ mod auditfix_tests {
         let w = vine_shaft();
         let mut p = Player::new(Vec3::new(1.5, 66.0, 8.5));
         p.flying = false;
-        let mut input = Input::default();
-        input.jump = true;
+        let mut input = Input {
+            jump: true,
+            ..Default::default()
+        };
         for _ in 0..60 {
             let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
         }
@@ -2039,8 +2057,10 @@ mod auditfix_tests {
         let w = vine_shaft();
         let mut p = Player::new(Vec3::new(1.5, 70.0, 8.5));
         p.flying = false;
-        let mut input = Input::default();
-        input.sneak = true;
+        let mut input = Input {
+            sneak: true,
+            ..Default::default()
+        };
         for _ in 0..30 {
             let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
         }

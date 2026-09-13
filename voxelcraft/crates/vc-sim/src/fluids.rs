@@ -820,7 +820,7 @@ mod tests {
         );
 
         // remove the source → every downstream flow decays to air
-        w.set_block_state(0, 65, 0, AIR as u16);
+        w.set_block_state(0, 65, 0, AIR);
         on_block_changed(&mut sched, &w, 0, 65, 0);
         drain(&mut w, &mut sched, 400);
         for x in 0..8 {
@@ -837,7 +837,7 @@ mod tests {
         let mut w = flat_world(64);
         // dig a 1-wide shaft at x=2 down to y=60
         for y in 61..=64 {
-            w.set_block_state(2, y, 0, AIR as u16);
+            w.set_block_state(2, y, 0, AIR);
         }
         let mut sched = TickScheduler::new();
         w.set_block_state(0, 65, 0, water_state(0));
@@ -855,7 +855,7 @@ mod tests {
         let mut w = flat_world(64);
         let mut sched = TickScheduler::new();
         // sand floating 3 above the floor
-        w.set_block_state(8, 68, 8, SAND as u16);
+        w.set_block_state(8, 68, 8, SAND);
         on_block_changed(&mut sched, &w, 8, 68, 8);
         drain(&mut w, &mut sched, 100);
         assert_eq!(
@@ -877,9 +877,9 @@ mod tests {
         let mut w = flat_world(64);
         let mut sched = TickScheduler::new();
         // 3 sand blocks at y=66..68 (one gap above the floor)
-        w.set_block_state(8, 66, 8, SAND as u16);
-        w.set_block_state(8, 67, 8, SAND as u16);
-        w.set_block_state(8, 68, 8, SAND as u16);
+        w.set_block_state(8, 66, 8, SAND);
+        w.set_block_state(8, 67, 8, SAND);
+        w.set_block_state(8, 68, 8, SAND);
         on_block_changed(&mut sched, &w, 8, 67, 8);
         on_block_changed(&mut sched, &w, 8, 68, 8);
         drain(&mut w, &mut sched, 200);
@@ -1137,7 +1137,7 @@ mod e2_tests {
         on_block_changed(&mut sched, &w, 0, 65, 0);
         drain(&mut w, &mut sched, 2000);
         assert!(lava_level(w.get_state(1, 65, 0)) != 255, "flow established");
-        w.set_block_state(0, 65, 0, AIR as u16);
+        w.set_block_state(0, 65, 0, AIR);
         on_block_changed(&mut sched, &w, 0, 65, 0);
         drain(&mut w, &mut sched, 4000);
         for x in 0..5 {
@@ -1352,7 +1352,7 @@ mod e2_tests {
 mod farm_tests {
     use super::*;
     use crate::ticks::TickScheduler;
-    use vc_blocks::blocks::*;
+
     use vc_world::world::World;
 
     /// the flat fully-lit test world (the e2_tests helper, local copy)

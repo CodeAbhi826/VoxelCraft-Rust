@@ -656,7 +656,7 @@ mod tests {
         let hive = [8, 70, 8];
         sys.hives.insert(hive, HiveData { bees: Vec::new(), natural: false });
         // the block vanishes (broken)
-        w.set_block_state(8, 70, 8, AIR as u16);
+        w.set_block_state(8, 70, 8, AIR);
         sys.scan_t = 144 * 20 - 1;
         sys.tick(&w, (0, 0), 8, true);
         assert!(!sys.hives.contains_key(&hive), "registry drops dead hives");

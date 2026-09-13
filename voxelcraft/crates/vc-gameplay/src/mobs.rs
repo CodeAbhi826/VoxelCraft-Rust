@@ -7175,7 +7175,7 @@ mod v18_tests {
 
 #[cfg(test)]
 mod v19_tests {
-    use super::*;
+
 
     /// 1.9: attack-cooldown combat was verified in Phase 2 (combat.rs has
     /// the exact 1.9 formulas: 0.2 + 0.8p², ×1.5 crits at ≥84.8%, armor
@@ -7336,8 +7336,8 @@ mod v111_tests {
         assert_eq!(MobKind::from_egg(30), MobKind::Parrot);
         assert_eq!(MobKind::Parrot.egg_id(), 30);
         assert_eq!(MobKind::Illusioner.egg_id(), 255, "no spawn egg (VERIFIED)");
-        assert_eq!(MobKind::Illusioner.hostile(), true);
-        assert_eq!(MobKind::Parrot.hostile(), false);
+        assert!(MobKind::Illusioner.hostile());
+        assert!(!MobKind::Parrot.hostile());
     }
 
     /// llama spawns carry strength 1..=5 in the variant byte + equine
@@ -7409,8 +7409,8 @@ mod v111_tests {
         let fangs_or_summons = !ms.pending_player_fang.is_empty() || !ms.pending_summons.is_empty();
         assert!(fangs_or_summons, "a spell fired (fangs or vex summon)");
         // drain them (the game layer's contract)
-        let _: Vec<(u32, usize)> = ms.pending_summons.drain(..).collect();
-        let _: Vec<f32> = ms.pending_player_fang.drain(..).collect();
+        let _: Vec<(u32, usize)> = std::mem::take(&mut ms.pending_summons);
+        let _: Vec<f32> = std::mem::take(&mut ms.pending_player_fang);
         let _ = eid;
     }
 
@@ -8175,7 +8175,7 @@ mod v113_tests {
         assert!(!phantoms.is_empty(), "the insomnia pack arrived");
         for m in &phantoms {
             let dy = m.pos[1] - 70.0;
-            assert!(dy >= 12.0 && dy <= 20.0, "12-20 blocks above (got {dy})");
+            assert!((12.0..=20.0).contains(&dy), "12-20 blocks above (got {dy})");
             // phantoms spawned during the 40-tick window are part-way
             // through the 200-tick orbit countdown by sampling time
             assert!(
@@ -8548,7 +8548,7 @@ mod v114_tests {
             sys.pending_drops.clear();
         }
         // expected 33.3; band 10..=70 covers ~±4 sigma (Poisson(33))
-        assert!(eggs >= 10 && eggs <= 70, "expected ~33 eggs, got {eggs}");
+        assert!((10..=70).contains(&eggs), "expected ~33 eggs, got {eggs}");
     }
 
     /// the sweep-2: the player-thrown trio never hits the thrower, and
@@ -8561,7 +8561,7 @@ mod v114_tests {
         sys.player = Some([8.5, 66.0, 8.5]);
         // a projectile spawning INSIDE the thrower's hit sphere, flying
         // away — PLAYER_OWNER must skip the player-hit branch
-        for (kind, name) in [
+        for (kind, _name) in [
             (ProjKind::Snowball, "snowball"),
             (ProjKind::Egg, "egg"),
             (ProjKind::Pearl, "pearl"),
@@ -8647,7 +8647,7 @@ mod v114_tests {
         }
         // expected 800/8 = 100 (plus ~1 quad event) — the ±5 sigma band
         assert!(
-            chicks >= 55 && chicks <= 165,
+            (55..=165).contains(&chicks),
             "expected ~100 chicks over 800 eggs, got {chicks}"
         );
     }
@@ -8791,7 +8791,7 @@ mod v114_tests {
     /// weight table)
     #[test]
     fn backlog_zombified_piglin_is_the_wastes_roll() {
-        let world = v115_world();
+        let _world = v115_world();
         // a nether world with the wastes biome — a 3x3 chunk grid so
         // the spawn pass's random chunk pick lands in-world
         let mut w = World::new(23);
@@ -8957,7 +8957,7 @@ mod v114_tests {
     /// 16-block neighbors; the anger window is 20-39 s (VERIFIED)
     #[test]
     fn v115_anger_swarm() {
-        let world = v115_world();
+        let _world = v115_world();
         let mut sys = MobSystem::new(10);
         let a = sys.spawn_at(MobKind::Bee, 6, 66, 6).unwrap();
         let b = sys.spawn_at(MobKind::Bee, 8, 66, 8).unwrap(); // near
@@ -9053,7 +9053,7 @@ mod v114_tests {
         assert_eq!(h.speed_attr, 0.3);
         assert_eq!((h.height, h.width), (1.4, 1.3965));
         // the classification rows
-        assert!(MobKind::Strider.neutral() == false && !MobKind::Strider.hostile());
+        assert!(!MobKind::Strider.neutral() && !MobKind::Strider.hostile());
         assert!(MobKind::Piglin.neutral(), "piglins are the neutral (adult) row");
         assert!(!MobKind::Piglin.hostile());
         assert!(MobKind::Hoglin.hostile(), "hoglins are the hostile row");
@@ -9133,7 +9133,7 @@ mod v114_tests {
                     | IRON_NUGGET
                     | ENDER_PEARL
             ));
-            assert!(count >= 1 && count <= 36, "count {count} in range");
+            assert!((1..=36).contains(&count), "count {count} in range");
         }
     }
 

@@ -5638,6 +5638,7 @@ mod shader_tests {
     ///    coordinate tuv=(tile+fract)/32 over the 512px atlas
     ///    (d(tuv)/dpx = dpdx(uv)/512; the old /16 was 32× too large and
     ///    selected mips ~5 levels too deep → the dark grid at distance).
+    ///
     /// A refactor that drops any one of them resurrects the seam bug —
     /// this test fails loudly instead.
     #[test]

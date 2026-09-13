@@ -4763,9 +4763,11 @@ mod pack_tex_tests {
         let t = vc_mesh::mesh::TILE_MISSING;
         let tx = (t % 32) as usize;
         let ty = (t / 32) as usize;
-        let i = ((ty * TILE_PX + 0) * ATLAS_SIZE + tx * TILE_PX + 0) * 4;
+        // (ty + 0/tx + 0: the tile's top-left corner pixel; + 4: the neighbor
+        // pixel to its right — checker alternation)
+        let i = (ty * TILE_PX * ATLAS_SIZE + tx * TILE_PX) * 4;
         assert_eq!(&atlas[i..i + 4], &[248, 0, 248, 255]); // magenta
-        let i2 = ((ty * TILE_PX + 0) * ATLAS_SIZE + tx * TILE_PX + 4) * 4;
+        let i2 = (ty * TILE_PX * ATLAS_SIZE + tx * TILE_PX + 4) * 4;
         assert_eq!(&atlas[i2..i2 + 4], &[0, 0, 0, 255]); // black
     }
 
@@ -4915,12 +4917,10 @@ mod pack_merge_tests {
     /// builtin pack then overwrote the wire/torch art in the atlas.
     #[test]
     fn pack_tile_base_is_above_all_procedural_tiles() {
-        assert!(
-            PACK_TILE_BASE > vc_blocks::blocks::TILE_MAX,
-            "PACK_TILE_BASE {PACK_TILE_BASE} must clear procedural TILE_MAX {}",
-            vc_blocks::blocks::TILE_MAX
-        );
-        assert!(PACK_TILE_BASE > vc_mesh::mesh::TILE_MISSING);
+        // compile-time guard (the format-free form of the message):
+        // PACK_TILE_BASE must clear every procedural tile id
+        const _: () = assert!(PACK_TILE_BASE > vc_blocks::blocks::TILE_MAX);
+        const _: () = assert!(PACK_TILE_BASE > vc_mesh::mesh::TILE_MISSING);
     }
 
     // --------------------------------------------- Phase 6 §26: mipmaps --
@@ -4998,11 +4998,11 @@ mod pack_merge_tests {
     #[test]
     fn mip_averages_a_flat_block() {
         let mut atlas = vec![0u8; ATLAS_SIZE * ATLAS_SIZE * 4];
-        for px in atlas.chunks_exact_mut(4) {
+        for px in atlas.as_chunks_mut::<4>().0 {
             px.copy_from_slice(&[100, 150, 200, 255]);
         }
         let mips = generate_mips(&atlas, 1);
-        assert!(mips[0].chunks_exact(4).all(|px| px == [100, 150, 200, 255]));
+        assert!(mips[0].as_chunks::<4>().0.iter().all(|px| *px == [100, 150, 200, 255]));
     }
 
     /// the real merge must not touch ANY procedural tile: generate the

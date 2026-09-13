@@ -5905,7 +5905,7 @@ pub const PICKER_BLOCKS: [u16; 467] = [
     BOOKSHELF, CRAFTING_TABLE, FURNACE, GLASS, ICE, SNOW,
     PUMPKIN, MELON, CACTUS,
     WOOL_WHITE, WOOL_RED, WOOL_YELLOW, WOOL_BLUE, WOOL_BLACK,
-    
+
     STAINED_GLASS_WHITE, STAINED_GLASS_ORANGE, STAINED_GLASS_MAGENTA,
     STAINED_GLASS_LIGHT_BLUE, STAINED_GLASS_YELLOW, STAINED_GLASS_LIME,
     STAINED_GLASS_PINK, STAINED_GLASS_GRAY, STAINED_GLASS_LIGHT_GRAY,
@@ -5914,18 +5914,18 @@ pub const PICKER_BLOCKS: [u16; 467] = [
     STAINED_GLASS_BLACK,
 
     TALL_GRASS, FLOWER_RED, FLOWER_YELLOW, MUSHROOM_RED, MUSHROOM_BROWN,
-    
+
     ALLIUM, AZURE_BLUET, BLUE_ORCHID, OXEYE_DAISY,
     ORANGE_TULIP, RED_TULIP, WHITE_TULIP, PINK_TULIP,
     SUNFLOWER, LILAC, PEONY, ROSE_BUSH,
-    
+
     RAW_FISH, RAW_SALMON, CLOWNFISH, PUFFERFISH,
-    
+
     MAGMA_BLOCK, NETHER_WART_BLOCK, RED_NETHER_BRICKS, BONE_BLOCK,
-    
+
     GRASS_PATH, PURPUR_BLOCK, PURPUR_PILLAR, END_STONE_BRICKS, END_ROD,
     CHORUS_PLANT, CHORUS_FLOWER, CHORUS_FRUIT, ELYTRA, SHIELD,
-    
+
     SLIME_BLOCK, COARSE_DIRT,
     POLISHED_GRANITE, POLISHED_DIORITE, POLISHED_ANDESITE,
     RED_SANDSTONE, SMOOTH_RED_SANDSTONE,
@@ -5938,19 +5938,19 @@ pub const PICKER_BLOCKS: [u16; 467] = [
     BREWING_STAND,
     POTION_EMPTY, POTION_WATER, POTION_AWKWARD, POTION_MUNDANE, POTION_HEALING, POTION_HEALING_II,
     ENCHANT_TABLE, ENCHANTED_BOOK,
-    
+
     MYCELIUM, END_STONE, NETHER_BRICKS, NETHER_BRICK,
     REDSTONE_LAMP,
     CHISELED_STONE_BRICKS, CHISELED_SANDSTONE, CUT_SANDSTONE, SMOOTH_SANDSTONE,
     MUSHROOM_RED_BLOCK, MUSHROOM_BROWN_BLOCK, MUSHROOM_STEM,
     NETHER_WART, DRAGON_EGG, END_CRYSTAL,
     EYE_OF_ENDER, BLAZE_ROD, BLAZE_POWDER, GOLDEN_APPLE, SNOWBALL,
-    
+
     SPAWN_EGG_BASE, SPAWN_EGG_BASE + 1, SPAWN_EGG_BASE + 2, SPAWN_EGG_BASE + 3,
     SPAWN_EGG_BASE + 4, SPAWN_EGG_BASE + 5, SPAWN_EGG_BASE + 6, SPAWN_EGG_BASE + 7,
     SPAWN_EGG_BASE + 8, SPAWN_EGG_BASE + 9, SPAWN_EGG_BASE + 10, SPAWN_EGG_BASE + 11,
     SPAWN_EGG_BASE + 12, SPAWN_EGG_BASE + 13, SPAWN_EGG_BASE + 14, SPAWN_EGG_BASE + 15,
-    
+
     ANVIL, CHIPPED_ANVIL, DAMAGED_ANVIL, BEACON, COBBLE_WALL,
     ENDER_CHEST, FLOWER_POT, ITEM_FRAME, TRIPWIRE_HOOK,
     WITHER_SKELETON_SKULL, COMMAND_BLOCK,
@@ -5961,12 +5961,12 @@ pub const PICKER_BLOCKS: [u16; 467] = [
     SPAWN_EGG_LLAMA, SPAWN_EGG_VINDICATOR, SPAWN_EGG_EVOKER, SPAWN_EGG_VEX,
     SPAWN_EGG_HUSK, SPAWN_EGG_STRAY,
     LAVA,
-    
-    
+
+
     COAL,
-    
+
     SPAWN_EGG_BASE + 16, SPAWN_EGG_BASE + 17, SPAWN_EGG_BASE + 18, SPAWN_EGG_BASE + 19,
-    
+
     COAL_BLOCK,
     QUARTZ_BLOCK, CHISELED_QUARTZ, QUARTZ_PILLAR, NETHER_QUARTZ,
     STAINED_TERRACOTTA_BASE, STAINED_TERRACOTTA_BASE + 1, STAINED_TERRACOTTA_BASE + 2,
@@ -6088,7 +6088,7 @@ mod state_tests {
         // log axis variants (state ids ≠ block ids there); 63+ are property
         // states (covered by prop_states_roundtrip)
         for b in 0..57u16 {
-            assert_eq!(state_block(b), b as u16, "state {b}");
+            assert_eq!(state_block(b), b, "state {b}");
         }
         for s in 57..=62u16 {
             assert!(is_log(state_block(s)), "state {s} must fold to a log");
@@ -6102,17 +6102,17 @@ mod state_tests {
         assert_eq!(state_block(BIRCH_LOG_X), BIRCH_LOG);
         assert_eq!(state_block(SPRUCE_LOG_Z), SPRUCE_LOG);
         // default (axis Y) is the identity state
-        assert_eq!(log_axis_state(OAK_LOG, 1), OAK_LOG as u16);
+        assert_eq!(log_axis_state(OAK_LOG, 1), OAK_LOG);
         assert_eq!(log_axis_state(OAK_LOG, 0), OAK_LOG_X);
         assert_eq!(log_axis_state(OAK_LOG, 2), OAK_LOG_Z);
         // non-logs pass through untouched
-        assert_eq!(log_axis_state(STONE, 0), STONE as u16);
+        assert_eq!(log_axis_state(STONE, 0), STONE);
     }
 
     #[test]
     fn log_tiles_rotate_with_axis() {
         // axis Y (default): rings on top/bottom, bark on the sides
-        let y = state_tiles(OAK_LOG as u16);
+        let y = state_tiles(OAK_LOG);
         assert_eq!(y[0], TILE_LOG_TOP);
         assert_eq!(y[1], TILE_LOG_TOP);
         assert_eq!(y[2], TILE_LOG_SIDE);
@@ -6128,7 +6128,7 @@ mod state_tests {
         assert_eq!(z[2], TILE_LOG_SIDE);
         assert_eq!(z[3], TILE_LOG_TOP);
         // every non-variant state mirrors its block def
-        let g = state_tiles(GRASS as u16);
+        let g = state_tiles(GRASS);
         assert_eq!(g, [TILE_GRASS_TOP, TILE_DIRT, TILE_GRASS_SIDE, TILE_GRASS_SIDE]);
     }
 
@@ -6176,9 +6176,9 @@ mod state_tests {
         // warts fold + per-age tiles
         for a in 0..4u16 {
             assert_eq!(state_block(WART_STATE_BASE + a), NETHER_WART);
-            assert_eq!(wart_age(WART_STATE_BASE + a), a as u16);
+            assert_eq!(wart_age(WART_STATE_BASE + a), a);
             let t = state_tiles(WART_STATE_BASE + a);
-            assert!(t.iter().all(|&x| x >= TILE_NETHER_WART_0 && x <= TILE_NETHER_WART_3));
+            assert!(t.iter().all(|&x| (TILE_NETHER_WART_0..=TILE_NETHER_WART_3).contains(&x)));
         }
         assert_eq!(default_state(NETHER_WART), WART_STATE_BASE);
         // frame-with-eye folds to the frame
@@ -6267,7 +6267,7 @@ mod state_tests {
         let vis_rows = 11;
         assert!(vis_rows * 44 + 30 <= 540, "visible picker window too tall");
         assert!(cols * 44 + 8 <= 960, "picker grid too wide");
-        let total_rows = (PICKER_BLOCKS.len() + cols - 1) / cols;
+        let total_rows = PICKER_BLOCKS.len().div_ceil(cols);
         let max_scroll = total_rows.saturating_sub(vis_rows);
         // every entry is reachable: max first-row × cols < len, and the
         // window bottom covers the tail
@@ -6278,8 +6278,10 @@ mod state_tests {
     /// Phase 4: the dedicated item tiles exist in the 16×16-tile atlas grid
     #[test]
     fn phase4_tiles_fit_the_atlas() {
-        assert!(TILE_POTION_HARMING < 256);
-        assert!(TILE_FERMENTED_EYE < 256);
+        // compile-time atlas guards (const assertions — checked at build,
+        // not per test run)
+        const _: () = assert!(TILE_POTION_HARMING < 256);
+        const _: () = assert!(TILE_FERMENTED_EYE < 256);
         // the tile ids the Phase 4 blocks reference are exactly the new ones
         assert_eq!(def(POTION_HARMING).tiles[0], TILE_POTION_HARMING);
         assert_eq!(def(FERMENTED_SPIDER_EYE).tiles[0], TILE_FERMENTED_EYE);
@@ -6379,7 +6381,7 @@ mod state_tests {
                 assert!(s > SOUL_SAND_STATE, "brewing states live above the sim range");
                 // every dedicated state folds back to its own block id
                 // (BREWING_STAND_STATE..ENCHANTED_BOOK_STATE == blocks 67..75)
-                assert_eq!(state_block(s), (s - BREWING_STAND_STATE + BREWING_STAND as u16) as u16);
+                assert_eq!(state_block(s), s - BREWING_STAND_STATE + BREWING_STAND);
                 continue;
             }
             // Phase 2 mob-drop item states + Phase 3 redstone-component
@@ -6596,7 +6598,7 @@ mod state_tests {
             assert_eq!(state_block(s), WATER);
             assert!(!is_model_state(s));
         }
-        assert_eq!(water_level(STONE as u16), 255);
+        assert_eq!(water_level(STONE), 255);
         // redstone state roundtrips
         for p in 0u8..=15 {
             let s = wire_state(p);
@@ -6604,7 +6606,7 @@ mod state_tests {
             assert_eq!(state_block(s), REDSTONE_WIRE);
             assert!(!is_model_state(s));
         }
-        assert_eq!(wire_power(STONE as u16), 255);
+        assert_eq!(wire_power(STONE), 255);
         assert!(lever_is_on(lever_state(true)));
         assert!(!lever_is_on(lever_state(false)));
         assert_eq!(state_block(lever_state(true)), LEVER);
@@ -6626,7 +6628,7 @@ mod state_tests {
         assert_eq!(state_description(64), "Oak Slab[half=top]");
         assert_eq!(state_description(65), "Cobblestone Stairs[facing=north,half=bottom]");
         assert_eq!(state_description(OAK_LOG_X), "Oak Log[axis=x]");
-        assert_eq!(state_description(STONE as u16), "Stone");
+        assert_eq!(state_description(STONE), "Stone");
     }
 
     /// §28 + the P7-structures followup: every BLOCK id must place a state
@@ -6763,7 +6765,7 @@ mod state_tests {
             assert!(PICKER_BLOCKS.contains(&want), "picker missing {want}");
         }
         // TILE_MAX covers every E3 tile (the Phase-4 blank-tile guard)
-        assert!(TILE_MAX >= 243);
+        const _: () = assert!(TILE_MAX >= 243);
     }
 }
 
@@ -6842,7 +6844,7 @@ mod auditfix_tests {
         assert!(is_item_block(GOLDEN_CARROT) && is_cross(GOLDEN_CARROT));
         // every new tile is within the atlas guard (the Phase-4
         // blank-tile regression)
-        assert!(TILE_GOLDEN_CARROT <= TILE_MAX && TILE_VINE <= TILE_MAX && TILE_FERN <= TILE_MAX);
+        const _: () = assert!(TILE_GOLDEN_CARROT <= TILE_MAX && TILE_VINE <= TILE_MAX && TILE_FERN <= TILE_MAX);
         // the picker carries the family
         for b in [GOLDEN_CARROT, JUNGLE_LOG, JUNGLE_LEAVES, JUNGLE_PLANKS, VINE, FERN] {
             assert!(PICKER_BLOCKS.contains(&b), "picker missing {b}");
@@ -6918,7 +6920,7 @@ mod v111_tests {
         // the mob billboard sprites
         assert_eq!(BLOCK_TABLE[SPAWN_EGG_LLAMA as usize].tiles[0], TILE_V7_EGG_BASE);
         assert_eq!(BLOCK_TABLE[SPAWN_EGG_STRAY as usize].tiles[0], TILE_V7_EGG_BASE + 5);
-        assert!(TILE_V7_EGG_END <= TILE_MAX, "egg tiles within the atlas guard");
+        const _: () = assert!(TILE_V7_EGG_END <= TILE_MAX, "egg tiles within the atlas guard");
         // shulker box is a solid placeable container
         assert!(is_solid(SHULKER_BOX) && is_opaque(SHULKER_BOX));
     }
@@ -6931,8 +6933,8 @@ mod v111_tests {
 mod v112_tests {
     use super::*;
 
-    /// the V8 window: 70 ids (16 concrete + 16 powder + 16 glazed + egg
-    /// + 16 dyes + 4 seeds + cookie) with their default states, plus the
+    /// the V8 window: 70 ids (16 concrete, 16 powder, 16 glazed, egg,
+    /// 16 dyes, 4 seeds, cookie) with their default states, plus the
     /// registry/state-space bounds (VERIFIED live: minecraft.wiki
     /// /w/Java_Edition_1.12 §Blocks/§Items)
     #[test]
@@ -7056,7 +7058,7 @@ mod v112_tests {
         ] {
             assert!(PICKER_BLOCKS.contains(&b), "picker missing {b}");
         }
-        assert!(TILE_MAX >= TILE_ILLUSIONER, "1.12 tiles within the atlas guard");
+        const _: () = assert!(TILE_MAX >= TILE_ILLUSIONER, "1.12 tiles within the atlas guard");
         assert_eq!(PICKER_BLOCKS.len(), 467);
         // the V9 + V10 windows are all present (the picker-gap fix)
         for want in [SEA_PICKLE, CONDUIT, SPAWN_EGG_TURTLE, BAMBOO, CAMPFIRE, BARREL, SPAWN_EGG_FOX, STICK, CHARCOAL] {
@@ -7161,7 +7163,7 @@ mod v114_tests {
         );
         assert_eq!(state_description(campfire_state(false)), "Campfire[lit=false]");
         // tiles within the atlas guard (the Phase-4 blank-tile regression)
-        assert!(TILE_MAX >= TILE_CHARCOAL, "1.14 tiles within the atlas guard");
+        const _: () = assert!(TILE_MAX >= TILE_CHARCOAL, "1.14 tiles within the atlas guard");
         assert_eq!(TILE_BERRY_BUSH_BASE + 3, 624);
         assert_eq!(TILE_MOB_FOX, 631);
     }
@@ -7221,8 +7223,8 @@ mod v114_tests {
         assert!(!is_item_block(CORNFLOWER), "cornflower is placeable");
         assert!(!is_item_block(LILY_OF_THE_VALLEY), "lily of the valley is placeable");
         // tiles within the atlas guard
-        assert!(TILE_MAX >= TILE_IRON_NUGGET);
-        assert!(TILE_MAX >= TILE_LILY_OF_THE_VALLEY, "flower tiles within the atlas guard");
+        const _: () = assert!(TILE_MAX >= TILE_IRON_NUGGET);
+        const _: () = assert!(TILE_MAX >= TILE_LILY_OF_THE_VALLEY, "flower tiles within the atlas guard");
         // bounds + window shape
         assert_eq!(V11_COUNT, 9);
         assert_eq!(BLOCK_COUNT, 515);
@@ -7307,8 +7309,8 @@ mod v115_tests {
         assert_eq!(name(HONEY_BOTTLE), "Honey Bottle");
         assert_eq!(name(SHEARS), "Shears");
         // tiles within the atlas guard
-        assert!(TILE_MAX >= TILE_MOB_BEE, "bee sprite within the atlas guard");
-        assert!(TILE_MAX >= TILE_BEEHIVE_FRONT_HONEY, "honey front within the atlas guard");
+        const _: () = assert!(TILE_MAX >= TILE_MOB_BEE, "bee sprite within the atlas guard");
+        const _: () = assert!(TILE_MAX >= TILE_BEEHIVE_FRONT_HONEY, "honey front within the atlas guard");
         // bounds + window shape
         assert_eq!(V12_COUNT, 18);
         assert_eq!(BLOCK_COUNT, 515);
@@ -7453,9 +7455,9 @@ mod v116_tests {
         assert_eq!(name(NETHERITE_SCRAP), "Netherite Scrap");
         assert_eq!(name(NETHERITE_INGOT), "Netherite Ingot");
         // tiles within the atlas guard
-        assert!(TILE_MAX >= TILE_SOUL_FIRE, "soul fire within the atlas guard");
-        assert!(TILE_MAX >= TILE_ANCHOR_SIDE_CHARGED, "anchor glow within the atlas guard");
-        assert!(TILE_MAX >= TILE_NETHERITE_INGOT, "ingot within the atlas guard");
+        const _: () = assert!(TILE_MAX >= TILE_SOUL_FIRE, "soul fire within the atlas guard");
+        const _: () = assert!(TILE_MAX >= TILE_ANCHOR_SIDE_CHARGED, "anchor glow within the atlas guard");
+        const _: () = assert!(TILE_MAX >= TILE_NETHERITE_INGOT, "ingot within the atlas guard");
         // bounds + window shape
         assert_eq!(V13_COUNT, 34);
         assert_eq!(V13_STATE_BASE + V13_COUNT, 750);
@@ -7632,9 +7634,9 @@ mod v116_tests {
         assert_eq!(name(SOUL_TORCH), "Soul Torch");
         assert_eq!(name(SOUL_LANTERN), "Soul Lantern");
         // tiles within the atlas guard
-        assert!(TILE_MAX >= TILE_SOUL_LANTERN, "soul lantern within the atlas guard");
-        assert!(TILE_MAX >= TILE_SHROOMLIGHT, "shroomlight within the atlas guard");
-        assert!(TILE_MAX >= TILE_MOB_HOGLIN, "hoglin sprite within the atlas guard");
+        const _: () = assert!(TILE_MAX >= TILE_SOUL_LANTERN, "soul lantern within the atlas guard");
+        const _: () = assert!(TILE_MAX >= TILE_SHROOMLIGHT, "shroomlight within the atlas guard");
+        const _: () = assert!(TILE_MAX >= TILE_MOB_HOGLIN, "hoglin sprite within the atlas guard");
         // bounds + window shape
         assert_eq!(V14_COUNT, 26);
         assert_eq!(V14_STATE_BASE + V14_COUNT, 776);
@@ -7705,7 +7707,7 @@ mod v116_tests {
         assert_eq!(name(GHAST_TEAR), "Ghast Tear");
         assert_eq!(name(POTION_LEAPING), "Potion of Leaping");
         // tiles within the atlas guard
-        assert!(TILE_MAX >= TILE_MOB_SILVERFISH, "silverfish sprite within the atlas guard");
+        const _: () = assert!(TILE_MAX >= TILE_MOB_SILVERFISH, "silverfish sprite within the atlas guard");
     }
 }
 

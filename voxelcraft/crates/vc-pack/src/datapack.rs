@@ -1734,7 +1734,7 @@ mod tests {
     #[test]
     fn zip_pack_scans() {
         use crate::zip::ZipFiles;
-        use std::io::{Read, Write};
+        use std::io::Write;
         // build a one-file deflate zip: pack.mcmeta + one recipe
         let recipe = br#"{"type":"minecraft:crafting_shapeless","ingredients":[{"item":"minecraft:cobblestone"}],"result":{"item":"minecraft:stone"} }"#;
         let files: Vec<(&str, Vec<u8>)> = vec![

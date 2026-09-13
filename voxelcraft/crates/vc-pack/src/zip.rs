@@ -233,7 +233,7 @@ mod tests {
     /// same zip, but the payload is deflate-compressed (method 8) — the
     /// method every real-world pack zip actually uses
     fn build_deflate_zip(files: &[(&str, &[u8])]) -> Vec<u8> {
-        use std::io::Read;
+
         let mut deflated: Vec<(String, Vec<u8>, Vec<u8>, u32)> = Vec::new();
         for (name, data) in files {
             let mut enc = flate2::write::DeflateEncoder::new(Vec::new(), flate2::Compression::default());

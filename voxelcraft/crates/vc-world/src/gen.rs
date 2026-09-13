@@ -4951,7 +4951,7 @@ mod village_tests {
 mod nether_tests {
     use super::*;
     use crate::world::Dimension;
-    use vc_blocks::blocks::*;
+
 
     /// 1.7.2 refactor: Chunk::get FOLDS states to block ids itself, so the
     /// fold helper is identity (kept for the historical test prose). u16
@@ -5130,10 +5130,11 @@ mod nether_tests {
                     SOUL_SOIL | SOUL_FIRE | BONE_BLOCK | CRIMSON_ROOTS
                     | MUSHROOM_RED | MUSHROOM_BROWN => {}
                     // 1.16 (Nether Update, part 1): the V13 nether body —
-                    // soul-valley floors (soil + the eternal fires), the
-                    // basalt blobs/pillars, the blackstone patch family,
-                    // gold veins and the never-air-exposed debris
-                    SOUL_SOIL | SOUL_FIRE | NETHER_GOLD_ORE | ANCIENT_DEBRIS => {}
+                    // gold veins and the never-air-exposed debris (the
+                    // soul-valley soil/fires are counted in the bucket
+                    // above; the basalt blobs/pillars and the blackstone
+                    // patch family have their own buckets)
+                    NETHER_GOLD_ORE | ANCIENT_DEBRIS => {}
                     // 1.16 (Nether Update, part 2): the V14 forest
                     // families — nylium floors, huge-fungi stems + wart
                     // caps + shroomlights, the undergrowth tufts and the
@@ -5143,7 +5144,7 @@ mod nether_tests {
                     | NETHER_WART_BLOCK | WARPED_WART_BLOCK
                     | SHROOMLIGHT
                     | CRIMSON_FUNGUS | WARPED_FUNGUS
-                    | CRIMSON_ROOTS | WARPED_ROOTS | NETHER_SPROUTS
+                    | WARPED_ROOTS | NETHER_SPROUTS
                     | WEEPING_VINES | TWISTING_VINES => {}
                     _ => other += 1,
                 }
@@ -5327,7 +5328,6 @@ mod nether_tests {
     fn nether_forest_regions_and_families() {
         let mut crimson_regions = 0;
         let mut warped_regions = 0;
-        let mut total = 0;
         let mut saw_crimson_stem = false;
         let mut saw_warped_stem = false;
         let mut saw_shroomlight = false;
@@ -5339,7 +5339,6 @@ mod nether_tests {
                 for rz in -1..=1i32 {
                     let cx = rx * 2; // region = 2x2 chunks
                     let cz = rz * 2;
-                    total += 1;
                     let region = nether_region_biome(gen.seed, cx, cz);
                     match region {
                         Biome::CrimsonForest => crimson_regions += 1,
@@ -5455,7 +5454,7 @@ mod dungeon_tests {
                     // y band: underground, above bedrock
                     assert!((8..=35).contains(&r.y0), "y0 {}", r.y0);
                     // mob is one of the three dungeon spawners
-                    assert!(matches!(r.mob, 0 | 1 | 2), "mob {}", r.mob);
+                    assert!(matches!(r.mob, 0..=2), "mob {}", r.mob);
                     // ≤ 2 chests, all inside the interior
                     assert!(r.chest_count <= 2);
                     for c in r.chests.iter().take(r.chest_count) {
@@ -5608,7 +5607,7 @@ mod dungeon_tests {
 #[cfg(test)]
 mod phase10_tests {
     use super::*;
-    use vc_blocks::blocks::*;
+
 
     fn gen() -> TerrainGen {
         TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Overworld)
@@ -5730,7 +5729,7 @@ mod phase10_tests {
             })
             .sum::<usize>();
         assert_eq!(same, 0);
-        let base = g.column(wx, wz).height as i32;
+        let base = g.column(wx, wz).height;
         let at = |dx: i32, dy: i32, dz: i32| -> u16 {
             let x = ((wx + dx) - cx * 16) as usize;
             let z = ((wz + dz) - cz * 16) as usize;
@@ -5874,7 +5873,7 @@ mod phase10_tests {
         let mx = r.x0 + (r.dx * (r.length as f32 / 2.0)) as i32;
         let mz = r.z0 + (r.dz * (r.length as f32 / 2.0)) as i32;
         let (c, _) = g.generate_chunk(mx >> 4, mz >> 4, Vec::new());
-        let col_h = g.column(mx, mz).height as i32;
+        let col_h = g.column(mx, mz).height;
         // probe 3 blocks below the local surface at the midpoint: the
         // cut may be shallow where it clipped a low top; assert that at
         // SOME depth along the column the terrain is carved to air
@@ -5914,7 +5913,7 @@ mod phase10_tests {
 #[cfg(test)]
 mod v172_tests {
     use super::*;
-    use vc_blocks::blocks::*;
+
 
     fn gen() -> TerrainGen {
         TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Overworld)
@@ -6167,21 +6166,10 @@ mod v172_tests {
 #[cfg(test)]
 mod v110_tests {
     use super::*;
-    use vc_blocks::blocks::*;
+
 
     fn gen() -> TerrainGen {
         TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Overworld)
-    }
-
-    fn find_biome(g: &TerrainGen, b: Biome) -> (i32, i32) {
-        for cx in -64..64 {
-            for cz in -64..64 {
-                if g.column(cx * 16 + 8, cz * 16 + 8).biome == b {
-                    return (cx, cz);
-                }
-            }
-        }
-        panic!("{} not found in the ±64-chunk window", b.name());
     }
 
     #[test]
@@ -6269,7 +6257,7 @@ mod e1_tests {
         // the arrival platform (100, 63, 0) — chunk (6, 0), local (4, ?, 0)
         let (pchunk, _) = gen.generate_chunk(6, 0, Vec::new());
         assert_eq!(
-            state_block(pchunk.get(4, 63, 0) as u16),
+            state_block(pchunk.get(4, 63, 0)),
             OBSIDIAN,
             "5×5 obsidian platform at (100, 63, 0) — VERIFIED arrival x/z"
         );
@@ -6302,7 +6290,7 @@ mod e1_tests {
         let (chunk0, _) = gen.generate_chunk(2, 0, Vec::new());
         let mut deep_obsidian = 0;
         for y in 1..=10usize {
-            if state_block(chunk0.get(10, y, 0) as u16) == OBSIDIAN {
+            if state_block(chunk0.get(10, y, 0)) == OBSIDIAN {
                 deep_obsidian += 1;
             }
         }
@@ -6336,7 +6324,7 @@ mod e1_tests {
         assert_eq!(a, b, "deterministic per-region roll");
         // across a spread of regions, some carry fortresses (50% roll)
         let with: usize = (0..20).filter(|i| gen.fortress_in_region(*i, 0).is_some()).count();
-        assert!(with >= 4 && with <= 16, "roughly half the regions, got {with}");
+        assert!((4..=16).contains(&with), "roughly half the regions, got {with}");
         // VERIFIED region size: 432 blocks
         let (x, z) = gen.fortress_in_region(1, 0).unwrap();
         assert!((432..=432 + 431).contains(&x) && (0..=431).contains(&z));
@@ -6488,11 +6476,11 @@ mod e2_tests {
         let (chunk, _) = gen.generate_chunk(0, 0, Vec::new());
         for lz in 0..16usize {
             for lx in 0..16usize {
-                assert_eq!(chunk.get(lx, 0, lz), BEDROCK as u16, "bedrock floor");
-                assert_eq!(chunk.get(lx, 1, lz), DIRT as u16, "dirt layer 1");
-                assert_eq!(chunk.get(lx, 2, lz), DIRT as u16, "dirt layer 2");
-                assert_eq!(chunk.get(lx, 3, lz), GRASS as u16, "grass surface");
-                assert_eq!(chunk.get(lx, 4, lz), AIR as u16, "air above");
+                assert_eq!(chunk.get(lx, 0, lz), BEDROCK, "bedrock floor");
+                assert_eq!(chunk.get(lx, 1, lz), DIRT, "dirt layer 1");
+                assert_eq!(chunk.get(lx, 2, lz), DIRT, "dirt layer 2");
+                assert_eq!(chunk.get(lx, 3, lz), GRASS, "grass surface");
+                assert_eq!(chunk.get(lx, 4, lz), AIR, "air above");
             }
         }
         // plains biome everywhere; no ocean fill above the surface
@@ -6557,23 +6545,10 @@ mod e2_tests {
 #[cfg(test)]
 mod auditfix_tests {
     use super::*;
-    use vc_blocks::blocks::*;
+
 
     fn gen() -> TerrainGen {
         TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Overworld)
-    }
-
-    /// find a chunk whose center biome is `b` within ±64 chunks
-    fn find_biome(g: &TerrainGen, b: Biome) -> (i32, i32) {
-        for cx in -64..64 {
-            for cz in -64..64 {
-                let col = g.column(cx * 16 + 8, cz * 16 + 8);
-                if col.biome == b {
-                    return (cx, cz);
-                }
-            }
-        }
-        panic!("{} not found in the ±64-chunk window", b.name());
     }
 
     /// jungle chunks grow JUNGLE_LOG/JUNGLE_LEAVES trees with VINE on
@@ -6667,7 +6642,7 @@ mod auditfix_tests {
                                 chunk.get(lx, y, lz + 1),
                                 chunk.get(lx, y, lz - 1),
                             ];
-                            if neighbors.iter().any(|&n| n == LEAVES) {
+                            if neighbors.contains(&LEAVES) {
                                 found_bush = true;
                                 break 'scan;
                             }
@@ -6720,14 +6695,14 @@ mod auditfix_tests {
 #[cfg(test)]
 mod v111_tests {
     use super::*;
-    use vc_blocks::blocks::*;
+
 
     fn gen() -> TerrainGen {
         TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Overworld)
     }
 
     /// dark-forest mansions generate with the illager spawners + chest
-    /// + cobble/wood construction (VERIFIED w/Woodland_Mansion: three
+    /// and cobble/wood construction (VERIFIED w/Woodland_Mansion: three
     /// floors, cobblestone foundation, "inhabited by vindicators,
     /// evokers")
     #[test]
@@ -6824,7 +6799,7 @@ mod v111_tests {
 #[cfg(test)]
 mod v113_tests {
     use super::*;
-    use vc_blocks::blocks::*;
+
 
     fn gen() -> TerrainGen {
         TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Overworld)

@@ -873,8 +873,10 @@ mod tests {
 
     #[test]
     fn incompatible_offer_cannot_be_applied() {
-        let mut st = EnchantState::default();
-        st.item = ItemStack::new(ENCHANTED_BOOK, 1);
+        let mut st = EnchantState {
+            item: ItemStack::new(ENCHANTED_BOOK, 1),
+            ..Default::default()
+        };
         st.item.set_enchant(enchant_by_id("protection").unwrap(), 2);
         st.lapis = ItemStack::new(LAPIS_ORE, 3);
         // force an offer of Fire Protection — incompatible with Protection

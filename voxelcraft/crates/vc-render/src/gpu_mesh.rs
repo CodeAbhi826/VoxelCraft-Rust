@@ -1577,8 +1577,8 @@ mod tests {
         use vc_blocks::tint::{KIND_FOLIAGE, KIND_GRASS, KIND_WATER, SLOT_BIRCH, SLOT_SPRUCE};
         let lut = build_lut();
         // state -> block
-        for s in 0..STATE_COUNT {
-            assert_eq!(lut[s], state_block(s as u16) as u32, "state_block({s})");
+        for (s, entry) in lut.iter().take(STATE_COUNT).enumerate() {
+            assert_eq!(*entry, state_block(s as u16) as u32, "state_block({s})");
         }
         // flags encode the exact face_visible arm structure
         for b in 0..BLOCK_COUNT {
@@ -1589,9 +1589,8 @@ mod tests {
                 // (vc_blocks: `if b == AIR return false`; shader:
                 // `if b == 0u ... return`) — the flags path is never
                 // consulted for an air emitter
-                assert_eq!(
-                    vc_blocks::blocks::face_visible(AIR, 3u16),
-                    false,
+                assert!(
+                    !vc_blocks::blocks::face_visible(AIR, 3u16),
                     "face_visible(AIR, stone) must short-circuit"
                 );
                 continue;

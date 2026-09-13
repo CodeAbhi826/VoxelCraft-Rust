@@ -590,7 +590,7 @@ mod tests {
 
     /// count non-transparent pixels painted into a sentinel buffer
     fn painted(px: &[u8]) -> usize {
-        px.chunks_exact(4).filter(|c| c[3] != 0).count()
+        px.as_chunks::<4>().0.iter().filter(|c| c[3] != 0).count()
     }
 
     #[test]
@@ -690,7 +690,7 @@ mod tests {
         assert_eq!(&buf[body..body + 4], &[0xC6, 0xC6, 0xC6, 255]);
         let outer = 10 * 4;
         assert_eq!(&buf[outer..outer + 4], &[0x55, 0x55, 0x55, 255]);
-        let inner = (1 * 20 + 10) * 4;
+        let inner = (20 + 10) * 4; // row 1, col 10
         assert_eq!(&buf[inner..inner + 4], &[255, 255, 255, 255]);
     }
 
@@ -793,9 +793,9 @@ mod tests {
         draw_options_dirt(&mut b, 16);
         assert_eq!(a, b, "dirt tile must be byte-identical across calls");
         // 0.25 brightness of the brightest shade stays dark
-        let max = a.chunks_exact(4).map(|c| c[0].max(c[1]).max(c[2])).max();
+        let max = a.as_chunks::<4>().0.iter().map(|c| c[0].max(c[1]).max(c[2])).max();
         assert_eq!(max, Some(148 / 4), "dirt tile not darkened to 0.25");
         // fully opaque
-        assert!(a.chunks_exact(4).all(|c| c[3] == 255));
+        assert!(a.as_chunks::<4>().0.iter().all(|c| c[3] == 255));
     }
 }

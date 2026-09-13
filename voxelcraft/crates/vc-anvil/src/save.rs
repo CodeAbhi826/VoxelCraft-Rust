@@ -1441,7 +1441,7 @@ mod tests {
 
         // --- …the chunk reloads with the edit intact…
         let (loaded, _l) = load_chunk(&dir, 0, 0).unwrap().expect("chunk present");
-        assert_eq!(loaded.get(8, 70, 8), GLOWSTONE as u16);
+        assert_eq!(loaded.get(8, 70, 8), GLOWSTONE);
 
         // --- …and every other block matches a same-seed regeneration exactly
         let (fresh, _) = vc_world::gen::TerrainGen::new(seed).generate_chunk(0, 0, Vec::new());

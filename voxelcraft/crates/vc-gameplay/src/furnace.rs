@@ -414,9 +414,11 @@ mod tests {
     fn smelts_sand_to_glass_on_fuel() {
         // 1.7.2: red sand smelts to glass too (wiki changelog)
         assert_eq!(smelt_result(RED_SAND), Some(GLASS));
-        let mut f = FurnaceState::default();
-        f.input = ItemStack::new(SAND, 3);
-        f.fuel = ItemStack::new(PLANKS, 1);
+        let mut f = FurnaceState {
+            input: ItemStack::new(SAND, 3),
+            fuel: ItemStack::new(PLANKS, 1),
+            ..Default::default()
+        };
         // run until one item completes (200 ticks + 1 to ignite)
         let mut lit_changes = 0;
         let mut was = false;
@@ -443,9 +445,11 @@ mod tests {
     #[test]
     fn smelts_stone_to_smooth_stone() {
         assert_eq!(smelt_result(STONE), Some(SMOOTH_STONE));
-        let mut f = FurnaceState::default();
-        f.input = ItemStack::new(STONE, 2);
-        f.fuel = ItemStack::new(PLANKS, 1);
+        let mut f = FurnaceState {
+            input: ItemStack::new(STONE, 2),
+            fuel: ItemStack::new(PLANKS, 1),
+            ..Default::default()
+        };
         let mut ticks = 0;
         for _ in 0..400 {
             ticks += 1;
@@ -457,14 +461,16 @@ mod tests {
         assert_eq!((f.output.block, f.output.count), (SMOOTH_STONE, 1));
         assert_eq!(f.input.count, 1);
         // the standard 200-tick cook (ignite tick + 200)
-        assert!(ticks <= 205 && ticks >= 195, "cook time {ticks}");
+        assert!((195..=205).contains(&ticks), "cook time {ticks}");
         assert_eq!(crate::enchanting::smelt_xp(STONE), 0.1);
     }
 
     #[test]
     fn no_fuel_no_cooking() {
-        let mut f = FurnaceState::default();
-        f.input = ItemStack::new(COBBLE, 1);
+        let mut f = FurnaceState {
+            input: ItemStack::new(COBBLE, 1),
+            ..Default::default()
+        };
         for _ in 0..300 {
             f.tick();
         }
@@ -511,9 +517,11 @@ mod tests {
     /// the 80-item ratio are pinned by the fuel-table row above).
     #[test]
     fn coal_block_burns_16000_and_outpaces_the_output_stack() {
-        let mut f = FurnaceState::default();
-        f.input = ItemStack::new(SAND, 81);
-        f.fuel = ItemStack::new(COAL_BLOCK, 1);
+        let mut f = FurnaceState {
+            input: ItemStack::new(SAND, 81),
+            fuel: ItemStack::new(COAL_BLOCK, 1),
+            ..Default::default()
+        };
         for _ in 0..16_000 {
             f.tick();
         }
@@ -530,9 +538,11 @@ mod tests {
     /// exactly 8 glass smelt (1600 / 200), the 9th stays raw, coal gone.
     #[test]
     fn one_coal_smelts_exactly_eight_items() {
-        let mut f = FurnaceState::default();
-        f.input = ItemStack::new(SAND, 9);
-        f.fuel = ItemStack::new(COAL, 1);
+        let mut f = FurnaceState {
+            input: ItemStack::new(SAND, 9),
+            fuel: ItemStack::new(COAL, 1),
+            ..Default::default()
+        };
         // 8 items × 200 ticks + 1 tick to ignite = 1601; run long enough
         for _ in 0..1700 {
             f.tick();
@@ -548,9 +558,11 @@ mod tests {
     #[test]
     fn coal_ore_smelts_into_the_coal_item() {
         assert_eq!(smelt_result(COAL_ORE), Some(COAL));
-        let mut f = FurnaceState::default();
-        f.input = ItemStack::new(COAL_ORE, 2);
-        f.fuel = ItemStack::new(PLANKS, 1);
+        let mut f = FurnaceState {
+            input: ItemStack::new(COAL_ORE, 2),
+            fuel: ItemStack::new(PLANKS, 1),
+            ..Default::default()
+        };
         for _ in 0..420 {
             f.tick();
         }
@@ -564,9 +576,11 @@ mod tests {
     #[test]
     fn slab_burns_half_as_long_as_planks() {
         let run = |fuel: u16| -> i32 {
-            let mut f = FurnaceState::default();
-            f.input = ItemStack::new(SAND, 3);
-            f.fuel = ItemStack::new(fuel, 1);
+            let mut f = FurnaceState {
+                input: ItemStack::new(SAND, 3),
+                fuel: ItemStack::new(fuel, 1),
+                ..Default::default()
+            };
             let mut burning_ticks = 0;
             for _ in 0..400 {
                 f.tick();
@@ -591,10 +605,12 @@ mod tests {
 
     #[test]
     fn output_full_stops() {
-        let mut f = FurnaceState::default();
-        f.input = ItemStack::new(SAND, 5);
-        f.fuel = ItemStack::new(OAK_LOG, 5);
-        f.output = ItemStack::new(GLASS, 64);
+        let mut f = FurnaceState {
+            input: ItemStack::new(SAND, 5),
+            fuel: ItemStack::new(OAK_LOG, 5),
+            output: ItemStack::new(GLASS, 64),
+            ..Default::default()
+        };
         for _ in 0..100 {
             f.tick();
         }
@@ -701,15 +717,17 @@ mod v112_tests {
         assert_eq!(FurnaceKind::Blast.cook_ticks(), 100);
         assert_eq!(FurnaceKind::Blast.burn_rate(), 2);
         // the class filter: ore in, food out (VERIFIED: "can smelt only
-        /// raw metal, ore blocks ... cannot smelt anything else")
+        // raw metal, ore blocks ... cannot smelt anything else")
         assert!(FurnaceKind::Blast.accepts(COAL_ORE));
         assert!(!FurnaceKind::Blast.accepts(POTATO));
         assert!(!FurnaceKind::Blast.accepts(SAND));
 
-        let mut f = FurnaceState::default();
-        f.kind = FurnaceKind::Blast;
-        f.input = ItemStack::new(COAL_ORE, 2);
-        f.fuel = ItemStack::new(PLANKS, 1);
+        let mut f = FurnaceState {
+            kind: FurnaceKind::Blast,
+            input: ItemStack::new(COAL_ORE, 2),
+            fuel: ItemStack::new(PLANKS, 1),
+            ..Default::default()
+        };
         let mut ticks = 0;
         let mut saw_lit = false;
         for _ in 0..400 {
@@ -722,7 +740,7 @@ mod v112_tests {
         }
         assert_eq!((f.output.block, f.output.count), (COAL, 1));
         // 2x speed: ignite tick + 100 cook ticks
-        assert!(ticks >= 95 && ticks <= 106, "blast cook time {ticks}");
+        assert!((95..=106).contains(&ticks), "blast cook time {ticks}");
         assert!(saw_lit, "blast furnace lit while smelting");
 
         // the world state swap: unlit 689 <-> lit 690 (own mini world —
@@ -734,10 +752,12 @@ mod v112_tests {
         w.dirty.clear();
         let mut fs = Furnaces::default();
         w.set_block_state(8, 65, 8, vc_blocks::blocks::V11_STATE_BASE);
-        let mut e = FurnaceState::default();
-        e.kind = FurnaceKind::Blast;
-        e.input = ItemStack::new(COAL_ORE, 8);
-        e.fuel = ItemStack::new(COAL, 4);
+        let e = FurnaceState {
+            kind: FurnaceKind::Blast,
+            input: ItemStack::new(COAL_ORE, 8),
+            fuel: ItemStack::new(COAL, 4),
+            ..Default::default()
+        };
         fs.map.insert([8, 65, 8], e);
         // tick until the lit state appears on the world block
         let mut lit_seen = false;
@@ -765,10 +785,12 @@ mod v112_tests {
         assert!(!FurnaceKind::Smoker.accepts(COAL_ORE));
         assert!(!FurnaceKind::Smoker.accepts(SAND));
 
-        let mut f = FurnaceState::default();
-        f.kind = FurnaceKind::Smoker;
-        f.input = ItemStack::new(POTATO, 2);
-        f.fuel = ItemStack::new(PLANKS, 1);
+        let mut f = FurnaceState {
+            kind: FurnaceKind::Smoker,
+            input: ItemStack::new(POTATO, 2),
+            fuel: ItemStack::new(PLANKS, 1),
+            ..Default::default()
+        };
         let mut ticks = 0;
         for _ in 0..400 {
             ticks += 1;
@@ -778,23 +800,27 @@ mod v112_tests {
             }
         }
         assert_eq!((f.output.block, f.output.count), (BAKED_POTATO, 1));
-        assert!(ticks >= 95 && ticks <= 106, "smoker cook time {ticks}");
+        assert!((95..=106).contains(&ticks), "smoker cook time {ticks}");
 
         // REJECTED input never ignites (no fuel spent)
-        let mut g = FurnaceState::default();
-        g.kind = FurnaceKind::Smoker;
-        g.input = ItemStack::new(COAL_ORE, 1);
-        g.fuel = ItemStack::new(PLANKS, 1);
+        let mut g = FurnaceState {
+            kind: FurnaceKind::Smoker,
+            input: ItemStack::new(COAL_ORE, 1),
+            fuel: ItemStack::new(PLANKS, 1),
+            ..Default::default()
+        };
         for _ in 0..500 {
             g.tick();
         }
         assert!(g.output.is_empty(), "smoker must reject ore");
         assert_eq!(g.fuel.count, 1, "no fuel spent on a rejected input");
 
-        let mut b = FurnaceState::default();
-        b.kind = FurnaceKind::Blast;
-        b.input = ItemStack::new(POTATO, 1);
-        b.fuel = ItemStack::new(PLANKS, 1);
+        let mut b = FurnaceState {
+            kind: FurnaceKind::Blast,
+            input: ItemStack::new(POTATO, 1),
+            fuel: ItemStack::new(PLANKS, 1),
+            ..Default::default()
+        };
         for _ in 0..500 {
             b.tick();
         }
@@ -810,10 +836,12 @@ mod v112_tests {
     #[test]
     fn v114b_smelter_fuel_items_per_fuel_invariant() {
         let run = |kind: FurnaceKind| -> (u8, u32) {
-            let mut f = FurnaceState::default();
-            f.kind = kind;
-            f.input = ItemStack::new(COAL_ORE, 4);
-            f.fuel = ItemStack::new(PLANKS, 1);
+            let mut f = FurnaceState {
+                kind,
+                input: ItemStack::new(COAL_ORE, 4),
+                fuel: ItemStack::new(PLANKS, 1),
+                ..Default::default()
+            };
             let mut items = 0u8;
             let mut flame_ticks = 0u32;
             for _ in 0..2000 {

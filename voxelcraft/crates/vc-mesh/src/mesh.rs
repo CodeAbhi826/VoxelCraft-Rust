@@ -1015,7 +1015,7 @@ fn greedy_merge(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vc_blocks::blocks::*;
+
 
     /// reference light for a snapshot (differential bridge, Phase 4)
     fn lref(snap: &[Option<Arc<Chunk>>; 9]) -> [Option<Arc<vc_world::light::LightData>>; 9] {
@@ -1038,7 +1038,7 @@ mod tests {
     fn decode(v: &Vertex) -> (u16, u8, u16) {
         let tile = ((v.w2 >> 18) & 0x3FFF) as u16;
         let flags = (v.w1 >> 16) as u8;
-        let normal = (flags & 7) as u8;
+        let normal = flags & 7;
         let state = (v.w3 >> 16) as u16;
         (tile, normal, state)
     }
@@ -1069,7 +1069,7 @@ mod tests {
     /// axis=y (identity state) keeps rings on ±Y — the default tree trunk.
     #[test]
     fn log_axis_y_default() {
-        let snap = snap_with(OAK_LOG as u16);
+        let snap = snap_with(OAK_LOG);
         let md = mesh_chunk((0, 0), &snap, &lref(&snap), true);
         let mut ok_top = false;
         let mut ok_side = false;
@@ -1087,14 +1087,14 @@ mod tests {
     /// cross plants keep their side tile and the cross normal index
     #[test]
     fn cross_plant_normal_and_tile() {
-        let snap = snap_with(TALL_GRASS as u16);
+        let snap = snap_with(TALL_GRASS);
         let md = mesh_chunk((0, 0), &snap, &lref(&snap), true);
         assert!(!md.solid.0.is_empty());
         for v in md.solid.0.iter() {
             let (tile, normal, state) = decode(v);
             assert_eq!(normal, 6, "cross plants use normal index 6");
             assert_eq!(tile, TILE_TALL_GRASS);
-            assert_eq!(state, TALL_GRASS as u16);
+            assert_eq!(state, TALL_GRASS);
         }
     }
 
@@ -1370,9 +1370,9 @@ mod tests {
     fn golden_single_block_meshes() {
         // single stone / log / cross plant — geometry + packing baseline
         for (state, want_verts) in [
-            (STONE as u16, 24usize), // 6 faces × 4 corners
+            (STONE, 24usize), // 6 faces × 4 corners
             (OAK_LOG_X, 24),         // 6 faces, rotated tiles
-            (GLASS as u16, 24),      // neighbor rules keep all faces
+            (GLASS, 24),      // neighbor rules keep all faces
         ] {
             let gsnap = golden_snap(state);
             let md = mesh_chunk((0, 0), &gsnap, &lref(&gsnap), true);
@@ -1560,7 +1560,7 @@ mod phase3_tests {
 
         // edit a block in section 8 (y 128..143) in the CENTER chunk only
         let mut c = (*chunks[4]).clone();
-        c.set_state(8, 130, 8, STONE as u16);
+        c.set_state(8, 130, 8, STONE);
         let mut snap2 = snap;
         snap2[4] = Some(Arc::new(c));
 

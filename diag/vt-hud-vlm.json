@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Based on the provided image, here is the QA check of the HUD:\n\n1.  **Symmetric Crosshair:** **Yes**, there is a white, symmetric plus-sign (+) crosshair located in the center of the screen.\n2.  **9-Slot Hotbar:** **Yes**, there is a 9-slot hotbar at the bottom containing various block/item icons (dirt, cobblestone, planks, etc.) with quantity numbers.\n3.  **Hearts and Hunger Icons:** **Yes**, there is a row of red heart icons (health) and a row of orange drumstick icons (hunger) positioned directly above the hotbar.\n4.  **XP/Level Bar:** **No**, there is no experience bar visible above the hotbar in this screenshot.\n5.  **Visual Quality (Blurriness/Rendering):** The rendering is generally sharp and clean for a pixel-art style game. There is no noticeable blurriness or mushy rendering; the edges of the HUD elements and voxels are crisp.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789326790,
+  "id": "2026091403130379a8544b06134430",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "2026091403130379a8544b06134430",
+  "usage": {
+    "completion_tokens": 215,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1569,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1784
+  }
+}

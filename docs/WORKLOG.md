@@ -3957,3 +3957,166 @@ SwiftShader downlevel-limits retry.
 
 **Not committed or pushed** — 31 modified files sit in the working
 tree awaiting explicit user approval, per the standing instruction.
+
+## 2026-09-14 (round 6) — vanilla-accurate world generation: the 1.16.5 density-noise stack
+
+**Task:** "complete the remaining debt and the graphical issues, visuals,
+pipeline all to look exact vanilla minecraft and also the resolutions of
+everything and the hud and mainly the world generation to accurate
+vanilla" — the user's priority order put **world generation accuracy**
+first; §7 re-verification confirmed the rest of the debt (occlusion
+culling §2, entity models §4, Monocraft §6) was already closed by rounds
+1–5, so this round rebuilt the terrain generator on the vanilla 1.16.5
+algorithm.
+
+**§7 re-verification (live, this round):** rounds 1–5's claims re-checked
+in the codebase — occlusion culling + split counters in `render.rs`,
+entity bone hierarchy in `entity_model.rs`, Monocraft embedded in
+`gui/font.rs`: all present. The real gap was terrain: the old generator
+was 2D simplex heightmaps + per-block hash ores + 1.18-style noise-sheet
+caves — a fundamentally different shape language from vanilla 1.16.5.
+The toolchain had been wiped again (the recurring container reset);
+rustup 1.98.1 + wasm32 + clippy + wasm-bindgen-cli 0.2.127 reinstalled
+before any build.
+
+**Vanilla sources (live-verified 2026-09-14, no Mojang code):**
+- **misode/mcmeta `1.16.5-data`** (community extraction of the vanilla
+  data pack): `worldgen/noise_settings/overworld.json` — noise cell
+  4×8×4 (`size_horizontal` 1 / `size_vertical` 2), sampling factors xz 80
+  / y 160, `density_factor` 1.0, `density_offset` −0.46875,
+  `random_density_offset` true, sea_level 63, default block stone /
+  fluid water; `worldgen/configured_carver/cave.json` probability
+  0.14285715 + `canyon.json` 0.02; `worldgen/configured_feature/ore_*.json`
+  — the exact vanilla ore table (dirt 10×33 y0..255, gravel 8×33 y0..255,
+  granite/diorite/andesite 10×33 y0..79, coal 20×17 y0..127, iron 20×9
+  y0..63, gold 2×9 y0..31, redstone 8×8 y0..15, diamond 1×8 y0..15, lapis
+  1×7 baseline 16 spread 16) and biome feature stage 6 ordering; the
+  biome `depth`/`scale` table for all 30+ biomes (plains 0.125/0.05,
+  forest 0.1/0.2, mountains 1.0/0.5, ocean −1.0/0.1, deep ocean
+  −1.8/0.1, river −0.5/0.0, …).
+- **Archived Customized wiki table** (minecraft.wiki/w/Customized via
+  web.archive.org, the 1.8–1.16 world type): the legacy noise fields —
+  Coordinate/Height Scale 684.412, Main Noise Scale X/Y/Z 80/160/80,
+  Upper/Lower Limit Scale 512, Depth Noise Scale X/Z 200, Depth Base
+  Size 8.5 (base height 68 = 8.5 × 8, wiki's own conversion).
+- **minecraft.wiki/w/Bedrock** §Natural generation: "the five bottommost
+  layers … in a rough pattern" — the 100/80/60/40/20% roughness stack.
+- **minecraft.fandom.com/wiki/Noise_generator**: the low/high/selector
+  blend semantics (selector < 0 → low field, > 1 → high field, between →
+  linear), which persist through 1.17.
+- **Biome numeric IDs**: minecraft.wiki/w/Biome + Fandom Biome/ID
+  (Bedrock-classic values for the 1.7+ variants where Java's registry
+  renumbered; disclosed below).
+
+**Implementation (`vc-world/src/vanilla_noise.rs` + the `gen.rs` surgery):**
+- `JavaRandom` — the documented 48-bit LCG (0x5DEECE66D multiplier,
+  11 increment) so the Perlin permutation shuffle follows vanilla's
+  `ImprovedNoiseGenerator(Random)` init structure; `nextInt` with
+  Java's modulo-bias correction.
+- `ImprovedPerlin` — Ken Perlin's published 2002 improved noise
+  (quintic fade, 12 gradients); `OctavePerlin` — the fBm sampler
+  (frequency ×2 / amplitude ×0.5 per octave).
+- `VanillaTerrain` — the stack wired with the vanilla constants: main
+  (8 octaves, x/80 y/160 z/80 — the selector), lower/upper (16 octaves
+  each, /512 — the limit fields, blended by the selector), depth (16
+  octaves, 2D /200), surface (4 octaves, 2D /64). Density formula:
+  `field × amp + (h_eff − y)/8 + (−0.46875) + rnd_off` — the documented
+  pre-1.18 structure.
+- **Chunk pipeline**: density sampled on the 5×33×5 lattice (4×8×4
+  cells), trilinearly interpolated per block; per-lattice-column
+  drivers = base 68 + continental shelf response (deep oceans floor at
+  ~35–45, the −1.8 depth response) + mountain-region mask (mountains
+  biome depth 1.0/scale 0.5 response) + depth-noise wobble + the
+  climate biome's depth (the vanilla depth/scale table, smoothed over
+  the 3×3 neighborhood — the vanilla squoze-biome behavior);
+  amplification = 1 + scale × 1.8 + mountain mask × 2.2;
+  `random_density_offset` drawn per noise column in [−0.1875, 0.0625].
+- **Perlin-worm cave carvers** (replacing the 1.18-style sheets): roll
+  0.14285715/chunk (the vanilla cave.json value), 10–28 steps of 4
+  blocks, drifting yaw/pitch, width 1..5 with entrance rooms, y 8..128,
+  lava below y=10, liquid guards so tunnels never breach into water,
+  bedrock never carved.
+- **Ore veins** (replacing per-block hash): the exact vanilla table
+  above, per-chunk feature placement, ellipsoid blobs with rotated-frame
+  + per-position hash edge-jitter, replacing base-stone only (the
+  vanilla `base_stone_overworld` target).
+- **Bedrock**: y=0 always solid; y=1..4 with the per-column
+  100/80/60/40/20% roughness (hash-draw; vanilla's own draw is
+  chunk-random — same distribution, disclosed adaptation).
+- **River biome (new, id 27)**: ridged-noise bands carving the density
+  target toward a 58-high bed; sand-over-dirt floor; disclosed
+  adaptation of vanilla's layer-stack rivers.
+- **Classification moved pre-carve** (the critical correctness fix of
+  the round): biome selection is climate-driven and reads the
+  pre-carve density surface — a ravine canyon keeps its surface biome,
+  exactly like vanilla. Tests that scanned `column()` hits now verify
+  against the generated chunk's center (vanilla's own biome queries
+  read chunk data).
+- **Save codec extended** (the round's surprise): `vc-anvil/save.rs`
+  only mapped 57 block ids + 14 biomes — kelp/seagrass (now common in
+  ocean chunks) silently degraded to AIR on save, and new biomes loaded
+  as Plains. Blocks beyond the table now derive registry names from the
+  block display names (roundtrip-closed through the state space);
+  the biome table extended to all 28 (vanilla ids live-verified; the
+  1.7+ variant rows use Bedrock-classic numeric ids where Java's
+  post-1.18 registry renumbered — disclosed).
+- Climate calibration: mountain response strengthened (vanilla mountain
+  surfaces 80–125), dark-forest band widened (vanilla ~1.5% coverage),
+  savanna tree density ~1.4/chunk, iceberg frequency 40%/chunk.
+
+**Verification chain (the after-everything discipline):**
+- **735 tests / 0 failures workspace-wide** (729 + 6 new
+  vanilla_noise.rs unit tests: JavaRandom determinism, Perlin bounds +
+  lattice-zero property, fBm range, density polarity, field continuity,
+  seed determinism). The suite surfaced and the fixes closed: the
+  surface-band loop-direction bug (grass/dirt never applied — found by
+  the dump_chunk diagnostic), the post-carve classification bug (ravine
+  floors classified as beach), find_biome threshold misses (±1-block
+  column-vs-lattice divergence at biome boundaries), emerald/badlands/
+  pyramid/mansion/iceberg test windows (structure-site gates now anchor
+  on actual biome regions instead of fixed windows).
+- **Clippy 1.98.1: 0 warnings** `--lib` and `--all-targets`
+  (the zero-warning bar restored; includes the LCG constant regrouping
+  — 0x5DEE_ECE_66D, value-identical, caught my own bad first regroup).
+- **wasm bundle rebuilt** (locked js+wasm pair, 19:04, patched glue,
+  pack rsynced).
+- **Live browser E2E at 1440×810** through `/voxelcraft.html`: title →
+  SINGLEPLAYER → CREATE WORLD → gameplay; VLM QA on the gameplay frame:
+  smooth rolling hills, oak trees, tall grass + poppy/dandelion flora,
+  "very similar to natural vanilla Minecraft generation", no broken/
+  flat/chaotic terrain. F3 overlay verified: `Culling: occl 0 frust 26
+  (of 42 meshed)` — the §2 split counters intact in the shipping build;
+  player standing on natural terrain at y=86, sky light 15. No console
+  panics; only the known-benign SwiftShader downlevel retry.
+  Load time: first chunks on GPU in 10.2s under SwiftShader (the
+  density stack costs ~14.5 ms/chunk native-release, ~3× that in wasm —
+  recorded as the known follow-up; vanilla's own sampler count is the
+  cost driver, kept for shape fidelity).
+
+**Disclosed adaptations (clean-room, no Mojang code):** the climate
+fields remain the pre-rewrite two-noise temperature/humidity/variant
+brackets (vanilla 1.16.5 selects biomes through a Voronoi'd layer stack
+from the same climate concept — our bracket chain is the documented
+adaptation, disclosed in the code); rivers via ridged noise instead of
+the layer stack; ore blob edge jitter and the random-density-offset /
+bedrock roughness draws are position hashes instead of chunk-random
+stream draws (same distributions, stream-order independence — the
+golden-determinism discipline); deep-ocean and mountain responses are
+calibrated to the vanilla depth/scale table rather than driven through
+it (no continentalness/erosion noise in the 1.16.5 pipeline sense).
+
+### Luanti-referenced techniques
+
+- No new Luanti techniques this round — the terrain rewrite is
+  **vanilla-parity** work cited entirely against the vanilla sources
+  above (misode/mcmeta data, the wiki pages). The standing citations
+  from prior rounds remain accurate and were re-verified live:
+  ClientMap split-counter culling reference (`src/client/clientmap.cpp`,
+  studied 2026-09-12) and the entity-model architecture reference
+  (`docs.luanti.org/for-creators/models` + `src/client/content_cao.cpp`,
+  studied 2026-09-12).
+
+**Not committed or pushed** — the round's work sits in the working tree
+plus the environment's automatic checkpoint commit (c91b109, the UUID
+pattern this container produces); nothing was pushed to GitHub,
+awaiting explicit user approval, per the standing instruction.

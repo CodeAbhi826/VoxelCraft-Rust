@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "This is the **create-world screen**.\n\n**Visible buttons and labels:**\n*   **GAME MODE: SURVIVAL**\n*   **WORLD TYPE: NORMAL**\n*   **CREATE WORLD: DEPLETING STACKS. REAL DAMAGE. RESPAWN**\n*   **CANCEL**\n\n**Visual Defects:**\n*   The text for the \"CREATE WORLD\" button overflows the boundaries of the button graphic, extending significantly to the left and right edges.\n*   The background appears to be a blurred or darkened in-game scene (likely the Nether), which is standard for this menu, though the overall image has a heavy red tint.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789326388,
+  "id": "202609140306246fd3acdb925d4ad3",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202609140306246fd3acdb925d4ad3",
+  "usage": {
+    "completion_tokens": 134,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1515,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1649
+  }
+}

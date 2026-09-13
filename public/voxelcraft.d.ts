@@ -20,13 +20,13 @@ export interface InitOutput {
     readonly wgpu_render_bundle_pop_debug_group: (a: number) => void;
     readonly wgpu_render_bundle_set_index_buffer: (a: number, b: bigint, c: number, d: bigint, e: bigint) => void;
     readonly wgpu_render_bundle_push_debug_group: (a: number, b: number) => void;
-    readonly __wasm_bindgen_func_elem_11571: (a: number, b: number, c: number, d: number) => void;
-    readonly __wasm_bindgen_func_elem_1098: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_11581: (a: number, b: number, c: number, d: number) => void;
+    readonly __wasm_bindgen_func_elem_875: (a: number, b: number, c: number, d: number) => void;
     readonly __wasm_bindgen_func_elem_4592: (a: number, b: number, c: number) => void;
     readonly __wasm_bindgen_func_elem_2810: (a: number, b: number, c: number) => void;
-    readonly __wasm_bindgen_func_elem_1097: (a: number, b: number, c: number) => void;
+    readonly __wasm_bindgen_func_elem_874: (a: number, b: number, c: number) => void;
     readonly __wasm_bindgen_func_elem_2810_5: (a: number, b: number, c: number) => void;
-    readonly __wasm_bindgen_func_elem_1097_6: (a: number, b: number, c: number) => void;
+    readonly __wasm_bindgen_func_elem_874_6: (a: number, b: number, c: number) => void;
     readonly __wasm_bindgen_func_elem_4592_7: (a: number, b: number, c: number) => void;
     readonly __wasm_bindgen_func_elem_2810_8: (a: number, b: number, c: number) => void;
     readonly __wasm_bindgen_func_elem_2810_9: (a: number, b: number, c: number) => void;

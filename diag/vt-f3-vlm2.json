@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "VoxelCraft 1.16.5 (Rust/wgpu/modif\n10 fps T: ∞ fancy-clouds D: 2\nIntegrated server @ 0 ms ticks: 0 t\nC: 15/225 (s) D: 6. pC: 000. pl: 127. a\nE: 6/8 B: 299\nF: 0 I: 210\nCulling: occl 0 frust 26 (of 42 mesh\nClient Chunk Cache: 42, 15\nServerChunkCache: 225\nXYZ: -15.500 / 86.00100 / 16.500\nBlock: -16 86 16\nChunk: 0 6 0 in -1 5 1\nFacing: west (Towards negative X) (\nClient Light: 15 (15 sky, 0 blk)\nServer Light: 15 (15 sky, 0 blk)\nCH F:0/0 D:0/0",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789326639,
+  "id": "20260914031033a5aea6e0cb6640ba",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260914031033a5aea6e0cb6640ba",
+  "usage": {
+    "completion_tokens": 215,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1338,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1553
+  }
+}

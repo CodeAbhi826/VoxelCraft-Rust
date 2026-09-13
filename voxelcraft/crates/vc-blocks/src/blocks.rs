@@ -4142,6 +4142,82 @@ pub fn is_model_block(b: u16) -> bool {
     (OAK_SLAB..=OAK_FENCE).contains(&b)
 }
 
+/// Hand break time in SECONDS for a block (2026-09-14 round — the
+/// vanilla mining model, VERIFIED live 2026-09-14, minecraft.wiki/w/
+/// Breaking: bare-hand break time = hardness × 1.5 when the block is
+/// harvestable by hand, × 5 when it needs a tool; hardness 0 = instant).
+///
+/// DOCUMENTED ADAPTATION: this engine has no tool ITEMS yet (the
+/// inventory is blocks-only), so the bare hand counts as the proper tool
+/// for every block — time = hardness × 1.5 across the board. Without it,
+/// tool-class blocks (stone × 5 = 7.5 s AND no drops by hand) would
+/// soft-lock survival progression the moment worlds start empty. When
+/// tool items arrive, this table grows the tool-speed column instead.
+/// Values = the vanilla hardness table (minecraft.wiki/w/Breaking
+/// §Blocks by hardness, 1.16.5 values).
+///
+/// Returns 0.0 for instant-break (plants/decor), and f32::INFINITY for
+/// unbreakable (bedrock — the game layer also hard-guards it).
+#[inline]
+pub fn break_time_secs(block: u16) -> f32 {
+    let hardness: f32 = match block {
+        // unbreakable
+        BEDROCK => return f32::INFINITY,
+        // instant (hardness 0)
+        TALL_GRASS | FERN | DEAD_BUSH | FLOWER_RED | FLOWER_YELLOW
+        | WHEAT_CROP | WHEAT | REDSTONE_WIRE | REDSTONE_TORCH
+        | LEVER | VINE => 0.0,
+        // soft ground (0.5–0.6)
+        DIRT | COARSE_DIRT | PODZOL => 0.5,
+        GRASS => 0.6,
+        SAND | RED_SAND => 0.5,
+        GRAVEL => 0.6,
+        CLAY => 0.6,
+        FARMLAND => 0.6,
+        MYCELIUM => 0.6,
+        SNOW | SNOW_GRASS => 0.2,
+        SOUL_SAND => 0.5,
+        NETHERRACK => 0.4,
+        // woods (2.0)
+        OAK_LOG | BIRCH_LOG | SPRUCE_LOG | JUNGLE_LOG | ACACIA_LOG
+        | DARK_OAK_LOG => 2.0,
+        PLANKS | JUNGLE_PLANKS | CRIMSON_PLANKS => 2.0,
+        CRAFTING_TABLE => 2.5,
+        BOOKSHELF => 1.5,
+        CHEST => 2.5,
+        OAK_FENCE => 2.0,
+        // leaves + plants-ish
+        LEAVES | BIRCH_LEAVES | SPRUCE_LEAVES | JUNGLE_LEAVES
+        | ACACIA_LEAVES | DARK_OAK_LEAVES => 0.2,
+        CACTUS => 0.4,
+        PUMPKIN | MELON => 1.0,
+        // stone-class (1.5–2)
+        STONE | GRANITE | DIORITE | ANDESITE => 1.5,
+        STONE_BRICKS | CHISELED_STONE_BRICKS => 1.5,
+        SMOOTH_STONE => 2.0,
+        COBBLE | MOSSY_COBBLE => 2.0,
+        BRICKS => 2.0,
+        CHISELED_SANDSTONE | CUT_SANDSTONE | SMOOTH_SANDSTONE
+        | RED_SANDSTONE | SMOOTH_RED_SANDSTONE => 0.8,
+        QUARTZ_BLOCK | CHISELED_QUARTZ => 0.8,
+        NETHER_BRICKS => 2.0,
+        END_STONE => 3.0,
+        // ores + mineral blocks (3)
+        COAL_ORE | IRON_ORE | GOLD_ORE | DIAMOND_ORE | REDSTONE_ORE
+        | LAPIS_ORE | EMERALD_ORE | NETHER_QUARTZ_ORE => 3.0,
+        IRON_BLOCK | GOLD_BLOCK | DIAMOND_BLOCK => 5.0,
+        COAL_BLOCK => 5.0,
+        // utility
+        FURNACE => 3.5,
+        GLOWSTONE => 0.3,
+        GLASS => 0.3,
+        ICE => 0.5,
+        OBSIDIAN => 50.0,
+        _ => 1.0,
+    };
+    hardness * 1.5
+}
+
 /// per-state tiles: [top(+Y), bottom(−Y), side_x(±X), side_z(±Z)].
 /// Vanilla logs show the ring texture on the ±axis faces and bark on the
 /// rest — the axis property drives the tile rotation.
@@ -4415,7 +4491,144 @@ pub fn log_axis_state(block: u16, axis: u8) -> u16 {
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
 // [merge] E-series tiles end at 243; the F-series (1.7.2-1.10) tiles
 // continue at 244..=325; the audit-fix round adds 326..=332
-pub const TILE_MAX: u16 = 763; // the backlog round: 736/737 rain+snow sprites, 738 fire, 739-763 the farming set (farming bracket)
+pub const TILE_MAX: u16 = 774; // 763 farming bracket + 764..773 destroy stages + 774 arm
+
+// ---- the 2026-09-14 round: destroy-stage crack overlays (764..=773) and
+// the first-person arm tile (774). The ten destroy stages are the vanilla
+// `textures/block/destroy_stage_0..9.png` analogs (VERIFIED live
+// 2026-09-14, minecraft.wiki/w/Breaking §Mining: "the block being mined
+// gets an overlay of 10 progressively deeper crack textures") — painted
+// procedurally in textures.rs, and PACK-OVERRIDABLE so resource packs can
+// restyle them like vanilla. ----
+/// destroy_stage_0 — no cracks yet (transparent) through
+/// destroy_stage_9 — fully cracked (block breaks).
+pub const TILE_DESTROY_BASE: u16 = 764;
+/// the first-person right-arm skin tile (the held-item view model).
+pub const TILE_ARM: u16 = 774;
+
+/// Resource-pack override registry (2026-09-14 round): vanilla texture
+/// locations → our procedural atlas tiles. A pack that ships
+/// `assets/minecraft/textures/block/<loc>.png` REPLACES the pixels of the
+/// listed tile IN the atlas slot — every consumer (mesher, particles,
+/// item icons, HUD, held item) picks the new art up with zero routing
+/// changes, exactly the vanilla "packs override default textures" feel
+/// (VERIFIED live 2026-09-14, minecraft.wiki/w/Resource_pack §Behavior:
+/// packs on the Selected list "replace or merge loaded assets").
+///
+/// Locations are in canonical `minecraft:block/<name>` form; entries the
+/// engine has no procedural tile for are simply not listed (a pack can
+/// still override model-dispatch textures — fences/slabs/stairs — through
+/// the ModelSet merge). Non-16×16 pack sources are nearest-resampled to
+/// 16×16 (the fixed-tile atlas architecture, §1 of the protocol).
+///
+/// This is the table that makes resource packs REAL for cube blocks; the
+/// Programmer Art builtin pack (the vanilla pre-1.14 retro look-alike)
+/// drives its retro set through exactly these paths.
+#[rustfmt::skip]
+pub const PACK_OVERRIDABLE: &[(&str, u16)] = &[
+    // terrain basics
+    ("block/grass_block_top", TILE_GRASS_TOP),
+    ("block/grass_block_side", TILE_GRASS_SIDE),
+    ("block/dirt", TILE_DIRT),
+    ("block/stone", TILE_STONE),
+    ("block/cobblestone", TILE_COBBLE),
+    ("block/mossy_cobblestone", TILE_MOSSY_COBBLE),
+    ("block/sand", TILE_SAND),
+    ("block/gravel", TILE_GRAVEL),
+    ("block/bedrock", TILE_BEDROCK),
+    ("block/snow", TILE_SNOW),
+    ("block/ice", TILE_ICE),
+    ("block/clay", TILE_CLAY),
+    ("block/obsidian", TILE_OBSIDIAN),
+    ("block/glowstone", TILE_GLOWSTONE),
+    ("block/chiseled_sandstone", TILE_CHISELED_SANDSTONE),
+    ("block/cut_sandstone", TILE_CUT_SANDSTONE),
+    ("block/smooth_sandstone", TILE_SMOOTH_SANDSTONE),
+    // stone variants
+    ("block/granite", TILE_GRANITE),
+    ("block/diorite", TILE_DIORITE),
+    ("block/andesite", TILE_ANDESITE),
+    ("block/stone_bricks", TILE_STONE_BRICKS),
+    ("block/chiseled_stone_bricks", TILE_CHISELED_STONE_BRICKS),
+    ("block/bricks", TILE_BRICKS),
+    ("block/smooth_stone", TILE_SMOOTH_STONE),
+    // logs + planks + leaves
+    ("block/oak_log", TILE_LOG_SIDE),
+    ("block/oak_log_top", TILE_LOG_TOP),
+    ("block/oak_planks", TILE_PLANKS),
+    ("block/oak_leaves", TILE_LEAVES),
+    ("block/birch_log", TILE_BIRCH_LOG_SIDE),
+    ("block/birch_log_top", TILE_LOG_TOP),
+    ("block/birch_leaves", TILE_BIRCH_LEAVES),
+    ("block/spruce_log", TILE_SPRUCE_LOG_SIDE),
+    ("block/spruce_log_top", TILE_LOG_TOP),
+    ("block/spruce_leaves", TILE_SPRUCE_LEAVES),
+    // ores + mineral blocks
+    ("block/coal_ore", TILE_COAL_ORE),
+    ("block/iron_ore", TILE_IRON_ORE),
+    ("block/gold_ore", TILE_GOLD_ORE),
+    ("block/diamond_ore", TILE_DIAMOND_ORE),
+    ("block/redstone_ore", TILE_REDSTONE_ORE),
+    ("block/lapis_ore", TILE_LAPIS_ORE),
+    ("block/emerald_ore", TILE_EMERALD_ORE),
+    ("block/iron_block", TILE_IRON_BLOCK),
+    ("block/gold_block", TILE_GOLD_BLOCK),
+    ("block/diamond_block", TILE_DIAMOND_BLOCK),
+    // utility / crafted
+    ("block/glass", TILE_GLASS),
+    ("block/bookshelf", TILE_BOOKSHELF_SIDE),
+    ("block/crafting_table_top", TILE_CRAFT_TOP),
+    ("block/crafting_table_side", TILE_CRAFT_SIDE),
+    ("block/furnace_side", TILE_FURNACE_SIDE),
+    ("block/furnace_top", TILE_FURNACE_TOP),
+    ("block/furnace_front_on", TILE_FURNACE_LIT_SIDE),
+    ("block/redstone_lamp", TILE_REDSTONE_LAMP),
+    ("block/redstone_lamp_on", TILE_REDSTONE_LAMP_ON),
+    ("block/spawner", TILE_SPAWNER),
+    // wool (1.13+ names; our engine ships the 6-tile subset)
+    ("block/white_wool", TILE_WOOL_WHITE),
+    ("block/red_wool", TILE_WOOL_RED),
+    ("block/blue_wool", TILE_WOOL_BLUE),
+    ("block/yellow_wool", TILE_WOOL_YELLOW),
+    ("block/black_wool", TILE_WOOL_BLACK),
+    // nether + end
+    ("block/netherrack", TILE_NETHERRACK),
+    ("block/nether_bricks", TILE_NETHER_BRICKS),
+    ("block/soul_sand", TILE_SOUL_SAND),
+    ("block/quartz_ore", TILE_QUARTZ_ORE),
+    ("block/end_stone", TILE_END_STONE),
+    ("block/dragon_egg", TILE_DRAGON_EGG),
+    // plants / decor
+    ("block/tall_grass", TILE_TALL_GRASS),
+    ("block/poppy", TILE_FLOWER_RED),
+    ("block/dandelion", TILE_FLOWER_YELLOW),
+    ("block/red_mushroom", TILE_MUSHROOM_RED),
+    ("block/brown_mushroom", TILE_MUSHROOM_BROWN),
+    ("block/dead_bush", TILE_DEAD_BUSH),
+    ("block/cactus_side", TILE_CACTUS_SIDE),
+    ("block/cactus_top", TILE_CACTUS_TOP),
+    ("block/pumpkin_side", TILE_PUMPKIN_SIDE),
+    ("block/pumpkin_top", TILE_PUMPKIN_TOP),
+    ("block/melon_side", TILE_MELON_SIDE),
+    ("block/melon_top", TILE_MELON_TOP),
+    ("block/mycelium_top", TILE_MYCELIUM_TOP),
+    ("block/mycelium_side", TILE_MYCELIUM_SIDE),
+    // mushroom blocks
+    ("block/red_mushroom_block", TILE_MUSHROOM_RED_BLOCK),
+    ("block/brown_mushroom_block", TILE_MUSHROOM_BROWN_BLOCK),
+    ("block/mushroom_stem", TILE_MUSHROOM_STEM),
+    // destroy stages (vanilla packs can restyle the crack overlay)
+    ("block/destroy_stage_0", TILE_DESTROY_BASE),
+    ("block/destroy_stage_1", TILE_DESTROY_BASE + 1),
+    ("block/destroy_stage_2", TILE_DESTROY_BASE + 2),
+    ("block/destroy_stage_3", TILE_DESTROY_BASE + 3),
+    ("block/destroy_stage_4", TILE_DESTROY_BASE + 4),
+    ("block/destroy_stage_5", TILE_DESTROY_BASE + 5),
+    ("block/destroy_stage_6", TILE_DESTROY_BASE + 6),
+    ("block/destroy_stage_7", TILE_DESTROY_BASE + 7),
+    ("block/destroy_stage_8", TILE_DESTROY_BASE + 8),
+    ("block/destroy_stage_9", TILE_DESTROY_BASE + 9),
+];
 
 // ---- the farming bracket's tiles (739..=763, 2026-09-09) — all
 // clean-room procedural art (farming_art.rs), NOT vanilla assets ----

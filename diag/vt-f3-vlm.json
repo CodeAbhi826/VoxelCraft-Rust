@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Based on the image provided, there is **no debug overlay (F3 screen) visible**. The image shows a standard gameplay view of a Minecraft world with a tree, grass, and flowers, but it does not contain any text, coordinates, or performance statistics.\n\nIf you intended to upload a screenshot of the F3 debug screen, please re-upload the correct image. If you are looking for an example of what that text typically looks like in Minecraft, here is a standard transcription:\n\n```\nMinecraft 1.20.4 (C:/Users/...)\nCPU: Intel(R) Core(TM) i7-... @ ...GHz\nDisplay: ...x... @ ...Hz (...)\nJava: ... / ...\nGL Caps: ...\n...\nFPS: 120\nC: 444/1250\nD: 562/1125 (ph)\n...\nXYZ: -123.45 / 67.89 / 101.12\nBlock: 123 67 101 [minecraft:grass_block]\nChunk: 7 8 in -1 0\nFacing: north (toward negative Z)\nBiome: minecraft:plains\n...\n```",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789326588,
+  "id": "20260914030939c1b640beccf24ef0",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260914030939c1b640beccf24ef0",
+  "usage": {
+    "completion_tokens": 239,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1336,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1575
+  }
+}

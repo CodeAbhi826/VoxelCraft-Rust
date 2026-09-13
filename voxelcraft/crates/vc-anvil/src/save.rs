@@ -708,6 +708,14 @@ pub struct PlayerMeta {
     pub pos: [f64; 3],
     pub yaw: f32,
     pub pitch: f32,
+    /// 2026-09-14 round: the player inventory now persists (vanilla
+    /// keeps `Inventory` inside the player NBT of level.dat). With the
+    /// debug starter palette retired, a saved world MUST give back the
+    /// collected items or every reload would restart empty-handed.
+    /// (hotbar slot index, block id, count) — absent/empty = fresh start.
+    pub slots: Vec<(u8, u16, u8)>,
+    /// selected hotbar slot (0..8; defaults to 0)
+    pub selected: u8,
 }
 
 fn gzip_bytes(data: &[u8]) -> std::io::Result<Vec<u8>> {
@@ -748,6 +756,23 @@ pub fn write_level_dat(world_dir: &Path, meta: &WorldMeta) -> std::io::Result<()
         vc.set("PlayerZ", Nbt::Double(p.pos[2]));
         vc.set("PlayerYaw", Nbt::Float(p.yaw));
         vc.set("PlayerPitch", Nbt::Float(p.pitch));
+        // the collected inventory rides along (vanilla Inventory NBT
+        // analog — only non-empty slots are stored)
+        let items: Vec<Nbt> = p
+            .slots
+            .iter()
+            .map(|(slot, block, count)| {
+                let mut it = Nbt::compound();
+                it.set("Slot", Nbt::Int(*slot as i32));
+                it.set("Block", Nbt::Short(*block as i16));
+                it.set("Count", Nbt::Byte(*count as i8));
+                it
+            })
+            .collect();
+        if !items.is_empty() {
+            vc.set("PlayerItems", Nbt::List(items));
+        }
+        vc.set("PlayerSelected", Nbt::Byte(p.selected as i8));
     }
     // Phase 1: hardcore world whose player died — locked forever
     if meta.hardcore_dead {
@@ -864,6 +889,30 @@ pub fn read_level_dat(world_dir: &Path) -> std::io::Result<Option<WorldMeta>> {
             ],
             yaw: fl("PlayerYaw").unwrap_or(0.0),
             pitch: fl("PlayerPitch").unwrap_or(0.0),
+            // permissive: old saves (pre-2026-09-14) have no PlayerItems
+            // → empty inventory, exactly the fresh-start semantics
+            slots: {
+                let mut v = Vec::new();
+                if let Some(Nbt::List(items)) = find("PlayerItems") {
+                    for it in items {
+                        let Nbt::Compound(ifs) = it else { continue };
+                        let pf = |k: &str| {
+                            ifs.iter().find(|(k2, _)| k2 == k).and_then(|(_, v)| v.as_i64())
+                        };
+                        let (Some(slot), Some(block), Some(count)) =
+                            (pf("Slot"), pf("Block"), pf("Count"))
+                        else {
+                            continue;
+                        };
+                        v.push((slot as u8, block as u16, count as u8));
+                    }
+                }
+                v
+            },
+            selected: find("PlayerSelected")
+                .and_then(|v| v.as_i64())
+                .map(|v| v.clamp(0, 8) as u8)
+                .unwrap_or(0),
         });
         // Phase 5: container inventories (permissive — missing/malformed
         // entries are skipped, a foreign level.dat just has none)
@@ -1377,7 +1426,7 @@ mod tests {
             seed: 0xDEAD_BEEF_CAFE_1234,
             name: "Test World".into(),
             spawn: (-17, 71, 239),
-            player: Some(PlayerMeta { pos: [1.5, 72.0, -3.25], yaw: -0.75, pitch: 0.5 }),
+            player: Some(PlayerMeta { pos: [1.5, 72.0, -3.25], yaw: -0.75, pitch: 0.5, slots: Vec::new(), selected: 0 }),
             game_time: 4242,
             game_type: 1,
             hardcore: false,
@@ -1472,7 +1521,7 @@ mod tests {
                 seed,
                 name: "VoxelCraft".into(),
                 spawn: (8, 70, 8),
-                player: Some(PlayerMeta { pos: [8.5, 90.0, 8.5], yaw: 1.0, pitch: -0.5 }),
+                player: Some(PlayerMeta { pos: [8.5, 90.0, 8.5], yaw: 1.0, pitch: -0.5, slots: Vec::new(), selected: 0 }),
                 game_time: 100,
                 game_type: 0,
                 hardcore: true,

@@ -110,6 +110,14 @@ impl GameMode {
         self != GameMode::Creative
     }
 
+    /// The creative item picker (E in creative / B shortcut /
+    /// middle-click pick-block GRANTS items). Survival and Adventure
+    /// never get free items — vanilla E opens the survival inventory
+    /// there and pick-block only SELECTS an existing stack.
+    pub fn picks_creative(self) -> bool {
+        self == GameMode::Creative
+    }
+
     /// Death screen offers RESPAWN (Hardcore: never).
     pub fn permadeath(self) -> bool {
         self == GameMode::Hardcore

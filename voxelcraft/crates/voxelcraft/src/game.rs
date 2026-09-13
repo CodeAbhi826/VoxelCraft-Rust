@@ -88,6 +88,16 @@ pub struct Settings {
     /// one-block-tall obstacle. Enabled by default; can be disabled in
     /// options"). Vanilla option key `autoJump`.
     pub auto_jump: bool,
+    /// vanilla "View Bobbing" (Options screen, default ON — the
+    /// walk-cycle camera + held-item sway; minecraft.wiki/w/Options
+    /// §Video: "view bobbing ... on by default")
+    pub view_bobbing: bool,
+    /// 2026-09-14 round: ENABLED resource packs, in Selected-list order
+    /// (index 0 = TOP = HIGHEST priority; vanilla's options.txt
+    /// `resourcePacks` analog — applied bottom-first so higher entries
+    /// override lower ones). Names: "programmer-art" (builtin) or the
+    /// folder/zip file name in resourcepacks/.
+    pub resource_packs: Vec<String>,
     /// chunk-graph occlusion culling (OptiFine `ofOcclusionFancy` parity,
     /// default on)
     pub occlusion: bool,
@@ -133,6 +143,8 @@ impl Default for Settings {
             msaa: 0,
             occlusion: true,
             auto_jump: true, // 1.10 default ON (wiki)
+            view_bobbing: true, // vanilla default ON
+            resource_packs: Vec::new(), // Default only, like vanilla
             #[cfg(target_arch = "wasm32")]
             gpu_meshing: false,
             #[cfg(not(target_arch = "wasm32"))]
@@ -178,13 +190,31 @@ impl Settings {
             _ => 0.0,
         }
     }
-    /// menu scale factor (GUI Scale): 1 = 0.72, 2 = 0.86, 3/auto = 1.0
-    /// (bigger value = bigger interface, vanilla semantics)
+    /// menu scale factor (GUI Scale): 1 = 0.72, 2 = 0.86, 3 = 1.0
+    /// (bigger value = bigger interface, vanilla semantics). AUTO (0)
+    /// now picks by the LIVE window height (2026-09-14 — the vanilla
+    /// "Auto" picks the largest scale that fits; ours steps down on small
+    /// windows so the 960×540 UI canvas never overflows): <720 px →
+    /// 0.72, <1080 px → 0.86, else 1.0.
     pub fn gui_scale_factor(&self) -> f32 {
         match self.gui_scale {
             1 => 0.72,
             2 => 0.86,
-            _ => 1.0,
+            3 => 1.0,
+            _ => self.gui_scale_auto(),
+        }
+    }
+    /// the AUTO branch — the window height, read through the (global)
+    /// renderer-reported surface size; small windows step the UI down so
+    /// menus stay fully visible (the dynamic-resolution behavior)
+    fn gui_scale_auto(&self) -> f32 {
+        let h = window_height_hint();
+        if h > 0 && h < 720 {
+            0.72
+        } else if h > 0 && h < 1080 {
+            0.86
+        } else {
+            1.0
         }
     }
     /// particle spawn density: All 100% / Decreased ~50% / Minimal ~25%
@@ -228,10 +258,12 @@ impl Settings {
             _ => "MAXIMUM",
         }
     }
-    /// serialize as k=v; pairs (parsed without serde)
+    /// serialize as k=v; pairs (parsed without serde). The pack list
+    /// rides as the final `packs=` pair (pipe-separated — pack names are
+    /// folder/zip file names, which never contain `;` or `|`).
     pub fn serialize(&self) -> String {
-        format!(
-            "rd={};sd={};sens={:.3};vol={:.3};mvol={:.3};fov={:.1};bright={:.3};smoothl={};cloudsl={};gui={};part={};fs={};vsync={};eshad={};bblend={};graphics={};shader={};shadowq={};upscale={};maxfps={};mip={};aniso={};msaa={};occl={};gmesh={}",
+        let mut s = format!(
+            "rd={};sd={};sens={:.3};vol={:.3};mvol={:.3};fov={:.1};bright={:.3};smoothl={};cloudsl={};gui={};part={};fs={};vsync={};eshad={};bblend={};graphics={};shader={};shadowq={};upscale={};maxfps={};mip={};aniso={};msaa={};occl={};gmesh={};bob={}",
             self.render_distance,
             self.sim_distance,
             self.sensitivity,
@@ -256,8 +288,13 @@ impl Settings {
             self.aniso,
             self.msaa,
             self.occlusion as u8,
-            self.gpu_meshing as u8
-        )
+            self.gpu_meshing as u8,
+            self.view_bobbing as u8
+        );
+        if !self.resource_packs.is_empty() {
+            s.push_str(&format!(";packs={}", self.resource_packs.join("|")));
+        }
+        s
     }
     pub fn deserialize(s: &str) -> Settings {
         let mut st = Settings::default();
@@ -307,6 +344,16 @@ impl Settings {
                 }
                 "occl" => st.occlusion = v == "1",
                 "gmesh" => st.gpu_meshing = v == "1",
+                "bob" => st.view_bobbing = v != "0",
+                // 2026-09-14: enabled resource packs in priority order
+                // (pipe-separated; absent = Default only, like vanilla)
+                "packs" => {
+                    st.resource_packs = v
+                        .split('|')
+                        .map(|n| n.trim().to_string())
+                        .filter(|n| !n.is_empty())
+                        .collect()
+                }
                 _ => {}
             }
         }
@@ -335,11 +382,27 @@ pub enum Screen {
     Death,
     /// vanilla 1.16.5 settings sub-screens (reached from Options):
     /// Video = the exact vanilla screen; Engine = our extras; Packs =
-    /// resource/shader pack list; Access = accessibility (auto-jump)
+    /// the REAL resource-pack manager (2026-09-14); Access =
+    /// accessibility (auto-jump); Shaders = the Iris-style shader-pack
+    /// list (moved off the Options page — vanilla has no such screen)
     Video,
     Engine,
     Packs,
     Access,
+    Shaders,
+}
+
+/// 2026-09-14 round: the in-progress MINING target (the vanilla timed
+/// break — progress 0..1 over the block's hardness-derived break time,
+/// driving the 10-stage destroy overlay + dig sound/hit particle cadence).
+#[derive(Clone, Copy)]
+struct MiningState {
+    pos: [i32; 3],
+    block: u16,
+    /// 0..1 — fraction of the break time elapsed
+    progress: f32,
+    /// seconds since the last dig sound / hit particle burst
+    feedback_acc: f32,
 }
 
 /// open container screens (Phase 7 §27/§29)
@@ -385,6 +448,7 @@ impl Screen {
             Screen::Engine => "engine",
             Screen::Packs => "packs",
             Screen::Access => "access",
+            Screen::Shaders => "shaders",
         }
     }
 
@@ -399,6 +463,7 @@ impl Screen {
                 | Screen::Engine
                 | Screen::Packs
                 | Screen::Access
+                | Screen::Shaders
                 | Screen::Pause
                 | Screen::WorldSelect
                 | Screen::WorldCreate
@@ -922,6 +987,33 @@ pub struct GameApp {
     data: vc_pack::datapack::LoadedData,
     /// pack-driven animated textures (frame updates only, no re-mesh)
     animations: Vec<vc_render::textures::AnimatedTile>,
+    /// 2026-09-14 round: the cached pack sources behind the REAL Resource
+    /// Packs screen — Default (builtin_pack), Programmer Art (the vanilla
+    /// built-in analog), and the scanned user packs (native only; wasm
+    /// has no filesystem). Cached at boot so DONE on the pack screen can
+    /// recompile the atlas synchronously (the wasm fetches happened once,
+    /// up here).
+    builtin_pack: Option<std::sync::Arc<dyn vc_pack::pack::PackSource>>,
+    programmer_art: Option<std::sync::Arc<dyn vc_pack::pack::PackSource>>,
+    user_packs: Vec<(String, std::sync::Arc<dyn vc_pack::pack::PackSource>)>,
+    /// set when the Selected list was edited — DONE applies the stack
+    /// (recompile atlas + GUI sheets + remesh) and persists options
+    pack_stack_dirty: bool,
+    /// 2026-09-14: the block currently being mined (survival timing +
+    /// destroy overlay); None while not holding the button
+    mining: Option<MiningState>,
+    /// 2026-09-14: first-person view-model animation state — the swing
+    /// phase (0 = idle, else advancing 0→1 over ~0.3 s, the vanilla
+    /// 6-tick swing), the equip raise (0→1 over ~0.25 s on slot change),
+    /// and the last seen hotbar slot (change detection)
+    held_swing: f32,
+    held_equip: f32,
+    held_prev: usize,
+    /// walk-cycle bob offset in camera-right/up units (view bobbing)
+    bob_off: [f32; 2],
+    /// bob phase accumulator (radians) + smoothed amplitude
+    bob_phase: f32,
+    bob_amp: f32,
     /// §28: root save dir (world root); `world_dir` is the CURRENT
     /// dimension's dir (overworld = root, nether = DIM-1)
     #[cfg(not(target_arch = "wasm32"))]
@@ -983,6 +1075,15 @@ pub struct GameApp {
     #[cfg(not(target_arch = "wasm32"))]
     autosave_in: f32,
 }
+
+/// 2026-09-14: the last known window height (px) — set by the renderer's
+/// resize path, read by `Settings::gui_scale_auto` so the AUTO GUI scale
+/// re-picks live when the window size changes (the dynamic-resolution
+/// behavior the user asked for). 0 = unknown → the largest scale.
+pub fn window_height_hint() -> u32 {
+    WINDOW_H.load(std::sync::atomic::Ordering::Relaxed)
+}
+static WINDOW_H: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
 pub fn now_secs() -> f32 {
     // CRITICAL (native had the SAME f32-precision bug the wasm comment
@@ -1071,6 +1172,26 @@ fn bootstrap_game_dir() {
         ));
     }
 
+    // 2026-09-14 round: the Programmer Art builtin pack extracts the same
+    // way (vanilla ships programmer_art.zip in its asset store — ours is a
+    // plain folder the Resource Packs screen opens as a PackSource)
+    let pa = Path::new("builtin-packs").join("programmer-art");
+    if created(&pa) {
+        let mut n = 0usize;
+        for (rel, bytes) in crate::embedded_programmer_art::EMBEDDED_PA_FILES {
+            let out = pa.join(rel);
+            if let Some(parent) = out.parent() {
+                let _ = fs::create_dir_all(parent);
+            }
+            if fs::write(&out, bytes).is_ok() {
+                n += 1;
+            }
+        }
+        vc_render::render::report_boot_log(&format!(
+            "first run: programmer-art pack extracted to builtin-packs/programmer-art/ ({n} files)"
+        ));
+    }
+
     // log mirror (append; one session header per run)
     vc_render::render::init_file_log(Path::new("logs").join("latest.log").as_path());
 
@@ -1105,17 +1226,15 @@ fn save_native_settings(s: &Settings) {
     let _ = std::fs::write("options.txt", s.serialize());
 }
 
-/// Compile the builtin resource pack into a ModelSet and merge its textures
-/// into a fresh procedural atlas (Phase 1, Master Spec §5.2/§19).
+/// Acquire the DEFAULT builtin pack source (2026-09-14 refactor: split
+/// out of `load_builtin_pack_assets` so the Resource Packs screen can
+/// recompile the atlas from the SAME cached sources without refetching).
 ///
-/// Native: reads `voxelcraft/assets/` from the working directory. Wasm:
-/// fetches the same file set from `/assets/` (deployed by CI). Any failure
-/// degrades to the procedural-only path with the missing-texture fallback
-/// (§46 — an imperfect pack must never crash the engine).
-async fn load_builtin_pack_assets() -> (Vec<u8>, Vec<vc_render::textures::AnimatedTile>) {
-    let mut atlas = vc_render::textures::generate_atlas();
-
-    // 1. acquire the pack source
+/// Native: `builtin-pack/` folder next to the binary, else the copy baked
+/// in at compile time (crate::embedded_pack). Wasm: fetched from
+/// `/voxelcraft-pack/` at boot. Any failure → None (procedural fallback,
+/// §46 — an imperfect pack must never crash the engine).
+async fn acquire_builtin_pack() -> Option<std::sync::Arc<dyn vc_pack::pack::PackSource>> {
     #[cfg(not(target_arch = "wasm32"))]
     let source: Option<std::sync::Arc<dyn vc_pack::pack::PackSource>> = {
         let folder = vc_pack::pack::FolderSource::new("builtin-pack", "builtin");
@@ -1198,8 +1317,117 @@ async fn load_builtin_pack_assets() -> (Vec<u8>, Vec<vc_render::textures::Animat
             }
         }
     };
+    source
+}
 
-    let Some(source) = source else {
+/// Acquire the PROGRAMMER ART builtin pack — the vanilla analog of
+/// `minecraft/resourcepacks/programmer_art.zip` ("The classic look of
+/// Minecraft (built-in) — the old pre-1.14 textures", VERIFIED live
+/// 2026-09-14, minecraft.wiki/w/Resource_pack §Built-in resource packs).
+/// Ours is a clean-room look-alike set (scripts/gen_programmer_art.py).
+///
+/// Native: the extracted `builtin-packs/programmer-art/` folder, else the
+/// embedded copy. Wasm: fetched once from `/voxelcraft-pack-programmer-art/`
+/// and cached — the pack screen toggles it synchronously afterwards.
+async fn acquire_programmer_art_pack() -> Option<std::sync::Arc<dyn vc_pack::pack::PackSource>> {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let folder = vc_pack::pack::FolderSource::new(
+            std::path::Path::new("builtin-packs").join("programmer-art"),
+            "programmer-art",
+        );
+        if folder.exists() {
+            match vc_pack::pack::open(std::sync::Arc::new(folder)) {
+                Ok((_meta, src)) => return Some(src),
+                Err(e) => {
+                    vc_render::render::report_boot_log(&format!(
+                        "programmer-art pack rejected: {e} — not listed"
+                    ));
+                    return None;
+                }
+            }
+        }
+        // single-file release path: the embedded copy
+        let mut mem = vc_pack::pack::MemorySource::new("programmer-art (embedded)");
+        for (path, bytes) in crate::embedded_programmer_art::EMBEDDED_PA_FILES {
+            mem.insert(path, bytes.to_vec());
+        }
+        match vc_pack::pack::open(std::sync::Arc::new(mem)) {
+            Ok((_meta, src)) => Some(src),
+            Err(e) => {
+                vc_render::render::report_boot_log(&format!(
+                    "programmer-art embedded copy rejected: {e} — not listed"
+                ));
+                None
+            }
+        }
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        match vc_pack::pack::fetch_programmer_art_pack().await {
+            Some(mem) => match vc_pack::pack::open(std::sync::Arc::new(mem)) {
+                Ok((_meta, src)) => Some(src),
+                Err(e) => {
+                    vc_render::render::report_boot_log(&format!(
+                        "programmer-art pack rejected: {e} — not listed"
+                    ));
+                    None
+                }
+            },
+            None => {
+                vc_render::render::report_boot_log(
+                    "no programmer-art pack on server — entry hidden",
+                );
+                None
+            }
+        }
+    }
+}
+
+/// Resolve the enabled pack NAMES (Selected list, top = highest priority)
+/// to sources in APPLICATION order (lowest priority first — vanilla loads
+/// bottom-first so higher entries override, VERIFIED live 2026-09-14,
+/// minecraft.wiki/w/Resource_pack §Behavior). Unknown names (pack deleted
+/// from resourcepacks/ since last run) are dropped silently.
+fn enabled_pack_sources(
+    settings: &Settings,
+    programmer_art: &Option<std::sync::Arc<dyn vc_pack::pack::PackSource>>,
+    user_packs: &[(String, std::sync::Arc<dyn vc_pack::pack::PackSource>)],
+) -> Vec<std::sync::Arc<dyn vc_pack::pack::PackSource>> {
+    let source_for = |name: &str| -> Option<std::sync::Arc<dyn vc_pack::pack::PackSource>> {
+        if name == "programmer-art" {
+            programmer_art.clone()
+        } else {
+            user_packs
+                .iter()
+                .find(|(n, _)| n == name)
+                .map(|(_, s)| s.clone())
+        }
+    };
+    // display order top→bottom = high→low priority; application order is
+    // the reverse (bottom-most loads first)
+    settings
+        .resource_packs
+        .iter()
+        .rev()
+        .filter_map(|n| source_for(n))
+        .collect()
+}
+
+/// Compile the builtin pack + the ENABLED pack stack into a fresh
+/// procedural atlas + installed ModelSet (the 2026-09-14 "real resource
+/// packs" pipeline: builtin dispatch/models/textures FIRST, then each
+/// enabled pack's texture OVERRIDES blitted onto the procedural atlas
+/// slots in application order so the highest priority lands last/wins).
+/// Returns (atlas pixels, animations). Pure CPU — callable at boot AND
+/// from the Resource Packs screen's DONE.
+fn compile_pack_atlas(
+    builtin: Option<&std::sync::Arc<dyn vc_pack::pack::PackSource>>,
+    packs_in_application_order: &[std::sync::Arc<dyn vc_pack::pack::PackSource>],
+) -> (Vec<u8>, Vec<vc_render::textures::AnimatedTile>) {
+    let mut atlas = vc_render::textures::generate_atlas();
+
+    let Some(source) = builtin else {
         // no pack: still install an empty ModelSet so model-state blocks
         // render the missing texture instead of being skipped silently
         vc_pack::model::install(vc_pack::model::ModelSet {
@@ -1237,17 +1465,27 @@ async fn load_builtin_pack_assets() -> (Vec<u8>, Vec<vc_render::textures::Animat
     };
 
     // 3. merge pack textures into the atlas (fills set.tiles + animations)
-    let animations =
+    let mut animations =
         vc_render::textures::merge_pack_textures(&mut atlas, &mut set, source.as_ref());
     let n_models: usize = set.by_state.values().map(|v| v.len()).sum();
-    vc_render::render::report_boot_log(&format!(
-        "model dispatch: {} states, {} applied models, {} pack textures, {} animations",
-        set.by_state.len(),
-        n_models,
-        set.tiles.len(),
-        animations.len()
-    ));
     vc_pack::model::install(set);
+
+    // 4. 2026-09-14: every ENABLED pack's procedural-slot overrides, in
+    // application order (lowest priority first — later blits win)
+    for pack in packs_in_application_order {
+        animations.extend(vc_render::textures::merge_pack_tile_overrides(
+            &mut atlas,
+            pack.as_ref(),
+        ));
+    }
+    vc_render::render::report_boot_log(&format!(
+        "model dispatch: {} states, {} applied models, {} pack textures, {} animations, {} resource pack(s) active",
+        vc_pack::model::models().map(|m| m.by_state.len()).unwrap_or(0),
+        n_models,
+        vc_pack::model::models().map(|m| m.tiles.len()).unwrap_or(0),
+        animations.len(),
+        packs_in_application_order.len()
+    ));
     (atlas, animations)
 }
 
@@ -1272,14 +1510,45 @@ impl GameApp {
         // and writes a default options.txt when none exists.
         #[cfg(not(target_arch = "wasm32"))]
         bootstrap_game_dir();
+        // persisted settings FIRST (2026-09-14): the ENABLED resource-pack
+        // list is a setting and the atlas compile below needs it (web:
+        // localStorage; native: options.txt in the first-run game folder)
+        let settings = {
+            #[cfg(target_arch = "wasm32")]
+            {
+                crate::web_input::load_settings()
+                    .map(|s| Settings::deserialize(&s))
+                    .unwrap_or_default()
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                load_native_settings()
+            }
+        };
         // ---------------------------------------------------- Phase 1 assets
-        // Compile the builtin resource pack (blockstates → models → textures)
-        // BEFORE any mesh job can run; merge its textures into the atlas.
-        let (mut atlas, animations) = crate::game::load_builtin_pack_assets().await;
+        // Acquire the pack sources (Default + Programmer Art + user packs
+        // from resourcepacks/), then compile the builtin resource pack
+        // (blockstates → models → textures) + the enabled packs' texture
+        // overrides BEFORE any mesh job can run.
+        let builtin_pack = acquire_builtin_pack().await;
+        let programmer_art = acquire_programmer_art_pack().await;
+        #[cfg(not(target_arch = "wasm32"))]
+        let user_packs: Vec<(String, std::sync::Arc<dyn vc_pack::pack::PackSource>)> =
+            vc_pack::pack::scan_user_packs_named(std::path::Path::new("resourcepacks"));
+        #[cfg(target_arch = "wasm32")]
+        let user_packs: Vec<(String, std::sync::Arc<dyn vc_pack::pack::PackSource>)> = Vec::new();
+        let enabled_packs = enabled_pack_sources(&settings, &programmer_art, &user_packs);
+        let (mut atlas, animations) = compile_pack_atlas(builtin_pack.as_ref(), &enabled_packs);
         vc_render::textures::draw_missing_tile(&mut atlas);
         let t_pack = t_boot.elapsed();
 
         let mut renderer = Renderer::new(window, &atlas).await;
+        // 2026-09-14: seed the GUI-Scale-AUTO height hint with the actual
+        // initial window size (resize events keep it fresh afterwards)
+        WINDOW_H.store(
+            window.inner_size().height.max(1),
+            std::sync::atomic::Ordering::Relaxed,
+        );
         let t_renderer = t_boot.elapsed() - t_pack;
         let bank = SoundBank::generate();
         let t_audio = t_boot.elapsed() - t_pack - t_renderer;
@@ -1328,6 +1597,14 @@ impl GameApp {
                         Player::new(Vec3::new(p.pos[0] as f32, p.pos[1] as f32, p.pos[2] as f32));
                     player.yaw = p.yaw;
                     player.pitch = p.pitch;
+                    // saved inventory rides along (vanilla Inventory NBT)
+                    for (i, block, count) in &p.slots {
+                        if (*i as usize) < vc_inventory::inventory::INV_SLOTS {
+                            player.inv.slots[*i as usize] =
+                                vc_inventory::inventory::ItemStack::new(*block, *count);
+                        }
+                    }
+                    player.selected = p.selected.min(8) as usize;
                 }
                 newest.dir.clone()
             } else {
@@ -1347,22 +1624,9 @@ impl GameApp {
             }
         }
 
-        // persisted settings (web: localStorage; native: options.txt in
-        // the first-run game folder)
-        let settings = {
-            #[cfg(target_arch = "wasm32")]
-            {
-                crate::web_input::load_settings()
-                    .map(|s| Settings::deserialize(&s))
-                    .unwrap_or_default()
-            }
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                load_native_settings()
-            }
-        };
-        // (player was already built above — restored from level.dat on native
-        // when a save exists, else spawn-positioned for a fresh world)
+        // (settings were loaded before the pack compile — see above;
+        // player was already built above — restored from level.dat on
+        // native when a save exists, else spawn-positioned fresh)
         player.fov = settings.fov.to_radians();
         player.fov_cur = player.fov;
 
@@ -1480,21 +1744,22 @@ impl GameApp {
 
         // ------------------------------------------- UI Phases 1 + 4
         // (D6): build the procedural GUI texture set (G9 — painted in
-        // memory at boot, never read from disk), then let user resource
-        // packs override any sheet through the vc-pack pipeline (Phase 4
-        // wiring: scan resourcepacks/, resolve highest-priority-first,
-        // fall back to builtin per texture). §46: a bad pack never
+        // memory at boot, never read from disk), then let the ENABLED
+        // resource packs override any sheet through the vc-pack pipeline
+        // (Phase 4 wiring + the 2026-09-14 enablement round: only the
+        // packs on the Selected list apply, highest priority first,
+        // falling back to builtin per texture). §46: a bad pack never
         // aborts boot — it is logged and skipped.
-        // (mut only for the native pack-override merge below)
         #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
         let mut gui_set = vc_render::gui::GuiTextureSet::build_builtin();
-        #[cfg(not(target_arch = "wasm32"))]
         {
-            let packs = vc_pack::pack::scan_user_packs(std::path::Path::new("resourcepacks"));
-            if !packs.is_empty() {
+            if !enabled_packs.is_empty() {
                 let mut stack = vc_pack::pack::PackStack::new();
-                for pack in packs {
-                    stack.push_front(pack);
+                for pack in enabled_packs.iter() {
+                    // push in APPLICATION order (lowest priority first) —
+                    // each push_front lands in front, so the LAST push (the
+                    // highest-priority pack) ends up at index 0 = read first
+                    stack.push_front(pack.clone());
                 }
                 match vc_render::gui::loader::load_from_pack(&stack) {
                     Ok(Some(s)) => {
@@ -1502,7 +1767,7 @@ impl GameApp {
                         vc_render::render::report_debug_log(
                             "screen",
                             &format!(
-                                "gui textures: {} user pack(s) applied over builtin",
+                                "gui textures: {} enabled pack(s) applied over builtin",
                                 stack.len()
                             ),
                         );
@@ -1510,7 +1775,7 @@ impl GameApp {
                     Ok(None) => {
                         vc_render::render::report_debug_log(
                             "screen",
-                            "gui textures: user packs provide no gui sheets — builtin kept",
+                            "gui textures: enabled packs provide no gui sheets — builtin kept",
                         );
                     }
                     Err(e) => {
@@ -1574,6 +1839,17 @@ impl GameApp {
             ambient_next: 4.0,
             audio,
             settings,
+            builtin_pack,
+            programmer_art,
+            user_packs,
+            pack_stack_dirty: false,
+            mining: None,
+            held_swing: 0.0,
+            held_equip: 1.0,
+            held_prev: 0,
+            bob_off: [0.0, 0.0],
+            bob_phase: 0.0,
+            bob_amp: 0.0,
             work,
             gen_inflight: HashSet::new(),
             mesh_inflight: HashMap::new(),
@@ -1819,6 +2095,14 @@ impl GameApp {
                 }
                 WindowEvent::Resized(size) => {
                     self.renderer.resize(size.width, size.height);
+                    // 2026-09-14: GUI Scale AUTO re-evaluates on resize —
+                    // the window-height hint updates and the widget list
+                    // re-scales around the canvas center (menus stay
+                    // fully visible on small windows)
+                    WINDOW_H.store(size.height, std::sync::atomic::Ordering::Relaxed);
+                    if self.settings.gui_scale == 0 && self.screen.is_menu() {
+                        self.refresh_widgets();
+                    }
                     self.ui.dirty = true;
                 }
                 #[cfg(not(target_arch = "wasm32"))]
@@ -2148,7 +2432,8 @@ impl GameApp {
                         }
                         Screen::Pause => self.resume_game(),
                         Screen::Options => self.close_options(),
-                        Screen::Video | Screen::Engine | Screen::Packs | Screen::Access => {
+                        Screen::Video | Screen::Engine | Screen::Packs | Screen::Access
+                        | Screen::Shaders => {
                             // vanilla: ESC on a sub-screen returns to Options
                             self.set_screen(Screen::Options)
                         }
@@ -2164,6 +2449,14 @@ impl GameApp {
                         self.close_container();
                     } else if self.picker_open {
                         self.close_picker();
+                    } else if self.mode.picks_creative()
+                    // vanilla 1.16.5: E opens the CREATIVE inventory in
+                    // creative (tabs + search), the survival inventory in
+                    // survival/adventure (minecraft.wiki/w/Inventory,
+                    // §Creative mode). Our picker is the creative picker
+                    // (B stays as an extra shortcut, creative-only too).
+                    {
+                        self.open_picker();
                     } else {
                         self.open_container(Container::Inventory);
                     }
@@ -2173,7 +2466,7 @@ impl GameApp {
                 if pressed && !repeat && self.screen == Screen::Game {
                     if self.picker_open {
                         self.close_picker();
-                    } else {
+                    } else if self.mode.picks_creative() {
                         self.open_picker();
                     }
                 }
@@ -2345,31 +2638,50 @@ impl GameApp {
                     // Phase 2: a mob under the crosshair takes swing
                     // priority over block breaking (vanilla ordering)
                     if self.try_attack_mob() {
+                        // the attack swings the view model (vanilla: every
+                        // left-click swings, hit or miss)
+                        self.held_swing = 0.0001;
                         return;
                     }
                 }
+                if pressed {
+                    // a left click always starts a swing (mine attempt,
+                    // air poke — vanilla swings the arm regardless)
+                    self.held_swing = 0.0001;
+                }
                 self.input.break_hold = pressed;
             }
-            MouseButton::Right => self.input.place_hold = pressed,
+            MouseButton::Right => {
+                if pressed {
+                    // placing/using swings the view model too (vanilla
+                    // right-click swing)
+                    self.held_swing = 0.0001;
+                }
+                self.input.place_hold = pressed;
+            }
             MouseButton::Middle
                 if pressed => {
-                    if let Some((_, b, _)) = self.target {
-                        if let Some(slot) = self
-                            .player
-                            .inv
-                            .slots
-                            .iter()
-                            .position(|h| h.block == b && h.count > 0)
-                        {
-                            self.player.selected = slot.min(8);
-                        } else {
-                            self.player.inv.slots[self.player.selected] =
-                                vc_inventory::inventory::ItemStack::new(b, 64);
-                        }
-                        self.item_toast = Some((name(b).to_string(), 2.0));
-                        self.ui.dirty = true;
+                // vanilla pick-block: ALWAYS select a matching hotbar slot
+                // if one exists; GRANT the block (full stack) only in
+                // creative — survival/adventure just selects or does
+                // nothing (minecraft.wiki/w/Controls §Middle click).
+                if let Some((_, b, _)) = self.target {
+                    if let Some(slot) = self
+                        .player
+                        .inv
+                        .slots
+                        .iter()
+                        .position(|h| h.block == b && h.count > 0)
+                    {
+                        self.player.selected = slot.min(8);
+                    } else if self.mode.picks_creative() {
+                        self.player.inv.slots[self.player.selected] =
+                            vc_inventory::inventory::ItemStack::new(b, 64);
                     }
+                    self.item_toast = Some((name(b).to_string(), 2.0));
+                    self.ui.dirty = true;
                 }
+            }
             _ => {}
         }
     }
@@ -2747,6 +3059,25 @@ impl GameApp {
         let Some(id) = self.hover else {
             return Vec::new();
         };
+        // resource-pack rows describe the hovered PACK (dynamic state —
+        // not available to the static tooltip_for table below)
+        if (ui::ID_RPACK_AVAIL_BASE
+            ..ui::ID_RPACK_AVAIL_BASE + ui::MAX_RPACK_ENTRIES as u16)
+            .contains(&id)
+        {
+            if let Some(key) = self.resource_pack_key_avail((id - ui::ID_RPACK_AVAIL_BASE) as usize) {
+                return self.pack_tooltip(&key);
+            }
+        }
+        if (ui::ID_RPACK_SEL_BASE
+            ..ui::ID_RPACK_SEL_BASE + ui::MAX_RPACK_ENTRIES as u16)
+            .contains(&id)
+        {
+            let idx = (id - ui::ID_RPACK_SEL_BASE) as usize;
+            if let Some(key) = self.settings.resource_packs.get(idx).cloned() {
+                return self.pack_tooltip(&key);
+            }
+        }
         Self::tooltip_for(id, &self.settings)
     }
 
@@ -2764,7 +3095,21 @@ impl GameApp {
             ID_OPT_CHAT | ID_OPT_LANG | ID_OPT_CONTROLS => {
                 l("Not implemented in this build yet.")
             }
-            ID_OPT_PACKS => l("Pick the active shader pack or engine shader mode."),
+            ID_OPT_PACKS => l2(
+                "Enable resource packs to restyle textures and GUI.",
+                "The bottom pack loads first; packs above override it.",
+            ),
+            ID_OPT_SHADERS => l2(
+                "Pick the active shader pack or engine shader mode.",
+                "(Iris-style page — vanilla 1.16.5 ships no shaders.)",
+            ),
+            ID_OPT_BOB => l(
+                "Toggles the walking view movement. (vanilla: on by default)",
+            ),
+            ID_RPACK_DEFAULT => l2(
+                "The default look and feel of VoxelCraft (built-in).",
+                "Selected by default; cannot be unselected.",
+            ),
             ID_OPT_ACCESS => l("Accessibility options. Currently: Auto-Jump."),
             ID_OPT_VIDEO => l("The video settings screen."),
             ID_OPT_ENGINE => l("Engine-specific options: meshing, culling and quality knobs."),
@@ -3153,11 +3498,23 @@ impl GameApp {
                 p.pitch,
             )
         });
+        // the saved inventory comes back with the pose (vanilla
+        // Inventory NBT restore — non-empty slots + selected hotbar)
+        let saved_inv = entry.meta.player.clone().map(|p| (p.slots, p.selected));
         self.save_root = entry.dir;
         self.world_dir =
             vc_anvil::save::dimension_dir(&self.save_root, vc_world::world::Dimension::Overworld);
         let game_time = entry.meta.game_time;
         self.reset_world(seed, mode, name, player);
+        if let Some((slots, selected)) = saved_inv {
+            for (i, block, count) in slots {
+                if (i as usize) < vc_inventory::inventory::INV_SLOTS {
+                    self.player.inv.slots[i as usize] =
+                        vc_inventory::inventory::ItemStack::new(block, count);
+                }
+            }
+            self.player.selected = selected.min(8) as usize;
+        }
         // F3: the loaded world's clock continues where the save left off
         // (reset_world zeroed it for a fresh world)
         self.world_game_time = game_time;
@@ -3209,9 +3566,9 @@ impl GameApp {
     /// Swap the entire engine into a different world: fresh terrain,
     /// fresh sim/particles, fresh player (or restored from `level.dat`).
     /// Mirrors `travel_to_dimension`'s reset list — every world-local
-    /// system restarts. The inventory reset is a documented deviation:
-    /// vanilla starts Survival empty, we keep the starter palette so the
-    /// sandbox stays playable before mobs/food exist (Phase 2).
+    /// system restarts. 2026-09-14 round: the inventory deviation is
+    /// RETIRED — `Player::new` now starts empty in both modes (vanilla
+    /// behavior); the debug starter palette is gone.
     ///
     /// `restore` = (x, y, z, yaw, pitch) — a plain tuple so the signature
     /// is identical on wasm (PlayerMeta lives in the native save module).
@@ -3277,6 +3634,13 @@ impl GameApp {
         self.target = None;
         self.break_timer = 0.0;
         self.place_timer = 0.0;
+        self.mining = None;
+        self.held_swing = 0.0;
+        self.held_equip = 1.0;
+        self.held_prev = self.player.selected;
+        self.bob_off = [0.0, 0.0];
+        self.bob_phase = 0.0;
+        self.bob_amp = 0.0;
         self.day_time = 0.30;
         self.edits = 0;
         // fresh world clock (vanilla `Time` starts at 0); play_world
@@ -5165,12 +5529,79 @@ impl GameApp {
             // main options Done returns to its parent (title / pause);
             // sub-screen Done returns to Options (vanilla navigation)
             ID_OPT_DONE => self.close_options(),
-            ID_OPT_DONE2 => self.set_screen(Screen::Options),
+            // 2026-09-14: DONE on the Resource Packs screen APPLIES the
+            // edited Selected list first (vanilla applies on Done), then
+            // returns to Options like every sub-screen
+            ID_OPT_DONE2 => {
+                if self.screen == Screen::Packs && self.pack_stack_dirty {
+                    self.apply_resource_packs();
+                }
+                self.set_screen(Screen::Options);
+            }
             // vanilla 1.16.5 settings sub-screens
             ID_OPT_VIDEO => self.set_screen(Screen::Video),
             ID_OPT_ENGINE => self.set_screen(Screen::Engine),
             ID_OPT_PACKS => self.set_screen(Screen::Packs),
+            ID_OPT_SHADERS => self.set_screen(Screen::Shaders),
             ID_OPT_ACCESS => self.set_screen(Screen::Access),
+            // ---- Resource Packs rows (2026-09-14) ----
+            // click an AVAILABLE pack → it joins SELECTED at the TOP
+            // (vanilla: newly selected packs enter at the top of the list)
+            _ if (ID_RPACK_AVAIL_BASE
+                ..ID_RPACK_AVAIL_BASE + MAX_RPACK_ENTRIES as u16)
+                .contains(&id) =>
+            {
+                let idx = (id - ID_RPACK_AVAIL_BASE) as usize;
+                if let Some(key) = self.resource_pack_key_avail(idx) {
+                    // newly selected packs enter at the TOP (highest
+                    // priority) — vanilla Selected-list behavior
+                    self.settings.resource_packs.insert(0, key);
+                    self.pack_stack_dirty = true;
+                    self.refresh_widgets();
+                    self.ui.dirty = true;
+                }
+            }
+            // click a SELECTED pack → back to Available (Default is pinned
+            // and handled by its own disabled row — never removable)
+            _ if (ID_RPACK_SEL_BASE
+                ..ID_RPACK_SEL_BASE + MAX_RPACK_ENTRIES as u16)
+                .contains(&id) =>
+            {
+                let idx = (id - ID_RPACK_SEL_BASE) as usize;
+                if idx < self.settings.resource_packs.len() {
+                    self.settings.resource_packs.remove(idx);
+                    self.pack_stack_dirty = true;
+                    self.refresh_widgets();
+                    self.ui.dirty = true;
+                }
+            }
+            // ▲ — swap the row with the one above (higher priority)
+            _ if (ID_RPACK_UP_BASE..ID_RPACK_UP_BASE + MAX_RPACK_ENTRIES as u16)
+                .contains(&id) =>
+            {
+                let idx = (id - ID_RPACK_UP_BASE) as usize;
+                if idx > 0 && idx < self.settings.resource_packs.len() {
+                    self.settings.resource_packs.swap(idx - 1, idx);
+                    self.pack_stack_dirty = true;
+                    self.refresh_widgets();
+                    self.ui.dirty = true;
+                }
+            }
+            // ▼ — swap the row with the one below (lower priority)
+            _ if (ID_RPACK_DOWN_BASE
+                ..ID_RPACK_DOWN_BASE + MAX_RPACK_ENTRIES as u16)
+                .contains(&id) =>
+            {
+                let idx = (id - ID_RPACK_DOWN_BASE) as usize;
+                if idx + 1 < self.settings.resource_packs.len() {
+                    self.settings.resource_packs.swap(idx, idx + 1);
+                    self.pack_stack_dirty = true;
+                    self.refresh_widgets();
+                    self.ui.dirty = true;
+                }
+            }
+            // the pinned DEFAULT row — vanilla: "can't be unselected"
+            ID_RPACK_DEFAULT => {}
             ID_OPT_GUISCALE => {
                 // vanilla GUI Scale cycle: Auto → 1 → 2 → 3 (menus + text)
                 self.settings.gui_scale = (self.settings.gui_scale + 1) % 4;
@@ -5244,6 +5675,15 @@ impl GameApp {
                 // each frame.
                 self.settings.auto_jump = !self.settings.auto_jump;
             }
+            ID_OPT_BOB => {
+                // vanilla View Bobbing toggle (Options screen, default ON)
+                self.settings.view_bobbing = !self.settings.view_bobbing;
+                if !self.settings.view_bobbing {
+                    self.bob_off = [0.0, 0.0];
+                    self.bob_amp = 0.0;
+                }
+                self.after_settings_change();
+            }
             ID_OPT_GMESH => {
                 // Phase 7: GPU compute meshing toggle. 2026-09-09: NO
                 // remesh_all — the CPU and GPU meshers are bit-identical by
@@ -5259,13 +5699,15 @@ impl GameApp {
                 self.after_settings_change();
             }
             _ if (ID_PACK_BASE..ID_PACK_BASE + MAX_PACK_ENTRIES as u16).contains(&id) => {
-                // resource-pack row: select that shader mode / pack
-                // (0..2 engine modes, 3.. pack index)
-                let idx = id - ID_PACK_BASE;
-                let n = (3 + self.shader_packs.len()) as u16;
-                if idx < n {
-                    self.settings.shader = idx as u8;
-                    self.after_settings_change();
+                // shader-pack row (Screen::Shaders only now): select that
+                // shader mode / pack (0..2 engine modes, 3.. pack index)
+                if self.screen == Screen::Shaders {
+                    let idx = id - ID_PACK_BASE;
+                    let n = (3 + self.shader_packs.len()) as u16;
+                    if idx < n {
+                        self.settings.shader = idx as u8;
+                        self.after_settings_change();
+                    }
                 }
             }
             ID_PAUSE_BACK => self.resume_game(),
@@ -5406,6 +5848,341 @@ impl GameApp {
         self.ui.dirty = true;
     }
 
+    /// The break itself (2026-09-14: extracted from the old inline
+    /// hold-to-break so BOTH the timed-mining path and the instant
+    /// creative path share ONE implementation): world edit + light +
+    /// fence neighbors + break burst + mode-gated drops + sim notify +
+    /// container spill + ore XP + break sound. The caller owns progress
+    /// timing and the repeat cooldown.
+    fn finish_break(&mut self, pos: [i32; 3]) {
+        let b = self.world.get_block(pos[0], pos[1], pos[2]);
+        let broke = self.world.get_block(pos[0], pos[1], pos[2]);
+        // 1.14: the pre-break state (the berry bush's
+        // age — captured BEFORE the AIR write clears it)
+        let broke_state = self.world.get_state(pos[0], pos[1], pos[2]);
+        let (biome, sky, blk) =
+            light_at(&self.world, &self.light, pos[0], pos[1], pos[2]);
+        if let Some((old, new)) = self.world.set_block(pos[0], pos[1], pos[2], AIR)
+        {
+            self.light.on_block_changed(
+                &self.world,
+                pos[0],
+                pos[1],
+                pos[2],
+                old,
+                new,
+            );
+        }
+        // fences: removing a block changes neighbor connections
+        update_fence_neighbors(&mut self.world, pos[0], pos[1], pos[2]);
+        // §5 break burst: vanilla 4×4×4 particle grid, baked
+        // biome tint + light
+        self.particles
+            .spawn_block_break(pos[0], pos[1], pos[2], broke, biome, sky, blk);
+        // §22/§24: item drop + neighbor sim notification
+        // (water flows, sand falls). Phase 1: creative
+        // breaking yields NO drops (infinite inventory —
+        // blocks just vanish, vanilla behavior)
+        if self.mode.drops_blocks() {
+            if broke == ENDER_CHEST {
+                // Phase E2 (VERIFIED w/Ender_Chest): breaks
+                // into 8 obsidian (no Silk Touch in the
+                // engine — the always-obsidian row,
+                // documented); contents stay in the shared
+                // ender inventory (never spilled)
+                for _ in 0..8 {
+                    self.sim.items.drop_block(
+                        pos[0], pos[1], pos[2], OBSIDIAN, biome, sky, blk,
+                    );
+                }
+            } else if broke == EMERALD_ORE {
+                // Phase E2 (VERIFIED w/Emerald_Ore): drops
+                // 1 emerald (Fortune deferred — no Fortune
+                // enchant in the engine)
+                self.sim.items.drop_block(
+                    pos[0], pos[1], pos[2], EMERALD, biome, sky, blk,
+                );
+            } else if broke == NETHER_QUARTZ_ORE {
+                // Phase E3 (VERIFIED live 2026-09-06,
+                // minecraft.wiki/w/Nether_Quartz_Ore:
+                // "it drops 1 Nether quartz" — Fortune up
+                // to 4 deferred, no Fortune enchant; ore
+                // XP 2–5 rides the ore_xp path)
+                self.sim.items.drop_block(
+                    pos[0], pos[1], pos[2], NETHER_QUARTZ, biome, sky, blk,
+                );
+            } else if broke == GILDED_BLACKSTONE {
+                // 1.16 (Nether Update, part 1) — VERIFIED
+                // w/Gilded_Blackstone §Breaking: "a 10%
+                // chance to drop 2–5 gold nuggets when
+                // mined with any pickaxe. If it does not
+                // drop gold nuggets, it drops itself as a
+                // block." Gold nugget = the iron-nugget
+                // stand-in (the disclosed convention;
+                // Fortune raises the CHANCE — absent,
+                // disclosed)
+                if self.audio_rng.next_f32() < 0.10 {
+                    let n = 2 + self.audio_rng.next_range(4) as u8; // 2..=5
+                    for _ in 0..n {
+                        self.sim.items.drop_block(
+                            pos[0], pos[1], pos[2], IRON_NUGGET, biome, sky, blk,
+                        );
+                    }
+                } else {
+                    self.sim.items.drop_block(
+                        pos[0], pos[1], pos[2], broke, biome, sky, blk,
+                    );
+                }
+                // 1.16 part 2: the piglin gold-mining anger
+                // hook — mining gold-related blocks angers
+                // nearby piglins (the w/Piglin aggravation
+                // rows; the 16-block medium-aggravation
+                // range, disclosed)
+                let _ = self
+                    .sim
+                    .mobs
+                    .anger_piglins_near([pos[0] as f32 + 0.5, pos[1] as f32, pos[2] as f32 + 0.5], 16.0);
+            } else if broke == NETHER_GOLD_ORE {
+                // 1.16 — VERIFIED w/Nether_Gold_Ore
+                // §Drops: "2–6 gold nuggets when mined
+                // with any pickaxe" (the iron-nugget
+                // stand-in; Fortune multiplies — absent,
+                // disclosed); mining XP 0.1 rounds to 0
+                // on the integer ore_xp path
+                let n = 2 + self.audio_rng.next_range(5) as u8; // 2..=6
+                for _ in 0..n {
+                    self.sim.items.drop_block(
+                        pos[0], pos[1], pos[2], IRON_NUGGET, biome, sky, blk,
+                    );
+                }
+                // 1.16 part 2: the piglin gold-mining anger
+                // hook (the same aggravation class)
+                let _ = self
+                    .sim
+                    .mobs
+                    .anger_piglins_near([pos[0] as f32 + 0.5, pos[1] as f32, pos[2] as f32 + 0.5], 16.0);
+            } else if broke == SOUL_FIRE {
+                // 1.16 — soul fire cannot be collected
+                // (fire blocks drop nothing, VERIFIED
+                // w/Soul_Fire — the creative picker is
+                // the only manual placement path, the
+                // disclosed no-flint adaptation)
+            } else if broke == NETHER_SPROUTS {
+                // 1.16 part 2 — VERIFIED w/Nether_Sprouts:
+                // drops nothing when broken without
+                // shears (no tool-gated drops in the
+                // engine — the empty-handed result,
+                // disclosed)
+            } else if broke == WEEPING_VINES || broke == TWISTING_VINES {
+                // 1.16 part 2 — VERIFIED w/Weeping_Vines
+                // + w/Twisting_Vines: "These blocks have
+                // a 1/3 chance of dropping themselves"
+                // (shears make it certain — the shears
+                // item's block-breaking use is the
+                // trimmed half, disclosed)
+                if self.audio_rng.next_range(3) == 0 {
+                    self.sim.items.drop_block(
+                        pos[0], pos[1], pos[2], broke, biome, sky, blk,
+                    );
+                }
+            } else if broke == MELON {
+                // the sweep-2: "When broken, a melon
+                // drops 3-7 melon slices with equal
+                // probability for an overall average of
+                // 5 slices per melon" (VERIFIED
+                // w/Melon_Slice §Block loot, live
+                // 2026-09-09; silk-touch/fortune out of
+                // scope, no tool-gated loot yet)
+                let n = 3 + self.audio_rng.next_range(5) as u8; // 3..=7
+                for _ in 0..n {
+                    self.sim.items.drop_block(
+                        pos[0],
+                        pos[1],
+                        pos[2],
+                        MELON_SLICE,
+                        biome,
+                        sky,
+                        blk,
+                    );
+                }
+            } else if broke == CRIMSON_NYLIUM || broke == WARPED_NYLIUM {
+                // 1.16 part 2 — the nylium row: mining a
+                // nylium drops its netherrack base (the
+                // grass-block-to-dirt class; silk-touch
+                // absent, disclosed)
+                self.sim.items.drop_block(
+                    pos[0], pos[1], pos[2], NETHERRACK, biome, sky, blk,
+                );
+            } else if broke == LEAVES || broke == DARK_OAK_LEAVES {
+                // the completeness audit: the apple roll
+                // — VERIFIED (minecraft.wiki/w/Apple, live
+                // 2026-09-08): "Oak and dark oak leaves
+                // have a 0.5% (1/200) chance of dropping
+                // an apple when decayed or broken, but
+                // not if burned". The engine's leaves
+                // self-drop convention is unchanged; the
+                // apple rides as the bonus roll (only
+                // the two apple-bearing species — the
+                // other four leaves never drop apples,
+                // VERIFIED).
+                self.sim.items.drop_block(
+                    pos[0], pos[1], pos[2], broke, biome, sky, blk,
+                );
+                if self.audio_rng.next_range(200) == 0 {
+                    self.sim.items.drop_block(
+                        pos[0], pos[1], pos[2], APPLE, biome, sky, blk,
+                    );
+                }
+            } else if broke == BEE_NEST || broke == BEEHIVE {
+                // 1.15 (Buzzy Bees) — VERIFIED w/Bee_nest
+                // §Breaking: "If a bee nest is broken with
+                // a tool not enchanted with Silk Touch, it
+                // drops NOTHING and any bees inside emerge
+                // angry at the player" (no Silk Touch in
+                // the engine — the adaptation, disclosed);
+                // the beehive always drops itself (the
+                // standard block rule) with its bees
+                // released angry (w/Beehive §Breaking)
+                if broke == BEEHIVE {
+                    self.sim.items.drop_block(
+                        pos[0], pos[1], pos[2], BEEHIVE, biome, sky, blk,
+                    );
+                }
+                // the angry swarm: stored bees release
+                // angry + the out family joins
+                let _n_in = self.sim.hives.anger(pos);
+                let _n_out = self.sim.mobs.anger_bees_near(
+                    [pos[0] as f32 + 0.5, pos[1] as f32, pos[2] as f32 + 0.5],
+                    Some(pos),
+                );
+                // the registry entry drops with the block
+                self.sim.hives.hives.remove(&pos);
+                self.play_event(
+                    "entity.bee.loop_aggressive",
+                    Some([pos[0] as f32 + 0.5, pos[1] as f32, pos[2] as f32 + 0.5]),
+                    1.0,
+                );
+            } else if broke == CAMPFIRE {
+                // 1.14 (VERIFIED w/Campfire §Breaking: "When
+                // mined regularly, a campfire drops 2
+                // charcoal" — no Silk Touch in the engine,
+                // the self-drop row is out of reach, disclosed)
+                // + 20w22a "Campfires now drop the food being
+                // cooked": the raw food spills from the entity
+                for _ in 0..2 {
+                    self.sim.items.drop_block(
+                        pos[0], pos[1], pos[2], CHARCOAL, biome, sky, blk,
+                    );
+                }
+                if let Some(cf) = self.sim.campfires.map.remove(&pos) {
+                    for slot in cf.slots.iter() {
+                        if !slot.is_empty() {
+                            self.sim.items.drop_block(
+                                pos[0], pos[1] + 1, pos[2], slot.block,
+                                biome, sky, blk,
+                            );
+                        }
+                    }
+                }
+            } else if broke == SWEET_BERRY_BUSH {
+                // 1.14 (VERIFIED w/Sweet_Berry_Bush §Breaking:
+                // "A mature sweet berry bush yields 2–3 sweet
+                // berries. On its third growth stage, it yields
+                // 1–2" — age 0/1 yield nothing; no Fortune)
+                let age = berry_bush_age(broke_state);
+                let n = match age {
+                    2 => 1 + self.audio_rng.next_range(2) as u8,
+                    3 => 2 + self.audio_rng.next_range(2) as u8,
+                    _ => 0,
+                };
+                for _ in 0..n {
+                    self.sim.items.drop_block(
+                        pos[0], pos[1], pos[2], SWEET_BERRIES, biome, sky, blk,
+                    );
+                }
+            } else if broke == BAMBOO || broke == BAMBOO_SHOOT {
+                // 1.14: "Bamboo stalks can be mined with any
+                // tool" and drop the bamboo item — the shoot
+                // is the sapling form of the same plant
+                self.sim.items.drop_block(
+                    pos[0], pos[1], pos[2], BAMBOO, biome, sky, blk,
+                );
+            } else if vc_sim::fluids::is_crop(broke) {
+                // ---- backlog round (farming, 2026-09-09):
+                // the four crops — the verified per-crop
+                // mature/early drop split (see
+                // drop_crop_harvest for the citations) ----
+                self.drop_crop_harvest(pos[0], pos[1], pos[2], broke_state, biome, sky, blk);
+            } else if broke == FARMLAND {
+                // ---- backlog round (farming): farmland
+                // drops 1 dirt when destroyed (VERIFIED
+                // w/Farmland §Breaking: "Farmland drops 1
+                // dirt block when it's destroyed"), and the
+                // crop above pops with its harvest ----
+                self.sim.items.drop_block(
+                    pos[0], pos[1], pos[2], DIRT, biome, sky, blk,
+                );
+                let crop = self.world.get_state(pos[0], pos[1] + 1, pos[2]);
+                if vc_sim::fluids::is_crop(state_block(crop)) {
+                    self.drop_crop_harvest(pos[0], pos[1] + 1, pos[2], crop, biome, sky, blk);
+                    if let Some((old, new)) = self
+                        .world
+                        .set_block_state(pos[0], pos[1] + 1, pos[2], default_state(AIR))
+                    {
+                        self.light.on_block_changed(
+                            &self.world, pos[0], pos[1] + 1, pos[2], old, new,
+                        );
+                    }
+                    notify_sim(
+                        &self.world,
+                        &mut self.sim.sched,
+                        pos[0],
+                        pos[1] + 1,
+                        pos[2],
+                    );
+                }
+            } else if broke == TALL_GRASS || broke == FERN {
+                // ---- backlog round (farming): grass plants
+                // drop wheat seeds 1/8 (VERIFIED live
+                // 2026-09-09 w/Tutorial:Crop_farming:
+                // "Each grass plant has only a 1/8 chance
+                // of dropping seeds") — the survival seed
+                // source ----
+                if self.audio_rng.next_range(8) == 0 {
+                    self.sim.items.drop_block(
+                        pos[0], pos[1], pos[2], WHEAT_SEEDS, biome, sky, blk,
+                    );
+                }
+            } else {
+                self.sim.items.drop_block(
+                    pos[0], pos[1], pos[2], broke, biome, sky, blk,
+                );
+            }
+        }
+        notify_sim(&self.world, &mut self.sim.sched, pos[0], pos[1], pos[2]);
+        // §27/§29: container contents spill + entity cleanup
+        self.drop_container_contents(pos, broke);
+        // §29: mining ores grants XP (vanilla amounts)
+        let ore_xp = vc_gameplay::enchanting::ore_xp(broke);
+        if ore_xp > 0 {
+            let gained = self.player.add_xp(ore_xp);
+            if gained > 0 {
+                self.play_event("entity.player.levelup", None, 1.0);
+            }
+        }
+        self.play_event(
+            vc_audio::sounds::family_event(def(b).sound, true),
+            Some([
+                pos[0] as f32 + 0.5,
+                pos[1] as f32 + 0.5,
+                pos[2] as f32 + 0.5,
+            ]),
+            1.0,
+        );
+        self.break_timer = 0.24;
+        self.edits += 1;
+    }
+
     /// Phase 11 §34: settings.shader → display name (engine modes + packs)
     fn shader_mode_name(&self, mode: u8) -> &str {
         match mode {
@@ -5418,6 +6195,366 @@ impl GameApp {
                 .map(|p| p.name.as_str())
                 .unwrap_or("?"),
         }
+    }
+
+    // --------------------------------------- 2026-09-14: resource packs --
+
+    /// The Resource Packs screen lists (vanilla two-pane model):
+    /// * `avail` — Available (disabled): "Programmer Art" (when the pack
+    ///   source resolved) + every scanned user pack not on the Selected
+    ///   list, alphabetical.
+    /// * `sel` — Selected (enabled) in priority order (index 0 = TOP =
+    ///   highest priority; Default is pinned separately by the layout and
+    ///   never appears here).
+    fn resource_pack_lists(&self) -> (Vec<String>, Vec<String>) {
+        let sel: Vec<String> = self
+            .settings
+            .resource_packs
+            .iter()
+            .map(|n| self.pack_display_name(n))
+            .collect();
+        let mut avail: Vec<String> = Vec::new();
+        if self.programmer_art.is_some() && !self.settings.resource_packs.contains(&"programmer-art".to_string()) {
+            avail.push("PROGRAMMER ART".to_string());
+        }
+        for (name, _src) in &self.user_packs {
+            if !self.settings.resource_packs.contains(name) {
+                avail.push(self.pack_display_name(name));
+            }
+        }
+        (avail, sel)
+    }
+
+    /// pack key → display name for the rows (vanilla shows the pack's own
+    /// name; ours derives it from the folder/zip name or the builtin id)
+    fn pack_display_name(&self, key: &str) -> String {
+        match key {
+            "programmer-art" => "PROGRAMMER ART".to_string(),
+            other => other.to_uppercase().replace('_', " "),
+        }
+    }
+
+    /// pack key → cached source (None for unknown/stale names)
+    fn pack_source_by_name(
+        &self,
+        name: &str,
+    ) -> Option<std::sync::Arc<dyn vc_pack::pack::PackSource>> {
+        if name == "programmer-art" {
+            self.programmer_art.clone()
+        } else {
+            self.user_packs
+                .iter()
+                .find(|(n, _)| n == name)
+                .map(|(_, s)| s.clone())
+        }
+    }
+
+    /// 1-2 hover lines describing a pack (the vanilla pack-row hover)
+    fn pack_tooltip(&self, key: &str) -> Vec<String> {
+        match key {
+            "programmer-art" => vec![
+                "The classic look of VoxelCraft (built-in).".to_string(),
+                "The old pre-1.14-style textures, clean-room look-alikes.".to_string(),
+            ],
+            other => vec![
+                format!("User pack \"{other}\""),
+                "Loaded from the resourcepacks/ folder.".to_string(),
+            ],
+        }
+    }
+
+    /// 2026-09-14: the destroy-stage crack overlay — 6 axis-aligned
+    /// quads (slightly inflated, painter-ordered far face first) around
+    /// the block being mined, textured with destroy_stage_N (10 stages,
+    /// vanilla §Breaking). Emitted into the shared billboard stream AFTER
+    /// mobs so the alpha-blended no-depth-write pass draws it on top of
+    /// the block faces.
+    fn push_mining_overlay(&mut self) {
+        use vc_particles::particles::ParticleVertex;
+        let Some(m) = &self.mining else { return };
+        if m.progress <= 0.0 {
+            return;
+        }
+        let stage = ((m.progress * 10.0) as i32).clamp(0, 9) as u16;
+        let tile = TILE_DESTROY_BASE + stage;
+        let (_biome, sky, blk) =
+            light_at(&self.world, &self.light, m.pos[0], m.pos[1], m.pos[2]);
+        let light = vc_particles::particles::particle_light(sky, blk);
+        // atlas UV of the stage tile
+        let tx = (tile % 32) as f32;
+        let ty = (tile / 32) as f32;
+        let u0 = tx / 32.0;
+        let u1 = (tx + 1.0) / 32.0;
+        let v0 = ty / 32.0;
+        let v1 = (ty + 1.0) / 32.0;
+        // inflate 1.5% so the overlay never z-fights the block faces
+        let e = 0.0075;
+        let (x0, y0, z0) = (m.pos[0] as f32 - e, m.pos[1] as f32 - e, m.pos[2] as f32 - e);
+        let (x1, y1, z1) = (
+            m.pos[0] as f32 + 1.0 + e,
+            m.pos[1] as f32 + 1.0 + e,
+            m.pos[2] as f32 + 1.0 + e,
+        );
+        // face quads (corners CCW from outside); light face shading like
+        // the mesher (top 1.0, sides 0.8/0.6, bottom 0.5)
+        let faces: [([[f32; 3]; 4], f32); 6] = [
+            ([[x1, y0, z0], [x1, y0, z1], [x1, y1, z1], [x1, y1, z0]], 0.6), // +x
+            ([[x0, y0, z1], [x0, y0, z0], [x0, y1, z0], [x0, y1, z1]], 0.6), // -x
+            ([[x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]], 1.0), // +y
+            ([[x0, y0, z1], [x1, y0, z1], [x1, y0, z0], [x0, y0, z0]], 0.5), // -y
+            ([[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]], 0.8), // +z
+            ([[x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0]], 0.8), // -z
+        ];
+        for (c, shade) in faces {
+            let f = [shade * light; 3];
+            let a = ParticleVertex { pos: c[0], uv: [u0, v0], col: f };
+            let b = ParticleVertex { pos: c[1], uv: [u1, v0], col: f };
+            let cc = ParticleVertex { pos: c[2], uv: [u1, v1], col: f };
+            let d = ParticleVertex { pos: c[3], uv: [u0, v1], col: f };
+            self.particle_verts
+                .extend_from_slice(&[a, b, cc, a, cc, d]);
+        }
+    }
+
+    /// 2026-09-14: the FIRST-PERSON VIEW MODEL — the held block (3D cube,
+    /// per-face tiles) or the bare arm (skin-tone box), anchored to the
+    /// camera and animated: swing (the vanilla ~0.3 s attack/mine arc —
+    /// translate + pitch rotation), equip (rises on slot change), view
+    /// bobbing (rides the walk cycle). Emitted LAST into the blended
+    /// billboard stream (alpha, no depth write) so it draws over the
+    /// world exactly like vanilla's separate hand pass — walls closer
+    /// than the hand never clip it.
+    #[allow(clippy::too_many_arguments)]
+    fn push_held_item(&mut self, right: [f32; 3], up: [f32; 3], dir: [f32; 3], eye: [f32; 3]) {
+        use vc_particles::particles::ParticleVertex;
+        let held = self.player.inv.slots[self.player.selected];
+        let light = {
+            let (bx, by, bz) = (
+                eye[0].floor() as i32,
+                eye[1].floor() as i32,
+                eye[2].floor() as i32,
+            );
+            let (_biome, sky, blk) = light_at(&self.world, &self.light, bx, by, bz);
+            vc_particles::particles::particle_light(sky, blk).max(0.35)
+        };
+        // camera-space anchor of the view model
+        let ax = -0.42_f32;
+        let ay = -0.36_f32;
+        let az = 0.55_f32;
+        // equip: rises from below on slot change
+        let ay = ay - 0.45 * (1.0 - self.held_equip);
+        // view bobbing: the hand sways with the walk cycle (1.6× the
+        // camera sway, vanilla's parallax feel)
+        let ax = ax + self.bob_off[0] * 1.6;
+        let ay = ay + self.bob_off[1] * 1.6;
+        // swing: dips down-toward the viewer through the arc
+        let sw = if self.held_swing > 0.0 {
+            (self.held_swing * std::f32::consts::PI).sin()
+        } else {
+            0.0
+        };
+        let ay = ay - 0.22 * sw;
+        let az = az - 0.10 * sw;
+        let ax = ax - 0.05 * sw;
+        // the whole assembly pitches forward through the swing (rotate
+        // about the camera-space X axis through the anchor)
+        let rot = -1.1 * sw;
+        let (rc, rs) = (rot.cos(), rot.sin());
+        // local (right, up, forward) → world
+        let to_world = |lx: f32, ly: f32, lz: f32| -> [f32; 3] {
+            // swing rotation about X (through the anchor)
+            let dy = ly - ay;
+            let dz = lz - az;
+            let ry = dy * rc - dz * rs + ay;
+            let rz = dy * rs + dz * rc + az;
+            [
+                eye[0] + right[0] * lx + up[0] * ry + dir[0] * rz,
+                eye[1] + right[1] * lx + up[1] * ry + dir[1] * rz,
+                eye[2] + right[2] * lx + up[2] * ry + dir[2] * rz,
+            ]
+        };
+        let emit_face = |corners: &[[f32; 3]; 4],
+                         tile: u16,
+                         shade: f32,
+                         out: &mut Vec<ParticleVertex>| {
+            let tx = (tile % 32) as f32;
+            let ty = (tile / 32) as f32;
+            let u0 = tx / 32.0;
+            let u1 = (tx + 1.0) / 32.0;
+            let v0 = ty / 32.0;
+            let v1 = (ty + 1.0) / 32.0;
+            let f = [light * shade; 3];
+            let a = ParticleVertex { pos: corners[0], uv: [u0, v0], col: f };
+            let b = ParticleVertex { pos: corners[1], uv: [u1, v0], col: f };
+            let c = ParticleVertex { pos: corners[2], uv: [u1, v1], col: f };
+            let d = ParticleVertex { pos: corners[3], uv: [u0, v1], col: f };
+            out.extend_from_slice(&[a, b, c, a, c, d]);
+        };
+        if !held.is_empty() {
+            // the held block: 0.30 cube centered on the anchor, per-face
+            // tiles from the block's default state
+            let hs = 0.15_f32;
+            let corners_local: [[f32; 3]; 8] = [
+                [ax - hs, ay - hs, az - hs],
+                [ax + hs, ay - hs, az - hs],
+                [ax - hs, ay + hs, az - hs],
+                [ax + hs, ay + hs, az - hs],
+                [ax - hs, ay - hs, az + hs],
+                [ax + hs, ay - hs, az + hs],
+                [ax - hs, ay + hs, az + hs],
+                [ax + hs, ay + hs, az + hs],
+            ];
+            let w: Vec<[f32; 3]> = corners_local
+                .iter()
+                .map(|l| to_world(l[0], l[1], l[2]))
+                .collect();
+            let state = default_state(held.block);
+            let t = state_tiles(state);
+            let faces: [([usize; 4], u16, f32); 6] = [
+                ([1, 3, 7, 5], t[2], 0.6), // +x
+                ([4, 6, 2, 0], t[2], 0.6), // -x
+                ([2, 3, 7, 6], t[0], 1.0), // +y top
+                ([0, 1, 5, 4], t[1], 0.5), // -y bottom
+                ([0, 2, 3, 1], t[3], 0.8), // +z
+                ([4, 5, 7, 6], t[3], 0.8), // -z
+            ];
+            // painter order: far faces (small camera-space z) first
+            let mut order: Vec<(f32, usize)> = faces
+                .iter()
+                .enumerate()
+                .map(|(i, (cs, _, _))| {
+                    let z = cs.iter().map(|&c| corners_local[c][2]).sum::<f32>() / 4.0;
+                    (z, i)
+                })
+                .collect();
+            order.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+            for (_, i) in order {
+                let (cs, tile, shade) = faces[i];
+                let fc = [w[cs[0]], w[cs[1]], w[cs[2]], w[cs[3]]];
+                emit_face(&fc, tile, shade, &mut self.particle_verts);
+            }
+            // the forearm tucked under-right-behind the block (skin-tone
+            // box, TILE_ARM)
+            let arm = [
+                to_world(ax + 0.05, ay - 0.42, az - 0.28),
+                to_world(ax + 0.15, ay - 0.42, az - 0.28),
+                to_world(ax + 0.05, ay - 0.05, az - 0.28),
+                to_world(ax + 0.15, ay - 0.05, az - 0.28),
+                to_world(ax + 0.05, ay - 0.42, az + 0.02),
+                to_world(ax + 0.15, ay - 0.42, az + 0.02),
+                to_world(ax + 0.05, ay - 0.05, az + 0.02),
+                to_world(ax + 0.15, ay - 0.05, az + 0.02),
+            ];
+            let arm_faces: [([usize; 4], f32); 6] = [
+                ([1, 3, 7, 5], 0.6),
+                ([4, 6, 2, 0], 0.6),
+                ([2, 3, 7, 6], 1.0),
+                ([0, 1, 5, 4], 0.5),
+                ([0, 2, 3, 1], 0.8),
+                ([4, 5, 7, 6], 0.8),
+            ];
+            for (cs, shade) in arm_faces {
+                let fc = [arm[cs[0]], arm[cs[1]], arm[cs[2]], arm[cs[3]]];
+                emit_face(&fc, TILE_ARM, shade, &mut self.particle_verts);
+            }
+        } else {
+            // empty hand: just the forearm, angled slightly inward
+            let arm = [
+                to_world(ax - 0.05, ay - 0.40, az - 0.30),
+                to_world(ax + 0.07, ay - 0.40, az - 0.30),
+                to_world(ax - 0.05, ay + 0.02, az - 0.30),
+                to_world(ax + 0.07, ay + 0.02, az - 0.30),
+                to_world(ax - 0.05, ay - 0.40, az + 0.10),
+                to_world(ax + 0.07, ay - 0.40, az + 0.10),
+                to_world(ax - 0.05, ay + 0.02, az + 0.10),
+                to_world(ax + 0.07, ay + 0.02, az + 0.10),
+            ];
+            let arm_faces: [([usize; 4], f32); 6] = [
+                ([1, 3, 7, 5], 0.6),
+                ([4, 6, 2, 0], 0.6),
+                ([2, 3, 7, 6], 1.0),
+                ([0, 1, 5, 4], 0.5),
+                ([0, 2, 3, 1], 0.8),
+                ([4, 5, 7, 6], 0.8),
+            ];
+            for (cs, shade) in arm_faces {
+                let fc = [arm[cs[0]], arm[cs[1]], arm[cs[2]], arm[cs[3]]];
+                emit_face(&fc, TILE_ARM, shade, &mut self.particle_verts);
+            }
+        }
+    }
+
+    /// row key from a display row index on the AVAILABLE pane
+    fn resource_pack_key_avail(&self, idx: usize) -> Option<String> {
+        let (avail, _) = self.resource_pack_lists();
+        let display = avail.get(idx)?;
+        if display == "PROGRAMMER ART" {
+            Some("programmer-art".to_string())
+        } else {
+            // reverse the display-name transform by matching user packs
+            self.user_packs
+                .iter()
+                .find(|(n, _)| self.pack_display_name(n) == *display)
+                .map(|(n, _)| n.clone())
+        }
+    }
+
+    /// APPLY the edited Selected list (the Resource Packs screen's DONE):
+    /// recompile the atlas + ModelSet with the enabled stack (builtin
+    /// first, then each pack bottom→top so the topmost wins), swap the
+    /// atlas on the GPU, rebuild the GUI texture set, reset the item-icon
+    /// cache (icons bake from the atlas), remesh the world, persist the
+    /// settings. Vanilla-faithful "apply on Done" behavior.
+    fn apply_resource_packs(&mut self) {
+        self.pack_stack_dirty = false;
+        // application order = display order reversed (bottom-most loads
+        // first — VERIFIED live 2026-09-14, minecraft.wiki/w/Resource_pack
+        // §Behavior)
+        let app_order: Vec<std::sync::Arc<dyn vc_pack::pack::PackSource>> = self
+            .settings
+            .resource_packs
+            .iter()
+            .rev()
+            .filter_map(|n| self.pack_source_by_name(n))
+            .collect();
+        let (mut atlas, animations) =
+            compile_pack_atlas(self.builtin_pack.as_ref(), &app_order);
+        vc_render::textures::draw_missing_tile(&mut atlas);
+        self.atlas = atlas;
+        self.animations = animations;
+        self.renderer.replace_atlas(&self.atlas);
+        // GUI sheets: the enabled stack over the builtin set (same merge
+        // as boot — the loader resolves per texture, §46-tolerant)
+        let mut gui_set = vc_render::gui::GuiTextureSet::build_builtin();
+        if !app_order.is_empty() {
+            let mut stack = vc_pack::pack::PackStack::new();
+            for pack in app_order.iter() {
+                stack.push_front(pack.clone());
+            }
+            if let Ok(Some(s)) = vc_render::gui::loader::load_from_pack(&stack) {
+                gui_set = s;
+            }
+        }
+        self.gui_set = gui_set;
+        // icons bake FROM the atlas — drop the cache so every hotbar /
+        // picker icon re-bakes from the new pixels (pop-in over a few
+        // frames, the documented amortization)
+        self.icon_cache = self.renderer.create_icon_cache(512);
+        self.ui.set_icon_cells(std::sync::Arc::new(
+            self.icon_cache.ready_cells().clone(),
+        ));
+        // every chunk remeshes through the (newly installed) ModelSet
+        self.remesh_all();
+        // persist the pack list with the other settings
+        #[cfg(target_arch = "wasm32")]
+        crate::web_input::save_settings(&self.settings.serialize());
+        #[cfg(not(target_arch = "wasm32"))]
+        save_native_settings(&self.settings);
+        vc_render::render::report_boot_log(&format!(
+            "resource packs applied: {} pack(s) on the Selected list",
+            app_order.len()
+        ));
+        self.ui.dirty = true;
     }
 
     /// Phase 11 §34: map settings.shader → renderer pack state. 0..2 are
@@ -5473,6 +6610,9 @@ impl GameApp {
                             &format!("SENSITIVITY: {}%", (s.sensitivity * 100.0).round() as i32),
                             (s.sensitivity - 0.1) / 1.9,
                         ),
+                        ID_OPT_BOB => {
+                            set_button_value(w, if s.view_bobbing { "ON" } else { "OFF" })
+                        }
                         _ => {}
                     }
                 }
@@ -5613,6 +6753,14 @@ impl GameApp {
                 self.widgets = ws;
             }
             Screen::Packs => {
+                // 2026-09-14: the REAL resource-pack manager — Available
+                // (disabled) vs Selected (enabled, top = highest priority),
+                // Default pinned at the pane bottom. The old shader-mode
+                // list moved to Screen::Shaders.
+                let (avail, sel) = self.resource_pack_lists();
+                self.widgets = layout_resource_packs(&avail, &sel);
+            }
+            Screen::Shaders => {
                 // engine shader modes + shader packs as one selectable list
                 let n = 3 + self.shader_packs.len();
                 let entries: Vec<String> = (0..n)
@@ -10877,350 +12025,135 @@ impl GameApp {
                 crate::player::REACH,
             );
 
+            // ---- 2026-09-14: first-person view-model animation ----
+            // swing: 0 = idle, else 0→1 over 0.3 s (the vanilla 6-tick
+            // swing); retriggerable mid-swing (click spam restarts it)
+            if self.held_swing > 0.0 {
+                self.held_swing += dt / 0.3;
+                if self.held_swing >= 1.0 {
+                    self.held_swing = 0.0;
+                }
+            }
+            // equip: the view model rises on slot change (0→1 over 0.25 s)
+            if self.held_equip < 1.0 {
+                self.held_equip = (self.held_equip + dt / 0.25).min(1.0);
+            }
+            if self.player.selected != self.held_prev {
+                self.held_prev = self.player.selected;
+                self.held_equip = 0.0;
+            }
+            // view bobbing (vanilla Options §View Bobbing): the walk-cycle
+            // sway, amplitude eased by ground speed, disabled by the
+            // setting or in flight; the same offset drives the camera and
+            // the held item so they move as one
+            {
+                let hspeed = (self.player.vel.x * self.player.vel.x
+                    + self.player.vel.z * self.player.vel.z)
+                    .sqrt();
+                let active = self.settings.view_bobbing
+                    && self.player.on_ground
+                    && !self.player.flying;
+                let target = if active { (hspeed * 0.11).min(0.05) } else { 0.0 };
+                self.bob_amp += (target - self.bob_amp) * (dt * 8.0).min(1.0);
+                self.bob_phase += hspeed * dt * 5.2;
+                let sway = self.bob_phase.sin() * self.bob_amp;
+                let dip = -self.bob_phase.cos().abs() * self.bob_amp * 0.85;
+                self.bob_off = [sway, dip];
+            }
+
             // interactions
             self.break_timer -= dt;
             self.place_timer -= dt;
-            // 1.8: Spectators never interact (wiki: no block breaking,
-            // placing, or using — flight through everything)
-            if self.input.break_hold
-                && self.break_timer <= 0.0
-                && self.mode != vc_gameplay::modes::GameMode::Spectator
-            {
+            // ---- 2026-09-14 round: the vanilla MINING MODEL (replaces
+            // the fixed 0.24 s hold-to-break). Survival: progress
+            // accumulates over the block's hardness-derived break time
+            // (vc-blocks `break_time_secs` — the hand formula hardness ×
+            // 1.5, VERIFIED live 2026-09-14 minecraft.wiki/w/Breaking),
+            // with the 10-stage destroy overlay rendered from
+            // `self.mining`, quarter-second dig sounds + hit particles.
+            // Creative: INSTANT break (vanilla creative one-shots blocks;
+            // the short repeat cooldown stays so holding doesn't
+            // machine-gun). Adventure: no direct breaks (Phase E2 rule,
+            // kept: it only gates the placement timer below).
+            // 1.8: Spectators never interact (no breaking, placing, or
+            // using — flight through everything).
+            let can_edit = self.mode.edits_world_blocks()
+                && self.mode != vc_gameplay::modes::GameMode::Spectator;
+            if self.input.break_hold && !can_edit {
+                // Phase E2 (VERIFIED w/Adventure): adventure mode cannot
+                // directly break blocks (Java allows it only via item
+                // can_break components — the engine has none: plain
+                // denial, disclosed); the timer keeps click-and-place
+                // from firing on the same press
+                self.place_timer = 0.3;
+                self.mining = None;
+            } else if self.input.break_hold && self.break_timer <= 0.0 {
                 if let Some((pos, b, _)) = self.target {
-                    // Phase E2 (VERIFIED w/Adventure): adventure mode
-                    // cannot directly break blocks (Java allows it only
-                    // via item can_break components — the engine has
-                    // none: plain denial, disclosed)
-                    if !self.mode.edits_world_blocks() {
-                        self.place_timer = 0.3;
-                    } else if b != BEDROCK {
-                        let broke = self.world.get_block(pos[0], pos[1], pos[2]);
-                        // 1.14: the pre-break state (the berry bush's
-                        // age — captured BEFORE the AIR write clears it)
-                        let broke_state = self.world.get_state(pos[0], pos[1], pos[2]);
-                        let (biome, sky, blk) =
-                            light_at(&self.world, &self.light, pos[0], pos[1], pos[2]);
-                        if let Some((old, new)) = self.world.set_block(pos[0], pos[1], pos[2], AIR)
-                        {
-                            self.light.on_block_changed(
-                                &self.world,
-                                pos[0],
-                                pos[1],
-                                pos[2],
-                                old,
-                                new,
-                            );
+                    if b == BEDROCK {
+                        self.mining = None;
+                    } else {
+                        let total = vc_blocks::blocks::break_time_secs(b);
+                        let instant = self.mode.picks_creative() || total <= 0.0;
+                        // (re)start when the crosshair moved to a new block
+                        let fresh = !matches!(&self.mining, Some(m) if m.pos == pos && m.block == b);
+                        if fresh {
+                            self.mining = Some(MiningState {
+                                pos,
+                                block: b,
+                                progress: 0.0,
+                                feedback_acc: 0.0,
+                            });
                         }
-                        // fences: removing a block changes neighbor connections
-                        update_fence_neighbors(&mut self.world, pos[0], pos[1], pos[2]);
-                        // §5 break burst: vanilla 4×4×4 particle grid, baked
-                        // biome tint + light
-                        self.particles
-                            .spawn_block_break(pos[0], pos[1], pos[2], broke, biome, sky, blk);
-                        // §22/§24: item drop + neighbor sim notification
-                        // (water flows, sand falls). Phase 1: creative
-                        // breaking yields NO drops (infinite inventory —
-                        // blocks just vanish, vanilla behavior)
-                        if self.mode.drops_blocks() {
-                            if broke == ENDER_CHEST {
-                                // Phase E2 (VERIFIED w/Ender_Chest): breaks
-                                // into 8 obsidian (no Silk Touch in the
-                                // engine — the always-obsidian row,
-                                // documented); contents stay in the shared
-                                // ender inventory (never spilled)
-                                for _ in 0..8 {
-                                    self.sim.items.drop_block(
-                                        pos[0], pos[1], pos[2], OBSIDIAN, biome, sky, blk,
-                                    );
-                                }
-                            } else if broke == EMERALD_ORE {
-                                // Phase E2 (VERIFIED w/Emerald_Ore): drops
-                                // 1 emerald (Fortune deferred — no Fortune
-                                // enchant in the engine)
-                                self.sim.items.drop_block(
-                                    pos[0], pos[1], pos[2], EMERALD, biome, sky, blk,
-                                );
-                            } else if broke == NETHER_QUARTZ_ORE {
-                                // Phase E3 (VERIFIED live 2026-09-06,
-                                // minecraft.wiki/w/Nether_Quartz_Ore:
-                                // "it drops 1 Nether quartz" — Fortune up
-                                // to 4 deferred, no Fortune enchant; ore
-                                // XP 2–5 rides the ore_xp path)
-                                self.sim.items.drop_block(
-                                    pos[0], pos[1], pos[2], NETHER_QUARTZ, biome, sky, blk,
-                                );
-                            } else if broke == GILDED_BLACKSTONE {
-                                // 1.16 (Nether Update, part 1) — VERIFIED
-                                // w/Gilded_Blackstone §Breaking: "a 10%
-                                // chance to drop 2–5 gold nuggets when
-                                // mined with any pickaxe. If it does not
-                                // drop gold nuggets, it drops itself as a
-                                // block." Gold nugget = the iron-nugget
-                                // stand-in (the disclosed convention;
-                                // Fortune raises the CHANCE — absent,
-                                // disclosed)
-                                if self.audio_rng.next_f32() < 0.10 {
-                                    let n = 2 + self.audio_rng.next_range(4) as u8; // 2..=5
-                                    for _ in 0..n {
-                                        self.sim.items.drop_block(
-                                            pos[0], pos[1], pos[2], IRON_NUGGET, biome, sky, blk,
-                                        );
-                                    }
-                                } else {
-                                    self.sim.items.drop_block(
-                                        pos[0], pos[1], pos[2], broke, biome, sky, blk,
-                                    );
-                                }
-                                // 1.16 part 2: the piglin gold-mining anger
-                                // hook — mining gold-related blocks angers
-                                // nearby piglins (the w/Piglin aggravation
-                                // rows; the 16-block medium-aggravation
-                                // range, disclosed)
-                                let _ = self
-                                    .sim
-                                    .mobs
-                                    .anger_piglins_near([pos[0] as f32 + 0.5, pos[1] as f32, pos[2] as f32 + 0.5], 16.0);
-                            } else if broke == NETHER_GOLD_ORE {
-                                // 1.16 — VERIFIED w/Nether_Gold_Ore
-                                // §Drops: "2–6 gold nuggets when mined
-                                // with any pickaxe" (the iron-nugget
-                                // stand-in; Fortune multiplies — absent,
-                                // disclosed); mining XP 0.1 rounds to 0
-                                // on the integer ore_xp path
-                                let n = 2 + self.audio_rng.next_range(5) as u8; // 2..=6
-                                for _ in 0..n {
-                                    self.sim.items.drop_block(
-                                        pos[0], pos[1], pos[2], IRON_NUGGET, biome, sky, blk,
-                                    );
-                                }
-                                // 1.16 part 2: the piglin gold-mining anger
-                                // hook (the same aggravation class)
-                                let _ = self
-                                    .sim
-                                    .mobs
-                                    .anger_piglins_near([pos[0] as f32 + 0.5, pos[1] as f32, pos[2] as f32 + 0.5], 16.0);
-                            } else if broke == SOUL_FIRE {
-                                // 1.16 — soul fire cannot be collected
-                                // (fire blocks drop nothing, VERIFIED
-                                // w/Soul_Fire — the creative picker is
-                                // the only manual placement path, the
-                                // disclosed no-flint adaptation)
-                            } else if broke == NETHER_SPROUTS {
-                                // 1.16 part 2 — VERIFIED w/Nether_Sprouts:
-                                // drops nothing when broken without
-                                // shears (no tool-gated drops in the
-                                // engine — the empty-handed result,
-                                // disclosed)
-                            } else if broke == WEEPING_VINES || broke == TWISTING_VINES {
-                                // 1.16 part 2 — VERIFIED w/Weeping_Vines
-                                // + w/Twisting_Vines: "These blocks have
-                                // a 1/3 chance of dropping themselves"
-                                // (shears make it certain — the shears
-                                // item's block-breaking use is the
-                                // trimmed half, disclosed)
-                                if self.audio_rng.next_range(3) == 0 {
-                                    self.sim.items.drop_block(
-                                        pos[0], pos[1], pos[2], broke, biome, sky, blk,
-                                    );
-                                }
-                            } else if broke == MELON {
-                                // the sweep-2: "When broken, a melon
-                                // drops 3-7 melon slices with equal
-                                // probability for an overall average of
-                                // 5 slices per melon" (VERIFIED
-                                // w/Melon_Slice §Block loot, live
-                                // 2026-09-09; silk-touch/fortune out of
-                                // scope, no tool-gated loot yet)
-                                let n = 3 + self.audio_rng.next_range(5) as u8; // 3..=7
-                                for _ in 0..n {
-                                    self.sim.items.drop_block(
-                                        pos[0],
-                                        pos[1],
-                                        pos[2],
-                                        MELON_SLICE,
-                                        biome,
-                                        sky,
-                                        blk,
-                                    );
-                                }
-                            } else if broke == CRIMSON_NYLIUM || broke == WARPED_NYLIUM {
-                                // 1.16 part 2 — the nylium row: mining a
-                                // nylium drops its netherrack base (the
-                                // grass-block-to-dirt class; silk-touch
-                                // absent, disclosed)
-                                self.sim.items.drop_block(
-                                    pos[0], pos[1], pos[2], NETHERRACK, biome, sky, blk,
-                                );
-                            } else if broke == LEAVES || broke == DARK_OAK_LEAVES {
-                                // the completeness audit: the apple roll
-                                // — VERIFIED (minecraft.wiki/w/Apple, live
-                                // 2026-09-08): "Oak and dark oak leaves
-                                // have a 0.5% (1/200) chance of dropping
-                                // an apple when decayed or broken, but
-                                // not if burned". The engine's leaves
-                                // self-drop convention is unchanged; the
-                                // apple rides as the bonus roll (only
-                                // the two apple-bearing species — the
-                                // other four leaves never drop apples,
-                                // VERIFIED).
-                                self.sim.items.drop_block(
-                                    pos[0], pos[1], pos[2], broke, biome, sky, blk,
-                                );
-                                if self.audio_rng.next_range(200) == 0 {
-                                    self.sim.items.drop_block(
-                                        pos[0], pos[1], pos[2], APPLE, biome, sky, blk,
-                                    );
-                                }
-                            } else if broke == BEE_NEST || broke == BEEHIVE {
-                                // 1.15 (Buzzy Bees) — VERIFIED w/Bee_nest
-                                // §Breaking: "If a bee nest is broken with
-                                // a tool not enchanted with Silk Touch, it
-                                // drops NOTHING and any bees inside emerge
-                                // angry at the player" (no Silk Touch in
-                                // the engine — the adaptation, disclosed);
-                                // the beehive always drops itself (the
-                                // standard block rule) with its bees
-                                // released angry (w/Beehive §Breaking)
-                                if broke == BEEHIVE {
-                                    self.sim.items.drop_block(
-                                        pos[0], pos[1], pos[2], BEEHIVE, biome, sky, blk,
-                                    );
-                                }
-                                // the angry swarm: stored bees release
-                                // angry + the out family joins
-                                let _n_in = self.sim.hives.anger(pos);
-                                let _n_out = self.sim.mobs.anger_bees_near(
-                                    [pos[0] as f32 + 0.5, pos[1] as f32, pos[2] as f32 + 0.5],
-                                    Some(pos),
-                                );
-                                // the registry entry drops with the block
-                                self.sim.hives.hives.remove(&pos);
+                        if instant {
+                            self.mining = None;
+                            self.finish_break(pos);
+                            // creative: vanilla's short hold-repeat; instant
+                            // survival blocks (plants) keep a tiny gap
+                            self.break_timer = 0.24;
+                        } else if let Some(mut m) = self.mining.take() {
+                            // (take/put-back: the feedback below needs
+                            // &mut self while the state is live)
+                            m.progress += dt / total;
+                            m.feedback_acc += dt;
+                            let mut finished = false;
+                            if m.feedback_acc >= 0.25 {
+                                m.feedback_acc = 0.0;
+                                // the arm keeps swinging while mining
+                                // (vanilla re-swings for every dig hit)
+                                self.held_swing = 0.0001;
+                                // vanilla mines with a repeating dig sound
+                                // + face hit particles (every ~4 ticks)
                                 self.play_event(
-                                    "entity.bee.loop_aggressive",
-                                    Some([pos[0] as f32 + 0.5, pos[1] as f32, pos[2] as f32 + 0.5]),
-                                    1.0,
+                                    vc_audio::sounds::family_event(def(b).sound, true),
+                                    Some([
+                                        pos[0] as f32 + 0.5,
+                                        pos[1] as f32 + 0.5,
+                                        pos[2] as f32 + 0.5,
+                                    ]),
+                                    0.45,
                                 );
-                            } else if broke == CAMPFIRE {
-                                // 1.14 (VERIFIED w/Campfire §Breaking: "When
-                                // mined regularly, a campfire drops 2
-                                // charcoal" — no Silk Touch in the engine,
-                                // the self-drop row is out of reach, disclosed)
-                                // + 20w22a "Campfires now drop the food being
-                                // cooked": the raw food spills from the entity
-                                for _ in 0..2 {
-                                    self.sim.items.drop_block(
-                                        pos[0], pos[1], pos[2], CHARCOAL, biome, sky, blk,
-                                    );
-                                }
-                                if let Some(cf) = self.sim.campfires.map.remove(&pos) {
-                                    for slot in cf.slots.iter() {
-                                        if !slot.is_empty() {
-                                            self.sim.items.drop_block(
-                                                pos[0], pos[1] + 1, pos[2], slot.block,
-                                                biome, sky, blk,
-                                            );
-                                        }
-                                    }
-                                }
-                            } else if broke == SWEET_BERRY_BUSH {
-                                // 1.14 (VERIFIED w/Sweet_Berry_Bush §Breaking:
-                                // "A mature sweet berry bush yields 2–3 sweet
-                                // berries. On its third growth stage, it yields
-                                // 1–2" — age 0/1 yield nothing; no Fortune)
-                                let age = berry_bush_age(broke_state);
-                                let n = match age {
-                                    2 => 1 + self.audio_rng.next_range(2) as u8,
-                                    3 => 2 + self.audio_rng.next_range(2) as u8,
-                                    _ => 0,
-                                };
-                                for _ in 0..n {
-                                    self.sim.items.drop_block(
-                                        pos[0], pos[1], pos[2], SWEET_BERRIES, biome, sky, blk,
-                                    );
-                                }
-                            } else if broke == BAMBOO || broke == BAMBOO_SHOOT {
-                                // 1.14: "Bamboo stalks can be mined with any
-                                // tool" and drop the bamboo item — the shoot
-                                // is the sapling form of the same plant
-                                self.sim.items.drop_block(
-                                    pos[0], pos[1], pos[2], BAMBOO, biome, sky, blk,
-                                );
-                            } else if vc_sim::fluids::is_crop(broke) {
-                                // ---- backlog round (farming, 2026-09-09):
-                                // the four crops — the verified per-crop
-                                // mature/early drop split (see
-                                // drop_crop_harvest for the citations) ----
-                                self.drop_crop_harvest(pos[0], pos[1], pos[2], broke_state, biome, sky, blk);
-                            } else if broke == FARMLAND {
-                                // ---- backlog round (farming): farmland
-                                // drops 1 dirt when destroyed (VERIFIED
-                                // w/Farmland §Breaking: "Farmland drops 1
-                                // dirt block when it's destroyed"), and the
-                                // crop above pops with its harvest ----
-                                self.sim.items.drop_block(
-                                    pos[0], pos[1], pos[2], DIRT, biome, sky, blk,
-                                );
-                                let crop = self.world.get_state(pos[0], pos[1] + 1, pos[2]);
-                                if vc_sim::fluids::is_crop(state_block(crop)) {
-                                    self.drop_crop_harvest(pos[0], pos[1] + 1, pos[2], crop, biome, sky, blk);
-                                    if let Some((old, new)) = self
-                                        .world
-                                        .set_block_state(pos[0], pos[1] + 1, pos[2], default_state(AIR))
-                                    {
-                                        self.light.on_block_changed(
-                                            &self.world, pos[0], pos[1] + 1, pos[2], old, new,
-                                        );
-                                    }
-                                    notify_sim(
-                                        &self.world,
-                                        &mut self.sim.sched,
-                                        pos[0],
-                                        pos[1] + 1,
-                                        pos[2],
-                                    );
-                                }
-                            } else if broke == TALL_GRASS || broke == FERN {
-                                // ---- backlog round (farming): grass plants
-                                // drop wheat seeds 1/8 (VERIFIED live
-                                // 2026-09-09 w/Tutorial:Crop_farming:
-                                // "Each grass plant has only a 1/8 chance
-                                // of dropping seeds") — the survival seed
-                                // source ----
-                                if self.audio_rng.next_range(8) == 0 {
-                                    self.sim.items.drop_block(
-                                        pos[0], pos[1], pos[2], WHEAT_SEEDS, biome, sky, blk,
-                                    );
-                                }
+                                let (biome, sky, blk) =
+                                    light_at(&self.world, &self.light, pos[0], pos[1], pos[2]);
+                                self.particles
+                                    .spawn_hit(pos[0], pos[1], pos[2], b, biome, sky, blk);
+                            }
+                            if m.progress >= 1.0 {
+                                finished = true;
                             } else {
-                                self.sim.items.drop_block(
-                                    pos[0], pos[1], pos[2], broke, biome, sky, blk,
-                                );
+                                self.mining = Some(m);
+                            }
+                            if finished {
+                                self.finish_break(pos);
+                                self.break_timer = 0.24;
                             }
                         }
-                        notify_sim(&self.world, &mut self.sim.sched, pos[0], pos[1], pos[2]);
-                        // §27/§29: container contents spill + entity cleanup
-                        self.drop_container_contents(pos, broke);
-                        // §29: mining ores grants XP (vanilla amounts)
-                        let ore_xp = vc_gameplay::enchanting::ore_xp(broke);
-                        if ore_xp > 0 {
-                            let gained = self.player.add_xp(ore_xp);
-                            if gained > 0 {
-                                self.play_event("entity.player.levelup", None, 1.0);
-                            }
-                        }
-                        self.play_event(
-                            vc_audio::sounds::family_event(def(b).sound, true),
-                            Some([
-                                pos[0] as f32 + 0.5,
-                                pos[1] as f32 + 0.5,
-                                pos[2] as f32 + 0.5,
-                            ]),
-                            1.0,
-                        );
-                        self.break_timer = 0.24;
-                        self.edits += 1;
                     }
+                } else {
+                    self.mining = None;
                 }
+            } else if !self.input.break_hold {
+                // button released (or out of game) → progress resets
+                self.mining = None;
             }
             if self.input.place_hold
                 && self.place_timer <= 0.0
@@ -13635,6 +14568,18 @@ impl GameApp {
                 ],
                 yaw: self.player.yaw,
                 pitch: self.player.pitch,
+                // the collected inventory persists (vanilla Inventory
+                // NBT analog) — non-empty hotbar slots only
+                slots: self
+                    .player
+                    .inv
+                    .slots
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, s)| !s.is_empty())
+                    .map(|(i, s)| (i as u8, s.block, s.count))
+                    .collect(),
+                selected: self.player.selected as u8,
             }),
             game_time: tick,
             // Phase 1: the real mode + hardcore state (vanilla schema)
@@ -15117,7 +16062,14 @@ impl GameApp {
             Screen::Packs => {
                 let tt = self.tooltip_lines();
                 self.ui
-                    .settings_screen(&self.widgets, self.hover, "RESOURCE PACKS", &tt);
+                    .resource_pack_screen(&self.widgets, self.hover, &tt);
+                self.ui_dump_if_asked();
+                return;
+            }
+            Screen::Shaders => {
+                let tt = self.tooltip_lines();
+                self.ui
+                    .settings_screen(&self.widgets, self.hover, "SHADER PACKS", &tt);
                 self.ui_dump_if_asked();
                 return;
             }
@@ -15458,7 +16410,8 @@ impl GameApp {
             }
             // settings sub-screens ride the same treatment as Options
             // (panorama when the menu tree was opened from the title)
-            Screen::Video | Screen::Engine | Screen::Packs | Screen::Access => {
+            Screen::Video | Screen::Engine | Screen::Packs | Screen::Access
+            | Screen::Shaders => {
                 if self.options_from == Screen::Title {
                     panorama = Some(pano_view);
                 }
@@ -15508,8 +16461,20 @@ impl GameApp {
                 (cam, 0.55, None)
             }
             Screen::Game => {
+                // view bobbing: the camera rides the same walk-cycle sway
+                // as the held item (vanilla "View Bobbing" — the world
+                // dips side-to-side while walking)
+                let mut eye = self.player.eye();
+                if self.settings.view_bobbing && self.bob_amp > 0.0001 {
+                    let yaw = self.player.yaw;
+                    let (sn, cs) = (yaw.sin(), yaw.cos());
+                    // camera-right in world space
+                    eye.x += -(-cs) * self.bob_off[0] * 0.4;
+                    eye.z += -(sn) * self.bob_off[0] * 0.4;
+                    eye.y += self.bob_off[1] * 0.5;
+                }
                 let cam = Camera {
-                    eye: self.player.eye(),
+                    eye,
                     yaw: self.player.yaw,
                     pitch: self.player.pitch,
                     fov: self.player.fov_cur,
@@ -15594,6 +16559,15 @@ impl GameApp {
                 up,
                 &mut self.particle_verts,
             );
+            // 2026-09-14: the destroy-stage crack overlay rides the same
+            // blended stream, last so it draws over the mined block
+            self.push_mining_overlay();
+            // ...and the first-person view model after it — the hand must
+            // draw over EVERYTHING world-space (vanilla hand pass)
+            if self.screen == Screen::Game {
+                let e = self.player.eye();
+                self.push_held_item(right, up, dir, [e.x, e.y, e.z]);
+            }
         }
 
         // UI-overhaul Phase 3 (D6 amortization): bake up to 4 queued
@@ -16378,7 +17352,15 @@ mod settings_tests {
         ] {
             assert!(ids.contains(&wanted), "video screen missing {wanted}");
         }
-        assert_eq!(ids.len(), 12, "vanilla video = 11 options + done");
+        // 2026-09-14: the vanilla 11 options + done, PLUS the one
+        // deliberate Iris-style extra — SHADER PACKS... (vanilla 1.16.5
+        // ships no shader screen; that entry used to squat on the Options
+        // page mislabeled as RESOURCE PACKS)
+        assert!(
+            ids.contains(&vc_render::ui::ID_OPT_SHADERS),
+            "video screen missing the shader-packs entry"
+        );
+        assert_eq!(ids.len(), 13, "vanilla video = 11 options + shader packs + done");
         // vanilla proportions
         let rd = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_RD).unwrap();
         assert_eq!((rd.x, rd.y, rd.w, rd.h), (248, 72, 465, 30));
@@ -16538,16 +17520,27 @@ mod settings_tests {
             Some(vc_render::ui::ID_OPT_GMESH),
         ));
 
+        // 2026-09-14: the shader list is its own SHADER PACKS screen; the
+        // Resource Packs screen dumps the real two-pane manager
         let packs: Vec<String> = ["OFF", "VANILLA+", "CINEMATIC", "MOONLIT", "WARM EVENING"]
             .iter()
             .map(|s| s.to_string())
             .collect();
         let ws = vc_render::ui::layout_packs(&packs, 1);
         cases.push((
+            "shaders",
+            ws,
+            "SHADER PACKS",
+            Some(vc_render::ui::ID_PACK_BASE + 1),
+        ));
+        let avail = vec!["PROGRAMMER ART".to_string()];
+        let sel = vec![];
+        let ws = vc_render::ui::layout_resource_packs(&avail, &sel);
+        cases.push((
             "packs",
             ws,
             "RESOURCE PACKS",
-            Some(vc_render::ui::ID_PACK_BASE + 1),
+            Some(vc_render::ui::ID_RPACK_AVAIL_BASE),
         ));
 
         let mut ws = vc_render::ui::layout_access();
@@ -16767,16 +17760,19 @@ mod settings_tests {
             assert!((1280.0..=2816.0).contains(&dist), "band claim, got {dist}");
         }
         // "e2e: desert pyramid at ... (4 chests, desert_pyramid loot)"
+        // (vanilla-parity terrain round: the continental shelf puts
+        // desert patches farther from spawn — scan ±16 regions, the
+        // same widening the vc-world pyramid test took)
         let mut pyr = None;
-        'p: for rx in -8..8 {
-            for rz in -8..8 {
+        'p: for rx in -16..16 {
+            for rz in -16..16 {
                 if let Some(c) = gen.pyramid_center_pub(rx, rz) {
                     pyr = Some(c);
                     break 'p;
                 }
             }
         }
-        let (wx, wz) = pyr.expect("a pyramid within ±8 regions");
+        let (wx, wz) = pyr.expect("a pyramid within ±16 regions");
         let (cx, cz) = (wx >> 4, wz >> 4);
         let (chunk, _) = gen.generate_chunk(cx, cz, Vec::new());
         let base = gen.column(wx, wz).height;

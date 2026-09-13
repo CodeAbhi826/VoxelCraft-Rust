@@ -1418,7 +1418,7 @@ mod phase3_tests {
         // piston at (0,65,0) facing EAST (idx 1)
         w.set_block_state(0, 65, 0, piston_state(1, false));
         for x in 1..=12i32 {
-            w.set_block_state(x, 65, 0, DIRT as u16);
+            w.set_block_state(x, 65, 0, DIRT);
         }
         w.set_block_state(0, 66, 0, lever_state(true));
         on_block_changed(&mut sched, &w, 0, 66, 0);
@@ -1433,7 +1433,7 @@ mod phase3_tests {
         let mut sched2 = TickScheduler::new();
         w2.set_block_state(0, 65, 0, piston_state(1, false));
         for x in 1..=13i32 {
-            w2.set_block_state(x, 65, 0, DIRT as u16);
+            w2.set_block_state(x, 65, 0, DIRT);
         }
         w2.set_block_state(0, 66, 0, lever_state(true));
         on_block_changed(&mut sched2, &w2, 0, 66, 0);
@@ -1467,7 +1467,7 @@ mod phase3_tests {
         let mut sched = TickScheduler::new();
         // observer at (0,65,0) facing EAST (idx 1) watches (1,65,0)
         w.set_block_state(0, 65, 0, observer_state(1, false));
-        w.set_block_state(1, 65, 0, DIRT as u16);
+        w.set_block_state(1, 65, 0, DIRT);
         on_block_changed(&mut sched, &w, 1, 65, 0);
         // run exactly 3 ticks: the pulse fires at tick 2 and stays ON
         // until the 2-game-tick expiry (tick 4)
@@ -1530,7 +1530,7 @@ mod phase3_tests {
         w.set_block_state(-1, 65, 0, wire_state(0));
         w.set_block_state(0, 65, 1, wire_state(0));
         // dirt appears AT the watched cell → change → pulse
-        w.set_block_state(1, 65, 0, DIRT as u16);
+        w.set_block_state(1, 65, 0, DIRT);
         on_block_changed(&mut sched, &w, 1, 65, 0);
         // t2: observer fires ON; t4: the wires tick (insertion order puts
         // the wire entry before the pulse-off entry, so the wire reads
@@ -1741,7 +1741,7 @@ mod e1_lamp_tests {
             for pos in due {
                 let b = state_block(w.get_state(pos[0], pos[1], pos[2]));
                 match b {
-                    LEVER => lever_tick(&mut w, pos[0], pos[1], pos[2]),
+                    LEVER => lever_tick(&w, pos[0], pos[1], pos[2]),
                     PISTON | STICKY_PISTON => piston_tick(&mut w, &mut sched, pos[0], pos[1], pos[2]),
                     _ => {}
                 }
@@ -1758,7 +1758,7 @@ mod e1_lamp_tests {
             for pos in due {
                 let b = state_block(w.get_state(pos[0], pos[1], pos[2]));
                 match b {
-                    LEVER => lever_tick(&mut w, pos[0], pos[1], pos[2]),
+                    LEVER => lever_tick(&w, pos[0], pos[1], pos[2]),
                     PISTON | STICKY_PISTON => piston_tick(&mut w, &mut sched, pos[0], pos[1], pos[2]),
                     _ => {}
                 }

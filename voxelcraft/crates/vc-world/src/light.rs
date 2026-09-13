@@ -1000,7 +1000,7 @@ pub fn reference_lightdata(snap: &[Option<Arc<Chunk>>; 9]) -> [Option<Arc<LightD
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vc_blocks::blocks::*;
+
 
     /// hand-built 5×5 world with variance: floor + hill + cave + water pool.
     /// The inner 3×3 (all chunks with |x|<=1, |z|<=1) is the comparison
@@ -1064,11 +1064,9 @@ mod tests {
                                     + (y as i32 - 70).abs()
                                     + (lz as i32 - 8).abs()
                                     <= 3
-                                {
-                                    if c.get(lx, y, lz) == 0 {
+                                    && c.get(lx, y, lz) == 0 {
                                         c.set(lx, y, lz, LEAVES);
                                     }
-                                }
                             }
                         }
                     }
@@ -1183,7 +1181,7 @@ mod tests {
             }
         }
         engine2.pump(&mut world2, 1_000_000);
-        assert_differential(&mut world2, "generation (reverse order)");
+        assert_differential(&world2, "generation (reverse order)");
     }
 
     /// Phase 4 gate part 2: incremental updates stay differential-exact

@@ -1292,7 +1292,6 @@ mod tests {
     /// (all VERIFIED live 2026-09-08 against the audit16 captures —
     /// Bowl/Sugar/Mushroom_Stew/Rabbit_Stew/Beetroot_Soup/Pumpkin_Pie/
     /// Popped_Chorus_Fruit)
-    #[test]
     /// the sweep-2 melon crafts: 9 slices -> the melon block, 1 slice
     /// -> melon seeds (VERIFIED w/Melon_Slice §Crafting, live 2026-09-09)
     #[test]
@@ -1303,8 +1302,8 @@ mod tests {
         assert_eq!(out.count, 1);
         // a partial grid (8 slices) must NOT craft
         let mut partial = vec![ItemStack::EMPTY; 9];
-        for i in 0..8 {
-            partial[i] = ItemStack::new(MELON_SLICE, 1);
+        for slot in partial.iter_mut().take(8) {
+            *slot = ItemStack::new(MELON_SLICE, 1);
         }
         assert!(match_grid(&partial, 3).is_none(), "8 slices craft nothing");
         // 1 slice -> 1 melon seed
@@ -1315,6 +1314,11 @@ mod tests {
         assert_eq!(out.count, 1);
     }
 
+    /// the 1.13 kitchen chain: bowl/sugar/stews/pie crafting sweep
+    /// (VERIFIED w/ the live wiki pages during the audit16 sweep) — the
+    /// #[test] attribute was accidentally dropped (dead code, zero
+    /// coverage); restored 2026-09-13.
+    #[test]
     fn audit16_kitchen_chain() {
         // bowl: 3 planks -> 4 (shapeless — the V shape's 3 items)
         let mut g = vec![ItemStack::new(PLANKS, 3); 9];
@@ -1425,7 +1429,7 @@ mod tests {
         let out = match_grid(&g, 3).unwrap();
         assert_eq!(out.block, FURNACE);
         // the 2×2 grid cannot host the 3×3 recipe
-        assert!(match_grid(&vec![ItemStack::new(COBBLE, 7); 4], 2).is_none());
+        assert!(match_grid(&[ItemStack::new(COBBLE, 7); 4], 2).is_none());
     }
 
     #[test]
@@ -1510,7 +1514,7 @@ mod tests {
     #[test]
     fn phase_e3_coal_block_recipes() {
         // 9 coal -> 1 block (VERIFIED w/Block_of_Coal)
-        let mut g = [ItemStack::new(COAL, 1); 9];
+        let g = [ItemStack::new(COAL, 1); 9];
         let out = match_grid(&g, 3).unwrap();
         assert_eq!((out.block, out.count), (COAL_BLOCK, 1));
         // 1 block -> 9 coal (the vanilla reverse craft)

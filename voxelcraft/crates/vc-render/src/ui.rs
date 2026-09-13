@@ -3757,9 +3757,9 @@ mod phase5_font_tests {
         for (i, g) in FONT.iter().enumerate() {
             let col = (i % 16) * 8;
             let row = (i / 16) * 8;
-            for gy in 0..8usize {
+            for (gy, bits) in g.iter().enumerate() {
                 for gx in 0..5usize {
-                    if g[gy] & (1 << (4 - gx)) != 0 {
+                    if bits & (1 << (4 - gx)) != 0 {
                         let idx = (row + gy) * 128 + col + gx;
                         sheet[idx..idx + 4].copy_from_slice(&[255, 255, 255, 255]);
                     }
@@ -4306,7 +4306,7 @@ mod screen_tests {
             crate::ui::set_text_quads_active(true);
             r
         };
-        assert_eq!(bw2 > 0 && bh2 > 0, true);
+        assert!(bw2 > 0 && bh2 > 0);
         assert!(src2.iter().any(|c| c[3] > 0), "bitmap path also inks");
     }
 

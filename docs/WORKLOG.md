@@ -3873,3 +3873,87 @@ newer 1.98.1 lint set — pre-existing, unchanged by this round); wasm
 bundle rebuilt and deployed (matched pair, 08:35). **Not committed or
 pushed** — awaiting explicit user approval, per the standing
 instruction.
+
+## 2026-09-13 (round 5) — zero-warning bar restored workspace-wide; two phantom test registrations and one dead test recovered
+
+**Task:** "continue and do whats needed" — §7 re-verification round on a
+container-reset environment, then close the one open engineering debt the
+last round left: ~200 pre-existing clippy warnings under `--all-targets`.
+
+**Toolchain recovery (container was reset again):** rustup stable
+1.98.1 + wasm32-unknown-unknown + clippy + wasm-bindgen-cli 0.2.127
+reinstalled; full workspace rebuild from a wiped target/.
+
+**§7 live re-verification (independent, this session):**
+- §2 occlusion culling + split counters: confirmed in
+  `vc-render/src/render.rs` (`RenderStats.culled` = occlusion-flood,
+  `RenderStats.frustum_culled` = frustum; ClientMap-cited split) and
+  live in the browser: `Culling: occl 0 frust 42 (of 64 meshed)`.
+- §4 entity models: confirmed in `vc-gameplay/src/entity_model.rs`
+  (own Rust bone hierarchy, named ranges walk/attack/hurt/idle, linear
+  keyframe lerp, no file parsers).
+- §6 Monocraft: confirmed embedded in `vc-render/src/gui/font.rs`
+  (OFL-1.1 text alongside the TTF).
+- Baseline before cleanup: 730 passed / 0 failed — consistent with the
+  prior round's claim.
+
+**Clippy debt cleanup (198 → 0 warnings, all-targets, workspace):**
+- `cargo clippy --fix` applied the machine-applicable subset (redundant
+  casts, `drain(..).collect()` → `std::mem::take`, manual
+  `RangeInclusive::contains`, unused imports): 198 → 106.
+- A scripted transformation (scripts/fix_field_reassign.py, parsed
+  clippy's note-spans; kept in the repo) converted all 30
+  `field_reassign_with_default` sites to struct-literal +
+  `..Default::default()` form (furnace/brewing/enchanting tests,
+  player input fixtures, game settings fixtures).
+- Manual fixes for the rest, notably:
+  - 20 atlas-guard assertions on consts → genuine compile-time
+    checks (`const _: () = assert!(TILE_MAX >= …)`), strengthening
+    them from per-run to build-time.
+  - `chunks_exact(4)` → `as_chunks::<4>()` (8 sites) per the new
+    1.98 `chunks_exact_to_as_chunks` lint.
+  - Binary-literal regrouping in the occlusion tests
+    (`0b1111111_0` → `0b1111_1110` etc. — same values, standard
+    4-digit groups).
+  - **Two duplicate `#[test]` attributes removed** (craft.rs melon
+    crafts, game.rs chorus destination): each had silently registered
+    the test TWICE in the harness. The stale golden-carrot doc comment
+    orphaned above the chorus test was deleted (coverage lives at
+    game.rs food tests).
+  - **One dead test recovered**: `craft::tests::audit16_kitchen_chain`
+    (bowl/sugar/stews/pie chain, ~60 lines) had lost its `#[test]`
+    attribute — zero coverage, rustc "never used". Attribute restored;
+    the test passes.
+  - Dead `find_biome` helpers removed from two gen.rs test modules
+    (two live copies remain in use elsewhere); a dead `total` counter
+    and unreachable duplicate match patterns cleaned.
+- Final: **0 warnings** under both `--lib` and `--all-targets`
+  (clippy 1.98.1) — the zero-warning bar commit 48b2912 set is now
+  restored across the whole workspace, not just lib targets.
+
+**Test-count reconciliation (closes the 648-vs-672 question for good):**
+the suite grew 648 → 672 → 716 → 726 → 730 with each feature round;
+this round's honest count is **729 = 730 − 2 phantom duplicate
+registrations + 1 recovered dead test**. Unique real tests only.
+
+**Verify-after-everything chain:** 729/0 tests; clippy 0/0 (lib and
+all-targets); wasm bundle rebuilt as the locked js+wasm pair (15:00,
+patched glue, pack rsynced); live browser E2E at 1440×810 through
+`/voxelcraft.html`: title → SINGLEPLAYER → CREATE NEW WORLD → CREATE
+WORLD → gameplay. VLM QA: **PASS** (terrain + crosshair + hotbar +
+hearts/hunger, no artifacts); F3 VLM QA: **PASS** (two clean columns,
+`Culling: occl 0 frust 42 (of 64 meshed)` — the §2 split counters
+intact in the shipping build). No console panics; only the known-benign
+SwiftShader downlevel-limits retry.
+
+### Luanti-referenced techniques
+
+- No new Luanti techniques this round (lint/robustness cleanup only);
+  the standing citations from prior rounds remain accurate and were
+  re-verified live: ClientMap split-counter culling reference
+  (`src/client/clientmap.cpp`, studied 2026-09-12) and the entity-model
+  architecture reference (`docs.luanti.org/for-creators/models` +
+  `src/client/content_cao.cpp`, studied 2026-09-12).
+
+**Not committed or pushed** — 31 modified files sit in the working
+tree awaiting explicit user approval, per the standing instruction.

@@ -363,7 +363,7 @@ impl ParticleSystem {
 
 /// terrain-light-curve brightness for a particle (sky vs block light, no
 /// per-frame day factor — baked at spawn)
-fn particle_light(sky: u8, blk: u8) -> f32 {
+pub fn particle_light(sky: u8, blk: u8) -> f32 {
     let s = sky.min(15) as f32 / 15.0;
     let b = blk.min(15) as f32 / 15.0;
     // approximate vanilla brightness curve: light^1.6-ish falloff with a

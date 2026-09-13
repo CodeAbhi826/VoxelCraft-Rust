@@ -4110,6 +4110,17 @@ impl Renderer {
         }
     }
 
+    /// Replace the ENTIRE block atlas (2026-09-14 round: the Resource
+    /// Packs screen's DONE recompiles the atlas with the enabled pack
+    /// stack and swaps it in). Updates the CPU copy and routes through
+    /// `rebuild_atlas`, which regenerates the per-tile-safe mip chain and
+    /// refreshes every bind group — the same path a Mipmap Levels change
+    /// takes, so pack swaps and quality settings stay consistent.
+    pub fn replace_atlas(&mut self, atlas: &[u8]) {
+        self.atlas_data = atlas.to_vec();
+        self.rebuild_atlas();
+    }
+
     /// Upload one chunk's merged mesh (Phase 9 §14/§43: regional
     /// mega-buffers + slot sub-allocation). A remesh that fits the chunk's
     /// existing slot writes IN PLACE — repeated edits never reallocate;

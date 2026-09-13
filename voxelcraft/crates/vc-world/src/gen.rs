@@ -581,6 +581,10 @@ pub struct DungeonRoom {
     pub chest_count: usize,
 }
 
+/// One carver worm paired with its precomputed ellipsoid path —
+/// (x, y, z, half-width) per 4-block step.
+pub type WormPath = Vec<(f64, f64, f64, f64)>;
+
 /// One perlin-worm cave carver, anchored in its start chunk (the
 /// vanilla-parity replacement for the 1.18-style noise-sheet caves;
 /// deterministic from the seed + start chunk alone).
@@ -741,10 +745,10 @@ impl TerrainGen {
             } else {
                 (0.1, 0.2) // birch forest
             }
-        } else if humid > 0.12 && temp <= 0.32 {
-            (0.1, 0.2) // dark forest / forest
         } else if humid > 0.12 {
-            (0.1, 0.2) // forest
+            // dark forest / forest / birch-forest share the vanilla
+            // depth/scale pair (all 0.1 / 0.2)
+            (0.1, 0.2)
         } else {
             (0.125, 0.05) // plains / sunflower plains
         }
@@ -1290,10 +1294,12 @@ impl TerrainGen {
         // neighborhood around each lattice column smooths the biome
         // response — the vanilla squoze-biome behavior)
         let mut climate = [[(0f64, 0f64); 7]; 7];
-        for gz in 0..7usize {
-            for gx in 0..7usize {
-                climate[gz][gx] =
-                    self.climate_depth_scale(ox + (gx as i32 - 1) * 4, oz + (gz as i32 - 1) * 4);
+        for (gz, row) in climate.iter_mut().enumerate() {
+            for (gx, cell) in row.iter_mut().enumerate() {
+                *cell = self.climate_depth_scale(
+                    ox + (gx as i32 - 1) * 4,
+                    oz + (gz as i32 - 1) * 4,
+                );
             }
         }
 
@@ -2863,7 +2869,7 @@ impl TerrainGen {
     /// ⇒ solid), minus the worm carvers' ellipsoids. The worm paths are
     /// passed in by the caller (they are expensive to re-derive per
     /// query — `dungeon_in_chunk` computes them once).
-    fn gen_solid(&self, x: i32, y: i32, z: i32, worms: &[(CaveWorm, Vec<(f64, f64, f64, f64)>)]) -> bool {
+    fn gen_solid(&self, x: i32, y: i32, z: i32, worms: &[(CaveWorm, WormPath)]) -> bool {
         if y <= 0 {
             return true; // the flat bedrock floor
         }
@@ -2909,7 +2915,7 @@ impl TerrainGen {
         let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x0D66, cx, 0, cz));
         // the carver worms that can reach this chunk, paths precomputed
         // once (gen_solid tests their ellipsoids per query)
-        let worms: Vec<(CaveWorm, Vec<(f64, f64, f64, f64)>)> = self
+        let worms: Vec<(CaveWorm, WormPath)> = self
             .cave_worms_near(cx, cz)
             .into_iter()
             .map(|w| {
@@ -4150,7 +4156,7 @@ impl TerrainGen {
     fn emit_mineshaft(&self, chunk: &mut Chunk, ms: &Mineshaft, ox: i32, oz: i32) {
         // carver worms that can reach the shaft (paths precomputed once —
         // gen_solid tests their ellipsoids per floor query)
-        let worms: Vec<(CaveWorm, Vec<(f64, f64, f64, f64)>)> = self
+        let worms: Vec<(CaveWorm, WormPath)> = self
             .cave_worms_near(ms.x >> 4, ms.z >> 4)
             .into_iter()
             .map(|w| {
@@ -7067,7 +7073,7 @@ mod e2_tests {
                 }
             }
         }
-        let Some((x, z, h)) = found else {
+        let Some((x, z, _probe_h)) = found else {
             panic!("no badlands column found in the probe window");
         };
         let (chunk, _) = gen.generate_chunk(
@@ -7106,7 +7112,7 @@ mod e2_tests {
         assert_eq!(surface, RED_SAND, "badlands surface is red sand");
         let mut bands = std::collections::HashSet::new();
         for y in (h.saturating_sub(15))..(h.saturating_sub(4)) {
-            let b = chunk.get(lx, y as usize, lz);
+            let b = chunk.get(lx, y, lz);
             if (STAINED_TERRACOTTA_BASE..=STAINED_TERRACOTTA_END).contains(&b) {
                 bands.insert(b);
             }
@@ -7298,7 +7304,7 @@ mod v111_tests {
                 0x10C0_C0DEu64.wrapping_add(s.wrapping_mul(0x9E37_79B9_7F4A_7C15u64)),
                 Dimension::Overworld,
             );
-            'scan: for rx in -40..40 {
+            for rx in -40..40 {
                 for rz in -40..40 {
                     for mx in 0..8 {
                         for mz in 0..8 {

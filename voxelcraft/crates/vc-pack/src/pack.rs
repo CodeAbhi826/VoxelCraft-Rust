@@ -218,14 +218,100 @@ pub async fn fetch_builtin_pack(
     Some(mem)
 }
 
+/// The Programmer Art builtin pack's file manifest (the 52 clean-room
+/// retro look-alike textures + pack.mcmeta). Deployed to the web as
+/// `/voxelcraft-pack-programmer-art/**` by the bundle script; the exact
+/// list is baked in because wasm has no directory listing.
+pub const PROGRAMMER_ART_FILES: &[&str] = &[
+    "assets/minecraft/textures/block/bedrock.png",
+    "assets/minecraft/textures/block/black_wool.png",
+    "assets/minecraft/textures/block/blue_wool.png",
+    "assets/minecraft/textures/block/bookshelf.png",
+    "assets/minecraft/textures/block/bricks.png",
+    "assets/minecraft/textures/block/clay.png",
+    "assets/minecraft/textures/block/coal_ore.png",
+    "assets/minecraft/textures/block/cobblestone.png",
+    "assets/minecraft/textures/block/crafting_table_side.png",
+    "assets/minecraft/textures/block/crafting_table_top.png",
+    "assets/minecraft/textures/block/dandelion.png",
+    "assets/minecraft/textures/block/diamond_block.png",
+    "assets/minecraft/textures/block/diamond_ore.png",
+    "assets/minecraft/textures/block/dirt.png",
+    "assets/minecraft/textures/block/emerald_ore.png",
+    "assets/minecraft/textures/block/end_stone.png",
+    "assets/minecraft/textures/block/furnace_front_on.png",
+    "assets/minecraft/textures/block/furnace_side.png",
+    "assets/minecraft/textures/block/furnace_top.png",
+    "assets/minecraft/textures/block/glass.png",
+    "assets/minecraft/textures/block/glowstone.png",
+    "assets/minecraft/textures/block/gold_block.png",
+    "assets/minecraft/textures/block/gold_ore.png",
+    "assets/minecraft/textures/block/grass_block_side.png",
+    "assets/minecraft/textures/block/grass_block_top.png",
+    "assets/minecraft/textures/block/gravel.png",
+    "assets/minecraft/textures/block/ice.png",
+    "assets/minecraft/textures/block/iron_block.png",
+    "assets/minecraft/textures/block/iron_ore.png",
+    "assets/minecraft/textures/block/lapis_ore.png",
+    "assets/minecraft/textures/block/mossy_cobblestone.png",
+    "assets/minecraft/textures/block/nether_bricks.png",
+    "assets/minecraft/textures/block/netherrack.png",
+    "assets/minecraft/textures/block/oak_leaves.png",
+    "assets/minecraft/textures/block/oak_log.png",
+    "assets/minecraft/textures/block/oak_log_top.png",
+    "assets/minecraft/textures/block/oak_planks.png",
+    "assets/minecraft/textures/block/obsidian.png",
+    "assets/minecraft/textures/block/poppy.png",
+    "assets/minecraft/textures/block/red_wool.png",
+    "assets/minecraft/textures/block/redstone_ore.png",
+    "assets/minecraft/textures/block/sand.png",
+    "assets/minecraft/textures/block/snow.png",
+    "assets/minecraft/textures/block/soul_sand.png",
+    "assets/minecraft/textures/block/spawner.png",
+    "assets/minecraft/textures/block/stone.png",
+    "assets/minecraft/textures/block/stone_bricks.png",
+    "assets/minecraft/textures/block/tall_grass.png",
+    "assets/minecraft/textures/block/tnt_side.png",
+    "assets/minecraft/textures/block/tnt_top.png",
+    "assets/minecraft/textures/block/white_wool.png",
+    "assets/minecraft/textures/block/yellow_wool.png",
+    "pack.mcmeta",
+];
+
+/// wasm: fetch the Programmer Art builtin pack (the vanilla Programmer
+/// Art analog — "the old pre-1.14 textures", minecraft.wiki/w/Programmer_
+/// Art) into memory. Cached by the caller at boot so the resource-pack
+/// screen can toggle it synchronously afterwards.
+#[cfg(target_arch = "wasm32")]
+pub async fn fetch_programmer_art_pack() -> Option<MemorySource> {
+    let mut mem = MemorySource::new("programmer-art (fetched)");
+    let mut any = false;
+    for path in PROGRAMMER_ART_FILES {
+        if let Some(bytes) = fetch_bytes_base("/voxelcraft-pack-programmer-art", path).await {
+            mem.insert(path, bytes);
+            any = true;
+        }
+    }
+    if any {
+        Some(mem)
+    } else {
+        None
+    }
+}
+
 #[cfg(target_arch = "wasm32")]
 async fn fetch_bytes(path: &str) -> Option<Vec<u8>> {
     // same-origin fetch of the deployed builtin pack (public/voxelcraft-pack).
     // Returns None on any network/HTTP failure — callers fall back to the
     // missing-asset path (§46), never panic.
+    fetch_bytes_base("/voxelcraft-pack", path).await
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn fetch_bytes_base(base: &str, path: &str) -> Option<Vec<u8>> {
     use wasm_bindgen::JsCast;
     use wasm_bindgen_futures::JsFuture;
-    let url = format!("/voxelcraft-pack/{path}");
+    let url = format!("{base}/{path}");
     let Some(window) = web_sys::window() else { return None };
     let Ok(resp_val) = JsFuture::from(window.fetch_with_str(&url)).await else {
         return None;
@@ -385,6 +471,19 @@ impl PackSource for ZipSource {
 /// breaks boot).
 #[cfg(not(target_arch = "wasm32"))]
 pub fn scan_user_packs(dir: &std::path::Path) -> Vec<Arc<dyn PackSource>> {
+    scan_user_packs_named(dir)
+        .into_iter()
+        .map(|(_name, src)| src)
+        .collect()
+}
+
+/// The 2026-09-14 round: scan `resourcepacks/` and keep the NAMES (folder
+/// or zip file name) so the Resource Packs screen can list/enable/disable
+/// individual packs (vanilla lists "file/<name>" in options.txt). Returns
+/// them ALPHABETICALLY — priority ordering is the caller's business (the
+/// Selected list, not the disk order, decides precedence).
+#[cfg(not(target_arch = "wasm32"))]
+pub fn scan_user_packs_named(dir: &std::path::Path) -> Vec<(String, Arc<dyn PackSource>)> {
     let mut found: Vec<(String, Arc<dyn PackSource>)> = Vec::new();
     let Ok(entries) = std::fs::read_dir(dir) else {
         return Vec::new();
@@ -411,12 +510,7 @@ pub fn scan_user_packs(dir: &std::path::Path) -> Vec<Arc<dyn PackSource>> {
         }
     }
     found.sort_by(|a, b| a.0.cmp(&b.0));
-    // build the stack: later names are pushed first (front) = higher
-    let mut stack = Vec::new();
-    for (_name, src) in found.into_iter().rev() {
-        stack.push(src);
-    }
-    stack
+    found
 }
 
 /// logical GUI texture name -> pack-relative path:

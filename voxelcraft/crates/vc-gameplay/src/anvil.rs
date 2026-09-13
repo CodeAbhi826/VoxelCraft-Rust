@@ -82,7 +82,7 @@ pub fn prior_work_penalty(repairs: u32) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vc_blocks::blocks::*;
+
 
     #[test]
     fn constants_match_the_live_wiki() {

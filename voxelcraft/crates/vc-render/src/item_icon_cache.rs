@@ -652,7 +652,7 @@ mod tests {
         let ok = bake_block_icon(&atlas, 3, &mut out);
         assert!(ok, "a cube block must bake");
         // non-empty
-        assert!(out.chunks_exact(4).any(|c| c[3] != 0));
+        assert!(out.as_chunks::<4>().0.iter().any(|c| c[3] != 0));
         // 4-px margin: the corner pixel stays transparent
         assert_eq!(&out[0..4], &[0, 0, 0, 0]);
     }

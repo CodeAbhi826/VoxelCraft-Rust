@@ -16422,8 +16422,10 @@ mod settings_tests {
                 w.id
             );
         }
-        let mut sb = Settings::default();
-        sb.brightness = 0.0;
+        let mut sb = Settings {
+            brightness: 0.0,
+            ..Default::default()
+        };
         assert!(GameApp::tooltip_for(vc_render::ui::ID_OPT_BRIGHT, &sb)[0].contains("Moody"));
         sb.brightness = 1.0;
         assert!(GameApp::tooltip_for(vc_render::ui::ID_OPT_BRIGHT, &sb)[0].contains("Bright"));
@@ -16577,12 +16579,14 @@ mod settings_tests {
     /// save, no new keys) parses to the DEFAULTS for those keys
     #[test]
     fn quality_settings_roundtrip() {
-        let mut s = Settings::default();
-        s.sim_distance = 7;
-        s.mipmap_levels = 2;
-        s.aniso = 8;
-        s.msaa = 4;
-        s.occlusion = false;
+        let mut s = Settings {
+            sim_distance: 7,
+            mipmap_levels: 2,
+            aniso: 8,
+            msaa: 4,
+            occlusion: false,
+            ..Default::default()
+        };
         let restored = Settings::deserialize(&s.serialize());
         assert_eq!(restored.sim_distance, 7);
         assert_eq!(restored.mipmap_levels, 2);
@@ -16705,7 +16709,7 @@ mod settings_tests {
     /// `demo_pack_end_to_end` test so drift breaks one of the two.
     #[test]
     fn datapack_demo_e2e_claims_hold() {
-        use vc_pack::datapack::{GridItem, MemoryFiles, PackFiles};
+        use vc_pack::datapack::{GridItem, MemoryFiles};
         let files = MemoryFiles::demo();
         let report = vc_pack::datapack::scan_pack("demo", &files).expect("demo pack valid");
         assert_eq!(report.pack_format, vc_pack::datapack::PACK_FORMAT_1_16_5);
@@ -16775,7 +16779,7 @@ mod settings_tests {
         let (wx, wz) = pyr.expect("a pyramid within ±8 regions");
         let (cx, cz) = (wx >> 4, wz >> 4);
         let (chunk, _) = gen.generate_chunk(cx, cz, Vec::new());
-        let base = gen.column(wx, wz).height as i32;
+        let base = gen.column(wx, wz).height;
         let floor = (base - 11) as usize;
         let mut chests = 0;
         for (dx, dz) in [(-1i32, -1i32), (1, -1), (-1, 1), (1, 1)] {
@@ -16914,9 +16918,6 @@ mod tests {
 mod auditfix_food_tests {
     use super::*;
 
-    /// golden carrot heals hunger 6 / 2 = 3.0 HP (VERIFIED live
-    /// 2026-09-07 w/Golden_Carrot: "Hunger 6", "Saturation 14.4")
-    #[test]
     /// the sweep-2: the chorus destination rule — the ±8 box, the
     /// solid-floor + 2-air validity, and the all-solid failure (VERIFIED
     /// w/Chorus_Fruit §Teleportation, live 2026-09-09)
@@ -17174,9 +17175,9 @@ mod v111_tests {
     #[test]
     fn v111_caravan_constants() {
         // the changelog's "up to 10" cap and the engine's follow radius
-        // (9 blocks — the disclosure in the caravan block comment)
-        assert_eq!(10, 10, "caravan cap: up to 10 llamas (VERIFIED)");
-        assert!(9.0 * 9.0 > 0.0, "follow radius 9 blocks");
+        // (9 blocks — the disclosure in the caravan block comment):
+        // the caravan cap is 10 llamas and the follow radius 9 blocks —
+        // both rest on the llama AI constants, asserted in llama tests.
     }
 
     // ------------------------------------------------ F3 helpers ----
@@ -17199,7 +17200,7 @@ mod v111_tests {
         // single-property state: Redstone Lamp[lit=true]
         assert_eq!(state_prop_lines(REDSTONE_LAMP_LIT), vec!["lit: true".to_string()]);
         // a state with no properties yields nothing
-        let plain = state_prop_lines(STONE as u16);
+        let plain = state_prop_lines(STONE);
         assert!(plain.is_empty(), "no-props block has no lines");
     }
 
@@ -17236,7 +17237,7 @@ mod v111_tests {
 #[cfg(test)]
 mod farm_game_tests {
     use super::*;
-    use vc_blocks::blocks::*;
+
 
     /// bread heals hunger 5 → 2.5 HP on the hunger/2 scale (VERIFIED
     /// w/Bread §Food: "Restores 5 hunger points and 6 saturation")

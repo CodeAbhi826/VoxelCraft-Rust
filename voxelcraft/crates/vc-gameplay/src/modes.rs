@@ -261,7 +261,7 @@ mod tests {
         assert!(!GameMode::Adventure.allows_flight());
         assert!(!GameMode::Adventure.invulnerable());
         assert!(GameMode::Adventure.depletes_items());
-        assert!(GameMode::Adventure.drops_blocks() == false || true); // drops irrelevant: cannot break
+        assert!(!GameMode::Adventure.drops_blocks() || true); // drops irrelevant: cannot break
         assert!(GameMode::Adventure.drops_inventory_on_death());
         assert!(!GameMode::Adventure.permadeath());
         assert!(!GameMode::Adventure.edits_world_blocks());

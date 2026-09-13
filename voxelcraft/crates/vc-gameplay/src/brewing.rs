@@ -393,14 +393,16 @@ mod tests {
     fn corrupting_a_live_brew_cycle() {
         // full interactive path: a brewing stand holding Healing, fed a
         // fermented eye, produces Harming after exactly one 400-tick cycle
-        let mut b = BrewingState::default();
-        b.bottles = [
-            ItemStack::new(POTION_HEALING, 1),
-            ItemStack::EMPTY,
-            ItemStack::EMPTY,
-        ];
-        b.ingredient = ItemStack::new(FERMENTED_SPIDER_EYE, 1);
-        b.fuel = ItemStack::new(NETHERRACK, 1);
+        let mut b = BrewingState {
+            bottles: [
+                ItemStack::new(POTION_HEALING, 1),
+                ItemStack::EMPTY,
+                ItemStack::EMPTY,
+            ],
+            ingredient: ItemStack::new(FERMENTED_SPIDER_EYE, 1),
+            fuel: ItemStack::new(NETHERRACK, 1),
+            ..Default::default()
+        };
         let mut completions = 0;
         for _ in 0..BREW_TICKS {
             if b.tick() {
@@ -417,14 +419,16 @@ mod tests {
 
     #[test]
     fn water_plus_wart_makes_awkward() {
-        let mut b = BrewingState::default();
-        b.bottles = [
-            ItemStack::new(POTION_WATER, 1),
-            ItemStack::EMPTY,
-            ItemStack::new(POTION_WATER, 1),
-        ];
-        b.ingredient = ItemStack::new(MUSHROOM_RED, 1);
-        b.fuel = ItemStack::new(NETHERRACK, 1);
+        let mut b = BrewingState {
+            bottles: [
+                ItemStack::new(POTION_WATER, 1),
+                ItemStack::EMPTY,
+                ItemStack::new(POTION_WATER, 1),
+            ],
+            ingredient: ItemStack::new(MUSHROOM_RED, 1),
+            fuel: ItemStack::new(NETHERRACK, 1),
+            ..Default::default()
+        };
         let mut completions = 0;
         for _ in 0..BREW_TICKS {
             if b.tick() {
@@ -499,9 +503,11 @@ mod tests {
         // vanilla: each stand slot holds ONE bottle (potions don't stack),
         // so we re-fill the slot between cycles — the fuel charge pool must
         // fund exactly 20 operations from one netherrack item
-        let mut b = BrewingState::default();
-        b.ingredient = ItemStack::new(MUSHROOM_RED, 64);
-        b.fuel = ItemStack::new(NETHERRACK, 1);
+        let mut b = BrewingState {
+            ingredient: ItemStack::new(MUSHROOM_RED, 64),
+            fuel: ItemStack::new(NETHERRACK, 1),
+            ..Default::default()
+        };
         let mut completions = 0;
         let mut ticks = 0i64;
         while ticks < (BREW_TICKS as i64) * 25 {

@@ -571,7 +571,7 @@ mod tests {
             // scripted events at fixed ticks
             w.set_block_state(0, 65, 0, vc_blocks::blocks::water_state(0));
             fluids::on_block_changed(&mut sim.sched, &w, 0, 65, 0);
-            w.set_block_state(8, 68, 8, SAND as u16);
+            w.set_block_state(8, 68, 8, SAND);
             fluids::on_block_changed(&mut sim.sched, &w, 8, 68, 8);
             sim.items.drop_block(4, 66, 4, DIRT, 2, 15, 0);
             for _ in 0..400 {
@@ -675,7 +675,7 @@ mod tests {
         fluids::on_block_changed(&mut sim.sched, &w, 0, 65, 16);
         // wire + torch far away: torch at (16, 65, 0) (chunk (1, 0), outside
         // the radius-0 ring) — pure redstone must still run
-        w.set_block_state(16, 65, 0, REDSTONE_TORCH as u16);
+        w.set_block_state(16, 65, 0, REDSTONE_TORCH);
         crate::redstone::on_block_changed(&mut sim.sched, &w, 16, 65, 0);
         let tiny = TickScope {
             center: (0, 0),
@@ -688,7 +688,7 @@ mod tests {
         // the out-of-ring water never flowed: still a single source block
         let out_states: Vec<u16> = (0..16).map(|x| w.get_state(x, 65, 17)).collect();
         assert!(
-            out_states.iter().all(|&s| s == AIR as u16),
+            out_states.iter().all(|&s| s == AIR),
             "out-of-ring water column untouched (got {out_states:?})"
         );
         // ...while the deferred out-of-ring entry keeps re-queueing

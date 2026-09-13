@@ -866,7 +866,7 @@ mod tests {
         let mut chunks = HashMap::new();
         for dz in -2..=2 {
             for dx in -2..=2 {
-                chunks.insert((dx, dz), col(0b1111111_0, 1 << 4)); // bands 4..10 air, geo band 4
+                chunks.insert((dx, dz), col(0b1111_1110, 1 << 4)); // bands 4..10 air, geo band 4
             }
         }
         let vis = occlusion_visible(&chunks, (0, 0), 5).unwrap();
@@ -885,12 +885,12 @@ mod tests {
     fn occlusion_culls_sealed_cave_column() {
         let mut chunks = HashMap::new();
         // camera column: air bands 3..7 (walls + planes open), geo at 4
-        chunks.insert((0, 0), col(0b1111100_0, 1 << 4));
+        chunks.insert((0, 0), col(0b1111_1000, 1 << 4));
         // neighbor columns: air bands 3..7 open (connected), but their geo
         // band 1 has CLOSED walls and the plane above it (band 1→2) closed:
         // no path reaches it → culled
         for d in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
-            let mut g = col(0b1111100_0, 1 << 1); // geo deep down
+            let mut g = col(0b1111_1000, 1 << 1); // geo deep down
             g.occl.sides &= !0xF; // close band-0..: only band 1 walls closed
                                   // close ALL walls of band 1 and the plane between band 1/2
             g.occl.sides &= !(0xF << 4);
@@ -910,10 +910,10 @@ mod tests {
     #[test]
     fn occlusion_keeps_tunnel_connected_cave() {
         let mut chunks = HashMap::new();
-        chunks.insert((0, 0), col(0b1111100_0, 1 << 4));
-        let mut g = col(0b1111100_0, 1 << 1);
+        chunks.insert((0, 0), col(0b1111_1000, 1 << 4));
+        let mut g = col(0b1111_1000, 1 << 1);
         g.occl.sides &= !(0xF << 4); // band-1 walls all closed…
-        g.occl.sides |= 1 << (1 * 4 + FACE_NX); // …except the wall facing the camera
+        g.occl.sides |= 1 << (4 + FACE_NX); // …except the wall facing the camera
         g.occl.planes &= !(1 << 1);
         chunks.insert((1, 0), g);
         // (1,0)'s open band set has no band 1 → the flood must reach band 1
@@ -921,8 +921,8 @@ mod tests {
         // band 1 → wall open → (1,0) band 1. The camera column's planes must
         // therefore reach band 1: give it open bands 1..7.
         chunks.get_mut(&(0, 0)).unwrap().occl = {
-            let mut c = col(0b1111111_0, 1 << 4).occl;
-            c.planes |= 0b11_1111_11; // open planes down to band 0
+            let mut c = col(0b1111_1110, 1 << 4).occl;
+            c.planes |= 0b1111_1111; // open planes down to band 0
             c
         };
         let vis = occlusion_visible(&chunks, (0, 0), 5).unwrap();
@@ -933,7 +933,7 @@ mod tests {
     #[test]
     fn occlusion_camera_chunk_missing_is_none() {
         let mut chunks = HashMap::new();
-        chunks.insert((1, 0), col(0b1111111_0, 1 << 4));
+        chunks.insert((1, 0), col(0b1111_1110, 1 << 4));
         assert!(occlusion_visible(&chunks, (0, 0), 5).is_none());
     }
 
@@ -962,7 +962,7 @@ mod tests {
         let mut chunks = HashMap::new();
         for dz in -2..=2 {
             for dx in -2..=2 {
-                chunks.insert((dx, dz), col(0b1111111_0, 1 << 4));
+                chunks.insert((dx, dz), col(0b1111_1110, 1 << 4));
             }
         }
         let mut cache = OcclCache::default();
@@ -1003,7 +1003,7 @@ mod tests {
         let mut cache = OcclCache::default();
         assert!(occlusion_visible_cached(&chunks, (0, 0), 5, 1, &mut cache).is_none());
         // camera chunk arrives (mesh upload → rev 2)
-        chunks.insert((0, 0), col(0b1111111_0, 1 << 4));
+        chunks.insert((0, 0), col(0b1111_1110, 1 << 4));
         let r = occlusion_visible_cached(&chunks, (0, 0), 5, 2, &mut cache);
         assert!(r.is_some(), "None state must not stick");
     }

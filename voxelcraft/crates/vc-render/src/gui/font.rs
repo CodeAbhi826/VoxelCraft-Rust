@@ -714,7 +714,7 @@ mod tests {
             .map(|c| (c[0], c[1], c[2]))
             .collect::<std::collections::HashSet<_>>();
         assert!(ink_px.contains(&(255, 255, 0)));
-        assert!(ink_px.len() >= 1);
+        assert!(!ink_px.is_empty());
     }
 
     #[test]

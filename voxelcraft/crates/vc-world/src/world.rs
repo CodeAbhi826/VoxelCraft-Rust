@@ -547,10 +547,10 @@ mod phase3_tests {
         );
     }
 
-    /// §12 + §18: light regions now come from the incremental LightEngine's
-    /// exact `changed` map — see light.rs::tests (differential gate +
-    /// region coverage). These two cases (mid-air shadow column, glowstone
-    /// ±15 box) are asserted there against the engine, not heuristics.
+    // §12 + §18: light regions now come from the incremental LightEngine's
+    // exact `changed` map — see light.rs::tests (differential gate +
+    // region coverage). These two cases (mid-air shadow column, glowstone
+    // ±15 box) are asserted there against the engine, not heuristics.
 
     /// §12: a border edit reaches the adjacent chunk's matching sections
     /// (face culling + AO), including the diagonal corner chunk.

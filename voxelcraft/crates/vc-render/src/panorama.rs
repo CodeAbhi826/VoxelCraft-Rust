@@ -574,7 +574,7 @@ mod tests {
             };
             for face in 0..6usize {
                 let mut slice = data[face * 384 * 384 * 4..(face + 1) * 384 * 384 * 4].to_vec();
-                for px in slice.chunks_exact_mut(4) {
+                for px in slice.as_chunks_mut::<4>().0 {
                     for c in px.iter_mut().take(3) {
                         *c = (srgb(*c as f32 / 255.0) * 255.0).round() as u8;
                     }

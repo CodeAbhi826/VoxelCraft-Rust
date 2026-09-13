@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Based on the image provided, here is the description of the screen:\n\n**Screen Type:**\nThis is the **Main Menu** (Title Screen) of a Minecraft-style game called \"VoxelCraft\". It is not a world list or create-world form, but rather the initial entry point for the game.\n\n**Visible Buttons and Interactive Elements:**\n*   **Singleplayer Button:** Centered horizontally, located in the upper-middle area.\n    *   Approximate Coordinates: **(510, 440)**\n*   **Multiplayer Button:** Located directly below the Singleplayer button.\n    *   Approximate Coordinates: **(510, 525)**\n*   **Options... Button:** Located directly below the Multiplayer button.\n    *   Approximate Coordinates: **(510, 610)**\n\n**Text Inputs:**\n*   There are **no text inputs** visible on this screen.\n\n**Notes on Broken or Misaligned Elements:**\n*   **Misaligned Text:** The yellow text \"Also try going outside!\" is rotated at an angle (roughly -20 degrees) and overlaps with the \"F\" and \"T\" in the main \"VOXELCRAFT\" logo. It appears to be placed haphazardly rather than aligned to a grid or UI container.\n*   **Version Text:** In the bottom-left corner, the text \"VoxelCraft 1.16.5\" is partially cut off by the edge of the screen (the 'V' and left side of the 'o' are missing/obscured).\n*   **Disclaimer:** The bottom-right text \"100% CLEAN-ROOM – NOT AN OFFICIAL GAME\" appears correctly aligned.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789286661,
+  "id": "20260913160413d91f11859fd04ca2",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260913160413d91f11859fd04ca2",
+  "usage": {
+    "completion_tokens": 350,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1520,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1870
+  }
+}

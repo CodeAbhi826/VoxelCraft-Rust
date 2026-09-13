@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "C: 4/91 (S) D: 6. PC: 134. PO: 835. AB: 010\nE: 0/0 B: 0\nF: 0 I: 87\nE (Google. Vulkan 1.3.0 (SwiftShader Device (Subzero) (\nClient Chunk Cache: 10. 4                          WebGL 2.0 (",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789286930,
+  "id": "20260913160847a62a76a746274563",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260913160847a62a76a746274563",
+  "usage": {
+    "completion_tokens": 87,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 567,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 654
+  }
+}

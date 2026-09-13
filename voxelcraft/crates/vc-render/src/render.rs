@@ -4728,8 +4728,10 @@ impl Renderer {
         // FRUSTUM alone removed (the occlusion flood's count is `culled`)
         let frustum_culled = (self.chunks.len() - visible.len()) as u32;
 
-        let mut stats = RenderStats::default();
-        stats.frustum_culled = frustum_culled;
+        let mut stats = RenderStats {
+            frustum_culled,
+            ..Default::default()
+        };
 
         // Sort once (near → far) — the per-frame origin rows are indexed by
         // this order (identical in all three passes, as before). `visible`

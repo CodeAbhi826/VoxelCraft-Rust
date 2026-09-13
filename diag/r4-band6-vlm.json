@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "CE|<Google:Vulkan1.0 (SwiftShader Device (Subzero) (0x00000C00E)). SwiftShader driver>",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789288155,
+  "id": "202609131629134de36df5fce74e5d",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202609131629134de36df5fce74e5d",
+  "usage": {
+    "completion_tokens": 32,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 474,
+    "prompt_tokens_details": {
+      "cached_tokens": 2
+    },
+    "total_tokens": 506
+  }
+}

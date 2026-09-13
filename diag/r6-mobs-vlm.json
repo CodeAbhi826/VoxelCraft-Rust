@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Based on the image provided:\n\n1.  **'E:' line:** The line says **`E: 9/9 6 0`**.\n\n2.  **Visible Creatures/Mobs:**\n    *   **Pig (or similar passive mob):** Located in the mid-ground, slightly to the left of the center, near the base of a tree on the grassy hill.\n    *   **Sheep (Blue):** Located in the foreground on the right side of the screen, standing on the grass near some tall grass.\n\n3.  **Model Type for each mob:**\n    *   **Pig:** It is a **multi-part 3D boxy model** (you can see distinct boxes for its head and body).\n    *   **Sheep (Blue):** It is a **multi-part 3D boxy model** (it has a boxy body with a separate head and legs).",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789288860,
+  "id": "20260913164054d17a20bbeb764791",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260913164054d17a20bbeb764791",
+  "usage": {
+    "completion_tokens": 194,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1563,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1757
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Culling: occl 0 frust 2 (of 7 meshed)",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789288603,
+  "id": "20260913163642fced91b6fffe4904",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260913163642fced91b6fffe4904",
+  "usage": {
+    "completion_tokens": 19,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 348,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 367
+  }
+}

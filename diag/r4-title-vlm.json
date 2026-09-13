@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Based on the image provided, here is the information you requested:\n\n**Title Text:**\nThe main title text is **\"VOXELCRAFT\"**. There is also a smaller yellow subtitle that reads **\"100% Rust!\"**.\n\n**Visible Buttons and Coordinates (approximate center):**\n*   **SINGLEPLAYER:** (505, 445)\n*   **MULTIPLAYER:** (505, 532)\n*   **OPTIONS...:** (505, 619)\n\n**UI Element Status:**\n*   **Broken/Misaligned:** No, the UI elements appear to be correctly aligned and centered.\n*   **Blurry:** The image is intentionally styled with pixel art, but the UI elements themselves are sharp and clear within that style. The background features a blurred or out-of-focus voxel landscape, which is likely an intentional aesthetic choice rather than a rendering error.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789286632,
+  "id": "2026091316034819458db7c4744cf2",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "2026091316034819458db7c4744cf2",
+  "usage": {
+    "completion_tokens": 186,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1512,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1698
+  }
+}

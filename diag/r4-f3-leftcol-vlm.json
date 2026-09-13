@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "VoxelCraft 1.16.5 (hust/ugpu/modtf\n10 fps T: 0 fancy-clouds D: 2\nIntegrated server @ 0 ms ticks. 0 t\nC: 4/91 (s) 0: 6. pc: 134. pU: 635. sB:\nE: 0/0 B: 0\nF: 0 I: 87\nEULGooglecclU8kSnut3.0 (SuiltShade\nClient Chunk Cache: 10. 4\nServerChunkCache: 91\nXYZ: -103.500 / 81.00100 / -215.500\nBlock: -104 81 -216\nChunk: 8 1 8 in -7 5 -14\nFacing: south (Towards positive Z)",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789286990,
+  "id": "202609131609451e3c9a11e2cf42ce",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202609131609451e3c9a11e2cf42ce",
+  "usage": {
+    "completion_tokens": 182,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2455,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 2637
+  }
+}

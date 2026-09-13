@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Client Chunk Cache: 7. 4",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789288592,
+  "id": "202609131636310fcba460642d4098",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202609131636310fcba460642d4098",
+  "usage": {
+    "completion_tokens": 10,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 336,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 346
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "VoxelCraft 1.16.5 (Rust/wgpu/modified)\n10 fps T: ∞ fancy-clouds D: 2\nIntegrated server @ 0 ms ticks: 0 tx: 0 rx\nC: 4/91 (s) D: 6. pC: 134. pU: 035. aB: 010\nE: 0/0 B: 0\nF: 0 I: 87\nLE [Google: Vulkan 1.3.0 (SwiftShader) Device (Subzero) (0x00000C0DE)]. SwiftShader driver\nClient Chunk Cache: 10, 4\nServerChunkCache: 91\nXYZ: -103.500 / 81.00100 / -215.500\nBlock: -104 81 -216\nChunk: 8 1 8 in -7 5 -14\nFacing: south (Towards positive Z) (0.0 / -0.0)\nClient Light: 15 (15 sky, 0 blk)\nServer Light: 15 (15 sky, 0 blk)\nCH S: 81 D: 81\nCH H: 81 O: 81 M: 76 ML: 76\nBiome: minecraft:forest\nLocal Difficulty: 1.06 // 1.06 (Day 0)\n\nSC: 289. M: 0. C: 0. A: 0. W: 0. M: 0\nSounds: 0/43 + 0/8 (mood 0/0)\nDebug: Fie [shift]: hidden FP5 + TP5 [alt]: hidden\nFor help: press F3 + Q\n\nRust: 32bit release\nMem: 0MB\nAllocated: 100% 31MB\nCPU: 1x unknown\nDisplay 1440×810 (ANGLE)\nWebGL 2.0 (OpenGL ES 3.0 Chromium) (Gl, wgpu)",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789286884,
+  "id": "202609131607549b436c52877b40c7",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202609131607549b436c52877b40c7",
+  "usage": {
+    "completion_tokens": 429,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1519,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1948
+  }
+}

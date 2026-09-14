@@ -9626,12 +9626,16 @@ impl GameApp {
                             Some("hopper") => Some(HOPPER),
                             _ => None,
                         };
-                        if p.len() == 3 && b.is_some() {
-                            // coords() skipped the name — re-parse the tail
-                            let q: Vec<i32> =
-                                parts[2..].iter().filter_map(|v| v.parse().ok()).collect();
-                            if q.len() == 3 {
-                                self.test_place(b.unwrap(), q[0], q[1], q[2]);
+                        if p.len() == 3 {
+                            if let Some(b) = b {
+                                // coords() skipped the name — re-parse the tail
+                                let q: Vec<i32> = parts[2..]
+                                    .iter()
+                                    .filter_map(|v| v.parse().ok())
+                                    .collect();
+                                if q.len() == 3 {
+                                    self.test_place(b, q[0], q[1], q[2]);
+                                }
                             }
                         }
                     }
@@ -10524,7 +10528,15 @@ impl GameApp {
                                     if dx.abs() != r && dz.abs() != r {
                                         continue;
                                     }
-                                    for ms in gen.mineshafts_near((pcx + dx) * 16, (pcz + dz) * 16)
+                                    // `mineshafts_near` returns a Vec — the
+                                    // first hit is the nearest (ring scan);
+                                    // `if let` reads it without the loop
+                                    // (clippy::never_loop: a `for` whose body
+                                    // always breaks only ever runs once)
+                                    if let Some(ms) =
+                                        gen.mineshafts_near((pcx + dx) * 16, (pcz + dz) * 16)
+                                            .into_iter()
+                                            .next()
                                     {
                                         found = Some(((pcx + dx, pcz + dz), ms));
                                         break 'scan;
@@ -10590,7 +10602,7 @@ impl GameApp {
                                 // borrow ends before the world mutations —
                                 // held-across-mutation fails borrowck on
                                 // the wasm target)
-                                let base = gen.column(wx, wz).height as i32;
+                                let base = gen.column(wx, wz).height;
                                 let floor = base - 11;
                                 let cx = wx >> 4;
                                 let cz = wz >> 4;
@@ -10865,9 +10877,11 @@ impl GameApp {
                             ]
                         };
                         self.test_place(FURNACE, pos[0], pos[1], pos[2]);
-                        let mut f = vc_gameplay::furnace::FurnaceState::default();
-                        f.input = vc_inventory::inventory::ItemStack::new(SAND, 2);
-                        f.fuel = vc_inventory::inventory::ItemStack::new(PLANKS, 2);
+                        let f = vc_gameplay::furnace::FurnaceState {
+                            input: vc_inventory::inventory::ItemStack::new(SAND, 2),
+                            fuel: vc_inventory::inventory::ItemStack::new(PLANKS, 2),
+                            ..Default::default()
+                        };
                         self.sim.furnaces.map.insert(pos, f);
                         // fast-forward: 260 ticks = ignite + 200 cook + slack
                         let mut lit = false;

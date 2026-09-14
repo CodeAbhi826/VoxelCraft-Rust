@@ -4602,7 +4602,7 @@ fn arm_art(a: &mut [u8], tile: u16) {
             let (mut r, mut g, mut b) = (194.0 + n, 152.0 + n, 108.0 + n);
             // sleeve cuff: the bottom quarter reads as a teal shirt cuff
             if y >= 12 {
-                let c = ((rng.next_f32() - 0.5) * 10.0) as f32;
+                let c = (rng.next_f32() - 0.5) * 10.0;
                 r = 42.0 + c;
                 g = 96.0 + c;
                 b = 90.0 + c;

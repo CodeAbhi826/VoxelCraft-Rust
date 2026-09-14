@@ -299,6 +299,360 @@ const BUBBLE_GONE_MASK: [&str; 9] = [
     ".........",
 ];
 
+// ------------------------------------------------ effect-icon 9x9 masks --
+// Sub-round 1 (2026-09-14 Survival HUD round): the status-effect icon
+// set — one 9x9 tile per engine effect kind (16 kinds, index order =
+// vc_gameplay::effects::EffectKind's declaration order; the index
+// mapping lives at the game layer so vc-render stays crate-independent).
+//
+// CLEAN-ROOM — hand-drawn from scratch. Silhouettes are generic pixel-art
+// glyphs (droplet / bolt / arrow / heart / shield / fish / feather /
+// spiral…), one per effect MEANING, colored with each effect's
+// wiki-published color family (facts, not assets). No Mojang sprite was
+// read, copied, or traced; vanilla's actual inventory_effect icons are
+// different art at a different size (24x24).
+
+/// number of effect-icon tiles in the sheet (16 kinds × 9x9 = 144x9)
+pub const EFFECT_ICON_COUNT: usize = 16;
+
+// CLEAN-ROOM — hand-drawn from scratch (wither: ash-grey skull)
+const EFF_WITHER: [&str; 9] = [
+    "..OOOO...",
+    ".OFFFFO..",
+    ".OFAAFO..",
+    ".OFFFFO..",
+    "..OFFO...",
+    "..O.O....",
+    ".O.O.O...",
+    ".O.....O.",
+    ".........",
+];
+const PAL_WITHER: [(char, Px); 3] = [
+    ('O', [30, 30, 30, 255]),
+    ('F', [85, 75, 75, 255]),
+    ('A', [140, 125, 125, 255]),
+];
+
+// CLEAN-ROOM — hand-drawn from scratch (poison: green droplet)
+const EFF_POISON: [&str; 9] = [
+    "....O....",
+    "...OFO...",
+    "...OFO...",
+    "..OFFFO..",
+    ".OFFAFFO.",
+    ".OFFFFFO.",
+    ".OFFFFFO.",
+    "..OFFFO..",
+    "...OOO...",
+];
+const PAL_POISON: [(char, Px); 3] = [
+    ('O', [22, 62, 22, 255]),
+    ('F', [72, 160, 60, 255]),
+    ('A', [185, 255, 170, 255]),
+];
+
+// CLEAN-ROOM — hand-drawn from scratch (regeneration: magenta heart)
+const EFF_REGEN: [&str; 9] = [
+    ".OO...OO.",
+    "OAFO.OFFO",
+    "OFFFOFFFO",
+    "OFFFFFFFO",
+    "OOFFFFFFO",
+    ".OFFFFFO.",
+    "..OFFFO..",
+    "...OFO...",
+    "....O....",
+];
+const PAL_REGEN: [(char, Px); 3] = [
+    ('O', [84, 12, 62, 255]),
+    ('F', [238, 82, 198, 255]),
+    ('A', [255, 172, 232, 255]),
+];
+
+// CLEAN-ROOM — hand-drawn from scratch (speed: twin cyan chevrons)
+const EFF_SPEED: [&str; 9] = [
+    ".........",
+    ".O....O..",
+    ".OO..OO..",
+    ".OFO.OFO.",
+    ".OFO.OFO.",
+    ".OO..OO..",
+    ".O....O..",
+    ".........",
+    ".........",
+];
+const PAL_SPEED: [(char, Px); 2] = [
+    ('O', [18, 80, 100, 255]),
+    ('F', [120, 220, 255, 255]),
+];
+
+// CLEAN-ROOM — hand-drawn from scratch (haste: yellow lightning bolt)
+const EFF_HASTE: [&str; 9] = [
+    "....OOOO.",
+    "...OFFFO.",
+    "..OFFFO..",
+    ".OOOOOOO.",
+    "...OFFO..",
+    "..OFFO...",
+    "..OFO....",
+    "..OO.....",
+    "..O......",
+];
+const PAL_HASTE: [(char, Px); 2] = [
+    ('O', [96, 74, 10, 255]),
+    ('F', [250, 220, 82, 255]),
+];
+
+// CLEAN-ROOM — hand-drawn from scratch (resistance: grey round shield)
+const EFF_RESIST: [&str; 9] = [
+    "..OOOOO..",
+    ".OFFFFFO.",
+    ".OFAAFFO.",
+    ".OFAAFFO.",
+    ".OFFFFFO.",
+    "..OOOOO..",
+    "...OAO...",
+    ".........",
+    ".........",
+];
+const PAL_RESIST: [(char, Px); 3] = [
+    ('O', [52, 52, 52, 255]),
+    ('F', [142, 142, 142, 255]),
+    ('A', [222, 222, 222, 255]),
+];
+
+// CLEAN-ROOM — hand-drawn from scratch (jump boost: light-blue up arrow)
+const EFF_JUMP: [&str; 9] = [
+    "....O....",
+    "...OFO...",
+    "..OFFFO..",
+    ".OFFFFFO.",
+    "OOOFAFOOO",
+    "..OFO....",
+    "..OFO....",
+    "..OOO....",
+    ".........",
+];
+const PAL_JUMP: [(char, Px); 3] = [
+    ('O', [20, 62, 112, 255]),
+    ('F', [122, 190, 255, 255]),
+    ('A', [228, 244, 255, 255]),
+];
+
+// CLEAN-ROOM — hand-drawn from scratch (strength: red up sword)
+const EFF_STRENGTH: [&str; 9] = [
+    "....O....",
+    "...OFO...",
+    "...OFO...",
+    "...OFO...",
+    ".OOOFOOO.",
+    "..OOFOO..",
+    "...OOO...",
+    "...OAO...",
+    ".........",
+];
+const PAL_STRENGTH: [(char, Px); 3] = [
+    ('O', [92, 16, 16, 255]),
+    ('F', [222, 62, 62, 255]),
+    ('A', [255, 152, 152, 255]),
+];
+
+// CLEAN-ROOM — hand-drawn from scratch (slowness: muddy down arrow)
+const EFF_SLOWNESS: [&str; 9] = [
+    ".........",
+    "..OOO....",
+    "..OFO....",
+    "..OFO....",
+    "OOOFAFOOO",
+    ".OFFFFFO.",
+    "..OFFFO..",
+    "...OFO...",
+    "....O....",
+];
+const PAL_SLOWNESS: [(char, Px); 3] = [
+    ('O', [62, 46, 26, 255]),
+    ('F', [150, 112, 70, 255]),
+    ('A', [202, 172, 124, 255]),
+];
+
+// CLEAN-ROOM — hand-drawn from scratch (hunger effect: desaturated
+// yellow-green drumstick — w/Hunger_(effect), live 2026-09-14: "It also
+// turns the hunger bar a yellow-green color")
+const EFF_HUNGER: [&str; 9] = [
+    "....OOOO.",
+    "...OMMMMO",
+    "..OMHMMMO",
+    "..OMMMMMO",
+    "...OMMMO.",
+    "..OWOMMO.",
+    ".OWWOOO..",
+    "OWWO.....",
+    "OOO......",
+];
+const PAL_HUNGER_EFF: [(char, Px); 4] = [
+    ('O', [36, 42, 30, 255]),
+    ('M', [150, 168, 96, 255]),
+    ('H', [184, 202, 128, 255]),
+    ('W', [222, 232, 204, 255]),
+];
+
+// CLEAN-ROOM — hand-drawn from scratch (absorption: golden heart)
+const EFF_ABSORB: [&str; 9] = [
+    ".OO...OO.",
+    "OAFO.OFFO",
+    "OFFFOFFFO",
+    "OFFFFFFFO",
+    "OOFFFFFFO",
+    ".OFFFFFO.",
+    "..OFFFO..",
+    "...OFO...",
+    "....O....",
+];
+const PAL_ABSORB: [(char, Px); 3] = [
+    ('O', [102, 72, 10, 255]),
+    ('F', [255, 220, 82, 255]),
+    ('A', [255, 250, 204, 255]),
+];
+
+// CLEAN-ROOM — hand-drawn from scratch (blindness: dark smoke cloud)
+const EFF_BLIND: [&str; 9] = [
+    "..OOOO...",
+    ".OFFFFO..",
+    "OFAAAFFO.",
+    "OFFFFFFO.",
+    ".OOFFOO..",
+    "..OOO....",
+    ".........",
+    ".........",
+    ".........",
+];
+const PAL_BLIND: [(char, Px); 3] = [
+    ('O', [26, 26, 26, 255]),
+    ('F', [72, 72, 72, 255]),
+    ('A', [8, 8, 8, 255]),
+];
+
+// CLEAN-ROOM — hand-drawn from scratch (water breathing: bubble + wave)
+const EFF_WATER: [&str; 9] = [
+    ".OO......",
+    "OAAO.....",
+    "OAAO.OO..",
+    ".OO..OFO.",
+    ".....OFO.",
+    "..OOOOO..",
+    ".OFFFFFO.",
+    "..OOOOO..",
+    ".........",
+];
+const PAL_WATER: [(char, Px); 3] = [
+    ('O', [20, 52, 92, 255]),
+    ('F', [72, 132, 222, 255]),
+    ('A', [232, 246, 255, 255]),
+];
+
+// CLEAN-ROOM — hand-drawn from scratch (slow falling: white feather)
+const EFF_FEATHER: [&str; 9] = [
+    ".....O...",
+    "....OFO..",
+    "...OFFO..",
+    "...OFFO..",
+    "..OFFAO..",
+    "..OFAO...",
+    ".OFAO....",
+    ".OO......",
+    "O........",
+];
+const PAL_FEATHER: [(char, Px); 3] = [
+    ('O', [84, 84, 84, 255]),
+    ('F', [236, 236, 236, 255]),
+    ('A', [182, 182, 182, 255]),
+];
+
+// CLEAN-ROOM — hand-drawn from scratch (conduit power: teal shell spiral)
+const EFF_CONDUIT: [&str; 9] = [
+    "..OOOO...",
+    ".OFFFFO..",
+    "OFFAFFO..",
+    "OFAFFFO..",
+    "OFFFOOO..",
+    ".OFO.OFO.",
+    "..O...O..",
+    ".........",
+    ".........",
+];
+const PAL_CONDUIT: [(char, Px); 3] = [
+    ('O', [10, 62, 62, 255]),
+    ('F', [42, 162, 162, 255]),
+    ('A', [182, 255, 255, 255]),
+];
+
+// CLEAN-ROOM — hand-drawn from scratch (dolphin's grace: light-blue fish)
+const EFF_DOLPHIN: [&str; 9] = [
+    ".........",
+    "..OOO..O.",
+    ".OFFFO.OO",
+    "OFAFFFFO.",
+    ".OFFFO.OO",
+    "..OOO..O.",
+    ".........",
+    ".........",
+    ".........",
+];
+const PAL_DOLPHIN: [(char, Px); 3] = [
+    ('O', [16, 56, 82, 255]),
+    ('F', [92, 182, 232, 255]),
+    ('A', [232, 246, 255, 255]),
+];
+
+/// one effect icon: (mask rows, palette) — the alias keeps the sheet
+/// table's type readable (clippy type_complexity)
+type EffectIcon = (&'static [&'static str], &'static [(char, Px)]);
+
+/// the 16 effect-icon (mask, palette) pairs, index order matching
+/// vc_gameplay::effects::EffectKind's declaration order
+const EFFECT_ICONS: [EffectIcon; EFFECT_ICON_COUNT] = [
+    (&EFF_WITHER, &PAL_WITHER),
+    (&EFF_POISON, &PAL_POISON),
+    (&EFF_REGEN, &PAL_REGEN),
+    (&EFF_SPEED, &PAL_SPEED),
+    (&EFF_HASTE, &PAL_HASTE),
+    (&EFF_RESIST, &PAL_RESIST),
+    (&EFF_JUMP, &PAL_JUMP),
+    (&EFF_STRENGTH, &PAL_STRENGTH),
+    (&EFF_SLOWNESS, &PAL_SLOWNESS),
+    (&EFF_HUNGER, &PAL_HUNGER_EFF),
+    (&EFF_ABSORB, &PAL_ABSORB),
+    (&EFF_BLIND, &PAL_BLIND),
+    (&EFF_WATER, &PAL_WATER),
+    (&EFF_FEATHER, &PAL_FEATHER),
+    (&EFF_CONDUIT, &PAL_CONDUIT),
+    (&EFF_DOLPHIN, &PAL_DOLPHIN),
+];
+
+/// effect-icon registry names (matches vc_gameplay EffectKind order;
+/// used by tests + debug dumps — never rendered on screen)
+pub fn effect_icon_name(idx: usize) -> &'static str {
+    const NAMES: [&str; EFFECT_ICON_COUNT] = [
+        "wither",
+        "poison",
+        "regeneration",
+        "speed",
+        "haste",
+        "resistance",
+        "jump_boost",
+        "strength",
+        "slowness",
+        "hunger",
+        "absorption",
+        "blindness",
+        "water_breathing",
+        "slow_falling",
+        "conduit_power",
+        "dolphins_grace",
+    ];
+    NAMES[idx.min(EFFECT_ICON_COUNT - 1)]
+}
+
 // ------------------------------------------------------------- palettes --
 
 // CLEAN-ROOM — original palette values (carried over from the canvas
@@ -417,6 +771,16 @@ pub fn draw_bubble(out: &mut [u8], w: usize, variant: BubbleVariant) {
         BubbleVariant::Full => paint_mask(out, w, &BUBBLE_MASK, &BUBBLE_PAL),
         BubbleVariant::Gone => paint_mask(out, w, &BUBBLE_GONE_MASK, &BUBBLE_PAL),
     }
+}
+
+/// Paint one 9x9 status-effect icon (index 0..EFFECT_ICON_COUNT, order
+/// = vc_gameplay EffectKind; out-of-range indices paint nothing).
+pub fn draw_effect_icon(out: &mut [u8], w: usize, idx: usize) {
+    if idx >= EFFECT_ICON_COUNT {
+        return;
+    }
+    let (mask, pal) = EFFECT_ICONS[idx];
+    paint_mask(out, w, mask, pal);
 }
 
 /// Paint widget chrome into `out`. Buttons and the panel fill the full
@@ -632,6 +996,68 @@ mod tests {
             let mut buf = [0u8; 9 * 9 * 4];
             draw_bubble(&mut buf, 9, v);
             assert!(painted(&buf) > 8, "bubble {v:?} painted almost nothing");
+        }
+    }
+
+    /// Sub-round 1: every effect-icon tile paints real ink at both the
+    /// 9x9 sheet size and a 20x20 zoom (the coverage-guard pattern — a
+    /// blank icon is a missing painter), the count matches the engine's
+    /// 16 effect kinds, and out-of-range indices are a no-op.
+    #[test]
+    fn effect_icons_all_paint_ink() {
+        assert_eq!(EFFECT_ICON_COUNT, 16, "one tile per engine effect kind");
+        for idx in 0..EFFECT_ICON_COUNT {
+            let mut buf = [0u8; 9 * 9 * 4];
+            draw_effect_icon(&mut buf, 9, idx);
+            assert!(
+                painted(&buf) >= 12,
+                "effect icon {} ({}) painted almost nothing",
+                idx,
+                effect_icon_name(idx)
+            );
+            let mut zoom = [0u8; 20 * 20 * 4];
+            draw_effect_icon(&mut zoom, 20, idx);
+            assert!(
+                painted(&zoom) >= 12,
+                "effect icon {} ({}) blank at 20x20",
+                idx,
+                effect_icon_name(idx)
+            );
+        }
+        // out-of-range: paints nothing, never panics
+        let mut buf = [0u8; 9 * 9 * 4];
+        draw_effect_icon(&mut buf, 9, EFFECT_ICON_COUNT);
+        draw_effect_icon(&mut buf, 9, usize::MAX);
+        assert_eq!(painted(&buf), 0);
+    }
+
+    /// Sub-round 1: the icon order matches the engine's EffectKind
+    /// declaration order by name (the game layer maps kinds to these
+    /// indices positionally — drift would mislabel every icon).
+    #[test]
+    fn effect_icon_names_match_effectkind_order() {
+        for (idx, expect) in [
+            "wither",
+            "poison",
+            "regeneration",
+            "speed",
+            "haste",
+            "resistance",
+            "jump_boost",
+            "strength",
+            "slowness",
+            "hunger",
+            "absorption",
+            "blindness",
+            "water_breathing",
+            "slow_falling",
+            "conduit_power",
+            "dolphins_grace",
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            assert_eq!(effect_icon_name(idx), expect);
         }
     }
 

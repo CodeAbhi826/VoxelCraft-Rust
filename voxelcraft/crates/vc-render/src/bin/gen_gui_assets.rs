@@ -46,6 +46,7 @@ fn main() {
         ("hunger", &set.hunger),
         ("armor", &set.armor),
         ("bubbles", &set.bubbles),
+        ("effects", &set.effects),
         ("widgets", &set.widgets),
         ("hotbar", &set.hotbar_bg),
         ("hotbar_sel", &set.hotbar_sel),

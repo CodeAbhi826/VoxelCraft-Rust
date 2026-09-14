@@ -4246,3 +4246,176 @@ inventory screen has no player paper-doll preview yet.
 **Not committed or pushed** — this round's work sits in the working
 tree plus the environment's automatic checkpoint commits; nothing goes
 to GitHub without explicit user approval, per the standing instruction.
+
+## 2026-09-14 (round 8) — deploy-fix round II: shipping the interrupted parity round (shader-pack removal, world persistence, level.dat options) that never reached the bundle
+
+The previous session (between the round-7 checkpoint `c91b109` and the
+15:34 environment checkpoint `701637e`) implemented a full parity round
+— then the session died: the wasm bundle was never rebuilt (still Sep-14
+12:18, round 7's), the WORKLOG was never written, and the tests were
+never run. The user was still playing the round-7 bundle, which is why
+the shader entries they had repeatedly asked to remove were still
+visible. This round recovered, verified, fixed, shipped and documented
+it.
+
+**What the interrupted round had built (verified this round):**
+
+- **The Shader Packs screen REMOVED entirely** — the 2026-09-14 user
+  directive, now actually in a deployed bundle: `ID_OPT_SHADERS`, the
+  ID_PACK_BASE row family, the builtin_packs() demo packs and the
+  `shader-packs/moonlit` + `shader-packs/warm-evening` clean-room demo
+  directories are all gone. `external_packs()` stays as the UI-less
+  engine capability for user-provided WGSL packs. VLM-verified live on
+  the new bundle: the RESOURCE PACKS screen shows only AVAILABLE
+  (Programmer Art) + SELECTED (Default (Required)) + DONE — zero
+  shader/Cinematic/Moonlit/Warm-Evening entries; the Video Settings
+  screen has no shader button at all.
+- **Vanilla settings defaults** — the maxed-out defaults reset to
+  vanilla 1.16.5 (RD 12 native, FOV 70, Moody, Smooth MAXIMUM, GUI
+  AUTO, Clouds FANCY, Particles ALL, VSync ON, Mipmaps 4, master/music
+  1.0/1.0, aniso 1 = off). VLM-verified on the live Video Settings
+  screen. This round's correction: `sim_distance` restored to 12 (the
+  interrupted round had set 10, breaking the §26 sim-ring invariant
+  "default 12 covers everything loaded at the default render
+  distances" — mobs would freeze 2 chunks inside the RD-12 ring); the
+  stale `legacy_settings_string_parses` expectation (aniso 4) updated
+  to the new default (1).
+- **World persistence on the web** — localStorage world list +
+  block-edit journal (`voxelcraftSaveWorlds`/`voxelcraftLoadWorlds`,
+  the `World::journal` choke point); world metadata now carries the
+  real vanilla level.dat keys (flat / structures / bonus chest) and
+  the player inventory round-trips through saves.
+- **Vanilla world-select / world-create / world-edit screens** —
+  two-page More World Options flow (seed / world type / generate
+  structures / bonus chest), game-mode description pairs, Play / Edit /
+  Delete (armed) / Re-Create / Search, the vanilla two-line world rows.
+  VLM-verified live (SELECT WORLD + search + the six buttons; CREATE
+  NEW WORLD + name field + GAME MODE: SURVIVAL + the two gray
+  description lines).
+- **Death screen + respawn** — YOU DIED! / Score / RESPAWN + TITLE
+  SCREEN buttons, hardcore GAME OVER variant with DELETE WORLD, the
+  anchor-aware `respawn()` (charge consumed per respawn, VERIFIED
+  w/Respawn_Anchor), insomnia reset, surface re-snap. Live-verified
+  end-to-end this round: `hurt:12` → death → RESPAWN click → loading →
+  back in game at the world spawn with 20 HP.
+
+**This round's own work:** the toolchain rebuilt from scratch (rustup
+1.98.1, wasm32 target, clippy component, wasm-bindgen-cli 0.2.127 —
+the fresh container had none of them), one stale test fixed, six
+clippy warnings cleaned (the interrupted round left 4: doc-list
+indentation, an empty-line-after-doc, `text_field_h` arity, the
+`pending_edits` type_complexity — now a `PendingEdits` alias; plus the
+save.rs bool-assert trio), the wasm bundle rebuilt + glue patched +
+packs rsynced (locked 16:37 pair), and the full live E2E + VLM
+verification pass above.
+
+**Suite: 744 tests / 0 failures workspace-wide** (release mode,
+`--no-default-features` — the ALSA dev headers this container lacks
+gate only the native rodio backend, which the wasm target never
+compiles). **Clippy: 0 warnings native `--all-targets` AND 0 on the
+wasm32 `--lib` target.**
+
+### Luanti-referenced techniques
+
+- No new Luanti techniques this round. The standing citations
+  re-verified as still accurate: ClientMap split-counter culling
+  reference (`src/client/clientmap.cpp`, studied 2026-09-12) and the
+  entity-model architecture reference
+  (`docs.luanti.org/for-creators/models` + `src/client/content_cao.cpp`,
+  studied 2026-09-12). The shader-pack removal, world persistence and
+  screens were verified against minecraft.wiki (Heads-up_display,
+  Resource_pack, Java_Edition_1.3.1 §generate-structures,
+  Respawn_Anchor — live, 2026-09-14).
+
+**Not committed or pushed** — the round's work sits in the working
+tree; nothing goes to GitHub without explicit user approval, per the
+standing instruction.
+
+## 2026-09-14 (round 9) — the "Ultimate Prompt" sub-round 1: Survival HUD completeness
+
+**Task:** the first sub-round of the user's 2026-09-14 "Ultimate Prompt"
+parity pass (the full spec pasted as
+`upload/Pasted Content_1789400071647.txt`): close the Survival HUD gaps
+against the live wiki. The pre-implementation reference audit (the
+prompt's mandatory step) is
+`docs/research/round-9-survival-hud-reference-audit.md`; wiki pages
+fetched live 2026-09-14: Heads-up_display, Armor, Hunger_(effect),
+Experience.
+
+**The prompt-vs-wiki disagreement, resolved per the cross-check rule:**
+the prompt's Subsystem A table claims Creative keeps the XP bar; the
+LIVE wiki says "In Creative mode, the health, hunger, oxygen,
+experience, and armor bars are hidden." The wiki wins — the retired
+`xp_bar_only()` (creative XP + bubbles) is deleted; Creative now shows
+crosshair + hotbar + boss bar + held-item name ONLY. VLM-verified live
+(no status rows above the creative hotbar). The held-item name now
+shows in BOTH modes (vanilla renders it in creative; it is not one of
+the hidden status rows).
+
+**Landed (all with tests, all wiki-cited in the code):**
+
+- **Armor row** — above the health bar ("The armor condition bar
+  appears above the health bar if the player is wearing armor"),
+  hidden at 0 armor points (the vanilla gate), 2 points per icon +
+  half icons, driven by the new `Player::armor_points` armor attribute
+  ("the sum of the armor points of the individual pieces of armor
+  worn, and is visually represented by the armor bar"). No armor items
+  exist in the registry yet — the survival-inventory round (prompt
+  sub-round 3) registers them and fills the attribute; until then the
+  row stays hidden exactly like vanilla-with-no-armor. Disclosed.
+- **Status-effect icon rows, top-right** — 16 clean-room 9x9 icons
+  (one per engine EffectKind, index order pinned by test), the
+  wiki-verified rules: positive top row / others bottom row, sooner
+  expiring farther left, blink in the final 5 s, amplifier numeral at
+  vanilla level II+. New `effects` GUI sheet (144x9) through the full
+  pipeline (gui_art → set.rs → QuadTexture::Effects → pack-override
+  loader row).
+- **Damage flash + hearts jitter** — `Player::hurt_t` (the vanilla
+  `hurtTime` shape) set inside `damage()` (absorption-eaten hits do
+  NOT retrigger; unit-tested), decays in update(); the HUD renders the
+  red vignette (≤0.3 alpha, clean-room) and jitters the hearts row
+  while hurt / regenerating / at ≤4 HP.
+- **Hunger-effect recolor** — the drumstick row tints yellow-green +
+  jitters while the Hunger effect is active ("It also turns the
+  hunger bar a yellow-green color") through the new
+  `GuiFrame::hunger_tinted`.
+- **XP bar 182x5 vanilla-eq** — the 364x8 (4-vanilla-px) deviation
+  fixed to 364x10.
+- **HUD assembly rework** — `status_bars(&HudStatus)` (struct instead
+  of the growing arg list), the per-mode element set above, effect
+  entries mapped through `effect_icon_index`/`effect_is_positive`
+  (game-layer, bijection-tested against the icon sheet's pinned
+  names).
+
+**Tests:** +9 net (744 → the suite now carries the armor-gate census,
+the poisoned tint, the vignette, the effect-row split/sort/blink, the
+icon coverage + name-order guards, the mapping bijection, the hurt
+flash semantics; the retired `xp_bar_only` test replaced by the
+creative-hide assertion). **Clippy 0/0 both targets.** The wasm bundle
+was rebuilt + redeployed after these changes (same locked-pair
+discipline) and the live E2E re-verified: survival HUD with 10 hearts
++ hotbar + crosshair on a fresh world, creative HUD with no status
+rows, death → RESPAWN → back in game.
+
+**Deferred (documented, with reasons):** the offhand slot + armor
+items + per-piece armor points and the survival inventory screen that
+fills them (prompt sub-round 3 — needs registry additions + WGSL LUT
+resync); the vanilla integer GUI-scale model `max(1, floor(min(w/320,
+h/240)))` replacing the fractional 0.72/0.86/1.0 canvas scaling
+(prompt sub-round 6 / H); the hunger-drain gameplay system (the HUD
+currently displays the vanilla spawn 20/20; the effect recolor +
+jitter still fire); armor toughness/resistance interactions with the
+armor row.
+
+### Luanti-referenced techniques
+
+- No new Luanti techniques this round — the HUD work is vanilla-parity
+  cited entirely against the live wiki pages above. Standing citations
+  re-verified: ClientMap split-counter culling reference
+  (`src/client/clientmap.cpp`, studied 2026-09-12) and the entity-model
+  architecture reference (`docs.luanti.org/for-creators/models` +
+  `src/client/content_cao.cpp`, studied 2026-09-12).
+
+**Not committed or pushed** — the round's work sits in the working
+tree; nothing goes to GitHub without explicit user approval, per the
+standing instruction.

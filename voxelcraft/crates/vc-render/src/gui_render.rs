@@ -85,6 +85,8 @@ pub enum QuadTexture {
     Hunger,
     Armor,
     Bubbles,
+    /// Sub-round 1 (2026-09-14): the 16 status-effect icon tiles
+    Effects,
     Hotbar,
     HotbarSel,
     Dirt,
@@ -97,7 +99,7 @@ pub enum QuadTexture {
 }
 
 /// number of QuadTexture variants (bind_groups / sheet_dims slots)
-const QUAD_TEX_COUNT: usize = 11;
+const QUAD_TEX_COUNT: usize = 12;
 
 /// One textured quad. `src` is in TEXTURE pixels (integer source rect);
 /// `dst` is in UI pixels (fractional — glyph quads carry device-exact
@@ -474,6 +476,30 @@ impl GuiFrame {
         );
     }
 
+    /// Sub-round 1 (2026-09-14): the Hunger-effect hunger sprite — the
+    /// same tiles multiplied toward yellow-green (VERIFIED
+    /// minecraft.wiki/w/Hunger_(effect), live 2026-09-14: "It also turns
+    /// the hunger bar a yellow-green color").
+    pub fn hunger_tinted(
+        &mut self,
+        x: i32,
+        y: i32,
+        variant: crate::textures::gui_art::HungerVariant,
+        tint: [f32; 4],
+    ) {
+        let tile = match variant {
+            crate::textures::gui_art::HungerVariant::Empty => 0,
+            crate::textures::gui_art::HungerVariant::Full => 1,
+            crate::textures::gui_art::HungerVariant::Half => 2,
+        };
+        self.push(
+            QuadTexture::Hunger,
+            Rect::new(x, y, HUD_DST, HUD_DST),
+            Rect::new(tile * HUD_SRC, 0, HUD_SRC, HUD_SRC),
+            tint,
+        );
+    }
+
     pub fn armor(&mut self, x: i32, y: i32, variant: crate::textures::gui_art::ArmorVariant) {
         let tile = match variant {
             crate::textures::gui_art::ArmorVariant::Empty => 0,
@@ -498,6 +524,22 @@ impl GuiFrame {
             Rect::new(x, y, HUD_DST, HUD_DST),
             Rect::new(tile * HUD_SRC, 0, HUD_SRC, HUD_SRC),
             WHITE,
+        );
+    }
+
+    /// Sub-round 1 (2026-09-14): one 9x9 status-effect icon drawn
+    /// 18x18, tinted for the expiring blink (alpha 1.0 = solid).
+    /// `idx` is the effect-icon index (0..16, order = vc_gameplay
+    /// EffectKind); out-of-range draws nothing.
+    pub fn effect_icon(&mut self, x: i32, y: i32, idx: usize, alpha: f32) {
+        if idx >= crate::textures::gui_art::EFFECT_ICON_COUNT {
+            return;
+        }
+        self.push(
+            QuadTexture::Effects,
+            Rect::new(x, y, HUD_DST, HUD_DST),
+            Rect::new(idx as i32 * HUD_SRC, 0, HUD_SRC, HUD_SRC),
+            [1.0, 1.0, 1.0, alpha.clamp(0.0, 1.0)],
         );
     }
 
@@ -942,12 +984,13 @@ impl GuiRenderer {
         sampler: &wgpu::Sampler,
         set: &GuiTextureSet,
     ) -> Result<(), GuiError> {
-        let sheets: [(&crate::gui::set::SpriteSheet, QuadTexture); 8] = [
+        let sheets: [(&crate::gui::set::SpriteSheet, QuadTexture); 9] = [
             (&set.widgets, QuadTexture::Widgets),
             (&set.hearts, QuadTexture::Hearts),
             (&set.hunger, QuadTexture::Hunger),
             (&set.armor, QuadTexture::Armor),
             (&set.bubbles, QuadTexture::Bubbles),
+            (&set.effects, QuadTexture::Effects),
             (&set.hotbar_bg, QuadTexture::Hotbar),
             (&set.hotbar_sel, QuadTexture::HotbarSel),
             (&set.dirt, QuadTexture::Dirt),

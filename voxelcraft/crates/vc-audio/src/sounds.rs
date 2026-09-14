@@ -1008,6 +1008,12 @@ pub mod web_audio {
         }
     }
 
+    impl Default for WebAudioOut {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl AudioBackend for WebAudioOut {
         fn play(&self, bank: &SoundBank, slot: usize, volume: f32, pitch: f32, pan: f32) {
             let ctx_guard = self.inner.ctx.borrow();

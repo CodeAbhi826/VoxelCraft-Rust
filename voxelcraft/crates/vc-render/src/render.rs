@@ -5407,11 +5407,14 @@ fn make_fullscreen_pipe(
 }
 
 /// Choose the GPU backend on wasm by ACTUALLY requesting adapters with the
-/// same options wgpu will use later:
+/// same options wgpu will use later. Returns
+/// Some(force_fallback_adapter) when WebGPU is viable, None → GL.
+///
+/// Adapter ladder:
 ///   1. hardware adapter:  {powerPreference: 'high-performance', forceFallbackAdapter: false}
 ///   2. software adapter:  {forceFallbackAdapter: true}   (blocklisted/absent GPUs)
 ///   3. else: WebGL2 (GL backend)
-/// Returns Some(force_fallback_adapter) when WebGPU is viable, None → GL.
+///
 /// (navigator.gpu presence alone is insufficient — headless Chromium exposes
 /// the API but returns null adapters, and wgpu locks an instance to
 /// WebGPU-only mode whenever it detects the API at all.)

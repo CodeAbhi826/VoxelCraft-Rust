@@ -33,4 +33,7 @@ web-sys = { workspace = true, features = [
     "GainNode",
     "AudioDestinationNode",
     "StereoPannerNode",
+    # Sub-round 5: the underwater muffle biquad
+    "BiquadFilterNode",
+    "BiquadFilterType",
 ] }

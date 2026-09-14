@@ -48,6 +48,13 @@ pub fn family_index(f: SoundFamily) -> usize {
         SoundFamily::Glass => 6,
         SoundFamily::Wool => 7,
         SoundFamily::Water | SoundFamily::None => 8, // splash
+        // Sub-round 5: the new material classes ride the legacy slots
+        // closest to their character (the registry path never uses these)
+        SoundFamily::Gravel => 4,
+        SoundFamily::Metal => 2,
+        SoundFamily::Plant => 0,
+        SoundFamily::Chain => 2,
+        SoundFamily::NetherWood => 3,
     }
 }
 
@@ -127,11 +134,37 @@ fn clamp_amp(x: Vec<f32>) -> Vec<f32> {
 /// `variant` (0/1/2…) jitters seeds + filter cutoffs for the SECOND take of
 /// the same recipe — the registry's "multiple sound variants". `step` makes
 /// a shorter, quieter footstep take of the same material.
-fn family_recipe(f: SoundFamily, variant: u32, step: bool) -> Vec<f32> {
-    // seed spread per take; step take jitters further
-    let v = variant + if step { 5 } else { 0 };
+/// Sub-round 5: which of the five vanilla material events a take
+/// synthesizes — dig (break), the lighter mining-cadence hit, the soft
+/// step, or the heavier landing fall. Place uses the Dig take at a lower
+/// registry volume (vanilla's own approach: place IS the break sound,
+/// quieter + shorter pitch window).
+#[derive(Clone, Copy, PartialEq)]
+pub enum Take {
+    Dig,
+    Hit,
+    Step,
+    Fall,
+}
+
+fn family_recipe(f: SoundFamily, variant: u32, take: Take) -> Vec<f32> {
+    // seed spread per take; light takes jitter further
+    let v = variant
+        + match take {
+            Take::Dig => 0,
+            Take::Hit => 5,
+            Take::Step => 9,
+            Take::Fall => 13,
+        };
     let j = 1.0 + 0.14 * ((v as f32 * 1.7).sin() * 0.5); // ±14% cutoff jitter
-    let (amp, dec_scale) = if step { (0.6, 0.55) } else { (1.0, 1.0) };
+    // hit: light + short (the mining cadence); step: soft + shorter;
+    // fall: heavy + LONG (the landing thud)
+    let (amp, dec_scale) = match take {
+        Take::Dig => (1.0, 1.0),
+        Take::Hit => (0.62, 0.6),
+        Take::Step => (0.6, 0.55),
+        Take::Fall => (1.25, 1.7),
+    };
     match f {
         SoundFamily::Grass => {
             let mut g = one_pole_lp(
@@ -217,6 +250,75 @@ fn family_recipe(f: SoundFamily, variant: u32, step: bool) -> Vec<f32> {
             noise_burst((6600.0 * dec_scale) as usize, 81 + v as u64, 0.55 * amp, 0.02, 0.3 * dec_scale),
             2400.0 * j,
         )),
+        // ---- Sub-round 5: the new material classes ----
+        // gravel: crunchy mid-low noise with a loose-stone rattle
+        SoundFamily::Gravel => {
+            let raw = noise_burst((4200.0 * dec_scale) as usize, 101 + v as u64, 0.5 * amp, 0.003, 0.16 * dec_scale);
+            let mut gv = one_pole_lp(raw, 620.0 * j);
+            let mut rng = Rng::new(102 + v as u64);
+            for s in gv.iter_mut() {
+                if rng.next_f32() < 0.28 {
+                    *s *= 0.35;
+                }
+            }
+            mix_into(&mut gv, &thump(120.0 * j, 0.09 * dec_scale, 0.3 * amp), 1.0);
+            clamp_amp(gv)
+        }
+        // metal: a hard attack thump + two ringing partials (the anvil
+        // character — clean-room: decaying sine partials, no sampled
+        // resonance)
+        SoundFamily::Metal => {
+            let mut m = thump(210.0 * j, 0.16 * dec_scale, 0.5 * amp);
+            mix_into(&mut m, &ping(1560.0 * j, 0.11 * dec_scale, 0.3 * amp, 111 + v as u64), 1.0);
+            mix_into(&mut m, &ping(2340.0 / j, 0.08 * dec_scale, 0.22 * amp, 112 + v as u64), 1.0);
+            mix_into(
+                &mut m,
+                &one_pole_hp(
+                    noise_burst((900.0 * dec_scale) as usize, 113 + v as u64, 0.18 * amp, 0.001, 0.03 * dec_scale),
+                    2600.0 * j,
+                ),
+                1.0,
+            );
+            clamp_amp(m)
+        }
+        // plant: crisp short foliage snap (bamho/bush class)
+        SoundFamily::Plant => {
+            let mut p = one_pole_hp(
+                noise_burst((1600.0 * dec_scale) as usize, 121 + v as u64, 0.4 * amp, 0.001, 0.07 * dec_scale),
+                1800.0 / j,
+            );
+            mix_into(&mut p, &ping(2900.0 * j, 0.03, 0.2 * amp, 122 + v as u64), 1.0);
+            clamp_amp(p)
+        }
+        // chain: a short metallic clink (two quick partials)
+        SoundFamily::Chain => {
+            let mut c = ping(2050.0 * j, 0.05 * dec_scale, 0.4 * amp, 131 + v as u64);
+            mix_into(&mut c, &ping(3400.0 / j, 0.035 * dec_scale, 0.3 * amp, 132 + v as u64), 1.0);
+            mix_into(
+                &mut c,
+                &one_pole_hp(
+                    noise_burst((700.0 * dec_scale) as usize, 133 + v as u64, 0.22 * amp, 0.001, 0.02 * dec_scale),
+                    3000.0 * j,
+                ),
+                1.0,
+            );
+            clamp_amp(c)
+        }
+        // nether wood: the wood recipe pitched down + a hollow thump
+        // (the crimson/warped "nether_wood" class)
+        SoundFamily::NetherWood => {
+            let mut w = thump(112.0 * j, 0.17 * dec_scale, 0.55 * amp);
+            mix_into(
+                &mut w,
+                &one_pole_lp(
+                    noise_burst((1500.0 * dec_scale) as usize, 141 + v as u64, 0.3 * amp, 0.003, 0.07 * dec_scale),
+                    640.0 * j,
+                ),
+                1.0,
+            );
+            mix_into(&mut w, &ping(190.0 * j, 0.09 * dec_scale, 0.25 * amp, 142 + v as u64), 1.0);
+            clamp_amp(w)
+        }
     }
 }
 
@@ -486,6 +588,194 @@ fn music_pad(minor: bool) -> Vec<f32> {
     one_pole_lp(out, 1400.0)
 }
 
+// -------------------------------------------------- Sub-round 5 recipes --
+// clean-room synthesis for the new event classes (container, XP orb,
+// underwater, weather, music variants). shape language = the vanilla
+// event's character (creak/clunk/chirp/pad); reference facts cited per
+// recipe from minecraft.wiki (live 2026-09-15); no Mojang asset was
+// read, copied, or traced.
+
+/// wooden container OPEN: a creaky rise (the chest-lid character —
+/// rising filtered noise + a wood thump).
+fn chest_open_recipe() -> Vec<f32> {
+    let mut c = one_pole_lp(
+        noise_burst(2600, 211, 0.4, 0.12, 0.22),
+        900.0,
+    );
+    mix_into(&mut c, &thump(140.0, 0.14, 0.5), 1.0);
+    clamp_amp(c)
+}
+
+/// wooden container CLOSE: the creak in reverse + a firmer latch thump.
+fn chest_close_recipe() -> Vec<f32> {
+    let mut c = one_pole_lp(
+        noise_burst(2000, 212, 0.45, 0.01, 0.16),
+        800.0,
+    );
+    mix_into(&mut c, &thump(120.0, 0.1, 0.6), 1.0);
+    clamp_amp(c)
+}
+
+/// iron door OPEN: a heavy metal clunk-slide.
+fn iron_door_recipe() -> Vec<f32> {
+    let mut d = thump(180.0, 0.12, 0.6);
+    mix_into(&mut d, &ping(1300.0, 0.07, 0.3, 213), 1.0);
+    mix_into(&mut d, &ping(1950.0, 0.05, 0.22, 214), 1.0);
+    clamp_amp(d)
+}
+
+/// wooden door OPEN: the lighter clack.
+fn wooden_door_recipe() -> Vec<f32> {
+    let mut d = thump(160.0, 0.08, 0.5);
+    mix_into(&mut d, &ping(800.0, 0.05, 0.25, 215), 1.0);
+    clamp_amp(d)
+}
+
+/// shulker box: the peeling clatter (a quick metallic rattle).
+fn shulker_recipe() -> Vec<f32> {
+    let mut s = Vec::new();
+    for k in 0..5u32 {
+        let seg = ping(1500.0 + 260.0 * k as f32, 0.03, 0.24, 220 + k as u64);
+        mix_into(&mut s, &seg, 1.0);
+    }
+    mix_into(&mut s, &thump(200.0, 0.09, 0.35), 1.0);
+    clamp_amp(s)
+}
+
+/// entity.experience_orb.pickup — VERIFIED minecraft.wiki/w/Experience
+/// (live 2026-09-15): volume 0.1, pitch 0.55–1.25, attenuation 16. A
+/// bell-like FM chirp (carrier + a quick upward-blipped modulator).
+fn xp_orb_recipe() -> Vec<f32> {
+    let n = (0.16 * RATE as f32) as usize;
+    let mut out = Vec::with_capacity(n);
+    let mut rng = Rng::new(231);
+    let f0 = 780.0 + rng.next_f32() * 140.0;
+    for i in 0..n {
+        let t = i as f32 / RATE as f32;
+        let env = (-t * 16.0).exp();
+        // FM chirp: quick upward sweep on the modulator
+        let mod_f = 2.0 + 6.0 * (t / 0.16).min(1.0);
+        let v = (2.0 * std::f32::consts::PI * f0 * t).sin()
+            * (2.0 * std::f32::consts::PI * mod_f * t).cos();
+        out.push(v * env * 0.5);
+    }
+    clamp_amp(out)
+}
+
+/// underwater ENTER: a muffled plunge (low-passed splash).
+fn water_enter_recipe() -> Vec<f32> {
+    let mut w = one_pole_lp(
+        noise_burst(4200, 241, 0.5, 0.01, 0.3),
+        500.0,
+    );
+    mix_into(&mut w, &thump(90.0, 0.2, 0.4), 1.0);
+    clamp_amp(w)
+}
+
+/// underwater EXIT: the brighter emerge splash.
+fn water_exit_recipe() -> Vec<f32> {
+    let mut w = one_pole_lp(
+        noise_burst(3200, 242, 0.5, 0.005, 0.22),
+        1600.0,
+    );
+    mix_into(&mut w, &ping(600.0, 0.05, 0.2, 243), 1.0);
+    clamp_amp(w)
+}
+
+/// the underwater LOOP bed (one ~2 s tile, low-passed bubble wash).
+fn water_loop_recipe() -> Vec<f32> {
+    let mut w = one_pole_lp(
+        noise_burst((2.0 * RATE as f32) as usize, 244, 0.16, 0.4, 1.6),
+        380.0,
+    );
+    // slow bubble blips riding the wash
+    for k in 0..6u32 {
+        let blip = ping(300.0 + 90.0 * k as f32, 0.05, 0.08, 245 + k as u64);
+        mix_into(&mut w, &blip, 1.0);
+    }
+    clamp_amp(w)
+}
+
+/// weather.rain: a one-second rain tile (dense soft high noise) — the
+/// game layer loops it while rain is active.
+fn rain_recipe() -> Vec<f32> {
+    let mut r = one_pole_hp(
+        noise_burst(RATE as usize, 251, 0.22, 0.15, 0.85),
+        900.0,
+    );
+    r = one_pole_lp(r, 3400.0);
+    clamp_amp(r)
+}
+
+/// entity.lightning_bolt.impact: the sharp crack before the thunder
+/// roll (a hard noise snap + a sub thump).
+fn lightning_impact_recipe() -> Vec<f32> {
+    let mut l = one_pole_hp(
+        noise_burst(1400, 261, 0.8, 0.001, 0.05),
+        700.0,
+    );
+    mix_into(&mut l, &thump(60.0, 0.25, 0.7), 1.0);
+    clamp_amp(l)
+}
+
+/// music.menu: the title-screen pad (a calm major-ish drone, warmer
+/// than the gameplay pads).
+fn music_pad_menu() -> Vec<f32> {
+    let n = (6.0 * RATE as f32) as usize;
+    let mut out = vec![0.0f32; n];
+    // a soft triad-ish stack with slow tremolo
+    for (f, g) in [(196.0, 0.16), (247.0, 0.12), (294.0, 0.1), (392.0, 0.07)] {
+        let tone = ping(f, 6.0, g, 271 + f as u64);
+        mix_into(&mut out, &tone, 1.0);
+    }
+    let mut rng = Rng::new(272);
+    for s in out.iter_mut() {
+        *s *= 0.8 + 0.2 * rng.next_f32();
+    }
+    clamp_amp(out)
+}
+
+/// music.creative: a brighter, slightly faster pad (the creative-mode
+/// track character).
+fn music_pad_creative() -> Vec<f32> {
+    let n = (5.0 * RATE as f32) as usize;
+    let mut out = vec![0.0f32; n];
+    for (f, g) in [(262.0, 0.14), (330.0, 0.12), (392.0, 0.12), (523.0, 0.08)] {
+        let tone = ping(f, 5.0, g, 281 + f as u64);
+        mix_into(&mut out, &tone, 1.0);
+    }
+    clamp_amp(out)
+}
+
+/// music.under_water: a heavily muffled, slow pad (the underwater
+/// track's drowsy character).
+fn music_pad_underwater() -> Vec<f32> {
+    let n = (7.0 * RATE as f32) as usize;
+    let mut out = vec![0.0f32; n];
+    for (f, g) in [(147.0, 0.18), (185.0, 0.12), (220.0, 0.1)] {
+        let tone = ping(f, 7.0, g, 291 + f as u64);
+        mix_into(&mut out, &tone, 1.0);
+    }
+    let lp = one_pole_lp(out, 700.0);
+    clamp_amp(lp)
+}
+
+/// music.nether: a dark, dissonant-leaning pad (the nether track's
+/// ominous character).
+fn music_pad_nether() -> Vec<f32> {
+    let n = (6.0 * RATE as f32) as usize;
+    let mut out = vec![0.0f32; n];
+    for (f, g) in [(139.0, 0.17), (208.0, 0.11), (277.0, 0.09), (415.0, 0.05)] {
+        let tone = ping(f, 6.0, g, 301 + f as u64);
+        mix_into(&mut out, &tone, 1.0);
+    }
+    let mut rng = Rng::new(302);
+    for s in out.iter_mut() {
+        *s *= 0.75 + 0.25 * rng.next_f32();
+    }
+    clamp_amp(out)
+}
+
 impl SoundBank {
     /// synthesize every recipe the registry references (plus the legacy
     /// family-indexed slots at 0..9 for old call paths during migration)
@@ -504,8 +794,17 @@ impl SoundBank {
                 SoundFamily::Glass => "glass",
                 SoundFamily::Wool => "wool",
                 SoundFamily::Water | SoundFamily::None => "water",
+                SoundFamily::Gravel => "gravel",
+                SoundFamily::Metal => "metal",
+                SoundFamily::Plant => "plant",
+                SoundFamily::Chain => "chain",
+                SoundFamily::NetherWood => "nether_wood",
             }
         };
+        // Sub-round 5: the fourteen LAND families (water keeps its splash
+        // special). Each gets the five vanilla material-event takes:
+        // two dig/break variants, a place take, the light mining-cadence
+        // hit, the soft step, and the heavy fall.
         let families = [
             SoundFamily::Grass,
             SoundFamily::Dirt,
@@ -515,16 +814,25 @@ impl SoundBank {
             SoundFamily::Leaves,
             SoundFamily::Glass,
             SoundFamily::Wool,
-            SoundFamily::Water,
+            SoundFamily::Gravel,
+            SoundFamily::Metal,
+            SoundFamily::Plant,
+            SoundFamily::Chain,
+            SoundFamily::NetherWood,
         ];
-        // dig/place variants + steps per family
         for f in families {
             for v in 0..2 {
                 names.push(format!("dig/{}{}", fam_name(f), v + 1));
-                data.push(family_recipe(f, v, false));
+                data.push(family_recipe(f, v, Take::Dig));
             }
+            names.push(format!("place/{}", fam_name(f)));
+            data.push(family_recipe(f, 2, Take::Dig));
+            names.push(format!("hit/{}", fam_name(f)));
+            data.push(family_recipe(f, 3, Take::Hit));
             names.push(format!("step/{}", fam_name(f)));
-            data.push(family_recipe(f, 0, true));
+            data.push(family_recipe(f, 0, Take::Step));
+            names.push(format!("fall/{}", fam_name(f)));
+            data.push(family_recipe(f, 1, Take::Fall));
         }
         // one-off recipes
         for (n, d) in [
@@ -555,6 +863,24 @@ impl SoundBank {
             ("entity/pig/ambient", pig_recipe()),
             ("entity/sheep/ambient", sheep_recipe()),
             ("entity/chicken/ambient", chicken_recipe()),
+            // ---- Sub-round 5: containers, XP orb, underwater, weather,
+            // music variants ----
+            ("block/chest_open", chest_open_recipe()),
+            ("block/chest_close", chest_close_recipe()),
+            ("block/iron_door", iron_door_recipe()),
+            ("block/wooden_door", wooden_door_recipe()),
+            ("block/shulker", shulker_recipe()),
+            ("entity/xp_orb", xp_orb_recipe()),
+            ("ambient/water_enter", water_enter_recipe()),
+            ("ambient/water_exit", water_exit_recipe()),
+            ("ambient/water_loop", water_loop_recipe()),
+            ("weather/rain", rain_recipe()),
+            ("weather/rain_above", rain_recipe()),
+            ("ambient/lightning_impact", lightning_impact_recipe()),
+            ("music/pad_menu", music_pad_menu()),
+            ("music/pad_creative", music_pad_creative()),
+            ("music/pad_underwater", music_pad_underwater()),
+            ("music/pad_nether", music_pad_nether()),
         ] {
             names.push(n.into());
             data.push(d);
@@ -629,6 +955,11 @@ pub enum SoundCategory {
     Neutral,
     Players,
     Ambient,
+    /// Sub-round 5: vanilla's tenth category ("Voice/Speech", added
+    /// 16w02a = 1.9; the narrator/maps lane — no engine events ride it
+    /// yet, but the Music & Sound screen carries its slider like
+    /// vanilla's)
+    Voice,
 }
 
 impl SoundCategory {
@@ -643,6 +974,7 @@ impl SoundCategory {
             "neutral" => Self::Neutral,
             "players" => Self::Players,
             "ambient" => Self::Ambient,
+            "voice" => Self::Voice,
             _ => return None,
         })
     }
@@ -657,6 +989,7 @@ impl SoundCategory {
             Self::Neutral => "neutral",
             Self::Players => "players",
             Self::Ambient => "ambient",
+            Self::Voice => "voice",
         }
     }
 }
@@ -779,58 +1112,124 @@ impl SoundRegistry {
 /// clean-room sound registry (vanilla sounds.json field shape; every
 /// recipe is our own synthesis). Generated, not copied.
 pub const SOUNDS_JSON: &str = r##"{
-  "block.grass.dig":     {"category": "blocks", "pitch": [0.8, 1.1], "sounds": [
-    {"name": "dig/grass1", "weight": 3}, {"name": "dig/grass2", "weight": 1}]},
-  "block.grass.step":    {"category": "blocks", "volume": 0.35, "pitch": [0.9, 1.05], "sounds": [{"name": "step/grass"}]},
-  "block.dirt.dig":      {"category": "blocks", "pitch": [0.8, 1.1], "sounds": [
-    {"name": "dig/dirt1", "weight": 3}, {"name": "dig/dirt2", "weight": 1}]},
-  "block.dirt.step":     {"category": "blocks", "volume": 0.35, "pitch": [0.9, 1.05], "sounds": [{"name": "step/dirt"}]},
-  "block.stone.dig":     {"category": "blocks", "pitch": [0.8, 1.0], "sounds": [
-    {"name": "dig/stone1", "weight": 2}, {"name": "dig/stone2", "weight": 2}]},
-  "block.stone.step":    {"category": "blocks", "volume": 0.3, "pitch": [0.9, 1.05], "sounds": [{"name": "step/stone"}]},
-  "block.wood.dig":      {"category": "blocks", "pitch": [0.85, 1.1], "sounds": [
-    {"name": "dig/wood1", "weight": 3}, {"name": "dig/wood2", "weight": 1}]},
-  "block.wood.step":     {"category": "blocks", "volume": 0.35, "pitch": [0.9, 1.05], "sounds": [{"name": "step/wood"}]},
-  "block.sand.dig":      {"category": "blocks", "pitch": [0.9, 1.15], "sounds": [
-    {"name": "dig/sand1", "weight": 3}, {"name": "dig/sand2", "weight": 1}]},
-  "block.sand.step":     {"category": "blocks", "volume": 0.3, "pitch": [0.9, 1.1], "sounds": [{"name": "step/sand"}]},
-  "block.leaves.dig":    {"category": "blocks", "pitch": [0.9, 1.15], "sounds": [
-    {"name": "dig/leaves1", "weight": 3}, {"name": "dig/leaves2", "weight": 1}]},
-  "block.leaves.step":   {"category": "blocks", "volume": 0.32, "pitch": [0.95, 1.1], "sounds": [{"name": "step/leaves"}]},
-  "block.glass.break":   {"category": "blocks", "volume": 0.9, "pitch": [0.85, 1.1], "sounds": [
-    {"name": "dig/glass1", "weight": 2}, {"name": "dig/glass2", "weight": 1}]},
-  "block.glass.step":    {"category": "blocks", "volume": 0.3, "pitch": [0.95, 1.1], "sounds": [{"name": "step/glass"}]},
-  "block.wool.dig":      {"category": "blocks", "pitch": [0.85, 1.05], "sounds": [
-    {"name": "dig/wool1", "weight": 3}, {"name": "dig/wool2", "weight": 1}]},
-  "block.wool.step":     {"category": "blocks", "volume": 0.32, "pitch": [0.9, 1.05], "sounds": [{"name": "step/wool"}]},
-  "block.water.splash":  {"category": "blocks", "volume": 0.8, "pitch": [0.8, 1.2], "attenuation": 12, "sounds": [
-    {"name": "dig/water1", "weight": 2}, {"name": "dig/water2", "weight": 1}]},
-  "block.water.step":    {"category": "blocks", "volume": 0.4, "pitch": [0.8, 1.2], "sounds": [{"name": "step/water"}]},
-  "block.lever.click":   {"category": "blocks", "volume": 0.6, "pitch": [0.9, 1.1], "sounds": [{"name": "block/lever"}]},
-  "ui.click":            {"category": "players", "volume": 0.35, "pitch": [1.5, 1.7], "sounds": [{"name": "ui/click"}]},
-  "entity.item.pickup":  {"category": "players", "volume": 0.45, "pitch": [0.9, 1.3], "sounds": [{"name": "entity/item/pickup"}]},
-  "ambient.eerie":       {"category": "ambient", "volume": 0.55, "pitch": [0.85, 1.3], "attenuation": 0, "sounds": [{"name": "ambient/eerie"}]},
-  "ambient.thunder":     {"category": "ambient", "volume": 1.0, "pitch": [0.9, 1.1], "attenuation": 0, "sounds": [{"name": "ambient/thunder"}]},
-  "item.hoe.till":       {"category": "blocks", "volume": 0.8, "pitch": [0.9, 1.15], "attenuation": 12, "sounds": [{"name": "item/hoe/till"}]},
-  "music.pad.day":       {"category": "music", "volume": 0.5, "sounds": [{"name": "music/pad_day", "stream": true}]},
-  "music.pad.night":     {"category": "music", "volume": 0.5, "sounds": [{"name": "music/pad_night", "stream": true}]},
+  "block.grass.break": {"category": "blocks", "pitch": [0.8, 1.1], "sounds": [{"name": "dig/grass1", "weight": 2}, {"name": "dig/grass2", "weight": 1}]},
+  "block.grass.place": {"category": "blocks", "volume": 0.8, "pitch": [0.9, 1.1], "sounds": [{"name": "place/grass"}]},
+  "block.grass.hit": {"category": "blocks", "volume": 0.32, "pitch": [0.85, 1.15], "sounds": [{"name": "hit/grass"}]},
+  "block.grass.step": {"category": "blocks", "volume": 0.3, "pitch": [0.9, 1.05], "sounds": [{"name": "step/grass"}]},
+  "block.grass.fall": {"category": "blocks", "volume": 0.6, "pitch": [0.85, 1.05], "sounds": [{"name": "fall/grass"}]},
+  "block.dirt.break": {"category": "blocks", "pitch": [0.8, 1.1], "sounds": [{"name": "dig/dirt1", "weight": 2}, {"name": "dig/dirt2", "weight": 1}]},
+  "block.dirt.place": {"category": "blocks", "volume": 0.8, "pitch": [0.9, 1.1], "sounds": [{"name": "place/dirt"}]},
+  "block.dirt.hit": {"category": "blocks", "volume": 0.32, "pitch": [0.85, 1.15], "sounds": [{"name": "hit/dirt"}]},
+  "block.dirt.step": {"category": "blocks", "volume": 0.3, "pitch": [0.9, 1.05], "sounds": [{"name": "step/dirt"}]},
+  "block.dirt.fall": {"category": "blocks", "volume": 0.6, "pitch": [0.85, 1.05], "sounds": [{"name": "fall/dirt"}]},
+  "block.stone.break": {"category": "blocks", "pitch": [0.8, 1.0], "sounds": [{"name": "dig/stone1", "weight": 2}, {"name": "dig/stone2", "weight": 1}]},
+  "block.stone.place": {"category": "blocks", "volume": 0.8, "pitch": [0.9, 1.1], "sounds": [{"name": "place/stone"}]},
+  "block.stone.hit": {"category": "blocks", "volume": 0.32, "pitch": [0.85, 1.15], "sounds": [{"name": "hit/stone"}]},
+  "block.stone.step": {"category": "blocks", "volume": 0.3, "pitch": [0.9, 1.05], "sounds": [{"name": "step/stone"}]},
+  "block.stone.fall": {"category": "blocks", "volume": 0.6, "pitch": [0.85, 1.05], "sounds": [{"name": "fall/stone"}]},
+  "block.wood.break": {"category": "blocks", "pitch": [0.85, 1.1], "sounds": [{"name": "dig/wood1", "weight": 2}, {"name": "dig/wood2", "weight": 1}]},
+  "block.wood.place": {"category": "blocks", "volume": 0.8, "pitch": [0.9, 1.1], "sounds": [{"name": "place/wood"}]},
+  "block.wood.hit": {"category": "blocks", "volume": 0.32, "pitch": [0.85, 1.15], "sounds": [{"name": "hit/wood"}]},
+  "block.wood.step": {"category": "blocks", "volume": 0.3, "pitch": [0.9, 1.05], "sounds": [{"name": "step/wood"}]},
+  "block.wood.fall": {"category": "blocks", "volume": 0.6, "pitch": [0.85, 1.05], "sounds": [{"name": "fall/wood"}]},
+  "block.sand.break": {"category": "blocks", "pitch": [0.9, 1.15], "sounds": [{"name": "dig/sand1", "weight": 2}, {"name": "dig/sand2", "weight": 1}]},
+  "block.sand.place": {"category": "blocks", "volume": 0.8, "pitch": [0.9, 1.1], "sounds": [{"name": "place/sand"}]},
+  "block.sand.hit": {"category": "blocks", "volume": 0.32, "pitch": [0.85, 1.15], "sounds": [{"name": "hit/sand"}]},
+  "block.sand.step": {"category": "blocks", "volume": 0.3, "pitch": [0.9, 1.05], "sounds": [{"name": "step/sand"}]},
+  "block.sand.fall": {"category": "blocks", "volume": 0.6, "pitch": [0.85, 1.05], "sounds": [{"name": "fall/sand"}]},
+  "block.leaves.break": {"category": "blocks", "pitch": [0.9, 1.15], "sounds": [{"name": "dig/leaves1", "weight": 2}, {"name": "dig/leaves2", "weight": 1}]},
+  "block.leaves.place": {"category": "blocks", "volume": 0.8, "pitch": [0.9, 1.1], "sounds": [{"name": "place/leaves"}]},
+  "block.leaves.hit": {"category": "blocks", "volume": 0.32, "pitch": [0.85, 1.15], "sounds": [{"name": "hit/leaves"}]},
+  "block.leaves.step": {"category": "blocks", "volume": 0.3, "pitch": [0.9, 1.05], "sounds": [{"name": "step/leaves"}]},
+  "block.leaves.fall": {"category": "blocks", "volume": 0.6, "pitch": [0.85, 1.05], "sounds": [{"name": "fall/leaves"}]},
+  "block.glass.break": {"category": "blocks", "pitch": [0.85, 1.1], "sounds": [{"name": "dig/glass1", "weight": 2}, {"name": "dig/glass2", "weight": 1}]},
+  "block.glass.place": {"category": "blocks", "volume": 0.8, "pitch": [0.9, 1.1], "sounds": [{"name": "place/glass"}]},
+  "block.glass.hit": {"category": "blocks", "volume": 0.32, "pitch": [0.85, 1.15], "sounds": [{"name": "hit/glass"}]},
+  "block.glass.step": {"category": "blocks", "volume": 0.3, "pitch": [0.9, 1.05], "sounds": [{"name": "step/glass"}]},
+  "block.glass.fall": {"category": "blocks", "volume": 0.6, "pitch": [0.85, 1.05], "sounds": [{"name": "fall/glass"}]},
+  "block.wool.break": {"category": "blocks", "pitch": [0.85, 1.05], "sounds": [{"name": "dig/wool1", "weight": 2}, {"name": "dig/wool2", "weight": 1}]},
+  "block.wool.place": {"category": "blocks", "volume": 0.8, "pitch": [0.9, 1.1], "sounds": [{"name": "place/wool"}]},
+  "block.wool.hit": {"category": "blocks", "volume": 0.32, "pitch": [0.85, 1.15], "sounds": [{"name": "hit/wool"}]},
+  "block.wool.step": {"category": "blocks", "volume": 0.3, "pitch": [0.9, 1.05], "sounds": [{"name": "step/wool"}]},
+  "block.wool.fall": {"category": "blocks", "volume": 0.6, "pitch": [0.85, 1.05], "sounds": [{"name": "fall/wool"}]},
+  "block.gravel.break": {"category": "blocks", "pitch": [0.85, 1.1], "sounds": [{"name": "dig/gravel1", "weight": 2}, {"name": "dig/gravel2", "weight": 1}]},
+  "block.gravel.place": {"category": "blocks", "volume": 0.8, "pitch": [0.9, 1.1], "sounds": [{"name": "place/gravel"}]},
+  "block.gravel.hit": {"category": "blocks", "volume": 0.32, "pitch": [0.85, 1.15], "sounds": [{"name": "hit/gravel"}]},
+  "block.gravel.step": {"category": "blocks", "volume": 0.3, "pitch": [0.9, 1.05], "sounds": [{"name": "step/gravel"}]},
+  "block.gravel.fall": {"category": "blocks", "volume": 0.6, "pitch": [0.85, 1.05], "sounds": [{"name": "fall/gravel"}]},
+  "block.metal.break": {"category": "blocks", "pitch": [0.9, 1.1], "sounds": [{"name": "dig/metal1", "weight": 2}, {"name": "dig/metal2", "weight": 1}]},
+  "block.metal.place": {"category": "blocks", "volume": 0.8, "pitch": [0.9, 1.1], "sounds": [{"name": "place/metal"}]},
+  "block.metal.hit": {"category": "blocks", "volume": 0.32, "pitch": [0.85, 1.15], "sounds": [{"name": "hit/metal"}]},
+  "block.metal.step": {"category": "blocks", "volume": 0.3, "pitch": [0.9, 1.05], "sounds": [{"name": "step/metal"}]},
+  "block.metal.fall": {"category": "blocks", "volume": 0.6, "pitch": [0.85, 1.05], "sounds": [{"name": "fall/metal"}]},
+  "block.plant.break": {"category": "blocks", "pitch": [0.9, 1.15], "sounds": [{"name": "dig/plant1", "weight": 2}, {"name": "dig/plant2", "weight": 1}]},
+  "block.plant.place": {"category": "blocks", "volume": 0.8, "pitch": [0.9, 1.1], "sounds": [{"name": "place/plant"}]},
+  "block.plant.hit": {"category": "blocks", "volume": 0.32, "pitch": [0.85, 1.15], "sounds": [{"name": "hit/plant"}]},
+  "block.plant.step": {"category": "blocks", "volume": 0.3, "pitch": [0.9, 1.05], "sounds": [{"name": "step/plant"}]},
+  "block.plant.fall": {"category": "blocks", "volume": 0.6, "pitch": [0.85, 1.05], "sounds": [{"name": "fall/plant"}]},
+  "block.chain.break": {"category": "blocks", "pitch": [0.9, 1.1], "sounds": [{"name": "dig/chain1", "weight": 2}, {"name": "dig/chain2", "weight": 1}]},
+  "block.chain.place": {"category": "blocks", "volume": 0.8, "pitch": [0.9, 1.1], "sounds": [{"name": "place/chain"}]},
+  "block.chain.hit": {"category": "blocks", "volume": 0.32, "pitch": [0.85, 1.15], "sounds": [{"name": "hit/chain"}]},
+  "block.chain.step": {"category": "blocks", "volume": 0.3, "pitch": [0.9, 1.05], "sounds": [{"name": "step/chain"}]},
+  "block.chain.fall": {"category": "blocks", "volume": 0.6, "pitch": [0.85, 1.05], "sounds": [{"name": "fall/chain"}]},
+  "block.nether_wood.break": {"category": "blocks", "pitch": [0.85, 1.05], "sounds": [{"name": "dig/nether_wood1", "weight": 2}, {"name": "dig/nether_wood2", "weight": 1}]},
+  "block.nether_wood.place": {"category": "blocks", "volume": 0.8, "pitch": [0.9, 1.1], "sounds": [{"name": "place/nether_wood"}]},
+  "block.nether_wood.hit": {"category": "blocks", "volume": 0.32, "pitch": [0.85, 1.15], "sounds": [{"name": "hit/nether_wood"}]},
+  "block.nether_wood.step": {"category": "blocks", "volume": 0.3, "pitch": [0.9, 1.05], "sounds": [{"name": "step/nether_wood"}]},
+  "block.nether_wood.fall": {"category": "blocks", "volume": 0.6, "pitch": [0.85, 1.05], "sounds": [{"name": "fall/nether_wood"}]},
+  "block.water.splash": {"category": "blocks", "volume": 0.8, "pitch": [0.8, 1.2], "attenuation": 12, "sounds": [{"name": "dig/water1", "weight": 2}, {"name": "dig/water2", "weight": 1}]},
+  "block.water.step": {"category": "blocks", "volume": 0.4, "pitch": [0.8, 1.2], "sounds": [{"name": "step/water"}]},
+  "block.lever.click": {"category": "blocks", "volume": 0.6, "pitch": [0.9, 1.1], "sounds": [{"name": "block/lever"}]},
+  "ui.click": {"category": "players", "volume": 0.35, "pitch": [1.5, 1.7], "sounds": [{"name": "ui/click"}]},
+  "entity.item.pickup": {"category": "players", "volume": 0.45, "pitch": [0.9, 1.3], "sounds": [{"name": "entity/item/pickup"}]},
+  "ambient.eerie": {"category": "ambient", "volume": 0.55, "pitch": [0.85, 1.3], "attenuation": 0, "sounds": [{"name": "ambient/eerie"}]},
+  "ambient.thunder": {"category": "weather", "volume": 1.0, "pitch": [0.9, 1.1], "attenuation": 0, "sounds": [{"name": "ambient/thunder"}]},
+  "item.hoe.till": {"category": "blocks", "volume": 0.8, "pitch": [0.9, 1.15], "attenuation": 12, "sounds": [{"name": "item/hoe/till"}]},
+  "music.pad.day": {"category": "music", "volume": 0.5, "sounds": [{"name": "music/pad_day", "stream": true}]},
+  "music.pad.night": {"category": "music", "volume": 0.5, "sounds": [{"name": "music/pad_night", "stream": true}]},
   "block.brewing_stand.bubble": {"category": "blocks", "volume": 0.7, "pitch": [0.9, 1.15], "attenuation": 12, "sounds": [{"name": "block/brewing_bubble"}]},
   "entity.generic.drink": {"category": "players", "volume": 0.6, "pitch": [0.9, 1.1], "sounds": [{"name": "entity/drink"}]},
-  "liquid.splash":       {"category": "blocks", "volume": 0.6, "pitch": [0.9, 1.2], "attenuation": 12, "sounds": [{"name": "liquid/splash"}]},
+  "liquid.splash": {"category": "blocks", "volume": 0.6, "pitch": [0.9, 1.2], "attenuation": 12, "sounds": [{"name": "liquid/splash"}]},
   "block.enchantment_table.use": {"category": "blocks", "volume": 0.8, "pitch": [0.9, 1.1], "attenuation": 12, "sounds": [{"name": "block/enchant_use"}]},
-  "entity.player.levelup": {"category": "players", "volume": 0.6, "pitch": [0.95, 1.1], "sounds": [{"name": "entity/levelup"}]},
+  "entity.player.levelup": {"category": "players", "volume": 0.75, "pitch": [1.0, 1.0], "sounds": [{"name": "entity/levelup"}]},
   "entity.villager.ambient": {"category": "neutral", "volume": 0.55, "pitch": [0.85, 1.15], "attenuation": 12, "sounds": [{"name": "entity/villager_ambient"}]},
-  "entity.villager.trade":  {"category": "neutral", "volume": 0.7, "pitch": [0.9, 1.1], "attenuation": 12, "sounds": [{"name": "entity/villager_trade"}]},
-  "entity.player.hurt":     {"category": "players", "volume": 0.8, "pitch": [0.9, 1.15], "sounds": [{"name": "entity/player/hurt"}]},
-  "entity.zombie.ambient":  {"category": "hostile", "volume": 0.6, "pitch": [0.8, 1.1], "attenuation": 14, "sounds": [{"name": "entity/zombie/ambient"}]},
-  "entity.generic.death":   {"category": "hostile", "volume": 0.7, "pitch": [0.85, 1.1], "attenuation": 14, "sounds": [{"name": "entity/generic/death"}]},
+  "entity.villager.trade": {"category": "neutral", "volume": 0.7, "pitch": [0.9, 1.1], "attenuation": 12, "sounds": [{"name": "entity/villager_trade"}]},
+  "entity.player.hurt": {"category": "players", "volume": 0.8, "pitch": [0.9, 1.15], "sounds": [{"name": "entity/player/hurt"}]},
+  "entity.zombie.ambient": {"category": "hostile", "volume": 0.6, "pitch": [0.8, 1.1], "attenuation": 14, "sounds": [{"name": "entity/zombie/ambient"}]},
+  "entity.generic.death": {"category": "hostile", "volume": 0.7, "pitch": [0.85, 1.1], "attenuation": 14, "sounds": [{"name": "entity/generic/death"}]},
   "entity.creeper.priming": {"category": "hostile", "volume": 0.9, "pitch": [1.0, 1.0], "attenuation": 16, "sounds": [{"name": "entity/creeper/priming"}]},
   "entity.generic.explode": {"category": "hostile", "volume": 1.0, "pitch": [0.9, 1.1], "attenuation": 24, "sounds": [{"name": "entity/explode"}]},
-  "entity.skeleton.shoot":  {"category": "hostile", "volume": 0.6, "pitch": [0.9, 1.1], "attenuation": 16, "sounds": [{"name": "entity/skeleton/shoot"}]},
-  "entity.cow.ambient":     {"category": "neutral", "volume": 0.55, "pitch": [0.9, 1.1], "attenuation": 14, "sounds": [{"name": "entity/cow/ambient"}]},
-  "entity.pig.ambient":     {"category": "neutral", "volume": 0.55, "pitch": [0.9, 1.1], "attenuation": 14, "sounds": [{"name": "entity/pig/ambient"}]},
-  "entity.sheep.ambient":   {"category": "neutral", "volume": 0.55, "pitch": [0.9, 1.1], "attenuation": 14, "sounds": [{"name": "entity/sheep/ambient"}]},
-  "entity.chicken.ambient": {"category": "neutral", "volume": 0.5, "pitch": [0.95, 1.15], "attenuation": 12, "sounds": [{"name": "entity/chicken/ambient"}]}
+  "entity.skeleton.shoot": {"category": "hostile", "volume": 0.6, "pitch": [0.9, 1.1], "attenuation": 16, "sounds": [{"name": "entity/skeleton/shoot"}]},
+  "entity.cow.ambient": {"category": "neutral", "volume": 0.55, "pitch": [0.9, 1.1], "attenuation": 14, "sounds": [{"name": "entity/cow/ambient"}]},
+  "entity.pig.ambient": {"category": "neutral", "volume": 0.55, "pitch": [0.9, 1.1], "attenuation": 14, "sounds": [{"name": "entity/pig/ambient"}]},
+  "entity.sheep.ambient": {"category": "neutral", "volume": 0.55, "pitch": [0.9, 1.1], "attenuation": 14, "sounds": [{"name": "entity/sheep/ambient"}]},
+  "entity.chicken.ambient": {"category": "neutral", "volume": 0.5, "pitch": [0.95, 1.15], "attenuation": 12, "sounds": [{"name": "entity/chicken/ambient"}]},
+  "block.chest.open": {"category": "blocks", "volume": 0.7, "pitch": [0.9, 1.0], "attenuation": 12, "sounds": [{"name": "block/chest_open"}]},
+  "block.chest.close": {"category": "blocks", "volume": 0.7, "pitch": [0.9, 1.0], "attenuation": 12, "sounds": [{"name": "block/chest_close"}]},
+  "block.ender_chest.open": {"category": "blocks", "volume": 0.6, "pitch": [1.1, 1.3], "attenuation": 12, "sounds": [{"name": "block/chest_open"}]},
+  "block.ender_chest.close": {"category": "blocks", "volume": 0.6, "pitch": [1.1, 1.3], "attenuation": 12, "sounds": [{"name": "block/chest_close"}]},
+  "block.barrel.open": {"category": "blocks", "volume": 0.7, "pitch": [0.9, 1.0], "attenuation": 12, "sounds": [{"name": "block/chest_open"}]},
+  "block.barrel.close": {"category": "blocks", "volume": 0.7, "pitch": [0.9, 1.0], "attenuation": 12, "sounds": [{"name": "block/chest_close"}]},
+  "block.shulker_box.open": {"category": "blocks", "volume": 0.6, "pitch": [0.9, 1.1], "attenuation": 12, "sounds": [{"name": "block/shulker"}]},
+  "block.shulker_box.close": {"category": "blocks", "volume": 0.6, "pitch": [0.8, 1.0], "attenuation": 12, "sounds": [{"name": "block/shulker"}]},
+  "block.iron_door.open": {"category": "blocks", "volume": 0.7, "pitch": [0.9, 1.0], "attenuation": 12, "sounds": [{"name": "block/iron_door"}]},
+  "block.iron_door.close": {"category": "blocks", "volume": 0.7, "pitch": [0.85, 0.95], "attenuation": 12, "sounds": [{"name": "block/iron_door"}]},
+  "block.wooden_door.open": {"category": "blocks", "volume": 0.7, "pitch": [0.9, 1.0], "attenuation": 12, "sounds": [{"name": "block/wooden_door"}]},
+  "block.wooden_door.close": {"category": "blocks", "volume": 0.7, "pitch": [0.85, 0.95], "attenuation": 12, "sounds": [{"name": "block/wooden_door"}]},
+  "entity.experience_orb.pickup": {"category": "players", "volume": 0.35, "pitch": [0.55, 1.25], "attenuation": 16, "sounds": [{"name": "entity/xp_orb"}]},
+  "ambient.cave": {"category": "ambient", "volume": 0.6, "pitch": [0.85, 1.3], "attenuation": 0, "sounds": [{"name": "ambient/eerie"}]},
+  "ambient.underwater.enter": {"category": "weather", "volume": 0.6, "pitch": [0.9, 1.1], "attenuation": 0, "sounds": [{"name": "ambient/water_enter"}]},
+  "ambient.underwater.exit": {"category": "weather", "volume": 0.6, "pitch": [0.9, 1.1], "attenuation": 0, "sounds": [{"name": "ambient/water_exit"}]},
+  "ambient.underwater.loop": {"category": "ambient", "volume": 0.4, "pitch": [0.95, 1.05], "attenuation": 0, "sounds": [{"name": "ambient/water_loop", "stream": true}]},
+  "weather.rain": {"category": "weather", "volume": 0.35, "pitch": [0.95, 1.05], "attenuation": 0, "sounds": [{"name": "weather/rain"}]},
+  "weather.rain.above": {"category": "weather", "volume": 0.28, "pitch": [0.95, 1.05], "attenuation": 0, "sounds": [{"name": "weather/rain_above"}]},
+  "entity.lightning_bolt.thunder": {"category": "weather", "volume": 1.0, "pitch": [0.9, 1.1], "attenuation": 0, "sounds": [{"name": "ambient/thunder"}]},
+  "entity.lightning_bolt.impact": {"category": "weather", "volume": 0.9, "pitch": [0.9, 1.1], "attenuation": 0, "sounds": [{"name": "ambient/lightning_impact"}]},
+  "music.menu": {"category": "music", "volume": 0.5, "sounds": [{"name": "music/pad_menu", "stream": true}]},
+  "music.game": {"category": "music", "volume": 0.5, "sounds": [{"name": "music/pad_day", "stream": true}]},
+  "music.creative": {"category": "music", "volume": 0.5, "sounds": [{"name": "music/pad_creative", "stream": true}]},
+  "music.under_water": {"category": "music", "volume": 0.5, "sounds": [{"name": "music/pad_underwater", "stream": true}]},
+  "music.nether": {"category": "music", "volume": 0.5, "sounds": [{"name": "music/pad_nether", "stream": true}]}
 }"##;
 
 /// distance attenuation + stereo pan for one positioned sound relative to
@@ -862,48 +1261,55 @@ pub fn spatialize(
     (vol, d.clamp(-0.8, 0.8))
 }
 
-/// map a block SoundFamily to its registry event: dig (break/place) or
-/// step (footsteps). Glass has no "dig" in vanilla — it breaks; water
-/// has splash. This is the migration bridge from family-based call sites
-/// to the §21 event system.
-pub fn family_event(f: SoundFamily, dig: bool) -> &'static str {
-    match f {
-        SoundFamily::Grass => dig_or_step(dig, "grass"),
-        SoundFamily::Dirt => dig_or_step(dig, "dirt"),
-        SoundFamily::Stone => dig_or_step(dig, "stone"),
-        SoundFamily::Wood => dig_or_step(dig, "wood"),
-        SoundFamily::Sand => dig_or_step(dig, "sand"),
-        SoundFamily::Leaves => dig_or_step(dig, "leaves"),
-        SoundFamily::Glass => {
-            if dig {
-                "block.glass.break"
-            } else {
-                "block.glass.step"
-            }
-        }
-        SoundFamily::Wool => dig_or_step(dig, "wool"),
-        SoundFamily::Water | SoundFamily::None => "block.water.splash",
-    }
+/// Sub-round 5 (2026-09-15): the five vanilla material events, mapped
+/// from a block SoundFamily. VERIFIED structure against vanilla 1.16.5
+/// sounds.json (minecraft.wiki/w/Sounds.json, live 2026-09-15): every
+/// material class carries block.<mat>.break / .place / .hit / .step /
+/// .fall. Glass breaks (no plain dig); water splashes.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum FamilyEvent {
+    Break,
+    Place,
+    Hit,
+    Step,
+    Fall,
 }
 
-fn dig_or_step(dig: bool, fam: &str) -> &'static str {
-    match (dig, fam) {
-        (true, "grass") => "block.grass.dig",
-        (false, "grass") => "block.grass.step",
-        (true, "dirt") => "block.dirt.dig",
-        (false, "dirt") => "block.dirt.step",
-        (true, "stone") => "block.stone.dig",
-        (false, "stone") => "block.stone.step",
-        (true, "wood") => "block.wood.dig",
-        (false, "wood") => "block.wood.step",
-        (true, "sand") => "block.sand.dig",
-        (false, "sand") => "block.sand.step",
-        (true, "leaves") => "block.leaves.dig",
-        (false, "leaves") => "block.leaves.step",
-        (true, "wool") => "block.wool.dig",
-        (false, "wool") => "block.wool.step",
-        _ => "block.stone.dig",
+/// map a block SoundFamily + event kind to the registry event name
+/// (static strings — no allocation on the hot footstep path).
+pub fn family_event(f: SoundFamily, kind: FamilyEvent) -> &'static str {
+    use FamilyEvent as FE;
+    use SoundFamily as SF;
+    // rows: (family, break, place, hit, step, fall)
+    const TABLE: &[(SF, &str, &str, &str, &str, &str)] = &[
+        (SF::Grass, "block.grass.break", "block.grass.place", "block.grass.hit", "block.grass.step", "block.grass.fall"),
+        (SF::Dirt, "block.dirt.break", "block.dirt.place", "block.dirt.hit", "block.dirt.step", "block.dirt.fall"),
+        (SF::Stone, "block.stone.break", "block.stone.place", "block.stone.hit", "block.stone.step", "block.stone.fall"),
+        (SF::Wood, "block.wood.break", "block.wood.place", "block.wood.hit", "block.wood.step", "block.wood.fall"),
+        (SF::Sand, "block.sand.break", "block.sand.place", "block.sand.hit", "block.sand.step", "block.sand.fall"),
+        (SF::Leaves, "block.leaves.break", "block.leaves.place", "block.leaves.hit", "block.leaves.step", "block.leaves.fall"),
+        (SF::Glass, "block.glass.break", "block.glass.place", "block.glass.hit", "block.glass.step", "block.glass.fall"),
+        (SF::Wool, "block.wool.break", "block.wool.place", "block.wool.hit", "block.wool.step", "block.wool.fall"),
+        (SF::Gravel, "block.gravel.break", "block.gravel.place", "block.gravel.hit", "block.gravel.step", "block.gravel.fall"),
+        (SF::Metal, "block.metal.break", "block.metal.place", "block.metal.hit", "block.metal.step", "block.metal.fall"),
+        (SF::Plant, "block.plant.break", "block.plant.place", "block.plant.hit", "block.plant.step", "block.plant.fall"),
+        (SF::Chain, "block.chain.break", "block.chain.place", "block.chain.hit", "block.chain.step", "block.chain.fall"),
+        (SF::NetherWood, "block.nether_wood.break", "block.nether_wood.place", "block.nether_wood.hit", "block.nether_wood.step", "block.nether_wood.fall"),
+        (SF::Water, "block.water.splash", "block.water.splash", "block.water.splash", "block.water.step", "block.water.splash"),
+        (SF::None, "block.stone.break", "block.stone.place", "block.stone.hit", "block.stone.step", "block.stone.fall"),
+    ];
+    for &(fam, brk, place, hit, step, fall) in TABLE {
+        if fam == f {
+            return match kind {
+                FE::Break => brk,
+                FE::Place => place,
+                FE::Hit => hit,
+                FE::Step => step,
+                FE::Fall => fall,
+            };
+        }
     }
+    "block.stone.break"
 }
 
 // ------------------------------------------------------------- backends --
@@ -915,6 +1321,11 @@ pub trait AudioBackend {
     fn play(&self, bank: &SoundBank, slot: usize, volume: f32, pitch: f32, pan: f32);
     /// unlock audio context (wasm: needs user gesture; decodes the bank)
     fn unlock(&self, _bank: &SoundBank) {}
+    /// Sub-round 5: the underwater muffle — every subsequent sound plays
+    /// through a low-pass (vanilla routes the master bus through a
+    /// low-pass filter while the camera is underwater; ~500 Hz biquad
+    /// in the Web backend, the one-pole 500 Hz equivalent in native).
+    fn set_underwater(&self, _on: bool) {}
 }
 
 /// No-device silent fallback.
@@ -931,12 +1342,18 @@ pub mod native_audio {
     pub struct RodioOut {
         _stream: rodio::OutputStream,
         handle: rodio::OutputStreamHandle,
+        /// Sub-round 5: the underwater muffle flag
+        underwater: std::cell::Cell<bool>,
     }
 
     impl RodioOut {
         pub fn new() -> Option<Self> {
             match rodio::OutputStream::try_default() {
-                Ok((stream, handle)) => Some(RodioOut { _stream: stream, handle }),
+                Ok((stream, handle)) => Some(RodioOut {
+                    _stream: stream,
+                    handle,
+                    underwater: std::cell::Cell::new(false),
+                }),
                 Err(_) => None,
             }
         }
@@ -945,7 +1362,12 @@ pub mod native_audio {
     impl AudioBackend for RodioOut {
         fn play(&self, bank: &SoundBank, slot: usize, volume: f32, pitch: f32, pan: f32) {
             let Some(base) = bank.data.get(slot) else { return };
-            let samples = resample(base, pitch);
+            let mut samples = resample(base, pitch);
+            // Sub-round 5: the underwater muffle (one-pole 500 Hz — the
+            // native stand-in for vanilla's low-pass master bus)
+            if self.underwater.get() {
+                samples = one_pole_lp(samples, 500.0);
+            }
             // stereo from pan: equal-power law
             let l = (0.5 * (1.0 - pan) + 0.5).sqrt();
             let r = (0.5 * (1.0 + pan) + 0.5).sqrt();
@@ -959,6 +1381,10 @@ pub mod native_audio {
                 sink.append(src);
                 sink.detach();
             }
+        }
+
+        fn set_underwater(&self, on: bool) {
+            self.underwater.set(on);
         }
     }
 }
@@ -991,6 +1417,8 @@ pub mod web_audio {
     struct Inner {
         ctx: RefCell<Option<web_sys::AudioContext>>,
         buffers: RefCell<Vec<Option<web_sys::AudioBuffer>>>,
+        /// Sub-round 5: the underwater muffle flag
+        underwater: std::cell::Cell<bool>,
     }
 
     pub struct WebAudioOut {
@@ -1003,6 +1431,7 @@ pub mod web_audio {
                 inner: Rc::new(Inner {
                     ctx: RefCell::new(None),
                     buffers: RefCell::new(vec![None; 64]),
+                    underwater: std::cell::Cell::new(false),
                 }),
             }
         }
@@ -1051,20 +1480,42 @@ pub mod web_audio {
                 let pr = web_sys::AudioBufferSourceNode::playback_rate(&src);
                 web_sys::AudioParam::set_value(&pr, pitch);
                 let dest = web_sys::AudioContext::destination(ctx);
-                // chain: source → gain → panner → destination
+                // chain: source → gain → [muffle biquad] → panner →
+                // destination. Sub-round 5: while underwater every sound
+                // routes through a 500 Hz low-pass (vanilla's underwater
+                // master-bus filter — the §E ask).
+                let muffled = self.inner.underwater.get();
                 if let Ok(gain) = web_sys::AudioContext::create_gain(ctx) {
                     let g = web_sys::GainNode::gain(&gain);
                     web_sys::AudioParam::set_value(&g, volume.clamp(0.0, 1.0));
-                    if let Ok(panner) = web_sys::AudioContext::create_stereo_panner(ctx) {
-                        let p = web_sys::StereoPannerNode::pan(&panner);
-                        web_sys::AudioParam::set_value(&p, pan.clamp(-1.0, 1.0));
-                        let _ = web_sys::AudioNode::connect_with_audio_node(&src, &gain);
-                        let _ = web_sys::AudioNode::connect_with_audio_node(&gain, &panner);
-                        let _ = web_sys::AudioNode::connect_with_audio_node(&panner, &dest);
+                    let panner = web_sys::AudioContext::create_stereo_panner(ctx).ok();
+                    let filter = if muffled {
+                        web_sys::AudioContext::create_biquad_filter(ctx).ok()
                     } else {
-                        let _ = web_sys::AudioNode::connect_with_audio_node(&src, &gain);
-                        let _ = web_sys::AudioNode::connect_with_audio_node(&gain, &dest);
+                        None
+                    };
+                    if let Some(f) = filter.as_ref() {
+                        let _ = web_sys::BiquadFilterNode::set_type(
+                            f,
+                            web_sys::BiquadFilterType::Lowpass,
+                        );
+                        let freq = web_sys::BiquadFilterNode::frequency(f);
+                        web_sys::AudioParam::set_value(&freq, 500.0);
                     }
+                    // wire: src → gain → [filter] → [panner] → dest
+                    let _ = web_sys::AudioNode::connect_with_audio_node(&src, &gain);
+                    let mut node: &web_sys::AudioNode = &gain;
+                    if let Some(f) = filter.as_ref() {
+                        let _ = web_sys::AudioNode::connect_with_audio_node(node, f);
+                        node = f;
+                    }
+                    if let Some(pn) = panner.as_ref() {
+                        let p = web_sys::StereoPannerNode::pan(pn);
+                        web_sys::AudioParam::set_value(&p, pan.clamp(-1.0, 1.0));
+                        let _ = web_sys::AudioNode::connect_with_audio_node(node, pn);
+                        node = pn;
+                    }
+                    let _ = web_sys::AudioNode::connect_with_audio_node(node, &dest);
                 } else {
                     let _ = web_sys::AudioNode::connect_with_audio_node(&src, &dest);
                 }
@@ -1088,6 +1539,10 @@ pub mod web_audio {
                 *inner.buffers.borrow_mut() = bufs;
                 *inner.ctx.borrow_mut() = Some(ctx);
             });
+        }
+
+        fn set_underwater(&self, on: bool) {
+            self.inner.underwater.set(on);
         }
     }
 

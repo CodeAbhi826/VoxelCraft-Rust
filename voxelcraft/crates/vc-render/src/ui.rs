@@ -2930,7 +2930,11 @@ impl UiCanvas {
         let x0 = (UI_W as i32 - grid_w) / 2;
         // top-area height per kind
         let top_h = match kind {
-            ContainerKind::Inventory => 96, // 2x2 craft + arrow + output
+            // Sub-round 3: the vanilla 176x166-shaped inventory — armor
+            // column + player model + offhand (in its boxed recess below
+            // the armor column) + 2x2 craft + output. 232 = the armor
+            // column (4x44+8) + the offhand row (36) + breathing room.
+            ContainerKind::Inventory => 232,
             ContainerKind::Crafting => 140, // 3x3 craft + arrow + output
             ContainerKind::Chest => 132,    // 3 rows of 9 slots
             // the barrel shares the chest grid (VERIFIED: 27 slots)
@@ -2983,15 +2987,81 @@ impl UiCanvas {
             brewing: None,
             enchant: None,
             trade: None,
+            armor: [(i32::MIN, i32::MIN); 4],
+            offhand: (i32::MIN, i32::MIN),
         };
 
         // ---- container-specific top area ----
         match kind {
             ContainerKind::Inventory => {
-                // 2x2 grid + arrow + output, centered
-                let total = 2 * 40 + 50 + 36;
-                let cx = x0 + (grid_w - total) / 2;
-                let cy = y0 + 8;
+                // Sub-round 3: the vanilla 176x166-shaped survival
+                // inventory (scaled 2x on the 960x540 canvas). clean-room:
+                // shape language = the vanilla layout — LEFT armor column
+                // (helmet..boots top to bottom), the player model preview
+                // beside it with the offhand slot in its boxed recess
+                // below, the 2x2 craft grid + arrow + result on the
+                // right. Reference facts (minecraft.wiki/w/Inventory,
+                // live 2026-09-15): "The inventory consists of 4 armor
+                // slots, 27 storage slots, 9 hotbar slots, and an
+                // off-hand slot"; "There is also a 2x2 crafting grid";
+                // "Pressing the F key moves the selected item to and from
+                // the hotbar slot and the off-hand slot". No Mojang asset
+                // was read, copied, or traced.
+                let ax = px0 + 16; // armor column x
+                let ay = y0 + 8;
+                // the four equipment slots: helmet, chestplate, leggings,
+                // boots — vanilla order top to bottom
+                for (i, st) in view.armor.iter().enumerate() {
+                    let y = ay + i as i32 * 44;
+                    self.slot_well(ax, y, st, atlas);
+                    geom.armor[i] = (ax, y);
+                }
+                // ---- the player-model preview (the sanctioned 2D bake
+                // fallback: a clean-room front-facing player figure; the
+                // slow vanilla 3D rotation does not apply to a bake —
+                // disclosed) ----
+                let mx = ax + 52;
+                let my = ay + 4;
+                let mw = 56;
+                let mh = 168;
+                self.rect(mx, my, mw, mh, [20, 20, 24, 190]);
+                self.frame(mx, my, mw, mh, [46, 46, 52, 255]);
+                // head (skin tones) + face hint
+                let skin: Color = [199, 159, 122, 255];
+                let skin_d: Color = [166, 128, 95, 255];
+                let shirt: Color = [0, 124, 124, 255];
+                let shirt_d: Color = [0, 96, 96, 255];
+                let pants: Color = [46, 57, 148, 255];
+                let pants_d: Color = [36, 45, 118, 255];
+                self.rect(mx + 16, my + 8, 24, 24, skin);
+                self.rect(mx + 16, my + 26, 24, 6, skin_d);
+                self.rect(mx + 21, my + 16, 4, 3, [46, 36, 30, 255]);
+                self.rect(mx + 31, my + 16, 4, 3, [46, 36, 30, 255]);
+                self.rect(mx + 24, my + 24, 8, 2, [130, 96, 74, 255]);
+                // torso + arms
+                self.rect(mx + 14, my + 34, 28, 44, shirt);
+                self.rect(mx + 6, my + 34, 8, 40, shirt_d);
+                self.rect(mx + 42, my + 34, 8, 40, shirt_d);
+                // legs
+                self.rect(mx + 14, my + 78, 13, 46, pants);
+                self.rect(mx + 29, my + 78, 13, 46, pants);
+                self.rect(mx + 14, my + 78, 13, 4, pants_d);
+                self.rect(mx + 29, my + 78, 13, 4, pants_d);
+                // feet
+                self.rect(mx + 12, my + 124, 15, 8, [70, 50, 34, 255]);
+                self.rect(mx + 29, my + 124, 15, 8, [70, 50, 34, 255]);
+                // ---- the offhand slot: its boxed recess below the
+                // model (vanilla bottom-left) ----
+                let ox0 = ax;
+                let oy0 = ay + 4 * 44 + 8;
+                self.rect(ox0 - 6, oy0 - 6, 48, 48, [22, 22, 26, 210]);
+                self.frame(ox0 - 6, oy0 - 6, 48, 48, [54, 54, 60, 255]);
+                self.slot_well(ox0, oy0, &view.offhand, atlas);
+                geom.offhand = (ox0, oy0);
+                // ---- the 2x2 craft grid + arrow + output (right side,
+                // vanilla x=98 scaled) ----
+                let cx = px0 + 196;
+                let cy = y0 + 20;
                 for r in 0..2 {
                     for c in 0..2 {
                         let x = cx + c as i32 * 40;
@@ -3001,12 +3071,12 @@ impl UiCanvas {
                     }
                 }
                 self.arrow(
-                    cx + 84,
-                    cy + 12,
+                    cx + 88,
+                    cy + 24,
                     if !view.craft_out.is_empty() { 1.0 } else { 0.0 },
                 );
-                let ox = cx + 134;
-                let oy = cy + 2;
+                let ox = cx + 138;
+                let oy = cy + 14;
                 self.slot_well(ox, oy, &view.craft_out, atlas);
                 geom.craft_out = (ox, oy);
             }
@@ -3582,84 +3652,257 @@ impl UiCanvas {
         }
     }
 
-    /// Creative-style block picker (E key): centered grid of every placeable
-    /// block; click → assigns to the selected hotbar slot. Returns the grid
-    /// geometry so game.rs can hit-test clicks.
-    pub fn picker(
+    /// Sub-round 2 (2026-09-15): the vanilla 1.16.5 tabbed creative
+    /// inventory. clean-room: shape language = the classic (pre-1.19.3)
+    /// creative screen — two tab rows on top (6 + 5 tabs, icon-only
+    /// folder tabs), a 9x5 slot grid with a right scrollbar, the tab
+    /// title above the grid (the Search tab replaces it with a search
+    /// field), and the hotbar + destroy slot at the bottom. Reference
+    /// facts: minecraft.wiki/w/Creative_inventory (live 2026-09-15):
+    /// the nine content tabs + Search Items + Survival Inventory; the
+    /// 9x5/45-per-page grid with a scrollbar; "A single item can be
+    /// grabbed using left-click ... Right-clicking an item also picks
+    /// up one item ... Shift-clicking an item grabs a full stack";
+    /// "Pressing a number key while hovering over an item instantly
+    /// places one full stack of that item into the hotbar slot"; the
+    /// destroy slot ("get rid of the held item" by clicking outside or
+    /// over another item). Proportions are the engine's established 2x
+    /// container geometry (40px slots on the 960x540 canvas). No Mojang
+    /// asset was read, copied, or traced.
+    #[allow(clippy::too_many_arguments)]
+    pub fn creative_screen(
         &mut self,
         cursor: (f32, f32),
         atlas: &[u8],
+        tab: u8,
         scroll: usize,
+        search: &str,
+        search_focused: bool,
+        items: &[u16],
+        hotbar: &[vc_inventory::inventory::ItemStack],
+        selected: usize,
+        cursor_stack: &vc_inventory::inventory::ItemStack,
         advanced_tooltips: bool,
-    ) -> PickerGeom {
-        let blocks = &PICKER_BLOCKS;
-        // [merge scroll] the F-series (1.7.2-1.10) grew PICKER_BLOCKS to
-        // 236 — 15 cols x 16 rows overflows the 540px canvas; the picker
-        // is now a fixed 11-row window scrolled by the game layer (mouse
-        // wheel, vanilla creative-grid behavior) instead of clipping.
-        let cols = 15;
-        let vis_rows = 11usize;
-        let cell = 44i32;
-        let total_rows = blocks.len().div_ceil(cols);
-        let scroll = scroll.min(total_rows.saturating_sub(vis_rows));
-        // Phase E1: 12 columns (was 8) — the picker grew past 68 entries
-        // with the 1.0–1.2 bracket blocks + 16 spawn eggs.
-        // Phase E3: 15 columns — the picker grew to 164 entries with the
-        // 1.5–1.6 bracket (quartz family, 16 stained terracotta, carpets,
-        // redstone components, items, 3 eggs); 15×11 stays inside the
-        // 960×540 UI canvas (668×514 grid).
-        // [merge] F-series (1.7.2-1.10) grows PICKER_BLOCKS to 236 —
-        // 15 cols × 16 rows overflows the 540px canvas bottom; the last
-        // rows clip (known issue, scrolling picker is future UI work,
-        // documented in WORKLOG).
-        let grid_w = cols as i32 * cell + 8;
-        let grid_h = vis_rows as i32 * cell + 8 + 22;
+    ) -> CreativeGeom {
+        use vc_blocks::blocks as blk;
+
+        // ---- layout constants (engine 2x container geometry) ----
+        let cols = 9usize;
+        let vis_rows = 5usize;
+        let cell = 40i32;
+        let grid_w = cols as i32 * cell + 4;
         let x0 = (UI_W as i32 - grid_w) / 2;
-        let y0 = (UI_H as i32 - grid_h) / 2;
+        // panel: title strip 26px; grid 5x40; hotbar row below
+        let y0 = 150i32; // grid top
+        let title_y = y0 - 26;
+        let hot_y = y0 + vis_rows as i32 * cell + 14;
+        let px0 = x0 - 14;
+        let pw = grid_w + 28;
+        let py0 = title_y - 10;
+        let ph = (hot_y + 46) - py0;
+        // tab strip: two rows (6 + 5), folder tabs attached to the panel
+        let tab_w = 76i32;
+        let tab_h = 44i32;
+        let row1_n = 6i32;
+        let row1_x = (UI_W as i32 - row1_n * tab_w) / 2;
+        let row2_n = 5i32;
+        let row2_x = (UI_W as i32 - row2_n * tab_w) / 2;
+        let row2_y = py0 - tab_h + 2;
+        let row1_y = row2_y - tab_h + 2;
 
-        self.rect(x0 - 6, y0 - 26, grid_w + 12, grid_h + 32, [16, 16, 16, 210]);
-        self.frame(x0 - 6, y0 - 26, grid_w + 12, grid_h + 32, [70, 70, 70, 255]);
-        self.text(
-            x0 - 6 + 10,
-            y0 - 24,
-            "SELECT BLOCK  (B / ESC to close)  -  wheel scrolls",
-            [230, 230, 230, 255],
-            1,
-        );
+        let mut geom = CreativeGeom {
+            x0,
+            y0,
+            cell,
+            cols,
+            vis_rows,
+            scroll,
+            tabs: [None; 11],
+            hotbar: [(0, 0, 0, 0); 9],
+            trash: (0, 0, 0, 0),
+            search: (0, 0, 0, 0),
+            scrollbar: None,
+        };
 
+        // ---- tab strip (11 tabs: 9 content + Search + Inventory) ----
+        // vanilla tab order: Building, Decoration, Redstone, Transport,
+        // Misc, Food, Tools, Combat, Brewing, Search, Inventory
+        let tab_labels: [&str; 11] = [
+            "BUILDING BLOCKS",
+            "DECORATION BLOCKS",
+            "REDSTONE",
+            "TRANSPORTATION",
+            "MISCELLANEOUS",
+            "FOODSTUFFS",
+            "TOOLS",
+            "COMBAT",
+            "BREWING",
+            "SEARCH ITEMS",
+            "INVENTORY",
+        ];
+        let cx = cursor.0 as i32;
+        let cy = cursor.1 as i32;
+        let mut hovered_tab: Option<u8> = None;
+        for t in 0..11u8 {
+            let (tx, ty) = if t < 6 {
+                (row1_x + t as i32 * tab_w, row1_y)
+            } else {
+                (row2_x + (t as i32 - 6) * tab_w, row2_y)
+            };
+            let selected_tab = t == tab;
+            // folder-tab chrome: attached to the panel on selection
+            let bg: Color = if selected_tab {
+                [58, 58, 62, 245]
+            } else {
+                [34, 34, 38, 225]
+            };
+            self.rect(tx, ty, tab_w, tab_h, bg);
+            self.frame(tx, ty, tab_w, tab_h, [78, 78, 84, 255]);
+            if selected_tab {
+                self.frame(tx, ty + 1, tab_w, tab_h - 2, [140, 140, 148, 255]);
+                // connect to the panel: erase the bottom edge line
+                self.rect(tx + 1, ty + tab_h - 2, tab_w - 2, 2, [58, 58, 62, 245]);
+            }
+            // the tab icon: the canonical item's tile, 2x blit
+            let icon = if t < 9 {
+                blk::CREATIVE_TABS[t as usize].icon_block()
+            } else if t == 9 {
+                // Search tab icon: the compass — engine substitute: the
+                // eye of ender (the registry's search-est item; no compass)
+                blk::EYE_OF_ENDER
+            } else {
+                // Inventory tab icon: the player head — engine
+                // substitute: the wither-skeleton skull (the registry's
+                // only head-shaped block; no player-skin item exists)
+                blk::WITHER_SKELETON_SKULL
+            };
+            let tile = blk::def(icon).tiles[0];
+            blit_tile(atlas, tile, 2, (tx + (tab_w - 32) / 2) as usize, (ty + 6) as usize, &mut self.px, UI_W);
+            // hover highlight + tooltip capture
+            if cx >= tx && cx < tx + tab_w && cy >= ty && cy < ty + tab_h {
+                self.frame(tx - 1, ty - 1, tab_w + 2, tab_h + 2, [255, 255, 255, 200]);
+                hovered_tab = Some(t);
+            }
+            geom.tabs[t as usize] = Some((tx, ty, tab_w, tab_h));
+        }
+
+        // ---- panel ----
+        self.rect(px0, py0, pw, ph, [26, 26, 30, 235]);
+        self.frame(px0, py0, pw, ph, [60, 60, 66, 255]);
+        self.frame(px0 + 1, py0 + 1, pw - 2, ph - 2, [12, 12, 14, 255]);
+
+        // ---- title / search field ----
+        if tab == 9 {
+            // the Search tab: a text field in the title strip
+            let fx = x0;
+            let fy = title_y;
+            let fw = grid_w;
+            let fh = 22;
+            let w = Widget {
+                id: 0,
+                x: fx,
+                y: fy,
+                w: fw,
+                h: fh,
+                kind: WidgetKind::TextField {
+                    label: String::new(),
+                    text: search.to_string(),
+                    placeholder: "SEARCH".to_string(),
+                    focused: search_focused,
+                },
+            };
+            self.draw_text_field(&w, false);
+            geom.search = (fx, fy, fw, fh);
+        } else {
+            let label = if tab < 9 {
+                blk::CREATIVE_TABS[tab as usize].label().to_uppercase()
+            } else {
+                tab_labels[tab as usize].to_string()
+            };
+            self.text(x0, title_y + 4, &label, [255, 220, 120, 255], 1);
+        }
+
+        // ---- the 9x5 grid ----
+        let total_rows = items.len().div_ceil(cols);
+        let scroll = scroll.min(total_rows.saturating_sub(vis_rows));
         let first = scroll * cols;
-        let last = (first + vis_rows * cols).min(blocks.len());
+        let last = (first + vis_rows * cols).min(items.len());
         let mut hovered: Option<u16> = None;
-        for (i, b) in blocks[first..last].iter().enumerate() {
+        for (i, &b) in items[first..last].iter().enumerate() {
             let col = (i % cols) as i32;
             let row = (i / cols) as i32;
             let sx = x0 + 4 + col * cell;
             let sy = y0 + 4 + row * cell;
-            self.rect(sx, sy, 40, 40, [58, 58, 58, 170]);
-            self.frame(sx, sy, 40, 40, [90, 90, 90, 220]);
-            let tile = def(*b).tiles[0];
-            blit_tile(
-                atlas,
-                tile,
-                2,
-                (sx + 4) as usize,
-                (sy + 4) as usize,
-                &mut self.px,
-                UI_W,
-            );
-            // hover highlight
-            let cx = cursor.0 as i32;
-            let cy = cursor.1 as i32;
-            if cx >= sx && cx < sx + 40 && cy >= sy && cy < sy + 40 {
-                self.frame(sx - 1, sy - 1, 42, 42, [255, 255, 255, 255]);
-                hovered = Some(*b);
+            self.rect(sx, sy, 36, 36, [52, 52, 52, 200]);
+            self.frame(sx, sy, 36, 36, [24, 24, 24, 255]);
+            self.frame(sx + 1, sy + 1, 34, 34, [110, 110, 110, 255]);
+            let tile = blk::def(b).tiles[0];
+            blit_tile(atlas, tile, 2, (sx + 2) as usize, (sy + 2) as usize, &mut self.px, UI_W);
+            if cx >= sx && cx < sx + 36 && cy >= sy && cy < sy + 36 {
+                self.frame(sx - 1, sy - 1, 38, 38, [255, 255, 255, 255]);
+                hovered = Some(b);
+            }
+        }
+        // empty slots for the unfilled tail of the last page (vanilla
+        // shows empty slots, not blank space)
+        let tail_start = items.len().saturating_sub(first);
+        if tail_start < vis_rows * cols {
+            for i in tail_start..(vis_rows * cols) {
+                let col = (i % cols) as i32;
+                let row = (i / cols) as i32;
+                let sx = x0 + 4 + col * cell;
+                let sy = y0 + 4 + row * cell;
+                self.rect(sx, sy, 36, 36, [40, 40, 44, 160]);
+                self.frame(sx, sy, 36, 36, [20, 20, 20, 200]);
             }
         }
 
-        // hovered block name on a bottom strip (F3+H appends the registry
-        // id — vanilla advanced tooltips)
+        // ---- scrollbar (when the tab overflows one page) ----
+        if total_rows > vis_rows {
+            let sb_x = px0 + pw - 16;
+            let sb_y = y0 + 2;
+            let sb_h = vis_rows as i32 * cell;
+            self.rect(sb_x, sb_y, 10, sb_h, [16, 16, 18, 220]);
+            self.frame(sb_x, sb_y, 10, sb_h, [10, 10, 10, 255]);
+            let track = (total_rows - vis_rows).max(1);
+            let thumb_h = (((sb_h as f32) * (vis_rows as f32 / total_rows as f32)) as i32).max(24);
+            let avail = sb_h - thumb_h;
+            let thumb_y = sb_y + ((scroll as f32 / track as f32) * avail as f32) as i32;
+            self.rect(sb_x + 1, thumb_y + 1, 8, thumb_h - 2, [150, 150, 155, 230]);
+            geom.scrollbar = Some((sb_x, sb_y, 10, sb_h));
+        }
+
+        // ---- bottom row: hotbar + destroy slot ----
+        for (i, s) in hotbar.iter().take(9).enumerate() {
+            let sx = x0 + 4 + i as i32 * cell;
+            let sy = hot_y;
+            self.rect(sx, sy, 36, 36, [52, 52, 52, 200]);
+            self.frame(sx, sy, 36, 36, [24, 24, 24, 255]);
+            self.frame(sx + 1, sy + 1, 34, 34, [110, 110, 110, 255]);
+            self.draw_stack(s, sx, sy, atlas);
+            if i == selected {
+                self.frame(sx - 2, sy - 2, 40, 40, [255, 255, 255, 230]);
+            }
+            geom.hotbar[i] = (sx, sy, 36, 36);
+        }
+        // destroy slot (trash): bottom-right, X-marked
+        {
+            let sx = px0 + pw - 46;
+            let sy = hot_y;
+            self.rect(sx, sy, 36, 36, [70, 40, 40, 210]);
+            self.frame(sx, sy, 36, 36, [24, 24, 24, 255]);
+            self.frame(sx + 1, sy + 1, 34, 34, [110, 70, 70, 255]);
+            // X mark
+            for k in 0..12i32 {
+                self.set(sx + 12 + k, sy + 12 + k, [200, 90, 90, 255]);
+                self.set(sx + 23 - k, sy + 12 + k, [200, 90, 90, 255]);
+            }
+            geom.trash = (sx, sy, 36, 36);
+        }
+
+        // ---- hovered item name (above the hotbar, centered) ----
         let label = hovered
-            .map(name)
+            .map(blk::name)
             .map(|n| {
                 if advanced_tooltips {
                     let id: String = n.to_lowercase().replace(' ', "_");
@@ -3668,12 +3911,31 @@ impl UiCanvas {
                     n.to_string()
                 }
             })
+            .or_else(|| {
+                hovered_tab.map(|t| {
+                    // tab tooltip = the vanilla tab label
+                    if t < 9 {
+                        blk::CREATIVE_TABS[t as usize].label().to_string()
+                    } else {
+                        tab_labels[t as usize].to_string()
+                    }
+                })
+            })
             .unwrap_or_default();
-        let lw = Self::text_width(&label, 1);
-        self.text(x0 + 4, y0 + grid_h - 18, &label, [255, 255, 255, 255], 1);
-        let _ = lw;
+        if !label.is_empty() {
+            let lw = Self::text_width(&label, 1);
+            self.text((UI_W as i32 - lw) / 2, hot_y - 16, &label, [255, 255, 255, 255], 1);
+        }
 
-        PickerGeom { x0, y0, cell, cols, scroll, vis_rows }
+        // ---- the held (cursor) stack follows the mouse ----
+        if !cursor_stack.is_empty() {
+            let hx = cx - 18;
+            let hy = cy - 18;
+            self.draw_stack(cursor_stack, hx, hy, atlas);
+        }
+
+        geom.scroll = scroll;
+        geom
     }
 
     pub fn help(&mut self) {
@@ -3689,7 +3951,8 @@ impl UiCanvas {
             ("MIDDLE CLICK", "Pick block"),
             ("1-9 / WHEEL", "Select hotbar slot"),
             ("E", "Inventory + crafting (§27)"),
-            ("B", "Creative block picker"),
+            ("F", "Swap item to off-hand"),
+            ("B", "Creative inventory (creative mode)"),
             ("ESC", "Pause menu / options"),
             ("F3", "Debug info"),
             ("H", "This help"),
@@ -3811,24 +4074,46 @@ impl UiCanvas {
     }
 }
 
-/// hit-test geometry for the picker grid (UI-space), returned by
-/// `UiCanvas::picker` so game.rs can map clicks to picker slots.
-pub struct PickerGeom {
+/// Sub-round 2: hit-test geometry for the tabbed creative screen,
+/// returned by `UiCanvas::creative_screen` so game.rs can route clicks
+/// (tabs, grid slots, hotbar, destroy slot, search field, scrollbar).
+pub struct CreativeGeom {
     pub x0: i32,
     pub y0: i32,
     pub cell: i32,
     pub cols: usize,
     /// first visible row (the game layer's scroll state, clamped by the
-    /// renderer to the real range)
+    /// painter to the real range)
     pub scroll: usize,
-    /// visible rows in the fixed window
+    /// visible rows in the fixed window (5 — the vanilla page size)
     pub vis_rows: usize,
+    /// the 11 tab hit rects (UI space) in vanilla order
+    pub tabs: [Option<(i32, i32, i32, i32)>; 11],
+    /// the 9 hotbar-slot hit rects
+    pub hotbar: [(i32, i32, i32, i32); 9],
+    /// the destroy (trash) slot hit rect
+    pub trash: (i32, i32, i32, i32),
+    /// the search field hit rect
+    pub search: (i32, i32, i32, i32),
+    /// the scrollbar track hit rect (present only when the tab scrolls)
+    pub scrollbar: Option<(i32, i32, i32, i32)>,
 }
 
-impl PickerGeom {
-    /// which picker slot (if any) is under this UI-space cursor position
-    /// (absolute PICKER_BLOCKS index, scroll-aware)
-    pub fn slot_at(&self, ux: i32, uy: i32) -> Option<usize> {
+impl CreativeGeom {
+    fn in_rect(r: (i32, i32, i32, i32), ux: i32, uy: i32) -> bool {
+        ux >= r.0 && ux < r.0 + r.2 && uy >= r.1 && uy < r.1 + r.3
+    }
+
+    /// which tab (0..=10, vanilla order) is under this UI-space cursor
+    pub fn tab_at(&self, ux: i32, uy: i32) -> Option<u8> {
+        self.tabs
+            .iter()
+            .position(|r| r.map_or(false, |r| Self::in_rect(r, ux, uy)))
+            .map(|i| i as u8)
+    }
+
+    /// which item index into the CURRENT tab's item list (scroll-aware)
+    pub fn grid_at(&self, ux: i32, uy: i32) -> Option<usize> {
         let dx = ux - (self.x0 + 4);
         let dy = uy - (self.y0 + 4);
         if dx < 0 || dy < 0 {
@@ -3836,19 +4121,30 @@ impl PickerGeom {
         }
         let col = dx / self.cell;
         let row = dy / self.cell;
-        if col >= self.cols as i32
-            || row >= self.vis_rows as i32
-            || dx % self.cell >= 40
-            || dy % self.cell >= 40
-        {
+        if col >= self.cols as i32 || row >= self.vis_rows as i32 || dx % self.cell >= 36 || dy % self.cell >= 36 {
             return None;
         }
-        let idx = self.scroll * self.cols + row as usize * self.cols + col as usize;
-        if idx < PICKER_BLOCKS.len() {
-            Some(idx)
-        } else {
-            None
-        }
+        Some(self.scroll * self.cols + row as usize * self.cols + col as usize)
+    }
+
+    /// which hotbar slot is under the cursor
+    pub fn hotbar_at(&self, ux: i32, uy: i32) -> Option<usize> {
+        self.hotbar.iter().position(|r| Self::in_rect(*r, ux, uy))
+    }
+
+    /// the destroy slot?
+    pub fn trash_at(&self, ux: i32, uy: i32) -> bool {
+        Self::in_rect(self.trash, ux, uy)
+    }
+
+    /// the search field?
+    pub fn search_at(&self, ux: i32, uy: i32) -> bool {
+        Self::in_rect(self.search, ux, uy)
+    }
+
+    /// the scrollbar track?
+    pub fn scrollbar_at(&self, ux: i32, uy: i32) -> bool {
+        self.scrollbar.map_or(false, |r| Self::in_rect(r, ux, uy))
     }
 }
 
@@ -3888,6 +4184,11 @@ pub enum ContainerKind {
 pub enum SlotRef {
     /// player inventory slot (0..36; 0..9 = hotbar row)
     Inv(usize),
+    /// Sub-round 3: the player's armor equipment slots, vanilla order
+    /// 0 = helmet(head), 1 = chestplate, 2 = leggings, 3 = boots(feet)
+    Armor(usize),
+    /// Sub-round 3: the shield/offhand slot
+    Offhand,
     /// crafting-grid cell (row-major; 4 cells for 2×2, 9 for 3×3)
     Craft(usize),
     /// Phase 3: container (chest) slot index
@@ -3939,6 +4240,11 @@ pub struct ContainerView {
     pub chest: Vec<ItemStack>,
     /// trade screen (Phase 5): tiered offers + stock + career level
     pub trade: Option<TradeView>,
+    /// Sub-round 3: the player's armor equipment (helmet/chest/legs/
+    /// boots, vanilla order — mirrors Player.armor)
+    pub armor: [ItemStack; 4],
+    /// Sub-round 3: the shield/offhand slot contents
+    pub offhand: ItemStack,
     /// stack riding the mouse cursor
     pub cursor: ItemStack,
 }
@@ -3982,6 +4288,8 @@ impl ContainerView {
     fn hovered_stack(&self, x: i32, y: i32, geom: &ContainerGeom) -> Option<ItemStack> {
         Some(match geom.slot_at(x, y)? {
             SlotRef::Inv(i) => self.inv[i],
+            SlotRef::Armor(i) => self.armor[i],
+            SlotRef::Offhand => self.offhand,
             SlotRef::Craft(i) => self.grid[i],
             SlotRef::Chest(i) => self.chest[i],
             SlotRef::CraftOut => self.craft_out,
@@ -4044,6 +4352,11 @@ pub struct ContainerGeom {
     pub trade: Option<TradeSlots>,
     /// Phase 3: chest slot origins (27, row-major 3×9)
     pub chest: Vec<(i32, i32)>,
+    /// Sub-round 3: the armor slot origins (helmet..boots, top to
+    /// bottom) — present on the Inventory screen
+    pub armor: [(i32, i32); 4],
+    /// Sub-round 3: the offhand slot origin (i32::MIN when absent)
+    pub offhand: (i32, i32),
 }
 
 impl ContainerGeom {
@@ -4053,6 +4366,15 @@ impl ContainerGeom {
 
     /// which logical slot (if any) is under this UI-space cursor position
     pub fn slot_at(&self, x: i32, y: i32) -> Option<SlotRef> {
+        // Sub-round 3: armor column (helmet..boots) + offhand
+        for (i, s) in self.armor.iter().enumerate() {
+            if Self::hit(x, y, s) {
+                return Some(SlotRef::Armor(i));
+            }
+        }
+        if self.offhand.0 > i32::MIN && Self::hit(x, y, &self.offhand) {
+            return Some(SlotRef::Offhand);
+        }
         if let Some(fs) = &self.furnace {
             if Self::hit(x, y, &fs.input) {
                 return Some(SlotRef::FurnaceInput);
@@ -4430,6 +4752,8 @@ mod tests {
             enchant: None,
             chest: vec![ItemStack::EMPTY; 5],
             trade: None,
+            armor: [ItemStack::EMPTY; 4],
+            offhand: ItemStack::EMPTY,
             cursor: ItemStack::EMPTY,
         }
     }
@@ -5137,6 +5461,165 @@ mod screen_tests {
         assert!(!ui.gui_frame.quads.is_empty(), "quads still pushed (A/B)");
     }
 
+    /// Sub-round 3 (2026-09-15): the survival inventory layout — the
+    /// vanilla 176x166 shape (scaled 2x): the LEFT armor column in
+    /// helmet..boots order, the offhand slot below it, the 2x2 craft
+    /// grid + output on the right, the 9x3 storage + 9x1 hotbar below.
+    /// (minecraft.wiki/w/Inventory, live 2026-09-15: "The inventory
+    /// consists of 4 armor slots, 27 storage slots, 9 hotbar slots, and
+    /// an off-hand slot"; "There is also a 2x2 crafting grid".)
+    #[test]
+    fn survival_inventory_layout() {
+        let mut ui = UiCanvas::new();
+        ui.set_chrome_enabled(false);
+        ui.clear();
+        let view = crate::ui::ContainerView {
+            kind: crate::ui::ContainerKind::Inventory,
+            inv: vec![vc_inventory::inventory::ItemStack::EMPTY; 36],
+            grid: vec![vc_inventory::inventory::ItemStack::EMPTY; 4],
+            craft_out: vc_inventory::inventory::ItemStack::EMPTY,
+            furnace: None,
+            brewing: None,
+            enchant: None,
+            trade: None,
+            chest: Vec::new(),
+            armor: [
+                vc_inventory::inventory::ItemStack::new(
+                    vc_blocks::blocks::DIAMOND_HELMET,
+                    1,
+                ),
+                vc_inventory::inventory::ItemStack::EMPTY,
+                vc_inventory::inventory::ItemStack::EMPTY,
+                vc_inventory::inventory::ItemStack::EMPTY,
+            ],
+            offhand: vc_inventory::inventory::ItemStack::new(
+                vc_blocks::blocks::SHIELD,
+                1,
+            ),
+            cursor: vc_inventory::inventory::ItemStack::EMPTY,
+        };
+        let atlas = vec![0u8; crate::textures::ATLAS_SIZE * crate::textures::ATLAS_SIZE * 4];
+        let g = ui.container_screen(&view, (0.0, 0.0), &atlas, false);
+        // the armor column: 4 slots top-to-bottom (helmet first)
+        assert!(g.armor.len() == 4);
+        for i in 1..4 {
+            assert_eq!(g.armor[i].1, g.armor[i - 1].1 + 44, "armor pitch");
+        }
+        // armor hit-tests resolve in piece order
+        assert_eq!(g.slot_at(g.armor[0].0 + 4, g.armor[0].1 + 4), Some(crate::ui::SlotRef::Armor(0)));
+        assert_eq!(g.slot_at(g.armor[3].0 + 4, g.armor[3].1 + 4), Some(crate::ui::SlotRef::Armor(3)));
+        // the offhand slot sits BELOW the armor column (its boxed recess)
+        assert!(g.offhand.1 > g.armor[3].1);
+        assert_eq!(g.slot_at(g.offhand.0 + 4, g.offhand.1 + 4), Some(crate::ui::SlotRef::Offhand));
+        // the 2x2 craft grid + output on the right of the armor column
+        assert_eq!(g.craft.len(), 4);
+        assert!(g.craft[0].0 > g.armor[0].0 + 100);
+        assert!(g.craft_out.0 > g.craft[3].0);
+        // 36 inventory slots (27 storage + 9 hotbar) still hit-test
+        assert_eq!(g.inv.len(), 36);
+        assert_eq!(g.slot_at(g.inv[0].0 + 4, g.inv[0].1 + 4), Some(crate::ui::SlotRef::Inv(0)));
+    }
+
+    /// Sub-round 2 (2026-09-15): the tabbed creative screen geometry —
+    /// the 11-tab strip in vanilla order, the 9x5 grid page, the hotbar
+    /// + destroy slot hit rects, and the scrollbar presence rule.
+    /// (minecraft.wiki/w/Creative_inventory, live 2026-09-15: nine
+    /// content tabs + Search Items + Survival Inventory; 9 columns x
+    /// 5 rows = 45 slots per page with a scrollbar when the tab has
+    /// more.)
+    #[test]
+    fn creative_screen_geometry() {
+        use vc_blocks::blocks as blk;
+        let mut ui = UiCanvas::new();
+        ui.set_chrome_enabled(false);
+        ui.clear();
+        let items = blk::creative_tab_items(blk::CreativeTab::BuildingBlocks);
+        let hotbar = [vc_inventory::inventory::ItemStack::EMPTY; 9];
+        // zeroed full-size atlas (the tile blits read within bounds)
+        let atlas = vec![0u8; crate::textures::ATLAS_SIZE * crate::textures::ATLAS_SIZE * 4];
+        let g = ui.creative_screen(
+            (480.0, 270.0),
+            &atlas,
+            0,
+            0,
+            "",
+            false,
+            &items,
+            &hotbar,
+            0,
+            &vc_inventory::inventory::ItemStack::EMPTY,
+            false,
+        );
+        // the grid page: 9 columns x 5 rows
+        assert_eq!(g.cols, 9);
+        assert_eq!(g.vis_rows, 5);
+        // 11 tab hit rects, all present
+        assert_eq!(g.tabs.len(), 11);
+        assert!(g.tabs.iter().all(|t| t.is_some()));
+        // tab hit-testing in vanilla order: tab 0 (Building Blocks) is
+        // the first hit rect of row 1; tab 9 (Search) + tab 10
+        // (Inventory) live on row 2
+        let t0 = g.tabs[0].unwrap();
+        assert_eq!(g.tab_at(t0.0 + 2, t0.1 + 2), Some(0));
+        let t9 = g.tabs[9].unwrap();
+        assert_eq!(g.tab_at(t9.0 + 2, t9.1 + 2), Some(9));
+        let t10 = g.tabs[10].unwrap();
+        assert_eq!(g.tab_at(t10.0 + 2, t10.1 + 2), Some(10));
+        // row 2 sits BELOW row 1 (folder-tab stacking, 6 + 5)
+        assert!(t9.1 > t0.1);
+        // the grid hit-tests to the item list (Building tab, no scroll)
+        assert_eq!(g.grid_at(g.x0 + 4 + 18, g.y0 + 4 + 18), Some(0));
+        assert_eq!(g.grid_at(g.x0 + 4 + 40 + 18, g.y0 + 4 + 18), Some(1));
+        assert_eq!(g.grid_at(g.x0 + 4 + 18, g.y0 + 4 + 40 + 18), Some(9));
+        // the Building tab (155 items > 45) must carry a scrollbar
+        assert!(g.scrollbar.is_some());
+        // hotbar hit rects: 9, left-to-right
+        assert_eq!(g.hotbar.len(), 9);
+        let h0 = g.hotbar[0];
+        let h8 = g.hotbar[8];
+        assert!(h8.0 > h0.0);
+        assert_eq!(g.hotbar_at(h0.0 + 4, h0.1 + 4), Some(0));
+        assert_eq!(g.hotbar_at(h8.0 + 4, h8.1 + 4), Some(8));
+        // the destroy slot sits right of the hotbar
+        assert!(g.trash.0 > h8.0);
+        assert!(g.trash_at(g.trash.0 + 4, g.trash.1 + 4));
+        // no search field outside the Search tab
+        assert_eq!(g.search, (0, 0, 0, 0));
+    }
+
+    /// Sub-round 2: the Search tab — the search field's hit rect appears
+    /// in the title strip, and a short result list (<= 45 items) shows
+    /// NO scrollbar (the vanilla single-page case).
+    #[test]
+    fn creative_screen_search_tab() {
+        use vc_blocks::blocks as blk;
+        let mut ui = UiCanvas::new();
+        ui.set_chrome_enabled(false);
+        ui.clear();
+        let items = blk::creative_tab_items(blk::CreativeTab::Redstone);
+        assert!(items.len() <= 45, "redstone tab is one page");
+        let hotbar = [vc_inventory::inventory::ItemStack::EMPTY; 9];
+        let atlas = vec![0u8; crate::textures::ATLAS_SIZE * crate::textures::ATLAS_SIZE * 4];
+        let g = ui.creative_screen(
+            (480.0, 270.0),
+            &atlas,
+            9, // Search tab
+            0,
+            "redstone",
+            true,
+            &items,
+            &hotbar,
+            0,
+            &vc_inventory::inventory::ItemStack::EMPTY,
+            false,
+        );
+        // the search field replaces the title strip
+        assert!(g.search.2 > 0, "search field present on the Search tab");
+        assert!(g.search_at(g.search.0 + 4, g.search.1 + 4));
+        // single page: no scrollbar
+        assert!(g.scrollbar.is_none());
+    }
+
     /// Sub-round 1 (2026-09-14): the creative HUD now hides the XP bar
     /// and bubbles too — VERIFIED minecraft.wiki/w/Heads-up_display
     /// (live 2026-09-14): "In Creative mode, the health, hunger, oxygen,
@@ -5153,6 +5636,45 @@ mod screen_tests {
         // creative (crosshair + hotbar + held name are separate calls)
         let before = ui.gui_frame.quads.len();
         assert_eq!(before, 0, "no status quads without status_bars");
+    }
+
+    /// Sub-round 2/3 round (2026-09-15, the user's "what about the
+    /// effects" callout): effect icons render with NO status_bars call
+    /// — i.e. in Creative mode, where every status row is hidden but
+    /// the effect icons stay. VERIFIED minecraft.wiki/w/
+    /// Heads-up_display (live 2026-09-14): "All effects ... the player
+    /// currently has are shown on the top-right of the screen" with no
+    /// Creative exception (the hidden list is "health, hunger, oxygen,
+    /// experience, and armor bars").
+    #[test]
+    fn effect_icons_render_without_status_rows_creative() {
+        let mut ui = UiCanvas::new();
+        ui.set_chrome_enabled(false);
+        ui.clear();
+        // the creative situation: no status_bars call at all, but the
+        // player has two live effects
+        let entries = [
+            EffectIconEntry {
+                icon: 3,
+                amplifier: 0,
+                ticks_left: 200,
+                positive: true,
+            },
+            EffectIconEntry {
+                icon: 8,
+                amplifier: 1,
+                ticks_left: 60,
+                positive: false,
+            },
+        ];
+        ui.effect_icons(&entries, 40);
+        let icons = ui
+            .gui_frame
+            .quads
+            .iter()
+            .filter(|q| q.texture == crate::gui_render::QuadTexture::Effects)
+            .count();
+        assert!(icons >= 2, "effect icon quads must render in creative (got {icons})");
     }
 
     /// Sub-round 1: the survival block's quad census — hearts 10,

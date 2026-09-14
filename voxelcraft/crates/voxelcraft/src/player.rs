@@ -141,6 +141,26 @@ pub struct Player {
     /// effect (totem of undying: 8 points for Absorption II, VERIFIED
     /// w/Totem_of_Undying); consumed by damage BEFORE health.
     pub absorption: f32,
+    /// Sub-round 1 (2026-09-14 Survival HUD round): the hurt flash +
+    /// hearts-shake timer, the engine's analog of vanilla's `hurtTime`
+    /// player-entity field. Set to `HURT_FLASH_SECS` by real damage,
+    /// decays every frame; the HUD reads > 0 for the red vignette
+    /// (clean-room 0.3 alpha) and the row jitter. Vanilla's own value
+    /// is 10 ticks; the wiki documents the flash's existence, not its
+    /// numeric curve — the 0.25 s ≈ 5-tick span is the documented
+    /// clean-room approximation.
+    pub hurt_t: f32,
+    /// Sub-round 1 (2026-09-14): the player's ARMOR ATTRIBUTE in armor
+    /// points (0..20+, 2 points per HUD icon). VERIFIED minecraft.wiki
+    /// /w/Armor (live 2026-09-14): "The total number of armor points
+    /// that the player has is the sum of the armor points of the
+    /// individual pieces of armor worn, and is visually represented by
+    /// the armor bar." The equipped-slots array + per-piece table land
+    /// with the survival inventory screen round (which registers the
+    /// armor items); until then this stays 0 — identical to vanilla
+    /// with no armor worn (the HUD row hides at 0 exactly like
+    /// vanilla's "if the player is wearing armor" gate).
+    pub armor_points: i32,
     /// Phase E2: timed status effects (wither/poison/regen + beacon stat
     /// effects — VERIFIED w/Effect rows; see vc_gameplay::effects)
     pub effects: vc_gameplay::effects::Effects,
@@ -225,6 +245,8 @@ impl Player {
             in_lava: false,
             on_vine: false,
             absorption: 0.0,
+            hurt_t: 0.0,
+            armor_points: 0,
             effects: vc_gameplay::effects::Effects::new(),
             health: 20.0,
             xp_points: 0,
@@ -344,6 +366,11 @@ impl Player {
         self.health = (self.health + amount).min(20.0);
     }
 
+    /// Sub-round 1 (2026-09-14): the hurt-flash span in seconds
+    /// (~5 game ticks of the vanilla 10-tick hurtTime — clean-room
+    /// approximation; see the `hurt_t` field doc).
+    pub const HURT_FLASH_SECS: f32 = 0.25;
+
     /// damage clamped to 0; returns the ACTUAL damage applied
     pub fn damage(&mut self, amount: f32) -> f32 {
         // 1.11: the absorption buffer eats damage first (VERIFIED
@@ -357,7 +384,13 @@ impl Player {
         }
         let before = self.health;
         self.health = (self.health - amt).max(0.0);
-        before - self.health
+        let applied = before - self.health;
+        // Sub-round 1: real damage retriggers the hurt flash (vanilla
+        // `hurtTime` semantics — the HUD vignette + hearts shake)
+        if applied > 0.0 {
+            self.hurt_t = Self::HURT_FLASH_SECS;
+        }
+        applied
     }
 
     /// add XP points → levels advance on the vanilla curve (§29); returns
@@ -422,6 +455,12 @@ impl Player {
         loaded: bool,
     ) -> Vec<SoundEvent> {
         let mut sounds = Vec::new();
+
+        // Sub-round 1: the hurt flash decays in real time (frame-rate
+        // independent; the HUD vignette + hearts-shake read > 0)
+        if self.hurt_t > 0.0 {
+            self.hurt_t = (self.hurt_t - dt).max(0.0);
+        }
 
         // look
         let (mdx, mdy) = input.take_mouse();

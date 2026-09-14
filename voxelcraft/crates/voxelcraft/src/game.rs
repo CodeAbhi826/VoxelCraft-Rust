@@ -121,7 +121,12 @@ impl Default for Settings {
             render_distance: 6,
             #[cfg(not(target_arch = "wasm32"))]
             render_distance: 12, // vanilla default renderDistance
-            sim_distance: 10, // vanilla default simulationDistance
+            // 2026-09-14 round-8 correction: keep 12 (modern-vanilla
+            // default; range 5–32) — the 1.16.5-identical invariant the
+            // §26 sim-ring comment documents ("default 12 covers
+            // everything loaded at the default render distances"). A 10
+            // would freeze mobs 2 chunks inside the default RD-12 ring.
+            sim_distance: 12,
             sensitivity: 1.0, // slider shows 100% — the vanilla default
             // vanilla 1.16.5 options.txt defaults: master/music 1.0
             volume: 1.0,
@@ -1007,7 +1012,7 @@ pub struct GameApp {
     web_active_id: Option<u64>,
     /// journal entries not yet applied (their chunks regenerate later) —
     /// keyed (dimension, cx, cz), drained in apply_result(JobResult::Gen)
-    pending_edits: HashMap<(u8, i32, i32), Vec<([i32; 3], u16)>>,
+    pending_edits: PendingEdits,
     /// per-dimension edit journals stashed while the player travels (the
     /// live journal lives on the current World; travel swaps worlds)
     #[cfg(target_arch = "wasm32")]
@@ -1225,6 +1230,11 @@ pub struct GameApp {
     autosave_in: f32,
 }
 
+/// Sub-round 1 round-8 cleanup: the pending web-journal map —
+/// `(dimension, cx, cz)` → the edit list awaiting that chunk's regen
+/// (the clippy type_complexity alias for the raw HashMap shape).
+type PendingEdits = HashMap<(u8, i32, i32), Vec<([i32; 3], u16)>>;
+
 /// 2026-09-14: the last known window height (px) — set by the renderer's
 /// resize path, read by `Settings::gui_scale_auto` so the AUTO GUI scale
 /// re-picks live when the window size changes (the dynamic-resolution
@@ -1233,6 +1243,51 @@ pub fn window_height_hint() -> u32 {
     WINDOW_H.load(std::sync::atomic::Ordering::Relaxed)
 }
 static WINDOW_H: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+
+/// Sub-round 1 (2026-09-14 Survival HUD round): map an effect kind to
+/// its effect-icon index. The index order is pinned to
+/// vc_gameplay::effects::EffectKind's declaration order — the guard is
+/// `effect_icon_names_match_effectkind_order` in vc-render plus this
+/// function's own test below (a new EffectKind arm without a matching
+/// icon breaks the build, not a silent mislabel).
+pub(crate) fn effect_icon_index(kind: vc_gameplay::effects::EffectKind) -> usize {
+    use vc_gameplay::effects::EffectKind;
+    match kind {
+        EffectKind::Wither => 0,
+        EffectKind::Poison => 1,
+        EffectKind::Regeneration => 2,
+        EffectKind::Speed => 3,
+        EffectKind::Haste => 4,
+        EffectKind::Resistance => 5,
+        EffectKind::JumpBoost => 6,
+        EffectKind::Strength => 7,
+        EffectKind::Slowness => 8,
+        EffectKind::Hunger => 9,
+        EffectKind::Absorption => 10,
+        EffectKind::Blindness => 11,
+        EffectKind::WaterBreathing => 12,
+        EffectKind::SlowFalling => 13,
+        EffectKind::ConduitPower => 14,
+        EffectKind::DolphinsGrace => 15,
+    }
+}
+
+/// Sub-round 1: the wiki's positive/others split for the two effect
+/// rows — VERIFIED minecraft.wiki/w/Heads-up_display (live 2026-09-14):
+/// "positive effects are shown on the top, and other effects (neutral
+/// or negative) are shown on the bottom." Beneficial kinds = positive;
+/// the harmful set (wither/poison/slowness/hunger/blindness) = row 1.
+pub(crate) fn effect_is_positive(kind: vc_gameplay::effects::EffectKind) -> bool {
+    use vc_gameplay::effects::EffectKind;
+    !matches!(
+        kind,
+        EffectKind::Wither
+            | EffectKind::Poison
+            | EffectKind::Slowness
+            | EffectKind::Hunger
+            | EffectKind::Blindness
+    )
+}
 
 pub fn now_secs() -> f32 {
     // CRITICAL (native had the SAME f32-precision bug the wasm comment
@@ -17029,13 +17084,72 @@ impl GameApp {
         let level = self.player.xp_level.max(0) as u32;
         // §29: the health bar is REAL now — potions heal it, damage lowers it;
         // the XP bar shows the real in-level progress + level.
-        // Phase 1: creative hides hearts + hunger (vanilla), XP stays
-        // (creative still earns and spends enchanting levels here)
-        if self.mode.invulnerable() {
-            self.ui.xp_bar_only(xp, level, self.player.air);
-        } else {
-            self.ui
-                .status_bars(self.player.health, 20.0, xp, level, self.player.air);
+        //
+        // Sub-round 1 (2026-09-14 Survival HUD round): the per-mode
+        // element set now follows the LIVE wiki — VERIFIED
+        // minecraft.wiki/w/Heads-up_display (fetched 2026-09-14): "In
+        // Creative mode, the health, hunger, oxygen, experience, and
+        // armor bars are hidden." Creative renders crosshair + hotbar +
+        // boss bar + held-item name ONLY. The retired `xp_bar_only`
+        // (creative XP bar + bubbles) is gone; the old rationale
+        // ("levels still matter for enchanting") is recorded in the
+        // round-9 reference audit §2 — the wiki wins per the
+        // cross-check rule.
+        if !self.mode.invulnerable() {
+            use vc_gameplay::effects::EffectKind;
+            let hunger_poisoned = self
+                .player
+                .effects
+                .amplifier(EffectKind::Hunger)
+                .is_some();
+            let regen = self
+                .player
+                .effects
+                .amplifier(EffectKind::Regeneration)
+                .is_some();
+            let status = ui::HudStatus {
+                health: self.player.health,
+                // the engine has no hunger-drain system yet — vanilla
+                // spawn food is 20/20 so the full row is the correct
+                // display (deviation documented in the audit)
+                food: 20.0,
+                xp,
+                level,
+                air: self.player.air,
+                armor: self.player.armor_points,
+                // hearts shake while regenerating / hurt / at low
+                // health (clean-room; audit §3)
+                hearts_jitter: regen
+                    || self.player.hurt_t > 0.0
+                    || self.player.health <= 4.0,
+                hunger_poisoned,
+                tick_phase: (self.sim.ticks & 1) as i32,
+            };
+            self.ui.status_bars(&status);
+            // Sub-round 1: the damage-flash vignette, decaying with the
+            // player's hurt timer (vanilla hurtTime semantics)
+            if self.player.hurt_t > 0.0 {
+                let a = self.player.hurt_t / Player::HURT_FLASH_SECS;
+                self.ui.damage_vignette(a);
+            }
+            // Sub-round 1: the status-effect icons, top-right (wiki-
+            // verified split/sort/blink rules on the painter)
+            let entries: Vec<ui::EffectIconEntry> = self
+                .player
+                .effects
+                .active
+                .iter()
+                .filter(|e| e.ticks_left > 0)
+                .map(|e| ui::EffectIconEntry {
+                    icon: effect_icon_index(e.kind),
+                    amplifier: e.amplifier,
+                    ticks_left: e.ticks_left,
+                    positive: effect_is_positive(e.kind),
+                })
+                .collect();
+            if !entries.is_empty() {
+                self.ui.effect_icons(&entries, self.sim.ticks as i64);
+            }
         }
 
         // Phase E1: the dragon boss bar while the fight is live (VERIFIED:
@@ -17063,8 +17177,10 @@ impl GameApp {
             }
         }
 
-        // held-item name (fades ~2 s after the selection changes)
-        if self.held_name_t > 0.0 && !self.mode.invulnerable() {
+        // held-item name (fades ~2 s after the selection changes) —
+        // Sub-round 1: shows in BOTH modes (vanilla renders it in
+        // creative too; it is not one of the hidden status rows)
+        if self.held_name_t > 0.0 {
             let a = (self.held_name_t / 2.0).min(1.0);
             self.ui.held_item_name(&self.held_name, a);
         }
@@ -18486,10 +18602,12 @@ mod settings_tests {
         assert_eq!(s.smooth_level, 2); // smooth=1 → maximum
         assert_eq!(s.clouds_level, 0); // clouds=0 → off
         assert_eq!(s.upscale, 1);
-        // Phase 6 keys → defaults
+        // Phase 6 keys → defaults (the 2026-09-14 vanilla-parity reset:
+        // aniso 1 = OFF — vanilla 1.16.5 ships no aniso filtering;
+        // sim_distance 12 per the §26 sim-ring invariant)
         assert_eq!(s.sim_distance, 12);
         assert_eq!(s.mipmap_levels, 4);
-        assert_eq!(s.aniso, 4);
+        assert_eq!(s.aniso, 1);
         assert_eq!(s.msaa, 0);
         assert!(s.occlusion);
     }
@@ -18704,6 +18822,86 @@ pub(crate) fn fps_min_max(times: &std::collections::VecDeque<f32>) -> (f32, f32)
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Sub-round 1 (2026-09-14): the effect-icon mapping is exhaustive
+    /// and matches the icon sheet's pinned name order — every kind maps
+    /// to a distinct index < EFFECT_ICON_COUNT, and the harmful set
+    /// lands on the "others" row per the wiki split.
+    #[test]
+    fn effect_icon_mapping_is_bijection_with_positive_split() {
+        use vc_gameplay::effects::EffectKind;
+        let kinds = [
+            EffectKind::Wither,
+            EffectKind::Poison,
+            EffectKind::Regeneration,
+            EffectKind::Speed,
+            EffectKind::Haste,
+            EffectKind::Resistance,
+            EffectKind::JumpBoost,
+            EffectKind::Strength,
+            EffectKind::Slowness,
+            EffectKind::Hunger,
+            EffectKind::Absorption,
+            EffectKind::Blindness,
+            EffectKind::WaterBreathing,
+            EffectKind::SlowFalling,
+            EffectKind::ConduitPower,
+            EffectKind::DolphinsGrace,
+        ];
+        let idxs: Vec<usize> = kinds.iter().map(|k| effect_icon_index(*k)).collect();
+        for (k, &i) in kinds.iter().zip(idxs.iter()) {
+            assert!(
+                i < vc_render::textures::gui_art::EFFECT_ICON_COUNT,
+                "{k:?} maps out of range"
+            );
+            assert_eq!(
+                vc_render::textures::gui_art::effect_icon_name(i),
+                k.name().trim_start_matches("minecraft:"),
+                "{k:?} name/icon mismatch at {i}"
+            );
+        }
+        // bijection
+        let mut sorted = idxs.clone();
+        sorted.sort();
+        sorted.dedup();
+        assert_eq!(sorted.len(), kinds.len(), "indices are distinct");
+        // the wiki split: harmful kinds are NOT positive
+        for k in [
+            EffectKind::Wither,
+            EffectKind::Poison,
+            EffectKind::Slowness,
+            EffectKind::Hunger,
+            EffectKind::Blindness,
+        ] {
+            assert!(!effect_is_positive(k), "{k:?} must be on the others row");
+        }
+        assert!(effect_is_positive(EffectKind::Regeneration));
+        assert!(effect_is_positive(EffectKind::Speed));
+    }
+
+    /// Sub-round 1: the hurt flash fires on real damage and decays with
+    /// dt (vanilla hurtTime semantics; absorption-eaten hits do not
+    /// retrigger it — only applied health damage does).
+    #[test]
+    fn hurt_flash_fires_and_decays() {
+        let mut p = Player::new(Vec3::new(0.0, 64.0, 0.0));
+        assert_eq!(p.hurt_t, 0.0);
+        let applied = p.damage(4.0);
+        assert_eq!(applied, 4.0);
+        assert!((p.hurt_t - Player::HURT_FLASH_SECS).abs() < 1e-6);
+        // a fully absorbed hit does not retrigger the flash
+        p.hurt_t = 0.0;
+        p.absorption = 6.0;
+        let applied2 = p.damage(3.0);
+        assert_eq!(applied2, 0.0);
+        assert_eq!(p.hurt_t, 0.0);
+        assert_eq!(p.absorption, 3.0, "absorption ate the whole hit");
+        // real damage through a partial buffer still flashes
+        p.absorption = 1.0;
+        let applied3 = p.damage(5.0);
+        assert_eq!(applied3, 4.0);
+        assert!(p.hurt_t > 0.0);
+    }
 
     /// VERIFIED 2026-09-06 live (minecraft.wiki/w/Daylight_cycle):
     /// the full 1.16.5 day-night cycle is 24000 ticks at 20 tps = 1200 s

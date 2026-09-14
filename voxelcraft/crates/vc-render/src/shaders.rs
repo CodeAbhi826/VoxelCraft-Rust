@@ -262,7 +262,7 @@ pub fn validate_wgsl(src: &str) -> Result<(), String> {
 /// pre-created pack may ship inside the engine. `external_packs()`
 /// below stays as the (UI-less) engine capability for user-provided
 /// WGSL packs dropped into `shader-packs/`.
-
+//
 /// native-only: also load packs from a `shader-packs/` directory next to
 /// the executable/cwd (§34.1 recompilation path — external packs without
 /// rebuilding). Invalid packs are skipped with a log line (§46), never

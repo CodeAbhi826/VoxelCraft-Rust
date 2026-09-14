@@ -1505,9 +1505,9 @@ mod tests {
         // vanilla level.dat keys (generatorName / MapFeatures /
         // BonusChestEnabled) — a reloaded flat structures-off world stays
         // that way
-        assert_eq!(back.flat, true);
-        assert_eq!(back.structures, false);
-        assert_eq!(back.bonus_chest, true);
+        assert!(back.flat);
+        assert!(!back.structures);
+        assert!(back.bonus_chest);
         // Phase 5: the container inventory round-trips
         assert_eq!(back.containers.len(), 1);
         assert_eq!(back.containers[0].pos, [-17, 40, 239]);

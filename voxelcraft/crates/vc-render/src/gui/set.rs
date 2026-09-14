@@ -124,6 +124,10 @@ pub struct GuiTextureSet {
     pub armor: SpriteSheet,
     /// 2 tiles of 9x9 (Full, Gone) — 18x9
     pub bubbles: SpriteSheet,
+    /// Sub-round 1 (2026-09-14): the 16 status-effect icons, one 9x9
+    /// tile per engine effect kind — 144x9. Index order =
+    /// vc_gameplay::effects::EffectKind (see textures/gui_art.rs).
+    pub effects: SpriteSheet,
     /// 6 cells of 20x20 (ButtonNormal, ButtonHover, ButtonDisabled,
     /// SlotEmpty, SlotHover, Panel) — 120x20. Slots paint centered
     /// 18x18 in their cell (the vanilla 1-px buffer).
@@ -145,6 +149,7 @@ pub(crate) const SHEET_DIMS: &[(&str, usize, usize)] = &[
     ("hunger", 27, 9),
     ("armor", 27, 9),
     ("bubbles", 18, 9),
+    ("effects", 144, 9),
     ("widgets", 120, 20),
     ("hotbar", 182, 22),
     ("hotbar_sel", 24, 22),
@@ -234,6 +239,29 @@ impl GuiTextureSet {
             tile_h: 9,
         };
 
+        // Sub-round 1: the 16 status-effect icons — 16 tiles of 9x9 in
+        // one 144x9 strip (tile i = effect-icon index i)
+        let mut effects_px = vec![0u8; 144 * 9 * 4];
+        for i in 0..crate::textures::gui_art::EFFECT_ICON_COUNT {
+            let mut tile = [0u8; 9 * 9 * 4];
+            crate::textures::gui_art::draw_effect_icon(&mut tile, 9, i);
+            let off = i * 9 * 4;
+            for row in 0..9usize {
+                let dst = row * 144 * 4 + off;
+                let src = row * 9 * 4;
+                if dst + 9 * 4 <= effects_px.len() {
+                    effects_px[dst..dst + 9 * 4].copy_from_slice(&tile[src..src + 9 * 4]);
+                }
+            }
+        }
+        let effects = SpriteSheet {
+            px: effects_px,
+            w: 144,
+            h: 9,
+            tile_w: 9,
+            tile_h: 9,
+        };
+
         // widgets: 6 cells of 20x20, laid out horizontally
         let variants = [
             WidgetVariant::ButtonNormal,
@@ -299,6 +327,7 @@ impl GuiTextureSet {
             hunger,
             armor,
             bubbles,
+            effects,
             widgets,
             hotbar_bg,
             hotbar_sel,
@@ -325,6 +354,7 @@ mod tests {
             ("hunger", &set.hunger),
             ("armor", &set.armor),
             ("bubbles", &set.bubbles),
+            ("effects", &set.effects),
             ("widgets", &set.widgets),
             ("hotbar_bg", &set.hotbar_bg),
             ("hotbar_sel", &set.hotbar_sel),
@@ -346,6 +376,7 @@ mod tests {
             (&set.hunger, 9, 9, 3),
             (&set.armor, 9, 9, 3),
             (&set.bubbles, 9, 9, 2),
+            (&set.effects, 9, 9, crate::textures::gui_art::EFFECT_ICON_COUNT),
             (&set.widgets, 20, 20, 6),
             (&set.hotbar_bg, 182, 22, 1),
             (&set.hotbar_sel, 24, 22, 1),

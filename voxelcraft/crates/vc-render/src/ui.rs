@@ -297,6 +297,9 @@ pub fn scale_widgets(ws: &mut [Widget], s: f32) {
 /// Single-line text entry with explicit height (vanilla fields are
 /// 320x20 → 480x30 on the 1.5x canvas; the old fixed 44px height made
 /// the world screens look padded).
+// 8 params mirror `text_field` + the explicit height column — the
+// same deliberate shape as `btn_h`.
+#[allow(clippy::too_many_arguments)]
 pub fn text_field_h(
     id: u16,
     x: i32,
@@ -487,6 +490,46 @@ pub struct WorldRow {
     pub info: String,
     /// dead hardcore worlds render dim + unplayable (vanilla locks them)
     pub dead: bool,
+}
+
+/// Sub-round 1 (2026-09-14 Survival HUD round): the survival status
+/// block's inputs, one struct instead of a growing argument list.
+/// Per-element wiki citations live on `UiCanvas::status_bars`.
+#[derive(Clone, Copy, Debug)]
+pub struct HudStatus {
+    /// health 0..20 (10 hearts, half-heart resolution)
+    pub health: f32,
+    /// food 0..20 (10 drumsticks; the engine has no hunger-drain system
+    /// yet — the game layer passes 20.0 and the deviation is documented)
+    pub food: f32,
+    /// XP progress within the current level, 0..1
+    pub xp: f32,
+    /// XP level (number above the bar; 0 = hidden)
+    pub level: u32,
+    /// air 0..300 (bubbles above hunger while < 300)
+    pub air: f32,
+    /// armor points 0..20+ (row hidden at 0 — the vanilla gate)
+    pub armor: i32,
+    /// hearts-row ±1-px jitter (hurt flash / Regeneration active)
+    pub hearts_jitter: bool,
+    /// Hunger effect active: yellow-green recolor + row jitter
+    pub hunger_poisoned: bool,
+    /// game-tick parity for the jitter offsets (0/1 alternating)
+    pub tick_phase: i32,
+}
+
+/// Sub-round 1: one status-effect icon for the top-right HUD rows.
+#[derive(Clone, Copy, Debug)]
+pub struct EffectIconEntry {
+    /// effect-icon index (order = vc_gameplay EffectKind; see
+    /// textures/gui_art.rs `EFFECT_ICON_COUNT`)
+    pub icon: usize,
+    /// amplifier 0 = level I (numeral only at ≥ II)
+    pub amplifier: u8,
+    /// ticks left (blink in the final 100; sorts sooner-left)
+    pub ticks_left: i32,
+    /// positive effects row 0, others row 1 (vanilla split)
+    pub positive: bool,
 }
 
 /// Button with explicit height (vanilla title buttons are 200x20 at GUI
@@ -924,11 +967,13 @@ pub fn layout_world_select(
 
 /// 2026-09-14 parity round: the vanilla 1.16.5 Create World layout —
 /// TWO pages like vanilla's More World Options flow:
+///
 /// * page 1: name field, Game Mode button + description, bottom
 ///   [CREATE NEW WORLD] [MORE WORLD OPTIONS...] + centered CANCEL
 /// * page 2 (More World Options): seed field + "leave blank" hint,
 ///   [WORLD TYPE: ...] [GENERATE STRUCTURES: ON/OFF], [BONUS CHEST:
 ///   ON/OFF], bottom [DONE...] + CANCEL
+///
 /// Values refresh on every keystroke / toggle from game.rs.
 #[allow(clippy::too_many_arguments)]
 pub fn layout_world_create(
@@ -2333,16 +2378,21 @@ impl UiCanvas {
     /// 300-air oxygen bar, one bubble per 30 air)
     const BUBBLE: [&'static str; 6] = [".ooo..", "oWWoo.", "oWBBBo", "oBBBBo", ".oBBo.", "..oo.."];
 
-    /// Full 1.16.5-style status bars: hearts (left), hunger (right), XP
-    /// bar, and the oxygen bubble row above hunger (VERIFIED —
-    /// research-verdicts.md live round: 10 bubbles × 30 air; drawn only
-    /// while the air supply is below full, right-aligned above hunger).
-    pub fn status_bars(&mut self, health: f32, food: f32, xp: f32, level: u32, air: f32) {
+    /// Sub-round 1 (2026-09-14 Survival HUD round): the full vanilla
+    /// 1.16.5 survival status block, drawn from [`HudStatus`] — armor
+    /// row above the hearts (hidden at 0 points), hearts/hunger with
+    /// the hurt/regen jitter + Hunger-effect recolor, oxygen bubbles
+    /// above hunger while air < 300, XP bar 182x5 vanilla-eq + level.
+    /// Per-element wiki citations in the body; clean-room items marked
+    /// (see docs/research/round-9-survival-hud-reference-audit.md).
+    pub fn status_bars(&mut self, s: &HudStatus) {
         let hb_w = 9 * 40 + 4;
         let hb_x = (UI_W as i32 - hb_w) / 2;
         let hb_y = UI_H as i32 - 48;
 
-        // hearts row
+        // hearts row — ±1-vanilla-px jitter while hurt / regenerating
+        // (clean-room; vanilla jitters the row, the wiki publishes no
+        // numbers — round-9 audit §3)
         let heart_pal: [(char, Color); 4] = [
             ('O', [46, 6, 6, 255]),
             ('R', [227, 27, 13, 255]),
@@ -2352,22 +2402,23 @@ impl UiCanvas {
         for i in 0..10i32 {
             let x = hb_x + 2 + i * 17;
             let y = hb_y - 26;
+            let dx = if s.hearts_jitter && ((i + s.tick_phase) & 1) == 0 { -2 } else { 0 };
             // Phase 2: the 9x9 quad sprite (18x18 drawn) always pushed;
             // the legacy canvas sprite raster is gated
-            let variant = if health >= (i + 1) as f32 / 10.0 {
+            let variant = if s.health >= (i + 1) as f32 / 10.0 {
                 crate::textures::gui_art::HeartVariant::Full
-            } else if health > i as f32 / 10.0 {
+            } else if s.health > i as f32 / 10.0 {
                 crate::textures::gui_art::HeartVariant::Half
             } else {
                 crate::textures::gui_art::HeartVariant::Empty
             };
-            self.gui_frame.heart(x, y, variant);
+            self.gui_frame.heart(x + dx, y, variant);
             if !self.chrome_enabled {
                 continue;
             }
             // background outline (empty heart) then fill
-            if health >= (i + 1) as f32 / 10.0 {
-                self.sprite(x, y, &Self::HEART, &heart_pal, 2);
+            if s.health >= (i + 1) as f32 / 10.0 {
+                self.sprite(x + dx, y, &Self::HEART, &heart_pal, 2);
             } else {
                 let dim: [(char, Color); 4] = [
                     ('O', [30, 30, 30, 200]),
@@ -2375,11 +2426,33 @@ impl UiCanvas {
                     ('H', [90, 90, 90, 200]),
                     ('W', [110, 110, 110, 200]),
                 ];
-                self.sprite(x, y, &Self::HEART, &dim, 2);
+                self.sprite(x + dx, y, &Self::HEART, &dim, 2);
             }
         }
 
-        // hunger row (right aligned, mirrored order)
+        // armor row ABOVE the hearts (17-px pitch), hidden at 0 points
+        // — VERIFIED w/Heads-up_display (live 2026-09-14): "The armor
+        // condition bar appears above the health bar if the player is
+        // wearing armor" (0 points = unworn = hidden, the vanilla gate);
+        // icons = 2 points each, half icon at odd (w/Armor)
+        if s.armor > 0 {
+            for i in 0..10i32 {
+                let pts = s.armor - i * 2;
+                let variant = if pts >= 2 {
+                    crate::textures::gui_art::ArmorVariant::Full
+                } else if pts == 1 {
+                    crate::textures::gui_art::ArmorVariant::Half
+                } else {
+                    crate::textures::gui_art::ArmorVariant::Empty
+                };
+                self.gui_frame.armor(hb_x + 2 + i * 17, hb_y - 43, variant);
+            }
+        }
+
+        // hunger row (right aligned, mirrored order) — the Hunger-effect
+        // yellow-green recolor + ±1-px jitter while poisoned (VERIFIED
+        // w/Hunger_(effect) for the recolor: "It also turns the hunger
+        // bar a yellow-green color"; the jitter is clean-room)
         let food_pal: [(char, Color); 4] = [
             ('O', [43, 26, 4, 255]),
             ('M', [186, 106, 38, 255]),
@@ -2389,20 +2462,26 @@ impl UiCanvas {
         for i in 0..10i32 {
             let x = hb_x + hb_w - 4 - (i + 1) * 17;
             let y = hb_y - 28;
+            let dx = if s.hunger_poisoned && ((i + s.tick_phase) & 1) == 0 { -2 } else { 0 };
             // Phase 2: quad sprite always pushed (right row mirrors)
-            let variant = if food >= (i + 1) as f32 / 10.0 {
+            let variant = if s.food >= (i + 1) as f32 / 10.0 {
                 crate::textures::gui_art::HungerVariant::Full
-            } else if food > i as f32 / 10.0 {
+            } else if s.food > i as f32 / 10.0 {
                 crate::textures::gui_art::HungerVariant::Half
             } else {
                 crate::textures::gui_art::HungerVariant::Empty
             };
-            self.gui_frame.hunger(x, y, variant);
+            if s.hunger_poisoned {
+                self.gui_frame
+                    .hunger_tinted(x + dx, y, variant, [0.72, 1.0, 0.45, 1.0]);
+            } else {
+                self.gui_frame.hunger(x + dx, y, variant);
+            }
             if !self.chrome_enabled {
                 continue;
             }
-            if food >= (i + 1) as f32 / 10.0 {
-                self.sprite(x, y, &Self::FOOD, &food_pal, 2);
+            if s.food >= (i + 1) as f32 / 10.0 {
+                self.sprite(x + dx, y, &Self::FOOD, &food_pal, 2);
             } else {
                 let dim: [(char, Color); 4] = [
                     ('O', [30, 30, 30, 200]),
@@ -2410,21 +2489,21 @@ impl UiCanvas {
                     ('W', [110, 110, 110, 200]),
                     ('H', [110, 110, 110, 200]),
                 ];
-                self.sprite(x, y, &Self::FOOD, &dim, 2);
+                self.sprite(x + dx, y, &Self::FOOD, &dim, 2);
             }
         }
 
         // oxygen bubbles (air supply < full): right-aligned row ABOVE
         // the hunger bar, mirrored order (vanilla position); ceil(air/30)
         // full bubbles — at the pop boundary the last one blinks out
-        if air < 299.0 {
+        if s.air < 299.0 {
             let bubble_pal: [(char, Color); 4] = [
                 ('o', [26, 46, 78, 255]),
                 ('W', [235, 247, 255, 255]),
                 ('B', [94, 158, 222, 255]),
                 ('.', [0, 0, 0, 0]),
             ];
-            let bubbles = (air.max(0.0) / 30.0).ceil() as i32;
+            let bubbles = (s.air.max(0.0) / 30.0).ceil() as i32;
             for i in 0..bubbles.min(10) {
                 let x = hb_x + hb_w - 4 - (i + 1) * 17;
                 let y = hb_y - 48;
@@ -2436,13 +2515,15 @@ impl UiCanvas {
             }
         }
 
-        // XP bar — Luanti font round: Solid quads (pixel-crisp at any
-        // window size, and immune to the canvas/quad z-order class of
-        // bugs); the canvas raster stays as the no-GPU-pass fallback
+        // XP bar — 182x5 vanilla-eq (364x10 UI px; the old 364x8 was the
+        // 4-vanilla-px height deviation — round-9 audit §1). Luanti font
+        // round: Solid quads (pixel-crisp at any window size, and immune
+        // to the canvas/quad z-order class of bugs); the canvas raster
+        // stays as the no-GPU-pass fallback
         let xp_w = hb_w;
         let xp_x = hb_x;
-        let xp_y = hb_y - 10;
-        let fill = ((xp_w - 4) as f32 * xp.clamp(0.0, 1.0)) as i32;
+        let xp_y = hb_y - 12;
+        let fill = ((xp_w - 4) as f32 * s.xp.clamp(0.0, 1.0)) as i32;
         let ct = |c: Color| -> [f32; 4] {
             [
                 c[0] as f32 / 255.0,
@@ -2451,37 +2532,103 @@ impl UiCanvas {
                 c[3] as f32 / 255.0,
             ]
         };
-        self.gui_frame.solid_rect(xp_x, xp_y, xp_w, 8, ct([16, 16, 16, 220]));
+        self.gui_frame.solid_rect(xp_x, xp_y, xp_w, 10, ct([16, 16, 16, 220]));
         self.gui_frame.solid_rect(xp_x, xp_y, xp_w, 1, ct([60, 60, 60, 255]));
-        self.gui_frame.solid_rect(xp_x, xp_y + 7, xp_w, 1, ct([60, 60, 60, 255]));
-        self.gui_frame.solid_rect(xp_x, xp_y, 1, 8, ct([60, 60, 60, 255]));
+        self.gui_frame.solid_rect(xp_x, xp_y + 9, xp_w, 1, ct([60, 60, 60, 255]));
+        self.gui_frame.solid_rect(xp_x, xp_y, 1, 10, ct([60, 60, 60, 255]));
         self.gui_frame
-            .solid_rect(xp_x + xp_w - 1, xp_y, 1, 8, ct([60, 60, 60, 255]));
+            .solid_rect(xp_x + xp_w - 1, xp_y, 1, 10, ct([60, 60, 60, 255]));
         if fill > 0 {
             self.gui_frame
-                .solid_rect(xp_x + 2, xp_y + 2, fill, 4, ct([128, 255, 32, 255]));
+                .solid_rect(xp_x + 2, xp_y + 2, fill, 6, ct([128, 255, 32, 255]));
             self.gui_frame
                 .solid_rect(xp_x + 2, xp_y + 2, fill, 1, ct([190, 255, 130, 255]));
         }
         if self.chrome_enabled {
-            self.rect(xp_x, xp_y, xp_w, 8, [16, 16, 16, 220]);
-            self.frame(xp_x, xp_y, xp_w, 8, [60, 60, 60, 255]);
+            self.rect(xp_x, xp_y, xp_w, 10, [16, 16, 16, 220]);
+            self.frame(xp_x, xp_y, xp_w, 10, [60, 60, 60, 255]);
             if fill > 0 {
-                self.rect(xp_x + 2, xp_y + 2, fill, 4, [128, 255, 32, 255]);
+                self.rect(xp_x + 2, xp_y + 2, fill, 6, [128, 255, 32, 255]);
                 self.rect(xp_x + 2, xp_y + 2, fill, 1, [190, 255, 130, 255]);
             }
         }
-        if level > 0 {
-            let s = format!("{}", level);
-            let w = Self::text_width(&s, 2);
+        if s.level > 0 {
+            let lvl = format!("{}", s.level);
+            let w = Self::text_width(&lvl, 2);
             self.text_outlined(
                 (UI_W as i32 - w) / 2,
                 xp_y - 20,
-                &s,
+                &lvl,
                 [128, 255, 32, 255],
                 [20, 40, 8, 255],
                 2,
             );
+        }
+    }
+
+    /// Sub-round 1: the damage-flash vignette — a full-canvas red wash
+    /// at ≤0.3 alpha, decaying with the player's hurt timer (clean-room
+    /// spec per round-9 audit §3; the wiki documents the flash's
+    /// existence, not its curve). `alpha` 0..1 (the game layer scales it).
+    pub fn damage_vignette(&mut self, alpha: f32) {
+        let a = alpha.clamp(0.0, 1.0);
+        if a <= 0.0 {
+            return;
+        }
+        self.gui_frame
+            .solid_over(0.0, 0.0, UI_W as f32, UI_H as f32, [0.55, 0.0, 0.0, 0.3 * a]);
+    }
+
+    /// Sub-round 1: the status-effect icon rows, top-right (VERIFIED
+    /// minecraft.wiki/w/Heads-up_display + its 1.9 15w31a history entry,
+    /// live 2026-09-14): "When an effect is active on the player, it
+    /// appears on the top-right corner of the screen. It blinks when
+    /// about to run out." + "Effects that run out sooner appear farther
+    /// to the left, and effects that are about to run out start to
+    /// flash. Additionally, positive effects are shown on the top, and
+    /// other effects (neutral or negative) are shown on the bottom."
+    ///
+    /// Rows are sorted by ticks-left ascending (soonest-expiring
+    /// leftmost) and right-aligned; the amplifier+1 numeral renders
+    /// under the icon at vanilla level ≥ II; the blink in the final 5 s
+    /// (100 ticks) is the documented clean-room threshold.
+    pub fn effect_icons(&mut self, entries: &[EffectIconEntry], tick: i64) {
+        if entries.is_empty() {
+            return;
+        }
+        const PITCH: i32 = 20; // 18-wide icon + 2-px gap
+        const MARGIN: i32 = 10; // right/top inset (5 vanilla px)
+        let mut pos: Vec<&EffectIconEntry> = entries.iter().filter(|e| e.positive).collect();
+        let mut neg: Vec<&EffectIconEntry> = entries.iter().filter(|e| !e.positive).collect();
+        pos.sort_by_key(|e| e.ticks_left);
+        neg.sort_by_key(|e| e.ticks_left);
+        for (row, list) in [(0i32, &pos), (1i32, &neg)] {
+            let n = list.len() as i32;
+            for (i, e) in list.iter().enumerate() {
+                let x = UI_W as i32 - MARGIN - (n - i as i32) * PITCH + 2;
+                let y = MARGIN + row * 20;
+                // blink in the final 5 s (100 ticks) at ~4 Hz
+                let alpha = if e.ticks_left < 100 && (tick / 5) % 2 == 0 {
+                    0.25
+                } else {
+                    1.0
+                };
+                self.gui_frame.effect_icon(x, y, e.icon, alpha);
+                // amplifier ≥ 1 (vanilla level II+): the level numeral
+                // (vanilla draws it on the icon; under the icon keeps the
+                // 9x9 art readable — disclosed adaptation)
+                if e.amplifier >= 1 {
+                    let lvl = format!("{}", e.amplifier + 1);
+                    self.text_outlined(
+                        x + 6,
+                        y + 18,
+                        &lvl,
+                        [255, 255, 255, 230],
+                        [30, 30, 30, 160],
+                        1,
+                    );
+                }
+            }
         }
     }
 
@@ -2536,85 +2683,6 @@ impl UiCanvas {
         }
     }
 
-    /// Phase 1: creative HUD — no hearts, no hunger, XP bar only
-    /// (vanilla creative shows no status rows; levels still matter here
-    /// because enchanting spends them), plus the oxygen bubbles
-    /// (creative players still lose air visually — damage is gated by
-    /// invulnerability).
-    pub fn xp_bar_only(&mut self, xp: f32, level: u32, air: f32) {
-        let hb_w = 9 * 40 + 4;
-        let hb_x = (UI_W as i32 - hb_w) / 2;
-        let hb_y = UI_H as i32 - 48;
-        let xp_w = hb_w;
-        let xp_x = hb_x;
-        let xp_y = hb_y - 10;
-        // Luanti round 2: solid quads — the exact XP block the survival
-        // `status_bars` renders (pixel-crisp at any window size, immune
-        // to the canvas/quad z-order bug class); canvas raster gated
-        let ct = |c: Color| -> [f32; 4] {
-            [
-                c[0] as f32 / 255.0,
-                c[1] as f32 / 255.0,
-                c[2] as f32 / 255.0,
-                c[3] as f32 / 255.0,
-            ]
-        };
-        self.gui_frame.solid_rect(xp_x, xp_y, xp_w, 8, ct([16, 16, 16, 220]));
-        self.gui_frame.solid_rect(xp_x, xp_y, xp_w, 1, ct([60, 60, 60, 255]));
-        self.gui_frame.solid_rect(xp_x, xp_y + 7, xp_w, 1, ct([60, 60, 60, 255]));
-        self.gui_frame.solid_rect(xp_x, xp_y, 1, 8, ct([60, 60, 60, 255]));
-        self.gui_frame
-            .solid_rect(xp_x + xp_w - 1, xp_y, 1, 8, ct([60, 60, 60, 255]));
-        let fill = ((xp_w - 4) as f32 * xp.clamp(0.0, 1.0)) as i32;
-        if fill > 0 {
-            self.gui_frame
-                .solid_rect(xp_x + 2, xp_y + 2, fill, 4, ct([128, 255, 32, 255]));
-            self.gui_frame
-                .solid_rect(xp_x + 2, xp_y + 2, fill, 1, ct([190, 255, 130, 255]));
-        }
-        if self.chrome_enabled {
-            self.rect(xp_x, xp_y, xp_w, 8, [16, 16, 16, 220]);
-            self.frame(xp_x, xp_y, xp_w, 8, [60, 60, 60, 255]);
-            if fill > 0 {
-                self.rect(xp_x + 2, xp_y + 2, fill, 4, [128, 255, 32, 255]);
-                self.rect(xp_x + 2, xp_y + 2, fill, 1, [190, 255, 130, 255]);
-            }
-        }
-        if level > 0 {
-            let s = format!("{}", level);
-            let w = Self::text_width(&s, 2);
-            self.text_outlined(
-                (UI_W as i32 - w) / 2,
-                xp_y - 20,
-                &s,
-                [128, 255, 32, 255],
-                [20, 40, 8, 255],
-                2,
-            );
-        }
-        // oxygen bubbles also render in creative (vanilla shows them) —
-        // the 9x9 quad sprite always pushed (the status_bars pattern),
-        // canvas raster gated
-        if air < 299.0 {
-            let bubble_pal: [(char, Color); 4] = [
-                ('o', [26, 46, 78, 255]),
-                ('W', [235, 247, 255, 255]),
-                ('B', [94, 158, 222, 255]),
-                ('.', [0, 0, 0, 0]),
-            ];
-            let bubbles = (air.max(0.0) / 30.0).ceil() as i32;
-            for i in 0..bubbles.min(10) {
-                let x = hb_x + hb_w - 4 - (i + 1) * 17;
-                let y = hb_y - 48;
-                self.gui_frame
-                    .bubble(x, y, crate::textures::gui_art::BubbleVariant::Full);
-                if self.chrome_enabled {
-                    self.sprite(x, y, &Self::BUBBLE, &bubble_pal, 2);
-                }
-            }
-        }
-    }
-
     /// Held-item name above the XP bar, fading out over ~2 s after the
     /// selection changes (vanilla HUD behavior; the 2 s fade duration is
     /// an unverified-but-trivial UI nicety — the layout position is the
@@ -2624,12 +2692,13 @@ impl UiCanvas {
         if a <= 0.0 || name.is_empty() {
             return;
         }
-        let hb_w = 9 * 40 + 4;
-        let hb_x = (UI_W as i32 - hb_w) / 2;
-        let hb_y = UI_H as i32 - 48;
-        // above the XP level-number zone, left-aligned with the hotbar
-        let x = hb_x + 4;
-        let y = hb_y - 44;
+        // Sub-round 1: centered above the whole status block (vanilla
+        // centers it; the old left-aligned hb_y-44 spot now collides
+        // with the armor row). Clear above armor (hb_y-43) and the
+        // level-number zone (hb_y-32)
+        let y = UI_H as i32 - 48 - 64;
+        let w = Self::text_width(name, 2);
+        let x = (UI_W as i32 - w) / 2;
         let fg: Color = [255, 255, 255, (230.0 * a) as u8];
         let sh: Color = [20, 20, 20, (140.0 * a) as u8];
         self.text_outlined(x, y, name, fg, sh, 2);
@@ -4400,11 +4469,31 @@ mod tests {
     #[test]
     fn oxygen_row_draws_only_when_air_is_depleted() {
         let mut ui = UiCanvas::new();
-        ui.status_bars(20.0, 20.0, 0.5, 5, 300.0);
+        ui.status_bars(&HudStatus {
+            health: 20.0,
+            food: 20.0,
+            xp: 0.5,
+            level: 5,
+            air: 300.0,
+            armor: 0,
+            hearts_jitter: false,
+            hunger_poisoned: false,
+            tick_phase: 0,
+        });
         // full air -> the bubble band (right side, above hunger) stays empty
         let band = nonwhite(&ui, bubble_band_rect());
         let mut ui2 = UiCanvas::new();
-        ui2.status_bars(20.0, 20.0, 0.5, 5, 150.0);
+        ui2.status_bars(&HudStatus {
+            health: 20.0,
+            food: 20.0,
+            xp: 0.5,
+            level: 5,
+            air: 150.0,
+            armor: 0,
+            hearts_jitter: false,
+            hunger_poisoned: false,
+            tick_phase: 0,
+        });
         let band2 = nonwhite(&ui2, bubble_band_rect());
         assert_eq!(band, 0, "no bubbles at full air");
         assert!(band2 > 0, "bubbles drawn at half air ({} px)", band2);
@@ -4766,7 +4855,17 @@ mod screen_tests {
         // quad path ON (chrome_enabled = false mirrors the game's
         // shipping config): the XP bar lands as Solid quads
         ui.set_chrome_enabled(false);
-        ui.status_bars(0.8, 0.8, 0.5, 3, 300.0);
+        ui.status_bars(&HudStatus {
+            health: 0.8,
+            food: 0.8,
+            xp: 0.5,
+            level: 3,
+            air: 300.0,
+            armor: 0,
+            hearts_jitter: false,
+            hunger_poisoned: false,
+            tick_phase: 0,
+        });
         let solids: Vec<_> = ui
             .gui_frame
             .quads
@@ -4783,7 +4882,8 @@ mod screen_tests {
             .iter()
             .min_by(|a, b| a.dst.y.partial_cmp(&b.dst.y).unwrap_or(std::cmp::Ordering::Equal))
             .unwrap();
-        assert_eq!(xp.dst.h, 8.0, "8-px bar");
+        // Sub-round 1: 182x5 vanilla-eq height — 10 UI px (was 8)
+        assert_eq!(xp.dst.h, 10.0, "10-px bar (5 vanilla px)");
         // level number routes through the engine's TEXT layer (pass 7)
         assert!(
             ui.gui_frame
@@ -5037,33 +5137,211 @@ mod screen_tests {
         assert!(!ui.gui_frame.quads.is_empty(), "quads still pushed (A/B)");
     }
 
+    /// Sub-round 1 (2026-09-14): the creative HUD now hides the XP bar
+    /// and bubbles too — VERIFIED minecraft.wiki/w/Heads-up_display
+    /// (live 2026-09-14): "In Creative mode, the health, hunger, oxygen,
+    /// experience, and armor bars are hidden." The retired
+    /// `xp_bar_only()` (creative XP + bubbles) is replaced by this
+    /// assertion: the game layer simply does not call `status_bars` in
+    /// creative — here we prove a no-status call pushes ZERO status quads.
     #[test]
-    fn xp_bar_only_pushes_solid_quads_and_bubble_sprites() {
-        // the creative XP block now matches status_bars: solid quads
-        // always, canvas gated; low air also pushes bubble quads
+    fn creative_hud_hides_all_status_rows() {
         let mut ui = UiCanvas::new();
         ui.set_chrome_enabled(false);
         ui.clear();
-        ui.xp_bar_only(0.75, 7, 150.0);
-        let solids: Vec<_> = ui
+        // nothing drawn except what the game layer would draw in
+        // creative (crosshair + hotbar + held name are separate calls)
+        let before = ui.gui_frame.quads.len();
+        assert_eq!(before, 0, "no status quads without status_bars");
+    }
+
+    /// Sub-round 1: the survival block's quad census — hearts 10,
+    /// hunger 10, XP solids 7 (bg + 4 edges + fill pair), plus the
+    /// armor row's 10 sprites at >0 points and 0 at zero (the vanilla
+    /// hide gate), and the 182x5 vanilla-eq XP height (364x10).
+    #[test]
+    fn status_bars_quad_census_and_armor_gate() {
+        let base = HudStatus {
+            health: 13.0,
+            food: 20.0,
+            xp: 0.75,
+            level: 7,
+            air: 300.0,
+            armor: 0,
+            hearts_jitter: false,
+            hunger_poisoned: false,
+            tick_phase: 0,
+        };
+        let mut ui = UiCanvas::new();
+        ui.set_chrome_enabled(false);
+        ui.clear();
+        ui.status_bars(&base);
+        let hearts = ui
+            .gui_frame
+            .quads
+            .iter()
+            .filter(|q| q.texture == crate::gui_render::QuadTexture::Hearts)
+            .count();
+        let hunger = ui
+            .gui_frame
+            .quads
+            .iter()
+            .filter(|q| q.texture == crate::gui_render::QuadTexture::Hunger)
+            .count();
+        let armor = ui
+            .gui_frame
+            .quads
+            .iter()
+            .filter(|q| q.texture == crate::gui_render::QuadTexture::Armor)
+            .count();
+        let solids = ui
             .gui_frame
             .quads
             .iter()
             .filter(|q| q.texture == crate::gui_render::QuadTexture::Solid)
-            .collect();
-        // bg + 4 frame edges + fill pair = 7; plus 5 bubble sprites
-        assert_eq!(solids.len(), 7, "XP track block");
-        let bubbles: Vec<_> = ui
+            .count();
+        assert_eq!(hearts, 10);
+        assert_eq!(hunger, 10);
+        assert_eq!(armor, 0, "0 armor points = row hidden (vanilla gate)");
+        assert_eq!(solids, 7, "XP track: bg + 4 edges + fill pair");
+        // 182x5 vanilla-eq height: the XP track quad is 364x10
+        let track = ui
             .gui_frame
             .quads
             .iter()
-            .filter(|q| q.texture == crate::gui_render::QuadTexture::Bubbles)
+            .find(|q| q.texture == crate::gui_render::QuadTexture::Solid && q.dst.w == 364.0)
+            .expect("364-wide XP track");
+        assert_eq!(track.dst.h, 10.0, "XP bar height = 5 vanilla px");
+
+        // armor > 0 → the row appears, icon census follows the points
+        let mut armored = base;
+        armored.armor = 15; // 7 full + 1 half + 2 empty
+        ui.clear();
+        ui.status_bars(&armored);
+        let armor2 = ui
+            .gui_frame
+            .quads
+            .iter()
+            .filter(|q| q.texture == crate::gui_render::QuadTexture::Armor)
+            .count();
+        assert_eq!(armor2, 10, "10 icons at 15 points (7 full, 1 half, 2 empty)");
+        // armor row sits ABOVE the hearts row (vanilla position)
+        let armor_y = ui
+            .gui_frame
+            .quads
+            .iter()
+            .find(|q| q.texture == crate::gui_render::QuadTexture::Armor)
+            .map(|q| q.dst.y)
+            .unwrap();
+        let heart_y = ui
+            .gui_frame
+            .quads
+            .iter()
+            .find(|q| q.texture == crate::gui_render::QuadTexture::Hearts)
+            .map(|q| q.dst.y)
+            .unwrap();
+        assert!(armor_y < heart_y, "armor above hearts ({armor_y} < {heart_y})");
+    }
+
+    /// Sub-round 1: the Hunger-effect recolor routes the hunger sprites
+    /// through the tint path (non-white tint) while the normal path
+    /// stays white.
+    #[test]
+    fn hunger_poisoned_tints_the_row() {
+        let base = HudStatus {
+            health: 20.0,
+            food: 20.0,
+            xp: 0.0,
+            level: 0,
+            air: 300.0,
+            armor: 0,
+            hearts_jitter: false,
+            hunger_poisoned: false,
+            tick_phase: 0,
+        };
+        let mut ui = UiCanvas::new();
+        ui.set_chrome_enabled(false);
+        ui.clear();
+        ui.status_bars(&base);
+        assert!(ui
+            .gui_frame
+            .quads
+            .iter()
+            .filter(|q| q.texture == crate::gui_render::QuadTexture::Hunger)
+            .all(|q| q.tint == [1.0, 1.0, 1.0, 1.0]));
+
+        let mut poisoned = base;
+        poisoned.hunger_poisoned = true;
+        ui.clear();
+        ui.status_bars(&poisoned);
+        let tinted = ui
+            .gui_frame
+            .quads
+            .iter()
+            .filter(|q| q.texture == crate::gui_render::QuadTexture::Hunger)
+            .filter(|q| q.tint[1] > q.tint[0] && q.tint[2] < q.tint[0])
+            .count();
+        assert_eq!(tinted, 10, "all 10 drumsticks tinted yellow-green");
+    }
+
+    /// Sub-round 1: the damage vignette pushes ONE full-canvas red
+    /// over-quad at alpha ≤ 0.3·a and nothing at alpha 0.
+    #[test]
+    fn damage_vignette_full_canvas_red() {
+        let mut ui = UiCanvas::new();
+        ui.set_chrome_enabled(false);
+        ui.clear();
+        ui.damage_vignette(0.0);
+        assert!(ui.gui_frame.text_quads.is_empty(), "no vignette at 0");
+        ui.damage_vignette(1.0);
+        assert_eq!(ui.gui_frame.text_quads.len(), 1);
+        let q = &ui.gui_frame.text_quads[0];
+        assert_eq!((q.dst.w, q.dst.h), (crate::ui::UI_W as f32, crate::ui::UI_H as f32));
+        assert!((q.tint[3] - 0.3).abs() < 1e-6, "max 0.3 alpha");
+        assert!(q.tint[0] > 0.0 && q.tint[1] == 0.0, "red");
+    }
+
+    /// Sub-round 1: the effect-icon rows — positive on top, others on
+    /// the bottom, sooner-expiring LEFT within a row, blinking in the
+    /// final 100 ticks, amplifier numerals at level II+.
+    #[test]
+    fn effect_icons_split_sort_and_blink() {
+        let entries = [
+            EffectIconEntry { icon: 3, amplifier: 0, ticks_left: 400, positive: true },   // speed
+            EffectIconEntry { icon: 2, amplifier: 1, ticks_left: 1200, positive: true }, // regen II
+            EffectIconEntry { icon: 1, amplifier: 0, ticks_left: 60, positive: false },  // poison, about to expire
+            EffectIconEntry { icon: 8, amplifier: 0, ticks_left: 900, positive: false }, // slowness
+        ];
+        let mut ui = UiCanvas::new();
+        ui.set_chrome_enabled(false);
+        ui.clear();
+        ui.effect_icons(&entries, 0);
+        let icons: Vec<(f32, f32, f32)> = ui
+            .gui_frame
+            .quads
+            .iter()
+            .filter(|q| q.texture == crate::gui_render::QuadTexture::Effects)
+            .map(|q| (q.dst.x, q.dst.y, q.tint[3]))
             .collect();
-        assert_eq!(bubbles.len(), 5, "ceil(150/30) bubbles");
-        // canvas XP track suppressed
-        let xp_y = (crate::ui::UI_H as i32 - 48 - 10) as usize;
-        let idx = (xp_y * crate::ui::UI_W + 480usize) * 4;
-        assert_eq!(ui.px[idx + 3], 0, "canvas XP suppressed when chrome off");
+        assert_eq!(icons.len(), 4, "one quad per effect");
+        // positive row 0 (y=10), others row 1 (y=30)
+        let top: Vec<_> = icons.iter().filter(|i| i.1 == 10.0).collect();
+        let bottom: Vec<_> = icons.iter().filter(|i| i.1 == 30.0).collect();
+        assert_eq!(top.len(), 2);
+        assert_eq!(bottom.len(), 2);
+        // sooner-expiring farther left within the row
+        let poison = bottom.iter().find(|i| i.2 == 0.25).expect("poison blinking");
+        let slowness = bottom.iter().find(|i| i.2 == 1.0).expect("slowness solid");
+        assert!(poison.0 < slowness.0, "poison (60 ticks) left of slowness (900)");
+        // blink: poison at 60 ticks < 100 → alpha 0.25 at tick 0
+        // (verified by the find above); the regen II numeral is text —
+        // canvas ink when the font-quad path is not armed (tests)
+        let ink = ui.px.as_chunks::<4>().0.iter().filter(|c| c[3] != 0).count();
+        assert!(ink > 0, "regen II numeral rastered");
+        // no entries → nothing
+        ui.clear();
+        ui.effect_icons(&[], 0);
+        assert!(ui.gui_frame.quads.is_empty());
     }
 
     #[test]

@@ -294,6 +294,34 @@ pub fn scale_widgets(ws: &mut [Widget], s: f32) {
     }
 }
 
+/// Single-line text entry with explicit height (vanilla fields are
+/// 320x20 → 480x30 on the 1.5x canvas; the old fixed 44px height made
+/// the world screens look padded).
+pub fn text_field_h(
+    id: u16,
+    x: i32,
+    y: i32,
+    w: i32,
+    h: i32,
+    label: &str,
+    text: &str,
+    placeholder: &str,
+) -> Widget {
+    Widget {
+        id,
+        x,
+        y,
+        w,
+        h,
+        kind: WidgetKind::TextField {
+            label: label.to_string(),
+            text: text.to_string(),
+            placeholder: placeholder.to_string(),
+            focused: false,
+        },
+    }
+}
+
 /// Phase 1: a single-line text entry field.
 pub fn text_field(
     id: u16,
@@ -348,14 +376,31 @@ pub const ID_WC_CANCEL: u16 = 98;
 pub const ID_DEATH_RESPAWN: u16 = 99;
 pub const ID_DEATH_TITLE: u16 = 100;
 pub const ID_DEATH_DELETE: u16 = 101;
-/// maximum world entries the select screen lists (ids 60..60+n)
-pub const MAX_LISTED_WORLDS: usize = 8;
+/// 2026-09-14 parity round: the vanilla Select World bottom rows —
+/// Play Selected World / Create New World (row A), Edit / Delete /
+/// Re-Create / Search (row B) — plus the search field, the Edit World
+/// screen, and the two-page Create World (More World Options) flow.
+pub const ID_WS_PLAY: u16 = 102;
+pub const ID_WS_EDIT: u16 = 103;
+pub const ID_WS_RECREATE: u16 = 104;
+pub const ID_WS_SEARCH: u16 = 105;
+pub const ID_WS_SEARCHFIELD: u16 = 106;
+pub const ID_WE_NAME: u16 = 107;
+pub const ID_WE_RENAME: u16 = 108;
+pub const ID_WE_DELETE: u16 = 109;
+pub const ID_WE_COPY: u16 = 110;
+pub const ID_WE_DONE: u16 = 111;
+pub const ID_WC_MORE: u16 = 112;
+pub const ID_WC_STRUCT: u16 = 113;
+pub const ID_WC_BONUS: u16 = 114;
+/// maximum world entries the select screen lists at once (scroll for the
+/// rest — vanilla scrolls the list; ids 60..60+n)
+pub const MAX_LISTED_WORLDS: usize = 6;
 pub const ID_OPT_FOV: u16 = 10;
 pub const ID_OPT_SENS: u16 = 11;
 pub const ID_OPT_RD: u16 = 12;
 pub const ID_OPT_BRIGHT: u16 = 13;
 pub const ID_OPT_VOL: u16 = 14;
-pub const ID_OPT_SHADER: u16 = 15;
 pub const ID_OPT_GRAPHICS: u16 = 16;
 pub const ID_OPT_SMOOTH: u16 = 17;
 pub const ID_OPT_CLOUDS: u16 = 18;
@@ -400,13 +445,11 @@ pub const ID_OPT_BIOME: u16 = 46;
 pub const ID_OPT_CHAT: u16 = 47;
 pub const ID_OPT_LANG: u16 = 48;
 pub const ID_OPT_CONTROLS: u16 = 49;
-pub const ID_PACK_BASE: u16 = 110;
-/// pack rows available (3 engine shader modes + up to 5 packs)
-pub const MAX_PACK_ENTRIES: usize = 8;
-/// 2026-09-14 round: the REAL Resource Packs screen (vanilla two-pane
-/// Available/Selected — the old shader-mode list moved to a dedicated
-/// Shader Packs screen reached from Video Settings, Iris-style).
-pub const ID_OPT_SHADERS: u16 = 51; // Video Settings → SHADER PACKS...
+/// 2026-09-14 round (user directive): the SHADER PACKS screen, the
+/// ID_OPT_SHADERS video entry, the ID_PACK_BASE row family and every
+/// pre-created engine shader mode/builtin pack were REMOVED — vanilla
+/// 1.16.5 ships no shader screen. The Resource Packs manager below is
+/// the real vanilla surface.
 /// vanilla "View Bobbing" toggle (Options screen, default ON)
 pub const ID_OPT_BOB: u16 = 52;
 /// available (left pane) pack rows
@@ -432,6 +475,19 @@ pub const ID_RPACK_UP_BASE: u16 = 140;
 pub const ID_RPACK_DOWN_BASE: u16 = 150;
 /// max rows per pane (layout clips beyond this)
 pub const MAX_RPACK_ENTRIES: usize = 8;
+
+/// Phase 1 + 2026-09-14 parity round: one Select World list entry —
+/// name (white, first line) + info line (gray, second line: mode,
+/// last played, dead-hardcore lock). Owned by the painter so the row
+/// bodies can render the vanilla two-line entry look.
+#[derive(Clone, Debug)]
+pub struct WorldRow {
+    pub name: String,
+    /// second line under the name (mode + last played / GAME OVER)
+    pub info: String,
+    /// dead hardcore worlds render dim + unplayable (vanilla locks them)
+    pub dead: bool,
+}
 
 /// Button with explicit height (vanilla title buttons are 200x20 at GUI
 /// scale 2 = 300x30 on the 960x540 canvas).
@@ -587,20 +643,6 @@ pub fn layout_video() -> Vec<Widget> {
         // reads Moody/Bright from the live value
         slider_h(ID_OPT_BRIGHT, 248, 252, 465, 30, "", 0.1),
         slider_h(ID_OPT_BIOME, 248, 288, 465, 30, "BIOME BLEND", 0.5),
-        // 2026-09-14: SHADER PACKS lives HERE (Iris-style — vanilla
-        // 1.16.5 has no shader screen; Iris/OptiFine add theirs to Video
-        // Settings), not on the Options page where it used to squat
-        // mislabeled as "RESOURCE PACKS..."
-        btn_h(
-            ID_OPT_SHADERS,
-            248,
-            324,
-            465,
-            30,
-            "SHADER PACKS...",
-            "",
-            true,
-        ),
         btn_h(
             ID_OPT_DONE2,
             (UI_W as i32 - 300) / 2,
@@ -650,41 +692,6 @@ pub fn layout_engine() -> Vec<Widget> {
             true,
         ),
     ]
-}
-
-/// Shader Packs — the Iris-style shader selection screen (engine shader
-/// modes OFF/VANILLA+/CINEMATIC + WGSL shader packs). Moved here from the
-/// old mislabeled "RESOURCE PACKS" screen in the 2026-09-14 round: the
-/// RESOURCE PACKS entry on the Options screen now opens the real
-/// resource-pack manager (`layout_resource_packs`), because vanilla
-/// 1.16.5 has NO shader-pack screen at all — shaders are an Iris/OptiFine
-/// concept, so this list lives on its own page reached from Video
-/// Settings. `selected` marks the active entry.
-pub fn layout_packs(entries: &[String], selected: usize) -> Vec<Widget> {
-    let mut v = Vec::new();
-    for (i, name) in entries.iter().take(MAX_PACK_ENTRIES).enumerate() {
-        v.push(btn_h(
-            ID_PACK_BASE + i as u16,
-            248,
-            72 + i as i32 * 40,
-            465,
-            30,
-            name,
-            if i == selected { "SELECTED" } else { "" },
-            true,
-        ));
-    }
-    v.push(btn_h(
-        ID_OPT_DONE2,
-        (UI_W as i32 - 300) / 2,
-        470,
-        300,
-        30,
-        "DONE",
-        "",
-        true,
-    ));
-    v
 }
 
 /// Resource Packs — the vanilla 1.16.5 two-pane manager (VERIFIED live
@@ -827,102 +834,232 @@ pub fn layout_pause() -> Vec<Widget> {
     ]
 }
 
-/// Phase 1: world-select layout (native). One button per saved world plus
-/// create/delete/cancel. `dead` marks a hardcore world whose player died —
-/// it can't be played but stays clickable so it can be selected + deleted.
+/// 2026-09-14 parity round: the vanilla 1.16.5 Select World layout —
+/// title + top-left search field, two-line world entries (painted by
+/// `world_select_screen`), then the two vanilla bottom rows:
+///   row A: [PLAY SELECTED WORLD] [CREATE NEW WORLD]
+///   row B: [EDIT] [DELETE] [RE-CREATE] [SEARCH]
+/// Rows are hit-test widgets whose bodies the painter fills (name +
+/// info lines) instead of a centered single label. `can_play` gates row A
+/// on a live selection (vanilla disables both without one).
 pub fn layout_world_select(
-    names: &[(String, String, bool)], // (name, mode label, dead)
+    n_rows: usize,
+    can_play: bool,
+    delete_armed: bool,
 ) -> Vec<Widget> {
     let mut v = Vec::new();
-    for (i, (name, mode, dead)) in names.iter().take(MAX_LISTED_WORLDS).enumerate() {
-        let label = if *dead {
-            format!("{name} - GAME OVER")
-        } else {
-            format!("{name} ({mode})")
-        };
-        v.push(btn(
+    // world rows (hit-test only — the painter draws the two-line body)
+    for i in 0..n_rows.min(MAX_LISTED_WORLDS) {
+        v.push(btn_h(
             ID_WS_WORLD_BASE + i as u16,
-            176,
-            96 + i as i32 * 56,
-            500,
-            &label,
+            227,
+            96 + i as i32 * 50,
+            506,
+            46,
+            "",
             "",
             true,
         ));
     }
-    let y = 96 + names.len().min(MAX_LISTED_WORLDS) as i32 * 56 + 8;
-    v.push(btn(ID_WS_CREATE, 176, y, 242, "CREATE NEW WORLD", "", true));
-    v.push(btn(ID_WS_DELETE, 434, y, 242, "DELETE SELECTED", "", true));
-    v.push(btn(ID_WS_CANCEL, 176, y + 56, 500, "CANCEL", "", true));
+    // top-left search field (vanilla "Search worlds..." box)
+    v.push(text_field_h(
+        ID_WS_SEARCHFIELD,
+        176,
+        44,
+        225,
+        30,
+        "",
+        "",
+        "SEARCH WORLDS...",
+    ));
+    // row A + row B (vanilla bottom stacks, 1.5x geometry)
+    v.push(btn_h(
+        ID_WS_PLAY,
+        248,
+        440,
+        225,
+        30,
+        "PLAY SELECTED WORLD",
+        "",
+        can_play,
+    ));
+    v.push(btn_h(
+        ID_WS_CREATE,
+        487,
+        440,
+        225,
+        30,
+        "CREATE NEW WORLD",
+        "",
+        true,
+    ));
+    let four = 150i32; // 4 × 100-wide vanilla buttons at 1.5x
+    let gap = 12i32;
+    let x0 = (UI_W as i32 - (four * 4 + gap * 3)) / 2;
+    v.push(btn_h(ID_WS_EDIT, x0, 480, four, 30, "EDIT", "", can_play));
+    v.push(btn_h(
+        ID_WS_DELETE,
+        x0 + four + gap,
+        480,
+        four + gap * 2,
+        30,
+        if delete_armed { "REALLY DELETE?" } else { "DELETE" },
+        "",
+        can_play,
+    ));
+    v.push(btn_h(
+        ID_WS_RECREATE,
+        x0 + (four + gap) * 2,
+        480,
+        four,
+        30,
+        "RE-CREATE",
+        "",
+        can_play,
+    ));
+    v.push(btn_h(ID_WS_SEARCH, x0 + (four + gap) * 3, 480, four, 30, "SEARCH", "", true));
+    // cancel keeps the vanilla Esc route
     v
 }
 
-/// Phase 1: world-create layout. Values refresh on every keystroke /
-/// mode cycle from game.rs (widgets are rebuilt per state change).
+/// 2026-09-14 parity round: the vanilla 1.16.5 Create World layout —
+/// TWO pages like vanilla's More World Options flow:
+/// * page 1: name field, Game Mode button + description, bottom
+///   [CREATE NEW WORLD] [MORE WORLD OPTIONS...] + centered CANCEL
+/// * page 2 (More World Options): seed field + "leave blank" hint,
+///   [WORLD TYPE: ...] [GENERATE STRUCTURES: ON/OFF], [BONUS CHEST:
+///   ON/OFF], bottom [DONE...] + CANCEL
+/// Values refresh on every keystroke / toggle from game.rs.
+#[allow(clippy::too_many_arguments)]
 pub fn layout_world_create(
+    page2: bool,
     name: &str,
+    seed: &str,
     seed_placeholder: &str,
     mode_label: &str,
-    mode_desc: &str,
     type_label: &str,
+    structures: bool,
+    bonus: bool,
 ) -> Vec<Widget> {
-    let col = 176;
-    let w = 500;
+    let mut v = Vec::new();
+    if !page2 {
+        v.push(text_field_h(
+            ID_WC_NAME,
+            236,
+            84,
+            488,
+            30,
+            "",
+            name,
+            "New World",
+        ));
+        // vanilla: the game-mode button is 200 wide centered with its
+        // two-line description under it
+        v.push(btn_h(
+            ID_WC_MODE,
+            330,
+            150,
+            300,
+            30,
+            "GAME MODE",
+            mode_label,
+            true,
+        ));
+        v.push(btn_h(
+            ID_WC_CREATE,
+            248,
+            440,
+            225,
+            30,
+            "CREATE NEW WORLD",
+            "",
+            true,
+        ));
+        v.push(btn_h(
+            ID_WC_MORE,
+            487,
+            440,
+            225,
+            30,
+            "MORE WORLD OPTIONS...",
+            "",
+            true,
+        ));
+        v.push(btn_h(ID_WC_CANCEL, 330, 480, 300, 30, "CANCEL", "", true));
+    } else {
+        v.push(text_field_h(
+            ID_WC_SEED,
+            236,
+            84,
+            488,
+            30,
+            "",
+            seed,
+            seed_placeholder,
+        ));
+        v.push(btn_h(
+            ID_WC_TYPE,
+            248,
+            160,
+            225,
+            30,
+            "WORLD TYPE",
+            type_label,
+            true,
+        ));
+        v.push(btn_h(
+            ID_WC_STRUCT,
+            487,
+            160,
+            225,
+            30,
+            "GENERATE STRUCTURES",
+            if structures { "ON" } else { "OFF" },
+            true,
+        ));
+        v.push(btn_h(
+            ID_WC_BONUS,
+            248,
+            200,
+            225,
+            30,
+            "BONUS CHEST",
+            if bonus { "ON" } else { "OFF" },
+            true,
+        ));
+        // vanilla page 2: [Done...] returns to page 1
+        v.push(btn_h(ID_WC_MORE, 487, 440, 225, 30, "DONE...", "", true));
+        v.push(btn_h(ID_WC_CANCEL, 330, 480, 300, 30, "CANCEL", "", true));
+    }
+    v
+}
+
+/// 2026-09-14 parity round: the vanilla Edit World screen — title, the
+/// world-name field, then [RENAME] [DELETE] / [COPY WORLD] [DONE].
+pub fn layout_world_edit(name: &str) -> Vec<Widget> {
     vec![
-        text_field(ID_WC_NAME, col, 96, w, "NAME", name, "New World"),
-        text_field(ID_WC_SEED, col, 152, w, "SEED", "", seed_placeholder),
-        btn(ID_WC_MODE, col, 208, w, "GAME MODE", mode_label, true),
-        // Phase E3 (VERIFIED w/Superflat): world-type cycle Normal ↔
-        // Superflat (classic preset — enabled now)
-        btn(ID_WC_TYPE, col, 264, w, "WORLD TYPE", type_label, true),
-        btn(ID_WC_CREATE, col, 336, w, "CREATE WORLD", mode_desc, true),
-        btn(ID_WC_CANCEL, col, 392, w, "CANCEL", "", true),
+        text_field_h(ID_WE_NAME, 236, 84, 488, 30, "", name, ""),
+        btn_h(ID_WE_RENAME, 248, 200, 225, 30, "RENAME", "", true),
+        btn_h(ID_WE_DELETE, 487, 200, 225, 30, "DELETE", "", true),
+        btn_h(ID_WE_COPY, 248, 240, 225, 30, "COPY WORLD", "", true),
+        btn_h(ID_WE_DONE, 487, 240, 225, 30, "DONE", "", true),
+        btn_h(ID_WC_CANCEL, 330, 480, 300, 30, "CANCEL", "", true),
     ]
 }
 
-/// Phase 1: death screen (Survival vs Hardcore variants).
+/// Phase 1 + 2026-09-14: death screen — vanilla two 200-wide buttons
+/// (300 at 1.5x) stacked, 40px apart.
 pub fn layout_death(hardcore: bool) -> Vec<Widget> {
     let mut v = Vec::new();
+    let (x, w) = ((UI_W as i32 - 300) / 2, 300);
     if !hardcore {
-        v.push(btn(
-            ID_DEATH_RESPAWN,
-            (UI_W as i32 - 320) / 2,
-            300,
-            320,
-            "RESPAWN",
-            "",
-            true,
-        ));
-        v.push(btn(
-            ID_DEATH_TITLE,
-            (UI_W as i32 - 320) / 2,
-            356,
-            320,
-            "TITLE SCREEN",
-            "",
-            true,
-        ));
+        v.push(btn_h(ID_DEATH_RESPAWN, x, 296, w, 30, "RESPAWN", "", true));
+        v.push(btn_h(ID_DEATH_TITLE, x, 336, w, 30, "TITLE SCREEN", "", true));
     } else {
         // hardcore: death is final — vanilla's two options (delete world /
         // title screen, which leaves the locked world on disk)
-        v.push(btn(
-            ID_DEATH_DELETE,
-            (UI_W as i32 - 320) / 2,
-            300,
-            320,
-            "DELETE WORLD",
-            "",
-            true,
-        ));
-        v.push(btn(
-            ID_DEATH_TITLE,
-            (UI_W as i32 - 320) / 2,
-            356,
-            320,
-            "TITLE SCREEN",
-            "",
-            true,
-        ));
+        v.push(btn_h(ID_DEATH_DELETE, x, 296, w, 30, "DELETE WORLD", "", true));
+        v.push(btn_h(ID_DEATH_TITLE, x, 336, w, 30, "TITLE SCREEN", "", true));
     }
     v
 }
@@ -1932,64 +2069,162 @@ impl UiCanvas {
         self.draw_widgets(ws, hover);
     }
 
-    /// Phase 1: world-select screen (native — the browser build creates
-    /// worlds directly, no persistent list).
+    /// 2026-09-14 parity round: the vanilla Select World screen — title,
+    /// search field top-left, two-line entries in a sunken list, and the
+    /// two vanilla bottom rows. Row bodies are painted here (the widgets
+    /// are hit-test rectangles); every non-row widget draws normally.
+    #[allow(clippy::too_many_arguments)]
     pub fn world_select_screen(
         &mut self,
         ws: &[Widget],
         hover: Option<u16>,
+        rows: &[WorldRow],
         selected: Option<usize>,
-        count_shown: usize,
+        scroll: usize,
         total: usize,
+        filtering: bool,
     ) {
         self.rect(0, 0, UI_W as i32, UI_H as i32, [8, 8, 10, 200]);
         self.text_center(18, "SELECT WORLD", [255, 255, 255, 255], 3);
-        if total == 0 {
+        // sunken list backdrop behind the entries (vanilla look)
+        self.rect(221, 90, 518, 6 + MAX_LISTED_WORLDS as i32 * 50, [0, 0, 0, 130]);
+        // count / search status line under the title (vanilla shows
+        // "Showing x of y" while filtering)
+        if filtering {
+            let sub = format!("{total} MATCH(ES)");
+            self.text_center(64, &sub, [170, 170, 170, 255], 1);
+        } else if total == 0 {
             self.text_center(
                 64,
                 "NO SAVED WORLDS YET - CREATE ONE BELOW",
                 [170, 170, 170, 255],
                 1,
             );
-        } else if total > count_shown {
-            let sub = format!("SHOWING {count_shown} OF {total} (OLDEST HIDDEN)");
+        } else if total > MAX_LISTED_WORLDS {
+            let sub = format!("SHOWING {} OF {total}", rows.len().min(MAX_LISTED_WORLDS));
             self.text_center(64, &sub, [170, 170, 170, 255], 1);
         }
-        // highlight the selected row (vanilla-style white frame)
-        if let Some(sel) = selected {
-            if let Some(w) = ws.iter().find(|w| w.id == ID_WS_WORLD_BASE + sel as u16) {
-                self.frame(w.x - 3, w.y - 3, w.w + 6, w.h + 6, [255, 255, 255, 200]);
-            }
+        // scroll arrows when the list overflows (vanilla has them on the
+        // list frame edges)
+        if total > MAX_LISTED_WORLDS {
+            let up = scroll > 0;
+            let down = scroll + MAX_LISTED_WORLDS < total;
+            let col = |on: bool| if on { [255, 255, 255, 220] } else { [120, 120, 120, 120] };
+            let (cx, cy) = (744, 100);
+            self.text(cx, cy, "/\\", col(up), 1);
+            self.text(cx, 90 + MAX_LISTED_WORLDS as i32 * 50, "\\/", col(down), 1);
         }
+        // the entries themselves (two-line vanilla rows)
+        for (i, row) in rows.iter().take(MAX_LISTED_WORLDS).enumerate() {
+            let id = ID_WS_WORLD_BASE + i as u16;
+            let Some(w) = ws.iter().find(|w| w.id == id) else { continue };
+            let hov = hover == Some(id);
+            let sel = selected == Some(i);
+            let base = if sel {
+                [70, 70, 74, 235]
+            } else {
+                [24, 24, 28, 235]
+            };
+            self.rect(w.x, w.y, w.w, w.h, base);
+            self.frame(w.x, w.y, w.w, w.h, if sel || hov { [255, 255, 255, 200] } else { [16, 16, 16, 255] });
+            // line 1: world name (white, slightly large)
+            let name_col: Color = if row.dead {
+                [150, 150, 150, 255]
+            } else if hov {
+                [255, 255, 160, 255]
+            } else {
+                [255, 255, 255, 255]
+            };
+            self.text_frac(w.x + 10, w.y + 5, &row.name, name_col, 1.5 * self.widget_scale);
+            // line 2: mode + last played (gray)
+            self.text_frac(
+                w.x + 10,
+                w.y + 26,
+                &row.info,
+                [150, 150, 150, 255],
+                self.widget_scale,
+            );
+        }
+        // everything else (search field + bottom rows) draws normally
         self.draw_widgets(ws, hover);
     }
 
-    /// Phase 1: world-create screen (shared native/web).
-    pub fn world_create_screen(&mut self, ws: &[Widget], hover: Option<u16>, time: f32) {
+    /// 2026-09-14 parity round: the vanilla two-page Create World screen.
+    /// Page 1 paints the name label + the Game Mode description under the
+    /// button; page 2 (More World Options) paints the seed label + the
+    /// "leave blank" hint.
+    pub fn world_create_screen(
+        &mut self,
+        ws: &[Widget],
+        hover: Option<u16>,
+        time: f32,
+        page2: bool,
+        mode_desc: (&str, &str),
+    ) {
         self.rect(0, 0, UI_W as i32, UI_H as i32, [8, 8, 10, 200]);
         self.text_center(18, "CREATE NEW WORLD", [255, 255, 255, 255], 3);
-        self.text_center(
-            64,
-            "SEED: NUMBER = ITSELF, TEXT = JAVA HASH, BLANK = RANDOM",
-            [150, 150, 150, 255],
-            1,
-        );
+        if !page2 {
+            self.text_center(
+                64,
+                "ENTER A NAME FOR THE NEW WORLD:",
+                [150, 150, 150, 255],
+                1,
+            );
+            // the game-mode description (vanilla: two gray lines under
+            // the centered button)
+            self.text_center(192, mode_desc.0, [150, 150, 150, 255], 1);
+            self.text_center(210, mode_desc.1, [150, 150, 150, 255], 1);
+        } else {
+            self.text_center(
+                64,
+                "SEED FOR THE WORLD GENERATOR",
+                [150, 150, 150, 255],
+                1,
+            );
+            self.text_center(
+                122,
+                "LEAVE BLANK FOR A RANDOM SEED",
+                [130, 130, 130, 255],
+                1,
+            );
+        }
         // focused-field hint + blinking caret handled per widget
         self.draw_widgets_caret(ws, hover, time);
     }
 
-    /// Phase 1: death screen — red-tinged overlay, vanilla "You died!".
-    pub fn death_screen(&mut self, ws: &[Widget], hover: Option<u16>, hardcore: bool, cause: &str) {
+    /// 2026-09-14 parity round: the vanilla Edit World screen.
+    pub fn world_edit_screen(&mut self, ws: &[Widget], hover: Option<u16>, time: f32) {
+        self.rect(0, 0, UI_W as i32, UI_H as i32, [8, 8, 10, 200]);
+        self.text_center(18, "EDIT WORLD", [255, 255, 255, 255], 3);
+        self.text_center(
+            64,
+            "ENTER A NEW NAME FOR THE WORLD:",
+            [150, 150, 150, 255],
+            1,
+        );
+        self.draw_widgets_caret(ws, hover, time);
+    }
+
+    /// Phase 1 + 2026-09-14: death screen — red wash, vanilla "You Died!"
+    /// title + the vanilla Score line under it (vanilla shows the
+    /// player's score, not the death cause).
+    pub fn death_screen(
+        &mut self,
+        ws: &[Widget],
+        hover: Option<u16>,
+        hardcore: bool,
+        score: i32,
+    ) {
         self.rect(0, 0, UI_W as i32, UI_H as i32, [80, 0, 0, 150]);
         let title = if hardcore { "GAME OVER!" } else { "YOU DIED!" };
         let tw = Self::text_width(title, 5);
         self.text((UI_W as i32 - tw) / 2, 150, title, [255, 240, 240, 255], 5);
         let sub = if hardcore {
-            "HARDCORE WORLD - DEATH IS PERMANENT"
+            "HARDCORE WORLD - DEATH IS PERMANENT".to_string()
         } else {
-            cause
+            format!("SCORE: {score}")
         };
-        self.text_center(210, sub, [230, 200, 200, 255], 1);
+        self.text_center(210, &sub, [255, 255, 255, 255], 1);
         self.draw_widgets(ws, hover);
     }
 
@@ -3978,7 +4213,6 @@ mod tests {
         ID_OPT_RD,
         ID_OPT_BRIGHT,
         ID_OPT_VOL,
-        ID_OPT_SHADER,
         ID_OPT_GRAPHICS,
         ID_OPT_SMOOTH,
         ID_OPT_CLOUDS,
@@ -4013,7 +4247,6 @@ mod tests {
         ID_OPT_CHAT,
         ID_OPT_LANG,
         ID_OPT_CONTROLS,
-        ID_OPT_SHADERS,
         ID_OPT_BOB,
         ID_WS_CREATE,
         ID_WS_CANCEL,
@@ -4047,9 +4280,8 @@ mod tests {
     /// exactly what masked it in the browser E2E).
     #[test]
     fn row_ranges_disjoint_from_literals_and_each_other() {
-        let rows: [(u16, u16, &str); 6] = [
+        let rows: [(u16, u16, &str); 5] = [
             (ID_WS_WORLD_BASE, MAX_LISTED_WORLDS as u16, "world entries"),
-            (ID_PACK_BASE, MAX_PACK_ENTRIES as u16, "shader pack rows"),
             (ID_RPACK_AVAIL_BASE, MAX_RPACK_ENTRIES as u16, "rpack available"),
             (ID_RPACK_SEL_BASE, MAX_RPACK_ENTRIES as u16, "rpack selected"),
             (ID_RPACK_UP_BASE, MAX_RPACK_ENTRIES as u16, "rpack up arrows"),

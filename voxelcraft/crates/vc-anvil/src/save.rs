@@ -682,6 +682,16 @@ pub struct WorldMeta {
     /// player NBT dead instead — we keep a top-level marker because the
     /// player block here is a minimal subset.
     pub hardcore_dead: bool,
+    /// 2026-09-14 parity round: the three vanilla world-create options
+    /// that must survive a reload — all three are REAL level.dat keys in
+    /// vanilla 1.16.5 (generatorName / MapFeatures / BonusChestEnabled).
+    /// `flat` = the Superflat world type (generatorName "flat");
+    /// `structures` = Generate Structures (MapFeatures 1/0);
+    /// `bonus_chest` = Bonus Chest (BonusChestEnabled 1/0, spawn-only —
+    /// read back for the world list, never re-spawned).
+    pub flat: bool,
+    pub structures: bool,
+    pub bonus_chest: bool,
     /// Phase 5: container inventories (dungeon loot + player-touched
     /// containers) — the chunk format keeps only block ids
     pub containers: Vec<ContainerMeta>,
@@ -698,6 +708,9 @@ impl Default for WorldMeta {
             game_type: 0,
             hardcore: false,
             hardcore_dead: false,
+            flat: false,
+            structures: true,
+            bonus_chest: false,
             containers: Vec::new(),
         }
     }
@@ -744,6 +757,18 @@ pub fn write_level_dat(world_dir: &Path, meta: &WorldMeta) -> std::io::Result<()
     // Hardcore Byte — Dossier Part 3 §15) instead of hardcoded creative
     data.set("GameType", Nbt::Int(meta.game_type));
     data.set("Hardcore", Nbt::Byte(if meta.hardcore { 1 } else { 0 }));
+    // 2026-09-14: the three world-create options persist through the
+    // REAL vanilla level.dat keys — generatorName ("flat"/"default"),
+    // MapFeatures (Generate Structures), BonusChestEnabled
+    data.set(
+        "generatorName",
+        Nbt::String(if meta.flat { "flat" } else { "default" }.into()),
+    );
+    data.set("MapFeatures", Nbt::Byte(if meta.structures { 1 } else { 0 }));
+    data.set(
+        "BonusChestEnabled",
+        Nbt::Byte(if meta.bonus_chest { 1 } else { 0 }),
+    );
     data.set("Time", Nbt::Long(meta.game_time));
     data.set(
         "LastPlayed",
@@ -857,6 +882,23 @@ pub fn read_level_dat(world_dir: &Path) -> std::io::Result<Option<WorldMeta>> {
         .and_then(|v| v.as_i64())
         .map(|v| v != 0)
         .unwrap_or(false);
+    // 2026-09-14: world-create options — vanilla keys, permissive
+    // defaults (a foreign/old level.dat reads as Default + structures on)
+    let flat = data
+        .get("generatorName")
+        .and_then(|v| v.as_str())
+        .map(|s| s == "flat")
+        .unwrap_or(false);
+    let structures = data
+        .get("MapFeatures")
+        .and_then(|v| v.as_i64())
+        .map(|v| v != 0)
+        .unwrap_or(true);
+    let bonus_chest = data
+        .get("BonusChestEnabled")
+        .and_then(|v| v.as_i64())
+        .map(|v| v != 0)
+        .unwrap_or(false);
     let mut meta = WorldMeta {
         seed: get_i64("RandomSeed").unwrap_or(0) as u64,
         name: data
@@ -874,6 +916,9 @@ pub fn read_level_dat(world_dir: &Path) -> std::io::Result<Option<WorldMeta>> {
         game_type,
         hardcore,
         hardcore_dead,
+        flat,
+        structures,
+        bonus_chest,
         containers: Vec::new(),
     };
     if let Some(Nbt::Compound(vc)) = data.get("voxelcraft") {
@@ -1431,6 +1476,9 @@ mod tests {
             game_type: 1,
             hardcore: false,
             hardcore_dead: false,
+            flat: true,
+            structures: false,
+            bonus_chest: true,
             containers: vec![ContainerMeta {
                 pos: [-17, 40, 239],
                 kind: 96, // CHEST
@@ -1453,6 +1501,13 @@ mod tests {
         assert_eq!(back.game_type, 1);
         assert!(!back.hardcore);
         assert!(!back.hardcore_dead);
+        // 2026-09-14: the world-create options round-trip through the REAL
+        // vanilla level.dat keys (generatorName / MapFeatures /
+        // BonusChestEnabled) — a reloaded flat structures-off world stays
+        // that way
+        assert_eq!(back.flat, true);
+        assert_eq!(back.structures, false);
+        assert_eq!(back.bonus_chest, true);
         // Phase 5: the container inventory round-trips
         assert_eq!(back.containers.len(), 1);
         assert_eq!(back.containers[0].pos, [-17, 40, 239]);
@@ -1526,6 +1581,9 @@ mod tests {
                 game_type: 0,
                 hardcore: true,
                 hardcore_dead: false,
+                flat: false,
+                structures: true,
+                bonus_chest: false,
                 containers: Vec::new(),
             },
         )

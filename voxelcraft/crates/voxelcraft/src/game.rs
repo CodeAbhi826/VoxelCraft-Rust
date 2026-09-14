@@ -62,8 +62,10 @@ pub struct Settings {
     pub biome_blend: u8,
     /// 0 = fast, 1 = fancy, 2 = fabulous (fancy + soft shadows + full post)
     pub graphics: u8,
-    pub shader: u8, // 0 = off, 1 = vanilla+, 2 = cinematic
-    /// §17 sun shadows: 0 = off, 1 = 1024px, 2 = 2048px, 3 = 4096px
+    /// §17 sun shadows: 0 = off, 1 = 1024px, 2 = 2048px, 3 = 4096px.
+    /// 2026-09-14 round: default OFF — vanilla 1.16.5 has no sun-shadow
+    /// pass, and a defaulted-on 2048px map visibly darkens the scene vs
+    /// the vanilla look. Engine extra (Video → Engine screen only).
     pub shadow_quality: u8,
     /// FSR 1.0 internal render scale index: 0 = 100%, 1 = 75%, 2 = 50%
     pub upscale: u8,
@@ -118,12 +120,15 @@ impl Default for Settings {
             #[cfg(target_arch = "wasm32")]
             render_distance: 6,
             #[cfg(not(target_arch = "wasm32"))]
-            render_distance: 10,
-            sim_distance: 12,
-            sensitivity: 1.0,
-            volume: 0.7,
+            render_distance: 12, // vanilla default renderDistance
+            sim_distance: 10, // vanilla default simulationDistance
+            sensitivity: 1.0, // slider shows 100% — the vanilla default
+            // vanilla 1.16.5 options.txt defaults: master/music 1.0
+            volume: 1.0,
+            music_volume: 1.0,
             fov: 70.0,
-            brightness: 0.10,
+            // Moody (vanilla default brightness 0.0)
+            brightness: 0.0,
             smooth_level: 2,
             clouds_level: 2,
             gui_scale: 0,
@@ -133,13 +138,11 @@ impl Default for Settings {
             entity_shadows: true,
             biome_blend: 2, // 3x3 — the vanilla default blend look
             graphics: 1,
-            shader: 1,
-            shadow_quality: 2,
+            shadow_quality: 0, // OFF — vanilla look (engine extra, opt-in)
             upscale: 0,
-            music_volume: 0.6,
             maxfps: 0,
             mipmap_levels: 4,
-            aniso: 4,
+            aniso: 1, // OFF — vanilla ships no aniso filtering
             msaa: 0,
             occlusion: true,
             auto_jump: true, // 1.10 default ON (wiki)
@@ -263,7 +266,7 @@ impl Settings {
     /// folder/zip file names, which never contain `;` or `|`).
     pub fn serialize(&self) -> String {
         let mut s = format!(
-            "rd={};sd={};sens={:.3};vol={:.3};mvol={:.3};fov={:.1};bright={:.3};smoothl={};cloudsl={};gui={};part={};fs={};vsync={};eshad={};bblend={};graphics={};shader={};shadowq={};upscale={};maxfps={};mip={};aniso={};msaa={};occl={};gmesh={};bob={}",
+            "rd={};sd={};sens={:.3};vol={:.3};mvol={:.3};fov={:.1};bright={:.3};smoothl={};cloudsl={};gui={};part={};fs={};vsync={};eshad={};bblend={};graphics={};shadowq={};upscale={};maxfps={};mip={};aniso={};msaa={};occl={};gmesh={};bob={}",
             self.render_distance,
             self.sim_distance,
             self.sensitivity,
@@ -280,7 +283,6 @@ impl Settings {
             self.entity_shadows as u8,
             self.biome_blend,
             self.graphics,
-            self.shader,
             self.shadow_quality,
             self.upscale,
             self.maxfps,
@@ -294,10 +296,21 @@ impl Settings {
         if !self.resource_packs.is_empty() {
             s.push_str(&format!(";packs={}", self.resource_packs.join("|")));
         }
+        // defaults-version marker: files written before 2026-09-14
+        // shipped non-vanilla engine defaults (2048px shadows, aniso 4,
+        // boosted brightness/volumes) that no user ever chose — seeing
+        // it absent tells the loader to reset those five once
+        s.push_str(";defv=2");
         s
     }
     pub fn deserialize(s: &str) -> Settings {
         let mut st = Settings::default();
+        // defaults-version marker (see serialize): absent = written by a
+        // build whose NON-vanilla engine defaults (2048px shadows, aniso
+        // 4, brightness 0.10, 70%/60% volumes) were persisted without any
+        // user choice — reset those once so old installs land on the
+        // corrected vanilla look
+        let defv2 = s.contains("defv=2");
         for pair in s.split(';') {
             let mut kv = pair.splitn(2, '=');
             let k = kv.next().unwrap_or("");
@@ -325,12 +338,15 @@ impl Settings {
                 // legacy key from older saves
                 "fancy" => st.graphics = if v == "1" { 1 } else { 0 },
                 "graphics" => st.graphics = v.parse().unwrap_or(st.graphics).min(2),
-                "shader" => st.shader = v.parse().unwrap_or(st.shader).min(2),
-                "shadowq" => st.shadow_quality = v.parse().unwrap_or(2).min(3),
+                // legacy `shader` key from the removed engine shader modes
+                // (Off/Vanilla+/Cinematic) — parsed, ignored: the engine
+                // post pipeline is vanilla-only now
+                "shader" => {}
+                "shadowq" => st.shadow_quality = v.parse().unwrap_or(0).min(3),
                 "upscale" => st.upscale = v.parse().unwrap_or(st.upscale).min(2),
                 "maxfps" => st.maxfps = v.parse().unwrap_or(st.maxfps).min(3),
                 "mip" => st.mipmap_levels = v.parse().unwrap_or(4).min(4),
-                "aniso" => st.aniso = v.parse().unwrap_or(4).clamp(1, 16),
+                "aniso" => st.aniso = v.parse().unwrap_or(st.aniso).clamp(1, 16),
                 "msaa" => {
                     // valid sample counts: 0 (off), 4, 8 — snap anything else
                     let v = v.parse::<u8>().unwrap_or(0);
@@ -357,6 +373,13 @@ impl Settings {
                 _ => {}
             }
         }
+        if !defv2 {
+            st.shadow_quality = 0;
+            st.aniso = 1;
+            st.brightness = 0.0;
+            st.volume = 1.0;
+            st.music_volume = 1.0;
+        }
         st
     }
 }
@@ -374,22 +397,28 @@ pub enum Screen {
     Options,
     Game,
     Pause,
-    /// Phase 1: saved-world list (native)
+    /// Phase 1: saved-world list — native reads saves/, web reads the
+    /// localStorage world list (2026-09-14 parity round)
     WorldSelect,
     /// Phase 1: new-world creation (name / seed / mode)
     WorldCreate,
+    /// 2026-09-14 parity round: the vanilla Edit World screen (rename /
+    /// delete / copy) reached from Select World's EDIT button
+    WorldEdit,
     /// Phase 1: death screen (respawn vs hardcore game-over)
     Death,
     /// vanilla 1.16.5 settings sub-screens (reached from Options):
     /// Video = the exact vanilla screen; Engine = our extras; Packs =
     /// the REAL resource-pack manager (2026-09-14); Access =
-    /// accessibility (auto-jump); Shaders = the Iris-style shader-pack
-    /// list (moved off the Options page — vanilla has no such screen)
+    /// accessibility (auto-jump).
+    /// 2026-09-14 (user directive): the Iris-style SHADER PACKS screen
+    /// and every pre-created engine shader mode/pack (Vanilla+ /
+    /// Cinematic / builtin WGSL presets) are REMOVED — vanilla 1.16.5
+    /// ships no shader screen; the post pipeline is vanilla-only.
     Video,
     Engine,
     Packs,
     Access,
-    Shaders,
 }
 
 /// 2026-09-14 round: the in-progress MINING target (the vanilla timed
@@ -443,12 +472,12 @@ impl Screen {
             Screen::Pause => "pause",
             Screen::WorldSelect => "worldselect",
             Screen::WorldCreate => "create",
+            Screen::WorldEdit => "worldedit",
             Screen::Death => "death",
             Screen::Video => "video",
             Screen::Engine => "engine",
             Screen::Packs => "packs",
             Screen::Access => "access",
-            Screen::Shaders => "shaders",
         }
     }
 
@@ -463,10 +492,10 @@ impl Screen {
                 | Screen::Engine
                 | Screen::Packs
                 | Screen::Access
-                | Screen::Shaders
                 | Screen::Pause
                 | Screen::WorldSelect
                 | Screen::WorldCreate
+                | Screen::WorldEdit
                 | Screen::Death
         )
     }
@@ -479,7 +508,7 @@ const SPLASHES: [&str; 14] = [
     "wgpu powered!",
     "Zero assets copied!",
     "Greedy meshed!",
-    "Now with shaders!",
+    "As seen on TV!",
     "60 fps or bust!",
     "Made of cubes!",
     "WebGPU + WebGL2!",
@@ -500,6 +529,9 @@ enum Job {
         /// Phase E3: superflat world type (the classic preset —
         /// VERIFIED w/Superflat)
         flat: bool,
+        /// 2026-09-14: the vanilla Generate Structures option (level.dat
+        /// MapFeatures) — OFF skips the seven structure emits
+        structures: bool,
     },
     Mesh {
         pos: ChunkPos,
@@ -625,12 +657,17 @@ fn run_job(job: Job) -> JobResult {
             dim,
             inbound,
             flat,
+            structures,
         } => {
-            let gen = if flat {
+            let mut gen = if flat {
                 vc_world::gen::TerrainGen::for_dimension_flat(seed, dim)
             } else {
                 vc_world::gen::TerrainGen::for_dimension(seed, dim)
             };
+            // the vanilla Generate Structures option rides the generator
+            // (OFF gates dungeons/villages/mineshafts/pyramids/temples/
+            // mansions/strongholds — see TerrainGen::structures)
+            gen.structures = structures;
             let (chunk, outbound) = gen.generate_chunk(pos.0, pos.1, inbound);
             JobResult::Gen {
                 pos,
@@ -755,6 +792,81 @@ fn intro_progress(t: f32) -> f32 {
     1.0
 }
 
+// ------------------------------------------------- web world persistence --
+// 2026-09-14 parity round: the browser build's localStorage world list.
+// One JSON record per world under localStorage `voxelcraft.worlds`:
+// meta (name/seed/mode/type/options), the player state (pose +
+// inventory), container inventories, and the block-edit journal (the
+// anvil-region substitute — the world regenerates from the seed and the
+// journal replays every landed mutation as chunks arrive).
+
+/// serde DTO for one stored web world (wasm only)
+#[cfg(target_arch = "wasm32")]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+struct WebWorldRec {
+    id: u64,
+    name: String,
+    seed: u64,
+    /// "survival" | "creative" | "hardcore"
+    mode: String,
+    #[serde(default)]
+    flat: bool,
+    #[serde(default = "true_default")]
+    structures: bool,
+    #[serde(default)]
+    bonus_chest: bool,
+    #[serde(default)]
+    game_time: i64,
+    #[serde(default)]
+    spawn: [i32; 3],
+    #[serde(default)]
+    hardcore_dead: bool,
+    /// (slot, block, count) + pose — the level.dat PlayerMeta analog
+    #[serde(default)]
+    player: Option<WebPlayerRec>,
+    /// (pos, kind, [(slot, block, count)]) — the ContainerMeta analog
+    #[serde(default)]
+    containers: Vec<WebContainerRec>,
+    /// (x, y, z, state) — the overworld block-edit journal
+    #[serde(default)]
+    edits: Vec<(i32, i32, i32, u16)>,
+    /// (x, y, z, state) — the nether journal (dimension travel parity;
+    /// End edits are out of scope, disclosed)
+    #[serde(default)]
+    edits_nether: Vec<(i32, i32, i32, u16)>,
+    #[serde(default)]
+    last_played: u64,
+}
+
+#[cfg(target_arch = "wasm32")]
+fn true_default() -> bool {
+    true
+}
+
+#[cfg(target_arch = "wasm32")]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+struct WebPlayerRec {
+    pos: [f64; 3],
+    yaw: f32,
+    pitch: f32,
+    slots: Vec<(u8, u16, u8)>,
+    selected: u8,
+    #[serde(default)]
+    health: f32,
+    #[serde(default)]
+    xp_points: i32,
+    #[serde(default)]
+    xp_level: i32,
+}
+
+#[cfg(target_arch = "wasm32")]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+struct WebContainerRec {
+    pos: [i32; 3],
+    kind: u16,
+    slots: Vec<(u16, u16, u8)>,
+}
+
 pub struct GameApp {
     pub window: &'static winit::window::Window,
     pub renderer: Renderer,
@@ -859,6 +971,52 @@ pub struct GameApp {
     /// Phase E3: superflat world-type toggle in the world-create screen
     /// (classic preset — VERIFIED w/Superflat)
     wc_flat: bool,
+    /// 2026-09-14 parity round: "Generate Structures" for the ACTIVE
+    /// world (rides every Gen job like world_flat; vanilla More World
+    /// Options toggle — level.dat MapFeatures)
+    world_structures: bool,
+    /// pending create-screen toggles (More World Options page)
+    wc_structures: bool,
+    /// pending Bonus Chest toggle (spawns a starter chest at world spawn
+    /// when ON — vanilla BonusChestEnabled)
+    wc_bonus: bool,
+    /// create-screen page: false = main page, true = More World Options
+    /// (the vanilla two-page Create World flow)
+    wc_more: bool,
+    /// Select World: search filter text (top-left field, vanilla Search)
+    ws_search: String,
+    /// Select World: scroll offset in rows (wheel + arrows)
+    ws_scroll: usize,
+    /// Select World: two-step delete confirmation (vanilla asks on a
+    /// dedicated confirm screen — the armed label is the adaptation)
+    ws_confirm_delete: bool,
+    /// Select World: last row click (idx, time) — vanilla double-click
+    /// plays the world
+    ws_last_click: Option<(usize, f32)>,
+    /// Edit World: the rename buffer + which list index is being edited
+    we_name: String,
+    we_index: Option<usize>,
+    /// web world list (wasm) — the localStorage-backed Select World rows;
+    /// native keeps its saves/ scan in `worlds`
+    #[cfg(target_arch = "wasm32")]
+    web_worlds: Vec<WebWorldRec>,
+    #[cfg(target_arch = "wasm32")]
+    web_next_id: u64,
+    /// the localStorage record id of the ACTIVE web world (save target)
+    #[cfg(target_arch = "wasm32")]
+    web_active_id: Option<u64>,
+    /// journal entries not yet applied (their chunks regenerate later) —
+    /// keyed (dimension, cx, cz), drained in apply_result(JobResult::Gen)
+    pending_edits: HashMap<(u8, i32, i32), Vec<([i32; 3], u16)>>,
+    /// per-dimension edit journals stashed while the player travels (the
+    /// live journal lives on the current World; travel swaps worlds)
+    #[cfg(target_arch = "wasm32")]
+    web_dim_journals: [Vec<([i32; 3], u16)>; 3],
+    /// the death screen's Score line (captured before XP is zeroed)
+    death_score: i32,
+    /// the Bonus Chest waits for the spawn chunk (Loading snap) before
+    /// placing — set by create_world, consumed by snap_player
+    pending_bonus_chest: bool,
     /// Phase E3: plate-sweep tick counter (every 10 game ticks)
     plate_sweep_t: u32,
     show_debug: bool,
@@ -971,15 +1129,6 @@ pub struct GameApp {
     pub bench: Option<crate::bench::BenchState>,
     /// spawn position captured at world init (bench camera orbits it)
     bench_spawn: glam::Vec3,
-    /// Phase 11 §34: discovered shader packs (builtin + external)
-    shader_packs: Vec<vc_render::shaders::ShaderPack>,
-    /// Phase 8: Iris-format packs found in `shader-packs/` (native scan;
-    /// wasm has no filesystem and boots empty). Structure-validated only —
-    /// they are deliberately NOT in `shader_packs` because they cannot be
-    /// applied: GLSL translation ships in the vc-iris sister project and
-    /// plugs in through the IrisTranslator seam (vc-render/src/iris.rs).
-    #[allow(dead_code)] // scanned at boot, not yet surfaced in a screen
-    iris_packs: Vec<vc_render::iris::IrisPackInfo>,
     /// Phase 9: the active world's data packs (Mojang official format —
     /// recipes + loot tables + tags; scanned from `<world>/datapacks/`,
     /// folders AND zips). Wasm has no filesystem: boots empty and the
@@ -1071,8 +1220,8 @@ pub struct GameApp {
     /// persisted spawn point (level.dat SpawnX/Y/Z)
     #[cfg(not(target_arch = "wasm32"))]
     level_spawn: (i32, i32, i32),
-    /// seconds until the next autosave flush (20 s cadence, vanilla-like)
-    #[cfg(not(target_arch = "wasm32"))]
+    /// seconds until the next autosave flush (20 s cadence, vanilla-like;
+    /// both platforms since the 2026-09-14 web world round)
     autosave_in: f32,
 }
 
@@ -1640,46 +1789,11 @@ impl GameApp {
         renderer.set_msaa(settings.msaa);
         renderer.set_occlusion(settings.occlusion);
 
-        // Phase 11 §34: discover shader packs (builtin embedded + native
-        // external dir) and apply the persisted selection before frame 1
-        #[cfg_attr(target_arch = "wasm32", allow(unused_mut))] // native append below
-        let mut shader_packs = vc_render::shaders::builtin_packs();
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            let mut ext = vc_render::shaders::external_packs();
-            shader_packs.append(&mut ext);
-        }
-        if let Some(n) = shader_mode_pack_index(settings.shader, shader_packs.len()) {
-            renderer.set_shader_pack(shader_packs.get(n));
-            if let Some(p) = shader_packs.get(n) {
-                vc_render::render::report_boot_log(&format!(
-                    "shader pack active: {} ({})",
-                    p.name, p.tier
-                ));
-            }
-        }
-
-        // Phase 8: scan the same shader-packs/ root for Iris-format packs
-        // (dirs carrying shaders.properties). Each is fully analyzed and
-        // reported HONESTLY: structure-validated, not selectable — the
-        // GLSL-330 translation lives in the vc-iris sister project and
-        // registers itself through the IrisTranslator seam. Web builds
-        // have no filesystem: the list stays empty and the E2E `iris`
-        // command exercises the wasm-reachable surface instead.
-        #[cfg(not(target_arch = "wasm32"))]
-        let iris_packs = {
-            let packs = vc_render::iris::scan_shader_packs(std::path::Path::new("shader-packs"));
-            for p in &packs {
-                vc_render::render::report_boot_log(&format!(
-                    "iris pack detected: {} — structure-validated, not selectable \
-                     (GLSL translation ships in the sister project vc-iris)",
-                    p.summary()
-                ));
-            }
-            packs
-        };
-        #[cfg(target_arch = "wasm32")]
-        let iris_packs = Vec::new();
+        // 2026-09-14 (user directive): the pre-created shader-pack
+        // discovery + persisted selection is REMOVED with the SHADER
+        // PACKS screen — no builtin packs are compiled in and no pack is
+        // ever activated. The engine post pipeline stays vanilla-only
+        // (menu blur / FSR-lite upscale path untouched).
 
         // Phase 9: scan the restored world's data packs (recipes + loot
         // tables + tags, Mojang's official format — folders AND zips).
@@ -1830,8 +1944,6 @@ impl GameApp {
             icon_cache,
             bank,
             sounds,
-            shader_packs,
-            iris_packs,
             data,
             audio_rng: vc_rng::rng::Rng::new(0x500D_5EED),
             sounds_played: 0,
@@ -1886,6 +1998,27 @@ impl GameApp {
             leashed: None,
             world_flat: false,
             wc_flat: false,
+            world_structures: true,
+            wc_structures: true,
+            wc_bonus: false,
+            wc_more: false,
+            ws_search: String::new(),
+            ws_scroll: 0,
+            ws_confirm_delete: false,
+            ws_last_click: None,
+            we_name: String::new(),
+            we_index: None,
+            #[cfg(target_arch = "wasm32")]
+            web_worlds: Vec::new(),
+            #[cfg(target_arch = "wasm32")]
+            web_next_id: 1,
+            #[cfg(target_arch = "wasm32")]
+            web_active_id: None,
+            pending_edits: HashMap::new(),
+            #[cfg(target_arch = "wasm32")]
+            web_dim_journals: [Vec::new(), Vec::new(), Vec::new()],
+            death_score: 0,
+            pending_bonus_chest: false,
             plate_sweep_t: 0,
             show_debug: false,
             show_help: false,
@@ -1997,7 +2130,6 @@ impl GameApp {
             swing_t: 99.0,
             #[cfg(not(target_arch = "wasm32"))]
             level_spawn,
-            #[cfg(not(target_arch = "wasm32"))]
             autosave_in: 20.0,
         };
         // boot-time settings effects: persisted VSync / Full Screen /
@@ -2108,10 +2240,14 @@ impl GameApp {
                 #[cfg(not(target_arch = "wasm32"))]
                 WindowEvent::KeyboardInput { event, .. } => {
                     let pressed = event.state == ElementState::Pressed;
-                    // Phase 1: text fields eat printable characters first
-                    // (world name / seed entry on the create screen)
+                    // Phase 1 + 2026-09-14: text fields eat printable
+                    // characters first (create-screen name/seed, the
+                    // Select World search field, the Edit World rename)
                     if pressed
-                        && self.screen == Screen::WorldCreate
+                        && matches!(
+                            self.screen,
+                            Screen::WorldCreate | Screen::WorldSelect | Screen::WorldEdit
+                        )
                         && self.text_field_focused().is_some()
                     {
                         if let winit::keyboard::Key::Character(s) = &event.logical_key {
@@ -2261,7 +2397,10 @@ impl GameApp {
                     // shift for case — the shim sends physical codes)
                     if pressed
                         && !repeat
-                        && self.screen == Screen::WorldCreate
+                        && matches!(
+                            self.screen,
+                            Screen::WorldCreate | Screen::WorldSelect | Screen::WorldEdit
+                        )
                         && self.text_field_focused().is_some()
                     {
                         if let Some(ch) = web_char_from_code(&code, self.web_shift) {
@@ -2407,8 +2546,14 @@ impl GameApp {
             KeyCode::ShiftLeft | KeyCode::ShiftRight => self.input.sneak = pressed && in_game,
             KeyCode::ControlLeft | KeyCode::ControlRight => self.input.sprint = pressed && in_game,
             KeyCode::Backspace => {
-                // Phase 1: text-field editing (world name / seed)
-                if pressed && self.screen == Screen::WorldCreate {
+                // Phase 1 + 2026-09-14: text-field editing (create name /
+                // seed, search, rename)
+                if pressed
+                    && matches!(
+                        self.screen,
+                        Screen::WorldCreate | Screen::WorldSelect | Screen::WorldEdit
+                    )
+                {
                     self.backspace_field();
                 }
             }
@@ -2432,12 +2577,12 @@ impl GameApp {
                         }
                         Screen::Pause => self.resume_game(),
                         Screen::Options => self.close_options(),
-                        Screen::Video | Screen::Engine | Screen::Packs | Screen::Access
-                        | Screen::Shaders => {
+                        Screen::Video | Screen::Engine | Screen::Packs | Screen::Access => {
                             // vanilla: ESC on a sub-screen returns to Options
                             self.set_screen(Screen::Options)
                         }
                         Screen::WorldCreate => self.cancel_world_create(),
+                        Screen::WorldEdit => self.set_screen(Screen::WorldSelect),
                         Screen::WorldSelect => self.set_screen(Screen::Title),
                         _ => {}
                     }
@@ -2867,6 +3012,20 @@ impl GameApp {
     }
 
     fn wheel(&mut self, d: f32) {
+        // 2026-09-14: the Select World list scrolls with the wheel
+        // (vanilla list scrolling) — before the in-game handling
+        if self.screen == Screen::WorldSelect && d.abs() > 0.01 {
+            let rows = self.world_list_rows().len();
+            let max = rows.saturating_sub(ui::MAX_LISTED_WORLDS);
+            let cur = self.ws_scroll as i32 - d.signum() as i32;
+            let next = cur.clamp(0, max as i32) as usize;
+            if next != self.ws_scroll {
+                self.ws_scroll = next;
+                self.refresh_widgets();
+                self.ui.dirty = true;
+            }
+            return;
+        }
         if self.screen != Screen::Game || d.abs() <= 0.01 {
             return;
         }
@@ -3099,10 +3258,6 @@ impl GameApp {
                 "Enable resource packs to restyle textures and GUI.",
                 "The bottom pack loads first; packs above override it.",
             ),
-            ID_OPT_SHADERS => l2(
-                "Pick the active shader pack or engine shader mode.",
-                "(Iris-style page — vanilla 1.16.5 ships no shaders.)",
-            ),
             ID_OPT_BOB => l(
                 "Toggles the walking view movement. (vanilla: on by default)",
             ),
@@ -3150,9 +3305,6 @@ impl GameApp {
             ID_OPT_SHADOWS => l("Sun shadow map resolution. Higher is sharper but costs fill rate."),
             ID_OPT_UPSCALE => l("Renders at a lower internal resolution and upscales with FSR."),
             ID_OPT_AUTOJUMP => l("Automatically jumps one-block steps while walking."),
-            _ if (ID_PACK_BASE..ID_PACK_BASE + MAX_PACK_ENTRIES as u16).contains(&id) => {
-                l("Activate this shader mode / pack.")
-            }
             _ => Vec::new(),
         }
     }
@@ -3361,11 +3513,14 @@ impl GameApp {
     }
 
     fn quit_to_title(&mut self) {
-        // leaving the world → flush unsaved chunks + level.dat (native, §28)
+        // leaving the world → flush unsaved chunks + level.dat (native,
+        // §28); web flushes the localStorage record (2026-09-14)
         #[cfg(not(target_arch = "wasm32"))]
         if self.bench.is_none() {
             self.save_world();
         }
+        #[cfg(target_arch = "wasm32")]
+        self.web_save_world();
         self.set_screen(Screen::Title);
         self.input = Input::default();
         self.target = None;
@@ -3373,32 +3528,48 @@ impl GameApp {
 
     // --------------------------------------------- Phase 1: world flow --
 
-    /// Open the saved-world list (native). Rescans `saves/` every time —
-    /// the world set may have changed since boot.
-    #[cfg(not(target_arch = "wasm32"))]
+    /// Open the saved-world list — the VANILLA Select World screen on
+    /// BOTH platforms now (2026-09-14 parity round): native rescans
+    /// `saves/`, web rescans the localStorage world list. Preselects the
+    /// most recent playable world (vanilla behavior) and resets the
+    /// search filter + scroll + delete-confirmation.
     fn open_world_select(&mut self) {
-        self.worlds = vc_anvil::save::list_worlds();
-        // preselect the most recent playable world (vanilla behavior)
-        self.ws_selected = self.worlds.iter().position(|w| !w.meta.hardcore_dead);
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.worlds = vc_anvil::save::list_worlds();
+            self.ws_selected = self.worlds.iter().position(|w| !w.meta.hardcore_dead);
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.web_load_worlds();
+            self.ws_selected = self.web_worlds.iter().position(|w| !w.hardcore_dead);
+        }
+        self.ws_search.clear();
+        self.ws_scroll = 0;
+        self.ws_confirm_delete = false;
+        self.ws_last_click = None;
         self.set_screen(Screen::WorldSelect);
     }
 
     /// Open the create-world screen (shared native/web). Fresh random seed
-    /// preview each time; buffers reset to defaults.
+    /// preview each time; buffers reset to vanilla defaults (Survival,
+    /// Default type, structures ON, bonus chest OFF, main page).
     fn open_world_create(&mut self) {
         self.wc_name = String::from("New World");
         self.wc_seed = String::new();
         self.wc_mode = vc_gameplay::modes::GameMode::Survival;
         self.wc_seed_preview = vc_world::world::World::random_seed();
+        self.wc_flat = false;
+        self.wc_structures = true;
+        self.wc_bonus = false;
+        self.wc_more = false;
         self.set_screen(Screen::WorldCreate);
     }
 
-    /// Cancel create: native goes back to the list, web straight to title.
+    /// Cancel create: back to the list (both platforms — the list exists
+    /// on the web now too).
     fn cancel_world_create(&mut self) {
-        #[cfg(not(target_arch = "wasm32"))]
         self.set_screen(Screen::WorldSelect);
-        #[cfg(target_arch = "wasm32")]
-        self.set_screen(Screen::Title);
     }
 
     /// CREATE WORLD: seed parse (vanilla: number = itself, text = Java
@@ -3431,14 +3602,30 @@ impl GameApp {
         self.load_datapacks();
         // Phase E3 (VERIFIED w/Superflat): the world-type flag rides the
         // created world — every Gen job routes through the flat generator
-        // (classic preset: bedrock, 2 dirt, grass; plains; no structures)
+        // (classic preset: bedrock, 2 dirt, grass; plains; no structures).
+        // 2026-09-14: Generate Structures + the journal arming ride along
+        // (MapFeatures / BonusChestEnabled parity — see WorldMeta).
         self.world_flat = self.wc_flat;
+        self.world_structures = self.wc_structures;
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.web_active_id = Some(self.web_next_id);
+            self.web_next_id += 1;
+            self.world.journaling = true;
+        }
+        // vanilla Bonus Chest: spawns a starter chest next to the world
+        // spawn when the option is ON (level.dat BonusChestEnabled) — the
+        // placement waits for the spawn chunk (the Loading snap), because
+        // set_block needs a loaded chunk
+        self.pending_bonus_chest = self.wc_bonus;
         vc_render::render::report_boot_log(&format!(
-            "world created: \"{}\" seed={} mode={} type={}",
+            "world created: \"{}\" seed={} mode={} type={} structures={} bonus={}",
             self.world_name,
             self.world.seed,
             self.mode.label(),
-            if self.world_flat { "superflat" } else { "normal" }
+            if self.world_flat { "superflat" } else { "normal" },
+            self.world_structures,
+            self.wc_bonus
         ));
     }
 
@@ -3474,9 +3661,20 @@ impl GameApp {
         vc_gameplay::craft::match_grid(grid, size)
     }
 
+    /// Play the `idx`-th world from the cached select list — dispatches
+    /// to the native anvil loader or the web localStorage loader (the
+    /// 2026-09-14 parity round: both platforms share the Select World
+    /// screen, so both need a play path).
+    fn play_world(&mut self, idx: usize) {
+        #[cfg(not(target_arch = "wasm32"))]
+        self.play_world_native(idx);
+        #[cfg(target_arch = "wasm32")]
+        self.play_world_web(idx);
+    }
+
     /// Play the `idx`-th world from the cached select list (native).
     #[cfg(not(target_arch = "wasm32"))]
-    fn play_world(&mut self, idx: usize) {
+    fn play_world_native(&mut self, idx: usize) {
         let Some(entry) = self.worlds.get(idx).cloned() else {
             return;
         };
@@ -3518,35 +3716,368 @@ impl GameApp {
         // F3: the loaded world's clock continues where the save left off
         // (reset_world zeroed it for a fresh world)
         self.world_game_time = game_time;
+        // 2026-09-14: the world-create options ride the level.dat round
+        // trip (generatorName / MapFeatures) — a reloaded superflat or
+        // structures-off world STAYS that way (latent Phase E3 bug: the
+        // flat flag never persisted, so every reload regen'd normal)
+        self.world_flat = entry.meta.flat;
+        self.world_structures = entry.meta.structures;
+        // containers restore through the boot path's exact semantics
+        for c in entry.meta.containers {
+            let inv = self.sim.containers.entry(c.pos, c.kind);
+            for (slot, block, count) in c.slots {
+                if let Some(s) = inv.slots.get_mut(slot as usize) {
+                    *s = vc_inventory::inventory::ItemStack::new(block, count);
+                }
+            }
+        }
         self.load_datapacks();
         vc_render::render::report_boot_log(&format!(
-            "world loaded: \"{}\" seed={} mode={}",
+            "world loaded: \"{}\" seed={} mode={} type={}",
             self.world_name,
             self.world.seed,
-            self.mode.label()
+            self.mode.label(),
+            if self.world_flat { "superflat" } else { "normal" }
         ));
     }
 
-    /// Phase 9: (re)scan the active world's `datapacks/` directory —
-    /// called on world create AND on world load, after `save_root` is
-    /// set and before generation fills dungeon chests. Native only;
-    /// the wasm build has no filesystem (the E2E `dpdemo` command runs
-    /// the embedded demo pack through the same code path instead).
-    #[cfg(not(target_arch = "wasm32"))]
-    fn load_datapacks(&mut self) {
-        let loaded = vc_pack::datapack::scan_datapacks(&self.save_root.join("datapacks"));
-        report_datapacks(&loaded);
-        self.data = loaded;
-    }
+    /// Play the `idx`-th world from the localStorage list (web) — the
+    /// web twin of `play_world_native`: restores the player pose +
+    /// inventory, containers, the world clock, and queues the block-edit
+    /// journal for replay (applied per chunk as generation completes).
     #[cfg(target_arch = "wasm32")]
-    fn load_datapacks(&mut self) {
-        self.data = vc_pack::datapack::LoadedData::default();
+    fn play_world_web(&mut self, idx: usize) {
+        let Some(rec) = self.web_worlds.get(idx).cloned() else {
+            return;
+        };
+        if rec.hardcore_dead {
+            return; // dead hardcore worlds are unplayable (vanilla lock)
+        }
+        let mode = match rec.mode.as_str() {
+            "creative" => vc_gameplay::modes::GameMode::Creative,
+            "hardcore" => vc_gameplay::modes::GameMode::Hardcore,
+            _ => vc_gameplay::modes::GameMode::Survival,
+        };
+        let restore = rec.player.as_ref().map(|p| {
+            (
+                p.pos[0] as f32,
+                p.pos[1] as f32,
+                p.pos[2] as f32,
+                p.yaw,
+                p.pitch,
+            )
+        });
+        self.reset_world(rec.seed, mode, rec.name.clone(), restore);
+        // player state the web record carries beyond the pose tuple
+        if let Some(p) = rec.player.as_ref() {
+            for (i, block, count) in &p.slots {
+                if (*i as usize) < vc_inventory::inventory::INV_SLOTS {
+                    self.player.inv.slots[*i as usize] =
+                        vc_inventory::inventory::ItemStack::new(*block, *count);
+                }
+            }
+            self.player.selected = p.selected.min(8) as usize;
+            if p.health > 0.0 {
+                self.player.health = p.health;
+            }
+            self.player.xp_points = p.xp_points;
+            self.player.xp_level = p.xp_level;
+        }
+        self.world_game_time = rec.game_time;
+        self.world_flat = rec.flat;
+        self.world_structures = rec.structures;
+        // containers restore (the native boot path's exact semantics)
+        for c in &rec.containers {
+            let inv = self.sim.containers.entry(c.pos, c.kind);
+            for (slot, block, count) in &c.slots {
+                if let Some(s) = inv.slots.get_mut(*slot as usize) {
+                    *s = vc_inventory::inventory::ItemStack::new(*block, *count);
+                }
+            }
+        }
+        // journal replay: entries apply as their chunks generate (the
+        // world regenerates from the seed — the journal is the region
+        // file substitute). Per-dimension maps; the current dimension's
+        // entries also seed the LIVE journal so future saves carry them.
+        self.pending_edits.clear();
+        let ow: Vec<([i32; 3], u16)> = rec
+            .edits
+            .iter()
+            .map(|&(x, y, z, s)| ([x, y, z], s))
+            .collect();
+        let nether: Vec<([i32; 3], u16)> = rec
+            .edits_nether
+            .iter()
+            .map(|&(x, y, z, s)| ([x, y, z], s))
+            .collect();
+        self.web_dim_journals = [ow, nether, Vec::new()];
+        for (dim, list) in self.web_dim_journals.iter().enumerate() {
+            for &(p, state) in list {
+                let key = (dim as u8, p[0].div_euclid(16), p[2].div_euclid(16));
+                self.pending_edits
+                    .entry(key)
+                    .or_default()
+                    .push((p, state));
+            }
+        }
+        let dim = self.world.dimension as u8 as usize;
+        self.world.journal = self.web_dim_journals[dim]
+            .iter()
+            .map(|&(p, s)| (p, s))
+            .collect();
+        self.web_active_id = Some(rec.id);
+        self.world.journaling = true;
+        vc_render::render::report_boot_log(&format!(
+            "world loaded (web): \"{}\" seed={} mode={} edits={} containers={}",
+            self.world_name,
+            self.world.seed,
+            self.mode.label(),
+            rec.edits.len(),
+            rec.containers.len()
+        ));
     }
 
-    /// DELETE SELECTED on the world-select screen (native). No confirm
-    /// dialog yet — vanilla has one; noted as a follow-up.
-    #[cfg(not(target_arch = "wasm32"))]
+    // ------------------------------------ 2026-09-14: vanilla world list --
+
+    /// The Select World rows (both platforms): native from saves/ scan,
+    /// web from the localStorage list — one shared shape the screen
+    /// paints. The search filter applies first (vanilla Search), then
+    /// the scroll window.
+    fn world_list_rows(&self) -> Vec<vc_render::ui::WorldRow> {
+        #[allow(unused_mut)]
+        let mut rows: Vec<vc_render::ui::WorldRow> = Vec::new();
+        #[cfg(not(target_arch = "wasm32"))]
+        for w in &self.worlds {
+            let mode =
+                vc_gameplay::modes::GameMode::from_save(w.meta.game_type, w.meta.hardcore);
+            let info = if w.meta.hardcore_dead {
+                "HARDCORE (GAME OVER)".to_string()
+            } else {
+                let age = web_time::SystemTime::now()
+                    .duration_since(web_time::UNIX_EPOCH)
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0)
+                    .saturating_sub(w.last_played);
+                let played = if age < 60 {
+                    "JUST NOW".to_string()
+                } else if age < 3600 {
+                    format!("{} MIN AGO", age / 60)
+                } else if age < 86400 {
+                    format!("{} HR AGO", age / 3600)
+                } else {
+                    format!("{} DAYS AGO", age / 86400)
+                };
+                format!("{}, {}", mode.label(), played)
+            };
+            rows.push(vc_render::ui::WorldRow {
+                name: w.meta.name.clone(),
+                info,
+                dead: w.meta.hardcore_dead,
+            });
+        }
+        #[cfg(target_arch = "wasm32")]
+        for w in &self.web_worlds {
+            let info = if w.hardcore_dead {
+                "HARDCORE (GAME OVER)".to_string()
+            } else {
+                let mode = match w.mode.as_str() {
+                    "creative" => "CREATIVE",
+                    "hardcore" => "HARDCORE",
+                    _ => "SURVIVAL",
+                };
+                let age = web_time::SystemTime::now()
+                    .duration_since(web_time::UNIX_EPOCH)
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0)
+                    .saturating_sub(w.last_played);
+                let played = if age < 60 {
+                    "JUST NOW".to_string()
+                } else if age < 3600 {
+                    format!("{} MIN AGO", age / 60)
+                } else if age < 86400 {
+                    format!("{} HR AGO", age / 3600)
+                } else {
+                    format!("{} DAYS AGO", age / 86400)
+                };
+                format!("{mode}, {played}")
+            };
+            rows.push(vc_render::ui::WorldRow {
+                name: w.name.clone(),
+                info,
+                dead: w.hardcore_dead,
+            });
+        }
+        // the search filter (vanilla Search worlds...): case-insensitive
+        // name substring, matching vanilla's contains() behavior
+        if !self.ws_search.is_empty() {
+            let needle = self.ws_search.to_lowercase();
+            rows.retain(|r| r.name.to_lowercase().contains(&needle));
+        }
+        rows
+    }
+
+    /// Load the localStorage world list into `web_worlds` (wasm). Sorts
+    /// newest-first like the native list_worlds scan.
+    #[cfg(target_arch = "wasm32")]
+    fn web_load_worlds(&mut self) {
+        self.web_worlds = Vec::new();
+        self.web_next_id = 1;
+        let Some(json) = crate::web_input::load_worlds() else {
+            return;
+        };
+        if let Ok(list) = serde_json::from_str::<Vec<WebWorldRec>>(&json) {
+            self.web_next_id = list.iter().map(|w| w.id).max().unwrap_or(0) + 1;
+            self.web_worlds = list;
+        }
+        self.web_worlds
+            .sort_by_key(|w| std::cmp::Reverse(w.last_played));
+    }
+
+    /// Snapshot the ACTIVE world into `web_worlds` + localStorage (wasm).
+    /// The record carries meta, player state, containers, and the
+    /// block-edit journal (position-keyed — the world regenerates from
+    /// the seed and the journal replays the mutations).
+    #[cfg(target_arch = "wasm32")]
+    fn web_save_world(&mut self) {
+        let Some(active) = self.web_active_id else {
+            return;
+        };
+        // capture containers + player BEFORE the immutable borrow below
+        let containers: Vec<WebContainerRec> = self
+            .sim
+            .containers
+            .map
+            .iter()
+            .map(|(pos, inv)| {
+                let slots = inv
+                    .slots
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, s)| !s.is_empty())
+                    .map(|(i, s)| (i as u16, s.block, s.count))
+                    .collect();
+                let live = vc_blocks::blocks::state_block(self.world.get_state(pos[0], pos[1], pos[2]));
+                let kind = match live {
+                    CHEST | DISPENSER | DROPPER | HOPPER => live,
+                    _ => match inv.slots.len() {
+                        27 => CHEST,
+                        5 => HOPPER,
+                        _ => DISPENSER,
+                    },
+                };
+                WebContainerRec {
+                    pos: *pos,
+                    kind,
+                    slots,
+                }
+            })
+            .collect();
+        let player = WebPlayerRec {
+            pos: [
+                self.player.pos.x as f64,
+                self.player.pos.y as f64,
+                self.player.pos.z as f64,
+            ],
+            yaw: self.player.yaw,
+            pitch: self.player.pitch,
+            slots: self
+                .player
+                .inv
+                .slots
+                .iter()
+                .enumerate()
+                .filter(|(_, s)| !s.is_empty())
+                .map(|(i, s)| (i as u8, s.block, s.count))
+                .collect(),
+            selected: self.player.selected as u8,
+            health: self.player.health,
+            xp_points: self.player.xp_points,
+            xp_level: self.player.xp_level,
+        };
+        let edits: Vec<(i32, i32, i32, u16)> = self
+            .world
+            .journal
+            .iter()
+            .map(|(&[x, y, z], &st)| (x, y, z, st))
+            .collect();
+        let journal_len = edits.len();
+        // the CURRENT dimension's journal goes to its field; the other
+        // dimensions keep their stashed copies (travel parity — a save
+        // from the nether never wipes overworld edits)
+        let cur_dim = self.world.dimension as u8 as usize;
+        self.web_dim_journals[cur_dim] = self
+            .world
+            .journal
+            .iter()
+            .map(|(&p, &s)| (p, s))
+            .collect();
+        let edits_ow: Vec<(i32, i32, i32, u16)> = self.web_dim_journals[0]
+            .iter()
+            .map(|&([x, y, z], s)| (x, y, z, s))
+            .collect();
+        let edits_nether: Vec<(i32, i32, i32, u16)> = self.web_dim_journals[1]
+            .iter()
+            .map(|&([x, y, z], s)| (x, y, z, s))
+            .collect();
+        let rec = WebWorldRec {
+            id: active,
+            name: self.world_name.clone(),
+            seed: self.world.seed,
+            mode: match self.mode {
+                vc_gameplay::modes::GameMode::Creative => "creative".to_string(),
+                vc_gameplay::modes::GameMode::Hardcore => "hardcore".to_string(),
+                _ => "survival".to_string(),
+            },
+            flat: self.world_flat,
+            structures: self.world_structures,
+            bonus_chest: false, // spawn-only; never re-spawned on load
+            game_time: self.world_game_time,
+            spawn: [
+                self.respawn_pos.x.floor() as i32,
+                self.respawn_pos.y.floor() as i32,
+                self.respawn_pos.z.floor() as i32,
+            ],
+            hardcore_dead: self.hardcore_dead,
+            player: Some(player),
+            containers,
+            edits: edits_ow,
+            edits_nether,
+            last_played: web_time::SystemTime::now()
+                .duration_since(web_time::UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0),
+        };
+        // replace-or-append into the list
+        if let Some(slot) = self.web_worlds.iter_mut().find(|w| w.id == active) {
+            *slot = rec;
+        } else {
+            self.web_worlds.push(rec);
+        }
+        let json = serde_json::to_string(&self.web_worlds).unwrap_or_else(|_| "[]".into());
+        crate::web_input::save_worlds(&json);
+        vc_render::render::report_debug_log(
+            "save",
+            &format!(
+                "web world saved: \"{}\" journal={journal_len} bytes={}",
+                self.world_name,
+                json.len()
+            ),
+        );
+    }
+
+    /// DELETE on the Select World screen (both platforms) — vanilla asks
+    /// for confirmation on a dedicated screen; our two-step armed button
+    /// carries the same guard (first click arms, second deletes, any
+    /// other interaction disarms).
     fn delete_selected_world(&mut self) {
+        if !self.ws_confirm_delete {
+            self.ws_confirm_delete = true;
+            self.refresh_widgets();
+            self.ui.dirty = true;
+            return;
+        }
+        self.ws_confirm_delete = false;
+        #[cfg(not(target_arch = "wasm32"))]
         if let Some(idx) = self.ws_selected {
             if let Some(entry) = self.worlds.get(idx).cloned() {
                 if vc_anvil::save::delete_world(&entry.dir) {
@@ -3559,8 +4090,229 @@ impl GameApp {
                 }
             }
         }
+        #[cfg(target_arch = "wasm32")]
+        if let Some(idx) = self.ws_selected {
+            if self.web_worlds.get(idx).is_some() {
+                let name = self.web_worlds[idx].name.clone();
+                self.web_worlds.remove(idx);
+                self.ws_selected = None;
+                let json = serde_json::to_string(&self.web_worlds).unwrap_or_else(|_| "[]".into());
+                crate::web_input::save_worlds(&json);
+                vc_render::render::report_boot_log(&format!("web world deleted: {name}"));
+            }
+        }
         self.refresh_widgets();
         self.ui.dirty = true;
+    }
+
+    /// RENAME on the Edit World screen (both platforms) — vanilla applies
+    /// the typed name to the save.
+    fn rename_selected_world(&mut self) {
+        let name = {
+            let n = self.we_name.trim();
+            if n.is_empty() {
+                None
+            } else {
+                Some(n.to_string())
+            }
+        };
+        let Some(name) = name else { return };
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(idx) = self.we_index {
+            if let Some(entry) = self.worlds.get_mut(idx) {
+                entry.meta.name = name.clone();
+                // flush level.dat under the NEW name (vanilla renames the
+                // world, not the folder — the folder keeps its identity)
+                let _ = vc_anvil::save::write_level_dat(&entry.dir, &entry.meta);
+                if self.save_root == entry.dir {
+                    self.world_name = name.clone();
+                }
+            }
+        }
+        #[cfg(target_arch = "wasm32")]
+        if let Some(idx) = self.we_index {
+            let rec_id = self.web_worlds.get(idx).map(|r| r.id);
+            if let Some(rec_id) = rec_id {
+                if let Some(rec) = self.web_worlds.get_mut(idx) {
+                    rec.name = name.clone();
+                }
+                let json =
+                    serde_json::to_string(&self.web_worlds).unwrap_or_else(|_| "[]".into());
+                crate::web_input::save_worlds(&json);
+                if self.web_active_id == Some(rec_id) {
+                    self.world_name = name.clone();
+                }
+            }
+        }
+        self.set_screen(Screen::WorldSelect);
+        self.refresh_widgets();
+        self.ui.dirty = true;
+    }
+
+    /// COPY WORLD on the Edit World screen — vanilla duplicates the save
+    /// ("<name> copy"). Web: clones the record under a fresh id; native:
+    /// a directory copy is NOT made (disclosed engine adaptation — the
+    /// native copy path would need region-file cloning; the web list is
+    /// where copies are first-class).
+    fn copy_selected_world(&mut self) {
+        #[cfg(target_arch = "wasm32")]
+        if let Some(idx) = self.we_index {
+            if let Some(rec) = self.web_worlds.get(idx).cloned() {
+                let mut copy = rec.clone();
+                copy.id = self.web_next_id;
+                self.web_next_id += 1;
+                copy.name = format!("{} copy", rec.name);
+                copy.last_played = web_time::SystemTime::now()
+                    .duration_since(web_time::UNIX_EPOCH)
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0);
+                self.web_worlds.push(copy);
+                let json = serde_json::to_string(&self.web_worlds).unwrap_or_else(|_| "[]".into());
+                crate::web_input::save_worlds(&json);
+                self.set_screen(Screen::WorldSelect);
+                self.refresh_widgets();
+                self.ui.dirty = true;
+            }
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            // native: region-file cloning is out of scope this round —
+            // the button stays honest and reports it
+            vc_render::render::report_boot_log(
+                "copy world: native directory clone not implemented (web lists support it)",
+            );
+        }
+    }
+
+    /// RE-CREATE on the Select World screen (vanilla: opens the Create
+    /// World screen pre-filled with the selected world's settings — same
+    /// seed/mode/type, fresh player state).
+    fn recreate_selected_world(&mut self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        let prefill = self.ws_selected.and_then(|i| self.worlds.get(i).cloned()).map(|e| {
+            (
+                e.meta.name.clone(),
+                e.meta.seed,
+                vc_gameplay::modes::GameMode::from_save(e.meta.game_type, e.meta.hardcore),
+                e.meta.flat,
+                e.meta.structures,
+            )
+        });
+        #[cfg(target_arch = "wasm32")]
+        let prefill = self.ws_selected.and_then(|i| self.web_worlds.get(i).cloned()).map(|w| {
+            (
+                w.name.clone(),
+                w.seed,
+                match w.mode.as_str() {
+                    "creative" => vc_gameplay::modes::GameMode::Creative,
+                    "hardcore" => vc_gameplay::modes::GameMode::Hardcore,
+                    _ => vc_gameplay::modes::GameMode::Survival,
+                },
+                w.flat,
+                w.structures,
+            )
+        });
+        let Some((name, seed, mode, flat, structures)) = prefill else {
+            return;
+        };
+        self.wc_name = name;
+        self.wc_seed = seed.to_string();
+        self.wc_mode = mode;
+        self.wc_flat = flat;
+        self.wc_structures = structures;
+        self.wc_bonus = false;
+        self.wc_more = false;
+        self.wc_seed_preview = seed;
+        self.set_screen(Screen::WorldCreate);
+        self.refresh_widgets();
+        self.ui.dirty = true;
+    }
+
+    /// The vanilla Bonus Chest (VERIFIED minecraft.wiki/w/Bonus_chest:
+    /// "a chest containing items... spawned near the world spawn point
+    /// when the Create New World Bonus Chest option is enabled" — the
+    /// 1.16.5 loot pools carry starter tools/food/torches). Engine
+    /// adaptation, palette-limited: one chest placed beside the spawn
+    /// column with a fixed starter loadout drawn from the same spirit
+    /// (torches, planks, sticks, apples, bread); tools are out of the
+    /// flat-block palette — disclosed in the WORKLOG.
+    fn spawn_bonus_chest(&mut self) {
+        let (sx, _, sz) = (
+            self.player.pos.x.floor() as i32,
+            self.player.pos.y.floor() as i32,
+            self.player.pos.z.floor() as i32,
+        );
+        // find a floor spot 1-3 blocks from the spawn column
+        let mut placed: Option<[i32; 3]> = None;
+        'outer: for dx in [2, -2, 1, -1, 3, -3] {
+            for dz in [0, 2, -2, 1, -1] {
+                let x = sx + dx;
+                let z = sz + dz;
+                // top solid in this column (loaded — the snap column is in)
+                let cx = x.div_euclid(16);
+                let cz = z.div_euclid(16);
+                if let Some(c) = self.world.chunk((cx, cz)) {
+                    let lx = (x - cx * 16) as usize;
+                    let lz = (z - cz * 16) as usize;
+                    let t = c.top_solid_y(lx.min(15), lz.min(15));
+                    if t >= 0 {
+                        let pos = [x, t + 1, z];
+                        if self.world.get_block(x, t + 1, z) == AIR
+                            && self.world.get_block(x, t + 2, z) == AIR
+                        {
+                            if let Some((old, new)) = self.world.set_block(x, t + 1, z, CHEST) {
+                                self.light
+                                    .on_block_changed(&self.world, x, t + 1, z, old, new);
+                                notify_sim(&self.world, &mut self.sim.sched, x, t + 1, z);
+                                placed = Some(pos);
+                                break 'outer;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        let Some(pos) = placed else {
+            return;
+        };
+        // the starter loadout (vanilla bonus-chest spirit, palette-limited)
+        let inv = self.sim.containers.entry(pos, CHEST);
+        let loadout: [(usize, u16, u8); 6] = [
+            (3, TORCH_LIT, 8),
+            (4, TORCH_LIT, 8),
+            (12, PLANKS, 16),
+            (13, PLANKS, 8),
+            (14, STICK, 8),
+            (15, APPLE, 4),
+        ];
+        for (slot, block, count) in loadout {
+            if let Some(s) = inv.slots.get_mut(slot) {
+                *s = vc_inventory::inventory::ItemStack::new(block, count);
+            }
+        }
+        // bread joins through the same path when the palette carries it
+        if let Some(s) = inv.slots.get_mut(16) {
+            *s = vc_inventory::inventory::ItemStack::new(BREAD, 3);
+        }
+        self.edits += 1;
+        vc_render::render::report_boot_log(&format!(
+            "bonus chest spawned at {:?} (VERIFIED w/Bonus_chest, palette-limited loadout)",
+            pos
+        ));
+    }
+
+    /// Phase 9: (re)scan the active world's `datapacks/` directory —
+    /// called on world create AND on world load, after `save_root` is
+    /// set and before generation fills dungeon chests. Native only;
+    #[cfg(not(target_arch = "wasm32"))]
+    fn load_datapacks(&mut self) {
+        let loaded = vc_pack::datapack::scan_datapacks(&self.save_root.join("datapacks"));
+        report_datapacks(&loaded);
+        self.data = loaded;
+    }
+    #[cfg(target_arch = "wasm32")]
+    fn load_datapacks(&mut self) {
+        self.data = vc_pack::datapack::LoadedData::default();
     }
 
     /// Swap the entire engine into a different world: fresh terrain,
@@ -3580,10 +4332,23 @@ impl GameApp {
         name: String,
         restore: Option<(f32, f32, f32, f32, f32)>,
     ) {
-        // flush the outgoing world first (native, §28)
+        // flush the outgoing world first (native, §28; web: the localStorage
+        // record, 2026-09-14)
         #[cfg(not(target_arch = "wasm32"))]
         if self.bench.is_none() && self.screen != Screen::Loading {
             self.save_world();
+        }
+        #[cfg(target_arch = "wasm32")]
+        if self.screen != Screen::Loading {
+            self.web_save_world();
+        }
+        // the journal replay queue + the per-dimension stashes never cross
+        // worlds — reset them with the world itself
+        self.pending_edits.clear();
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.web_dim_journals = [Vec::new(), Vec::new(), Vec::new()];
+            self.web_active_id = None;
         }
         self.world = World::new(seed);
         let spawn = self.world.find_spawn();
@@ -3655,10 +4420,7 @@ impl GameApp {
         self.spawn_snapped = false;
         self.faced_land = false;
         self.load_start = self.time;
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            self.autosave_in = 20.0;
-        }
+        self.autosave_in = 20.0;
         self.set_screen(Screen::Loading);
     }
 
@@ -3696,9 +4458,13 @@ impl GameApp {
         let Some(id) = self.text_field_focused() else {
             return false;
         };
-        let (buf, max) = match id {
+        // (buffer, max length) — 2026-09-14: the search field + the Edit
+        // World rename field join the create-screen fields
+        let (buf, max): (&mut String, usize) = match id {
             ui::ID_WC_NAME => (&mut self.wc_name, 32),
             ui::ID_WC_SEED => (&mut self.wc_seed, 24),
+            ui::ID_WS_SEARCHFIELD => (&mut self.ws_search, 24),
+            ui::ID_WE_NAME => (&mut self.we_name, 32),
             _ => return false,
         };
         if buf.chars().count() >= max {
@@ -3717,6 +4483,8 @@ impl GameApp {
         let buf = match id {
             ui::ID_WC_NAME => &mut self.wc_name,
             ui::ID_WC_SEED => &mut self.wc_seed,
+            ui::ID_WS_SEARCHFIELD => &mut self.ws_search,
+            ui::ID_WE_NAME => &mut self.we_name,
             _ => return,
         };
         buf.pop();
@@ -3727,12 +4495,23 @@ impl GameApp {
     /// render state; game.rs owns the truth).
     fn sync_field_widgets(&mut self) {
         let (name, seed) = (self.wc_name.clone(), self.wc_seed.clone());
+        let (search, we_name) = (self.ws_search.clone(), self.we_name.clone());
         for w in self.widgets.iter_mut() {
             match w.id {
                 ui::ID_WC_NAME => ui::set_text(w, &name),
                 ui::ID_WC_SEED => ui::set_text(w, &seed),
+                ui::ID_WS_SEARCHFIELD => {
+                    ui::set_text(w, &search);
+                    // the filter changes the visible rows — rebuild
+                }
+                ui::ID_WE_NAME => ui::set_text(w, &we_name),
                 _ => {}
             }
+        }
+        // the search filter re-windows the row list (and row widgets)
+        if self.screen == Screen::WorldSelect {
+            self.ws_scroll = 0;
+            self.refresh_widgets();
         }
         self.ui.dirty = true;
     }
@@ -3821,7 +4600,9 @@ impl GameApp {
             let _ = dropped;
         }
         // vanilla: XP is lost on death (dropped as orbs — we have none yet,
-        // so it just zeroes; documented deviation)
+        // so it just zeroes; documented deviation). The death screen's
+        // Score line captures the pre-zero total first (vanilla shows it).
+        self.death_score = self.player.xp_points;
         self.player.xp_points = 0;
         self.player.xp_level = 0;
         self.play_event("entity.player.hurt", None, 1.0);
@@ -3834,6 +4615,8 @@ impl GameApp {
             if self.bench.is_none() {
                 self.save_world();
             }
+            #[cfg(target_arch = "wasm32")]
+            self.web_save_world();
         }
         self.death_cause = cause;
         self.set_screen(Screen::Death);
@@ -5517,12 +6300,10 @@ impl GameApp {
         use ui::*;
         match id {
             ID_TITLE_PLAY => {
-                // Phase 1: SINGLEPLAYER opens the world flow — native picks
-                // from the save list, web (no persistence) creates directly
-                #[cfg(not(target_arch = "wasm32"))]
+                // Phase 1 + 2026-09-14: SINGLEPLAYER opens the vanilla
+                // Select World screen on BOTH platforms (native picks from
+                // saves/, web from the localStorage world list)
                 self.open_world_select();
-                #[cfg(target_arch = "wasm32")]
-                self.open_world_create();
             }
             ID_TITLE_OPTIONS => self.open_options(Screen::Title),
             ID_TITLE_QUIT => self.quit_requested = true,
@@ -5542,7 +6323,6 @@ impl GameApp {
             ID_OPT_VIDEO => self.set_screen(Screen::Video),
             ID_OPT_ENGINE => self.set_screen(Screen::Engine),
             ID_OPT_PACKS => self.set_screen(Screen::Packs),
-            ID_OPT_SHADERS => self.set_screen(Screen::Shaders),
             ID_OPT_ACCESS => self.set_screen(Screen::Access),
             // ---- Resource Packs rows (2026-09-14) ----
             // click an AVAILABLE pack → it joins SELECTED at the TOP
@@ -5698,28 +6478,48 @@ impl GameApp {
                 self.settings.gpu_meshing = !self.settings.gpu_meshing && avail;
                 self.after_settings_change();
             }
-            _ if (ID_PACK_BASE..ID_PACK_BASE + MAX_PACK_ENTRIES as u16).contains(&id) => {
-                // shader-pack row (Screen::Shaders only now): select that
-                // shader mode / pack (0..2 engine modes, 3.. pack index)
-                if self.screen == Screen::Shaders {
-                    let idx = id - ID_PACK_BASE;
-                    let n = (3 + self.shader_packs.len()) as u16;
-                    if idx < n {
-                        self.settings.shader = idx as u8;
-                        self.after_settings_change();
-                    }
-                }
-            }
             ID_PAUSE_BACK => self.resume_game(),
             ID_PAUSE_OPTIONS => self.open_options(Screen::Pause),
             ID_PAUSE_QUIT => self.quit_to_title(),
-            // ---- Phase 1: world select / create / death screens ----
+            // ---- 2026-09-14: the vanilla Select / Create / Edit World ----
+            ID_WS_PLAY => {
+                // vanilla row-A: plays the selected world (disabled without
+                // a selection — the layout's `can_play` guard)
+                if let Some(idx) = self.ws_selected {
+                    self.play_world(idx);
+                }
+            }
             ID_WS_CREATE => self.open_world_create(),
             ID_WS_CANCEL => self.set_screen(Screen::Title),
-            ID_WS_DELETE => {
-                #[cfg(not(target_arch = "wasm32"))]
+            ID_WS_EDIT => {
+                // vanilla Edit World screen with the selected name loaded
+                if let Some(idx) = self.ws_selected {
+                    self.we_index = Some(idx);
+                    self.we_name = self
+                        .world_list_rows()
+                            .get(idx)
+                            .map(|r| r.name.clone())
+                            .unwrap_or_default();
+                    self.set_screen(Screen::WorldEdit);
+                }
+            }
+            ID_WS_DELETE => self.delete_selected_world(),
+            ID_WS_RECREATE => self.recreate_selected_world(),
+            ID_WS_SEARCH | ID_WS_SEARCHFIELD => {
+                // vanilla: the Search button focuses the search field
+                self.focus_field(ID_WS_SEARCHFIELD);
+            }
+            ID_WE_NAME => self.focus_field(ID_WE_NAME),
+            ID_WE_RENAME => self.rename_selected_world(),
+            ID_WE_DELETE => {
+                // the Edit World delete is already a deliberate two-step
+                // context — arm + delete in one press
+                self.ws_selected = self.we_index;
+                self.ws_confirm_delete = true;
                 self.delete_selected_world();
             }
+            ID_WE_COPY => self.copy_selected_world(),
+            ID_WE_DONE => self.set_screen(Screen::WorldSelect),
             ID_WC_MODE => {
                 self.wc_mode = self.wc_mode.next();
                 self.refresh_widgets();
@@ -5733,24 +6533,47 @@ impl GameApp {
                 self.refresh_widgets();
                 self.ui.dirty = true;
             }
+            ID_WC_STRUCT => {
+                // vanilla More World Options: Generate Structures ON/OFF
+                // (level.dat MapFeatures)
+                self.wc_structures = !self.wc_structures;
+                self.refresh_widgets();
+                self.ui.dirty = true;
+            }
+            ID_WC_BONUS => {
+                // vanilla More World Options: Bonus Chest ON/OFF
+                // (level.dat BonusChestEnabled)
+                self.wc_bonus = !self.wc_bonus;
+                self.refresh_widgets();
+                self.ui.dirty = true;
+            }
+            ID_WC_MORE => {
+                // the vanilla two-page flow: More World Options ↔ Done...
+                self.wc_more = !self.wc_more;
+                self.refresh_widgets();
+                self.ui.dirty = true;
+            }
             ID_WC_CREATE => self.create_world(),
             ID_WC_CANCEL => self.cancel_world_create(),
             ID_DEATH_RESPAWN => self.respawn(),
             ID_DEATH_TITLE => self.death_quit_to_title(false),
             ID_DEATH_DELETE => self.death_quit_to_title(true),
             _ if (ID_WS_WORLD_BASE..ID_WS_WORLD_BASE + MAX_LISTED_WORLDS as u16).contains(&id) => {
-                // clicking a row selects it; a live world also plays
-                // (WorldSelect is native-only — unreachable on wasm)
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    let idx = (id - ID_WS_WORLD_BASE) as usize;
-                    self.ws_selected = Some(idx);
-                    let dead = self
-                        .worlds
-                        .get(idx)
-                        .map(|w| w.meta.hardcore_dead)
+                // vanilla row click: SELECTS the world; double-click plays
+                // it. Both platforms (the list exists on the web now too).
+                // Any row click disarms the pending delete confirmation.
+                self.ws_confirm_delete = false;
+                let idx = (id - ID_WS_WORLD_BASE) as usize + self.ws_scroll;
+                if idx < self.world_list_rows().len() {
+                    let now = self.time;
+                    let dbl = self
+                        .ws_last_click
+                        .map(|(i, t)| i == idx && now - t < 0.45)
                         .unwrap_or(false);
-                    if !dead {
+                    self.ws_last_click = Some((idx, now));
+                    self.ws_selected = Some(idx);
+                    let dead = self.world_list_rows()[idx].dead;
+                    if dbl && !dead {
                         self.play_world(idx);
                     } else {
                         self.refresh_widgets();
@@ -5833,8 +6656,6 @@ impl GameApp {
         // vanilla Use VSync + Particles apply live
         self.renderer.set_vsync(self.settings.vsync);
         self.particles.density = self.settings.particle_density();
-        // Phase 11 §34: re-apply the shader selection (pack pipeline swap)
-        self.apply_shader_selection();
         // Phase 6 §26: texture quality (mipmaps + aniso), MSAA, occlusion
         self.renderer
             .set_texture_quality(self.settings.mipmap_levels, self.settings.aniso);
@@ -6181,20 +7002,6 @@ impl GameApp {
         );
         self.break_timer = 0.24;
         self.edits += 1;
-    }
-
-    /// Phase 11 §34: settings.shader → display name (engine modes + packs)
-    fn shader_mode_name(&self, mode: u8) -> &str {
-        match mode {
-            0 => "OFF",
-            1 => "VANILLA+",
-            2 => "CINEMATIC",
-            i => self
-                .shader_packs
-                .get((i - 3) as usize)
-                .map(|p| p.name.as_str())
-                .unwrap_or("?"),
-        }
     }
 
     // --------------------------------------- 2026-09-14: resource packs --
@@ -6557,15 +7364,6 @@ impl GameApp {
         self.ui.dirty = true;
     }
 
-    /// Phase 11 §34: map settings.shader → renderer pack state. 0..2 are
-    /// the engine modes (pack cleared); 3.. = pack index (clamped — a
-    /// persisted selection outliving a removed pack falls back cleanly).
-    fn apply_shader_selection(&mut self) {
-        let idx = shader_mode_pack_index(self.settings.shader, self.shader_packs.len());
-        let pack = idx.and_then(|i| self.shader_packs.get(i));
-        self.renderer.set_shader_pack(pack);
-    }
-
     /// rebuild widget list from current settings (labels carry values)
     fn refresh_widgets(&mut self) {
         use ui::*;
@@ -6755,19 +7553,11 @@ impl GameApp {
             Screen::Packs => {
                 // 2026-09-14: the REAL resource-pack manager — Available
                 // (disabled) vs Selected (enabled, top = highest priority),
-                // Default pinned at the pane bottom. The old shader-mode
-                // list moved to Screen::Shaders.
+                // Default pinned at the pane bottom. The Iris-style shader
+                // list is REMOVED entirely (vanilla 1.16.5 has no such
+                // screen — user directive 2026-09-14).
                 let (avail, sel) = self.resource_pack_lists();
                 self.widgets = layout_resource_packs(&avail, &sel);
-            }
-            Screen::Shaders => {
-                // engine shader modes + shader packs as one selectable list
-                let n = 3 + self.shader_packs.len();
-                let entries: Vec<String> = (0..n)
-                    .map(|i| self.shader_mode_name(i as u8).to_string())
-                    .collect();
-                let selected = (s.shader as usize).min(n - 1);
-                self.widgets = layout_packs(&entries, selected);
             }
             Screen::Access => {
                 let mut ws = layout_access();
@@ -6778,36 +7568,53 @@ impl GameApp {
                 }
                 self.widgets = ws;
             }
-            #[cfg(not(target_arch = "wasm32"))]
             Screen::WorldSelect => {
-                let names: Vec<(String, String, bool)> = self
-                    .worlds
-                    .iter()
-                    .take(MAX_LISTED_WORLDS)
-                    .map(|w| {
-                        let mode = vc_gameplay::modes::GameMode::from_save(
-                            w.meta.game_type,
-                            w.meta.hardcore,
-                        );
-                        (
-                            w.meta.name.clone(),
-                            mode.label().to_string(),
-                            w.meta.hardcore_dead,
-                        )
-                    })
-                    .collect();
-                self.widgets = layout_world_select(&names);
+                // 2026-09-14: the vanilla Select World rows + bottom stack —
+                // rows count is the visible window of the (filtered) list
+                let rows = self.world_list_rows();
+                let shown = rows.len().saturating_sub(self.ws_scroll).min(MAX_LISTED_WORLDS);
+                let can_play = self
+                    .ws_selected
+                    .map(|i| rows.get(i).map(|r| !r.dead).unwrap_or(false))
+                    .unwrap_or(false);
+                self.widgets = layout_world_select(shown, can_play, self.ws_confirm_delete);
+                // the search field's live text
+                let text = self.ws_search.clone();
+                let focused = self.text_field_focused().unwrap_or(0);
+                for w in self.widgets.iter_mut() {
+                    if w.id == ID_WS_SEARCHFIELD {
+                        ui::set_text(w, &text);
+                        if let WidgetKind::TextField { focused: f, .. } = &mut w.kind {
+                            *f = w.id == focused;
+                        }
+                    }
+                }
+            }
+            Screen::WorldEdit => {
+                // 2026-09-14: the vanilla Edit World screen
+                let focused = self.text_field_focused().unwrap_or(0);
+                let mut ws = layout_world_edit(&self.we_name);
+                for w in ws.iter_mut() {
+                    if let WidgetKind::TextField { focused: f, .. } = &mut w.kind {
+                        *f = w.id == focused;
+                    }
+                }
+                self.widgets = ws;
             }
             Screen::WorldCreate => {
                 // live buffers → widgets (focus state preserved via the
-                // rebuild: the focused id is re-set from the last state)
+                // rebuild: the focused id is re-set from the last state);
+                // 2026-09-14: the two-page vanilla flow
                 let focused = self.text_field_focused().unwrap_or(0);
                 let mut ws = layout_world_create(
+                    self.wc_more,
                     &self.wc_name,
+                    &self.wc_seed,
                     &format!("{}", self.wc_seed_preview),
                     self.wc_mode.label(),
-                    self.wc_mode.describe(),
-                    if self.wc_flat { "SUPERFLAT" } else { "NORMAL" },
+                    if self.wc_flat { "SUPERFLAT" } else { "DEFAULT" },
+                    self.wc_structures,
+                    self.wc_bonus,
                 );
                 for w in ws.iter_mut() {
                     if let WidgetKind::TextField { focused: f, .. } = &mut w.kind {
@@ -10911,17 +11718,12 @@ impl GameApp {
                         self.ui.dirty = true;
                     }
                     Some("shader") => {
-                        // Phase 11 §34: shader:<mode> — set the shader mode
-                        // (0..2 engine grades, 3.. packs) exactly like the
-                        // options row; E2E verifies via stats + pixels
-                        if let Some(v) = parts.get(1).and_then(|s| s.parse::<u8>().ok()) {
-                            self.settings.shader = v;
-                            self.after_settings_change();
-                            vc_render::render::report_boot_log(&format!(
-                                "e2e: shader mode {v} = {}",
-                                self.shader_mode_name(v)
-                            ));
-                        }
+                        // REMOVED with the SHADER PACKS screen (2026-09-14,
+                        // user directive — vanilla 1.16.5 has no shaders).
+                        // Kept as a no-op so old E2E scripts stay parseable.
+                        vc_render::render::report_boot_log(
+                            "e2e: shader command retired (vanilla-only post pipeline)",
+                        );
                     }
                     Some("dim") => {
                         // §28 E2E: dim:<0|1> — dimension travel through the
@@ -11041,25 +11843,32 @@ impl GameApp {
                     // ---- Phase 8 E2E: Iris integration interface ----
                     Some("iris") => {
                         // iris — report the Phase 8 interface state honestly:
-                        // * native: every pack the boot scan structure-validated
-                        //   (full summary line per pack) + the translator seam
+                        // * native: a LIVE scan of shader-packs/ (the boot-time
+                        //   cache was removed with the shader UI — vanilla
+                        //   1.16.5 has no shaders; the scan here is a
+                        //   diagnostics-only surface) + the translator seam
                         // * wasm: no filesystem → no packs, and the
                         //   wasm-reachable surface (properties document parse,
                         //   stage-directive parse, translator status) exercised
                         //   LIVE on the embedded demo so the harness proves the
                         //   interface itself works on the web build
-                        let packs = self.iris_packs.len();
+                        #[cfg(not(target_arch = "wasm32"))]
+                        let packs: Vec<vc_render::iris::IrisPackInfo> =
+                            vc_render::iris::scan_shader_packs(std::path::Path::new("shader-packs"));
+                        #[cfg(target_arch = "wasm32")]
+                        let packs: Vec<vc_render::iris::IrisPackInfo> = Vec::new();
                         let trans = vc_render::iris::translator().id();
                         vc_render::render::report_boot_log(&format!(
-                            "e2e: iris interface — packs={packs} translator={}",
+                            "e2e: iris interface — packs={} translator={}",
+                            packs.len(),
                             if trans == "none (vc-iris sister project not registered)" {
                                 "none"
                             } else {
                                 trans
                             }
                         ));
-                        if packs > 0 {
-                            for p in &self.iris_packs {
+                        if !packs.is_empty() {
+                            for p in &packs {
                                 vc_render::render::report_boot_log(&format!(
                                     "e2e: iris pack: {}",
                                     p.summary()
@@ -11377,7 +12186,6 @@ impl GameApp {
                             (t + 2.80, ui::ID_OPT_GMESH),
                             (t + 3.00, ui::ID_OPT_DONE2),
                             (t + 3.30, ui::ID_OPT_PACKS),
-                            (t + 3.55, ui::ID_PACK_BASE),
                             (t + 3.80, ui::ID_OPT_DONE2),
                             (t + 4.10, ui::ID_OPT_ACCESS),
                             (t + 4.35, ui::ID_OPT_AUTOJUMP),
@@ -14522,17 +15330,22 @@ impl GameApp {
             }
         }
 
-        // native autosave (§28): 20 s cadence while a world is in play.
-        // Benchmarks never touch the save dir.
-        #[cfg(not(target_arch = "wasm32"))]
+        // autosave (§28): 20 s cadence while a world is in play — native
+        // flushes anvil regions + level.dat, web snapshots the localStorage
+        // record (meta + player + containers + journal). Benchmarks never
+        // touch the save target.
         {
             let in_world = self.screen == Screen::Game || self.screen == Screen::Pause;
             if in_world && self.bench.is_none() {
                 self.autosave_in -= dt;
                 if self.autosave_in <= 0.0 {
                     self.autosave_in = 20.0;
-                    let t0 = std::time::Instant::now();
+                    // web_time::Instant — std::time::Instant panics on wasm
+                    let t0 = web_time::Instant::now();
+                    #[cfg(not(target_arch = "wasm32"))]
                     self.save_world();
+                    #[cfg(target_arch = "wasm32")]
+                    self.web_save_world();
                     vc_render::render::report_debug_log(
                         "save",
                         &format!("autosave in {:.0}ms", t0.elapsed().as_secs_f32() * 1000.0),
@@ -14600,6 +15413,13 @@ impl GameApp {
             game_type: self.mode.vanilla_game_type(),
             hardcore: self.mode.vanilla_hardcore(),
             hardcore_dead: self.hardcore_dead,
+            // 2026-09-14: the three world-create options persist (the
+            // level.dat keys generatorName / MapFeatures /
+            // BonusChestEnabled — a reload keeps the world's type +
+            // structure setting)
+            flat: self.world_flat,
+            structures: self.world_structures,
+            bonus_chest: false, // spawn-only; never re-spawned on load
             // Phase 5: container inventories (dungeon loot + touched
             // chests/hoppers) — they restore on load via read_level_dat
             containers: self
@@ -14666,6 +15486,20 @@ impl GameApp {
         if self.bench.is_none() {
             self.save_world();
         }
+        // web: stash the outgoing dimension's edit journal + snapshot the
+        // localStorage record BEFORE the world swap (the journal lives on
+        // the World instance — travel swaps it away)
+        #[cfg(target_arch = "wasm32")]
+        {
+            let out_dim = self.world.dimension as u8 as usize;
+            self.web_dim_journals[out_dim] = self
+                .world
+                .journal
+                .iter()
+                .map(|(&p, &s)| (p, s))
+                .collect();
+            self.web_save_world();
+        }
 
         // 8:1 horizontal mapping (vanilla nether portals)
         let cur = self.world.dimension;
@@ -14677,6 +15511,17 @@ impl GameApp {
 
         // fresh world in the target dimension
         self.world = World::new_in_dimension(self.world.seed, dim);
+        // web: restore the target dimension's stashed journal so a return
+        // trip keeps its edits, and keep journaling (travel parity)
+        #[cfg(target_arch = "wasm32")]
+        {
+            let in_dim = dim as u8 as usize;
+            self.world.journal = self.web_dim_journals[in_dim]
+                .iter()
+                .map(|&(p, s)| (p, s))
+                .collect();
+            self.world.journaling = true;
+        }
         #[cfg(not(target_arch = "wasm32"))]
         {
             self.world_dir = vc_anvil::save::dimension_dir(&self.save_root, dim);
@@ -14834,12 +15679,6 @@ impl GameApp {
             ("dim", StatsVal::F(self.world.dimension as u8 as f32)),
             ("dimName", StatsVal::S(self.world.dimension.id().into())),
             ("traveling", StatsVal::B(self.traveling)),
-            ("shaderMode", StatsVal::F(self.settings.shader as f32)),
-            (
-                "shaderPack",
-                StatsVal::S(self.renderer.pack_id.clone().unwrap_or_default()),
-            ),
-            ("packTier", StatsVal::S(self.renderer.pack_tier.clone())),
             // §12 evidence: section-granular invalidation state
             (
                 "dirtySections",
@@ -14903,9 +15742,10 @@ impl GameApp {
                         .unwrap_or(0.0),
                 ),
             ),
-            // Phase 8: Iris interface — detected packs (native scan; the
-            // wasm build boots empty by design, no filesystem)
-            ("irisPacks", StatsVal::F(self.iris_packs.len() as f32)),
+            // Phase 8: the Iris interface stats row was removed with the
+            // shader-pack UI (2026-09-14) — `irisPacks`/`shader`/
+            // `shaderMode` no longer exist; the e2e `iris` command keeps a
+            // live diagnostics scan
             // Phase 9: data packs — counts for E2E assertions
             ("dpacks", StatsVal::F(self.data.packs.len() as f32)),
             ("drecipes", StatsVal::F(self.data.recipes.len() as f32)),
@@ -14915,7 +15755,6 @@ impl GameApp {
             ("sens", StatsVal::F(self.settings.sensitivity)),
             ("vol", StatsVal::F(self.settings.volume)),
             ("bright", StatsVal::F(self.settings.brightness)),
-            ("shader", StatsVal::F(self.settings.shader as f32)),
             ("clouds", StatsVal::F(self.settings.clouds_level as f32)),
             ("smooth", StatsVal::F(self.settings.smooth_level as f32)),
             ("guiScale", StatsVal::F(self.settings.gui_scale as f32)),
@@ -15105,6 +15944,12 @@ impl GameApp {
             self.player.flying = self.mode.allows_flight();
         }
         self.spawn_snapped = true;
+        // 2026-09-14: the vanilla Bonus Chest lands once the spawn column
+        // exists (create-world option — see spawn_bonus_chest)
+        if self.pending_bonus_chest {
+            self.pending_bonus_chest = false;
+            self.spawn_bonus_chest();
+        }
     }
 
     fn player_chunk(&self) -> ChunkPos {
@@ -15271,6 +16116,7 @@ impl GameApp {
                 dim: self.world.dimension,
                 inbound,
                 flat: self.world_flat,
+                structures: self.world_structures,
             };
             self.submit(job);
         }
@@ -15522,7 +16368,7 @@ impl GameApp {
             } => {
                 self.gen_inflight.remove(&pos);
                 let leftover = self.world.pending.remove(&pos).unwrap_or_default();
-                let chunk = if leftover.is_empty() {
+                let mut chunk = if leftover.is_empty() {
                     chunk
                 } else {
                     let mut c = (*chunk).clone();
@@ -15534,6 +16380,27 @@ impl GameApp {
                     Arc::new(c)
                 };
                 self.world.insert_generated(pos, chunk.clone(), outbound);
+                // 2026-09-14 web round: replay the block-edit journal for
+                // this chunk (localStorage persistence — the region-file
+                // substitute). Applied BEFORE lighting so init_chunk
+                // lights the edited blocks; the fresh chunk Arc is
+                // re-fetched after the edits for the entity scan below.
+                let journal_key = (self.world.dimension as u8, pos.0, pos.1);
+                if let Some(list) = self.pending_edits.remove(&journal_key) {
+                    let n = list.len();
+                    for (p, state) in list {
+                        // journaling stays ON: the replay re-records into
+                        // the live journal map (idempotent — same keys)
+                        let _ = self.world.set_block_state(p[0], p[1], p[2], state);
+                    }
+                    if let Some(fresh) = self.world.chunk(pos).cloned() {
+                        chunk = fresh;
+                    }
+                    vc_render::render::report_debug_log(
+                        "save",
+                        &format!("journal replay: {n} edits applied to chunk {pos:?}"),
+                    );
+                }
                 // §27: villagers spawn with their village — populate the
                 // wells whose reach covers this chunk (guarded, once)
                 self.sim
@@ -15542,7 +16409,9 @@ impl GameApp {
                 // Phase 5 §27: register spawner entities + fill dungeon
                 // chest loot (fresh generation only — loaded chunks take
                 // the no-fill path and their inventories arrive from
-                // level.dat)
+                // level.dat). Replayed player-placed chests get a no-fill
+                // registration pass too (their contents arrive from the
+                // saved container list at world start)
                 self.register_block_entities(pos, &chunk, true);
                 // Phase 4: initial lighting for the new chunk (column scan +
                 // border exchange, settled synchronously) — the engine's
@@ -16080,13 +16949,6 @@ impl GameApp {
                 self.ui_dump_if_asked();
                 return;
             }
-            Screen::Shaders => {
-                let tt = self.tooltip_lines();
-                self.ui
-                    .settings_screen(&self.widgets, self.hover, "SHADER PACKS", &tt);
-                self.ui_dump_if_asked();
-                return;
-            }
             Screen::Access => {
                 let tt = self.tooltip_lines();
                 self.ui.settings_screen(
@@ -16102,28 +16964,41 @@ impl GameApp {
                 self.ui.pause_screen(&self.widgets, self.hover);
                 return;
             }
-            #[cfg(not(target_arch = "wasm32"))]
             Screen::WorldSelect => {
-                let total = self.worlds.len();
-                let shown = total.min(ui::MAX_LISTED_WORLDS);
+                // 2026-09-14: the vanilla Select World screen on BOTH
+                // platforms — rows are the filtered list window
+                let rows = self.world_list_rows();
+                let total = rows.len();
+                let sel = self.ws_selected.map(|i| i.saturating_sub(self.ws_scroll));
                 self.ui.world_select_screen(
                     &self.widgets,
                     self.hover,
-                    self.ws_selected,
-                    shown,
+                    &rows[self.ws_scroll.min(rows.len())..],
+                    sel,
+                    self.ws_scroll,
                     total,
+                    !self.ws_search.is_empty(),
                 );
+                self.ui_dump_if_asked();
                 return;
             }
-            // wasm: the select screen is unreachable (no save list); the
-            // arm keeps the match exhaustive
-            #[cfg(target_arch = "wasm32")]
-            Screen::WorldSelect => {
-                self.widgets = Vec::new();
+            Screen::WorldEdit => {
+                self.ui
+                    .world_edit_screen(&self.widgets, self.hover, self.time);
+                self.ui_dump_if_asked();
+                return;
             }
             Screen::WorldCreate => {
-                self.ui
-                    .world_create_screen(&self.widgets, self.hover, self.time);
+                // 2026-09-14: the two-page vanilla flow — the game-mode
+                // description lines come from the mode's summary pair
+                self.ui.world_create_screen(
+                    &self.widgets,
+                    self.hover,
+                    self.time,
+                    self.wc_more,
+                    self.wc_mode.describe_lines(),
+                );
+                self.ui_dump_if_asked();
                 return;
             }
             Screen::Death => {
@@ -16131,7 +17006,7 @@ impl GameApp {
                     &self.widgets,
                     self.hover,
                     self.mode.permadeath(),
-                    &self.death_cause,
+                    self.death_score,
                 );
                 return;
             }
@@ -16424,8 +17299,7 @@ impl GameApp {
             }
             // settings sub-screens ride the same treatment as Options
             // (panorama when the menu tree was opened from the title)
-            Screen::Video | Screen::Engine | Screen::Packs | Screen::Access
-            | Screen::Shaders => {
+            Screen::Video | Screen::Engine | Screen::Packs | Screen::Access => {
                 if self.options_from == Screen::Title {
                     panorama = Some(pano_view);
                 }
@@ -16433,7 +17307,7 @@ impl GameApp {
             }
             // Phase 1: world screens ride the panorama like the title —
             // the real world list also sits on the panorama background
-            Screen::WorldSelect | Screen::WorldCreate => {
+            Screen::WorldSelect | Screen::WorldCreate | Screen::WorldEdit => {
                 panorama = Some(pano_view);
                 (menu_cam(), 0.45, None)
             }
@@ -16617,7 +17491,11 @@ impl GameApp {
             &mut self.ui,
             selection,
             &vc_render::render::PostParams {
-                mode: self.settings.shader,
+                // 2026-09-14: the engine shader modes (Vanilla+ / Cinematic)
+                // are removed with the SHADER PACKS screen — the post pass
+                // is vanilla-only (menu blur + the graphics=Fabulous chain);
+                // `mode` stays 0 permanently
+                mode: 0,
                 menu_blur,
                 // §28: the Nether has no sun — no shadow pass
                 shadows: if nether {
@@ -16690,17 +17568,6 @@ impl GameApp {
 
 /// does a block connect a fence? (vanilla rule: solid blocks + fences)
 #[inline]
-/// Phase 11 §34: shader-mode index → pack list index. Modes 0..2 are the
-/// engine's own grades; 3.. selects pack i-3 when it exists.
-fn shader_mode_pack_index(mode: u8, n_packs: usize) -> Option<usize> {
-    let i = mode as usize;
-    if i >= 3 && i - 3 < n_packs {
-        Some(i - 3)
-    } else {
-        None
-    }
-}
-
 fn fence_connects_to(b: u16) -> bool {
     is_solid(b) || b == OAK_FENCE
 }
@@ -17366,15 +18233,11 @@ mod settings_tests {
         ] {
             assert!(ids.contains(&wanted), "video screen missing {wanted}");
         }
-        // 2026-09-14: the vanilla 11 options + done, PLUS the one
-        // deliberate Iris-style extra — SHADER PACKS... (vanilla 1.16.5
-        // ships no shader screen; that entry used to squat on the Options
-        // page mislabeled as RESOURCE PACKS)
-        assert!(
-            ids.contains(&vc_render::ui::ID_OPT_SHADERS),
-            "video screen missing the shader-packs entry"
-        );
-        assert_eq!(ids.len(), 13, "vanilla video = 11 options + shader packs + done");
+        // 2026-09-14 (user directive): the video screen is the EXACT
+        // vanilla set now — 11 options + Done. The ID_OPT_SHADERS entry
+        // and its constant were removed entirely (vanilla 1.16.5 ships no
+        // shader screen; the count below proves no 13th widget appeared)
+        assert_eq!(ids.len(), 12, "vanilla video = 11 options + done");
         // vanilla proportions
         let rd = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_RD).unwrap();
         assert_eq!((rd.x, rd.y, rd.w, rd.h), (248, 72, 465, 30));
@@ -17410,14 +18273,10 @@ mod settings_tests {
                 );
             }
         }
-        let packs: Vec<String> = (0..5).map(|i| format!("PACK {i}")).collect();
-        for w in vc_render::ui::layout_packs(&packs, 0) {
-            assert!(
-                !GameApp::tooltip_for(w.id, &s).is_empty(),
-                "pack row {} has no tooltip",
-                w.id
-            );
-        }
+        // 2026-09-14: the SHADER PACKS row family was removed with the
+        // screen. Resource-pack rows carry DYNAMIC tooltips (the hovered
+        // pack's description) through tooltip_lines(), which is why they
+        // are not in this static-table test.
         let mut sb = Settings {
             brightness: 0.0,
             ..Default::default()
@@ -17534,19 +18393,8 @@ mod settings_tests {
             Some(vc_render::ui::ID_OPT_GMESH),
         ));
 
-        // 2026-09-14: the shader list is its own SHADER PACKS screen; the
-        // Resource Packs screen dumps the real two-pane manager
-        let packs: Vec<String> = ["OFF", "VANILLA+", "CINEMATIC", "MOONLIT", "WARM EVENING"]
-            .iter()
-            .map(|s| s.to_string())
-            .collect();
-        let ws = vc_render::ui::layout_packs(&packs, 1);
-        cases.push((
-            "shaders",
-            ws,
-            "SHADER PACKS",
-            Some(vc_render::ui::ID_PACK_BASE + 1),
-        ));
+        // 2026-09-14 (user directive): the SHADER PACKS screen is removed
+        // entirely — only the real two-pane Resource Packs manager remains
         let avail = vec!["PROGRAMMER ART".to_string()];
         let sel = vec![];
         let ws = vc_render::ui::layout_resource_packs(&avail, &sel);

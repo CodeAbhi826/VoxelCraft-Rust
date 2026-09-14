@@ -611,6 +611,15 @@ pub struct TerrainGen {
     /// the engine's flat mode generates NO structures, disclosed
     /// adaptation).
     pub flat: bool,
+    /// 2026-09-14 parity round: the vanilla "Generate Structures"
+    /// world-create option (options key `generate-structures`, on the
+    /// More World Options page — VERIFIED minecraft.wiki/w/Java_Edition_1.3.1
+    /// §Changes: "New world-generation option: generate structures").
+    /// OFF gates every structure emit below (dungeons, villages,
+    /// mineshafts, pyramids, jungle temples, mansions, strongholds);
+    /// terrain, caves, ores and vegetation are NOT structures and keep
+    /// generating (the vanilla split: structure features vs features).
+    pub structures: bool,
     /// continental shelf field (~750–3000-block scale) — drives the
     /// land/ocean split of the density stack
     n_cont: Noise,
@@ -653,6 +662,7 @@ impl TerrainGen {
             seed,
             dim,
             flat: false,
+            structures: true,
             n_cont: Noise::new(seed ^ 0x1000),
             n_mfac: Noise::new(seed ^ 0x2000),
             n_temp: Noise::new(seed ^ 0x5000),
@@ -2802,42 +2812,48 @@ impl TerrainGen {
         // wiki Monster Room revision 1944695): 8 attempts per chunk, room
         // size 7/9/11, floor 25% cobble / 75% mossy, spawner at center
         // (zombie 50% / skeleton 25% / spider 25%), up to 2 chests.
-        if let Some(room) = self.dungeon_in_chunk(cx, cz) {
-            self.emit_dungeon(&mut chunk, room, ox, oz);
-        }
-
-        // ──────────────────────────────── P7 structures: villages ────
-        // Deterministic per 24×24-chunk region: each chunk emits ONLY the
-        // village blocks falling inside itself (positions are globally
-        // derived, so every chunk independently agrees on the layout —
-        // no cross-chunk handoff, no generation-order dependence).
-        for &(village_wx, village_wz) in self.villages_near(ox, oz).iter() {
-            self.emit_village(&mut chunk, village_wx, village_wz, ox, oz);
-        }
-
-        // ─────────────── Phase 10 structures (same emit discipline) ──
-        for ms in self.mineshafts_near(ox, oz).iter() {
-            self.emit_mineshaft(&mut chunk, ms, ox, oz);
-        }
-        for &(px, pz) in self.pyramids_near(ox, oz).iter() {
-            self.emit_pyramid(&mut chunk, px, pz, ox, oz);
-        }
-        for &(tx, tz) in self.jungle_temples_near(ox, oz).iter() {
-            self.emit_jungle_temple(&mut chunk, tx, tz, ox, oz);
-        }
-        // 1.11: woodland mansions (dark forest, rare — VERIFIED
-        // w/Woodland_Mansion: "generate rarely in dark forests")
-        for &(mx, mz) in self.woodland_mansions_near(ox, oz).iter() {
-            self.emit_woodland_mansion(&mut chunk, mx, mz, ox, oz);
-        }
-        for &(sx, sz) in self.strongholds().iter() {
-            // skip far strongholds cheaply (the layout spans ~30 blocks
-            // around the center; the guard avoids running the emit for
-            // the 99.99% of chunks nowhere near one)
-            if (sx - ox).abs() > 40 || (sz - oz).abs() > 40 {
-                continue;
+        //
+        // 2026-09-14: the whole structure block rides the vanilla
+        // "Generate Structures" world option — OFF skips all seven
+        // emits (see the `structures` field doc for the vanilla split)
+        if self.structures {
+            if let Some(room) = self.dungeon_in_chunk(cx, cz) {
+                self.emit_dungeon(&mut chunk, room, ox, oz);
             }
-            self.emit_stronghold(&mut chunk, sx, sz, ox, oz);
+
+            // ──────────────────────────────── P7 structures: villages ────
+            // Deterministic per 24×24-chunk region: each chunk emits ONLY the
+            // village blocks falling inside itself (positions are globally
+            // derived, so every chunk independently agrees on the layout —
+            // no cross-chunk handoff, no generation-order dependence).
+            for &(village_wx, village_wz) in self.villages_near(ox, oz).iter() {
+                self.emit_village(&mut chunk, village_wx, village_wz, ox, oz);
+            }
+
+            // ─────────────── Phase 10 structures (same emit discipline) ──
+            for ms in self.mineshafts_near(ox, oz).iter() {
+                self.emit_mineshaft(&mut chunk, ms, ox, oz);
+            }
+            for &(px, pz) in self.pyramids_near(ox, oz).iter() {
+                self.emit_pyramid(&mut chunk, px, pz, ox, oz);
+            }
+            for &(tx, tz) in self.jungle_temples_near(ox, oz).iter() {
+                self.emit_jungle_temple(&mut chunk, tx, tz, ox, oz);
+            }
+            // 1.11: woodland mansions (dark forest, rare — VERIFIED
+            // w/Woodland_Mansion: "generate rarely in dark forests")
+            for &(mx, mz) in self.woodland_mansions_near(ox, oz).iter() {
+                self.emit_woodland_mansion(&mut chunk, mx, mz, ox, oz);
+            }
+            for &(sx, sz) in self.strongholds().iter() {
+                // skip far strongholds cheaply (the layout spans ~30 blocks
+                // around the center; the guard avoids running the emit for
+                // the 99.99% of chunks nowhere near one)
+                if (sx - ox).abs() > 40 || (sz - oz).abs() > 40 {
+                    continue;
+                }
+                self.emit_stronghold(&mut chunk, sx, sz, ox, oz);
+            }
         }
 
         (Arc::new(chunk), outbound)

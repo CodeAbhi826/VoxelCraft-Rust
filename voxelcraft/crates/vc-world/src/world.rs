@@ -124,6 +124,15 @@ pub struct World {
     /// chunks with unsaved content (player edits + newly generated;
     /// drained by the native autosave — §28)
     pub save_dirty: HashSet<ChunkPos>,
+    /// 2026-09-14 web round: position → final STATE id journal of every
+    /// landed block mutation — the web build's substitute for region
+    /// files (localStorage persistence replays it after chunk gen).
+    /// Only filled while `journaling` is on (wasm; native saves real
+    /// chunks through anvil). Gameplay + sim edits both land here
+    /// because set_block_state is the single mutation choke point.
+    pub journal: HashMap<[i32; 3], u16>,
+    /// web persistence arming flag — see `journal`
+    pub journaling: bool,
 }
 
 impl World {
@@ -146,6 +155,8 @@ impl World {
             dirty: HashMap::new(),
             dirty_causes: HashMap::new(),
             save_dirty: HashSet::new(),
+            journal: HashMap::new(),
+            journaling: false,
         }
     }
 
@@ -285,6 +296,12 @@ impl World {
         let mut new_chunk = (*old).clone();
         new_chunk.set_state(lx, wy as usize, lz, state);
         self.chunks.insert(pos, Arc::new(new_chunk));
+
+        // 2026-09-14 web round: journal the final state for localStorage
+        // persistence (native ignores it — anvil region files rule there)
+        if self.journaling {
+            self.journal.insert([wx, wy, wz], state);
+        }
 
         self.save_dirty.insert(pos); // persist player edits (§28)
         self.mark_edit(wx, wy, wz, old_state, state);

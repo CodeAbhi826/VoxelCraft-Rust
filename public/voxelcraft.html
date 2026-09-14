@@ -74,6 +74,18 @@
       window.voxelcraftLoadSettings = function () {
         try { return localStorage.getItem('voxelcraft.settings') || ''; } catch (e) { return ''; }
       };
+      // 2026-09-14 world persistence (localStorage) — the web world list
+      // (Select World screen). JSON array, one record per world; includes
+      // the block-edit journal so worlds survive reloads.
+      window.voxelcraftSaveWorlds = function (json) {
+        try { localStorage.setItem('voxelcraft.worlds', json); } catch (e) {
+          // quota exceeded (journal too large): keep the previous list
+          try { console.warn('voxelcraft: world save skipped (storage quota)'); } catch (e2) {}
+        }
+      };
+      window.voxelcraftLoadWorlds = function () {
+        try { return localStorage.getItem('voxelcraft.worlds') || '[]'; } catch (e) { return '[]'; }
+      };
 
       function push(ev) { if (queue.length < 256) queue.push(ev); }
       function locked() { return document.pointerLockElement === canvas; }

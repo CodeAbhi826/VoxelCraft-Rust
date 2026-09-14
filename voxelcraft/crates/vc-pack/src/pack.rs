@@ -312,7 +312,7 @@ async fn fetch_bytes_base(base: &str, path: &str) -> Option<Vec<u8>> {
     use wasm_bindgen::JsCast;
     use wasm_bindgen_futures::JsFuture;
     let url = format!("{base}/{path}");
-    let Some(window) = web_sys::window() else { return None };
+    let window = web_sys::window()?;
     let Ok(resp_val) = JsFuture::from(window.fetch_with_str(&url)).await else {
         return None;
     };

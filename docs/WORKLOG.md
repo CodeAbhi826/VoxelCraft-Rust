@@ -4120,3 +4120,129 @@ it (no continentalness/erosion noise in the 1.16.5 pipeline sense).
 plus the environment's automatic checkpoint commit (c91b109, the UUID
 pattern this container produces); nothing was pushed to GitHub,
 awaiting explicit user approval, per the standing instruction.
+
+## 2026-09-14 (round 7) — deploy-fix round: shipping the interrupted resource-pack/inventory work + the ID-collision regression the live E2E caught
+
+The previous session (round 6's successor, the "2026-09-14 round" in the
+code comments) died mid-round: the source for the Resource Packs
+restructure, the empty-inventory retirement, the destroy-stage overlays
+and the first-person view model was committed by the environment's
+automatic checkpoint, but the web bundle was never rebuilt — the user
+was still playing the Sep-13 19:04 wasm, which is why they still saw
+"Cinematic" squatting in the RESOURCE PACKS section and pre-filled
+hotbars. This round recovered, completed, verified and SHIPPED it.
+
+**The deployed fixes (all live-verified in the browser at 1440×810
+through `/voxelcraft.html`, SwiftShader/WebGL2):**
+
+- **Resource Packs = the real vanilla 1.16.5 screen**: two panes,
+  AVAILABLE (Programmer Art + user packs from `resourcepacks/`) and
+  SELECTED with the pinned DEFAULT "(REQUIRED)" row, ▲▼ reorder
+  arrows, DONE applies + persists (`packs=programmer-art` survives in
+  localStorage exactly like vanilla's options.txt `resourcePacks`).
+  VLM-verified: no "Cinematic"/shader entries anywhere on it.
+- **Shader options moved home**: OFF/VANILLA+/CINEMATIC + WGSL packs
+  now live on a dedicated SHADER PACKS screen reached from Video
+  Settings (Iris-style; vanilla 1.16.5 itself has NO shader screen).
+  VLM-verified the button on the Video Settings screen.
+- **Empty spawn inventory, both modes** (vanilla `loadInventory` writes
+  nothing for a fresh world): Survival spawns with 9+27 EMPTY slots
+  (VLM-verified hotbar + E inventory screen); Creative spawns empty
+  and pulls from the E creative picker (13×9 visible grid VLM-verified,
+  click-grant into the hotbar VLM-verified, hearts/hunger hidden per
+  vanilla). The Phase-2 debug starter palette is gone.
+- **The first-person view model + destroy stages from the interrupted
+  round** shipped in the same bundle: 3D held-block cube / bare arm,
+  0.3 s swing arc, equip rise, view bobbing (1.6× parallax), 10-stage
+  crack overlays, quarter-second dig sounds + hit particles, creative
+  instant break.
+
+**The regression this round caught and fixed (the round's find): a
+widget-ID collision that silently killed the world-create screen.**
+The interrupted round placed the resource-pack row bases at
+ID_RPACK_AVAIL=60 / SEL=70 / UP=80 / DOWN=90 and ID_PACK_BASE=50 —
+colliding with the world-select/create button ids (60..98) and the
+options tree (ID_OPT_SHADERS=51, ID_OPT_BOB=52). `activate()` tries
+its RANGE GUARDS before the later literal arms, so every
+world-create/select button click (GAME MODE, WORLD TYPE, CREATE
+WORLD, world entries) was swallowed by a resource-pack handler —
+only the Enter-key create path still worked, which is exactly what
+masked it in the old E2E. On the Shader Packs screen, rows 2-3
+toggled VIEW BOBBING instead of applying the shader. Fix: all row
+bases renumbered into clean space (PACK 110, RPACK_AVAIL 120, SEL
+130, DEFAULT 138, UP 140, DOWN 150 — clear of every literal id ≤101)
++ two regression tests (`literal_widget_ids_are_unique`,
+`row_ranges_disjoint_from_literals_and_each_other` in vc-render ui.rs)
+that fail on any future overlap. Live re-verified: GAME MODE click
+cycles SURVIVAL→CREATIVE, CREATE WORLD works BY CLICK, the creative
+world boots with the empty hotbar + working E picker.
+
+**E2E tooling note (the calibration forensics)**: menu clicks are
+transformed by TWO stacked mappings — phys→UI (letterbox ÷1.5) and
+the AUTO GUI Scale (0.86 at 810 px window height, widgets re-scaled
+around the 960×540 center by `scale_widgets`). Every "flaky click"
+during verification decomposed into exactly this transform once
+computed properly (plus one genuinely swallowed click at the
+collision ids). The E2E driver now uses layout-coordinate clicks
+through the full transform.
+
+**Also this round:**
+- Toolchain rebuilt from scratch in the fresh container (rustup
+  1.98.1 — matching the project's pinned bar, wasm32 target,
+  wasm-bindgen 0.2.127, clippy).
+- vc-world's gen tests moved to release-mode execution (the
+  density-noise stack is too slow in debug on this 2-core/4 GB
+  container: 560 s timeout vs 101 s release).
+- **Clippy 1.98.1: 0 warnings native `--all-targets` AND 0 on the
+  wasm32 `--lib` target** (the wasm target had never been held to the
+  bar — this round fixed its 1 error `never_loop` + 14 warnings:
+  the let-else→`?` in pack.rs fetch, 4 doc-list indentations in
+  render.rs, `Default` for `WebAudioOut`, an `unwrap`-after-`is_some`,
+  an `i32 as i32` cast, and a field-assignment-outside-initializer).
+- **737 tests / 0 failures** workspace-wide (735 + the 2 new ID-space
+  regression tests); vc-world 73 of them in release mode.
+- **wasm bundle rebuilt twice and deployed** (locked js+wasm pair,
+  12:18 final, glue patched, builtin pack + programmer-art rsynced).
+
+**Audit status vs the user's checklist (the "check everything" ask):**
+- Breaking: timed mining (hardness ×1.5 hand formula, wiki-cited),
+  10-stage overlay, 0.25 s dig sound + hit particles, arm re-swing,
+  creative instant break, adventure/spectator denial — code + tests
+  verified this round; view-model + crack overlay now live-verified.
+- Placing: place timer with villager-trade priority, creative picker
+  crop placement, pick-block semantics per mode (creative grants,
+  survival selects) — code verified.
+- Animations: held-item swing/equip/bob (live), entity limb swing,
+  item-drop spin/bob (prior rounds, tests green).
+- Sound: synthesized bank + spatial pan + WebAudio backend (wasm
+  clippy now clean, tests green).
+- Performance: F3 split culling counters live ("Culling: occl 0 frust
+  31 (of 54 meshed)" in the shipped build), GPU meshing toggle, LRU
+  icon cache; SwiftShader headless runs ~10 fps (software rasterizer
+  tax, disclosed) — native is the perf target per BUILD.md.
+- Textures/resolutions: block atlas fixed 512×512 (16×16 tiles ×
+  32×32 grid, no dynamic stitcher — §1 re-verified live), item icons
+  fixed 2048×2048 with 64 px cells (16×16 sources × 4 nearest-neighbor
+  upscale, isometric 45°/30° at vanilla angles), GUI art at vanilla
+  dimensions (9×9 HUD icons, 20×20 slots, vanilla bevel palette),
+  destroy stages + arm tile 16×16. No resolution mismatches found.
+
+**Known gaps disclosed (follow-ups):** the creative picker is a
+scrolling 15×11 grid, not yet vanilla's tabbed creative inventory
+(5 category tabs + search + survival-inventory tab); the survival
+inventory screen has no player paper-doll preview yet.
+
+### Luanti-referenced techniques
+
+- No new Luanti techniques this round. The standing citations were
+  re-verified as still accurate: ClientMap split-counter culling
+  reference (`src/client/clientmap.cpp`, studied 2026-09-12) and the
+  entity-model architecture reference (`docs.luanti.org/for-creators/models`
+  + `src/client/content_cao.cpp`, studied 2026-09-12). The ID-space
+  fix, resource-pack manager and inventory semantics were verified
+  against minecraft.wiki/w/Resource_pack §Behavior and w/Inventory
+  §Initial state/§Creative mode (live, 2026-09-14).
+
+**Not committed or pushed** — this round's work sits in the working
+tree plus the environment's automatic checkpoint commits; nothing goes
+to GitHub without explicit user approval, per the standing instruction.

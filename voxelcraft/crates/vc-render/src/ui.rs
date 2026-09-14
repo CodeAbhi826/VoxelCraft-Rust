@@ -400,7 +400,7 @@ pub const ID_OPT_BIOME: u16 = 46;
 pub const ID_OPT_CHAT: u16 = 47;
 pub const ID_OPT_LANG: u16 = 48;
 pub const ID_OPT_CONTROLS: u16 = 49;
-pub const ID_PACK_BASE: u16 = 50;
+pub const ID_PACK_BASE: u16 = 110;
 /// pack rows available (3 engine shader modes + up to 5 packs)
 pub const MAX_PACK_ENTRIES: usize = 8;
 /// 2026-09-14 round: the REAL Resource Packs screen (vanilla two-pane
@@ -410,16 +410,26 @@ pub const ID_OPT_SHADERS: u16 = 51; // Video Settings → SHADER PACKS...
 /// vanilla "View Bobbing" toggle (Options screen, default ON)
 pub const ID_OPT_BOB: u16 = 52;
 /// available (left pane) pack rows
-pub const ID_RPACK_AVAIL_BASE: u16 = 60;
+///
+/// 2026-09-14 follow-up (deploy-fix round): the 2026-09-14 resource-pack
+/// renumbering — the pack-row bases moved OUT of the low id space they
+/// shared with the world-select/create button ids (60..98) and the
+/// options-tree ids (50..52). `activate()` tries its RANGE GUARDS before
+/// the later literal arms, so the old values silently swallowed every
+/// world-create/select button click (GAME MODE / CREATE WORLD / world
+/// entries — the Enter-key path still worked, which masked it in E2E)
+/// and made shader rows 2-3 toggle VIEW BOBBING instead. All row bases
+/// now live at 110+, clear of every literal id (max 101).
+pub const ID_RPACK_AVAIL_BASE: u16 = 120;
 /// selected (right pane) pack rows
-pub const ID_RPACK_SEL_BASE: u16 = 70;
+pub const ID_RPACK_SEL_BASE: u16 = 130;
 /// the pinned DEFAULT row at the bottom of the Selected pane (vanilla:
 /// "Selected by default, can't be unselected")
-pub const ID_RPACK_DEFAULT: u16 = 78;
+pub const ID_RPACK_DEFAULT: u16 = 138;
 /// move-up arrow per selected row (higher = higher priority)
-pub const ID_RPACK_UP_BASE: u16 = 80;
+pub const ID_RPACK_UP_BASE: u16 = 140;
 /// move-down arrow per selected row
-pub const ID_RPACK_DOWN_BASE: u16 = 90;
+pub const ID_RPACK_DOWN_BASE: u16 = 150;
 /// max rows per pane (layout clips beyond this)
 pub const MAX_RPACK_ENTRIES: usize = 8;
 
@@ -3951,6 +3961,122 @@ mod phase5_font_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ---- 2026-09-14 deploy-fix round: widget-id space disjointness ----
+
+    /// Every LITERAL widget id (the fixed, non-row ids) across all screens.
+    /// If you add one, add it here — the disjointness tests below then prove
+    /// the dynamic row ranges never swallow it (see the long comment on
+    /// `ID_RPACK_AVAIL_BASE` for how the 2026-09-14 collision played out).
+    const LITERAL_IDS: &[u16] = &[
+        ID_TITLE_PLAY,
+        ID_TITLE_OPTIONS,
+        ID_TITLE_QUIT,
+        ID_TITLE_MULTI,
+        ID_OPT_FOV,
+        ID_OPT_SENS,
+        ID_OPT_RD,
+        ID_OPT_BRIGHT,
+        ID_OPT_VOL,
+        ID_OPT_SHADER,
+        ID_OPT_GRAPHICS,
+        ID_OPT_SMOOTH,
+        ID_OPT_CLOUDS,
+        ID_OPT_DONE,
+        ID_PAUSE_BACK,
+        ID_PAUSE_OPTIONS,
+        ID_PAUSE_QUIT,
+        ID_OPT_SHADOWS,
+        ID_OPT_UPSCALE,
+        ID_OPT_MAXFPS,
+        ID_OPT_MUSIC,
+        ID_OPT_NEXT,
+        ID_OPT_PREV,
+        ID_OPT_SIMDIST,
+        ID_OPT_MIP,
+        ID_OPT_ANISO,
+        ID_OPT_MSAA,
+        ID_OPT_OCCL,
+        ID_OPT_AUTOJUMP,
+        ID_OPT_DONE2,
+        ID_OPT_GMESH,
+        ID_OPT_VIDEO,
+        ID_OPT_ENGINE,
+        ID_OPT_PACKS,
+        ID_OPT_ACCESS,
+        ID_OPT_GUISCALE,
+        ID_OPT_PARTICLES,
+        ID_OPT_FULLSCREEN,
+        ID_OPT_VSYNC,
+        ID_OPT_ENTSHADOW,
+        ID_OPT_BIOME,
+        ID_OPT_CHAT,
+        ID_OPT_LANG,
+        ID_OPT_CONTROLS,
+        ID_OPT_SHADERS,
+        ID_OPT_BOB,
+        ID_WS_CREATE,
+        ID_WS_CANCEL,
+        ID_WS_DELETE,
+        ID_WC_NAME,
+        ID_WC_SEED,
+        ID_WC_MODE,
+        ID_WC_TYPE,
+        ID_WC_CREATE,
+        ID_WC_CANCEL,
+        ID_DEATH_RESPAWN,
+        ID_DEATH_TITLE,
+        ID_DEATH_DELETE,
+        ID_RPACK_DEFAULT,
+    ];
+
+    #[test]
+    fn literal_widget_ids_are_unique() {
+        let mut seen = std::collections::HashSet::new();
+        for &id in LITERAL_IDS {
+            assert!(seen.insert(id), "duplicate literal widget id {id}");
+        }
+    }
+
+    /// The dynamic row ranges (pack lists, resource-pack panes, world
+    /// entries) must be disjoint from every literal id AND from each
+    /// other — otherwise `activate()`'s early range guards silently
+    /// swallow the colliding buttons (the 2026-09-14 regression: RPACK
+    /// row bases at 60/70/80/90 killed the whole world-select/create
+    /// screen — only the Enter-key create path still worked, which is
+    /// exactly what masked it in the browser E2E).
+    #[test]
+    fn row_ranges_disjoint_from_literals_and_each_other() {
+        let rows: [(u16, u16, &str); 6] = [
+            (ID_WS_WORLD_BASE, MAX_LISTED_WORLDS as u16, "world entries"),
+            (ID_PACK_BASE, MAX_PACK_ENTRIES as u16, "shader pack rows"),
+            (ID_RPACK_AVAIL_BASE, MAX_RPACK_ENTRIES as u16, "rpack available"),
+            (ID_RPACK_SEL_BASE, MAX_RPACK_ENTRIES as u16, "rpack selected"),
+            (ID_RPACK_UP_BASE, MAX_RPACK_ENTRIES as u16, "rpack up arrows"),
+            (ID_RPACK_DOWN_BASE, MAX_RPACK_ENTRIES as u16, "rpack down arrows"),
+        ];
+        for &(base, len, name) in &rows {
+            for id in base..base + len {
+                assert!(
+                    !LITERAL_IDS.contains(&id),
+                    "{name} row id {id} collides with a literal widget id \
+                     (activate() range guards would swallow that button)"
+                );
+            }
+        }
+        for i in 0..rows.len() {
+            for j in i + 1..rows.len() {
+                let (a0, al, an) = rows[i];
+                let (b0, bl, bn) = rows[j];
+                assert!(
+                    a0 + al <= b0 || b0 + bl <= a0,
+                    "row ranges {an} ({a0}..{}) and {bn} ({b0}..{}) overlap",
+                    a0 + al,
+                    b0 + bl
+                );
+            }
+        }
+    }
 
     // ---- F3 right-column half-screen clamp (round-4 forensics fix) ----
 

@@ -22,6 +22,7 @@ mod v116_art;
 mod v116b_art;
 mod audit16_art;
 mod weather_art;
+mod armor_art;
 mod farming_art;
 /// UI-overhaul Phase 1: GUI chrome + HUD sprites (public so the
 /// `gui` module's set/loader can call the painters)
@@ -4384,6 +4385,12 @@ pub fn generate_atlas() -> Vec<u8> {
                 destroy_stage_art(&mut a, t, (t - TILE_DESTROY_BASE) as u8)
             }
             TILE_ARM => arm_art(&mut a, t),
+            // ---- Sub-round 3: the 16 armor item sprites ----
+            t if (TILE_ARMOR_BASE..=TILE_ARMOR_BASE + 15).contains(&t) => {
+                // tile = TILE_ARMOR_BASE + material*4 + piece
+                let idx = t - TILE_ARMOR_BASE;
+                armor_art::armor_art(&mut a, t, (idx / 4) as u8, (idx % 4) as u8)
+            }
             _ => {}
         }
     }

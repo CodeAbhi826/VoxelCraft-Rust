@@ -71,6 +71,12 @@ pub struct Settings {
     pub upscale: u8,
     /// §21 music category volume (0..1, master = `volume`)
     pub music_volume: f32,
+    /// Sub-round 5: the per-category volumes for the Music & Sound
+    /// screen — vanilla 1.16.5's ten sliders. Index order follows
+    /// SoundCategory: [music, record, weather, blocks, hostile,
+    /// neutral, players, ambient, voice] (master = `volume`). Persisted
+    /// through the vanilla `soundCategory_<name>` options.txt keys.
+    pub cat_volumes: [f32; 9],
     /// frame limiter: 0 = uncapped, else a fps ceiling (30/60/120)
     pub maxfps: u8,
     // ------------------------------------------ Phase 6 §26: rendering --
@@ -131,6 +137,7 @@ impl Default for Settings {
             // vanilla 1.16.5 options.txt defaults: master/music 1.0
             volume: 1.0,
             music_volume: 1.0,
+            cat_volumes: [1.0; 9],
             fov: 70.0,
             // Moody (vanilla default brightness 0.0)
             brightness: 0.0,
@@ -298,6 +305,19 @@ impl Settings {
             self.gpu_meshing as u8,
             self.view_bobbing as u8
         );
+        // Sub-round 5: the per-category sliders ride the vanilla
+        // soundCategory_* keys (options.txt naming parity)
+        {
+            const CAT_KEYS: [&str; 9] = [
+                "music", "record", "weather", "blocks", "hostile",
+                "neutral", "players", "ambient", "voice",
+            ];
+            for (i, k) in CAT_KEYS.iter().enumerate() {
+                s.push_str(&format!(";soundCategory_{k}={:.3}", self.cat_volumes[i]));
+            }
+            // the master key too (vanilla's own name for it)
+            s.push_str(&format!(";soundCategory_master={:.3}", self.volume));
+        }
         if !self.resource_packs.is_empty() {
             s.push_str(&format!(";packs={}", self.resource_packs.join("|")));
         }
@@ -325,7 +345,30 @@ impl Settings {
                 "sd" => st.sim_distance = v.parse().unwrap_or(st.sim_distance).clamp(5, 32),
                 "sens" => st.sensitivity = v.parse().unwrap_or(st.sensitivity).clamp(0.1, 2.0),
                 "vol" => st.volume = v.parse().unwrap_or(st.volume).clamp(0.0, 1.0),
-                "mvol" => st.music_volume = v.parse().unwrap_or(st.music_volume).clamp(0.0, 1.0),
+                "mvol" => {
+                    st.music_volume = v.parse().unwrap_or(st.music_volume).clamp(0.0, 1.0);
+                    st.cat_volumes[0] = st.music_volume;
+                }
+                // Sub-round 5: the vanilla soundCategory_* keys
+                k if k.starts_with("soundCategory_") => {
+                    let val: f32 = v.parse().unwrap_or(1.0f32).clamp(0.0, 1.0);
+                    match &k[14..] {
+                        "master" => st.volume = val,
+                        "music" => {
+                            st.music_volume = val;
+                            st.cat_volumes[0] = val;
+                        }
+                        "record" => st.cat_volumes[1] = val,
+                        "weather" => st.cat_volumes[2] = val,
+                        "blocks" => st.cat_volumes[3] = val,
+                        "hostile" => st.cat_volumes[4] = val,
+                        "neutral" => st.cat_volumes[5] = val,
+                        "players" => st.cat_volumes[6] = val,
+                        "ambient" => st.cat_volumes[7] = val,
+                        "voice" => st.cat_volumes[8] = val,
+                        _ => {}
+                    }
+                }
                 "fov" => st.fov = v.parse().unwrap_or(st.fov).clamp(30.0, 110.0),
                 "bright" => st.brightness = v.parse().unwrap_or(st.brightness).clamp(0.0, 1.0),
                 // legacy bool keys → vanilla three-state levels (the
@@ -862,6 +905,13 @@ struct WebPlayerRec {
     xp_points: i32,
     #[serde(default)]
     xp_level: i32,
+    /// Sub-round 3: the equipped armor (piece 0..=3, block, count) —
+    /// absent in old saves = empty equipment
+    #[serde(default)]
+    armor: Vec<(u8, u16, u8)>,
+    /// Sub-round 3: the offhand stack (block, count)
+    #[serde(default)]
+    offhand: (u16, u8),
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -898,6 +948,13 @@ pub struct GameApp {
     /// §21: next game-time a music pad starts (first at ~12 s, then every
     /// 2.5–4 min; day/night pick the progression)
     music_next: f32,
+    /// Sub-round 5: the underwater-loop + rain-loop cadence timers
+    water_loop_next: f32,
+    rain_next: f32,
+    /// Sub-round 5: the head-underwater latch (enter/exit one-shots)
+    was_head_underwater: bool,
+    /// Sub-round 5: was-on-ground latch (landing detection)
+    was_on_ground: bool,
     /// §21: next game-time for the ambient cave-sound roll
     ambient_next: f32,
     pub audio: Box<dyn AudioBackend>,
@@ -1059,13 +1116,21 @@ pub struct GameApp {
     smoke_game_t: f32,
     /// F3_DUMP2 liveness pair: the second dump has fired
     f3_dump2: bool,
-    /// creative-style block picker overlay (E key)
+    /// Sub-round 2: the vanilla tabbed creative inventory overlay
+    /// (E/B key, creative mode only)
     picker_open: bool,
-    /// picker scroll (first visible row) — wheel-scrolls like the
-    /// vanilla creative grid since the merged registry outgrew one page
+    /// the active creative tab: 0..=8 = the nine content tabs (vanilla
+    /// order), 9 = Search Items, 10 = Survival Inventory (swap screen)
+    creative_tab: u8,
+    /// picker scroll (first visible row) — the vanilla creative grid
+    /// scrolls one 9-slot row per wheel tick
     picker_scroll: usize,
-    /// last pickr grid geometry for hit-testing clicks
-    picker_geom: Option<vc_render::ui::PickerGeom>,
+    /// Search-tab query (live filter across every item)
+    creative_search: String,
+    /// the search field's focus state (typing gate)
+    creative_search_focused: bool,
+    /// last creative-screen geometry for hit-testing clicks
+    creative_geom: Option<vc_render::ui::CreativeGeom>,
     /// rolling frame times (ms) for the F3 frame-time graph
     frame_times: std::collections::VecDeque<f32>,
     /// rolling (draw calls, buffer binds) per frame — Phase 9 §37 metric
@@ -2003,6 +2068,10 @@ impl GameApp {
             audio_rng: vc_rng::rng::Rng::new(0x500D_5EED),
             sounds_played: 0,
             music_next: 12.0,
+            water_loop_next: 0.0,
+            rain_next: 0.0,
+            was_head_underwater: false,
+            was_on_ground: false,
             ambient_next: 4.0,
             audio,
             settings,
@@ -2094,8 +2163,11 @@ impl GameApp {
             smoke_game_t: 0.0,
             f3_dump2: false,
             picker_open: false,
+            creative_tab: 0,
             picker_scroll: 0,
-            picker_geom: None,
+            creative_search: String::new(),
+            creative_search_focused: false,
+            creative_geom: None,
             frame_times: std::collections::VecDeque::new(),
             draw_calls_ring: std::collections::VecDeque::new(),
             item_toast: None,
@@ -2317,6 +2389,21 @@ impl GameApp {
                             }
                         }
                     }
+                    // Sub-round 2: the creative screen's search field —
+                    // printable keys type into it (auto-switching to the
+                    // Search tab first, vanilla behavior)
+                    if pressed
+                        && self.picker_open
+                        && self.screen == Screen::Game
+                    {
+                        if let winit::keyboard::Key::Character(s) = &event.logical_key {
+                            if let Some(ch) = s.chars().next() {
+                                if self.creative_type(ch) {
+                                    return;
+                                }
+                            }
+                        }
+                    }
                     let code = match event.physical_key {
                         PhysicalKey::Code(c) => c,
                         _ => return,
@@ -2464,6 +2551,18 @@ impl GameApp {
                             }
                         }
                     }
+                    // Sub-round 2: the creative screen's search field
+                    if pressed
+                        && !repeat
+                        && self.picker_open
+                        && self.screen == Screen::Game
+                    {
+                        if let Some(ch) = web_char_from_code(&code, self.web_shift) {
+                            if self.creative_type(ch) {
+                                continue;
+                            }
+                        }
+                    }
                     if let Some(kc) = keycode_from_web(&code) {
                         self.key_action(kc, pressed, repeat);
                     }
@@ -2498,7 +2597,7 @@ impl GameApp {
                     } else if self.picker_open && self.screen == Screen::Game {
                         if pressed {
                             let (ux, uy) = self.css_to_ui(x, y);
-                            self.picker_click(ux as i32, uy as i32);
+                            self.creative_click(ux as i32, uy as i32, button == 2);
                         }
                     } else if self.screen == Screen::Game {
                         // drag-look fallback path (pointer lock unavailable)
@@ -2611,6 +2710,16 @@ impl GameApp {
                 {
                     self.backspace_field();
                 }
+                // Sub-round 2: the creative screen's search field
+                if pressed
+                    && self.picker_open
+                    && self.creative_search_focused
+                    && self.screen == Screen::Game
+                {
+                    self.creative_search.pop();
+                    self.picker_scroll = 0;
+                    self.ui.dirty = true;
+                }
             }
             KeyCode::Enter | KeyCode::NumpadEnter => {
                 // Phase 1: Enter on the create screen = CREATE
@@ -2660,6 +2769,24 @@ impl GameApp {
                     } else {
                         self.open_container(Container::Inventory);
                     }
+                }
+            }
+            KeyCode::KeyF => {
+                // Sub-round 3: the offhand swap — VERIFIED minecraft.wiki/
+                // w/Inventory (live 2026-09-15): "Pressing the F key moves
+                // the selected item to and from the hotbar slot and the
+                // off-hand slot." In-world only (vanilla F in a screen
+                // swaps the focused slot instead; the engine's container
+                // offhand slot covers that path).
+                if pressed && !repeat && self.screen == Screen::Game
+                    && !self.picker_open
+                    && self.container.is_none()
+                {
+                    std::mem::swap(
+                        &mut self.player.inv.slots[self.player.selected],
+                        &mut self.player.offhand,
+                    );
+                    self.ui.dirty = true;
                 }
             }
             KeyCode::KeyB => {
@@ -2766,6 +2893,28 @@ impl GameApp {
                     let b = self.player.inv.slots[n as usize].block;
                     self.item_toast = Some((name(b).to_string(), 2.0));
                     self.ui.dirty = true;
+                }
+                // Sub-round 2: number keys over a creative-grid item put a
+                // full stack into THAT slot (the vanilla hotkey pick —
+                // matches! guard is inverted: the branch above needs the
+                // pointer captured, this one needs the screen open)
+                KeyCode::Digit1
+                | KeyCode::Digit2
+                | KeyCode::Digit3
+                | KeyCode::Digit4
+                | KeyCode::Digit5
+                | KeyCode::Digit6
+                | KeyCode::Digit7
+                | KeyCode::Digit8
+                | KeyCode::Digit9
+                    if pressed && self.picker_open && self.screen == Screen::Game =>
+                {
+                    let n = code as u8 - KeyCode::Digit1 as u8;
+                    if !self.creative_hotkey(n as usize) {
+                        // not hovering a grid item: plain hotbar select
+                        self.player.selected = n as usize;
+                        self.ui.dirty = true;
+                    }
                 }
             _ => {}
         }
@@ -2889,8 +3038,11 @@ impl GameApp {
     // ------------------------------------------------------ block picker --
 
     fn open_picker(&mut self) {
+        // Sub-round 2: the vanilla tabbed creative screen — opens on the
+        // last-used content tab, top of its grid
         self.picker_scroll = 0; // top of the grid on open
         self.picker_open = true;
+        self.creative_search_focused = false;
         self.input = Input::default();
         // release the pointer so the cursor can select blocks; tell the JS
         // shim we're in a "picker" state so canvas clicks are forwarded as
@@ -2907,7 +3059,11 @@ impl GameApp {
 
     fn close_picker(&mut self) {
         self.picker_open = false;
-        self.picker_geom = None;
+        self.creative_geom = None;
+        self.creative_search_focused = false;
+        // vanilla creative: closing the screen with a held stack DESTROYS
+        // it (creative items are free — nothing drops)
+        self.cursor_stack = vc_inventory::inventory::ItemStack::EMPTY;
         // back to the plain game state in the shim
         #[cfg(target_arch = "wasm32")]
         crate::web_input::set_screen("game");
@@ -2919,17 +3075,177 @@ impl GameApp {
         self.ui.dirty = true;
     }
 
-    /// click inside the picker grid → assign that block to the selected slot
-    fn picker_click(&mut self, ux: i32, uy: i32) {
+    /// Sub-round 2: the active creative-screen item list — the current
+    /// tab's items, or the live search results across every item
+    /// (PICKER_BLOCKS + the redstone extras) when the Search tab is up.
+    fn creative_items(&self) -> Vec<u16> {
+        use vc_blocks::blocks as blk;
+        if self.creative_tab == 9 {
+            let q = self.creative_search.to_lowercase();
+            if q.is_empty() {
+                // empty query = every item, tab order, deduped
+                let mut all: Vec<u16> = Vec::with_capacity(blk::PICKER_BLOCKS.len() + 10);
+                for &t in blk::CREATIVE_TABS.iter() {
+                    all.extend(blk::creative_tab_items(t));
+                }
+                return all;
+            }
+            let mut all: Vec<u16> = Vec::new();
+            for &t in blk::CREATIVE_TABS.iter() {
+                all.extend(blk::creative_tab_items(t));
+            }
+            all.retain(|&b| name(b).to_lowercase().contains(&q));
+            all
+        } else {
+            blk::creative_tab_items(blk::CREATIVE_TABS[self.creative_tab.min(8) as usize])
+        }
+    }
+
+    /// Sub-round 2: the creative screen's max scroll (rows) for the
+    /// current tab/search — the vanilla page is 5 rows of 9.
+    fn creative_max_scroll(&self) -> usize {
+        let total = self.creative_items().len();
+        total.div_ceil(9).saturating_sub(5)
+    }
+
+    /// Sub-round 2: click inside the tabbed creative screen — the
+    /// vanilla semantics (VERIFIED minecraft.wiki/w/Creative_inventory,
+    /// live 2026-09-15): left-click grabs a full stack onto the cursor,
+    /// right-click picks one item, clicking a different item replaces
+    /// the held stack, the hotbar swaps/places, the destroy slot and
+    /// clicks outside the panel destroy the held stack, and pressing
+    /// number keys over an item fills that hotbar slot (see
+    /// `creative_hotkey`).
+    fn creative_click(&mut self, ux: i32, uy: i32, right: bool) {
         self.unlock_audio();
-        let Some(g) = &self.picker_geom else { return };
-        if let Some(idx) = g.slot_at(ux, uy) {
-            let b = PICKER_BLOCKS[idx];
-            self.player.inv.slots[self.player.selected] =
-                vc_inventory::inventory::ItemStack::new(b, 64);
-            self.item_toast = Some((name(b).to_string(), 2.0));
+        let Some(g) = &self.creative_geom else { return };
+        // 1) tabs
+        if let Some(t) = g.tab_at(ux, uy) {
+            if t == 10 {
+                // the Inventory tab: the SURVIVAL inventory layout —
+                // swap to the real inventory container screen
+                self.close_picker();
+                self.open_container(Container::Inventory);
+                return;
+            }
+            self.creative_tab = t;
+            self.picker_scroll = 0;
+            self.creative_search_focused = t == 9;
+            self.ui.dirty = true;
+            return;
+        }
+        // 2) the search field (focus; typing follows)
+        if g.search_at(ux, uy) {
+            self.creative_search_focused = true;
+            self.ui.dirty = true;
+            return;
+        }
+        // 3) scrollbar: click scrolls a page toward the click
+        if g.scrollbar_at(ux, uy) {
+            let max = self.creative_max_scroll() as i32;
+            let (sb_x, _sb_y, _w, _h) = g.scrollbar.unwrap_or((0, 0, 0, 0));
+            let dir = if ux > sb_x + 5 { 5 } else { -5 };
+            let cur = (self.picker_scroll as i32 + dir).clamp(0, max);
+            self.picker_scroll = cur as usize;
+            self.ui.dirty = true;
+            return;
+        }
+        // 4) the grid: pick up onto the cursor (vanilla creative)
+        if let Some(idx) = g.grid_at(ux, uy) {
+            let items = self.creative_items();
+            if let Some(&b) = items.get(idx) {
+                use vc_inventory::inventory::{ItemStack, STACK_MAX};
+                if self.cursor_stack.is_empty() {
+                    // left = full stack, right = one item
+                    let n = if right { 1 } else { STACK_MAX };
+                    self.cursor_stack = ItemStack::new(b, n);
+                } else if self.cursor_stack.block == b {
+                    // same item: left tops up, right adds one
+                    let add = if right { 1 } else { STACK_MAX };
+                    self.cursor_stack.count =
+                        (self.cursor_stack.count + add).min(STACK_MAX);
+                } else {
+                    // different item: the held stack is replaced
+                    let n = if right { 1 } else { STACK_MAX };
+                    self.cursor_stack = ItemStack::new(b, n);
+                }
+                self.ui.dirty = true;
+            }
+            return;
+        }
+        // 5) the hotbar row: place/swap with the cursor (container
+        // semantics)
+        if let Some(i) = g.hotbar_at(ux, uy) {
+            use vc_inventory::inventory::Inventory;
+            Inventory::slot_click(
+                &mut self.player.inv.slots[i],
+                &mut self.cursor_stack,
+                right,
+            );
+            self.ui.dirty = true;
+            return;
+        }
+        // 6) the destroy slot
+        if g.trash_at(ux, uy) {
+            self.cursor_stack = vc_inventory::inventory::ItemStack::EMPTY;
+            self.ui.dirty = true;
+            return;
+        }
+        // 7) clicking outside the panel destroys the held stack (vanilla
+        // creative: "clicking ... while hovering over any item other than
+        // the one held gets rid of the held item" + the outside click)
+        if !self.cursor_stack.is_empty() {
+            self.cursor_stack = vc_inventory::inventory::ItemStack::EMPTY;
             self.ui.dirty = true;
         }
+    }
+
+    /// Sub-round 2: type one character into the creative search field.
+    /// When the screen is open but the Search tab is not, the first
+    /// printable key auto-switches to it (vanilla behavior: typing in
+    /// the creative screen jumps to search). Returns true when consumed.
+    fn creative_type(&mut self, ch: char) -> bool {
+        if !(32..=126).contains(&(ch as u32)) {
+            return false;
+        }
+        if self.creative_tab != 9 {
+            self.creative_tab = 9;
+            self.picker_scroll = 0;
+        }
+        if !self.creative_search_focused {
+            self.creative_search_focused = true;
+        }
+        if self.creative_search.chars().count() >= 24 {
+            return true; // full, but consumed
+        }
+        self.creative_search.push(ch);
+        self.picker_scroll = 0;
+        self.ui.dirty = true;
+        true
+    }
+
+    /// Sub-round 2: number keys 1..9 while the creative screen is open —
+    /// "Pressing a number key while hovering over an item instantly
+    /// places one full stack of that item into the hotbar slot" (VERIFIED
+    /// minecraft.wiki/w/Creative_inventory, live 2026-09-15).
+    fn creative_hotkey(&mut self, slot: usize) -> bool {
+        if !self.picker_open || self.screen != Screen::Game {
+            return false;
+        }
+        let Some(g) = &self.creative_geom else { return false };
+        let (cx, cy) = (self.cursor.0 as i32, self.cursor.1 as i32);
+        let Some(idx) = g.grid_at(cx, cy) else { return false };
+        let items = self.creative_items();
+        let Some(&b) = items.get(idx) else { return false };
+        self.player.inv.slots[slot] =
+            vc_inventory::inventory::ItemStack::new(b, vc_inventory::inventory::STACK_MAX);
+        // show the picked item's name above the hotbar (vanilla shows the
+        // name on hotkey picks; the held_key tracker only follows the
+        // selected slot, so set it directly here)
+        self.held_name = name(b).to_string();
+        self.held_name_t = 2.0;
+        self.ui.dirty = true;
+        true
     }
 
     /// physical-mouse routing (shared by the winit MouseInput event and
@@ -2982,7 +3298,7 @@ impl GameApp {
             }
         } else if self.picker_open && self.screen == Screen::Game {
             if pressed {
-                self.picker_click(cx, cy);
+                self.creative_click(cx, cy, button == winit::event::MouseButton::Right);
             }
         } else if self.screen == Screen::Game {
             self.game_mouse(button, pressed);
@@ -3084,14 +3400,13 @@ impl GameApp {
         if self.screen != Screen::Game || d.abs() <= 0.01 {
             return;
         }
-        // the open picker eats the wheel (scroll rows, vanilla creative
-        // grid); the hotbar cycle below stays for the in-world case
+        // the open creative screen eats the wheel: one 9-slot row per
+        // tick within the active tab/search (the vanilla creative grid);
+        // the hotbar cycle below stays for the in-world case
         if self.picker_open {
-            let cols = 15usize;
-            let total = PICKER_BLOCKS.len().div_ceil(cols);
-            let max_scroll = total.saturating_sub(11);
+            let max_scroll = self.creative_max_scroll() as i32;
             let cur = self.picker_scroll as i32 - d.signum() as i32;
-            self.picker_scroll = cur.clamp(0, max_scroll as i32) as usize;
+            self.picker_scroll = cur.clamp(0, max_scroll) as usize;
             self.ui.dirty = true;
             return;
         }
@@ -3133,16 +3448,24 @@ impl GameApp {
         let listener = self.player.eye().to_array();
         let yaw = self.player.yaw;
         let master = self.settings.volume;
-        let music = self.settings.music_volume;
         let Some(r) = self.sounds.pick(event, &mut self.audio_rng, &self.bank) else {
             return;
         };
-        // category gain: music rides its own slider; the other seven
-        // categories default to full (their content volumes already encode
-        // the mix); everything is scaled by the master volume
+        // Sub-round 5: the vanilla per-category sliders (Music & Sound
+        // screen) — every SoundCategory rides its own gain; the master
+        // volume scales everything (vanilla's soundCategory_* model).
+        // music_volume and cat_volumes[0] are the same slider.
         let cat_gain = match r.category {
-            vc_audio::sounds::SoundCategory::Music => music,
-            _ => 1.0,
+            vc_audio::sounds::SoundCategory::Master => 1.0,
+            vc_audio::sounds::SoundCategory::Music => self.settings.cat_volumes[0],
+            vc_audio::sounds::SoundCategory::Record => self.settings.cat_volumes[1],
+            vc_audio::sounds::SoundCategory::Weather => self.settings.cat_volumes[2],
+            vc_audio::sounds::SoundCategory::Blocks => self.settings.cat_volumes[3],
+            vc_audio::sounds::SoundCategory::Hostile => self.settings.cat_volumes[4],
+            vc_audio::sounds::SoundCategory::Neutral => self.settings.cat_volumes[5],
+            vc_audio::sounds::SoundCategory::Players => self.settings.cat_volumes[6],
+            vc_audio::sounds::SoundCategory::Ambient => self.settings.cat_volumes[7],
+            vc_audio::sounds::SoundCategory::Voice => self.settings.cat_volumes[8],
         };
         let (att, pan) = vc_audio::sounds::spatialize(pos, listener, yaw, r.attenuation);
         let vol = r.volume * volume_scale * att * cat_gain * master;
@@ -3411,17 +3734,19 @@ impl GameApp {
             }
         }
         if self.picker_open {
-            // the visible 15x11 window of the creative grid
-            const COLS: usize = 15;
-            const VIS: usize = 11 * COLS;
+            // Sub-round 2: the visible 9x5 window of the active tab (or
+            // search results), plus the tab icons and the hotbar stacks
+            const COLS: usize = 9;
+            const VIS: usize = 5 * COLS;
             let start = self.picker_scroll * COLS;
-            for &b in vc_blocks::blocks::PICKER_BLOCKS
-                .iter()
-                .skip(start)
-                .take(VIS)
-            {
+            for &b in self.creative_items().iter().skip(start).take(VIS) {
                 self.icon_cache.get_or_queue(b);
             }
+            for &t in vc_blocks::blocks::CREATIVE_TABS.iter() {
+                self.icon_cache.get_or_queue(t.icon_block());
+            }
+            self.icon_cache.get_or_queue(vc_blocks::blocks::EYE_OF_ENDER);
+            self.icon_cache.get_or_queue(vc_blocks::blocks::WITHER_SKELETON_SKULL);
         }
     }
 
@@ -3768,6 +4093,22 @@ impl GameApp {
             }
             self.player.selected = selected.min(8) as usize;
         }
+        // Sub-round 3: restore the worn armor + offhand (absent in old
+        // saves = empty equipment, then the attribute follows)
+        if let Some(p) = entry.meta.player.as_ref() {
+            for (i, block, count) in &p.armor {
+                if (*i as usize) < 4 {
+                    self.player.armor[*i as usize] =
+                        vc_inventory::inventory::ItemStack::new(*block, *count);
+                }
+            }
+            self.player.offhand = if p.offhand.0 == vc_blocks::blocks::AIR {
+                vc_inventory::inventory::ItemStack::EMPTY
+            } else {
+                vc_inventory::inventory::ItemStack::new(p.offhand.0, p.offhand.1)
+            };
+            self.player.recalc_armor_points();
+        }
         // F3: the loaded world's clock continues where the save left off
         // (reset_world zeroed it for a fresh world)
         self.world_game_time = game_time;
@@ -3837,6 +4178,19 @@ impl GameApp {
             }
             self.player.xp_points = p.xp_points;
             self.player.xp_level = p.xp_level;
+            // Sub-round 3: the equipment + offhand ride the record
+            for (i, block, count) in &p.armor {
+                if (*i as usize) < 4 {
+                    self.player.armor[*i as usize] =
+                        vc_inventory::inventory::ItemStack::new(*block, *count);
+                }
+            }
+            self.player.offhand = if p.offhand.0 == vc_blocks::blocks::AIR {
+                vc_inventory::inventory::ItemStack::EMPTY
+            } else {
+                vc_inventory::inventory::ItemStack::new(p.offhand.0, p.offhand.1)
+            };
+            self.player.recalc_armor_points();
         }
         self.world_game_time = rec.game_time;
         self.world_flat = rec.flat;
@@ -4048,6 +4402,15 @@ impl GameApp {
             health: self.player.health,
             xp_points: self.player.xp_points,
             xp_level: self.player.xp_level,
+            armor: self
+                .player
+                .armor
+                .iter()
+                .enumerate()
+                .filter(|(_, s)| !s.is_empty())
+                .map(|(i, s)| (i as u8, s.block, s.count))
+                .collect(),
+            offhand: (self.player.offhand.block, self.player.offhand.count),
         };
         let edits: Vec<(i32, i32, i32, u16)> = self
             .world
@@ -4622,13 +4985,14 @@ impl GameApp {
         };
         self.player.vel = Vec3::ZERO;
         self.player.flying = false;
+        // the death spot (item drops AND the XP orbs land here)
+        let (bx, by, bz) = (
+            self.player.pos.x.floor() as i32,
+            self.player.pos.y.floor() as i32,
+            self.player.pos.z.floor() as i32,
+        );
         // scatter the inventory as item drops at the death spot
         if self.mode.drops_inventory_on_death() {
-            let (bx, by, bz) = (
-                self.player.pos.x.floor() as i32,
-                self.player.pos.y.floor() as i32,
-                self.player.pos.z.floor() as i32,
-            );
             let mut dropped = 0usize;
             // 1.11 Curse of Vanishing (VERIFIED, changelog §Gameplay:
             // "Curse of Vanishing makes the item disappear if the player
@@ -4652,12 +5016,43 @@ impl GameApp {
                     *slot = vc_inventory::inventory::ItemStack::EMPTY;
                 }
             }
+            // Sub-round 3: the worn armor + offhand drop too (vanilla
+            // scatters the equipment with the inventory)
+            for slot in self.player.armor.iter_mut() {
+                if !slot.is_empty() {
+                    for _ in 0..slot.count {
+                        self.sim.items.drop_block(bx, by, bz, slot.block, 2, 15, 0);
+                    }
+                    dropped += 1;
+                    *slot = vc_inventory::inventory::ItemStack::EMPTY;
+                }
+            }
+            if !self.player.offhand.is_empty() {
+                for _ in 0..self.player.offhand.count {
+                    self.sim
+                        .items
+                        .drop_block(bx, by, bz, self.player.offhand.block, 2, 15, 0);
+                }
+                dropped += 1;
+                self.player.offhand = vc_inventory::inventory::ItemStack::EMPTY;
+            }
+            self.player.recalc_armor_points();
             let _ = dropped;
         }
-        // vanilla: XP is lost on death (dropped as orbs — we have none yet,
-        // so it just zeroes; documented deviation). The death screen's
-        // Score line captures the pre-zero total first (vanilla shows it).
+        // Sub-round 5 XP polish (2026-09-15): the player's XP drops as
+        // ORBS at the death spot — VERIFIED minecraft.wiki/w/Experience
+        // (live 2026-09-15): "When the player dies, they drop experience
+        // orbs worth 7 * current level experience points, up to a
+        // maximum of 100 points ... and all of the other experience
+        // vanishes." (From 1.16.2 the orbs drop at the death location.)
+        // The death screen's Score line captures the pre-drop total
+        // first (vanilla shows the collected-since-last-death score).
         self.death_score = self.player.xp_points;
+        let level = self.player.xp_level.max(0);
+        let orbs_xp = (level * 7).min(100);
+        if orbs_xp > 0 {
+            self.sim.xp_orbs.drop_xp(bx as f32, by as f32, bz as f32, orbs_xp);
+        }
         self.player.xp_points = 0;
         self.player.xp_level = 0;
         self.play_event("entity.player.hurt", None, 1.0);
@@ -5428,6 +5823,14 @@ impl GameApp {
         if !collected.is_empty() {
             let total: i32 = collected.iter().sum();
             let gained = self.player.add_xp(total);
+            // Sub-round 5: the orb pickup chime per collection batch —
+            // VERIFIED minecraft.wiki/w/Experience (live 2026-09-15):
+            // entity.experience_orb.pickup, volume 0.1, pitch 0.55–1.25
+            // (the registry's own pitch window); the level-up ding only
+            // when a LEVEL is actually gained ("When a player levels up
+            // to a multiple of 5" — engine-adapted to every level gain,
+            // disclosed)
+            self.play_event("entity.experience_orb.pickup", None, 1.0);
             if gained > 0 {
                 self.play_event("entity.player.levelup", None, 1.0);
             }
@@ -7047,7 +7450,7 @@ impl GameApp {
             }
         }
         self.play_event(
-            vc_audio::sounds::family_event(def(b).sound, true),
+            vc_audio::sounds::family_event(def(b).sound, vc_audio::sounds::FamilyEvent::Break),
             Some([
                 pos[0] as f32 + 0.5,
                 pos[1] as f32 + 0.5,
@@ -7798,6 +8201,18 @@ impl GameApp {
 
     /// open a container screen (inventory / crafting table / furnace)
     fn open_container(&mut self, c: Container) {
+        // Sub-round 5: the vanilla container open sounds (the
+        // chest-family; crafting/furnace/brewing/enchanting GUIs open
+        // silently in vanilla)
+        match c {
+            Container::Chest { pos } => {
+                self.play_event("block.chest.open", Some([pos[0] as f32 + 0.5, pos[1] as f32 + 0.5, pos[2] as f32 + 0.5]), 1.0);
+            }
+            Container::Barrel { pos } => {
+                self.play_event("block.barrel.open", Some([pos[0] as f32 + 0.5, pos[1] as f32 + 0.5, pos[2] as f32 + 0.5]), 1.0);
+            }
+            _ => {}
+        }
         self.container = Some(c);
         self.container_geom = None;
         self.input = Input::default();
@@ -7819,6 +8234,16 @@ impl GameApp {
     /// (vanilla behavior), the cursor stack drops back in too
     fn close_container(&mut self) {
         if let Some(c) = self.container.take() {
+            // Sub-round 5: the vanilla container close sounds
+            match c {
+                Container::Chest { pos } => {
+                    self.play_event("block.chest.close", Some([pos[0] as f32 + 0.5, pos[1] as f32 + 0.5, pos[2] as f32 + 0.5]), 1.0);
+                }
+                Container::Barrel { pos } => {
+                    self.play_event("block.barrel.close", Some([pos[0] as f32 + 0.5, pos[1] as f32 + 0.5, pos[2] as f32 + 0.5]), 1.0);
+                }
+                _ => {}
+            }
             // Phase E3 (VERIFIED w/Trapped_Chest): closing a trapped
             // chest drops its viewer signal back to 0 (signal = number
             // of players accessing, max 15 — single-player: 1 while open)
@@ -7953,6 +8378,32 @@ impl GameApp {
         match slot {
             SlotRef::Inv(i) if i < vc_inventory::inventory::INV_SLOTS => {
                 Inventory::slot_click(&mut self.player.inv.slots[i], &mut self.cursor_stack, right);
+            }
+            // Sub-round 3: the armor equipment slots — vanilla
+            // accepts ONLY the matching piece kind ("Armor is
+            // considered equipped only when it is in an armor slot");
+            // a wrong-kind click swaps the cursor back (no-op click
+            // keeps the held stack, matching vanilla's rejection)
+            SlotRef::Armor(i) => {
+                // an empty cursor always works (take the piece off);
+                // a held stack must be the matching piece kind
+                let piece_fits = self.cursor_stack.is_empty()
+                    || vc_blocks::blocks::armor_piece(self.cursor_stack.block)
+                        .map(|p| p as usize == i)
+                        .unwrap_or(false);
+                if piece_fits {
+                    Inventory::slot_click(
+                        &mut self.player.armor[i.min(3)],
+                        &mut self.cursor_stack,
+                        right,
+                    );
+                    self.player.recalc_armor_points();
+                }
+            }
+            // Sub-round 3: the offhand slot (anything rides here —
+            // the shield's home)
+            SlotRef::Offhand => {
+                Inventory::slot_click(&mut self.player.offhand, &mut self.cursor_stack, right);
             }
             SlotRef::Craft(i) => {
                 let n_cells = self.craft_grid_cells();
@@ -8481,6 +8932,8 @@ impl GameApp {
             enchant,
             trade,
             chest,
+            armor: self.player.armor,
+            offhand: self.player.offhand,
             cursor: self.cursor_stack,
         }
     }
@@ -8515,9 +8968,12 @@ impl GameApp {
                 self.play_event("entity.player.levelup", None, 1.0);
             }
         }
-        // §21: the dig event, same as the interactive path
+        // §21: the break event, same as the interactive path
         self.play_event(
-            vc_audio::sounds::family_event(vc_blocks::blocks::def(b).sound, true),
+            vc_audio::sounds::family_event(
+                vc_blocks::blocks::def(b).sound,
+                vc_audio::sounds::FamilyEvent::Break,
+            ),
             Some([x as f32 + 0.5, y as f32 + 0.5, z as f32 + 0.5]),
             1.0,
         );
@@ -10415,14 +10871,24 @@ impl GameApp {
             }
         }
 
-        // §21 music + ambient scheduling: a procedural pad every 2.5–4 min
-        // (day/night progressions), and cave "eerie" tones when the player
-        // is deep with no skylight. Both ride their own categories.
+        // §21 music + ambient scheduling — Sub-round 5 (2026-09-15)
+        // expanded: the vanilla music.track set (game day/night, the
+        // creative pad in creative, music.under_water while the camera
+        // is submerged, music.nether in the nether), ambient.cave below
+        // sea level with no skylight (the vanilla cave-ambience gate),
+        // the underwater enter/exit/loop bed with the master-bus
+        // muffle, and the weather.rain loop while rain falls.
         if self.screen == Screen::Game {
             if self.time >= self.music_next {
                 self.music_next = self.time + 150.0 + self.audio_rng.next_f32() * 90.0;
-                let ev = if self.day_time < 0.55 {
-                    "music.pad.day"
+                let ev = if self.player.head_in_water {
+                    "music.under_water"
+                } else if self.world.dimension == vc_world::world::Dimension::Nether {
+                    "music.nether"
+                } else if self.mode.picks_creative() {
+                    "music.creative"
+                } else if self.day_time < 0.55 {
+                    "music.game"
                 } else {
                     "music.pad.night"
                 };
@@ -10439,10 +10905,45 @@ impl GameApp {
                         p.y.floor() as i32,
                         p.z.floor() as i32,
                     );
+                    // the vanilla cadence: dark caves roll an ambience
+                    // tone every 8–15 s at low probability
                     if sky == 0 && self.audio_rng.next_f32() < 0.12 {
-                        self.play_event("ambient.eerie", None, 1.0);
+                        self.play_event("ambient.cave", None, 1.0);
                     }
                 }
+            }
+            // Sub-round 5: the underwater bed — enter/exit one-shots on
+            // the transition + the loop tile while submerged, and the
+            // master-bus muffle flag on the audio backend
+            {
+                let under = self.player.head_in_water;
+                if under != self.was_head_underwater {
+                    self.was_head_underwater = under;
+                    let ev = if under {
+                        "ambient.underwater.enter"
+                    } else {
+                        "ambient.underwater.exit"
+                    };
+                    self.play_event(ev, None, 1.0);
+                }
+                self.audio.set_underwater(under);
+                if under && self.time >= self.water_loop_next {
+                    self.water_loop_next = self.time + 1.9;
+                    self.play_event("ambient.underwater.loop", None, 1.0);
+                }
+            }
+            // Sub-round 5: the rain loop (weather.rain while rain falls;
+            // weather.rain.above when the player is above the cloud
+            // layer, y > 128 — the vanilla above-cloud variant)
+            let raining = self.weather.weather() != vc_gameplay::weather::Weather::Clear;
+            if raining && self.time >= self.rain_next {
+                self.rain_next = self.time + 0.95;
+                let ev = if self.player.pos.y > 128.0 {
+                    "weather.rain.above"
+                } else {
+                    "weather.rain"
+                };
+                self.play_event(ev, None, 1.0);
             }
         }
 
@@ -12442,7 +12943,8 @@ impl GameApp {
                     for s in sounds {
                         // footsteps + water-entry: the registry's step/splash events
                         // carry their own volume + pitch ranges (§21)
-                        let ev = vc_audio::sounds::family_event(s.family, false);
+                        let ev =
+                            vc_audio::sounds::family_event(s.family, vc_audio::sounds::FamilyEvent::Step);
                         self.play_event(ev, None, 1.0);
                     }
                 }
@@ -12451,6 +12953,28 @@ impl GameApp {
             // Phase 1: fall damage (MC-12357: fall − 3 HP) — creative is
             // invulnerable, the queued damage drains away instead
             let fall = self.player.take_pending_fall_damage();
+            // Sub-round 5: the landing sound (block.<mat>.fall) — the
+            // block under the feet, the heavier/longer take. Vanilla
+            // plays the fall event only on real falls (sub-damage hops
+            // stay silent); the engine gates on a damage-class fall.
+            if fall > 0.0 {
+                let p = self.player.pos;
+                let below = self.world.get_block(
+                    p.x.floor() as i32,
+                    (p.y - 0.1).floor() as i32,
+                    p.z.floor() as i32,
+                );
+                if below != vc_blocks::blocks::AIR {
+                    self.play_event(
+                        vc_audio::sounds::family_event(
+                            vc_blocks::blocks::def(below).sound,
+                            vc_audio::sounds::FamilyEvent::Fall,
+                        ),
+                        None,
+                        1.0,
+                    );
+                }
+            }
             if fall > 0.0 {
                 if self.mode.invulnerable() {
                     // creative: nothing happens (immunity includes falls)
@@ -12998,10 +13522,15 @@ impl GameApp {
                                 // the arm keeps swinging while mining
                                 // (vanilla re-swings for every dig hit)
                                 self.held_swing = 0.0001;
-                                // vanilla mines with a repeating dig sound
-                                // + face hit particles (every ~4 ticks)
+                                // vanilla mines with a repeating HIT sound
+                                // (block.<mat>.hit — the lighter cadence
+                                // take) + face hit particles (every ~4
+                                // ticks)
                                 self.play_event(
-                                    vc_audio::sounds::family_event(def(b).sound, true),
+                                    vc_audio::sounds::family_event(
+                                        def(b).sound,
+                                        vc_audio::sounds::FamilyEvent::Hit,
+                                    ),
                                     Some([
                                         pos[0] as f32 + 0.5,
                                         pos[1] as f32 + 0.5,
@@ -14365,7 +14894,10 @@ impl GameApp {
                                 }
                             }
                             self.play_event(
-                                vc_audio::sounds::family_event(SoundFamily::Grass, false),
+                                vc_audio::sounds::family_event(
+                                    SoundFamily::Grass,
+                                    vc_audio::sounds::FamilyEvent::Step,
+                                ),
                                 Some([
                                     tpos[0] as f32 + 0.5,
                                     tpos[1] as f32 + 1.5,
@@ -15222,7 +15754,10 @@ impl GameApp {
                                     }
                                 }
                                 self.play_event(
-                                    vc_audio::sounds::family_event(def(b).sound, true),
+                                    vc_audio::sounds::family_event(
+                                        def(b).sound,
+                                        vc_audio::sounds::FamilyEvent::Place,
+                                    ),
                                     Some([
                                         prev[0] as f32 + 0.5,
                                         prev[1] as f32 + 0.5,
@@ -15462,6 +15997,17 @@ impl GameApp {
                     .map(|(i, s)| (i as u8, s.block, s.count))
                     .collect(),
                 selected: self.player.selected as u8,
+                // Sub-round 3: the worn armor + offhand persist with the
+                // pose (vanilla Equipment NBT analog)
+                armor: self
+                    .player
+                    .armor
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, s)| !s.is_empty())
+                    .map(|(i, s)| (i as u8, s.block, s.count))
+                    .collect(),
+                offhand: (self.player.offhand.block, self.player.offhand.count),
             }),
             game_time: tick,
             // Phase 1: the real mode + hardcore state (vanilla schema)
@@ -17132,24 +17678,33 @@ impl GameApp {
                 let a = self.player.hurt_t / Player::HURT_FLASH_SECS;
                 self.ui.damage_vignette(a);
             }
-            // Sub-round 1: the status-effect icons, top-right (wiki-
-            // verified split/sort/blink rules on the painter)
-            let entries: Vec<ui::EffectIconEntry> = self
-                .player
-                .effects
-                .active
-                .iter()
-                .filter(|e| e.ticks_left > 0)
-                .map(|e| ui::EffectIconEntry {
-                    icon: effect_icon_index(e.kind),
-                    amplifier: e.amplifier,
-                    ticks_left: e.ticks_left,
-                    positive: effect_is_positive(e.kind),
-                })
-                .collect();
-            if !entries.is_empty() {
-                self.ui.effect_icons(&entries, self.sim.ticks as i64);
-            }
+        }
+        // Sub-round 1: the status-effect icons, top-right (wiki-
+        // verified split/sort/blink rules on the painter).
+        // Sub-round 2/3 round (2026-09-15, user callout "what about
+        // the effects"): effects render in EVERY gameplay mode —
+        // VERIFIED minecraft.wiki/w/Heads-up_display (live
+        // 2026-09-14): "All effects ... the player currently has are
+        // shown on the top-right of the screen", and the Creative-mode
+        // hidden list ("health, hunger, oxygen, experience, and armor
+        // bars are hidden") does NOT include the effect icons. The
+        // icons previously rode the !invulnerable() gate and vanished
+        // in Creative — now hoisted out of it.
+        let entries: Vec<ui::EffectIconEntry> = self
+            .player
+            .effects
+            .active
+            .iter()
+            .filter(|e| e.ticks_left > 0)
+            .map(|e| ui::EffectIconEntry {
+                icon: effect_icon_index(e.kind),
+                amplifier: e.amplifier,
+                ticks_left: e.ticks_left,
+                positive: effect_is_positive(e.kind),
+            })
+            .collect();
+        if !entries.is_empty() {
+            self.ui.effect_icons(&entries, self.sim.ticks as i64);
         }
 
         // Phase E1: the dragon boss bar while the fight is live (VERIFIED:
@@ -17228,14 +17783,27 @@ impl GameApp {
             self.container_geom = None;
         }
 
-        // block picker overlay (B) — sits above the HUD
+        // Sub-round 2: the vanilla tabbed creative inventory — sits
+        // above the HUD (11 tabs, 9x5 grid, search, hotbar + destroy)
         if self.picker_open {
-            let g = self
-                .ui
-                .picker(self.cursor, &self.atlas, self.picker_scroll, self.advanced_tooltips);
-            self.picker_geom = Some(g);
+            let items = self.creative_items();
+            let g = self.ui.creative_screen(
+                self.cursor,
+                &self.atlas,
+                self.creative_tab,
+                self.picker_scroll,
+                &self.creative_search,
+                self.creative_search_focused,
+                &items,
+                &self.player.inv.slots[..vc_inventory::inventory::INV_SLOTS.min(9)],
+                self.player.selected,
+                &self.cursor_stack,
+                self.advanced_tooltips,
+            );
+            self.picker_scroll = g.scroll;
+            self.creative_geom = Some(g);
         } else {
-            self.picker_geom = None;
+            self.creative_geom = None;
         }
 
         // mouse-capture hint when unlocked and no drag-look fallback

@@ -729,6 +729,12 @@ pub struct PlayerMeta {
     pub slots: Vec<(u8, u16, u8)>,
     /// selected hotbar slot (0..8; defaults to 0)
     pub selected: u8,
+    /// Sub-round 3 (2026-09-15): the worn armor equipment (piece
+    /// 0..=3 = helmet..boots, block id, count) — vanilla Equipment NBT
+    /// analog; absent/empty = empty equipment.
+    pub armor: Vec<(u8, u16, u8)>,
+    /// Sub-round 3: the offhand stack (block id, count)
+    pub offhand: (u16, u8),
 }
 
 fn gzip_bytes(data: &[u8]) -> std::io::Result<Vec<u8>> {
@@ -798,6 +804,27 @@ pub fn write_level_dat(world_dir: &Path, meta: &WorldMeta) -> std::io::Result<()
             vc.set("PlayerItems", Nbt::List(items));
         }
         vc.set("PlayerSelected", Nbt::Byte(p.selected as i8));
+        // Sub-round 3: the equipment + offhand ride the player block
+        let armor: Vec<Nbt> = p
+            .armor
+            .iter()
+            .map(|(piece, block, count)| {
+                let mut it = Nbt::compound();
+                it.set("Piece", Nbt::Int(*piece as i32));
+                it.set("Block", Nbt::Short(*block as i16));
+                it.set("Count", Nbt::Byte(*count as i8));
+                it
+            })
+            .collect();
+        if !armor.is_empty() {
+            vc.set("PlayerArmor", Nbt::List(armor));
+        }
+        if p.offhand.0 != 0 {
+            let mut oh = Nbt::compound();
+            oh.set("Block", Nbt::Short(p.offhand.0 as i16));
+            oh.set("Count", Nbt::Byte(p.offhand.1 as i8));
+            vc.set("PlayerOffhand", oh);
+        }
     }
     // Phase 1: hardcore world whose player died — locked forever
     if meta.hardcore_dead {
@@ -958,6 +985,41 @@ pub fn read_level_dat(world_dir: &Path) -> std::io::Result<Option<WorldMeta>> {
                 .and_then(|v| v.as_i64())
                 .map(|v| v.clamp(0, 8) as u8)
                 .unwrap_or(0),
+            // Sub-round 3: worn armor + offhand (permissive: old saves
+            // have none → empty equipment)
+            armor: {
+                let mut v = Vec::new();
+                if let Some(Nbt::List(items)) = find("PlayerArmor") {
+                    for it in items {
+                        let Nbt::Compound(ifs) = it else { continue };
+                        let pf = |k: &str| {
+                            ifs.iter().find(|(k2, _)| k2 == k).and_then(|(_, v)| v.as_i64())
+                        };
+                        let (Some(piece), Some(block), Some(count)) =
+                            (pf("Piece"), pf("Block"), pf("Count"))
+                        else {
+                            continue;
+                        };
+                        if piece < 4 {
+                            v.push((piece as u8, block as u16, count as u8));
+                        }
+                    }
+                }
+                v
+            },
+            offhand: find("PlayerOffhand")
+                .and_then(|v| {
+                    if let Nbt::Compound(ifs) = v {
+                        let pf = |k: &str| {
+                            ifs.iter().find(|(k2, _)| k2 == k).and_then(|(_, v)| v.as_i64())
+                        };
+                        let (block, count) = (pf("Block")?, pf("Count")?);
+                        Some((block as u16, count as u8))
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or((0, 0)),
         });
         // Phase 5: container inventories (permissive — missing/malformed
         // entries are skipped, a foreign level.dat just has none)
@@ -1471,7 +1533,7 @@ mod tests {
             seed: 0xDEAD_BEEF_CAFE_1234,
             name: "Test World".into(),
             spawn: (-17, 71, 239),
-            player: Some(PlayerMeta { pos: [1.5, 72.0, -3.25], yaw: -0.75, pitch: 0.5, slots: Vec::new(), selected: 0 }),
+            player: Some(PlayerMeta { pos: [1.5, 72.0, -3.25], yaw: -0.75, pitch: 0.5, slots: Vec::new(), selected: 0, armor: Vec::new(), offhand: (0, 0) }),
             game_time: 4242,
             game_type: 1,
             hardcore: false,
@@ -1576,7 +1638,7 @@ mod tests {
                 seed,
                 name: "VoxelCraft".into(),
                 spawn: (8, 70, 8),
-                player: Some(PlayerMeta { pos: [8.5, 90.0, 8.5], yaw: 1.0, pitch: -0.5, slots: Vec::new(), selected: 0 }),
+                player: Some(PlayerMeta { pos: [8.5, 90.0, 8.5], yaw: 1.0, pitch: -0.5, slots: Vec::new(), selected: 0, armor: Vec::new(), offhand: (0, 0) }),
                 game_time: 100,
                 game_type: 0,
                 hardcore: true,

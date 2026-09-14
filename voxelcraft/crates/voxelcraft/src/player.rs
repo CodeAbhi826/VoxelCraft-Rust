@@ -155,12 +155,21 @@ pub struct Player {
     /// /w/Armor (live 2026-09-14): "The total number of armor points
     /// that the player has is the sum of the armor points of the
     /// individual pieces of armor worn, and is visually represented by
-    /// the armor bar." The equipped-slots array + per-piece table land
-    /// with the survival inventory screen round (which registers the
-    /// armor items); until then this stays 0 — identical to vanilla
-    /// with no armor worn (the HUD row hides at 0 exactly like
-    /// vanilla's "if the player is wearing armor" gate).
+    /// the armor bar." Sub-round 3 (2026-09-15): the equipment slots
+    /// below now exist and `recalc_armor_points` keeps this in sync.
     pub armor_points: i32,
+    /// Sub-round 3: the four ARMOR EQUIPMENT slots, vanilla order —
+    /// [helmet(head), chestplate, leggings, boots(feet)]. VERIFIED
+    /// minecraft.wiki/w/Inventory (live 2026-09-15): "The inventory
+    /// consists of 4 armor slots, 27 storage slots, 9 hotbar slots, and
+    /// an off-hand slot"; "Armor is considered equipped only when it is
+    /// in an armor slot; when in any of the regular inventory slots, it
+    /// is not considered 'worn' and does not offer protection."
+    pub armor: [vc_inventory::inventory::ItemStack; 4],
+    /// Sub-round 3: the offhand slot (shields ride here; "Pressing the
+    /// F key moves the selected item to and from the hotbar slot and
+    /// the off-hand slot").
+    pub offhand: vc_inventory::inventory::ItemStack,
     /// Phase E2: timed status effects (wither/poison/regen + beacon stat
     /// effects — VERIFIED w/Effect rows; see vc_gameplay::effects)
     pub effects: vc_gameplay::effects::Effects,
@@ -247,6 +256,8 @@ impl Player {
             absorption: 0.0,
             hurt_t: 0.0,
             armor_points: 0,
+            armor: [vc_inventory::inventory::ItemStack::EMPTY; 4],
+            offhand: vc_inventory::inventory::ItemStack::EMPTY,
             effects: vc_gameplay::effects::Effects::new(),
             health: 20.0,
             xp_points: 0,
@@ -361,6 +372,16 @@ impl Player {
         self.inv.slots[self.selected]
     }
 
+    /// Sub-round 3: the "main hand" for combat/interaction checks is the
+    /// selected hotbar slot, but a raised shield in the OFFHAND blocks
+    /// exactly like vanilla's dual-wield (the shield's home slot). Call
+    /// sites that only need "is a shield up" should use
+    /// [`Self::shield_up`].
+    pub fn shield_up(&self) -> bool {
+        self.held().block == vc_blocks::blocks::SHIELD
+            || self.offhand.block == vc_blocks::blocks::SHIELD
+    }
+
     /// clamp-to-max healing (§29 potions)
     pub fn heal(&mut self, amount: f32) {
         self.health = (self.health + amount).min(20.0);
@@ -372,11 +393,36 @@ impl Player {
     pub const HURT_FLASH_SECS: f32 = 0.25;
 
     /// damage clamped to 0; returns the ACTUAL damage applied
+    /// Sub-round 3: recompute the armor attribute from the equipped
+    /// pieces (call after any equipment change). "The total number of
+    /// armor points that the player has is the sum of the armor points
+    /// of the individual pieces of armor worn."
+    pub fn recalc_armor_points(&mut self) {
+        self.armor_points = self
+            .armor
+            .iter()
+            .map(|s| vc_blocks::blocks::armor_points(s.block) as i32)
+            .sum();
+    }
+
     pub fn damage(&mut self, amount: f32) -> f32 {
-        // 1.11: the absorption buffer eats damage first (VERIFIED
+        // Sub-round 3 (2026-09-15): worn armor reduces incoming damage
+        // FIRST, by the vanilla 1.16.5 formula. VERIFIED minecraft.wiki/
+        // w/Armor (live 2026-09-15), the 0-toughness simplification:
+        // reduction% = min(80, max(4/5 x armorPoints,
+        // 4 x armorPoints - 2 x damage)) — leather/iron/gold/diamond
+        // armor has no toughness in 1.16.5, so this is exact for the
+        // wearable set. (Unblockable damage bypasses armor in vanilla —
+        // the engine's damage path is all blockable, disclosed.)
+        let mut amt = amount;
+        let ap = self.armor_points.max(0) as f32;
+        if ap > 0.0 && amount > 0.0 {
+            let pct = (80.0f32).min((ap * 0.8f32).max(ap * 4.0 - amount * 2.0)) / 100.0;
+            amt *= 1.0 - pct;
+        }
+        // 1.11: the absorption buffer eats damage next (VERIFIED
         // w/Effect §Absorption — the yellow hearts absorb incoming
         // damage before health)
-        let mut amt = amount;
         if self.absorption > 0.0 {
             let eaten = self.absorption.min(amt);
             self.absorption -= eaten;
@@ -2241,5 +2287,61 @@ mod farm_player_tests {
             p2.take_pending_trample().is_none(),
             "sub-0.5 fall on farmland is free"
         );
+    }
+
+    /// Sub-round 3 (2026-09-15): the armor attribute follows the worn
+    /// equipment (the vanilla sum), and damage flows through the vanilla
+    /// 1.16.5 reduction formula — VERIFIED minecraft.wiki/w/Armor (live
+    /// 2026-09-15): reduction% = min(80, max(4/5 x armorPoints,
+    /// 4 x armorPoints - 2 x damage)) with 0 toughness.
+    #[test]
+    fn armor_attribute_and_damage_reduction() {
+        use vc_blocks::blocks::{DIAMOND_BOOTS, DIAMOND_CHESTPLATE, DIAMOND_HELMET, DIAMOND_LEGGINGS, IRON_CHESTPLATE};
+        let mut p = Player::new(Vec3::new(0.0, 64.0, 0.0));
+        // no armor: no reduction
+        assert_eq!(p.armor_points, 0);
+        assert_eq!(p.damage(10.0), 10.0);
+        // equip the full diamond set (20 points) through the equipment
+        // slots — armor only counts when WORN ("Armor is considered
+        // equipped only when it is in an armor slot")
+        p.armor = [
+            vc_inventory::inventory::ItemStack::new(DIAMOND_HELMET, 1),
+            vc_inventory::inventory::ItemStack::new(DIAMOND_CHESTPLATE, 1),
+            vc_inventory::inventory::ItemStack::new(DIAMOND_LEGGINGS, 1),
+            vc_inventory::inventory::ItemStack::new(DIAMOND_BOOTS, 1),
+        ];
+        p.recalc_armor_points();
+        assert_eq!(p.armor_points, 20);
+        // a 10-damage hit with 20 armor: pct = min(80, max(16, 80-20)) = 60%
+        // → 10 -> 4 applied
+        p.health = 20.0;
+        let applied = p.damage(10.0);
+        assert!((applied - 4.0).abs() < 1e-4, "applied {applied}");
+        // the 80% cap: a huge hit through full diamond saturates
+        p.health = 20.0;
+        let applied2 = p.damage(100.0);
+        assert!((applied2 - 20.0).abs() < 1e-3, "applied {applied2}");
+        // a tiny hit through 20 armor is nearly fully absorbed (the
+        // 4x armor - 2x damage arm dominates: 78% reduction)
+        p.health = 20.0;
+        let applied3 = p.damage(1.0);
+        assert!((applied3 - 0.22).abs() < 1e-3, "applied {applied3}");
+        // a single iron chestplate (6 points): pct = max(4.8, 24-2d)
+        p.armor = [
+            vc_inventory::inventory::ItemStack::EMPTY,
+            vc_inventory::inventory::ItemStack::new(IRON_CHESTPLATE, 1),
+            vc_inventory::inventory::ItemStack::EMPTY,
+            vc_inventory::inventory::ItemStack::EMPTY,
+        ];
+        p.recalc_armor_points();
+        assert_eq!(p.armor_points, 6);
+        p.health = 20.0;
+        let applied4 = p.damage(10.0);
+        // pct = min(80, max(4.8, 24-20)) = 4.8% -> 9.52 applied
+        assert!((applied4 - 9.52).abs() < 1e-3, "applied {applied4}");
+        // the shield check covers the offhand slot
+        assert!(!p.shield_up());
+        p.offhand = vc_inventory::inventory::ItemStack::new(vc_blocks::blocks::SHIELD, 1);
+        assert!(p.shield_up());
     }
 }

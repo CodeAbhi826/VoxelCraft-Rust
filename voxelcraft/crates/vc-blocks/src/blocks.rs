@@ -13,6 +13,17 @@ pub enum SoundFamily {
     Glass,
     Wool,
     Water,
+    /// Sub-round 5 (2026-09-15): the vanilla 1.16.5 material-class
+    /// expansion — gravel (its own vanilla class), metal (iron/gold
+    /// blocks + anvils), plant (bamboo), chains (the 1.16 chain block),
+    /// nether wood (crimson/warped — "nether_wood" is vanilla's own
+    /// class for the Nether Update stems). Copper/deepslate are 1.17+
+    /// and stay out (the prompt's "map 1.16.5 classes only").
+    Gravel,
+    Metal,
+    Plant,
+    Chain,
+    NetherWood,
     None,
 }
 
@@ -2302,6 +2313,10 @@ pub fn v15_state(b: u16) -> Option<u16> {
         WHEAT => Some(V16_STATE_BASE + 37),
         BREAD => Some(V16_STATE_BASE + 38),
         HOE => Some(V16_STATE_BASE + 39),
+        // Sub-round 3: the 16 armor items' identity states (V17)
+        b if (LEATHER_CAP..=DIAMOND_BOOTS).contains(&b) => {
+            Some(V17_STATE_BASE + (b - LEATHER_CAP))
+        }
         _ => None,
     }
 }
@@ -2411,6 +2426,24 @@ pub fn crop_state(block: u16, age: u8) -> u16 {
 #[inline]
 pub fn is_v16_state(s: u16) -> bool {
     (V16_STATE_BASE..V16_STATE_BASE + V16_COUNT).contains(&s)
+}
+
+/// Sub-round 3 (2026-09-15): the V17 state window — the 16 armor-item
+/// identity states (845..=860, never world-stored; the melon-slice /
+/// wheat-item pattern).
+pub const V17_STATE_BASE: u16 = 845;
+pub const V17_COUNT: u16 = 16;
+/// V17 state -> block fold: index = state − V17_STATE_BASE.
+pub const V17_STATE_TO_BLOCK: [u16; V17_COUNT as usize] = [
+    LEATHER_CAP, LEATHER_TUNIC, LEATHER_PANTS, LEATHER_BOOTS,
+    IRON_HELMET, IRON_CHESTPLATE, IRON_LEGGINGS, IRON_BOOTS,
+    GOLDEN_HELMET, GOLDEN_CHESTPLATE, GOLDEN_LEGGINGS, GOLDEN_BOOTS,
+    DIAMOND_HELMET, DIAMOND_CHESTPLATE, DIAMOND_LEGGINGS, DIAMOND_BOOTS,
+];
+
+#[inline]
+pub fn is_v17_state(s: u16) -> bool {
+    (V17_STATE_BASE..V17_STATE_BASE + V17_COUNT).contains(&s)
 }
 
 /// the 1.0-1.16.5 audit's cave-spider spawner state (kind code 7 —
@@ -3106,7 +3139,9 @@ pub fn item_state_block(s: u16) -> Option<u16> {
     }
 }
 
-pub const BLOCK_COUNT: usize = 515; // + the backlog fire (506) + the farming set (507-514: farmland, 4 crops, wheat, bread, hoe)
+pub const BLOCK_COUNT: usize = 531; // + the backlog fire (506) + the farming set (507-514: farmland, 4
+                                      // crops, wheat, bread, hoe) + the 16 armor items (515-530,
+                                      // sub-round 3)
 /// [merge renumber] acacia/dark-oak log axis states moved to 443..=446
 /// (past the E-series states, which end at 354; V2 base is now 400)
 /// acacia/dark-oak log axis states (the V2 log window — same pattern as
@@ -3143,7 +3178,8 @@ pub const DARK_OAK_LOG_Z: u16 = 446;
 /// items + eggs 20..=22 + the POWER-state ladders (317..=399)
 /// [merge renumber] F-series states: V2 400..=442 + log-axis 443..=446,
 /// V3 447..=465, V4 466..=475, V5 476..=479, V6 480..=485 (audit-fix)
-pub const STATE_COUNT: usize = 845; // the V16 window: 805 fire + 806-841 farming states + 842-844 the item identity states
+pub const STATE_COUNT: usize = 861; // the V16 window: 805 fire + 806-841 farming states + 842-844 the item identity
+                                    // states + the V17 armor identity window (845..=860, sub-round 3)
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -3906,6 +3942,10 @@ pub fn state_block(s: u16) -> u16 {
         s if is_v16_state(s) => {
             return V16_STATE_TO_BLOCK[(s - V16_STATE_BASE) as usize];
         }
+        // Sub-round 3: the armor-item identity window
+        s if is_v17_state(s) => {
+            return V17_STATE_TO_BLOCK[(s - V17_STATE_BASE) as usize];
+        }
         s if is_v15_state(s) => {
             return V15_STATE_TO_BLOCK[(s - V15_STATE_BASE) as usize];
         }
@@ -4062,6 +4102,8 @@ pub fn is_model_state(s: u16) -> bool {
         // (the SPAWNER_VINDICATOR/SPAWNER_EVOKER pattern)
         || is_v15_state(s)
         || is_v16_state(s)
+        // Sub-round 3: the armor-item identity states ride their flags
+        || is_v17_state(s)
         || s == SPAWNER_CAVESPIDER
         || s == SPAWNER_SILVERFISH
         || s == SPAWNER_VINDICATOR
@@ -4491,7 +4533,7 @@ pub fn log_axis_state(block: u16, axis: u8) -> u16 {
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
 // [merge] E-series tiles end at 243; the F-series (1.7.2-1.10) tiles
 // continue at 244..=325; the audit-fix round adds 326..=332
-pub const TILE_MAX: u16 = 774; // 763 farming bracket + 764..773 destroy stages + 774 arm
+pub const TILE_MAX: u16 = 790; // + the 16 armor item sprites (775..=790, sub-round 3) // 763 farming bracket + 764..773 destroy stages + 774 arm
 
 // ---- the 2026-09-14 round: destroy-stage crack overlays (764..=773) and
 // the first-person arm tile (774). The ten destroy stages are the vanilla
@@ -4654,6 +4696,16 @@ pub const TILE_WHEAT_ITEM: u16 = 761;
 pub const TILE_BREAD: u16 = 762;
 /// the hoe item sprite (763 — wooden-handled tilling blade).
 pub const TILE_HOE: u16 = 763;
+/// ---- Sub-round 3 (2026-09-15): the 16 armor item sprites (775..=790)
+/// — clean-room helmet/chestplate/leggings/boots silhouettes in the four
+/// material palettes (leather/iron/gold/diamond), drawn by
+/// vc-render/textures/armor_art.rs. Reference facts: minecraft.wiki/w/
+/// Armor (live 2026-09-15): the four wearable pieces + the per-material
+/// defense table. No Mojang asset was read, copied, or traced.
+pub const TILE_ARMOR_BASE: u16 = 775;
+// piece order: helmet(0) chestplate(1) leggings(2) boots(3)
+// material order: leather(0) iron(1) gold(2) diamond(3) — tile =
+// TILE_ARMOR_BASE + material*4 + piece
 /// 1.11 egg tiles (egg-shaped, egg order 23..=28 = llama, vindicator,
 /// evoker, vex, husk, stray) — the E1/E2/E3 egg-art convention
 /// (e1_art::egg_art + palettes), replacing the interrupted round's
@@ -5054,6 +5106,72 @@ pub const BREAD: u16 = 513;
 /// system — disclosed).
 pub const HOE: u16 = 514;
 
+// ---- Sub-round 3 (2026-09-15): the wearable ARMOR items (515..=530).
+// 4 materials x 4 pieces, vanilla order feet->head irrelevant here; ids
+// grouped by material. Armor points per piece (the vanilla 1.16.5
+// defense table, minecraft.wiki/w/Armor live 2026-09-15: "The total
+// number of armor points that the player has is the sum of the armor
+// points of the individual pieces of armor worn"): leather 1/3/2/1,
+// golden 2/5/3/1, iron 2/6/5/2, diamond 3/8/6/3. The turtle shell
+// (id 404, already in the registry) is a helmet worth 2.
+pub const LEATHER_CAP: u16 = 515;
+pub const LEATHER_TUNIC: u16 = 516;
+pub const LEATHER_PANTS: u16 = 517;
+pub const LEATHER_BOOTS: u16 = 518;
+pub const IRON_HELMET: u16 = 519;
+pub const IRON_CHESTPLATE: u16 = 520;
+pub const IRON_LEGGINGS: u16 = 521;
+pub const IRON_BOOTS: u16 = 522;
+pub const GOLDEN_HELMET: u16 = 523;
+pub const GOLDEN_CHESTPLATE: u16 = 524;
+pub const GOLDEN_LEGGINGS: u16 = 525;
+pub const GOLDEN_BOOTS: u16 = 526;
+pub const DIAMOND_HELMET: u16 = 527;
+pub const DIAMOND_CHESTPLATE: u16 = 528;
+pub const DIAMOND_LEGGINGS: u16 = 529;
+pub const DIAMOND_BOOTS: u16 = 530;
+
+/// armor piece kind (for slot routing + art): 0 helmet, 1 chestplate,
+/// 2 leggings, 3 boots. None for non-armor blocks.
+#[inline]
+pub fn armor_piece(b: u16) -> Option<u8> {
+    match b {
+        LEATHER_CAP | IRON_HELMET | GOLDEN_HELMET | DIAMOND_HELMET
+        | TURTLE_SHELL => Some(0),
+        LEATHER_TUNIC | IRON_CHESTPLATE | GOLDEN_CHESTPLATE
+        | DIAMOND_CHESTPLATE => Some(1),
+        LEATHER_PANTS | IRON_LEGGINGS | GOLDEN_LEGGINGS
+        | DIAMOND_LEGGINGS => Some(2),
+        LEATHER_BOOTS | IRON_BOOTS | GOLDEN_BOOTS | DIAMOND_BOOTS => Some(3),
+        _ => None,
+    }
+}
+
+/// armor points contributed by one worn piece (the vanilla table; the
+/// turtle shell helmet = 2, VERIFIED w/Turtle_Shell "gives 2 armor
+/// points").
+#[inline]
+pub fn armor_points(b: u16) -> u8 {
+    match b {
+        LEATHER_CAP => 1,
+        LEATHER_TUNIC => 3,
+        LEATHER_PANTS => 2,
+        LEATHER_BOOTS => 1,
+        IRON_HELMET | GOLDEN_HELMET | TURTLE_SHELL => 2,
+        IRON_CHESTPLATE => 6,
+        GOLDEN_CHESTPLATE => 5,
+        IRON_LEGGINGS => 5,
+        GOLDEN_LEGGINGS => 3,
+        IRON_BOOTS => 2,
+        GOLDEN_BOOTS => 1,
+        DIAMOND_HELMET => 3,
+        DIAMOND_CHESTPLATE => 8,
+        DIAMOND_LEGGINGS => 6,
+        DIAMOND_BOOTS => 3,
+        _ => 0,
+    }
+}
+
 /// inventory-only ITEM blocks (potions/bottles/books): never placeable in
 /// the world — right-click drinks (potions) / fills (glass bottle at water).
 #[inline]
@@ -5091,6 +5209,11 @@ pub fn is_item_block(b: u16) -> bool {
             // items + the 4 taming seeds + the cookie — inventory-only
             // (concrete/powder/glazed are real placeable BLOCKS) ----
             | COOKIE
+            // ---- Sub-round 3: the 16 wearable armor item-blocks ----
+            | LEATHER_CAP | LEATHER_TUNIC | LEATHER_PANTS | LEATHER_BOOTS
+            | IRON_HELMET | IRON_CHESTPLATE | IRON_LEGGINGS | IRON_BOOTS
+            | GOLDEN_HELMET | GOLDEN_CHESTPLATE | GOLDEN_LEGGINGS | GOLDEN_BOOTS
+            | DIAMOND_HELMET | DIAMOND_CHESTPLATE | DIAMOND_LEGGINGS | DIAMOND_BOOTS
             // ---- 1.13 item-blocks (Update Aquatic): the conduit/turtle
             // craft items, the trident, the membrane, the food + the 4
             // new potions — inventory-only (coral/kelp/egg blocks are
@@ -5353,7 +5476,7 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Water", [TILE_WATER, TILE_WATER, TILE_WATER], false, false, false, true, 0, SoundFamily::Water),
     d("Glass", [TILE_GLASS, TILE_GLASS, TILE_GLASS], true, false, false, false, 0, SoundFamily::Glass),
     d("Bedrock", [TILE_BEDROCK, TILE_BEDROCK, TILE_BEDROCK], true, true, false, false, 0, SoundFamily::Stone),
-    d("Gravel", [TILE_GRAVEL, TILE_GRAVEL, TILE_GRAVEL], true, true, false, false, 0, SoundFamily::Sand),
+    d("Gravel", [TILE_GRAVEL, TILE_GRAVEL, TILE_GRAVEL], true, true, false, false, 0, SoundFamily::Gravel),
     d("Snow Block", [TILE_SNOW, TILE_SNOW, TILE_SNOW], true, true, false, false, 0, SoundFamily::Sand),
     d("Snowy Grass", [TILE_SNOW, TILE_DIRT, TILE_SNOW_SIDE], true, true, false, false, 0, SoundFamily::Grass),
     d("Grass", [TILE_TALL_GRASS, TILE_TALL_GRASS, TILE_TALL_GRASS], false, false, true, false, 0, SoundFamily::Grass),
@@ -5377,8 +5500,8 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Lapis Ore", [TILE_LAPIS_ORE, TILE_LAPIS_ORE, TILE_LAPIS_ORE], true, true, false, false, 0, SoundFamily::Stone),
     d("Emerald Ore", [TILE_EMERALD_ORE, TILE_EMERALD_ORE, TILE_EMERALD_ORE], true, true, false, false, 0, SoundFamily::Stone),
     // mineral blocks
-    d("Block of Iron", [TILE_IRON_BLOCK, TILE_IRON_BLOCK, TILE_IRON_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
-    d("Block of Gold", [TILE_GOLD_BLOCK, TILE_GOLD_BLOCK, TILE_GOLD_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
+    d("Block of Iron", [TILE_IRON_BLOCK, TILE_IRON_BLOCK, TILE_IRON_BLOCK], true, true, false, false, 0, SoundFamily::Metal),
+    d("Block of Gold", [TILE_GOLD_BLOCK, TILE_GOLD_BLOCK, TILE_GOLD_BLOCK], true, true, false, false, 0, SoundFamily::Metal),
     d("Block of Diamond", [TILE_DIAMOND_BLOCK, TILE_DIAMOND_BLOCK, TILE_DIAMOND_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
     // misc
     d("Glowstone", [TILE_GLOWSTONE, TILE_GLOWSTONE, TILE_GLOWSTONE], true, true, false, false, 15, SoundFamily::Glass),
@@ -5525,7 +5648,7 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Wither Spawn Egg", [TILE_EGG_BASE + 19, TILE_EGG_BASE + 19, TILE_EGG_BASE + 19], false, false, true, false, 0, SoundFamily::Grass),
     // ---- Phase E2 world blocks (evolution 1.3–1.4 bracket) ----
     // anvil family: solid, opaque; damage tiles come from state_tiles
-    d("Anvil", [TILE_ANVIL, TILE_ANVIL, TILE_ANVIL], true, true, false, false, 0, SoundFamily::Stone),
+    d("Anvil", [TILE_ANVIL, TILE_ANVIL, TILE_ANVIL], true, true, false, false, 0, SoundFamily::Metal),
     d("Chipped Anvil", [TILE_ANVIL_CHIPPED, TILE_ANVIL_CHIPPED, TILE_ANVIL_CHIPPED], true, true, false, false, 0, SoundFamily::Stone),
     d("Damaged Anvil", [TILE_ANVIL_DAMAGED, TILE_ANVIL_DAMAGED, TILE_ANVIL_DAMAGED], true, true, false, false, 0, SoundFamily::Stone),
     // beacon: solid, NOT opaque (vanilla glass-like core; the beam rides
@@ -5887,7 +6010,7 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     // vanilla's 2-px stalk collision can't be expressed yet — disclosed).
     // Berry bush: cross, non-solid (walk-through — the slow/damage hook
     // lives in the movement paths) ----
-    d("Bamboo", [TILE_BAMBOO, TILE_BAMBOO, TILE_BAMBOO], false, false, true, false, 0, SoundFamily::Wood),
+    d("Bamboo", [TILE_BAMBOO, TILE_BAMBOO, TILE_BAMBOO], false, false, true, false, 0, SoundFamily::Plant),
     d("Bamboo Shoot", [TILE_BAMBOO_SHOOT, TILE_BAMBOO_SHOOT, TILE_BAMBOO_SHOOT], false, false, true, false, 0, SoundFamily::Grass),
     d("Sweet Berry Bush", [TILE_BERRY_BUSH_BASE, TILE_BERRY_BUSH_BASE, TILE_BERRY_BUSH_BASE], false, false, true, false, 0, SoundFamily::Grass),
     d("Campfire", [TILE_CAMPFIRE, TILE_CAMPFIRE, TILE_CAMPFIRE], true, false, false, false, 0, SoundFamily::Wood),
@@ -5941,7 +6064,7 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Nether Gold Ore", [TILE_NETHER_GOLD_ORE, TILE_NETHER_GOLD_ORE, TILE_NETHER_GOLD_ORE], true, true, false, false, 0, SoundFamily::Stone),
     d("Ancient Debris", [TILE_ANCIENT_DEBRIS_TOP, TILE_ANCIENT_DEBRIS_TOP, TILE_ANCIENT_DEBRIS_SIDE], true, true, false, false, 0, SoundFamily::Stone),
     d("Block of Netherite", [TILE_NETHERITE_BLOCK, TILE_NETHERITE_BLOCK, TILE_NETHERITE_BLOCK], true, true, false, false, 0, SoundFamily::Stone),
-    d("Chain", [TILE_CHAIN, TILE_CHAIN, TILE_CHAIN], false, false, true, false, 0, SoundFamily::Stone),
+    d("Chain", [TILE_CHAIN, TILE_CHAIN, TILE_CHAIN], false, false, true, false, 0, SoundFamily::Chain),
     d("Soul Fire", [TILE_SOUL_FIRE, TILE_SOUL_FIRE, TILE_SOUL_FIRE], false, false, true, false, 10, SoundFamily::Grass),
     // 1.16 items — the item-row pattern (non-placeable, cross-sprited)
     d("Netherite Scrap", [TILE_NETHERITE_SCRAP, TILE_NETHERITE_SCRAP, TILE_NETHERITE_SCRAP], false, false, true, false, 0, SoundFamily::Stone),
@@ -5953,16 +6076,16 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     // sprouts/vines are non-solid cross plants; shroomlight is the
     // light-15 lamp; the polished stones are stone cubes; the soul
     // torch + soul lantern are the light-10 soul-lit pair ----
-    d("Crimson Stem", [TILE_CRIMSON_STEM_TOP, TILE_CRIMSON_STEM_TOP, TILE_CRIMSON_STEM_SIDE], true, true, false, false, 0, SoundFamily::Wood),
-    d("Crimson Hyphae", [TILE_CRIMSON_HYPHAE, TILE_CRIMSON_HYPHAE, TILE_CRIMSON_HYPHAE], true, true, false, false, 0, SoundFamily::Wood),
-    d("Crimson Planks", [TILE_CRIMSON_PLANKS, TILE_CRIMSON_PLANKS, TILE_CRIMSON_PLANKS], true, true, false, false, 0, SoundFamily::Wood),
+    d("Crimson Stem", [TILE_CRIMSON_STEM_TOP, TILE_CRIMSON_STEM_TOP, TILE_CRIMSON_STEM_SIDE], true, true, false, false, 0, SoundFamily::NetherWood),
+    d("Crimson Hyphae", [TILE_CRIMSON_HYPHAE, TILE_CRIMSON_HYPHAE, TILE_CRIMSON_HYPHAE], true, true, false, false, 0, SoundFamily::NetherWood),
+    d("Crimson Planks", [TILE_CRIMSON_PLANKS, TILE_CRIMSON_PLANKS, TILE_CRIMSON_PLANKS], true, true, false, false, 0, SoundFamily::NetherWood),
     d("Crimson Nylium", [TILE_CRIMSON_NYLIUM_TOP, TILE_NETHERRACK, TILE_CRIMSON_NYLIUM_SIDE], true, true, false, false, 0, SoundFamily::Dirt),
     d("Crimson Fungus", [TILE_CRIMSON_FUNGUS, TILE_CRIMSON_FUNGUS, TILE_CRIMSON_FUNGUS], false, false, true, false, 0, SoundFamily::Grass),
     d("Crimson Roots", [TILE_CRIMSON_ROOTS, TILE_CRIMSON_ROOTS, TILE_CRIMSON_ROOTS], false, false, true, false, 0, SoundFamily::Grass),
     d("Weeping Vines", [TILE_WEEPING_VINES, TILE_WEEPING_VINES, TILE_WEEPING_VINES], false, false, true, false, 0, SoundFamily::Grass),
-    d("Warped Stem", [TILE_WARPED_STEM_TOP, TILE_WARPED_STEM_TOP, TILE_WARPED_STEM_SIDE], true, true, false, false, 0, SoundFamily::Wood),
-    d("Warped Hyphae", [TILE_WARPED_HYPHAE, TILE_WARPED_HYPHAE, TILE_WARPED_HYPHAE], true, true, false, false, 0, SoundFamily::Wood),
-    d("Warped Planks", [TILE_WARPED_PLANKS, TILE_WARPED_PLANKS, TILE_WARPED_PLANKS], true, true, false, false, 0, SoundFamily::Wood),
+    d("Warped Stem", [TILE_WARPED_STEM_TOP, TILE_WARPED_STEM_TOP, TILE_WARPED_STEM_SIDE], true, true, false, false, 0, SoundFamily::NetherWood),
+    d("Warped Hyphae", [TILE_WARPED_HYPHAE, TILE_WARPED_HYPHAE, TILE_WARPED_HYPHAE], true, true, false, false, 0, SoundFamily::NetherWood),
+    d("Warped Planks", [TILE_WARPED_PLANKS, TILE_WARPED_PLANKS, TILE_WARPED_PLANKS], true, true, false, false, 0, SoundFamily::NetherWood),
     d("Warped Nylium", [TILE_WARPED_NYLIUM_TOP, TILE_NETHERRACK, TILE_WARPED_NYLIUM_SIDE], true, true, false, false, 0, SoundFamily::Dirt),
     d("Warped Fungus", [TILE_WARPED_FUNGUS, TILE_WARPED_FUNGUS, TILE_WARPED_FUNGUS], false, false, true, false, 0, SoundFamily::Grass),
     d("Warped Roots", [TILE_WARPED_ROOTS, TILE_WARPED_ROOTS, TILE_WARPED_ROOTS], false, false, true, false, 0, SoundFamily::Grass),
@@ -6037,6 +6160,24 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Wheat", [TILE_WHEAT_ITEM, TILE_WHEAT_ITEM, TILE_WHEAT_ITEM], false, false, true, false, 0, SoundFamily::Grass),
     d("Bread", [TILE_BREAD, TILE_BREAD, TILE_BREAD], false, false, true, false, 0, SoundFamily::Grass),
     d("Hoe", [TILE_HOE, TILE_HOE, TILE_HOE], false, false, true, false, 0, SoundFamily::Wood),
+    // ---- Sub-round 3: the 16 armor items (cross-rendered item sprites;
+    // wool-ish worn sound for leather, metal for the rest) ----
+    d("Leather Cap", [TILE_ARMOR_BASE, TILE_ARMOR_BASE, TILE_ARMOR_BASE], false, false, true, false, 0, SoundFamily::Wool),
+    d("Leather Tunic", [TILE_ARMOR_BASE + 1, TILE_ARMOR_BASE + 1, TILE_ARMOR_BASE + 1], false, false, true, false, 0, SoundFamily::Wool),
+    d("Leather Pants", [TILE_ARMOR_BASE + 2, TILE_ARMOR_BASE + 2, TILE_ARMOR_BASE + 2], false, false, true, false, 0, SoundFamily::Wool),
+    d("Leather Boots", [TILE_ARMOR_BASE + 3, TILE_ARMOR_BASE + 3, TILE_ARMOR_BASE + 3], false, false, true, false, 0, SoundFamily::Wool),
+    d("Iron Helmet", [TILE_ARMOR_BASE + 4, TILE_ARMOR_BASE + 4, TILE_ARMOR_BASE + 4], false, false, true, false, 0, SoundFamily::Stone),
+    d("Iron Chestplate", [TILE_ARMOR_BASE + 5, TILE_ARMOR_BASE + 5, TILE_ARMOR_BASE + 5], false, false, true, false, 0, SoundFamily::Stone),
+    d("Iron Leggings", [TILE_ARMOR_BASE + 6, TILE_ARMOR_BASE + 6, TILE_ARMOR_BASE + 6], false, false, true, false, 0, SoundFamily::Stone),
+    d("Iron Boots", [TILE_ARMOR_BASE + 7, TILE_ARMOR_BASE + 7, TILE_ARMOR_BASE + 7], false, false, true, false, 0, SoundFamily::Stone),
+    d("Golden Helmet", [TILE_ARMOR_BASE + 8, TILE_ARMOR_BASE + 8, TILE_ARMOR_BASE + 8], false, false, true, false, 0, SoundFamily::Stone),
+    d("Golden Chestplate", [TILE_ARMOR_BASE + 9, TILE_ARMOR_BASE + 9, TILE_ARMOR_BASE + 9], false, false, true, false, 0, SoundFamily::Stone),
+    d("Golden Leggings", [TILE_ARMOR_BASE + 10, TILE_ARMOR_BASE + 10, TILE_ARMOR_BASE + 10], false, false, true, false, 0, SoundFamily::Stone),
+    d("Golden Boots", [TILE_ARMOR_BASE + 11, TILE_ARMOR_BASE + 11, TILE_ARMOR_BASE + 11], false, false, true, false, 0, SoundFamily::Stone),
+    d("Diamond Helmet", [TILE_ARMOR_BASE + 12, TILE_ARMOR_BASE + 12, TILE_ARMOR_BASE + 12], false, false, true, false, 0, SoundFamily::Stone),
+    d("Diamond Chestplate", [TILE_ARMOR_BASE + 13, TILE_ARMOR_BASE + 13, TILE_ARMOR_BASE + 13], false, false, true, false, 0, SoundFamily::Stone),
+    d("Diamond Leggings", [TILE_ARMOR_BASE + 14, TILE_ARMOR_BASE + 14, TILE_ARMOR_BASE + 14], false, false, true, false, 0, SoundFamily::Stone),
+    d("Diamond Boots", [TILE_ARMOR_BASE + 15, TILE_ARMOR_BASE + 15, TILE_ARMOR_BASE + 15], false, false, true, false, 0, SoundFamily::Stone),
 ];
 
 #[inline]
@@ -6287,6 +6428,417 @@ pub const PICKER_BLOCKS: [u16; 467] = [
     FARMLAND, WHEAT_CROP, CARROTS, POTATOES, BEETROOTS,
     WHEAT, BREAD, HOE,
 ];
+
+
+// ---------------------------------------------------------------------------
+// Sub-round 2 (2026-09-15) — the vanilla 1.16.5 creative inventory tabs.
+//
+// clean-room: tab structure = the nine content tabs of the classic
+// (pre-1.19.3) Java creative screen, in the vanilla order, mapped onto
+// this engine's 515-block registry. Reference facts: minecraft.wiki/w/
+// Creative_inventory (live 2026-09-15): the classic tab set is Building
+// Blocks, Decoration Blocks, Redstone, Transportation, Miscellaneous,
+// Foodstuffs, Tools, Combat, Brewing (+ the Search Items and Survival
+// Inventory tabs, handled at the screen layer); "The Creative inventory
+// before Java Edition 1.12" gallery caption + the 1.7.2/1.9/1.12 history
+// rows confirm the classic layout. Membership is engine-adapted (the
+// registry is not item-for-item vanilla) and canonical-anchored: grass
+// block -> Building, poppy -> Decoration, redstone components ->
+// Redstone, saddle -> Transportation, spawn eggs -> Miscellaneous
+// (their 1.16.5 home), bread -> Foodstuffs, hoe -> Tools, shield ->
+// Combat, potions + brewing stand -> Brewing. No Mojang asset was read,
+// copied, or traced.
+// ---------------------------------------------------------------------------
+
+/// The nine CONTENT tabs of the classic creative screen. Search Items
+/// and Survival Inventory are structural tabs (no block membership) and
+/// live at the screen layer.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum CreativeTab {
+    BuildingBlocks,
+    DecorationBlocks,
+    Redstone,
+    Transportation,
+    Miscellaneous,
+    Foodstuffs,
+    Tools,
+    Combat,
+    Brewing,
+}
+
+pub const CREATIVE_TAB_COUNT: usize = 9;
+
+/// vanilla tab display order (the classic pre-1.19.3 order).
+pub const CREATIVE_TABS: [CreativeTab; CREATIVE_TAB_COUNT] = [
+    CreativeTab::BuildingBlocks,
+    CreativeTab::DecorationBlocks,
+    CreativeTab::Redstone,
+    CreativeTab::Transportation,
+    CreativeTab::Miscellaneous,
+    CreativeTab::Foodstuffs,
+    CreativeTab::Tools,
+    CreativeTab::Combat,
+    CreativeTab::Brewing,
+];
+
+impl CreativeTab {
+    /// The in-game label (vanilla 1.16.5 titles).
+    pub fn label(self) -> &'static str {
+        match self {
+            CreativeTab::BuildingBlocks => "Building Blocks",
+            CreativeTab::DecorationBlocks => "Decoration Blocks",
+            CreativeTab::Redstone => "Redstone",
+            CreativeTab::Transportation => "Transportation",
+            CreativeTab::Miscellaneous => "Miscellaneous",
+            CreativeTab::Foodstuffs => "Foodstuffs",
+            CreativeTab::Tools => "Tools",
+            CreativeTab::Combat => "Combat",
+            CreativeTab::Brewing => "Brewing",
+        }
+    }
+
+    /// The tab's canonical icon item (the vanilla tab icons): grass
+    /// block, peony, redstone dust, minecart, lava bucket, apple, iron
+    /// pickaxe, iron sword, brewing stand. Engine substitutes where the
+    /// registry lacks the vanilla icon item (documented per arm).
+    pub fn icon_block(self) -> u16 {
+        match self {
+            // vanilla icon: the grass block
+            CreativeTab::BuildingBlocks => GRASS,
+            // vanilla icon: the peony — the engine HAS the peony block
+            CreativeTab::DecorationBlocks => PEONY,
+            // vanilla icon: redstone dust
+            CreativeTab::Redstone => REDSTONE_WIRE,
+            // vanilla icon: a minecart — engine substitute: the saddle
+            // (the registry's only transportation item; no rails exist)
+            CreativeTab::Transportation => SADDLE,
+            // vanilla icon: a lava bucket — engine substitute: the lava
+            // block itself (no bucket item in the registry)
+            CreativeTab::Miscellaneous => LAVA,
+            // vanilla icon: an apple
+            CreativeTab::Foodstuffs => APPLE,
+            // vanilla icon: an iron pickaxe — engine substitute: the hoe
+            // (the registry's only tool item)
+            CreativeTab::Tools => HOE,
+            // vanilla icon: an iron sword — engine substitute: the shield
+            // (the registry's combat-est item; armor lands in sub-round 3)
+            CreativeTab::Combat => SHIELD,
+            // vanilla icon: the brewing stand
+            CreativeTab::Brewing => BREWING_STAND,
+        }
+    }
+}
+
+/// One block's creative-tab membership. Covers every PICKER_BLOCKS entry
+/// (pinned by test) + the registry's redstone components (which never
+/// joined PICKER_BLOCKS — they ride the Redstone tab through
+/// `creative_tab_items`); anything else defaults to Miscellaneous, the
+/// vanilla "everything without a home" tab (spawn eggs live there too).
+/// The numeric ranges below are the BASE+N window ids (see the trailing
+/// comments); renumbering the registry trips the coverage test below.
+#[inline]
+pub fn creative_tab(b: u16) -> CreativeTab {
+    match b {
+        // ---- BuildingBlocks (155 entries) ----
+        GRASS | DIRT | STONE | COBBLE | SAND => CreativeTab::BuildingBlocks,
+        OAK_LOG | PLANKS | GLASS | GRAVEL | SNOW => CreativeTab::BuildingBlocks,
+        GRANITE | DIORITE | ANDESITE | STONE_BRICKS | BRICKS => CreativeTab::BuildingBlocks,
+        MOSSY_COBBLE | SMOOTH_STONE | OBSIDIAN | COAL_ORE | IRON_ORE => CreativeTab::BuildingBlocks,
+        GOLD_ORE | DIAMOND_ORE | REDSTONE_ORE | LAPIS_ORE | EMERALD_ORE => CreativeTab::BuildingBlocks,
+        IRON_BLOCK | GOLD_BLOCK | DIAMOND_BLOCK | GLOWSTONE | BOOKSHELF => CreativeTab::BuildingBlocks,
+        CLAY | TERRACOTTA | PUMPKIN | MELON | ICE => CreativeTab::BuildingBlocks,
+        BIRCH_LOG | SPRUCE_LOG | OAK_SLAB | COBBLE_STAIRS | OAK_FENCE => CreativeTab::BuildingBlocks,
+        NETHERRACK | NETHER_QUARTZ_ORE | SOUL_SAND | MYCELIUM | END_STONE => CreativeTab::BuildingBlocks,
+        NETHER_BRICKS | CHISELED_STONE_BRICKS | CHISELED_SANDSTONE | CUT_SANDSTONE | SMOOTH_SANDSTONE => CreativeTab::BuildingBlocks,
+        MUSHROOM_RED_BLOCK | MUSHROOM_BROWN_BLOCK | MUSHROOM_STEM | COBBLE_WALL | COAL_BLOCK => CreativeTab::BuildingBlocks,
+        QUARTZ_BLOCK | CHISELED_QUARTZ | QUARTZ_PILLAR | STAINED_GLASS_WHITE | STAINED_GLASS_ORANGE => CreativeTab::BuildingBlocks,
+        STAINED_GLASS_MAGENTA | STAINED_GLASS_LIGHT_BLUE | STAINED_GLASS_YELLOW | STAINED_GLASS_LIME | STAINED_GLASS_PINK => CreativeTab::BuildingBlocks,
+        STAINED_GLASS_GRAY | STAINED_GLASS_LIGHT_GRAY | STAINED_GLASS_CYAN | STAINED_GLASS_PURPLE | STAINED_GLASS_BLUE => CreativeTab::BuildingBlocks,
+        STAINED_GLASS_BROWN | STAINED_GLASS_GREEN | STAINED_GLASS_RED | STAINED_GLASS_BLACK | RED_SAND => CreativeTab::BuildingBlocks,
+        PACKED_ICE | PODZOL | ACACIA_LOG | DARK_OAK_LOG | SLIME_BLOCK => CreativeTab::BuildingBlocks,
+        COARSE_DIRT | POLISHED_GRANITE | POLISHED_DIORITE | POLISHED_ANDESITE | RED_SANDSTONE => CreativeTab::BuildingBlocks,
+        SMOOTH_RED_SANDSTONE | PRISMARINE | PRISMARINE_BRICKS | SEA_LANTERN | IRON_TRAPDOOR => CreativeTab::BuildingBlocks,
+        GRASS_PATH | PURPUR_BLOCK | PURPUR_PILLAR | END_STONE_BRICKS | MAGMA_BLOCK => CreativeTab::BuildingBlocks,
+        NETHER_WART_BLOCK | RED_NETHER_BRICKS | BONE_BLOCK | JUNGLE_LOG | JUNGLE_PLANKS => CreativeTab::BuildingBlocks,
+        CONCRETE_BASE | CONCRETE_POWDER_BASE | HONEY_BLOCK | HONEYCOMB_BLOCK | SOUL_SOIL => CreativeTab::BuildingBlocks,
+        BASALT | BLACKSTONE | GILDED_BLACKSTONE | CRYING_OBSIDIAN | NETHER_GOLD_ORE => CreativeTab::BuildingBlocks,
+        NETHERITE_BLOCK | CRIMSON_STEM | CRIMSON_HYPHAE | CRIMSON_PLANKS | CRIMSON_NYLIUM => CreativeTab::BuildingBlocks,
+        WARPED_STEM | WARPED_HYPHAE | WARPED_PLANKS | WARPED_NYLIUM | WARPED_WART_BLOCK => CreativeTab::BuildingBlocks,
+        SHROOMLIGHT | POLISHED_BASALT | POLISHED_BLACKSTONE | POLISHED_BLACKSTONE_BRICKS | FARMLAND => CreativeTab::BuildingBlocks,
+        (292..=306) /* CONCRETE_BASE+1..+15 */ | (308..=322) /* CONCRETE_POWDER_BASE+1..+15 */ => CreativeTab::BuildingBlocks,
+        // ---- DecorationBlocks (52 entries) ----
+        LEAVES | TALL_GRASS | FLOWER_RED | FLOWER_YELLOW | CACTUS => CreativeTab::DecorationBlocks,
+        WOOL_WHITE | WOOL_RED | WOOL_BLUE | WOOL_YELLOW | WOOL_BLACK => CreativeTab::DecorationBlocks,
+        BIRCH_LEAVES | SPRUCE_LEAVES | MUSHROOM_RED | MUSHROOM_BROWN | DRAGON_EGG => CreativeTab::DecorationBlocks,
+        FLOWER_POT | ITEM_FRAME | ACACIA_LEAVES | DARK_OAK_LEAVES | ALLIUM => CreativeTab::DecorationBlocks,
+        AZURE_BLUET | BLUE_ORCHID | OXEYE_DAISY | ORANGE_TULIP | RED_TULIP => CreativeTab::DecorationBlocks,
+        WHITE_TULIP | PINK_TULIP | SUNFLOWER | LILAC | PEONY => CreativeTab::DecorationBlocks,
+        ROSE_BUSH | END_ROD | CHORUS_PLANT | CHORUS_FLOWER | JUNGLE_LEAVES => CreativeTab::DecorationBlocks,
+        VINE | FERN | BAMBOO | BAMBOO_SHOOT | SWEET_BERRY_BUSH => CreativeTab::DecorationBlocks,
+        LANTERN | CORNFLOWER | LILY_OF_THE_VALLEY | CRIMSON_FUNGUS | CRIMSON_ROOTS => CreativeTab::DecorationBlocks,
+        WEEPING_VINES | WARPED_FUNGUS | WARPED_ROOTS | TWISTING_VINES | NETHER_SPROUTS => CreativeTab::DecorationBlocks,
+        SOUL_TORCH | SOUL_LANTERN => CreativeTab::DecorationBlocks,
+        // ---- Redstone (7 picker entries + the 10 extras below) ----
+        REDSTONE_LAMP | TRIPWIRE_HOOK | DAYLIGHT_SENSOR | LIGHT_WEIGHTED_PLATE | HEAVY_WEIGHTED_PLATE => CreativeTab::Redstone,
+        REDSTONE_BLOCK | TARGET => CreativeTab::Redstone,
+        // the registry redstone components (CREATIVE_REDSTONE_EXTRA) —
+        // never in PICKER_BLOCKS, but full tab members
+        REDSTONE_WIRE | REDSTONE_TORCH | LEVER | REPEATER | COMPARATOR => CreativeTab::Redstone,
+        PISTON | DISPENSER | DROPPER | OBSERVER | HOPPER => CreativeTab::Redstone,
+        // Sub-round 3: the 16 armor items ride the Combat tab (their
+        // vanilla home) even though they postdate PICKER_BLOCKS
+        LEATHER_CAP | LEATHER_TUNIC | LEATHER_PANTS | LEATHER_BOOTS => CreativeTab::Combat,
+        IRON_HELMET | IRON_CHESTPLATE | IRON_LEGGINGS | IRON_BOOTS => CreativeTab::Combat,
+        GOLDEN_HELMET | GOLDEN_CHESTPLATE | GOLDEN_LEGGINGS | GOLDEN_BOOTS => CreativeTab::Combat,
+        DIAMOND_HELMET | DIAMOND_CHESTPLATE | DIAMOND_LEGGINGS | DIAMOND_BOOTS => CreativeTab::Combat,
+        TURTLE_SHELL => CreativeTab::Combat,
+        // ---- Transportation (1 entries) ----
+        SADDLE => CreativeTab::Transportation,
+        // ---- Miscellaneous (184 entries) ----
+        CRAFTING_TABLE | FURNACE | ENCHANT_TABLE | ENCHANTED_BOOK | END_CRYSTAL => CreativeTab::Miscellaneous,
+        EYE_OF_ENDER | NETHER_BRICK | SPAWN_EGG_BASE | ANVIL | CHIPPED_ANVIL => CreativeTab::Miscellaneous,
+        DAMAGED_ANVIL | BEACON | ENDER_CHEST | WITHER_SKELETON_SKULL | COMMAND_BLOCK => CreativeTab::Miscellaneous,
+        EMERALD | NETHER_STAR | LAVA | COAL | STAINED_TERRACOTTA_BASE => CreativeTab::Miscellaneous,
+        CARPET_WHITE | CARPET_RED | CARPET_YELLOW | CARPET_BLUE | CARPET_BLACK => CreativeTab::Miscellaneous,
+        HAY_BALE | TRAPPED_CHEST | NETHER_QUARTZ | LEAD | E3_SPAWN_EGG_BASE => CreativeTab::Miscellaneous,
+        CLOWNFISH | PUFFERFISH | DARK_PRISMARINE | BARRIER | RABBIT_HIDE => CreativeTab::Miscellaneous,
+        PRISMARINE_SHARD | PRISMARINE_CRYSTALS | SHULKER_BOX | SHULKER_SHELL | TOTEM_OF_UNDYING => CreativeTab::Miscellaneous,
+        SPAWN_EGG_LLAMA | SPAWN_EGG_VINDICATOR | SPAWN_EGG_EVOKER | SPAWN_EGG_VEX | SPAWN_EGG_HUSK => CreativeTab::Miscellaneous,
+        SPAWN_EGG_STRAY | GLAZED_TERRACOTTA_BASE | SPAWN_EGG_PARROT | DYE_BASE | MELON_SEEDS => CreativeTab::Miscellaneous,
+        PUMPKIN_SEEDS | CORAL_BLOCK_BASE | DEAD_CORAL_BLOCK_BASE | CORAL_PLANT_BASE | DEAD_CORAL_PLANT_BASE => CreativeTab::Miscellaneous,
+        CORAL_FAN_BASE | DEAD_CORAL_FAN_BASE | SEA_PICKLE | BLUE_ICE | KELP => CreativeTab::Miscellaneous,
+        SEAGRASS | CONDUIT | TURTLE_EGG | HEART_OF_THE_SEA | NAUTILUS_SHELL => CreativeTab::Miscellaneous,
+        SCUTE | SPAWN_EGG_DROWNED | SPAWN_EGG_PHANTOM | SPAWN_EGG_DOLPHIN | SPAWN_EGG_COD => CreativeTab::Miscellaneous,
+        SPAWN_EGG_SALMON | SPAWN_EGG_PUFFERFISH | SPAWN_EGG_TROPICAL_FISH | SPAWN_EGG_TURTLE | CAMPFIRE => CreativeTab::Miscellaneous,
+        BARREL | SPAWN_EGG_FOX | STICK | CHARCOAL | BLAST_FURNACE => CreativeTab::Miscellaneous,
+        SMOKER | BEE_NEST | BEEHIVE | RESPAWN_ANCHOR | ANCIENT_DEBRIS => CreativeTab::Miscellaneous,
+        CHAIN | SOUL_FIRE | SPAWN_EGG_STRIDER | SPAWN_EGG_PIGLIN | SPAWN_EGG_HOGLIN => CreativeTab::Miscellaneous,
+        POPPED_CHORUS_FRUIT | SPAWN_EGG_GHAST | SPAWN_EGG_CAVE_SPIDER | SPAWN_EGG_SILVERFISH | (125..=143) /* SPAWN_EGG_BASE+1..+19 */ => CreativeTab::Miscellaneous,
+        (168..=182) /* STAINED_TERRACOTTA_BASE+1..+15 */ | (198..=199) /* E3_SPAWN_EGG_BASE+1..+2 */ | (324..=338) /* GLAZED_TERRACOTTA_BASE+1..+15 */ | (341..=355) /* DYE_BASE+1..+15 */ | (362..=365) /* CORAL_BLOCK_BASE+1..+4 */ => CreativeTab::Miscellaneous,
+        (367..=370) /* DEAD_CORAL_BLOCK_BASE+1..+4 */ | (372..=375) /* CORAL_PLANT_BASE+1..+4 */ | (377..=380) /* DEAD_CORAL_PLANT_BASE+1..+4 */ | (382..=385) /* CORAL_FAN_BASE+1..+4 */ | (387..=390) /* DEAD_CORAL_FAN_BASE+1..+4 */ => CreativeTab::Miscellaneous,
+        // ---- Foodstuffs (37 entries) ----
+        GOLDEN_APPLE | POTATO | BAKED_POTATO | CARROT | PUMPKIN_PIE => CreativeTab::Foodstuffs,
+        RAW_FISH | RAW_SALMON | RAW_RABBIT | COOKED_RABBIT | CHORUS_FRUIT => CreativeTab::Foodstuffs,
+        WHEAT_SEEDS | BEETROOT_SEEDS | COOKIE | DRIED_KELP_BLOCK | DRIED_KELP => CreativeTab::Foodstuffs,
+        SWEET_BERRIES | STEAK | COOKED_PORKCHOP | COOKED_CHICKEN | COOKED_MUTTON => CreativeTab::Foodstuffs,
+        COOKED_COD | COOKED_SALMON | APPLE | BOWL | MUSHROOM_STEW => CreativeTab::Foodstuffs,
+        RABBIT_STEW | BEETROOT | BEETROOT_SOUP | EGG | POISONOUS_POTATO => CreativeTab::Foodstuffs,
+        MELON_SLICE | WHEAT_CROP | CARROTS | POTATOES | BEETROOTS => CreativeTab::Foodstuffs,
+        WHEAT | BREAD => CreativeTab::Foodstuffs,
+        // ---- Tools (1 entries) ----
+        HOE => CreativeTab::Tools,
+        // ---- Combat (5 entries) ----
+        SNOWBALL | ELYTRA | SHIELD | TRIDENT | TURTLE_SHELL => CreativeTab::Combat,
+        // ---- Brewing (25 entries) ----
+        BREWING_STAND | POTION_EMPTY | POTION_WATER | POTION_AWKWARD | POTION_MUNDANE => CreativeTab::Brewing,
+        POTION_HEALING | POTION_HEALING_II | NETHER_WART | BLAZE_ROD | BLAZE_POWDER => CreativeTab::Brewing,
+        RABBIT_FOOT | GOLDEN_CARROT | PHANTOM_MEMBRANE | POTION_SLOW_FALLING | POTION_SLOW_FALLING_EXT => CreativeTab::Brewing,
+        POTION_TURTLE_MASTER | POTION_TURTLE_MASTER_II | SUGAR | GHAST_TEAR | POTION_LEAPING => CreativeTab::Brewing,
+        POTION_LEAPING_II | POTION_LEAPING_LONG | POTION_REGEN | POTION_REGEN_II | POTION_REGEN_LONG => CreativeTab::Brewing,
+        // everything else — items, spawn eggs, station blocks, future
+        // registry additions: the vanilla catch-all tab
+        _ => CreativeTab::Miscellaneous,
+    }
+}
+
+/// Registry redstone components that predate the tab system and never
+/// joined PICKER_BLOCKS — the Redstone tab's core (wire, torch, lever,
+/// repeater, comparator, piston, hopper, dispenser, dropper, observer).
+pub const CREATIVE_REDSTONE_EXTRA: [u16; 10] = [
+    REDSTONE_WIRE, REDSTONE_TORCH, LEVER, REPEATER, COMPARATOR,
+    PISTON, DISPENSER, DROPPER, OBSERVER, HOPPER,
+];
+
+/// The tab's items in display order: PICKER_BLOCKS order (the engine's
+/// curated version-bracket order — the vanilla-shaped stand-in for
+/// vanilla's own tab ordering) plus the redstone extras appended to
+/// their tab.
+pub fn creative_tab_items(tab: CreativeTab) -> Vec<u16> {
+    let mut out: Vec<u16> = PICKER_BLOCKS
+        .iter()
+        .copied()
+        .filter(|&b| creative_tab(b) == tab)
+        .collect();
+    if tab == CreativeTab::Redstone {
+        out.extend_from_slice(&CREATIVE_REDSTONE_EXTRA);
+    }
+    if tab == CreativeTab::Combat {
+        // Sub-round 3: the 16 armor items (they postdate PICKER_BLOCKS;
+        // material order = id order, helmet..boots per material)
+        out.extend(LEATHER_CAP..=DIAMOND_BOOTS);
+    }
+    out
+}
+
+#[cfg(test)]
+mod creative_tab_tests {
+    use super::*;
+
+    /// Sub-round 2: the tab order is the classic nine, in vanilla order,
+    /// every tab non-empty, and every PICKER_BLOCKS entry lands somewhere
+    /// (the categorization covers the whole picker — renumbering the
+    /// registry or dropping entries trips this).
+    #[test]
+    fn tabs_are_complete_and_ordered() {
+        assert_eq!(CREATIVE_TABS.len(), 9);
+        assert_eq!(CREATIVE_TABS[0], CreativeTab::BuildingBlocks);
+        assert_eq!(CREATIVE_TABS[1], CreativeTab::DecorationBlocks);
+        assert_eq!(CREATIVE_TABS[2], CreativeTab::Redstone);
+        assert_eq!(CREATIVE_TABS[3], CreativeTab::Transportation);
+        assert_eq!(CREATIVE_TABS[4], CreativeTab::Miscellaneous);
+        assert_eq!(CREATIVE_TABS[5], CreativeTab::Foodstuffs);
+        assert_eq!(CREATIVE_TABS[6], CreativeTab::Tools);
+        assert_eq!(CREATIVE_TABS[7], CreativeTab::Combat);
+        assert_eq!(CREATIVE_TABS[8], CreativeTab::Brewing);
+        let mut total = 0usize;
+        for &t in CREATIVE_TABS.iter() {
+            let items = creative_tab_items(t);
+            assert!(!items.is_empty(), "{} tab must not be empty", t.label());
+            total += items.len();
+        }
+        // picker entries + the 10 redstone extras + the 16 armor items
+        assert_eq!(
+            total,
+            PICKER_BLOCKS.len() + CREATIVE_REDSTONE_EXTRA.len() + 16
+        );
+        // per-tab census (regenerates with the table; pins drift)
+        assert_eq!(creative_tab_items(CreativeTab::BuildingBlocks).len(), 155);
+        assert_eq!(creative_tab_items(CreativeTab::DecorationBlocks).len(), 52);
+        assert_eq!(creative_tab_items(CreativeTab::Redstone).len(), 17);
+        assert_eq!(creative_tab_items(CreativeTab::Transportation).len(), 1);
+        assert_eq!(creative_tab_items(CreativeTab::Miscellaneous).len(), 184);
+        assert_eq!(creative_tab_items(CreativeTab::Foodstuffs).len(), 37);
+        assert_eq!(creative_tab_items(CreativeTab::Tools).len(), 1);
+        // Sub-round 3: Combat = the 5 picker entries + the 16 armor items
+        assert_eq!(creative_tab_items(CreativeTab::Combat).len(), 21);
+        assert!(creative_tab_items(CreativeTab::Combat).contains(&DIAMOND_CHESTPLATE));
+        assert_eq!(creative_tab_items(CreativeTab::Brewing).len(), 25);
+    }
+
+    /// Sub-round 2: the canonical vanilla anchors — the spot-checks that
+    /// pin the whole membership table to vanilla-shaped truth.
+    #[test]
+    fn canonical_tab_anchors() {
+        assert_eq!(creative_tab(GRASS), CreativeTab::BuildingBlocks);
+        assert_eq!(creative_tab(STONE), CreativeTab::BuildingBlocks);
+        assert_eq!(creative_tab(COAL_ORE), CreativeTab::BuildingBlocks);
+        assert_eq!(creative_tab(OBSIDIAN), CreativeTab::BuildingBlocks);
+        assert_eq!(creative_tab(FLOWER_RED), CreativeTab::DecorationBlocks);
+        assert_eq!(creative_tab(LEAVES), CreativeTab::DecorationBlocks);
+        assert_eq!(creative_tab(PEONY), CreativeTab::DecorationBlocks);
+        assert_eq!(creative_tab(WOOL_WHITE), CreativeTab::DecorationBlocks);
+        // (no plain-torch block exists in the registry — the lantern is
+        // the Decoration-family light source that does)
+        assert_eq!(creative_tab(LANTERN), CreativeTab::DecorationBlocks);
+        // redstone ore is an ORE (Building), not a redstone component
+        assert_eq!(creative_tab(REDSTONE_ORE), CreativeTab::BuildingBlocks);
+        assert_eq!(creative_tab(REDSTONE_WIRE), CreativeTab::Redstone);
+        assert_eq!(creative_tab(REDSTONE_TORCH), CreativeTab::Redstone);
+        assert_eq!(creative_tab(LEVER), CreativeTab::Redstone);
+        assert_eq!(creative_tab(PISTON), CreativeTab::Redstone);
+        assert_eq!(creative_tab(TARGET), CreativeTab::Redstone);
+        assert_eq!(creative_tab(SADDLE), CreativeTab::Transportation);
+        // spawn eggs live in Miscellaneous in 1.16.5 (pre-1.19.3)
+        assert_eq!(creative_tab(SPAWN_EGG_LLAMA), CreativeTab::Miscellaneous);
+        assert_eq!(creative_tab(BREAD), CreativeTab::Foodstuffs);
+        assert_eq!(creative_tab(APPLE), CreativeTab::Foodstuffs);
+        assert_eq!(creative_tab(HOE), CreativeTab::Tools);
+        assert_eq!(creative_tab(SHIELD), CreativeTab::Combat);
+        assert_eq!(creative_tab(BREWING_STAND), CreativeTab::Brewing);
+        assert_eq!(creative_tab(POTION_REGEN), CreativeTab::Brewing);
+        // every tab icon resolves to a live registry block
+        for &t in CREATIVE_TABS.iter() {
+            let icon = t.icon_block();
+            assert!(icon != AIR && (icon as usize) < BLOCK_COUNT, "{} icon", t.label());
+        }
+    }
+
+    /// Sub-round 3 (2026-09-15): the armor item registry — 16 pieces
+    /// (4 materials x 4 slots), the per-piece defense table (the vanilla
+    /// 1.16.5 values from minecraft.wiki/w/Armor, live 2026-09-15), and
+    /// the piece-kind routing used by the equipment slots.
+    #[test]
+    fn armor_items_and_defense_table() {
+        use super::*;
+        // the 16 ids are contiguous 515..=530 and past the old registry
+        assert_eq!(LEATHER_CAP, 515);
+        assert_eq!(DIAMOND_BOOTS, 530);
+        assert_eq!(BLOCK_COUNT, 531);
+        for b in LEATHER_CAP..=DIAMOND_BOOTS {
+            // every armor item is an inventory-only item block
+            assert!(is_item_block(b), "armor {b} must be an item block");
+            // valid table entry + name
+            assert!(b < BLOCK_COUNT as u16);
+            assert!(!name(b).is_empty());
+            // piece routing is total over the 16 + the turtle shell
+            assert!(armor_piece(b).is_some());
+            // defense is positive and vanilla-correct
+            assert!(armor_points(b) > 0);
+            // armor rides the Combat tab
+            assert_eq!(creative_tab(b), CreativeTab::Combat);
+        }
+        // the turtle shell is a wearable helmet worth 2 (VERIFIED
+        // w/Turtle_Shell "gives 2 armor points")
+        assert_eq!(armor_piece(TURTLE_SHELL), Some(0));
+        assert_eq!(armor_points(TURTLE_SHELL), 2);
+        // the vanilla defense table: leather 1/3/2/1, golden 2/5/3/1,
+        // iron 2/6/5/2, diamond 3/8/6/3
+        assert_eq!(
+            (armor_points(LEATHER_CAP), armor_points(LEATHER_TUNIC), armor_points(LEATHER_PANTS), armor_points(LEATHER_BOOTS)),
+            (1, 3, 2, 1)
+        );
+        assert_eq!(
+            (armor_points(GOLDEN_HELMET), armor_points(GOLDEN_CHESTPLATE), armor_points(GOLDEN_LEGGINGS), armor_points(GOLDEN_BOOTS)),
+            (2, 5, 3, 1)
+        );
+        assert_eq!(
+            (armor_points(IRON_HELMET), armor_points(IRON_CHESTPLATE), armor_points(IRON_LEGGINGS), armor_points(IRON_BOOTS)),
+            (2, 6, 5, 2)
+        );
+        assert_eq!(
+            (armor_points(DIAMOND_HELMET), armor_points(DIAMOND_CHESTPLATE), armor_points(DIAMOND_LEGGINGS), armor_points(DIAMOND_BOOTS)),
+            (3, 8, 6, 3)
+        );
+        // full sets: leather 7, golden 11, iron 15, diamond 20
+        let set = |helmet: u16, chest: u16, legs: u16, boots: u16| {
+            armor_points(helmet) + armor_points(chest) + armor_points(legs) + armor_points(boots)
+        };
+        assert_eq!(set(LEATHER_CAP, LEATHER_TUNIC, LEATHER_PANTS, LEATHER_BOOTS), 7);
+        assert_eq!(set(GOLDEN_HELMET, GOLDEN_CHESTPLATE, GOLDEN_LEGGINGS, GOLDEN_BOOTS), 11);
+        assert_eq!(set(IRON_HELMET, IRON_CHESTPLATE, IRON_LEGGINGS, IRON_BOOTS), 15);
+        assert_eq!(set(DIAMOND_HELMET, DIAMOND_CHESTPLATE, DIAMOND_LEGGINGS, DIAMOND_BOOTS), 20);
+        // piece-kind order: helmet 0, chest 1, legs 2, boots 3
+        assert_eq!(armor_piece(DIAMOND_HELMET), Some(0));
+        assert_eq!(armor_piece(DIAMOND_CHESTPLATE), Some(1));
+        assert_eq!(armor_piece(DIAMOND_LEGGINGS), Some(2));
+        assert_eq!(armor_piece(DIAMOND_BOOTS), Some(3));
+        // non-armor blocks route to None and defend 0
+        assert_eq!(armor_piece(STONE), None);
+        assert_eq!(armor_points(STONE), 0);
+        assert_eq!(armor_points(AIR), 0);
+    }
+
+    /// Sub-round 2: the tab items are the picker's entries in picker
+    /// order plus the redstone extras — no duplicates, all valid ids.
+    #[test]
+    fn tab_items_are_unique_and_valid() {
+        for &t in CREATIVE_TABS.iter() {
+            let items = creative_tab_items(t);
+            for &b in items.iter() {
+                assert!(b != AIR && (b as usize) < BLOCK_COUNT);
+            }
+            let mut sorted = items.clone();
+            sorted.sort();
+            sorted.dedup();
+            assert_eq!(sorted.len(), items.len(), "{} has duplicates", t.label());
+        }
+        // the redstone extras actually ride the redstone tab
+        let redstone = creative_tab_items(CreativeTab::Redstone);
+        assert!(redstone.contains(&REDSTONE_WIRE));
+        assert!(redstone.contains(&HOPPER));
+        assert!(redstone.contains(&OBSERVER));
+    }
+}
 
 /// default hotbar palette
 pub const PALETTE: [u16; 9] = [GRASS, DIRT, STONE, COBBLE, PLANKS, OAK_LOG, LEAVES, GLOWSTONE, GLASS];
@@ -6647,6 +7199,8 @@ mod state_tests {
                 // the completeness audit V15
                 || is_v15_state(s)
         || is_v16_state(s)
+                // Sub-round 3: the armor-item identity window
+                || is_v17_state(s)
                 || matches!(s, ACACIA_LOG_X | ACACIA_LOG_Z | DARK_OAK_LOG_X | DARK_OAK_LOG_Z)
             {
                 assert!(!is_model_state(s), "component/item state {s} never routes to models");
@@ -6794,6 +7348,12 @@ mod state_tests {
                     if let Some(db) = v15_state(b) {
                         assert_eq!(default_state(b), db, "v15 default for {b}");
                     }
+                }
+                // Sub-round 3 V17: the 16 armor identity states fold 1:1
+                // and default_state inverts the fold exactly
+                if is_v17_state(s) {
+                    assert_eq!(state_block(s), V17_STATE_TO_BLOCK[(s - V17_STATE_BASE) as usize]);
+                    assert_eq!(default_state(b), s, "v17 state {s} roundtrip");
                 }
                 continue;
             }
@@ -6953,8 +7513,8 @@ mod state_tests {
         // with the 1.7.2–1.10 F-series: 276 blocks / 480 states
         // (E-series states end at 354; V2 400..=442, V3 447..=465,
         // V4 466..=475, V5 476..=479)
-        assert_eq!(BLOCK_COUNT, 515, "merged registry + V6..V14 + the audit V15 window + the backlog fire + the farming set");
-        assert_eq!(STATE_COUNT, 845, "merged state space + the V16 window (fire + farming + item identities)");
+        assert_eq!(BLOCK_COUNT, 531, "merged registry + V6..V14 + the audit V15 window + the backlog fire + the farming set + the 16 armor items");
+        assert_eq!(STATE_COUNT, 861, "merged state space + the V16 window (fire + farming + item identities) + the V17 armor window");
         assert_eq!(BLOCK_TABLE.len(), BLOCK_COUNT);
         for want in [
             COAL_BLOCK,
@@ -7005,8 +7565,8 @@ mod v110_tests {
             assert_eq!(default_state(b), s);
             assert!(is_v5_state(s));
         }
-        assert_eq!(BLOCK_COUNT, 515); // + the backlog fire (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 845); // + the backlog V16 fire state (state windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 531); // + the backlog fire (block windows are cumulative)
+        assert_eq!(STATE_COUNT, 861); // + the backlog V16 fire state (state windows are cumulative)
     }
 
     /// magma emits light level 3 (VERIFIED — minecraft.wiki/w/Magma_Block,
@@ -7043,8 +7603,8 @@ mod auditfix_tests {
             assert!(!is_model_state(s), "V6 states are cube/cross defs, not model states");
         }
         assert_eq!(V6_COUNT, 6);
-        assert_eq!(BLOCK_COUNT, 515); // + the backlog fire (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 845); // + the backlog V16 fire state (state windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 531); // + the backlog fire (block windows are cumulative)
+        assert_eq!(STATE_COUNT, 861); // + the backlog V16 fire state (state windows are cumulative)
         // solidity classes: log/planks solid-opaque (hardness family 2
         // per w/Log + w/Planks), leaves see-through, vine/fern non-solid
         // cross plants (w/Vines: "climbable non-solid"; w/Fern:
@@ -7093,8 +7653,8 @@ mod v111_tests {
             assert_eq!(default_state(b), s, "block {b} default state");
             assert_eq!(state_block(s), b, "state {s} folds back");
         }
-        assert_eq!(BLOCK_COUNT, 515); // + the backlog fire (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 845); // + the backlog V16 fire state (state windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 531); // + the backlog fire (block windows are cumulative)
+        assert_eq!(STATE_COUNT, 861); // + the backlog V16 fire state (state windows are cumulative)
         // mansion spawner states fold to SPAWNER + decode their kinds
         assert_eq!(state_block(SPAWNER_VINDICATOR), SPAWNER);
         assert_eq!(state_block(SPAWNER_EVOKER), SPAWNER);
@@ -7198,8 +7758,8 @@ mod v112_tests {
         }
         assert_eq!(default_state(COOKIE), V8_STATE_BASE + 117);
         // bounds
-        assert_eq!(BLOCK_COUNT, 515);
-        assert_eq!(STATE_COUNT, 845);
+        assert_eq!(BLOCK_COUNT, 531);
+        assert_eq!(STATE_COUNT, 861);
         assert_eq!(CONCRETE_BASE + 15, CONCRETE_END);
         assert_eq!(CONCRETE_POWDER_BASE + 15, CONCRETE_POWDER_END);
         assert_eq!(GLAZED_TERRACOTTA_BASE + 15, GLAZED_TERRACOTTA_END);
@@ -7338,8 +7898,8 @@ mod v114_tests {
             "unlit tile"
         );
         // bounds + window shape
-        assert_eq!(BLOCK_COUNT, 515);
-        assert_eq!(STATE_COUNT, 845);
+        assert_eq!(BLOCK_COUNT, 531);
+        assert_eq!(STATE_COUNT, 861);
         assert_eq!(V10_COUNT, 13);
         assert_eq!(BAMBOO, 417);
         assert_eq!(CHARCOAL, 425);
@@ -7440,8 +8000,8 @@ mod v114_tests {
         const _: () = assert!(TILE_MAX >= TILE_LILY_OF_THE_VALLEY, "flower tiles within the atlas guard");
         // bounds + window shape
         assert_eq!(V11_COUNT, 9);
-        assert_eq!(BLOCK_COUNT, 515);
-        assert_eq!(STATE_COUNT, 845);
+        assert_eq!(BLOCK_COUNT, 531);
+        assert_eq!(STATE_COUNT, 861);
     }
 }
 
@@ -7526,8 +8086,8 @@ mod v115_tests {
         const _: () = assert!(TILE_MAX >= TILE_BEEHIVE_FRONT_HONEY, "honey front within the atlas guard");
         // bounds + window shape
         assert_eq!(V12_COUNT, 18);
-        assert_eq!(BLOCK_COUNT, 515);
-        assert_eq!(STATE_COUNT, 845);
+        assert_eq!(BLOCK_COUNT, 531);
+        assert_eq!(STATE_COUNT, 861);
         assert_eq!(PICKER_BLOCKS.len(), 467);
     }
 }
@@ -7674,8 +8234,8 @@ mod v116_tests {
         // bounds + window shape
         assert_eq!(V13_COUNT, 34);
         assert_eq!(V13_STATE_BASE + V13_COUNT, 750);
-        assert_eq!(BLOCK_COUNT, 515);
-        assert_eq!(STATE_COUNT, 845);
+        assert_eq!(BLOCK_COUNT, 531);
+        assert_eq!(STATE_COUNT, 861);
         assert_eq!(PICKER_BLOCKS.len(), 467);
     }
 
@@ -7857,8 +8417,8 @@ mod v116_tests {
         // spawner states)
         assert_eq!(V15_COUNT, 29);
         assert_eq!(V15_STATE_BASE + V15_COUNT, 805);
-        assert_eq!(BLOCK_COUNT, 515);
-        assert_eq!(STATE_COUNT, 845);
+        assert_eq!(BLOCK_COUNT, 531);
+        assert_eq!(STATE_COUNT, 861);
         assert_eq!(PICKER_BLOCKS.len(), 467);
     }
 

@@ -153,6 +153,20 @@ impl GameMode {
         }
     }
 
+    /// 2026-09-14 parity round: the vanilla Create World Game Mode
+    /// description PAIR — clean-room paraphrase of vanilla's two gray
+    /// summary lines under the Game Mode button (vanilla wording is
+    /// Mojang's; these carry the same meaning in our own words).
+    pub fn describe_lines(self) -> (&'static str, &'static str) {
+        match self {
+            GameMode::Survival => ("EXPLORE, BUILD, AND SURVIVE", "SEEK OUT RESOURCES, WATCH YOUR HEALTH"),
+            GameMode::Creative => ("UNLIMITED RESOURCES, FREE FLYING", "DESTROY BLOCKS INSTANTLY"),
+            GameMode::Hardcore => ("SAME AS SURVIVAL, HARDER MODE", "ONE LIFE ONLY - DEATH LOCKS THE WORLD"),
+            GameMode::Adventure => ("EXPLORE AND INTERACT ONLY", "BLOCK BREAKING AND PLACING DISABLED"),
+            GameMode::Spectator => ("FLY THROUGH WALLS, NO INTERACTION", "COMMAND-ONLY MODE IN VANILLA"),
+        }
+    }
+
     /// Next mode in the world-creation cycle (Spectator is not in the
     /// cycle — vanilla only enters it via command).
     pub fn next(self) -> GameMode {

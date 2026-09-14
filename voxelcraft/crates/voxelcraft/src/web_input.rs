@@ -184,6 +184,27 @@ pub fn load_settings() -> Option<String> {
     v.as_string()
 }
 
+/// 2026-09-14 world round: persist the web world list (JSON) to
+/// localStorage — the Select World screen's storage backend.
+pub fn save_worlds(json: &str) {
+    if let Some(win) = window_ref() {
+        if let Ok(f) = js_sys::Reflect::get(&win, &"voxelcraftSaveWorlds".into()) {
+            if let Ok(f) = f.dyn_into::<js_sys::Function>() {
+                let _ = f.call1(&win, &wasm_bindgen::JsValue::from_str(json));
+            }
+        }
+    }
+}
+
+/// 2026-09-14 world round: load the web world list ("[]" when absent).
+pub fn load_worlds() -> Option<String> {
+    let win = window_ref()?;
+    let f = js_sys::Reflect::get(&win, &"voxelcraftLoadWorlds".into()).ok()?;
+    let f = f.dyn_into::<js_sys::Function>().ok()?;
+    let v = f.call0(&win).ok()?;
+    v.as_string()
+}
+
 /// Publish a stats object for E2E tests / in-page debugging.
 pub fn publish_stats(fields: &[(&str, StatsVal)]) {
     let Some(win) = window_ref() else { return };

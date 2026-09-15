@@ -24,6 +24,7 @@ mod audit16_art;
 mod weather_art;
 mod armor_art;
 mod farming_art;
+mod r13_art;
 /// UI-overhaul Phase 1: GUI chrome + HUD sprites (public so the
 /// `gui` module's set/loader can call the painters)
 pub mod gui_art;
@@ -4360,6 +4361,9 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_RAIN_PARTICLE => weather_art::rain_streak(&mut a, t, &mut rng),
             TILE_SNOW_PARTICLE => weather_art::snow_flake(&mut a, t, &mut rng),
             TILE_FIRE => weather_art::fire_art(&mut a, t, &mut rng),
+            // Round 13 (station GUIs): the book item + the grindstone block
+            TILE_BOOK => r13_art::book_art(&mut a, t, &mut rng),
+            TILE_GRINDSTONE => r13_art::grindstone_art(&mut a, t, &mut rng),
             // ---- backlog round (farming, 2026-09-09): the farming set ----
             TILE_FARMLAND_DRY => farming_art::farmland_art(&mut a, t, false),
             TILE_FARMLAND_WET => farming_art::farmland_art(&mut a, t, true),

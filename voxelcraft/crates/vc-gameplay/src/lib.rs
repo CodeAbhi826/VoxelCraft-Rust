@@ -15,6 +15,7 @@ pub mod wither;
 pub mod enchanting;
 pub mod fishing;
 pub mod furnace;
+pub mod grindstone;
 pub mod mobs;
 pub mod modes;
 pub mod spawners;

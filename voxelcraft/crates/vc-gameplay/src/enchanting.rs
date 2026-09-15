@@ -66,6 +66,12 @@ pub struct EnchantDef {
     /// Curse of Binding, Soul Speed, Mending, Curse of Vanishing are
     /// chest/fishing/trading-only — the table never offers them)
     pub table: bool,
+    /// Round 13: the ANVIL cost multiplier "from item" (the "from
+    /// book" multiplier is half, rounded down) — VERIFIED against
+    /// minecraft.wiki/w/Anvil_mechanics "Enchantment cost multipliers"
+    /// table, fetched live 2026-09-15 (the 1.16.5-relevant rows;
+    /// post-1.16 rows excluded by the same version filter as above).
+    pub cost_mult: u8,
 }
 
 pub const ENCHANTS: &[EnchantDef] = &[
@@ -76,6 +82,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 4,
         weight: 10,
         table: true,
+        cost_mult: 1,
     },
     EnchantDef {
         name: "Feather Falling",
@@ -83,6 +90,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 4,
         weight: 5,
         table: true,
+        cost_mult: 2,
     },
     EnchantDef {
         name: "Sharpness",
@@ -90,6 +98,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 5,
         weight: 10,
         table: true,
+        cost_mult: 1,
     },
     EnchantDef {
         name: "Efficiency",
@@ -97,6 +106,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 5,
         weight: 10,
         table: true,
+        cost_mult: 1,
     },
     EnchantDef {
         name: "Unbreaking",
@@ -104,6 +114,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 3,
         weight: 5,
         table: true,
+        cost_mult: 2,
     },
     EnchantDef {
         name: "Fortune",
@@ -111,6 +122,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 3,
         weight: 2,
         table: true,
+        cost_mult: 4,
     },
     EnchantDef {
         name: "Silk Touch",
@@ -118,6 +130,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 1,
         weight: 1,
         table: true,
+        cost_mult: 8,
     },
     EnchantDef {
         name: "Mending",
@@ -125,6 +138,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 1,
         weight: 2,
         table: false,
+        cost_mult: 4,
     },
     // NOTE (1.11 bracket): the curse enchantments (binding_curse id 10 /
     // vanishing_curse id 71 per the 1.11 changelog §Gameplay) were
@@ -138,6 +152,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 5,
         weight: 10,
         table: true,
+        cost_mult: 1,
     },
     EnchantDef {
         name: "Looting",
@@ -145,6 +160,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 3,
         weight: 2,
         table: true,
+        cost_mult: 4,
     },
     // ---- Phase 4 additions: the remaining 28 of the 38 ----
     EnchantDef {
@@ -153,6 +169,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 4,
         weight: 5,
         table: true,
+        cost_mult: 2,
     },
     EnchantDef {
         name: "Blast Protection",
@@ -160,6 +177,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 4,
         weight: 2,
         table: true,
+        cost_mult: 4,
     },
     EnchantDef {
         name: "Projectile Protection",
@@ -167,6 +185,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 4,
         weight: 5,
         table: true,
+        cost_mult: 2,
     },
     EnchantDef {
         name: "Respiration",
@@ -174,6 +193,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 3,
         weight: 2,
         table: true,
+        cost_mult: 4,
     },
     EnchantDef {
         name: "Aqua Affinity",
@@ -181,6 +201,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 1,
         weight: 2,
         table: true,
+        cost_mult: 4,
     },
     EnchantDef {
         name: "Thorns",
@@ -188,6 +209,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 3,
         weight: 1,
         table: true,
+        cost_mult: 8,
     },
     EnchantDef {
         name: "Depth Strider",
@@ -195,6 +217,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 3,
         weight: 2,
         table: true,
+        cost_mult: 4,
     },
     EnchantDef {
         name: "Frost Walker",
@@ -202,6 +225,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 2,
         weight: 2,
         table: false,
+        cost_mult: 4,
     },
     EnchantDef {
         name: "Curse of Binding",
@@ -209,6 +233,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 1,
         weight: 1,
         table: false,
+        cost_mult: 8,
     },
     EnchantDef {
         name: "Soul Speed",
@@ -216,6 +241,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 3,
         weight: 1,
         table: false,
+        cost_mult: 8,
     },
     EnchantDef {
         name: "Smite",
@@ -223,6 +249,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 5,
         weight: 5,
         table: true,
+        cost_mult: 2,
     },
     EnchantDef {
         name: "Bane of Arthropods",
@@ -230,6 +257,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 5,
         weight: 5,
         table: true,
+        cost_mult: 2,
     },
     EnchantDef {
         name: "Knockback",
@@ -237,6 +265,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 2,
         weight: 5,
         table: true,
+        cost_mult: 2,
     },
     EnchantDef {
         name: "Fire Aspect",
@@ -244,6 +273,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 2,
         weight: 2,
         table: true,
+        cost_mult: 4,
     },
     EnchantDef {
         name: "Sweeping Edge",
@@ -251,6 +281,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 3,
         weight: 2,
         table: true,
+        cost_mult: 4,
     },
     EnchantDef {
         name: "Punch",
@@ -258,6 +289,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 2,
         weight: 2,
         table: true,
+        cost_mult: 4,
     },
     EnchantDef {
         name: "Flame",
@@ -265,6 +297,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 1,
         weight: 2,
         table: true,
+        cost_mult: 4,
     },
     EnchantDef {
         name: "Infinity",
@@ -272,6 +305,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 1,
         weight: 1,
         table: true,
+        cost_mult: 8,
     },
     EnchantDef {
         name: "Luck of the Sea",
@@ -279,6 +313,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 3,
         weight: 2,
         table: true,
+        cost_mult: 4,
     },
     EnchantDef {
         name: "Lure",
@@ -286,6 +321,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 3,
         weight: 2,
         table: true,
+        cost_mult: 4,
     },
     EnchantDef {
         name: "Loyalty",
@@ -293,6 +329,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 3,
         weight: 5,
         table: true,
+        cost_mult: 1,
     },
     EnchantDef {
         name: "Impaling",
@@ -300,6 +337,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 5,
         weight: 2,
         table: true,
+        cost_mult: 4,
     },
     EnchantDef {
         name: "Riptide",
@@ -307,6 +345,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 3,
         weight: 2,
         table: true,
+        cost_mult: 4,
     },
     EnchantDef {
         name: "Channeling",
@@ -314,6 +353,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 1,
         weight: 1,
         table: true,
+        cost_mult: 8,
     },
     EnchantDef {
         name: "Multishot",
@@ -321,6 +361,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 1,
         weight: 2,
         table: true,
+        cost_mult: 4,
     },
     EnchantDef {
         name: "Quick Charge",
@@ -328,6 +369,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 3,
         weight: 5,
         table: true,
+        cost_mult: 2,
     },
     EnchantDef {
         name: "Piercing",
@@ -335,6 +377,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 4,
         weight: 10,
         table: true,
+        cost_mult: 1,
     },
     EnchantDef {
         name: "Curse of Vanishing",
@@ -342,6 +385,7 @@ pub const ENCHANTS: &[EnchantDef] = &[
         max_level: 1,
         weight: 1,
         table: false,
+        cost_mult: 8,
     },
 ];
 

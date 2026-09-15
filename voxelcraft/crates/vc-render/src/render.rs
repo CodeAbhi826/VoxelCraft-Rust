@@ -1378,6 +1378,12 @@ pub struct Renderer {
     ui_view: wgpu::TextureView,
     #[allow(dead_code)] // GPU keep-alive (bound via ui_bg at init)
     ui_samp: wgpu::Sampler,
+    /// Round 10 (vanilla integer GUI scale): the CURRENT ui_tex size —
+    /// the live canvas resizes with the resolved scale, and the texture
+    /// + blit quad + bind group rebuild to match (see ensure_ui_size).
+    ///
+    /// Initialized to the 960×540 reference.
+    ui_tex_size: (u32, u32),
     /// Luanti font round: LINEAR sampler for the glyph atlas (AA
     /// rasters — the sprite sheets keep the NEAREST pixel-art sampler)
     glyph_samp: wgpu::Sampler,
@@ -3205,6 +3211,7 @@ impl Renderer {
             cloud_pipe_blend: scene.cloud_blend,
             cloud_vb,
             ui_tex,
+            ui_tex_size: (UI_W as u32, UI_H as u32),
             ui_view,
             ui_samp,
             glyph_samp,
@@ -3489,6 +3496,72 @@ impl Renderer {
             ((h as f32) * self.upscale).round().max(1.0) as u32,
         );
         self.rebuild_post_targets();
+    }
+
+    /// Round 10 (vanilla integer GUI scale): keep the UI texture, its
+    /// bind group and the blit quad matched to the LIVE canvas size.
+    /// No-op at the 960×540 reference; on a size change it recreates
+    /// the (texture, view, bind group, quad) quartet — resize events
+    /// and GUI-scale changes are rare, so recreate-not-patch keeps the
+    /// code flat (no partial-update hazards). The next `write_texture`
+    /// upload and uniform write in the same frame use the new size.
+    fn ensure_ui_size(&mut self, w: u32, h: u32) {
+        let (w, h) = (w.max(1), h.max(1));
+        if (w, h) == self.ui_tex_size {
+            return;
+        }
+        let tex = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("ui"),
+            size: wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
+        self.ui_bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ui-bg"),
+            layout: &self.ui_bgl,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&self.ui_samp),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: &self.ui_buf,
+                        offset: 0,
+                        size: None,
+                    }),
+                },
+            ],
+        });
+        // the blit quad: canvas-px corners (0,0)..(w,h) with 0..1 UVs
+        let verts: [[f32; 4]; 4] = [
+            [0.0, 0.0, 0.0, 0.0],
+            [w as f32, 0.0, 1.0, 0.0],
+            [w as f32, h as f32, 1.0, 1.0],
+            [0.0, h as f32, 0.0, 1.0],
+        ];
+        self.ui_vb = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("ui-vb"),
+            contents: bytemuck::cast_slice(&verts),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+        self.ui_tex = tex;
+        self.ui_view = view;
+        self.ui_tex_size = (w, h);
     }
 
     /// FSR 1.0 (§33): set the internal render scale (1.0 = native, 0.75/0.5
@@ -4552,16 +4625,22 @@ impl Renderer {
         self.queue
             .write_buffer(&self.globals_buf, 0, bytemuck::bytes_of(&globals));
 
-        // UI uniform: letterboxed mapping canvas → screen
+        // UI uniform: the LIVE canvas maps to the screen through a
+        // centered fit (Round 10: the vanilla integer GUI-scale model —
+        // the canvas is the logical space at 2 canvas px per vanilla
+        // px, so device-px-per-canvas-px = resolved-scale / 2, an
+        // INTEGER device size per vanilla px at every scale; the
+        // letterbox-style fractional path is retired)
+        self.ensure_ui_size(ui.live_w as u32, ui.live_h as u32);
         let sw = self.config.width as f32;
         let sh = self.config.height as f32;
-        let scale = (sw / UI_W as f32).min(sh / UI_H as f32);
+        let scale = (sw / ui.live_w as f32).min(sh / ui.live_h as f32);
         // Luanti font round: publish the letterbox scale (device px per
         // UI px) — the game feeds it back into the UiCanvas each frame
         // so the font engine rasterizes glyphs at true device size
         self.ui_device_scale = scale;
-        let x0 = (sw - UI_W as f32 * scale) * 0.5;
-        let y0 = (sh - UI_H as f32 * scale) * 0.5;
+        let x0 = (sw - ui.live_w as f32 * scale) * 0.5;
+        let y0 = (sh - ui.live_h as f32 * scale) * 0.5;
         let ui_map = UiUniform {
             map: [
                 2.0 * scale / sw,
@@ -4585,12 +4664,12 @@ impl Renderer {
                 &ui.px,
                 wgpu::ImageDataLayout {
                     offset: 0,
-                    bytes_per_row: Some(UI_W as u32 * 4),
-                    rows_per_image: Some(UI_H as u32),
+                    bytes_per_row: Some(ui.live_w as u32 * 4),
+                    rows_per_image: Some(ui.live_h as u32),
                 },
                 wgpu::Extent3d {
-                    width: UI_W as u32,
-                    height: UI_H as u32,
+                    width: ui.live_w as u32,
+                    height: ui.live_h as u32,
                     depth_or_array_layers: 1,
                 },
             );

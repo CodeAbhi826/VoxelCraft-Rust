@@ -1,4 +1,5 @@
-//! UI canvas (960x540 RGBA) with hand-built 5x7 bitmap font, Minecraft-style
+//! UI canvas (960x540 reference RGBA grid, resizable per the vanilla
+//! integer GUI-scale model) with hand-built 5x7 bitmap font, Minecraft-style
 //! widgets (buttons + sliders), title / options / pause screens, and the
 //! full 1.16.5-style HUD (hotbar, hearts, hunger, XP bar, crosshair, F3).
 //! Redrawn only when state changes; uploaded to GPU as a texture.
@@ -11,6 +12,49 @@ use vc_inventory::inventory::ItemStack;
 
 pub const UI_W: usize = 960;
 pub const UI_H: usize = 540;
+
+// ------------------------------------------- live UI size (Round 10) --
+// The vanilla 1.16.5 integer GUI-scale model: the drawn logical GUI
+// space is (framebuffer_w / scale, framebuffer_h / scale) vanilla px
+// (minecraft.wiki/w/Options, fetched live 2026-09-15: "Auto sets the
+// GUI scale to the highest value available", available =
+// max(1, min(floor(w/320), floor(h/240))) — identical to the 1.16.5
+// MainWindow#calculateScale while-loop). This engine's canvas raster
+// and every layout constant are built at 2 canvas px per vanilla px
+// (the 960×540 reference = vanilla at 1920×1080 scale 4), so the LIVE
+// canvas becomes (2·w/scale, 2·h/scale) canvas px and the blit maps
+// each canvas px to scale/2 device px — an INTEGER device size per
+// vanilla px at every scale. Menu layouts + HUD anchors read these
+// hints so they re-center / re-anchor at any live size; the default
+// (960×540) keeps every headless caller and test byte-identical.
+// THREAD-LOCAL for the same reason TEXT_QUADS_ACTIVE is: the layout
+// helpers are called from the single-threaded game loop (update + UI
+// rebuild on one thread — the engine's documented threading model) and
+// from parallel test threads; thread-locality isolates a test that
+// resizes from every other test's geometry (the AtomicUsize version
+// was a cross-test race — the exact lottery the text-quads flag lost
+// once before).
+thread_local! {
+    static LIVE_UI_W: std::cell::Cell<usize> = const { std::cell::Cell::new(UI_W) };
+    static LIVE_UI_H: std::cell::Cell<usize> = const { std::cell::Cell::new(UI_H) };
+}
+
+/// set the live UI canvas size (called by the game when the resolved
+/// vanilla GUI scale or the window size changes)
+pub fn set_live_ui_size(w: usize, h: usize) {
+    LIVE_UI_W.with(|f| f.set(w.max(1)));
+    LIVE_UI_H.with(|f| f.set(h.max(1)));
+}
+
+/// the live UI canvas width in canvas px (default 960)
+pub fn live_ui_w() -> usize {
+    LIVE_UI_W.with(|f| f.get())
+}
+
+/// the live UI canvas height in canvas px (default 540)
+pub fn live_ui_h() -> usize {
+    LIVE_UI_H.with(|f| f.get())
+}
 
 // ------------------------------------------------- quad-text switch --
 // The Luanti-style font round: when armed, every text* method routes
@@ -285,7 +329,7 @@ pub fn scale_widgets(ws: &mut [Widget], s: f32) {
     if (s - 1.0).abs() < 0.01 {
         return;
     }
-    let (cx, cy) = (UI_W as f32 / 2.0, UI_H as f32 / 2.0);
+    let (cx, cy) = (live_ui_w() as f32 / 2.0, live_ui_h() as f32 / 2.0);
     for w in ws.iter_mut() {
         w.x = (cx + (w.x as f32 - cx) * s).round() as i32;
         w.y = (cy + (w.y as f32 - cy) * s).round() as i32;
@@ -448,6 +492,29 @@ pub const ID_OPT_BIOME: u16 = 46;
 pub const ID_OPT_CHAT: u16 = 47;
 pub const ID_OPT_LANG: u16 = 48;
 pub const ID_OPT_CONTROLS: u16 = 49;
+/// Round 14 (2026-09-15): the Music & Sound screen entry — vanilla's
+/// ten per-category sliders (minecraft.wiki/w/Options §Music & Sound,
+/// live 2026-09-15). Full-width row under VIEW BOBBING.
+pub const ID_OPT_MUSICSND: u16 = 50;
+/// Round 14: the Music & Sound screen slider rows — one per vanilla
+/// SoundCategory + master. 160..170 (clear of every literal id and the
+/// 60..66 / 120..158 row families; guarded by the ID-space tests).
+pub const ID_SND_BASE: u16 = 160;
+/// Round 14: the Controls screen — reset + the bind-row family
+/// (180..204: up to 24 rebindable action rows)
+pub const ID_SND_DONE: u16 = 170;
+pub const ID_CTRL_RESET: u16 = 171;
+pub const ID_CTRL_DONE: u16 = 172;
+/// Round 14: the accessibility additions (Fog cycle / FOV Effects /
+/// Distortion Effects / Chat Visibility / Subtitles)
+pub const ID_ACC_FOG: u16 = 173;
+pub const ID_ACC_FOVEFF: u16 = 174;
+pub const ID_ACC_DISTORT: u16 = 175;
+pub const ID_ACC_CHATVIS: u16 = 176;
+pub const ID_ACC_SUBTITLES: u16 = 177;
+pub const ID_CTRL_BIND_BASE: u16 = 180;
+/// max rebindable rows on the Controls screen
+pub const MAX_CTRL_BINDS: usize = 24;
 /// 2026-09-14 round (user directive): the SHADER PACKS screen, the
 /// ID_OPT_SHADERS video entry, the ID_PACK_BASE row family and every
 /// pre-created engine shader mode/builtin pack were REMOVED — vanilla
@@ -566,7 +633,7 @@ pub fn btn_h(
 /// bottom row two half-width 146px buttons; MULTIPLAYER disabled until
 /// netcode exists). Quit only exists on native.
 pub fn layout_title(is_web: bool) -> Vec<Widget> {
-    let cx = (UI_W as i32 - 300) / 2;
+    let cx = (live_ui_w() as i32 - 300) / 2;
     let mut v = vec![
         btn_h(ID_TITLE_PLAY, cx, 225, 300, 30, "SINGLEPLAYER", "", true),
         btn_h(ID_TITLE_MULTI, cx, 270, 300, 30, "MULTIPLAYER", "", false),
@@ -623,9 +690,11 @@ pub fn layout_options() -> Vec<Widget> {
         slider_h(ID_OPT_VOL, r, rows[0], bw, 30, "SOUND", 0.7),
         slider_h(ID_OPT_FOV, l, rows[1], bw, 30, "FOV", 0.5),
         slider_h(ID_OPT_SENS, r, rows[1], bw, 30, "MOUSE SENSITIVITY", 0.45),
-        btn_h(ID_OPT_CHAT, l, rows[2], bw, 30, "CHAT SETTINGS...", "", false),
+        // Round 14: the stub screens are REAL now — Chat Settings is the
+        // documented no-subsystem stub screen, Language lists English
+        btn_h(ID_OPT_CHAT, l, rows[2], bw, 30, "CHAT SETTINGS...", "", true),
         btn_h(ID_OPT_PACKS, r, rows[2], bw, 30, "RESOURCE PACKS...", "", true),
-        btn_h(ID_OPT_LANG, l, rows[3], bw, 30, "LANGUAGE...", "", false),
+        btn_h(ID_OPT_LANG, l, rows[3], bw, 30, "LANGUAGE...", "", true),
         btn_h(
             ID_OPT_ACCESS,
             r,
@@ -637,14 +706,17 @@ pub fn layout_options() -> Vec<Widget> {
             true,
         ),
         btn_h(ID_OPT_VIDEO, l, rows[4], bw, 30, "VIDEO SETTINGS...", "", true),
-        btn_h(ID_OPT_CONTROLS, r, rows[4], bw, 30, "CONTROLS...", "", false),
+        btn_h(ID_OPT_CONTROLS, r, rows[4], bw, 30, "CONTROLS...", "", true),
         btn_h(ID_OPT_ENGINE, 248, 252, 465, 30, "ENGINE SETTINGS...", "", true),
         // vanilla 1.16.5 Options-screen option (default ON): the walk-cycle
         // camera/hand sway
         btn_h(ID_OPT_BOB, 248, 292, 465, 30, "VIEW BOBBING", "ON", true),
+        // Round 14: the vanilla Music & Sound sub-screen (ten category
+        // sliders) — full-width row under VIEW BOBBING
+        btn_h(ID_OPT_MUSICSND, 248, 332, 465, 30, "MUSIC & SOUND...", "", true),
         btn_h(
             ID_OPT_DONE,
-            (UI_W as i32 - 300) / 2,
+            (live_ui_w() as i32 - 300) / 2,
             470,
             300,
             30,
@@ -688,7 +760,7 @@ pub fn layout_video() -> Vec<Widget> {
         slider_h(ID_OPT_BIOME, 248, 288, 465, 30, "BIOME BLEND", 0.5),
         btn_h(
             ID_OPT_DONE2,
-            (UI_W as i32 - 300) / 2,
+            (live_ui_w() as i32 - 300) / 2,
             470,
             300,
             30,
@@ -726,7 +798,7 @@ pub fn layout_engine() -> Vec<Widget> {
         btn_h(ID_OPT_UPSCALE, l, rows[4], bw, 30, "UPSCALING", "OFF", true),
         btn_h(
             ID_OPT_DONE2,
-            (UI_W as i32 - 300) / 2,
+            (live_ui_w() as i32 - 300) / 2,
             470,
             300,
             30,
@@ -814,7 +886,7 @@ pub fn layout_resource_packs(avail: &[String], sel: &[String]) -> Vec<Widget> {
     ));
     v.push(btn_h(
         ID_OPT_DONE2,
-        (UI_W as i32 - 300) / 2,
+        (live_ui_w() as i32 - 300) / 2,
         470,
         300,
         30,
@@ -830,9 +902,175 @@ pub fn layout_resource_packs(avail: &[String], sel: &[String]) -> Vec<Widget> {
 pub fn layout_access() -> Vec<Widget> {
     vec![
         btn_h(ID_OPT_AUTOJUMP, 248, 72, 465, 30, "AUTO-JUMP", "ON", true),
+        // Round 14: the accessibility additions — the Fog cycle and the
+        // FOV Effects slider are live; the chat/subtitle rows are grayed
+        // until their subsystems exist (vanilla grays unavailable
+        // features too)
+        btn_h(ID_ACC_FOG, 248, 112, 465, 30, "FOG", "FAST", true),
+        slider_h(ID_ACC_FOVEFF, 248, 152, 465, 30, "FOV EFFECTS", 1.0),
+        btn_h(
+            ID_ACC_CHATVIS,
+            248,
+            192,
+            465,
+            30,
+            "CHAT VISIBILITY",
+            "FULL (NO CHAT)",
+            false,
+        ),
+        btn_h(ID_ACC_SUBTITLES, 248, 232, 465, 30, "SUBTITLES", "OFF", false),
         btn_h(
             ID_OPT_DONE2,
-            (UI_W as i32 - 300) / 2,
+            (live_ui_w() as i32 - 300) / 2,
+            470,
+            300,
+            30,
+            "DONE",
+            "",
+            true,
+        ),
+    ]
+}
+
+/// Round 14 (2026-09-15): the Music & Sound screen — vanilla 1.16.5's
+/// ten sliders, one per SoundCategory with master at the top
+/// (minecraft.wiki/w/Options §Music & Sound, live 2026-09-15: "Music &
+/// Sound ... has sliders which control the volume of each sound
+/// category"). Values are patched in by the caller (game.rs) — the
+/// layout pins only the geometry. Slider ids 160..170 (ID_SND_BASE..).
+pub fn layout_music_sound() -> Vec<Widget> {
+    let l = 248;
+    let bw = 465;
+    let rows = [72, 106, 140, 174, 208, 242, 276, 310, 344, 378];
+    let names = [
+        "MASTER",
+        "MUSIC",
+        "JUKEBOXES / NOTE BLOCKS",
+        "WEATHER",
+        "BLOCKS",
+        "HOSTILE CREATURES",
+        "FRIENDLY CREATURES",
+        "PLAYERS",
+        "AMBIENT / ENVIRONMENT",
+        "VOICE / SPEECH",
+    ];
+    let mut v = Vec::with_capacity(11);
+    for (i, n) in names.iter().enumerate() {
+        v.push(slider_h(ID_SND_BASE + i as u16, l, rows[i], bw, 30, n, 0.8));
+    }
+    v.push(btn_h(
+        ID_SND_DONE,
+        (live_ui_w() as i32 - 300) / 2,
+        470,
+        300,
+        30,
+        "DONE",
+        "",
+        true,
+    ));
+    v
+}
+
+/// Round 14 (2026-09-15): the Controls screen — vanilla's two-column
+/// keybind editor (minecraft.wiki/w/Controls, live 2026-09-15: rows of
+/// action + key button, categories, "Reset Keys" at the bottom). The
+/// engine's rebindable set: movement, inventory, gameplay. Row ids
+/// 180.. (ID_CTRL_BIND_BASE..); the caller patches the key labels.
+pub fn layout_controls(labels: &[(bool, &str, &str)]) -> Vec<Widget> {
+    // (is_header, action, key) — headers are non-button category rows
+    let l = 130;
+    let name_w = 300;
+    let key_w = 120;
+    let r = l + name_w + 10;
+    let mut v = Vec::new();
+    let mut y = 66;
+    for (i, (is_header, action, key)) in labels.iter().enumerate() {
+        if *is_header {
+            v.push(btn_h(
+                ID_CTRL_BIND_BASE + i as u16,
+                l,
+                y,
+                name_w + 10 + key_w,
+                22,
+                action,
+                "",
+                false,
+            ));
+        } else {
+            v.push(btn_h(
+                ID_CTRL_BIND_BASE + i as u16,
+                l,
+                y,
+                name_w,
+                30,
+                action,
+                "",
+                true,
+            ));
+            v.push(btn_h(
+                ID_CTRL_BIND_BASE + i as u16,
+                r,
+                y,
+                key_w,
+                30,
+                key,
+                "",
+                true,
+            ));
+        }
+        y += if *is_header { 26 } else { 34 };
+    }
+    v.push(btn_h(ID_CTRL_RESET, l, 440, 210, 30, "RESET KEYS", "", true));
+    v.push(btn_h(
+        ID_CTRL_DONE,
+        l + 230,
+        440,
+        210,
+        30,
+        "DONE",
+        "",
+        true,
+    ));
+    v
+}
+
+/// Round 14: the Language screen — the engine is English-only; the
+/// screen lists English and says so (spec rule: do NOT pretend to
+/// support other languages).
+pub fn layout_language() -> Vec<Widget> {
+    vec![
+        btn_h(ID_CTRL_DONE, 248, 150, 465, 30, "ENGLISH (US)", "*", true),
+        btn_h(
+            ID_OPT_DONE2,
+            (live_ui_w() as i32 - 300) / 2,
+            470,
+            300,
+            30,
+            "DONE",
+            "",
+            true,
+        ),
+    ]
+}
+
+/// Round 14: the Chat Settings screen — the engine has no chat
+/// subsystem (a multi-round feature per the spec); this is the
+/// documented stub with the vanilla-titled entry point.
+pub fn layout_chat_settings() -> Vec<Widget> {
+    vec![
+        btn_h(
+            ID_CTRL_DONE,
+            248,
+            200,
+            465,
+            30,
+            "CHAT SETTINGS  (NO CHAT SUBSYSTEM)",
+            "",
+            false,
+        ),
+        btn_h(
+            ID_OPT_DONE2,
+            (live_ui_w() as i32 - 300) / 2,
             470,
             300,
             30,
@@ -849,7 +1087,7 @@ pub fn layout_pause() -> Vec<Widget> {
     vec![
         btn(
             ID_PAUSE_BACK,
-            (UI_W as i32 - 320) / 2,
+            (live_ui_w() as i32 - 320) / 2,
             208,
             320,
             "BACK TO GAME",
@@ -858,7 +1096,7 @@ pub fn layout_pause() -> Vec<Widget> {
         ),
         btn(
             ID_PAUSE_OPTIONS,
-            (UI_W as i32 - 320) / 2,
+            (live_ui_w() as i32 - 320) / 2,
             264,
             320,
             "OPTIONS...",
@@ -867,7 +1105,7 @@ pub fn layout_pause() -> Vec<Widget> {
         ),
         btn(
             ID_PAUSE_QUIT,
-            (UI_W as i32 - 320) / 2,
+            (live_ui_w() as i32 - 320) / 2,
             320,
             320,
             "QUIT TO TITLE",
@@ -938,7 +1176,7 @@ pub fn layout_world_select(
     ));
     let four = 150i32; // 4 × 100-wide vanilla buttons at 1.5x
     let gap = 12i32;
-    let x0 = (UI_W as i32 - (four * 4 + gap * 3)) / 2;
+    let x0 = (live_ui_w() as i32 - (four * 4 + gap * 3)) / 2;
     v.push(btn_h(ID_WS_EDIT, x0, 480, four, 30, "EDIT", "", can_play));
     v.push(btn_h(
         ID_WS_DELETE,
@@ -1096,7 +1334,7 @@ pub fn layout_world_edit(name: &str) -> Vec<Widget> {
 /// (300 at 1.5x) stacked, 40px apart.
 pub fn layout_death(hardcore: bool) -> Vec<Widget> {
     let mut v = Vec::new();
-    let (x, w) = ((UI_W as i32 - 300) / 2, 300);
+    let (x, w) = ((live_ui_w() as i32 - 300) / 2, 300);
     if !hardcore {
         v.push(btn_h(ID_DEATH_RESPAWN, x, 296, w, 30, "RESPAWN", "", true));
         v.push(btn_h(ID_DEATH_TITLE, x, 336, w, 30, "TITLE SCREEN", "", true));
@@ -1198,6 +1436,14 @@ pub(crate) fn smallcaps_slot(ch: char) -> usize {
 pub struct UiCanvas {
     pub px: Vec<u8>,
     pub dirty: bool,
+    /// Round 10 (vanilla integer GUI scale): the LIVE canvas size in
+    /// canvas px. The raster is 2 canvas px per vanilla px, so at the
+    /// 960×540 reference the canvas IS the classic grid (every
+    /// existing test); at other resolved scales the game resizes to
+    /// (2·fb_w/scale, 2·fb_h/scale) so HUD edge anchors land on true
+    /// screen edges and menus re-center in the live logical space.
+    pub live_w: usize,
+    pub live_h: usize,
     /// GUI Scale factor applied to widget text (set alongside
     /// [`scale_widgets`] — geometry scaling and text scaling move together)
     pub widget_scale: f32,
@@ -1369,12 +1615,30 @@ impl UiCanvas {
         UiCanvas {
             px: vec![0u8; UI_W * UI_H * 4],
             dirty: true,
+            live_w: UI_W,
+            live_h: UI_H,
             widget_scale: 1.0,
             chrome_enabled: true,
             gui_frame: crate::gui_render::GuiFrame::default(),
             icon_cells: None,
             device_scale: 1.0,
         }
+    }
+
+    /// Round 10: resize the canvas raster to the live logical GUI
+    /// space (2 canvas px per vanilla px). No-op when the size already
+    /// matches; otherwise reallocates zeroed and flags dirty so the
+    /// frame re-rasterizes + re-uploads. Callers follow with a widget
+    /// re-layout (`rebuild_ui`) so menu geometry re-centers.
+    pub fn resize(&mut self, w: usize, h: usize) {
+        let (w, h) = (w.max(1), h.max(1));
+        if w == self.live_w && h == self.live_h {
+            return;
+        }
+        self.live_w = w;
+        self.live_h = h;
+        self.px = vec![0u8; w * h * 4];
+        self.dirty = true;
     }
 
     /// the device scale (device px per UI px) for the GPU text path —
@@ -1406,7 +1670,8 @@ impl UiCanvas {
     /// save the current canvas (RGBA, straight alpha) as a PNG — the
     /// F3_DUMP visual-verification hook (never set in CI)
     pub fn dump_png(&self, path: &str) {
-        if let Some(img) = image::RgbaImage::from_raw(UI_W as u32, UI_H as u32, self.px.clone())
+        if let Some(img) =
+            image::RgbaImage::from_raw(self.live_w as u32, self.live_h as u32, self.px.clone())
         {
             let _ = img.save(path);
         }
@@ -1414,10 +1679,10 @@ impl UiCanvas {
 
     #[inline]
     pub fn set(&mut self, x: i32, y: i32, c: Color) {
-        if x < 0 || x >= UI_W as i32 || y < 0 || y >= UI_H as i32 {
+        if x < 0 || x >= self.live_w as i32 || y < 0 || y >= self.live_h as i32 {
             return;
         }
-        let i = (y as usize * UI_W + x as usize) * 4;
+        let i = (y as usize * self.live_w + x as usize) * 4;
         self.px[i] = c[0];
         self.px[i + 1] = c[1];
         self.px[i + 2] = c[2];
@@ -1620,7 +1885,7 @@ impl UiCanvas {
 
     pub fn text_center(&mut self, y: i32, s: &str, c: Color, scale: i32) {
         let w = Self::text_width(s, scale);
-        self.text((UI_W as i32 - w) / 2, y, s, c, scale);
+        self.text((self.live_w as i32 - w) / 2, y, s, c, scale);
     }
 
     /// Text with a 1px outline in all 8 directions (for logo / level number).
@@ -2026,7 +2291,7 @@ impl UiCanvas {
         let scale = 12;
         let logo = "VOXELCRAFT";
         let lw = Self::text_width(logo, scale);
-        let lx = (UI_W as i32 - lw) / 2;
+        let lx = (self.live_w as i32 - lw) / 2;
         let ly = 18;
         // soft drop shadow
         self.text(lx + 4, ly + 6, logo, [0, 0, 0, 150], scale);
@@ -2036,7 +2301,7 @@ impl UiCanvas {
         // splash: yellow, tilted -20 deg (right side up), pulsing 2 Hz,
         // tucked at the logo's bottom-right corner
         let sw = Self::text_width(splash, 2);
-        let cx = (lx + lw - 30 - sw / 2).clamp(40, UI_W as i32 - 40);
+        let cx = (lx + lw - 30 - sw / 2).clamp(40, self.live_w as i32 - 40);
         let cy = ly + 62;
         self.text_splash(cx, cy, splash, time);
 
@@ -2044,7 +2309,7 @@ impl UiCanvas {
 
         self.text(
             8,
-            UI_H as i32 - 20,
+            self.live_h as i32 - 20,
             "VoxelCraft 1.16.5",
             [220, 220, 220, 255],
             1,
@@ -2052,8 +2317,8 @@ impl UiCanvas {
         let vr = "100% CLEAN-ROOM - NOT AN OFFICIAL GAME";
         let vw = Self::text_width(vr, 1);
         self.text(
-            UI_W as i32 - vw - 8,
-            UI_H as i32 - 20,
+            self.live_w as i32 - vw - 8,
+            self.live_h as i32 - 20,
             vr,
             [210, 210, 210, 255],
             1,
@@ -2076,8 +2341,8 @@ impl UiCanvas {
         // 0.25 brightness) rides the quad pass; the canvas dark rect
         // stays as the no-quads fallback
         self.gui_frame
-            .dirt_background(UI_W as i32, UI_H as i32);
-        self.rect(0, 0, UI_W as i32, UI_H as i32, [8, 8, 10, 110]);
+            .dirt_background(self.live_w as i32, self.live_h as i32);
+        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [8, 8, 10, 110]);
         self.text_center(18, title, [255, 255, 255, 255], 3);
         for (i, line) in tooltip.iter().take(2).enumerate() {
             self.text_center(46 + i as i32 * 12, line, [170, 170, 170, 255], 1);
@@ -2091,8 +2356,8 @@ impl UiCanvas {
     /// themselves carry the rows + arrows).
     pub fn resource_pack_screen(&mut self, ws: &[Widget], hover: Option<u16>, tooltip: &[String]) {
         self.gui_frame
-            .dirt_background(UI_W as i32, UI_H as i32);
-        self.rect(0, 0, UI_W as i32, UI_H as i32, [8, 8, 10, 110]);
+            .dirt_background(self.live_w as i32, self.live_h as i32);
+        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [8, 8, 10, 110]);
         self.text_center(18, "RESOURCE PACKS", [255, 255, 255, 255], 3);
         for (i, line) in tooltip.iter().take(2).enumerate() {
             self.text_center(46 + i as i32 * 12, line, [170, 170, 170, 255], 1);
@@ -2109,7 +2374,7 @@ impl UiCanvas {
     }
 
     pub fn pause_screen(&mut self, ws: &[Widget], hover: Option<u16>) {
-        self.rect(0, 0, UI_W as i32, UI_H as i32, [0, 0, 0, 130]);
+        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [0, 0, 0, 130]);
         self.text_center(140, "GAME MENU", [255, 255, 255, 255], 3);
         self.draw_widgets(ws, hover);
     }
@@ -2129,7 +2394,7 @@ impl UiCanvas {
         total: usize,
         filtering: bool,
     ) {
-        self.rect(0, 0, UI_W as i32, UI_H as i32, [8, 8, 10, 200]);
+        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [8, 8, 10, 200]);
         self.text_center(18, "SELECT WORLD", [255, 255, 255, 255], 3);
         // sunken list backdrop behind the entries (vanilla look)
         self.rect(221, 90, 518, 6 + MAX_LISTED_WORLDS as i32 * 50, [0, 0, 0, 130]);
@@ -2206,7 +2471,7 @@ impl UiCanvas {
         page2: bool,
         mode_desc: (&str, &str),
     ) {
-        self.rect(0, 0, UI_W as i32, UI_H as i32, [8, 8, 10, 200]);
+        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [8, 8, 10, 200]);
         self.text_center(18, "CREATE NEW WORLD", [255, 255, 255, 255], 3);
         if !page2 {
             self.text_center(
@@ -2239,7 +2504,7 @@ impl UiCanvas {
 
     /// 2026-09-14 parity round: the vanilla Edit World screen.
     pub fn world_edit_screen(&mut self, ws: &[Widget], hover: Option<u16>, time: f32) {
-        self.rect(0, 0, UI_W as i32, UI_H as i32, [8, 8, 10, 200]);
+        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [8, 8, 10, 200]);
         self.text_center(18, "EDIT WORLD", [255, 255, 255, 255], 3);
         self.text_center(
             64,
@@ -2260,10 +2525,10 @@ impl UiCanvas {
         hardcore: bool,
         score: i32,
     ) {
-        self.rect(0, 0, UI_W as i32, UI_H as i32, [80, 0, 0, 150]);
+        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [80, 0, 0, 150]);
         let title = if hardcore { "GAME OVER!" } else { "YOU DIED!" };
         let tw = Self::text_width(title, 5);
-        self.text((UI_W as i32 - tw) / 2, 150, title, [255, 240, 240, 255], 5);
+        self.text((self.live_w as i32 - tw) / 2, 150, title, [255, 240, 240, 255], 5);
         let sub = if hardcore {
             "HARDCORE WORLD - DEATH IS PERMANENT".to_string()
         } else {
@@ -2299,8 +2564,8 @@ impl UiCanvas {
             self.crosshair_quads();
             return;
         }
-        let cx = (UI_W / 2) as i32;
-        let cy = (UI_H / 2) as i32;
+        let cx = (self.live_w / 2) as i32;
+        let cy = (self.live_h / 2) as i32;
         let arm = 8;
         let th = 2;
         let white: Color = [238, 238, 238, 185];
@@ -2329,8 +2594,8 @@ impl UiCanvas {
         let k = self.device_scale.max(0.05);
         // half-up round (f32 → whole device px)
         let snap = |v: f32| (v + 0.5).floor();
-        let cxd = snap(UI_W as f32 * 0.5 * k);
-        let cyd = snap(UI_H as f32 * 0.5 * k);
+        let cxd = snap(self.live_w as f32 * 0.5 * k);
+        let cyd = snap(self.live_h as f32 * 0.5 * k);
         let ha = (snap(8.0 * k) as i32).max(4); // half-arm (device px)
         let ht = (snap(2.0 * k) as i32).max(2); // arm thickness
         // bar top/left snapped so the arm covers whole device px
@@ -2387,8 +2652,8 @@ impl UiCanvas {
     /// (see docs/research/round-9-survival-hud-reference-audit.md).
     pub fn status_bars(&mut self, s: &HudStatus) {
         let hb_w = 9 * 40 + 4;
-        let hb_x = (UI_W as i32 - hb_w) / 2;
-        let hb_y = UI_H as i32 - 48;
+        let hb_x = (self.live_w as i32 - hb_w) / 2;
+        let hb_y = self.live_h as i32 - 48;
 
         // hearts row — ±1-vanilla-px jitter while hurt / regenerating
         // (clean-room; vanilla jitters the row, the wiki publishes no
@@ -2556,7 +2821,7 @@ impl UiCanvas {
             let lvl = format!("{}", s.level);
             let w = Self::text_width(&lvl, 2);
             self.text_outlined(
-                (UI_W as i32 - w) / 2,
+                (self.live_w as i32 - w) / 2,
                 xp_y - 20,
                 &lvl,
                 [128, 255, 32, 255],
@@ -2576,7 +2841,7 @@ impl UiCanvas {
             return;
         }
         self.gui_frame
-            .solid_over(0.0, 0.0, UI_W as f32, UI_H as f32, [0.55, 0.0, 0.0, 0.3 * a]);
+            .solid_over(0.0, 0.0, self.live_w as f32, self.live_h as f32, [0.55, 0.0, 0.0, 0.3 * a]);
     }
 
     /// Sub-round 1: the status-effect icon rows, top-right (VERIFIED
@@ -2605,7 +2870,7 @@ impl UiCanvas {
         for (row, list) in [(0i32, &pos), (1i32, &neg)] {
             let n = list.len() as i32;
             for (i, e) in list.iter().enumerate() {
-                let x = UI_W as i32 - MARGIN - (n - i as i32) * PITCH + 2;
+                let x = self.live_w as i32 - MARGIN - (n - i as i32) * PITCH + 2;
                 let y = MARGIN + row * 20;
                 // blink in the final 5 s (100 ticks) at ~4 Hz
                 let alpha = if e.ticks_left < 100 && (tick / 5) % 2 == 0 {
@@ -2638,13 +2903,13 @@ impl UiCanvas {
     /// dragon's remaining health fraction (0..1).
     pub fn boss_bar(&mut self, frac: f32) {
         let w = 9 * 40 + 4; // hotbar-width band (the vanilla boss-bar width)
-        let x = (UI_W as i32 - w) / 2;
+        let x = (self.live_w as i32 - w) / 2;
         let y = 24;
         // label
         let name = "ENDER DRAGON";
         let tw = name.len() as i32 * 8;
         self.text(
-            (UI_W as i32 - tw) / 2,
+            (self.live_w as i32 - tw) / 2,
             y - 14,
             name,
             [235, 220, 245, 255],
@@ -2696,9 +2961,9 @@ impl UiCanvas {
         // centers it; the old left-aligned hb_y-44 spot now collides
         // with the armor row). Clear above armor (hb_y-43) and the
         // level-number zone (hb_y-32)
-        let y = UI_H as i32 - 48 - 64;
+        let y = self.live_h as i32 - 48 - 64;
         let w = Self::text_width(name, 2);
-        let x = (UI_W as i32 - w) / 2;
+        let x = (self.live_w as i32 - w) / 2;
         let fg: Color = [255, 255, 255, (230.0 * a) as u8];
         let sh: Color = [20, 20, 20, (140.0 * a) as u8];
         self.text_outlined(x, y, name, fg, sh, 2);
@@ -2716,8 +2981,8 @@ impl UiCanvas {
         let n = slots.len() as i32;
         let slot = 40i32;
         let bw = n * slot + 4;
-        let x0 = (UI_W as i32 - bw) / 2;
-        let y0 = UI_H as i32 - 48;
+        let x0 = (self.live_w as i32 - bw) / 2;
+        let y0 = self.live_h as i32 - 48;
         // Phase 2: hotbar chrome quads (bg + selection) always pushed,
         // raster gated. Item icons + counts stay on the canvas (Phase 3
         // migrates icons).
@@ -2746,7 +3011,7 @@ impl UiCanvas {
         if let Some((name, alpha)) = item_name {
             let w = name.len() as i32 * 12;
             self.text(
-                (UI_W as i32 - w) / 2,
+                (self.live_w as i32 - w) / 2,
                 y0 - 76,
                 name,
                 [255, 255, 255, alpha],
@@ -2787,7 +3052,7 @@ impl UiCanvas {
                     (sx + 2) as usize,
                     (sy + 2) as usize,
                     &mut self.px,
-                    UI_W,
+                    self.live_w,
                 ),
             }
         }
@@ -2927,7 +3192,7 @@ impl UiCanvas {
         // ---- shared bottom layout: 9-col storage (3 rows) + hotbar row ----
         let cols: i32 = 9;
         let grid_w = cols * 40 + 4;
-        let x0 = (UI_W as i32 - grid_w) / 2;
+        let x0 = (self.live_w as i32 - grid_w) / 2;
         // top-area height per kind
         let top_h = match kind {
             // Sub-round 3: the vanilla 176x166-shaped inventory — armor
@@ -2937,6 +3202,9 @@ impl UiCanvas {
             ContainerKind::Inventory => 232,
             ContainerKind::Crafting => 140, // 3x3 craft + arrow + output
             ContainerKind::Chest => 132,    // 3 rows of 9 slots
+            // Round 12: 6 rows of 9 = 54 slots (vanilla 176×220 panel —
+            // +3 rows over the single chest, same family chrome)
+            ContainerKind::DoubleChest => 264, // 6 rows of 9 slots
             // the barrel shares the chest grid (VERIFIED: 27 slots)
             ContainerKind::Barrel => 132, // 3 rows of 9 slots
             // vanilla ratio: hopper 133/166 of a chest's height — one
@@ -2949,13 +3217,13 @@ impl UiCanvas {
             ContainerKind::Trade => 248,
         };
         let panel_h = top_h + 3 * 44 + 8 + 44 + 30; // + title + gaps + padding
-        let y0 = (UI_H as i32 - panel_h) / 2;
+        let y0 = (self.live_h as i32 - panel_h) / 2;
 
         // panel chrome (the trade screen is wider: two 260px columns)
         let trade_wide = kind == ContainerKind::Trade;
         let pw = if trade_wide { 562 } else { grid_w + 28 };
         let px0 = if trade_wide {
-            (UI_W as i32 - pw) / 2
+            (self.live_w as i32 - pw) / 2
         } else {
             x0 - 14
         };
@@ -2967,6 +3235,10 @@ impl UiCanvas {
             ContainerKind::Inventory => "INVENTORY  (E / ESC to close)",
             ContainerKind::Crafting => "CRAFTING TABLE",
             ContainerKind::Chest => "CHEST",
+            // Round 12: the double chest keeps the single-word vanilla
+            // title (NOT "Large Chest") — VERIFIED w/Chest §Double
+            // chests, live 2026-09-15
+            ContainerKind::DoubleChest => "CHEST",
             // 1.14: the barrel's own label (the vanilla GUI title)
             ContainerKind::Barrel => "BARREL",
             // VERIFIED vanilla GUI label: "Item Hopper"
@@ -3110,6 +3382,25 @@ impl UiCanvas {
                 let cx = x0 + (grid_w - total) / 2;
                 let cy = y0 + 8;
                 for r in 0..3 {
+                    for c in 0..9 {
+                        let x = cx + c as i32 * 40;
+                        let y = cy + r as i32 * 40;
+                        let idx = r * 9 + c;
+                        let st = view.chest.get(idx).copied().unwrap_or(ItemStack::EMPTY);
+                        self.slot_well(x, y, &st, atlas);
+                        geom.chest.push((x, y));
+                    }
+                }
+            }
+            ContainerKind::DoubleChest => {
+                // Round 12: 6 rows of 9 = 54 slots, centered — the two
+                // adjacent halves' 27+27 slots in one grid (the first
+                // half's 27 ride rows 0-2, the second's rows 3-5;
+                // game.rs routes SlotRef::Chest(i) to the owning half)
+                let total = 9 * 40;
+                let cx = x0 + (grid_w - total) / 2;
+                let cy = y0 + 8;
+                for r in 0..6 {
                     for c in 0..9 {
                         let x = cx + c as i32 * 40;
                         let y = cy + r as i32 * 40;
@@ -3448,7 +3739,7 @@ impl UiCanvas {
                 };
                 let lw = Self::text_width(&label, 1);
                 self.text(
-                    (UI_W as i32 - lw) / 2,
+                    (self.live_w as i32 - lw) / 2,
                     y0 - 44,
                     &label,
                     [255, 255, 255, 255],
@@ -3532,20 +3823,20 @@ impl UiCanvas {
             // No right line may cross the half-screen mark: truncate to
             // the measured width with an ASCII "..." tail (vanilla
             // truncates its own long renderer lines rather than wrap).
-            let half = UI_W as f32 / 2.0 - 12.0;
+            let half = self.live_w as f32 / 2.0 - 12.0;
             if strip_quads {
                 let line = fit_line(l, half, |s| measure(s));
                 let w = measure(&line);
                 // text ends 3px from the right edge; the strip extends
                 // 1 UI px past both ends of the fractional text width
-                let x = UI_W as f32 - 3.0 - w;
+                let x = self.live_w as f32 - 3.0 - w;
                 self.gui_frame
                     .solid_over(x - 1.0, y as f32, w + 2.0, LINE_H as f32, bg_tint);
                 self.text_flat_case(x.round() as i32, y + 1, &line, FG, 2);
             } else {
                 let line = fit_line(l, half, |s| Self::text_width_case(s, 2) as f32);
                 let w = Self::text_width_case(&line, 2);
-                let x = UI_W as i32 - 3 - w; // text ends 3px from the right edge
+                let x = self.live_w as i32 - 3 - w; // text ends 3px from the right edge
                 self.rect(x - 1, y, w + 2, LINE_H, BG);
                 self.text_flat_case(x, y + 1, &line, FG, 2);
             }
@@ -3559,8 +3850,8 @@ impl UiCanvas {
         let w = 340;
         let row_h = 20;
         let h = rows.len() as i32 * row_h + 40;
-        let x0 = (UI_W as i32 - w) / 2;
-        let y0 = (UI_H as i32 - h) / 2;
+        let x0 = (self.live_w as i32 - w) / 2;
+        let y0 = (self.live_h as i32 - h) / 2;
         self.rect(x0, y0, w, h, [12, 12, 14, 235]);
         self.frame(x0, y0, w, h, [140, 140, 140, 200]);
         self.text_flat_case(x0 + 12, y0 + 9, "Debug help", [255, 255, 255, 255], 2);
@@ -3691,7 +3982,7 @@ impl UiCanvas {
         let vis_rows = 5usize;
         let cell = 40i32;
         let grid_w = cols as i32 * cell + 4;
-        let x0 = (UI_W as i32 - grid_w) / 2;
+        let x0 = (self.live_w as i32 - grid_w) / 2;
         // panel: title strip 26px; grid 5x40; hotbar row below
         let y0 = 150i32; // grid top
         let title_y = y0 - 26;
@@ -3704,9 +3995,9 @@ impl UiCanvas {
         let tab_w = 76i32;
         let tab_h = 44i32;
         let row1_n = 6i32;
-        let row1_x = (UI_W as i32 - row1_n * tab_w) / 2;
+        let row1_x = (self.live_w as i32 - row1_n * tab_w) / 2;
         let row2_n = 5i32;
-        let row2_x = (UI_W as i32 - row2_n * tab_w) / 2;
+        let row2_x = (self.live_w as i32 - row2_n * tab_w) / 2;
         let row2_y = py0 - tab_h + 2;
         let row1_y = row2_y - tab_h + 2;
 
@@ -3777,7 +4068,7 @@ impl UiCanvas {
                 blk::WITHER_SKELETON_SKULL
             };
             let tile = blk::def(icon).tiles[0];
-            blit_tile(atlas, tile, 2, (tx + (tab_w - 32) / 2) as usize, (ty + 6) as usize, &mut self.px, UI_W);
+            blit_tile(atlas, tile, 2, (tx + (tab_w - 32) / 2) as usize, (ty + 6) as usize, &mut self.px, self.live_w);
             // hover highlight + tooltip capture
             if cx >= tx && cx < tx + tab_w && cy >= ty && cy < ty + tab_h {
                 self.frame(tx - 1, ty - 1, tab_w + 2, tab_h + 2, [255, 255, 255, 200]);
@@ -3837,7 +4128,7 @@ impl UiCanvas {
             self.frame(sx, sy, 36, 36, [24, 24, 24, 255]);
             self.frame(sx + 1, sy + 1, 34, 34, [110, 110, 110, 255]);
             let tile = blk::def(b).tiles[0];
-            blit_tile(atlas, tile, 2, (sx + 2) as usize, (sy + 2) as usize, &mut self.px, UI_W);
+            blit_tile(atlas, tile, 2, (sx + 2) as usize, (sy + 2) as usize, &mut self.px, self.live_w);
             if cx >= sx && cx < sx + 36 && cy >= sy && cy < sy + 36 {
                 self.frame(sx - 1, sy - 1, 38, 38, [255, 255, 255, 255]);
                 hovered = Some(b);
@@ -3924,7 +4215,7 @@ impl UiCanvas {
             .unwrap_or_default();
         if !label.is_empty() {
             let lw = Self::text_width(&label, 1);
-            self.text((UI_W as i32 - lw) / 2, hot_y - 16, &label, [255, 255, 255, 255], 1);
+            self.text((self.live_w as i32 - lw) / 2, hot_y - 16, &label, [255, 255, 255, 255], 1);
         }
 
         // ---- the held (cursor) stack follows the mouse ----
@@ -3962,8 +4253,8 @@ impl UiCanvas {
         ];
         let bw = 460;
         let bh = lines.len() as i32 * 20 + 50;
-        let x0 = (UI_W as i32 - bw) / 2;
-        let y0 = (UI_H as i32 - bh) / 2;
+        let x0 = (self.live_w as i32 - bw) / 2;
+        let y0 = (self.live_h as i32 - bh) / 2;
         self.rect(x0, y0, bw, bh, [16, 16, 16, 200]);
         self.frame(x0, y0, bw, bh, [120, 120, 120, 255]);
         self.text(
@@ -3986,8 +4277,8 @@ impl UiCanvas {
     }
 
     pub fn center_msg(&mut self, title: &str, sub: &str) {
-        self.text_center(UI_H as i32 / 2 - 40, title, [255, 255, 255, 255], 3);
-        self.text_center(UI_H as i32 / 2, sub, [200, 200, 200, 255], 1);
+        self.text_center(self.live_h as i32 / 2 - 40, title, [255, 255, 255, 255], 3);
+        self.text_center(self.live_h as i32 / 2, sub, [200, 200, 200, 255], 1);
     }
 
     /// Boot intro screen — the FIRST screen after opening the game, in the
@@ -3997,12 +4288,12 @@ impl UiCanvas {
     /// caption — exactly the real boot screen's composition, clean-room.
     pub fn intro_screen(&mut self, progress: f32) {
         // solid studio-brand red (clean-room color — not a sampled asset)
-        self.rect(0, 0, UI_W as i32, UI_H as i32, [239, 50, 61, 255]);
+        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [239, 50, 61, 255]);
         // studio wordmark: dark on the bright field, centered
         let scale = 8;
         let logo = "VOXELCRAFT";
         let lw = Self::text_width(logo, scale);
-        let lx = (UI_W as i32 - lw) / 2;
+        let lx = (self.live_w as i32 - lw) / 2;
         let ly = 196;
         self.text(lx + 3, ly + 4, logo, [120, 22, 28, 200], scale);
         self.text(lx, ly, logo, [54, 54, 54, 255], scale);
@@ -4010,7 +4301,7 @@ impl UiCanvas {
         let sub = "S T U D I O S";
         let suw = Self::text_width(sub, 3);
         self.text(
-            (UI_W as i32 - suw) / 2 + 2,
+            (self.live_w as i32 - suw) / 2 + 2,
             ly + 70,
             sub,
             [54, 54, 54, 255],
@@ -4019,7 +4310,7 @@ impl UiCanvas {
         // thin white progress bar, centered, just past mid-frame (the bar
         // tracks the settled intro beat — assets all load in GameApp::new)
         let bw = 200;
-        let x0 = (UI_W as i32 - bw) / 2;
+        let x0 = (self.live_w as i32 - bw) / 2;
         let y0 = 342;
         self.rect(x0 - 1, y0 - 1, bw + 2, 7, [190, 36, 45, 255]);
         self.rect(
@@ -4044,7 +4335,7 @@ impl UiCanvas {
     /// 2 meshed + on GPU (0xFFFFFF "full") · 3 spawn chunk pending
     /// (0xF26060 "spawn"). Color values are the wiki's exact table.
     pub fn world_loading_screen(&mut self, percent: i32, cells: &[u8], center: usize) {
-        self.rect(0, 0, UI_W as i32, UI_H as i32, [10, 12, 16, 140]);
+        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [10, 12, 16, 140]);
         self.text_center(84, "LOADING WORLD", [255, 255, 255, 255], 2);
         let pct = format!("{percent}%");
         self.text_center(118, &pct, [220, 220, 220, 255], 2);
@@ -4052,7 +4343,7 @@ impl UiCanvas {
         // 35x35 colormap, 4px cells (140px square, vanilla-proportioned)
         const N: i32 = 35;
         const CELL: i32 = 4;
-        let x0 = (UI_W as i32 - N * CELL) / 2;
+        let x0 = (self.live_w as i32 - N * CELL) / 2;
         let y0 = 170;
         for row in 0..N {
             for col in 0..N {
@@ -4108,7 +4399,7 @@ impl CreativeGeom {
     pub fn tab_at(&self, ux: i32, uy: i32) -> Option<u8> {
         self.tabs
             .iter()
-            .position(|r| r.map_or(false, |r| Self::in_rect(r, ux, uy)))
+            .position(|r| r.is_some_and(|r| Self::in_rect(r, ux, uy)))
             .map(|i| i as u8)
     }
 
@@ -4144,7 +4435,7 @@ impl CreativeGeom {
 
     /// the scrollbar track?
     pub fn scrollbar_at(&self, ux: i32, uy: i32) -> bool {
-        self.scrollbar.map_or(false, |r| Self::in_rect(r, ux, uy))
+        self.scrollbar.is_some_and(|r| Self::in_rect(r, ux, uy))
     }
 }
 
@@ -4168,6 +4459,12 @@ pub enum ContainerKind {
     Trade,
     /// Phase 3: generic container (chest: 3 rows of 9)
     Chest,
+    /// Round 12: the double chest — two adjacent chest halves merging
+    /// into one 9×6 = 54-slot grid (VERIFIED w/Chest §Double chests,
+    /// live 2026-09-15: "Placing two chests of the same type next to
+    /// each other ... combines them into a large chest"; the GUI keeps
+    /// the single-word "Chest" title)
+    DoubleChest,
     /// 1.14: barrel container (3 rows of 9 — VERIFIED w/Barrel: "the
     /// same as a single chest"; shares the chest grid geometry, own
     /// title)
@@ -4652,6 +4949,16 @@ mod tests {
         ID_DEATH_TITLE,
         ID_DEATH_DELETE,
         ID_RPACK_DEFAULT,
+        // Round 14: the settings-tree additions
+        ID_OPT_MUSICSND,
+        ID_SND_DONE,
+        ID_CTRL_RESET,
+        ID_CTRL_DONE,
+        ID_ACC_FOG,
+        ID_ACC_FOVEFF,
+        ID_ACC_DISTORT,
+        ID_ACC_CHATVIS,
+        ID_ACC_SUBTITLES,
     ];
 
     #[test]
@@ -4671,12 +4978,15 @@ mod tests {
     /// exactly what masked it in the browser E2E).
     #[test]
     fn row_ranges_disjoint_from_literals_and_each_other() {
-        let rows: [(u16, u16, &str); 5] = [
+        let rows: [(u16, u16, &str); 7] = [
             (ID_WS_WORLD_BASE, MAX_LISTED_WORLDS as u16, "world entries"),
             (ID_RPACK_AVAIL_BASE, MAX_RPACK_ENTRIES as u16, "rpack available"),
             (ID_RPACK_SEL_BASE, MAX_RPACK_ENTRIES as u16, "rpack selected"),
             (ID_RPACK_UP_BASE, MAX_RPACK_ENTRIES as u16, "rpack up arrows"),
             (ID_RPACK_DOWN_BASE, MAX_RPACK_ENTRIES as u16, "rpack down arrows"),
+            // Round 14: the Music & Sound sliders + the Controls bind rows
+            (ID_SND_BASE, 10, "music & sound sliders"),
+            (ID_CTRL_BIND_BASE, MAX_CTRL_BINDS as u16, "controls bind rows"),
         ];
         for &(base, len, name) in &rows {
             for id in base..base + len {
@@ -5518,6 +5828,77 @@ mod screen_tests {
         // 36 inventory slots (27 storage + 9 hotbar) still hit-test
         assert_eq!(g.inv.len(), 36);
         assert_eq!(g.slot_at(g.inv[0].0 + 4, g.inv[0].1 + 4), Some(crate::ui::SlotRef::Inv(0)));
+    }
+
+    /// Round 12 (2026-09-15): the double-chest screen geometry — the
+    /// 9×6 = 54-slot grid (the two halves' 27+27), the single-word
+    /// "CHEST" title, and the vanilla 176×220-family panel. The engine
+    /// container family carries a constant chrome overhead over vanilla
+    /// (single chest 173 vanilla-eq px vs 166; the same +3-row growth
+    /// → the double's 239 vanilla-eq vs 220) — the SLOT GRID itself is
+    /// exactly vanilla: 9 columns × 6 rows at the 20-px pitch, +3 rows
+    /// over the single chest. (minecraft.wiki/w/Chest §Double chests,
+    /// live 2026-09-15.)
+    #[test]
+    fn double_chest_screen_geometry() {
+        let mut ui = UiCanvas::new();
+        ui.set_chrome_enabled(false);
+        ui.clear();
+        let view = crate::ui::ContainerView {
+            kind: crate::ui::ContainerKind::DoubleChest,
+            inv: vec![vc_inventory::inventory::ItemStack::EMPTY; 36],
+            grid: vec![],
+            craft_out: vc_inventory::inventory::ItemStack::EMPTY,
+            furnace: None,
+            brewing: None,
+            enchant: None,
+            trade: None,
+            chest: vec![vc_inventory::inventory::ItemStack::EMPTY; 54],
+            armor: [vc_inventory::inventory::ItemStack::EMPTY; 4],
+            offhand: vc_inventory::inventory::ItemStack::EMPTY,
+            cursor: vc_inventory::inventory::ItemStack::EMPTY,
+        };
+        let atlas = vec![0u8; crate::textures::ATLAS_SIZE * crate::textures::ATLAS_SIZE * 4];
+        let g = ui.container_screen(&view, (0.0, 0.0), &atlas, false);
+        // the merged grid: 54 slots = 9 cols × 6 rows
+        assert_eq!(g.chest.len(), 54, "54 slot rects");
+        // column pitch 40 (20 vanilla px), row pitch 40
+        for r in 0..6usize {
+            for c in 0..8usize {
+                let i = r * 9 + c;
+                assert_eq!(g.chest[i + 1].0, g.chest[i].0 + 40, "col pitch");
+            }
+        }
+        for r in 0..5usize {
+            let i = r * 9;
+            assert_eq!(g.chest[i + 9].1, g.chest[i].1 + 40, "row pitch");
+        }
+        // +3 rows over the single chest's 3-row grid (132 → 264 top)
+        let single_top = 132;
+        let double_top = 264;
+        assert_eq!(double_top - single_top, 3 * 44, "+3 rows of slots");
+        // every slot hit-tests through the generic Chest(i) path
+        for i in [0usize, 26, 27, 53] {
+            let (x, y) = g.chest[i];
+            assert_eq!(
+                g.slot_at(x + 4, y + 4),
+                Some(crate::ui::SlotRef::Chest(i)),
+                "slot {i} hit-tests"
+            );
+        }
+        // the player inventory rows below still hit-test (36 slots)
+        assert_eq!(g.inv.len(), 36);
+        // rows 0-2 sit ABOVE rows 3-5 (the halves' order in the view)
+        assert!(g.chest[0].1 < g.chest[27].1, "half A rows above half B");
+        // the panel is taller than the single chest's: top 264 + the
+        // shared bottom (3*44+8+44+30) = 478 canvas px = 239
+        // vanilla-eq (family chrome overhead, disclosed above)
+        let panel_h = 264 + 3 * 44 + 8 + 44 + 30;
+        assert_eq!(panel_h, 478);
+        assert_eq!(panel_h / 2, 239, "vanilla-eq height (220 + family overhead)");
+        // the panel centers vertically in the live canvas (540 tall)
+        let y0 = (540 - panel_h) / 2;
+        assert_eq!(g.chest[0].1 - 8, y0, "grid starts 8px under the panel top");
     }
 
     /// Sub-round 2 (2026-09-15): the tabbed creative screen geometry —

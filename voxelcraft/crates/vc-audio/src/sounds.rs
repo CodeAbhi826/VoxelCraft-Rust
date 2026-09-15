@@ -836,6 +836,13 @@ impl SoundBank {
         }
         // one-off recipes
         for (n, d) in [
+            // Sub-round 5 fix (2026-09-15): the Water family rides its
+            // splash for break/place/hit but the registry's
+            // block.water.step / block.water.splash rows need these two
+            // takes to exist — the family loop above skips Water
+            ("step/water", family_recipe(SoundFamily::Water, 0, Take::Step)),
+            ("dig/water1", family_recipe(SoundFamily::Water, 0, Take::Dig)),
+            ("dig/water2", family_recipe(SoundFamily::Water, 1, Take::Dig)),
             ("ui/click", click_recipe()),
             ("entity/item/pickup", pop_recipe()),
             ("block/lever", lever_recipe()),
@@ -1495,7 +1502,7 @@ pub mod web_audio {
                         None
                     };
                     if let Some(f) = filter.as_ref() {
-                        let _ = web_sys::BiquadFilterNode::set_type(
+                        web_sys::BiquadFilterNode::set_type(
                             f,
                             web_sys::BiquadFilterType::Lowpass,
                         );
@@ -1580,7 +1587,7 @@ mod tests {
         let mut rng = Rng::new(42);
         let mut rare = 0;
         for _ in 0..400 {
-            let r = reg.pick("block.grass.dig", &mut rng, &bank).unwrap();
+            let r = reg.pick("block.grass.break", &mut rng, &bank).unwrap();
             // grass2 is the 1-weight variant — find its slot
             let rare_slot = bank.recipe("dig/grass2").unwrap();
             if r.recipe == rare_slot {
@@ -1601,7 +1608,7 @@ mod tests {
         let reg = SoundRegistry::from_json(SOUNDS_JSON).unwrap();
         let mut rng = Rng::new(9);
         for _ in 0..200 {
-            let r = reg.pick("block.stone.dig", &mut rng, &bank).unwrap();
+            let r = reg.pick("block.stone.break", &mut rng, &bank).unwrap();
             assert!((0.8..=1.0).contains(&r.pitch), "pitch {}", r.pitch);
         }
     }

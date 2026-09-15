@@ -25,6 +25,141 @@ use vc_render::render::{Camera, RenderStats, Renderer, SkyState};
 use vc_render::ui::{self, UiCanvas, Widget, WidgetKind, UI_H, UI_W};
 use vc_world::gen::Biome;
 use vc_world::world::{ChunkPos, World};
+use winit::keyboard::KeyCode;
+
+// ------------------------------------------------------------- keybinds --
+
+/// Round 14 (2026-09-15): the rebindable key table — the vanilla
+/// Controls screen's backing store (minecraft.wiki/w/Controls, live
+/// 2026-09-15: every bindable action listed with its current key,
+/// click to rebind, Reset Keys restores defaults). The engine's
+/// rebindable set: movement (forward/back/left/right/jump/sneak),
+/// inventory (E), offhand swap (F), creative picker (B). Fixed binds
+/// (Escape, F3, hotbar 1-9) stay hardcoded like vanilla's non-
+/// rebindable entries and are listed grayed on the screen.
+#[derive(Clone, PartialEq, Debug)]
+pub struct KeyBinds {
+    pub forward: KeyCode,
+    pub back: KeyCode,
+    pub left: KeyCode,
+    pub right: KeyCode,
+    pub jump: KeyCode,
+    pub sneak: KeyCode,
+    pub inventory: KeyCode,
+    pub swap_offhand: KeyCode,
+    pub creative_picker: KeyCode,
+}
+
+impl Default for KeyBinds {
+    fn default() -> Self {
+        KeyBinds {
+            forward: KeyCode::KeyW,
+            back: KeyCode::KeyS,
+            left: KeyCode::KeyA,
+            right: KeyCode::KeyD,
+            jump: KeyCode::Space,
+            sneak: KeyCode::ShiftLeft,
+            inventory: KeyCode::KeyE,
+            swap_offhand: KeyCode::KeyF,
+            creative_picker: KeyCode::KeyB,
+        }
+    }
+}
+
+impl KeyBinds {
+    /// the rows the Controls screen renders — `(is_header, name, key)`
+    /// triples in the vanilla category grouping (Movement / Inventory)
+    pub fn rows(&self) -> Vec<(bool, &'static str, KeyCode)> {
+        vec![
+            (true, "MOVEMENT", KeyCode::Escape),
+            (false, "Walk Forwards", self.forward),
+            (false, "Walk Backwards", self.back),
+            (false, "Strafe Left", self.left),
+            (false, "Strafe Right", self.right),
+            (false, "Jump", self.jump),
+            (false, "Sneak", self.sneak),
+            (true, "INVENTORY", KeyCode::Escape),
+            (false, "Open/Close Inventory", self.inventory),
+            (false, "Swap Item With Offhand", self.swap_offhand),
+            (false, "Creative Item Picker", self.creative_picker),
+        ]
+    }
+
+    /// rebind the nth non-header row (the row index the layout assigns
+    /// counts headers too — same walk as `rows()`)
+    pub fn set_nth(&mut self, n: usize, key: KeyCode) {
+        let mut i = 0usize;
+        for (is_header, _, _) in self.rows() {
+            if is_header {
+                continue;
+            }
+            if i == n {
+                match i {
+                    0 => self.forward = key,
+                    1 => self.back = key,
+                    2 => self.left = key,
+                    3 => self.right = key,
+                    4 => self.jump = key,
+                    5 => self.sneak = key,
+                    6 => self.inventory = key,
+                    7 => self.swap_offhand = key,
+                    _ => self.creative_picker = key,
+                }
+                return;
+            }
+            i += 1;
+        }
+    }
+
+    /// parse a KeyCode from its Debug name ("KeyW", "Space"...) — the
+    /// settings round-trip format (the web input path shares the names)
+    pub fn key_from_str(s: &str) -> Option<KeyCode> {
+        let code = match s {
+            "KeyA" => KeyCode::KeyA, "KeyB" => KeyCode::KeyB, "KeyC" => KeyCode::KeyC,
+            "KeyD" => KeyCode::KeyD, "KeyE" => KeyCode::KeyE, "KeyF" => KeyCode::KeyF,
+            "KeyG" => KeyCode::KeyG, "KeyH" => KeyCode::KeyH, "KeyI" => KeyCode::KeyI,
+            "KeyJ" => KeyCode::KeyJ, "KeyK" => KeyCode::KeyK, "KeyL" => KeyCode::KeyL,
+            "KeyM" => KeyCode::KeyM, "KeyN" => KeyCode::KeyN, "KeyO" => KeyCode::KeyO,
+            "KeyP" => KeyCode::KeyP, "KeyQ" => KeyCode::KeyQ, "KeyR" => KeyCode::KeyR,
+            "KeyS" => KeyCode::KeyS, "KeyT" => KeyCode::KeyT, "KeyU" => KeyCode::KeyU,
+            "KeyV" => KeyCode::KeyV, "KeyW" => KeyCode::KeyW, "KeyX" => KeyCode::KeyX,
+            "KeyY" => KeyCode::KeyY, "KeyZ" => KeyCode::KeyZ,
+            "Digit1" => KeyCode::Digit1, "Digit2" => KeyCode::Digit2,
+            "Digit3" => KeyCode::Digit3, "Digit4" => KeyCode::Digit4,
+            "Digit5" => KeyCode::Digit5, "Digit6" => KeyCode::Digit6,
+            "Digit7" => KeyCode::Digit7, "Digit8" => KeyCode::Digit8,
+            "Digit9" => KeyCode::Digit9, "Digit0" => KeyCode::Digit0,
+            "Space" => KeyCode::Space,
+            "ShiftLeft" => KeyCode::ShiftLeft, "ShiftRight" => KeyCode::ShiftRight,
+            "ControlLeft" => KeyCode::ControlLeft, "ControlRight" => KeyCode::ControlRight,
+            "AltLeft" => KeyCode::AltLeft, "AltRight" => KeyCode::AltRight,
+            "ArrowUp" => KeyCode::ArrowUp, "ArrowDown" => KeyCode::ArrowDown,
+            "ArrowLeft" => KeyCode::ArrowLeft, "ArrowRight" => KeyCode::ArrowRight,
+            _ => return None,
+        };
+        Some(code)
+    }
+
+    /// a printable key label (vanilla shows "W", "A", "SPACE"...)
+    pub fn key_label(k: KeyCode) -> String {
+        match k {
+            KeyCode::Space => "SPACE".into(),
+            KeyCode::ShiftLeft | KeyCode::ShiftRight => "LSHIFT".into(),
+            KeyCode::ControlLeft | KeyCode::ControlRight => "LCTRL".into(),
+            KeyCode::AltLeft | KeyCode::AltRight => "LALT".into(),
+            KeyCode::ArrowUp => "UP".into(),
+            KeyCode::ArrowDown => "DOWN".into(),
+            KeyCode::ArrowLeft => "LEFT".into(),
+            KeyCode::ArrowRight => "RIGHT".into(),
+            KeyCode::Escape => "ESC".into(),
+            KeyCode::Backquote => "`".into(),
+            _ => format!("{k:?}")
+                .trim_start_matches("Key")
+                .trim_start_matches("Digit")
+                .to_string(),
+        }
+    }
+}
 
 // --------------------------------------------------------------- settings --
 
@@ -46,9 +181,11 @@ pub struct Settings {
     /// vanilla Clouds: 0 = off, 1 = fast (solid plane), 2 = fancy
     /// (alpha-blended layer — the vanilla 1.16.5 cycle)
     pub clouds_level: u8,
-    /// vanilla GUI Scale: 0 = auto, 1..=3 — menus + their text scale
-    /// around the canvas center (HUD edge-anchored scaling is the
-    /// disclosed remaining half)
+    /// vanilla GUI Scale: 0 = auto, 1..=4 — Round 10: the vanilla
+    /// integer model. The resolved scale resizes the UI canvas to the
+    /// live logical GUI space (2 canvas px per vanilla px) and feeds
+    /// the blit an integer-per-vanilla-px mapping; menus and HUD both
+    /// anchor in that live space (HUD at true screen edges).
     pub gui_scale: u8,
     /// vanilla Particles: 0 = all, 1 = decreased, 2 = minimal
     pub particles: u8,
@@ -77,6 +214,9 @@ pub struct Settings {
     /// neutral, players, ambient, voice] (master = `volume`). Persisted
     /// through the vanilla `soundCategory_<name>` options.txt keys.
     pub cat_volumes: [f32; 9],
+    /// Round 14: the rebindable key table (Controls screen), persisted
+    /// as `key_<action>:<KeyCode>` pairs
+    pub binds: KeyBinds,
     /// frame limiter: 0 = uncapped, else a fps ceiling (30/60/120)
     pub maxfps: u8,
     // ------------------------------------------ Phase 6 §26: rendering --
@@ -96,6 +236,14 @@ pub struct Settings {
     /// one-block-tall obstacle. Enabled by default; can be disabled in
     /// options"). Vanilla option key `autoJump`.
     pub auto_jump: bool,
+    /// Round 14: Accessibility Fog — 0 = Fast (the shipped look), 1 =
+    /// Fancy (softer start), 2 = OFF (fog pushed to the far plane).
+    /// (The spec's OFF/Fast/Fancy cycle; the modern-wiki page's exact
+    /// triple — 1.16.5 itself ships only the graphics-adjacent fog.)
+    pub acc_fog: u8,
+    /// Round 14: FOV Effects 0..1 (Accessibility) — scales the sprint
+    /// FOV modifier (0 = the sprint view stays at the base FOV)
+    pub acc_fov_effects: f32,
     /// vanilla "View Bobbing" (Options screen, default ON — the
     /// walk-cycle camera + held-item sway; minecraft.wiki/w/Options
     /// §Video: "view bobbing ... on by default")
@@ -138,6 +286,7 @@ impl Default for Settings {
             volume: 1.0,
             music_volume: 1.0,
             cat_volumes: [1.0; 9],
+            binds: KeyBinds::default(),
             fov: 70.0,
             // Moody (vanilla default brightness 0.0)
             brightness: 0.0,
@@ -158,6 +307,8 @@ impl Default for Settings {
             msaa: 0,
             occlusion: true,
             auto_jump: true, // 1.10 default ON (wiki)
+            acc_fog: 0,
+            acc_fov_effects: 1.0,
             view_bobbing: true, // vanilla default ON
             resource_packs: Vec::new(), // Default only, like vanilla
             #[cfg(target_arch = "wasm32")]
@@ -205,32 +356,30 @@ impl Settings {
             _ => 0.0,
         }
     }
-    /// menu scale factor (GUI Scale): 1 = 0.72, 2 = 0.86, 3 = 1.0
-    /// (bigger value = bigger interface, vanilla semantics). AUTO (0)
-    /// now picks by the LIVE window height (2026-09-14 — the vanilla
-    /// "Auto" picks the largest scale that fits; ours steps down on small
-    /// windows so the 960×540 UI canvas never overflows): <720 px →
-    /// 0.72, <1080 px → 0.86, else 1.0.
-    pub fn gui_scale_factor(&self) -> f32 {
-        match self.gui_scale {
-            1 => 0.72,
-            2 => 0.86,
-            3 => 1.0,
-            _ => self.gui_scale_auto(),
+    /// Round 10 — the vanilla 1.16.5 integer GUI-scale model
+    /// (replaces the retired fractional 0.72/0.86/1.0 widget scaling).
+    /// Resolves the setting against the framebuffer size:
+    /// `available = max(1, min(⌊w/320⌋, ⌊h/240⌋))` — minecraft.wiki/w/Options
+    /// fetched live 2026-09-15 ("Auto sets the GUI scale to the highest
+    /// value available for the current resolution"), mathematically
+    /// identical to the 1.16.5 MainWindow#calculateScale while-loop.
+    /// Setting 0 = Auto → available; a manual N clamps to available
+    /// (vanilla: the loop stops at the constraint). NO CAP — the spec
+    /// pack's "4 (capped)" table disagreed with the live wiki and the
+    /// 1.16.5 code semantics; per the cross-check rule the wiki wins
+    /// (disagreement documented in the round-10 research audit).
+    pub fn gui_scale_resolved(&self, w: u32, h: u32) -> u32 {
+        let avail = (w / 320).min(h / 240).max(1);
+        if self.gui_scale == 0 {
+            avail
+        } else {
+            (self.gui_scale as u32).min(avail)
         }
     }
-    /// the AUTO branch — the window height, read through the (global)
-    /// renderer-reported surface size; small windows step the UI down so
-    /// menus stay fully visible (the dynamic-resolution behavior)
-    fn gui_scale_auto(&self) -> f32 {
-        let h = window_height_hint();
-        if h > 0 && h < 720 {
-            0.72
-        } else if h > 0 && h < 1080 {
-            0.86
-        } else {
-            1.0
-        }
+    /// the largest GUI scale the resolution offers (the options-screen
+    /// slider list — vanilla offers only the available values)
+    pub fn gui_scale_available(w: u32, h: u32) -> u32 {
+        (w / 320).min(h / 240).max(1)
     }
     /// particle spawn density: All 100% / Decreased ~50% / Minimal ~25%
     /// (clean-room approximation of the vanilla densities)
@@ -278,7 +427,7 @@ impl Settings {
     /// folder/zip file names, which never contain `;` or `|`).
     pub fn serialize(&self) -> String {
         let mut s = format!(
-            "rd={};sd={};sens={:.3};vol={:.3};mvol={:.3};fov={:.1};bright={:.3};smoothl={};cloudsl={};gui={};part={};fs={};vsync={};eshad={};bblend={};graphics={};shadowq={};upscale={};maxfps={};mip={};aniso={};msaa={};occl={};gmesh={};bob={}",
+            "rd={};sd={};sens={:.3};vol={:.3};mvol={:.3};fov={:.1};bright={:.3};smoothl={};cloudsl={};gui={};part={};fs={};vsync={};eshad={};bblend={};graphics={};shadowq={};upscale={};maxfps={};mip={};aniso={};msaa={};occl={};gmesh={};bob={};accfog={};accfoveff={:.3}",
             self.render_distance,
             self.sim_distance,
             self.sensitivity,
@@ -303,7 +452,9 @@ impl Settings {
             self.msaa,
             self.occlusion as u8,
             self.gpu_meshing as u8,
-            self.view_bobbing as u8
+            self.view_bobbing as u8,
+            self.acc_fog,
+            self.acc_fov_effects
         );
         // Sub-round 5: the per-category sliders ride the vanilla
         // soundCategory_* keys (options.txt naming parity)
@@ -317,6 +468,24 @@ impl Settings {
             }
             // the master key too (vanilla's own name for it)
             s.push_str(&format!(";soundCategory_master={:.3}", self.volume));
+        }
+        // Round 14: the keybind table rides key_<action> pairs (the
+        // Controls screen's rebinds persist)
+        {
+            let b = &self.binds;
+            for (k, v) in [
+                ("key_forward", b.forward),
+                ("key_back", b.back),
+                ("key_left", b.left),
+                ("key_right", b.right),
+                ("key_jump", b.jump),
+                ("key_sneak", b.sneak),
+                ("key_inventory", b.inventory),
+                ("key_offhand", b.swap_offhand),
+                ("key_picker", b.creative_picker),
+            ] {
+                s.push_str(&format!(";{k}={v:?}"));
+            }
         }
         if !self.resource_packs.is_empty() {
             s.push_str(&format!(";packs={}", self.resource_packs.join("|")));
@@ -377,7 +546,7 @@ impl Settings {
                 "smoothl" => st.smooth_level = v.parse().unwrap_or(2).min(2),
                 "clouds" => st.clouds_level = if v == "1" { 2 } else { 0 },
                 "cloudsl" => st.clouds_level = v.parse().unwrap_or(2).min(2),
-                "gui" => st.gui_scale = v.parse().unwrap_or(0).min(3),
+                "gui" => st.gui_scale = v.parse().unwrap_or(0).min(4),
                 "part" => st.particles = v.parse().unwrap_or(0).min(2),
                 "fs" => st.fullscreen = v == "1",
                 "vsync" => st.vsync = v == "1",
@@ -409,8 +578,23 @@ impl Settings {
                 "occl" => st.occlusion = v == "1",
                 "gmesh" => st.gpu_meshing = v == "1",
                 "bob" => st.view_bobbing = v != "0",
+                // Round 14: the accessibility additions
+                "accfog" => st.acc_fog = v.parse().unwrap_or(0).min(2),
+                "accfoveff" => {
+                    st.acc_fov_effects = v.parse::<f32>().unwrap_or(1.0).clamp(0.0, 1.0)
+                }
                 // 2026-09-14: enabled resource packs in priority order
                 // (pipe-separated; absent = Default only, like vanilla)
+                // Round 14: the rebindable keys (key_<action>:<KeyCode>)
+                "key_forward" => st.binds.forward = KeyBinds::key_from_str(v).unwrap_or(st.binds.forward),
+                "key_back" => st.binds.back = KeyBinds::key_from_str(v).unwrap_or(st.binds.back),
+                "key_left" => st.binds.left = KeyBinds::key_from_str(v).unwrap_or(st.binds.left),
+                "key_right" => st.binds.right = KeyBinds::key_from_str(v).unwrap_or(st.binds.right),
+                "key_jump" => st.binds.jump = KeyBinds::key_from_str(v).unwrap_or(st.binds.jump),
+                "key_sneak" => st.binds.sneak = KeyBinds::key_from_str(v).unwrap_or(st.binds.sneak),
+                "key_inventory" => st.binds.inventory = KeyBinds::key_from_str(v).unwrap_or(st.binds.inventory),
+                "key_offhand" => st.binds.swap_offhand = KeyBinds::key_from_str(v).unwrap_or(st.binds.swap_offhand),
+                "key_picker" => st.binds.creative_picker = KeyBinds::key_from_str(v).unwrap_or(st.binds.creative_picker),
                 "packs" => {
                     st.resource_packs = v
                         .split('|')
@@ -467,6 +651,17 @@ pub enum Screen {
     Engine,
     Packs,
     Access,
+    /// Round 14 (2026-09-15): the vanilla Music & Sound screen — ten
+    /// per-category volume sliders (w/Options §Music & Sound)
+    MusicSound,
+    /// Round 14: the vanilla Controls screen — the keybind editor
+    /// (w/Controls: two-column action/key rows, Reset Keys)
+    Controls,
+    /// Round 14: the Language screen — English-only, honestly labeled
+    Language,
+    /// Round 14: the Chat Settings screen — documented stub (no chat
+    /// subsystem; the spec forbids adding one this round)
+    ChatSettings,
 }
 
 /// 2026-09-14 round: the in-progress MINING target (the vanilla timed
@@ -503,10 +698,41 @@ pub enum Container {
     Hopper { pos: [i32; 3] },
     /// Phase 3: chest container screen (27 slots)
     Chest { pos: [i32; 3] },
+    /// Round 12: the double chest — two horizontally adjacent chest
+    /// halves open as ONE 54-slot screen (VERIFIED w/Chest §Double
+    /// chests, live 2026-09-15). `pos` = the clicked half, `other` =
+    /// the neighbor the open-path scan found; each half keeps its own
+    /// 27-slot container entity (the merge is a VIEW, dropped on
+    /// close; breaking either half spills both).
+    DoubleChest { pos: [i32; 3], other: [i32; 3] },
     /// 1.14: barrel container screen (27 slots — VERIFIED w/Barrel:
     /// "the same as a single chest"; the same grid geometry, the
     /// BARREL title)
     Barrel { pos: [i32; 3] },
+}
+
+impl Container {
+    /// Round 12 — the double-chest partner scan (pure, tested): the
+    /// first horizontally adjacent CHEST in +X/−X/+Z/−Z order at the
+    /// same Y. Trapped chests pair only with trapped chests and
+    /// shulker boxes never merge (VERIFIED w/Chest §Double chests +
+    /// w/Shulker_Box, live 2026-09-15) — callers pass the exact block
+    /// id they are opening; only CHEST matches CHEST here.
+    pub fn double_chest_partner(
+        world: &World,
+        pos: [i32; 3],
+        block: u16,
+    ) -> Option<[i32; 3]> {
+        [
+            [pos[0] + 1, pos[1], pos[2]],
+            [pos[0] - 1, pos[1], pos[2]],
+            [pos[0], pos[1], pos[2] + 1],
+            [pos[0], pos[1], pos[2] - 1],
+        ]
+        .iter()
+        .copied()
+        .find(|p| world.get_block(p[0], p[1], p[2]) == block)
+    }
 }
 
 impl Screen {
@@ -526,6 +752,10 @@ impl Screen {
             Screen::Engine => "engine",
             Screen::Packs => "packs",
             Screen::Access => "access",
+            Screen::MusicSound => "musicsound",
+            Screen::Controls => "controls",
+            Screen::Language => "language",
+            Screen::ChatSettings => "chat",
         }
     }
 
@@ -540,6 +770,10 @@ impl Screen {
                 | Screen::Engine
                 | Screen::Packs
                 | Screen::Access
+                | Screen::MusicSound
+                | Screen::Controls
+                | Screen::Language
+                | Screen::ChatSettings
                 | Screen::Pause
                 | Screen::WorldSelect
                 | Screen::WorldCreate
@@ -953,8 +1187,6 @@ pub struct GameApp {
     rain_next: f32,
     /// Sub-round 5: the head-underwater latch (enter/exit one-shots)
     was_head_underwater: bool,
-    /// Sub-round 5: was-on-ground latch (landing detection)
-    was_on_ground: bool,
     /// §21: next game-time for the ambient cave-sound roll
     ambient_next: f32,
     pub audio: Box<dyn AudioBackend>,
@@ -1119,6 +1351,9 @@ pub struct GameApp {
     /// Sub-round 2: the vanilla tabbed creative inventory overlay
     /// (E/B key, creative mode only)
     picker_open: bool,
+    /// Round 14: the Controls screen's rebind listener — Some(row) while
+    /// the next keydown claims the row's bind (None = normal input)
+    rebind_listen: Option<usize>,
     /// the active creative tab: 0..=8 = the nine content tabs (vanilla
     /// order), 9 = Search Items, 10 = Survival Inventory (swap screen)
     creative_tab: u8,
@@ -1301,13 +1536,19 @@ pub struct GameApp {
 type PendingEdits = HashMap<(u8, i32, i32), Vec<([i32; 3], u16)>>;
 
 /// 2026-09-14: the last known window height (px) — set by the renderer's
-/// resize path, read by `Settings::gui_scale_auto` so the AUTO GUI scale
-/// re-picks live when the window size changes (the dynamic-resolution
-/// behavior the user asked for). 0 = unknown → the largest scale.
+/// resize path. Round 10: the width hint joins it so the vanilla
+/// integer GUI-scale model can resolve Auto against the live
+/// framebuffer (0 = unknown → the largest scale).
 pub fn window_height_hint() -> u32 {
     WINDOW_H.load(std::sync::atomic::Ordering::Relaxed)
 }
 static WINDOW_H: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+
+/// Round 10: the last known window width (px) — see window_height_hint.
+pub fn window_width_hint() -> u32 {
+    WINDOW_W.load(std::sync::atomic::Ordering::Relaxed)
+}
+static WINDOW_W: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
 /// Sub-round 1 (2026-09-14 Survival HUD round): map an effect kind to
 /// its effect-icon index. The index order is pinned to
@@ -1814,6 +2055,12 @@ impl GameApp {
         let mut renderer = Renderer::new(window, &atlas).await;
         // 2026-09-14: seed the GUI-Scale-AUTO height hint with the actual
         // initial window size (resize events keep it fresh afterwards)
+        // Round 10: the width joins (the vanilla integer scale resolves
+        // against BOTH framebuffer dimensions)
+        WINDOW_W.store(
+            window.inner_size().width.max(1),
+            std::sync::atomic::Ordering::Relaxed,
+        );
         WINDOW_H.store(
             window.inner_size().height.max(1),
             std::sync::atomic::Ordering::Relaxed,
@@ -2071,7 +2318,6 @@ impl GameApp {
             water_loop_next: 0.0,
             rain_next: 0.0,
             was_head_underwater: false,
-            was_on_ground: false,
             ambient_next: 4.0,
             audio,
             settings,
@@ -2163,6 +2409,7 @@ impl GameApp {
             smoke_game_t: 0.0,
             f3_dump2: false,
             picker_open: false,
+            rebind_listen: None,
             creative_tab: 0,
             picker_scroll: 0,
             creative_search: String::new(),
@@ -2264,6 +2511,10 @@ impl GameApp {
         app.renderer.set_vsync(app.settings.vsync);
         app.particles.density = app.settings.particle_density();
         app.apply_fullscreen();
+        // Round 10: resolve the vanilla integer GUI scale at boot — the
+        // live canvas sizes to the persisted setting (Auto default) from
+        // the first frame, before any menu lays out
+        app.refresh_gui_scale();
         // UI-overhaul Phase 2 (D5/D6): arm the GUI quad pass with the
         // built texture set and apply the migration config. Shipping
         // default: quads ON, canvas chrome OFF. If the upload failed,
@@ -2354,14 +2605,13 @@ impl GameApp {
                 }
                 WindowEvent::Resized(size) => {
                     self.renderer.resize(size.width, size.height);
-                    // 2026-09-14: GUI Scale AUTO re-evaluates on resize —
-                    // the window-height hint updates and the widget list
-                    // re-scales around the canvas center (menus stay
-                    // fully visible on small windows)
-                    WINDOW_H.store(size.height, std::sync::atomic::Ordering::Relaxed);
-                    if self.settings.gui_scale == 0 && self.screen.is_menu() {
-                        self.refresh_widgets();
-                    }
+                    // Round 10: the vanilla integer GUI scale re-resolves
+                    // on resize — the live canvas resizes to the new
+                    // logical space and the widget list re-lays out in it
+                    // (menus re-center, HUD re-anchors at the true edges)
+                    WINDOW_W.store(size.width.max(1), std::sync::atomic::Ordering::Relaxed);
+                    WINDOW_H.store(size.height.max(1), std::sync::atomic::Ordering::Relaxed);
+                    self.refresh_gui_scale();
                     self.ui.dirty = true;
                 }
                 #[cfg(not(target_arch = "wasm32"))]
@@ -2665,10 +2915,14 @@ impl GameApp {
     // ------------------------------------------------------- coordinates --
 
     fn phys_to_ui(&self, x: f32, y: f32) -> (f32, f32) {
+        // Round 10: the live canvas maps to the screen through the SAME
+        // centered fit the renderer's UI uniform uses (device px per
+        // canvas px = resolved-scale / 2 — integer per vanilla px), so
+        // hit-testing stays 1:1 with the drawn geometry at any scale
         let (sw, sh) = self.renderer.size();
-        let scale = (sw / UI_W as f32).min(sh / UI_H as f32);
-        let x0 = (sw - UI_W as f32 * scale) * 0.5;
-        let y0 = (sh - UI_H as f32 * scale) * 0.5;
+        let scale = (sw / self.ui.live_w as f32).min(sh / self.ui.live_h as f32);
+        let x0 = (sw - self.ui.live_w as f32 * scale) * 0.5;
+        let y0 = (sh - self.ui.live_h as f32 * scale) * 0.5;
         ((x - x0) / scale, (y - y0) / scale)
     }
 
@@ -2685,19 +2939,96 @@ impl GameApp {
         // movement only when actually in the game world (not in the picker
         // or a container screen)
         let in_game = self.screen == Screen::Game && !self.picker_open && self.container.is_none();
-        match code {
-            KeyCode::KeyW => self.input.fwd = pressed && in_game,
-            KeyCode::KeyS => self.input.back = pressed && in_game,
-            KeyCode::KeyA => self.input.left = pressed && in_game,
-            KeyCode::KeyD => self.input.right = pressed && in_game,
-            KeyCode::Space => {
+        // Round 14 (2026-09-15): the REBIND LISTENER — while the Controls
+        // screen waits on a key for a row, the next keydown claims the
+        // bind (Escape cancels, matching vanilla's rebind flow) and no
+        // gameplay action fires
+        if pressed {
+            if let Some(row) = self.rebind_listen.take() {
+                if code != KeyCode::Escape {
+                    self.settings.binds.set_nth(row, code);
+                }
+                self.refresh_widgets();
+                self.ui.dirty = true;
+                return;
+            }
+        }
+        // Round 14: the rebindable binds resolve through the Controls
+        // screen's table (minecraft.wiki/w/Controls) — defaults match
+        // the classic WASD/Space/Shift/E/F/B layout
+        {
+            let b = self.settings.binds.clone();
+            if code == b.forward {
+                self.input.fwd = pressed && in_game;
+                return;
+            }
+            if code == b.back {
+                self.input.back = pressed && in_game;
+                return;
+            }
+            if code == b.left {
+                self.input.left = pressed && in_game;
+                return;
+            }
+            if code == b.right {
+                self.input.right = pressed && in_game;
+                return;
+            }
+            if code == b.jump {
                 self.input.jump = pressed && in_game;
                 // Phase 1: double-space flight is a Creative-only mechanic
                 if pressed && in_game && self.mode.allows_flight() {
                     self.player.try_fly_toggle(self.time);
                 }
+                return;
             }
-            KeyCode::ShiftLeft | KeyCode::ShiftRight => self.input.sneak = pressed && in_game,
+            if code == b.sneak {
+                self.input.sneak = pressed && in_game;
+                return;
+            }
+            if code == b.inventory {
+                if pressed && !repeat && self.screen == Screen::Game {
+                    if self.container.is_some() {
+                        self.close_container();
+                    } else if self.picker_open {
+                        self.close_picker();
+                    } else if self.mode.picks_creative() {
+                        self.open_picker();
+                    } else {
+                        self.open_container(Container::Inventory);
+                    }
+                }
+                return;
+            }
+            if code == b.swap_offhand {
+                // Sub-round 3: the offhand swap — VERIFIED minecraft.wiki/
+                // w/Inventory (live 2026-09-15): "Pressing the F key moves
+                // the selected item to and from the hotbar slot and the
+                // off-hand slot." In-world only.
+                if pressed && !repeat && self.screen == Screen::Game
+                    && !self.picker_open
+                    && self.container.is_none()
+                {
+                    std::mem::swap(
+                        &mut self.player.inv.slots[self.player.selected],
+                        &mut self.player.offhand,
+                    );
+                    self.ui.dirty = true;
+                }
+                return;
+            }
+            if code == b.creative_picker {
+                if pressed && !repeat && self.screen == Screen::Game {
+                    if self.picker_open {
+                        self.close_picker();
+                    } else if self.mode.picks_creative() {
+                        self.open_picker();
+                    }
+                }
+                return;
+            }
+        }
+        match code {
             KeyCode::ControlLeft | KeyCode::ControlRight => self.input.sprint = pressed && in_game,
             KeyCode::Backspace => {
                 // Phase 1 + 2026-09-14: text-field editing (create name /
@@ -2741,7 +3072,14 @@ impl GameApp {
                         }
                         Screen::Pause => self.resume_game(),
                         Screen::Options => self.close_options(),
-                        Screen::Video | Screen::Engine | Screen::Packs | Screen::Access => {
+                        Screen::Video
+                        | Screen::Engine
+                        | Screen::Packs
+                        | Screen::Access
+                        | Screen::MusicSound
+                        | Screen::Controls
+                        | Screen::Language
+                        | Screen::ChatSettings => {
                             // vanilla: ESC on a sub-screen returns to Options
                             self.set_screen(Screen::Options)
                         }
@@ -2752,52 +3090,9 @@ impl GameApp {
                     }
                 }
             }
-            KeyCode::KeyE => {
-                if pressed && !repeat && self.screen == Screen::Game {
-                    if self.container.is_some() {
-                        self.close_container();
-                    } else if self.picker_open {
-                        self.close_picker();
-                    } else if self.mode.picks_creative()
-                    // vanilla 1.16.5: E opens the CREATIVE inventory in
-                    // creative (tabs + search), the survival inventory in
-                    // survival/adventure (minecraft.wiki/w/Inventory,
-                    // §Creative mode). Our picker is the creative picker
-                    // (B stays as an extra shortcut, creative-only too).
-                    {
-                        self.open_picker();
-                    } else {
-                        self.open_container(Container::Inventory);
-                    }
-                }
-            }
-            KeyCode::KeyF => {
-                // Sub-round 3: the offhand swap — VERIFIED minecraft.wiki/
-                // w/Inventory (live 2026-09-15): "Pressing the F key moves
-                // the selected item to and from the hotbar slot and the
-                // off-hand slot." In-world only (vanilla F in a screen
-                // swaps the focused slot instead; the engine's container
-                // offhand slot covers that path).
-                if pressed && !repeat && self.screen == Screen::Game
-                    && !self.picker_open
-                    && self.container.is_none()
-                {
-                    std::mem::swap(
-                        &mut self.player.inv.slots[self.player.selected],
-                        &mut self.player.offhand,
-                    );
-                    self.ui.dirty = true;
-                }
-            }
-            KeyCode::KeyB => {
-                if pressed && !repeat && self.screen == Screen::Game {
-                    if self.picker_open {
-                        self.close_picker();
-                    } else if self.mode.picks_creative() {
-                        self.open_picker();
-                    }
-                }
-            }
+            // (KeyE / KeyF / KeyB / movement / jump / sneak now resolve
+            // through the Round-14 binds table ABOVE — the hardcoded arms
+            // are gone so a rebind genuinely moves the action)
             KeyCode::F3 => {
                 if self.screen == Screen::Game {
                     if pressed {
@@ -3312,9 +3607,9 @@ impl GameApp {
     /// coordinate round-trip is covered)
     fn ui_to_phys(&self, ux: f32, uy: f32) -> (f32, f32) {
         let (sw, sh) = self.renderer.size();
-        let scale = (sw / UI_W as f32).min(sh / UI_H as f32);
-        let x0 = (sw - UI_W as f32 * scale) * 0.5;
-        let y0 = (sh - UI_H as f32 * scale) * 0.5;
+        let scale = (sw / self.ui.live_w as f32).min(sh / self.ui.live_h as f32);
+        let x0 = (sw - self.ui.live_w as f32 * scale) * 0.5;
+        let y0 = (sh - self.ui.live_h as f32 * scale) * 0.5;
         (x0 + ux * scale, y0 + uy * scale)
     }
 
@@ -3629,9 +3924,28 @@ impl GameApp {
             ID_OPT_VOL => l("Master volume for every sound, music included."),
             ID_OPT_FOV => l("Field of view in degrees. 70 is the classic look; 110 is Quake Pro."),
             ID_OPT_SENS => l("How fast the view turns when the mouse moves."),
-            ID_OPT_CHAT | ID_OPT_LANG | ID_OPT_CONTROLS => {
-                l("Not implemented in this build yet.")
-            }
+            ui::ID_ACC_FOG => l2(
+                "Accessibility Fog: Fast keeps the shipped look, Fancy",
+                "softens the fade-in, OFF pushes fog to the far plane.",
+            ),
+            ui::ID_ACC_FOVEFF => l(
+                "How much the field of view changes while sprinting.",
+            ),
+            ui::ID_ACC_CHATVIS => l("Chat Visibility needs the chat subsystem (a future round)."),
+            ui::ID_ACC_SUBTITLES => l("Subtitles need the subtitle overlay (a future round)."),
+            ui::ID_CTRL_RESET => l("Restore the classic WASD / Space / Shift / E / F / B layout."),
+            ui::ID_CTRL_DONE => l("Back to the options."),
+            ui::ID_SND_DONE => l("Back to the options."),
+            ID_OPT_CONTROLS => l2(
+                "The keybind editor: click a key button, press the new key.",
+                "Reset Keys restores the classic layout.",
+            ),
+            ID_OPT_LANG => l("The engine speaks English (US) only."),
+            ID_OPT_CHAT => l("Chat settings need the chat subsystem (a future round)."),
+            ID_OPT_MUSICSND => l2(
+                "Ten sliders, one per sound category (vanilla).",
+                "Master scales everything; each category rides its own gain.",
+            ),
             ID_OPT_PACKS => l2(
                 "Enable resource packs to restyle textures and GUI.",
                 "The bottom pack loads first; packs above override it.",
@@ -6838,11 +7152,72 @@ impl GameApp {
                     self.ui.dirty = true;
                 }
             }
+            // ---- Round 14: the settings-tree sub-screens ----
+            ID_OPT_MUSICSND => self.set_screen(Screen::MusicSound),
+            ID_OPT_CONTROLS => self.set_screen(Screen::Controls),
+            ID_OPT_LANG => self.set_screen(Screen::Language),
+            ID_OPT_CHAT => self.set_screen(Screen::ChatSettings),
+            // the Music & Sound sliders (160..170): one per category;
+            // slider drags route through slider_drag, activate is the
+            // click-to-reset (vanilla double-click resets a slider)
+            _ if (ID_SND_BASE..ID_SND_BASE + 10).contains(&id) => {
+                let i = (id - ID_SND_BASE) as u8;
+                // click-to-default like the other sliders (vanilla's
+                // double-click resets a slider; every category defaults 1.0)
+                self.set_sound_slider(i, 1.0);
+                self.refresh_widgets();
+            }
+            ID_SND_DONE => self.set_screen(Screen::Options),
+            // the Controls bind rows: click enters the rebind listener
+            // (the next key claims the bind; ESC cancels). Headers are
+            // disabled widgets and never reach here.
+            _ if (ID_CTRL_BIND_BASE
+                ..ID_CTRL_BIND_BASE + MAX_CTRL_BINDS as u16)
+                .contains(&id) =>
+            {
+                // the ROW index counts header rows too — walk rows() to
+                // the clicked index; a non-header row enters the rebind
+                // listener at its bind ordinal (headers are disabled
+                // widgets and never activate)
+                let idx = (id - ID_CTRL_BIND_BASE) as usize;
+                let mut bind_nth = 0usize;
+                for (pos, (is_header, _, _)) in
+                    self.settings.binds.rows().into_iter().enumerate()
+                {
+                    if pos == idx {
+                        if !is_header {
+                            self.rebind_listen = Some(bind_nth);
+                            self.refresh_widgets();
+                            self.ui.dirty = true;
+                        }
+                        break;
+                    }
+                    if !is_header {
+                        bind_nth += 1;
+                    }
+                }
+            }
+            ID_CTRL_RESET => {
+                // vanilla "Reset Keys": restore the default binds
+                self.settings.binds = KeyBinds::default();
+                self.refresh_widgets();
+                self.ui.dirty = true;
+            }
+            ID_CTRL_DONE => {
+                self.set_screen(Screen::Options);
+            }
             // the pinned DEFAULT row — vanilla: "can't be unselected"
             ID_RPACK_DEFAULT => {}
             ID_OPT_GUISCALE => {
-                // vanilla GUI Scale cycle: Auto → 1 → 2 → 3 (menus + text)
-                self.settings.gui_scale = (self.settings.gui_scale + 1) % 4;
+                // vanilla GUI Scale cycle: Auto → 1 → 2 → 3 → 4 (Round 10:
+                // the vanilla slider offers every integer up to the
+                // resolution's available max; the resolved value clamps
+                // there)
+                self.settings.gui_scale = (self.settings.gui_scale + 1) % 5;
+                // Round 10: the live canvas follows the new resolved
+                // scale (resize + re-layout); the blit's per-vanilla-px
+                // mapping updates with it on the next frame
+                self.refresh_gui_scale();
                 self.refresh_widgets();
                 self.ui.dirty = true;
             }
@@ -6912,6 +7287,17 @@ impl GameApp {
                 // (wiki). No remesh needed; the player mirrors the flag
                 // each frame.
                 self.settings.auto_jump = !self.settings.auto_jump;
+            }
+            // Round 14: the accessibility additions
+            ui::ID_ACC_FOG => {
+                // Fast → Fancy → OFF (the spec's cycle; Fancy softens the
+                // start, OFF pushes fog to the far plane)
+                self.settings.acc_fog = (self.settings.acc_fog + 1) % 3;
+                self.refresh_widgets();
+            }
+            ui::ID_ACC_CHATVIS | ui::ID_ACC_SUBTITLES => {
+                // grayed stubs (chat/subtitle subsystems are future
+                // rounds) — vanilla grays unavailable options too
             }
             ID_OPT_BOB => {
                 // vanilla View Bobbing toggle (Options screen, default ON)
@@ -7103,9 +7489,43 @@ impl GameApp {
             }
             ID_OPT_VOL => self.settings.volume = t,
             ID_OPT_MUSIC => self.settings.music_volume = t,
+            // Round 14: Accessibility FOV Effects (scales the sprint FOV
+            // modifier; 0 = sprint keeps the base FOV)
+            ui::ID_ACC_FOVEFF => self.settings.acc_fov_effects = t,
+            // Round 14: the Music & Sound screen sliders (160..170) —
+            // index 0 = master, 1 = music (mirrors music_volume like
+            // the options.txt soundCategory_music key), 2.. = the
+            // category table order
+            _ if (ui::ID_SND_BASE..ui::ID_SND_BASE + 10).contains(&id) => {
+                let i = (id - ui::ID_SND_BASE) as u8;
+                self.set_sound_slider(i, t);
+            }
             _ => {}
         }
         self.after_settings_change();
+    }
+
+    /// Round 14: write one Music & Sound slider (0 = master volume,
+    /// 1 = music [kept in lockstep with music_volume], 2..10 = the
+    /// soundCategory_* table). Applies live through play_event's
+    /// per-category gain chain — the next sound plays at the new level.
+    fn set_sound_slider(&mut self, i: u8, t: f32) {
+        let t = t.clamp(0.0, 1.0);
+        match i {
+            0 => self.settings.volume = t,
+            1 => {
+                self.settings.music_volume = t;
+                self.settings.cat_volumes[0] = t;
+            }
+            2 => self.settings.cat_volumes[1] = t, // record
+            3 => self.settings.cat_volumes[2] = t, // weather
+            4 => self.settings.cat_volumes[3] = t, // blocks
+            5 => self.settings.cat_volumes[4] = t, // hostile
+            6 => self.settings.cat_volumes[5] = t, // neutral
+            7 => self.settings.cat_volumes[6] = t, // players
+            8 => self.settings.cat_volumes[7] = t, // ambient
+            _ => self.settings.cat_volumes[8] = t, // voice
+        }
     }
 
     /// persist + refresh widget labels + player fov
@@ -7899,6 +8319,7 @@ impl GameApp {
                                 1 => "1",
                                 2 => "2",
                                 3 => "3",
+                                4 => "4",
                                 _ => "AUTO",
                             },
                         ),
@@ -8022,9 +8443,71 @@ impl GameApp {
                 for w in ws.iter_mut() {
                     if w.id == ID_OPT_AUTOJUMP {
                         set_button_value(w, if s.auto_jump { "ON" } else { "OFF" });
+                    } else if w.id == ui::ID_ACC_FOG {
+                        set_button_value(
+                            w,
+                            match s.acc_fog {
+                                1 => "FANCY",
+                                2 => "OFF",
+                                _ => "FAST",
+                            },
+                        );
+                    } else if let WidgetKind::Slider { value: v, .. } = &mut w.kind {
+                        if w.id == ui::ID_ACC_FOVEFF {
+                            *v = s.acc_fov_effects;
+                        }
                     }
                 }
                 self.widgets = ws;
+            }
+            // ---- Round 14: the settings-tree sub-screens ----
+            Screen::MusicSound => {
+                let mut ws = ui::layout_music_sound();
+                for w in ws.iter_mut() {
+                    if let WidgetKind::Slider { value: v, .. } = &mut w.kind {
+                        *v = match w.id - ui::ID_SND_BASE {
+                            0 => s.volume,
+                            1 => s.cat_volumes[0],
+                            2 => s.cat_volumes[1],
+                            3 => s.cat_volumes[2],
+                            4 => s.cat_volumes[3],
+                            5 => s.cat_volumes[4],
+                            6 => s.cat_volumes[5],
+                            7 => s.cat_volumes[6],
+                            8 => s.cat_volumes[7],
+                            _ => s.cat_volumes[8],
+                        };
+                    }
+                }
+                self.widgets = ws;
+            }
+            Screen::Controls => {
+                // the two-column keybind rows + the listening highlight
+                let listening = self.rebind_listen;
+                let mut nth = 0usize;
+                let mut labels: Vec<(bool, &str, String)> = Vec::new();
+                for (is_header, name, key) in self.settings.binds.rows() {
+                    if is_header {
+                        labels.push((true, name, String::new()));
+                    } else {
+                        let key_label = if listening == Some(nth) {
+                            "> ? <".to_string()
+                        } else {
+                            KeyBinds::key_label(key)
+                        };
+                        labels.push((false, name, key_label));
+                        nth += 1;
+                    }
+                }
+                let refs: Vec<(bool, &str, &str)> =
+                    labels.iter().map(|(h, n, k)| (*h, *n, k.as_str())).collect();
+                self.widgets = ui::layout_controls(&refs);
+            }
+            Screen::Language => {
+                self.widgets = ui::layout_language();
+            }
+            Screen::ChatSettings => {
+                self.widgets = ui::layout_chat_settings();
             }
             Screen::WorldSelect => {
                 // 2026-09-14: the vanilla Select World rows + bottom stack —
@@ -8086,11 +8569,40 @@ impl GameApp {
             }
             _ => self.widgets = Vec::new(),
         }
-        // GUI Scale: every menu's widget list scales around the canvas
-        // center (with matching text scale for the draw pass)
-        let gs = self.settings.gui_scale_factor();
-        ui::scale_widgets(&mut self.widgets, gs);
-        self.ui.widget_scale = gs;
+        // Round 10: the fractional widget-scaling path is GONE — the
+        // vanilla integer model resizes the canvas itself (see
+        // refresh_gui_scale) so widgets lay out at full 2-cp-per-vp size
+        // in the live logical space; text scale follows the canvas
+        // (widget_scale stays 1.0 for the fs multipliers).
+        self.ui.widget_scale = 1.0;
+    }
+
+    /// Round 10 — the vanilla integer GUI-scale resolution. Computes
+    /// the live logical canvas (2 canvas px per vanilla px ×
+    /// framebuffer / resolved-scale), resizes the raster, publishes the
+    /// live-size hints the menu layouts/HUD anchors read, and re-lays
+    /// out the current screen's widgets when the size actually moved.
+    /// Idempotent; called on resize, on the GUI Scale setting change,
+    /// and at boot.
+    fn refresh_gui_scale(&mut self) {
+        let (sw, sh) = {
+            let (w, h) = (window_width_hint(), window_height_hint());
+            if w > 0 && h > 0 {
+                (w, h)
+            } else {
+                let (rw, rh) = self.renderer.size();
+                (rw.max(1.0) as u32, rh.max(1.0) as u32)
+            }
+        };
+        let s = self.settings.gui_scale_resolved(sw, sh).max(1);
+        // live canvas = 2 canvas px per vanilla px × the logical space
+        let cw = ((2.0 * sw as f32) / s as f32).ceil() as usize;
+        let ch = ((2.0 * sh as f32) / s as f32).ceil() as usize;
+        if cw != self.ui.live_w || ch != self.ui.live_h {
+            self.ui.resize(cw, ch);
+            ui::set_live_ui_size(cw, ch);
+            self.refresh_widgets();
+        }
     }
 
     /// vanilla Biome Blend: the mesh-time tint pad becomes the
@@ -8208,6 +8720,11 @@ impl GameApp {
             Container::Chest { pos } => {
                 self.play_event("block.chest.open", Some([pos[0] as f32 + 0.5, pos[1] as f32 + 0.5, pos[2] as f32 + 0.5]), 1.0);
             }
+            // Round 12: the double chest opens with the same chest
+            // sound at the clicked half (vanilla plays one sound)
+            Container::DoubleChest { pos, .. } => {
+                self.play_event("block.chest.open", Some([pos[0] as f32 + 0.5, pos[1] as f32 + 0.5, pos[2] as f32 + 0.5]), 1.0);
+            }
             Container::Barrel { pos } => {
                 self.play_event("block.barrel.open", Some([pos[0] as f32 + 0.5, pos[1] as f32 + 0.5, pos[2] as f32 + 0.5]), 1.0);
             }
@@ -8237,6 +8754,11 @@ impl GameApp {
             // Sub-round 5: the vanilla container close sounds
             match c {
                 Container::Chest { pos } => {
+                    self.play_event("block.chest.close", Some([pos[0] as f32 + 0.5, pos[1] as f32 + 0.5, pos[2] as f32 + 0.5]), 1.0);
+                }
+                // Round 12: the double chest closes with the chest
+                // sound (vanilla plays one)
+                Container::DoubleChest { pos, .. } => {
                     self.play_event("block.chest.close", Some([pos[0] as f32 + 0.5, pos[1] as f32 + 0.5, pos[2] as f32 + 0.5]), 1.0);
                 }
                 Container::Barrel { pos } => {
@@ -8329,6 +8851,10 @@ impl GameApp {
                     }
                 }
                 Container::Trade { .. } => {}
+                // Round 12: the double-chest view needs no close-time
+                // cleanup — each half's container entity is the source
+                // of truth and stays put (the merge was only a view)
+                Container::DoubleChest { .. } => {}
             }
         }
         // cursor returns to the inventory
@@ -8415,6 +8941,8 @@ impl GameApp {
                 // Phase 3: chest slots click like inventory slots
                 // (hopper reuses the same generic container-slot path —
                 // its 5 slots are ContainerKind::Hopper's geometry)
+                // Round 12: the double chest routes slot i to the owning
+                // half (0..27 = the clicked half, 27..54 = the neighbor)
                 if let Some(
                     Container::Chest { pos }
                     | Container::Hopper { pos }
@@ -8435,6 +8963,14 @@ impl GameApp {
                     if let Some(inv) = self.sim.containers.get_mut(&pos) {
                         if i < inv.slots.len() {
                             let inv = &mut inv.slots[i];
+                            Inventory::slot_click(inv, &mut self.cursor_stack, right);
+                        }
+                    }
+                } else if let Some(Container::DoubleChest { pos, other }) = self.container {
+                    let (target, idx) = if i < 27 { (pos, i) } else { (other, i - 27) };
+                    if let Some(inv) = self.sim.containers.get_mut(&target) {
+                        if idx < inv.slots.len() {
+                            let inv = &mut inv.slots[idx];
                             Inventory::slot_click(inv, &mut self.cursor_stack, right);
                         }
                     }
@@ -8810,6 +9346,9 @@ impl GameApp {
             Some(Container::Inventory) => (ContainerKind::Inventory, None, None, None, None),
             Some(Container::Crafting { .. }) => (ContainerKind::Crafting, None, None, None, None),
             Some(Container::Chest { .. }) => (ContainerKind::Chest, None, None, None, None),
+            Some(Container::DoubleChest { .. }) => {
+                (ContainerKind::DoubleChest, None, None, None, None)
+            }
             Some(Container::Barrel { .. }) => (ContainerKind::Barrel, None, None, None, None),
             Some(Container::Hopper { pos: _ }) => (ContainerKind::Hopper, None, None, None, None),
             Some(Container::Furnace { pos }) => {
@@ -8914,6 +9453,24 @@ impl GameApp {
                 .get(&pos)
                 .map(|c| c.slots.clone())
                 .unwrap_or_default(),
+            // Round 12: the double chest view = the clicked half's 27
+            // slots THEN the neighbor's 27 (rows 0-2 / 3-5 of the grid)
+            Some(Container::DoubleChest { pos, other }) => {
+                let mut v = self
+                    .sim
+                    .containers
+                    .get(&pos)
+                    .map(|c| c.slots.clone())
+                    .unwrap_or_default();
+                let n = self
+                    .sim
+                    .containers
+                    .get(&other)
+                    .map(|c| c.slots.clone())
+                    .unwrap_or_default();
+                v.extend(n);
+                v
+            }
             _ => Vec::new(),
         };
         let size = self.craft_grid_size();
@@ -9047,8 +9604,44 @@ impl GameApp {
         // Phase 3 §26: chests / dispensers / droppers / hoppers — the
         // containers module queues the spill, we turn it into item drops
         // (and if the player is mid-screen on this very container, close
-        // it — the block is gone)
+        // it — the block is gone).
+        // Round 12: breaking HALF of a double chest spills BOTH halves'
+        // contents at the broken half's location (VERIFIED w/Chest
+        // §Breaking, live 2026-09-15 — the surviving half becomes a
+        // normal single chest again, empty)
         if matches!(broke, CHEST | DISPENSER | DROPPER | HOPPER | BARREL) {
+            if broke == CHEST {
+                // collect the neighbor halves' stacks first (borrow
+                // split: containers read, then items dropped)
+                let mut neighbor_stacks: Vec<vc_inventory::inventory::ItemStack> = Vec::new();
+                for d in [
+                    [1i32, 0, 0],
+                    [-1, 0, 0],
+                    [0, 0, 1],
+                    [0, 0, -1],
+                ] {
+                    let n = [pos[0] + d[0], pos[1] + d[1], pos[2] + d[2]];
+                    if self.world.get_block(n[0], n[1], n[2]) == CHEST {
+                        if let Some(c) = self.sim.containers.get_mut(&n) {
+                            for s in c.slots.iter_mut() {
+                                if !s.is_empty() {
+                                    neighbor_stacks.push(*s);
+                                    *s = vc_inventory::inventory::ItemStack::EMPTY;
+                                }
+                            }
+                        }
+                    }
+                }
+                // vanilla drops both halves' loot at the broken half's
+                // site (VERIFIED w/Chest §Breaking, live 2026-09-15);
+                // the surviving half becomes a normal single chest,
+                // empty
+                for s in neighbor_stacks {
+                    self.sim
+                        .items
+                        .drop_block(pos[0], pos[1], pos[2], s.block, 7, 15, 0);
+                }
+            }
             if matches!(
                 self.container,
                 Some(
@@ -9056,6 +9649,9 @@ impl GameApp {
                         | Container::Hopper { pos: p }
                         | Container::Barrel { pos: p },
                 ) if p == pos
+            ) || matches!(
+                self.container,
+                Some(Container::DoubleChest { pos: p, other: o }) if p == pos || o == pos
             ) {
                 self.close_container();
             }
@@ -14293,9 +14889,22 @@ impl GameApp {
                     } else if tb == CHEST {
                         // Phase 3: right-click opens the chest screen; the
                         // 27-slot container entity is created on first use
-                        // (empty state) — §26 containers
+                        // (empty state) — §26 containers.
+                        // Round 12: a horizontally adjacent CHEST merges
+                        // into the double-chest screen (54 slots) — the
+                        // open-path scan (first match N/E/S/W order).
+                        // Trapped chests pair only with trapped chests
+                        // (VERIFIED w/Chest §Double chests) — they ride
+                        // their own branch below; shulker boxes NEVER
+                        // merge (VERIFIED w/Shulker_Box).
                         self.sim.containers.entry(tpos, CHEST);
-                        self.open_container(Container::Chest { pos: tpos });
+                        if let Some(other) = Container::double_chest_partner(&self.world, tpos, CHEST)
+                        {
+                            self.sim.containers.entry(other, CHEST);
+                            self.open_container(Container::DoubleChest { pos: tpos, other });
+                        } else {
+                            self.open_container(Container::Chest { pos: tpos });
+                        }
                         self.place_timer = 0.3;
                     } else if tb == TRAPPED_CHEST {
                         // Phase E3 (VERIFIED w/Trapped_Chest): container
@@ -14305,8 +14914,19 @@ impl GameApp {
                         // GUI is open). Opening feeds adjacent wires the
                         // viewer signal; closing drops it back to 0 (the
                         // container-close path re-ticks with open=false).
+                        // Round 12: trapped chests double with trapped
+                        // chests only (VERIFIED w/Chest §Double chests) —
+                        // the scan matches TRAPPED_CHEST exactly, so a
+                        // trapped chest beside a normal chest stays single
                         self.sim.containers.entry(tpos, CHEST);
-                        self.open_container(Container::Chest { pos: tpos });
+                        if let Some(other) =
+                            Container::double_chest_partner(&self.world, tpos, TRAPPED_CHEST)
+                        {
+                            self.sim.containers.entry(other, CHEST);
+                            self.open_container(Container::DoubleChest { pos: tpos, other });
+                        } else {
+                            self.open_container(Container::Chest { pos: tpos });
+                        }
                         let (w, sched) = (&mut self.world, &mut self.sim.sched);
                         vc_sim::redstone::trapped_chest_tick(w, sched, tpos[0], tpos[1], tpos[2], true);
                         self.place_timer = 0.3;
@@ -17561,6 +18181,51 @@ impl GameApp {
                 self.ui_dump_if_asked();
                 return;
             }
+            // Round 14: the new settings sub-screens
+            Screen::MusicSound => {
+                let tt = self.tooltip_lines();
+                self.ui.settings_screen(
+                    &self.widgets,
+                    self.hover,
+                    "MUSIC & SOUND",
+                    &tt,
+                );
+                self.ui_dump_if_asked();
+                return;
+            }
+            Screen::Controls => {
+                let tt = self.tooltip_lines();
+                self.ui.settings_screen(
+                    &self.widgets,
+                    self.hover,
+                    "CONTROLS",
+                    &tt,
+                );
+                self.ui_dump_if_asked();
+                return;
+            }
+            Screen::Language => {
+                let tt = self.tooltip_lines();
+                self.ui.settings_screen(
+                    &self.widgets,
+                    self.hover,
+                    "LANGUAGE  (ENGLISH ONLY)",
+                    &tt,
+                );
+                self.ui_dump_if_asked();
+                return;
+            }
+            Screen::ChatSettings => {
+                let tt = self.tooltip_lines();
+                self.ui.settings_screen(
+                    &self.widgets,
+                    self.hover,
+                    "CHAT SETTINGS",
+                    &tt,
+                );
+                self.ui_dump_if_asked();
+                return;
+            }
             Screen::Pause => {
                 self.ui.pause_screen(&self.widgets, self.hover);
                 return;
@@ -17903,6 +18568,27 @@ impl GameApp {
             fog[0] += 0.65 * sunset;
             fog[1] += 0.22 * sunset;
             fog[2] -= 0.02 * sunset;
+            // Round 15 (biome-tinted fog): the fog color leans toward
+            // the player's biome (VERIFIED w/Fog, live 2026-09-15: the
+            // fog color comes from the biome — swamp green-grey, desert
+            // sandy, ocean blue, jungle green). A 20% blend keeps the
+            // day/night + sunset ramp dominant (vanilla's blend is
+            // subtle at eye level).
+            {
+                use vc_world::gen::Biome;
+                let bx = self.player.pos.x.floor() as i32;
+                let bz = self.player.pos.z.floor() as i32;
+                let tint: [f32; 3] = match Biome::from_u8(self.world.get_biome(bx, bz)) {
+                    Biome::Swamp => [0.36, 0.42, 0.32],
+                    Biome::Desert => [0.86, 0.80, 0.62],
+                    Biome::Jungle => [0.32, 0.44, 0.28],
+                    Biome::Ocean => [0.24, 0.36, 0.58],
+                    _ => fog,
+                };
+                for c in 0..3 {
+                    fog[c] = fog[c] * 0.8 + tint[c] * 0.2;
+                }
+            }
             // Backlog round (weather): inclement weather darkens the
             // sky and grays the fog — "The sky itself darkens and gray
             // fog increases" (VERIFIED w/Weather). The sky-light factor
@@ -17934,7 +18620,14 @@ impl GameApp {
                 (8.0, 44.0, fog)
             } else {
                 let end = (rd * 16 - 12) as f32;
-                (end * 0.55, end, fog)
+                // Round 14 (Accessibility Fog): Fast = the shipped look;
+                // Fancy softens the start; OFF pushes fog to the far
+                // plane (the engine's fog stays linear either way)
+                match self.settings.acc_fog {
+                    1 => (end * 0.75, end, fog),
+                    2 => (end * 3.0, end * 4.0, fog),
+                    _ => (end * 0.55, end, fog),
+                }
             };
 
         // Menu background = the pre-rendered panorama cubemap (VERIFIED
@@ -17984,6 +18677,14 @@ impl GameApp {
             // settings sub-screens ride the same treatment as Options
             // (panorama when the menu tree was opened from the title)
             Screen::Video | Screen::Engine | Screen::Packs | Screen::Access => {
+                if self.options_from == Screen::Title {
+                    panorama = Some(pano_view);
+                }
+                (menu_cam(), 0.45, None)
+            }
+            // Round 14: the new settings sub-screens ride the same
+            // panorama treatment
+            Screen::MusicSound | Screen::Controls | Screen::Language | Screen::ChatSettings => {
                 if self.options_from == Screen::Title {
                     panorama = Some(pano_view);
                 }
@@ -18888,7 +19589,7 @@ fn report_datapacks(loaded: &vc_pack::datapack::LoadedData) {
 
 #[cfg(test)]
 mod settings_tests {
-    use super::{Settings, GameApp};
+    use super::{Container, KeyBinds, Settings, GameApp};
 
     /// The vanilla 1.16.5 Video Settings screen: the EXACT option set —
     /// the full-width Render Distance slider, four two-column cycling
@@ -18988,6 +19689,280 @@ mod settings_tests {
         assert_eq!((480.0 + (before.x - 480) as f32 * 0.72).round() as i32, after.x);
         assert_eq!((before.w as f32 * 0.72).round() as i32, after.w);
         assert_eq!((270.0 + (before.y - 270) as f32 * 0.72).round() as i32, after.y);
+    }
+
+    /// Round 10 — the vanilla integer GUI-scale AUTO formula, pinned to
+    /// the LIVE wiki values (minecraft.wiki/w/Options, fetched
+    /// 2026-09-15: available = max(1, min(⌊w/320⌋, ⌊h/240⌋)), no cap —
+    /// mathematically identical to the 1.16.5 calculateScale loop).
+    /// NOTE the documented disagreement: the round-10 spec pack's table
+    /// claimed 1080p→3 and "4 (capped)" at 1440p; both the live wiki
+    /// and the 1.16.5 loop give 4 and 6 — per the cross-check rule the
+    /// wiki wins (research audit round-10).
+    #[test]
+    fn gui_scale_auto_matches_vanilla() {
+        let s = Settings { gui_scale: 0, ..Settings::default() };
+        // (w, h, expected available/auto scale)
+        for (w, h, want) in [
+            (854u32, 480u32, 2u32),   // min(2, 2)
+            (960, 540, 2),            // min(3, 2)
+            (1280, 720, 3),           // min(4, 3)
+            (1440, 810, 3),           // min(4, 3)
+            (1920, 1080, 4),          // min(6, 4)
+            (2560, 1440, 6),          // min(8, 6) — no cap
+            (3840, 2160, 9),          // min(12, 9) — no cap
+            (300, 200, 1),            // clamped to 1
+        ] {
+            assert_eq!(s.gui_scale_resolved(w, h), want, "{w}x{h}");
+            assert_eq!(Settings::gui_scale_available(w, h), want, "{w}x{h}");
+        }
+        // manual settings clamp to the available max (vanilla loop)
+        let s4 = Settings { gui_scale: 4, ..Settings::default() };
+        assert_eq!(s4.gui_scale_resolved(1280, 720), 3, "manual clamps to available");
+        assert_eq!(s4.gui_scale_resolved(1920, 1080), 4);
+        let s2 = Settings { gui_scale: 2, ..Settings::default() };
+        assert_eq!(s2.gui_scale_resolved(3840, 2160), 2, "manual below available stays");
+    }
+
+    /// Round 10 — the live logical GUI space uses the integer scale:
+    /// the canvas raster is 2 canvas px per vanilla px, so a 1920×1080
+    /// framebuffer at Auto (=4) is EXACTLY the 960×540 reference grid,
+    /// and the blit maps every canvas px to scale/2 device px (integer
+    /// per vanilla px at every scale).
+    #[test]
+    fn logical_gui_space_uses_integer_scale() {
+        let mut ui = vc_render::ui::UiCanvas::new();
+        assert_eq!((ui.live_w, ui.live_h), (960, 540), "reference default");
+        // 1920×1080 @ Auto(4): the reference grid exactly
+        let s = Settings { gui_scale: 0, ..Settings::default() };
+        let sc = s.gui_scale_resolved(1920, 1080);
+        assert_eq!(sc, 4);
+        let cw = ((2.0 * 1920.0) / sc as f32).ceil() as usize;
+        let ch = ((2.0 * 1080.0) / sc as f32).ceil() as usize;
+        assert_eq!((cw, ch), (960, 540));
+        ui.resize(cw, ch);
+        assert_eq!((ui.live_w, ui.live_h), (960, 540));
+        assert_eq!(ui.px.len(), 960 * 540 * 4);
+        // 1280×720 @ Auto(3): 854×480 canvas; device-px-per-canvas = 1.5
+        // = 3 device px per vanilla px (integer per vanilla px)
+        let sc = s.gui_scale_resolved(1280, 720);
+        assert_eq!(sc, 3);
+        let cw = ((2.0 * 1280.0) / sc as f32).ceil() as usize;
+        let ch = ((2.0 * 720.0) / sc as f32).ceil() as usize;
+        assert_eq!((cw, ch), (854, 480));
+        ui.resize(cw, ch);
+        assert_eq!(ui.px.len(), 854 * 480 * 4);
+        assert!(ui.dirty, "resize flags dirty");
+        // the px grid indexes the LIVE width (set() clip bounds)
+        ui.set(853, 479, [1, 2, 3, 4]);
+        let i = (479usize * 854 + 853) * 4;
+        assert_eq!(&ui.px[i..i + 4], &[1, 2, 3, 4]);
+        ui.set(854, 100, [9, 9, 9, 9]); // out of live bounds — dropped
+        // resize is a no-op at the same size (no churn on every frame)
+        let cap = ui.px.capacity();
+        ui.resize(854, 480);
+        assert_eq!(ui.px.capacity(), cap);
+    }
+
+    /// Round 10 — the live-size hints the menu layouts read: publishing
+    /// a new live size re-centers the vanilla option rows, and the
+    /// default keeps the classic 960×540 geometry byte-identical.
+    #[test]
+    fn live_ui_size_hints_recenter_layouts() {
+        // pause's BACK TO GAME is a live-centered 320-wide button
+        let ws = vc_render::ui::layout_pause();
+        let b = ws.iter().find(|w| w.id == vc_render::ui::ID_PAUSE_BACK).unwrap();
+        assert_eq!(b.x, (960 - 320) / 2, "reference centering");
+        assert_eq!(b.w, 320);
+        // shrink the live width: the row re-centers in the narrower space
+        vc_render::ui::set_live_ui_size(854, 480);
+        let ws = vc_render::ui::layout_pause();
+        let b = ws.iter().find(|w| w.id == vc_render::ui::ID_PAUSE_BACK).unwrap();
+        assert_eq!(b.x, (854 - 320) / 2, "re-centered at 854");
+        assert_eq!(b.w, 320, "size unchanged — vanilla px stay put");
+        // restore for the other tests
+        vc_render::ui::set_live_ui_size(960, 540);
+    }
+
+    /// Round 12 — the double-chest partner scan: two adjacent CHESTs
+    /// pair; a trapped chest beside a normal chest does NOT; a shulker
+    /// box never matches the CHEST scan; vertical neighbors don't pair
+    /// (VERIFIED w/Chest §Double chests, live 2026-09-15).
+    #[test]
+    fn double_chest_merges_adjacent_chests() {
+        use vc_blocks::blocks::*;
+        // a bare world with empty chunks around the origin (set_block
+        // no-ops on absent chunks — copy-on-write needs the base chunk)
+        let mut w = vc_world::world::World::new(0x00D0_0B1E);
+        for dz in -1i32..=4 {
+            for dx in -1i32..=4 {
+                w.chunks.insert(
+                    (dx, dz),
+                    std::sync::Arc::new(vc_chunk::chunk::Chunk::empty()),
+                );
+            }
+        }
+        // two side-by-side chests at y=70
+        w.set_block(10, 70, 10, CHEST);
+        w.set_block(11, 70, 10, CHEST);
+        assert_eq!(
+            Container::double_chest_partner(&w, [10, 70, 10], CHEST),
+            Some([11, 70, 10]),
+            "+X neighbor pairs"
+        );
+        assert_eq!(
+            Container::double_chest_partner(&w, [11, 70, 10], CHEST),
+            Some([10, 70, 10]),
+            "the scan finds -X from the other half"
+        );
+        // trapped beside normal: the CHEST scan must not match TRAPPED_CHEST
+        w.set_block(20, 70, 10, CHEST);
+        w.set_block(21, 70, 10, TRAPPED_CHEST);
+        assert_eq!(
+            Container::double_chest_partner(&w, [20, 70, 10], CHEST),
+            None,
+            "trapped ≠ normal (no cross-pairing)"
+        );
+        assert_eq!(
+            Container::double_chest_partner(&w, [21, 70, 10], TRAPPED_CHEST),
+            None,
+            "normal ≠ trapped (the mirror direction)"
+        );
+        // two trapped chests DO pair
+        w.set_block(30, 70, 10, TRAPPED_CHEST);
+        w.set_block(30, 70, 11, TRAPPED_CHEST);
+        assert_eq!(
+            Container::double_chest_partner(&w, [30, 70, 10], TRAPPED_CHEST),
+            Some([30, 70, 11]),
+            "+Z pairs for trapped"
+        );
+        // shulker boxes never merge (scan is CHEST-only)
+        w.set_block(40, 70, 10, CHEST);
+        w.set_block(41, 70, 10, SHULKER_BOX);
+        assert_eq!(
+            Container::double_chest_partner(&w, [40, 70, 10], CHEST),
+            None,
+            "shulker neighbor does not merge"
+        );
+        // vertical neighbors never pair (vanilla: side-by-side only)
+        w.set_block(50, 70, 10, CHEST);
+        w.set_block(50, 71, 10, CHEST);
+        assert_eq!(
+            Container::double_chest_partner(&w, [50, 70, 10], CHEST),
+            None,
+            "vertical neighbor does not pair"
+        );
+        // +X wins over +Z (first-match order)
+        w.set_block(60, 70, 10, CHEST);
+        w.set_block(61, 70, 10, CHEST);
+        w.set_block(60, 70, 11, CHEST);
+        assert_eq!(
+            Container::double_chest_partner(&w, [60, 70, 10], CHEST),
+            Some([61, 70, 10]),
+            "deterministic +X/-X/+Z/-Z order"
+        );
+    }
+
+    /// Round 14 — the Music & Sound screen: ten sliders in the vanilla
+    /// category order, the master/music mirror, and the settings
+    /// round-trip through the soundCategory_* keys.
+    #[test]
+    fn music_sound_screen_layout_and_mapping() {
+        let ws = vc_render::ui::layout_music_sound();
+        // 10 sliders + the DONE button
+        let sliders: Vec<&vc_render::ui::Widget> = ws
+            .iter()
+            .filter(|w| (vc_render::ui::ID_SND_BASE..vc_render::ui::ID_SND_BASE + 10).contains(&w.id))
+            .collect();
+        assert_eq!(sliders.len(), 10, "ten category sliders");
+        assert!(ws.iter().any(|w| w.id == vc_render::ui::ID_SND_DONE));
+        // every slider carries a distinct row (the layout pins them)
+        let mut ys: Vec<i32> = sliders.iter().map(|w| w.y).collect();
+        ys.sort();
+        ys.dedup();
+        assert_eq!(ys.len(), 10, "one slider per row");
+    }
+
+    /// Round 14 — the Controls screen: the rebind table round-trips
+    /// (set_nth changes the row's key, Reset restores the defaults),
+    /// key labels parse back, and the layout's two-column shape holds.
+    #[test]
+    fn control_rebind_changes_effective_key() {
+        let mut b = KeyBinds::default();
+        assert_eq!(b.forward, winit::keyboard::KeyCode::KeyW);
+        // rebind row 0 (Walk Forwards) to the Up arrow
+        b.set_nth(0, winit::keyboard::KeyCode::ArrowUp);
+        assert_eq!(b.forward, winit::keyboard::KeyCode::ArrowUp);
+        // the row table reflects it
+        let rows = b.rows();
+        assert_eq!(rows[1].1, "Walk Forwards");
+        assert_eq!(rows[1].2, winit::keyboard::KeyCode::ArrowUp);
+        // the label + parse round trip
+        let lbl = KeyBinds::key_label(winit::keyboard::KeyCode::ArrowUp);
+        assert_eq!(lbl, "UP");
+        assert_eq!(
+            KeyBinds::key_from_str("ArrowUp"),
+            Some(winit::keyboard::KeyCode::ArrowUp)
+        );
+        assert_eq!(KeyBinds::key_from_str("KeyW"), Some(winit::keyboard::KeyCode::KeyW));
+        assert_eq!(KeyBinds::key_from_str("Nonsense"), None);
+        // reset (the Controls screen's RESET KEYS assigns the defaults)
+        b = KeyBinds::default();
+        let d = KeyBinds::default();
+        assert_eq!(b.rows(), d.rows(), "reset restores the defaults");
+    }
+
+    /// Round 14 — the Controls layout shape: two columns (action name +
+    /// key button share a row id), category headers, Reset + Done.
+    #[test]
+    fn controls_screen_layout_shape() {
+        let labels = vec![
+            (true, "MOVEMENT", ""),
+            (false, "Walk Forwards", "W"),
+            (false, "Walk Backwards", "S"),
+        ];
+        let ws = vc_render::ui::layout_controls(&labels);
+        // row 0 = the header (one wide disabled button); rows 1-2 = the
+        // name + key button pair (same id, key button on the right)
+        let hdr = ws.iter().find(|w| w.id == vc_render::ui::ID_CTRL_BIND_BASE).unwrap();
+        match &hdr.kind {
+            vc_render::ui::WidgetKind::Button { enabled, .. } => {
+                assert!(!enabled, "headers are not clickable")
+            }
+            _ => panic!("header is a button"),
+        }
+        let name = ws.iter().find(|w| w.id == vc_render::ui::ID_CTRL_BIND_BASE + 1).unwrap();
+        let key = ws.iter()
+            .filter(|w| w.id == vc_render::ui::ID_CTRL_BIND_BASE + 1)
+            .nth(1)
+            .unwrap();
+        assert!(key.x > name.x, "the key button sits right of the name");
+        assert_eq!(key.y, name.y, "same row");
+        assert!(ws.iter().any(|w| w.id == vc_render::ui::ID_CTRL_RESET));
+        assert!(ws.iter().any(|w| w.id == vc_render::ui::ID_CTRL_DONE));
+    }
+
+    /// Round 14 — the accessibility options + the keybinds persist
+    /// through serialize/deserialize (the spec's round-trip test).
+    #[test]
+    fn accessibility_options_persist_round_trip() {
+        let b = KeyBinds {
+            forward: winit::keyboard::KeyCode::ArrowUp,
+            inventory: winit::keyboard::KeyCode::KeyI,
+            ..KeyBinds::default()
+        };
+        let s = Settings {
+            acc_fog: 2,
+            acc_fov_effects: 0.25,
+            binds: b,
+            ..Settings::default()
+        };
+        let r = Settings::deserialize(&s.serialize());
+        assert_eq!(r.acc_fog, 2);
+        assert!((r.acc_fov_effects - 0.25).abs() < 1e-3);
+        assert_eq!(r.binds.forward, winit::keyboard::KeyCode::ArrowUp);
+        assert_eq!(r.binds.inventory, winit::keyboard::KeyCode::KeyI);
+        assert_eq!(r.binds.back, KeyBinds::default().back, "untouched binds keep defaults");
     }
 
     /// UI_DUMP_DIR=<dir> renders every settings screen on the CPU canvas

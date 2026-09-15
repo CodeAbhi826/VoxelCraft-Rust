@@ -6628,7 +6628,7 @@ pub fn creative_tab(b: u16) -> CreativeTab {
         // ---- Tools (1 entries) ----
         HOE => CreativeTab::Tools,
         // ---- Combat (5 entries) ----
-        SNOWBALL | ELYTRA | SHIELD | TRIDENT | TURTLE_SHELL => CreativeTab::Combat,
+        SNOWBALL | ELYTRA | SHIELD | TRIDENT => CreativeTab::Combat,
         // ---- Brewing (25 entries) ----
         BREWING_STAND | POTION_EMPTY | POTION_WATER | POTION_AWKWARD | POTION_MUNDANE => CreativeTab::Brewing,
         POTION_HEALING | POTION_HEALING_II | NETHER_WART | BLAZE_ROD | BLAZE_POWDER => CreativeTab::Brewing,

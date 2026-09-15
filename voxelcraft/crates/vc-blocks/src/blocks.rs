@@ -3139,7 +3139,7 @@ pub fn item_state_block(s: u16) -> Option<u16> {
     }
 }
 
-pub const BLOCK_COUNT: usize = 531; // + the backlog fire (506) + the farming set (507-514: farmland, 4
+pub const BLOCK_COUNT: usize = 533; // + the backlog fire (506) + the farming set (507-514: farmland, 4
                                       // crops, wheat, bread, hoe) + the 16 armor items (515-530,
                                       // sub-round 3)
 /// [merge renumber] acacia/dark-oak log axis states moved to 443..=446
@@ -4255,6 +4255,9 @@ pub fn break_time_secs(block: u16) -> f32 {
         GLASS => 0.3,
         ICE => 0.5,
         OBSIDIAN => 50.0,
+        // Round 13: the grindstone (VERIFIED w/Grindstone §Breaking,
+        // live 2026-09-15: hardness 2.0)
+        GRINDSTONE => 2.0,
         _ => 1.0,
     };
     hardness * 1.5
@@ -4533,7 +4536,7 @@ pub fn log_axis_state(block: u16, axis: u8) -> u16 {
 /// `all_def_tiles_within_tile_max` test so it can never drift again.
 // [merge] E-series tiles end at 243; the F-series (1.7.2-1.10) tiles
 // continue at 244..=325; the audit-fix round adds 326..=332
-pub const TILE_MAX: u16 = 790; // + the 16 armor item sprites (775..=790, sub-round 3) // 763 farming bracket + 764..773 destroy stages + 774 arm
+pub const TILE_MAX: u16 = 792; // + the 16 armor item sprites (775..=790, sub-round 3) + Round 13 book/grindstone (791/792) // 763 farming bracket + 764..773 destroy stages + 774 arm
 
 // ---- the 2026-09-14 round: destroy-stage crack overlays (764..=773) and
 // the first-person arm tile (774). The ten destroy stages are the vanilla
@@ -5069,6 +5072,10 @@ pub const TILE_SNOW_PARTICLE: u16 = 737;
 /// the fire block sprite (backlog round: weather + flint-and-steel) —
 /// clean-room flame art (weather_art::fire_art).
 pub const TILE_FIRE: u16 = 738;
+/// Round 13: the plain book item sprite (r13_art::book_art)
+pub const TILE_BOOK: u16 = 791;
+/// Round 13: the grindstone block sprite (r13_art::grindstone_art)
+pub const TILE_GRINDSTONE: u16 = 792;
 /// the fire block (id 506 — lightning ignition + flint-and-steel
 /// source; VERIFIED w/Weather §Lightning).
 pub const FIRE: u16 = 506;
@@ -5130,6 +5137,20 @@ pub const DIAMOND_HELMET: u16 = 527;
 pub const DIAMOND_CHESTPLATE: u16 = 528;
 pub const DIAMOND_LEGGINGS: u16 = 529;
 pub const DIAMOND_BOOTS: u16 = 530;
+
+// ---- Round 13 (station GUIs): the two registry additions the grindstone
+// station needs (ids 531/532).
+/// the plain book — the grindstone's disenchanted-book output
+/// (VERIFIED w/Grindstone §Usage, live 2026-09-15: "If an enchanted
+/// book is placed in the input, a normal book appears in the output")
+/// and the anvil's book-combine base. Inventory-only item.
+pub const BOOK: u16 = 531;
+/// 1.14: the grindstone — the disenchant/repair station. Registered
+/// by Round 13 (the GUI cannot be reachable without the block);
+/// hardness 2.0, drops itself (VERIFIED w/Grindstone §Breaking/§Crafting,
+/// live 2026-09-15: crafted from "2 sticks, 1 stone slab, 2 planks";
+/// the engine's OAK_SLAB stays the "any slab" stand-in — craft.rs).
+pub const GRINDSTONE: u16 = 532;
 
 /// armor piece kind (for slot routing + art): 0 helmet, 1 chestplate,
 /// 2 leggings, 3 boots. None for non-armor blocks.
@@ -6178,6 +6199,9 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Diamond Chestplate", [TILE_ARMOR_BASE + 13, TILE_ARMOR_BASE + 13, TILE_ARMOR_BASE + 13], false, false, true, false, 0, SoundFamily::Stone),
     d("Diamond Leggings", [TILE_ARMOR_BASE + 14, TILE_ARMOR_BASE + 14, TILE_ARMOR_BASE + 14], false, false, true, false, 0, SoundFamily::Stone),
     d("Diamond Boots", [TILE_ARMOR_BASE + 15, TILE_ARMOR_BASE + 15, TILE_ARMOR_BASE + 15], false, false, true, false, 0, SoundFamily::Stone),
+    // ---- Round 13 (station GUIs): book (531) + grindstone (532) ----
+    d("Book", [TILE_BOOK, TILE_BOOK, TILE_BOOK], false, false, true, false, 0, SoundFamily::Grass),
+    d("Grindstone", [TILE_GRINDSTONE, TILE_GRINDSTONE, TILE_GRINDSTONE], true, true, false, false, 0, SoundFamily::Stone),
 ];
 
 #[inline]
@@ -6598,6 +6622,9 @@ pub fn creative_tab(b: u16) -> CreativeTab {
         CRAFTING_TABLE | FURNACE | ENCHANT_TABLE | ENCHANTED_BOOK | END_CRYSTAL => CreativeTab::Miscellaneous,
         EYE_OF_ENDER | NETHER_BRICK | SPAWN_EGG_BASE | ANVIL | CHIPPED_ANVIL => CreativeTab::Miscellaneous,
         DAMAGED_ANVIL | BEACON | ENDER_CHEST | WITHER_SKELETON_SKULL | COMMAND_BLOCK => CreativeTab::Miscellaneous,
+        // Round 13: the station-GUI pair — the grindstone block and the
+        // plain book item (their vanilla 1.16.5 tab home)
+        GRINDSTONE | BOOK => CreativeTab::Miscellaneous,
         EMERALD | NETHER_STAR | LAVA | COAL | STAINED_TERRACOTTA_BASE => CreativeTab::Miscellaneous,
         CARPET_WHITE | CARPET_RED | CARPET_YELLOW | CARPET_BLUE | CARPET_BLACK => CreativeTab::Miscellaneous,
         HAY_BALE | TRAPPED_CHEST | NETHER_QUARTZ | LEAD | E3_SPAWN_EGG_BASE => CreativeTab::Miscellaneous,
@@ -6763,7 +6790,7 @@ mod creative_tab_tests {
         // the 16 ids are contiguous 515..=530 and past the old registry
         assert_eq!(LEATHER_CAP, 515);
         assert_eq!(DIAMOND_BOOTS, 530);
-        assert_eq!(BLOCK_COUNT, 531);
+        assert_eq!(BLOCK_COUNT, 533);
         for b in LEATHER_CAP..=DIAMOND_BOOTS {
             // every armor item is an inventory-only item block
             assert!(is_item_block(b), "armor {b} must be an item block");
@@ -7513,7 +7540,7 @@ mod state_tests {
         // with the 1.7.2–1.10 F-series: 276 blocks / 480 states
         // (E-series states end at 354; V2 400..=442, V3 447..=465,
         // V4 466..=475, V5 476..=479)
-        assert_eq!(BLOCK_COUNT, 531, "merged registry + V6..V14 + the audit V15 window + the backlog fire + the farming set + the 16 armor items");
+        assert_eq!(BLOCK_COUNT, 533, "merged registry + V6..V14 + the audit V15 window + the backlog fire + the farming set + the 16 armor items + Round 13 book/grindstone");
         assert_eq!(STATE_COUNT, 861, "merged state space + the V16 window (fire + farming + item identities) + the V17 armor window");
         assert_eq!(BLOCK_TABLE.len(), BLOCK_COUNT);
         for want in [
@@ -7565,7 +7592,7 @@ mod v110_tests {
             assert_eq!(default_state(b), s);
             assert!(is_v5_state(s));
         }
-        assert_eq!(BLOCK_COUNT, 531); // + the backlog fire (block windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 533); // + the backlog fire (block windows are cumulative)
         assert_eq!(STATE_COUNT, 861); // + the backlog V16 fire state (state windows are cumulative)
     }
 
@@ -7603,7 +7630,7 @@ mod auditfix_tests {
             assert!(!is_model_state(s), "V6 states are cube/cross defs, not model states");
         }
         assert_eq!(V6_COUNT, 6);
-        assert_eq!(BLOCK_COUNT, 531); // + the backlog fire (block windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 533); // + the backlog fire (block windows are cumulative)
         assert_eq!(STATE_COUNT, 861); // + the backlog V16 fire state (state windows are cumulative)
         // solidity classes: log/planks solid-opaque (hardness family 2
         // per w/Log + w/Planks), leaves see-through, vine/fern non-solid
@@ -7653,7 +7680,7 @@ mod v111_tests {
             assert_eq!(default_state(b), s, "block {b} default state");
             assert_eq!(state_block(s), b, "state {s} folds back");
         }
-        assert_eq!(BLOCK_COUNT, 531); // + the backlog fire (block windows are cumulative)
+        assert_eq!(BLOCK_COUNT, 533); // + the backlog fire (block windows are cumulative)
         assert_eq!(STATE_COUNT, 861); // + the backlog V16 fire state (state windows are cumulative)
         // mansion spawner states fold to SPAWNER + decode their kinds
         assert_eq!(state_block(SPAWNER_VINDICATOR), SPAWNER);
@@ -7758,7 +7785,7 @@ mod v112_tests {
         }
         assert_eq!(default_state(COOKIE), V8_STATE_BASE + 117);
         // bounds
-        assert_eq!(BLOCK_COUNT, 531);
+        assert_eq!(BLOCK_COUNT, 533);
         assert_eq!(STATE_COUNT, 861);
         assert_eq!(CONCRETE_BASE + 15, CONCRETE_END);
         assert_eq!(CONCRETE_POWDER_BASE + 15, CONCRETE_POWDER_END);
@@ -7898,7 +7925,7 @@ mod v114_tests {
             "unlit tile"
         );
         // bounds + window shape
-        assert_eq!(BLOCK_COUNT, 531);
+        assert_eq!(BLOCK_COUNT, 533);
         assert_eq!(STATE_COUNT, 861);
         assert_eq!(V10_COUNT, 13);
         assert_eq!(BAMBOO, 417);
@@ -8000,7 +8027,7 @@ mod v114_tests {
         const _: () = assert!(TILE_MAX >= TILE_LILY_OF_THE_VALLEY, "flower tiles within the atlas guard");
         // bounds + window shape
         assert_eq!(V11_COUNT, 9);
-        assert_eq!(BLOCK_COUNT, 531);
+        assert_eq!(BLOCK_COUNT, 533);
         assert_eq!(STATE_COUNT, 861);
     }
 }
@@ -8086,7 +8113,7 @@ mod v115_tests {
         const _: () = assert!(TILE_MAX >= TILE_BEEHIVE_FRONT_HONEY, "honey front within the atlas guard");
         // bounds + window shape
         assert_eq!(V12_COUNT, 18);
-        assert_eq!(BLOCK_COUNT, 531);
+        assert_eq!(BLOCK_COUNT, 533);
         assert_eq!(STATE_COUNT, 861);
         assert_eq!(PICKER_BLOCKS.len(), 467);
     }
@@ -8234,7 +8261,7 @@ mod v116_tests {
         // bounds + window shape
         assert_eq!(V13_COUNT, 34);
         assert_eq!(V13_STATE_BASE + V13_COUNT, 750);
-        assert_eq!(BLOCK_COUNT, 531);
+        assert_eq!(BLOCK_COUNT, 533);
         assert_eq!(STATE_COUNT, 861);
         assert_eq!(PICKER_BLOCKS.len(), 467);
     }
@@ -8417,7 +8444,7 @@ mod v116_tests {
         // spawner states)
         assert_eq!(V15_COUNT, 29);
         assert_eq!(V15_STATE_BASE + V15_COUNT, 805);
-        assert_eq!(BLOCK_COUNT, 531);
+        assert_eq!(BLOCK_COUNT, 533);
         assert_eq!(STATE_COUNT, 861);
         assert_eq!(PICKER_BLOCKS.len(), 467);
     }

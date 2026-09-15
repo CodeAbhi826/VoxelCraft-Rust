@@ -4419,3 +4419,98 @@ armor row.
 **Not committed or pushed** — the round's work sits in the working
 tree; nothing goes to GitHub without explicit user approval, per the
 standing instruction.
+
+## 2026-09-15 (rounds 10–16 pack) — the "rest of the parts" pass
+
+**Task:** the user's 2026-09-15 directive — "start the preview and also
+rest of the part" against the Round 10–16 spec pack
+(`upload/Pasted Content_1789476877305.txt`). The container had been
+RESET: the Rust toolchain, wasm32 target, clippy and wasm-bindgen-cli
+0.2.127 were all gone (reinstalled per the ENVIRONMENT FACTS), and the
+deployed wasm predated the previous session's creative-tabs commit.
+
+**Landed (all with tests, all wiki-cited in the code):**
+
+- **Round 10 [1] — the vanilla integer GUI-scale model** (the round-9
+  deferral closed). `Settings::gui_scale_resolved`: Auto =
+  max(1, min(⌊w/320⌋, ⌊h/240⌋)) — the LIVE wiki formula
+  (Options page, fetched 2026-09-15), mathematically identical to the
+  1.16.5 calculateScale loop; manual 1..4 clamps to available. The
+  960×540 canvas became the LIVE logical space (2 canvas px per
+  vanilla px): `UiCanvas::resize` reallocates the raster to
+  ceil(2·fb/scale), the renderer's `ensure_ui_size` rebuilds the
+  (texture, bind group, blit quad) to match, the blit maps every
+  vanilla px to exactly `scale` device px, and `phys_to_ui`/`ui_to_phys`
+  share the same fit so hit-testing stays 1:1. The fractional
+  0.72/0.86/1.0 `scale_widgets` path is RETIRED (the fn stays as pure
+  math with its test). HUD anchors + menu layouts read the live size
+  (thread-local hints — the TEXT_QUADS_ACTIVE precedent), so hearts
+  sit at true screen edges at any scale. The spec's Auto table
+  (1080p→3, "capped at 4") disagreed with the live wiki and the 1.16.5
+  loop (both give 4 at 1080p, no cap) — the wiki wins, documented in
+  `docs/research/round-10b-integer-gui-scale-audit.md`.
+- **Round 12 [1] — the double chest.** `Container::DoubleChest
+  {pos, other}`: the open-path scan (`double_chest_partner`, pure +
+  tested: +X/−X/+Z/−Z first-match, trapped pairs only with trapped,
+  shulkers never merge, vertical never pairs), the 54-slot 9×6 screen
+  (`ContainerKind::DoubleChest`, top 264, single-word CHEST title per
+  the wiki), slot clicks routed to the owning half (0..27 = clicked,
+  27..54 = neighbor), open/close chest sounds, and `drop_container_
+  contents` spilling BOTH halves at the broken half's site (the
+  survivor stays as an empty single chest — the wiki's §Breaking
+  outcome). Panel-family chrome overhead disclosed in
+  ROUND-16-PARITY-GAP.md.
+- **Round 14 (partial) — the settings tree.** Music & Sound screen
+  (ten per-category sliders over the existing Sub-round-5 gain chain:
+  Master/Music/Jukeboxes/Weather/Blocks/Hostile/Friendly/Players/
+  Ambient/Voice, `set_sound_slider` + persistence through the
+  soundCategory_* keys). Controls screen (the `KeyBinds` table,
+  click-to-rebind with a listening state + ESC cancel, RESET KEYS,
+  `key_<action>` persistence, `key_from_str`/`key_label` round-trips;
+  the hardcoded W/A/S/D/Space/Shift/E/F/B arms in `key_action`
+  replaced by table resolution so rebinds genuinely move actions).
+  Language screen (English-only, honestly labeled), Chat Settings
+  (titled stub — the spec forbids adding chat this round).
+  Accessibility additions: Fog Fast/Fancy/OFF (live renderer effect),
+  FOV Effects slider, grayed Chat Visibility/Subtitles. New widget-id
+  families 160..170 / 180..204 + literals 50/170..177 added to the
+  ID-space guard tests.
+- **Round 15 (partial) — biome-tinted fog** (a 20% blend at the
+  player's biome: swamp green-grey, desert sandy, ocean blue, jungle
+  green — the weather darkening + nether fog were already shipped and
+  re-verified).
+- **Latent-bug fixes from the previous session's uncommitted state:**
+  the sub-round-5 sound-registry water recipes (`step/water`,
+  `dig/water1/2` never generated → three vc-audio tests failing) and
+  the duplicate `TURTLE_SHELL => Combat` match arm (an
+  unreachable-patterns warning).
+
+**Suite: 762 tests / 0 failures** (752 → 762; +10: the GUI-scale trio,
+the double-chest pair, the Round-14 quartet, plus the three repaired
+vc-audio tests back green). **Clippy 0 warnings native `--all-targets`
+AND wasm32 `--lib`.** The wasm bundle was rebuilt (wasm-bindgen
+0.2.127, glue patched, packs rsynced — the locked 14:45 pair) and
+deployed to `public/`.
+
+**Live E2E (headless Chromium, agent-browser + VLM):** boot → title
+(logo/splash/menus) → SELECT WORLD → CREATE NEW WORLD → in-game at
+1280×720 (Auto = scale 3, canvas 854×480): hearts/hunger at the true
+bottom-left edge, hotbar bottom-center, crosshair center, proportionate
+UI with NO letterbox bars (the letterbox path is gone). Options tree
+shows MUSIC & SOUND... / enabled CONTROLS.../LANGUAGE.../CHAT
+SETTINGS...; the Music & Sound screen VLM-verified with all ten
+category sliders; the Controls screen VLM-verified with MOVEMENT +
+INVENTORY categories, the nine default binds, RESET KEYS + DONE. At
+1920×1080: proportionate, no letterbox. Synthetic clicks at
+computed live-canvas coordinates landed exactly — the phys↔canvas
+mapping round-trips end to end.
+
+**Deferred (documented with reasons in `docs/ROUND-16-PARITY-GAP.md`):**
+Round 12 [2] mount storage (no entity-side inventories exist yet);
+Round 13 station GUIs (anvil/beacon logic exists, GUIs + the other six
+stations need their subsystems first); Round 14 Skin Customization; the
+Round 15 particle-type batch + exact sky-cell sizes; saved hotbars.
+
+**Not committed or pushed** — the round's work sits in the working
+tree; nothing goes to GitHub without explicit user approval, per the
+standing instruction.

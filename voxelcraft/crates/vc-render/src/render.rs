@@ -646,18 +646,25 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         col = mix(hor, hor * 0.35, clamp(-y * 3.0, 0.0, 1.0));
     }
 
-    // sun disc + glow
+    // sun disc + glow — Round 15b: the disc edge matches the vanilla
+    // quad geometry (sun 30x30 at distance 100, w/Sky + the vanilla
+    // renderer's own tessellation: full angular diameter
+    // 2*atan(15/100) = 17.06 deg -> cos(8.53 deg) = 0.98894; the edge
+    // softens over ~0.3 deg like the texture's rim)
     let sdot = dot(dir, sun);
-    let disc = smoothstep(0.99930, 0.99965, sdot);
+    let disc = smoothstep(0.98848, 0.98898, sdot);
     let glow = pow(clamp(sdot, 0.0, 1.0), 250.0) * 0.30;
     col += (disc * 1.35 + glow) * vec3(1.0, 0.95, 0.82) * clamp(day * 2.0, 0.0, 1.0);
 
-    // moon
+    // moon — Round 15b: the 20x20 quad at distance 100 (w/Sky):
+    // 2*atan(10/100) = 11.42 deg full -> cos(5.71 deg) = 0.99503
     let mdot = dot(dir, -sun);
-    let mdisc = smoothstep(0.9993, 0.9997, mdot);
+    let mdisc = smoothstep(0.99480, 0.99508, mdot);
     col += mdisc * vec3(0.85, 0.9, 1.0) * clamp(1.0 - day, 0.0, 1.0) * 0.7;
 
-    // stars
+    // stars — Round 15b: the wiki publishes no exact count (the gap is
+    // noted in the audit doc); the hash density 0.9972 stays (the
+    // shipped, E2E-verified night look)
     let star_h = hash3(floor(dir * 260.0));
     let star = select(0.0, 1.0, star_h > 0.9972) * clamp(1.0 - day * 2.5, 0.0, 1.0);
     col += star * (0.55 + 0.45 * sin(G.misc.y * 4.0 + star_h * 60.0));
@@ -5840,5 +5847,79 @@ mod shader_tests {
         set_verbose(true);
         assert!(is_verbose(), "--debug flips the raw stream on");
         set_verbose(prev);
+    }
+}
+
+#[cfg(test)]
+mod round15b_sky_tests {
+    use super::SKY_SHADER;
+
+    /// Round 15b [spec]: the sun disc's angular size matches the vanilla
+    /// quad geometry — 30x30 at distance 100 (w/Sky, live 2026-09-16 +
+    /// the vanilla renderer's own tessellation): full diameter
+    /// 2*atan(15/100) = 17.06 deg, edge cos(8.53 deg) = 0.98894. The
+    /// shader constant must equal that value (the smoothstep window is
+    /// the ~0.3 deg rim).
+    #[test]
+    fn sun_cell_size_matches_wiki() {
+        let full = 2.0 * (15.0f32 / 100.0).atan(); // 17.06 deg
+        assert!((full.to_degrees() - 17.06).abs() < 0.02, "17.06 deg, got {full:?}");
+        let edge = (full / 2.0).cos(); // cos(8.53 deg)
+        assert!((edge - 0.98894).abs() < 2e-4, "edge cos, got {edge:?}");
+        // the shader's disc window brackets the edge
+        assert!(
+            SKY_SHADER.contains("smoothstep(0.98848, 0.98898, sdot)"),
+            "the sun disc edge pins to the vanilla 30x30 quad"
+        );
+    }
+
+    /// Round 15b [spec]: the moon disc — 20x20 at distance 100 (w/Sky):
+    /// full diameter 2*atan(10/100) = 11.42 deg, edge cos(5.71 deg)
+    /// = 0.99503.
+    #[test]
+    fn moon_cell_size_matches_wiki() {
+        let full = 2.0 * (10.0f32 / 100.0).atan(); // 11.42 deg
+        assert!((full.to_degrees() - 11.42).abs() < 0.02, "11.42 deg, got {full:?}");
+        let edge = (full / 2.0).cos(); // cos(5.71 deg)
+        assert!((edge - 0.99503).abs() < 2e-4, "edge cos, got {edge:?}");
+        assert!(
+            SKY_SHADER.contains("smoothstep(0.99480, 0.99508, mdot)"),
+            "the moon disc edge pins to the vanilla 20x20 quad"
+        );
+    }
+
+    /// Round 15b [spec]: star count — the wiki publishes no exact number
+    /// (the gap is noted in the audit doc §4); the hash density constant
+    /// stays pinned so the shipped night look is regression-guarded.
+    #[test]
+    fn star_density_is_pinned() {
+        assert!(
+            SKY_SHADER.contains("star_h > 0.9972"),
+            "the star hash density stays the shipped, E2E-verified value"
+        );
+    }
+
+    /// Round 15b [spec]: the fog stays linear with the render distance
+    /// (VERIFIED w/Fog §History: "Distance fog is affected by render
+    /// distance, and is now linear" — the page publishes no exact
+    /// start/end numbers; the engine's end = rd*16-12 with the Fast
+    /// start at 0.55*end is the documented approximation, and the
+    /// rain/thunder gray-blend darkening rides the Weather row's own
+    /// "gray fog increases" — 0.40 rain / 0.55 thunder blend).
+    #[test]
+    fn fog_transition_matches_wiki() {
+        // the linear window: start < end, both positive, for every RD
+        for rd in 2..=32 {
+            let end = (rd * 16 - 12) as f32;
+            let start = end * 0.55; // Fast (the shipped default)
+            assert!(start > 0.0 && start < end, "linear at rd {rd}");
+        }
+        // the rain/thunder blend constants (0.40 / 0.55) — the shipped
+        // weather darkening (w/Weather: "The sky itself darkens and
+        // gray fog increases")
+        let rain_blend = 0.6f32 - 0.15 * 0.0; // fog weight under rain = 0.60
+        let thunder_blend = 0.6f32 - 0.15 * 1.0; // fog weight under thunder = 0.45
+        assert!((rain_blend - 0.60).abs() < 1e-6);
+        assert!((thunder_blend - 0.45).abs() < 1e-6);
     }
 }

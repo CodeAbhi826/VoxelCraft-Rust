@@ -109,6 +109,11 @@ pub struct Sim {
     /// Phase E2: beacon states (position-keyed; the pyramid + powers,
     /// VERIFIED w/Beacon)
     pub beacons: std::collections::HashMap<[i32; 3], vc_gameplay::beacon::BeaconState>,
+    /// Round 13: anvil station slots (target + sacrifice, position-
+    /// keyed; items return to the player on screen close — vanilla)
+    pub anvils: std::collections::HashMap<[i32; 3], vc_gameplay::anvil::StationSlots>,
+    /// Round 13: grindstone station slots (top + bottom, position-keyed)
+    pub grindstones: std::collections::HashMap<[i32; 3], vc_gameplay::anvil::StationSlots>,
     /// 1.13 (Update Aquatic): placed conduits (position-keyed; the
     /// frame scan + Conduit Power application live in the game layer
     /// — VERIFIED w/Conduit)
@@ -155,6 +160,8 @@ impl Sim {
             dragon: vc_gameplay::dragon::DragonSystem::new(seed ^ 0xDA60_0005),
             wither: vc_gameplay::wither::WitherSystem::new(seed ^ 0xB055_0002),
             beacons: std::collections::HashMap::new(),
+            anvils: std::collections::HashMap::new(),
+            grindstones: std::collections::HashMap::new(),
             conduits: std::collections::HashSet::new(),
             conduit_attack_t: 0,
             containers: crate::containers::Containers::default(),

@@ -24,7 +24,7 @@
 //!   modified enchantment levels combined" — the per-enchant M values
 //!   below are the maxima of the wiki's published XP-ranges table
 
-use vc_blocks::blocks::*;
+use vc_blocks::blocks::{BOOK, ENCHANTED_BOOK};
 use vc_inventory::inventory::ItemStack;
 use crate::anvil::armor_max_durability;
 use crate::enchanting::enchant_def;
@@ -83,7 +83,7 @@ pub fn xp_min_cost(ench: u8, level: u8) -> u32 {
     if lvl > table.len() {
         0
     } else {
-        table[lvl - 1] as u32
+        table[lvl - 1]
     }
 }
 
@@ -138,9 +138,15 @@ pub fn grindstone_plan(top: &ItemStack, bottom: &ItemStack) -> Option<GrindPlan>
         let mut result = *it;
         result.ench = 0;
         result.ench2 = 0;
+        // "If an enchanted book is placed in the input, a normal book
+        // appears in the output" (VERIFIED — the block converts too)
+        if result.block == ENCHANTED_BOOK {
+            result.block = BOOK;
+        }
         // curses survive a disenchant (VERIFIED); the model keeps at
         // most the first curse slot — a curse+curse input keeps one
-        let curse = it.enchants().iter().flatten().find(|&&(id, _)| is_curse(id));
+        let it_ench = it.enchants();
+        let curse = it_ench.iter().flatten().find(|&&(id, _)| is_curse(id));
         if let Some(&(id, lvl)) = curse {
             result.set_enchant(id, lvl);
         }
@@ -152,20 +158,23 @@ pub fn grindstone_plan(top: &ItemStack, bottom: &ItemStack) -> Option<GrindPlan>
     if top.block != bottom.block {
         return None; // "two tools or pieces of armor ... of the same type"
     }
+    // "Placing two tools or pieces of armor (enchanted or not) of the
+    // same type in the input slots causes a non-enchanted output"
+    // (VERIFIED — the combine is offered even when neither input is
+    // enchanted; the red-X "Unenchanted items" row is the SINGLE-input
+    // disenchant refusal above)
     let useful_a = non_curse(top);
     let useful_b = non_curse(bottom);
-    if useful_a.is_empty() && useful_b.is_empty() {
-        return None; // nothing to disenchant -> red X
-    }
     let mut result = *top; // the name rides the TOP input (VERIFIED)
     result.count = 1;
     result.ench = 0;
     result.ench2 = 0;
-    let curse = top
-        .enchants()
+    let top_ench = top.enchants();
+    let bottom_ench = bottom.enchants();
+    let curse = top_ench
         .iter()
         .flatten()
-        .chain(bottom.enchants().iter().flatten())
+        .chain(bottom_ench.iter().flatten())
         .find(|&&(id, _)| is_curse(id));
     if let Some(&(id, lvl)) = curse {
         result.set_enchant(id, lvl); // curses survive the grindstone
@@ -181,6 +190,8 @@ pub fn grindstone_plan(top: &ItemStack, bottom: &ItemStack) -> Option<GrindPlan>
     }
     let mut all = useful_a;
     all.extend(useful_b);
+    // "If either input item was enchanted, the grindstone drops some
+    // experience" (VERIFIED) — an unenchanted pair combines with no XP
     let (mn, mx) = xp_bounds(&all);
     Some(GrindPlan { result, xp_min: mn, xp_max: mx })
 }
@@ -191,13 +202,14 @@ fn xp_bounds(enchants: &[(u8, u8)]) -> (u32, u32) {
         .iter()
         .map(|&(id, lvl)| xp_min_cost(id, lvl))
         .sum();
-    ((m + 1) / 2, m) // ceil(m/2) ..= m — the 50%..100% window
+    (m.div_ceil(2), m) // ceil(m/2) ..= m — the 50%..100% window
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::enchanting::enchant_by_id;
+    use vc_blocks::blocks::*;
 
     fn ench(stack_block: u16, id: &str, level: u8) -> ItemStack {
         let mut s = ItemStack::new(stack_block, 1);
@@ -261,7 +273,10 @@ mod tests {
     }
 
     /// Round 13 [spec]: the combine WITHOUT the anvil's 12% bonus —
-    /// the grindstone gives 5% (rounded down), capped at max.
+    /// the grindstone gives 5% (rounded down), capped at max. The pair
+    /// is unenchanted and still combines (VERIFIED live 2026-09-16:
+    /// "Placing two tools or pieces of armor (enchanted or not) of the
+    /// same type ... causes a non-enchanted output").
     #[test]
     fn grindstone_combines_without_12pct_bonus() {
         // two damaged diamond chestplates (max 528): dmg 300 + 450
@@ -272,10 +287,9 @@ mod tests {
         assert_eq!(plan.result.dmg, 528 - 332);
         // the prior-work penalty RESETS (the anvil keeps accumulating)
         assert_eq!(plan.result.prior, 0);
-        // unenchanted pair: refused (the Java red-X rule)
-        let c = ItemStack::new_damaged(LEATHER_CAP, 1, 10, 0);
-        let d = ItemStack::new_damaged(LEATHER_CAP, 1, 10, 0);
-        assert!(grindstone_plan(&c, &d).is_none(), "nothing to disenchant");
+        // an unenchanted pair drops NO XP (VERIFIED: "If either input
+        // item was enchanted" — neither was)
+        assert_eq!((plan.xp_min, plan.xp_max), (0, 0));
     }
 
     /// Round 13 [spec]: cursed items return nothing — the grindstone

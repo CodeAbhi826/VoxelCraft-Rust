@@ -4,3 +4,5 @@
 
 pub mod particles;
 pub use particles::*;
+/// Round 15b: the missing-type registry + the typed emitter
+pub mod kinds;

@@ -178,10 +178,10 @@ pub struct AnvilPlan {
 /// - Returns None when the anvil REFUSES the pair outright (nothing to
 ///   do: full-durability target + unenchanted sacrifice + no rename).
 /// - Cost = penalties(target) + penalties(sacrifice) + [rename 1]
-///   + [repair 2 when the target is damaged and the sacrifice repairs
-///   it] + enchant cost (each sacrifice enchant that applies: final
-///   result level x multiplier — half when the sacrifice is a book;
-///   +1 per incompatible enchant, which is NOT transferred).
+///   + [repair 2 when the target is damaged and the sacrifice repairs it].
+/// - Enchant cost: each sacrifice enchant that applies — final result
+///   level x multiplier (half when the sacrifice is a book), plus 1 per
+///   incompatible enchant (which is NOT transferred).
 /// - Result prior-use count = max(t, s) + 1, EXCEPT a pure rename
 ///   ("renaming alone does not cause an item's prior work penalty to
 ///   accumulate").
@@ -199,9 +199,7 @@ pub fn combine(
     // the pure-rename path: only the target placed + a valid new name
     // (VERIFIED w/Anvil §Renaming — the single-item operation)
     if sacrifice.is_empty() {
-        if rename.is_none() {
-            return None;
-        }
+        rename?;
         let mut result = *target;
         result.name = rename.unwrap_or(0);
         let cost = prior_work_penalty(target.prior as u32) + RENAME_COST;
@@ -221,7 +219,7 @@ pub fn combine(
     }
     let s_enchants: Vec<(u8, u8)> = sacrifice.enchants().iter().flatten().copied().collect();
     let t_max_dur = if t_book { None } else { armor_max_durability(target.block) };
-    let t_damaged = t_max_dur.map_or(false, |m| target.dmg > 0 && target.dmg < m);
+    let t_damaged = t_max_dur.is_some_and(|m| target.dmg > 0 && target.dmg < m);
 
     // refusal: nothing to do (VERIFIED: "If the target item is at full
     // durability and the sacrifice does not have any enchantments, the
@@ -332,6 +330,34 @@ fn same_item_repaired_or_enchanted(t_damaged: bool, same_item: bool, s_ench: boo
     t_damaged && same_item || s_ench
 }
 
+/// Round 13: the two-slot station state (the anvil's target/sacrifice
+/// pair and the grindstone's top/bottom pair — position-keyed in the
+/// sim, items returned to the player on screen close, vanilla-style).
+#[derive(Clone, Debug, PartialEq, Default)]
+pub struct StationSlots {
+    pub a: ItemStack,
+    pub b: ItemStack,
+}
+
+/// Round 13: the game layer's custom-name pool — renamed items carry a
+/// `name: u16` id into this pool (0 = the registry name; the ids start
+/// at 1 so EMPTY's 0 is never a name). "Renamed items are italicized by
+/// default" (VERIFIED w/Anvil §Renaming) and "Named items do not stack
+/// with unnamed or differently-named items" (the inventory merge guard).
+pub fn name_pool_id(pool: &mut Vec<String>, name: &str) -> u16 {
+    if let Some(i) = pool.iter().position(|n| n == name) {
+        (i + 1) as u16
+    } else {
+        pool.push(name.to_string());
+        pool.len() as u16
+    }
+}
+
+/// Round 13: fetch a name by id (None for 0 = the registry name).
+pub fn name_pool_get(pool: &[String], id: u16) -> Option<&str> {
+    pool.get(id as usize - 1).map(|s| s.as_str())
+}
+
 /// Round 13: the anvil stage-advance roll on taking a result (the 12%
 /// gate wired into the take-result path — game.rs).
 #[inline]
@@ -440,6 +466,15 @@ mod tests {
     /// Round 13 [spec]: the combine respects the incompatibility groups
     /// (a Protection sacrifice onto a Fire Protection target: +1 level,
     /// the enchant is NOT transferred).
+    ///
+    /// Round 13 GUI pass (2026-09-16): the cost expectation is CORRECTED
+    /// to the live wiki — w/Anvil_mechanics §Costs charges "for each
+    /// sacrifice enchant that can apply" (final level x multiplier) plus
+    /// "+1 level for every incompatible enchantment on the target".
+    /// The sacrifice's Protection III is INCOMPATIBLE with the target's
+    /// Fire Protection → the +1 surcharge only; the TARGET'S OWN Fire
+    /// Protection II never contributes cost (the old 4+1 expectation
+    /// double-counted it — wiki wins, documented in the audit doc §1).
     #[test]
     fn anvil_combine_respects_incompatibility_groups() {
         let prot = crate::enchanting::enchant_by_id("protection").unwrap();
@@ -452,9 +487,9 @@ mod tests {
         // the result keeps ONLY the target's Fire Protection II
         assert_eq!(plan.result.enchant(), Some((fire, 2)));
         assert_eq!(plan.result.enchant2(), None);
-        // cost: Fire Protection II final level 2 x mult 2 = 4, plus the
-        // +1 incompatible surcharge
-        assert_eq!(plan.cost, 4 + 1);
+        // cost: the +1 incompatibility surcharge (the sacrifice's
+        // Protection III is dropped, not transferred, not charged)
+        assert_eq!(plan.cost, 1);
     }
 
     /// Round 13 [spec]: rename costs one level (+ penalties); a pure
@@ -508,17 +543,25 @@ mod tests {
     }
 
     /// Round 13 [spec]: the anvil damage stage advances on use (the 12%
-    /// roll wired into the take-result path).
+    /// roll wired into the take-result path). Roll semantics VERIFIED
+    /// (w/Anvil §Becoming damaged: a 12% CHANCE per use — the roll is
+    /// "rolled under 0.12"). The original test had the two rolls
+    /// swapped (0.5 was expected to degrade, 0.05 to survive — the
+    /// opposite of the gate); corrected against the wiki.
     #[test]
     fn anvil_damage_stage_advances_on_use() {
-        assert_eq!(stage_after_use(ANVIL, 0.5), Some(CHIPPED_ANVIL));
-        assert_eq!(stage_after_use(ANVIL, 0.05), Some(ANVIL), "87% survive");
+        assert_eq!(stage_after_use(ANVIL, 0.5), Some(ANVIL), "87% survive (0.5 >= 0.12)");
+        assert_eq!(stage_after_use(ANVIL, 0.05), Some(CHIPPED_ANVIL), "the 12% degrade roll");
         assert_eq!(stage_after_use(CHIPPED_ANVIL, 0.1), Some(DAMAGED_ANVIL));
         assert_eq!(stage_after_use(DAMAGED_ANVIL, 0.0), None, "destroyed");
     }
 
     /// Round 13: the book-combine path (book + book merges enchants at
     /// the half multiplier; an item + book merge rides the same rule).
+    /// Round 13 GUI pass: the cost expectation CORRECTED to the live
+    /// wiki — only SACRIFICE enchants charge (the target book's own
+    /// Protection II contributes nothing); Thorns I from the sacrifice
+    /// book at the half multiplier (8/2 = 4) → cost 4.
     #[test]
     fn anvil_book_combine_uses_half_multipliers() {
         let prot = crate::enchanting::enchant_by_id("protection").unwrap();
@@ -531,12 +574,12 @@ mod tests {
         // both enchants carried
         assert_eq!(plan.result.enchant(), Some((prot, 2)));
         assert_eq!(plan.result.enchant2(), Some((thorns, 1)));
-        // Protection II final 2 x (1/2 -> max(1)) ... book mult = 1/2
-        // rounds to 0 -> clamped to 1: 2x1; Thorns I x (8/2 = 4) = 4
-        assert_eq!(plan.cost, 2 * 1 + 1 * 4);
+        // Thorns I (the sacrifice's enchant) x the book half-multiplier
+        // (8 / 2 = 4) = 4; the target's Protection II charges nothing
+        assert_eq!(plan.cost, 4);
     }
 
-    /// Round 13: equal-level enchants gain one level up to the registry
+    /// Round 13: the anvil equal-level enchants gain one level up to the registry
     /// max (w/Anvil_mechanics §Combining items).
     #[test]
     fn anvil_equal_levels_gain_one() {
@@ -557,5 +600,41 @@ mod tests {
         let plan2 = combine(&t2, &s2, None).expect("offered");
         assert_eq!(plan2.result.enchant(), Some((prot, 4)));
         assert_eq!(plan2.cost, 4, "Java still charges final level x mult");
+    }
+
+    /// Round 13 [GUI]: the name pool — ids start at 1 (0 = registry
+    /// name), repeat names reuse the id, and lookups round-trip.
+    #[test]
+    fn name_pool_ids_round_trip() {
+        let mut pool: Vec<String> = Vec::new();
+        let a = name_pool_id(&mut pool, "Hero Cap");
+        let b = name_pool_id(&mut pool, "Bane");
+        let a2 = name_pool_id(&mut pool, "Hero Cap");
+        assert_eq!(a, 1, "ids start at 1 (0 = the registry name)");
+        assert_eq!(b, 2);
+        assert_eq!(a2, a, "a repeated name reuses its id");
+        assert_eq!(name_pool_get(&pool, a), Some("Hero Cap"));
+        assert_eq!(name_pool_get(&pool, b), Some("Bane"));
+        assert_eq!(name_pool_get(&pool, 0), None, "0 = the registry name");
+        assert_eq!(name_pool_get(&pool, 99), None, "out of range");
+        // a renamed stack carries the id and combines again through the
+        // rename path (the anvil's result.name = the pool id)
+        let mut t = ItemStack::new(IRON_HELMET, 1);
+        t.name = a;
+        let plan = combine(&t, &ItemStack::EMPTY, Some(b)).expect("re-rename");
+        assert_eq!(plan.result.name, b);
+    }
+
+    /// Round 13 [GUI]: the station slot state defaults empty and clones
+    /// cleanly (the sim's position-keyed anvil/grindstone store).
+    #[test]
+    fn station_slots_default_empty() {
+        let s = StationSlots::default();
+        assert!(s.a.is_empty());
+        assert!(s.b.is_empty());
+        let mut s2 = s.clone();
+        s2.a = ItemStack::new(ANVIL, 1);
+        assert!(!s2.a.is_empty());
+        assert!(s.b.is_empty(), "the clone is independent");
     }
 }

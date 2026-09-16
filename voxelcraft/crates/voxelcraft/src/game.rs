@@ -244,6 +244,36 @@ pub struct Settings {
     /// Round 14: FOV Effects 0..1 (Accessibility) — scales the sprint
     /// FOV modifier (0 = the sprint view stays at the base FOV)
     pub acc_fov_effects: f32,
+    /// Round 14b: Distortion Effects 0..1 (Accessibility, 1.16.2 pre1)
+    /// — the nether-portal/nausea screen-warp scale. The engine has no
+    /// warp renderer yet, so the value registers + persists with no
+    /// live effect (the spec's grayed-slider rule; disclosed).
+    pub acc_distortion: f32,
+    /// Round 14b: Sprint Hold/Toggle (Accessibility, 1.15 19w41a) —
+    /// false = Hold (the key sprints while down), true = Toggle (the
+    /// key latches the sprint state)
+    pub sprint_toggle: bool,
+    /// Round 14b: Sneak Hold/Toggle (Accessibility, 1.15 19w41a)
+    pub sneak_toggle: bool,
+    /// Round 14b: Reduced Debug Info (Chat Settings) — gates the F3
+    /// overlay's detail rows (the right column + the coordinate lines,
+    /// the vanilla `reducedDebugInfo` behavior)
+    pub reduced_debug: bool,
+    /// Round 14b: the Skin Customization layer toggles (vanilla
+    /// `modelPart_*` keys — ON defaults per the live wiki table). The
+    /// player model has no separately-meshed second layers yet, so the
+    /// toggles persist with no visible effect (disclosed, the round-9
+    /// armor-row pattern).
+    pub skin_cape: bool,
+    pub skin_jacket: bool,
+    pub skin_lsleeve: bool,
+    pub skin_rsleeve: bool,
+    pub skin_lpants: bool,
+    pub skin_rpants: bool,
+    pub skin_hat: bool,
+    /// Round 14b: Main Hand LEFT/RIGHT (vanilla `mainHand`, default
+    /// Right — the live wiki table)
+    pub main_hand_left: bool,
     /// vanilla "View Bobbing" (Options screen, default ON — the
     /// walk-cycle camera + held-item sway; minecraft.wiki/w/Options
     /// §Video: "view bobbing ... on by default")
@@ -309,6 +339,18 @@ impl Default for Settings {
             auto_jump: true, // 1.10 default ON (wiki)
             acc_fog: 0,
             acc_fov_effects: 1.0,
+            acc_distortion: 1.0,   // 1.16.2 pre1 default 100%
+            sprint_toggle: false,   // Hold (vanilla default)
+            sneak_toggle: false,   // Hold (vanilla default)
+            reduced_debug: false,  // OFF (vanilla default)
+            skin_cape: true,       // the live wiki table's ON defaults
+            skin_jacket: true,
+            skin_lsleeve: true,
+            skin_rsleeve: true,
+            skin_lpants: true,
+            skin_rpants: true,
+            skin_hat: true,
+            main_hand_left: false, // Right (the vanilla default)
             view_bobbing: true, // vanilla default ON
             resource_packs: Vec::new(), // Default only, like vanilla
             #[cfg(target_arch = "wasm32")]
@@ -487,6 +529,33 @@ impl Settings {
                 s.push_str(&format!(";{k}={v:?}"));
             }
         }
+        // Round 14b: the accessibility completion + the skin layer
+        // toggles + reduced debug (the vanilla options.txt key names:
+        // distortionEffects, sprintToggled/sneakToggled for the
+        // Hold/Toggle rows, modelPart_* for the layers, mainHand,
+        // reducedDebugInfo — plus the round-14 autoJump gap fixed here)
+        s.push_str(&format!(
+            ";ajump={};accdistort={:.3};sprinttog={};snektog={};rdebug={}",
+            self.auto_jump as u8,
+            self.acc_distortion,
+            self.sprint_toggle as u8,
+            self.sneak_toggle as u8,
+            self.reduced_debug as u8
+        ));
+        s.push_str(&format!(
+            ";modelPart_capeEnabled={};modelPart_jacketEnabled={};modelPart_leftSleeveEnabled={};modelPart_rightSleeveEnabled={}",
+            self.skin_cape as u8,
+            self.skin_jacket as u8,
+            self.skin_lsleeve as u8,
+            self.skin_rsleeve as u8
+        ));
+        s.push_str(&format!(
+            ";modelPart_leftPantsEnabled={};modelPart_rightPantsEnabled={};modelPart_hatEnabled={};mainHand={}",
+            self.skin_lpants as u8,
+            self.skin_rpants as u8,
+            self.skin_hat as u8,
+            if self.main_hand_left { "left" } else { "right" }
+        ));
         if !self.resource_packs.is_empty() {
             s.push_str(&format!(";packs={}", self.resource_packs.join("|")));
         }
@@ -583,6 +652,24 @@ impl Settings {
                 "accfoveff" => {
                     st.acc_fov_effects = v.parse::<f32>().unwrap_or(1.0).clamp(0.0, 1.0)
                 }
+                // Round 14b: the accessibility completion + the skin
+                // layer toggles (vanilla options.txt key names) + the
+                // round-14 autoJump persistence gap fixed
+                "ajump" => st.auto_jump = v == "1",
+                "accdistort" => {
+                    st.acc_distortion = v.parse::<f32>().unwrap_or(1.0).clamp(0.0, 1.0)
+                }
+                "sprinttog" => st.sprint_toggle = v == "1",
+                "snektog" => st.sneak_toggle = v == "1",
+                "rdebug" => st.reduced_debug = v == "1",
+                "modelPart_capeEnabled" => st.skin_cape = v == "1",
+                "modelPart_jacketEnabled" => st.skin_jacket = v == "1",
+                "modelPart_leftSleeveEnabled" => st.skin_lsleeve = v == "1",
+                "modelPart_rightSleeveEnabled" => st.skin_rsleeve = v == "1",
+                "modelPart_leftPantsEnabled" => st.skin_lpants = v == "1",
+                "modelPart_rightPantsEnabled" => st.skin_rpants = v == "1",
+                "modelPart_hatEnabled" => st.skin_hat = v == "1",
+                "mainHand" => st.main_hand_left = v == "left",
                 // 2026-09-14: enabled resource packs in priority order
                 // (pipe-separated; absent = Default only, like vanilla)
                 // Round 14: the rebindable keys (key_<action>:<KeyCode>)
@@ -659,9 +746,12 @@ pub enum Screen {
     Controls,
     /// Round 14: the Language screen — English-only, honestly labeled
     Language,
-    /// Round 14: the Chat Settings screen — documented stub (no chat
-    /// subsystem; the spec forbids adding one this round)
+    /// Round 14: the Chat Settings screen — the 1.16.5 row set (Round
+    /// 14b; every chat-behavior row grayed, Reduced Debug Info live)
     ChatSettings,
+    /// Round 14b: the Skin Customization screen — the layer toggles +
+    /// Main Hand (persisted; no visible effect until layer meshes land)
+    Skin,
 }
 
 /// 2026-09-14 round: the in-progress MINING target (the vanilla timed
@@ -709,6 +799,20 @@ pub enum Container {
     /// "the same as a single chest"; the same grid geometry, the
     /// BARREL title)
     Barrel { pos: [i32; 3] },
+    /// Round 13: the anvil — Repair & Name (two inputs + result + the
+    /// rename field + the level-cost line; the combine math lives in
+    /// vc_gameplay::anvil::combine)
+    Anvil { pos: [i32; 3] },
+    /// Round 13: the beacon — power selection + payment (the pyramid
+    /// scan + effect application live in beacon.rs / the tick path)
+    Beacon { pos: [i32; 3] },
+    /// Round 13: the grindstone — Repair & Disenchant (two inputs +
+    /// result + the XP drop; the math lives in grindstone.rs)
+    Grindstone { pos: [i32; 3] },
+    /// Round 12b: the mount's chest storage (a chest-equipped donkey/
+    /// mule/llama; the slot count rides the mob — 15 for donkeys/mules,
+    /// 3 × strength for llamas — VERIFIED w/Donkey + w/Llama §Usage)
+    Mount { mob: u32 },
 }
 
 impl Container {
@@ -756,6 +860,7 @@ impl Screen {
             Screen::Controls => "controls",
             Screen::Language => "language",
             Screen::ChatSettings => "chat",
+            Screen::Skin => "skin",
         }
     }
 
@@ -774,6 +879,7 @@ impl Screen {
                 | Screen::Controls
                 | Screen::Language
                 | Screen::ChatSettings
+                | Screen::Skin
                 | Screen::Pause
                 | Screen::WorldSelect
                 | Screen::WorldCreate
@@ -1189,6 +1295,12 @@ pub struct GameApp {
     was_head_underwater: bool,
     /// §21: next game-time for the ambient cave-sound roll
     ambient_next: f32,
+    /// Round 15b: the player's water state last tick (the splash burst
+    /// on entry + the bubble trail while submerged)
+    prev_in_water: bool,
+    /// Round 15b: next game-time for the ambient particle roll (portal
+    /// shimmer, redstone dust, leaf drips after rain)
+    particle_ambient_next: f32,
     pub audio: Box<dyn AudioBackend>,
     pub settings: Settings,
     work: WorkBackend,
@@ -1213,6 +1325,24 @@ pub struct GameApp {
     container_geom: Option<vc_render::ui::ContainerGeom>,
     /// stack held by the cursor in a container screen
     cursor_stack: vc_inventory::inventory::ItemStack,
+    /// Round 13: the anvil rename field's live buffer (typing goes here
+    /// while `anvil_rename_focus`; 50 chars max — VERIFIED w/Anvil
+    /// §Renaming, JE)
+    anvil_rename: String,
+    /// Round 13: the anvil rename field has focus
+    anvil_rename_focus: bool,
+    /// Round 13: the custom-name pool (renamed items carry a name id;
+    /// ids start at 1 — see vc_gameplay::anvil::name_pool_id)
+    name_pool: Vec<String>,
+    /// Round 13: the beacon GUI's pending selection (highlighted before
+    /// the confirm click consumes the payment)
+    beacon_pending: (
+        Option<vc_gameplay::beacon::BeaconPower>,
+        vc_gameplay::beacon::BeaconSecondary,
+    ),
+    /// Round 13: the beacon GUI's payment slot (ore stand-in for the
+    /// ingot — no ingot items, documented adaptation)
+    beacon_pay: vc_inventory::inventory::ItemStack,
     /// 1.11: positions whose container entity is a SHULKER_BOX (the
     /// no-nesting insert gate)
     shulker_positions: std::collections::HashSet<[i32; 3]>,
@@ -2319,6 +2449,8 @@ impl GameApp {
             rain_next: 0.0,
             was_head_underwater: false,
             ambient_next: 4.0,
+            prev_in_water: false,
+            particle_ambient_next: 1.0,
             audio,
             settings,
             builtin_pack,
@@ -2342,6 +2474,11 @@ impl GameApp {
             container: None,
             container_geom: None,
             cursor_stack: vc_inventory::inventory::ItemStack::EMPTY,
+            anvil_rename: String::new(),
+            anvil_rename_focus: false,
+            name_pool: Vec::new(),
+            beacon_pending: (None, vc_gameplay::beacon::BeaconSecondary::None),
+            beacon_pay: vc_inventory::inventory::ItemStack::EMPTY,
             shulker_positions: std::collections::HashSet::new(),
             craft_grid: [vc_inventory::inventory::ItemStack::EMPTY; 9],
             particles: vc_particles::particles::ParticleSystem::new(0x5EED_0042),
@@ -2639,6 +2776,25 @@ impl GameApp {
                             }
                         }
                     }
+                    // Round 13: the anvil's rename field (container
+                    // screen, geom-rect focus — not a widget)
+                    if pressed
+                        && self.anvil_rename_focus
+                        && self.container.is_some()
+                        && self.screen == Screen::Game
+                    {
+                        if let winit::keyboard::Key::Character(s) = &event.logical_key {
+                            let mut ate = false;
+                            for ch in s.chars() {
+                                if self.type_char(ch) {
+                                    ate = true;
+                                }
+                            }
+                            if ate {
+                                return;
+                            }
+                        }
+                    }
                     // Sub-round 2: the creative screen's search field —
                     // printable keys type into it (auto-switching to the
                     // Search tab first, vanilla behavior)
@@ -2794,6 +2950,20 @@ impl GameApp {
                             Screen::WorldCreate | Screen::WorldSelect | Screen::WorldEdit
                         )
                         && self.text_field_focused().is_some()
+                    {
+                        if let Some(ch) = web_char_from_code(&code, self.web_shift) {
+                            if self.type_char(ch) {
+                                continue;
+                            }
+                        }
+                    }
+                    // Round 13: the anvil's rename field (container
+                    // screen, geom-rect focus — not a widget)
+                    if pressed
+                        && !repeat
+                        && self.anvil_rename_focus
+                        && self.container.is_some()
+                        && self.screen == Screen::Game
                     {
                         if let Some(ch) = web_char_from_code(&code, self.web_shift) {
                             if self.type_char(ch) {
@@ -2983,7 +3153,16 @@ impl GameApp {
                 return;
             }
             if code == b.sneak {
-                self.input.sneak = pressed && in_game;
+                // Round 14b: the Sneak Hold/Toggle row (1.15 19w41a) — in
+                // Toggle mode a keydown latches the state; in Hold mode
+                // it follows the key
+                if self.settings.sneak_toggle {
+                    if pressed && !repeat && in_game {
+                        self.input.sneak = !self.input.sneak;
+                    }
+                } else {
+                    self.input.sneak = pressed && in_game;
+                }
                 return;
             }
             if code == b.inventory {
@@ -3029,7 +3208,17 @@ impl GameApp {
             }
         }
         match code {
-            KeyCode::ControlLeft | KeyCode::ControlRight => self.input.sprint = pressed && in_game,
+            KeyCode::ControlLeft | KeyCode::ControlRight => {
+                // Round 14b: the Sprint Hold/Toggle row (1.15 19w41a) —
+                // in Toggle mode a keydown latches the state
+                if self.settings.sprint_toggle {
+                    if pressed && !repeat && in_game {
+                        self.input.sprint = !self.input.sprint;
+                    }
+                } else {
+                    self.input.sprint = pressed && in_game;
+                }
+            }
             KeyCode::Backspace => {
                 // Phase 1 + 2026-09-14: text-field editing (create name /
                 // seed, search, rename)
@@ -3040,6 +3229,15 @@ impl GameApp {
                     )
                 {
                     self.backspace_field();
+                }
+                // Round 13: the anvil's rename field
+                if pressed
+                    && self.anvil_rename_focus
+                    && self.container.is_some()
+                    && self.screen == Screen::Game
+                {
+                    self.anvil_rename.pop();
+                    self.ui.dirty = true;
                 }
                 // Sub-round 2: the creative screen's search field
                 if pressed
@@ -3932,7 +4130,6 @@ impl GameApp {
                 "How much the field of view changes while sprinting.",
             ),
             ui::ID_ACC_CHATVIS => l("Chat Visibility needs the chat subsystem (a future round)."),
-            ui::ID_ACC_SUBTITLES => l("Subtitles need the subtitle overlay (a future round)."),
             ui::ID_CTRL_RESET => l("Restore the classic WASD / Space / Shift / E / F / B layout."),
             ui::ID_CTRL_DONE => l("Back to the options."),
             ui::ID_SND_DONE => l("Back to the options."),
@@ -3997,6 +4194,57 @@ impl GameApp {
             ID_OPT_SHADOWS => l("Sun shadow map resolution. Higher is sharper but costs fill rate."),
             ID_OPT_UPSCALE => l("Renders at a lower internal resolution and upscales with FSR."),
             ID_OPT_AUTOJUMP => l("Automatically jumps one-block steps while walking."),
+            // ---- Round 14b: the accessibility completion + skin + chat ----
+            ui::ID_ACC_SPRINT => l("Hold sprints while the key is down; Toggle latches it (1.15)."),
+            ui::ID_ACC_SNEAK => l("Hold sneaks while the key is down; Toggle latches it (1.15)."),
+            ui::ID_ACC_DISTORT_SLIDER => l2(
+                "How much the view warps under Nausea and the nether portal",
+                "(1.16.2). Registered; no warp renderer in this engine yet.",
+            ),
+            ui::ID_ACC_SUBTITLES => l2(
+                "Shows sound events as captions (Java 1.9).",
+                "No subtitle overlay renderer in this engine yet.",
+            ),
+            ui::ID_OPT_SKIN => l("Toggle the player model's overlay layers and main hand."),
+            ui::ID_SKIN_CAPE => l("Toggles the cape (w/Options §Skin Customization)."),
+            ui::ID_SKIN_JACKET => l("Toggles the body second layer."),
+            ui::ID_SKIN_LSLEEVE => l("Toggles the left arm second layer."),
+            ui::ID_SKIN_RSLEEVE => l("Toggles the right arm second layer."),
+            ui::ID_SKIN_LPANTS => l("Toggles the left leg second layer."),
+            ui::ID_SKIN_RPANTS => l("Toggles the right leg second layer."),
+            ui::ID_SKIN_HAT => l("Toggles the head second layer."),
+            ui::ID_SKIN_MAINHAND => l("Switches the main hand between left and right."),
+            ui::ID_SKIN_DONE => l("Back to Options."),
+            ui::ID_CHAT_VIS => l2(
+                "Show: the chat renders. Commands Only: system lines only.",
+                "Hide: nothing shows. No chat subsystem in this engine yet.",
+            ),
+            ui::ID_CHAT_COLORS => l("Color codes in chat lines. No chat subsystem yet."),
+            ui::ID_CHAT_LINKS => l("Click web links in chat. No chat subsystem yet."),
+            ui::ID_CHAT_LINKSPROMPT => l("Ask before opening a link. No chat subsystem yet."),
+            ui::ID_CHAT_OPACITY => l("The chat's background opacity. No chat subsystem yet."),
+            ui::ID_CHAT_DELAY => l("Delays chat messages by up to 5 s (1.16.2). No chat yet."),
+            ui::ID_CHAT_WIDTH => l("Chat width 0-320 px. No chat subsystem yet."),
+            ui::ID_CHAT_SCALE => l("Chat text scale. No chat subsystem yet."),
+            ui::ID_CHAT_HFOCUSED => l("Chat height while typing. No chat subsystem yet."),
+            ui::ID_CHAT_HUNFOCUSED => l("Chat height while playing. No chat subsystem yet."),
+            ui::ID_CHAT_LINESPACING => l("Spacing between chat lines. No chat subsystem yet."),
+            ui::ID_CHAT_HIDENAMES => l2(
+                "Hides matched names in chat (1.16.4).",
+                "No chat subsystem in this engine yet.",
+            ),
+            ui::ID_CHAT_REDUCEDDEBUG => l(
+                "Hides the coordinate and system rows from the F3 overlay.",
+            ),
+            ui::ID_CHAT_NARRATOR => l2(
+                "Reads menus and chat aloud (OFF/All/Chat/System).",
+                "No text-to-speech in this engine's scope.",
+            ),
+            ui::ID_CHAT_DONE => l("Back to Options."),
+            ui::ID_SND_SUBTITLES => l2(
+                "Shows sound events as captions (the Java 1.9 subtitle",
+                "toggle also lives on Music & Sounds). No overlay renderer yet.",
+            ),
             _ => Vec::new(),
         }
     }
@@ -5187,6 +5435,16 @@ impl GameApp {
         if !(32..=126).contains(&(ch as u32)) {
             return false;
         }
+        // Round 13: the anvil's rename field (a container-geom rect, not
+        // a widget — routed here when focused; 50 chars max, VERIFIED
+        // w/Anvil §Renaming, JE)
+        if self.anvil_rename_focus {
+            if self.anvil_rename.chars().count() < vc_gameplay::anvil::RENAME_MAX_CHARS {
+                self.anvil_rename.push(ch);
+                self.ui.dirty = true;
+            }
+            return true;
+        }
         let Some(id) = self.text_field_focused() else {
             return false;
         };
@@ -5209,6 +5467,12 @@ impl GameApp {
 
     /// Backspace on the focused field.
     fn backspace_field(&mut self) {
+        // Round 13: the anvil's rename field
+        if self.anvil_rename_focus {
+            self.anvil_rename.pop();
+            self.ui.dirty = true;
+            return;
+        }
         let Some(id) = self.text_field_focused() else {
             return;
         };
@@ -5278,6 +5542,15 @@ impl GameApp {
             }
             apply_totem_revival(&mut self.player);
             self.play_event("entity.player.hurt", None, 1.0);
+            // Round 15b: the totem-of-undying particle ring (VERIFIED
+            // w/Totem_of_Undying: the green + yellow burst)
+            self.particles.spawn_kind(
+                "totem_of_undying",
+                self.player.pos.x,
+                self.player.pos.y + 1.2,
+                self.player.pos.z,
+                32,
+            );
             vc_render::render::report_boot_log(
                 "e2e: totem of undying activated (VERIFIED w/Totem_of_Undying)",
             );
@@ -6963,6 +7236,15 @@ impl GameApp {
     /// exact exposure-based formula was not verified this pass]
     fn explode(&mut self, center: [f32; 3], power: f32) {
         let r = power as i32;
+        // Round 15b: the explosion puff + spark ring (VERIFIED w/Particle:
+        // the explosion_emitter's large smoke cloud)
+        self.particles.spawn_kind(
+            "explosion_emitter",
+            center[0],
+            center[1],
+            center[2],
+            12,
+        );
         let (cx, cy, cz) = (
             center[0].floor() as i32,
             center[1].floor() as i32,
@@ -7299,6 +7581,77 @@ impl GameApp {
                 // grayed stubs (chat/subtitle subsystems are future
                 // rounds) — vanilla grays unavailable options too
             }
+            // Round 14b: the accessibility completion
+            ui::ID_ACC_SPRINT => {
+                // 1.15 19w41a: Hold ↔ Toggle (the key latches when
+                // toggled; releasing it keeps the state)
+                self.settings.sprint_toggle = !self.settings.sprint_toggle;
+                if !self.settings.sprint_toggle {
+                    self.input.sprint = false; // dropping to Hold clears
+                }
+                self.refresh_widgets();
+            }
+            ui::ID_ACC_SNEAK => {
+                self.settings.sneak_toggle = !self.settings.sneak_toggle;
+                if !self.settings.sneak_toggle {
+                    self.input.sneak = false;
+                }
+                self.refresh_widgets();
+            }
+            // Round 14b: the Skin Customization screen
+            ui::ID_SKIN_CAPE => {
+                self.settings.skin_cape = !self.settings.skin_cape;
+                self.refresh_widgets();
+            }
+            ui::ID_SKIN_JACKET => {
+                self.settings.skin_jacket = !self.settings.skin_jacket;
+                self.refresh_widgets();
+            }
+            ui::ID_SKIN_LSLEEVE => {
+                self.settings.skin_lsleeve = !self.settings.skin_lsleeve;
+                self.refresh_widgets();
+            }
+            ui::ID_SKIN_RSLEEVE => {
+                self.settings.skin_rsleeve = !self.settings.skin_rsleeve;
+                self.refresh_widgets();
+            }
+            ui::ID_SKIN_LPANTS => {
+                self.settings.skin_lpants = !self.settings.skin_lpants;
+                self.refresh_widgets();
+            }
+            ui::ID_SKIN_RPANTS => {
+                self.settings.skin_rpants = !self.settings.skin_rpants;
+                self.refresh_widgets();
+            }
+            ui::ID_SKIN_HAT => {
+                self.settings.skin_hat = !self.settings.skin_hat;
+                self.refresh_widgets();
+            }
+            ui::ID_SKIN_MAINHAND => {
+                self.settings.main_hand_left = !self.settings.main_hand_left;
+                self.refresh_widgets();
+            }
+            ui::ID_SKIN_DONE => self.set_screen(Screen::Options),
+            ui::ID_OPT_SKIN => self.set_screen(Screen::Skin),
+            // Round 14b: the Chat Settings rows — Reduced Debug Info is
+            // the one live row; the chat-behavior rows are grayed stubs
+            // (no chat subsystem — the spec forbids adding one)
+            ui::ID_CHAT_REDUCEDDEBUG => {
+                self.settings.reduced_debug = !self.settings.reduced_debug;
+                self.refresh_widgets();
+            }
+            ui::ID_CHAT_DONE => self.set_screen(Screen::Options),
+            ui::ID_CHAT_VIS
+            | ui::ID_CHAT_COLORS
+            | ui::ID_CHAT_LINKS
+            | ui::ID_CHAT_LINKSPROMPT
+            | ui::ID_CHAT_HIDENAMES
+            | ui::ID_CHAT_NARRATOR
+            | ui::ID_SND_SUBTITLES => {
+                // grayed stubs (no chat / no narrator TTS / no subtitle
+                // overlay — registered with their reasons, the vanilla
+                // grayed-option treatment)
+            }
             ID_OPT_BOB => {
                 // vanilla View Bobbing toggle (Options screen, default ON)
                 self.settings.view_bobbing = !self.settings.view_bobbing;
@@ -7492,6 +7845,21 @@ impl GameApp {
             // Round 14: Accessibility FOV Effects (scales the sprint FOV
             // modifier; 0 = sprint keeps the base FOV)
             ui::ID_ACC_FOVEFF => self.settings.acc_fov_effects = t,
+            // Round 14b: Accessibility Distortion Effects (1.16.2 pre1)
+            // — registered + persisted; the engine has no
+            // nether-portal/nausea warp renderer yet (disclosed)
+            ui::ID_ACC_DISTORT_SLIDER => self.settings.acc_distortion = t,
+            // Round 14b: the Chat Settings sliders (grayed rows — the
+            // drag still moves the knob visually, the values persist;
+            // no chat subsystem reads them, the same disclosed-stub
+            // treatment as the grayed buttons)
+            ui::ID_CHAT_OPACITY
+            | ui::ID_CHAT_DELAY
+            | ui::ID_CHAT_WIDTH
+            | ui::ID_CHAT_HFOCUSED
+            | ui::ID_CHAT_HUNFOCUSED
+            | ui::ID_CHAT_SCALE
+            | ui::ID_CHAT_LINESPACING => {}
             // Round 14: the Music & Sound screen sliders (160..170) —
             // index 0 = master, 1 = music (mirrors music_volume like
             // the options.txt soundCategory_music key), 2.. = the
@@ -8508,6 +8876,28 @@ impl GameApp {
             }
             Screen::ChatSettings => {
                 self.widgets = ui::layout_chat_settings();
+                // the live-value patches (Reduced Debug Info's label)
+                let rdebug = self.settings.reduced_debug;
+                for w in self.widgets.iter_mut() {
+                    if w.id == ui::ID_CHAT_REDUCEDDEBUG {
+                        ui::set_text(w, if rdebug { "ON" } else { "OFF" });
+                    }
+                }
+            }
+            Screen::Skin => {
+                // Round 14b: the Skin Customization screen (the layer
+                // toggles + Main Hand, persisted through modelPart_*)
+                let s = &self.settings;
+                self.widgets = ui::layout_skin(
+                    s.skin_cape,
+                    s.skin_jacket,
+                    s.skin_lsleeve,
+                    s.skin_rsleeve,
+                    s.skin_lpants,
+                    s.skin_rpants,
+                    s.skin_hat,
+                    s.main_hand_left,
+                );
             }
             Screen::WorldSelect => {
                 // 2026-09-14: the vanilla Select World rows + bottom stack —
@@ -8855,6 +9245,69 @@ impl GameApp {
                 // cleanup — each half's container entity is the source
                 // of truth and stays put (the merge was only a view)
                 Container::DoubleChest { .. } => {}
+                // Round 13: the anvil's inputs + the rename focus
+                // return (vanilla gives the placed items back)
+                Container::Anvil { pos } => {
+                    if let Some(slots) = self.sim.anvils.remove(&pos) {
+                        for s in [&slots.a, &slots.b] {
+                            if !s.is_empty() {
+                                let left = self.player.inv.add(s.block, s.count);
+                                if left > 0 {
+                                    self.sim.items.drop_block(
+                                        pos[0], pos[1] + 1, pos[2], s.block, 2, 15, 0,
+                                    );
+                                }
+                            }
+                        }
+                    }
+                    self.anvil_rename.clear();
+                    self.anvil_rename_focus = false;
+                }
+                // Round 13: the beacon's payment slot returns (the
+                // selection persists in sim.beacons — VERIFIED w/Beacon:
+                // "Upon restoration of the pyramid, the originally
+                // selected power returns without the need to spend
+                // another item")
+                Container::Beacon { .. } => {
+                    if !self.beacon_pay.is_empty() {
+                        let left = self
+                            .player
+                            .inv
+                            .add(self.beacon_pay.block, self.beacon_pay.count);
+                        if left > 0 {
+                            self.sim.items.drop_block(
+                                self.player.pos.x.floor() as i32,
+                                self.player.pos.y.floor() as i32,
+                                self.player.pos.z.floor() as i32,
+                                self.beacon_pay.block,
+                                2,
+                                15,
+                                0,
+                            );
+                        }
+                    }
+                    self.beacon_pay = vc_inventory::inventory::ItemStack::EMPTY;
+                    self.beacon_pending = (None, vc_gameplay::beacon::BeaconSecondary::None);
+                }
+                // Round 13: the grindstone's inputs return (vanilla)
+                Container::Grindstone { pos } => {
+                    if let Some(slots) = self.sim.grindstones.remove(&pos) {
+                        for s in [&slots.a, &slots.b] {
+                            if !s.is_empty() {
+                                let left = self.player.inv.add(s.block, s.count);
+                                if left > 0 {
+                                    self.sim.items.drop_block(
+                                        pos[0], pos[1] + 1, pos[2], s.block, 2, 15, 0,
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+                // Round 12b: the mount's storage is entity-side (no
+                // close-time return — the items stay in the mob's slots,
+                // vanilla behavior)
+                Container::Mount { .. } => {}
             }
         }
         // cursor returns to the inventory
@@ -8894,6 +9347,51 @@ impl GameApp {
     /// place-one), plus the special craft-result and furnace-output rules.
     fn container_click(&mut self, ux: i32, uy: i32, right: bool) {
         self.unlock_audio();
+        // Round 13: the beacon's confirm/cancel buttons and the anvil's
+        // rename field are hit-rects OUTSIDE the SlotRef space (they are
+        // buttons, not slots) — resolved before the slot scan
+        if let Some(g) = self.container_geom.as_ref() {
+            if let Some(b) = g.beacon.as_ref() {
+                let on_confirm = ux >= b.confirm.0
+                    && ux < b.confirm.0 + 36
+                    && uy >= b.confirm.1
+                    && uy < b.confirm.1 + 36;
+                let on_cancel = ux >= b.cancel.0
+                    && ux < b.cancel.0 + 36
+                    && uy >= b.cancel.1
+                    && uy < b.cancel.1 + 36;
+                if on_cancel {
+                    self.beacon_pending = (None, vc_gameplay::beacon::BeaconSecondary::None);
+                    self.click_sound();
+                    self.ui.dirty = true;
+                    return;
+                }
+                if on_confirm {
+                    self.beacon_confirm();
+                    self.click_sound();
+                    self.ui.dirty = true;
+                    return;
+                }
+            }
+            if let Some(a) = g.anvil.as_ref() {
+                if ux >= a.rename.0
+                    && ux < a.rename.0 + 208
+                    && uy >= a.rename.1
+                    && uy < a.rename.1 + 24
+                {
+                    // focus the rename field (typing routes here)
+                    self.anvil_rename_focus = true;
+                    self.click_sound();
+                    self.ui.dirty = true;
+                    return;
+                }
+                // any click outside the field releases the focus
+                if self.anvil_rename_focus {
+                    self.anvil_rename_focus = false;
+                    self.ui.dirty = true;
+                }
+            }
+        }
         // resolve the slot first, then mutate (geom borrow must not overlap)
         let slot = match self.container_geom.as_ref().and_then(|g| g.slot_at(ux, uy)) {
             Some(s) => s,
@@ -9257,6 +9755,16 @@ impl GameApp {
                 let (get, get_n) = tr.get;
                 if self.player.inv.consume(give, give_n) {
                     let left = self.player.inv.add(get, get_n);
+                    // Round 15b: the trade's happy-villager sparkles at
+                    // the villager (VERIFIED w/Particle: shown on a
+                    // successful trade)
+                    self.particles.spawn_kind(
+                        "happy_villager",
+                        vpos[0],
+                        vpos[1] + 1.6,
+                        vpos[2],
+                        8,
+                    );
                     if left > 0 {
                         self.sim.items.drop_block(
                             self.player.pos.x.floor() as i32,
@@ -9307,12 +9815,332 @@ impl GameApp {
                     ));
                 } else {
                     self.click_sound();
+                    // Round 15b: the angry-villager cloud (cannot afford
+                    // — VERIFIED w/Particle: the trades-refused burst)
+                    self.particles.spawn_kind(
+                        "angry_villager",
+                        vpos[0],
+                        vpos[1] + 1.6,
+                        vpos[2],
+                        5,
+                    );
                 }
             }
             SlotRef::Inv(_) => {}
+            // ---- Round 13: the station GUIs ----
+            SlotRef::AnvilTarget | SlotRef::AnvilSacrifice => {
+                let Some(Container::Anvil { pos }) = self.container else {
+                    return;
+                };
+                let entry = self
+                    .sim
+                    .anvils
+                    .entry(pos)
+                    .or_default();
+                let slot_ref = match slot {
+                    SlotRef::AnvilTarget => &mut entry.a,
+                    _ => &mut entry.b,
+                };
+                Inventory::slot_click(slot_ref, &mut self.cursor_stack, right);
+            }
+            SlotRef::AnvilOut => {
+                // Round 13: take the result — pay the levels, consume
+                // the inputs, roll the 12% stage advance (VERIFIED)
+                let Some(Container::Anvil { pos }) = self.container else {
+                    return;
+                };
+                let slots = self.sim.anvils.get(&pos).cloned().unwrap_or_default();
+                let rename_id = if self.anvil_rename.is_empty() {
+                    None
+                } else {
+                    Some(vc_gameplay::anvil::name_pool_id(
+                        &mut self.name_pool,
+                        &self.anvil_rename,
+                    ))
+                };
+                let Some(plan) = vc_gameplay::anvil::combine(&slots.a, &slots.b, rename_id)
+                else {
+                    return;
+                };
+                let creative = self.mode.creative();
+                if plan.too_expensive && !creative {
+                    return; // "Too Expensive!" refusal (survival)
+                }
+                if !creative && self.player.xp_level < plan.cost {
+                    return; // insufficient XP: result dimmed + red cost
+                }
+                let fits = self.cursor_stack.is_empty()
+                    || (self.cursor_stack.block == plan.result.block
+                        && self.cursor_stack.name == plan.result.name
+                        && self.cursor_stack.count + plan.result.count
+                            <= vc_inventory::inventory::STACK_MAX);
+                if !fits {
+                    return;
+                }
+                if self.cursor_stack.is_empty() {
+                    self.cursor_stack = plan.result;
+                } else {
+                    self.cursor_stack.count += plan.result.count;
+                }
+                if !creative {
+                    self.player.spend_levels(plan.cost);
+                }
+                // consume the inputs
+                if let Some(e) = self.sim.anvils.get_mut(&pos) {
+                    e.a = vc_inventory::inventory::ItemStack::EMPTY;
+                    e.b = vc_inventory::inventory::ItemStack::EMPTY;
+                }
+                // the 12% stage-advance roll on use (VERIFIED w/Anvil)
+                let block = self.world.get_block(pos[0], pos[1], pos[2]);
+                let roll = self.audio_rng.next_f32();
+                match vc_gameplay::anvil::stage_after_use(block, roll) {
+                    Some(next) if next != block => {
+                        if let Some((old, new)) = self.world.set_block(pos[0], pos[1], pos[2], next)
+                        {
+                            self.light.on_block_changed(
+                                &self.world, pos[0], pos[1], pos[2], old, new,
+                            );
+                        }
+                        self.play_event(
+                            "block.anvil.land",
+                            Some([pos[0] as f32 + 0.5, pos[1] as f32 + 1.0, pos[2] as f32 + 0.5]),
+                            0.7,
+                        );
+                    }
+                    None => {
+                        // destroyed: the anvil breaks and disappears
+                        if let Some((old, new)) = self.world.set_block(pos[0], pos[1], pos[2], AIR)
+                        {
+                            self.light.on_block_changed(
+                                &self.world, pos[0], pos[1], pos[2], old, new,
+                            );
+                        }
+                        self.play_event(
+                            "block.anvil.destroy",
+                            Some([pos[0] as f32 + 0.5, pos[1] as f32 + 1.0, pos[2] as f32 + 0.5]),
+                            0.8,
+                        );
+                        self.close_container();
+                    }
+                    _ => {}
+                }
+                self.anvil_rename.clear();
+                self.play_event(
+                    "block.anvil.use",
+                    Some([pos[0] as f32 + 0.5, pos[1] as f32 + 1.0, pos[2] as f32 + 0.5]),
+                    1.0,
+                );
+                vc_render::render::report_boot_log(&format!(
+                    "e2e: anvil take (cost {} lvl, stage roll {:.2})",
+                    plan.cost, roll
+                ));
+            }
+            SlotRef::BeaconPay => {
+                // Round 13: the payment slot clicks like an inventory
+                // slot (the ore stand-in for the ingot)
+                Inventory::slot_click(&mut self.beacon_pay, &mut self.cursor_stack, right);
+            }
+            SlotRef::BeaconPrimary(i) => {
+                // Round 13: highlight a primary power (level-gated —
+                // VERIFIED w/Beacon §Powers)
+                use vc_gameplay::beacon::BeaconPower;
+                let powers = [
+                    BeaconPower::Speed,
+                    BeaconPower::Haste,
+                    BeaconPower::Resistance,
+                    BeaconPower::JumpBoost,
+                    BeaconPower::Strength,
+                ];
+                let Some(Container::Beacon { pos }) = self.container else {
+                    return;
+                };
+                let level =
+                    vc_gameplay::beacon::pyramid_level(&self.world, pos[0], pos[1], pos[2]);
+                let p = powers[i.min(4)];
+                if p.min_level() > level {
+                    return; // gated (grayed)
+                }
+                self.beacon_pending.0 = Some(p);
+            }
+            SlotRef::BeaconSecondary(i) => {
+                // Round 13: the secondary row (level 4 only — VERIFIED)
+                use vc_gameplay::beacon::BeaconSecondary;
+                let Some(Container::Beacon { pos }) = self.container else {
+                    return;
+                };
+                let level =
+                    vc_gameplay::beacon::pyramid_level(&self.world, pos[0], pos[1], pos[2]);
+                if level < 4 {
+                    return; // gated
+                }
+                self.beacon_pending.1 = if i == 0 {
+                    BeaconSecondary::Regeneration
+                } else {
+                    BeaconSecondary::PrimaryII
+                };
+            }
+            SlotRef::GrindTop | SlotRef::GrindBottom => {
+                let Some(Container::Grindstone { pos }) = self.container else {
+                    return;
+                };
+                let entry = self.sim.grindstones.entry(pos).or_default();
+                let slot_ref = match slot {
+                    SlotRef::GrindTop => &mut entry.a,
+                    _ => &mut entry.b,
+                };
+                Inventory::slot_click(slot_ref, &mut self.cursor_stack, right);
+            }
+            SlotRef::GrindOut => {
+                // Round 13: take the result — consume the inputs, drop
+                // the XP (the uniform 50%..100% window over the M sum)
+                let Some(Container::Grindstone { pos }) = self.container else {
+                    return;
+                };
+                let slots = self.sim.grindstones.get(&pos).cloned().unwrap_or_default();
+                let Some(plan) = vc_gameplay::grindstone::grindstone_plan(&slots.a, &slots.b)
+                else {
+                    return;
+                };
+                let fits = self.cursor_stack.is_empty()
+                    || (self.cursor_stack.block == plan.result.block
+                        && self.cursor_stack.count + plan.result.count
+                            <= vc_inventory::inventory::STACK_MAX);
+                if !fits {
+                    return;
+                }
+                if self.cursor_stack.is_empty() {
+                    self.cursor_stack = plan.result;
+                } else {
+                    self.cursor_stack.count += plan.result.count;
+                }
+                if let Some(e) = self.sim.grindstones.get_mut(&pos) {
+                    e.a = vc_inventory::inventory::ItemStack::EMPTY;
+                    e.b = vc_inventory::inventory::ItemStack::EMPTY;
+                }
+                // the XP drop: a uniform roll in [min, max] (VERIFIED
+                // w/Grindstone — "between 50% and 100% (rounded up)")
+                if plan.xp_max > 0 && self.mode.depletes_items() {
+                    let roll = self.audio_rng.next_f32();
+                    let xp = plan.xp_min
+                        + ((plan.xp_max - plan.xp_min) as f32 * roll) as u32;
+                    if xp > 0 {
+                        let gained = self.player.add_xp(xp as i32);
+                        vc_render::render::report_boot_log(&format!(
+                            "e2e: grindstone xp drop {xp} (levels gained {gained})"
+                        ));
+                    }
+                }
+                self.play_event(
+                    "block.grindstone.use",
+                    Some([pos[0] as f32 + 0.5, pos[1] as f32 + 1.0, pos[2] as f32 + 0.5]),
+                    1.0,
+                );
+                vc_render::render::report_boot_log(&format!(
+                    "e2e: grindstone take (xp window {}..{})",
+                    plan.xp_min, plan.xp_max
+                ));
+            }
         }
         self.click_sound();
         self.ui.dirty = true;
+    }
+
+    /// Round 13: the beacon GUI's confirm click — consume the payment
+    /// (the pay slot's ore stand-in, or one pyramid base block when the
+    /// slot is empty — the audit §2's documented adaptation), then apply
+    /// the pending selection through BeaconState::select (level-gated).
+    fn beacon_confirm(&mut self) {
+        use vc_gameplay::beacon::BeaconSecondary;
+        let Some(Container::Beacon { pos }) = self.container else {
+            return;
+        };
+        let level = vc_gameplay::beacon::pyramid_level(&self.world, pos[0], pos[1], pos[2]);
+        let (pending_primary, pending_secondary) = self.beacon_pending;
+        let Some(primary) = pending_primary else {
+            return; // nothing pending — the button stays dim
+        };
+        if primary.min_level() > level {
+            return; // gated (the pyramid dropped since the click)
+        }
+        if pending_secondary != BeaconSecondary::None && level < 4 {
+            return;
+        }
+        // the payment: the pay slot first, else one pyramid base block
+        // (the round-13 adaptation — "clicking a power may also pay from
+        // the pyramid" per the spec + audit §2)
+        let valid_pay = matches!(
+            self.beacon_pay.block,
+            IRON_ORE | GOLD_ORE | DIAMOND_ORE | EMERALD | IRON_BLOCK | GOLD_BLOCK | DIAMOND_BLOCK
+        );
+        let mut paid_from = 0u8; // 0 = slot, 1 = pyramid, 2 = free (level 0)
+        if valid_pay && !self.beacon_pay.is_empty() {
+            self.beacon_pay.count -= 1;
+            if self.beacon_pay.count == 0 {
+                self.beacon_pay = vc_inventory::inventory::ItemStack::EMPTY;
+            }
+            paid_from = 1;
+        } else if level > 0 {
+            // consume one base block from the pyramid's top layer
+            let mut consumed = false;
+            'scan: for l in 1..=4i32 {
+                let half = l;
+                let ly = pos[1] - l;
+                for dx in -half..=half {
+                    for dz in -half..=half {
+                        let b = self.world.get_block(pos[0] + dx, ly, pos[2] + dz);
+                        if vc_gameplay::beacon::is_base_block(b) {
+                            if let Some((old, new)) =
+                                self.world.set_block(pos[0] + dx, ly, pos[2] + dz, AIR)
+                            {
+                                self.light.on_block_changed(
+                                    &self.world,
+                                    pos[0] + dx,
+                                    ly,
+                                    pos[2] + dz,
+                                    old,
+                                    new,
+                                );
+                            }
+                            consumed = true;
+                            break 'scan;
+                        }
+                    }
+                }
+            }
+            if !consumed {
+                return; // no payment available anywhere — refuse
+            }
+            paid_from = 2;
+        }
+        // apply the selection (the level re-scan after a pyramid pay may
+        // have DROPPED the level — re-gate against the live value)
+        let live_level = vc_gameplay::beacon::pyramid_level(&self.world, pos[0], pos[1], pos[2]);
+        let mut st = vc_gameplay::beacon::BeaconState::new();
+        if live_level > 0 {
+            let _ = st.select(live_level, primary, pending_secondary);
+        }
+        self.sim.beacons.insert(pos, st);
+        self.beacon_pending = (None, BeaconSecondary::None);
+        self.play_event(
+            "block.beacon.activate",
+            Some([pos[0] as f32 + 0.5, pos[1] as f32 + 1.0, pos[2] as f32 + 0.5]),
+            1.0,
+        );
+        vc_render::render::report_boot_log(&format!(
+            "e2e: beacon confirmed {}{} at level {} (paid {})",
+            primary.name(),
+            match pending_secondary {
+                BeaconSecondary::Regeneration => " + Regeneration".to_string(),
+                BeaconSecondary::PrimaryII => " II".to_string(),
+                BeaconSecondary::None => String::new(),
+            },
+            live_level,
+            match paid_from {
+                1 => "slot",
+                2 => "pyramid",
+                _ => "free",
+            },
+        ));
     }
 
     /// 1.11: was the container entity at `pos` created as a SHULKER_BOX
@@ -9350,6 +10178,10 @@ impl GameApp {
                 (ContainerKind::DoubleChest, None, None, None, None)
             }
             Some(Container::Barrel { .. }) => (ContainerKind::Barrel, None, None, None, None),
+            Some(Container::Anvil { .. }) => (ContainerKind::Anvil, None, None, None, None),
+            Some(Container::Beacon { .. }) => (ContainerKind::Beacon, None, None, None, None),
+            Some(Container::Grindstone { .. }) => (ContainerKind::Grindstone, None, None, None, None),
+            Some(Container::Mount { .. }) => (ContainerKind::Mount, None, None, None, None),
             Some(Container::Hopper { pos: _ }) => (ContainerKind::Hopper, None, None, None, None),
             Some(Container::Furnace { pos }) => {
                 // live slots + progress fractions for the flame/arrow
@@ -9479,6 +10311,69 @@ impl GameApp {
         let craft_out = self
             .craft_result(&grid, size)
             .unwrap_or(vc_inventory::inventory::ItemStack::EMPTY);
+        // ---- Round 13: the station views (anvil / beacon / grindstone) ----
+        let anvil = match self.container {
+            Some(Container::Anvil { pos }) => {
+                let slots = self.sim.anvils.get(&pos).cloned().unwrap_or_default();
+                // the rename id: the typed name maps into the pool only
+                // when non-empty (blank field = the red-X rule — VERIFIED)
+                let rename_id = if self.anvil_rename.is_empty() {
+                    None
+                } else {
+                    Some(vc_gameplay::anvil::name_pool_id(
+                        &mut self.name_pool.clone(),
+                        &self.anvil_rename,
+                    ))
+                };
+                let plan = vc_gameplay::anvil::combine(&slots.a, &slots.b, rename_id);
+                let creative = self.mode.creative();
+                let (result, cost, too_expensive) = match &plan {
+                    Some(p) => (p.result, p.cost, p.too_expensive),
+                    None => (vc_inventory::inventory::ItemStack::EMPTY, 0, false),
+                };
+                let affordable = creative
+                    || (plan.is_some() && self.player.xp_level >= cost && !too_expensive);
+                Some(vc_render::ui::AnvilView {
+                    target: slots.a,
+                    sacrifice: slots.b,
+                    result,
+                    cost,
+                    too_expensive,
+                    affordable,
+                    rename: self.anvil_rename.clone(),
+                    rename_focused: self.anvil_rename_focus,
+                    creative,
+                })
+            }
+            _ => None,
+        };
+        let beacon = match self.container {
+            Some(Container::Beacon { pos }) => {
+                let level =
+                    vc_gameplay::beacon::pyramid_level(&self.world, pos[0], pos[1], pos[2]);
+                let st = self.sim.beacons.get(&pos).cloned().unwrap_or_default();
+                let (pending_primary, pending_secondary) = self.beacon_pending;
+                Some(vc_render::ui::BeaconView {
+                    level,
+                    pay: self.beacon_pay,
+                    primary: st.primary,
+                    secondary: st.secondary,
+                    pending_primary,
+                    pending_secondary,
+                })
+            }
+            _ => None,
+        };
+        let grind = match self.container {
+            Some(Container::Grindstone { pos }) => {
+                let slots = self.sim.grindstones.get(&pos).cloned().unwrap_or_default();
+                let result = vc_gameplay::grindstone::grindstone_plan(&slots.a, &slots.b)
+                    .map(|p| p.result)
+                    .unwrap_or(vc_inventory::inventory::ItemStack::EMPTY);
+                Some((slots.a, slots.b, result))
+            }
+            _ => None,
+        };
         ContainerView {
             kind,
             inv: self.player.inv.slots.clone(),
@@ -9492,6 +10387,9 @@ impl GameApp {
             armor: self.player.armor,
             offhand: self.player.offhand,
             cursor: self.cursor_stack,
+            anvil,
+            beacon,
+            grind,
         }
     }
 
@@ -10913,6 +11811,67 @@ impl GameApp {
                     }
                     vc_world::gen::Precip::Rain => {
                         self.particles.spawn_rain_streak(x, py + 10.0, z, sky, 0);
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        // ---- Round 15b: the typed-particle events ----
+        // splash on water entry (VERIFIED w/Particle: the burst when an
+        // entity enters water) + the bubble trail while submerged
+        if self.player.in_water && !self.prev_in_water {
+            self.particles.spawn_kind(
+                "splash",
+                px,
+                py + 0.4,
+                pz,
+                24,
+            );
+        }
+        if self.player.head_in_water {
+            // the breath-bubble trail (a couple per tick keeps it light)
+            if self.audio_rng.next_f32() < 0.12 {
+                self.particles.spawn_kind(
+                    "bubble",
+                    px + (self.audio_rng.next_f32() - 0.5) * 0.4,
+                    py + 0.5,
+                    pz + (self.audio_rng.next_f32() - 0.5) * 0.4,
+                    1,
+                );
+            }
+        }
+        self.prev_in_water = self.player.in_water;
+        // the ambient roll (portal shimmer / redstone dust / leaf drips
+        // while it rains) — every 0.25 s, a few random blocks near the
+        // player are checked so the scans stay cheap
+        if self.time >= self.particle_ambient_next {
+            self.particle_ambient_next = self.time + 0.25;
+            for _ in 0..6 {
+                let bx = px as i32 + self.audio_rng.next_range(24) as i32 - 12;
+                let by = py as i32 + self.audio_rng.next_range(8) as i32;
+                let bz = pz as i32 + self.audio_rng.next_range(24) as i32 - 12;
+                let b = self.world.get_block(bx, by, bz);
+                match b {
+                    REDSTONE_TORCH => {
+                        // the red dust mote above a lit torch
+                        self.particles.spawn_kind(
+                            "dust",
+                            bx as f32 + 0.5,
+                            by as f32 + 0.65,
+                            bz as f32 + 0.5,
+                            1,
+                        );
+                    }
+                    LEAVES | BIRCH_LEAVES | SPRUCE_LEAVES if self.weather.is_raining() => {
+                        // the hanging drip under a wet canopy
+                        self.particles.spawn_kind(
+                            "dripping_water",
+                            bx as f32 + 0.3 + self.audio_rng.next_f32() * 0.4,
+                            by as f32 - 0.05,
+                            bz as f32 + 0.3 + self.audio_rng.next_f32() * 0.4,
+                            1,
+                        );
                     }
                     _ => {}
                 }
@@ -13688,6 +14647,22 @@ impl GameApp {
                 let py = self.player.pos.y;
                 let pz = self.player.pos.z;
                 for (pos, mut st) in beacons {
+                    // Round 13: re-scan the live pyramid level each
+                    // reapplication — "If the pyramid is broken, effects
+                    // deactivate or weaken depending on the level"
+                    // (VERIFIED w/Beacon §Pyramids). A broken pyramid
+                    // stops the refresh entirely (level 0 = no powers);
+                    // "Upon restoration of the pyramid, the originally
+                    // selected power returns without the need to spend
+                    // another item" — the selection itself persists.
+                    st.level =
+                        vc_gameplay::beacon::pyramid_level(&self.world, pos[0], pos[1], pos[2]);
+                    if let Some(slot) = self.sim.beacons.get_mut(&pos) {
+                        slot.level = st.level;
+                    }
+                    if st.level == 0 {
+                        continue; // broken pyramid: no reapplication
+                    }
                     if !in_range(st.level.max(1), pos[0], pos[1], pos[2], px, py, pz) {
                         continue;
                     }
@@ -15032,94 +16007,28 @@ impl GameApp {
                         }
                         self.place_timer = 0.3;
                     } else if tb == BEACON {
-                        // Phase E2 (VERIFIED w/Beacon): feed one material
-                        // (engine adaptation: iron/gold/diamond ORE items
-                        // or EMERALD — no ingot/gem items) + cycle the
-                        // powers. Cycle order: Speed, Haste, Resistance,
-                        // Jump Boost, Strength (min-level gated); at a
-                        // 4-level pyramid the secondary cycles
-                        // None -> Regeneration -> Primary II.
-                        let fed = matches!(
-                            self.player.held().block,
-                            IRON_ORE | GOLD_ORE | DIAMOND_ORE | EMERALD
-                                | IRON_BLOCK | GOLD_BLOCK | DIAMOND_BLOCK
-                        );
-                        if fed && self.mode.depletes_items() {
-                            let held = self.player.held_mut();
-                            held.count -= 1;
-                            if held.count == 0 {
-                                *held = vc_inventory::inventory::ItemStack::EMPTY;
-                            }
-                        }
-                        let level = vc_gameplay::beacon::pyramid_level(
-                            &self.world, tpos[0], tpos[1], tpos[2],
-                        );
-                        use vc_gameplay::beacon::{BeaconPower, BeaconSecondary};
-                        let powers = [
-                            BeaconPower::Speed,
-                            BeaconPower::Haste,
-                            BeaconPower::Resistance,
-                            BeaconPower::JumpBoost,
-                            BeaconPower::Strength,
-                        ];
-                        let cur = self
-                            .sim
-                            .beacons
-                            .get(&tpos)
-                            .cloned()
-                            .unwrap_or_default();
-                        // advance the primary (level-gated), then the
-                        // secondary at level 4
-                        let cur_idx = cur
-                            .primary
-                            .map(|c| powers.iter().position(|&p| p == c).unwrap_or(0))
-                            .unwrap_or(0);
-                        let mut next_idx = cur_idx + 1;
-                        while next_idx < powers.len()
-                            && powers[next_idx].min_level() > level
-                        {
-                            next_idx += 1;
-                        }
-                        let (primary, secondary) = if next_idx >= powers.len() {
-                            // wrapped: restart at the first allowed power
-                            let mut first = 0;
-                            while first < powers.len()
-                                && powers[first].min_level() > level
-                            {
-                                first += 1;
-                            }
-                            let p = powers[first.min(powers.len() - 1)];
-                            let sec = if level >= 4 {
-                                match cur.secondary {
-                                    BeaconSecondary::None => BeaconSecondary::Regeneration,
-                                    BeaconSecondary::Regeneration => BeaconSecondary::PrimaryII,
-                                    BeaconSecondary::PrimaryII => BeaconSecondary::None,
-                                }
-                            } else {
-                                BeaconSecondary::None
-                            };
-                            (p, sec)
-                        } else {
-                            (powers[next_idx], BeaconSecondary::None)
-                        };
-                        let mut st = vc_gameplay::beacon::BeaconState::new();
-                        if level > 0 {
-                            let _ = st.select(level, primary, secondary);
-                        }
-                        self.sim.beacons.insert(tpos, st);
-                        vc_render::render::report_boot_log(&format!(
-                            "e2e: beacon level {level} -> {}{} (fed {}, VERIFIED powers/levels)",
-                            primary.name(),
-                            match secondary {
-                                BeaconSecondary::Regeneration => " + Regeneration".to_string(),
-                                BeaconSecondary::PrimaryII => " II".to_string(),
-                                _ => String::new(),
-                            },
-                            if fed { 1 } else { 0 },
-                        ));
-                        self.play_event("block.beacon.activate", Some([tpos[0] as f32 + 0.5, tpos[1] as f32 + 1.0, tpos[2] as f32 + 0.5]), 1.0);
+                        // Round 13: right-click opens the beacon GUI (the
+                        // power selection + payment screen — the audit §2
+                        // structure). The old feed-and-cycle path is
+                        // retired: payment now flows through the GUI's
+                        // pay slot (the ore stand-in) or the pyramid-
+                        // mineral fallback at confirm time.
+                        self.beacon_pending = (None, vc_gameplay::beacon::BeaconSecondary::None);
+                        self.open_container(Container::Beacon { pos: tpos });
                         self.place_timer = 0.3;
                         self.ui.dirty = true;
+                    } else if tb == ANVIL || tb == CHIPPED_ANVIL || tb == DAMAGED_ANVIL {
+                        // Round 13: right-click opens the anvil GUI
+                        // (Repair & Name — any damage stage opens)
+                        self.anvil_rename.clear();
+                        self.anvil_rename_focus = false;
+                        self.open_container(Container::Anvil { pos: tpos });
+                        self.place_timer = 0.3;
+                    } else if tb == GRINDSTONE {
+                        // Round 13: right-click opens the grindstone GUI
+                        // (Repair & Disenchant)
+                        self.open_container(Container::Grindstone { pos: tpos });
+                        self.place_timer = 0.3;
                     } else if tb == HOPPER {
                         // §Container: right-click opens the hopper screen
                         // (5 slots, VERIFIED "Item Hopper" GUI); the entity
@@ -17888,6 +18797,31 @@ impl GameApp {
                 right.push("minecraft:water".to_string());
             }
         }
+        // Round 14b: Reduced Debug Info (vanilla `reducedDebugInfo`,
+        // Chat Settings) — hides the coordinate/facing/biome/light/
+        // heightmap/local-difficulty/mob-cap rows on the left and the
+        // WHOLE right column (the vanilla screen keeps only the
+        // version/fps/chunk-cache lines)
+        if self.settings.reduced_debug {
+            let reduced: Vec<String> = left
+                .into_iter()
+                .filter(|l| {
+                    !(l.starts_with("XYZ:")
+                        || l.starts_with("Block: ")
+                        || l.starts_with("Chunk: ")
+                        || l.starts_with("Facing:")
+                        || l.starts_with("Client Light:")
+                        || l.starts_with("Server Light:")
+                        || l.starts_with("CH S:")
+                        || l.starts_with("CH H:")
+                        || l.starts_with("Biome:")
+                        || l.starts_with("Local Difficulty")
+                        || l.starts_with("SC:")
+                        || l.starts_with("Sounds:"))
+                })
+                .collect();
+            return (reduced, Vec::new());
+        }
         (left, right)
     }
 
@@ -18221,6 +19155,17 @@ impl GameApp {
                     &self.widgets,
                     self.hover,
                     "CHAT SETTINGS",
+                    &tt,
+                );
+                self.ui_dump_if_asked();
+                return;
+            }
+            Screen::Skin => {
+                let tt = self.tooltip_lines();
+                self.ui.settings_screen(
+                    &self.widgets,
+                    self.hover,
+                    "SKIN CUSTOMIZATION",
                     &tt,
                 );
                 self.ui_dump_if_asked();
@@ -18685,6 +19630,14 @@ impl GameApp {
             // Round 14: the new settings sub-screens ride the same
             // panorama treatment
             Screen::MusicSound | Screen::Controls | Screen::Language | Screen::ChatSettings => {
+                if self.options_from == Screen::Title {
+                    panorama = Some(pano_view);
+                }
+                (menu_cam(), 0.45, None)
+            }
+            // Round 14b: the Skin Customization screen rides the same
+            // panorama treatment
+            Screen::Skin => {
                 if self.options_from == Screen::Title {
                     panorama = Some(pano_view);
                 }
@@ -19649,6 +20602,10 @@ mod settings_tests {
             vc_render::ui::layout_video(),
             vc_render::ui::layout_engine(),
             vc_render::ui::layout_access(),
+            // Round 14b: the new screens join the tooltip requirement
+            vc_render::ui::layout_skin(true, true, true, true, true, true, true, false),
+            vc_render::ui::layout_chat_settings(),
+            vc_render::ui::layout_music_sound(),
         ] {
             for w in ws {
                 assert!(
@@ -20845,5 +21802,185 @@ mod farm_game_tests {
         assert!((food_heal(BREAD) - 2.5).abs() < 1e-6, "bread = hunger 5");
         // wheat itself is inedible (never reaches the eat branch's set)
         assert!(!is_food(WHEAT));
+    }
+}
+
+#[cfg(test)]
+mod round14b_settings_tests {
+    use super::*;
+
+    /// Round 14b [spec]: every accessibility option survives a
+    /// serialize → deserialize round trip (the vanilla options.txt keys:
+    /// autoJump, the sneakToggled/sprintToggled Hold-Toggle rows,
+    /// distortionEffects, fovEffects).
+    #[test]
+    #[allow(clippy::field_reassign_with_default)]
+    fn accessibility_options_persist_round_trip() {
+        let mut s = Settings::default();
+        s.auto_jump = false;
+        s.sprint_toggle = true;
+        s.sneak_toggle = true;
+        s.acc_distortion = 0.25;
+        s.acc_fov_effects = 0.5;
+        s.acc_fog = 2;
+        let back = Settings::deserialize(&s.serialize());
+        assert!(!back.auto_jump);
+        assert!(back.sprint_toggle, "sprintToggled persists");
+        assert!(back.sneak_toggle, "sneakToggled persists");
+        assert!((back.acc_distortion - 0.25).abs() < 1e-3);
+        assert!((back.acc_fov_effects - 0.5).abs() < 1e-3);
+        assert_eq!(back.acc_fog, 2);
+        // defaults: Hold/Hold, 100% distortion (1.16.2 pre1 defaults)
+        let d = Settings::default();
+        assert!(!d.sprint_toggle && !d.sneak_toggle);
+        assert!((d.acc_distortion - 1.0).abs() < 1e-6);
+    }
+
+    /// Round 14b [spec]: the seven skin layer toggles + Main Hand
+    /// survive the round trip (the vanilla modelPart_* + mainHand keys).
+    #[test]
+    #[allow(clippy::field_reassign_with_default)]
+    fn skin_layer_toggles_persist() {
+        let mut s = Settings::default();
+        // flip everything off the ON defaults
+        s.skin_cape = false;
+        s.skin_jacket = false;
+        s.skin_lsleeve = false;
+        s.skin_rsleeve = false;
+        s.skin_lpants = false;
+        s.skin_rpants = false;
+        s.skin_hat = false;
+        s.main_hand_left = true;
+        let back = Settings::deserialize(&s.serialize());
+        assert!(!back.skin_cape);
+        assert!(!back.skin_jacket);
+        assert!(!back.skin_lsleeve);
+        assert!(!back.skin_rsleeve);
+        assert!(!back.skin_lpants);
+        assert!(!back.skin_rpants);
+        assert!(!back.skin_hat);
+        assert!(back.main_hand_left, "mainHand: left persists");
+        // defaults: every layer ON, main hand Right (the live wiki table)
+        let d = Settings::default();
+        assert!(d.skin_cape && d.skin_jacket && d.skin_hat);
+        assert!(d.skin_lsleeve && d.skin_rsleeve);
+        assert!(d.skin_lpants && d.skin_rpants);
+        assert!(!d.main_hand_left);
+    }
+
+    /// Round 14b [3]: the settings tree matches the vanilla 1.16.5
+    /// option set — every screen's row list pinned (divergences all
+    /// disclosed: the engine's own Fog row, the grayed chat/subtitle/
+    /// narrator rows, the version-scoped omissions).
+    #[test]
+    fn settings_tree_matches_vanilla_option_set() {
+        // Accessibility: the 1.16.5 order (Auto-Jump, Sprint, Sneak,
+        // Distortion, FOV Effects, Show Subtitles) + the disclosed
+        // engine Fog row
+        let acc = ui::layout_access();
+        let acc_labels: Vec<&str> = acc
+            .iter()
+            .filter(|w| w.id != ui::ID_OPT_DONE2)
+            .map(|w| w.label())
+            .collect();
+        assert_eq!(
+            acc_labels,
+            vec![
+                "AUTO-JUMP",
+                "SPRINT",
+                "SNEAK",
+                "DISTORTION EFFECTS",
+                "FOV EFFECTS",
+                "SHOW SUBTITLES",
+                "FOG",
+            ],
+            "the 1.16.5 accessibility order (Fog = the disclosed engine row)"
+        );
+        // Skin Customization: the eight vanilla rows in table order
+        let skin = ui::layout_skin(true, true, true, true, true, true, true, false);
+        let skin_labels: Vec<&str> = skin
+            .iter()
+            .filter(|w| w.id != ui::ID_SKIN_DONE)
+            .map(|w| w.label())
+            .collect();
+        assert_eq!(
+            skin_labels,
+            vec![
+                "CAPE",
+                "JACKET",
+                "LEFT SLEEVE",
+                "RIGHT SLEEVE",
+                "LEFT PANT LEG",
+                "RIGHT PANT LEG",
+                "HAT",
+                "MAIN HAND",
+            ]
+        );
+        // Chat Settings: the 1.16.5 row set (Visibility, Colors, Links,
+        // Prompt, Opacity, Delay, Width, Scale, Heights, Spacing, Hide
+        // Matched Names, Reduced Debug Info, Narrator)
+        let chat = ui::layout_chat_settings();
+        assert_eq!(chat.len(), 15, "14 rows + DONE");
+        // the main Options screen exposes the eight vanilla entries
+        let opts = ui::layout_options();
+        let opt_labels: Vec<&str> = opts.iter().map(|w| w.label()).collect();
+        for needed in [
+            "CHAT SETTINGS...",
+            "RESOURCE PACKS...",
+            "LANGUAGE...",
+            "ACCESSIBILITY SETTINGS...",
+            "VIDEO SETTINGS...",
+            "CONTROLS...",
+            "MUSIC & SOUND...",
+            "SKIN CUSTOMIZATION...",
+        ] {
+            assert!(opt_labels.contains(&needed), "Options exposes {needed}");
+        }
+    }
+
+    /// Round 14b: the reduced-debug F3 gate — the coordinate/biome/
+    /// facing lines hide and the right column empties.
+    #[test]
+    fn reduced_debug_info_hides_detail_rows() {
+        // the filter is a pure prefix predicate — pin its shape
+        let hidden = [
+            "XYZ: 1.0 / 2.0 / 3.0",
+            "Block: 1 2 3",
+            "Chunk: 1 2 3 in 4 5 6",
+            "Facing: north (Towards negative Z) (0.0 / 0.0)",
+            "Client Light: 15 (15 sky, 0 blk)",
+            "Server Light: 15 (15 sky, 0 blk)",
+            "CH S: 64 D: 64",
+            "CH H: 64 O: 64 M: 64 ML: 64",
+            "Biome: minecraft:plains",
+            "Local Difficulty: 1.00 // 1.00 (Day 1)",
+            "SC: 289, M: 1, C: 2, A: 3, W: 4, M: 5",
+            "Sounds: 0/1 + 0/8 (mood 0/0)",
+        ];
+        let kept = [
+            "VoxelCraft 1.16.5 (Rust/wgpu/modified)",
+            "60 fps T: ∞ fancy-clouds D: 2",
+            "Client Chunk Cache: 1, 2",
+        ];
+        let is_hidden = |l: &str| {
+            l.starts_with("XYZ:")
+                || l.starts_with("Block: ")
+                || l.starts_with("Chunk: ")
+                || l.starts_with("Facing:")
+                || l.starts_with("Client Light:")
+                || l.starts_with("Server Light:")
+                || l.starts_with("CH S:")
+                || l.starts_with("CH H:")
+                || l.starts_with("Biome:")
+                || l.starts_with("Local Difficulty")
+                || l.starts_with("SC:")
+                || l.starts_with("Sounds:")
+        };
+        for l in hidden {
+            assert!(is_hidden(l), "{l:?} hides under reduced debug");
+        }
+        for l in kept {
+            assert!(!is_hidden(l), "{l:?} stays under reduced debug");
+        }
     }
 }

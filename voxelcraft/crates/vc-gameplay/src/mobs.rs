@@ -1538,6 +1538,47 @@ pub struct EquineState {
     pub breed_cd: i32,
 }
 
+/// Round 12b (2026-09-16): the mount's chest storage — the per-entity
+/// inventory model (VERIFIED w/Donkey §Usage: "equipping a chest ... 15
+/// slots"; w/Llama §Usage: the capacity is 3 × the llama's Strength,
+/// so 3/6/9/12/15). The chest flag rides the equip interaction (the
+/// chest item is consumed on equip); the slots are empty until then.
+#[derive(Clone, Debug, PartialEq)]
+pub struct MountStorage {
+    /// a chest has been equipped (the slot vector is allocated but
+    /// inert until this flips — vanilla's own ChestedHorse flag)
+    pub chest: bool,
+    /// the storage slots (EMPTY until items are placed). Donkey/mule
+    /// = 15; llama = 3 × strength.
+    pub slots: Vec<vc_inventory::inventory::ItemStack>,
+}
+
+impl MountStorage {
+    /// a donkey/mule's storage (15 slots — VERIFIED w/Donkey §Usage:
+    /// "If a chest is given to a donkey or mule, it gains 15 inventory
+    /// slots")
+    pub fn new_equine() -> Self {
+        MountStorage {
+            chest: false,
+            slots: vec![vc_inventory::inventory::ItemStack::EMPTY; 15],
+        }
+    }
+    /// a llama's storage — capacity = 3 × strength (VERIFIED w/Llama
+    /// §Usage: "Llamas can be equipped with chests, which increases
+    /// their storage capacity ... depending on their strength")
+    pub fn new_llama(strength: u8) -> Self {
+        let n = 3 * strength.clamp(1, 5) as usize;
+        MountStorage {
+            chest: false,
+            slots: vec![vc_inventory::inventory::ItemStack::EMPTY; n],
+        }
+    }
+    /// the capacity in slots (the llama strength mapping surface)
+    pub fn capacity(&self) -> usize {
+        self.slots.len()
+    }
+}
+
 impl EquineState {
     /// the launch velocity that clears `height` blocks under the engine's
     /// jump integrator (v1 = (v0 − 0.08)·0.98 — the shared player/mob
@@ -1607,6 +1648,10 @@ pub struct Mob {
     /// Phase E3: per-instance equine state (horses/donkeys/mules —
     /// None for every other kind)
     pub equine: Option<Box<EquineState>>,
+    /// Round 12b: the mount's chest storage (donkeys/mules/llamas —
+    /// None for every other kind; the chest is equipped through the
+    /// use-with-chest interaction)
+    pub storage: Option<Box<MountStorage>>,
     /// 1.15 (Buzzy Bees): per-instance bee state (None for every
     /// other kind) — the hive/flower lifecycle, nectar payload,
     /// anger/sting timers (VERIFIED w/Bee; see bees.rs)
@@ -1953,6 +1998,17 @@ impl MobSystem {
                 Some(Box::new(super::bees::BeeState::new()))
             } else {
                 None
+            },
+            // Round 12b: the mount storage (donkeys/mules 15 slots;
+            // llamas 3 × strength — the strength rides the variant byte)
+            storage: match kind {
+                MobKind::Donkey | MobKind::Mule => {
+                    Some(Box::new(MountStorage::new_equine()))
+                }
+                MobKind::Llama => Some(Box::new(MountStorage::new_llama(
+                    variant.clamp(1, 5),
+                ))),
+                _ => None,
             },
             wander_yaw: yaw,
             wander_t: 0,
@@ -6638,6 +6694,7 @@ mod tests {
                 wander_yaw: 0.0,
                 wander_t: 0,
                 equine: None,
+                storage: None,
                 bee: None,
             };
             physics_tick(&mut m, &w);
@@ -6678,6 +6735,7 @@ mod tests {
                 wander_yaw: 0.0,
                 wander_t: 0,
                 equine: None,
+                storage: None,
                 bee: None,
             };
             let mut ticks = 0;
@@ -6723,6 +6781,7 @@ mod tests {
             wander_yaw: 0.0,
             wander_t: 0,
                 equine: None,
+                storage: None,
                 bee: None,
         };
         let mut ticks = 0;
@@ -6841,7 +6900,7 @@ mod tests {
         let mut m = Mob { id: 9, kind: MobKind::SnowGolem, pos: [8.5, 65.0, 8.5], vel: [0.0; 3],
             yaw: 0.0, health: 4.0, on_ground: true, hurt_t: 0, attack_cd: 0, fuse: -1,
             provoked: false, lonely_t: 0, fall_dist: 0.0, anim_walk: 0.0, attack_anim: 0, variant: 0, aux: 0,
-            wander_yaw: 0.0, wander_t: 0, equine: None, bee: None };
+            wander_yaw: 0.0, wander_t: 0, equine: None, storage: None, bee: None };
         for _ in 0..5 {
             ai_tick(&mut rng, &mut m, None, false, &mut Vec::new(), &mut Vec::new(), &desert, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), true);
         }
@@ -9321,3 +9380,88 @@ mod v114_tests {
         let p = sys.list.iter().find(|m| m.id == pid).unwrap();
         assert_eq!(p.health, php0, "piglins take no water damage");
     }
+
+#[cfg(test)]
+mod round12b_mount_storage_tests {
+    use super::*;
+
+    /// Round 12b [spec]: the llama's storage capacity scales with its
+    /// strength — 3 × strength = 3/6/9/12/15 slots (VERIFIED w/Llama
+    /// §Usage: "Llamas can be equipped with chests, which increases
+    /// their storage capacity ... depending on their strength").
+    #[test]
+    fn llama_storage_scales_with_strength() {
+        for (strength, want) in [(1u8, 3usize), (2, 6), (3, 9), (4, 12), (5, 15)] {
+            let s = MountStorage::new_llama(strength);
+            assert_eq!(s.capacity(), want, "strength {strength} → {want} slots");
+            assert!(!s.chest, "unequipped at spawn");
+            assert!(s.slots.iter().all(|x| x.is_empty()));
+        }
+        // out-of-range strengths clamp to the 1..=5 window
+        assert_eq!(MountStorage::new_llama(0).capacity(), 3, "clamps low");
+        assert_eq!(MountStorage::new_llama(9).capacity(), 15, "clamps high");
+        // the spawn path wires the storage with the variant strength
+        let mut ms = MobSystem::new(77);
+        let id = ms.spawn_variant(MobKind::Llama, 0, 65, 0, 3).unwrap();
+        let m = ms.by_id(id).unwrap();
+        assert_eq!(m.storage.as_ref().unwrap().capacity(), 9);
+        assert!(m.storage.as_ref().unwrap().slots.len() == 9);
+    }
+
+    /// Round 12b [spec]: the donkey/mule storage — 15 slots (VERIFIED
+    /// w/Donkey §Usage: "If a chest is given to a donkey or mule, it
+    /// gains 15 inventory slots"); every other kind carries no storage.
+    #[test]
+    fn donkey_storage_is_fifteen_slots() {
+        let s = MountStorage::new_equine();
+        assert_eq!(s.capacity(), 15);
+        assert!(!s.chest, "the chest flag starts unequipped");
+        let mut ms = MobSystem::new(78);
+        for (kind, has) in [
+            (MobKind::Donkey, true),
+            (MobKind::Mule, true),
+            (MobKind::Llama, true),
+            (MobKind::Horse, false),
+            (MobKind::Cow, false),
+        ] {
+            let id = ms.spawn_at(kind, 0, 65, 0).unwrap();
+            let m = ms.by_id(id).unwrap();
+            assert_eq!(
+                m.storage.is_some(),
+                has,
+                "{kind:?} storage presence"
+            );
+            if matches!(kind, MobKind::Donkey | MobKind::Mule) {
+                assert_eq!(m.storage.as_ref().unwrap().capacity(), 15);
+            }
+        }
+    }
+
+    /// Round 12b [spec]: mount inventories ride the entity (the
+    /// position-keyed stores are for BLOCK entities — mounts live in
+    /// the mob list; the slot vector mutates in place through the
+    /// storage reference).
+    #[test]
+    fn mount_slots_mutate_in_place() {
+        let mut ms = MobSystem::new(79);
+        let id = ms.spawn_at(MobKind::Donkey, 0, 65, 0).unwrap();
+        {
+            let m = ms.by_id_mut(id).unwrap();
+            let st = m.storage.as_mut().unwrap();
+            st.chest = true; // the equip interaction flips this
+            st.slots[0] = vc_inventory::inventory::ItemStack::new(LEATHER, 3);
+            st.slots[14] = vc_inventory::inventory::ItemStack::new(BONE, 1);
+        }
+        let m = ms.by_id(id).unwrap();
+        let st = m.storage.as_ref().unwrap();
+        assert!(st.chest);
+        assert_eq!(st.slots[0].block, LEATHER);
+        assert_eq!(st.slots[0].count, 3);
+        assert_eq!(st.slots[14].block, BONE);
+        assert!(st.slots[7].is_empty());
+        // the model clones cleanly (the view snapshot path)
+        let st2 = st.clone();
+        assert_eq!(st2.capacity(), 15);
+        assert_eq!(st2.slots[0].block, LEATHER);
+    }
+}

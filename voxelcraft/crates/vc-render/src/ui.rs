@@ -266,6 +266,14 @@ impl Widget {
     pub fn slider_value_at(&self, px: i32) -> f32 {
         ((px - self.x - 8) as f32 / (self.w - 16) as f32).clamp(0.0, 1.0)
     }
+    /// Round 14b: the row's label (Button/TextField/Slider kinds)
+    pub fn label(&self) -> &str {
+        match &self.kind {
+            WidgetKind::Button { label, .. } => label,
+            WidgetKind::TextField { label, .. } => label,
+            WidgetKind::Slider { label, .. } => label,
+        }
+    }
 }
 
 pub fn btn(id: u16, x: i32, y: i32, w: i32, label: &str, value: &str, enabled: bool) -> Widget {
@@ -515,6 +523,53 @@ pub const ID_ACC_SUBTITLES: u16 = 177;
 pub const ID_CTRL_BIND_BASE: u16 = 180;
 /// max rebindable rows on the Controls screen
 pub const MAX_CTRL_BINDS: usize = 24;
+/// Round 14b (2026-09-16): the Skin Customization + Chat Settings +
+/// accessibility-completion family — 210..=235, one fresh block clear
+/// of every literal id (max 101) and every row family (110 PACK,
+/// 120..158 rpack, 160..170 sound, 170..177 access/ctrl, 180..204
+/// binds). Guarded by the ID-space tests.
+pub const ID_SKIN_BASE: u16 = 210; // cape/jacket/sleeves/pants/hat/main hand (6 ids)
+pub const ID_SKIN_CAPE: u16 = 210;
+pub const ID_SKIN_JACKET: u16 = 211;
+pub const ID_SKIN_LSLEEVE: u16 = 212;
+pub const ID_SKIN_RSLEEVE: u16 = 213;
+pub const ID_SKIN_LPANTS: u16 = 214;
+pub const ID_SKIN_RPANTS: u16 = 215;
+pub const ID_SKIN_HAT: u16 = 216;
+pub const ID_SKIN_MAINHAND: u16 = 217;
+pub const ID_SKIN_DONE: u16 = 218;
+/// Round 14b: the Chat Settings rows (the 1.16.5 vanilla set, grayed
+/// where no subsystem exists — live-verified order)
+pub const ID_CHAT_VIS: u16 = 219;
+pub const ID_CHAT_COLORS: u16 = 220;
+pub const ID_CHAT_LINKS: u16 = 221;
+pub const ID_CHAT_LINKSPROMPT: u16 = 222;
+pub const ID_CHAT_OPACITY: u16 = 223;
+pub const ID_CHAT_DELAY: u16 = 224;
+pub const ID_CHAT_WIDTH: u16 = 225;
+pub const ID_CHAT_HFOCUSED: u16 = 226;
+pub const ID_CHAT_HUNFOCUSED: u16 = 227;
+pub const ID_CHAT_SCALE: u16 = 228;
+pub const ID_CHAT_LINESPACING: u16 = 229;
+pub const ID_CHAT_HIDENAMES: u16 = 230;
+pub const ID_CHAT_REDUCEDDEBUG: u16 = 231;
+pub const ID_CHAT_NARRATOR: u16 = 232;
+pub const ID_CHAT_DONE: u16 = 233;
+/// Round 14b: the Music & Sounds SHOW SUBTITLES row (the 1.16.5
+/// placement — live w/Subtitles: "In Java Edition, you can also enable
+/// these in the Music & Sounds options")
+pub const ID_SND_SUBTITLES: u16 = 234;
+/// Round 14b: the accessibility completion — the Sprint/Sneak
+/// Hold-vs-Toggle pair (1.15 19w41a rows) + the Distortion Effects
+/// slider (1.16.2 pre1). 1.16.5 vanilla order: Auto-Jump, Sprint,
+/// Sneak, Distortion, FOV Effects, Subtitles.
+pub const ID_ACC_SPRINT: u16 = 235;
+pub const ID_ACC_SNEAK: u16 = 236;
+pub const ID_ACC_DISTORT_SLIDER: u16 = 237;
+/// Round 14b: the Options screen's SKIN CUSTOMIZATION... entry (115 —
+/// clear of the world-edit/create literals through 114 and the rpack
+/// family at 120+)
+pub const ID_OPT_SKIN: u16 = 115;
 /// 2026-09-14 round (user directive): the SHADER PACKS screen, the
 /// ID_OPT_SHADERS video entry, the ID_PACK_BASE row family and every
 /// pre-created engine shader mode/builtin pack were REMOVED — vanilla
@@ -714,6 +769,9 @@ pub fn layout_options() -> Vec<Widget> {
         // Round 14: the vanilla Music & Sound sub-screen (ten category
         // sliders) — full-width row under VIEW BOBBING
         btn_h(ID_OPT_MUSICSND, 248, 332, 465, 30, "MUSIC & SOUND...", "", true),
+        // Round 14b: the vanilla Skin Customization entry (the layer
+        // toggles + Main Hand screen)
+        btn_h(ID_OPT_SKIN, 248, 372, 465, 30, "SKIN CUSTOMIZATION...", "", true),
         btn_h(
             ID_OPT_DONE,
             (live_ui_w() as i32 - 300) / 2,
@@ -897,30 +955,137 @@ pub fn layout_resource_packs(avail: &[String], sel: &[String]) -> Vec<Widget> {
     v
 }
 
-/// Accessibility Settings — vanilla 1.16.5 home of the Auto-Jump toggle
-/// (the screen's other entries land with their subsystems).
+/// Accessibility Settings — the 1.16.5 vanilla row set + order,
+/// live-verified 2026-09-16 (minecraft.wiki/w/Options §Accessibility
+/// Settings + §History): Auto-Jump (moved here 19w11b), Sprint and
+/// Sneak Hold/Toggle (added 19w41a), Distortion Effects + FOV Effects
+/// (added 1.16.2 pre1), Show Subtitles (the Java 1.9 subtitle system's
+/// toggle — grayed here: no subtitle overlay renderer in the engine).
+/// Rows the modern wiki lists that are NOT 1.16.5 are omitted by
+/// version-scoping: Darkness Pulsing (1.19, the Warden), High Contrast
+/// (1.20.5), Text Background Opacity (the modern accessibility split —
+/// 1.16.5's chat background rides Chat Opacity in Chat Settings).
 pub fn layout_access() -> Vec<Widget> {
     vec![
         btn_h(ID_OPT_AUTOJUMP, 248, 72, 465, 30, "AUTO-JUMP", "ON", true),
-        // Round 14: the accessibility additions — the Fog cycle and the
-        // FOV Effects slider are live; the chat/subtitle rows are grayed
-        // until their subsystems exist (vanilla grays unavailable
-        // features too)
-        btn_h(ID_ACC_FOG, 248, 112, 465, 30, "FOG", "FAST", true),
-        slider_h(ID_ACC_FOVEFF, 248, 152, 465, 30, "FOV EFFECTS", 1.0),
-        btn_h(
-            ID_ACC_CHATVIS,
-            248,
-            192,
-            465,
-            30,
-            "CHAT VISIBILITY",
-            "FULL (NO CHAT)",
-            false,
-        ),
-        btn_h(ID_ACC_SUBTITLES, 248, 232, 465, 30, "SUBTITLES", "OFF", false),
+        // Round 14b: the Sprint/Sneak Hold-vs-Toggle pair (1.15 19w41a —
+        // live rows: the toggle flips the key's latched state)
+        btn_h(ID_ACC_SPRINT, 248, 112, 465, 30, "SPRINT", "HOLD", true),
+        btn_h(ID_ACC_SNEAK, 248, 152, 465, 30, "SNEAK", "HOLD", true),
+        // 1.16.2 pre1: "Added 'Distortion Effects' and 'FOV effects'
+        // sliders to video and accessibility settings" — the engine has
+        // no nether-portal/nausea screen warp yet, so the slider is
+        // registered + grayed with that reason (the spec's own rule)
+        slider_h(ID_ACC_DISTORT_SLIDER, 248, 192, 465, 30, "DISTORTION EFFECTS", 1.0),
+        slider_h(ID_ACC_FOVEFF, 248, 232, 465, 30, "FOV EFFECTS", 1.0),
+        // the Java 1.9 subtitle toggle (also on Music & Sounds in JE —
+        // grayed: no subtitle overlay renderer)
+        btn_h(ID_ACC_SUBTITLES, 248, 272, 465, 30, "SHOW SUBTITLES", "OFF", false),
+        // the Fog cycle stays as the engine's own live row (the round-14
+        // addition; vanilla 1.16.5 has no accessibility fog row — the
+        // engine's fog is a renderer feature surfaced here, disclosed)
+        btn_h(ID_ACC_FOG, 248, 312, 465, 30, "FOG", "FAST", true),
         btn_h(
             ID_OPT_DONE2,
+            (live_ui_w() as i32 - 300) / 2,
+            470,
+            300,
+            30,
+            "DONE",
+            "",
+            true,
+        ),
+    ]
+}
+
+/// Round 14b: the Skin Customization screen — the vanilla 1.16.5 rows
+/// (live w/Options §Skin Customization): Cape, Jacket, Left Sleeve,
+/// Right Sleeve, Left Pant Leg, Right Pant Leg, Hat, Main Hand. The
+/// player model has no separately-meshed second layers or cape yet, so
+/// the seven toggles persist their `skin_*` keys with NO visible effect
+/// (the round-9 armor-row pattern: the state survives until the layer
+/// meshes land — disclosed in the audit doc). Main Hand persists the
+/// `mainHand` key (no handedness-differentiated animation to show).
+// (8 args: the vanilla screen's own eight toggle states — a struct here
+// would just mirror the row list; the lint is silenced deliberately)
+#[allow(clippy::too_many_arguments)]
+pub fn layout_skin(
+    cape: bool,
+    jacket: bool,
+    lsleeve: bool,
+    rsleeve: bool,
+    lpants: bool,
+    rpants: bool,
+    hat: bool,
+    main_hand_left: bool,
+) -> Vec<Widget> {
+    let onoff = |b: bool| if b { "ON" } else { "OFF" };
+    vec![
+        btn_h(ID_SKIN_CAPE, 248, 72, 465, 30, "CAPE", onoff(cape), true),
+        btn_h(ID_SKIN_JACKET, 248, 112, 465, 30, "JACKET", onoff(jacket), true),
+        btn_h(ID_SKIN_LSLEEVE, 248, 152, 465, 30, "LEFT SLEEVE", onoff(lsleeve), true),
+        btn_h(ID_SKIN_RSLEEVE, 248, 192, 465, 30, "RIGHT SLEEVE", onoff(rsleeve), true),
+        btn_h(ID_SKIN_LPANTS, 248, 232, 465, 30, "LEFT PANT LEG", onoff(lpants), true),
+        btn_h(ID_SKIN_RPANTS, 248, 272, 465, 30, "RIGHT PANT LEG", onoff(rpants), true),
+        btn_h(ID_SKIN_HAT, 248, 312, 465, 30, "HAT", onoff(hat), true),
+        btn_h(
+            ID_SKIN_MAINHAND,
+            248,
+            352,
+            465,
+            30,
+            "MAIN HAND",
+            if main_hand_left { "LEFT" } else { "RIGHT" },
+            true,
+        ),
+        btn_h(
+            ID_SKIN_DONE,
+            (live_ui_w() as i32 - 300) / 2,
+            470,
+            300,
+            30,
+            "DONE",
+            "",
+            true,
+        ),
+    ]
+}
+
+/// Round 14b: the Chat Settings screen — the 1.16.5 vanilla row set
+/// (live w/Options §Chat Settings + the 1.16.2-pre1 Chat Delay + the
+/// 1.16.4-RC1 Hide Matched Names). No chat subsystem exists, so every
+/// chat-behavior row is registered + grayed with that reason; the
+/// live-behavior row is REAL: Reduced Debug Info (gates the F3
+/// overlay's detail rows). Narrator is grayed — no TTS in scope.
+pub fn layout_chat_settings() -> Vec<Widget> {
+    let (l, r, bw) = (248, 487, 225);
+    let rows = [72, 108, 144, 180, 216, 252];
+    vec![
+        btn_h(ID_CHAT_VIS, l, rows[0], bw, 30, "CHAT VISIBILITY", "SHOW", false),
+        btn_h(ID_CHAT_COLORS, r, rows[0], bw, 30, "CHAT COLORS", "ON", false),
+        btn_h(ID_CHAT_LINKS, l, rows[1], bw, 30, "WEB LINKS", "ON", false),
+        btn_h(ID_CHAT_LINKSPROMPT, r, rows[1], bw, 30, "LINK PROMPT", "ON", false),
+        slider_h(ID_CHAT_OPACITY, l, rows[2], bw, 30, "CHAT OPACITY", 1.0),
+        slider_h(ID_CHAT_DELAY, r, rows[2], bw, 30, "CHAT DELAY", 0.0),
+        slider_h(ID_CHAT_WIDTH, l, rows[3], bw, 30, "WIDTH", 0.53),
+        slider_h(ID_CHAT_SCALE, r, rows[3], bw, 30, "SCALE", 1.0),
+        slider_h(ID_CHAT_HFOCUSED, l, rows[4], bw, 30, "HEIGHT (FOCUSED)", 0.5),
+        slider_h(ID_CHAT_HUNFOCUSED, r, rows[4], bw, 30, "HEIGHT (UNFOC.)", 0.44),
+        slider_h(ID_CHAT_LINESPACING, l, rows[5], bw, 30, "LINE SPACING", 0.0),
+        btn_h(ID_CHAT_HIDENAMES, r, rows[5], bw, 30, "HIDE MATCHED NAMES", "OFF", false),
+        btn_h(
+            ID_CHAT_REDUCEDDEBUG,
+            248,
+            292,
+            225,
+            30,
+            "REDUCED DEBUG INFO",
+            "OFF",
+            true,
+        ),
+        btn_h(ID_CHAT_NARRATOR, 487, 292, 225, 30, "NARRATOR", "OFF", false),
+        btn_h(
+            ID_CHAT_DONE,
             (live_ui_w() as i32 - 300) / 2,
             470,
             300,
@@ -954,10 +1119,23 @@ pub fn layout_music_sound() -> Vec<Widget> {
         "AMBIENT / ENVIRONMENT",
         "VOICE / SPEECH",
     ];
-    let mut v = Vec::with_capacity(11);
+    let mut v = Vec::with_capacity(12);
     for (i, n) in names.iter().enumerate() {
         v.push(slider_h(ID_SND_BASE + i as u16, l, rows[i], bw, 30, n, 0.8));
     }
+    // Round 14b: SHOW SUBTITLES — the 1.16.5 placement (live w/Subtitles:
+    // "In Java Edition, you can also enable these in the Music & Sounds
+    // options") — grayed: no subtitle overlay renderer in the engine
+    v.push(btn_h(
+        ID_SND_SUBTITLES,
+        l,
+        418,
+        bw,
+        30,
+        "SHOW SUBTITLES",
+        "OFF",
+        false,
+    ));
     v.push(btn_h(
         ID_SND_DONE,
         (live_ui_w() as i32 - 300) / 2,
@@ -1053,36 +1231,8 @@ pub fn layout_language() -> Vec<Widget> {
     ]
 }
 
-/// Round 14: the Chat Settings screen — the engine has no chat
-/// subsystem (a multi-round feature per the spec); this is the
-/// documented stub with the vanilla-titled entry point.
-pub fn layout_chat_settings() -> Vec<Widget> {
-    vec![
-        btn_h(
-            ID_CTRL_DONE,
-            248,
-            200,
-            465,
-            30,
-            "CHAT SETTINGS  (NO CHAT SUBSYSTEM)",
-            "",
-            false,
-        ),
-        btn_h(
-            ID_OPT_DONE2,
-            (live_ui_w() as i32 - 300) / 2,
-            470,
-            300,
-            30,
-            "DONE",
-            "",
-            true,
-        ),
-    ]
-}
-
-
-
+/// Round 14: the Chat Settings screen — RETIRED as a stub in Round 14b
+/// (the real 1.16.5 row set lives in the layout_chat_settings above).
 pub fn layout_pause() -> Vec<Widget> {
     vec![
         btn(
@@ -3215,6 +3365,13 @@ impl UiCanvas {
             ContainerKind::Enchant => 160, // item + lapis + 3 option buttons
             // Phase 5: two 5-row columns + the career header
             ContainerKind::Trade => 248,
+            // Round 13: the anvil — rename field + one slot row + cost
+            // line (audit §1 geometry, doubled to the 36px slot space)
+            ContainerKind::Anvil => 168,
+            // Round 13: the beacon — the power grid + the pay row
+            ContainerKind::Beacon => 232,
+            // Round 13: the grindstone — two stacked inputs + result
+            ContainerKind::Grindstone => 128,
         };
         let panel_h = top_h + 3 * 44 + 8 + 44 + 30; // + title + gaps + padding
         let y0 = (self.live_h as i32 - panel_h) / 2;
@@ -3247,6 +3404,11 @@ impl UiCanvas {
             ContainerKind::Brewing => "BREWING STAND",
             ContainerKind::Enchant => "ENCHANT  (needs book + lapis + levels)",
             ContainerKind::Trade => "VILLAGER",
+            // Round 13 (audit §1, VLM OCR of the wiki GUI): "Repair & Name"
+            ContainerKind::Anvil => "REPAIR & NAME",
+            ContainerKind::Beacon => "BEACON",
+            // Round 13 (audit §3, VLM OCR): "Repair & Disenchant"
+            ContainerKind::Grindstone => "REPAIR & DISENCHANT",
         };
         self.text(px0 + 12, y0 - 24, title, [255, 220, 120, 255], 1);
 
@@ -3261,6 +3423,9 @@ impl UiCanvas {
             trade: None,
             armor: [(i32::MIN, i32::MIN); 4],
             offhand: (i32::MIN, i32::MIN),
+            anvil: None,
+            beacon: None,
+            grind: None,
         };
 
         // ---- container-specific top area ----
@@ -3700,6 +3865,301 @@ impl UiCanvas {
                     row_pos[i] = (rx, ry);
                 }
                 geom.trade = Some(TradeSlots { rows: row_pos });
+            }
+            ContainerKind::Anvil => {
+                // Round 13: the anvil — two inputs + the "+" glyph + the
+                // result, the rename field above, the cost line under the
+                // arrow (audit §1: inputs (27,47)/(76,47), result (134,47),
+                // cost at (60,70) — doubled into the 36px slot space)
+                let av = view.anvil.clone().unwrap_or(AnvilView {
+                    target: ItemStack::EMPTY,
+                    sacrifice: ItemStack::EMPTY,
+                    result: ItemStack::EMPTY,
+                    cost: 0,
+                    too_expensive: false,
+                    affordable: false,
+                    rename: String::new(),
+                    rename_focused: false,
+                    creative: false,
+                });
+                // the rename field (104x12 vanilla → 208x24 here)
+                let rx = px0 + 128;
+                let ry = y0 + 16;
+                self.rect(rx, ry, 208, 24, [16, 16, 18, 255]);
+                self.frame(rx, ry, 208, 24, if av.rename_focused {
+                    [160, 160, 170, 255]
+                } else {
+                    [70, 70, 76, 255]
+                });
+                let shown = if av.rename.is_empty() {
+                    "item name".to_string()
+                } else {
+                    av.rename.clone()
+                };
+                let placeholder = av.rename.is_empty();
+                self.text(
+                    rx + 6,
+                    ry + 8,
+                    &shown,
+                    if placeholder {
+                        [110, 110, 110, 255]
+                    } else {
+                        [235, 235, 235, 255]
+                    },
+                    1,
+                );
+                // hammer glyph left of the field (clean-room redraw)
+                let hx = px0 + 88;
+                let hy = ry + 2;
+                self.rect(hx + 8, hy, 20, 8, [150, 150, 156, 255]);
+                self.rect(hx + 12, hy + 8, 4, 14, [110, 84, 56, 255]);
+                // the three slots
+                let sy = y0 + 64;
+                let tx = px0 + 54; // (27,47) x2
+                let sx = px0 + 152; // (76,47) x2
+                let ox = px0 + 268; // (134,47) x2
+                self.slot_well(tx, sy, &av.target, atlas);
+                self.slot_well(sx, sy, &av.sacrifice, atlas);
+                // the result: dimmed when refused/unaffordable (VERIFIED:
+                // "Insufficient XP: result slot dimmed + cost text red")
+                self.slot_well(ox, sy, &av.result, atlas);
+                if !av.result.is_empty() && (!av.affordable || av.too_expensive) && !av.creative {
+                    self.rect(ox + 2, sy + 2, 32, 32, [40, 10, 10, 130]);
+                }
+                // the "+" glyph between the inputs (audit: ~(61,54) x2)
+                self.text(px0 + 118, sy + 12, "+", [200, 200, 205, 255], 2);
+                // the progress arrow toward the result
+                self.arrow(px0 + 196, sy + 14, if av.result.is_empty() { 0.2 } else { 1.0 });
+                // the cost line under the arrow (audit: (60,70) x2)
+                let cost_label = if av.too_expensive && !av.creative {
+                    "TOO EXPENSIVE!".to_string()
+                } else if av.result.is_empty() {
+                    String::new()
+                } else {
+                    format!("Enchantment Cost: {}", av.cost)
+                };
+                if !cost_label.is_empty() {
+                    let color: [u8; 4] = if av.creative {
+                        [120, 255, 120, 255]
+                    } else if av.affordable && !av.too_expensive {
+                        [90, 255, 90, 255] // green when affordable (VERIFIED)
+                    } else {
+                        [255, 80, 80, 255] // red when not (VERIFIED)
+                    };
+                    let lw = Self::text_width(&cost_label, 1);
+                    self.text(px0 + 200 - lw / 2, sy + 44, &cost_label, color, 1);
+                }
+                geom.anvil = Some(AnvilSlots {
+                    target: (tx, sy),
+                    sacrifice: (sx, sy),
+                    out: (ox, sy),
+                    rename: (rx, ry),
+                });
+            }
+            ContainerKind::Beacon => {
+                // Round 13: the beacon — "Primary Power" label + the 2x2+1
+                // button grid, "Secondary Power" with Regeneration + II at
+                // level 4, the level glyphs down the left edge, the pay
+                // slot + confirm/cancel in the bottom bar (audit §2's
+                // clean-room structure)
+                let bv = view.beacon.clone().unwrap_or(BeaconView {
+                    level: 0,
+                    pay: ItemStack::EMPTY,
+                    primary: None,
+                    secondary: vc_gameplay::beacon::BeaconSecondary::None,
+                    pending_primary: None,
+                    pending_secondary: vc_gameplay::beacon::BeaconSecondary::None,
+                });
+                use vc_gameplay::beacon::{BeaconPower, BeaconSecondary};
+                let powers = [
+                    BeaconPower::Speed,
+                    BeaconPower::Haste,
+                    BeaconPower::Resistance,
+                    BeaconPower::JumpBoost,
+                    BeaconPower::Strength,
+                ];
+                // the level glyphs (3 stacked down the left edge + 1 at
+                // the right — audit §2; lit green per achieved level)
+                for i in 0..bv.level.min(3) as usize {
+                    let gy = y0 + 48 + i as i32 * 38;
+                    self.rect(px0 + 30, gy, 24, 24, [90, 220, 90, 255]);
+                    self.frame(px0 + 30, gy, 24, 24, [30, 60, 30, 255]);
+                }
+                if bv.level >= 4 {
+                    self.rect(px0 + 242, y0 + 48, 24, 24, [90, 220, 90, 255]);
+                    self.frame(px0 + 242, y0 + 48, 24, 24, [30, 60, 30, 255]);
+                }
+                self.text(px0 + 12, y0 + 20, "PRIMARY POWER", [255, 220, 120, 255], 1);
+                self.text(px0 + 260, y0 + 20, "SECONDARY", [255, 220, 120, 255], 1);
+                // the 2x2 grid + the 5th below-left (audit §2)
+                let mut prim_pos = [(0, 0); 5];
+                for (i, p) in powers.iter().enumerate() {
+                    let (col, row) = (i % 2, i / 2);
+                    let bx = px0 + 76 + col as i32 * 56;
+                    let by = y0 + 44 + row as i32 * 56 + if i == 4 { 56 } else { 0 };
+                    let gated = p.min_level() > bv.level;
+                    let selected = bv.pending_primary == Some(*p)
+                        || (bv.pending_primary.is_none() && bv.primary == Some(*p));
+                    let bg: [u8; 4] = if selected && !gated {
+                        [40, 90, 40, 235]
+                    } else if gated {
+                        [30, 30, 34, 170]
+                    } else {
+                        [40, 34, 34, 200]
+                    };
+                    self.rect(bx, by, 44, 44, bg);
+                    self.frame(bx, by, 44, 44, [12, 12, 14, 255]);
+                    // the power glyph: a clean-room 2-letter monogram
+                    let mono = match p {
+                        BeaconPower::Speed => "SP",
+                        BeaconPower::Haste => "HA",
+                        BeaconPower::Resistance => "RE",
+                        BeaconPower::JumpBoost => "JB",
+                        BeaconPower::Strength => "ST",
+                    };
+                    let col_txt: [u8; 4] = if gated {
+                        [100, 100, 105, 255]
+                    } else if selected {
+                        [140, 255, 140, 255]
+                    } else {
+                        [230, 230, 235, 255]
+                    };
+                    self.text(bx + 12, by + 16, mono, col_txt, 2);
+                    let (label, lv) = (p.name(), p.min_level());
+                    self.text(
+                        bx - 6,
+                        by + 50,
+                        &format!("{}(L{})", &label[..2], lv),
+                        if gated { [100, 100, 105, 255] } else { [180, 180, 185, 255] },
+                        1,
+                    );
+                    prim_pos[i] = (bx, by);
+                }
+                // the secondary row: Regeneration + primary-II (level 4
+                // only — VERIFIED)
+                let sec_gated = bv.level < 4;
+                let mut sec_pos = [(0, 0); 2];
+                for (i, s) in [BeaconSecondary::Regeneration, BeaconSecondary::PrimaryII]
+                    .iter()
+                    .enumerate()
+                {
+                    let bx = px0 + 260 + i as i32 * 56;
+                    let by = y0 + 44;
+                    let selected = bv.pending_secondary == *s
+                        || (bv.pending_secondary == BeaconSecondary::None
+                            && bv.secondary == *s);
+                    let bg: [u8; 4] = if selected && !sec_gated {
+                        [40, 90, 40, 235]
+                    } else if sec_gated {
+                        [30, 30, 34, 170]
+                    } else {
+                        [40, 34, 34, 200]
+                    };
+                    self.rect(bx, by, 44, 44, bg);
+                    self.frame(bx, by, 44, 44, [12, 12, 14, 255]);
+                    let (mono, tip) = if *s == BeaconSecondary::Regeneration {
+                        ("RG", "Regen")
+                    } else {
+                        ("II", "Pwr II")
+                    };
+                    self.text(
+                        bx + 12,
+                        by + 16,
+                        mono,
+                        if sec_gated {
+                            [100, 100, 105, 255]
+                        } else if selected {
+                            [140, 255, 140, 255]
+                        } else {
+                            [230, 230, 235, 255]
+                        },
+                        2,
+                    );
+                    self.text(
+                        bx - 2,
+                        by + 50,
+                        if sec_gated { "L4" } else { tip },
+                        if sec_gated { [100, 100, 105, 255] } else { [180, 180, 185, 255] },
+                        1,
+                    );
+                    sec_pos[i] = (bx, by);
+                }
+                // the bottom bar: pay slot + confirm + cancel
+                let py = y0 + 176;
+                let payx = px0 + 176;
+                self.slot_well(payx, py, &bv.pay, atlas);
+                self.text(px0 + 12, py + 10, "PAY:", [200, 200, 205, 255], 1);
+                // confirm (green check) — enabled when a pending selection
+                // exists and the pay slot holds a valid mineral
+                let has_pay = matches!(
+                    bv.pay.block,
+                    vc_blocks::blocks::IRON_ORE
+                        | vc_blocks::blocks::GOLD_ORE
+                        | vc_blocks::blocks::DIAMOND_ORE
+                        | vc_blocks::blocks::EMERALD
+                        | vc_blocks::blocks::IRON_BLOCK
+                        | vc_blocks::blocks::GOLD_BLOCK
+                        | vc_blocks::blocks::DIAMOND_BLOCK
+                );
+                let confirm_on = bv.pending_primary.is_some() && (has_pay || bv.level == 0);
+                let cx2 = px0 + 212;
+                self.rect(cx2, py, 36, 36, if confirm_on {
+                    [34, 90, 34, 235]
+                } else {
+                    [30, 30, 34, 170]
+                });
+                self.frame(cx2, py, 36, 36, [12, 12, 14, 255]);
+                self.text(cx2 + 12, py + 12, "OK", if confirm_on {
+                    [140, 255, 140, 255]
+                } else {
+                    [100, 100, 105, 255]
+                }, 1);
+                // cancel (red X)
+                let cx3 = px0 + 260;
+                self.rect(cx3, py, 36, 36, [90, 34, 34, 200]);
+                self.frame(cx3, py, 36, 36, [12, 12, 14, 255]);
+                self.text(cx3 + 12, py + 12, "X", [255, 120, 120, 255], 1);
+                geom.beacon = Some(BeaconSlots {
+                    primary: prim_pos,
+                    secondary: sec_pos,
+                    pay: (payx, py),
+                    confirm: (cx2, py),
+                    cancel: (cx3, py),
+                });
+            }
+            ContainerKind::Grindstone => {
+                // Round 13: the grindstone — two stacked inputs at (50,18)
+                // and (50,40) (22px pitch), the wheel illustration beside
+                // them, the result at (148,32), the XP hint under the
+                // arrow (audit §3 — doubled into the 36px slot space)
+                let (top, bottom, result) = view.grind.unwrap_or((
+                    ItemStack::EMPTY,
+                    ItemStack::EMPTY,
+                    ItemStack::EMPTY,
+                ));
+                let tx = px0 + 100; // (50,18) x2
+                let ty = y0 + 36;
+                let by = ty + 44; // the 22px pitch doubled
+                self.slot_well(tx, ty, &top, atlas);
+                self.slot_well(tx, by, &bottom, atlas);
+                // the wheel illustration (clean-room: two side posts +
+                // the stone disc)
+                let wx = px0 + 36;
+                self.rect(wx, ty + 6, 12, 76, [110, 84, 56, 255]);
+                self.rect(wx + 68, ty + 6, 12, 76, [110, 84, 56, 255]);
+                self.rect(wx + 20, ty + 26, 40, 36, [150, 150, 156, 255]);
+                self.rect(wx + 26, ty + 32, 28, 24, [120, 120, 126, 255]);
+                // the arrow
+                self.arrow(px0 + 180, by + 2, if result.is_empty() { 0.2 } else { 1.0 });
+                // the result at (148,32) x2
+                let ox = px0 + 296;
+                let oy = ty + 20;
+                self.slot_well(ox, oy, &result, atlas);
+                geom.grind = Some(GrindSlots {
+                    top: (tx, ty),
+                    bottom: (tx, by),
+                    out: (ox, oy),
+                });
             }
         }
 
@@ -4474,6 +4934,16 @@ pub enum ContainerKind {
     /// confirmed wrong; see docs/research/research-verdicts.md — a hopper
     /// has one content row, not three, so the panel is genuinely shorter)
     Hopper,
+    /// Round 13: the anvil — Repair & Name (two inputs + result + the
+    /// rename field + the level-cost line; geometry per the round-13
+    /// audit §1: inputs (27,47)/(76,47), result (134,47), cost (60,70))
+    Anvil,
+    /// Round 13: the beacon — power selection + the payment slot (the
+    /// audit §2's clean-room redraw of the Beacon_GUI structure)
+    Beacon,
+    /// Round 13: the grindstone — Repair & Disenchant (two stacked
+    /// inputs + result; audit §3: inputs (50,18)/(50,40), result (148,32))
+    Grindstone,
 }
 
 /// a logical slot in a container screen — the target of a mouse click
@@ -4509,6 +4979,26 @@ pub enum SlotRef {
     EnchantOption(usize),
     /// villager trade: one of the trade rows
     TradeRow(usize),
+    /// Round 13: the anvil's left (target) input
+    AnvilTarget,
+    /// Round 13: the anvil's right (sacrifice) input
+    AnvilSacrifice,
+    /// Round 13: the anvil's result slot (take = pay levels + roll the
+    /// 12% stage advance)
+    AnvilOut,
+    /// Round 13: the beacon's payment slot (ore stand-in for ingots)
+    BeaconPay,
+    /// Round 13: one of the five primary power buttons (0=Speed,
+    /// 1=Haste, 2=Resistance, 3=JumpBoost, 4=Strength)
+    BeaconPrimary(usize),
+    /// Round 13: the secondary row (0 = Regeneration, 1 = primary II)
+    BeaconSecondary(usize),
+    /// Round 13: the grindstone's top input
+    GrindTop,
+    /// Round 13: the grindstone's bottom input
+    GrindBottom,
+    /// Round 13: the grindstone's result slot (take = XP drop)
+    GrindOut,
 }
 
 /// pure-data snapshot of everything a container screen renders — owned
@@ -4537,6 +5027,12 @@ pub struct ContainerView {
     pub chest: Vec<ItemStack>,
     /// trade screen (Phase 5): tiered offers + stock + career level
     pub trade: Option<TradeView>,
+    /// Round 13: the anvil view (slots + cost + rename text)
+    pub anvil: Option<AnvilView>,
+    /// Round 13: the beacon view (pyramid level + selection + pay slot)
+    pub beacon: Option<BeaconView>,
+    /// Round 13: the grindstone view (top, bottom, result)
+    pub grind: Option<(ItemStack, ItemStack, ItemStack)>,
     /// Sub-round 3: the player's armor equipment (helmet/chest/legs/
     /// boots, vanilla order — mirrors Player.armor)
     pub armor: [ItemStack; 4],
@@ -4581,6 +5077,47 @@ pub struct TradeView {
     pub rows: Vec<TradeRowView>,
 }
 
+/// Round 13: the anvil screen's live state (pure data — the plan math
+/// lives in vc_gameplay::anvil::combine; the view only renders it)
+#[derive(Clone)]
+pub struct AnvilView {
+    pub target: ItemStack,
+    pub sacrifice: ItemStack,
+    /// the computed result (EMPTY when the anvil refuses — red X)
+    pub result: ItemStack,
+    /// the level cost of the current plan
+    pub cost: i32,
+    /// "Too Expensive!" (> 39 levels; creative is exempt — VERIFIED)
+    pub too_expensive: bool,
+    /// the player can afford the cost (survival only; green vs red
+    /// cost text — VERIFIED w/Anvil §Usage)
+    pub affordable: bool,
+    /// the rename field's current text
+    pub rename: String,
+    /// the rename field is focused (typing goes here)
+    pub rename_focused: bool,
+    /// creative mode exempts the cost cap (VERIFIED)
+    pub creative: bool,
+}
+
+/// Round 13: the beacon screen's live state
+#[derive(Clone)]
+pub struct BeaconView {
+    /// the live pyramid level 0..=4 (re-scanned every rebuild)
+    pub level: u8,
+    /// the payment slot (ore stand-in — no ingot items, documented)
+    pub pay: ItemStack,
+    /// the currently selected primary power (None before the first
+    /// confirmation — the vanilla screen starts unselected)
+    pub primary: Option<vc_gameplay::beacon::BeaconPower>,
+    /// the currently selected secondary
+    pub secondary: vc_gameplay::beacon::BeaconSecondary,
+    /// the pending primary (highlighted before the confirm click)
+    pub pending_primary: Option<vc_gameplay::beacon::BeaconPower>,
+    /// the pending secondary
+    pub pending_secondary: vc_gameplay::beacon::BeaconSecondary,
+}
+
 impl ContainerView {
     fn hovered_stack(&self, x: i32, y: i32, geom: &ContainerGeom) -> Option<ItemStack> {
         Some(match geom.slot_at(x, y)? {
@@ -4600,6 +5137,14 @@ impl ContainerView {
             SlotRef::EnchantLapis => self.enchant?.1,
             SlotRef::EnchantOption(_) => ItemStack::EMPTY, // buttons, not stacks
             SlotRef::TradeRow(i) => self.trade.as_ref()?.rows.get(i)?.give,
+            SlotRef::AnvilTarget => self.anvil.as_ref()?.target,
+            SlotRef::AnvilSacrifice => self.anvil.as_ref()?.sacrifice,
+            SlotRef::AnvilOut => self.anvil.as_ref()?.result,
+            SlotRef::BeaconPay => self.beacon.as_ref()?.pay,
+            SlotRef::BeaconPrimary(_) | SlotRef::BeaconSecondary(_) => ItemStack::EMPTY,
+            SlotRef::GrindTop => self.grind?.0,
+            SlotRef::GrindBottom => self.grind?.1,
+            SlotRef::GrindOut => self.grind?.2,
         })
     }
 }
@@ -4631,6 +5176,34 @@ pub struct TradeSlots {
     pub rows: Vec<(i32, i32)>,
 }
 
+/// Round 13: anvil hit rects — two inputs, the result, the rename field
+pub struct AnvilSlots {
+    pub target: (i32, i32),
+    pub sacrifice: (i32, i32),
+    pub out: (i32, i32),
+    /// the rename text field (w = 208, h = 24)
+    pub rename: (i32, i32),
+}
+
+/// Round 13: beacon hit rects — 5 primary buttons (44×44), 2 secondary
+/// buttons, the payment slot, the confirm + cancel buttons
+pub struct BeaconSlots {
+    pub primary: [(i32, i32); 5],
+    pub secondary: [(i32, i32); 2],
+    pub pay: (i32, i32),
+    /// the green-check confirm button (w = h = 36)
+    pub confirm: (i32, i32),
+    /// the red-X cancel button (w = h = 36)
+    pub cancel: (i32, i32),
+}
+
+/// Round 13: grindstone hit rects — the two stacked inputs + the result
+pub struct GrindSlots {
+    pub top: (i32, i32),
+    pub bottom: (i32, i32),
+    pub out: (i32, i32),
+}
+
 /// hit-test geometry for a container screen (UI-space 36px slots)
 pub struct ContainerGeom {
     /// 36 inventory slot origins: 0..9 hotbar row (bottom), 9..36 storage
@@ -4654,6 +5227,12 @@ pub struct ContainerGeom {
     pub armor: [(i32, i32); 4],
     /// Sub-round 3: the offhand slot origin (i32::MIN when absent)
     pub offhand: (i32, i32),
+    /// Round 13: the anvil's slot/field origins
+    pub anvil: Option<AnvilSlots>,
+    /// Round 13: the beacon's button/slot origins
+    pub beacon: Option<BeaconSlots>,
+    /// Round 13: the grindstone's slot origins
+    pub grind: Option<GrindSlots>,
 }
 
 impl ContainerGeom {
@@ -4716,6 +5295,43 @@ impl ContainerGeom {
                 }
             }
         }
+        if let Some(a) = &self.anvil {
+            if Self::hit(x, y, &a.target) {
+                return Some(SlotRef::AnvilTarget);
+            }
+            if Self::hit(x, y, &a.sacrifice) {
+                return Some(SlotRef::AnvilSacrifice);
+            }
+            if Self::hit(x, y, &a.out) {
+                return Some(SlotRef::AnvilOut);
+            }
+        }
+        if let Some(b) = &self.beacon {
+            for (i, s) in b.primary.iter().enumerate() {
+                if Self::hit(x, y, s) {
+                    return Some(SlotRef::BeaconPrimary(i));
+                }
+            }
+            for (i, s) in b.secondary.iter().enumerate() {
+                if Self::hit(x, y, s) {
+                    return Some(SlotRef::BeaconSecondary(i));
+                }
+            }
+            if Self::hit(x, y, &b.pay) {
+                return Some(SlotRef::BeaconPay);
+            }
+        }
+        if let Some(g) = &self.grind {
+            if Self::hit(x, y, &g.top) {
+                return Some(SlotRef::GrindTop);
+            }
+            if Self::hit(x, y, &g.bottom) {
+                return Some(SlotRef::GrindBottom);
+            }
+            if Self::hit(x, y, &g.out) {
+                return Some(SlotRef::GrindOut);
+            }
+        }
         for (i, s) in self.chest.iter().enumerate() {
             if Self::hit(x, y, s) {
                 return Some(SlotRef::Chest(i));
@@ -4753,6 +5369,10 @@ mod phase3_icon_tests {
             block: 3,
             count: 1,
             ench: 0,
+            ench2: 0,
+            dmg: 0,
+            prior: 0,
+            name: 0,
         };
         let before = ui.gui_frame.quads.len();
         ui.draw_stack(&s, 100, 100, &atlas);
@@ -4959,6 +5579,38 @@ mod tests {
         ID_ACC_DISTORT,
         ID_ACC_CHATVIS,
         ID_ACC_SUBTITLES,
+        // Round 14b: the Skin Customization + Chat Settings + the
+        // accessibility completion family (210..=237 block + the 115
+        // Options entry)
+        ID_OPT_SKIN,
+        ID_SKIN_CAPE,
+        ID_SKIN_JACKET,
+        ID_SKIN_LSLEEVE,
+        ID_SKIN_RSLEEVE,
+        ID_SKIN_LPANTS,
+        ID_SKIN_RPANTS,
+        ID_SKIN_HAT,
+        ID_SKIN_MAINHAND,
+        ID_SKIN_DONE,
+        ID_CHAT_VIS,
+        ID_CHAT_COLORS,
+        ID_CHAT_LINKS,
+        ID_CHAT_LINKSPROMPT,
+        ID_CHAT_OPACITY,
+        ID_CHAT_DELAY,
+        ID_CHAT_WIDTH,
+        ID_CHAT_HFOCUSED,
+        ID_CHAT_HUNFOCUSED,
+        ID_CHAT_SCALE,
+        ID_CHAT_LINESPACING,
+        ID_CHAT_HIDENAMES,
+        ID_CHAT_REDUCEDDEBUG,
+        ID_CHAT_NARRATOR,
+        ID_CHAT_DONE,
+        ID_SND_SUBTITLES,
+        ID_ACC_SPRINT,
+        ID_ACC_SNEAK,
+        ID_ACC_DISTORT_SLIDER,
     ];
 
     #[test]
@@ -4987,6 +5639,12 @@ mod tests {
             // Round 14: the Music & Sound sliders + the Controls bind rows
             (ID_SND_BASE, 10, "music & sound sliders"),
             (ID_CTRL_BIND_BASE, MAX_CTRL_BINDS as u16, "controls bind rows"),
+            // NOTE Round 14b: the skin/chat-settings/accessibility
+            // additions (210..=237) are STATIC literal ids (each a
+            // dedicated button/slider on a fixed screen — no dynamic
+            // row family), so they are guarded by
+            // literal_widget_ids_are_unique + the range-vs-literal check
+            // below instead of a row entry here.
         ];
         for &(base, len, name) in &rows {
             for id in base..base + len {
@@ -5065,6 +5723,9 @@ mod tests {
             armor: [ItemStack::EMPTY; 4],
             offhand: ItemStack::EMPTY,
             cursor: ItemStack::EMPTY,
+            anvil: None,
+            beacon: None,
+            grind: None,
         }
     }
 
@@ -5807,6 +6468,9 @@ mod screen_tests {
                 1,
             ),
             cursor: vc_inventory::inventory::ItemStack::EMPTY,
+            anvil: None,
+            beacon: None,
+            grind: None,
         };
         let atlas = vec![0u8; crate::textures::ATLAS_SIZE * crate::textures::ATLAS_SIZE * 4];
         let g = ui.container_screen(&view, (0.0, 0.0), &atlas, false);
@@ -5857,6 +6521,9 @@ mod screen_tests {
             armor: [vc_inventory::inventory::ItemStack::EMPTY; 4],
             offhand: vc_inventory::inventory::ItemStack::EMPTY,
             cursor: vc_inventory::inventory::ItemStack::EMPTY,
+            anvil: None,
+            beacon: None,
+            grind: None,
         };
         let atlas = vec![0u8; crate::textures::ATLAS_SIZE * crate::textures::ATLAS_SIZE * 4];
         let g = ui.container_screen(&view, (0.0, 0.0), &atlas, false);
@@ -5903,11 +6570,11 @@ mod screen_tests {
 
     /// Sub-round 2 (2026-09-15): the tabbed creative screen geometry —
     /// the 11-tab strip in vanilla order, the 9x5 grid page, the hotbar
-    /// + destroy slot hit rects, and the scrollbar presence rule.
+    /// and destroy-slot hit rects, and the scrollbar presence rule.
     /// (minecraft.wiki/w/Creative_inventory, live 2026-09-15: nine
-    /// content tabs + Search Items + Survival Inventory; 9 columns x
-    /// 5 rows = 45 slots per page with a scrollbar when the tab has
-    /// more.)
+    /// content tabs, Search Items, and Survival Inventory; 9 columns
+    /// and 5 rows = 45 slots per page with a scrollbar when the tab has
+    /// more items than one page.)
     #[test]
     fn creative_screen_geometry() {
         use vc_blocks::blocks as blk;
@@ -6269,5 +6936,164 @@ mod screen_tests {
         // canvas clear at the graph body
         let idx = (110usize * crate::ui::UI_W + 30usize) * 4;
         assert_eq!(ui.px[idx + 3], 0, "canvas graph clear when armed");
+    }
+}
+
+#[cfg(test)]
+mod round13_station_tests {
+    use super::*;
+    use vc_inventory::inventory::ItemStack;
+
+    fn station_view(kind: ContainerKind, anvil: Option<AnvilView>) -> ContainerView {
+        ContainerView {
+            kind,
+            inv: vec![ItemStack::EMPTY; 36],
+            grid: vec![],
+            craft_out: ItemStack::EMPTY,
+            furnace: None,
+            brewing: None,
+            enchant: None,
+            trade: None,
+            chest: Vec::new(),
+            armor: [ItemStack::EMPTY; 4],
+            offhand: ItemStack::EMPTY,
+            cursor: ItemStack::EMPTY,
+            anvil,
+            beacon: None,
+            grind: None,
+        }
+    }
+
+    /// Round 13 [spec]: the anvil screen geometry — the audit §1 layout
+    /// (inputs (27,47)/(76,47), result (134,47) at the doubled scale:
+    /// 36px pitch) with the rename field above and the cost line under
+    /// the arrow. Hit-rects resolve to the right SlotRefs.
+    #[test]
+    fn anvil_screen_geometry_and_hits() {
+        let mut ui = UiCanvas::new();
+        ui.set_chrome_enabled(false);
+        ui.clear();
+        let av = AnvilView {
+            target: ItemStack::new(vc_blocks::blocks::IRON_HELMET, 1),
+            sacrifice: ItemStack::EMPTY,
+            result: ItemStack::new(vc_blocks::blocks::IRON_HELMET, 1),
+            cost: 1,
+            too_expensive: false,
+            affordable: true,
+            rename: "Hero Cap".into(),
+            rename_focused: true,
+            creative: false,
+        };
+        let view = station_view(ContainerKind::Anvil, Some(av));
+        let atlas = vec![0u8; crate::textures::ATLAS_SIZE * crate::textures::ATLAS_SIZE * 4];
+        let g = ui.container_screen(&view, (0.0, 0.0), &atlas, false);
+        let a = g.anvil.as_ref().expect("anvil geometry present");
+        // the vanilla slot triangle: target left, sacrifice middle,
+        // result right — the result sits FARTHER right than the inputs
+        assert!(a.target.0 < a.sacrifice.0);
+        assert!(a.sacrifice.0 < a.out.0);
+        // all three on the same row (the audit's y=47 row)
+        assert_eq!(a.target.1, a.sacrifice.1);
+        assert_eq!(a.sacrifice.1, a.out.1);
+        // the vanilla proportions at the doubled scale: target→sacrifice
+        // = 49 vanilla px → 98 UI px; sacrifice→result = 58 vanilla px
+        // → 116 UI px (audit §1's measured layout)
+        assert_eq!(a.sacrifice.0 - a.target.0, 98);
+        assert_eq!(a.out.0 - a.sacrifice.0, 116);
+        // the rename field sits ABOVE the slots
+        assert!(a.rename.1 < a.target.1);
+        // hit-tests resolve in order
+        assert_eq!(
+            g.slot_at(a.target.0 + 4, a.target.1 + 4),
+            Some(SlotRef::AnvilTarget)
+        );
+        assert_eq!(
+            g.slot_at(a.sacrifice.0 + 4, a.sacrifice.1 + 4),
+            Some(SlotRef::AnvilSacrifice)
+        );
+        assert_eq!(g.slot_at(a.out.0 + 4, a.out.1 + 4), Some(SlotRef::AnvilOut));
+    }
+
+    /// Round 13 [spec]: the beacon screen geometry — 5 primary power
+    /// buttons, 2 secondary buttons, the payment slot; the buttons
+    /// resolve to BeaconPrimary(i)/BeaconSecondary(i) and the slot to
+    /// BeaconPay.
+    #[test]
+    fn beacon_screen_geometry_and_hits() {
+        let mut ui = UiCanvas::new();
+        ui.set_chrome_enabled(false);
+        ui.clear();
+        let bv = BeaconView {
+            level: 4,
+            pay: ItemStack::new(vc_blocks::blocks::IRON_ORE, 1),
+            primary: Some(vc_gameplay::beacon::BeaconPower::Speed),
+            secondary: vc_gameplay::beacon::BeaconSecondary::None,
+            pending_primary: None,
+            pending_secondary: vc_gameplay::beacon::BeaconSecondary::None,
+        };
+        let mut view = station_view(ContainerKind::Beacon, None);
+        view.beacon = Some(bv);
+        let atlas = vec![0u8; crate::textures::ATLAS_SIZE * crate::textures::ATLAS_SIZE * 4];
+        let g = ui.container_screen(&view, (0.0, 0.0), &atlas, false);
+        let b = g.beacon.as_ref().expect("beacon geometry present");
+        // the five primary buttons: two columns, the 5th below-left
+        // (the audit §2's 2x2 + 1 grid)
+        assert_eq!(b.primary.len(), 5);
+        assert_eq!(b.primary[1].0, b.primary[0].0 + 56, "column pitch 56");
+        assert_eq!(b.primary[2].1, b.primary[0].1 + 56, "row pitch 56");
+        // the 5th button sits below the first column
+        assert!(b.primary[4].1 > b.primary[2].1);
+        assert_eq!(b.primary[4].0, b.primary[0].0);
+        // the secondary pair to the right of the primary grid
+        assert!(b.secondary[0].0 > b.primary[1].0);
+        // hit-tests resolve
+        assert_eq!(
+            g.slot_at(b.primary[0].0 + 8, b.primary[0].1 + 8),
+            Some(SlotRef::BeaconPrimary(0))
+        );
+        assert_eq!(
+            g.slot_at(b.primary[4].0 + 8, b.primary[4].1 + 8),
+            Some(SlotRef::BeaconPrimary(4))
+        );
+        assert_eq!(
+            g.slot_at(b.secondary[0].0 + 8, b.secondary[0].1 + 8),
+            Some(SlotRef::BeaconSecondary(0))
+        );
+        assert_eq!(
+            g.slot_at(b.pay.0 + 8, b.pay.1 + 8),
+            Some(SlotRef::BeaconPay)
+        );
+    }
+
+    /// Round 13 [spec]: the grindstone screen geometry — the two
+    /// STACKED inputs (the audit §3's 22px-pitch vertical pair) and the
+    /// result on the right.
+    #[test]
+    fn grindstone_screen_geometry_and_hits() {
+        let mut ui = UiCanvas::new();
+        ui.set_chrome_enabled(false);
+        ui.clear();
+        let mut view = station_view(ContainerKind::Grindstone, None);
+        view.grind = Some((
+            ItemStack::new(vc_blocks::blocks::IRON_HELMET, 1),
+            ItemStack::EMPTY,
+            ItemStack::EMPTY,
+        ));
+        let atlas = vec![0u8; crate::textures::ATLAS_SIZE * crate::textures::ATLAS_SIZE * 4];
+        let g = ui.container_screen(&view, (0.0, 0.0), &atlas, false);
+        let s = g.grind.as_ref().expect("grindstone geometry present");
+        // the inputs are vertically stacked (top above bottom, same x)
+        assert_eq!(s.top.0, s.bottom.0);
+        assert_eq!(s.bottom.1 - s.top.1, 44, "the doubled 22px pitch");
+        // the result sits right of both inputs, vertically between them
+        assert!(s.out.0 > s.top.0);
+        assert!(s.out.1 > s.top.1 && s.out.1 < s.bottom.1);
+        // hit-tests resolve
+        assert_eq!(g.slot_at(s.top.0 + 4, s.top.1 + 4), Some(SlotRef::GrindTop));
+        assert_eq!(
+            g.slot_at(s.bottom.0 + 4, s.bottom.1 + 4),
+            Some(SlotRef::GrindBottom)
+        );
+        assert_eq!(g.slot_at(s.out.0 + 4, s.out.1 + 4), Some(SlotRef::GrindOut));
     }
 }

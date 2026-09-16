@@ -61,7 +61,9 @@ pub struct ParticleSystem {
     pub parts: Vec<Particle>,
     /// fixed-step accumulator (seconds)
     acc: f32,
-    rng: Rng,
+    /// Round 15b: crate-visible (the kinds module's typed emitter shares
+    /// the stream's randomness)
+    pub(crate) rng: Rng,
     /// total spawned (E2E/stat evidence)
     pub spawned_total: u64,
     /// vanilla Particles density: 1.0 All, 0.5 Decreased, 0.25 Minimal —

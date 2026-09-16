@@ -89,6 +89,13 @@ impl GameMode {
         self == GameMode::Creative || self == GameMode::Spectator
     }
 
+    /// Round 13: the Creative mode (the anvil's "Too Expensive!" cap
+    /// and cost do not apply — VERIFIED w/Anvil §Usage: "This limit is
+    /// not present in Creative mode")
+    pub fn creative(self) -> bool {
+        self == GameMode::Creative
+    }
+
     /// Damage of every kind is absorbed (Creative's damage immunity +
     /// Spectator's).
     pub fn invulnerable(self) -> bool {

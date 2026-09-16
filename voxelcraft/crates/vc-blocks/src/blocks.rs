@@ -3178,8 +3178,9 @@ pub const DARK_OAK_LOG_Z: u16 = 446;
 /// items + eggs 20..=22 + the POWER-state ladders (317..=399)
 /// [merge renumber] F-series states: V2 400..=442 + log-axis 443..=446,
 /// V3 447..=465, V4 466..=475, V5 476..=479, V6 480..=485 (audit-fix)
-pub const STATE_COUNT: usize = 861; // the V16 window: 805 fire + 806-841 farming states + 842-844 the item identity
+pub const STATE_COUNT: usize = 863; // the V16 window: 805 fire + 806-841 farming states + 842-844 the item identity
                                     // states + the V17 armor identity window (845..=860, sub-round 3)
+                                    // + Round 13's BOOK/GRINDSTONE identity states (861..=862)
 pub const OAK_LOG_X: u16 = 57;
 pub const OAK_LOG_Z: u16 = 58;
 pub const BIRCH_LOG_X: u16 = 59;
@@ -3485,6 +3486,8 @@ pub fn default_state(b: u16) -> u16 {
         END_PORTAL => END_PORTAL_STATE,
         ENCHANT_TABLE => ENCHANT_TABLE_STATE,
         ENCHANTED_BOOK => ENCHANTED_BOOK_STATE,
+        BOOK => BOOK_STATE,
+        GRINDSTONE => GRINDSTONE_STATE,
         BEEF => BEEF_STATE,
         PORKCHOP => PORKCHOP_STATE,
         MUTTON => MUTTON_STATE,
@@ -3855,6 +3858,8 @@ pub fn state_block(s: u16) -> u16 {
         SPAWNER_EVOKER => return SPAWNER,
         ENCHANT_TABLE_STATE => return ENCHANT_TABLE,
         ENCHANTED_BOOK_STATE => return ENCHANTED_BOOK,
+        BOOK_STATE => return BOOK,
+        GRINDSTONE_STATE => return GRINDSTONE,
         BEEF_STATE => return BEEF,
         PORKCHOP_STATE => return PORKCHOP,
         MUTTON_STATE => return MUTTON,
@@ -5145,6 +5150,15 @@ pub const DIAMOND_BOOTS: u16 = 530;
 /// book is placed in the input, a normal book appears in the output")
 /// and the anvil's book-combine base. Inventory-only item.
 pub const BOOK: u16 = 531;
+/// Round 13: the book's dedicated item state — the identity fallthrough
+/// (531) lands inside the glazed-terracotta facing window (529..=592,
+/// color 0 facing 2 → folds to White Glazed Terracotta), so the book
+/// takes the next free state above the V17 armor window (845..=860).
+pub const BOOK_STATE: u16 = 861;
+/// Round 13: the grindstone's dedicated item state (the identity 532
+/// also lands inside the glazed-terracotta window — same class as the
+/// book's fix above).
+pub const GRINDSTONE_STATE: u16 = 862;
 /// 1.14: the grindstone — the disenchant/repair station. Registered
 /// by Round 13 (the GUI cannot be reachable without the block);
 /// hardness 2.0, drops itself (VERIFIED w/Grindstone §Breaking/§Crafting,

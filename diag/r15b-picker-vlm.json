@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Based on the image provided, here is the breakdown of the inventory screen:\n\n**Tab Rows:**\n*   **Top Row:** There are **6** tab icons in the first row.\n*   **Second Row:** There are **4** tab icons in the second row.\n\n**Item Grid Description:**\nBelow the tabs is a large grid displaying the \"BUILDING BLOCKS\" category. The grid is organized into **5 columns** and **5 rows** (with the last row partially empty).\n*   **Contents:** It contains various textured blocks typical of Minecraft, such as different types of wood planks (oak, spruce, birch, etc.), stone variants (cobblestone, mossy cobblestone, stone bricks), colored blocks (wool, terracotta, concrete), and other building materials like glass, glowstone, and snow.\n*   **Layout:** Most slots are filled with items, but the final row contains only one item followed by four empty dark slots.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789663149,
+  "id": "20260918003904bdc6328d68904a01",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260918003904bdc6328d68904a01",
+  "usage": {
+    "completion_tokens": 204,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 944,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1148
+  }
+}

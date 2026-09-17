@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Based on the image, here are the rows/buttons on the skin customization screen:\n\n*   **CAPE:** ON\n*   **JACKET:** ON\n*   **LEFT SLEEVE:** ON\n*   **RIGHT SLEEVE:** ON\n*   **LEFT PANT LEG:** ON\n*   **RIGHT PANT LEG:** ON\n*   **HAT:** ON\n*   **MAIN HAND:** RIGHT\n*   **DONE**",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789663793,
+  "id": "202609180049510f201d61df97410b",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202609180049510f201d61df97410b",
+  "usage": {
+    "completion_tokens": 93,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 899,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 992
+  }
+}

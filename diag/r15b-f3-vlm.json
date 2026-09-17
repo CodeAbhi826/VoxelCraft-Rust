@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Yes. The text visible includes:\n\n**VoxelCraft 1.16.5 (Rust/wgpu/modified)**\n**10 fps, T: 0 fancy-clouds: 0/2**\n**Integrated server @ 0 ms ticks: 0 tx: 0 rx**\n**C: 51/225 (s) D: 6.6 pC: 000 pU: 067 aB: 132**\n**E: 0/0.6 / 47**\n**F: 0 I: 174**\n**Culling: local 0 frustrum 80 (of 132 meshed)**\n**Client Chunk Cache: 132/51**\n**ServerChunkCache: 225**\n**XYZ: 0.500 / 72.00100 / 176.500**\n**Block: 72 72 176**\n**Chunk: 0 8 in 0 4 11**\n**Facing: north (Towards negative Z) (-135.0 / -0.0)**\n**Client Light: 15 (15 sky, 0 blk)**\n**Server Light: 15 (15 sky, 0 blk)**\n**CH: 3 72 D: 72**\n**CH H: 72.0 M: 72 M L: 72**\n**Biome: minecraft:plains**\n**Local Difficulty: 106 // 1.06 (Day 0)**\n**SC: 289, M: 0, C: 0, A: 0, W: 0, M: 0**\n**Sounds: 0/118 + 0/8 (mood 0/0)**\n**Debug: Pie [shift] hidden FPS + TPS [alt]: hidden**\n**For help: press F3 + 0**\n\nAnd on the right side:\n**Rust: 32bit release**\n**Mem: 0MB Allocated: 100% 74MB**\n**CPU: 1x unknown**\n**Display 1280x577 (ANGLE) ANGLE (Google, Vulkan 1.30 (SwiftShader Device (Subzero))... WebGL 2.0 (OpenGL ES 3.0 Chromium (1ol_wgpu))**\n**Targeted Block: 3, 73, 173**\n**minecraft:grass**",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789663096,
+  "id": "20260918003805f042c2af73e64b28",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260918003805f042c2af73e64b28",
+  "usage": {
+    "completion_tokens": 493,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 917,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1410
+  }
+}

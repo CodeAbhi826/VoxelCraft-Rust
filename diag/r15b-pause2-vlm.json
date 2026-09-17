@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "**Screen:** Minecraft Game Menu (Pause Screen)\n\n**Visible Buttons:**\n*   **Back to Game**\n*   **Options...**\n*   **Quit to Title**",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789663753,
+  "id": "2026091800490626de71c58dd946a4",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "2026091800490626de71c58dd946a4",
+  "usage": {
+    "completion_tokens": 36,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 899,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 935
+  }
+}

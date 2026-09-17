@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Yes, the player is in a 3D voxel world. Yes, there is a hotbar visible at the bottom of the screen. No, there is no crosshair. No, there is no UI panel open, though there is a text prompt in the center of the screen.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789662640,
+  "id": "20260918003038a00ec6bdd2424dde",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260918003038a00ec6bdd2424dde",
+  "usage": {
+    "completion_tokens": 59,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 925,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 984
+  }
+}

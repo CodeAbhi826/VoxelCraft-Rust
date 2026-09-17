@@ -4514,3 +4514,140 @@ Round 15 particle-type batch + exact sky-cell sizes; saved hotbars.
 **Not committed or pushed** — the round's work sits in the working
 tree; nothing goes to GitHub without explicit user approval, per the
 standing instruction.
+
+## 2026-09-15..16 (recovered into the record) — the interrupted session's two unlogged commits
+
+**Task:** recovered 2026-09-17 from `git log` — two commits landed after
+the rounds-10–16 entry with NO worklog record (the session was
+interrupted mid-flight; the commits carry UUID placeholder messages).
+
+**Commit 05a4e97 (2026-09-15 17:50) — Round 13, the station screens
+part 1 (+1616 lines):** the anvil's full model (`vc_gameplay::anvil`:
++472 — the combine math, prior-work penalty, level costs, the
+"Too Expensive!" gate, rename pool), the grindstone
+(`vc_gameplay::grindstone` NEW: +318 — disenchant/repair math + the
+XP drop), the ItemStack model extensions (`dmg`/`prior`/`ench2`/`name`
+— renamed/damaged/enchanted stacking identities in
+`Inventory::slot_click`), the GRINDSTONE block registration (hardness
+2.0, craft 2 sticks + slab + 2 planks — w/Grindstone) + the
+BOOK/GRINDSTONE identity states (861..=862 — a latent bug this
+recovery pass fixed, see the next entry), the r13 art textures, and
+`docs/research/round-13-station-screens-audit.md` (the §1–§5
+clean-room audit: anvil geometry, the beacon redraw, the grindstone
+geometry, the reachability verdicts that defer stonecutter/loom/
+cartography/smithing/fletching per the SPEC'S OWN deferral clauses,
+and the honest-support decisions).
+
+**Commit 57f3c88 (2026-09-16 02:23) — Rounds 12b/13/14b/15b
+(+3596 lines):** the MountStorage model (donkey/mule 15 slots, llama
+3×strength — w/Donkey + w/Llama §Usage) riding the Mob struct; the
+beacon GUI's live confirm path (`beacon_confirm`: the pay slot /
+pyramid-block payment adaptation, the level gates); the anvil screen
+state through the ContainerView; the Round 14b batch — the Skin
+Customization screen (8 layer toggles + Main Hand, persisted through
+`skin_*`/mainHand keys), the real Chat Settings screen (the round-14
+stub RETIRED — 14 rows + Reduced Debug Info + Narrator), the
+Accessibility completion (Sneak/Sprint Hold-vs-Toggle 1.15 rows,
+Distortion Effects + FOV Effects sliders 1.16.2 pre1, web KeyC/KeyX
+gates); the Round 15 particle batch (`vc-particles::kinds`: 20 typed
+kinds — splash/bubble(+pop)/dripping+falling water+lava/portal/
+reverse_portal/end_rod/firework/explosion_emitter/squid_ink/dust/
+note/happy+angry_villager/snowflake/totem_of_undying/spit, each with
+color/size/life/gravity physics + the registry-coverage test); the
+Round 15b sky exactness (sun 30×30 + moon 20×20 at distance 100
+pinned through the shader smoothstep edges, star density pinned).
+
+**Not committed or pushed** — (this entry documents commits already
+in the tree; nothing goes to GitHub without explicit user approval).
+
+## 2026-09-17 (round 12b-completion + round 15b) — "anything left to do then do it"
+
+**Task:** the user's directive — finish everything left. The container
+had been RESET again (no cargo; toolchain reinstalled per BUILD.md:
+stable 1.98.1 + wasm32 + wasm-bindgen-cli 0.2.127, the locked pair).
+Ground truth on resume: **HEAD did not compile** — the interrupted
+session had left the mount screen half-built (`game.rs` referenced
+`ContainerKind::Mount`, the enum variant + screen never written), and
+the suite carried **three latent defects** from the UUID commits.
+
+**Landed (all wiki-cited in the code):**
+
+- **Round 12b COMPLETE — the mount storage screen.**
+  `ContainerKind::Mount` + the layout: donkey/mule = the saddle slot
+  (left column, `SlotRef::MountSaddle` — equip on click w/SADDLE,
+  un-equip on empty click) + the 5-wide 15-slot grid riding the
+  generic chest-slot path; llama = the STR badge (carpets are not
+  registered — disclosed) + the 3×strength partial-row grid.
+  `ContainerView::mount` (MountView: label/saddle/llama/strength/
+  capacity). game.rs: `container_view` builds it from the mob; slot
+  clicks route `SlotRef::Chest(i)` into the entity's storage (items
+  STAY with the mob on close — vanilla); the use-interaction gate —
+  CHEST in hand on a donkey/mule/llama equips (consumes the chest,
+  opens the screen), using a CHESTED mount opens it, llamas join the
+  gate (saddle excluded — llamas cannot be saddled, w/Llama); E while
+  riding a chested mount opens the storage (w/Donkey §Usage); the
+  **death spill** — the deaths queue carries a `DeathSpill` (chest
+  flag + contents) and the game layer drops the CHEST + every
+  non-empty stack (w/Donkey §On death: "If equipped with a chest or
+  saddle, they drop those items. They also drop the contents" +
+  w/Llama §On death). Tests: the ui geometry pair (donkey 15+ saddle
+  hit-rects; llama 5+4 partial row, no saddle), the death-spill pair.
+- **Round 15b — Saved Hotbars** (the last unblocked deferral row).
+  w/Saved_Hotbars (live fetch 2026-09-17): "Up to 9 hotbars can be
+  saved ... C + a number 1 through 9 ... loaded ... X + 1"; "common
+  between all worlds" → the options store (hotbar0..8 rows,
+  "block:count"×9, 0:0 = the placeholder — the engine's adaptation of
+  vanilla's hotbar.nbt, disclosed). The creative tab strip grew to
+  **12 tabs (6+6)**: content 0..8, Search 9, **Saved Hotbars 10**
+  (BOOK icon — no paper item; the tab grid shows the saved rows' ids
+  with BOOK placeholders), Inventory 11 (reindexed). C/X held-state +
+  the Digit1..9 arms route save/load while NO inventory screen is
+  open (the wiki's own rule); KeyC/KeyX joined the web keycode table.
+  Round-trip + junk-input tests in settings_tests.
+- **Three latent-bug fixes the resume review caught:**
+  1. `anvil::name_pool_get(pool, 0)` — `id − 1` on 0 underflowed (the
+     interrupted commit shipped it unguarded; the round-trip test
+     PANICKED instead of passing). Guarded; the test now passes.
+  2. The BOOK/GRINDSTONE identity states (861..=862) shipped without
+     a decode-side window — `prop_states_roundtrip` panicked at
+     "state 861 failed to decode" and 11 registry tests pinned the
+     old STATE_COUNT. Fixed with the `R13_STATE_BASE..` window (the
+     V17 pattern: fold table + identity gate + `is_model_state`
+     exemption + the 863 pins).
+  3. The Music & Sound sliders (160..=169) had NO tooltips —
+     `every_settings_option_has_tooltip` failed at "option 160".
+     Added the ten per-category tooltips (+ `ID_SND_LAST` const).
+
+**Suite: 800 tests / 0 failures** (762 → 800). **Clippy 0 warnings
+native `--all-targets` AND wasm32 `--lib`.** The wasm bundle was
+rebuilt with the locked pair (wasm-bindgen 0.2.127, glue patched,
+packs rsynced) and redeployed to `public/`.
+
+**E2E commands added:** `mount:<donkey|llama|mule>` (spawn + equip +
+stuff a slot + open through the real path) and
+`open:<anvil|grindstone|beacon>` (place + open — the station GUIs
+had shipped without any live verification).
+
+**Live E2E (headless Chromium + VLM + pixel-diff):** boot → title →
+world create (CREATIVE) → in-game; **C+1 / X+1** both fire
+("e2e: hotbar saved to row 1" / "hotbar row 1 loaded"); the picker's
+12-tab strip + the SAVED HOTBARS tab (title + book placeholders
+VLM-verified); the **donkey screen** (slot 0 emptied on cclick —
+45k px-diff at the slot, 0 at the control slot, the stack follows
+the cursor — deterministic pixel proof); the **llama screen** (STR
+badge + the same pixel-verified routing); the **anvil** ("Repair &
+Name" + rename field + inputs/result/cost), **grindstone** ("Repair
+& Disenchant"), **beacon** (power selection + level gates) — the
+first live verification of the interrupted session's Round 13 GUIs;
+**Skin Customization** (all 8 rows + Main Hand + Done), **Music &
+Sound** (all ten sliders + the fixed tooltips rendering live:
+"Volume of the Master sound category (vanilla 1.16.5)").
+
+**Deferred (standing, unchanged):** stonecutter/loom/cartography/
+smithing/fletching (the spec's own deferral clauses — their item
+families are unregistered); the hunger-drain gameplay system; the
+panel-chrome +7px family overhead (disclosed in the round-12 audit).
+
+**Not committed or pushed** — the round's work sits in the working
+tree; nothing goes to GitHub without explicit user approval, per the
+standing instruction.

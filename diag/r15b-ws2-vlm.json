@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "This is the **\"Select World\"** screen from Minecraft (Java Edition).\n\n**Visible Text:**\n- **Header:** \"SELECT WORLD\"\n- **Subtext:** \"NO SAVED WORLDS YET – CREATE ONE BELOW\"\n\n**Visible Buttons:**\n- Top left: **SEARCH WORLD**\n- Bottom row (left to right):\n  - **PLAY SELECTED WORLD**\n  - **CREATE NEW WORLD**\n  - **EDIT**\n  - **DELETE**\n  - **RE-CREATE**\n  - **SEARCH**\n\nThe screen shows an empty world selection area (the large red-tinted box in the center) indicating no worlds have been created yet, with the Nether-themed background visible behind the UI elements.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789662546,
+  "id": "20260918002902abbabeed30f843f6",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260918002902abbabeed30f843f6",
+  "usage": {
+    "completion_tokens": 148,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 901,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1049
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "This is the **main menu screen** of a game called **VoxelCraft** (version 1.16.5), which appears to be a Minecraft-inspired or parody game with a \"100% Clean-Room - Not An Official Game\" disclaimer.\n\n**Visible buttons:**\n- **SINGLEPLAYER**\n- **MULTIPLAYER** \n- **OPTIONS...**\n\nThe screen features the game's pixelated logo at the top, a red/dark background resembling the Nether dimension, and a \"100% RUSH!\" label in yellow text. The version number appears in the bottom-left corner.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789662496,
+  "id": "2026091800281269daaa5507b349d7",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "2026091800281269daaa5507b349d7",
+  "usage": {
+    "completion_tokens": 123,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 903,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1026
+  }
+}

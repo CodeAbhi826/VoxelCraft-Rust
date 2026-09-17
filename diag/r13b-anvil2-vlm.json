@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "**Title:** Repair & Name\n\n**UI Description:** Yes, the UI features a \"Item name\" text field for renaming, two input slots separated by a plus sign with a result slot to the right, and an experience cost indicator (though the specific value is not clearly visible in this empty state).",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789663706,
+  "id": "20260918004823ec9711996f0d41a3",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260918004823ec9711996f0d41a3",
+  "usage": {
+    "completion_tokens": 62,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 928,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 990
+  }
+}

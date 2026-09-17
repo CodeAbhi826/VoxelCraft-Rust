@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "**Title/Label:** SAVED HOTBARS\n\n**Items:** The grid is filled with **Book and Quill** (or written book) items. They appear as brown books with white pages, occupying most of the inventory slots.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789663202,
+  "id": "202609180040007c79678195594ed9",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202609180040007c79678195594ed9",
+  "usage": {
+    "completion_tokens": 49,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 939,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 988
+  }
+}

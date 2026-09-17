@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Here are the buttons on the options screen:\n\n*   **Chat Settings...**\n*   **Resource Packs...**\n*   **Language...**\n*   **Accessibility Settings...**\n*   **Video Settings...**\n*   **Controls...**\n*   **Engine Settings...**\n*   **View Bobbing: ON** (toggle)\n*   **Music & Sound...**\n*   **Skin Customization...**\n*   **Done**",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789663778,
+  "id": "202609180049351abc2aa078054e75",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202609180049351abc2aa078054e75",
+  "usage": {
+    "completion_tokens": 90,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 897,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 987
+  }
+}

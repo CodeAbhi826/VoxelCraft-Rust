@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "**Title:** BEACON\n\n**Special UI Elements:**\n*   **Rename Text Field:** A text input box labeled \"PAY:\" (for customizing the beacon's display name).\n*   **Cost Text:** Level indicators (e.g., \"L4\") displayed beneath the power icons.\n*   **Stacked Slots:** The \"ST\" (Status) icon is visually layered on top of the main inventory grid.\n*   **Power-Selection Buttons:** Icons for Primary Powers (Speed, Haste, Resistance, Jump Boost) and Secondary Powers (Regeneration, Strength).\n*   **Check/X Buttons:** Confirmation (Checkmark) and Cancel (X) buttons located to the right of the payment slot.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789663685,
+  "id": "202609180047547f03d033fde54125",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202609180047547f03d033fde54125",
+  "usage": {
+    "completion_tokens": 146,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 928,
+    "prompt_tokens_details": {
+      "cached_tokens": 2
+    },
+    "total_tokens": 1074
+  }
+}

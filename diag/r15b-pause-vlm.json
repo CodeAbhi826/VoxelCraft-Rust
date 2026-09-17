@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "**Minecraft Gameplay Screen (First-Person View)**\n\n*   **Title/Context:** In-game world view (Survival/Creative mode).\n*   **Buttons/UI:**\n    *   **Crosshair:** Center white plus sign (+) for aiming.\n    *   **Hotbar:** Bottom row of 9 inventory slots (currently holding a block/item in the first slot).\n    *   **Hand:** Visible player hand holding the selected item (bottom-left).",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789663732,
+  "id": "20260918004849abb6215a4a494054",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260918004849abb6215a4a494054",
+  "usage": {
+    "completion_tokens": 96,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 898,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 994
+  }
+}

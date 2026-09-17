@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "This is the **main menu screen** of the game **VoxelCraft** (version 1.0.5).\n\n**Visible elements:**\n- **Title:** \"VOXELCRAFT\" in large pixelated white letters at the top, with a yellow \"100% RUSH!\" badge\n- **Three main buttons** in the center:\n  - SINGLEPLAYER\n  - MULTIPLAYER\n  - OPTIONS...\n- **Footer text:** \n  - Bottom left: \"VoxelCraft 1.0.5\"\n  - Bottom right: \"100% CLEAN-ROOM - NOT AN OFFICIAL GAME\"\n\nThe background features a red/orange gradient sky with a blocky voxel landscape silhouette (resembling a Minecraft-style Nether or sunset scene). The UI uses a gray, beveled button style reminiscent of classic Minecraft menus.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789662460,
+  "id": "20260918002736b31d0ccf756b471f",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260918002736b31d0ccf756b471f",
+  "usage": {
+    "completion_tokens": 171,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 905,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1076
+  }
+}

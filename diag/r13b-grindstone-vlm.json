@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "**Title:** REPAIR & DISENCHANT\n\n**Special UI Elements:**\n*   **Rename text field:** Present (the long rectangular box in the top-middle).\n*   **Cost text:** Not visible (no experience level cost is displayed).\n*   **Stacked slots:** Yes (the input slot on the left appears to show stacked item borders).\n*   **Power-selection buttons:** Not present.\n*   **Check/X buttons:** Not present (the interface uses the standard anvil layout without modern confirmation buttons).",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789663674,
+  "id": "20260918004751a135922c78b440f4",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260918004751a135922c78b440f4",
+  "usage": {
+    "completion_tokens": 107,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 928,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1035
+  }
+}

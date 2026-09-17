@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "**Title Text:** \"LOADING WORLD\" (with \"44%\" below it)\n\n**UI Elements Present:**\n- **None of the requested elements are visible.** This is a simple loading screen containing only:\n  - Title text (\"LOADING WORLD\")\n  - Progress percentage (\"44%\")\n  - A single square icon with a green diamond/checkmark symbol\n\nThere is **no container panel**, rename field, cost text, stacked slots, power-selection buttons, or check/X buttons in this image.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789663670,
+  "id": "202609180047477b6df58b809849b9",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202609180047477b6df58b809849b9",
+  "usage": {
+    "completion_tokens": 103,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 928,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1031
+  }
+}

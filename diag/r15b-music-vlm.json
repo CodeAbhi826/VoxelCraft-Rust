@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Based on the image, here are the sliders/rows:\n\n*   **Master**\n*   **Music**\n*   **Jukeboxes / Note Blocks**\n*   **Weather**\n*   **Blocks**\n*   **Hostile Creatures**\n*   **Friendly Creatures**\n*   **Players**\n*   **Ambient / Environment**\n*   **Voice / Speech**",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789663820,
+  "id": "20260918005019b9798165ea6d459c",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260918005019b9798165ea6d459c",
+  "usage": {
+    "completion_tokens": 76,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 902,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 978
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Yes. It says: **\"Volume of the Master sound category (vanilla 1.16.5).\"**",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1789663841,
+  "id": "20260918005040bcf77bf9152c465a",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260918005040bcf77bf9152c465a",
+  "usage": {
+    "completion_tokens": 25,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 918,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 943
+  }
+}

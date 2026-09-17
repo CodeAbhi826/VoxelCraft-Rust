@@ -508,6 +508,9 @@ pub const ID_OPT_MUSICSND: u16 = 50;
 /// SoundCategory + master. 160..170 (clear of every literal id and the
 /// 60..66 / 120..158 row families; guarded by the ID-space tests).
 pub const ID_SND_BASE: u16 = 160;
+/// Round 14: the last Music & Sound slider id (Voice — 169; the
+/// range-end twin of ID_SND_BASE for match patterns)
+pub const ID_SND_LAST: u16 = 169;
 /// Round 14: the Controls screen — reset + the bind-row family
 /// (180..204: up to 24 rebindable action rows)
 pub const ID_SND_DONE: u16 = 170;
@@ -3372,6 +3375,18 @@ impl UiCanvas {
             ContainerKind::Beacon => 232,
             // Round 13: the grindstone — two stacked inputs + result
             ContainerKind::Grindstone => 128,
+            // Round 12b: the mount's storage — rows of 5 (the last row
+            // partial for llamas) + the saddle/strength column; the
+            // exact height rides the mob's capacity (view.mount)
+            ContainerKind::Mount => {
+                8 + (view
+                    .mount
+                    .as_ref()
+                    .map(|m| m.capacity)
+                    .unwrap_or(15)
+                    .div_ceil(5)) as i32 * 40
+                    + 4
+            }
         };
         let panel_h = top_h + 3 * 44 + 8 + 44 + 30; // + title + gaps + padding
         let y0 = (self.live_h as i32 - panel_h) / 2;
@@ -3409,6 +3424,13 @@ impl UiCanvas {
             ContainerKind::Beacon => "BEACON",
             // Round 13 (audit §3, VLM OCR): "Repair & Disenchant"
             ContainerKind::Grindstone => "REPAIR & DISENCHANT",
+            // Round 12b: the vanilla GUI title is the entity's own name
+            // (w/Donkey + w/Llama GUI captions: "GUI of a donkey ...")
+            ContainerKind::Mount => view
+                .mount
+                .as_ref()
+                .map(|m| m.kind_label.as_str())
+                .unwrap_or("MOUNT"),
         };
         self.text(px0 + 12, y0 - 24, title, [255, 220, 120, 255], 1);
 
@@ -3426,6 +3448,7 @@ impl UiCanvas {
             anvil: None,
             beacon: None,
             grind: None,
+            mount: None,
         };
 
         // ---- container-specific top area ----
@@ -3589,6 +3612,77 @@ impl UiCanvas {
                     let st = view.chest.get(c).copied().unwrap_or(ItemStack::EMPTY);
                     self.slot_well(x, cy, &st, atlas);
                     geom.chest.push((x, cy));
+                }
+            }
+            ContainerKind::Mount => {
+                // Round 12b: the mount screen — the saddle/strength
+                // column at the left (vanilla puts the saddle slot left
+                // of the chest grid, w/Donkey GUI), the chest grid
+                // (5-wide, rows = ceil(capacity/5), the last row partial
+                // for llamas) to its right. The grid slots share the
+                // generic chest-slot geometry (game.rs routes
+                // SlotRef::Chest(i) into the mob's storage slots).
+                let mv = view.mount.clone().unwrap_or(MountView {
+                    kind_label: "MOUNT".into(),
+                    saddle: ItemStack::EMPTY,
+                    llama: false,
+                    strength: 1,
+                    capacity: 15,
+                });
+                let cap = mv.capacity.max(1);
+                let rows = cap.div_ceil(5);
+                // saddle column (40) + gap (24) + 5-wide grid (200)
+                let total = 40 + 24 + 5 * 40;
+                let cx = x0 + (grid_w - total) / 2;
+                let cy = y0 + 8;
+                if mv.llama {
+                    // the llama's strength badge — vanilla's left column
+                    // is the carpet decor slot; carpets are not registered
+                    // in the engine, so the strength (the capacity's own
+                    // driver, VERIFIED w/Llama §Storage) is shown instead:
+                    // documented adaptation
+                    let bx = cx;
+                    let by = cy + 4;
+                    self.rect(bx, by, 40, 40, [22, 22, 26, 200]);
+                    self.frame(bx, by, 40, 40, [60, 60, 66, 255]);
+                    self.text(
+                        bx + 4,
+                        by + 6,
+                        "STR",
+                        [255, 220, 120, 255],
+                        1,
+                    );
+                    // the strength pips (1..5, one column of short bars)
+                    for p in 0..mv.strength.clamp(1, 5) {
+                        self.rect(
+                            bx + 8,
+                            by + 22 + p as i32 * 3,
+                            24,
+                            2,
+                            [120, 220, 120, 255],
+                        );
+                    }
+                } else {
+                    // the saddle slot — donkey/mule (w/Donkey §Usage:
+                    // "Saddle slot for equipping a saddle. ... A saddle
+                    // can be equipped on a donkey by holding it and then
+                    // using on the donkey, or by accessing its inventory")
+                    self.slot_well(cx, cy, &mv.saddle, atlas);
+                    geom.mount = Some(MountGeom { saddle: (cx, cy) });
+                }
+                let gx = cx + 40 + 24;
+                for r in 0..rows {
+                    for c in 0..5 {
+                        let idx = r * 5 + c;
+                        if idx >= cap {
+                            break; // the llama's partial last row
+                        }
+                        let x = gx + c as i32 * 40;
+                        let y = cy + r as i32 * 40;
+                        let st = view.chest.get(idx).copied().unwrap_or(ItemStack::EMPTY);
+                        self.slot_well(x, y, &st, atlas);
+                        geom.chest.push((x, y));
+                    }
                 }
             }
             ContainerKind::Furnace => {
@@ -4403,23 +4497,25 @@ impl UiCanvas {
         }
     }
 
-    /// Sub-round 2 (2026-09-15): the vanilla 1.16.5 tabbed creative
-    /// inventory. clean-room: shape language = the classic (pre-1.19.3)
-    /// creative screen — two tab rows on top (6 + 5 tabs, icon-only
-    /// folder tabs), a 9x5 slot grid with a right scrollbar, the tab
-    /// title above the grid (the Search tab replaces it with a search
-    /// field), and the hotbar + destroy slot at the bottom. Reference
-    /// facts: minecraft.wiki/w/Creative_inventory (live 2026-09-15):
-    /// the nine content tabs + Search Items + Survival Inventory; the
-    /// 9x5/45-per-page grid with a scrollbar; "A single item can be
-    /// grabbed using left-click ... Right-clicking an item also picks
-    /// up one item ... Shift-clicking an item grabs a full stack";
-    /// "Pressing a number key while hovering over an item instantly
-    /// places one full stack of that item into the hotbar slot"; the
-    /// destroy slot ("get rid of the held item" by clicking outside or
-    /// over another item). Proportions are the engine's established 2x
-    /// container geometry (40px slots on the 960x540 canvas). No Mojang
-    /// asset was read, copied, or traced.
+    /// Sub-round 2 (2026-09-15) + Round 15b (2026-09-17): the vanilla
+    /// 1.16.5 tabbed creative inventory. clean-room: shape language =
+    /// the classic (pre-1.19.3) creative screen — two tab rows on top
+    /// (6 + 6 tabs, icon-only folder tabs), a 9x5 slot grid with a
+    /// right scrollbar, the tab title above the grid (the Search tab
+    /// replaces it with a search field), and the hotbar + destroy slot
+    /// at the bottom. Reference facts: minecraft.wiki/w/Creative_
+    /// inventory (live 2026-09-15): the nine content tabs + Search
+    /// Items + Saved Hotbars + Survival Inventory (live fetch
+    /// 2026-09-17: "There are also Search Items, Saved Hotbars and
+    /// Survival Inventory tabs"); the 9x5/45-per-page grid with a
+    /// scrollbar; "A single item can be grabbed using left-click ...;
+    /// Right-clicking an item also picks up one item ...; Shift-
+    /// clicking an item grabs a full stack"; "Pressing a number key
+    /// while hovering over an item instantly places one full stack of
+    /// that item into the hotbar slot"; the destroy slot. Proportions
+    /// are the engine's established 2x container geometry (40px slots
+    /// on the 960x540 canvas). No Mojang asset was read, copied, or
+    /// traced.
     #[allow(clippy::too_many_arguments)]
     pub fn creative_screen(
         &mut self,
@@ -4451,12 +4547,15 @@ impl UiCanvas {
         let pw = grid_w + 28;
         let py0 = title_y - 10;
         let ph = (hot_y + 46) - py0;
-        // tab strip: two rows (6 + 5), folder tabs attached to the panel
+        // tab strip: two rows (6 + 6), folder tabs attached to the panel
         let tab_w = 76i32;
         let tab_h = 44i32;
         let row1_n = 6i32;
         let row1_x = (self.live_w as i32 - row1_n * tab_w) / 2;
-        let row2_n = 5i32;
+        // Round 15b: the second row grew to 6 — the Saved Hotbars tab
+        // (vanilla's 12-tab strip: 9 content + Search + Hotbars +
+        // Inventory)
+        let row2_n = 6i32;
         let row2_x = (self.live_w as i32 - row2_n * tab_w) / 2;
         let row2_y = py0 - tab_h + 2;
         let row1_y = row2_y - tab_h + 2;
@@ -4468,17 +4567,20 @@ impl UiCanvas {
             cols,
             vis_rows,
             scroll,
-            tabs: [None; 11],
+            tabs: [None; 12],
             hotbar: [(0, 0, 0, 0); 9],
             trash: (0, 0, 0, 0),
             search: (0, 0, 0, 0),
             scrollbar: None,
         };
 
-        // ---- tab strip (11 tabs: 9 content + Search + Inventory) ----
-        // vanilla tab order: Building, Decoration, Redstone, Transport,
-        // Misc, Food, Tools, Combat, Brewing, Search, Inventory
-        let tab_labels: [&str; 11] = [
+        // ---- tab strip (12 tabs: 9 content + Search + Saved Hotbars +
+        // Inventory) — vanilla order: Building, Decoration, Redstone,
+        // Transport, Misc, Food, Tools, Combat, Brewing, Search,
+        // Hotbar, Inventory (VERIFIED w/Creative_inventory, live
+        // 2026-09-17: "There are also Search Items, Saved Hotbars and
+        // Survival Inventory tabs")
+        let tab_labels: [&str; 12] = [
             "BUILDING BLOCKS",
             "DECORATION BLOCKS",
             "REDSTONE",
@@ -4489,12 +4591,13 @@ impl UiCanvas {
             "COMBAT",
             "BREWING",
             "SEARCH ITEMS",
+            "SAVED HOTBARS",
             "INVENTORY",
         ];
         let cx = cursor.0 as i32;
         let cy = cursor.1 as i32;
         let mut hovered_tab: Option<u8> = None;
-        for t in 0..11u8 {
+        for t in 0..12u8 {
             let (tx, ty) = if t < 6 {
                 (row1_x + t as i32 * tab_w, row1_y)
             } else {
@@ -4521,6 +4624,11 @@ impl UiCanvas {
                 // Search tab icon: the compass — engine substitute: the
                 // eye of ender (the registry's search-est item; no compass)
                 blk::EYE_OF_ENDER
+            } else if t == 10 {
+                // Round 15b: the Saved Hotbars tab icon — vanilla's is a
+                // book-family icon; the BOOK item is the registry's
+                // stand-in (no paper item exists)
+                blk::BOOK
             } else {
                 // Inventory tab icon: the player head — engine
                 // substitute: the wither-skeleton skull (the registry's
@@ -4838,8 +4946,9 @@ pub struct CreativeGeom {
     pub scroll: usize,
     /// visible rows in the fixed window (5 — the vanilla page size)
     pub vis_rows: usize,
-    /// the 11 tab hit rects (UI space) in vanilla order
-    pub tabs: [Option<(i32, i32, i32, i32)>; 11],
+    /// the 12 tab hit rects (UI space) in vanilla order: 9 content tabs
+    /// + Search (9) + Saved Hotbars (10) + Inventory (11)
+    pub tabs: [Option<(i32, i32, i32, i32)>; 12],
     /// the 9 hotbar-slot hit rects
     pub hotbar: [(i32, i32, i32, i32); 9],
     /// the destroy (trash) slot hit rect
@@ -4855,7 +4964,7 @@ impl CreativeGeom {
         ux >= r.0 && ux < r.0 + r.2 && uy >= r.1 && uy < r.1 + r.3
     }
 
-    /// which tab (0..=10, vanilla order) is under this UI-space cursor
+    /// which tab (0..=11, vanilla order) is under this UI-space cursor
     pub fn tab_at(&self, ux: i32, uy: i32) -> Option<u8> {
         self.tabs
             .iter()
@@ -4944,6 +5053,16 @@ pub enum ContainerKind {
     /// Round 13: the grindstone — Repair & Disenchant (two stacked
     /// inputs + result; audit §3: inputs (50,18)/(50,40), result (148,32))
     Grindstone,
+    /// Round 12b: the mount's chest storage (a chest-equipped donkey/
+    /// mule/llama — 15 slots for donkeys/mules, 3 × strength for llamas;
+    /// VERIFIED w/Donkey §Usage: "An additional 15 inventory slots when
+    /// the donkey has been equipped with a chest" + w/Llama §Storage:
+    /// the capacity rides the llama's Strength). Left column = the
+    /// saddle slot (donkey/mule — w/Donkey: "Saddle slot for equipping
+    /// a saddle") or the strength badge (llama — carpets are not
+    /// registered in the engine, disclosed); the chest grid rides the
+    /// generic chest-slot path (SlotRef::Chest).
+    Mount,
 }
 
 /// a logical slot in a container screen — the target of a mouse click
@@ -4999,6 +5118,11 @@ pub enum SlotRef {
     GrindBottom,
     /// Round 13: the grindstone's result slot (take = XP drop)
     GrindOut,
+    /// Round 12b: the mount's saddle slot (donkey/mule — equip on
+    /// click with the SADDLE on the cursor, take it back off when
+    /// empty; llamas have no saddle slot — their left column is the
+    /// strength badge)
+    MountSaddle,
 }
 
 /// pure-data snapshot of everything a container screen renders — owned
@@ -5033,6 +5157,9 @@ pub struct ContainerView {
     pub beacon: Option<BeaconView>,
     /// Round 13: the grindstone view (top, bottom, result)
     pub grind: Option<(ItemStack, ItemStack, ItemStack)>,
+    /// Round 12b: the mount view (the saddle state + the llama
+    /// strength; the chest slots ride `chest` like the hopper)
+    pub mount: Option<MountView>,
     /// Sub-round 3: the player's armor equipment (helmet/chest/legs/
     /// boots, vanilla order — mirrors Player.armor)
     pub armor: [ItemStack; 4],
@@ -5075,6 +5202,26 @@ pub struct TradeView {
     pub xp_next: Option<u32>,
     /// all table rows, in table order (indices = SlotRef::TradeRow(i))
     pub rows: Vec<TradeRowView>,
+}
+
+/// Round 12b: the mount screen's live state (pure data — the storage
+/// slots ride ContainerView::chest; this carries the left column)
+#[derive(Clone)]
+pub struct MountView {
+    /// the GUI title — the entity's own name ("Donkey"/"Mule"/"Llama",
+    /// the vanilla GUI captions)
+    pub kind_label: String,
+    /// the saddle slot's contents (the SADDLE item when equipped —
+    /// donkey/mule only; EMPTY otherwise)
+    pub saddle: ItemStack,
+    /// a llama's screen (strength badge instead of the saddle slot —
+    /// carpets are not registered, disclosed)
+    pub llama: bool,
+    /// the llama's strength 1..5 (the capacity driver)
+    pub strength: u8,
+    /// the storage capacity in slots (15 for donkeys/mules;
+    /// 3 × strength for llamas)
+    pub capacity: usize,
 }
 
 /// Round 13: the anvil screen's live state (pure data — the plan math
@@ -5145,6 +5292,9 @@ impl ContainerView {
             SlotRef::GrindTop => self.grind?.0,
             SlotRef::GrindBottom => self.grind?.1,
             SlotRef::GrindOut => self.grind?.2,
+            // Round 12b: the saddle slot's contents (the SADDLE item
+            // when equipped, EMPTY otherwise)
+            SlotRef::MountSaddle => self.mount.as_ref()?.saddle,
         })
     }
 }
@@ -5204,6 +5354,12 @@ pub struct GrindSlots {
     pub out: (i32, i32),
 }
 
+/// Round 12b: the mount screen's saddle-slot hit rect (the chest grid
+/// rides ContainerGeom::chest — the generic slot path)
+pub struct MountGeom {
+    pub saddle: (i32, i32),
+}
+
 /// hit-test geometry for a container screen (UI-space 36px slots)
 pub struct ContainerGeom {
     /// 36 inventory slot origins: 0..9 hotbar row (bottom), 9..36 storage
@@ -5233,6 +5389,9 @@ pub struct ContainerGeom {
     pub beacon: Option<BeaconSlots>,
     /// Round 13: the grindstone's slot origins
     pub grind: Option<GrindSlots>,
+    /// Round 12b: the mount screen's saddle slot (llamas show the
+    /// strength badge instead — not a hit target)
+    pub mount: Option<MountGeom>,
 }
 
 impl ContainerGeom {
@@ -5330,6 +5489,13 @@ impl ContainerGeom {
             }
             if Self::hit(x, y, &g.out) {
                 return Some(SlotRef::GrindOut);
+            }
+        }
+        // Round 12b: the mount's saddle slot (donkey/mule screens —
+        // the llama badge is not a hit target)
+        if let Some(m) = &self.mount {
+            if Self::hit(x, y, &m.saddle) {
+                return Some(SlotRef::MountSaddle);
             }
         }
         for (i, s) in self.chest.iter().enumerate() {
@@ -5726,6 +5892,7 @@ mod tests {
             anvil: None,
             beacon: None,
             grind: None,
+            mount: None,
         }
     }
 
@@ -6471,6 +6638,7 @@ mod screen_tests {
             anvil: None,
             beacon: None,
             grind: None,
+            mount: None,
         };
         let atlas = vec![0u8; crate::textures::ATLAS_SIZE * crate::textures::ATLAS_SIZE * 4];
         let g = ui.container_screen(&view, (0.0, 0.0), &atlas, false);
@@ -6524,6 +6692,7 @@ mod screen_tests {
             anvil: None,
             beacon: None,
             grind: None,
+            mount: None,
         };
         let atlas = vec![0u8; crate::textures::ATLAS_SIZE * crate::textures::ATLAS_SIZE * 4];
         let g = ui.container_screen(&view, (0.0, 0.0), &atlas, false);
@@ -6601,20 +6770,25 @@ mod screen_tests {
         // the grid page: 9 columns x 5 rows
         assert_eq!(g.cols, 9);
         assert_eq!(g.vis_rows, 5);
-        // 11 tab hit rects, all present
-        assert_eq!(g.tabs.len(), 11);
+        // Round 15b: 12 tab hit rects, all present (9 content + Search
+        // + Saved Hotbars + Inventory)
+        assert_eq!(g.tabs.len(), 12);
         assert!(g.tabs.iter().all(|t| t.is_some()));
         // tab hit-testing in vanilla order: tab 0 (Building Blocks) is
-        // the first hit rect of row 1; tab 9 (Search) + tab 10
-        // (Inventory) live on row 2
+        // the first hit rect of row 1; tab 9 (Search), tab 10 (Saved
+        // Hotbars) + tab 11 (Inventory) live on row 2
         let t0 = g.tabs[0].unwrap();
         assert_eq!(g.tab_at(t0.0 + 2, t0.1 + 2), Some(0));
         let t9 = g.tabs[9].unwrap();
         assert_eq!(g.tab_at(t9.0 + 2, t9.1 + 2), Some(9));
         let t10 = g.tabs[10].unwrap();
         assert_eq!(g.tab_at(t10.0 + 2, t10.1 + 2), Some(10));
-        // row 2 sits BELOW row 1 (folder-tab stacking, 6 + 5)
+        let t11 = g.tabs[11].unwrap();
+        assert_eq!(g.tab_at(t11.0 + 2, t11.1 + 2), Some(11));
+        // row 2 sits BELOW row 1 (folder-tab stacking, 6 + 6)
         assert!(t9.1 > t0.1);
+        // row 2's six tabs stay inside the canvas (the 12-tab strip)
+        assert!(t11.0 + t11.2 < ui.live_w as i32);
         // the grid hit-tests to the item list (Building tab, no scroll)
         assert_eq!(g.grid_at(g.x0 + 4 + 18, g.y0 + 4 + 18), Some(0));
         assert_eq!(g.grid_at(g.x0 + 4 + 40 + 18, g.y0 + 4 + 18), Some(1));
@@ -6961,6 +7135,7 @@ mod round13_station_tests {
             anvil,
             beacon: None,
             grind: None,
+            mount: None,
         }
     }
 
@@ -7095,5 +7270,117 @@ mod round13_station_tests {
             Some(SlotRef::GrindBottom)
         );
         assert_eq!(g.slot_at(s.out.0 + 4, s.out.1 + 4), Some(SlotRef::GrindOut));
+    }
+}
+
+/// Round 12b: the mount storage screen — the donkey/mule (saddle
+/// column + the 5-wide 15-slot grid) and the llama (strength badge +
+/// the partial-row 3×strength grid) layouts and hit-tests.
+#[cfg(test)]
+mod round12b_mount_screen_tests {
+    use super::*;
+    use vc_inventory::inventory::ItemStack;
+
+    fn mount_view(
+        kind_label: &str,
+        llama: bool,
+        strength: u8,
+        capacity: usize,
+        saddle: ItemStack,
+        chest: Vec<ItemStack>,
+    ) -> ContainerView {
+        ContainerView {
+            kind: ContainerKind::Mount,
+            inv: vec![ItemStack::EMPTY; 36],
+            grid: vec![],
+            craft_out: ItemStack::EMPTY,
+            furnace: None,
+            brewing: None,
+            enchant: None,
+            trade: None,
+            chest,
+            armor: [ItemStack::EMPTY; 4],
+            offhand: ItemStack::EMPTY,
+            cursor: ItemStack::EMPTY,
+            anvil: None,
+            beacon: None,
+            grind: None,
+            mount: Some(MountView {
+                kind_label: kind_label.to_string(),
+                saddle,
+                llama,
+                strength,
+                capacity,
+            }),
+        }
+    }
+
+    fn atlas() -> Vec<u8> {
+        vec![0u8; crate::textures::ATLAS_SIZE * crate::textures::ATLAS_SIZE * 4]
+    }
+
+    /// the donkey screen: the saddle slot left of a 3×5 grid; all 15
+    /// slots hit-test as generic chest slots; the saddle resolves to
+    /// SlotRef::MountSaddle.
+    #[test]
+    fn donkey_screen_geometry_and_hits() {
+        let mut ui = UiCanvas::new();
+        ui.set_chrome_enabled(false);
+        ui.clear();
+        let chest = vec![ItemStack::EMPTY; 15];
+        let saddle = ItemStack::new(vc_blocks::blocks::SADDLE, 1);
+        let view = mount_view("DONKEY", false, 1, 15, saddle, chest);
+        let g = ui.container_screen(&view, (0.0, 0.0), &atlas(), false);
+        // 15 grid wells + the saddle slot
+        assert_eq!(g.chest.len(), 15, "the donkey's 15 storage slots");
+        let m = g.mount.as_ref().expect("the saddle geometry present");
+        assert_eq!(
+            g.slot_at(m.saddle.0 + 4, m.saddle.1 + 4),
+            Some(SlotRef::MountSaddle)
+        );
+        // grid slots resolve as generic chest slots (the game layer's
+        // Container::Mount routing surface)
+        for i in 0..15 {
+            let (x, y) = g.chest[i];
+            assert_eq!(
+                g.slot_at(x + 4, y + 4),
+                Some(SlotRef::Chest(i)),
+                "slot {i} hit-tests"
+            );
+        }
+        // the saddle column sits LEFT of the grid
+        assert!(m.saddle.0 < g.chest[0].0);
+        // row pitch: 5 columns per row (slots 0/5/10 step one row)
+        assert!(g.chest[5].1 > g.chest[0].1);
+        assert!(g.chest[4].0 < g.chest[5].0 || g.chest[5].1 > g.chest[4].1);
+        // the saddle well and the first grid well share the row
+        assert!((m.saddle.1 - g.chest[0].1).abs() < 8);
+    }
+
+    /// the llama screen (strength 3 → 9 slots): no saddle geometry (the
+    /// strength badge is not a hit target), the 9 grid wells with a
+    /// PARTIAL last row (4 in row 2).
+    #[test]
+    fn llama_screen_partial_row_and_no_saddle() {
+        let mut ui = UiCanvas::new();
+        ui.set_chrome_enabled(false);
+        ui.clear();
+        let chest = vec![ItemStack::EMPTY; 9];
+        let view = mount_view("LLAMA", true, 3, 9, ItemStack::EMPTY, chest);
+        let g = ui.container_screen(&view, (0.0, 0.0), &atlas(), false);
+        assert_eq!(g.chest.len(), 9, "3 × strength 3 = 9 slots");
+        // no saddle hit target on the llama screen (the badge column)
+        assert!(g.mount.is_none(), "llamas have no saddle slot");
+        // rows: 5 + 4 (the partial second row)
+        let row1: Vec<_> = g.chest.iter().filter(|(_, y)| *y == g.chest[0].1).collect();
+        let row2_y = g.chest[5].1;
+        let row2: Vec<_> = g.chest.iter().filter(|(_, y)| *y == row2_y).collect();
+        assert_eq!(row1.len(), 5, "the first row is full");
+        assert_eq!(row2.len(), 4, "the llama's partial last row");
+        // all 9 hit-test
+        for i in 0..9 {
+            let (x, y) = g.chest[i];
+            assert_eq!(g.slot_at(x + 4, y + 4), Some(SlotRef::Chest(i)));
+        }
     }
 }

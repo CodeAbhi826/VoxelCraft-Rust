@@ -1,9 +1,10 @@
-# ROUND-16-PARITY-GAP.md — the remaining known gaps after the Round 10–16 pass
+# ROUND-16-PARITY-GAP.md — the remaining known gaps
 
-Date: 2026-09-15 · the honest ledger of what is NOT yet vanilla-parity,
-with size estimates (the spec's Round 16 [1] deliverable).
+Date: 2026-09-17 (updated; first cut 2026-09-15) · the honest ledger
+of what is NOT yet vanilla-parity, with size estimates (the spec's
+Round 16 [1] deliverable).
 
-## Shipped this pass
+## Shipped since the 2026-09-15 cut
 
 - **Round 10 [1]** — the vanilla integer GUI-scale model (Auto =
   max(1, min(⌊w/320⌋, ⌊h/240⌋)), live-canvas logical space, integer
@@ -11,48 +12,56 @@ with size estimates (the spec's Round 16 [1] deliverable).
   removed). Items [2]–[7] (armor registry, survival inventory, armor
   HUD wiring) shipped in the prior sub-rounds 2–3.
 - **Round 11** — the 11-tab creative inventory (prior session, commit
-  b477d24; re-verified this pass).
-- **Round 12 [1]** — the double chest: partner scan (pure + tested),
-  54-slot merged screen, single-word CHEST title, spill-both-halves on
-  break, shulker/trapped no-cross-merge.
-- **Round 14 (partial)** — Music & Sound screen (10 category sliders,
-  live mixer gains), Controls screen (the KeyBinds table, click-to-
-  rebind with ESC cancel, Reset Keys, persistence), Language screen
-  (English-only, honest), Chat Settings (documented stub),
-  Accessibility additions (Fog Fast/Fancy/OFF live, FOV Effects
-  slider, grayed Chat Visibility/Subtitles).
-- **Round 15 (partial)** — biome-tinted fog (20% blend at the player's
-  biome), re-verified weather darkening + nether fog (already shipped).
+  b477d24; re-verified).
+- **Round 12 [1]** — the double chest (partner scan, 54-slot merged
+  screen, spill-both-halves on break).
+- **Round 12b — mount storage CLOSED (2026-09-17)** — the
+  per-entity MountStorage model (donkey/mule 15; llama 3×strength),
+  the mount SCREEN (saddle slot + 5-wide grid / STR badge + partial
+  rows), chest-equip through the use-interaction, E-while-riding, and
+  the death spill (chest + contents). E2E-verified live.
+- **Round 13 — station GUIs CLOSED** — anvil (Repair & Name: combine
+  math, prior-work penalty, rename, Too Expensive!), grindstone
+  (Repair & Disenchant + XP), beacon (power selection + payment +
+  level gates). E2E-verified live 2026-09-17.
+- **Round 14 (partial) + 14b** — Music & Sound (10 sliders + the
+  2026-09-17 tooltip completion), Controls (rebind table), Language,
+  Chat Settings (real screen), Accessibility completion (Hold/Toggle,
+  Distortion/FOV Effects), Skin Customization (8 layers + Main Hand).
+- **Round 15 (partial) + 15b** — biome fog; the 20-kind particle
+  batch (splash/bubble/drips/portal/end_rod/firework/squid_ink/dust/
+  note/villager moods/snowflake/totem/spit); the sky exactness (sun
+  30×30, moon 20×20 at distance 100, pinned star density).
+- **Saved hotbars CLOSED (2026-09-17)** — the 12-tab creative strip
+  (Search/Hotbars/Inventory), C+n save + X+n load (the vanilla
+  defaults, held-state combos), options-store persistence
+  (hotbar0..8), the tab grid with placeholder rows. E2E-verified
+  live (both boot logs + the tab screen).
 
 ## Deferred (with reasons)
 
 | Gap | Reason | Estimate |
 |---|---|---|
-| Round 12 [2] mount storage (donkey/llama screens) | The entity system has Horse/Donkey/Llama mobs and riding, but NO entity-side inventories — needs a per-entity container model + the chest-equip interaction + a mount screen (a full round of work on its own) | 1 round |
-| Round 13 anvil GUI | anvil.rs ships the block physics + prior-work penalty but no repair/combine/rename logic or GUI; needs enchantment-merge rules + a new container kind + level-cost formula | 1 round |
-| Round 13 beacon GUI | beacon.rs ships the pyramid scan + effect application; needs the power-selection GUI (primary/secondary) + the payment slot | ½ round |
-| Round 13 grindstone / loom / stonecutter / cartography / smithing / fletching GUIs | Each needs its station logic first (disenchant-XP, banner system, recipe lists, map items, netherite gear registration, arrow-recipe index) — the spec's own deferral clauses apply (banners and maps are not registered; netherite gear is not registered) | 1–2 rounds |
-| Round 14 Skin Customization screen | The player model has no separate cape/jacket/sleeve layers to toggle — the spec allows showing inert toggles, but that pretends at parity; deferred honestly instead | ¼ round |
-| Round 15 particle types (splash, bubble, drips, portal, end_rod, firework, squid_ink, dust, note, happy/angry villager, snowflake, totem, spit) | The particle system is block-texture billboards; each new type needs a procedural texture + spawn rules through the gameplay paths (water entry, mob events) — a batch of small but individually fiddly additions | 1 round |
-| Round 15 sky ramp exactness (sun 30×30 / moon 20×20 cells, ~1500 stars) | The shader sky (sun disc + glow + hash stars + sunset band) is visually equivalent; the exact cell sizes are sub-pixel at the engine's rendering scale | ¼ round |
-| Saved hotbars (the creative C-tab row, 1.12+) | No saved-toolbar store exists | ¼ round |
+| Round 13 loom / stonecutter / cartography / smithing / fletching | The SPEC'S OWN deferral clauses: banners, map items, the stone-family recipes, netherite gear and arrows are not registered (audit §4 verdicts) | blocked on their subsystems |
+| Hunger-drain gameplay system | The HUD displays the vanilla 20/20 spawn state; the drain/regen simulation is a gameplay round of its own | 1 round |
+| Container-panel family chrome (+~7 vanilla-eq-px vs the 176-wide panels) | A full panel-chrome rework touches every container screen (disclosed in the round-12 audit) | ½ round |
+| Saved-hotbar counts in the tab grid | The creative grid is the u16 item grid; the X+n load preserves counts but the tab view does not render them | trivial, cosmetic |
 
 ## Known issues (observed, not fixed this pass)
 
-- The container-panel family chrome carries a constant ~+7 vanilla-eq-px
-  overhead vs vanilla's 176-wide panels (all container screens uniformly;
-  the slot grids are exactly vanilla-geometry). Disclosed in the round-12
-  audit; a full panel-chrome rework would touch every container screen.
+- (none new — the three latent defects from the interrupted commits
+  were fixed 2026-09-17: the name-pool underflow, the R13 state
+  decode window, the missing music-slider tooltips)
 
-## Legal audit notes (Round 16 [2], this pass)
+## Legal audit notes (Round 16 [2])
 
 - Grep for "Minecraft/Mojang/Notch/Creeper" in user-facing strings: the
   mob display name "Creeper Spawn Egg" (blocks.rs) is a pre-existing
   naming choice from the earlier audit16 rounds (vanilla's own item
-  name, shown on VLM-verified screens); flagged here rather than
-  renamed mid-pass — a rename belongs to a dedicated string-freeze pass.
+  name, shown on VLM-verified screens); flagged for a dedicated
+  string-freeze pass rather than a mid-round rename.
 - The wasm bundle pair (voxelcraft.js + voxelcraft_bg.wasm) is the
-  matched 14:45 Sep-15 rebuild; packs rsynced from builtin-pack/ +
-  builtin-packs/programmer-art/ (procedural PNGs only).
-- README disclaimer: untouched this pass (still the standing clean-room
-  notice from the earlier rounds).
+  matched 2026-09-17 16:43 rebuild (wasm-bindgen 0.2.127, glue
+  patched, packs rsynced from builtin-pack/ +
+  builtin-packs/programmer-art/ — procedural PNGs only).
+- README disclaimer: the standing clean-room notice, unchanged.

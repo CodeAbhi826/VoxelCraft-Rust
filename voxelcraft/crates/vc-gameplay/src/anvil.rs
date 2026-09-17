@@ -355,6 +355,12 @@ pub fn name_pool_id(pool: &mut Vec<String>, name: &str) -> u16 {
 
 /// Round 13: fetch a name by id (None for 0 = the registry name).
 pub fn name_pool_get(pool: &[String], id: u16) -> Option<&str> {
+    // the 0 guard FIRST — `id - 1` on 0 underflows (the 2026-09-17
+    // review catch: the interrupted round-13 commit shipped this
+    // unguarded and the round-trip test panicked instead of passing)
+    if id == 0 {
+        return None;
+    }
     pool.get(id as usize - 1).map(|s| s.as_str())
 }
 

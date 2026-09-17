@@ -1553,6 +1553,17 @@ pub struct MountStorage {
     pub slots: Vec<vc_inventory::inventory::ItemStack>,
 }
 
+/// Round 12b: a mount's death spill — the chest flag + the storage
+/// contents (the game layer drops the CHEST block + these stacks;
+/// VERIFIED w/Donkey §On death + w/Llama §On death)
+#[derive(Default, Clone, Debug)]
+pub struct DeathSpill {
+    /// the mob carried a chest (the CHEST block drops)
+    pub chest: bool,
+    /// the non-empty storage stacks, in slot order
+    pub slots: Vec<vc_inventory::inventory::ItemStack>,
+}
+
 impl MountStorage {
     /// a donkey/mule's storage (15 slots — VERIFIED w/Donkey §Usage:
     /// "If a chest is given to a donkey or mule, it gains 15 inventory
@@ -1814,8 +1825,9 @@ pub struct MobSystem {
     pub bee_pollinations: Vec<([i32; 3], u8)>,
     pub pending_drops: Vec<([f32; 3], u16)>,
     /// mob deaths (drops + XP handled by the game layer); the u8 carries
-    /// the per-kind variant (magma-cube size code etc.)
-    pub deaths: Vec<(MobKind, [f32; 3], u8)>,
+    /// the per-kind variant (magma-cube size code etc.); the DeathSpill
+    /// carries a mount's chest + storage contents (Round 12b)
+    pub deaths: Vec<(MobKind, [f32; 3], u8, DeathSpill)>,
     /// Phase E1: mob-vs-mob damage queued inside ai_tick (borrow split) —
     /// (target id, damage). Applied before the deaths scan.
     pub pending_damage: Vec<(u32, f32)>,
@@ -2300,7 +2312,7 @@ impl MobSystem {
                     i += 1;
                     continue;
                 }
-                let m = self.list.remove(i);
+                let mut m = self.list.remove(i);
                 // exploded creepers leave no drops (vanilla: destroyed).
                 // Phase E3: equines carry "saddled" in the death
                 // variant byte (1 = the saddle drops — VERIFIED w/
@@ -2310,7 +2322,24 @@ impl MobSystem {
                 } else {
                     m.variant
                 };
-                self.deaths.push((m.kind, m.pos, variant));
+                // Round 12b: the mount's death spill — the chest flag +
+                // the non-empty storage stacks (VERIFIED w/Donkey §On
+                // death: "If equipped with a chest or saddle, they drop
+                // those items. They also drop the contents" + w/Llama
+                // §On death: "Any equipped carpets and chest. All items
+                // in their inventory.")
+                let spill = match m.storage.take() {
+                    Some(st) => DeathSpill {
+                        chest: st.chest,
+                        slots: st
+                            .slots
+                            .into_iter()
+                            .filter(|s| !s.is_empty())
+                            .collect(),
+                    },
+                    None => DeathSpill::default(),
+                };
+                self.deaths.push((m.kind, m.pos, variant, spill));
                 self.killed_total += 1;
             } else {
                 i += 1;
@@ -7737,7 +7766,7 @@ mod v112_tests {
         let world = flat_world();
         ms.tick(&world, (0, 0), 1);
         assert!(
-            ms.deaths.iter().any(|(k, _, _)| *k == MobKind::Parrot),
+            ms.deaths.iter().any(|(k, _, _, _)| *k == MobKind::Parrot),
             "the cookie kill routes through the death sweep"
         );
         // non-food: no effect
@@ -9385,6 +9414,20 @@ mod v114_tests {
 mod round12b_mount_storage_tests {
     use super::*;
 
+    fn flat_world() -> World {
+        let mut w = World::new(11);
+        let mut c = vc_chunk::chunk::Chunk::empty();
+        for y in 0..=64i32 {
+            for lz in 0..16usize {
+                for lx in 0..16usize {
+                    c.set(lx, y as usize, lz, STONE);
+                }
+            }
+        }
+        w.insert_generated((0, 0), std::sync::Arc::new(c), Vec::new());
+        w
+    }
+
     /// Round 12b [spec]: the llama's storage capacity scales with its
     /// strength — 3 × strength = 3/6/9/12/15 slots (VERIFIED w/Llama
     /// §Usage: "Llamas can be equipped with chests, which increases
@@ -9463,5 +9506,42 @@ mod round12b_mount_storage_tests {
         let st2 = st.clone();
         assert_eq!(st2.capacity(), 15);
         assert_eq!(st2.slots[0].block, LEATHER);
+    }
+
+    /// Round 12b: the death spill — a chested mount dying drops the
+    /// chest flag + its non-empty contents through the deaths queue
+    /// (VERIFIED w/Donkey §On death: "If equipped with a chest or
+    /// saddle, they drop those items. They also drop the contents" +
+    /// w/Llama §On death: "Any equipped carpets and chest. All items
+    /// in their inventory.")
+    #[test]
+    fn chested_mount_death_spills_storage() {
+        let mut ms = MobSystem::new(80);
+        let id = ms.spawn_at(MobKind::Donkey, 0, 65, 0).unwrap();
+        {
+            let m = ms.by_id_mut(id).unwrap();
+            let st = m.storage.as_mut().unwrap();
+            st.chest = true;
+            st.slots[0] = vc_inventory::inventory::ItemStack::new(LEATHER, 3);
+            st.slots[5] = vc_inventory::inventory::ItemStack::new(BONE, 2);
+        }
+        // kill it through the damage path (the death sweep's real route)
+        ms.damage(id, 999.0);
+        let world = flat_world();
+        ms.tick(&world, (0, 0), 1);
+        assert_eq!(ms.deaths.len(), 1);
+        let (_, _, _, spill) = &ms.deaths[0];
+        assert!(spill.chest, "the chest flag rides the death queue");
+        assert_eq!(spill.slots.len(), 2, "only the non-empty stacks");
+        assert_eq!(spill.slots[0].block, LEATHER);
+        assert_eq!(spill.slots[1].block, BONE);
+        // an UNCHESTED mount spills nothing (no chest flag, no contents)
+        let mut ms2 = MobSystem::new(81);
+        let id2 = ms2.spawn_at(MobKind::Llama, 0, 65, 0).unwrap();
+        ms2.damage(id2, 999.0);
+        ms2.tick(&world, (0, 0), 1);
+        let (_, _, _, spill2) = &ms2.deaths[0];
+        assert!(!spill2.chest);
+        assert!(spill2.slots.is_empty());
     }
 }

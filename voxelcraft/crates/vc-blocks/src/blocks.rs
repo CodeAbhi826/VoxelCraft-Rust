@@ -2446,6 +2446,21 @@ pub fn is_v17_state(s: u16) -> bool {
     (V17_STATE_BASE..V17_STATE_BASE + V17_COUNT).contains(&s)
 }
 
+/// Round 13 (2026-09-16): the station identity window — BOOK +
+/// GRINDSTONE (861..=862, never world-stored; the V17 armor pattern:
+/// the blocks' own identity fallthroughs land inside the glazed-
+/// terracotta facing window, so they take the next free states above
+/// the V17 window).
+pub const R13_STATE_BASE: u16 = 861;
+pub const R13_COUNT: u16 = 2;
+/// R13 state -> block fold: index = state − R13_STATE_BASE.
+pub const R13_STATE_TO_BLOCK: [u16; R13_COUNT as usize] = [BOOK, GRINDSTONE];
+
+#[inline]
+pub fn is_r13_state(s: u16) -> bool {
+    (R13_STATE_BASE..R13_STATE_BASE + R13_COUNT).contains(&s)
+}
+
 /// the 1.0-1.16.5 audit's cave-spider spawner state (kind code 7 —
 /// the mineshaft spawner's mob; replaces the pre-audit spider-spawner
 /// adaptation that gen.rs documented as "no distinct cave-spider mob").
@@ -4113,6 +4128,9 @@ pub fn is_model_state(s: u16) -> bool {
         || s == SPAWNER_SILVERFISH
         || s == SPAWNER_VINDICATOR
         || s == SPAWNER_EVOKER
+        // Round 13: the station identity window (BOOK/GRINDSTONE) —
+        // never model states (the V17 pattern)
+        || is_r13_state(s)
         || s == ACACIA_LOG_X
         || s == ACACIA_LOG_Z
         || s == DARK_OAK_LOG_X
@@ -7242,6 +7260,8 @@ mod state_tests {
         || is_v16_state(s)
                 // Sub-round 3: the armor-item identity window
                 || is_v17_state(s)
+                // Round 13: the station identity window (BOOK/GRINDSTONE)
+                || is_r13_state(s)
                 || matches!(s, ACACIA_LOG_X | ACACIA_LOG_Z | DARK_OAK_LOG_X | DARK_OAK_LOG_Z)
             {
                 assert!(!is_model_state(s), "component/item state {s} never routes to models");
@@ -7395,6 +7415,15 @@ mod state_tests {
                 if is_v17_state(s) {
                     assert_eq!(state_block(s), V17_STATE_TO_BLOCK[(s - V17_STATE_BASE) as usize]);
                     assert_eq!(default_state(b), s, "v17 state {s} roundtrip");
+                }
+                // Round 13: the station identity states (BOOK/GRINDSTONE)
+                // fold 1:1 and default_state inverts the fold exactly (the
+                // V17 pattern — the 2026-09-17 review catch: the
+                // interrupted round-13 commit shipped these states without
+                // the decode-side window, so prop_states_roundtrip panicked)
+                if is_r13_state(s) {
+                    assert_eq!(state_block(s), R13_STATE_TO_BLOCK[(s - R13_STATE_BASE) as usize]);
+                    assert_eq!(default_state(b), s, "r13 state {s} roundtrip");
                 }
                 continue;
             }
@@ -7555,7 +7584,7 @@ mod state_tests {
         // (E-series states end at 354; V2 400..=442, V3 447..=465,
         // V4 466..=475, V5 476..=479)
         assert_eq!(BLOCK_COUNT, 533, "merged registry + V6..V14 + the audit V15 window + the backlog fire + the farming set + the 16 armor items + Round 13 book/grindstone");
-        assert_eq!(STATE_COUNT, 861, "merged state space + the V16 window (fire + farming + item identities) + the V17 armor window");
+        assert_eq!(STATE_COUNT, 863, "merged state space + the V16 window (fire + farming + item identities) + the V17 armor window + the Round-13 station identities");
         assert_eq!(BLOCK_TABLE.len(), BLOCK_COUNT);
         for want in [
             COAL_BLOCK,
@@ -7607,7 +7636,7 @@ mod v110_tests {
             assert!(is_v5_state(s));
         }
         assert_eq!(BLOCK_COUNT, 533); // + the backlog fire (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 861); // + the backlog V16 fire state (state windows are cumulative)
+        assert_eq!(STATE_COUNT, 863); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
     }
 
     /// magma emits light level 3 (VERIFIED — minecraft.wiki/w/Magma_Block,
@@ -7645,7 +7674,7 @@ mod auditfix_tests {
         }
         assert_eq!(V6_COUNT, 6);
         assert_eq!(BLOCK_COUNT, 533); // + the backlog fire (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 861); // + the backlog V16 fire state (state windows are cumulative)
+        assert_eq!(STATE_COUNT, 863); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
         // solidity classes: log/planks solid-opaque (hardness family 2
         // per w/Log + w/Planks), leaves see-through, vine/fern non-solid
         // cross plants (w/Vines: "climbable non-solid"; w/Fern:
@@ -7695,7 +7724,7 @@ mod v111_tests {
             assert_eq!(state_block(s), b, "state {s} folds back");
         }
         assert_eq!(BLOCK_COUNT, 533); // + the backlog fire (block windows are cumulative)
-        assert_eq!(STATE_COUNT, 861); // + the backlog V16 fire state (state windows are cumulative)
+        assert_eq!(STATE_COUNT, 863); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
         // mansion spawner states fold to SPAWNER + decode their kinds
         assert_eq!(state_block(SPAWNER_VINDICATOR), SPAWNER);
         assert_eq!(state_block(SPAWNER_EVOKER), SPAWNER);
@@ -7800,7 +7829,7 @@ mod v112_tests {
         assert_eq!(default_state(COOKIE), V8_STATE_BASE + 117);
         // bounds
         assert_eq!(BLOCK_COUNT, 533);
-        assert_eq!(STATE_COUNT, 861);
+        assert_eq!(STATE_COUNT, 863); // + the Round-13 station identities (861..=862)
         assert_eq!(CONCRETE_BASE + 15, CONCRETE_END);
         assert_eq!(CONCRETE_POWDER_BASE + 15, CONCRETE_POWDER_END);
         assert_eq!(GLAZED_TERRACOTTA_BASE + 15, GLAZED_TERRACOTTA_END);
@@ -7940,7 +7969,7 @@ mod v114_tests {
         );
         // bounds + window shape
         assert_eq!(BLOCK_COUNT, 533);
-        assert_eq!(STATE_COUNT, 861);
+        assert_eq!(STATE_COUNT, 863); // + the Round-13 station identities (861..=862)
         assert_eq!(V10_COUNT, 13);
         assert_eq!(BAMBOO, 417);
         assert_eq!(CHARCOAL, 425);
@@ -8042,7 +8071,7 @@ mod v114_tests {
         // bounds + window shape
         assert_eq!(V11_COUNT, 9);
         assert_eq!(BLOCK_COUNT, 533);
-        assert_eq!(STATE_COUNT, 861);
+        assert_eq!(STATE_COUNT, 863); // + the Round-13 station identities (861..=862)
     }
 }
 
@@ -8128,7 +8157,7 @@ mod v115_tests {
         // bounds + window shape
         assert_eq!(V12_COUNT, 18);
         assert_eq!(BLOCK_COUNT, 533);
-        assert_eq!(STATE_COUNT, 861);
+        assert_eq!(STATE_COUNT, 863); // + the Round-13 station identities (861..=862)
         assert_eq!(PICKER_BLOCKS.len(), 467);
     }
 }
@@ -8276,7 +8305,7 @@ mod v116_tests {
         assert_eq!(V13_COUNT, 34);
         assert_eq!(V13_STATE_BASE + V13_COUNT, 750);
         assert_eq!(BLOCK_COUNT, 533);
-        assert_eq!(STATE_COUNT, 861);
+        assert_eq!(STATE_COUNT, 863); // + the Round-13 station identities (861..=862)
         assert_eq!(PICKER_BLOCKS.len(), 467);
     }
 
@@ -8459,7 +8488,7 @@ mod v116_tests {
         assert_eq!(V15_COUNT, 29);
         assert_eq!(V15_STATE_BASE + V15_COUNT, 805);
         assert_eq!(BLOCK_COUNT, 533);
-        assert_eq!(STATE_COUNT, 861);
+        assert_eq!(STATE_COUNT, 863); // + the Round-13 station identities (861..=862)
         assert_eq!(PICKER_BLOCKS.len(), 467);
     }
 

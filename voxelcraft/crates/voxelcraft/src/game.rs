@@ -217,6 +217,15 @@ pub struct Settings {
     /// Round 14: the rebindable key table (Controls screen), persisted
     /// as `key_<action>:<KeyCode>` pairs
     pub binds: KeyBinds,
+    /// Round 15b: the Saved Hotbars store — vanilla's hotbar.nbt rows
+    /// (VERIFIED w/Saved_Hotbars, live 2026-09-17: "Up to 9 hotbars can
+    /// be saved ... C + a number 1 through 9 ... loaded ... X + 1";
+    /// "The Saved Hotbar menu is common between all worlds the player
+    /// loads — it is not saved locally to any individual world" → the
+    /// options store, a documented adaptation of vanilla's separate
+    /// hotbar.nbt file). Each row = 9 (block, count) pairs; (0, 0) =
+    /// the empty placeholder.
+    pub saved_hotbars: [[(u16, u8); 9]; 9],
     /// frame limiter: 0 = uncapped, else a fps ceiling (30/60/120)
     pub maxfps: u8,
     // ------------------------------------------ Phase 6 §26: rendering --
@@ -353,6 +362,7 @@ impl Default for Settings {
             main_hand_left: false, // Right (the vanilla default)
             view_bobbing: true, // vanilla default ON
             resource_packs: Vec::new(), // Default only, like vanilla
+            saved_hotbars: [[(0, 0); 9]; 9], // all-empty (the paper rows)
             #[cfg(target_arch = "wasm32")]
             gpu_meshing: false,
             #[cfg(not(target_arch = "wasm32"))]
@@ -559,6 +569,14 @@ impl Settings {
         if !self.resource_packs.is_empty() {
             s.push_str(&format!(";packs={}", self.resource_packs.join("|")));
         }
+        // Round 15b: the Saved Hotbars rows (vanilla keeps these in a
+        // separate hotbar.nbt — the options store is the engine's
+        // documented adaptation; row format "block:count,block:count,.."
+        // with 0:0 = the empty placeholder)
+        for (n, row) in self.saved_hotbars.iter().enumerate() {
+            let cells: Vec<String> = row.iter().map(|(b, c)| format!("{b}:{c}")).collect();
+            s.push_str(&format!(";hotbar{n}={}", cells.join(",")));
+        }
         // defaults-version marker: files written before 2026-09-14
         // shipped non-vanilla engine defaults (2048px shadows, aniso 4,
         // boosted brightness/volumes) that no user ever chose — seeing
@@ -605,6 +623,21 @@ impl Settings {
                         "ambient" => st.cat_volumes[7] = val,
                         "voice" => st.cat_volumes[8] = val,
                         _ => {}
+                    }
+                }
+                // Round 15b: the Saved Hotbars rows (hotbar0..hotbar8 —
+                // each "block:count" ×9, 0:0 = empty)
+                k if k.starts_with("hotbar") && k.len() == 7 => {
+                    let n: usize = k[6..].parse().unwrap_or(usize::MAX);
+                    if n < 9 {
+                        for (slot, cell) in v.split(',').enumerate().take(9) {
+                            let mut it = cell.splitn(2, ':');
+                            let b: u16 =
+                                it.next().unwrap_or("0").parse().unwrap_or(0);
+                            let c: u8 =
+                                it.next().unwrap_or("0").parse().unwrap_or(0);
+                            st.saved_hotbars[n][slot] = (b, c);
+                        }
                     }
                 }
                 "fov" => st.fov = v.parse().unwrap_or(st.fov).clamp(30.0, 110.0),
@@ -1380,6 +1413,15 @@ pub struct GameApp {
     /// (None = on foot). Mounting/steering/dismount wired through the
     /// use path + the ride physics below (VERIFIED w/Horse §Riding).
     riding: Option<u32>,
+    /// Round 15b: the Save Toolbar Activator is held (C — vanilla's
+    /// default; VERIFIED w/Saved_Hotbars §Controls: "Save Toolbar
+    /// Activator (default key: C)"). C+1..9 saves the hotbar into the
+    /// Saved Hotbars row while no inventory screen is open.
+    save_toolbar_held: bool,
+    /// Round 15b: the Load Toolbar Activator is held (X — vanilla's
+    /// default; VERIFIED w/Saved_Hotbars §Controls: "Load Toolbar
+    /// Activator (default key: X)"). X+1..9 loads the row.
+    load_toolbar_held: bool,
     /// Phase E3: registered weighted-pressure-plate positions (the
     /// entity-count sweep feeds their redstone signals — VERIFIED
     /// signal formulas w/Light_Weighted_Pressure_Plate + the heavy one)
@@ -2501,6 +2543,8 @@ impl GameApp {
             place_timer: 0.0,
             lava_t: 0,
             riding: None,
+            save_toolbar_held: false,
+            load_toolbar_held: false,
             plates: Vec::new(),
             leashed: None,
             world_flat: false,
@@ -3171,10 +3215,30 @@ impl GameApp {
                         self.close_container();
                     } else if self.picker_open {
                         self.close_picker();
-                    } else if self.mode.picks_creative() {
-                        self.open_picker();
                     } else {
-                        self.open_container(Container::Inventory);
+                        // Round 12b: while riding a CHESTED mount, the
+                        // inventory key opens the mount's storage (the
+                        // vanilla riding behavior — w/Donkey §Usage: the
+                        // inventory GUI is accessed while riding); an
+                        // unchested mount falls through to the normal
+                        // inventory/picker (the saddle-only screen is
+                        // the engine's disclosed simplification)
+                        let riding_chested = self.riding.filter(|&mob| {
+                            self.sim
+                                .mobs
+                                .by_id(mob)
+                                .map(|m| {
+                                    m.storage.as_ref().map(|s| s.chest).unwrap_or(false)
+                                })
+                                .unwrap_or(false)
+                        });
+                        if let Some(mob) = riding_chested {
+                            self.open_container(Container::Mount { mob });
+                        } else if self.mode.picks_creative() {
+                            self.open_picker();
+                        } else {
+                            self.open_container(Container::Inventory);
+                        }
                     }
                 }
                 return;
@@ -3362,6 +3426,15 @@ impl GameApp {
                     self.ui.dirty = true;
                 }
             }
+            KeyCode::KeyC => {
+                // Round 15b: the Save Toolbar Activator (vanilla default C)
+                // — held while a digit 1..9 saves that Saved Hotbars row
+                self.save_toolbar_held = pressed && in_game;
+            }
+            KeyCode::KeyX => {
+                // Round 15b: the Load Toolbar Activator (vanilla default X)
+                self.load_toolbar_held = pressed && in_game;
+            }
             KeyCode::Digit1
             | KeyCode::Digit2
             | KeyCode::Digit3
@@ -3382,6 +3455,21 @@ impl GameApp {
                         return;
                     }
                     let n = code as u8 - KeyCode::Digit1 as u8;
+                    // Round 15b: C+n / X+n — the Saved Hotbars save/load
+                    // (VERIFIED w/Saved_Hotbars §Usage: "The player can
+                    // save their current row using (by default) C + a
+                    // number 1 through 9"; "This row can then be loaded
+                    // into the hotbar using (by default) X + 1"; "the
+                    // inventory must be closed in order to save or load
+                    // hotbars" — the in_game guard is exactly that)
+                    if self.save_toolbar_held {
+                        self.save_toolbar_hotbar(n as usize);
+                        return;
+                    }
+                    if self.load_toolbar_held {
+                        self.load_toolbar_hotbar(n as usize);
+                        return;
+                    }
                     self.player.selected = n as usize;
                     let b = self.player.inv.slots[n as usize].block;
                     self.item_toast = Some((name(b).to_string(), 2.0));
@@ -3589,6 +3677,29 @@ impl GameApp {
             }
             all.retain(|&b| name(b).to_lowercase().contains(&q));
             all
+        } else if self.creative_tab == 10 {
+            // Round 15b: the Saved Hotbars tab — 9 rows of 9, the saved
+            // stacks' block ids with the placeholder in the empty slots
+            // (vanilla: "By default, the 9 slots are marked with an
+            // informational paper item with instructions on how to save
+            // slots as its custom name" — the BOOK is the registry's
+            // stand-in; no paper item exists, disclosed). Counts are not
+            // shown in the u16 creative grid (the X+n load preserves
+            // them — disclosed).
+            use vc_blocks::blocks as blk;
+            self.settings
+                .saved_hotbars
+                .iter()
+                .flat_map(|row| {
+                    row.iter().map(|&(b, c)| {
+                        if c == 0 {
+                            blk::BOOK
+                        } else {
+                            b
+                        }
+                    })
+                })
+                .collect()
         } else {
             blk::creative_tab_items(blk::CREATIVE_TABS[self.creative_tab.min(8) as usize])
         }
@@ -3614,8 +3725,9 @@ impl GameApp {
         let Some(g) = &self.creative_geom else { return };
         // 1) tabs
         if let Some(t) = g.tab_at(ux, uy) {
-            if t == 10 {
-                // the Inventory tab: the SURVIVAL inventory layout —
+            if t == 11 {
+                // the Inventory tab (index 11 — the Saved Hotbars tab
+                // took 10 in Round 15b): the SURVIVAL inventory layout —
                 // swap to the real inventory container screen
                 self.close_picker();
                 self.open_container(Container::Inventory);
@@ -3739,6 +3851,61 @@ impl GameApp {
         self.held_name_t = 2.0;
         self.ui.dirty = true;
         true
+    }
+
+    /// Round 15b: save the current hotbar into Saved Hotbars row `n`
+    /// (C + n, VERIFIED w/Saved_Hotbars §Usage: "The player can save
+    /// their current row using (by default) C + a number 1 through 9
+    /// corresponding to which row in the inventory menu the hotbar row
+    /// should be saved into"; "If an empty hotbar is saved, it clears
+    /// the bookmarked hotbar and puts back the paper into the
+    /// respective slot" — the (0, 0) placeholder rows are exactly that
+    /// clear). Persists through the options store (the
+    /// common-between-worlds rule).
+    fn save_toolbar_hotbar(&mut self, n: usize) {
+        if n >= 9 {
+            return;
+        }
+        for (s, st) in self.player.inv.slots.iter().enumerate().take(9) {
+            self.settings.saved_hotbars[n][s] = (st.block, st.count);
+        }
+        #[cfg(target_arch = "wasm32")]
+        crate::web_input::save_settings(&self.settings.serialize());
+        #[cfg(not(target_arch = "wasm32"))]
+        save_native_settings(&self.settings);
+        vc_render::render::report_boot_log(&format!(
+            "e2e: hotbar saved to row {} (C+{}, VERIFIED w/Saved_Hotbars)",
+            n + 1,
+            n + 1
+        ));
+        self.ui.dirty = true;
+    }
+
+    /// Round 15b: load Saved Hotbars row `n` into the hotbar (X + n,
+    /// VERIFIED w/Saved_Hotbars §Usage: "This row can then be loaded
+    /// into the hotbar using (by default) X + 1"). An empty row loads
+    /// as an empty hotbar (the placeholder clear).
+    fn load_toolbar_hotbar(&mut self, n: usize) {
+        if n >= 9 {
+            return;
+        }
+        let row = self.settings.saved_hotbars[n];
+        for (s, &(b, c)) in row.iter().enumerate() {
+            self.player.inv.slots[s] = if c == 0 {
+                vc_inventory::inventory::ItemStack::EMPTY
+            } else {
+                vc_inventory::inventory::ItemStack::new(b, c)
+            };
+        }
+        vc_render::render::report_boot_log(&format!(
+            "e2e: hotbar row {} loaded (X+{}, VERIFIED w/Saved_Hotbars)",
+            n + 1,
+            n + 1
+        ));
+        // show the first slot's item name (the vanilla load feedback)
+        let b = self.player.inv.slots[self.player.selected].block;
+        self.item_toast = Some((name(b).to_string(), 2.0));
+        self.ui.dirty = true;
     }
 
     /// physical-mouse routing (shared by the winit MouseInput event and
@@ -4133,6 +4300,27 @@ impl GameApp {
             ui::ID_CTRL_RESET => l("Restore the classic WASD / Space / Shift / E / F / B layout."),
             ui::ID_CTRL_DONE => l("Back to the options."),
             ui::ID_SND_DONE => l("Back to the options."),
+            // Round 14 (the 2026-09-17 review catch: the interrupted
+            // commit shipped the Music & Sound screen without these
+            // tooltips and the every-option test caught it)
+            i @ ui::ID_SND_BASE..=ui::ID_SND_LAST => {
+                const CAT_NAMES: [&str; 10] = [
+                    "Master",
+                    "Music",
+                    "Jukeboxes / Note Blocks",
+                    "Weather",
+                    "Blocks",
+                    "Hostile Creatures",
+                    "Friendly Creatures",
+                    "Players",
+                    "Ambient / Environment",
+                    "Voice / Narration",
+                ];
+                l(&format!(
+                    "Volume of the {} sound category (vanilla 1.16.5).",
+                    CAT_NAMES[(i - ui::ID_SND_BASE) as usize]
+                ))
+            }
             ID_OPT_CONTROLS => l2(
                 "The keybind editor: click a key button, press the new key.",
                 "Reset Keys restores the classic layout.",
@@ -6700,9 +6888,38 @@ impl GameApp {
                 0,
             );
         }
-        let deaths: Vec<(mobs::MobKind, [f32; 3], u8)> = std::mem::take(&mut self.sim.mobs.deaths);
-        for (kind, pos, variant) in deaths {
+        let deaths: Vec<(mobs::MobKind, [f32; 3], u8, mobs::DeathSpill)> =
+            std::mem::take(&mut self.sim.mobs.deaths);
+        for (kind, pos, variant, spill) in deaths {
             let d = mobs::def(kind);
+            // Round 12b: the mount's death spill — the chest block +
+            // every non-empty storage stack (VERIFIED w/Donkey §On
+            // death: "If equipped with a chest or saddle, they drop
+            // those items. They also drop the contents" + w/Llama:
+            // "Any equipped carpets and chest. All items in their
+            // inventory.")
+            if spill.chest {
+                self.sim.items.drop_block(
+                    pos[0].floor() as i32,
+                    pos[1].floor() as i32,
+                    pos[2].floor() as i32,
+                    CHEST,
+                    1,
+                    15,
+                    0,
+                );
+            }
+            for s in &spill.slots {
+                self.sim.items.drop_block(
+                    pos[0].floor() as i32,
+                    pos[1].floor() as i32,
+                    pos[2].floor() as i32,
+                    s.block,
+                    s.count.min(vc_inventory::inventory::STACK_MAX),
+                    15,
+                    0,
+                );
+            }
             // vanilla-common loot ranges [adaptation: fixed min..max per
             // kind, no weighted loot tables yet — Phase 9 territory]
             let drops: &[(u16, u8)] = match kind {
@@ -9472,6 +9689,69 @@ impl GameApp {
                             Inventory::slot_click(inv, &mut self.cursor_stack, right);
                         }
                     }
+                } else if let Some(Container::Mount { mob }) = self.container {
+                    // Round 12b: the mount's entity-side storage — slot i
+                    // clicks into the mob's own slot vector (the items
+                    // stay with the mob on close — vanilla behavior)
+                    if let Some(m) = self.sim.mobs.by_id_mut(mob) {
+                        if let Some(st) = m.storage.as_mut() {
+                            if i < st.slots.len() {
+                                let slot = &mut st.slots[i];
+                                Inventory::slot_click(slot, &mut self.cursor_stack, right);
+                            }
+                        }
+                    }
+                }
+            }
+            SlotRef::MountSaddle => {
+                // Round 12b: the saddle slot — equip on click with the
+                // SADDLE on the cursor (the use-interaction path's twin;
+                // VERIFIED w/Donkey §Usage: "A saddle can be equipped on
+                // a donkey by holding it and then using on the donkey,
+                // or by accessing its inventory"), take it back off
+                // with an empty cursor (the equip-returns rule the
+                // saddle-drop-on-death already encodes)
+                let Some(Container::Mount { mob }) = self.container else {
+                    return;
+                };
+                let is_equine = self
+                    .sim
+                    .mobs
+                    .by_id(mob)
+                    .map(|m| {
+                        matches!(
+                            m.kind,
+                            vc_gameplay::mobs::MobKind::Donkey | vc_gameplay::mobs::MobKind::Mule
+                        )
+                    })
+                    .unwrap_or(false);
+                if !is_equine {
+                    return; // llamas have no saddle slot (the badge column)
+                }
+                if self.cursor_stack.block == SADDLE && !self.cursor_stack.is_empty() {
+                    if self.sim.mobs.try_saddle(mob) {
+                        if self.mode.depletes_items() {
+                            self.cursor_stack.count -= 1;
+                            if self.cursor_stack.count == 0 {
+                                self.cursor_stack =
+                                    vc_inventory::inventory::ItemStack::EMPTY;
+                            }
+                        }
+                        self.play_event("entity.horse.armor", None, 1.0);
+                    }
+                } else if self.cursor_stack.is_empty() {
+                    // un-equip: the saddle returns to the cursor (the
+                    // mob keeps its tamed state)
+                    if let Some(m) = self.sim.mobs.by_id_mut(mob) {
+                        if let Some(eq) = m.equine.as_mut() {
+                            if eq.saddled {
+                                eq.saddled = false;
+                                self.cursor_stack =
+                                    vc_inventory::inventory::ItemStack::new(SADDLE, 1);
+                                self.play_event("entity.horse.armor", None, 0.8);
+                            }
+                        }
+                    }
                 }
             }
             SlotRef::CraftOut => {
@@ -10285,6 +10565,19 @@ impl GameApp {
                 .get(&pos)
                 .map(|c| c.slots.clone())
                 .unwrap_or_default(),
+            // Round 12b: the mount's storage slots (the entity-side
+            // inventory; an absent mob renders as an empty grid)
+            Some(Container::Mount { mob }) => self
+                .sim
+                .mobs
+                .by_id(mob)
+                .map(|m| {
+                    m.storage
+                        .as_ref()
+                        .map(|s| s.slots.clone())
+                        .unwrap_or_default()
+                })
+                .unwrap_or_default(),
             // Round 12: the double chest view = the clicked half's 27
             // slots THEN the neighbor's 27 (rows 0-2 / 3-5 of the grid)
             Some(Container::DoubleChest { pos, other }) => {
@@ -10374,6 +10667,39 @@ impl GameApp {
             }
             _ => None,
         };
+        // ---- Round 12b: the mount view (the saddle state + the llama
+        // strength; the storage slots ride `chest`) ----
+        let mount = match self.container {
+            Some(Container::Mount { mob }) => {
+                self.sim.mobs.by_id(mob).map(|m| {
+                    let (label, llama, strength) = match m.kind {
+                        vc_gameplay::mobs::MobKind::Llama => {
+                            ("LLAMA", true, m.variant.clamp(1, 5))
+                        }
+                        vc_gameplay::mobs::MobKind::Mule => ("MULE", false, 1),
+                        _ => ("DONKEY", false, 1),
+                    };
+                    let saddle = if m
+                        .equine
+                        .as_ref()
+                        .map(|e| e.saddled)
+                        .unwrap_or(false)
+                    {
+                        vc_inventory::inventory::ItemStack::new(SADDLE, 1)
+                    } else {
+                        vc_inventory::inventory::ItemStack::EMPTY
+                    };
+                    vc_render::ui::MountView {
+                        kind_label: label.to_string(),
+                        saddle,
+                        llama,
+                        strength,
+                        capacity: m.storage.as_ref().map(|s| s.capacity()).unwrap_or(0),
+                    }
+                })
+            }
+            _ => None,
+        };
         ContainerView {
             kind,
             inv: self.player.inv.slots.clone(),
@@ -10390,6 +10716,7 @@ impl GameApp {
             anvil,
             beacon,
             grind,
+            mount,
         }
     }
 
@@ -12815,6 +13142,34 @@ impl GameApp {
                                 self.open_container(Container::Brewing { pos });
                                 vc_render::render::report_boot_log("e2e: brewing screen open");
                             }
+                            // Round 13 (2026-09-17): the station screens —
+                            // place the block + open through the real path
+                            // (the 2026-09-16 commits shipped the GUIs
+                            // without a live E2E; this closes the gap)
+                            Some("anvil") => {
+                                self.test_place(ANVIL, pos[0], pos[1], pos[2]);
+                                self.sim.anvils.entry(pos).or_default();
+                                self.open_container(Container::Anvil { pos });
+                                vc_render::render::report_boot_log(
+                                    "e2e: anvil screen open (Repair & Name)",
+                                );
+                            }
+                            Some("grindstone") => {
+                                self.test_place(GRINDSTONE, pos[0], pos[1], pos[2]);
+                                self.sim.grindstones.entry(pos).or_default();
+                                self.open_container(Container::Grindstone { pos });
+                                vc_render::render::report_boot_log(
+                                    "e2e: grindstone screen open (Repair & Disenchant)",
+                                );
+                            }
+                            Some("beacon") => {
+                                self.test_place(BEACON, pos[0], pos[1], pos[2]);
+                                self.sim.beacons.entry(pos).or_default();
+                                self.open_container(Container::Beacon { pos });
+                                vc_render::render::report_boot_log(
+                                    "e2e: beacon screen open (power selection)",
+                                );
+                            }
                             Some("enchant") => {
                                 // place the table + the vanilla 15-bookshelf
                                 // ring, then open with a fresh offer list
@@ -13215,6 +13570,58 @@ impl GameApp {
                                 vc_render::render::report_boot_log("e2e: villager cap reached");
                             }
                         }
+                    }
+                    Some("mount") => {
+                        // mount:<donkey|llama|mule> — Round 12b E2E: spawn
+                        // the mount two blocks ahead, hand the player a
+                        // CHEST through the real pickup path, equip it
+                        // through the same mutation the use-interaction
+                        // performs, stuff one storage slot (so the grid
+                        // shows an item), and open the screen through the
+                        // real open_container path (the harness verifies
+                        // the layout + clicks the slots via cclick)
+                        let kind = match parts.get(1).copied() {
+                            Some("llama") => vc_gameplay::mobs::MobKind::Llama,
+                            Some("mule") => vc_gameplay::mobs::MobKind::Mule,
+                            _ => vc_gameplay::mobs::MobKind::Donkey,
+                        };
+                        let pos = self.player.pos;
+                        let id = if kind == vc_gameplay::mobs::MobKind::Llama {
+                            // strength 3 → 9 slots → the 5+4 partial-row
+                            // layout (the interesting llama grid)
+                            self.sim
+                                .mobs
+                                .spawn_variant(kind, pos.x.floor() as i32 + 2, pos.y.floor() as i32, pos.z.floor() as i32, 3)
+                                .expect("mob cap")
+                        } else {
+                            self.sim
+                                .mobs
+                                .spawn_at(kind, pos.x.floor() as i32 + 2, pos.y.floor() as i32, pos.z.floor() as i32)
+                                .expect("mob cap")
+                        };
+                        self.player.inv.add(CHEST, 1);
+                        // the equip (the use-interaction's exact mutation)
+                        // + one stuffed slot for the visual check
+                        if let Some(m) = self.sim.mobs.by_id_mut(id) {
+                            if let Some(st) = m.storage.as_mut() {
+                                st.chest = true;
+                                st.slots[0] =
+                                    vc_inventory::inventory::ItemStack::new(LEATHER, 3);
+                            }
+                        }
+                        self.open_container(Container::Mount { mob: id });
+                        let label = self
+                            .sim
+                            .mobs
+                            .by_id(id)
+                            .map(|m| {
+                                let cap = m.storage.as_ref().map(|s| s.capacity()).unwrap_or(0);
+                                format!("{:?} ({} slots)", m.kind, cap)
+                            })
+                            .unwrap_or_default();
+                        vc_render::render::report_boot_log(&format!(
+                            "e2e: mount screen open — {label}, slot 0 = Leather x3 (VERIFIED 15/3×strength)"
+                        ));
                     }
                     Some("trade") => {
                         // trade:<idx> — scripted §29 flow: spawn a cleric (sells
@@ -15543,9 +15950,10 @@ impl GameApp {
                             self.place_timer = 0.5;
                         }
                 }
-                // ---- Phase E3 (1.5–1.6): equine interactions (mount /
-                // saddle / feed / lead) — vanilla interaction priority
-                // over blocks, the villager pattern ----
+                // ---- Phase E3 (1.5–1.6) + Round 12b: equine/llama
+                // interactions (mount / saddle / feed / lead / chest)
+                // — vanilla interaction priority over blocks, the
+                // villager pattern ----
                 else if let Some(eid) = self
                     .sim
                     .mobs
@@ -15564,17 +15972,66 @@ impl GameApp {
                                     vc_gameplay::mobs::MobKind::Horse
                                         | vc_gameplay::mobs::MobKind::Donkey
                                         | vc_gameplay::mobs::MobKind::Mule
+                                        | vc_gameplay::mobs::MobKind::Llama
                                 )
                             })
                             .unwrap_or(false)
                     })
                 {
                     let held = self.player.held().block;
+                    // (0) Round 12b — CHEST: equip a mount's storage (a
+                    // donkey/mule/llama — VERIFIED w/Donkey: "they can
+                    // also be equipped with chests to store up to 15
+                    // stacks of items" + w/Llama §Storage: 3 × strength
+                    // slots). The chest item is consumed on equip, then
+                    // the mount screen opens (vanilla's own flow); using
+                    // a CHESTED mount again just opens the screen.
+                    let has_storage = self
+                        .sim
+                        .mobs
+                        .by_id(eid)
+                        .map(|m| m.storage.is_some())
+                        .unwrap_or(false);
+                    let is_chested = self
+                        .sim
+                        .mobs
+                        .by_id(eid)
+                        .map(|m| m.storage.as_ref().map(|s| s.chest).unwrap_or(false))
+                        .unwrap_or(false);
+                    if held == CHEST && has_storage && !is_chested && self.container.is_none() {
+                        if let Some(m) = self.sim.mobs.by_id_mut(eid) {
+                            if let Some(st) = m.storage.as_mut() {
+                                st.chest = true;
+                            }
+                        }
+                        if self.mode.depletes_items() {
+                            let h = self.player.held_mut();
+                            h.count -= 1;
+                            if h.count == 0 {
+                                *h = vc_inventory::inventory::ItemStack::EMPTY;
+                            }
+                        }
+                        self.play_event("block.chest.open", None, 0.8);
+                        vc_render::render::report_boot_log(
+                            "e2e: chest equipped on mount (15 / 3×strength slots, VERIFIED)",
+                        );
+                        self.open_container(Container::Mount { mob: eid });
+                        self.place_timer = 0.3;
+                    }
+                    // using a CHESTED mount opens its storage (VERIFIED
+                    // w/Donkey §Usage: the inventory GUI is accessed by
+                    // using the donkey) — before the lead/saddle/feed/
+                    // mount branches, vanilla's own priority for a
+                    // storage-equipped mount
+                    else if is_chested && self.container.is_none() {
+                        self.open_container(Container::Mount { mob: eid });
+                        self.place_timer = 0.3;
+                    }
                     // (1) LEAD: leash the mob to the player (VERIFIED w/
                     // Lead — 10-block stretch in 1.16.5, version-scoped);
                     // a held lead on a FENCE ties a knot instead (the
                     // target block path below)
-                    if held == LEAD && self.leashed.is_none() {
+                    else if held == LEAD && self.leashed.is_none() {
                         self.leashed = Some((eid, None));
                         if self.mode.depletes_items() {
                             let h = self.player.held_mut();
@@ -15588,8 +16045,18 @@ impl GameApp {
                         self.place_timer = 0.3;
                     }
                     // (2) SADDLE: equip a tamed equine (VERIFIED w/Horse
-                    // §Riding — control needs the saddle)
-                    else if held == SADDLE {
+                    // §Riding — control needs the saddle). Llamas are
+                    // excluded — vanilla llamas cannot be saddled (the
+                    // llama's equip surface is the CHEST, VERIFIED
+                    // w/Llama §Usage)
+                    else if held == SADDLE
+                        && !self
+                            .sim
+                            .mobs
+                            .by_id(eid)
+                            .map(|m| m.kind == vc_gameplay::mobs::MobKind::Llama)
+                            .unwrap_or(false)
+                    {
                         let applied = self.sim.mobs.try_saddle(eid);
                         if applied {
                             if self.mode.depletes_items() {
@@ -20425,6 +20892,10 @@ fn keycode_from_web(code: &str) -> Option<winit::keyboard::KeyCode> {
         "KeyB" => KeyCode::KeyB,
         "KeyH" => KeyCode::KeyH,
         "KeyV" => KeyCode::KeyV,
+        // Round 15b: the Saved Hotbars activators (C = save, X = load —
+        // the vanilla defaults, VERIFIED w/Saved_Hotbars §Controls)
+        "KeyC" => KeyCode::KeyC,
+        "KeyX" => KeyCode::KeyX,
         "BracketLeft" => KeyCode::BracketLeft,
         "BracketRight" => KeyCode::BracketRight,
         "Minus" => KeyCode::Minus,
@@ -21292,6 +21763,35 @@ mod settings_tests {
         let mut names: Vec<&str> = (0u8..=13).map(Biome::from_u8).map(|b| b.name()).collect();
         names.dedup();
         assert_eq!(names.len(), 14, "the 14-biomes-total claim");
+    }
+
+    /// Round 15b: the Saved Hotbars rows round-trip through the options
+    /// store (hotbar0..hotbar8, "block:count" cells with 0:0 = the
+    /// empty placeholder) — the common-between-worlds persistence.
+    #[test]
+    fn saved_hotbars_round_trip() {
+        let mut s = Settings::default();
+        assert!(s.saved_hotbars.iter().all(|row| row.iter().all(|&(b, c)| b == 0 && c == 0)),
+            "all rows start empty (the paper placeholders)");
+        // a saved row: dirt x64 in slot 0, empty elsewhere
+        s.saved_hotbars[0][0] = (3, 64);
+        // a full row of 9
+        for slot in 0..9 {
+            s.saved_hotbars[2][slot] = (5, 7);
+        }
+        let text = s.serialize();
+        assert!(text.contains("hotbar0=3:64,"), "row 0 persists: {}", &text[text.find("hotbar0").unwrap()..text.find("hotbar0").unwrap() + 40]);
+        let back = Settings::deserialize(&text);
+        assert_eq!(back.saved_hotbars[0][0], (3, 64));
+        assert_eq!(back.saved_hotbars[0][1], (0, 0), "the empty cells stay empty");
+        for slot in 0..9 {
+            assert_eq!(back.saved_hotbars[2][slot], (5, 7));
+        }
+        assert_eq!(back.saved_hotbars[8][0], (0, 0), "untouched rows stay empty");
+        // junk input does not panic and leaves defaults
+        let junk = Settings::deserialize("hotbar3=garbage;hotbar99=1:1");
+        assert!(junk.saved_hotbars.iter().all(|r| r.iter().all(|&(b, c)| b == 0 && c == 0)),
+            "malformed rows fall back to empty");
     }
 }
 

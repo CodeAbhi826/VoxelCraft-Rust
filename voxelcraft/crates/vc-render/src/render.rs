@@ -391,23 +391,25 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     //     the implicit dpdx/dpdy the GPU derives for mip/aniso selection
     //     jump to ~the full tile width at every block boundary. Fixed by
     //     sampling with EXPLICIT gradients from the PRE-fract uv.
-    // (3) GRADIENT SCALE (2026-09-09, the "dark grid on distant blocks"
-    //     report): textureSampleGrad takes the derivative of the ATLAS
-    //     COORDINATE tuv = (tile + fract(uv)) / 32 — normalized over the
-    //     512×512 atlas (32×32 tiles of 16 texels). d(tuv)/dpx =
-    //     d(fract(uv))/dpx / 32 = dpdx(uv) / (16 · 32) = dpdx(uv) / 512.
-    //     The old code passed dpdx(uv)/16 — 32× TOO LARGE — so the GPU
-    //     picked a mip ~5 levels too deep for every distance beyond a
-    //     couple of blocks: deep mips average whole tiles AND their atlas
-    //     neighbors, painting a dark grid over mid/far terrain the moment
-    //     Mipmap or Aniso was on (both default). The fix is the /512.
+    // (3) GRADIENT SCALE (2026-09-09 "dark grid on distant blocks" report;
+    //     scale re-derived and corrected 2026-09-19): textureSampleGrad
+    //     needs the derivative of the ATLAS COORDINATE
+    //     tuv = (tile + fract(uv)) / 32. The mesher's uv is FACE units
+    //     (0..1 across a block face — the packed decode in vs_main stores
+    //     texel units and divides by 16.0), so
+    //     d(tuv)/dpx = dpdx(uv) · 16/512 = dpdx(uv) / 32.
+    //     History: the original /16 was 32× TOO LARGE (mips ~5 levels too
+    //     deep → dark grid over mid/far terrain); the 2026-09-09 /512
+    //     over-corrected with a spurious ÷16 and UNDER-mipped ~4 levels
+    //     (mip 0 even at max render distance — distant shimmer instead of
+    //     vanilla's graded blur). The exact scale is /32.
     // Deep-distance note: at mip 3/4 (2px/1px per tile) bilinear still
     // mixes neighboring tiles — same residual vanilla 1.16.5 has (the
     // reason its mipmap slider stops at 4); covered by fog at that range.
     let fuv = clamp(fract(in.uv), vec2<f32>(0.03125), vec2<f32>(0.9375));
     let tuv = (in.tile + fuv) / vec2<f32>(32.0, 32.0);
-    let gdx = dpdx(in.uv) / vec2<f32>(512.0, 512.0);
-    let gdy = dpdy(in.uv) / vec2<f32>(512.0, 512.0);
+    let gdx = dpdx(in.uv) / vec2<f32>(32.0, 32.0);
+    let gdy = dpdy(in.uv) / vec2<f32>(32.0, 32.0);
     let c = textureSampleGrad(atlas_tex, atlas_samp, tuv, gdx, gdy);
     if (c.a < 0.5) { discard; }
     let day = G.misc.x;
@@ -553,6 +555,10 @@ fn vs_main(
     return out;
 }
 
+// (water fs_main gradient note — see TERRAIN_SHADER's comment (3) for the
+// full derivation: uv is FACE units, tuv=(tile+fract)/32, so the atlas-
+// coordinate gradient is dpdx(uv)/32; the /512 form under-mipped ~4 levels.)
+
 @fragment
 fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // scroll + fract(uv + scroll): the scroll offset is uniform across the
@@ -562,14 +568,14 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     // inset kills cross-tile bleed (the upper bound is 15/16 — 15.5/16 sat
     // ON the tile boundary and blended 50% of the neighbor tile into every
     // face edge), and the gradients are dpdx/dpdy of the ATLAS coordinate
-    // (tuv spans (tile+fract)/32 of a 512px atlas → derivative is
-    // dpdx(uv)/512, NOT the old /16 — the /16 form was 32× too large and
-    // forced ~5-mips-too-deep sampling: the dark-grid-at-distance bug).
+    // (uv is FACE units, tuv = (tile+fract)/32 → derivative is dpdx(uv)/32;
+    // the old /16 was 32× too large — dark-grid-at-distance — and the
+    // 2026-09-09 /512 under-mipped ~4 levels; /32 is exact).
     let scroll = vec2<f32>(G.misc.y * 0.06, G.misc.y * 0.025);
     let fuv = clamp(fract(in.uv + scroll), vec2<f32>(0.03125), vec2<f32>(0.9375));
     let tuv = (in.tile + fuv) / vec2<f32>(32.0, 32.0);
-    let gdx = dpdx(in.uv) / vec2<f32>(512.0, 512.0);
-    let gdy = dpdy(in.uv) / vec2<f32>(512.0, 512.0);
+    let gdx = dpdx(in.uv) / vec2<f32>(32.0, 32.0);
+    let gdy = dpdy(in.uv) / vec2<f32>(32.0, 32.0);
     let c = textureSampleGrad(atlas_tex, atlas_samp, tuv, gdx, gdy);
     let day = G.misc.x;
     // water is a flat plane — the up normal is exact
@@ -5734,10 +5740,11 @@ mod shader_tests {
     ///    and blends the neighbor tile into every face edge),
     /// 3. gradients taken from the PRE-fract uv (`dpdx(in.uv)`, not of the
     ///    clamped/fract'ed coordinate), and
-    /// 4. the gradient divided by 512 — the derivative of the ATLAS
-    ///    coordinate tuv=(tile+fract)/32 over the 512px atlas
-    ///    (d(tuv)/dpx = dpdx(uv)/512; the old /16 was 32× too large and
-    ///    selected mips ~5 levels too deep → the dark grid at distance).
+    /// 4. the gradient divided by 32 — the derivative of the ATLAS
+    ///    coordinate tuv=(tile+fract)/32 when uv is FACE units
+    ///    (d(tuv)/dpx = dpdx(uv)·16/512 = dpdx(uv)/32; the old /16 was
+    ///    32× too large → dark grid at distance; the 2026-09-09→19 /512
+    ///    under-mipped ~4 levels → distant shimmer. /32 is exact.)
     ///
     /// A refactor that drops any one of them resurrects the seam bug —
     /// this test fails loudly instead.
@@ -5757,12 +5764,16 @@ mod shader_tests {
                 "{name}: inset bounds must be the tile-safe pair (0.5/16, 15/16)"
             );
             assert!(
-                src.contains("dpdx(in.uv) / vec2<f32>(512.0, 512.0)"),
-                "{name}: gradients must be atlas-coordinate derivatives (dpdx(uv)/512)"
+                src.contains("dpdx(in.uv) / vec2<f32>(32.0, 32.0)"),
+                "{name}: gradients must be atlas-coordinate derivatives (dpdx(uv)/32, uv is face-units)"
             );
             assert!(
                 !src.contains("dpdx(in.uv) / vec2<f32>(16.0, 16.0)"),
                 "{name}: the 32×-too-large gradient (/16) is the dark-grid bug — do not reintroduce"
+            );
+            assert!(
+                !src.contains("dpdx(in.uv) / vec2<f32>(512.0, 512.0)"),
+                "{name}: the /512 gradient under-mips ~4 LOD levels (spurious ÷16 — the 2026-09-19 correction) — do not reintroduce"
             );
             assert!(
                 !src.contains("textureSample(atlas_tex"),

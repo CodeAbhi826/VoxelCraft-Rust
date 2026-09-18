@@ -5390,3 +5390,109 @@ latest bundle.
 - Still deferred (unchanged): the starvation watchdog + VC_POINTER +
   click-side routing ports; LabPBR pbr.rs wiring; the station GUIs;
   hunger-drain hooks beyond combat/movement.
+
+## [2026-09-19] CI REPAIR ROUND — the bench-bin compile break + the four lost smoke e2e hardening lines
+
+Context: the push of the /32 fix (078f890) exposed that CI had been red
+since d3adde5 — the linux-game smoke and the wasm-build native-check job
+both failed on the previous push already (last green: 33ed0bd2,
+2026-09-11). Root causes were all in the 33ed0bd2 → d3adde5 window
+(rounds 12b/15b/17 + the owner-track merge); the /32 change itself was
+clean (the wasm-bundle job passed, the game smoke reached gameplay, and
+the browser E2E was visually verified).
+
+### The vc_bench API-drift compile break (native-check job, red)
+
+`cargo test --release --no-default-features --features bench-bin` is the
+CI gate that compiles the bench binary — the workspace test command
+skips it (`bench-bin` is a non-default feature), which is why the local
+816-test runs stayed green while CI failed to compile. Three call sites
+in `bin/vc_bench.rs` had drifted when `mesh_sections` grew the vanilla
+3-state `smooth: u8` + the `biomes: Option<Box<[u8]>>` 7th arg and
+`GpuMeshJobMeta.smooth` became `u8`:
+
+- the GpuMeshJobMeta literal: `smooth: true` → `smooth: 2` (bool true =
+  full-strength AO = vanilla Maximum, the same mapping `mesh_chunk`
+  documents),
+- the full-mesh and partial-remesh `mesh_sections(...)` calls: `true` →
+  `2` + the trailing `None` biome pad.
+
+A latent `clippy::ptr_arg` (`&mut Vec<f32>` → `&mut [f32]` on
+`percentile_ms`) surfaced once the target compiled again — fixed.
+Verified: `cargo test ... --features bench-bin` = 80/80, clippy 0/0 in
+BOTH feature configurations.
+
+### The four lost smoke-e2e determinism lines (linux-game smoke, red)
+
+Diffing each failing e2e function against 33ed0bd2 (the last green tree)
+showed the round-12b/15b/17 + merge window had each time LOST the exact
+lines that made the checks deterministic; the round-6 worldgen overhaul
+(same window — never smoke-tested before d3adde5 because rounds 6-17
+were only pushed at the reconciliation) changed the seed-12345 terrain
+and made the weakened forms fail:
+
+1. **v115 beehive lifecycle** — the merge lost (a) the reset of the hive
+   to honey_level 0 after the state-encode checks (so `level_after` read
+   the pre-set 5 instead of the bee's deposit), (b) the PER-TICK
+   `drain_bee_queues()` inside the fast-forward (without it the bee sits
+   in `bee_enters` un-stored, the 2400-tick work clock never runs, and
+   the honey never bumps), and (c) the spawn at +1 above the hive. The
+   rewritten `entered_then_left` ("no Bee anywhere in the mob list") was
+   also WRONG — release-spawned natural-hive bees (new ids) re-enter the
+   list through the same drain and always falsify it. Restored the reset
+   + per-tick drain + +1 spawn, and the check now tracks OUR bee by id:
+   it leaves the list on arrival (the mobs 3.4 pass) regardless of
+   natural-hive release pollution.
+2. **v116 soulfire** — the check runs right after the anchor-drain
+   `respawn()`, which leaves the player at the mid-air world-spawn cell
+   (seed-12345: y 73 over a y-68 surface). The green form placed a STONE
+   floor at feet-1 and PINNED the player at the fire cell (pos, vel=0,
+   on_ground); those four lines were lost, so the fire was placed at a
+   mid-air cell and the player fell through it (a cadence test proved a
+   falling player accumulates zero). Restored.
+3. **audit16 trio** — `sim.mobs.player` (the aim target for the ghast's
+   fireball and the cave spider's bite) was never set in the weakened
+   form, so neither event ever fired. Restored the player-reference line
+   before the spawns.
+4. **audit16b pearl throw** — the stone floor + pearl column moved from
+   +4 blocks away to the player's own column; the pearl teleport then
+   lands the player exactly where they already stand, so `moved` reads
+   false even on a successful teleport. Restored the +4 offset.
+
+Plus one new regression guard: `soul_fire_contact_at_e2e_cadence`
+(player.rs tests) — the same 2 HP / 0.5 s contract at the smoke
+harness's dt=0.1 x 6 cadence (the 20 Hz substep accumulator must
+quantize the window identically at any frame-rate). Workspace count is
+now **817/817** (816 + this test).
+
+Diagnostics kept for the record: `crates/vc-world/examples/
+spawn_check.rs` (prints the seed-12345 spawn + the actual generated
+column — the probe that pinned the mid-air/terrain mismatch),
+`scripts/diff_e2e_fns.sh` (per-function old-vs-new diff driver), and
+`scripts/readme_capture.sh` (the browser E2E capture flow).
+
+### Verify + redeploy
+
+- `cargo test --release --no-default-features --workspace` = **817/817**
+- `cargo test --release --no-default-features --features bench-bin` =
+  **80/80** (the previously-broken CI gate)
+- clippy `-D warnings` = **0/0** in both feature configurations
+- wasm32 check clean; release wasm32 rebuilt (CI method), glue patched,
+  locked pair redeployed to public/ and the preview verified serving it
+  by HTTP md5; a fresh browser boot check (title screen + panorama,
+  VLM-verified) confirms the bundle is healthy.
+
+### Stage Summary
+
+- Both CI failure classes repaired at root cause: the bench-bin compile
+  break (API drift + a latent clippy lint) and the four smoke e2e
+  checks (each restored to its last-green deterministic form, with the
+  v115 check now strictly MORE precise — by-bee-id tracking that
+  natural-hive releases cannot falsify).
+- The smoke's own world-facing assumptions now match the round-6
+  worldgen reality (the mid-air respawn cell is explicitly pinned
+  around by the restored hardening).
+- 817/817 + 80/80 + clippy 0/0 both configs + wasm clean; preview
+  serves the rebuilt bundle. Pushing — CI (ci.yml / linux-game.yml /
+  wasm-build.yml incl. its native-check job) is the final verifier for
+  the smoke path (no local GPU/lavapipe).

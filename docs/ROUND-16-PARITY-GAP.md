@@ -1,6 +1,6 @@
 # ROUND-16-PARITY-GAP.md — the remaining known gaps
 
-Date: 2026-09-17 (updated; first cut 2026-09-15) · the honest ledger
+Date: 2026-09-18 (updated; first cut 2026-09-15) · the honest ledger
 of what is NOT yet vanilla-parity, with size estimates (the spec's
 Round 16 [1] deliverable).
 
@@ -37,21 +37,43 @@ Round 16 [1] deliverable).
   defaults, held-state combos), options-store persistence
   (hotbar0..8), the tab grid with placeholder rows. E2E-verified
   live (both boot logs + the tab screen).
+- **Round 17 — the hunger-drain gameplay system CLOSED (2026-09-18)**
+  — the standing deferral closed: the full vanilla FoodData model
+  (`vc_gameplay::hunger`: foodLevel / foodSaturationLevel /
+  foodExhaustionLevel / foodTickTimer), the exhaustion-accumulation
+  hooks (sprint 0.1/m, swim 0.01/m, jump 0.05, sprint-jump 0.2,
+  attack 0.1 landed, damage 0.1, mining 0.005, Hunger effect
+  0.005/tick/level, regen 6.0/HP), the natural regeneration (80-tick
+  cadence) + the Java-only saturation boost (10-tick cadence), the
+  starvation branch with the per-difficulty stop thresholds (Normal
+  1 HP / Hardcore Hard-class never-stops), the sprint gate (food > 6,
+  mayfly bypass), the live HUD food bar (replacing the hardcoded
+  20/20) + the saturation-zero hunger-bar jitter, the FoodData eat
+  path (the hunger/2 direct-heal convention RETIRED — the full
+  nutrition/saturation table re-verified live against the Food
+  page), the respawn reset (20/5), and the cadence defect fix (the
+  effects tick + lava contact damage ran per FRAME — now per 20 Hz
+  sim tick). All wiki-cited live 2026-09-18
+  (docs/research/round-17-hunger-audit.md).
 
 ## Deferred (with reasons)
 
 | Gap | Reason | Estimate |
 |---|---|---|
 | Round 13 loom / stonecutter / cartography / smithing / fletching | The SPEC'S OWN deferral clauses: banners, map items, the stone-family recipes, netherite gear and arrows are not registered (audit §4 verdicts) | blocked on their subsystems |
-| Hunger-drain gameplay system | The HUD displays the vanilla 20/20 spawn state; the drain/regen simulation is a gameplay round of its own | 1 round |
 | Container-panel family chrome (+~7 vanilla-eq-px vs the 176-wide panels) | A full panel-chrome rework touches every container screen (disclosed in the round-12 audit) | ½ round |
 | Saved-hotbar counts in the tab grid | The creative grid is the u16 item grid; the X+n load preserves counts but the tab view does not render them | trivial, cosmetic |
+| The in-game nether portal (Phase 12A of the master plan) | Newly identified in the 2026-09-18 master-plan review: the Nether dimension itself is COMPLETE (five biomes, fortresses, 8:1 coords, respawn anchors, piglin/hoglin content, nether fog) and reachable through the §28 travel pipeline + the E2E `dim:` command, but the obsidian-frame portal block + the flint-and-steel item + the walk-in trigger do not exist (the End portals are the only in-game dimension path; the fire block exists via lightning only). A portal round needs: the PORTAL block registration + frame validation + flint-and-steel item + portal particles/fog overlay + the walk-in travel + spawn-frame building on the far side | 1 round |
+| Hunger NBT persistence (foodLevel/foodSaturationLevel/foodExhaustionLevel in the player block) | The engine's level.dat player NBT carries no health/xp either — every world entry is a fresh 20 HP / 20 food (the wiki's own world-creation semantics). Riding the existing convention this round; a future persistence round carries the whole vital-stat set | with the persistence round |
+| Peaceful / Easy difficulty rules | The engine has no difficulty selector (worlds run Normal-class starvation; Hardcore runs Hard-class per the modes doc). The two unreachable rule rows stay disclosed | with a difficulty selector round |
 
 ## Known issues (observed, not fixed this pass)
 
 - (none new — the three latent defects from the interrupted commits
   were fixed 2026-09-17: the name-pool underflow, the R13 state
-  decode window, the missing music-slider tooltips)
+  decode window, the missing music-slider tooltips; the frame-cadence
+  effects/lava defect was fixed 2026-09-18 with the round-17
+  per-sim-tick block)
 
 ## Legal audit notes (Round 16 [2])
 
@@ -61,7 +83,7 @@ Round 16 [1] deliverable).
   name, shown on VLM-verified screens); flagged for a dedicated
   string-freeze pass rather than a mid-round rename.
 - The wasm bundle pair (voxelcraft.js + voxelcraft_bg.wasm) is the
-  matched 2026-09-17 16:43 rebuild (wasm-bindgen 0.2.127, glue
+  matched 2026-09-18 rebuild (wasm-bindgen 0.2.127, glue
   patched, packs rsynced from builtin-pack/ +
   builtin-packs/programmer-art/ — procedural PNGs only).
 - README disclaimer: the standing clean-room notice, unchanged.

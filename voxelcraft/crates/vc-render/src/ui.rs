@@ -624,9 +624,15 @@ pub struct WorldRow {
 pub struct HudStatus {
     /// health 0..20 (10 hearts, half-heart resolution)
     pub health: f32,
-    /// food 0..20 (10 drumsticks; the engine has no hunger-drain system
-    /// yet — the game layer passes 20.0 and the deviation is documented)
+    /// food 0..20 (10 drumsticks; Round 17: the LIVE foodLevel — the
+    /// hardcoded 20/20 spawn display is retired with the FoodData
+    /// system, VERIFIED w/Food §Hunger values)
     pub food: f32,
+    /// Round 17: foodSaturationLevel == 0 — the hunger bar "starts to
+    /// shake or jitter periodically" (VERIFIED w/Food §Saturation:
+    /// "when saturation reaches zero, the hunger bar starts to shake
+    /// or jitter periodically")
+    pub food_jitter: bool,
     /// XP progress within the current level, 0..1
     pub xp: f32,
     /// XP level (number above the bar; 0 = hidden)
@@ -2870,7 +2876,12 @@ impl UiCanvas {
         // hunger row (right aligned, mirrored order) — the Hunger-effect
         // yellow-green recolor + ±1-px jitter while poisoned (VERIFIED
         // w/Hunger_(effect) for the recolor: "It also turns the hunger
-        // bar a yellow-green color"; the jitter is clean-room)
+        // bar a yellow-green color"; the poisoned jitter is clean-room).
+        // Round 17: the row ALSO jitters when saturation hits zero —
+        // VERIFIED w/Food §Saturation (live 2026-09-18): "when
+        // saturation reaches zero, the hunger bar starts to shake or
+        // jitter periodically" (periodicity = the alternating tick
+        // phase, the engine's established jitter wave)
         let food_pal: [(char, Color); 4] = [
             ('O', [43, 26, 4, 255]),
             ('M', [186, 106, 38, 255]),
@@ -2880,7 +2891,8 @@ impl UiCanvas {
         for i in 0..10i32 {
             let x = hb_x + hb_w - 4 - (i + 1) * 17;
             let y = hb_y - 28;
-            let dx = if s.hunger_poisoned && ((i + s.tick_phase) & 1) == 0 { -2 } else { 0 };
+            let jitter = (s.hunger_poisoned || s.food_jitter) && ((i + s.tick_phase) & 1) == 0;
+            let dx = if jitter { -2 } else { 0 };
             // Phase 2: quad sprite always pushed (right row mirrors)
             let variant = if s.food >= (i + 1) as f32 / 10.0 {
                 crate::textures::gui_art::HungerVariant::Full
@@ -5934,6 +5946,7 @@ mod tests {
         ui.status_bars(&HudStatus {
             health: 20.0,
             food: 20.0,
+            food_jitter: false,
             xp: 0.5,
             level: 5,
             air: 300.0,
@@ -5948,6 +5961,7 @@ mod tests {
         ui2.status_bars(&HudStatus {
             health: 20.0,
             food: 20.0,
+            food_jitter: false,
             xp: 0.5,
             level: 5,
             air: 150.0,
@@ -6320,6 +6334,7 @@ mod screen_tests {
         ui.status_bars(&HudStatus {
             health: 0.8,
             food: 0.8,
+            food_jitter: false,
             xp: 0.5,
             level: 3,
             air: 300.0,
@@ -6908,6 +6923,7 @@ mod screen_tests {
         let base = HudStatus {
             health: 13.0,
             food: 20.0,
+            food_jitter: false,
             xp: 0.75,
             level: 7,
             air: 300.0,
@@ -6995,6 +7011,7 @@ mod screen_tests {
         let base = HudStatus {
             health: 20.0,
             food: 20.0,
+            food_jitter: false,
             xp: 0.0,
             level: 0,
             air: 300.0,

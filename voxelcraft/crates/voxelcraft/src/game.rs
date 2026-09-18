@@ -1407,8 +1407,12 @@ pub struct GameApp {
     target: Option<([i32; 3], u16, [i32; 3])>,
     break_timer: f32,
     place_timer: f32,
-    /// Phase E2: lava contact-damage tick counter (4 HP / 10 ticks)
-    lava_t: u32,
+    /// Round 17: the sim-tick watermark for the per-20Hz player block
+    /// (effects + lava + hunger). The pre-round latent defect: both ran
+    /// per FRAME (at 60 fps effect durations expired ~3x too fast and
+    /// lava hit ~3x too often) — now they run exactly once per sim
+    /// step (see the update() block + the round-17 audit §9).
+    last_player_sim_tick: u64,
     /// Phase E3 (1.5–1.6): the mob id the player is currently riding
     /// (None = on foot). Mounting/steering/dismount wired through the
     /// use path + the ride physics below (VERIFIED w/Horse §Riding).
@@ -2541,7 +2545,7 @@ impl GameApp {
             target: None,
             break_timer: 0.0,
             place_timer: 0.0,
-            lava_t: 0,
+            last_player_sim_tick: 0,
             riding: None,
             save_toolbar_held: false,
             load_toolbar_held: false,
@@ -5893,6 +5897,11 @@ impl GameApp {
         self.player.pos = self.respawn_pos;
         self.player.reset_fall();
         self.player.reset_air();
+        // Round 17: hunger resets on respawn — "Its initial value on
+        // world creation or respawn is 20" / saturation 5 (VERIFIED
+        // w/Food §Variables); effects already clear through the death
+        // path's reset
+        self.player.hunger = vc_gameplay::hunger::Hunger::spawn();
         // 1.13: dying resets "Time Since Last Rest" (VERIFIED
         // w/Phantom §Spawning: the insomnia statistic resets on death
         // or sleep; beds are deferred — death is the engine's reset
@@ -5987,6 +5996,12 @@ impl GameApp {
                     // VERIFIED: on taking damage the wither breaks blocks
                     // in a 3×4×3 box around itself
                     if applied > 0.0 {
+                        // Round 17: a landed attack costs 0.1 exhaustion
+                        // (VERIFIED w/Food §Energy-intensive actions:
+                        // "Attacking an entity: 0.1 per attack landed")
+                        if !self.mode.invulnerable() {
+                            self.player.hunger.add_exhaustion(0.1);
+                        }
                         self.sim
                             .wither_events
                             .push(vc_gameplay::wither::WitherEvent::BreakBlocks(wpos));
@@ -6063,6 +6078,13 @@ impl GameApp {
                         );
                         let applied = self.sim.dragon.damage(outcome.damage);
                         if applied > 0.0 {
+                            // Round 17: a landed attack costs 0.1
+                            // exhaustion (VERIFIED w/Food
+                            // §Energy-intensive actions: "Attacking an
+                            // entity: 0.1 per attack landed")
+                            if !self.mode.invulnerable() {
+                                self.player.hunger.add_exhaustion(0.1);
+                            }
                             self.play_event("entity.ender_dragon.hurt", Some(d_pos), 1.0);
                             vc_render::render::report_boot_log(&format!(
                                 "e2e: dragon hit p={:.2} -> {:.2} dmg (hp {:.0})",
@@ -6137,6 +6159,12 @@ impl GameApp {
             self.play_event("entity.bee.loop_aggressive", Some(m_pos), 1.0);
         }
         if applied > 0.0 {
+            // Round 17: a landed attack costs 0.1 exhaustion (VERIFIED
+            // w/Food §Energy-intensive actions: "Attacking an entity:
+            // 0.1 per attack landed")
+            if !self.mode.invulnerable() {
+                self.player.hunger.add_exhaustion(0.1);
+            }
             self.play_event("entity.generic.death", None, 0.6); // hurt grunt
             vc_render::render::report_boot_log(&format!(
                 "e2e: swing p={:.2}{} -> {:.2} dmg to {} (hp now serving)",
@@ -6183,6 +6211,12 @@ impl GameApp {
         );
         let (applied, kill_pos) = self.sim.villagers.damage(vid, outcome.damage);
         if applied > 0.0 {
+            // Round 17: a landed attack costs 0.1 exhaustion (VERIFIED
+            // w/Food §Energy-intensive actions: "Attacking an entity:
+            // 0.1 per attack landed")
+            if !self.mode.invulnerable() {
+                self.player.hunger.add_exhaustion(0.1);
+            }
             self.play_event("entity.villager.hurt", None, 1.0);
         }
         if let Some(pos) = kill_pos {
@@ -8141,6 +8175,13 @@ impl GameApp {
     fn finish_break(&mut self, pos: [i32; 3]) {
         let b = self.world.get_block(pos[0], pos[1], pos[2]);
         let broke = self.world.get_block(pos[0], pos[1], pos[2]);
+        // Round 17: breaking a block costs 0.005 exhaustion (VERIFIED
+        // w/Food §Energy-intensive actions: "Breaking a block: 0.005
+        // per block broken") — survival-class modes only (creative
+        // mining is free, like the item drops above)
+        if !self.mode.invulnerable() {
+            self.player.hunger.add_exhaustion(0.005);
+        }
         // 1.14: the pre-break state (the berry bush's
         // age — captured BEFORE the AIR write clears it)
         let broke_state = self.world.get_state(pos[0], pos[1], pos[2]);
@@ -11775,12 +11816,14 @@ impl GameApp {
         let trio_ok = fireball && venom == Some(140);
 
         // 4. the new food rows through the real eat-value path
+        // (Round 17: the (nutrition, saturation) pairs — both wiki
+        // columns; the retired hunger/2 direct-heal pins became these)
         let food_ok = is_food(STEAK)
             && is_food(RABBIT_STEW)
             && is_food(COOKIE)
-            && (food_heal(STEAK) - 4.0).abs() < 1e-6
-            && (food_heal(RABBIT_STEW) - 5.0).abs() < 1e-6
-            && (food_heal(COOKIE) - 1.0).abs() < 1e-6;
+            && food_values(STEAK) == (8, 12.8)
+            && food_values(RABBIT_STEW) == (10, 12.0)
+            && food_values(COOKIE) == (2, 0.4);
 
         vc_render::render::report_boot_log(&format!(
             "e2e: audit16 smelt={} smoker={} kitchen={} purpur={} trio={} food={}",
@@ -11837,16 +11880,18 @@ impl GameApp {
         ];
 
         // 1. the five new food rows through the real eat-value path
+        // (Round 17: the (nutrition, saturation) pairs — both wiki
+        // columns; the retired hunger/2 direct-heal pins became these)
         let food_ok = is_food(ROTTEN_FLESH)
             && is_food(SPIDER_EYE)
             && is_food(CHORUS_FRUIT)
             && is_food(GOLDEN_APPLE)
             && is_food(MELON_SLICE)
-            && (food_heal(ROTTEN_FLESH) - 2.0).abs() < 1e-6
-            && (food_heal(SPIDER_EYE) - 1.0).abs() < 1e-6
-            && (food_heal(CHORUS_FRUIT) - 2.0).abs() < 1e-6
-            && (food_heal(GOLDEN_APPLE) - 2.0).abs() < 1e-6
-            && (food_heal(MELON_SLICE) - 1.0).abs() < 1e-6;
+            && food_values(ROTTEN_FLESH) == (4, 0.8)
+            && food_values(SPIDER_EYE) == (2, 3.2)
+            && food_values(CHORUS_FRUIT) == (4, 2.4)
+            && food_values(GOLDEN_APPLE) == (4, 9.6)
+            && food_values(MELON_SLICE) == (2, 1.2);
 
         // 2. the melon crafts: the 9-slice block + the 1-slice seeds
         let g = vec![ItemStack::new(MELON_SLICE, 1); 9];
@@ -13348,6 +13393,10 @@ impl GameApp {
                             Some("emerald") => Some(EMERALD),
                             Some("nether_star") => Some(NETHER_STAR),
                             Some("potato") => Some(POTATO),
+                            // Round 17: the foods the live hunger E2E
+                            // feeds through the real eat path
+                            Some("steak") => Some(STEAK),
+                            Some("bread") => Some(BREAD),
                             Some("baked_potato") => Some(BAKED_POTATO),
                             Some("carrot") => Some(CARROT),
                             Some("pumpkin_pie") => Some(PUMPKIN_PIE),
@@ -14573,6 +14622,34 @@ impl GameApp {
                             self.ui.dirty = true;
                         }
                     }
+                    Some("hunger") => {
+                        // Round 17 E2E: hunger:<food>[:<saturation>[:<exhaustion>]]
+                        // — set the FoodData state directly (the
+                        // starvation/sprint-gate/HUD verification path
+                        // without waiting minutes of real drain)
+                        let food: i32 = parts
+                            .get(1)
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(self.player.hunger.food)
+                            .clamp(0, vc_gameplay::hunger::MAX_FOOD);
+                        let sat: f32 = parts
+                            .get(2)
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(self.player.hunger.saturation)
+                            .clamp(0.0, vc_gameplay::hunger::MAX_FOOD as f32);
+                        let exh: f32 = parts
+                            .get(3)
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(self.player.hunger.exhaustion)
+                            .clamp(0.0, 40.0);
+                        self.player.hunger.food = food;
+                        self.player.hunger.saturation = sat;
+                        self.player.hunger.exhaustion = exh;
+                        self.ui.dirty = true; // the HUD row repaints
+                        vc_render::render::report_boot_log(&format!(
+                            "e2e: hunger set food={food} sat={sat:.1} exh={exh:.2} (food_values wired, regen/starve tick live)"
+                        ));
+                    }
                     Some("fall") => {
                         // fall:<blocks> — teleport up, let real gravity +
                         // the real fall-damage path apply (MC-12357)
@@ -14994,46 +15071,120 @@ impl GameApp {
                 }
             }
 
-            // Phase E2 (VERIFIED w/Lava): contact damage 4 HP per 10
-            // ticks (the every-tick 4 HP is reduced by the half-second
-            // damage-immunity window); creative is immune. Fire
-            // (300-tick burn after leaving) is deferred — no fire system.
-            if self.player.in_lava && self.lava_t.is_multiple_of(10)
-                && !self.mode.invulnerable() {
-                    let applied = self.player.damage(4.0);
-                    if applied > 0.0 {
-                        self.play_event("entity.player.hurt", None, 1.0);
-                        self.death_cause = "TRIED TO SWIM IN LAVA".into();
-                        self.ui.dirty = true;
-                    }
-                }
-            self.lava_t += 1;
-
-            // Phase E2 (+ 1.7.2 pufferfish poison, unified): timed status
-            // effects tick (wither / poison / regeneration — VERIFIED
-            // w/Effect rows; beacons refresh these through the same apply
-            // path). Poison damage is floored at 1 HP inside the system
-            // (cannot kill); wither can.
+            // ---- Round 17: the per-SIM-TICK player status block ----
+            // (20 Hz, exactly once per sim step — the latent defect this
+            // round fixed: the lava contact damage AND the status-effect
+            // tick below previously ran per FRAME, so at 60 fps effect
+            // durations expired ~3x too fast and lava hit ~3x too often
+            // (the unit tests call the ticks per-tick and never caught
+            // the call-site cadence; documented in the round-17 audit
+            // §9). The hunger-drain tick rides the same cadence — the
+            // vanilla FoodData advances one step per game tick.)
+            let sim_now = self.sim.ticks;
+            let sim_steps = if sim_now >= self.last_player_sim_tick {
+                (sim_now - self.last_player_sim_tick) as usize
+            } else {
+                0 // a world reload reset the sim clock — no catch-up
+            };
+            self.last_player_sim_tick = sim_now;
             {
-                let (edmg, eheal) = self.player.effects.tick(self.player.health);
-                if edmg > 0.0 && !self.mode.invulnerable() {
-                    let applied = self.player.damage(edmg);
-                    if applied > 0.0 {
-                        self.play_event("entity.player.hurt", None, 0.9);
-                        // wither can kill, poison cannot — pick the cause
-                        // from which effect is actually running
-                        let poisoned = self
-                            .player
-                            .effects
-                            .amplifier(vc_gameplay::effects::EffectKind::Poison)
-                            .is_some();
-                        self.death_cause =
-                            if poisoned { "POISONED".into() } else { "WITHERED AWAY".into() };
-                        self.ui.dirty = true;
+                use vc_gameplay::hunger::StarveRule;
+                use vc_gameplay::effects::EffectKind;
+                // the engine's difficulty mapping (no difficulty
+                // selector exists — the modes doc locks Hardcore to
+                // Hard-class starvation, everything else runs Normal;
+                // audit §10)
+                let starve_rule = if self.mode == vc_gameplay::modes::GameMode::Hardcore {
+                    StarveRule::Hard
+                } else {
+                    StarveRule::Normal
+                };
+                for step_i in 0..sim_steps {
+                    let sim_tick = sim_now - (sim_steps - step_i) as u64;
+
+                    // Phase E2 (VERIFIED w/Lava): contact damage 4 HP
+                    // per 10 SIM TICKS (0.5 s at the 20 Hz sim —
+                    // previously the per-frame `lava_t` counter fired
+                    // it ~3x too often at 60 fps; round-17 audit §9);
+                    // creative is immune. Fire (300-tick burn after
+                    // leaving) is deferred — no fire system.
+                    if self.player.in_lava && sim_tick.is_multiple_of(10)
+                        && !self.mode.invulnerable()
+                    {
+                        let applied = self.player.damage(4.0);
+                        if applied > 0.0 {
+                            self.play_event("entity.player.hurt", None, 1.0);
+                            self.death_cause = "TRIED TO SWIM IN LAVA".into();
+                            self.ui.dirty = true;
+                        }
                     }
-                }
-                if eheal > 0.0 {
-                    self.player.heal(eheal);
+
+                    // Phase E2 (+ 1.7.2 pufferfish poison, unified): timed
+                    // status effects tick (wither / poison / regeneration —
+                    // VERIFIED w/Effect rows; beacons refresh these through
+                    // the same apply path). Poison damage is floored at 1
+                    // HP inside the system (cannot kill); wither can.
+                    {
+                        let (edmg, eheal) = self.player.effects.tick(self.player.health);
+                        if edmg > 0.0 && !self.mode.invulnerable() {
+                            let applied = self.player.damage(edmg);
+                            if applied > 0.0 {
+                                self.play_event("entity.player.hurt", None, 0.9);
+                                // wither can kill, poison cannot — pick the
+                                // cause from which effect is actually running
+                                let poisoned = self
+                                    .player
+                                    .effects
+                                    .amplifier(EffectKind::Poison)
+                                    .is_some();
+                                self.death_cause =
+                                    if poisoned { "POISONED".into() } else { "WITHERED AWAY".into() };
+                                self.ui.dirty = true;
+                            }
+                        }
+                        if eheal > 0.0 {
+                            self.player.heal(eheal);
+                        }
+                    }
+
+                    // ---- Round 17: the hunger-drain tick (the standing
+                    // Round-16-parity-gap deferral, closed) — one 20 Hz
+                    // FoodData step per sim tick, all numerics VERIFIED
+                    // w/Food (live 2026-09-18; see the round-17 audit) ----
+                    if !self.mode.invulnerable() {
+                        // the Hunger effect itself costs 0.005 exhaustion
+                        // per tick per level (VERIFIED w/Food
+                        // §Energy-intensive actions: "Hunger: 0.005 per
+                        // tick, per Hunger status effect level")
+                        if let Some(amp) = self.player.effects.amplifier(EffectKind::Hunger) {
+                            self.player
+                                .hunger
+                                .add_exhaustion(0.005 * (amp as f32 + 1.0));
+                        }
+                        let should_heal = self.player.health < 20.0;
+                        let ht =
+                            self.player
+                                .hunger
+                                .tick(should_heal, starve_rule, self.player.health);
+                        if ht.heal > 0.0 {
+                            // natural regeneration / the saturation boost
+                            // ("every 4 seconds (80 ticks)" / "every 0.5
+                            // seconds (10 ticks) when at full hunger")
+                            self.player.heal(ht.heal);
+                            self.ui.dirty = true;
+                        }
+                        if ht.starve > 0.0 {
+                            // starvation: the UNBLOCKABLE class — bypasses
+                            // armor/resistance, adds no exhaustion (the
+                            // starve path in Player; w/Food §Starvation)
+                            let applied = self.player.starve(ht.starve);
+                            if applied > 0.0 {
+                                self.play_event("entity.player.hurt", None, 1.0);
+                                self.death_cause = "STARVED TO DEATH".into();
+                                self.ui.dirty = true;
+                            }
+                        }
+                    }
                 }
             }
 
@@ -16756,11 +16907,14 @@ impl GameApp {
                         // (minecraft.wiki/w/Java_Edition_1.7.2 §Items,
                         // live 2026-09-06): restores 1 hunger but inflicts
                         // Poison IV (1:00), Hunger III (0:15) and Nausea
-                        // (0:15). Our hunger-bar-less adaptation: the
-                        // hunger/nausea halves are recorded effects (no
-                        // mechanical hunger bar yet — documented), the
-                        // POISON is exact (1.7.2's headline pufferfish
-                        // mechanic). Not in is_food() so it can't heal.
+                        // (0:15). Round 17: the mechanical hunger bar now
+                        // EXISTS — the eat feeds FoodData (1 / 0.2, the
+                        // Food page's Pufferfish rows) and the Hunger
+                        // effect drains exhaustion on top (0.005/tick/
+                        // level through the per-sim-tick block). Not in
+                        // is_food() so the generic eat path never picks
+                        // it (the poison payload needs this dedicated
+                        // branch).
                         if self.mode.depletes_items() {
                             let held = self.player.held_mut();
                             held.count -= 1;
@@ -16769,6 +16923,8 @@ impl GameApp {
                             }
                         }
                         if !self.mode.invulnerable() {
+                            self.player.hunger.eat(1, 0.2);
+                            self.ui.dirty = true;
                             // Poison IV 1:00 + Hunger 0:15 in one eat
                             // (VERIFIED w/Pufferfish) — both ride the
                             // unified Effects system now
@@ -17027,13 +17183,18 @@ impl GameApp {
                         ));
                         self.ui.dirty = true;
                     } else if !self.player.held().is_empty() && is_food(self.player.held().block) {
-                        // Phase 2: right-click eats raw meat. Documented
-                        // deviation: no hunger system yet, so food heals
-                        // directly (4 HP ≈ the meats' satiating weight);
-                        // stacks deplete in Survival only. Phase E2: the
-                        // verified per-food values (food_heal).
+                        // Round 17: eating feeds the FoodData model —
+                        // the retired deviation was "no hunger system
+                        // yet, so food heals directly (hunger/2 HP)";
+                        // now `food_values` supplies the wiki's
+                        // (nutrition, saturation) pair and ALL healing
+                        // flows through the natural-regen /
+                        // saturation-boost ticks (VERIFIED w/Food
+                        // §Hunger values + §Food saturation values,
+                        // live 2026-09-18; the round-17 audit §6).
+                        // Stacks still deplete in Survival only.
                         let b = self.player.held().block;
-                        let heal_amt = food_heal(b);
+                        let (nutrition, saturation) = food_values(b);
                         if self.mode.depletes_items() {
                             let held = self.player.held_mut();
                             held.count -= 1;
@@ -17042,7 +17203,8 @@ impl GameApp {
                             }
                         }
                         if !self.mode.invulnerable() {
-                            self.player.heal(heal_amt);
+                            self.player.hunger.eat(nutrition, saturation);
+                            self.ui.dirty = true; // the hunger bar lives now
                         }
                         // the completeness audit: the stews return their
                         // bowl (the honey-bottle precedent returns the
@@ -17118,8 +17280,11 @@ impl GameApp {
                         }
                         self.play_event("entity.generic.drink", None, 0.8);
                         vc_render::render::report_boot_log(&format!(
-                            "e2e: ate {} (+{heal_amt} hp -> {})",
+                            "e2e: ate {} (food {}/{} sat {:.1} -> hp {})",
                             name(b),
+                            self.player.hunger.food,
+                            vc_gameplay::hunger::MAX_FOOD,
+                            self.player.hunger.saturation,
                             self.player.health
                         ));
                         self.place_timer = 0.5;
@@ -17267,9 +17432,11 @@ impl GameApp {
                         // bottle. Consuming the item also has the benefit
                         // of removing any Poison effect applied to the
                         // player. Unlike drinking milk, other applied
-                        // effects are not removed." (Engine: the food
-                        // convention heals hunger/2 = 3.0 HP; the
-                        // Poison-removal is exact; the bottle returns.)
+                        // effects are not removed." Round 17: the
+                        // hunger/2 direct-heal convention is retired —
+                        // the drink feeds the FoodData model (6 / 1.2);
+                        // the Poison-removal is exact; the bottle
+                        // returns.
                         if self.mode.depletes_items() {
                             let held = self.player.held_mut();
                             held.count -= 1;
@@ -17277,7 +17444,10 @@ impl GameApp {
                                 *held = vc_inventory::inventory::ItemStack::EMPTY;
                             }
                         }
-                        self.player.heal(3.0);
+                        if !self.mode.invulnerable() {
+                            self.player.hunger.eat(6, 1.2);
+                            self.ui.dirty = true;
+                        }
                         // remove Poison — and ONLY Poison (the milk
                         // contrast, VERIFIED)
                         let had_poison = self
@@ -19732,10 +19902,12 @@ impl GameApp {
                 .is_some();
             let status = ui::HudStatus {
                 health: self.player.health,
-                // the engine has no hunger-drain system yet — vanilla
-                // spawn food is 20/20 so the full row is the correct
-                // display (deviation documented in the audit)
-                food: 20.0,
+                // Round 17: the LIVE foodLevel — the hardcoded 20/20
+                // spawn display is retired with the FoodData system
+                // (VERIFIED w/Food §Hunger values); the saturation-zero
+                // jitter flag rides along (w/Food §Saturation)
+                food: self.player.hunger.food as f32,
+                food_jitter: self.player.hunger.saturation <= 0.0,
                 xp,
                 level,
                 air: self.player.air,
@@ -20646,69 +20818,73 @@ fn is_food(b: u16) -> bool {
     )
 }
 
-/// Phase E2 (VERIFIED w/Food): heal amount per food item — the engine's
-/// convention maps the vanilla hunger points to HP at hunger/2 (steak
-/// 8 hunger -> 4 HP, matching the Phase-2 meat rule):
-/// potato 1 -> 0.5, carrot 3 -> 1.5, baked potato 5 -> 2.5, pie 8 -> 4.
-/// 1.7.2/1.8 extensions use the same hunger/2 mapping from the Food
-/// table: raw cod/salmon 2 -> 1.0, clownfish 1 -> 0.5, raw rabbit 3 ->
-/// 1.5, cooked rabbit 5 -> 2.5.
-fn food_heal(b: u16) -> f32 {
+/// Round 17 (2026-09-18): the per-food (nutrition, saturation) pair —
+/// BOTH columns VERIFIED live 2026-09-18 against minecraft.wiki/w/Food
+/// (§Hunger values + §Food saturation values tables; the round-17
+/// audit §6 carries the full tables + the retired-convention note).
+/// This RETIRES the Phase-E2 `food_heal` hunger/2 direct-heal table:
+/// eating now feeds `Player::hunger` (the FoodData model) and ALL
+/// healing flows through the natural-regen / saturation-boost ticks.
+/// The raw meats keep their REAL wiki rows (raw beef/porkchop/rabbit
+/// 3, raw chicken/mutton/fish 2) — the old 4.0-HP raw-meat default
+/// was the pre-hunger sandbox convention, superseded by the wiki.
+fn food_values(b: u16) -> (i32, f32) {
     match b {
-        POTATO => 0.5,
-        CARROT => 1.5,
-        BAKED_POTATO => 2.5,
-        PUMPKIN_PIE => 4.0,
-        // audit-fix (1.4): hunger 6 -> 3.0 HP (VERIFIED live 2026-09-07
-        // w/Golden_Carrot: "Hunger 6", "Saturation 14.4")
-        GOLDEN_CARROT => 3.0,
-        RAW_FISH => 1.0,
-        RAW_SALMON => 1.0,
-        CLOWNFISH => 0.5,
-        RAW_RABBIT => 1.5,
-        COOKED_RABBIT => 2.5,
-        // 1.13: dried kelp — "restoring 1 hunger point" (VERIFIED
-        // changelog §Items); 1 hunger → 0.5 HP on the engine's scale.
-        // "It is eaten faster than other food" — no eating-speed
-        // system in the engine, disclosed
-        DRIED_KELP => 0.5,
-        // 1.14: sweet berries — hunger 2 → 1.0 HP (VERIFIED
-        // w/Sweet_Berries §Food: "restores 2 hunger and 0.4 [JE] only"
-        // saturation")
-        SWEET_BERRIES => 1.0,
-        // backlog round (farming): bread — hunger 5 → 2.5 HP (VERIFIED
-        // w/Bread §Food: "Restores 5 hunger points")
-        BREAD => 2.5,
-        // ---- the completeness audit: the hunger/2 mapping (the Food
-        // table capture's own rows — "Rabbit Stew 10 / Steak 8 /
-        // Cooked Porkchop 8 / Beetroot Soup 6 / Cooked Chicken 6 /
-        // Cooked Mutton 6 / Cooked Salmon 6 / ... Cooked Cod 5 /
-        // Apple 4 / Cookie 2 / Beetroot 1") ----
-        STEAK => 4.0,
-        COOKED_PORKCHOP => 4.0,
-        COOKED_CHICKEN => 3.0,
-        COOKED_MUTTON => 3.0,
-        COOKED_COD => 2.5,
-        COOKED_SALMON => 3.0,
-        APPLE => 2.0,
-        MUSHROOM_STEW => 3.0,
-        RABBIT_STEW => 5.0, // hunger 10 — the biggest single-food heal
-        BEETROOT => 0.5,
-        BEETROOT_SOUP => 3.0,
-        POISONOUS_POTATO => 1.0,
-        // the cookie bug fix: hunger 2 -> 1.0 (was falling to the 4.0
-        // default — an inedible item's value never mattered before)
-        COOKIE => 1.0,
-        // ---- the sweep-2 rows (VERIFIED live 2026-09-09 against the
-        // fresh captures: Rotten_Flesh "Hunger 4", Spider_Eye "Hunger
-        // 2", Chorus_Fruit "Hunger 4", Golden_Apple "Hunger 4",
-        // Melon_Slice "Hunger 2") ----
-        ROTTEN_FLESH => 2.0,
-        SPIDER_EYE => 1.0,
-        CHORUS_FRUIT => 2.0,
-        GOLDEN_APPLE => 2.0,
-        MELON_SLICE => 1.0,
-        _ => 4.0, // the raw meats' established value
+        // ---- the 10-hunger top food ----
+        RABBIT_STEW => (10, 12.0),
+        // ---- the 8-hunger family (sat 12.8 / pie 4.8) ----
+        STEAK => (8, 12.8),
+        COOKED_PORKCHOP => (8, 12.8),
+        PUMPKIN_PIE => (8, 4.8),
+        // ---- the 6-hunger family ----
+        COOKED_CHICKEN => (6, 7.2),
+        BEETROOT_SOUP => (6, 7.2),
+        MUSHROOM_STEW => (6, 7.2),
+        COOKED_MUTTON => (6, 9.6),
+        COOKED_SALMON => (6, 9.6),
+        GOLDEN_CARROT => (6, 14.4), // "Hunger 6 / Saturation 14.4"
+        // ---- the 5-hunger family (sat 6.0) ----
+        BAKED_POTATO => (5, 6.0),
+        BREAD => (5, 6.0), // "Restores 5 hunger points" + 6 saturation
+        COOKED_COD => (5, 6.0),
+        COOKED_RABBIT => (5, 6.0),
+        // ---- the 4-hunger family ----
+        APPLE => (4, 2.4),
+        CHORUS_FRUIT => (4, 2.4),
+        ROTTEN_FLESH => (4, 0.8),
+        GOLDEN_APPLE => (4, 9.6),
+        // ---- the 3-hunger family (raw meats sat 1.8; carrot 3.6) ----
+        CARROT => (3, 3.6),
+        BEEF => (3, 1.8),
+        PORKCHOP => (3, 1.8),
+        RAW_RABBIT => (3, 1.8),
+        // ---- the 2-hunger family ----
+        COOKIE => (2, 0.4),
+        MELON_SLICE => (2, 1.2),
+        POISONOUS_POTATO => (2, 1.2),
+        CHICKEN_RAW => (2, 1.2),
+        MUTTON => (2, 1.2),
+        RAW_FISH => (2, 0.4), // raw cod
+        RAW_SALMON => (2, 0.4),
+        SPIDER_EYE => (2, 3.2),
+        // 1.14: sweet berries — "restores 2 hunger and 0.4 [JE] only
+        // saturation" (VERIFIED w/Sweet_Berries §Food)
+        SWEET_BERRIES => (2, 0.4),
+        // ---- the 1-hunger family ----
+        BEETROOT => (1, 1.2),
+        POTATO => (1, 0.6),
+        // 1.13: dried kelp — "restoring 1 hunger point" (JE 0.6 sat)
+        DRIED_KELP => (1, 0.6),
+        // the pufferfish's own eat path uses (1, 0.2) too — VERIFIED
+        // w/Food §Hunger values ("Pufferfish 1") + §Food saturation
+        // values ("Pufferfish 0.2"); kept here for completeness
+        PUFFERFISH => (1, 0.2),
+        CLOWNFISH => (1, 0.2), // tropical fish
+        // the honey bottle's own drink path uses (6, 1.2) — VERIFIED
+        // w/Honey_Bottle ("restores 6 hunger and 1.2 hunger
+        // saturation") + the Food table's matching rows
+        HONEY_BOTTLE => (6, 1.2),
+        _ => (0, 0.0), // inedible: is_food() gates the eat path anyway
     }
 }
 
@@ -22022,28 +22198,57 @@ mod auditfix_food_tests {
 
     #[test]
     fn audit16_food_values() {
-        // the completeness audit: the hunger/2 table for the whole V15
-        // kitchen (all VERIFIED live 2026-09-08 against the Food page
-        // capture scripts/audit16_page_Food.json)
+        // the completeness audit: the (nutrition, saturation) table for
+        // the whole V15 kitchen — Round 17 re-verified BOTH columns live
+        // 2026-09-18 against minecraft.wiki/w/Food (§Hunger values +
+        // §Food saturation values; the original hunger/2 direct-heal
+        // pins retired with the FoodData eat path, same rows, one
+        // column up + the saturation column added)
         // the cooked-meat family
-        assert!((food_heal(STEAK) - 4.0).abs() < 1e-6, "hunger 8");
-        assert!((food_heal(COOKED_PORKCHOP) - 4.0).abs() < 1e-6, "hunger 8");
-        assert!((food_heal(COOKED_CHICKEN) - 3.0).abs() < 1e-6, "hunger 6");
-        assert!((food_heal(COOKED_MUTTON) - 3.0).abs() < 1e-6, "hunger 6");
-        assert!((food_heal(COOKED_COD) - 2.5).abs() < 1e-6, "hunger 5");
-        assert!((food_heal(COOKED_SALMON) - 3.0).abs() < 1e-6, "hunger 6");
+        assert_eq!(food_values(STEAK), (8, 12.8), "hunger 8 / sat 12.8");
+        assert_eq!(food_values(COOKED_PORKCHOP), (8, 12.8), "hunger 8 / sat 12.8");
+        assert_eq!(food_values(COOKED_CHICKEN), (6, 7.2), "hunger 6 / sat 7.2");
+        assert_eq!(food_values(COOKED_MUTTON), (6, 9.6), "hunger 6 / sat 9.6");
+        assert_eq!(food_values(COOKED_COD), (5, 6.0), "hunger 5 / sat 6.0");
+        assert_eq!(food_values(COOKED_SALMON), (6, 9.6), "hunger 6 / sat 9.6");
         // the kitchen chain
-        assert!((food_heal(APPLE) - 2.0).abs() < 1e-6, "hunger 4");
-        assert!((food_heal(MUSHROOM_STEW) - 3.0).abs() < 1e-6, "hunger 6");
-        assert!((food_heal(RABBIT_STEW) - 5.0).abs() < 1e-6, "hunger 10 — the top food");
-        // ---- the sweep-2 rows (VERIFIED live 2026-09-09: the
-        // Rotten_Flesh/Spider_Eye/Chorus_Fruit/Golden_Apple/
-        // Melon_Slice captures) ----
-        assert!((food_heal(ROTTEN_FLESH) - 2.0).abs() < 1e-6, "hunger 4");
-        assert!((food_heal(SPIDER_EYE) - 1.0).abs() < 1e-6, "hunger 2");
-        assert!((food_heal(CHORUS_FRUIT) - 2.0).abs() < 1e-6, "hunger 4");
-        assert!((food_heal(GOLDEN_APPLE) - 2.0).abs() < 1e-6, "hunger 4");
-        assert!((food_heal(MELON_SLICE) - 1.0).abs() < 1e-6, "hunger 2");
+        assert_eq!(food_values(APPLE), (4, 2.4), "hunger 4 / sat 2.4");
+        assert_eq!(food_values(MUSHROOM_STEW), (6, 7.2), "hunger 6 / sat 7.2");
+        assert_eq!(food_values(RABBIT_STEW), (10, 12.0), "hunger 10 — the top food");
+        // ---- the sweep-2 rows (VERIFIED live 2026-09-09, re-verified
+        // 2026-09-18: the Rotten_Flesh/Spider_Eye/Chorus_Fruit/
+        // Golden_Apple/Melon_Slice rows) ----
+        assert_eq!(food_values(ROTTEN_FLESH), (4, 0.8), "hunger 4 / sat 0.8");
+        assert_eq!(food_values(SPIDER_EYE), (2, 3.2), "hunger 2 / sat 3.2");
+        assert_eq!(food_values(CHORUS_FRUIT), (4, 2.4), "hunger 4 / sat 2.4");
+        assert_eq!(food_values(GOLDEN_APPLE), (4, 9.6), "hunger 4 / sat 9.6");
+        assert_eq!(food_values(MELON_SLICE), (2, 1.2), "hunger 2 / sat 1.2");
+        // ---- Round 17: the raw-meat rows now carry their REAL wiki
+        // values (the old 4.0-HP raw-meat default was the pre-hunger
+        // convention — superseded, audit §6) ----
+        assert_eq!(food_values(BEEF), (3, 1.8), "raw beef: hunger 3 / sat 1.8");
+        assert_eq!(food_values(PORKCHOP), (3, 1.8), "raw porkchop");
+        assert_eq!(food_values(CHICKEN_RAW), (2, 1.2), "raw chicken: hunger 2 / sat 1.2");
+        assert_eq!(food_values(MUTTON), (2, 1.2), "raw mutton");
+        assert_eq!(food_values(RAW_FISH), (2, 0.4), "raw cod");
+        assert_eq!(food_values(RAW_SALMON), (2, 0.4), "raw salmon");
+        assert_eq!(food_values(CLOWNFISH), (1, 0.2), "tropical fish");
+        assert_eq!(food_values(DRIED_KELP), (1, 0.6), "dried kelp (JE)");
+        assert_eq!(food_values(SWEET_BERRIES), (2, 0.4), "sweet berries (JE)");
+        assert_eq!(food_values(POTATO), (1, 0.6), "potato");
+        assert_eq!(food_values(BAKED_POTATO), (5, 6.0), "baked potato");
+        assert_eq!(food_values(CARROT), (3, 3.6), "carrot");
+        assert_eq!(food_values(PUMPKIN_PIE), (8, 4.8), "pie: hunger 8 / sat 4.8");
+        assert_eq!(food_values(GOLDEN_CARROT), (6, 14.4), "golden carrot");
+        assert_eq!(food_values(BREAD), (5, 6.0), "bread");
+        assert_eq!(food_values(BEETROOT), (1, 1.2), "beetroot");
+        assert_eq!(food_values(BEETROOT_SOUP), (6, 7.2), "beetroot soup");
+        assert_eq!(food_values(POISONOUS_POTATO), (2, 1.2), "poisonous potato");
+        assert_eq!(food_values(COOKIE), (2, 0.4), "cookie");
+        assert_eq!(food_values(RAW_RABBIT), (3, 1.8), "raw rabbit");
+        assert_eq!(food_values(COOKED_RABBIT), (5, 6.0), "cooked rabbit");
+        assert_eq!(food_values(PUFFERFISH), (1, 0.2), "the pufferfish eat path");
+        assert_eq!(food_values(HONEY_BOTTLE), (6, 1.2), "the honey-bottle drink path");
         assert!(is_food(ROTTEN_FLESH), "edible since Phase 2 — value now correct");
         assert!(is_food(SPIDER_EYE), "the 1.0 spider eye now edible");
         assert!(is_food(CHORUS_FRUIT), "the 1.9 chorus fruit now edible");
@@ -22066,11 +22271,11 @@ mod auditfix_food_tests {
                 "Regeneration II 0:05"
             );
         }
-        assert!((food_heal(BEETROOT) - 0.5).abs() < 1e-6, "hunger 1");
-        assert!((food_heal(BEETROOT_SOUP) - 3.0).abs() < 1e-6, "hunger 6");
-        assert!((food_heal(POISONOUS_POTATO) - 1.0).abs() < 1e-6, "hunger 2");
+        assert_eq!(food_values(BEETROOT), (1, 1.2), "hunger 1 / sat 1.2");
+        assert_eq!(food_values(BEETROOT_SOUP), (6, 7.2), "hunger 6 / sat 7.2");
+        assert_eq!(food_values(POISONOUS_POTATO), (2, 1.2), "hunger 2 / sat 1.2");
         // the cookie bug fix (hunger 2; was falling to the 4.0 default)
-        assert!((food_heal(COOKIE) - 1.0).abs() < 1e-6, "hunger 2 — the 1.12 cookie");
+        assert_eq!(food_values(COOKIE), (2, 0.4), "hunger 2 — the 1.12 cookie");
         // and everything is actually food now
         for b in [
             STEAK, COOKED_PORKCHOP, COOKED_CHICKEN, COOKED_MUTTON, COOKED_COD,
@@ -22083,7 +22288,7 @@ mod auditfix_food_tests {
 
     #[test]
     fn golden_carrot_food_values() {
-        assert!((food_heal(GOLDEN_CARROT) - 3.0).abs() < 1e-6, "hunger 6 -> 3 HP");
+        assert_eq!(food_values(GOLDEN_CARROT), (6, 14.4), "hunger 6 / sat 14.4");
         assert!(is_food(GOLDEN_CARROT), "golden carrot is edible");
         // registry: item-block, in the picker, V6 state roundtrip
         assert!(vc_blocks::blocks::is_item_block(GOLDEN_CARROT));
@@ -22295,13 +22500,28 @@ mod farm_game_tests {
     use super::*;
 
 
-    /// bread heals hunger 5 → 2.5 HP on the hunger/2 scale (VERIFIED
-    /// w/Bread §Food: "Restores 5 hunger points and 6 saturation")
+    /// bread carries hunger 5 / saturation 6 (VERIFIED w/Bread §Food:
+    /// "Restores 5 hunger points and 6 saturation") — Round 17: the
+    /// direct hunger/2 heal is retired, the pair feeds FoodData
     #[test]
     fn farm_bread_food_value() {
-        assert!((food_heal(BREAD) - 2.5).abs() < 1e-6, "bread = hunger 5");
+        assert_eq!(food_values(BREAD), (5, 6.0), "bread = hunger 5 / sat 6");
         // wheat itself is inedible (never reaches the eat branch's set)
         assert!(!is_food(WHEAT));
+    }
+
+    /// Round 17: the eat wiring — bread through the FoodData model: a
+    /// starved player eats and the food bar climbs to its wiki value
+    /// with saturation riding at food's cap; no instant heal (the
+    /// retired convention).
+    #[test]
+    fn farm_bread_feeds_the_fooddata_model() {
+        let mut h = vc_gameplay::hunger::Hunger::spawn();
+        h.food = 7;
+        h.saturation = 0.0;
+        h.eat(food_values(BREAD).0, food_values(BREAD).1);
+        assert_eq!(h.food, 12, "7 + 5 = 12");
+        assert!((h.saturation - 6.0).abs() < 1e-6, "saturation 6 rides the food");
     }
 }
 
@@ -22366,6 +22586,65 @@ mod round14b_settings_tests {
         assert!(d.skin_lsleeve && d.skin_rsleeve);
         assert!(d.skin_lpants && d.skin_rpants);
         assert!(!d.main_hand_left);
+    }
+
+    /// Round 17: the `food_values` table and the `is_food` gate agree —
+    /// every generic-path edible has a real wiki (nutrition, saturation)
+    /// pair, every special-path item (pufferfish / honey bottle — their
+    /// own dedicated branches) carries its pair too, and no inedible
+    /// block accidentally gained one.
+    #[test]
+    fn food_values_table_agrees_with_the_edible_gate() {
+        use vc_blocks::blocks::*;
+        // the generic eat path: every is_food row must have nutrition
+        // > 0 AND a saturation value from the wiki tables
+        let edibles = [
+            BEEF, PORKCHOP, MUTTON, CHICKEN_RAW, ROTTEN_FLESH, RAW_FISH, RAW_SALMON, CLOWNFISH,
+            RAW_RABBIT, COOKED_RABBIT, POTATO, BAKED_POTATO, CARROT, PUMPKIN_PIE, GOLDEN_CARROT,
+            SWEET_BERRIES, BREAD, STEAK, COOKED_PORKCHOP, COOKED_CHICKEN, COOKED_MUTTON,
+            COOKED_COD, COOKED_SALMON, APPLE, MUSHROOM_STEW, RABBIT_STEW, BEETROOT, BEETROOT_SOUP,
+            POISONOUS_POTATO, COOKIE, SPIDER_EYE, CHORUS_FRUIT, GOLDEN_APPLE, MELON_SLICE,
+        ];
+        for &b in &edibles {
+            assert!(is_food(b), "{b} must be edible (the generic path)");
+            let (n, s) = food_values(b);
+            assert!(n > 0, "{b}: nutrition {n} must be a real wiki row");
+            assert!(s > 0.0, "{b}: saturation {s} must be a real wiki row");
+        }
+        // the dedicated branches: pufferfish + honey bottle are NOT in
+        // is_food (their eat paths are the poison-payload / drink
+        // branches) but still carry their wiki pairs
+        assert!(!is_food(PUFFERFISH), "the pufferfish poisons through its own branch");
+        assert!(!is_food(HONEY_BOTTLE), "the honey bottle drinks through its own branch");
+        assert_eq!(food_values(PUFFERFISH), (1, 0.2));
+        assert_eq!(food_values(HONEY_BOTTLE), (6, 1.2));
+        // a random inedible block stays zero (the match's default)
+        assert_eq!(food_values(STONE), (0, 0.0));
+        assert_eq!(food_values(DIRT), (0, 0.0));
+        assert_eq!(food_values(STICK), (0, 0.0));
+    }
+
+    /// Round 17: the StarveRule difficulty mapping — Hardcore runs
+    /// Hard-class starvation (never stops), everything else Normal
+    /// (stops at 1 HP); the modes doc's own "difficulty locked to Hard"
+    /// row drives it.
+    #[test]
+    fn starve_rule_follows_the_game_mode() {
+        use vc_gameplay::hunger::StarveRule;
+        use vc_gameplay::modes::GameMode;
+        let rule = |m: GameMode| {
+            if m == GameMode::Hardcore {
+                StarveRule::Hard
+            } else {
+                StarveRule::Normal
+            }
+        };
+        assert_eq!(rule(GameMode::Hardcore), StarveRule::Hard);
+        assert_eq!(rule(GameMode::Survival), StarveRule::Normal);
+        assert_eq!(rule(GameMode::Adventure), StarveRule::Normal);
+        // the thresholds themselves (VERIFIED w/Food §Starvation):
+        assert!(!StarveRule::Normal.allows(1.0), "normal stops at 1 HP");
+        assert!(StarveRule::Hard.allows(1.0), "hard never stops");
     }
 
     /// Round 14b [3]: the settings tree matches the vanilla 1.16.5

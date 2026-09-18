@@ -12546,10 +12546,16 @@ impl GameApp {
                     // stale canvas made the pair byte-identical (the
                     // false "STATIC overlay" verdict). A fresh
                     // rebuild_ui() re-renders the whole Game canvas
-                    // (HUD + F3) with the CURRENT frame counter, which
-                    // the Frame liveness line guarantees differs from
-                    // f3a's last write (>= 1 frame older).
+                    // (HUD + F3) with the CURRENT counters. The columns
+                    // then go through debug_canvas (the GPU text layer
+                    // is invisible to dump_png in armed mode), and the
+                    // f3a freeze (the F3_DUMP hook checks f3_dump2)
+                    // keeps f3a at the PREVIOUS rebuild — the monotonic
+                    // R: counter in the Frame line differs by
+                    // construction.
                     self.rebuild_ui();
+                    let (left, right) = self.f3_lines();
+                    self.ui.debug_canvas(&left, &right);
                     self.ui.dump_png(&p2);
                     vc_render::render::report_boot_log(
                         "smoke: F3 liveness pair written (dump 2 @ 1.6 s)",
@@ -20084,9 +20090,13 @@ impl GameApp {
             // 2026-09-19: writes are FROZEN once the F3_DUMP2 pair is
             // armed — the dump-2 block's fresh rebuild must not
             // overwrite f3a with its own content (that made the pair
-            // byte-identical by construction).
+            // byte-identical by construction). And in armed mode the
+            // live text rides the GPU text-quad layer (invisible to
+            // dump_png) — re-render the columns through the CANVAS
+            // glyph path so the dumped pixels carry the live overlay.
             if let Ok(path) = std::env::var("F3_DUMP") {
                 if !self.f3_dump2 {
+                    self.ui.debug_canvas(&left, &right);
                     self.ui.dump_png(&path);
                 }
             }

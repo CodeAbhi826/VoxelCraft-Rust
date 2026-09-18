@@ -5593,3 +5593,29 @@ CONSTRUCTION. Final form:
 
 Verify: 818/818 workspace, clippy 0/0, wasm32 rebuilt + redeployed;
 preview serves the new bundle (HTTP md5).
+
+### Follow-up 5 (same session): the armed-mode text layer — the ACTUAL static cause
+
+The freeze + rebuild counter STILL compared equal, which finally pinned
+the real mechanism: since the UI-Phase-2 round (GPU chrome/text quads,
+2026-09-12 — one day after the last green smoke) the live F3 TEXT rides
+the GPU text-quad layer. dump_png dumps the CPU canvas pixel buffer,
+which contains NO F3 text at all in armed mode — the dumps have been
+textless static HUD remnants ever since UI-P2 (never caught: the smoke
+never ran past the earlier failures until now). All the overlay-side
+fixes (Frame line, rebuild counters) were rendering into a layer the
+dump could not see.
+
+Final form:
+- ui.rs: text_flat_case's canvas-glyph branch extracted as the public
+  text_flat_case_px, plus debug_canvas(left, right) — the debug columns
+  rendered through the CANVAS path (rect strips + px glyphs + the
+  half-screen truncation), usable in armed mode;
+- game.rs: both dump sites render the columns through debug_canvas
+  BEFORE dumping — the dumped pixels now carry the live overlay (and
+  its Frame / R: / uptime line); f3a stays frozen at the pre-arm
+  rebuild, f3b is the dump-2 fresh rebuild — the R: counter differs by
+  construction.
+
+Verify: 818/818 workspace, clippy 0/0, wasm32 rebuilt + redeployed;
+preview serves the new bundle (HTTP md5).

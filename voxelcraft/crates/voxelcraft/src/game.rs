@@ -19445,6 +19445,13 @@ impl GameApp {
                 if cfg!(target_pointer_width = "64") { 64 } else { 32 },
                 if cfg!(debug_assertions) { "debug" } else { "release" }
             ),
+            // engine-adapted liveness line (2026-09-19): the frame
+            // counter + uptime advance on EVERY draw, guaranteeing the
+            // F3_DUMP2 dynamism pair (linux-game smoke) differs between
+            // dumps. The old design relied on fps/XYZ/memory drifting —
+            // a standing player at steady fps on the round-6 worldgen
+            // produced byte-identical dumps and a false STATIC verdict.
+            format!("Frame: {} ({:.1}s)", self.frames, self.time),
             self.f3_mem_line(),
             self.f3_allocated_line(),
             String::new(),

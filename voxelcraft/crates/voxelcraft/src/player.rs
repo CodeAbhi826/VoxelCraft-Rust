@@ -2287,6 +2287,29 @@ mod v116_tests {
         }
         assert_eq!(p.take_pending_hazard_damage(), 0.0, "no damage after leaving");
     }
+
+    /// 2026-09-19 (smoke-triage follow-up): the SAME contract at the
+    /// e2e_v116 cadence — dt=0.1 x 6 (the 20 Hz substep accumulator must
+    /// quantize the window identically at frame-rates the smoke harness
+    /// uses). A falling player must NOT accumulate (the e2e pins the
+    /// player for exactly this reason — see the restored determinism
+    /// hardening in e2e_v116).
+    #[test]
+    fn soul_fire_contact_at_e2e_cadence() {
+        let mut w = flat_floor();
+        let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
+        p.flying = false;
+        let mut input = Input::default();
+        w.set_block(0, 65, 0, vc_blocks::blocks::SOUL_FIRE);
+        for _ in 0..6 {
+            let _ = p.update(0.1, 0.0, &w, &mut input, 1.0, true);
+        }
+        assert_eq!(
+            p.take_pending_hazard_damage(),
+            2.0,
+            "e2e cadence (0.1 x 6) must queue the same 2 HP packet"
+        );
+    }
 }
 }
 

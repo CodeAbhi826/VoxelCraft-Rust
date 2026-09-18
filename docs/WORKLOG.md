@@ -5556,3 +5556,22 @@ glue patched + locked pair redeployed; preview serves the new bundle
 filled the 9.9G rootfs mid-round — freed by dropping the stale
 target/debug profile + a stale /tmp project mirror; release + wasm
 profiles kept.)
+
+### Follow-up 3 (same session): the dump-2 staleness (the real STATIC cause)
+
+The Frame liveness line alone did not turn the check — the deeper
+mechanism: F3_DUMP (f3a) is written from the UI rebuild inside the DRAW
+path, while F3_DUMP2 (f3b) fired from UPDATE's smoke block. Under the
+software renderer a draw is NOT guaranteed to land between the two dump
+events (the failing run had zero draws in that window) — so f3b dumped
+the very same canvas bytes f3a last wrote. The pair was structurally
+identical, independent of any overlay content.
+
+Fix: the dump-2 block now calls rebuild_ui() FIRST — a full fresh
+Game-screen canvas rebuild (HUD + F3 with the CURRENT frame counter and
+uptime) — then dumps. The Frame/uptime line guarantees the fresh
+rebuild differs from f3a's last write (>= 1 frame / >= 0.5 s older),
+making the dynamism pair deterministic.
+
+Verify: 818/818 workspace, clippy 0/0, wasm32 rebuilt + redeployed;
+preview serves the new bundle (HTTP md5).

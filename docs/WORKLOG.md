@@ -5288,3 +5288,105 @@ unchanged).
 - Everything committed and pushed to origin/main under the user's
   explicit authorization — the first push authorized in this
   conversation.
+
+## [2026-09-19] THE /32 GRADIENT FIX LANDED + README REWRITTEN FROM SCRATCH + FRESH E2E
+
+Session context: the user directive was "update the readme in the github
+based on the latest state of the repo" (done last session as a sync) then
+"make it a proper readme — rewriting from scratch, up to date, even the
+screenshots, legal stuff like disclaimers — and use the latest compiled
+wasm in the preview, and continue what you have to do". Three deliverables
+followed: the deferred /32 gradient port (the FIRST flagged item from the
+reconciliation entry), a from-scratch README, and the preview on the
+latest bundle.
+
+### The /32 textureSampleGrad gradient correction — landed with the full verify cycle
+
+- Toolchain recovered: `~/.cargo` had persisted across the container
+  reset all along (cargo/rustc 1.98.1, wasm-bindgen 0.2.127 — the exact
+  crate pin, wasm32-unknown-unknown installed); only PATH was lost. The
+  2026-09-18 "no Rust toolchain" verdict was a PATH misdetection.
+- Re-derivation confirmed at code level before editing: the mesher writes
+  face-unit UVs (mesh.rs corner table 0..1; the packed vc16 decode in
+  render.rs vs_main divides the 8-bit texel field by 16.0), the atlas
+  coordinate is tuv = (tile + fract(uv))/32 over the 32×32-tile atlas,
+  so d(tuv)/dpx = dpdx(uv)·16/512 = dpdx(uv)/32. The /512 form carried a
+  spurious ÷16 and under-mipped ~4 LOD levels (mip 0 at max render
+  distance — distant shimmer instead of vanilla's graded blur); the
+  original /16 was the 32×-too-large dark-grid bug. /32 is exact.
+- Landed in BOTH TERRAIN_SHADER and WATER_SHADER fs_main (gradient pair
+  /512 → /32), with the comment blocks rewritten to the corrected
+  derivation (uv is FACE units; the 2026-09-09 derivation's "fract(uv)
+  in texel units" assumption was the error), and the water comment
+  cross-referencing the terrain derivation.
+- The §26 drift-guard test upgraded: now asserts the /32 form AND
+  negatively guards BOTH regression forms — the /16 (dark-grid) and the
+  /512 (under-mip) — so neither history branch can silently return.
+- Verify cycle (CI-matching): `cargo test --release --no-default-features
+  --workspace` = **816/816 green** (identical count to pre-fix);
+  `cargo clippy ... --all-targets -- -D warnings` = **0/0**;
+  `cargo check --release --no-default-features --workspace --lib
+  --target wasm32-unknown-unknown` clean; release wasm32 build clean.
+- Bundle rebuilt by the CI wasm-build method (default features — web
+  audio included, matching wasm-build.yml; the local script's
+  --no-default-features was the source of the 1,287-byte CI/local size
+  delta): wasm-bindgen 0.2.127 → patch-wasm-glue.py (pointerType +
+  exitFullscreen hardening applied) → locked pair deployed to public/
+  (voxelcraft.js 136,061 B + voxelcraft_bg.wasm 6,191,274 B) with the
+  builtin packs rsynced; the preview (Next.js :3000 → voxelcraft.html)
+  verified serving the new pair by HTTP md5.
+
+### Live E2E through the preview — the post-fix regression sanity pass
+
+- 9 fresh screenshots captured from the served bundle (WebGL2 path,
+  headless Chromium via agent-browser, 1920×1080 = exact 2× UI canvas
+  fit): title (panorama) → options → video settings → world select →
+  world create → gameplay (post world-entry; the first attempt captured
+  the LOADING WORLD 11% screen — 35 s was not enough under SwiftShader,
+  re-captured after load) → F3 → inventory → pause.
+- VLM-verified each frame: terrain renders with correct variety, HUD
+  complete, F3 two-column readable, inventory/pause correct — and
+  specifically **no dark grid lines, no texture seams, no black/broken
+  areas** (the seam-bug family stays dead with the /32 gradients).
+- Shots saved as docs/screenshots/readme-01..09-*.png; the capture
+  script persisted as scripts/readme_capture.sh.
+
+### README — rewritten from scratch as a proper project README
+
+- New structure: badge row (4 workflow badges + Apache-2.0), 6-shot
+  screenshot gallery (fresh captures + the warm-evening shader-pack
+  shot), "What this is" (clean-room positioning + verified fact table),
+  four quick starts (browser zero-build / Linux single-file / native
+  source / reusable libraries), tech-stack table, rendering highlights
+  (incl. the corrected tile-safe sampling paragraph — /32 with the
+  face-units derivation), repository layout, controls, troubleshooting
+  (Linux pointer ladder as documented in BUILD.md; VC_POINTER correctly
+  NOT claimed — it is still the pending port), rebuild-bundle recipe,
+  verification section (816 tests / clippy 0 / E2E), and a full Legal
+  section: the Mojang guidelines disclaimer, trademark notice,
+  clean-room asset policy, **Monocraft font attribution (Idrees Hassan,
+  SIL OFL 1.1 — previously undocumented in the README despite the
+  bundled OFL file)**, and the Apache-2.0 summary.
+- Fact corrections vs the old README: block/state counts updated to the
+  verified **533 / 863** (the old "515 / 845" predated the farming
+  window), VERIFIED citation count stated as the counted **1,913**, and
+  the stale "water with vertex wave" architecture note dropped (flat
+  14/16 + scroll, per the 2026-09-09 fix).
+- The 126-line version-evolution record (phase table + all 16 bracket
+  paragraphs + the post-era rounds + the 2026-09-19 reconciliation
+  note) extracted verbatim to **docs/VERSION-EVOLUTION.md** and linked
+  from the README's documentation index — history preserved, README
+  compact.
+
+### Stage Summary
+
+- The reconciliation entry's FIRST deferred item is closed: /32 landed,
+  fully verified (816/816, clippy 0/0, wasm clean), deployed, and
+  E2E-confirmed visually clean through the live preview.
+- The repo now has a proper from-scratch README with current facts,
+  fresh screenshots, and complete legal attribution; the preview serves
+  the latest compiled wasm (this session's /32 build, to be superseded
+  by CI's auto-rebuild commit on push).
+- Still deferred (unchanged): the starvation watchdog + VC_POINTER +
+  click-side routing ports; LabPBR pbr.rs wiring; the station GUIs;
+  hunger-drain hooks beyond combat/movement.

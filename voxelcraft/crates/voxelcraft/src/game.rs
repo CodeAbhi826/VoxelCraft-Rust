@@ -11277,7 +11277,7 @@ impl GameApp {
         let bee_id = self
             .sim
             .mobs
-            .spawn_at(vc_gameplay::mobs::MobKind::Bee, pos[0] - 2, pos[1] + 1, pos[2]);
+            .spawn_at(vc_gameplay::mobs::MobKind::Bee, pos[0] - 2, pos[1] + 3, pos[2]);
         let mut bee_armed = false;
         if let Some(id) = bee_id {
             self.sim.mobs.set_bee(id, hive_pos, false);

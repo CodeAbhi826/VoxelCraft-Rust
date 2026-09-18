@@ -5496,3 +5496,38 @@ column — the probe that pinned the mid-air/terrain mismatch),
   serves the rebuilt bundle. Pushing — CI (ci.yml / linux-game.yml /
   wasm-build.yml incl. its native-check job) is the final verifier for
   the smoke path (no local GPU/lavapipe).
+
+### Follow-up (same session): the bee roof-approach engine bug behind the last red grep
+
+The push of the CI repairs turned the smoke's soulfire/trio/throw checks
+green (CI tests + the wasm-build native-check job + the bundle job all
+passed on e97af00), but `lifecycle=true` stayed red — and this time the
+by-id check earned its keep: `lifecycle=false(entered+left=false
+level=0 released=true)` meant OUR bee never entered the hive at all
+(level stayed 0; no work clock, no bump).
+
+Root cause (a REAL engine bug, latent since the v115 round): the bee
+homing target was the hive's front-face point `(h+0.5, h[1]−0.4,
+h+0.5)` with a 1.2 squared-distance arrival threshold. A bee returning
+from ABOVE — the common forage return — gets landed on the hive ROOF by
+mob collision at squared distance ~1.96 from that target: above the
+threshold forever, hovering on the roof, never entering. The old smoke
+lifecycle form (`released || honey_total > 0`) passed vacuously through
+natural-hive releases, so this was never caught; the sibling unit test
+(`v115_bee_enters_hive`) spawns its hive as an AIR cell (no collision),
+which is exactly why the side/air approach looked fine while the solid
+roof approach stranded.
+
+Fix (mobs.rs, both the NIGHT return branch and the DAY PH_TO_HIVE
+branch): the homing target is now the hive CELL CENTER
+`(h+0.5, h[1]+0.5, h+0.5)` with a 1.8 squared threshold (~1.34 blocks)
+— reachable from the roof (0.25 squared), the sides, and the front; the
+arrival check only runs inside the homing phases, so a bee merely
+passing in another phase never false-enters. The e2e bee spawn went
+back to +3 so the fast-forward exercises a real flight.
+
+New regression guard: `v115_bee_enters_hive_from_directly_above`
+(spawns a bee above a REAL solid BEEHIVE block — fails on the pre-fix
+geometry, passes now). Workspace count: **818/818**; bench-bin gate
+80/80; clippy 0/0 in both feature configs; wasm32 clean; bundle
+rebuilt (CI method) and the preview verified serving it by HTTP md5.

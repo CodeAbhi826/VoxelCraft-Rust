@@ -1524,6 +1524,12 @@ pub struct GameApp {
     smoke_game_t: f32,
     /// F3_DUMP2 liveness pair: the second dump has fired
     f3_dump2: bool,
+    /// 2026-09-19 (F3 dump pair): monotonic count of rebuild_ui() calls.
+    /// Rendered in the F3 Frame line so the F3_DUMP/F3_DUMP2 dynamism
+    /// pair differs by CONSTRUCTION: f3a is frozen at the last pre-dump2
+    /// rebuild (N) and f3b is the dump-2 rebuild (N+1) — the counter
+    /// reads different values even when frames/uptime happen to tie.
+    ui_rebuild_count: u64,
     /// Sub-round 2: the vanilla tabbed creative inventory overlay
     /// (E/B key, creative mode only)
     picker_open: bool,
@@ -2593,6 +2599,7 @@ impl GameApp {
             smoke_clicked_ingame: false,
             smoke_game_t: 0.0,
             f3_dump2: false,
+            ui_rebuild_count: 0,
             picker_open: false,
             rebind_listen: None,
             creative_tab: 0,
@@ -19457,12 +19464,16 @@ impl GameApp {
                 if cfg!(debug_assertions) { "debug" } else { "release" }
             ),
             // engine-adapted liveness line (2026-09-19): the frame
-            // counter + uptime advance on EVERY draw, guaranteeing the
+            // counter, the monotonic UI-rebuild counter, and uptime all
+            // advance between any two rebuilds, guaranteeing the
             // F3_DUMP2 dynamism pair (linux-game smoke) differs between
             // dumps. The old design relied on fps/XYZ/memory drifting —
             // a standing player at steady fps on the round-6 worldgen
             // produced byte-identical dumps and a false STATIC verdict.
-            format!("Frame: {} ({:.1}s)", self.frames, self.time),
+            format!(
+                "Frame: {} R: {} ({:.1}s)",
+                self.frames, self.ui_rebuild_count, self.time
+            ),
             self.f3_mem_line(),
             self.f3_allocated_line(),
             String::new(),
@@ -19716,6 +19727,7 @@ impl GameApp {
 
     fn rebuild_ui(&mut self) {
         self.last_ui_t = self.time;
+        self.ui_rebuild_count += 1;
         self.ui.clear();
         // Luanti font round: refresh the device scale so glyph rasters
         // land on real screen pixels at the current window size
@@ -20069,8 +20081,14 @@ impl GameApp {
             }
             // visual-verification hook (never set in CI):
             //   F3_DUMP=/tmp/f3.png F3=1 ./voxelcraft --smoke
+            // 2026-09-19: writes are FROZEN once the F3_DUMP2 pair is
+            // armed — the dump-2 block's fresh rebuild must not
+            // overwrite f3a with its own content (that made the pair
+            // byte-identical by construction).
             if let Ok(path) = std::env::var("F3_DUMP") {
-                self.ui.dump_png(&path);
+                if !self.f3_dump2 {
+                    self.ui.dump_png(&path);
+                }
             }
         }
 

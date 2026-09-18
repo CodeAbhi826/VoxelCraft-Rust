@@ -47,6 +47,36 @@ If you can't install ALSA headers locally, you can disable audio and still get t
 cargo run --release --no-default-features
 ```
 
+#### Linux input (mouse / pointer capture) — troubleshooting
+
+Look-around uses a three-rung pointer-capture ladder `Locked → Confined →
+delta-look`, tried in that order at every capture: `Locked` (a real winit
+grab — relative motion via raw `DeviceEvent`s), `Confined` (winit 0.29's
+X11 backend rejects `Locked` outright, so Linux lands here; on Wayland
+`Confined` delivers the same raw relative motion), and `Delta` (no
+pointer-lock protocol available: the cursor stays visible and look input
+is fed from cursor position deltas — the guaranteed-delivery channel).
+The engine never hides the cursor without a working grab and never feeds
+two motion streams at once; if the first click after a menu finds the
+grab lost, it re-attempts the ladder. Every rung logs a `pointer:` line
+through the boot-log sinks (visible with `--debug`, mirrored to
+`logs/latest.log`).
+
+- Run with `--debug` and read the `pointer:` line to see which rung your
+  compositor actually granted (`locked` / `confined to the window` /
+  `lock unavailable — delta-look fallback`).
+- Want a hidden-cursor lock on a Wayland session? Force the XWayland
+  path, which uses XInput2 raw motion: `WINIT_UNIX_BACKEND=x11 ./voxelcraft-*`.
+- Edge note: in delta-look mode the camera stops turning when the (visible)
+  cursor reaches the screen edge — inherent to position-delta input; pull the
+  mouse back toward the center to keep turning.
+- The upstream reconciliation (2026-09-19) preserved in git history a
+  parallel owner track with an evidence-based starvation watchdog (demote
+  to delta-look when the mouse demonstrably moves but no raw motion ever
+  arrives) and a `VC_POINTER=delta|confined|locked|auto` env override; both
+  are pending selective porting onto this lineage and are NOT yet wired
+  into the current build.
+
 ### 3. Build & serve the browser (WebGPU) version
 
 ```sh

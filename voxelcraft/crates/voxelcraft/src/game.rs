@@ -11218,6 +11218,15 @@ impl GameApp {
         let level5 = vc_blocks::blocks::honey_level(s5);
         let full = vc_blocks::blocks::hive_full(s5);
         let desc = vc_blocks::blocks::state_description(s5);
+        // reset the hive back to level 0 so the lifecycle increment
+        // (0 -> 1) is cleanly tested (restored 2026-09-19 — the merge
+        // window lost this line and the level check read the pre-set 5)
+        if let Some((old, new)) = self.world.set_block_state(
+            pos[0] - 2, pos[1], pos[2],
+            vc_blocks::blocks::hive_state(BEEHIVE, 0),
+        ) {
+            self.light.on_block_changed(&self.world, pos[0] - 2, pos[1], pos[2], old, new);
+        }
 
         // 2. the craft contracts (all five, VERIFIED §Crafting rows)
         let hive_craft = vc_gameplay::craft::match_grid(
@@ -11268,7 +11277,7 @@ impl GameApp {
         let bee_id = self
             .sim
             .mobs
-            .spawn_at(vc_gameplay::mobs::MobKind::Bee, pos[0] - 2, pos[1] + 3, pos[2]);
+            .spawn_at(vc_gameplay::mobs::MobKind::Bee, pos[0] - 2, pos[1] + 1, pos[2]);
         let mut bee_armed = false;
         if let Some(id) = bee_id {
             self.sim.mobs.set_bee(id, hive_pos, false);
@@ -11280,18 +11289,27 @@ impl GameApp {
                 }
             }
         }
-        // the fast-forward: bee flies in, works, exits, honey bumps
+        // the fast-forward: bee flies in, works, exits, honey bumps.
+        // The game layer's queues are drained EVERY tick exactly like
+        // update() does (restored 2026-09-19 — draining only once at the
+        // end left the bee stuck in bee_enters for the whole window, so
+        // the work clock never ran and the honey bump never landed)
         for _ in 0..ticks {
             self.sim.step(
                 &mut self.world,
                 &mut self.light,
                 &vc_sim::sim::TickScope::everything(),
             );
+            self.drain_bee_queues();
         }
-        // drain the queues exactly like update() does
-        self.drain_bee_queues();
+        // track OUR bee by id: it leaves the mob list on arrival (the
+        // 3.4 pass), while released natural-hive bees re-spawn with NEW
+        // ids and must not count against this check (the 2026-09-18
+        // "no Bee anywhere" form failed on exactly that pollution)
         let entered_then_left = bee_armed
-            && self.sim.mobs.list.iter().all(|m| m.kind != vc_gameplay::mobs::MobKind::Bee);
+            && bee_id
+                .map(|id| !self.sim.mobs.list.iter().any(|m| m.id == id))
+                .unwrap_or(false);
         let level_after = vc_blocks::blocks::honey_level(
             self.world.get_state(hive_pos[0], hive_pos[1], hive_pos[2]),
         );
@@ -11468,13 +11486,22 @@ impl GameApp {
 
         // 6. the soul-fire contact rate: 2 HP per 0.5 s through the
         //    shared immunity window (VERIFIED w/Soul_Fire) — the player
-        //    stands in a placed flame for 0.6 s
+        //    stands in a placed flame for 0.6 s. Determinism hardening
+        //    (restored 2026-09-19 from the last-green form): the anchor
+        //    drain test above calls respawn(), which leaves the player
+        //    at the mid-air world-spawn position — place a stone floor
+        //    and PIN the player at the fire cell so the check measures
+        //    the soul-fire rate, not the fall trajectory.
         let feet = [
             self.player.pos.x.floor() as i32,
             self.player.pos.y.floor() as i32,
             self.player.pos.z.floor() as i32,
         ];
+        self.test_place(STONE, feet[0], feet[1] - 1, feet[2]);
         self.test_place(SOUL_FIRE, feet[0], feet[1], feet[2]);
+        self.player.pos = glam::Vec3::new(feet[0] as f32 + 0.5, feet[1] as f32, feet[2] as f32 + 0.5);
+        self.player.vel = glam::Vec3::ZERO;
+        self.player.on_ground = true;
         let mut input = Input::default();
         for _ in 0..6 {
             let _ = self.player.update(0.1, 0.0, &self.world, &mut input, 1.0, true);
@@ -11784,6 +11811,14 @@ impl GameApp {
         // 3. the audit trio in the world: the ghast (a 20-block spawn
         //    fires the 60-tick fireball), the cave spider (the venom
         //    payload), the silverfish (alive + hostile)
+        // the mobs layer needs the player reference to aim at (restored
+        // 2026-09-19 — losing this line left the ghast without a target,
+        // so no fireball and no cave-spider bite reached the hits queue)
+        self.sim.mobs.player = Some([
+            pos[0] as f32 + 0.5,
+            pos[1] as f32 + 1.0,
+            pos[2] as f32 + 0.5,
+        ]);
         self.test_place(GRASS, pos[0] + 8, pos[1], pos[2]);
         let _ghast = self
             .sim
@@ -11925,17 +11960,22 @@ impl GameApp {
 
         // 4. the throwable trio: push each through the real projectile
         //    list with PLAYER_OWNER, fly them into a stone floor, then
-        //    drain through the REAL game-layer event path
+        //    drain through the REAL game-layer event path. The floor and
+        //    the pearl column sit +4 blocks AWAY from the player's own
+        //    column (restored 2026-09-19) so the pearl teleport is a
+        //    REAL position change — at +0 the landing cell equals the
+        //    player's cell and `moved` reads false even on a successful
+        //    teleport.
         self.sim.mobs.arrows.clear();
         self.sim.mobs.landings.clear();
-        self.test_place(STONE, pos[0], pos[1], pos[2]);
+        self.test_place(STONE, pos[0] + 4, pos[1], pos[2]);
         for kind in [
             vc_gameplay::mobs::ProjKind::Snowball,
             vc_gameplay::mobs::ProjKind::Egg,
             vc_gameplay::mobs::ProjKind::Pearl,
         ] {
             self.sim.mobs.arrows.push(vc_gameplay::mobs::Arrow {
-                pos: [pos[0] as f32 + 0.5, pos[1] as f32 + 12.0, pos[2] as f32 + 0.5],
+                pos: [pos[0] as f32 + 4.5, pos[1] as f32 + 12.0, pos[2] as f32 + 0.5],
                 vel: [0.0, -24.0, 0.0],
                 damage: 0.0,
                 age: 0,

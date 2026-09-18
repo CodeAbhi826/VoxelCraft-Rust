@@ -11,7 +11,7 @@ One codebase, two targets: **native** (Vulkan / DirectX 12 / Metal) and **browse
 [![Releases](https://github.com/CodeAbhi826/VoxelCraft-Rust/actions/workflows/release.yml/badge.svg)](https://github.com/CodeAbhi826/VoxelCraft-Rust/actions/workflows/release.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-**817 tests · clippy clean (0 warnings) · WGSL validated · E2E-screenshot verified**
+**818 tests · clippy clean (0 warnings) · WGSL validated · E2E-screenshot verified**
 
 </div>
 
@@ -94,7 +94,7 @@ The engine is split into **14 independent crates** (`vc-nbt`, `vc-blocks`, `vc-w
 | Math / parallelism | glam 0.29, rayon 1.10 (native) |
 | WASM | wasm-bindgen 0.2.127 (pinned, CLI-matched), wasm32-unknown-unknown |
 | Persistence | vanilla-format Anvil saves (`.mca` + `level.dat`), resource packs & datapacks (folder/zip) |
-| CI | 4 workflows: tests (817), wasm bundle auto-rebuild, single-file Linux build, releases |
+| CI | 4 workflows: tests (818), wasm bundle auto-rebuild, single-file Linux build, releases |
 
 ## Rendering highlights
 
@@ -173,7 +173,7 @@ CI does exactly this on every engine change and commits the bundle back to `publ
 
 ## Verification
 
-- **817/817 tests green** (`cargo test --release --no-default-features --workspace`, plus the `bench-bin`-featured CI gate at 80/80) — including WGSL parse+validation of every shader via naga, drift-guard tests for every historical bug fix (texture-seam quartet, flat water, FSR identity-at-1×, …), and per-subsystem constant checks against the wiki values
+- **818/818 tests green** (`cargo test --release --no-default-features --workspace`, plus the `bench-bin`-featured CI gate at 80/80) — including WGSL parse+validation of every shader via naga, drift-guard tests for every historical bug fix (texture-seam quartet, flat water, FSR identity-at-1×, …), and per-subsystem constant checks against the wiki values
 - **clippy: 0 warnings** across the workspace, all targets
 - **CI on every push**: native tests, wasm32 compile-check, headless benchmark, single-file Linux build, wasm bundle rebuild
 - **E2E screenshot verification** of the live bundle: boot → title → world create → gameplay → F3/inventory/pause (the screenshots above are those captures)

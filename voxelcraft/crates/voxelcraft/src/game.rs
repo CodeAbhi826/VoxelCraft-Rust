@@ -12532,6 +12532,17 @@ impl GameApp {
             if t_in > 1.6 && !self.f3_dump2 {
                 self.f3_dump2 = true;
                 if let Ok(p2) = std::env::var("F3_DUMP2") {
+                    // Rebuild the UI FRESH before dumping (2026-09-19):
+                    // the canvas only refreshes in the draw path, and
+                    // under the software renderer no draw is guaranteed
+                    // to land between the two dump events — dumping the
+                    // stale canvas made the pair byte-identical (the
+                    // false "STATIC overlay" verdict). A fresh
+                    // rebuild_ui() re-renders the whole Game canvas
+                    // (HUD + F3) with the CURRENT frame counter, which
+                    // the Frame liveness line guarantees differs from
+                    // f3a's last write (>= 1 frame older).
+                    self.rebuild_ui();
                     self.ui.dump_png(&p2);
                     vc_render::render::report_boot_log(
                         "smoke: F3 liveness pair written (dump 2 @ 1.6 s)",

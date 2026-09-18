@@ -5575,3 +5575,21 @@ making the dynamism pair deterministic.
 
 Verify: 818/818 workspace, clippy 0/0, wasm32 rebuilt + redeployed;
 preview serves the new bundle (HTTP md5).
+
+### Follow-up 4 (same session): f3a freeze — the pair now differs by construction
+
+The dump-2 fresh rebuild STILL compared equal: the F3_DUMP write inside
+rebuild_ui() re-fired during dump-2's own rebuild, overwriting f3a with
+the same fresh content bound for f3b — the pair was byte-identical BY
+CONSTRUCTION. Final form:
+
+- f3a writes are FROZEN once the F3_DUMP2 pair arms (the flag check at
+  the F3_DUMP hook) — f3a stays at the last pre-arm rebuild (N);
+- the dump-2 block rebuilds fresh and dumps f3b = rebuild N+1;
+- the F3 Frame line now carries the monotonic UI-rebuild counter
+  ("Frame: n R: m (t s)") — N vs N+1 always renders differently, so the
+  pair differs deterministically even if the frame counter and the
+  1-decimal uptime happen to tie.
+
+Verify: 818/818 workspace, clippy 0/0, wasm32 rebuilt + redeployed;
+preview serves the new bundle (HTTP md5).

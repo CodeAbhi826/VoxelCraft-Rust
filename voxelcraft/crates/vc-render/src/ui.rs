@@ -1998,6 +1998,16 @@ impl UiCanvas {
                 .gui_frame
                 .text(x, y, s, c, 8.0 * scale as f32, self.device_scale, false);
         }
+        self.text_flat_case_px(x, y, s, c, scale)
+    }
+
+    /// The CANVAS-glyph branch of text_flat_case, callable directly:
+    /// 2026-09-19 — in armed mode (GPU chrome/text quads) the live F3
+    /// text rides the GPU text layer, which dump_png (the CPU canvas
+    /// pixel buffer) cannot see. The smoke's F3_DUMP liveness pair
+    /// re-renders the overlay through THIS path so the dumped pixels
+    /// carry the live text (and its monotonic Frame/R counters).
+    pub fn text_flat_case_px(&mut self, x: i32, y: i32, s: &str, c: Color, scale: i32) -> i32 {
         let mut cx = x;
         for ch in s.chars() {
             match case_glyph(ch) {
@@ -4406,6 +4416,42 @@ impl UiCanvas {
                 self.rect(x - 1, y, w + 2, LINE_H, BG);
                 self.text_flat_case(x, y + 1, &line, FG, 2);
             }
+        }
+    }
+
+    /// 2026-09-19 — F3 dump path: render the debug columns through the
+    /// CANVAS glyph path regardless of armed mode. The live overlay
+    /// rides the GPU text-quad layer in armed mode, which dump_png (the
+    /// CPU pixel buffer) cannot see; the smoke's F3_DUMP/F3_DUMP2
+    /// liveness pair dumps THESE pixels, carrying the live text (and
+    /// its monotonic Frame/R counters). Layout mirrors debug()'s canvas
+    /// branch (strips via rect, text via text_flat_case_px, the
+    /// right-column truncation at the half-screen mark).
+    pub fn debug_canvas(&mut self, left: &[String], right: &[String]) {
+        const BG: Color = [80, 80, 80, 144]; // 0x90505050
+        const FG: Color = [224, 224, 224, 255]; // 0xE0E0E0
+        const LINE_H: i32 = 18;
+        for (i, l) in left.iter().enumerate() {
+            if l.is_empty() {
+                continue;
+            }
+            let y = 2 + i as i32 * LINE_H;
+            let w = Self::text_width_case(l, 2);
+            self.rect(2, y, w + 2, LINE_H, BG);
+            self.text_flat_case_px(3, y + 1, l, FG, 2);
+        }
+        for (i, l) in right.iter().enumerate() {
+            if l.is_empty() {
+                continue;
+            }
+            let y = 2 + i as i32 * LINE_H;
+            // same half-screen truncation as debug()'s canvas branch
+            let half = self.live_w as f32 / 2.0 - 12.0;
+            let line = fit_line(l, half, |s| Self::text_width_case(s, 2) as f32);
+            let w = Self::text_width_case(&line, 2);
+            let x = self.live_w as i32 - 3 - w;
+            self.rect(x - 1, y, w + 2, LINE_H, BG);
+            self.text_flat_case_px(x, y + 1, &line, FG, 2);
         }
     }
 

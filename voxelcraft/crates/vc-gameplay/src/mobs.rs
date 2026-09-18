@@ -4326,15 +4326,29 @@ fn ai_tick(
                 // nest ... during the night"; the engine has no rain —
                 // documented) --
                 if let Some(h) = bee.hive {
+                    // arrival geometry (2026-09-19 fix): the target is
+                    // the hive CELL CENTER and the threshold is ~1.34
+                    // blocks. The old front-face target (h[1]−0.4) plus
+                    // the 1.2 squared-threshold could NEVER be reached
+                    // from above: mob collision lands the bee on the
+                    // hive roof at squared distance ~1.96, where it
+                    // hovered forever (a returning bee that approaches
+                    // from above — the common forage return — was
+                    // stranded; caught by the smoke's by-id lifecycle
+                    // check after 4 rounds of vacuous green). The
+                    // center target + 1.8 admits roof, side, and front
+                    // approaches; the arrival check only runs inside
+                    // the homing phases, so a bee merely passing within
+                    // ~1.3 blocks in another phase never false-enters.
                     let target = [
                         h[0] as f32 + 0.5,
-                        h[1] as f32 - 0.4,
+                        h[1] as f32 + 0.5,
                         h[2] as f32 + 0.5,
                     ];
                     let dd = (m.pos[0] - target[0]).powi(2)
                         + (m.pos[1] - target[1]).powi(2)
                         + (m.pos[2] - target[2]).powi(2);
-                    if dd < 1.2 {
+                    if dd < 1.8 {
                         bee.arrived = true; // the tick pass removes + enters
                     } else {
                         steer_3d(m, target, speed);
@@ -4443,15 +4457,22 @@ fn ai_tick(
                         }
                         match bee.hive {
                             Some(h) => {
+                                // arrival geometry: the hive CELL CENTER
+                                // + ~1.34-block threshold — reachable from
+                                // the roof (the common return approach;
+                                // collision strands a front-face-target
+                                // bee on the roof at ~1.96 squared — see
+                                // the night branch's comment) as well as
+                                // from the sides/front
                                 let target = [
                                     h[0] as f32 + 0.5,
-                                    h[1] as f32 - 0.4,
+                                    h[1] as f32 + 0.5,
                                     h[2] as f32 + 0.5,
                                 ];
                                 let dd = (m.pos[0] - target[0]).powi(2)
                                     + (m.pos[1] - target[1]).powi(2)
                                     + (m.pos[2] - target[2]).powi(2);
-                                if dd < 1.2 {
+                                if dd < 1.8 {
                                     // arrived — the mob leaves the list
                                     // (MobSystem::tick drains
                                     // bee_enters)
@@ -9117,6 +9138,46 @@ mod v114_tests {
         assert_eq!(hive, [8, 66, 8]);
         assert!(nectar, "carried nectar");
         // the arrival pass removes it from the list (same tick)
+        assert!(sys.list.iter().all(|m| m.id != id), "mob left the list");
+    }
+
+    /// 2026-09-19 (the roof-approach regression the smoke lifecycle check
+    /// exposed): a bee returning from DIRECTLY ABOVE a real solid
+    /// BEEHIVE block must still enter. The pre-fix geometry homed on the
+    /// front-face point (h[1]−0.4) with a 1.2 squared threshold — mob
+    /// collision lands a roof-approaching bee ON the hive at squared
+    /// distance ~1.96, so it hovered forever (the smoke's old lifecycle
+    /// form passed vacuously through natural-hive releases and never
+    /// caught it). The cell-center target + 1.8 threshold admits roof,
+    /// side, and front approaches.
+    #[test]
+    fn v115_bee_enters_hive_from_directly_above() {
+        let mut world = v115_world();
+        // a REAL solid hive block — the collision geometry engaged (the
+        // sibling test's hive is an air cell, which is why this case
+        // was never covered)
+        world.set_block(8, 66, 8, BEEHIVE);
+        let mut sys = MobSystem::new(13);
+        sys.is_day = true;
+        // directly above the hive — the common forage-return approach
+        let id = sys.spawn_at(MobKind::Bee, 8, 69, 8).unwrap();
+        sys.set_bee(id, [8, 66, 8], false);
+        if let Some(m) = sys.by_id_mut(id) {
+            if let Some(b) = m.bee.as_mut() {
+                b.nectar = true;
+                b.phase = crate::bees::PH_TO_HIVE;
+            }
+        }
+        for _ in 0..200 {
+            sys.tick(&world, (0, 0), i32::MAX);
+            if !sys.bee_enters.is_empty() {
+                break;
+            }
+        }
+        assert!(
+            !sys.bee_enters.is_empty(),
+            "a roof-approaching bee must enter the hive (the pre-fix geometry stranded it on the roof)"
+        );
         assert!(sys.list.iter().all(|m| m.id != id), "mob left the list");
     }
 

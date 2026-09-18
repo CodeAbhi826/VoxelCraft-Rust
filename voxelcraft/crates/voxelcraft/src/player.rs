@@ -173,6 +173,13 @@ pub struct Player {
     /// Phase E2: timed status effects (wither/poison/regen + beacon stat
     /// effects — VERIFIED w/Effect rows; see vc_gameplay::effects)
     pub effects: vc_gameplay::effects::Effects,
+    /// Round 17 (2026-09-18): the vanilla FoodData model — foodLevel /
+    /// foodSaturationLevel / foodExhaustionLevel (VERIFIED w/Food
+    /// §Variables, live 2026-09-18; the drain/regen/starve tick lives
+    /// in the game layer's per-sim-tick block, the exhaustion
+    /// accumulate sites are this file's jump/move/damage hooks — see
+    /// vc_gameplay::hunger and the round-17 audit)
+    pub hunger: vc_gameplay::hunger::Hunger,
     /// health points (0..20, vanilla half-heart scale ×2; §29 potions act
     /// on this, the HUD renders it as the real health bar)
     pub health: f32,
@@ -259,6 +266,7 @@ impl Player {
             armor: [vc_inventory::inventory::ItemStack::EMPTY; 4],
             offhand: vc_inventory::inventory::ItemStack::EMPTY,
             effects: vc_gameplay::effects::Effects::new(),
+            hunger: vc_gameplay::hunger::Hunger::spawn(),
             health: 20.0,
             xp_points: 0,
             xp_level: 0,
@@ -435,8 +443,49 @@ impl Player {
         // `hurtTime` semantics — the HUD vignette + hearts shake)
         if applied > 0.0 {
             self.hurt_t = Self::HURT_FLASH_SECS;
+            // Round 17: taking damage costs 0.1 exhaustion per instance
+            // (VERIFIED w/Food §Energy-intensive actions: "Taking damage
+            // that is normally protected by armor: 0.1 per distinct
+            // instance of damage being received" — the engine's damage
+            // path is the armor-protected class; the starve path below
+            // is the unblockable exception and never lands here)
+            self.hunger.add_exhaustion(0.1);
         }
         applied
+    }
+
+    /// Round 17: starvation damage — the UNBLOCKABLE class (VERIFIED
+    /// w/Food §Starvation: "Starvation damage ignores armor and armor
+    /// toughness, the Protection enchantment, and the Resistance
+    /// effect"). Absorption hearts still eat it (they are not in the
+    /// wiki's ignore list), the hurt flash still fires (it is a damage
+    /// event), and it adds NO exhaustion (the starvation branch of the
+    /// FoodData tick is not on the take-damage source list — wiring it
+    /// into `damage()` would feed the drain loop).
+    pub fn starve(&mut self, amount: f32) -> f32 {
+        let mut amt = amount;
+        if self.absorption > 0.0 {
+            let eaten = self.absorption.min(amt);
+            self.absorption -= eaten;
+            amt -= eaten;
+        }
+        let before = self.health;
+        self.health = (self.health - amt).max(0.0);
+        let applied = before - self.health;
+        if applied > 0.0 {
+            self.hurt_t = Self::HURT_FLASH_SECS;
+        }
+        applied
+    }
+
+    /// Round 17: the sprint gate (VERIFIED w/Food §Sprinting: "If the
+    /// hunger value is at 6 or below, the player loses the ability to
+    /// sprint until the hunger value exceeds 7" — implemented as the
+    /// 1.16.5 Java check foodLevel > 6, audit §5). Flight bypasses
+    /// (the Java `|| mayfly` arm — the engine's flying state is
+    /// creative/spectator-only, i.e. exactly mayfly).
+    pub fn sprint_allowed(&self) -> bool {
+        self.flying || self.hunger.can_sprint()
     }
 
     /// add XP points → levels advance on the vanilla curve (§29); returns
@@ -699,6 +748,7 @@ impl Player {
 
         let sprinting = input.sprint
             && (input.fwd || input.back || input.left || input.right)
+            && self.sprint_allowed() // Round 17: food > 6, flight bypasses (w/Food §Sprinting)
             && !on_vine; // vines cancel a sprint (VERIFIED w/Vines)
 
         if self.flying {
@@ -820,6 +870,12 @@ impl Player {
                     };
                     self.vel.y = base + jb;
                     self.on_ground = false;
+                    // Round 17: a jump costs 0.05 exhaustion, a
+                    // sprint-jump 0.2 (VERIFIED w/Food
+                    // §Energy-intensive actions: "Jumping 0.05 per
+                    // jump" / "Jumping while sprinting 0.2 per jump")
+                    self.hunger
+                        .add_exhaustion(if sprinting { 0.2 } else { 0.05 });
                     if sprinting {
                         // sprint-jump boost: +0.2 b/t horizontally toward
                         // the facing (VERIFIED, mcpk.wiki/wiki/Sprinting)
@@ -949,6 +1005,11 @@ impl Player {
                 self.vel.y = JUMP_VEL + jb;
                 self.on_ground = false;
                 self.autojump_cd = 0.3;
+                // Round 17: an autojump is a jump — the same 0.05
+                // exhaustion (w/Food §Energy-intensive actions; the
+                // 1.16.5 Java exhaustion hook is the jump itself, not
+                // the key that produced it)
+                self.hunger.add_exhaustion(0.05);
                 // phase-align the 20 Hz substep like the manual jump —
                 // without this the hop apex loses up to 2/3 of tick 0
                 // and undershoots the 1-block clearance
@@ -1112,6 +1173,23 @@ impl Player {
             self.fall_dist = 0.0;
         }
         self.was_on_ground = self.on_ground;
+
+        // Round 17: per-meter exhaustion from locomotion (VERIFIED
+        // w/Food §Energy-intensive actions — "Sprinting 0.1 per meter",
+        // "Swimming 0.01 per meter"). The Java shape: sprinting (NOT
+        // in water, not a passenger — the engine's mount ride path
+        // bypasses this update's locomotion anyway) costs 0.1/m;
+        // else swimming costs 0.01/m. Flight costs nothing (mayfly
+        // class; food does not drain in creative, and hunger does not
+        // tick in invulnerable modes at the game layer).
+        if !self.flying && has_input {
+            let moved = (self.vel.x * self.vel.x + self.vel.z * self.vel.z).sqrt() * dt;
+            if sprinting && !self.in_water {
+                self.hunger.add_exhaustion(0.1 * moved);
+            } else if self.in_water {
+                self.hunger.add_exhaustion(0.01 * moved);
+            }
+        }
 
         // footsteps
         if self.on_ground && !self.flying {
@@ -2343,5 +2421,170 @@ mod farm_player_tests {
         assert!(!p.shield_up());
         p.offhand = vc_inventory::inventory::ItemStack::new(vc_blocks::blocks::SHIELD, 1);
         assert!(p.shield_up());
+    }
+
+    // ---- Round 17: the hunger-system player-layer wiring ----
+
+    /// taking real damage costs 0.1 exhaustion (VERIFIED w/Food
+    /// §Energy-intensive actions: "Taking damage that is normally
+    /// protected by armor: 0.1 per distinct instance")
+    #[test]
+    fn taking_damage_adds_exhaustion() {
+        let w = flat_floor();
+        let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
+        p.flying = false;
+        let _ = p.update(1.0 / 60.0, 0.0, &w, &mut Input::default(), 1.0, true);
+        p.damage(3.0);
+        assert!(
+            (p.hunger.exhaustion - 0.1).abs() < 1e-6,
+            "one instance = 0.1, got {}",
+            p.hunger.exhaustion
+        );
+        // a fully-absorbed hit (zero applied) does not exhaust
+        p.health = 20.0;
+        p.hunger.exhaustion = 0.0;
+        p.absorption = 50.0; // eats everything
+        let applied = p.damage(3.0);
+        assert_eq!(applied, 0.0);
+        assert_eq!(p.hunger.exhaustion, 0.0, "no damage taken = no exhaustion");
+    }
+
+    /// starvation damage bypasses armor, adds NO exhaustion, still
+    /// flashes (VERIFIED w/Food §Starvation: "Starvation damage ignores
+    /// armor and armor toughness, the Protection enchantment, and the
+    /// Resistance effect")
+    #[test]
+    fn starve_damage_bypasses_armor_and_never_exhausts() {
+        let w = flat_floor();
+        let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
+        p.flying = false;
+        let _ = p.update(1.0 / 60.0, 0.0, &w, &mut Input::default(), 1.0, true);
+        p.armor = [
+            vc_inventory::inventory::ItemStack::new(DIAMOND_CHESTPLATE, 1),
+            vc_inventory::inventory::ItemStack::new(DIAMOND_CHESTPLATE, 1),
+            vc_inventory::inventory::ItemStack::new(DIAMOND_CHESTPLATE, 1),
+            vc_inventory::inventory::ItemStack::new(DIAMOND_CHESTPLATE, 1),
+        ];
+        p.recalc_armor_points();
+        assert!(p.armor_points >= 20, "full diamond = 20 armor points");
+        p.health = 20.0;
+        p.hunger.exhaustion = 0.0;
+        let applied = p.starve(1.0);
+        assert!((applied - 1.0).abs() < 1e-6, "armor never reduces starve");
+        assert_eq!(p.hunger.exhaustion, 0.0, "starving never feeds the drain");
+        assert!(p.hurt_t > 0.0, "starvation still flashes the hurt vignette");
+    }
+
+    /// a jump costs 0.05 exhaustion, a sprint-jump 0.2 (VERIFIED
+    /// w/Food §Energy-intensive actions)
+    #[test]
+    fn jumps_cost_exhaustion() {
+        let w = flat_floor();
+        let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
+        p.flying = false;
+        // land first
+        for _ in 0..120 {
+            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut Input::default(), 1.0, true);
+        }
+        assert!(p.on_ground);
+        let mut input = Input {
+            jump: true,
+            ..Default::default()
+        };
+        p.hunger.exhaustion = 0.0;
+        let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+        assert!(
+            (p.hunger.exhaustion - 0.05).abs() < 1e-6,
+            "plain jump = 0.05, got {}",
+            p.hunger.exhaustion
+        );
+        // reset to the floor, then a sprint-jump (fwd + sprint)
+        for _ in 0..120 {
+            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut Input::default(), 1.0, true);
+        }
+        assert!(p.on_ground);
+        p.hunger.exhaustion = 0.0;
+        let mut input2 = Input {
+            jump: true,
+            fwd: true,
+            sprint: true,
+            ..Default::default()
+        };
+        let z_before = p.pos.z;
+        let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input2, 1.0, true);
+        let meters = (z_before - p.pos.z).abs();
+        assert!(
+            (p.hunger.exhaustion - 0.2 - 0.1 * meters).abs() < 1e-4,
+            "sprint-jump = 0.2 + 0.1 per sprinted meter (moved {meters:.4}), got {}",
+            p.hunger.exhaustion
+        );
+        assert!(p.hunger.exhaustion >= 0.2, "the jump component alone is 0.2");
+    }
+
+    /// sprinting costs 0.1 exhaustion per meter, swimming 0.01 per
+    /// meter (VERIFIED w/Food §Energy-intensive actions)
+    #[test]
+    fn sprint_and_swim_cost_per_meter() {
+        let w = flat_floor();
+        let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
+        p.flying = false;
+        let mut input = Input {
+            fwd: true,
+            sprint: true,
+            ..Default::default()
+        };
+        // one single frame from rest: the exhaustion is dominated by
+        // the jump-free sprint meters of that frame
+        let before = p.pos.z;
+        p.hunger.exhaustion = 0.0;
+        let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+        let meters = (before - p.pos.z).abs();
+        assert!(
+            (p.hunger.exhaustion - 0.1 * meters).abs() < 1e-4,
+            "0.1 per sprinted meter (moved {meters:.4}), got {}",
+            p.hunger.exhaustion
+        );
+        // walking (not sprinting) on dry ground costs nothing
+        p.hunger.exhaustion = 0.0;
+        let mut walk = Input {
+            fwd: true,
+            ..Default::default()
+        };
+        let _ = p.update(1.0 / 60.0, 0.0, &w, &mut walk, 1.0, true);
+        assert_eq!(p.hunger.exhaustion, 0.0, "plain walking is free");
+    }
+
+    /// the sprint gate: food ≤ 6 blocks sprinting; flight bypasses
+    /// (VERIFIED w/Food §Sprinting + the Java mayfly arm)
+    #[test]
+    fn low_food_blocks_sprinting() {
+        let w = flat_floor();
+        let mut p = Player::new(Vec3::new(0.5, 65.0, 0.5));
+        p.flying = false;
+        for _ in 0..120 {
+            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut Input::default(), 1.0, true);
+        }
+        p.hunger.food = 6;
+        assert!(!p.sprint_allowed());
+        let mut input = Input {
+            fwd: true,
+            sprint: true,
+            ..Default::default()
+        };
+        for _ in 0..180 {
+            let _ = p.update(1.0 / 60.0, 0.0, &w, &mut input, 1.0, true);
+        }
+        let horiz = (p.vel.x * p.vel.x + p.vel.z * p.vel.z).sqrt();
+        assert!(
+            (horiz - WALK_SPEED).abs() < 0.05,
+            "food 6 = walk speed {horiz}, not sprint"
+        );
+        // food 7: the sprint gate opens again
+        p.hunger.food = 7;
+        assert!(p.sprint_allowed());
+        // flight bypasses the gate (the mayfly arm)
+        p.hunger.food = 0;
+        p.flying = true;
+        assert!(p.sprint_allowed());
     }
 }

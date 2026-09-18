@@ -4651,3 +4651,197 @@ panel-chrome +7px family overhead (disclosed in the round-12 audit).
 **Not committed or pushed** — the round's work sits in the working
 tree; nothing goes to GitHub without explicit user approval, per the
 standing instruction.
+
+---
+
+## [2026-09-18] POST-PHASE 16 COMPLETE ENGINE AUDIT & REGRESSION SANITY PASS
+
+**Task:** the audit directive — public GitHub/README declared stale;
+the local tree is ground truth. Every claimed subsystem was
+cross-examined against the wiki-anchored constants living in the
+code, the full regression surface re-run from a cold container (the
+toolchain survived at `~/.cargo`, off PATH), and the deployed web
+bundle found ONE DAY STALE vs the working tree (the Sep-18 Round-17
+hunger work had never shipped to `public/`) — rebuilt and redeployed
+as the locked pair.
+
+**Verified Subsystems (local code, live-checked this pass):**
+
+1. **Workspace topology — 14 libraries + app, strict DAG.**
+   `voxelcraft/Cargo.toml` (resolver 2, default-members = the app) +
+   the `LIBRARIES.md` layering: foundations (nbt/blocks/rng/chunk/
+   pack) → world → mesh/particles → gameplay → sim → anvil/render/
+   audio → app. No crate depends upward; only the app touches
+   everything. wgpu 22 + naga 22 (runtime WGSL validation),
+   `web-time 0.2` (std Instant panics on wasm32), wasm-bindgen
+   =0.2.127 (the locked pair).
+2. **GPU chunk meshing on the web — the three stacked causes, all
+   reproduced and fixed (the 2026-09-09 round, re-verified in
+   `vc-render/src/gpu_mesh.rs`):** (1) `create_buffer_init`
+   (mappedAtCreation+getMappedRange) silently kills the winit event
+   loop on wgpu-22 browser backends — replaced by `create_buffer` +
+   `queue.write_buffer`; (2) `mapAsync` readback rejects 5995/5995
+   with "A valid external Instance reference no longer exists" (a
+   wgpu-22 browser-context lifetime limitation) — a rejected
+   readback now counts as a watchdog strike instead of silent
+   batch churn (~30 MB/cycle); (3) the 2-strike watchdog:
+   `STALL_TIMEOUT = 6 s` (`web_time::Duration` — runs on native AND
+   wasm), `STALL_LIMIT = 2`, `stalled_out()` routes the session to
+   the CPU rayon path; `Device::poll(Poll)` every frame on ALL
+   platforms (the old cfg-gate starved the first readback forever);
+   the loading timeout is unconditional (≤15 s to title even with a
+   dead mesher); toggling gmesh no longer `remesh_all()`s (the
+   parity contract makes it a routing no-op); the `wgpu::Instance`
+   stays pinned (GC hardening).
+3. **Bind-group safety, native + browser.** The compute mesher uses
+   ONE bind-group layout with exactly 8 storage bindings — the
+   WebGPU `max_storage_buffers_per_shader_stage` floor — shared by
+   both passes; binding 5 is dual-purpose (pass A writes quad
+   counts, the CPU rewrites it with offsets for pass B); per-job
+   state rides one params buffer (stride 66) instead of per-job
+   bind groups; pass A binds 16-byte dummies at 6/7.
+4. **Pointer-capture ladder (native) — Locked → Confined → Delta.**
+   `PointerLockMode` (game.rs) with CHECKED grabs (the pre-fix code
+   discarded errors and hid the cursor — dead clicks on
+   WSLg/Wayland/RDP), re-attempted on the first in-game click
+   (gesture-gated compositors), Delta keeps the cursor visible and
+   feeds look from CursorMoved position deltas while raw
+   DeviceEvent motion is SKIPPED in Delta mode (double-sensitivity
+   guard).
+5. **Terrain/water WGSL — the seam-fix quartet.** Both pipelines:
+   `textureSampleGrad` with EXPLICIT gradients; gradient scale
+   `dpdx(in.uv)/512` (the 512×512 atlas / 32-tile math — the old
+   /16 was 32× too large, ~5 mips too deep: the "dark grid"
+   report); inset clamp `clamp(fract(uv), 0.03125, 0.9375)` (upper
+   bound 15/16); gradients from the PRE-fract uv; flat water at
+   14/16. All four pinned by `terrain_water_seam_guards_present`
+   (incl. the anti-regression `!contains("/16.0")` check).
+6. **Video Settings tree parity.** Graphics cycles Fast → Fancy →
+   Fabulous! (0/1/2, per-row tooltips); Smooth Lighting 0/1/2 with
+   the minimum = half-strength remap `ao = (a+3)/2` in the mesher
+   (the GPU mesher mirrors it); Clouds Fancy = the alpha-blending
+   pipeline (`cloud_pipe_blend`, the shader's 0.55 alpha finally
+   blends); Biome Blend OFF/1x1/3x3/5x5/7x7 → radius 0..3,
+   consumed by `blended_biome_pad` (nearest-LUT-slot average of
+   neighborhood grass colors) fed to BOTH meshers.
+7. **20 Hz simulation + exact entity physics.** `SIM_HZ = 20.0`
+   fixed-step accumulator; the player runs the EXACT per-tick drag
+   `v1 = (v0 − 0.08) × 0.98` AFTER position integration (vanilla
+   tick order — each velocity drives one 50 ms slice), terminal
+   −3.92 b/t inherent; `GRAVITY = 32` (0.08 × 20²), `JUMP_VEL =
+   8.4` (0.42 b/t) → measured apex 1.2492 (vanilla 1.25);
+   `SPRINT_JUMP_SPEED = 7.127` with the calibrated-runway test
+   (measured 7.129). Items/orbs: gravity 0.04, drag 0.98, terminal
+   1.96 b/t; XP pickup gate 10/s, 7.25-block attraction.
+8. **Fluids — dimension-aware lava.** `LAVA_TICK_RATE_OVERWORLD =
+   30` / `_NETHER = 10`; drop-off 2/1 → spread 3/7 (source + 3 /
+   + 7); no source creation; falls first. Water deltas (level-1
+   falling column, cross-plant stop) documented per §0.
+9. **Version-evolution mechanics.** Wither: 300 HP, `CHARGE_TICKS
+   = 220` (invulnerable + inactive), regen 1 HP / 20 ticks,
+   kill-heal 5 HP, breaks 3×4×3 on damage, black skull every 40
+   ticks, Wither II 10 s/40 s, nether star 100%, 50 XP, hitbox 3.5
+   × 0.9. Ender Dragon: `DEATH_XP_AT = 154`, portal at 200 —
+   pinned by test. Fox: stage-1+ berry bush = 1 HP / half-second +
+   34.05% slow, foxes take neither (test
+   `v114_bush_slows_and_damages_except_foxes`); bushes grow 20% /
+   random tick to age 3. Bees (full 1.15 life-cycle): hive capacity
+   3, 400-tick flower circling, 2400-tick hive work, 1200-tick
+   sting death, anger 400..=780 ticks, 10 nectar charges, ~5%/tick
+   fertilization, honey levels with harvest gates, day-release.
+10. **Clean-room legal posture.** 19 procedural art modules
+    (`v113_art.rs` … `v116b_art.rs`, e1/e2/e3, gui/armor/weather/
+    farming/auditfix/audit16/r13) — per-pixel clean-room
+    approximations (the wiki names colors, not hex); audio fully
+    synthesized (vc-audio); panorama procedural; the builtin-pack
+    PNGs are GENERATED from the procedural atlas
+    (`write_builtin_pack_pngs`); zero bit-for-bit Mojang assets.
+11. **Round 17 (the unlogged Sep-18 work, now on the record).**
+    `vc-gameplay/src/hunger.rs`: the FoodData model — MAX_FOOD 20,
+    saturation 5, REGEN_FOOD 18 / 80-tick natural regen,
+    SATURATED_FOOD 20 / 10-tick boost, REGEN_EXHAUSTION 6.0 per HP,
+    EXHAUSTION_DRAIN 4.0 with the Java subtract-4.0 shape + 40.0
+    cap, STARVE_PERIOD 80, SPRINT_GATE 6 (sprint needs 7+),
+    difficulty classes (Hardcore = Hard-class starvation);
+    exhaustion hooks live in combat (0.1/attack), movement, regen;
+    research doc `docs/research/round-17-hunger-audit.md`.
+
+**Flushed Out Gaps/Drift (request ↔ code, this pass):**
+
+- **The 0.96875 claim is DRIFT.** The request's "half-texel 15/16
+  (0.03125 to 0.96875)" is self-contradictory: 15/16 = 0.9375 — the
+  LIVE clamp. 0.96875 (15.5/16) was the OLD value that sat ON the
+  texel-15/16 boundary and blended 50% of the neighbor tile into
+  every face edge (the 2026-09-09 seam bug). Code and drift-guard
+  are correct; the request's number is the pre-fix constant.
+- **`VC_POINTER=auto` does NOT exist.** Full-tree search (Rust,
+  wasm glue, HTML loaders): no such env var. The pointer fix is the
+  automatic capture ladder + first-click re-attempt — no
+  user-facing override knob was ever implemented (a ~20-line
+  `env::var` match in `capture_pointer` would add one). Naming
+  note: the "pointer-starvation watchdog" is really the GPU-mesh
+  stall watchdog; the pointer system is a capture ladder.
+- **The deployed preview bundle was STALE.** `public/` carried the
+  Sep-17 16:46 pair while the tree gained the Sep-18 Round-17 work
+  — the local changes the directive calls authoritative were NOT in
+  the preview. Fixed this pass.
+- **BUILD.md architecture notes drifted:** still says water has "a
+  vertex wave" and "depth-write off" — both superseded by the
+  2026-09-09 fix (flat 14/16 surface, depth-write ON + Less).
+- **Wither "armor" (below-half-health projectile immunity) is
+  unimplemented** — disclosed in wither.rs, routed to the projectile
+  bracket.
+- **Round 17 was unlogged + uncommitted** — this entry closes the
+  log gap; the commit still awaits explicit user approval.
+- **alsa-sys sandbox limitation** (environmental, not code): the
+  native app binary cannot link without ALSA headers; the app crate
+  was tested via `--no-default-features` (BUILD.md's documented
+  path). All 14 libraries link and test natively.
+
+**Regression sanity pass (from the cold container):**
+
+- `cargo test --workspace --exclude voxelcraft`: **737 passed / 0
+  failed** (incl. the vc-render GPU parity suite on the software
+  adapter — 73 tests, 551 s, the blocking-poll contract honored).
+- `cargo test -p voxelcraft --no-default-features`: **79 passed /
+  0 failed** — **816 total, 0 failures** (800 → 816: Round 17's 16
+  new tests).
+- `cargo clippy` (native, all-targets, libs + app
+  no-default-features): **0 warnings, 0 errors**.
+- `cargo build --release --no-default-features --target
+  wasm32-unknown-unknown --lib`: clean, 2m19s.
+- **Bundle redeployed (the locked pair):** wasm-bindgen 0.2.127 →
+  `patch-wasm-glue.py` (pointerType + exitFullscreen glue patched) →
+  `public/voxelcraft.js` (136,061 B) + `voxelcraft_bg.wasm`
+  (6,191,527 B — +4,301 B, the hunger code) + the `.d.ts` pair +
+  pack rsync. Verified byte-identical to `wasm-out/` (md5). The
+  preview now runs the audited tree.
+
+**WASM / Native Fix Paths (why the multi-target story holds):**
+
+- The capture ladder degrades gracefully per-compositor (Locked →
+  Confined → Delta), never hides the cursor without a working grab,
+  and never feeds two motion streams at once — native input cannot
+  freeze into the pre-fix dead state on any backend.
+- The stall watchdog + `web-time` + all-platform `Device::poll`
+  make the GPU mesher self-healing on the browser (2 strikes → CPU
+  rayon for the session, §12 dirty bits keep remesh pressure) while
+  the unconditional 15 s loading timeout keeps the title screen
+  reachable on ANY device — the failure modes can no longer wedge
+  boot or churn buffers.
+- `web-time` replaces std Instant everywhere timing crosses the
+  wasm boundary (performance.now() on the web) — no panic paths, no
+  dummy clocks, one code path for both targets.
+- The locked-pair rule (js + wasm rebuilt and copied TOGETHER, glue
+  patched after every wasm-bindgen run) prevents the version-skew
+  class of preview breakage; this pass found and fixed exactly that
+  class of staleness.
+
+Stage Summary:
+- Full engine audit against the local tree: every claimed mechanic
+  verified at the constant level; two request-side drifts exposed
+  (0.96875, VC_POINTER); BUILD.md water-note drift logged.
+- Round 17 (hunger) recovered into the record; 816/0 tests, clippy
+  0/0, wasm32 clean; the stale preview bundle rebuilt and redeployed
+  as the locked pair (+4,301 B).
+- Nothing committed or pushed — standing instruction.

@@ -5531,3 +5531,28 @@ New regression guard: `v115_bee_enters_hive_from_directly_above`
 geometry, passes now). Workspace count: **818/818**; bench-bin gate
 80/80; clippy 0/0 in both feature configs; wasm32 clean; bundle
 rebuilt (CI method) and the preview verified serving it by HTTP md5.
+
+### Follow-up 2 (same session): the F3 dump pair determinism
+
+The bee fix turned the smoke's game stage fully green (lifecycle=true,
+level 0->1, released) — the workflow then failed for the FIRST time on
+its LAST assertion: "FAIL: F3 overlay is STATIC (the two dumps are
+identical)". The F3_DUMP2 liveness pair (two UI-canvas PNGs ~1 s apart)
+was designed to differ via "fps/XYZ/light/memory all move" — but every
+one of those is integer-rounded (fps, MB) or static for a standing
+player in a settled world, and the round-6 worldgen's light spawn
+terrain holds the fps integer steady: byte-identical dumps, a false
+STATIC verdict. Inherent flake, not a regression (the check had never
+run past the game stage since the failures began).
+
+Fix: an engine-adapted monotonic liveness line in the F3 right column —
+`Frame: {n} ({uptime}s)` (the same engine-specific precedent as the
+"Culling: occl/frust" row) — the frame counter advances on every draw,
+so any two dumps >= 1 frame apart now differ deterministically.
+
+Verify: 818/818 workspace, clippy 0/0, wasm32 rebuilt (CI method) +
+glue patched + locked pair redeployed; preview serves the new bundle
+(HTTP md5). (Disk-pressure note: the repeated feature-config builds
+filled the 9.9G rootfs mid-round — freed by dropping the stale
+target/debug profile + a stale /tmp project mirror; release + wasm
+profiles kept.)

@@ -5619,3 +5619,87 @@ Final form:
 
 Verify: 818/818 workspace, clippy 0/0, wasm32 rebuilt + redeployed;
 preview serves the new bundle (HTTP md5).
+
+### 2026-09-20 round — legal audit, the Shaders screen returns (external-only), labPBR scan, the ravine rampart-fix
+
+The round had four mandates. (1) The owner supplied a copyrighted
+reference set (a 4,218-file modern-version texture zip + 3 logo/GUI
+images) with a strict directive: reference-only, never copy, never
+overlay, everything legal. (2) Real drop-in shader & resource pack
+options (BSL/SEUS-style + NAPP-style labPBR — no built-in shaders).
+(3) The settings UI may welcome modern-version extras (the owner's
+call: version differences don't matter, more options are great).
+(4) Fix the rampant-ravines + lag terrain report.
+
+**Legal (the round's top priority).** scripts/legal_audit.py hashes
+all 4,031 reference byte-streams and md5-scans every repo asset:
+zero matches, the three logo/GUI files absent, upload/ gitignored
+and untracked, source audit clean (no mojang refs outside legal
+commentary, no upload/ paths in code). Pixel-level check on the two
+same-name shipped PNGs: mean-difference 28.9/255 and 13.5/255 —
+clean-room distinct. docs/LEGAL-COMPLIANCE.md is now the binding
+analysis: four pillars (pixel art = protected expression; EULA
+distribution = the bright line; logos = trademark too; clean-room =
+study → functional description → in-code synthesis → verify), what
+ships (100% procedurally synthesized pixels — the strongest posture),
+and 7 binding rules (upload/ reference-only forever; the three
+tests; no built-in shaders or copied shader code; no Mojang marks;
+re-run the audit before every deploy). shader-packs/ is gitignored
+except README+gitkeep so user-dropped packs never enter the repo.
+
+**The ravine rampart-fix.** The exact rng-port harness
+(scripts/ravine_quant.py) quantified the report: the anchor density
+(2.31% ≈ vanilla 1/50) was fine, but EVERY carved column was 100%
+sky-open at mean depth 39.3 — because the canyon top was derived
+from the anchor's terrain surface (forcing surface-breaking
+mega-trenches on plains) and depth was uniform 40..=62 ("up to 62"
+treated as a minimum). The mesh explosion from 40-56-block vertical
+walls was the lag. Two more defects: the overlap merge kept the
+LOWER rim (silently dropping the upper carve interval — solid rock
+mesas standing inside canyon crossings), and the scan's column()
+solve (the only expensive call) ran ~121× redundantly across each
+neighborhood's chunk generations.
+
+Fix (gen.rs): the top is now the rolled 10..=72 START LEVEL (the
+wiki's "can start at levels 10 to 72" — independent of surface, so
+most carves stay underground and only the rolls that clear the local
+surface open as canyons); depth is 10..=62; the merge is a true
+union (higher rim AND deeper floor both survive); the column() call
+left the scan entirely. Post-fix, validated by the exact simulation:
+sky-open 100% → 25%, mean carved depth 39.3 → 24.7, max respects the
+62 grammar. Four regression tests pin the envelope — the carve-
+profile test samples representatively (per-anchor capped, real
+terrain heights) and was validated against flat-64/55/72/varied
+scenarios before landing.
+
+**The Shaders screen (restored by owner request — external-only).**
+The 2026-09-14 removal is reversed for the SCREEN but not the
+built-ins: Video Settings gains the OptiFine/Iris-style SHADERS...
+row (id 53), and Screen::Shaders lists the pinned "(none)" row (the
+vanilla pipeline), one row per EXTERNAL pack scanned live from
+shader-packs/ (analyze_pack's honest IRIS-STRUCTURE-VALIDATED tier +
+pass/uniform summary ride the hover tooltips), the LABPBR MATERIALS
+toggle, and DONE back to Video. Selection persists immediately
+(options.txt `shaderpack` / `labpbr` keys, "(none)" round-trips);
+ESC steps to Video like OptiFine; the smoke menu-walk now visits the
+screen so CI exercises it. The wasm build honestly lists nothing (no
+filesystem) with a hint line. NO built-in shader packs exist — by
+design and by law; the GLSL translation remains the vc-iris sister
+project's job.
+
+**labPBR (NAPP-style resource packs).** pbr.rs (the labPBR 1.3
+decode + WGSL PBR/POM library with its 3 tests) existed but was
+never declared in lib.rs — dead code; it now compiles. The new
+textures.rs scan_labpbr_materials() detects `_n`/`_s` companion maps
+for every overridable tile, decodes a validation texel through the
+labPBR 1.3 decoder (corrupt/absent companions don't count), and the
+count feeds the boot log, the pack-apply log and the E2E iris report
+(`labpbr=on/off (N material tiles)`). A synthetic MemorySource pack
+unit test covers the n+s / corrupt / s-only / plain cases.
+
+Verification: no local Rust toolchain exists in this environment —
+the round ships through CI (commit fc00753): the full test suite
+(the 4 new ravine tests + the shader-screen layout/tooltip/roundtrip
+tests + the labPBR scan test + the ID-space guards with the new
+240..=249 block), then the wasm bundle + the single-file Linux
+build.

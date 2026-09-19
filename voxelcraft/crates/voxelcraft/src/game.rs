@@ -8699,7 +8699,11 @@ impl GameApp {
             "shader-packs",
         ))
         .into_iter()
-        .map(|p| (p.name, p.summary()))
+        .map(|p| {
+            // summary() borrows the pack — compute it BEFORE moving name
+            let summary = p.summary();
+            (p.name, summary)
+        })
         .collect();
     }
 

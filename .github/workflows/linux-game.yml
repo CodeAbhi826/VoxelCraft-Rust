@@ -212,7 +212,12 @@ jobs:
           grep -q "\[screen\] options -> engine" menu.log
           grep -q "\[screen\] options -> packs" menu.log
           grep -q "\[screen\] options -> access" menu.log
-          grep -q "e2e: settings tree ok (video/engine/packs/access)" menu.log
+          # 2026-09-20: the Shaders screen leg — enter from Video, DONE
+          # back to Video (the smoke script clicks the labPBR toggle +
+          # the (none) row in between)
+          grep -q "\[screen\] video -> shaders" menu.log
+          grep -q "\[screen\] shaders -> video" menu.log
+          grep -q "e2e: settings tree ok (video/engine/shaders/packs/access)" menu.log
           echo "SMOKE OK - pointer ladder + boot + world entry + 1.14 nature-half + settings tree all verified"
 
           # F3 debug overlay regression guard (user-reported "everything in

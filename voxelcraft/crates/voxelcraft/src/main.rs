@@ -22,8 +22,16 @@ fn main() {
         );
         println!("  (no args)     normal launch — intro → title → world");
         println!("  --debug       raw diagnostic log: [t+s][cat] lines to the");
-        println!("                terminal + logs/latest.log (input, screens,");
-        println!("                chunk streaming, perf, saves — for bug reports)");
+        println!("                terminal + logs/latest.log. Categories:");
+        println!("                input  — every event: hover changes, menu");
+        println!("                clicks (widget id/kind/label + hover/hit");
+        println!("                cross-check), unhandled-id WARNs, screen");
+        println!("                routing; gfx — boot/surface/gui-scale/canvas");
+        println!("                geometry, the per-screen widget-table dump,");
+        println!("                duplicate-id + overlap WARNs, 1 Hz UI/render");
+        println!("                heartbeat; screen — every transition; perf,");
+        println!("                world, save, f3 — the steady-state stream");
+        println!("                (run with --debug when reporting bugs)");
         println!("  --smoke       CI end-to-end smoke run (boots, enters a world, exits)");
         println!("  --benchmark   [frames=600] [warmup=120] [seed=…] [json=bench.json]");
         return;
@@ -34,8 +42,11 @@ fn main() {
     let debug_on = args.iter().any(|a| a == "--debug");
     if debug_on {
         vc_render::render::set_verbose(true);
-        vc_render::render::report_boot_log("raw debug stream enabled (--debug) — lines: [t+s][category] message; \
-             categories: input screen world perf save f3");
+        vc_render::render::report_boot_log(
+            "raw debug stream enabled (--debug) — lines: [t+s][category] message; \
+             categories: input screen world perf save f3 gfx (gfx = the UI/render pipeline: \
+             surface/gui-scale/canvas geometry, widget-table dumps, 1 Hz heartbeat)",
+        );
     }
 
     let event_loop = winit::event_loop::EventLoop::new().expect("event loop");

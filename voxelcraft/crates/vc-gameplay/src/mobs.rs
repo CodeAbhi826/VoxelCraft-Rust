@@ -997,11 +997,11 @@ pub const MOB_DATA: [MobDef; 49] = [
         height: 1.95,
         width: 0.6,
         xp: 5,
-    },    // ---- 1.11 bracket (VERIFIED live 2026-09-07) ----
+    }, // ---- 1.11 bracket (VERIFIED live 2026-09-07) ----
     MobDef {
         kind: MobKind::Llama,
-        health: 30.0, // 15–30 range per-instance (like horses)
-        damage: 1.0, // spit: 1 HP Easy/Normal (Hard 1.5 via scale)
+        health: 30.0,      // 15–30 range per-instance (like horses)
+        damage: 1.0,       // spit: 1 HP Easy/Normal (Hard 1.5 via scale)
         speed_attr: 0.175, // w/Llama "Speed 0.175"
         armor: 0.0,
         height: 1.87, // w/Llama hitbox
@@ -1010,8 +1010,8 @@ pub const MOB_DATA: [MobDef; 49] = [
     },
     MobDef {
         kind: MobKind::Vindicator,
-        health: 24.0, // w/Vindicator
-        damage: 13.0, // iron axe Normal (7.5/19.5 via difficulty_scale)
+        health: 24.0,      // w/Vindicator
+        damage: 13.0,      // iron axe Normal (7.5/19.5 via difficulty_scale)
         speed_attr: 0.535, // 5.612 b/s / 10.5 (sprint-speed — w/Vindicator)
         armor: 0.0,
         height: 1.95, // JE hitbox
@@ -1020,8 +1020,8 @@ pub const MOB_DATA: [MobDef; 49] = [
     },
     MobDef {
         kind: MobKind::Evoker,
-        health: 24.0, // w/Evoker
-        damage: 6.0, // fangs: 6 HP, ignores armor (armor-bypass on hit)
+        health: 24.0,     // w/Evoker
+        damage: 6.0,      // fangs: 6 HP, ignores armor (armor-bypass on hit)
         speed_attr: 0.23, // evokers walk slowly (vanilla illager speed 0.5? — w/Evoker 0.5? our adaptation 0.23, walking-pace caster)
         armor: 0.0,
         height: 1.95,
@@ -1030,8 +1030,8 @@ pub const MOB_DATA: [MobDef; 49] = [
     },
     MobDef {
         kind: MobKind::Vex,
-        health: 14.0, // w/Vex
-        damage: 9.0, // iron sword Normal (5.5/13.5 via difficulty_scale)
+        health: 14.0,    // w/Vex
+        damage: 9.0,     // iron sword Normal (5.5/13.5 via difficulty_scale)
         speed_attr: 0.7, // fast flyer (vanilla 0.7)
         armor: 0.0,
         height: 0.8, // w/Vex hitbox 0.8 tall
@@ -1875,10 +1875,10 @@ impl MobSystem {
             pending_player_blindness: Vec::new(),
             pending_player_grace: Vec::new(),
             pending_turtle_eggs: Vec::new(),
-        is_day: true,
-        weather: 0,
-        bee_enters: Vec::new(),
-        bee_pollinations: Vec::new(),
+            is_day: true,
+            weather: 0,
+            bee_enters: Vec::new(),
+            bee_pollinations: Vec::new(),
             pending_drops: Vec::new(),
             pending_damage: Vec::new(),
             explosions: Vec::new(),
@@ -1972,10 +1972,8 @@ impl MobSystem {
             // w/Horse: health 15–30, speed 0.1125–0.3375, jump 0.4–1.0;
             // donkeys/mules fixed 0.175 speed w/Donkey; 20% babies
             // §Spawning)
-            equine: if matches!(
-                kind,
-                MobKind::Horse | MobKind::Donkey | MobKind::Mule
-            ) || kind == MobKind::Llama
+            equine: if matches!(kind, MobKind::Horse | MobKind::Donkey | MobKind::Mule)
+                || kind == MobKind::Llama
             {
                 // 1.11: llamas share the temper-taming infrastructure
                 // (VERIFIED w/Llama §Taming: "Llamas can be tamed by
@@ -2014,12 +2012,8 @@ impl MobSystem {
             // Round 12b: the mount storage (donkeys/mules 15 slots;
             // llamas 3 × strength — the strength rides the variant byte)
             storage: match kind {
-                MobKind::Donkey | MobKind::Mule => {
-                    Some(Box::new(MountStorage::new_equine()))
-                }
-                MobKind::Llama => Some(Box::new(MountStorage::new_llama(
-                    variant.clamp(1, 5),
-                ))),
+                MobKind::Donkey | MobKind::Mule => Some(Box::new(MountStorage::new_equine())),
+                MobKind::Llama => Some(Box::new(MountStorage::new_llama(variant.clamp(1, 5)))),
                 _ => None,
             },
             wander_yaw: yaw,
@@ -2046,9 +2040,11 @@ impl MobSystem {
             if let Some(b) = m.bee.as_mut() {
                 b.hive = Some(hive);
                 if angry {
-                    b.anger_t = ANGER_TICKS_MIN_ROLL + self.rng.next_range(
-                        (ANGER_TICKS_MAX - ANGER_TICKS_MIN_ROLL + 1) as u32,
-                    ) as i32;
+                    b.anger_t = ANGER_TICKS_MIN_ROLL
+                        + self
+                            .rng
+                            .next_range((ANGER_TICKS_MAX - ANGER_TICKS_MIN_ROLL + 1) as u32)
+                            as i32;
                     b.phase = super::bees::PH_ANGRY;
                 }
             }
@@ -2078,9 +2074,10 @@ impl MobSystem {
             let near = dx * dx + dy * dy + dz * dz < 16.0 * 16.0;
             if family || near {
                 b.anger_t = ANGER_TICKS_MIN_ROLL
-                    + self.rng.next_range(
-                        (ANGER_TICKS_MAX - ANGER_TICKS_MIN_ROLL + 1) as u32,
-                    ) as i32;
+                    + self
+                        .rng
+                        .next_range((ANGER_TICKS_MAX - ANGER_TICKS_MIN_ROLL + 1) as u32)
+                        as i32;
                 b.phase = super::bees::PH_ANGRY;
                 n += 1;
             }
@@ -2109,39 +2106,39 @@ impl MobSystem {
         // while a non-invulnerable player anchor exists (cap-gated)
         if self.player.is_some() && !self.player_invulnerable {
             self.try_spawn_hostile(world, sim_ring);
-        // Phase E2: ambient bats (VERIFIED w/Bat: light <= 3, below sea
-        // level, groups of 8, not counted toward the passive cap)
-        self.bats_spawn_t += 1;
-        if self.bats_spawn_t.is_multiple_of(40) {
-            self.try_spawn_bats(world, sim_ring);
-        }
+            // Phase E2: ambient bats (VERIFIED w/Bat: light <= 3, below sea
+            // level, groups of 8, not counted toward the passive cap)
+            self.bats_spawn_t += 1;
+            if self.bats_spawn_t.is_multiple_of(40) {
+                self.try_spawn_bats(world, sim_ring);
+            }
             self.try_spawn_passive(world, sim_ring);
-        // 1.13 (Update Aquatic): the water-ambient pool — fish schools,
-        // dolphin pods, beach turtles (NOT counted toward the passive
-        // cap — the vanilla water_ambient/water_creature categories are
-        // separate, VERIFIED w/Java_Edition_1.13 §Spawning)
-        self.aquatic_spawn_t += 1;
-        if self.aquatic_spawn_t.is_multiple_of(40) {
-            self.try_spawn_aquatic(world, sim_ring);
-        }
-        // 1.16 (Nether Update, part 2): the strider lava-sea pool —
-        // "Groups of 2 to 4 striders spawn on spaces of lava that have
-        // an air block above", attempts every 400 gt (VERIFIED
-        // w/Strider §Spawning) — nether-only, passive-cap-free (the
-        // strider is the nether's only passive mob, its own category)
-        self.strider_spawn_t += 1;
-        if self.strider_spawn_t.is_multiple_of(400)
-            && world.dimension == vc_world::world::Dimension::Nether
-        {
-            self.try_spawn_striders(world, sim_ring);
-        }
-        // 1.13: phantom insomnia spawns — every 20 ticks while "Time
-        // Since Last Rest" ≥ 72000 (VERIFIED w/Phantom §Spawning: the
-        // 1–4 local pack; engine rolls one per attempt)
-        self.rest_t += 1;
-        if self.rest_t.is_multiple_of(20) && self.rest_t >= 72000 {
-            self.try_spawn_phantom(world, sim_ring);
-        }
+            // 1.13 (Update Aquatic): the water-ambient pool — fish schools,
+            // dolphin pods, beach turtles (NOT counted toward the passive
+            // cap — the vanilla water_ambient/water_creature categories are
+            // separate, VERIFIED w/Java_Edition_1.13 §Spawning)
+            self.aquatic_spawn_t += 1;
+            if self.aquatic_spawn_t.is_multiple_of(40) {
+                self.try_spawn_aquatic(world, sim_ring);
+            }
+            // 1.16 (Nether Update, part 2): the strider lava-sea pool —
+            // "Groups of 2 to 4 striders spawn on spaces of lava that have
+            // an air block above", attempts every 400 gt (VERIFIED
+            // w/Strider §Spawning) — nether-only, passive-cap-free (the
+            // strider is the nether's only passive mob, its own category)
+            self.strider_spawn_t += 1;
+            if self.strider_spawn_t.is_multiple_of(400)
+                && world.dimension == vc_world::world::Dimension::Nether
+            {
+                self.try_spawn_striders(world, sim_ring);
+            }
+            // 1.13: phantom insomnia spawns — every 20 ticks while "Time
+            // Since Last Rest" ≥ 72000 (VERIFIED w/Phantom §Spawning: the
+            // 1–4 local pack; engine rolls one per attempt)
+            self.rest_t += 1;
+            if self.rest_t.is_multiple_of(20) && self.rest_t >= 72000 {
+                self.try_spawn_phantom(world, sim_ring);
+            }
         }
 
         // 2. AI + physics (split borrows: rng/hits/arrows vs the mob list)
@@ -2331,11 +2328,7 @@ impl MobSystem {
                 let spill = match m.storage.take() {
                     Some(st) => DeathSpill {
                         chest: st.chest,
-                        slots: st
-                            .slots
-                            .into_iter()
-                            .filter(|s| !s.is_empty())
-                            .collect(),
+                        slots: st.slots.into_iter().filter(|s| !s.is_empty()).collect(),
                     },
                     None => DeathSpill::default(),
                 };
@@ -2427,8 +2420,7 @@ impl MobSystem {
         // are the ocean's water-column hostile; the light gate below
         // is a land rule — deep water is its own darkness, disclosed);
         // land positions in an ocean chunk convert zombie → drowned.
-        let col_biome =
-            vc_world::gen::Biome::from_u8(world.get_biome(cx * 16 + lx, cz * 16 + lz));
+        let col_biome = vc_world::gen::Biome::from_u8(world.get_biome(cx * 16 + lx, cz * 16 + lz));
         let ocean_family = col_biome.is_ocean();
         let py = p[1] as i32;
         for y in (py - 40..py + 16).rev() {
@@ -2497,20 +2489,18 @@ impl MobSystem {
                     // (w/Soul_Sand_Valley capture): skeleton 20/71, ghast
                     // 50/71 (5% attempt success — the engine rolls the
                     // 1/20 gate), enderman 1/71
-                    vc_world::gen::Biome::SoulSandValley => {
-                        match self.rng.next_range(71) {
-                            0 => MobKind::Enderman,
-                            1..=20 if self.rng.next_range(20) == 0 => MobKind::Ghast,
-                            1..=20 => MobKind::Skeleton,
-                            _ => {
-                                if self.rng.next_range(20) == 0 {
-                                    MobKind::Ghast
-                                } else {
-                                    MobKind::Skeleton
-                                }
+                    vc_world::gen::Biome::SoulSandValley => match self.rng.next_range(71) {
+                        0 => MobKind::Enderman,
+                        1..=20 if self.rng.next_range(20) == 0 => MobKind::Ghast,
+                        1..=20 => MobKind::Skeleton,
+                        _ => {
+                            if self.rng.next_range(20) == 0 {
+                                MobKind::Ghast
+                            } else {
+                                MobKind::Skeleton
                             }
                         }
-                    }
+                    },
                     // Backlog round: the basalt deltas roll — VERIFIED
                     // (w/Basalt_Deltas capture): magma cube 100/140
                     // (2-5 group), ghast 40/140 (5% attempt success)
@@ -2605,10 +2595,7 @@ impl MobSystem {
                 } else if kind == MobKind::Drowned {
                     // 1.13: land-spawned drowned roll the same 6.25%
                     // trident-armed bit (VERIFIED w/Drowned §Equipment)
-                    (
-                        kind,
-                        if self.rng.next_f32() < 0.0625 { 1u8 } else { 0 },
-                    )
+                    (kind, if self.rng.next_f32() < 0.0625 { 1u8 } else { 0 })
                 } else {
                     (kind, 0)
                 };
@@ -2621,9 +2608,7 @@ impl MobSystem {
                 if (spawn_kind == MobKind::Piglin || spawn_kind == MobKind::Hoglin)
                     && self.rng.next_range(2) == 0
                 {
-                    let v = if spawn_kind == MobKind::Hoglin
-                        && self.rng.next_f32() < 0.2
-                    {
+                    let v = if spawn_kind == MobKind::Hoglin && self.rng.next_f32() < 0.2 {
                         0x40u8 // baby (20%, VERIFIED)
                     } else {
                         0
@@ -2645,52 +2630,52 @@ impl MobSystem {
     /// floor with 2 air, groups of 8, NOT counted toward the passive mob cap
     /// (the ambient category is separate — VERIFIED).
     fn try_spawn_bats(&mut self, world: &World, sim_ring: impl Fn(i32, i32) -> bool) {
-    let Some(p) = self.player else { return };
-    if world.dimension != vc_world::world::Dimension::Overworld {
-        return;
-    }
-    let bats = self.list.iter().filter(|m| m.kind == MobKind::Bat).count();
-    if bats >= 10 {
-        return; // ambient category cap (10)
-    }
-    let cx = (p[0] / 16.0).floor() as i32 + (self.rng.next_range(9) as i32) - 4;
-    let cz = (p[2] / 16.0).floor() as i32 + (self.rng.next_range(9) as i32) - 4;
-    if !sim_ring(cx, cz) || world.chunk((cx, cz)).is_none() {
-        return;
-    }
-    let lx = self.rng.next_range(16) as i32;
-    let lz = self.rng.next_range(16) as i32;
-    let wx = cx * 16 + lx;
-    let wz = cz * 16 + lz;
-    for y in (1..=62).rev() {
-        if !is_solid(world.get_block(wx, y - 1, wz)) {
-            continue;
+        let Some(p) = self.player else { return };
+        if world.dimension != vc_world::world::Dimension::Overworld {
+            return;
         }
-        if world.get_block(wx, y, wz) != AIR || world.get_block(wx, y + 1, wz) != AIR {
-            continue;
+        let bats = self.list.iter().filter(|m| m.kind == MobKind::Bat).count();
+        if bats >= 10 {
+            return; // ambient category cap (10)
         }
-        let (blk_l, sky_l) = light_levels(world, wx, y, wz);
-        if blk_l > 3 || sky_l > 3 {
-            return; // light <= 3 (VERIFIED)
+        let cx = (p[0] / 16.0).floor() as i32 + (self.rng.next_range(9) as i32) - 4;
+        let cz = (p[2] / 16.0).floor() as i32 + (self.rng.next_range(9) as i32) - 4;
+        if !sim_ring(cx, cz) || world.chunk((cx, cz)).is_none() {
+            return;
         }
-        let mut placed = 0;
-        'group: for dz in -1..=1i32 {
-            for dx in -1..=1i32 {
-                if placed >= 8 {
-                    break 'group; // group of 8 (VERIFIED JE)
-                }
-                let bx = wx + dx;
-                let bz = wz + dz;
-                if world.get_block(bx, y, bz) == AIR
-                    && world.get_block(bx, y + 1, bz) == AIR
-                    && is_solid(world.get_block(bx, y - 1, bz))
-                {
-                    let _ = self.spawn_variant(MobKind::Bat, bx, y, bz, 0);
-                    placed += 1;
+        let lx = self.rng.next_range(16) as i32;
+        let lz = self.rng.next_range(16) as i32;
+        let wx = cx * 16 + lx;
+        let wz = cz * 16 + lz;
+        for y in (1..=62).rev() {
+            if !is_solid(world.get_block(wx, y - 1, wz)) {
+                continue;
+            }
+            if world.get_block(wx, y, wz) != AIR || world.get_block(wx, y + 1, wz) != AIR {
+                continue;
+            }
+            let (blk_l, sky_l) = light_levels(world, wx, y, wz);
+            if blk_l > 3 || sky_l > 3 {
+                return; // light <= 3 (VERIFIED)
+            }
+            let mut placed = 0;
+            'group: for dz in -1..=1i32 {
+                for dx in -1..=1i32 {
+                    if placed >= 8 {
+                        break 'group; // group of 8 (VERIFIED JE)
+                    }
+                    let bx = wx + dx;
+                    let bz = wz + dz;
+                    if world.get_block(bx, y, bz) == AIR
+                        && world.get_block(bx, y + 1, bz) == AIR
+                        && is_solid(world.get_block(bx, y - 1, bz))
+                    {
+                        let _ = self.spawn_variant(MobKind::Bat, bx, y, bz, 0);
+                        placed += 1;
+                    }
                 }
             }
-        }
-        return;
+            return;
         }
     }
 
@@ -2733,8 +2718,7 @@ impl MobSystem {
         }
         let lx = self.rng.next_range(16) as i32;
         let lz = self.rng.next_range(16) as i32;
-        let biome =
-            vc_world::gen::Biome::from_u8(world.get_biome(cx * 16 + lx, cz * 16 + lz));
+        let biome = vc_world::gen::Biome::from_u8(world.get_biome(cx * 16 + lx, cz * 16 + lz));
         let wx = cx * 16 + lx;
         let wz = cz * 16 + lz;
         // turtles: Beach-biome sand columns, groups ≤ 5, 5% babies
@@ -2753,8 +2737,7 @@ impl MobSystem {
                 if floor != SAND {
                     continue;
                 }
-                if world.get_block(wx, y, wz) != AIR || world.get_block(wx, y + 1, wz) != AIR
-                {
+                if world.get_block(wx, y, wz) != AIR || world.get_block(wx, y + 1, wz) != AIR {
                     continue;
                 }
                 let group = 1 + (self.rng.next_range(5)) as usize; // ≤ 5 (VERIFIED)
@@ -2776,8 +2759,7 @@ impl MobSystem {
         // the water column: two stacked WATER blocks at y 45..=SEA_LEVEL
         // (dolphin doc band Y 50–64 covers the shallow half — disclosed)
         for y in (45..=vc_chunk::SEA_LEVEL).rev() {
-            if world.get_block(wx, y, wz) != WATER || world.get_block(wx, y + 1, wz) != WATER
-            {
+            if world.get_block(wx, y, wz) != WATER || world.get_block(wx, y + 1, wz) != WATER {
                 continue;
             }
             // dolphins: pods 1–2, warm/lukewarm/neutral families only
@@ -3063,9 +3045,7 @@ impl MobSystem {
                 } else {
                     MobKind::Rabbit
                 }
-            } else if biome == vc_world::gen::Biome::Taiga
-                && self.rng.next_f32() < 0.25
-            {
+            } else if biome == vc_world::gen::Biome::Taiga && self.rng.next_f32() < 0.25 {
                 // 1.14 (VERIFIED w/Fox §Spawning: taiga is the fox's
                 // primary biome): a quarter of taiga passive rolls
                 // are fox packs (groups 2–4 — the herd size below)
@@ -3460,23 +3440,23 @@ impl MobSystem {
     /// Spawn a foal from two parents (breeding result): horse×horse =
     /// horse; horse×donkey or any mule pairing = mule (VERIFIED w/Mule:
     /// "When a horse and donkey breed" a mule results).
-    pub fn spawn_foal(&mut self, p1: u32, p2: u32, x: i32, y: i32, z: i32, rng: &mut Rng) -> Option<u32> {
-        let (k1, s1, j1, h1) = self
-            .list
-            .iter()
-            .find(|m| m.id == p1)
-            .map(|m| {
-                let e = m.equine.as_ref().unwrap();
-                (m.kind, e.speed_attr, e.jump_strength, m.health)
-            })?;
-        let (k2, s2, j2, h2) = self
-            .list
-            .iter()
-            .find(|m| m.id == p2)
-            .map(|m| {
-                let e = m.equine.as_ref().unwrap();
-                (m.kind, e.speed_attr, e.jump_strength, m.health)
-            })?;
+    pub fn spawn_foal(
+        &mut self,
+        p1: u32,
+        p2: u32,
+        x: i32,
+        y: i32,
+        z: i32,
+        rng: &mut Rng,
+    ) -> Option<u32> {
+        let (k1, s1, j1, h1) = self.list.iter().find(|m| m.id == p1).map(|m| {
+            let e = m.equine.as_ref().unwrap();
+            (m.kind, e.speed_attr, e.jump_strength, m.health)
+        })?;
+        let (k2, s2, j2, h2) = self.list.iter().find(|m| m.id == p2).map(|m| {
+            let e = m.equine.as_ref().unwrap();
+            (m.kind, e.speed_attr, e.jump_strength, m.health)
+        })?;
         let kind = if (k1 == MobKind::Horse && k2 == MobKind::Donkey)
             || (k1 == MobKind::Donkey && k2 == MobKind::Horse)
             || k1 == MobKind::Mule
@@ -3663,7 +3643,12 @@ impl MobSystem {
             return None;
         }
         // a loving adult partner within 8 blocks → pair now
-        let me = self.list.iter().find(|m| m.id == id).map(|m| m.pos).unwrap_or([0.0; 3]);
+        let me = self
+            .list
+            .iter()
+            .find(|m| m.id == id)
+            .map(|m| m.pos)
+            .unwrap_or([0.0; 3]);
         let partner = self
             .list
             .iter()
@@ -3727,7 +3712,12 @@ impl MobSystem {
             return None;
         }
         // a loving adult partner within 8 blocks → pair now
-        let me = self.list.iter().find(|m| m.id == id).map(|m| m.pos).unwrap_or([0.0; 3]);
+        let me = self
+            .list
+            .iter()
+            .find(|m| m.id == id)
+            .map(|m| m.pos)
+            .unwrap_or([0.0; 3]);
         let partner = self
             .list
             .iter()
@@ -3794,7 +3784,12 @@ impl MobSystem {
             return None;
         }
         // a loving adult partner within 8 blocks → pair now
-        let me = self.list.iter().find(|m| m.id == id).map(|m| m.pos).unwrap_or([0.0; 3]);
+        let me = self
+            .list
+            .iter()
+            .find(|m| m.id == id)
+            .map(|m| m.pos)
+            .unwrap_or([0.0; 3]);
         let partner = self
             .list
             .iter()
@@ -3874,7 +3869,12 @@ impl MobSystem {
         if already {
             return None;
         }
-        let me = self.list.iter().find(|m| m.id == id).map(|m| m.pos).unwrap_or([0.0; 3]);
+        let me = self
+            .list
+            .iter()
+            .find(|m| m.id == id)
+            .map(|m| m.pos)
+            .unwrap_or([0.0; 3]);
         let partner = self
             .list
             .iter()
@@ -3975,12 +3975,12 @@ pub fn piglin_barter_roll(rng: &mut Rng) -> (u16, u8) {
         w if w < 40 => {
             // the 40-class pick: crying obsidian is the headliner
             match rng.next_range(6) {
-                0 => (CRYING_OBSIDIAN, (1 + rng.next_range(3)) as u8),   // 1-3
+                0 => (CRYING_OBSIDIAN, (1 + rng.next_range(3)) as u8), // 1-3
                 1 => (OBSIDIAN, 1),
-                2 => (GRAVEL, (8 + rng.next_range(9)) as u8),            // 8-16
-                3 => (BLACKSTONE, (8 + rng.next_range(9)) as u8),        // 8-16
-                4 => (LEATHER, (2 + rng.next_range(3)) as u8),           // 2-4
-                _ => (SOUL_SAND, (2 + rng.next_range(7)) as u8),         // 2-8
+                2 => (GRAVEL, (8 + rng.next_range(9)) as u8), // 8-16
+                3 => (BLACKSTONE, (8 + rng.next_range(9)) as u8), // 8-16
+                4 => (LEATHER, (2 + rng.next_range(3)) as u8), // 2-4
+                _ => (SOUL_SAND, (2 + rng.next_range(7)) as u8), // 2-8
             }
         }
         w if w < 60 => {
@@ -4077,10 +4077,7 @@ fn ai_tick(
     // Environmental — applies regardless of a player anchor.
     if m.kind == MobKind::SnowGolem {
         let biome_hot = matches!(
-            vc_world::gen::Biome::from_u8(world.get_biome(
-                m.pos[0] as i32,
-                m.pos[2] as i32,
-            )),
+            vc_world::gen::Biome::from_u8(world.get_biome(m.pos[0] as i32, m.pos[2] as i32,)),
             vc_world::gen::Biome::Desert
                 | vc_world::gen::Biome::Badlands
                 | vc_world::gen::Biome::Savanna
@@ -4105,11 +4102,7 @@ fn ai_tick(
     // zombie-villager cure path is a different kind so no collision).
     // Converted drowned are unarmed (their zombie hands were empty).
     if m.kind == MobKind::Zombie
-        && world.get_block(
-            m.pos[0] as i32,
-            (m.pos[1] + 1.6) as i32,
-            m.pos[2] as i32,
-        ) == WATER
+        && world.get_block(m.pos[0] as i32, (m.pos[1] + 1.6) as i32, m.pos[2] as i32) == WATER
     {
         m.aux = (m.aux + 1).min(601);
         if m.aux >= 600 {
@@ -4136,11 +4129,7 @@ fn ai_tick(
         }
         // egg laying (bred female, standing on sand)
         if m.variant & 0x80 != 0 && m.on_ground {
-            let below = world.get_block(
-                m.pos[0] as i32,
-                (m.pos[1] - 0.1) as i32,
-                m.pos[2] as i32,
-            );
+            let below = world.get_block(m.pos[0] as i32, (m.pos[1] - 0.1) as i32, m.pos[2] as i32);
             if below == SAND || below == RED_SAND {
                 m.variant &= !0x80; // egg laid
                 pending_turtle_eggs.push((
@@ -4191,7 +4180,7 @@ fn ai_tick(
             m.aux -= 1;
             if m.aux == 0 {
                 m.variant &= !0x40; // grown (a scute-less maturity —
-                // foxes drop nothing on maturity, VERIFIED w/Fox)
+                                    // foxes drop nothing on maturity, VERIFIED w/Fox)
             }
         }
         if m.variant & 0x80 != 0 && m.variant & 0x40 == 0 && m.aux > 0 {
@@ -4222,9 +4211,9 @@ fn ai_tick(
             m.aux -= 1;
             if m.aux == 0 {
                 m.variant &= !0x80; // love expired ("striders have a
-                // cooldown of about 5 minutes before they can breed
-                // again" — the engine's cleared-outright class,
-                // disclosed)
+                                    // cooldown of about 5 minutes before they can breed
+                                    // again" — the engine's cleared-outright class,
+                                    // disclosed)
             }
         }
     }
@@ -4340,11 +4329,7 @@ fn ai_tick(
                     // approaches; the arrival check only runs inside
                     // the homing phases, so a bee merely passing within
                     // ~1.3 blocks in another phase never false-enters.
-                    let target = [
-                        h[0] as f32 + 0.5,
-                        h[1] as f32 + 0.5,
-                        h[2] as f32 + 0.5,
-                    ];
+                    let target = [h[0] as f32 + 0.5, h[1] as f32 + 0.5, h[2] as f32 + 0.5];
                     let dd = (m.pos[0] - target[0]).powi(2)
                         + (m.pos[1] - target[1]).powi(2)
                         + (m.pos[2] - target[2]).powi(2);
@@ -4393,13 +4378,9 @@ fn ai_tick(
                         }
                     }
                     super::bees::PH_TO_FLOWER => {
-                        let target = bee.flower.map(|f| {
-                            [
-                                f[0] as f32 + 0.5,
-                                f[1] as f32 + 1.1,
-                                f[2] as f32 + 0.5,
-                            ]
-                        });
+                        let target = bee
+                            .flower
+                            .map(|f| [f[0] as f32 + 0.5, f[1] as f32 + 1.1, f[2] as f32 + 0.5]);
                         match target {
                             Some(tp) => {
                                 let dd = (m.pos[0] - tp[0]).powi(2)
@@ -4448,8 +4429,7 @@ fn ai_tick(
                             && bee.pollinations > 0
                             && rng.next_f32() < super::bees::POLLINATE_CHANCE
                         {
-                            if let Some((crop, age)) =
-                                super::bees::pollination_target(world, m.pos)
+                            if let Some((crop, age)) = super::bees::pollination_target(world, m.pos)
                             {
                                 bee_pollinations.push((crop, age + 1));
                                 bee.pollinations -= 1;
@@ -4464,11 +4444,8 @@ fn ai_tick(
                                 // bee on the roof at ~1.96 squared — see
                                 // the night branch's comment) as well as
                                 // from the sides/front
-                                let target = [
-                                    h[0] as f32 + 0.5,
-                                    h[1] as f32 + 0.5,
-                                    h[2] as f32 + 0.5,
-                                ];
+                                let target =
+                                    [h[0] as f32 + 0.5, h[1] as f32 + 0.5, h[2] as f32 + 0.5];
                                 let dd = (m.pos[0] - target[0]).powi(2)
                                     + (m.pos[1] - target[1]).powi(2)
                                     + (m.pos[2] - target[2]).powi(2);
@@ -4575,10 +4552,9 @@ fn ai_tick(
         } else {
             // dive: straight at the player's chest
             steer_3d(m, [p[0], p[1] + 1.0, p[2]], speed * 1.8);
-            let d3 = ((p[0] - m.pos[0]).powi(2)
-                + (p[1] - m.pos[1]).powi(2)
-                + (p[2] - m.pos[2]).powi(2))
-            .sqrt();
+            let d3 =
+                ((p[0] - m.pos[0]).powi(2) + (p[1] - m.pos[1]).powi(2) + (p[2] - m.pos[2]).powi(2))
+                    .sqrt();
             if !invuln && d3 < 1.4 && m.attack_cd == 0 {
                 m.attack_cd = 20;
                 m.attack_anim = 6;
@@ -4616,11 +4592,7 @@ fn ai_tick(
             }
         }
         let inflated = m.variant >= 1;
-        if inflated
-            && !invuln
-            && dist < d.width * 0.5 + 0.9
-            && m.aux <= 0
-        {
+        if inflated && !invuln && dist < d.width * 0.5 + 0.9 && m.aux <= 0 {
             m.aux = 20; // contact cadence (~0.5 s, the immunity window)
             hits.push(PlayerHit {
                 damage: if m.variant == 2 { d.damage } else { 2.0 },
@@ -4645,10 +4617,9 @@ fn ai_tick(
     // a 9-block sphere banks Dolphin's Grace 5 s (VERIFIED w/Dolphin);
     // provoked pods melee like the wolf-pack pattern
     if m.kind == MobKind::Dolphin {
-        let dd = ((p[0] - m.pos[0]).powi(2)
-            + (p[1] - m.pos[1]).powi(2)
-            + (p[2] - m.pos[2]).powi(2))
-        .sqrt();
+        let dd =
+            ((p[0] - m.pos[0]).powi(2) + (p[1] - m.pos[1]).powi(2) + (p[2] - m.pos[2]).powi(2))
+                .sqrt();
         if !invuln && dd <= 9.0 && m.aux <= 0 {
             m.aux = 20; // re-apply at most 1/s (replenished, VERIFIED)
             pending_player_grace.push(100); // 5 s (VERIFIED)
@@ -4691,13 +4662,18 @@ fn ai_tick(
     // with a trident can throw it every 1.5 seconds, sending it up to
     // 20 blocks away")
     if m.kind == MobKind::Drowned
-        && m.variant & 1 != 0 && aggro && dist <= 20.0 && dist > 4.0 && m.attack_cd == 0 {
-            m.attack_cd = 30; // 1.5 s (VERIFIED)
-            face_player(m);
-            spawn_projectile(m, p, rng, arrows, ProjKind::Trident, 20.0, 8.0);
-            return;
-        }
-        // falls through to the generic hostile melee chase below
+        && m.variant & 1 != 0
+        && aggro
+        && dist <= 20.0
+        && dist > 4.0
+        && m.attack_cd == 0
+    {
+        m.attack_cd = 30; // 1.5 s (VERIFIED)
+        face_player(m);
+        spawn_projectile(m, p, rng, arrows, ProjKind::Trident, 20.0, 8.0);
+        return;
+    }
+    // falls through to the generic hostile melee chase below
 
     // 1.13: the zombie→drowned conversion moved ABOVE the
     // player-anchor early return (environmental — see the 1.13 section).
@@ -4856,11 +4832,10 @@ fn ai_tick(
                     world.get_block(pos[0] as i32, pos[1] as i32, pos[2] as i32) != WATER
                 }
                 // baby turtles (variant bit 0x40) on land
-                MobKind::Turtle => (variant & 0x40 != 0) && world.get_block(
-                    pos[0] as i32,
-                    pos[1] as i32,
-                    pos[2] as i32,
-                ) != WATER,
+                MobKind::Turtle => {
+                    (variant & 0x40 != 0)
+                        && world.get_block(pos[0] as i32, pos[1] as i32, pos[2] as i32) != WATER
+                }
                 _ => false,
             };
             if !prey {
@@ -5181,9 +5156,9 @@ fn ai_tick(
                     damage: 6.0,
                     source: m.kind,
                     knockback_dir: [dx / dist, dz / dist],
-                wither_effect: None,
-                poison_effect: None,
-            });
+                    wither_effect: None,
+                    poison_effect: None,
+                });
             }
         } else {
             m.aux = 0;
@@ -5260,10 +5235,7 @@ fn ai_tick(
             }
         }
         // contact damage (VERIFIED: damages on touch, ~½ s cadence)
-        if seek
-            && dist < (d.width * 0.5 + 0.7)
-            && m.attack_cd == 0
-        {
+        if seek && dist < (d.width * 0.5 + 0.7) && m.attack_cd == 0 {
             m.attack_cd = 10; // damage-immunity cadence (VERIFIED ~0.5 s)
             hits.push(PlayerHit {
                 damage: d.damage, // size + 2 (VERIFIED)
@@ -5784,7 +5756,7 @@ fn physics_tick(m: &mut Mob, world: &World) {
             MobKind::Cod | MobKind::Salmon | MobKind::Pufferfish | MobKind::TropicalFish
         ) {
             m.health -= 1.0 / 20.0; // ~1 HP/s (documented approximation)
-            // flop: a small random hop (vanilla fish flop on land)
+                                    // flop: a small random hop (vanilla fish flop on land)
             m.vel[0] *= 0.9;
             m.vel[2] *= 0.9;
         }
@@ -6012,7 +5984,11 @@ fn tick_arrows(
                     };
                     // snowballs deal 0 damage to the player (VERIFIED),
                     // knockback only
-                    let dmg = if a.kind == ProjKind::Snowball { 0.0 } else { a.damage };
+                    let dmg = if a.kind == ProjKind::Snowball {
+                        0.0
+                    } else {
+                        a.damage
+                    };
                     hits.push(PlayerHit {
                         damage: dmg,
                         source: src,
@@ -6075,8 +6051,7 @@ fn tick_arrows(
             a.pos[1].floor() as i32,
             a.pos[2].floor() as i32,
         ));
-        if hit_solid || a.age > 20 * 60
-        {
+        if hit_solid || a.age > 20 * 60 {
             // 1.16 (Nether Update, part 1): a projectile landing on a
             // TARGET block powers it — "produces a temporary redstone
             // signal when hit by a projectile"; "The strength of the
@@ -6167,8 +6142,7 @@ fn model_for(kind: MobKind) -> Option<&'static crate::entity_model::EntityModel>
     let map = MODELS.get_or_init(|| {
         // Box::leak: the models live for the process lifetime by design
         // (a bounded, per-kind-constant set — 12 rigs)
-        let mut m: HashMap<MobKind, &'static crate::entity_model::EntityModel> =
-            HashMap::new();
+        let mut m: HashMap<MobKind, &'static crate::entity_model::EntityModel> = HashMap::new();
         let put = |m: &mut HashMap<MobKind, &'static crate::entity_model::EntityModel>,
                    k: MobKind,
                    model: crate::entity_model::EntityModel| {
@@ -6176,7 +6150,11 @@ fn model_for(kind: MobKind) -> Option<&'static crate::entity_model::EntityModel>
         };
         // humanoid family (zombie arms forward, skeletons hang)
         put(&mut m, MobKind::Zombie, humanoid(TILE_ZOMBIE, true));
-        put(&mut m, MobKind::ZombifiedPiglin, humanoid(TILE_ZOMBIE, true));
+        put(
+            &mut m,
+            MobKind::ZombifiedPiglin,
+            humanoid(TILE_ZOMBIE, true),
+        );
         put(
             &mut m,
             MobKind::ZombieVillager,
@@ -6212,10 +6190,7 @@ fn active_range(m: &Mob) -> (&'static str, f32) {
     } else {
         let hs = (m.vel[0] * m.vel[0] + m.vel[2] * m.vel[2]).sqrt();
         if hs > 0.05 {
-            (
-                "walk",
-                (m.anim_walk / std::f32::consts::TAU).fract(),
-            )
+            ("walk", (m.anim_walk / std::f32::consts::TAU).fract())
         } else {
             ("idle", 0.0)
         }
@@ -6243,15 +6218,21 @@ fn build_model_vertices(
         tint = [1.6, 1.6, 1.6];
     }
     crate::entity_model::emit_model_vertices(
-        model,
-        m.pos,
-        m.yaw,
-        &rots,
-        scale,
-        tint,
-        view_dir,
-        out,
+        model, m.pos, m.yaw, &rots, scale, tint, view_dir, out,
     );
+}
+
+/// Entity Distance gate (2026-09-20, the 1.17+ modern option): true
+/// when `m` is within `max_dist` of `eye`. The radius is
+/// render_distance × 16 × entity_distance — mobs outside the circle
+/// skip the vertex build AND the shadow quads (the caller applies the
+/// same gate).
+#[inline]
+pub fn within_entity_distance(m: &Mob, eye: [f32; 3], max_dist: f32) -> bool {
+    let dx = m.pos[0] - eye[0];
+    let dy = m.pos[1] - eye[1];
+    let dz = m.pos[2] - eye[2];
+    dx * dx + dy * dy + dz * dz <= max_dist * max_dist
 }
 
 /// Mob rendering: the modeled kinds draw as jointed 3D boxes (the
@@ -6259,14 +6240,33 @@ fn build_model_vertices(
 /// state); every other kind keeps the camera-facing sprite quad
 /// (sized per kind, red-tinted while hurt; creepers blink white while
 /// priming). `view_dir` is the camera forward (painter ordering for
-/// the box path).
+/// the box path). The no-cull entry: every mob builds (legacy callers
+/// + tests).
 pub fn build_vertices(
     list: &[Mob],
     right: [f32; 3],
     view_dir: [f32; 3],
     out: &mut Vec<vc_particles::particles::ParticleVertex>,
 ) {
+    build_vertices_culled(list, right, view_dir, [f32::MAX; 3], f32::MAX, out);
+}
+
+/// Entity-Distance-aware vertex build: mobs beyond `max_dist` from
+/// `eye` are skipped entirely (no quads — the honest implementation of
+/// the Video Settings ENTITY DISTANCE slider; 1.0 = the full render
+/// distance, the pre-option behavior).
+pub fn build_vertices_culled(
+    list: &[Mob],
+    right: [f32; 3],
+    view_dir: [f32; 3],
+    eye: [f32; 3],
+    max_dist: f32,
+    out: &mut Vec<vc_particles::particles::ParticleVertex>,
+) {
     for m in list {
+        if !within_entity_distance(m, eye, max_dist) {
+            continue;
+        }
         let d = def(m.kind);
         if let Some(model) = model_for(m.kind) {
             build_model_vertices(m, model, view_dir, out);
@@ -6332,10 +6332,26 @@ pub fn build_vertices(
             let t = m.aux as f32 * 0.31;
             let (a, b) = (t.sin(), t.cos());
             [
-                [m.pos[0] + 2.0 + a * 0.5, m.pos[1] + 0.4 + b * 0.3, m.pos[2] - 2.0],
-                [m.pos[0] - 2.0, m.pos[1] + 0.6 + a * 0.3, m.pos[2] + 2.0 + b * 0.5],
-                [m.pos[0] + 1.5 - b * 0.4, m.pos[1] + 1.0, m.pos[2] + 1.5 + a * 0.4],
-                [m.pos[0] - 1.5 + a * 0.4, m.pos[1] + 0.2, m.pos[2] - 1.5 - b * 0.4],
+                [
+                    m.pos[0] + 2.0 + a * 0.5,
+                    m.pos[1] + 0.4 + b * 0.3,
+                    m.pos[2] - 2.0,
+                ],
+                [
+                    m.pos[0] - 2.0,
+                    m.pos[1] + 0.6 + a * 0.3,
+                    m.pos[2] + 2.0 + b * 0.5,
+                ],
+                [
+                    m.pos[0] + 1.5 - b * 0.4,
+                    m.pos[1] + 1.0,
+                    m.pos[2] + 1.5 + a * 0.4,
+                ],
+                [
+                    m.pos[0] - 1.5 + a * 0.4,
+                    m.pos[1] + 0.2,
+                    m.pos[2] - 1.5 - b * 0.4,
+                ],
             ]
             .to_vec()
         } else {
@@ -6562,7 +6578,17 @@ mod tests {
         // fly it at the player
         let world = flat_world();
         for _ in 0..300 {
-            tick_arrows(&mut sys.arrows, sys.player, false, &mut sys.hits, &world, &mut [], &mut Vec::new(), &mut Vec::new(), &mut Vec::new());
+            tick_arrows(
+                &mut sys.arrows,
+                sys.player,
+                false,
+                &mut sys.hits,
+                &world,
+                &mut [],
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+            );
             if !sys.hits.is_empty() {
                 break;
             }
@@ -6805,6 +6831,70 @@ mod tests {
         }
     }
 
+    /// 2026-09-20 round: the modern (1.17+) Entity Distance gate — the
+    /// camera-relative radius shrinks with the setting and mobs outside
+    /// the circle skip the vertex build entirely (the Video Settings
+    /// ENTITY DISTANCE slider's honest wiring: 100% = the legacy
+    /// full-distance behavior).
+    #[test]
+    fn entity_distance_gate_culls_far_mobs() {
+        let mob_at = |pos: [f32; 3]| Mob {
+            id: 0,
+            kind: MobKind::Zombie,
+            pos,
+            vel: [0.0; 3],
+            yaw: 0.0,
+            health: 20.0,
+            on_ground: true,
+            hurt_t: 0,
+            attack_cd: 0,
+            fuse: -1,
+            provoked: false,
+            lonely_t: 0,
+            fall_dist: 0.0,
+            anim_walk: 0.0,
+            attack_anim: 0,
+            variant: 0,
+            aux: 0,
+            wander_yaw: 0.0,
+            wander_t: 0,
+            equine: None,
+            storage: None,
+            bee: None,
+        };
+        let eye = [0.0, 64.0, 0.0];
+        let near = mob_at([10.0, 64.0, 0.0]); // 10 blocks out
+        let far = mob_at([400.0, 64.0, 0.0]); // 400 blocks out
+                                              // the gate: 30-block radius keeps the near mob, drops the far
+        assert!(within_entity_distance(&near, eye, 30.0));
+        assert!(!within_entity_distance(&far, eye, 30.0));
+        assert!(
+            within_entity_distance(&far, eye, 500.0),
+            "full distance keeps it"
+        );
+        // the vertex build honors the same gate (a zombie renders quads
+        // at any distance in the legacy entry; the culled entry with a
+        // short radius drops the far one)
+        let list = [near, far];
+        let right = [1.0f32, 0.0, 0.0];
+        let dir = [0.0f32, 0.0, -1.0];
+        let mut legacy: Vec<vc_particles::particles::ParticleVertex> = Vec::new();
+        build_vertices(&list, right, dir, &mut legacy);
+        assert!(!legacy.is_empty(), "legacy entry renders every mob");
+        let mut culled: Vec<vc_particles::particles::ParticleVertex> = Vec::new();
+        build_vertices_culled(&list, right, dir, eye, 30.0, &mut culled);
+        assert!(
+            !culled.is_empty(),
+            "the near mob still renders under the gate"
+        );
+        assert!(
+            culled.len() < legacy.len(),
+            "the far mob is dropped ({} < {} vertices)",
+            culled.len(),
+            legacy.len()
+        );
+    }
+
     /// Terminal falls (terminal −78.4 b/s = 3.92 blocks/tick) must not
     /// tunnel through the 1-block-thick stone floor
     #[test]
@@ -6830,9 +6920,9 @@ mod tests {
             aux: 0,
             wander_yaw: 0.0,
             wander_t: 0,
-                equine: None,
-                storage: None,
-                bee: None,
+            equine: None,
+            storage: None,
+            bee: None,
         };
         let mut ticks = 0;
         while !m.on_ground && ticks < 100 {
@@ -6941,20 +7031,66 @@ mod tests {
         }
         assert!(!sys.arrows.is_empty(), "snowball fired at the zombie");
         assert_eq!(sys.arrows[0].kind, ProjKind::Snowball);
-        assert_eq!(sys.arrows[0].damage, 0.0, "snowball base damage is 0 (VERIFIED)");
+        assert_eq!(
+            sys.arrows[0].damage, 0.0,
+            "snowball base damage is 0 (VERIFIED)"
+        );
         // heat: the same golem in a hot biome takes 1 HP per tick — biome
         // gate is read from the world, covered by the desert flat-world
         // variant below (we assert the branch through a desert world).
         let desert = desert_world();
         let mut rng = Rng::new(1);
-        let mut m = Mob { id: 9, kind: MobKind::SnowGolem, pos: [8.5, 65.0, 8.5], vel: [0.0; 3],
-            yaw: 0.0, health: 4.0, on_ground: true, hurt_t: 0, attack_cd: 0, fuse: -1,
-            provoked: false, lonely_t: 0, fall_dist: 0.0, anim_walk: 0.0, attack_anim: 0, variant: 0, aux: 0,
-            wander_yaw: 0.0, wander_t: 0, equine: None, storage: None, bee: None };
+        let mut m = Mob {
+            id: 9,
+            kind: MobKind::SnowGolem,
+            pos: [8.5, 65.0, 8.5],
+            vel: [0.0; 3],
+            yaw: 0.0,
+            health: 4.0,
+            on_ground: true,
+            hurt_t: 0,
+            attack_cd: 0,
+            fuse: -1,
+            provoked: false,
+            lonely_t: 0,
+            fall_dist: 0.0,
+            anim_walk: 0.0,
+            attack_anim: 0,
+            variant: 0,
+            aux: 0,
+            wander_yaw: 0.0,
+            wander_t: 0,
+            equine: None,
+            storage: None,
+            bee: None,
+        };
         for _ in 0..5 {
-            ai_tick(&mut rng, &mut m, None, false, &mut Vec::new(), &mut Vec::new(), &desert, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), true);
+            ai_tick(
+                &mut rng,
+                &mut m,
+                None,
+                false,
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &desert,
+                &[],
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                true,
+            );
         }
-        assert!(m.health < 4.0, "desert heat melts the golem (1 HP/tick), hp={}", m.health);
+        assert!(
+            m.health < 4.0,
+            "desert heat melts the golem (1 HP/tick), hp={}",
+            m.health
+        );
     }
 
     #[test]
@@ -6993,7 +7129,10 @@ mod tests {
             sys.rng = rng;
         }
         // 60-tick charge + 3 shots per 80-tick window = exactly 3
-        assert_eq!(fired, 3, "one 3-shot burst after the 60-tick charge (VERIFIED cadence)");
+        assert_eq!(
+            fired, 3,
+            "one 3-shot burst after the 60-tick charge (VERIFIED cadence)"
+        );
         assert!(sys.arrows.iter().all(|a| a.kind == ProjKind::Fireball));
     }
 
@@ -7009,7 +7148,26 @@ mod tests {
         for _ in 0..30 {
             let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
             let mut mob = sys.list.remove(0);
-            ai_tick(&mut rng, &mut mob, sys.player, false, &mut sys.hits, &mut sys.arrows, &world, &[(zid, MobKind::Zombie, [5.5, 65.0, 6.5], 0)], &mut pend, &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), true);
+            ai_tick(
+                &mut rng,
+                &mut mob,
+                sys.player,
+                false,
+                &mut sys.hits,
+                &mut sys.arrows,
+                &world,
+                &[(zid, MobKind::Zombie, [5.5, 65.0, 6.5], 0)],
+                &mut pend,
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                true,
+            );
             sys.list.insert(0, mob);
             sys.rng = rng;
         }
@@ -7037,7 +7195,26 @@ mod tests {
         for _ in 0..ticks as usize + 2 {
             let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
             let mut mob = sys.list.remove(0);
-            ai_tick(&mut rng, &mut mob, sys.player, false, &mut sys.hits, &mut sys.arrows, &world, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), true);
+            ai_tick(
+                &mut rng,
+                &mut mob,
+                sys.player,
+                false,
+                &mut sys.hits,
+                &mut sys.arrows,
+                &world,
+                &[],
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                true,
+            );
             sys.list.insert(0, mob);
             sys.rng = rng;
         }
@@ -7057,7 +7234,10 @@ mod tests {
         let mut w = flat_world();
         w.set_block(8, 64, 8, SNOW);
         w.set_block(8, 65, 8, SNOW);
-        assert!(snow_golem_pattern(&w, 8, 66, 8), "pattern matches with pumpkin at 66");
+        assert!(
+            snow_golem_pattern(&w, 8, 66, 8),
+            "pattern matches with pumpkin at 66"
+        );
         assert!(!snow_golem_pattern(&w, 9, 66, 8), "offset column fails");
         // iron golem: T of iron blocks
         let mut w2 = flat_world();
@@ -7065,9 +7245,15 @@ mod tests {
         w2.set_block(7, 64, 8, IRON_BLOCK);
         w2.set_block(9, 64, 8, IRON_BLOCK);
         w2.set_block(8, 65, 8, IRON_BLOCK);
-        assert!(iron_golem_pattern(&w2, 8, 66, 8), "T pattern + pumpkin on top");
+        assert!(
+            iron_golem_pattern(&w2, 8, 66, 8),
+            "T pattern + pumpkin on top"
+        );
         w2.set_block(7, 65, 8, STONE); // an obstruction in the empty spaces
-        assert!(!iron_golem_pattern(&w2, 8, 66, 8), "obstructed spaces block the spawn");
+        assert!(
+            !iron_golem_pattern(&w2, 8, 66, 8),
+            "obstructed spaces block the spawn"
+        );
     }
 
     #[test]
@@ -7080,7 +7266,26 @@ mod tests {
         let x0 = sys.list[0].pos[0];
         let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
         let mut mob = sys.list.remove(0);
-        ai_tick(&mut rng, &mut mob, sys.player, false, &mut sys.hits, &mut sys.arrows, &world, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), true);
+        ai_tick(
+            &mut rng,
+            &mut mob,
+            sys.player,
+            false,
+            &mut sys.hits,
+            &mut sys.arrows,
+            &world,
+            &[],
+            &mut Vec::new(),
+            &mut Vec::new(),
+            &mut Vec::new(),
+            &mut Vec::new(),
+            &mut Vec::new(),
+            &mut Vec::new(),
+            &mut Vec::new(),
+            &mut Vec::new(),
+            &mut Vec::new(),
+            true,
+        );
         sys.list.insert(0, mob);
         sys.rng = rng;
         assert!(sys.list[0].pos[0] < x0 + 0.2, "fled away from the player");
@@ -7091,10 +7296,32 @@ mod tests {
         let x1 = sys2.list[0].pos[0];
         let mut rng2 = std::mem::replace(&mut sys2.rng, Rng::new(1));
         let mut mob2 = sys2.list.remove(0);
-        ai_tick(&mut rng2, &mut mob2, sys2.player, false, &mut sys2.hits, &mut sys2.arrows, &world2, &[], &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), true);
+        ai_tick(
+            &mut rng2,
+            &mut mob2,
+            sys2.player,
+            false,
+            &mut sys2.hits,
+            &mut sys2.arrows,
+            &world2,
+            &[],
+            &mut Vec::new(),
+            &mut Vec::new(),
+            &mut Vec::new(),
+            &mut Vec::new(),
+            &mut Vec::new(),
+            &mut Vec::new(),
+            &mut Vec::new(),
+            &mut Vec::new(),
+            &mut Vec::new(),
+            true,
+        );
         sys2.list.insert(0, mob2);
         sys2.rng = rng2;
-        assert!((sys2.list[0].pos[0] - x1).abs() < 0.05, "trusting ocelot stays");
+        assert!(
+            (sys2.list[0].pos[0] - x1).abs() < 0.05,
+            "trusting ocelot stays"
+        );
     }
 
     /// test-only cure starter with a SHORT window (the real begin_cure
@@ -7122,7 +7349,11 @@ mod tests {
                 "speed {}",
                 eq.speed_attr
             );
-            assert!((0.4..=1.0).contains(&eq.jump_strength), "jump {}", eq.jump_strength);
+            assert!(
+                (0.4..=1.0).contains(&eq.jump_strength),
+                "jump {}",
+                eq.jump_strength
+            );
             assert_eq!(m.kind, MobKind::Horse);
             seen_baby |= eq.baby;
             let _ = i;
@@ -7229,7 +7460,11 @@ mod tests {
         let h2 = ms.spawn_at(MobKind::Horse, 4, 65, 0).unwrap();
         let mut rng = Rng::new(2026);
         let foal = ms.spawn_foal(h, d, 1, 65, 1, &mut rng).unwrap();
-        assert_eq!(ms.by_id(foal).unwrap().kind, MobKind::Mule, "horse×donkey = mule");
+        assert_eq!(
+            ms.by_id(foal).unwrap().kind,
+            MobKind::Mule,
+            "horse×donkey = mule"
+        );
         let foal2 = ms.spawn_foal(h, h2, 3, 65, 3, &mut rng).unwrap();
         assert_eq!(ms.by_id(foal2).unwrap().kind, MobKind::Horse);
         // foals: baby + tamed (VERIFIED w/Horse §Breeding)
@@ -7274,7 +7509,10 @@ mod v18_tests {
         let d = def(MobKind::Rabbit);
         // VERIFIED (minecraft.wiki/w/Rabbit): 3 HP
         assert_eq!(d.health, 3.0);
-        assert!(!MobKind::Rabbit.hostile() && !MobKind::Rabbit.neutral(), "passive");
+        assert!(
+            !MobKind::Rabbit.hostile() && !MobKind::Rabbit.neutral(),
+            "passive"
+        );
         assert_eq!(MobKind::from_name("rabbit"), Some(MobKind::Rabbit));
         assert_eq!(MobKind::Rabbit.name(), "minecraft:rabbit");
         // the mob registry includes it in the herd roll
@@ -7285,7 +7523,6 @@ mod v18_tests {
 #[cfg(test)]
 mod v19_tests {
 
-
     /// 1.9: attack-cooldown combat was verified in Phase 2 (combat.rs has
     /// the exact 1.9 formulas: 0.2 + 0.8p², ×1.5 crits at ≥84.8%, armor
     /// toughness). Here we pin the registry side of the bracket.
@@ -7295,12 +7532,16 @@ mod v19_tests {
         let vc = vc_blocks::blocks::default_state(vc_blocks::blocks::SHIELD);
         assert!(vc_blocks::blocks::is_item_block(vc_blocks::blocks::SHIELD));
         assert!(vc_blocks::blocks::is_item_block(vc_blocks::blocks::ELYTRA));
-        assert!(vc_blocks::blocks::is_item_block(vc_blocks::blocks::CHORUS_FRUIT));
+        assert!(vc_blocks::blocks::is_item_block(
+            vc_blocks::blocks::CHORUS_FRUIT
+        ));
         // frost walker + mending (1.9 treasure enchants) are in the 38 set
         assert!(crate::enchanting::ENCHANTS
             .iter()
             .any(|e| e.id == "frost_walker"));
-        assert!(crate::enchanting::ENCHANTS.iter().any(|e| e.id == "mending"));
+        assert!(crate::enchanting::ENCHANTS
+            .iter()
+            .any(|e| e.id == "mending"));
         let _ = vc;
     }
 }
@@ -7315,7 +7556,10 @@ mod v110_tests {
         // polar bear: 30 HP (wiki /w/Polar_Bear)
         let pb = def(MobKind::PolarBear);
         assert_eq!(pb.health, 30.0);
-        assert!(!MobKind::PolarBear.hostile(), "neutral, not on-sight hostile");
+        assert!(
+            !MobKind::PolarBear.hostile(),
+            "neutral, not on-sight hostile"
+        );
         // stray + husk inherit their base kinds' hostility
         assert!(MobKind::Stray.hostile() && MobKind::Husk.hostile());
         // registry names
@@ -7391,7 +7635,11 @@ mod auditfix_tests {
             "lone-horse feed outcome (got {out:?})"
         );
         let m = ms.by_id(a).unwrap();
-        assert!((m.health - 14.0).abs() < 1e-6, "healed +4 (got {})", m.health);
+        assert!(
+            (m.health - 14.0).abs() < 1e-6,
+            "healed +4 (got {})",
+            m.health
+        );
     }
 }
 
@@ -7407,7 +7655,10 @@ mod v111_tests {
         let llama = def(MobKind::Llama);
         assert_eq!(llama.health, 30.0); // cap of the 15-30 range
         assert!((llama.damage - 1.0).abs() < 1e-6, "spit 1 HP E/N");
-        assert!((llama.speed_attr - 0.175).abs() < 1e-6, "w/Llama speed 0.175");
+        assert!(
+            (llama.speed_attr - 0.175).abs() < 1e-6,
+            "w/Llama speed 0.175"
+        );
         assert!(MobKind::Llama.neutral(), "llama is neutral");
         assert!(!MobKind::Llama.hostile());
 
@@ -7494,7 +7745,7 @@ mod v111_tests {
         let mut ms = MobSystem::new(13);
         let eid = ms.spawn_at(MobKind::Evoker, 4, 65, 4).unwrap();
         ms.player = Some([6.0, 65.0, 4.5]); // in aggro range
-        // run the ai through MobSystem::tick with a flat world
+                                            // run the ai through MobSystem::tick with a flat world
         let world = {
             let mut w = World::new(13);
             let mut c = vc_chunk::chunk::Chunk::empty();
@@ -7649,7 +7900,10 @@ mod v111_tests {
         ms2.by_id_mut(c).unwrap().health = 10.0;
         let out2 = ms2.try_feed(c, HAY_BALE, &mut Rng::new(26));
         assert!(matches!(out2, Some(FeedOutcome::Healed)));
-        assert!((ms2.by_id(c).unwrap().health - 20.0).abs() < 1e-6, "heal +10");
+        assert!(
+            (ms2.by_id(c).unwrap().health - 20.0).abs() < 1e-6,
+            "heal +10"
+        );
     }
 
     /// the vex phases through blocks (VERIFIED w/Vex: "pass through any
@@ -7681,7 +7935,10 @@ mod v111_tests {
             ms.tick(&world, (0, 0), 4);
         }
         let m = ms.by_id(id).unwrap();
-        assert!(m.health > 0.0, "vex alive inside solid blocks (no suffocation path)");
+        assert!(
+            m.health > 0.0,
+            "vex alive inside solid blocks (no suffocation path)"
+        );
         let moved = (m.pos[0] - start[0]).abs() + (m.pos[2] - start[2]).abs();
         assert!(
             moved > 0.0 || m.vel[0] != 0.0 || m.vel[2] != 0.0,
@@ -7689,7 +7946,6 @@ mod v111_tests {
         );
     }
 }
-
 
 // ---------------- 1.12 bracket tests (World of Color Update) ----------------
 #[cfg(test)]
@@ -7782,7 +8038,10 @@ mod v112_tests {
         let mut rng = Rng::new(3);
         let out = ms.try_feed_parrot(id, COOKIE, &mut rng);
         assert_eq!(out, Some(ParrotFeedOutcome::CookieDeath));
-        assert!(ms.by_id(id).unwrap().health <= 0.0, "2128 damage kills a 6 HP parrot");
+        assert!(
+            ms.by_id(id).unwrap().health <= 0.0,
+            "2128 damage kills a 6 HP parrot"
+        );
         // the death sweep converts it (drops handled at the game layer)
         let world = flat_world();
         ms.tick(&world, (0, 0), 1);
@@ -7822,7 +8081,26 @@ mod v112_tests {
             let mut pend = Vec::new();
             let mut summons = Vec::new();
             let mut fang = Vec::new();
-            ai_tick(&mut rng, &mut mob, ms.player, false, &mut hits, &mut arrows, &world, &[], &mut pend, &mut summons, &mut fang, &mut blind, &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), &mut Vec::new(), true);
+            ai_tick(
+                &mut rng,
+                &mut mob,
+                ms.player,
+                false,
+                &mut hits,
+                &mut arrows,
+                &world,
+                &[],
+                &mut pend,
+                &mut summons,
+                &mut fang,
+                &mut blind,
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                &mut Vec::new(),
+                true,
+            );
             ms.list.insert(0, mob);
             ms.rng = rng;
         }
@@ -7847,8 +8125,16 @@ mod v112_tests {
         ms.player = Some([4.5, 65.0, 4.5]);
         let world = flat_world();
         ms.tick(&world, (0, 0), 1);
-        assert_eq!(ms.pending_player_blindness.len(), 1, "first engage casts blindness");
-        assert_eq!(ms.pending_player_blindness[0], 20 * 20, "20 seconds (VERIFIED)");
+        assert_eq!(
+            ms.pending_player_blindness.len(),
+            1,
+            "first engage casts blindness"
+        );
+        assert_eq!(
+            ms.pending_player_blindness[0],
+            20 * 20,
+            "20 seconds (VERIFIED)"
+        );
         // more ticks: NOT cast again (the once-per-opponent gate)
         for _ in 0..50 {
             ms.tick(&world, (0, 0), 1);
@@ -7856,7 +8142,10 @@ mod v112_tests {
         assert_eq!(ms.pending_player_blindness.len(), 1, "once per opponent");
         // the mirror spell: invisibility runs while engaged
         let m = ms.by_id(id).unwrap();
-        assert!(m.aux > 0 && m.aux <= 20 * 60, "invisibility ticking (60 s cap)");
+        assert!(
+            m.aux > 0 && m.aux <= 20 * 60,
+            "invisibility ticking (60 s cap)"
+        );
         // the bow: 20-tick cadence (1/s — VERIFIED: "three times faster
         // than a skeleton" whose 40-tick cadence is SKELETON_SHOOT_TICKS).
         // The arrows fly ~6 blocks at speed 10 and strike the player
@@ -8051,10 +8340,7 @@ mod v113_tests {
         assert_eq!(MobKind::Dolphin.registry_id(), "minecraft:dolphin");
         assert_eq!(MobKind::Cod.registry_id(), "minecraft:cod");
         assert_eq!(MobKind::Salmon.registry_id(), "minecraft:salmon");
-        assert_eq!(
-            MobKind::Pufferfish.registry_id(),
-            "minecraft:pufferfish"
-        );
+        assert_eq!(MobKind::Pufferfish.registry_id(), "minecraft:pufferfish");
         assert_eq!(
             MobKind::TropicalFish.registry_id(),
             "minecraft:tropical_fish"
@@ -8109,10 +8395,21 @@ mod v113_tests {
         for _ in 0..599 {
             sys.tick(&world, (0, 0), i32::MAX);
         }
-        assert_eq!(sys.by_id(id).unwrap().kind, MobKind::Zombie, "599 ticks: still a zombie");
-        assert!(sys.by_id(id).unwrap().aux > 0, "the submersion timer accumulates");
+        assert_eq!(
+            sys.by_id(id).unwrap().kind,
+            MobKind::Zombie,
+            "599 ticks: still a zombie"
+        );
+        assert!(
+            sys.by_id(id).unwrap().aux > 0,
+            "the submersion timer accumulates"
+        );
         sys.tick(&world, (0, 0), i32::MAX); // tick 600
-        assert_eq!(sys.by_id(id).unwrap().kind, MobKind::Drowned, "converted at 30 s");
+        assert_eq!(
+            sys.by_id(id).unwrap().kind,
+            MobKind::Drowned,
+            "converted at 30 s"
+        );
         assert_eq!(sys.by_id(id).unwrap().variant, 0, "unarmed conversion");
         // a dry zombie never converts
         let mut sys2 = MobSystem::new(9);
@@ -8121,7 +8418,11 @@ mod v113_tests {
         for _ in 0..1000 {
             sys2.tick(&flat_world(), (0, 0), i32::MAX);
         }
-        assert_eq!(sys2.by_id(id2).unwrap().kind, MobKind::Zombie, "dry zombies stay zombies");
+        assert_eq!(
+            sys2.by_id(id2).unwrap().kind,
+            MobKind::Zombie,
+            "dry zombies stay zombies"
+        );
     }
 
     /// VERIFIED w/Phantom §Behavior: the orbit-and-swoop cycle — 12
@@ -8182,7 +8483,7 @@ mod v113_tests {
         // outside the contact band (width 0.5 -> 1.15)
         sys.player = Some([8.0, 56.0, 8.0]);
         let world = ocean_world(19); // warm ocean: the pufferfish's home
-        // two 20-tick steps: 0 -> 1 -> 2 (fully puffed)
+                                     // two 20-tick steps: 0 -> 1 -> 2 (fully puffed)
         for _ in 0..41 {
             sys.tick(&world, (0, 0), i32::MAX);
         }
@@ -8196,8 +8497,15 @@ mod v113_tests {
         assert!(sys.hits.len() > hits0, "contact sting fired");
         let hit = sys.hits.last().unwrap();
         assert_eq!(hit.source, MobKind::Pufferfish);
-        assert!((hit.damage - 3.0).abs() < 1e-6, "fully-puffed N contact 3 HP");
-        assert_eq!(hit.poison_effect, Some(120), "6 s poison fully-puffed (VERIFIED Java)");
+        assert!(
+            (hit.damage - 3.0).abs() < 1e-6,
+            "fully-puffed N contact 3 HP"
+        );
+        assert_eq!(
+            hit.poison_effect,
+            Some(120),
+            "6 s poison fully-puffed (VERIFIED Java)"
+        );
     }
 
     /// VERIFIED w/Dolphin: "Players who sprint-swim within a 9 block
@@ -8224,7 +8532,10 @@ mod v113_tests {
         for _ in 0..40 {
             sys.tick(&world, (0, 0), i32::MAX);
         }
-        assert!(sys.pending_player_grace.is_empty(), "out of range: no grace");
+        assert!(
+            sys.pending_player_grace.is_empty(),
+            "out of range: no grace"
+        );
     }
 
     /// VERIFIED w/Turtle + w/Scute: a bred female (variant bit 0x80)
@@ -8248,7 +8559,11 @@ mod v113_tests {
         let baby = sys.spawn_variant(MobKind::Turtle, 8, 65, 8, 0x40).unwrap();
         sys.by_id_mut(baby).unwrap().aux = 1;
         sys.tick(&world, (0, 0), i32::MAX);
-        assert_eq!(sys.pending_drops.len(), 1, "scute queued (VERIFIED w/Scute)");
+        assert_eq!(
+            sys.pending_drops.len(),
+            1,
+            "scute queued (VERIFIED w/Scute)"
+        );
         assert_eq!(sys.pending_drops[0].1, SCUTE);
         assert_eq!(sys.by_id(baby).unwrap().variant & 0x40, 0, "baby matured");
         // a non-sand floor never receives an egg
@@ -8274,13 +8589,20 @@ mod v113_tests {
         for _ in 0..80 {
             sys.tick(&world, (0, 0), i32::MAX);
         }
-        assert!(sys.list.iter().all(|m| m.kind != MobKind::Phantom), "insomnia not yet");
+        assert!(
+            sys.list.iter().all(|m| m.kind != MobKind::Phantom),
+            "insomnia not yet"
+        );
         // at the threshold: phantoms appear above the player
         sys.rest_t = 72000 - 20; // the % 20 gate fires on 72000
         for _ in 0..40 {
             sys.tick(&world, (0, 0), i32::MAX);
         }
-        let phantoms: Vec<_> = sys.list.iter().filter(|m| m.kind == MobKind::Phantom).collect();
+        let phantoms: Vec<_> = sys
+            .list
+            .iter()
+            .filter(|m| m.kind == MobKind::Phantom)
+            .collect();
         assert!(!phantoms.is_empty(), "the insomnia pack arrived");
         for m in &phantoms {
             let dy = m.pos[1] - 70.0;
@@ -8297,7 +8619,11 @@ mod v113_tests {
         for _ in 0..400 {
             sys.tick(&world, (0, 0), i32::MAX);
         }
-        let n = sys.list.iter().filter(|m| m.kind == MobKind::Phantom).count();
+        let n = sys
+            .list
+            .iter()
+            .filter(|m| m.kind == MobKind::Phantom)
+            .count();
         assert!(n <= 4, "the local pack caps at 4 (got {n})");
         // death resets the statistic (VERIFIED: "dying ... resets")
         sys.note_rest();
@@ -8315,11 +8641,18 @@ mod v113_tests {
         for _ in 0..2000 {
             sys.try_spawn_hostile(&world, |_, _| true);
         }
-        let drowned: Vec<_> = sys.list.iter().filter(|m| m.kind == MobKind::Drowned).collect();
+        let drowned: Vec<_> = sys
+            .list
+            .iter()
+            .filter(|m| m.kind == MobKind::Drowned)
+            .collect();
         assert!(!drowned.is_empty(), "the ocean rolls drowned (VERIFIED)");
         for m in &drowned {
             let y = m.pos[1] as i32;
-            assert!((53..=62).contains(&y), "spawned in the water column (y {y})");
+            assert!(
+                (53..=62).contains(&y),
+                "spawned in the water column (y {y})"
+            );
         }
         // no zombies in the ocean-family water rolls (drowned replace them)
         assert!(
@@ -8348,9 +8681,10 @@ mod v113_tests {
             "warm oceans school tropical fish (VERIFIED)"
         );
         assert!(
-            sys.list
-                .iter()
-                .all(|m| matches!(m.kind, MobKind::TropicalFish | MobKind::Pufferfish | MobKind::Dolphin)),
+            sys.list.iter().all(|m| matches!(
+                m.kind,
+                MobKind::TropicalFish | MobKind::Pufferfish | MobKind::Dolphin
+            )),
             "warm families only"
         );
         // cold ocean: the cod-salmon split, no dolphins ("all ocean
@@ -8494,7 +8828,11 @@ mod v114_tests {
         let z = sys.list.iter().find(|m| m.id == zid).unwrap();
         let f = sys.list.iter().find(|m| m.id == fid).unwrap();
         assert_eq!(z.health, 19.0, "the zombie took the 1 HP window hit");
-        assert!(z.vel[0] < 0.5, "the zombie was slowed to 34.05% (vel {})", z.vel[0]);
+        assert!(
+            z.vel[0] < 0.5,
+            "the zombie was slowed to 34.05% (vel {})",
+            z.vel[0]
+        );
         assert_eq!(f.health, 10.0, "the fox took NO damage (VERIFIED immunity)");
         assert_eq!(f.vel[0], 1.0, "the fox was NOT slowed (VERIFIED immunity)");
         // stage 0 (sapling) never damages
@@ -8575,12 +8913,16 @@ mod v114_tests {
             other => panic!("second feeding should pair: {other:?}"),
         }
         // both loves cleared
-        assert_eq!(sys.list.iter().find(|m| m.id == a).unwrap().variant & 0x80, 0);
-        assert_eq!(sys.list.iter().find(|m| m.id == b).unwrap().variant & 0x80, 0);
+        assert_eq!(
+            sys.list.iter().find(|m| m.id == a).unwrap().variant & 0x80,
+            0
+        );
+        assert_eq!(
+            sys.list.iter().find(|m| m.id == b).unwrap().variant & 0x80,
+            0
+        );
         // a baby never breeds
-        let kid = sys
-            .spawn_variant(MobKind::Fox, 12, 65, 10, 0x41)
-            .unwrap();
+        let kid = sys.spawn_variant(MobKind::Fox, 12, 65, 10, 0x41).unwrap();
         assert!(sys.try_feed_fox(kid).is_none(), "babies don't breed");
     }
 
@@ -8589,9 +8931,7 @@ mod v114_tests {
     fn v114_fox_cub_grows() {
         let world = flat_world();
         let mut sys = MobSystem::new(7);
-        let kid = sys
-            .spawn_variant(MobKind::Fox, 8, 65, 8, 0x41)
-            .unwrap();
+        let kid = sys.spawn_variant(MobKind::Fox, 8, 65, 8, 0x41).unwrap();
         {
             let k = sys.list.iter_mut().find(|m| m.id == kid).unwrap();
             k.aux = 3; // short countdown for the test
@@ -8605,871 +8945,897 @@ mod v114_tests {
     }
 }
 
+/// the MOB_DATA row: 10 HP, sting 2 (Normal), speed 0.6 (the
+/// infobox row), hitbox 0.5 x 0.55, XP row (VERIFIED w/Bee)
+#[test]
+fn v115_bee_def_row() {
+    let d = def(MobKind::Bee);
+    assert_eq!(d.health, 10.0);
+    assert_eq!(d.damage, 2.0);
+    assert_eq!(d.speed_attr, 0.6);
+    assert_eq!((d.height, d.width), (0.5, 0.55));
+    assert_eq!(d.armor, 0.0);
+    assert!(MobKind::Bee.flies(), "bees hover (no gravity)");
+    assert_eq!(MobKind::Bee.egg_id(), 41);
+    assert_eq!(MobKind::from_egg(41), MobKind::Bee);
+    assert_eq!(MobKind::Bee.sprite_tile(), TILE_MOB_BEE);
+}
 
-    /// the MOB_DATA row: 10 HP, sting 2 (Normal), speed 0.6 (the
-    /// infobox row), hitbox 0.5 x 0.55, XP row (VERIFIED w/Bee)
-    #[test]
-    fn v115_bee_def_row() {
-        let d = def(MobKind::Bee);
-        assert_eq!(d.health, 10.0);
-        assert_eq!(d.damage, 2.0);
-        assert_eq!(d.speed_attr, 0.6);
-        assert_eq!((d.height, d.width), (0.5, 0.55));
-        assert_eq!(d.armor, 0.0);
-        assert!(MobKind::Bee.flies(), "bees hover (no gravity)");
-        assert_eq!(MobKind::Bee.egg_id(), 41);
-        assert_eq!(MobKind::from_egg(41), MobKind::Bee);
-        assert_eq!(MobKind::Bee.sprite_tile(), TILE_MOB_BEE);
-    }
-
-    /// 1.15: the v115 tests' own flat world (the per-module convention)
-    #[cfg(test)]  // used only by the tests below (the per-module convention)
-    fn v115_world() -> World {
-        let mut w = World::new(11);
-        let mut c = vc_chunk::chunk::Chunk::empty();
-        for y in 0..=64i32 {
-            for lz in 0..16usize {
-                for lx in 0..16usize {
-                    c.set(lx, y as usize, lz, STONE);
-                }
+/// 1.15: the v115 tests' own flat world (the per-module convention)
+#[cfg(test)] // used only by the tests below (the per-module convention)
+fn v115_world() -> World {
+    let mut w = World::new(11);
+    let mut c = vc_chunk::chunk::Chunk::empty();
+    for y in 0..=64i32 {
+        for lz in 0..16usize {
+            for lx in 0..16usize {
+                c.set(lx, y as usize, lz, STONE);
             }
         }
-        w.insert_generated((0, 0), std::sync::Arc::new(c), Vec::new());
-        w.dirty.clear();
-        w
     }
+    w.insert_generated((0, 0), std::sync::Arc::new(c), Vec::new());
+    w.dirty.clear();
+    w
+}
 
-    /// the completeness audit: the chicken's egg laying — "Every adult
-    /// chicken lays an egg item every 5-10 minutes ... The theoretical
-    /// average would be expected at 1 egg every 7.5 minutes (9000 game
-    /// ticks)" (VERIFIED w/Egg). Statistical form: 300k ticks of one
-    /// adult chicken -> ~33 eggs expected; assert a generous Poisson
-    /// band (the per-tick 1/9000 roll reproduces the steady state).
-    #[test]
-    fn audit16_chicken_lays_eggs_at_the_9000_tick_average() {
-        let world = v115_world();
-        let mut sys = MobSystem::new(9);
-        sys.spawn_at(MobKind::Chicken, 8, 66, 8).unwrap();
-        let mut eggs = 0;
-        for _ in 0..300_000 {
-            sys.tick(&world, (0, 0), i32::MAX);
-            eggs += sys.pending_drops.iter().filter(|(_, b)| *b == EGG).count();
-            sys.pending_drops.clear();
-        }
-        // expected 33.3; band 10..=70 covers ~±4 sigma (Poisson(33))
-        assert!((10..=70).contains(&eggs), "expected ~33 eggs, got {eggs}");
+/// the completeness audit: the chicken's egg laying — "Every adult
+/// chicken lays an egg item every 5-10 minutes ... The theoretical
+/// average would be expected at 1 egg every 7.5 minutes (9000 game
+/// ticks)" (VERIFIED w/Egg). Statistical form: 300k ticks of one
+/// adult chicken -> ~33 eggs expected; assert a generous Poisson
+/// band (the per-tick 1/9000 roll reproduces the steady state).
+#[test]
+fn audit16_chicken_lays_eggs_at_the_9000_tick_average() {
+    let world = v115_world();
+    let mut sys = MobSystem::new(9);
+    sys.spawn_at(MobKind::Chicken, 8, 66, 8).unwrap();
+    let mut eggs = 0;
+    for _ in 0..300_000 {
+        sys.tick(&world, (0, 0), i32::MAX);
+        eggs += sys.pending_drops.iter().filter(|(_, b)| *b == EGG).count();
+        sys.pending_drops.clear();
     }
+    // expected 33.3; band 10..=70 covers ~±4 sigma (Poisson(33))
+    assert!((10..=70).contains(&eggs), "expected ~33 eggs, got {eggs}");
+}
 
-    /// the sweep-2: the player-thrown trio never hits the thrower, and
-    /// eggs + pearls (not snowballs) push landing events on the ground
-    /// hit (VERIFIED w/Egg + w/Ender_Pearl + w/Snowball, live 2026-09-09)
-    #[test]
-    fn audit16_sweep2_projectile_landings() {
-        let world = v115_world();
-        let mut sys = MobSystem::new(42);
-        sys.player = Some([8.5, 66.0, 8.5]);
-        // a projectile spawning INSIDE the thrower's hit sphere, flying
-        // away — PLAYER_OWNER must skip the player-hit branch
-        for (kind, _name) in [
-            (ProjKind::Snowball, "snowball"),
-            (ProjKind::Egg, "egg"),
-            (ProjKind::Pearl, "pearl"),
-        ] {
-            sys.arrows.push(Arrow {
-                pos: [8.5, 66.9, 8.5],
-                vel: [0.0, -24.0, 0.0],
-                damage: 0.0,
-                age: 0,
-                kind,
-                owner: PLAYER_OWNER,
-            });
-        }
-        let mut landings: Vec<(ProjKind, [f32; 3])> = Vec::new();
-        for _ in 0..60 {
-            let mut hits = std::mem::take(&mut sys.hits);
+/// the sweep-2: the player-thrown trio never hits the thrower, and
+/// eggs + pearls (not snowballs) push landing events on the ground
+/// hit (VERIFIED w/Egg + w/Ender_Pearl + w/Snowball, live 2026-09-09)
+#[test]
+fn audit16_sweep2_projectile_landings() {
+    let world = v115_world();
+    let mut sys = MobSystem::new(42);
+    sys.player = Some([8.5, 66.0, 8.5]);
+    // a projectile spawning INSIDE the thrower's hit sphere, flying
+    // away — PLAYER_OWNER must skip the player-hit branch
+    for (kind, _name) in [
+        (ProjKind::Snowball, "snowball"),
+        (ProjKind::Egg, "egg"),
+        (ProjKind::Pearl, "pearl"),
+    ] {
+        sys.arrows.push(Arrow {
+            pos: [8.5, 66.9, 8.5],
+            vel: [0.0, -24.0, 0.0],
+            damage: 0.0,
+            age: 0,
+            kind,
+            owner: PLAYER_OWNER,
+        });
+    }
+    let mut landings: Vec<(ProjKind, [f32; 3])> = Vec::new();
+    for _ in 0..60 {
+        let mut hits = std::mem::take(&mut sys.hits);
+        tick_arrows(
+            &mut sys.arrows,
+            sys.player,
+            false,
+            &mut hits,
+            &world,
+            &mut [],
+            &mut Vec::new(),
+            &mut Vec::new(),
+            &mut landings,
+        );
+        sys.hits = hits;
+    }
+    assert!(
+        sys.hits.is_empty(),
+        "a thrown projectile never hits its thrower"
+    );
+    assert_eq!(
+        landings.len(),
+        2,
+        "egg + pearl land (the snowball has no landing)"
+    );
+    assert!(landings
+        .iter()
+        .all(|(k, _)| { matches!(k, ProjKind::Egg | ProjKind::Pearl) }));
+    // they landed on the stone floor (y = 64, the flat_world surface)
+    assert!(landings.iter().all(|(_, p)| p[1].floor() as i32 == 64));
+}
+
+/// the sweep-2: the egg hatch statistics — 1/8 per egg + 1/32 for
+/// three more chicks (VERIFIED w/Egg §Spawning chickens). The
+/// statistical band rides 800 throws (expected ~112 chicks).
+#[test]
+fn audit16_sweep2_egg_hatch_statistics() {
+    let world = v115_world();
+    let mut sys = MobSystem::new(77);
+    let mut chicks = 0usize;
+    let mut rng = vc_rng::rng::Rng::new(1234);
+    for i in 0..800 {
+        sys.arrows.clear();
+        sys.landings.clear();
+        sys.arrows.push(Arrow {
+            pos: [8.5, 70.0, 8.5],
+            vel: [0.0, -24.0, 0.0],
+            damage: 0.0,
+            age: 0,
+            kind: ProjKind::Egg,
+            owner: PLAYER_OWNER,
+        });
+        for _ in 0..10 {
             tick_arrows(
                 &mut sys.arrows,
-                sys.player,
+                None,
                 false,
-                &mut hits,
+                &mut Vec::new(),
                 &world,
                 &mut [],
                 &mut Vec::new(),
                 &mut Vec::new(),
-                &mut landings,
+                &mut sys.landings,
             );
-            sys.hits = hits;
         }
-        assert!(sys.hits.is_empty(), "a thrown projectile never hits its thrower");
-        assert_eq!(landings.len(), 2, "egg + pearl land (the snowball has no landing)");
-        assert!(landings.iter().all(|(k, _)| {
-            matches!(k, ProjKind::Egg | ProjKind::Pearl)
-        }));
-        // they landed on the stone floor (y = 64, the flat_world surface)
-        assert!(landings.iter().all(|(_, p)| p[1].floor() as i32 == 64));
-    }
-
-    /// the sweep-2: the egg hatch statistics — 1/8 per egg + 1/32 for
-    /// three more chicks (VERIFIED w/Egg §Spawning chickens). The
-    /// statistical band rides 800 throws (expected ~112 chicks).
-    #[test]
-    fn audit16_sweep2_egg_hatch_statistics() {
-        let world = v115_world();
-        let mut sys = MobSystem::new(77);
-        let mut chicks = 0usize;
-        let mut rng = vc_rng::rng::Rng::new(1234);
-        for i in 0..800 {
-            sys.arrows.clear();
-            sys.landings.clear();
-            sys.arrows.push(Arrow {
-                pos: [8.5, 70.0, 8.5],
-                vel: [0.0, -24.0, 0.0],
-                damage: 0.0,
-                age: 0,
-                kind: ProjKind::Egg,
-                owner: PLAYER_OWNER,
-            });
-            for _ in 0..10 {
-                tick_arrows(
-                    &mut sys.arrows,
-                    None,
-                    false,
-                    &mut Vec::new(),
-                    &world,
-                    &mut [],
-                    &mut Vec::new(),
-                    &mut Vec::new(),
-                    &mut sys.landings,
-                );
+        // the game layer's hatch roll, replayed here with its own
+        // rng (1/8; then 1/32 for three more)
+        for _ in 0..sys.landings.len() {
+            if rng.next_range(8) == 0 {
+                chicks += 1;
+                if rng.next_range(32) == 0 {
+                    chicks += 3;
+                }
             }
-            // the game layer's hatch roll, replayed here with its own
-            // rng (1/8; then 1/32 for three more)
-            for _ in 0..sys.landings.len() {
-                if rng.next_range(8) == 0 {
-                    chicks += 1;
-                    if rng.next_range(32) == 0 {
-                        chicks += 3;
+        }
+        let _ = i;
+    }
+    // expected 800/8 = 100 (plus ~1 quad event) — the ±5 sigma band
+    assert!(
+        (55..=165).contains(&chicks),
+        "expected ~100 chicks over 800 eggs, got {chicks}"
+    );
+}
+
+/// the sweep-2: the egg-spawned chick (variant 0x40) matures on the
+/// 24000-tick countdown — the fox/turtle class (VERIFIED w/Egg)
+#[test]
+fn audit16_sweep2_chick_matures() {
+    let world = v115_world();
+    let mut sys = MobSystem::new(88);
+    let id = sys.spawn_variant(MobKind::Chicken, 8, 65, 8, 0x40).unwrap();
+    if let Some(m) = sys.list.last_mut() {
+        m.aux = 24000;
+    }
+    for _ in 0..23_999 {
+        sys.tick(&world, (0, 0), i32::MAX);
+    }
+    // one tick short: still a baby
+    assert!(
+        sys.by_id(id)
+            .map(|m| m.variant & 0x40 != 0)
+            .unwrap_or(false),
+        "one tick short of maturity, still a chick"
+    );
+    sys.tick(&world, (0, 0), i32::MAX);
+    assert!(
+        sys.by_id(id)
+            .map(|m| m.variant & 0x40 == 0)
+            .unwrap_or(false),
+        "matured at exactly 24000 ticks"
+    );
+}
+
+/// the completeness audit: the cave spider's venom — the melee hit
+/// carries "Poison for 7 seconds" on Normal (140 ticks, VERIFIED
+/// w/Cave_Spider's venom row)
+#[test]
+fn audit16_cave_spider_venom_payload() {
+    let world = v115_world();
+    let mut sys = MobSystem::new(9);
+    sys.player = Some([8.6, 66.5, 8.5]);
+    sys.spawn_at(MobKind::CaveSpider, 8, 66, 8).unwrap();
+    let mut bitten = false;
+    for _ in 0..80 {
+        sys.tick(&world, (0, 0), i32::MAX);
+        let hits = std::mem::take(&mut sys.hits);
+        if let Some(h) = hits.first() {
+            assert_eq!(h.source, MobKind::CaveSpider);
+            assert!((h.damage - 2.0).abs() < 1e-4, "Normal melee 2 (VERIFIED)");
+            assert_eq!(h.poison_effect, Some(140), "Poison 7 s = 140 ticks");
+            assert_eq!(h.wither_effect, None);
+            bitten = true;
+            break;
+        }
+    }
+    assert!(bitten, "the cave spider reached + bit the player");
+}
+
+/// REGRESSION (the backlog-round bug fix): the game-layer pattern
+/// — sys.tick THEN take_explosions — must surface the blast. The
+/// old death sweep removed the consumed creeper inside the tick,
+/// so live-game creeper explosions were silently dropped.
+#[test]
+fn backlog_creeper_blast_reaches_the_game_layer() {
+    let world = v115_world();
+    let mut sys = MobSystem::new(77);
+    sys.player = Some([8.5, 65.5, 8.5]);
+    sys.spawn_at(MobKind::Creeper, 8, 65, 8).unwrap();
+    let mut saw_boom = false;
+    for _ in 0..100 {
+        sys.tick(&world, (0, 0), i32::MAX);
+        let booms = take_explosions(&mut sys);
+        if let Some((_, power)) = booms.first() {
+            assert!((power - 3.0).abs() < 1e-4, "normal power 3");
+            saw_boom = true;
+        }
+    }
+    assert!(saw_boom, "the post-tick drain sees the blast (bug fix)");
+    // and the death queue stayed empty (exploded = no drops)
+    assert!(sys.deaths.is_empty());
+}
+
+/// Backlog round (weather): a lightning strike converts creepers
+/// (charged bit), pigs (zombified piglin), and mooshrooms (red↔brown)
+/// and deals its 5 HP Normal damage (VERIFIED w/Weather).
+#[test]
+fn backlog_lightning_conversions() {
+    let mut sys = MobSystem::new(21);
+    sys.player = Some([8.5, 70.5, 8.5]);
+    let creeper = sys.spawn_at(MobKind::Creeper, 8, 65, 8).unwrap();
+    let pig = sys.spawn_at(MobKind::Pig, 10, 65, 8).unwrap();
+    let cow = sys.spawn_at(MobKind::Cow, 12, 65, 8).unwrap();
+    let far = sys.spawn_at(MobKind::Mooshroom, 40, 65, 40).unwrap();
+    let mooshroom = sys.spawn_at(MobKind::Mooshroom, 8, 65, 10).unwrap();
+    let struck = sys.lightning_strike(10.5, 66.0, 9.0, 5.0);
+    assert!(struck >= 4, "the near mobs were struck ({struck})");
+    // creeper -> charged (variant bit, power doubles at detonation)
+    let c = sys.by_id(creeper).unwrap();
+    assert!(c.variant & CREEPER_CHARGED_BIT != 0, "creeper charged");
+    assert!((c.health - 15.0).abs() < 1e-4, "5 HP lightning damage");
+    // pig -> zombified piglin at full health
+    let z = sys.by_id(pig).unwrap();
+    assert_eq!(z.kind, MobKind::ZombifiedPiglin);
+    assert!((z.health - 20.0).abs() < 1e-4, "fresh zombified piglin HP");
+    // mooshroom red -> brown
+    let m = sys.by_id(mooshroom).unwrap();
+    assert_eq!(m.variant & 1, 1, "mooshroom flipped to brown");
+    // the far mooshroom untouched (variant 0)
+    let fm = sys.by_id(far).unwrap();
+    assert_eq!(fm.variant & 1, 0);
+    // the cow takes damage but does not convert
+    let cw = sys.by_id(cow).unwrap();
+    assert_eq!(cw.kind, MobKind::Cow);
+    assert!((cw.health - 5.0).abs() < 1e-4);
+}
+
+/// charged creepers detonate at power 6 — "lightning ... turns
+/// creepers into charged creepers" + the doubled blast (VERIFIED
+/// w/Creeper).
+#[test]
+fn backlog_charged_creeper_double_blast() {
+    let world = v115_world();
+    let mut sys = MobSystem::new(22);
+    let _ = &world;
+    sys.player = Some([8.5, 66.5, 8.5]);
+    let id = sys.spawn_at(MobKind::Creeper, 8, 65, 8).unwrap();
+    let _ = sys.lightning_strike(8.0, 66.0, 8.0, 0.0); // charge only
+    assert!(sys.by_id(id).unwrap().variant & CREEPER_CHARGED_BIT != 0);
+    // run the fuse to detonation (player adjacent + 30-tick fuse)
+    for _ in 0..200 {
+        sys.tick(&world, (0, 0), i32::MAX);
+        let booms = take_explosions(&mut sys);
+        if let Some((_, power)) = booms.first() {
+            assert!((power - 6.0).abs() < 1e-4, "charged power 6 (VERIFIED)");
+            return;
+        }
+    }
+    panic!("the charged creeper never detonated");
+}
+
+/// the zombified piglin now carries the nether-wastes slot the
+/// zombie used to fill — "zombified piglin 100/215" of the wastes
+/// roll (VERIFIED w/Zombified_Piglin §Spawning + the audit's own
+/// weight table)
+#[test]
+fn backlog_zombified_piglin_is_the_wastes_roll() {
+    let _world = v115_world();
+    // a nether world with the wastes biome — a 3x3 chunk grid so
+    // the spawn pass's random chunk pick lands in-world
+    let mut w = World::new(23);
+    w.dimension = vc_world::world::Dimension::Nether;
+    for ccx in -1..=1i32 {
+        for ccz in -1..=1i32 {
+            let mut c = vc_chunk::chunk::Chunk::empty();
+            for y in 0..=64i32 {
+                for lz in 0..16usize {
+                    for lx in 0..16usize {
+                        c.set(lx, y as usize, lz, NETHERRACK);
                     }
                 }
             }
-            let _ = i;
+            c.biome = Box::new([vc_world::gen::Biome::NetherWastes as u8; 256]);
+            w.insert_generated((ccx, ccz), std::sync::Arc::new(c), Vec::new());
         }
-        // expected 800/8 = 100 (plus ~1 quad event) — the ±5 sigma band
-        assert!(
-            (55..=165).contains(&chicks),
-            "expected ~100 chicks over 800 eggs, got {chicks}"
-        );
     }
+    w.dirty.clear();
+    let mut sys = MobSystem::new(24);
+    sys.player = Some([8.5, 65.5, 8.5]);
+    let mut kinds: Vec<MobKind> = Vec::new();
+    for _ in 0..400 {
+        sys.tick(&w, (0, 0), i32::MAX);
+        for m in sys.list.iter() {
+            if !kinds.contains(&m.kind) {
+                kinds.push(m.kind);
+            }
+        }
+        if kinds.len() >= 3 {
+            break;
+        }
+    }
+    assert!(
+        kinds.contains(&MobKind::ZombifiedPiglin),
+        "the real zombified piglin spawns in the wastes {kinds:?}"
+    );
+    assert!(
+        !kinds.contains(&MobKind::Zombie),
+        "the zombie filler is retired"
+    );
+}
 
-    /// the sweep-2: the egg-spawned chick (variant 0x40) matures on the
-    /// 24000-tick countdown — the fox/turtle class (VERIFIED w/Egg)
-    #[test]
-    fn audit16_sweep2_chick_matures() {
-        let world = v115_world();
-        let mut sys = MobSystem::new(88);
-        let id = sys.spawn_variant(MobKind::Chicken, 8, 65, 8, 0x40).unwrap();
-        if let Some(m) = sys.list.last_mut() {
-            m.aux = 24000;
-        }
-        for _ in 0..23_999 {
-            sys.tick(&world, (0, 0), i32::MAX);
-        }
-        // one tick short: still a baby
-        assert!(
-            sys.by_id(id).map(|m| m.variant & 0x40 != 0).unwrap_or(false),
-            "one tick short of maturity, still a chick"
-        );
+/// the thunderstorm spawn gate: sky light is treated as 0 — a
+/// hostile spawn attempt succeeds in full daylight during a storm
+/// (VERIFIED w/Weather).
+#[test]
+fn backlog_thunderstorm_daylight_spawn_gate() {
+    let world = v115_world(); // full-bright sky (open air, noon-ish)
+    let mut sys = MobSystem::new(25);
+    sys.player = Some([8.5, 70.5, 8.5]);
+    // clear weather: the daylight gate rejects surface spawns
+    sys.weather = 0;
+    let mut saw_day_spawn = false;
+    for _ in 0..600 {
         sys.tick(&world, (0, 0), i32::MAX);
-        assert!(
-            sys.by_id(id).map(|m| m.variant & 0x40 == 0).unwrap_or(false),
-            "matured at exactly 24000 ticks"
-        );
+        if !sys.list.is_empty() {
+            saw_day_spawn = true;
+            break;
+        }
     }
+    assert!(!saw_day_spawn, "clear weather: no daylight hostiles");
+    // thunderstorm: hostiles may spawn in daylight
+    sys.weather = 2;
+    sys.list.clear();
+    let mut spawned = false;
+    for _ in 0..600 {
+        sys.tick(&world, (0, 0), i32::MAX);
+        if !sys.list.is_empty() {
+            spawned = true;
+            break;
+        }
+    }
+    assert!(spawned, "thunderstorm opens the daylight gate (VERIFIED)");
+}
 
+/// the completeness audit: the ghast fires its fireball — "a ghast
+/// faces the player and shoots a fireball every 3 seconds" within
+/// the 64-block range (VERIFIED w/Ghast §Behavior); the impact
+/// damage is the Normal 6 row.
+#[test]
+fn audit16_ghast_fires_the_3_second_fireball() {
+    let world = v115_world();
+    let mut sys = MobSystem::new(9);
+    sys.player = Some([8.5, 70.5, 8.5]);
+    // 20 blocks out — inside the 64-block target range
+    sys.spawn_at(MobKind::Ghast, 28, 70, 8).unwrap();
+    let mut fired = false;
+    for _ in 0..200 {
+        sys.tick(&world, (0, 0), i32::MAX);
+        if let Some(a) = sys.arrows.first() {
+            assert_eq!(a.kind, ProjKind::Fireball, "the ghast's projectile");
+            assert!((a.damage - 6.0).abs() < 1e-4, "impact Normal 6 (VERIFIED)");
+            fired = true;
+            break;
+        }
+    }
+    assert!(fired, "the ghast shot within 200 ticks (60-tick cadence)");
+    // and the flying class (no gravity — the bat/phantom class)
+    assert!(MobKind::Ghast.flies(), "the ghast is a FlyingMob-class");
+}
 
-    /// the completeness audit: the cave spider's venom — the melee hit
-    /// carries "Poison for 7 seconds" on Normal (140 ticks, VERIFIED
-    /// w/Cave_Spider's venom row)
-    #[test]
-    fn audit16_cave_spider_venom_payload() {
-        let world = v115_world();
-        let mut sys = MobSystem::new(9);
-        sys.player = Some([8.6, 66.5, 8.5]);
-        sys.spawn_at(MobKind::CaveSpider, 8, 66, 8).unwrap();
-        let mut bitten = false;
-        for _ in 0..80 {
-            sys.tick(&world, (0, 0), i32::MAX);
+/// the sting contract: an angry bee stings ONCE (2 HP + Poison I
+/// 10 s payload), loses the stinger, "dies approximately one
+/// minute later" (1200 ticks), and never attacks again (VERIFIED
+/// w/Bee §Attacking)
+#[test]
+fn v115_bee_sting_rules() {
+    let world = v115_world();
+    let mut sys = MobSystem::new(9);
+    sys.player = Some([8.6, 65.5, 8.5]);
+    let id = sys.spawn_at(MobKind::Bee, 8, 66, 8).unwrap();
+    sys.set_bee(id, [4, 66, 4], true); // angry release
+                                       // the anger chase → contact → the sting
+    let mut stung = false;
+    let mut poison: Option<i32> = None;
+    for _ in 0..40 {
+        sys.tick(&world, (0, 0), i32::MAX);
+        if !stung {
             let hits = std::mem::take(&mut sys.hits);
             if let Some(h) = hits.first() {
-                assert_eq!(h.source, MobKind::CaveSpider);
-                assert!((h.damage - 2.0).abs() < 1e-4, "Normal melee 2 (VERIFIED)");
-                assert_eq!(h.poison_effect, Some(140), "Poison 7 s = 140 ticks");
+                stung = true;
+                assert_eq!(h.source, MobKind::Bee);
+                assert!((h.damage - 2.0).abs() < 1e-4, "sting damage 2 (Normal)");
+                poison = h.poison_effect;
                 assert_eq!(h.wither_effect, None);
-                bitten = true;
-                break;
             }
         }
-        assert!(bitten, "the cave spider reached + bit the player");
-    }
-
-    /// REGRESSION (the backlog-round bug fix): the game-layer pattern
-    /// — sys.tick THEN take_explosions — must surface the blast. The
-    /// old death sweep removed the consumed creeper inside the tick,
-    /// so live-game creeper explosions were silently dropped.
-    #[test]
-    fn backlog_creeper_blast_reaches_the_game_layer() {
-        let world = v115_world();
-        let mut sys = MobSystem::new(77);
-        sys.player = Some([8.5, 65.5, 8.5]);
-        sys.spawn_at(MobKind::Creeper, 8, 65, 8).unwrap();
-        let mut saw_boom = false;
-        for _ in 0..100 {
-            sys.tick(&world, (0, 0), i32::MAX);
-            let booms = take_explosions(&mut sys);
-            if let Some((_, power)) = booms.first() {
-                assert!((power - 3.0).abs() < 1e-4, "normal power 3");
-                saw_boom = true;
-            }
-        }
-        assert!(saw_boom, "the post-tick drain sees the blast (bug fix)");
-        // and the death queue stayed empty (exploded = no drops)
-        assert!(sys.deaths.is_empty());
-    }
-
-    /// Backlog round (weather): a lightning strike converts creepers
-    /// (charged bit), pigs (zombified piglin), and mooshrooms (red↔brown)
-    /// and deals its 5 HP Normal damage (VERIFIED w/Weather).
-    #[test]
-    fn backlog_lightning_conversions() {
-        let mut sys = MobSystem::new(21);
-        sys.player = Some([8.5, 70.5, 8.5]);
-        let creeper = sys.spawn_at(MobKind::Creeper, 8, 65, 8).unwrap();
-        let pig = sys.spawn_at(MobKind::Pig, 10, 65, 8).unwrap();
-        let cow = sys.spawn_at(MobKind::Cow, 12, 65, 8).unwrap();
-        let far = sys.spawn_at(MobKind::Mooshroom, 40, 65, 40).unwrap();
-        let mooshroom = sys.spawn_at(MobKind::Mooshroom, 8, 65, 10).unwrap();
-        let struck = sys.lightning_strike(10.5, 66.0, 9.0, 5.0);
-        assert!(struck >= 4, "the near mobs were struck ({struck})");
-        // creeper -> charged (variant bit, power doubles at detonation)
-        let c = sys.by_id(creeper).unwrap();
-        assert!(c.variant & CREEPER_CHARGED_BIT != 0, "creeper charged");
-        assert!((c.health - 15.0).abs() < 1e-4, "5 HP lightning damage");
-        // pig -> zombified piglin at full health
-        let z = sys.by_id(pig).unwrap();
-        assert_eq!(z.kind, MobKind::ZombifiedPiglin);
-        assert!((z.health - 20.0).abs() < 1e-4, "fresh zombified piglin HP");
-        // mooshroom red -> brown
-        let m = sys.by_id(mooshroom).unwrap();
-        assert_eq!(m.variant & 1, 1, "mooshroom flipped to brown");
-        // the far mooshroom untouched (variant 0)
-        let fm = sys.by_id(far).unwrap();
-        assert_eq!(fm.variant & 1, 0);
-        // the cow takes damage but does not convert
-        let cw = sys.by_id(cow).unwrap();
-        assert_eq!(cw.kind, MobKind::Cow);
-        assert!((cw.health - 5.0).abs() < 1e-4);
-    }
-
-    /// charged creepers detonate at power 6 — "lightning ... turns
-    /// creepers into charged creepers" + the doubled blast (VERIFIED
-    /// w/Creeper).
-    #[test]
-    fn backlog_charged_creeper_double_blast() {
-        let world = v115_world();
-        let mut sys = MobSystem::new(22);
-        let _ = &world;
-        sys.player = Some([8.5, 66.5, 8.5]);
-        let id = sys.spawn_at(MobKind::Creeper, 8, 65, 8).unwrap();
-        let _ = sys.lightning_strike(8.0, 66.0, 8.0, 0.0); // charge only
-        assert!(sys.by_id(id).unwrap().variant & CREEPER_CHARGED_BIT != 0);
-        // run the fuse to detonation (player adjacent + 30-tick fuse)
-        for _ in 0..200 {
-            sys.tick(&world, (0, 0), i32::MAX);
-            let booms = take_explosions(&mut sys);
-            if let Some((_, power)) = booms.first() {
-                assert!((power - 6.0).abs() < 1e-4, "charged power 6 (VERIFIED)");
-                return;
-            }
-        }
-        panic!("the charged creeper never detonated");
-    }
-
-    /// the zombified piglin now carries the nether-wastes slot the
-    /// zombie used to fill — "zombified piglin 100/215" of the wastes
-    /// roll (VERIFIED w/Zombified_Piglin §Spawning + the audit's own
-    /// weight table)
-    #[test]
-    fn backlog_zombified_piglin_is_the_wastes_roll() {
-        let _world = v115_world();
-        // a nether world with the wastes biome — a 3x3 chunk grid so
-        // the spawn pass's random chunk pick lands in-world
-        let mut w = World::new(23);
-        w.dimension = vc_world::world::Dimension::Nether;
-        for ccx in -1..=1i32 {
-            for ccz in -1..=1i32 {
-                let mut c = vc_chunk::chunk::Chunk::empty();
-                for y in 0..=64i32 {
-                    for lz in 0..16usize {
-                        for lx in 0..16usize {
-                            c.set(lx, y as usize, lz, NETHERRACK);
-                        }
-                    }
-                }
-                c.biome = Box::new([vc_world::gen::Biome::NetherWastes as u8; 256]);
-                w.insert_generated((ccx, ccz), std::sync::Arc::new(c), Vec::new());
-            }
-        }
-        w.dirty.clear();
-        let mut sys = MobSystem::new(24);
-        sys.player = Some([8.5, 65.5, 8.5]);
-        let mut kinds: Vec<MobKind> = Vec::new();
-        for _ in 0..400 {
-            sys.tick(&w, (0, 0), i32::MAX);
-            for m in sys.list.iter() {
-                if !kinds.contains(&m.kind) {
-                    kinds.push(m.kind);
-                }
-            }
-            if kinds.len() >= 3 {
-                break;
-            }
-        }
-        assert!(
-            kinds.contains(&MobKind::ZombifiedPiglin),
-            "the real zombified piglin spawns in the wastes {kinds:?}"
-        );
-        assert!(!kinds.contains(&MobKind::Zombie), "the zombie filler is retired");
-    }
-
-    /// the thunderstorm spawn gate: sky light is treated as 0 — a
-    /// hostile spawn attempt succeeds in full daylight during a storm
-    /// (VERIFIED w/Weather).
-    #[test]
-    fn backlog_thunderstorm_daylight_spawn_gate() {
-        let world = v115_world(); // full-bright sky (open air, noon-ish)
-        let mut sys = MobSystem::new(25);
-        sys.player = Some([8.5, 70.5, 8.5]);
-        // clear weather: the daylight gate rejects surface spawns
-        sys.weather = 0;
-        let mut saw_day_spawn = false;
-        for _ in 0..600 {
-            sys.tick(&world, (0, 0), i32::MAX);
-            if !sys.list.is_empty() {
-                saw_day_spawn = true;
-                break;
-            }
-        }
-        assert!(!saw_day_spawn, "clear weather: no daylight hostiles");
-        // thunderstorm: hostiles may spawn in daylight
-        sys.weather = 2;
-        sys.list.clear();
-        let mut spawned = false;
-        for _ in 0..600 {
-            sys.tick(&world, (0, 0), i32::MAX);
-            if !sys.list.is_empty() {
-                spawned = true;
-                break;
-            }
-        }
-        assert!(spawned, "thunderstorm opens the daylight gate (VERIFIED)");
-    }
-
-    /// the completeness audit: the ghast fires its fireball — "a ghast
-    /// faces the player and shoots a fireball every 3 seconds" within
-    /// the 64-block range (VERIFIED w/Ghast §Behavior); the impact
-    /// damage is the Normal 6 row.
-    #[test]
-    fn audit16_ghast_fires_the_3_second_fireball() {
-        let world = v115_world();
-        let mut sys = MobSystem::new(9);
-        sys.player = Some([8.5, 70.5, 8.5]);
-        // 20 blocks out — inside the 64-block target range
-        sys.spawn_at(MobKind::Ghast, 28, 70, 8).unwrap();
-        let mut fired = false;
-        for _ in 0..200 {
-            sys.tick(&world, (0, 0), i32::MAX);
-            if let Some(a) = sys.arrows.first() {
-                assert_eq!(a.kind, ProjKind::Fireball, "the ghast's projectile");
-                assert!((a.damage - 6.0).abs() < 1e-4, "impact Normal 6 (VERIFIED)");
-                fired = true;
-                break;
-            }
-        }
-        assert!(fired, "the ghast shot within 200 ticks (60-tick cadence)");
-        // and the flying class (no gravity — the bat/phantom class)
-        assert!(MobKind::Ghast.flies(), "the ghast is a FlyingMob-class");
-    }
-
-    /// the sting contract: an angry bee stings ONCE (2 HP + Poison I
-    /// 10 s payload), loses the stinger, "dies approximately one
-    /// minute later" (1200 ticks), and never attacks again (VERIFIED
-    /// w/Bee §Attacking)
-    #[test]
-    fn v115_bee_sting_rules() {
-        let world = v115_world();
-        let mut sys = MobSystem::new(9);
-        sys.player = Some([8.6, 65.5, 8.5]);
-        let id = sys.spawn_at(MobKind::Bee, 8, 66, 8).unwrap();
-        sys.set_bee(id, [4, 66, 4], true); // angry release
-        // the anger chase → contact → the sting
-        let mut stung = false;
-        let mut poison: Option<i32> = None;
-        for _ in 0..40 {
-            sys.tick(&world, (0, 0), i32::MAX);
-            if !stung {
-                let hits = std::mem::take(&mut sys.hits);
-                if let Some(h) = hits.first() {
-                    stung = true;
-                    assert_eq!(h.source, MobKind::Bee);
-                    assert!((h.damage - 2.0).abs() < 1e-4, "sting damage 2 (Normal)");
-                    poison = h.poison_effect;
-                    assert_eq!(h.wither_effect, None);
-                }
-            }
-            if stung {
-                break;
-            }
-        }
-        assert!(stung, "the angry bee reached + stung the player");
-        assert_eq!(poison, Some(200), "Poison I 10 s (200 ticks) payload");
-        // one sting only: the bee is stung — no further hits, ever
-        sys.hits.clear();
-        for _ in 0..60 {
-            sys.tick(&world, (0, 0), i32::MAX);
-            assert!(sys.hits.is_empty(), "no second sting");
-        }
-        let m = sys.by_id(id).unwrap();
-        let b = m.bee.as_ref().unwrap();
-        assert!(b.stung, "stinger spent");
-        // the timer armed at 1200 and already counts down — the observed
-        // window (sting tick .. now) is small vs the 1200 span
-        assert!(
-            b.death_t > crate::bees::STING_DEATH_TICKS - 100,
-            "1200-tick death timer (armed, now {})",
-            b.death_t
-        );
-        let armed = b.death_t;
-        // the death timer: fast-forward to the 1200-tick mark — the
-        // bee dies (the deaths queue fires; no item drops)
-        let before = sys.list.iter().filter(|m| m.kind == MobKind::Bee).count();
-        assert_eq!(before, 1);
-        for _ in 0..(armed + 20) {
-            sys.tick(&world, (0, 0), i32::MAX);
-        }
-        assert!(
-            sys.list.iter().all(|m| m.kind != MobKind::Bee),
-            "the stung bee died on the timer"
-        );
-    }
-
-    /// the anger swarm: attacking one bee angers the family + the
-    /// 16-block neighbors; the anger window is 20-39 s (VERIFIED)
-    #[test]
-    fn v115_anger_swarm() {
-        let _world = v115_world();
-        let mut sys = MobSystem::new(10);
-        let a = sys.spawn_at(MobKind::Bee, 6, 66, 6).unwrap();
-        let b = sys.spawn_at(MobKind::Bee, 8, 66, 8).unwrap(); // near
-        let far = sys.spawn_at(MobKind::Bee, 40, 66, 40).unwrap(); // far, no family
-        sys.set_bee(a, [3, 66, 3], false);
-        sys.set_bee(b, [3, 66, 3], false); // same hive family
-        sys.set_bee(far, [60, 66, 60], false);
-        let n = sys.anger_bees_near([6.5, 66.0, 6.5], Some([3, 66, 3]));
-        assert_eq!(n, 2, "family + near angered; far stranger not");
-        for id in [a, b] {
-            let t = sys.by_id(id).unwrap().bee.as_ref().unwrap().anger_t;
-            assert!(
-                (ANGER_TICKS_MIN_ROLL..=ANGER_TICKS_MAX).contains(&t),
-                "anger window 20-39 s: {t}"
-            );
-        }
-        assert_eq!(sys.by_id(far).unwrap().bee.as_ref().unwrap().anger_t, 0);
-    }
-
-    /// the flower feeding: first feeding arms love; a second with a
-    /// loving partner pairs → Bred (VERIFIED w/Bee §Breeding)
-    #[test]
-    fn v115_bee_breeding_flow() {
-        let mut sys = MobSystem::new(11);
-        let a = sys.spawn_at(MobKind::Bee, 6, 66, 6).unwrap();
-        let b = sys.spawn_at(MobKind::Bee, 8, 66, 8).unwrap();
-        assert_eq!(sys.try_feed_bee(a), Some(BeeFeedOutcome::LoveMode));
-        assert_eq!(sys.try_feed_bee(a), None, "already in love — ignored");
-        assert_eq!(sys.try_feed_bee(b), Some(BeeFeedOutcome::Bred(a)));
-        // both loves cleared after the pairing
-        for id in [a, b] {
-            assert_eq!(sys.by_id(id).unwrap().bee.as_ref().unwrap().love_t, 0);
-        }
-        // babies never breed
-        let kid = sys.spawn_at(MobKind::Bee, 6, 66, 10).unwrap();
-        if let Some(m) = sys.list.iter_mut().find(|m| m.id == kid) {
-            if let Some(bs) = m.bee.as_mut() {
-                bs.baby = true;
-            }
-        }
-        assert!(sys.try_feed_bee(kid).is_none(), "babies don't breed");
-    }
-
-    /// the hive trip: a nectar bee in PH_TO_HIVE reaches the hive,
-    /// leaves the mob list (the enter queue), and the sting-less
-    /// night return works the same (VERIFIED w/Bee §Housing)
-    #[test]
-    fn v115_bee_enters_hive() {
-        let world = v115_world();
-        let mut sys = MobSystem::new(12);
-        sys.is_day = true;
-        let id = sys.spawn_at(MobKind::Bee, 6, 68, 6).unwrap();
-        sys.set_bee(id, [8, 66, 8], false);
-        if let Some(m) = sys.by_id_mut(id) {
-            if let Some(b) = m.bee.as_mut() {
-                b.nectar = true;
-                b.phase = crate::bees::PH_TO_HIVE;
-            }
-        }
-        for _ in 0..200 {
-            sys.tick(&world, (0, 0), i32::MAX);
-            if !sys.bee_enters.is_empty() {
-                break;
-            }
-        }
-        assert!(!sys.bee_enters.is_empty(), "the bee reached the hive");
-        let (bid, hive, nectar) = sys.bee_enters[0];
-        assert_eq!(bid, id);
-        assert_eq!(hive, [8, 66, 8]);
-        assert!(nectar, "carried nectar");
-        // the arrival pass removes it from the list (same tick)
-        assert!(sys.list.iter().all(|m| m.id != id), "mob left the list");
-    }
-
-    /// 2026-09-19 (the roof-approach regression the smoke lifecycle check
-    /// exposed): a bee returning from DIRECTLY ABOVE a real solid
-    /// BEEHIVE block must still enter. The pre-fix geometry homed on the
-    /// front-face point (h[1]−0.4) with a 1.2 squared threshold — mob
-    /// collision lands a roof-approaching bee ON the hive at squared
-    /// distance ~1.96, so it hovered forever (the smoke's old lifecycle
-    /// form passed vacuously through natural-hive releases and never
-    /// caught it). The cell-center target + 1.8 threshold admits roof,
-    /// side, and front approaches.
-    #[test]
-    fn v115_bee_enters_hive_from_directly_above() {
-        let mut world = v115_world();
-        // a REAL solid hive block — the collision geometry engaged (the
-        // sibling test's hive is an air cell, which is why this case
-        // was never covered)
-        world.set_block(8, 66, 8, BEEHIVE);
-        let mut sys = MobSystem::new(13);
-        sys.is_day = true;
-        // directly above the hive — the common forage-return approach
-        let id = sys.spawn_at(MobKind::Bee, 8, 69, 8).unwrap();
-        sys.set_bee(id, [8, 66, 8], false);
-        if let Some(m) = sys.by_id_mut(id) {
-            if let Some(b) = m.bee.as_mut() {
-                b.nectar = true;
-                b.phase = crate::bees::PH_TO_HIVE;
-            }
-        }
-        for _ in 0..200 {
-            sys.tick(&world, (0, 0), i32::MAX);
-            if !sys.bee_enters.is_empty() {
-                break;
-            }
-        }
-        assert!(
-            !sys.bee_enters.is_empty(),
-            "a roof-approaching bee must enter the hive (the pre-fix geometry stranded it on the roof)"
-        );
-        assert!(sys.list.iter().all(|m| m.id != id), "mob left the list");
-    }
-
-    // ------------- 1.16 (Nether Update, part 2) tests -------------
-
-    /// the MOB_DATA rows (all VERIFIED against the v116b captures)
-    #[test]
-    fn v116b_forest_mob_def_rows() {
-        let s = def(MobKind::Strider);
-        assert_eq!(s.health, 20.0);
-        assert_eq!(s.damage, 0.0);
-        assert_eq!(s.speed_attr, 0.175);
-        assert_eq!((s.height, s.width), (1.7, 0.9));
-        let p = def(MobKind::Piglin);
-        assert_eq!(p.health, 16.0);
-        assert_eq!(p.damage, 8.0); // the golden-sword Normal row
-        assert_eq!(p.speed_attr, 0.35);
-        assert_eq!((p.height, p.width), (1.95, 0.6));
-        let h = def(MobKind::Hoglin);
-        assert_eq!(h.health, 40.0);
-        assert_eq!(h.damage, 5.5); // the 3-8 Normal midpoint, disclosed
-        assert_eq!(h.speed_attr, 0.3);
-        assert_eq!((h.height, h.width), (1.4, 1.3965));
-        // the classification rows
-        assert!(!MobKind::Strider.neutral() && !MobKind::Strider.hostile());
-        assert!(MobKind::Piglin.neutral(), "piglins are the neutral (adult) row");
-        assert!(!MobKind::Piglin.hostile());
-        assert!(MobKind::Hoglin.hostile(), "hoglins are the hostile row");
-        assert!(!MobKind::Hoglin.neutral());
-        // the registry + egg mapping (kinds 42..=44)
-        assert_eq!(MobKind::Strider.name(), "minecraft:strider");
-        assert_eq!(MobKind::Piglin.name(), "minecraft:piglin");
-        assert_eq!(MobKind::Hoglin.name(), "minecraft:piglin".replace("piglin", "hoglin"));
-        assert_eq!(MobKind::from_name("strider"), Some(MobKind::Strider));
-        assert_eq!(MobKind::from_name("piglin"), Some(MobKind::Piglin));
-        assert_eq!(MobKind::from_name("hoglin"), Some(MobKind::Hoglin));
-        assert_eq!(MobKind::Strider.egg_id(), 42);
-        assert_eq!(MobKind::Piglin.egg_id(), 43);
-        assert_eq!(MobKind::Hoglin.egg_id(), 44);
-        assert_eq!(MobKind::from_egg(42), MobKind::Strider);
-        assert_eq!(MobKind::from_egg(43), MobKind::Piglin);
-        assert_eq!(MobKind::from_egg(44), MobKind::Hoglin);
-        assert_eq!(MobKind::Strider.sprite_tile(), TILE_MOB_STRIDER);
-        assert_eq!(MobKind::Piglin.sprite_tile(), TILE_MOB_PIGLIN);
-        assert_eq!(MobKind::Hoglin.sprite_tile(), TILE_MOB_HOGLIN);
-        // the completeness audit trio: sprites + names + hostility
-        assert_eq!(MobKind::Ghast.sprite_tile(), TILE_MOB_GHAST);
-        assert_eq!(MobKind::CaveSpider.sprite_tile(), TILE_MOB_CAVESPIDER);
-        assert_eq!(MobKind::Silverfish.sprite_tile(), TILE_MOB_SILVERFISH);
-        assert_eq!(MobKind::Ghast.name(), "minecraft:ghast");
-        assert_eq!(MobKind::CaveSpider.name(), "minecraft:cave_spider");
-        assert_eq!(MobKind::Silverfish.name(), "minecraft:silverfish");
-        assert!(MobKind::Ghast.hostile());
-        assert!(MobKind::CaveSpider.hostile());
-        assert!(MobKind::Silverfish.hostile());
-        assert!(MobKind::Ghast.flies());
-        assert!(!MobKind::Silverfish.flies());
-        assert_eq!(MobKind::from_name("ghast"), Some(MobKind::Ghast));
-        assert_eq!(MobKind::from_name("cave_spider"), Some(MobKind::CaveSpider));
-        assert_eq!(MobKind::from_name("silverfish"), Some(MobKind::Silverfish));
-        // the egg window: kinds 45..=47 roundtrip
-        assert_eq!(MobKind::from_egg(45), MobKind::Ghast);
-        assert_eq!(MobKind::from_egg(46), MobKind::CaveSpider);
-        assert_eq!(MobKind::from_egg(47), MobKind::Silverfish);
-        assert_eq!(MobKind::Ghast.egg_id(), 45);
-        assert_eq!(MobKind::CaveSpider.egg_id(), 46);
-        assert_eq!(MobKind::Silverfish.egg_id(), 47);
-        // the verified infobox rows (audit16_page_{Ghast,Cave_Spider,
-        // Silverfish}.json)
-        let gh = def(MobKind::Ghast);
-        assert_eq!(gh.health, 10.0);
-        assert_eq!(gh.damage, 6.0, "fireball impact Normal (VERIFIED)");
-        assert_eq!((gh.height, gh.width), (4.0, 4.0), "the 4x4x4 hitbox");
-        let cs = def(MobKind::CaveSpider);
-        assert_eq!(cs.health, 12.0);
-        assert_eq!(cs.damage, 2.0, "Normal melee (VERIFIED)");
-        assert_eq!((cs.height, cs.width), (0.5, 0.7));
-        let sf = def(MobKind::Silverfish);
-        assert_eq!(sf.health, 8.0);
-        assert_eq!(sf.damage, 1.0, "Easy/Normal attack (VERIFIED)");
-        assert_eq!((sf.height, sf.width), (0.3, 0.4));
-        assert_eq!(sf.xp, 5, "\"no drops other than 5 XP\" (VERIFIED)");
-    }
-
-    /// 1.16: the barter table only yields engine-valid items, with
-    /// vanilla-count ranges (VERIFIED w/Bartering)
-    #[test]
-    fn v116b_barter_table_items() {
-        let mut rng = Rng::new(99);
-        for _ in 0..500 {
-            let (item, count) = piglin_barter_roll(&mut rng);
-            assert!(matches!(
-                item,
-                CRYING_OBSIDIAN
-                    | OBSIDIAN
-                    | GRAVEL
-                    | BLACKSTONE
-                    | LEATHER
-                    | SOUL_SAND
-                    | STRING
-                    | NETHER_QUARTZ
-                    | IRON_NUGGET
-                    | ENDER_PEARL
-            ));
-            assert!((1..=36).contains(&count), "count {count} in range");
+        if stung {
+            break;
         }
     }
-
-    /// 1.16: the piglin barter flow — a gold-ingot use arms the
-    /// 120-tick examine, the countdown ends in a pending_drops entry
-    /// (the piglin "throws" the bartered item, VERIFIED w/Piglin)
-    #[test]
-    fn v116b_piglin_barter_flow() {
-        let world = v115_world();
-        let mut sys = MobSystem::new(21);
-        let id = sys.spawn_at(MobKind::Piglin, 8, 65, 8).unwrap();
-        // the wrong item is refused
-        assert!(!sys.try_barter_piglin(id, STRING));
-        // gold (the iron-ore stand-in) arms the examine
-        assert!(sys.try_barter_piglin(id, IRON_ORE));
-        {
-            let m = sys.list.iter().find(|m| m.id == id).unwrap();
-            assert_eq!(m.aux, 120, "the 6-second examine countdown");
-        }
-        // a second offer while examining is refused
-        assert!(!sys.try_barter_piglin(id, IRON_ORE));
-        // run the countdown out with the player nearby (the AI ticks)
-        sys.player = Some([8.0, 65.0, 10.0]);
-        for _ in 0..130 {
-            sys.tick(&world, (0, 0), i32::MAX);
-            if !sys.pending_drops.is_empty() {
-                break;
-            }
-        }
-        assert!(
-            !sys.pending_drops.is_empty(),
-            "the barter item surfaced through pending_drops"
-        );
-    }
-
-    /// 1.16: the gold-mining anger hook (VERIFIED w/Piglin's
-    /// aggravation rows — mining gold-related blocks angers nearby
-    /// piglins within 16 blocks)
-    #[test]
-    fn v116b_piglin_gold_mining_anger() {
-        let mut sys = MobSystem::new(22);
-        let near = sys.spawn_at(MobKind::Piglin, 8, 65, 8).unwrap();
-        let far = sys.spawn_at(MobKind::Piglin, 40, 65, 40).unwrap();
-        let _strider = sys.spawn_at(MobKind::Strider, 9, 65, 8).unwrap();
-        let n = sys.anger_piglins_near([8.0, 65.0, 8.0], 16.0);
-        assert_eq!(n, 1, "only the nearby piglin angered");
-        assert!(sys.list.iter().find(|m| m.id == near).unwrap().provoked);
-        assert!(!sys.list.iter().find(|m| m.id == far).unwrap().provoked);
-        // the strider is untouched (piglins only)
-        assert!(!sys.list.iter().find(|m| m.id == _strider).unwrap().provoked);
-    }
-
-    /// 1.16: strider breeding — the warped fungus arms love, the pair
-    /// breeds (VERIFIED w/Strider §Breeding)
-    #[test]
-    fn v116b_strider_feeding_and_breeding() {
-        let world = v115_world();
-        let mut sys = MobSystem::new(23);
-        let a = sys.spawn_at(MobKind::Strider, 8, 65, 8).unwrap();
-        let b = sys.spawn_at(MobKind::Strider, 9, 65, 9).unwrap();
-        // the wrong food is refused
-        assert!(sys.try_feed_strider(a, CRIMSON_FUNGUS).is_none());
-        // the first feeding arms love
-        assert_eq!(sys.try_feed_strider(a, WARPED_FUNGUS), Some(StriderFeedOutcome::LoveMode));
-        {
-            let m = sys.list.iter().find(|m| m.id == a).unwrap();
-            assert!(m.variant & 0x80 != 0, "in love");
-        }
-        // the second feeding with a loving partner pairs them
-        assert_eq!(sys.try_feed_strider(b, WARPED_FUNGUS), Some(StriderFeedOutcome::Bred(a)));
-        for id in [a, b] {
-            let m = sys.list.iter().find(|m| m.id == id).unwrap();
-            assert_eq!(m.variant & 0x80, 0, "both exited love");
-        }
-        // a baby strider cannot be fed (maturity-only, disclosed)
-        let kid = sys.spawn_variant(MobKind::Strider, 10, 65, 10, 0x40).unwrap();
-        assert!(sys.try_feed_strider(kid, WARPED_FUNGUS).is_none());
-        // the baby matures on the countdown (the fox pattern)
-        {
-            let m = sys.list.iter_mut().find(|m| m.id == kid).unwrap();
-            m.aux = 2; // short countdown for the test
-        }
-        for _ in 0..3 {
-            sys.tick(&world, (0, 0), i32::MAX);
-        }
-        let m = sys.list.iter().find(|m| m.id == kid).unwrap();
-        assert_eq!(m.variant & 0x40, 0, "grown after the countdown");
-    }
-
-    /// 1.16: hoglin breeding is flee-gated — a warped fungus within 7
-    /// blocks refuses the crimson-fungus feed ("Hoglins cannot be bred
-    /// when they are running away from warped fungi", VERIFIED w/Hoglin)
-    #[test]
-    fn v116b_hoglin_flee_gate() {
-        let mut world = v115_world();
-        let mut sys = MobSystem::new(24);
-        let a = sys.spawn_at(MobKind::Hoglin, 8, 65, 8).unwrap();
-        let b = sys.spawn_at(MobKind::Hoglin, 9, 65, 9).unwrap();
-        // no repel source: the feed flows
-        assert_eq!(
-            sys.try_feed_hoglin(a, CRIMSON_FUNGUS, &world),
-            Some(HoglinFeedOutcome::LoveMode)
-        );
-        // a stays in love (the pairing state); the gate tests below
-        // feed a SECOND hoglin under the repel sources
-        // plant the warped fungus 3 blocks away → the feed refuses
-        let _ = world.set_block(11, 65, 11, WARPED_FUNGUS);
-        assert!(sys.try_feed_hoglin(a, CRIMSON_FUNGUS, &world).is_none());
-        // the respawn anchor repels too (VERIFIED w/Hoglin)
-        let _ = world.set_block(11, 65, 11, RESPAWN_ANCHOR);
-        assert!(sys.try_feed_hoglin(a, CRIMSON_FUNGUS, &world).is_none());
-        let _ = world.set_block(11, 65, 11, 0);
-        // and the pair completes without the repel source
-        assert_eq!(
-            sys.try_feed_hoglin(b, CRIMSON_FUNGUS, &world),
-            Some(HoglinFeedOutcome::Bred(a))
-        );
-    }
-
-    /// 1.16: the strider's lava physics — feet in lava with air above
-    /// = standing on the surface ("walk on top of it without sinking",
-    /// VERIFIED w/Strider); fully submerged = the buoyant ascent
-    #[test]
-    fn v116b_strider_lava_physics() {
-        let mut world = v115_world();
-        // a lava pond at the stone surface
-        for dz in 7..=9i32 {
-            for dx in 7..=9i32 {
-                let _ = world.set_block(dx, 64, dz, LAVA);
-            }
-        }
-        let mut sys = MobSystem::new(25);
-        let id = sys.spawn_at(MobKind::Strider, 8, 64, 8).unwrap();
-        {
-            let m = sys.list.iter_mut().find(|m| m.id == id).unwrap();
-            m.pos = [8.5, 64.0, 8.5]; // feet in the lava cell
-            m.vel = [0.0, -8.0, 0.0]; // a hard sink attempt
-        }
+    assert!(stung, "the angry bee reached + stung the player");
+    assert_eq!(poison, Some(200), "Poison I 10 s (200 ticks) payload");
+    // one sting only: the bee is stung — no further hits, ever
+    sys.hits.clear();
+    for _ in 0..60 {
         sys.tick(&world, (0, 0), i32::MAX);
-        let m = sys.list.iter().find(|m| m.id == id).unwrap();
-        assert!(m.on_ground, "standing on the lava surface");
-        assert_eq!(m.vel[1], 0.0, "no sinking");
-        assert!((m.pos[1] - 64.0).abs() < 0.1, "still at the surface");
-        // submerged: rises out (VERIFIED)
-        {
-            let m = sys.list.iter_mut().find(|m| m.id == id).unwrap();
-            m.pos = [8.5, 64.0, 8.5];
-        }
-        // cover the cell above with lava too → submerged → ascent
-        for dz in 7..=9i32 {
-            for dx in 7..=9i32 {
-                let _ = world.set_block(dx, 65, dz, LAVA);
-            }
-        }
+        assert!(sys.hits.is_empty(), "no second sting");
+    }
+    let m = sys.by_id(id).unwrap();
+    let b = m.bee.as_ref().unwrap();
+    assert!(b.stung, "stinger spent");
+    // the timer armed at 1200 and already counts down — the observed
+    // window (sting tick .. now) is small vs the 1200 span
+    assert!(
+        b.death_t > crate::bees::STING_DEATH_TICKS - 100,
+        "1200-tick death timer (armed, now {})",
+        b.death_t
+    );
+    let armed = b.death_t;
+    // the death timer: fast-forward to the 1200-tick mark — the
+    // bee dies (the deaths queue fires; no item drops)
+    let before = sys.list.iter().filter(|m| m.kind == MobKind::Bee).count();
+    assert_eq!(before, 1);
+    for _ in 0..(armed + 20) {
         sys.tick(&world, (0, 0), i32::MAX);
-        let m = sys.list.iter().find(|m| m.id == id).unwrap();
-        assert!(m.vel[1] > 0.0, "rising out of the lava (vel {})", m.vel[1]);
     }
+    assert!(
+        sys.list.iter().all(|m| m.kind != MobKind::Bee),
+        "the stung bee died on the timer"
+    );
+}
 
-    /// 1.16: striders take water damage at the 0.5 s cadence ("1 HP
-    /// per ... half-second in water", VERIFIED w/Strider)
-    #[test]
-    fn v116b_strider_water_damage() {
-        let mut world = v115_world();
-        for dz in 7..=9i32 {
-            for dx in 7..=9i32 {
-                let _ = world.set_block(dx, 64, dz, WATER);
-                let _ = world.set_block(dx, 65, dz, WATER);
-            }
-        }
-        let mut sys = MobSystem::new(26);
-        let id = sys.spawn_at(MobKind::Strider, 8, 64, 8).unwrap();
-        let hp0 = def(MobKind::Strider).health;
-        for _ in 0..10 {
-            sys.tick(&world, (0, 0), i32::MAX);
-        }
-        let m = sys.list.iter().find(|m| m.id == id).unwrap();
-        assert!(m.health < hp0, "water damages striders (hp {})", m.health);
-        // the control: a piglin in water is untouched (the strider rule)
-        let pid = sys.spawn_at(MobKind::Piglin, 8, 64, 9).unwrap();
-        let php0 = def(MobKind::Piglin).health;
-        for _ in 0..10 {
-            sys.tick(&world, (0, 0), i32::MAX);
-        }
-        let p = sys.list.iter().find(|m| m.id == pid).unwrap();
-        assert_eq!(p.health, php0, "piglins take no water damage");
+/// the anger swarm: attacking one bee angers the family + the
+/// 16-block neighbors; the anger window is 20-39 s (VERIFIED)
+#[test]
+fn v115_anger_swarm() {
+    let _world = v115_world();
+    let mut sys = MobSystem::new(10);
+    let a = sys.spawn_at(MobKind::Bee, 6, 66, 6).unwrap();
+    let b = sys.spawn_at(MobKind::Bee, 8, 66, 8).unwrap(); // near
+    let far = sys.spawn_at(MobKind::Bee, 40, 66, 40).unwrap(); // far, no family
+    sys.set_bee(a, [3, 66, 3], false);
+    sys.set_bee(b, [3, 66, 3], false); // same hive family
+    sys.set_bee(far, [60, 66, 60], false);
+    let n = sys.anger_bees_near([6.5, 66.0, 6.5], Some([3, 66, 3]));
+    assert_eq!(n, 2, "family + near angered; far stranger not");
+    for id in [a, b] {
+        let t = sys.by_id(id).unwrap().bee.as_ref().unwrap().anger_t;
+        assert!(
+            (ANGER_TICKS_MIN_ROLL..=ANGER_TICKS_MAX).contains(&t),
+            "anger window 20-39 s: {t}"
+        );
     }
+    assert_eq!(sys.by_id(far).unwrap().bee.as_ref().unwrap().anger_t, 0);
+}
+
+/// the flower feeding: first feeding arms love; a second with a
+/// loving partner pairs → Bred (VERIFIED w/Bee §Breeding)
+#[test]
+fn v115_bee_breeding_flow() {
+    let mut sys = MobSystem::new(11);
+    let a = sys.spawn_at(MobKind::Bee, 6, 66, 6).unwrap();
+    let b = sys.spawn_at(MobKind::Bee, 8, 66, 8).unwrap();
+    assert_eq!(sys.try_feed_bee(a), Some(BeeFeedOutcome::LoveMode));
+    assert_eq!(sys.try_feed_bee(a), None, "already in love — ignored");
+    assert_eq!(sys.try_feed_bee(b), Some(BeeFeedOutcome::Bred(a)));
+    // both loves cleared after the pairing
+    for id in [a, b] {
+        assert_eq!(sys.by_id(id).unwrap().bee.as_ref().unwrap().love_t, 0);
+    }
+    // babies never breed
+    let kid = sys.spawn_at(MobKind::Bee, 6, 66, 10).unwrap();
+    if let Some(m) = sys.list.iter_mut().find(|m| m.id == kid) {
+        if let Some(bs) = m.bee.as_mut() {
+            bs.baby = true;
+        }
+    }
+    assert!(sys.try_feed_bee(kid).is_none(), "babies don't breed");
+}
+
+/// the hive trip: a nectar bee in PH_TO_HIVE reaches the hive,
+/// leaves the mob list (the enter queue), and the sting-less
+/// night return works the same (VERIFIED w/Bee §Housing)
+#[test]
+fn v115_bee_enters_hive() {
+    let world = v115_world();
+    let mut sys = MobSystem::new(12);
+    sys.is_day = true;
+    let id = sys.spawn_at(MobKind::Bee, 6, 68, 6).unwrap();
+    sys.set_bee(id, [8, 66, 8], false);
+    if let Some(m) = sys.by_id_mut(id) {
+        if let Some(b) = m.bee.as_mut() {
+            b.nectar = true;
+            b.phase = crate::bees::PH_TO_HIVE;
+        }
+    }
+    for _ in 0..200 {
+        sys.tick(&world, (0, 0), i32::MAX);
+        if !sys.bee_enters.is_empty() {
+            break;
+        }
+    }
+    assert!(!sys.bee_enters.is_empty(), "the bee reached the hive");
+    let (bid, hive, nectar) = sys.bee_enters[0];
+    assert_eq!(bid, id);
+    assert_eq!(hive, [8, 66, 8]);
+    assert!(nectar, "carried nectar");
+    // the arrival pass removes it from the list (same tick)
+    assert!(sys.list.iter().all(|m| m.id != id), "mob left the list");
+}
+
+/// 2026-09-19 (the roof-approach regression the smoke lifecycle check
+/// exposed): a bee returning from DIRECTLY ABOVE a real solid
+/// BEEHIVE block must still enter. The pre-fix geometry homed on the
+/// front-face point (h[1]−0.4) with a 1.2 squared threshold — mob
+/// collision lands a roof-approaching bee ON the hive at squared
+/// distance ~1.96, so it hovered forever (the smoke's old lifecycle
+/// form passed vacuously through natural-hive releases and never
+/// caught it). The cell-center target + 1.8 threshold admits roof,
+/// side, and front approaches.
+#[test]
+fn v115_bee_enters_hive_from_directly_above() {
+    let mut world = v115_world();
+    // a REAL solid hive block — the collision geometry engaged (the
+    // sibling test's hive is an air cell, which is why this case
+    // was never covered)
+    world.set_block(8, 66, 8, BEEHIVE);
+    let mut sys = MobSystem::new(13);
+    sys.is_day = true;
+    // directly above the hive — the common forage-return approach
+    let id = sys.spawn_at(MobKind::Bee, 8, 69, 8).unwrap();
+    sys.set_bee(id, [8, 66, 8], false);
+    if let Some(m) = sys.by_id_mut(id) {
+        if let Some(b) = m.bee.as_mut() {
+            b.nectar = true;
+            b.phase = crate::bees::PH_TO_HIVE;
+        }
+    }
+    for _ in 0..200 {
+        sys.tick(&world, (0, 0), i32::MAX);
+        if !sys.bee_enters.is_empty() {
+            break;
+        }
+    }
+    assert!(
+        !sys.bee_enters.is_empty(),
+        "a roof-approaching bee must enter the hive (the pre-fix geometry stranded it on the roof)"
+    );
+    assert!(sys.list.iter().all(|m| m.id != id), "mob left the list");
+}
+
+// ------------- 1.16 (Nether Update, part 2) tests -------------
+
+/// the MOB_DATA rows (all VERIFIED against the v116b captures)
+#[test]
+fn v116b_forest_mob_def_rows() {
+    let s = def(MobKind::Strider);
+    assert_eq!(s.health, 20.0);
+    assert_eq!(s.damage, 0.0);
+    assert_eq!(s.speed_attr, 0.175);
+    assert_eq!((s.height, s.width), (1.7, 0.9));
+    let p = def(MobKind::Piglin);
+    assert_eq!(p.health, 16.0);
+    assert_eq!(p.damage, 8.0); // the golden-sword Normal row
+    assert_eq!(p.speed_attr, 0.35);
+    assert_eq!((p.height, p.width), (1.95, 0.6));
+    let h = def(MobKind::Hoglin);
+    assert_eq!(h.health, 40.0);
+    assert_eq!(h.damage, 5.5); // the 3-8 Normal midpoint, disclosed
+    assert_eq!(h.speed_attr, 0.3);
+    assert_eq!((h.height, h.width), (1.4, 1.3965));
+    // the classification rows
+    assert!(!MobKind::Strider.neutral() && !MobKind::Strider.hostile());
+    assert!(
+        MobKind::Piglin.neutral(),
+        "piglins are the neutral (adult) row"
+    );
+    assert!(!MobKind::Piglin.hostile());
+    assert!(MobKind::Hoglin.hostile(), "hoglins are the hostile row");
+    assert!(!MobKind::Hoglin.neutral());
+    // the registry + egg mapping (kinds 42..=44)
+    assert_eq!(MobKind::Strider.name(), "minecraft:strider");
+    assert_eq!(MobKind::Piglin.name(), "minecraft:piglin");
+    assert_eq!(
+        MobKind::Hoglin.name(),
+        "minecraft:piglin".replace("piglin", "hoglin")
+    );
+    assert_eq!(MobKind::from_name("strider"), Some(MobKind::Strider));
+    assert_eq!(MobKind::from_name("piglin"), Some(MobKind::Piglin));
+    assert_eq!(MobKind::from_name("hoglin"), Some(MobKind::Hoglin));
+    assert_eq!(MobKind::Strider.egg_id(), 42);
+    assert_eq!(MobKind::Piglin.egg_id(), 43);
+    assert_eq!(MobKind::Hoglin.egg_id(), 44);
+    assert_eq!(MobKind::from_egg(42), MobKind::Strider);
+    assert_eq!(MobKind::from_egg(43), MobKind::Piglin);
+    assert_eq!(MobKind::from_egg(44), MobKind::Hoglin);
+    assert_eq!(MobKind::Strider.sprite_tile(), TILE_MOB_STRIDER);
+    assert_eq!(MobKind::Piglin.sprite_tile(), TILE_MOB_PIGLIN);
+    assert_eq!(MobKind::Hoglin.sprite_tile(), TILE_MOB_HOGLIN);
+    // the completeness audit trio: sprites + names + hostility
+    assert_eq!(MobKind::Ghast.sprite_tile(), TILE_MOB_GHAST);
+    assert_eq!(MobKind::CaveSpider.sprite_tile(), TILE_MOB_CAVESPIDER);
+    assert_eq!(MobKind::Silverfish.sprite_tile(), TILE_MOB_SILVERFISH);
+    assert_eq!(MobKind::Ghast.name(), "minecraft:ghast");
+    assert_eq!(MobKind::CaveSpider.name(), "minecraft:cave_spider");
+    assert_eq!(MobKind::Silverfish.name(), "minecraft:silverfish");
+    assert!(MobKind::Ghast.hostile());
+    assert!(MobKind::CaveSpider.hostile());
+    assert!(MobKind::Silverfish.hostile());
+    assert!(MobKind::Ghast.flies());
+    assert!(!MobKind::Silverfish.flies());
+    assert_eq!(MobKind::from_name("ghast"), Some(MobKind::Ghast));
+    assert_eq!(MobKind::from_name("cave_spider"), Some(MobKind::CaveSpider));
+    assert_eq!(MobKind::from_name("silverfish"), Some(MobKind::Silverfish));
+    // the egg window: kinds 45..=47 roundtrip
+    assert_eq!(MobKind::from_egg(45), MobKind::Ghast);
+    assert_eq!(MobKind::from_egg(46), MobKind::CaveSpider);
+    assert_eq!(MobKind::from_egg(47), MobKind::Silverfish);
+    assert_eq!(MobKind::Ghast.egg_id(), 45);
+    assert_eq!(MobKind::CaveSpider.egg_id(), 46);
+    assert_eq!(MobKind::Silverfish.egg_id(), 47);
+    // the verified infobox rows (audit16_page_{Ghast,Cave_Spider,
+    // Silverfish}.json)
+    let gh = def(MobKind::Ghast);
+    assert_eq!(gh.health, 10.0);
+    assert_eq!(gh.damage, 6.0, "fireball impact Normal (VERIFIED)");
+    assert_eq!((gh.height, gh.width), (4.0, 4.0), "the 4x4x4 hitbox");
+    let cs = def(MobKind::CaveSpider);
+    assert_eq!(cs.health, 12.0);
+    assert_eq!(cs.damage, 2.0, "Normal melee (VERIFIED)");
+    assert_eq!((cs.height, cs.width), (0.5, 0.7));
+    let sf = def(MobKind::Silverfish);
+    assert_eq!(sf.health, 8.0);
+    assert_eq!(sf.damage, 1.0, "Easy/Normal attack (VERIFIED)");
+    assert_eq!((sf.height, sf.width), (0.3, 0.4));
+    assert_eq!(sf.xp, 5, "\"no drops other than 5 XP\" (VERIFIED)");
+}
+
+/// 1.16: the barter table only yields engine-valid items, with
+/// vanilla-count ranges (VERIFIED w/Bartering)
+#[test]
+fn v116b_barter_table_items() {
+    let mut rng = Rng::new(99);
+    for _ in 0..500 {
+        let (item, count) = piglin_barter_roll(&mut rng);
+        assert!(matches!(
+            item,
+            CRYING_OBSIDIAN
+                | OBSIDIAN
+                | GRAVEL
+                | BLACKSTONE
+                | LEATHER
+                | SOUL_SAND
+                | STRING
+                | NETHER_QUARTZ
+                | IRON_NUGGET
+                | ENDER_PEARL
+        ));
+        assert!((1..=36).contains(&count), "count {count} in range");
+    }
+}
+
+/// 1.16: the piglin barter flow — a gold-ingot use arms the
+/// 120-tick examine, the countdown ends in a pending_drops entry
+/// (the piglin "throws" the bartered item, VERIFIED w/Piglin)
+#[test]
+fn v116b_piglin_barter_flow() {
+    let world = v115_world();
+    let mut sys = MobSystem::new(21);
+    let id = sys.spawn_at(MobKind::Piglin, 8, 65, 8).unwrap();
+    // the wrong item is refused
+    assert!(!sys.try_barter_piglin(id, STRING));
+    // gold (the iron-ore stand-in) arms the examine
+    assert!(sys.try_barter_piglin(id, IRON_ORE));
+    {
+        let m = sys.list.iter().find(|m| m.id == id).unwrap();
+        assert_eq!(m.aux, 120, "the 6-second examine countdown");
+    }
+    // a second offer while examining is refused
+    assert!(!sys.try_barter_piglin(id, IRON_ORE));
+    // run the countdown out with the player nearby (the AI ticks)
+    sys.player = Some([8.0, 65.0, 10.0]);
+    for _ in 0..130 {
+        sys.tick(&world, (0, 0), i32::MAX);
+        if !sys.pending_drops.is_empty() {
+            break;
+        }
+    }
+    assert!(
+        !sys.pending_drops.is_empty(),
+        "the barter item surfaced through pending_drops"
+    );
+}
+
+/// 1.16: the gold-mining anger hook (VERIFIED w/Piglin's
+/// aggravation rows — mining gold-related blocks angers nearby
+/// piglins within 16 blocks)
+#[test]
+fn v116b_piglin_gold_mining_anger() {
+    let mut sys = MobSystem::new(22);
+    let near = sys.spawn_at(MobKind::Piglin, 8, 65, 8).unwrap();
+    let far = sys.spawn_at(MobKind::Piglin, 40, 65, 40).unwrap();
+    let _strider = sys.spawn_at(MobKind::Strider, 9, 65, 8).unwrap();
+    let n = sys.anger_piglins_near([8.0, 65.0, 8.0], 16.0);
+    assert_eq!(n, 1, "only the nearby piglin angered");
+    assert!(sys.list.iter().find(|m| m.id == near).unwrap().provoked);
+    assert!(!sys.list.iter().find(|m| m.id == far).unwrap().provoked);
+    // the strider is untouched (piglins only)
+    assert!(!sys.list.iter().find(|m| m.id == _strider).unwrap().provoked);
+}
+
+/// 1.16: strider breeding — the warped fungus arms love, the pair
+/// breeds (VERIFIED w/Strider §Breeding)
+#[test]
+fn v116b_strider_feeding_and_breeding() {
+    let world = v115_world();
+    let mut sys = MobSystem::new(23);
+    let a = sys.spawn_at(MobKind::Strider, 8, 65, 8).unwrap();
+    let b = sys.spawn_at(MobKind::Strider, 9, 65, 9).unwrap();
+    // the wrong food is refused
+    assert!(sys.try_feed_strider(a, CRIMSON_FUNGUS).is_none());
+    // the first feeding arms love
+    assert_eq!(
+        sys.try_feed_strider(a, WARPED_FUNGUS),
+        Some(StriderFeedOutcome::LoveMode)
+    );
+    {
+        let m = sys.list.iter().find(|m| m.id == a).unwrap();
+        assert!(m.variant & 0x80 != 0, "in love");
+    }
+    // the second feeding with a loving partner pairs them
+    assert_eq!(
+        sys.try_feed_strider(b, WARPED_FUNGUS),
+        Some(StriderFeedOutcome::Bred(a))
+    );
+    for id in [a, b] {
+        let m = sys.list.iter().find(|m| m.id == id).unwrap();
+        assert_eq!(m.variant & 0x80, 0, "both exited love");
+    }
+    // a baby strider cannot be fed (maturity-only, disclosed)
+    let kid = sys
+        .spawn_variant(MobKind::Strider, 10, 65, 10, 0x40)
+        .unwrap();
+    assert!(sys.try_feed_strider(kid, WARPED_FUNGUS).is_none());
+    // the baby matures on the countdown (the fox pattern)
+    {
+        let m = sys.list.iter_mut().find(|m| m.id == kid).unwrap();
+        m.aux = 2; // short countdown for the test
+    }
+    for _ in 0..3 {
+        sys.tick(&world, (0, 0), i32::MAX);
+    }
+    let m = sys.list.iter().find(|m| m.id == kid).unwrap();
+    assert_eq!(m.variant & 0x40, 0, "grown after the countdown");
+}
+
+/// 1.16: hoglin breeding is flee-gated — a warped fungus within 7
+/// blocks refuses the crimson-fungus feed ("Hoglins cannot be bred
+/// when they are running away from warped fungi", VERIFIED w/Hoglin)
+#[test]
+fn v116b_hoglin_flee_gate() {
+    let mut world = v115_world();
+    let mut sys = MobSystem::new(24);
+    let a = sys.spawn_at(MobKind::Hoglin, 8, 65, 8).unwrap();
+    let b = sys.spawn_at(MobKind::Hoglin, 9, 65, 9).unwrap();
+    // no repel source: the feed flows
+    assert_eq!(
+        sys.try_feed_hoglin(a, CRIMSON_FUNGUS, &world),
+        Some(HoglinFeedOutcome::LoveMode)
+    );
+    // a stays in love (the pairing state); the gate tests below
+    // feed a SECOND hoglin under the repel sources
+    // plant the warped fungus 3 blocks away → the feed refuses
+    let _ = world.set_block(11, 65, 11, WARPED_FUNGUS);
+    assert!(sys.try_feed_hoglin(a, CRIMSON_FUNGUS, &world).is_none());
+    // the respawn anchor repels too (VERIFIED w/Hoglin)
+    let _ = world.set_block(11, 65, 11, RESPAWN_ANCHOR);
+    assert!(sys.try_feed_hoglin(a, CRIMSON_FUNGUS, &world).is_none());
+    let _ = world.set_block(11, 65, 11, 0);
+    // and the pair completes without the repel source
+    assert_eq!(
+        sys.try_feed_hoglin(b, CRIMSON_FUNGUS, &world),
+        Some(HoglinFeedOutcome::Bred(a))
+    );
+}
+
+/// 1.16: the strider's lava physics — feet in lava with air above
+/// = standing on the surface ("walk on top of it without sinking",
+/// VERIFIED w/Strider); fully submerged = the buoyant ascent
+#[test]
+fn v116b_strider_lava_physics() {
+    let mut world = v115_world();
+    // a lava pond at the stone surface
+    for dz in 7..=9i32 {
+        for dx in 7..=9i32 {
+            let _ = world.set_block(dx, 64, dz, LAVA);
+        }
+    }
+    let mut sys = MobSystem::new(25);
+    let id = sys.spawn_at(MobKind::Strider, 8, 64, 8).unwrap();
+    {
+        let m = sys.list.iter_mut().find(|m| m.id == id).unwrap();
+        m.pos = [8.5, 64.0, 8.5]; // feet in the lava cell
+        m.vel = [0.0, -8.0, 0.0]; // a hard sink attempt
+    }
+    sys.tick(&world, (0, 0), i32::MAX);
+    let m = sys.list.iter().find(|m| m.id == id).unwrap();
+    assert!(m.on_ground, "standing on the lava surface");
+    assert_eq!(m.vel[1], 0.0, "no sinking");
+    assert!((m.pos[1] - 64.0).abs() < 0.1, "still at the surface");
+    // submerged: rises out (VERIFIED)
+    {
+        let m = sys.list.iter_mut().find(|m| m.id == id).unwrap();
+        m.pos = [8.5, 64.0, 8.5];
+    }
+    // cover the cell above with lava too → submerged → ascent
+    for dz in 7..=9i32 {
+        for dx in 7..=9i32 {
+            let _ = world.set_block(dx, 65, dz, LAVA);
+        }
+    }
+    sys.tick(&world, (0, 0), i32::MAX);
+    let m = sys.list.iter().find(|m| m.id == id).unwrap();
+    assert!(m.vel[1] > 0.0, "rising out of the lava (vel {})", m.vel[1]);
+}
+
+/// 1.16: striders take water damage at the 0.5 s cadence ("1 HP
+/// per ... half-second in water", VERIFIED w/Strider)
+#[test]
+fn v116b_strider_water_damage() {
+    let mut world = v115_world();
+    for dz in 7..=9i32 {
+        for dx in 7..=9i32 {
+            let _ = world.set_block(dx, 64, dz, WATER);
+            let _ = world.set_block(dx, 65, dz, WATER);
+        }
+    }
+    let mut sys = MobSystem::new(26);
+    let id = sys.spawn_at(MobKind::Strider, 8, 64, 8).unwrap();
+    let hp0 = def(MobKind::Strider).health;
+    for _ in 0..10 {
+        sys.tick(&world, (0, 0), i32::MAX);
+    }
+    let m = sys.list.iter().find(|m| m.id == id).unwrap();
+    assert!(m.health < hp0, "water damages striders (hp {})", m.health);
+    // the control: a piglin in water is untouched (the strider rule)
+    let pid = sys.spawn_at(MobKind::Piglin, 8, 64, 9).unwrap();
+    let php0 = def(MobKind::Piglin).health;
+    for _ in 0..10 {
+        sys.tick(&world, (0, 0), i32::MAX);
+    }
+    let p = sys.list.iter().find(|m| m.id == pid).unwrap();
+    assert_eq!(p.health, php0, "piglins take no water damage");
+}
 
 #[cfg(test)]
 mod round12b_mount_storage_tests {
@@ -9530,11 +9896,7 @@ mod round12b_mount_storage_tests {
         ] {
             let id = ms.spawn_at(kind, 0, 65, 0).unwrap();
             let m = ms.by_id(id).unwrap();
-            assert_eq!(
-                m.storage.is_some(),
-                has,
-                "{kind:?} storage presence"
-            );
+            assert_eq!(m.storage.is_some(), has, "{kind:?} storage presence");
             if matches!(kind, MobKind::Donkey | MobKind::Mule) {
                 assert_eq!(m.storage.as_ref().unwrap().capacity(), 15);
             }

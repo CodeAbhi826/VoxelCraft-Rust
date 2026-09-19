@@ -5703,3 +5703,15 @@ the round ships through CI (commit fc00753): the full test suite
 tests + the labPBR scan test + the ID-space guards with the new
 240..=249 block), then the wasm bundle + the single-file Linux
 build.
+
+The follow-up loop: the first push tripped one real compile error
+(E0382 — the scan closure moved `p.name` before `p.summary()` borrowed
+the pack; fixed by computing the summary first) and one dead-code
+warning (the new test module lacked `#[cfg(test)]`). The second push
+was green on CI + Build WASM; the single-file Linux job failed only on
+its menu.log grep for the renamed settings-tree line — the workflow
+now also greps the two new screen transitions (`video -> shaders` /
+`shaders -> video`), pinning the Shaders screen leg in the smoke
+contract. Final state (d550f00): all three workflows green, the wasm
+bundle rebuilt and committed (2a5a562), and the preview serves the new
+bundle (md5-verified).

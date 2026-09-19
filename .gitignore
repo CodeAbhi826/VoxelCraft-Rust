@@ -92,6 +92,12 @@ voxelcraft/logs/
 voxelcraft/resourcepacks/*
 !voxelcraft/resourcepacks/.gitkeep
 !voxelcraft/resourcepacks/README.md
+# 2026-09-20: user-dropped shader packs never enter the repo (only the
+# folder README + gitkeep ship — the legal rule: third-party shader
+# packs are user downloads, never redistributed by us)
+voxelcraft/shader-packs/*
+!voxelcraft/shader-packs/.gitkeep
+!voxelcraft/shader-packs/README.md
 /builtin-pack/
 /downloaded_build/
 /options.txt

@@ -305,6 +305,20 @@ pub struct Settings {
     /// measurements). Falls back to CPU automatically when the adapter
     /// lacks compute or a chunk needs the cross/model special paths.
     pub gpu_meshing: bool,
+    /// 2026-09-20 round: the ACTIVE external shader pack (None = the
+    /// vanilla post pipeline — the default and the honest state until
+    /// the vc-iris translator sister project registers). The name is
+    /// the shader-packs/ folder the user dropped an Iris-format pack
+    /// into (BSL/SEUS-style — third-party downloads, never shipped by
+    /// us; docs/LEGAL-COMPLIANCE.md §4.4). Selecting a pack the scan
+    /// can validate stores the name here; the structural analysis
+    /// (tier/passes/uniforms) is reported on the screen's rows.
+    pub shader_pack: Option<String>,
+    /// 2026-09-20 round: labPBR 1.3 materials (NAPP-style `_n`/`_s`
+    /// resource-pack maps). OFF = the vanilla look (default); ON feeds
+    /// the decoded LabPBR material maps through the PBR path when the
+    /// resource pack provides them (pbr.rs + the pack-merge detection).
+    pub labpbr: bool,
 }
 
 impl Default for Settings {
@@ -367,6 +381,10 @@ impl Default for Settings {
             gpu_meshing: false,
             #[cfg(not(target_arch = "wasm32"))]
             gpu_meshing: true,
+            // 2026-09-20: no active shader pack + labPBR off — the
+            // vanilla post pipeline is the default look
+            shader_pack: None,
+            labpbr: false,
         }
     }
 }
@@ -569,6 +587,11 @@ impl Settings {
         if !self.resource_packs.is_empty() {
             s.push_str(&format!(";packs={}", self.resource_packs.join("|")));
         }
+        // 2026-09-20: the shader-pack selection + labPBR toggle
+        if let Some(pack) = &self.shader_pack {
+            s.push_str(&format!(";shaderpack={pack}"));
+        }
+        s.push_str(&format!(";labpbr={}", self.labpbr as u8));
         // Round 15b: the Saved Hotbars rows (vanilla keeps these in a
         // separate hotbar.nbt — the options store is the engine's
         // documented adaptation; row format "block:count,block:count,.."
@@ -661,6 +684,17 @@ impl Settings {
                 // (Off/Vanilla+/Cinematic) — parsed, ignored: the engine
                 // post pipeline is vanilla-only now
                 "shader" => {}
+                // 2026-09-20: the external shader-pack selection (an
+                // unknown/stale name re-validates against the live scan
+                // when the Shaders screen opens — deserialize keeps it)
+                "shaderpack" => {
+                    st.shader_pack = if v.is_empty() || v == "(none)" {
+                        None
+                    } else {
+                        Some(v.to_string())
+                    }
+                }
+                "labpbr" => st.labpbr = v == "1",
                 "shadowq" => st.shadow_quality = v.parse().unwrap_or(0).min(3),
                 "upscale" => st.upscale = v.parse().unwrap_or(st.upscale).min(2),
                 "maxfps" => st.maxfps = v.parse().unwrap_or(st.maxfps).min(3),
@@ -763,14 +797,18 @@ pub enum Screen {
     /// Video = the exact vanilla screen; Engine = our extras; Packs =
     /// the REAL resource-pack manager (2026-09-14); Access =
     /// accessibility (auto-jump).
-    /// 2026-09-14 (user directive): the Iris-style SHADER PACKS screen
-    /// and every pre-created engine shader mode/pack (Vanilla+ /
-    /// Cinematic / builtin WGSL presets) are REMOVED — vanilla 1.16.5
-    /// ships no shader screen; the post pipeline is vanilla-only.
+    /// 2026-09-20 (user directive — restored by request): Shaders = the
+    /// OptiFine/Iris-style EXTERNAL pack selector (reached from Video's
+    /// SHADERS... row). No built-in shader packs exist — the screen
+    /// lists user-dropped packs from shader-packs/ only (BSL/SEUS-style
+    /// third-party downloads; docs/LEGAL-COMPLIANCE.md). The GLSL
+    /// translation itself is the vc-iris sister project's job, so the
+    /// post pipeline stays vanilla until it registers.
     Video,
     Engine,
     Packs,
     Access,
+    Shaders,
     /// Round 14 (2026-09-15): the vanilla Music & Sound screen — ten
     /// per-category volume sliders (w/Options §Music & Sound)
     MusicSound,
@@ -889,6 +927,7 @@ impl Screen {
             Screen::Engine => "engine",
             Screen::Packs => "packs",
             Screen::Access => "access",
+            Screen::Shaders => "shaders",
             Screen::MusicSound => "musicsound",
             Screen::Controls => "controls",
             Screen::Language => "language",
@@ -908,6 +947,7 @@ impl Screen {
                 | Screen::Engine
                 | Screen::Packs
                 | Screen::Access
+                | Screen::Shaders
                 | Screen::MusicSound
                 | Screen::Controls
                 | Screen::Language
@@ -1632,6 +1672,17 @@ pub struct GameApp {
     builtin_pack: Option<std::sync::Arc<dyn vc_pack::pack::PackSource>>,
     programmer_art: Option<std::sync::Arc<dyn vc_pack::pack::PackSource>>,
     user_packs: Vec<(String, std::sync::Arc<dyn vc_pack::pack::PackSource>)>,
+    /// 2026-09-20: the scanned EXTERNAL shader packs (name, one-line
+    /// analysis summary) from shader-packs/ — refreshed by
+    /// scan_shader_packs() at boot and on entering the Shaders screen
+    /// (native only; wasm stays honestly empty). Selection lives in
+    /// settings.shader_pack; this is the live list the rows render.
+    shader_packs: Vec<(String, String)>,
+    /// 2026-09-20: how many atlas tiles gained labPBR material maps
+    /// (`_n`/`_s` companions) from the enabled resource-pack stack —
+    /// the count behind the Shaders screen's LABPBR MATERIALS row and
+    /// the E2E iris report (0 = no NAPP-style pack active)
+    labpbr_tiles: usize,
     /// set when the Selected list was edited — DONE applies the stack
     /// (recompile atlas + GUI sheets + remesh) and persists options
     pack_stack_dirty: bool,
@@ -2231,6 +2282,15 @@ impl GameApp {
         let user_packs: Vec<(String, std::sync::Arc<dyn vc_pack::pack::PackSource>)> = Vec::new();
         let enabled_packs = enabled_pack_sources(&settings, &programmer_art, &user_packs);
         let (mut atlas, animations) = compile_pack_atlas(builtin_pack.as_ref(), &enabled_packs);
+        // 2026-09-20: the labPBR material scan over the enabled stack —
+        // each pack's `_n`/`_s` companion coverage; the strongest pack's
+        // count is the honest headline number (per-tile union is the
+        // renderer's job when materials activate)
+        let labpbr_tiles = enabled_packs
+            .iter()
+            .map(|s| vc_render::textures::scan_labpbr_materials(s.as_ref()))
+            .max()
+            .unwrap_or(0);
         vc_render::textures::draw_missing_tile(&mut atlas);
         let t_pack = t_boot.elapsed();
 
@@ -2508,6 +2568,8 @@ impl GameApp {
             builtin_pack,
             programmer_art,
             user_packs,
+            shader_packs: Vec::new(), // native: filled by the boot scan
+            labpbr_tiles, // the boot-time material-map count (0 on wasm)
             pack_stack_dirty: false,
             mining: None,
             held_swing: 0.0,
@@ -2703,6 +2765,12 @@ impl GameApp {
         app.renderer.set_vsync(app.settings.vsync);
         app.particles.density = app.settings.particle_density();
         app.apply_fullscreen();
+        // 2026-09-20: the boot-time shader-pack scan (native only — wasm
+        // has no filesystem, so the Shaders screen lists nothing there).
+        // Kept out of the struct literal so a scan failure can never
+        // abort the boot; the screen's own entry re-scans live anyway.
+        #[cfg(not(target_arch = "wasm32"))]
+        app.scan_shader_packs();
         // Round 10: resolve the vanilla integer GUI scale at boot — the
         // live canvas sizes to the persisted setting (Auto default) from
         // the first frame, before any menu lays out
@@ -3356,6 +3424,10 @@ impl GameApp {
                             // vanilla: ESC on a sub-screen returns to Options
                             self.set_screen(Screen::Options)
                         }
+                        // 2026-09-20: the Shaders screen's parent is Video
+                        // (the OptiFine/Iris navigation: ESC steps back to
+                        // the Video Settings screen, not Options)
+                        Screen::Shaders => self.set_screen(Screen::Video),
                         Screen::WorldCreate => self.cancel_world_create(),
                         Screen::WorldEdit => self.set_screen(Screen::WorldSelect),
                         Screen::WorldSelect => self.set_screen(Screen::Title),
@@ -4286,6 +4358,24 @@ impl GameApp {
                 return self.pack_tooltip(&key);
             }
         }
+        // 2026-09-20: shader-pack rows describe the hovered pack — the
+        // honest Iris analysis (tier + passes; the GLSL translation
+        // status rides the second line)
+        if (ui::ID_SHDR_BASE
+            ..ui::ID_SHDR_BASE + ui::MAX_SHDR_ENTRIES as u16)
+            .contains(&id)
+        {
+            if let Some((name, summary)) = self
+                .shader_packs
+                .get((id - ui::ID_SHDR_BASE) as usize)
+                .cloned()
+            {
+                return vec![
+                    format!("{name} (external pack)"),
+                    format!("{summary}"),
+                ];
+            }
+        }
         Self::tooltip_for(id, &self.settings)
     }
 
@@ -4355,6 +4445,20 @@ impl GameApp {
             ),
             ID_OPT_ACCESS => l("Accessibility options. Currently: Auto-Jump."),
             ID_OPT_VIDEO => l("The video settings screen."),
+            // 2026-09-20: the Shaders screen family tooltips
+            ID_OPT_SHADERS => l2(
+                "Select an external shader pack (BSL / SEUS style).",
+                "Packs are dropped into the shader-packs/ folder.",
+            ),
+            ID_SHDR_NONE => l2(
+                "No shader pack: the vanilla look.",
+                "The engine ships no built-in shaders.",
+            ),
+            ID_SHDR_LABPBR => l2(
+                "Use labPBR material maps (_n / _s textures) from",
+                "resource packs when they provide them. Off = vanilla.",
+            ),
+            ID_SHDR_DONE => l("Back to the video settings."),
             ID_OPT_ENGINE => l("Engine-specific options: meshing, culling and quality knobs."),
             ID_OPT_DONE | ID_OPT_DONE2 => l("Save and go back."),
             ID_OPT_RD => l("How far terrain renders, in chunks. Fewer chunks render faster."),
@@ -7636,6 +7740,46 @@ impl GameApp {
             ID_OPT_ENGINE => self.set_screen(Screen::Engine),
             ID_OPT_PACKS => self.set_screen(Screen::Packs),
             ID_OPT_ACCESS => self.set_screen(Screen::Access),
+            // ---- 2026-09-20: the Shader Packs screen ----
+            // the Video screen's SHADERS... row re-scans shader-packs/
+            // (native) so newly dropped packs appear without a restart
+            ID_OPT_SHADERS => {
+                self.scan_shader_packs();
+                self.set_screen(Screen::Shaders);
+            }
+            // "(none)" — back to the vanilla post pipeline
+            ID_SHDR_NONE => {
+                if self.settings.shader_pack.is_some() {
+                    self.settings.shader_pack = None;
+                    // persists immediately (same contract as a slider
+                    // change — after_settings_change saves options.txt)
+                    self.after_settings_change();
+                }
+            }
+            // a pack row — select it (the tier/passes analysis rides the
+            // hover tooltip; translation is the vc-iris sister project's
+            // job, honestly labeled on the row)
+            _ if (ID_SHDR_BASE
+                ..ID_SHDR_BASE + MAX_SHDR_ENTRIES as u16)
+                .contains(&id) =>
+            {
+                let idx = (id - ID_SHDR_BASE) as usize;
+                if let Some((name, _)) = self.shader_packs.get(idx) {
+                    let name = name.clone();
+                    if self.settings.shader_pack.as_deref() != Some(name.as_str()) {
+                        self.settings.shader_pack = Some(name);
+                        // persists immediately (the slider-change contract)
+                        self.after_settings_change();
+                    }
+                }
+            }
+            // the labPBR materials toggle (NAPP-style _n/_s maps)
+            ID_SHDR_LABPBR => {
+                self.settings.labpbr = !self.settings.labpbr;
+                self.after_settings_change();
+            }
+            // DONE — back to Video Settings (the screen's parent)
+            ID_SHDR_DONE => self.set_screen(Screen::Video),
             // ---- Resource Packs rows (2026-09-14) ----
             // click an AVAILABLE pack → it joins SELECTED at the TOP
             // (vanilla: newly selected packs enter at the top of the list)
@@ -8543,6 +8687,27 @@ impl GameApp {
         (avail, sel)
     }
 
+    /// 2026-09-20: refresh the EXTERNAL shader-pack list from
+    /// shader-packs/ (the Iris-format structure scan — analysis only,
+    /// never loads GLSL). Native only; the wasm build has no
+    /// filesystem and keeps the honest empty list. Cheap enough to
+    /// run on every SHADERS... click so newly dropped packs appear
+    /// without a restart.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn scan_shader_packs(&mut self) {
+        self.shader_packs = vc_render::iris::scan_shader_packs(std::path::Path::new(
+            "shader-packs",
+        ))
+        .into_iter()
+        .map(|p| (p.name, p.summary()))
+        .collect();
+    }
+
+    /// wasm twin of the scan: nothing to scan (no filesystem); exists so
+    /// the ID_OPT_SHADERS handler compiles identically on both targets
+    #[cfg(target_arch = "wasm32")]
+    fn scan_shader_packs(&mut self) {}
+
     /// pack key → display name for the rows (vanilla shows the pack's own
     /// name; ours derives it from the folder/zip name or the builtin id)
     fn pack_display_name(&self, key: &str) -> String {
@@ -8837,6 +9002,13 @@ impl GameApp {
             .collect();
         let (mut atlas, animations) =
             compile_pack_atlas(self.builtin_pack.as_ref(), &app_order);
+        // 2026-09-20: refresh the labPBR material-map count for the new
+        // stack (the same scan the boot runs)
+        self.labpbr_tiles = app_order
+            .iter()
+            .map(|s| vc_render::textures::scan_labpbr_materials(s.as_ref()))
+            .max()
+            .unwrap_or(0);
         vc_render::textures::draw_missing_tile(&mut atlas);
         self.atlas = atlas;
         self.animations = animations;
@@ -8869,8 +9041,9 @@ impl GameApp {
         #[cfg(not(target_arch = "wasm32"))]
         save_native_settings(&self.settings);
         vc_render::render::report_boot_log(&format!(
-            "resource packs applied: {} pack(s) on the Selected list",
-            app_order.len()
+            "resource packs applied: {} pack(s) on the Selected list, labpbr tiles: {}",
+            app_order.len(),
+            self.labpbr_tiles
         ));
         self.ui.dirty = true;
     }
@@ -9066,10 +9239,25 @@ impl GameApp {
                 // 2026-09-14: the REAL resource-pack manager — Available
                 // (disabled) vs Selected (enabled, top = highest priority),
                 // Default pinned at the pane bottom. The Iris-style shader
-                // list is REMOVED entirely (vanilla 1.16.5 has no such
-                // screen — user directive 2026-09-14).
+                // list lives on its own Shaders screen now (2026-09-20
+                // round — external packs from shader-packs/ only).
                 let (avail, sel) = self.resource_pack_lists();
                 self.widgets = layout_resource_packs(&avail, &sel);
+            }
+            Screen::Shaders => {
+                // 2026-09-20: the external shader-pack selector — rows from
+                // the live scan (native) / empty (wasm has no filesystem).
+                // A stale persisted name (the pack folder was removed)
+                // un-selects honestly rather than listing a ghost row.
+                let packs: Vec<String> =
+                    self.shader_packs.iter().map(|(n, _)| n.clone()).collect();
+                let active = self
+                    .settings
+                    .shader_pack
+                    .clone()
+                    .filter(|name| packs.contains(name));
+                self.widgets =
+                    layout_shaders(&packs, active.as_deref(), s.labpbr);
             }
             Screen::Access => {
                 let mut ws = layout_access();
@@ -12438,7 +12626,7 @@ impl GameApp {
             && self.screen == Screen::Title
         {
             vc_render::render::report_boot_log(
-                "e2e: settings tree ok (video/engine/packs/access) — exiting 0",
+                "e2e: settings tree ok (video/engine/shaders/packs/access) — exiting 0",
             );
             self.dbg_exit_summary();
             std::process::exit(0);
@@ -14474,10 +14662,10 @@ impl GameApp {
                     // ---- Phase 8 E2E: Iris integration interface ----
                     Some("iris") => {
                         // iris — report the Phase 8 interface state honestly:
-                        // * native: a LIVE scan of shader-packs/ (the boot-time
-                        //   cache was removed with the shader UI — vanilla
-                        //   1.16.5 has no shaders; the scan here is a
-                        //   diagnostics-only surface) + the translator seam
+                        // * native: a LIVE scan of shader-packs/ (the
+                        //   diagnostics surface; the Shaders SCREEN is the
+                        //   user-facing one since 2026-09-20) + the
+                        //   translator seam + the active selection
                         // * wasm: no filesystem → no packs, and the
                         //   wasm-reachable surface (properties document parse,
                         //   stage-directive parse, translator status) exercised
@@ -14489,14 +14677,22 @@ impl GameApp {
                         #[cfg(target_arch = "wasm32")]
                         let packs: Vec<vc_render::iris::IrisPackInfo> = Vec::new();
                         let trans = vc_render::iris::translator().id();
+                        let active = self
+                            .settings
+                            .shader_pack
+                            .clone()
+                            .unwrap_or_else(|| "(none)".to_string());
                         vc_render::render::report_boot_log(&format!(
-                            "e2e: iris interface — packs={} translator={}",
+                            "e2e: iris interface — packs={} translator={} active={} labpbr={} ({} material tiles)",
                             packs.len(),
                             if trans == "none (vc-iris sister project not registered)" {
                                 "none"
                             } else {
                                 trans
-                            }
+                            },
+                            active,
+                            if self.settings.labpbr { "on" } else { "off" },
+                            self.labpbr_tiles
                         ));
                         if !packs.is_empty() {
                             for p in &packs {
@@ -14839,17 +15035,24 @@ impl GameApp {
                             (t + 1.45, ui::ID_OPT_CLOUDS),
                             (t + 1.65, ui::ID_OPT_PARTICLES),
                             (t + 1.85, ui::ID_OPT_VSYNC),
-                            (t + 2.05, ui::ID_OPT_DONE2),
-                            (t + 2.35, ui::ID_OPT_ENGINE),
-                            (t + 2.60, ui::ID_OPT_OCCL),
-                            (t + 2.80, ui::ID_OPT_GMESH),
-                            (t + 3.00, ui::ID_OPT_DONE2),
-                            (t + 3.30, ui::ID_OPT_PACKS),
-                            (t + 3.80, ui::ID_OPT_DONE2),
-                            (t + 4.10, ui::ID_OPT_ACCESS),
-                            (t + 4.35, ui::ID_OPT_AUTOJUMP),
-                            (t + 4.60, ui::ID_OPT_DONE2),
-                            (t + 4.90, ui::ID_OPT_DONE),
+                            // 2026-09-20: the Shaders screen leg — enter
+                            // (re-scan + switch), exercise the labPBR
+                            // toggle + the (none) row, DONE back to Video
+                            (t + 2.00, ui::ID_OPT_SHADERS),
+                            (t + 2.10, ui::ID_SHDR_LABPBR),
+                            (t + 2.15, ui::ID_SHDR_NONE),
+                            (t + 2.20, ui::ID_SHDR_DONE),
+                            (t + 2.25, ui::ID_OPT_DONE2),
+                            (t + 2.55, ui::ID_OPT_ENGINE),
+                            (t + 2.80, ui::ID_OPT_OCCL),
+                            (t + 3.00, ui::ID_OPT_GMESH),
+                            (t + 3.20, ui::ID_OPT_DONE2),
+                            (t + 3.50, ui::ID_OPT_PACKS),
+                            (t + 4.00, ui::ID_OPT_DONE2),
+                            (t + 4.30, ui::ID_OPT_ACCESS),
+                            (t + 4.55, ui::ID_OPT_AUTOJUMP),
+                            (t + 4.80, ui::ID_OPT_DONE2),
+                            (t + 5.10, ui::ID_OPT_DONE),
                         ]
                         .into();
                         self.smoke_menu_e2e = true;
@@ -19817,6 +20020,24 @@ impl GameApp {
                 self.ui_dump_if_asked();
                 return;
             }
+            Screen::Shaders => {
+                // 2026-09-20: the empty-scan hint rides the tooltip slot
+                // (native: drop packs in shader-packs/; wasm: no
+                // filesystem — the honest empty state)
+                let mut tt = self.tooltip_lines();
+                if self.shader_packs.is_empty() && tt.is_empty() {
+                    if cfg!(target_arch = "wasm32") {
+                        tt.push("No shader packs: the web build has no".to_string());
+                        tt.push("filesystem - use the native build.".to_string());
+                    } else {
+                        tt.push("No shader packs found - drop Iris-format".to_string());
+                        tt.push("pack folders into shader-packs/".to_string());
+                    }
+                }
+                self.ui.shader_screen(&self.widgets, self.hover, &tt);
+                self.ui_dump_if_asked();
+                return;
+            }
             Screen::Access => {
                 let tt = self.tooltip_lines();
                 self.ui.settings_screen(
@@ -20346,7 +20567,8 @@ impl GameApp {
             }
             // settings sub-screens ride the same treatment as Options
             // (panorama when the menu tree was opened from the title)
-            Screen::Video | Screen::Engine | Screen::Packs | Screen::Access => {
+            Screen::Video | Screen::Engine | Screen::Packs | Screen::Access
+            | Screen::Shaders => {
                 if self.options_from == Screen::Title {
                     panorama = Some(pano_view);
                 }
@@ -21304,11 +21526,15 @@ mod settings_tests {
         ] {
             assert!(ids.contains(&wanted), "video screen missing {wanted}");
         }
-        // 2026-09-14 (user directive): the video screen is the EXACT
-        // vanilla set now — 11 options + Done. The ID_OPT_SHADERS entry
-        // and its constant were removed entirely (vanilla 1.16.5 ships no
-        // shader screen; the count below proves no 13th widget appeared)
-        assert_eq!(ids.len(), 12, "vanilla video = 11 options + done");
+        // 2026-09-20 round: the vanilla 11 options + Done + ONE disclosed
+        // engine extra — the OptiFine/Iris-style SHADERS... entry (the
+        // owner's call: modern extra options are welcome; the row is the
+        // only addition, full-width under Biome Blend)
+        assert!(
+            ids.contains(&vc_render::ui::ID_OPT_SHADERS),
+            "the SHADERS... entry exists"
+        );
+        assert_eq!(ids.len(), 13, "vanilla video 11 + shaders + done");
         // vanilla proportions
         let rd = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_RD).unwrap();
         assert_eq!((rd.x, rd.y, rd.w, rd.h), (248, 72, 465, 30));
@@ -21316,12 +21542,70 @@ mod settings_tests {
         assert_eq!((g.x, g.y, g.w, g.h), (248, 108, 225, 30));
         let sl = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_SMOOTH).unwrap();
         assert_eq!((sl.x, sl.y), (487, 108), "right column");
+        // the shaders row: full-width, under Biome Blend
+        let sh = ws
+            .iter()
+            .find(|w| w.id == vc_render::ui::ID_OPT_SHADERS)
+            .unwrap();
+        assert_eq!((sh.x, sh.y, sh.w, sh.h), (248, 324, 465, 30));
         // the vanilla unlabeled Brightness slider
         let b = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_BRIGHT).unwrap();
         match &b.kind {
             vc_render::ui::WidgetKind::Slider { label, .. } => assert_eq!(label, ""),
             _ => panic!("brightness is a slider"),
         }
+    }
+
+    /// 2026-09-20 round: the Shader Packs screen — the (none) row pinned
+    /// first, one row per external pack, the labPBR toggle, DONE back to
+    /// Video; the selection marks exactly one row
+    #[test]
+    fn shader_screen_layout_and_selection() {
+        let packs: Vec<String> = vec![
+            "BSL-v8".to_string(),
+            "SEUS-Renewed".to_string(),
+        ];
+        // selection on a pack row
+        let ws = vc_render::ui::layout_shaders(&packs, Some("SEUS-Renewed"), false);
+        let ids: Vec<u16> = ws.iter().map(|w| w.id).collect();
+        for wanted in [
+            vc_render::ui::ID_SHDR_NONE,
+            vc_render::ui::ID_SHDR_BASE,
+            vc_render::ui::ID_SHDR_BASE + 1,
+            vc_render::ui::ID_SHDR_LABPBR,
+            vc_render::ui::ID_SHDR_DONE,
+        ] {
+            assert!(ids.contains(&wanted), "shader screen missing {wanted}");
+        }
+        // exactly one row carries SELECTED
+        let selected = ws.iter().filter(|w| {
+            matches!(&w.kind, vc_render::ui::WidgetKind::Button { value, .. } if value == "SELECTED")
+        });
+        assert_eq!(selected.count(), 1, "exactly one selected row");
+        // the (none) row is selected when no pack is active
+        let ws2 = vc_render::ui::layout_shaders(&packs, None, true);
+        let none_sel = ws2
+            .iter()
+            .find(|w| w.id == vc_render::ui::ID_SHDR_NONE)
+            .unwrap();
+        match &none_sel.kind {
+            vc_render::ui::WidgetKind::Button { value, .. } => {
+                assert_eq!(value, "SELECTED")
+            }
+            _ => panic!("(none) is a button"),
+        }
+        // the labPBR toggle reflects the live value
+        let lb = ws2
+            .iter()
+            .find(|w| w.id == vc_render::ui::ID_SHDR_LABPBR)
+            .unwrap();
+        match &lb.kind {
+            vc_render::ui::WidgetKind::Button { value, .. } => assert_eq!(value, "ON"),
+            _ => panic!("labpbr is a button"),
+        }
+        // empty scan: just (none) + labpbr + done (the honest empty state)
+        let ws3 = vc_render::ui::layout_shaders(&[], None, false);
+        assert_eq!(ws3.len(), 3, "the empty shader screen stays honest");
     }
 
     /// every option on every settings screen carries a hover tooltip —
@@ -21339,6 +21623,10 @@ mod settings_tests {
             vc_render::ui::layout_skin(true, true, true, true, true, true, true, false),
             vc_render::ui::layout_chat_settings(),
             vc_render::ui::layout_music_sound(),
+            // 2026-09-20: the Shader Packs screen — the static rows (the
+            // (none) row, the labPBR toggle, DONE, the Video entry); the
+            // pack ROWS carry dynamic tooltips through tooltip_lines()
+            vc_render::ui::layout_shaders(&[], None, false),
         ] {
             for w in ws {
                 assert!(
@@ -21348,10 +21636,10 @@ mod settings_tests {
                 );
             }
         }
-        // 2026-09-14: the SHADER PACKS row family was removed with the
-        // screen. Resource-pack rows carry DYNAMIC tooltips (the hovered
-        // pack's description) through tooltip_lines(), which is why they
-        // are not in this static-table test.
+        // 2026-09-20: the shader-pack ROWS carry DYNAMIC tooltips (the
+        // hovered pack's analysis) through tooltip_lines(), which is why
+        // they are not in this static-table test; the Resource Packs rows
+        // work the same way.
         let mut sb = Settings {
             brightness: 0.0,
             ..Default::default()
@@ -21820,6 +22108,21 @@ mod settings_tests {
         assert_eq!(r2.biome_blend, 4);
         assert_eq!(r2.smooth_level, 1);
         assert_eq!(r2.clouds_level, 1);
+        // 2026-09-20: the shader-pack selection + labPBR toggle round trip
+        s.shader_pack = Some("BSL-v8".to_string());
+        s.labpbr = true;
+        let r3 = Settings::deserialize(&s.serialize());
+        assert_eq!(r3.shader_pack.as_deref(), Some("BSL-v8"));
+        assert!(r3.labpbr);
+        // "(none)" deserializes back to no-pack
+        s.shader_pack = Some("(none)".to_string());
+        let r4 = Settings::deserialize(&s.serialize());
+        assert!(r4.shader_pack.is_none(), "(none) persists as the empty selection");
+        // default = no pack, labpbr off
+        let d = Settings::default();
+        let rd = Settings::deserialize(&d.serialize());
+        assert!(rd.shader_pack.is_none());
+        assert!(!rd.labpbr);
     }
 
     /// legacy settings strings (Phase 5 era) keep parsing; the Phase 6 keys

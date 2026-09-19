@@ -4705,6 +4705,73 @@ pub fn merge_pack_tile_overrides(
     animations
 }
 
+/// 2026-09-20 round — the labPBR 1.3 material scan (NAPP-style packs).
+///
+/// labPBR convention (the published spec, clean-room implemented in
+/// `crate::pbr`): a pack providing `textures/block/stone.png` may ALSO
+/// provide `stone_n.png` (tangent-space normal + AO + height) and
+/// `stone_s.png` (smoothness + F0/metal + porosity/SSS + emission).
+/// This scan detects those companions for every overridable tile,
+/// decodes a validation texel through the LabPBR 1.3 decoder (the same
+/// decode the render path uses when materials are enabled), and reports
+/// how many atlas tiles gained material maps.
+///
+/// Honest scope: detection + decode validation + the count (surfaced on
+/// the Shaders screen's LABPBR MATERIALS state and the E2E `iris`
+/// report). The material MAPS feed the PBR path only when a translator
+/// registers (the vc-iris sister project) — never claimed otherwise.
+pub fn scan_labpbr_materials(source: &dyn vc_pack::pack::PackSource) -> usize {
+    /// read the center texel of a pack texture at `<stem><suffix>.png`
+    fn center_texel(
+        source: &dyn vc_pack::pack::PackSource,
+        stem: &str,
+        suffix: &str,
+    ) -> Option<[u8; 4]> {
+        let bytes = source.read(&format!("{stem}{suffix}.png"))?;
+        let img = image::load_from_memory(&bytes).ok()?;
+        let rgba = img.to_rgba8();
+        let (w, h) = rgba.dimensions();
+        if w == 0 || h == 0 {
+            return None;
+        }
+        // the center texel as the validation decode sample
+        let px = rgba.get_pixel(w / 2, h / 2);
+        Some([px.0[0], px.0[1], px.0[2], px.0[3]])
+    }
+    let mut tiles_with_maps = 0usize;
+    for (loc, _tile) in vc_blocks::blocks::PACK_OVERRIDABLE {
+        let path = vc_pack::model::texture_path(loc);
+        // the labPBR companions: insert _n / _s before .png
+        let stem = path.trim_end_matches(".png");
+        let has_n = center_texel(source, stem, "_n");
+        let has_s = center_texel(source, stem, "_s");
+        if has_n.is_none() && has_s.is_none() {
+            continue;
+        }
+        // decode validation: every present map must decode (a corrupt
+        // PNG or a non-image `_n` counts as absent — packs in the wild
+        // are messy)
+        let n_ok = has_n
+            .map(|texel| {
+                let m = crate::pbr::decode_normal(texel);
+                // a decoded normal must be a finite unit-ish vector
+                m.normal.iter().all(|c| c.is_finite())
+            })
+            .unwrap_or(false);
+        let s_ok = has_s
+            .map(|texel| {
+                let m = crate::pbr::decode_specular(texel, [0.5, 0.5, 0.5]);
+                m.roughness.is_finite() && (0.0..=1.0).contains(&m.smoothness)
+            })
+            .unwrap_or(false);
+        if (has_n.is_some() && !n_ok) || (has_s.is_some() && !s_ok) {
+            continue; // present but undecodable — not a labPBR map
+        }
+        tiles_with_maps += 1;
+    }
+    tiles_with_maps
+}
+
 
 /// Merge pack textures into the procedural atlas + fill the ModelSet's
 /// tile registry. Returns the animations to drive per frame.
@@ -4938,6 +5005,64 @@ pub fn tick_animations(anims: &mut [AnimatedTile], dt: f32) -> Vec<(u16, u16)> {
 #[cfg(test)]
 mod pack_tex_tests {
     use super::*;
+
+    /// 2026-09-20: the labPBR material scan — a NAPP-style pack
+    /// providing `_n`/`_s` companions for an overridable tile counts
+    /// once; corrupt or absent companions don't; vanilla-only packs
+    /// (no companions) count zero
+    #[test]
+    fn labpbr_material_scan_counts_napp_style_packs() {
+        // a 2x2 solid PNG helper (bigger than 1x1 so the center texel
+        // at (1,1) is a real pixel)
+        fn png2x2(px: [u8; 4]) -> Vec<u8> {
+            let img = image::RgbaImage::from_pixel(2, 2, image::Rgba(px));
+            let mut bytes = Vec::new();
+            image::DynamicImage::ImageRgba8(img)
+                .write_to(&mut std::io::Cursor::new(&mut bytes), image::ImageFormat::Png)
+                .unwrap();
+            bytes
+        }
+        // the NAPP-style pack: stone + stone_n + stone_s (+ dirt plain)
+        let mut mem = vc_pack::pack::MemorySource::new("napp-test");
+        mem.insert("assets/minecraft/textures/block/stone.png", png2x2([120, 120, 120, 255]));
+        // flat normal (128,128) + AO 255 + height 255
+        mem.insert(
+            "assets/minecraft/textures/block/stone_n.png",
+            png2x2([128, 128, 255, 255]),
+        );
+        // smoothness 200, F0 100, porosity 30, emission 0
+        mem.insert(
+            "assets/minecraft/textures/block/stone_s.png",
+            png2x2([200, 100, 30, 0]),
+        );
+        mem.insert("assets/minecraft/textures/block/dirt.png", png2x2([134, 96, 67, 255]));
+        let n = scan_labpbr_materials(&mem);
+        assert_eq!(n, 1, "stone gained material maps; dirt did not");
+
+        // corrupt _n (not a PNG) → the tile does not count
+        let mut bad = vc_pack::pack::MemorySource::new("corrupt-test");
+        bad.insert("assets/minecraft/textures/block/stone.png", png2x2([120, 120, 120, 255]));
+        bad.insert(
+            "assets/minecraft/textures/block/stone_n.png",
+            b"not a png".to_vec(),
+        );
+        assert_eq!(scan_labpbr_materials(&bad), 0, "undecodable maps don't count");
+
+        // a vanilla-style pack (no companions at all) → zero
+        let mut plain = vc_pack::pack::MemorySource::new("plain-test");
+        plain.insert("assets/minecraft/textures/block/stone.png", png2x2([120, 120, 120, 255]));
+        assert_eq!(scan_labpbr_materials(&plain), 0, "no companions, no materials");
+
+        // _s alone still counts (spec allows either map alone)
+        let mut sonly = vc_pack::pack::MemorySource::new("s-only-test");
+        sonly.insert("assets/minecraft/textures/block/stone.png", png2x2([120, 120, 120, 255]));
+        sonly.insert(
+            "assets/minecraft/textures/block/stone_s.png",
+            png2x2([200, 100, 30, 0]),
+        );
+        assert_eq!(scan_labpbr_materials(&sonly), 1, "the specular map alone counts");
+    }
+
 
     #[test]
     fn missing_tile_draws_checker() {

@@ -573,13 +573,40 @@ pub const ID_ACC_DISTORT_SLIDER: u16 = 237;
 /// clear of the world-edit/create literals through 114 and the rpack
 /// family at 120+)
 pub const ID_OPT_SKIN: u16 = 115;
-/// 2026-09-14 round (user directive): the SHADER PACKS screen, the
-/// ID_OPT_SHADERS video entry, the ID_PACK_BASE row family and every
-/// pre-created engine shader mode/builtin pack were REMOVED — vanilla
-/// 1.16.5 ships no shader screen. The Resource Packs manager below is
-/// the real vanilla surface.
+/// 2026-09-14 round: the builtin engine shader modes and pre-created
+/// demo packs (moonlit, warm-evening) were removed — no built-in
+/// shaders, ever. 2026-09-20 round: the SHADER PACKS *screen* is back
+/// by owner request, but listing EXTERNAL drop-in packs only (see
+/// ID_OPT_SHADERS below); the post pipeline stays vanilla-only until
+/// the vc-iris translator sister project registers.
 /// vanilla "View Bobbing" toggle (Options screen, default ON)
 pub const ID_OPT_BOB: u16 = 52;
+/// 2026-09-20 round (user directive — restored by request): the SHADERS
+/// entry on the Video Settings screen. Vanilla 1.16.5 ships no shader
+/// screen, but every modded 1.16.5 player knows the OptiFine/Iris
+/// "Shaders..." button — and modern versions keep adding options the
+/// 1.16.5 screen lacks (the owner's call: extra options are welcome).
+/// The screen lists EXTERNAL drop-in packs from shader-packs/ only —
+/// the engine ships NO built-in shaders (BSL/SEUS-style packs are
+/// third-party downloads, never ours to redistribute; see
+/// docs/LEGAL-COMPLIANCE.md §4.4).
+pub const ID_OPT_SHADERS: u16 = 53;
+/// 2026-09-20: the Shader Packs screen family — 240..=249, a fresh
+/// literal block clear of every existing id (max literal 115) and every
+/// row family (60 world, 110 pack, 120..158 rpack, 160..170 sound,
+/// 170..177 access/ctrl, 180..204 binds, 210..237 skin/chat/acc).
+/// Guarded by the ID-space tests.
+/// the "(none)" row — the vanilla post pipeline (no shader pack)
+pub const ID_SHDR_NONE: u16 = 240;
+/// external pack rows (one per scanned shader-packs/ entry)
+pub const ID_SHDR_BASE: u16 = 241;
+/// max shader-pack rows the screen lists
+pub const MAX_SHDR_ENTRIES: usize = 7;
+/// DONE — back to Video Settings (the screen's parent)
+pub const ID_SHDR_DONE: u16 = 248;
+/// the labPBR materials toggle (NAPP-style `_n`/`_s` resource-pack
+/// maps feed the PBR path when ON; default OFF = the vanilla look)
+pub const ID_SHDR_LABPBR: u16 = 249;
 /// available (left pane) pack rows
 ///
 /// 2026-09-14 follow-up (deploy-fix round): the 2026-09-14 resource-pack
@@ -794,11 +821,13 @@ pub fn layout_options() -> Vec<Widget> {
     ]
 }
 
-/// Video Settings — the EXACT vanilla 1.16.5 screen: full-width Render
+/// Video Settings — the vanilla 1.16.5 screen: full-width Render
 /// Distance slider on top, four two-column cycling rows (Graphics |
 /// Smooth Lighting, GUI Scale | Clouds, Particles | Full Screen, Use
 /// VSync | Entity Shadows), the unlabeled full-width Brightness slider
 /// (hover shows Moody/Bright), the full-width Biome Blend slider, Done.
+/// 2026-09-20: one DISCLOSED extra row — SHADERS... (the OptiFine/Iris
+/// 1.16.5-modded entry; the owner welcomes modern-version extras).
 pub fn layout_video() -> Vec<Widget> {
     let (l, r, bw) = (248, 487, 225);
     let rows = [108, 144, 180, 216];
@@ -825,6 +854,11 @@ pub fn layout_video() -> Vec<Widget> {
         // reads Moody/Bright from the live value
         slider_h(ID_OPT_BRIGHT, 248, 252, 465, 30, "", 0.1),
         slider_h(ID_OPT_BIOME, 248, 288, 465, 30, "BIOME BLEND", 0.5),
+        // 2026-09-20: the OptiFine/Iris-style SHADERS... entry (engine
+        // extra beyond vanilla 1.16.5 — the owner's call that modern
+        // extra options are welcome; the screen lists external packs
+        // from shader-packs/ only, never built-ins)
+        btn_h(ID_OPT_SHADERS, 248, 324, 465, 30, "SHADERS...", "", true),
         btn_h(
             ID_OPT_DONE2,
             (live_ui_w() as i32 - 300) / 2,
@@ -836,6 +870,72 @@ pub fn layout_video() -> Vec<Widget> {
             true,
         ),
     ]
+}
+
+/// 2026-09-20 round: the Shader Packs screen — the OptiFine/Iris-style
+/// pack selector. Rows top to bottom:
+/// * "(none)" — the vanilla post pipeline (pinned first, like Iris's
+///   "internal" row; selecting it unselects any pack)
+/// * one row per EXTERNAL pack scanned from shader-packs/ (native
+///   live scan; wasm honestly has no filesystem → the empty hint)
+/// * the LABPBR MATERIALS toggle (NAPP-style `_n`/`_s` resource-pack
+///   maps; OFF = the vanilla look — the default)
+/// * DONE back to Video Settings (the screen's parent)
+///
+/// NO built-in shader packs exist to list — by design and by law
+/// (docs/LEGAL-COMPLIANCE.md: BSL/SEUS-style packs are third-party
+/// downloads the user drops in; the engine only reads them).
+pub fn layout_shaders(packs: &[String], active: Option<&str>, labpbr: bool) -> Vec<Widget> {
+    let mut v = Vec::new();
+    // the pinned "(none)" row — value shows the live selection
+    v.push(btn_h(
+        ID_SHDR_NONE,
+        148,
+        86,
+        660,
+        30,
+        "(NONE)",
+        if active.is_none() { "SELECTED" } else { "" },
+        true,
+    ));
+    for (i, name) in packs.iter().take(MAX_SHDR_ENTRIES).enumerate() {
+        v.push(btn_h(
+            ID_SHDR_BASE + i as u16,
+            148,
+            124 + i as i32 * 34,
+            660,
+            30,
+            name,
+            if active == Some(name.as_str()) {
+                "SELECTED"
+            } else {
+                ""
+            },
+            true,
+        ));
+    }
+    // the labPBR materials toggle
+    v.push(btn_h(
+        ID_SHDR_LABPBR,
+        148,
+        376,
+        660,
+        30,
+        "LABPBR MATERIALS",
+        if labpbr { "ON" } else { "OFF" },
+        true,
+    ));
+    v.push(btn_h(
+        ID_SHDR_DONE,
+        (live_ui_w() as i32 - 300) / 2,
+        470,
+        300,
+        30,
+        "DONE",
+        "",
+        true,
+    ));
+    v
 }
 
 /// Engine Settings — our extra subsystems (GPU meshing, occlusion,
@@ -2539,6 +2639,26 @@ impl UiCanvas {
         // dark inset panels behind the rows (vanilla's sunken list look)
         self.rect(26, 86, 428, 348, [0, 0, 0, 130]);
         self.rect(506, 86, 428, 348, [0, 0, 0, 130]);
+        self.draw_widgets(ws, hover);
+    }
+
+    /// 2026-09-20: the Shader Packs screen — the vanilla dirt/options
+    /// backdrop, big title, tooltip slot, then a single sunken list
+    /// panel holding the "(none)" row + the external pack rows, the
+    /// LABPBR MATERIALS row, DONE at the bottom. The empty-folder hint
+    /// line rides the tooltip slot (the caller feeds it when the scan
+    /// found nothing).
+    pub fn shader_screen(&mut self, ws: &[Widget], hover: Option<u16>, tooltip: &[String]) {
+        self.gui_frame
+            .dirt_background(self.live_w as i32, self.live_h as i32);
+        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [8, 8, 10, 110]);
+        self.text_center(18, "SHADERS", [255, 255, 255, 255], 3);
+        for (i, line) in tooltip.iter().take(2).enumerate() {
+            self.text_center(46 + i as i32 * 12, line, [170, 170, 170, 255], 1);
+        }
+        // sunken list backdrop behind the pack rows (the vanilla
+        // list-panel look, full width)
+        self.rect(140, 80, 676, 304, [0, 0, 0, 130]);
         self.draw_widgets(ws, hover);
     }
 
@@ -5835,6 +5955,13 @@ mod tests {
         ID_ACC_SPRINT,
         ID_ACC_SNEAK,
         ID_ACC_DISTORT_SLIDER,
+        // 2026-09-20: the Shader Packs screen family (240..=249 block —
+        // the row range 241..248 is guarded below; the literals here are
+        // the (none) row, DONE, the labPBR toggle, and the Video entry)
+        ID_OPT_SHADERS,
+        ID_SHDR_NONE,
+        ID_SHDR_DONE,
+        ID_SHDR_LABPBR,
     ];
 
     #[test]
@@ -5854,7 +5981,7 @@ mod tests {
     /// exactly what masked it in the browser E2E).
     #[test]
     fn row_ranges_disjoint_from_literals_and_each_other() {
-        let rows: [(u16, u16, &str); 7] = [
+        let rows: [(u16, u16, &str); 8] = [
             (ID_WS_WORLD_BASE, MAX_LISTED_WORLDS as u16, "world entries"),
             (ID_RPACK_AVAIL_BASE, MAX_RPACK_ENTRIES as u16, "rpack available"),
             (ID_RPACK_SEL_BASE, MAX_RPACK_ENTRIES as u16, "rpack selected"),
@@ -5863,6 +5990,8 @@ mod tests {
             // Round 14: the Music & Sound sliders + the Controls bind rows
             (ID_SND_BASE, 10, "music & sound sliders"),
             (ID_CTRL_BIND_BASE, MAX_CTRL_BINDS as u16, "controls bind rows"),
+            // 2026-09-20: the Shader Packs screen pack rows
+            (ID_SHDR_BASE, MAX_SHDR_ENTRIES as u16, "shader pack rows"),
             // NOTE Round 14b: the skin/chat-settings/accessibility
             // additions (210..=237) are STATIC literal ids (each a
             // dedicated button/slider on a fixed screen — no dynamic

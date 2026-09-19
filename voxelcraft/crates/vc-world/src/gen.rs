@@ -4823,6 +4823,22 @@ impl TerrainGen {
 
     /// every ravine that can cover the chunk containing (cx, cz): the
     /// 11×11-chunk neighborhood covers the 127-block max diagonal
+    ///
+    /// 2026-09-20 rampart-fix round (the rampant-ravines + lag report):
+    /// the canyon TOP is now an independent 10..=72 roll from the
+    /// anchor's rng stream (wiki Ravine: "can start at levels 10 to
+    /// 72" — a START LEVEL, not the anchor surface). The old
+    /// `top = column(x0,z0).clamp(10,72)` forced top = the anchor
+    /// terrain surface on plains, so EVERY ravine broke the surface
+    /// as a 40+ block open mega-trench (quantified: 100% of carved
+    /// columns sky-open, mean depth 39) — the rampant look plus a
+    /// mesh explosion (each trench adds ~2×depth wall faces per
+    /// carved column). With the rolled top most carves stay
+    /// UNDERGROUND (found while caving, vanilla-style) and only the
+    /// few whose rolled top clears the local surface open as canyons.
+    /// The `column()` solve also leaves the scan entirely — it was
+    /// the only expensive call in here and ran ~121× redundantly
+    /// across the neighborhood's chunk generations.
     pub fn ravines_near_chunk(&self, cx: i32, cz: i32) -> Vec<Ravine> {
         let mut out = Vec::new();
         for dcx in -5..=5 {
@@ -4837,10 +4853,16 @@ impl TerrainGen {
                 let angle = rng.next_f32() * std::f32::consts::TAU;
                 let length = 85 + rng.next_range(43) as i32; // 85..=127
                 let half_w = 2.0 + rng.next_f32() * 5.0; // < 15 wide total
-                let depth = 40 + rng.next_range(23) as i32; // ≤ 62
-                                                            // top: terrain height at the start, clamped to 10..=72
-                let h = self.column(x0, z0).height;
-                let top = h.clamp(10, 72);
+                // 2026-09-20: depth was 40..=62 — "up to 62 deep" is a
+                // MAXIMUM, not a minimum; every ravine being 40+ deep is
+                // what made each one a mega-canyon. Now 10..=62 (mean
+                // ~36, shallow ones included; [tuning] like the chance).
+                let depth = 10 + rng.next_range(53) as i32; // ≤ 62
+                // 2026-09-20: the START LEVEL roll (10..=72) — see the
+                // doc comment above. Drawn after depth on the same
+                // stream: anchors/angle/length/width/depth are unchanged
+                // for any seed that previously rolled them.
+                let top = 10 + rng.next_range(63) as i32; // 10..=72
                 out.push(Ravine {
                     x0,
                     z0,
@@ -4894,10 +4916,15 @@ impl TerrainGen {
             let cut_bottom = top - ((top - bottom) as f32 * (0.45 + 0.55 * frac)) as i32;
             let cut_bottom = cut_bottom.max(bottom);
             if cut_bottom < cut_top {
-                // merge overlapping ravine cuts: keep the deepest floor
-                // and the lowest rim of any contributor
+                // merge overlapping ravine cuts as a UNION of the two
+                // down-carve intervals [b+1 ..= t]: keep the HIGHER rim
+                // and the deeper floor. (2026-09-20 rampart-fix: the old
+                // `bt.min(cut_top)` kept the LOWER rim, silently
+                // dropping the upper interval when two ravines crossed
+                // a column — solid rock mesas/pillars left standing
+                // inside canyon crossings, the "rampant" artifact.)
                 best = Some(match best {
-                    Some((bt, bb)) => (bt.min(cut_top), bb.min(cut_bottom)),
+                    Some((bt, bb)) => (bt.max(cut_top), bb.min(cut_bottom)),
                     None => (cut_top, cut_bottom),
                 });
             }
@@ -7800,5 +7827,176 @@ mod v115_nest_tests {
         assert!(hive_full(w.get_state(8, 70, 8)));
         assert_eq!(honey_level(w.get_state(10, 70, 8)), 3);
         assert!(!hive_full(w.get_state(10, 70, 8)));
+    }
+}
+
+
+// =====================================================================
+// 2026-09-20 rampart-fix round — the ravine-density regression tests
+// (the rampant-ravines + lag report). Pre-fix quantification (exact
+// rng-port harness, scripts/ravine_quant.py): every carved column was
+// 100% sky-open with mean depth 39.3 (the mega-trench look) and the
+// overlap merge dropped carve intervals (solid mesas inside canyon
+// crossings). These tests pin the fixed envelope.
+// =====================================================================
+mod rampart_fix_tests {
+    use super::*;
+
+    fn agen() -> TerrainGen {
+        TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Overworld)
+    }
+
+    /// unique ravine anchors rolled in a 40x40-chunk window: the
+    /// vanilla 1/50 canyon-carver rate ± sampling noise
+    #[test]
+    fn ravine_anchor_rate_in_envelope() {
+        let g = agen();
+        let mut seen: std::collections::HashSet<(i32, i32)> =
+            std::collections::HashSet::new();
+        let mut n = 0usize;
+        for cx in -20..20i32 {
+            for cz in -20..20i32 {
+                for r in g.ravines_near_chunk(cx, cz) {
+                    if seen.insert((r.x0, r.z0)) {
+                        n += 1;
+                    }
+                }
+            }
+        }
+        let rate = n as f32 / 1600.0;
+        assert!(
+            (0.01..=0.035).contains(&rate),
+            "anchor rate {rate:.3} stays near vanilla 1/50 (got {n}/1600)"
+        );
+    }
+
+    /// the carved profile: mean carved depth well under the 62 max
+    /// (pre-fix every carve averaged 39 with a 40 floor), max
+    /// respects the 62 grammar, and the carved population is no
+    /// longer 100% sky-open (pre-fix EVERY carved column broke the
+    /// surface by construction — the rampant mega-trench look + the
+    /// mesh explosion that caused the lag)
+    #[test]
+    fn ravine_carve_profile_is_mostly_underground() {
+        let g = agen();
+        // collect the unique anchors covering a 12x12-chunk area
+        let mut ravines: Vec<Ravine> = Vec::new();
+        let mut seen: std::collections::HashSet<(i32, i32)> =
+            std::collections::HashSet::new();
+        for dcx in -6..6i32 {
+            for dcz in -6..6i32 {
+                for r in g.ravines_near_chunk(10 + dcx, 10 + dcz) {
+                    if seen.insert((r.x0, r.z0)) {
+                        ravines.push(r);
+                    }
+                }
+            }
+        }
+        assert!(!ravines.is_empty(), "the window has anchors");
+        // Sample the carve population REPRESENTATIVELY: around every
+        // anchor (±16 blocks, capped 16 carved columns per anchor so no
+        // single anchor dominates), with REAL terrain heights — a
+        // first-anchor-only sample is order-biased and flaky, this one
+        // measures the whole window's population
+        let mut carved = 0usize;
+        let mut depth_sum = 0usize;
+        let mut max_depth = 0i32;
+        let mut sky_open = 0usize;
+        for rv in &ravines {
+            let mut per_anchor = 0usize;
+            'anchor: for bx in (rv.x0 - 16)..(rv.x0 + 16) {
+                for bz in (rv.z0 - 16)..(rv.z0 + 16) {
+                    let surf = g.column(bx, bz).height;
+                    if let Some((top, bot)) = g.ravine_cut(&ravines, bx, bz, surf) {
+                        carved += 1;
+                        depth_sum += (top - bot) as usize;
+                        max_depth = max_depth.max(top - bot);
+                        if top >= surf - 1 {
+                            sky_open += 1;
+                        }
+                        per_anchor += 1;
+                        if per_anchor >= 16 {
+                            break 'anchor;
+                        }
+                    }
+                }
+            }
+        }
+        assert!(carved >= 8, "the anchors' neighborhoods carve ({carved})");
+        let mean = depth_sum as f32 / carved as f32;
+        assert!(mean < 30.0, "mean carved depth {mean:.1} < 30 (was 39.3)");
+        assert!(max_depth <= 62, "max carved depth {max_depth} respects the 62 grammar");
+        let sky = sky_open as f32 / carved as f32;
+        assert!(
+            sky < 0.85,
+            "sky-open fraction {sky:.2} is no longer the pre-fix 100% \
+             (the rolled 10..=72 start level keeps most carves underground)"
+        );
+    }
+
+    /// the 2026-09-20 merge fix: two crossing ravines carve the UNION
+    /// of their intervals — the higher rim AND the deeper floor both
+    /// survive. Pre-fix the upper interval was dropped, leaving solid
+    /// rock mesas standing inside canyon crossings.
+    #[test]
+    fn ravine_overlap_merges_as_union() {
+        let g = agen();
+        // two synthetic ravines crossing at column (100, 100):
+        // A: east-west, top 40, depth 20 → carves ~(20..40)
+        // B: north-south, top 64, depth 40 → carves ~(24..64)
+        let a = Ravine {
+            x0: 0,
+            z0: 100,
+            dx: 1.0,
+            dz: 0.0,
+            length: 200,
+            half_w: 6.0,
+            depth: 20,
+            top: 40,
+        };
+        let b = Ravine {
+            x0: 100,
+            z0: 0,
+            dx: 0.0,
+            dz: 1.0,
+            length: 200,
+            half_w: 6.0,
+            depth: 40,
+            top: 64,
+        };
+        let rv = [a, b];
+        // flat surface at 64
+        let cut = g.ravine_cut(&rv, 100, 100, 64).expect("both carve here");
+        let (top, bot) = cut;
+        // the union must reach B's rim (64: the higher carve survives)
+        assert!(top >= 60, "the union keeps the HIGHER rim (got {top})");
+        // and reach at least A's floor depth territory
+        assert!(bot <= 32, "the union keeps the deeper floor (got {bot})");
+        // the carved span covers the old lost interval [33..=40] too
+        assert!(top - bot >= 32, "span {top}-{bot} covers both carves");
+    }
+
+    /// determinism after the fix: identical carve decisions for the
+    /// same seed, and the descriptor grammar still holds
+    #[test]
+    fn ravine_grammar_and_determinism_after_fix() {
+        let (g1, g2) = (agen(), agen());
+        for cx in -5..5i32 {
+            for cz in -5..5i32 {
+                let r1 = g1.ravines_near_chunk(cx, cz);
+                let r2 = g2.ravines_near_chunk(cx, cz);
+                assert_eq!(r1.len(), r2.len(), "same count");
+                for (a, b) in r1.iter().zip(r2.iter()) {
+                    assert_eq!((a.x0, a.z0, a.length), (b.x0, b.z0, b.length));
+                    assert_eq!(a.depth, b.depth);
+                    assert_eq!(a.top, b.top);
+                    // the wiki grammar
+                    assert!((85..=127).contains(&a.length));
+                    assert!(a.half_w < 7.5);
+                    assert!(a.depth <= 62);
+                    assert!((10..=72).contains(&a.top));
+                }
+            }
+        }
     }
 }

@@ -227,6 +227,17 @@ fn case_glyph(ch: char) -> Option<([u8; 8], i32, i32)> {
 
 // ------------------------------------------------------------- widgets --
 
+/// Deterministic 2D pixel hash (the modern flat chrome's noise band —
+/// same xorshift-multiply family as textures/gui_art.rs::hash2, seeded
+/// differently so the canvas fallback's noise never aligns with the
+/// 9-slice source's pattern).
+fn hash_pixel(x: i32, y: i32) -> u32 {
+    let mut h = (x as u32).wrapping_mul(0x85EB_CA6B) ^ (y as u32).wrapping_mul(0xC2B2_AE35);
+    h ^= h >> 15;
+    h = h.wrapping_mul(0x27D4_EB2F);
+    h ^ (h >> 13)
+}
+
 #[derive(Clone, Debug)]
 pub enum WidgetKind {
     Button {
@@ -308,15 +319,7 @@ pub fn slider(id: u16, x: i32, y: i32, w: i32, label: &str, value: f32) -> Widge
 /// Slider with explicit height — the vanilla 1.16.5 settings screens use
 /// 150x20 buttons (→ 225x30 on this 1.5x canvas); an empty label draws
 /// the vanilla unlabeled slider (Brightness).
-pub fn slider_h(
-    id: u16,
-    x: i32,
-    y: i32,
-    w: i32,
-    h: i32,
-    label: &str,
-    value: f32,
-) -> Widget {
+pub fn slider_h(id: u16, x: i32, y: i32, w: i32, h: i32, label: &str, value: f32) -> Widget {
     Widget {
         id,
         x,
@@ -591,6 +594,15 @@ pub const ID_OPT_BOB: u16 = 52;
 /// third-party downloads, never ours to redistribute; see
 /// docs/LEGAL-COMPLIANCE.md §4.4).
 pub const ID_OPT_SHADERS: u16 = 53;
+/// 2026-09-20 round: the ENTITY DISTANCE slider on the Video Settings
+/// screen (the 1.17+ modern option the owner welcomes — "newer versions
+/// have much more options which can be great"). A 0.5..1.0 multiplier
+/// on the entity render radius: honest engine behavior — mobs beyond
+/// render_distance * 16 * entity_distance from the camera skip the
+/// vertex build (and the shadow quads) entirely. Default 1.0 = the
+/// pre-option behavior (entities visible across the full render
+/// distance). options.txt key `entityDistance` (vanilla naming).
+pub const ID_OPT_ENTDIST: u16 = 54;
 /// 2026-09-20: the Shader Packs screen family — 240..=249, a fresh
 /// literal block clear of every existing id (max literal 115) and every
 /// row family (60 world, 110 pack, 120..158 rpack, 160..170 sound,
@@ -783,8 +795,26 @@ pub fn layout_options() -> Vec<Widget> {
         slider_h(ID_OPT_SENS, r, rows[1], bw, 30, "MOUSE SENSITIVITY", 0.45),
         // Round 14: the stub screens are REAL now — Chat Settings is the
         // documented no-subsystem stub screen, Language lists English
-        btn_h(ID_OPT_CHAT, l, rows[2], bw, 30, "CHAT SETTINGS...", "", true),
-        btn_h(ID_OPT_PACKS, r, rows[2], bw, 30, "RESOURCE PACKS...", "", true),
+        btn_h(
+            ID_OPT_CHAT,
+            l,
+            rows[2],
+            bw,
+            30,
+            "CHAT SETTINGS...",
+            "",
+            true,
+        ),
+        btn_h(
+            ID_OPT_PACKS,
+            r,
+            rows[2],
+            bw,
+            30,
+            "RESOURCE PACKS...",
+            "",
+            true,
+        ),
         btn_h(ID_OPT_LANG, l, rows[3], bw, 30, "LANGUAGE...", "", true),
         btn_h(
             ID_OPT_ACCESS,
@@ -796,18 +826,54 @@ pub fn layout_options() -> Vec<Widget> {
             "",
             true,
         ),
-        btn_h(ID_OPT_VIDEO, l, rows[4], bw, 30, "VIDEO SETTINGS...", "", true),
+        btn_h(
+            ID_OPT_VIDEO,
+            l,
+            rows[4],
+            bw,
+            30,
+            "VIDEO SETTINGS...",
+            "",
+            true,
+        ),
         btn_h(ID_OPT_CONTROLS, r, rows[4], bw, 30, "CONTROLS...", "", true),
-        btn_h(ID_OPT_ENGINE, 248, 252, 465, 30, "ENGINE SETTINGS...", "", true),
+        btn_h(
+            ID_OPT_ENGINE,
+            248,
+            252,
+            465,
+            30,
+            "ENGINE SETTINGS...",
+            "",
+            true,
+        ),
         // vanilla 1.16.5 Options-screen option (default ON): the walk-cycle
         // camera/hand sway
         btn_h(ID_OPT_BOB, 248, 292, 465, 30, "VIEW BOBBING", "ON", true),
         // Round 14: the vanilla Music & Sound sub-screen (ten category
         // sliders) — full-width row under VIEW BOBBING
-        btn_h(ID_OPT_MUSICSND, 248, 332, 465, 30, "MUSIC & SOUND...", "", true),
+        btn_h(
+            ID_OPT_MUSICSND,
+            248,
+            332,
+            465,
+            30,
+            "MUSIC & SOUND...",
+            "",
+            true,
+        ),
         // Round 14b: the vanilla Skin Customization entry (the layer
         // toggles + Main Hand screen)
-        btn_h(ID_OPT_SKIN, 248, 372, 465, 30, "SKIN CUSTOMIZATION...", "", true),
+        btn_h(
+            ID_OPT_SKIN,
+            248,
+            372,
+            465,
+            30,
+            "SKIN CUSTOMIZATION...",
+            "",
+            true,
+        ),
         btn_h(
             ID_OPT_DONE,
             (live_ui_w() as i32 - 300) / 2,
@@ -833,7 +899,16 @@ pub fn layout_video() -> Vec<Widget> {
     let rows = [108, 144, 180, 216];
     vec![
         slider_h(ID_OPT_RD, 248, 72, 465, 30, "RENDER DISTANCE", 0.4),
-        btn_h(ID_OPT_GRAPHICS, l, rows[0], bw, 30, "GRAPHICS", "FANCY", true),
+        btn_h(
+            ID_OPT_GRAPHICS,
+            l,
+            rows[0],
+            bw,
+            30,
+            "GRAPHICS",
+            "FANCY",
+            true,
+        ),
         btn_h(
             ID_OPT_SMOOTH,
             r,
@@ -844,21 +919,61 @@ pub fn layout_video() -> Vec<Widget> {
             "MAXIMUM",
             true,
         ),
-        btn_h(ID_OPT_GUISCALE, l, rows[1], bw, 30, "GUI SCALE", "AUTO", true),
+        btn_h(
+            ID_OPT_GUISCALE,
+            l,
+            rows[1],
+            bw,
+            30,
+            "GUI SCALE",
+            "AUTO",
+            true,
+        ),
         btn_h(ID_OPT_CLOUDS, r, rows[1], bw, 30, "CLOUDS", "FANCY", true),
-        btn_h(ID_OPT_PARTICLES, l, rows[2], bw, 30, "PARTICLES", "ALL", true),
-        btn_h(ID_OPT_FULLSCREEN, r, rows[2], bw, 30, "FULL SCREEN", "OFF", true),
+        btn_h(
+            ID_OPT_PARTICLES,
+            l,
+            rows[2],
+            bw,
+            30,
+            "PARTICLES",
+            "ALL",
+            true,
+        ),
+        btn_h(
+            ID_OPT_FULLSCREEN,
+            r,
+            rows[2],
+            bw,
+            30,
+            "FULL SCREEN",
+            "OFF",
+            true,
+        ),
         btn_h(ID_OPT_VSYNC, l, rows[3], bw, 30, "USE VSYNC", "ON", true),
-        btn_h(ID_OPT_ENTSHADOW, r, rows[3], bw, 30, "ENTITY SHADOWS", "ON", true),
+        btn_h(
+            ID_OPT_ENTSHADOW,
+            r,
+            rows[3],
+            bw,
+            30,
+            "ENTITY SHADOWS",
+            "ON",
+            true,
+        ),
         // vanilla brightness slider carries NO label; the hover tooltip
         // reads Moody/Bright from the live value
         slider_h(ID_OPT_BRIGHT, 248, 252, 465, 30, "", 0.1),
         slider_h(ID_OPT_BIOME, 248, 288, 465, 30, "BIOME BLEND", 0.5),
+        // 2026-09-20: the modern (1.17+) Entity Distance option — a
+        // 50%..100% multiplier on the entity render radius (the label
+        // updates from the live value in refresh_widgets)
+        slider_h(ID_OPT_ENTDIST, 248, 324, 465, 30, "ENTITY DISTANCE", 1.0),
         // 2026-09-20: the OptiFine/Iris-style SHADERS... entry (engine
         // extra beyond vanilla 1.16.5 — the owner's call that modern
         // extra options are welcome; the screen lists external packs
         // from shader-packs/ only, never built-ins)
-        btn_h(ID_OPT_SHADERS, 248, 324, 465, 30, "SHADERS...", "", true),
+        btn_h(ID_OPT_SHADERS, 248, 360, 465, 30, "SHADERS...", "", true),
         btn_h(
             ID_OPT_DONE2,
             (live_ui_w() as i32 - 300) / 2,
@@ -946,11 +1061,29 @@ pub fn layout_engine() -> Vec<Widget> {
     let rows = [72, 108, 144, 180, 216];
     vec![
         slider_h(ID_OPT_SIMDIST, l, rows[0], bw, 30, "SIM DISTANCE", 0.25),
-        btn_h(ID_OPT_MAXFPS, r, rows[0], bw, 30, "MAX FPS", "UNCAPPED", true),
+        btn_h(
+            ID_OPT_MAXFPS,
+            r,
+            rows[0],
+            bw,
+            30,
+            "MAX FPS",
+            "UNCAPPED",
+            true,
+        ),
         btn_h(ID_OPT_MIP, l, rows[1], bw, 30, "MIPMAP LEVELS", "4", true),
         btn_h(ID_OPT_ANISO, r, rows[1], bw, 30, "ANISOTROPIC", "4X", true),
         btn_h(ID_OPT_MSAA, l, rows[2], bw, 30, "MSAA", "OFF", true),
-        btn_h(ID_OPT_OCCL, r, rows[2], bw, 30, "OCCLUSION CULLING", "ON", true),
+        btn_h(
+            ID_OPT_OCCL,
+            r,
+            rows[2],
+            bw,
+            30,
+            "OCCLUSION CULLING",
+            "ON",
+            true,
+        ),
         btn_h(
             ID_OPT_GMESH,
             l,
@@ -961,7 +1094,16 @@ pub fn layout_engine() -> Vec<Widget> {
             "ON",
             true,
         ),
-        btn_h(ID_OPT_SHADOWS, r, rows[3], bw, 30, "SUN SHADOWS", "2K", true),
+        btn_h(
+            ID_OPT_SHADOWS,
+            r,
+            rows[3],
+            bw,
+            30,
+            "SUN SHADOWS",
+            "2K",
+            true,
+        ),
         btn_h(ID_OPT_UPSCALE, l, rows[4], bw, 30, "UPSCALING", "OFF", true),
         btn_h(
             ID_OPT_DONE2,
@@ -1085,11 +1227,28 @@ pub fn layout_access() -> Vec<Widget> {
         // sliders to video and accessibility settings" — the engine has
         // no nether-portal/nausea screen warp yet, so the slider is
         // registered + grayed with that reason (the spec's own rule)
-        slider_h(ID_ACC_DISTORT_SLIDER, 248, 192, 465, 30, "DISTORTION EFFECTS", 1.0),
+        slider_h(
+            ID_ACC_DISTORT_SLIDER,
+            248,
+            192,
+            465,
+            30,
+            "DISTORTION EFFECTS",
+            1.0,
+        ),
         slider_h(ID_ACC_FOVEFF, 248, 232, 465, 30, "FOV EFFECTS", 1.0),
         // the Java 1.9 subtitle toggle (also on Music & Sounds in JE —
         // grayed: no subtitle overlay renderer)
-        btn_h(ID_ACC_SUBTITLES, 248, 272, 465, 30, "SHOW SUBTITLES", "OFF", false),
+        btn_h(
+            ID_ACC_SUBTITLES,
+            248,
+            272,
+            465,
+            30,
+            "SHOW SUBTITLES",
+            "OFF",
+            false,
+        ),
         // the Fog cycle stays as the engine's own live row (the round-14
         // addition; vanilla 1.16.5 has no accessibility fog row — the
         // engine's fog is a renderer feature surfaced here, disclosed)
@@ -1131,11 +1290,56 @@ pub fn layout_skin(
     let onoff = |b: bool| if b { "ON" } else { "OFF" };
     vec![
         btn_h(ID_SKIN_CAPE, 248, 72, 465, 30, "CAPE", onoff(cape), true),
-        btn_h(ID_SKIN_JACKET, 248, 112, 465, 30, "JACKET", onoff(jacket), true),
-        btn_h(ID_SKIN_LSLEEVE, 248, 152, 465, 30, "LEFT SLEEVE", onoff(lsleeve), true),
-        btn_h(ID_SKIN_RSLEEVE, 248, 192, 465, 30, "RIGHT SLEEVE", onoff(rsleeve), true),
-        btn_h(ID_SKIN_LPANTS, 248, 232, 465, 30, "LEFT PANT LEG", onoff(lpants), true),
-        btn_h(ID_SKIN_RPANTS, 248, 272, 465, 30, "RIGHT PANT LEG", onoff(rpants), true),
+        btn_h(
+            ID_SKIN_JACKET,
+            248,
+            112,
+            465,
+            30,
+            "JACKET",
+            onoff(jacket),
+            true,
+        ),
+        btn_h(
+            ID_SKIN_LSLEEVE,
+            248,
+            152,
+            465,
+            30,
+            "LEFT SLEEVE",
+            onoff(lsleeve),
+            true,
+        ),
+        btn_h(
+            ID_SKIN_RSLEEVE,
+            248,
+            192,
+            465,
+            30,
+            "RIGHT SLEEVE",
+            onoff(rsleeve),
+            true,
+        ),
+        btn_h(
+            ID_SKIN_LPANTS,
+            248,
+            232,
+            465,
+            30,
+            "LEFT PANT LEG",
+            onoff(lpants),
+            true,
+        ),
+        btn_h(
+            ID_SKIN_RPANTS,
+            248,
+            272,
+            465,
+            30,
+            "RIGHT PANT LEG",
+            onoff(rpants),
+            true,
+        ),
         btn_h(ID_SKIN_HAT, 248, 312, 465, 30, "HAT", onoff(hat), true),
         btn_h(
             ID_SKIN_MAINHAND,
@@ -1170,18 +1374,70 @@ pub fn layout_chat_settings() -> Vec<Widget> {
     let (l, r, bw) = (248, 487, 225);
     let rows = [72, 108, 144, 180, 216, 252];
     vec![
-        btn_h(ID_CHAT_VIS, l, rows[0], bw, 30, "CHAT VISIBILITY", "SHOW", false),
-        btn_h(ID_CHAT_COLORS, r, rows[0], bw, 30, "CHAT COLORS", "ON", false),
+        btn_h(
+            ID_CHAT_VIS,
+            l,
+            rows[0],
+            bw,
+            30,
+            "CHAT VISIBILITY",
+            "SHOW",
+            false,
+        ),
+        btn_h(
+            ID_CHAT_COLORS,
+            r,
+            rows[0],
+            bw,
+            30,
+            "CHAT COLORS",
+            "ON",
+            false,
+        ),
         btn_h(ID_CHAT_LINKS, l, rows[1], bw, 30, "WEB LINKS", "ON", false),
-        btn_h(ID_CHAT_LINKSPROMPT, r, rows[1], bw, 30, "LINK PROMPT", "ON", false),
+        btn_h(
+            ID_CHAT_LINKSPROMPT,
+            r,
+            rows[1],
+            bw,
+            30,
+            "LINK PROMPT",
+            "ON",
+            false,
+        ),
         slider_h(ID_CHAT_OPACITY, l, rows[2], bw, 30, "CHAT OPACITY", 1.0),
         slider_h(ID_CHAT_DELAY, r, rows[2], bw, 30, "CHAT DELAY", 0.0),
         slider_h(ID_CHAT_WIDTH, l, rows[3], bw, 30, "WIDTH", 0.53),
         slider_h(ID_CHAT_SCALE, r, rows[3], bw, 30, "SCALE", 1.0),
-        slider_h(ID_CHAT_HFOCUSED, l, rows[4], bw, 30, "HEIGHT (FOCUSED)", 0.5),
-        slider_h(ID_CHAT_HUNFOCUSED, r, rows[4], bw, 30, "HEIGHT (UNFOC.)", 0.44),
+        slider_h(
+            ID_CHAT_HFOCUSED,
+            l,
+            rows[4],
+            bw,
+            30,
+            "HEIGHT (FOCUSED)",
+            0.5,
+        ),
+        slider_h(
+            ID_CHAT_HUNFOCUSED,
+            r,
+            rows[4],
+            bw,
+            30,
+            "HEIGHT (UNFOC.)",
+            0.44,
+        ),
         slider_h(ID_CHAT_LINESPACING, l, rows[5], bw, 30, "LINE SPACING", 0.0),
-        btn_h(ID_CHAT_HIDENAMES, r, rows[5], bw, 30, "HIDE MATCHED NAMES", "OFF", false),
+        btn_h(
+            ID_CHAT_HIDENAMES,
+            r,
+            rows[5],
+            bw,
+            30,
+            "HIDE MATCHED NAMES",
+            "OFF",
+            false,
+        ),
         btn_h(
             ID_CHAT_REDUCEDDEBUG,
             248,
@@ -1192,7 +1448,16 @@ pub fn layout_chat_settings() -> Vec<Widget> {
             "OFF",
             true,
         ),
-        btn_h(ID_CHAT_NARRATOR, 487, 292, 225, 30, "NARRATOR", "OFF", false),
+        btn_h(
+            ID_CHAT_NARRATOR,
+            487,
+            292,
+            225,
+            30,
+            "NARRATOR",
+            "OFF",
+            false,
+        ),
         btn_h(
             ID_CHAT_DONE,
             (live_ui_w() as i32 - 300) / 2,
@@ -1307,17 +1572,17 @@ pub fn layout_controls(labels: &[(bool, &str, &str)]) -> Vec<Widget> {
         }
         y += if *is_header { 26 } else { 34 };
     }
-    v.push(btn_h(ID_CTRL_RESET, l, 440, 210, 30, "RESET KEYS", "", true));
     v.push(btn_h(
-        ID_CTRL_DONE,
-        l + 230,
+        ID_CTRL_RESET,
+        l,
         440,
         210,
         30,
-        "DONE",
+        "RESET KEYS",
         "",
         true,
     ));
+    v.push(btn_h(ID_CTRL_DONE, l + 230, 440, 210, 30, "DONE", "", true));
     v
 }
 
@@ -1382,11 +1647,7 @@ pub fn layout_pause() -> Vec<Widget> {
 /// Rows are hit-test widgets whose bodies the painter fills (name +
 /// info lines) instead of a centered single label. `can_play` gates row A
 /// on a live selection (vanilla disables both without one).
-pub fn layout_world_select(
-    n_rows: usize,
-    can_play: bool,
-    delete_armed: bool,
-) -> Vec<Widget> {
+pub fn layout_world_select(n_rows: usize, can_play: bool, delete_armed: bool) -> Vec<Widget> {
     let mut v = Vec::new();
     // world rows (hit-test only — the painter draws the two-line body)
     for i in 0..n_rows.min(MAX_LISTED_WORLDS) {
@@ -1443,7 +1704,11 @@ pub fn layout_world_select(
         480,
         four + gap * 2,
         30,
-        if delete_armed { "REALLY DELETE?" } else { "DELETE" },
+        if delete_armed {
+            "REALLY DELETE?"
+        } else {
+            "DELETE"
+        },
         "",
         can_play,
     ));
@@ -1457,7 +1722,16 @@ pub fn layout_world_select(
         "",
         can_play,
     ));
-    v.push(btn_h(ID_WS_SEARCH, x0 + (four + gap) * 3, 480, four, 30, "SEARCH", "", true));
+    v.push(btn_h(
+        ID_WS_SEARCH,
+        x0 + (four + gap) * 3,
+        480,
+        four,
+        30,
+        "SEARCH",
+        "",
+        true,
+    ));
     // cancel keeps the vanilla Esc route
     v
 }
@@ -1596,12 +1870,39 @@ pub fn layout_death(hardcore: bool) -> Vec<Widget> {
     let (x, w) = ((live_ui_w() as i32 - 300) / 2, 300);
     if !hardcore {
         v.push(btn_h(ID_DEATH_RESPAWN, x, 296, w, 30, "RESPAWN", "", true));
-        v.push(btn_h(ID_DEATH_TITLE, x, 336, w, 30, "TITLE SCREEN", "", true));
+        v.push(btn_h(
+            ID_DEATH_TITLE,
+            x,
+            336,
+            w,
+            30,
+            "TITLE SCREEN",
+            "",
+            true,
+        ));
     } else {
         // hardcore: death is final — vanilla's two options (delete world /
         // title screen, which leaves the locked world on disk)
-        v.push(btn_h(ID_DEATH_DELETE, x, 296, w, 30, "DELETE WORLD", "", true));
-        v.push(btn_h(ID_DEATH_TITLE, x, 336, w, 30, "TITLE SCREEN", "", true));
+        v.push(btn_h(
+            ID_DEATH_DELETE,
+            x,
+            296,
+            w,
+            30,
+            "DELETE WORLD",
+            "",
+            true,
+        ));
+        v.push(btn_h(
+            ID_DEATH_TITLE,
+            x,
+            336,
+            w,
+            30,
+            "TITLE SCREEN",
+            "",
+            true,
+        ));
     }
     v
 }
@@ -1788,11 +2089,7 @@ fn splash_ink(s: &str) -> (Vec<u8>, i32, i32) {
 /// engine-backed tight yellow ink at an explicit (device) cell —
 /// shared by the canvas fallback (16 UI px) and the rotated-quad
 /// path (16 × device_scale, so the strip bakes at DEVICE resolution).
-fn splash_ink_at(
-    s: &str,
-    cell: f32,
-    e: &mut crate::gui::font::FontEngine,
-) -> (Vec<u8>, i32, i32) {
+fn splash_ink_at(s: &str, cell: f32, e: &mut crate::gui::font::FontEngine) -> (Vec<u8>, i32, i32) {
     const YELLOW: [u8; 4] = [255, 255, 0, 255];
     let (bytes, w, h) = e.bake_bitmap(s, cell, YELLOW);
     (bytes, w as i32, h as i32)
@@ -1908,7 +2205,10 @@ impl UiCanvas {
 
     /// Phase 3: install the ready-icon snapshot (called by the game
     /// whenever the icon cache's version moves)
-    pub fn set_icon_cells(&mut self, cells: std::sync::Arc<std::collections::HashMap<u16, [u8; 2]>>) {
+    pub fn set_icon_cells(
+        &mut self,
+        cells: std::sync::Arc<std::collections::HashMap<u16, [u8; 2]>>,
+    ) {
         self.icon_cells = Some(cells);
         self.dirty = true;
     }
@@ -1932,6 +2232,29 @@ impl UiCanvas {
         if let Some(img) =
             image::RgbaImage::from_raw(self.live_w as u32, self.live_h as u32, self.px.clone())
         {
+            let _ = img.save(path);
+        }
+    }
+
+    /// save the canvas FLATTENED over a backdrop color — the composite
+    /// the GPU's alpha-blend produces at render time (the raw dump keeps
+    /// the overlay alphas, which read as near-black in PNG viewers).
+    /// The headless visual-review path (ui_snapshots bin).
+    pub fn dump_png_flat(&self, path: &str, bg: Color) {
+        let mut out = self.px.clone();
+        for px in out.as_chunks_mut::<4>().0 {
+            let a = px[3] as u32;
+            if a == 0 {
+                px.copy_from_slice(&bg);
+            } else if a < 255 {
+                let inv = 255 - a;
+                for c in 0..3 {
+                    px[c] = ((bg[c] as u32 * inv + px[c] as u32 * a) / 255) as u8;
+                }
+                px[3] = 255;
+            }
+        }
+        if let Some(img) = image::RgbaImage::from_raw(self.live_w as u32, self.live_h as u32, out) {
             let _ = img.save(path);
         }
     }
@@ -2335,24 +2658,47 @@ impl UiCanvas {
             self.draw_button_text(w, &label, &value, enabled, hover);
             return;
         }
+        // 2026-09-20 modern flat profile (canvas fallback — the quad
+        // path renders the same look from the 20x20 9-slice): flat body
+        // with a subtle hash-noise band, ONE light row under the top
+        // frame, two shade rows over the bottom frame, 2-px frame —
+        // black normally, white on hover. Clean-room re-synthesis of
+        // the modern-widget design parameters (own palette, own noise).
         let body: Color = if enabled {
-            [96, 96, 96, 235]
+            [111, 111, 111, 255] // 0x6F + noise below
         } else {
-            [56, 56, 56, 215]
+            [45, 45, 45, 235] // 0x2D
         };
-        self.rect(w.x, w.y, w.w, w.h, body);
-        // bevel: light top/left, dark bottom/right
-        self.rect(w.x + 2, w.y + 2, w.w - 4, 2, [140, 140, 140, 255]);
-        self.rect(w.x + 2, w.y + 2, 2, w.h - 4, [130, 130, 130, 255]);
-        self.rect(w.x + 2, w.y + w.h - 4, w.w - 4, 2, [58, 58, 58, 255]);
-        self.rect(w.x + w.w - 4, w.y + 2, 2, w.h - 4, [58, 58, 58, 255]);
-        // 2px black border
-        self.frame(w.x, w.y, w.w, w.h, [12, 12, 12, 255]);
-        self.frame(w.x + 1, w.y + 1, w.w - 2, w.h - 2, [42, 42, 42, 255]);
+        // body + deterministic ±4 noise (2x2 blocks keep it cheap and
+        // matching the 2-canvas-px-per-vanilla-px model)
+        for y in (w.y + 2..w.y + w.h - 2).step_by(2) {
+            for x in (w.x + 2..w.x + w.w - 2).step_by(2) {
+                let n = (hash_pixel(x, y) % 9) as i32 - 4;
+                let c: Color = [
+                    (body[0] as i32 + n).clamp(0, 255) as u8,
+                    (body[1] as i32 + n).clamp(0, 255) as u8,
+                    (body[2] as i32 + n).clamp(0, 255) as u8,
+                    body[3],
+                ];
+                self.rect(x, y, 2, 2, c);
+            }
+        }
+        let (frame, light): (Color, Color) = if hover && enabled {
+            ([255, 255, 255, 255], [180, 180, 182, 255])
+        } else {
+            ([12, 12, 12, 255], [172, 172, 172, 255])
+        };
+        // ONE light row under the top frame (the modern sheen)
+        self.rect(w.x + 2, w.y + 2, w.w - 4, 2, light);
+        // two shade rows over the bottom frame
+        self.rect(w.x + 2, w.y + w.h - 6, w.w - 4, 2, [90, 90, 92, 255]);
+        self.rect(w.x + 2, w.y + w.h - 4, w.w - 4, 2, [74, 74, 76, 255]);
+        // 2-px frame
+        self.frame(w.x, w.y, w.w, w.h, frame);
+        self.frame(w.x + 1, w.y + 1, w.w - 2, w.h - 2, frame);
         if hover && enabled {
             let tint: Color = [130, 160, 255, 70];
-            self.rect(w.x + 2, w.y + 2, w.w - 4, w.h - 4, tint);
-            self.frame(w.x + 2, w.y + 2, w.w - 4, w.h - 4, [255, 255, 255, 130]);
+            self.rect(w.x + 4, w.y + 4, w.w - 8, w.h - 8, tint);
         }
         self.draw_button_text(w, &label, &value, enabled, hover);
     }
@@ -2394,7 +2740,8 @@ impl UiCanvas {
         );
     }
 
-    /// Minecraft-style slider: inset track + knob.
+    /// Minecraft-style slider: inset track + knob (2026-09-20: modern
+    /// flat profile — dark flat track, knob = a small modern button).
     pub fn draw_slider(&mut self, w: &Widget, hover: bool) {
         let (label, value) = match &w.kind {
             WidgetKind::Slider { label, value } => (label.clone(), *value),
@@ -2405,23 +2752,26 @@ impl UiCanvas {
         // Phase 2: quads always pushed, raster gated
         self.gui_frame.slider(w, hover);
         if self.chrome_enabled {
-        // track: dark inset
-        self.rect(w.x, ty, w.w, th, [30, 30, 30, 230]);
-        self.frame(w.x, ty, w.w, th, [12, 12, 12, 255]);
-        self.rect(w.x + 2, ty + 2, w.w - 4, th - 4, [86, 86, 86, 230]);
-        self.rect(w.x + 2, ty + 2, w.w - 4, 2, [64, 64, 64, 255]);
-        // knob (16 wide, button style)
-        let kx = w.x + 8 + ((w.w - 16 - 16) as f32 * value) as i32;
-        self.rect(kx, ty - 4, 16, th + 8, [110, 110, 110, 250]);
-        self.frame(kx, ty - 4, 16, th + 8, [12, 12, 12, 255]);
-        self.rect(kx + 2, ty - 2, 12, 2, [150, 150, 150, 255]);
-        self.rect(kx + 2, ty + th, 12, 2, [58, 58, 58, 255]);
-        if hover {
-            self.frame(kx + 1, ty - 3, 14, th + 6, [255, 255, 255, 110]);
-        }
+            // track: dark flat inset (the modern sunken slider tray)
+            self.rect(w.x, ty, w.w, th, [22, 22, 22, 235]);
+            self.frame(w.x, ty, w.w, th, [0, 0, 0, 255]);
+            self.frame(w.x + 1, ty + 1, w.w - 2, th - 2, [52, 52, 52, 255]);
+            // knob (16 wide — a mini modern button: body + sheen + shade +
+            // 2-px frame, white frame on hover)
+            let kx = w.x + 8 + ((w.w - 16 - 16) as f32 * value) as i32;
+            self.rect(kx, ty - 4, 16, th + 8, [111, 111, 111, 250]);
+            self.rect(kx + 2, ty - 2, 12, 2, [172, 172, 172, 255]);
+            self.rect(kx + 2, ty + th, 12, 2, [90, 90, 92, 255]);
+            let kf: Color = if hover {
+                [255, 255, 255, 255]
+            } else {
+                [12, 12, 12, 255]
+            };
+            self.frame(kx, ty - 4, 16, th + 8, kf);
+            self.frame(kx + 1, ty - 3, 14, th + 6, kf);
         } // chrome_enabled
-        // label centered over the track (empty label = the vanilla
-        // unlabeled slider, e.g. Brightness)
+          // label centered over the track (empty label = the vanilla
+          // unlabeled slider, e.g. Brightness)
         if !label.is_empty() {
             let text_col: Color = if hover {
                 [255, 255, 160, 255]
@@ -2459,16 +2809,16 @@ impl UiCanvas {
         // Phase 2: quads always pushed, raster gated
         self.gui_frame.text_field(w, _hover);
         if self.chrome_enabled {
-        // inset tray
-        self.rect(w.x, w.y, w.w, w.h, [16, 16, 16, 235]);
-        self.frame(w.x, w.y, w.w, w.h, [12, 12, 12, 255]);
-        self.rect(w.x + 2, w.y + 2, w.w - 4, 2, [50, 50, 50, 255]);
-        self.rect(w.x + 2, w.y + w.h - 4, w.w - 4, 2, [70, 70, 70, 255]);
-        if focused {
-            self.frame(w.x + 1, w.y + 1, w.w - 2, w.h - 2, [255, 255, 255, 170]);
-        }
+            // inset tray
+            self.rect(w.x, w.y, w.w, w.h, [16, 16, 16, 235]);
+            self.frame(w.x, w.y, w.w, w.h, [12, 12, 12, 255]);
+            self.rect(w.x + 2, w.y + 2, w.w - 4, 2, [50, 50, 50, 255]);
+            self.rect(w.x + 2, w.y + w.h - 4, w.w - 4, 2, [70, 70, 70, 255]);
+            if focused {
+                self.frame(w.x + 1, w.y + 1, w.w - 2, w.h - 2, [255, 255, 255, 170]);
+            }
         } // chrome_enabled
-        // contents: typed text, else placeholder in gray
+          // contents: typed text, else placeholder in gray
         let fs = 2.0 * self.widget_scale;
         let shown = Self::field_visible_text_f(w.w, &text, fs);
         if !shown.is_empty() {
@@ -2525,7 +2875,13 @@ impl UiCanvas {
                     let tw = Self::text_width_frac(shown, fs);
                     let pad = (16.0 * self.widget_scale) as i32;
                     let ch = (20.0 * self.widget_scale) as i32;
-                    self.rect(w.x + pad + tw + 1, w.y + (12.0 * self.widget_scale) as i32, 2, ch, [240, 240, 240, 255]);
+                    self.rect(
+                        w.x + pad + tw + 1,
+                        w.y + (12.0 * self.widget_scale) as i32,
+                        2,
+                        ch,
+                        [240, 240, 240, 255],
+                    );
                 }
             }
         }
@@ -2606,12 +2962,13 @@ impl UiCanvas {
         title: &str,
         tooltip: &[String],
     ) {
-        // Phase 2: the vanilla options background (16x16 dirt tiles at
-        // 0.25 brightness) rides the quad pass; the canvas dark rect
-        // stays as the no-quads fallback
-        self.gui_frame
-            .dirt_background(self.live_w as i32, self.live_h as i32);
-        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [8, 8, 10, 110]);
+        // 2026-09-20 modern look (owner directive — clean-room, similar
+        // to the reference family): the OPAQUE 1.16.5 dirt tile backdrop
+        // is replaced by the current-generation translucent dark menu
+        // overlay — the blurred panorama (title) or the frozen live
+        // world (pause) shows THROUGH it. The dirt sheet stays compiled
+        // for resource packs that ship an options background.
+        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [0, 0, 0, 100]);
         self.text_center(18, title, [255, 255, 255, 255], 3);
         for (i, line) in tooltip.iter().take(2).enumerate() {
             self.text_center(46 + i as i32 * 12, line, [170, 170, 170, 255], 1);
@@ -2624,9 +2981,10 @@ impl UiCanvas {
     /// tooltip lines under the title, DONE at the bottom (the widgets
     /// themselves carry the rows + arrows).
     pub fn resource_pack_screen(&mut self, ws: &[Widget], hover: Option<u16>, tooltip: &[String]) {
-        self.gui_frame
-            .dirt_background(self.live_w as i32, self.live_h as i32);
-        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [8, 8, 10, 110]);
+        // 2026-09-20 modern translucent menu backdrop (see
+        // settings_screen) + the darker sunken LIST panels (the
+        // modern list-background family — deeper than the base overlay)
+        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [0, 0, 0, 100]);
         self.text_center(18, "RESOURCE PACKS", [255, 255, 255, 255], 3);
         for (i, line) in tooltip.iter().take(2).enumerate() {
             self.text_center(46 + i as i32 * 12, line, [170, 170, 170, 255], 1);
@@ -2635,10 +2993,16 @@ impl UiCanvas {
         let aw = Self::text_width("AVAILABLE", 2);
         self.text((450 - aw) / 2, 62, "AVAILABLE", [255, 255, 255, 255], 2);
         let sw = Self::text_width("SELECTED", 2);
-        self.text((720 - sw) / 2 + 210, 62, "SELECTED", [255, 255, 255, 255], 2);
-        // dark inset panels behind the rows (vanilla's sunken list look)
-        self.rect(26, 86, 428, 348, [0, 0, 0, 130]);
-        self.rect(506, 86, 428, 348, [0, 0, 0, 130]);
+        self.text(
+            (720 - sw) / 2 + 210,
+            62,
+            "SELECTED",
+            [255, 255, 255, 255],
+            2,
+        );
+        // dark inset panels behind the rows (the modern list look)
+        self.rect(26, 86, 428, 348, [0, 0, 0, 150]);
+        self.rect(506, 86, 428, 348, [0, 0, 0, 150]);
         self.draw_widgets(ws, hover);
     }
 
@@ -2649,21 +3013,23 @@ impl UiCanvas {
     /// line rides the tooltip slot (the caller feeds it when the scan
     /// found nothing).
     pub fn shader_screen(&mut self, ws: &[Widget], hover: Option<u16>, tooltip: &[String]) {
-        self.gui_frame
-            .dirt_background(self.live_w as i32, self.live_h as i32);
-        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [8, 8, 10, 110]);
+        // 2026-09-20 modern translucent backdrop (see settings_screen)
+        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [0, 0, 0, 100]);
         self.text_center(18, "SHADERS", [255, 255, 255, 255], 3);
         for (i, line) in tooltip.iter().take(2).enumerate() {
             self.text_center(46 + i as i32 * 12, line, [170, 170, 170, 255], 1);
         }
-        // sunken list backdrop behind the pack rows (the vanilla
-        // list-panel look, full width)
-        self.rect(140, 80, 676, 304, [0, 0, 0, 130]);
+        // sunken list backdrop behind the pack rows (the modern
+        // list-background family, full width)
+        self.rect(140, 80, 676, 304, [0, 0, 0, 150]);
         self.draw_widgets(ws, hover);
     }
 
     pub fn pause_screen(&mut self, ws: &[Widget], hover: Option<u16>) {
-        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [0, 0, 0, 130]);
+        // 2026-09-20: modern in-world menu translucency (the frozen
+        // world shows through — the same family as the settings
+        // backdrop, slightly deeper for white-text readability)
+        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [0, 0, 0, 110]);
         self.text_center(140, "GAME MENU", [255, 255, 255, 255], 3);
         self.draw_widgets(ws, hover);
     }
@@ -2683,10 +3049,17 @@ impl UiCanvas {
         total: usize,
         filtering: bool,
     ) {
-        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [8, 8, 10, 200]);
+        // 2026-09-20 modern translucent backdrop over the panorama
+        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [0, 0, 0, 110]);
         self.text_center(18, "SELECT WORLD", [255, 255, 255, 255], 3);
         // sunken list backdrop behind the entries (vanilla look)
-        self.rect(221, 90, 518, 6 + MAX_LISTED_WORLDS as i32 * 50, [0, 0, 0, 130]);
+        self.rect(
+            221,
+            90,
+            518,
+            6 + MAX_LISTED_WORLDS as i32 * 50,
+            [0, 0, 0, 150],
+        );
         // count / search status line under the title (vanilla shows
         // "Showing x of y" while filtering)
         if filtering {
@@ -2708,7 +3081,13 @@ impl UiCanvas {
         if total > MAX_LISTED_WORLDS {
             let up = scroll > 0;
             let down = scroll + MAX_LISTED_WORLDS < total;
-            let col = |on: bool| if on { [255, 255, 255, 220] } else { [120, 120, 120, 120] };
+            let col = |on: bool| {
+                if on {
+                    [255, 255, 255, 220]
+                } else {
+                    [120, 120, 120, 120]
+                }
+            };
             let (cx, cy) = (744, 100);
             self.text(cx, cy, "/\\", col(up), 1);
             self.text(cx, 90 + MAX_LISTED_WORLDS as i32 * 50, "\\/", col(down), 1);
@@ -2716,7 +3095,9 @@ impl UiCanvas {
         // the entries themselves (two-line vanilla rows)
         for (i, row) in rows.iter().take(MAX_LISTED_WORLDS).enumerate() {
             let id = ID_WS_WORLD_BASE + i as u16;
-            let Some(w) = ws.iter().find(|w| w.id == id) else { continue };
+            let Some(w) = ws.iter().find(|w| w.id == id) else {
+                continue;
+            };
             let hov = hover == Some(id);
             let sel = selected == Some(i);
             let base = if sel {
@@ -2725,7 +3106,17 @@ impl UiCanvas {
                 [24, 24, 28, 235]
             };
             self.rect(w.x, w.y, w.w, w.h, base);
-            self.frame(w.x, w.y, w.w, w.h, if sel || hov { [255, 255, 255, 200] } else { [16, 16, 16, 255] });
+            self.frame(
+                w.x,
+                w.y,
+                w.w,
+                w.h,
+                if sel || hov {
+                    [255, 255, 255, 200]
+                } else {
+                    [16, 16, 16, 255]
+                },
+            );
             // line 1: world name (white, slightly large)
             let name_col: Color = if row.dead {
                 [150, 150, 150, 255]
@@ -2734,7 +3125,13 @@ impl UiCanvas {
             } else {
                 [255, 255, 255, 255]
             };
-            self.text_frac(w.x + 10, w.y + 5, &row.name, name_col, 1.5 * self.widget_scale);
+            self.text_frac(
+                w.x + 10,
+                w.y + 5,
+                &row.name,
+                name_col,
+                1.5 * self.widget_scale,
+            );
             // line 2: mode + last played (gray)
             self.text_frac(
                 w.x + 10,
@@ -2760,7 +3157,8 @@ impl UiCanvas {
         page2: bool,
         mode_desc: (&str, &str),
     ) {
-        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [8, 8, 10, 200]);
+        // 2026-09-20 modern translucent backdrop over the panorama
+        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [0, 0, 0, 110]);
         self.text_center(18, "CREATE NEW WORLD", [255, 255, 255, 255], 3);
         if !page2 {
             self.text_center(
@@ -2774,12 +3172,7 @@ impl UiCanvas {
             self.text_center(192, mode_desc.0, [150, 150, 150, 255], 1);
             self.text_center(210, mode_desc.1, [150, 150, 150, 255], 1);
         } else {
-            self.text_center(
-                64,
-                "SEED FOR THE WORLD GENERATOR",
-                [150, 150, 150, 255],
-                1,
-            );
+            self.text_center(64, "SEED FOR THE WORLD GENERATOR", [150, 150, 150, 255], 1);
             self.text_center(
                 122,
                 "LEAVE BLANK FOR A RANDOM SEED",
@@ -2793,7 +3186,8 @@ impl UiCanvas {
 
     /// 2026-09-14 parity round: the vanilla Edit World screen.
     pub fn world_edit_screen(&mut self, ws: &[Widget], hover: Option<u16>, time: f32) {
-        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [8, 8, 10, 200]);
+        // 2026-09-20 modern translucent backdrop over the panorama
+        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [0, 0, 0, 110]);
         self.text_center(18, "EDIT WORLD", [255, 255, 255, 255], 3);
         self.text_center(
             64,
@@ -2807,17 +3201,23 @@ impl UiCanvas {
     /// Phase 1 + 2026-09-14: death screen — red wash, vanilla "You Died!"
     /// title + the vanilla Score line under it (vanilla shows the
     /// player's score, not the death cause).
-    pub fn death_screen(
-        &mut self,
-        ws: &[Widget],
-        hover: Option<u16>,
-        hardcore: bool,
-        score: i32,
-    ) {
-        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [80, 0, 0, 150]);
+    pub fn death_screen(&mut self, ws: &[Widget], hover: Option<u16>, hardcore: bool, score: i32) {
+        self.rect(
+            0,
+            0,
+            self.live_w as i32,
+            self.live_h as i32,
+            [80, 0, 0, 150],
+        );
         let title = if hardcore { "GAME OVER!" } else { "YOU DIED!" };
         let tw = Self::text_width(title, 5);
-        self.text((self.live_w as i32 - tw) / 2, 150, title, [255, 240, 240, 255], 5);
+        self.text(
+            (self.live_w as i32 - tw) / 2,
+            150,
+            title,
+            [255, 240, 240, 255],
+            5,
+        );
         let sub = if hardcore {
             "HARDCORE WORLD - DEATH IS PERMANENT".to_string()
         } else {
@@ -2887,19 +3287,15 @@ impl UiCanvas {
         let cyd = snap(self.live_h as f32 * 0.5 * k);
         let ha = (snap(8.0 * k) as i32).max(4); // half-arm (device px)
         let ht = (snap(2.0 * k) as i32).max(2); // arm thickness
-        // bar top/left snapped so the arm covers whole device px
-        // (odd thickness sits 1 px heavy toward +x/+y — invisible on
-        // a symmetric-plus crosshair, and every edge stays crisp)
+                                                // bar top/left snapped so the arm covers whole device px
+                                                // (odd thickness sits 1 px heavy toward +x/+y — invisible on
+                                                // a symmetric-plus crosshair, and every edge stays crisp)
         let wy = cyd as i32 - (ht + 1) / 2;
         let wx = cxd as i32 - (ht + 1) / 2;
         // device-px rect → fractional UI rect (dst = device / k)
         let q = |x: i32, y: i32, w: i32, h: i32, f: &mut Self| {
-            f.gui_frame.solid_invert(
-                x as f32 / k,
-                y as f32 / k,
-                w as f32 / k,
-                h as f32 / k,
-            );
+            f.gui_frame
+                .solid_invert(x as f32 / k, y as f32 / k, w as f32 / k, h as f32 / k);
         };
         // horizontal bar SPLIT into two segments around the vertical
         // bar's [wx, wx+ht) window — disjoint invert geometry
@@ -2956,7 +3352,11 @@ impl UiCanvas {
         for i in 0..10i32 {
             let x = hb_x + 2 + i * 17;
             let y = hb_y - 26;
-            let dx = if s.hearts_jitter && ((i + s.tick_phase) & 1) == 0 { -2 } else { 0 };
+            let dx = if s.hearts_jitter && ((i + s.tick_phase) & 1) == 0 {
+                -2
+            } else {
+                0
+            };
             // Phase 2: the 9x9 quad sprite (18x18 drawn) always pushed;
             // the legacy canvas sprite raster is gated
             let variant = if s.health >= (i + 1) as f32 / 10.0 {
@@ -3092,10 +3492,14 @@ impl UiCanvas {
                 c[3] as f32 / 255.0,
             ]
         };
-        self.gui_frame.solid_rect(xp_x, xp_y, xp_w, 10, ct([16, 16, 16, 220]));
-        self.gui_frame.solid_rect(xp_x, xp_y, xp_w, 1, ct([60, 60, 60, 255]));
-        self.gui_frame.solid_rect(xp_x, xp_y + 9, xp_w, 1, ct([60, 60, 60, 255]));
-        self.gui_frame.solid_rect(xp_x, xp_y, 1, 10, ct([60, 60, 60, 255]));
+        self.gui_frame
+            .solid_rect(xp_x, xp_y, xp_w, 10, ct([16, 16, 16, 220]));
+        self.gui_frame
+            .solid_rect(xp_x, xp_y, xp_w, 1, ct([60, 60, 60, 255]));
+        self.gui_frame
+            .solid_rect(xp_x, xp_y + 9, xp_w, 1, ct([60, 60, 60, 255]));
+        self.gui_frame
+            .solid_rect(xp_x, xp_y, 1, 10, ct([60, 60, 60, 255]));
         self.gui_frame
             .solid_rect(xp_x + xp_w - 1, xp_y, 1, 10, ct([60, 60, 60, 255]));
         if fill > 0 {
@@ -3135,8 +3539,13 @@ impl UiCanvas {
         if a <= 0.0 {
             return;
         }
-        self.gui_frame
-            .solid_over(0.0, 0.0, self.live_w as f32, self.live_h as f32, [0.55, 0.0, 0.0, 0.3 * a]);
+        self.gui_frame.solid_over(
+            0.0,
+            0.0,
+            self.live_w as f32,
+            self.live_h as f32,
+            [0.55, 0.0, 0.0, 0.3 * a],
+        );
     }
 
     /// Sub-round 1: the status-effect icon rows, top-right (VERIFIED
@@ -3222,16 +3631,23 @@ impl UiCanvas {
                 c[3] as f32 / 255.0,
             ]
         };
-        self.gui_frame.solid_rect(x, y, w, 12, ct([16, 12, 20, 220]));
+        self.gui_frame
+            .solid_rect(x, y, w, 12, ct([16, 12, 20, 220]));
         // 1-px frame (the canvas `frame` decomposition)
-        self.gui_frame.solid_rect(x, y, w, 1, ct([90, 70, 110, 255]));
-        self.gui_frame.solid_rect(x, y + 11, w, 1, ct([90, 70, 110, 255]));
-        self.gui_frame.solid_rect(x, y, 1, 12, ct([90, 70, 110, 255]));
-        self.gui_frame.solid_rect(x + w - 1, y, 1, 12, ct([90, 70, 110, 255]));
+        self.gui_frame
+            .solid_rect(x, y, w, 1, ct([90, 70, 110, 255]));
+        self.gui_frame
+            .solid_rect(x, y + 11, w, 1, ct([90, 70, 110, 255]));
+        self.gui_frame
+            .solid_rect(x, y, 1, 12, ct([90, 70, 110, 255]));
+        self.gui_frame
+            .solid_rect(x + w - 1, y, 1, 12, ct([90, 70, 110, 255]));
         let fill = ((w - 4) as f32 * frac.clamp(0.0, 1.0)) as i32;
         if fill > 0 {
-            self.gui_frame.solid_rect(x + 2, y + 2, fill, 8, ct([190, 90, 220, 255]));
-            self.gui_frame.solid_rect(x + 2, y + 2, fill, 2, ct([230, 150, 250, 255]));
+            self.gui_frame
+                .solid_rect(x + 2, y + 2, fill, 8, ct([190, 90, 220, 255]));
+            self.gui_frame
+                .solid_rect(x + 2, y + 2, fill, 2, ct([230, 150, 250, 255]));
         }
         if self.chrome_enabled {
             self.rect(x, y, w, 12, [16, 12, 20, 220]);
@@ -3334,11 +3750,7 @@ impl UiCanvas {
             // tile would cover the icon quad. No cached icon yet → the
             // flat tile is the pop-in placeholder and the permanent
             // fallback for blocks the baker cannot model.
-            match self
-                .icon_cells
-                .as_ref()
-                .and_then(|m| m.get(&b).copied())
-            {
+            match self.icon_cells.as_ref().and_then(|m| m.get(&b).copied()) {
                 Some(cell) => self.gui_frame.icon_quad(sx + 2, sy + 2, cell),
                 None => blit_tile(
                     atlas,
@@ -3526,7 +3938,8 @@ impl UiCanvas {
                     .as_ref()
                     .map(|m| m.capacity)
                     .unwrap_or(15)
-                    .div_ceil(5)) as i32 * 40
+                    .div_ceil(5)) as i32
+                    * 40
                     + 4
             }
         };
@@ -3787,22 +4200,10 @@ impl UiCanvas {
                     let by = cy + 4;
                     self.rect(bx, by, 40, 40, [22, 22, 26, 200]);
                     self.frame(bx, by, 40, 40, [60, 60, 66, 255]);
-                    self.text(
-                        bx + 4,
-                        by + 6,
-                        "STR",
-                        [255, 220, 120, 255],
-                        1,
-                    );
+                    self.text(bx + 4, by + 6, "STR", [255, 220, 120, 255], 1);
                     // the strength pips (1..5, one column of short bars)
                     for p in 0..mv.strength.clamp(1, 5) {
-                        self.rect(
-                            bx + 8,
-                            by + 22 + p as i32 * 3,
-                            24,
-                            2,
-                            [120, 220, 120, 255],
-                        );
+                        self.rect(bx + 8, by + 22 + p as i32 * 3, 24, 2, [120, 220, 120, 255]);
                     }
                 } else {
                     // the saddle slot — donkey/mule (w/Donkey §Usage:
@@ -4122,11 +4523,17 @@ impl UiCanvas {
                 let rx = px0 + 128;
                 let ry = y0 + 16;
                 self.rect(rx, ry, 208, 24, [16, 16, 18, 255]);
-                self.frame(rx, ry, 208, 24, if av.rename_focused {
-                    [160, 160, 170, 255]
-                } else {
-                    [70, 70, 76, 255]
-                });
+                self.frame(
+                    rx,
+                    ry,
+                    208,
+                    24,
+                    if av.rename_focused {
+                        [160, 160, 170, 255]
+                    } else {
+                        [70, 70, 76, 255]
+                    },
+                );
                 let shown = if av.rename.is_empty() {
                     "item name".to_string()
                 } else {
@@ -4165,7 +4572,11 @@ impl UiCanvas {
                 // the "+" glyph between the inputs (audit: ~(61,54) x2)
                 self.text(px0 + 118, sy + 12, "+", [200, 200, 205, 255], 2);
                 // the progress arrow toward the result
-                self.arrow(px0 + 196, sy + 14, if av.result.is_empty() { 0.2 } else { 1.0 });
+                self.arrow(
+                    px0 + 196,
+                    sy + 14,
+                    if av.result.is_empty() { 0.2 } else { 1.0 },
+                );
                 // the cost line under the arrow (audit: (60,70) x2)
                 let cost_label = if av.too_expensive && !av.creative {
                     "TOO EXPENSIVE!".to_string()
@@ -4266,7 +4677,11 @@ impl UiCanvas {
                         bx - 6,
                         by + 50,
                         &format!("{}(L{})", &label[..2], lv),
-                        if gated { [100, 100, 105, 255] } else { [180, 180, 185, 255] },
+                        if gated {
+                            [100, 100, 105, 255]
+                        } else {
+                            [180, 180, 185, 255]
+                        },
                         1,
                     );
                     prim_pos[i] = (bx, by);
@@ -4282,8 +4697,7 @@ impl UiCanvas {
                     let bx = px0 + 260 + i as i32 * 56;
                     let by = y0 + 44;
                     let selected = bv.pending_secondary == *s
-                        || (bv.pending_secondary == BeaconSecondary::None
-                            && bv.secondary == *s);
+                        || (bv.pending_secondary == BeaconSecondary::None && bv.secondary == *s);
                     let bg: [u8; 4] = if selected && !sec_gated {
                         [40, 90, 40, 235]
                     } else if sec_gated {
@@ -4315,7 +4729,11 @@ impl UiCanvas {
                         bx - 2,
                         by + 50,
                         if sec_gated { "L4" } else { tip },
-                        if sec_gated { [100, 100, 105, 255] } else { [180, 180, 185, 255] },
+                        if sec_gated {
+                            [100, 100, 105, 255]
+                        } else {
+                            [180, 180, 185, 255]
+                        },
                         1,
                     );
                     sec_pos[i] = (bx, by);
@@ -4339,17 +4757,29 @@ impl UiCanvas {
                 );
                 let confirm_on = bv.pending_primary.is_some() && (has_pay || bv.level == 0);
                 let cx2 = px0 + 212;
-                self.rect(cx2, py, 36, 36, if confirm_on {
-                    [34, 90, 34, 235]
-                } else {
-                    [30, 30, 34, 170]
-                });
+                self.rect(
+                    cx2,
+                    py,
+                    36,
+                    36,
+                    if confirm_on {
+                        [34, 90, 34, 235]
+                    } else {
+                        [30, 30, 34, 170]
+                    },
+                );
                 self.frame(cx2, py, 36, 36, [12, 12, 14, 255]);
-                self.text(cx2 + 12, py + 12, "OK", if confirm_on {
-                    [140, 255, 140, 255]
-                } else {
-                    [100, 100, 105, 255]
-                }, 1);
+                self.text(
+                    cx2 + 12,
+                    py + 12,
+                    "OK",
+                    if confirm_on {
+                        [140, 255, 140, 255]
+                    } else {
+                        [100, 100, 105, 255]
+                    },
+                    1,
+                );
                 // cancel (red X)
                 let cx3 = px0 + 260;
                 self.rect(cx3, py, 36, 36, [90, 34, 34, 200]);
@@ -4368,11 +4798,9 @@ impl UiCanvas {
                 // and (50,40) (22px pitch), the wheel illustration beside
                 // them, the result at (148,32), the XP hint under the
                 // arrow (audit §3 — doubled into the 36px slot space)
-                let (top, bottom, result) = view.grind.unwrap_or((
-                    ItemStack::EMPTY,
-                    ItemStack::EMPTY,
-                    ItemStack::EMPTY,
-                ));
+                let (top, bottom, result) =
+                    view.grind
+                        .unwrap_or((ItemStack::EMPTY, ItemStack::EMPTY, ItemStack::EMPTY));
                 let tx = px0 + 100; // (50,18) x2
                 let ty = y0 + 36;
                 let by = ty + 44; // the 22px pitch doubled
@@ -4465,16 +4893,16 @@ impl UiCanvas {
         const BG: Color = [80, 80, 80, 144]; // 0x90505050
         const FG: Color = [224, 224, 224, 255]; // 0xE0E0E0
         const LINE_H: i32 = 18; // glyph 16 (8 rows x scale 2) + 1px pad top+bottom
-        // Luanti round 2: strips are fractional solid quads measured
-        // with the ACTIVE font's real metrics — the strip hugs the
-        // device-exact text at any window size instead of quantizing
-        // to the 960x540 integer grid (text already rides glyph quads).
-        // They ride the OVER-CANVAS text layer (pushed immediately
-        // before their line's text, so the text still composites on
-        // top) — the canvas is empty at the strip region in armed
-        // mode, and the text layer is the proven-visible Solid path
-        // (the crosshair class; browser E2E caught the chrome-layer
-        // draw silently dropping them).
+                                // Luanti round 2: strips are fractional solid quads measured
+                                // with the ACTIVE font's real metrics — the strip hugs the
+                                // device-exact text at any window size instead of quantizing
+                                // to the 960x540 integer grid (text already rides glyph quads).
+                                // They ride the OVER-CANVAS text layer (pushed immediately
+                                // before their line's text, so the text still composites on
+                                // top) — the canvas is empty at the strip region in armed
+                                // mode, and the text layer is the proven-visible Solid path
+                                // (the crosshair class; browser E2E caught the chrome-layer
+                                // draw silently dropping them).
         let strip_quads = text_quads_active() && crate::gui::font::engine().is_some();
         let bg_tint: [f32; 4] = [
             BG[0] as f32 / 255.0,
@@ -4632,10 +5060,20 @@ impl UiCanvas {
             }
         };
         if text_quads_active() {
-            self.gui_frame
-                .solid_over(x0 as f32, y as f32, (w + 4) as f32, (h + 4) as f32, ct([80, 80, 80, 110]));
-            self.gui_frame
-                .solid_over(x0 as f32 + 2.0, guide_y as f32, w as f32, 1.0, ct([255, 255, 255, 70]));
+            self.gui_frame.solid_over(
+                x0 as f32,
+                y as f32,
+                (w + 4) as f32,
+                (h + 4) as f32,
+                ct([80, 80, 80, 110]),
+            );
+            self.gui_frame.solid_over(
+                x0 as f32 + 2.0,
+                guide_y as f32,
+                w as f32,
+                1.0,
+                ct([255, 255, 255, 70]),
+            );
             for (i, t) in times_ms.iter().rev().enumerate() {
                 let x = x0 + 2 + i as i32 * 2;
                 if x >= x0 + 2 + w {
@@ -4814,7 +5252,15 @@ impl UiCanvas {
                 blk::WITHER_SKELETON_SKULL
             };
             let tile = blk::def(icon).tiles[0];
-            blit_tile(atlas, tile, 2, (tx + (tab_w - 32) / 2) as usize, (ty + 6) as usize, &mut self.px, self.live_w);
+            blit_tile(
+                atlas,
+                tile,
+                2,
+                (tx + (tab_w - 32) / 2) as usize,
+                (ty + 6) as usize,
+                &mut self.px,
+                self.live_w,
+            );
             // hover highlight + tooltip capture
             if cx >= tx && cx < tx + tab_w && cy >= ty && cy < ty + tab_h {
                 self.frame(tx - 1, ty - 1, tab_w + 2, tab_h + 2, [255, 255, 255, 200]);
@@ -4874,7 +5320,15 @@ impl UiCanvas {
             self.frame(sx, sy, 36, 36, [24, 24, 24, 255]);
             self.frame(sx + 1, sy + 1, 34, 34, [110, 110, 110, 255]);
             let tile = blk::def(b).tiles[0];
-            blit_tile(atlas, tile, 2, (sx + 2) as usize, (sy + 2) as usize, &mut self.px, self.live_w);
+            blit_tile(
+                atlas,
+                tile,
+                2,
+                (sx + 2) as usize,
+                (sy + 2) as usize,
+                &mut self.px,
+                self.live_w,
+            );
             if cx >= sx && cx < sx + 36 && cy >= sy && cy < sy + 36 {
                 self.frame(sx - 1, sy - 1, 38, 38, [255, 255, 255, 255]);
                 hovered = Some(b);
@@ -4961,7 +5415,13 @@ impl UiCanvas {
             .unwrap_or_default();
         if !label.is_empty() {
             let lw = Self::text_width(&label, 1);
-            self.text((self.live_w as i32 - lw) / 2, hot_y - 16, &label, [255, 255, 255, 255], 1);
+            self.text(
+                (self.live_w as i32 - lw) / 2,
+                hot_y - 16,
+                &label,
+                [255, 255, 255, 255],
+                1,
+            );
         }
 
         // ---- the held (cursor) stack follows the mouse ----
@@ -5034,7 +5494,13 @@ impl UiCanvas {
     /// caption — exactly the real boot screen's composition, clean-room.
     pub fn intro_screen(&mut self, progress: f32) {
         // solid studio-brand red (clean-room color — not a sampled asset)
-        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [239, 50, 61, 255]);
+        self.rect(
+            0,
+            0,
+            self.live_w as i32,
+            self.live_h as i32,
+            [239, 50, 61, 255],
+        );
         // studio wordmark: dark on the bright field, centered
         let scale = 8;
         let logo = "VOXELCRAFT";
@@ -5081,7 +5547,13 @@ impl UiCanvas {
     /// 2 meshed + on GPU (0xFFFFFF "full") · 3 spawn chunk pending
     /// (0xF26060 "spawn"). Color values are the wiki's exact table.
     pub fn world_loading_screen(&mut self, percent: i32, cells: &[u8], center: usize) {
-        self.rect(0, 0, self.live_w as i32, self.live_h as i32, [10, 12, 16, 140]);
+        self.rect(
+            0,
+            0,
+            self.live_w as i32,
+            self.live_h as i32,
+            [10, 12, 16, 140],
+        );
         self.text_center(84, "LOADING WORLD", [255, 255, 255, 255], 2);
         let pct = format!("{percent}%");
         self.text_center(118, &pct, [220, 220, 220, 255], 2);
@@ -5159,7 +5631,11 @@ impl CreativeGeom {
         }
         let col = dx / self.cell;
         let row = dy / self.cell;
-        if col >= self.cols as i32 || row >= self.vis_rows as i32 || dx % self.cell >= 36 || dy % self.cell >= 36 {
+        if col >= self.cols as i32
+            || row >= self.vis_rows as i32
+            || dx % self.cell >= 36
+            || dy % self.cell >= 36
+        {
             return None;
         }
         Some(self.scroll * self.cols + row as usize * self.cols + col as usize)
@@ -5959,6 +6435,8 @@ mod tests {
         // the row range 241..248 is guarded below; the literals here are
         // the (none) row, DONE, the labPBR toggle, and the Video entry)
         ID_OPT_SHADERS,
+        // 2026-09-20: the modern Entity Distance video slider
+        ID_OPT_ENTDIST,
         ID_SHDR_NONE,
         ID_SHDR_DONE,
         ID_SHDR_LABPBR,
@@ -5983,13 +6461,33 @@ mod tests {
     fn row_ranges_disjoint_from_literals_and_each_other() {
         let rows: [(u16, u16, &str); 8] = [
             (ID_WS_WORLD_BASE, MAX_LISTED_WORLDS as u16, "world entries"),
-            (ID_RPACK_AVAIL_BASE, MAX_RPACK_ENTRIES as u16, "rpack available"),
-            (ID_RPACK_SEL_BASE, MAX_RPACK_ENTRIES as u16, "rpack selected"),
-            (ID_RPACK_UP_BASE, MAX_RPACK_ENTRIES as u16, "rpack up arrows"),
-            (ID_RPACK_DOWN_BASE, MAX_RPACK_ENTRIES as u16, "rpack down arrows"),
+            (
+                ID_RPACK_AVAIL_BASE,
+                MAX_RPACK_ENTRIES as u16,
+                "rpack available",
+            ),
+            (
+                ID_RPACK_SEL_BASE,
+                MAX_RPACK_ENTRIES as u16,
+                "rpack selected",
+            ),
+            (
+                ID_RPACK_UP_BASE,
+                MAX_RPACK_ENTRIES as u16,
+                "rpack up arrows",
+            ),
+            (
+                ID_RPACK_DOWN_BASE,
+                MAX_RPACK_ENTRIES as u16,
+                "rpack down arrows",
+            ),
             // Round 14: the Music & Sound sliders + the Controls bind rows
             (ID_SND_BASE, 10, "music & sound sliders"),
-            (ID_CTRL_BIND_BASE, MAX_CTRL_BINDS as u16, "controls bind rows"),
+            (
+                ID_CTRL_BIND_BASE,
+                MAX_CTRL_BINDS as u16,
+                "controls bind rows",
+            ),
             // 2026-09-20: the Shader Packs screen pack rows
             (ID_SHDR_BASE, MAX_SHDR_ENTRIES as u16, "shader pack rows"),
             // NOTE Round 14b: the skin/chat-settings/accessibility
@@ -6259,13 +6757,17 @@ mod screen_tests {
         let mut cells = [0u8; 35 * 35];
         cells[0] = 1; // generated
         cells[34] = 2; // meshed
-        // center (17,17) left pending -> spawn red
+                       // center (17,17) left pending -> spawn red
         let mut c = UiCanvas::new();
         c.world_loading_screen(43, &cells, 17 * 35 + 17);
         // map origin: (UI_W-140)/2, 170 — 4px cells
         let x0 = (UI_W as i32 - 140) / 2;
         let y0 = 170;
-        assert_eq!(px(&c, x0, y0), [128, 178, 82], "generated cell = biomes green");
+        assert_eq!(
+            px(&c, x0, y0),
+            [128, 178, 82],
+            "generated cell = biomes green"
+        );
         assert_eq!(
             px(&c, x0 + 4 * 34 + 2, y0 + 2),
             [255, 255, 255],
@@ -6332,7 +6834,11 @@ mod screen_tests {
         // right column: right-aligned — the strip hugs the right edge with
         // the 3px text margin (strip ends at UI_W-2)
         let y = 9;
-        assert_eq!(px(&c, UI_W as i32 - 3, y), [80, 80, 80], "right strip margin");
+        assert_eq!(
+            px(&c, UI_W as i32 - 3, y),
+            [80, 80, 80],
+            "right strip margin"
+        );
         assert_eq!(
             px(&c, UI_W as i32 - 1, y),
             [0, 0, 0],
@@ -6424,10 +6930,7 @@ mod screen_tests {
         assert_eq!((play.w, play.h), (300, 30));
         assert_eq!(play.y, 225);
         let multi = ws.iter().find(|w| w.id == ID_TITLE_MULTI).unwrap();
-        assert!(!matches!(
-            &multi.kind,
-            WidgetKind::Button { enabled: false, .. }
-        ) || true);
+        assert!(!matches!(&multi.kind, WidgetKind::Button { enabled: false, .. }) || true);
         assert!(matches!(
             &multi.kind,
             WidgetKind::Button { enabled: false, .. }
@@ -6477,7 +6980,13 @@ mod screen_tests {
             for dx in -6..=6i32 {
                 let r = ((dx * dx + dy * dy) as f32).sqrt();
                 let idx = ((dy + 17) * 35 + (dx + 17)) as usize;
-                cells[idx] = if r < 3.0 { 2 } else if r < 5.0 { 1 } else { 0 };
+                cells[idx] = if r < 3.0 {
+                    2
+                } else if r < 5.0 {
+                    1
+                } else {
+                    0
+                };
             }
         }
         loading.world_loading_screen(43, &cells, 17 * 35 + 17);
@@ -6532,7 +7041,12 @@ mod screen_tests {
         // XP bar sits above the hotbar band
         let xp = solids
             .iter()
-            .min_by(|a, b| a.dst.y.partial_cmp(&b.dst.y).unwrap_or(std::cmp::Ordering::Equal))
+            .min_by(|a, b| {
+                a.dst
+                    .y
+                    .partial_cmp(&b.dst.y)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
             .unwrap();
         // Sub-round 1: 182x5 vanilla-eq height — 10 UI px (was 8)
         assert_eq!(xp.dst.h, 10.0, "10-px bar (5 vanilla px)");
@@ -6609,8 +7123,15 @@ mod screen_tests {
         ui.crosshair();
         // 3 solid INVERT quads in the OVER-canvas layer: the horizontal
         // bar split into 2 disjoint segments + the vertical bar
-        assert_eq!(ui.gui_frame.text_quads.len(), 3, "H split into 2 disjoint segments + 1 V bar");
-        assert!(ui.gui_frame.quads.is_empty(), "crosshair never lands in the chrome layer");
+        assert_eq!(
+            ui.gui_frame.text_quads.len(),
+            3,
+            "H split into 2 disjoint segments + 1 V bar"
+        );
+        assert!(
+            ui.gui_frame.quads.is_empty(),
+            "crosshair never lands in the chrome layer"
+        );
         let k = 1.5f32;
         for q in &ui.gui_frame.text_quads {
             assert_eq!(q.texture, crate::gui_render::QuadTexture::Solid);
@@ -6635,10 +7156,10 @@ mod screen_tests {
             for i in 0..qs.len() {
                 for j in (i + 1)..qs.len() {
                     let (a, b) = (&qs[i], &qs[j]);
-                    let sep_x = a.dst.x + a.dst.w <= b.dst.x + 1e-6
-                        || b.dst.x + b.dst.w <= a.dst.x + 1e-6;
-                    let sep_y = a.dst.y + a.dst.h <= b.dst.y + 1e-6
-                        || b.dst.y + b.dst.h <= a.dst.y + 1e-6;
+                    let sep_x =
+                        a.dst.x + a.dst.w <= b.dst.x + 1e-6 || b.dst.x + b.dst.w <= a.dst.x + 1e-6;
+                    let sep_y =
+                        a.dst.y + a.dst.h <= b.dst.y + 1e-6 || b.dst.y + b.dst.h <= a.dst.y + 1e-6;
                     assert!(
                         sep_x || sep_y,
                         "invert quads {i} and {j} overlap — they would cancel"
@@ -6656,7 +7177,9 @@ mod screen_tests {
             .collect();
         assert_eq!(hw.len(), 2, "the split horizontal segments");
         let cy_dev = 270.0 * k;
-        assert!(hw.iter().all(|q| q.dst.y * k <= cy_dev && (q.dst.y + q.dst.h) * k >= cy_dev));
+        assert!(hw
+            .iter()
+            .all(|q| q.dst.y * k <= cy_dev && (q.dst.y + q.dst.h) * k >= cy_dev));
         let vw = ui
             .gui_frame
             .text_quads
@@ -6713,11 +7236,17 @@ mod screen_tests {
             (q2.src.x, q2.src.y, q2.src.w, q2.src.h),
             "cache hit — stable atlas rect"
         );
-        assert!(q2.dst.w > q.dst.w && q2.dst.h > q.dst.h, "pulse scales the dst");
+        assert!(
+            q2.dst.w > q.dst.w && q2.dst.h > q.dst.h,
+            "pulse scales the dst"
+        );
         let c = |r: &crate::gui_render::RectF| (r.x + r.w * 0.5, r.y + r.h * 0.5);
         let (ax, ay) = c(&q.dst);
         let (bx, by) = c(&q2.dst);
-        assert!((ax - bx).abs() < 1e-3 && (ay - by).abs() < 1e-3, "center invariant");
+        assert!(
+            (ax - bx).abs() < 1e-3 && (ay - by).abs() < 1e-3,
+            "center invariant"
+        );
         // the device-res bake: at k=1.5 the strip is ~1.5× the UI-cell
         // raster (the old canvas path baked at 16 and upscaled mushy)
         assert!(q.src.w as f32 >= 16.0, "device-res strip (w={})", q.src.w);
@@ -6812,18 +7341,12 @@ mod screen_tests {
             trade: None,
             chest: Vec::new(),
             armor: [
-                vc_inventory::inventory::ItemStack::new(
-                    vc_blocks::blocks::DIAMOND_HELMET,
-                    1,
-                ),
+                vc_inventory::inventory::ItemStack::new(vc_blocks::blocks::DIAMOND_HELMET, 1),
                 vc_inventory::inventory::ItemStack::EMPTY,
                 vc_inventory::inventory::ItemStack::EMPTY,
                 vc_inventory::inventory::ItemStack::EMPTY,
             ],
-            offhand: vc_inventory::inventory::ItemStack::new(
-                vc_blocks::blocks::SHIELD,
-                1,
-            ),
+            offhand: vc_inventory::inventory::ItemStack::new(vc_blocks::blocks::SHIELD, 1),
             cursor: vc_inventory::inventory::ItemStack::EMPTY,
             anvil: None,
             beacon: None,
@@ -6838,18 +7361,30 @@ mod screen_tests {
             assert_eq!(g.armor[i].1, g.armor[i - 1].1 + 44, "armor pitch");
         }
         // armor hit-tests resolve in piece order
-        assert_eq!(g.slot_at(g.armor[0].0 + 4, g.armor[0].1 + 4), Some(crate::ui::SlotRef::Armor(0)));
-        assert_eq!(g.slot_at(g.armor[3].0 + 4, g.armor[3].1 + 4), Some(crate::ui::SlotRef::Armor(3)));
+        assert_eq!(
+            g.slot_at(g.armor[0].0 + 4, g.armor[0].1 + 4),
+            Some(crate::ui::SlotRef::Armor(0))
+        );
+        assert_eq!(
+            g.slot_at(g.armor[3].0 + 4, g.armor[3].1 + 4),
+            Some(crate::ui::SlotRef::Armor(3))
+        );
         // the offhand slot sits BELOW the armor column (its boxed recess)
         assert!(g.offhand.1 > g.armor[3].1);
-        assert_eq!(g.slot_at(g.offhand.0 + 4, g.offhand.1 + 4), Some(crate::ui::SlotRef::Offhand));
+        assert_eq!(
+            g.slot_at(g.offhand.0 + 4, g.offhand.1 + 4),
+            Some(crate::ui::SlotRef::Offhand)
+        );
         // the 2x2 craft grid + output on the right of the armor column
         assert_eq!(g.craft.len(), 4);
         assert!(g.craft[0].0 > g.armor[0].0 + 100);
         assert!(g.craft_out.0 > g.craft[3].0);
         // 36 inventory slots (27 storage + 9 hotbar) still hit-test
         assert_eq!(g.inv.len(), 36);
-        assert_eq!(g.slot_at(g.inv[0].0 + 4, g.inv[0].1 + 4), Some(crate::ui::SlotRef::Inv(0)));
+        assert_eq!(
+            g.slot_at(g.inv[0].0 + 4, g.inv[0].1 + 4),
+            Some(crate::ui::SlotRef::Inv(0))
+        );
     }
 
     /// Round 12 (2026-09-15): the double-chest screen geometry — the
@@ -6921,7 +7456,11 @@ mod screen_tests {
         // vanilla-eq (family chrome overhead, disclosed above)
         let panel_h = 264 + 3 * 44 + 8 + 44 + 30;
         assert_eq!(panel_h, 478);
-        assert_eq!(panel_h / 2, 239, "vanilla-eq height (220 + family overhead)");
+        assert_eq!(
+            panel_h / 2,
+            239,
+            "vanilla-eq height (220 + family overhead)"
+        );
         // the panel centers vertically in the live canvas (540 tall)
         let y0 = (540 - panel_h) / 2;
         assert_eq!(g.chest[0].1 - 8, y0, "grid starts 8px under the panel top");
@@ -7086,7 +7625,10 @@ mod screen_tests {
             .iter()
             .filter(|q| q.texture == crate::gui_render::QuadTexture::Effects)
             .count();
-        assert!(icons >= 2, "effect icon quads must render in creative (got {icons})");
+        assert!(
+            icons >= 2,
+            "effect icon quads must render in creative (got {icons})"
+        );
     }
 
     /// Sub-round 1: the survival block's quad census — hearts 10,
@@ -7159,7 +7701,10 @@ mod screen_tests {
             .iter()
             .filter(|q| q.texture == crate::gui_render::QuadTexture::Armor)
             .count();
-        assert_eq!(armor2, 10, "10 icons at 15 points (7 full, 1 half, 2 empty)");
+        assert_eq!(
+            armor2, 10,
+            "10 icons at 15 points (7 full, 1 half, 2 empty)"
+        );
         // armor row sits ABOVE the hearts row (vanilla position)
         let armor_y = ui
             .gui_frame
@@ -7175,7 +7720,10 @@ mod screen_tests {
             .find(|q| q.texture == crate::gui_render::QuadTexture::Hearts)
             .map(|q| q.dst.y)
             .unwrap();
-        assert!(armor_y < heart_y, "armor above hearts ({armor_y} < {heart_y})");
+        assert!(
+            armor_y < heart_y,
+            "armor above hearts ({armor_y} < {heart_y})"
+        );
     }
 
     /// Sub-round 1: the Hunger-effect recolor routes the hunger sprites
@@ -7232,7 +7780,10 @@ mod screen_tests {
         ui.damage_vignette(1.0);
         assert_eq!(ui.gui_frame.text_quads.len(), 1);
         let q = &ui.gui_frame.text_quads[0];
-        assert_eq!((q.dst.w, q.dst.h), (crate::ui::UI_W as f32, crate::ui::UI_H as f32));
+        assert_eq!(
+            (q.dst.w, q.dst.h),
+            (crate::ui::UI_W as f32, crate::ui::UI_H as f32)
+        );
         assert!((q.tint[3] - 0.3).abs() < 1e-6, "max 0.3 alpha");
         assert!(q.tint[0] > 0.0 && q.tint[1] == 0.0, "red");
     }
@@ -7243,10 +7794,30 @@ mod screen_tests {
     #[test]
     fn effect_icons_split_sort_and_blink() {
         let entries = [
-            EffectIconEntry { icon: 3, amplifier: 0, ticks_left: 400, positive: true },   // speed
-            EffectIconEntry { icon: 2, amplifier: 1, ticks_left: 1200, positive: true }, // regen II
-            EffectIconEntry { icon: 1, amplifier: 0, ticks_left: 60, positive: false },  // poison, about to expire
-            EffectIconEntry { icon: 8, amplifier: 0, ticks_left: 900, positive: false }, // slowness
+            EffectIconEntry {
+                icon: 3,
+                amplifier: 0,
+                ticks_left: 400,
+                positive: true,
+            }, // speed
+            EffectIconEntry {
+                icon: 2,
+                amplifier: 1,
+                ticks_left: 1200,
+                positive: true,
+            }, // regen II
+            EffectIconEntry {
+                icon: 1,
+                amplifier: 0,
+                ticks_left: 60,
+                positive: false,
+            }, // poison, about to expire
+            EffectIconEntry {
+                icon: 8,
+                amplifier: 0,
+                ticks_left: 900,
+                positive: false,
+            }, // slowness
         ];
         let mut ui = UiCanvas::new();
         ui.set_chrome_enabled(false);
@@ -7266,13 +7837,25 @@ mod screen_tests {
         assert_eq!(top.len(), 2);
         assert_eq!(bottom.len(), 2);
         // sooner-expiring farther left within the row
-        let poison = bottom.iter().find(|i| i.2 == 0.25).expect("poison blinking");
+        let poison = bottom
+            .iter()
+            .find(|i| i.2 == 0.25)
+            .expect("poison blinking");
         let slowness = bottom.iter().find(|i| i.2 == 1.0).expect("slowness solid");
-        assert!(poison.0 < slowness.0, "poison (60 ticks) left of slowness (900)");
+        assert!(
+            poison.0 < slowness.0,
+            "poison (60 ticks) left of slowness (900)"
+        );
         // blink: poison at 60 ticks < 100 → alpha 0.25 at tick 0
         // (verified by the find above); the regen II numeral is text —
         // canvas ink when the font-quad path is not armed (tests)
-        let ink = ui.px.as_chunks::<4>().0.iter().filter(|c| c[3] != 0).count();
+        let ink = ui
+            .px
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .filter(|c| c[3] != 0)
+            .count();
         assert!(ink > 0, "regen II numeral rastered");
         // no entries → nothing
         ui.clear();

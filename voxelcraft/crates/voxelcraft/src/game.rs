@@ -115,26 +115,53 @@ impl KeyBinds {
     /// settings round-trip format (the web input path shares the names)
     pub fn key_from_str(s: &str) -> Option<KeyCode> {
         let code = match s {
-            "KeyA" => KeyCode::KeyA, "KeyB" => KeyCode::KeyB, "KeyC" => KeyCode::KeyC,
-            "KeyD" => KeyCode::KeyD, "KeyE" => KeyCode::KeyE, "KeyF" => KeyCode::KeyF,
-            "KeyG" => KeyCode::KeyG, "KeyH" => KeyCode::KeyH, "KeyI" => KeyCode::KeyI,
-            "KeyJ" => KeyCode::KeyJ, "KeyK" => KeyCode::KeyK, "KeyL" => KeyCode::KeyL,
-            "KeyM" => KeyCode::KeyM, "KeyN" => KeyCode::KeyN, "KeyO" => KeyCode::KeyO,
-            "KeyP" => KeyCode::KeyP, "KeyQ" => KeyCode::KeyQ, "KeyR" => KeyCode::KeyR,
-            "KeyS" => KeyCode::KeyS, "KeyT" => KeyCode::KeyT, "KeyU" => KeyCode::KeyU,
-            "KeyV" => KeyCode::KeyV, "KeyW" => KeyCode::KeyW, "KeyX" => KeyCode::KeyX,
-            "KeyY" => KeyCode::KeyY, "KeyZ" => KeyCode::KeyZ,
-            "Digit1" => KeyCode::Digit1, "Digit2" => KeyCode::Digit2,
-            "Digit3" => KeyCode::Digit3, "Digit4" => KeyCode::Digit4,
-            "Digit5" => KeyCode::Digit5, "Digit6" => KeyCode::Digit6,
-            "Digit7" => KeyCode::Digit7, "Digit8" => KeyCode::Digit8,
-            "Digit9" => KeyCode::Digit9, "Digit0" => KeyCode::Digit0,
+            "KeyA" => KeyCode::KeyA,
+            "KeyB" => KeyCode::KeyB,
+            "KeyC" => KeyCode::KeyC,
+            "KeyD" => KeyCode::KeyD,
+            "KeyE" => KeyCode::KeyE,
+            "KeyF" => KeyCode::KeyF,
+            "KeyG" => KeyCode::KeyG,
+            "KeyH" => KeyCode::KeyH,
+            "KeyI" => KeyCode::KeyI,
+            "KeyJ" => KeyCode::KeyJ,
+            "KeyK" => KeyCode::KeyK,
+            "KeyL" => KeyCode::KeyL,
+            "KeyM" => KeyCode::KeyM,
+            "KeyN" => KeyCode::KeyN,
+            "KeyO" => KeyCode::KeyO,
+            "KeyP" => KeyCode::KeyP,
+            "KeyQ" => KeyCode::KeyQ,
+            "KeyR" => KeyCode::KeyR,
+            "KeyS" => KeyCode::KeyS,
+            "KeyT" => KeyCode::KeyT,
+            "KeyU" => KeyCode::KeyU,
+            "KeyV" => KeyCode::KeyV,
+            "KeyW" => KeyCode::KeyW,
+            "KeyX" => KeyCode::KeyX,
+            "KeyY" => KeyCode::KeyY,
+            "KeyZ" => KeyCode::KeyZ,
+            "Digit1" => KeyCode::Digit1,
+            "Digit2" => KeyCode::Digit2,
+            "Digit3" => KeyCode::Digit3,
+            "Digit4" => KeyCode::Digit4,
+            "Digit5" => KeyCode::Digit5,
+            "Digit6" => KeyCode::Digit6,
+            "Digit7" => KeyCode::Digit7,
+            "Digit8" => KeyCode::Digit8,
+            "Digit9" => KeyCode::Digit9,
+            "Digit0" => KeyCode::Digit0,
             "Space" => KeyCode::Space,
-            "ShiftLeft" => KeyCode::ShiftLeft, "ShiftRight" => KeyCode::ShiftRight,
-            "ControlLeft" => KeyCode::ControlLeft, "ControlRight" => KeyCode::ControlRight,
-            "AltLeft" => KeyCode::AltLeft, "AltRight" => KeyCode::AltRight,
-            "ArrowUp" => KeyCode::ArrowUp, "ArrowDown" => KeyCode::ArrowDown,
-            "ArrowLeft" => KeyCode::ArrowLeft, "ArrowRight" => KeyCode::ArrowRight,
+            "ShiftLeft" => KeyCode::ShiftLeft,
+            "ShiftRight" => KeyCode::ShiftRight,
+            "ControlLeft" => KeyCode::ControlLeft,
+            "ControlRight" => KeyCode::ControlRight,
+            "AltLeft" => KeyCode::AltLeft,
+            "AltRight" => KeyCode::AltRight,
+            "ArrowUp" => KeyCode::ArrowUp,
+            "ArrowDown" => KeyCode::ArrowDown,
+            "ArrowLeft" => KeyCode::ArrowLeft,
+            "ArrowRight" => KeyCode::ArrowRight,
             _ => return None,
         };
         Some(code)
@@ -319,6 +346,12 @@ pub struct Settings {
     /// the decoded LabPBR material maps through the PBR path when the
     /// resource pack provides them (pbr.rs + the pack-merge detection).
     pub labpbr: bool,
+    /// 2026-09-20 round: the modern (1.17+) Entity Distance — a 0.5..1.0
+    /// multiplier on the entity render radius (mobs beyond
+    /// render_distance*16*value skip the vertex build + shadow quads).
+    /// Default 1.0 = the pre-option full-distance behavior. options.txt
+    /// key `entityDistance` (vanilla naming).
+    pub entity_distance: f32,
 }
 
 impl Default for Settings {
@@ -362,20 +395,20 @@ impl Default for Settings {
             auto_jump: true, // 1.10 default ON (wiki)
             acc_fog: 0,
             acc_fov_effects: 1.0,
-            acc_distortion: 1.0,   // 1.16.2 pre1 default 100%
-            sprint_toggle: false,   // Hold (vanilla default)
-            sneak_toggle: false,   // Hold (vanilla default)
-            reduced_debug: false,  // OFF (vanilla default)
-            skin_cape: true,       // the live wiki table's ON defaults
+            acc_distortion: 1.0,  // 1.16.2 pre1 default 100%
+            sprint_toggle: false, // Hold (vanilla default)
+            sneak_toggle: false,  // Hold (vanilla default)
+            reduced_debug: false, // OFF (vanilla default)
+            skin_cape: true,      // the live wiki table's ON defaults
             skin_jacket: true,
             skin_lsleeve: true,
             skin_rsleeve: true,
             skin_lpants: true,
             skin_rpants: true,
             skin_hat: true,
-            main_hand_left: false, // Right (the vanilla default)
-            view_bobbing: true, // vanilla default ON
-            resource_packs: Vec::new(), // Default only, like vanilla
+            main_hand_left: false,           // Right (the vanilla default)
+            view_bobbing: true,              // vanilla default ON
+            resource_packs: Vec::new(),      // Default only, like vanilla
             saved_hotbars: [[(0, 0); 9]; 9], // all-empty (the paper rows)
             #[cfg(target_arch = "wasm32")]
             gpu_meshing: false,
@@ -385,6 +418,9 @@ impl Default for Settings {
             // vanilla post pipeline is the default look
             shader_pack: None,
             labpbr: false,
+            // 2026-09-20: entity distance 100% (the modern default —
+            // entities render across the full render distance)
+            entity_distance: 1.0,
         }
     }
 }
@@ -530,8 +566,8 @@ impl Settings {
         // soundCategory_* keys (options.txt naming parity)
         {
             const CAT_KEYS: [&str; 9] = [
-                "music", "record", "weather", "blocks", "hostile",
-                "neutral", "players", "ambient", "voice",
+                "music", "record", "weather", "blocks", "hostile", "neutral", "players", "ambient",
+                "voice",
             ];
             for (i, k) in CAT_KEYS.iter().enumerate() {
                 s.push_str(&format!(";soundCategory_{k}={:.3}", self.cat_volumes[i]));
@@ -592,6 +628,12 @@ impl Settings {
             s.push_str(&format!(";shaderpack={pack}"));
         }
         s.push_str(&format!(";labpbr={}", self.labpbr as u8));
+        // 2026-09-20: the modern Entity Distance (vanilla options.txt key
+        // `entityDistance`; only written when it differs from the default
+        // so pre-2026-09-20 files stay byte-compatible)
+        if (self.entity_distance - 1.0).abs() > 1e-4 {
+            s.push_str(&format!(";entityDistance={:.3}", self.entity_distance));
+        }
         // Round 15b: the Saved Hotbars rows (vanilla keeps these in a
         // separate hotbar.nbt — the options store is the engine's
         // documented adaptation; row format "block:count,block:count,.."
@@ -655,10 +697,8 @@ impl Settings {
                     if n < 9 {
                         for (slot, cell) in v.split(',').enumerate().take(9) {
                             let mut it = cell.splitn(2, ':');
-                            let b: u16 =
-                                it.next().unwrap_or("0").parse().unwrap_or(0);
-                            let c: u8 =
-                                it.next().unwrap_or("0").parse().unwrap_or(0);
+                            let b: u16 = it.next().unwrap_or("0").parse().unwrap_or(0);
+                            let c: u8 = it.next().unwrap_or("0").parse().unwrap_or(0);
                             st.saved_hotbars[n][slot] = (b, c);
                         }
                     }
@@ -695,6 +735,10 @@ impl Settings {
                     }
                 }
                 "labpbr" => st.labpbr = v == "1",
+                // 2026-09-20: the modern Entity Distance (0.5..1.0)
+                "entityDistance" => {
+                    st.entity_distance = v.parse::<f32>().unwrap_or(1.0).clamp(0.5, 1.0);
+                }
                 "shadowq" => st.shadow_quality = v.parse().unwrap_or(0).min(3),
                 "upscale" => st.upscale = v.parse().unwrap_or(st.upscale).min(2),
                 "maxfps" => st.maxfps = v.parse().unwrap_or(st.maxfps).min(3),
@@ -716,16 +760,12 @@ impl Settings {
                 "bob" => st.view_bobbing = v != "0",
                 // Round 14: the accessibility additions
                 "accfog" => st.acc_fog = v.parse().unwrap_or(0).min(2),
-                "accfoveff" => {
-                    st.acc_fov_effects = v.parse::<f32>().unwrap_or(1.0).clamp(0.0, 1.0)
-                }
+                "accfoveff" => st.acc_fov_effects = v.parse::<f32>().unwrap_or(1.0).clamp(0.0, 1.0),
                 // Round 14b: the accessibility completion + the skin
                 // layer toggles (vanilla options.txt key names) + the
                 // round-14 autoJump persistence gap fixed
                 "ajump" => st.auto_jump = v == "1",
-                "accdistort" => {
-                    st.acc_distortion = v.parse::<f32>().unwrap_or(1.0).clamp(0.0, 1.0)
-                }
+                "accdistort" => st.acc_distortion = v.parse::<f32>().unwrap_or(1.0).clamp(0.0, 1.0),
                 "sprinttog" => st.sprint_toggle = v == "1",
                 "snektog" => st.sneak_toggle = v == "1",
                 "rdebug" => st.reduced_debug = v == "1",
@@ -740,15 +780,25 @@ impl Settings {
                 // 2026-09-14: enabled resource packs in priority order
                 // (pipe-separated; absent = Default only, like vanilla)
                 // Round 14: the rebindable keys (key_<action>:<KeyCode>)
-                "key_forward" => st.binds.forward = KeyBinds::key_from_str(v).unwrap_or(st.binds.forward),
+                "key_forward" => {
+                    st.binds.forward = KeyBinds::key_from_str(v).unwrap_or(st.binds.forward)
+                }
                 "key_back" => st.binds.back = KeyBinds::key_from_str(v).unwrap_or(st.binds.back),
                 "key_left" => st.binds.left = KeyBinds::key_from_str(v).unwrap_or(st.binds.left),
                 "key_right" => st.binds.right = KeyBinds::key_from_str(v).unwrap_or(st.binds.right),
                 "key_jump" => st.binds.jump = KeyBinds::key_from_str(v).unwrap_or(st.binds.jump),
                 "key_sneak" => st.binds.sneak = KeyBinds::key_from_str(v).unwrap_or(st.binds.sneak),
-                "key_inventory" => st.binds.inventory = KeyBinds::key_from_str(v).unwrap_or(st.binds.inventory),
-                "key_offhand" => st.binds.swap_offhand = KeyBinds::key_from_str(v).unwrap_or(st.binds.swap_offhand),
-                "key_picker" => st.binds.creative_picker = KeyBinds::key_from_str(v).unwrap_or(st.binds.creative_picker),
+                "key_inventory" => {
+                    st.binds.inventory = KeyBinds::key_from_str(v).unwrap_or(st.binds.inventory)
+                }
+                "key_offhand" => {
+                    st.binds.swap_offhand =
+                        KeyBinds::key_from_str(v).unwrap_or(st.binds.swap_offhand)
+                }
+                "key_picker" => {
+                    st.binds.creative_picker =
+                        KeyBinds::key_from_str(v).unwrap_or(st.binds.creative_picker)
+                }
                 "packs" => {
                     st.resource_packs = v
                         .split('|')
@@ -893,11 +943,7 @@ impl Container {
     /// shulker boxes never merge (VERIFIED w/Chest §Double chests +
     /// w/Shulker_Box, live 2026-09-15) — callers pass the exact block
     /// id they are opening; only CHEST matches CHEST here.
-    pub fn double_chest_partner(
-        world: &World,
-        pos: [i32; 3],
-        block: u16,
-    ) -> Option<[i32; 3]> {
+    pub fn double_chest_partner(world: &World, pos: [i32; 3], block: u16) -> Option<[i32; 3]> {
         [
             [pos[0] + 1, pos[1], pos[2]],
             [pos[0] - 1, pos[1], pos[2]],
@@ -1089,21 +1135,32 @@ fn chunk_occl(
         }
         let y0 = b * 16;
         // +X / -X walls: 16×16 cells each (x fixed, y × z varies)
-        if (0..16usize).any(|dy| (0..16usize).any(|z| !is_opaque(state_block(c.get(15, y0 + dy, z))))) {
+        if (0..16usize)
+            .any(|dy| (0..16usize).any(|z| !is_opaque(state_block(c.get(15, y0 + dy, z)))))
+        {
             occl.sides |= 1u64 << (b as u32 * 4 + FACE_PX as u32);
         }
-        if (0..16usize).any(|dy| (0..16usize).any(|z| !is_opaque(state_block(c.get(0, y0 + dy, z))))) {
+        if (0..16usize)
+            .any(|dy| (0..16usize).any(|z| !is_opaque(state_block(c.get(0, y0 + dy, z)))))
+        {
             occl.sides |= 1u64 << (b as u32 * 4 + FACE_NX as u32);
         }
         // +Z / -Z walls: 16×16 cells each (z fixed, y × x varies)
-        if (0..16usize).any(|dy| (0..16usize).any(|x| !is_opaque(state_block(c.get(x, y0 + dy, 15))))) {
+        if (0..16usize)
+            .any(|dy| (0..16usize).any(|x| !is_opaque(state_block(c.get(x, y0 + dy, 15)))))
+        {
             occl.sides |= 1u64 << (b as u32 * 4 + FACE_PZ as u32);
         }
-        if (0..16usize).any(|dy| (0..16usize).any(|x| !is_opaque(state_block(c.get(x, y0 + dy, 0))))) {
+        if (0..16usize)
+            .any(|dy| (0..16usize).any(|x| !is_opaque(state_block(c.get(x, y0 + dy, 0)))))
+        {
             occl.sides |= 1u64 << (b as u32 * 4 + FACE_NZ as u32);
         }
         // ceiling plane of this band (y = b·16+15) — only for b < 15
-        if b < 15 && (0..16usize).any(|x| (0..16usize).any(|z| !is_opaque(state_block(c.get(x, y0 + 15, z))))) {
+        if b < 15
+            && (0..16usize)
+                .any(|x| (0..16usize).any(|z| !is_opaque(state_block(c.get(x, y0 + 15, z)))))
+        {
             occl.planes |= 1u16 << b;
         }
     }
@@ -1191,9 +1248,7 @@ enum WorkBackend {
     },
     /// the wasm32-only backend (native uses the threaded pool above)
     #[allow(dead_code)]
-    Inline {
-        jobs: VecDeque<Job>,
-    },
+    Inline { jobs: VecDeque<Job> },
 }
 
 // ------------------------------------------------------------------- app --
@@ -1233,12 +1288,12 @@ pub const INTRO_SECS: f32 = 2.6;
 fn intro_progress(t: f32) -> f32 {
     const WP: &[(f32, f32)] = &[
         (0.00, 0.00),
-        (0.35, 0.18), // builtin resource pack extracted
-        (0.52, 0.18), // hold: pack.mcmeta + model tables settle
-        (1.30, 0.62), // atlas stitched + shader pipelines compiled
-        (1.50, 0.62), // hold: audio device + sound bank
-        (1.90, 0.86), // sound events registered + save scan
-        (2.10, 0.86), // hold: game state settles
+        (0.35, 0.18),       // builtin resource pack extracted
+        (0.52, 0.18),       // hold: pack.mcmeta + model tables settle
+        (1.30, 0.62),       // atlas stitched + shader pipelines compiled
+        (1.50, 0.62),       // hold: audio device + sound bank
+        (1.90, 0.86),       // sound events registered + save scan
+        (2.10, 0.86),       // hold: game state settles
         (INTRO_SECS, 1.00), // ready — hand over to the title
     ];
     let t = t.clamp(0.0, INTRO_SECS);
@@ -1601,6 +1656,21 @@ pub struct GameApp {
     last_ui_t: f32,
     last_frame_t: f32,
     last_draw_t: f32,
+    /// --debug [input] detector: game-time of the LAST CursorMoved (the
+    /// click-vs-motion gap — a click whose cursor position predates a
+    /// live-canvas resize / GUI-scale change lands in a STALE coordinate
+    /// space and mis-hits; this field makes that visible in the stream)
+    last_cursor_move_t: f32,
+    /// --debug [input] detector: game-time of the last UI-canvas size
+    /// change (resize / GUI scale flip). A click between a canvas resize
+    /// and the next CursorMoved uses cached coords from the OLD space.
+    last_canvas_resize_t: f32,
+    /// --debug [gfx]: the screen whose widget table was last dumped —
+    /// refresh_widgets fires on every slider DRAG motion (drag →
+    /// apply_slider → after_settings_change → refresh_widgets), so the
+    /// verbose widget-table dump is gated to a screen change (rects
+    /// don't move mid-drag; labels do)
+    dbg_widget_dump_screen: Option<Screen>,
     fps: f32,
     frames: u32,
     fps_t: f32,
@@ -1954,9 +2024,7 @@ fn load_native_settings() -> Settings {
     match std::fs::read_to_string("options.txt") {
         Ok(s) => Settings::deserialize(&s),
         Err(e) => {
-            vc_render::render::report_boot_log(&format!(
-                "options.txt unreadable ({e}) — defaults"
-            ));
+            vc_render::render::report_boot_log(&format!("options.txt unreadable ({e}) — defaults"));
             Settings::default()
         }
     }
@@ -2308,6 +2376,27 @@ impl GameApp {
             std::sync::atomic::Ordering::Relaxed,
         );
         let t_renderer = t_boot.elapsed() - t_pack;
+        // --debug [gfx]: the boot graphics identity — the coordinate spaces
+        // every later input event maps through (surface px, scale factor,
+        // resolved GUI scale, live canvas) in ONE line, so a report that
+        // starts mid-session can still be anchored
+        {
+            let (sw, sh) = renderer.size();
+            let gs = settings.gui_scale_resolved(sw.max(1.0) as u32, sh.max(1.0) as u32);
+            vc_render::render::report_debug_log(
+                "gfx",
+                &format!(
+                    "boot gfx: surface {:.0}x{:.0} scale-factor {} | gui-scale resolved {} \
+                     | adapter {:?} vsync {}",
+                    sw,
+                    sh,
+                    window.scale_factor(),
+                    gs,
+                    renderer.adapter_name,
+                    settings.vsync
+                ),
+            );
+        }
         let bank = SoundBank::generate();
         let t_audio = t_boot.elapsed() - t_pack - t_renderer;
         let sounds = vc_audio::sounds::SoundRegistry::from_json(vc_audio::sounds::SOUNDS_JSON)
@@ -2569,7 +2658,7 @@ impl GameApp {
             programmer_art,
             user_packs,
             shader_packs: Vec::new(), // native: filled by the boot scan
-            labpbr_tiles, // the boot-time material-map count (0 on wasm)
+            labpbr_tiles,             // the boot-time material-map count (0 on wasm)
             pack_stack_dirty: false,
             mining: None,
             held_swing: 0.0,
@@ -2678,6 +2767,9 @@ impl GameApp {
             last_ui_t: -1.0,
             last_frame_t: now_secs(),
             last_draw_t: 0.0,
+            last_cursor_move_t: -999.0,
+            last_canvas_resize_t: -999.0,
+            dbg_widget_dump_screen: None,
             fps: 0.0,
             frames: 0,
             fps_t: now_secs(),
@@ -2803,8 +2895,7 @@ impl GameApp {
             // if the quad pass (or the embedded font) is unavailable the
             // canvas keeps the bitmap-font text
             vc_render::ui::set_text_quads_active(
-                app.renderer.gui_quads_ready()
-                    && vc_render::gui::font::engine().is_some(),
+                app.renderer.gui_quads_ready() && vc_render::gui::font::engine().is_some(),
             );
         }
         // Phase 5: restore container inventories (dungeon loot + the
@@ -2864,6 +2955,17 @@ impl GameApp {
                     elwt.exit();
                 }
                 WindowEvent::Resized(size) => {
+                    // --debug [gfx]: the surface geometry flip (every input
+                    // coordinate maps through this)
+                    vc_render::render::report_debug_log(
+                        "gfx",
+                        &format!(
+                            "resized: surface {}x{} (scale factor {})",
+                            size.width,
+                            size.height,
+                            self.window.scale_factor()
+                        ),
+                    );
                     self.renderer.resize(size.width, size.height);
                     // Round 10: the vanilla integer GUI scale re-resolves
                     // on resize — the live canvas resizes to the new
@@ -2921,10 +3023,7 @@ impl GameApp {
                     // Sub-round 2: the creative screen's search field —
                     // printable keys type into it (auto-switching to the
                     // Search tab first, vanilla behavior)
-                    if pressed
-                        && self.picker_open
-                        && self.screen == Screen::Game
-                    {
+                    if pressed && self.picker_open && self.screen == Screen::Game {
                         if let winit::keyboard::Key::Character(s) = &event.logical_key {
                             if let Some(ch) = s.chars().next() {
                                 if self.creative_type(ch) {
@@ -2956,6 +3055,42 @@ impl GameApp {
                 #[cfg(not(target_arch = "wasm32"))]
                 WindowEvent::CursorMoved { position, .. } => {
                     let (ux, uy) = self.phys_to_ui(position.x as f32, position.y as f32);
+                    // --debug [input]: pointer-motion tracking — the anchor
+                    // every later click is validated against (see
+                    // last_cursor_move_t / the menu click trace). Only the
+                    // UI-space position + hover state, at motion-changed
+                    // hover only (no per-pixel spam).
+                    self.last_cursor_move_t = self.time;
+                    if vc_render::render::is_verbose() {
+                        let h = self
+                            .widgets
+                            .iter()
+                            .find(|w| w.hit(ux as i32, uy as i32))
+                            .map(|w| w.id);
+                        if h != self.hover {
+                            let note = match h {
+                                Some(id) => format!(
+                                    " -> widget {} \"{}\"",
+                                    id,
+                                    self.widgets
+                                        .iter()
+                                        .find(|w| w.id == id)
+                                        .map(|w| w.label().to_string())
+                                        .unwrap_or_default()
+                                ),
+                                None => " -> none".to_string(),
+                            };
+                            vc_render::render::report_debug_log(
+                                "input",
+                                &format!(
+                                    "hover ({:.0},{:.0}){note} on {}",
+                                    ux,
+                                    uy,
+                                    self.screen.name()
+                                ),
+                            );
+                        }
+                    }
                     // Delta-look fallback (see capture_pointer): compositors
                     // without pointer-lock deliver motion ONLY as CursorMoved,
                     // so gameplay look input is fed from position deltas while
@@ -3019,9 +3154,7 @@ impl GameApp {
                     // active. In the Delta fallback the SAME motion also
                     // arrives as CursorMoved — feeding both would double
                     // the sensitivity, so raw events are skipped there.
-                    if self.screen == Screen::Game
-                        && self.pointer_lock != PointerLockMode::Delta
-                    {
+                    if self.screen == Screen::Game && self.pointer_lock != PointerLockMode::Delta {
                         self.input.add_mouse(dx as f32, dy as f32);
                     }
                 }
@@ -3095,11 +3228,7 @@ impl GameApp {
                         }
                     }
                     // Sub-round 2: the creative screen's search field
-                    if pressed
-                        && !repeat
-                        && self.picker_open
-                        && self.screen == Screen::Game
-                    {
+                    if pressed && !repeat && self.picker_open && self.screen == Screen::Game {
                         if let Some(ch) = web_char_from_code(&code, self.web_shift) {
                             if self.creative_type(ch) {
                                 continue;
@@ -3306,9 +3435,7 @@ impl GameApp {
                             self.sim
                                 .mobs
                                 .by_id(mob)
-                                .map(|m| {
-                                    m.storage.as_ref().map(|s| s.chest).unwrap_or(false)
-                                })
+                                .map(|m| m.storage.as_ref().map(|s| s.chest).unwrap_or(false))
                                 .unwrap_or(false)
                         });
                         if let Some(mob) = riding_chested {
@@ -3327,7 +3454,9 @@ impl GameApp {
                 // w/Inventory (live 2026-09-15): "Pressing the F key moves
                 // the selected item to and from the hotbar slot and the
                 // off-hand slot." In-world only.
-                if pressed && !repeat && self.screen == Screen::Game
+                if pressed
+                    && !repeat
+                    && self.screen == Screen::Game
                     && !self.picker_open
                     && self.container.is_none()
                 {
@@ -3527,59 +3656,60 @@ impl GameApp {
             | KeyCode::Digit7
             | KeyCode::Digit8
             | KeyCode::Digit9
-                if pressed && in_game => {
-                    // F3 + 1 — engine extension (not vanilla): the
-                    // frame-time graph under the left column, listed in
-                    // the F3+Q overlay. While F3 is held, Digit1 is the
-                    // combo, not hotbar slot 1.
-                    if code == KeyCode::Digit1 && self.f3_held {
-                        self.debug_graph = !self.debug_graph;
-                        self.ui.dirty = true;
-                        return;
-                    }
-                    let n = code as u8 - KeyCode::Digit1 as u8;
-                    // Round 15b: C+n / X+n — the Saved Hotbars save/load
-                    // (VERIFIED w/Saved_Hotbars §Usage: "The player can
-                    // save their current row using (by default) C + a
-                    // number 1 through 9"; "This row can then be loaded
-                    // into the hotbar using (by default) X + 1"; "the
-                    // inventory must be closed in order to save or load
-                    // hotbars" — the in_game guard is exactly that)
-                    if self.save_toolbar_held {
-                        self.save_toolbar_hotbar(n as usize);
-                        return;
-                    }
-                    if self.load_toolbar_held {
-                        self.load_toolbar_hotbar(n as usize);
-                        return;
-                    }
+                if pressed && in_game =>
+            {
+                // F3 + 1 — engine extension (not vanilla): the
+                // frame-time graph under the left column, listed in
+                // the F3+Q overlay. While F3 is held, Digit1 is the
+                // combo, not hotbar slot 1.
+                if code == KeyCode::Digit1 && self.f3_held {
+                    self.debug_graph = !self.debug_graph;
+                    self.ui.dirty = true;
+                    return;
+                }
+                let n = code as u8 - KeyCode::Digit1 as u8;
+                // Round 15b: C+n / X+n — the Saved Hotbars save/load
+                // (VERIFIED w/Saved_Hotbars §Usage: "The player can
+                // save their current row using (by default) C + a
+                // number 1 through 9"; "This row can then be loaded
+                // into the hotbar using (by default) X + 1"; "the
+                // inventory must be closed in order to save or load
+                // hotbars" — the in_game guard is exactly that)
+                if self.save_toolbar_held {
+                    self.save_toolbar_hotbar(n as usize);
+                    return;
+                }
+                if self.load_toolbar_held {
+                    self.load_toolbar_hotbar(n as usize);
+                    return;
+                }
+                self.player.selected = n as usize;
+                let b = self.player.inv.slots[n as usize].block;
+                self.item_toast = Some((name(b).to_string(), 2.0));
+                self.ui.dirty = true;
+            }
+            // Sub-round 2: number keys over a creative-grid item put a
+            // full stack into THAT slot (the vanilla hotkey pick —
+            // matches! guard is inverted: the branch above needs the
+            // pointer captured, this one needs the screen open)
+            KeyCode::Digit1
+            | KeyCode::Digit2
+            | KeyCode::Digit3
+            | KeyCode::Digit4
+            | KeyCode::Digit5
+            | KeyCode::Digit6
+            | KeyCode::Digit7
+            | KeyCode::Digit8
+            | KeyCode::Digit9
+                if pressed && self.picker_open && self.screen == Screen::Game =>
+            {
+                let n = code as u8 - KeyCode::Digit1 as u8;
+                if !self.creative_hotkey(n as usize) {
+                    // not hovering a grid item: plain hotbar select
                     self.player.selected = n as usize;
-                    let b = self.player.inv.slots[n as usize].block;
-                    self.item_toast = Some((name(b).to_string(), 2.0));
                     self.ui.dirty = true;
                 }
-                // Sub-round 2: number keys over a creative-grid item put a
-                // full stack into THAT slot (the vanilla hotkey pick —
-                // matches! guard is inverted: the branch above needs the
-                // pointer captured, this one needs the screen open)
-                KeyCode::Digit1
-                | KeyCode::Digit2
-                | KeyCode::Digit3
-                | KeyCode::Digit4
-                | KeyCode::Digit5
-                | KeyCode::Digit6
-                | KeyCode::Digit7
-                | KeyCode::Digit8
-                | KeyCode::Digit9
-                    if pressed && self.picker_open && self.screen == Screen::Game =>
-                {
-                    let n = code as u8 - KeyCode::Digit1 as u8;
-                    if !self.creative_hotkey(n as usize) {
-                        // not hovering a grid item: plain hotbar select
-                        self.player.selected = n as usize;
-                        self.ui.dirty = true;
-                    }
-                }
+            }
             _ => {}
         }
     }
@@ -3672,8 +3802,7 @@ impl GameApp {
                 }
                 self.input.place_hold = pressed;
             }
-            MouseButton::Middle
-                if pressed => {
+            MouseButton::Middle if pressed => {
                 // vanilla pick-block: ALWAYS select a matching hotbar slot
                 // if one exists; GRANT the block (full stack) only in
                 // creative — survival/adventure just selects or does
@@ -3773,15 +3902,7 @@ impl GameApp {
             self.settings
                 .saved_hotbars
                 .iter()
-                .flat_map(|row| {
-                    row.iter().map(|&(b, c)| {
-                        if c == 0 {
-                            blk::BOOK
-                        } else {
-                            b
-                        }
-                    })
-                })
+                .flat_map(|row| row.iter().map(|&(b, c)| if c == 0 { blk::BOOK } else { b }))
                 .collect()
         } else {
             blk::creative_tab_items(blk::CREATIVE_TABS[self.creative_tab.min(8) as usize])
@@ -3850,8 +3971,7 @@ impl GameApp {
                 } else if self.cursor_stack.block == b {
                     // same item: left tops up, right adds one
                     let add = if right { 1 } else { STACK_MAX };
-                    self.cursor_stack.count =
-                        (self.cursor_stack.count + add).min(STACK_MAX);
+                    self.cursor_stack.count = (self.cursor_stack.count + add).min(STACK_MAX);
                 } else {
                     // different item: the held stack is replaced
                     let n = if right { 1 } else { STACK_MAX };
@@ -3865,11 +3985,7 @@ impl GameApp {
         // semantics)
         if let Some(i) = g.hotbar_at(ux, uy) {
             use vc_inventory::inventory::Inventory;
-            Inventory::slot_click(
-                &mut self.player.inv.slots[i],
-                &mut self.cursor_stack,
-                right,
-            );
+            Inventory::slot_click(&mut self.player.inv.slots[i], &mut self.cursor_stack, right);
             self.ui.dirty = true;
             return;
         }
@@ -3920,11 +4036,17 @@ impl GameApp {
         if !self.picker_open || self.screen != Screen::Game {
             return false;
         }
-        let Some(g) = &self.creative_geom else { return false };
+        let Some(g) = &self.creative_geom else {
+            return false;
+        };
         let (cx, cy) = (self.cursor.0 as i32, self.cursor.1 as i32);
-        let Some(idx) = g.grid_at(cx, cy) else { return false };
+        let Some(idx) = g.grid_at(cx, cy) else {
+            return false;
+        };
         let items = self.creative_items();
-        let Some(&b) = items.get(idx) else { return false };
+        let Some(&b) = items.get(idx) else {
+            return false;
+        };
         self.player.inv.slots[slot] =
             vc_inventory::inventory::ItemStack::new(b, vc_inventory::inventory::STACK_MAX);
         // show the picked item's name above the hotbar (vanilla shows the
@@ -4004,26 +4126,24 @@ impl GameApp {
         cy: i32,
     ) {
         // --debug: every click routed — button, state, screen, canvas
-        // coords + what is under it (game: crosshair target block; menus:
-        // the hit widget id or "no widget"). This is the input-regression
-        // detector (the "mouse clicking not working" class).
-        if vc_render::render::is_verbose() {
+        // coords + what is under it. MENUS: the richer one-line trace
+        // lives in menu_mouse (widget id/kind/label + hover cross-check
+        // + cursor age) — this summary only fires for the game-family
+        // screens (crosshair target / container / picker context).
+        if vc_render::render::is_verbose() && self.screen == Screen::Game {
             let b = match button {
                 winit::event::MouseButton::Left => "left",
                 winit::event::MouseButton::Middle => "middle",
                 winit::event::MouseButton::Right => "right",
                 _ => "other",
             };
-            let under = if self.screen == Screen::Game {
-                match self.target {
-                    Some((p, blk, _)) => format!("target block {} at {:?}", vc_blocks::blocks::def(blk).name, p),
-                    None => "no crosshair target".to_string(),
-                }
-            } else {
-                match self.widgets.iter().find(|w| w.hit(cx, cy)) {
-                    Some(w) => format!("widget {}", w.id),
-                    None => "no widget".to_string(),
-                }
+            let under = match self.target {
+                Some((p, blk, _)) => format!(
+                    "target block {} at {:?}",
+                    vc_blocks::blocks::def(blk).name,
+                    p
+                ),
+                None => "no crosshair target".to_string(),
             };
             vc_render::render::report_debug_log(
                 "input",
@@ -4095,6 +4215,47 @@ impl GameApp {
         if pressed {
             self.unlock_audio();
             if let Some(w) = self.widgets.iter().find(|w| w.hit(x, y)) {
+                // --debug [input] menu-activation trace: the exact chain a
+                // menu click drives — widget id/kind/label/enabled, the
+                // hover state AT CLICK TIME (a hover≠hit mismatch means the
+                // painted highlight and the hit-test table disagree — the
+                // "clicked the highlighted button but something else (or
+                // nothing) responded" class), and the cursor-age (a stale
+                // cursor position predating a canvas resize mis-hits).
+                if vc_render::render::is_verbose() {
+                    let kind = match &w.kind {
+                        WidgetKind::Button { .. } => "button",
+                        WidgetKind::Slider { .. } => "slider",
+                        WidgetKind::TextField { .. } => "field",
+                    };
+                    let label = w.label().to_string();
+                    let hover_note = match self.hover {
+                        Some(h) if h != w.id => format!(
+                            " — WARN hover id {h} != hit id {} (painted highlight and hit-test DISAGREE)",
+                            w.id
+                        ),
+                        _ => String::new(),
+                    };
+                    let age = self.time - self.last_cursor_move_t;
+                    let stale_note = if self.last_canvas_resize_t > self.last_cursor_move_t {
+                        format!(
+                            " — WARN cursor coords are from BEFORE the last canvas resize \
+                             (t={:.2}s ago; click mapped in a stale coordinate space)",
+                            (self.time - self.last_canvas_resize_t).max(0.0)
+                        )
+                    } else if age > 0.5 {
+                        format!(" — note: pointer idle {:.1}s before click", age)
+                    } else {
+                        String::new()
+                    };
+                    vc_render::render::report_debug_log(
+                        "input",
+                        &format!(
+                            "menu click on widget {} [{}] \"{}\" at ({x},{y}){hover_note}{stale_note}",
+                            w.id, kind, label
+                        ),
+                    );
+                }
                 match &w.kind {
                     WidgetKind::Slider { .. } => {
                         self.dragging = Some(w.id);
@@ -4106,6 +4267,19 @@ impl GameApp {
                         if *enabled {
                             self.activate(w.id);
                             self.click_sound();
+                        } else if vc_render::render::is_verbose() {
+                            // the third swallow path: a DISABLED button
+                            // plays no sound and does nothing (by design —
+                            // MULTIPLAYER today); log it so a report
+                            // distinguishes "disabled" from "broken"
+                            vc_render::render::report_debug_log(
+                                "input",
+                                &format!(
+                                    "menu click on DISABLED widget {} \"{}\" — ignored by design",
+                                    w.id,
+                                    w.label()
+                                ),
+                            );
                         }
                     }
                     WidgetKind::TextField { .. } => {
@@ -4115,6 +4289,21 @@ impl GameApp {
                     }
                 }
             } else {
+                // --debug: the no-sound case — the click landed OUTSIDE
+                // every widget rect (the other half of the "sometimes no
+                // sound, nothing opens" report: coordinates that miss the
+                // painted buttons entirely)
+                if vc_render::render::is_verbose() {
+                    vc_render::render::report_debug_log(
+                        "input",
+                        &format!(
+                            "menu click at ({x},{y}) hit NO widget ({} widgets on {}; \
+                             click outside every rect — check the [gfx] widget-table dump)",
+                            self.widgets.len(),
+                            self.screen.name()
+                        ),
+                    );
+                }
                 // click outside any widget: drop text-field focus
                 if self.text_field_focused().is_some() {
                     self.focus_field(0);
@@ -4341,16 +4530,15 @@ impl GameApp {
         };
         // resource-pack rows describe the hovered PACK (dynamic state —
         // not available to the static tooltip_for table below)
-        if (ui::ID_RPACK_AVAIL_BASE
-            ..ui::ID_RPACK_AVAIL_BASE + ui::MAX_RPACK_ENTRIES as u16)
+        if (ui::ID_RPACK_AVAIL_BASE..ui::ID_RPACK_AVAIL_BASE + ui::MAX_RPACK_ENTRIES as u16)
             .contains(&id)
         {
-            if let Some(key) = self.resource_pack_key_avail((id - ui::ID_RPACK_AVAIL_BASE) as usize) {
+            if let Some(key) = self.resource_pack_key_avail((id - ui::ID_RPACK_AVAIL_BASE) as usize)
+            {
                 return self.pack_tooltip(&key);
             }
         }
-        if (ui::ID_RPACK_SEL_BASE
-            ..ui::ID_RPACK_SEL_BASE + ui::MAX_RPACK_ENTRIES as u16)
+        if (ui::ID_RPACK_SEL_BASE..ui::ID_RPACK_SEL_BASE + ui::MAX_RPACK_ENTRIES as u16)
             .contains(&id)
         {
             let idx = (id - ui::ID_RPACK_SEL_BASE) as usize;
@@ -4361,19 +4549,13 @@ impl GameApp {
         // 2026-09-20: shader-pack rows describe the hovered pack — the
         // honest Iris analysis (tier + passes; the GLSL translation
         // status rides the second line)
-        if (ui::ID_SHDR_BASE
-            ..ui::ID_SHDR_BASE + ui::MAX_SHDR_ENTRIES as u16)
-            .contains(&id)
-        {
+        if (ui::ID_SHDR_BASE..ui::ID_SHDR_BASE + ui::MAX_SHDR_ENTRIES as u16).contains(&id) {
             if let Some((name, summary)) = self
                 .shader_packs
                 .get((id - ui::ID_SHDR_BASE) as usize)
                 .cloned()
             {
-                return vec![
-                    format!("{name} (external pack)"),
-                    format!("{summary}"),
-                ];
+                return vec![format!("{name} (external pack)"), summary];
             }
         }
         Self::tooltip_for(id, &self.settings)
@@ -4386,7 +4568,9 @@ impl GameApp {
         let l2 = |a: &str, b: &str| vec![a.to_string(), b.to_string()];
         use ui::*;
         match id {
-            ID_OPT_MUSIC => l("Volume of the music category. The sound volume still scales everything."),
+            ID_OPT_MUSIC => {
+                l("Volume of the music category. The sound volume still scales everything.")
+            }
             ID_OPT_VOL => l("Master volume for every sound, music included."),
             ID_OPT_FOV => l("Field of view in degrees. 70 is the classic look; 110 is Quake Pro."),
             ID_OPT_SENS => l("How fast the view turns when the mouse moves."),
@@ -4394,9 +4578,7 @@ impl GameApp {
                 "Accessibility Fog: Fast keeps the shipped look, Fancy",
                 "softens the fade-in, OFF pushes fog to the far plane.",
             ),
-            ui::ID_ACC_FOVEFF => l(
-                "How much the field of view changes while sprinting.",
-            ),
+            ui::ID_ACC_FOVEFF => l("How much the field of view changes while sprinting."),
             ui::ID_ACC_CHATVIS => l("Chat Visibility needs the chat subsystem (a future round)."),
             ui::ID_CTRL_RESET => l("Restore the classic WASD / Space / Shift / E / F / B layout."),
             ui::ID_CTRL_DONE => l("Back to the options."),
@@ -4436,9 +4618,7 @@ impl GameApp {
                 "Enable resource packs to restyle textures and GUI.",
                 "The bottom pack loads first; packs above override it.",
             ),
-            ID_OPT_BOB => l(
-                "Toggles the walking view movement. (vanilla: on by default)",
-            ),
+            ID_OPT_BOB => l("Toggles the walking view movement. (vanilla: on by default)"),
             ID_RPACK_DEFAULT => l2(
                 "The default look and feel of VoxelCraft (built-in).",
                 "Selected by default; cannot be unselected.",
@@ -4470,31 +4650,54 @@ impl GameApp {
                 "Ambient occlusion softens block corners.",
                 "Minimum keeps half-strength corners; Maximum is the full effect.",
             ),
-            ID_OPT_GUISCALE => l("Size of the interface. Auto keeps the default fit; 1 is smallest, 3 largest."),
-            ID_OPT_CLOUDS => l("Off hides clouds; Fast draws a solid layer; Fancy blends them softly."),
-            ID_OPT_PARTICLES => l("All spawns every effect; Decreased halves them; Minimal keeps a quarter."),
+            ID_OPT_GUISCALE => {
+                l("Size of the interface. Auto keeps the default fit; 1 is smallest, 3 largest.")
+            }
+            ID_OPT_CLOUDS => {
+                l("Off hides clouds; Fast draws a solid layer; Fancy blends them softly.")
+            }
+            ID_OPT_PARTICLES => {
+                l("All spawns every effect; Decreased halves them; Minimal keeps a quarter.")
+            }
             ID_OPT_FULLSCREEN => l("Toggles borderless full-screen output."),
-            ID_OPT_VSYNC => l("Sync frames to the display. Removes tearing, adds a little latency."),
+            ID_OPT_VSYNC => {
+                l("Sync frames to the display. Removes tearing, adds a little latency.")
+            }
             ID_OPT_ENTSHADOW => l("Draws a soft ground shadow under each creature."),
             ID_OPT_BRIGHT => {
                 // vanilla: the unlabeled slider hints Moody/Bright by value
-                l(if s.brightness < 0.5 { "Moody" } else { "Bright" })
+                l(if s.brightness < 0.5 {
+                    "Moody"
+                } else {
+                    "Bright"
+                })
             }
             ID_OPT_BIOME => l2(
                 "Blends biome colors across borders so grass and leaves",
                 "transition smoothly. Higher values cost a little meshing time.",
             ),
-            ID_OPT_SIMDIST => l("Chunk radius that keeps entities and blocks ticking. 12 is the default."),
+            ID_OPT_SIMDIST => {
+                l("Chunk radius that keeps entities and blocks ticking. 12 is the default.")
+            }
+            // 2026-09-20: the modern (1.17+) Entity Distance hint
+            ID_OPT_ENTDIST => l2(
+                "How far away creatures render, as a share of the render distance.",
+                "50% hides distant mobs and speeds up crowded scenes.",
+            ),
             ID_OPT_MAXFPS => l("Frame-rate ceiling. Uncapped renders as fast as possible."),
             ID_OPT_MIP => l("Texture mipmap levels. Reduces shimmer on far blocks."),
             ID_OPT_ANISO => l("Anisotropic filtering sharpens textures viewed at steep angles."),
             ID_OPT_MSAA => l("Anti-aliasing: smooths block edges. Device-gated."),
-            ID_OPT_OCCL => l("Skips terrain hidden behind hills and cave walls. Big wins underground."),
+            ID_OPT_OCCL => {
+                l("Skips terrain hidden behind hills and cave walls. Big wins underground.")
+            }
             ID_OPT_GMESH => l2(
                 "Builds chunk geometry in GPU compute shaders instead of CPU threads.",
                 "Faster remeshing; falls back to the CPU path when unsupported.",
             ),
-            ID_OPT_SHADOWS => l("Sun shadow map resolution. Higher is sharper but costs fill rate."),
+            ID_OPT_SHADOWS => {
+                l("Sun shadow map resolution. Higher is sharper but costs fill rate.")
+            }
             ID_OPT_UPSCALE => l("Renders at a lower internal resolution and upscales with FSR."),
             ID_OPT_AUTOJUMP => l("Automatically jumps one-block steps while walking."),
             // ---- Round 14b: the accessibility completion + skin + chat ----
@@ -4536,9 +4739,9 @@ impl GameApp {
                 "Hides matched names in chat (1.16.4).",
                 "No chat subsystem in this engine yet.",
             ),
-            ui::ID_CHAT_REDUCEDDEBUG => l(
-                "Hides the coordinate and system rows from the F3 overlay.",
-            ),
+            ui::ID_CHAT_REDUCEDDEBUG => {
+                l("Hides the coordinate and system rows from the F3 overlay.")
+            }
             ui::ID_CHAT_NARRATOR => l2(
                 "Reads menus and chat aloud (OFF/All/Chat/System).",
                 "No text-to-speech in this engine's scope.",
@@ -4610,8 +4813,10 @@ impl GameApp {
             for &t in vc_blocks::blocks::CREATIVE_TABS.iter() {
                 self.icon_cache.get_or_queue(t.icon_block());
             }
-            self.icon_cache.get_or_queue(vc_blocks::blocks::EYE_OF_ENDER);
-            self.icon_cache.get_or_queue(vc_blocks::blocks::WITHER_SKELETON_SKULL);
+            self.icon_cache
+                .get_or_queue(vc_blocks::blocks::EYE_OF_ENDER);
+            self.icon_cache
+                .get_or_queue(vc_blocks::blocks::WITHER_SKELETON_SKULL);
         }
     }
 
@@ -4645,6 +4850,51 @@ impl GameApp {
             icon_stats.2,
             self.stats.gui_quads,
             icon_quads
+        )
+    }
+
+    /// --debug [gfx] 1 Hz line (2026-09-20): the UI/render pipeline
+    /// heartbeat — runs in EVERY screen, so a menu that stopped
+    /// repainting (the "click sound plays, nothing opens, screen frozen"
+    /// report) shows up as a stalled rebuild count / fps envelope in the
+    /// stream, and a click-routing failure can be cross-read against the
+    /// live widget table from the same second.
+    fn dbg_gfx_line(&self) -> String {
+        let (sw, sh) = self.renderer.size();
+        let scale = self
+            .settings
+            .gui_scale_resolved(sw.max(1.0) as u32, sh.max(1.0) as u32);
+        let hover_note = match self.hover {
+            Some(h) => {
+                let label = self
+                    .widgets
+                    .iter()
+                    .find(|w| w.id == h)
+                    .map(|w| w.label().to_string())
+                    .unwrap_or_else(|| "<stale: id not in table>".to_string());
+                format!(" id {h} \"{label}\"")
+            }
+            None => " none".to_string(),
+        };
+        format!(
+            "screen {} | surface {:.0}x{:.0} scale-factor {} | gui-scale {} live {}x{} \
+             | fps {:.0} frames {} | ui rebuilds {} dirty {} | widgets {} hover{} \
+             | cursor ({:.0},{:.0})",
+            self.screen.name(),
+            sw,
+            sh,
+            self.window.scale_factor(),
+            scale,
+            self.ui.live_w,
+            self.ui.live_h,
+            self.fps,
+            self.frames,
+            self.ui_rebuild_count,
+            self.ui.dirty,
+            self.widgets.len(),
+            hover_note,
+            self.cursor.0,
+            self.cursor.1
         )
     }
 
@@ -4868,7 +5118,11 @@ impl GameApp {
             self.world_name,
             self.world.seed,
             self.mode.label(),
-            if self.world_flat { "superflat" } else { "normal" },
+            if self.world_flat {
+                "superflat"
+            } else {
+                "normal"
+            },
             self.world_structures,
             self.wc_bonus
         ));
@@ -4998,7 +5252,11 @@ impl GameApp {
             self.world_name,
             self.world.seed,
             self.mode.label(),
-            if self.world_flat { "superflat" } else { "normal" }
+            if self.world_flat {
+                "superflat"
+            } else {
+                "normal"
+            }
         ));
     }
 
@@ -5088,10 +5346,7 @@ impl GameApp {
         for (dim, list) in self.web_dim_journals.iter().enumerate() {
             for &(p, state) in list {
                 let key = (dim as u8, p[0].div_euclid(16), p[2].div_euclid(16));
-                self.pending_edits
-                    .entry(key)
-                    .or_default()
-                    .push((p, state));
+                self.pending_edits.entry(key).or_default().push((p, state));
             }
         }
         let dim = self.world.dimension as u8 as usize;
@@ -5122,8 +5377,7 @@ impl GameApp {
         let mut rows: Vec<vc_render::ui::WorldRow> = Vec::new();
         #[cfg(not(target_arch = "wasm32"))]
         for w in &self.worlds {
-            let mode =
-                vc_gameplay::modes::GameMode::from_save(w.meta.game_type, w.meta.hardcore);
+            let mode = vc_gameplay::modes::GameMode::from_save(w.meta.game_type, w.meta.hardcore);
             let info = if w.meta.hardcore_dead {
                 "HARDCORE (GAME OVER)".to_string()
             } else {
@@ -5230,7 +5484,8 @@ impl GameApp {
                     .filter(|(_, s)| !s.is_empty())
                     .map(|(i, s)| (i as u16, s.block, s.count))
                     .collect();
-                let live = vc_blocks::blocks::state_block(self.world.get_state(pos[0], pos[1], pos[2]));
+                let live =
+                    vc_blocks::blocks::state_block(self.world.get_state(pos[0], pos[1], pos[2]));
                 let kind = match live {
                     CHEST | DISPENSER | DROPPER | HOPPER => live,
                     _ => match inv.slots.len() {
@@ -5288,12 +5543,7 @@ impl GameApp {
         // dimensions keep their stashed copies (travel parity — a save
         // from the nether never wipes overworld edits)
         let cur_dim = self.world.dimension as u8 as usize;
-        self.web_dim_journals[cur_dim] = self
-            .world
-            .journal
-            .iter()
-            .map(|(&p, &s)| (p, s))
-            .collect();
+        self.web_dim_journals[cur_dim] = self.world.journal.iter().map(|(&p, &s)| (p, s)).collect();
         let edits_ow: Vec<(i32, i32, i32, u16)> = self.web_dim_journals[0]
             .iter()
             .map(|&([x, y, z], s)| (x, y, z, s))
@@ -5419,8 +5669,7 @@ impl GameApp {
                 if let Some(rec) = self.web_worlds.get_mut(idx) {
                     rec.name = name.clone();
                 }
-                let json =
-                    serde_json::to_string(&self.web_worlds).unwrap_or_else(|_| "[]".into());
+                let json = serde_json::to_string(&self.web_worlds).unwrap_or_else(|_| "[]".into());
                 crate::web_input::save_worlds(&json);
                 if self.web_active_id == Some(rec_id) {
                     self.world_name = name.clone();
@@ -5472,29 +5721,35 @@ impl GameApp {
     /// seed/mode/type, fresh player state).
     fn recreate_selected_world(&mut self) {
         #[cfg(not(target_arch = "wasm32"))]
-        let prefill = self.ws_selected.and_then(|i| self.worlds.get(i).cloned()).map(|e| {
-            (
-                e.meta.name.clone(),
-                e.meta.seed,
-                vc_gameplay::modes::GameMode::from_save(e.meta.game_type, e.meta.hardcore),
-                e.meta.flat,
-                e.meta.structures,
-            )
-        });
+        let prefill = self
+            .ws_selected
+            .and_then(|i| self.worlds.get(i).cloned())
+            .map(|e| {
+                (
+                    e.meta.name.clone(),
+                    e.meta.seed,
+                    vc_gameplay::modes::GameMode::from_save(e.meta.game_type, e.meta.hardcore),
+                    e.meta.flat,
+                    e.meta.structures,
+                )
+            });
         #[cfg(target_arch = "wasm32")]
-        let prefill = self.ws_selected.and_then(|i| self.web_worlds.get(i).cloned()).map(|w| {
-            (
-                w.name.clone(),
-                w.seed,
-                match w.mode.as_str() {
-                    "creative" => vc_gameplay::modes::GameMode::Creative,
-                    "hardcore" => vc_gameplay::modes::GameMode::Hardcore,
-                    _ => vc_gameplay::modes::GameMode::Survival,
-                },
-                w.flat,
-                w.structures,
-            )
-        });
+        let prefill = self
+            .ws_selected
+            .and_then(|i| self.web_worlds.get(i).cloned())
+            .map(|w| {
+                (
+                    w.name.clone(),
+                    w.seed,
+                    match w.mode.as_str() {
+                        "creative" => vc_gameplay::modes::GameMode::Creative,
+                        "hardcore" => vc_gameplay::modes::GameMode::Hardcore,
+                        _ => vc_gameplay::modes::GameMode::Survival,
+                    },
+                    w.flat,
+                    w.structures,
+                )
+            });
         let Some((name, seed, mode, flat, structures)) = prefill else {
             return;
         };
@@ -5941,7 +6196,9 @@ impl GameApp {
         let level = self.player.xp_level.max(0);
         let orbs_xp = (level * 7).min(100);
         if orbs_xp > 0 {
-            self.sim.xp_orbs.drop_xp(bx as f32, by as f32, bz as f32, orbs_xp);
+            self.sim
+                .xp_orbs
+                .drop_xp(bx as f32, by as f32, bz as f32, orbs_xp);
         }
         self.player.xp_points = 0;
         self.player.xp_level = 0;
@@ -5984,9 +6241,12 @@ impl GameApp {
             let charge = vc_blocks::blocks::anchor_charge(s);
             if self.world.get_block(apos[0], apos[1], apos[2]) == RESPAWN_ANCHOR && charge > 0 {
                 let drained = vc_blocks::blocks::anchor_state(charge - 1);
-                if let Some((old, new)) = self.world.set_block_state(apos[0], apos[1], apos[2], drained)
+                if let Some((old, new)) = self
+                    .world
+                    .set_block_state(apos[0], apos[1], apos[2], drained)
                 {
-                    self.light.on_block_changed(&self.world, apos[0], apos[1], apos[2], old, new);
+                    self.light
+                        .on_block_changed(&self.world, apos[0], apos[1], apos[2], old, new);
                 }
                 notify_sim(&self.world, &mut self.sim.sched, apos[0], apos[1], apos[2]);
                 if charge - 1 == 0 {
@@ -6057,7 +6317,12 @@ impl GameApp {
         // ---- Phase E2: the wither takes melee priority ----
         // (only players damage it; charging = invulnerable — VERIFIED
         // w/Wither; generous 2×4×2 AABB around the sprite center)
-        let wstate = self.sim.wither.wither.as_ref().map(|w| (w.pos, w.charging(), w.health, w.alive()));
+        let wstate = self
+            .sim
+            .wither
+            .wither
+            .as_ref()
+            .map(|w| (w.pos, w.charging(), w.health, w.alive()));
         if let Some((wpos, wcharging, whealth, walive)) = wstate {
             if walive && !wcharging {
                 let lo = [wpos[0] - 1.0, wpos[1] - 1.5, wpos[2] - 1.0];
@@ -6137,7 +6402,12 @@ impl GameApp {
         // damage it — VERIFIED).
         if self.world.dimension == vc_world::world::Dimension::End {
             // snapshot the fight state (borrow split: damage below needs &mut)
-            let dstate = self.sim.dragon.dragon.as_ref().map(|d| (d.pos, d.dying, d.health));
+            let dstate = self
+                .sim
+                .dragon
+                .dragon
+                .as_ref()
+                .map(|d| (d.pos, d.dying, d.health));
             if let Some((dpos, ddying, dhealth)) = dstate {
                 if ddying.is_none() {
                     let d_pos = dpos;
@@ -6411,11 +6681,12 @@ impl GameApp {
             ),
         ];
         for (v, uv) in corners.iter() {
-            self.particle_verts.push(vc_particles::particles::ParticleVertex {
-                pos: [pos[0] + v[0], pos[1] + v[1], pos[2] + v[2]],
-                uv: [uv[0], uv[1]],
-                col,
-            });
+            self.particle_verts
+                .push(vc_particles::particles::ParticleVertex {
+                    pos: [pos[0] + v[0], pos[1] + v[1], pos[2] + v[2]],
+                    uv: [uv[0], uv[1]],
+                    col,
+                });
         }
     }
 
@@ -6476,11 +6747,7 @@ impl GameApp {
                 let (c0, uv) = corners[ci];
                 self.particle_verts
                     .push(vc_particles::particles::ParticleVertex {
-                        pos: [
-                            c.pos[0] + c0[0],
-                            c.pos[1] + c0[1] + bob,
-                            c.pos[2] + c0[2],
-                        ],
+                        pos: [c.pos[0] + c0[0], c.pos[1] + c0[1] + bob, c.pos[2] + c0[2]],
                         uv: [uv[0], uv[1]],
                         col,
                     });
@@ -6537,11 +6804,7 @@ impl GameApp {
                 let (c0, uv) = corners[ci];
                 self.particle_verts
                     .push(vc_particles::particles::ParticleVertex {
-                        pos: [
-                            d.pos[0] + c0[0],
-                            d.pos[1] + c0[1],
-                            d.pos[2] + c0[2],
-                        ],
+                        pos: [d.pos[0] + c0[0], d.pos[1] + c0[1], d.pos[2] + c0[2]],
                         uv: [uv[0], uv[1]],
                         col,
                     });
@@ -6762,18 +7025,16 @@ impl GameApp {
             // VERIFIED w/Zombie_Villager + w/Villager §Gossiping: a cured
             // zombie villager returns as a villager with major_positive
             // gossip (the cure discount)
-            let vid = self
-                .sim
-                .villagers
-                .spawn_at(
-                    pos[0].floor() as i32,
-                    pos[1].floor() as i32,
-                    pos[2].floor() as i32,
-                    None,
-                );
+            let vid = self.sim.villagers.spawn_at(
+                pos[0].floor() as i32,
+                pos[1].floor() as i32,
+                pos[2].floor() as i32,
+                None,
+            );
             if let Some(vid) = vid {
                 if let Some(v) = self.sim.villagers.list.iter_mut().find(|v| v.id == vid) {
-                    v.gossip.gain_event(vc_gameplay::villagers::GossipKind::MajorPositive);
+                    v.gossip
+                        .gain_event(vc_gameplay::villagers::GossipKind::MajorPositive);
                 }
                 self.play_event("entity.villager.celebrate", Some(pos), 1.0);
             }
@@ -6790,8 +7051,7 @@ impl GameApp {
                 .list
                 .iter()
                 .filter(|m| {
-                    (m.kind == mobs::MobKind::Zombie
-                        || m.kind == mobs::MobKind::ZombieVillager)
+                    (m.kind == mobs::MobKind::Zombie || m.kind == mobs::MobKind::ZombieVillager)
                         && m.attack_cd == 0
                 })
                 .map(|m| (m.id, m.pos, m.attack_cd))
@@ -6812,9 +7072,7 @@ impl GameApp {
                     let d2 = dx * dx + dy * dy + dz * dz;
                     if d2 < 1.6 * 1.6 {
                         // the swing
-                        if let Some(m) =
-                            self.sim.mobs.list.iter_mut().find(|m| m.id == zid)
-                        {
+                        if let Some(m) = self.sim.mobs.list.iter_mut().find(|m| m.id == zid) {
                             m.attack_cd = mobs::MOB_MELEE_TICKS;
                         }
                         // VERIFIED: villager damage = the zombie's row,
@@ -6858,10 +7116,7 @@ impl GameApp {
         // ---- 1. hits on the player ----
         let hits: Vec<mobs::PlayerHit> = std::mem::take(&mut self.sim.mobs.hits);
         for h in hits {
-            if self.mode.invulnerable()
-                || shield_up
-                || self.screen != Screen::Game
-            {
+            if self.mode.invulnerable() || shield_up || self.screen != Screen::Game {
                 continue; // creative absorbs everything; 1.9 shields block
             }
             let difficulty = if self.mode.permadeath() {
@@ -6873,7 +7128,11 @@ impl GameApp {
             // Phase E2 (VERIFIED w/Wither): skull hits inflict Wither II
             // — 200 ticks (10 s) Normal / 800 (40 s) Hard
             if let Some(ticks) = h.wither_effect {
-                let dur = if difficulty == Difficulty::Hard { 800 } else { ticks };
+                let dur = if difficulty == Difficulty::Hard {
+                    800
+                } else {
+                    ticks
+                };
                 self.player
                     .effects
                     .apply(vc_gameplay::effects::EffectKind::Wither, 1, dur);
@@ -6898,7 +7157,11 @@ impl GameApp {
             // (VERIFIED w/Bee infobox; the 200-tick payload rides the
             // hit, Hard doubles to 360)
             if h.source == mobs::MobKind::Bee {
-                let dur = if difficulty == Difficulty::Hard { 360 } else { 200 };
+                let dur = if difficulty == Difficulty::Hard {
+                    360
+                } else {
+                    200
+                };
                 self.player
                     .effects
                     .apply(vc_gameplay::effects::EffectKind::Poison, 0, dur);
@@ -6916,9 +7179,11 @@ impl GameApp {
                     Difficulty::Hard => 3.0,
                     _ => 1.0,
                 };
-                self.player
-                    .effects
-                    .apply(vc_gameplay::effects::EffectKind::Hunger, 0, 20 * 7 * rd as i32);
+                self.player.effects.apply(
+                    vc_gameplay::effects::EffectKind::Hunger,
+                    0,
+                    20 * 7 * rd as i32,
+                );
                 self.ui.dirty = true;
             }
             let applied = self.player.damage(dmg);
@@ -6959,7 +7224,9 @@ impl GameApp {
                 let vz = ez + (ang.sin() * 2.0).round() as i32;
                 let _ = self.sim.mobs.spawn_at(mobs::MobKind::Vex, vx, ey + 1, vz);
             }
-            vc_render::render::report_boot_log("e2e: evoker summon spell -> vexes (VERIFIED w/Evoker)");
+            vc_render::render::report_boot_log(
+                "e2e: evoker summon spell -> vexes (VERIFIED w/Evoker)",
+            );
         }
         let fangs: Vec<f32> = std::mem::take(&mut self.sim.mobs.pending_player_fang);
         for dmg in fangs {
@@ -7125,16 +7392,21 @@ impl GameApp {
                 // glowstone, gunpowder, spider eye, sugar, glass bottle,
                 // stick — engine items exist for 5 of the 7; sugar and
                 // glass-bottle items are absent -> covered by the 5)
-                mobs::MobKind::Witch => &[(REDSTONE_ORE, 2), (GLOWSTONE, 2), (GUNPOWDER, 2), (SPIDER_EYE, 2)],
+                mobs::MobKind::Witch => &[
+                    (REDSTONE_ORE, 2),
+                    (GLOWSTONE, 2),
+                    (GUNPOWDER, 2),
+                    (SPIDER_EYE, 2),
+                ],
                 // bat: drops nothing (VERIFIED w/Bat: empty drop table)
                 mobs::MobKind::Bat => &[],
                 // ---- Phase E3 (VERIFIED live 2026-09-06: w/Horse §Drops
                 // "0–2 Leather" + 1–3 XP when killed by a player; the
                 // equipped saddle drops on death (variant byte 1) — the
                 // engine has no horse-armor items, disclosed) ----
-                mobs::MobKind::Horse
-                | mobs::MobKind::Donkey
-                | mobs::MobKind::Mule => &[(LEATHER, 2)],
+                mobs::MobKind::Horse | mobs::MobKind::Donkey | mobs::MobKind::Mule => {
+                    &[(LEATHER, 2)]
+                }
                 // 1.8 rabbit — VERIFIED (wiki /w/Rabbit + /w/Rabbit's_Foot,
                 // live 2026-09-06): 0–1 raw rabbit + 0–1 rabbit hide; the
                 // rabbit's foot is the separate 10% player-kill roll below
@@ -7222,18 +7494,17 @@ impl GameApp {
                 mobs::MobKind::Hoglin => &[],
             };
             // blaze rod is a 50% roll (VERIFIED), others roll count 1..max
-            if kind == mobs::MobKind::Blaze
-                && self.audio_rng.next_f32() < 0.5 {
-                    self.sim.items.drop_block(
-                        pos[0].floor() as i32,
-                        pos[1].floor() as i32,
-                        pos[2].floor() as i32,
-                        BLAZE_ROD,
-                        2,
-                        15,
-                        0,
-                    );
-                }
+            if kind == mobs::MobKind::Blaze && self.audio_rng.next_f32() < 0.5 {
+                self.sim.items.drop_block(
+                    pos[0].floor() as i32,
+                    pos[1].floor() as i32,
+                    pos[2].floor() as i32,
+                    BLAZE_ROD,
+                    2,
+                    15,
+                    0,
+                );
+            }
             // 1.13: phantom membrane — 0–1 at 50% (VERIFIED w/Phantom
             // §Drops: the "0–1" row on a player kill; Looting out of
             // scope, no enchantment system yet)
@@ -7397,8 +7668,8 @@ impl GameApp {
             // sizes 1/2/4 (see mobs::magma_size) — splits walk 2→1→0.
             if kind == mobs::MobKind::MagmaCube {
                 let child_code = match variant {
-                    2 => 1, // big → medium
-                    1 => 0, // medium → small
+                    2 => 1,   // big → medium
+                    1 => 0,   // medium → small
                     _ => 255, // small: no split
                 };
                 if child_code != 255 {
@@ -7489,8 +7760,7 @@ impl GameApp {
         // on_block_changed (the target feeds wire at its power level).
         // ---- the sweep-2: the throwable landing queue — eggs
         // hatch, pearls teleport (all VERIFIED live 2026-09-09) ----
-        let landings: Vec<(mobs::ProjKind, [f32; 3])> =
-            mobs::take_landings(&mut self.sim.mobs);
+        let landings: Vec<(mobs::ProjKind, [f32; 3])> = mobs::take_landings(&mut self.sim.mobs);
         for (kind, pos) in landings {
             match kind {
                 mobs::ProjKind::Egg => {
@@ -7506,21 +7776,22 @@ impl GameApp {
                         if self.world.get_block(x, y, z) == AIR
                             && self.world.get_block(x, y + 1, z) == AIR
                         {
-                            let spawn_chick = |sim: &mut vc_sim::sim::Sim, x: i32, y: i32, z: i32| {
-                                let _ = sim.mobs.spawn_variant(
-                                    mobs::MobKind::Chicken,
-                                    x,
-                                    y,
-                                    z,
-                                    0x40, // the baby bit (the fox/turtle
-                                    // maturity class)
-                                );
-                                // the 20-minute chick maturity (the
-                                // generic 0x40 countdown)
-                                if let Some(m) = sim.mobs.list.last_mut() {
-                                    m.aux = 24000;
-                                }
-                            };
+                            let spawn_chick =
+                                |sim: &mut vc_sim::sim::Sim, x: i32, y: i32, z: i32| {
+                                    let _ = sim.mobs.spawn_variant(
+                                        mobs::MobKind::Chicken,
+                                        x,
+                                        y,
+                                        z,
+                                        0x40, // the baby bit (the fox/turtle
+                                              // maturity class)
+                                    );
+                                    // the 20-minute chick maturity (the
+                                    // generic 0x40 countdown)
+                                    if let Some(m) = sim.mobs.list.last_mut() {
+                                        m.aux = 24000;
+                                    }
+                                };
                             spawn_chick(&mut self.sim, x, y, z);
                             let mut n = 1;
                             if self.audio_rng.next_range(32) == 0 {
@@ -7556,8 +7827,7 @@ impl GameApp {
                         }
                         y += 1;
                     }
-                    self.player.pos =
-                        glam::Vec3::new(x as f32 + 0.5, y as f32, z as f32 + 0.5);
+                    self.player.pos = glam::Vec3::new(x as f32 + 0.5, y as f32, z as f32 + 0.5);
                     self.player.fall_dist = 0.0;
                     self.player.vel.y = 0.0;
                     if !self.mode.invulnerable() && self.mode.depletes_items() {
@@ -7579,13 +7849,16 @@ impl GameApp {
             }
             let st = vc_blocks::blocks::target_state(power);
             if let Some((old, new)) = self.world.set_block_state(pos[0], pos[1], pos[2], st) {
-                self.light.on_block_changed(&self.world, pos[0], pos[1], pos[2], old, new);
+                self.light
+                    .on_block_changed(&self.world, pos[0], pos[1], pos[2], old, new);
             }
             // schedule the DECAY first: the scheduler keeps only the
             // first entry per block (pending_pos dedup), so a later
             // notify_sim-side re-check of the target cell is absorbed
             // into this window instead of firing early
-            self.sim.sched.schedule([pos[0], pos[1], pos[2]], ticks.max(1) as u64);
+            self.sim
+                .sched
+                .schedule([pos[0], pos[1], pos[2]], ticks.max(1) as u64);
             notify_sim(&self.world, &mut self.sim.sched, pos[0], pos[1], pos[2]);
             self.edits += 1;
         }
@@ -7600,13 +7873,8 @@ impl GameApp {
         let r = power as i32;
         // Round 15b: the explosion puff + spark ring (VERIFIED w/Particle:
         // the explosion_emitter's large smoke cloud)
-        self.particles.spawn_kind(
-            "explosion_emitter",
-            center[0],
-            center[1],
-            center[2],
-            12,
-        );
+        self.particles
+            .spawn_kind("explosion_emitter", center[0], center[1], center[2], 12);
         let (cx, cy, cz) = (
             center[0].floor() as i32,
             center[1].floor() as i32,
@@ -7759,10 +8027,7 @@ impl GameApp {
             // a pack row — select it (the tier/passes analysis rides the
             // hover tooltip; translation is the vc-iris sister project's
             // job, honestly labeled on the row)
-            _ if (ID_SHDR_BASE
-                ..ID_SHDR_BASE + MAX_SHDR_ENTRIES as u16)
-                .contains(&id) =>
-            {
+            _ if (ID_SHDR_BASE..ID_SHDR_BASE + MAX_SHDR_ENTRIES as u16).contains(&id) => {
                 let idx = (id - ID_SHDR_BASE) as usize;
                 if let Some((name, _)) = self.shader_packs.get(idx) {
                     let name = name.clone();
@@ -7783,8 +8048,7 @@ impl GameApp {
             // ---- Resource Packs rows (2026-09-14) ----
             // click an AVAILABLE pack → it joins SELECTED at the TOP
             // (vanilla: newly selected packs enter at the top of the list)
-            _ if (ID_RPACK_AVAIL_BASE
-                ..ID_RPACK_AVAIL_BASE + MAX_RPACK_ENTRIES as u16)
+            _ if (ID_RPACK_AVAIL_BASE..ID_RPACK_AVAIL_BASE + MAX_RPACK_ENTRIES as u16)
                 .contains(&id) =>
             {
                 let idx = (id - ID_RPACK_AVAIL_BASE) as usize;
@@ -7799,8 +8063,7 @@ impl GameApp {
             }
             // click a SELECTED pack → back to Available (Default is pinned
             // and handled by its own disabled row — never removable)
-            _ if (ID_RPACK_SEL_BASE
-                ..ID_RPACK_SEL_BASE + MAX_RPACK_ENTRIES as u16)
+            _ if (ID_RPACK_SEL_BASE..ID_RPACK_SEL_BASE + MAX_RPACK_ENTRIES as u16)
                 .contains(&id) =>
             {
                 let idx = (id - ID_RPACK_SEL_BASE) as usize;
@@ -7812,9 +8075,7 @@ impl GameApp {
                 }
             }
             // ▲ — swap the row with the one above (higher priority)
-            _ if (ID_RPACK_UP_BASE..ID_RPACK_UP_BASE + MAX_RPACK_ENTRIES as u16)
-                .contains(&id) =>
-            {
+            _ if (ID_RPACK_UP_BASE..ID_RPACK_UP_BASE + MAX_RPACK_ENTRIES as u16).contains(&id) => {
                 let idx = (id - ID_RPACK_UP_BASE) as usize;
                 if idx > 0 && idx < self.settings.resource_packs.len() {
                     self.settings.resource_packs.swap(idx - 1, idx);
@@ -7824,8 +8085,7 @@ impl GameApp {
                 }
             }
             // ▼ — swap the row with the one below (lower priority)
-            _ if (ID_RPACK_DOWN_BASE
-                ..ID_RPACK_DOWN_BASE + MAX_RPACK_ENTRIES as u16)
+            _ if (ID_RPACK_DOWN_BASE..ID_RPACK_DOWN_BASE + MAX_RPACK_ENTRIES as u16)
                 .contains(&id) =>
             {
                 let idx = (id - ID_RPACK_DOWN_BASE) as usize;
@@ -7855,19 +8115,14 @@ impl GameApp {
             // the Controls bind rows: click enters the rebind listener
             // (the next key claims the bind; ESC cancels). Headers are
             // disabled widgets and never reach here.
-            _ if (ID_CTRL_BIND_BASE
-                ..ID_CTRL_BIND_BASE + MAX_CTRL_BINDS as u16)
-                .contains(&id) =>
-            {
+            _ if (ID_CTRL_BIND_BASE..ID_CTRL_BIND_BASE + MAX_CTRL_BINDS as u16).contains(&id) => {
                 // the ROW index counts header rows too — walk rows() to
                 // the clicked index; a non-header row enters the rebind
                 // listener at its bind ordinal (headers are disabled
                 // widgets and never activate)
                 let idx = (id - ID_CTRL_BIND_BASE) as usize;
                 let mut bind_nth = 0usize;
-                for (pos, (is_header, _, _)) in
-                    self.settings.binds.rows().into_iter().enumerate()
-                {
+                for (pos, (is_header, _, _)) in self.settings.binds.rows().into_iter().enumerate() {
                     if pos == idx {
                         if !is_header {
                             self.rebind_listen = Some(bind_nth);
@@ -8096,9 +8351,9 @@ impl GameApp {
                     self.we_index = Some(idx);
                     self.we_name = self
                         .world_list_rows()
-                            .get(idx)
-                            .map(|r| r.name.clone())
-                            .unwrap_or_default();
+                        .get(idx)
+                        .map(|r| r.name.clone())
+                        .unwrap_or_default();
                     self.set_screen(Screen::WorldEdit);
                 }
             }
@@ -8214,7 +8469,24 @@ impl GameApp {
                 self.settings.clouds_level = (self.settings.clouds_level + 1) % 3;
                 self.after_settings_change();
             }
-            _ => {}
+            // ---- --debug input-regression detector (2026-09-20 round) --
+            // The reported Linux bug class: "click SINGLEPLAYER/OPTIONS,
+            // sometimes hear the click sound, but nothing opens". A click
+            // that reaches activate() with an id NO arm handles is exactly
+            // that symptom — the sound already played in menu_mouse, the
+            // match falls through here, the screen never changes. Kept a
+            // no-op in normal play (zero behavior change); under --debug
+            // it screams into the raw stream with the full context line.
+            _ => {
+                vc_render::render::report_debug_log(
+                    "input",
+                    &format!(
+                        "WARN activate({id}) on {} — NO HANDLER (click swallowed; screen unchanged). \
+                         This is a wiring bug: the clicked widget id is not reachable from activate()",
+                        self.screen.name()
+                    ),
+                );
+            }
         }
     }
 
@@ -8232,6 +8504,8 @@ impl GameApp {
             // Phase 6 §26: VERIFIED range 5–32 (wiki simulationDistance)
             ID_OPT_SIMDIST => self.settings.sim_distance = 5 + (t * 27.0).round() as i32,
             ID_OPT_BRIGHT => self.settings.brightness = t,
+            // 2026-09-20: the modern Entity Distance (0.5..1.0 = 50%..100%)
+            ID_OPT_ENTDIST => self.settings.entity_distance = 0.5 + t * 0.5,
             ID_OPT_BIOME => {
                 // vanilla Biome Blend slider: five stops (drag remeshes —
                 // remesh_all is just the dirty-mark pass; meshing itself
@@ -8336,18 +8610,10 @@ impl GameApp {
         // 1.14: the pre-break state (the berry bush's
         // age — captured BEFORE the AIR write clears it)
         let broke_state = self.world.get_state(pos[0], pos[1], pos[2]);
-        let (biome, sky, blk) =
-            light_at(&self.world, &self.light, pos[0], pos[1], pos[2]);
-        if let Some((old, new)) = self.world.set_block(pos[0], pos[1], pos[2], AIR)
-        {
-            self.light.on_block_changed(
-                &self.world,
-                pos[0],
-                pos[1],
-                pos[2],
-                old,
-                new,
-            );
+        let (biome, sky, blk) = light_at(&self.world, &self.light, pos[0], pos[1], pos[2]);
+        if let Some((old, new)) = self.world.set_block(pos[0], pos[1], pos[2], AIR) {
+            self.light
+                .on_block_changed(&self.world, pos[0], pos[1], pos[2], old, new);
         }
         // fences: removing a block changes neighbor connections
         update_fence_neighbors(&mut self.world, pos[0], pos[1], pos[2]);
@@ -8367,26 +8633,26 @@ impl GameApp {
                 // documented); contents stay in the shared
                 // ender inventory (never spilled)
                 for _ in 0..8 {
-                    self.sim.items.drop_block(
-                        pos[0], pos[1], pos[2], OBSIDIAN, biome, sky, blk,
-                    );
+                    self.sim
+                        .items
+                        .drop_block(pos[0], pos[1], pos[2], OBSIDIAN, biome, sky, blk);
                 }
             } else if broke == EMERALD_ORE {
                 // Phase E2 (VERIFIED w/Emerald_Ore): drops
                 // 1 emerald (Fortune deferred — no Fortune
                 // enchant in the engine)
-                self.sim.items.drop_block(
-                    pos[0], pos[1], pos[2], EMERALD, biome, sky, blk,
-                );
+                self.sim
+                    .items
+                    .drop_block(pos[0], pos[1], pos[2], EMERALD, biome, sky, blk);
             } else if broke == NETHER_QUARTZ_ORE {
                 // Phase E3 (VERIFIED live 2026-09-06,
                 // minecraft.wiki/w/Nether_Quartz_Ore:
                 // "it drops 1 Nether quartz" — Fortune up
                 // to 4 deferred, no Fortune enchant; ore
                 // XP 2–5 rides the ore_xp path)
-                self.sim.items.drop_block(
-                    pos[0], pos[1], pos[2], NETHER_QUARTZ, biome, sky, blk,
-                );
+                self.sim
+                    .items
+                    .drop_block(pos[0], pos[1], pos[2], NETHER_QUARTZ, biome, sky, blk);
             } else if broke == GILDED_BLACKSTONE {
                 // 1.16 (Nether Update, part 1) — VERIFIED
                 // w/Gilded_Blackstone §Breaking: "a 10%
@@ -8401,23 +8667,29 @@ impl GameApp {
                     let n = 2 + self.audio_rng.next_range(4) as u8; // 2..=5
                     for _ in 0..n {
                         self.sim.items.drop_block(
-                            pos[0], pos[1], pos[2], IRON_NUGGET, biome, sky, blk,
+                            pos[0],
+                            pos[1],
+                            pos[2],
+                            IRON_NUGGET,
+                            biome,
+                            sky,
+                            blk,
                         );
                     }
                 } else {
-                    self.sim.items.drop_block(
-                        pos[0], pos[1], pos[2], broke, biome, sky, blk,
-                    );
+                    self.sim
+                        .items
+                        .drop_block(pos[0], pos[1], pos[2], broke, biome, sky, blk);
                 }
                 // 1.16 part 2: the piglin gold-mining anger
                 // hook — mining gold-related blocks angers
                 // nearby piglins (the w/Piglin aggravation
                 // rows; the 16-block medium-aggravation
                 // range, disclosed)
-                let _ = self
-                    .sim
-                    .mobs
-                    .anger_piglins_near([pos[0] as f32 + 0.5, pos[1] as f32, pos[2] as f32 + 0.5], 16.0);
+                let _ = self.sim.mobs.anger_piglins_near(
+                    [pos[0] as f32 + 0.5, pos[1] as f32, pos[2] as f32 + 0.5],
+                    16.0,
+                );
             } else if broke == NETHER_GOLD_ORE {
                 // 1.16 — VERIFIED w/Nether_Gold_Ore
                 // §Drops: "2–6 gold nuggets when mined
@@ -8427,16 +8699,16 @@ impl GameApp {
                 // on the integer ore_xp path
                 let n = 2 + self.audio_rng.next_range(5) as u8; // 2..=6
                 for _ in 0..n {
-                    self.sim.items.drop_block(
-                        pos[0], pos[1], pos[2], IRON_NUGGET, biome, sky, blk,
-                    );
+                    self.sim
+                        .items
+                        .drop_block(pos[0], pos[1], pos[2], IRON_NUGGET, biome, sky, blk);
                 }
                 // 1.16 part 2: the piglin gold-mining anger
                 // hook (the same aggravation class)
-                let _ = self
-                    .sim
-                    .mobs
-                    .anger_piglins_near([pos[0] as f32 + 0.5, pos[1] as f32, pos[2] as f32 + 0.5], 16.0);
+                let _ = self.sim.mobs.anger_piglins_near(
+                    [pos[0] as f32 + 0.5, pos[1] as f32, pos[2] as f32 + 0.5],
+                    16.0,
+                );
             } else if broke == SOUL_FIRE {
                 // 1.16 — soul fire cannot be collected
                 // (fire blocks drop nothing, VERIFIED
@@ -8457,9 +8729,9 @@ impl GameApp {
                 // item's block-breaking use is the
                 // trimmed half, disclosed)
                 if self.audio_rng.next_range(3) == 0 {
-                    self.sim.items.drop_block(
-                        pos[0], pos[1], pos[2], broke, biome, sky, blk,
-                    );
+                    self.sim
+                        .items
+                        .drop_block(pos[0], pos[1], pos[2], broke, biome, sky, blk);
                 }
             } else if broke == MELON {
                 // the sweep-2: "When broken, a melon
@@ -8471,24 +8743,18 @@ impl GameApp {
                 // scope, no tool-gated loot yet)
                 let n = 3 + self.audio_rng.next_range(5) as u8; // 3..=7
                 for _ in 0..n {
-                    self.sim.items.drop_block(
-                        pos[0],
-                        pos[1],
-                        pos[2],
-                        MELON_SLICE,
-                        biome,
-                        sky,
-                        blk,
-                    );
+                    self.sim
+                        .items
+                        .drop_block(pos[0], pos[1], pos[2], MELON_SLICE, biome, sky, blk);
                 }
             } else if broke == CRIMSON_NYLIUM || broke == WARPED_NYLIUM {
                 // 1.16 part 2 — the nylium row: mining a
                 // nylium drops its netherrack base (the
                 // grass-block-to-dirt class; silk-touch
                 // absent, disclosed)
-                self.sim.items.drop_block(
-                    pos[0], pos[1], pos[2], NETHERRACK, biome, sky, blk,
-                );
+                self.sim
+                    .items
+                    .drop_block(pos[0], pos[1], pos[2], NETHERRACK, biome, sky, blk);
             } else if broke == LEAVES || broke == DARK_OAK_LEAVES {
                 // the completeness audit: the apple roll
                 // — VERIFIED (minecraft.wiki/w/Apple, live
@@ -8501,13 +8767,13 @@ impl GameApp {
                 // the two apple-bearing species — the
                 // other four leaves never drop apples,
                 // VERIFIED).
-                self.sim.items.drop_block(
-                    pos[0], pos[1], pos[2], broke, biome, sky, blk,
-                );
+                self.sim
+                    .items
+                    .drop_block(pos[0], pos[1], pos[2], broke, biome, sky, blk);
                 if self.audio_rng.next_range(200) == 0 {
-                    self.sim.items.drop_block(
-                        pos[0], pos[1], pos[2], APPLE, biome, sky, blk,
-                    );
+                    self.sim
+                        .items
+                        .drop_block(pos[0], pos[1], pos[2], APPLE, biome, sky, blk);
                 }
             } else if broke == BEE_NEST || broke == BEEHIVE {
                 // 1.15 (Buzzy Bees) — VERIFIED w/Bee_nest
@@ -8520,9 +8786,9 @@ impl GameApp {
                 // standard block rule) with its bees
                 // released angry (w/Beehive §Breaking)
                 if broke == BEEHIVE {
-                    self.sim.items.drop_block(
-                        pos[0], pos[1], pos[2], BEEHIVE, biome, sky, blk,
-                    );
+                    self.sim
+                        .items
+                        .drop_block(pos[0], pos[1], pos[2], BEEHIVE, biome, sky, blk);
                 }
                 // the angry swarm: stored bees release
                 // angry + the out family joins
@@ -8546,16 +8812,21 @@ impl GameApp {
                 // + 20w22a "Campfires now drop the food being
                 // cooked": the raw food spills from the entity
                 for _ in 0..2 {
-                    self.sim.items.drop_block(
-                        pos[0], pos[1], pos[2], CHARCOAL, biome, sky, blk,
-                    );
+                    self.sim
+                        .items
+                        .drop_block(pos[0], pos[1], pos[2], CHARCOAL, biome, sky, blk);
                 }
                 if let Some(cf) = self.sim.campfires.map.remove(&pos) {
                     for slot in cf.slots.iter() {
                         if !slot.is_empty() {
                             self.sim.items.drop_block(
-                                pos[0], pos[1] + 1, pos[2], slot.block,
-                                biome, sky, blk,
+                                pos[0],
+                                pos[1] + 1,
+                                pos[2],
+                                slot.block,
+                                biome,
+                                sky,
+                                blk,
                             );
                         }
                     }
@@ -8573,16 +8844,22 @@ impl GameApp {
                 };
                 for _ in 0..n {
                     self.sim.items.drop_block(
-                        pos[0], pos[1], pos[2], SWEET_BERRIES, biome, sky, blk,
+                        pos[0],
+                        pos[1],
+                        pos[2],
+                        SWEET_BERRIES,
+                        biome,
+                        sky,
+                        blk,
                     );
                 }
             } else if broke == BAMBOO || broke == BAMBOO_SHOOT {
                 // 1.14: "Bamboo stalks can be mined with any
                 // tool" and drop the bamboo item — the shoot
                 // is the sapling form of the same plant
-                self.sim.items.drop_block(
-                    pos[0], pos[1], pos[2], BAMBOO, biome, sky, blk,
-                );
+                self.sim
+                    .items
+                    .drop_block(pos[0], pos[1], pos[2], BAMBOO, biome, sky, blk);
             } else if vc_sim::fluids::is_crop(broke) {
                 // ---- backlog round (farming, 2026-09-09):
                 // the four crops — the verified per-crop
@@ -8595,27 +8872,26 @@ impl GameApp {
                 // w/Farmland §Breaking: "Farmland drops 1
                 // dirt block when it's destroyed"), and the
                 // crop above pops with its harvest ----
-                self.sim.items.drop_block(
-                    pos[0], pos[1], pos[2], DIRT, biome, sky, blk,
-                );
+                self.sim
+                    .items
+                    .drop_block(pos[0], pos[1], pos[2], DIRT, biome, sky, blk);
                 let crop = self.world.get_state(pos[0], pos[1] + 1, pos[2]);
                 if vc_sim::fluids::is_crop(state_block(crop)) {
                     self.drop_crop_harvest(pos[0], pos[1] + 1, pos[2], crop, biome, sky, blk);
-                    if let Some((old, new)) = self
-                        .world
-                        .set_block_state(pos[0], pos[1] + 1, pos[2], default_state(AIR))
+                    if let Some((old, new)) =
+                        self.world
+                            .set_block_state(pos[0], pos[1] + 1, pos[2], default_state(AIR))
                     {
                         self.light.on_block_changed(
-                            &self.world, pos[0], pos[1] + 1, pos[2], old, new,
+                            &self.world,
+                            pos[0],
+                            pos[1] + 1,
+                            pos[2],
+                            old,
+                            new,
                         );
                     }
-                    notify_sim(
-                        &self.world,
-                        &mut self.sim.sched,
-                        pos[0],
-                        pos[1] + 1,
-                        pos[2],
-                    );
+                    notify_sim(&self.world, &mut self.sim.sched, pos[0], pos[1] + 1, pos[2]);
                 }
             } else if broke == TALL_GRASS || broke == FERN {
                 // ---- backlog round (farming): grass plants
@@ -8625,14 +8901,14 @@ impl GameApp {
                 // of dropping seeds") — the survival seed
                 // source ----
                 if self.audio_rng.next_range(8) == 0 {
-                    self.sim.items.drop_block(
-                        pos[0], pos[1], pos[2], WHEAT_SEEDS, biome, sky, blk,
-                    );
+                    self.sim
+                        .items
+                        .drop_block(pos[0], pos[1], pos[2], WHEAT_SEEDS, biome, sky, blk);
                 }
             } else {
-                self.sim.items.drop_block(
-                    pos[0], pos[1], pos[2], broke, biome, sky, blk,
-                );
+                self.sim
+                    .items
+                    .drop_block(pos[0], pos[1], pos[2], broke, biome, sky, blk);
             }
         }
         notify_sim(&self.world, &mut self.sim.sched, pos[0], pos[1], pos[2]);
@@ -8676,7 +8952,12 @@ impl GameApp {
             .map(|n| self.pack_display_name(n))
             .collect();
         let mut avail: Vec<String> = Vec::new();
-        if self.programmer_art.is_some() && !self.settings.resource_packs.contains(&"programmer-art".to_string()) {
+        if self.programmer_art.is_some()
+            && !self
+                .settings
+                .resource_packs
+                .contains(&"programmer-art".to_string())
+        {
             avail.push("PROGRAMMER ART".to_string());
         }
         for (name, _src) in &self.user_packs {
@@ -8695,16 +8976,15 @@ impl GameApp {
     /// without a restart.
     #[cfg(not(target_arch = "wasm32"))]
     fn scan_shader_packs(&mut self) {
-        self.shader_packs = vc_render::iris::scan_shader_packs(std::path::Path::new(
-            "shader-packs",
-        ))
-        .into_iter()
-        .map(|p| {
-            // summary() borrows the pack — compute it BEFORE moving name
-            let summary = p.summary();
-            (p.name, summary)
-        })
-        .collect();
+        self.shader_packs =
+            vc_render::iris::scan_shader_packs(std::path::Path::new("shader-packs"))
+                .into_iter()
+                .map(|p| {
+                    // summary() borrows the pack — compute it BEFORE moving name
+                    let summary = p.summary();
+                    (p.name, summary)
+                })
+                .collect();
     }
 
     /// wasm twin of the scan: nothing to scan (no filesystem); exists so
@@ -8764,8 +9044,7 @@ impl GameApp {
         }
         let stage = ((m.progress * 10.0) as i32).clamp(0, 9) as u16;
         let tile = TILE_DESTROY_BASE + stage;
-        let (_biome, sky, blk) =
-            light_at(&self.world, &self.light, m.pos[0], m.pos[1], m.pos[2]);
+        let (_biome, sky, blk) = light_at(&self.world, &self.light, m.pos[0], m.pos[1], m.pos[2]);
         let light = vc_particles::particles::particle_light(sky, blk);
         // atlas UV of the stage tile
         let tx = (tile % 32) as f32;
@@ -8776,7 +9055,11 @@ impl GameApp {
         let v1 = (ty + 1.0) / 32.0;
         // inflate 1.5% so the overlay never z-fights the block faces
         let e = 0.0075;
-        let (x0, y0, z0) = (m.pos[0] as f32 - e, m.pos[1] as f32 - e, m.pos[2] as f32 - e);
+        let (x0, y0, z0) = (
+            m.pos[0] as f32 - e,
+            m.pos[1] as f32 - e,
+            m.pos[2] as f32 - e,
+        );
         let (x1, y1, z1) = (
             m.pos[0] as f32 + 1.0 + e,
             m.pos[1] as f32 + 1.0 + e,
@@ -8785,21 +9068,54 @@ impl GameApp {
         // face quads (corners CCW from outside); light face shading like
         // the mesher (top 1.0, sides 0.8/0.6, bottom 0.5)
         let faces: [([[f32; 3]; 4], f32); 6] = [
-            ([[x1, y0, z0], [x1, y0, z1], [x1, y1, z1], [x1, y1, z0]], 0.6), // +x
-            ([[x0, y0, z1], [x0, y0, z0], [x0, y1, z0], [x0, y1, z1]], 0.6), // -x
-            ([[x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]], 1.0), // +y
-            ([[x0, y0, z1], [x1, y0, z1], [x1, y0, z0], [x0, y0, z0]], 0.5), // -y
-            ([[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]], 0.8), // +z
-            ([[x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0]], 0.8), // -z
+            (
+                [[x1, y0, z0], [x1, y0, z1], [x1, y1, z1], [x1, y1, z0]],
+                0.6,
+            ), // +x
+            (
+                [[x0, y0, z1], [x0, y0, z0], [x0, y1, z0], [x0, y1, z1]],
+                0.6,
+            ), // -x
+            (
+                [[x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]],
+                1.0,
+            ), // +y
+            (
+                [[x0, y0, z1], [x1, y0, z1], [x1, y0, z0], [x0, y0, z0]],
+                0.5,
+            ), // -y
+            (
+                [[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]],
+                0.8,
+            ), // +z
+            (
+                [[x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0]],
+                0.8,
+            ), // -z
         ];
         for (c, shade) in faces {
             let f = [shade * light; 3];
-            let a = ParticleVertex { pos: c[0], uv: [u0, v0], col: f };
-            let b = ParticleVertex { pos: c[1], uv: [u1, v0], col: f };
-            let cc = ParticleVertex { pos: c[2], uv: [u1, v1], col: f };
-            let d = ParticleVertex { pos: c[3], uv: [u0, v1], col: f };
-            self.particle_verts
-                .extend_from_slice(&[a, b, cc, a, cc, d]);
+            let a = ParticleVertex {
+                pos: c[0],
+                uv: [u0, v0],
+                col: f,
+            };
+            let b = ParticleVertex {
+                pos: c[1],
+                uv: [u1, v0],
+                col: f,
+            };
+            let cc = ParticleVertex {
+                pos: c[2],
+                uv: [u1, v1],
+                col: f,
+            };
+            let d = ParticleVertex {
+                pos: c[3],
+                uv: [u0, v1],
+                col: f,
+            };
+            self.particle_verts.extend_from_slice(&[a, b, cc, a, cc, d]);
         }
     }
 
@@ -8860,23 +9176,37 @@ impl GameApp {
                 eye[2] + right[2] * lx + up[2] * ry + dir[2] * rz,
             ]
         };
-        let emit_face = |corners: &[[f32; 3]; 4],
-                         tile: u16,
-                         shade: f32,
-                         out: &mut Vec<ParticleVertex>| {
-            let tx = (tile % 32) as f32;
-            let ty = (tile / 32) as f32;
-            let u0 = tx / 32.0;
-            let u1 = (tx + 1.0) / 32.0;
-            let v0 = ty / 32.0;
-            let v1 = (ty + 1.0) / 32.0;
-            let f = [light * shade; 3];
-            let a = ParticleVertex { pos: corners[0], uv: [u0, v0], col: f };
-            let b = ParticleVertex { pos: corners[1], uv: [u1, v0], col: f };
-            let c = ParticleVertex { pos: corners[2], uv: [u1, v1], col: f };
-            let d = ParticleVertex { pos: corners[3], uv: [u0, v1], col: f };
-            out.extend_from_slice(&[a, b, c, a, c, d]);
-        };
+        let emit_face =
+            |corners: &[[f32; 3]; 4], tile: u16, shade: f32, out: &mut Vec<ParticleVertex>| {
+                let tx = (tile % 32) as f32;
+                let ty = (tile / 32) as f32;
+                let u0 = tx / 32.0;
+                let u1 = (tx + 1.0) / 32.0;
+                let v0 = ty / 32.0;
+                let v1 = (ty + 1.0) / 32.0;
+                let f = [light * shade; 3];
+                let a = ParticleVertex {
+                    pos: corners[0],
+                    uv: [u0, v0],
+                    col: f,
+                };
+                let b = ParticleVertex {
+                    pos: corners[1],
+                    uv: [u1, v0],
+                    col: f,
+                };
+                let c = ParticleVertex {
+                    pos: corners[2],
+                    uv: [u1, v1],
+                    col: f,
+                };
+                let d = ParticleVertex {
+                    pos: corners[3],
+                    uv: [u0, v1],
+                    col: f,
+                };
+                out.extend_from_slice(&[a, b, c, a, c, d]);
+            };
         if !held.is_empty() {
             // the held block: 0.30 cube centered on the anchor, per-face
             // tiles from the block's default state
@@ -9004,8 +9334,7 @@ impl GameApp {
             .rev()
             .filter_map(|n| self.pack_source_by_name(n))
             .collect();
-        let (mut atlas, animations) =
-            compile_pack_atlas(self.builtin_pack.as_ref(), &app_order);
+        let (mut atlas, animations) = compile_pack_atlas(self.builtin_pack.as_ref(), &app_order);
         // 2026-09-20: refresh the labPBR material-map count for the new
         // stack (the same scan the boot runs)
         self.labpbr_tiles = app_order
@@ -9034,9 +9363,8 @@ impl GameApp {
         // picker icon re-bakes from the new pixels (pop-in over a few
         // frames, the documented amortization)
         self.icon_cache = self.renderer.create_icon_cache(512);
-        self.ui.set_icon_cells(std::sync::Arc::new(
-            self.icon_cache.ready_cells().clone(),
-        ));
+        self.ui
+            .set_icon_cells(std::sync::Arc::new(self.icon_cache.ready_cells().clone()));
         // every chunk remeshes through the (newly installed) ModelSet
         self.remesh_all();
         // persist the pack list with the other settings
@@ -9157,6 +9485,16 @@ impl GameApp {
                             &format!("BIOME BLEND: {}", s.biome_blend_label()),
                             s.biome_blend as f32 / 4.0,
                         ),
+                        // 2026-09-20: the modern Entity Distance (the
+                        // label rides the live value like every slider)
+                        ID_OPT_ENTDIST => set_slider(
+                            w,
+                            &format!(
+                                "ENTITY DISTANCE: {}%",
+                                (s.entity_distance * 100.0).round() as i32
+                            ),
+                            (s.entity_distance - 0.5) / 0.5,
+                        ),
                         _ => {}
                     }
                 }
@@ -9253,15 +9591,13 @@ impl GameApp {
                 // the live scan (native) / empty (wasm has no filesystem).
                 // A stale persisted name (the pack folder was removed)
                 // un-selects honestly rather than listing a ghost row.
-                let packs: Vec<String> =
-                    self.shader_packs.iter().map(|(n, _)| n.clone()).collect();
+                let packs: Vec<String> = self.shader_packs.iter().map(|(n, _)| n.clone()).collect();
                 let active = self
                     .settings
                     .shader_pack
                     .clone()
                     .filter(|name| packs.contains(name));
-                self.widgets =
-                    layout_shaders(&packs, active.as_deref(), s.labpbr);
+                self.widgets = layout_shaders(&packs, active.as_deref(), s.labpbr);
             }
             Screen::Access => {
                 let mut ws = layout_access();
@@ -9324,8 +9660,10 @@ impl GameApp {
                         nth += 1;
                     }
                 }
-                let refs: Vec<(bool, &str, &str)> =
-                    labels.iter().map(|(h, n, k)| (*h, *n, k.as_str())).collect();
+                let refs: Vec<(bool, &str, &str)> = labels
+                    .iter()
+                    .map(|(h, n, k)| (*h, *n, k.as_str()))
+                    .collect();
                 self.widgets = ui::layout_controls(&refs);
             }
             Screen::Language => {
@@ -9360,7 +9698,10 @@ impl GameApp {
                 // 2026-09-14: the vanilla Select World rows + bottom stack —
                 // rows count is the visible window of the (filtered) list
                 let rows = self.world_list_rows();
-                let shown = rows.len().saturating_sub(self.ws_scroll).min(MAX_LISTED_WORLDS);
+                let shown = rows
+                    .len()
+                    .saturating_sub(self.ws_scroll)
+                    .min(MAX_LISTED_WORLDS);
                 let can_play = self
                     .ws_selected
                     .map(|i| rows.get(i).map(|r| !r.dead).unwrap_or(false))
@@ -9422,6 +9763,130 @@ impl GameApp {
         // in the live logical space; text scale follows the canvas
         // (widget_scale stays 1.0 for the fs multipliers).
         self.ui.widget_scale = 1.0;
+
+        // ---- 2026-09-20 round: post-rebuild UI hygiene (the wiring bugs
+        // behind the "click sound but nothing opens" class) ----
+        // (a) STALE HOVER: the hover id survived the screen swap, so the
+        //     painter highlighted / tooltiped whatever widget on the NEW
+        //     screen happens to own that id (ids repeat across screens!) —
+        //     the user clicks the HIGHLIGHTED button but a different id is
+        //     under the cursor. Re-resolve hover from the live cursor
+        //     position against the NEW table so paint and hit-test agree.
+        // (b) STALE DRAG: a slider drag left open across a screen change
+        //     would keep feeding slider_value_at from the dead widget id.
+        let live_ids: std::collections::HashSet<u16> = self.widgets.iter().map(|w| w.id).collect();
+        if self.dragging.is_some_and(|d| !live_ids.contains(&d)) {
+            if vc_render::render::is_verbose() {
+                vc_render::render::report_debug_log(
+                    "input",
+                    &format!(
+                        "cleared stale slider drag after rebuild on {}",
+                        self.screen.name()
+                    ),
+                );
+            }
+            self.dragging = None;
+        }
+        if self.hover.is_some_and(|h| !live_ids.contains(&h)) {
+            self.hover = None;
+        }
+        self.update_hover();
+
+        // ---- --debug [gfx]: the widget-table dump + the two structural
+        // detectors. THE bug-report tool for "clicked where the button
+        // LOOKS like it is, nothing happened": the dump is the exact
+        // hit-test table the click routed through, and the detectors
+        // scream on the two layout bugs that swallow clicks silently:
+        //   * DUPLICATE IDs — two widgets share an id: the painter draws
+        //     both, hit-testing finds only the FIRST in list order
+        //   * OVERLAPPING rects — the first widget in list order eats the
+        //     click even though the visible top widget is another one
+        // GATED to a screen change (vs dbg_widget_dump_screen): slider
+        // drags rebuild the table on every pointer motion — rects don't
+        // move mid-drag, only labels/values do, so one dump per screen
+        // + a re-dump when the geometry source actually flips.
+        if vc_render::render::is_verbose() && self.dbg_widget_dump_screen != Some(self.screen) {
+            self.dbg_widget_dump_screen = Some(self.screen);
+            let mut ids: Vec<u16> = self.widgets.iter().map(|w| w.id).collect();
+            let total = ids.len();
+            ids.sort_unstable();
+            ids.dedup();
+            if ids.len() != total {
+                let dups: Vec<u16> = self
+                    .widgets
+                    .iter()
+                    .filter(|w| self.widgets.iter().filter(|o| o.id == w.id).count() > 1)
+                    .map(|w| w.id)
+                    .collect::<std::collections::HashSet<u16>>()
+                    .into_iter()
+                    .collect();
+                vc_render::render::report_debug_log(
+                    "gfx",
+                    &format!(
+                        "WARN {} widgets on {} — DUPLICATE ids {:?} \
+                         (hit-test finds only the first per id; the painted \
+                         second one never responds)",
+                        total,
+                        self.screen.name(),
+                        dups
+                    ),
+                );
+            }
+            for (i, a) in self.widgets.iter().enumerate() {
+                for b in self.widgets.iter().skip(i + 1) {
+                    let x_ov = a.x < b.x + b.w && b.x < a.x + a.w;
+                    let y_ov = a.y < b.y + b.h && b.y < a.y + a.h;
+                    if x_ov && y_ov {
+                        vc_render::render::report_debug_log(
+                            "gfx",
+                            &format!(
+                                "WARN on {}: widget {} and {} OVERLAP \
+                                 ({} vs {}) — the earlier list entry eats the click",
+                                self.screen.name(),
+                                a.id,
+                                b.id,
+                                a.label(),
+                                b.label()
+                            ),
+                        );
+                    }
+                }
+            }
+            let mut table = String::new();
+            for w in &self.widgets {
+                let kind = match &w.kind {
+                    WidgetKind::Button { enabled, .. } => {
+                        if *enabled {
+                            "btn"
+                        } else {
+                            "btn-off"
+                        }
+                    }
+                    WidgetKind::Slider { .. } => "sld",
+                    WidgetKind::TextField { .. } => "fld",
+                };
+                table.push_str(&format!(
+                    "\n      id {:>3} {kind:>7} x{} y{} w{} h{} \"{}\"",
+                    w.id,
+                    w.x,
+                    w.y,
+                    w.w,
+                    w.h,
+                    w.label()
+                ));
+            }
+            vc_render::render::report_debug_log(
+                "gfx",
+                &format!(
+                    "widget table — {} on {} (live {}x{}){}",
+                    total,
+                    self.screen.name(),
+                    self.ui.live_w,
+                    self.ui.live_h,
+                    table
+                ),
+            );
+        }
     }
 
     /// Round 10 — the vanilla integer GUI-scale resolution. Computes
@@ -9448,6 +9913,33 @@ impl GameApp {
         if cw != self.ui.live_w || ch != self.ui.live_h {
             self.ui.resize(cw, ch);
             ui::set_live_ui_size(cw, ch);
+            // --debug [gfx]: the live-canvas geometry flip — every input
+            // coordinate is mapped through this space, so a click landing
+            // between this flip and the next CursorMoved (see
+            // last_canvas_resize_t) hit-tests in a STALE space
+            self.last_canvas_resize_t = self.time;
+            // re-arm the one-dump-per-screen gate: the rects just moved,
+            // the next rebuild must re-dump the new geometry
+            self.dbg_widget_dump_screen = None;
+            // REAL FIX (the stale-cursor class): the cached cursor lives in
+            // the OLD canvas space — until the mouse physically moves,
+            // every click would hit-test through a stale mapping (the
+            // "clicked the button, nothing happened" report). Re-project
+            // the last PHYSICAL pointer position through the NEW live
+            // canvas instead (native path; web re-maps on every event).
+            #[cfg(not(target_arch = "wasm32"))]
+            if let Some((px, py)) = self.last_cursor_phys {
+                let (ux, uy) = self.phys_to_ui(px, py);
+                self.cursor = (ux, uy);
+            }
+            vc_render::render::report_debug_log(
+                "gfx",
+                &format!(
+                    "gui-scale re-resolved: surface {}x{} -> scale {} -> live canvas {}x{} \
+                     (cursor re-projected from the last physical position)",
+                    sw, sh, s, cw, ch
+                ),
+            );
             self.refresh_widgets();
         }
     }
@@ -9480,9 +9972,8 @@ impl GameApp {
                 for b in 0..14u8 {
                     // 14 biomes (Phase 10) — tint rows are biome-keyed
                     let c = vc_blocks::tint::grass_color(b);
-                    let d = (ar / n - c[0]).powi(2)
-                        + (ag / n - c[1]).powi(2)
-                        + (ab / n - c[2]).powi(2);
+                    let d =
+                        (ar / n - c[0]).powi(2) + (ag / n - c[1]).powi(2) + (ab / n - c[2]).powi(2);
                     if d < bd {
                         bd = d;
                         best = b;
@@ -9500,7 +9991,10 @@ impl GameApp {
     /// approximation of the vanilla blob texture).
     fn push_mob_shadows(&mut self) {
         const TILE: u16 = TILE_GLASS; // 11
-        let uv = [((TILE % 32) as f32 + 0.5) / 32.0, ((TILE / 32) as f32 + 0.5) / 32.0];
+        let uv = [
+            ((TILE % 32) as f32 + 0.5) / 32.0,
+            ((TILE / 32) as f32 + 0.5) / 32.0,
+        ];
         let col = [0.30, 0.30, 0.34];
         let quads: Vec<([f32; 3], f32, f32)> = self
             .sim
@@ -9508,6 +10002,15 @@ impl GameApp {
             .list
             .iter()
             .filter_map(|m| {
+                // 2026-09-20: the Entity Distance gate — a mob the
+                // vertex build skipped must not float a shadow quad
+                let eye = self.player.eye();
+                let ent_max = self.settings.render_distance.max(2) as f32
+                    * 16.0
+                    * self.settings.entity_distance;
+                if !vc_gameplay::mobs::within_entity_distance(m, [eye.x, eye.y, eye.z], ent_max) {
+                    return None;
+                }
                 let d = vc_gameplay::mobs::def(m.kind);
                 let g = self.mob_shadow_ground(m.pos[0], m.pos[1], m.pos[2])?;
                 let s = (d.width.max(0.5) * 0.45).clamp(0.28, 0.9);
@@ -9565,15 +10068,39 @@ impl GameApp {
         // silently in vanilla)
         match c {
             Container::Chest { pos } => {
-                self.play_event("block.chest.open", Some([pos[0] as f32 + 0.5, pos[1] as f32 + 0.5, pos[2] as f32 + 0.5]), 1.0);
+                self.play_event(
+                    "block.chest.open",
+                    Some([
+                        pos[0] as f32 + 0.5,
+                        pos[1] as f32 + 0.5,
+                        pos[2] as f32 + 0.5,
+                    ]),
+                    1.0,
+                );
             }
             // Round 12: the double chest opens with the same chest
             // sound at the clicked half (vanilla plays one sound)
             Container::DoubleChest { pos, .. } => {
-                self.play_event("block.chest.open", Some([pos[0] as f32 + 0.5, pos[1] as f32 + 0.5, pos[2] as f32 + 0.5]), 1.0);
+                self.play_event(
+                    "block.chest.open",
+                    Some([
+                        pos[0] as f32 + 0.5,
+                        pos[1] as f32 + 0.5,
+                        pos[2] as f32 + 0.5,
+                    ]),
+                    1.0,
+                );
             }
             Container::Barrel { pos } => {
-                self.play_event("block.barrel.open", Some([pos[0] as f32 + 0.5, pos[1] as f32 + 0.5, pos[2] as f32 + 0.5]), 1.0);
+                self.play_event(
+                    "block.barrel.open",
+                    Some([
+                        pos[0] as f32 + 0.5,
+                        pos[1] as f32 + 0.5,
+                        pos[2] as f32 + 0.5,
+                    ]),
+                    1.0,
+                );
             }
             _ => {}
         }
@@ -9601,15 +10128,39 @@ impl GameApp {
             // Sub-round 5: the vanilla container close sounds
             match c {
                 Container::Chest { pos } => {
-                    self.play_event("block.chest.close", Some([pos[0] as f32 + 0.5, pos[1] as f32 + 0.5, pos[2] as f32 + 0.5]), 1.0);
+                    self.play_event(
+                        "block.chest.close",
+                        Some([
+                            pos[0] as f32 + 0.5,
+                            pos[1] as f32 + 0.5,
+                            pos[2] as f32 + 0.5,
+                        ]),
+                        1.0,
+                    );
                 }
                 // Round 12: the double chest closes with the chest
                 // sound (vanilla plays one)
                 Container::DoubleChest { pos, .. } => {
-                    self.play_event("block.chest.close", Some([pos[0] as f32 + 0.5, pos[1] as f32 + 0.5, pos[2] as f32 + 0.5]), 1.0);
+                    self.play_event(
+                        "block.chest.close",
+                        Some([
+                            pos[0] as f32 + 0.5,
+                            pos[1] as f32 + 0.5,
+                            pos[2] as f32 + 0.5,
+                        ]),
+                        1.0,
+                    );
                 }
                 Container::Barrel { pos } => {
-                    self.play_event("block.barrel.close", Some([pos[0] as f32 + 0.5, pos[1] as f32 + 0.5, pos[2] as f32 + 0.5]), 1.0);
+                    self.play_event(
+                        "block.barrel.close",
+                        Some([
+                            pos[0] as f32 + 0.5,
+                            pos[1] as f32 + 0.5,
+                            pos[2] as f32 + 0.5,
+                        ]),
+                        1.0,
+                    );
                 }
                 _ => {}
             }
@@ -9711,7 +10262,13 @@ impl GameApp {
                                 let left = self.player.inv.add(s.block, s.count);
                                 if left > 0 {
                                     self.sim.items.drop_block(
-                                        pos[0], pos[1] + 1, pos[2], s.block, 2, 15, 0,
+                                        pos[0],
+                                        pos[1] + 1,
+                                        pos[2],
+                                        s.block,
+                                        2,
+                                        15,
+                                        0,
                                     );
                                 }
                             }
@@ -9754,7 +10311,13 @@ impl GameApp {
                                 let left = self.player.inv.add(s.block, s.count);
                                 if left > 0 {
                                     self.sim.items.drop_block(
-                                        pos[0], pos[1] + 1, pos[2], s.block, 2, 15, 0,
+                                        pos[0],
+                                        pos[1] + 1,
+                                        pos[2],
+                                        s.block,
+                                        2,
+                                        15,
+                                        0,
                                     );
                                 }
                             }
@@ -9973,8 +10536,7 @@ impl GameApp {
                         if self.mode.depletes_items() {
                             self.cursor_stack.count -= 1;
                             if self.cursor_stack.count == 0 {
-                                self.cursor_stack =
-                                    vc_inventory::inventory::ItemStack::EMPTY;
+                                self.cursor_stack = vc_inventory::inventory::ItemStack::EMPTY;
                             }
                         }
                         self.play_event("entity.horse.armor", None, 1.0);
@@ -10026,7 +10588,10 @@ impl GameApp {
                                     self.player.pos.x.floor() as i32,
                                     self.player.pos.y.floor() as i32,
                                     self.player.pos.z.floor() as i32,
-                                    POTION_EMPTY, 2, 15, 0,
+                                    POTION_EMPTY,
+                                    2,
+                                    15,
+                                    0,
                                 );
                             }
                         }
@@ -10278,13 +10843,8 @@ impl GameApp {
                     // Round 15b: the trade's happy-villager sparkles at
                     // the villager (VERIFIED w/Particle: shown on a
                     // successful trade)
-                    self.particles.spawn_kind(
-                        "happy_villager",
-                        vpos[0],
-                        vpos[1] + 1.6,
-                        vpos[2],
-                        8,
-                    );
+                    self.particles
+                        .spawn_kind("happy_villager", vpos[0], vpos[1] + 1.6, vpos[2], 8);
                     if left > 0 {
                         self.sim.items.drop_block(
                             self.player.pos.x.floor() as i32,
@@ -10337,13 +10897,8 @@ impl GameApp {
                     self.click_sound();
                     // Round 15b: the angry-villager cloud (cannot afford
                     // — VERIFIED w/Particle: the trades-refused burst)
-                    self.particles.spawn_kind(
-                        "angry_villager",
-                        vpos[0],
-                        vpos[1] + 1.6,
-                        vpos[2],
-                        5,
-                    );
+                    self.particles
+                        .spawn_kind("angry_villager", vpos[0], vpos[1] + 1.6, vpos[2], 5);
                 }
             }
             SlotRef::Inv(_) => {}
@@ -10352,11 +10907,7 @@ impl GameApp {
                 let Some(Container::Anvil { pos }) = self.container else {
                     return;
                 };
-                let entry = self
-                    .sim
-                    .anvils
-                    .entry(pos)
-                    .or_default();
+                let entry = self.sim.anvils.entry(pos).or_default();
                 let slot_ref = match slot {
                     SlotRef::AnvilTarget => &mut entry.a,
                     _ => &mut entry.b,
@@ -10378,8 +10929,7 @@ impl GameApp {
                         &self.anvil_rename,
                     ))
                 };
-                let Some(plan) = vc_gameplay::anvil::combine(&slots.a, &slots.b, rename_id)
-                else {
+                let Some(plan) = vc_gameplay::anvil::combine(&slots.a, &slots.b, rename_id) else {
                     return;
                 };
                 let creative = self.mode.creative();
@@ -10418,12 +10968,21 @@ impl GameApp {
                         if let Some((old, new)) = self.world.set_block(pos[0], pos[1], pos[2], next)
                         {
                             self.light.on_block_changed(
-                                &self.world, pos[0], pos[1], pos[2], old, new,
+                                &self.world,
+                                pos[0],
+                                pos[1],
+                                pos[2],
+                                old,
+                                new,
                             );
                         }
                         self.play_event(
                             "block.anvil.land",
-                            Some([pos[0] as f32 + 0.5, pos[1] as f32 + 1.0, pos[2] as f32 + 0.5]),
+                            Some([
+                                pos[0] as f32 + 0.5,
+                                pos[1] as f32 + 1.0,
+                                pos[2] as f32 + 0.5,
+                            ]),
                             0.7,
                         );
                     }
@@ -10432,12 +10991,21 @@ impl GameApp {
                         if let Some((old, new)) = self.world.set_block(pos[0], pos[1], pos[2], AIR)
                         {
                             self.light.on_block_changed(
-                                &self.world, pos[0], pos[1], pos[2], old, new,
+                                &self.world,
+                                pos[0],
+                                pos[1],
+                                pos[2],
+                                old,
+                                new,
                             );
                         }
                         self.play_event(
                             "block.anvil.destroy",
-                            Some([pos[0] as f32 + 0.5, pos[1] as f32 + 1.0, pos[2] as f32 + 0.5]),
+                            Some([
+                                pos[0] as f32 + 0.5,
+                                pos[1] as f32 + 1.0,
+                                pos[2] as f32 + 0.5,
+                            ]),
                             0.8,
                         );
                         self.close_container();
@@ -10447,7 +11015,11 @@ impl GameApp {
                 self.anvil_rename.clear();
                 self.play_event(
                     "block.anvil.use",
-                    Some([pos[0] as f32 + 0.5, pos[1] as f32 + 1.0, pos[2] as f32 + 0.5]),
+                    Some([
+                        pos[0] as f32 + 0.5,
+                        pos[1] as f32 + 1.0,
+                        pos[2] as f32 + 0.5,
+                    ]),
                     1.0,
                 );
                 vc_render::render::report_boot_log(&format!(
@@ -10474,8 +11046,7 @@ impl GameApp {
                 let Some(Container::Beacon { pos }) = self.container else {
                     return;
                 };
-                let level =
-                    vc_gameplay::beacon::pyramid_level(&self.world, pos[0], pos[1], pos[2]);
+                let level = vc_gameplay::beacon::pyramid_level(&self.world, pos[0], pos[1], pos[2]);
                 let p = powers[i.min(4)];
                 if p.min_level() > level {
                     return; // gated (grayed)
@@ -10488,8 +11059,7 @@ impl GameApp {
                 let Some(Container::Beacon { pos }) = self.container else {
                     return;
                 };
-                let level =
-                    vc_gameplay::beacon::pyramid_level(&self.world, pos[0], pos[1], pos[2]);
+                let level = vc_gameplay::beacon::pyramid_level(&self.world, pos[0], pos[1], pos[2]);
                 if level < 4 {
                     return; // gated
                 }
@@ -10541,8 +11111,7 @@ impl GameApp {
                 // w/Grindstone — "between 50% and 100% (rounded up)")
                 if plan.xp_max > 0 && self.mode.depletes_items() {
                     let roll = self.audio_rng.next_f32();
-                    let xp = plan.xp_min
-                        + ((plan.xp_max - plan.xp_min) as f32 * roll) as u32;
+                    let xp = plan.xp_min + ((plan.xp_max - plan.xp_min) as f32 * roll) as u32;
                     if xp > 0 {
                         let gained = self.player.add_xp(xp as i32);
                         vc_render::render::report_boot_log(&format!(
@@ -10552,7 +11121,11 @@ impl GameApp {
                 }
                 self.play_event(
                     "block.grindstone.use",
-                    Some([pos[0] as f32 + 0.5, pos[1] as f32 + 1.0, pos[2] as f32 + 0.5]),
+                    Some([
+                        pos[0] as f32 + 0.5,
+                        pos[1] as f32 + 1.0,
+                        pos[2] as f32 + 0.5,
+                    ]),
                     1.0,
                 );
                 vc_render::render::report_boot_log(&format!(
@@ -10643,7 +11216,11 @@ impl GameApp {
         self.beacon_pending = (None, BeaconSecondary::None);
         self.play_event(
             "block.beacon.activate",
-            Some([pos[0] as f32 + 0.5, pos[1] as f32 + 1.0, pos[2] as f32 + 0.5]),
+            Some([
+                pos[0] as f32 + 0.5,
+                pos[1] as f32 + 1.0,
+                pos[2] as f32 + 0.5,
+            ]),
             1.0,
         );
         vc_render::render::report_boot_log(&format!(
@@ -10700,7 +11277,9 @@ impl GameApp {
             Some(Container::Barrel { .. }) => (ContainerKind::Barrel, None, None, None, None),
             Some(Container::Anvil { .. }) => (ContainerKind::Anvil, None, None, None, None),
             Some(Container::Beacon { .. }) => (ContainerKind::Beacon, None, None, None, None),
-            Some(Container::Grindstone { .. }) => (ContainerKind::Grindstone, None, None, None, None),
+            Some(Container::Grindstone { .. }) => {
+                (ContainerKind::Grindstone, None, None, None, None)
+            }
             Some(Container::Mount { .. }) => (ContainerKind::Mount, None, None, None, None),
             Some(Container::Hopper { pos: _ }) => (ContainerKind::Hopper, None, None, None, None),
             Some(Container::Furnace { pos }) => {
@@ -10864,8 +11443,8 @@ impl GameApp {
                     Some(p) => (p.result, p.cost, p.too_expensive),
                     None => (vc_inventory::inventory::ItemStack::EMPTY, 0, false),
                 };
-                let affordable = creative
-                    || (plan.is_some() && self.player.xp_level >= cost && !too_expensive);
+                let affordable =
+                    creative || (plan.is_some() && self.player.xp_level >= cost && !too_expensive);
                 Some(vc_render::ui::AnvilView {
                     target: slots.a,
                     sacrifice: slots.b,
@@ -10882,8 +11461,7 @@ impl GameApp {
         };
         let beacon = match self.container {
             Some(Container::Beacon { pos }) => {
-                let level =
-                    vc_gameplay::beacon::pyramid_level(&self.world, pos[0], pos[1], pos[2]);
+                let level = vc_gameplay::beacon::pyramid_level(&self.world, pos[0], pos[1], pos[2]);
                 let st = self.sim.beacons.get(&pos).cloned().unwrap_or_default();
                 let (pending_primary, pending_secondary) = self.beacon_pending;
                 Some(vc_render::ui::BeaconView {
@@ -10910,34 +11488,25 @@ impl GameApp {
         // ---- Round 12b: the mount view (the saddle state + the llama
         // strength; the storage slots ride `chest`) ----
         let mount = match self.container {
-            Some(Container::Mount { mob }) => {
-                self.sim.mobs.by_id(mob).map(|m| {
-                    let (label, llama, strength) = match m.kind {
-                        vc_gameplay::mobs::MobKind::Llama => {
-                            ("LLAMA", true, m.variant.clamp(1, 5))
-                        }
-                        vc_gameplay::mobs::MobKind::Mule => ("MULE", false, 1),
-                        _ => ("DONKEY", false, 1),
-                    };
-                    let saddle = if m
-                        .equine
-                        .as_ref()
-                        .map(|e| e.saddled)
-                        .unwrap_or(false)
-                    {
-                        vc_inventory::inventory::ItemStack::new(SADDLE, 1)
-                    } else {
-                        vc_inventory::inventory::ItemStack::EMPTY
-                    };
-                    vc_render::ui::MountView {
-                        kind_label: label.to_string(),
-                        saddle,
-                        llama,
-                        strength,
-                        capacity: m.storage.as_ref().map(|s| s.capacity()).unwrap_or(0),
-                    }
-                })
-            }
+            Some(Container::Mount { mob }) => self.sim.mobs.by_id(mob).map(|m| {
+                let (label, llama, strength) = match m.kind {
+                    vc_gameplay::mobs::MobKind::Llama => ("LLAMA", true, m.variant.clamp(1, 5)),
+                    vc_gameplay::mobs::MobKind::Mule => ("MULE", false, 1),
+                    _ => ("DONKEY", false, 1),
+                };
+                let saddle = if m.equine.as_ref().map(|e| e.saddled).unwrap_or(false) {
+                    vc_inventory::inventory::ItemStack::new(SADDLE, 1)
+                } else {
+                    vc_inventory::inventory::ItemStack::EMPTY
+                };
+                vc_render::ui::MountView {
+                    kind_label: label.to_string(),
+                    saddle,
+                    llama,
+                    strength,
+                    capacity: m.storage.as_ref().map(|s| s.capacity()).unwrap_or(0),
+                }
+            }),
             _ => None,
         };
         ContainerView {
@@ -11079,12 +11648,7 @@ impl GameApp {
                 // collect the neighbor halves' stacks first (borrow
                 // split: containers read, then items dropped)
                 let mut neighbor_stacks: Vec<vc_inventory::inventory::ItemStack> = Vec::new();
-                for d in [
-                    [1i32, 0, 0],
-                    [-1, 0, 0],
-                    [0, 0, 1],
-                    [0, 0, -1],
-                ] {
+                for d in [[1i32, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]] {
                     let n = [pos[0] + d[0], pos[1] + d[1], pos[2] + d[2]];
                     if self.world.get_block(n[0], n[1], n[2]) == CHEST {
                         if let Some(c) = self.sim.containers.get_mut(&n) {
@@ -11213,21 +11777,21 @@ impl GameApp {
         self.test_place(BARREL, pos[0] + 2, pos[1], pos[2]);
         let slots = vc_sim::containers::slot_count(BARREL).unwrap_or(0);
         // 3. a mature berry bush (age 3)
-        let _ = self.world.set_block_state(
-            pos[0] + 4, pos[1], pos[2],
-            berry_bush_state(3),
-        );
+        let _ = self
+            .world
+            .set_block_state(pos[0] + 4, pos[1], pos[2], berry_bush_state(3));
         // 4. a bamboo shoot on grass
         self.test_place(GRASS, pos[0] + 6, pos[1] - 1, pos[2]);
-        let _ = self.world.set_block_state(
-            pos[0] + 6, pos[1], pos[2],
-            default_state(BAMBOO_SHOOT),
-        );
+        let _ = self
+            .world
+            .set_block_state(pos[0] + 6, pos[1], pos[2], default_state(BAMBOO_SHOOT));
         // 5. a fox (the taiga predator)
-        let fox = self
-            .sim
-            .mobs
-            .spawn_at(vc_gameplay::mobs::MobKind::Fox, pos[0] + 8, pos[1] + 1, pos[2]);
+        let fox = self.sim.mobs.spawn_at(
+            vc_gameplay::mobs::MobKind::Fox,
+            pos[0] + 8,
+            pos[1] + 1,
+            pos[2],
+        );
         // advance the sim deterministically (the brew fast-forward
         // pattern — full-scope steps)
         for _ in 0..ticks {
@@ -11264,13 +11828,23 @@ impl GameApp {
         ];
         // 1. a blast furnace (unlit V11 state, VERIFIED) + coal ore + fuel
         self.test_place(BLAST_FURNACE, pos[0] - 2, pos[1], pos[2]);
-        let bf = self.sim.furnaces.map.entry([pos[0] - 2, pos[1], pos[2]]).or_default();
+        let bf = self
+            .sim
+            .furnaces
+            .map
+            .entry([pos[0] - 2, pos[1], pos[2]])
+            .or_default();
         bf.kind = vc_gameplay::furnace::FurnaceKind::Blast;
         bf.input = vc_inventory::inventory::ItemStack::new(COAL_ORE, 2);
         bf.fuel = vc_inventory::inventory::ItemStack::new(COAL, 1);
         // 2. a smoker + potato + fuel
         self.test_place(SMOKER, pos[0] - 4, pos[1], pos[2]);
-        let sm = self.sim.furnaces.map.entry([pos[0] - 4, pos[1], pos[2]]).or_default();
+        let sm = self
+            .sim
+            .furnaces
+            .map
+            .entry([pos[0] - 4, pos[1], pos[2]])
+            .or_default();
         sm.kind = vc_gameplay::furnace::FurnaceKind::Smoker;
         sm.input = vc_inventory::inventory::ItemStack::new(POTATO, 2);
         sm.fuel = vc_inventory::inventory::ItemStack::new(PLANKS, 1);
@@ -11278,17 +11852,23 @@ impl GameApp {
         // HANGING from a support; breaking the support pops the hanger
         self.test_place(STONE, pos[0] - 6, pos[1], pos[2]);
         if let Some((old, new)) = self.world.set_block_state(
-            pos[0] - 6, pos[1] + 1, pos[2],
+            pos[0] - 6,
+            pos[1] + 1,
+            pos[2],
             vc_blocks::blocks::V11_STATE_BASE + 4, // sitting
         ) {
-            self.light.on_block_changed(&self.world, pos[0] - 6, pos[1] + 1, pos[2], old, new);
+            self.light
+                .on_block_changed(&self.world, pos[0] - 6, pos[1] + 1, pos[2], old, new);
         }
         self.test_place(STONE, pos[0] - 8, pos[1] + 4, pos[2]);
         if let Some((old, new)) = self.world.set_block_state(
-            pos[0] - 8, pos[1] + 3, pos[2],
+            pos[0] - 8,
+            pos[1] + 3,
+            pos[2],
             vc_blocks::blocks::V11_STATE_BASE + 5, // hanging
         ) {
-            self.light.on_block_changed(&self.world, pos[0] - 8, pos[1] + 3, pos[2], old, new);
+            self.light
+                .on_block_changed(&self.world, pos[0] - 8, pos[1] + 3, pos[2], old, new);
         }
         // fast-forward the sim (the furnaces tick inside the step), then
         // settle the light queue — the game loop's pump() call, without
@@ -11318,13 +11898,7 @@ impl GameApp {
         // AIR cell above it (the engine keeps the emitter's own cell at
         // 0 — the reference rule; a 15-emitter lights its neighbors at
         // 15 − 1 = 14). Block light only — the sky column would mask it.
-        let (_, _sky, blk_l) = light_at(
-            &self.world,
-            &self.light,
-            pos[0] - 6,
-            pos[1] + 2,
-            pos[2],
-        );
+        let (_, _sky, blk_l) = light_at(&self.world, &self.light, pos[0] - 6, pos[1] + 2, pos[2]);
         vc_render::render::report_boot_log(&format!(
             "e2e: v114b blast furnace out={} lit={} (100-tick 2x cook), smoker out={} (100-tick cook), lantern sitting={} neighbor-block-light={} hanging={}",
             bf_out, bf_lit, sm_out,
@@ -11372,7 +11946,10 @@ impl GameApp {
             1,
         );
         let white = vc_gameplay::craft::match_grid(
-            &[vc_inventory::inventory::ItemStack::new(LILY_OF_THE_VALLEY, 1)],
+            &[vc_inventory::inventory::ItemStack::new(
+                LILY_OF_THE_VALLEY,
+                1,
+            )],
             1,
         );
         let (blue_ok, white_ok) = match (blue, white) {
@@ -11408,10 +11985,13 @@ impl GameApp {
         let s0 = self.world.get_state(pos[0] - 2, pos[1], pos[2]);
         let level0 = vc_blocks::blocks::honey_level(s0);
         if let Some((old, new)) = self.world.set_block_state(
-            pos[0] - 2, pos[1], pos[2],
+            pos[0] - 2,
+            pos[1],
+            pos[2],
             vc_blocks::blocks::hive_state(BEEHIVE, 5),
         ) {
-            self.light.on_block_changed(&self.world, pos[0] - 2, pos[1], pos[2], old, new);
+            self.light
+                .on_block_changed(&self.world, pos[0] - 2, pos[1], pos[2], old, new);
         }
         let s5 = self.world.get_state(pos[0] - 2, pos[1], pos[2]);
         let level5 = vc_blocks::blocks::honey_level(s5);
@@ -11421,49 +12001,73 @@ impl GameApp {
         // (0 -> 1) is cleanly tested (restored 2026-09-19 — the merge
         // window lost this line and the level check read the pre-set 5)
         if let Some((old, new)) = self.world.set_block_state(
-            pos[0] - 2, pos[1], pos[2],
+            pos[0] - 2,
+            pos[1],
+            pos[2],
             vc_blocks::blocks::hive_state(BEEHIVE, 0),
         ) {
-            self.light.on_block_changed(&self.world, pos[0] - 2, pos[1], pos[2], old, new);
+            self.light
+                .on_block_changed(&self.world, pos[0] - 2, pos[1], pos[2], old, new);
         }
 
         // 2. the craft contracts (all five, VERIFIED §Crafting rows)
         let hive_craft = vc_gameplay::craft::match_grid(
             &[
-                ItemStack::new(PLANKS, 1), ItemStack::new(PLANKS, 1), ItemStack::new(PLANKS, 1),
-                ItemStack::new(HONEYCOMB, 1), ItemStack::new(HONEYCOMB, 1), ItemStack::new(HONEYCOMB, 1),
-                ItemStack::new(PLANKS, 1), ItemStack::new(PLANKS, 1), ItemStack::new(PLANKS, 1),
+                ItemStack::new(PLANKS, 1),
+                ItemStack::new(PLANKS, 1),
+                ItemStack::new(PLANKS, 1),
+                ItemStack::new(HONEYCOMB, 1),
+                ItemStack::new(HONEYCOMB, 1),
+                ItemStack::new(HONEYCOMB, 1),
+                ItemStack::new(PLANKS, 1),
+                ItemStack::new(PLANKS, 1),
+                ItemStack::new(PLANKS, 1),
             ],
             3,
         );
         let comb_block_craft = vc_gameplay::craft::match_grid(
             &[
-                ItemStack::new(HONEYCOMB, 1), ItemStack::new(HONEYCOMB, 1),
-                ItemStack::new(HONEYCOMB, 1), ItemStack::new(HONEYCOMB, 1),
+                ItemStack::new(HONEYCOMB, 1),
+                ItemStack::new(HONEYCOMB, 1),
+                ItemStack::new(HONEYCOMB, 1),
+                ItemStack::new(HONEYCOMB, 1),
             ],
             2,
         );
         let honey_craft = vc_gameplay::craft::match_grid(
             &[
-                ItemStack::new(HONEY_BOTTLE, 1), ItemStack::new(HONEY_BOTTLE, 1),
-                ItemStack::new(HONEY_BOTTLE, 1), ItemStack::new(HONEY_BOTTLE, 1),
+                ItemStack::new(HONEY_BOTTLE, 1),
+                ItemStack::new(HONEY_BOTTLE, 1),
+                ItemStack::new(HONEY_BOTTLE, 1),
+                ItemStack::new(HONEY_BOTTLE, 1),
             ],
             2,
         );
-        let bottles_craft =
-            vc_gameplay::craft::match_grid(&[ItemStack::new(HONEY_BLOCK, 1)], 1);
+        let bottles_craft = vc_gameplay::craft::match_grid(&[ItemStack::new(HONEY_BLOCK, 1)], 1);
         let shears_craft = vc_gameplay::craft::match_grid(
             &[
-                ItemStack::new(IRON_ORE, 1), ItemStack::EMPTY,
-                ItemStack::EMPTY, ItemStack::new(IRON_ORE, 1),
+                ItemStack::new(IRON_ORE, 1),
+                ItemStack::EMPTY,
+                ItemStack::EMPTY,
+                ItemStack::new(IRON_ORE, 1),
             ],
             2,
         );
-        let crafts_ok = hive_craft.map(|o| o.block == BEEHIVE && o.count == 1).unwrap_or(false)
-            && comb_block_craft.map(|o| o.block == HONEYCOMB_BLOCK && o.count == 1).unwrap_or(false)
-            && honey_craft.map(|o| o.block == HONEY_BLOCK && o.count == 1).unwrap_or(false)
-            && bottles_craft.map(|o| o.block == HONEY_BOTTLE && o.count == 4).unwrap_or(false)
-            && shears_craft.map(|o| o.block == SHEARS && o.count == 1).unwrap_or(false);
+        let crafts_ok = hive_craft
+            .map(|o| o.block == BEEHIVE && o.count == 1)
+            .unwrap_or(false)
+            && comb_block_craft
+                .map(|o| o.block == HONEYCOMB_BLOCK && o.count == 1)
+                .unwrap_or(false)
+            && honey_craft
+                .map(|o| o.block == HONEY_BLOCK && o.count == 1)
+                .unwrap_or(false)
+            && bottles_craft
+                .map(|o| o.block == HONEY_BOTTLE && o.count == 4)
+                .unwrap_or(false)
+            && shears_craft
+                .map(|o| o.block == SHEARS && o.count == 1)
+                .unwrap_or(false);
 
         // 3. the hive lifecycle: register the placed hive, spawn a bee
         //    with nectar + the return phase, fast-forward — it must
@@ -11471,12 +12075,17 @@ impl GameApp {
         let hive_pos = [pos[0] - 2, pos[1], pos[2]];
         self.sim.hives.hives.insert(
             hive_pos,
-            vc_gameplay::bees::HiveData { bees: Vec::new(), natural: false },
+            vc_gameplay::bees::HiveData {
+                bees: Vec::new(),
+                natural: false,
+            },
         );
-        let bee_id = self
-            .sim
-            .mobs
-            .spawn_at(vc_gameplay::mobs::MobKind::Bee, pos[0] - 2, pos[1] + 3, pos[2]);
+        let bee_id = self.sim.mobs.spawn_at(
+            vc_gameplay::mobs::MobKind::Bee,
+            pos[0] - 2,
+            pos[1] + 3,
+            pos[2],
+        );
         let mut bee_armed = false;
         if let Some(id) = bee_id {
             self.sim.mobs.set_bee(id, hive_pos, false);
@@ -11509,16 +12118,17 @@ impl GameApp {
             && bee_id
                 .map(|id| !self.sim.mobs.list.iter().any(|m| m.id == id))
                 .unwrap_or(false);
-        let level_after = vc_blocks::blocks::honey_level(
-            self.world.get_state(hive_pos[0], hive_pos[1], hive_pos[2]),
-        );
+        let level_after = vc_blocks::blocks::honey_level(self.world.get_state(
+            hive_pos[0],
+            hive_pos[1],
+            hive_pos[2],
+        ));
         let released = self.sim.hives.released_total > 0;
 
         // 4. the campfire pacify contract: a lit campfire under the
         //    hive pacifies the harvest
         self.test_place(CAMPFIRE, pos[0] - 2, pos[1] - 1, pos[2]);
-        let pacified =
-            vc_gameplay::bees::HiveSystem::campfire_pacifies(&self.world, hive_pos);
+        let pacified = vc_gameplay::bees::HiveSystem::campfire_pacifies(&self.world, hive_pos);
 
         // 5. the anger swarm + sting payload (the mob-side rules)
         let anger_pos = [pos[0] as f32 + 0.5, pos[1] as f32, pos[2] as f32 + 0.5];
@@ -11559,7 +12169,8 @@ impl GameApp {
         for c in 1u8..=4 {
             let st = anchor_state(c);
             if let Some((old, new)) = self.world.set_block_state(apos[0], apos[1], apos[2], st) {
-                self.light.on_block_changed(&self.world, apos[0], apos[1], apos[2], old, new);
+                self.light
+                    .on_block_changed(&self.world, apos[0], apos[1], apos[2], old, new);
             }
             ladder_ok &= anchor_charge(st) == c
                 && state_emissive(st) == anchor_light(st)
@@ -11568,9 +12179,11 @@ impl GameApp {
         let anchor_desc = state_description(self.world.get_state(apos[0], apos[1], apos[2]));
         // the respawn drain: charge back to 1, register, respawn
         if let Some((old, new)) =
-            self.world.set_block_state(apos[0], apos[1], apos[2], anchor_state(1))
+            self.world
+                .set_block_state(apos[0], apos[1], apos[2], anchor_state(1))
         {
-            self.light.on_block_changed(&self.world, apos[0], apos[1], apos[2], old, new);
+            self.light
+                .on_block_changed(&self.world, apos[0], apos[1], apos[2], old, new);
         }
         self.respawn_anchor = Some(apos);
         // snapshot the loading-flow flags — respawn() arms the spawn
@@ -11580,8 +12193,7 @@ impl GameApp {
         self.pending_play = pp;
         self.spawn_snapped = ss;
         self.load_start = ls;
-        let drained =
-            anchor_charge(self.world.get_state(apos[0], apos[1], apos[2])) == 0;
+        let drained = anchor_charge(self.world.get_state(apos[0], apos[1], apos[2])) == 0;
 
         // 2. the target: place, simulate the projectile hit exactly as
         //    drain_mob_events does (power 11, 8-gt window), verify the
@@ -11591,20 +12203,29 @@ impl GameApp {
         self.test_place(REDSTONE_WIRE, pos[0] + 1, pos[1], pos[2]);
         let wpos = [pos[0] + 1, pos[1], pos[2]];
         let hit_state = target_state(11);
-        if let Some((old, new)) = self.world.set_block_state(tpos[0], tpos[1], tpos[2], hit_state)
+        if let Some((old, new)) = self
+            .world
+            .set_block_state(tpos[0], tpos[1], tpos[2], hit_state)
         {
-            self.light.on_block_changed(&self.world, tpos[0], tpos[1], tpos[2], old, new);
+            self.light
+                .on_block_changed(&self.world, tpos[0], tpos[1], tpos[2], old, new);
         }
         self.sim.sched.schedule([tpos[0], tpos[1], tpos[2]], 8);
         notify_sim(&self.world, &mut self.sim.sched, tpos[0], tpos[1], tpos[2]);
         for _ in 0..2 {
-            self.sim
-                .step(&mut self.world, &mut self.light, &vc_sim::sim::TickScope::everything());
+            self.sim.step(
+                &mut self.world,
+                &mut self.light,
+                &vc_sim::sim::TickScope::everything(),
+            );
         }
         let fed_power = wire_power(self.world.get_state(wpos[0], wpos[1], wpos[2]));
         for _ in 0..8 {
-            self.sim
-                .step(&mut self.world, &mut self.light, &vc_sim::sim::TickScope::everything());
+            self.sim.step(
+                &mut self.world,
+                &mut self.light,
+                &vc_sim::sim::TickScope::everything(),
+            );
         }
         let decayed = target_power(self.world.get_state(tpos[0], tpos[1], tpos[2])) == 0;
 
@@ -11612,50 +12233,81 @@ impl GameApp {
         //    gold = the iron stand-in, the disclosed convention)
         let anchor_craft = vc_gameplay::craft::match_grid(
             &[
-                ItemStack::new(CRYING_OBSIDIAN, 1), ItemStack::new(GLOWSTONE, 1), ItemStack::new(CRYING_OBSIDIAN, 1),
-                ItemStack::new(CRYING_OBSIDIAN, 1), ItemStack::new(GLOWSTONE, 1), ItemStack::new(CRYING_OBSIDIAN, 1),
-                ItemStack::new(CRYING_OBSIDIAN, 1), ItemStack::new(GLOWSTONE, 1), ItemStack::new(CRYING_OBSIDIAN, 1),
+                ItemStack::new(CRYING_OBSIDIAN, 1),
+                ItemStack::new(GLOWSTONE, 1),
+                ItemStack::new(CRYING_OBSIDIAN, 1),
+                ItemStack::new(CRYING_OBSIDIAN, 1),
+                ItemStack::new(GLOWSTONE, 1),
+                ItemStack::new(CRYING_OBSIDIAN, 1),
+                ItemStack::new(CRYING_OBSIDIAN, 1),
+                ItemStack::new(GLOWSTONE, 1),
+                ItemStack::new(CRYING_OBSIDIAN, 1),
             ],
             3,
         );
         let target_craft = vc_gameplay::craft::match_grid(
             &[
-                ItemStack::EMPTY,               ItemStack::new(REDSTONE_BLOCK, 1), ItemStack::EMPTY,
-                ItemStack::new(REDSTONE_BLOCK, 1), ItemStack::new(HAY_BALE, 1),   ItemStack::new(REDSTONE_BLOCK, 1),
-                ItemStack::EMPTY,               ItemStack::new(REDSTONE_BLOCK, 1), ItemStack::EMPTY,
+                ItemStack::EMPTY,
+                ItemStack::new(REDSTONE_BLOCK, 1),
+                ItemStack::EMPTY,
+                ItemStack::new(REDSTONE_BLOCK, 1),
+                ItemStack::new(HAY_BALE, 1),
+                ItemStack::new(REDSTONE_BLOCK, 1),
+                ItemStack::EMPTY,
+                ItemStack::new(REDSTONE_BLOCK, 1),
+                ItemStack::EMPTY,
             ],
             3,
         );
         let ingot_craft = vc_gameplay::craft::match_grid(
             &[
-                ItemStack::new(NETHERITE_SCRAP, 1), ItemStack::new(IRON_ORE, 1),      ItemStack::new(NETHERITE_SCRAP, 1),
-                ItemStack::new(IRON_ORE, 1),        ItemStack::EMPTY,                  ItemStack::new(IRON_ORE, 1),
-                ItemStack::new(NETHERITE_SCRAP, 1), ItemStack::new(IRON_ORE, 1),      ItemStack::new(NETHERITE_SCRAP, 1),
+                ItemStack::new(NETHERITE_SCRAP, 1),
+                ItemStack::new(IRON_ORE, 1),
+                ItemStack::new(NETHERITE_SCRAP, 1),
+                ItemStack::new(IRON_ORE, 1),
+                ItemStack::EMPTY,
+                ItemStack::new(IRON_ORE, 1),
+                ItemStack::new(NETHERITE_SCRAP, 1),
+                ItemStack::new(IRON_ORE, 1),
+                ItemStack::new(NETHERITE_SCRAP, 1),
             ],
             3,
         );
-        let block_craft = vc_gameplay::craft::match_grid(
-            &[ItemStack::new(NETHERITE_INGOT, 1); 9],
-            3,
-        );
-        let ingots_back = vc_gameplay::craft::match_grid(
-            &[ItemStack::new(NETHERITE_BLOCK, 1)],
-            1,
-        );
+        let block_craft =
+            vc_gameplay::craft::match_grid(&[ItemStack::new(NETHERITE_INGOT, 1); 9], 3);
+        let ingots_back = vc_gameplay::craft::match_grid(&[ItemStack::new(NETHERITE_BLOCK, 1)], 1);
         let chain_craft = vc_gameplay::craft::match_grid(
             &[
-                ItemStack::EMPTY,          ItemStack::new(IRON_NUGGET, 1), ItemStack::EMPTY,
-                ItemStack::EMPTY,          ItemStack::new(IRON_ORE, 1),     ItemStack::EMPTY,
-                ItemStack::EMPTY,          ItemStack::new(IRON_NUGGET, 1), ItemStack::EMPTY,
+                ItemStack::EMPTY,
+                ItemStack::new(IRON_NUGGET, 1),
+                ItemStack::EMPTY,
+                ItemStack::EMPTY,
+                ItemStack::new(IRON_ORE, 1),
+                ItemStack::EMPTY,
+                ItemStack::EMPTY,
+                ItemStack::new(IRON_NUGGET, 1),
+                ItemStack::EMPTY,
             ],
             3,
         );
-        let crafts_ok = anchor_craft.map(|o| o.block == RESPAWN_ANCHOR && o.count == 1).unwrap_or(false)
-            && target_craft.map(|o| o.block == TARGET && o.count == 1).unwrap_or(false)
-            && ingot_craft.map(|o| o.block == NETHERITE_INGOT && o.count == 1).unwrap_or(false)
-            && block_craft.map(|o| o.block == NETHERITE_BLOCK && o.count == 1).unwrap_or(false)
-            && ingots_back.map(|o| o.block == NETHERITE_INGOT && o.count == 9).unwrap_or(false)
-            && chain_craft.map(|o| o.block == CHAIN && o.count == 1).unwrap_or(false);
+        let crafts_ok = anchor_craft
+            .map(|o| o.block == RESPAWN_ANCHOR && o.count == 1)
+            .unwrap_or(false)
+            && target_craft
+                .map(|o| o.block == TARGET && o.count == 1)
+                .unwrap_or(false)
+            && ingot_craft
+                .map(|o| o.block == NETHERITE_INGOT && o.count == 1)
+                .unwrap_or(false)
+            && block_craft
+                .map(|o| o.block == NETHERITE_BLOCK && o.count == 1)
+                .unwrap_or(false)
+            && ingots_back
+                .map(|o| o.block == NETHERITE_INGOT && o.count == 9)
+                .unwrap_or(false)
+            && chain_craft
+                .map(|o| o.block == CHAIN && o.count == 1)
+                .unwrap_or(false);
 
         // 4. the smelting contracts: debris → scrap, gold ore → ingot
         //    (the blast-furnace metal class, VERIFIED §Smelting rows)
@@ -11698,16 +12350,20 @@ impl GameApp {
         ];
         self.test_place(STONE, feet[0], feet[1] - 1, feet[2]);
         self.test_place(SOUL_FIRE, feet[0], feet[1], feet[2]);
-        self.player.pos = glam::Vec3::new(feet[0] as f32 + 0.5, feet[1] as f32, feet[2] as f32 + 0.5);
+        self.player.pos =
+            glam::Vec3::new(feet[0] as f32 + 0.5, feet[1] as f32, feet[2] as f32 + 0.5);
         self.player.vel = glam::Vec3::ZERO;
         self.player.on_ground = true;
         let mut input = Input::default();
         for _ in 0..6 {
-            let _ = self.player.update(0.1, 0.0, &self.world, &mut input, 1.0, true);
+            let _ = self
+                .player
+                .update(0.1, 0.0, &self.world, &mut input, 1.0, true);
         }
         let soul_dmg = self.player.take_pending_hazard_damage();
         if let Some((old, new)) = self.world.set_block(feet[0], feet[1], feet[2], AIR) {
-            self.light.on_block_changed(&self.world, feet[0], feet[1], feet[2], old, new);
+            self.light
+                .on_block_changed(&self.world, feet[0], feet[1], feet[2], old, new);
         }
 
         vc_render::render::report_boot_log(&format!(
@@ -11740,12 +12396,26 @@ impl GameApp {
         //    the soul lantern carries its sitting/hanging pair
         let mut family_ok = true;
         for (i, b) in [
-            CRIMSON_STEM, CRIMSON_HYPHAE, CRIMSON_PLANKS, CRIMSON_NYLIUM,
-            CRIMSON_FUNGUS, CRIMSON_ROOTS, WEEPING_VINES,
-            WARPED_STEM, WARPED_HYPHAE, WARPED_PLANKS, WARPED_NYLIUM,
-            WARPED_FUNGUS, WARPED_ROOTS, TWISTING_VINES, WARPED_WART_BLOCK,
-            SHROOMLIGHT, NETHER_SPROUTS,
-            POLISHED_BASALT, POLISHED_BLACKSTONE, POLISHED_BLACKSTONE_BRICKS,
+            CRIMSON_STEM,
+            CRIMSON_HYPHAE,
+            CRIMSON_PLANKS,
+            CRIMSON_NYLIUM,
+            CRIMSON_FUNGUS,
+            CRIMSON_ROOTS,
+            WEEPING_VINES,
+            WARPED_STEM,
+            WARPED_HYPHAE,
+            WARPED_PLANKS,
+            WARPED_NYLIUM,
+            WARPED_FUNGUS,
+            WARPED_ROOTS,
+            TWISTING_VINES,
+            WARPED_WART_BLOCK,
+            SHROOMLIGHT,
+            NETHER_SPROUTS,
+            POLISHED_BASALT,
+            POLISHED_BLACKSTONE,
+            POLISHED_BLACKSTONE_BRICKS,
         ]
         .iter()
         .enumerate()
@@ -11761,7 +12431,8 @@ impl GameApp {
         let lantern_pair = !soul_lantern_hanging(sitting)
             && state_block(sitting) == SOUL_LANTERN
             && soul_lantern_hanging(v14_state(SOUL_LANTERN).unwrap() + 1)
-            && state_description(v14_state(SOUL_LANTERN).unwrap() + 1) == "Soul Lantern[hanging=true]";
+            && state_description(v14_state(SOUL_LANTERN).unwrap() + 1)
+                == "Soul Lantern[hanging=true]";
         // the soul lights: torch + lantern 10, shroomlight 15
         let lights_ok = emissive(SOUL_TORCH) == 10
             && emissive(SOUL_LANTERN) == 10
@@ -11791,18 +12462,30 @@ impl GameApp {
         }
         let st = vc_gameplay::craft::match_grid(
             &[
-                ItemStack::new(CHARCOAL, 1), ItemStack::EMPTY, ItemStack::new(STICK, 1),
-                ItemStack::EMPTY, ItemStack::new(SOUL_SOIL, 1), ItemStack::EMPTY,
-                ItemStack::EMPTY, ItemStack::EMPTY, ItemStack::EMPTY,
+                ItemStack::new(CHARCOAL, 1),
+                ItemStack::EMPTY,
+                ItemStack::new(STICK, 1),
+                ItemStack::EMPTY,
+                ItemStack::new(SOUL_SOIL, 1),
+                ItemStack::EMPTY,
+                ItemStack::EMPTY,
+                ItemStack::EMPTY,
+                ItemStack::EMPTY,
             ],
             3,
         )
         .unwrap();
         let sl = vc_gameplay::craft::match_grid(
             &[
-                ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1),
-                ItemStack::new(IRON_NUGGET, 1), ItemStack::new(SOUL_TORCH, 1), ItemStack::new(IRON_NUGGET, 1),
-                ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1), ItemStack::new(IRON_NUGGET, 1),
+                ItemStack::new(IRON_NUGGET, 1),
+                ItemStack::new(IRON_NUGGET, 1),
+                ItemStack::new(IRON_NUGGET, 1),
+                ItemStack::new(IRON_NUGGET, 1),
+                ItemStack::new(SOUL_TORCH, 1),
+                ItemStack::new(IRON_NUGGET, 1),
+                ItemStack::new(IRON_NUGGET, 1),
+                ItemStack::new(IRON_NUGGET, 1),
+                ItemStack::new(IRON_NUGGET, 1),
             ],
             3,
         )
@@ -11823,16 +12506,30 @@ impl GameApp {
         let strider = self
             .sim
             .mobs
-            .spawn_at(vc_gameplay::mobs::MobKind::Strider, lava_p[0], lava_p[1], lava_p[2])
+            .spawn_at(
+                vc_gameplay::mobs::MobKind::Strider,
+                lava_p[0],
+                lava_p[1],
+                lava_p[2],
+            )
             .unwrap();
         if let Some(m) = self.sim.mobs.by_id_mut(strider) {
-            m.pos = [lava_p[0] as f32 + 0.5, lava_p[1] as f32, lava_p[2] as f32 + 0.5];
+            m.pos = [
+                lava_p[0] as f32 + 0.5,
+                lava_p[1] as f32,
+                lava_p[2] as f32 + 0.5,
+            ];
             m.vel[1] = -8.0; // a hard sink attempt
         }
         let mut input = Input::default();
-        let _ = self.player.update(0.1, 0.0, &self.world, &mut input, 1.0, true);
-        self.sim
-            .step(&mut self.world, &mut self.light, &vc_sim::sim::TickScope::everything());
+        let _ = self
+            .player
+            .update(0.1, 0.0, &self.world, &mut input, 1.0, true);
+        self.sim.step(
+            &mut self.world,
+            &mut self.light,
+            &vc_sim::sim::TickScope::everything(),
+        );
         let strider_stands = self
             .sim
             .mobs
@@ -11847,17 +12544,29 @@ impl GameApp {
         let hoglin = self
             .sim
             .mobs
-            .spawn_at(vc_gameplay::mobs::MobKind::Hoglin, hog_p[0], hog_p[1], hog_p[2])
+            .spawn_at(
+                vc_gameplay::mobs::MobKind::Hoglin,
+                hog_p[0],
+                hog_p[1],
+                hog_p[2],
+            )
             .unwrap();
         if let Some(m) = self.sim.mobs.by_id_mut(hoglin) {
-            m.pos = [hog_p[0] as f32 + 0.5, hog_p[1] as f32, hog_p[2] as f32 + 0.5];
+            m.pos = [
+                hog_p[0] as f32 + 0.5,
+                hog_p[1] as f32,
+                hog_p[2] as f32 + 0.5,
+            ];
         }
         self.test_place(WARPED_FUNGUS, hog_p[0] + 3, hog_p[1], hog_p[2]);
         // the player anchor must exist for the AI arm to run
         self.sim.mobs.player = Some([hog_p[0] as f32 - 20.0, hog_p[1] as f32, hog_p[2] as f32]);
         for _ in 0..4 {
-            self.sim
-                .step(&mut self.world, &mut self.light, &vc_sim::sim::TickScope::everything());
+            self.sim.step(
+                &mut self.world,
+                &mut self.light,
+                &vc_sim::sim::TickScope::everything(),
+            );
         }
         let hoglin_flees = self
             .sim
@@ -11869,9 +12578,7 @@ impl GameApp {
                 m.vel[0] < -0.01
             })
             .unwrap_or(false);
-        let _ = self
-            .world
-            .set_block(hog_p[0] + 3, hog_p[1], hog_p[2], AIR);
+        let _ = self.world.set_block(hog_p[0] + 3, hog_p[1], hog_p[2], AIR);
 
         // 5. the piglin's barter round trip: hand the gold (the
         //    iron-ore stand-in), the 120-gt examine ends in a dropped
@@ -11881,13 +12588,21 @@ impl GameApp {
         let piglin = self
             .sim
             .mobs
-            .spawn_at(vc_gameplay::mobs::MobKind::Piglin, pig_p[0], pig_p[1], pig_p[2])
+            .spawn_at(
+                vc_gameplay::mobs::MobKind::Piglin,
+                pig_p[0],
+                pig_p[1],
+                pig_p[2],
+            )
             .unwrap();
         let items_before = self.sim.items.len();
         let barter_armed = self.sim.mobs.try_barter_piglin(piglin, IRON_ORE);
         for _ in 0..125 {
-            self.sim
-                .step(&mut self.world, &mut self.light, &vc_sim::sim::TickScope::everything());
+            self.sim.step(
+                &mut self.world,
+                &mut self.light,
+                &vc_sim::sim::TickScope::everything(),
+            );
             // the pending_drops drain happens in drain_mob_events; run
             // it so the item entities materialize
             self.drain_mob_events();
@@ -11897,10 +12612,10 @@ impl GameApp {
         }
         let barter_delivered = self.sim.items.len() > items_before;
         // the mining anger hook: nearby piglins provoke on gold mining
-        let angered = self.sim.mobs.anger_piglins_near(
-            [pig_p[0] as f32, pig_p[1] as f32, pig_p[2] as f32],
-            16.0,
-        );
+        let angered = self
+            .sim
+            .mobs
+            .anger_piglins_near([pig_p[0] as f32, pig_p[1] as f32, pig_p[2] as f32], 16.0);
 
         vc_render::render::report_boot_log(&format!(
             "e2e: v116b family={} lantern-pair={} lights={} crafts={} strider-lava={} hoglin-flee={} barter={}(delivered={} angered={})",
@@ -11959,18 +12674,28 @@ impl GameApp {
         let mut kitchen_ok = true;
         {
             let g = vec![
-                ItemStack::new(PLANKS, 1), ItemStack::new(PLANKS, 1), ItemStack::EMPTY,
-                ItemStack::new(PLANKS, 1), ItemStack::EMPTY, ItemStack::EMPTY,
-                ItemStack::EMPTY, ItemStack::EMPTY, ItemStack::EMPTY,
+                ItemStack::new(PLANKS, 1),
+                ItemStack::new(PLANKS, 1),
+                ItemStack::EMPTY,
+                ItemStack::new(PLANKS, 1),
+                ItemStack::EMPTY,
+                ItemStack::EMPTY,
+                ItemStack::EMPTY,
+                ItemStack::EMPTY,
+                ItemStack::EMPTY,
             ];
-            kitchen_ok &= match_grid(&g, 3).map(|o| (o.block, o.count) == (BOWL, 4)).unwrap_or(false);
+            kitchen_ok &= match_grid(&g, 3)
+                .map(|o| (o.block, o.count) == (BOWL, 4))
+                .unwrap_or(false);
         }
         {
             let mut g = vec![ItemStack::EMPTY; 9];
             g[0] = ItemStack::new(MUSHROOM_RED, 1);
             g[4] = ItemStack::new(MUSHROOM_BROWN, 1);
             g[8] = ItemStack::new(BOWL, 1);
-            kitchen_ok &= match_grid(&g, 3).map(|o| o.block == MUSHROOM_STEW).unwrap_or(false);
+            kitchen_ok &= match_grid(&g, 3)
+                .map(|o| o.block == MUSHROOM_STEW)
+                .unwrap_or(false);
         }
         {
             let mut g = vec![ItemStack::EMPTY; 9];
@@ -11979,7 +12704,9 @@ impl GameApp {
             g[4] = ItemStack::new(BAKED_POTATO, 1);
             g[6] = ItemStack::new(MUSHROOM_RED, 1);
             g[8] = ItemStack::new(BOWL, 1);
-            kitchen_ok &= match_grid(&g, 3).map(|o| o.block == RABBIT_STEW).unwrap_or(false);
+            kitchen_ok &= match_grid(&g, 3)
+                .map(|o| o.block == RABBIT_STEW)
+                .unwrap_or(false);
         }
         {
             let mut g = vec![ItemStack::EMPTY; 9];
@@ -11987,24 +12714,32 @@ impl GameApp {
                 g[i] = ItemStack::new(BEETROOT, 2);
             }
             g[4] = ItemStack::new(BOWL, 1);
-            kitchen_ok &= match_grid(&g, 3).map(|o| o.block == BEETROOT_SOUP).unwrap_or(false);
+            kitchen_ok &= match_grid(&g, 3)
+                .map(|o| o.block == BEETROOT_SOUP)
+                .unwrap_or(false);
         }
         {
             let mut g = vec![ItemStack::EMPTY; 4];
             g[2] = ItemStack::new(HONEY_BOTTLE, 1);
-            kitchen_ok &= match_grid(&g, 2).map(|o| (o.block, o.count) == (SUGAR, 3)).unwrap_or(false);
+            kitchen_ok &= match_grid(&g, 2)
+                .map(|o| (o.block, o.count) == (SUGAR, 3))
+                .unwrap_or(false);
         }
         {
             let mut g = vec![ItemStack::EMPTY; 4];
             g[0] = ItemStack::new(PUMPKIN, 1);
             g[1] = ItemStack::new(SUGAR, 1);
             g[3] = ItemStack::new(EGG, 1);
-            kitchen_ok &= match_grid(&g, 2).map(|o| o.block == PUMPKIN_PIE).unwrap_or(false);
+            kitchen_ok &= match_grid(&g, 2)
+                .map(|o| o.block == PUMPKIN_PIE)
+                .unwrap_or(false);
         }
         // the purpur family: 4 popped chorus -> 4 purpur
         let purpur_ok = {
             let g = vec![ItemStack::new(POPPED_CHORUS_FRUIT, 1); 4];
-            match_grid(&g, 2).map(|o| (o.block, o.count) == (PURPUR_BLOCK, 4)).unwrap_or(false)
+            match_grid(&g, 2)
+                .map(|o| (o.block, o.count) == (PURPUR_BLOCK, 4))
+                .unwrap_or(false)
         };
 
         // 3. the audit trio in the world: the ghast (a 20-block spawn
@@ -12019,30 +12754,49 @@ impl GameApp {
             pos[2] as f32 + 0.5,
         ]);
         self.test_place(GRASS, pos[0] + 8, pos[1], pos[2]);
-        let _ghast = self
-            .sim
-            .mobs
-            .spawn_at(vc_gameplay::mobs::MobKind::Ghast, pos[0] + 8, pos[1] + 4, pos[2]);
-        let _cs = self
-            .sim
-            .mobs
-            .spawn_at(vc_gameplay::mobs::MobKind::CaveSpider, pos[0] + 2, pos[1] + 1, pos[2] + 2);
-        let _sf = self
-            .sim
-            .mobs
-            .spawn_at(vc_gameplay::mobs::MobKind::Silverfish, pos[0] - 2, pos[1] + 1, pos[2] - 2);
+        let _ghast = self.sim.mobs.spawn_at(
+            vc_gameplay::mobs::MobKind::Ghast,
+            pos[0] + 8,
+            pos[1] + 4,
+            pos[2],
+        );
+        let _cs = self.sim.mobs.spawn_at(
+            vc_gameplay::mobs::MobKind::CaveSpider,
+            pos[0] + 2,
+            pos[1] + 1,
+            pos[2] + 2,
+        );
+        let _sf = self.sim.mobs.spawn_at(
+            vc_gameplay::mobs::MobKind::Silverfish,
+            pos[0] - 2,
+            pos[1] + 1,
+            pos[2] - 2,
+        );
         self.sim.mobs.arrows.clear();
         let mut fireball = false;
         let mut venom: Option<i32> = None;
         for _ in 0..120 {
-            self.sim
-                .step(&mut self.world, &mut self.light, &vc_sim::sim::TickScope::everything());
-            if !fireball && self.sim.mobs.arrows.iter().any(|a| a.kind == vc_gameplay::mobs::ProjKind::Fireball) {
+            self.sim.step(
+                &mut self.world,
+                &mut self.light,
+                &vc_sim::sim::TickScope::everything(),
+            );
+            if !fireball
+                && self
+                    .sim
+                    .mobs
+                    .arrows
+                    .iter()
+                    .any(|a| a.kind == vc_gameplay::mobs::ProjKind::Fireball)
+            {
                 fireball = true;
             }
             let hits = std::mem::take(&mut self.sim.mobs.hits);
             if venom.is_none() {
-                if let Some(h) = hits.iter().find(|h| h.source == vc_gameplay::mobs::MobKind::CaveSpider) {
+                if let Some(h) = hits
+                    .iter()
+                    .find(|h| h.source == vc_gameplay::mobs::MobKind::CaveSpider)
+                {
                     venom = h.poison_effect;
                 }
             }
@@ -12061,12 +12815,7 @@ impl GameApp {
 
         vc_render::render::report_boot_log(&format!(
             "e2e: audit16 smelt={} smoker={} kitchen={} purpur={} trio={} food={}",
-            smelt_ok,
-            smoker_ok,
-            kitchen_ok,
-            purpur_ok,
-            trio_ok,
-            food_ok
+            smelt_ok, smoker_ok, kitchen_ok, purpur_ok, trio_ok, food_ok
         ));
     }
 
@@ -12082,8 +12831,7 @@ impl GameApp {
         let px = self.player.pos.x.floor() as i32;
         let py = self.player.pos.y.floor() as i32;
         let pz = self.player.pos.z.floor() as i32;
-        if let Some([x, y, z]) = chorus_destination(&self.world, px, py, pz, &mut self.audio_rng)
-        {
+        if let Some([x, y, z]) = chorus_destination(&self.world, px, py, pz, &mut self.audio_rng) {
             self.player.pos = glam::Vec3::new(x as f32 + 0.5, y as f32, z as f32 + 0.5);
             // the warp cancels the accumulated fall (the pearl's own
             // class of negation, VERIFIED w/Chorus_Fruit)
@@ -12129,8 +12877,9 @@ impl GameApp {
 
         // 2. the melon crafts: the 9-slice block + the 1-slice seeds
         let g = vec![ItemStack::new(MELON_SLICE, 1); 9];
-        let melon_craft =
-            vc_gameplay::craft::match_grid(&g, 3).map(|o| o.block == MELON).unwrap_or(false);
+        let melon_craft = vc_gameplay::craft::match_grid(&g, 3)
+            .map(|o| o.block == MELON)
+            .unwrap_or(false);
         let mut s = vec![ItemStack::EMPTY; 9];
         s[4] = ItemStack::new(MELON_SLICE, 1);
         let seeds_craft = vc_gameplay::craft::match_grid(&s, 3)
@@ -12174,7 +12923,11 @@ impl GameApp {
             vc_gameplay::mobs::ProjKind::Pearl,
         ] {
             self.sim.mobs.arrows.push(vc_gameplay::mobs::Arrow {
-                pos: [pos[0] as f32 + 4.5, pos[1] as f32 + 12.0, pos[2] as f32 + 0.5],
+                pos: [
+                    pos[0] as f32 + 4.5,
+                    pos[1] as f32 + 12.0,
+                    pos[2] as f32 + 0.5,
+                ],
                 vel: [0.0, -24.0, 0.0],
                 damage: 0.0,
                 age: 0,
@@ -12183,8 +12936,11 @@ impl GameApp {
             });
         }
         for _ in 0..60 {
-            self.sim
-                .step(&mut self.world, &mut self.light, &vc_sim::sim::TickScope::everything());
+            self.sim.step(
+                &mut self.world,
+                &mut self.light,
+                &vc_sim::sim::TickScope::everything(),
+            );
         }
         let before = (
             self.player.pos.x.floor() as i32,
@@ -12212,8 +12968,11 @@ impl GameApp {
         let landed_chicks = chicks - chicks_before;
         // the pearl: teleported (pos moved) + the 5 HP cost (survival
         // only — the creative check rides the mode gate)
-        let moved = (self.player.pos.x.floor() as i32, self.player.pos.y.floor() as i32,
-            self.player.pos.z.floor() as i32) != before;
+        let moved = (
+            self.player.pos.x.floor() as i32,
+            self.player.pos.y.floor() as i32,
+            self.player.pos.z.floor() as i32,
+        ) != before;
         let paid = if self.mode.depletes_items() {
             (hp_before - self.player.health - 5.0).abs() < 1e-6
         } else {
@@ -12269,74 +13028,74 @@ impl GameApp {
     /// Called from update() every frame and from the E2E stage after
     /// its fast-forward steps.
     fn drain_bee_queues(&mut self) {
-            // honey-level state writes (the +1/+2 bumps)
-            let levels: Vec<([i32; 3], u8)> = std::mem::take(&mut self.sim.hives.pending_hive_levels);
-            for (pos, bump) in levels {
-                let s = self.world.get_state(pos[0], pos[1], pos[2]);
-                let b = vc_blocks::blocks::state_block(s);
-                if b == vc_blocks::blocks::BEE_NEST || b == vc_blocks::blocks::BEEHIVE {
-                    let cur = vc_blocks::blocks::honey_level(s);
-                    let next = (cur + bump).min(5);
-                    let want = vc_blocks::blocks::hive_state(b, next);
-                    if want != s {
-                        if let Some((old, new)) =
-                            self.world.set_block_state(pos[0], pos[1], pos[2], want)
-                        {
-                            self.light.on_block_changed(
-                                &self.world, pos[0], pos[1], pos[2], old, new,
-                            );
-                        }
+        // honey-level state writes (the +1/+2 bumps)
+        let levels: Vec<([i32; 3], u8)> = std::mem::take(&mut self.sim.hives.pending_hive_levels);
+        for (pos, bump) in levels {
+            let s = self.world.get_state(pos[0], pos[1], pos[2]);
+            let b = vc_blocks::blocks::state_block(s);
+            if b == vc_blocks::blocks::BEE_NEST || b == vc_blocks::blocks::BEEHIVE {
+                let cur = vc_blocks::blocks::honey_level(s);
+                let next = (cur + bump).min(5);
+                let want = vc_blocks::blocks::hive_state(b, next);
+                if want != s {
+                    if let Some((old, new)) =
+                        self.world.set_block_state(pos[0], pos[1], pos[2], want)
+                    {
+                        self.light
+                            .on_block_changed(&self.world, pos[0], pos[1], pos[2], old, new);
                     }
                 }
             }
-            // bee releases: spawn at the hive front, point home, flag angry
-            let releases: Vec<([i32; 3], vc_gameplay::bees::StoredBee)> =
-                std::mem::take(&mut self.sim.hives.releases);
-            for (hive, sb) in releases {
-                let spawn = vc_gameplay::bees::HiveSystem::release_pos(&self.world, hive);
-                let bx = spawn[0].floor() as i32;
-                let by = spawn[1].floor() as i32;
-                let bz = spawn[2].floor() as i32;
-                if let Some(id) = self.sim.mobs.spawn_at(vc_gameplay::mobs::MobKind::Bee, bx, by, bz) {
-                    self.sim.mobs.set_bee(id, hive, sb.angry);
-                    if let Some(m) = self.sim.mobs.by_id_mut(id) {
-                        m.health = sb.health;
-                        if let Some(bs) = m.bee.as_mut() {
-                            bs.nectar = sb.nectar;
-                        }
+        }
+        // bee releases: spawn at the hive front, point home, flag angry
+        let releases: Vec<([i32; 3], vc_gameplay::bees::StoredBee)> =
+            std::mem::take(&mut self.sim.hives.releases);
+        for (hive, sb) in releases {
+            let spawn = vc_gameplay::bees::HiveSystem::release_pos(&self.world, hive);
+            let bx = spawn[0].floor() as i32;
+            let by = spawn[1].floor() as i32;
+            let bz = spawn[2].floor() as i32;
+            if let Some(id) = self
+                .sim
+                .mobs
+                .spawn_at(vc_gameplay::mobs::MobKind::Bee, bx, by, bz)
+            {
+                self.sim.mobs.set_bee(id, hive, sb.angry);
+                if let Some(m) = self.sim.mobs.by_id_mut(id) {
+                    m.health = sb.health;
+                    if let Some(bs) = m.bee.as_mut() {
+                        bs.nectar = sb.nectar;
                     }
                 }
             }
-            // arrivals: store the bee inside the hive (capacity 3)
-            let enters: Vec<(u32, [i32; 3], bool)> =
-                std::mem::take(&mut self.sim.mobs.bee_enters);
-            for (_id, hive, nectar) in enters {
-                let _ = self.sim.hives.enter(hive, 10.0, nectar);
-                self.play_event(
-                    "block.beehive.enter",
-                    Some([hive[0] as f32 + 0.5, hive[1] as f32, hive[2] as f32 + 0.5]),
-                    0.6,
-                );
-            }
-            // pollinations: the bone-meal-like crop stage advance
-            let pollinations: Vec<([i32; 3], u8)> =
-                std::mem::take(&mut self.sim.mobs.bee_pollinations);
-            for (pos, age) in pollinations {
-                let s = self.world.get_state(pos[0], pos[1], pos[2]);
-                if vc_blocks::blocks::state_block(s) == vc_blocks::blocks::SWEET_BERRY_BUSH {
-                    let want = vc_blocks::blocks::berry_bush_state(age.min(3));
-                    if want != s {
-                        if let Some((old, new)) =
-                            self.world.set_block_state(pos[0], pos[1], pos[2], want)
-                        {
-                            self.light.on_block_changed(
-                                &self.world, pos[0], pos[1], pos[2], old, new,
-                            );
-                            self.hives_stats_pollinated += 1;
-                        }
+        }
+        // arrivals: store the bee inside the hive (capacity 3)
+        let enters: Vec<(u32, [i32; 3], bool)> = std::mem::take(&mut self.sim.mobs.bee_enters);
+        for (_id, hive, nectar) in enters {
+            let _ = self.sim.hives.enter(hive, 10.0, nectar);
+            self.play_event(
+                "block.beehive.enter",
+                Some([hive[0] as f32 + 0.5, hive[1] as f32, hive[2] as f32 + 0.5]),
+                0.6,
+            );
+        }
+        // pollinations: the bone-meal-like crop stage advance
+        let pollinations: Vec<([i32; 3], u8)> = std::mem::take(&mut self.sim.mobs.bee_pollinations);
+        for (pos, age) in pollinations {
+            let s = self.world.get_state(pos[0], pos[1], pos[2]);
+            if vc_blocks::blocks::state_block(s) == vc_blocks::blocks::SWEET_BERRY_BUSH {
+                let want = vc_blocks::blocks::berry_bush_state(age.min(3));
+                if want != s {
+                    if let Some((old, new)) =
+                        self.world.set_block_state(pos[0], pos[1], pos[2], want)
+                    {
+                        self.light
+                            .on_block_changed(&self.world, pos[0], pos[1], pos[2], old, new);
+                        self.hives_stats_pollinated += 1;
                     }
                 }
             }
+        }
     }
 
     /// Backlog round (weather): the per-frame weather pass — ticks the
@@ -12375,12 +13134,9 @@ impl GameApp {
             let world_ptr: *const vc_world::world::World = &self.world;
             // SAFETY: rain_exposure_tick only reads the world
             let world_ref = unsafe { &*world_ptr };
-            self.sim
-                .mobs
-                .rain_exposure_tick(world_ref, |b: u8| {
-                    vc_world::gen::Biome::from_u8(b).precipitation()
-                        == vc_world::gen::Precip::Rain
-                });
+            self.sim.mobs.rain_exposure_tick(world_ref, |b: u8| {
+                vc_world::gen::Biome::from_u8(b).precipitation() == vc_world::gen::Precip::Rain
+            });
         }
 
         if !overworld || self.screen != Screen::Game || !raining {
@@ -12389,14 +13145,9 @@ impl GameApp {
         // ---- the precipitation particles: a few columns per frame in
         // the ring around the player, only where the column is
         // rain-exposed (sky light high) and the biome precipitates
-        let (px, py, pz) = (
-            self.player.pos[0],
-            self.player.pos[1],
-            self.player.pos[2],
-        );
-        let player_biome = vc_world::gen::Biome::from_u8(
-            self.world.get_biome(px as i32, pz as i32),
-        );
+        let (px, py, pz) = (self.player.pos[0], self.player.pos[1], self.player.pos[2]);
+        let player_biome =
+            vc_world::gen::Biome::from_u8(self.world.get_biome(px as i32, pz as i32));
         let precip = player_biome.precipitation();
         if precip != vc_world::gen::Precip::None {
             let count = 4;
@@ -12410,8 +13161,7 @@ impl GameApp {
                 let by = (py + 6.0 + self.audio_rng.next_f32() * 6.0) as i32;
                 // sky-exposed column? (the rain only falls through open
                 // sky — VERIFIED "Rain occurs only in blocks ... exposed")
-                let (_, sky) =
-                    vc_gameplay::mobs::light_levels(&self.world, bx, by, bz);
+                let (_, sky) = vc_gameplay::mobs::light_levels(&self.world, bx, by, bz);
                 if sky < 12 {
                     continue;
                 }
@@ -12432,13 +13182,7 @@ impl GameApp {
         // splash on water entry (VERIFIED w/Particle: the burst when an
         // entity enters water) + the bubble trail while submerged
         if self.player.in_water && !self.prev_in_water {
-            self.particles.spawn_kind(
-                "splash",
-                px,
-                py + 0.4,
-                pz,
-                24,
-            );
+            self.particles.spawn_kind("splash", px, py + 0.4, pz, 24);
         }
         if self.player.head_in_water {
             // the breath-bubble trail (a couple per tick keeps it light)
@@ -12514,8 +13258,7 @@ impl GameApp {
                         && b != vc_blocks::blocks::WATER
                     {
                         // require open sky at the cell above
-                        let (_, sky) =
-                            vc_gameplay::mobs::light_levels(&self.world, bx, y + 1, bz);
+                        let (_, sky) = vc_gameplay::mobs::light_levels(&self.world, bx, y + 1, bz);
                         if sky >= 12 {
                             top = Some((bx, y, bz));
                         }
@@ -12572,11 +13315,9 @@ impl GameApp {
                 let fz = sz;
                 if self.world.get_block(fx, fy, fz) == vc_blocks::blocks::AIR {
                     let fire_state = vc_blocks::blocks::default_state(vc_blocks::blocks::FIRE);
-                    if let Some((old, new)) = self.world.set_block_state(fx, fy, fz, fire_state)
-                    {
-                        self.light.on_block_changed(
-                            &self.world, fx, fy, fz, old, new,
-                        );
+                    if let Some((old, new)) = self.world.set_block_state(fx, fy, fz, fire_state) {
+                        self.light
+                            .on_block_changed(&self.world, fx, fy, fz, old, new);
                         let burn = 20 + self.audio_rng.next_range(60) as u64;
                         self.sim.sched.schedule([fx, fy, fz], burn);
                     }
@@ -12598,7 +13339,8 @@ impl GameApp {
         // 1.15 (Buzzy Bees): the day flag for the sim — day_time 0..=0.5
         // is the sun-up half of the cycle (sun_dir.y > 0 at noon; the
         // bees' night-return + the hives' day-release gate)
-        self.sim.is_day = self.day_time < 0.5 || self.world.dimension == vc_world::world::Dimension::Nether;
+        self.sim.is_day =
+            self.day_time < 0.5 || self.world.dimension == vc_world::world::Dimension::Nether;
         // Backlog round (weather): the machine + particles + strikes
         self.weather_update(dt);
         // DAY_LEN_SECS = 1200 = the vanilla 1.16.5 full daylight cycle
@@ -12625,10 +13367,7 @@ impl GameApp {
 
         // E2E_MENU: the settings-tree script ran to the end — verify the
         // tree round-tripped back to the title and exit clean
-        if self.smoke_menu_e2e
-            && self.smoke_script.is_empty()
-            && self.screen == Screen::Title
-        {
+        if self.smoke_menu_e2e && self.smoke_script.is_empty() && self.screen == Screen::Title {
             vc_render::render::report_boot_log(
                 "e2e: settings tree ok (video/engine/shaders/packs/access) — exiting 0",
             );
@@ -12954,9 +13693,7 @@ impl GameApp {
                                     if followers >= 10 {
                                         break; // "up to 10 llamas" (VERIFIED)
                                     }
-                                    if m.kind != vc_gameplay::mobs::MobKind::Llama
-                                        || m.id == lid
-                                    {
+                                    if m.kind != vc_gameplay::mobs::MobKind::Llama || m.id == lid {
                                         continue;
                                     }
                                     let dx = lx - m.pos[0];
@@ -13175,10 +13912,8 @@ impl GameApp {
                         if p.len() == 3 {
                             if let Some(b) = b {
                                 // coords() skipped the name — re-parse the tail
-                                let q: Vec<i32> = parts[2..]
-                                    .iter()
-                                    .filter_map(|v| v.parse().ok())
-                                    .collect();
+                                let q: Vec<i32> =
+                                    parts[2..].iter().filter_map(|v| v.parse().ok()).collect();
                                 if q.len() == 3 {
                                     self.test_place(b, q[0], q[1], q[2]);
                                 }
@@ -13308,9 +14043,7 @@ impl GameApp {
                             // (moisture 0 — the hoe path's state write)
                             let o = self.world.get_state(x, y, z);
                             let nf = farmland_state(0);
-                            if let Some((old, new)) =
-                                self.world.set_block_state(x, y, z, nf)
-                            {
+                            if let Some((old, new)) = self.world.set_block_state(x, y, z, nf) {
                                 let _ = (old, new);
                             }
                             self.light.on_block_changed(&self.world, x, y, z, o, nf);
@@ -13318,7 +14051,8 @@ impl GameApp {
                             let o2 = self.world.get_state(x, y + 1, z);
                             let nw = crop_state(WHEAT_CROP, 0);
                             let _ = self.world.set_block_state(x, y + 1, z, nw);
-                            self.light.on_block_changed(&self.world, x, y + 1, z, o2, nw);
+                            self.light
+                                .on_block_changed(&self.world, x, y + 1, z, o2, nw);
                             // (d) ~600 simulated random ticks on BOTH the
                             // farmland (hydration) and the crop (growth)
                             for _ in 0..600 {
@@ -13382,10 +14116,7 @@ impl GameApp {
                     Some("v114") => {
                         // v114:<ticks> — the 1.14 nature-half E2E (see
                         // e2e_v114; the CI smoke greps these lines).
-                        let ticks: u64 = parts
-                            .get(1)
-                            .and_then(|v| v.parse().ok())
-                            .unwrap_or(0);
+                        let ticks: u64 = parts.get(1).and_then(|v| v.parse().ok()).unwrap_or(0);
                         self.e2e_v114(ticks);
                     }
                     Some("open") => {
@@ -13830,11 +14561,13 @@ impl GameApp {
                         }
                         match found {
                             Some((bx, byy, bz)) => {
-                                let lvl = vc_gameplay::beacon::pyramid_level(
-                                    &self.world, bx, byy, bz,
-                                );
+                                let lvl =
+                                    vc_gameplay::beacon::pyramid_level(&self.world, bx, byy, bz);
                                 let blocks = vc_gameplay::beacon::pyramid_block_count(
-                                    &self.world, bx, byy, bz,
+                                    &self.world,
+                                    bx,
+                                    byy,
+                                    bz,
                                 );
                                 vc_render::render::report_boot_log(&format!(
                                     "e2e: beacon pyramid level {lvl} ({blocks} blocks; VERIFIED 9/34/83/164)"
@@ -13896,12 +14629,23 @@ impl GameApp {
                             // layout (the interesting llama grid)
                             self.sim
                                 .mobs
-                                .spawn_variant(kind, pos.x.floor() as i32 + 2, pos.y.floor() as i32, pos.z.floor() as i32, 3)
+                                .spawn_variant(
+                                    kind,
+                                    pos.x.floor() as i32 + 2,
+                                    pos.y.floor() as i32,
+                                    pos.z.floor() as i32,
+                                    3,
+                                )
                                 .expect("mob cap")
                         } else {
                             self.sim
                                 .mobs
-                                .spawn_at(kind, pos.x.floor() as i32 + 2, pos.y.floor() as i32, pos.z.floor() as i32)
+                                .spawn_at(
+                                    kind,
+                                    pos.x.floor() as i32 + 2,
+                                    pos.y.floor() as i32,
+                                    pos.z.floor() as i32,
+                                )
                                 .expect("mob cap")
                         };
                         self.player.inv.add(CHEST, 1);
@@ -13910,8 +14654,7 @@ impl GameApp {
                         if let Some(m) = self.sim.mobs.by_id_mut(id) {
                             if let Some(st) = m.storage.as_mut() {
                                 st.chest = true;
-                                st.slots[0] =
-                                    vc_inventory::inventory::ItemStack::new(LEATHER, 3);
+                                st.slots[0] = vc_inventory::inventory::ItemStack::new(LEATHER, 3);
                             }
                         }
                         self.open_container(Container::Mount { mob: id });
@@ -14163,10 +14906,10 @@ impl GameApp {
                                     // `if let` reads it without the loop
                                     // (clippy::never_loop: a `for` whose body
                                     // always breaks only ever runs once)
-                                    if let Some(ms) =
-                                        gen.mineshafts_near((pcx + dx) * 16, (pcz + dz) * 16)
-                                            .into_iter()
-                                            .next()
+                                    if let Some(ms) = gen
+                                        .mineshafts_near((pcx + dx) * 16, (pcz + dz) * 16)
+                                        .into_iter()
+                                        .next()
                                     {
                                         found = Some(((pcx + dx, pcz + dz), ms));
                                         break 'scan;
@@ -14677,7 +15420,9 @@ impl GameApp {
                         //   interface itself works on the web build
                         #[cfg(not(target_arch = "wasm32"))]
                         let packs: Vec<vc_render::iris::IrisPackInfo> =
-                            vc_render::iris::scan_shader_packs(std::path::Path::new("shader-packs"));
+                            vc_render::iris::scan_shader_packs(std::path::Path::new(
+                                "shader-packs",
+                            ));
                         #[cfg(target_arch = "wasm32")]
                         let packs: Vec<vc_render::iris::IrisPackInfo> = Vec::new();
                         let trans = vc_render::iris::translator().id();
@@ -15235,8 +15980,7 @@ impl GameApp {
                     }
                 } else {
                     // 1.8: spectator no-clip + always flying (GameType 3)
-                    self.player.noclip =
-                        self.mode == vc_gameplay::modes::GameMode::Spectator;
+                    self.player.noclip = self.mode == vc_gameplay::modes::GameMode::Spectator;
                     // 1.10: mirror the auto-jump setting into the player
                     self.player.auto_jump = self.settings.auto_jump;
                     if self.player.noclip {
@@ -15253,8 +15997,10 @@ impl GameApp {
                     for s in sounds {
                         // footsteps + water-entry: the registry's step/splash events
                         // carry their own volume + pitch ranges (§21)
-                        let ev =
-                            vc_audio::sounds::family_event(s.family, vc_audio::sounds::FamilyEvent::Step);
+                        let ev = vc_audio::sounds::family_event(
+                            s.family,
+                            vc_audio::sounds::FamilyEvent::Step,
+                        );
                         self.play_event(ev, None, 1.0);
                     }
                 }
@@ -15310,7 +16056,8 @@ impl GameApp {
                 if b == FARMLAND {
                     let (biome, sky, blk) = light_at(&self.world, &self.light, tp[0], tp[1], tp[2]);
                     if let Some((old, new)) =
-                        self.world.set_block_state(tp[0], tp[1], tp[2], default_state(DIRT))
+                        self.world
+                            .set_block_state(tp[0], tp[1], tp[2], default_state(DIRT))
                     {
                         self.light
                             .on_block_changed(&self.world, tp[0], tp[1], tp[2], old, new);
@@ -15322,21 +16069,24 @@ impl GameApp {
                     if vc_sim::fluids::is_crop(state_block(crop)) {
                         self.drop_crop_harvest(tp[0], tp[1] + 1, tp[2], crop, biome, sky, blk);
                         if let Some((old, new)) =
-                            self.world.set_block_state(tp[0], tp[1] + 1, tp[2], default_state(AIR))
+                            self.world
+                                .set_block_state(tp[0], tp[1] + 1, tp[2], default_state(AIR))
                         {
-                            self.light
-                                .on_block_changed(&self.world, tp[0], tp[1] + 1, tp[2], old, new);
+                            self.light.on_block_changed(
+                                &self.world,
+                                tp[0],
+                                tp[1] + 1,
+                                tp[2],
+                                old,
+                                new,
+                            );
                         }
                         notify_sim(&self.world, &mut self.sim.sched, tp[0], tp[1] + 1, tp[2]);
                     }
                     notify_sim(&self.world, &mut self.sim.sched, tp[0], tp[1], tp[2]);
                     self.play_event(
                         "item.hoe.till",
-                        Some([
-                            tp[0] as f32 + 0.5,
-                            tp[1] as f32 + 0.5,
-                            tp[2] as f32 + 0.5,
-                        ]),
+                        Some([tp[0] as f32 + 0.5, tp[1] as f32 + 0.5, tp[2] as f32 + 0.5]),
                         0.9,
                     );
                 }
@@ -15359,8 +16109,8 @@ impl GameApp {
             };
             self.last_player_sim_tick = sim_now;
             {
-                use vc_gameplay::hunger::StarveRule;
                 use vc_gameplay::effects::EffectKind;
+                use vc_gameplay::hunger::StarveRule;
                 // the engine's difficulty mapping (no difficulty
                 // selector exists — the modes doc locks Hardcore to
                 // Hard-class starvation, everything else runs Normal;
@@ -15379,7 +16129,8 @@ impl GameApp {
                     // it ~3x too often at 60 fps; round-17 audit §9);
                     // creative is immune. Fire (300-tick burn after
                     // leaving) is deferred — no fire system.
-                    if self.player.in_lava && sim_tick.is_multiple_of(10)
+                    if self.player.in_lava
+                        && sim_tick.is_multiple_of(10)
                         && !self.mode.invulnerable()
                     {
                         let applied = self.player.damage(4.0);
@@ -15403,13 +16154,13 @@ impl GameApp {
                                 self.play_event("entity.player.hurt", None, 0.9);
                                 // wither can kill, poison cannot — pick the
                                 // cause from which effect is actually running
-                                let poisoned = self
-                                    .player
-                                    .effects
-                                    .amplifier(EffectKind::Poison)
-                                    .is_some();
-                                self.death_cause =
-                                    if poisoned { "POISONED".into() } else { "WITHERED AWAY".into() };
+                                let poisoned =
+                                    self.player.effects.amplifier(EffectKind::Poison).is_some();
+                                self.death_cause = if poisoned {
+                                    "POISONED".into()
+                                } else {
+                                    "WITHERED AWAY".into()
+                                };
                                 self.ui.dirty = true;
                             }
                         }
@@ -15465,7 +16216,7 @@ impl GameApp {
             // radius 20/30/40/50)
             {
                 use vc_gameplay::beacon::{in_range, BeaconSecondary};
-                use vc_gameplay::effects::{EffectKind};
+                use vc_gameplay::effects::EffectKind;
                 let beacons: Vec<([i32; 3], vc_gameplay::beacon::BeaconState)> = self
                     .sim
                     .beacons
@@ -15507,9 +16258,7 @@ impl GameApp {
                                 vc_gameplay::beacon::BeaconPower::JumpBoost => {
                                     EffectKind::JumpBoost
                                 }
-                                vc_gameplay::beacon::BeaconPower::Strength => {
-                                    EffectKind::Strength
-                                }
+                                vc_gameplay::beacon::BeaconPower::Strength => EffectKind::Strength,
                             };
                             // level II at the PrimaryII secondary (VERIFIED)
                             let amp = if st.secondary == BeaconSecondary::PrimaryII {
@@ -15553,17 +16302,14 @@ impl GameApp {
             // standing deferral as beacon Haste).
             {
                 if !self.sim.conduits.is_empty() {
-                    let conduits: Vec<[i32; 3]> =
-                        self.sim.conduits.iter().copied().collect();
-                    let (px, py, pz) = (
-                        self.player.pos.x,
-                        self.player.pos.y,
-                        self.player.pos.z,
-                    );
+                    let conduits: Vec<[i32; 3]> = self.sim.conduits.iter().copied().collect();
+                    let (px, py, pz) = (self.player.pos.x, self.player.pos.y, self.player.pos.z);
                     let player_wet = self.player.in_water || self.player.head_in_water;
                     self.sim.conduit_attack_t += 1;
-                    let attack_window =
-                        self.sim.conduit_attack_t.is_multiple_of(vc_gameplay::beacon::CONDUIT_ATTACK_TICKS);
+                    let attack_window = self
+                        .sim
+                        .conduit_attack_t
+                        .is_multiple_of(vc_gameplay::beacon::CONDUIT_ATTACK_TICKS);
                     for pos in conduits {
                         // activation: 26 water cells in the 3×3×3 core
                         // (the conduit itself occupies the center)
@@ -15574,11 +16320,8 @@ impl GameApp {
                                     if dx == 0 && dy == 0 && dz == 0 {
                                         continue; // the conduit itself
                                     }
-                                    if self.world.get_block(
-                                        pos[0] + dx,
-                                        pos[1] + dy,
-                                        pos[2] + dz,
-                                    ) != WATER
+                                    if self.world.get_block(pos[0] + dx, pos[1] + dy, pos[2] + dz)
+                                        != WATER
                                     {
                                         core_ok = false;
                                         break 'core;
@@ -15595,17 +16338,11 @@ impl GameApp {
                         for dx in -2..=2i32 {
                             for dy in -2..=2i32 {
                                 for dz in -2..=2i32 {
-                                    if (dx.abs() <= 1)
-                                        && (dy.abs() <= 1)
-                                        && (dz.abs() <= 1)
-                                    {
+                                    if (dx.abs() <= 1) && (dy.abs() <= 1) && (dz.abs() <= 1) {
                                         continue; // the core volume
                                     }
-                                    let b = self.world.get_block(
-                                        pos[0] + dx,
-                                        pos[1] + dy,
-                                        pos[2] + dz,
-                                    );
+                                    let b =
+                                        self.world.get_block(pos[0] + dx, pos[1] + dy, pos[2] + dz);
                                     if b == PRISMARINE
                                         || b == PRISMARINE_BRICKS
                                         || b == DARK_PRISMARINE
@@ -15630,16 +16367,16 @@ impl GameApp {
                             // refreshed while in range (vanilla re-
                             // evaluates continuously; the 2 s window
                             // is the engine's expiry grace)
-                            self.player
-                                .effects
-                                .apply(vc_gameplay::effects::EffectKind::ConduitPower, 0, 40);
+                            self.player.effects.apply(
+                                vc_gameplay::effects::EffectKind::ConduitPower,
+                                0,
+                                40,
+                            );
                             self.ui.dirty = true;
                         }
                         // full frame: the hostile hunt, one target at a
                         // time, 4 HP every 2 s, wet mobs only
-                        if frame >= vc_gameplay::beacon::CONDUIT_FRAME_FULL
-                            && attack_window
-                        {
+                        if frame >= vc_gameplay::beacon::CONDUIT_FRAME_FULL && attack_window {
                             let mut best: Option<(u32, f32)> = None;
                             for m in self.sim.mobs.list.iter() {
                                 if !m.kind.hostile() {
@@ -15669,10 +16406,10 @@ impl GameApp {
                                 }
                             }
                             if let Some((id, _)) = best {
-                                self.sim.mobs.pending_damage.push((
-                                    id,
-                                    vc_gameplay::beacon::CONDUIT_ATTACK_DAMAGE,
-                                ));
+                                self.sim
+                                    .mobs
+                                    .pending_damage
+                                    .push((id, vc_gameplay::beacon::CONDUIT_ATTACK_DAMAGE));
                                 self.play_event(
                                     "block.conduit.attack.target",
                                     Some([
@@ -15734,14 +16471,13 @@ impl GameApp {
             // ejects on top of the campfire (the no-UI adaptation;
             // breaking mid-cook drops the raw food on the break path)
             if !self.sim.campfires.done.is_empty() {
-                let done: Vec<([i32; 3], u16)> =
-                    std::mem::take(&mut self.sim.campfires.done);
+                let done: Vec<([i32; 3], u16)> = std::mem::take(&mut self.sim.campfires.done);
                 for (pos, item) in done {
                     let (biome, sky, blk) =
                         light_at(&self.world, &self.light, pos[0], pos[1], pos[2]);
-                    self.sim.items.drop_block(
-                        pos[0], pos[1] + 1, pos[2], item, biome, sky, blk,
-                    );
+                    self.sim
+                        .items
+                        .drop_block(pos[0], pos[1] + 1, pos[2], item, biome, sky, blk);
                     self.play_event(
                         "block.campfire.crackle",
                         Some([
@@ -15773,11 +16509,7 @@ impl GameApp {
                         (dx * dx + dz * dz) < 576.0 // 24 blocks
                     })
                     .map(|pos| {
-                        let hay_bale = self.world.get_block(
-                            pos[0],
-                            pos[1] - 1,
-                            pos[2],
-                        ) == HAY_BALE;
+                        let hay_bale = self.world.get_block(pos[0], pos[1] - 1, pos[2]) == HAY_BALE;
                         (*pos, hay_bale)
                     })
                     .collect();
@@ -15790,7 +16522,11 @@ impl GameApp {
                     // brighter smoke (24 vs 10 blocks, VERIFIED)
                     let life = if hay { 90 } else { 38 };
                     let rise = if hay { 0.26 } else { 0.11 };
-                    let tint = if hay { [0.95, 0.93, 0.9] } else { [0.62, 0.62, 0.64] };
+                    let tint = if hay {
+                        [0.95, 0.93, 0.9]
+                    } else {
+                        [0.62, 0.62, 0.64]
+                    };
                     self.particles.push(vc_particles::particles::Particle {
                         pos: [
                             pos[0] as f32 + 0.5 + (self.audio_rng.next_f32() - 0.5) * 0.6,
@@ -15851,10 +16587,13 @@ impl GameApp {
                 let hspeed = (self.player.vel.x * self.player.vel.x
                     + self.player.vel.z * self.player.vel.z)
                     .sqrt();
-                let active = self.settings.view_bobbing
-                    && self.player.on_ground
-                    && !self.player.flying;
-                let target = if active { (hspeed * 0.11).min(0.05) } else { 0.0 };
+                let active =
+                    self.settings.view_bobbing && self.player.on_ground && !self.player.flying;
+                let target = if active {
+                    (hspeed * 0.11).min(0.05)
+                } else {
+                    0.0
+                };
                 self.bob_amp += (target - self.bob_amp) * (dt * 8.0).min(1.0);
                 self.bob_phase += hspeed * dt * 5.2;
                 let sway = self.bob_phase.sin() * self.bob_amp;
@@ -15896,7 +16635,8 @@ impl GameApp {
                         let total = vc_blocks::blocks::break_time_secs(b);
                         let instant = self.mode.picks_creative() || total <= 0.0;
                         // (re)start when the crosshair moved to a new block
-                        let fresh = !matches!(&self.mining, Some(m) if m.pos == pos && m.block == b);
+                        let fresh =
+                            !matches!(&self.mining, Some(m) if m.pos == pos && m.block == b);
                         if fresh {
                             self.mining = Some(MiningState {
                                 pos,
@@ -16008,10 +16748,8 @@ impl GameApp {
                     let is_seeds_held = is_seeds(held);
                     if held == COOKIE || is_seeds_held {
                         // feed: seeds (taming roll) or cookie (death)
-                        let mut feed_rng =
-                            vc_rng::rng::Rng::new(self.sim.ticks ^ 0x1EAF_5EED);
-                        let outcome =
-                            self.sim.mobs.try_feed_parrot(eid, held, &mut feed_rng);
+                        let mut feed_rng = vc_rng::rng::Rng::new(self.sim.ticks ^ 0x1EAF_5EED);
+                        let outcome = self.sim.mobs.try_feed_parrot(eid, held, &mut feed_rng);
                         if let Some(out) = outcome {
                             if self.mode.depletes_items() {
                                 let h = self.player.held_mut();
@@ -16027,12 +16765,8 @@ impl GameApp {
                                     // (VERIFIED 17w13a) — the clean-room
                                     // poison puff: tinted green particles
                                     // at the parrot's last position
-                                    let p = self
-                                        .sim
-                                        .mobs
-                                        .by_id(eid)
-                                        .map(|m| m.pos)
-                                        .unwrap_or([0.0; 3]);
+                                    let p =
+                                        self.sim.mobs.by_id(eid).map(|m| m.pos).unwrap_or([0.0; 3]);
                                     for _ in 0..8 {
                                         self.particles.push(vc_particles::particles::Particle {
                                             pos: [
@@ -16123,17 +16857,18 @@ impl GameApp {
                                 let (px, py, pz, hive) = {
                                     let m = self.sim.mobs.by_id(eid).unwrap();
                                     let hive = m.bee.as_ref().and_then(|b| b.hive);
-                                    (
-                                        m.pos[0] as i32,
-                                        m.pos[1] as i32,
-                                        m.pos[2] as i32,
-                                        hive,
-                                    )
+                                    (m.pos[0] as i32, m.pos[1] as i32, m.pos[2] as i32, hive)
                                 };
-                                let kid =
-                                    self.sim.mobs.spawn_at(vc_gameplay::mobs::MobKind::Bee, px, py, pz);
+                                let kid = self.sim.mobs.spawn_at(
+                                    vc_gameplay::mobs::MobKind::Bee,
+                                    px,
+                                    py,
+                                    pz,
+                                );
                                 if let Some(kid) = kid {
-                                    self.sim.mobs.set_bee(kid, hive.unwrap_or([px, py, pz]), false);
+                                    self.sim
+                                        .mobs
+                                        .set_bee(kid, hive.unwrap_or([px, py, pz]), false);
                                     if let Some(m) = self.sim.mobs.by_id_mut(kid) {
                                         if let Some(b) = m.bee.as_mut() {
                                             b.baby = true;
@@ -16197,10 +16932,13 @@ impl GameApp {
                                     let m = self.sim.mobs.by_id(eid).unwrap();
                                     (m.pos[0] as i32, m.pos[1] as i32, m.pos[2] as i32)
                                 };
-                                let kid =
-                                    self.sim
-                                        .mobs
-                                        .spawn_variant(vc_gameplay::mobs::MobKind::Fox, px, py, pz, 0x41);
+                                let kid = self.sim.mobs.spawn_variant(
+                                    vc_gameplay::mobs::MobKind::Fox,
+                                    px,
+                                    py,
+                                    pz,
+                                    0x41,
+                                );
                                 if let Some(kid) = kid {
                                     if let Some(m) = self.sim.mobs.by_id_mut(kid) {
                                         m.aux = 24000; // 20 min to maturity
@@ -16357,20 +17095,21 @@ impl GameApp {
                             .by_id(eid)
                             .map(|m| m.kind == vc_gameplay::mobs::MobKind::Piglin)
                             .unwrap_or(false)
-                        && self.sim.mobs.try_barter_piglin(eid, held) {
-                            if self.mode.depletes_items() {
-                                let h = self.player.held_mut();
-                                h.count -= 1;
-                                if h.count == 0 {
-                                    *h = vc_inventory::inventory::ItemStack::EMPTY;
-                                }
+                        && self.sim.mobs.try_barter_piglin(eid, held)
+                    {
+                        if self.mode.depletes_items() {
+                            let h = self.player.held_mut();
+                            h.count -= 1;
+                            if h.count == 0 {
+                                *h = vc_inventory::inventory::ItemStack::EMPTY;
                             }
-                            self.play_event("entity.piglin.admiring_item", None, 1.0);
-                            vc_render::render::report_boot_log(
+                        }
+                        self.play_event("entity.piglin.admiring_item", None, 1.0);
+                        vc_render::render::report_boot_log(
                                 "e2e: gold ingot handed -> piglin examines (6 s), barter follows (VERIFIED)",
                             );
-                            self.place_timer = 0.5;
-                        }
+                        self.place_timer = 0.5;
+                    }
                 }
                 // ---- Phase E3 (1.5–1.6) + Round 12b: equine/llama
                 // interactions (mount / saddle / feed / lead / chest)
@@ -16463,7 +17202,9 @@ impl GameApp {
                             }
                         }
                         self.play_event("entity.horse.gallop", None, 0.7);
-                        vc_render::render::report_boot_log("e2e: lead attached (10-block max, VERIFIED 1.16.5)");
+                        vc_render::render::report_boot_log(
+                            "e2e: lead attached (10-block max, VERIFIED 1.16.5)",
+                        );
                         self.place_timer = 0.3;
                     }
                     // (2) SADDLE: equip a tamed equine (VERIFIED w/Horse
@@ -16489,7 +17230,9 @@ impl GameApp {
                                 }
                             }
                             self.play_event("entity.horse.armor", None, 1.0);
-                            vc_render::render::report_boot_log("e2e: saddle equipped (control unlocked, VERIFIED)");
+                            vc_render::render::report_boot_log(
+                                "e2e: saddle equipped (control unlocked, VERIFIED)",
+                            );
                         }
                         self.place_timer = 0.3;
                     }
@@ -16497,10 +17240,8 @@ impl GameApp {
                     // §Breeding) / hay bale (heals + grows temper,
                     // VERIFIED w/Hay_Bale §Food)
                     else if held == GOLDEN_APPLE || held == HAY_BALE || held == GOLDEN_CARROT {
-                        let mut feed_rng =
-                            vc_rng::rng::Rng::new(self.sim.ticks ^ 0x5EED_1EAD);
-                        let outcome =
-                            self.sim.mobs.try_feed(eid, held, &mut feed_rng);
+                        let mut feed_rng = vc_rng::rng::Rng::new(self.sim.ticks ^ 0x5EED_1EAD);
+                        let outcome = self.sim.mobs.try_feed(eid, held, &mut feed_rng);
                         if let Some(out) = outcome {
                             if self.mode.depletes_items() {
                                 let h = self.player.held_mut();
@@ -16517,11 +17258,14 @@ impl GameApp {
                                     let m = self.sim.mobs.by_id(eid).unwrap();
                                     (m.pos[0] as i32, m.pos[1] as i32, m.pos[2] as i32)
                                 };
-                                let mut foal_rng = vc_rng::rng::Rng::new(
-                                    self.sim.ticks ^ 0xF0A1,
-                                );
+                                let mut foal_rng = vc_rng::rng::Rng::new(self.sim.ticks ^ 0xF0A1);
                                 let foal = self.sim.mobs.spawn_foal(
-                                    eid, partner, px, py + 1, pz, &mut foal_rng,
+                                    eid,
+                                    partner,
+                                    px,
+                                    py + 1,
+                                    pz,
+                                    &mut foal_rng,
                                 );
                                 let _ = foal;
                                 vc_render::render::report_boot_log(
@@ -16557,25 +17301,29 @@ impl GameApp {
                         // mounting is disallowed in Adventure (§ modes —
                         // use the not-adventure rule from modes.rs)
                         if self.mode.label() != "Adventure" {
-                            let mut tame_rng =
-                                vc_rng::rng::Rng::new(self.sim.ticks ^ 0x7A1E);
+                            let mut tame_rng = vc_rng::rng::Rng::new(self.sim.ticks ^ 0x7A1E);
                             match self.sim.mobs.try_mount(eid, &mut tame_rng) {
                                 Some(true) => {
                                     self.riding = Some(eid);
                                     self.play_event("entity.horse.ambient", None, 1.0);
-                                    vc_render::render::report_boot_log(if self
-                                        .sim
-                                        .mobs
-                                        .by_id(eid)
-                                        .map(|m| {
-                                            m.equine.as_ref().map(|e| e.saddled).unwrap_or(false)
-                                        })
-                                        .unwrap_or(false)
-                                    {
-                                        "e2e: mounted (saddled — control enabled, VERIFIED)"
-                                    } else {
-                                        "e2e: mounted (tamed, unsaddled — no control, VERIFIED)"
-                                    });
+                                    vc_render::render::report_boot_log(
+                                        if self
+                                            .sim
+                                            .mobs
+                                            .by_id(eid)
+                                            .map(|m| {
+                                                m.equine
+                                                    .as_ref()
+                                                    .map(|e| e.saddled)
+                                                    .unwrap_or(false)
+                                            })
+                                            .unwrap_or(false)
+                                        {
+                                            "e2e: mounted (saddled — control enabled, VERIFIED)"
+                                        } else {
+                                            "e2e: mounted (tamed, unsaddled — no control, VERIFIED)"
+                                        },
+                                    );
                                 }
                                 Some(false) => {
                                     self.play_event("entity.horse.angry", None, 1.0);
@@ -16589,8 +17337,7 @@ impl GameApp {
                         }
                     }
                     self.ui.dirty = true;
-                }
-                else if let Some((tpos, tb, _)) = self.target {
+                } else if let Some((tpos, tb, _)) = self.target {
                     // §25: right-click a lever toggles it (vanilla interaction)
                     if tb == LEVER {
                         vc_sim::redstone::toggle_lever(
@@ -16636,7 +17383,12 @@ impl GameApp {
                                 self.world.set_block_state(tpos[0], tpos[1], tpos[2], st)
                             {
                                 self.light.on_block_changed(
-                                    &self.world, tpos[0], tpos[1], tpos[2], old, new,
+                                    &self.world,
+                                    tpos[0],
+                                    tpos[1],
+                                    tpos[2],
+                                    old,
+                                    new,
                                 );
                             }
                             // wake adjacent wire: the charge IS the
@@ -16662,8 +17414,7 @@ impl GameApp {
                                 "e2e: anchor charged to {} (glowstone consumed, VERIFIED)",
                                 charge + 1
                             ));
-                        } else if self.world.dimension
-                            == vc_world::world::Dimension::Nether
+                        } else if self.world.dimension == vc_world::world::Dimension::Nether
                             && charge >= 1
                         {
                             // the spawn point: on top of the anchor (the
@@ -16696,7 +17447,12 @@ impl GameApp {
                                 self.world.set_block(tpos[0], tpos[1], tpos[2], AIR)
                             {
                                 self.light.on_block_changed(
-                                    &self.world, tpos[0], tpos[1], tpos[2], old, new,
+                                    &self.world,
+                                    tpos[0],
+                                    tpos[1],
+                                    tpos[2],
+                                    old,
+                                    new,
                                 );
                             }
                             self.explode(
@@ -16762,7 +17518,8 @@ impl GameApp {
                         // their own branch below; shulker boxes NEVER
                         // merge (VERIFIED w/Shulker_Box).
                         self.sim.containers.entry(tpos, CHEST);
-                        if let Some(other) = Container::double_chest_partner(&self.world, tpos, CHEST)
+                        if let Some(other) =
+                            Container::double_chest_partner(&self.world, tpos, CHEST)
                         {
                             self.sim.containers.entry(other, CHEST);
                             self.open_container(Container::DoubleChest { pos: tpos, other });
@@ -16792,7 +17549,9 @@ impl GameApp {
                             self.open_container(Container::Chest { pos: tpos });
                         }
                         let (w, sched) = (&mut self.world, &mut self.sim.sched);
-                        vc_sim::redstone::trapped_chest_tick(w, sched, tpos[0], tpos[1], tpos[2], true);
+                        vc_sim::redstone::trapped_chest_tick(
+                            w, sched, tpos[0], tpos[1], tpos[2], true,
+                        );
                         self.place_timer = 0.3;
                     } else if tb == ENDER_CHEST {
                         // Phase E2 (VERIFIED w/Ender_Chest): 27 slots,
@@ -16803,7 +17562,9 @@ impl GameApp {
                         // available in Adventure (containers are
                         // interactions, not block edits).
                         self.sim.containers.entry(ENDER_CHEST_KEY, CHEST);
-                        self.open_container(Container::Chest { pos: ENDER_CHEST_KEY });
+                        self.open_container(Container::Chest {
+                            pos: ENDER_CHEST_KEY,
+                        });
                         self.place_timer = 0.3;
                     } else if tb == SHULKER_BOX {
                         // 1.11 (VERIFIED w/Shulker_Box): opens like a
@@ -16836,8 +17597,7 @@ impl GameApp {
                         // berries on the ground, the sweet berry bush
                         // reverts to its second growth stage." (age 0/1:
                         // nothing to harvest)
-                        let age =
-                            berry_bush_age(self.world.get_state(tpos[0], tpos[1], tpos[2]));
+                        let age = berry_bush_age(self.world.get_state(tpos[0], tpos[1], tpos[2]));
                         if age >= 2 {
                             let n = if age == 2 {
                                 1 + self.audio_rng.next_range(2) as u8
@@ -16860,7 +17620,12 @@ impl GameApp {
                                 self.world.set_block_state(tpos[0], tpos[1], tpos[2], ns)
                             {
                                 self.light.on_block_changed(
-                                    &self.world, tpos[0], tpos[1], tpos[2], old, new,
+                                    &self.world,
+                                    tpos[0],
+                                    tpos[1],
+                                    tpos[2],
+                                    old,
+                                    new,
                                 );
                             }
                             self.play_event(
@@ -16977,24 +17742,28 @@ impl GameApp {
                             .sim
                             .mobs
                             .ray_hit(eye, dir, crate::player::REACH + 0.4)
-                            .and_then(|id| self.sim.mobs.list.iter().find(|m| m.id == id).map(|m| (m.id, m.kind, m.pos)));
-                        if mob_hit.map(|(_, k, _)| k) == Some(vc_gameplay::mobs::MobKind::ZombieVillager) {
+                            .and_then(|id| {
+                                self.sim
+                                    .mobs
+                                    .list
+                                    .iter()
+                                    .find(|m| m.id == id)
+                                    .map(|m| (m.id, m.kind, m.pos))
+                            });
+                        if mob_hit.map(|(_, k, _)| k)
+                            == Some(vc_gameplay::mobs::MobKind::ZombieVillager)
+                        {
                             let mid = mob_hit.unwrap().0;
                             // begin the cure (VERIFIED 3600..=6000 ticks)
-                            let mut cure_rng = vc_rng::rng::Rng::new(
-                                self.sim.ticks ^ 0xC0_FFEE,
-                            );
-                            if let Some(m) =
-                                self.sim.mobs.list.iter_mut().find(|m| m.id == mid)
-                            {
+                            let mut cure_rng = vc_rng::rng::Rng::new(self.sim.ticks ^ 0xC0_FFEE);
+                            if let Some(m) = self.sim.mobs.list.iter_mut().find(|m| m.id == mid) {
                                 if m.variant == 0 {
                                     vc_gameplay::mobs::begin_cure(m, &mut cure_rng);
                                     if self.mode.depletes_items() {
                                         let held = self.player.held_mut();
                                         held.count -= 1;
                                         if held.count == 0 {
-                                            *held =
-                                                vc_inventory::inventory::ItemStack::EMPTY;
+                                            *held = vc_inventory::inventory::ItemStack::EMPTY;
                                         }
                                     }
                                     self.play_event(
@@ -17038,8 +17807,7 @@ impl GameApp {
                         let (cx, cy, cz) = (tpos[0], tpos[1], tpos[2]);
                         let cur = self.world.get_state(cx, cy, cz);
                         if cur != END_PORTAL_FRAME_EYE {
-                            self.world
-                                .set_block_state(cx, cy, cz, END_PORTAL_FRAME_EYE);
+                            self.world.set_block_state(cx, cy, cz, END_PORTAL_FRAME_EYE);
                             if self.mode.depletes_items() {
                                 let held = self.player.held_mut();
                                 held.count -= 1;
@@ -17076,9 +17844,7 @@ impl GameApp {
                         // Phase E1: entering an end portal dimension-travels
                         // (walk-in trigger; vanilla jumps in). Overworld
                         // portal → the End; the End's exit fountain → home.
-                        let target = if self.world.dimension
-                            == vc_world::world::Dimension::End
-                        {
+                        let target = if self.world.dimension == vc_world::world::Dimension::End {
                             vc_world::world::Dimension::Overworld
                         } else {
                             vc_world::world::Dimension::End
@@ -17138,12 +17904,9 @@ impl GameApp {
                         // grounded target with 2 air blocks
                         let base = self.player.pos;
                         'tp: for _ in 0..16 {
-                            let dx =
-                                (self.audio_rng.next_f32() * 17.0 - 8.0).floor() as i32;
-                            let dz =
-                                (self.audio_rng.next_f32() * 17.0 - 8.0).floor() as i32;
-                            let dy =
-                                (self.audio_rng.next_f32() * 17.0 - 8.0).floor() as i32;
+                            let dx = (self.audio_rng.next_f32() * 17.0 - 8.0).floor() as i32;
+                            let dz = (self.audio_rng.next_f32() * 17.0 - 8.0).floor() as i32;
+                            let dy = (self.audio_rng.next_f32() * 17.0 - 8.0).floor() as i32;
                             let tx = (base.x.floor() as i32 + dx).max(1);
                             let ty = (base.y.floor() as i32 + dy).clamp(1, 250);
                             let tz = (base.z.floor() as i32 + dz).max(1);
@@ -17156,11 +17919,8 @@ impl GameApp {
                             {
                                 continue;
                             }
-                            self.player.pos = glam::Vec3::new(
-                                tx as f32 + 0.5,
-                                ty as f32,
-                                tz as f32 + 0.5,
-                            );
+                            self.player.pos =
+                                glam::Vec3::new(tx as f32 + 0.5, ty as f32, tz as f32 + 0.5);
                             self.player.vel = glam::Vec3::ZERO;
                             self.player.reset_fall();
                             self.play_event("entity.enderman.teleport", None, 1.0);
@@ -17224,7 +17984,11 @@ impl GameApp {
                                 // dirt — the 14w32a row)
                                 let tillable = matches!(tb, GRASS | DIRT | COARSE_DIRT);
                                 let above_open = tpos[1] < 255
-                                    && !is_solid(self.world.get_block(tpos[0], tpos[1] + 1, tpos[2]));
+                                    && !is_solid(self.world.get_block(
+                                        tpos[0],
+                                        tpos[1] + 1,
+                                        tpos[2],
+                                    ));
                                 tillable && above_open
                             })
                             .unwrap_or(false)
@@ -17235,11 +17999,20 @@ impl GameApp {
                         // random-tick hook). No durability system in the
                         // engine — the hoe never wears, disclosed. ----
                         if let Some((tpos, _, _)) = self.target {
-                            if let Some((old, new)) =
-                                self.world.set_block_state(tpos[0], tpos[1], tpos[2], farmland_state(0))
-                            {
-                                self.light
-                                    .on_block_changed(&self.world, tpos[0], tpos[1], tpos[2], old, new);
+                            if let Some((old, new)) = self.world.set_block_state(
+                                tpos[0],
+                                tpos[1],
+                                tpos[2],
+                                farmland_state(0),
+                            ) {
+                                self.light.on_block_changed(
+                                    &self.world,
+                                    tpos[0],
+                                    tpos[1],
+                                    tpos[2],
+                                    old,
+                                    new,
+                                );
                             }
                             notify_sim(&self.world, &mut self.sim.sched, tpos[0], tpos[1], tpos[2]);
                             self.edits += 1;
@@ -17295,11 +18068,19 @@ impl GameApp {
                             _ => None,
                         };
                         if let (Some((tpos, _, _)), Some(crop)) = (self.target, crop) {
-                            if let Some((old, new)) =
-                                self.world.set_block_state(tpos[0], tpos[1] + 1, tpos[2], crop_state(crop, 0))
-                            {
+                            if let Some((old, new)) = self.world.set_block_state(
+                                tpos[0],
+                                tpos[1] + 1,
+                                tpos[2],
+                                crop_state(crop, 0),
+                            ) {
                                 self.light.on_block_changed(
-                                    &self.world, tpos[0], tpos[1] + 1, tpos[2], old, new,
+                                    &self.world,
+                                    tpos[0],
+                                    tpos[1] + 1,
+                                    tpos[2],
+                                    old,
+                                    new,
                                 );
                             }
                             notify_sim(
@@ -17342,10 +18123,7 @@ impl GameApp {
                                 // Berries: "can be placed on grass ...
                                 // and other blocks" — the engine's
                                 // grass-family set)
-                                let soil = matches!(
-                                    tb,
-                                    GRASS | DIRT | PODZOL | SNOW_GRASS
-                                );
+                                let soil = matches!(tb, GRASS | DIRT | PODZOL | SNOW_GRASS);
                                 let above_open = tpos[1] < 255
                                     && self.world.get_block(tpos[0], tpos[1] + 1, tpos[2]) == AIR;
                                 soil && above_open
@@ -17364,7 +18142,12 @@ impl GameApp {
                                 berry_bush_state(0),
                             ) {
                                 self.light.on_block_changed(
-                                    &self.world, tpos[0], tpos[1] + 1, tpos[2], old, new,
+                                    &self.world,
+                                    tpos[0],
+                                    tpos[1] + 1,
+                                    tpos[2],
+                                    old,
+                                    new,
                                 );
                             }
                             if self.mode.depletes_items() {
@@ -17387,10 +18170,7 @@ impl GameApp {
                         self.place_timer = 0.3;
                         self.ui.dirty = true;
                     } else if !self.player.held().is_empty()
-                        && matches!(
-                            self.player.held().block,
-                            SNOWBALL | EGG | ENDER_PEARL
-                        )
+                        && matches!(self.player.held().block, SNOWBALL | EGG | ENDER_PEARL)
                     {
                         // ---- the sweep-2 throwable family (the
                         // 1.0-era player throws, all VERIFIED live
@@ -17505,9 +18285,11 @@ impl GameApp {
                             && !self.mode.invulnerable()
                             && self.audio_rng.next_f32() < 0.6
                         {
-                            self.player
-                                .effects
-                                .apply(vc_gameplay::effects::EffectKind::Poison, 0, 100);
+                            self.player.effects.apply(
+                                vc_gameplay::effects::EffectKind::Poison,
+                                0,
+                                100,
+                            );
                             self.ui.dirty = true;
                         }
                         // ---- the sweep-2 effect rows (all VERIFIED live
@@ -17517,27 +18299,35 @@ impl GameApp {
                             && !self.mode.invulnerable()
                             && self.audio_rng.next_f32() < 0.8
                         {
-                            self.player
-                                .effects
-                                .apply(vc_gameplay::effects::EffectKind::Hunger, 0, 600);
+                            self.player.effects.apply(
+                                vc_gameplay::effects::EffectKind::Hunger,
+                                0,
+                                600,
+                            );
                             self.ui.dirty = true;
                         }
                         // spider eye: "Poison (0:05)" — always
                         if b == SPIDER_EYE && !self.mode.invulnerable() {
-                            self.player
-                                .effects
-                                .apply(vc_gameplay::effects::EffectKind::Poison, 0, 100);
+                            self.player.effects.apply(
+                                vc_gameplay::effects::EffectKind::Poison,
+                                0,
+                                100,
+                            );
                             self.ui.dirty = true;
                         }
                         // golden apple: "Absorption (2:00)" +
                         // "Regeneration II (0:05)"
                         if b == GOLDEN_APPLE && !self.mode.invulnerable() {
-                            self.player
-                                .effects
-                                .apply(vc_gameplay::effects::EffectKind::Absorption, 0, 2400);
-                            self.player
-                                .effects
-                                .apply(vc_gameplay::effects::EffectKind::Regeneration, 1, 100);
+                            self.player.effects.apply(
+                                vc_gameplay::effects::EffectKind::Absorption,
+                                0,
+                                2400,
+                            );
+                            self.player.effects.apply(
+                                vc_gameplay::effects::EffectKind::Regeneration,
+                                1,
+                                100,
+                            );
                             self.ui.dirty = true;
                         }
                         // the chorus teleport: "up to 16 attempts are
@@ -17565,10 +18355,12 @@ impl GameApp {
                         && self
                             .target
                             .map(|(tpos, tb, _)| {
-                                matches!(tb, vc_blocks::blocks::BEE_NEST | vc_blocks::blocks::BEEHIVE)
-                                    && vc_blocks::blocks::hive_full(
-                                        self.world.get_state(tpos[0], tpos[1], tpos[2]),
-                                    )
+                                matches!(
+                                    tb,
+                                    vc_blocks::blocks::BEE_NEST | vc_blocks::blocks::BEEHIVE
+                                ) && vc_blocks::blocks::hive_full(
+                                    self.world.get_state(tpos[0], tpos[1], tpos[2]),
+                                )
                             })
                             .unwrap_or(false)
                     {
@@ -17581,14 +18373,23 @@ impl GameApp {
                         // honeycomb or honey bottle is harvested").
                         if let Some((tpos, tb, _)) = self.target {
                             let hive_pos = [tpos[0], tpos[1], tpos[2]];
-                            let pacified =
-                                vc_gameplay::bees::HiveSystem::campfire_pacifies(&self.world, hive_pos);
+                            let pacified = vc_gameplay::bees::HiveSystem::campfire_pacifies(
+                                &self.world,
+                                hive_pos,
+                            );
                             // the harvest
                             let want = vc_blocks::blocks::hive_state(tb, 0);
                             if let Some((old, new)) =
                                 self.world.set_block_state(tpos[0], tpos[1], tpos[2], want)
                             {
-                                self.light.on_block_changed(&self.world, tpos[0], tpos[1], tpos[2], old, new);
+                                self.light.on_block_changed(
+                                    &self.world,
+                                    tpos[0],
+                                    tpos[1],
+                                    tpos[2],
+                                    old,
+                                    new,
+                                );
                             }
                             // 3 honeycomb pops (as item drops at the
                             // hive front — "The honeycomb pops out as a
@@ -17597,8 +18398,13 @@ impl GameApp {
                                 light_at(&self.world, &self.light, tpos[0], tpos[1], tpos[2]);
                             for _ in 0..3 {
                                 self.sim.items.drop_block(
-                                    tpos[0], tpos[1] - 1, tpos[2],
-                                    HONEYCOMB, biome, sky, blk,
+                                    tpos[0],
+                                    tpos[1] - 1,
+                                    tpos[2],
+                                    HONEYCOMB,
+                                    biome,
+                                    sky,
+                                    blk,
                                 );
                             }
                             self.play_event(
@@ -17610,13 +18416,17 @@ impl GameApp {
                                 // the swarm: stored bees exit angry + the
                                 // out family joins
                                 let _angry_in = self.sim.hives.anger(hive_pos);
-                                let _angry_out = self
-                                    .sim
-                                    .mobs
-                                    .anger_bees_near([tpos[0] as f32, tpos[1] as f32, tpos[2] as f32], Some(hive_pos));
+                                let _angry_out = self.sim.mobs.anger_bees_near(
+                                    [tpos[0] as f32, tpos[1] as f32, tpos[2] as f32],
+                                    Some(hive_pos),
+                                );
                                 self.play_event(
                                     "entity.bee.loop_aggressive",
-                                    Some([tpos[0] as f32 + 0.5, tpos[1] as f32, tpos[2] as f32 + 0.5]),
+                                    Some([
+                                        tpos[0] as f32 + 0.5,
+                                        tpos[1] as f32,
+                                        tpos[2] as f32 + 0.5,
+                                    ]),
                                     1.0,
                                 );
                             }
@@ -17631,10 +18441,12 @@ impl GameApp {
                         && self
                             .target
                             .map(|(tpos, tb, _)| {
-                                matches!(tb, vc_blocks::blocks::BEE_NEST | vc_blocks::blocks::BEEHIVE)
-                                    && vc_blocks::blocks::hive_full(
-                                        self.world.get_state(tpos[0], tpos[1], tpos[2]),
-                                    )
+                                matches!(
+                                    tb,
+                                    vc_blocks::blocks::BEE_NEST | vc_blocks::blocks::BEEHIVE
+                                ) && vc_blocks::blocks::hive_full(
+                                    self.world.get_state(tpos[0], tpos[1], tpos[2]),
+                                )
                             })
                             .unwrap_or(false)
                     {
@@ -17645,13 +18457,22 @@ impl GameApp {
                         // anger unless a campfire pacifies below.
                         if let Some((tpos, tb, _)) = self.target {
                             let hive_pos = [tpos[0], tpos[1], tpos[2]];
-                            let pacified =
-                                vc_gameplay::bees::HiveSystem::campfire_pacifies(&self.world, hive_pos);
+                            let pacified = vc_gameplay::bees::HiveSystem::campfire_pacifies(
+                                &self.world,
+                                hive_pos,
+                            );
                             let want = vc_blocks::blocks::hive_state(tb, 0);
                             if let Some((old, new)) =
                                 self.world.set_block_state(tpos[0], tpos[1], tpos[2], want)
                             {
-                                self.light.on_block_changed(&self.world, tpos[0], tpos[1], tpos[2], old, new);
+                                self.light.on_block_changed(
+                                    &self.world,
+                                    tpos[0],
+                                    tpos[1],
+                                    tpos[2],
+                                    old,
+                                    new,
+                                );
                             }
                             // the empty bottle becomes a honey bottle
                             if self.mode.depletes_items() {
@@ -17666,8 +18487,13 @@ impl GameApp {
                                 let (biome, sky, blk) =
                                     light_at(&self.world, &self.light, tpos[0], tpos[1], tpos[2]);
                                 self.sim.items.drop_block(
-                                    tpos[0], tpos[1] - 1, tpos[2],
-                                    HONEY_BOTTLE, biome, sky, blk,
+                                    tpos[0],
+                                    tpos[1] - 1,
+                                    tpos[2],
+                                    HONEY_BOTTLE,
+                                    biome,
+                                    sky,
+                                    blk,
                                 );
                             }
                             self.play_event(
@@ -17677,13 +18503,17 @@ impl GameApp {
                             );
                             if !pacified {
                                 let _angry_in = self.sim.hives.anger(hive_pos);
-                                let _angry_out = self
-                                    .sim
-                                    .mobs
-                                    .anger_bees_near([tpos[0] as f32, tpos[1] as f32, tpos[2] as f32], Some(hive_pos));
+                                let _angry_out = self.sim.mobs.anger_bees_near(
+                                    [tpos[0] as f32, tpos[1] as f32, tpos[2] as f32],
+                                    Some(hive_pos),
+                                );
                                 self.play_event(
                                     "entity.bee.loop_aggressive",
-                                    Some([tpos[0] as f32 + 0.5, tpos[1] as f32, tpos[2] as f32 + 0.5]),
+                                    Some([
+                                        tpos[0] as f32 + 0.5,
+                                        tpos[1] as f32,
+                                        tpos[2] as f32 + 0.5,
+                                    ]),
                                     1.0,
                                 );
                             }
@@ -17731,7 +18561,10 @@ impl GameApp {
                                 self.player.pos.x.floor() as i32,
                                 self.player.pos.y.floor() as i32,
                                 self.player.pos.z.floor() as i32,
-                                POTION_EMPTY, 2, 15, 0,
+                                POTION_EMPTY,
+                                2,
+                                15,
+                                0,
                             );
                         }
                         self.play_event("entity.generic.drink", None, 0.9);
@@ -17831,14 +18664,10 @@ impl GameApp {
                                     // stalk it stacks a stalk (vanilla's
                                     // placement rule). Other supports are
                                     // rejected (the deny below).
-                                    let below =
-                                        self.world.get_block(prev[0], prev[1] - 1, prev[2]);
+                                    let below = self.world.get_block(prev[0], prev[1] - 1, prev[2]);
                                     if below == BAMBOO {
                                         default_state(BAMBOO)
-                                    } else if matches!(
-                                        below,
-                                        GRASS | DIRT | PODZOL | SNOW_GRASS
-                                    ) {
+                                    } else if matches!(below, GRASS | DIRT | PODZOL | SNOW_GRASS) {
                                         default_state(BAMBOO_SHOOT)
                                     } else {
                                         // unsupported: deny the placement
@@ -17852,8 +18681,7 @@ impl GameApp {
                                     // crops root ONLY on farmland (w/Wheat_
                                     // Crops: seeds planted on farmland;
                                     // every other support is denied)
-                                    let below =
-                                        self.world.get_block(prev[0], prev[1] - 1, prev[2]);
+                                    let below = self.world.get_block(prev[0], prev[1] - 1, prev[2]);
                                     if below == FARMLAND {
                                         crop_state(b, 0)
                                     } else {
@@ -17867,8 +18695,7 @@ impl GameApp {
                                     // the overworld soil family joins for
                                     // creative transplanting, disclosed) —
                                     // a solid floor below or deny
-                                    let below =
-                                        self.world.get_block(prev[0], prev[1] - 1, prev[2]);
+                                    let below = self.world.get_block(prev[0], prev[1] - 1, prev[2]);
                                     if matches!(
                                         below,
                                         CRIMSON_NYLIUM
@@ -17889,8 +18716,7 @@ impl GameApp {
                                     // 1.16 part 2 — the hanging vine needs
                                     // a support above it (the growth rule
                                     // mirrored for placement)
-                                    let above =
-                                        self.world.get_block(prev[0], prev[1] + 1, prev[2]);
+                                    let above = self.world.get_block(prev[0], prev[1] + 1, prev[2]);
                                     if is_solid(above) || above == WEEPING_VINES {
                                         default_state(b)
                                     } else {
@@ -17899,8 +18725,7 @@ impl GameApp {
                                 } else if b == TWISTING_VINES {
                                     // 1.16 part 2 — the climbing vine roots
                                     // on solid ground (or stacks on itself)
-                                    let below =
-                                        self.world.get_block(prev[0], prev[1] - 1, prev[2]);
+                                    let below = self.world.get_block(prev[0], prev[1] - 1, prev[2]);
                                     if is_solid(below) || below == TWISTING_VINES {
                                         default_state(b)
                                     } else {
@@ -17937,8 +18762,8 @@ impl GameApp {
                                     let facing = match yaw {
                                         315.0..=360.0 | 0.0..=45.0 => 0, // north
                                         45.0..=135.0 => 1,               // west
-                                        135.0..=225.0 => 2,               // south
-                                        _ => 3,                           // east
+                                        135.0..=225.0 => 2,              // south
+                                        _ => 3,                          // east
                                     };
                                     glazed_terracotta_state(
                                         (b - GLAZED_TERRACOTTA_BASE) as u8,
@@ -17975,8 +18800,7 @@ impl GameApp {
                                     // placement cell, tpos the clicked
                                     // block)
                                     let hanging = prev[1] < tpos[1];
-                                    vc_blocks::blocks::V11_STATE_BASE
-                                        + if hanging { 5 } else { 4 }
+                                    vc_blocks::blocks::V11_STATE_BASE + if hanging { 5 } else { 4 }
                                 } else if b == CHAIN {
                                     // 1.16 (Nether Update, part 1) — VERIFIED
                                     // w/Chain §Usage: "chains can be placed
@@ -18012,208 +18836,209 @@ impl GameApp {
                                 if state == u16::MAX {
                                     self.place_timer = 0.2;
                                 } else {
-                                if let Some((old, new)) =
-                                    self.world.set_block_state(prev[0], prev[1], prev[2], state)
-                                {
-                                    self.light.on_block_changed(
-                                        &self.world,
-                                        prev[0],
-                                        prev[1],
-                                        prev[2],
-                                        old,
-                                        new,
-                                    );
-                                }
-                                // fences: neighbors recompute their connections
-                                update_fence_neighbors(&mut self.world, prev[0], prev[1], prev[2]);
-                                // Phase E3: register weighted plates for
-                                // the entity-count sweep (signals VERIFIED
-                                // w/Light_Weighted_Pressure_Plate + the
-                                // heavy ceil(entities/10) row)
-                                if b == LIGHT_WEIGHTED_PLATE || b == HEAVY_WEIGHTED_PLATE {
-                                    self.plates.push(prev);
-                                }
-                                // 1.13 (Update Aquatic): register a placed
-                                // CONDUIT for the Conduit Power scan
-                                // (frame activation + range + hostile
-                                // attacks live in the game layer tick)
-                                if b == CONDUIT {
-                                    self.sim.conduits.insert(prev);
-                                }
-                                // Phase E3: a LEAD used on a fence ties the
-                                // held leash as a knot (VERIFIED w/Lead —
-                                // "using the lead on any type of fence
-                                // attaches the lead to it with a visible
-                                // knot"); the mob then stays within the
-                                // leash of that post
-                                if b == OAK_FENCE {
-                                    if let Some((lid, None)) = self.leashed {
-                                        self.leashed = Some((lid, Some(prev)));
-                                        vc_render::render::report_boot_log(
-                                            "e2e: lead tied to fence knot (VERIFIED)",
-                                        );
-                                    }
-                                }
-                                // §24/§25: a new block notifies the sim
-                                notify_sim(
-                                    &self.world,
-                                    &mut self.sim.sched,
-                                    prev[0],
-                                    prev[1],
-                                    prev[2],
-                                );
-                                // Phase E2 (VERIFIED w/Wither Spawning): the
-                                // wither is summoned when the LAST wither
-                                // skeleton skull is placed on the T of 4
-                                // soul sand (4 soul sand + 3 skulls, the
-                                // final block must be a skull)
-                                if b == WITHER_SKELETON_SKULL
-                                    && self.mode.edits_world_blocks()
-                                    && vc_gameplay::wither::wither_pattern(
-                                        &self.world,
-                                        prev[0],
-                                        prev[1],
-                                        prev[2],
-                                    )
-                                {
-                                    // consume the pattern (7 blocks)
-                                    for c in
-                                        vc_gameplay::wither::wither_pattern_blocks(
-                                            prev[0], prev[1], prev[2],
-                                        )
+                                    if let Some((old, new)) =
+                                        self.world.set_block_state(prev[0], prev[1], prev[2], state)
                                     {
-                                        self.world.set_block(c[0], c[1], c[2], AIR);
                                         self.light.on_block_changed(
                                             &self.world,
-                                            c[0],
-                                            c[1],
-                                            c[2],
-                                            0,
-                                            0,
+                                            prev[0],
+                                            prev[1],
+                                            prev[2],
+                                            old,
+                                            new,
                                         );
                                     }
-                                    self.sim.wither.begin_summon(
-                                        prev[0], prev[1], prev[2],
+                                    // fences: neighbors recompute their connections
+                                    update_fence_neighbors(
+                                        &mut self.world,
+                                        prev[0],
+                                        prev[1],
+                                        prev[2],
                                     );
+                                    // Phase E3: register weighted plates for
+                                    // the entity-count sweep (signals VERIFIED
+                                    // w/Light_Weighted_Pressure_Plate + the
+                                    // heavy ceil(entities/10) row)
+                                    if b == LIGHT_WEIGHTED_PLATE || b == HEAVY_WEIGHTED_PLATE {
+                                        self.plates.push(prev);
+                                    }
+                                    // 1.13 (Update Aquatic): register a placed
+                                    // CONDUIT for the Conduit Power scan
+                                    // (frame activation + range + hostile
+                                    // attacks live in the game layer tick)
+                                    if b == CONDUIT {
+                                        self.sim.conduits.insert(prev);
+                                    }
+                                    // Phase E3: a LEAD used on a fence ties the
+                                    // held leash as a knot (VERIFIED w/Lead —
+                                    // "using the lead on any type of fence
+                                    // attaches the lead to it with a visible
+                                    // knot"); the mob then stays within the
+                                    // leash of that post
+                                    if b == OAK_FENCE {
+                                        if let Some((lid, None)) = self.leashed {
+                                            self.leashed = Some((lid, Some(prev)));
+                                            vc_render::render::report_boot_log(
+                                                "e2e: lead tied to fence knot (VERIFIED)",
+                                            );
+                                        }
+                                    }
+                                    // §24/§25: a new block notifies the sim
+                                    notify_sim(
+                                        &self.world,
+                                        &mut self.sim.sched,
+                                        prev[0],
+                                        prev[1],
+                                        prev[2],
+                                    );
+                                    // Phase E2 (VERIFIED w/Wither Spawning): the
+                                    // wither is summoned when the LAST wither
+                                    // skeleton skull is placed on the T of 4
+                                    // soul sand (4 soul sand + 3 skulls, the
+                                    // final block must be a skull)
+                                    if b == WITHER_SKELETON_SKULL
+                                        && self.mode.edits_world_blocks()
+                                        && vc_gameplay::wither::wither_pattern(
+                                            &self.world,
+                                            prev[0],
+                                            prev[1],
+                                            prev[2],
+                                        )
+                                    {
+                                        // consume the pattern (7 blocks)
+                                        for c in vc_gameplay::wither::wither_pattern_blocks(
+                                            prev[0], prev[1], prev[2],
+                                        ) {
+                                            self.world.set_block(c[0], c[1], c[2], AIR);
+                                            self.light.on_block_changed(
+                                                &self.world,
+                                                c[0],
+                                                c[1],
+                                                c[2],
+                                                0,
+                                                0,
+                                            );
+                                        }
+                                        self.sim.wither.begin_summon(prev[0], prev[1], prev[2]);
+                                        self.play_event(
+                                            "entity.wither.spawn",
+                                            Some([
+                                                prev[0] as f32 + 0.5,
+                                                prev[1] as f32 + 1.0,
+                                                prev[2] as f32 + 0.5,
+                                            ]),
+                                            1.0,
+                                        );
+                                        vc_render::render::report_boot_log(
+                                        "e2e: wither summon begun (T of 4 soul sand + 3 skulls, 220-tick charge, VERIFIED)",
+                                    );
+                                        self.place_timer = 0.5;
+                                        self.ui.dirty = true;
+                                    } else
+                                    // Phase E1: golem build patterns — a PUMPKIN
+                                    // placed last on the right body spawns the
+                                    // golem and consumes the pattern blocks
+                                    // (VERIFIED w/Snow_Golem + w/Iron_Golem
+                                    // §Spawning: 2 snow blocks / a T of 4 iron
+                                    // blocks; "The pumpkin may be placed ...
+                                    // but it must be placed last")
+                                    if b == PUMPKIN
+                                        && prev[1] > 2
+                                        && self.mode.edits_world_blocks()
+                                    {
+                                        if vc_gameplay::mobs::snow_golem_pattern(
+                                            &self.world,
+                                            prev[0],
+                                            prev[1],
+                                            prev[2],
+                                        ) {
+                                            // remove the body (2 snow + the pumpkin)
+                                            for dy in 0..3 {
+                                                self.world.set_block(
+                                                    prev[0],
+                                                    prev[1] - dy,
+                                                    prev[2],
+                                                    AIR,
+                                                );
+                                            }
+                                            let _ = self.sim.mobs.spawn_at(
+                                                vc_gameplay::mobs::MobKind::SnowGolem,
+                                                prev[0],
+                                                prev[1] - 2,
+                                                prev[2],
+                                            );
+                                            self.play_event(
+                                                "entity.snow_golem.ambient",
+                                                Some([
+                                                    prev[0] as f32 + 0.5,
+                                                    prev[1] as f32,
+                                                    prev[2] as f32 + 0.5,
+                                                ]),
+                                                1.0,
+                                            );
+                                            vc_render::render::report_boot_log(
+                                            "e2e: snow golem built (2 snow + pumpkin, VERIFIED)",
+                                        );
+                                        } else if vc_gameplay::mobs::iron_golem_pattern(
+                                            &self.world,
+                                            prev[0],
+                                            prev[1],
+                                            prev[2],
+                                        ) {
+                                            // remove the T body + the pumpkin
+                                            for (bx, by) in [
+                                                (prev[0], prev[1]),
+                                                (prev[0], prev[1] - 1),
+                                                (prev[0] - 1, prev[1] - 2),
+                                                (prev[0], prev[1] - 2),
+                                                (prev[0] + 1, prev[1] - 2),
+                                            ] {
+                                                self.world.set_block(bx, by, prev[2], AIR);
+                                            }
+                                            let _ = self.sim.mobs.spawn_at(
+                                                vc_gameplay::mobs::MobKind::IronGolem,
+                                                prev[0],
+                                                prev[1] - 2,
+                                                prev[2],
+                                            );
+                                            self.play_event(
+                                                "entity.iron_golem.ambient",
+                                                Some([
+                                                    prev[0] as f32 + 0.5,
+                                                    prev[1] as f32,
+                                                    prev[2] as f32 + 0.5,
+                                                ]),
+                                                1.0,
+                                            );
+                                            vc_render::render::report_boot_log(
+                                            "e2e: iron golem built (T of 4 iron + pumpkin, VERIFIED)",
+                                        );
+                                        }
+                                    }
                                     self.play_event(
-                                        "entity.wither.spawn",
+                                        vc_audio::sounds::family_event(
+                                            def(b).sound,
+                                            vc_audio::sounds::FamilyEvent::Place,
+                                        ),
                                         Some([
                                             prev[0] as f32 + 0.5,
-                                            prev[1] as f32 + 1.0,
+                                            prev[1] as f32 + 0.5,
                                             prev[2] as f32 + 0.5,
                                         ]),
                                         1.0,
                                     );
-                                    vc_render::render::report_boot_log(
-                                        "e2e: wither summon begun (T of 4 soul sand + 3 skulls, 220-tick charge, VERIFIED)",
-                                    );
-                                    self.place_timer = 0.5;
-                                    self.ui.dirty = true;
-                                } else
-                                // Phase E1: golem build patterns — a PUMPKIN
-                                // placed last on the right body spawns the
-                                // golem and consumes the pattern blocks
-                                // (VERIFIED w/Snow_Golem + w/Iron_Golem
-                                // §Spawning: 2 snow blocks / a T of 4 iron
-                                // blocks; "The pumpkin may be placed ...
-                                // but it must be placed last")
-                                if b == PUMPKIN
-                                    && prev[1] > 2
-                                    && self.mode.edits_world_blocks()
-                                {
-                                    if vc_gameplay::mobs::snow_golem_pattern(
-                                        &self.world,
-                                        prev[0],
-                                        prev[1],
-                                        prev[2],
-                                    ) {
-                                        // remove the body (2 snow + the pumpkin)
-                                        for dy in 0..3 {
-                                            self.world.set_block(
-                                                prev[0],
-                                                prev[1] - dy,
-                                                prev[2],
-                                                AIR,
-                                            );
+                                    // Phase 1: placement depletes the stack in
+                                    // Survival/Hardcore only — creative stacks are
+                                    // infinite (vanilla behavior)
+                                    if self.mode.depletes_items() {
+                                        let held = self.player.held_mut();
+                                        held.count -= 1;
+                                        if held.count == 0 {
+                                            *held = vc_inventory::inventory::ItemStack::EMPTY;
                                         }
-                                        let _ = self.sim.mobs.spawn_at(
-                                            vc_gameplay::mobs::MobKind::SnowGolem,
-                                            prev[0],
-                                            prev[1] - 2,
-                                            prev[2],
-                                        );
-                                        self.play_event(
-                                            "entity.snow_golem.ambient",
-                                            Some([
-                                                prev[0] as f32 + 0.5,
-                                                prev[1] as f32,
-                                                prev[2] as f32 + 0.5,
-                                            ]),
-                                            1.0,
-                                        );
-                                        vc_render::render::report_boot_log(
-                                            "e2e: snow golem built (2 snow + pumpkin, VERIFIED)",
-                                        );
-                                    } else if vc_gameplay::mobs::iron_golem_pattern(
-                                        &self.world,
-                                        prev[0],
-                                        prev[1],
-                                        prev[2],
-                                    ) {
-                                        // remove the T body + the pumpkin
-                                        for (bx, by) in [
-                                            (prev[0], prev[1]),
-                                            (prev[0], prev[1] - 1),
-                                            (prev[0] - 1, prev[1] - 2),
-                                            (prev[0], prev[1] - 2),
-                                            (prev[0] + 1, prev[1] - 2),
-                                        ] {
-                                            self.world.set_block(bx, by, prev[2], AIR);
-                                        }
-                                        let _ = self.sim.mobs.spawn_at(
-                                            vc_gameplay::mobs::MobKind::IronGolem,
-                                            prev[0],
-                                            prev[1] - 2,
-                                            prev[2],
-                                        );
-                                        self.play_event(
-                                            "entity.iron_golem.ambient",
-                                            Some([
-                                                prev[0] as f32 + 0.5,
-                                                prev[1] as f32,
-                                                prev[2] as f32 + 0.5,
-                                            ]),
-                                            1.0,
-                                        );
-                                        vc_render::render::report_boot_log(
-                                            "e2e: iron golem built (T of 4 iron + pumpkin, VERIFIED)",
-                                        );
                                     }
-                                }
-                                self.play_event(
-                                    vc_audio::sounds::family_event(
-                                        def(b).sound,
-                                        vc_audio::sounds::FamilyEvent::Place,
-                                    ),
-                                    Some([
-                                        prev[0] as f32 + 0.5,
-                                        prev[1] as f32 + 0.5,
-                                        prev[2] as f32 + 0.5,
-                                    ]),
-                                    1.0,
-                                );
-                                // Phase 1: placement depletes the stack in
-                                // Survival/Hardcore only — creative stacks are
-                                // infinite (vanilla behavior)
-                                if self.mode.depletes_items() {
-                                    let held = self.player.held_mut();
-                                    held.count -= 1;
-                                    if held.count == 0 {
-                                        *held = vc_inventory::inventory::ItemStack::EMPTY;
-                                    }
-                                }
-                                self.place_timer = 0.24;
-                                self.edits += 1;
+                                    self.place_timer = 0.24;
+                                    self.edits += 1;
                                 } // (the 1.14 bamboo-deny else closes here)
                             }
                         }
@@ -18287,10 +19112,12 @@ impl GameApp {
         // containers animate: mark the UI dirty on a 5 Hz heartbeat while a
         // furnace screen is open (craft/inventory screens are static between
         // clicks — clicks already set dirty)
-        if container_live && matches!(self.container, Some(Container::Furnace { .. }))
-            && self.time - self.last_ui_t > 0.2 {
-                self.ui.dirty = true;
-            }
+        if container_live
+            && matches!(self.container, Some(Container::Furnace { .. }))
+            && self.time - self.last_ui_t > 0.2
+        {
+            self.ui.dirty = true;
+        }
         // BLOCKING-BUG FIX (user report: "F3 was static, nothing updated"):
         // the rebuild gate only repaints when ui.dirty is SET, and nothing
         // re-marked it while the debug overlay was open — after the single
@@ -18301,20 +19128,34 @@ impl GameApp {
         if live_debug && self.time - self.last_ui_t > 0.05 {
             self.ui.dirty = true;
         }
+        // --debug: the verbose MENU heartbeat — while the raw stream is on,
+        // menu screens repaint at 5 Hz so the on-canvas debug strip (see
+        // dbg_ui_strip: cursor/hover/widget count) stays live without
+        // pointer motion (the menu-tree twin of the F3-freeze fix above)
+        if vc_render::render::is_verbose()
+            && self.screen != Screen::Game
+            && self.time - self.last_ui_t > 0.2
+        {
+            self.ui.dirty = true;
+        }
         if self.ui.dirty && self.time - self.last_ui_t > cadence {
             crate::phase!(self.phases, crate::bench::PHASE_UI, self.rebuild_ui());
+            // --debug: the in-screenshot diagnostic strip — drawn ON the
+            // fresh canvas (top layer) so a bug screenshot carries the
+            // same facts the [gfx] stream logs: screen, cursor, hover,
+            // widget count, live canvas, rebuild count
+            self.dbg_ui_strip();
         }
 
         // F3 right-column telemetry: sample process memory at 4 Hz (a
         // /proc read is cheap but not free) and roll the 1 s sound-event
         // window (the vanilla "Sounds: N/M" live counter)
-        if self.show_debug
-            && self.time - self.f3_mem_t > 0.25 {
-                self.f3_mem_t = self.time;
-                let (rss, sys) = proc_memory_mb();
-                self.f3_rss_mb = rss;
-                self.f3_sys_mb = sys;
-            }
+        if self.show_debug && self.time - self.f3_mem_t > 0.25 {
+            self.f3_mem_t = self.time;
+            let (rss, sys) = proc_memory_mb();
+            self.f3_rss_mb = rss;
+            self.f3_sys_mb = sys;
+        }
         self.snd_window_t += dt;
         if self.snd_window_t >= 1.0 {
             self.snd_window_t = 0.0;
@@ -18349,11 +19190,18 @@ impl GameApp {
         // --debug: 1 Hz raw perf + world-streaming summary while playing
         // (the [perf] line: fps envelope, frame/sim ms, chunk pipeline
         // depths, mob count — the steady-state heartbeat for bug reports)
-        if self.screen == Screen::Game && vc_render::render::is_verbose() {
+        // 2026-09-20: the [gfx] line runs in EVERY screen (the menu-tree
+        // clicks are exactly where the "click sound but nothing opens"
+        // report lives — a menu that stopped repainting must be visible
+        // in the stream, not only in-game)
+        if vc_render::render::is_verbose() {
             self.dbg_t -= dt;
             if self.dbg_t <= 0.0 {
                 self.dbg_t = 1.0;
-                vc_render::render::report_debug_log("perf", &self.dbg_perf_line());
+                if self.screen == Screen::Game {
+                    vc_render::render::report_debug_log("perf", &self.dbg_perf_line());
+                }
+                vc_render::render::report_debug_log("gfx", &self.dbg_gfx_line());
             }
         }
 
@@ -18530,12 +19378,8 @@ impl GameApp {
         #[cfg(target_arch = "wasm32")]
         {
             let out_dim = self.world.dimension as u8 as usize;
-            self.web_dim_journals[out_dim] = self
-                .world
-                .journal
-                .iter()
-                .map(|(&p, &s)| (p, s))
-                .collect();
+            self.web_dim_journals[out_dim] =
+                self.world.journal.iter().map(|(&p, &s)| (p, s)).collect();
             self.web_save_world();
         }
 
@@ -18655,7 +19499,8 @@ impl GameApp {
                 self.world
                     .set_block(center_x + dx, cy, center_z + dz, END_PORTAL);
                 for dy in 1..=2 {
-                    self.world.set_block(center_x + dx, cy + dy, center_z + dz, AIR);
+                    self.world
+                        .set_block(center_x + dx, cy + dy, center_z + dz, AIR);
                 }
             }
         }
@@ -18750,10 +19595,7 @@ impl GameApp {
             ("culled", StatsVal::F(self.stats.culled as f32)),
             // Luanti-style split: frustum-culled kept separate from the
             // occlusion flood's `culled` count (the before/after metric)
-            (
-                "frustumCull",
-                StatsVal::F(self.stats.frustum_culled as f32),
-            ),
+            ("frustumCull", StatsVal::F(self.stats.frustum_culled as f32)),
             // Phase 7: GPU meshing backend + throughput counters
             (
                 "gmesh",
@@ -19375,7 +20217,10 @@ impl GameApp {
         // mansion chest contains items drawn from 4 pools" — the
         // dedicated woodland_mansion table; palette-limited +
         // version-scoped, see vc-pack's builtin_structure_table)
-        if !gen.woodland_mansions_near(cx * 16 + 8, cz * 16 + 8).is_empty() {
+        if !gen
+            .woodland_mansions_near(cx * 16 + 8, cz * 16 + 8)
+            .is_empty()
+        {
             return "minecraft:chests/woodland_mansion";
         }
         for &(sx, sz) in gen.strongholds().iter() {
@@ -19605,10 +20450,7 @@ impl GameApp {
                 "{} fps T: {} {} D: {}",
                 self.fps as i32, t_val, clouds_val, diff_id
             ),
-            format!(
-                "Integrated server @ {:.0} ms ticks, 0 tx, 0 rx",
-                tick_ms
-            ),
+            format!("Integrated server @ {:.0} ms ticks, 0 tx, 0 rx", tick_ms),
             format!(
                 "C: {}/{} (s) D: {}, pC: {:03}, pU: {:03}, aB: {:03}",
                 drawn,
@@ -19618,16 +20460,19 @@ impl GameApp {
                 self.mesh_inflight.len(),
                 meshed
             ),
-            format!("E: {}/{} B: {}", self.mob_visible_count(), self.sim.mobs.len(), self.block_entity_count()),
+            format!(
+                "E: {}/{} B: {}",
+                self.mob_visible_count(),
+                self.sim.mobs.len(),
+                self.block_entity_count()
+            ),
             format!("F: {} I: {}", self.stats.culled, hidden),
             // Luanti-style split culling counters (occlusion vs frustum
             // tracked separately — the before/after metric that proves
             // the occlusion flood actually did something this frame)
             format!(
                 "Culling: occl {} frust {} (of {} meshed)",
-                self.stats.culled,
-                self.stats.frustum_culled,
-                meshed
+                self.stats.culled, self.stats.frustum_culled, meshed
             ),
             format!("Client Chunk Cache: {}, {}", meshed, drawn),
             format!("ServerChunkCache: {}", loaded),
@@ -19655,7 +20500,10 @@ impl GameApp {
             format!("CH S: {} D: {}", ws, of),
             format!("CH H: {} O: {} M: {} ML: {}", mb, of, mbl, mbl),
             format!("Biome: minecraft:{}", biome_registry_id(biome)),
-            format!("Local Difficulty: {:.2} // {:.2} (Day {})", ld, ld_clamped, day),
+            format!(
+                "Local Difficulty: {:.2} // {:.2} (Day {})",
+                ld, ld_clamped, day
+            ),
             String::new(),
             format!(
                 "SC: {}, M: {}, C: {}, A: {}, W: {}, M: {}",
@@ -19673,8 +20521,16 @@ impl GameApp {
         let mut right = vec![
             format!(
                 "Rust: {}bit {}",
-                if cfg!(target_pointer_width = "64") { 64 } else { 32 },
-                if cfg!(debug_assertions) { "debug" } else { "release" }
+                if cfg!(target_pointer_width = "64") {
+                    64
+                } else {
+                    32
+                },
+                if cfg!(debug_assertions) {
+                    "debug"
+                } else {
+                    "release"
+                }
             ),
             // engine-adapted liveness line (2026-09-19): the frame
             // counter, the monotonic UI-rebuild counter, and uptime all
@@ -19762,8 +20618,7 @@ impl GameApp {
     /// 2 normal / 3 hard; hardcore rides hard)
     fn settings_difficulty_id(&self) -> i32 {
         match self.mode {
-            vc_gameplay::modes::GameMode::Creative
-            | vc_gameplay::modes::GameMode::Spectator => 2,
+            vc_gameplay::modes::GameMode::Creative | vc_gameplay::modes::GameMode::Spectator => 2,
             _ => 2,
         }
     }
@@ -19850,8 +20705,13 @@ impl GameApp {
                 | K::Drowned
                 | K::Phantom => m += 1,
                 K::Bat | K::Parrot => a += 1,
-                K::Dolphin | K::Cod | K::Salmon | K::Pufferfish | K::TropicalFish
-                | K::Squid | K::Turtle => w += 1,
+                K::Dolphin
+                | K::Cod
+                | K::Salmon
+                | K::Pufferfish
+                | K::TropicalFish
+                | K::Squid
+                | K::Turtle => w += 1,
                 _ => c += 1,
             }
         }
@@ -19938,6 +20798,40 @@ impl GameApp {
         format!("Display {}x{} ({})", w, h, vendor)
     }
 
+    /// --debug: the on-canvas diagnostic strip (menus, top layer) — the
+    /// screenshot twin of the [gfx] 1 Hz line: screen, cursor position,
+    /// hover widget, widget count, live canvas, rebuild count. Only
+    /// drawn while the raw stream is on; a bug screenshot then carries
+    /// exactly the state the log shows, cross-checkable by timestamp.
+    fn dbg_ui_strip(&mut self) {
+        if !vc_render::render::is_verbose() || self.screen == Screen::Game {
+            return;
+        }
+        let hover = match self.hover {
+            Some(h) => match self.widgets.iter().find(|w| w.id == h) {
+                Some(w) => format!("id {} \"{}\"", h, w.label()),
+                None => format!("id {h} STALE (not in table!)"),
+            },
+            None => "none".to_string(),
+        };
+        let line = format!(
+            "dbg: {} | cursor ({:.0},{:.0}) | hover {} | widgets {} | live {}x{} | rebuilds {}",
+            self.screen.name(),
+            self.cursor.0,
+            self.cursor.1,
+            hover,
+            self.widgets.len(),
+            self.ui.live_w,
+            self.ui.live_h,
+            self.ui_rebuild_count
+        );
+        let y = self.ui.live_h as i32 - 34;
+        // dark backing for readability over the panorama, then the strip
+        self.ui
+            .rect(6, y - 3, self.ui.live_w as i32 - 12, 14, [0, 0, 0, 150]);
+        self.ui.text(8, y, &line, [120, 220, 120, 255], 1);
+    }
+
     fn rebuild_ui(&mut self) {
         self.last_ui_t = self.time;
         self.ui_rebuild_count += 1;
@@ -19977,10 +20871,7 @@ impl GameApp {
                 let mut have = 0.0;
                 for dz in -2..=2 {
                     for dx in -2..=2 {
-                        if self
-                            .renderer
-                            .has_chunk((pc.0 + dx, pc.1 + dz))
-                        {
+                        if self.renderer.has_chunk((pc.0 + dx, pc.1 + dz)) {
                             have += 1.0;
                         }
                     }
@@ -20019,8 +20910,7 @@ impl GameApp {
             }
             Screen::Packs => {
                 let tt = self.tooltip_lines();
-                self.ui
-                    .resource_pack_screen(&self.widgets, self.hover, &tt);
+                self.ui.resource_pack_screen(&self.widgets, self.hover, &tt);
                 self.ui_dump_if_asked();
                 return;
             }
@@ -20044,68 +20934,44 @@ impl GameApp {
             }
             Screen::Access => {
                 let tt = self.tooltip_lines();
-                self.ui.settings_screen(
-                    &self.widgets,
-                    self.hover,
-                    "ACCESSIBILITY SETTINGS",
-                    &tt,
-                );
+                self.ui
+                    .settings_screen(&self.widgets, self.hover, "ACCESSIBILITY SETTINGS", &tt);
                 self.ui_dump_if_asked();
                 return;
             }
             // Round 14: the new settings sub-screens
             Screen::MusicSound => {
                 let tt = self.tooltip_lines();
-                self.ui.settings_screen(
-                    &self.widgets,
-                    self.hover,
-                    "MUSIC & SOUND",
-                    &tt,
-                );
+                self.ui
+                    .settings_screen(&self.widgets, self.hover, "MUSIC & SOUND", &tt);
                 self.ui_dump_if_asked();
                 return;
             }
             Screen::Controls => {
                 let tt = self.tooltip_lines();
-                self.ui.settings_screen(
-                    &self.widgets,
-                    self.hover,
-                    "CONTROLS",
-                    &tt,
-                );
+                self.ui
+                    .settings_screen(&self.widgets, self.hover, "CONTROLS", &tt);
                 self.ui_dump_if_asked();
                 return;
             }
             Screen::Language => {
                 let tt = self.tooltip_lines();
-                self.ui.settings_screen(
-                    &self.widgets,
-                    self.hover,
-                    "LANGUAGE  (ENGLISH ONLY)",
-                    &tt,
-                );
+                self.ui
+                    .settings_screen(&self.widgets, self.hover, "LANGUAGE  (ENGLISH ONLY)", &tt);
                 self.ui_dump_if_asked();
                 return;
             }
             Screen::ChatSettings => {
                 let tt = self.tooltip_lines();
-                self.ui.settings_screen(
-                    &self.widgets,
-                    self.hover,
-                    "CHAT SETTINGS",
-                    &tt,
-                );
+                self.ui
+                    .settings_screen(&self.widgets, self.hover, "CHAT SETTINGS", &tt);
                 self.ui_dump_if_asked();
                 return;
             }
             Screen::Skin => {
                 let tt = self.tooltip_lines();
-                self.ui.settings_screen(
-                    &self.widgets,
-                    self.hover,
-                    "SKIN CUSTOMIZATION",
-                    &tt,
-                );
+                self.ui
+                    .settings_screen(&self.widgets, self.hover, "SKIN CUSTOMIZATION", &tt);
                 self.ui_dump_if_asked();
                 return;
             }
@@ -20191,11 +21057,7 @@ impl GameApp {
         // cross-check rule.
         if !self.mode.invulnerable() {
             use vc_gameplay::effects::EffectKind;
-            let hunger_poisoned = self
-                .player
-                .effects
-                .amplifier(EffectKind::Hunger)
-                .is_some();
+            let hunger_poisoned = self.player.effects.amplifier(EffectKind::Hunger).is_some();
             let regen = self
                 .player
                 .effects
@@ -20215,9 +21077,7 @@ impl GameApp {
                 armor: self.player.armor_points,
                 // hearts shake while regenerating / hurt / at low
                 // health (clean-room; audit §3)
-                hearts_jitter: regen
-                    || self.player.hurt_t > 0.0
-                    || self.player.health <= 4.0,
+                hearts_jitter: regen || self.player.hurt_t > 0.0 || self.player.health <= 4.0,
                 hunger_poisoned,
                 tick_phase: (self.sim.ticks & 1) as i32,
             };
@@ -20262,7 +21122,8 @@ impl GameApp {
         if self.world.dimension == vc_world::world::Dimension::End {
             if let Some(d) = self.sim.dragon.dragon.as_ref() {
                 if d.dying.is_none() {
-                    self.ui.boss_bar(d.health / vc_gameplay::dragon::DRAGON_HEALTH);
+                    self.ui
+                        .boss_bar(d.health / vc_gameplay::dragon::DRAGON_HEALTH);
                 }
             }
         }
@@ -20277,7 +21138,8 @@ impl GameApp {
                     let frac = (w.phase_t as f32) / (vc_gameplay::wither::CHARGE_TICKS as f32);
                     self.ui.boss_bar(frac.clamp(0.0, 1.0));
                 } else {
-                    self.ui.boss_bar(w.health / vc_gameplay::wither::WITHER_HEALTH);
+                    self.ui
+                        .boss_bar(w.health / vc_gameplay::wither::WITHER_HEALTH);
                 }
             }
         }
@@ -20335,9 +21197,9 @@ impl GameApp {
         // the renderer never borrows game state.
         if self.container.is_some() {
             let view = self.container_view();
-            let g = self
-                .ui
-                .container_screen(&view, self.cursor, &self.atlas, self.advanced_tooltips);
+            let g =
+                self.ui
+                    .container_screen(&view, self.cursor, &self.atlas, self.advanced_tooltips);
             self.container_geom = Some(g);
         } else {
             self.container_geom = None;
@@ -20493,7 +21355,11 @@ impl GameApp {
             if w != vc_gameplay::weather::Weather::Clear {
                 let f = self.weather.sky_factor();
                 day_light *= f;
-                let gray = [fog[0] * 0.35 + 0.25, fog[1] * 0.35 + 0.25, fog[2] * 0.38 + 0.27];
+                let gray = [
+                    fog[0] * 0.35 + 0.25,
+                    fog[1] * 0.35 + 0.25,
+                    fog[2] * 0.38 + 0.27,
+                ];
                 let storm = if w == vc_gameplay::weather::Weather::Thunder {
                     1.0
                 } else {
@@ -20571,8 +21437,7 @@ impl GameApp {
             }
             // settings sub-screens ride the same treatment as Options
             // (panorama when the menu tree was opened from the title)
-            Screen::Video | Screen::Engine | Screen::Packs | Screen::Access
-            | Screen::Shaders => {
+            Screen::Video | Screen::Engine | Screen::Packs | Screen::Access | Screen::Shaders => {
                 if self.options_from == Screen::Title {
                     panorama = Some(pano_view);
                 }
@@ -20710,15 +21575,27 @@ impl GameApp {
             // Phase 2 + entity-models round: modeled mobs draw as
             // jointed 3D boxes (bone/joint hierarchy — view_dir drives
             // the painter back-to-front face order); the rest keep the
-            // billboard sprite path
-            vc_gameplay::mobs::build_vertices(
+            // billboard sprite path.
+            // 2026-09-20: the modern (1.17+) Entity Distance — mobs
+            // beyond render_distance*16*entity_distance from the camera
+            // skip the build entirely (the honest wiring: 100% = the
+            // pre-option full-distance behavior)
+            let ent_eye = {
+                let e = self.player.eye();
+                [e.x, e.y, e.z]
+            };
+            let ent_max =
+                self.settings.render_distance.max(2) as f32 * 16.0 * self.settings.entity_distance;
+            vc_gameplay::mobs::build_vertices_culled(
                 &self.sim.mobs.list,
                 right,
                 dir,
+                ent_eye,
+                ent_max,
                 &mut self.particle_verts,
             );
             // vanilla Entity Shadows: soft ground quads under the mobs
-            // (same blended billboard pipeline)
+            // (same blended billboard pipeline — same Entity Distance gate)
             if self.settings.entity_shadows {
                 self.push_mob_shadows();
             }
@@ -21501,7 +22378,7 @@ fn report_datapacks(loaded: &vc_pack::datapack::LoadedData) {
 
 #[cfg(test)]
 mod settings_tests {
-    use super::{Container, KeyBinds, Settings, GameApp};
+    use super::{Container, GameApp, KeyBinds, Settings};
 
     /// The vanilla 1.16.5 Video Settings screen: the EXACT option set —
     /// the full-width Render Distance slider, four two-column cycling
@@ -21530,30 +22407,53 @@ mod settings_tests {
         ] {
             assert!(ids.contains(&wanted), "video screen missing {wanted}");
         }
-        // 2026-09-20 round: the vanilla 11 options + Done + ONE disclosed
-        // engine extra — the OptiFine/Iris-style SHADERS... entry (the
-        // owner's call: modern extra options are welcome; the row is the
-        // only addition, full-width under Biome Blend)
+        // 2026-09-20 round: the vanilla 11 options + Done + the disclosed
+        // engine extras the owner welcomes — the OptiFine/Iris-style
+        // SHADERS... entry AND the modern (1.17+) ENTITY DISTANCE slider
+        // ("newer versions have much more options which can be great");
+        // both full-width under Biome Blend, Shaders below Entity Distance
         assert!(
             ids.contains(&vc_render::ui::ID_OPT_SHADERS),
             "the SHADERS... entry exists"
         );
-        assert_eq!(ids.len(), 13, "vanilla video 11 + shaders + done");
+        assert!(
+            ids.contains(&vc_render::ui::ID_OPT_ENTDIST),
+            "the ENTITY DISTANCE slider exists"
+        );
+        assert_eq!(ids.len(), 14, "vanilla video 11 + entdist + shaders + done");
         // vanilla proportions
-        let rd = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_RD).unwrap();
+        let rd = ws
+            .iter()
+            .find(|w| w.id == vc_render::ui::ID_OPT_RD)
+            .unwrap();
         assert_eq!((rd.x, rd.y, rd.w, rd.h), (248, 72, 465, 30));
-        let g = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_GRAPHICS).unwrap();
+        let g = ws
+            .iter()
+            .find(|w| w.id == vc_render::ui::ID_OPT_GRAPHICS)
+            .unwrap();
         assert_eq!((g.x, g.y, g.w, g.h), (248, 108, 225, 30));
-        let sl = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_SMOOTH).unwrap();
+        let sl = ws
+            .iter()
+            .find(|w| w.id == vc_render::ui::ID_OPT_SMOOTH)
+            .unwrap();
         assert_eq!((sl.x, sl.y), (487, 108), "right column");
-        // the shaders row: full-width, under Biome Blend
+        // the entity-distance row: full-width, directly under Biome Blend
+        let ed = ws
+            .iter()
+            .find(|w| w.id == vc_render::ui::ID_OPT_ENTDIST)
+            .unwrap();
+        assert_eq!((ed.x, ed.y, ed.w, ed.h), (248, 324, 465, 30));
+        // the shaders row: full-width, under Entity Distance
         let sh = ws
             .iter()
             .find(|w| w.id == vc_render::ui::ID_OPT_SHADERS)
             .unwrap();
-        assert_eq!((sh.x, sh.y, sh.w, sh.h), (248, 324, 465, 30));
+        assert_eq!((sh.x, sh.y, sh.w, sh.h), (248, 360, 465, 30));
         // the vanilla unlabeled Brightness slider
-        let b = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_BRIGHT).unwrap();
+        let b = ws
+            .iter()
+            .find(|w| w.id == vc_render::ui::ID_OPT_BRIGHT)
+            .unwrap();
         match &b.kind {
             vc_render::ui::WidgetKind::Slider { label, .. } => assert_eq!(label, ""),
             _ => panic!("brightness is a slider"),
@@ -21565,10 +22465,7 @@ mod settings_tests {
     /// Video; the selection marks exactly one row
     #[test]
     fn shader_screen_layout_and_selection() {
-        let packs: Vec<String> = vec![
-            "BSL-v8".to_string(),
-            "SEUS-Renewed".to_string(),
-        ];
+        let packs: Vec<String> = vec!["BSL-v8".to_string(), "SEUS-Renewed".to_string()];
         // selection on a pack row
         let ws = vc_render::ui::layout_shaders(&packs, Some("SEUS-Renewed"), false);
         let ids: Vec<u16> = ws.iter().map(|w| w.id).collect();
@@ -21663,14 +22560,27 @@ mod settings_tests {
     #[test]
     fn gui_scale_scales_around_center() {
         let mut ws = vc_render::ui::layout_video();
-        let before = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_GRAPHICS).unwrap().clone();
+        let before = ws
+            .iter()
+            .find(|w| w.id == vc_render::ui::ID_OPT_GRAPHICS)
+            .unwrap()
+            .clone();
         vc_render::ui::scale_widgets(&mut ws, 0.72);
-        let after = ws.iter().find(|w| w.id == vc_render::ui::ID_OPT_GRAPHICS).unwrap();
+        let after = ws
+            .iter()
+            .find(|w| w.id == vc_render::ui::ID_OPT_GRAPHICS)
+            .unwrap();
         // center (480,270) stays fixed; distances shrink by 0.72 (the
         // scale_widgets rounding, mirrored exactly)
-        assert_eq!((480.0 + (before.x - 480) as f32 * 0.72).round() as i32, after.x);
+        assert_eq!(
+            (480.0 + (before.x - 480) as f32 * 0.72).round() as i32,
+            after.x
+        );
         assert_eq!((before.w as f32 * 0.72).round() as i32, after.w);
-        assert_eq!((270.0 + (before.y - 270) as f32 * 0.72).round() as i32, after.y);
+        assert_eq!(
+            (270.0 + (before.y - 270) as f32 * 0.72).round() as i32,
+            after.y
+        );
     }
 
     /// Round 10 — the vanilla integer GUI-scale AUTO formula, pinned to
@@ -21683,27 +22593,44 @@ mod settings_tests {
     /// wiki wins (research audit round-10).
     #[test]
     fn gui_scale_auto_matches_vanilla() {
-        let s = Settings { gui_scale: 0, ..Settings::default() };
+        let s = Settings {
+            gui_scale: 0,
+            ..Settings::default()
+        };
         // (w, h, expected available/auto scale)
         for (w, h, want) in [
-            (854u32, 480u32, 2u32),   // min(2, 2)
-            (960, 540, 2),            // min(3, 2)
-            (1280, 720, 3),           // min(4, 3)
-            (1440, 810, 3),           // min(4, 3)
-            (1920, 1080, 4),          // min(6, 4)
-            (2560, 1440, 6),          // min(8, 6) — no cap
-            (3840, 2160, 9),          // min(12, 9) — no cap
-            (300, 200, 1),            // clamped to 1
+            (854u32, 480u32, 2u32), // min(2, 2)
+            (960, 540, 2),          // min(3, 2)
+            (1280, 720, 3),         // min(4, 3)
+            (1440, 810, 3),         // min(4, 3)
+            (1920, 1080, 4),        // min(6, 4)
+            (2560, 1440, 6),        // min(8, 6) — no cap
+            (3840, 2160, 9),        // min(12, 9) — no cap
+            (300, 200, 1),          // clamped to 1
         ] {
             assert_eq!(s.gui_scale_resolved(w, h), want, "{w}x{h}");
             assert_eq!(Settings::gui_scale_available(w, h), want, "{w}x{h}");
         }
         // manual settings clamp to the available max (vanilla loop)
-        let s4 = Settings { gui_scale: 4, ..Settings::default() };
-        assert_eq!(s4.gui_scale_resolved(1280, 720), 3, "manual clamps to available");
+        let s4 = Settings {
+            gui_scale: 4,
+            ..Settings::default()
+        };
+        assert_eq!(
+            s4.gui_scale_resolved(1280, 720),
+            3,
+            "manual clamps to available"
+        );
         assert_eq!(s4.gui_scale_resolved(1920, 1080), 4);
-        let s2 = Settings { gui_scale: 2, ..Settings::default() };
-        assert_eq!(s2.gui_scale_resolved(3840, 2160), 2, "manual below available stays");
+        let s2 = Settings {
+            gui_scale: 2,
+            ..Settings::default()
+        };
+        assert_eq!(
+            s2.gui_scale_resolved(3840, 2160),
+            2,
+            "manual below available stays"
+        );
     }
 
     /// Round 10 — the live logical GUI space uses the integer scale:
@@ -21716,7 +22643,10 @@ mod settings_tests {
         let mut ui = vc_render::ui::UiCanvas::new();
         assert_eq!((ui.live_w, ui.live_h), (960, 540), "reference default");
         // 1920×1080 @ Auto(4): the reference grid exactly
-        let s = Settings { gui_scale: 0, ..Settings::default() };
+        let s = Settings {
+            gui_scale: 0,
+            ..Settings::default()
+        };
         let sc = s.gui_scale_resolved(1920, 1080);
         assert_eq!(sc, 4);
         let cw = ((2.0 * 1920.0) / sc as f32).ceil() as usize;
@@ -21740,7 +22670,7 @@ mod settings_tests {
         let i = (479usize * 854 + 853) * 4;
         assert_eq!(&ui.px[i..i + 4], &[1, 2, 3, 4]);
         ui.set(854, 100, [9, 9, 9, 9]); // out of live bounds — dropped
-        // resize is a no-op at the same size (no churn on every frame)
+                                        // resize is a no-op at the same size (no churn on every frame)
         let cap = ui.px.capacity();
         ui.resize(854, 480);
         assert_eq!(ui.px.capacity(), cap);
@@ -21753,13 +22683,19 @@ mod settings_tests {
     fn live_ui_size_hints_recenter_layouts() {
         // pause's BACK TO GAME is a live-centered 320-wide button
         let ws = vc_render::ui::layout_pause();
-        let b = ws.iter().find(|w| w.id == vc_render::ui::ID_PAUSE_BACK).unwrap();
+        let b = ws
+            .iter()
+            .find(|w| w.id == vc_render::ui::ID_PAUSE_BACK)
+            .unwrap();
         assert_eq!(b.x, (960 - 320) / 2, "reference centering");
         assert_eq!(b.w, 320);
         // shrink the live width: the row re-centers in the narrower space
         vc_render::ui::set_live_ui_size(854, 480);
         let ws = vc_render::ui::layout_pause();
-        let b = ws.iter().find(|w| w.id == vc_render::ui::ID_PAUSE_BACK).unwrap();
+        let b = ws
+            .iter()
+            .find(|w| w.id == vc_render::ui::ID_PAUSE_BACK)
+            .unwrap();
         assert_eq!(b.x, (854 - 320) / 2, "re-centered at 854");
         assert_eq!(b.w, 320, "size unchanged — vanilla px stay put");
         // restore for the other tests
@@ -21854,7 +22790,9 @@ mod settings_tests {
         // 10 sliders + the DONE button
         let sliders: Vec<&vc_render::ui::Widget> = ws
             .iter()
-            .filter(|w| (vc_render::ui::ID_SND_BASE..vc_render::ui::ID_SND_BASE + 10).contains(&w.id))
+            .filter(|w| {
+                (vc_render::ui::ID_SND_BASE..vc_render::ui::ID_SND_BASE + 10).contains(&w.id)
+            })
             .collect();
         assert_eq!(sliders.len(), 10, "ten category sliders");
         assert!(ws.iter().any(|w| w.id == vc_render::ui::ID_SND_DONE));
@@ -21886,7 +22824,10 @@ mod settings_tests {
             KeyBinds::key_from_str("ArrowUp"),
             Some(winit::keyboard::KeyCode::ArrowUp)
         );
-        assert_eq!(KeyBinds::key_from_str("KeyW"), Some(winit::keyboard::KeyCode::KeyW));
+        assert_eq!(
+            KeyBinds::key_from_str("KeyW"),
+            Some(winit::keyboard::KeyCode::KeyW)
+        );
         assert_eq!(KeyBinds::key_from_str("Nonsense"), None);
         // reset (the Controls screen's RESET KEYS assigns the defaults)
         b = KeyBinds::default();
@@ -21906,15 +22847,22 @@ mod settings_tests {
         let ws = vc_render::ui::layout_controls(&labels);
         // row 0 = the header (one wide disabled button); rows 1-2 = the
         // name + key button pair (same id, key button on the right)
-        let hdr = ws.iter().find(|w| w.id == vc_render::ui::ID_CTRL_BIND_BASE).unwrap();
+        let hdr = ws
+            .iter()
+            .find(|w| w.id == vc_render::ui::ID_CTRL_BIND_BASE)
+            .unwrap();
         match &hdr.kind {
             vc_render::ui::WidgetKind::Button { enabled, .. } => {
                 assert!(!enabled, "headers are not clickable")
             }
             _ => panic!("header is a button"),
         }
-        let name = ws.iter().find(|w| w.id == vc_render::ui::ID_CTRL_BIND_BASE + 1).unwrap();
-        let key = ws.iter()
+        let name = ws
+            .iter()
+            .find(|w| w.id == vc_render::ui::ID_CTRL_BIND_BASE + 1)
+            .unwrap();
+        let key = ws
+            .iter()
             .filter(|w| w.id == vc_render::ui::ID_CTRL_BIND_BASE + 1)
             .nth(1)
             .unwrap();
@@ -21944,7 +22892,11 @@ mod settings_tests {
         assert!((r.acc_fov_effects - 0.25).abs() < 1e-3);
         assert_eq!(r.binds.forward, winit::keyboard::KeyCode::ArrowUp);
         assert_eq!(r.binds.inventory, winit::keyboard::KeyCode::KeyI);
-        assert_eq!(r.binds.back, KeyBinds::default().back, "untouched binds keep defaults");
+        assert_eq!(
+            r.binds.back,
+            KeyBinds::default().back,
+            "untouched binds keep defaults"
+        );
     }
 
     /// UI_DUMP_DIR=<dir> renders every settings screen on the CPU canvas
@@ -22121,12 +23073,40 @@ mod settings_tests {
         // "(none)" deserializes back to no-pack
         s.shader_pack = Some("(none)".to_string());
         let r4 = Settings::deserialize(&s.serialize());
-        assert!(r4.shader_pack.is_none(), "(none) persists as the empty selection");
+        assert!(
+            r4.shader_pack.is_none(),
+            "(none) persists as the empty selection"
+        );
         // default = no pack, labpbr off
         let d = Settings::default();
         let rd = Settings::deserialize(&d.serialize());
         assert!(rd.shader_pack.is_none());
         assert!(!rd.labpbr);
+    }
+
+    /// 2026-09-20 round: the modern (1.17+) Entity Distance — roundtrip
+    /// via the vanilla `entityDistance` key, clamped range, default 1.0
+    /// (the pre-option behavior), and byte-compatibility (the key only
+    /// serializes when it differs from the default).
+    #[test]
+    fn entity_distance_roundtrip_and_default() {
+        let mut s = Settings::default();
+        assert_eq!(s.entity_distance, 1.0, "default = 100% (full distance)");
+        // default NOT serialized (pre-2026-09-20 files stay identical)
+        assert!(!s.serialize().contains("entityDistance="));
+        // a dragged value roundtrips
+        s.entity_distance = 0.625;
+        let r = Settings::deserialize(&s.serialize());
+        assert!((r.entity_distance - 0.625).abs() < 1e-4);
+        assert!(s.serialize().contains("entityDistance="));
+        // out-of-range clamps to the 0.5..1.0 window
+        let lo = Settings::deserialize("rd=12;entityDistance=0.1");
+        assert_eq!(lo.entity_distance, 0.5);
+        let hi = Settings::deserialize("rd=12;entityDistance=2.0");
+        assert_eq!(hi.entity_distance, 1.0);
+        // garbage falls back to the default
+        let bad = Settings::deserialize("rd=12;entityDistance=abc");
+        assert_eq!(bad.entity_distance, 1.0);
     }
 
     /// legacy settings strings (Phase 5 era) keep parsing; the Phase 6 keys
@@ -22340,8 +23320,12 @@ mod settings_tests {
     #[test]
     fn saved_hotbars_round_trip() {
         let mut s = Settings::default();
-        assert!(s.saved_hotbars.iter().all(|row| row.iter().all(|&(b, c)| b == 0 && c == 0)),
-            "all rows start empty (the paper placeholders)");
+        assert!(
+            s.saved_hotbars
+                .iter()
+                .all(|row| row.iter().all(|&(b, c)| b == 0 && c == 0)),
+            "all rows start empty (the paper placeholders)"
+        );
         // a saved row: dirt x64 in slot 0, empty elsewhere
         s.saved_hotbars[0][0] = (3, 64);
         // a full row of 9
@@ -22349,18 +23333,34 @@ mod settings_tests {
             s.saved_hotbars[2][slot] = (5, 7);
         }
         let text = s.serialize();
-        assert!(text.contains("hotbar0=3:64,"), "row 0 persists: {}", &text[text.find("hotbar0").unwrap()..text.find("hotbar0").unwrap() + 40]);
+        assert!(
+            text.contains("hotbar0=3:64,"),
+            "row 0 persists: {}",
+            &text[text.find("hotbar0").unwrap()..text.find("hotbar0").unwrap() + 40]
+        );
         let back = Settings::deserialize(&text);
         assert_eq!(back.saved_hotbars[0][0], (3, 64));
-        assert_eq!(back.saved_hotbars[0][1], (0, 0), "the empty cells stay empty");
+        assert_eq!(
+            back.saved_hotbars[0][1],
+            (0, 0),
+            "the empty cells stay empty"
+        );
         for slot in 0..9 {
             assert_eq!(back.saved_hotbars[2][slot], (5, 7));
         }
-        assert_eq!(back.saved_hotbars[8][0], (0, 0), "untouched rows stay empty");
+        assert_eq!(
+            back.saved_hotbars[8][0],
+            (0, 0),
+            "untouched rows stay empty"
+        );
         // junk input does not panic and leaves defaults
         let junk = Settings::deserialize("hotbar3=garbage;hotbar99=1:1");
-        assert!(junk.saved_hotbars.iter().all(|r| r.iter().all(|&(b, c)| b == 0 && c == 0)),
-            "malformed rows fall back to empty");
+        assert!(
+            junk.saved_hotbars
+                .iter()
+                .all(|r| r.iter().all(|&(b, c)| b == 0 && c == 0)),
+            "malformed rows fall back to empty"
+        );
     }
 }
 
@@ -22571,7 +23571,10 @@ mod auditfix_food_tests {
                 assert_eq!(y, 65, "the only valid standing row above the floor");
             }
         }
-        assert!(warped >= 80, "the flat-floor warp rate (dy=0 is 1/17), got {warped}/200");
+        assert!(
+            warped >= 80,
+            "the flat-floor warp rate (dy=0 is 1/17), got {warped}/200"
+        );
         // the failure case: an all-solid world has no valid destination
         let mut solid = World::new(12);
         let mut sc = vc_chunk::chunk::Chunk::empty();
@@ -22599,7 +23602,11 @@ mod auditfix_food_tests {
         // column up + the saturation column added)
         // the cooked-meat family
         assert_eq!(food_values(STEAK), (8, 12.8), "hunger 8 / sat 12.8");
-        assert_eq!(food_values(COOKED_PORKCHOP), (8, 12.8), "hunger 8 / sat 12.8");
+        assert_eq!(
+            food_values(COOKED_PORKCHOP),
+            (8, 12.8),
+            "hunger 8 / sat 12.8"
+        );
         assert_eq!(food_values(COOKED_CHICKEN), (6, 7.2), "hunger 6 / sat 7.2");
         assert_eq!(food_values(COOKED_MUTTON), (6, 9.6), "hunger 6 / sat 9.6");
         assert_eq!(food_values(COOKED_COD), (5, 6.0), "hunger 5 / sat 6.0");
@@ -22607,7 +23614,11 @@ mod auditfix_food_tests {
         // the kitchen chain
         assert_eq!(food_values(APPLE), (4, 2.4), "hunger 4 / sat 2.4");
         assert_eq!(food_values(MUSHROOM_STEW), (6, 7.2), "hunger 6 / sat 7.2");
-        assert_eq!(food_values(RABBIT_STEW), (10, 12.0), "hunger 10 — the top food");
+        assert_eq!(
+            food_values(RABBIT_STEW),
+            (10, 12.0),
+            "hunger 10 — the top food"
+        );
         // ---- the sweep-2 rows (VERIFIED live 2026-09-09, re-verified
         // 2026-09-18: the Rotten_Flesh/Spider_Eye/Chorus_Fruit/
         // Golden_Apple/Melon_Slice rows) ----
@@ -22621,7 +23632,11 @@ mod auditfix_food_tests {
         // convention — superseded, audit §6) ----
         assert_eq!(food_values(BEEF), (3, 1.8), "raw beef: hunger 3 / sat 1.8");
         assert_eq!(food_values(PORKCHOP), (3, 1.8), "raw porkchop");
-        assert_eq!(food_values(CHICKEN_RAW), (2, 1.2), "raw chicken: hunger 2 / sat 1.2");
+        assert_eq!(
+            food_values(CHICKEN_RAW),
+            (2, 1.2),
+            "raw chicken: hunger 2 / sat 1.2"
+        );
         assert_eq!(food_values(MUTTON), (2, 1.2), "raw mutton");
         assert_eq!(food_values(RAW_FISH), (2, 0.4), "raw cod");
         assert_eq!(food_values(RAW_SALMON), (2, 0.4), "raw salmon");
@@ -22631,7 +23646,11 @@ mod auditfix_food_tests {
         assert_eq!(food_values(POTATO), (1, 0.6), "potato");
         assert_eq!(food_values(BAKED_POTATO), (5, 6.0), "baked potato");
         assert_eq!(food_values(CARROT), (3, 3.6), "carrot");
-        assert_eq!(food_values(PUMPKIN_PIE), (8, 4.8), "pie: hunger 8 / sat 4.8");
+        assert_eq!(
+            food_values(PUMPKIN_PIE),
+            (8, 4.8),
+            "pie: hunger 8 / sat 4.8"
+        );
         assert_eq!(food_values(GOLDEN_CARROT), (6, 14.4), "golden carrot");
         assert_eq!(food_values(BREAD), (5, 6.0), "bread");
         assert_eq!(food_values(BEETROOT), (1, 1.2), "beetroot");
@@ -22641,8 +23660,15 @@ mod auditfix_food_tests {
         assert_eq!(food_values(RAW_RABBIT), (3, 1.8), "raw rabbit");
         assert_eq!(food_values(COOKED_RABBIT), (5, 6.0), "cooked rabbit");
         assert_eq!(food_values(PUFFERFISH), (1, 0.2), "the pufferfish eat path");
-        assert_eq!(food_values(HONEY_BOTTLE), (6, 1.2), "the honey-bottle drink path");
-        assert!(is_food(ROTTEN_FLESH), "edible since Phase 2 — value now correct");
+        assert_eq!(
+            food_values(HONEY_BOTTLE),
+            (6, 1.2),
+            "the honey-bottle drink path"
+        );
+        assert!(
+            is_food(ROTTEN_FLESH),
+            "edible since Phase 2 — value now correct"
+        );
         assert!(is_food(SPIDER_EYE), "the 1.0 spider eye now edible");
         assert!(is_food(CHORUS_FRUIT), "the 1.9 chorus fruit now edible");
         assert!(is_food(GOLDEN_APPLE), "the golden apple now edible");
@@ -22666,14 +23692,28 @@ mod auditfix_food_tests {
         }
         assert_eq!(food_values(BEETROOT), (1, 1.2), "hunger 1 / sat 1.2");
         assert_eq!(food_values(BEETROOT_SOUP), (6, 7.2), "hunger 6 / sat 7.2");
-        assert_eq!(food_values(POISONOUS_POTATO), (2, 1.2), "hunger 2 / sat 1.2");
+        assert_eq!(
+            food_values(POISONOUS_POTATO),
+            (2, 1.2),
+            "hunger 2 / sat 1.2"
+        );
         // the cookie bug fix (hunger 2; was falling to the 4.0 default)
         assert_eq!(food_values(COOKIE), (2, 0.4), "hunger 2 — the 1.12 cookie");
         // and everything is actually food now
         for b in [
-            STEAK, COOKED_PORKCHOP, COOKED_CHICKEN, COOKED_MUTTON, COOKED_COD,
-            COOKED_SALMON, APPLE, MUSHROOM_STEW, RABBIT_STEW, BEETROOT,
-            BEETROOT_SOUP, POISONOUS_POTATO, COOKIE,
+            STEAK,
+            COOKED_PORKCHOP,
+            COOKED_CHICKEN,
+            COOKED_MUTTON,
+            COOKED_COD,
+            COOKED_SALMON,
+            APPLE,
+            MUSHROOM_STEW,
+            RABBIT_STEW,
+            BEETROOT,
+            BEETROOT_SOUP,
+            POISONOUS_POTATO,
+            COOKIE,
         ] {
             assert!(is_food(b), "block {b} must be food");
         }
@@ -22714,17 +23754,20 @@ mod v111_tests {
         apply_totem_revival(&mut p);
         assert!((p.health - 1.0).abs() < 1e-6, "restores 1 HP");
         assert_eq!(
-            p.effects.amplifier(vc_gameplay::effects::EffectKind::Poison),
+            p.effects
+                .amplifier(vc_gameplay::effects::EffectKind::Poison),
             None,
             "removes all existing status effects"
         );
         assert_eq!(
-            p.effects.amplifier(vc_gameplay::effects::EffectKind::Regeneration),
+            p.effects
+                .amplifier(vc_gameplay::effects::EffectKind::Regeneration),
             Some(1),
             "Regeneration II (amplifier 1)"
         );
         assert_eq!(
-            p.effects.amplifier(vc_gameplay::effects::EffectKind::Absorption),
+            p.effects
+                .amplifier(vc_gameplay::effects::EffectKind::Absorption),
             Some(1),
             "Absorption II (amplifier 1)"
         );
@@ -22745,7 +23788,10 @@ mod v111_tests {
             Some(5 * 20),
             "Absorption II 5 s"
         );
-        assert!((p.absorption - 8.0).abs() < 1e-6, "Absorption II = 8 points");
+        assert!(
+            (p.absorption - 8.0).abs() < 1e-6,
+            "Absorption II = 8 points"
+        );
     }
 
     /// the absorption buffer eats damage before health (VERIFIED
@@ -22845,14 +23891,14 @@ mod v111_tests {
         let lines = state_prop_lines(65);
         assert_eq!(
             lines,
-            vec![
-                "facing: north".to_string(),
-                "half: bottom".to_string()
-            ],
+            vec!["facing: north".to_string(), "half: bottom".to_string()],
             "one line per blockstate property"
         );
         // single-property state: Redstone Lamp[lit=true]
-        assert_eq!(state_prop_lines(REDSTONE_LAMP_LIT), vec!["lit: true".to_string()]);
+        assert_eq!(
+            state_prop_lines(REDSTONE_LAMP_LIT),
+            vec!["lit: true".to_string()]
+        );
         // a state with no properties yields nothing
         let plain = state_prop_lines(STONE);
         assert!(plain.is_empty(), "no-props block has no lines");
@@ -22892,7 +23938,6 @@ mod v111_tests {
 mod farm_game_tests {
     use super::*;
 
-
     /// bread carries hunger 5 / saturation 6 (VERIFIED w/Bread §Food:
     /// "Restores 5 hunger points and 6 saturation") — Round 17: the
     /// direct hunger/2 heal is retired, the pair feeds FoodData
@@ -22914,7 +23959,10 @@ mod farm_game_tests {
         h.saturation = 0.0;
         h.eat(food_values(BREAD).0, food_values(BREAD).1);
         assert_eq!(h.food, 12, "7 + 5 = 12");
-        assert!((h.saturation - 6.0).abs() < 1e-6, "saturation 6 rides the food");
+        assert!(
+            (h.saturation - 6.0).abs() < 1e-6,
+            "saturation 6 rides the food"
+        );
     }
 }
 
@@ -22992,11 +24040,40 @@ mod round14b_settings_tests {
         // the generic eat path: every is_food row must have nutrition
         // > 0 AND a saturation value from the wiki tables
         let edibles = [
-            BEEF, PORKCHOP, MUTTON, CHICKEN_RAW, ROTTEN_FLESH, RAW_FISH, RAW_SALMON, CLOWNFISH,
-            RAW_RABBIT, COOKED_RABBIT, POTATO, BAKED_POTATO, CARROT, PUMPKIN_PIE, GOLDEN_CARROT,
-            SWEET_BERRIES, BREAD, STEAK, COOKED_PORKCHOP, COOKED_CHICKEN, COOKED_MUTTON,
-            COOKED_COD, COOKED_SALMON, APPLE, MUSHROOM_STEW, RABBIT_STEW, BEETROOT, BEETROOT_SOUP,
-            POISONOUS_POTATO, COOKIE, SPIDER_EYE, CHORUS_FRUIT, GOLDEN_APPLE, MELON_SLICE,
+            BEEF,
+            PORKCHOP,
+            MUTTON,
+            CHICKEN_RAW,
+            ROTTEN_FLESH,
+            RAW_FISH,
+            RAW_SALMON,
+            CLOWNFISH,
+            RAW_RABBIT,
+            COOKED_RABBIT,
+            POTATO,
+            BAKED_POTATO,
+            CARROT,
+            PUMPKIN_PIE,
+            GOLDEN_CARROT,
+            SWEET_BERRIES,
+            BREAD,
+            STEAK,
+            COOKED_PORKCHOP,
+            COOKED_CHICKEN,
+            COOKED_MUTTON,
+            COOKED_COD,
+            COOKED_SALMON,
+            APPLE,
+            MUSHROOM_STEW,
+            RABBIT_STEW,
+            BEETROOT,
+            BEETROOT_SOUP,
+            POISONOUS_POTATO,
+            COOKIE,
+            SPIDER_EYE,
+            CHORUS_FRUIT,
+            GOLDEN_APPLE,
+            MELON_SLICE,
         ];
         for &b in &edibles {
             assert!(is_food(b), "{b} must be edible (the generic path)");
@@ -23007,8 +24084,14 @@ mod round14b_settings_tests {
         // the dedicated branches: pufferfish + honey bottle are NOT in
         // is_food (their eat paths are the poison-payload / drink
         // branches) but still carry their wiki pairs
-        assert!(!is_food(PUFFERFISH), "the pufferfish poisons through its own branch");
-        assert!(!is_food(HONEY_BOTTLE), "the honey bottle drinks through its own branch");
+        assert!(
+            !is_food(PUFFERFISH),
+            "the pufferfish poisons through its own branch"
+        );
+        assert!(
+            !is_food(HONEY_BOTTLE),
+            "the honey bottle drinks through its own branch"
+        );
         assert_eq!(food_values(PUFFERFISH), (1, 0.2));
         assert_eq!(food_values(HONEY_BOTTLE), (6, 1.2));
         // a random inedible block stays zero (the match's default)

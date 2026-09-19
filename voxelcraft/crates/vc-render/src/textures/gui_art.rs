@@ -381,10 +381,7 @@ const EFF_SPEED: [&str; 9] = [
     ".........",
     ".........",
 ];
-const PAL_SPEED: [(char, Px); 2] = [
-    ('O', [18, 80, 100, 255]),
-    ('F', [120, 220, 255, 255]),
-];
+const PAL_SPEED: [(char, Px); 2] = [('O', [18, 80, 100, 255]), ('F', [120, 220, 255, 255])];
 
 // CLEAN-ROOM — hand-drawn from scratch (haste: yellow lightning bolt)
 const EFF_HASTE: [&str; 9] = [
@@ -398,10 +395,7 @@ const EFF_HASTE: [&str; 9] = [
     "..OO.....",
     "..O......",
 ];
-const PAL_HASTE: [(char, Px); 2] = [
-    ('O', [96, 74, 10, 255]),
-    ('F', [250, 220, 82, 255]),
-];
+const PAL_HASTE: [(char, Px); 2] = [('O', [96, 74, 10, 255]), ('F', [250, 220, 82, 255])];
 
 // CLEAN-ROOM — hand-drawn from scratch (resistance: grey round shield)
 const EFF_RESIST: [&str; 9] = [
@@ -705,21 +699,34 @@ const BUBBLE_PAL: [(char, Px); 4] = [
 ];
 
 // -------------------------------------------------------- widget chrome --
-// Section 2 chrome values, wiki-verified:
-// VERIFIED https://minecraft.wiki — button body #6C6C6C, top+left 2-px
-// bevel #A0A0A0, bottom+right 2-px #4A4A4A, 1-px outer outline #000000,
-// 1-px inner outline #2A2A2A (rendered at 2x: 2-px/4-px equivalents).
-const BTN_BODY: Px = [0x6C, 0x6C, 0x6C, 255];
-const BTN_BEVEL_LIGHT: Px = [0xA0, 0xA0, 0xA0, 255];
-const BTN_BEVEL_DARK: Px = [0x4A, 0x4A, 0x4A, 255];
+// 2026-09-20 modern-profile round: the FLAT widget look of the
+// current-generation UI family (owner directive: "make it similar to
+// the reference zip's look than the current one — but all legal").
+// CLEAN-ROOM PROVENANCE: the design was re-derived from measured
+// FUNCTIONAL parameters of the reference (a 200x20 three-state sprite:
+// dark body, one light row under the top border, dark shade rows over
+// the bottom border, black 1-px frame; hover = white frame + brighter
+// body; disabled = dark flat body). Colors/borders/opacities are
+// functional design parameters — the PIXELS below are synthesized by
+// this code (own palette values, own deterministic noise) and share
+// zero bytes with the reference (scripts/legal_audit.py re-verifies
+// after every asset round).
+const BTN_BODY: Px = [0x6F, 0x6F, 0x6F, 255];
+const BTN_TOP_LIGHT: Px = [0xAC, 0xAC, 0xAC, 255];
+const BTN_BOTTOM_SHADE: Px = [0x5A, 0x5A, 0x5C, 255];
 const BTN_OUTER: Px = [0x00, 0x00, 0x00, 255];
-const BTN_INNER: Px = [0x2A, 0x2A, 0x2A, 255];
-// hover: #FFFFFF at alpha 51 blended into the body (the quad renderer
-// ALSO has a live tint path; the baked variant keeps the pack-override
-// route looking right)
+// hover: white frame + brightened body (baked for the pack route; the
+// quad renderer ALSO has its live tint path)
+const BTN_HOVER_BODY: Px = [0x76, 0x76, 0x78, 255];
+const BTN_HOVER_TOP: Px = [0xB4, 0xB4, 0xB6, 255];
+const BTN_HOVER_FRAME: Px = [0xFF, 0xFF, 0xFF, 255];
 const HOVER_OVERLAY: Px = [255, 255, 255, 51];
-// disabled: flattened dark body, no bevel highlight
-const BTN_DISABLED_BODY: Px = [0x4C, 0x4C, 0x4C, 235];
+// disabled: dark flat body, black frame, no light row
+const BTN_DISABLED_BODY: Px = [0x2D, 0x2D, 0x2D, 235];
+// the subtle per-pixel noise the modern flat body carries (a ±4 band
+// driven by the deterministic hash — the texture that keeps a large
+// flat button from banding)
+const BTN_NOISE: i32 = 4;
 
 // VERIFIED https://minecraft.wiki — slot body #8B8B8B, top+left 1-px
 // #373737, bottom+right 1-px #FFFFFF (18x18, 1-px buffer around a
@@ -789,46 +796,58 @@ pub fn draw_effect_icon(out: &mut [u8], w: usize, idx: usize) {
 /// so a pack-provided 18x18 slots strip still lands correctly).
 pub fn draw_widget(out: &mut [u8], w: usize, variant: WidgetVariant) {
     match variant {
-        WidgetVariant::ButtonNormal => paint_button(out, w, BTN_BODY, true),
+        WidgetVariant::ButtonNormal => paint_button(out, w, BTN_BODY, BTN_TOP_LIGHT, false),
         // hover: the verified #FFFFFF @ alpha 51 overlay baked into the
         // body (the quad renderer ALSO has a live tint path — this keeps
         // a pack-provided hover variant meaningful on its own)
-        WidgetVariant::ButtonHover => {
-            paint_button(out, w, blend_over(BTN_BODY, HOVER_OVERLAY), true)
+        WidgetVariant::ButtonHover => paint_button(
+            out,
+            w,
+            blend_over(BTN_HOVER_BODY, HOVER_OVERLAY),
+            BTN_HOVER_TOP,
+            true,
+        ),
+        WidgetVariant::ButtonDisabled => {
+            paint_button(out, w, BTN_DISABLED_BODY, BTN_DISABLED_BODY, false)
         }
-        WidgetVariant::ButtonDisabled => paint_button(out, w, BTN_DISABLED_BODY, false),
         WidgetVariant::SlotEmpty => paint_slot(out, w, false),
         WidgetVariant::SlotHover => paint_slot(out, w, true),
         WidgetVariant::Panel => paint_panel(out, w),
     }
 }
 
-/// 20x20 button 9-slice source: flat body, 2-px bevels inset 1 px from
-/// the 1-px outer + 1-px inner outlines (4-px corners total, matching
-/// the 9-slice split the quad renderer uses).
-fn paint_button(out: &mut [u8], w: usize, body: Px, bevel: bool) {
-    fill_rect(out, w, 0, 0, 20, 20, body);
-    if bevel {
-        // top+left light bevel
-        fill_rect(out, w, 2, 2, 16, 2, BTN_BEVEL_LIGHT);
-        fill_rect(out, w, 2, 2, 2, 16, BTN_BEVEL_LIGHT);
-        // bottom+right dark bevel
-        fill_rect(out, w, 2, 16, 16, 2, BTN_BEVEL_DARK);
-        fill_rect(out, w, 16, 2, 2, 16, BTN_BEVEL_DARK);
-    } else {
-        // disabled: single inset flat edge, no highlight
-        fill_rect(out, w, 2, 16, 16, 2, [0x2A, 0x2A, 0x2A, 255]);
-        fill_rect(out, w, 16, 2, 2, 16, [0x2A, 0x2A, 0x2A, 255]);
+/// 20x20 button 9-slice source — the MODERN flat profile (2026-09-20):
+/// black 1-px frame; one light row under the top border; flat body with
+/// a deterministic ±4 noise band; two shade rows over the bottom border.
+/// `hover` swaps the frame to white. The 9-slice split the quad renderer
+/// uses stretches the middle; the borders stay 1-px crisp at any size.
+fn paint_button(out: &mut [u8], w: usize, body: Px, top_light: Px, hover: bool) {
+    let h = out.len() / (w.max(1) * 4);
+    // body + noise band
+    for y in 0..h.min(20) {
+        for x in 0..w.min(20) {
+            let n = (hash2(x as i32 + 71, y as i32 + 13) % (BTN_NOISE as u32 * 2 + 1)) as i32
+                - BTN_NOISE; // -4..=4
+            let o = (y * w + x) * 4;
+            if o + 3 < out.len() {
+                out[o] = (body[0] as i32 + n).clamp(0, 255) as u8;
+                out[o + 1] = (body[1] as i32 + n).clamp(0, 255) as u8;
+                out[o + 2] = (body[2] as i32 + n).clamp(0, 255) as u8;
+                out[o + 3] = body[3];
+            }
+        }
     }
-    // 1-px outer outline + 1-px inner outline
-    fill_rect(out, w, 0, 0, 20, 1, BTN_OUTER);
-    fill_rect(out, w, 0, 19, 20, 1, BTN_OUTER);
-    fill_rect(out, w, 0, 0, 1, 20, BTN_OUTER);
-    fill_rect(out, w, 19, 0, 1, 20, BTN_OUTER);
-    fill_rect(out, w, 1, 1, 18, 1, BTN_INNER);
-    fill_rect(out, w, 1, 18, 18, 1, BTN_INNER);
-    fill_rect(out, w, 1, 1, 1, 18, BTN_INNER);
-    fill_rect(out, w, 18, 1, 1, 18, BTN_INNER);
+    // one light row under the top border (the modern "sheen" line)
+    fill_rect(out, w, 0, 1, 20, 1, top_light);
+    // two shade rows over the bottom border
+    fill_rect(out, w, 0, 17, 20, 1, BTN_BOTTOM_SHADE);
+    fill_rect(out, w, 0, 18, 20, 1, BTN_BOTTOM_SHADE);
+    // 1-px frame: black (or white on hover)
+    let frame = if hover { BTN_HOVER_FRAME } else { BTN_OUTER };
+    fill_rect(out, w, 0, 0, 20, 1, frame);
+    fill_rect(out, w, 0, 19, 20, 1, frame);
+    fill_rect(out, w, 0, 0, 1, 20, frame);
+    fill_rect(out, w, 19, 0, 1, 20, frame);
 }
 
 /// 18x18 slot: light body, dark top+left 1-px, white bottom+right 1-px.
@@ -908,12 +927,7 @@ pub fn draw_hotbar_sel(out: &mut [u8], w: usize) {
 // dirt tile multiplied by 0.25 brightness. Clean-room dirt: position-
 // hashed brown noise (deterministic — same bytes every boot, unlike
 // the world atlas's seeded Rng variant).
-const DIRT_SHADES: [[i32; 3]; 4] = [
-    [134, 96, 67],
-    [121, 85, 58],
-    [148, 109, 77],
-    [110, 78, 52],
-];
+const DIRT_SHADES: [[i32; 3]; 4] = [[134, 96, 67], [121, 85, 58], [148, 109, 77], [110, 78, 52]];
 
 /// Clean-room position-hash noise (deterministic, no Rng state).
 fn hash2(x: i32, y: i32) -> u32 {
@@ -929,12 +943,7 @@ pub fn draw_options_dirt(out: &mut [u8], w: usize) {
     for y in 0..16i32 {
         for x in 0..16i32 {
             let s = DIRT_SHADES[(hash2(x, y) % 4) as usize];
-            let c: Px = [
-                (s[0] / 4) as u8,
-                (s[1] / 4) as u8,
-                (s[2] / 4) as u8,
-                255,
-            ];
+            let c: Px = [(s[0] / 4) as u8, (s[1] / 4) as u8, (s[2] / 4) as u8, 255];
             let idx = (y as usize * w + x as usize) * 4;
             if idx + 3 < out.len() {
                 out[idx] = c[0];
@@ -974,7 +983,11 @@ mod tests {
 
     #[test]
     fn hunger_variants_paint() {
-        for v in [HungerVariant::Empty, HungerVariant::Full, HungerVariant::Half] {
+        for v in [
+            HungerVariant::Empty,
+            HungerVariant::Full,
+            HungerVariant::Half,
+        ] {
             let mut buf = [0u8; 9 * 9 * 4];
             draw_hunger(&mut buf, 9, v);
             assert!(painted(&buf) > 20, "hunger {v:?} painted almost nothing");
@@ -1079,18 +1092,54 @@ mod tests {
     }
 
     #[test]
-    fn button_corner_pixels_match_outline_color() {
-        // VERIFIED chrome: the 1-px outer outline is #000000 — corner
-        // pixels of the 20x20 button source must be exactly that
+    fn button_modern_profile_matches_design() {
+        // 2026-09-20 modern flat profile: 1-px black frame (white on
+        // hover), one light row under the top border, two shade rows
+        // over the bottom border, body = BTN_BODY + the deterministic
+        // ±4 noise band
         let mut buf = [0u8; 20 * 20 * 4];
         draw_widget(&mut buf, 20, WidgetVariant::ButtonNormal);
+        // corners: the black frame
         for (x, y) in [(0usize, 0usize), (19, 0), (0, 19), (19, 19)] {
             let o = (y * 20 + x) * 4;
             assert_eq!(&buf[o..o + 4], &[0, 0, 0, 255], "corner {x},{y}");
         }
-        // body pixel (center) is the verified #6C6C6C body
+        // the light "sheen" row under the top border
+        let o = (1 * 20 + 10) * 4;
+        assert_eq!(&buf[o..o + 4], &[0xAC, 0xAC, 0xAC, 255], "light row");
+        // the shade rows over the bottom border
+        for y in [17usize, 18] {
+            let o = (y * 20 + 10) * 4;
+            assert_eq!(&buf[o..o + 4], &[0x5A, 0x5A, 0x5C, 255], "shade row {y}");
+        }
+        // body pixel: within the noise band around BTN_BODY
         let o = (10 * 20 + 10) * 4;
-        assert_eq!(&buf[o..o + 4], &[0x6C, 0x6C, 0x6C, 255]);
+        for ch in 0..3 {
+            let v = buf[o + ch] as i32;
+            assert!(
+                (BTN_BODY[ch] as i32 - BTN_NOISE..=BTN_BODY[ch] as i32 + BTN_NOISE).contains(&v),
+                "body channel {ch} = {v} outside the noise band"
+            );
+        }
+        // hover: the frame swaps to white
+        let mut hov = [0u8; 20 * 20 * 4];
+        draw_widget(&mut hov, 20, WidgetVariant::ButtonHover);
+        let o = (0 * 20 + 10) * 4;
+        assert_eq!(&hov[o..o + 4], &[255, 255, 255, 255], "hover top frame");
+        // disabled: dark flat body, black frame
+        let mut dis = [0u8; 20 * 20 * 4];
+        draw_widget(&mut dis, 20, WidgetVariant::ButtonDisabled);
+        let o = (10 * 20 + 10) * 4;
+        for ch in 0..3 {
+            let v = dis[o + ch] as i32;
+            assert!(
+                (BTN_DISABLED_BODY[ch] as i32 - BTN_NOISE
+                    ..=BTN_DISABLED_BODY[ch] as i32 + BTN_NOISE)
+                    .contains(&v),
+                "disabled body channel {ch} = {v} outside the noise band"
+            );
+        }
+        assert!(dis[3] != 0, "disabled body must paint alpha");
     }
 
     #[test]
@@ -1142,11 +1191,7 @@ mod tests {
     #[test]
     fn gui_tiles_all_painted() {
         let mut buf = [0u8; 20 * 20 * 4];
-        for v in [
-            HeartVariant::Empty,
-            HeartVariant::Full,
-            HeartVariant::Half,
-        ] {
+        for v in [HeartVariant::Empty, HeartVariant::Full, HeartVariant::Half] {
             buf.fill(0);
             draw_heart(&mut buf, 20, v);
             assert!(painted(&buf) > 20, "blank heart variant {v:?}");
@@ -1191,7 +1236,10 @@ mod tests {
         assert!(painted(&sbuf) > 80, "selection frame unpainted");
         buf.fill(0);
         draw_options_dirt(&mut buf, 20);
-        assert!(painted(&buf) == 16 * 16, "dirt tile not fully opaque in stride 20");
+        assert!(
+            painted(&buf) == 16 * 16,
+            "dirt tile not fully opaque in stride 20"
+        );
     }
 
     #[test]
@@ -1219,7 +1267,12 @@ mod tests {
         draw_options_dirt(&mut b, 16);
         assert_eq!(a, b, "dirt tile must be byte-identical across calls");
         // 0.25 brightness of the brightest shade stays dark
-        let max = a.as_chunks::<4>().0.iter().map(|c| c[0].max(c[1]).max(c[2])).max();
+        let max = a
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|c| c[0].max(c[1]).max(c[2]))
+            .max();
         assert_eq!(max, Some(148 / 4), "dirt tile not darkened to 0.25");
         // fully opaque
         assert!(a.as_chunks::<4>().0.iter().all(|c| c[3] == 255));

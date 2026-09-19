@@ -21,8 +21,8 @@ One codebase, two targets: **native** (Vulkan / DirectX 12 / Metal) and **browse
 |---|---|---|
 | ![Title screen](docs/screenshots/readme-01-title.png) | ![Gameplay](docs/screenshots/readme-06-gameplay.png) | ![F3 debug overlay](docs/screenshots/readme-07-f3.png) |
 | *Title screen — pre-rendered, panning panorama* | *Survival gameplay — HUD, smooth lighting, biome fog* | *F3 debug overlay — vanilla two-column layout* |
-| ![Video settings](docs/screenshots/readme-03-video-settings.png) | ![Inventory](docs/screenshots/readme-08-inventory.png) | ![Shader pack](docs/screenshots/p11-pack-warm-evening.png) |
-| *Video Settings — the exact vanilla 1.16.5 tree* | *Inventory & creative picker* | *Demo shader packs (warm-evening)* |
+| ![Video settings](docs/screenshots/readme-03-video-settings.png) | ![Options](docs/screenshots/readme-02-options.png) | ![Pause menu](docs/screenshots/readme-09-pause.png) |
+| *Video Settings — the vanilla tree + the SHADERS... entry* | *Options — the vanilla settings tree* | *Pause menu over gameplay* |
 
 > All screenshots are captured **live from the browser build** (WebGL2, headless Chromium) — the same bundle this repo ships, driving the same engine as native.
 
@@ -103,7 +103,7 @@ The engine is split into **14 independent crates** (`vc-nbt`, `vc-blocks`, `vc-w
 - **Tile-safe atlas sampling** — half-texel UV inset (`[0.5/16, 15/16]`) + analytic gradients: `textureSampleGrad` with the exact atlas-coordinate derivative `dpdx(uv)/32` (uv is face-units, atlas is 32×32 tiles), so bilinear/mipmap/aniso filtering can never bleed neighboring tiles and LOD is exact at every distance
 - **Occlusion-flood cache**, frustum culling, one texture atlas = one bind group, copy-on-write chunk edits
 - **FSR 1.0** upscaling (EASU/RCAS), MSAA up to 8×, mipmaps/aniso up to 16×, shadow mapping, biome fog, clouds, 8-phase moon & stars
-- **Iris integration surface** — drop an Iris-format pack into `shader-packs/` for structure validation + the pass/uniform report (the LGPL translator itself is a separate sister project, per the clean-room boundary)
+- **Iris integration surface + the Shaders screen** — drop an Iris-format pack (BSL/SEUS-style, third-party) into `shader-packs/`, open Video Settings → SHADERS... to see it scanned, tier-labeled and selectable (the LGPL GLSL→WGSL translator itself is a separate sister project, per the clean-room boundary — the engine ships no built-in shaders). labPBR 1.3 materials (`_n`/`_s` maps, NAPP-style resource packs) are detected, decoded and reported; see `docs/LEGAL-COMPLIANCE.md` for the legal posture
 - Flat 14/16 vanilla water surface with scrolling texture (separate blended pipeline, depth-write off)
 
 ## Repository layout
@@ -113,7 +113,7 @@ voxelcraft/                  Cargo workspace — the engine + the game
   crates/                    14 vc-* libraries + the voxelcraft app (see LIBRARIES.md)
   builtin-pack/              1.16.5-format resource pack (blockstates/models/PNGs)
   builtin-packs/             programmer-art pack (pre-1.14-style clean-room look-alikes)
-  shader-packs/              demo shader packs (moonlit, warm-evening)
+  shader-packs/              user-dropped Iris-format shader packs (never shipped by us)
   wasm-out/                  prebuilt wasm-bindgen output
   play.html                  standalone browser loader
   BUILD.md                   full build instructions (native + wasm + all-arch)

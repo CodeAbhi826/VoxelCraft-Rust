@@ -7839,6 +7839,7 @@ mod v115_nest_tests {
 // overlap merge dropped carve intervals (solid mesas inside canyon
 // crossings). These tests pin the fixed envelope.
 // =====================================================================
+#[cfg(test)]
 mod rampart_fix_tests {
     use super::*;
 

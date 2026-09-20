@@ -14,7 +14,7 @@ import numpy as np
 from PIL import Image
 
 ZIP = "/home/z/my-project/upload/textures.zip"
-VAULT = "/home/z/my-project/voxelcraft/assets-vault/assets/minecraft/textures"
+VAULT = "/home/z/my-project/voxelcraft/assets-vault/assets/the reference game/textures"
 OUT = "/home/z/my-project/voxelcraft/assets-vault/spec/verify_report.json"
 
 def md5(b):

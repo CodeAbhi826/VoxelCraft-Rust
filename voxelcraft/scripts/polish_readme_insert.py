@@ -13,19 +13,19 @@ ENTRY = """
 
 | # | Versions | Update | Headline | Record |
 |---|---|---|---|---|
-| 1 | 1.0–1.2 | Core World Content | The End + Ender Dragon fight, Nether Fortress, Mushroom Fields, 7 mobs, XP orbs | `phase1-1.0-1.2-research.md` |
-| 2 | 1.3–1.4 | Adventure Features | Wither boss + beacon + ender chest, Adventure mode, anvil, lava fluid, timed status effects | `phase2-1.3-1.4-research.md` |
+| 1 | 1.0–1.2 | Core World Content | The Void + Void Wyrm fight, Hollow Fortress, Mushroom Fields, 7 mobs, XP orbs | `phase1-1.0-1.2-research.md` |
+| 2 | 1.3–1.4 | Adventure Features | Blight boss + beacon + void chest, Adventure mode, anvil, lava fluid, timed status effects | `phase2-1.3-1.4-research.md` |
 | 3 | 1.5–1.6 | Transport & Building | Horses/donkeys/mules (stats, taming, breeding), leads, name tags, hay bales, carpets | `phase3-1.5-1.6-research.md` |
 | 4 | 1.7.2 | The Update that Changed the World | Acacia + dark oak, the new biome set with verified grass colors, the status-effect foundation | WORKLOG 2026-09-06 |
-| 5 | 1.8 | Bountiful Update | Granite/diorite/andesite, red sandstone, prismarine, rabbits, slime-block bounce | WORKLOG 2026-09-06 |
-| 6 | 1.9 | Combat Update | Attack cooldown, grass paths, the purpur family + end rods, elytra gliding | WORKLOG 2026-09-06 |
+| 5 | 1.8 | Bountiful-era update | Granite/diorite/andesite, red sandstone, abyssprism, rabbits, slime-block bounce | WORKLOG 2026-09-06 |
+| 6 | 1.9 | Combat Update | Attack cooldown, grass paths, the violetstone family + void rods, skywings gliding | WORKLOG 2026-09-06 |
 | 7 | 1.10 | Frostburn Update | The frosty trio — stray, husk, polar bear — with biome-locked spawning | WORKLOG 2026-09-06 |
-| 8 | 1.11 | Exploration Update | Woodland mansions with illager spawners, vindicator/evoker/vex, totem of undying | `verify_v111_*` captures |
-| 9 | 1.12 | World of Color Update | Concrete ×16 + powder solidification, glazed terracotta ×16, parrot + illusioner | `phase-v112-1.12-research.md` |
-| 10 | 1.13 | Update Aquatic | Ocean temperature split, the aquatic mob set, coral, sea pickles, kelp | `phase-v113-1.13-research.md` |
+| 8 | 1.11 | Exploration-era update | Woodland mansions with illager spawners, cleaver/runecaller/wisp, totem of revival | `verify_v111_*` captures |
+| 9 | 1.12 | World of Color Update | Concrete ×16 + powder solidification, glazed terracotta ×16, parrot + miragecaller | `phase-v112-1.12-research.md` |
+| 10 | 1.13 | Aquatic-era update | Ocean temperature split, the aquatic mob set, coral, sea pickles, kelp | `phase-v113-1.13-research.md` |
 | 11 | 1.14 | Village & Pillage (nature half) | Bamboo, sweet berry bushes, campfires, barrels, foxes, the two small flowers | `phase-v114-1.14-research.md` |
 | 12 | 1.15 | Buzzy Bees | The full bee lifecycle — hives, honey, flowering pollination | `phase-v115-1.15-research.md` |
-| 13 | 1.16 | Nether Update (parts 1+2) | Respawn anchors, targets, lodestones, piglin bartering, hoglins, striders, the crimson/warped families, soul fire | `phase-v116-1.16-research.md` + `phase-v116b-1.16-research.md` |
+| 13 | 1.16 | Hollows Update (parts 1+2) | Rebirth anchors, targets, lodestones, pigoblin bartering, boarlings, emberhoppers, the scarlet/viridian families, spirit fire | `phase-v116-1.16-research.md` + `phase-v116b-1.16-research.md` |
 | 15 | 1.0–1.16.5 | COMPLETENESS AUDIT | The full-era recheck — every in-capability gap closed, the deferral inventory itemized | `audit16-completeness-research.md` |
 | 16 | — | FINAL POLISH PASS | Zero-warning build on both targets, two latent bugs fixed, bundle re-verified | this entry |
 

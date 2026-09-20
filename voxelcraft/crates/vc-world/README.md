@@ -2,7 +2,7 @@
 
 The heart of the engine: the chunk `World` with copy-on-write
 edits and cross-chunk decoration, deterministic terrain generation
-(noise, biomes, caves, trees, villages, the Nether), and the flood-fill
+(noise, biomes, caves, trees, villages, the Hollow), and the flood-fill
 block/skylight engine with incremental updates.
 
 ## What it provides
@@ -10,7 +10,7 @@ block/skylight engine with incremental updates.
 - `World::new(seed)` (+ `new_in_dimension`) — chunk map, COW edits, `snapshot3x3`
 - `TerrainGen::generate_chunk(cx, cz, inbound)` — deterministic, decoration included
 - `LightEngine` — block light + skylight BFS with incremental relight (§10/§12)
-- `Dimension` (Overworld + Nether with 8:1 coordinate mapping)
+- `Dimension` (Overworld + Hollow with 8:1 coordinate mapping)
 
 ## Dependencies
 

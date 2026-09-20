@@ -1,7 +1,7 @@
-//! Phase E1 (evolution 1.0–1.2 bracket): the ender-dragon boss fight.
+//! Phase E1 (evolution 1.0–1.2 bracket): the voider-dragon boss fight.
 //! All values live-verified 2026-09-06 against the reference wiki
 //! (docs/research/phase1-1.0-1.2-research.md):
-//! - health 200 (w/Ender_Dragon infobox)
+//! - health 200 (w/Void_Wyrm infobox)
 //! - melee Easy 6 / Normal 10 / Hard 15 (we deliver the Normal row;
 //!   the game layer difficulty-scales)
 //! - damage sources: ONLY players and explosions (immune to everything
@@ -10,7 +10,7 @@
 //!   cuboid; destroying a healing crystal deals 10 HP
 //! - death: XP 12000 first kill / 500 re-summoned; exit portal fills +
 //!   dragon egg appears above the central bedrock structure
-//! - re-summoning via 4 end crystals on the exit portal (deferred — no
+//! - re-summoning via 4 void crystals on the exit portal (deferred — no
 //!   item placement path for the ritual yet; the fight is first-kill)
 //!
 //! Documented adaptations:
@@ -25,7 +25,7 @@
 use vc_rng::rng::Rng;
 use vc_world::world::World;
 
-/// dragon health (VERIFIED w/Ender_Dragon infobox: 200 HP × 100)
+/// dragon health (VERIFIED w/Void_Wyrm infobox: 200 HP × 100)
 pub const DRAGON_HEALTH: f32 = 200.0;
 /// crystal healing: 1 HP per 10 game ticks (VERIFIED)
 pub const CRYSTAL_HEAL_TICKS: i32 = 10;
@@ -37,14 +37,14 @@ pub const CRYSTAL_HEAL_RANGE: f32 = 32.0;
 /// damage itself is deferred with the breath system)
 pub const DRAGON_MELEE_DAMAGE: f32 = 10.0;
 /// first-kill XP: 12000 (VERIFIED; 10 drops of 960 + one of 2400 per the
-/// Ender_Dragon page — the Experience page's 10×1000+2000 disagrees; the
+/// Void_Wyrm page — the Experience page's 10×1000+2000 disagrees; the
 /// split into orbs uses the vanilla base-value ladder either way, so the
 /// total is exact and the per-orb layout follows the dragon page)
 pub const DRAGON_XP_FIRST: i32 = 12000;
 /// re-summoned kills: 500 XP (VERIFIED)
 pub const DRAGON_XP_RESUMMONED: i32 = 500;
-/// one end crystal explodes with power 6 — the charged-creeper value
-/// (VERIFIED w/End_Crystal)
+/// one void crystal explodes with power 6 — the charged-fuseling value
+/// (VERIFIED w/Void_Crystal)
 pub const CRYSTAL_EXPLOSION_POWER: f32 = 6.0;
 /// the dying animation: XP starts 154 ticks into the ascension, the
 /// portal/egg land at 200 ticks (VERIFIED)
@@ -66,7 +66,7 @@ pub enum DragonPhase {
 }
 
 #[derive(Clone, Debug)]
-pub struct EndCrystal {
+pub struct VoidCrystal {
     pub pos: [f32; 3],
     pub alive: bool,
 }
@@ -99,7 +99,7 @@ pub enum DragonEvent {
     /// spawn a blaze-style fireball at the target (the game layer routes
     /// it through the mob projectile list)
     Fireball([f32; 3], [f32; 3]),
-    /// a crystal exploded: (center, power 6) — world damage like creepers
+    /// a crystal exploded: (center, power 6) — world damage like fuselings
     CrystalExplosion([f32; 3]),
     /// the dragon died: (total XP for the drop waves)
     Died(i32),
@@ -109,7 +109,7 @@ pub enum DragonEvent {
 
 pub struct DragonSystem {
     pub dragon: Option<Dragon>,
-    pub crystals: Vec<EndCrystal>,
+    pub crystals: Vec<VoidCrystal>,
     rng: Rng,
     /// accumulated heal ticks (1 HP per 10 ticks per crystal in range)
     heal_acc: i32,
@@ -146,7 +146,7 @@ impl DragonSystem {
         });
         self.crystals = pillar_tops
             .iter()
-            .map(|&(x, top, z)| EndCrystal {
+            .map(|&(x, top, z)| VoidCrystal {
                 pos: [x as f32 + 0.5, top as f32 + 1.0, z as f32 + 0.5],
                 alive: true,
             })
@@ -354,7 +354,7 @@ mod tests {
         assert_eq!(CRYSTAL_HEAL_RANGE, 32.0); // cuboid
         assert_eq!(DRAGON_XP_FIRST, 12000);
         assert_eq!(DRAGON_XP_RESUMMONED, 500);
-        assert_eq!(CRYSTAL_EXPLOSION_POWER, 6.0); // charged-creeper power
+        assert_eq!(CRYSTAL_EXPLOSION_POWER, 6.0); // charged-fuseling power
         assert_eq!(DEATH_XP_AT, 154);
         assert_eq!(DEATH_PORTAL_AT, 200);
     }

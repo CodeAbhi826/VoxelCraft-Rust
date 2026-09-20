@@ -8,6 +8,7 @@ description = "Vanilla 1.16.5 Anvil save/load: NBT chunk encoding + .mca regions
 [dependencies]
 serde = { workspace = true }
 vc-blocks = { workspace = true }
+vc-pack = { workspace = true }
 vc-chunk = { workspace = true }
 vc-nbt = { workspace = true }
 vc-world = { workspace = true }

@@ -32,8 +32,8 @@ pub enum Biome {
     Desert = 4,
     Snowy = 5,
     Mountains = 6,
-    /// §26/§28: the Nether's single biome (chunk biome u8 = 7)
-    NetherWastes = 7,
+    /// §26/§28: the Hollow's single biome (chunk biome u8 = 7)
+    HollowWastes = 7,
     // ---- Phase 10 content breadth: 6 climate biomes (vanilla save ids
     // live-verified from the wiki Biome page: taiga=5, swamp=6, jungle=21,
     // birch_forest=27, savanna=35, badlands=37) ----
@@ -44,7 +44,7 @@ pub enum Biome {
     Swamp = 12,
     Badlands = 13,
     /// Phase E1 (1.0.0 content): Mushroom Fields — mycelium surface,
-    /// huge mushrooms, mooshroom herds, NO natural hostile spawns (all
+    /// huge mushrooms, shroomcow herds, NO natural hostile spawns (all
     /// VERIFIED w/Mushroom_Fields, live 2026-09-06). Internal id 14
     /// (vanilla's real registry id is 14 = mushroom_fields, matching).
     MushroomFields = 14,
@@ -56,7 +56,7 @@ pub enum Biome {
     SunflowerPlains = 16,
     IceSpikes = 17,
     DarkForest = 18,
-    // ---- 1.13 bracket (Update Aquatic): the ocean temperature split
+    // ---- 1.13 bracket (Aquatic-era update): the ocean temperature split
     // (VERIFIED live 2026-09-07, reference wiki /Java_Edition_1.13
     // §World generation: "Added voxelcraft:warm_ocean (Warm Ocean),
     // voxelcraft:lukewarm_ocean (Lukewarm Ocean), voxelcraft:cold_ocean
@@ -69,30 +69,30 @@ pub enum Biome {
     LukewarmOcean = 20,
     ColdOcean = 21,
     FrozenOcean = 22,
-    /// 1.16 (Nether Update, part 2): the crimson forest — the piglin/
-    /// hoglin home (VERIFIED w/Crimson_Forest live: "the second most
-    /// common Nether biome, making up 22% of the Nether by volume";
-    /// "This is the only biome where hoglins naturally spawn outside
+    /// 1.16 (Hollows Update, part 2): the scarlet forest — the pigoblin/
+    /// boarling home (VERIFIED w/Scarlet_Forest live: "the second most
+    /// common Hollow biome, making up 22% of the Hollow by volume";
+    /// "This is the only biome where boarlings naturally spawn outside
     /// of bastion remnants"). Internal id 23 (vanilla registry id 171
     /// — renumbered into the engine's internal sequence, the standing
     /// disclosed convention).
-    CrimsonForest = 23,
-    /// 1.16: the warped forest — the enderman-fungus home (VERIFIED
-    /// w/Warped_Forest live: "the rarest of the five biomes in the
-    /// Nether, making up around 8% of the Nether by volume";
-    /// "hostile mobs do not spawn naturally" — endermen are the
+    ScarletForest = 23,
+    /// 1.16: the viridian forest — the voidling-fungus home (VERIFIED
+    /// w/Viridian_Forest live: "the rarest of the five biomes in the
+    /// Hollow, making up around 8% of the Hollow by volume";
+    /// "hostile mobs do not spawn naturally" — voidlings are the
     /// exception). Internal id 24 (vanilla registry id 172).
-    WarpedForest = 24,
-    /// Backlog round (2026-09-09): the soul sand valley — VERIFIED
-    /// (w/Soul_Sand_Valley live, capture backlog_page_Soul_Sand_Valley.json):
-    /// "makes up around 17% of the Nether by volume, making it the
-    /// third most common biome"; "mostly composed of soul sand and
-    /// soul soil, with gravel found on its coastlines"; "Soul fire is
-    /// scattered throughout the biome and Nether fossils poke out of
+    ViridianForest = 24,
+    /// Backlog round (2026-09-09): the spirit sand valley — VERIFIED
+    /// (w/Spirit_Sand_Valley live, capture backlog_page_Spirit_Sand_Valley.json):
+    /// "makes up around 17% of the Hollow by volume, making it the
+    /// third most common biome"; "mostly composed of spirit sand and
+    /// spirit soil, with gravel found on its coastlines"; "Soul fire is
+    /// scattered throughout the biome and Hollow fossils poke out of
     /// the terrain"; "Its fog is cyan"; spawns: skeleton 20/71,
-    /// ghast 50/71 (5% attempt success), enderman 1/71. Internal id 25
+    /// weepgeist 50/71 (5% attempt success), voidling 1/71. Internal id 25
     /// (vanilla registry id 170).
-    SoulSandValley = 25,
+    SpiritSandValley = 25,
     /// Backlog round: the basalt deltas — the basalt-pillar wastes
     /// (stats from the w/Basalt_Deltas capture). Internal id 26
     /// (vanilla registry id 173).
@@ -114,7 +114,7 @@ impl Biome {
             Biome::Desert => "Desert",
             Biome::Snowy => "Snowy Taiga",
             Biome::Mountains => "Mountains",
-            Biome::NetherWastes => "Nether Wastes",
+            Biome::HollowWastes => "Hollow Wastes",
             Biome::Taiga => "Taiga",
             Biome::BirchForest => "Birch Forest",
             Biome::Jungle => "Jungle",
@@ -130,9 +130,9 @@ impl Biome {
             Biome::LukewarmOcean => "Lukewarm Ocean",
             Biome::ColdOcean => "Cold Ocean",
             Biome::FrozenOcean => "Frozen Ocean",
-            Biome::CrimsonForest => "Crimson Forest",
-            Biome::WarpedForest => "Warped Forest",
-            Biome::SoulSandValley => "Soul Sand Valley",
+            Biome::ScarletForest => "Scarlet Forest",
+            Biome::ViridianForest => "Viridian Forest",
+            Biome::SpiritSandValley => "Spirit Sand Valley",
             Biome::BasaltDeltas => "Basalt Deltas",
             Biome::River => "River",
         }
@@ -146,7 +146,7 @@ impl Biome {
             4 => Biome::Desert,
             5 => Biome::Snowy,
             6 => Biome::Mountains,
-            7 => Biome::NetherWastes,
+            7 => Biome::HollowWastes,
             8 => Biome::Taiga,
             9 => Biome::BirchForest,
             10 => Biome::Jungle,
@@ -162,26 +162,26 @@ impl Biome {
             20 => Biome::LukewarmOcean,
             21 => Biome::ColdOcean,
             22 => Biome::FrozenOcean,
-            23 => Biome::CrimsonForest,
-            24 => Biome::WarpedForest,
-            25 => Biome::SoulSandValley,
+            23 => Biome::ScarletForest,
+            24 => Biome::ViridianForest,
+            25 => Biome::SpiritSandValley,
             26 => Biome::BasaltDeltas,
             27 => Biome::River,
             _ => Biome::Ocean,
         }
     }
 
-    /// 1.16 (Nether Update, part 2): the nether biome family — the
+    /// 1.16 (Hollows Update, part 2): the hollow biome family — the
     /// wastes + the two forests (region gates for mob spawning and
-    /// the snow-golem heat rule: every nether flavor is "hot").
+    /// the snow-golem heat rule: every hollow flavor is "hot").
     /// The backlog round adds the valley + deltas (all five now).
-    pub fn is_nether(self) -> bool {
+    pub fn is_hollow(self) -> bool {
         matches!(
             self,
-            Biome::NetherWastes
-                | Biome::CrimsonForest
-                | Biome::WarpedForest
-                | Biome::SoulSandValley
+            Biome::HollowWastes
+                | Biome::ScarletForest
+                | Biome::ViridianForest
+                | Biome::SpiritSandValley
                 | Biome::BasaltDeltas
         )
     }
@@ -199,9 +199,9 @@ impl Biome {
             Biome::Desert | Biome::Savanna | Biome::Badlands => Precip::None,
             // cold — snow instead of rain
             Biome::Snowy | Biome::IceSpikes | Biome::FrozenOcean => Precip::Snow,
-            // nether/end flavors never see weather (the game layer's
+            // hollow/end flavors never see weather (the game layer's
             // dimension gate is primary; this is belt-and-braces)
-            b if b.is_nether() => Precip::None,
+            b if b.is_hollow() => Precip::None,
             _ => Precip::Rain,
         }
     }
@@ -509,33 +509,33 @@ fn floor_div(a: i32, b: i32) -> i32 {
     }
 }
 
-/// 1.16 (Nether Update, part 2): the nether region biome â a
+/// 1.16 (Hollows Update, part 2): the hollow region biome â a
 /// deterministic 2x2-chunk cell hash (contiguous forest regions, not
 /// per-column confetti). Shares VERIFIED against the wiki infobox
-/// rows: crimson forest "22% of the Nether by volume", warped forest
-/// "around 8% of the Nether by volume" (the rarest of the five);
-/// the nether wastes fill the rest. The region scale is the engine's
+/// rows: scarlet forest "22% of the Hollow by volume", viridian forest
+/// "around 8% of the Hollow by volume" (the rarest of the five);
+/// the hollow wastes fill the rest. The region scale is the engine's
 /// disclosed adaptation â vanilla's 3D biome climate sampler needs
 /// the full multi-noise stack.
-pub fn nether_region_biome(seed: u64, cx: i32, cz: i32) -> Biome {
+pub fn hollow_region_biome(seed: u64, cx: i32, cz: i32) -> Biome {
     let region_x = floor_div(cx, 2);
     let region_z = floor_div(cz, 2);
     // Backlog round: the five-biome roll at the wiki-verified volumes —
-    // wastes 37% (the remainder), crimson 22% (w/Crimson_Forest "22% of
-    // the Nether by volume"), SSV 17% (w/Soul_Sand_Valley "around 17%"),
-    // basalt deltas 16% (w/Basalt_Deltas "around 16%"), warped 8%
-    // (w/Warped_Forest "around 8% ... the rarest of the five")
+    // wastes 37% (the remainder), scarlet 22% (w/Scarlet_Forest "22% of
+    // the Hollow by volume"), SSV 17% (w/Spirit_Sand_Valley "around 17%"),
+    // basalt deltas 16% (w/Basalt_Deltas "around 16%"), viridian 8%
+    // (w/Viridian_Forest "around 8% ... the rarest of the five")
     let v = Rng::hash3(seed ^ 0xF0E7, region_x, 0, region_z) % 100;
     if v < 8 {
-        Biome::WarpedForest
+        Biome::ViridianForest
     } else if v < 24 {
         Biome::BasaltDeltas
     } else if v < 41 {
-        Biome::SoulSandValley
+        Biome::SpiritSandValley
     } else if v < 63 {
-        Biome::CrimsonForest
+        Biome::ScarletForest
     } else {
-        Biome::NetherWastes
+        Biome::HollowWastes
     }
 }
 
@@ -636,10 +636,10 @@ pub struct TerrainGen {
     /// River band: ridged low-frequency field (the disclosed adaptation
     /// of vanilla's layer-stack rivers).
     n_river: Noise,
-    /// §28 nether: cavern pair (bigger scale than overworld caves)
+    /// §28 hollow: cavern pair (bigger scale than overworld caves)
     n_neth1: Noise,
     n_neth2: Noise,
-    /// §28 nether: wall density variation so caverns aren't uniform
+    /// §28 hollow: wall density variation so caverns aren't uniform
     n_neth3: Noise,
     /// Phase E1: the rare mushroom-island field (~0.15% of the overworld
     /// — VERIFIED w/Mushroom_Fields). A dedicated low-frequency noise;
@@ -879,7 +879,7 @@ impl TerrainGen {
             // desert, but made of red sand"; the colored banding below is
             // painted in the terrain fill, see badlands_band).
             // 1.8: red sandstone directly under the red sand floor (the
-            // Bountiful Update's companion block, wiki /w/Red_Sandstone)
+            // Bountiful-era update's companion block, wiki /w/Red_Sandstone)
             (Biome::Badlands, RED_SAND, RED_SANDSTONE)
         } else if temp > 0.3 && humid < 0.05 {
             (Biome::Desert, SAND, SAND)
@@ -1102,7 +1102,7 @@ impl TerrainGen {
                             && (col_biome.is_ocean()
                                 || col_biome == Biome::Beach
                                 || col_biome == Biome::River)
-                            && col_biome != Biome::NetherWastes;
+                            && col_biome != Biome::HollowWastes;
                         for by in by0..=by1 {
                             let cur = chunk.get(lx, by as usize, lz);
                             if cur == AIR || cur == WATER || cur == BEDROCK || cur == LAVA {
@@ -1145,7 +1145,7 @@ impl TerrainGen {
     /// configured_feature/ore_*.json + the biome feature stage 6 order,
     /// live 2026-09-14): dirt 10×33 y0..255, gravel 8×33 y0..255,
     /// granite/diorite/andesite 10×33 y0..79, coal 20×17 y0..127, iron
-    /// 20×9 y0..63, gold 2×9 y0..31, redstone 8×8 y0..15, diamond 1×8
+    /// 20×9 y0..63, gold 2×9 y0..31, fluxstone 8×8 y0..15, diamond 1×8
     /// y0..15, lapis 1×7 y16±8 (depth_average baseline 16, spread 16).
     /// Vein shape: the vanilla ellipsoid blob (rotated in xz, per-block
     /// hash edge-jitter), replacing base-stone only (the vanilla target
@@ -1160,7 +1160,7 @@ impl TerrainGen {
             (COAL_ORE, 20, 17, 0, 127),
             (IRON_ORE, 20, 9, 0, 63),
             (GOLD_ORE, 2, 9, 0, 31),
-            (REDSTONE_ORE, 8, 8, 0, 15),
+            (FLUXSTONE_ORE, 8, 8, 0, 15),
             (DIAMOND_ORE, 1, 8, 0, 15),
             (LAPIS_ORE, 1, 7, 8, 24), // depth_average(16, 16) -> y16±8
         ];
@@ -1244,8 +1244,8 @@ impl TerrainGen {
     ) -> GenOut {
         match self.dim {
             Dimension::Overworld => self.generate_overworld_chunk(cx, cz, inbound),
-            Dimension::Nether => self.generate_nether_chunk(cx, cz, inbound),
-            Dimension::End => self.generate_end_chunk(cx, cz, inbound),
+            Dimension::Hollow => self.generate_hollow_chunk(cx, cz, inbound),
+            Dimension::Void => self.generate_end_chunk(cx, cz, inbound),
         }
     }
 
@@ -2658,7 +2658,7 @@ impl TerrainGen {
             }
         }
 
-        // ─────────────── 1.13 (Update Aquatic): ocean flora ─────────────
+        // ─────────────── 1.13 (Aquatic-era update): ocean flora ─────────────
         // VERIFIED changelog §Blocks + §World generation (live captures
         // in scripts/v113_page_changelog_text.txt):
         // - kelp: "Generate in ocean biomes, except warm oceans ...
@@ -3086,16 +3086,16 @@ impl TerrainGen {
         }
     }
 
-    // ------------------------------------------------------------ nether --
-    // §26/§28: the Nether generator (our own implementation, 1.16.5's
-    // Nether-Wastes *character*): a solid netherrack mass 0..127 between a
+    // ------------------------------------------------------------ hollow --
+    // §26/§28: the Hollow generator (our own implementation, 1.16.5's
+    // Hollow-Wastes *character*): a solid hollowstone mass 0..127 between a
     // jittered bedrock floor and bedrock ceiling, carved by two big 3D
     // noise fields into vast caverns; quartz ore veins in the rock, soul
     // sand patches on cavern floors, glowstone clusters on cavern ceilings.
     // The opaque bedrock ceiling zeroes skylight for everything below —
-    // exactly the vanilla "no sky light in the nether" rule, achieved
+    // exactly the vanilla "no sky light in the hollow" rule, achieved
     // through the same column scan the light engine already runs.
-    fn generate_nether_chunk(
+    fn generate_hollow_chunk(
         &self,
         cx: i32,
         cz: i32,
@@ -3103,7 +3103,7 @@ impl TerrainGen {
     ) -> GenOut {
         let mut chunk = Chunk::empty();
         let mut rng = Rng::new(Rng::hash3(self.seed ^ 0x0D1D, cx, 0, cz));
-        // the nether has no cross-chunk decorations (structures are
+        // the hollow has no cross-chunk decorations (structures are
         // strictly in-chunk) → outbound stays empty
         let outbound: Vec<(i32, i32, i32, u16)> = Vec::new();
 
@@ -3115,22 +3115,22 @@ impl TerrainGen {
             (Rng::hash3(self.seed ^ 0xCE11, wx, 0, wz) % 4) as i32 // 0..3
         };
 
-        let mut nether = vec![false; 16 * 16 * 128]; // solid-cell scratch (y<128)
+        let mut hollow = vec![false; 16 * 16 * 128]; // solid-cell scratch (y<128)
 
         for z in 0..16usize {
             for x in 0..16usize {
                 let wx = cx * 16 + x as i32;
                 let wz = cz * 16 + z as i32;
                 let col_idx = z * 16 + x;
-                // 1.16 (Nether Update, part 2): the nether biome split —
+                // 1.16 (Hollows Update, part 2): the hollow biome split —
                 // region cells of 2x2 chunks (contiguous forests, not
-                // per-column confetti): crimson ~22% of the volume,
-                // warped ~8%, wastes the rest (VERIFIED shares, the
-                // w/Crimson_Forest + w/Warped_Forest infobox rows;
+                // per-column confetti): scarlet ~22% of the volume,
+                // viridian ~8%, wastes the rest (VERIFIED shares, the
+                // w/Scarlet_Forest + w/Viridian_Forest infobox rows;
                 // region scale is the engine's disclosed adaptation —
                 // vanilla's 3D biome sampler needs the full climate
                 // stack)
-                chunk.biome[col_idx] = nether_region_biome(self.seed, cx, cz) as u8;
+                chunk.biome[col_idx] = hollow_region_biome(self.seed, cx, cz) as u8;
                 let fb = 1 + floor_bed(wx, wz);
                 let cb = 127 - ceil_bed(wx, wz);
                 chunk.height[col_idx] = 127; // highest opaque = the bedrock roof
@@ -3164,13 +3164,13 @@ impl TerrainGen {
                         r < t.max(0.012)
                     };
                     if solid {
-                        nether[(y * 256 + z as i32 * 16 + x as i32) as usize] = true;
+                        hollow[(y * 256 + z as i32 * 16 + x as i32) as usize] = true;
                     }
                 }
             }
         }
 
-        // materialize: bedrock shell + netherrack (with quartz ore) cells
+        // materialize: bedrock shell + hollowstone (with quartz ore) cells
         for z in 0..16usize {
             for x in 0..16usize {
                 let wx = cx * 16 + x as i32;
@@ -3180,7 +3180,7 @@ impl TerrainGen {
                 for y in 0..=127i32 {
                     let is_bed = y <= fb.saturating_sub(1) || y > cb || y == 0 || y == 127;
                     let solid =
-                        is_bed || nether[(y.max(0) * 256 + z as i32 * 16 + x as i32) as usize];
+                        is_bed || hollow[(y.max(0) * 256 + z as i32 * 16 + x as i32) as usize];
                     if !solid {
                         continue;
                     }
@@ -3190,9 +3190,9 @@ impl TerrainGen {
                         // quartz ore: hash-gated veins in the rock
                         let v = Rng::hash3(self.seed ^ 0x07A2, wx, y, wz);
                         if (v % 100_000) as f32 / 100_000.0 < 0.011 {
-                            NETHER_QUARTZ_ORE
+                            HOLLOW_QUARTZ_ORE
                         } else {
-                            NETHERRACK
+                            HOLLOWSTONE
                         }
                     };
                     chunk.set(x, y as usize, z, b);
@@ -3200,7 +3200,7 @@ impl TerrainGen {
             }
         }
 
-        // inbound edits (none in practice — no cross-chunk nether decorations
+        // inbound edits (none in practice — no cross-chunk hollow decorations
         // — but the pipeline contract is honored)
         for (idx, id) in inbound {
             if chunk.get_idx(idx as usize) == AIR {
@@ -3209,9 +3209,9 @@ impl TerrainGen {
         }
 
         // 1.10 magma blobs — VERIFIED (wiki /w/Magma_Block, live
-        // 2026-09-06): "found in the Nether, generating 4 blobs per chunk
+        // 2026-09-06): "found in the Hollow, generating 4 blobs per chunk
         // between Y=27 and Y=36... similar frequency to andesite in the
-        // Overworld". Blobs of 4-9 blocks, embedded in netherrack.
+        // Overworld". Blobs of 4-9 blocks, embedded in hollowstone.
         for _ in 0..4 {
             let bx = rng.next_range(16) as i32;
             let by = 27 + rng.next_range(10) as i32;
@@ -3221,14 +3221,14 @@ impl TerrainGen {
                 let ox = (bx + (i % 3) - 1).clamp(0, 15);
                 let oy = (by + (i / 9)).clamp(27, 36);
                 let oz = (bz + ((i / 3) % 3) - 1).clamp(0, 15);
-                // only replace netherrack (embedded look, never floating)
-                if chunk.get(ox as usize, oy as usize, oz as usize) == NETHERRACK {
+                // only replace hollowstone (embedded look, never floating)
+                if chunk.get(ox as usize, oy as usize, oz as usize) == HOLLOWSTONE {
                     chunk.set(ox as usize, oy as usize, oz as usize, MAGMA_BLOCK);
                 }
             }
         }
 
-        // decorations: soul sand floors + glowstone ceilings (deterministic).
+        // decorations: spirit sand floors + glowstone ceilings (deterministic).
         // 1.7.2 refactor: Chunk::get now FOLDS states to block ids itself
         // (the V2 window made the old `as u8` truncation unsafe), so the
         // per-site state_block fold here is gone — get already returns the
@@ -3247,26 +3247,26 @@ impl TerrainGen {
                 } else {
                     BEDROCK
                 };
-                if here_air && below == NETHERRACK {
-                    // vanilla-ish: soul sand valley patches — replace the top
+                if here_air && below == HOLLOWSTONE {
+                    // vanilla-ish: spirit sand valley patches — replace the top
                     // 1..2 floor blocks. 1.16: a third of the patches are
                     // SOUL SOIL (the valley's other floor — VERIFIED
-                    // w/Soul_Soil "naturally generates in soul sand
+                    // w/Spirit_Soil "naturally generates in spirit sand
                     // valleys"), and one-in-six carries a SOUL FIRE flame
-                    // on top (the eternal blue fires, VERIFIED w/Soul_Fire
-                    // "Soul fire ... generates naturally in soul sand
+                    // on top (the eternal blue fires, VERIFIED w/Spirit_Fire
+                    // "Soul fire ... generates naturally in spirit sand
                     // valley biomes"; flint-ignition is not in the engine,
                     // disclosed)
                     let wx2 = cx * 16 + lx;
                     let wz2 = cz * 16 + lz;
                     let soil = Rng::hash3(self.seed ^ 0x5011, wx2, y, wz2).is_multiple_of(3);
-                    let floor_b = if soil { SOUL_SOIL } else { SOUL_SAND };
+                    let floor_b = if soil { SPIRIT_SOIL } else { SPIRIT_SAND };
                     let depth = 1 + rng.next_range(2) as i32;
                     for d in 0..depth {
                         chunk.set(lx as usize, (y - 1 - d) as usize, lz as usize, floor_b);
                     }
                     if Rng::hash3(self.seed ^ 0xF1E5, wx2, y + 1, wz2).is_multiple_of(6) {
-                        chunk.set(lx as usize, y as usize, lz as usize, SOUL_FIRE);
+                        chunk.set(lx as usize, y as usize, lz as usize, SPIRIT_FIRE);
                     }
                     break;
                 }
@@ -3274,7 +3274,7 @@ impl TerrainGen {
             }
         }
 
-        // Phase E1: Nether fortresses (432×432 regions — VERIFIED). Each
+        // Phase E1: Hollow fortresses (432×432 regions — VERIFIED). Each
         // chunk emits every fortress whose arms reach it, so the layout is
         // deterministic and cross-chunk stable (the village/mineshaft
         // region-query pattern).
@@ -3294,7 +3294,7 @@ impl TerrainGen {
                 } else {
                     BEDROCK
                 };
-                if here == AIR && above == NETHERRACK {
+                if here == AIR && above == HOLLOWSTONE {
                     chunk.set(lx as usize, (y + 1) as usize, lz as usize, GLOWSTONE);
                     // a small cluster around it
                     let extra = rng.next_range(3);
@@ -3305,7 +3305,7 @@ impl TerrainGen {
                         let nz = (lz + dz).clamp(0, 15) as usize;
                         let there = chunk.get(nx, (y + 1) as usize, nz);
                         let below_there = chunk.get(nx, y as usize, nz);
-                        if there == NETHERRACK && below_there == AIR {
+                        if there == HOLLOWSTONE && below_there == AIR {
                             chunk.set(nx, (y + 1) as usize, nz, GLOWSTONE);
                         }
                     }
@@ -3315,62 +3315,62 @@ impl TerrainGen {
             }
         }
 
-        // 1.16 (Nether Update, part 1): the V13 nether decorations —
+        // 1.16 (Hollows Update, part 1): the V13 hollow decorations —
         // basalt blobs + pillars, blackstone/gilded/crying patches,
-        // nether gold ore veins, ancient debris clusters
-        self.gen_v116_nether_decorations(&mut chunk, &mut rng, cx, cz);
+        // hollow gold ore veins, ancient debris clusters
+        self.gen_v116_hollow_decorations(&mut chunk, &mut rng, cx, cz);
 
-        // 1.16 (Nether Update, part 2): the V14 forest families — the
-        // nylium floors, huge fungi, shroomlights, vines + undergrowth
-        self.gen_v116b_nether_forests(&mut chunk, &mut rng, cx, cz);
+        // 1.16 (Hollows Update, part 2): the V14 forest families — the
+        // mold floors, huge fungi, glowcaps, vines + undergrowth
+        self.gen_v116b_hollow_forests(&mut chunk, &mut rng, cx, cz);
 
-        // backlog round: the two missing Nether regions — the soul sand
-        // valley + the basalt deltas (all five 1.16 nether biomes now)
-        self.gen_backlog_nether_regions(&mut chunk, &mut rng, cx, cz);
+        // backlog round: the two missing Hollow regions — the spirit sand
+        // valley + the basalt deltas (all five 1.16 hollow biomes now)
+        self.gen_backlog_hollow_regions(&mut chunk, &mut rng, cx, cz);
 
         (Arc::new(chunk), outbound)
     }
 
-    /// Backlog round (2026-09-09): the two missing Nether regions —
-    /// the soul sand valley and the basalt deltas, closing the five-
-    /// biome 1.16 Nether map.
+    /// Backlog round (2026-09-09): the two missing Hollow regions —
+    /// the spirit sand valley and the basalt deltas, closing the five-
+    /// biome 1.16 Hollow map.
     ///
-    /// Soul Sand Valley (VERIFIED w/Soul_Sand_Valley, capture
-    /// backlog_page_Soul_Sand_Valley.json): "mostly composed of soul
-    /// sand and soul soil, with gravel found on its coastlines"; "Soul
-    /// fire is scattered throughout the biome and Nether fossils poke
+    /// Spirit Sand Valley (VERIFIED w/Spirit_Sand_Valley, capture
+    /// backlog_page_Spirit_Sand_Valley.json): "mostly composed of soul
+    /// sand and spirit soil, with gravel found on its coastlines"; "Soul
+    /// fire is scattered throughout the biome and Hollow fossils poke
     /// out of the terrain"; "Giant columns of basalt called basalt
     /// pillars can be found stretching from the floor to the ceiling";
-    /// native vegetation = crimson roots + mushrooms.
+    /// native vegetation = scarlet roots + mushrooms.
     ///
     /// Basalt Deltas (VERIFIED w/Basalt_Deltas, capture
-    /// backlog_page_Basalt_Deltas.json): the "second rarest Nether
-    /// biome, making up around 16% of the Nether by volume"; the
+    /// backlog_page_Basalt_Deltas.json): the "second rarest Hollow
+    /// biome, making up around 16% of the Hollow by volume"; the
     /// wasteland body is basalt + blackstone + magma (the deltas'
-    /// surface is the engine's netherrack body converted to basalt —
+    /// surface is the engine's hollowstone body converted to basalt —
     /// the documented column-carver adaptation).
-    fn gen_backlog_nether_regions(&self, chunk: &mut Chunk, rng: &mut Rng, cx: i32, cz: i32) {
+    fn gen_backlog_hollow_regions(&self, chunk: &mut Chunk, rng: &mut Rng, cx: i32, cz: i32) {
         use vc_blocks::blocks::{
-            BASALT, BLACKSTONE, BONE_BLOCK, MAGMA_BLOCK, NETHERRACK, SOUL_SAND, SOUL_SOIL,
-            SOUL_FIRE, CRIMSON_ROOTS, MUSHROOM_RED, MUSHROOM_BROWN,
+            BASALT, BLACKSTONE, BONE_BLOCK, MAGMA_BLOCK, HOLLOWSTONE, SPIRIT_SAND, SPIRIT_SOIL,
+            SPIRIT_FIRE, SCARLET_ROOTS, MUSHROOM_RED, MUSHROOM_BROWN,
         };
-        let region = nether_region_biome(self.seed, cx, cz);
-        if region == Biome::SoulSandValley {
-            // ---- the soul floor: netherrack surface -> soul sand (60%)
-            // or soul soil (40%) — the "mostly composed of" row ----
+        let region = hollow_region_biome(self.seed, cx, cz);
+        if region == Biome::SpiritSandValley {
+            // ---- the soul floor: hollowstone surface -> spirit sand (60%)
+            // or spirit soil (40%) — the "mostly composed of" row ----
             for z in 0..16usize {
                 for x in 0..16usize {
                     let wx = cx * 16 + x as i32;
                     let wz = cz * 16 + z as i32;
                     for y in (20..110usize).rev() {
                         let below = chunk.get(x, y, z);
-                        if below == NETHERRACK && chunk.get(x, y + 1, z) == 0 {
+                        if below == HOLLOWSTONE && chunk.get(x, y + 1, z) == 0 {
                             let sand = Rng::hash3(self.seed ^ 0x50F1, wx, y as i32, wz) % 10 < 6;
-                            let floor = if sand { SOUL_SAND } else { SOUL_SOIL };
+                            let floor = if sand { SPIRIT_SAND } else { SPIRIT_SOIL };
                             chunk.set(x, y, z, floor);
-                            // the nether fossils: ~1 in 8 surface columns
+                            // the hollow fossils: ~1 in 8 surface columns
                             // sprouts a bone rib arc right at the floor
-                            // ("Nether fossils poke out of the terrain",
+                            // ("Hollow fossils poke out of the terrain",
                             // VERIFIED — placement on known surface
                             // columns instead of a separate random scan,
                             // so fossils always land on real terrain)
@@ -3386,15 +3386,15 @@ impl TerrainGen {
                                     }
                                 }
                             }
-                            // soul fire on soul soil ("scattered
-                            // throughout", VERIFIED — soul fire burns on
-                            // soul soil only, the soul_fire placement rule)
+                            // spirit fire on spirit soil ("scattered
+                            // throughout", VERIFIED — spirit fire burns on
+                            // spirit soil only, the spirit_fire placement rule)
                             if !sand
                                 && Rng::hash3(self.seed ^ 0x50F2, wx, y as i32, wz).is_multiple_of(60)
                             {
-                                chunk.set(x, y + 1, z, SOUL_FIRE);
+                                chunk.set(x, y + 1, z, SPIRIT_FIRE);
                             } else if Rng::hash3(self.seed ^ 0x50F3, wx, y as i32, wz).is_multiple_of(40) {
-                                // the sparse native vegetation: crimson
+                                // the sparse native vegetation: scarlet
                                 // roots + mushrooms (VERIFIED row)
                                 let plant = match Rng::hash3(
                                     self.seed ^ 0x50F4,
@@ -3403,7 +3403,7 @@ impl TerrainGen {
                                     wz,
                                 ) % 3
                                 {
-                                    0 => CRIMSON_ROOTS,
+                                    0 => SCARLET_ROOTS,
                                     1 => MUSHROOM_RED,
                                     _ => MUSHROOM_BROWN,
                                 };
@@ -3443,7 +3443,7 @@ impl TerrainGen {
                 }
             }
         } else if region == Biome::BasaltDeltas {
-            // ---- the deltas floor: netherrack surface -> basalt (70%)
+            // ---- the deltas floor: hollowstone surface -> basalt (70%)
             // with blackstone (20%) + magma (10%) — the deltas' basalt
             // body (the wiki's own composition: basalt, blackstone,
             // magma) ----
@@ -3453,7 +3453,7 @@ impl TerrainGen {
                     let wz = cz * 16 + z as i32;
                     for y in (20..110usize).rev() {
                         let below = chunk.get(x, y, z);
-                        if below == NETHERRACK && chunk.get(x, y + 1, z) == 0 {
+                        if below == HOLLOWSTONE && chunk.get(x, y + 1, z) == 0 {
                             let v = Rng::hash3(self.seed ^ 0xBA2A, wx, y as i32, wz) % 10;
                             let floor = if v < 7 {
                                 BASALT
@@ -3510,37 +3510,37 @@ impl TerrainGen {
         }
     }
 
-    /// 1.16 (Nether Update, part 2): the nether forest generation —
-    /// the crimson/warped region's signature look, all in-chunk:
-    /// nylium floors ("The forest floor is mostly covered with
-    /// crimson nylium", VERIFIED w/Crimson_Forest), huge fungi (the
-    /// stem + wart-cap + shroomlight "trees"), the undergrowth
-    /// tufts, weeping vines hanging under crimson canopies + twisting
-    /// vines climbing from warped ground (VERIFIED w/Weeping_Vines +
+    /// 1.16 (Hollows Update, part 2): the hollow forest generation —
+    /// the scarlet/viridian region's signature look, all in-chunk:
+    /// mold floors ("The forest floor is mostly covered with
+    /// scarlet mold", VERIFIED w/Scarlet_Forest), huge fungi (the
+    /// stem + wart-cap + glowcap "trees"), the undergrowth
+    /// tufts, weeping vines hanging under scarlet canopies + twisting
+    /// vines climbing from viridian ground (VERIFIED w/Weeping_Vines +
     /// w/Twisting_Vines "Post-generation" rows). Adaptations,
-    /// disclosed: no bone-meal growth path (no nylium-spreading sim);
+    /// disclosed: no bone-meal growth path (no mold-spreading sim);
     /// the huge fungi are the engine's tree-generator pattern trimmed
     /// to the two families.
-    fn gen_v116b_nether_forests(&self, chunk: &mut Chunk, rng: &mut Rng, cx: i32, cz: i32) {
+    fn gen_v116b_hollow_forests(&self, chunk: &mut Chunk, rng: &mut Rng, cx: i32, cz: i32) {
         use vc_blocks::blocks::{
-            CRIMSON_FUNGUS, CRIMSON_NYLIUM, CRIMSON_ROOTS, NETHER_SPROUTS, NETHER_WART_BLOCK,
-            SHROOMLIGHT, TWISTING_VINES, WARPED_FUNGUS, WARPED_NYLIUM, WARPED_ROOTS,
-            WEEPING_VINES, WARPED_WART_BLOCK, CRIMSON_STEM, WARPED_STEM, NETHERRACK,
+            SCARLET_FUNGUS, SCARLET_MOLD, SCARLET_ROOTS, HOLLOW_SPROUTS, HOLLOW_WART_BLOCK,
+            GLOWCAP, TWISTING_VINES, VIRIDIAN_FUNGUS, VIRIDIAN_MOLD, VIRIDIAN_ROOTS,
+            WEEPING_VINES, VIRIDIAN_WART_BLOCK, SCARLET_STEM, VIRIDIAN_STEM, HOLLOWSTONE,
         };
-        let region = nether_region_biome(self.seed, cx, cz);
-        if region == Biome::NetherWastes {
+        let region = hollow_region_biome(self.seed, cx, cz);
+        if region == Biome::HollowWastes {
             return; // the wastes keep their part-1 look
         }
-        let crimson = region == Biome::CrimsonForest;
-        let (nylium, stem, wart_cap) = if crimson {
-            (CRIMSON_NYLIUM, CRIMSON_STEM, NETHER_WART_BLOCK)
+        let scarlet = region == Biome::ScarletForest;
+        let (mold, stem, wart_cap) = if scarlet {
+            (SCARLET_MOLD, SCARLET_STEM, HOLLOW_WART_BLOCK)
         } else {
-            (WARPED_NYLIUM, WARPED_STEM, WARPED_WART_BLOCK)
+            (VIRIDIAN_MOLD, VIRIDIAN_STEM, VIRIDIAN_WART_BLOCK)
         };
 
-        // ---- the nylium floor: every netherrack surface with air
-        // above (y 20..110) turns nylium; ~30% of the columns keep
-        // bare netherrack ("with some netherrack ... generating on the
+        // ---- the mold floor: every hollowstone surface with air
+        // above (y 20..110) turns mold; ~30% of the columns keep
+        // bare hollowstone ("with some hollowstone ... generating on the
         // surface as well", VERIFIED) ----
         for z in 0..16usize {
             for x in 0..16usize {
@@ -3552,27 +3552,27 @@ impl TerrainGen {
                 }
                 for y in (20..110usize).rev() {
                     let below = chunk.get(x, y, z);
-                    if below == NETHERRACK && chunk.get(x, y + 1, z) == 0 {
-                        // plant the nylium block (Chunk::set routes
+                    if below == HOLLOWSTONE && chunk.get(x, y + 1, z) == 0 {
+                        // plant the mold block (Chunk::set routes
                         // through default_state)
-                        chunk.set(x, y, z, nylium);
-                        // the undergrowth: ~45% of nylium columns sprout
-                        // a tuft (fungi/roots crimson; roots/sprouts/
-                        // fungi warped — "The most frequent vegetation
-                        // ... includes crimson fungi, crimson roots",
-                        // VERIFIED w/Crimson_Forest)
+                        chunk.set(x, y, z, mold);
+                        // the undergrowth: ~45% of mold columns sprout
+                        // a tuft (fungi/roots scarlet; roots/sprouts/
+                        // fungi viridian — "The most frequent vegetation
+                        // ... includes scarlet fungi, scarlet roots",
+                        // VERIFIED w/Scarlet_Forest)
                         if Rng::hash3(self.seed ^ 0xF106, wx, y as i32, wz) % 100 < 45 {
-                            let plant = if crimson {
+                            let plant = if scarlet {
                                 match Rng::hash3(self.seed ^ 0xC407, wx, y as i32, wz) % 3 {
-                                    0 => CRIMSON_FUNGUS,
-                                    _ => CRIMSON_ROOTS,
+                                    0 => SCARLET_FUNGUS,
+                                    _ => SCARLET_ROOTS,
                                 }
                             } else {
                                 match Rng::hash3(self.seed ^ 0x9A0E, wx, y as i32, wz) % 4 {
-                                    0 => WARPED_FUNGUS,
-                                    1 => WARPED_ROOTS,
-                                    2 => NETHER_SPROUTS,
-                                    _ => WARPED_ROOTS,
+                                    0 => VIRIDIAN_FUNGUS,
+                                    1 => VIRIDIAN_ROOTS,
+                                    2 => HOLLOW_SPROUTS,
+                                    _ => VIRIDIAN_ROOTS,
                                 }
                             };
                             chunk.set(x, y + 1, z, plant);
@@ -3584,17 +3584,17 @@ impl TerrainGen {
         }
 
         // ---- the huge fungi (the forest's "trees"): 3 attempts per
-        // chunk — a 4..9-tall stem from a nylium floor, a 3..5-wide
-        // wart cap, one shroomlight in the cap, and (crimson only)
-        // weeping-vine strands hanging from the cap's rim; (warped)
+        // chunk — a 4..9-tall stem from a mold floor, a 3..5-wide
+        // wart cap, one glowcap in the cap, and (scarlet only)
+        // weeping-vine strands hanging from the cap's rim; (viridian)
         // twisting-vine columns climbing 2..6 from the ground nearby
         // ----
         for _ in 0..3 {
             let lx = rng.next_range(16) as i32;
             let lz = rng.next_range(16) as i32;
-            // find a nylium floor (only forests themselves host the
-            // huge fungi — VERIFIED w/Crimson_Forest: "This is the
-            // only place where huge crimson fungus trees grow
+            // find a mold floor (only forests themselves host the
+            // huge fungi — VERIFIED w/Scarlet_Forest: "This is the
+            // only place where huge scarlet fungus trees grow
             // naturally")
             let mut base = 0i32;
             for y in (20..110usize).rev() {
@@ -3608,7 +3608,7 @@ impl TerrainGen {
                 continue;
             }
             let floor = chunk.get(lx as usize, base as usize, lz as usize);
-            if floor != nylium {
+            if floor != mold {
                 continue; // not a forest floor — skip this attempt
             }
             let h = 4 + rng.next_range(6) as i32; // 4..9
@@ -3624,7 +3624,7 @@ impl TerrainGen {
             if top <= base + 1 {
                 continue; // the stem never made it out of the floor
             }
-            // the cap: a disc of wart blocks + the shroomlight core
+            // the cap: a disc of wart blocks + the glowcap core
             let r = 2 + rng.next_range(2) as i32; // 2..3 → caps 3..5 wide
             let cy = (top + 1).min(125);
             for dz in -r..=r {
@@ -3639,17 +3639,17 @@ impl TerrainGen {
                     }
                 }
             }
-            // the shroomlight: the cap's center ("Shroomlights ...
-            // generate in huge fungi", VERIFIED w/Shroomlight)
+            // the glowcap: the cap's center ("Glowcaps ...
+            // generate in huge fungi", VERIFIED w/Glowcap)
             let x = lx.clamp(0, 15) as usize;
             let z = lz.clamp(0, 15) as usize;
             if chunk.get(x, cy as usize, z) == wart_cap {
-                chunk.set(x, cy as usize, z, SHROOMLIGHT);
+                chunk.set(x, cy as usize, z, GLOWCAP);
             }
-            // crimson: weeping vines hang from the cap's rim (1..4
+            // scarlet: weeping vines hang from the cap's rim (1..4
             // strands, 2..5 long — "generate naturally ... on huge
-            // crimson fungi", VERIFIED w/Weeping_Vines)
-            if crimson {
+            // scarlet fungi", VERIFIED w/Weeping_Vines)
+            if scarlet {
                 for _ in 0..1 + rng.next_range(4) as i32 {
                     let dx = (rng.next_range((r * 2 + 1) as u32) as i32 - r).clamp(-r, r);
                     let dz = (rng.next_range((r * 2 + 1) as u32) as i32 - r).clamp(-r, r);
@@ -3670,10 +3670,10 @@ impl TerrainGen {
             }
         }
 
-        // warped only: twisting-vine columns from the ground ("twisting
-        // vines growing from the ground", VERIFIED w/Warped_Forest) —
+        // viridian only: twisting-vine columns from the ground ("twisting
+        // vines growing from the ground", VERIFIED w/Viridian_Forest) —
         // 2 columns per chunk, 2..7 tall
-        if !crimson {
+        if !scarlet {
             for _ in 0..2 {
                 let lx = rng.next_range(16) as i32;
                 let lz = rng.next_range(16) as i32;
@@ -3686,7 +3686,7 @@ impl TerrainGen {
                     }
                 }
                 let floor = chunk.get(lx as usize, base as usize, lz as usize);
-                if base < 20 || floor != nylium {
+                if base < 20 || floor != mold {
                     continue;
                 }
                 let len = 2 + rng.next_range(6) as i32; // 2..7
@@ -3701,18 +3701,18 @@ impl TerrainGen {
         }
     }
 
-    /// 1.16 (Nether Update, part 1): the V13 nether decorations —
+    /// 1.16 (Hollows Update, part 1): the V13 hollow decorations —
     /// basalt blobs + pillars, blackstone patches with gilded + crying
-    /// obsidian trace, nether gold ore veins, and the ancient-debris
-    /// clusters. Called at the end of generate_nether_chunk (the
+    /// obsidian trace, hollow gold ore veins, and the ancient-debris
+    /// clusters. Called at the void of generate_hollow_chunk (the
     /// chunk is fully materialized — the debris air-exposure check
     /// needs that).
-    fn gen_v116_nether_decorations(&self, chunk: &mut Chunk, rng: &mut Rng, cx: i32, cz: i32) {
-        // ---- basalt blobs (the basalt-deltas adaptation — no nether
+    fn gen_v116_hollow_decorations(&self, chunk: &mut Chunk, rng: &mut Rng, cx: i32, cz: i32) {
+        // ---- basalt blobs (the basalt-deltas adaptation — no hollow
         // sub-biomes in this engine, disclosed): 5 blobs/chunk y 20..90,
-        // radius 3..5, replacing netherrack (the magma-blob pattern).
+        // radius 3..5, replacing hollowstone (the magma-blob pattern).
         // VERIFIED w/Basalt: "generate in blobs, which attempt to
-        // replace netherrack ... in basalt deltas biomes". ----
+        // replace hollowstone ... in basalt deltas biomes". ----
         for _ in 0..5 {
             let bx = rng.next_range(16) as i32;
             let by = 20 + rng.next_range(70) as i32;
@@ -3727,7 +3727,7 @@ impl TerrainGen {
                         let x = (bx + dx).clamp(0, 15) as usize;
                         let y = (by + dy).clamp(1, 126) as usize;
                         let z = (bz + dz).clamp(0, 15) as usize;
-                        if chunk.get(x, y, z) == NETHERRACK {
+                        if chunk.get(x, y, z) == HOLLOWSTONE {
                             chunk.set(x, y, z, BASALT);
                         }
                     }
@@ -3760,9 +3760,9 @@ impl TerrainGen {
             }
         }
 
-        // ---- blackstone patches ("small patches in all Nether
+        // ---- blackstone patches ("small patches in all Hollow
         // biomes", VERIFIED w/Blackstone 20w19a row): 3 blobs/chunk,
-        // low band y 5..55 (denser deep — vanilla's low-nether body is
+        // low band y 5..55 (denser deep — vanilla's low-hollow body is
         // blackstone-rich under the bastion round's disclosure). Inside
         // each blob: 1-2 gilded spots ("native to bastion remnants" —
         // our patch adaptation, disclosed) + a 1-in-3-blob crying
@@ -3781,7 +3781,7 @@ impl TerrainGen {
                         let x = (bx + dx).clamp(0, 15) as usize;
                         let y = (by + dy).clamp(1, 126) as usize;
                         let z = (bz + dz).clamp(0, 15) as usize;
-                        if chunk.get(x, y, z) == NETHERRACK {
+                        if chunk.get(x, y, z) == HOLLOWSTONE {
                             chunk.set(x, y, z, BLACKSTONE);
                         }
                     }
@@ -3797,31 +3797,31 @@ impl TerrainGen {
                     chunk.set(x, y, z, GILDED_BLACKSTONE);
                 }
             }
-            // crying obsidian trace: 1-in-3 blobs carry a single spot
+            // weeping obsidian trace: 1-in-3 blobs carry a single spot
             if bi == 0 && rng.next_range(3) == 0 {
                 let x = (bx + rng.next_range((r * 2 + 1) as u32) as i32 - r).clamp(0, 15) as usize;
                 let y = (by + rng.next_range((r * 2 + 1) as u32) as i32 - r).clamp(1, 126) as usize;
                 let z = (bz + rng.next_range((r * 2 + 1) as u32) as i32 - r).clamp(0, 15) as usize;
                 if chunk.get(x, y, z) == BLACKSTONE {
-                    chunk.set(x, y, z, CRYING_OBSIDIAN);
+                    chunk.set(x, y, z, WEEPING_OBSIDIAN);
                 }
             }
         }
 
-        // ---- nether gold ore (VERIFIED w/Nether_Gold_Ore "generates
-        // in the Nether in the form of blobs"): hash-gated veins at
+        // ---- hollow gold ore (VERIFIED w/Hollow_Gold_Ore "generates
+        // in the Hollow in the form of blobs"): hash-gated veins at
         // quartz-like density, any y in the rock body ----
         for z in 0..16usize {
             for x in 0..16usize {
                 for y in 1..=126usize {
-                    if chunk.get(x, y, z) != NETHERRACK {
+                    if chunk.get(x, y, z) != HOLLOWSTONE {
                         continue;
                     }
                     let wx = cx * 16 + x as i32;
                     let wz = cz * 16 + z as i32;
                     let v = Rng::hash3(self.seed ^ 0x601D, wx, y as i32, wz);
                     if (v % 100_000) as f32 / 100_000.0 < 0.009 {
-                        chunk.set(x, y, z, NETHER_GOLD_ORE);
+                        chunk.set(x, y, z, HOLLOW_GOLD_ORE);
                     }
                 }
             }
@@ -3832,7 +3832,7 @@ impl TerrainGen {
         // 0–3 ancient debris ... with a triangle distribution from
         // levels 8 to 24 [peak 16]. An additional cluster of 0–2 ...
         // evenly from levels 8 to 119." And "never naturally exposed
-        // to air"; "They can only replace netherrack, basalt, and
+        // to air"; "They can only replace hollowstone, basalt, and
         // blackstone" [Java]. ----
         let solid_no_air = |c: &Chunk, x: usize, y: usize, z: usize| -> bool {
             // all 6 neighbors must be non-air (never exposed)
@@ -3849,7 +3849,7 @@ impl TerrainGen {
                 && solid_at(x as i32, y as i32, z as i32 - 1)
                 && solid_at(x as i32, y as i32, z as i32 + 1)
         };
-        let placeable = |b: u16| b == NETHERRACK || b == BASALT || b == BLACKSTONE;
+        let placeable = |b: u16| b == HOLLOWSTONE || b == BASALT || b == BLACKSTONE;
         // cluster A: 0..3, triangle y 8..24 (sum of two uniforms 0..8+0..8
         // + 8 → peak at 16)
         for _ in 0..(rng.next_range(4) as i32) {
@@ -3877,7 +3877,7 @@ impl TerrainGen {
         }
     }
     /// first chunk can be solid rock; caverns interleave with walls).
-    pub fn find_nether_spawn(&self) -> (f32, f32, f32) {
+    pub fn find_hollow_spawn(&self) -> (f32, f32, f32) {
         // ring-by-ring spiral over the first ~9×9 chunks
         for r in 0..4i32 {
             for dz in -r..=r {
@@ -3885,7 +3885,7 @@ impl TerrainGen {
                     if dx.abs() != r && dz.abs() != r {
                         continue; // ring cells only
                     }
-                    let (chunk, _) = self.generate_nether_chunk(dx, dz, Vec::new());
+                    let (chunk, _) = self.generate_hollow_chunk(dx, dz, Vec::new());
                     for lz in 0..16usize {
                         for lx in 0..16usize {
                             for y in 10..110usize {
@@ -3914,7 +3914,7 @@ impl TerrainGen {
                 }
             }
         }
-        // fallback: mid-band position — the travel snap (nether_floor_y)
+        // fallback: mid-band position — the travel snap (hollow_floor_y)
         // refines it, arriving flying if nothing opens up
         (8.5, 70.0, 8.5)
     }
@@ -4483,12 +4483,12 @@ impl TerrainGen {
     // forests"; "three floors"; "The top floor is about half the size
     // of the lower floors"; "generate a cobblestone foundation
     // underneath the entire structure"; "Consist mostly of cobblestone
-    // and wood blocks"; "inhabited by vindicators, evokers"). Placement
+    // and wood blocks"; "inhabited by cleavers, runecallers"). Placement
     // regions: 8×8 chunks (128 blocks — mansions are the rarest
     // overworld structure), hash-gated ~1/5, dark-forest biome check.
-    // The engine-native illager placement = vindicator/evoker SPAWNER
+    // The engine-native illager placement = cleaver/runecaller SPAWNER
     // blocks (vanilla spawns them at generation without respawn — the
-    // spawner adaptation is disclosed in the WORKLOG; evoker spawners
+    // spawner adaptation is disclosed in the WORKLOG; runecaller spawners
     // on the two upper floors, VERIFIED: "Spawn in the two upper floors
     // of woodland mansions").
     pub fn woodland_mansions_near(&self, ox: i32, oz: i32) -> Vec<(i32, i32)> {
@@ -4584,15 +4584,15 @@ impl TerrainGen {
                 put(chunk, wx + d, base + 1 + dy, wz + 6, AIR);
             }
         }
-        // illagers: vindicator spawners on the lower two floors, evoker
+        // illagers: cleaver spawners on the lower two floors, runecaller
         // spawners on the upper two (VERIFIED "Spawn in the two upper
-        // floors" for evokers; vindicators mansion-wide) — the engine's
+        // floors" for runecallers; cleavers mansion-wide) — the engine's
         // spawner-block adaptation of vanilla's generation-time spawn
         // (no-respawn nuance disclosed in the WORKLOG). The completeness
         // audit fix: these DEDICATED STATE ids now ride set_state (the
         // fortress/dungeon pattern) — the old put()-as-block form leaned
         // on default_state's identity fall-through, which the audit's
-        // V15 block window (GHAST_TEAR = 495) broke; states never route
+        // V15 block window (WEEPGEIST_TEAR = 495) broke; states never route
         // through the block-id path again.
         let put_state = |chunk: &mut Chunk, x: i32, y: i32, z: i32, st: u16| {
             let lxi = x - ox;
@@ -4601,11 +4601,11 @@ impl TerrainGen {
                 chunk.set_state(lxi as usize, y as usize, lzi as usize, st);
             }
         };
-        put_state(chunk, wx - 3, base + 6, wz - 3, SPAWNER_VINDICATOR);
-        put_state(chunk, wx + 3, base + 6, wz + 3, SPAWNER_VINDICATOR);
-        put_state(chunk, wx - 2, base + 11, wz + 2, SPAWNER_EVOKER);
-        put_state(chunk, wx + 2, base + 16, wz - 2, SPAWNER_EVOKER);
-        put_state(chunk, wx, base + 16, wz, SPAWNER_VINDICATOR);
+        put_state(chunk, wx - 3, base + 6, wz - 3, SPAWNER_CLEAVER);
+        put_state(chunk, wx + 3, base + 6, wz + 3, SPAWNER_CLEAVER);
+        put_state(chunk, wx - 2, base + 11, wz + 2, SPAWNER_RUNECALLER);
+        put_state(chunk, wx + 2, base + 16, wz - 2, SPAWNER_RUNECALLER);
+        put_state(chunk, wx, base + 16, wz, SPAWNER_CLEAVER);
         // a couple of loot chests in the foyer
         put(chunk, wx - 4, base + 2, wz + 4, CHEST);
         put(chunk, wx + 4, base + 12, wz - 4, CHEST);
@@ -4686,7 +4686,7 @@ impl TerrainGen {
     // ---- stronghold (wiki Stronghold page, live) ----
     // VERIFIED: Java has 128 strongholds in 8 rings; ring 1 = 3
     // strongholds within 1,280–2,816 blocks of the origin, at roughly
-    // equal angles. Stone-brick construction; the End portal room holds
+    // equal angles. Stone-brick construction; the Void portal room holds
     // the 12-frame portal ring over lava. Loot: stronghold_library +
     // stronghold_corridor.
     // ADAPTED: ring 1 only (the engine's playable range; the remaining
@@ -4787,10 +4787,10 @@ impl TerrainGen {
         // the 12-frame ring: 3 per side, gap at the corners (vanilla
         // 1.16.5 portal room layout)
         for i in 0..3 {
-            put(chunk, px + (i - 1), y + 1, pz - 2, END_PORTAL_FRAME);
-            put(chunk, px + (i - 1), y + 1, pz + 2, END_PORTAL_FRAME);
-            put(chunk, px - 2, y + 1, pz + (i - 1), END_PORTAL_FRAME);
-            put(chunk, px + 2, y + 1, pz + (i - 1), END_PORTAL_FRAME);
+            put(chunk, px + (i - 1), y + 1, pz - 2, VOID_GATE_FRAME);
+            put(chunk, px + (i - 1), y + 1, pz + 2, VOID_GATE_FRAME);
+            put(chunk, px - 2, y + 1, pz + (i - 1), VOID_GATE_FRAME);
+            put(chunk, px + 2, y + 1, pz + (i - 1), VOID_GATE_FRAME);
         }
         // the completeness audit: the stronghold's silverfish spawner —
         // VERIFIED (reference wiki /Silverfish, live 2026-09-08, capture
@@ -4933,12 +4933,12 @@ impl TerrainGen {
     }
 
     // =================================================================
-    // Phase E1 (evolution 1.0–1.2 bracket): The End + Nether Fortress.
+    // Phase E1 (evolution 1.0–1.2 bracket): The Void + Hollow Fortress.
     // All structural facts live-verified 2026-09-06 (the audit trail:
     // docs/research/phase1-1.0-1.2-research.md).
     // =================================================================
 
-    /// The End (VERIFIED w/The_End): a void dimension — one end-stone
+    /// The Void (VERIFIED w/The_Void): a void dimension — one end-stone
     /// central island around (0,0); 10 obsidian pillars on a 42-block
     /// radius circle around the exit portal, descending to y=0, each
     /// capped with a bedrock block (the crystal sits above it, entity
@@ -4959,7 +4959,7 @@ impl TerrainGen {
         let ox = cx * 16;
         let oz = cz * 16;
 
-        // ---- central island: end stone, radius ~60, surface band 60..64 ----
+        // ---- central island: void stone, radius ~60, surface band 60..64 ----
         for z in 0..16i32 {
             for x in 0..16i32 {
                 let wx = ox + x;
@@ -4977,10 +4977,10 @@ impl TerrainGen {
                     let bottom = (surface - thick).max(40);
                     chunk.height[col_idx] = surface as u8;
                     for y in bottom..=surface {
-                        chunk.set(x as usize, y as usize, z as usize, END_STONE);
+                        chunk.set(x as usize, y as usize, z as usize, VOID_STONE);
                     }
                 }
-                chunk.biome[col_idx] = 9; // the_end (Bedrock single-biome id)
+                chunk.biome[col_idx] = 9; // the_void (Bedrock single-biome id)
             }
         }
 
@@ -5024,7 +5024,7 @@ impl TerrainGen {
                 }
             }
             // 2 pillars carry iron-bar cages (VERIFIED: "two of which are
-            // protected in cages of iron bars" — w/The_End). No iron-bars
+            // protected in cages of iron bars" — w/The_Void). No iron-bars
             // block in the engine: OBSIDIAN corner posts stand in
             // [documented adaptation; the crystal stays reachable from
             // above like vanilla's open-top cages]
@@ -5043,8 +5043,8 @@ impl TerrainGen {
         }
 
         // ---- the exit-portal bedrock fountain at (0, y, 0) (VERIFIED
-        // w/The_End: activates on the dragon's defeat — the 3×3 center
-        // fills with END_PORTAL blocks then, game-side). Sits ON the
+        // w/The_Void: activates on the dragon's defeat — the 3×3 center
+        // fills with VOID_GATE blocks then, game-side). Sits ON the
         // island surface (the island center tops at ~y 63).
         {
             // base slab (5×5) at 61, ring at 62, the inner 3×3 stays open
@@ -5068,7 +5068,7 @@ impl TerrainGen {
         }
 
         // ---- the 5×5 obsidian arrival platform at (100, 64, 0) (VERIFIED
-        // w/The_End: "a 5 by 5 square of obsidian that is generated once a\n        // player or entity enters the End" — we emit it with the world so\n        // the first arrival already stands on it) ----
+        // w/The_Void: "a 5 by 5 square of obsidian that is generated once a\n        // player or entity enters the Void" — we emit it with the world so\n        // the first arrival already stands on it) ----
         {
             for dx in -2..=2i32 {
                 for dz in -2..=2i32 {
@@ -5084,15 +5084,15 @@ impl TerrainGen {
         (Arc::new(chunk), outbound)
     }
 
-    /// The End arrival position (the platform's center top).
-    pub fn end_arrival(&self) -> (f32, f32, f32) {
+    /// The Void arrival position (the platform's center top).
+    pub fn void_arrival(&self) -> (f32, f32, f32) {
         (100.5, 64.0, 0.5)
     }
 
     /// The 10 pillar tops as (x, top_y, z) — the crystal spawn points
     /// (game layer's dragon fight). Mirrors generate_end_chunk's pillar
     /// math exactly (same angle table + height roll).
-    pub fn end_pillar_tops(&self) -> Vec<(i32, i32, i32)> {
+    pub fn void_pillar_tops(&self) -> Vec<(i32, i32, i32)> {
         let mut out = Vec::with_capacity(10);
         for i in 0..10usize {
             let th = i as f32 * std::f32::consts::TAU / 10.0;
@@ -5104,8 +5104,8 @@ impl TerrainGen {
         out
     }
 
-    /// Phase E1: does this 432×432 nether region (VERIFIED region size,
-    /// w/Nether_Fortress "regions are 432×432 blocks in Java Edition")
+    /// Phase E1: does this 432×432 hollow region (VERIFIED region size,
+    /// w/Hollow_Fortress "regions are 432×432 blocks in Java Edition")
     /// carry a fortress? Deterministic per-region roll [placeholder: the
     /// vanilla per-region probability was not captured this round — 50%
     /// chosen so fortresses are findable; disclosed in the worklog].
@@ -5142,12 +5142,12 @@ impl TerrainGen {
         out
     }
 
-    /// Fortress layout (all VERIFIED w/Nether_Fortress unless noted):
-    /// bridges + enclosed corridors of nether bricks on pillars "that
+    /// Fortress layout (all VERIFIED w/Hollow_Fortress unless noted):
+    /// bridges + enclosed corridors of hollow bricks on pillars "that
     /// tower high above the lava seas"; up to 2 blaze spawner platforms
-    /// (each surrounded by nether-brick fences + a 3-block staircase —
-    /// w/Blaze); nether-wart garden by a stairwell (20 plants in soul
-    /// sand — w/Nether_Wart). We emit a symmetric cross: an E-W bridge
+    /// (each surrounded by hollow-brick fences + a 3-block staircase —
+    /// w/Blaze); hollow-wart garden by a stairwell (20 plants in soul
+    /// sand — w/Hollow_Wart). We emit a symmetric cross: an E-W bridge
     /// spine, a N-S corridor, 2 blaze platforms, 1 wart garden. [layout
     /// geometry is our procedural approximation of the vanilla piece
     /// system — the verified facts are the material, the blaze platforms,
@@ -5168,15 +5168,15 @@ impl TerrainGen {
             for dz in -2..=2i32 {
                 let x = wx + dx;
                 let z = wz + dz;
-                put(chunk, x, deck, z, NETHER_BRICKS);
+                put(chunk, x, deck, z, HOLLOW_BRICKS);
                 // railing rows (vanilla bridges have side rails)
                 if dz.abs() == 2 {
-                    put(chunk, x, deck + 1, z, NETHER_BRICKS);
+                    put(chunk, x, deck + 1, z, HOLLOW_BRICKS);
                 }
                 // support pillars every 8 blocks down to y=8
                 if dx % 8 == 0 && dz == 0 {
                     for y in 8..deck {
-                        put(chunk, x, y, z, NETHER_BRICKS);
+                        put(chunk, x, y, z, HOLLOW_BRICKS);
                     }
                 }
             }
@@ -5187,19 +5187,19 @@ impl TerrainGen {
             for dx in -1..=1i32 {
                 let x = wx + dx;
                 let z = wz + dz;
-                put(chunk, x, deck, z, NETHER_BRICKS);
+                put(chunk, x, deck, z, HOLLOW_BRICKS);
                 if dx.abs() == 1 {
                     // side walls with window gaps
                     if dz % 4 != 2 {
-                        put(chunk, x, deck + 1, z, NETHER_BRICKS);
-                        put(chunk, x, deck + 2, z, NETHER_BRICKS);
+                        put(chunk, x, deck + 1, z, HOLLOW_BRICKS);
+                        put(chunk, x, deck + 2, z, HOLLOW_BRICKS);
                     }
                 }
-                put(chunk, x, deck + 3, z, NETHER_BRICKS); // roof
+                put(chunk, x, deck + 3, z, HOLLOW_BRICKS); // roof
                 // pillars
                 if dz % 8 == 0 && dx == 0 {
                     for y in 8..deck {
-                        put(chunk, x, y, z, NETHER_BRICKS);
+                        put(chunk, x, y, z, HOLLOW_BRICKS);
                     }
                 }
             }
@@ -5207,36 +5207,36 @@ impl TerrainGen {
 
         // ---- spawner platforms ×2 (VERIFIED w/Blaze: "up to two blaze
         // spawner platforms…"; Phase E2: the second platform hosts a
-        // WITHER-SKELETON spawner — VERIFIED w/Wither_Skeleton "spawn in
-        // Nether fortresses" — no fence block in the engine; railing
+        // BLIGHT-SKELETON spawner — VERIFIED w/Blight_Skeleton "spawn in
+        // Hollow fortresses" — no fence block in the engine; railing
         // posts stand in [adaptation]) ----
         for (pi, (sx, sz)) in [(0, (wx + 24, wz + 10)), (1, (wx - 24, wz - 10))].into_iter() {
             for dx in -3..=3i32 {
                 for dz in -3..=3i32 {
-                    put(chunk, sx + dx, deck, sz + dz, NETHER_BRICKS);
+                    put(chunk, sx + dx, deck, sz + dz, HOLLOW_BRICKS);
                     // railing ring
                     if dx.abs() == 3 || dz.abs() == 3 {
-                        put(chunk, sx + dx, deck + 1, sz + dz, NETHER_BRICKS);
+                        put(chunk, sx + dx, deck + 1, sz + dz, HOLLOW_BRICKS);
                     }
                 }
             }
             // the spawner itself (SPAWNER_BLAZE state 241 / the second
-            // platform's wither-skeleton spawner state 315)
+            // platform's blight-skeleton spawner state 315)
             let lxi = sx - ox;
             let lzi = sz - oz;
             if (0..16).contains(&lxi) && (0..16).contains(&lzi) {
-                let st = if pi == 0 { SPAWNER_BLAZE } else { SPAWNER_WITHER_SKELETON };
+                let st = if pi == 0 { SPAWNER_BLAZE } else { SPAWNER_BLIGHT_SKELETON };
                 chunk.set_state(lxi as usize, deck as usize + 1, lzi as usize, st);
             }
             // 3-block staircase down (VERIFIED)
             for step in 0..3i32 {
                 for dz in -1..=1i32 {
-                    put(chunk, sx + 4, deck - 1 - step, sz + dz, NETHER_BRICKS);
+                    put(chunk, sx + 4, deck - 1 - step, sz + dz, HOLLOW_BRICKS);
                 }
             }
         }
 
-        // ---- the nether-wart garden (VERIFIED w/Nether_Wart: soul sand
+        // ---- the hollow-wart garden (VERIFIED w/Hollow_Wart: spirit sand
         // gardens near stairwells; ~20 plants; growth needs only soul
         // sand) ----
         {
@@ -5245,7 +5245,7 @@ impl TerrainGen {
             let mut planted = 0;
             for dx in 0..6i32 {
                 for dz in 0..6i32 {
-                    put(chunk, gx + dx, deck, gz + dz, SOUL_SAND);
+                    put(chunk, gx + dx, deck, gz + dz, SPIRIT_SAND);
                     // plant ~20 warts in a scatter (age 0 state)
                     if planted < 20 && dx % 2 == 0 && dz % 2 == 0 {
                         let lxi = gx + dx - ox;
@@ -5522,7 +5522,7 @@ mod village_tests {
 }
 
 #[cfg(test)]
-mod nether_tests {
+mod hollow_tests {
     use super::*;
     use crate::world::Dimension;
 
@@ -5534,42 +5534,42 @@ mod nether_tests {
         s
     }
 
-    /// Backlog round: all five 1.16 nether biomes appear in the region
+    /// Backlog round: all five 1.16 hollow biomes appear in the region
     /// roll at roughly their wiki-verified volumes (SSV 17%, BD 16%,
-    /// crimson 22%, warped 8%, wastes the remainder).
+    /// scarlet 22%, viridian 8%, wastes the remainder).
     #[test]
-    fn backlog_five_nether_biomes_all_appear() {
-        let mut counts = [0usize; 5]; // [wastes, crimson, warped, ssv, deltas]
+    fn backlog_five_hollow_biomes_all_appear() {
+        let mut counts = [0usize; 5]; // [wastes, scarlet, viridian, ssv, deltas]
         for rx in -30..30 {
             for rz in -30..30 {
-                let b = nether_region_biome(0xBE11, rx * 2, rz * 2);
+                let b = hollow_region_biome(0xBE11, rx * 2, rz * 2);
                 let i = match b {
-                    Biome::NetherWastes => 0,
-                    Biome::CrimsonForest => 1,
-                    Biome::WarpedForest => 2,
-                    Biome::SoulSandValley => 3,
+                    Biome::HollowWastes => 0,
+                    Biome::ScarletForest => 1,
+                    Biome::ViridianForest => 2,
+                    Biome::SpiritSandValley => 3,
                     Biome::BasaltDeltas => 4,
-                    _ => panic!("non-nether region biome {b:?}"),
+                    _ => panic!("non-hollow region biome {b:?}"),
                 };
                 counts[i] += 1;
             }
         }
         let total: usize = counts.iter().sum();
         for c in counts {
-            assert!(c > 0, "every nether biome must appear in the roll");
+            assert!(c > 0, "every hollow biome must appear in the roll");
         }
         // the volume shares (±6% tolerance — a 60x60 sample)
         let ssv = counts[3] as f64 / total as f64;
         let bd = counts[4] as f64 / total as f64;
-        let warped = counts[2] as f64 / total as f64;
+        let viridian = counts[2] as f64 / total as f64;
         assert!((ssv - 0.17).abs() < 0.06, "SSV share {ssv:.2}");
         assert!((bd - 0.16).abs() < 0.06, "deltas share {bd:.2}");
-        assert!((warped - 0.08).abs() < 0.05, "warped share {warped:.2}");
+        assert!((viridian - 0.08).abs() < 0.05, "viridian share {viridian:.2}");
     }
 
-    /// The soul sand valley floor is soul sand + soul soil, carries
+    /// The spirit sand valley floor is spirit sand + spirit soil, carries
     /// fossils, and grows giant basalt pillars (VERIFIED
-    /// w/Soul_Sand_Valley capture). Samples several SSV regions —
+    /// w/Spirit_Sand_Valley capture). Samples several SSV regions —
     /// surface density varies per chunk with the cavern carver.
     #[test]
     fn backlog_soul_valley_has_soul_floor_and_fossils() {
@@ -5582,15 +5582,15 @@ mod nether_tests {
             for c in 0..40i32 {
                 let cx = c * 2;
                 let cz = c * 2;
-                if nether_region_biome(seed, cx, cz) != Biome::SoulSandValley {
+                if hollow_region_biome(seed, cx, cz) != Biome::SpiritSandValley {
                     continue;
                 }
-                let gen = TerrainGen::for_dimension(seed, Dimension::Nether);
+                let gen = TerrainGen::for_dimension(seed, Dimension::Hollow);
                 for (dx, dz) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
                     let (chunk, _) = gen.generate_chunk(cx + dx, cz + dz, Vec::new());
                     for i in 0..vc_chunk::chunk::CHUNK_LEN {
                         match chunk.get_idx(i) {
-                            SOUL_SAND | SOUL_SOIL => soul += 1,
+                            SPIRIT_SAND | SPIRIT_SOIL => soul += 1,
                             BONE_BLOCK => fossils += 1,
                             BASALT => pillars += 1,
                             _ => {}
@@ -5606,7 +5606,7 @@ mod nether_tests {
         }
         assert!(regions_sampled >= 3, "found SSV regions ({regions_sampled})");
         assert!(soul > 40, "the soul floor exists ({soul} cells)");
-        assert!(fossils > 0, "nether fossils poke out ({fossils} bone cells)");
+        assert!(fossils > 0, "hollow fossils poke out ({fossils} bone cells)");
         assert!(pillars > 30, "giant basalt pillars ({pillars} cells)");
     }
 
@@ -5617,7 +5617,7 @@ mod nether_tests {
         let mut seed = 1u64;
         let (cx, cz) = loop {
             let found = (0..64).find(|&c| {
-                nether_region_biome(seed, c * 2, c * 2) == Biome::BasaltDeltas
+                hollow_region_biome(seed, c * 2, c * 2) == Biome::BasaltDeltas
             });
             if let Some(c) = found {
                 break (c * 2, c * 2);
@@ -5627,7 +5627,7 @@ mod nether_tests {
                 panic!("no deltas region found");
             }
         };
-        let gen = TerrainGen::for_dimension(seed, Dimension::Nether);
+        let gen = TerrainGen::for_dimension(seed, Dimension::Hollow);
         let mut basalt = 0usize;
         let mut blackstone = 0usize;
         let mut magma = 0usize;
@@ -5646,10 +5646,10 @@ mod nether_tests {
         assert!(blackstone > 0 || magma > 0, "the trio appears (bs {blackstone}, magma {magma})");
     }
 
-    /// §28: the nether shell — bedrock floor + roof, nothing above 127
+    /// §28: the hollow shell — bedrock floor + roof, nothing above 127
     #[test]
-    fn nether_bedrock_shell() {
-        let gen = TerrainGen::for_dimension(0xDEAD_BEEF, Dimension::Nether);
+    fn hollow_bedrock_shell() {
+        let gen = TerrainGen::for_dimension(0xDEAD_BEEF, Dimension::Hollow);
         let (chunk, _) = gen.generate_chunk(0, 0, Vec::new());
         for lz in 0..16usize {
             for lx in 0..16usize {
@@ -5667,16 +5667,16 @@ mod nether_tests {
         }
     }
 
-    /// §26/§28: netherrack dominates the mass, with quartz ore sprinkled in
+    /// §26/§28: hollowstone dominates the mass, with quartz ore sprinkled in
     #[test]
-    fn nether_is_netherrack_with_quartz() {
+    fn hollow_is_hollowstone_with_quartz() {
         let mut rack = 0usize;
         let mut quartz = 0usize;
         let mut basalt = 0usize;
         let mut blackstone = 0usize;
         let mut other = 0usize;
         for s in 0..16i32 {
-            let gen = TerrainGen::for_dimension(0xCAFE_F00D, Dimension::Nether);
+            let gen = TerrainGen::for_dimension(0xCAFE_F00D, Dimension::Hollow);
             let (chunk, _) = gen.generate_chunk(s * 3, s * 7, Vec::new());
             for i in 0..vc_chunk::chunk::CHUNK_LEN {
                 // mid band only — the shell (bedrock) lives near y 0 and 127
@@ -5685,40 +5685,40 @@ mod nether_tests {
                     continue;
                 }
                 match fold(chunk.get_idx(i)) {
-                    NETHERRACK => rack += 1,
-                    NETHER_QUARTZ_ORE => quartz += 1,
+                    HOLLOWSTONE => rack += 1,
+                    HOLLOW_QUARTZ_ORE => quartz += 1,
                     BASALT => basalt += 1,
-                    BLACKSTONE | GILDED_BLACKSTONE | CRYING_OBSIDIAN => blackstone += 1,
-                    // Phase E1: fortress materials (nether bricks, spawners,
-                    // soul-sand wart gardens) are legitimate nether content;
+                    BLACKSTONE | GILDED_BLACKSTONE | WEEPING_OBSIDIAN => blackstone += 1,
+                    // Phase E1: fortress materials (hollow bricks, spawners,
+                    // soul-sand wart gardens) are legitimate hollow content;
                     // 1.10: magma blobs (4/chunk, Y 27-36, wiki
-                    // /w/Magma_Block) joined the nether mass
-                    NETHER_BRICKS | SPAWNER | NETHER_WART | MAGMA_BLOCK => {}
-                    AIR | GLOWSTONE | SOUL_SAND => {}
+                    // /w/Magma_Block) joined the hollow mass
+                    HOLLOW_BRICKS | SPAWNER | HOLLOW_WART | MAGMA_BLOCK => {}
+                    AIR | GLOWSTONE | SPIRIT_SAND => {}
                     // backlog round: the valley + deltas content —
-                    // soul soil floors, soul fire, the fossil bone
+                    // spirit soil floors, spirit fire, the fossil bone
                     // blocks, the deltas' floor trio (basalt is counted
                     // in its own bucket above) and the valley plants
-                    // (crimson roots + mushrooms, VERIFIED
-                    // w/Soul_Sand_Valley §vegetation)
-                    SOUL_SOIL | SOUL_FIRE | BONE_BLOCK | CRIMSON_ROOTS
+                    // (scarlet roots + mushrooms, VERIFIED
+                    // w/Spirit_Sand_Valley §vegetation)
+                    SPIRIT_SOIL | SPIRIT_FIRE | BONE_BLOCK | SCARLET_ROOTS
                     | MUSHROOM_RED | MUSHROOM_BROWN => {}
-                    // 1.16 (Nether Update, part 1): the V13 nether body —
+                    // 1.16 (Hollows Update, part 1): the V13 hollow body —
                     // gold veins and the never-air-exposed debris (the
                     // soul-valley soil/fires are counted in the bucket
                     // above; the basalt blobs/pillars and the blackstone
                     // patch family have their own buckets)
-                    NETHER_GOLD_ORE | ANCIENT_DEBRIS => {}
-                    // 1.16 (Nether Update, part 2): the V14 forest
-                    // families — nylium floors, huge-fungi stems + wart
-                    // caps + shroomlights, the undergrowth tufts and the
+                    HOLLOW_GOLD_ORE | ANCIENT_DEBRIS => {}
+                    // 1.16 (Hollows Update, part 2): the V14 forest
+                    // families — mold floors, huge-fungi stems + wart
+                    // caps + glowcaps, the undergrowth tufts and the
                     // weeping/twisting vines
-                    CRIMSON_NYLIUM | WARPED_NYLIUM
-                    | CRIMSON_STEM | WARPED_STEM
-                    | NETHER_WART_BLOCK | WARPED_WART_BLOCK
-                    | SHROOMLIGHT
-                    | CRIMSON_FUNGUS | WARPED_FUNGUS
-                    | WARPED_ROOTS | NETHER_SPROUTS
+                    SCARLET_MOLD | VIRIDIAN_MOLD
+                    | SCARLET_STEM | VIRIDIAN_STEM
+                    | HOLLOW_WART_BLOCK | VIRIDIAN_WART_BLOCK
+                    | GLOWCAP
+                    | SCARLET_FUNGUS | VIRIDIAN_FUNGUS
+                    | VIRIDIAN_ROOTS | HOLLOW_SPROUTS
                     | WEEPING_VINES | TWISTING_VINES => {}
                     _ => other += 1,
                 }
@@ -5726,7 +5726,7 @@ mod nether_tests {
         }
         assert!(
             rack > 50_000,
-            "netherrack dominates the mass ({rack} cells)"
+            "hollowstone dominates the mass ({rack} cells)"
         );
         assert!(
             quartz > 50,
@@ -5745,20 +5745,20 @@ mod nether_tests {
         );
         assert!(
             other == 0,
-            "the nether mass is ONLY the verified nether set (1.10 + 1.16 V13) — got {other} others"
+            "the hollow mass is ONLY the verified hollow set (1.10 + 1.16 V13) — got {other} others"
         );
     }
 
-    /// §26/§28: vast open caverns exist (the nether is hollow, not solid),
+    /// §26/§28: vast open caverns exist (the hollow is hollow, not solid),
     /// and glowstone hangs from ceilings somewhere in a region
     #[test]
-    fn nether_caverns_and_glowstone() {
+    fn hollow_caverns_and_glowstone() {
         let mut open = 0usize;
         let mut glowstone = 0usize;
-        let mut soul_sand = 0usize;
+        let mut spirit_sand = 0usize;
         for dz in -2..=2i32 {
             for dx in -2..=2i32 {
-                let gen = TerrainGen::for_dimension(0x5EED_1234, Dimension::Nether);
+                let gen = TerrainGen::for_dimension(0x5EED_1234, Dimension::Hollow);
                 let (chunk, _) = gen.generate_chunk(dx, dz, Vec::new());
                 for i in 0..vc_chunk::chunk::CHUNK_LEN {
                     let y = (i >> 8) as i32;
@@ -5768,13 +5768,13 @@ mod nether_tests {
                     match fold(chunk.get_idx(i)) {
                         AIR => open += 1,
                         GLOWSTONE => glowstone += 1,
-                        SOUL_SAND => soul_sand += 1,
+                        SPIRIT_SAND => spirit_sand += 1,
                         _ => {}
                     }
                 }
             }
         }
-        // a 5×5-chunk nether neighborhood is substantially hollow
+        // a 5×5-chunk hollow neighborhood is substantially hollow
         let total = 25 * CHUNK_LEN * 5 / 8; // band y 7..119 ≈ 5/8 of cells
         let ratio = open as f32 / total as f32;
         assert!(
@@ -5782,14 +5782,14 @@ mod nether_tests {
             "caverns too small: {ratio:.2} open in the mid band"
         );
         assert!(glowstone > 0, "glowstone clusters exist ({glowstone})");
-        assert!(soul_sand > 0, "soul sand patches exist ({soul_sand})");
+        assert!(spirit_sand > 0, "spirit sand patches exist ({spirit_sand})");
     }
 
     /// §9/§26 determinism: same seed + dimension → identical bytes; the two
     /// dimensions with the same world seed → different terrain
     #[test]
-    fn nether_deterministic_and_distinct_from_overworld() {
-        let gen = TerrainGen::for_dimension(0x1234_ABCD, Dimension::Nether);
+    fn hollow_deterministic_and_distinct_from_overworld() {
+        let gen = TerrainGen::for_dimension(0x1234_ABCD, Dimension::Hollow);
         let a = gen.generate_chunk(1, 2, Vec::new()).0;
         // interleave neighbors, regenerate — must be identical
         for dz in -1..=1 {
@@ -5804,10 +5804,10 @@ mod nether_tests {
             assert_eq!(
                 a.get_idx(i),
                 b.get_idx(i),
-                "nether gen must be order-independent at {i}"
+                "hollow gen must be order-independent at {i}"
             );
         }
-        // same world seed, overworld vs nether → different chunks
+        // same world seed, overworld vs hollow → different chunks
         let over = TerrainGen::for_dimension(0x1234_ABCD, Dimension::Overworld);
         let (oc, _) = over.generate_chunk(1, 2, Vec::new());
         let mut same = 0;
@@ -5824,10 +5824,10 @@ mod nether_tests {
     }
 
     /// §28: no skylight path — the bedrock roof makes the light engine's
-    /// column scan produce sky=0 for the whole nether interior
+    /// column scan produce sky=0 for the whole hollow interior
     #[test]
-    fn nether_roof_blocks_skylight() {
-        let gen = TerrainGen::for_dimension(0xBEEF_CAFE, Dimension::Nether);
+    fn hollow_roof_blocks_skylight() {
+        let gen = TerrainGen::for_dimension(0xBEEF_CAFE, Dimension::Hollow);
         let (chunk, _) = gen.generate_chunk(0, 0, Vec::new());
         for lz in 0..16usize {
             for lx in 0..16usize {
@@ -5843,18 +5843,18 @@ mod nether_tests {
                 }
                 assert!(
                     top_content <= 127,
-                    "column ({lx},{lz}) has content above the nether roof at {top_content}"
+                    "column ({lx},{lz}) has content above the hollow roof at {top_content}"
                 );
             }
         }
     }
 
-    /// §28: find_nether_spawn lands on an open cavern floor with headroom
+    /// §28: find_hollow_spawn lands on an open cavern floor with headroom
     #[test]
-    fn nether_spawn_is_on_open_floor() {
+    fn hollow_spawn_is_on_open_floor() {
         for s in 0..6u64 {
-            let gen = TerrainGen::for_dimension(0x9000_0000 + s * 7919, Dimension::Nether);
-            let (x, y, z) = gen.find_nether_spawn();
+            let gen = TerrainGen::for_dimension(0x9000_0000 + s * 7919, Dimension::Hollow);
+            let (x, y, z) = gen.find_hollow_spawn();
             // block coords use FLOOR semantics (negative x truncates wrong)
             let (xi, yi, zi) = (x.floor() as i32, y.floor() as i32, z.floor() as i32);
             let (chunk, _) = gen.generate_chunk(xi.div_euclid(16), zi.div_euclid(16), Vec::new());
@@ -5871,52 +5871,52 @@ mod nether_tests {
             );
             assert!(
                 (8..120).contains(&yi),
-                "spawn inside the nether band (seed {s})"
+                "spawn inside the hollow band (seed {s})"
             );
         }
     }
 
-    /// §28: the biome field is Nether Wastes everywhere
+    /// §28: the biome field is Hollow Wastes everywhere
     #[test]
-    fn nether_biome_field() {
+    fn hollow_biome_field() {
         // 1.16 part 2: the field is region-uniform (the 2x2-chunk
-        // cell hash) and always a nether-family biome — the wastes is
+        // cell hash) and always a hollow-family biome — the wastes is
         // no longer the only flavor
-        let gen = TerrainGen::for_dimension(0xFEED_1234, Dimension::Nether);
+        let gen = TerrainGen::for_dimension(0xFEED_1234, Dimension::Hollow);
         let (chunk, _) = gen.generate_chunk(3, -4, Vec::new());
         let first = chunk.biome[0];
         for i in 0..256usize {
             assert_eq!(chunk.biome[i], first, "biome[{i}] region-uniform");
             assert!(
-                Biome::from_u8(chunk.biome[i]).is_nether(),
-                "biome[{i}] in the nether family"
+                Biome::from_u8(chunk.biome[i]).is_hollow(),
+                "biome[{i}] in the hollow family"
             );
         }
     }
 
-    /// 1.16 part 2: the forest families — crimson/warped regions
-    /// exist across seeds, their floors turn nylium, the huge fungi
-    /// (stem + wart cap + shroomlight) grow, and the vines hang/climb
-    /// (the region shares: crimson ~22%, warped ~8%, verified scan)
+    /// 1.16 part 2: the forest families — scarlet/viridian regions
+    /// exist across seeds, their floors turn mold, the huge fungi
+    /// (stem + wart cap + glowcap) grow, and the vines hang/climb
+    /// (the region shares: scarlet ~22%, viridian ~8%, verified scan)
     #[test]
-    fn nether_forest_regions_and_families() {
-        let mut crimson_regions = 0;
-        let mut warped_regions = 0;
-        let mut saw_crimson_stem = false;
-        let mut saw_warped_stem = false;
-        let mut saw_shroomlight = false;
-        let mut saw_nylium = false;
+    fn hollow_forest_regions_and_families() {
+        let mut scarlet_regions = 0;
+        let mut viridian_regions = 0;
+        let mut saw_scarlet_stem = false;
+        let mut saw_viridian_stem = false;
+        let mut saw_glowcap = false;
+        let mut saw_mold = false;
         for s in 0..12u64 {
-            let gen = TerrainGen::for_dimension(0xC0FFEE + s, Dimension::Nether);
+            let gen = TerrainGen::for_dimension(0xC0FFEE + s, Dimension::Hollow);
             // sample 9 regions around the origin
             for rx in -1..=1i32 {
                 for rz in -1..=1i32 {
                     let cx = rx * 2; // region = 2x2 chunks
                     let cz = rz * 2;
-                    let region = nether_region_biome(gen.seed, cx, cz);
+                    let region = hollow_region_biome(gen.seed, cx, cz);
                     match region {
-                        Biome::CrimsonForest => crimson_regions += 1,
-                        Biome::WarpedForest => warped_regions += 1,
+                        Biome::ScarletForest => scarlet_regions += 1,
+                        Biome::ViridianForest => viridian_regions += 1,
                         _ => {}
                     }
                     let (chunk, _) = gen.generate_chunk(cx, cz, Vec::new());
@@ -5924,15 +5924,15 @@ mod nether_tests {
                     for i in 0..256usize {
                         assert_eq!(chunk.biome[i], region as u8, "region-uniform at {cx},{cz}");
                     }
-                    if region != Biome::NetherWastes {
+                    if region != Biome::HollowWastes {
                         // the family blocks appear (scan the whole chunk)
                         for i in 0..16 * 16 * 128usize {
                             let b = chunk.get_idx(i);
                             match b {
-                                x if x == CRIMSON_STEM => saw_crimson_stem = true,
-                                x if x == WARPED_STEM => saw_warped_stem = true,
-                                x if x == SHROOMLIGHT => saw_shroomlight = true,
-                                x if x == CRIMSON_NYLIUM || x == WARPED_NYLIUM => saw_nylium = true,
+                                x if x == SCARLET_STEM => saw_scarlet_stem = true,
+                                x if x == VIRIDIAN_STEM => saw_viridian_stem = true,
+                                x if x == GLOWCAP => saw_glowcap = true,
+                                x if x == SCARLET_MOLD || x == VIRIDIAN_MOLD => saw_mold = true,
                                 _ => {}
                             }
                         }
@@ -5940,15 +5940,15 @@ mod nether_tests {
                 }
             }
         }
-        // the shares: crimson ~22%, warped ~8% of 108 samples (with
+        // the shares: scarlet ~22%, viridian ~8% of 108 samples (with
         // generous tolerance — the hash is deterministic but coarse)
-        assert!(crimson_regions >= 8, "crimson regions appear ({crimson_regions}/108)");
-        assert!(warped_regions >= 2, "warped regions appear ({warped_regions}/108)");
+        assert!(scarlet_regions >= 8, "scarlet regions appear ({scarlet_regions}/108)");
+        assert!(viridian_regions >= 2, "viridian regions appear ({viridian_regions}/108)");
         // the families generate their signature blocks
-        assert!(saw_crimson_stem, "huge crimson fungi generate");
-        assert!(saw_warped_stem, "huge warped fungi generate");
-        assert!(saw_shroomlight, "shroomlights generate in the caps");
-        assert!(saw_nylium, "forest floors turn nylium");
+        assert!(saw_scarlet_stem, "huge scarlet fungi generate");
+        assert!(saw_viridian_stem, "huge viridian fungi generate");
+        assert!(saw_glowcap, "glowcaps generate in the caps");
+        assert!(saw_mold, "forest floors turn mold");
     }
 }
 
@@ -6389,7 +6389,7 @@ mod phase10_tests {
             }
         }
         // world-coord lookup across the neighborhood — returns the BLOCK
-        // id (Chunk::get yields the raw state; END_PORTAL_FRAME stores
+        // id (Chunk::get yields the raw state; VOID_GATE_FRAME stores
         // state 235 ≠ block 102, CHEST stores 227 ≠ 96, so route through
         // state_block)
         let get = |x: i32, y: usize, z: i32| -> u16 {
@@ -6408,7 +6408,7 @@ mod phase10_tests {
         for i in -2..=2i32 {
             for j in -2..=2i32 {
                 let on_ring = (i.abs() == 2 || j.abs() == 2) && !(i.abs() == 2 && j.abs() == 2);
-                if on_ring && get(px + i, 21, pz + j) == END_PORTAL_FRAME {
+                if on_ring && get(px + i, 21, pz + j) == VOID_GATE_FRAME {
                     frames += 1;
                 }
             }
@@ -6767,9 +6767,9 @@ mod v110_tests {
     }
 
     #[test]
-    fn nether_generates_magma_blobs() {
+    fn hollow_generates_magma_blobs() {
         // wiki: "generating 4 blobs per chunk between Y=27 and Y=36"
-        let g = TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Nether);
+        let g = TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Hollow);
         let mut total = 0usize;
         for s in 0..8 {
             let (chunk, _) = g.generate_chunk(s * 5, s * 3, Vec::new());
@@ -6779,14 +6779,14 @@ mod v110_tests {
                 }
             }
         }
-        assert!(total >= 12, "magma present across nether chunks ({total})");
-        // and only in the Y band (127-high nether; idx y = i >> 8) —
+        assert!(total >= 12, "magma present across hollow chunks ({total})");
+        // and only in the Y band (127-high hollow; idx y = i >> 8) —
         // unless the chunk is a basalt-deltas region, where magma is
         // a floor material (the backlog round's verified composition:
         // basalt/blackstone/magma surface)
-        let g2 = TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Nether);
+        let g2 = TerrainGen::for_dimension(0x10C0_C0DE, Dimension::Hollow);
         let (chunk, _) = g2.generate_chunk(3, 2, Vec::new());
-        let deltas = nether_region_biome(0x10C0_C0DE, 3, 2) == Biome::BasaltDeltas;
+        let deltas = hollow_region_biome(0x10C0_C0DE, 3, 2) == Biome::BasaltDeltas;
         for i in 0..CHUNK_LEN {
             if chunk.get_idx(i) == MAGMA_BLOCK {
                 let y = (i >> 8) as i32;
@@ -6830,7 +6830,7 @@ mod v110_tests {
     }
 }
 
-/// Phase E1 tests (evolution 1.0–1.2 bracket) — The End, the Nether
+/// Phase E1 tests (evolution 1.0–1.2 bracket) — The Void, the Hollow
 /// Fortress, and the Mushroom Fields.
 #[cfg(test)]
 mod e1_tests {
@@ -6838,16 +6838,16 @@ mod e1_tests {
 
     #[test]
     fn end_central_island_exists() {
-        let gen = TerrainGen::for_dimension(0x5EED_1234, Dimension::End);
+        let gen = TerrainGen::for_dimension(0x5EED_1234, Dimension::Void);
         let (chunk, _) = gen.generate_chunk(0, 0, Vec::new());
-        // the island center (8,8 local = world (8,8)): end stone surface
+        // the island center (8,8 local = world (8,8)): void stone surface
         let mut stone = 0;
         for y in 40..=64usize {
-            if chunk.get(8, y, 8) == END_STONE {
+            if chunk.get(8, y, 8) == VOID_STONE {
                 stone += 1;
             }
         }
-        assert!(stone >= 4, "end stone column at the island center");
+        assert!(stone >= 4, "void stone column at the island center");
         // the arrival platform (100, 63, 0) — chunk (6, 0), local (4, ?, 0)
         let (pchunk, _) = gen.generate_chunk(6, 0, Vec::new());
         assert_eq!(
@@ -6863,13 +6863,13 @@ mod e1_tests {
         );
         // the fountain's inner 3×3 at y 62 stays open for the victory portal
         assert_eq!(chunk.get(1, 62, 1), AIR);
-        // the biome field is the_end (id 9)
+        // the biome field is the_void (id 9)
         assert_eq!(chunk.biome[8 * 16 + 8], 9);
     }
 
     #[test]
-    fn end_pillars_form_the_42_radius_circle() {
-        let gen = TerrainGen::for_dimension(0x5EED_1234, Dimension::End);
+    fn void_pillars_form_the_42_radius_circle() {
+        let gen = TerrainGen::for_dimension(0x5EED_1234, Dimension::Void);
         // pillar 0 sits at angle 0 → (42, 0) — chunk (2, 0), local (10, .., 0)
         let (chunk, _) = gen.generate_chunk(2, 0, Vec::new());
         let mut found = false;
@@ -6893,8 +6893,8 @@ mod e1_tests {
 
     #[test]
     fn end_generation_is_deterministic() {
-        let a = TerrainGen::for_dimension(77, Dimension::End);
-        let b = TerrainGen::for_dimension(77, Dimension::End);
+        let a = TerrainGen::for_dimension(77, Dimension::Void);
+        let b = TerrainGen::for_dimension(77, Dimension::Void);
         let (ca, _) = a.generate_chunk(1, 1, Vec::new());
         let (cb, _) = b.generate_chunk(1, 1, Vec::new());
         let same = (0..CHUNK_LEN)
@@ -6911,7 +6911,7 @@ mod e1_tests {
 
     #[test]
     fn fortresses_roll_deterministically_per_region() {
-        let gen = TerrainGen::for_dimension(0x5EED_1234, Dimension::Nether);
+        let gen = TerrainGen::for_dimension(0x5EED_1234, Dimension::Hollow);
         // region queries are pure functions of the seed
         let a = gen.fortress_in_region(0, 0);
         let b = gen.fortress_in_region(0, 0);
@@ -6925,8 +6925,8 @@ mod e1_tests {
     }
 
     #[test]
-    fn fortress_emits_nether_bricks_and_blaze_spawners() {
-        let gen = TerrainGen::for_dimension(0x5EED_1234, Dimension::Nether);
+    fn fortress_emits_hollow_bricks_and_blaze_spawners() {
+        let gen = TerrainGen::for_dimension(0x5EED_1234, Dimension::Hollow);
         // find a region with a fortress, then scan the 5×5 chunk
         // neighborhood of its center (spawners sit ±24 out, gardens ±14)
         'outer: for rx in 0..8 {
@@ -6943,17 +6943,17 @@ mod e1_tests {
                                 gen.generate_chunk(ccx + dcx, ccz + dcz, Vec::new());
                             for i in 0..CHUNK_LEN {
                                 match chunk.get_idx(i) {
-                                    NETHER_BRICKS => bricks += 1,
+                                    HOLLOW_BRICKS => bricks += 1,
                                     SPAWNER => spawner = true,
-                                    NETHER_WART => wart = true,
+                                    HOLLOW_WART => wart = true,
                                     _ => {}
                                 }
                             }
                         }
                     }
-                    assert!(bricks > 500, "nether-brick structure ({bricks} cells)");
+                    assert!(bricks > 500, "hollow-brick structure ({bricks} cells)");
                     assert!(spawner, "a blaze spawner platform is present");
-                    assert!(wart, "the nether-wart garden is present");
+                    assert!(wart, "the hollow-wart garden is present");
                     break 'outer;
                 }
             }
@@ -7333,8 +7333,8 @@ mod v111_tests {
 
     /// dark-forest mansions generate with the illager spawners + chest
     /// and cobble/wood construction (VERIFIED w/Woodland_Mansion: three
-    /// floors, cobblestone foundation, "inhabited by vindicators,
-    /// evokers")
+    /// floors, cobblestone foundation, "inhabited by cleavers,
+    /// runecallers")
     #[test]
     fn woodland_mansions_generate_with_illagers() {
         // vanilla mansions are genuinely rare (the wiki: mansions
@@ -7378,11 +7378,11 @@ mod v111_tests {
         // (the 1.7.2 refactor — see chunk.rs), and Chunk::set STORES the
         // default STATE (default_state) — so the raw scan rides get_state:
         // the placed CHEST lands as CHEST_STATE (227) and the dedicated
-        // mansion spawner states (SPAWNER_VINDICATOR / _EVOKER, already
+        // mansion spawner states (SPAWNER_CLEAVER / _RUNECALLER, already
         // state ids) survive verbatim. register_block_entities decodes
         // both through state_block + spawner_mob.
         let (mut cobble, mut planks, mut spawners, mut chests) = (0, 0, 0, 0);
-        let (mut v_spawners, mut evoker_spawners) = (0, 0);
+        let (mut v_spawners, mut runecaller_spawners) = (0, 0);
         for y in 0..256usize {
             for z in 0..16usize {
                 for x in 0..16usize {
@@ -7390,13 +7390,13 @@ mod v111_tests {
                         COBBLE => cobble += 1,
                         PLANKS => planks += 1,
                         CHEST_STATE => chests += 1,
-                        SPAWNER_VINDICATOR => {
+                        SPAWNER_CLEAVER => {
                             spawners += 1;
                             v_spawners += 1;
                         }
-                        SPAWNER_EVOKER => {
+                        SPAWNER_RUNECALLER => {
                             spawners += 1;
-                            evoker_spawners += 1;
+                            runecaller_spawners += 1;
                         }
                         _ => {}
                     }
@@ -7407,8 +7407,8 @@ mod v111_tests {
         assert!(planks > 100, "wood floors (got {planks})");
         assert!(spawners >= 3, "illager spawners (got {spawners})");
         assert!(
-            v_spawners >= 2 && evoker_spawners >= 2,
-            "vindicator + evoker spawners (got {v_spawners}/{evoker_spawners})"
+            v_spawners >= 2 && runecaller_spawners >= 2,
+            "cleaver + runecaller spawners (got {v_spawners}/{runecaller_spawners})"
         );
         assert!(chests >= 1, "loot chest (got {chests})");
         // the emit's ground truth: the 5 spawner puts + 2 chest puts are
@@ -7419,21 +7419,21 @@ mod v111_tests {
     }
 
     /// 1.11: the mansion spawner states decode to their mobs via
-    /// spawner_mob (the register_block_entities path) — vindicator
-    /// code 5, evoker code 6 (both VERIFIED w/Vindicator + w/Evoker
+    /// spawner_mob (the register_block_entities path) — cleaver
+    /// code 5, runecaller code 6 (both VERIFIED w/Cleaver + w/Runecaller
     /// spawn behavior: "Spawn in the woodland mansions upon generation.
-    /// They don't respawn." / evokers "Spawn in the two upper floors")
+    /// They don't respawn." / runecallers "Spawn in the two upper floors")
     #[test]
     fn v111_mansion_spawner_states_decode() {
-        assert_eq!(vc_blocks::blocks::spawner_mob(SPAWNER_VINDICATOR), 5);
-        assert_eq!(vc_blocks::blocks::spawner_mob(SPAWNER_EVOKER), 6);
-        assert_eq!(vc_blocks::blocks::state_block(SPAWNER_VINDICATOR), SPAWNER);
-        assert_eq!(vc_blocks::blocks::state_block(SPAWNER_EVOKER), SPAWNER);
+        assert_eq!(vc_blocks::blocks::spawner_mob(SPAWNER_CLEAVER), 5);
+        assert_eq!(vc_blocks::blocks::spawner_mob(SPAWNER_RUNECALLER), 6);
+        assert_eq!(vc_blocks::blocks::state_block(SPAWNER_CLEAVER), SPAWNER);
+        assert_eq!(vc_blocks::blocks::state_block(SPAWNER_RUNECALLER), SPAWNER);
     }
 }
 
 // ---------------------------------------------------------------------------
-// 1.13 bracket tests (Update Aquatic, live 2026-09-07)
+// 1.13 bracket tests (Aquatic-era update, live 2026-09-07)
 // ---------------------------------------------------------------------------
 #[cfg(test)]
 mod v113_tests {

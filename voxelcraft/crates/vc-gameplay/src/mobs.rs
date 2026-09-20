@@ -1,5 +1,5 @@
 //! Mobs (master prompt Phase 2): a first batch of 9 entities — 5 hostile
-//! (zombie, skeleton, creeper, spider, enderman) + 4 passive (cow, pig,
+//! (zombie, skeleton, fuseling, spider, voidling) + 4 passive (cow, pig,
 //! sheep, chicken). The remaining ~90 entities of the 1.16.5 registry are
 //! explicitly deferred (see DEFERRED_ENTITIES).
 //!
@@ -12,7 +12,7 @@
 //! - Ocelot (10 HP, jungle, trust-by-feeding, attacks chickens)
 //! - Iron Golem (100 HP, Normal 7.5–21.5, village guard)
 //! - Zombie Villager (20 HP, 0/50/100% conversion by difficulty, curable)
-//! - Mooshroom (10 HP, mushroom-fields only, weight 8/8, herds 4–8)
+//! - Shroomcow (10 HP, mushroom-fields only, weight 8/8, herds 4–8)
 //!
 //! VERIFIED data (the reference wiki, pulled 2026-09-04 per the verification
 //! discipline — NOT from dossier memory):
@@ -25,7 +25,7 @@
 //!   `cap × chunks ÷ 289` over the 17×17-chunk spawn square
 //! - despawn: >128 blocks from the nearest player is instant; 32 blocks
 //!   with no player for 30 s rolls 1/800 despawn per game tick
-//! - creeper: explosion power 3, 1.5 s fuse (30 game ticks)
+//! - fuseling: explosion power 3, 1.5 s fuse (30 game ticks)
 //!
 //! Documented adaptations:
 //! - speed: attributes converted at ~10.5 blocks/s per point (observed-
@@ -40,7 +40,7 @@
 //! - snow-golem snow TRAIL is deferred: the engine has no thin snow-layer
 //!   block; the wiki's own page carries an internal disagreement on the
 //!   Java rule ("any biome" vs temperature-gated) — noted in the worklog
-//! - mooshroom shear/stew/breeding deferred (no shears/bowls/wheat items)
+//! - shroomcow shear/stew/breeding deferred (no shears/bowls/wheat items)
 
 use vc_blocks::blocks::*;
 use vc_rng::rng::Rng;
@@ -55,9 +55,9 @@ pub const MAX_MOBS: usize = 128;
 pub enum MobKind {
     Zombie,
     Skeleton,
-    Creeper,
+    Fuseling,
     Spider,
-    Enderman,
+    Voidling,
     Cow,
     Pig,
     Sheep,
@@ -69,16 +69,16 @@ pub enum MobKind {
     Ocelot,
     IronGolem,
     ZombieVillager,
-    Mooshroom,
+    Shroomcow,
     // ---- Phase E2 (1.3-1.4 bracket) ----
-    WitherSkeleton,
+    BlightSkeleton,
     Witch,
     Bat,
     // ---- Phase E3 (1.5–1.6 bracket) ----
     Horse,
     Donkey,
     Mule,
-    /// 1.8 (Bountiful Update): the rabbit — VERIFIED live (the reference wiki
+    /// 1.8 (Bountiful-era update): the rabbit — VERIFIED live (the reference wiki
     /// /w/Rabbit, 2026-09-06): 3 HP, avoids players within 8 blocks,
     /// 0-1 raw rabbit + 0-1 rabbit hide on death, a 10% rabbit's foot on
     /// a player kill
@@ -97,7 +97,7 @@ pub enum MobKind {
     /// sunlight; attacks apply Hunger for 7 × floor(regional difficulty)
     /// seconds
     Husk,
-    // ---- 1.11 bracket (Exploration Update, live 2026-09-07) ----
+    // ---- 1.11 bracket (Exploration-era update, live 2026-09-07) ----
     /// 1.11: the llama — VERIFIED (w/Llama live): 15–30 HP neutral,
     /// spit 1 HP Easy/Normal (1.5 Hard), strength 1–5 (wild 32.8/32.8/
     /// 32.8/0.8/0.8%), chest slots 3×strength, tamed by repetitively
@@ -105,23 +105,23 @@ pub enum MobKind {
     /// leather 0–2 (66.67%), 1⁄900 per-tick regen chance, aggressive
     /// toward wolves
     Llama,
-    /// 1.11: the vindicator — VERIFIED (w/Vindicator live): 24 HP
+    /// 1.11: the cleaver — VERIFIED (w/Cleaver live): 24 HP
     /// hostile illager, iron axe 13 HP Normal (7.5/19.5 E/H), speed
     /// 5.612 b/s, emerald 0–1 (50%) + its iron axe drops, spawns in
     /// woodland mansions
-    Vindicator,
-    /// 1.11: the evoker — VERIFIED (w/Evoker live): 24 HP hostile
+    Cleaver,
+    /// 1.11: the runecaller — VERIFIED (w/Runecaller live): 24 HP hostile
     /// spell-casting illager, fangs 6 HP ignoring armor ("not mitigated
-    /// by armor"), summons vexes, the ONLY totem-of-undying source
+    /// by armor"), summons vexes, the ONLY totem-of-revival source
     /// ("They are the only source of totems of undying"), emerald 0–1,
     /// converts blue sheep to red within 16 blocks, spawns on the
     /// mansion's two upper floors
-    Evoker,
-    /// 1.11: the vex — VERIFIED (w/Vex live): 14 HP hostile, iron
+    Runecaller,
+    /// 1.11: the wisp — VERIFIED (w/Wisp live): 14 HP hostile, iron
     /// sword 9 HP Normal (5.5/13.5 E/H), "pass through any block,
     /// including water and lava", 5 XP, iron sword never drops
-    /// (HandDropChances 0), summoned by evokers only
-    Vex,
+    /// (HandDropChances 0), summoned by runecallers only
+    Wisp,
     // ---- 1.12 bracket (World of Color Update, live 2026-09-07) ----
     /// 1.12: the parrot — VERIFIED (w/Parrot live): 6 HP passive,
     /// speed 0.2, jungle spawn weight 40/93 (43.01%), groups 1–2,
@@ -133,7 +133,7 @@ pub enum MobKind {
     /// ("Unlike most passive mobs, parrots cannot be bred"), follows
     /// the tamer and teleports at 12+ blocks
     Parrot,
-    /// 1.12: the illusioner — VERIFIED (w/Illusioner live): 32 HP
+    /// 1.12: the miragecaller — VERIFIED (w/Miragecaller live): 32 HP
     /// hostile illager, speed 0.5, bow 2–5 HP Easy/Normal (3–5 Hard)
     /// fired every second ("three times faster than a skeleton"),
     /// casts Blindness 20 s on first engaging a player, then the mirror
@@ -141,7 +141,7 @@ pub enum MobKind {
     /// targets players (16×4×16 box), no spawn egg, "Unused and
     /// present only in Java Edition" — spawns ONLY via the direct
     /// spawn API (the engine-native /summon stand-in)
-    Illusioner,
+    Miragecaller,
     /// 1.13: the drowned — VERIFIED (w/Drowned live 2026-09-07): 20 HP
     /// base zombie variant (40/100 for "leaders" is Java-internal,
     /// disclosed), melee E 2.5/N 3/H 4.5, spawns in ocean/river water
@@ -217,58 +217,58 @@ pub enum MobKind {
     /// within 5 blocks below the hive. Hover-flight like the bat
     /// ("hover a few blocks above the ground similar to bats").
     Bee,
-    /// 1.16 (Nether Update, part 2): the strider — VERIFIED (w/Strider,
-    /// live 2026-09-08, raw capture scripts/v116b_page_Strider.json):
+    /// 1.16 (Hollows Update, part 2): the emberhopper — VERIFIED (w/Emberhopper,
+    /// live 2026-09-08, raw capture scripts/v116b_page_Emberhopper.json):
     /// 20 HP passive animal, "Hitbox size Adult: Height: 1.7 blocks
     /// Width: 0.9 blocks" (baby 0.85/0.45), speed 0.175, "Lava does
-    /// not damage striders, and they can walk on top of it without
+    /// not damage emberhoppers, and they can walk on top of it without
     /// sinking", damaged by water ("1 HP per ... half-second in
-    /// water"), "Groups of 2 to 4 striders spawn on spaces of lava
+    /// water"), "Groups of 2 to 4 emberhoppers spawn on spaces of lava
     /// that have an air block above" with attempts every 400 gt,
-    /// drops 2-5 string (100%), "can be fed warped fungus to breed".
+    /// drops 2-5 string (100%), "can be fed viridian fungus to breed".
     /// Riding (saddle + fungus-on-a-stick) is the standing deferral —
-    /// no mount system for striders, disclosed.
-    Strider,
-    /// 1.16: the piglin — VERIFIED (w/Piglin, live 2026-09-08, raw
-    /// capture scripts/v116b_page_Piglin.json): 16 HP "Neutral (adult)"
+    /// no mount system for emberhoppers, disclosed.
+    Emberhopper,
+    /// 1.16: the pigoblin — VERIFIED (w/Pigoblin, live 2026-09-08, raw
+    /// capture scripts/v116b_page_Pigoblin.json): 16 HP "Neutral (adult)"
     /// monster, hitbox 1.95 x 0.6, speed 0.35, "Melee: Golden Sword:
     /// ... Normal: 8 HP" (the engine's melee row; the crossbow's
     /// 2-5 is the ranged row — melee-only here, disclosed), spawns
-    /// in Nether Wastes + Crimson Forest in groups of 3-4 (the
-    /// w/Crimson_Forest row), bartering: "take gold ingots ... The
-    /// piglin 'examines' the ingot for six seconds, then drops a
+    /// in Hollow Wastes + Scarlet Forest in groups of 3-4 (the
+    /// w/Scarlet_Forest row), bartering: "take gold ingots ... The
+    /// pigoblin 'examines' the ingot for six seconds, then drops a
     /// random item from the chart" (the trimmed engine table,
     /// VERIFIED w/Bartering). Gold-armor pacification needs a wearable
     /// armor system — the engine's adaptation is neutral-until-provoked
     /// + the gold-mining anger hook (disclosed).
-    Piglin,
-    /// 1.16: the hoglin — VERIFIED (w/Hoglin, live 2026-09-08, raw
-    /// capture scripts/v116b_page_Hoglin.json): 40 HP hostile Animal
+    Pigoblin,
+    /// 1.16: the boarling — VERIFIED (w/Boarling, live 2026-09-08, raw
+    /// capture scripts/v116b_page_Boarling.json): 40 HP hostile Animal
     /// "Monster", hitbox 1.4 x 1.3965 (JE row), speed 0.3, knockback
     /// resistance 60% (no knockback stat in the engine — disclosed),
     /// "Attack strength Adult in Java Edition: ... Normal: 3 HP to
-    /// 8 HP" (engine takes the 5.5 midpoint, disclosed), "Hoglins
-    /// avoid being within 7 blocks of warped fungi ... and respawn
-    /// anchors", spawn in the Crimson Forest (the only natural biome,
-    /// w/Crimson_Forest) in 3-4 packs with 20% JE babies, bred with
-    /// crimson fungus, drops raw porkchop 2-4 (100%) + leather 0-1
-    /// (50%), 5 XP. Zombification (overworld zoglins) has no mob
+    /// 8 HP" (engine takes the 5.5 midpoint, disclosed), "Boarlings
+    /// avoid being within 7 blocks of viridian fungi ... and respawn
+    /// anchors", spawn in the Scarlet Forest (the only natural biome,
+    /// w/Scarlet_Forest) in 3-4 packs with 20% JE babies, bred with
+    /// scarlet fungus, drops raw porkchop 2-4 (100%) + leather 0-1
+    /// (50%), 5 XP. Zombification (overworld rotboars) has no mob
     /// dimension transfer — trimmed, disclosed.
-    Hoglin,
+    Boarling,
     // ---- the 1.0-1.16.5 completeness audit (2026-09-08): the three
     // classic mobs no earlier bracket ever accounted for ----
-    /// The ghast — the floating Nether artillery. VERIFIED
-    /// (reference wiki /Ghast, live 2026-09-08, capture
-    /// scripts/audit16_page_Ghast.json): 10 HP hostile, hitbox
+    /// The weepgeist — the floating Hollow artillery. VERIFIED
+    /// (reference wiki /Weepgeist, live 2026-09-08, capture
+    /// scripts/audit16_page_Weepgeist.json): 10 HP hostile, hitbox
     /// 4.0×4.0 ("They have a hitbox of 4×4×4 blocks"), speed 0.7,
     /// fireball impact "Normal: 6 HP", "target players within 64
     /// blocks horizontally and 4 blocks vertically", "shoots a
-    /// fireball every 3 seconds", "Ghasts do not attempt to approach
+    /// fireball every 3 seconds", "Weepgeists do not attempt to approach
     /// the player once aggravated, but instead fire at the player
-    /// from their position". Spawns in Nether Wastes / Soul Sand
-    /// Valley / Basalt Deltas. Drops: ghast tear 0–1 at 50%, gunpowder
-    /// 0–2 at 66.67% ("are the only source of ghast tears").
-    Ghast,
+    /// from their position". Spawns in Hollow Wastes / Spirit Sand
+    /// Valley / Basalt Deltas. Drops: weepgeist tear 0–1 at 50%, gunpowder
+    /// 0–2 at 66.67% ("are the only source of weepgeist tears").
+    Weepgeist,
     /// The cave spider — the mineshaft spawner's own mob. VERIFIED
     /// (w/Cave_Spider, live, capture audit16_page_Cave_Spider.json):
     /// 12 HP, "Melee: Easy: 2 HP Normal: 2 HP Hard: 3 HP", venom
@@ -291,41 +291,46 @@ pub enum MobKind {
     /// 1.2; the engine's early brackets skipped it and it is NOT one of
     /// 1.13's new mobs). Declared so the aquatic() classification
     /// question has a real answer: the squid is a legacy water mob and
-    /// does NOT receive the 1.13 Update Aquatic swim-physics/conduit
+    /// does NOT receive the 1.13 Aquatic-era update swim-physics/conduit
     /// gating. No MOB_DATA row, no spawn table entry, no egg — a
     /// classification-only stub, disclosed in the 1.13 worklog.
     Squid,
     // ---- the backlog round (2026-09-09): the weather bracket's
-    // lightning-conversion target + the honest nether-wastes roll ----
-    /// The zombified piglin — the Nether Wastes' actual common hostile
+    // lightning-conversion target + the honest hollow-wastes roll ----
+    /// The zombified pigoblin — the Hollow Wastes' actual common hostile
     /// (the pre-backlog engine documented the zombie as the "zombified
-    /// piglin filler"; this row replaces that stand-in) AND the
+    /// pigoblin filler"; this row replaces that stand-in) AND the
     /// lightning target (VERIFIED w/Weather: lightning "turns ... pigs
-    /// into zombified piglins"). Neutral-until-provoked like the
-    /// piglin's anger family; stats from w/Zombified_Piglin.
-    ZombifiedPiglin,
+    /// into zombified pigoblins"). Neutral-until-provoked like the
+    /// pigoblin's anger family; stats from w/Zombified_Pigoblin.
+    ZombifiedPigoblin,
 }
 
 impl MobKind {
     /// Parse a registry id from ANY source: our own `voxelcraft:` ids,
-    /// ids written by older builds of this engine (legacy namespace
-    /// prefix), or bare names. Read-side format interop — see the
-    /// datapack namespace notes in vc-pack.
+    /// ids written by third-party tools of the wider 1.16.5-era
+    /// ecosystem (ANY namespace prefix), or bare names. Namespace-
+    /// agnostic read-side format interop — see the datapack namespace
+    /// notes in vc-pack.
     pub fn from_registry_id(s: &str) -> Option<MobKind> {
-        let bare = s
-            .strip_prefix("voxelcraft:")
-            .or_else(|| s.strip_prefix("minecraft:"))
-            .unwrap_or(s);
-        MobKind::from_name(bare)
+        let bare = match s.split_once(':') {
+            Some((_, rest)) => rest,
+            None => s,
+        };
+        // legacy-NAME interop (read-side): the ecosystem's coined mob
+        // names map onto OUR vocabulary
+        let bare = vc_pack::legacy_aliases::legacy_name_alias(bare)
+            .unwrap_or(std::borrow::Cow::Borrowed(bare));
+        MobKind::from_name(bare.as_ref())
     }
 
     pub fn from_name(s: &str) -> Option<MobKind> {
         Some(match s {
             "zombie" => MobKind::Zombie,
             "skeleton" => MobKind::Skeleton,
-            "creeper" => MobKind::Creeper,
+            "fuseling" => MobKind::Fuseling,
             "spider" => MobKind::Spider,
-            "enderman" => MobKind::Enderman,
+            "voidling" => MobKind::Voidling,
             "cow" => MobKind::Cow,
             "pig" => MobKind::Pig,
             "sheep" => MobKind::Sheep,
@@ -336,8 +341,8 @@ impl MobKind {
             "ocelot" => MobKind::Ocelot,
             "iron_golem" => MobKind::IronGolem,
             "zombie_villager" => MobKind::ZombieVillager,
-            "mooshroom" => MobKind::Mooshroom,
-            "wither_skeleton" => MobKind::WitherSkeleton,
+            "shroomcow" => MobKind::Shroomcow,
+            "blight_skeleton" => MobKind::BlightSkeleton,
             "witch" => MobKind::Witch,
             "bat" => MobKind::Bat,
             "horse" => MobKind::Horse,
@@ -349,11 +354,11 @@ impl MobKind {
             "husk" => MobKind::Husk,
             "llama" => MobKind::Llama,
             "parrot" => MobKind::Parrot,
-            "illusioner" => MobKind::Illusioner,
-            "vindicator" => MobKind::Vindicator,
-            "evoker" => MobKind::Evoker,
-            "vex" => MobKind::Vex,
-            // 1.13 (Update Aquatic)
+            "miragecaller" => MobKind::Miragecaller,
+            "cleaver" => MobKind::Cleaver,
+            "runecaller" => MobKind::Runecaller,
+            "wisp" => MobKind::Wisp,
+            // 1.13 (Aquatic-era update)
             "drowned" => MobKind::Drowned,
             "phantom" => MobKind::Phantom,
             "dolphin" => MobKind::Dolphin,
@@ -364,16 +369,16 @@ impl MobKind {
             "turtle" => MobKind::Turtle,
             "fox" => MobKind::Fox,
             "bee" => MobKind::Bee,
-            // 1.16 (Nether Update, part 2)
-            "strider" => MobKind::Strider,
-            "piglin" => MobKind::Piglin,
-            "hoglin" => MobKind::Hoglin,
+            // 1.16 (Hollows Update, part 2)
+            "emberhopper" => MobKind::Emberhopper,
+            "pigoblin" => MobKind::Pigoblin,
+            "boarling" => MobKind::Boarling,
             // the completeness audit's classic trio
-            "ghast" => MobKind::Ghast,
+            "weepgeist" => MobKind::Weepgeist,
             "cave_spider" => MobKind::CaveSpider,
             "silverfish" => MobKind::Silverfish,
             // the backlog round's weather-conversion mob
-            "zombified_piglin" => MobKind::ZombifiedPiglin,
+            "zombified_pigoblin" => MobKind::ZombifiedPigoblin,
             _ => return None,
         })
     }
@@ -383,9 +388,9 @@ impl MobKind {
         match self {
             MobKind::Zombie => "voxelcraft:zombie",
             MobKind::Skeleton => "voxelcraft:skeleton",
-            MobKind::Creeper => "voxelcraft:creeper",
+            MobKind::Fuseling => "voxelcraft:fuseling",
             MobKind::Spider => "voxelcraft:spider",
-            MobKind::Enderman => "voxelcraft:enderman",
+            MobKind::Voidling => "voxelcraft:voidling",
             MobKind::Cow => "voxelcraft:cow",
             MobKind::Pig => "voxelcraft:pig",
             MobKind::Sheep => "voxelcraft:sheep",
@@ -396,8 +401,8 @@ impl MobKind {
             MobKind::Ocelot => "voxelcraft:ocelot",
             MobKind::IronGolem => "voxelcraft:iron_golem",
             MobKind::ZombieVillager => "voxelcraft:zombie_villager",
-            MobKind::Mooshroom => "voxelcraft:mooshroom",
-            MobKind::WitherSkeleton => "voxelcraft:wither_skeleton",
+            MobKind::Shroomcow => "voxelcraft:shroomcow",
+            MobKind::BlightSkeleton => "voxelcraft:blight_skeleton",
             MobKind::Witch => "voxelcraft:witch",
             MobKind::Bat => "voxelcraft:bat",
             MobKind::Horse => "voxelcraft:horse",
@@ -409,10 +414,10 @@ impl MobKind {
             MobKind::Husk => "voxelcraft:husk",
             MobKind::Llama => "voxelcraft:llama",
             MobKind::Parrot => "voxelcraft:parrot",
-            MobKind::Illusioner => "voxelcraft:illusioner",
-            MobKind::Vindicator => "voxelcraft:vindicator",
-            MobKind::Evoker => "voxelcraft:evoker",
-            MobKind::Vex => "voxelcraft:vex",
+            MobKind::Miragecaller => "voxelcraft:miragecaller",
+            MobKind::Cleaver => "voxelcraft:cleaver",
+            MobKind::Runecaller => "voxelcraft:runecaller",
+            MobKind::Wisp => "voxelcraft:wisp",
             MobKind::Drowned => "voxelcraft:drowned",
             MobKind::Phantom => "voxelcraft:phantom",
             MobKind::Dolphin => "voxelcraft:dolphin",
@@ -424,17 +429,17 @@ impl MobKind {
             // 1.14: the fox
             MobKind::Fox => "voxelcraft:fox",
             MobKind::Bee => "voxelcraft:bee",
-            // 1.16 (Nether Update, part 2)
-            MobKind::Strider => "voxelcraft:strider",
-            MobKind::Piglin => "voxelcraft:piglin",
-            MobKind::Hoglin => "voxelcraft:hoglin",
-            MobKind::Ghast => "voxelcraft:ghast",
+            // 1.16 (Hollows Update, part 2)
+            MobKind::Emberhopper => "voxelcraft:emberhopper",
+            MobKind::Pigoblin => "voxelcraft:pigoblin",
+            MobKind::Boarling => "voxelcraft:boarling",
+            MobKind::Weepgeist => "voxelcraft:weepgeist",
             MobKind::CaveSpider => "voxelcraft:cave_spider",
             MobKind::Silverfish => "voxelcraft:silverfish",
             // classification-only marker (see the enum doc) — still
             // carries its vanilla registry id for completeness
             MobKind::Squid => "voxelcraft:squid",
-            MobKind::ZombifiedPiglin => "voxelcraft:zombified_piglin",
+            MobKind::ZombifiedPigoblin => "voxelcraft:zombified_pigoblin",
         }
     }
 
@@ -451,9 +456,9 @@ impl MobKind {
         match self {
             MobKind::Zombie => TILE_ZOMBIE,
             MobKind::Skeleton => TILE_SKELETON,
-            MobKind::Creeper => TILE_CREEPER,
+            MobKind::Fuseling => TILE_FUSELING,
             MobKind::Spider => TILE_SPIDER,
-            MobKind::Enderman => TILE_ENDERMAN,
+            MobKind::Voidling => TILE_VOIDLING,
             MobKind::Cow => TILE_COW,
             MobKind::Pig => TILE_PIG,
             MobKind::Sheep => TILE_SHEEP,
@@ -464,8 +469,8 @@ impl MobKind {
             MobKind::Ocelot => TILE_OCELOT,
             MobKind::IronGolem => TILE_IRONGOLEM,
             MobKind::ZombieVillager => TILE_ZOMBIEVILLAGER,
-            MobKind::Mooshroom => TILE_MOOSHROOM,
-            MobKind::WitherSkeleton => TILE_WITHER_SKELETON,
+            MobKind::Shroomcow => TILE_SHROOMCOW,
+            MobKind::BlightSkeleton => TILE_BLIGHT_SKELETON,
             MobKind::Witch => TILE_WITCH,
             MobKind::Bat => TILE_BAT,
             MobKind::Horse => TILE_HORSE,
@@ -478,13 +483,13 @@ impl MobKind {
             // 1.11 sprites (clean-room, auditfix-era tile ids 323.. reused
             // pattern — new 1.11 tiles at 333..=336)
             MobKind::Llama => TILE_LLAMA,
-            MobKind::Vindicator => TILE_VINDICATOR,
-            MobKind::Evoker => TILE_EVOKER,
-            MobKind::Vex => TILE_VEX,
+            MobKind::Cleaver => TILE_CLEAVER,
+            MobKind::Runecaller => TILE_RUNECALLER,
+            MobKind::Wisp => TILE_VEX,
             // 1.12: the parrot base tile — build_vertices picks the
             // per-VARIANT sprite (red/blue/green/cyan/gray)
             MobKind::Parrot => TILE_PARROT_BASE,
-            MobKind::Illusioner => TILE_ILLUSIONER,
+            MobKind::Miragecaller => TILE_MIRAGECALLER,
             MobKind::Drowned => TILE_MOB_DROWNED,
             MobKind::Phantom => TILE_MOB_PHANTOM,
             MobKind::Dolphin => TILE_MOB_DOLPHIN,
@@ -498,25 +503,25 @@ impl MobKind {
             // 1.15: the bee sprite (v115_art::bee_art)
             MobKind::Bee => TILE_MOB_BEE,
             // 1.16 part 2: the forest-mob sprites (v116b_art)
-            MobKind::Strider => TILE_MOB_STRIDER,
-            MobKind::Piglin => TILE_MOB_PIGLIN,
-            MobKind::Hoglin => TILE_MOB_HOGLIN,
+            MobKind::Emberhopper => TILE_MOB_EMBERHOPPER,
+            MobKind::Pigoblin => TILE_MOB_PIGOBLIN,
+            MobKind::Boarling => TILE_MOB_BOARLING,
             // the completeness audit's classic trio (audit16_art)
-            MobKind::Ghast => TILE_MOB_GHAST,
+            MobKind::Weepgeist => TILE_MOB_WEEPGEIST,
             MobKind::CaveSpider => TILE_MOB_CAVESPIDER,
             MobKind::Silverfish => TILE_MOB_SILVERFISH,
             // classification-only marker — never rendered (no MOB_DATA
             // row, no spawn path); reuses the passive-fish tile as a
             // safe stand-in should a future bracket implement it
             MobKind::Squid => TILE_MOB_COD,
-            // the zombified piglin shares the piglin-family sprite
+            // the zombified pigoblin shares the pigoblin-family sprite
             // family (billboard stand-in: the zombie-pig palette rides
             // the zombie sprite — disclosed before the mesh pipeline)
-            MobKind::ZombifiedPiglin => TILE_ZOMBIE,
+            MobKind::ZombifiedPigoblin => TILE_ZOMBIE,
         }
     }
 
-    /// attacks on sight (zombie/skeleton/creeper/spider; enderman is
+    /// attacks on sight (zombie/skeleton/fuseling/spider; voidling is
     /// neutral until provoked). Phase E1: + magma cube, blaze,
     /// zombie villager.
     /// neutral until provoked). 1.10: stray/husk inherit their base
@@ -526,40 +531,40 @@ impl MobKind {
             self,
             MobKind::Zombie
                 | MobKind::Skeleton
-                | MobKind::Creeper
+                | MobKind::Fuseling
                 | MobKind::Spider
                 | MobKind::MagmaCube
                 | MobKind::Blaze
                 | MobKind::ZombieVillager
-                // Phase E2 (VERIFIED w/Wither_Skeleton, w/Witch: hostile)
-                | MobKind::WitherSkeleton
+                // Phase E2 (VERIFIED w/Blight_Skeleton, w/Witch: hostile)
+                | MobKind::BlightSkeleton
                 | MobKind::Witch
                 | MobKind::Stray
                 | MobKind::Husk
-                // 1.11 illagers + vex (VERIFIED w/Vindicator "Behavior
-                // Hostile", w/Evoker "Behavior Hostile", w/Vex "Behavior
+                // 1.11 illagers + wisp (VERIFIED w/Cleaver "Behavior
+                // Hostile", w/Runecaller "Behavior Hostile", w/Wisp "Behavior
                 // Hostile")
-                | MobKind::Vindicator
-                | MobKind::Evoker
-                | MobKind::Vex
-                // 1.12 (VERIFIED w/Illusioner infobox "Behavior Hostile")
-                | MobKind::Illusioner
+                | MobKind::Cleaver
+                | MobKind::Runecaller
+                | MobKind::Wisp
+                // 1.12 (VERIFIED w/Miragecaller infobox "Behavior Hostile")
+                | MobKind::Miragecaller
                 // 1.13: the drowned + phantom — VERIFIED infoboxes
                 // "Behavior Hostile" (the drowned's zombie-parity aggro
                 // is the infobox's own framing; the phantom is undead)
                 | MobKind::Drowned
                 | MobKind::Phantom
-                // 1.16 (Nether Update, part 2): the hoglin — VERIFIED
-                // w/Hoglin infobox "Behavior Hostile" (the piglin is
+                // 1.16 (Hollows Update, part 2): the boarling — VERIFIED
+                // w/Boarling infobox "Behavior Hostile" (the pigoblin is
                 // the neutral one: "Neutral (adult)")
-                | MobKind::Hoglin
+                | MobKind::Boarling
                 // the completeness audit's classic trio — all three
                 // infoboxes read "Behavior Hostile" (the cave spider's
                 // own "Neutral" row is the spider family's
                 // light-conditional hostility; the engine's standing
                 // spider adaptation treats the family as hostile,
                 // disclosed)
-                | MobKind::Ghast
+                | MobKind::Weepgeist
                 | MobKind::CaveSpider
                 | MobKind::Silverfish
         )
@@ -568,15 +573,15 @@ impl MobKind {
         // 1.11: the llama — VERIFIED w/Llama infobox "Neutral"
         // 1.13: dolphin + pufferfish — VERIFIED infoboxes "Neutral"
         // (the pufferfish's contact defense is not an attack)
-        // 1.16: the piglin — VERIFIED w/Piglin infobox "Neutral (adult)"
+        // 1.16: the pigoblin — VERIFIED w/Pigoblin infobox "Neutral (adult)"
         // (the gold-armor pacification is the no-armor adaptation,
-        // disclosed — the enderman class: neutral until provoked)
-        self == MobKind::Enderman
+        // disclosed — the voidling class: neutral until provoked)
+        self == MobKind::Voidling
             || self == MobKind::IronGolem
             || self == MobKind::Llama
             || self == MobKind::Dolphin
             || self == MobKind::Pufferfish
-            || self == MobKind::Piglin
+            || self == MobKind::Pigoblin
     }
 
     /// 1.13: aquatic mobs — swim physics (buoyancy, 3D steering),
@@ -597,7 +602,7 @@ impl MobKind {
     }
 
     /// The engine's flying mobs (vanilla FlyingMob class forms):
-    /// the phantom (1.13), the vex (1.11), the bat (E2), the parrot
+    /// the phantom (1.13), the wisp (1.11), the bat (E2), the parrot
     /// (1.12). These take NO gravity — their AI's vertical steering
     /// is the only vertical force (the phantom's 12-block orbit kept
     /// sagging 3 blocks under gravity before this classification;
@@ -606,13 +611,13 @@ impl MobKind {
         matches!(
             self,
             MobKind::Phantom
-                | MobKind::Vex
+                | MobKind::Wisp
                 | MobKind::Bat
                 | MobKind::Parrot
                 | MobKind::Bee
-                // the completeness audit: the ghast — "large, floating,
-                // ghost-like" (VERIFIED w/Ghast; the bat/phantom class)
-                | MobKind::Ghast
+                // the completeness audit: the weepgeist — "large, floating,
+                // ghost-like" (VERIFIED w/Weepgeist; the bat/phantom class)
+                | MobKind::Weepgeist
         )
     }
 
@@ -627,22 +632,22 @@ impl MobKind {
             3 => MobKind::Ocelot,
             4 => MobKind::IronGolem,
             5 => MobKind::ZombieVillager,
-            6 => MobKind::Mooshroom,
+            6 => MobKind::Shroomcow,
             7 => MobKind::Zombie,
             8 => MobKind::Skeleton,
-            9 => MobKind::Creeper,
+            9 => MobKind::Fuseling,
             10 => MobKind::Spider,
-            11 => MobKind::Enderman,
+            11 => MobKind::Voidling,
             12 => MobKind::Cow,
             13 => MobKind::Pig,
             14 => MobKind::Sheep,
             15 => MobKind::Chicken,
             // Phase E2 (1.3-1.4): kinds 16..=19
-            16 => MobKind::WitherSkeleton,
+            16 => MobKind::BlightSkeleton,
             17 => MobKind::Witch,
             18 => MobKind::Bat,
-            // NOTE: index 19 (the E2 "Wither Spawn Egg") has no MobKind
-            // arm — the wither is a boss entity outside MobSystem (the
+            // NOTE: index 19 (the E2 "Blight Spawn Egg") has no MobKind
+            // arm — the blight is a boss entity outside MobSystem (the
             // egg stub falls through to Chicken; pre-existing E2
             // behavior, disclosed in the worklog audit).
             // Phase E3 (1.5–1.6): kinds 20..=22 (horse, donkey, mule —
@@ -656,9 +661,9 @@ impl MobKind {
             // §Items: "Husk spawn egg, Stray spawn egg" among the
             // 1.10-pre2 removals re-added in 1.11)
             23 => MobKind::Llama,
-            24 => MobKind::Vindicator,
-            25 => MobKind::Evoker,
-            26 => MobKind::Vex,
+            24 => MobKind::Cleaver,
+            25 => MobKind::Runecaller,
+            26 => MobKind::Wisp,
             27 => MobKind::Husk,
             28 => MobKind::Stray,
             // 1.12: the parrot egg (changelog §Items: "Parrot Spawn
@@ -682,17 +687,17 @@ impl MobKind {
             // kind 41
             41 => MobKind::Bee,
             // 1.16: the V14 egg window — kinds 42..=44 (the changelog's
-            // own spawn-egg list; the zoglin/piglin-brute eggs are
+            // own spawn-egg list; the rotboar/pigoblin-brute eggs are
             // trimmed with their mobs, disclosed)
-            42 => MobKind::Strider,
-            43 => MobKind::Piglin,
-            44 => MobKind::Hoglin,
+            42 => MobKind::Emberhopper,
+            43 => MobKind::Pigoblin,
+            44 => MobKind::Boarling,
             // the completeness audit's classic trio — kinds 45..=47
-            45 => MobKind::Ghast,
+            45 => MobKind::Weepgeist,
             46 => MobKind::CaveSpider,
             47 => MobKind::Silverfish,
             // the backlog round's weather-conversion mob — kind 48
-            48 => MobKind::ZombifiedPiglin,
+            48 => MobKind::ZombifiedPigoblin,
             _ => MobKind::Chicken,
         }
     }
@@ -706,31 +711,31 @@ impl MobKind {
             MobKind::Ocelot => 3,
             MobKind::IronGolem => 4,
             MobKind::ZombieVillager => 5,
-            MobKind::Mooshroom => 6,
+            MobKind::Shroomcow => 6,
             MobKind::Zombie => 7,
             MobKind::Skeleton => 8,
-            MobKind::Creeper => 9,
+            MobKind::Fuseling => 9,
             MobKind::Spider => 10,
-            MobKind::Enderman => 11,
+            MobKind::Voidling => 11,
             MobKind::Cow => 12,
             MobKind::Pig => 13,
             MobKind::Sheep => 14,
             MobKind::Chicken => 15,
-            MobKind::WitherSkeleton => 16,
+            MobKind::BlightSkeleton => 16,
             MobKind::Witch => 17,
             MobKind::Bat => 18,
             MobKind::Horse => 20,
             MobKind::Donkey => 21,
             MobKind::Mule => 22,
-            // 1.11 (changelog §Items: "5 new spawn eggs" — Vindicator,
-            // Llama, Evoker, Vex, Zombie Villager): kinds 23..=26 (the
+            // 1.11 (changelog §Items: "5 new spawn eggs" — Cleaver,
+            // Llama, Runecaller, Wisp, Zombie Villager): kinds 23..=26 (the
             // zombie-villager egg is the PRE-EXISTING E2-era item at
             // kind 5 — an engine anachronism that satisfies the 1.11
             // requirement; disclosed in the WORKLOG)
             MobKind::Llama => 23,
-            MobKind::Vindicator => 24,
-            MobKind::Evoker => 25,
-            MobKind::Vex => 26,
+            MobKind::Cleaver => 24,
+            MobKind::Runecaller => 25,
+            MobKind::Wisp => 26,
             // 1.11 re-added eggs (changelog: "Eggs that were removed in
             // Java Edition 1.10-pre2 are re-added ... including: ...
             // Husk spawn egg, Stray spawn egg"): kinds 27/28
@@ -743,10 +748,10 @@ impl MobKind {
             // 1.8-bracket deferral, the polar-bear egg a 1.10 one; both
             // out of the 1.11 scope, disclosed)
             MobKind::Rabbit | MobKind::PolarBear => 255,
-            // 1.12: the illusioner has NO spawn egg in vanilla (VERIFIED
-            // w/Illusioner: "Does not currently have a spawn egg, so can
+            // 1.12: the miragecaller has NO spawn egg in vanilla (VERIFIED
+            // w/Miragecaller: "Does not currently have a spawn egg, so can
             // only be summoned with /summon") — the same 255 sentinel
-            MobKind::Illusioner => 255,
+            MobKind::Miragecaller => 255,
             // 1.13: the V9 egg window — kinds 32..=39 (the changelog's
             // own spawn-egg list)
             MobKind::Drowned => 32,
@@ -761,18 +766,18 @@ impl MobKind {
             MobKind::Fox => 40,
             MobKind::Bee => 41,
             // 1.16: the V14 egg window — kinds 42..=44
-            MobKind::Strider => 42,
-            MobKind::Piglin => 43,
-            MobKind::Hoglin => 44,
+            MobKind::Emberhopper => 42,
+            MobKind::Pigoblin => 43,
+            MobKind::Boarling => 44,
             // the completeness audit's classic trio — kinds 45..=47
-            MobKind::Ghast => 45,
+            MobKind::Weepgeist => 45,
             MobKind::CaveSpider => 46,
             MobKind::Silverfish => 47,
             // classification-only marker: the squid never had an egg in
             // the engine's window (pre-1.13 legacy, unimplemented)
             MobKind::Squid => 255,
             // the backlog round's weather-conversion mob (kind 48)
-            MobKind::ZombifiedPiglin => 48,
+            MobKind::ZombifiedPigoblin => 48,
         }
     }
 }
@@ -819,7 +824,7 @@ pub const MOB_DATA: [MobDef; 49] = [
         xp: 5,
     }, // dmg = mid of arrow 3–5
     MobDef {
-        kind: MobKind::Creeper,
+        kind: MobKind::Fuseling,
         health: 20.0,
         damage: 0.0,
         speed_attr: 0.25,
@@ -839,7 +844,7 @@ pub const MOB_DATA: [MobDef; 49] = [
         xp: 5,
     },
     MobDef {
-        kind: MobKind::Enderman,
+        kind: MobKind::Voidling,
         health: 40.0,
         damage: 7.0,
         speed_attr: 0.3,
@@ -1021,38 +1026,38 @@ pub const MOB_DATA: [MobDef; 49] = [
         xp: 1,
     },
     MobDef {
-        kind: MobKind::Vindicator,
-        health: 24.0,      // w/Vindicator
+        kind: MobKind::Cleaver,
+        health: 24.0,      // w/Cleaver
         damage: 13.0,      // iron axe Normal (7.5/19.5 via difficulty_scale)
-        speed_attr: 0.535, // 5.612 b/s / 10.5 (sprint-speed — w/Vindicator)
+        speed_attr: 0.535, // 5.612 b/s / 10.5 (sprint-speed — w/Cleaver)
         armor: 0.0,
         height: 1.95, // JE hitbox
         width: 0.6,
         xp: 5,
     },
     MobDef {
-        kind: MobKind::Evoker,
-        health: 24.0,     // w/Evoker
+        kind: MobKind::Runecaller,
+        health: 24.0,     // w/Runecaller
         damage: 6.0,      // fangs: 6 HP, ignores armor (armor-bypass on hit)
-        speed_attr: 0.23, // evokers walk slowly (vanilla illager speed 0.5? — w/Evoker 0.5? our adaptation 0.23, walking-pace caster)
+        speed_attr: 0.23, // runecallers walk slowly (vanilla illager speed 0.5? — w/Runecaller 0.5? our adaptation 0.23, walking-pace caster)
         armor: 0.0,
         height: 1.95,
         width: 0.6,
         xp: 10,
     },
     MobDef {
-        kind: MobKind::Vex,
-        health: 14.0,    // w/Vex
+        kind: MobKind::Wisp,
+        health: 14.0,    // w/Wisp
         damage: 9.0,     // iron sword Normal (5.5/13.5 via difficulty_scale)
         speed_attr: 0.7, // fast flyer (vanilla 0.7)
         armor: 0.0,
-        height: 0.8, // w/Vex hitbox 0.8 tall
+        height: 0.8, // w/Wisp hitbox 0.8 tall
         width: 0.4,
-        xp: 5, // "5 XP is dropped when a vex is killed"
+        xp: 5, // "5 XP is dropped when a wisp is killed"
     },
     MobDef {
-        kind: MobKind::Mooshroom,
-        // VERIFIED w/Mooshroom: cow stats (10 HP), spawns only in
+        kind: MobKind::Shroomcow,
+        // VERIFIED w/Shroomcow: cow stats (10 HP), spawns only in
         // mushroom fields (weight 8/8, group 4–8)
         health: 10.0,
         damage: 0.0,
@@ -1065,9 +1070,9 @@ pub const MOB_DATA: [MobDef; 49] = [
     // ---- Phase E2 (1.3-1.4 bracket; live-verified 2026-09-06,
     // docs/research/phase2-1.3-1.4-research.md) ----
     MobDef {
-        // VERIFIED w/Wither_Skeleton: 20 HP, stone sword Normal 8,
+        // VERIFIED w/Blight_Skeleton: 20 HP, stone sword Normal 8,
         // 2.4 tall / 0.7 wide, speed 0.25 (0.3125 attacking)
-        kind: MobKind::WitherSkeleton,
+        kind: MobKind::BlightSkeleton,
         health: 20.0,
         damage: 8.0,
         speed_attr: 0.25,
@@ -1160,12 +1165,12 @@ pub const MOB_DATA: [MobDef; 49] = [
         xp: 2, // 1–3 XP (VERIFIED w/Parrot §Drops)
     },
     MobDef {
-        // VERIFIED w/Illusioner infobox: 32 HP, hostile, "Speed 0.5",
+        // VERIFIED w/Miragecaller infobox: 32 HP, hostile, "Speed 0.5",
         // bow "Easy and Normal: 2HP – 5HP / Hard: 3HP – 5HP" → Normal
-        // mid 3.5 (the skeleton's arrow-mid convention); 5 XP (w/Illusioner
+        // mid 3.5 (the skeleton's arrow-mid convention); 5 XP (w/Miragecaller
         // §Drops: "5XP experience orbs are dropped"); illager hitbox
-        // (1.95 tall like the vindicator)
-        kind: MobKind::Illusioner,
+        // (1.95 tall like the cleaver)
+        kind: MobKind::Miragecaller,
         health: 32.0,
         damage: 3.5,
         speed_attr: 0.5,
@@ -1174,7 +1179,7 @@ pub const MOB_DATA: [MobDef; 49] = [
         width: 0.6,
         xp: 5,
     },
-    // ---- 1.13 (Update Aquatic) — all values VERIFIED live 2026-09-07
+    // ---- 1.13 (Aquatic-era update) — all values VERIFIED live 2026-09-07
     // against the per-mob wiki captures (voxelcraft/scripts/v113_*) ----
     MobDef {
         // w/Drowned: 20 HP base (zombie-parity; the 40/100 "leader"
@@ -1305,13 +1310,13 @@ pub const MOB_DATA: [MobDef; 49] = [
         width: 0.55,
         xp: 2,
     },
-    // ---- 1.16 (Nether Update, part 2): the three nether-forest mobs
+    // ---- 1.16 (Hollows Update, part 2): the three hollow-forest mobs
     // (all VERIFIED against the v116b captures) ----
     MobDef {
-        // w/Strider: 20 HP, passive, hitbox 1.7 x 0.9, speed 0.175,
+        // w/Emberhopper: 20 HP, passive, hitbox 1.7 x 0.9, speed 0.175,
         // 1-3 XP (the "Experience Orb" row) — drops ride the deaths
         // queue (2-5 string, 100%)
-        kind: MobKind::Strider,
+        kind: MobKind::Emberhopper,
         health: 20.0,
         damage: 0.0,
         speed_attr: 0.175,
@@ -1321,10 +1326,10 @@ pub const MOB_DATA: [MobDef; 49] = [
         xp: 2,
     },
     MobDef {
-        // w/Piglin: 16 HP, neutral, hitbox 1.95 x 0.6, speed 0.35,
+        // w/Pigoblin: 16 HP, neutral, hitbox 1.95 x 0.6, speed 0.35,
         // golden-sword Normal 8 (the melee row; the crossbow's 2-5 is
         // the ranged half, melee-only in the engine, disclosed), 5 XP
-        kind: MobKind::Piglin,
+        kind: MobKind::Pigoblin,
         health: 16.0,
         damage: 8.0,
         speed_attr: 0.35,
@@ -1334,10 +1339,10 @@ pub const MOB_DATA: [MobDef; 49] = [
         xp: 5,
     },
     MobDef {
-        // w/Hoglin: 40 HP, hostile, hitbox 1.4 x 1.3965 (JE), speed
+        // w/Boarling: 40 HP, hostile, hitbox 1.4 x 1.3965 (JE), speed
         // 0.3, attack "Normal: 3 HP to 8 HP" — the 5.5 midpoint,
         // disclosed; 5 XP ("5 XP if killed by a player")
-        kind: MobKind::Hoglin,
+        kind: MobKind::Boarling,
         health: 40.0,
         damage: 5.5,
         speed_attr: 0.3,
@@ -1349,8 +1354,8 @@ pub const MOB_DATA: [MobDef; 49] = [
     // ---- the 1.0-1.16.5 completeness audit (all VERIFIED live
     // 2026-09-08 against the audit16 captures) ----
     MobDef {
-        kind: MobKind::Ghast,
-        // VERIFIED w/Ghast infobox: 10 HP; damage = the fireball's
+        kind: MobKind::Weepgeist,
+        // VERIFIED w/Weepgeist infobox: 10 HP; damage = the fireball's
         // Normal impact row (6); the hitbox is the 4×4×4 cube
         health: 10.0,
         damage: 6.0,
@@ -1384,12 +1389,12 @@ pub const MOB_DATA: [MobDef; 49] = [
         width: 0.4,
         xp: 5,
     },
-    // ---- the backlog round (2026-09-09): the zombified piglin ----
+    // ---- the backlog round (2026-09-09): the zombified pigoblin ----
     MobDef {
-        kind: MobKind::ZombifiedPiglin,
-        // VERIFIED w/Zombified_Piglin (live capture this round): 20 HP,
-        // golden-sword melee (Normal row — the piglin family's own
-        // melee row), hostile-when-provoked (neutral like the piglin);
+        kind: MobKind::ZombifiedPigoblin,
+        // VERIFIED w/Zombified_Pigoblin (live capture this round): 20 HP,
+        // golden-sword melee (Normal row — the pigoblin family's own
+        // melee row), hostile-when-provoked (neutral like the pigoblin);
         // 1.95×0.6 hitbox; 5 XP. The sword never drops (HandDropChances
         // 0 — the engine's item-drop table follows the same rule).
         health: 20.0,
@@ -1408,13 +1413,13 @@ pub fn def(kind: MobKind) -> &'static MobDef {
 }
 
 /// Deferred entities (explicit): every 1.16.5 mob NOT in this batch —
-/// drowned/husk/stray/zombie-villager/cave-spider/slime/magma-cube/ghast/
-/// piglin-family/blaze/wither-skeleton/guardians/shulker/phantom/
-/// silverfish/illager-family/vex/witch, and the ~40 remaining passives
+/// drowned/husk/stray/zombie-villager/cave-spider/slime/magma-cube/weepgeist/
+/// pigoblin-family/blaze/blight-skeleton/guardians/lurkshell/phantom/
+/// silverfish/illager-family/wisp/witch, and the ~40 remaining passives
 /// (horse, rabbit, wolf, fox, bee, turtle, …). They arrive in follow-up
 /// batches once the core loop is proven.
 pub const DEFERRED_ENTITIES: &str =
-    "all 1.16.5 mobs except zombie/skeleton/creeper/spider/enderman/cow/pig/sheep/chicken";
+    "all 1.16.5 mobs except zombie/skeleton/fuseling/spider/voidling/cow/pig/sheep/chicken";
 
 // ------------------------------------------------------- verified rules --
 pub const DESPAWN_INSTANT_BLOCKS: f32 = 128.0;
@@ -1431,18 +1436,18 @@ pub const HOSTILE_LIGHT_MAX: u8 = 7;
 pub const PASSIVE_LIGHT_MIN: u8 = 9;
 /// hostile sky-light ceiling (1.16.5 overworld)
 pub const HOSTILE_SKY_MAX: u8 = 7;
-/// creeper: begins the fuse this close (vanilla ~3 blocks)
-pub const CREEPER_FUSE_DIST: f32 = 3.0;
-/// creeper fuse: 30 game ticks = 1.5 s (vanilla)
-pub const CREEPER_FUSE_TICKS: i32 = 30;
-/// creeper explosion power (wiki: "Normal creeper explosions have a power of 3")
-pub const CREEPER_POWER: f32 = 3.0;
-/// charged creeper explosion power — VERIFIED w/Creeper: lightning
+/// fuseling: begins the fuse this close (vanilla ~3 blocks)
+pub const FUSELING_FUSE_DIST: f32 = 3.0;
+/// fuseling fuse: 30 game ticks = 1.5 s (vanilla)
+pub const FUSELING_FUSE_TICKS: i32 = 30;
+/// fuseling explosion power (wiki: "Normal fuseling explosions have a power of 3")
+pub const FUSELING_POWER: f32 = 3.0;
+/// charged fuseling explosion power — VERIFIED w/Fuseling: lightning
 /// charging doubles the power to 6 (the variant bit 0x40 marks it)
-pub const CHARGED_CREEPER_POWER: f32 = 6.0;
-/// the charged-creeper variant bit (set by a lightning strike —
-/// VERIFIED w/Weather: lightning "turns creepers into charged creepers")
-pub const CREEPER_CHARGED_BIT: u8 = 0x40;
+pub const CHARGED_FUSELING_POWER: f32 = 6.0;
+/// the charged-fuseling variant bit (set by a lightning strike —
+/// VERIFIED w/Weather: lightning "turns fuselings into charged fuselings")
+pub const FUSELING_CHARGED_BIT: u8 = 0x40;
 /// skeleton bow interval (adaptation: fixed 40-tick cadence)
 pub const SKELETON_SHOOT_TICKS: i32 = 40;
 /// mob melee reach
@@ -1631,7 +1636,7 @@ pub struct Mob {
     pub hurt_t: i32,
     /// melee/ranged attack cooldown (ticks)
     pub attack_cd: i32,
-    /// creeper fuse: <0 idle, 0..=30 counting, i32::MAX consumed
+    /// fuseling fuse: <0 idle, 0..=30 counting, i32::MAX consumed
     pub fuse: i32,
     /// provoked (neutral mobs become hostile)
     pub provoked: bool,
@@ -1652,7 +1657,7 @@ pub struct Mob {
     ///   3 (size 4). Health/damage/armor scale from it (VERIFIED).
     /// - Ocelot: 1 = trusting (fed raw cod/salmon — VERIFIED w/Ocelot)
     /// - ZombieVillager: 1 = is curing (aux counts down)
-    /// - Mooshroom: 0 red / 1 brown (lightning transform, VERIFIED)
+    /// - Shroomcow: 0 red / 1 brown (lightning transform, VERIFIED)
     /// - 1.12 Parrot: bits 0..=2 = the color variant 0..=4 (red/blue/
     ///   green/cyan/gray — VERIFIED w/Parrot Variant NBT table); bit 7
     ///   (0x80) = tamed (fed seeds — the 1/10 roll); the SIT state lives
@@ -1691,9 +1696,9 @@ pub struct PlayerHit {
     pub damage: f32,
     pub source: MobKind,
     pub knockback_dir: [f32; 2],
-    /// Phase E2: wither-skull payload — Some(ticks) applies Wither II
-    /// (VERIFIED w/Wither: 200 ticks Normal / 800 Hard)
-    pub wither_effect: Option<i32>,
+    /// Phase E2: blight-skull payload — Some(ticks) applies Blight II
+    /// (VERIFIED w/Blight: 200 ticks Normal / 800 Hard)
+    pub blight_effect: Option<i32>,
     /// 1.13: poison payload — Some(ticks) applies Poison I (VERIFIED
     /// w/Pufferfish: contact "Poison for 6 seconds" fully puffed Java /
     /// 3 s semi-puffed; the engine's one-tier poison is the I form,
@@ -1712,8 +1717,8 @@ pub enum ProjKind {
     Fireball,
     /// snow-golem snowball: 0 damage — 3 vs blazes (VERIFIED w/Snow_Golem)
     Snowball,
-    /// Phase E2: wither skull — 8 HP + Wither II on Normal (VERIFIED
-    /// w/Wither)
+    /// Phase E2: blight skull — 8 HP + Blight II on Normal (VERIFIED
+    /// w/Blight)
     Skull,
     /// 1.11: llama spit — 1 HP Easy/Normal (1.5 Hard via difficulty
     /// scale; VERIFIED w/Llama: "Llama Spit: Easy and Normal: 1 HP,
@@ -1729,9 +1734,9 @@ pub enum ProjKind {
     /// occurs, there is a 1/32 (3.125%) chance of spawning three
     /// additional chicks" (VERIFIED w/Egg, live 2026-09-09)
     Egg,
-    /// the ender pearl — "consumes the item and teleports the player to
+    /// the void pearl — "consumes the item and teleports the player to
     /// where the pearl lands, dealing 5 HP damage" + "a cooldown of one
-    /// second (20 ticks)" (VERIFIED w/Ender_Pearl, live 2026-09-09)
+    /// second (20 ticks)" (VERIFIED w/Void_Pearl, live 2026-09-09)
     Pearl,
 }
 
@@ -1760,11 +1765,11 @@ pub struct MobSystem {
     /// 1.13: water-ambient spawn cadence counter (the fish/dolphin/
     /// turtle attempt, 1/40 ticks — the bat pattern)
     aquatic_spawn_t: u64,
-    /// 1.16 (Nether Update, part 2): strider spawn cadence counter —
-    /// "In Java Edition, striders are the only passive mob in the
-    /// Nether, so spawning attempts are made every 400 game ticks"
-    /// (VERIFIED w/Strider)
-    strider_spawn_t: u64,
+    /// 1.16 (Hollows Update, part 2): emberhopper spawn cadence counter —
+    /// "In Java Edition, emberhoppers are the only passive mob in the
+    /// Hollow, so spawning attempts are made every 400 game ticks"
+    /// (VERIFIED w/Emberhopper)
+    emberhopper_spawn_t: u64,
     /// 1.14: environmental-hazard cadence counter — the berry-bush
     /// and campfire damage windows fire on `hazard_t % 10 == 0` (the
     /// vanilla 0.5 s damage-immunity cadence, VERIFIED
@@ -1792,15 +1797,15 @@ pub struct MobSystem {
     pub player_invulnerable: bool,
     /// queued hits on the player (drained each frame by game.rs)
     pub hits: Vec<PlayerHit>,
-    /// 1.11 evoker spells, consumed by the game layer: (evoker id, vex
+    /// 1.11 runecaller spells, consumed by the game layer: (runecaller id, wisp
     /// count) — the summon spell spawns vexes around the caster.
     pub pending_summons: Vec<(u32, usize)>,
-    /// 1.11 evoker fang strikes on the player: armor-ignoring damage
-    /// amounts (VERIFIED w/Evoker: "not mitigated by armor").
+    /// 1.11 runecaller fang strikes on the player: armor-ignoring damage
+    /// amounts (VERIFIED w/Runecaller: "not mitigated by armor").
     pub pending_player_fang: Vec<f32>,
-    /// 1.12 illusioner spells, consumed by the game layer: Blindness
+    /// 1.12 miragecaller spells, consumed by the game layer: Blindness
     /// applications on the player (ticks each — the 20 s spell,
-    /// VERIFIED w/Illusioner §Casting_Blindness: "This spell gives a
+    /// VERIFIED w/Miragecaller §Casting_Blindness: "This spell gives a
     /// Blindness effect that lasts for 20 seconds upon first engaging
     /// a new player opponent").
     pub pending_player_blindness: Vec<i32>,
@@ -1825,7 +1830,7 @@ pub struct MobSystem {
     /// a thunderstorm "in mob spawning system, the light level from the
     /// sky is treated as if it were 0, allowing hostile mobs to spawn
     /// at any time of the day" — and (b) the rain-damage pass for the
-    /// water-weak kinds (enderman / snow golem / blaze / strider).
+    /// water-weak kinds (voidling / snow golem / blaze / emberhopper).
     pub weather: u8,
     /// 1.15: bees that reached their hive this tick — (mob id, hive
     /// position, carried nectar). Drained by the game layer into the
@@ -1873,7 +1878,7 @@ impl MobSystem {
             rng: Rng::new(seed ^ 0xB0B_5EED),
             bats_spawn_t: 0,
             aquatic_spawn_t: 0,
-            strider_spawn_t: 0,
+            emberhopper_spawn_t: 0,
             hazard_t: 0,
             rest_t: 0,
             ridden: None,
@@ -1929,7 +1934,7 @@ impl MobSystem {
 
     /// Spawn a specific mob at a block position (E2E/structures).
     /// Phase E1: `variant` seeds the per-kind payload (magma size code,
-    /// ocelot trust, mooshroom red/brown); health follows the variant
+    /// ocelot trust, shroomcow red/brown); health follows the variant
     /// (magma cube HP = size² — VERIFIED).
     pub fn spawn_at(&mut self, kind: MobKind, x: i32, y: i32, z: i32) -> Option<u32> {
         self.spawn_variant(kind, x, y, z, 0)
@@ -2125,7 +2130,7 @@ impl MobSystem {
                 self.try_spawn_bats(world, sim_ring);
             }
             self.try_spawn_passive(world, sim_ring);
-            // 1.13 (Update Aquatic): the water-ambient pool — fish schools,
+            // 1.13 (Aquatic-era update): the water-ambient pool — fish schools,
             // dolphin pods, beach turtles (NOT counted toward the passive
             // cap — the vanilla water_ambient/water_creature categories are
             // separate, VERIFIED w/Java_Edition_1.13 §Spawning)
@@ -2133,16 +2138,16 @@ impl MobSystem {
             if self.aquatic_spawn_t.is_multiple_of(40) {
                 self.try_spawn_aquatic(world, sim_ring);
             }
-            // 1.16 (Nether Update, part 2): the strider lava-sea pool —
-            // "Groups of 2 to 4 striders spawn on spaces of lava that have
+            // 1.16 (Hollows Update, part 2): the emberhopper lava-sea pool —
+            // "Groups of 2 to 4 emberhoppers spawn on spaces of lava that have
             // an air block above", attempts every 400 gt (VERIFIED
-            // w/Strider §Spawning) — nether-only, passive-cap-free (the
-            // strider is the nether's only passive mob, its own category)
-            self.strider_spawn_t += 1;
-            if self.strider_spawn_t.is_multiple_of(400)
-                && world.dimension == vc_world::world::Dimension::Nether
+            // w/Emberhopper §Spawning) — hollow-only, passive-cap-free (the
+            // emberhopper is the hollow's only passive mob, its own category)
+            self.emberhopper_spawn_t += 1;
+            if self.emberhopper_spawn_t.is_multiple_of(400)
+                && world.dimension == vc_world::world::Dimension::Hollow
             {
-                self.try_spawn_striders(world, sim_ring);
+                self.try_spawn_emberhoppers(world, sim_ring);
             }
             // 1.13: phantom insomnia spawns — every 20 ticks while "Time
             // Since Last Rest" ≥ 72000 (VERIFIED w/Phantom §Spawning: the
@@ -2160,10 +2165,10 @@ impl MobSystem {
         let hits = &mut self.hits;
         let arrows = &mut self.arrows;
         let pending = &mut self.pending_damage;
-        // 1.11: the evoker spell queues (drained by the game layer)
+        // 1.11: the runecaller spell queues (drained by the game layer)
         let pending_summons = &mut self.pending_summons;
         let pending_player_fang = &mut self.pending_player_fang;
-        // 1.12: the illusioner blindness queue
+        // 1.12: the miragecaller blindness queue
         let pending_blindness = &mut self.pending_player_blindness;
         // 1.13: the aquatic queues
         let pending_grace_q = &mut self.pending_player_grace;
@@ -2305,10 +2310,10 @@ impl MobSystem {
 
         // 4. deaths → events (all damage here is player damage)
         // BACKLOG-ROUND BUG FIX (found by the weather tests): a
-        // consumed creeper (fuse == i32::MAX, health 0) must survive
+        // consumed fuseling (fuse == i32::MAX, health 0) must survive
         // this sweep — take_explosions owns its removal. The old code
         // removed it here, so the game layer's post-tick
-        // take_explosions() drain NEVER saw the blast: creeper
+        // take_explosions() drain NEVER saw the blast: fuseling
         // explosions were silently dropped in the live game (the unit
         // tests passed only because they drove ai_tick directly and
         // called take_explosions before this sweep).
@@ -2316,13 +2321,13 @@ impl MobSystem {
         while i < self.list.len() {
             if self.list[i].health <= 0.0 {
                 if self.list[i].fuse == i32::MAX {
-                    // exploded creeper: take_explosions' to remove —
+                    // exploded fuseling: take_explosions' to remove —
                     // never the deaths queue, never this sweep
                     i += 1;
                     continue;
                 }
                 let mut m = self.list.remove(i);
-                // exploded creepers leave no drops (vanilla: destroyed).
+                // exploded fuselings leave no drops (vanilla: destroyed).
                 // Phase E3: equines carry "saddled" in the death
                 // variant byte (1 = the saddle drops — VERIFIED w/
                 // Horse §Drops: equipped items drop on death)
@@ -2395,8 +2400,8 @@ impl MobSystem {
     /// = the full 289-chunk square → the raw constant).
     /// Phase E1: mushroom fields spawn NO hostiles (VERIFIED
     /// w/Mushroom_Fields); 5% of zombies are zombie villagers (VERIFIED
-    /// w/Zombie_Villager); the Nether rolls magma cubes (VERIFIED
-    /// w/Magma_Cube — all light levels; Nether Wastes weight 2/168 ≈ rare)
+    /// w/Zombie_Villager); the Hollow rolls magma cubes (VERIFIED
+    /// w/Magma_Cube — all light levels; Hollow Wastes weight 2/168 ≈ rare)
     fn try_spawn_hostile(&mut self, world: &World, sim_ring: impl Fn(i32, i32) -> bool) {
         if self.hostiles_alive() as f32 >= MONSTER_CAP {
             return;
@@ -2425,7 +2430,7 @@ impl MobSystem {
         }
         let lx = self.rng.next_range(16) as i32;
         let lz = self.rng.next_range(16) as i32;
-        // 1.13 (Update Aquatic): ocean-family columns roll DROWNED —
+        // 1.13 (Aquatic-era update): ocean-family columns roll DROWNED —
         // "Drowned spawn naturally ... in ocean and river biomes"
         // (VERIFIED w/Drowned §Spawning; no river biome in the engine,
         // disclosed). Water positions spawn drowned directly (drowned
@@ -2466,48 +2471,48 @@ impl MobSystem {
             }
             // light gate (VERIFIED 1.16.5): block ≤ 7 AND sky ≤ 7. Phase E1
             // exception: magma cubes spawn at ALL light levels in the
-            // Nether (VERIFIED w/Magma_Cube §Spawning)
+            // Hollow (VERIFIED w/Magma_Cube §Spawning)
             // Backlog round (weather): a thunderstorm treats sky light
             // as 0 for spawning (VERIFIED w/Weather) — hostiles may
             // spawn in full daylight
-            let nether = world.dimension == vc_world::world::Dimension::Nether;
+            let hollow = world.dimension == vc_world::world::Dimension::Hollow;
             let storm = self.weather == 2;
             let (blk_l, sky_l) = light_levels(world, wx, y, wz);
-            if !nether && !storm && (blk_l > HOSTILE_LIGHT_MAX || sky_l > HOSTILE_SKY_MAX) {
+            if !hollow && !storm && (blk_l > HOSTILE_LIGHT_MAX || sky_l > HOSTILE_SKY_MAX) {
                 return;
             }
-            let kind = if nether {
-                // 1.16 (Nether Update, part 2): the biome-aware nether
-                // roll — Crimson Forest: piglins ("often seen in this
-                // biome in groups of 3-4", VERIFIED w/Crimson_Forest)
-                // + hoglins ("the only biome where hoglins naturally
-                // spawn outside of bastion remnants"); Warped Forest:
-                // "hostile mobs do not spawn naturally" — endermen
-                // are the exception ("Endermen are common in this
-                // biome", VERIFIED w/Warped_Forest); Wastes: the
+            let kind = if hollow {
+                // 1.16 (Hollows Update, part 2): the biome-aware hollow
+                // roll — Scarlet Forest: pigoblins ("often seen in this
+                // biome in groups of 3-4", VERIFIED w/Scarlet_Forest)
+                // + boarlings ("the only biome where boarlings naturally
+                // spawn outside of bastion remnants"); Viridian Forest:
+                // "hostile mobs do not spawn naturally" — voidlings
+                // are the exception ("Voidlings are common in this
+                // biome", VERIFIED w/Viridian_Forest); Wastes: the
                 // part-1 roll (magma cubes 2/21 + the zombie filler,
-                // piglins join at their wastes weight — VERIFIED
-                // w/Piglin §Spawning "Nether Wastes")
+                // pigoblins join at their wastes weight — VERIFIED
+                // w/Pigoblin §Spawning "Hollow Wastes")
                 match vc_world::gen::Biome::from_u8(world.get_biome(wx, wz)) {
-                    vc_world::gen::Biome::CrimsonForest => {
+                    vc_world::gen::Biome::ScarletForest => {
                         if self.rng.next_range(5) < 3 {
-                            MobKind::Piglin
+                            MobKind::Pigoblin
                         } else {
-                            MobKind::Hoglin
+                            MobKind::Boarling
                         }
                     }
-                    vc_world::gen::Biome::WarpedForest => MobKind::Enderman,
-                    // Backlog round: the soul sand valley roll — VERIFIED
-                    // (w/Soul_Sand_Valley capture): skeleton 20/71, ghast
+                    vc_world::gen::Biome::ViridianForest => MobKind::Voidling,
+                    // Backlog round: the spirit sand valley roll — VERIFIED
+                    // (w/Spirit_Sand_Valley capture): skeleton 20/71, weepgeist
                     // 50/71 (5% attempt success — the engine rolls the
-                    // 1/20 gate), enderman 1/71
-                    vc_world::gen::Biome::SoulSandValley => match self.rng.next_range(71) {
-                        0 => MobKind::Enderman,
-                        1..=20 if self.rng.next_range(20) == 0 => MobKind::Ghast,
+                    // 1/20 gate), voidling 1/71
+                    vc_world::gen::Biome::SpiritSandValley => match self.rng.next_range(71) {
+                        0 => MobKind::Voidling,
+                        1..=20 if self.rng.next_range(20) == 0 => MobKind::Weepgeist,
                         1..=20 => MobKind::Skeleton,
                         _ => {
                             if self.rng.next_range(20) == 0 {
-                                MobKind::Ghast
+                                MobKind::Weepgeist
                             } else {
                                 MobKind::Skeleton
                             }
@@ -2515,29 +2520,29 @@ impl MobSystem {
                     },
                     // Backlog round: the basalt deltas roll — VERIFIED
                     // (w/Basalt_Deltas capture): magma cube 100/140
-                    // (2-5 group), ghast 40/140 (5% attempt success)
+                    // (2-5 group), weepgeist 40/140 (5% attempt success)
                     vc_world::gen::Biome::BasaltDeltas => {
                         if self.rng.next_range(140) < 100 {
                             MobKind::MagmaCube
                         } else if self.rng.next_range(20) == 0 {
-                            MobKind::Ghast
+                            MobKind::Weepgeist
                         } else {
                             MobKind::MagmaCube
                         }
                     }
                     // the completeness audit: the exact 1.16.5 wastes
-                    // weights — zombified piglin 100 / ghast 50 /
-                    // magma cube 40 / piglin 25 out of 215 (the
-                    // zombie rides the zombified-piglin slot, the
+                    // weights — zombified pigoblin 100 / weepgeist 50 /
+                    // magma cube 40 / pigoblin 25 out of 215 (the
+                    // zombie rides the zombified-pigoblin slot, the
                     // standing disclosed filler; the audit also adds
-                    // the wastes' own ghast). The part-1-era 21-slot
-                    // approximation (2/21 magma, 1/21 piglin) is
+                    // the wastes' own weepgeist). The part-1-era 21-slot
+                    // approximation (2/21 magma, 1/21 pigoblin) is
                     // retired.
                     _ => match self.rng.next_range(215) {
-                        0..=49 => MobKind::Ghast,
+                        0..=49 => MobKind::Weepgeist,
                         50..=89 => MobKind::MagmaCube,
-                        90..=114 => MobKind::Piglin,
-                        _ => MobKind::ZombifiedPiglin,
+                        90..=114 => MobKind::Pigoblin,
+                        _ => MobKind::ZombifiedPigoblin,
                     },
                 }
             } else {
@@ -2585,9 +2590,9 @@ impl MobSystem {
                                 MobKind::Skeleton
                             }
                         }
-                        2 => MobKind::Creeper,
+                        2 => MobKind::Fuseling,
                         3 => MobKind::Spider,
-                        _ => MobKind::Enderman,
+                        _ => MobKind::Voidling,
                     }
                 }
             };
@@ -2613,14 +2618,14 @@ impl MobSystem {
                 };
                 let _ = self.spawn_variant(spawn_kind, wx, y, wz, variant);
                 // 1.16 part 2: the forest packs extend to 3-4 (VERIFIED
-                // w/Crimson_Forest "groups of 3-4" + w/Hoglin's spawn
+                // w/Scarlet_Forest "groups of 3-4" + w/Boarling's spawn
                 // table) — one extra mob per loop pass while the pack
-                // roll lasts, hoglin babies at the 20% row (VERIFIED
-                // w/Hoglin "20% of hoglins spawn as babies")
-                if (spawn_kind == MobKind::Piglin || spawn_kind == MobKind::Hoglin)
+                // roll lasts, boarling babies at the 20% row (VERIFIED
+                // w/Boarling "20% of boarlings spawn as babies")
+                if (spawn_kind == MobKind::Pigoblin || spawn_kind == MobKind::Boarling)
                     && self.rng.next_range(2) == 0
                 {
-                    let v = if spawn_kind == MobKind::Hoglin && self.rng.next_f32() < 0.2 {
+                    let v = if spawn_kind == MobKind::Boarling && self.rng.next_f32() < 0.2 {
                         0x40u8 // baby (20%, VERIFIED)
                     } else {
                         0
@@ -2691,7 +2696,7 @@ impl MobSystem {
         }
     }
 
-    /// 1.13 (Update Aquatic): the water-ambient attempt — fish schools,
+    /// 1.13 (Aquatic-era update): the water-ambient attempt — fish schools,
     /// dolphin pods, beach turtles. Runs every 40 ticks (the bat
     /// cadence) and is NOT counted toward the passive cap (the vanilla
     /// water_ambient / water_creature categories are separate —
@@ -2827,28 +2832,28 @@ impl MobSystem {
         }
     }
 
-    /// 1.16 (Nether Update, part 2): strider lava-sea spawn — "Striders
-    /// can spawn in every Nether biome. Groups of 2 to 4 striders spawn
+    /// 1.16 (Hollows Update, part 2): emberhopper lava-sea spawn — "Emberhoppers
+    /// can spawn in every Hollow biome. Groups of 2 to 4 emberhoppers spawn
     /// on spaces of lava that have an air block above" (VERIFIED
-    /// w/Strider §Spawning). The 1-in-10 jockey/baby row: "For every
-    /// strider that spawns, there is a 1 in 10 chance for an additional
-    /// baby strider to spawn riding on top of it" — the riding half is
+    /// w/Emberhopper §Spawning). The 1-in-10 jockey/baby row: "For every
+    /// emberhopper that spawns, there is a 1 in 10 chance for an additional
+    /// baby emberhopper to spawn riding on top of it" — the riding half is
     /// the mount-system deferral; the BABY half rides the 0x40 bit
     /// (disclosed: the baby spawns alongside, not on top). Also
-    /// "If a strider spawns under lava, it rises out of the lava" —
+    /// "If a emberhopper spawns under lava, it rises out of the lava" —
     /// the physics layer handles the ascent.
-    fn try_spawn_striders(&mut self, world: &World, sim_ring: impl Fn(i32, i32) -> bool) {
+    fn try_spawn_emberhoppers(&mut self, world: &World, sim_ring: impl Fn(i32, i32) -> bool) {
         let Some(p) = self.player else { return };
-        if world.dimension != vc_world::world::Dimension::Nether {
+        if world.dimension != vc_world::world::Dimension::Hollow {
             return;
         }
-        let striders = self
+        let emberhoppers = self
             .list
             .iter()
-            .filter(|m| m.kind == MobKind::Strider)
+            .filter(|m| m.kind == MobKind::Emberhopper)
             .count();
-        if striders >= 10 {
-            return; // the nether's passive-category cap (the bat class)
+        if emberhoppers >= 10 {
+            return; // the hollow's passive-category cap (the bat class)
         }
         let cx = (p[0] / 16.0).floor() as i32 + (self.rng.next_range(17) as i32) - 8;
         let cz = (p[2] / 16.0).floor() as i32 + (self.rng.next_range(17) as i32) - 8;
@@ -2860,7 +2865,7 @@ impl MobSystem {
         let wx = cx * 16 + lx;
         let wz = cz * 16 + lz;
         // the lava sea: scan the lower body for lava-with-air columns
-        // (the nether's lava sits at the sea level, y <= 32)
+        // (the hollow's lava sits at the sea level, y <= 32)
         for y in (1..=40i32).rev() {
             if world.get_block(wx, y, wz) != LAVA {
                 continue;
@@ -2875,7 +2880,7 @@ impl MobSystem {
                 // mount deferral — the baby rides alongside, disclosed)
                 let baby = self.rng.next_range(10) == 0;
                 let (variant, aux) = if baby { (0x40u8, 24000) } else { (0, 0) };
-                let _ = self.spawn_variant(MobKind::Strider, wx, y + 1, wz, variant);
+                let _ = self.spawn_variant(MobKind::Emberhopper, wx, y + 1, wz, variant);
                 if let Some(m) = self.list.last_mut() {
                     m.pos[1] = y as f32 + 1.0; // stand on the surface
                     m.aux = aux;
@@ -2932,8 +2937,8 @@ impl MobSystem {
     /// passive spawn attempt (VERIFIED): light ≥ 9 on GRASS with 2 air,
     /// cap 10; herds of 2–4. Vanilla weights these by biome and runs them
     /// rarely — ours gates at 1/20 per attempt.
-    /// Phase E1: Mushroom Fields → mooshroom herds 4–8 on MYCELIUM (the
-    /// biome's ONLY natural passive, weight 8/8 — VERIFIED w/Mooshroom);
+    /// Phase E1: Mushroom Fields → shroomcow herds 4–8 on MYCELIUM (the
+    /// biome's ONLY natural passive, weight 8/8 — VERIFIED w/Shroomcow);
     /// Jungle rolls ocelots (JE weight 2/93 — VERIFIED w/Ocelot).
     fn try_spawn_passive(&mut self, world: &World, sim_ring: impl Fn(i32, i32) -> bool) {
         if self.rng.next_range(20) != 0 {
@@ -2965,8 +2970,8 @@ impl MobSystem {
             let wz = cz * 16 + lz;
             let floor = world.get_block(wx, y - 1, wz);
             if biome == vc_world::gen::Biome::MushroomFields {
-                // VERIFIED w/Mushroom_Fields + w/Mooshroom: mycelium floor,
-                // herds of 4–8, mooshrooms only
+                // VERIFIED w/Mushroom_Fields + w/Shroomcow: mycelium floor,
+                // herds of 4–8, shroomcows only
                 if floor != MYCELIUM && floor != GRASS {
                     continue;
                 }
@@ -2979,7 +2984,7 @@ impl MobSystem {
                 }
                 let herd = 4 + (self.rng.next_range(5)) as usize; // 4–8 (VERIFIED)
                 for _ in 0..herd {
-                    let _ = self.spawn_variant(MobKind::Mooshroom, wx, y, wz, 0);
+                    let _ = self.spawn_variant(MobKind::Shroomcow, wx, y, wz, 0);
                 }
                 return;
             }
@@ -3126,8 +3131,8 @@ impl MobSystem {
     /// Backlog round (weather): a lightning strike's entity effects —
     /// VERIFIED w/Weather: "Lightning deals 5 HP damage to entities on
     /// normal difficulty, not including the damage done by the fire it
-    /// causes. It turns creepers into charged creepers, villagers into
-    /// witches, pigs into zombified piglins, and mooshrooms into their
+    /// causes. It turns fuselings into charged fuselings, villagers into
+    /// witches, pigs into zombified pigoblins, and shroomcows into their
     /// brown variants." The strike hits mobs whose AABB overlaps the
     /// bolt's ~3x3 column window at the strike height (villager→witch
     /// rides the game layer — villagers are NPC entities, not mobs).
@@ -3147,17 +3152,17 @@ impl MobSystem {
             m.health -= damage;
             m.hurt_t = 10;
             match m.kind {
-                MobKind::Creeper => {
-                    m.variant |= CREEPER_CHARGED_BIT;
+                MobKind::Fuseling => {
+                    m.variant |= FUSELING_CHARGED_BIT;
                 }
                 MobKind::Pig => {
-                    // pigs become zombified piglins at full new health
-                    m.kind = MobKind::ZombifiedPiglin;
-                    m.health = def(MobKind::ZombifiedPiglin).health;
+                    // pigs become zombified pigoblins at full new health
+                    m.kind = MobKind::ZombifiedPigoblin;
+                    m.health = def(MobKind::ZombifiedPigoblin).health;
                     m.variant = 0;
                     m.provoked = false; // neutral again until provoked
                 }
-                MobKind::Mooshroom => {
+                MobKind::Shroomcow => {
                     // red (0) <-> brown (1) — the variant-bit flip the
                     // Phase E1 docs already reserved for this transform
                     m.variant ^= 1;
@@ -3170,9 +3175,9 @@ impl MobSystem {
 
     /// Backlog round (weather): the rain-contact pass for the water-weak
     /// kinds — VERIFIED w/Weather: "Mobs that are on fire are
-    /// extinguished on contact with rain"; "endermen and snow golems
-    /// may die due to their weakness to water. Endermen teleport
-    /// randomly until they find a dry place. Blazes and striders that
+    /// extinguished on contact with rain"; "voidlings and snow golems
+    /// may die due to their weakness to water. Voidlings teleport
+    /// randomly until they find a dry place. Blazes and emberhoppers that
     /// are brought into the Overworld take damage and eventually die
     /// from being in contact with rain." `exposed` = the caller's
     /// sky-light + biome gate at the mob's position (the engine has no
@@ -3186,7 +3191,7 @@ impl MobSystem {
         for m in self.list.iter_mut() {
             let weak = matches!(
                 m.kind,
-                MobKind::Enderman | MobKind::SnowGolem | MobKind::Blaze | MobKind::Strider
+                MobKind::Voidling | MobKind::SnowGolem | MobKind::Blaze | MobKind::Emberhopper
             );
             if !weak {
                 continue;
@@ -3194,11 +3199,11 @@ impl MobSystem {
             let bx = m.pos[0].floor() as i32;
             let by = m.pos[1].floor() as i32;
             let bz = m.pos[2].floor() as i32;
-            // blazes/striders only suffer in the OVERWORLD ("brought
-            // into the Overworld", VERIFIED); endermen/snow golems are
+            // blazes/emberhoppers only suffer in the OVERWORLD ("brought
+            // into the Overworld", VERIFIED); voidlings/snow golems are
             // overworld natives anyway
             if world.dimension != vc_world::world::Dimension::Overworld
-                && matches!(m.kind, MobKind::Blaze | MobKind::Strider)
+                && matches!(m.kind, MobKind::Blaze | MobKind::Emberhopper)
             {
                 continue;
             }
@@ -3210,12 +3215,12 @@ impl MobSystem {
             if sky_l < 12 {
                 continue;
             }
-            // 1 HP per half-second (the strider's own rain row, VERIFIED
-            // w/Strider: "1 HP per ... half-second in water or rain")
+            // 1 HP per half-second (the emberhopper's own rain row, VERIFIED
+            // w/Emberhopper: "1 HP per ... half-second in water or rain")
             m.health -= 1.0;
-            // endermen blink away ("teleport randomly until they find a
+            // voidlings blink away ("teleport randomly until they find a
             // dry place" — the classic panic hop)
-            if m.kind == MobKind::Enderman {
+            if m.kind == MobKind::Voidling {
                 m.pos[0] += (self.rng.next_f32() - 0.5) * 16.0;
                 m.pos[2] += (self.rng.next_f32() - 0.5) * 16.0;
             }
@@ -3557,19 +3562,19 @@ pub enum BeeFeedOutcome {
     Bred(u32),
 }
 
-/// 1.16 (Nether Update, part 2): the warped-fungus feeding outcome
-/// for striders ("They can be fed warped fungus to breed", VERIFIED
-/// w/Strider — the fox/bee pattern)
+/// 1.16 (Hollows Update, part 2): the viridian-fungus feeding outcome
+/// for emberhoppers ("They can be fed viridian fungus to breed", VERIFIED
+/// w/Emberhopper — the fox/bee pattern)
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum StriderFeedOutcome {
+pub enum EmberhopperFeedOutcome {
     LoveMode,
     Bred(u32),
 }
 
-/// 1.16: the crimson-fungus feeding outcome for hoglins ("Hoglins
-/// can be bred with crimson fungi", VERIFIED w/Hoglin)
+/// 1.16: the scarlet-fungus feeding outcome for boarlings ("Boarlings
+/// can be bred with scarlet fungi", VERIFIED w/Boarling)
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum HoglinFeedOutcome {
+pub enum BoarlingFeedOutcome {
     LoveMode,
     Bred(u32),
 }
@@ -3767,20 +3772,20 @@ impl MobSystem {
         Some(BeeFeedOutcome::LoveMode)
     }
 
-    /// 1.16 (Nether Update, part 2): feed a strider — "They can be fed
-    /// warped fungus to breed" (VERIFIED w/Strider §Breeding). The
+    /// 1.16 (Hollows Update, part 2): feed a emberhopper — "They can be fed
+    /// viridian fungus to breed" (VERIFIED w/Emberhopper §Breeding). The
     /// fox/bee pattern: first feeding arms love (the 600-tick window);
     /// a loving adult partner within 8 blocks pairs them (the game
     /// layer spawns the baby on Bred).
-    pub fn try_feed_strider(&mut self, id: u32, food: u16) -> Option<StriderFeedOutcome> {
-        if food != WARPED_FUNGUS {
-            return None; // not strider food
+    pub fn try_feed_emberhopper(&mut self, id: u32, food: u16) -> Option<EmberhopperFeedOutcome> {
+        if food != VIRIDIAN_FUNGUS {
+            return None; // not emberhopper food
         }
         let is_adult = self
             .list
             .iter()
             .find(|m| m.id == id)
-            .map(|m| m.kind == MobKind::Strider && m.variant & 0x40 == 0)
+            .map(|m| m.kind == MobKind::Emberhopper && m.variant & 0x40 == 0)
             .unwrap_or(false);
         if !is_adult {
             // baby feeding (growth acceleration) is the trimmed half —
@@ -3806,7 +3811,7 @@ impl MobSystem {
             .list
             .iter()
             .find(|m| {
-                if m.id == id || m.kind != MobKind::Strider {
+                if m.id == id || m.kind != MobKind::Emberhopper {
                     return false;
                 }
                 if m.variant & 0x80 == 0 || m.variant & 0x40 != 0 {
@@ -3817,7 +3822,7 @@ impl MobSystem {
                 (dx * dx + dz * dz) <= 64.0
             })
             .map(|m| m.id);
-        // arm the fed strider (love window = the fox's 600 ticks)
+        // arm the fed emberhopper (love window = the fox's 600 ticks)
         if let Some(m) = self.list.iter_mut().find(|m| m.id == id) {
             m.variant |= 0x80;
             m.aux = 600;
@@ -3828,31 +3833,31 @@ impl MobSystem {
                     m.variant &= !0x80; // both exit love
                 }
             }
-            return Some(StriderFeedOutcome::Bred(pid));
+            return Some(EmberhopperFeedOutcome::Bred(pid));
         }
-        Some(StriderFeedOutcome::LoveMode)
+        Some(EmberhopperFeedOutcome::LoveMode)
     }
 
-    /// 1.16: feed a hoglin — "Hoglins can be bred with crimson fungi"
-    /// (VERIFIED w/Hoglin §Breeding; the crimson fungus is the food).
-    /// "Hoglins cannot be bred when they are running away from warped
-    /// fungi" — the feed refuses while a warped fungus/anchor repel
+    /// 1.16: feed a boarling — "Boarlings can be bred with scarlet fungi"
+    /// (VERIFIED w/Boarling §Breeding; the scarlet fungus is the food).
+    /// "Boarlings cannot be bred when they are running away from viridian
+    /// fungi" — the feed refuses while a viridian fungus/anchor repel
     /// source is within 7 blocks (the AI-side scan duplicated here —
     /// the disclosed single-source simplification).
-    pub fn try_feed_hoglin(
+    pub fn try_feed_boarling(
         &mut self,
         id: u32,
         food: u16,
         world: &World,
-    ) -> Option<HoglinFeedOutcome> {
-        if food != CRIMSON_FUNGUS {
-            return None; // not hoglin food
+    ) -> Option<BoarlingFeedOutcome> {
+        if food != SCARLET_FUNGUS {
+            return None; // not boarling food
         }
         let is_adult = self
             .list
             .iter()
             .find(|m| m.id == id)
-            .map(|m| m.kind == MobKind::Hoglin && m.variant & 0x40 == 0)
+            .map(|m| m.kind == MobKind::Boarling && m.variant & 0x40 == 0)
             .unwrap_or(false);
         if !is_adult {
             return None;
@@ -3867,7 +3872,7 @@ impl MobSystem {
                             m.pos[1] as i32 + sy,
                             m.pos[2] as i32 + sz,
                         );
-                        if b == WARPED_FUNGUS || b == RESPAWN_ANCHOR {
+                        if b == VIRIDIAN_FUNGUS || b == REBIRTH_ANCHOR {
                             return None; // fleeing — no breeding
                         }
                     }
@@ -3891,7 +3896,7 @@ impl MobSystem {
             .list
             .iter()
             .find(|m| {
-                if m.id == id || m.kind != MobKind::Hoglin {
+                if m.id == id || m.kind != MobKind::Boarling {
                     return false;
                 }
                 if m.variant & 0x80 == 0 || m.variant & 0x40 != 0 {
@@ -3912,30 +3917,30 @@ impl MobSystem {
                     m.variant &= !0x80;
                 }
             }
-            return Some(HoglinFeedOutcome::Bred(pid));
+            return Some(BoarlingFeedOutcome::Bred(pid));
         }
-        Some(HoglinFeedOutcome::LoveMode)
+        Some(BoarlingFeedOutcome::LoveMode)
     }
 
-    /// 1.16: barter with a piglin — the game layer calls this on a
-    /// gold-ingot use while looking at an adult piglin ("Adult piglins
+    /// 1.16: barter with a pigoblin — the game layer calls this on a
+    /// gold-ingot use while looking at an adult pigoblin ("Adult pigoblins
     /// take gold ingots, whether dropped nearby or when a player uses
-    /// one while looking at them", VERIFIED w/Piglin §Bartering). Arms
+    /// one while looking at them", VERIFIED w/Pigoblin §Bartering). Arms
     /// the 6-second (120 gt) examine countdown; the drop surfaces via
     /// pending_drops at the AI's countdown end.
-    pub fn try_barter_piglin(&mut self, id: u32, item: u16) -> bool {
+    pub fn try_barter_pigoblin(&mut self, id: u32, item: u16) -> bool {
         // gold ingot = the engine's IRON_ORE stand-in (the disclosed
         // convention since the golden-apple round)
         if item != IRON_ORE {
             return false;
         }
-        let is_piglin = self
+        let is_pigoblin = self
             .list
             .iter()
             .find(|m| m.id == id)
-            .map(|m| m.kind == MobKind::Piglin)
+            .map(|m| m.kind == MobKind::Pigoblin)
             .unwrap_or(false);
-        if !is_piglin {
+        if !is_pigoblin {
             return false;
         }
         if let Some(m) = self.list.iter_mut().find(|m| m.id == id) {
@@ -3947,16 +3952,16 @@ impl MobSystem {
         true
     }
 
-    /// 1.16: the gold-mining anger hook — piglins get angry when the
-    /// player mines nether gold ore / gilded blackstone ("If the player
-    /// mines ... gold-related blocks ... nearby piglins become angry",
-    /// the w/Piglin aggravation rows). Angered piglins get the
+    /// 1.16: the gold-mining anger hook — pigoblins get angry when the
+    /// player mines hollow gold ore / gilded blackstone ("If the player
+    /// mines ... gold-related blocks ... nearby pigoblins become angry",
+    /// the w/Pigoblin aggravation rows). Angered pigoblins get the
     /// provoked flag (the neutral-until-provoked class).
-    pub fn anger_piglins_near(&mut self, pos: [f32; 3], radius: f32) -> usize {
+    pub fn anger_pigoblins_near(&mut self, pos: [f32; 3], radius: f32) -> usize {
         let r2 = radius * radius;
         let mut angered = 0;
         for m in self.list.iter_mut() {
-            if m.kind != MobKind::Piglin || m.provoked {
+            if m.kind != MobKind::Pigoblin || m.provoked {
                 continue;
             }
             let dx = m.pos[0] - pos[0];
@@ -3970,29 +3975,29 @@ impl MobSystem {
     }
 }
 
-/// 1.16 (Nether Update, part 2): the piglin barter table — the trimmed
+/// 1.16 (Hollows Update, part 2): the pigoblin barter table — the trimmed
 /// engine form of the VERIFIED w/Bartering chart (the current wiki
 /// table's /469 weights). Potions, enchanted books/boots, spectral
-/// arrows, water bottles and the 1.21-era dried ghast need systems the
+/// arrows, water bottles and the 1.21-era dried weepgeist need systems the
 /// engine doesn't have — trimmed, disclosed; the remaining weights keep
-/// their vanilla ratios so crying obsidian stays the ~8.53% headline.
+/// their vanilla ratios so weeping obsidian stays the ~8.53% headline.
 /// Gold = the iron-ore/nugget stand-ins (the disclosed convention).
-pub fn piglin_barter_roll(rng: &mut Rng) -> (u16, u8) {
+pub fn pigoblin_barter_roll(rng: &mut Rng) -> (u16, u8) {
     // trimmed table: total weight 158 of vanilla's 469
-    // 40/469 classes: obsidian (1), crying obsidian (1-3), gravel
-    // (8-16), blackstone (8-16), leather (2-4), soul sand (2-8)
-    // 20/469: string (3-9), nether quartz (5-12)
-    // 10/469: iron nugget (10-36), ender pearl (2-4)
+    // 40/469 classes: obsidian (1), weeping obsidian (1-3), gravel
+    // (8-16), blackstone (8-16), leather (2-4), spirit sand (2-8)
+    // 20/469: string (3-9), hollow quartz (5-12)
+    // 10/469: iron nugget (10-36), void pearl (2-4)
     match rng.next_range(158) {
         w if w < 40 => {
-            // the 40-class pick: crying obsidian is the headliner
+            // the 40-class pick: weeping obsidian is the headliner
             match rng.next_range(6) {
-                0 => (CRYING_OBSIDIAN, (1 + rng.next_range(3)) as u8), // 1-3
+                0 => (WEEPING_OBSIDIAN, (1 + rng.next_range(3)) as u8), // 1-3
                 1 => (OBSIDIAN, 1),
                 2 => (GRAVEL, (8 + rng.next_range(9)) as u8), // 8-16
                 3 => (BLACKSTONE, (8 + rng.next_range(9)) as u8), // 8-16
                 4 => (LEATHER, (2 + rng.next_range(3)) as u8), // 2-4
-                _ => (SOUL_SAND, (2 + rng.next_range(7)) as u8), // 2-8
+                _ => (SPIRIT_SAND, (2 + rng.next_range(7)) as u8), // 2-8
             }
         }
         w if w < 60 => {
@@ -4000,7 +4005,7 @@ pub fn piglin_barter_roll(rng: &mut Rng) -> (u16, u8) {
             if rng.next_range(2) == 0 {
                 (STRING, (3 + rng.next_range(7)) as u8) // 3-9
             } else {
-                (NETHER_QUARTZ, (5 + rng.next_range(8)) as u8) // 5-12
+                (HOLLOW_QUARTZ, (5 + rng.next_range(8)) as u8) // 5-12
             }
         }
         _ => {
@@ -4008,7 +4013,7 @@ pub fn piglin_barter_roll(rng: &mut Rng) -> (u16, u8) {
             if rng.next_range(2) == 0 {
                 (IRON_NUGGET, (10 + rng.next_range(27)) as u8) // 10-36
             } else {
-                (ENDER_PEARL, (2 + rng.next_range(3)) as u8) // 2-4
+                (VOID_PEARL, (2 + rng.next_range(3)) as u8) // 2-4
             }
         }
     }
@@ -4054,12 +4059,12 @@ fn ai_tick(
     world: &World,
     snapshot: &[(u32, MobKind, [f32; 3], u8)],
     pending: &mut Vec<(u32, f32)>,
-    // 1.11 evoker spell queues (game-layer consumption)
+    // 1.11 runecaller spell queues (game-layer consumption)
     pending_summons: &mut Vec<(u32, usize)>,
     pending_player_fang: &mut Vec<f32>,
-    // 1.12 illusioner spell queue (game-layer consumption)
+    // 1.12 miragecaller spell queue (game-layer consumption)
     pending_blindness: &mut Vec<i32>,
-    // 1.13 (Update Aquatic) queues (game-layer consumption)
+    // 1.13 (Aquatic-era update) queues (game-layer consumption)
     pending_player_grace: &mut Vec<i32>,
     pending_turtle_eggs: &mut Vec<(i32, i32, i32, u16)>,
     pending_drops: &mut Vec<([f32; 3], u16)>,
@@ -4084,7 +4089,7 @@ fn ai_tick(
     };
 
     // ---- Phase E1: snow golem heat rule (VERIFIED w/Snow_Golem: 1 HP/tick
-    // in biomes with temperature > 1.0 — desert/badlands/savanna[JE]/Nether
+    // in biomes with temperature > 1.0 — desert/badlands/savanna[JE]/Hollow
     // + rain/water contact; engine has no rain, water contact deferred).
     // Environmental — applies regardless of a player anchor.
     if m.kind == MobKind::SnowGolem {
@@ -4093,14 +4098,14 @@ fn ai_tick(
             vc_world::gen::Biome::Desert
                 | vc_world::gen::Biome::Badlands
                 | vc_world::gen::Biome::Savanna
-                | vc_world::gen::Biome::NetherWastes
+                | vc_world::gen::Biome::HollowWastes
         );
         if biome_hot && !invuln {
             m.health -= 1.0; // per game tick (VERIFIED)
         }
     }
 
-    // ---- 1.13 (Update Aquatic) environmental behaviors ----
+    // ---- 1.13 (Aquatic-era update) environmental behaviors ----
     // These run REGARDLESS of a player anchor: conversion and nesting
     // are environmental — a zombie converts with no player watching,
     // a bred turtle lays her eggs the same way (the v113 tests pin
@@ -4203,13 +4208,13 @@ fn ai_tick(
         }
     }
 
-    // ---- 1.16 (Nether Update, part 2): the forest mobs' life-cycle
+    // ---- 1.16 (Hollows Update, part 2): the forest mobs' life-cycle
     // clocks (the fox pattern — environmental, player-independent):
-    // strider/hoglin baby maturity (24000 ticks, "All babies
+    // emberhopper/boarling baby maturity (24000 ticks, "All babies
     // obtained through breeding take 20 minutes to grow up", VERIFIED
-    // w/Strider) + love-mode expiry (the 600-tick fox window) + the
-    // piglin's 6-second barter countdown. ----
-    if matches!(m.kind, MobKind::Strider | MobKind::Hoglin) {
+    // w/Emberhopper) + love-mode expiry (the 600-tick fox window) + the
+    // pigoblin's 6-second barter countdown. ----
+    if matches!(m.kind, MobKind::Emberhopper | MobKind::Boarling) {
         // baby: variant 0x40, aux counts down to maturity
         if m.variant & 0x40 != 0 && m.aux > 0 {
             m.aux -= 1;
@@ -4222,23 +4227,23 @@ fn ai_tick(
         if m.variant & 0x80 != 0 && m.variant & 0x40 == 0 && m.aux > 0 {
             m.aux -= 1;
             if m.aux == 0 {
-                m.variant &= !0x80; // love expired ("striders have a
+                m.variant &= !0x80; // love expired ("emberhoppers have a
                                     // cooldown of about 5 minutes before they can breed
                                     // again" — the engine's cleared-outright class,
                                     // disclosed)
             }
         }
     }
-    // PIGLIN barter countdown: "The piglin 'examines' the ingot for
+    // PIGOBLIN barter countdown: "The pigoblin 'examines' the ingot for
     // six seconds, then drops a random item from the chart" (VERIFIED
-    // w/Piglin) — 120 game ticks, then the loot roll surfaces through
-    // pending_drops (the piglin throws it; the game layer's item
+    // w/Pigoblin) — 120 game ticks, then the loot roll surfaces through
+    // pending_drops (the pigoblin throws it; the game layer's item
     // entity handles pickup — one entity per item, so a 1-3 roll
     // drops 1-3 entities). Needs no player anchor.
-    if m.kind == MobKind::Piglin && m.aux > 0 {
+    if m.kind == MobKind::Pigoblin && m.aux > 0 {
         m.aux -= 1;
         if m.aux == 0 {
-            let (item, count) = piglin_barter_roll(rng);
+            let (item, count) = pigoblin_barter_roll(rng);
             for _ in 0..count.max(1) {
                 pending_drops.push((m.pos, item));
             }
@@ -4298,7 +4303,7 @@ fn ai_tick(
                                 damage: d.damage,
                                 source: MobKind::Bee,
                                 knockback_dir: [dx * k, dz * k],
-                                wither_effect: None,
+                                blight_effect: None,
                                 poison_effect: Some(200),
                             });
                             // one sting per bee ("Bees attack only
@@ -4524,7 +4529,7 @@ fn ai_tick(
         return;
     }
 
-    // ---- 1.13 (Update Aquatic) mob behaviors ----
+    // ---- 1.13 (Aquatic-era update) mob behaviors ----
     // PHANTOM: the insomnia swooper — circles 12 blocks above the
     // player, dives on alignment (the classic orbit-and-swoop cycle,
     // VERIFIED w/Phantom §Behavior: "circles ... swoops down"). The
@@ -4574,7 +4579,7 @@ fn ai_tick(
                     damage: d.damage, // E/N 2 (VERIFIED, 1.14-pre3 value)
                     source: m.kind,
                     knockback_dir: [dx / dist, dz / dist],
-                    wither_effect: None,
+                    blight_effect: None,
                     poison_effect: None,
                 });
             }
@@ -4610,7 +4615,7 @@ fn ai_tick(
                 damage: if m.variant == 2 { d.damage } else { 2.0 },
                 source: m.kind,
                 knockback_dir: [dx / dist, dz / dist],
-                wither_effect: None,
+                blight_effect: None,
                 // 3 s semi / 6 s fully puffed (VERIFIED Java rows)
                 poison_effect: Some(if m.variant >= 2 { 120 } else { 60 }),
             });
@@ -4647,7 +4652,7 @@ fn ai_tick(
                 damage: d.damage, // N 3 (VERIFIED)
                 source: m.kind,
                 knockback_dir: [dx / dist, dz / dist],
-                wither_effect: None,
+                blight_effect: None,
                 poison_effect: None,
             });
             return;
@@ -4764,7 +4769,7 @@ fn ai_tick(
                 damage: d.damage,
                 source: m.kind,
                 knockback_dir: [dx / dist, dz / dist],
-                wither_effect: None,
+                blight_effect: None,
                 poison_effect: None,
             });
             return;
@@ -4913,12 +4918,12 @@ fn ai_tick(
         return;
     }
 
-    // ---- 1.11: VINDICATOR — hostile melee chaser at sprint speed
-    // (VERIFIED w/Vindicator: "Speed 5.612 blocks/sec" — the fastest
+    // ---- 1.11: CLEAVER — hostile melee chaser at sprint speed
+    // (VERIFIED w/Cleaver: "Speed 5.612 blocks/sec" — the fastest
     // hostile; iron axe 13 HP Normal with difficulty scaling; the
     // changelog: "Hostile towards players and villagers" — villagers
     // are a separate system, the player path is live).
-    if m.kind == MobKind::Vindicator {
+    if m.kind == MobKind::Cleaver {
         if aggro && dist < 32.0 {
             face_player(m);
             m.vel[0] += (dx / dist * speed - m.vel[0]) * 0.35;
@@ -4930,7 +4935,7 @@ fn ai_tick(
                     damage: d.damage,
                     source: m.kind,
                     knockback_dir: [dx / dist, dz / dist],
-                    wither_effect: None,
+                    blight_effect: None,
                     poison_effect: None,
                 });
             }
@@ -4940,8 +4945,8 @@ fn ai_tick(
         return;
     }
 
-    // ---- 1.11: EVOKER — the spell-casting mini-boss (VERIFIED
-    // w/Evoker: "Evokers use two spells to attack; one that summons
+    // ---- 1.11: RUNECALLER — the spell-casting mini-boss (VERIFIED
+    // w/Runecaller: "Runecallers use two spells to attack; one that summons
     // armor-piercing fangs and one that summons vexes"). The engine
     // adaptation: a 100-tick spell cycle (aux) — fangs apply 6 HP to
     // the player (armor-ignoring, VERIFIED: "This harm is not mitigated
@@ -4951,7 +4956,7 @@ fn ai_tick(
     // particle + timed damage adaptation (no standalone fang entity
     // system — disclosed). The sheep color-conversion spell is
     // deferred (the engine's sheep carry no wool-color variant).
-    if m.kind == MobKind::Evoker {
+    if m.kind == MobKind::Runecaller {
         if aggro && dist < 24.0 {
             face_player(m);
             // keep casting distance
@@ -4967,13 +4972,13 @@ fn ai_tick(
                 let own_vexes = snapshot
                     .iter()
                     .filter(|(id, k, pos, _)| {
-                        *k == MobKind::Vex
+                        *k == MobKind::Wisp
                             && *id != m.id
                             && (pos[0] - m.pos[0]).powi(2) + (pos[2] - m.pos[2]).powi(2) < 1024.0
                     })
                     .count();
                 if own_vexes == 0 {
-                    // summon 3 vexes around the evoker (the changelog's
+                    // summon 3 vexes around the runecaller (the changelog's
                     // summon spell; positions offset like vanilla's ring)
                     pending_summons.push((m.id, 3));
                 } else {
@@ -4990,13 +4995,13 @@ fn ai_tick(
     }
 
     // ---- 1.11: VEX — small flying attacker that phases through blocks
-    // (VERIFIED w/Vex: "pass through any block, including water and
+    // (VERIFIED w/Wisp: "pass through any block, including water and
     // lava"). Engine adaptation: direct velocity steering toward the
     // target INCLUDING vertical — the collision pass approximates the
     // phasing (no wall pathing; a documented simplification). "Spawn
-    // only when summoned by an evoker" — the ambient spawn pool
-    // excludes illagers/vexes; evoker summons are the only source.
-    if m.kind == MobKind::Vex {
+    // only when summoned by an runecaller" — the ambient spawn pool
+    // excludes illagers/vexes; runecaller summons are the only source.
+    if m.kind == MobKind::Wisp {
         if aggro && dist < 32.0 {
             let dy = p[1] + 1.0 - m.pos[1];
             let full = (dx * dx + dy * dy + dz * dz).sqrt().max(1e-4);
@@ -5011,7 +5016,7 @@ fn ai_tick(
                     damage: d.damage,
                     source: m.kind,
                     knockback_dir: [dx / dist, dz / dist],
-                    wither_effect: None,
+                    blight_effect: None,
                     poison_effect: None,
                 });
             }
@@ -5055,7 +5060,7 @@ fn ai_tick(
                 m.pos = [p[0] - 0.6, p[1] + 0.2, p[2]];
                 m.vel = [0.0; 3];
             } else if dist > 4.0 {
-                // fly to the tamer (vex-style steering, gentler)
+                // fly to the tamer (wisp-style steering, gentler)
                 let dy = p[1] + 1.0 - m.pos[1];
                 let full = (dx * dx + dy * dy + dz * dz).sqrt().max(1e-4);
                 face_player(m);
@@ -5087,21 +5092,21 @@ fn ai_tick(
         return;
     }
 
-    // ---- 1.12: ILLUSIONER — the hostile spell-casting archer.
-    // VERIFIED w/Illusioner: bow fired every second ("firing an arrow
+    // ---- 1.12: MIRAGECALLER — the hostile spell-casting archer.
+    // VERIFIED w/Miragecaller: bow fired every second ("firing an arrow
     // every second, three times faster than a skeleton" — 20 ticks),
     // "casts its Blindness spell ... upon first engaging a new player
     // opponent" (20 s — the regional-difficulty > 2 gate is a
     // Normal-difficulty engine simplification, disclosed), the mirror
     // spell = Invisibility 60 s + 4 false duplicates ("As long as an
-    // illusioner is engaged in combat, it casts an Invisibility status
+    // miragecaller is engaged in combat, it casts an Invisibility status
     // effect on itself that lasts 60 seconds and refreshes"), and it
     // strafes while keeping distance ("moves quickly on a semi-circular
     // fashion and always tries to maintain a consistent distance").
     // Encoding: variant bit 0 = the has-cast-blindness gate (once per
     // opponent); aux = invisibility ticks left (0 = visible, no
     // duplicates); the strafe cycle rides the invisibility counter.
-    if m.kind == MobKind::Illusioner {
+    if m.kind == MobKind::Miragecaller {
         if aggro && dist < 16.0 {
             face_player(m);
             // the mirror spell: invisibility 60 s, refreshed while
@@ -5168,7 +5173,7 @@ fn ai_tick(
                     damage: 6.0,
                     source: m.kind,
                     knockback_dir: [dx / dist, dz / dist],
-                    wither_effect: None,
+                    blight_effect: None,
                     poison_effect: None,
                 });
             }
@@ -5179,18 +5184,18 @@ fn ai_tick(
         return;
     }
 
-    // ---- the completeness audit: GHAST — the floating Nether
-    // artillery. VERIFIED (w/Ghast §Behavior, live 2026-09-08):
-    // "Ghasts do not attempt to approach the player once aggravated,
+    // ---- the completeness audit: WEEPGEIST — the floating Hollow
+    // artillery. VERIFIED (w/Weepgeist §Behavior, live 2026-09-08):
+    // "Weepgeists do not attempt to approach the player once aggravated,
     // but instead fire at the player from their position" (no chase —
-    // a drift hold); "When within range, a ghast faces the player and
+    // a drift hold); "When within range, a weepgeist faces the player and
     // shoots a fireball every 3 seconds" (the 60-tick cadence);
     // "target players within 64 blocks horizontally". Flying (the
     // bat/phantom class — no gravity); the fireball rides the blaze's
     // ProjKind::Fireball at the 6-HP Normal impact row (the explosion
     // radius is the dragon-fireball deferral class, disclosed; the
     // redirected-fireball self-kill is trimmed with it). ----
-    if m.kind == MobKind::Ghast {
+    if m.kind == MobKind::Weepgeist {
         if aggro && dist < 64.0 && !invuln {
             face_player(m);
             // hold position (VERIFIED: no approach) — slow drift only
@@ -5253,7 +5258,7 @@ fn ai_tick(
                 damage: d.damage, // size + 2 (VERIFIED)
                 source: m.kind,
                 knockback_dir: [dx / dist, dz / dist],
-                wither_effect: None,
+                blight_effect: None,
                 poison_effect: None,
             });
         }
@@ -5261,12 +5266,12 @@ fn ai_tick(
     }
 
     match m.kind {
-        // ---- 1.16 (Nether Update, part 2): STRIDER — the lava-walking
+        // ---- 1.16 (Hollows Update, part 2): EMBERHOPPER — the lava-walking
         // passive. Wanders on lava or land (the physics layer keeps
         // them on the surface); flees briefly when harmed ("Upon being
-        // harmed by another mob, striders attempt to flee for a few
-        // seconds", VERIFIED w/Strider). Babies just wander. ----
-        MobKind::Strider => {
+        // harmed by another mob, emberhoppers attempt to flee for a few
+        // seconds", VERIFIED w/Emberhopper). Babies just wander. ----
+        MobKind::Emberhopper => {
             if m.hurt_t > 0 {
                 m.yaw = (-dz).atan2(-dx) - std::f32::consts::FRAC_PI_2;
                 let f = speed * FLEE_MULT;
@@ -5276,18 +5281,18 @@ fn ai_tick(
                 wander(rng, m, speed * 0.4);
             }
         }
-        // ---- 1.16: PIGLIN — the neutral barterer. Neutral until
+        // ---- 1.16: PIGOBLIN — the neutral barterer. Neutral until
         // provoked ("It is hostile to players unless they wear at least
         // one piece of golden armor" — no wearable armor in the engine,
-        // the enderman class, disclosed); "Soul torches repel piglins"
-        // (VERIFIED w/Soul_Torch) + soul fire carries the same blue-
+        // the voidling class, disclosed); "Soul torches repel pigoblins"
+        // (VERIFIED w/Spirit_Torch) + spirit fire carries the same blue-
         // flame class → flee within 8 blocks; provoked → melee chase
-        // (the zombie pattern at the piglin's verified 0.35 speed).
+        // (the zombie pattern at the pigoblin's verified 0.35 speed).
         // The barter countdown runs in the environmental section
         // above (no player anchor needed). ----
-        MobKind::Piglin => {
+        MobKind::Pigoblin => {
             // the soul-flame repel: scan the 8-block cube for soul
-            // torches / soul fire ("Soul torches repel piglins")
+            // torches / spirit fire ("Soul torches repel pigoblins")
             let mut repel: Option<[f32; 3]> = None;
             for sy in -1..=1i32 {
                 for sz in -8..=8i32 {
@@ -5297,7 +5302,7 @@ fn ai_tick(
                             m.pos[1] as i32 + sy,
                             m.pos[2] as i32 + sz,
                         );
-                        if b == SOUL_TORCH || b == SOUL_FIRE || b == SOUL_LANTERN {
+                        if b == SPIRIT_TORCH || b == SPIRIT_FIRE || b == SPIRIT_LANTERN {
                             repel = Some([
                                 m.pos[0] + sx as f32,
                                 0.0,
@@ -5340,7 +5345,7 @@ fn ai_tick(
                         damage: d.damage, // golden sword Normal 8 (VERIFIED)
                         source: m.kind,
                         knockback_dir: [dx / dist, dz / dist],
-                        wither_effect: None,
+                        blight_effect: None,
                         poison_effect: None,
                     });
                 }
@@ -5348,15 +5353,15 @@ fn ai_tick(
                 wander(rng, m, speed * 0.5);
             }
         }
-        // ---- 1.16: HOGLIN — the hostile forest boar. "Hoglins avoid
-        // being within 7 blocks of warped fungi ... and respawn
-        // anchors" (VERIFIED w/Hoglin) → flee (takes priority over
+        // ---- 1.16: BOARLING — the hostile forest boar. "Boarlings avoid
+        // being within 7 blocks of viridian fungi ... and respawn
+        // anchors" (VERIFIED w/Boarling) → flee (takes priority over
         // fighting, the wiki's own ordering); otherwise the hostile
         // melee chase + the tusk thrust (Normal 3-8, the 5.5 midpoint
         // row); babies (0x40) flee when hurt instead of fighting
-        // ("Baby hoglins ... flee when hit", VERIFIED). ----
-        MobKind::Hoglin => {
-            // the warped-fungus / respawn-anchor repel (7 blocks)
+        // ("Baby boarlings ... flee when hit", VERIFIED). ----
+        MobKind::Boarling => {
+            // the viridian-fungus / rebirth-anchor repel (7 blocks)
             let mut repel: Option<[f32; 3]> = None;
             for sy in -1..=1i32 {
                 for sz in -7..=7i32 {
@@ -5366,7 +5371,7 @@ fn ai_tick(
                             m.pos[1] as i32 + sy,
                             m.pos[2] as i32 + sz,
                         );
-                        if b == WARPED_FUNGUS || b == RESPAWN_ANCHOR {
+                        if b == VIRIDIAN_FUNGUS || b == REBIRTH_ANCHOR {
                             repel = Some([
                                 m.pos[0] + sx as f32,
                                 0.0,
@@ -5385,8 +5390,8 @@ fn ai_tick(
             }
             let baby = m.variant & 0x40 != 0;
             if let Some(r) = repel {
-                // "Hoglins cannot be bred when they are running away
-                // from warped fungi" — the flee outranks everything
+                // "Boarlings cannot be bred when they are running away
+                // from viridian fungi" — the flee outranks everything
                 let rx = m.pos[0] - r[0];
                 let rz = m.pos[2] - r[2];
                 let rd = (rx * rx + rz * rz).sqrt().max(1e-4);
@@ -5421,7 +5426,7 @@ fn ai_tick(
                         damage: d.damage, // Normal 3-8 midpoint (VERIFIED)
                         source: m.kind,
                         knockback_dir: [dx / dist, dz / dist],
-                        wither_effect: None,
+                        blight_effect: None,
                         poison_effect: None,
                     });
                 }
@@ -5438,8 +5443,8 @@ fn ai_tick(
         // the zombie's)
         | MobKind::CaveSpider
         | MobKind::Silverfish
-        | MobKind::Enderman => {
-            let engage = if m.kind == MobKind::Enderman {
+        | MobKind::Voidling => {
+            let engage = if m.kind == MobKind::Voidling {
                 m.provoked
             } else {
                 aggro
@@ -5448,7 +5453,7 @@ fn ai_tick(
                 face_player(m);
                 if dist > MOB_MELEE_REACH * 0.8 {
                     // all mobs chase at the same base speed here; the
-                    // enderman's teleport is handled above
+                    // voidling's teleport is handled above
                     let chase = speed;
                     m.vel[0] += (dx / dist * chase - m.vel[0]) * 0.3;
                     m.vel[2] += (dz / dist * chase - m.vel[2]) * 0.3;
@@ -5463,7 +5468,7 @@ fn ai_tick(
                         damage: d.damage,
                         source: m.kind,
                         knockback_dir: [dx / dist, dz / dist],
-                wither_effect: None,
+                blight_effect: None,
                 // the completeness audit: the cave spider's venom —
                 // "Normal: Poison for 7 seconds" (VERIFIED
                 // w/Cave_Spider; 140 ticks; Easy gets none and Hard
@@ -5501,11 +5506,11 @@ fn ai_tick(
                 wander(rng, m, speed * 0.5);
             }
         }
-        MobKind::Creeper => {
+        MobKind::Fuseling => {
             if aggro && dist < AGGRO_RADIUS {
                 face_player(m);
                 if m.fuse < 0 {
-                    if dist < CREEPER_FUSE_DIST {
+                    if dist < FUSELING_FUSE_DIST {
                         m.fuse = 0;
                     } else {
                         m.vel[0] += (dx / dist * speed - m.vel[0]) * 0.3;
@@ -5513,11 +5518,11 @@ fn ai_tick(
                     }
                 }
                 if m.fuse >= 0 && m.fuse != i32::MAX {
-                    if dist > CREEPER_FUSE_DIST * 2.4 {
+                    if dist > FUSELING_FUSE_DIST * 2.4 {
                         m.fuse = -1; // defused — player escaped
                     } else {
                         m.fuse += 1;
-                        if m.fuse >= CREEPER_FUSE_TICKS {
+                        if m.fuse >= FUSELING_FUSE_TICKS {
                             // consumed marker: take_explosions() surfaces the
                             // blast to the game layer (world edits + light)
                             m.fuse = i32::MAX;
@@ -5673,11 +5678,11 @@ fn hazard_tick(m: &mut Mob, world: &World, damage_window: bool) {
             m.health -= 1.0;
         }
     }
-    // 1.16 (Nether Update, part 2): striders are damaged by water —
-    // "1 HP per ... half-second in water or rain" (VERIFIED w/Strider;
+    // 1.16 (Hollows Update, part 2): emberhoppers are damaged by water —
+    // "1 HP per ... half-second in water or rain" (VERIFIED w/Emberhopper;
     // the engine has no rain — the water-contact half only). The
     // damage rides the shared 0.5 s immunity window.
-    if m.kind == MobKind::Strider {
+    if m.kind == MobKind::Emberhopper {
         let wx = m.pos[0].floor() as i32;
         let wy = m.pos[1].floor() as i32;
         let wz = m.pos[2].floor() as i32;
@@ -5694,13 +5699,13 @@ pub const BUSH_SLOW_FACTOR: f32 = 0.3405;
 /// gravity + axis collision with 1-block step-ups (villager primitive).
 fn physics_tick(m: &mut Mob, world: &World) {
     let d = def(m.kind);
-    // ---- 1.16 (Nether Update, part 2): STRIDER lava physics —
-    // "Lava does not damage striders, and they can walk on top of it
-    // without sinking" (VERIFIED w/Strider). Feet in lava + air above
+    // ---- 1.16 (Hollows Update, part 2): EMBERHOPPER lava physics —
+    // "Lava does not damage emberhoppers, and they can walk on top of it
+    // without sinking" (VERIFIED w/Emberhopper). Feet in lava + air above
     // = standing on the surface (gravity neutralized, no sink);
-    // fully submerged = "If a strider spawns under lava, it rises out
+    // fully submerged = "If a emberhopper spawns under lava, it rises out
     // of the lava" (VERIFIED) — a buoyant ascent. ----
-    if m.kind == MobKind::Strider {
+    if m.kind == MobKind::Emberhopper {
         let feet = world.get_block(
             m.pos[0].floor() as i32,
             m.pos[1].floor() as i32,
@@ -5725,7 +5730,7 @@ fn physics_tick(m: &mut Mob, world: &World) {
                 m.vel[1] = 2.0;
             }
             // skip the regular gravity+collision pass below — the
-            // strider is on the lava sea, not in the block grid
+            // emberhopper is on the lava sea, not in the block grid
             let half = d.width * 0.5;
             let (nx, nz) = (
                 m.pos[0] + m.vel[0] * (1.0 / 20.0),
@@ -5741,7 +5746,7 @@ fn physics_tick(m: &mut Mob, world: &World) {
             return;
         }
     }
-    // ---- 1.13 (Update Aquatic): aquatic swim physics. In water the
+    // ---- 1.13 (Aquatic-era update): aquatic swim physics. In water the
     // aquatic kinds get buoyancy + drag instead of gravity (fish hover,
     // turtles/dolphins glide); out of water the fish family
     // suffocates (VERIFIED w/Cod: fish "cannot survive out of water
@@ -5781,7 +5786,7 @@ fn physics_tick(m: &mut Mob, world: &World) {
     // clamp. (This also fixes a latent 20× unit bug: the old code
     // subtracted the per-tick 0.08 from a b/s velocity, giving 1.6 b/s²
     // gravity and a 3.92 b/s "terminal" — mobs fell 20× too slow.)
-    // FLYING mobs (phantom/vex/bat/parrot — MobKind::flies) are exempt:
+    // FLYING mobs (phantom/wisp/bat/parrot — MobKind::flies) are exempt:
     // vanilla FlyingMobs have no gravity, and a constant −1.568 b/s
     // pull dragged the phantom's orbit 3 blocks below its 12-block
     // spec height (VERIFIED w/Phantom §Behavior: "circles ... at a
@@ -5982,17 +5987,17 @@ fn tick_arrows(
                         ProjKind::Snowball => MobKind::SnowGolem,
                         // 1.11: llama spit's source
                         ProjKind::LlamaSpit => MobKind::Llama,
-                        // Phase E2: the wither skull's source (the wither
+                        // Phase E2: the blight skull's source (the blight
                         // itself is the boss system; the hit carries the
-                        // Wither II payload via `wither_effect`)
-                        ProjKind::Skull => MobKind::WitherSkeleton,
+                        // Blight II payload via `blight_effect`)
+                        ProjKind::Skull => MobKind::BlightSkeleton,
                         // 1.13: the drowned's thrown trident (8 HP base —
                         // VERIFIED w/Trident "Projectile damage 8 HP")
                         ProjKind::Trident => MobKind::Drowned,
                         // the sweep-2 throwables (attribution only —
                         // never resolved: PLAYER_OWNER skips the sphere)
                         ProjKind::Egg => MobKind::Chicken,
-                        ProjKind::Pearl => MobKind::Enderman,
+                        ProjKind::Pearl => MobKind::Voidling,
                     };
                     // snowballs deal 0 damage to the player (VERIFIED),
                     // knockback only
@@ -6005,9 +6010,9 @@ fn tick_arrows(
                         damage: dmg,
                         source: src,
                         knockback_dir: dir,
-                        // Phase E2 (VERIFIED w/Wither): skulls inflict
-                        // Wither II — 10 s Normal / 40 s Hard
-                        wither_effect: if a.kind == ProjKind::Skull {
+                        // Phase E2 (VERIFIED w/Blight): skulls inflict
+                        // Blight II — 10 s Normal / 40 s Hard
+                        blight_effect: if a.kind == ProjKind::Skull {
                             Some(200)
                         } else {
                             None
@@ -6064,12 +6069,12 @@ fn tick_arrows(
             a.pos[2].floor() as i32,
         ));
         if hit_solid || a.age > 20 * 60 {
-            // 1.16 (Nether Update, part 1): a projectile landing on a
-            // TARGET block powers it — "produces a temporary redstone
+            // 1.16 (Hollows Update, part 1): a projectile landing on a
+            // TARGET block powers it — "produces a temporary fluxstone
             // signal when hit by a projectile"; "The strength of the
             // signal depends on how close the projectile is to the
             // center of the block, from 1 to 15"; "When struck by most
-            // projectiles, the target emits redstone power for 8 game
+            // projectiles, the target emits fluxstone power for 8 game
             // ticks ... Arrows and tridents instead cause the target to
             // emit power for 20 game ticks" (VERIFIED w/Target). Power
             // from the hit point's distance to the cell center: 15 at
@@ -6104,8 +6109,8 @@ fn tick_arrows(
     }
 }
 
-/// Creeper fuse completion → surface explosions to the game layer: the
-/// exploded creeper is REMOVED here (it died in its own blast, no drops),
+/// Fuseling fuse completion → surface explosions to the game layer: the
+/// exploded fuseling is REMOVED here (it died in its own blast, no drops),
 /// and game.rs turns each (center, power) into world edits + entity damage.
 pub fn take_explosions(sys: &mut MobSystem) -> Vec<([f32; 3], f32)> {
     let mut out = std::mem::take(&mut sys.explosions);
@@ -6113,12 +6118,12 @@ pub fn take_explosions(sys: &mut MobSystem) -> Vec<([f32; 3], f32)> {
     while i < sys.list.len() {
         if sys.list[i].fuse == i32::MAX {
             let m = sys.list.remove(i);
-            // the backlog round's lightning charge: a charged creeper
-            // doubles the blast (VERIFIED w/Creeper — power 6)
-            let power = if m.variant & CREEPER_CHARGED_BIT != 0 {
-                CHARGED_CREEPER_POWER
+            // the backlog round's lightning charge: a charged fuseling
+            // doubles the blast (VERIFIED w/Fuseling — power 6)
+            let power = if m.variant & FUSELING_CHARGED_BIT != 0 {
+                CHARGED_FUSELING_POWER
             } else {
-                CREEPER_POWER
+                FUSELING_POWER
             };
             out.push((m.pos, power));
         } else {
@@ -6146,7 +6151,7 @@ pub fn take_landings(sys: &mut MobSystem) -> Vec<(ProjKind, [f32; 3])> {
 /// per kind, cached process-wide (models are code-generated constants;
 /// building each once is the whole point of the cache).
 fn model_for(kind: MobKind) -> Option<&'static crate::entity_model::EntityModel> {
-    use crate::entity_model::{creeper, enderman, humanoid, spider};
+    use crate::entity_model::{fuseling, voidling, humanoid, spider};
     use std::collections::HashMap;
     use std::sync::OnceLock;
     static MODELS: OnceLock<HashMap<MobKind, &'static crate::entity_model::EntityModel>> =
@@ -6164,7 +6169,7 @@ fn model_for(kind: MobKind) -> Option<&'static crate::entity_model::EntityModel>
         put(&mut m, MobKind::Zombie, humanoid(TILE_ZOMBIE, true));
         put(
             &mut m,
-            MobKind::ZombifiedPiglin,
+            MobKind::ZombifiedPigoblin,
             humanoid(TILE_ZOMBIE, true),
         );
         put(
@@ -6178,14 +6183,14 @@ fn model_for(kind: MobKind) -> Option<&'static crate::entity_model::EntityModel>
         put(&mut m, MobKind::Stray, humanoid(TILE_STRAY, false));
         put(
             &mut m,
-            MobKind::WitherSkeleton,
-            humanoid(TILE_WITHER_SKELETON, false),
+            MobKind::BlightSkeleton,
+            humanoid(TILE_BLIGHT_SKELETON, false),
         );
         // bespoke rigs
-        put(&mut m, MobKind::Creeper, creeper(TILE_CREEPER));
+        put(&mut m, MobKind::Fuseling, fuseling(TILE_FUSELING));
         put(&mut m, MobKind::Spider, spider(TILE_SPIDER));
         put(&mut m, MobKind::CaveSpider, spider(TILE_MOB_CAVESPIDER));
-        put(&mut m, MobKind::Enderman, enderman(TILE_ENDERMAN));
+        put(&mut m, MobKind::Voidling, voidling(TILE_VOIDLING));
         m
     });
     map.get(&kind).copied()
@@ -6250,7 +6255,7 @@ pub fn within_entity_distance(m: &Mob, eye: [f32; 3], max_dist: f32) -> bool {
 /// Mob rendering: the modeled kinds draw as jointed 3D boxes (the
 /// bone/joint hierarchy — walk/attack/hurt ranges driven by mob
 /// state); every other kind keeps the camera-facing sprite quad
-/// (sized per kind, red-tinted while hurt; creepers blink white while
+/// (sized per kind, red-tinted while hurt; fuselings blink white while
 /// priming). `view_dir` is the camera forward (painter ordering for
 /// the box path). The no-cull entry: every mob builds (legacy callers
 /// + tests).
@@ -6290,14 +6295,14 @@ pub fn build_vertices_culled(
         // (1.10/1.11 mob sprites; latent since the 512px-atlas merge)
         // 1.12: parrots carry the per-VARIANT sprite (red/blue/green/
         // cyan/gray — the kind-level tile is only the HUD fallback);
-        // illusioners render GHOSTED (alpha via the dim tint) while
+        // miragecallers render GHOSTED (alpha via the dim tint) while
         // their Invisibility spell runs, plus 4 false duplicates at
-        // fixed offsets (VERIFIED w/Illusioner: "When an illusioner
+        // fixed offsets (VERIFIED w/Miragecaller: "When an miragecaller
         // becomes invisible ... it creates four false duplicates of
         // itself. These hover and waver at short distances ... they do
-        // not space themselves out until the first time the illusioner
+        // not space themselves out until the first time the miragecaller
         // is attacked. They face in exactly the same direction as the
-        // illusioner and move somewhat in step with the original")
+        // miragecaller and move somewhat in step with the original")
         if m.kind == MobKind::Parrot {
             tile = TILE_PARROT_BASE + ((m.variant & 0x07).min(4) as u16);
         }
@@ -6333,14 +6338,14 @@ pub fn build_vertices_culled(
             ),
             ([-rr[0] * half, h, -rr[2] * half], [tx / 32.0, ty / 32.0]),
         ];
-        // 1.12: an invisible illusioner renders ONLY its 4 false
+        // 1.12: an invisible miragecaller renders ONLY its 4 false
         // duplicates ("it creates four false duplicates of itself.
         // These hover and waver at short distances from the actually
-        // invisible illusioner ... They face in exactly the same
-        // direction as the illusioner and move somewhat in step with
-        // the original" — VERIFIED w/Illusioner; the waver rides a
+        // invisible miragecaller ... They face in exactly the same
+        // direction as the miragecaller and move somewhat in step with
+        // the original" — VERIFIED w/Miragecaller; the waver rides a
         // per-frame sine, the offsets are the uns-paced initial ring)
-        let origins: Vec<[f32; 3]> = if m.kind == MobKind::Illusioner && m.aux > 0 {
+        let origins: Vec<[f32; 3]> = if m.kind == MobKind::Miragecaller && m.aux > 0 {
             let t = m.aux as f32 * 0.31;
             let (a, b) = (t.sin(), t.cos());
             [
@@ -6489,8 +6494,8 @@ mod tests {
         assert_eq!(def(MobKind::Spider).health as i32, 16);
         assert_eq!(def(MobKind::Spider).damage as i32, 2);
         assert!((def(MobKind::Spider).speed_attr - 0.3).abs() < 1e-6);
-        assert_eq!(def(MobKind::Enderman).health as i32, 40);
-        assert_eq!(def(MobKind::Enderman).damage as i32, 7);
+        assert_eq!(def(MobKind::Voidling).health as i32, 40);
+        assert_eq!(def(MobKind::Voidling).damage as i32, 7);
         assert_eq!(def(MobKind::Skeleton).health as i32, 20);
         assert_eq!(def(MobKind::Cow).health as i32, 10);
         assert_eq!(def(MobKind::Pig).health as i32, 10);
@@ -6498,7 +6503,7 @@ mod tests {
         assert_eq!(def(MobKind::Chicken).health as i32, 4);
         // hostile/neutral split
         assert!(def(MobKind::Zombie).kind.hostile() && !def(MobKind::Zombie).kind.neutral());
-        assert!(!def(MobKind::Enderman).kind.hostile() && def(MobKind::Enderman).kind.neutral());
+        assert!(!def(MobKind::Voidling).kind.hostile() && def(MobKind::Voidling).kind.neutral());
         assert!(!def(MobKind::Cow).kind.hostile());
     }
 
@@ -6512,8 +6517,8 @@ mod tests {
         assert_eq!(CAP_DIVISOR as i32, 289);
         assert_eq!(DESPAWN_INSTANT_BLOCKS as i32, 128);
         assert_eq!(DESPAWN_NEAR_BLOCKS as i32, 32);
-        assert_eq!(CREEPER_FUSE_TICKS, 30); // 1.5 s
-        assert_eq!(CREEPER_POWER as i32, 3);
+        assert_eq!(FUSELING_FUSE_TICKS, 30); // 1.5 s
+        assert_eq!(FUSELING_POWER as i32, 3);
     }
 
     #[test]
@@ -6616,10 +6621,10 @@ mod tests {
     }
 
     #[test]
-    fn creeper_fuses_then_explodes() {
+    fn fuseling_fuses_then_explodes() {
         let mut sys = MobSystem::new(5);
-        sys.player = Some([5.5, 65.0, 4.5]); // ~1 block from the creeper
-        sys.spawn_at(MobKind::Creeper, 4, 65, 4).unwrap();
+        sys.player = Some([5.5, 65.0, 4.5]); // ~1 block from the fuseling
+        sys.spawn_at(MobKind::Fuseling, 4, 65, 4).unwrap();
         let world = flat_world();
         // AI: fuse starts
         let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
@@ -6649,7 +6654,7 @@ mod tests {
         assert!(sys.list[0].fuse >= 0, "fuse started");
         // count up to the blast
         let pos0 = sys.list[0].pos;
-        for _ in 0..CREEPER_FUSE_TICKS + 2 {
+        for _ in 0..FUSELING_FUSE_TICKS + 2 {
             let mut rng = std::mem::replace(&mut sys.rng, Rng::new(1));
             let mut mob = sys.list.remove(0);
             ai_tick(
@@ -6680,7 +6685,7 @@ mod tests {
             }
         }
         assert_eq!(sys.list[0].fuse, i32::MAX, "fuse completed");
-        assert!(sys.list[0].health <= 0.0, "creeper died in its blast");
+        assert!(sys.list[0].health <= 0.0, "fuseling died in its blast");
         let booms = take_explosions(&mut sys);
         assert_eq!(booms.len(), 1);
         assert_eq!(booms[0].0, pos0);
@@ -6688,7 +6693,7 @@ mod tests {
         // the death sweep must NOT queue drops (exploded = destroyed)
         sys.tick(&world, (0, 0), i32::MAX);
         assert!(sys.is_empty());
-        assert!(sys.deaths.is_empty(), "exploded creepers drop nothing");
+        assert!(sys.deaths.is_empty(), "exploded fuselings drop nothing");
     }
 
     #[test]
@@ -6953,7 +6958,7 @@ mod tests {
         // [merge] the kinds resolve in/out of names + eggs (16 E1 + 3
         // E2 + 3 E3 horse/donkey/mule + 4 F-series: rabbit 1.8, stray +
         // polar bear + husk 1.10)
-        assert_eq!(MOB_DATA.len(), 49); // + 1.11 four + 1.12 two + 1.13 eight + 1.14 fox + 1.16 three + the audit trio + the backlog zombified piglin
+        assert_eq!(MOB_DATA.len(), 49); // + 1.11 four + 1.12 two + 1.13 eight + 1.14 fox + 1.16 three + the audit trio + the backlog zombified pigoblin
         for d in MOB_DATA.iter() {
             assert_eq!(
                 MobKind::from_name(d.kind.name().strip_prefix("voxelcraft:").unwrap()),
@@ -6978,7 +6983,7 @@ mod tests {
         assert_eq!(ig.health, 100.0);
         let zv = def(MobKind::ZombieVillager);
         assert_eq!(zv.health, 20.0);
-        let mr = def(MobKind::Mooshroom);
+        let mr = def(MobKind::Shroomcow);
         assert_eq!(mr.health, 10.0);
         // hostile set: magma/blaze/zombie-villager join; golems neutral
         assert!(MobKind::MagmaCube.hostile());
@@ -7539,13 +7544,13 @@ mod v19_tests {
     /// the exact 1.9 formulas: 0.2 + 0.8p², ×1.5 crits at ≥84.8%, armor
     /// toughness). Here we pin the registry side of the bracket.
     #[test]
-    fn shield_and_elytra_registered() {
-        // shield/elytra/chorus items ride the V4 window and never place
+    fn shield_and_skywings_registered() {
+        // shield/skywings/echo items ride the V4 window and never place
         let vc = vc_blocks::blocks::default_state(vc_blocks::blocks::SHIELD);
         assert!(vc_blocks::blocks::is_item_block(vc_blocks::blocks::SHIELD));
-        assert!(vc_blocks::blocks::is_item_block(vc_blocks::blocks::ELYTRA));
+        assert!(vc_blocks::blocks::is_item_block(vc_blocks::blocks::SKYWINGS));
         assert!(vc_blocks::blocks::is_item_block(
-            vc_blocks::blocks::CHORUS_FRUIT
+            vc_blocks::blocks::ECHO_FRUIT
         ));
         // frost walker + mending (1.9 treasure enchants) are in the 38 set
         assert!(crate::enchanting::ENCHANTS
@@ -7655,13 +7660,13 @@ mod auditfix_tests {
     }
 }
 
-// ---------------- 1.11 bracket tests (Exploration Update) ----------------
+// ---------------- 1.11 bracket tests (Exploration-era update) ----------------
 #[cfg(test)]
 mod v111_tests {
     use super::*;
 
     /// the four 1.11 mobs register with their live-verified stats
-    /// (w/Llama, w/Vindicator, w/Evoker, w/Vex)
+    /// (w/Llama, w/Cleaver, w/Runecaller, w/Wisp)
     #[test]
     fn v111_mob_data() {
         let llama = def(MobKind::Llama);
@@ -7674,41 +7679,41 @@ mod v111_tests {
         assert!(MobKind::Llama.neutral(), "llama is neutral");
         assert!(!MobKind::Llama.hostile());
 
-        let vin = def(MobKind::Vindicator);
+        let vin = def(MobKind::Cleaver);
         assert_eq!(vin.health, 24.0);
         assert_eq!(vin.damage, 13.0, "iron axe Normal");
-        // 5.612 b/s / 10.5 attr multiplier (w/Vindicator "5.612 blocks/sec")
+        // 5.612 b/s / 10.5 attr multiplier (w/Cleaver "5.612 blocks/sec")
         assert!((vin.speed_attr * 10.5 - 5.612).abs() < 0.01, "sprint-speed");
 
-        let evo = def(MobKind::Evoker);
+        let evo = def(MobKind::Runecaller);
         assert_eq!(evo.health, 24.0);
         assert_eq!(evo.damage, 6.0, "fangs 6 HP armor-ignoring");
 
-        let vex = def(MobKind::Vex);
-        assert_eq!(vex.health, 14.0);
-        assert_eq!(vex.damage, 9.0, "iron sword Normal");
-        assert_eq!(vex.xp, 5, "w/Vex: 5 XP");
-        // the illager trio is hostile (w/Vindicator/w/Evoker/w/Vex)
-        assert!(MobKind::Vindicator.hostile());
-        assert!(MobKind::Evoker.hostile());
-        assert!(MobKind::Vex.hostile());
+        let wisp = def(MobKind::Wisp);
+        assert_eq!(wisp.health, 14.0);
+        assert_eq!(wisp.damage, 9.0, "iron sword Normal");
+        assert_eq!(wisp.xp, 5, "w/Wisp: 5 XP");
+        // the illager trio is hostile (w/Cleaver/w/Runecaller/w/Wisp)
+        assert!(MobKind::Cleaver.hostile());
+        assert!(MobKind::Runecaller.hostile());
+        assert!(MobKind::Wisp.hostile());
         // names + eggs roundtrip
         assert_eq!(MobKind::from_name("llama"), Some(MobKind::Llama));
-        assert_eq!(MobKind::from_name("vindicator"), Some(MobKind::Vindicator));
-        assert_eq!(MobKind::from_name("evoker"), Some(MobKind::Evoker));
-        assert_eq!(MobKind::from_name("vex"), Some(MobKind::Vex));
+        assert_eq!(MobKind::from_name("cleaver"), Some(MobKind::Cleaver));
+        assert_eq!(MobKind::from_name("runecaller"), Some(MobKind::Runecaller));
+        assert_eq!(MobKind::from_name("wisp"), Some(MobKind::Wisp));
         assert_eq!(MobKind::from_egg(23), MobKind::Llama);
-        assert_eq!(MobKind::from_egg(24), MobKind::Vindicator);
-        assert_eq!(MobKind::from_egg(25), MobKind::Evoker);
-        assert_eq!(MobKind::from_egg(26), MobKind::Vex);
+        assert_eq!(MobKind::from_egg(24), MobKind::Cleaver);
+        assert_eq!(MobKind::from_egg(25), MobKind::Runecaller);
+        assert_eq!(MobKind::from_egg(26), MobKind::Wisp);
         assert_eq!(MobKind::Llama.egg_id(), 23);
-        assert_eq!(MobKind::Evoker.egg_id(), 25);
-        // 1.12 (World of Color): parrot + illusioner — 32 kinds
-        assert_eq!(MOB_DATA.len(), 49, "+ the 1.13 aquatic eight + the 1.14 fox + the 1.16 forest three + the audit trio + the backlog zombified piglin");
+        assert_eq!(MobKind::Runecaller.egg_id(), 25);
+        // 1.12 (World of Color): parrot + miragecaller — 32 kinds
+        assert_eq!(MOB_DATA.len(), 49, "+ the 1.13 aquatic eight + the 1.14 fox + the 1.16 forest three + the audit trio + the backlog zombified pigoblin");
         assert_eq!(MobKind::from_egg(30), MobKind::Parrot);
         assert_eq!(MobKind::Parrot.egg_id(), 30);
-        assert_eq!(MobKind::Illusioner.egg_id(), 255, "no spawn egg (VERIFIED)");
-        assert!(MobKind::Illusioner.hostile());
+        assert_eq!(MobKind::Miragecaller.egg_id(), 255, "no spawn egg (VERIFIED)");
+        assert!(MobKind::Miragecaller.hostile());
         assert!(!MobKind::Parrot.hostile());
     }
 
@@ -7750,12 +7755,12 @@ mod v111_tests {
         assert!(healed, "the 1/900 regen roll fires within 4000 ticks");
     }
 
-    /// the evoker queues fang damage + vex summons through the spell
+    /// the runecaller queues fang damage + wisp summons through the spell
     /// queues (ai_tick integration)
     #[test]
-    fn v111_evoker_spell_queues() {
+    fn v111_runecaller_spell_queues() {
         let mut ms = MobSystem::new(13);
-        let eid = ms.spawn_at(MobKind::Evoker, 4, 65, 4).unwrap();
+        let eid = ms.spawn_at(MobKind::Runecaller, 4, 65, 4).unwrap();
         ms.player = Some([6.0, 65.0, 4.5]); // in aggro range
                                             // run the ai through MobSystem::tick with a flat world
         let world = {
@@ -7776,10 +7781,10 @@ mod v111_tests {
         for _ in 0..120 {
             ms.tick(&world, (0, 0), 4);
         }
-        // provoked+hostile: the evoker engaged the player — either fangs
+        // provoked+hostile: the runecaller engaged the player — either fangs
         // queued or vexes summoned within 120 ticks (the 100-tick cycle)
         let fangs_or_summons = !ms.pending_player_fang.is_empty() || !ms.pending_summons.is_empty();
-        assert!(fangs_or_summons, "a spell fired (fangs or vex summon)");
+        assert!(fangs_or_summons, "a spell fired (fangs or wisp summon)");
         // drain them (the game layer's contract)
         let _: Vec<(u32, usize)> = std::mem::take(&mut ms.pending_summons);
         let _: Vec<f32> = std::mem::take(&mut ms.pending_player_fang);
@@ -7796,7 +7801,7 @@ mod v111_tests {
         assert_eq!(MobKind::from_egg(28), MobKind::Stray);
         assert_eq!(MobKind::Husk.egg_id(), 27);
         assert_eq!(MobKind::Stray.egg_id(), 28);
-        // the changelog's five NEW eggs: llama/vindicator/evoker/vex +
+        // the changelog's five NEW eggs: llama/cleaver/runecaller/wisp +
         // zombie villager (pre-existing E2-era item at kind 5)
         assert_eq!(MobKind::ZombieVillager.egg_id(), 5);
         // rabbit + polar bear keep the 255 no-egg sentinel (standing
@@ -7918,13 +7923,13 @@ mod v111_tests {
         );
     }
 
-    /// the vex phases through blocks (VERIFIED w/Vex: "pass through any
+    /// the wisp phases through blocks (VERIFIED w/Wisp: "pass through any
     /// block, including water and lava") — the no-clip physics path
     #[test]
     fn v111_vex_passes_through_blocks() {
         let mut ms = MobSystem::new(27);
-        let id = ms.spawn_at(MobKind::Vex, 4, 65, 4).unwrap();
-        // build a solid column in its path; the vex's physics ignores it
+        let id = ms.spawn_at(MobKind::Wisp, 4, 65, 4).unwrap();
+        // build a solid column in its path; the wisp's physics ignores it
         let world = {
             let mut w = World::new(27);
             let mut c = vc_chunk::chunk::Chunk::empty();
@@ -7941,7 +7946,7 @@ mod v111_tests {
             w
         };
         let start = ms.by_id(id).unwrap().pos;
-        // the vex spawns INSIDE the solid chunk and must not be pushed
+        // the wisp spawns INSIDE the solid chunk and must not be pushed
         // out / stuck by collision (its physics skips block collision)
         for _ in 0..10 {
             ms.tick(&world, (0, 0), 4);
@@ -7949,12 +7954,12 @@ mod v111_tests {
         let m = ms.by_id(id).unwrap();
         assert!(
             m.health > 0.0,
-            "vex alive inside solid blocks (no suffocation path)"
+            "wisp alive inside solid blocks (no suffocation path)"
         );
         let moved = (m.pos[0] - start[0]).abs() + (m.pos[2] - start[2]).abs();
         assert!(
             moved > 0.0 || m.vel[0] != 0.0 || m.vel[2] != 0.0,
-            "vex moves freely through solid ground"
+            "wisp moves freely through solid ground"
         );
     }
 }
@@ -8122,18 +8127,18 @@ mod v112_tests {
         let _ = blind;
     }
 
-    /// illusioner: 32 HP, blindness on first engage (once), the mirror
+    /// miragecaller: 32 HP, blindness on first engage (once), the mirror
     /// spell (invisibility 60 s, refreshed), the 20-tick bow cadence
-    /// (VERIFIED w/Illusioner live 2026-09-07)
+    /// (VERIFIED w/Miragecaller live 2026-09-07)
     #[test]
-    fn v112_illusioner_stats_and_blindness_spell() {
-        let d = def(MobKind::Illusioner);
-        assert_eq!(d.health, 32.0, "w/Illusioner infobox: 32 HP");
-        assert_eq!(d.speed_attr, 0.5, "w/Illusioner infobox: Speed 0.5");
+    fn v112_miragecaller_stats_and_blindness_spell() {
+        let d = def(MobKind::Miragecaller);
+        assert_eq!(d.health, 32.0, "w/Miragecaller infobox: 32 HP");
+        assert_eq!(d.speed_attr, 0.5, "w/Miragecaller infobox: Speed 0.5");
         assert!(d.kind.hostile(), "hostile illager");
         // engage: blindness queued ONCE at 20 s
         let mut ms = MobSystem::new(43);
-        let id = ms.spawn_at(MobKind::Illusioner, 10, 65, 4).unwrap();
+        let id = ms.spawn_at(MobKind::Miragecaller, 10, 65, 4).unwrap();
         ms.player = Some([4.5, 65.0, 4.5]);
         let world = flat_world();
         ms.tick(&world, (0, 0), 1);
@@ -8172,13 +8177,13 @@ mod v112_tests {
     }
 
     #[test]
-    fn v112_illusioner_never_spawns_naturally() {
-        // VERIFIED w/Illusioner: "Spawn: By commands" + "Unused and
+    fn v112_miragecaller_never_spawns_naturally() {
+        // VERIFIED w/Miragecaller: "Spawn: By commands" + "Unused and
         // present only in Java Edition" — the ambient pools exclude it
         // (no spawn egg either)
-        assert_eq!(MobKind::Illusioner.egg_id(), 255);
+        assert_eq!(MobKind::Miragecaller.egg_id(), 255);
         // hostile pool: run many spawn attempts in a flat dark world —
-        // no illusioner ever appears
+        // no miragecaller ever appears
         let mut ms = MobSystem::new(97);
         ms.player = Some([8.5, 65.0, 8.5]);
         let world = flat_world();
@@ -8186,14 +8191,14 @@ mod v112_tests {
             ms.try_spawn_hostile(&world, |_, _| true);
         }
         assert!(
-            !ms.list.iter().any(|m| m.kind == MobKind::Illusioner),
-            "illusioners never spawn naturally (vanilla parity)"
+            !ms.list.iter().any(|m| m.kind == MobKind::Miragecaller),
+            "miragecallers never spawn naturally (vanilla parity)"
         );
     }
 }
 
 // ---------------------------------------------------------------------------
-// 1.13 (Update Aquatic) — VERIFIED live 2026-09-07 against the wiki
+// 1.13 (Aquatic-era update) — VERIFIED live 2026-09-07 against the wiki
 // captures (voxelcraft/scripts/v113_page_*; research record
 // docs/research/phase-v113-1.13-research.md)
 // ---------------------------------------------------------------------------
@@ -8270,7 +8275,7 @@ mod v113_tests {
     /// aquatic() swim-physics gate + the V9 spawn-egg kinds.
     #[test]
     fn v113_registry_rows_and_flags() {
-        assert_eq!(MOB_DATA.len(), 49, "32 prior + 8 aquatic + the 1.14 fox + the 1.16 forest three + the audit trio + the backlog zombified piglin");
+        assert_eq!(MOB_DATA.len(), 49, "32 prior + 8 aquatic + the 1.14 fox + the 1.16 forest three + the audit trio + the backlog zombified pigoblin");
         // drowned: 20 HP zombie-parity, N 3, armor 2, 5 XP, hostile
         let d = def(MobKind::Drowned);
         assert_eq!(d.health as i32, 20);
@@ -8761,7 +8766,7 @@ mod v114_tests {
     /// the V10 registry row + egg/tile mappings (VERIFIED w/Fox)
     #[test]
     fn v114_fox_registry_row() {
-        assert_eq!(MOB_DATA.len(), 49, "32 + 8 aquatic + the fox + the 1.16 forest three + the audit trio + the backlog zombified piglin");
+        assert_eq!(MOB_DATA.len(), 49, "32 + 8 aquatic + the fox + the 1.16 forest three + the audit trio + the backlog zombified pigoblin");
         let d = def(MobKind::Fox);
         assert_eq!(d.health as i32, 10, "10 HP (VERIFIED infobox)");
         assert!((d.damage - 2.0).abs() < 1e-6, "Easy/Normal 2 HP");
@@ -9013,7 +9018,7 @@ fn audit16_chicken_lays_eggs_at_the_9000_tick_average() {
 
 /// the sweep-2: the player-thrown trio never hits the thrower, and
 /// eggs + pearls (not snowballs) push landing events on the ground
-/// hit (VERIFIED w/Egg + w/Ender_Pearl + w/Snowball, live 2026-09-09)
+/// hit (VERIFIED w/Egg + w/Void_Pearl + w/Snowball, live 2026-09-09)
 #[test]
 fn audit16_sweep2_projectile_landings() {
     let world = v115_world();
@@ -9165,7 +9170,7 @@ fn audit16_cave_spider_venom_payload() {
             assert_eq!(h.source, MobKind::CaveSpider);
             assert!((h.damage - 2.0).abs() < 1e-4, "Normal melee 2 (VERIFIED)");
             assert_eq!(h.poison_effect, Some(140), "Poison 7 s = 140 ticks");
-            assert_eq!(h.wither_effect, None);
+            assert_eq!(h.blight_effect, None);
             bitten = true;
             break;
         }
@@ -9175,14 +9180,14 @@ fn audit16_cave_spider_venom_payload() {
 
 /// REGRESSION (the backlog-round bug fix): the game-layer pattern
 /// — sys.tick THEN take_explosions — must surface the blast. The
-/// old death sweep removed the consumed creeper inside the tick,
-/// so live-game creeper explosions were silently dropped.
+/// old death sweep removed the consumed fuseling inside the tick,
+/// so live-game fuseling explosions were silently dropped.
 #[test]
-fn backlog_creeper_blast_reaches_the_game_layer() {
+fn backlog_fuseling_blast_reaches_the_game_layer() {
     let world = v115_world();
     let mut sys = MobSystem::new(77);
     sys.player = Some([8.5, 65.5, 8.5]);
-    sys.spawn_at(MobKind::Creeper, 8, 65, 8).unwrap();
+    sys.spawn_at(MobKind::Fuseling, 8, 65, 8).unwrap();
     let mut saw_boom = false;
     for _ in 0..100 {
         sys.tick(&world, (0, 0), i32::MAX);
@@ -9197,32 +9202,32 @@ fn backlog_creeper_blast_reaches_the_game_layer() {
     assert!(sys.deaths.is_empty());
 }
 
-/// Backlog round (weather): a lightning strike converts creepers
-/// (charged bit), pigs (zombified piglin), and mooshrooms (red↔brown)
+/// Backlog round (weather): a lightning strike converts fuselings
+/// (charged bit), pigs (zombified pigoblin), and shroomcows (red↔brown)
 /// and deals its 5 HP Normal damage (VERIFIED w/Weather).
 #[test]
 fn backlog_lightning_conversions() {
     let mut sys = MobSystem::new(21);
     sys.player = Some([8.5, 70.5, 8.5]);
-    let creeper = sys.spawn_at(MobKind::Creeper, 8, 65, 8).unwrap();
+    let fuseling = sys.spawn_at(MobKind::Fuseling, 8, 65, 8).unwrap();
     let pig = sys.spawn_at(MobKind::Pig, 10, 65, 8).unwrap();
     let cow = sys.spawn_at(MobKind::Cow, 12, 65, 8).unwrap();
-    let far = sys.spawn_at(MobKind::Mooshroom, 40, 65, 40).unwrap();
-    let mooshroom = sys.spawn_at(MobKind::Mooshroom, 8, 65, 10).unwrap();
+    let far = sys.spawn_at(MobKind::Shroomcow, 40, 65, 40).unwrap();
+    let shroomcow = sys.spawn_at(MobKind::Shroomcow, 8, 65, 10).unwrap();
     let struck = sys.lightning_strike(10.5, 66.0, 9.0, 5.0);
     assert!(struck >= 4, "the near mobs were struck ({struck})");
-    // creeper -> charged (variant bit, power doubles at detonation)
-    let c = sys.by_id(creeper).unwrap();
-    assert!(c.variant & CREEPER_CHARGED_BIT != 0, "creeper charged");
+    // fuseling -> charged (variant bit, power doubles at detonation)
+    let c = sys.by_id(fuseling).unwrap();
+    assert!(c.variant & FUSELING_CHARGED_BIT != 0, "fuseling charged");
     assert!((c.health - 15.0).abs() < 1e-4, "5 HP lightning damage");
-    // pig -> zombified piglin at full health
+    // pig -> zombified pigoblin at full health
     let z = sys.by_id(pig).unwrap();
-    assert_eq!(z.kind, MobKind::ZombifiedPiglin);
-    assert!((z.health - 20.0).abs() < 1e-4, "fresh zombified piglin HP");
-    // mooshroom red -> brown
-    let m = sys.by_id(mooshroom).unwrap();
-    assert_eq!(m.variant & 1, 1, "mooshroom flipped to brown");
-    // the far mooshroom untouched (variant 0)
+    assert_eq!(z.kind, MobKind::ZombifiedPigoblin);
+    assert!((z.health - 20.0).abs() < 1e-4, "fresh zombified pigoblin HP");
+    // shroomcow red -> brown
+    let m = sys.by_id(shroomcow).unwrap();
+    assert_eq!(m.variant & 1, 1, "shroomcow flipped to brown");
+    // the far shroomcow untouched (variant 0)
     let fm = sys.by_id(far).unwrap();
     assert_eq!(fm.variant & 1, 0);
     // the cow takes damage but does not convert
@@ -9231,18 +9236,18 @@ fn backlog_lightning_conversions() {
     assert!((cw.health - 5.0).abs() < 1e-4);
 }
 
-/// charged creepers detonate at power 6 — "lightning ... turns
-/// creepers into charged creepers" + the doubled blast (VERIFIED
-/// w/Creeper).
+/// charged fuselings detonate at power 6 — "lightning ... turns
+/// fuselings into charged fuselings" + the doubled blast (VERIFIED
+/// w/Fuseling).
 #[test]
-fn backlog_charged_creeper_double_blast() {
+fn backlog_charged_fuseling_double_blast() {
     let world = v115_world();
     let mut sys = MobSystem::new(22);
     let _ = &world;
     sys.player = Some([8.5, 66.5, 8.5]);
-    let id = sys.spawn_at(MobKind::Creeper, 8, 65, 8).unwrap();
+    let id = sys.spawn_at(MobKind::Fuseling, 8, 65, 8).unwrap();
     let _ = sys.lightning_strike(8.0, 66.0, 8.0, 0.0); // charge only
-    assert!(sys.by_id(id).unwrap().variant & CREEPER_CHARGED_BIT != 0);
+    assert!(sys.by_id(id).unwrap().variant & FUSELING_CHARGED_BIT != 0);
     // run the fuse to detonation (player adjacent + 30-tick fuse)
     for _ in 0..200 {
         sys.tick(&world, (0, 0), i32::MAX);
@@ -9252,31 +9257,31 @@ fn backlog_charged_creeper_double_blast() {
             return;
         }
     }
-    panic!("the charged creeper never detonated");
+    panic!("the charged fuseling never detonated");
 }
 
-/// the zombified piglin now carries the nether-wastes slot the
-/// zombie used to fill — "zombified piglin 100/215" of the wastes
-/// roll (VERIFIED w/Zombified_Piglin §Spawning + the audit's own
+/// the zombified pigoblin now carries the hollow-wastes slot the
+/// zombie used to fill — "zombified pigoblin 100/215" of the wastes
+/// roll (VERIFIED w/Zombified_Pigoblin §Spawning + the audit's own
 /// weight table)
 #[test]
-fn backlog_zombified_piglin_is_the_wastes_roll() {
+fn backlog_zombified_pigoblin_is_the_wastes_roll() {
     let _world = v115_world();
-    // a nether world with the wastes biome — a 3x3 chunk grid so
+    // a hollow world with the wastes biome — a 3x3 chunk grid so
     // the spawn pass's random chunk pick lands in-world
     let mut w = World::new(23);
-    w.dimension = vc_world::world::Dimension::Nether;
+    w.dimension = vc_world::world::Dimension::Hollow;
     for ccx in -1..=1i32 {
         for ccz in -1..=1i32 {
             let mut c = vc_chunk::chunk::Chunk::empty();
             for y in 0..=64i32 {
                 for lz in 0..16usize {
                     for lx in 0..16usize {
-                        c.set(lx, y as usize, lz, NETHERRACK);
+                        c.set(lx, y as usize, lz, HOLLOWSTONE);
                     }
                 }
             }
-            c.biome = Box::new([vc_world::gen::Biome::NetherWastes as u8; 256]);
+            c.biome = Box::new([vc_world::gen::Biome::HollowWastes as u8; 256]);
             w.insert_generated((ccx, ccz), std::sync::Arc::new(c), Vec::new());
         }
     }
@@ -9296,8 +9301,8 @@ fn backlog_zombified_piglin_is_the_wastes_roll() {
         }
     }
     assert!(
-        kinds.contains(&MobKind::ZombifiedPiglin),
-        "the real zombified piglin spawns in the wastes {kinds:?}"
+        kinds.contains(&MobKind::ZombifiedPigoblin),
+        "the real zombified pigoblin spawns in the wastes {kinds:?}"
     );
     assert!(
         !kinds.contains(&MobKind::Zombie),
@@ -9338,30 +9343,30 @@ fn backlog_thunderstorm_daylight_spawn_gate() {
     assert!(spawned, "thunderstorm opens the daylight gate (VERIFIED)");
 }
 
-/// the completeness audit: the ghast fires its fireball — "a ghast
+/// the completeness audit: the weepgeist fires its fireball — "a weepgeist
 /// faces the player and shoots a fireball every 3 seconds" within
-/// the 64-block range (VERIFIED w/Ghast §Behavior); the impact
+/// the 64-block range (VERIFIED w/Weepgeist §Behavior); the impact
 /// damage is the Normal 6 row.
 #[test]
-fn audit16_ghast_fires_the_3_second_fireball() {
+fn audit16_weepgeist_fires_the_3_second_fireball() {
     let world = v115_world();
     let mut sys = MobSystem::new(9);
     sys.player = Some([8.5, 70.5, 8.5]);
     // 20 blocks out — inside the 64-block target range
-    sys.spawn_at(MobKind::Ghast, 28, 70, 8).unwrap();
+    sys.spawn_at(MobKind::Weepgeist, 28, 70, 8).unwrap();
     let mut fired = false;
     for _ in 0..200 {
         sys.tick(&world, (0, 0), i32::MAX);
         if let Some(a) = sys.arrows.first() {
-            assert_eq!(a.kind, ProjKind::Fireball, "the ghast's projectile");
+            assert_eq!(a.kind, ProjKind::Fireball, "the weepgeist's projectile");
             assert!((a.damage - 6.0).abs() < 1e-4, "impact Normal 6 (VERIFIED)");
             fired = true;
             break;
         }
     }
-    assert!(fired, "the ghast shot within 200 ticks (60-tick cadence)");
+    assert!(fired, "the weepgeist shot within 200 ticks (60-tick cadence)");
     // and the flying class (no gravity — the bat/phantom class)
-    assert!(MobKind::Ghast.flies(), "the ghast is a FlyingMob-class");
+    assert!(MobKind::Weepgeist.flies(), "the weepgeist is a FlyingMob-class");
 }
 
 /// the sting contract: an angry bee stings ONCE (2 HP + Poison I
@@ -9387,7 +9392,7 @@ fn v115_bee_sting_rules() {
                 assert_eq!(h.source, MobKind::Bee);
                 assert!((h.damage - 2.0).abs() < 1e-4, "sting damage 2 (Normal)");
                 poison = h.poison_effect;
-                assert_eq!(h.wither_effect, None);
+                assert_eq!(h.blight_effect, None);
             }
         }
         if stung {
@@ -9545,79 +9550,79 @@ fn v115_bee_enters_hive_from_directly_above() {
     assert!(sys.list.iter().all(|m| m.id != id), "mob left the list");
 }
 
-// ------------- 1.16 (Nether Update, part 2) tests -------------
+// ------------- 1.16 (Hollows Update, part 2) tests -------------
 
 /// the MOB_DATA rows (all VERIFIED against the v116b captures)
 #[test]
 fn v116b_forest_mob_def_rows() {
-    let s = def(MobKind::Strider);
+    let s = def(MobKind::Emberhopper);
     assert_eq!(s.health, 20.0);
     assert_eq!(s.damage, 0.0);
     assert_eq!(s.speed_attr, 0.175);
     assert_eq!((s.height, s.width), (1.7, 0.9));
-    let p = def(MobKind::Piglin);
+    let p = def(MobKind::Pigoblin);
     assert_eq!(p.health, 16.0);
     assert_eq!(p.damage, 8.0); // the golden-sword Normal row
     assert_eq!(p.speed_attr, 0.35);
     assert_eq!((p.height, p.width), (1.95, 0.6));
-    let h = def(MobKind::Hoglin);
+    let h = def(MobKind::Boarling);
     assert_eq!(h.health, 40.0);
     assert_eq!(h.damage, 5.5); // the 3-8 Normal midpoint, disclosed
     assert_eq!(h.speed_attr, 0.3);
     assert_eq!((h.height, h.width), (1.4, 1.3965));
     // the classification rows
-    assert!(!MobKind::Strider.neutral() && !MobKind::Strider.hostile());
+    assert!(!MobKind::Emberhopper.neutral() && !MobKind::Emberhopper.hostile());
     assert!(
-        MobKind::Piglin.neutral(),
-        "piglins are the neutral (adult) row"
+        MobKind::Pigoblin.neutral(),
+        "pigoblins are the neutral (adult) row"
     );
-    assert!(!MobKind::Piglin.hostile());
-    assert!(MobKind::Hoglin.hostile(), "hoglins are the hostile row");
-    assert!(!MobKind::Hoglin.neutral());
+    assert!(!MobKind::Pigoblin.hostile());
+    assert!(MobKind::Boarling.hostile(), "boarlings are the hostile row");
+    assert!(!MobKind::Boarling.neutral());
     // the registry + egg mapping (kinds 42..=44)
-    assert_eq!(MobKind::Strider.name(), "voxelcraft:strider");
-    assert_eq!(MobKind::Piglin.name(), "voxelcraft:piglin");
+    assert_eq!(MobKind::Emberhopper.name(), "voxelcraft:emberhopper");
+    assert_eq!(MobKind::Pigoblin.name(), "voxelcraft:pigoblin");
     assert_eq!(
-        MobKind::Hoglin.name(),
-        "voxelcraft:piglin".replace("piglin", "hoglin")
+        MobKind::Boarling.name(),
+        "voxelcraft:pigoblin".replace("pigoblin", "boarling")
     );
-    assert_eq!(MobKind::from_name("strider"), Some(MobKind::Strider));
-    assert_eq!(MobKind::from_name("piglin"), Some(MobKind::Piglin));
-    assert_eq!(MobKind::from_name("hoglin"), Some(MobKind::Hoglin));
-    assert_eq!(MobKind::Strider.egg_id(), 42);
-    assert_eq!(MobKind::Piglin.egg_id(), 43);
-    assert_eq!(MobKind::Hoglin.egg_id(), 44);
-    assert_eq!(MobKind::from_egg(42), MobKind::Strider);
-    assert_eq!(MobKind::from_egg(43), MobKind::Piglin);
-    assert_eq!(MobKind::from_egg(44), MobKind::Hoglin);
-    assert_eq!(MobKind::Strider.sprite_tile(), TILE_MOB_STRIDER);
-    assert_eq!(MobKind::Piglin.sprite_tile(), TILE_MOB_PIGLIN);
-    assert_eq!(MobKind::Hoglin.sprite_tile(), TILE_MOB_HOGLIN);
+    assert_eq!(MobKind::from_name("emberhopper"), Some(MobKind::Emberhopper));
+    assert_eq!(MobKind::from_name("pigoblin"), Some(MobKind::Pigoblin));
+    assert_eq!(MobKind::from_name("boarling"), Some(MobKind::Boarling));
+    assert_eq!(MobKind::Emberhopper.egg_id(), 42);
+    assert_eq!(MobKind::Pigoblin.egg_id(), 43);
+    assert_eq!(MobKind::Boarling.egg_id(), 44);
+    assert_eq!(MobKind::from_egg(42), MobKind::Emberhopper);
+    assert_eq!(MobKind::from_egg(43), MobKind::Pigoblin);
+    assert_eq!(MobKind::from_egg(44), MobKind::Boarling);
+    assert_eq!(MobKind::Emberhopper.sprite_tile(), TILE_MOB_EMBERHOPPER);
+    assert_eq!(MobKind::Pigoblin.sprite_tile(), TILE_MOB_PIGOBLIN);
+    assert_eq!(MobKind::Boarling.sprite_tile(), TILE_MOB_BOARLING);
     // the completeness audit trio: sprites + names + hostility
-    assert_eq!(MobKind::Ghast.sprite_tile(), TILE_MOB_GHAST);
+    assert_eq!(MobKind::Weepgeist.sprite_tile(), TILE_MOB_WEEPGEIST);
     assert_eq!(MobKind::CaveSpider.sprite_tile(), TILE_MOB_CAVESPIDER);
     assert_eq!(MobKind::Silverfish.sprite_tile(), TILE_MOB_SILVERFISH);
-    assert_eq!(MobKind::Ghast.name(), "voxelcraft:ghast");
+    assert_eq!(MobKind::Weepgeist.name(), "voxelcraft:weepgeist");
     assert_eq!(MobKind::CaveSpider.name(), "voxelcraft:cave_spider");
     assert_eq!(MobKind::Silverfish.name(), "voxelcraft:silverfish");
-    assert!(MobKind::Ghast.hostile());
+    assert!(MobKind::Weepgeist.hostile());
     assert!(MobKind::CaveSpider.hostile());
     assert!(MobKind::Silverfish.hostile());
-    assert!(MobKind::Ghast.flies());
+    assert!(MobKind::Weepgeist.flies());
     assert!(!MobKind::Silverfish.flies());
-    assert_eq!(MobKind::from_name("ghast"), Some(MobKind::Ghast));
+    assert_eq!(MobKind::from_name("weepgeist"), Some(MobKind::Weepgeist));
     assert_eq!(MobKind::from_name("cave_spider"), Some(MobKind::CaveSpider));
     assert_eq!(MobKind::from_name("silverfish"), Some(MobKind::Silverfish));
     // the egg window: kinds 45..=47 roundtrip
-    assert_eq!(MobKind::from_egg(45), MobKind::Ghast);
+    assert_eq!(MobKind::from_egg(45), MobKind::Weepgeist);
     assert_eq!(MobKind::from_egg(46), MobKind::CaveSpider);
     assert_eq!(MobKind::from_egg(47), MobKind::Silverfish);
-    assert_eq!(MobKind::Ghast.egg_id(), 45);
+    assert_eq!(MobKind::Weepgeist.egg_id(), 45);
     assert_eq!(MobKind::CaveSpider.egg_id(), 46);
     assert_eq!(MobKind::Silverfish.egg_id(), 47);
-    // the verified infobox rows (audit16_page_{Ghast,Cave_Spider,
+    // the verified infobox rows (audit16_page_{Weepgeist,Cave_Spider,
     // Silverfish}.json)
-    let gh = def(MobKind::Ghast);
+    let gh = def(MobKind::Weepgeist);
     assert_eq!(gh.health, 10.0);
     assert_eq!(gh.damage, 6.0, "fireball impact Normal (VERIFIED)");
     assert_eq!((gh.height, gh.width), (4.0, 4.0), "the 4x4x4 hitbox");
@@ -9638,42 +9643,42 @@ fn v116b_forest_mob_def_rows() {
 fn v116b_barter_table_items() {
     let mut rng = Rng::new(99);
     for _ in 0..500 {
-        let (item, count) = piglin_barter_roll(&mut rng);
+        let (item, count) = pigoblin_barter_roll(&mut rng);
         assert!(matches!(
             item,
-            CRYING_OBSIDIAN
+            WEEPING_OBSIDIAN
                 | OBSIDIAN
                 | GRAVEL
                 | BLACKSTONE
                 | LEATHER
-                | SOUL_SAND
+                | SPIRIT_SAND
                 | STRING
-                | NETHER_QUARTZ
+                | HOLLOW_QUARTZ
                 | IRON_NUGGET
-                | ENDER_PEARL
+                | VOID_PEARL
         ));
         assert!((1..=36).contains(&count), "count {count} in range");
     }
 }
 
-/// 1.16: the piglin barter flow — a gold-ingot use arms the
+/// 1.16: the pigoblin barter flow — a gold-ingot use arms the
 /// 120-tick examine, the countdown ends in a pending_drops entry
-/// (the piglin "throws" the bartered item, VERIFIED w/Piglin)
+/// (the pigoblin "throws" the bartered item, VERIFIED w/Pigoblin)
 #[test]
-fn v116b_piglin_barter_flow() {
+fn v116b_pigoblin_barter_flow() {
     let world = v115_world();
     let mut sys = MobSystem::new(21);
-    let id = sys.spawn_at(MobKind::Piglin, 8, 65, 8).unwrap();
+    let id = sys.spawn_at(MobKind::Pigoblin, 8, 65, 8).unwrap();
     // the wrong item is refused
-    assert!(!sys.try_barter_piglin(id, STRING));
+    assert!(!sys.try_barter_pigoblin(id, STRING));
     // gold (the iron-ore stand-in) arms the examine
-    assert!(sys.try_barter_piglin(id, IRON_ORE));
+    assert!(sys.try_barter_pigoblin(id, IRON_ORE));
     {
         let m = sys.list.iter().find(|m| m.id == id).unwrap();
         assert_eq!(m.aux, 120, "the 6-second examine countdown");
     }
     // a second offer while examining is refused
-    assert!(!sys.try_barter_piglin(id, IRON_ORE));
+    assert!(!sys.try_barter_pigoblin(id, IRON_ORE));
     // run the countdown out with the player nearby (the AI ticks)
     sys.player = Some([8.0, 65.0, 10.0]);
     for _ in 0..130 {
@@ -9688,37 +9693,37 @@ fn v116b_piglin_barter_flow() {
     );
 }
 
-/// 1.16: the gold-mining anger hook (VERIFIED w/Piglin's
+/// 1.16: the gold-mining anger hook (VERIFIED w/Pigoblin's
 /// aggravation rows — mining gold-related blocks angers nearby
-/// piglins within 16 blocks)
+/// pigoblins within 16 blocks)
 #[test]
-fn v116b_piglin_gold_mining_anger() {
+fn v116b_pigoblin_gold_mining_anger() {
     let mut sys = MobSystem::new(22);
-    let near = sys.spawn_at(MobKind::Piglin, 8, 65, 8).unwrap();
-    let far = sys.spawn_at(MobKind::Piglin, 40, 65, 40).unwrap();
-    let _strider = sys.spawn_at(MobKind::Strider, 9, 65, 8).unwrap();
-    let n = sys.anger_piglins_near([8.0, 65.0, 8.0], 16.0);
-    assert_eq!(n, 1, "only the nearby piglin angered");
+    let near = sys.spawn_at(MobKind::Pigoblin, 8, 65, 8).unwrap();
+    let far = sys.spawn_at(MobKind::Pigoblin, 40, 65, 40).unwrap();
+    let _emberhopper = sys.spawn_at(MobKind::Emberhopper, 9, 65, 8).unwrap();
+    let n = sys.anger_pigoblins_near([8.0, 65.0, 8.0], 16.0);
+    assert_eq!(n, 1, "only the nearby pigoblin angered");
     assert!(sys.list.iter().find(|m| m.id == near).unwrap().provoked);
     assert!(!sys.list.iter().find(|m| m.id == far).unwrap().provoked);
-    // the strider is untouched (piglins only)
-    assert!(!sys.list.iter().find(|m| m.id == _strider).unwrap().provoked);
+    // the emberhopper is untouched (pigoblins only)
+    assert!(!sys.list.iter().find(|m| m.id == _emberhopper).unwrap().provoked);
 }
 
-/// 1.16: strider breeding — the warped fungus arms love, the pair
-/// breeds (VERIFIED w/Strider §Breeding)
+/// 1.16: emberhopper breeding — the viridian fungus arms love, the pair
+/// breeds (VERIFIED w/Emberhopper §Breeding)
 #[test]
-fn v116b_strider_feeding_and_breeding() {
+fn v116b_emberhopper_feeding_and_breeding() {
     let world = v115_world();
     let mut sys = MobSystem::new(23);
-    let a = sys.spawn_at(MobKind::Strider, 8, 65, 8).unwrap();
-    let b = sys.spawn_at(MobKind::Strider, 9, 65, 9).unwrap();
+    let a = sys.spawn_at(MobKind::Emberhopper, 8, 65, 8).unwrap();
+    let b = sys.spawn_at(MobKind::Emberhopper, 9, 65, 9).unwrap();
     // the wrong food is refused
-    assert!(sys.try_feed_strider(a, CRIMSON_FUNGUS).is_none());
+    assert!(sys.try_feed_emberhopper(a, SCARLET_FUNGUS).is_none());
     // the first feeding arms love
     assert_eq!(
-        sys.try_feed_strider(a, WARPED_FUNGUS),
-        Some(StriderFeedOutcome::LoveMode)
+        sys.try_feed_emberhopper(a, VIRIDIAN_FUNGUS),
+        Some(EmberhopperFeedOutcome::LoveMode)
     );
     {
         let m = sys.list.iter().find(|m| m.id == a).unwrap();
@@ -9726,18 +9731,18 @@ fn v116b_strider_feeding_and_breeding() {
     }
     // the second feeding with a loving partner pairs them
     assert_eq!(
-        sys.try_feed_strider(b, WARPED_FUNGUS),
-        Some(StriderFeedOutcome::Bred(a))
+        sys.try_feed_emberhopper(b, VIRIDIAN_FUNGUS),
+        Some(EmberhopperFeedOutcome::Bred(a))
     );
     for id in [a, b] {
         let m = sys.list.iter().find(|m| m.id == id).unwrap();
         assert_eq!(m.variant & 0x80, 0, "both exited love");
     }
-    // a baby strider cannot be fed (maturity-only, disclosed)
+    // a baby emberhopper cannot be fed (maturity-only, disclosed)
     let kid = sys
-        .spawn_variant(MobKind::Strider, 10, 65, 10, 0x40)
+        .spawn_variant(MobKind::Emberhopper, 10, 65, 10, 0x40)
         .unwrap();
-    assert!(sys.try_feed_strider(kid, WARPED_FUNGUS).is_none());
+    assert!(sys.try_feed_emberhopper(kid, VIRIDIAN_FUNGUS).is_none());
     // the baby matures on the countdown (the fox pattern)
     {
         let m = sys.list.iter_mut().find(|m| m.id == kid).unwrap();
@@ -9750,41 +9755,41 @@ fn v116b_strider_feeding_and_breeding() {
     assert_eq!(m.variant & 0x40, 0, "grown after the countdown");
 }
 
-/// 1.16: hoglin breeding is flee-gated — a warped fungus within 7
-/// blocks refuses the crimson-fungus feed ("Hoglins cannot be bred
-/// when they are running away from warped fungi", VERIFIED w/Hoglin)
+/// 1.16: boarling breeding is flee-gated — a viridian fungus within 7
+/// blocks refuses the scarlet-fungus feed ("Boarlings cannot be bred
+/// when they are running away from viridian fungi", VERIFIED w/Boarling)
 #[test]
-fn v116b_hoglin_flee_gate() {
+fn v116b_boarling_flee_gate() {
     let mut world = v115_world();
     let mut sys = MobSystem::new(24);
-    let a = sys.spawn_at(MobKind::Hoglin, 8, 65, 8).unwrap();
-    let b = sys.spawn_at(MobKind::Hoglin, 9, 65, 9).unwrap();
+    let a = sys.spawn_at(MobKind::Boarling, 8, 65, 8).unwrap();
+    let b = sys.spawn_at(MobKind::Boarling, 9, 65, 9).unwrap();
     // no repel source: the feed flows
     assert_eq!(
-        sys.try_feed_hoglin(a, CRIMSON_FUNGUS, &world),
-        Some(HoglinFeedOutcome::LoveMode)
+        sys.try_feed_boarling(a, SCARLET_FUNGUS, &world),
+        Some(BoarlingFeedOutcome::LoveMode)
     );
     // a stays in love (the pairing state); the gate tests below
-    // feed a SECOND hoglin under the repel sources
-    // plant the warped fungus 3 blocks away → the feed refuses
-    let _ = world.set_block(11, 65, 11, WARPED_FUNGUS);
-    assert!(sys.try_feed_hoglin(a, CRIMSON_FUNGUS, &world).is_none());
-    // the respawn anchor repels too (VERIFIED w/Hoglin)
-    let _ = world.set_block(11, 65, 11, RESPAWN_ANCHOR);
-    assert!(sys.try_feed_hoglin(a, CRIMSON_FUNGUS, &world).is_none());
+    // feed a SECOND boarling under the repel sources
+    // plant the viridian fungus 3 blocks away → the feed refuses
+    let _ = world.set_block(11, 65, 11, VIRIDIAN_FUNGUS);
+    assert!(sys.try_feed_boarling(a, SCARLET_FUNGUS, &world).is_none());
+    // the rebirth anchor repels too (VERIFIED w/Boarling)
+    let _ = world.set_block(11, 65, 11, REBIRTH_ANCHOR);
+    assert!(sys.try_feed_boarling(a, SCARLET_FUNGUS, &world).is_none());
     let _ = world.set_block(11, 65, 11, 0);
     // and the pair completes without the repel source
     assert_eq!(
-        sys.try_feed_hoglin(b, CRIMSON_FUNGUS, &world),
-        Some(HoglinFeedOutcome::Bred(a))
+        sys.try_feed_boarling(b, SCARLET_FUNGUS, &world),
+        Some(BoarlingFeedOutcome::Bred(a))
     );
 }
 
-/// 1.16: the strider's lava physics — feet in lava with air above
+/// 1.16: the emberhopper's lava physics — feet in lava with air above
 /// = standing on the surface ("walk on top of it without sinking",
-/// VERIFIED w/Strider); fully submerged = the buoyant ascent
+/// VERIFIED w/Emberhopper); fully submerged = the buoyant ascent
 #[test]
-fn v116b_strider_lava_physics() {
+fn v116b_emberhopper_lava_physics() {
     let mut world = v115_world();
     // a lava pond at the stone surface
     for dz in 7..=9i32 {
@@ -9793,7 +9798,7 @@ fn v116b_strider_lava_physics() {
         }
     }
     let mut sys = MobSystem::new(25);
-    let id = sys.spawn_at(MobKind::Strider, 8, 64, 8).unwrap();
+    let id = sys.spawn_at(MobKind::Emberhopper, 8, 64, 8).unwrap();
     {
         let m = sys.list.iter_mut().find(|m| m.id == id).unwrap();
         m.pos = [8.5, 64.0, 8.5]; // feet in the lava cell
@@ -9820,10 +9825,10 @@ fn v116b_strider_lava_physics() {
     assert!(m.vel[1] > 0.0, "rising out of the lava (vel {})", m.vel[1]);
 }
 
-/// 1.16: striders take water damage at the 0.5 s cadence ("1 HP
-/// per ... half-second in water", VERIFIED w/Strider)
+/// 1.16: emberhoppers take water damage at the 0.5 s cadence ("1 HP
+/// per ... half-second in water", VERIFIED w/Emberhopper)
 #[test]
-fn v116b_strider_water_damage() {
+fn v116b_emberhopper_water_damage() {
     let mut world = v115_world();
     for dz in 7..=9i32 {
         for dx in 7..=9i32 {
@@ -9832,21 +9837,21 @@ fn v116b_strider_water_damage() {
         }
     }
     let mut sys = MobSystem::new(26);
-    let id = sys.spawn_at(MobKind::Strider, 8, 64, 8).unwrap();
-    let hp0 = def(MobKind::Strider).health;
+    let id = sys.spawn_at(MobKind::Emberhopper, 8, 64, 8).unwrap();
+    let hp0 = def(MobKind::Emberhopper).health;
     for _ in 0..10 {
         sys.tick(&world, (0, 0), i32::MAX);
     }
     let m = sys.list.iter().find(|m| m.id == id).unwrap();
-    assert!(m.health < hp0, "water damages striders (hp {})", m.health);
-    // the control: a piglin in water is untouched (the strider rule)
-    let pid = sys.spawn_at(MobKind::Piglin, 8, 64, 9).unwrap();
-    let php0 = def(MobKind::Piglin).health;
+    assert!(m.health < hp0, "water damages emberhoppers (hp {})", m.health);
+    // the control: a pigoblin in water is untouched (the emberhopper rule)
+    let pid = sys.spawn_at(MobKind::Pigoblin, 8, 64, 9).unwrap();
+    let php0 = def(MobKind::Pigoblin).health;
     for _ in 0..10 {
         sys.tick(&world, (0, 0), i32::MAX);
     }
     let p = sys.list.iter().find(|m| m.id == pid).unwrap();
-    assert_eq!(p.health, php0, "piglins take no water damage");
+    assert_eq!(p.health, php0, "pigoblins take no water damage");
 }
 
 #[cfg(test)]

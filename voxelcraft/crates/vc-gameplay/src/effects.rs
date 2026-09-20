@@ -1,9 +1,9 @@
 //! Phase E2 (evolution 1.3–1.4 bracket): a minimal timed status-effect
 //! system. This bracket needs EXACTLY these effects:
-//! - Wither (1.4's signature effect — wither skeleton hits + wither
+//! - Blight (1.4's signature effect — blight skeleton hits + blight
 //!   skulls): damage 1 HP per 20 ticks at level II (VERIFIED
-//!   w/Wither_Skeleton: "1 HP every two seconds"; w/Wither: "1 HP per
-//!   sec" — Wither II ticks every 20 game ticks, 0.5 hearts)
+//!   w/Blight_Skeleton: "1 HP every two seconds"; w/Blight: "1 HP per
+//!   sec" — Blight II ticks every 20 game ticks, 0.5 hearts)
 //! - Poison (witch splash potions): 1 HP per 25 ticks at level I,
 //!   cannot kill (floors at 1 HP — VERIFIED w/Effect §Poison)
 //! - Regeneration (beacon secondary power): 1 HP per 50 ticks at level
@@ -22,7 +22,7 @@
 /// mechanical data).
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum EffectKind {
-    Wither,
+    Blight,
     Poison,
     Regeneration,
     Speed,
@@ -36,13 +36,13 @@ pub enum EffectKind {
     /// 1.10 bracket (husk hits apply Hunger 7 s × regional difficulty;
     /// VERIFIED w/Husk) — food-poisoning drain flag
     Hunger,
-    /// 1.11 bracket (totem of undying): Absorption — grants a temporary
+    /// 1.11 bracket (totem of revival): Absorption — grants a temporary
     /// damage buffer (4 points per level; VERIFIED w/Effect §Absorption
-    /// and w/Totem_of_Undying: Absorption II = 8 points / 4 hearts for
+    /// and w/Totem_of_Revival: Absorption II = 8 points / 4 hearts for
     /// 5 s). No per-tick action; the buffer lives on the player struct
     /// and is cleared when the effect expires (the game layer's hook).
     Absorption,
-    /// 1.12 bracket (illusioner spell): Blindness — "Impairs vision by
+    /// 1.12 bracket (miragecaller spell): Blindness — "Impairs vision by
     /// adding close black fog and disables the ability to sprint and
     /// critical hit" (VERIFIED w/Effect §Blindness, live 2026-09-07;
     /// effect id 15, negative). No per-tick action: the render layer
@@ -50,7 +50,7 @@ pub enum EffectKind {
     /// sprinting (the engine's 1.12 hooks). Critical hits are a
     /// 1.9-combat detail the engine doesn't model — disclosed.
     Blindness,
-    /// 1.13 bracket (Update Aquatic): Water Breathing — Java effect id
+    /// 1.13 bracket (Aquatic-era update): Water Breathing — Java effect id
     /// 13. "Prevents the breath meter from running out" (VERIFIED
     /// w/Effect §Water Breathing). Sources here: the conduit's Conduit
     /// Power bundles it, and the turtle-shell helmet would (the helmet
@@ -84,7 +84,7 @@ pub enum EffectKind {
 impl EffectKind {
     pub fn name(self) -> &'static str {
         match self {
-            EffectKind::Wither => "voxelcraft:wither",
+            EffectKind::Blight => "voxelcraft:blight",
             EffectKind::Poison => "voxelcraft:poison",
             EffectKind::Regeneration => "voxelcraft:regeneration",
             EffectKind::Speed => "voxelcraft:speed",
@@ -114,14 +114,14 @@ pub struct Effect {
 }
 
 /// Damage/heal period per kind (VERIFIED w/Effect rows):
-/// - Wither II: every 20 ticks (1 HP)
+/// - Blight II: every 20 ticks (1 HP)
 /// - Poison I: every 25 ticks (1 HP, cannot kill)
 /// - Regeneration I: every 50 ticks (1 HP)
 pub fn period_ticks(kind: EffectKind, amplifier: u8) -> i32 {
     match kind {
-        // Wither I: 1 HP per 40 ticks (2 s — w/Wither_Skeleton phrasing);
-        // Wither II: per 20 ticks (1 s — w/Wither row)
-        EffectKind::Wither => 40 >> (amplifier as i32).min(1),
+        // Blight I: 1 HP per 40 ticks (2 s — w/Blight_Skeleton phrasing);
+        // Blight II: per 20 ticks (1 s — w/Blight row)
+        EffectKind::Blight => 40 >> (amplifier as i32).min(1),
         // Poison I: per 25 ticks (1.25 s — w/Effect). Raw cadence halves
         // per level (25 >> amplifier), but the 10-tick hurt-immunity
         // window floors the EFFECTIVE cadence at 10 ticks (VERIFIED live
@@ -179,7 +179,7 @@ impl Effects {
     }
 
     /// Advance one game tick. Returns (damage, heal) to apply this tick:
-    /// damage > 0 from wither/poison; heal > 0 from regeneration.
+    /// damage > 0 from blight/poison; heal > 0 from regeneration.
     /// `health` is the holder's current HP (poison floors at 1).
     pub fn tick(&mut self, health: f32) -> (f32, f32) {
         let mut dmg = 0.0;
@@ -199,7 +199,7 @@ impl Effects {
             if self.acc[i] >= period {
                 self.acc[i] = 0;
                 match e.kind {
-                    EffectKind::Wither => {
+                    EffectKind::Blight => {
                         // can kill (unlike poison — VERIFIED)
                         dmg += 1.0;
                     }
@@ -344,37 +344,37 @@ mod tests {
     use super::*;
 
     #[test]
-    fn wither_ticks_damage_every_second_and_can_kill() {
+    fn blight_ticks_damage_every_second_and_can_kill() {
         let mut e = Effects::new();
-        // wither skeleton hit: Wither 10 s (VERIFIED w/Wither_Skeleton —
+        // blight skeleton hit: Blight 10 s (VERIFIED w/Blight_Skeleton —
         // level I in 1.16.5; the page's damage row describes the II row
-        // for the wither boss; skeleton applies level I? — wiki text:
-        // "inflicted with the Wither effect for 10 seconds ... decreases
+        // for the blight boss; skeleton applies level I? — wiki text:
+        // "inflicted with the Blight effect for 10 seconds ... decreases
         // it by 1 HP every two seconds" → level I, 40-tick period is the
         // II row; 1 HP per 2 s at I = period 40.
-        e.apply(EffectKind::Wither, 0, 200);
+        e.apply(EffectKind::Blight, 0, 200);
         let mut dmg = 0.0;
         for _ in 0..200 {
             let (d, _) = e.tick(20.0);
             dmg += d;
         }
         // 10 s at 1 HP per 2 s (level I) = 5 HP — VERIFIED phrasing
-        assert!((dmg - 5.0).abs() < 0.01, "wither I total = 5 HP, got {dmg}");
+        assert!((dmg - 5.0).abs() < 0.01, "blight I total = 5 HP, got {dmg}");
         // expired
-        assert!(e.amplifier(EffectKind::Wither).is_none());
+        assert!(e.amplifier(EffectKind::Blight).is_none());
     }
 
     #[test]
-    fn wither_ii_ticks_at_the_boss_rate() {
+    fn blight_ii_ticks_at_the_boss_rate() {
         let mut e = Effects::new();
-        // wither skull: Wither II 10 s (VERIFIED w/Wither: 1 HP per sec)
-        e.apply(EffectKind::Wither, 1, 200);
+        // blight skull: Blight II 10 s (VERIFIED w/Blight: 1 HP per sec)
+        e.apply(EffectKind::Blight, 1, 200);
         let mut dmg = 0.0;
         for _ in 0..200 {
             let (d, _) = e.tick(20.0);
             dmg += d;
         }
-        assert!((dmg - 10.0).abs() < 0.01, "wither II total = 10 HP, got {dmg}");
+        assert!((dmg - 10.0).abs() < 0.01, "blight II total = 10 HP, got {dmg}");
     }
 
     #[test]

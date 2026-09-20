@@ -1,0 +1,7 @@
+{
+  "pack": {
+    "format": 1,
+    "name": "voxelcraft-asset-vault",
+    "description": "VoxelCraft clean-room asset vault (original procedurally-synthesized art). Library copy for future versions \u2014 not wired into the engine. All pixels generated in-project; no third-party assets."
+  }
+}

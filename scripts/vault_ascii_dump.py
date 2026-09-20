@@ -6,7 +6,7 @@ import numpy as np
 from PIL import Image
 
 ZIP = "/home/z/my-project/upload/textures.zip"
-V = "/home/z/my-project/voxelcraft/assets-vault/assets/minecraft/textures"
+V = "/home/z/my-project/voxelcraft/assets-vault/assets/the reference game/textures"
 RAMP = " .:-=+*#%@"
 
 def dump(arr, label):

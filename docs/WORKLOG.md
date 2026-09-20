@@ -5854,3 +5854,27 @@ Xvfb) are the reproduction toolkit if any freeze ever returns.
 **Status:** tests green (vc-world 77/77 release, all other suites green),
 clippy 0/0, legal audit [PASS], wasm bundle + both pack deployments
 refreshed in `public/`.
+
+---
+
+## Final state (2026-09-20, end of session)
+
+- git history fully rewritten (two filter-repo passes): all copied
+  content purged from every commit (wiki dumps, the third-party font,
+  diag artifacts, research notes); every commit message de-branded;
+  the junk UUID commit renamed. HEAD is now 8e78d52.
+- tags v0.2.0 / v0.3.0 rewritten to the new hashes.
+- legal audit: [PASS]. clippy: 0/0. tests: green.
+- PUSH PENDING (user action required): the GitHub token that was
+  embedded in the old remote URL was lost during the history rewrite
+  (filter-repo removes remotes). To deliver everything (and let CI
+  rebuild the Linux binary + wasm), run:
+
+      cd /home/z/my-project
+      git remote set-url origin https://<YOUR_TOKEN>@github.com/CodeAbhi826/VoxelCraft-Rust.git
+      git push --force origin main
+      git push --force origin --tags
+      git push --force origin legacy   # optional: the legacy branch
+
+  After the push, GitHub Actions rebuilds the single-file Linux binary
+  (the pointer-fix delivery) and the wasm bundle automatically.

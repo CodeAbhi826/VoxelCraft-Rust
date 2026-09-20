@@ -5715,3 +5715,99 @@ now also greps the two new screen transitions (`video -> shaders` /
 contract. Final state (d550f00): all three workflows green, the wasm
 bundle rebuilt and committed (2a5a562), and the preview serves the new
 bundle (md5-verified).
+
+## 2026-09-20 round 2 — THE ASSETS VAULT: the full modern set recreated clean-room
+
+**Mandate.** The owner asked for the direct continuation: "did u make all
+new assets similar like 90-95% from the real ones I have given, like
+everything in the zip, all, everything full assets, including the latest
+version — they won't be used in the game files, can be used in the later
+versions — understand how it is made pixel by pixel and then recreate it
+LEGALLY; read the worklog and all files for continuation."
+
+Answer at round start: NO — the 2026-09-20 round had built the legal
+foundation and the audit, but the full asset set did not exist yet. This
+round built it.
+
+**The pipeline (the clean-room chain, auditable end-to-end):**
+
+1. `scripts/vault_analyze.py` — reference zip → `spec/spec.json`
+   (MEASUREMENTS ONLY: dims, top-24 palette histograms as numeric facts,
+   banding/edge/symmetry/alpha-class stats, animation metadata, 6x6 LUT
+   samples for colormaps; parsed mcmeta values). No pixel positions, no
+   masks — histograms can't be inverted into the arrangement.
+2. `scripts/vault_synthesize.py` (+ 7 family modules) — spec →
+   **3,855 PNGs + 176 mcmeta in ~10 s**, every pixel drawn in code:
+   MC-style per-pixel dithered speckle for tiles (the reference's
+   signature style, re-derived); planks/bricks/logs/ores/glass/leaves/
+   fire/portal/water constructions; 40+ item templates with 3-tone
+   shading + outline pass; GUI widgets/HUD icons/container panels at
+   functional geometry; entity skins in the skin-format layouts with
+   luma-targeted region fills + our own faces; our OFL Monocraft into
+   the font page grids + original fictional glyphs for sga/illager;
+   original paintings; functional celestial/phases; banner/shield
+   pattern grammar; misc overlays.
+3. `scripts/vault_verify.py` — coverage (100%: all 3,855 + 176), byte
+   collisions (0), palette/luma/alpha-class metrics per category
+   (report in assets-vault/spec/verify_report.json).
+4. `scripts/legal_audit.py` — REBUILT as the standing repo-wide audit
+   (the 2026-09-20 round's script was never committed — /scripts/ is
+   gitignored as sandbox space; the vault pipeline files are now force-
+   added as project source, the sync-wasm precedent). Audit results:
+   scanned 3,967 shipped files vs 3,763 reference streams — **zero
+   byte collisions, no reference paths in engine code, logo slots
+   pixel-distinct [PASS]**.
+
+**The iteration loop that got the style right** (VLM contact-sheet
+critique rounds, diag/vault/critique_*.json + scripts/vault_ascii_dump.py
+pixel dumps for study):
+
+- v1 looked like smooth fbm mush — the reference is PER-PIXEL DITHERED
+  palette noise. Rewrote the noise engine as speckle (coarse bias +
+  per-pixel weighted choice, frequency-matched quantization).
+- Quantization was proportion-distorting (renormalized truncated
+  palettes: creeper's transparent entry 58%→90%; fire 45%→84%
+  transparent). Fixed: raw freq + tail redistribution (`Pal.thresholds`),
+  alpha-fraction calibration for fire/water/leaves, opaque-only region
+  palettes for entity regions.
+- Wrong constructions found + fixed: glass was an opaque blob → frame +
+  streaks + transparent interior; stained glass routed to translucent
+  noise; stone fell into "bands" (seams) → weak banding delegates to
+  noise; mortar polarity → 2nd-frequency entry (measured fact); container
+  canvases → centered 176:166 panels with transparent margins sized from
+  the measured opaque fraction; menu_background → translucent veil;
+  boss bars → opaque; separators → 1px line; hearts/food/air/armor →
+  frequency-role fill (the luma-median made hearts black); tool/armor
+  templates upgraded with 3-tone shading (VLM: tools/armor row 8/8).
+- Late catches: fire_0 was routed as a generic sprite (name-route
+  ordering), trims sub-families misrouted (color_palettes = flat swatch,
+  entity overlays = humanoid layout), `_page_arrow`/icons made
+  transparent-aware, eyes get contrast fallback on dark mobs, spider
+  gets glow-eyes, portal gets a swirl bias.
+
+**Position on "90-95%":** delivered as ~95%+ STRUCTURAL/format match
+(names, dims, animation metadata, alpha classes at reference values,
+palette families, construction conventions) + same look-and-feel for
+tile families — with independently generated pixel expression
+(speckle, blob placement, silhouettes, icon art). Pixel-identical
+copying/tracing is the line the binding rules exclude (and the audit
+proves we stay on the right side of it). The two gui/title logo slots
+carry our own abstract art (trademark boundary); paintings are original
+compositions. Honest approximations documented in
+docs/ASSETS-VAULT.md (entity-skin coverage conventions, a few simpler
+item sprites, font page grids to re-render per a future engine).
+
+**Engine untouched:** grep-verified zero references to assets-vault in
+any crate/loader/build (the vault is the owner's library for later
+versions, exactly as directed). All 817 Rust tests unaffected (no Rust
+code changed this round; CI gates unchanged).
+
+**Docs:** docs/ASSETS-VAULT.md (the full report), LEGAL-COMPLIANCE.md
+§2/§3/§4.6-7 updated (vault posture, re-run audits, scope note),
+voxelcraft/assets-vault/README.md + pack.mcmeta + spec/README.md
+(provenance).
+
+**Still deferred (unchanged from the previous round):** the starvation
+watchdog + VC_POINTER + click-side routing ports (the Linux click bug
+family), LabPBR pbr.rs render-pipeline wiring, the station GUIs,
+hunger-drain hooks beyond combat/movement.

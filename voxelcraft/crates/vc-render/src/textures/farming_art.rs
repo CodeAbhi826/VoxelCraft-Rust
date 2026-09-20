@@ -4,7 +4,7 @@
 //! 8-age blockstate ladder like vanilla), beetroot's 4 stages, and the
 //! wheat / bread / hoe item sprites.
 //!
-//! Clean-room art (no Mojang assets), a child module of textures.rs
+//! Clean-room art (no third-party assets), a child module of textures.rs
 //! (shares the put/art helpers). Guarded by the farming coverage test
 //! so the 1.13 art-gap regression (a window with TILE_MAX raised but no
 //! painters renders blank) can never repeat.

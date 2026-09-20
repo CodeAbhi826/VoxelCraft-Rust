@@ -1,6 +1,6 @@
 //! Campfire (1.14 Village & Pillage — nature half): the 4-slot,
 //! fuel-less 600-tick cooker. All values VERIFIED live 2026-09-08 from
-//! the raw capture scripts/v114_page_campfire.json (minecraft.wiki
+//! the raw capture scripts/v114_page_campfire.json (the reference wiki
 //! /w/Campfire):
 //!
 //! - "Food items take 30 seconds (600 ticks) to cook, compared to 10

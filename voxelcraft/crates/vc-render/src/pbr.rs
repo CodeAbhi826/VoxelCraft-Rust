@@ -1,6 +1,6 @@
 //! LabPBR 1.3 Material & Parallax Occlusion Mapping (POM) Pipeline.
 //!
-//! Clean-room implementation of the LabPBR 1.3 standard for Minecraft
+//! Clean-room implementation of the LabPBR 1.3 standard for the reference game
 //! PBR and POM shaders. Provides channel unpacking, Cook-Torrance GGX
 //! specular BRDF, self-shadowing, and POM raymarching in WGSL.
 //!

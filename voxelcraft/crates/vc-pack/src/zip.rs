@@ -299,7 +299,7 @@ mod tests {
     fn stored_zip_roundtrip() {
         let zip = build_stored_zip(&[
             ("pack.mcmeta", b"{\"pack\":{\"pack_format\":6,\"description\":\"t\"}}"),
-            ("data/demo/recipes/x.json", b"{\"type\":\"minecraft:crafting_shapeless\",\"ingredients\":[{\"item\":\"minecraft:stone\"}],\"result\":{\"item\":\"minecraft:cobblestone\"}}"),
+            ("data/demo/recipes/x.json", b"{\"type\":\"voxelcraft:crafting_shapeless\",\"ingredients\":[{\"item\":\"voxelcraft:stone\"}],\"result\":{\"item\":\"voxelcraft:cobblestone\"}}"),
         ]);
         let zf = ZipFiles::from_bytes(&zip).expect("zip parses");
         assert_eq!(zf.list("data/"), vec!["data/demo/recipes/x.json".to_string()]);
@@ -312,7 +312,7 @@ mod tests {
     fn deflate_zip_roundtrip() {
         let zip = build_deflate_zip(&[
             ("pack.mcmeta", b"{\"pack\":{\"pack_format\":6}}"),
-            ("data/demo/tags/items/t.json", b"{\"replace\":false,\"values\":[\"minecraft:bone\"]}"),
+            ("data/demo/tags/items/t.json", b"{\"replace\":false,\"values\":[\"voxelcraft:bone\"]}"),
         ]);
         let zf = ZipFiles::from_bytes(&zip).expect("zip parses");
         let tag = zf.read("data/demo/tags/items/t.json").expect("deflate entry inflates");

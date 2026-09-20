@@ -364,7 +364,7 @@ pub fn toggle_lever(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32
 
 // ---------------------------------------------------------------------
 // Phase E3 (evolution 1.5–1.6 bracket) — all values VERIFIED live
-// 2026-09-06: minecraft.wiki/w/Block_of_Redstone, /w/Daylight_Detector,
+// 2026-09-06: reference wiki /Block_of_Redstone, /w/Daylight_Detector,
 // /w/Trapped_Chest, /w/Light_Weighted_Pressure_Plate,
 // /w/Heavy_Weighted_Pressure_Plate.
 // ---------------------------------------------------------------------

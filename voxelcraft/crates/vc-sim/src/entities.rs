@@ -143,7 +143,7 @@ impl ItemSystem {
             if in_water {
                 it.vel[1] *= 0.9;
             } else {
-                // VERIFIED entity physics table (minecraft.wiki/w/
+                // VERIFIED entity physics table (reference wiki /
                 // Falling_Block, research-verdicts.md live round):
                 // Drag-Y 0.98 applies in air too — items share the
                 // falling-block profile (gravity 0.04, drag 0.98,
@@ -255,7 +255,7 @@ impl ItemSystem {
 
 // ---------------------------------------------------------------------------
 // Phase E1 — XP orbs (evolution 1.0–1.2 bracket, all values live-verified
-// 2026-09-06 against minecraft.wiki/w/Experience; see
+// 2026-09-06 against reference wiki /Experience; see
 // docs/research/phase1-1.0-1.2-research.md)
 // ---------------------------------------------------------------------------
 

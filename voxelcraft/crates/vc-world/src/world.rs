@@ -27,7 +27,7 @@ pub enum Dimension {
 }
 
 impl Dimension {
-    /// registry-style identifier (F3 parity: "minecraft:overworld")
+    /// registry-style identifier (F3 parity: "voxelcraft:overworld")
     pub fn id(self) -> &'static str {
         match self {
             Dimension::Overworld => "overworld",

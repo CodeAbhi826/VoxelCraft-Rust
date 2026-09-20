@@ -1,4 +1,4 @@
-//! VoxelCraft — high-performance Minecraft-1.16.5-style voxel game.
+//! VoxelCraft — high-performance 1.16.5-era reference-style voxel game.
 //! Rust + wgpu. One codebase -> native (Vulkan/DX12/Metal) + WASM (WebGPU).
 //!
 //! This crate is the APPLICATION/game shell; the reusable engine lives in

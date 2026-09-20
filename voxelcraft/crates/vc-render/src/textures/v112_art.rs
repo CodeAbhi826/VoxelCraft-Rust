@@ -2,7 +2,7 @@
 //! concrete powder + glazed terracotta (with pixel-rotated facing
 //! variants), the 16 dye palette items, 4 seed items, the cookie, the
 //! parrot egg + 5 parrot variant sprites + the illusioner sprite.
-//! Clean-room art (no Mojang assets), a child module of textures.rs
+//! Clean-room art (no third-party assets), a child module of textures.rs
 //! (shares put/jit/noise_fill/art helpers). All row/palette values are
 //! live-verified where the wiki publishes them (see
 //! docs/research/phase-v112-1.12-research.md); the per-color RGB tables

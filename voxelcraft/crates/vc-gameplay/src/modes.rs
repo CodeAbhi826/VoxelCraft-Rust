@@ -34,7 +34,7 @@ pub enum GameMode {
     /// Phase E2 (1.3–1.4): no block break/place; everything else is
     /// Survival rules (VERIFIED w/Adventure).
     Adventure,
-    /// 1.8 (VERIFIED — minecraft.wiki/w/Java_Edition_1.8 §Gameplay:
+    /// 1.8 (VERIFIED — reference wiki /Java_Edition_1.8 §Gameplay:
     /// "Spectator game mode — It can be accessed and reversed only via
     /// /gamemode"; GameType 3): flight always on, no-clip through blocks,
     /// no interaction, mobs ignore the player, no damage. Not offered in
@@ -163,7 +163,7 @@ impl GameMode {
     /// 2026-09-14 parity round: the vanilla Create World Game Mode
     /// description PAIR — clean-room paraphrase of vanilla's two gray
     /// summary lines under the Game Mode button (vanilla wording is
-    /// Mojang's; these carry the same meaning in our own words).
+    /// the original game's; these carry the same meaning in our own words).
     pub fn describe_lines(self) -> (&'static str, &'static str) {
         match self {
             GameMode::Survival => ("EXPLORE, BUILD, AND SURVIVE", "SEEK OUT RESOURCES, WATCH YOUR HEALTH"),

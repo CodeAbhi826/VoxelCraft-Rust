@@ -103,7 +103,7 @@ pub fn fuel_ticks(block: u16) -> i32 {
         // — 0.5 items × 200 ticks/item = 100 ticks).
         WOOL_WHITE | WOOL_RED | WOOL_YELLOW | WOOL_BLUE | WOOL_BLACK => 100,
         // 1.11 carpets (VERIFIED live 2026-09-07, search verdict
-        // minecraft.wiki/w/Carpet: "Carpet can be used as a fuel in
+        // reference wiki /Carpet: "Carpet can be used as a fuel in
         // furnaces, smelting 0.335 items per carpet item" — the
         // changelog's "0.3 items" is the rounded form; the precise
         // 0.335 × 200 = 67 ticks. Record:
@@ -114,13 +114,13 @@ pub fn fuel_ticks(block: u16) -> i32 {
         // in the WORKLOG).
         CARPET_WHITE | CARPET_RED | CARPET_YELLOW | CARPET_BLUE | CARPET_BLACK => 67,
         // OAK_SLAB = 150 ticks (VERIFIED 2026-09-06 live:
-        // minecraft.wiki/w/Smelting — "Wooden Slab 7.5 [s], 150 ticks";
+        // reference wiki /Smelting — "Wooden Slab 7.5 [s], 150 ticks";
         // was 300, the planks value — half-length slabs burn half as
         // long). Crafting table + fence stay 300 (wiki fuel table).
         CRAFTING_TABLE | OAK_FENCE => 300,
         OAK_SLAB => 150,
         // the coal ITEM: 1600 ticks = 80 s = 8 items (VERIFIED
-        // 2026-09-06 live, minecraft.wiki/w/Furnace "a piece of coal
+        // 2026-09-06 live, reference wiki /Furnace "a piece of coal
         // burns for 80 seconds and can process eight items";
         // w/Smelting fuel table "Coal 1600 [ticks], 8 [items]").
         // COAL_ORE is NO LONGER a fuel: the 800-tick ore-as-fuel
@@ -140,7 +140,7 @@ pub fn fuel_ticks(block: u16) -> i32 {
         // Indev-era parity; w/Charcoal §Fuel = the coal row: "1600
         // [ticks], 8 [items]")
         CHARCOAL => 1600,
-        // Phase E3 (VERIFIED live 2026-09-06, minecraft.wiki/w/
+        // Phase E3 (VERIFIED live 2026-09-06, reference wiki /
         // Block_of_Coal: "One block of coal lasts 800 seconds (16000
         // ticks), which smelts 80 items" — 10× the coal item)
         COAL_BLOCK => 16000,
@@ -167,7 +167,7 @@ pub fn smelt_result(block: u16) -> Option<u16> {
         // (the only E2 food with a smelting recipe)
         POTATO => Some(BAKED_POTATO),
         // VERIFICATION-REPORT fix #4 (VERIFIED 2026-09-06 live,
-        // minecraft.wiki/w/Smelting recipes + w/Coal_Ore §Smelting):
+        // reference wiki /Smelting recipes + w/Coal_Ore §Smelting):
         // coal ore smelts into the coal item (0.1 XP per — the recipe
         // that makes the coal item obtainable in survival)
         COAL_ORE => Some(COAL),
@@ -479,7 +479,7 @@ mod tests {
         assert!(!f.is_burning());
     }
 
-    /// VERIFIED 2026-09-06 live (minecraft.wiki/w/Smelting fuel table):
+    /// VERIFIED 2026-09-06 live (reference wiki /Smelting fuel table):
     /// planks/log 300, crafting table 300, fence 300, wooden slab 150
     /// (half of planks — a slab is half the wood), coal 1600 / 8 items
     /// (w/Furnace "a piece of coal burns for 80 seconds and can process
@@ -493,7 +493,7 @@ mod tests {
         assert_eq!(fuel_ticks(OAK_FENCE), 300);
         assert_eq!(fuel_ticks(OAK_SLAB), 150, "slab = half of planks (150)");
         assert_eq!(fuel_ticks(COAL), 1600, "coal: 80 s, 8 items (w/Furnace)");
-        // Phase E3 (VERIFIED live 2026-09-06, minecraft.wiki/w/
+        // Phase E3 (VERIFIED live 2026-09-06, reference wiki /
         // Block_of_Coal: "One block of coal lasts 800 seconds (16000
         // ticks), which smelts 80 items" — 10x the coal item)
         assert_eq!(fuel_ticks(COAL_BLOCK), 16000, "block of coal: 800 s, 80 items");
@@ -501,7 +501,7 @@ mod tests {
         assert_eq!(fuel_ticks(STONE), 0, "stone is not a fuel");
         // 1.11 (VERIFIED live 2026-09-07):
         // wool 0.5 items = 100 t (changelog §Fuel); carpet
-        // 0.335 items = 67 t (search verdict minecraft.wiki/w/Carpet,
+        // 0.335 items = 67 t (search verdict reference wiki /Carpet,
         // scripts/v111_search_carpetfuel.json — the changelog's "0.3
         // items" is the rounded form)
         assert_eq!(fuel_ticks(WOOL_WHITE), 100, "1 wool smelts 0.5 items");
@@ -534,7 +534,7 @@ mod tests {
     }
 
     /// VERIFICATION-REPORT fix #4: "a piece of coal ... can process eight
-    /// items" (VERIFIED live, minecraft.wiki/w/Furnace). 9 sand + 1 coal:
+    /// items" (VERIFIED live, reference wiki /Furnace). 9 sand + 1 coal:
     /// exactly 8 glass smelt (1600 / 200), the 9th stays raw, coal gone.
     #[test]
     fn one_coal_smelts_exactly_eight_items() {

@@ -1,0 +1,8 @@
+{
+  "parent": "voxelcraft:block/stairs",
+  "textures": {
+    "top": "voxelcraft:block/cobblestone",
+    "bottom": "voxelcraft:block/cobblestone",
+    "side": "voxelcraft:block/cobblestone"
+  }
+}

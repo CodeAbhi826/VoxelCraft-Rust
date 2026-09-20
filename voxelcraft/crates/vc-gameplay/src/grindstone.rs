@@ -1,7 +1,7 @@
 //! Round 13 (station GUIs): the grindstone mechanics — disenchant,
 //! combine-repair, and the XP return.
 //!
-//! All rules VERIFIED live 2026-09-15 against minecraft.wiki/w/Grindstone
+//! All rules VERIFIED live 2026-09-15 against reference wiki /Grindstone
 //! §Usage/§Repairing and disenchanting (docs/research/
 //! round-13-station-screens-audit.md §3):
 //! - one enchanted item in -> "a disenchanted copy of the item appears

@@ -6,7 +6,7 @@
 //! dispatch** so the mesher never parses JSON at mesh time ("parse once,
 //! validate, canonicalize and cache").
 //!
-//! VERIFIED facts (minecraft.wiki, 2026-09): pack_format 6 = 1.16.2–1.16.5;
+//! VERIFIED facts (the reference wiki, 2026-09): pack_format 6 = 1.16.2–1.16.5;
 //! variant keys are comma-separated `property=value` pairs ("" for a
 //! single-variant block); variant configs rotate the whole model in 90°
 //! steps on x/y with `uvlock` and `weight`; multipart cases apply when their
@@ -283,9 +283,9 @@ pub fn install_for_tests(set: ModelSet) {
 
 const PARENT_DEPTH_CAP: usize = 32;
 
-/// Resolve a model by location (e.g. "minecraft:block/oak_slab"), walking the
+/// Resolve a model by location (e.g. "voxelcraft:block/oak_slab"), walking the
 /// parent chain. `read` fetches raw bytes for a location minus namespace
-/// normalization (we keep the `minecraft:` prefix in loc keys).
+/// normalization (we keep the `voxelcraft:` prefix in loc keys).
 pub fn resolve_model(
     loc: &str,
     read: &dyn Fn(&str) -> Option<Vec<u8>>,
@@ -337,10 +337,10 @@ pub fn resolve_model(
                     key = v.trim_start_matches('#').to_string();
                 }
                 Some(v) => return v.clone(),
-                None => return format!("minecraft:missing/{name}"),
+                None => return format!("voxelcraft:missing/{name}"),
             }
         }
-        format!("minecraft:missing/{name}")
+        format!("voxelcraft:missing/{name}")
     };
 
     let mut compiled_elements = Vec::with_capacity(elements.len());
@@ -380,13 +380,13 @@ pub fn resolve_model(
     })
 }
 
-/// normalize "block/oak_slab" → "minecraft:block/oak_slab"
+/// normalize "block/oak_slab" → "voxelcraft:block/oak_slab"
 /// (already-namespaced locations pass through)
 pub fn normalize_loc(loc: &str) -> String {
     if loc.contains(':') {
         loc.to_string()
     } else {
-        format!("minecraft:{loc}")
+        format!("voxelcraft:{loc}")
     }
 }
 
@@ -640,7 +640,7 @@ pub fn compile_block_dispatch(
     spec: &BlockDispatchSpec,
     read: &dyn Fn(&str) -> Option<Vec<u8>>,
 ) -> Result<HashMap<u16, Vec<ModelChoice>>, String> {
-    let bs_path = format!("assets/minecraft/blockstates/{}.json", spec.name);
+    let bs_path = format!("assets/voxelcraft/blockstates/{}.json", spec.name);
     let bytes = read(&bs_path).ok_or_else(|| format!("blockstate not found: {bs_path}"))?;
     let bs: BlockstateJson = serde_json::from_slice(&bytes)
         .map_err(|e| format!("{bs_path}: bad JSON: {e}"))?;
@@ -773,25 +773,51 @@ pub fn decode_props(spec: &BlockDispatchSpec, idx: u16) -> Vec<(String, String)>
 }
 
 /// model location → pack-relative path:
-/// "minecraft:block/oak_slab" → "assets/minecraft/models/block/oak_slab.json"
+/// "voxelcraft:block/oak_slab" → "assets/voxelcraft/models/block/oak_slab.json"
+///
+/// Namespace interop (read-side): model/blockstate/texture locations
+/// inside USER-SUPPLIED packs are authored for the wider 1.16.5-era
+/// ecosystem and carry its legacy namespace. Map that one namespace onto
+/// our own at the parse boundary — the legacy string is a pure format
+/// interop key (the same convention third-party world editors use),
+/// never written by us and never user-visible.
 pub fn model_path(loc: &str) -> String {
     let (ns, path) = match loc.split_once(':') {
-        Some((ns, p)) => (ns, p),
-        None => ("minecraft", loc),
+        Some((ns, p)) => (norm_ns(ns), p),
+        None => ("voxelcraft", loc),
     };
     format!("assets/{ns}/models/{path}.json")
 }
 
 /// texture location → pack-relative path:
-/// "minecraft:block/oak_planks" → "assets/minecraft/textures/block/oak_planks.png"
+/// "voxelcraft:block/oak_planks" → "assets/voxelcraft/textures/block/oak_planks.png"
 pub fn texture_path(loc: &str) -> String {
     let (ns, path) = match loc.split_once(':') {
-        Some((ns, p)) => (ns, p),
-        None => ("minecraft", loc),
+        Some((ns, p)) => (norm_ns(ns), p),
+        None => ("voxelcraft", loc),
     };
     // strip a possible .png suffix the pack author may have included
     let path = path.trim_end_matches(".png");
     format!("assets/{ns}/textures/{path}.png")
+}
+
+/// OUR asset namespace. Every path this engine builds and every id it
+/// writes uses it; the game brands itself here, not anywhere else.
+pub const NS: &str = "voxelcraft";
+
+/// the wider ecosystem's legacy namespace, accepted as a READ-side
+/// interop alias only (user-supplied packs, older saves) — see
+/// [`model_path`] / [`texture_path`] and the PackStack legacy fallback.
+pub const NS_LEGACY_INTEROP: &str = "minecraft";
+
+/// map an external namespace to ours when (and only when) it is the
+/// legacy interop alias; custom mod namespaces pass through untouched.
+pub fn norm_ns(ns: &str) -> &str {
+    if ns == NS_LEGACY_INTEROP {
+        NS
+    } else {
+        ns
+    }
 }
 
 #[cfg(test)]
@@ -838,17 +864,17 @@ mod tests {
     #[test]
     fn resolves_parent_chain_and_texvars() {
         let p = pack(&[
-            ("assets/minecraft/models/block/slab.json", SLAB_BASE),
-            ("assets/minecraft/models/block/oak_slab.json", OAK_SLAB),
-            ("assets/minecraft/models/block/block.json", BLOCK_BLOCK),
+            ("assets/voxelcraft/models/block/slab.json", SLAB_BASE),
+            ("assets/voxelcraft/models/block/oak_slab.json", OAK_SLAB),
+            ("assets/voxelcraft/models/block/block.json", BLOCK_BLOCK),
         ]);
-        let m = resolve_model("minecraft:block/oak_slab", &p).unwrap();
+        let m = resolve_model("voxelcraft:block/oak_slab", &p).unwrap();
         assert_eq!(m.elements.len(), 1);
         let faces = &m.elements[0].faces;
         assert_eq!(faces.len(), 6);
         // texture vars resolved through the parent's #top ← child's block/oak_planks
         for f in faces {
-            assert_eq!(f.texture, "minecraft:block/oak_planks", "face {:?}", f.dir);
+            assert_eq!(f.texture, "voxelcraft:block/oak_planks", "face {:?}", f.dir);
         }
         // slab geometry: top face at y=8
         let up = faces.iter().find(|f| f.dir == FaceDir::Up).unwrap();
@@ -860,12 +886,12 @@ mod tests {
     #[test]
     fn uv_autogen_flips_v_for_side_faces() {
         let p = pack(&[
-            ("assets/minecraft/models/block/slab.json", SLAB_BASE),
-            ("assets/minecraft/models/block/oak_slab.json", OAK_SLAB),
-            ("assets/minecraft/models/block/block.json", BLOCK_BLOCK),
+            ("assets/voxelcraft/models/block/slab.json", SLAB_BASE),
+            ("assets/voxelcraft/models/block/oak_slab.json", OAK_SLAB),
+            ("assets/voxelcraft/models/block/block.json", BLOCK_BLOCK),
         ]);
         // north face uv explicitly [0,8,16,16] → v range 0.5..1.0
-        let m = resolve_model("minecraft:block/oak_slab", &p).unwrap();
+        let m = resolve_model("voxelcraft:block/oak_slab", &p).unwrap();
         let north = m.elements[0]
             .faces
             .iter()
@@ -886,10 +912,10 @@ mod tests {
             }]
         }"##;
         let p2 = pack(&[
-            ("assets/minecraft/models/block/auto.json", auto),
-            ("assets/minecraft/models/block/block.json", BLOCK_BLOCK),
+            ("assets/voxelcraft/models/block/auto.json", auto),
+            ("assets/voxelcraft/models/block/block.json", BLOCK_BLOCK),
         ]);
-        let m2 = resolve_model("minecraft:block/auto", &p2).unwrap();
+        let m2 = resolve_model("voxelcraft:block/auto", &p2).unwrap();
         let n2 = &m2.elements[0].faces[0];
         // autogen north uv = [x1, 16−y1, x2, 16−y2] = [0,0,16,16] → full tile
         assert!(n2.uvs.iter().all(|uv| (uv[0] - 0.0).abs() < 0.01 || (uv[0] - 1.0).abs() < 0.01));
@@ -899,11 +925,11 @@ mod tests {
     #[test]
     fn variant_y_rotation_rotates_positions_and_dirs() {
         let p = pack(&[
-            ("assets/minecraft/models/block/slab.json", SLAB_BASE),
-            ("assets/minecraft/models/block/oak_slab.json", OAK_SLAB),
-            ("assets/minecraft/models/block/block.json", BLOCK_BLOCK),
+            ("assets/voxelcraft/models/block/slab.json", SLAB_BASE),
+            ("assets/voxelcraft/models/block/oak_slab.json", OAK_SLAB),
+            ("assets/voxelcraft/models/block/block.json", BLOCK_BLOCK),
         ]);
-        let m = resolve_model("minecraft:block/oak_slab", &p).unwrap();
+        let m = resolve_model("voxelcraft:block/oak_slab", &p).unwrap();
         let r = apply_variant_rotation(&m, 0, 90);
         // top face stays a top face
         let up = r.elements[0].faces.iter().find(|f| f.dir == FaceDir::Up).unwrap();
@@ -927,10 +953,10 @@ mod tests {
             }]
         }"##;
         let p = pack(&[
-            ("assets/minecraft/models/block/rot.json", rotated),
-            ("assets/minecraft/models/block/block.json", BLOCK_BLOCK),
+            ("assets/voxelcraft/models/block/rot.json", rotated),
+            ("assets/voxelcraft/models/block/block.json", BLOCK_BLOCK),
         ]);
-        let m = resolve_model("minecraft:block/rot", &p).unwrap();
+        let m = resolve_model("voxelcraft:block/rot", &p).unwrap();
         let up = &m.elements[0].faces[0];
         // rotated corners: x²+z² pattern around center, distance 8/√2 from axis
         for v in up.verts.iter() {
@@ -950,10 +976,10 @@ mod tests {
             }
         }"##;
         let p = pack(&[
-            ("assets/minecraft/blockstates/testslab.json", bs),
-            ("assets/minecraft/models/block/slab.json", SLAB_BASE),
-            ("assets/minecraft/models/block/oak_slab.json", OAK_SLAB),
-            ("assets/minecraft/models/block/block.json", BLOCK_BLOCK),
+            ("assets/voxelcraft/blockstates/testslab.json", bs),
+            ("assets/voxelcraft/models/block/slab.json", SLAB_BASE),
+            ("assets/voxelcraft/models/block/oak_slab.json", OAK_SLAB),
+            ("assets/voxelcraft/models/block/block.json", BLOCK_BLOCK),
         ]);
         let spec = BlockDispatchSpec {
             name: "testslab",
@@ -996,10 +1022,10 @@ mod tests {
                           "faces": {"up": {"texture": "#all"}}}]
         }"##;
         let p = pack(&[
-            ("assets/minecraft/blockstates/fence.json", bs),
-            ("assets/minecraft/models/block/fence_post.json", post),
-            ("assets/minecraft/models/block/fence_side.json", side),
-            ("assets/minecraft/models/block/block.json", BLOCK_BLOCK),
+            ("assets/voxelcraft/blockstates/fence.json", bs),
+            ("assets/voxelcraft/models/block/fence_post.json", post),
+            ("assets/voxelcraft/models/block/fence_side.json", side),
+            ("assets/voxelcraft/models/block/block.json", BLOCK_BLOCK),
         ]);
         // 2 props × 2 (north/east) = 4 states
         let spec = BlockDispatchSpec {
@@ -1038,10 +1064,10 @@ mod tests {
             "elements": [{"from": [6, 0, 6], "to": [10, 16, 10],
                           "faces": {"up": {"texture": "#all"}}}]}"##;
         let p = pack(&[
-            ("assets/minecraft/blockstates/rand.json", bs),
-            ("assets/minecraft/models/block/fence_post.json", post),
-            ("assets/minecraft/models/block/fence_side.json", post),
-            ("assets/minecraft/models/block/block.json", BLOCK_BLOCK),
+            ("assets/voxelcraft/blockstates/rand.json", bs),
+            ("assets/voxelcraft/models/block/fence_post.json", post),
+            ("assets/voxelcraft/models/block/fence_side.json", post),
+            ("assets/voxelcraft/models/block/block.json", BLOCK_BLOCK),
         ]);
         let spec = BlockDispatchSpec {
             name: "rand",
@@ -1061,16 +1087,16 @@ mod tests {
     #[test]
     fn paths_map_correctly() {
         assert_eq!(
-            model_path("minecraft:block/oak_slab"),
-            "assets/minecraft/models/block/oak_slab.json"
+            model_path("voxelcraft:block/oak_slab"),
+            "assets/voxelcraft/models/block/oak_slab.json"
         );
         assert_eq!(
-            texture_path("minecraft:block/oak_planks"),
-            "assets/minecraft/textures/block/oak_planks.png"
+            texture_path("voxelcraft:block/oak_planks"),
+            "assets/voxelcraft/textures/block/oak_planks.png"
         );
         assert_eq!(
             texture_path("block/oak_planks.png"),
-            "assets/minecraft/textures/block/oak_planks.png"
+            "assets/voxelcraft/textures/block/oak_planks.png"
         );
     }
 }

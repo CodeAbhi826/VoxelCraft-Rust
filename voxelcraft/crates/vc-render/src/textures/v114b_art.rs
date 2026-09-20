@@ -6,7 +6,7 @@
 //! difference is future work, disclosed), and the iron nugget item
 //! icon.
 //!
-//! Clean-room art (no Mojang assets), a child module of textures.rs
+//! Clean-room art (no third-party assets), a child module of textures.rs
 //! (shares the art helper). Guarded by the `v114b_tiles_all_painted`
 //! coverage test — the 1.13 art-gap regression guard.
 

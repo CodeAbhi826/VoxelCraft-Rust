@@ -1,7 +1,7 @@
 //! Phase E2 procedural tiles (evolution 1.3–1.4 bracket) — clean-room
 //! art, a child module of textures.rs (shares put/jit/noise_fill/art).
 //! All pixel art is ours (distinct silhouettes/palettes); nothing is
-//! extracted or recreated from Mojang assets.
+//! extracted or recreated from third-party assets.
 
 use super::{art, jit, noise_fill, put, Rng};
 

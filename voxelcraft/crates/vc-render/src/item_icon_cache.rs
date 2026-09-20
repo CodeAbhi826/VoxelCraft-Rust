@@ -51,7 +51,7 @@ pub const ICON_CELL_PX: u32 = 64;
 pub const ICON_GRID: u32 = ICON_ATLAS_PX / ICON_CELL_PX;
 
 /// the fixed item-icon camera (Section 3).
-// VERIFIED https://minecraft.wiki/w/Model — Y-rotation 45 degrees,
+// VERIFIED https://reference wiki /Model — Y-rotation 45 degrees,
 // X-rotation 30 degrees (the standard item-icon isometric angle);
 // orthographic (no perspective); 4-px margin inside the 64x64 target.
 #[derive(Copy, Clone, Debug)]

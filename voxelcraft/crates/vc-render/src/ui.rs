@@ -1,5 +1,5 @@
 //! UI canvas (960x540 reference RGBA grid, resizable per the vanilla
-//! integer GUI-scale model) with hand-built 5x7 bitmap font, Minecraft-style
+//! integer GUI-scale model) with hand-built 5x7 bitmap font, the reference game-style
 //! widgets (buttons + sliders), title / options / pause screens, and the
 //! full 1.16.5-style HUD (hotbar, hearts, hunger, XP bar, crosshair, F3).
 //! Redrawn only when state changes; uploaded to GPU as a texture.
@@ -16,7 +16,7 @@ pub const UI_H: usize = 540;
 // ------------------------------------------- live UI size (Round 10) --
 // The vanilla 1.16.5 integer GUI-scale model: the drawn logical GUI
 // space is (framebuffer_w / scale, framebuffer_h / scale) vanilla px
-// (minecraft.wiki/w/Options, fetched live 2026-09-15: "Auto sets the
+// (reference wiki /Options, fetched live 2026-09-15: "Auto sets the
 // GUI scale to the highest value available", available =
 // max(1, min(floor(w/320), floor(h/240))) — identical to the 1.16.5
 // MainWindow#calculateScale while-loop). This engine's canvas raster
@@ -504,7 +504,7 @@ pub const ID_OPT_CHAT: u16 = 47;
 pub const ID_OPT_LANG: u16 = 48;
 pub const ID_OPT_CONTROLS: u16 = 49;
 /// Round 14 (2026-09-15): the Music & Sound screen entry — vanilla's
-/// ten per-category sliders (minecraft.wiki/w/Options §Music & Sound,
+/// ten per-category sliders (reference wiki /Options §Music & Sound,
 /// live 2026-09-15). Full-width row under VIEW BOBBING.
 pub const ID_OPT_MUSICSND: u16 = 50;
 /// Round 14: the Music & Sound screen slider rows — one per vanilla
@@ -1119,7 +1119,7 @@ pub fn layout_engine() -> Vec<Widget> {
 }
 
 /// Resource Packs — the vanilla 1.16.5 two-pane manager (VERIFIED live
-/// 2026-09-14, minecraft.wiki/w/Resource_pack §Behavior: packs "can be
+/// 2026-09-14, reference wiki /Resource_pack §Behavior: packs "can be
 /// moved between 'Available' (disabled) and 'Selected' (enabled), and
 /// reordered"; "The bottom-most pack loads first, then each pack above it
 /// replaces or merges loaded assets"; Default is "Selected by default,
@@ -1207,7 +1207,7 @@ pub fn layout_resource_packs(avail: &[String], sel: &[String]) -> Vec<Widget> {
 }
 
 /// Accessibility Settings — the 1.16.5 vanilla row set + order,
-/// live-verified 2026-09-16 (minecraft.wiki/w/Options §Accessibility
+/// live-verified 2026-09-16 (reference wiki /Options §Accessibility
 /// Settings + §History): Auto-Jump (moved here 19w11b), Sprint and
 /// Sneak Hold/Toggle (added 19w41a), Distortion Effects + FOV Effects
 /// (added 1.16.2 pre1), Show Subtitles (the Java 1.9 subtitle system's
@@ -1473,7 +1473,7 @@ pub fn layout_chat_settings() -> Vec<Widget> {
 
 /// Round 14 (2026-09-15): the Music & Sound screen — vanilla 1.16.5's
 /// ten sliders, one per SoundCategory with master at the top
-/// (minecraft.wiki/w/Options §Music & Sound, live 2026-09-15: "Music &
+/// (reference wiki /Options §Music & Sound, live 2026-09-15: "Music &
 /// Sound ... has sliders which control the volume of each sound
 /// category"). Values are patched in by the caller (game.rs) — the
 /// layout pins only the geometry. Slider ids 160..170 (ID_SND_BASE..).
@@ -1524,7 +1524,7 @@ pub fn layout_music_sound() -> Vec<Widget> {
 }
 
 /// Round 14 (2026-09-15): the Controls screen — vanilla's two-column
-/// keybind editor (minecraft.wiki/w/Controls, live 2026-09-15: rows of
+/// keybind editor (reference wiki /Controls, live 2026-09-15: rows of
 /// action + key button, categories, "Reset Keys" at the bottom). The
 /// engine's rebindable set: movement, inventory, gameplay. Row ids
 /// 180.. (ID_CTRL_BIND_BASE..); the caller patches the key labels.
@@ -1909,7 +1909,7 @@ pub fn layout_death(hardcore: bool) -> Vec<Widget> {
 
 // ------------------------------------------------- Phase 5 font core --
 // variable-width advance: glyph advance = measured ink width + 1
-// (VERIFIED https://minecraft.wiki/w/Font — "the width of each
+// (VERIFIED https://reference wiki /Font — "the width of each
 // character is the rightmost ink pixel + 1"; the space keeps a fixed
 // 4-px advance), shadow at (x+1, y+1) in foreground x 0.25.
 
@@ -1995,7 +1995,22 @@ pub(crate) fn smallcaps_slot(ch: char) -> usize {
 
 pub struct UiCanvas {
     pub px: Vec<u8>,
+    /// logical "the game wants a re-raster" flag — set by gameplay/UI
+    /// code, consumed by the game's rebuild gate (update()). It does NOT
+    /// mean "pixels changed"; see [`Self::upload_pending`].
     pub dirty: bool,
+    /// "pixels changed since the last GPU upload" — set ONLY by actual
+    /// canvas repaints (clear/resize/rebuild), consumed by the renderer's
+    /// upload step. Split from `dirty` to kill the Linux menu-freeze
+    /// race: X11/Wayland deliver SPONTANEOUS RedrawRequested events
+    /// (expose/damage/frame callbacks) between a click and the next
+    /// update() pass — the old single-flag upload there re-uploaded the
+    /// STALE canvas and cleared `dirty`, permanently suppressing the
+    /// pending rebuild: the click sound played, screen state switched,
+    /// but the old menu stayed painted forever ("clicked Singleplayer,
+    /// nothing opened"). With two flags a spontaneous redraw uploads
+    /// nothing (no fresh pixels) and can never kill the rebuild.
+    pub upload_pending: bool,
     /// Round 10 (vanilla integer GUI scale): the LIVE canvas size in
     /// canvas px. The raster is 2 canvas px per vanilla px, so at the
     /// 960×540 reference the canvas IS the classic grid (every
@@ -2171,6 +2186,7 @@ impl UiCanvas {
         UiCanvas {
             px: vec![0u8; UI_W * UI_H * 4],
             dirty: true,
+            upload_pending: true,
             live_w: UI_W,
             live_h: UI_H,
             widget_scale: 1.0,
@@ -2195,6 +2211,9 @@ impl UiCanvas {
         self.live_h = h;
         self.px = vec![0u8; w * h * 4];
         self.dirty = true;
+        // a fresh zeroed raster MUST reach the GPU even before the first
+        // rebuild, or the texture keeps the old size's garbage
+        self.upload_pending = true;
     }
 
     /// the device scale (device px per UI px) for the GPU text path —
@@ -2217,6 +2236,9 @@ impl UiCanvas {
         self.px.iter_mut().for_each(|p| *p = 0);
         self.gui_frame.clear();
         self.dirty = true;
+        // a repaint landed in the pixel buffer — the renderer must upload
+        // it (rebuild_ui always starts with clear())
+        self.upload_pending = true;
     }
 
     /// Phase 2 D2: suppress the canvas CHROME raster (the GPU quad pass
@@ -2512,7 +2534,7 @@ impl UiCanvas {
     }
 
     /// Vanilla-style splash text: yellow, tilted -20 degrees (right side
-    /// up), pulsing at 2 Hz (VERIFIED minecraft.wiki/w/Splash: "yellow
+    /// up), pulsing at 2 Hz (VERIFIED reference wiki /Splash: "yellow
     /// lines of text on the title screen... pulsates at a frequency of
     /// 2 Hz"; the tilt is the classic ~20-degree rotation at the logo's
     /// bottom-right corner).
@@ -2641,7 +2663,7 @@ impl UiCanvas {
 
     // ------------------------------------------------------ widgets ----
 
-    /// Minecraft-style button (gray body, bevel, hover tint).
+    /// the reference game-style button (gray body, bevel, hover tint).
     pub fn draw_button(&mut self, w: &Widget, hover: bool) {
         let (label, value, enabled) = match &w.kind {
             WidgetKind::Button {
@@ -2740,7 +2762,7 @@ impl UiCanvas {
         );
     }
 
-    /// Minecraft-style slider: inset track + knob (2026-09-20: modern
+    /// the reference game-style slider: inset track + knob (2026-09-20: modern
     /// flat profile — dark flat track, knob = a small modern button).
     pub fn draw_slider(&mut self, w: &Widget, hover: bool) {
         let (label, value) = match &w.kind {
@@ -2909,7 +2931,7 @@ impl UiCanvas {
     /// structure: big logo top-center, yellow splash tilted -20 degrees at
     /// the logo's bottom-right corner pulsing at 2 Hz, button stack starting
     /// at half screen height, version bottom-left, disclaimer bottom-right.
-    /// (VERIFIED minecraft.wiki/w/Title_screen + /w/Splash.)
+    /// (VERIFIED reference wiki /Title_screen + /w/Splash.)
     pub fn title_screen(&mut self, splash: &str, ws: &[Widget], hover: Option<u16>, time: f32) {
         // logo: big blocky wordmark over the panorama (vanilla draws its
         // logo with a dark outline — no dim band behind it)
@@ -3240,7 +3262,7 @@ impl UiCanvas {
     /// columns and 2 on others) — and the result is
     /// 1 − background per channel, the
     /// documented vanilla 1.16.5 crosshair behavior (technique
-    /// reference: minecraft.wiki/w/Crosshair — the classic
+    /// reference: reference wiki /Crosshair — the classic
     /// GL_ONE_MINUS_DST_COLOR blend re-expressed as wgpu
     /// BlendFactor::OneMinusDst). The plus is DARK against a bright
     /// sky/snow and LIGHT against dark terrain, so it never disappears
@@ -3549,7 +3571,7 @@ impl UiCanvas {
     }
 
     /// Sub-round 1: the status-effect icon rows, top-right (VERIFIED
-    /// minecraft.wiki/w/Heads-up_display + its 1.9 15w31a history entry,
+    /// reference wiki /Heads-up_display + its 1.9 15w31a history entry,
     /// live 2026-09-14): "When an effect is active on the player, it
     /// appears on the top-right corner of the screen. It blinks when
     /// about to run out." + "Effects that run out sooner appear farther
@@ -4015,12 +4037,12 @@ impl UiCanvas {
                 // (helmet..boots top to bottom), the player model preview
                 // beside it with the offhand slot in its boxed recess
                 // below, the 2x2 craft grid + arrow + result on the
-                // right. Reference facts (minecraft.wiki/w/Inventory,
+                // right. Reference facts (reference wiki /Inventory,
                 // live 2026-09-15): "The inventory consists of 4 armor
                 // slots, 27 storage slots, 9 hotbar slots, and an
                 // off-hand slot"; "There is also a 2x2 crafting grid";
                 // "Pressing the F key moves the selected item to and from
-                // the hotbar slot and the off-hand slot". No Mojang asset
+                // the hotbar slot and the off-hand slot". No third-party asset
                 // was read, copied, or traced.
                 let ax = px0 + 16; // armor column x
                 let ay = y0 + 8;
@@ -4857,7 +4879,7 @@ impl UiCanvas {
             if !s.is_empty() {
                 let label: String = if advanced_tooltips {
                     let id: String = name(s.block).to_lowercase().replace(' ', "_");
-                    format!("{} (minecraft:{})", name(s.block), id)
+                    format!("{} (voxelcraft:{})", name(s.block), id)
                 } else {
                     name(s.block).to_string()
                 };
@@ -5119,7 +5141,7 @@ impl UiCanvas {
     /// (6 + 6 tabs, icon-only folder tabs), a 9x5 slot grid with a
     /// right scrollbar, the tab title above the grid (the Search tab
     /// replaces it with a search field), and the hotbar + destroy slot
-    /// at the bottom. Reference facts: minecraft.wiki/w/Creative_
+    /// at the bottom. Reference facts: reference wiki /Creative_
     /// inventory (live 2026-09-15): the nine content tabs + Search
     /// Items + Saved Hotbars + Survival Inventory (live fetch
     /// 2026-09-17: "There are also Search Items, Saved Hotbars and
@@ -5130,7 +5152,7 @@ impl UiCanvas {
     /// while hovering over an item instantly places one full stack of
     /// that item into the hotbar slot"; the destroy slot. Proportions
     /// are the engine's established 2x container geometry (40px slots
-    /// on the 960x540 canvas). No Mojang asset was read, copied, or
+    /// on the 960x540 canvas). No third-party asset was read, copied, or
     /// traced.
     #[allow(clippy::too_many_arguments)]
     pub fn creative_screen(
@@ -5397,7 +5419,7 @@ impl UiCanvas {
             .map(|n| {
                 if advanced_tooltips {
                     let id: String = n.to_lowercase().replace(' ', "_");
-                    format!("{n} (minecraft:{id})")
+                    format!("{n} (voxelcraft:{id})")
                 } else {
                     n.to_string()
                 }
@@ -5535,7 +5557,7 @@ impl UiCanvas {
     }
 
     /// World-loading screen — vanilla 1.16.5 Java structure (VERIFIED
-    /// minecraft.wiki/w/Loading_world_screen): "Loading world" centered at
+    /// reference wiki /Loading_world_screen): "Loading world" centered at
     /// the top, the load percentage under it, and a 35x35 chunk colormap in
     /// the middle that populates outward as chunks generate/light/mesh —
     /// each pixel is one chunk, colored by pipeline status. The background
@@ -7322,7 +7344,7 @@ mod screen_tests {
     /// vanilla 176x166 shape (scaled 2x): the LEFT armor column in
     /// helmet..boots order, the offhand slot below it, the 2x2 craft
     /// grid + output on the right, the 9x3 storage + 9x1 hotbar below.
-    /// (minecraft.wiki/w/Inventory, live 2026-09-15: "The inventory
+    /// (reference wiki /Inventory, live 2026-09-15: "The inventory
     /// consists of 4 armor slots, 27 storage slots, 9 hotbar slots, and
     /// an off-hand slot"; "There is also a 2x2 crafting grid".)
     #[test]
@@ -7394,7 +7416,7 @@ mod screen_tests {
     /// (single chest 173 vanilla-eq px vs 166; the same +3-row growth
     /// → the double's 239 vanilla-eq vs 220) — the SLOT GRID itself is
     /// exactly vanilla: 9 columns × 6 rows at the 20-px pitch, +3 rows
-    /// over the single chest. (minecraft.wiki/w/Chest §Double chests,
+    /// over the single chest. (reference wiki /Chest §Double chests,
     /// live 2026-09-15.)
     #[test]
     fn double_chest_screen_geometry() {
@@ -7469,7 +7491,7 @@ mod screen_tests {
     /// Sub-round 2 (2026-09-15): the tabbed creative screen geometry —
     /// the 11-tab strip in vanilla order, the 9x5 grid page, the hotbar
     /// and destroy-slot hit rects, and the scrollbar presence rule.
-    /// (minecraft.wiki/w/Creative_inventory, live 2026-09-15: nine
+    /// (reference wiki /Creative_inventory, live 2026-09-15: nine
     /// content tabs, Search Items, and Survival Inventory; 9 columns
     /// and 5 rows = 45 slots per page with a scrollbar when the tab has
     /// more items than one page.)
@@ -7572,7 +7594,7 @@ mod screen_tests {
     }
 
     /// Sub-round 1 (2026-09-14): the creative HUD now hides the XP bar
-    /// and bubbles too — VERIFIED minecraft.wiki/w/Heads-up_display
+    /// and bubbles too — VERIFIED reference wiki /Heads-up_display
     /// (live 2026-09-14): "In Creative mode, the health, hunger, oxygen,
     /// experience, and armor bars are hidden." The retired
     /// `xp_bar_only()` (creative XP + bubbles) is replaced by this
@@ -7592,7 +7614,7 @@ mod screen_tests {
     /// Sub-round 2/3 round (2026-09-15, the user's "what about the
     /// effects" callout): effect icons render with NO status_bars call
     /// — i.e. in Creative mode, where every status row is hidden but
-    /// the effect icons stay. VERIFIED minecraft.wiki/w/
+    /// the effect icons stay. VERIFIED reference wiki /
     /// Heads-up_display (live 2026-09-14): "All effects ... the player
     /// currently has are shown on the top-right of the screen" with no
     /// Creative exception (the hidden list is "health, hunger, oxygen,

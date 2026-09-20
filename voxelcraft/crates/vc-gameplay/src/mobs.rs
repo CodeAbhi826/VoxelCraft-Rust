@@ -4,7 +4,7 @@
 //! explicitly deferred (see DEFERRED_ENTITIES).
 //!
 //! Phase E1 (evolution 1.0–1.2 bracket): +7 mobs, all live-verified
-//! 2026-09-06 against minecraft.wiki (see
+//! 2026-09-06 against the reference wiki (see
 //! docs/research/phase1-1.0-1.2-research.md for the audit trail):
 //! - Snow Golem (4 HP, snowball 0 dmg / 3 vs blaze, 1/s at ≤ 10 blocks)
 //! - Magma Cube (HP = size², dmg = size+2, armor = 3×size, splits 2–4)
@@ -14,7 +14,7 @@
 //! - Zombie Villager (20 HP, 0/50/100% conversion by difficulty, curable)
 //! - Mooshroom (10 HP, mushroom-fields only, weight 8/8, herds 4–8)
 //!
-//! VERIFIED data (minecraft.wiki, pulled 2026-09-04 per the verification
+//! VERIFIED data (the reference wiki, pulled 2026-09-04 per the verification
 //! discipline — NOT from dossier memory):
 //! - per-mob health / speed attribute / damage rows (infobox "Health
 //!   points", "Speed", "Attack strength") — see MOB_DATA
@@ -78,7 +78,7 @@ pub enum MobKind {
     Horse,
     Donkey,
     Mule,
-    /// 1.8 (Bountiful Update): the rabbit — VERIFIED live (minecraft.wiki
+    /// 1.8 (Bountiful Update): the rabbit — VERIFIED live (the reference wiki
     /// /w/Rabbit, 2026-09-06): 3 HP, avoids players within 8 blocks,
     /// 0-1 raw rabbit + 0-1 rabbit hide on death, a 10% rabbit's foot on
     /// a player kill
@@ -258,7 +258,7 @@ pub enum MobKind {
     // ---- the 1.0-1.16.5 completeness audit (2026-09-08): the three
     // classic mobs no earlier bracket ever accounted for ----
     /// The ghast — the floating Nether artillery. VERIFIED
-    /// (minecraft.wiki/w/Ghast, live 2026-09-08, capture
+    /// (reference wiki /Ghast, live 2026-09-08, capture
     /// scripts/audit16_page_Ghast.json): 10 HP hostile, hitbox
     /// 4.0×4.0 ("They have a hitbox of 4×4×4 blocks"), speed 0.7,
     /// fireball impact "Normal: 6 HP", "target players within 64
@@ -307,6 +307,18 @@ pub enum MobKind {
 }
 
 impl MobKind {
+    /// Parse a registry id from ANY source: our own `voxelcraft:` ids,
+    /// ids written by older builds of this engine (legacy namespace
+    /// prefix), or bare names. Read-side format interop — see the
+    /// datapack namespace notes in vc-pack.
+    pub fn from_registry_id(s: &str) -> Option<MobKind> {
+        let bare = s
+            .strip_prefix("voxelcraft:")
+            .or_else(|| s.strip_prefix("minecraft:"))
+            .unwrap_or(s);
+        MobKind::from_name(bare)
+    }
+
     pub fn from_name(s: &str) -> Option<MobKind> {
         Some(match s {
             "zombie" => MobKind::Zombie,
@@ -369,65 +381,65 @@ impl MobKind {
     /// Entity-type registry name (vanilla strings, mechanical data).
     pub fn name(self) -> &'static str {
         match self {
-            MobKind::Zombie => "minecraft:zombie",
-            MobKind::Skeleton => "minecraft:skeleton",
-            MobKind::Creeper => "minecraft:creeper",
-            MobKind::Spider => "minecraft:spider",
-            MobKind::Enderman => "minecraft:enderman",
-            MobKind::Cow => "minecraft:cow",
-            MobKind::Pig => "minecraft:pig",
-            MobKind::Sheep => "minecraft:sheep",
-            MobKind::Chicken => "minecraft:chicken",
-            MobKind::SnowGolem => "minecraft:snow_golem",
-            MobKind::MagmaCube => "minecraft:magma_cube",
-            MobKind::Blaze => "minecraft:blaze",
-            MobKind::Ocelot => "minecraft:ocelot",
-            MobKind::IronGolem => "minecraft:iron_golem",
-            MobKind::ZombieVillager => "minecraft:zombie_villager",
-            MobKind::Mooshroom => "minecraft:mooshroom",
-            MobKind::WitherSkeleton => "minecraft:wither_skeleton",
-            MobKind::Witch => "minecraft:witch",
-            MobKind::Bat => "minecraft:bat",
-            MobKind::Horse => "minecraft:horse",
-            MobKind::Donkey => "minecraft:donkey",
-            MobKind::Mule => "minecraft:mule",
-            MobKind::Rabbit => "minecraft:rabbit",
-            MobKind::PolarBear => "minecraft:polar_bear",
-            MobKind::Stray => "minecraft:stray",
-            MobKind::Husk => "minecraft:husk",
-            MobKind::Llama => "minecraft:llama",
-            MobKind::Parrot => "minecraft:parrot",
-            MobKind::Illusioner => "minecraft:illusioner",
-            MobKind::Vindicator => "minecraft:vindicator",
-            MobKind::Evoker => "minecraft:evoker",
-            MobKind::Vex => "minecraft:vex",
-            MobKind::Drowned => "minecraft:drowned",
-            MobKind::Phantom => "minecraft:phantom",
-            MobKind::Dolphin => "minecraft:dolphin",
-            MobKind::Cod => "minecraft:cod",
-            MobKind::Salmon => "minecraft:salmon",
-            MobKind::Pufferfish => "minecraft:pufferfish",
-            MobKind::TropicalFish => "minecraft:tropical_fish",
-            MobKind::Turtle => "minecraft:turtle",
+            MobKind::Zombie => "voxelcraft:zombie",
+            MobKind::Skeleton => "voxelcraft:skeleton",
+            MobKind::Creeper => "voxelcraft:creeper",
+            MobKind::Spider => "voxelcraft:spider",
+            MobKind::Enderman => "voxelcraft:enderman",
+            MobKind::Cow => "voxelcraft:cow",
+            MobKind::Pig => "voxelcraft:pig",
+            MobKind::Sheep => "voxelcraft:sheep",
+            MobKind::Chicken => "voxelcraft:chicken",
+            MobKind::SnowGolem => "voxelcraft:snow_golem",
+            MobKind::MagmaCube => "voxelcraft:magma_cube",
+            MobKind::Blaze => "voxelcraft:blaze",
+            MobKind::Ocelot => "voxelcraft:ocelot",
+            MobKind::IronGolem => "voxelcraft:iron_golem",
+            MobKind::ZombieVillager => "voxelcraft:zombie_villager",
+            MobKind::Mooshroom => "voxelcraft:mooshroom",
+            MobKind::WitherSkeleton => "voxelcraft:wither_skeleton",
+            MobKind::Witch => "voxelcraft:witch",
+            MobKind::Bat => "voxelcraft:bat",
+            MobKind::Horse => "voxelcraft:horse",
+            MobKind::Donkey => "voxelcraft:donkey",
+            MobKind::Mule => "voxelcraft:mule",
+            MobKind::Rabbit => "voxelcraft:rabbit",
+            MobKind::PolarBear => "voxelcraft:polar_bear",
+            MobKind::Stray => "voxelcraft:stray",
+            MobKind::Husk => "voxelcraft:husk",
+            MobKind::Llama => "voxelcraft:llama",
+            MobKind::Parrot => "voxelcraft:parrot",
+            MobKind::Illusioner => "voxelcraft:illusioner",
+            MobKind::Vindicator => "voxelcraft:vindicator",
+            MobKind::Evoker => "voxelcraft:evoker",
+            MobKind::Vex => "voxelcraft:vex",
+            MobKind::Drowned => "voxelcraft:drowned",
+            MobKind::Phantom => "voxelcraft:phantom",
+            MobKind::Dolphin => "voxelcraft:dolphin",
+            MobKind::Cod => "voxelcraft:cod",
+            MobKind::Salmon => "voxelcraft:salmon",
+            MobKind::Pufferfish => "voxelcraft:pufferfish",
+            MobKind::TropicalFish => "voxelcraft:tropical_fish",
+            MobKind::Turtle => "voxelcraft:turtle",
             // 1.14: the fox
-            MobKind::Fox => "minecraft:fox",
-            MobKind::Bee => "minecraft:bee",
+            MobKind::Fox => "voxelcraft:fox",
+            MobKind::Bee => "voxelcraft:bee",
             // 1.16 (Nether Update, part 2)
-            MobKind::Strider => "minecraft:strider",
-            MobKind::Piglin => "minecraft:piglin",
-            MobKind::Hoglin => "minecraft:hoglin",
-            MobKind::Ghast => "minecraft:ghast",
-            MobKind::CaveSpider => "minecraft:cave_spider",
-            MobKind::Silverfish => "minecraft:silverfish",
+            MobKind::Strider => "voxelcraft:strider",
+            MobKind::Piglin => "voxelcraft:piglin",
+            MobKind::Hoglin => "voxelcraft:hoglin",
+            MobKind::Ghast => "voxelcraft:ghast",
+            MobKind::CaveSpider => "voxelcraft:cave_spider",
+            MobKind::Silverfish => "voxelcraft:silverfish",
             // classification-only marker (see the enum doc) — still
             // carries its vanilla registry id for completeness
-            MobKind::Squid => "minecraft:squid",
-            MobKind::ZombifiedPiglin => "minecraft:zombified_piglin",
+            MobKind::Squid => "voxelcraft:squid",
+            MobKind::ZombifiedPiglin => "voxelcraft:zombified_piglin",
         }
     }
 
     /// The 1.13 entity-id registry spelling (VERIFIED: the 1.13 id set
-    /// on minecraft.wiki). Semantic alias of [`MobKind::name`] kept as
+    /// on the reference wiki). Semantic alias of [`MobKind::name`] kept as
     /// its own accessor so registry-id consumers (spawn data, /summon
     /// parity checks, save files) read distinctly from display-name
     /// consumers.
@@ -952,7 +964,7 @@ pub const MOB_DATA: [MobDef; 49] = [
         xp: 5,
     },
     // ---- F-series (1.8/1.10 additions, live-verified 2026-09-06) ----
-    // 1.8 rabbit — VERIFIED (minecraft.wiki/w/Rabbit): 3 HP; avoids
+    // 1.8 rabbit — VERIFIED (reference wiki /Rabbit): 3 HP; avoids
     // players within 8 blocks (panics fast when approached)
     MobDef {
         kind: MobKind::Rabbit,
@@ -1088,7 +1100,7 @@ pub const MOB_DATA: [MobDef; 49] = [
         xp: 0,
     },
     // ---- Phase E3 (1.5–1.6 bracket) — all VERIFIED live 2026-09-06
-    // (minecraft.wiki/w/Horse §Health/§Movement_speed/§Jump_strength,
+    // (reference wiki /Horse §Health/§Movement_speed/§Jump_strength,
     // w/Donkey, w/Mule): the DEF rows carry the wiki AVERAGE / midpoint
     // values; per-instance randomization happens at spawn (below) ----
     MobDef {
@@ -1502,7 +1514,7 @@ pub fn begin_cure(m: &mut Mob, rng: &mut Rng) {
 
 /// Phase E3 (1.5–1.6 bracket): per-instance equine state (horses,
 /// donkeys, mules). All rules VERIFIED live 2026-09-06,
-/// minecraft.wiki/w/Horse:
+/// reference wiki /Horse:
 /// - temper starts 0/100; a random taming THRESHOLD 0–99 is chosen at
 ///   the first mount; each failed mount adds +5 temper; tame once the
 ///   temper EXCEEDS the threshold
@@ -4153,7 +4165,7 @@ fn ai_tick(
 
     // ---- the completeness audit: CHICKEN egg laying —
     // environmental (the turtle/fox precedent, player-independent).
-    // VERIFIED (minecraft.wiki/w/Egg, live 2026-09-08, capture
+    // VERIFIED (reference wiki /Egg, live 2026-09-08, capture
     // scripts/audit16_page_Egg.json): "Every adult chicken lays an
     // egg item every 5-10 minutes ... The theoretical average would
     // be expected at 1 egg every 7.5 minutes (9000 game ticks)".
@@ -6944,7 +6956,7 @@ mod tests {
         assert_eq!(MOB_DATA.len(), 49); // + 1.11 four + 1.12 two + 1.13 eight + 1.14 fox + 1.16 three + the audit trio + the backlog zombified piglin
         for d in MOB_DATA.iter() {
             assert_eq!(
-                MobKind::from_name(d.kind.name().strip_prefix("minecraft:").unwrap()),
+                MobKind::from_name(d.kind.name().strip_prefix("voxelcraft:").unwrap()),
                 Some(d.kind)
             );
             // 255 = "no egg item yet" (F-series rabbit/polar-bear/stray/
@@ -7507,14 +7519,14 @@ mod v18_tests {
     #[test]
     fn rabbit_data_and_behavior() {
         let d = def(MobKind::Rabbit);
-        // VERIFIED (minecraft.wiki/w/Rabbit): 3 HP
+        // VERIFIED (reference wiki /Rabbit): 3 HP
         assert_eq!(d.health, 3.0);
         assert!(
             !MobKind::Rabbit.hostile() && !MobKind::Rabbit.neutral(),
             "passive"
         );
         assert_eq!(MobKind::from_name("rabbit"), Some(MobKind::Rabbit));
-        assert_eq!(MobKind::Rabbit.name(), "minecraft:rabbit");
+        assert_eq!(MobKind::Rabbit.name(), "voxelcraft:rabbit");
         // the mob registry includes it in the herd roll
         assert!(MOB_DATA.iter().any(|m| m.kind == MobKind::Rabbit));
     }
@@ -7563,9 +7575,9 @@ mod v110_tests {
         // stray + husk inherit their base kinds' hostility
         assert!(MobKind::Stray.hostile() && MobKind::Husk.hostile());
         // registry names
-        assert_eq!(MobKind::PolarBear.name(), "minecraft:polar_bear");
-        assert_eq!(MobKind::Stray.name(), "minecraft:stray");
-        assert_eq!(MobKind::Husk.name(), "minecraft:husk");
+        assert_eq!(MobKind::PolarBear.name(), "voxelcraft:polar_bear");
+        assert_eq!(MobKind::Stray.name(), "voxelcraft:stray");
+        assert_eq!(MobKind::Husk.name(), "voxelcraft:husk");
         // stray/husk data mirror skeleton/zombie stats
         let sk = def(MobKind::Skeleton);
         let st = def(MobKind::Stray);
@@ -8335,17 +8347,17 @@ mod v113_tests {
             assert_eq!(MobKind::from_egg(k.egg_id()), k, "{k:?} egg roundtrip");
         }
         // registry ids (VERIFIED: the 1.13 entity id set)
-        assert_eq!(MobKind::Drowned.registry_id(), "minecraft:drowned");
-        assert_eq!(MobKind::Phantom.registry_id(), "minecraft:phantom");
-        assert_eq!(MobKind::Dolphin.registry_id(), "minecraft:dolphin");
-        assert_eq!(MobKind::Cod.registry_id(), "minecraft:cod");
-        assert_eq!(MobKind::Salmon.registry_id(), "minecraft:salmon");
-        assert_eq!(MobKind::Pufferfish.registry_id(), "minecraft:pufferfish");
+        assert_eq!(MobKind::Drowned.registry_id(), "voxelcraft:drowned");
+        assert_eq!(MobKind::Phantom.registry_id(), "voxelcraft:phantom");
+        assert_eq!(MobKind::Dolphin.registry_id(), "voxelcraft:dolphin");
+        assert_eq!(MobKind::Cod.registry_id(), "voxelcraft:cod");
+        assert_eq!(MobKind::Salmon.registry_id(), "voxelcraft:salmon");
+        assert_eq!(MobKind::Pufferfish.registry_id(), "voxelcraft:pufferfish");
         assert_eq!(
             MobKind::TropicalFish.registry_id(),
-            "minecraft:tropical_fish"
+            "voxelcraft:tropical_fish"
         );
-        assert_eq!(MobKind::Turtle.registry_id(), "minecraft:turtle");
+        assert_eq!(MobKind::Turtle.registry_id(), "voxelcraft:turtle");
     }
 
     /// VERIFIED w/Drowned §Attacking: "A drowned with a trident can
@@ -8763,7 +8775,7 @@ mod v114_tests {
         assert_eq!(MobKind::from_egg(40), MobKind::Fox);
         assert_eq!(MobKind::Fox.egg_id(), 40);
         assert_eq!(MobKind::from_name("fox"), Some(MobKind::Fox));
-        assert_eq!(MobKind::Fox.name(), "minecraft:fox");
+        assert_eq!(MobKind::Fox.name(), "voxelcraft:fox");
         // the sprite tile
         assert_eq!(MobKind::Fox.sprite_tile(), TILE_MOB_FOX);
     }
@@ -9563,11 +9575,11 @@ fn v116b_forest_mob_def_rows() {
     assert!(MobKind::Hoglin.hostile(), "hoglins are the hostile row");
     assert!(!MobKind::Hoglin.neutral());
     // the registry + egg mapping (kinds 42..=44)
-    assert_eq!(MobKind::Strider.name(), "minecraft:strider");
-    assert_eq!(MobKind::Piglin.name(), "minecraft:piglin");
+    assert_eq!(MobKind::Strider.name(), "voxelcraft:strider");
+    assert_eq!(MobKind::Piglin.name(), "voxelcraft:piglin");
     assert_eq!(
         MobKind::Hoglin.name(),
-        "minecraft:piglin".replace("piglin", "hoglin")
+        "voxelcraft:piglin".replace("piglin", "hoglin")
     );
     assert_eq!(MobKind::from_name("strider"), Some(MobKind::Strider));
     assert_eq!(MobKind::from_name("piglin"), Some(MobKind::Piglin));
@@ -9585,9 +9597,9 @@ fn v116b_forest_mob_def_rows() {
     assert_eq!(MobKind::Ghast.sprite_tile(), TILE_MOB_GHAST);
     assert_eq!(MobKind::CaveSpider.sprite_tile(), TILE_MOB_CAVESPIDER);
     assert_eq!(MobKind::Silverfish.sprite_tile(), TILE_MOB_SILVERFISH);
-    assert_eq!(MobKind::Ghast.name(), "minecraft:ghast");
-    assert_eq!(MobKind::CaveSpider.name(), "minecraft:cave_spider");
-    assert_eq!(MobKind::Silverfish.name(), "minecraft:silverfish");
+    assert_eq!(MobKind::Ghast.name(), "voxelcraft:ghast");
+    assert_eq!(MobKind::CaveSpider.name(), "voxelcraft:cave_spider");
+    assert_eq!(MobKind::Silverfish.name(), "voxelcraft:silverfish");
     assert!(MobKind::Ghast.hostile());
     assert!(MobKind::CaveSpider.hostile());
     assert!(MobKind::Silverfish.hostile());

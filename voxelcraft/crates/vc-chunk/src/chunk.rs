@@ -1,5 +1,5 @@
 //! Chunk storage: 16 × 256 × 16 column of **16³ paletted sections**
-//! (Minecraft 1.16.5 `PalettedContainer` semantics, see
+//! (the 1.16.5 reference game `PalettedContainer` semantics, see
 //! docs/research/mc-chunk-internals.md):
 //!
 //! * each `Section` keeps a local palette (index → state id) plus a

@@ -48,7 +48,7 @@ pub enum Biome {
     /// VERIFIED w/Mushroom_Fields, live 2026-09-06). Internal id 14
     /// (vanilla's real registry id is 14 = mushroom_fields, matching).
     MushroomFields = 14,
-    // ---- 1.7.2 bracket (live-verified minecraft.wiki/w/Java_Edition_1.7.2):
+    // ---- 1.7.2 bracket (live-verified reference wiki /Java_Edition_1.7.2):
     // the four headliner overworld additions of the Update that Changed
     // the World. [merge renumber] shifted 14..=17 -> 15..=18 past the E1
     // MushroomFields id ----
@@ -57,10 +57,10 @@ pub enum Biome {
     IceSpikes = 17,
     DarkForest = 18,
     // ---- 1.13 bracket (Update Aquatic): the ocean temperature split
-    // (VERIFIED live 2026-09-07, minecraft.wiki/w/Java_Edition_1.13
-    // §World generation: "Added minecraft:warm_ocean (Warm Ocean),
-    // minecraft:lukewarm_ocean (Lukewarm Ocean), minecraft:cold_ocean
-    // (Cold Ocean) ... minecraft:frozen_ocean (Frozen Ocean) now
+    // (VERIFIED live 2026-09-07, reference wiki /Java_Edition_1.13
+    // §World generation: "Added voxelcraft:warm_ocean (Warm Ocean),
+    // voxelcraft:lukewarm_ocean (Lukewarm Ocean), voxelcraft:cold_ocean
+    // (Cold Ocean) ... voxelcraft:frozen_ocean (Frozen Ocean) now
     // generates again"). Internal ids 19..=22 (vanilla registry ids
     // 44/45/46/10 — the deep variants are depth-cosmetic and fold into
     // these families here, disclosed). The pre-1.13 "Ocean" (id 0)
@@ -605,7 +605,7 @@ pub struct TerrainGen {
     /// §28: which dimension this generator produces
     pub dim: Dimension,
     /// Phase E3 (1.5–1.6 bracket): Superflat world type (VERIFIED live
-    /// 2026-09-06, minecraft.wiki/w/Superflat: classic preset = "one
+    /// 2026-09-06, reference wiki /Superflat: classic preset = "one
     /// layer of grass blocks and two layers of dirt, followed by
     /// bedrock", plains biome; JE also generates villages/strongholds —
     /// the engine's flat mode generates NO structures, disclosed
@@ -613,7 +613,7 @@ pub struct TerrainGen {
     pub flat: bool,
     /// 2026-09-14 parity round: the vanilla "Generate Structures"
     /// world-create option (options key `generate-structures`, on the
-    /// More World Options page — VERIFIED minecraft.wiki/w/Java_Edition_1.3.1
+    /// More World Options page — VERIFIED reference wiki /Java_Edition_1.3.1
     /// §Changes: "New world-generation option: generate structures").
     /// OFF gates every structure emit below (dungeons, villages,
     /// mineshafts, pyramids, jungle temples, mansions, strongholds);
@@ -1005,7 +1005,7 @@ impl TerrainGen {
     /// water columns (ocean/beach/river border columns keep a 12-block
     /// floor margin where the neighbor chunk can't be inspected —
     /// disclosed). Shape: chain of ellipsoids along the path — the
-    /// documented pre-1.18 "carver cave" structure (minecraft.wiki
+    /// documented pre-1.18 "carver cave" structure (the reference wiki
     /// w/Cave §Carver caves).
     fn cave_worms_near(&self, cx: i32, cz: i32) -> Vec<CaveWorm> {
         const CAVE_PROB: f32 = 0.14285715;
@@ -1506,7 +1506,7 @@ impl TerrainGen {
                 // bedrock floor (vanilla shape): y=0 always; y=1..4 with
                 // the decreasing per-column chance (draw r ∈ 0..4;
                 // bedrock for y ≤ r — the 100/80/60/40/20% stack,
-                // minecraft.wiki/w/Bedrock: "the five bottommost layers
+                // reference wiki /Bedrock: "the five bottommost layers
                 // ... in a rough pattern"; hash-based draw, disclosed)
                 let br = (Rng::hash3(self.seed ^ 0xBED0, wx, 0, wz) % 5) as i32;
                 for y in 0..=br.min(4) {
@@ -4105,7 +4105,7 @@ impl TerrainGen {
 
     // ------------------------------------------------- Phase 10 structures --
     // Four deferred structures from the Part 1 §2 gap table, every numeric
-    // rule live-verified from minecraft.wiki (2026-09-04) with the
+    // rule live-verified from the reference wiki (2026-09-04) with the
     // adaptation notes inline. All of them follow the established pure/
     // deterministic layout style (region queries + per-chunk clipped emit
     // like villages; validated against the same carved-terrain replica
@@ -4479,7 +4479,7 @@ impl TerrainGen {
     }
 
     // ---- 1.11 woodland mansion (VERIFIED live 2026-09-07,
-    // minecraft.wiki/w/Woodland_Mansion: "generate rarely in dark
+    // reference wiki /Woodland_Mansion: "generate rarely in dark
     // forests"; "three floors"; "The top floor is about half the size
     // of the lower floors"; "generate a cobblestone foundation
     // underneath the entire structure"; "Consist mostly of cobblestone
@@ -4793,7 +4793,7 @@ impl TerrainGen {
             put(chunk, px + 2, y + 1, pz + (i - 1), END_PORTAL_FRAME);
         }
         // the completeness audit: the stronghold's silverfish spawner —
-        // VERIFIED (minecraft.wiki/w/Silverfish, live 2026-09-08, capture
+        // VERIFIED (reference wiki /Silverfish, live 2026-09-08, capture
         // scripts/audit16_page_Silverfish.json): "Stronghold: from
         // infested blocks and monster spawners". The engine form: one
         // spawner in the portal room's upper center (vanilla's own
@@ -6483,7 +6483,7 @@ mod phase10_tests {
 
 /// 1.7.2 bracket — the Update that Changed the World world-gen tests.
 /// Every claim is the live-verified changelog text
-/// (minecraft.wiki/w/Java_Edition_1.7.2, 2026-09-06 round).
+/// (reference wiki /Java_Edition_1.7.2, 2026-09-06 round).
 #[cfg(test)]
 mod v172_tests {
     use super::*;
@@ -6756,7 +6756,7 @@ mod v172_tests {
 }
 
 /// 1.10 bracket — Frostburn Update world-gen tests (live-verified
-/// minecraft.wiki/w/Java_Edition_1.10, 2026-09-06).
+/// reference wiki /Java_Edition_1.10, 2026-09-06).
 #[cfg(test)]
 mod v110_tests {
     use super::*;
@@ -7078,7 +7078,7 @@ mod e2_tests {
 
     #[test]
     fn phase_e3_superflat_is_the_classic_preset() {
-        // VERIFIED live 2026-09-06 (minecraft.wiki/w/Superflat): "one
+        // VERIFIED live 2026-09-06 (reference wiki /Superflat): "one
         // layer of grass blocks and two layers of dirt, followed by
         // bedrock" — the classic preset, plains biome
         let gen = TerrainGen::for_dimension_flat(777, Dimension::Overworld);

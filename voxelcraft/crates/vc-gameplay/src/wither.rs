@@ -1,5 +1,5 @@
 //! Phase E2 (evolution 1.3–1.4 bracket): the wither boss fight.
-//! All values live-verified 2026-09-06 against minecraft.wiki
+//! All values live-verified 2026-09-06 against the reference wiki
 //! (docs/research/phase2-1.3-1.4-research.md):
 //! - health 300, Java row regardless of difficulty (w/Wither infobox)
 //! - summon: 4 soul sand in a T + 3 wither-skeleton skulls on the upper

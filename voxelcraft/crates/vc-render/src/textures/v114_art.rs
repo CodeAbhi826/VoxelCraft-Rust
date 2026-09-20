@@ -5,7 +5,7 @@
 //! the fox spawn egg (via the E-series egg convention) and the fox mob
 //! sprite.
 //!
-//! Clean-room art (no Mojang assets), a child module of textures.rs
+//! Clean-room art (no third-party assets), a child module of textures.rs
 //! (shares put/jit/noise_fill/art helpers). Guarded by the
 //! `v114_tiles_all_painted` coverage test — the 1.13 art-gap regression
 //! (a window with TILE_MAX raised but no painters renders BLANK) can

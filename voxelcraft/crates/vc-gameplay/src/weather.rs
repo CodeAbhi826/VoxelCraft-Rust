@@ -1,6 +1,6 @@
 //! 1.16-backlog bracket 1: the Java weather state machine.
 //!
-//! VERIFIED against minecraft.wiki/w/Weather (live 2026-09-09, raw capture
+//! VERIFIED against reference wiki /Weather (live 2026-09-09, raw capture
 //! `scripts/backlog_page_Weather.json`) — every constant below is a wiki
 //! row, not an invention:
 //!

@@ -1,0 +1,6 @@
+{
+  "variants": {
+    "half=bottom": { "model": "voxelcraft:block/oak_slab" },
+    "half=top":    { "model": "voxelcraft:block/oak_slab", "x": 180 }
+  }
+}

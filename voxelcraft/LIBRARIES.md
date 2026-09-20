@@ -9,7 +9,7 @@ deliberately **no all-in-one bundle**.
 
 | Library | What it is | Depends on | Source |
 |---|---|---|---|
-| [`vc-nbt`](crates/vc-nbt/README.md) | Minecraft 1.16.5 NBT codec | nothing (only `serde` for derive support) | `crates/vc-nbt` |
+| [`vc-nbt`](crates/vc-nbt/README.md) | the 1.16.5 reference game NBT codec | nothing (only `serde` for derive support) | `crates/vc-nbt` |
 | [`vc-blocks`](crates/vc-blocks/README.md) | block registry & BlockState system | nothing | `crates/vc-blocks` |
 | [`vc-rng`](crates/vc-rng/README.md) | deterministic RNG | nothing | `crates/vc-rng` |
 | [`vc-chunk`](crates/vc-chunk/README.md) | chunk & section storage | vc-blocks (for state queries) | `crates/vc-chunk` |

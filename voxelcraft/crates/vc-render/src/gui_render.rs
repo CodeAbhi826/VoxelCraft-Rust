@@ -183,26 +183,26 @@ impl Default for GuiRenderConfig {
 /// UI-scale factor: repo chrome = 2x vanilla logical pixels
 pub const GUI_SCALE: i32 = 2;
 
-/// VERIFIED https://minecraft.wiki — button chrome 20x20 9-slice source
+/// VERIFIED https://the reference wiki — button chrome 20x20 9-slice source
 /// with 4-px corners (2-px bevels inset 1 px inside the 1-px outlines).
 const BTN_SRC: i32 = 20;
 const BTN_CORNER: i32 = 4;
-/// VERIFIED https://minecraft.wiki — hover overlay #FFFFFF at alpha
+/// VERIFIED https://the reference wiki — hover overlay #FFFFFF at alpha
 /// 51 (= 0.2).
 const HOVER_TINT: [f32; 4] = [1.0, 1.0, 1.0, 51.0 / 255.0];
-/// VERIFIED https://minecraft.wiki — slot 18x18 (rendered 36x36),
+/// VERIFIED https://the reference wiki — slot 18x18 (rendered 36x36),
 /// panel 20x20 9-slice.
 const SLOT_SRC: i32 = 18;
 /// HUD sprites 9x9 → 18x18.
 const HUD_SRC: i32 = 9;
 const HUD_DST: i32 = 18;
-/// VERIFIED https://minecraft.wiki — hotbar background 182x22,
+/// VERIFIED https://the reference wiki — hotbar background 182x22,
 /// selection frame 24x22.
 const HOTBAR_BG_SRC: i32 = 182;
 const HOTBAR_BG_DST: i32 = 364;
 const HOTBAR_SEL_SRC: i32 = 24;
 const HOTBAR_SEL_DST: i32 = 48;
-/// VERIFIED https://minecraft.wiki — options background tiles a 16x16
+/// VERIFIED https://the reference wiki — options background tiles a 16x16
 /// dirt tile at 0.25 brightness (darkness baked into the sprite).
 const DIRT_SRC: i32 = 16;
 const DIRT_DST: i32 = 32;
@@ -478,7 +478,7 @@ impl GuiFrame {
 
     /// Sub-round 1 (2026-09-14): the Hunger-effect hunger sprite — the
     /// same tiles multiplied toward yellow-green (VERIFIED
-    /// minecraft.wiki/w/Hunger_(effect), live 2026-09-14: "It also turns
+    /// reference wiki /Hunger_(effect), live 2026-09-14: "It also turns
     /// the hunger bar a yellow-green color").
     pub fn hunger_tinted(
         &mut self,
@@ -620,7 +620,7 @@ impl GuiFrame {
     /// and was the "mushy text" at 1.5x-class scales).
     ///
     /// Draws the shadow pass (foreground × 0.25 at `cell/8` offset —
-    /// the verified vanilla/Minecraft shadow, snapped to whole device
+    /// the verified vanilla/the reference game shadow, snapped to whole device
     /// px) under the glyph pass. Returns the drawn width (UI px) — the
     /// same contract as `UiCanvas::text`, which routes here when the
     /// quad text path is active.
@@ -794,7 +794,7 @@ pub struct GuiRenderer {
     /// the INVERT-blend twin of `pipe` (same shader/layout, blend
     /// src=OneMinusDst dst=Zero): a white quad writes 1 − dst — the
     /// vanilla crosshair's difference blending (technique reference:
-    /// minecraft.wiki/w/Crosshair documents the invert-style blend;
+    /// reference wiki /Crosshair documents the invert-style blend;
     /// the GL blend-factor formulation src=GL_ONE_MINUS_DST_COLOR is
     /// the classic implementation of that behavior, re-expressed here
     /// in wgpu's BlendFactor::OneMinusDst).

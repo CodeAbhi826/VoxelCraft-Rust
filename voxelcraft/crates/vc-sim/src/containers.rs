@@ -3,7 +3,7 @@
 //! first use (right-click or hopper transfer), spilled as item drops when
 //! the block breaks (the game layer drains `spilled`).
 //!
-//! VERIFIED (minecraft.wiki, 2026-09-04): hopper transfer cooldown is 8
+//! VERIFIED (the reference wiki, 2026-09-04): hopper transfer cooldown is 8
 //! game ticks (2.5 items/s); dispenser/dropper eject ONE item on the
 //! rising edge of a redstone signal with a 4 game tick delay.
 

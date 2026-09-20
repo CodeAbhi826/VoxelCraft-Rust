@@ -3,7 +3,7 @@
 //! Clean-room, hand-drawn from scratch: every sprite here is authored in
 //! this file as a mask table and painted into a caller-provided RGBA
 //! buffer at boot (G9 — the repo's startup-asset convention: procedural
-//! generation in code, never files on disk). No Mojang asset is shipped
+//! generation in code, never files on disk). No third-party asset is shipped
 //! or referenced; only the *dimensions* and layout constants follow the
 //! public wiki numbers, each tagged `// VERIFIED <url>`.
 //!
@@ -308,7 +308,7 @@ const BUBBLE_GONE_MASK: [&str; 9] = [
 // CLEAN-ROOM — hand-drawn from scratch. Silhouettes are generic pixel-art
 // glyphs (droplet / bolt / arrow / heart / shield / fish / feather /
 // spiral…), one per effect MEANING, colored with each effect's
-// wiki-published color family (facts, not assets). No Mojang sprite was
+// wiki-published color family (facts, not assets). No third-party sprite was
 // read, copied, or traced; vanilla's actual inventory_effect icons are
 // different art at a different size (24x24).
 
@@ -728,7 +728,7 @@ const BTN_DISABLED_BODY: Px = [0x2D, 0x2D, 0x2D, 235];
 // flat button from banding)
 const BTN_NOISE: i32 = 4;
 
-// VERIFIED https://minecraft.wiki — slot body #8B8B8B, top+left 1-px
+// VERIFIED https://the reference wiki — slot body #8B8B8B, top+left 1-px
 // #373737, bottom+right 1-px #FFFFFF (18x18, 1-px buffer around a
 // 16x16 item)
 const SLOT_BODY: Px = [0x8B, 0x8B, 0x8B, 255];
@@ -736,7 +736,7 @@ const SLOT_DARK: Px = [0x37, 0x37, 0x37, 255];
 const SLOT_LIGHT: Px = [0xFF, 0xFF, 0xFF, 255];
 const SLOT_HOVER_GLOW: Px = [255, 255, 255, 90];
 
-// VERIFIED https://minecraft.wiki — panel body #C6C6C6, outer 1-px
+// VERIFIED https://the reference wiki — panel body #C6C6C6, outer 1-px
 // #555555, inner 1-px #FFFFFF
 const PANEL_BODY: Px = [0xC6, 0xC6, 0xC6, 255];
 const PANEL_OUTER: Px = [0x55, 0x55, 0x55, 255];
@@ -880,7 +880,7 @@ fn paint_panel(out: &mut [u8], w: usize) {
     fill_rect(out, w, 18, 1, 1, 18, PANEL_INNER);
 }
 
-// VERIFIED https://minecraft.wiki — hotbar background 182x22, selection
+// VERIFIED https://the reference wiki — hotbar background 182x22, selection
 // frame 24x22, drawn 22 px above the screen bottom (rendered at the
 // engine's 2x scale by the quad pass). Body/edge colors are the
 // clean-room equivalents of the vanilla translucent dark chrome.
@@ -923,7 +923,7 @@ pub fn draw_hotbar_sel(out: &mut [u8], w: usize) {
     fill_rect(out, w, 21, 2, 1, 18, soft);
 }
 
-// VERIFIED https://minecraft.wiki — the options screens tile a 16x16
+// VERIFIED https://the reference wiki — the options screens tile a 16x16
 // dirt tile multiplied by 0.25 brightness. Clean-room dirt: position-
 // hashed brown noise (deterministic — same bytes every boot, unlike
 // the world atlas's seeded Rng variant).

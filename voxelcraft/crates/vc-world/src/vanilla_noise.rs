@@ -3,7 +3,7 @@
 //! Clean-room implementation of the documented pre-1.18 noise stack:
 //! improved Perlin noise (Ken Perlin's published 2002 algorithm) with
 //! octaved fBm samplers, seeded through a Java-`Random`-equivalent LCG so
-//! the permutation shuffle follows vanilla's init structure. No Mojang
+//! the permutation shuffle follows vanilla's init structure. No third-party
 //! code is reproduced — only the published algorithm and the
 //! data-exposed constants below.
 //!
@@ -16,7 +16,7 @@
 //!   bottom_slide {−30, 0, 0} (inert for the overworld range — both are
 //!   JSON leftovers that evaluate to no-ops for y ∈ 0..255), sea_level 63,
 //!   default block stone / default fluid water.
-//! - **Legacy Customized defaults table** (minecraft.wiki/w/Custom via
+//! - **Legacy Customized defaults table** (reference wiki /Custom via
 //!   web.archive.org snapshot, the 1.8–1.16 "Customized" world type):
 //!   Coordinate Scale 684.412, Height Scale 684.412, Main Noise Scale
 //!   X/Y/Z 80/160/80, Upper/Lower Limit Scale 512, Depth Noise Scale X/Z
@@ -25,7 +25,7 @@
 //! - The main-noise → min/max-limit selector lerp (main < 0 → lower field,
 //!   main > 1 → upper field, between → linear blend) and the 8/16-octave
 //!   sampler counts are the documented pre-1.18 structure
-//!   (minecraft.wiki "World generation" §Noise; minecraft.fandom.com
+//!   (the reference wiki "World generation" §Noise; voxelcraft.fandom.com
 //!   "Noise generator" — the selector semantics are stated there for the
 //!   Beta low/high/selector trio and persist through 1.17).
 

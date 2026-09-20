@@ -1152,7 +1152,7 @@ mod e2_tests {
     // ---------------- 1.12 bracket tests (World of Color) ----------------
 
     /// 1.12 concrete powder: gravity + water-contact solidification.
-    /// VERIFIED live (2026-09-07, minecraft.wiki/w/Concrete_Powder):
+    /// VERIFIED live (2026-09-07, reference wiki /Concrete_Powder):
     /// "Gravity affected (like sand and gravel)" + "If a concrete
     /// powder block comes into contact with water, it solidifies into
     /// a block of concrete" + "If it lands next to water, it solidifies

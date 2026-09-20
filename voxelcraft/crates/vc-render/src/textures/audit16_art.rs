@@ -6,7 +6,7 @@
 //! eggs + the three mob billboard sprites. (The six leaping/regeneration
 //! potion rows ride the shared `potion_art` helper in the dispatcher.)
 //!
-//! Clean-room art (no Mojang assets), a child module of textures.rs
+//! Clean-room art (no third-party assets), a child module of textures.rs
 //! (shares the art helper). Covered by the `v114b_tiles_all_painted`
 //! atlas guard (its loop runs 634..=TILE_MAX, so the new window rides
 //! the same art-gap regression guard).

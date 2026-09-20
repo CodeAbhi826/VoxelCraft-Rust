@@ -84,22 +84,22 @@ pub enum EffectKind {
 impl EffectKind {
     pub fn name(self) -> &'static str {
         match self {
-            EffectKind::Wither => "minecraft:wither",
-            EffectKind::Poison => "minecraft:poison",
-            EffectKind::Regeneration => "minecraft:regeneration",
-            EffectKind::Speed => "minecraft:speed",
-            EffectKind::Haste => "minecraft:haste",
-            EffectKind::Resistance => "minecraft:resistance",
-            EffectKind::JumpBoost => "minecraft:jump_boost",
-            EffectKind::Strength => "minecraft:strength",
-            EffectKind::Slowness => "minecraft:slowness",
-            EffectKind::Hunger => "minecraft:hunger",
-            EffectKind::Absorption => "minecraft:absorption",
-            EffectKind::Blindness => "minecraft:blindness",
-            EffectKind::WaterBreathing => "minecraft:water_breathing",
-            EffectKind::SlowFalling => "minecraft:slow_falling",
-            EffectKind::ConduitPower => "minecraft:conduit_power",
-            EffectKind::DolphinsGrace => "minecraft:dolphins_grace",
+            EffectKind::Wither => "voxelcraft:wither",
+            EffectKind::Poison => "voxelcraft:poison",
+            EffectKind::Regeneration => "voxelcraft:regeneration",
+            EffectKind::Speed => "voxelcraft:speed",
+            EffectKind::Haste => "voxelcraft:haste",
+            EffectKind::Resistance => "voxelcraft:resistance",
+            EffectKind::JumpBoost => "voxelcraft:jump_boost",
+            EffectKind::Strength => "voxelcraft:strength",
+            EffectKind::Slowness => "voxelcraft:slowness",
+            EffectKind::Hunger => "voxelcraft:hunger",
+            EffectKind::Absorption => "voxelcraft:absorption",
+            EffectKind::Blindness => "voxelcraft:blindness",
+            EffectKind::WaterBreathing => "voxelcraft:water_breathing",
+            EffectKind::SlowFalling => "voxelcraft:slow_falling",
+            EffectKind::ConduitPower => "voxelcraft:conduit_power",
+            EffectKind::DolphinsGrace => "voxelcraft:dolphins_grace",
         }
     }
 }

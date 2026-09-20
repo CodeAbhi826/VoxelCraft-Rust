@@ -6,7 +6,7 @@
 //! soul lantern, the strider/piglin/hoglin spawn eggs, and the three
 //! mob billboard sprites.
 //!
-//! Clean-room art (no Mojang assets), a child module of textures.rs
+//! Clean-room art (no third-party assets), a child module of textures.rs
 //! (shares the art helper). Covered by the `v114b_tiles_all_painted`
 //! atlas guard (its loop runs 634..=TILE_MAX, so the new window rides
 //! the same art-gap regression guard).

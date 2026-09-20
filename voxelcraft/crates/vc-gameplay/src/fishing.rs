@@ -1,6 +1,6 @@
 //! Fishing loot (1.7.2 bracket — "The Update that Changed the World").
 //!
-//! Every constant VERIFIED against minecraft.wiki/w/Fishing and
+//! Every constant VERIFIED against reference wiki /Fishing and
 //! /w/Java_Edition_1.7.2 (live round, 2026-09-06):
 //! - base roll: 85% fish / 10% junk / 5% treasure ("the player, with an
 //!   unenchanted fishing rod, has an 85% chance of catching fish, a 10%

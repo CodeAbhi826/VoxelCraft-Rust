@@ -5,7 +5,7 @@
 //! food/potion item icons, the 8 spawn eggs and the 8 aquatic mob
 //! billboards.
 //!
-//! Clean-room art (no Mojang assets), a child module of textures.rs
+//! Clean-room art (no third-party assets), a child module of textures.rs
 //! (shares put/jit/noise_fill/art helpers). This closes the recovery
 //! round's art gap: the interrupted-session commit landed the V9
 //! registry window with TILE_MAX=618 but NO painters — every 1.13

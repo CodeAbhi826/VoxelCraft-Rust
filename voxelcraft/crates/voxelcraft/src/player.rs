@@ -22,7 +22,7 @@ pub const HONEY_SLOW_FACTOR: f32 = 0.58;
 /// height scales v-squared: sqrt(3/16 / 1.25) ≈ 0.39 of the velocity.
 pub const HONEY_JUMP_CUT: f32 = 0.39;
 pub const TERMINAL: f32 = 78.4; // 3.92 b/tick × 20 — inherent fixed point of the drag formula
-/// research-verdicts.md live round (minecraft.wiki/w/Transportation):
+/// research-verdicts.md live round (reference wiki /Transportation):
 /// still-water surface swim 2.20 b/s, underwater 1.97 b/s,
 /// sprint-swim 3.918 b/s. (The mechanics document's "downstream 1.81 /
 /// upstream 0.39" labels were mislabeled — see verdicts.)
@@ -30,14 +30,14 @@ pub const SWIM_SPEED_SURFACE: f32 = 2.20;
 pub const SWIM_SPEED_UNDERWATER: f32 = 1.97;
 pub const SPRINT_SWIM_SPEED: f32 = 3.918;
 /// Sustained sprint-jumping average speed (VERIFIED 2026-09-06 live:
-/// minecraft.wiki/w/Sprinting "jumping while sprinting allows the player
+/// reference wiki /Sprinting "jumping while sprinting allows the player
 /// to move with an average speed of 7.127 m/s"; w/Transportation table
 /// "Sprint-jumping, flat terrain, 7.127 m/s").
 pub const SPRINT_JUMP_SPEED: f32 = 7.127;
 /// Sprint-jump boost (VERIFIED 2026-09-06 live, mcpk.wiki/wiki/Sprinting:
 /// "when the player jumps while sprinting, they accelerate by 0.2 towards
 /// their facing (regardless of whether the player is strafing)"; the
-/// mechanics summary on minecraft.wiki/w/Jumping: "jumping can be
+/// mechanics summary on reference wiki /Jumping: "jumping can be
 /// combined with sprinting to increase the player's movement speed").
 /// 0.2 blocks/tick × 20 = 4.0 blocks/s of horizontal impulse at the jump.
 pub const SPRINT_JUMP_BOOST: f32 = 4.0;
@@ -52,7 +52,7 @@ pub const SPRINT_JUMP_BOOST: f32 = 4.0;
 /// air accel) do not map 1:1 onto the exponential-smoothing model.
 pub const SPRINT_JUMP_EXTRA_DRAG: f32 = 2.2;
 /// air supply / drowning (research-verdicts.md live round,
-/// minecraft.wiki/w/Damage §Drowning): max 300 air (depletes 1/tick
+/// reference wiki /Damage §Drowning): max 300 air (depletes 1/tick
 /// submerged), 10 bubbles × 30 air; damage 2 HP when air reaches −20,
 /// then air resets to 0; regen 30 air per 4 ticks when the head is out.
 pub const AIR_MAX: f32 = 300.0;
@@ -151,7 +151,7 @@ pub struct Player {
     /// clean-room approximation.
     pub hurt_t: f32,
     /// Sub-round 1 (2026-09-14): the player's ARMOR ATTRIBUTE in armor
-    /// points (0..20+, 2 points per HUD icon). VERIFIED minecraft.wiki
+    /// points (0..20+, 2 points per HUD icon). VERIFIED the reference wiki
     /// /w/Armor (live 2026-09-14): "The total number of armor points
     /// that the player has is the sum of the armor points of the
     /// individual pieces of armor worn, and is visually represented by
@@ -160,7 +160,7 @@ pub struct Player {
     pub armor_points: i32,
     /// Sub-round 3: the four ARMOR EQUIPMENT slots, vanilla order —
     /// [helmet(head), chestplate, leggings, boots(feet)]. VERIFIED
-    /// minecraft.wiki/w/Inventory (live 2026-09-15): "The inventory
+    /// reference wiki /Inventory (live 2026-09-15): "The inventory
     /// consists of 4 armor slots, 27 storage slots, 9 hotbar slots, and
     /// an off-hand slot"; "Armor is considered equipped only when it is
     /// in an armor slot; when in any of the regular inventory slots, it
@@ -200,7 +200,7 @@ pub struct Player {
     /// what CONVERTS it into damage).
     pub fall_dist: f32,
     /// Phase 1: fall damage queued for the game layer (HP, half-heart
-    /// scale). Vanilla formula, verified against Mojang's own tracker
+    /// scale). Vanilla formula, verified against the original game's own tracker
     /// (MC-12357, Dossier Part 5 §25): damage = fall_distance − 3, so a
     /// 4-block fall costs 1 HP and a 23-block fall is lethal.
     pending_fall_dmg: f32,
@@ -274,7 +274,7 @@ impl Player {
             // start with an empty inventory — vanilla `PlayerList`/
             // `loadInventory` writes nothing for a fresh world; creative
             // players pull from the creative picker (E), survival players
-            // punch blocks (minecraft.wiki/w/Inventory, §Initial state:
+            // punch blocks (reference wiki /Inventory, §Initial state:
             // "a new player ... starts with no items"). The old 9-slot
             // debug starter palette (Phase 2 sandbox crutch, back when
             // mobs/food did not exist) is retired — every progression
@@ -364,7 +364,7 @@ impl Player {
     }
 
     /// pufferfish poisoning (1.7.2): Poison IV for 1:00 + Hunger for
-    /// 0:15 (VERIFIED minecraft.wiki/w/Pufferfish, live 2026-09-06;
+    /// 0:15 (VERIFIED reference wiki /Pufferfish, live 2026-09-06;
     /// cadence + cannot-kill floor live-verified on w/Poison — see
     /// vc_gameplay::effects::period_ticks for the hurt-immunity floor).
     /// The unified Effects system carries the state; the game layer's
@@ -415,7 +415,7 @@ impl Player {
 
     pub fn damage(&mut self, amount: f32) -> f32 {
         // Sub-round 3 (2026-09-15): worn armor reduces incoming damage
-        // FIRST, by the vanilla 1.16.5 formula. VERIFIED minecraft.wiki/
+        // FIRST, by the vanilla 1.16.5 formula. VERIFIED the reference wiki/
         // w/Armor (live 2026-09-15), the 0-toughness simplification:
         // reduction% = min(80, max(4/5 x armorPoints,
         // 4 x armorPoints - 2 x damage)) — leather/iron/gold/diamond
@@ -604,7 +604,7 @@ impl Player {
         self.was_in_water = self.in_water;
 
         // 1.10: magma-block contact damage — VERIFIED against the live
-        // 1.10 changelog (minecraft.wiki/w/Java_Edition_1.10 fetched
+        // 1.10 changelog (reference wiki /Java_Edition_1.10 fetched
         // 2026-09-06, §Magma Blocks): "Mobs and players take 1 HP damage
         // every second while touching it, similar to a cactus", and the
         // live /w/Magma_Block §Damage round (2026-09-06): "Walking into
@@ -902,7 +902,7 @@ impl Player {
         }
 
         // Air supply / drowning (VERIFIED — research-verdicts.md live
-        // round, minecraft.wiki/w/Damage §Drowning): fixed 20 Hz substep;
+        // round, reference wiki /Damage §Drowning): fixed 20 Hz substep;
         // 1 air per tick submerged; at −20 → 2 HP queued and air resets
         // to 0 (so damage repeats once per second); +7.5 air per tick
         // (30 per 4 ticks) with the head above water.
@@ -968,7 +968,7 @@ impl Player {
             }
         }
 
-        // 1.10 auto-jump (VERIFIED — minecraft.wiki/w/Java_Edition_1.10
+        // 1.10 auto-jump (VERIFIED — reference wiki /Java_Edition_1.10
         // §General: "automatically makes the player jump when running
         // towards a one-block-tall obstacle"): while walking on the
         // ground toward a 1-block step with headroom, fire the vanilla
@@ -1109,7 +1109,7 @@ impl Player {
         // (vanilla applies it on the ground-contact tick; water/flight
         // already zeroed fall_dist above, so a dive lands free)
         //
-        // 1.8 (VERIFIED — minecraft.wiki/w/Java_Edition_1.8 §Slime Block,
+        // 1.8 (VERIFIED — reference wiki /Java_Edition_1.8 §Slime Block,
         // live 2026-09-06): landing on a slime block negates all fall
         // damage and bounces the player ("This negates all fall damage...
         // Height can reach up to 60% of initial height"). Sneaking
@@ -1149,7 +1149,7 @@ impl Player {
             // (VERIFIED w/Slow_Falling) — the whole branch is skipped
             // while the effect runs (the fall was also clamped above, so
             // fall_dist stays small anyway; the gate is belt-and-braces)
-            // Phase E3 (VERIFIED live 2026-09-06, minecraft.wiki/w/
+            // Phase E3 (VERIFIED live 2026-09-06, reference wiki /
             // Hay_Bale: "Falling onto a hay bale reduces the fall damage
             // by 80%, meaning whatever falls on a hay bale takes 20% of
             // the normal fall damage"): probe the block we landed on
@@ -1541,7 +1541,7 @@ mod tests {
 
     /// VERIFICATION-REPORT mechanical fix #3: sustained sprint-jumping
     /// must average the wiki's 7.127 b/s (VERIFIED 2026-09-06 live:
-    /// minecraft.wiki/w/Sprinting "jumping while sprinting allows the
+    /// reference wiki /Sprinting "jumping while sprinting allows the
     /// player to move with an average speed of 7.127 m/s";
     /// w/Transportation "Sprint-jumping, flat terrain, 7.127 m/s").
     /// The input mechanic is vanilla's +0.2 b/t facing boost on sprint
@@ -1877,7 +1877,7 @@ mod v172_tests {
 
     #[test]
     fn pufferfish_poison_cadence_and_floor() {
-        // VERIFIED (minecraft.wiki/w/Poison, live 2026-09-06): the
+        // VERIFIED (reference wiki /Poison, live 2026-09-06): the
         // observable rate for Poison IV is the 10-tick hurt-immunity
         // floor (1 HP/s), and poison can never kill (floors at 1 HP).
         // Ticks through the unified Effects system (E2 + 1.7.2 merged).
@@ -2392,7 +2392,7 @@ mod farm_player_tests {
 
     /// Sub-round 3 (2026-09-15): the armor attribute follows the worn
     /// equipment (the vanilla sum), and damage flows through the vanilla
-    /// 1.16.5 reduction formula — VERIFIED minecraft.wiki/w/Armor (live
+    /// 1.16.5 reduction formula — VERIFIED reference wiki /Armor (live
     /// 2026-09-15): reduction% = min(80, max(4/5 x armorPoints,
     /// 4 x armorPoints - 2 x damage)) with 0 toughness.
     #[test]

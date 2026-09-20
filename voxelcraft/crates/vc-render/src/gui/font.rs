@@ -7,7 +7,7 @@
 //! that architecture with `ab_glyph` (pure Rust, wasm-safe):
 //!
 //! * **Font**: Monocraft (SIL OFL 1.1 — see
-//!   `assets/OFL-Monocraft.txt`), a Minecraft-style pixel font by
+//!   `assets/OFL-Monocraft.txt`), a the reference game-style pixel font by
 //!   IdreesInc, embedded via `include_bytes!` (G9 intact: no PNGs, no
 //!   external files at runtime). The OFL permits embedding and
 //!   redistribution.
@@ -19,7 +19,7 @@
 //!   shelf atlas (white RGB × coverage alpha; vertex tint supplies
 //!   the color). A full atlas resets and lazily re-rasters — the
 //!   same strategy as Luanti's glyph-cache invalidation.
-//! * **Proportional metrics, the Minecraft rule**: Monocraft is
+//! * **Proportional metrics, the the reference game rule**: Monocraft is
 //!   monospaced (720/1080 em advance), so the engine measures each
 //!   glyph's ink width and lays out with `advance = ink + 1 px at the
 //!   8-px reference cell` — the rule the vanilla font itself uses

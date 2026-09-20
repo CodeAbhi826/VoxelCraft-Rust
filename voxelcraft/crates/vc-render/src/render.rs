@@ -4665,8 +4665,21 @@ impl Renderer {
         self.queue
             .write_buffer(&self.ui_buf, 0, bytemuck::bytes_of(&ui_map));
 
-        // upload ui canvas if dirty
-        if ui.dirty {
+        // upload the ui canvas iff its PIXELS were repainted since the last
+        // upload (upload_pending), NOT merely because a rebuild is
+        // requested (dirty). THE LINUX MENU-FREEZE RACE (user report:
+        // "clicked Singleplayer/Options — click sound, screen never
+        // opens"): X11/Wayland deliver SPONTANEOUS RedrawRequested events
+        // (expose/damage/frame-callback) BETWEEN a menu click and the next
+        // update() rebuild pass. The old `if ui.dirty { upload; ui.dirty =
+        // false }` there uploaded the STALE canvas and killed the pending
+        // rebuild — the screen state had switched but the old menu stayed
+        // painted forever (and the next clicks hit-tested against the NEW
+        // screen's widget table, hence "sometimes a sound, sometimes
+        // nothing"). The two-flag split makes any event ordering safe:
+        // `dirty` is the game's rebuild request (consumed by update),
+        // `upload_pending` is the pixel-freshness flag (consumed here).
+        if ui.upload_pending {
             self.queue.write_texture(
                 wgpu::ImageCopyTexture {
                     texture: &self.ui_tex,
@@ -4686,7 +4699,18 @@ impl Renderer {
                     depth_or_array_layers: 1,
                 },
             );
-            ui.dirty = false;
+            ui.upload_pending = false;
+        } else if ui.dirty && crate::render::is_verbose() {
+            // --debug [gfx]: a rebuild is pending but this (possibly
+            // spontaneous) redraw has no fresh pixels yet — the frame
+            // intentionally re-draws the CURRENT canvas; the pending
+            // rebuild lands on the next update() pass. This line is the
+            // exact signature the old race used to leave silently.
+            crate::render::report_debug_log(
+                "gfx",
+                "ui: rebuild pending (dirty set, no fresh pixels) — stale-safe frame; \
+                 repaint lands next update()",
+            );
         }
 
         // post uniform: mode, menu_blur, time, aspect | bloom, vig, sat, exp

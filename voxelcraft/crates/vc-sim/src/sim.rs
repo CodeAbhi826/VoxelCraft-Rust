@@ -15,11 +15,11 @@ pub const RANDOM_PER_CHUNK: usize = 3;
 
 /// Phase 6 §26: the simulation-distance scope of one sim tick.
 ///
-/// Dossier Part 1 §6: "simulation distance ≠ render distance (Mojang
+/// Dossier Part 1 §6: "simulation distance ≠ render distance (the original game
 /// 1.18+/26.x) — no separate tick radius currently exists". 1.16.5 — our
 /// accuracy target — has NO simulation distance (everything loaded ticks),
 /// so this is an opt-in optimization. Defaults follow modern vanilla
-/// (VERIFIED, minecraft.wiki Options.txt + Simulation distance, 2026-09):
+/// (VERIFIED, the reference wiki Options.txt + Simulation distance, 2026-09):
 /// range 5–32, default 12 — at 12 ≥ the default render distances every
 /// loaded chunk ticks and behavior is bit-identical to the 1.16.5 rule.
 ///

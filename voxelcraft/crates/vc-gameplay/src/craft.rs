@@ -58,7 +58,7 @@ pub const RECIPES: &[Recipe] = &[
         ],
         out: ItemStack::new(SHULKER_BOX, 1),
     },
-    // ---- 1.8 bracket (VERIFIED minecraft.wiki/w/Java_Edition_1.8
+    // ---- 1.8 bracket (VERIFIED reference wiki /Java_Edition_1.8
     // §Blocks, live 2026-09-06) ----
     // "Polished variants of Diorite, Andesite & Granite — crafting recipe:
     // 4 pieces of one of the materials, in a 2×2 configuration"

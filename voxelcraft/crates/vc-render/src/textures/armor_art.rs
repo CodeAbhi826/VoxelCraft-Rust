@@ -6,9 +6,9 @@
 //! shoulder flanges, leggings waist-to-ankle, ankle boot) drawn as
 //! ASCII-grid sprites with per-material palettes (leather tans, iron
 //! silvers, gold yellows, diamond cyans). reference fact(s):
-//! minecraft.wiki/w/Armor (live 2026-09-15): the four armor pieces per
+//! reference wiki /Armor (live 2026-09-15): the four armor pieces per
 //! material and the vanilla defense values (leather 1/3/2/1, golden
-//! 2/5/3/1, iron 2/6/5/2, diamond 3/8/6/3). no Mojang asset was read,
+//! 2/5/3/1, iron 2/6/5/2, diamond 3/8/6/3). no third-party asset was read,
 //! copied, or traced — these are original pixel grids in the same
 //! *shape family*, not recreations of vanilla pixels.
 

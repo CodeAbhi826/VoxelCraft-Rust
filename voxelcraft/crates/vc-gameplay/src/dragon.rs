@@ -1,5 +1,5 @@
 //! Phase E1 (evolution 1.0–1.2 bracket): the ender-dragon boss fight.
-//! All values live-verified 2026-09-06 against minecraft.wiki
+//! All values live-verified 2026-09-06 against the reference wiki
 //! (docs/research/phase1-1.0-1.2-research.md):
 //! - health 200 (w/Ender_Dragon infobox)
 //! - melee Easy 6 / Normal 10 / Hard 15 (we deliver the Normal row;

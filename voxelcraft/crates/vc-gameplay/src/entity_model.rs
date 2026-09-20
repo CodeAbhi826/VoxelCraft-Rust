@@ -26,7 +26,7 @@
 //! Textures reuse the existing clean-room 16×16 mob sprites as
 //! per-part-face sub-rects (the sprites are laid out head-top /
 //! torso-middle / legs-bottom, so each box face samples the
-//! palette-correct region of our own art — no Mojang assets, no new
+//! palette-correct region of our own art — no third-party assets, no new
 //! atlas allocations).
 //!
 //! Rendering rides the existing billboard vertex stream

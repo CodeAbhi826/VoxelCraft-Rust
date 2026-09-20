@@ -1,8 +1,8 @@
 //! Combat math (master prompt Phase 2). Every formula here was verified
-//! against minecraft.wiki on 2026-09-04 (see the verification notes per
+//! against the reference wiki on 2026-09-04 (see the verification notes per
 //! function) — not copied from dossier prose or memory.
 //!
-//! VERIFIED (minecraft.wiki/w/Attack_cooldown, /Critical_hit, /Armor):
+//! VERIFIED (reference wiki /Attack_cooldown, /Critical_hit, /Armor):
 //! - cooldown damage scaling: `0.2 + 0.8·p²` for base melee damage
 //! - critical hits: ×1.5, requires falling + cooldown ≥ 84.8% + NOT sprinting
 //! - armor: `min(20, max(armor/5, armor − 4·damage/(toughness+8))) / 25`
@@ -46,7 +46,7 @@ pub fn is_critical(falling: bool, sprinting: bool, cooldown_p: f32) -> bool {
 }
 
 /// Armor + toughness damage reduction, the exact vanilla formula.
-/// VERIFIED (minecraft.wiki/w/Armor, "Damage formulas"):
+/// VERIFIED (reference wiki /Armor, "Damage formulas"):
 /// `points = min(20, max(armor/5, armor − 4·damage/(toughness+8)))`,
 /// reduction% = points × 4 (base 4%/point, floor armor/5 points,
 /// cap 20 points = 80%; the equivalent percent form on the wiki is

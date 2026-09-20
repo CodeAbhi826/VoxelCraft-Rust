@@ -1,4 +1,4 @@
-# vc-nbt — Minecraft 1.16.5 NBT codec
+# vc-nbt — the 1.16.5 reference game NBT codec
 
 Reads and writes Named Binary Tag data exactly the way vanilla
 1.16.5 does: little-endian on the network, big-endian in the

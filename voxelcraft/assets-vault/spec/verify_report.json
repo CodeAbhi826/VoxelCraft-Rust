@@ -1,0 +1,106 @@
+{
+ "byte_collisions": [],
+ "vault_files": 4031,
+ "per_family": {
+  "block": {
+   "n": 1269,
+   "pix": 0.1399,
+   "pal": 0.032,
+   "luma": 0.189,
+   "alpha": 0.97
+  },
+  "colormap": {
+   "n": 3,
+   "pix": 0.0247,
+   "pal": 0.031,
+   "luma": 0.092,
+   "alpha": 1.0
+  },
+  "effect": {
+   "n": 1,
+   "pix": 0.0,
+   "pal": 0.056,
+   "luma": 0.0,
+   "alpha": 0.0
+  },
+  "entity": {
+   "n": 725,
+   "pix": 0.146,
+   "pal": 0.028,
+   "luma": 0.324,
+   "alpha": 0.446
+  },
+  "environment": {
+   "n": 14,
+   "pix": 0.1881,
+   "pal": 0.06,
+   "luma": 0.179,
+   "alpha": 0.286
+  },
+  "font": {
+   "n": 5,
+   "pix": 0.1264,
+   "pal": 0.16,
+   "luma": 0.2,
+   "alpha": 1.0
+  },
+  "gui": {
+   "n": 555,
+   "pix": 0.2118,
+   "pal": 0.109,
+   "luma": 0.276,
+   "alpha": 0.782
+  },
+  "item": {
+   "n": 796,
+   "pix": 0.3899,
+   "pal": 0.069,
+   "luma": 0.565,
+   "alpha": 0.997
+  },
+  "map": {
+   "n": 37,
+   "pix": 0.3285,
+   "pal": 0.228,
+   "luma": 0.296,
+   "alpha": 0.946
+  },
+  "misc": {
+   "n": 13,
+   "pix": 0.1008,
+   "pal": 0.031,
+   "luma": 0.565,
+   "alpha": 0.462
+  },
+  "mob_effect": {
+   "n": 40,
+   "pix": 0.3803,
+   "pal": 0.098,
+   "luma": 0.81,
+   "alpha": 1.0
+  },
+  "painting": {
+   "n": 52,
+   "pix": 0.0008,
+   "pal": 0.001,
+   "luma": 0.553,
+   "alpha": 0.731
+  },
+  "particle": {
+   "n": 288,
+   "pix": 0.0638,
+   "pal": 0.02,
+   "luma": 0.155,
+   "alpha": 1.0
+  },
+  "trims": {
+   "n": 57,
+   "pix": 0.2817,
+   "pal": 0.095,
+   "luma": 0.527,
+   "alpha": 1.0
+  }
+ },
+ "mcmeta_missing": 0,
+ "issues": []
+}

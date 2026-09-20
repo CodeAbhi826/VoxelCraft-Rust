@@ -1,6 +1,6 @@
 [package]
 name = "voxelcraft"
-description = "High-performance Minecraft-1.16.5-style voxel engine in Rust + wgpu (native Vulkan/DX12/Metal + WebGPU/WASM)"
+description = "High-performance 1.16.5-era reference-style voxel engine in Rust + wgpu (native Vulkan/DX12/Metal + WebGPU/WASM)"
 default-run = "voxelcraft"
 version.workspace = true
 edition.workspace = true

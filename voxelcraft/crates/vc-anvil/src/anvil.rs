@@ -1,7 +1,7 @@
 //! Anvil region file format (`.mca`) — reader + writer.
 //!
 //! Clean-room implementation of the publicly documented format
-//! (https://minecraft.wiki/w/Region_file_format), the container vanilla
+//! (https://reference wiki /Region_file_format), the container vanilla
 //! 1.16.5 uses for chunk storage:
 //!
 //! * a region covers 32×32 chunks; the file is an array of **4096-byte

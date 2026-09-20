@@ -1,0 +1,8 @@
+{
+  "parent": "voxelcraft:block/slab",
+  "textures": {
+    "top": "voxelcraft:block/oak_planks",
+    "bottom": "voxelcraft:block/oak_planks",
+    "side": "voxelcraft:block/oak_planks"
+  }
+}

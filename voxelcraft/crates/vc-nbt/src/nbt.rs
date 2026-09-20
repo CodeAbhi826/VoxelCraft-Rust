@@ -1,7 +1,7 @@
 //! Named Binary Tag (NBT) codec — big-endian, Java edition semantics.
 //!
 //! Clean-room implementation of the publicly documented format
-//! (https://minecraft.wiki/w/NBT_format). Used by the Anvil save system
+//! (https://reference wiki /NBT_format). Used by the Anvil save system
 //! (region chunks + `level.dat`).
 //!
 //! Design constraints:
@@ -429,7 +429,7 @@ mod tests {
     fn sample() -> Nbt {
         let mut level = Nbt::compound();
         level.set("DataVersion", Nbt::Int(2586));
-        level.set("Name", Nbt::String("minecraft:stone".into()));
+        level.set("Name", Nbt::String("voxelcraft:stone".into()));
         level.set("Long", Nbt::Long(-0x0102_0304_0506_0708));
         level.set("Float", Nbt::Float(3.5));
         level.set("Double", Nbt::Double(-1.25));

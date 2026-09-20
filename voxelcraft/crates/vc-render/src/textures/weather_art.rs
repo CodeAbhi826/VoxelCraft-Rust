@@ -1,5 +1,5 @@
 //! Backlog-round procedural tiles — the weather bracket's two particle
-//! sprites (rain streak + snowflake). Clean-room art (no Mojang assets),
+//! sprites (rain streak + snowflake). Clean-room art (no third-party assets),
 //! a child module of textures.rs (shares put/jit/art helpers).
 
 use super::{art, put, Rng};

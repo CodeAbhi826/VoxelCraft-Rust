@@ -1,5 +1,5 @@
 //! Phase E2 (evolution 1.3–1.4 bracket): beacon pyramid + powers.
-//! All values live-verified 2026-09-06 against minecraft.wiki
+//! All values live-verified 2026-09-06 against the reference wiki
 //! (docs/research/phase2-1.3-1.4-research.md):
 //! - pyramid: 1–4 levels of iron/gold/emerald/diamond/netherite blocks
 //!   (mixed freely — the material is purely cosmetic); block counts

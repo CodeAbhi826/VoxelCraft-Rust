@@ -1,6 +1,6 @@
-//! Phase 9 — Data packs (Mojang's official format, 1.16.5).
+//! Phase 9 — Data packs (the original game's official format, 1.16.5).
 //!
-//! Dossier Part 1 §5: "Mojang's own datapack system is the legitimate
+//! Dossier Part 1 §5: "the original game's own datapack system is the legitimate
 //! answer: pure JSON + .mcfunction text, zero compiled code, explicitly
 //! implementation-agnostic (identical format across Vanilla/Spigot/
 //! Paper/Fabric/Forge). Covers recipes, loot tables, advancements, tags,
@@ -9,26 +9,26 @@
 //!
 //! Every structural fact in this module was verified against the GENUINE
 //! vanilla 1.16.5 data pack (extracted from the official `server.jar`
-//! published at piston-data.mojang.com, download sha1
-//! 1b557e7b033b583cd9f66746b7a9ab1ec1673ced) plus the minecraft.wiki
+//! published at the reference data endpoint, download sha1
+//! 1b557e7b033b583cd9f66746b7a9ab1ec1673ced) plus the the reference wiki
 //! "Pack format"/"Data pack" pages (live, 2026-09-04):
 //!
 //! * `pack_format` **6** = Java 1.16.2–1.16.5 (wiki Pack-format table).
 //! * 1.16.5 `data/<ns>/` content folders, plural names, exactly:
 //!   `advancements/`, `loot_tables/`, `recipes/`, `structures/`, `tags/`
-//!   (from the jar's own `data/minecraft/` listing; 859 recipes, 849
+//!   (from the reference jar's data-pack listing; 859 recipes, 849
 //!   loot tables, 147 tags, 927 advancements).
 //! * `tags/` registries in 1.16.5: `blocks`, `entity_types`, `fluids`,
 //!   `items` (jar listing).
-//! * Shaped recipe: `{"type":"minecraft:crafting_shaped","group":…,
+//! * Shaped recipe: `{"type":"voxelcraft:crafting_shaped","group":…,
 //!   "pattern":[" #X",…], "key":{"#":{"item"|"tag":…}},
 //!   "result":{"item":…,"count":N}}` (jar: bow.json, stick.json).
-//! * Shapeless recipe: `{"type":"minecraft:crafting_shapeless",
+//! * Shapeless recipe: `{"type":"voxelcraft:crafting_shapeless",
 //!   "ingredients":[{…}], "result":…}` (jar: acacia_button.json).
 //! * Loot table: `pools[] → rolls` (fixed int or `{"min":f,"max":f,
-//!   "type":"minecraft:uniform"}`), `entries[] → {"type":
-//!   "minecraft:item","weight":N,"name":…,"functions":[…]}`, function
-//!   `{"function":"minecraft:set_count","count":fixed|uniform}` (jar:
+//!   "type":"voxelcraft:uniform"}`), `entries[] → {"type":
+//!   "voxelcraft:item","weight":N,"name":…,"functions":[…]}`, function
+//!   `{"function":"voxelcraft:set_count","count":fixed|uniform}` (jar:
 //!   chests/simple_dungeon.json).
 //! * Tag file: `{"replace":bool,"values":["ns:id", "#ns:tag"]}` (jar:
 //!   tags/blocks/logs.json).
@@ -57,133 +57,149 @@ use vc_rng::rng::Rng;
 pub const PACK_FORMAT_1_16_5: i32 = 6;
 
 // ---------------------------------------------------------------------------
-// 1) the item-name bridge — `minecraft:xxx` ⇄ engine u8 item ids
+// 1) the item-name bridge — `voxelcraft:xxx` ⇄ engine u8 item ids
 // ---------------------------------------------------------------------------
 
 /// One row of the vanilla-name bridge. Vanilla registry ids are factual,
 /// non-copyrightable identifiers (dossier Part 1 §1); the mapping to the
 /// engine's palette is ours and deliberately partial — an id only exists
 /// here when the engine actually has the item, so a datapack that
-/// references `minecraft:stick` (we have no stick) is honestly skipped
+/// references `voxelcraft:stick` (we have no stick) is honestly skipped
 /// with a warning instead of silently mapped to a lookalike.
 ///
-/// Potions: vanilla has ONE `minecraft:potion` item (variants live in
+/// Potions: vanilla has ONE `voxelcraft:potion` item (variants live in
 /// NBT); the engine keeps distinct ids. Only the glass bottle maps —
-/// `minecraft:potion` resolves to nothing (documented, would be
+/// `voxelcraft:potion` resolves to nothing (documented, would be
 /// ambiguous). Same for blocks the engine stores as palette variants
 /// (e.g. snowy grass = `grass_block[snowy=true]` in vanilla).
 pub const VANILLA_ITEM_NAMES: &[(&str, u16)] = &[
     // world blocks 0..=56 (mirrors vc-anvil's save-name table — the ids
     // are the engine's own; the vanilla names are registry identifiers)
-    ("minecraft:air", AIR),
-    ("minecraft:grass_block", GRASS),
-    ("minecraft:dirt", DIRT),
-    ("minecraft:stone", STONE),
-    ("minecraft:cobblestone", COBBLE),
-    ("minecraft:sand", SAND),
-    ("minecraft:oak_log", OAK_LOG),
-    ("minecraft:oak_planks", PLANKS),
-    ("minecraft:oak_leaves", LEAVES),
-    ("minecraft:water", WATER),
-    ("minecraft:glass", GLASS),
-    ("minecraft:bedrock", BEDROCK),
-    ("minecraft:gravel", GRAVEL),
-    ("minecraft:snow_block", SNOW),
-    ("minecraft:grass", TALL_GRASS), // 1.16.5 name of the short-grass plant
-    ("minecraft:poppy", FLOWER_RED),
-    ("minecraft:dandelion", FLOWER_YELLOW),
-    ("minecraft:granite", GRANITE),
-    ("minecraft:diorite", DIORITE),
-    ("minecraft:andesite", ANDESITE),
-    ("minecraft:stone_bricks", STONE_BRICKS),
-    ("minecraft:bricks", BRICKS),
-    ("minecraft:mossy_cobblestone", MOSSY_COBBLE),
-    ("minecraft:smooth_stone", SMOOTH_STONE),
-    ("minecraft:obsidian", OBSIDIAN),
-    ("minecraft:coal_ore", COAL_ORE),
-    ("minecraft:iron_ore", IRON_ORE),
-    ("minecraft:gold_ore", GOLD_ORE),
-    ("minecraft:diamond_ore", DIAMOND_ORE),
-    ("minecraft:redstone_ore", REDSTONE_ORE),
-    ("minecraft:lapis_ore", LAPIS_ORE),
-    ("minecraft:emerald_ore", EMERALD_ORE),
-    ("minecraft:iron_block", IRON_BLOCK),
-    ("minecraft:gold_block", GOLD_BLOCK),
-    ("minecraft:diamond_block", DIAMOND_BLOCK),
-    ("minecraft:glowstone", GLOWSTONE),
-    ("minecraft:bookshelf", BOOKSHELF),
-    ("minecraft:crafting_table", CRAFTING_TABLE),
-    ("minecraft:clay", CLAY),
-    ("minecraft:terracotta", TERRACOTTA),
-    ("minecraft:pumpkin", PUMPKIN),
-    ("minecraft:melon", MELON),
-    ("minecraft:ice", ICE),
-    ("minecraft:cactus", CACTUS),
-    ("minecraft:white_wool", WOOL_WHITE),
-    ("minecraft:red_wool", WOOL_RED),
-    ("minecraft:blue_wool", WOOL_BLUE),
-    ("minecraft:yellow_wool", WOOL_YELLOW),
-    ("minecraft:black_wool", WOOL_BLACK),
-    ("minecraft:birch_log", BIRCH_LOG),
-    ("minecraft:birch_leaves", BIRCH_LEAVES),
-    ("minecraft:spruce_log", SPRUCE_LOG),
-    ("minecraft:spruce_leaves", SPRUCE_LEAVES),
-    ("minecraft:red_mushroom", MUSHROOM_RED),
-    ("minecraft:brown_mushroom", MUSHROOM_BROWN),
-    ("minecraft:dead_bush", DEAD_BUSH),
+    ("voxelcraft:air", AIR),
+    ("voxelcraft:grass_block", GRASS),
+    ("voxelcraft:dirt", DIRT),
+    ("voxelcraft:stone", STONE),
+    ("voxelcraft:cobblestone", COBBLE),
+    ("voxelcraft:sand", SAND),
+    ("voxelcraft:oak_log", OAK_LOG),
+    ("voxelcraft:oak_planks", PLANKS),
+    ("voxelcraft:oak_leaves", LEAVES),
+    ("voxelcraft:water", WATER),
+    ("voxelcraft:glass", GLASS),
+    ("voxelcraft:bedrock", BEDROCK),
+    ("voxelcraft:gravel", GRAVEL),
+    ("voxelcraft:snow_block", SNOW),
+    ("voxelcraft:grass", TALL_GRASS), // 1.16.5 name of the short-grass plant
+    ("voxelcraft:poppy", FLOWER_RED),
+    ("voxelcraft:dandelion", FLOWER_YELLOW),
+    ("voxelcraft:granite", GRANITE),
+    ("voxelcraft:diorite", DIORITE),
+    ("voxelcraft:andesite", ANDESITE),
+    ("voxelcraft:stone_bricks", STONE_BRICKS),
+    ("voxelcraft:bricks", BRICKS),
+    ("voxelcraft:mossy_cobblestone", MOSSY_COBBLE),
+    ("voxelcraft:smooth_stone", SMOOTH_STONE),
+    ("voxelcraft:obsidian", OBSIDIAN),
+    ("voxelcraft:coal_ore", COAL_ORE),
+    ("voxelcraft:iron_ore", IRON_ORE),
+    ("voxelcraft:gold_ore", GOLD_ORE),
+    ("voxelcraft:diamond_ore", DIAMOND_ORE),
+    ("voxelcraft:redstone_ore", REDSTONE_ORE),
+    ("voxelcraft:lapis_ore", LAPIS_ORE),
+    ("voxelcraft:emerald_ore", EMERALD_ORE),
+    ("voxelcraft:iron_block", IRON_BLOCK),
+    ("voxelcraft:gold_block", GOLD_BLOCK),
+    ("voxelcraft:diamond_block", DIAMOND_BLOCK),
+    ("voxelcraft:glowstone", GLOWSTONE),
+    ("voxelcraft:bookshelf", BOOKSHELF),
+    ("voxelcraft:crafting_table", CRAFTING_TABLE),
+    ("voxelcraft:clay", CLAY),
+    ("voxelcraft:terracotta", TERRACOTTA),
+    ("voxelcraft:pumpkin", PUMPKIN),
+    ("voxelcraft:melon", MELON),
+    ("voxelcraft:ice", ICE),
+    ("voxelcraft:cactus", CACTUS),
+    ("voxelcraft:white_wool", WOOL_WHITE),
+    ("voxelcraft:red_wool", WOOL_RED),
+    ("voxelcraft:blue_wool", WOOL_BLUE),
+    ("voxelcraft:yellow_wool", WOOL_YELLOW),
+    ("voxelcraft:black_wool", WOOL_BLACK),
+    ("voxelcraft:birch_log", BIRCH_LOG),
+    ("voxelcraft:birch_leaves", BIRCH_LEAVES),
+    ("voxelcraft:spruce_log", SPRUCE_LOG),
+    ("voxelcraft:spruce_leaves", SPRUCE_LEAVES),
+    ("voxelcraft:red_mushroom", MUSHROOM_RED),
+    ("voxelcraft:brown_mushroom", MUSHROOM_BROWN),
+    ("voxelcraft:dead_bush", DEAD_BUSH),
     // redstone core
-    ("minecraft:redstone", REDSTONE_WIRE), // item form of the wire block
-    ("minecraft:redstone_torch", REDSTONE_TORCH),
-    ("minecraft:lever", LEVER),
-    ("minecraft:furnace", FURNACE),
+    ("voxelcraft:redstone", REDSTONE_WIRE), // item form of the wire block
+    ("voxelcraft:redstone_torch", REDSTONE_TORCH),
+    ("voxelcraft:lever", LEVER),
+    ("voxelcraft:furnace", FURNACE),
     // nether
-    ("minecraft:netherrack", NETHERRACK),
-    ("minecraft:nether_quartz_ore", NETHER_QUARTZ_ORE),
-    ("minecraft:soul_sand", SOUL_SAND),
+    ("voxelcraft:netherrack", NETHERRACK),
+    ("voxelcraft:nether_quartz_ore", NETHER_QUARTZ_ORE),
+    ("voxelcraft:soul_sand", SOUL_SAND),
     // brewing
-    ("minecraft:brewing_stand", BREWING_STAND),
-    ("minecraft:glass_bottle", POTION_EMPTY),
+    ("voxelcraft:brewing_stand", BREWING_STAND),
+    ("voxelcraft:glass_bottle", POTION_EMPTY),
     // enchanting
-    ("minecraft:enchanting_table", ENCHANT_TABLE),
-    ("minecraft:enchanted_book", ENCHANTED_BOOK),
+    ("voxelcraft:enchanting_table", ENCHANT_TABLE),
+    ("voxelcraft:enchanted_book", ENCHANTED_BOOK),
     // mob drops (item-only ids)
-    ("minecraft:beef", BEEF),
-    ("minecraft:porkchop", PORKCHOP),
-    ("minecraft:mutton", MUTTON),
-    ("minecraft:chicken", CHICKEN_RAW),
-    ("minecraft:feather", FEATHER),
-    ("minecraft:leather", LEATHER),
-    ("minecraft:bone", BONE),
-    ("minecraft:string", STRING),
-    ("minecraft:gunpowder", GUNPOWDER),
-    ("minecraft:ender_pearl", ENDER_PEARL),
-    ("minecraft:rotten_flesh", ROTTEN_FLESH),
-    ("minecraft:arrow", ARROW_ITEM),
+    ("voxelcraft:beef", BEEF),
+    ("voxelcraft:porkchop", PORKCHOP),
+    ("voxelcraft:mutton", MUTTON),
+    ("voxelcraft:chicken", CHICKEN_RAW),
+    ("voxelcraft:feather", FEATHER),
+    ("voxelcraft:leather", LEATHER),
+    ("voxelcraft:bone", BONE),
+    ("voxelcraft:string", STRING),
+    ("voxelcraft:gunpowder", GUNPOWDER),
+    ("voxelcraft:ender_pearl", ENDER_PEARL),
+    ("voxelcraft:rotten_flesh", ROTTEN_FLESH),
+    ("voxelcraft:arrow", ARROW_ITEM),
     // redstone components (Phase 3)
-    ("minecraft:repeater", REPEATER),
-    ("minecraft:comparator", COMPARATOR),
-    ("minecraft:piston", PISTON),
-    ("minecraft:sticky_piston", STICKY_PISTON),
-    ("minecraft:dispenser", DISPENSER),
-    ("minecraft:dropper", DROPPER),
-    ("minecraft:observer", OBSERVER),
-    ("minecraft:hopper", HOPPER),
-    ("minecraft:chest", CHEST),
+    ("voxelcraft:repeater", REPEATER),
+    ("voxelcraft:comparator", COMPARATOR),
+    ("voxelcraft:piston", PISTON),
+    ("voxelcraft:sticky_piston", STICKY_PISTON),
+    ("voxelcraft:dispenser", DISPENSER),
+    ("voxelcraft:dropper", DROPPER),
+    ("voxelcraft:observer", OBSERVER),
+    ("voxelcraft:hopper", HOPPER),
+    ("voxelcraft:chest", CHEST),
     // brewing expansion (Phase 4)
-    ("minecraft:spider_eye", SPIDER_EYE),
-    ("minecraft:fermented_spider_eye", FERMENTED_SPIDER_EYE),
+    ("voxelcraft:spider_eye", SPIDER_EYE),
+    ("voxelcraft:fermented_spider_eye", FERMENTED_SPIDER_EYE),
     // Phase 5
-    ("minecraft:spawner", SPAWNER),
+    ("voxelcraft:spawner", SPAWNER),
 ];
 
-/// resolve a `minecraft:` (or mod `ns:`) item name to an engine item id.
-/// Only `minecraft:` names exist in the bridge; unknown namespaces and
+/// resolve a `voxelcraft:` (or mod `ns:`) item name to an engine item id.
+/// Only `voxelcraft:` names exist in the bridge; unknown namespaces and
 /// palette-absent names return None (callers skip + warn — honest).
+///
+/// Namespace interop (read-side): names arriving from USER-SUPPLIED data
+/// packs are authored for the wider 1.16.5-era ecosystem and carry the
+/// legacy `minecraft:` prefix — map it onto our own namespace here (the
+/// single parse boundary every item reference crosses). We never write
+/// the legacy prefix.
 pub fn item_id_by_name(name: &str) -> Option<u16> {
+    let name = norm_id(name);
     VANILLA_ITEM_NAMES
         .iter()
-        .find(|(n, _)| *n == name)
+        .find(|(n, _)| *n == name.as_ref())
         .map(|(_, id)| *id)
+}
+
+/// Map the legacy ecosystem namespace prefix onto ours; everything else
+/// (including custom mod namespaces) passes through untouched.
+pub fn norm_id(s: &str) -> std::borrow::Cow<'_, str> {
+    match s.strip_prefix(&format!("{}:", crate::model::NS_LEGACY_INTEROP)) {
+        Some(rest) => std::borrow::Cow::Owned(format!("{}:{rest}", crate::model::NS)),
+        None => std::borrow::Cow::Borrowed(s),
+    }
 }
 
 /// reverse lookup (E2E / logs: show the vanilla name of an engine id)
@@ -246,7 +262,7 @@ impl TagStore {
     }
 
     /// resolve a tag's DIRECT values (names + nested `#tag` refs, cycle
-    /// depth 16) to a set of `minecraft:` item names. Unknown members are
+    /// depth 16) to a set of `voxelcraft:` item names. Unknown members are
     /// skipped honestly and reported back.
     pub fn members(&self, registry: &str, tag: &str) -> (Vec<String>, Vec<String>) {
         let mut out: Vec<String> = Vec::new();
@@ -287,7 +303,7 @@ impl TagStore {
         }
     }
 
-    /// does `item_name` (e.g. "minecraft:oak_log") carry the tag? Direct
+    /// does `item_name` (e.g. "voxelcraft:oak_log") carry the tag? Direct
     /// membership only — vanilla tag semantics resolve through `#` chains,
     /// which `members()` flattens for matching use.
     pub fn is_tagged(&self, registry: &str, tag: &str, item_name: &str) -> bool {
@@ -322,9 +338,9 @@ impl TagStore {
 /// the same enum in order.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Ingredient {
-    /// one specific item (`{"item": "minecraft:stone"}`)
+    /// one specific item (`{"item": "voxelcraft:stone"}`)
     Item(u16),
-    /// every member of an item tag (`{"tag": "minecraft:planks"}`) — the
+    /// every member of an item tag (`{"tag": "voxelcraft:planks"}`) — the
     /// tag NAME is resolved lazily against the merged TagStore at match
     /// time (tags may come from a later pack)
     Tag(String),
@@ -437,7 +453,7 @@ fn shapeless_match(need: &[&Ingredient], stacks: &[&GridItem], tags: &TagStore) 
 /// ItemStacks to this (keeps vc-pack free of a vc-inventory dependency).
 #[derive(Debug, Clone, PartialEq)]
 pub struct GridItem {
-    /// "minecraft:stone" style vanilla name (empty = no item)
+    /// "voxelcraft:stone" style vanilla name (empty = no item)
     pub name: String,
     pub count: u8,
 }
@@ -474,9 +490,13 @@ pub fn parse_recipe(id: &str, json: &serde_json::Value) -> Result<JsonRecipe, St
         .get("type")
         .and_then(|t| t.as_str())
         .ok_or("missing type")?;
+    // interop: external packs address types through the legacy namespace
+    // prefix — normalize before the match (see norm_id)
+    let ty = norm_id(r#type);
+    let r#type = ty.as_ref();
     let (shaped, shapeless): (Option<ShapedGrid>, Vec<Ingredient>) =
         match r#type {
-            "minecraft:crafting_shaped" => {
+            "voxelcraft:crafting_shaped" => {
                 let pattern = json
                     .get("pattern")
                     .and_then(|p| p.as_array())
@@ -518,7 +538,7 @@ pub fn parse_recipe(id: &str, json: &serde_json::Value) -> Result<JsonRecipe, St
                 }
                 (Some(rows), Vec::new())
             }
-            "minecraft:crafting_shapeless" => {
+            "voxelcraft:crafting_shapeless" => {
                 let ings = json
                     .get("ingredients")
                     .and_then(|i| i.as_array())
@@ -567,7 +587,7 @@ fn parse_ingredient(spec: &serde_json::Value) -> Result<Ingredient, String> {
             item_id_by_name(item).ok_or(format!("ingredient {item} not in the engine palette"))?,
         ))
     } else if let Some(tag) = spec.get("tag").and_then(|t| t.as_str()) {
-        // tag names arrive as `minecraft:planks`; tag ids are stored
+        // tag names arrive as `voxelcraft:planks`; tag ids are stored
         // without the `#` (vanilla values use `#ns:tag` inside tag files
         // but ingredient specs use the bare name)
         Ok(Ingredient::Tag(tag.to_string()))
@@ -726,10 +746,12 @@ pub fn parse_loot_table(json: &serde_json::Value) -> Result<LootTable, String> {
                 .and_then(|w| w.as_u64())
                 .unwrap_or(1)
                 .clamp(1, u32::MAX as u64) as u32;
-            let kind = match entry.get("type").and_then(|t| t.as_str()) {
-                // 1.16.5 uses the namespaced form ("minecraft:item");
-                // accept the bare form too (some third-party tools emit it)
-                Some("minecraft:item") | Some("item") => {
+            let kind = match entry.get("type").and_then(|t| t.as_str()).map(|t| norm_id(t)) {
+                // 1.16.5 uses the namespaced form ("voxelcraft:item") —
+                // norm_id already mapped the legacy interop prefix onto
+                // ours; the bare form (some third-party tools emit it)
+                // stays accepted too
+                Some(t) if t.as_ref() == "voxelcraft:item" || t.as_ref() == "item" => {
                     let name = entry
                         .get("name")
                         .and_then(|n| n.as_str())
@@ -739,8 +761,9 @@ pub fn parse_loot_table(json: &serde_json::Value) -> Result<LootTable, String> {
                     let mut functions = Vec::new();
                     if let Some(fns) = entry.get("functions").and_then(|f| f.as_array()) {
                         for f in fns {
-                            if f.get("function").and_then(|n| n.as_str())
-                                == Some("minecraft:set_count")
+                            let f_kind = f.get("function").and_then(|n| n.as_str());
+                            if f_kind == Some("voxelcraft:set_count")
+                                || f_kind == Some("minecraft:set_count")
                             {
                                 if let Some(c) = f.get("count") {
                                     functions.push(LootFn::SetCount {
@@ -758,8 +781,10 @@ pub fn parse_loot_table(json: &serde_json::Value) -> Result<LootTable, String> {
                     }
                     LootKind::Item { id, functions }
                 }
-                Some("minecraft:empty") | Some("empty") => LootKind::Empty,
-                Some("minecraft:loot_table") | Some("loot_table") => {
+                Some(t) if t.as_ref() == "voxelcraft:empty" || t.as_ref() == "empty" => {
+                    LootKind::Empty
+                }
+                Some(t) if t.as_ref() == "voxelcraft:loot_table" || t.as_ref() == "loot_table" => {
                     let name = entry
                         .get("name")
                         .and_then(|n| n.as_str())
@@ -767,7 +792,9 @@ pub fn parse_loot_table(json: &serde_json::Value) -> Result<LootTable, String> {
                         .to_string();
                     LootKind::Table(name)
                 }
-                Some(other) => return Err(format!("loot entry type {other} not supported")),
+                Some(other) => {
+                    return Err(format!("loot entry type {other} not supported"))
+                }
                 None => return Err("loot entry without type".into()),
             };
             entries.push(LootEntry { weight, kind });
@@ -788,13 +815,13 @@ fn parse_rolls(v: Option<&serde_json::Value>) -> Option<Rolls> {
             }
         }
         // uniform: `"rolls": {"min": 1.0, "max": 3.0}` (the 1.16.5 jar
-        // also carries `"type": "minecraft:uniform"` inside — read, not
+        // also carries `"type": "voxelcraft:uniform"` inside — read, not
         // required; binomial ranges fall back to the fixed mean, honest)
         serde_json::Value::Object(o) => {
             let min = o.get("min").and_then(|m| m.as_f64())? as f32;
             let max = o.get("max").and_then(|m| m.as_f64())? as f32;
             let is_binomial = o.get("type").and_then(|t| t.as_str())
-                == Some("minecraft:binomial");
+                == Some("voxelcraft:binomial");
             if is_binomial {
                 // n × p → fixed expected value (binomial support is out of
                 // scope; the approximation is documented in the report)
@@ -869,7 +896,7 @@ pub fn builtin_structure_table(name: &str) -> Option<LootTable> {
     let table = match name {
         // jar: chests/abandoned_mineshaft (3 pools in vanilla: rails,
         // torches, treasure — palette collapses to ore/drop pools)
-        "minecraft:chests/abandoned_mineshaft" => LootTable {
+        "voxelcraft:chests/abandoned_mineshaft" => LootTable {
             pools: vec![
                 LootPool {
                     rolls: Rolls::Uniform { min: 1.0, max: 3.0 },
@@ -891,7 +918,7 @@ pub fn builtin_structure_table(name: &str) -> Option<LootTable> {
             ],
         },
         // jar: chests/desert_pyramid (4 pools in vanilla; ours: 2)
-        "minecraft:chests/desert_pyramid" => LootTable {
+        "voxelcraft:chests/desert_pyramid" => LootTable {
             pools: vec![
                 LootPool {
                     rolls: Rolls::Uniform { min: 2.0, max: 4.0 },
@@ -914,7 +941,7 @@ pub fn builtin_structure_table(name: &str) -> Option<LootTable> {
             ],
         },
         // jar: chests/jungle_temple
-        "minecraft:chests/jungle_temple" => LootTable {
+        "voxelcraft:chests/jungle_temple" => LootTable {
             pools: vec![
                 LootPool {
                     rolls: Rolls::Uniform { min: 2.0, max: 5.0 },
@@ -928,7 +955,7 @@ pub fn builtin_structure_table(name: &str) -> Option<LootTable> {
             ],
         },
         // jar: chests/stronghold_corridor
-        "minecraft:chests/stronghold_corridor" => LootTable {
+        "voxelcraft:chests/stronghold_corridor" => LootTable {
             pools: vec![
                 LootPool {
                     rolls: Rolls::Uniform { min: 2.0, max: 4.0 },
@@ -942,7 +969,7 @@ pub fn builtin_structure_table(name: &str) -> Option<LootTable> {
             ],
         },
         // jar: chests/stronghold_library
-        "minecraft:chests/stronghold_library" => LootTable {
+        "voxelcraft:chests/stronghold_library" => LootTable {
             pools: vec![
                 LootPool {
                     rolls: Rolls::Uniform { min: 2.0, max: 4.0 },
@@ -958,7 +985,7 @@ pub fn builtin_structure_table(name: &str) -> Option<LootTable> {
             ],
         },
         // 1.11: chests/woodland_mansion (VERIFIED live 2026-09-07,
-        // minecraft.wiki/w/Woodland_Mansion §Loot capture
+        // reference wiki /Woodland_Mansion §Loot capture
         // scripts/v111_page_woodland_mansion.json — "each woodland
         // mansion chest contains items drawn from 4 pools"). Palette-
         // limited with the page's own §History version-scoping: the
@@ -970,7 +997,7 @@ pub fn builtin_structure_table(name: &str) -> Option<LootTable> {
         // gold ingot rows are palette-absent — they don't roll (the
         // established honest policy; surviving weights keep their live
         // relative values).
-        "minecraft:chests/woodland_mansion" => LootTable {
+        "voxelcraft:chests/woodland_mansion" => LootTable {
             pools: vec![
                 // pool 1: rolls 1-3 (live weights / 107)
                 LootPool {
@@ -1153,10 +1180,10 @@ pub fn scan_pack(id: &str, files: &dyn PackFiles) -> Option<DataPackReport> {
         let Some((folder, file)) = path.split_once('/') else { continue };
         let Some(name) = file.strip_suffix(".json") else { continue };
         // fully-qualified resource id: `ns:<path under the content
-        // folder>` — the vanilla addressing (jar: data/minecraft/
+        // folder>` — the vanilla addressing (jar: data/voxelcraft/
         // loot_tables/chests/simple_dungeon.json ⇄
-        // `minecraft:chests/simple_dungeon`; recipes/bow.json ⇄
-        // `minecraft:bow`)
+        // `voxelcraft:chests/simple_dungeon`; recipes/bow.json ⇄
+        // `voxelcraft:bow`)
         let fq_name = format!("{}:{name}", ns_of(rest));
         match folder {
             "recipes" => {
@@ -1229,11 +1256,17 @@ pub fn scan_pack(id: &str, files: &dyn PackFiles) -> Option<DataPackReport> {
 }
 
 /// namespace of a `data/<ns>/...` path
+///
+/// Interop: `data/<legacy-ns>/…` folders in USER-SUPPLIED packs map onto
+/// our own namespace (read-side alias — external content addresses OUR
+/// registries through the ecosystem's legacy layout). Custom mod
+/// namespaces pass through untouched.
 fn ns_of(path_after_data: &str) -> String {
     path_after_data
         .split('/')
         .next()
-        .unwrap_or("minecraft")
+        .map(crate::model::norm_ns)
+        .unwrap_or(crate::model::NS)
         .to_string()
 }
 
@@ -1280,7 +1313,7 @@ impl LoadedData {
         let table = match self.loot_tables.get(name) {
             Some(t) => t,
             None => {
-                builtin = if name == "minecraft:chests/simple_dungeon" {
+                builtin = if name == "voxelcraft:chests/simple_dungeon" {
                     builtin_dungeon_table()
                 } else {
                     builtin_structure_table(name)?
@@ -1363,27 +1396,27 @@ pub const DEMO_PACK: &[(&str, &[u8])] = &[
     (
         // shaped, 2x2 cobble -> 4 stone bricks (a stone-brick cutter)
         "data/demo/recipes/cobble_bricks.json",
-        b"{\"type\":\"minecraft:crafting_shaped\",\"pattern\":[\"##\",\"##\"],\"key\":{\"#\":{\"item\":\"minecraft:cobblestone\"}},\"result\":{\"item\":\"minecraft:stone_bricks\",\"count\":4}}",
+        b"{\"type\":\"voxelcraft:crafting_shaped\",\"pattern\":[\"##\",\"##\"],\"key\":{\"#\":{\"item\":\"voxelcraft:cobblestone\"}},\"result\":{\"item\":\"voxelcraft:stone_bricks\",\"count\":4}}",
     ),
     (
         // shapeless with a TAG ingredient: any wool -> 1 string
         "data/demo/recipes/wool_string.json",
-        b"{\"type\":\"minecraft:crafting_shapeless\",\"ingredients\":[{\"tag\":\"demo:wools\"}],\"result\":{\"item\":\"minecraft:string\"}}",
+        b"{\"type\":\"voxelcraft:crafting_shapeless\",\"ingredients\":[{\"tag\":\"demo:wools\"}],\"result\":{\"item\":\"voxelcraft:string\"}}",
     ),
     (
         // the tag the recipe above references (5 engine wools)
         "data/demo/tags/items/wools.json",
-        b"{\"replace\":false,\"values\":[\"minecraft:white_wool\",\"minecraft:red_wool\",\"minecraft:blue_wool\",\"minecraft:yellow_wool\",\"minecraft:black_wool\"]}",
+        b"{\"replace\":false,\"values\":[\"voxelcraft:white_wool\",\"voxelcraft:red_wool\",\"voxelcraft:blue_wool\",\"voxelcraft:yellow_wool\",\"voxelcraft:black_wool\"]}",
     ),
     (
         // a weighted loot table: 2-4 rolls, iron 60% / gold 30% / bone 10%
         "data/demo/loot_tables/demo_loot.json",
-        b"{\"pools\":[{\"rolls\":{\"min\":2.0,\"max\":4.0,\"type\":\"minecraft:uniform\"},\"entries\":[{\"type\":\"minecraft:item\",\"weight\":6,\"functions\":[{\"function\":\"minecraft:set_count\",\"count\":{\"min\":1.0,\"max\":2.0}}],\"name\":\"minecraft:iron_ore\"},{\"type\":\"minecraft:item\",\"weight\":3,\"name\":\"minecraft:gold_ore\"},{\"type\":\"minecraft:item\",\"weight\":1,\"functions\":[{\"function\":\"minecraft:set_count\",\"count\":1}],\"name\":\"minecraft:bone\"}]}]}",
+        b"{\"pools\":[{\"rolls\":{\"min\":2.0,\"max\":4.0,\"type\":\"voxelcraft:uniform\"},\"entries\":[{\"type\":\"voxelcraft:item\",\"weight\":6,\"functions\":[{\"function\":\"voxelcraft:set_count\",\"count\":{\"min\":1.0,\"max\":2.0}}],\"name\":\"voxelcraft:iron_ore\"},{\"type\":\"voxelcraft:item\",\"weight\":3,\"name\":\"voxelcraft:gold_ore\"},{\"type\":\"voxelcraft:item\",\"weight\":1,\"functions\":[{\"function\":\"voxelcraft:set_count\",\"count\":1}],\"name\":\"voxelcraft:bone\"}]}]}",
     ),
     (
         // detected + reported, not applied (honest unsupported counting)
         "data/demo/advancements/demo.json",
-        b"{\"criteria\":{\"x\":{\"trigger\":\"minecraft:tick\"}}}",
+        b"{\"criteria\":{\"x\":{\"trigger\":\"voxelcraft:tick\"}}}",
     ),
 ];
 
@@ -1426,16 +1459,16 @@ mod tests {
     #[test]
     fn name_bridge_is_bidirectional_and_honest() {
         // forward: every mapped name resolves
-        assert_eq!(item_id_by_name("minecraft:bone"), Some(BONE));
-        assert_eq!(item_id_by_name("minecraft:glass_bottle"), Some(POTION_EMPTY));
-        assert_eq!(item_id_by_name("minecraft:spawner"), Some(SPAWNER));
+        assert_eq!(item_id_by_name("voxelcraft:bone"), Some(BONE));
+        assert_eq!(item_id_by_name("voxelcraft:glass_bottle"), Some(POTION_EMPTY));
+        assert_eq!(item_id_by_name("voxelcraft:spawner"), Some(SPAWNER));
         // palette-absent names resolve to None — never a lookalike
-        assert_eq!(item_id_by_name("minecraft:stick"), None);
-        assert_eq!(item_id_by_name("minecraft:saddle"), None);
-        assert_eq!(item_id_by_name("minecraft:potion"), None); // ambiguous by design
+        assert_eq!(item_id_by_name("voxelcraft:stick"), None);
+        assert_eq!(item_id_by_name("voxelcraft:saddle"), None);
+        assert_eq!(item_id_by_name("voxelcraft:potion"), None); // ambiguous by design
         assert_eq!(item_id_by_name("somemod:thing"), None);
         // reverse
-        assert_eq!(item_name_by_id(BONE), Some("minecraft:bone"));
+        assert_eq!(item_name_by_id(BONE), Some("voxelcraft:bone"));
         // no duplicate ids or names in the table (first-match wins, so a
         // duplicate would silently shadow — assert none exist)
         let mut seen_ids = std::collections::HashSet::new();
@@ -1454,24 +1487,24 @@ mod tests {
         store.apply(
             "items",
             "demo:things",
-            &TagFile { replace: false, values: vec!["minecraft:bone".into()] },
+            &TagFile { replace: false, values: vec!["voxelcraft:bone".into()] },
         );
         store.apply(
             "items",
             "demo:things",
-            &TagFile { replace: false, values: vec!["minecraft:string".into()] },
+            &TagFile { replace: false, values: vec!["voxelcraft:string".into()] },
         );
         let (members, unknown) = store.members("items", "demo:things");
-        assert_eq!(members, vec!["minecraft:bone", "minecraft:string"]);
+        assert_eq!(members, vec!["voxelcraft:bone", "voxelcraft:string"]);
         assert!(unknown.is_empty());
         // replace discards
         store.apply(
             "items",
             "demo:things",
-            &TagFile { replace: true, values: vec!["minecraft:feather".into()] },
+            &TagFile { replace: true, values: vec!["voxelcraft:feather".into()] },
         );
         let (members, _) = store.members("items", "demo:things");
-        assert_eq!(members, vec!["minecraft:feather"]);
+        assert_eq!(members, vec!["voxelcraft:feather"]);
         // nested #refs resolve; cycles are reported, not looped
         store.apply(
             "items",
@@ -1481,14 +1514,14 @@ mod tests {
         store.apply(
             "items",
             "demo:b",
-            &TagFile { replace: false, values: vec!["#demo:a".into(), "minecraft:arrow".into()] },
+            &TagFile { replace: false, values: vec!["#demo:a".into(), "voxelcraft:arrow".into()] },
         );
         let (members, unknown) = store.members("items", "demo:a");
-        assert!(members.contains(&"minecraft:arrow".to_string()));
+        assert!(members.contains(&"voxelcraft:arrow".to_string()));
         assert!(unknown.iter().any(|u| u.contains("cycle")));
         // is_tagged walks the chain
-        assert!(store.is_tagged("items", "demo:a", "minecraft:arrow"));
-        assert!(!store.is_tagged("items", "demo:a", "minecraft:bone"));
+        assert!(store.is_tagged("items", "demo:a", "voxelcraft:arrow"));
+        assert!(!store.is_tagged("items", "demo:a", "voxelcraft:bone"));
     }
 
     /// the recipe grammar parses the exact shapes extracted from the
@@ -1497,81 +1530,81 @@ mod tests {
     fn recipe_grammar_matches_the_vanilla_jar() {
         // stick.json (shaped, tag ingredient, count: 4) — verbatim shape
         let stick: serde_json::Value = serde_json::json!({
-            "type": "minecraft:crafting_shaped",
+            "type": "voxelcraft:crafting_shaped",
             "group": "sticks",
             "pattern": ["#", "#"],
-            "key": {"#": {"tag": "minecraft:planks"}},
-            "result": {"item": "minecraft:stick", "count": 4}
+            "key": {"#": {"tag": "voxelcraft:planks"}},
+            "result": {"item": "voxelcraft:stick", "count": 4}
         });
         // the RESULT (stick) is palette-absent → honest skip
-        assert!(parse_recipe("minecraft:stick", &stick).is_err());
+        assert!(parse_recipe("voxelcraft:stick", &stick).is_err());
 
         // a stick-shaped recipe with a palette result parses and matches
         let oak: serde_json::Value = serde_json::json!({
-            "type": "minecraft:crafting_shaped",
+            "type": "voxelcraft:crafting_shaped",
             "pattern": ["#", "#"],
-            "key": {"#": {"tag": "minecraft:planks"}},
-            "result": {"item": "minecraft:oak_planks", "count": 4}
+            "key": {"#": {"tag": "voxelcraft:planks"}},
+            "result": {"item": "voxelcraft:oak_planks", "count": 4}
         });
         let r = parse_recipe("demo:oak", &oak).unwrap();
         let mut tags = TagStore::default();
         tags.apply(
             "items",
-            "minecraft:planks",
-            &TagFile { replace: false, values: vec!["minecraft:oak_planks".into()] },
+            "voxelcraft:planks",
+            &TagFile { replace: false, values: vec!["voxelcraft:oak_planks".into()] },
         );
         let grid = vec![
-            GridItem::item("minecraft:oak_planks", 3),
+            GridItem::item("voxelcraft:oak_planks", 3),
             GridItem::empty(),
-            GridItem::item("minecraft:oak_planks", 1),
+            GridItem::item("voxelcraft:oak_planks", 1),
             GridItem::empty(),
         ];
         assert!(r.matches(&grid, 2, &tags));
         // bow.json pattern with offset + trailing spaces
         let bowish: serde_json::Value = serde_json::json!({
-            "type": "minecraft:crafting_shaped",
+            "type": "voxelcraft:crafting_shaped",
             "pattern": [" #X", "# X", " #X"],
             "key": {
-                "#": {"item": "minecraft:oak_log"},
-                "X": {"item": "minecraft:string"}
+                "#": {"item": "voxelcraft:oak_log"},
+                "X": {"item": "voxelcraft:string"}
             },
-            "result": {"item": "minecraft:crafting_table"}
+            "result": {"item": "voxelcraft:crafting_table"}
         });
         let r = parse_recipe("demo:bowish", &bowish).unwrap();
         let mk = |s: &str| GridItem { name: s.to_string(), count: 1 };
         let mut grid = vec![GridItem::empty(); 9];
-        grid[1] = mk("minecraft:oak_log");
-        grid[2] = mk("minecraft:string");
-        grid[3] = mk("minecraft:oak_log");
-        grid[5] = mk("minecraft:string");
-        grid[7] = mk("minecraft:oak_log");
-        grid[8] = mk("minecraft:string");
+        grid[1] = mk("voxelcraft:oak_log");
+        grid[2] = mk("voxelcraft:string");
+        grid[3] = mk("voxelcraft:oak_log");
+        grid[5] = mk("voxelcraft:string");
+        grid[7] = mk("voxelcraft:oak_log");
+        grid[8] = mk("voxelcraft:string");
         assert!(r.matches(&grid, 3, &tags));
         // shapeless (acacia_button shape) + bipartite overlap matching
         let shapeless: serde_json::Value = serde_json::json!({
-            "type": "minecraft:crafting_shapeless",
-            "ingredients": [{"item": "minecraft:bone"}, {"tag": "demo:any"}],
-            "result": {"item": "minecraft:string"}
+            "type": "voxelcraft:crafting_shapeless",
+            "ingredients": [{"item": "voxelcraft:bone"}, {"tag": "demo:any"}],
+            "result": {"item": "voxelcraft:string"}
         });
         let r = parse_recipe("demo:overlap", &shapeless).unwrap();
         tags.apply(
             "items",
             "demo:any",
-            &TagFile { replace: false, values: vec!["minecraft:bone".into(), "minecraft:string".into()] },
+            &TagFile { replace: false, values: vec!["voxelcraft:bone".into(), "voxelcraft:string".into()] },
         );
         // ONE bone stack satisfies the Item(bone) ingredient; the Tag may
         // not greedily steal it
-        let grid = vec![GridItem::item("minecraft:bone", 2)];
+        let grid = vec![GridItem::item("voxelcraft:bone", 2)];
         assert!(!r.matches(&grid, 1, &tags), "one stack cannot feed two ingredients");
         let grid = vec![
-            GridItem::item("minecraft:bone", 2),
-            GridItem::item("minecraft:bone", 1),
+            GridItem::item("voxelcraft:bone", 2),
+            GridItem::item("voxelcraft:bone", 1),
         ];
         assert!(r.matches(&grid, 2, &tags));
         // unsupported types are rejected with the type name
         let smelt: serde_json::Value = serde_json::json!({
-            "type": "minecraft:smelting", "ingredient": {"item": "minecraft:cobblestone"},
-            "result": "minecraft:stone", "experience": 0.1
+            "type": "voxelcraft:smelting", "ingredient": {"item": "voxelcraft:cobblestone"},
+            "result": "voxelcraft:stone", "experience": 0.1
         });
         assert!(parse_recipe("demo:smelt", &smelt)
             .unwrap_err()
@@ -1584,14 +1617,14 @@ mod tests {
     fn loot_grammar_and_distribution() {
         let table: serde_json::Value = serde_json::json!({
             "pools": [{
-                "rolls": {"min": 1.0, "max": 3.0, "type": "minecraft:uniform"},
+                "rolls": {"min": 1.0, "max": 3.0, "type": "voxelcraft:uniform"},
                 "entries": [
-                    {"type": "minecraft:item", "weight": 20, "name": "minecraft:bone",
-                     "functions": [{"function": "minecraft:set_count",
+                    {"type": "voxelcraft:item", "weight": 20, "name": "voxelcraft:bone",
+                     "functions": [{"function": "voxelcraft:set_count",
                                     "count": {"min": 1.0, "max": 4.0}}]},
-                    {"type": "minecraft:item", "weight": 10, "name": "minecraft:string"},
-                    {"type": "minecraft:empty"},
-                    {"type": "minecraft:loot_table", "name": "demo:sub"}
+                    {"type": "voxelcraft:item", "weight": 10, "name": "voxelcraft:string"},
+                    {"type": "voxelcraft:empty"},
+                    {"type": "voxelcraft:loot_table", "name": "demo:sub"}
                 ]
             }]
         });
@@ -1600,7 +1633,7 @@ mod tests {
         assert_eq!(t.pools[0].entries.len(), 4);
         let sub: serde_json::Value = serde_json::json!({
             "pools": [{"rolls": 1, "entries": [
-                {"type": "minecraft:item", "weight": 1, "name": "minecraft:arrow"}
+                {"type": "voxelcraft:item", "weight": 1, "name": "voxelcraft:arrow"}
             ]}]
         });
         let sub = parse_loot_table(&sub).unwrap();
@@ -1623,7 +1656,7 @@ mod tests {
         // fixed rolls parse too
         let fixed: serde_json::Value = serde_json::json!({
             "pools": [{"rolls": 2, "entries": [
-                {"type": "minecraft:item", "weight": 1, "name": "minecraft:bone"}
+                {"type": "voxelcraft:item", "weight": 1, "name": "voxelcraft:bone"}
             ]}]
         });
         let t = parse_loot_table(&fixed).unwrap();
@@ -1632,7 +1665,7 @@ mod tests {
         // palette-absent loot items are rejected honestly
         let bad: serde_json::Value = serde_json::json!({
             "pools": [{"rolls": 1, "entries": [
-                {"type": "minecraft:item", "weight": 1, "name": "minecraft:saddle"}
+                {"type": "voxelcraft:item", "weight": 1, "name": "voxelcraft:saddle"}
             ]}]
         });
         assert!(parse_loot_table(&bad).unwrap_err().contains("saddle"));
@@ -1656,15 +1689,15 @@ mod tests {
         assert_eq!(loaded.tags.len(), 1);
         // shaped demo recipe matches a 2x2 cobble grid
         let grid = vec![
-            GridItem::item("minecraft:cobblestone", 5),
-            GridItem::item("minecraft:cobblestone", 3),
-            GridItem::item("minecraft:cobblestone", 9),
-            GridItem::item("minecraft:cobblestone", 1),
+            GridItem::item("voxelcraft:cobblestone", 5),
+            GridItem::item("voxelcraft:cobblestone", 3),
+            GridItem::item("voxelcraft:cobblestone", 9),
+            GridItem::item("voxelcraft:cobblestone", 1),
         ];
         let (item, count) = loaded.match_grid(&grid, 2).unwrap();
         assert_eq!((item, count), (STONE_BRICKS, 4));
         // tag-driven shapeless: red wool -> string
-        let grid = vec![GridItem::item("minecraft:red_wool", 1)];
+        let grid = vec![GridItem::item("voxelcraft:red_wool", 1)];
         let (item, count) = loaded.match_grid(&grid, 1).unwrap();
         assert_eq!((item, count), (STRING, 1));
         // loot table rolls within its grammar
@@ -1698,22 +1731,22 @@ mod tests {
         .unwrap();
         std::fs::write(
             a.join("data/first/loot_tables/chests/simple_dungeon.json"),
-            r#"{"pools":[{"rolls":1,"entries":[{"type":"minecraft:item","weight":1,"name":"minecraft:iron_ore"}]}]}"#,
+            r#"{"pools":[{"rolls":1,"entries":[{"type":"voxelcraft:item","weight":1,"name":"voxelcraft:iron_ore"}]}]}"#,
         )
         .unwrap();
-        // pack B overrides the VANILLA table name — the minecraft
+        // pack B overrides the VANILLA table name — the voxelcraft
         // namespace ("used for vanilla files and can be used to override
         // them", wiki Data pack page, live-verified): gold replaces iron
         let b = root.join("pack-b");
-        std::fs::create_dir_all(b.join("data/minecraft/loot_tables/chests")).unwrap();
+        std::fs::create_dir_all(b.join("data/voxelcraft/loot_tables/chests")).unwrap();
         std::fs::write(
             b.join("pack.mcmeta"),
             format!("{{\"pack\":{{\"pack_format\":{},\"description\":\"b\"}}}}", PACK_FORMAT_1_16_5),
         )
         .unwrap();
         std::fs::write(
-            b.join("data/minecraft/loot_tables/chests/simple_dungeon.json"),
-            r#"{"pools":[{"rolls":1,"entries":[{"type":"minecraft:item","weight":1,"name":"minecraft:gold_ore"}]}]}"#,
+            b.join("data/voxelcraft/loot_tables/chests/simple_dungeon.json"),
+            r#"{"pools":[{"rolls":1,"entries":[{"type":"voxelcraft:item","weight":1,"name":"voxelcraft:gold_ore"}]}]}"#,
         )
         .unwrap();
         // a non-pack directory (no pack.mcmeta) — skipped silently
@@ -1723,7 +1756,7 @@ mod tests {
         assert_eq!(loaded.packs.len(), 2, "{:?}", loaded.packs.len());
         // B sorted after A → B's table wins the name (last pack wins)
         let mut rng = Rng::new(3);
-        let stacks = loaded.roll("minecraft:chests/simple_dungeon", &mut rng).unwrap();
+        let stacks = loaded.roll("voxelcraft:chests/simple_dungeon", &mut rng).unwrap();
         assert_eq!(stacks, vec![(GOLD_ORE, 1)]);
 
         std::fs::remove_dir_all(&root).ok();
@@ -1736,7 +1769,7 @@ mod tests {
         use crate::zip::ZipFiles;
         use std::io::Write;
         // build a one-file deflate zip: pack.mcmeta + one recipe
-        let recipe = br#"{"type":"minecraft:crafting_shapeless","ingredients":[{"item":"minecraft:cobblestone"}],"result":{"item":"minecraft:stone"} }"#;
+        let recipe = br#"{"type":"voxelcraft:crafting_shapeless","ingredients":[{"item":"voxelcraft:cobblestone"}],"result":{"item":"voxelcraft:stone"} }"#;
         let files: Vec<(&str, Vec<u8>)> = vec![
             (
                 "pack.mcmeta",
@@ -1806,7 +1839,7 @@ mod tests {
         let report = scan_pack("zipped", &zf).expect("pack scans");
         assert_eq!(report.recipes.len(), 1);
         let loaded = LoadedData::from_reports(vec![report]);
-        let grid = vec![GridItem::item("minecraft:cobblestone", 1)];
+        let grid = vec![GridItem::item("voxelcraft:cobblestone", 1)];
         assert_eq!(loaded.match_grid(&grid, 1), Some((STONE, 1)));
     }
 
@@ -1840,13 +1873,13 @@ mod tests {
         }
     }
     /// 1.11: the woodland_mansion chest table — 4 pools (VERIFIED live
-    /// 2026-09-07, minecraft.wiki/w/Woodland_Mansion §Loot capture:
+    /// 2026-09-07, reference wiki /Woodland_Mansion §Loot capture:
     /// "each woodland mansion chest contains items drawn from 4 pools"),
     /// palette-limited with the §History version-scoping (vex trim 1.20
     /// / resin 1.21.4 / name-tag removal 26.1 all post-1.11)
     #[test]
     fn v111_woodland_mansion_table() {
-        let t = builtin_structure_table("minecraft:chests/woodland_mansion")
+        let t = builtin_structure_table("voxelcraft:chests/woodland_mansion")
             .expect("the mansion table exists");
         assert_eq!(t.pools.len(), 4, "four pools (live page structure)");
         // pool 3: rolls 3, the four 1-8 rows at weight 10

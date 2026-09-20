@@ -3,11 +3,11 @@
 //! vanilla-observable movement (0.5 blocks/s walk, 1-block jump-ups), and
 //! the per-profession tiered trade tables the trade screen serves.
 //!
-//! Phase 5 trading depth (every value VERIFIED against minecraft.wiki,
+//! Phase 5 trading depth (every value VERIFIED against the reference wiki,
 //! live pull Sep 2026 — Villager + Trading pages, including the 1.16.5-era
 //! Trading revision 1952066):
 //! - the full **15 villager types** (13 professions + Unemployed + Nitwit),
-//!   registry ids in the `minecraft:villager_profession` spelling
+//!   registry ids in the `voxelcraft:villager_profession` spelling
 //! - **5 career levels** (Novice..Master) with XP thresholds
 //!   0 / 10 / 70 / 150 / 250 (Villager "Experience levels" table)
 //! - per-trade stock: **16 uses at Novice, 12 at every higher tier** (the
@@ -56,7 +56,7 @@ pub const TIER_XP: [u16; 5] = [2, 5, 10, 15, 30];
 pub const RESTOCK_TICKS: u64 = 6000;
 
 // ------------------------------------------------ gossip (§Gossiping) --
-// VERIFIED against minecraft.wiki/w/Villager §Gossiping (live round,
+// VERIFIED against reference wiki /Villager §Gossiping (live round,
 // research-verdicts.md): per-type gain / decay / sharing cost / maximum /
 // reputation multiplier. Decay runs every 20 minutes (24000 ticks);
 // shared gossip arrives reduced by the sharing cost; major_positive
@@ -65,7 +65,7 @@ pub const RESTOCK_TICKS: u64 = 6000;
 /// gossip decay / share cadence: 20 real minutes = 24000 game ticks
 pub const GOSSIP_DECAY_TICKS: u64 = 24_000;
 /// vanilla standard price multiplier for common trades (the reputation
-/// discount scales with it — minecraft.wiki/w/Trading §Sale prices)
+/// discount scales with it — reference wiki /Trading §Sale prices)
 pub const PRICE_MULTIPLIER: f32 = 0.05;
 
 /// The five gossip types (VERIFIED table). `major_positive`/`minor_positive`
@@ -206,24 +206,24 @@ pub const PROFESSIONS: [&str; 15] = [
     "Weaponsmith",
 ];
 
-/// registry ids exactly as `minecraft:villager_profession` spells them
+/// registry ids exactly as `voxelcraft:villager_profession` spells them
 /// (the mechanical-name discipline: exact key strings, no renaming)
 pub const PROFESSION_IDS: [&str; 15] = [
-    "minecraft:armorer",
-    "minecraft:butcher",
-    "minecraft:cartographer",
-    "minecraft:cleric",
-    "minecraft:farmer",
-    "minecraft:fisherman",
-    "minecraft:fletcher",
-    "minecraft:leatherworker",
-    "minecraft:librarian",
-    "minecraft:mason",
-    "minecraft:nitwit",
-    "minecraft:shepherd",
-    "minecraft:toolsmith",
-    "minecraft:unemployed",
-    "minecraft:weaponsmith",
+    "voxelcraft:armorer",
+    "voxelcraft:butcher",
+    "voxelcraft:cartographer",
+    "voxelcraft:cleric",
+    "voxelcraft:farmer",
+    "voxelcraft:fisherman",
+    "voxelcraft:fletcher",
+    "voxelcraft:leatherworker",
+    "voxelcraft:librarian",
+    "voxelcraft:mason",
+    "voxelcraft:nitwit",
+    "voxelcraft:shepherd",
+    "voxelcraft:toolsmith",
+    "voxelcraft:unemployed",
+    "voxelcraft:weaponsmith",
 ];
 
 /// the vanilla job-site block of each profession (documentation/UI only —
@@ -1000,7 +1000,7 @@ fn solid_at(world: &vc_world::world::World, x: f32, y: f32, z: f32) -> bool {
 }
 
 /// Reputation-adjusted give-count (price) for trade row `i` of villager
-/// `v` — VERIFIED price rule (minecraft.wiki/w/Trading §Sale prices,
+/// `v` — VERIFIED price rule (reference wiki /Trading §Sale prices,
 /// research-verdicts.md live round):
 ///     cost = clamp(base − floor(reputation × 0.05), 1, 64)
 /// Positive reputation discounts, negative raises (Java behavior).
@@ -1161,13 +1161,13 @@ mod tests {
         assert_eq!(PROFESSION_IDS.len(), 15);
         for (n, id) in PROFESSIONS.iter().zip(PROFESSION_IDS.iter()) {
             assert!(!n.is_empty());
-            assert!(id.starts_with("minecraft:"), "registry id {id}");
+            assert!(id.starts_with("voxelcraft:"), "registry id {id}");
         }
         // the two trade-less types sit at their documented indices
         assert_eq!(PROFESSIONS[NITWIT as usize], "Nitwit");
-        assert_eq!(PROFESSION_IDS[NITWIT as usize], "minecraft:nitwit");
+        assert_eq!(PROFESSION_IDS[NITWIT as usize], "voxelcraft:nitwit");
         assert_eq!(PROFESSIONS[UNEMPLOYED as usize], "Unemployed");
-        assert_eq!(PROFESSION_IDS[UNEMPLOYED as usize], "minecraft:unemployed");
+        assert_eq!(PROFESSION_IDS[UNEMPLOYED as usize], "voxelcraft:unemployed");
     }
 
     #[test]
@@ -1295,7 +1295,7 @@ mod tests {
 
     #[test]
     fn gossip_table_matches_wiki() {
-        // VERIFIED minecraft.wiki/w/Villager §Gossiping (research-verdicts
+        // VERIFIED reference wiki /Villager §Gossiping (research-verdicts
         // live round): (gain, decay, share cost, maximum, multiplier)
         assert_eq!(GossipKind::Trading.gain(), 4);
         assert_eq!(GossipKind::Trading.decay(), 2);

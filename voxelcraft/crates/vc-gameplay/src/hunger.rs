@@ -3,7 +3,7 @@
 //! gameplay system") closed per the user's "anything left to do then do
 //! it". This is the engine's analog of vanilla's `FoodData`.
 //!
-//! ALL numerics VERIFIED against minecraft.wiki/w/Food fetched LIVE
+//! ALL numerics VERIFIED against reference wiki /Food fetched LIVE
 //! 2026-09-18 (the full research pass + disagreement notes live in
 //! docs/research/round-17-hunger-audit.md). The wiki's own §Variables
 //! list names the exact fields:

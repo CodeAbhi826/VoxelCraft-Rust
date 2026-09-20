@@ -8,7 +8,7 @@
 //!   compile pipeline stays identical across platforms.
 //!
 //! `pack.mcmeta` is validated: pack_format 6 = 1.16.2–1.16.5 (VERIFIED,
-//! minecraft.wiki). Mismatched formats log a warning but never abort (§46 —
+//! the reference wiki). Mismatched formats log a warning but never abort (§46 —
 //! a user-supplied imperfect pack must not crash the engine).
 
 use serde::Deserialize;
@@ -38,7 +38,7 @@ pub struct PackMeta {
 
 /// where pack files come from
 pub trait PackSource: Send + Sync {
-    /// read a pack-relative path, e.g. "assets/minecraft/blockstates/oak_slab.json"
+    /// read a pack-relative path, e.g. "assets/voxelcraft/blockstates/oak_slab.json"
     fn read(&self, path: &str) -> Option<Vec<u8>>;
     /// human-readable source name for logs
     fn name(&self) -> String;
@@ -170,12 +170,12 @@ pub async fn fetch_builtin_pack(
     // 1. pack.mcmeta + all blockstates
     let mut wanted: Vec<String> = vec!["pack.mcmeta".to_string()];
     for spec in specs {
-        wanted.push(format!("assets/minecraft/blockstates/{}.json", spec.name));
+        wanted.push(format!("assets/voxelcraft/blockstates/{}.json", spec.name));
     }
     // fetch blockstates first, parse model refs from them
     let mut models: Vec<String> = Vec::new();
     for spec in specs {
-        let bs_path = format!("assets/minecraft/blockstates/{}.json", spec.name);
+        let bs_path = format!("assets/voxelcraft/blockstates/{}.json", spec.name);
         let bytes = fetch_bytes(&bs_path).await?;
         collect_model_refs(&bytes, &mut models);
         mem.insert(&bs_path, bytes);
@@ -223,63 +223,63 @@ pub async fn fetch_builtin_pack(
 /// `/voxelcraft-pack-programmer-art/**` by the bundle script; the exact
 /// list is baked in because wasm has no directory listing.
 pub const PROGRAMMER_ART_FILES: &[&str] = &[
-    "assets/minecraft/textures/block/bedrock.png",
-    "assets/minecraft/textures/block/black_wool.png",
-    "assets/minecraft/textures/block/blue_wool.png",
-    "assets/minecraft/textures/block/bookshelf.png",
-    "assets/minecraft/textures/block/bricks.png",
-    "assets/minecraft/textures/block/clay.png",
-    "assets/minecraft/textures/block/coal_ore.png",
-    "assets/minecraft/textures/block/cobblestone.png",
-    "assets/minecraft/textures/block/crafting_table_side.png",
-    "assets/minecraft/textures/block/crafting_table_top.png",
-    "assets/minecraft/textures/block/dandelion.png",
-    "assets/minecraft/textures/block/diamond_block.png",
-    "assets/minecraft/textures/block/diamond_ore.png",
-    "assets/minecraft/textures/block/dirt.png",
-    "assets/minecraft/textures/block/emerald_ore.png",
-    "assets/minecraft/textures/block/end_stone.png",
-    "assets/minecraft/textures/block/furnace_front_on.png",
-    "assets/minecraft/textures/block/furnace_side.png",
-    "assets/minecraft/textures/block/furnace_top.png",
-    "assets/minecraft/textures/block/glass.png",
-    "assets/minecraft/textures/block/glowstone.png",
-    "assets/minecraft/textures/block/gold_block.png",
-    "assets/minecraft/textures/block/gold_ore.png",
-    "assets/minecraft/textures/block/grass_block_side.png",
-    "assets/minecraft/textures/block/grass_block_top.png",
-    "assets/minecraft/textures/block/gravel.png",
-    "assets/minecraft/textures/block/ice.png",
-    "assets/minecraft/textures/block/iron_block.png",
-    "assets/minecraft/textures/block/iron_ore.png",
-    "assets/minecraft/textures/block/lapis_ore.png",
-    "assets/minecraft/textures/block/mossy_cobblestone.png",
-    "assets/minecraft/textures/block/nether_bricks.png",
-    "assets/minecraft/textures/block/netherrack.png",
-    "assets/minecraft/textures/block/oak_leaves.png",
-    "assets/minecraft/textures/block/oak_log.png",
-    "assets/minecraft/textures/block/oak_log_top.png",
-    "assets/minecraft/textures/block/oak_planks.png",
-    "assets/minecraft/textures/block/obsidian.png",
-    "assets/minecraft/textures/block/poppy.png",
-    "assets/minecraft/textures/block/red_wool.png",
-    "assets/minecraft/textures/block/redstone_ore.png",
-    "assets/minecraft/textures/block/sand.png",
-    "assets/minecraft/textures/block/snow.png",
-    "assets/minecraft/textures/block/soul_sand.png",
-    "assets/minecraft/textures/block/spawner.png",
-    "assets/minecraft/textures/block/stone.png",
-    "assets/minecraft/textures/block/stone_bricks.png",
-    "assets/minecraft/textures/block/tall_grass.png",
-    "assets/minecraft/textures/block/tnt_side.png",
-    "assets/minecraft/textures/block/tnt_top.png",
-    "assets/minecraft/textures/block/white_wool.png",
-    "assets/minecraft/textures/block/yellow_wool.png",
+    "assets/voxelcraft/textures/block/bedrock.png",
+    "assets/voxelcraft/textures/block/black_wool.png",
+    "assets/voxelcraft/textures/block/blue_wool.png",
+    "assets/voxelcraft/textures/block/bookshelf.png",
+    "assets/voxelcraft/textures/block/bricks.png",
+    "assets/voxelcraft/textures/block/clay.png",
+    "assets/voxelcraft/textures/block/coal_ore.png",
+    "assets/voxelcraft/textures/block/cobblestone.png",
+    "assets/voxelcraft/textures/block/crafting_table_side.png",
+    "assets/voxelcraft/textures/block/crafting_table_top.png",
+    "assets/voxelcraft/textures/block/dandelion.png",
+    "assets/voxelcraft/textures/block/diamond_block.png",
+    "assets/voxelcraft/textures/block/diamond_ore.png",
+    "assets/voxelcraft/textures/block/dirt.png",
+    "assets/voxelcraft/textures/block/emerald_ore.png",
+    "assets/voxelcraft/textures/block/end_stone.png",
+    "assets/voxelcraft/textures/block/furnace_front_on.png",
+    "assets/voxelcraft/textures/block/furnace_side.png",
+    "assets/voxelcraft/textures/block/furnace_top.png",
+    "assets/voxelcraft/textures/block/glass.png",
+    "assets/voxelcraft/textures/block/glowstone.png",
+    "assets/voxelcraft/textures/block/gold_block.png",
+    "assets/voxelcraft/textures/block/gold_ore.png",
+    "assets/voxelcraft/textures/block/grass_block_side.png",
+    "assets/voxelcraft/textures/block/grass_block_top.png",
+    "assets/voxelcraft/textures/block/gravel.png",
+    "assets/voxelcraft/textures/block/ice.png",
+    "assets/voxelcraft/textures/block/iron_block.png",
+    "assets/voxelcraft/textures/block/iron_ore.png",
+    "assets/voxelcraft/textures/block/lapis_ore.png",
+    "assets/voxelcraft/textures/block/mossy_cobblestone.png",
+    "assets/voxelcraft/textures/block/nether_bricks.png",
+    "assets/voxelcraft/textures/block/netherrack.png",
+    "assets/voxelcraft/textures/block/oak_leaves.png",
+    "assets/voxelcraft/textures/block/oak_log.png",
+    "assets/voxelcraft/textures/block/oak_log_top.png",
+    "assets/voxelcraft/textures/block/oak_planks.png",
+    "assets/voxelcraft/textures/block/obsidian.png",
+    "assets/voxelcraft/textures/block/poppy.png",
+    "assets/voxelcraft/textures/block/red_wool.png",
+    "assets/voxelcraft/textures/block/redstone_ore.png",
+    "assets/voxelcraft/textures/block/sand.png",
+    "assets/voxelcraft/textures/block/snow.png",
+    "assets/voxelcraft/textures/block/soul_sand.png",
+    "assets/voxelcraft/textures/block/spawner.png",
+    "assets/voxelcraft/textures/block/stone.png",
+    "assets/voxelcraft/textures/block/stone_bricks.png",
+    "assets/voxelcraft/textures/block/tall_grass.png",
+    "assets/voxelcraft/textures/block/tnt_side.png",
+    "assets/voxelcraft/textures/block/tnt_top.png",
+    "assets/voxelcraft/textures/block/white_wool.png",
+    "assets/voxelcraft/textures/block/yellow_wool.png",
     "pack.mcmeta",
 ];
 
 /// wasm: fetch the Programmer Art builtin pack (the vanilla Programmer
-/// Art analog — "the old pre-1.14 textures", minecraft.wiki/w/Programmer_
+/// Art analog — "the old pre-1.14 textures", reference wiki /Programmer_
 /// Art) into memory. Cached by the caller at boot so the resource-pack
 /// screen can toggle it synchronously afterwards.
 #[cfg(target_arch = "wasm32")]
@@ -407,10 +407,24 @@ impl PackStack {
 
     /// read `path` from the highest-priority source that provides it
     /// (returns the bytes + the source name for logs)
+    ///
+    /// Namespace interop (read-side): our paths live under
+    /// `assets/voxelcraft/…`, but USER-SUPPLIED packs authored for the
+    /// wider 1.16.5-era ecosystem lay their files out under the legacy
+    /// namespace folder. When a pack doesn't carry our path, the SAME
+    /// pack is retried through the legacy layout so real packs load
+    /// unchanged — we never write that layout ourselves, and it never
+    /// appears in any user-facing surface (pure format interop, the
+    /// same convention third-party world editors use).
     pub fn read_first(&self, path: &str) -> Option<(Vec<u8>, String)> {
         for s in &self.sources {
             if let Some(bytes) = s.read(path) {
                 return Some((bytes, s.name()));
+            }
+            if let Some(legacy) = legacy_ns_path(path) {
+                if let Some(bytes) = s.read(&legacy) {
+                    return Some((bytes, s.name()));
+                }
             }
         }
         None
@@ -423,6 +437,15 @@ impl PackStack {
     pub fn is_empty(&self) -> bool {
         self.sources.is_empty()
     }
+}
+
+/// `assets/voxelcraft/<rest>` → the legacy ecosystem layout
+/// `assets/<legacy-ns>/<rest>`; every other path maps to None. Read-side
+/// interop only — see [`PackStack::read_first`].
+fn legacy_ns_path(path: &str) -> Option<String> {
+    path.strip_prefix("assets/voxelcraft/").map(|rest| {
+        format!("assets/{}/{}", crate::model::NS_LEGACY_INTEROP, rest)
+    })
 }
 
 /// A `.zip` resource pack. Reuses the Phase 9 zip reader (flate2, zero
@@ -514,9 +537,11 @@ pub fn scan_user_packs_named(dir: &std::path::Path) -> Vec<(String, Arc<dyn Pack
 }
 
 /// logical GUI texture name -> pack-relative path:
-/// "hearts" -> "assets/minecraft/textures/gui/hearts.png" (the
-/// `minecraft` namespace so packs written for MC 1.16.5 work unchanged;
-/// custom namespaces resolve only through explicit "ns:name" requests)
+/// "hearts" -> "assets/voxelcraft/textures/gui/hearts.png" (our own
+/// namespace; user-supplied packs that only carry the legacy ecosystem
+/// layout still resolve through [`PackStack::read_first`]'s interop
+/// fallback; custom namespaces resolve only through explicit "ns:name"
+/// requests)
 pub fn gui_texture_path(name: &str) -> String {
     crate::model::texture_path(&format!("gui/{name}"))
 }
@@ -555,40 +580,40 @@ mod tests {
     }
 
     #[test]
-    fn gui_texture_path_uses_the_minecraft_namespace() {
+    fn gui_texture_path_uses_the_voxelcraft_namespace() {
         assert_eq!(
             gui_texture_path("hearts"),
-            "assets/minecraft/textures/gui/hearts.png"
+            "assets/voxelcraft/textures/gui/hearts.png"
         );
         assert_eq!(
             gui_texture_path("options_background"),
-            "assets/minecraft/textures/gui/options_background.png"
+            "assets/voxelcraft/textures/gui/options_background.png"
         );
     }
 
     #[test]
     fn pack_stack_resolves_highest_priority_first() {
         let mut low = MemorySource::new("low");
-        low.insert("assets/minecraft/textures/gui/hearts.png", b"low".to_vec());
-        low.insert("assets/minecraft/textures/gui/hunger.png", b"low".to_vec());
+        low.insert("assets/voxelcraft/textures/gui/hearts.png", b"low".to_vec());
+        low.insert("assets/voxelcraft/textures/gui/hunger.png", b"low".to_vec());
         let mut high = MemorySource::new("high");
-        high.insert("assets/minecraft/textures/gui/hearts.png", b"high".to_vec());
+        high.insert("assets/voxelcraft/textures/gui/hearts.png", b"high".to_vec());
         let mut stack = PackStack::new();
         stack.push_front(Arc::new(high));
         stack.push_front(Arc::new(low)); // low pushed to front = now highest
         // low wins hearts AND hunger; high's hearts is shadowed
         let (hearts, name) = stack
-            .read_first("assets/minecraft/textures/gui/hearts.png")
+            .read_first("assets/voxelcraft/textures/gui/hearts.png")
             .unwrap_or_else(|| (Vec::new(), String::new()));
         assert_eq!(hearts, b"low".to_vec());
         assert!(name.contains("low"));
         let (hunger, _) = stack
-            .read_first("assets/minecraft/textures/gui/hunger.png")
+            .read_first("assets/voxelcraft/textures/gui/hunger.png")
             .unwrap_or_else(|| (Vec::new(), String::new()));
         assert_eq!(hunger, b"low".to_vec());
         // nothing provides widgets
         assert!(stack
-            .read_first("assets/minecraft/textures/gui/widgets.png")
+            .read_first("assets/voxelcraft/textures/gui/widgets.png")
             .is_none());
     }
 
@@ -597,6 +622,43 @@ mod tests {
         let stack = PackStack::new();
         assert!(stack.is_empty());
         assert!(stack.read_first("pack.mcmeta").is_none());
+    }
+
+    /// Namespace interop: a user-supplied pack that only carries the
+    /// legacy ecosystem layout still resolves through our
+    /// `assets/voxelcraft/…` requests (read-side alias, same pack, same
+    /// priority slot — never a cross-pack priority change).
+    #[test]
+    fn pack_stack_falls_back_to_the_legacy_layout() {
+        let mut legacy = MemorySource::new("legacy-layout-pack");
+        legacy.insert(
+            "assets/minecraft/textures/gui/hearts.png",
+            b"legacy".to_vec(),
+        );
+        // NOTE: the literal below is built from NS_LEGACY_INTEROP, not
+        // hardcoded — the alias lives in exactly ONE place (model.rs).
+        assert_eq!(
+            legacy_ns_path("assets/voxelcraft/textures/gui/hearts.png")
+                .as_deref(),
+            Some(format!("assets/{}/textures/gui/hearts.png", crate::model::NS_LEGACY_INTEROP).as_str())
+        );
+        let mut stack = PackStack::new();
+        stack.push_front(Arc::new(legacy));
+        let (bytes, name) = stack
+            .read_first("assets/voxelcraft/textures/gui/hearts.png")
+            .expect("legacy-layout pack must resolve through the interop alias");
+        assert_eq!(bytes, b"legacy".to_vec());
+        assert!(name.contains("legacy-layout-pack"));
+        // a pack with BOTH layouts prefers our own path verbatim
+        let mut both = MemorySource::new("both");
+        both.insert("assets/voxelcraft/textures/gui/hearts.png", b"ours".to_vec());
+        both.insert("assets/minecraft/textures/gui/hearts.png", b"legacy".to_vec());
+        let mut stack2 = PackStack::new();
+        stack2.push_front(Arc::new(both));
+        let (bytes2, _) = stack2
+            .read_first("assets/voxelcraft/textures/gui/hearts.png")
+            .unwrap();
+        assert_eq!(bytes2, b"ours".to_vec());
     }
 
     /// a real zip built in-memory: the ZipSource reads the same paths a
@@ -617,7 +679,7 @@ mod tests {
                 (v >> 24) as u8,
             ]
         }
-        let name = b"assets/minecraft/textures/gui/hearts.png";
+        let name = b"assets/voxelcraft/textures/gui/hearts.png";
         let data = b"zip-heart".to_vec();
         let crc = crc32(&data);
         let mut out: Vec<u8> = Vec::new();
@@ -669,18 +731,18 @@ mod tests {
         };
         let src: Arc<dyn PackSource> = Arc::new(zip);
         assert_eq!(
-            src.read("assets/minecraft/textures/gui/hearts.png"),
+            src.read("assets/voxelcraft/textures/gui/hearts.png"),
             Some(b"zip-heart".to_vec())
         );
         // folder parity: the same logical path through a MemorySource
         let mut folder_like = MemorySource::new("folder-like");
         folder_like.insert(
-            "assets/minecraft/textures/gui/hearts.png",
+            "assets/voxelcraft/textures/gui/hearts.png",
             b"zip-heart".to_vec(),
         );
         assert_eq!(
-            folder_like.read("assets/minecraft/textures/gui/hearts.png"),
-            src.read("assets/minecraft/textures/gui/hearts.png")
+            folder_like.read("assets/voxelcraft/textures/gui/hearts.png"),
+            src.read("assets/voxelcraft/textures/gui/hearts.png")
         );
     }
 
@@ -698,7 +760,7 @@ mod tests {
     }
 
     /// a wrong pack_format only WARNS (the repo's §46 policy — VERIFIED
-    /// minecraft.wiki: pack_format 6 is 1.16.2-1.16.5, NOT the 5 the
+    /// the reference wiki: pack_format 6 is 1.16.2-1.16.5, NOT the 5 the
     /// master prompt claims) and the pack still opens
     #[test]
     fn wrong_pack_format_warns_but_opens() {

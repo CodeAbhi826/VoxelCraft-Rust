@@ -1,5 +1,5 @@
 //! Procedural 16x16 texture atlas (512x512, 32x32 tiles) in the visual style
-//! of Minecraft 1.16.5. Every pixel is synthesized at startup — zero asset files.
+//! of the 1.16.5 reference game. Every pixel is synthesized at startup — zero asset files.
 //! [merge atlas] grown from 256x256/16x16 tiles: the E1–E3 + 1.7–1.10 union
 //! pushed TILE_MAX past 256 slots.
 
@@ -855,7 +855,7 @@ fn enchanted_book_art(a: &mut [u8], t: u16) {
 // ---------------------------------------------------- Phase 2 mob art --
 //
 // All clean-room pixel art: distinct silhouettes and palettes of our own
-// design — deliberately NOT recreations of any Mojang sprite. The palette
+// design — deliberately NOT recreations of any the original game sprite. The palette
 // choices are generic (undead green, bone white, spotted hide...) which
 // are unprotectable style conventions for the creature archetypes.
 
@@ -1357,7 +1357,7 @@ fn rotten_flesh_art(a: &mut [u8], t: u16) {
 }
 
 /// spider eye (Phase 4): a clean-room eye item icon — red sclera,
-/// dark pupil, off-center glint (ours, not Mojang's)
+/// dark pupil, off-center glint (ours, not the original game's)
 fn spider_eye_art(a: &mut [u8], t: u16, fermented: bool) {
     let rows = [
         "................",
@@ -1408,7 +1408,7 @@ fn spider_eye_art(a: &mut [u8], t: u16, fermented: bool) {
 }
 
 /// spawner (Phase 5 §27): clean-room monster cage face — dark steel
-/// lattice bars with an open mesh (ours, not Mojang's): horizontal rails
+/// lattice bars with an open mesh (ours, not the original game's): horizontal rails
 /// + vertical bars, rivet dots on the frame
 fn spawner_art(a: &mut [u8], t: u16) {
     let rows = [
@@ -1438,7 +1438,7 @@ fn spawner_art(a: &mut [u8], t: u16) {
 
 /// end-portal frame (Phase 10): clean-room portal-room frame block —
 /// end-stone pale base with a recessed dark ring inset (the eye socket)
-/// + green glint corners (ours, not Mojang's)
+/// + green glint corners (ours, not the original game's)
 fn end_portal_frame_art(a: &mut [u8], t: u16) {
     let rows = [
         "S.S..........S.S",
@@ -3979,7 +3979,7 @@ pub fn generate_atlas() -> Vec<u8> {
                 e1_art::egg_art(&mut a, t, (p.0, p.1, p.2), (p.3, p.4, p.5))
             }
 
-            // ---- 1.7.2 bracket (live-verified minecraft.wiki/w/Java_Edition_1.7.2) ----
+            // ---- 1.7.2 bracket (live-verified reference wiki /Java_Edition_1.7.2) ----
             TILE_STAINED_GLASS_WHITE => stained_glass_art(&mut a, t, (231, 237, 234)),
             TILE_STAINED_GLASS_ORANGE => stained_glass_art(&mut a, t, (222, 125, 40)),
             TILE_STAINED_GLASS_MAGENTA => stained_glass_art(&mut a, t, (186, 84, 186)),
@@ -4024,7 +4024,7 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_RAW_SALMON => fish_art(&mut a, t, (222, 128, 114), (170, 88, 78), true),
             TILE_CLOWNFISH => clownfish_art(&mut a, t),
             TILE_PUFFERFISH => pufferfish_art(&mut a, t),
-            // ---- 1.8 bracket (live-verified minecraft.wiki/w/Java_Edition_1.8) ----
+            // ---- 1.8 bracket (live-verified reference wiki /Java_Edition_1.8) ----
             TILE_SLIME => slime_block_art(&mut a, t, &mut rng),
             TILE_COARSE_DIRT => coarse_dirt_art(&mut a, t, &mut rng),
             TILE_POLISHED_GRANITE => polished_art(&mut a, t, (154, 106, 79), &mut rng),
@@ -4046,7 +4046,7 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_PRISMARINE_CRYSTALS => crystals_art(&mut a, t),
             // 1.8 rabbit entity sprite
             TILE_RABBIT => rabbit_sprite_art(&mut a, t),
-            // ---- 1.9 bracket (live-verified minecraft.wiki/w/Java_Edition_1.9) ----
+            // ---- 1.9 bracket (live-verified reference wiki /Java_Edition_1.9) ----
             TILE_GRASS_PATH => grass_path_top_art(&mut a, t, &mut rng),
             TILE_GRASS_PATH_SIDE => grass_path_side_art(&mut a, t, &mut rng),
             TILE_PURPUR => purpur_art(&mut a, t, &mut rng),
@@ -4058,7 +4058,7 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_CHORUS_FRUIT => chorus_fruit_art(&mut a, t),
             TILE_ELYTRA => elytra_art(&mut a, t),
             TILE_SHIELD => shield_art(&mut a, t),
-            // ---- 1.10 bracket (live-verified minecraft.wiki/w/Java_Edition_1.10) ----
+            // ---- 1.10 bracket (live-verified reference wiki /Java_Edition_1.10) ----
             TILE_MAGMA => magma_art(&mut a, t, &mut rng),
             // 1.10 mob sprites
             TILE_POLAR_BEAR => polar_bear_art(&mut a, t),
@@ -4436,7 +4436,7 @@ pub fn blit_tile(
 // -------------------------------------------------- Phase 6: mipmaps (§26) --
 
 /// maximum mipmap levels BEYOND level 0 (vanilla `mipmapLevels` slider caps
-/// at 4 — VERIFIED against minecraft.wiki Options.txt: range 0–4, default 4,
+/// at 4 — VERIFIED against the reference wiki Options.txt: range 0–4, default 4,
 /// option exists since 1.7.2). A 16px tile bottoms out at 1px on level 4;
 /// level 5+ would collapse whole tiles into single texels (cross-tile
 /// blending) which is exactly why vanilla stops at 4.
@@ -4542,7 +4542,7 @@ pub struct AnimatedTile {
 }
 
 /// The ten vanilla destroy-stage crack overlays, clean-room procedural
-/// (VERIFIED live 2026-09-14, minecraft.wiki/w/Breaking: mining shows
+/// (VERIFIED live 2026-09-14, reference wiki /Breaking: mining shows
 /// "crack animations ... 10 stages"). Stage s draws `2 + 2s` deterministic
 /// random-walk cracks of growing length/darkness — later stages strictly
 /// CONTAIN the earlier ones (same fixed-seed walk stream), so the overlay
@@ -4638,7 +4638,7 @@ fn arm_art(a: &mut [u8], tile: u16) {
 /// must merge packs in APPLICATION order (lowest priority first) so the
 /// highest-priority pack's blit lands last and wins — the vanilla
 /// Selected-list semantics (VERIFIED live 2026-09-14,
-/// minecraft.wiki/w/Resource_pack §Behavior: "The bottom-most pack loads
+/// reference wiki /Resource_pack §Behavior: "The bottom-most pack loads
 /// first, then each pack above it replaces or merges loaded assets").
 ///
 /// Returns the animations found (caller drives their frames).
@@ -4883,7 +4883,7 @@ pub fn merge_pack_textures(
     }
 
     // 1.10 built-in: the magma block's flowing animation (VERIFIED —
-    // minecraft.wiki/w/Java_Edition_1.10 §Magma Blocks, live round
+    // reference wiki /Java_Edition_1.10 §Magma Blocks, live round
     // 2026-09-06: "Has a flowing magma animation"). Vanilla ships an
     // 8-frame texture strip; ours is a clean-room 4-frame shimmer built
     // from the procedural tile by pulsing only the glowing crack pixels
@@ -5024,40 +5024,40 @@ mod pack_tex_tests {
         }
         // the NAPP-style pack: stone + stone_n + stone_s (+ dirt plain)
         let mut mem = vc_pack::pack::MemorySource::new("napp-test");
-        mem.insert("assets/minecraft/textures/block/stone.png", png2x2([120, 120, 120, 255]));
+        mem.insert("assets/voxelcraft/textures/block/stone.png", png2x2([120, 120, 120, 255]));
         // flat normal (128,128) + AO 255 + height 255
         mem.insert(
-            "assets/minecraft/textures/block/stone_n.png",
+            "assets/voxelcraft/textures/block/stone_n.png",
             png2x2([128, 128, 255, 255]),
         );
         // smoothness 200, F0 100, porosity 30, emission 0
         mem.insert(
-            "assets/minecraft/textures/block/stone_s.png",
+            "assets/voxelcraft/textures/block/stone_s.png",
             png2x2([200, 100, 30, 0]),
         );
-        mem.insert("assets/minecraft/textures/block/dirt.png", png2x2([134, 96, 67, 255]));
+        mem.insert("assets/voxelcraft/textures/block/dirt.png", png2x2([134, 96, 67, 255]));
         let n = scan_labpbr_materials(&mem);
         assert_eq!(n, 1, "stone gained material maps; dirt did not");
 
         // corrupt _n (not a PNG) → the tile does not count
         let mut bad = vc_pack::pack::MemorySource::new("corrupt-test");
-        bad.insert("assets/minecraft/textures/block/stone.png", png2x2([120, 120, 120, 255]));
+        bad.insert("assets/voxelcraft/textures/block/stone.png", png2x2([120, 120, 120, 255]));
         bad.insert(
-            "assets/minecraft/textures/block/stone_n.png",
+            "assets/voxelcraft/textures/block/stone_n.png",
             b"not a png".to_vec(),
         );
         assert_eq!(scan_labpbr_materials(&bad), 0, "undecodable maps don't count");
 
         // a vanilla-style pack (no companions at all) → zero
         let mut plain = vc_pack::pack::MemorySource::new("plain-test");
-        plain.insert("assets/minecraft/textures/block/stone.png", png2x2([120, 120, 120, 255]));
+        plain.insert("assets/voxelcraft/textures/block/stone.png", png2x2([120, 120, 120, 255]));
         assert_eq!(scan_labpbr_materials(&plain), 0, "no companions, no materials");
 
         // _s alone still counts (spec allows either map alone)
         let mut sonly = vc_pack::pack::MemorySource::new("s-only-test");
-        sonly.insert("assets/minecraft/textures/block/stone.png", png2x2([120, 120, 120, 255]));
+        sonly.insert("assets/voxelcraft/textures/block/stone.png", png2x2([120, 120, 120, 255]));
         sonly.insert(
-            "assets/minecraft/textures/block/stone_s.png",
+            "assets/voxelcraft/textures/block/stone_s.png",
             png2x2([200, 100, 30, 0]),
         );
         assert_eq!(scan_labpbr_materials(&sonly), 1, "the specular map alone counts");
@@ -5104,7 +5104,7 @@ mod pack_tex_tests {
     fn write_builtin_pack_pngs() {
         let out_dir = concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../../builtin-pack/assets/minecraft/textures/block"
+            "/../../builtin-pack/assets/voxelcraft/textures/block"
         );
         std::fs::create_dir_all(out_dir).unwrap();
         let atlas = generate_atlas();
@@ -5173,7 +5173,7 @@ mod pack_tex_tests {
 pub const CLOUD_TEX: usize = 128;
 /// Vanilla-style blocky cloud layer: periodic value noise thresholded on a
 /// 64x64 cell grid (periodic by construction → seamless tiling), each cell
-/// rendered as a 2x2 block for the crisp Minecraft cloud look.
+/// rendered as a 2x2 block for the crisp the reference game cloud look.
 pub fn generate_cloud_atlas() -> Vec<u8> {
     const CELLS: usize = 64;
     let hash = |x: i32, y: i32| -> f32 {
@@ -5421,7 +5421,7 @@ mod v110_tests {
     }
 
     /// 1.10: the magma block gets a built-in flowing animation even with
-    /// NO resource pack (VERIFIED — minecraft.wiki/w/Java_Edition_1.10
+    /// NO resource pack (VERIFIED — reference wiki /Java_Edition_1.10
     /// §Magma Blocks, live 2026-09-06: "Has a flowing magma animation").
     /// 4 frames, 8-tick cadence, frame 0 identical to the atlas tile
     /// (seamless loop start), frames 1/2 differ (the glow pulses).

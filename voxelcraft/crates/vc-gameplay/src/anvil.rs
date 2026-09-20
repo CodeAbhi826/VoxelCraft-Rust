@@ -1,5 +1,5 @@
 //! Phase E2 (evolution 1.3–1.4 bracket): anvil mechanics.
-//! All values live-verified 2026-09-06 against minecraft.wiki
+//! All values live-verified 2026-09-06 against the reference wiki
 //! (docs/research/phase2-1.3-1.4-research.md):
 //! - 12% chance per use to degrade one stage; average 25 uses (w/Anvil
 //!   §Becoming damaged)

@@ -30,7 +30,7 @@ use winit::keyboard::KeyCode;
 // ------------------------------------------------------------- keybinds --
 
 /// Round 14 (2026-09-15): the rebindable key table — the vanilla
-/// Controls screen's backing store (minecraft.wiki/w/Controls, live
+/// Controls screen's backing store (reference wiki /Controls, live
 /// 2026-09-15: every bindable action listed with its current key,
 /// click to rebind, Reset Keys restores defaults). The engine's
 /// rebindable set: movement (forward/back/left/right/jump/sneak),
@@ -194,7 +194,7 @@ impl KeyBinds {
 pub struct Settings {
     pub render_distance: i32,
     /// Phase 6 §26: simulation distance (chunk radius for the sim ring).
-    /// NOT a 1.16.5 feature (dossier: Mojang 1.18+/26.x) — opt-in
+    /// NOT a 1.16.5 feature (dossier: the original game 1.18+/26.x) — opt-in
     /// optimization. VERIFIED modern-vanilla range 5–32, default 12 ≥ the
     /// default render distances → 1.16.5-identical behavior by default.
     pub sim_distance: i32,
@@ -266,7 +266,7 @@ pub struct Settings {
     /// MSAA: 0 = off (vanilla-faithful), 4/8 (OptiFine `ofAaLevel` parity;
     /// 2x has no guaranteed WebGPU path — off/4/8 only, device-gated)
     pub msaa: u8,
-    /// 1.10 auto-jump (VERIFIED — minecraft.wiki/w/Java_Edition_1.10
+    /// 1.10 auto-jump (VERIFIED — reference wiki /Java_Edition_1.10
     /// §General: "A new 'Auto-jump' toggle has been added, which
     /// automatically makes the player jump when running towards a
     /// one-block-tall obstacle. Enabled by default; can be disabled in
@@ -311,7 +311,7 @@ pub struct Settings {
     /// Right — the live wiki table)
     pub main_hand_left: bool,
     /// vanilla "View Bobbing" (Options screen, default ON — the
-    /// walk-cycle camera + held-item sway; minecraft.wiki/w/Options
+    /// walk-cycle camera + held-item sway; reference wiki /Options
     /// §Video: "view bobbing ... on by default")
     pub view_bobbing: bool,
     /// 2026-09-14 round: ENABLED resource packs, in Selected-list order
@@ -465,7 +465,7 @@ impl Settings {
     /// Round 10 — the vanilla 1.16.5 integer GUI-scale model
     /// (replaces the retired fractional 0.72/0.86/1.0 widget scaling).
     /// Resolves the setting against the framebuffer size:
-    /// `available = max(1, min(⌊w/320⌋, ⌊h/240⌋))` — minecraft.wiki/w/Options
+    /// `available = max(1, min(⌊w/320⌋, ⌊h/240⌋))` — reference wiki /Options
     /// fetched live 2026-09-15 ("Auto sets the GUI scale to the highest
     /// value available for the current resolution"), mathematically
     /// identical to the 1.16.5 MainWindow#calculateScale while-loop.
@@ -1267,7 +1267,7 @@ enum PointerLockMode {
 }
 
 /// Full daylight-cycle length in real seconds (VERIFIED 2026-09-06 live,
-/// minecraft.wiki/w/Daylight_cycle): 24000 game ticks at 20 ticks/second
+/// reference wiki /Daylight_cycle): 24000 game ticks at 20 ticks/second
 /// = 1200 s = 20 minutes for the complete day-night cycle in 1.16.5.
 pub const DAY_LEN_SECS: f32 = 1200.0;
 
@@ -1726,7 +1726,7 @@ pub struct GameApp {
     pub bench: Option<crate::bench::BenchState>,
     /// spawn position captured at world init (bench camera orbits it)
     bench_spawn: glam::Vec3,
-    /// Phase 9: the active world's data packs (Mojang official format —
+    /// Phase 9: the active world's data packs (vanilla-format format —
     /// recipes + loot tables + tags; scanned from `<world>/datapacks/`,
     /// folders AND zips). Wasm has no filesystem: boots empty and the
     /// E2E `dpdemo` command exercises the in-memory demo pack instead.
@@ -1882,7 +1882,7 @@ pub(crate) fn effect_icon_index(kind: vc_gameplay::effects::EffectKind) -> usize
 }
 
 /// Sub-round 1: the wiki's positive/others split for the two effect
-/// rows — VERIFIED minecraft.wiki/w/Heads-up_display (live 2026-09-14):
+/// rows — VERIFIED reference wiki /Heads-up_display (live 2026-09-14):
 /// "positive effects are shown on the top, and other effects (neutral
 /// or negative) are shown on the bottom." Beneficial kinds = positive;
 /// the harmful set (wither/poison/slowness/hunger/blindness) = row 1.
@@ -2132,9 +2132,9 @@ async fn acquire_builtin_pack() -> Option<std::sync::Arc<dyn vc_pack::pack::Pack
 }
 
 /// Acquire the PROGRAMMER ART builtin pack — the vanilla analog of
-/// `minecraft/resourcepacks/programmer_art.zip` ("The classic look of
-/// Minecraft (built-in) — the old pre-1.14 textures", VERIFIED live
-/// 2026-09-14, minecraft.wiki/w/Resource_pack §Built-in resource packs).
+/// `voxelcraft/resourcepacks/programmer_art.zip` ("The classic look of
+/// the reference game (built-in) — the old pre-1.14 textures", VERIFIED live
+/// 2026-09-14, reference wiki /Resource_pack §Built-in resource packs).
 /// Ours is a clean-room look-alike set (scripts/gen_programmer_art.py).
 ///
 /// Native: the extracted `builtin-packs/programmer-art/` folder, else the
@@ -2198,7 +2198,7 @@ async fn acquire_programmer_art_pack() -> Option<std::sync::Arc<dyn vc_pack::pac
 /// Resolve the enabled pack NAMES (Selected list, top = highest priority)
 /// to sources in APPLICATION order (lowest priority first — vanilla loads
 /// bottom-first so higher entries override, VERIFIED live 2026-09-14,
-/// minecraft.wiki/w/Resource_pack §Behavior). Unknown names (pack deleted
+/// reference wiki /Resource_pack §Behavior). Unknown names (pack deleted
 /// from resourcepacks/ since last run) are dropped silently.
 fn enabled_pack_sources(
     settings: &Settings,
@@ -2494,7 +2494,7 @@ impl GameApp {
         // (menu blur / FSR-lite upscale path untouched).
 
         // Phase 9: scan the restored world's data packs (recipes + loot
-        // tables + tags, Mojang's official format — folders AND zips).
+        // tables + tags, the original game's official format — folders AND zips).
         // Must happen before the world starts generating: dungeon-chest
         // loot rolls through the loaded tables. wasm has no filesystem —
         // `data` boots empty and the E2E `dpdemo` command runs the
@@ -3376,7 +3376,7 @@ impl GameApp {
             }
         }
         // Round 14: the rebindable binds resolve through the Controls
-        // screen's table (minecraft.wiki/w/Controls) — defaults match
+        // screen's table (reference wiki /Controls) — defaults match
         // the classic WASD/Space/Shift/E/F/B layout
         {
             let b = self.settings.binds.clone();
@@ -3450,7 +3450,7 @@ impl GameApp {
                 return;
             }
             if code == b.swap_offhand {
-                // Sub-round 3: the offhand swap — VERIFIED minecraft.wiki/
+                // Sub-round 3: the offhand swap — VERIFIED the reference wiki/
                 // w/Inventory (live 2026-09-15): "Pressing the F key moves
                 // the selected item to and from the hotbar slot and the
                 // off-hand slot." In-world only.
@@ -3806,7 +3806,7 @@ impl GameApp {
                 // vanilla pick-block: ALWAYS select a matching hotbar slot
                 // if one exists; GRANT the block (full stack) only in
                 // creative — survival/adventure just selects or does
-                // nothing (minecraft.wiki/w/Controls §Middle click).
+                // nothing (reference wiki /Controls §Middle click).
                 if let Some((_, b, _)) = self.target {
                     if let Some(slot) = self
                         .player
@@ -3917,7 +3917,7 @@ impl GameApp {
     }
 
     /// Sub-round 2: click inside the tabbed creative screen — the
-    /// vanilla semantics (VERIFIED minecraft.wiki/w/Creative_inventory,
+    /// vanilla semantics (VERIFIED reference wiki /Creative_inventory,
     /// live 2026-09-15): left-click grabs a full stack onto the cursor,
     /// right-click picks one item, clicking a different item replaces
     /// the held stack, the hotbar swaps/places, the destroy slot and
@@ -4031,7 +4031,7 @@ impl GameApp {
     /// Sub-round 2: number keys 1..9 while the creative screen is open —
     /// "Pressing a number key while hovering over an item instantly
     /// places one full stack of that item into the hotbar slot" (VERIFIED
-    /// minecraft.wiki/w/Creative_inventory, live 2026-09-15).
+    /// reference wiki /Creative_inventory, live 2026-09-15).
     fn creative_hotkey(&mut self, slot: usize) -> bool {
         if !self.picker_open || self.screen != Screen::Game {
             return false;
@@ -5766,7 +5766,7 @@ impl GameApp {
         self.ui.dirty = true;
     }
 
-    /// The vanilla Bonus Chest (VERIFIED minecraft.wiki/w/Bonus_chest:
+    /// The vanilla Bonus Chest (VERIFIED reference wiki /Bonus_chest:
     /// "a chest containing items... spawned near the world spawn point
     /// when the Create New World Bonus Chest option is enabled" — the
     /// 1.16.5 loot pools carry starter tools/food/torches). Engine
@@ -6081,7 +6081,7 @@ impl GameApp {
             return;
         }
         // ---- 1.11: the totem of undying (VERIFIED live 2026-09-07,
-        // minecraft.wiki/w/Totem_of_Undying: revives the holder on
+        // reference wiki /Totem_of_Undying: revives the holder on
         // otherwise-lethal damage — "restores 1 HP, removes all existing
         // status effects and grants" Regeneration II for 45 s (1 HP/25
         // ticks) + Absorption II for 5 s. Engine adaptation: "either
@@ -6185,7 +6185,7 @@ impl GameApp {
             let _ = dropped;
         }
         // Sub-round 5 XP polish (2026-09-15): the player's XP drops as
-        // ORBS at the death spot — VERIFIED minecraft.wiki/w/Experience
+        // ORBS at the death spot — VERIFIED reference wiki /Experience
         // (live 2026-09-15): "When the player dies, they drop experience
         // orbs worth 7 * current level experience points, up to a
         // maximum of 100 points ... and all of the other experience
@@ -7007,7 +7007,7 @@ impl GameApp {
             let total: i32 = collected.iter().sum();
             let gained = self.player.add_xp(total);
             // Sub-round 5: the orb pickup chime per collection batch —
-            // VERIFIED minecraft.wiki/w/Experience (live 2026-09-15):
+            // VERIFIED reference wiki /Experience (live 2026-09-15):
             // entity.experience_orb.pickup, volume 0.1, pitch 0.55–1.25
             // (the registry's own pitch window); the level-up ding only
             // when a LEVEL is actually gained ("When a player levels up
@@ -8646,7 +8646,7 @@ impl GameApp {
                     .drop_block(pos[0], pos[1], pos[2], EMERALD, biome, sky, blk);
             } else if broke == NETHER_QUARTZ_ORE {
                 // Phase E3 (VERIFIED live 2026-09-06,
-                // minecraft.wiki/w/Nether_Quartz_Ore:
+                // reference wiki /Nether_Quartz_Ore:
                 // "it drops 1 Nether quartz" — Fortune up
                 // to 4 deferred, no Fortune enchant; ore
                 // XP 2–5 rides the ore_xp path)
@@ -8757,7 +8757,7 @@ impl GameApp {
                     .drop_block(pos[0], pos[1], pos[2], NETHERRACK, biome, sky, blk);
             } else if broke == LEAVES || broke == DARK_OAK_LEAVES {
                 // the completeness audit: the apple roll
-                // — VERIFIED (minecraft.wiki/w/Apple, live
+                // — VERIFIED (reference wiki /Apple, live
                 // 2026-09-08): "Oak and dark oak leaves
                 // have a 0.5% (1/200) chance of dropping
                 // an apple when decayed or broken, but
@@ -9325,7 +9325,7 @@ impl GameApp {
     fn apply_resource_packs(&mut self) {
         self.pack_stack_dirty = false;
         // application order = display order reversed (bottom-most loads
-        // first — VERIFIED live 2026-09-14, minecraft.wiki/w/Resource_pack
+        // first — VERIFIED live 2026-09-14, reference wiki /Resource_pack
         // §Behavior)
         let app_order: Vec<std::sync::Arc<dyn vc_pack::pack::PackSource>> = self
             .settings
@@ -9931,6 +9931,21 @@ impl GameApp {
             if let Some((px, py)) = self.last_cursor_phys {
                 let (ux, uy) = self.phys_to_ui(px, py);
                 self.cursor = (ux, uy);
+            } else {
+                // no in-window pointer motion yet (fresh boot, or a
+                // click-to-focus without any movement — Wayland only
+                // sends CursorMoved on actual motion): the cached cursor
+                // still lives in the OLD canvas space, so every click
+                // before the first mouse move hit-tested through a stale
+                // mapping (the "sometimes no click sound at all" half of
+                // the menu-click report). Center it in the NEW live space —
+                // the title buttons sit near the center, so a first click
+                // without any prior motion now lands somewhere sane, and
+                // the very first CursorMoved makes it exact.
+                self.cursor = (
+                    self.ui.live_w as f32 / 2.0,
+                    self.ui.live_h as f32 / 2.0,
+                );
             }
             vc_render::render::report_debug_log(
                 "gfx",
@@ -13103,7 +13118,7 @@ impl GameApp {
     /// effects), spawns the rain/snow particle columns around the
     /// player, and fires lightning strikes on the 30 s cadence with
     /// the wiki's mob conversions + fire ignition. All numbers VERIFIED
-    /// against minecraft.wiki/w/Weather (live 2026-09-09, capture
+    /// against reference wiki /Weather (live 2026-09-09, capture
     /// scripts/backlog_page_Weather.json — see vc_gameplay::weather).
     fn weather_update(&mut self, dt: f32) {
         // the machine advances with the sim clock while playing (any
@@ -13344,7 +13359,7 @@ impl GameApp {
         // Backlog round (weather): the machine + particles + strikes
         self.weather_update(dt);
         // DAY_LEN_SECS = 1200 = the vanilla 1.16.5 full daylight cycle
-        // (VERIFIED 2026-09-06 live: minecraft.wiki/w/Daylight_cycle —
+        // (VERIFIED 2026-09-06 live: reference wiki /Daylight_cycle —
         // 24000 ticks at 20 tps = 20 minutes. The old 600 s value came
         // from a research-doc error (half the real length); fixed this
         // round.)
@@ -15508,10 +15523,10 @@ impl GameApp {
                                     vc_pack::datapack::LoadedData::from_reports(vec![report]);
                                 // shaped recipe: 2x2 cobble -> 4 stone bricks
                                 let grid = vec![
-                                    vc_pack::datapack::GridItem::item("minecraft:cobblestone", 5),
-                                    vc_pack::datapack::GridItem::item("minecraft:cobblestone", 5),
-                                    vc_pack::datapack::GridItem::item("minecraft:cobblestone", 5),
-                                    vc_pack::datapack::GridItem::item("minecraft:cobblestone", 5),
+                                    vc_pack::datapack::GridItem::item("voxelcraft:cobblestone", 5),
+                                    vc_pack::datapack::GridItem::item("voxelcraft:cobblestone", 5),
+                                    vc_pack::datapack::GridItem::item("voxelcraft:cobblestone", 5),
+                                    vc_pack::datapack::GridItem::item("voxelcraft:cobblestone", 5),
                                 ];
                                 let craft = loaded
                                     .match_grid(&grid, 2)
@@ -15519,7 +15534,7 @@ impl GameApp {
                                     .unwrap_or_else(|| "NO MATCH".into());
                                 // tag-driven shapeless: red wool -> string
                                 let wool = vec![vc_pack::datapack::GridItem::item(
-                                    "minecraft:red_wool",
+                                    "voxelcraft:red_wool",
                                     1,
                                 )];
                                 let craft2 = loaded
@@ -15567,7 +15582,7 @@ impl GameApp {
                         for i in 0..n {
                             let stacks = self
                                 .data
-                                .roll("minecraft:chests/simple_dungeon", &mut rng)
+                                .roll("voxelcraft:chests/simple_dungeon", &mut rng)
                                 .unwrap_or_default();
                             total += stacks.len();
                             let items = stacks
@@ -16426,7 +16441,7 @@ impl GameApp {
             }
 
             // Drowning (VERIFIED — research-verdicts.md live round,
-            // minecraft.wiki/w/Damage §Drowning): 2 HP per second once
+            // reference wiki /Damage §Drowning): 2 HP per second once
             // the 300-tick air supply is depleted; creative is immune
             let drown = self.player.take_pending_drown_damage();
             if drown > 0.0 {
@@ -16608,7 +16623,7 @@ impl GameApp {
             // the fixed 0.24 s hold-to-break). Survival: progress
             // accumulates over the block's hardness-derived break time
             // (vc-blocks `break_time_secs` — the hand formula hardness ×
-            // 1.5, VERIFIED live 2026-09-14 minecraft.wiki/w/Breaking),
+            // 1.5, VERIFIED live 2026-09-14 reference wiki /Breaking),
             // with the 10-stage destroy overlay rendered from
             // `self.mining`, quarter-second dig sounds + hit particles.
             // Creative: INSTANT break (vanilla creative one-shots blocks;
@@ -17935,7 +17950,7 @@ impl GameApp {
                         && self.player.held().block == PUFFERFISH
                     {
                         // 1.7.2: eating a pufferfish — VERIFIED
-                        // (minecraft.wiki/w/Java_Edition_1.7.2 §Items,
+                        // (reference wiki /Java_Edition_1.7.2 §Items,
                         // live 2026-09-06): restores 1 hunger but inflicts
                         // Poison IV (1:00), Hunger III (0:15) and Nausea
                         // (0:15). Round 17: the mechanical hunger bar now
@@ -19145,6 +19160,11 @@ impl GameApp {
             // same facts the [gfx] stream logs: screen, cursor, hover,
             // widget count, live canvas, rebuild count
             self.dbg_ui_strip();
+            // the rebuild request is CONSUMED here (the renderer no
+            // longer clears `dirty` — see the upload_pending split in
+            // render.rs: a spontaneous Linux redraw between a click and
+            // this gate must not be able to suppress the repaint)
+            self.ui.dirty = false;
         }
 
         // F3 right-column telemetry: sample process memory at 4 Hz (a
@@ -20176,7 +20196,7 @@ impl GameApp {
                         if inv.slots.iter().all(|s| s.is_empty()) {
                             fill_structure_chest(
                                 &self.data,
-                                table.unwrap_or("minecraft:chests/simple_dungeon"),
+                                table.unwrap_or("voxelcraft:chests/simple_dungeon"),
                                 inv,
                                 self.world.seed,
                                 p,
@@ -20195,25 +20215,25 @@ impl GameApp {
     /// Stronghold chests split by position: the library chest sits
     /// north of the portal room's center, the store-room chest south
     /// of it. The 1.11 mansion chest joins at its live-verified
-    /// dedicated table (minecraft:chests/woodland_mansion).
+    /// dedicated table (voxelcraft:chests/woodland_mansion).
     fn chest_table_for(&self, pos: ChunkPos) -> &'static str {
         let gen = &self.world.gen;
         let cx = pos.0;
         let cz = pos.1;
         if gen.dungeon_in_chunk(cx, cz).is_some() {
-            return "minecraft:chests/simple_dungeon";
+            return "voxelcraft:chests/simple_dungeon";
         }
         if !gen.mineshafts_near(cx * 16 + 8, cz * 16 + 8).is_empty() {
-            return "minecraft:chests/abandoned_mineshaft";
+            return "voxelcraft:chests/abandoned_mineshaft";
         }
         if !gen.pyramids_near(cx * 16 + 8, cz * 16 + 8).is_empty() {
-            return "minecraft:chests/desert_pyramid";
+            return "voxelcraft:chests/desert_pyramid";
         }
         if !gen.jungle_temples_near(cx * 16 + 8, cz * 16 + 8).is_empty() {
-            return "minecraft:chests/jungle_temple";
+            return "voxelcraft:chests/jungle_temple";
         }
         // 1.11 (VERIFIED live 2026-09-07,
-        // minecraft.wiki/w/Woodland_Mansion §Loot: "each woodland
+        // reference wiki /Woodland_Mansion §Loot: "each woodland
         // mansion chest contains items drawn from 4 pools" — the
         // dedicated woodland_mansion table; palette-limited +
         // version-scoped, see vc-pack's builtin_structure_table)
@@ -20221,19 +20241,19 @@ impl GameApp {
             .woodland_mansions_near(cx * 16 + 8, cz * 16 + 8)
             .is_empty()
         {
-            return "minecraft:chests/woodland_mansion";
+            return "voxelcraft:chests/woodland_mansion";
         }
         for &(sx, sz) in gen.strongholds().iter() {
             if (sx - (cx * 16 + 8)).abs() <= 40 && (sz - (cz * 16 + 8)).abs() <= 40 {
                 return if sz - (cz * 16 + 8) > 0 {
                     // chest north of the stronghold center → library
-                    "minecraft:chests/stronghold_library"
+                    "voxelcraft:chests/stronghold_library"
                 } else {
-                    "minecraft:chests/stronghold_corridor"
+                    "voxelcraft:chests/stronghold_corridor"
                 };
             }
         }
-        "minecraft:chests/simple_dungeon"
+        "voxelcraft:chests/simple_dungeon"
     }
 
     fn apply_result(&mut self, res: JobResult) {
@@ -20499,7 +20519,7 @@ impl GameApp {
             server_light_line,
             format!("CH S: {} D: {}", ws, of),
             format!("CH H: {} O: {} M: {} ML: {}", mb, of, mbl, mbl),
-            format!("Biome: minecraft:{}", biome_registry_id(biome)),
+            format!("Biome: voxelcraft:{}", biome_registry_id(biome)),
             format!(
                 "Local Difficulty: {:.2} // {:.2} (Day {})",
                 ld, ld_clamped, day
@@ -20557,7 +20577,7 @@ impl GameApp {
         if let Some((t, tb, _)) = self.target {
             let coord_line = format!("Targeted Block: {}, {}, {}", t[0], t[1], t[2]);
             right.push(coord_line);
-            right.push(format!("minecraft:{}", block_id_name(tb)));
+            right.push(format!("voxelcraft:{}", block_id_name(tb)));
             for prop in state_prop_lines(self.world.get_state(t[0], t[1], t[2])) {
                 right.push(prop);
             }
@@ -20569,7 +20589,7 @@ impl GameApp {
         if let Some((t, tb, _)) = self.target {
             if tb == WATER {
                 right.push(format!("Targeted Fluid: {}, {}, {}", t[0], t[1], t[2]));
-                right.push("minecraft:water".to_string());
+                right.push("voxelcraft:water".to_string());
             }
         }
         // Round 14b: Reduced Debug Info (vanilla `reducedDebugInfo`,
@@ -21047,7 +21067,7 @@ impl GameApp {
         //
         // Sub-round 1 (2026-09-14 Survival HUD round): the per-mode
         // element set now follows the LIVE wiki — VERIFIED
-        // minecraft.wiki/w/Heads-up_display (fetched 2026-09-14): "In
+        // reference wiki /Heads-up_display (fetched 2026-09-14): "In
         // Creative mode, the health, hunger, oxygen, experience, and
         // armor bars are hidden." Creative renders crosshair + hotbar +
         // boss bar + held-item name ONLY. The retired `xp_bar_only`
@@ -21093,7 +21113,7 @@ impl GameApp {
         // verified split/sort/blink rules on the painter).
         // Sub-round 2/3 round (2026-09-15, user callout "what about
         // the effects"): effects render in EVERY gameplay mode —
-        // VERIFIED minecraft.wiki/w/Heads-up_display (live
+        // VERIFIED reference wiki /Heads-up_display (live
         // 2026-09-14): "All effects ... the player currently has are
         // shown on the top-right of the screen", and the Creative-mode
         // hidden list ("health, hunger, oxygen, experience, and armor
@@ -21392,7 +21412,7 @@ impl GameApp {
             };
 
         // Menu background = the pre-rendered panorama cubemap (VERIFIED
-        // 2026-09-07 live, minecraft.wiki/w/Panorama: a slowly panning
+        // 2026-09-07 live, reference wiki /Panorama: a slowly panning
         // wide-angle view shown behind every menu that does not cover the
         // whole background — six pre-rendered square faces, NOT the live
         // world). The camera below is only a stand-in basis for billboard
@@ -21827,7 +21847,7 @@ fn fill_structure_chest(
 /// biome + (sky, block) light levels at a world position — for baking
 /// particle tint/brightness at spawn (Phase 5)
 /// 1.11: the totem-of-undying revival payload (VERIFIED live
-/// 2026-09-07, minecraft.wiki/w/Totem_of_Undying: "restores 1 HP,
+/// 2026-09-07, reference wiki /Totem_of_Undying: "restores 1 HP,
 /// removes all existing status effects and grants" Regeneration II for
 /// 45 s + Absorption II for 5 s; Absorption II = 8 absorption points).
 /// Extracted from check_death so the values are unit-testable. Fire
@@ -21856,14 +21876,14 @@ fn is_leaves(b: u16) -> bool {
     )
 }
 
-/// biome registry id ("Biome: minecraft:jungle") — the display name in
+/// biome registry id ("Biome: voxelcraft:jungle") — the display name in
 /// snake_case ("Nether Wastes" -> "nether_wastes", matching the vanilla
 /// id table for every biome this generator emits)
 fn biome_registry_id(b: Biome) -> String {
     b.name().to_lowercase().replace(' ', "_")
 }
 
-/// block registry id ("minecraft:grass_block") from the display name —
+/// block registry id ("voxelcraft:grass_block") from the display name —
 /// snake_case ("Grass Block" -> "grass_block", "Oak Log" -> "oak_log")
 fn block_id_name(b: u16) -> String {
     name(b).to_lowercase().replace(' ', "_")
@@ -22008,7 +22028,7 @@ fn is_food(b: u16) -> bool {
 }
 
 /// Round 17 (2026-09-18): the per-food (nutrition, saturation) pair —
-/// BOTH columns VERIFIED live 2026-09-18 against minecraft.wiki/w/Food
+/// BOTH columns VERIFIED live 2026-09-18 against reference wiki /Food
 /// (§Hunger values + §Food saturation values tables; the round-17
 /// audit §6 carries the full tables + the retired-convention note).
 /// This RETIRES the Phase-E2 `food_heal` hunger/2 direct-heal table:
@@ -22584,7 +22604,7 @@ mod settings_tests {
     }
 
     /// Round 10 — the vanilla integer GUI-scale AUTO formula, pinned to
-    /// the LIVE wiki values (minecraft.wiki/w/Options, fetched
+    /// the LIVE wiki values (reference wiki /Options, fetched
     /// 2026-09-15: available = max(1, min(⌊w/320⌋, ⌊h/240⌋)), no cap —
     /// mathematically identical to the 1.16.5 calculateScale loop).
     /// NOTE the documented disagreement: the round-10 spec pack's table
@@ -23214,11 +23234,11 @@ mod settings_tests {
 
         let loaded = vc_pack::datapack::LoadedData::from_reports(vec![report]);
         // dpdemo line 1: "craft 2x2 cobble -> Stone Bricks x4"
-        let grid = vec![GridItem::item("minecraft:cobblestone", 5); 4];
+        let grid = vec![GridItem::item("voxelcraft:cobblestone", 5); 4];
         let (b, c) = loaded.match_grid(&grid, 2).expect("cobble grid matches");
         assert_eq!((b, c), (vc_blocks::blocks::STONE_BRICKS, 4));
         // dpdemo line 1: "red wool -> String x1"
-        let wool = vec![GridItem::item("minecraft:red_wool", 1)];
+        let wool = vec![GridItem::item("voxelcraft:red_wool", 1)];
         let (b, c) = loaded.match_grid(&wool, 1).expect("wool matches via tag");
         assert_eq!((b, c), (vc_blocks::blocks::STRING, 1));
         // dpdemo line 2: loot rolls within 2..=4 stacks of palette items
@@ -23288,7 +23308,7 @@ mod settings_tests {
         }
         assert_eq!(chests, 4, "the 4-chest pit claim");
         assert!(
-            vc_pack::datapack::builtin_structure_table("minecraft:chests/desert_pyramid").is_some(),
+            vc_pack::datapack::builtin_structure_table("voxelcraft:chests/desert_pyramid").is_some(),
             "the desert_pyramid loot-table claim"
         );
         // "e2e: mineshaft at chunk ... corridors N (lens [24..=48])"
@@ -23425,7 +23445,7 @@ mod tests {
             );
             assert_eq!(
                 vc_render::textures::gui_art::effect_icon_name(i),
-                k.name().trim_start_matches("minecraft:"),
+                k.name().trim_start_matches("voxelcraft:"),
                 "{k:?} name/icon mismatch at {i}"
             );
         }
@@ -23472,7 +23492,7 @@ mod tests {
         assert!(p.hurt_t > 0.0);
     }
 
-    /// VERIFIED 2026-09-06 live (minecraft.wiki/w/Daylight_cycle):
+    /// VERIFIED 2026-09-06 live (reference wiki /Daylight_cycle):
     /// the full 1.16.5 day-night cycle is 24000 ticks at 20 tps = 1200 s
     /// (20 min). The engine briefly shipped 600 s (a research-doc error
     /// that halved the cycle) — this pins the real value.
@@ -23596,7 +23616,7 @@ mod auditfix_food_tests {
     fn audit16_food_values() {
         // the completeness audit: the (nutrition, saturation) table for
         // the whole V15 kitchen — Round 17 re-verified BOTH columns live
-        // 2026-09-18 against minecraft.wiki/w/Food (§Hunger values +
+        // 2026-09-18 against reference wiki /Food (§Hunger values +
         // §Food saturation values; the original hunger/2 direct-heal
         // pins retired with the FoodData eat path, same rows, one
         // column up + the saturation column added)
@@ -24207,7 +24227,7 @@ mod round14b_settings_tests {
             "Server Light: 15 (15 sky, 0 blk)",
             "CH S: 64 D: 64",
             "CH H: 64 O: 64 M: 64 ML: 64",
-            "Biome: minecraft:plains",
+            "Biome: voxelcraft:plains",
             "Local Difficulty: 1.00 // 1.00 (Day 1)",
             "SC: 289, M: 1, C: 2, A: 3, W: 4, M: 5",
             "Sounds: 0/1 + 0/8 (mood 0/0)",

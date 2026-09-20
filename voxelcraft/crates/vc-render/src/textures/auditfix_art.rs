@@ -1,6 +1,6 @@
 //! Audit-fix round (2026-09-07) procedural tiles — the Phase-1/2 audit's
 //! missing 1.2/1.4 content: jungle wood family, vines, ferns, golden
-//! carrot. Clean-room art (no Mojang assets), a child module of
+//! carrot. Clean-room art (no third-party assets), a child module of
 //! textures.rs (shares put/jit/noise_fill/art helpers).
 
 use super::{art, jit, noise_fill, put, Rng};
@@ -328,7 +328,7 @@ pub(super) fn totem(a: &mut [u8], t: u16, rng: &mut Rng) {
 /// evoker, vex, husk, stray — the re-added zombie-villager egg keeps
 /// its pre-existing tile in the base window). The E1/E2 egg_art renders
 /// the shell + spots from these pairs; colors are clean-room approximations
-/// of each mob's vanilla egg (disclosed — no Mojang assets).
+/// of each mob's vanilla egg (disclosed — no third-party assets).
 pub const V7_EGG_PALETTES: [(i32, i32, i32, i32, i32, i32); 6] = [
     (226, 216, 196, 139, 90, 43),   // llama: cream body + brown spots
     (158, 158, 152, 58, 54, 62),    // vindicator: grey skin + dark robe

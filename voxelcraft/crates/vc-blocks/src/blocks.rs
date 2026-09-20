@@ -1,6 +1,6 @@
 //! Block registry — ids, tiles, physical + optical properties, sound families.
-//! 57 blocks in the style of MC 1.16.5's overworld palette (all textures
-//! procedurally synthesized — none copied from Mojang assets).
+//! 57 blocks in the style of the 1.16.5-era overworld palette (all textures
+//! procedurally synthesized — none copied from third-party assets).
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum SoundFamily {
@@ -247,12 +247,12 @@ pub const TILE_E3_EGG_MULE: u16 = 243;
 // [merge 2026-09-06] tile ids shifted past the E-series backfill
 // (TILE_MAX 243); the 16 stained-terracotta tiles DROPPED as duplicates
 // of the E3 terracotta set (TILE_TERRACOTTA_STAINED_BASE 212).
-// minecraft.wiki/w/Java_Edition_1.7.2, live round 2026-09-06): the 16
+// reference wiki /Java_Edition_1.7.2, live round 2026-09-06): the 16
 // stained-glass + 16 stained-clay tiles, red sand, packed ice, podzol,
 // acacia/dark-oak logs, the 8 new small flowers, the 4 two-block-tall
 // flowers (lower + upper halves), and 4 fish item icons.
 // Clean-room palettes approximate the vanilla 16 dye hues (our art, not
-// Mojang's); acacia/dark-oak LEAVES reuse TILE_LEAVES exactly — the 1.7.2
+// the original game's); acacia/dark-oak LEAVES reuse TILE_LEAVES exactly — the 1.7.2
 // changelog itself notes both are "visually identical to regular oak
 // leaves".
 // ---------------------------------------------------------------------------
@@ -355,7 +355,7 @@ pub const TILE_HUSK: u16 = 325;
 
 // ---- audit-fix round (2026-09-07): the Phase-1/2 audit's missed 1.2/1.4
 // content — jungle wood family + vines + ferns (1.2) + golden carrot
-// (1.4). All live-verified this round (minecraft.wiki/w/Jungle_Log via
+// (1.4). All live-verified this round (reference wiki /Jungle_Log via
 // the Log page, /w/Leaves, /w/Vines, /w/Fern, /w/Golden_Carrot, /w/Tree,
 // /w/Ladder; research record in scripts/auditfix_page_*.json). ----
 /// Golden Carrot item sprite (VERIFIED w/Golden_Carrot: hunger 6,
@@ -394,7 +394,7 @@ pub const TILE_SHULKER_SHELL: u16 = 338;
 pub const TILE_TOTEM: u16 = 339;
 
 // mobs (Phase 2): entity sprites + drops' item tiles. Mob sprites are
-// clean-room pixel art (ours, not Mojang's) — distinct silhouettes/palettes
+// clean-room pixel art (ours, not the original game's) — distinct silhouettes/palettes
 pub const TILE_ZOMBIE: u16 = 83;
 pub const TILE_SKELETON: u16 = 84;
 pub const TILE_CREEPER: u16 = 85;
@@ -582,7 +582,7 @@ pub const SPAWNER: u16 = 101;
 pub const END_PORTAL_FRAME: u16 = 102;
 
 // ---- Phase E1 block ids (evolution 1.0–1.2 bracket) — all values
-// live-verified against minecraft.wiki on 2026-09-06 (see
+// live-verified against the reference wiki on 2026-09-06 (see
 // docs/research/phase1-1.0-1.2-research.md for the per-claim audit) ----
 /// Mycelium — mushroom-fields surface block. Spreads to dirt (1 up /
 /// 1 sideways / 3 down, light gates 9/4 — VERIFIED w/Mycelium §Spread).
@@ -644,7 +644,7 @@ pub const SPAWNER_SKELETON: u8 = 1;
 pub const SPAWNER_SPIDER: u8 = 2;
 
 // ---- Phase E2 block ids (evolution 1.3–1.4 bracket) — all values
-// live-verified 2026-09-06 against minecraft.wiki (see
+// live-verified 2026-09-06 against the reference wiki (see
 // docs/research/phase2-1.3-1.4-research.md for the per-claim audit) ----
 /// Anvil — gravity block, 3 damage stages (VERIFIED w/Anvil: 12% per use
 /// to degrade, falls like sand, 2 HP/block falling damage after the
@@ -706,7 +706,7 @@ pub const PUMPKIN_PIE: u16 = 160;
 /// immunity window). States: source 307 + flow levels 1..7 at 308..=314.
 pub const LAVA: u16 = 161;
 /// Coal — the fuel item (VERIFICATION-REPORT mechanical fix #4).
-/// VERIFIED live 2026-09-06 (minecraft.wiki/w/Furnace "a piece of coal
+/// VERIFIED live 2026-09-06 (reference wiki /Furnace "a piece of coal
 /// burns for 80 seconds and can process eight items"; w/Smelting fuel
 /// table "Coal 1600 ticks / 8 items"): fuel_ticks = 1600 = 80 s × 20 tps.
 /// Obtained by smelting coal ore (vanilla recipe, w/Smelting "coal ore
@@ -714,23 +714,23 @@ pub const LAVA: u16 = 161;
 pub const COAL: u16 = 162;
 // ---- Phase E3 (evolution 1.5–1.6 bracket, live-verified 2026-09-06) ----
 /// Block of Coal — fuel 16000 ticks / 800 s / 80 items (VERIFIED live
-/// 2026-09-06: minecraft.wiki/w/Block_of_Coal "One block of coal lasts
+/// 2026-09-06: reference wiki /Block_of_Coal "One block of coal lasts
 /// 800 seconds (16000 ticks), which smelts 80 items" — 10× the coal
 /// item's 1600). Craft: 9 coal ↔ 1 block (w/Block_of_Coal recipe).
 pub const COAL_BLOCK: u16 = 163;
 /// Block of Quartz — craft 4 nether quartz (VERIFIED live 2026-09-06,
-/// minecraft.wiki/w/Block_of_Quartz).
+/// reference wiki /Block_of_Quartz).
 pub const QUARTZ_BLOCK: u16 = 164;
 /// Chiseled Quartz Block — vanilla crafts from 2 quartz slabs
 /// (w/Chiseled_Quartz_Block); the engine has no quartz-slab model →
 /// picker-only this bracket, recipe deferred (disclosed).
 pub const CHISELED_QUARTZ: u16 = 165;
 /// Quartz Pillar — craft 2 blocks of quartz → 2 pillars (VERIFIED live
-/// 2026-09-06: minecraft.wiki/w/Quartz_Pillar "Block of Quartz 2";
+/// 2026-09-06: reference wiki /Quartz_Pillar "Block of Quartz 2";
 /// output count 2 confirmed by a second live source).
 pub const QUARTZ_PILLAR: u16 = 166;
 /// Stained Terracotta — 16 colors (ids 166..=181). VERIFIED live
-/// 2026-09-06: minecraft.wiki/w/Terracotta "comes in the sixteen dye
+/// 2026-09-06: reference wiki /Terracotta "comes in the sixteen dye
 /// colors ... found abundantly in badlands biomes"; crafting needs
 /// dye (no dye system in the engine — recipe deferred, disclosed);
 /// Badlands banding generation is the natural acquisition path.
@@ -739,7 +739,7 @@ pub const STAINED_TERRACOTTA_BASE: u16 = 167;
 pub const STAINED_TERRACOTTA_END: u16 = 182;
 /// Carpets — the 5 engine wool colors (vanilla has 16; the engine wool
 /// palette is 5 — carpets match it 1:1, adaptation disclosed). Craft
-/// 2 wool → 3 carpets (VERIFIED live: minecraft.wiki/w/Carpet "13w17a
+/// 2 wool → 3 carpets (VERIFIED live: reference wiki /Carpet "13w17a
 /// The crafting recipe of carpets now returns 3 carpets from two
 /// wool"). Hitbox height 1/16 block (VERIFIED: "14w29a Carpets now
 /// have a hitbox height of 1⁄16 of a block") — rendered as a thin
@@ -751,59 +751,59 @@ pub const CARPET_BLUE: u16 = 186;
 pub const CARPET_BLACK: u16 = 187;
 pub const CARPET_BASE: u16 = 183;
 /// Hay Bale — fall damage reduced by 80% (take 20%: VERIFIED live
-/// 2026-09-06, minecraft.wiki/w/Hay_Bale "Falling onto a hay bale
+/// 2026-09-06, reference wiki /Hay_Bale "Falling onto a hay bale
 /// reduces the fall damage by 80%, meaning whatever falls on a hay
 /// bale takes 20% of the normal fall damage"). Craft 9 wheat — no
 /// wheat/farming in the engine → recipe deferred, picker/loot only
 /// (disclosed). Feeds horses (mobs.rs).
 pub const HAY_BALE: u16 = 188;
 /// Daylight Sensor — redstone signal from sky light; recipe glass +
-/// nether quartz + any wooden slab (VERIFIED live: minecraft.wiki/w/
+/// nether quartz + any wooden slab (VERIFIED live: reference wiki /
 /// Daylight_Detector "Glass + Nether Quartz + Any Wooden Slab").
 /// Java 1.16.5 signal: driven by time-of-day + weather + sky exposure
 /// (the engine maps its real sky-light engine through the same 0–15
 /// ladder — adaptation disclosed in redstone.rs).
 pub const DAYLIGHT_SENSOR: u16 = 189;
 /// Trapped Chest — container + redstone signal = number of players
-/// viewing, max 15 (VERIFIED live: minecraft.wiki/w/Trapped_Chest "to
+/// viewing, max 15 (VERIFIED live: reference wiki /Trapped_Chest "to
 /// a power level equal to the number of players ... accessing the
 /// trapped chest at once (maximum 15)"). Recipe: tripwire hook +
 /// chest (VERIFIED, same page).
 pub const TRAPPED_CHEST: u16 = 190;
 /// Light Weighted Pressure Plate (gold) — signal = entity count on
-/// the plate, 1..15 (VERIFIED live: minecraft.wiki/w/
+/// the plate, 1..15 (VERIFIED live: reference wiki /
 /// Light_Weighted_Pressure_Plate "signal strength ... range from 1 to
 /// 15", "signal strength from a light weighted pressure plate does
 /// not vary with the type of entity"). Craft: 2 gold — engine has no
 /// ingots, 2 GOLD_ORE instead (the E2 ore-block convention, disclosed).
 pub const LIGHT_WEIGHTED_PLATE: u16 = 191;
 /// Heavy Weighted Pressure Plate (iron) — signal = ceil(entities/10),
-/// 1..15 (VERIFIED live: minecraft.wiki/w/Heavy_Weighted_Pressure_Plate
+/// 1..15 (VERIFIED live: reference wiki /Heavy_Weighted_Pressure_Plate
 /// "equal to 1⁄10 of the amount of entities on top of them (rounded
 /// up to the nearest integer), up to a maximum power level of 15").
 /// Craft: 2 iron — 2 IRON_ORE (convention, disclosed).
 pub const HEAVY_WEIGHTED_PLATE: u16 = 192;
 /// Block of Redstone — always-on power source, weak power 15 to direct
-/// neighbors (VERIFIED live: minecraft.wiki/w/Block_of_Redstone "acts
+/// neighbors (VERIFIED live: reference wiki /Block_of_Redstone "acts
 /// as a permanently powered redstone power source", "provide weak
 /// power to their direct neighbors at signal strength 15"). Craft
 /// 9 redstone ↔ 1 block — engine redstone dust is the WIRE block →
 /// 9 REDSTONE_WIRE (adaptation, disclosed).
 pub const REDSTONE_BLOCK: u16 = 193;
 /// Nether Quartz — item dropped by nether quartz ore (VERIFIED live:
-/// minecraft.wiki/w/Nether_Quartz_Ore "it drops 1 Nether quartz";
+/// reference wiki /Nether_Quartz_Ore "it drops 1 Nether quartz";
 /// ore XP 2–5 from the same page). Quartz-block ingredient.
 pub const NETHER_QUARTZ: u16 = 194;
-/// Lead — leash item (VERIFIED live: minecraft.wiki/w/Lead "A lead can
+/// Lead — leash item (VERIFIED live: reference wiki /Lead "A lead can
 /// stretch a maximum of 12 blocks" on the CURRENT wiki — but that 12
 /// value is the 2025 "Chase the Skies" buff ("Leash snapping distance
-/// has been increased to 12 blocks", minecraft.wiki/w/Lead §History);
+/// has been increased to 12 blocks", reference wiki /Lead §History);
 /// for the 1.16.5 target the value is 10 blocks — version-scoped, both
 /// cited). Craft 4 string + 1 slimeball — no slimeballs in the engine
 /// → recipe deferred, picker-only (disclosed).
 pub const LEAD: u16 = 195;
 /// Saddle — required to CONTROL a tamed horse (VERIFIED live:
-/// minecraft.wiki/w/Horse "Once a horse is tamed and saddled, the
+/// reference wiki /Horse "Once a horse is tamed and saddled, the
 /// player can control it"; w/Riding). Not craftable in vanilla —
 /// dungeon-chest loot + picker (the engine loot path).
 pub const SADDLE: u16 = 196;
@@ -828,7 +828,7 @@ pub const E3_EGG_MULE: u16 = 199;
 // V2 state, folded through V2_STATE_TO_BLOCK (the table IS the state→block
 // mapping; `Chunk::get` now folds every state through state_block so u16
 // states above 255 are safe).
-// All content verified against minecraft.wiki/w/Java_Edition_1.7.2
+// All content verified against reference wiki /Java_Edition_1.7.2
 // (live round, 2026-09-06).
 // ---------------------------------------------------------------------------
 
@@ -925,7 +925,7 @@ pub fn is_v2_state(s: u16) -> bool {
 
 // ---------------------------------------------------------------------------
 // 1.8 bracket — the Bountiful Update (2014-09-02,
-// minecraft.wiki/w/Java_Edition_1.8, live round 2026-09-06). V3 window:
+// reference wiki /Java_Edition_1.8, live round 2026-09-06). V3 window:
 // ids 243..=261, states 447..=465 [merged renumber] (after the V2 log-axis states).
 // ---------------------------------------------------------------------------
 pub const SLIME_BLOCK: u16 = 243;
@@ -983,7 +983,7 @@ pub fn is_v3_state(s: u16) -> bool {
 
 // ---------------------------------------------------------------------------
 // 1.9 bracket — the Combat Update (2016-02-29,
-// minecraft.wiki/w/Java_Edition_1.9, live round 2026-09-06). V4 window:
+// reference wiki /Java_Edition_1.9, live round 2026-09-06). V4 window:
 // ids 262..=271, states 466..=475 [merged renumber].
 // ---------------------------------------------------------------------------
 /// grass path: "15/16 of a block (15 pixels) tall. Obtainable by using a
@@ -1034,7 +1034,7 @@ pub fn is_v4_state(s: u16) -> bool {
 
 // ---------------------------------------------------------------------------
 // 1.10 bracket — the Frostburn Update (2016-06-08,
-// minecraft.wiki/w/Java_Edition_1.10, live round 2026-09-06). V5 window:
+// reference wiki /Java_Edition_1.10, live round 2026-09-06). V5 window:
 // ids 272..=275, states 476..=479 [merged renumber].
 // ---------------------------------------------------------------------------
 /// magma block — VERIFIED (wiki /w/Magma_Block, live 2026-09-06): emits
@@ -1051,7 +1051,7 @@ pub const BONE_BLOCK: u16 = 275;
 // 1.4 brackets (never implemented, never deferred — the audit report and
 // the WORKLOG entry document the finding + the fixes). ----
 /// Golden Carrot — food 6 / 14.4 (VERIFIED live 2026-09-07,
-/// minecraft.wiki/w/Golden_Carrot infobox: "Hunger 6", "Saturation
+/// reference wiki /Golden_Carrot infobox: "Hunger 6", "Saturation
 /// 14.4"; consumption 32 game ticks). Added Java 1.4.2 12w34a (VERIFIED
 /// w/Golden_Carrot §History). Craft = gold nugget + carrot (no gold
 /// nuggets in engine → picker-only, recipe deferred, documented).
@@ -1207,7 +1207,7 @@ pub fn is_v7_state(s: u16) -> bool {
 }
 
 // ---- 1.12 bracket (World of Color Update): ids 291..=360, V8 window ----
-// All values VERIFIED live 2026-09-07 (minecraft.wiki/w/Java_Edition_1.12
+// All values VERIFIED live 2026-09-07 (reference wiki /Java_Edition_1.12
 // §Additions + the per-block pages; research record
 // docs/research/phase-v112-1.12-research.md):
 // * concrete — 16 colors; "Created when concrete powder comes into
@@ -1242,7 +1242,7 @@ pub const BEETROOT_SEEDS: u16 = 359;
 pub const COOKIE: u16 = 360;
 
 // ---- 1.13 bracket (Update Aquatic): ids 361..=416, V9 window ----
-// All values VERIFIED live 2026-09-07 (minecraft.wiki/w/Java_Edition_1.13
+// All values VERIFIED live 2026-09-07 (reference wiki /Java_Edition_1.13
 // §Additions + the per-block pages; research record
 // docs/research/phase-v113-1.13-research.md):
 // * coral blocks ×5 — "Comes in the same 5 variants as coral: tube
@@ -1468,7 +1468,7 @@ pub fn sea_pickle_state(count: u8) -> u16 {
 // ---- 1.14 bracket (Village & Pillage — NATURE HALF): ids 417..=425,
 // the V10 window. All values VERIFIED live 2026-09-08 from the raw
 // captures scripts/v114_page_*.json (bamboo, sweetberrybush, campfire,
-// barrel, fox — minecraft.wiki) — the research record
+// barrel, fox — the reference wiki) — the research record
 // docs/research/phase-v114-1.14-research.md:
 // * bamboo stalk — "a versatile, fast-growing plant found primarily in
 //   jungles"; growth "Upon receiving a random tick, bamboo has a 1/3
@@ -4208,7 +4208,7 @@ pub fn is_model_block(b: u16) -> bool {
 }
 
 /// Hand break time in SECONDS for a block (2026-09-14 round — the
-/// vanilla mining model, VERIFIED live 2026-09-14, minecraft.wiki/w/
+/// vanilla mining model, VERIFIED live 2026-09-14, reference wiki /
 /// Breaking: bare-hand break time = hardness × 1.5 when the block is
 /// harvestable by hand, × 5 when it needs a tool; hardness 0 = instant).
 ///
@@ -4218,7 +4218,7 @@ pub fn is_model_block(b: u16) -> bool {
 /// tool-class blocks (stone × 5 = 7.5 s AND no drops by hand) would
 /// soft-lock survival progression the moment worlds start empty. When
 /// tool items arrive, this table grows the tool-speed column instead.
-/// Values = the vanilla hardness table (minecraft.wiki/w/Breaking
+/// Values = the vanilla hardness table (reference wiki /Breaking
 /// §Blocks by hardness, 1.16.5 values).
 ///
 /// Returns 0.0 for instant-break (plants/decor), and f32::INFINITY for
@@ -4564,7 +4564,7 @@ pub const TILE_MAX: u16 = 792; // + the 16 armor item sprites (775..=790, sub-ro
 // ---- the 2026-09-14 round: destroy-stage crack overlays (764..=773) and
 // the first-person arm tile (774). The ten destroy stages are the vanilla
 // `textures/block/destroy_stage_0..9.png` analogs (VERIFIED live
-// 2026-09-14, minecraft.wiki/w/Breaking §Mining: "the block being mined
+// 2026-09-14, reference wiki /Breaking §Mining: "the block being mined
 // gets an overlay of 10 progressively deeper crack textures") — painted
 // procedurally in textures.rs, and PACK-OVERRIDABLE so resource packs can
 // restyle them like vanilla. ----
@@ -4576,14 +4576,14 @@ pub const TILE_ARM: u16 = 774;
 
 /// Resource-pack override registry (2026-09-14 round): vanilla texture
 /// locations → our procedural atlas tiles. A pack that ships
-/// `assets/minecraft/textures/block/<loc>.png` REPLACES the pixels of the
+/// `assets/voxelcraft/textures/block/<loc>.png` REPLACES the pixels of the
 /// listed tile IN the atlas slot — every consumer (mesher, particles,
 /// item icons, HUD, held item) picks the new art up with zero routing
 /// changes, exactly the vanilla "packs override default textures" feel
-/// (VERIFIED live 2026-09-14, minecraft.wiki/w/Resource_pack §Behavior:
+/// (VERIFIED live 2026-09-14, reference wiki /Resource_pack §Behavior:
 /// packs on the Selected list "replace or merge loaded assets").
 ///
-/// Locations are in canonical `minecraft:block/<name>` form; entries the
+/// Locations are in canonical `voxelcraft:block/<name>` form; entries the
 /// engine has no procedural tile for are simply not listed (a pack can
 /// still override model-dispatch textures — fences/slabs/stairs — through
 /// the ModelSet merge). Non-16×16 pack sources are nearest-resampled to
@@ -4725,9 +4725,9 @@ pub const TILE_HOE: u16 = 763;
 /// ---- Sub-round 3 (2026-09-15): the 16 armor item sprites (775..=790)
 /// — clean-room helmet/chestplate/leggings/boots silhouettes in the four
 /// material palettes (leather/iron/gold/diamond), drawn by
-/// vc-render/textures/armor_art.rs. Reference facts: minecraft.wiki/w/
+/// vc-render/textures/armor_art.rs. Reference facts: reference wiki /
 /// Armor (live 2026-09-15): the four wearable pieces + the per-material
-/// defense table. No Mojang asset was read, copied, or traced.
+/// defense table. No third-party asset was read, copied, or traced.
 pub const TILE_ARMOR_BASE: u16 = 775;
 // piece order: helmet(0) chestplate(1) leggings(2) boots(3)
 // material order: leather(0) iron(1) gold(2) diamond(3) — tile =
@@ -4741,7 +4741,7 @@ pub const TILE_V7_EGG_BASE: u16 = 340;
 pub const TILE_V7_EGG_END: u16 = 345;
 
 // ---- 1.12 bracket tiles (World of Color Update, live 2026-09-07;
-// minecraft.wiki/w/Java_Edition_1.12 + w/Concrete, w/Concrete_Powder,
+// reference wiki /Java_Edition_1.12 + w/Concrete, w/Concrete_Powder,
 // w/Glazed_Terracotta, w/Parrot, w/Illusioner — raw captures in
 // scripts/v112_page_*.json) ----
 /// 16 concrete tiles, engine color order (the vanilla dye-registry order
@@ -5105,7 +5105,7 @@ pub const FIRE: u16 = 506;
 
 // ---- backlog round (farming, 2026-09-09): the 1.16.5 farming set —
 // FARMLAND + the four seed crops (VERIFIED live 2026-09-09 against the
-// minecraft.wiki captures: Farmland/Wheat_Crops/Beetroot/Carrot/Potato/
+// the reference wiki captures: Farmland/Wheat_Crops/Beetroot/Carrot/Potato/
 // Tutorial:Crop_farming — see scripts/backlog_page_*.json) ----
 /// farmland — created by a hoe on dirt/grass (moisture 0..7 state row;
 /// >0 = hydrated, VERIFIED w/Farmland §Hydration: water "up to four
@@ -5139,7 +5139,7 @@ pub const HOE: u16 = 514;
 // ---- Sub-round 3 (2026-09-15): the wearable ARMOR items (515..=530).
 // 4 materials x 4 pieces, vanilla order feet->head irrelevant here; ids
 // grouped by material. Armor points per piece (the vanilla 1.16.5
-// defense table, minecraft.wiki/w/Armor live 2026-09-15: "The total
+// defense table, reference wiki /Armor live 2026-09-15: "The total
 // number of armor points that the player has is the sum of the armor
 // points of the individual pieces of armor worn"): leather 1/3/2/1,
 // golden 2/5/3/1, iron 2/6/5/2, diamond 3/8/6/3. The turtle shell
@@ -5781,7 +5781,7 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Horse Spawn Egg", [TILE_E3_EGG_HORSE, TILE_E3_EGG_HORSE, TILE_E3_EGG_HORSE], false, false, true, false, 0, SoundFamily::Grass),
     d("Donkey Spawn Egg", [TILE_E3_EGG_DONKEY, TILE_E3_EGG_DONKEY, TILE_E3_EGG_DONKEY], false, false, true, false, 0, SoundFamily::Grass),
     d("Mule Spawn Egg", [TILE_E3_EGG_MULE, TILE_E3_EGG_MULE, TILE_E3_EGG_MULE], false, false, true, false, 0, SoundFamily::Grass),
-    // ---- 1.7.2 bracket (V2 window) — minecraft.wiki/w/Java_Edition_1.7.2,
+    // ---- 1.7.2 bracket (V2 window) — reference wiki /Java_Edition_1.7.2,
     // live round 2026-09-06. [merge] rows moved to ids 200.. (past the
     // E-series); the 16 stained-clay rows DROPPED (E3 covers them). ----
     // stained glass: solid, NOT opaque (translucent), glass sounds
@@ -5836,7 +5836,7 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Raw Salmon", [TILE_RAW_SALMON, TILE_RAW_SALMON, TILE_RAW_SALMON], false, false, true, false, 0, SoundFamily::Grass),
     d("Clownfish", [TILE_CLOWNFISH, TILE_CLOWNFISH, TILE_CLOWNFISH], false, false, true, false, 0, SoundFamily::Grass),
     d("Pufferfish", [TILE_PUFFERFISH, TILE_PUFFERFISH, TILE_PUFFERFISH], false, false, true, false, 0, SoundFamily::Grass),
-    // ---- 1.8 bracket (V3 window) — minecraft.wiki/w/Java_Edition_1.8,
+    // ---- 1.8 bracket (V3 window) — reference wiki /Java_Edition_1.8,
     // live round 2026-09-06 ----
     // slime block: solid, translucent, bounces (the trampoline block)
     d("Slime Block", [TILE_SLIME, TILE_SLIME, TILE_SLIME], true, false, false, false, 0, SoundFamily::Grass),
@@ -5862,7 +5862,7 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Rabbit's Foot", [TILE_RABBIT_FOOT, TILE_RABBIT_FOOT, TILE_RABBIT_FOOT], false, false, true, false, 0, SoundFamily::Grass),
     d("Prismarine Shard", [TILE_PRISMARINE_SHARD, TILE_PRISMARINE_SHARD, TILE_PRISMARINE_SHARD], false, false, true, false, 0, SoundFamily::Stone),
     d("Prismarine Crystals", [TILE_PRISMARINE_CRYSTALS, TILE_PRISMARINE_CRYSTALS, TILE_PRISMARINE_CRYSTALS], false, false, true, false, 0, SoundFamily::Stone),
-    // ---- 1.9 bracket (V4 window) — minecraft.wiki/w/Java_Edition_1.9,
+    // ---- 1.9 bracket (V4 window) — reference wiki /Java_Edition_1.9,
     // live round 2026-09-06 ----
     d("Grass Path", [TILE_GRASS_PATH, TILE_DIRT, TILE_GRASS_PATH_SIDE], true, true, false, false, 0, SoundFamily::Grass),
     d("Purpur Block", [TILE_PURPUR, TILE_PURPUR, TILE_PURPUR], true, true, false, false, 0, SoundFamily::Stone),
@@ -5876,7 +5876,7 @@ pub static BLOCK_TABLE: [BlockDef; BLOCK_COUNT] = [
     d("Chorus Fruit", [TILE_CHORUS_FRUIT, TILE_CHORUS_FRUIT, TILE_CHORUS_FRUIT], false, false, true, false, 0, SoundFamily::Grass),
     d("Elytra", [TILE_ELYTRA, TILE_ELYTRA, TILE_ELYTRA], false, false, true, false, 0, SoundFamily::Grass),
     d("Shield", [TILE_SHIELD, TILE_SHIELD, TILE_SHIELD], false, false, true, false, 0, SoundFamily::Wood),
-    // ---- 1.10 bracket (V5 window) — minecraft.wiki/w/Java_Edition_1.10,
+    // ---- 1.10 bracket (V5 window) — reference wiki /Java_Edition_1.10,
     // live round 2026-09-06 ----
     // magma: light level 3 (wiki /w/Magma_Block, live round)
     d("Magma Block", [TILE_MAGMA, TILE_MAGMA, TILE_MAGMA], true, true, false, false, 3, SoundFamily::Stone),
@@ -6491,7 +6491,7 @@ pub const PICKER_BLOCKS: [u16; 467] = [
 //
 // clean-room: tab structure = the nine content tabs of the classic
 // (pre-1.19.3) Java creative screen, in the vanilla order, mapped onto
-// this engine's 515-block registry. Reference facts: minecraft.wiki/w/
+// this engine's 515-block registry. Reference facts: reference wiki /
 // Creative_inventory (live 2026-09-15): the classic tab set is Building
 // Blocks, Decoration Blocks, Redstone, Transportation, Miscellaneous,
 // Foodstuffs, Tools, Combat, Brewing (+ the Search Items and Survival
@@ -6502,7 +6502,7 @@ pub const PICKER_BLOCKS: [u16; 467] = [
 // block -> Building, poppy -> Decoration, redstone components ->
 // Redstone, saddle -> Transportation, spawn eggs -> Miscellaneous
 // (their 1.16.5 home), bread -> Foodstuffs, hoe -> Tools, shield ->
-// Combat, potions + brewing stand -> Brewing. No Mojang asset was read,
+// Combat, potions + brewing stand -> Brewing. No third-party asset was read,
 // copied, or traced.
 // ---------------------------------------------------------------------------
 
@@ -6814,7 +6814,7 @@ mod creative_tab_tests {
 
     /// Sub-round 3 (2026-09-15): the armor item registry — 16 pieces
     /// (4 materials x 4 slots), the per-piece defense table (the vanilla
-    /// 1.16.5 values from minecraft.wiki/w/Armor, live 2026-09-15), and
+    /// 1.16.5 values from reference wiki /Armor, live 2026-09-15), and
     /// the piece-kind routing used by the equipment slots.
     #[test]
     fn armor_items_and_defense_table() {
@@ -7618,7 +7618,7 @@ mod v110_tests {
 
     /// 1.10 Frostburn V5 window: ids 191..=194, states 328..=331 — the
     /// four new blocks round-trip through the registry (live-verified
-    /// block list, minecraft.wiki/w/Java_Edition_1.10 §Blocks, fetched
+    /// block list, reference wiki /Java_Edition_1.10 §Blocks, fetched
     /// 2026-09-06)
     #[test]
     fn v5_window_roundtrips() {
@@ -7639,7 +7639,7 @@ mod v110_tests {
         assert_eq!(STATE_COUNT, 863); // + the backlog V16 fire state + the Round-13 station identities (state windows are cumulative)
     }
 
-    /// magma emits light level 3 (VERIFIED — minecraft.wiki/w/Magma_Block,
+    /// magma emits light level 3 (VERIFIED — reference wiki /Magma_Block,
     /// live round 2026-09-06: "Magma blocks emit a light level of 3")
     #[test]
     fn magma_emits_light_level_3() {
@@ -7778,7 +7778,7 @@ mod v112_tests {
 
     /// the V8 window: 70 ids (16 concrete, 16 powder, 16 glazed, egg,
     /// 16 dyes, 4 seeds, cookie) with their default states, plus the
-    /// registry/state-space bounds (VERIFIED live: minecraft.wiki
+    /// registry/state-space bounds (VERIFIED live: the reference wiki
     /// /w/Java_Edition_1.12 §Blocks/§Items)
     #[test]
     fn v112_v8_registry_window() {

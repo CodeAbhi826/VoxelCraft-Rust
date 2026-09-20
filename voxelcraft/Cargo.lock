@@ -2049,6 +2049,7 @@ dependencies = [
  "vc-blocks",
  "vc-chunk",
  "vc-nbt",
+ "vc-pack",
  "vc-world",
  "web-time",
 ]
@@ -2086,6 +2087,7 @@ dependencies = [
  "vc-blocks",
  "vc-chunk",
  "vc-inventory",
+ "vc-pack",
  "vc-particles",
  "vc-rng",
  "vc-world",

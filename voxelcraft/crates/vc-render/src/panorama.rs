@@ -10,10 +10,10 @@
 //!
 //! This module reproduces that architecture clean-room:
 //! - `paint_cubemap()` renders the six faces ONCE (at renderer init) from a
-//!   deterministic procedural scene — Nether-Update theme to match 1.16.x
-//!   (crimson fog sky, lava-glow horizon, netherrack ground, a crimson
+//!   deterministic procedural scene — Hollow-Update theme to match 1.16.x
+//!   (scarlet fog sky, lava-glow horizon, hollowstone ground, a scarlet
 //!   canopy tree belt and a glowing lava lake sector; no clouds — the
-//!   Nether has none). It is "pre-rendered" in the exact sense that
+//!   Hollow has none). It is "pre-rendered" in the exact sense that
 //!   matters: the menus never touch the world/meshing pipeline, so a slow
 //!   GPU mesher or heavy world gen can never stall the title screen again
 //!   (the user-reported minute-long "loading" was exactly that coupling).
@@ -251,7 +251,7 @@ impl PanoResources {
                 compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     // renders into the linear offscreen scene texture; the
-                    // post chain sRGB-encodes once at the end
+                    // post chain sRGB-encodes once at the void
                     format: wgpu::TextureFormat::Rgba8Unorm,
                     blend: None,
                     write_mask: wgpu::ColorWrites::ALL,
@@ -367,30 +367,30 @@ pub fn paint_cubemap(size: u32) -> Vec<u8> {
     let s = size as usize;
     let mut out = vec![0u8; 6 * s * s * 4];
 
-    // palette (sRGB, converted to linear below) — NETHER-UPDATE THEME:
-    // the 1.16.x title panorama reflects the Nether Update (VERIFIED
+    // palette (sRGB, converted to linear below) — HOLLOW-UPDATE THEME:
+    // the 1.16.x title panorama reflects the Hollows Update (VERIFIED
     // reference wiki /Panorama history: "1.16 ... Changed panorama in all
-    // released 1.16 snapshots to reflect the Nether Update"). Clean-room
-    // approximation of that look: crimson fog sky, lava-glow horizon,
-    // netherrack ground, a dark tree belt with crimson canopies (crimson
+    // released 1.16 snapshots to reflect the Hollows Update"). Clean-room
+    // approximation of that look: scarlet fog sky, lava-glow horizon,
+    // hollowstone ground, a dark tree belt with scarlet canopies (scarlet
     // forest), and a glowing lava lake sector. No sampled assets.
     let zenith = lin([0.30, 0.06, 0.07]); // dark maroon void above
-    let horizon_sky = lin([0.56, 0.14, 0.11]); // crimson fog at eye level
+    let horizon_sky = lin([0.56, 0.14, 0.11]); // scarlet fog at eye level
     let warm = lin([0.82, 0.34, 0.10]); // lava-glow band on the horizon
     let sun_disc = lin([1.0, 0.60, 0.22]); // distant lava-sea glow
     let sun_halo = lin([0.90, 0.40, 0.13]);
-    let cloud_lit = lin([0.97, 0.98, 1.0]); // unused — the Nether has no
+    let cloud_lit = lin([0.97, 0.98, 1.0]); // unused — the Hollow has no
     let cloud_shade = lin([0.66, 0.71, 0.80]); // clouds (gated off below)
-    let hill_far = lin([0.34, 0.10, 0.10]); // hazy crimson far ridge
-    let hill_near = lin([0.26, 0.07, 0.08]); // netherrack near ridge
+    let hill_far = lin([0.34, 0.10, 0.10]); // hazy scarlet far ridge
+    let hill_near = lin([0.26, 0.07, 0.08]); // hollowstone near ridge
     let grass = [
-        lin([0.40, 0.12, 0.12]), // netherrack light
-        lin([0.33, 0.09, 0.10]), // netherrack dark
+        lin([0.40, 0.12, 0.12]), // hollowstone light
+        lin([0.33, 0.09, 0.10]), // hollowstone dark
         lin([0.30, 0.06, 0.10]), // deep shade toward the nadir
     ];
-    let tree_lit = lin([0.68, 0.10, 0.13]); // crimson canopy, lit
-    let tree_dark = lin([0.52, 0.08, 0.11]); // crimson canopy, shade
-    let trunk = lin([0.16, 0.09, 0.08]); // dark nether trunk
+    let tree_lit = lin([0.68, 0.10, 0.13]); // scarlet canopy, lit
+    let tree_dark = lin([0.52, 0.08, 0.11]); // scarlet canopy, shade
+    let trunk = lin([0.16, 0.09, 0.08]); // dark hollow trunk
     let water = lin([0.88, 0.36, 0.07]); // glowing lava lake
     let sparkle = lin([1.0, 0.76, 0.30]); // bright lava crust glints
 
@@ -422,7 +422,7 @@ pub fn paint_cubemap(size: u32) -> Vec<u8> {
                 col = mix(col, warm, warm_t);
 
                 // ---- sun disc + halo (reads as a distant lava glow in
-                // the Nether theme — dimmer than the overworld sun)
+                // the Hollow theme — dimmer than the overworld sun)
                 let dot = (d[0] * SUN[0] + d[1] * SUN[1] + d[2] * SUN[2]) / sun_len;
                 if dot > 0.0 {
                     let halo = dot.powf(220.0) * 0.4;
@@ -432,7 +432,7 @@ pub fn paint_cubemap(size: u32) -> Vec<u8> {
                     }
                 }
 
-                // ---- clouds: none in the Nether theme (the overworld
+                // ---- clouds: none in the Hollow theme (the overworld
                 // painter's fbm clouds are gated off; the palette entries
                 // stay so the field remains documented)
                 let cover = 0.0f32;
@@ -466,7 +466,7 @@ pub fn paint_cubemap(size: u32) -> Vec<u8> {
                             col2 = mix(water, sparkle, sp2);
                         }
                         // ---- voxel tree belt standing on the near ridge
-                        // (crimson-forest stand: dense, tall — the canopies
+                        // (scarlet-forest stand: dense, tall — the canopies
                         // must read as trees, not a hedge line)
                         let cells = 132.0;
                         let cell = ((az + std::f32::consts::PI)
@@ -541,8 +541,8 @@ mod tests {
             [a[i], a[i + 1], a[i + 2]]
         };
         // side faces (+X, +Z): top rows are sky (red-dominant — the
-        // Nether theme's crimson fog), bottom rows are ground (dark
-        // netherrack: red dominant over green) — the cube orientation
+        // Hollow theme's scarlet fog), bottom rows are ground (dark
+        // hollowstone: red dominant over green) — the cube orientation
         // contract the ray-cast shader's face selection relies on
         for face in [0usize, 4] {
             let sky = px(face, 32, 2);
@@ -550,14 +550,14 @@ mod tests {
             assert!(sky[0] > sky[2], "sky must be red-dominant, got {sky:?}");
             assert!(
                 ground[0] > ground[1] && ground[0] > ground[2],
-                "ground must be netherrack red-dominant, got {ground:?}"
+                "ground must be hollowstone red-dominant, got {ground:?}"
             );
         }
         // up face center is sky-ish; down face center is ground-ish
         let up = px(2, 32, 32);
-        assert!(up[0] > up[2], "up face must be crimson sky, got {up:?}");
+        assert!(up[0] > up[2], "up face must be scarlet sky, got {up:?}");
         let down = px(3, 32, 32);
-        assert!(down[0] > down[1], "down face must be netherrack, got {down:?}");
+        assert!(down[0] > down[1], "down face must be hollowstone, got {down:?}");
 
         // optional visual dump for inspection (never set in CI):
         //   PANORAMA_DUMP=/tmp/pano cargo test -p vc-render panorama

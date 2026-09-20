@@ -17,10 +17,10 @@
 //!
 //! Vanilla 1.16.5 reference for the PROPORTIONS (documented mechanical
 //! behavior): humanoid mobs are 32 model px tall (8×8×8 head, 8×12×4
-//! body, 4×12×4 limbs; zombie arms held forward), the creeper is a
-//! 26-px stack, the enderman a 44-px tall thin frame. Model px are
+//! body, 4×12×4 limbs; zombie arms held forward), the fuseling is a
+//! 26-px stack, the voidling a 44-px tall thin frame. Model px are
 //! authored 16-per-block and then auto-scaled to each kind's verified
-//! hitbox height (`MOB_DATA.height`), so e.g. the wither skeleton's
+//! hitbox height (`MOB_DATA.height`), so e.g. the blight skeleton's
 //! 2.4 blocks stretch the humanoid rig correctly.
 //!
 //! Textures reuse the existing clean-room 16×16 mob sprites as
@@ -189,7 +189,7 @@ const FACE_SHADE: [f32; 6] = [0.72, 0.72, 1.0, 0.55, 0.85, 0.85];
 ///   (length must equal `parts.len()`)
 /// * `scale` — blocks per model px (auto-fit: `hitbox_height /
 ///   px_height`)
-/// * `tint` — hurt flash / creeper fuse multiplier (rgb)
+/// * `tint` — hurt flash / fuseling fuse multiplier (rgb)
 /// * `view_dir` — camera forward (unit); painter's back-to-front face
 ///   ordering within the mob
 #[allow(clippy::too_many_arguments)] // emitter convention, see the 20 precedents workspace-wide
@@ -634,9 +634,9 @@ pub fn humanoid(tile: u16, arms_forward: bool) -> EntityModel {
     }
 }
 
-/// the 44-px enderman: long thin limbs, narrow torso, glowing-eye
+/// the 44-px voidling: long thin limbs, narrow torso, glowing-eye
 /// head — the sprite's K/V columns map to the limbs.
-pub fn enderman(tile: u16) -> EntityModel {
+pub fn voidling(tile: u16) -> EntityModel {
     let head = head_tex(tile, [4, 0, 6, 4], [4, 0, 3, 4]);
     let torso = FaceTex::uniform(tile, [5, 5, 6, 5]);
     let limb = FaceTex::uniform(tile, [6, 11, 2, 4]);
@@ -782,8 +782,8 @@ pub fn enderman(tile: u16) -> EntityModel {
     }
 }
 
-/// the 26-px creeper: head + slim body + four stubby legs
-pub fn creeper(tile: u16) -> EntityModel {
+/// the 26-px fuseling: head + slim body + four stubby legs
+pub fn fuseling(tile: u16) -> EntityModel {
     let head = head_tex(tile, [4, 2, 7, 6], [4, 2, 3, 3]);
     let body = FaceTex::uniform(tile, [4, 8, 8, 1]);
     let foot = FaceTex::uniform(tile, [4, 9, 2, 3]);
@@ -1239,8 +1239,8 @@ mod tests {
     }
 
     #[test]
-    fn creeper_and_spider_rigs_build() {
-        let c = creeper(84);
+    fn fuseling_and_spider_rigs_build() {
+        let c = fuseling(84);
         assert_eq!(c.parts.len(), 7, "root + body + head + 4 legs");
         assert_eq!(c.px_height, 26.0);
         let s = spider(85);
@@ -1255,8 +1255,8 @@ mod tests {
     }
 
     #[test]
-    fn enderman_is_tall_and_thin() {
-        let m = enderman(86);
+    fn voidling_is_tall_and_thin() {
+        let m = voidling(86);
         assert_eq!(m.px_height, 44.0);
         // legs are 24 px long, arms 24 px
         assert_eq!(m.parts[5].boxes[0].size[1], 24.0);

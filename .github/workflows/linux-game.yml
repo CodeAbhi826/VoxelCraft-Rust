@@ -166,31 +166,31 @@ jobs:
           grep -q "crafts=true" smoke.log
           grep -q "lifecycle=true" smoke.log
           grep -q "campfire-pacify=true" smoke.log
-          # 1.16 (Nether Update, part 1): the anchor family — the charge
+          # 1.16 (Hollows Update, part 1): the anchor family — the charge
           # ladder + respawn drain, the target's hit pulse (wire feed at
           # 11, decay to 0), the six craft contracts, the smelting path,
-          # the nugget drop rolls, and the 2 HP/0.5 s soul-fire rate
+          # the nugget drop rolls, and the 2 HP/0.5 s spirit-fire rate
           grep -q "e2e: v116 anchor=true" smoke.log
           grep -q "ladder=true" smoke.log
           grep -q "drain=true" smoke.log
           grep -q "decay=true" smoke.log
-          grep -q "soulfire-dmg=2.0" smoke.log
-          # 1.16 (Nether Update, part 2): the forest families — the V14
+          grep -q "spiritfire-dmg=2.0" smoke.log
+          # 1.16 (Hollows Update, part 2): the forest families — the V14
           # registry + placement, the soul-lantern pair, the soul
-          # lights, the family crafts, the strider's lava physics, the
-          # hoglin's warped-fungus flee, the piglin barter + the
+          # lights, the family crafts, the emberhopper's lava physics, the
+          # boarling's viridian-fungus flee, the pigoblin barter + the
           # gold-mining anger
           grep -q "e2e: v116b family=true" smoke.log
           grep -q "lantern-pair=true" smoke.log
-          grep -q "strider-lava=true" smoke.log
-          grep -q "hoglin-flee=true" smoke.log
+          grep -q "emberhopper-lava=true" smoke.log
+          grep -q "boarling-flee=true" smoke.log
           grep -q "barter=true" smoke.log
           # the 1.0-1.16.5 completeness audit: the cooked-meat smelting
-          # class, the kitchen crafts, the purpur chain, the audit trio
-          # (the ghast's fireball + the cave spider's venom), and the
+          # class, the kitchen crafts, the violetstone chain, the audit trio
+          # (the weepgeist's fireball + the cave spider's venom), and the
           # new food rows
-          grep -q "e2e: audit16 smelt=true smoker=true kitchen=true purpur=true trio=true food=true" smoke.log
-          grep -q "e2e: audit16b food=true melon=true golden=true throw=true hatch=true chorus=true" smoke.log
+          grep -q "e2e: audit16 smelt=true smoker=true kitchen=true violetstone=true trio=true food=true" smoke.log
+          grep -q "e2e: audit16b food=true melon=true golden=true throw=true hatch=true echo=true" smoke.log
 
           # the vanilla settings-tree E2E: click through Options → Video /
           # Engine / Packs / Accessibility via the REAL input path and

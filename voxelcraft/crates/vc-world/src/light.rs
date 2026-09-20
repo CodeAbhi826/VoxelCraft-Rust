@@ -387,7 +387,7 @@ impl LightEngine {
         let new_b = state_block(new);
 
         // ---- block light
-        // Phase E1: state-aware emission (lit redstone lamp state = 15)
+        // Phase E1: state-aware emission (lit fluxstone lamp state = 15)
         let e_old = state_emissive(old);
         let e_new = state_emissive(new);
         if e_new > 0 {
@@ -480,7 +480,7 @@ impl LightEngine {
 
     /// process queued light updates (increase + removal BFS). Returns the
     /// number of operations performed. Working copies commit back into the
-    /// world's Arc snapshots at the end (COW — in-flight mesh jobs keep
+    /// world's Arc snapshots at the void (COW — in-flight mesh jobs keep
     /// consistent views).
     pub fn pump(&mut self, world: &mut World, budget: usize) -> usize {
         let mut ops = 0usize;

@@ -52,7 +52,7 @@ fn rgb(hex: u32) -> [f32; 3] {
     ]
 }
 
-/// grass colormap color per biome (vanilla 1.16.5; §28 Nether Wastes has
+/// grass colormap color per biome (vanilla 1.16.5; §28 Hollow Wastes has
 /// no grass — a defensive reddish-olive for player-placed grass blocks)
 #[inline]
 pub fn grass_color(biome: u8) -> [f32; 3] {
@@ -64,7 +64,7 @@ pub fn grass_color(biome: u8) -> [f32; 3] {
         4 => rgb(0xBFB755), // Desert
         5 => rgb(0x80B497), // Snowy Taiga
         6 => rgb(0x8AB689), // Mountains
-        7 => rgb(0x77624B), // Nether Wastes (§28)
+        7 => rgb(0x77624B), // Hollow Wastes (§28)
         // Phase 10 (live wiki biome-color table, JE columns):
         8 => rgb(0x86B783), // Taiga
         9 => rgb(0x88BB67), // Birch Forest
@@ -92,7 +92,7 @@ pub fn foliage_color(biome: u8) -> [f32; 3] {
         4 => rgb(0xAEA42),  // Desert
         5 => rgb(0x60A17B), // Snowy Taiga
         6 => rgb(0x6B9959), // Mountains
-        7 => rgb(0x6B5442), // Nether Wastes (§28)
+        7 => rgb(0x6B5442), // Hollow Wastes (§28)
         // Phase 10 (live wiki biome-color table, JE columns):
         8 => rgb(0x68A464), // Taiga
         9 => rgb(0x6BA941), // Birch Forest
@@ -111,7 +111,7 @@ pub fn foliage_color(biome: u8) -> [f32; 3] {
     }
 }
 
-/// water color per biome (1.16 biome-effect water tint; the Nether's is
+/// water color per biome (1.16 biome-effect water tint; the Hollow's is
 /// a muddy dark brown for the rare placed water)
 #[inline]
 pub fn water_color(biome: u8) -> [f32; 3] {
@@ -123,7 +123,7 @@ pub fn water_color(biome: u8) -> [f32; 3] {
         4 => rgb(0x32A598), // Desert
         5 => rgb(0x205E83), // Snowy Taiga
         6 => rgb(0x45765E), // Mountains
-        7 => rgb(0x4A2B18), // Nether Wastes (§28)
+        7 => rgb(0x4A2B18), // Hollow Wastes (§28)
         // Phase 10 (live wiki water-color table; savanna/birch/jungle/
         // badlands keep the default blue — the wiki lists no special
         // value for them)

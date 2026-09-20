@@ -3,7 +3,7 @@
 **Scope delivered:** every asset in the owner's modern-version reference
 dump — 3,855 PNGs + 176 `.mcmeta` across all 14 categories — recreated as
 original, procedurally-synthesized works in
-`voxelcraft/assets-vault/assets/minecraft/textures/`. The engine is
+`voxelcraft/assets-vault/assets/the reference game/textures/`. The engine is
 untouched: no crate, loader, or build step references the vault (grep
 -verified). Per the owner's directive the set is *not* used by the
 current 1.16.5-era game files; it stands ready for later versions.
@@ -43,7 +43,7 @@ arrangement. The synthesizer's family engines then *draw* every pixel:
   region fills guided by the measured luma; our own face expressions
   (eyes/mouths placed procedurally); banner/shield pattern grammar
   rendered geometrically; chests, equipment layers, big canvases.
-* **Font** — our OFL-licensed Monocraft rendered into the page grids;
+* **Font** — our OFL-licensed the removed third-party font rendered into the page grids;
   `ascii_sga`/`asciillager` are our own original fictional glyphs.
 * **Colormaps** — smooth re-derivation from a coarse 6x6 sample grid
   (functional LUT facts). **Paintings** — entirely original abstract

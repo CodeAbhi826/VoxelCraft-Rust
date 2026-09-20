@@ -23,9 +23,9 @@ cp wasm-out/voxelcraft_bg.wasm      ../public/
 cp wasm-out/voxelcraft.d.ts         ../public/
 cp wasm-out/voxelcraft_bg.wasm.d.ts ../public/
 rsync -a --delete builtin-pack/ ../public/voxelcraft-pack/
-# 2026-09-14: the Programmer Art builtin pack (pre-1.14-style clean-room
+# 2026-09-14: the Classic Art builtin pack (pre-1.14-style clean-room
 # look-alikes) deploys as its own fetch root for the wasm boot
-rsync -a --delete builtin-packs/programmer-art/ ../public/voxelcraft-pack-programmer-art/
+rsync -a --delete builtin-packs/classic-art/ ../public/voxelcraft-pack-classic-art/
 
 echo "[web] bundle mtime pair (MUST match):"
 ls -la ../public/voxelcraft.js ../public/voxelcraft_bg.wasm

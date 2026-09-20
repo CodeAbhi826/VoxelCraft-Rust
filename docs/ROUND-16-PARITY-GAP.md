@@ -29,7 +29,7 @@ Round 16 [1] deliverable).
   Chat Settings (real screen), Accessibility completion (Hold/Toggle,
   Distortion/FOV Effects), Skin Customization (8 layers + Main Hand).
 - **Round 15 (partial) + 15b** — biome fog; the 20-kind particle
-  batch (splash/bubble/drips/portal/end_rod/firework/squid_ink/dust/
+  batch (splash/bubble/drips/portal/void_rod/firework/squid_ink/dust/
   note/villager moods/snowflake/totem/spit); the sky exactness (sun
   30×30, moon 20×20 at distance 100, pinned star density).
 - **Saved hotbars CLOSED (2026-09-17)** — the 12-tab creative strip
@@ -60,10 +60,10 @@ Round 16 [1] deliverable).
 
 | Gap | Reason | Estimate |
 |---|---|---|
-| Round 13 loom / stonecutter / cartography / smithing / fletching | The SPEC'S OWN deferral clauses: banners, map items, the stone-family recipes, netherite gear and arrows are not registered (audit §4 verdicts) | blocked on their subsystems |
+| Round 13 loom / stonecutter / cartography / smithing / fletching | The SPEC'S OWN deferral clauses: banners, map items, the stone-family recipes, hollowite gear and arrows are not registered (audit §4 verdicts) | blocked on their subsystems |
 | Container-panel family chrome (+~7 vanilla-eq-px vs the 176-wide panels) | A full panel-chrome rework touches every container screen (disclosed in the round-12 audit) | ½ round |
 | Saved-hotbar counts in the tab grid | The creative grid is the u16 item grid; the X+n load preserves counts but the tab view does not render them | trivial, cosmetic |
-| The in-game nether portal (Phase 12A of the master plan) | Newly identified in the 2026-09-18 master-plan review: the Nether dimension itself is COMPLETE (five biomes, fortresses, 8:1 coords, respawn anchors, piglin/hoglin content, nether fog) and reachable through the §28 travel pipeline + the E2E `dim:` command, but the obsidian-frame portal block + the flint-and-steel item + the walk-in trigger do not exist (the End portals are the only in-game dimension path; the fire block exists via lightning only). A portal round needs: the PORTAL block registration + frame validation + flint-and-steel item + portal particles/fog overlay + the walk-in travel + spawn-frame building on the far side | 1 round |
+| The in-game hollow portal (Phase 12A of the master plan) | Newly identified in the 2026-09-18 master-plan review: the Hollow dimension itself is COMPLETE (five biomes, fortresses, 8:1 coords, rebirth anchors, pigoblin/boarling content, hollow fog) and reachable through the §28 travel pipeline + the E2E `dim:` command, but the obsidian-frame portal block + the flint-and-steel item + the walk-in trigger do not exist (the Void portals are the only in-game dimension path; the fire block exists via lightning only). A portal round needs: the PORTAL block registration + frame validation + flint-and-steel item + portal particles/fog overlay + the walk-in travel + spawn-frame building on the far side | 1 round |
 | Hunger NBT persistence (foodLevel/foodSaturationLevel/foodExhaustionLevel in the player block) | The engine's level.dat player NBT carries no health/xp either — every world entry is a fresh 20 HP / 20 food (the wiki's own world-creation semantics). Riding the existing convention this round; a future persistence round carries the whole vital-stat set | with the persistence round |
 | Peaceful / Easy difficulty rules | The engine has no difficulty selector (worlds run Normal-class starvation; Hardcore runs Hard-class per the modes doc). The two unreachable rule rows stay disclosed | with a difficulty selector round |
 
@@ -77,13 +77,13 @@ Round 16 [1] deliverable).
 
 ## Legal audit notes (Round 16 [2])
 
-- Grep for "Minecraft/Mojang/Notch/Creeper" in user-facing strings: the
-  mob display name "Creeper Spawn Egg" (blocks.rs) is a pre-existing
+- Grep for "the reference game/the original publisher/the original author/Fuseling" in user-facing strings: the
+  mob display name "Fuseling Spawn Egg" (blocks.rs) is a pre-existing
   naming choice from the earlier audit16 rounds (vanilla's own item
   name, shown on VLM-verified screens); flagged for a dedicated
   string-freeze pass rather than a mid-round rename.
 - The wasm bundle pair (voxelcraft.js + voxelcraft_bg.wasm) is the
   matched 2026-09-18 rebuild (wasm-bindgen 0.2.127, glue
   patched, packs rsynced from builtin-pack/ +
-  builtin-packs/programmer-art/ — procedural PNGs only).
+  builtin-packs/classic-art/ — procedural PNGs only).
 - README disclaimer: the standing clean-room notice, unchanged.

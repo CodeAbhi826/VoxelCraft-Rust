@@ -1,4 +1,4 @@
-//! 1.13 bracket (Update Aquatic) procedural tiles — the V9 window
+//! 1.13 bracket (Aquatic-era update) procedural tiles — the V9 window
 //! (tiles 550..=618): coral blocks/plants/fans ×5 colors + their dead
 //! gray forms, sea pickle ×4 counts, blue ice, dried kelp block, kelp,
 //! seagrass, the conduit, turtle eggs ×3 hatch stages, the 11 craft/

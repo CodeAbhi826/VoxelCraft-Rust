@@ -18,12 +18,12 @@ pub type ChunkPos = (i32, i32);
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Dimension {
     Overworld = 0,
-    /// the Nether: 8:1 coordinate scale, caverns, no skylight
-    Nether = 1,
-    /// Phase E1 (1.0.0 content, live-verified w/The_End): the End —
-    /// void dimension of end-stone islands, obsidian pillars, the ender
-    /// dragon fight; 1:1 coordinate scale, no skylight
-    End = 2,
+    /// the Hollow: 8:1 coordinate scale, caverns, no skylight
+    Hollow = 1,
+    /// Phase E1 (1.0.0 content, live-verified): the Void —
+    /// void dimension of void-stone islands, obsidian pillars, the void
+    /// wyrm fight; 1:1 coordinate scale, no skylight
+    Void = 2,
 }
 
 impl Dimension {
@@ -31,34 +31,34 @@ impl Dimension {
     pub fn id(self) -> &'static str {
         match self {
             Dimension::Overworld => "overworld",
-            Dimension::Nether => "the_nether",
-            Dimension::End => "the_end",
+            Dimension::Hollow => "the_hollow",
+            Dimension::Void => "the_void",
         }
     }
 
     pub fn name(self) -> &'static str {
         match self {
             Dimension::Overworld => "Overworld",
-            Dimension::Nether => "Nether",
-            Dimension::End => "End",
+            Dimension::Hollow => "Hollow",
+            Dimension::Void => "Void",
         }
     }
 
     pub fn from_u8(v: u8) -> Dimension {
         match v {
-            1 => Dimension::Nether,
-            2 => Dimension::End,
+            1 => Dimension::Hollow,
+            2 => Dimension::Void,
             _ => Dimension::Overworld,
         }
     }
 
     /// horizontal block-per-block scale of this dimension relative to the
-    /// overworld (vanilla nether travel: 8 overworld blocks = 1 nether block)
+    /// overworld (vanilla hollow travel: 8 overworld blocks = 1 hollow block)
     pub fn coord_scale(self) -> i32 {
         match self {
             Dimension::Overworld => 1,
-            Dimension::Nether => 8,
-            Dimension::End => 1,
+            Dimension::Hollow => 8,
+            Dimension::Void => 1,
         }
     }
 
@@ -66,8 +66,8 @@ impl Dimension {
     pub fn seed_salt(self) -> u64 {
         match self {
             Dimension::Overworld => 0,
-            Dimension::Nether => 0x1DE1_1E77_0D1D_1234,
-            Dimension::End => 0x0EAD_BEE5_E1D5_1234,
+            Dimension::Hollow => 0x1DE1_1E77_0D1D_1234,
+            Dimension::Void => 0x0EAD_BEE5_E1D5_1234,
         }
     }
 
@@ -265,8 +265,8 @@ impl World {
     pub fn set_block(&mut self, wx: i32, wy: i32, wz: i32, id: u16) -> Option<(u16, u16)> {
         // Phase E2 fix (latent E1 bug): store the block's DEFAULT STATE,
         // not the raw id. The raw id only equals a valid state for
-        // identity-mapped blocks 0..=56 — END_PORTAL (116) stored raw
-        // folded back as FURNACE (63), DRAGON_EGG (115) as REDSTONE_TORCH,
+        // identity-mapped blocks 0..=56 — VOID_GATE (116) stored raw
+        // folded back as FURNACE (63), DRAGON_EGG (115) as FLUXSTONE_TORCH,
         // and prop blocks (OAK_SLAB 57) as OAK_LOG[axis=x]. Routing
         // through default_state matches Chunk::set (the generator-side
         // rule) and makes high-id placement correct everywhere.
@@ -492,10 +492,10 @@ impl World {
     pub fn find_spawn(&self) -> (f32, f32, f32) {
         match self.dimension {
             Dimension::Overworld => self.gen.find_spawn(),
-            Dimension::Nether => self.gen.find_nether_spawn(),
-            // Phase E1: the End arrival — the 5×5 obsidian platform
-            // (VERIFIED w/The_End: entry point x=100, z=0)
-            Dimension::End => self.gen.end_arrival(),
+            Dimension::Hollow => self.gen.find_hollow_spawn(),
+            // Phase E1: the Void arrival — the 5×5 obsidian platform
+            // (VERIFIED w/The_Void: entry point x=100, z=0)
+            Dimension::Void => self.gen.void_arrival(),
         }
     }
 
@@ -671,14 +671,14 @@ mod dimension_tests {
     fn dimension_construction() {
         let seed = 0xAB12_CD34;
         let a = World::new(seed);
-        let b = World::new_in_dimension(seed, Dimension::Nether);
+        let b = World::new_in_dimension(seed, Dimension::Hollow);
         assert_eq!(a.dimension, Dimension::Overworld);
-        assert_eq!(b.dimension, Dimension::Nether);
+        assert_eq!(b.dimension, Dimension::Hollow);
         assert_eq!(a.seed, b.seed, "the world seed is shared across dimensions");
         // the generators derive different seeds
         assert_ne!(a.gen.seed, b.gen.seed);
         // and generate different terrain at the same chunk: thousands of
-        // cells differ AND the nether's bedrock roof (y=127) contrasts with
+        // cells differ AND the hollow's bedrock roof (y=127) contrasts with
         // the overworld's open sky — unambiguous even before counting
         let (ca, _) = a.gen.generate_chunk(0, 0, Vec::new());
         let (cb, _) = b.gen.generate_chunk(0, 0, Vec::new());
@@ -698,7 +698,7 @@ mod dimension_tests {
                 assert_ne!(
                     ca.get_idx(i),
                     cb.get_idx(i),
-                    "y=127: nether roof (bedrock) vs overworld sky"
+                    "y=127: hollow roof (bedrock) vs overworld sky"
                 );
             }
         }
@@ -707,17 +707,17 @@ mod dimension_tests {
     /// §28: the vanilla 8:1 coordinate rule both ways
     #[test]
     fn coordinate_mapping_8_to_1() {
-        use Dimension::{Nether, Overworld};
-        // overworld → nether divides by 8
-        assert_eq!(Overworld.map_coords(Nether, 800, -1600), (100, -200));
-        // nether → overworld multiplies by 8
-        assert_eq!(Nether.map_coords(Overworld, 100, -200), (800, -1600));
+        use Dimension::{Hollow, Overworld};
+        // overworld → hollow divides by 8
+        assert_eq!(Overworld.map_coords(Hollow, 800, -1600), (100, -200));
+        // hollow → overworld multiplies by 8
+        assert_eq!(Hollow.map_coords(Overworld, 100, -200), (800, -1600));
         // rounding: not-multiples floor toward zero on the shared axis
-        let (x, _) = Overworld.map_coords(Nether, 805, 0);
+        let (x, _) = Overworld.map_coords(Hollow, 805, 0);
         assert_eq!(x, 100);
         // self-mapping is identity
         assert_eq!(Overworld.map_coords(Overworld, 123, -45), (123, -45));
-        assert_eq!(Nether.map_coords(Nether, 123, -45), (123, -45));
+        assert_eq!(Hollow.map_coords(Hollow, 123, -45), (123, -45));
     }
 
     /// §28: overworld worlds keep the legacy constructor behavior (same

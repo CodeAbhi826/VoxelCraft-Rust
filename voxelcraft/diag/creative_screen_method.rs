@@ -4,7 +4,7 @@
     /// folder tabs), a 9x5 slot grid with a right scrollbar, the tab
     /// title above the grid (the Search tab replaces it with a search
     /// field), and the hotbar + destroy slot at the bottom. Reference
-    /// facts: minecraft.wiki/w/Creative_inventory (live 2026-09-15):
+    /// facts: the reference wiki's creative-inventory page (live 2026-09-15):
     /// the nine content tabs + Search Items + Survival Inventory; the
     /// 9x5/45-per-page grid with a scrollbar; "A single item can be
     /// grabbed using left-click ... Right-clicking an item also picks
@@ -13,7 +13,7 @@
     /// places one full stack of that item into the hotbar slot"; the
     /// destroy slot ("get rid of the held item" by clicking outside or
     /// over another item). Proportions are the engine's established 2x
-    /// container geometry (40px slots on the 960x540 canvas). No Mojang
+    /// container geometry (40px slots on the 960x540 canvas). No third-party
     /// asset was read, copied, or traced.
     #[allow(clippy::too_many_arguments)]
     pub fn creative_screen(
@@ -71,12 +71,12 @@
         };
 
         // ---- tab strip (11 tabs: 9 content + Search + Inventory) ----
-        // vanilla tab order: Building, Decoration, Redstone, Transport,
+        // vanilla tab order: Building, Decoration, Fluxstone, Transport,
         // Misc, Food, Tools, Combat, Brewing, Search, Inventory
         let tab_labels: [&str; 11] = [
             "BUILDING BLOCKS",
             "DECORATION BLOCKS",
-            "REDSTONE",
+            "FLUXSTONE",
             "TRANSPORTATION",
             "MISCELLANEOUS",
             "FOODSTUFFS",
@@ -114,8 +114,8 @@
                 blk::CREATIVE_TABS[t as usize].icon_block()
             } else if t == 9 {
                 // Search tab icon: the compass — engine substitute: the
-                // eye of ender (the registry's search-est item; no compass)
-                blk::EYE_OF_ENDER
+                // void eye (the registry's search-est item; no compass)
+                blk::VOID_EYE
             } else {
                 // Inventory tab icon: the player head — engine
                 // substitute: the zombie spawn egg (a face-like egg)
@@ -251,7 +251,7 @@
             .map(|n| {
                 if advanced_tooltips {
                     let id: String = n.to_lowercase().replace(' ', "_");
-                    format!("{n} (minecraft:{id})")
+                    format!("{n} (voxelcraft:{id})")
                 } else {
                     n.to_string()
                 }

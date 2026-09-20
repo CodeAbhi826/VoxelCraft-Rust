@@ -495,7 +495,7 @@ fn art(a: &mut [u8], t: u16, rows: [&str; 16], map: &dyn Fn(char) -> Option<(i32
     }
 }
 
-/// §25 redstone wire: a flat red cross laid on the block floor
+/// §25 fluxstone wire: a flat red cross laid on the block floor
 /// furnace side: stone body with a dark mouth
 fn furnace_side_art(a: &mut [u8], t: u16, lit: bool) {
     let rows = [
@@ -556,11 +556,11 @@ fn furnace_top_art(a: &mut [u8], t: u16) {
     });
 }
 
-// nether blocks (Phase 7 §28): our own procedural art, clean-room
+// hollow blocks (Phase 7 §28): our own procedural art, clean-room
 
-/// netherrack: maroon rock — mottled base, darker pits, occasional bright
+/// hollowstone: maroon rock — mottled base, darker pits, occasional bright
 /// flecks (the "living rock" look)
-fn netherrack(a: &mut [u8], t: u16, rng: &mut Rng) {
+fn hollowstone(a: &mut [u8], t: u16, rng: &mut Rng) {
     noise_fill(a, t, [111, 54, 54], 10, rng);
     for _ in 0..9 {
         let cx = rng.next_range(16) as i32;
@@ -600,9 +600,9 @@ fn netherrack(a: &mut [u8], t: u16, rng: &mut Rng) {
     }
 }
 
-/// nether quartz ore: netherrack base + cream crystal clusters
+/// hollow quartz ore: hollowstone base + cream crystal clusters
 fn quartz_ore(a: &mut [u8], t: u16, rng: &mut Rng) {
-    netherrack(a, t, rng);
+    hollowstone(a, t, rng);
     for _ in 0..4 {
         let cx = 2 + rng.next_range(12) as i32;
         let cy = 2 + rng.next_range(12) as i32;
@@ -627,8 +627,8 @@ fn quartz_ore(a: &mut [u8], t: u16, rng: &mut Rng) {
     }
 }
 
-/// soul sand: swampy brown with dark pores and sagging swirls
-fn soul_sand(a: &mut [u8], t: u16, rng: &mut Rng) {
+/// spirit sand: swampy brown with dark pores and sagging swirls
+fn spirit_sand(a: &mut [u8], t: u16, rng: &mut Rng) {
     noise_fill(a, t, [84, 64, 51], 8, rng);
     // sagging darker striations
     for y in 0..16i32 {
@@ -682,7 +682,7 @@ fn soul_sand(a: &mut [u8], t: u16, rng: &mut Rng) {
     }
 }
 
-fn redstone_wire_art(a: &mut [u8], t: u16) {
+fn fluxstone_wire_art(a: &mut [u8], t: u16) {
     let rows = [
         "................",
         "................",
@@ -707,8 +707,8 @@ fn redstone_wire_art(a: &mut [u8], t: u16) {
     });
 }
 
-/// redstone torch: a lit stick with a glowing tip
-fn redstone_torch_art(a: &mut [u8], t: u16) {
+/// fluxstone torch: a lit stick with a glowing tip
+fn fluxstone_torch_art(a: &mut [u8], t: u16) {
     let rows = [
         "................",
         "................",
@@ -736,7 +736,7 @@ fn redstone_torch_art(a: &mut [u8], t: u16) {
 }
 
 /// brewing stand (Phase 7 §29): a rod with a cross-arm and hint bottles —
-/// cross-rendered like redstone components (not a full cube)
+/// cross-rendered like fluxstone components (not a full cube)
 fn brewing_stand_art(a: &mut [u8], t: u16) {
     let rows = [
         "................",
@@ -918,8 +918,8 @@ fn skeleton_art(a: &mut [u8], t: u16) {
     });
 }
 
-/// creeper: tall body, four stubby feet, sad face
-fn creeper_art(a: &mut [u8], t: u16) {
+/// fuseling: tall body, four stubby feet, sad face
+fn fuseling_art(a: &mut [u8], t: u16) {
     let rows = [
         "................",
         "................",
@@ -975,8 +975,8 @@ fn spider_art(a: &mut [u8], t: u16) {
     });
 }
 
-/// enderman: extremely tall thin dark frame, glowing eyes
-fn enderman_art(a: &mut [u8], t: u16) {
+/// voidling: extremely tall thin dark frame, glowing eyes
+fn voidling_art(a: &mut [u8], t: u16) {
     let rows = [
         "....KKKKKK......",
         "....KKKKKK......",
@@ -1304,7 +1304,7 @@ fn gunpowder_art(a: &mut [u8], t: u16) {
     });
 }
 
-fn ender_pearl_art(a: &mut [u8], t: u16) {
+fn void_pearl_art(a: &mut [u8], t: u16) {
     let rows = [
         "................",
         "................",
@@ -1439,7 +1439,7 @@ fn spawner_art(a: &mut [u8], t: u16) {
 /// end-portal frame (Phase 10): clean-room portal-room frame block —
 /// end-stone pale base with a recessed dark ring inset (the eye socket)
 /// + green glint corners (ours, not the original game's)
-fn end_portal_frame_art(a: &mut [u8], t: u16) {
+fn void_gate_frame_art(a: &mut [u8], t: u16) {
     let rows = [
         "S.S..........S.S",
         "................",
@@ -1895,7 +1895,7 @@ fn diamond_ore(a: &mut [u8], t: u16, rng: &mut Rng) {
         4,
     );
 }
-fn redstone_ore(a: &mut [u8], t: u16, rng: &mut Rng) {
+fn fluxstone_ore(a: &mut [u8], t: u16, rng: &mut Rng) {
     ore_blob(a, t, rng, &[[255, 40, 40], [190, 24, 24], [232, 70, 70]], 5);
 }
 fn lapis_ore(a: &mut [u8], t: u16, rng: &mut Rng) {
@@ -3192,8 +3192,8 @@ fn magma_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     }
 }
 
-/// nether wart block: clustered red warts
-fn nether_wart_block_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+/// hollow wart block: clustered red warts
+fn hollow_wart_block_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     noise_fill(a, t, [118, 24, 32], 10, rng);
     for _ in 0..22 {
         let x = rng.next_range(16) as i32;
@@ -3207,8 +3207,8 @@ fn nether_wart_block_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     }
 }
 
-/// red nether bricks: dark brick courses in the nether-brick hue
-fn red_nether_bricks_art(a: &mut [u8], t: u16) {
+/// red hollow bricks: dark brick courses in the hollow-brick hue
+fn red_hollow_bricks_art(a: &mut [u8], t: u16) {
     let base = (70, 22, 26);
     let mortar = (44, 12, 16);
     for y in 0..16 {
@@ -3270,8 +3270,8 @@ fn grass_path_side_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     }
 }
 
-/// purpur: pale lavender speckled stone (the End building block)
-fn purpur_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+/// violetstone: pale lavender speckled stone (the Void building block)
+fn violetstone_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     noise_fill(a, t, [169, 133, 169], 6, rng);
     for _ in 0..10 {
         let x = rng.next_range(16) as i32;
@@ -3280,8 +3280,8 @@ fn purpur_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     }
 }
 
-/// purpur pillar side: vertical banding in the purpur hue
-fn purpur_pillar_side_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+/// violetstone pillar side: vertical banding in the violetstone hue
+fn violetstone_pillar_side_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     noise_fill(a, t, [169, 133, 169], 5, rng);
     for x in [2, 5, 8, 11, 14] {
         for y in 0..16 {
@@ -3290,8 +3290,8 @@ fn purpur_pillar_side_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     }
 }
 
-/// end stone bricks: pale-yellow brick courses
-fn end_stone_bricks_art(a: &mut [u8], t: u16) {
+/// void stone bricks: pale-yellow brick courses
+fn void_stone_bricks_art(a: &mut [u8], t: u16) {
     let base = (221, 223, 165);
     let mortar_col = (196, 199, 142);
     for y in 0..16 {
@@ -3305,8 +3305,8 @@ fn end_stone_bricks_art(a: &mut [u8], t: u16) {
     }
 }
 
-/// end rod: slim white-lavender rod (cross render; light 14)
-fn end_rod_art(a: &mut [u8], t: u16) {
+/// void rod: slim white-lavender rod (cross render; light 14)
+fn void_rod_art(a: &mut [u8], t: u16) {
     for y in 0..16 {
         for x in 0..16 {
             put(a, t, x, y, 0, 0, 0, 0);
@@ -3326,8 +3326,8 @@ fn end_rod_art(a: &mut [u8], t: u16) {
     put(a, t, 8, 1, 250, 250, 255, 255);
 }
 
-/// chorus plant: mottled purple stalk
-fn chorus_plant_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+/// echo plant: mottled purple stalk
+fn echo_plant_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     noise_fill(a, t, [116, 82, 132], 10, rng);
     for _ in 0..12 {
         let x = rng.next_range(16) as i32;
@@ -3336,8 +3336,8 @@ fn chorus_plant_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     }
 }
 
-/// chorus flower: the pale growing tip
-fn chorus_flower_art(a: &mut [u8], t: u16) {
+/// echo flower: the pale growing tip
+fn echo_flower_art(a: &mut [u8], t: u16) {
     for y in 0..16 {
         for x in 0..16 {
             put(a, t, x, y, 0, 0, 0, 0);
@@ -3359,8 +3359,8 @@ fn chorus_flower_art(a: &mut [u8], t: u16) {
     put(a, t, 8, 8, 250, 248, 252, 255);
 }
 
-/// chorus fruit: rounded purple fruit with pale speckles
-fn chorus_fruit_art(a: &mut [u8], t: u16) {
+/// echo fruit: rounded purple fruit with pale speckles
+fn echo_fruit_art(a: &mut [u8], t: u16) {
     for y in 0..16 {
         for x in 0..16 {
             put(a, t, x, y, 0, 0, 0, 0);
@@ -3378,8 +3378,8 @@ fn chorus_fruit_art(a: &mut [u8], t: u16) {
     }
 }
 
-/// elytra icon: grey beetle wing pair
-fn elytra_art(a: &mut [u8], t: u16) {
+/// skywings icon: grey beetle wing pair
+fn skywings_art(a: &mut [u8], t: u16) {
     for y in 0..16 {
         for x in 0..16 {
             put(a, t, x, y, 0, 0, 0, 0);
@@ -3433,7 +3433,7 @@ fn shield_art(a: &mut [u8], t: u16) {
 }
 
 // ---------------------------------------------------------------------------
-// 1.8 bracket painters ("Bountiful Update"). Clean-room pixel art.
+// 1.8 bracket painters ("Bountiful-era update"). Clean-room pixel art.
 // ---------------------------------------------------------------------------
 
 /// slime block: green translucent gel — the wiki's "bouncy, sticky"
@@ -3496,9 +3496,9 @@ fn red_sandstone_art(a: &mut [u8], t: u16, rng: &mut Rng, smooth: bool) {
     }
 }
 
-/// prismarine: teal-green stone with shifting cracks (vanilla animates
+/// abyssprism: teal-green stone with shifting cracks (vanilla animates
 /// the color slowly — ours is a static mid-tone, documented)
-fn prismarine_art(a: &mut [u8], t: u16, rgb: (i32, i32, i32), rng: &mut Rng) {
+fn abyssprism_art(a: &mut [u8], t: u16, rgb: (i32, i32, i32), rng: &mut Rng) {
     noise_fill(a, t, [rgb.0, rgb.1, rgb.2], 10, rng);
     for _ in 0..7 {
         let x = rng.next_range(12) as i32;
@@ -3510,8 +3510,8 @@ fn prismarine_art(a: &mut [u8], t: u16, rgb: (i32, i32, i32), rng: &mut Rng) {
     }
 }
 
-/// prismarine bricks: 4×2 brick grid in the prismarine hue
-fn prismarine_bricks_art(a: &mut [u8], t: u16) {
+/// abyssprism bricks: 4×2 brick grid in the abyssprism hue
+fn abyssprism_bricks_art(a: &mut [u8], t: u16) {
     let base = (99, 156, 150);
     let dark = (74, 124, 118);
     for y in 0..16 {
@@ -3523,8 +3523,8 @@ fn prismarine_bricks_art(a: &mut [u8], t: u16) {
     }
 }
 
-/// dark prismarine: deep teal with mottled tiles
-fn dark_prismarine_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+/// dark abyssprism: deep teal with mottled tiles
+fn dark_abyssprism_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     noise_fill(a, t, [60, 102, 96], 8, rng);
     for _ in 0..10 {
         let x = rng.next_range(16) as i32;
@@ -3696,7 +3696,7 @@ fn rabbit_foot_art(a: &mut [u8], t: u16) {
     }
 }
 
-/// prismarine shard: teal crystal sliver
+/// abyssprism shard: teal crystal sliver
 fn shard_art(a: &mut [u8], t: u16) {
     for y in 0..16 {
         for x in 0..16 {
@@ -3714,7 +3714,7 @@ fn shard_art(a: &mut [u8], t: u16) {
     }
 }
 
-/// prismarine crystals: cluster of bright teal gems
+/// abyssprism crystals: cluster of bright teal gems
 fn crystals_art(a: &mut [u8], t: u16) {
     for y in 0..16 {
         for x in 0..16 {
@@ -3770,7 +3770,7 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_IRON_ORE => iron_ore(&mut a, t, &mut rng),
             TILE_GOLD_ORE => gold_ore(&mut a, t, &mut rng),
             TILE_DIAMOND_ORE => diamond_ore(&mut a, t, &mut rng),
-            TILE_REDSTONE_ORE => redstone_ore(&mut a, t, &mut rng),
+            TILE_FLUXSTONE_ORE => fluxstone_ore(&mut a, t, &mut rng),
             TILE_LAPIS_ORE => lapis_ore(&mut a, t, &mut rng),
             TILE_EMERALD_ORE => emerald_ore(&mut a, t, &mut rng),
             // mineral blocks
@@ -3807,18 +3807,18 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_MUSHROOM_RED => mushroom_red_art(&mut a, t),
             TILE_MUSHROOM_BROWN => mushroom_brown_art(&mut a, t),
             TILE_DEAD_BUSH => dead_bush_art(&mut a, t),
-            // redstone core (Phase 6 §25)
-            TILE_REDSTONE_WIRE => redstone_wire_art(&mut a, t),
-            TILE_REDSTONE_TORCH => redstone_torch_art(&mut a, t),
+            // fluxstone core (Phase 6 §25)
+            TILE_FLUXSTONE_WIRE => fluxstone_wire_art(&mut a, t),
+            TILE_FLUXSTONE_TORCH => fluxstone_torch_art(&mut a, t),
             TILE_LEVER => lever_art(&mut a, t),
             // gameplay (Phase 7)
             TILE_FURNACE_SIDE => furnace_side_art(&mut a, t, false),
             TILE_FURNACE_TOP => furnace_top_art(&mut a, t),
             TILE_FURNACE_LIT_SIDE => furnace_side_art(&mut a, t, true),
-            // nether blocks (Phase 7 §28)
-            TILE_NETHERRACK => netherrack(&mut a, t, &mut rng),
+            // hollow blocks (Phase 7 §28)
+            TILE_HOLLOWSTONE => hollowstone(&mut a, t, &mut rng),
             TILE_QUARTZ_ORE => quartz_ore(&mut a, t, &mut rng),
-            TILE_SOUL_SAND => soul_sand(&mut a, t, &mut rng),
+            TILE_SPIRIT_SAND => spirit_sand(&mut a, t, &mut rng),
             // brewing (Phase 7 §29)
             TILE_BREWING_STAND => brewing_stand_art(&mut a, t),
             TILE_BOTTLE_EMPTY => potion_art(&mut a, t, (120, 130, 150), false),
@@ -3835,9 +3835,9 @@ pub fn generate_atlas() -> Vec<u8> {
             // mobs (Phase 2) — entity sprites, clean-room art (ours)
             TILE_ZOMBIE => zombie_art(&mut a, t),
             TILE_SKELETON => skeleton_art(&mut a, t),
-            TILE_CREEPER => creeper_art(&mut a, t),
+            TILE_FUSELING => fuseling_art(&mut a, t),
             TILE_SPIDER => spider_art(&mut a, t),
-            TILE_ENDERMAN => enderman_art(&mut a, t),
+            TILE_VOIDLING => voidling_art(&mut a, t),
             TILE_COW => cow_art(&mut a, t),
             TILE_PIG => pig_art(&mut a, t),
             TILE_SHEEP => sheep_art(&mut a, t),
@@ -3853,7 +3853,7 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_BONE => bone_art(&mut a, t),
             TILE_STRING => string_art(&mut a, t),
             TILE_GUNPOWDER => gunpowder_art(&mut a, t),
-            TILE_ENDER_PEARL => ender_pearl_art(&mut a, t),
+            TILE_VOID_PEARL => void_pearl_art(&mut a, t),
             TILE_ROTTEN_FLESH => rotten_flesh_art(&mut a, t),
             TILE_ARROW_ITEM => arrow_art(&mut a, t),
             // Phase 4 §26/§30: corruption-chain potions + ingredients
@@ -3864,14 +3864,14 @@ pub fn generate_atlas() -> Vec<u8> {
             // Phase 5 §27: dungeon spawner cage face
             TILE_SPAWNER => spawner_art(&mut a, t),
             // Phase 10: stronghold portal-room frame
-            TILE_END_PORTAL_FRAME => end_portal_frame_art(&mut a, t),
+            TILE_VOID_GATE_FRAME => void_gate_frame_art(&mut a, t),
             // ---- Phase E1 tiles (evolution 1.0–1.2 bracket) ----
             TILE_MYCELIUM_TOP => e1_art::mycelium_top(&mut a, t, &mut rng),
             TILE_MYCELIUM_SIDE => e1_art::mycelium_side(&mut a, t, &mut rng),
-            TILE_END_STONE => e1_art::end_stone(&mut a, t, &mut rng),
-            TILE_NETHER_BRICKS => e1_art::nether_bricks(&mut a, t, &mut rng),
-            TILE_REDSTONE_LAMP => e1_art::redstone_lamp(&mut a, t, &mut rng, false),
-            TILE_REDSTONE_LAMP_ON => e1_art::redstone_lamp(&mut a, t, &mut rng, true),
+            TILE_VOID_STONE => e1_art::void_stone(&mut a, t, &mut rng),
+            TILE_HOLLOW_BRICKS => e1_art::hollow_bricks(&mut a, t, &mut rng),
+            TILE_FLUXSTONE_LAMP => e1_art::fluxstone_lamp(&mut a, t, &mut rng, false),
+            TILE_FLUXSTONE_LAMP_ON => e1_art::fluxstone_lamp(&mut a, t, &mut rng, true),
             TILE_CHISELED_STONE_BRICKS => e1_art::chiseled_stone_bricks(&mut a, t, &mut rng),
             TILE_CHISELED_SANDSTONE => e1_art::chiseled_sandstone(&mut a, t, &mut rng),
             TILE_CUT_SANDSTONE => e1_art::cut_sandstone(&mut a, t, &mut rng),
@@ -3879,21 +3879,21 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_MUSHROOM_RED_BLOCK => e1_art::mushroom_block_red(&mut a, t, &mut rng),
             TILE_MUSHROOM_BROWN_BLOCK => e1_art::mushroom_block_brown(&mut a, t, &mut rng),
             TILE_MUSHROOM_STEM => e1_art::mushroom_stem(&mut a, t, &mut rng),
-            TILE_NETHER_WART_0 => e1_art::nether_wart_art(&mut a, t, 0),
-            TILE_NETHER_WART_1 => e1_art::nether_wart_art(&mut a, t, 1),
-            TILE_NETHER_WART_2 => e1_art::nether_wart_art(&mut a, t, 2),
-            TILE_NETHER_WART_3 => e1_art::nether_wart_art(&mut a, t, 3),
+            TILE_HOLLOW_WART_0 => e1_art::hollow_wart_art(&mut a, t, 0),
+            TILE_HOLLOW_WART_1 => e1_art::hollow_wart_art(&mut a, t, 1),
+            TILE_HOLLOW_WART_2 => e1_art::hollow_wart_art(&mut a, t, 2),
+            TILE_HOLLOW_WART_3 => e1_art::hollow_wart_art(&mut a, t, 3),
             TILE_DRAGON_EGG => e1_art::dragon_egg_art(&mut a, t),
-            TILE_END_PORTAL => e1_art::end_portal_art(&mut a, t),
-            TILE_END_CRYSTAL => e1_art::end_crystal_art(&mut a, t),
+            TILE_VOID_GATE => e1_art::void_gate_art(&mut a, t),
+            TILE_VOID_CRYSTAL => e1_art::void_crystal_art(&mut a, t),
             TILE_XP_ORB => e1_art::xp_orb_art(&mut a, t, false),
             TILE_XP_ORB_BIG => e1_art::xp_orb_art(&mut a, t, true),
-            TILE_EYE_OF_ENDER => e1_art::eye_of_ender_art(&mut a, t),
+            TILE_VOID_EYE => e1_art::void_eye_art(&mut a, t),
             TILE_BLAZE_ROD => e1_art::blaze_rod_art(&mut a, t),
             TILE_BLAZE_POWDER => e1_art::blaze_powder_art(&mut a, t),
             TILE_GOLDEN_APPLE => e1_art::golden_apple_art(&mut a, t),
             TILE_SNOWBALL => e1_art::snowball_art(&mut a, t),
-            TILE_NETHER_BRICK => e1_art::nether_brick_art(&mut a, t),
+            TILE_HOLLOW_BRICK => e1_art::hollow_brick_art(&mut a, t),
             // mob sprites (Phase E1)
             TILE_SNOWGOLEM => e1_art::snow_golem_art(&mut a, t),
             TILE_MAGMACUBE => e1_art::magma_cube_art(&mut a, t),
@@ -3901,11 +3901,11 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_OCELOT => e1_art::ocelot_art(&mut a, t),
             TILE_IRONGOLEM => e1_art::iron_golem_art(&mut a, t),
             TILE_ZOMBIEVILLAGER => e1_art::zombie_villager_art(&mut a, t),
-            TILE_MOOSHROOM => e1_art::mooshroom_art(&mut a, t),
-            TILE_ENDERDRAGON => e1_art::ender_dragon_art(&mut a, t),
+            TILE_SHROOMCOW => e1_art::shroomcow_art(&mut a, t),
+            TILE_VOIDWYRM => e1_art::void_wyrm_art(&mut a, t),
             // spawn eggs: palette pairs indexed by egg id (order = egg_mob);
-            // Phase E2 appends kinds 17..=20 (wither skeleton, witch, bat,
-            // wither) to the E1 16-entry table
+            // Phase E2 appends kinds 17..=20 (blight skeleton, witch, bat,
+            // blight) to the E1 16-entry table
             t if (TILE_EGG_BASE..=TILE_EGG_MAX).contains(&t) => {
                 let i = (t - TILE_EGG_BASE) as usize;
                 let p = if i < 16 {
@@ -3922,26 +3922,26 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_BEACON => e2_art::beacon_art(&mut a, t, &mut rng),
             TILE_BEACON_BEAM => e2_art::beacon_beam_art(&mut a, t),
             TILE_COBBLE_WALL => e2_art::cobble_wall_art(&mut a, t, &mut rng),
-            TILE_ENDER_CHEST => e2_art::ender_chest_art(&mut a, t, &mut rng),
+            TILE_VOID_CHEST => e2_art::void_chest_art(&mut a, t, &mut rng),
             TILE_FLOWER_POT => e2_art::flower_pot_art(&mut a, t),
             TILE_ITEM_FRAME => e2_art::item_frame_art(&mut a, t),
             TILE_TRIPWIRE_HOOK => e2_art::tripwire_hook_art(&mut a, t, false),
             TILE_TRIPWIRE_HOOK_ON => e2_art::tripwire_hook_art(&mut a, t, true),
-            TILE_WITHER_SKULL => e2_art::wither_skull_art(&mut a, t),
+            TILE_BLIGHT_SKULL => e2_art::blight_skull_art(&mut a, t),
             TILE_COMMAND_BLOCK => e2_art::command_block_art(&mut a, t, false),
             TILE_COMMAND_BLOCK_ON => e2_art::command_block_art(&mut a, t, true),
             TILE_EMERALD => e2_art::emerald_art(&mut a, t),
-            TILE_NETHER_STAR => e2_art::nether_star_art(&mut a, t),
+            TILE_HOLLOW_STAR => e2_art::hollow_star_art(&mut a, t),
             TILE_POTATO => e2_art::potato_art(&mut a, t),
             TILE_BAKED_POTATO => e2_art::baked_potato_art(&mut a, t),
             TILE_CARROT => e2_art::carrot_art(&mut a, t),
             TILE_PUMPKIN_PIE => e2_art::pumpkin_pie_art(&mut a, t),
             // E2 mob sprites (billboards)
-            TILE_WITHER => e2_art::wither_art(&mut a, t),
-            TILE_WITHER_SKELETON => e2_art::wither_skeleton_art(&mut a, t),
+            TILE_BLIGHT => e2_art::blight_art(&mut a, t),
+            TILE_BLIGHT_SKELETON => e2_art::blight_skeleton_art(&mut a, t),
             TILE_WITCH => e2_art::witch_art(&mut a, t),
             TILE_BAT => e2_art::bat_art(&mut a, t),
-            TILE_WITHER_SKULL_PROJ => e2_art::wither_skull_proj_art(&mut a, t),
+            TILE_BLIGHT_SKULL_PROJ => e2_art::blight_skull_proj_art(&mut a, t),
             // VERIFICATION-REPORT fix #4: the coal fuel item
             TILE_COAL => e2_art::coal_art(&mut a, t),
             // Phase E2: lava fluid tile (bright orange noise — VERIFIED
@@ -3966,8 +3966,8 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_DAYLIGHT_SIDE => e3_art::daylight_side_art(&mut a, t),
             TILE_PLATE_LIGHT => e3_art::plate_art(&mut a, t, true),
             TILE_PLATE_HEAVY => e3_art::plate_art(&mut a, t, false),
-            TILE_REDSTONE_BLOCK => e3_art::redstone_block_art(&mut a, t, &mut rng),
-            TILE_NETHER_QUARTZ => e3_art::nether_quartz_art(&mut a, t),
+            TILE_FLUXSTONE_BLOCK => e3_art::fluxstone_block_art(&mut a, t, &mut rng),
+            TILE_HOLLOW_QUARTZ => e3_art::hollow_quartz_art(&mut a, t),
             TILE_LEAD => e3_art::lead_art(&mut a, t),
             TILE_SADDLE => e3_art::saddle_art(&mut a, t),
             TILE_HORSE => e3_art::horse_art(&mut a, t, [148, 100, 60], [64, 42, 26]),
@@ -4032,9 +4032,9 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_POLISHED_ANDESITE => polished_art(&mut a, t, (136, 136, 135), &mut rng),
             TILE_RED_SANDSTONE => red_sandstone_art(&mut a, t, &mut rng, false),
             TILE_SMOOTH_RED_SANDSTONE => red_sandstone_art(&mut a, t, &mut rng, true),
-            TILE_PRISMARINE => prismarine_art(&mut a, t, (99, 156, 150), &mut rng),
-            TILE_PRISMARINE_BRICKS => prismarine_bricks_art(&mut a, t),
-            TILE_DARK_PRISMARINE => dark_prismarine_art(&mut a, t, &mut rng),
+            TILE_ABYSSPRISM => abyssprism_art(&mut a, t, (99, 156, 150), &mut rng),
+            TILE_ABYSSPRISM_BRICKS => abyssprism_bricks_art(&mut a, t),
+            TILE_DARK_ABYSSPRISM => dark_abyssprism_art(&mut a, t, &mut rng),
             TILE_SEA_LANTERN => sea_lantern_art(&mut a, t),
             TILE_IRON_TRAPDOOR => iron_trapdoor_art(&mut a, t),
             TILE_BARRIER => barrier_art(&mut a, t),
@@ -4042,21 +4042,21 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_COOKED_RABBIT => rabbit_meat_art(&mut a, t, (160, 96, 58), true),
             TILE_RABBIT_HIDE => rabbit_hide_art(&mut a, t),
             TILE_RABBIT_FOOT => rabbit_foot_art(&mut a, t),
-            TILE_PRISMARINE_SHARD => shard_art(&mut a, t),
-            TILE_PRISMARINE_CRYSTALS => crystals_art(&mut a, t),
+            TILE_ABYSSPRISM_SHARD => shard_art(&mut a, t),
+            TILE_ABYSSPRISM_CRYSTALS => crystals_art(&mut a, t),
             // 1.8 rabbit entity sprite
             TILE_RABBIT => rabbit_sprite_art(&mut a, t),
             // ---- 1.9 bracket (live-verified reference wiki /Java_Edition_1.9) ----
             TILE_GRASS_PATH => grass_path_top_art(&mut a, t, &mut rng),
             TILE_GRASS_PATH_SIDE => grass_path_side_art(&mut a, t, &mut rng),
-            TILE_PURPUR => purpur_art(&mut a, t, &mut rng),
-            TILE_PURPUR_PILLAR_SIDE => purpur_pillar_side_art(&mut a, t, &mut rng),
-            TILE_END_STONE_BRICKS => end_stone_bricks_art(&mut a, t),
-            TILE_END_ROD => end_rod_art(&mut a, t),
-            TILE_CHORUS_PLANT => chorus_plant_art(&mut a, t, &mut rng),
-            TILE_CHORUS_FLOWER => chorus_flower_art(&mut a, t),
-            TILE_CHORUS_FRUIT => chorus_fruit_art(&mut a, t),
-            TILE_ELYTRA => elytra_art(&mut a, t),
+            TILE_VIOLETSTONE => violetstone_art(&mut a, t, &mut rng),
+            TILE_VIOLETSTONE_PILLAR_SIDE => violetstone_pillar_side_art(&mut a, t, &mut rng),
+            TILE_VOID_STONE_BRICKS => void_stone_bricks_art(&mut a, t),
+            TILE_VOID_ROD => void_rod_art(&mut a, t),
+            TILE_ECHO_PLANT => echo_plant_art(&mut a, t, &mut rng),
+            TILE_ECHO_FLOWER => echo_flower_art(&mut a, t),
+            TILE_ECHO_FRUIT => echo_fruit_art(&mut a, t),
+            TILE_SKYWINGS => skywings_art(&mut a, t),
             TILE_SHIELD => shield_art(&mut a, t),
             // ---- 1.10 bracket (live-verified reference wiki /Java_Edition_1.10) ----
             TILE_MAGMA => magma_art(&mut a, t, &mut rng),
@@ -4064,8 +4064,8 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_POLAR_BEAR => polar_bear_art(&mut a, t),
             TILE_STRAY => stray_art(&mut a, t),
             TILE_HUSK => husk_art(&mut a, t),
-            TILE_NETHER_WART_BLOCK => nether_wart_block_art(&mut a, t, &mut rng),
-            TILE_RED_NETHER_BRICKS => red_nether_bricks_art(&mut a, t),
+            TILE_HOLLOW_WART_BLOCK => hollow_wart_block_art(&mut a, t, &mut rng),
+            TILE_RED_HOLLOW_BRICKS => red_hollow_bricks_art(&mut a, t),
             TILE_BONE_BLOCK => bone_block_art(&mut a, t),
             // ---- audit-fix round (2026-09-07): 1.2 jungle family + 1.4
             // golden carrot (live-verified; see auditfix_art.rs) ----
@@ -4076,13 +4076,13 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_JUNGLE_PLANKS => auditfix_art::jungle_planks(&mut a, t, &mut rng),
             TILE_VINE => auditfix_art::vine(&mut a, t, &mut rng),
             TILE_FERN => auditfix_art::fern(&mut a, t, &mut rng),
-            // ---- 1.11 bracket (Exploration Update) ----
+            // ---- 1.11 bracket (Exploration-era update) ----
             TILE_LLAMA => auditfix_art::llama(&mut a, t, &mut rng),
-            TILE_VINDICATOR => auditfix_art::vindicator(&mut a, t, &mut rng),
-            TILE_EVOKER => auditfix_art::evoker(&mut a, t, &mut rng),
-            TILE_VEX => auditfix_art::vex(&mut a, t, &mut rng),
-            TILE_SHULKER_BOX => auditfix_art::shulker_box(&mut a, t, &mut rng),
-            TILE_SHULKER_SHELL => auditfix_art::shulker_shell(&mut a, t, &mut rng),
+            TILE_CLEAVER => auditfix_art::cleaver(&mut a, t, &mut rng),
+            TILE_RUNECALLER => auditfix_art::runecaller(&mut a, t, &mut rng),
+            TILE_VEX => auditfix_art::wisp(&mut a, t, &mut rng),
+            TILE_LURKSHELL_BOX => auditfix_art::lurkshell_box(&mut a, t, &mut rng),
+            TILE_LURKSHELL_SHELL => auditfix_art::lurkshell_shell(&mut a, t, &mut rng),
             TILE_TOTEM => auditfix_art::totem(&mut a, t, &mut rng),
             // 1.11 egg items: egg-shaped tiles (the E1/E2/E3 convention
             // — egg_art + palettes), NOT the mob billboard sprites
@@ -4141,13 +4141,13 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_PARROT_EGG => {
                 e1_art::egg_art(&mut a, t, (206, 48, 36), (250, 204, 68))
             }
-            // 5 parrot variant sprites + the illusioner
+            // 5 parrot variant sprites + the miragecaller
             t if (TILE_PARROT_BASE..=TILE_PARROT_BASE + 4).contains(&t) => {
                 let v = (t - TILE_PARROT_BASE) as u8;
                 v112_art::parrot_art(&mut a, t, v, &mut rng)
             }
-            TILE_ILLUSIONER => v112_art::illusioner_art(&mut a, t, &mut rng),
-            // ---- 1.13 bracket (Update Aquatic): the V9 window 550..=618.
+            TILE_MIRAGECALLER => v112_art::miragecaller_art(&mut a, t, &mut rng),
+            // ---- 1.13 bracket (Aquatic-era update): the V9 window 550..=618.
             // ART-GAP FIX: the interrupted-session recovery landed the
             // registry with TILE_MAX=618 but NO painters — every 1.13
             // block/item/egg/mob tile rendered BLANK; this dispatch arm
@@ -4268,59 +4268,59 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_BEE_NEST_FRONT_HONEY => v115_art::bee_nest_front_honey_art(&mut a, t, &mut rng),
             TILE_BEEHIVE_FRONT_HONEY => v115_art::beehive_front_honey_art(&mut a, t, &mut rng),
             TILE_MOB_BEE => v115_art::bee_art(&mut a, t, &mut rng),
-            // ---- 1.16 (Nether Update, part 1): the V13 art window ----
-            TILE_SOUL_SOIL => v116_art::soul_soil_art(&mut a, t, &mut rng),
+            // ---- 1.16 (Hollows Update, part 1): the V13 art window ----
+            TILE_SPIRIT_SOIL => v116_art::spirit_soil_art(&mut a, t, &mut rng),
             TILE_BASALT_SIDE => v116_art::basalt_side_art(&mut a, t, &mut rng),
             TILE_BASALT_TOP => v116_art::basalt_top_art(&mut a, t, &mut rng),
             TILE_BLACKSTONE => v116_art::blackstone_art(&mut a, t, &mut rng),
             TILE_GILDED_BLACKSTONE => v116_art::gilded_blackstone_art(&mut a, t, &mut rng),
-            TILE_CRYING_OBSIDIAN => v116_art::crying_obsidian_art(&mut a, t, &mut rng),
+            TILE_WEEPING_OBSIDIAN => v116_art::weeping_obsidian_art(&mut a, t, &mut rng),
             TILE_ANCHOR_TOP => v116_art::anchor_top_art(&mut a, t, &mut rng),
             TILE_ANCHOR_SIDE => v116_art::anchor_side_art(&mut a, t, &mut rng),
             TILE_ANCHOR_SIDE_CHARGED => v116_art::anchor_side_charged_art(&mut a, t, &mut rng),
             TILE_TARGET => v116_art::target_art(&mut a, t, &mut rng),
-            TILE_NETHER_GOLD_ORE => v116_art::nether_gold_ore_art(&mut a, t, &mut rng),
+            TILE_HOLLOW_GOLD_ORE => v116_art::hollow_gold_ore_art(&mut a, t, &mut rng),
             TILE_ANCIENT_DEBRIS_TOP => v116_art::ancient_debris_top_art(&mut a, t, &mut rng),
             TILE_ANCIENT_DEBRIS_SIDE => v116_art::ancient_debris_side_art(&mut a, t, &mut rng),
-            TILE_NETHERITE_BLOCK => v116_art::netherite_block_art(&mut a, t, &mut rng),
+            TILE_HOLLOWITE_BLOCK => v116_art::hollowite_block_art(&mut a, t, &mut rng),
             TILE_CHAIN => v116_art::chain_art(&mut a, t, &mut rng),
-            TILE_SOUL_FIRE => v116_art::soul_fire_art(&mut a, t, &mut rng),
-            TILE_NETHERITE_SCRAP => v116_art::netherite_scrap_art(&mut a, t, &mut rng),
-            TILE_NETHERITE_INGOT => v116_art::netherite_ingot_art(&mut a, t, &mut rng),
-            // ---- 1.16 (Nether Update, part 2): the V14 art window ----
-            TILE_CRIMSON_STEM_SIDE => v116b_art::crimson_stem_side_art(&mut a, t, &mut rng),
-            TILE_CRIMSON_STEM_TOP => v116b_art::crimson_stem_top_art(&mut a, t, &mut rng),
-            TILE_CRIMSON_HYPHAE => v116b_art::crimson_hyphae_art(&mut a, t, &mut rng),
-            TILE_CRIMSON_PLANKS => v116b_art::crimson_planks_art(&mut a, t, &mut rng),
-            TILE_CRIMSON_NYLIUM_TOP => v116b_art::crimson_nylium_top_art(&mut a, t, &mut rng),
-            TILE_CRIMSON_NYLIUM_SIDE => v116b_art::crimson_nylium_side_art(&mut a, t, &mut rng),
-            TILE_CRIMSON_FUNGUS => v116b_art::crimson_fungus_art(&mut a, t, &mut rng),
-            TILE_CRIMSON_ROOTS => v116b_art::crimson_roots_art(&mut a, t, &mut rng),
+            TILE_SPIRIT_FIRE => v116_art::spirit_fire_art(&mut a, t, &mut rng),
+            TILE_HOLLOWITE_SCRAP => v116_art::hollowite_scrap_art(&mut a, t, &mut rng),
+            TILE_HOLLOWITE_INGOT => v116_art::hollowite_ingot_art(&mut a, t, &mut rng),
+            // ---- 1.16 (Hollows Update, part 2): the V14 art window ----
+            TILE_SCARLET_STEM_SIDE => v116b_art::scarlet_stem_side_art(&mut a, t, &mut rng),
+            TILE_SCARLET_STEM_TOP => v116b_art::scarlet_stem_top_art(&mut a, t, &mut rng),
+            TILE_SCARLET_HYPHAE => v116b_art::scarlet_hyphae_art(&mut a, t, &mut rng),
+            TILE_SCARLET_PLANKS => v116b_art::scarlet_planks_art(&mut a, t, &mut rng),
+            TILE_SCARLET_MOLD_TOP => v116b_art::scarlet_mold_top_art(&mut a, t, &mut rng),
+            TILE_SCARLET_MOLD_SIDE => v116b_art::scarlet_mold_side_art(&mut a, t, &mut rng),
+            TILE_SCARLET_FUNGUS => v116b_art::scarlet_fungus_art(&mut a, t, &mut rng),
+            TILE_SCARLET_ROOTS => v116b_art::scarlet_roots_art(&mut a, t, &mut rng),
             TILE_WEEPING_VINES => v116b_art::weeping_vines_art(&mut a, t, &mut rng),
-            TILE_WARPED_STEM_SIDE => v116b_art::warped_stem_side_art(&mut a, t, &mut rng),
-            TILE_WARPED_STEM_TOP => v116b_art::warped_stem_top_art(&mut a, t, &mut rng),
-            TILE_WARPED_HYPHAE => v116b_art::warped_hyphae_art(&mut a, t, &mut rng),
-            TILE_WARPED_PLANKS => v116b_art::warped_planks_art(&mut a, t, &mut rng),
-            TILE_WARPED_NYLIUM_TOP => v116b_art::warped_nylium_top_art(&mut a, t, &mut rng),
-            TILE_WARPED_NYLIUM_SIDE => v116b_art::warped_nylium_side_art(&mut a, t, &mut rng),
-            TILE_WARPED_FUNGUS => v116b_art::warped_fungus_art(&mut a, t, &mut rng),
-            TILE_WARPED_ROOTS => v116b_art::warped_roots_art(&mut a, t, &mut rng),
+            TILE_VIRIDIAN_STEM_SIDE => v116b_art::viridian_stem_side_art(&mut a, t, &mut rng),
+            TILE_VIRIDIAN_STEM_TOP => v116b_art::viridian_stem_top_art(&mut a, t, &mut rng),
+            TILE_VIRIDIAN_HYPHAE => v116b_art::viridian_hyphae_art(&mut a, t, &mut rng),
+            TILE_VIRIDIAN_PLANKS => v116b_art::viridian_planks_art(&mut a, t, &mut rng),
+            TILE_VIRIDIAN_MOLD_TOP => v116b_art::viridian_mold_top_art(&mut a, t, &mut rng),
+            TILE_VIRIDIAN_MOLD_SIDE => v116b_art::viridian_mold_side_art(&mut a, t, &mut rng),
+            TILE_VIRIDIAN_FUNGUS => v116b_art::viridian_fungus_art(&mut a, t, &mut rng),
+            TILE_VIRIDIAN_ROOTS => v116b_art::viridian_roots_art(&mut a, t, &mut rng),
             TILE_TWISTING_VINES => v116b_art::twisting_vines_art(&mut a, t, &mut rng),
-            TILE_WARPED_WART_BLOCK => v116b_art::warped_wart_block_art(&mut a, t, &mut rng),
-            TILE_SHROOMLIGHT => v116b_art::shroomlight_art(&mut a, t, &mut rng),
-            TILE_NETHER_SPROUTS => v116b_art::nether_sprouts_art(&mut a, t, &mut rng),
+            TILE_VIRIDIAN_WART_BLOCK => v116b_art::viridian_wart_block_art(&mut a, t, &mut rng),
+            TILE_GLOWCAP => v116b_art::glowcap_art(&mut a, t, &mut rng),
+            TILE_HOLLOW_SPROUTS => v116b_art::hollow_sprouts_art(&mut a, t, &mut rng),
             TILE_POLISHED_BASALT_SIDE => v116b_art::polished_basalt_side_art(&mut a, t, &mut rng),
             TILE_POLISHED_BASALT_TOP => v116b_art::polished_basalt_top_art(&mut a, t, &mut rng),
             TILE_POLISHED_BLACKSTONE => v116b_art::polished_blackstone_art(&mut a, t, &mut rng),
             TILE_POLISHED_BLACKSTONE_BRICKS => v116b_art::polished_blackstone_bricks_art(&mut a, t, &mut rng),
-            TILE_SOUL_TORCH => v116b_art::soul_torch_art(&mut a, t, &mut rng),
-            TILE_SOUL_LANTERN => v116b_art::soul_lantern_art(&mut a, t, &mut rng),
-            TILE_SPAWN_EGG_STRIDER => v116b_art::strider_egg_art(&mut a, t, &mut rng),
-            TILE_SPAWN_EGG_PIGLIN => v116b_art::piglin_egg_art(&mut a, t, &mut rng),
-            TILE_SPAWN_EGG_HOGLIN => v116b_art::hoglin_egg_art(&mut a, t, &mut rng),
-            TILE_MOB_STRIDER => v116b_art::strider_art(&mut a, t, &mut rng),
-            TILE_MOB_PIGLIN => v116b_art::piglin_art(&mut a, t, &mut rng),
-            TILE_MOB_HOGLIN => v116b_art::hoglin_art(&mut a, t, &mut rng),
+            TILE_SPIRIT_TORCH => v116b_art::spirit_torch_art(&mut a, t, &mut rng),
+            TILE_SPIRIT_LANTERN => v116b_art::spirit_lantern_art(&mut a, t, &mut rng),
+            TILE_SPAWN_EGG_EMBERHOPPER => v116b_art::emberhopper_egg_art(&mut a, t, &mut rng),
+            TILE_SPAWN_EGG_PIGOBLIN => v116b_art::pigoblin_egg_art(&mut a, t, &mut rng),
+            TILE_SPAWN_EGG_BOARLING => v116b_art::boarling_egg_art(&mut a, t, &mut rng),
+            TILE_MOB_EMBERHOPPER => v116b_art::emberhopper_art(&mut a, t, &mut rng),
+            TILE_MOB_PIGOBLIN => v116b_art::pigoblin_art(&mut a, t, &mut rng),
+            TILE_MOB_BOARLING => v116b_art::boarling_art(&mut a, t, &mut rng),
             // ---- the 1.0-1.16.5 completeness audit: the V15 window ----
             TILE_STEAK => audit16_art::steak_art(&mut a, t, &mut rng),
             TILE_COOKED_PORKCHOP => audit16_art::cooked_porkchop_art(&mut a, t, &mut rng),
@@ -4337,8 +4337,8 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_SUGAR => audit16_art::sugar_art(&mut a, t, &mut rng),
             TILE_EGG => audit16_art::egg_art(&mut a, t, &mut rng),
             TILE_POISONOUS_POTATO => audit16_art::poisonous_potato_art(&mut a, t, &mut rng),
-            TILE_POPPED_CHORUS => audit16_art::popped_chorus_art(&mut a, t, &mut rng),
-            TILE_GHAST_TEAR => audit16_art::ghast_tear_art(&mut a, t, &mut rng),
+            TILE_POPPED_ECHO => audit16_art::popped_echo_art(&mut a, t, &mut rng),
+            TILE_WEEPGEIST_TEAR => audit16_art::weepgeist_tear_art(&mut a, t, &mut rng),
             // the leaping + regeneration potions ride the shared helper
             // (leaping: the cyan family; regeneration: the pink family —
             // the glow flag follows the turtle/slow-falling II/EXT rows)
@@ -4349,10 +4349,10 @@ pub fn generate_atlas() -> Vec<u8> {
             TILE_POTION_REGEN_II => potion_art(&mut a, t, (250, 150, 180), true),
             TILE_POTION_REGEN_LONG => potion_art(&mut a, t, (200, 90, 130), true),
             // the classic trio's eggs + mob sprites
-            TILE_SPAWN_EGG_GHAST => audit16_art::ghast_egg_art(&mut a, t, &mut rng),
+            TILE_SPAWN_EGG_WEEPGEIST => audit16_art::weepgeist_egg_art(&mut a, t, &mut rng),
             TILE_SPAWN_EGG_CAVESPIDER => audit16_art::cave_spider_egg_art(&mut a, t, &mut rng),
             TILE_SPAWN_EGG_SILVERFISH => audit16_art::silverfish_egg_art(&mut a, t, &mut rng),
-            TILE_MOB_GHAST => audit16_art::ghast_art(&mut a, t, &mut rng),
+            TILE_MOB_WEEPGEIST => audit16_art::weepgeist_art(&mut a, t, &mut rng),
             TILE_MOB_CAVESPIDER => audit16_art::cave_spider_art(&mut a, t, &mut rng),
             TILE_MOB_SILVERFISH => audit16_art::silverfish_art(&mut a, t, &mut rng),
             // the sweep-2 food row: the melon slice
@@ -4600,7 +4600,7 @@ fn destroy_stage_art(a: &mut [u8], tile: u16, stage: u8) {
 
 /// The first-person right-arm skin tile — a generic procedural skin tone
 /// with subtle fabric cuff rows at the base (clean-room: NOT the vanilla
-/// Steve arm texture, just a plausible look-alike for the held-item view
+/// Player arm texture — an original look-alike for the held-item view
 /// model).
 fn arm_art(a: &mut [u8], tile: u16) {
     let tx = (tile % 32) as usize;
@@ -4654,8 +4654,11 @@ pub fn merge_pack_tile_overrides(
         let rgba = img.to_rgba8();
         let (w, h) = rgba.dimensions();
         // animation metadata? (same semantics as the model-texture merge)
+        // animation sidecar: ours is `<path>.json`; user-supplied packs
+        // from the wider ecosystem carry `<path>.mcmeta` — read either
         let mcmeta: Option<serde_json::Value> = source
-            .read(&format!("{path}.mcmeta"))
+            .read(&format!("{path}.json"))
+            .or_else(|| source.read(&format!("{path}.mcmeta")))
             .and_then(|b| serde_json::from_slice(&b).ok());
         let anim = mcmeta.as_ref().and_then(|m| m.get("animation")).cloned();
         let strip = anim.is_some() && w > 0 && h > w && (h % w == 0);
@@ -4779,7 +4782,8 @@ pub fn scan_labpbr_materials(source: &dyn vc_pack::pack::PackSource) -> usize {
 /// * texture paths come from the compiled model faces (`models.tiles`)
 /// * missing files fall back to the missing-texture tile (§46)
 /// * non-16×16 sources are nearest-resampled to 16×16
-/// * vertical-strip PNGs with `.png.mcmeta {animation:{...}}` become
+/// * vertical-strip PNGs with an animation sidecar (`<path>.json` in
+///   our packs, `<path>.mcmeta` in wider-ecosystem packs) become
 ///   AnimatedTiles (geometry is NOT rebuilt — only the atlas region updates)
 pub fn merge_pack_textures(
     atlas: &mut [u8],
@@ -4826,8 +4830,11 @@ pub fn merge_pack_textures(
         next_tile += 1;
 
         // animation metadata?
+        // animation sidecar: ours is `<path>.json`; user-supplied packs
+        // from the wider ecosystem carry `<path>.mcmeta` — read either
         let mcmeta: Option<serde_json::Value> = source
-            .read(&format!("{path}.mcmeta"))
+            .read(&format!("{path}.json"))
+            .or_else(|| source.read(&format!("{path}.mcmeta")))
             .and_then(|b| serde_json::from_slice(&b).ok());
         let anim = mcmeta.as_ref().and_then(|m| m.get("animation")).cloned();
         let strip = anim.is_some() && w > 0 && h > w && (h % w == 0);
@@ -5024,40 +5031,40 @@ mod pack_tex_tests {
         }
         // the NAPP-style pack: stone + stone_n + stone_s (+ dirt plain)
         let mut mem = vc_pack::pack::MemorySource::new("napp-test");
-        mem.insert("assets/voxelcraft/textures/block/stone.png", png2x2([120, 120, 120, 255]));
+        mem.insert("textures/block/stone.png", png2x2([120, 120, 120, 255]));
         // flat normal (128,128) + AO 255 + height 255
         mem.insert(
-            "assets/voxelcraft/textures/block/stone_n.png",
+            "textures/block/stone_n.png",
             png2x2([128, 128, 255, 255]),
         );
         // smoothness 200, F0 100, porosity 30, emission 0
         mem.insert(
-            "assets/voxelcraft/textures/block/stone_s.png",
+            "textures/block/stone_s.png",
             png2x2([200, 100, 30, 0]),
         );
-        mem.insert("assets/voxelcraft/textures/block/dirt.png", png2x2([134, 96, 67, 255]));
+        mem.insert("textures/block/dirt.png", png2x2([134, 96, 67, 255]));
         let n = scan_labpbr_materials(&mem);
         assert_eq!(n, 1, "stone gained material maps; dirt did not");
 
         // corrupt _n (not a PNG) → the tile does not count
         let mut bad = vc_pack::pack::MemorySource::new("corrupt-test");
-        bad.insert("assets/voxelcraft/textures/block/stone.png", png2x2([120, 120, 120, 255]));
+        bad.insert("textures/block/stone.png", png2x2([120, 120, 120, 255]));
         bad.insert(
-            "assets/voxelcraft/textures/block/stone_n.png",
+            "textures/block/stone_n.png",
             b"not a png".to_vec(),
         );
         assert_eq!(scan_labpbr_materials(&bad), 0, "undecodable maps don't count");
 
         // a vanilla-style pack (no companions at all) → zero
         let mut plain = vc_pack::pack::MemorySource::new("plain-test");
-        plain.insert("assets/voxelcraft/textures/block/stone.png", png2x2([120, 120, 120, 255]));
+        plain.insert("textures/block/stone.png", png2x2([120, 120, 120, 255]));
         assert_eq!(scan_labpbr_materials(&plain), 0, "no companions, no materials");
 
         // _s alone still counts (spec allows either map alone)
         let mut sonly = vc_pack::pack::MemorySource::new("s-only-test");
-        sonly.insert("assets/voxelcraft/textures/block/stone.png", png2x2([120, 120, 120, 255]));
+        sonly.insert("textures/block/stone.png", png2x2([120, 120, 120, 255]));
         sonly.insert(
-            "assets/voxelcraft/textures/block/stone_s.png",
+            "textures/block/stone_s.png",
             png2x2([200, 100, 30, 0]),
         );
         assert_eq!(scan_labpbr_materials(&sonly), 1, "the specular map alone counts");
@@ -5104,7 +5111,7 @@ mod pack_tex_tests {
     fn write_builtin_pack_pngs() {
         let out_dir = concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../../builtin-pack/assets/voxelcraft/textures/block"
+            "/../../builtin-pack/textures/block"
         );
         std::fs::create_dir_all(out_dir).unwrap();
         let atlas = generate_atlas();
@@ -5349,8 +5356,8 @@ mod pack_merge_tests {
         };
         let mut atlas = generate_atlas();
         let watched = [
-            vc_blocks::blocks::TILE_REDSTONE_WIRE,
-            vc_blocks::blocks::TILE_REDSTONE_TORCH,
+            vc_blocks::blocks::TILE_FLUXSTONE_WIRE,
+            vc_blocks::blocks::TILE_FLUXSTONE_TORCH,
             vc_blocks::blocks::TILE_LEVER,
             vc_blocks::blocks::TILE_FURNACE_SIDE,
             vc_blocks::blocks::TILE_FURNACE_TOP,

@@ -69,7 +69,7 @@ pub fn on_block_changed(sched: &mut TickScheduler, world: &World, x: i32, y: i32
             sched.schedule([nx, ny, nz], WATER_TICK_RATE);
         } else if b == LAVA {
             // Phase E2 lava (VERIFIED w/Lava: flow speed 30 ticks/block in
-            // the Overworld/End, 10 in the Nether)
+            // the Overworld/End, 10 in the Hollow)
             let rate = lava_tick_rate(world);
             sched.schedule([nx, ny, nz], rate);
         } else if b == SAND
@@ -191,23 +191,23 @@ pub fn water_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, 
 /// LAVA fluid — all values live-verified 2026-09-06 w/Lava
 /// (docs/research/phase2-1.3-1.4-research.md):
 /// * flow speed: 30 game ticks/block in the Overworld/End, 10 in the
-///   Nether (the dimension of the WORLD decides)
-/// * flow distance: 4 blocks Overworld/End (source + 3), 8 in the Nether
+///   Hollow (the dimension of the WORLD decides)
+/// * flow distance: 4 blocks Overworld/End (source + 3), 8 in the Hollow
 ///   (source + 7) — implemented as the level drop per block: 2 in the
-///   Overworld, 1 in the Nether (levels 1..7)
+///   Overworld, 1 in the Hollow (levels 1..7)
 /// * lava falls down first like water; the falling column then spreads
 ///   from the landing level
 /// * lava does NOT create sources (VERIFIED "Creates sources? No") and
 ///   no infinite-source pairing exists
 pub const LAVA_TICK_RATE_OVERWORLD: u64 = 30;
-pub const LAVA_TICK_RATE_NETHER: u64 = 10;
+pub const LAVA_TICK_RATE_HOLLOW: u64 = 10;
 
 /// the lava level drop per block of horizontal spread in this dimension
-/// (2 in Overworld/End → 3 spread; 1 in Nether → 7 spread — VERIFIED)
+/// (2 in Overworld/End → 3 spread; 1 in Hollow → 7 spread — VERIFIED)
 #[inline]
 fn lava_drop_off(world: &World) -> u8 {
     match world.dimension {
-        vc_world::world::Dimension::Nether => 1,
+        vc_world::world::Dimension::Hollow => 1,
         _ => 2,
     }
 }
@@ -216,7 +216,7 @@ fn lava_drop_off(world: &World) -> u8 {
 #[inline]
 pub fn lava_tick_rate(world: &World) -> u64 {
     match world.dimension {
-        vc_world::world::Dimension::Nether => LAVA_TICK_RATE_NETHER,
+        vc_world::world::Dimension::Hollow => LAVA_TICK_RATE_HOLLOW,
         _ => LAVA_TICK_RATE_OVERWORLD,
     }
 }
@@ -405,8 +405,8 @@ pub fn solidify_powder(world: &mut World, sched: &mut TickScheduler, x: i32, y: 
 /// Phase E1 additions (live-verified 2026-09-06): mycelium spread/die
 /// (w/Mycelium §Spread: to dirt within 1 up / 1 sideways / 3 down;
 /// mycelium needs light ≥ 9, the dirt cell ≥ 4 and not covered by an
-/// opaque block; dies a random time after being covered) and nether-wart
-/// growth (w/Nether_Wart: 10% chance per random tick, 4 stages).
+/// opaque block; dies a random time after being covered) and hollow-wart
+/// growth (w/Hollow_Wart: 10% chance per random tick, 4 stages).
 pub fn random_plant_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32, z: i32) {
     let b = state_block(world.get_state(x, y, z));
     match b {
@@ -457,9 +457,9 @@ pub fn random_plant_tick(world: &mut World, sched: &mut TickScheduler, x: i32, y
                 on_block_changed(sched, world, x, y, z);
             }
         }
-        // Phase E1: NETHER_WART — 10% chance per random tick to grow one
-        // stage (VERIFIED w/Nether_Wart §Farming; light-independent)
-        NETHER_WART => {
+        // Phase E1: HOLLOW_WART — 10% chance per random tick to grow one
+        // stage (VERIFIED w/Hollow_Wart §Farming; light-independent)
+        HOLLOW_WART => {
             let s = world.get_state(x, y, z);
             let age = wart_age(s);
             if age < 3 && world_random_10(world, x, y, z) {
@@ -691,7 +691,7 @@ fn spread_mycelium(world: &mut World, sched: &mut TickScheduler, x: i32, y: i32,
 
 /// a stable ~10% roll per (world seed, position, sim position) — the
 /// random-tick sampler provides the per-tick visit; this provides the
-/// growth chance (VERIFIED 10% w/Nether_Wart)
+/// growth chance (VERIFIED 10% w/Hollow_Wart)
 fn world_random_10(world: &World, x: i32, y: i32, z: i32) -> bool {
     let v = vc_rng::rng::Rng::hash3(world.seed ^ 0x0A17, x, y, z);
     v.is_multiple_of(10)
@@ -983,10 +983,10 @@ mod e1_tests {
         assert_eq!(w.get_block(9, 65, 8), DIRT, "dies under an opaque cover");
     }
 
-    /// Phase E1 (VERIFIED w/Nether_Wart): 4 growth stages, one age per
+    /// Phase E1 (VERIFIED w/Hollow_Wart): 4 growth stages, one age per
     /// successful 10% roll, stopping at the last.
     #[test]
-    fn nether_wart_grows_through_four_stages() {
+    fn hollow_wart_grows_through_four_stages() {
         let mut w = flat_world();
         let mut sched = TickScheduler::new();
         w.set_block_state(8, 65, 8, WART_STATE_BASE);
@@ -1053,12 +1053,12 @@ mod e2_tests {
     }
 
     /// Phase E2 (VERIFIED w/Lava): Overworld lava spreads at level-drop 2
-    /// → 3 blocks from the source (4 incl. source); Nether drop 1 → 7
+    /// → 3 blocks from the source (4 incl. source); Hollow drop 1 → 7
     /// blocks (8 incl. source). Tick rates: 30 / 10.
     #[test]
     fn lava_rates_and_spread_by_dimension() {
         assert_eq!(LAVA_TICK_RATE_OVERWORLD, 30);
-        assert_eq!(LAVA_TICK_RATE_NETHER, 10);
+        assert_eq!(LAVA_TICK_RATE_HOLLOW, 10);
         // Overworld: source at y=65 on a shelf
         let mut w = flat_world(64);
         let mut sched = TickScheduler::new();
@@ -1080,15 +1080,15 @@ mod e2_tests {
         let l1 = lava_level(w.get_state(1, 65, 0));
         assert_eq!(l1, 2, "first flow block is level 2 (drop-off 2)");
 
-        // Nether: full 7-block spread
-        let mut wn = World::new_in_dimension(9, vc_world::world::Dimension::Nether);
+        // Hollow: full 7-block spread
+        let mut wn = World::new_in_dimension(9, vc_world::world::Dimension::Hollow);
         for dz in -1i32..=1 {
             for dx in -1i32..=1 {
                 let mut c = vc_chunk::chunk::Chunk::empty();
                 for y in 0..=64 {
                     for lz in 0..16usize {
                         for lx in 0..16usize {
-                            c.set(lx, y as usize, lz, NETHERRACK);
+                            c.set(lx, y as usize, lz, HOLLOWSTONE);
                         }
                     }
                 }
@@ -1108,10 +1108,10 @@ mod e2_tests {
         }
         assert!(
             (5..=7).contains(&max_xn),
-            "Nether lava spreads up to 7 blocks, got {max_xn}"
+            "Hollow lava spreads up to 7 blocks, got {max_xn}"
         );
         let ln1 = lava_level(wn.get_state(1, 65, 0));
-        assert_eq!(ln1, 1, "Nether first flow block is level 1 (drop-off 1)");
+        assert_eq!(ln1, 1, "Hollow first flow block is level 1 (drop-off 1)");
     }
 
     /// Phase E2 (VERIFIED w/Anvil): anvils are gravity blocks — they fall

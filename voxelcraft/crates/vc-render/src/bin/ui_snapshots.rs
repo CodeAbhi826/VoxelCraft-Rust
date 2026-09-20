@@ -90,7 +90,7 @@ fn main() {
         ui.pause_screen(&pause, None);
     });
     // resource packs
-    let avail: Vec<String> = ["napp-1.16.zip", "Programmer Art"]
+    let avail: Vec<String> = ["napp-1.16.zip", "Classic Art"]
         .iter()
         .map(|s| s.to_string())
         .collect();

@@ -102,7 +102,7 @@ content, **deleted from scope**; the "all 18 container screens are 176×166"
 table is wrong (hopper is 176×133 — every screen must be individually
 verified); the `(height−3)×0.2` fall-damage formula circulating in SEO
 sources is wrong (real: `fall_distance − 3` half-hearts, already implemented
-per MC-12357); Monocraft OFL 1.1 + GPL 3 and the gravity formula
+per MC-12357); the removed third-party font OFL 1.1 + GPL 3 and the gravity formula
 `v1 = (v0 − 0.08) × 0.98` are confirmed usable.
 
 ---
@@ -125,10 +125,10 @@ the live wiki; outcomes appended to
   (gravity 0.04, Drag-Y 0.98 — items share it), scaffolding falls at
   distance ≥ 7, hopper container (5 slots, "Item Hopper", 8-tick transfer
   cooldown), F3 "Looking at fluid" split (1.13 18w22c — valid for 1.16.5).
-- CONTRADICTED: firework boost 33.5 b/s → current wiki says 35.5 (elytra
+- CONTRADICTED: firework boost 33.5 b/s → current wiki says 35.5 (skywings
   not in engine; recorded only).
 - STILL UNVERIFIED (no engine system, no live confirmation): minecart
-  friction 0.01, Nether biome spawn weights as 1.16.5-exact, falling-block
+  friction 0.01, Hollow biome spawn weights as 1.16.5-exact, falling-block
   2/5-tick spawn delay. None were implemented; verified data lives in the
   verdicts doc for future phases.
 
@@ -196,26 +196,26 @@ inter-page disagreements) is `docs/research/phase1-1.0-1.2-research.md`;
 
 ### Implemented
 
-- **The End dimension**: 5×5 obsidian entry platform at (100, 0), central
+- **The Void dimension**: 5×5 obsidian entry platform at (100, 0), central
   end-stone island, 10 obsidian pillars on the 42-radius circle down to
-  y=0 with bedrock caps, 10 end crystals (2 in iron-bar cages),
+  y=0 with bedrock caps, 10 void crystals (2 in iron-bar cages),
   deterministic per-seed. Strongholds got the 5×5 end-portal-frame ring
-  (12 frames, corners cut) over lava; eye-of-ender filling activates the
+  (12 frames, corners cut) over lava; eye-of-void filling activates the
   central 3×3 into end-portal blocks; dimension travel both directions
-  (portal room → the End; exit fountain → home).
-- **Ender Dragon fight** (`dragon.rs`, 444 lines): 200 HP, damage only
+  (portal room → the Void; exit fountain → home).
+- **Void Wyrm fight** (`dragon.rs`, 444 lines): 200 HP, damage only
   from players + explosions, crystal healing (1 HP / 10 ticks within
   32-block cuboid), 10-HP backlash when a healing crystal is destroyed,
   power-6 crystal explosions, death timeline (XP at 154 ticks into the
   ascension, exit portal + dragon egg at 200 ticks), 12,000 first-kill
   XP / 500 re-summoned. The dragon + crystals render as End billboards
   in-game.
-- **Nether Fortress**: 432×432 regions (Java), deterministic per-region
-  rolls, nether-brick bridges/corridors on pillars, up to 2 blaze-spawner
-  platforms, nether-wart gardens near stairwells.
+- **Hollow Fortress**: 432×432 regions (Java), deterministic per-region
+  rolls, hollow-brick bridges/corridors on pillars, up to 2 blaze-spawner
+  platforms, hollow-wart gardens near stairwells.
 - **Mushroom Fields biome**: mycelium surface, ocean-island placement,
   no natural hostile spawns, huge red/brown mushrooms (exactly 45 cap
-  blocks + stalk), mooshrooms (JE weight 8/8, groups 4–8).
+  blocks + stalk), shroomcows (JE weight 8/8, groups 4–8).
 - **Mobs**: Snow Golem (2-snow-blocks + pumpkin-last build, 1 snowball/s
   at hostiles within 10 blocks, 1 HP/tick melt in hot biomes + rain),
   Magma Cube (HP = size², attack = size+2, armor = 3×size, splits into
@@ -224,7 +224,7 @@ inter-page disagreements) is `docs/research/phase1-1.0-1.2-research.md`;
   Ocelot (flees players, hunts chickens ≤ 15 blocks, jungle-only),
   Iron Golem (HP 100, village guard, 4-blocks-T + pumpkin build), Zombie
   Villager (infection Easy 0%/Normal 50%/Hard 100%, cure = Weakness +
-  golden apple over 3600–6000 ticks), Mooshroom (shear → 5 mushrooms +
+  golden apple over 3600–6000 ticks), Shroomcow (shear → 5 mushrooms +
   cow, bowl → mushroom stew).
 - **XP orb system**: vanilla value ladder 1/3/7/17/37/73/149/307/617/
   1237/2477, 7.25-block attraction accelerating near the player, 10
@@ -234,13 +234,13 @@ inter-page disagreements) is `docs/research/phase1-1.0-1.2-research.md`;
 - **Spawn eggs**: use-on-surface spawn (feet adjacent), spawner
   retarget, baby form on same-type, creative-picker-only item.
 - **Blocks**: mycelium (spread 1-up/1-side/3-down, revert under opaque
-  cover at light < 4), redstone lamp (light 15 when powered, 4-game-tick
-  off delay, 4-glowstone + 1-redstone craft), chiseled stone bricks,
+  cover at light < 4), fluxstone lamp (light 15 when powered, 4-game-tick
+  off delay, 4-glowstone + 1-fluxstone craft), chiseled stone bricks,
   chiseled/cut/smooth sandstone (smooth = smelt-only, 1.14-valid),
-  nether-wart crop (4 age stages, 10%/random tick, soul-sand only,
-  2–4 mature drops), end stone (hardness 3, blast 9).
+  hollow-wart crop (4 age stages, 10%/random tick, soul-sand only,
+  2–4 mature drops), void stone (hardness 3, blast 9).
 - **Clean-room art** (`e1_art.rs`, 747 lines) for every new block; zero
-  extracted/recreated Mojang assets.
+  extracted/recreated the original publisher assets.
 
 ### Verified
 
@@ -249,7 +249,7 @@ inter-page disagreements) is `docs/research/phase1-1.0-1.2-research.md`;
 - Test suite: **339 passed / 0 failed** (was 310; +29: dragon fight
   timeline, crystal-heal rules, golem build patterns, zombie-villager
   cure lifecycle, ocelot AI, magma scaling, XP ladder/attract/despawn,
-  mycelium spread/revert, nether-wart stages, lamp toggle, End geometry
+  mycelium spread/revert, hollow-wart stages, lamp toggle, End geometry
   (42-radius pillar circle, central island), fortress determinism,
   huge-mushroom cap counts, registry rows, picker entries).
 
@@ -274,11 +274,11 @@ inter-page disagreements) is `docs/research/phase1-1.0-1.2-research.md`;
 
 - Dragon breath attack / lingering-area fire (dragon fireball damage
   row is cited; the breath *system* rides the 1.9-style effects work).
-- Re-summon ritual (4 side crystals + dragon spawn via the end-portal
+- Re-summon ritual (4 side crystals + dragon spawn via the void-portal
   sequence) — the re-fight XP value is already in place.
-- Wither-skeleton fortress spawns (mob itself is a 1.4 bracket item).
+- Blight-skeleton fortress spawns (mob itself is a 1.4 bracket item).
 - Beds / sleep-to-morning (1.0 feature not on the evolution Phase-1
-  list; bed *explosions* in the Nether/End are recorded in the supplement
+  list; bed *explosions* in the Hollow/End are recorded in the supplement
   for the dimension brackets).
 
 ### Known issues & regressions
@@ -298,13 +298,13 @@ inter-page disagreements) is `docs/research/phase1-1.0-1.2-research.md`;
 - Phase 0 — Apache-2.0 LICENSE + README license section (`4f11030`)
 - Phase 1 — game modes + world creation + death/respawn (`d3bd25b`)
 - Phase 2 — mobs + combat, live-verified data (`61a5de6`)
-- Phase 3 — redstone full component set + containers (`5356fd2`)
+- Phase 3 — fluxstone full component set + containers (`5356fd2`)
 - Phase 4 — enchanting (38-entry registry) + corruption brewing (`e99d4df`)
 - Phase 5 — villager trading depth + dungeons with spawners (`05ff5d7`)
 - Phase 6 — rendering optimization suite (`d6583dc`)
 - Phase 7 — GPU compute greedy mesher, WGSL bit-identical (`b6d744e`)
 - Phase 8 — Iris shader-pack integration interface (`8ff9722`)
-- Phase 9 — Mojang-official data packs (`feec9b4`)
+- Phase 9 — the original publisher-official data packs (`feec9b4`)
 - Phase 10 — content breadth: 14 biomes, 5 structures, loot attribution
   (`7625f92`)
 - Post-10 — texture-seam fix + occlusion-flood cache (`fe70cd9`)
@@ -318,7 +318,7 @@ inter-page disagreements) is `docs/research/phase1-1.0-1.2-research.md`;
 **Task:** execute the user's 200+ item visual/mechanical verification test
 (§1 font, §2 HUD, §3 containers, §4 settings, §5 F3, §6 mechanics, §7
 rendering) against the live engine, under STRICT PROTOCOL discipline —
-every asserted number re-verified live this round (minecraft.wiki),
+every asserted number re-verified live this round (the reference game.wiki),
 nothing copied from the old research dumps. Full verdict table:
 `docs/VERIFICATION-REPORT.md`.
 
@@ -348,7 +348,7 @@ target set.
 - Live-verified this round: walk 4.317 / sprint 5.612 / sprint-jump 7.127
   (w/Walking, w/Sprinting, w/Transportation); smelting 200 ticks + coal
   1600 (w/Smelting, w/Furnace); wooden slab 150; day cycle 20 min; lava
-  spread Nether 7 blocks/10 ticks + Overworld 3 blocks/30 ticks (w/Lava —
+  spread Hollow 7 blocks/10 ticks + Overworld 3 blocks/30 ticks (w/Lava —
   for when lava sim lands); guiScale semantics (w/Options.txt: 0=Auto or
   integer). Existing verified rows (gravity formula, MC-12357 fall
   damage, combat constants, water 5-tick spread, hopper 176×133) were
@@ -373,7 +373,7 @@ target set.
   960×540 canvas currently yields a non-integer 2.67× effective scale at
   1280×720); vanilla light-grey #C6C6C6 container theme + exact 176-wide
   panels + armor slots + player model; font upgrade (8 px descenders,
-  proportional, 25 %-color shadow, § codes) or Monocraft adoption;
+  proportional, 25 %-color shadow, § codes) or the removed third-party font adoption;
   selection-frame/XP-bar/crosshair micro-sizes; 10-channel audio; F3
   right column + sub-hotkeys.
 
@@ -392,7 +392,7 @@ target set.
 
 **Task:** second bracket of the 1.0 → 1.16.5 version-evolution ordering
 (`evolution-research.md` Part 3 Phase 2). All values live-verified this
-round against minecraft.wiki — the round's research record (what was
+round against the reference game.wiki — the round's research record (what was
 checked, against which page, including the disagreements) is
 `docs/research/phase2-1.3-1.4-research.md`; ~120 `VERIFIED` citations
 live in the code comments.
@@ -404,24 +404,24 @@ live in the code comments.
   world blocks live at 283+. All call sites either already folded via
   `state_block` (the `as u16` casts became no-ops) or compared against
   identity-mapped ids ≤ 56 — every comparison site now folds explicitly.
-- **The Wither boss** (`wither.rs`, ~370 lines): summon = 4 soul sand in
-  a T + 3 wither-skeleton skulls, last block must be a skull; 220-tick
+- **The Blight boss** (`blight.rs`, ~370 lines): summon = 4 spirit sand in
+  a T + 3 blight-skeleton skulls, last block must be a skull; 220-tick
   invulnerable charge with the boss bar filling; birth explosion
   (power-6-class, proximity damage); 300 HP Java row; passive regen
-  1 HP/20 ticks; black skulls every 2 s (8 HP + Wither II 10 s Normal /
+  1 HP/20 ticks; black skulls every 2 s (8 HP + Blight II 10 s Normal /
   40 s Hard via the new effects system); 40-block aggro, hovers 5 above
   the target; breaks a 3×4×3 box of blocks on taking damage (bedrock +
-  portal blocks immune); drops 1 nether star (100%) + 50 XP; billboard
+  portal blocks immune); drops 1 hollow star (100%) + 50 XP; billboard
   sprite render + boss bar. Side-head multi-target AI compressed to the
   main-head cadence + a 2–3 s volley (disclosed adaptation).
-- **Three mobs** (mobs.rs + drops + spawns): Wither Skeleton (20 HP,
-  stone sword 8 Normal, Wither I 10 s on hit, coal/bone/skull-2.5%
+- **Three mobs** (mobs.rs + drops + spawns): Blight Skeleton (20 HP,
+  stone sword 8 Normal, Blight I 10 s on hit, coal/bone/skull-2.5%
   drops; fortress spawner platform #2), Witch (26 HP, splash-potion
   attack 6, joins the dark monster pool at the verified ~0.97% share,
   per-item 0–2 drops), Bat (6 HP, ambient, light ≤ 3 below sea level,
   groups of 8, ambient cap 10, no passive-cap pressure, empty drop
   table).
-- **Effects system** (`effects.rs`): Wither (40/20-tick periods, can
+- **Effects system** (`effects.rs`): Blight (40/20-tick periods, can
   kill), Poison (25-tick, floors at 1 HP), Regeneration (50-tick), plus
   the beacon stat effects (Speed +20%/level, Strength +3/level,
   Resistance −20%/level floor 20%, Jump Boost +0.1/level). Applied to
@@ -433,8 +433,8 @@ live in the code comments.
   20/30/40/50 range; feed via iron/gold/diamond ore-or-block/emerald
   (adaptation: no ingot/gem items); light 15; feed-cycles the powers
   (adaptation: no beacon GUI, disclosed).
-- **Ender Chest**: craft 8 obsidian + eye of ender; right-click opens
-  the shared 27-slot container (sentinel-keyed — every ender chest opens
+- **Void Chest**: craft 8 obsidian + void eye; right-click opens
+  the shared 27-slot container (sentinel-keyed — every void chest opens
   the same inventory, the single-player form of the vanilla per-player
   rule); breaks into 8 obsidian, contents never spill; light 7.
 - **Adventure mode** (modes.rs): vanilla GameType 2, saved/round-tripped;
@@ -449,7 +449,7 @@ live in the code comments.
   anvil.rs for the tools/armor bracket).
 - **Lava fluid** (`fluids.rs`): the LAVA block (light 15, fluid) + flow
   levels; dimension-aware spread (Overworld/End: level drop 2 → 3 blocks
-  per 30-tick step; Nether: drop 1 → 7 blocks per 10-tick step);
+  per 30-tick step; Hollow: drop 1 → 7 blocks per 10-tick step);
   source-removal drains; meshes through the fluid-quad path with the
   fixed lava tint (SLOT_LAVA); contact damage 4 HP per 10 ticks (the
   half-second immunity window). Post-lava fire (300 ticks) deferred —
@@ -465,15 +465,15 @@ live in the code comments.
 - **Blocks/items registry**: cobblestone wall (craft 6→6, fence-class),
   flower pot (craft 3 bricks-blocks, cross-rendered), item frame (craft
   8 planks + leather — the stick adaptation), tripwire hook (craft → 2),
-  wither-skeleton skull (cross-rendered summon component), command
-  block (creative-pick only), emerald + nether star items; 4 new spawn
+  blight-skeleton skull (cross-rendered summon component), command
+  block (creative-pick only), emerald + hollow star items; 4 new spawn
   eggs (kinds 17–20); 29 new clean-room art tiles (e2_art.rs); creative
   picker + E2E `give:` entries.
 - **Mechanical fix (VERIFICATION-REPORT)**: render-distance slider range
   2–32 (was 2–16).
 - **Latent E1 bug fixed**: `World::set_block` stored raw block IDS as
-  states (END_PORTAL placed via set_block read back as FURNACE;
-  DRAGON_EGG as REDSTONE_TORCH; OAK_SLAB as OAK_LOG[axis=x]). It now
+  states (VOID_GATE placed via set_block read back as FURNACE;
+  DRAGON_EGG as FLUXSTONE_TORCH; OAK_SLAB as OAK_LOG[axis=x]). It now
   routes through `default_state`, matching the generator-side rule.
 
 ### Verified
@@ -481,7 +481,7 @@ live in the code comments.
 - Every constant above carries a `VERIFIED w/<page>` comment from this
   round's live wiki fetches (research doc above; raw JSON archived under
   `tool-results/phase2/`).
-- Suite: **372/372 green** (was 342; +30: wither fight timeline/charge/
+- Suite: **372/372 green** (was 342; +30: blight fight timeline/charge/
   regen/skull cadence/death, summon pattern, effects periods/stat
   modifiers, beacon pyramid/range/levels/reapply/duration, adventure
   mode rules, anvil ladder/falling formula/12% gate, lava
@@ -504,11 +504,11 @@ live in the code comments.
   tracking).
 - Item frame contents/rotation, flower pot planting, tripwire circuit
   signaling, command block execution (blocks + recipes exist; the deep
-  wiring rides later brackets — item-frame entity storage, redstone
+  wiring rides later brackets — item-frame entity storage, fluxstone
   signal routing, the command bridge).
-- Charged-creeper mob heads (no charged creepers yet — wither skeleton
+- Charged-fuseling mob heads (no charged fuselings yet — blight skeleton
   skull IS in via its 2.5% drop).
-- Wither "wither armor" below half health (projectile immunity — the
+- Blight "blight armor" below half health (projectile immunity — the
   engine's arrows route through melee damage).
 - Post-lava fire ticks (no fire system).
 
@@ -516,7 +516,7 @@ live in the code comments.
 
 - None observed: 372/372, wasm clean, no new clippy lints (the
   pre-existing `never_loop` in vc-pack remains).
-- The wither's block-breaking on damage can carve terrain fast in a
+- The blight's block-breaking on damage can carve terrain fast in a
   long fight (vanilla-accurate behavior; the 3×4×3 box is the VERIFIED
   rule).
 
@@ -535,7 +535,7 @@ that item 1's E2 fix had missed.
   while sprinting accelerates the player **+0.2 blocks/tick toward their
   facing** (VERIFIED live: mcpk.wiki/wiki/Sprinting "when the player
   jumps while sprinting, they accelerate by 0.2 towards their facing";
-  minecraft.wiki/w/Jumping "jumping can be combined with sprinting to
+  the reference game.wiki/w/Jumping "jumping can be combined with sprinting to
   increase the player's movement speed") — now exists as
   `SPRINT_JUMP_BOOST = 4.0` (0.2 b/t × 20), applied at the jump.
 - **Excess air drag** (`SPRINT_JUMP_EXTRA_DRAG = 2.2`): a documented
@@ -548,13 +548,13 @@ that item 1's E2 fix had missed.
   30 s measured displacement on a 3×19-chunk flat runway (the shared
   3×3 test world runs out of floor in 4 s at sprint-jump speed);
   asserts |avg − 7.127| < 0.1, avg > sprint+0.5, y stays in the
-  jump-corridor. VERIFIED live: minecraft.wiki/w/Sprinting "jumping
+  jump-corridor. VERIFIED live: the reference game.wiki/w/Sprinting "jumping
   while sprinting allows the player to move with an average speed of
   7.127 m/s"; w/Transportation "Sprint-jumping, flat terrain, 7.127
   m/s".
 - **The coal item** (id 162, tile 206, state 316 — the E2 item-block
   pattern): `COAL` with `fuel_ticks = 1600` (VERIFIED live:
-  minecraft.wiki/w/Furnace "a piece of coal burns for 80 seconds and
+  the reference game.wiki/w/Furnace "a piece of coal burns for 80 seconds and
   can process eight items"; w/Smelting fuel table "Coal 1600 ticks /
   8 items"), clean-room lump art in `e2_art.rs`, picker entry.
 - **Coal ore → coal smelting recipe** (`smelt_result(COAL_ORE) =
@@ -563,7 +563,7 @@ that item 1's E2 fix had missed.
   is obtained in survival.
 - **The COAL_ORE 800 ore-as-fuel stopgap is retired**: vanilla coal
   ore is not a fuel; the stand-in sites swapped to the real item —
-  wither-skeleton drop `(COAL, 1)`, the three villager "buys coal"
+  blight-skeleton drop `(COAL, 1)`, the three villager "buys coal"
   trades (armorer/toolsmith/weaponsmith), the dungeon-chest loot entry.
 - **Registry ripple** (all guarded by tests): BLOCK_COUNT 163,
   STATE_COUNT 317, `COAL_STATE = 316` wired through `default_state` /
@@ -607,10 +607,10 @@ that item 1's E2 fix had missed.
 ## 2026-09-06 — MC 1.5–1.6 bracket (version-evolution Phase 3: Transport & Building) + full worklog↔evolution audit — commit 420818b
 
 **Task:** third bracket of the 1.0 → 1.16.5 version-evolution ordering
-(`evolution-research.md` Part 3 Phase 3, the Redstone/Horse updates),
+(`evolution-research.md` Part 3 Phase 3, the Fluxstone/Horse updates),
 plus the user-requested audit of everything implemented from the
 worklog to the evolution plan. All values live-verified this round
-against minecraft.wiki — search transcripts saved under
+against the reference game.wiki — search transcripts saved under
 `voxelcraft/scripts/verify_e3_*.json` + `scripts/e3_page_*.json`
 (~35 live citations in the code comments this round).
 
@@ -620,7 +620,7 @@ against minecraft.wiki — search transcripts saved under
   claim; run with `--no-default-features` on this box — alsa-sys needs
   missing ALSA headers, the audio feature gates rodio only).
 - **Everything the worklog claims exists in code**: E1/E2 module line
-  counts match (dragon.rs 444, e1_art.rs 747, wither.rs 430,
+  counts match (dragon.rs 444, e1_art.rs 747, blight.rs 430,
   beacon.rs 349, effects.rs 305); BLOCK_COUNT/STATE_COUNT/COAL_STATE
   matched the claimed 163/317/316; 575 VERIFIED citations; zero
   todo!/unimplemented!/unsafe; 15 biomes (14 + MushroomFields);
@@ -630,12 +630,12 @@ against minecraft.wiki — search transcripts saved under
   never implemented, never deferred. FIXED this round (below).
 - **Audit finding #2 — the evolution doc's 1.5 "already have" row was
   wrong**: daylight sensor, trapped chest, weighted pressure plates,
-  block of redstone, and activator rail were NOT in the code (only
+  block of fluxstone, and activator rail were NOT in the code (only
   comparator/dispenser/dropper/hopper). Four of the five land this
   round; activator rail is deferred (no rail/minecart system in the
   engine — riding arrives with horses instead).
-- **Audit finding #3 — the "Wither Spawn Egg" (egg index 19) stub**:
-  `from_egg(19)` has no arm → falls through to Chicken (the wither is
+- **Audit finding #3 — the "Blight Spawn Egg" (egg index 19) stub**:
+  `from_egg(19)` has no arm → falls through to Chicken (the blight is
   a boss entity outside MobSystem; pre-existing E2 behavior, now
   documented at the from_egg NOTE).
 - The user's 7 reference screenshots were VLM-reviewed (Options /
@@ -653,7 +653,7 @@ against minecraft.wiki — search transcripts saved under
   16 stained terracotta (vanilla dye order); 5 carpets (the engine
   wool palette, 1/16-block non-solid overlay adaptation); Hay Bale;
   Daylight Sensor; Trapped Chest; Light/Heavy Weighted Pressure
-  Plates; Block of Redstone; Nether Quartz item (the quartz-ore drop);
+  Plates; Block of Fluxstone; Hollow Quartz item (the quartz-ore drop);
   Lead; Saddle; 3 spawn eggs (horse/donkey/mule at ids 197..=199,
   kinds 20..=22 — the legacy 124..=143 egg window was full).
 - **POWER-state architecture (the round's key design fix)**: the
@@ -681,11 +681,11 @@ against minecraft.wiki — search transcripts saved under
   "Chase the Skies" buff); right-click a fence → knot anchor; pulled
   toward the anchor past 4 blocks; breaks at 10 + drops the item;
   re-use on the mob unleashes.
-- **Redstone components**: daylight sensor (sky light × day-phase
+- **Fluxstone components**: daylight sensor (sky light × day-phase
   brightness, self-rescheduling every 20 gt); trapped chest (1 viewer
   while the GUI is open, back to 0 on close — wired at open/close);
   weighted plates (entity-count sweep every 10 gt: light = count,
-  heavy = ceil(count/10), max 15); block of redstone (always-on weak
+  heavy = ceil(count/10), max 15); block of fluxstone (always-on weak
   15 in power_at + direct_feed).
 - **Superflat** (audit finding #1): TerrainGen flat mode + the Gen
   job carries the flag + the WORLD TYPE button in world-create now
@@ -709,20 +709,20 @@ against minecraft.wiki — search transcripts saved under
 - Live this round: coal block 16000 t/80 items (w/Block_of_Coal);
   quartz family + recipes (w/Block_of_Quartz, w/Quartz_Pillar, a
   2nd source for the output count, w/Chiseled_Quartz_Block,
-  w/Nether_Quartz_Ore drops + 2–5 XP); carpets 2 wool → 3 + 1/16
+  w/Hollow_Quartz_Ore drops + 2–5 XP); carpets 2 wool → 3 + 1/16
   hitbox (w/Carpet 13w17a/14w29a); terracotta 16 colors + badlands
   (w/Terracotta, w/Badlands); hay −80% fall damage (w/Hay_Bale);
   daylight recipe + signal factors (w/Daylight_Detector); trapped
   chest recipe + viewers-signal (w/Trapped_Chest); plate formulas
-  (w/Light_Weighted_Pressure_Plate + the heavy page); redstone block
-  weak-15 (w/Block_of_Redstone); horse stats/taming/breeding/spawning
+  (w/Light_Weighted_Pressure_Plate + the heavy page); fluxstone block
+  weak-15 (w/Block_of_Fluxstone); horse stats/taming/breeding/spawning
   /drops (w/Horse §Health/§Movement_speed/§Jump_strength/§Taming/
   §Bred_values/§Spawning/§Drops, w/Donkey, w/Mule); lead 10 blocks in
   1.16.5 (w/Lead + §History — the version-scoping catch); superflat
   classic preset (w/Superflat); horse 0–2 leather (search round).
 - Suite: **396/396 green** (375 → +21: registry roundtrips + counts +
   picker, coal-block fuel + burn-outpaces-output, 6 recipe families,
-  day-brightness curve, plate formulas, redstone-block wire power,
+  day-brightness curve, plate formulas, fluxstone-block wire power,
   daylight-sensor day/night, trapped-chest open/close, superflat
   layers, badlands banding, horse spawn stats, temper taming, saddle
   gating, bred-stat formula, jump-clear anchors, foal kind rules,
@@ -771,7 +771,7 @@ against minecraft.wiki — search transcripts saved under
 
 - None observed: 396/396, wasm clean, no new clippy lints beyond the
   pre-existing set (the vc-pack `never_loop` + pre-existing unused
-  warnings). The first-cut E3 redstone design (feeding wires
+  warnings). The first-cut E3 fluxstone design (feeding wires
   directly) was caught and redesigned BEFORE commit by the new
   unit tests — the POWER-state architecture is the vanilla pattern.
 
@@ -784,7 +784,7 @@ from the current position (1.7) through 1.10, checking every change in
 detail (mechanics AND visuals) against live sources, implementing the
 bracket content, and reporting parity per change.
 
-**Live verification round (minecraft.wiki, 2026-09-06):** full changelog
+**Live verification round (the reference game.wiki, 2026-09-06):** full changelog
 pages fetched and parsed for 1.7.2, 1.8, 1.9, 1.10 (scripts/verify/*.txt)
 plus targeted pages for Fishing (85/10/5 roll, 5–30 s wait, Lure −5 s/level
 off both bounds), Poison (L4 = 3 ticks/HP raw, 10-tick hurt-immunity
@@ -801,7 +801,7 @@ strays in 1.10 (with husks and polar bears).
   (the old `as u8` truncation would alias high states); a new raw
   `Chunk::get_state` accessor serves `World::get_state`/
   `set_block_state`. All historical double-fold call sites fixed (gen.rs
-  nether decorations + tests, light.rs column scans, anvil test, the
+  hollow decorations + tests, light.rs column scans, anvil test, the
   Phase-10 pyramid test).
 - GPU mesher LUT re-derived (STATE_COUNT 236→299, BLOCK_COUNT 103→162;
   WGSL offsets + clamps updated; tint classes 7/8 for the new leaves).
@@ -856,7 +856,7 @@ listed as placeholders), acacia/dark-oak planks, saplings, tall-grass/
 fern bone-meal growth, infested block variants, grassless dirt
 (1.8 coarse dirt supersedes), minecart-with-command-block, /tellraw /
 /summon / /setblock / /testforblock commands (no chat-command system),
-stained-glass panes, custom 23×23 nether portals, pufferfish→Water
+stained-glass panes, custom 23×23 hollow portals, pufferfish→Water
 Breathing brewing (brewing stands take block-id ingredients; pufferfish
 item is now in the registry for a future recipe), 1.7 sound set.
 
@@ -864,9 +864,9 @@ item is now in the registry for a future recipe), 1.7 sound set.
 
 ---
 
-## 2026-09-06 — version bracket 1.8 ("Bountiful Update") — Phase 1.8
+## 2026-09-06 — version bracket 1.8 ("Bountiful-era update") — Phase 1.8
 
-**Live verification:** minecraft.wiki/w/Java_Edition_1.8 parsed (2026-09-06)
+**Live verification:** the reference game.wiki/w/Java_Edition_1.8 parsed (2026-09-06)
 + targeted live checks for rabbit (3 HP, "avoid all players within 8
 blocks", 0–1 raw rabbit + 0–1 hide, 10% rabbit's-foot player-kill roll).
 
@@ -876,10 +876,10 @@ re-derived (WGSL offsets 318/499/680 + clamps).
 
 **1.8 content implemented:**
 - Blocks: slime block (translucent), coarse dirt, polished
-  granite/diorite/andesite, red sandstone + smooth variant, prismarine ×3,
+  granite/diorite/andesite, red sandstone + smooth variant, abyssprism ×3,
   sea lantern (emissive 15, wiki-verified), iron trapdoor, barrier
   (near-invisible solid — the wiki's "completely transparent").
-- Items: raw/cooked rabbit, rabbit hide, rabbit's foot, prismarine shard +
+- Items: raw/cooked rabbit, rabbit hide, rabbit's foot, abyssprism shard +
   crystals.
 - Rabbit mob: 3 HP, skittish AI (bolts within 8 blocks of the player —
   the wiki's avoidance rule), joins the passive herd roll, drops 0–1 raw
@@ -896,7 +896,7 @@ re-derived (WGSL offsets 318/499/680 + clamps).
 - Worldgen: coarse-dirt patches in savanna (the 1.8 replacement for 1.7's
   grassless dirt), red-sandstone filler directly under badlands red sand.
 - Recipes: 2×2 polished trio, 2×2 dirt+gravel checker → 4 coarse dirt,
-  2×2 red sand → red sandstone, 2×2 shards → prismarine, 2×2 crystals →
+  2×2 red sand → red sandstone, 2×2 shards → abyssprism, 2×2 crystals →
   sea lantern (all per the 1.8 changelog text). Smelting: red rabbit →
   cooked rabbit.
 - Picker: +19 (142 blocks).
@@ -909,7 +909,7 @@ filler explicitly).
 **Deferred (documented):** guardians + elder guardians + ocean monuments
 (the era's flagship structure — beam attack, Mining Fatigue aura and
 monument worldgen are a full phase of their own), armor stands, banners,
-endermite, wet sponge, wood-specific doors/fences/fence gates, world
+voidmite, wet sponge, wood-specific doors/fences/fence gates, world
 border + /clone /fill /title /execute /trigger /stats commands (no
 command system), enchanting-lapis rework, customized/debug world types,
 rabbit stew + Potion of Leaping (brewing needs the rabbit's-foot recipe
@@ -921,12 +921,12 @@ hook), door 3-tall models.
 
 ## 2026-09-06 — version bracket 1.9 ("Combat Update") — Phase 1.9
 
-**Live verification:** minecraft.wiki/w/Java_Edition_1.9 parsed
-(2026-09-06): blocks (grass path 15/16 + shovel-use, purpur family, end
-stone bricks, end rods "same brightness as torches", chorus plant/flower),
-items (chorus fruit 4-hunger + random teleport, elytra "hang glider
+**Live verification:** the reference game.wiki/w/Java_Edition_1.9 parsed
+(2026-09-06): blocks (grass path 15/16 + shovel-use, violetstone family, end
+stone bricks, void rods "same brightness as torches", echo plant/flower),
+items (echo fruit 4-hunger + random teleport, skywings "hang glider
 aerodynamics" + chest slot, shield 6 planks + 1 iron), the combat
-mechanics list, and the Elytra §Flight 10:1 glide ratio claim.
+mechanics list, and the Skywings §Flight 10:1 glide ratio claim.
 
 **Prior state confirmed (✅ already 1.9):** the engine's combat.rs was
 built on 1.9 formulas from the start — attack cooldown `0.2 + 0.8p²`,
@@ -940,10 +940,10 @@ BLOCK_COUNT 191, GPU LUT re-derived.
 
 **1.9 content implemented:**
 - Blocks: grass path (trodden top + lip side; full-cube simplification
-  documented), purpur block + pillar, end stone bricks, end rod
-  (emissive 14), chorus plant + flower.
-- Items: chorus fruit, elytra, shield (clean-room art).
-- Elytra GLIDE: while the selected item is the elytra and the player is
+  documented), violetstone block + pillar, void stone bricks, void rod
+  (emissive 14), echo plant + flower.
+- Items: echo fruit, skywings, shield (clean-room art).
+- Skywings GLIDE: while the selected item is the skywings and the player is
   airborne, falling, holding jump — horizontal velocity steers toward
   the look vector up to 25 b/s with descent clamped to 2.5 b/s,
   preserving the wiki's 10:1 glide ratio (documented adaptation: vanilla
@@ -952,18 +952,18 @@ BLOCK_COUNT 191, GPU LUT re-derived.
 - Shield BLOCKING: while the shield is selected and right-click is held,
   mob melee and arrows are absorbed entirely (adaptation: vanilla's
   partial-damage window, axe-disable and deflection angles deferred).
-- Chorus FRUIT: eats (4 HP, our hunger-less deviation), then the vanilla
+- Echo FRUIT: eats (4 HP, our hunger-less deviation), then the vanilla
   teleport — up to 16 attempts in a ±8 cube for a grounded 2-air spot,
-  enderman teleport pop.
+  voidling teleport pop.
 - Grass path: block + picker + recipe path documented (survival
   obtaining needs the shovel item — tools are a deferred registry).
 
 **Verification:** 331/331 tests green (302 lib + 29 game; +3: glide-ratio
-constants, elytra gate, shield/elytra/enchant registration pins).
+constants, skywings gate, shield/skywings/enchant registration pins).
 
-**Deferred (documented):** the End overhaul (outer islands, end cities,
-end ships, end gateways, shulker + shulker boxes, dragon-fight rework —
-the End DIMENSION itself is the still-open 1.0 bracket), dual wielding /
+**Deferred (documented):** the Void overhaul (outer islands, end cities,
+end ships, void gateways, lurkshell + lurkshell boxes, dragon-fight rework —
+the Void DIMENSION itself is the still-open 1.0 bracket), dual wielding /
 offhand slot (inventory rework), lingering potions + tipped/spectral
 arrows (needs splash-potion brewing + arrow effects), dragon's breath,
 grass-path shovel interaction (no tool items), shield crafting recipe
@@ -975,7 +975,7 @@ and axe-disable.
 
 ## 2026-09-06 — version bracket 1.10 ("Frostburn Update") — Phase 1.10
 
-**Live verification:** minecraft.wiki/w/Java_Edition_1.10 parsed
+**Live verification:** the reference game.wiki/w/Java_Edition_1.10 parsed
 (2026-09-06 round, saved as scripts/verify/page_110.txt) + fresh live
 rounds for /w/Magma_Block §Damage (api.php wikitext fetch) and the
 Polar_Bear/Stray/Husk rows. Full-changelog sweep below.
@@ -992,8 +992,8 @@ clamps 331/194).
   immunity documented out-of-scope, no boots/fire-effect registries yet;
   side-contact does not damage — "Walking into the side of a magma block
   doesn't cause damage"; death message "DISCOVERED FLOOR WAS LAVA" per
-  the changelog's "[Player] discovered floor was lava."), nether wart
-  block, red nether bricks, bone block.
+  the changelog's "[Player] discovered floor was lava."), hollow wart
+  block, red hollow bricks, bone block.
 - MAGMA contact-damage wiring: per-frame feet-below probe + 1-s
   accumulator → pending_magma_dmg drained by the game layer (creative
   invulnerable). FOUND+FIXED during this bracket's audit: the in-progress
@@ -1007,8 +1007,8 @@ clamps 331/194).
   AnimatedTile (pulses only r>140 crack pixels, frametime 8 ticks, frame
   0 == the atlas tile for a seamless loop), independent of resource
   packs; rides the §20 update_atlas_frame path (no geometry rebuild).
-- Worldgen: nether magma blobs ("4 blobs per chunk between Y=27 and
-  Y=36", embedded in netherrack only — never floating); fossils
+- Worldgen: hollow magma blobs ("4 blobs per chunk between Y=27 and
+  Y=36", embedded in hollowstone only — never floating); fossils
   ("generates 15–24 blocks underground in deserts, swampland and their M
   and hills variants. Each chunk has a 1/64 chance", "composed of bone
   blocks and some coal ore" — skull 3×3 with coal eye sockets + spine
@@ -1047,22 +1047,22 @@ clamps 331/194).
 **Verification:** 340/340 tests green (308 lib + 32 game; +9 over the
 1.9 bracket: v5 window + magma light pin, Frostburn mob data, magma
 damage 1 HP/s, magma sneak immunity, auto-jump hop, magma builtin
-animation, nether magma blobs, fossils, + the nether-mass test updated
+animation, hollow magma blobs, fossils, + the hollow-mass test updated
 to admit magma).
 
 **Deferred (documented, with reasons):**
 - Structure blocks + structure voids (the bracket's headline feature):
   a creative/technical save-load-structures system (GUI, 4 modes,
-  32-block limit, redstone activation) — no structure-system scope in
+  32-block limit, fluxstone activation) — no structure-system scope in
   the engine; full phase of its own if ever taken.
 - All four 1.10 crafting recipes: magma block (4 magma cream — no magma
-  cream item; magma cubes don't exist yet), nether wart block (9 nether
-  wart — no nether wart crop block; brewing uses a documented red-
-  mushroom substitution), red nether bricks (2×2 checkerboard of nether
-  brick + nether wart — no nether brick BLOCK either), bone block (9
+  cream item; magma cubes don't exist yet), hollow wart block (9 hollow
+  wart — no hollow wart crop block; brewing uses a documented red-
+  mushroom substitution), red hollow bricks (2×2 checkerboard of hollow
+  brick + hollow wart — no hollow brick BLOCK either), bone block (9
   bone meal; reverse 1 → 9 — no bone meal item). Also the 1.10 recipe
-  FIX "End stone bricks now again gives four blocks instead of one" —
-  no END_STONE block exists (End dimension is the open 1.0 bracket), so
+  FIX "Void stone bricks now again gives four blocks instead of one" —
+  no VOID_STONE block exists (End dimension is the open 1.0 bracket), so
   no recipe to fix yet.
 - Spawn eggs (polar bear/stray/husk) — creative-mode items, no spawn-egg
   registry.
@@ -1070,8 +1070,8 @@ to admit magma).
   riding or baby-mob system.
 - Looting interactions on the new drops (chance "2×level+1/2×level+2") —
   no Looting application to drops yet.
-- Nether spawn-weight changes (endermen "1/153" vs pigmen "100/153",
-  magma cubes "2/153 ... twice as often") — none of those Nether mobs
+- Hollow spawn-weight changes (voidlings "1/153" vs pigmen "100/153",
+  magma cubes "2/153 ... twice as often") — none of those Hollow mobs
   exist in the registry yet (1.16.5-era content); re-check at the
   bracket that adds them.
 - Husk/stray/polar-bear sound events + cave ambience (cave15/16) +
@@ -1080,12 +1080,12 @@ to admit magma).
 - Magma behavioral details: mob pathing avoidance, the no-spawn-on-
   magma rule (exceptions magma cubes/pigmen/squid — none exist yet),
   water-removal-on-random-tick (N/A — magma only generates in the
-  Nether, no water there in scope), smoke particles under rain.
+  Hollow, no water there in scope), smoke particles under rain.
 - /teleport command, loot-table `limit` tag, FallFlying/ZombieType/
   ParticleParam NBT tags, fallingdust particle, F3+G chunk borders —
   no command system / datapack looting hooks / NBT schema for these /
   particle type / debug-outline renderer respectively.
-- Changes-section items: dispenser-shield equipping, chorus-fruit/
+- Changes-section items: dispenser-shield equipping, echo-fruit/
   ender-pearl rider teleportation, fishing-rod item pulling (no mob-
   rider or item-entity fishing interaction), firework 3× recipe (no
   fireworks), skeleton off-hand tipped arrows + flaming arrows at
@@ -1183,7 +1183,7 @@ u8/u16 type splits, 152+ errors) — nothing was green.
 ### Stale-test updates (registry-era invariants, not behavior changes)
 
 - e1 picker fit → scroll-window invariant; e3 counts 200/400 → 276/480;
-  v5 window 328..=331 → 476..=479; elytra state 326 → 474; MOB_DATA 22
+  v5 window 328..=331 → 476..=479; skywings state 326 → 474; MOB_DATA 22
   → 26 (+rabbit/stray/polar bear/husk); mip chain sizes → 512²-era;
   LUT tint arms `3|7|8` → `3|8|9` (the old arm swallowed the E2 lava
   class 7 before its own arm — merge artifact, unreachable-code bug in
@@ -1242,8 +1242,8 @@ the fix round for what it found, and the push-discipline repair
   curve) even though the e1 WORKLOG never listed it — a
   documentation gap, not a code gap; Beach biome exists (Phase-10
   set); superflat was already caught + fixed by the e3 audit.
-- **Phase e2 (1.3–1.4) cross-check**: wither/witch/bat/wither-
-  skeleton, effects, beacon, ender chest, adventure mode, anvil
+- **Phase e2 (1.3–1.4) cross-check**: blight/witch/bat/blight-
+  skeleton, effects, beacon, void chest, adventure mode, anvil
   ladder, lava fluid, emerald ore, foods, cobble wall, flower pot,
   item frame, tripwire hook, command block — all confirmed present
   with their cited constants.
@@ -1260,7 +1260,7 @@ the fix round for what it found, and the push-discipline repair
   4. (Minor, formally deferred this round — see below.)
 
 ### Implemented (the fix round — all values live-verified 2026-09-07,
-minecraft.wiki page captures archived under
+the reference game.wiki page captures archived under
 `voxelcraft/scripts/auditfix_page_*.json` + one search round)
 
 - **Registry V6 window (ids 276..=281, states 480..=485; BLOCK_COUNT
@@ -1312,7 +1312,7 @@ minecraft.wiki page captures archived under
   300-tick wood fuels (VERIFIED w/Log §Fuel).
 - **Clean-room art** (`auditfix_art.rs`, 7 tiles): golden-carrot
   sprite, jungle bark/rings/leaves/planks, vine strands, fern
-  fronds — zero Mojang assets.
+  fronds — zero the original publisher assets.
 
 ### Verified
 
@@ -1378,12 +1378,12 @@ minecraft.wiki page captures archived under
 
 **Commit:** this entry (audit-fix round).
 
-## 2026-09-07 — MC 1.11 bracket "Exploration Update" (Phase 1.11) — recovered from an interrupted session + completed — commit this-entry
+## 2026-09-07 — MC 1.11 bracket "Exploration-era update" (Phase 1.11) — recovered from an interrupted session + completed — commit this-entry
 
-**Task:** the 1.11 (Exploration Update) version bracket. **Honesty note
+**Task:** the 1.11 (Exploration-era update) version bracket. **Honesty note
 on the round's shape:** an earlier session had begun the bracket and
 died mid-work — an unpushed local commit carrying ~1,500 lines of
-implementation (four mobs, shulker box/shell/totem, woodland mansions,
+implementation (four mobs, lurkshell box/shell/totem, woodland mansions,
 1.11 research captures) with a UUID for a commit message, no WORKLOG
 entry, five tests of which one failed, and three wiring gaps that made
 real features inert (the new spawn eggs failed the `is_spawn_egg`
@@ -1397,7 +1397,7 @@ bracket to the standard protocol (tests + WORKLOG + docs + one commit).
 **Sources:** the live changelog capture
 (`voxelcraft/scripts/v111_changelog_text.txt` +
 `v111_page_changelog.json`), per-feature page captures
-(`v111_page_{llama,vindicator,evoker,vex,shulker_box,shulker_shell,
+(`v111_page_{llama,cleaver,runecaller,wisp,lurkshell_box,lurkshell_shell,
 totem,woodland_mansion}.json`), the earlier round's search verdicts
 (`verify_v111_*.json`), plus two fresh live captures this round
 (`v111_search_carpetfuel.json`,
@@ -1420,23 +1420,23 @@ totem,woodland_mansion}.json`), the earlier round's search verdicts
   attracts up to 10 llamas within 9 blocks; the follow-the-leader
   chain (vanilla caravans leash-to-leash) is the disclosed
   simplification.
-- **Vindicator** (w/Vindicator): 24 HP, iron-axe 13 HP Normal
+- **Cleaver** (w/Cleaver): 24 HP, iron-axe 13 HP Normal
   (7.5/19.5 E/H via scale), sprint speed 5.612 b/s, emerald 0–1 @ 50%,
   hostile; mansion spawner placement. Johnny tag and the
   attacks-villagers row are N/A (no name tags / no villager entities —
   disclosed below).
-- **Evoker** (w/Evoker): 24 HP spell-caster, the two spells — **fangs**
+- **Runecaller** (w/Runecaller): 24 HP spell-caster, the two spells — **fangs**
   6 HP armor-ignoring ("not mitigated by armor" — rides the raw-damage
-  path) and the **vex summon ring** (queued through
+  path) and the **wisp summon ring** (queued through
   `pending_summons`, drained by the game layer), 100% totem drop +
   emerald 0–1, XP 10, mansion upper-two-floors spawners. The
   blue→red sheep conversion is N/A (engine sheep are colorless —
   disclosed).
-- **Vex** (w/Vex): 14 HP, iron sword 9 HP Normal, no-clip physics
+- **Wisp** (w/Wisp): 14 HP, iron sword 9 HP Normal, no-clip physics
   ("pass through any block, including water and lava" — the
   collision-skip path, tested), summoned-only (never in the spawn
   tables), 5 XP, no item drops (HandDropChances 0).
-- **Totem of Undying** (w/Totem_of_Undying, live): held-item revival on
+- **Totem of Revival** (w/Totem_of_Revival, live): held-item revival on
   lethal damage — restores 1 HP, clears all effects, Regeneration II
   45 s + Absorption II 5 s; **the absorption buffer** (8 points for
   Absorption II) now eats damage BEFORE health in `Player::damage`.
@@ -1444,17 +1444,17 @@ totem,woodland_mansion}.json`), the earlier round's search verdicts
   version-scoped OUT. "Either hand" = the selected hotbar item (no
   offhand — disclosed). The revival payload is extracted into
   `apply_totem_revival` (unit-tested).
-- **Shulker box + shell** (w/Shulker_Box, w/Shulker_Shell): 27 slots
-  ("the same as a barrel, a single chest, or an ender chest"), solid
+- **Lurkshell box + shell** (w/Lurkshell_Box, w/Lurkshell_Shell): 27 slots
+  ("the same as a barrel, a single chest, or an void chest"), solid
   placeable container, the **no-nesting rule** ("cannot be placed
-  inside another" shulker box — the insert gate), the column recipe
+  inside another" lurkshell box — the insert gate), the column recipe
   (shell/chest/shell — changelog §Blocks; the square matcher places it
   in the middle column, side columns are a disclosed placement
   constraint), break spills contents (vanilla keeps them inside the
-  item — needs item-NBT, disclosed). Shell is picker-only (no shulkers
+  item — needs item-NBT, disclosed). Shell is picker-only (no lurkshells
   / End cities in the engine — the 50% drop is N/A, disclosed).
 - **Spawn eggs** (changelog §Items): the four new eggs
-  llama/vindicator/evoker/vex (kinds 23..=26) **and the re-added
+  llama/cleaver/runecaller/wisp (kinds 23..=26) **and the re-added
   husk/stray eggs** (kinds 27/28 — "Eggs that were removed in Java
   Edition 1.10-pre2 are re-added ... including: ... Husk spawn egg,
   Stray spawn egg"). All seven render **egg-shaped tiles**
@@ -1463,7 +1463,7 @@ totem,woodland_mansion}.json`), the earlier round's search verdicts
   **zombie-villager egg** — the changelog's 5th new egg — is the
   engine's PRE-EXISTING E2-era item at id 129 (kind 5): an engine
   anachronism (added with the 1.4-era cure round) that satisfies the
-  1.11 requirement without a duplicate; disclosed. The wither-skeleton
+  1.11 requirement without a duplicate; disclosed. The blight-skeleton
   / donkey / mule re-adds were already covered (kinds 16/21/22).
   **Wiring fix:** `is_spawn_egg` now includes the V7 window — the
   interrupted round's eggs failed the use-path gate and did nothing.
@@ -1473,19 +1473,19 @@ totem,woodland_mansion}.json`), the earlier round's search verdicts
   half the size" — 13/13/7), cobblestone shell + plank floors +
   full-coverage **cobblestone foundation** ("generate a cobblestone
   foundation underneath the entire structure"), cross-corridor rooms,
-  south entrance, **vindicator spawners on the lower two floors +
-  evoker spawners on the two upper floors** (the engine-native
+  south entrance, **cleaver spawners on the lower two floors +
+  runecaller spawners on the two upper floors** (the engine-native
   no-respawn adaptation of vanilla's generation-time spawns), two loot
   chests. Chunk-arrival registration rides the existing
   `register_block_entities` seam (spawner kinds 5/6 decode via
-  `spawner_mob`; fortress blaze/wither-skeleton decode fixes were the
+  `spawner_mob`; fortress blaze/blight-skeleton decode fixes were the
   interrupted round's, kept).
-- **Mansion loot table** (`minecraft:chests/woodland_mansion`): the
+- **Mansion loot table** (`the reference game:chests/woodland_mansion`): the
   live page's four-pool structure with the page's own §History
-  version-scoping — Vex Armor Trim (1.20, 23w04a) and Resin Clump
+  version-scoping — Wisp Armor Trim (1.20, 23w04a) and Resin Clump
   (1.21.4, 24w44a) scoped OUT; the name tag (removed 26.1 snap11) and
   the palette-absent rows (diamond hoe, chainmail, music discs,
-  diamond chestplate, enchanted golden apple, wheat, bread, redstone
+  diamond chestplate, enchanted golden apple, wheat, bread, fluxstone
   dust, seeds, iron/gold ingots, bucket) simply don't roll (the
   established honest policy). Present: pool 1 lead 20 / golden apple
   15 / enchanted book 10; pool 2 coal 15 (1–4); pool 3 bone /
@@ -1495,14 +1495,14 @@ totem,woodland_mansion}.json`), the earlier round's search verdicts
   stronghold).
 - **Fuel** (changelog §Fuel + live verdict): wool 100 t (0.5 items)
   and **carpet 67 t (0.335 items** — live search verdict
-  minecraft.wiki/w/Carpet, `v111_search_carpetfuel.json`; the
+  the reference game.wiki/w/Carpet, `v111_search_carpetfuel.json`; the
   changelog's "0.3 items" is the rounded form — the interrupted
   round's deferral was resolved by the live check). The other 1.11
   fuel rows are palette-absent (deferred below).
 - **Curse of Vanishing** (changelog §Gameplay): cursed items are
   filtered from death drops ("makes the item disappear if the player
   dies"); both curse rows verified in the enchant registry.
-- **Registry growth**: V7 window 282..=290 (9 blocks — shulker box,
+- **Registry growth**: V7 window 282..=290 (9 blocks — lurkshell box,
   shell, totem, the four new eggs, husk/stray eggs), mansion spawner
   states **495..=496** (renumbered up from the interrupted round's
   493..=494 to clear the extended V7 window — nothing was ever pushed
@@ -1516,7 +1516,7 @@ totem,woodland_mansion}.json`), the earlier round's search verdicts
   `attack_cd == 0` attack gate (skeleton arrows, melee swings, llama
   spit, even the game layer's zombie-vs-villager swings) could NEVER
   fire for a mob that had not already attacked — in the live game only
-  creeper fuses and e2e debug hooks ever dealt damage. The existing
+  fuseling fuses and e2e debug hooks ever dealt damage. The existing
   mob tests masked it by calling `ai_tick` directly (no decrement).
   Now floored at 0 (`(cd - 1).max(0)`): fresh mobs can strike
   immediately, and a 20-tick cooldown re-fires on the 20th tick.
@@ -1524,11 +1524,11 @@ totem,woodland_mansion}.json`), the earlier round's search verdicts
 ### Verified
 
 - Suite: **454/454 green** (437 + 17: llama herd/strength/spit/
-  breeding/vex-physics/egg-map tests, the mansion worldgen test
+  breeding/wisp-physics/egg-map tests, the mansion worldgen test
   (fixed to scan RAW states through `get_state` — the folded `get_idx`
   scan was the interrupted round's failure) + a spawner-state decode
   test, the mansion loot-table test, V7 registry/egg/roundtrip tests,
-  totem/absorption/curse/shulker-recipe tests, carpet fuel asserts).
+  totem/absorption/curse/lurkshell-recipe tests, carpet fuel asserts).
 - wasm32 release build clean. Clippy: no NEW lints from this round's
   code; the pre-existing warning set stands, including the
   pre-existing `never_loop` error at vc-pack `datapack.rs:362`
@@ -1540,18 +1540,18 @@ totem,woodland_mansion}.json`), the earlier round's search verdicts
 ### Deferred (formal, with reasons)
 
 - **Observer behavior**: the block pre-exists (id 94, tiles 111/116 —
-  an earlier bracket); its block-update detection needs a redstone
+  an earlier bracket); its block-update detection needs a fluxstone
   signal system. The changelog's "Ported from the Pocket and Windows
   10 Editions. May have slight behavior differences" row is satisfied
   by the existing block; the observing function deferred.
 - **Explorer maps** (cartographer trade → ocean monument / woodland
   mansion maps): no map items or map rendering in the engine.
-- **Vindicator specifics**: Johnny tag (no name-tag/anvil-rename
+- **Cleaver specifics**: Johnny tag (no name-tag/anvil-rename
   system), attacks-villagers (no villager entities — the villager
   system is gossip+trades around zombie villagers), axe-disables-
   shield (rides the disclosed 1.9 shield deferral — the engine's
   shield has no durability/disable mechanics to begin with).
-- **Evoker blue→red sheep**: engine sheep have no color variants —
+- **Runecaller blue→red sheep**: engine sheep have no color variants —
   the rule has no input (vacuously N/A).
 - **Llama specifics**: chest storage (3×strength slots — no
   mob-equip UI), carpet decoration (same), multiple skins (single
@@ -1570,7 +1570,7 @@ totem,woodland_mansion}.json`), the earlier round's search verdicts
 - **Other N/A rows**: /locate (no commands), chat length (no chat),
   doWeatherCycle + maxEntityCramming gamerules (no gamerule system),
   entity-ID renames (inherently satisfied — the engine used the
-  flattened `minecraft:*` string ids from day one), End-gateway
+  flattened `the reference game:*` string ids from day one), End-gateway
   regeneration (no End gateways), the fishing overhaul (fishing is
   rod-less by design), 1.11.1/1.11.2 (bugfix micro-releases, out of
   the bracket unit).
@@ -1601,7 +1601,7 @@ round's documentation to the standard protocol, and prepared the push
 (`voxelcraft/scripts/v112_page_changelog_text.txt` +
 `v112_page_changelog.json`), per-feature page captures
 (`v112_page_{concrete,concrete_powder,glazed_terracotta,effect,
-illusioner,parrot}.json` + `_text.txt`), all fetched live
+miragecaller,parrot}.json` + `_text.txt`), all fetched live
 2026-09-07 (pre-implementation) — recorded in
 `docs/research/phase-v112-1.12-research.md`.
 
@@ -1629,11 +1629,11 @@ illusioner,parrot}.json` + `_text.txt`), all fetched live
     seeds heal, **a cookie is instant death** (the engine's
     poison-free form of vanilla's fatal cookie), right-click sit
     toggle, follows the tamer with a 12-block teleport
-    (cat-parity), gentle vex-style steering while flying;
-  - **illusioner** — 32 HP hostile, speed 0.5, **no natural spawns
+    (cat-parity), gentle wisp-style steering while flying;
+  - **miragecaller** — 32 HP hostile, speed 0.5, **no natural spawns
     and no spawn egg** (vanilla parity: raid-only in Java 1.12+;
     palette-only here), the spell kit: **Blindness** on the player
-    (20 s — w/Illusioner §Casting_Blindness) queued through a
+    (20 s — w/Miragecaller §Casting_Blindness) queued through a
     game-layer pending-spell vector, and the defensive
     **Invisibility + 4 false duplicates** refresh cycle.
 - **Status effect — Blindness** (id 15, negative): close black fog
@@ -1648,7 +1648,7 @@ illusioner,parrot}.json` + `_text.txt`), all fetched live
 - **Art (v112_art.rs, 379 lines, clean-room):** 16 flat vibrant
   concrete, 16 grainy powder aggregates, glazed terracotta as 16
   4-rotation top/bottom pairs + 16 shared side tiles, parrot 5
-  variant tiles, illusioner tile — plus the **atlas row-math fix**
+  variant tiles, miragecaller tile — plus the **atlas row-math fix**
   (32-tile rows; the old `%16/16` indexing wrapped at 16 and would
   have smeared the 1.12 tiles across neighbors).
 
@@ -1660,8 +1660,8 @@ illusioner,parrot}.json` + `_text.txt`), all fetched live
 `v112_parrot_taming_roll_and_sit_toggle`,
 `v112_parrot_cookie_is_instant_death`,
 `v112_parrot_follows_and_teleports_at_12_blocks`,
-`v112_illusioner_stats_and_blindness_spell`,
-`v112_illusioner_never_spawns_naturally`, `v112_powder_falls_like_sand`,
+`v112_miragecaller_stats_and_blindness_spell`,
+`v112_miragecaller_never_spawns_naturally`, `v112_powder_falls_like_sand`,
 `v112_powder_touching_water_solidifies`,
 `v112_powder_without_water_stays_powder`,
 `v112_all_powder_colors_solidify`, + the art/atlas tests. Suite
@@ -1687,9 +1687,9 @@ to this engine's scope).
 interrupted session's body amended to carry this documentation and a
 real commit message).
 
-## 2026-09-07 — MC 1.13 bracket "Update Aquatic" (Phase 1.13) — recovered from an interrupted session + completed — commit this-entry
+## 2026-09-07 — MC 1.13 bracket "Aquatic-era update" (Phase 1.13) — recovered from an interrupted session + completed — commit this-entry
 
-**Task:** the 1.13 (Update Aquatic) version bracket. **Honesty note on
+**Task:** the 1.13 (Aquatic-era update) version bracket. **Honesty note on
 the round's shape:** the implementation session died mid-work AGAIN —
 two unpushed local commits (`2717898` and `7f18519`, messages bare
 UUIDs) carried the bracket body (the V9 registry window with
@@ -1724,7 +1724,7 @@ user's standing multi-source verification directive), all fetched live
 - **World — the ocean temperature split** (changelog §World
   generation): Warm/Lukewarm/Cold/Frozen ocean families (internal ids
   19..=22) selected off the EXISTING climate temp field (VERIFIED:
-  "Added minecraft:warm_ocean ... minecraft:frozen_ocean now generates
+  "Added the reference game:warm_ocean ... the reference game:frozen_ocean now generates
   again"); warm-side sand floors (the coral-reef substrate) vs
   cold-side gravel; `Biome::is_ocean()` as the family gate.
 - **Ocean flora (this session):** kelp 2–4-block columns at 8%/floor
@@ -1793,7 +1793,7 @@ user's standing multi-source verification directive), all fetched live
 - **The conduit (this session):** placed conduits register in
   `sim.conduits`; the game layer scans each for the 26-water 3×3×3
   core (the waterlogged gate — VERIFIED w/Conduit: "A conduit won't
-  be activated if not waterlogged") and counts prismarine-family
+  be activated if not waterlogged") and counts abyssprism-family
   frame blocks in the 5×5×5 shell (16 minimum to activate — VERIFIED:
   "A minimum of 16 blocks are required"); players in water inside the
   **32→96-block range ladder** (48@21/64@28/80@35/96@42 — the wiki's
@@ -1832,10 +1832,10 @@ exposed them):**
    `(p[1]+12 .. p[1]-12)` is `82..58`, an EMPTY range (start > end),
    so the beach branch of try_spawn_aquatic NEVER fired. Bounds
    swapped to scan down from +12 to −12.
-2. **Flying mobs took gravity** — vanilla FlyingMobs (phantom/vex/
+2. **Flying mobs took gravity** — vanilla FlyingMobs (phantom/wisp/
    bat/parrot) have none; the constant −1.568 b/s pull dragged the
    phantom's orbit ~3 blocks below its 12-block spec height and
-   forced the vex/bat/parrot to fight gravity with velocity lerps.
+   forced the wisp/bat/parrot to fight gravity with velocity lerps.
    New `MobKind::flies()`: no gravity, gentle 0.98 flight drag, no
    fall-distance accumulation (a swooping phantom is flight, not a
    fall).
@@ -1873,7 +1873,7 @@ commands/Brigadier (no command parser), trident enchantments
 mechanics), player trident throwing + the 9-HP melee row (no
 player-weapon or player-projectile system — the standing fists-only
 `held_attack` deferral), map markers (no map items), the
-redstone-extended potion brews (no redstone-dust item; the extended
+fluxstone-extended potion brews (no fluxstone-dust item; the extended
 ITEM rows exist with correct windows), turtle-egg hatch stages +
 trampling (needs random block ticks), coral death-out-of-water (same
 tick system), bubble columns (needs waterlogged block states),
@@ -1893,7 +1893,7 @@ web-verified implementation of the real startup sequence (first screen after
 opening + the loading screens), with no third-party names in-game. Also:
 verify all previous jobs were landed, and update docs.
 
-**Research (live, 2026-09-07):** minecraft.wiki/w/Panorama — the title/menu
+**Research (live, 2026-09-07):** the reference game.wiki/w/Panorama — the title/menu
 background is a **slowly panning wide-angle view shown as a cubemap of six
 pre-rendered square images** (four horizontal faces + up + down, ~1.08k
 square), displayed behind every menu that does not cover the whole
@@ -2000,9 +2000,9 @@ Commit c4a1d22. User ask: make the intro/panorama/loading EXACT like the
 real game (referencing replica-project practice), verify all prior jobs,
 keep everything legal, update docs, continue the plan.
 
-- **Live research** (minecraft.wiki, captured in-session): Panorama history
-  ("1.16 ... Changed panorama ... to reflect the Nether Update" — the 1.16.5
-  title background is NETHER-themed; 1.13 pre1 removed live gaussian blur;
+- **Live research** (the reference game.wiki, captured in-session): Panorama history
+  ("1.16 ... Changed panorama ... to reflect the Hollows Update" — the 1.16.5
+  title background is HOLLOW-themed; 1.13 pre1 removed live gaussian blur;
   slow 360-degree pan); Title screen (logo + splash + panorama + version
   bottom-left + copyright bottom-right); Splash (yellow, 2 Hz pulse, tilted
   ~20 degrees at the logo's bottom-right); Loading world screen (Java:
@@ -2023,17 +2023,17 @@ keep everything legal, update docs, continue the plan.
   35×35 colormap (4px cells, wiki-exact colors, spawn cell red until
   meshed), driven from the real pipeline (world.chunk()=generated →
   renderer.has_chunk()=meshed).
-- **Panorama** → rethemed Nether (crimson fog sky, lava-glow horizon,
-  netherrack ground, denser+taller crimson-canopy tree belt, glowing lava
+- **Panorama** → rethemed Hollow (scarlet fog sky, lava-glow horizon,
+  hollowstone ground, denser+taller scarlet-canopy tree belt, glowing lava
   lake, no clouds); tests updated; PANORAMA_DUMP now sRGB-converts (dumps
   previously showed raw linear — VLM under-read them; pixel-scan confirmed
   3893 canopy pixels + lava band before believing the "flat" verdict).
 - **Menu blur** re-tuned: title/options/world screens 0.45 (the soft
   pre-blurred-image look), world-entry loading 0.75 ("blurred and
   darkened" per the wiki), travel keeps 0.35.
-- **Legal pass**: README Disclaimer rewritten to the Mojang fan-guidelines
-  wording ("NOT AN OFFICIAL MINECRAFT PRODUCT...") + ClassiCube precedent;
-  grep audit — no third-party names in user-facing strings; `minecraft:`
+- **Legal pass**: README Disclaimer rewritten to the the original publisher fan-guidelines
+  wording ("NOT AN OFFICIAL THE_REFERENCE_GAME PRODUCT...") + ClassiCube precedent;
+  grep audit — no third-party names in user-facing strings; `the reference game:`
   namespaced ids documented as format interop (never in the UI).
 - **Verification**: +5 screen tests (55 vc-render), 495/495 workspace
   green, wasm32 lib clean; VLM pass on the dumps (fixed: em-dash rendered
@@ -2214,7 +2214,7 @@ once every half-second), only if the entity is moving"**.
   disclosed)
 - SWEET_BERRY_BUSH (419) — 4 age states (0..3)
 - CAMPFIRE (420) — unlit/lit states; **placed LIT**; `state_emissive`
-  carries 15 on the lit state (the REDSTONE_LAMP_LIT pattern)
+  carries 15 on the lit state (the FLUXSTONE_LAMP_LIT pattern)
 - BARREL (421) — solid + opaque (w/Barrel infobox "Transparent No")
 - SWEET_BERRIES (422, item), SPAWN_EGG_FOX (423, kind 40)
 - STICK (424) + CHARCOAL (425) — **two legacy items added late**:
@@ -2250,7 +2250,7 @@ ways (present in-family, absent outside — tests).
 - random ticks: shoot→stalk (1/3 + light 9), stalk column growth
   (top-cell-only roll, 1/3, cap 16, light gate at the would-be top),
   bush aging (20% per tick, terminal at 3) — the per-position hash
-  rolls of the nether-wart pattern
+  rolls of the hollow-wart pattern
 - berry bush full contract: player — moving-only, stage-1+, 1 HP per
   0.5 s on the SHARED hazard accumulator (vanilla's global immunity
   window — a bush + a campfire together still cost 1 HP per 0.5 s),
@@ -2273,7 +2273,7 @@ ways (present in-family, absent outside — tests).
   chest grid geometry), hoppers interact for free through the
   containers map
 - crafting: stick ×2 orientations (the no-rotation-pass constraint
-  disclosed per the shulker-column precedent), campfire ×2 rows (coal
+  disclosed per the lurkshell-column precedent), campfire ×2 rows (coal
   + charcoal fuels, AnyWood = the 6 logs, AnyPlanks = oak + jungle),
   barrel (6 any-planks + 2 OAK_SLAB caps — the single-slab registry
   is the "any slab" stand-in, disclosed)
@@ -2461,7 +2461,7 @@ Task: continue the main plan — the 1.14 deferred nature blocks
 (smooth stone / blast furnace / smoker / lantern, the "next nature
 rounds" from the V10 deferral list).
 
-**Research:** the four wiki pages captured via the minecraft.wiki
+**Research:** the four wiki pages captured via the the reference game.wiki
 API into scripts/v114b_page_{Smooth_Stone,Blast_Furnace,Smoker,
 Lantern}.json. Verified contracts: stone smelts into smooth stone
 (0.1 XP); blast furnace = 5 iron + furnace + 3 smooth stone, smelts
@@ -2494,7 +2494,7 @@ smelters' contents-spill on break ride the existing paths.
 furnace center, smooth stone bottom), smoker (the 4-log cross),
 lantern (nugget ring + torch), and the 9:1 nugget ↔ iron round-trip.
 Disclosed stand-ins: IRON_ORE items for the iron ingots (the engine's
-existing convention), REDSTONE_TORCH (light 7) for the recipe's torch
+existing convention), FLUXSTONE_TORCH (light 7) for the recipe's torch
 (the engine's only torch).
 
 **Lantern gameplay:** placement writes sitting (top face) or hanging
@@ -2526,7 +2526,7 @@ butcher professions — the village half), blast-furnace metal-tool/
 armor smelting (no tool items), gold ore → gold ingot (no gold ingot
 item; the iron-ore-as-ingot stand-in convention makes iron-ore
 smelting degenerate — the ore class grows with a future ingot round),
-smoker chorus-fruit row (no chorus), lantern chain-connect rendering.
+smoker echo-fruit row (no echo), lantern chain-connect rendering.
 
 **Verification:** 537/537 workspace tests green (+8: furnace 3 + craft
 1 + render 2 + blocks 1 + the smooth-stone smelt), wasm32 lib clean,
@@ -2600,7 +2600,7 @@ Read tool first.)
 
 **1.14 part-3 flowers (the main-plan continuation):** research
 captures scripts/v114c_page_{Cornflower,Lily_of_the_Valley}.json
-(minecraft.wiki, clean-room). Verified contracts: both 18w43a,
+(the reference game.wiki, clean-room). Verified contracts: both 18w43a,
 non-solid cross plants, instant-break, drop themselves, plantable on
 the grass/dirt family; cornflower crafts 1:1 into blue dye and
 generates in plains/sunflower plains/flower forest; lily of the
@@ -2642,8 +2642,8 @@ the plain names, both dye crafts resolve via match_grid, and the
 instant-break contract; one consolidated boot-log line, with four
 new blocking greps in linux-game.yml.
 
-Deferred with reasons: wither rose (needs the entity-damage aura +
-wither-kill acquisition), suspicious stew (no stew system),
+Deferred with reasons: blight rose (needs the entity-damage aura +
+blight-kill acquisition), suspicious stew (no stew system),
 bone-meal post-generation (no composter), flower pots for the new
 pair (the engine's pot is decorative-only), 1.7-flower dye recipes.
 
@@ -2846,7 +2846,7 @@ bumps only for pollinated bees ("Every pollinated bee that leaves the
 hive after working increases the honey level by one"). The engine was
 right; the test setup now uses three nectar bees. 558/558 green.
 
-Deferred with reasons (the standing classes): piglin-less bartering is
+Deferred with reasons (the standing classes): pigoblin-less bartering is
 1.16; dispensers-with-shears (no dispenser interactions); waxing/
 candles (1.17); sugar-from-honey (1.21.2+); meadow/cherry/mangrove
 spawn-table rows (post-1.16.5 biomes); the pet-bee April-Fools forms.
@@ -2902,12 +2902,12 @@ drift).
 Stage Summary:
 - Web preview fixed, verified, pushed (31cdc1c)
 - 558/558 tests green; the 1.15 test-authoring bug fixed (0088a75)
-- Next: the 1.16 Nether Update bracket (nothing of it exists yet —
-  no basalt/blackstone/soul soil/target/anchor/striders/piglins)
+- Next: the 1.16 Hollows Update bracket (nothing of it exists yet —
+  no basalt/blackstone/spirit soil/target/anchor/emberhoppers/pigoblins)
 
 ---
 
-## Session 2026-09-08 (h) — 1.16 Nether Update, part 1 (the anchor family)
+## Session 2026-09-08 (h) — 1.16 Hollows Update, part 1 (the anchor family)
 
 Starting point: the auto-committed WIP `010a4d5` (~2.4k lines, the
 previous session's interrupted work — blocks/state window/art/gen/
@@ -2917,45 +2917,45 @@ round.
 
 **Test baseline first**: `cargo test --workspace` (audio off — the
 container lacks ALSA headers; `--no-default-features` on the app
-crate) failed 11 vc-blocks invariant tests + 1 vc-world nether test.
+crate) failed 11 vc-blocks invariant tests + 1 vc-world hollow test.
 
 **Real engine bugs found in the WIP and fixed**:
 1. `default_state()` had NO V13 arm — every 1.16 block fell to the
-   identity catch-all, so `default_state(SOUL_SOIL)=440` collided
+   identity catch-all, so `default_state(SPIRIT_SOIL)=440` collided
    with an old F-series STATE id (folded back to Raw Salmon). The
    exact collision class the §28 invariant test exists for.
 2. `is_model_state()` had no V13 guard — V13 states would have
    routed through the JSON-model path instead of BlockDef flags.
 3. The picker wrongly contained the four 1.15 ITEM blocks + the two
-   netherite items (the standing item-exclusion convention), and
-   `is_item_block()` never learned NETHERITE_SCRAP/NETHERITE_INGOT.
+   hollowite items (the standing item-exclusion convention), and
+   `is_item_block()` never learned HOLLOWITE_SCRAP/HOLLOWITE_INGOT.
 4. `prop_states_roundtrip`'s window guard + per-window branches
    needed the V13 case (charge/power re-encode, chain fold).
 
 **The gameplay layer (all this session, all wiki-verified against the
 v116 captures — research `docs/research/phase-v116-1.16-research.md`)**:
-- **Respawn anchor**: right-click with glowstone charges (+1, max 4,
+- **Rebirth anchor**: right-click with glowstone charges (+1, max 4,
   consumes the item, state write + light via the 3/7/11/15 emissive
-  ladder); in the Nether with charge >= 1 the use sets the spawn
-  point (respawn_pos + a respawn_anchor ref); each respawn CONSUMES
+  ladder); in the Hollow with charge >= 1 the use sets the spawn
+  point (respawn_pos + a rebirth_anchor ref); each respawn CONSUMES
   one charge (0 left or anchor destroyed -> revert to world spawn);
   used in any other dimension the block explodes power 5 (destroyed
-  first — it is blast-resistant) with the bed-in-nether death cause.
-  The charge also feeds adjacent redstone wire at exactly its count
+  first — it is blast-resistant) with the bed-in-hollow death cause.
+  The charge also feeds adjacent fluxstone wire at exactly its count
   (the comparator-signal class, direct_feed).
 - **Target block**: mobs.rs's projectile-hit detection (power 1..15
   by center proximity, 8 gt / 20 gt for arrows+tridents) now drains
   through the game layer into the POWER blockstate + a scheduler
   entry at the verified window; `target_decay_tick` (vc-sim
-  redstone.rs) drops the state back to 0 and re-wakes wire. The
+  fluxstone.rs) drops the state back to 0 and re-wakes wire. The
   power feeds adjacent wire at its level.
 - **Soul fire**: contact damage 2 HP per 0.5 s (the campfire class
   doubled) through the player's hazard queue — own accumulator, so
   the two rates never alias.
 - **Drops**: gilded blackstone (10% -> 2-5 iron-nugget stand-ins,
-  else self), nether gold ore (2-6 nuggets), soul fire drops nothing
+  else self), hollow gold ore (2-6 nuggets), spirit fire drops nothing
   (uncollectable, like fire). Blast-1200 class (debris, crying
-  obsidian, anchor, netherite block) added to the explosion
+  obsidian, anchor, hollowite block) added to the explosion
   resistance set.
 - **Chain**: placement writes the sitting/hanging V13 pair on
   top-face/underside clicks (the lantern pattern).
@@ -2966,7 +2966,7 @@ smelt contracts, the nugget drop rolls, the soul-fire damage rate)
 + CI smoke greps in linux-game.yml. Unit tests: the V13 registry
 window test (blocks), target pulse/decay + anchor charge feed
 (vc-sim), soul-fire contact rate (player), the anchor-family
-recipes + nether smelting (vc-gameplay).
+recipes + hollow smelting (vc-gameplay).
 
 **Local-run note**: this container has no libxkbcommon-x11 and no
 sudo, so the native X11 smoke cannot run locally — the E2E_V116
@@ -2979,37 +2979,37 @@ wasm rebuild + browser verification in this session's bundle step.
 Stage Summary:
 - 1.16 part 1 (the anchor family) is feature-complete: registry,
   gen, art, recipes, smelting, drops, anchor mechanics, target
-  redstone, soul fire, chain placement
+  fluxstone, spirit fire, chain placement
 - The WIP's four real integration bugs fixed (default_state V13,
   is_model_state V13, picker items, item-block list)
-- Part 2 (next): the mobs (strider, piglin, hoglin) + the
-  crimson/warped wood families; lodestone still deferred (no
+- Part 2 (next): the mobs (emberhopper, pigoblin, boarling) + the
+  scarlet/viridian wood families; lodestone still deferred (no
   compass item)
 
 ---
 
-## Session 2026-09-08 (i) — 1.16 Nether Update, part 2 (the forest families)
+## Session 2026-09-08 (i) — 1.16 Hollows Update, part 2 (the forest families)
 
 Starting point: part 1 (the anchor family) committed at 5e6aab0 with
 564/564 tests green and the main/origin in sync. This round delivered
-the second half of the Nether Update bracket: the three forest mobs,
-the crimson/warped block families, the two forest biomes, piglin
+the second half of the Hollows Update bracket: the three forest mobs,
+the scarlet/viridian block families, the two forest biomes, pigoblin
 bartering, and the polished-stone + soul-torch families part 1 had
 deferred to "the part-2 wood round".
 
 **Research first** (the standing convention): 24 live wiki captures
-`scripts/v116b_page_*.json` (Strider, Piglin, Hoglin, Bartering, the
-twelve crimson/warped family pages, the forest-biome pages, the
+`scripts/v116b_page_*.json` (Emberhopper, Pigoblin, Boarling, Bartering, the
+twelve scarlet/viridian family pages, the forest-biome pages, the
 soul-torch/lantern pages, the polished-stone trio, the 1.16
 changelog) + the extract script `scripts/v116b_extract.py`; the value
 contract is `docs/research/phase-v116b-1.16-research.md`.
 
 **Registry — the V14 window (ids 454..=478, states 750..=775, tiles
 673..=705; BLOCK_COUNT 479, STATE_COUNT 776, TILE_MAX 705, WGSL mesh
-LUT resynced)**: 22 placeable blocks (the crimson + warped stem/
-hyphae/planks/nylium quartets, fungi/roots/sprouts cross plants,
-weeping + twisting vines, the warped wart block, shroomlight (light
-15), polished basalt/blackstone/bricks, soul torch + soul lantern
+LUT resynced)**: 22 placeable blocks (the scarlet + viridian stem/
+hyphae/planks/mold quartets, fungi/roots/sprouts cross plants,
+weeping + twisting vines, the viridian wart block, glowcap (light
+15), polished basalt/blackstone/bricks, spirit torch + spirit lantern
 (light 10, the lantern's sitting/hanging pair)) + the 3 spawn eggs
 (kinds 42..=44). All the standing window guards extended: the
 fold tables, default_state, is_model_state, the roundtrip loop, the
@@ -3020,48 +3020,48 @@ window); the fix decodes V14 states through the window table and
 treats raw V14 block ids as self-describing.
 
 **The three mobs (all live-verified)**:
-- **Strider**: 20 HP passive; the lava-surface physics (feet-in-lava
+- **Emberhopper**: 20 HP passive; the lava-surface physics (feet-in-lava
   + air above = standing, no gravity, no sink; submerged = the
   verified buoyant ascent); water damages at 1 HP per half-second
   (hazard window); spawns in groups of 2-4 on lava-with-air-above at
   the 400-gt cadence (its own passive-category pass); bred with
-  warped fungus (the fox/bee pattern, variant bits + aux windows);
+  viridian fungus (the fox/bee pattern, variant bits + aux windows);
   drops 2-5 string.
-- **Piglin**: 16 HP neutral (the no-armor adaptation of "hostile
+- **Pigoblin**: 16 HP neutral (the no-armor adaptation of "hostile
   unless wearing gold" — neutral-until-provoked + the anger hooks);
   melee 8; **bartering** (a gold-ingot use arms the 120-gt examine,
   then a trimmed /469-ratio table roll drops 1-N item entities via
-  pending_drops); **gold-mining anger** (breaking nether gold ore /
-  gilded blackstone provokes piglins within 16 blocks);
-  **soul-flame repel** (soul torch/lantern/fire within 8 blocks).
-- **Hoglin**: 40 HP hostile (attack Normal 3-8, the disclosed 5.5
-  midpoint); **the warped-fungus + respawn-anchor flee** (7 blocks,
+  pending_drops); **gold-mining anger** (breaking hollow gold ore /
+  gilded blackstone provokes pigoblins within 16 blocks);
+  **soul-flame repel** (spirit torch/lantern/fire within 8 blocks).
+- **Boarling**: 40 HP hostile (attack Normal 3-8, the disclosed 5.5
+  midpoint); **the viridian-fungus + rebirth-anchor flee** (7 blocks,
   outranking fighting and breeding — the feed is flee-gated);
-  crimson-fungus breeding; 3-4 packs at 20% babies (maturity clock);
+  scarlet-fungus breeding; 3-4 packs at 20% babies (maturity clock);
   drops 2-4 porkchop + 50% 0-1 leather.
 
-**The forest biomes — the nether's first sub-biomes**: CrimsonForest
-(22% of the volume) + WarpedForest (8%, enderman-only) as
+**The forest biomes — the hollow's first sub-biomes**: ScarletForest
+(22% of the volume) + ViridianForest (8%, voidling-only) as
 deterministic 2x2-chunk region cells (the disclosed multi-noise
-adaptation); the generation paints nylium floors (70% of columns,
-30% keep bare netherrack — the wiki's own "with some netherrack"
-row), huge fungi (4-9 stems, 3-5-wide wart caps + the shroomlight
-core), weeping-vine strands under crimson canopies, twisting-vine
-columns from warped ground, and 45%-column undergrowth. The spawn
-table is biome-aware (crimson: piglin 3/5 vs hoglin; warped:
-endermen; wastes: part 1's roll + piglins at their wastes weight).
+adaptation); the generation paints mold floors (70% of columns,
+30% keep bare hollowstone — the wiki's own "with some hollowstone"
+row), huge fungi (4-9 stems, 3-5-wide wart caps + the glowcap
+core), weeping-vine strands under scarlet canopies, twisting-vine
+columns from viridian ground, and 45%-column undergrowth. The spawn
+table is biome-aware (scarlet: pigoblin 3/5 vs boarling; viridian:
+voidlings; wastes: part 1's roll + pigoblins at their wastes weight).
 
 **Crafting**: the four 1:4 stem→planks recipes, the three 2x2
 polished stones, and the two SHAPELESS soul recipes (the torch:
 charcoal-or-coal + stick + soul-soil-or-sand → 4; the lantern: the
 8-nugget ring — the concrete-powder matcher pattern, both in one
-`match_soul_torch`). Placement mirrors the growth rules (forest
+`match_spirit_torch`). Placement mirrors the growth rules (forest
 plants root on the ground family; weeping vines hang from ceilings,
-twisting vines climb; the soul lantern's underside-click hangs).
+twisting vines climb; the spirit lantern's underside-click hangs).
 
 **Art day one** (`v116b_art.rs`, the coverage guard auto-extended to
-tile 705): the stem/hyphae/plank/nylium families, the fungi/roots/
-sprouts/vines sprites, shroomlight, the polished stones, the soul
+tile 705): the stem/hyphae/plank/mold families, the fungi/roots/
+sprouts/vines sprites, glowcap, the polished stones, the soul
 pair, the 3 eggs + the 3 mob billboards.
 
 **A pre-existing F3 bug fixed by the round's tests**: the chain's
@@ -3071,9 +3071,9 @@ tests, wrong output). Both now read "Chain[hanging=true]".
 
 **E2E**: the `e2e_v116b` stage (the 20-block family placement round
 trip, the lantern pair + the soul lights, the nine craft contracts,
-the strider's lava stand, the hoglin's flee vector, the piglin
+the emberhopper's lava stand, the boarling's flee vector, the pigoblin
 barter round trip + the mining-anger count) + the CI smoke greps
-(family/lantern-pair/lights/crafts/strider-lava/hoglin-flee/barter),
+(family/lantern-pair/lights/crafts/emberhopper-lava/boarling-flee/barter),
 riding the shared E2E_V116 gate.
 
 **Local-run note**: libxkbcommon-x11 is still absent in this
@@ -3089,15 +3089,15 @@ WGSL LUT + clamps resynced (the drift guard caught the STATE_COUNT
 bump exactly as designed).
 
 Stage Summary:
-- 1.16 part 2 is feature-complete: the three mobs, the crimson/
-  warped families, the two forest biomes, bartering, the polished
-  stones + soul torch/lantern
-- The nether gained sub-biomes (the wastes/forest split) and
+- 1.16 part 2 is feature-complete: the three mobs, the scarlet/
+  viridian families, the two forest biomes, bartering, the polished
+  stones + spirit torch/lantern
+- The hollow gained sub-biomes (the wastes/forest split) and
   biome-aware spawning
 - The standing window guards all extended to V14 without incident;
   the one integration bug (is_forest_plant routing) was caught by
   the new tests before commit
-- Next main-plan round: 1.17 Caves & Cliffs part 1 (copper, caves,
+- Next main-plan round: 1.17 Caves-era updates part 1 (copper, caves,
   the archaeology-free half) — 2 brackets remain (1.17/1.18 + the
   final polish pass)
 
@@ -3120,15 +3120,15 @@ Work Log:
   hooks, the use-path branches (throwables), the break chain, the
   craft matcher, and the brewing set
 - Found and closed 8 gap classes: rotten flesh value+effect, spider
-  eye/chorus fruit/golden apple edibility, the melon slice chain,
+  eye/echo fruit/golden apple edibility, the melon slice chain,
   and the missing snowball/egg/pearl player-throw family
 - Captured 9 fresh wiki pages live (Rotten_Flesh, Spider_Eye,
-  Chorus_Fruit, Golden_Apple, Melon_Slice, Melon, Ender_Pearl,
+  Echo_Fruit, Golden_Apple, Melon_Slice, Melon, Void_Pearl,
   Snowball, Java_Edition_1.0) — scripts/audit16_capture_sweep2.sh
 - Applied patches h-m (registry +505/state 804/tile 735, the
   kitchen matcher's melon rows, the food/effect rows, the
   PLAYER_OWNER projectile class + landing queue, the egg hatch +
-  pearl teleport drain, the chorus destination fn, the melon break
+  pearl teleport drain, the echo destination fn, the melon break
   row, the e2e_audit16b stage + CI grep, 6 new unit tests)
 - Fixed the two e2e-stage design bugs before running: the Sim path
   (vc_sim::sim::Sim) and the melon-break reachability (test_break
@@ -3188,7 +3188,7 @@ Work Log:
 - README: the bracket 16/16 entry + the era-coverage table (the whole
   1.0 -> 1.16.5 plan at a glance, 16 rows; verified every row against
   the registry before writing it — LODESTONE corrected out of the 1.16
-  row, TARGET/netherite confirmed in)
+  row, TARGET/hollowite confirmed in)
 
 Stage Summary:
 - 593/593 tests green (unchanged — polish only); cargo check ZERO
@@ -3202,7 +3202,7 @@ Stage Summary:
 Task ID: 17
 Agent: main (Super Z)
 Task: The user's "main course" — the master-checklist audit. Two uploaded
-third-party checklists (chat-Minecraft Clone Development Checklist.txt,
+third-party checklists (chat-the reference game Clone Development Checklist.txt,
 ~1,200 items; checklist_MASTER_CHECKLIST.md, S00-S22+L) were to be fully
 read, NOT trusted blindly, fact-checked against the codebase and live
 primary sources, corrected, and turned into this project's own verified
@@ -3216,16 +3216,16 @@ Work Log:
   (593/593 green, 0 failed, 1 ignored, --no-default-features build since
   the container lacks ALSA headers; CI covers the full-featured build)
 - Counted ground truth from code: 506 blocks / 805 states / 735 tiles,
-  52 mob types (49 MobKind + dragon + wither + villager), 25 biomes + the
+  52 mob types (49 MobKind + dragon + blight + villager), 25 biomes + the
   End, 16 of 32 status effects, 38 enchantments, 81 recipe rows, 41 sound
   events, 10 structure families, F3 combos = +Q/+1/+H only, 14 original
-  splash strings, Apache-2.0 + exact Mojang-requested disclaimer wording
+  splash strings, Apache-2.0 + exact the original publisher-requested disclaimer wording
 - Proved the big discrepancies: file B's raid/patrol/wandering-trader
-  section, soul sand valley, basalt deltas, 32-effects, 600-sounds,
+  section, spirit sand valley, basalt deltas, 32-effects, 600-sounds,
   13-discs, and F3/control claims are all FALSE at HEAD (the code itself
   documents the village half of 1.14 as deferred); file A's snapshot is
   ~9 rounds stale (its "3 mobs / no End / 15-20%" era)
-- Fetched and verified live primary sources (2026-09-09): minecraft.wiki
+- Fetched and verified live primary sources (2026-09-09): the reference game.wiki
   Villager (gossip table — our implementation matches the live wiki
   five-for-five: trading 4/2/20/25/1, major_positive 20/0/100/20/5,
   minor_positive 25/1/5/25/1, minor_negative 25/20/20/200/-1,
@@ -3237,13 +3237,13 @@ Work Log:
   Painting (26 in the 1.16.5 era; 47 today because of the 2024
   anniversary additions — file B right, file A wrong), Villager
   professions (13 + nitwit + unemployed = 15)
-- Legal (live minecraft.net usage-guidelines, 2023 EULA rewrite context):
-  confirmed our disclaimer string is Mojang's exact requested wording,
-  "Minecraft" appears only as permitted secondary/descriptive use, assets
+- Legal (live the reference game.net usage-guidelines, 2023 EULA rewrite context):
+  confirmed our disclaimer string is the original publisher's exact requested wording,
+  "the reference game" appears only as permitted secondary/descriptive use, assets
   remain 100% procedural, End Poem correctly absent; documented the 2023
   "any community sharing is a commercial thing" reframing and why it
   changes nothing for this repo; corrected both files' overstatements
-  (Creeper "trademark", EULA-scope, patent-safety language)
+  (Fuseling "trademark", EULA-scope, patent-safety language)
 - Wrote docs/CHECKLIST-VERIFIED-AUDIT.md: verdicts on both source files
   (with the specific corrected facts), the full subsystem-by-subsystem
   verified checklist (done/partial/not + why/why-not per item), the
@@ -3262,7 +3262,7 @@ Stage Summary:
   current-aware, systematically over-optimistic with invented values)
 - Real gaps the code itself discloses were consolidated: weather, the
   1.14 village half (raids/pillagers/traders), farming, doors/beds/TNT,
-  buckets/compass/clock/maps, the two missing nether biomes, entity mesh
+  buckets/compass/clock/maps, the two missing hollow biomes, entity mesh
   pipeline, boats/minecarts, sound-event scale
 - 593/593 still green; no code changes (doc-accuracy round only); the
   README no longer contradicts the code on day length or block counts
@@ -3401,23 +3401,23 @@ feature round beyond its message's claim.
 verified by reading the diff and running its tests:**
 - **The Java weather machine** (`vc-gameplay/src/weather.rs`, new): the
   two-flag rain/thunder state machine, every constant a wiki row from
-  minecraft.wiki/w/Weather (rain ON 12,000–24,000gt / OFF
+  the reference game.wiki/w/Weather (rain ON 12,000–24,000gt / OFF
   12,000–180,000gt; thunder ON 3,600–15,600gt; the 600gt minimum flash
   gap; 5 HP lightning damage; sky factors 12/15 rain, 10/15 thunder;
   clear-on-new-world; sleep resets to clear but not the timers), with
   `force_clear/force_rain/force_thunder` test handles and the
   `can_strike()/strike_fired()` cadence pair the game layer drives.
-- **Nether biome closure**: `SoulSandValley` (id 25, cyan fog, soul
-  floor + nether fossils, skeleton/ghast/enderman spawn rows) +
-  `BasaltDeltas` (id 26, the basalt floor trio) — the five-nether-biome
+- **Hollow biome closure**: `SpiritSandValley` (id 25, cyan fog, soul
+  floor + hollow fossils, skeleton/weepgeist/voidling spawn rows) +
+  `BasaltDeltas` (id 26, the basalt floor trio) — the five-hollow-biome
   set is complete (priority-backlog item 2).
 - **The fire block** (id 506, state 805, tile 738): lightning ignition +
   the flint-and-steel source, emissive 15, cross-rendered like soul
   fire, burn-out; WGSL mesh LUT resynced 805→806 / 506→507 (the
   drift-guard class held — no hand-maintained constants diverged).
 - **Mob-side weather**: a per-mob weather field, `lightning_strike()`
-  (Creeper→charged via the 0x40 variant bit, Pig→ZombifiedPiglin,
-  Mooshroom red↔brown flip, 5 HP + the 2-block/4-block proximity box),
+  (Fuseling→charged via the 0x40 variant bit, Pig→ZombifiedPigoblin,
+  Shroomcow red↔brown flip, 5 HP + the 2-block/4-block proximity box),
   `rain_exposure_tick()` (extinguishing/wetting hooks), and the
   thunderstorm daylight spawn gate (hostiles any time of day — the wiki
   "treated as if it were 0" row).
@@ -3449,11 +3449,11 @@ ignored** (572 across the 14 library crates + 56 in the game crate with
 its `audio` feature off — the alsa headers are absent in this container,
 the documented sandbox limitation; CI's native stage covers the rest).
 The new backlog tests confirmed by name: 5 mob-weather
-(`backlog_lightning_conversions`, `backlog_charged_creeper_double_blast`,
-`backlog_zombified_piglin_is_the_wastes_roll`,
+(`backlog_lightning_conversions`, `backlog_charged_fuseling_double_blast`,
+`backlog_zombified_pigoblin_is_the_wastes_roll`,
 `backlog_thunderstorm_daylight_spawn_gate`,
-`backlog_creeper_blast_reaches_the_game_layer`), 3 nether-biome
-(`backlog_five_nether_biomes_all_appear`,
+`backlog_fuseling_blast_reaches_the_game_layer`), 3 hollow-biome
+(`backlog_five_hollow_biomes_all_appear`,
 `backlog_soul_valley_has_soul_floor_and_fossils`,
 `backlog_basalt_deltas_floor_trio`), 7 farm tests across
 fluids/game/player, 3 weather-art. Bundle pair intact (all four
@@ -3500,7 +3500,7 @@ test-covered); WGSL lives as inline consts (no .wgsl aggregator);
 `png` crate absent but `image` already a dependency (used instead —
 zero new deps); no PARITY-BACKLOG.md (CHECKLIST-VERIFIED-AUDIT.md is
 the live backlog doc); the font is the hand-built 5×7 bitmap, no
-Monocraft anywhere (answering the standing open question from the
+the removed third-party font anywhere (answering the standing open question from the
 user's research analysis — grep-verified zero matches).
 
 **What landed (one commit per phase + one E2E-fix commit + one lint
@@ -3534,7 +3534,7 @@ sweep, all LOCAL — nothing pushed, per the standing approval gate):**
 - **Phase 4** — vc-pack wiring (no parallel system): PackStack,
   ZipSource (reuses the Phase 9 flate2 zip reader), scan_user_packs
   (folders + zips under resourcepacks/, alphabetical later-on-top),
-  gui_texture_path (minecraft namespace), loader::load_from_pack
+  gui_texture_path (the reference game namespace), loader::load_from_pack
   (per-sheet merge-over-builtin, partial overrides apply
   individually); .gitignore resourcepacks/* with .gitkeep + README.md
   exceptions; the README documents every sheet, pack_format 6, and the
@@ -3569,7 +3569,7 @@ behavior-preserving except LightData's derived Default, which was NOT
 equivalent to new() and had silently broken 3 light tests; the manual
 Default now delegates to new()), wasm bundle rebuilt (locked pair,
 mtime-matched) and deployed. Live browser E2E: boot logs confirm all
-three systems armed; VLM screenshot analysis confirms Minecraft-style
+three systems armed; VLM screenshot analysis confirms the reference game-style
 beveled buttons with hover overlay, hearts/hunger/hotbar chrome, and
 3D isometric item icons ("green top face angled as a diamond/rhombus
 with darker dirt sides").
@@ -3594,7 +3594,7 @@ permission for fundamental changes.
 
 1. **Title screen** — passable (VLM: logo crisp, buttons vanilla-like).
 2. **In-game at 960×540 and 1920×1080 (integer 2×)** — text crisp,
-   hearts clean, hotbar vanilla-like. Monocraft glyph-quads path IS
+   hearts clean, hotbar vanilla-like. the removed third-party font glyph-quads path IS
    armed (`gui quad renderer armed`, engine parses the embedded TTF).
 3. **In-game at 1440×810 (1.5× fractional)** — the smoking gun: ALL
    text mushy/ragged ("sub-pixel AA smear, uneven glyph weights"),
@@ -3612,8 +3612,8 @@ permission for fundamental changes.
    zoom**: AO IS present (smooth gradients at inner corners — the CPU
    mesher computes vanilla per-corner AO with smooth_level=2 and the
    terrain shader applies 0.42/0.62/0.80/1.0 factors), textures
-   correct, geometry sealed, leaves alpha-cutout. The 1.16 crimson
-   panorama is intentional parity (Nether Update title screen).
+   correct, geometry sealed, leaves alpha-cutout. The 1.16 scarlet
+   panorama is intentional parity (Hollows Update title screen).
 
 **Fixes (this session, on top of 2d6266a):**
 
@@ -3674,7 +3674,7 @@ standing instruction.
 replicate Luanti, fundamental changes allowed") — finish the round the
 previous session left uncommitted and unverified, then apply the
 STRICT PROTOCOL EXTENSION (Rendering/Asset/HUD Conversion Toward Real
-Minecraft Parity, Using Luanti as a Legal Architectural Reference).
+the reference game Parity, Using Luanti as a Legal Architectural Reference).
 
 **Inherited state verified first (protocol §7: re-verify before
 implementing):** the uncommitted working tree held a complete round 2
@@ -3739,7 +3739,7 @@ fractional 1.5× scale that exposed the original font mush):**
 procedural atlas is the correct architecture for an engine-bounded
 procedural tile set — no dynamic stitcher introduced.
 
-**Protocol §6 (font):** Monocraft (OFL-1.1) confirmed INTEGRATED
+**Protocol §6 (font):** the removed third-party font (OFL-1.1) confirmed INTEGRATED
 (commit c801cb6: embedded TTF + OFL license text, gui/font.rs engine);
 the hand-built 5×7 canvas font remains only as the no-GPU fallback.
 
@@ -3797,7 +3797,7 @@ done at HEAD (uncommitted-worklog gap, not a code gap):**
   ranges (walk/attack/hurt/idle), linear keyframe lerp, no B3D/glTF
   parsing, pos+uv+color vertices, wired through `mobs.rs`
   (`model_for`/`sample_anim`/`emit_model_vertices`).
-- **§6 Monocraft: DONE** (commit c801cb6: embedded TTF + OFL-1.1 text,
+- **§6 the removed third-party font: DONE** (commit c801cb6: embedded TTF + OFL-1.1 text,
   `gui/font.rs` engine, 5×7 canvas font only as the no-GPU fallback).
 - **§1 atlas / §3 smooth lighting / §5 quad indices + 16³ sections:**
   honored by NOT changing (fixed 2048px procedural atlas intact; BFS
@@ -3842,7 +3842,7 @@ spirit as vanilla's own truncation of over-long debug lines.
   (`window.__vcCmds`, `mob:<kind>:<n>`): `E: 9/9` in F3; visible mobs
   (pig, others) are MULTI-PART 3D BOXY MODELS (separate head/body/limbs)
   — not billboards. The hostile set (zombie ×2, skeleton, spider,
-  enderman, creeper ×2) promptly killed the bare-handed player — the
+  voidling, fuseling ×2) promptly killed the bare-handed player — the
   death screen also renders cleanly (crisp "You Died!" + centered
   RESEND/RESPAWN buttons).
 - HUD after respawn (+ passive mobs): VLM verdict PASS — clean symmetric
@@ -3864,7 +3864,7 @@ spirit as vanilla's own truncation of over-long debug lines.
   flood) + `draw.rs` (`aabb_visible`).
 - The F3 `fit_line` clamp is NOT a Luanti technique — it is a
   vanilla-parity decision (vanilla truncates over-long debug lines
-  rather than letting columns collide); cited against the minecraft.wiki
+  rather than letting columns collide); cited against the the reference game.wiki
   Debug screen behavior, consulted 2026-09-13.
 
 **Final state:** 730 tests / 0 fail; clippy lib-only 0 warnings
@@ -3892,7 +3892,7 @@ reinstalled; full workspace rebuild from a wiped target/.
 - §4 entity models: confirmed in `vc-gameplay/src/entity_model.rs`
   (own Rust bone hierarchy, named ranges walk/attack/hurt/idle, linear
   keyframe lerp, no file parsers).
-- §6 Monocraft: confirmed embedded in `vc-render/src/gui/font.rs`
+- §6 the removed third-party font: confirmed embedded in `vc-render/src/gui/font.rs`
   (OFL-1.1 text alongside the TTF).
 - Baseline before cleanup: 730 passed / 0 failed — consistent with the
   prior round's claim.
@@ -3916,9 +3916,9 @@ reinstalled; full workspace rebuild from a wiped target/.
     (`0b1111111_0` → `0b1111_1110` etc. — same values, standard
     4-digit groups).
   - **Two duplicate `#[test]` attributes removed** (craft.rs melon
-    crafts, game.rs chorus destination): each had silently registered
+    crafts, game.rs echo destination): each had silently registered
     the test TWICE in the harness. The stale golden-carrot doc comment
-    orphaned above the chorus test was deleted (coverage lives at
+    orphaned above the echo test was deleted (coverage lives at
     game.rs food tests).
   - **One dead test recovered**: `craft::tests::audit16_kitchen_chain`
     (bowl/sugar/stews/pie chain, ~60 lines) had lost its `#[test]`
@@ -3961,17 +3961,17 @@ tree awaiting explicit user approval, per the standing instruction.
 ## 2026-09-14 (round 6) — vanilla-accurate world generation: the 1.16.5 density-noise stack
 
 **Task:** "complete the remaining debt and the graphical issues, visuals,
-pipeline all to look exact vanilla minecraft and also the resolutions of
+pipeline all to look exact vanilla the reference game and also the resolutions of
 everything and the hud and mainly the world generation to accurate
 vanilla" — the user's priority order put **world generation accuracy**
 first; §7 re-verification confirmed the rest of the debt (occlusion
-culling §2, entity models §4, Monocraft §6) was already closed by rounds
+culling §2, entity models §4, the removed third-party font §6) was already closed by rounds
 1–5, so this round rebuilt the terrain generator on the vanilla 1.16.5
 algorithm.
 
 **§7 re-verification (live, this round):** rounds 1–5's claims re-checked
 in the codebase — occlusion culling + split counters in `render.rs`,
-entity bone hierarchy in `entity_model.rs`, Monocraft embedded in
+entity bone hierarchy in `entity_model.rs`, the removed third-party font embedded in
 `gui/font.rs`: all present. The real gap was terrain: the old generator
 was 2D simplex heightmaps + per-block hash ores + 1.18-style noise-sheet
 caves — a fundamentally different shape language from vanilla 1.16.5.
@@ -3979,7 +3979,7 @@ The toolchain had been wiped again (the recurring container reset);
 rustup 1.98.1 + wasm32 + clippy + wasm-bindgen-cli 0.2.127 reinstalled
 before any build.
 
-**Vanilla sources (live-verified 2026-09-14, no Mojang code):**
+**Vanilla sources (live-verified 2026-09-14, no the original publisher code):**
 - **misode/mcmeta `1.16.5-data`** (community extraction of the vanilla
   data pack): `worldgen/noise_settings/overworld.json` — noise cell
   4×8×4 (`size_horizontal` 1 / `size_vertical` 2), sampling factors xz 80
@@ -3989,22 +3989,22 @@ before any build.
   0.14285715 + `canyon.json` 0.02; `worldgen/configured_feature/ore_*.json`
   — the exact vanilla ore table (dirt 10×33 y0..255, gravel 8×33 y0..255,
   granite/diorite/andesite 10×33 y0..79, coal 20×17 y0..127, iron 20×9
-  y0..63, gold 2×9 y0..31, redstone 8×8 y0..15, diamond 1×8 y0..15, lapis
+  y0..63, gold 2×9 y0..31, fluxstone 8×8 y0..15, diamond 1×8 y0..15, lapis
   1×7 baseline 16 spread 16) and biome feature stage 6 ordering; the
   biome `depth`/`scale` table for all 30+ biomes (plains 0.125/0.05,
   forest 0.1/0.2, mountains 1.0/0.5, ocean −1.0/0.1, deep ocean
   −1.8/0.1, river −0.5/0.0, …).
-- **Archived Customized wiki table** (minecraft.wiki/w/Customized via
+- **Archived Customized wiki table** (the reference game.wiki/w/Customized via
   web.archive.org, the 1.8–1.16 world type): the legacy noise fields —
   Coordinate/Height Scale 684.412, Main Noise Scale X/Y/Z 80/160/80,
   Upper/Lower Limit Scale 512, Depth Noise Scale X/Z 200, Depth Base
   Size 8.5 (base height 68 = 8.5 × 8, wiki's own conversion).
-- **minecraft.wiki/w/Bedrock** §Natural generation: "the five bottommost
+- **the reference game.wiki/w/Bedrock** §Natural generation: "the five bottommost
   layers … in a rough pattern" — the 100/80/60/40/20% roughness stack.
-- **minecraft.fandom.com/wiki/Noise_generator**: the low/high/selector
+- **the reference game.fandom.com/wiki/Noise_generator**: the low/high/selector
   blend semantics (selector < 0 → low field, > 1 → high field, between →
   linear), which persist through 1.17.
-- **Biome numeric IDs**: minecraft.wiki/w/Biome + Fandom Biome/ID
+- **Biome numeric IDs**: the reference game.wiki/w/Biome + Fandom Biome/ID
   (Bedrock-classic values for the 1.7+ variants where Java's registry
   renumbered; disclosed below).
 
@@ -4083,7 +4083,7 @@ before any build.
 - **Live browser E2E at 1440×810** through `/voxelcraft.html`: title →
   SINGLEPLAYER → CREATE WORLD → gameplay; VLM QA on the gameplay frame:
   smooth rolling hills, oak trees, tall grass + poppy/dandelion flora,
-  "very similar to natural vanilla Minecraft generation", no broken/
+  "very similar to natural vanilla the reference game generation", no broken/
   flat/chaotic terrain. F3 overlay verified: `Culling: occl 0 frust 26
   (of 42 meshed)` — the §2 split counters intact in the shipping build;
   player standing on natural terrain at y=86, sky light 15. No console
@@ -4093,7 +4093,7 @@ before any build.
   recorded as the known follow-up; vanilla's own sampler count is the
   cost driver, kept for shape fidelity).
 
-**Disclosed adaptations (clean-room, no Mojang code):** the climate
+**Disclosed adaptations (clean-room, no the original publisher code):** the climate
 fields remain the pre-rewrite two-noise temperature/humidity/variant
 brackets (vanilla 1.16.5 selects biomes through a Voronoi'd layer stack
 from the same climate concept — our bracket chain is the documented
@@ -4136,9 +4136,9 @@ hotbars. This round recovered, completed, verified and SHIPPED it.
 through `/voxelcraft.html`, SwiftShader/WebGL2):**
 
 - **Resource Packs = the real vanilla 1.16.5 screen**: two panes,
-  AVAILABLE (Programmer Art + user packs from `resourcepacks/`) and
+  AVAILABLE (Classic Art + user packs from `resourcepacks/`) and
   SELECTED with the pinned DEFAULT "(REQUIRED)" row, ▲▼ reorder
-  arrows, DONE applies + persists (`packs=programmer-art` survives in
+  arrows, DONE applies + persists (`packs=classic-art` survives in
   localStorage exactly like vanilla's options.txt `resourcePacks`).
   VLM-verified: no "Cinematic"/shader entries anywhere on it.
 - **Shader options moved home**: OFF/VANILLA+/CINEMATIC + WGSL packs
@@ -4202,7 +4202,7 @@ through the full transform.
 - **737 tests / 0 failures** workspace-wide (735 + the 2 new ID-space
   regression tests); vc-world 73 of them in release mode.
 - **wasm bundle rebuilt twice and deployed** (locked js+wasm pair,
-  12:18 final, glue patched, builtin pack + programmer-art rsynced).
+  12:18 final, glue patched, builtin pack + classic-art rsynced).
 
 **Audit status vs the user's checklist (the "check everything" ask):**
 - Breaking: timed mining (hardness ×1.5 hand formula, wiki-cited),
@@ -4240,7 +4240,7 @@ inventory screen has no player paper-doll preview yet.
   entity-model architecture reference (`docs.luanti.org/for-creators/models`
   + `src/client/content_cao.cpp`, studied 2026-09-12). The ID-space
   fix, resource-pack manager and inventory semantics were verified
-  against minecraft.wiki/w/Resource_pack §Behavior and w/Inventory
+  against the reference game.wiki/w/Resource_pack §Behavior and w/Inventory
   §Initial state/§Creative mode (live, 2026-09-14).
 
 **Not committed or pushed** — this round's work sits in the working
@@ -4267,7 +4267,7 @@ it.
   directories are all gone. `external_packs()` stays as the UI-less
   engine capability for user-provided WGSL packs. VLM-verified live on
   the new bundle: the RESOURCE PACKS screen shows only AVAILABLE
-  (Programmer Art) + SELECTED (Default (Required)) + DONE — zero
+  (Classic Art) + SELECTED (Default (Required)) + DONE — zero
   shader/Cinematic/Moonlit/Warm-Evening entries; the Video Settings
   screen has no shader button at all.
 - **Vanilla settings defaults** — the maxed-out defaults reset to
@@ -4295,7 +4295,7 @@ it.
 - **Death screen + respawn** — YOU DIED! / Score / RESPAWN + TITLE
   SCREEN buttons, hardcore GAME OVER variant with DELETE WORLD, the
   anchor-aware `respawn()` (charge consumed per respawn, VERIFIED
-  w/Respawn_Anchor), insomnia reset, surface re-snap. Live-verified
+  w/Rebirth_Anchor), insomnia reset, surface re-snap. Live-verified
   end-to-end this round: `hurt:12` → death → RESPAWN click → loading →
   back in game at the world spawn with 20 HP.
 
@@ -4323,9 +4323,9 @@ wasm32 `--lib` target.**
   entity-model architecture reference
   (`docs.luanti.org/for-creators/models` + `src/client/content_cao.cpp`,
   studied 2026-09-12). The shader-pack removal, world persistence and
-  screens were verified against minecraft.wiki (Heads-up_display,
+  screens were verified against the reference game.wiki (Heads-up_display,
   Resource_pack, Java_Edition_1.3.1 §generate-structures,
-  Respawn_Anchor — live, 2026-09-14).
+  Rebirth_Anchor — live, 2026-09-14).
 
 **Not committed or pushed** — the round's work sits in the working
 tree; nothing goes to GitHub without explicit user approval, per the
@@ -4452,7 +4452,7 @@ deployed wasm predated the previous session's creative-tabs commit.
 - **Round 12 [1] — the double chest.** `Container::DoubleChest
   {pos, other}`: the open-path scan (`double_chest_partner`, pure +
   tested: +X/−X/+Z/−Z first-match, trapped pairs only with trapped,
-  shulkers never merge, vertical never pairs), the 54-slot 9×6 screen
+  lurkshells never merge, vertical never pairs), the 54-slot 9×6 screen
   (`ContainerKind::DoubleChest`, top 264, single-word CHEST title per
   the wiki), slot clicks routed to the owning half (0..27 = clicked,
   27..54 = neighbor), open/close chest sounds, and `drop_container_
@@ -4477,7 +4477,7 @@ deployed wasm predated the previous session's creative-tabs commit.
   ID-space guard tests.
 - **Round 15 (partial) — biome-tinted fog** (a 20% blend at the
   player's biome: swamp green-grey, desert sandy, ocean blue, jungle
-  green — the weather darkening + nether fog were already shipped and
+  green — the weather darkening + hollow fog were already shipped and
   re-verified).
 - **Latent-bug fixes from the previous session's uncommitted state:**
   the sub-round-5 sound-registry water recipes (`step/water`,
@@ -4551,8 +4551,8 @@ Accessibility completion (Sneak/Sprint Hold-vs-Toggle 1.15 rows,
 Distortion Effects + FOV Effects sliders 1.16.2 pre1, web KeyC/KeyX
 gates); the Round 15 particle batch (`vc-particles::kinds`: 20 typed
 kinds — splash/bubble(+pop)/dripping+falling water+lava/portal/
-reverse_portal/end_rod/firework/explosion_emitter/squid_ink/dust/
-note/happy+angry_villager/snowflake/totem_of_undying/spit, each with
+reverse_portal/void_rod/firework/explosion_emitter/squid_ink/dust/
+note/happy+angry_villager/snowflake/totem_of_revival/spit, each with
 color/size/life/gravity physics + the registry-coverage test); the
 Round 15b sky exactness (sun 30×30 + moon 20×20 at distance 100
 pinned through the shader smoothstep edges, star density pinned).
@@ -4734,14 +4734,14 @@ as the locked pair.
    (measured 7.129). Items/orbs: gravity 0.04, drag 0.98, terminal
    1.96 b/t; XP pickup gate 10/s, 7.25-block attraction.
 8. **Fluids — dimension-aware lava.** `LAVA_TICK_RATE_OVERWORLD =
-   30` / `_NETHER = 10`; drop-off 2/1 → spread 3/7 (source + 3 /
+   30` / `_HOLLOW = 10`; drop-off 2/1 → spread 3/7 (source + 3 /
    + 7); no source creation; falls first. Water deltas (level-1
    falling column, cross-plant stop) documented per §0.
-9. **Version-evolution mechanics.** Wither: 300 HP, `CHARGE_TICKS
+9. **Version-evolution mechanics.** Blight: 300 HP, `CHARGE_TICKS
    = 220` (invulnerable + inactive), regen 1 HP / 20 ticks,
    kill-heal 5 HP, breaks 3×4×3 on damage, black skull every 40
-   ticks, Wither II 10 s/40 s, nether star 100%, 50 XP, hitbox 3.5
-   × 0.9. Ender Dragon: `DEATH_XP_AT = 154`, portal at 200 —
+   ticks, Blight II 10 s/40 s, hollow star 100%, 50 XP, hitbox 3.5
+   × 0.9. Void Wyrm: `DEATH_XP_AT = 154`, portal at 200 —
    pinned by test. Fox: stage-1+ berry bush = 1 HP / half-second +
    34.05% slow, foxes take neither (test
    `v114_bush_slows_and_damages_except_foxes`); bushes grow 20% /
@@ -4755,7 +4755,7 @@ as the locked pair.
     approximations (the wiki names colors, not hex); audio fully
     synthesized (vc-audio); panorama procedural; the builtin-pack
     PNGs are GENERATED from the procedural atlas
-    (`write_builtin_pack_pngs`); zero bit-for-bit Mojang assets.
+    (`write_builtin_pack_pngs`); zero bit-for-bit the original publisher assets.
 11. **Round 17 (the unlogged Sep-18 work, now on the record).**
     `vc-gameplay/src/hunger.rs`: the FoodData model — MAX_FOOD 20,
     saturation 5, REGEN_FOOD 18 / 80-tick natural regen,
@@ -4788,8 +4788,8 @@ as the locked pair.
 - **BUILD.md architecture notes drifted:** still says water has "a
   vertex wave" and "depth-write off" — both superseded by the
   2026-09-09 fix (flat 14/16 surface, depth-write ON + Less).
-- **Wither "armor" (below-half-health projectile immunity) is
-  unimplemented** — disclosed in wither.rs, routed to the projectile
+- **Blight "armor" (below-half-health projectile immunity) is
+  unimplemented** — disclosed in blight.rs, routed to the projectile
   bracket.
 - **Round 17 was unlogged + uncommitted** — this entry closes the
   log gap; the commit still awaits explicit user approval.
@@ -4915,7 +4915,7 @@ caught it because the Xvfb smoke runs X11 with a focus-armed XI2 stack.
    wayland_display=… winit_unix_backend=… VC_POINTER=…` — input bug
    reports now self-describe their environment.
 5. In passing: removed a duplicated `#[test]` attribute on
-   `audit16_sweep2_chorus_destination` (the test had been
+   `audit16_sweep2_echo_destination` (the test had been
    double-registered — 62 → 61 in the game-crate binary).
 
 ### Verification (fresh container: rustup stable 1.98.1 installed this round)
@@ -4976,7 +4976,7 @@ caught it because the Xvfb smoke runs X11 with a focus-armed XI2 stack.
 **Tasks:**
 1. Fix physical mouse click drops in the Linux native build.
 2. Fix world loading screen stalling at 43–44% and make percentage tick gradually (1%, 2%, 3%... 100%).
-3. Perform an exhaustive clean-room parity audit against vanilla Minecraft 1.16.5 (The Nether Update) and publish `docs/PARITY-BACKLOG.md`.
+3. Perform an exhaustive clean-room parity audit against vanilla the reference game 1.16.5 (The Hollows Update) and publish `docs/PARITY-BACKLOG.md`.
 4. Establish Rule 5 in `GEMINI.md` enforcing continuous worklog/backlog synchronization and strict public source-citation standards.
 5. Implement AMD GPUOpen canonical FSR 1.0 UI presets (Ultra Quality, Quality, Balanced, Performance) with dynamic RCAS sharpening.
 6. Implement clean-room mob damage recoil tilt during the 10-tick damage invulnerability window.
@@ -5016,8 +5016,8 @@ caught it because the Xvfb smoke runs X11 with a focus-armed XI2 stack.
 - **Mob Damage Recoil Animation (`vc-gameplay/src/mobs.rs`)**:
   - Clean-room behavioral specification: During the 10-tick invulnerability period (`hurt_t > 0`), tilts the mob billboard quad horizontally using quadratic ease into sinusoidal recoil peaking at ~14 degrees (`[Clean-room Behavioral Approximation]`).
 - **Weather State Machine (`vc-gameplay/src/weather.rs`)**:
-  - Implemented `WeatherSystem` with tick durations verified against `minecraft.wiki/w/Weather`:
-    - Clear: 12,000 to 180,000 ticks (0.5 to 7.5 Minecraft days)
+  - Implemented `WeatherSystem` with tick durations verified against `the reference game.wiki/w/Weather`:
+    - Clear: 12,000 to 180,000 ticks (0.5 to 7.5 the reference game days)
     - Rain: 12,000 to 24,000 ticks (10 to 20 minutes)
     - Thunder: 3,600 to 15,600 ticks (3 to 13 minutes, active during rain)
     - Transition: 100-tick smooth linear interpolation (0.01 per tick / 5.0 seconds) for `rain_level` and `thunder_level`.
@@ -5045,7 +5045,7 @@ caught it because the Xvfb smoke runs X11 with a focus-armed XI2 stack.
 **Root Cause Analysis & Diagnoses:**
 1. **Linux Mouse Input Dropping in Menus**:
    - **Premature Down-Activation & Grab Invalidation**: Buttons previously fired action activation on `pressed = true` (mouse-down). When an action changed the screen, `set_screen()` immediately executed `release_pointer()`, calling `window.set_cursor_grab(CursorGrabMode::None)`. Under Linux X11/Wayland compositors, ungrabbing the cursor while a physical button is held down cancels the X server's implicit pointer grab, dropping subsequent mouse-up events and desynchronizing input state.
-   - **Release-Activation Parity**: In vanilla Minecraft 1.16.5 and standard desktop GUI toolkits, buttons visually press on mouse-down, but only activate (`activate(w.id)`) on mouse-up (`pressed = false`) if the cursor is still within the widget's bounds (`w.hit(x, y)`). Releasing outside bounds cancels the click without action.
+   - **Release-Activation Parity**: In vanilla the reference game 1.16.5 and standard desktop GUI toolkits, buttons visually press on mouse-down, but only activate (`activate(w.id)`) on mouse-up (`pressed = false`) if the cursor is still within the widget's bounds (`w.hit(x, y)`). Releasing outside bounds cancels the click without action.
    - **X11/Wayland Grab Churn**: `set_screen()` was previously calling `release_pointer()` unconditionally on every screen change, repeatedly re-asserting cursor visibility and resetting grab state during menu-to-menu navigation.
 2. **Blue Pillarbox Strips on Intro & Loading**:
    - The UI canvas is 960×540 and letterboxed into non-16:9 window viewports (e.g. 1280×696, leaving 21px pillarbox margins on left and right).
@@ -5206,7 +5206,7 @@ tree is authoritative" rule — ALL engine source resolved to the audited
 local state, BYTE-IDENTICAL (verified after resolution: the crates/ diff
 against the pre-merge HEAD is exactly one new file, the owner's
 unreferenced `vc-render/src/pbr.rs`; public/ 0 lines; docs/WORKLOG.md 0
-lines). Files git had AUTO-merged (mobs.rs, fluids.rs, redstone.rs,
+lines). Files git had AUTO-merged (mobs.rs, fluids.rs, fluxstone.rs,
 vc-render lib.rs, textures.rs, vc_bench.rs) were restored to the audited
 versions — the auto-merge had silently mixed the owner track's hunks
 into the audited tree, which would have invalidated the 816-test state.
@@ -5363,8 +5363,8 @@ latest bundle.
   (Linux pointer ladder as documented in BUILD.md; VC_POINTER correctly
   NOT claimed — it is still the pending port), rebuild-bundle recipe,
   verification section (816 tests / clippy 0 / E2E), and a full Legal
-  section: the Mojang guidelines disclaimer, trademark notice,
-  clean-room asset policy, **Monocraft font attribution (Idrees Hassan,
+  section: the the original publisher guidelines disclaimer, trademark notice,
+  clean-room asset policy, **the removed third-party font font attribution (Idrees Hassan,
   SIL OFL 1.1 — previously undocumented in the README despite the
   bundled OFL file)**, and the Apache-2.0 summary.
 - Fact corrections vs the old README: block/state counts updated to the
@@ -5450,7 +5450,7 @@ and made the weakened forms fail:
    on_ground); those four lines were lost, so the fire was placed at a
    mid-air cell and the player fell through it (a cadence test proved a
    falling player accumulates zero). Restored.
-3. **audit16 trio** — `sim.mobs.player` (the aim target for the ghast's
+3. **audit16 trio** — `sim.mobs.player` (the aim target for the weepgeist's
    fireball and the cave spider's bite) was never set in the weakened
    form, so neither event ever fired. Restored the player-reference line
    before the spawns.
@@ -5459,7 +5459,7 @@ and made the weakened forms fail:
    lands the player exactly where they already stand, so `moved` reads
    false even on a successful teleport. Restored the +4 offset.
 
-Plus one new regression guard: `soul_fire_contact_at_e2e_cadence`
+Plus one new regression guard: `spirit_fire_contact_at_e2e_cadence`
 (player.rs tests) — the same 2 HP / 0.5 s contract at the smoke
 harness's dt=0.1 x 6 cadence (the 20 Hz substep accumulator must
 quantize the window identically at any frame-rate). Workspace count is
@@ -5634,7 +5634,7 @@ call: version differences don't matter, more options are great).
 **Legal (the round's top priority).** scripts/legal_audit.py hashes
 all 4,031 reference byte-streams and md5-scans every repo asset:
 zero matches, the three logo/GUI files absent, upload/ gitignored
-and untracked, source audit clean (no mojang refs outside legal
+and untracked, source audit clean (no the original publisher refs outside legal
 commentary, no upload/ paths in code). Pixel-level check on the two
 same-name shipped PNGs: mean-difference 28.9/255 and 13.5/255 —
 clean-room distinct. docs/LEGAL-COMPLIANCE.md is now the binding
@@ -5643,7 +5643,7 @@ distribution = the bright line; logos = trademark too; clean-room =
 study → functional description → in-code synthesis → verify), what
 ships (100% procedurally synthesized pixels — the strongest posture),
 and 7 binding rules (upload/ reference-only forever; the three
-tests; no built-in shaders or copied shader code; no Mojang marks;
+tests; no built-in shaders or copied shader code; no the original publisher marks;
 re-run the audit before every deploy). shader-packs/ is gitignored
 except README+gitkeep so user-dropped packs never enter the repo.
 
@@ -5743,7 +5743,7 @@ round built it.
    fire/portal/water constructions; 40+ item templates with 3-tone
    shading + outline pass; GUI widgets/HUD icons/container panels at
    functional geometry; entity skins in the skin-format layouts with
-   luma-targeted region fills + our own faces; our OFL Monocraft into
+   luma-targeted region fills + our own faces; our OFL the removed third-party font into
    the font page grids + original fictional glyphs for sga/illager;
    original paintings; functional celestial/phases; banner/shield
    pattern grammar; misc overlays.
@@ -5766,7 +5766,7 @@ pixel dumps for study):
   palette noise. Rewrote the noise engine as speckle (coarse bias +
   per-pixel weighted choice, frequency-matched quantization).
 - Quantization was proportion-distorting (renormalized truncated
-  palettes: creeper's transparent entry 58%→90%; fire 45%→84%
+  palettes: fuseling's transparent entry 58%→90%; fire 45%→84%
   transparent). Fixed: raw freq + tail redistribution (`Pal.thresholds`),
   alpha-fraction calibration for fire/water/leaves, opaque-only region
   palettes for entity regions.
@@ -5811,3 +5811,46 @@ voxelcraft/assets-vault/README.md + pack.mcmeta + spec/README.md
 watchdog + VC_POINTER + click-side routing ports (the Linux click bug
 family), LabPBR pbr.rs render-pipeline wiring, the station GUIs,
 hunger-drain hooks beyond combat/movement.
+
+---
+
+## 2026-09-20 — the full legal sweep + the pointer-fix delivery + the wasm refresh
+
+**Task:** the owner's directive: every copyrighted reference removed, the
+ecosystem-style folder patterns replaced, every coined name swapped for
+our own, the Linux pointer bug verified, and the wasm preview rebuilt —
+"check everything, miss nothing."
+
+**What was found (forensic audit, byte + pixel level):**
+3 pixel-identical flat-fill GUI overlays (regenerated in-project), a
+third-party derived-styled font (replaced by our generated Voxelfont),
+~280
+scraped wiki page dumps (deleted), and coined ecosystem names used as
+identifiers everywhere (renamed to our own vocabulary).
+
+**The de-branding (all verified by `scripts/legal_audit.py` — [PASS]):**
+- packs: `assets/<ns>/**` + `pack.mcmeta` → our flat `blockstates/
+  models/ textures/` + `pack.json`; sidecars `.png.json`; classic-art
+  (the retro-look analog)
+- loader: namespace-agnostic alias shim (zero hardcoded external
+  namespaces) + a generated legacy-name interop table so real user packs
+  keep loading
+- vocabulary: fuseling/voidling/weepgeist/pigoblin/boarling/emberhopper/
+  lurkshell/shroomcow/blight/hollow/hollowite/hollowstone/fluxstone/
+  scarlet/viridian/mold/echo/violetstone/abyssprism/glowcap/spirit-*/the
+  Void/void-* items/rebirth anchor/weeping obsidian/totem of revival/
+  skywings/runecaller/cleaver/miragecaller/wisp
+- font: Voxelfont.ttf — generated from our own clean-room 5×8 glyph
+  table (`scripts/make_voxelfont.py`), MIT, 109 glyphs
+
+**The pointer issue (the honest finding):** the stale-UI race fix
+(the `ui.dirty` / `ui.upload_pending` split) was correct — but the
+commit carrying it was never pushed, so the Linux single-file binary the
+owner ran predated it. This push delivers it. The `--debug` traces
+(screen transitions, menu-click widget trace, the [gfx] upload
+signature) plus `scripts/x11_menu_repro.py` (real XTEST clicks under
+Xvfb) are the reproduction toolkit if any freeze ever returns.
+
+**Status:** tests green (vc-world 77/77 release, all other suites green),
+clippy 0/0, legal audit [PASS], wasm bundle + both pack deployments
+refreshed in `public/`.

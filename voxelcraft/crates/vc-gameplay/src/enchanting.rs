@@ -63,7 +63,7 @@ pub struct EnchantDef {
     /// 1.16.5 weight table)
     pub weight: u32,
     /// obtainable from an enchanting table (VERIFIED: Frost Walker,
-    /// Curse of Binding, Soul Speed, Mending, Curse of Vanishing are
+    /// Curse of Binding, Spirit Speed, Mending, Curse of Vanishing are
     /// chest/fishing/trading-only — the table never offers them)
     pub table: bool,
     /// Round 13: the ANVIL cost multiplier "from item" (the "from
@@ -212,8 +212,8 @@ pub const ENCHANTS: &[EnchantDef] = &[
         cost_mult: 8,
     },
     EnchantDef {
-        name: "Depth Strider",
-        id: "depth_strider",
+        name: "Aqua Step",
+        id: "aqua_step",
         max_level: 3,
         weight: 2,
         table: true,
@@ -236,8 +236,8 @@ pub const ENCHANTS: &[EnchantDef] = &[
         cost_mult: 8,
     },
     EnchantDef {
-        name: "Soul Speed",
-        id: "soul_speed",
+        name: "Spirit Speed",
+        id: "spirit_speed",
         max_level: 3,
         weight: 1,
         table: false,
@@ -405,7 +405,7 @@ pub fn enchant_by_id(id: &str) -> Option<u8> {
 /// - Sharpness / Smite / Bane of Arthropods are pairwise exclusive
 ///   (Breach/Density join this family only in 1.21+)
 /// - Fortune ↔ Silk Touch
-/// - Depth Strider ↔ Frost Walker
+/// - Aqua Step ↔ Frost Walker
 /// - Infinity ↔ Mending
 /// - Multishot ↔ Piercing
 /// - Riptide ↔ Channeling and Riptide ↔ Loyalty (Channeling + Loyalty
@@ -430,8 +430,8 @@ pub fn incompatible(a: u8, b: u8) -> bool {
         (da.id, db.id),
         ("fortune", "silk_touch")
             | ("silk_touch", "fortune")
-            | ("depth_strider", "frost_walker")
-            | ("frost_walker", "depth_strider")
+            | ("aqua_step", "frost_walker")
+            | ("frost_walker", "aqua_step")
             | ("infinity", "mending")
             | ("mending", "infinity")
             | ("multishot", "piercing")
@@ -473,13 +473,13 @@ pub fn ore_xp(block: u16) -> i32 {
     match block {
         COAL_ORE => 1,     // 0..2
         LAPIS_ORE => 3,    // 2..5
-        REDSTONE_ORE => 3, // 1..5
+        FLUXSTONE_ORE => 3, // 1..5
         DIAMOND_ORE => 5,  // 3..7
         EMERALD_ORE => 5,  // 3..7
         // Phase E3 (VERIFIED live 2026-09-06, reference wiki /
-        // Nether_Quartz_Ore: "2–5 experience" — midpoint, the engine's
+        // Hollow_Quartz_Ore: "2–5 experience" — midpoint, the engine's
         // deterministic-ore convention)
-        NETHER_QUARTZ_ORE => 3, // 2..5
+        HOLLOW_QUARTZ_ORE => 3, // 2..5
         _ => 0,
     }
 }
@@ -557,7 +557,7 @@ fn slot_levels(b: u8, rng: &mut Rng) -> [u8; 3] {
 
 /// weighted-random enchant pick from the TABLE-RECEIVABLE subset
 /// (books enchanted at the table can only roll the 33 `table: true`
-/// entries — VERIFIED: Frost Walker/Binding/Soul Speed/Mending/Vanishing
+/// entries — VERIFIED: Frost Walker/Binding/Spirit Speed/Mending/Vanishing
 /// never appear on table offers)
 fn pick_enchant(rng: &mut Rng) -> u8 {
     let total: u32 = ENCHANTS.iter().filter(|e| e.table).map(|e| e.weight).sum();
@@ -843,7 +843,7 @@ mod tests {
                 "mending",
                 "frost_walker",
                 "binding_curse",
-                "soul_speed",
+                "spirit_speed",
                 "vanishing_curse"
             ]
         );
@@ -879,7 +879,7 @@ mod tests {
         // pairwise pairs
         let pairs = [
             ("fortune", "silk_touch"),
-            ("depth_strider", "frost_walker"),
+            ("aqua_step", "frost_walker"),
             ("infinity", "mending"),
             ("multishot", "piercing"),
             ("riptide", "channeling"),

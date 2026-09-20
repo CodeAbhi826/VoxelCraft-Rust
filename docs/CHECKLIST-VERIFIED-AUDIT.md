@@ -1,11 +1,11 @@
 # VoxelCraft — The Verified Master Checklist (1.16.5 target)
 
 > **What this is.** An independent, source-checked audit of the project against
-> a 100%-replica target (Minecraft Java Edition 1.16.5), built by cross-checking
-> the two uploaded third-party checklists (`chat-Minecraft Clone Development
+> a 100%-replica target (the reference game Java Edition 1.16.5), built by cross-checking
+> the two uploaded third-party checklists (`chat-the reference game Clone Development
 > Checklist.txt`, ~1,200 items; `checklist_MASTER_CHECKLIST.md`, S00–S22 + L)
 > against (a) the actual code at HEAD `61a92f9` and (b) the live primary sources
-> (minecraft.wiki pages fetched 2026-09-09, minecraft.net Usage Guidelines
+> (the reference game.wiki pages fetched 2026-09-09, the reference game.net Usage Guidelines
 > fetched 2026-09-09). Neither source file was trusted blindly — both were
 > fact-checked, and both were found to contain errors in *opposite directions*.
 >
@@ -17,18 +17,18 @@
 
 ## Part 1 — Verdict on the two source checklists
 
-### 1.1 File A: `chat-Minecraft Clone Development Checklist.txt`
+### 1.1 File A: `chat-the reference game Clone Development Checklist.txt`
 
 **Character:** AI-generated chat transcript, 25 sections, ~1,200 items.
 **Snapshot date:** the 185-commit era (claims 575 tests, 479 blocks, 14 biomes,
-"3 mobs with AI", 2 dimensions, no The End, "15–20% coverage").
+"3 mobs with AI", 2 dimensions, no The Void, "15–20% coverage").
 
 | Problem class | Finding |
 |---|---|
-| **Stale status** | Every "Repo Status" cell reflects a repo state ~9 rounds old. Current truth (updated 2026-09-10 forensics round): 193 commits, **628/628 lib tests green** (re-run locally on a fresh toolchain), 515 blocks / 845 states, 27 overworld+nether biomes + the End, 49 mob defs (50 MobKind — the backlog round added the zombified piglin), 3 dimensions, weather + farming landed. Dozens of its "❌ Missing" items are ✅ now (The End + dragon fight, combat cooldown/crits/sweep, armor formula, weather-independent spawning rules, 15 villager types, brewing, enchanting, most redstone components, pistons, observers, daylight sensors, comparators, campfires, sweet berries, coral, kelp, bees, the entire 1.16 set…). |
-| **Version anachronisms** | Lists **1.17+/1.19 content as 1.16.5**: glow squid (6.1.9), goat (6.2.9), frog/tadpole (6.1.32/33), powder-snow bucket (4.3.13), freeze overlay (12.1.22), allay in pillager outposts (2.4.12), "drowned drop copper" (6.2.10 — copper is 1.17). |
+| **Stale status** | Every "Repo Status" cell reflects a repo state ~9 rounds old. Current truth (updated 2026-09-10 forensics round): 193 commits, **628/628 lib tests green** (re-run locally on a fresh toolchain), 515 blocks / 845 states, 27 overworld+hollow biomes + the Void, 49 mob defs (50 MobKind — the backlog round added the zombified pigoblin), 3 dimensions, weather + farming landed. Dozens of its "❌ Missing" items are ✅ now (The Void + dragon fight, combat cooldown/crits/sweep, armor formula, weather-independent spawning rules, 15 villager types, brewing, enchanting, most fluxstone components, pistons, observers, daylight sensors, comparators, campfires, sweet berries, coral, kelp, bees, the entire 1.16 set…). |
+| **Version anachronisms** | Lists **1.17+/1.19 content as 1.16.5**: glow squid (6.1.9), goat (6.2.9), frog/tadpole (6.1.32/33), powder-snow bucket (4.3.13), freeze overlay (12.1.22), sootheling in pillager outposts (2.4.12), "drowned drop copper" (6.2.10 — copper is 1.17). |
 | **Factual errors** | Oxygen "300 (15 bubbles)" (3.1.14) — the HUD shows **10** bubbles (its own §12.1.6 agrees); weather "rain 0.5–7.5 days" (10.4.6) — rain *lasts 10–20 min*; the *clear* period is 0.5–7.5 in-game days (live wiki, Weather §Java Edition mechanics); "30 painting variants" (4.3.37) — 1.16.5 has **26**; villager "13 professions" (6.1.16/7.1) — 13 *employable* + nitwit + unemployed = **15 types** (the repo's own framing). |
-| **What it got right** | The villager **gossip table values are exactly correct** (verified against the live wiki — see §6.2 below); Ghast **10 HP** (File B says 16 — wrong); crit conditions (falling + ≥84.8% cooldown) correct; sword damage table, fall-damage formula, terminal velocity, ladder speeds all correct; the legal section's framework is sound. |
+| **What it got right** | The villager **gossip table values are exactly correct** (verified against the live wiki — see §6.2 below); Weepgeist **10 HP** (File B says 16 — wrong); crit conditions (falling + ≥84.8% cooldown) correct; sword damage table, fall-damage formula, terminal velocity, ladder speeds all correct; the legal section's framework is sound. |
 
 ### 1.2 File B: `checklist_MASTER_CHECKLIST.md`
 
@@ -37,9 +37,9 @@
 
 | Problem class | Finding |
 |---|---|
-| **Systematic over-claiming** | The "Repo coverage" column says "In repo" for entire subsystems that do **not exist**. Worst offenders, all verified false at HEAD: **S18 raids/patrols/outposts/wandering trader** (every row — the code itself says "the village half of 1.14 (villages/pillager/raids/crossbow/bell/wandering trader/loom/stonecutter) is deferred"); **S16.01 "32 status effects — In repo"** (16 exist); **S21.F01 "600+ sound events"** (41 synthesized events); **S21.F07 "music disc 13 — In repo"** (no discs, no jukebox; two procedural music pads); **S21.D12–D15 F3+G/F3+P/F3+T/F3+1..4/F3+Esc** (only F3+Q, F3+1, F3+H exist); **S21.E controls** (F1/F2/F5/F11/Q-drop/Tab/T-chat/R/F-offhand/C-zoom/F4 — none exist); **S05.03/S05.06 Soul Sand Valley & Basalt Deltas "In repo"** (no trace in code); **S04.30 bastion remnants** (a gilded-blackstone *blob stand-in*, disclosed — not the structure); **S20.32 "entity animations: limb swing, head yaw"** (mobs are 2D billboard sprites). |
-| **Invented/garbled vanilla values** | Ghast 16 HP (real: **10**); zombie "0.5 attack" (real: 2.5/3/4.5 by difficulty); moon "4 day cycle" (real: **8**); Nether "1.16 doubled [height]" (**false** — the Nether has always been 128 blocks tall; 1.16 did not double it); bedrock "Y=0 ceiling + Y=127 floor" (inverted — floor at bottom, ceiling at top); beacon "level 1–9, range 20–100" (real: levels 1–4, range 20/30/40/50); conduit "16-block range" (real: 32–96 by frame size); target block "comparator output 1-21" (impossible — redstone max is 15; the repo correctly does 1–15); golden apple "regen I 30s, absorption II 5 min" (real: Regeneration II 5 s, Absorption I 2:00); raid wave counts "5 waves: 3-8, 5-9, 8-12…" (invented — Easy 3 / Normal 5 / Hard 7 waves, composition scales with Bad Omen); witch "1.16.5 new shrinking potion" (no such thing); iron ingot as brewing ingredient (no); enchant-power formula (garbled); villager gossip table (garbled — see §6.2); "default font: M+ (Open Source)" (vanilla's ASCII font is a custom pixel font, with GNU Unifont as the Unicode fallback); "illusioner … not in 1.16.5 (1.14+ removed)" (**false** — the illusioner exists in 1.16.5, unused; this repo even implements it); "Boat: 0.4 base speed" (boats travel ~8 m/s); "tropical fish 22,000 variants" (2,700 natural). |
-| **What it got right** | Paintings = 26 in 1.16.5 (File A says 30 — wrong); Wither 300 HP JE; 38 enchantments; 15 villager professions framing; Pigstep as the 1.16 disc (13 discs total in 1.16.5); the day-length suspicion ("10 min day in current impl") pointed at a **real README staleness** — the *code* is correct (20-minute day, unit-tested `DAY_LEN_SECS == 1200`), the README said 10; axolotl/bundle/sculk/bogged correctly marked 1.17+/1.21 skips; End Poem = Julian Gough + copyright warning (correct, and the engine ships no End credits — that's the right call legally); the L.1 legal landscape table is largely sound (see Part 3 for the 2026-current corrections). |
+| **Systematic over-claiming** | The "Repo coverage" column says "In repo" for entire subsystems that do **not exist**. Worst offenders, all verified false at HEAD: **S18 raids/patrols/outposts/wandering trader** (every row — the code itself says "the village half of 1.14 (villages/pillager/raids/crossbow/bell/wandering trader/loom/stonecutter) is deferred"); **S16.01 "32 status effects — In repo"** (16 exist); **S21.F01 "600+ sound events"** (41 synthesized events); **S21.F07 "music disc 13 — In repo"** (no discs, no jukebox; two procedural music pads); **S21.D12–D15 F3+G/F3+P/F3+T/F3+1..4/F3+Esc** (only F3+Q, F3+1, F3+H exist); **S21.E controls** (F1/F2/F5/F11/Q-drop/Tab/T-chat/R/F-offhand/C-zoom/F4 — none exist); **S05.03/S05.06 Spirit Sand Valley & Basalt Deltas "In repo"** (no trace in code); **S04.30 bastion remnants** (a gilded-blackstone *blob stand-in*, disclosed — not the structure); **S20.32 "entity animations: limb swing, head yaw"** (mobs are 2D billboard sprites). |
+| **Invented/garbled vanilla values** | Weepgeist 16 HP (real: **10**); zombie "0.5 attack" (real: 2.5/3/4.5 by difficulty); moon "4 day cycle" (real: **8**); Hollow "1.16 doubled [height]" (**false** — the Hollow has always been 128 blocks tall; 1.16 did not double it); bedrock "Y=0 ceiling + Y=127 floor" (inverted — floor at bottom, ceiling at top); beacon "level 1–9, range 20–100" (real: levels 1–4, range 20/30/40/50); conduit "16-block range" (real: 32–96 by frame size); target block "comparator output 1-21" (impossible — fluxstone max is 15; the repo correctly does 1–15); golden apple "regen I 30s, absorption II 5 min" (real: Regeneration II 5 s, Absorption I 2:00); raid wave counts "5 waves: 3-8, 5-9, 8-12…" (invented — Easy 3 / Normal 5 / Hard 7 waves, composition scales with Bad Omen); witch "1.16.5 new shrinking potion" (no such thing); iron ingot as brewing ingredient (no); enchant-power formula (garbled); villager gossip table (garbled — see §6.2); "default font: M+ (Open Source)" (vanilla's ASCII font is a custom pixel font, with GNU Unifont as the Unicode fallback); "miragecaller … not in 1.16.5 (1.14+ removed)" (**false** — the miragecaller exists in 1.16.5, unused; this repo even implements it); "Boat: 0.4 base speed" (boats travel ~8 m/s); "tropical fish 22,000 variants" (2,700 natural). |
+| **What it got right** | Paintings = 26 in 1.16.5 (File A says 30 — wrong); Blight 300 HP JE; 38 enchantments; 15 villager professions framing; Pigstep as the 1.16 disc (13 discs total in 1.16.5); the day-length suspicion ("10 min day in current impl") pointed at a **real README staleness** — the *code* is correct (20-minute day, unit-tested `DAY_LEN_SECS == 1200`), the README said 10; axolotl/bundle/sculk/bogged correctly marked 1.17+/1.21 skips; End Poem = Julian Gough + copyright warning (correct, and the engine ships no End credits — that's the right call legally); the L.1 legal landscape table is largely sound (see Part 3 for the 2026-current corrections). |
 
 ### 1.3 The one-sentence verdict on each
 
@@ -89,11 +89,11 @@ native + wasm32, 113 screenshots, 15 research documents.
 |---|---|---|
 | Seeded deterministic terrain (simplex 2D/3D, multi-octave) | ✅ | Java-LCG-compatible RNG crate (`vc-rng`). |
 | Overworld biomes — 22 of ~61 | 🟡 | Have: ocean, beach, plains, forest, desert, snowy, mountains, taiga, birch, jungle, savanna, swamp, badlands, mushroom fields, flower forest, sunflower plains, ice spikes, dark forest, warm/lukewarm/cold/frozen ocean. Missing: river, snowy taiga, snowy beach, stone shore, giant taiga, windswept variants, jungle edge, deep-ocean variants (disclosed as folded into the temperature families). |
-| Nether biomes — 5 of 5 | ✅ | All five: nether wastes, crimson forest, warped forest, **Soul Sand Valley, Basalt Deltas** (the last two landed in the 2026-09-09 backlog round — soul floor + fossils, the basalt floor trio, biome fog/spawn rows). |
-| The End dimension | ✅ | Central island, obsidian pillars, end crystals, dragon fight, gateway, dragon egg. End *cities/ships* ❌ (no chorus-fruit outer islands, no shulkers, no elytra-in-frame). |
-| Structures — 10 of ~19 | 🟡 | ✅ villages, mineshafts, ravines, desert pyramids, jungle temples, strongholds (12-frame end portal), dungeons, woodland mansions, nether fortresses, the End island. ❌ bastion remnants (blob stand-in), ruined portals (obsidian-trace stand-in), ocean monuments, ocean ruins, shipwrecks, buried treasure, pillager outposts, igloos, witch huts, fossils, end cities. |
-| Ore distribution | ✅ | Coal/iron/gold/redstone/lapis/diamond/emerald/nether quartz/nether gold/ancient debris — per-wiki y-ranges and vein sizes, ancient debris blast-resistance honored. |
-| Trees & flora | 🟡 | Oak/spruce/birch/jungle/acacia/dark-oak leaves+logs, huge crimson/warped fungi, 8 small flowers + 5 tall, grass/fern, dead bush, vines, weeping/twisting vines, kelp, seagrass, sea pickles, coral families (live+dead), cactus, sugar cane item, bamboo, sweet berry bushes, nether sprouts/roots. ❌ dark-oak *2×2 trunks as gen*, lily pads, cocoa, huge mushrooms (mushroom blocks exist as blocks). |
+| Hollow biomes — 5 of 5 | ✅ | All five: hollow wastes, scarlet forest, viridian forest, **Spirit Sand Valley, Basalt Deltas** (the last two landed in the 2026-09-09 backlog round — soul floor + fossils, the basalt floor trio, biome fog/spawn rows). |
+| The Void dimension | ✅ | Central island, obsidian pillars, void crystals, dragon fight, gateway, dragon egg. End *cities/ships* ❌ (no echo-fruit outer islands, no lurkshells, no skywings-in-frame). |
+| Structures — 10 of ~19 | 🟡 | ✅ villages, mineshafts, ravines, desert pyramids, jungle temples, strongholds (12-frame void gate), dungeons, woodland mansions, hollow fortresses, the Void island. ❌ bastion remnants (blob stand-in), ruined portals (obsidian-trace stand-in), ocean monuments, ocean ruins, shipwrecks, buried treasure, pillager outposts, igloos, witch huts, fossils, end cities. |
+| Ore distribution | ✅ | Coal/iron/gold/fluxstone/lapis/diamond/emerald/hollow quartz/hollow gold/ancient debris — per-wiki y-ranges and vein sizes, ancient debris blast-resistance honored. |
+| Trees & flora | 🟡 | Oak/spruce/birch/jungle/acacia/dark-oak leaves+logs, huge scarlet/viridian fungi, 8 small flowers + 5 tall, grass/fern, dead bush, vines, weeping/twisting vines, kelp, seagrass, sea pickles, coral families (live+dead), cactus, sugar cane item, bamboo, sweet berry bushes, hollow sprouts/roots. ❌ dark-oak *2×2 trunks as gen*, lily pads, cocoa, huge mushrooms (mushroom blocks exist as blocks). |
 | World types (default/superflat/flat presets) | ✅ | Superflat customization supported. |
 
 ### 2.3 Player, physics, movement
@@ -106,8 +106,8 @@ native + wasm32, 113 screenshots, 15 research documents.
 | Sprint-jump momentum, sprint-swim, underwater walk | ✅ | |
 | Honey-block physics (2.508 m/s clamp, 85% jump cut) | ✅ | 1.15 round, wiki-verified values. |
 | Ladders/vines climbing | 🟡 | Vines climb (2.35 up/3.0 down, fall reset); actual *ladder blocks* not in registry. |
-| Elytra gliding | ✅ | 432 durability, glide mechanics, firework boost (rockets as items). |
-| Mounts | ✅ | Horse/donkey/mule with per-instance stats, taming temper, breeding; ride-drive steering with the 43.17 speed conversion. Strider riding ❌ (disclosed — no lava-mount steering). |
+| Skywings gliding | ✅ | 432 durability, glide mechanics, firework boost (rockets as items). |
+| Mounts | ✅ | Horse/donkey/mule with per-instance stats, taming temper, breeding; ride-drive steering with the 43.17 speed conversion. Emberhopper riding ❌ (disclosed — no lava-mount steering). |
 | Sneak edge-guard, auto-step, auto-jump (1.10 default ON) | ✅ | |
 | Boats / minecarts / rails | ❌ | The standing transport deferral — no vehicle physics class. Why not: each needs an entity-physics + control layer the sim doesn't have yet. |
 | Souls speed slowdown, ice friction, slime bounce | 🟡 | Soul sand slows (1.16 round); slime-block bounce (1.8 round); frosted/blue-ice friction ❌. |
@@ -121,9 +121,9 @@ native + wasm32, 113 screenshots, 15 research documents.
 | Sprint-knockback, sweep (sword, ≥84.8%) | ✅ | |
 | Armor formula `min(20, max(a/5, a−4d/(t+8)))/25 · 100%` | ✅ | Exact vanilla damage-reduction math. |
 | Invulnerability frames (10 ticks), knockback impulse | ✅ | |
-| 16 of 32 status effects | 🟡 | Have: wither, poison, regeneration, speed, haste, resistance, jump boost, strength, slowness, hunger, absorption, blindness, water breathing, slow falling, conduit power, dolphin's grace. ❌: nausea, instant health/damage, fire resistance, invisibility, night vision, weakness, health boost, saturation, glowing, levitation, luck, unluck, bad omen, hero of the village. Why not: each absent effect lacks a consumer system (potions cover 6 of the brewing families; bad omen/hero need raids). |
+| 16 of 32 status effects | 🟡 | Have: blight, poison, regeneration, speed, haste, resistance, jump boost, strength, slowness, hunger, absorption, blindness, water breathing, slow falling, conduit power, dolphin's grace. ❌: nausea, instant health/damage, fire resistance, invisibility, night vision, weakness, health boost, saturation, glowing, levitation, luck, unluck, bad omen, hero of the village. Why not: each absent effect lacks a consumer system (potions cover 6 of the brewing families; bad omen/hero need raids). |
 | Damage types (melee/projectile/explosion/fire/fall/void/magic/drown) | ✅ | |
-| Bosses: Ender Dragon (200 HP, perch, breath, crystals, bossbar, 12,000 XP) and Wither (300 HP, 3 phases, skull projectiles, nether star) | ✅ | Both bossbar'd; wither build pattern 4 sand + 3 skulls verified. |
+| Bosses: Void Wyrm (200 HP, perch, breath, crystals, bossbar, 12,000 XP) and Blight (300 HP, 3 phases, skull projectiles, hollow star) | ✅ | Both bossbar'd; blight build pattern 4 sand + 3 skulls verified. |
 
 ### 2.5 Items, inventory, crafting, containers
 
@@ -136,8 +136,8 @@ native + wasm32, 113 screenshots, 15 research documents.
 | Enchanting: all 38 enchantments, 3-slot table, lapis, bookshelves, glint, conflicts | ✅ | Verified count (matches both files). |
 | Brewing: awkward/mundane/water + 6 effect families (healing, harming, leaping, regeneration, slow falling, turtle master), extended/II variants | 🟡 | 6 of ~15 vanilla effect potions; splash/lingering ❌. |
 | Anvil (3 damage stages, combine/repair/rename) | ✅ | |
-| Containers: chest, trapped chest, ender chest, barrel, hopper, dispenser, dropper, shulker box, furnace GUIs | ✅ | Hopper transfer at the verified cadence. |
-| Tools/weapons: 24+ tier set incl. netherite, shield, trident, bow-class, arrows, totem, elytra | ✅ | |
+| Containers: chest, trapped chest, void chest, barrel, hopper, dispenser, dropper, lurkshell box, furnace GUIs | ✅ | Hopper transfer at the verified cadence. |
+| Tools/weapons: 24+ tier set incl. hollowite, shield, trident, bow-class, arrows, totem, skywings | ✅ | |
 | Food: ~45 items incl. the cooked-meat family, stews, honey bottle, golden apple (edible + effects) | 🟡 | Cake/milk-bucket/glistering-melon ❌ (no bucket class — disclosed). |
 | Buckets, flint-and-steel, compass, clock, maps, fishing rod | ❌ | The standing item-class deferral (fishing *loot tables* exist with verified 85/10/5 splits, but no rod item). Why not: buckets need fluid-carrying state, compass/clock need NBT-tracked targets, maps need a render-to-texture pipeline. |
 | Durability bar, rarity colors, item entities (despawn) | ✅ | |
@@ -147,18 +147,18 @@ native + wasm32, 113 screenshots, 15 research documents.
 
 | Category | Status | Detail |
 |---|---|---|
-| Implemented (52 kinds) | ✅ | Zombie, skeleton, creeper, spider, cave spider, silverfish, enderman, cow, pig, sheep, chicken, squid, bat, ocelot, wolf-class absent… see full list below. |
+| Implemented (52 kinds) | ✅ | Zombie, skeleton, fuseling, spider, cave spider, silverfish, voidling, cow, pig, sheep, chicken, squid, bat, ocelot, wolf-class absent… see full list below. |
 | Rendering | ⚠️ | **All mobs are 2D billboard sprites** (procedural art), not 3D cuboid models. File B's "limb swing, head yaw, walk anim — In repo" is misleading. Why not: no entity mesh/model pipeline; the billboard layer is the disclosed stand-in. |
-| AI behaviors | ✅ | Wander/panic/flee, chase-melee, ranged (skeleton/ghast/blaze/witch), light-gated & biome-aware spawning, despawn rules, breeding (fungi/wheat-class foods), taming (horse temper), anger propagation (piglins, bees, zombie-villagers), group AI, baby variants, jockey-style spawns (chicken jockeys in dungeons). |
-| Missing mobs (20) | ❌ | Slime, guardian, elder guardian, shulker *mob*, pillager, ravager, wandering trader, trader llama, zombified piglin, zoglin, piglin brute, wolf, cat, endermite, glow squid-class (1.17, correctly N/A), etc. Why not: the village/raid half (1.14) and several 1.13 aquatic predators are the disclosed deferral class. |
+| AI behaviors | ✅ | Wander/panic/flee, chase-melee, ranged (skeleton/weepgeist/blaze/witch), light-gated & biome-aware spawning, despawn rules, breeding (fungi/wheat-class foods), taming (horse temper), anger propagation (pigoblins, bees, zombie-villagers), group AI, baby variants, jockey-style spawns (chicken jockeys in dungeons). |
+| Missing mobs (20) | ❌ | Slime, guardian, elder guardian, lurkshell *mob*, pillager, ravager, wandering trader, trader llama, zombified pigoblin, rotboar, pigoblin brute, wolf, cat, voidmite, glow squid-class (1.17, correctly N/A), etc. Why not: the village/raid half (1.14) and several 1.13 aquatic predators are the disclosed deferral class. |
 
 **Full implemented list** (49 MobKind + 3 module mobs): zombie, skeleton,
-creeper, spider, cave spider, silverfish, enderman, squid, bat, cow, pig,
-sheep, chicken, mooshroom, snow golem, iron golem, zombie villager, ocelot,
-horse, donkey, mule, rabbit, polar bear, stray, husk, llama, wither skeleton,
-witch, blaze, magma cube, ghast, vindicator, evoker, vex, illusioner,
+fuseling, spider, cave spider, silverfish, voidling, squid, bat, cow, pig,
+sheep, chicken, shroomcow, snow golem, iron golem, zombie villager, ocelot,
+horse, donkey, mule, rabbit, polar bear, stray, husk, llama, blight skeleton,
+witch, blaze, magma cube, weepgeist, cleaver, runecaller, wisp, miragecaller,
 parrot, drowned, phantom, dolphin, cod, salmon, pufferfish, tropical fish,
-turtle, fox, bee, strider, piglin, hoglin + **ender dragon, wither, villager**.
+turtle, fox, bee, emberhopper, pigoblin, boarling + **void wyrm, blight, villager**.
 
 ### 2.7 Villagers — the deep system, correctly done
 
@@ -166,13 +166,13 @@ turtle, fox, bee, strider, piglin, hoglin + **ender dragon, wither, villager**.
 |---|---|---|
 | 15 types: 13 professions + unemployed + nitwit, job-site blocks | ✅ | Correct framing (File A's "13" and File B's "15" are the same fact). |
 | 5 trade tiers (Novice→Master) with per-tier tables | ✅ | |
-| **Gossip — all five types, exact live-wiki table** | ✅ | `(gain, decay, share-cost, max, multiplier)`: trading (4, 2, 20, 25, 1) · major_positive (20, 0, 100, 20, 5) · minor_positive (25, 1, 5, 25, 1) · minor_negative (25, 20, 20, 200, −1) · major_negative (25, 10, 10, 100, −5). Verified today against minecraft.wiki/w/Villager §Gossiping — **five-for-five identical**. Share-cost semantics (major_positive unshareable) and 20-minute decay included. |
+| **Gossip — all five types, exact live-wiki table** | ✅ | `(gain, decay, share-cost, max, multiplier)`: trading (4, 2, 20, 25, 1) · major_positive (20, 0, 100, 20, 5) · minor_positive (25, 1, 5, 25, 1) · minor_negative (25, 20, 20, 200, −1) · major_negative (25, 10, 10, 100, −5). Verified today against the reference game.wiki/w/Villager §Gossiping — **five-for-five identical**. Share-cost semantics (major_positive unshareable) and 20-minute decay included. |
 | Reputation → price | ✅ | `clamp(base − floor(rep × 0.05), 1, 64)` — the reputation term of the live wiki's full sale-price formula, with demand (d) and Hero-of-Village (h) terms zeroed because those systems don't exist (disclosed). |
 | Zombie-villager curing → major_positive gossip | ✅ | Curing countdown 3600–6000 ticks, difficulty-gated conversion chances. |
 | Schedules/beds/farming/breeding AI | ❌ | No villager daily schedule, bed claiming, or crop-tending loop — the biggest behavioral gap in an otherwise gold-standard system. Why not: needs a village-blocks claiming layer (beds don't exist as blocks). |
 | Iron golem: mob + player-build pattern + hostile-target AI | ✅ | Village-summoned golems & reputation-based hostility ❌ (no village scheduling layer). |
 
-### 2.8 Redstone, fluids, block mechanics
+### 2.8 Fluxstone, fluids, block mechanics
 
 | Item | Status | Notes |
 |---|---|---|
@@ -181,7 +181,7 @@ turtle, fox, bee, strider, piglin, hoglin + **ender dragon, wither, villager**.
 | Dispenser/dropper per-item actions | ✅ | |
 | Quasi-connectivity | 🟡 | Documented behavior differences where the update graph differs — disclosed. |
 | Fluids: water/lava 8-4-3 source rules, flow levels, obsidian/cobble/stone interactions, waterlogging, bubble columns, lava light | ✅ | 20 Hz sim; File B's claim that this is "too fast" vs vanilla is unproven — the tick cadence is documented per-recipe. |
-| Interactive blocks: doors, trapdoors (iron trapdoor places), beds, TNT, campfire cooking, respawn anchor, lodestone, soul fire, sponge | 🟡 | Iron trapdoor ✅ (redstone-gated opening is the documented deferral); campfire ✅ (4-slot 600-tick cooking, soul variant); respawn anchor ✅ (4 charges, comparator signal, Nether-only respawn); sponge ❌ (no absorb system); **wood doors ❌, beds ❌, TNT ❌** — the standing disclosed deferral. Why not: multi-block placeable entities need a block-entity + multi-cell state layer. |
+| Interactive blocks: doors, trapdoors (iron trapdoor places), beds, TNT, campfire cooking, rebirth anchor, lodestone, spirit fire, sponge | 🟡 | Iron trapdoor ✅ (fluxstone-gated opening is the documented deferral); campfire ✅ (4-slot 600-tick cooking, soul variant); rebirth anchor ✅ (4 charges, comparator signal, Hollow-only respawn); sponge ❌ (no absorb system); **wood doors ❌, beds ❌, TNT ❌** — the standing disclosed deferral. Why not: multi-block placeable entities need a block-entity + multi-cell state layer. |
 | Farmland/crops (wheat/carrot/potato/beetroot) | ✅ | The farming system landed (2026-09-09 backlog round): hoe tilling, farmland moisture 0..7 with the 4-block hydration boundary, wheat/carrot/potato age 0..7 + beetroot age 0..3 growth at the wiki denominators, trampling, dry decay, bread/hay-bale/hoe crafts. |
 
 ### 2.9 World events, time, weather
@@ -190,7 +190,7 @@ turtle, fox, bee, strider, piglin, hoglin + **ender dragon, wither, villager**.
 |---|---|---|
 | 24000-tick day = 20 real minutes | ✅ | **Code correct and unit-tested** (`DAY_LEN_SECS == 1200`); the README's "10 min" line was stale doc text — fixed in this round. File B caught the README symptom, wrong about the code. |
 | Sun/moon/stars, 8-phase moon over 8 days, sleep… | 🟡 | Day/night + moon ✅; **sleeping to skip night ❌, beds ❌**; phantoms spawn on insomnia timer ✅ (their anti-sleep prey loop is N/A without beds). |
-| Weather: rain, thunder, lightning, snow | ✅ | Implemented (2026-09-09 backlog round): the two-flag state machine at the exact wiki cadences, 5 HP lightning with creeper-charging / pig→zombified-piglin / mooshroom-flip conversions and fire ignition, thunderstorm all-day hostile spawning, rain/snow particles + sound + sky factors. (File B's S19 "In repo" claim became true a day after this audit first wrote "false" — the round closed it.) |
+| Weather: rain, thunder, lightning, snow | ✅ | Implemented (2026-09-09 backlog round): the two-flag state machine at the exact wiki cadences, 5 HP lightning with fuseling-charging / pig→zombified-pigoblin / shroomcow-flip conversions and fire ignition, thunderstorm all-day hostile spawning, rain/snow particles + sound + sky factors. (File B's S19 "In repo" claim became true a day after this audit first wrote "false" — the round closed it.) |
 | Raids, bad omen, patrols, hero of the village, wandering traders, zombie sieges | ❌ | All deferred (the 1.14 "village half"). File B's entire S18 is false for this repo. |
 | Game rules, commands, /time etc. | 🟡 | No chat/commands; gamerules as engine settings only. |
 | Difficulty (peaceful→hard) with damage/spawning scaling | ✅ | |
@@ -199,9 +199,9 @@ turtle, fox, bee, strider, piglin, hoglin + **ender dragon, wither, villager**.
 
 | Item | Status | Notes |
 |---|---|---|
-| Boot flow: studio intro → panorama title (rotating cubemap, procedural Nether theme) → splash (14 **original** texts, 2 Hz pulse, yellow, tilted) → world-create → chunk-colormap loading | ✅ | Verified against screenshots; splash originality confirmed (no vanilla strings). |
+| Boot flow: studio intro → panorama title (rotating cubemap, procedural Hollow theme) → splash (14 **original** texts, 2 Hz pulse, yellow, tilted) → world-create → chunk-colormap loading | ✅ | Verified against screenshots; splash originality confirmed (no vanilla strings). |
 | Settings tree = exact vanilla 1.16.5 screens with functional options + hover hints | ✅ | Video/Options/Accessibility/Resource Packs/Engine page; all 11 video options functional. |
-| HUD: hotbar, hearts, hunger, XP, bubbles, bossbar (dragon/wither), held-item name, toasts, crosshair | ✅ | Armor icons ❌ (no armor-wearing layer), effect icons 🟡 (16 effects exist, HUD icons for the ambient set). |
+| HUD: hotbar, hearts, hunger, XP, bubbles, bossbar (dragon/blight), held-item name, toasts, crosshair | ✅ | Armor icons ❌ (no armor-wearing layer), effect icons 🟡 (16 effects exist, HUD icons for the ambient set). |
 | F3 debug overlay (vanilla two-column layout, translucent strips, targeted-block lines, biome, light, memory, FPS) | ✅ | Combos: **F3+Q (help), F3+1 (frame graph — engine extension), F3+H (advanced tooltips)** — exactly the honest set; F3+B/G/A/T/P/D/N ❌. |
 | Font: hand-built 5×7→8px-case bitmap, shadow, per-glyph advance | ✅ | Clean-room (vanilla's is a custom pixel font + Unifont; File B's "M+" claim wrong). No §-code formatting engine yet 🟡. |
 | Audio: 41-event synthesized bank in vanilla `sounds.json` shape, 9 categories + music, spatial pan/attenuation, day/night music pads, cave ambience | 🟡 | vs vanilla's ~600 events & 13 discs — the disclosed clean-room scale. No jukebox, no discs, no note blocks. |
@@ -218,22 +218,22 @@ turtle, fox, bee, strider, piglin, hoglin + **ender dragon, wither, villager**.
 
 ## Part 3 — Legal & compliance (verified against 2026-current sources)
 
-**Sources fetched live 2026-09-09:** minecraft.net/en-us/usage-guidelines
+**Sources fetched live 2026-09-09:** the reference game.net/en-us/usage-guidelines
 ("Usage Guidelines for Fans and Creators"), the 2023-updated EULA context,
-minecraft.wiki. This is engineering research, **not legal advice** — the
+the reference game.wiki. This is engineering research, **not legal advice** — the
 README already says consult an IP attorney before commercial release, and
 that advice stands.
 
 ### 3.1 Where the project stands (all verified at HEAD)
 
-1. **Assets** — zero Mojang files. Every texture, sound, glyph, logo and the
+1. **Assets** — zero the original publisher files. Every texture, sound, glyph, logo and the
    panorama are synthesized procedurally at boot (`docs/README` "Zero asset
    files"; art modules per bracket). The Usage Guidelines' hardest rule —
    "do not redistribute our games or any alterations of our games or game
    files" — is not even implicated: nothing of theirs is present.
-2. **Disclaimer** — the README carries **Mojang's exact requested wording**:
-   "NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
-   MOJANG OR MICROSOFT." The live guidelines page asks for precisely this
+2. **Disclaimer** — the README carries **the original publisher's exact requested wording**:
+   "NOT AN OFFICIAL THE_REFERENCE_GAME PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
+   THE_PUBLISHER OR MICROSOFT." The live guidelines page asks for precisely this
    string family on "your product, listing, description, website/webpage,
    and all other related materials." The in-game title screen carries the
    short form ("100% CLEAN-ROOM — NOT AN OFFICIAL GAME").
@@ -241,12 +241,12 @@ that advice stands.
    form; if this is ever distributed as a standalone download, the full
    sentence should appear in-game or in the store listing. Low effort, worth
    doing at next release.
-3. **Naming** — brand is "VoxelCraft"; "Minecraft" appears only as a
-   *secondary, descriptive* term ("Minecraft-1.16.5-style engine"), which is
+3. **Naming** — brand is "VoxelCraft"; "the reference game" appears only as a
+   *secondary, descriptive* term ("the reference game-1.16.5-style engine"), which is
    exactly the pattern the live guidelines permit ("Kotoba Miners: a
-   Minecraft server…" ✅ vs "Minecraft — the ultimate…" ❌). The repo URL and
+   the reference game server…" ✅ vs "the reference game — the ultimate…" ❌). The repo URL and
    project name don't embed the trademark.
-4. **`minecraft:` namespace in code/data** — interop convention for
+4. **`the reference game:` namespace in code/data** — interop convention for
    save/pack compatibility (every world editor and data tool does this);
    the namespace appears in F3 IDs and datapack keys, never as branding.
    Defensible; documented in the README legal notes.
@@ -262,16 +262,16 @@ that advice stands.
 ### 3.2 Corrections to the source files' legal sections
 
 - File B's L.1 is broadly sound but two rows are overstated: "The name
-  'Creeper' is a trademark for that mob shape" (mob *names* as such aren't
+  'Fuseling' is a trademark for that mob shape" (mob *names* as such aren't
   registered trademarks; trade-dress/confusion is the real doctrine to mind —
   keep names distinct anyway, which the engine does) and "EULA forbids…"
   rows phrased as if the EULA binds this project (the EULA is a contract for
-  people who *run Minecraft*; a clean-room engine never agreed to it. The
+  people who *run the reference game*; a clean-room engine never agreed to it. The
   *Usage Guidelines* are the relevant enforcement posture, and they govern
-  use of Mojang's name/brand/assets — which we don't use).
+  use of the original publisher's name/brand/assets — which we don't use).
 - File B's L.1.13 "gameplay is not patented — safe" — the conclusion is
   reasonable (game *rules* are excluded from copyright under 17 USC §102(b)
-  and the idea/expression doctrine; Mojang/Microsoft hold no known
+  and the idea/expression doctrine; the original publisher/Microsoft hold no known
   gameplay patents covering these mechanics) but absolute "safe" language is
   stronger than any non-lawyer should certify. Keep the attorney line.
 - File A's §24 checklist is a good compliance framework; its 24.11
@@ -281,9 +281,9 @@ that advice stands.
 
 ### 3.3 The 2026-current picture that neither file has
 
-- The **Aug 2023 EULA/guidelines rewrite** (Mojang's own announcement, "Minecraft EULA and Commercial Usage Guidelines Updates") restructured the language, folded the old Commercial Usage Guidelines into the Usage Guidelines, and hardened the "any sharing with the community is a *commercial thing*" framing — i.e., even free fan distributions are evaluated under the commercial-use rules. For this project that changes nothing materially (no Mojang assets/brand are being distributed), but it kills the casual "it's non-commercial so it's fine" argument some clones lean on.
+- The **Aug 2023 EULA/guidelines rewrite** (the original publisher's own announcement, "the reference game EULA and Commercial Usage Guidelines Updates") restructured the language, folded the old Commercial Usage Guidelines into the Usage Guidelines, and hardened the "any sharing with the community is a *commercial thing*" framing — i.e., even free fan distributions are evaluated under the commercial-use rules. For this project that changes nothing materially (no the original publisher assets/brand are being distributed), but it kills the casual "it's non-commercial so it's fine" argument some clones lean on.
 - The **15th-anniversary painting additions (2024)** are why the live wiki says 47 paintings; 1.16.5 is 26. Irrelevant to us (0 implemented) but a good example of why era-pinned checklists must cite *versioned* facts.
-- Practical posture unchanged since the files were written: Mojang's
+- Practical posture unchanged since the files were written: the original publisher's
   enforcement pattern targets (a) asset redistribution, (b) brand/confusion
   abuse, (c) servers selling gameplay advantage — not clean-room engines
   (Minetest/Luanti, ClassiCube, Terasology etc. have operated for 15+ years).
@@ -310,7 +310,7 @@ that advice stands.
 | Sound events | ~600 | 41 synthesized | ~7% (clean-room scale) |
 | Music discs | 13 | 0 | 0% |
 | HUD/menus/settings | full set | core set exact-vanilla | strong |
-| Redstone components | ~25 | ~18 | ~70% |
+| Fluxstone components | ~25 | ~18 | ~70% |
 | Weather/raids/events | full | 0 | 0% |
 | Multiplayer | full | 0 | 0% |
 | Save/format/packs | Anvil+NBT+packs | full | 100% of chosen scope |
@@ -330,7 +330,7 @@ correctly says.)
 1. **Weather** (rain/thunder/lightning) — ✅ **DONE** (2026-09-09 backlog
    round `62ca070`, verified 2026-09-10: 628/628 lib tests, the 5
    mob-weather tests by name).
-2. **The two missing Nether biomes** (Soul Sand Valley, Basalt Deltas) —
+2. **The two missing Hollow biomes** (Spirit Sand Valley, Basalt Deltas) —
    ✅ **DONE** (same round; the five-biome set is complete).
 3. **Farming** (hoe→farmland→wheat/carrot/potato/beetroot growth) — ✅
    **DONE** (2026-09-09 farming round inside `b0529ca`; bread/hay-bale/hoe

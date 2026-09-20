@@ -12,7 +12,7 @@ pub mod hunger;
 pub mod combat;
 pub mod craft;
 pub mod dragon;
-pub mod wither;
+pub mod blight;
 pub mod enchanting;
 pub mod fishing;
 pub mod furnace;

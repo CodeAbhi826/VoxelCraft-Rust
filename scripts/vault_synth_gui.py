@@ -248,7 +248,7 @@ def gen_heart(rec, name):
             c[ring & ~m] = r["lo"]
             return c
     c[m] = fillc
-    # variants: poisoned/withered/frozen/absorbing use their own palettes —
+    # variants: poisoned/blighted/frozen/absorbing use their own palettes —
     # the spec palette already carries the right hues.
     if "half" in name:
         c[m & (np.mgrid[0:h, 0:w][1] < w // 2 + 1)] = fillc
@@ -340,7 +340,7 @@ def gen_crosshair(rec, name):
     return c
 
 def gen_bar(rec, name, kind="xp"):
-    """182x5 bars: xp / boss bars (opaque; notched variants functional)."""
+    """182x5 bars: xp / boss bars (opaque; the original authored variants functional)."""
     w, h = rec["w"], rec["h"]
     pal = Pal(rec["pal"], rec["pc"], name)
     r = _roles(pal)
@@ -358,8 +358,8 @@ def gen_bar(rec, name, kind="xp"):
     else:
         # segment ticks
         n = 10
-        if "notched_" in name:
-            n = int(name.split("notched_")[1].split("_")[0])
+        if "the original authored_" in name:
+            n = int(name.split("the original authored_")[1].split("_")[0])
         seg = w / n
         for i in range(1, n):
             x = int(i * seg)
@@ -423,7 +423,7 @@ CONTAINER_GRIDS = {
     "villager": [("slot", 1, 1, 0.24, 0.30), ("slot", 1, 1, 0.38, 0.30),
                  ("result", 1, 1, 0.72, 0.30)],
     "horse": [("slot", 1, 1, 0.18, 0.22), ("slot", 1, 1, 0.18, 0.52)],
-    "shulker_box": [("grid", 9, 3, 0.12, 0.16)],
+    "lurkshell_box": [("grid", 9, 3, 0.12, 0.16)],
     "generic_54": [("grid", 9, 6, 0.12, 0.10)],
     "nautilus": [("slot", 1, 1, 0.42, 0.40)],
 }

@@ -1,7 +1,7 @@
 //! 1.12 bracket (World of Color Update) procedural tiles — concrete +
 //! concrete powder + glazed terracotta (with pixel-rotated facing
 //! variants), the 16 dye palette items, 4 seed items, the cookie, the
-//! parrot egg + 5 parrot variant sprites + the illusioner sprite.
+//! parrot egg + 5 parrot variant sprites + the miragecaller sprite.
 //! Clean-room art (no third-party assets), a child module of textures.rs
 //! (shares put/jit/noise_fill/art helpers). All row/palette values are
 //! live-verified where the wiki publishes them (see
@@ -344,10 +344,10 @@ pub(super) fn parrot_art(a: &mut [u8], t: u16, variant: u8, rng: &mut Rng) {
     let _ = rng;
 }
 
-/// illusioner sprite: a gray-robed illager holding a bow (VERIFIED
-/// w/Illusioner: "Natural equipment: Bow (right hand: 95%...)"). Rendered
-/// like the evoker/vindicator family — tall robe, hood, hidden face.
-pub(super) fn illusioner_art(a: &mut [u8], t: u16, rng: &mut Rng) {
+/// miragecaller sprite: a gray-robed illager holding a bow (VERIFIED
+/// w/Miragecaller: "Natural equipment: Bow (right hand: 95%...)"). Rendered
+/// like the runecaller/cleaver family — tall robe, hood, hidden face.
+pub(super) fn miragecaller_art(a: &mut [u8], t: u16, rng: &mut Rng) {
     let rows = [
         "....GGGG........",
         "...GGGGGG.......",

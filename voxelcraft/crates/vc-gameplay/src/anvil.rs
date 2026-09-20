@@ -153,7 +153,7 @@ pub fn ench_applies_to(ench: u8, block: u16) -> bool {
         // helmet only
         "respiration" | "aqua_affinity" => piece == 0,
         // boots only
-        "feather_falling" | "depth_strider" | "frost_walker" | "soul_speed" => piece == 3,
+        "feather_falling" | "aqua_step" | "frost_walker" | "spirit_speed" => piece == 3,
         // non-armor enchants never apply to armor pieces
         _ => false,
     }

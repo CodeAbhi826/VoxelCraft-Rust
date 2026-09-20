@@ -14,12 +14,12 @@ use vc_audio::sounds::web_audio;
 use vc_audio::sounds::{AudioBackend, SoundBank};
 use vc_blocks::blocks::*;
 
-/// Phase E2 (VERIFIED w/Ender_Chest): the shared ender-chest container
+/// Phase E2 (VERIFIED w/Void_Chest): the shared ender-chest container
 /// key — a sentinel position far outside any reachable chunk (1M blocks
-/// out); every ender chest opens THIS container, so the contents are
+/// out); every void chest opens THIS container, so the contents are
 /// shared across all of them (the single-player form of vanilla's
 /// per-player rule).
-const ENDER_CHEST_KEY: [i32; 3] = [1 << 20, 0, 1 << 20];
+const VOID_CHEST_KEY: [i32; 3] = [1 << 20, 0, 1 << 20];
 use vc_mesh::mesh::{mesh_sections, MeshData};
 use vc_render::render::{Camera, RenderStats, Renderer, SkyState};
 use vc_render::ui::{self, UiCanvas, Widget, WidgetKind, UI_H, UI_W};
@@ -281,7 +281,7 @@ pub struct Settings {
     /// FOV modifier (0 = the sprint view stays at the base FOV)
     pub acc_fov_effects: f32,
     /// Round 14b: Distortion Effects 0..1 (Accessibility, 1.16.2 pre1)
-    /// — the nether-portal/nausea screen-warp scale. The engine has no
+    /// — the hollow-portal/nausea screen-warp scale. The engine has no
     /// warp renderer yet, so the value registers + persists with no
     /// live effect (the spec's grayed-slider rule; disclosed).
     pub acc_distortion: f32,
@@ -317,7 +317,7 @@ pub struct Settings {
     /// 2026-09-14 round: ENABLED resource packs, in Selected-list order
     /// (index 0 = TOP = HIGHEST priority; vanilla's options.txt
     /// `resourcePacks` analog — applied bottom-first so higher entries
-    /// override lower ones). Names: "programmer-art" (builtin) or the
+    /// override lower ones). Names: "classic-art" (builtin) or the
     /// folder/zip file name in resourcepacks/.
     pub resource_packs: Vec<String>,
     /// chunk-graph occlusion culling (OptiFine `ofOcclusionFancy` parity,
@@ -940,8 +940,8 @@ impl Container {
     /// Round 12 — the double-chest partner scan (pure, tested): the
     /// first horizontally adjacent CHEST in +X/−X/+Z/−Z order at the
     /// same Y. Trapped chests pair only with trapped chests and
-    /// shulker boxes never merge (VERIFIED w/Chest §Double chests +
-    /// w/Shulker_Box, live 2026-09-15) — callers pass the exact block
+    /// lurkshell boxes never merge (VERIFIED w/Chest §Double chests +
+    /// w/Lurkshell_Box, live 2026-09-15) — callers pass the exact block
     /// id they are opening; only CHEST matches CHEST here.
     pub fn double_chest_partner(world: &World, pos: [i32; 3], block: u16) -> Option<[i32; 3]> {
         [
@@ -1346,10 +1346,10 @@ struct WebWorldRec {
     /// (x, y, z, state) — the overworld block-edit journal
     #[serde(default)]
     edits: Vec<(i32, i32, i32, u16)>,
-    /// (x, y, z, state) — the nether journal (dimension travel parity;
+    /// (x, y, z, state) — the hollow journal (dimension travel parity;
     /// End edits are out of scope, disclosed)
     #[serde(default)]
-    edits_nether: Vec<(i32, i32, i32, u16)>,
+    edits_hollow: Vec<(i32, i32, i32, u16)>,
     #[serde(default)]
     last_played: u64,
 }
@@ -1427,7 +1427,7 @@ pub struct GameApp {
     /// on entry + the bubble trail while submerged)
     prev_in_water: bool,
     /// Round 15b: next game-time for the ambient particle roll (portal
-    /// shimmer, redstone dust, leaf drips after rain)
+    /// shimmer, fluxstone dust, leaf drips after rain)
     particle_ambient_next: f32,
     pub audio: Box<dyn AudioBackend>,
     pub settings: Settings,
@@ -1471,9 +1471,9 @@ pub struct GameApp {
     /// Round 13: the beacon GUI's payment slot (ore stand-in for the
     /// ingot — no ingot items, documented adaptation)
     beacon_pay: vc_inventory::inventory::ItemStack,
-    /// 1.11: positions whose container entity is a SHULKER_BOX (the
+    /// 1.11: positions whose container entity is a LURKSHELL_BOX (the
     /// no-nesting insert gate)
-    shulker_positions: std::collections::HashSet<[i32; 3]>,
+    lurkshell_positions: std::collections::HashSet<[i32; 3]>,
     /// open crafting grid (2×2 uses [0..4] row-major on a 2-wide layout,
     /// 3×3 uses all 9)
     craft_grid: [vc_inventory::inventory::ItemStack; 9],
@@ -1522,7 +1522,7 @@ pub struct GameApp {
     /// Activator (default key: X)"). X+1..9 loads the row.
     load_toolbar_held: bool,
     /// Phase E3: registered weighted-pressure-plate positions (the
-    /// entity-count sweep feeds their redstone signals — VERIFIED
+    /// entity-count sweep feeds their fluxstone signals — VERIFIED
     /// signal formulas w/Light_Weighted_Pressure_Plate + the heavy one)
     plates: Vec<[i32; 3]>,
     /// Phase E3: the lead's anchored mob (player-held leash; 1.16.5
@@ -1734,13 +1734,13 @@ pub struct GameApp {
     /// pack-driven animated textures (frame updates only, no re-mesh)
     animations: Vec<vc_render::textures::AnimatedTile>,
     /// 2026-09-14 round: the cached pack sources behind the REAL Resource
-    /// Packs screen — Default (builtin_pack), Programmer Art (the vanilla
+    /// Packs screen — Default (builtin_pack), Classic Art (the vanilla
     /// built-in analog), and the scanned user packs (native only; wasm
     /// has no filesystem). Cached at boot so DONE on the pack screen can
     /// recompile the atlas synchronously (the wasm fetches happened once,
     /// up here).
     builtin_pack: Option<std::sync::Arc<dyn vc_pack::pack::PackSource>>,
-    programmer_art: Option<std::sync::Arc<dyn vc_pack::pack::PackSource>>,
+    classic_art: Option<std::sync::Arc<dyn vc_pack::pack::PackSource>>,
     user_packs: Vec<(String, std::sync::Arc<dyn vc_pack::pack::PackSource>)>,
     /// 2026-09-20: the scanned EXTERNAL shader packs (name, one-line
     /// analysis summary) from shader-packs/ — refreshed by
@@ -1772,7 +1772,7 @@ pub struct GameApp {
     bob_phase: f32,
     bob_amp: f32,
     /// §28: root save dir (world root); `world_dir` is the CURRENT
-    /// dimension's dir (overworld = root, nether = DIM-1)
+    /// dimension's dir (overworld = root, hollow = DIM-1)
     #[cfg(not(target_arch = "wasm32"))]
     save_root: std::path::PathBuf,
     /// world save directory (native, §28 — browsers get OPFS later)
@@ -1780,7 +1780,7 @@ pub struct GameApp {
     world_dir: std::path::PathBuf,
     /// §28: a dimension travel is waiting for the spawn chunk (Loading)
     traveling: bool,
-    /// Phase E1: the ender dragon has been defeated in this world (gates
+    /// Phase E1: the void wyrm has been defeated in this world (gates
     /// the first-entry fight spawn + the re-fight ritual, deferred)
     dragon_defeated: bool,
     /// Phase 1: a created/loaded world is waiting for the spawn chunk —
@@ -1796,14 +1796,14 @@ pub struct GameApp {
     /// level.dat but still needs a respawn point)
     respawn_pos: glam::Vec3,
     /// 1.16: the WORLD's own spawn (kept separately from respawn_pos,
-    /// which the respawn anchor can retarget) — the anchor-drain
+    /// which the rebirth anchor can retarget) — the anchor-drain
     /// revert target, cfg-agnostic (native: level.dat; web: the
     /// generated spawn)
     world_spawn_vec: glam::Vec3,
-    /// 1.16 (Nether Update, part 1): the respawn anchor that owns the
+    /// 1.16 (Hollows Update, part 1): the rebirth anchor that owns the
     /// current spawn point, if any (None = the world spawn). Each
-    /// respawn consumes one charge (VERIFIED w/Respawn_Anchor)
-    respawn_anchor: Option<[i32; 3]>,
+    /// respawn consumes one charge (VERIFIED w/Rebirth_Anchor)
+    rebirth_anchor: Option<[i32; 3]>,
     /// Phase 1: last death cause shown on the death screen
     death_cause: String,
     /// Phase 1: world-create screen state (buffers + selected mode + the
@@ -1862,7 +1862,7 @@ static WINDOW_W: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::ne
 pub(crate) fn effect_icon_index(kind: vc_gameplay::effects::EffectKind) -> usize {
     use vc_gameplay::effects::EffectKind;
     match kind {
-        EffectKind::Wither => 0,
+        EffectKind::Blight => 0,
         EffectKind::Poison => 1,
         EffectKind::Regeneration => 2,
         EffectKind::Speed => 3,
@@ -1885,12 +1885,12 @@ pub(crate) fn effect_icon_index(kind: vc_gameplay::effects::EffectKind) -> usize
 /// rows — VERIFIED reference wiki /Heads-up_display (live 2026-09-14):
 /// "positive effects are shown on the top, and other effects (neutral
 /// or negative) are shown on the bottom." Beneficial kinds = positive;
-/// the harmful set (wither/poison/slowness/hunger/blindness) = row 1.
+/// the harmful set (blight/poison/slowness/hunger/blindness) = row 1.
 pub(crate) fn effect_is_positive(kind: vc_gameplay::effects::EffectKind) -> bool {
     use vc_gameplay::effects::EffectKind;
     !matches!(
         kind,
-        EffectKind::Wither
+        EffectKind::Blight
             | EffectKind::Poison
             | EffectKind::Slowness
             | EffectKind::Hunger
@@ -1985,13 +1985,13 @@ fn bootstrap_game_dir() {
         ));
     }
 
-    // 2026-09-14 round: the Programmer Art builtin pack extracts the same
-    // way (vanilla ships programmer_art.zip in its asset store — ours is a
+    // 2026-09-14 round: the Classic Art builtin pack extracts the same
+    // way (vanilla ships classic_art.zip in its asset store — ours is a
     // plain folder the Resource Packs screen opens as a PackSource)
-    let pa = Path::new("builtin-packs").join("programmer-art");
+    let pa = Path::new("builtin-packs").join("classic-art");
     if created(&pa) {
         let mut n = 0usize;
-        for (rel, bytes) in crate::embedded_programmer_art::EMBEDDED_PA_FILES {
+        for (rel, bytes) in crate::embedded_classic_art::EMBEDDED_CA_FILES {
             let out = pa.join(rel);
             if let Some(parent) = out.parent() {
                 let _ = fs::create_dir_all(parent);
@@ -2001,7 +2001,7 @@ fn bootstrap_game_dir() {
             }
         }
         vc_render::render::report_boot_log(&format!(
-            "first run: programmer-art pack extracted to builtin-packs/programmer-art/ ({n} files)"
+            "first run: classic-art pack extracted to builtin-packs/classic-art/ ({n} files)"
         ));
     }
 
@@ -2131,43 +2131,43 @@ async fn acquire_builtin_pack() -> Option<std::sync::Arc<dyn vc_pack::pack::Pack
     source
 }
 
-/// Acquire the PROGRAMMER ART builtin pack — the vanilla analog of
-/// `voxelcraft/resourcepacks/programmer_art.zip` ("The classic look of
+/// Acquire the CLASSIC ART builtin pack — the vanilla analog of
+/// `voxelcraft/resourcepacks/classic_art.zip` ("The classic look of
 /// the reference game (built-in) — the old pre-1.14 textures", VERIFIED live
 /// 2026-09-14, reference wiki /Resource_pack §Built-in resource packs).
-/// Ours is a clean-room look-alike set (scripts/gen_programmer_art.py).
+/// Ours is a clean-room look-alike set (scripts/gen_classic_art.py).
 ///
-/// Native: the extracted `builtin-packs/programmer-art/` folder, else the
-/// embedded copy. Wasm: fetched once from `/voxelcraft-pack-programmer-art/`
+/// Native: the extracted `builtin-packs/classic-art/` folder, else the
+/// embedded copy. Wasm: fetched once from `/voxelcraft-pack-classic-art/`
 /// and cached — the pack screen toggles it synchronously afterwards.
-async fn acquire_programmer_art_pack() -> Option<std::sync::Arc<dyn vc_pack::pack::PackSource>> {
+async fn acquire_classic_art_pack() -> Option<std::sync::Arc<dyn vc_pack::pack::PackSource>> {
     #[cfg(not(target_arch = "wasm32"))]
     {
         let folder = vc_pack::pack::FolderSource::new(
-            std::path::Path::new("builtin-packs").join("programmer-art"),
-            "programmer-art",
+            std::path::Path::new("builtin-packs").join("classic-art"),
+            "classic-art",
         );
         if folder.exists() {
             match vc_pack::pack::open(std::sync::Arc::new(folder)) {
                 Ok((_meta, src)) => return Some(src),
                 Err(e) => {
                     vc_render::render::report_boot_log(&format!(
-                        "programmer-art pack rejected: {e} — not listed"
+                        "classic-art pack rejected: {e} — not listed"
                     ));
                     return None;
                 }
             }
         }
         // single-file release path: the embedded copy
-        let mut mem = vc_pack::pack::MemorySource::new("programmer-art (embedded)");
-        for (path, bytes) in crate::embedded_programmer_art::EMBEDDED_PA_FILES {
+        let mut mem = vc_pack::pack::MemorySource::new("classic-art (embedded)");
+        for (path, bytes) in crate::embedded_classic_art::EMBEDDED_CA_FILES {
             mem.insert(path, bytes.to_vec());
         }
         match vc_pack::pack::open(std::sync::Arc::new(mem)) {
             Ok((_meta, src)) => Some(src),
             Err(e) => {
                 vc_render::render::report_boot_log(&format!(
-                    "programmer-art embedded copy rejected: {e} — not listed"
+                    "classic-art embedded copy rejected: {e} — not listed"
                 ));
                 None
             }
@@ -2175,19 +2175,19 @@ async fn acquire_programmer_art_pack() -> Option<std::sync::Arc<dyn vc_pack::pac
     }
     #[cfg(target_arch = "wasm32")]
     {
-        match vc_pack::pack::fetch_programmer_art_pack().await {
+        match vc_pack::pack::fetch_classic_art_pack().await {
             Some(mem) => match vc_pack::pack::open(std::sync::Arc::new(mem)) {
                 Ok((_meta, src)) => Some(src),
                 Err(e) => {
                     vc_render::render::report_boot_log(&format!(
-                        "programmer-art pack rejected: {e} — not listed"
+                        "classic-art pack rejected: {e} — not listed"
                     ));
                     None
                 }
             },
             None => {
                 vc_render::render::report_boot_log(
-                    "no programmer-art pack on server — entry hidden",
+                    "no classic-art pack on server — entry hidden",
                 );
                 None
             }
@@ -2202,12 +2202,12 @@ async fn acquire_programmer_art_pack() -> Option<std::sync::Arc<dyn vc_pack::pac
 /// from resourcepacks/ since last run) are dropped silently.
 fn enabled_pack_sources(
     settings: &Settings,
-    programmer_art: &Option<std::sync::Arc<dyn vc_pack::pack::PackSource>>,
+    classic_art: &Option<std::sync::Arc<dyn vc_pack::pack::PackSource>>,
     user_packs: &[(String, std::sync::Arc<dyn vc_pack::pack::PackSource>)],
 ) -> Vec<std::sync::Arc<dyn vc_pack::pack::PackSource>> {
     let source_for = |name: &str| -> Option<std::sync::Arc<dyn vc_pack::pack::PackSource>> {
-        if name == "programmer-art" {
-            programmer_art.clone()
+        if name == "classic-art" {
+            classic_art.clone()
         } else {
             user_packs
                 .iter()
@@ -2337,18 +2337,18 @@ impl GameApp {
             }
         };
         // ---------------------------------------------------- Phase 1 assets
-        // Acquire the pack sources (Default + Programmer Art + user packs
+        // Acquire the pack sources (Default + Classic Art + user packs
         // from resourcepacks/), then compile the builtin resource pack
         // (blockstates → models → textures) + the enabled packs' texture
         // overrides BEFORE any mesh job can run.
         let builtin_pack = acquire_builtin_pack().await;
-        let programmer_art = acquire_programmer_art_pack().await;
+        let classic_art = acquire_classic_art_pack().await;
         #[cfg(not(target_arch = "wasm32"))]
         let user_packs: Vec<(String, std::sync::Arc<dyn vc_pack::pack::PackSource>)> =
             vc_pack::pack::scan_user_packs_named(std::path::Path::new("resourcepacks"));
         #[cfg(target_arch = "wasm32")]
         let user_packs: Vec<(String, std::sync::Arc<dyn vc_pack::pack::PackSource>)> = Vec::new();
-        let enabled_packs = enabled_pack_sources(&settings, &programmer_art, &user_packs);
+        let enabled_packs = enabled_pack_sources(&settings, &classic_art, &user_packs);
         let (mut atlas, animations) = compile_pack_atlas(builtin_pack.as_ref(), &enabled_packs);
         // 2026-09-20: the labPBR material scan over the enabled stack —
         // each pack's `_n`/`_s` companion coverage; the strongest pack's
@@ -2430,7 +2430,7 @@ impl GameApp {
         // recently played one (panorama background + fast re-entry); the
         // legacy single save at saves/VoxelCraft is simply one entry.
         // §28: the overworld saves at the world root (boot always starts
-        // there, like vanilla); the nether dir is derived on travel.
+        // there, like vanilla); the hollow dir is derived on travel.
         #[cfg(not(target_arch = "wasm32"))]
         let save_root = {
             let worlds = vc_anvil::save::list_worlds();
@@ -2655,7 +2655,7 @@ impl GameApp {
             audio,
             settings,
             builtin_pack,
-            programmer_art,
+            classic_art,
             user_packs,
             shader_packs: Vec::new(), // native: filled by the boot scan
             labpbr_tiles,             // the boot-time material-map count (0 on wasm)
@@ -2682,7 +2682,7 @@ impl GameApp {
             name_pool: Vec::new(),
             beacon_pending: (None, vc_gameplay::beacon::BeaconSecondary::None),
             beacon_pay: vc_inventory::inventory::ItemStack::EMPTY,
-            shulker_positions: std::collections::HashSet::new(),
+            lurkshell_positions: std::collections::HashSet::new(),
             craft_grid: [vc_inventory::inventory::ItemStack::EMPTY; 9],
             particles: vc_particles::particles::ParticleSystem::new(0x5EED_0042),
             weather: vc_gameplay::weather::WeatherSystem::new(0x4EA7_0000),
@@ -2809,7 +2809,7 @@ impl GameApp {
             mode,
             world_name,
             hardcore_dead: false,
-            respawn_anchor: None,
+            rebirth_anchor: None,
             world_spawn_vec: {
                 #[cfg(not(target_arch = "wasm32"))]
                 {
@@ -2890,7 +2890,7 @@ impl GameApp {
             }
             app.ui
                 .set_chrome_enabled(gui_cfg.chrome_in_canvas || !app.renderer.gui_quads_ready());
-            // Luanti font round: arm the GPU text path (Monocraft glyph
+            // Luanti font round: arm the GPU text path (Voxelfont glyph
             // quads) alongside the chrome quads — same self-healing rule:
             // if the quad pass (or the embedded font) is unavailable the
             // canvas keeps the bitmap-font text
@@ -3870,7 +3870,7 @@ impl GameApp {
 
     /// Sub-round 2: the active creative-screen item list — the current
     /// tab's items, or the live search results across every item
-    /// (PICKER_BLOCKS + the redstone extras) when the Search tab is up.
+    /// (PICKER_BLOCKS + the fluxstone extras) when the Search tab is up.
     fn creative_items(&self) -> Vec<u16> {
         use vc_blocks::blocks as blk;
         if self.creative_tab == 9 {
@@ -4704,7 +4704,7 @@ impl GameApp {
             ui::ID_ACC_SPRINT => l("Hold sprints while the key is down; Toggle latches it (1.15)."),
             ui::ID_ACC_SNEAK => l("Hold sneaks while the key is down; Toggle latches it (1.15)."),
             ui::ID_ACC_DISTORT_SLIDER => l2(
-                "How much the view warps under Nausea and the nether portal",
+                "How much the view warps under Nausea and the hollow portal",
                 "(1.16.2). Registered; no warp renderer in this engine yet.",
             ),
             ui::ID_ACC_SUBTITLES => l2(
@@ -4814,9 +4814,9 @@ impl GameApp {
                 self.icon_cache.get_or_queue(t.icon_block());
             }
             self.icon_cache
-                .get_or_queue(vc_blocks::blocks::EYE_OF_ENDER);
+                .get_or_queue(vc_blocks::blocks::VOID_EYE);
             self.icon_cache
-                .get_or_queue(vc_blocks::blocks::WITHER_SKELETON_SKULL);
+                .get_or_queue(vc_blocks::blocks::BLIGHT_SKELETON_SKULL);
         }
     }
 
@@ -5337,12 +5337,12 @@ impl GameApp {
             .iter()
             .map(|&(x, y, z, s)| ([x, y, z], s))
             .collect();
-        let nether: Vec<([i32; 3], u16)> = rec
-            .edits_nether
+        let hollow: Vec<([i32; 3], u16)> = rec
+            .edits_hollow
             .iter()
             .map(|&(x, y, z, s)| ([x, y, z], s))
             .collect();
-        self.web_dim_journals = [ow, nether, Vec::new()];
+        self.web_dim_journals = [ow, hollow, Vec::new()];
         for (dim, list) in self.web_dim_journals.iter().enumerate() {
             for &(p, state) in list {
                 let key = (dim as u8, p[0].div_euclid(16), p[2].div_euclid(16));
@@ -5541,14 +5541,14 @@ impl GameApp {
         let journal_len = edits.len();
         // the CURRENT dimension's journal goes to its field; the other
         // dimensions keep their stashed copies (travel parity — a save
-        // from the nether never wipes overworld edits)
+        // from the hollow never wipes overworld edits)
         let cur_dim = self.world.dimension as u8 as usize;
         self.web_dim_journals[cur_dim] = self.world.journal.iter().map(|(&p, &s)| (p, s)).collect();
         let edits_ow: Vec<(i32, i32, i32, u16)> = self.web_dim_journals[0]
             .iter()
             .map(|&([x, y, z], s)| (x, y, z, s))
             .collect();
-        let edits_nether: Vec<(i32, i32, i32, u16)> = self.web_dim_journals[1]
+        let edits_hollow: Vec<(i32, i32, i32, u16)> = self.web_dim_journals[1]
             .iter()
             .map(|&([x, y, z], s)| (x, y, z, s))
             .collect();
@@ -5574,7 +5574,7 @@ impl GameApp {
             player: Some(player),
             containers,
             edits: edits_ow,
-            edits_nether,
+            edits_hollow,
             last_played: web_time::SystemTime::now()
                 .duration_since(web_time::UNIX_EPOCH)
                 .map(|d| d.as_secs())
@@ -6080,8 +6080,8 @@ impl GameApp {
         if self.player.health > 0.0 {
             return;
         }
-        // ---- 1.11: the totem of undying (VERIFIED live 2026-09-07,
-        // reference wiki /Totem_of_Undying: revives the holder on
+        // ---- 1.11: the totem of revival (VERIFIED live 2026-09-07,
+        // reference wiki /Totem_of_Revival: revives the holder on
         // otherwise-lethal damage — "restores 1 HP, removes all existing
         // status effects and grants" Regeneration II for 45 s (1 HP/25
         // ticks) + Absorption II for 5 s. Engine adaptation: "either
@@ -6090,7 +6090,7 @@ impl GameApp {
         // (§History 20w28a) — version-scoped out of this bracket. The
         // void//kill exceptions are moot (no void damage system, no
         // commands).
-        if self.player.held().block == TOTEM_OF_UNDYING && !self.player.held().is_empty() {
+        if self.player.held().block == TOTEM_OF_REVIVAL && !self.player.held().is_empty() {
             if self.mode.depletes_items() {
                 let h = self.player.held_mut();
                 h.count -= 1;
@@ -6100,17 +6100,17 @@ impl GameApp {
             }
             apply_totem_revival(&mut self.player);
             self.play_event("entity.player.hurt", None, 1.0);
-            // Round 15b: the totem-of-undying particle ring (VERIFIED
-            // w/Totem_of_Undying: the green + yellow burst)
+            // Round 15b: the totem-of-revival particle ring (VERIFIED
+            // w/Totem_of_Revival: the green + yellow burst)
             self.particles.spawn_kind(
-                "totem_of_undying",
+                "totem_of_revival",
                 self.player.pos.x,
                 self.player.pos.y + 1.2,
                 self.player.pos.z,
                 32,
             );
             vc_render::render::report_boot_log(
-                "e2e: totem of undying activated (VERIFIED w/Totem_of_Undying)",
+                "e2e: totem of revival activated (VERIFIED w/Totem_of_Revival)",
             );
             self.ui.dirty = true;
             return; // survived
@@ -6222,7 +6222,7 @@ impl GameApp {
     /// RESPAWN (Survival only — the button doesn't exist for hardcore).
     /// Full health at the world spawn, empty fall accumulator.
     /// The 1.16 anchor's drain path reverts to world_spawn() when its
-    /// charge is spent (VERIFIED w/Respawn_Anchor).
+    /// charge is spent (VERIFIED w/Rebirth_Anchor).
     fn world_spawn(&self) -> glam::Vec3 {
         self.world_spawn_vec
     }
@@ -6231,15 +6231,15 @@ impl GameApp {
         if self.mode.permadeath() || self.hardcore_dead {
             return; // unreachable via UI; guard stays for safety
         }
-        // 1.16 (Nether Update, part 1): a respawn through a charged
-        // anchor CONSUMES one charge (VERIFIED w/Respawn_Anchor: "each
+        // 1.16 (Hollows Update, part 1): a respawn through a charged
+        // anchor CONSUMES one charge (VERIFIED w/Rebirth_Anchor: "each
         // respawn consumes one charge"); a 0-charge or destroyed
         // anchor reverts the spawn to the world spawn (the bed-less
         // equivalent of the spawn-point rules)
-        if let Some(apos) = self.respawn_anchor {
+        if let Some(apos) = self.rebirth_anchor {
             let s = self.world.get_state(apos[0], apos[1], apos[2]);
             let charge = vc_blocks::blocks::anchor_charge(s);
-            if self.world.get_block(apos[0], apos[1], apos[2]) == RESPAWN_ANCHOR && charge > 0 {
+            if self.world.get_block(apos[0], apos[1], apos[2]) == REBIRTH_ANCHOR && charge > 0 {
                 let drained = vc_blocks::blocks::anchor_state(charge - 1);
                 if let Some((old, new)) = self
                     .world
@@ -6251,7 +6251,7 @@ impl GameApp {
                 notify_sim(&self.world, &mut self.sim.sched, apos[0], apos[1], apos[2]);
                 if charge - 1 == 0 {
                     // charge spent: the anchor no longer holds the spawn
-                    self.respawn_anchor = None;
+                    self.rebirth_anchor = None;
                     self.respawn_pos = self.world_spawn();
                 }
                 vc_render::render::report_boot_log(&format!(
@@ -6259,7 +6259,7 @@ impl GameApp {
                     charge - 1
                 ));
             } else {
-                self.respawn_anchor = None;
+                self.rebirth_anchor = None;
                 self.respawn_pos = self.world_spawn();
             }
         }
@@ -6314,13 +6314,13 @@ impl GameApp {
         let eye = self.player.eye().to_array();
         let dir = self.player.look_dir().to_array();
 
-        // ---- Phase E2: the wither takes melee priority ----
+        // ---- Phase E2: the blight takes melee priority ----
         // (only players damage it; charging = invulnerable — VERIFIED
-        // w/Wither; generous 2×4×2 AABB around the sprite center)
+        // w/Blight; generous 2×4×2 AABB around the sprite center)
         let wstate = self
             .sim
-            .wither
-            .wither
+            .blight
+            .blight
             .as_ref()
             .map(|w| (w.pos, w.charging(), w.health, w.alive()));
         if let Some((wpos, wcharging, whealth, walive)) = wstate {
@@ -6368,8 +6368,8 @@ impl GameApp {
                         0.0,
                         0.0,
                     );
-                    let (applied, _) = self.sim.wither.damage(outcome.damage);
-                    // VERIFIED: on taking damage the wither breaks blocks
+                    let (applied, _) = self.sim.blight.damage(outcome.damage);
+                    // VERIFIED: on taking damage the blight breaks blocks
                     // in a 3×4×3 box around itself
                     if applied > 0.0 {
                         // Round 17: a landed attack costs 0.1 exhaustion
@@ -6379,11 +6379,11 @@ impl GameApp {
                             self.player.hunger.add_exhaustion(0.1);
                         }
                         self.sim
-                            .wither_events
-                            .push(vc_gameplay::wither::WitherEvent::BreakBlocks(wpos));
-                        self.play_event("entity.wither.hurt", Some(wpos), 1.0);
+                            .blight_events
+                            .push(vc_gameplay::blight::BlightEvent::BreakBlocks(wpos));
+                        self.play_event("entity.blight.hurt", Some(wpos), 1.0);
                         vc_render::render::report_boot_log(&format!(
-                            "e2e: wither hit p={:.2} -> {:.2} dmg (hp {:.0})",
+                            "e2e: blight hit p={:.2} -> {:.2} dmg (hp {:.0})",
                             p,
                             outcome.damage,
                             (whealth - applied).max(0.0)
@@ -6395,12 +6395,12 @@ impl GameApp {
             }
         }
 
-        // ---- Phase E1: the ender-dragon fight takes melee priority ----
-        // (a) an end crystal under the crosshair detonates on ANY damage
-        // (VERIFIED w/End_Crystal — power 6); (b) the dragon itself (a
+        // ---- Phase E1: the voider-dragon fight takes melee priority ----
+        // (a) an void crystal under the crosshair detonates on ANY damage
+        // (VERIFIED w/Void_Crystal — power 6); (b) the dragon itself (a
         // generous 8×4×8 hitbox around its sprite center; only players
         // damage it — VERIFIED).
-        if self.world.dimension == vc_world::world::Dimension::End {
+        if self.world.dimension == vc_world::world::Dimension::Void {
             // snapshot the fight state (borrow split: damage below needs &mut)
             let dstate = self
                 .sim
@@ -6466,7 +6466,7 @@ impl GameApp {
                             if !self.mode.invulnerable() {
                                 self.player.hunger.add_exhaustion(0.1);
                             }
-                            self.play_event("entity.ender_dragon.hurt", Some(d_pos), 1.0);
+                            self.play_event("entity.void_wyrm.hurt", Some(d_pos), 1.0);
                             vc_render::render::report_boot_log(&format!(
                                 "e2e: dragon hit p={:.2} -> {:.2} dmg (hp {:.0})",
                                 p,
@@ -6620,17 +6620,17 @@ impl GameApp {
         true
     }
 
-    /// Phase E2: the wither billboard — a large dark sprite with a hurt
-    /// flash, through the particle stream (any dimension: the wither is
+    /// Phase E2: the blight billboard — a large dark sprite with a hurt
+    /// flash, through the particle stream (any dimension: the blight is
     /// player-summoned).
-    fn build_wither_vertices(&mut self, right: [f32; 3], up: [f32; 3]) {
-        let Some(w) = self.sim.wither.wither.as_ref() else {
+    fn build_blight_vertices(&mut self, right: [f32; 3], up: [f32; 3]) {
+        let Some(w) = self.sim.blight.blight.as_ref() else {
             return;
         };
         if !w.alive() {
             return;
         }
-        let tile = TILE_WITHER;
+        let tile = TILE_BLIGHT;
         // [1.12 fix] 32-tile atlas rows (was %16//16)
         let tx = (tile % 32) as f32;
         let ty = (tile / 32) as f32;
@@ -6691,10 +6691,10 @@ impl GameApp {
     }
 
     /// Phase E1: end-dimension billboards — the dragon (large sprite) and
-    /// the alive end crystals on their pillars, through the particle
+    /// the alive void crystals on their pillars, through the particle
     /// stream like every other entity.
     fn build_end_entity_vertices(&mut self, right: [f32; 3], up: [f32; 3]) {
-        if self.world.dimension != vc_world::world::Dimension::End {
+        if self.world.dimension != vc_world::world::Dimension::Void {
             return;
         }
         // crystals: pillar-top sprites (bob like items)
@@ -6702,7 +6702,7 @@ impl GameApp {
             if !c.alive {
                 continue;
             }
-            let tile = TILE_END_CRYSTAL;
+            let tile = TILE_VOID_CRYSTAL;
             // [1.12 fix] 32-tile atlas rows (was %16//16)
             let tx = (tile % 32) as f32;
             let ty = (tile / 32) as f32;
@@ -6755,7 +6755,7 @@ impl GameApp {
         }
         // the dragon: a large billboard sprite, hurt-flash tinted
         if let Some(d) = self.sim.dragon.dragon.as_ref() {
-            let tile = TILE_ENDERDRAGON;
+            let tile = TILE_VOIDWYRM;
             // [1.12 fix] 32-tile atlas rows (was %16//16)
             let tx = (tile % 32) as f32;
             let ty = (tile / 32) as f32;
@@ -6812,9 +6812,9 @@ impl GameApp {
         }
     }
 
-    /// Phase E1: drain the ender-dragon fight events — fireball volleys
+    /// Phase E1: drain the voider-dragon fight events — fireball volleys
     /// (routed through the mob projectile list), crystal detonations
-    /// (power 6, the creeper explosion path), the 12000-XP victory drop,
+    /// (power 6, the fuseling explosion path), the 12000-XP victory drop,
     /// and the exit-portal + dragon-egg sequence (all live-verified
     /// 2026-09-06; see docs/research/phase1-1.0-1.2-research.md).
     fn drain_dragon_events(&mut self) {
@@ -6841,10 +6841,10 @@ impl GameApp {
                         kind: vc_gameplay::mobs::ProjKind::Fireball,
                         owner: 0,
                     });
-                    self.play_event("entity.ender_dragon.shoot", Some(from), 1.0);
+                    self.play_event("entity.void_wyrm.shoot", Some(from), 1.0);
                 }
                 DragonEvent::CrystalExplosion(center) => {
-                    // VERIFIED w/End_Crystal: power 6 (charged creeper)
+                    // VERIFIED w/Void_Crystal: power 6 (charged fuseling)
                     self.explode(center, 6.0);
                     self.play_event("entity.generic.explode", Some(center), 1.0);
                 }
@@ -6861,23 +6861,23 @@ impl GameApp {
                         .unwrap_or([0.5, 70.0, 0.5]);
                     self.sim.xp_orbs.drop_xp(pos[0], pos[1], pos[2], xp);
                     self.dragon_defeated = true;
-                    self.play_event("entity.ender_dragon.death", Some(pos), 1.0);
+                    self.play_event("entity.void_wyrm.death", Some(pos), 1.0);
                     self.ui.dirty = true;
                     vc_render::render::report_boot_log(&format!(
-                        "e2e: the ender dragon fell — {xp} XP (VERIFIED 12000/500)"
+                        "e2e: the void wyrm fell — {xp} XP (VERIFIED 12000/500)"
                     ));
                 }
                 DragonEvent::PortalActivated => {
-                    // VERIFIED w/Ender_Dragon §Death and drops: the 3×3
+                    // VERIFIED w/Void_Wyrm §Death and drops: the 3×3
                     // center of the bedrock fountain fills with end-portal
                     // blocks; the dragon egg appears above the structure
                     for dx in -1..=1i32 {
                         for dz in -1..=1i32 {
-                            self.world.set_block(dx, 62, dz, END_PORTAL);
+                            self.world.set_block(dx, 62, dz, VOID_GATE);
                         }
                     }
                     self.world.set_block(0, 64, 0, DRAGON_EGG);
-                    self.play_event("block.end_portal.spawn", None, 1.0);
+                    self.play_event("block.void_gate.spawn", None, 1.0);
                     self.edits += 1;
                     self.ui.dirty = true;
                     vc_render::render::report_boot_log(
@@ -6888,28 +6888,28 @@ impl GameApp {
         }
     }
 
-    /// Phase E2: drain the wither-fight events — skull volleys (routed
-    /// through the projectile list with the Wither effect payload),
+    /// Phase E2: drain the blight-fight events — skull volleys (routed
+    /// through the projectile list with the Blight effect payload),
     /// the birth explosion (proximity-scaled, power-6-class), the
     /// 3×4×3 block-breaking response to damage, and the death drop
-    /// (nether star + 50 XP — all live-verified 2026-09-06,
+    /// (hollow star + 50 XP — all live-verified 2026-09-06,
     /// docs/research/phase2-1.3-1.4-research.md).
-    fn drain_wither_events(&mut self) {
-        use vc_gameplay::wither::WitherEvent;
-        let events: Vec<WitherEvent> = std::mem::take(&mut self.sim.wither_events);
+    fn drain_blight_events(&mut self) {
+        use vc_gameplay::blight::BlightEvent;
+        let events: Vec<BlightEvent> = std::mem::take(&mut self.sim.blight_events);
         for ev in events {
             match ev {
-                WitherEvent::BirthExplosion(center) => {
+                BlightEvent::BirthExplosion(center) => {
                     // VERIFIED: Java Normal max 69 proximity-scaled; the
                     // engine's explosion path applies power-scaled damage
                     // + block destruction
                     self.explode(center, 6.0);
-                    self.play_event("entity.wither.spawn", Some(center), 1.0);
+                    self.play_event("entity.blight.spawn", Some(center), 1.0);
                 }
-                WitherEvent::SkullShot(from, target) => {
-                    // black wither skull: 8 HP + Wither II 10 s Normal /
+                BlightEvent::SkullShot(from, target) => {
+                    // black blight skull: 8 HP + Blight II 10 s Normal /
                     // 40 s Hard (VERIFIED). The projectile rides the arrow
-                    // list; the wither payload applies on player hit
+                    // list; the blight payload applies on player hit
                     // (drain_mob_events routes ProjKind::Skull)
                     let dx = target[0] - from[0];
                     let dy = target[1] + 1.0 - from[1];
@@ -6927,12 +6927,12 @@ impl GameApp {
                         kind: vc_gameplay::mobs::ProjKind::Skull,
                         owner: 1,
                     });
-                    self.play_event("entity.wither.shoot", Some(from), 1.0);
+                    self.play_event("entity.blight.shoot", Some(from), 1.0);
                 }
-                WitherEvent::BreakBlocks(center) => {
-                    // VERIFIED: on taking damage the wither breaks every
+                BlightEvent::BreakBlocks(center) => {
+                    // VERIFIED: on taking damage the blight breaks every
                     // block in a 3×4×3 box around itself (bedrock + portal
-                    // blocks are wither_immune)
+                    // blocks are blight_immune)
                     let (x0, y0, z0) = (
                         center[0].floor() as i32,
                         center[1].floor() as i32,
@@ -6944,8 +6944,8 @@ impl GameApp {
                                 let b = self.world.get_block(x0 + dx, y0 + dy, z0 + dz);
                                 if b != AIR
                                     && b != BEDROCK
-                                    && b != END_PORTAL
-                                    && b != END_PORTAL_FRAME
+                                    && b != VOID_GATE
+                                    && b != VOID_GATE_FRAME
                                 {
                                     if let Some((old, new)) =
                                         self.world.set_block(x0 + dx, y0 + dy, z0 + dz, AIR)
@@ -6965,12 +6965,12 @@ impl GameApp {
                         }
                     }
                 }
-                WitherEvent::Died(xp) => {
-                    // VERIFIED: 1 nether star (100%), 50 XP
+                BlightEvent::Died(xp) => {
+                    // VERIFIED: 1 hollow star (100%), 50 XP
                     let pos = self
                         .sim
-                        .wither
-                        .wither
+                        .blight
+                        .blight
                         .as_ref()
                         .map(|w| w.pos)
                         .unwrap_or([0.5, 70.0, 0.5]);
@@ -6978,16 +6978,16 @@ impl GameApp {
                         pos[0] as i32,
                         pos[1] as i32,
                         pos[2] as i32,
-                        NETHER_STAR,
+                        HOLLOW_STAR,
                         2,
                         15,
                         0,
                     );
                     self.sim.xp_orbs.drop_xp(pos[0], pos[1], pos[2], xp);
-                    self.play_event("entity.wither.death", Some(pos), 1.0);
-                    self.sim.wither.wither = None;
+                    self.play_event("entity.blight.death", Some(pos), 1.0);
+                    self.sim.blight.blight = None;
                     vc_render::render::report_boot_log(&format!(
-                        "e2e: wither slain — nether star + {xp} XP (VERIFIED drops)"
+                        "e2e: blight slain — hollow star + {xp} XP (VERIFIED drops)"
                     ));
                 }
             }
@@ -6996,7 +6996,7 @@ impl GameApp {
 
     /// Phase E1: drain the sim's mob queues after the fixed-step tick: player hits
     /// (difficulty-scaled + knockback), mob deaths (drops + XP), and
-    /// creeper explosions (world edits + light + entity damage).
+    /// fuseling explosions (world edits + light + entity damage).
     fn drain_mob_events(&mut self) {
         use vc_gameplay::combat::{difficulty_scale, Difficulty};
         use vc_gameplay::mobs;
@@ -7125,9 +7125,9 @@ impl GameApp {
                 Difficulty::Normal
             };
             let dmg = difficulty_scale(h.damage, difficulty);
-            // Phase E2 (VERIFIED w/Wither): skull hits inflict Wither II
+            // Phase E2 (VERIFIED w/Blight): skull hits inflict Blight II
             // — 200 ticks (10 s) Normal / 800 (40 s) Hard
-            if let Some(ticks) = h.wither_effect {
+            if let Some(ticks) = h.blight_effect {
                 let dur = if difficulty == Difficulty::Hard {
                     800
                 } else {
@@ -7135,14 +7135,14 @@ impl GameApp {
                 };
                 self.player
                     .effects
-                    .apply(vc_gameplay::effects::EffectKind::Wither, 1, dur);
+                    .apply(vc_gameplay::effects::EffectKind::Blight, 1, dur);
             }
-            // Phase E2 (VERIFIED w/Wither_Skeleton): wither-skeleton
-            // melee inflicts Wither I for 10 s on ANY difficulty
-            if h.source == mobs::MobKind::WitherSkeleton {
+            // Phase E2 (VERIFIED w/Blight_Skeleton): blight-skeleton
+            // melee inflicts Blight I for 10 s on ANY difficulty
+            if h.source == mobs::MobKind::BlightSkeleton {
                 self.player
                     .effects
-                    .apply(vc_gameplay::effects::EffectKind::Wither, 0, 200);
+                    .apply(vc_gameplay::effects::EffectKind::Blight, 0, 200);
             }
             // 1.10 hit riders (VERIFIED, wiki /w/Stray + /w/Husk, live
             // 2026-09-06):
@@ -7204,9 +7204,9 @@ impl GameApp {
         // ---- 2. mob deaths → drops + XP ----
         // Phase E1: the death tuple carries the per-kind variant (magma
         // size code — splits spawn here; drops + XP size-aware).
-        // 1.11 evoker spells: summon vexes (the changelog: "In battle,
+        // 1.11 runecaller spells: summon vexes (the changelog: "In battle,
         // they summon vexes and fangs to attack") + fang strikes on the
-        // player (6 HP, armor-ignoring — VERIFIED w/Evoker: "not
+        // player (6 HP, armor-ignoring — VERIFIED w/Runecaller: "not
         // mitigated by armor"; fangs ride the raw-damage path, armor
         // skipped by design)
         let summons: Vec<(u32, usize)> = std::mem::take(&mut self.sim.mobs.pending_summons);
@@ -7222,10 +7222,10 @@ impl GameApp {
                 let ang = (i as f32) * (std::f32::consts::TAU / count as f32);
                 let vx = ex + (ang.cos() * 2.0).round() as i32;
                 let vz = ez + (ang.sin() * 2.0).round() as i32;
-                let _ = self.sim.mobs.spawn_at(mobs::MobKind::Vex, vx, ey + 1, vz);
+                let _ = self.sim.mobs.spawn_at(mobs::MobKind::Wisp, vx, ey + 1, vz);
             }
             vc_render::render::report_boot_log(
-                "e2e: evoker summon spell -> vexes (VERIFIED w/Evoker)",
+                "e2e: runecaller summon spell -> vexes (VERIFIED w/Runecaller)",
             );
         }
         let fangs: Vec<f32> = std::mem::take(&mut self.sim.mobs.pending_player_fang);
@@ -7236,13 +7236,13 @@ impl GameApp {
                 let applied = self.player.damage(scaled);
                 let _ = applied;
                 self.play_event("entity.player.hurt", None, 1.0);
-                self.death_cause = "EVOKER FANGS".into();
+                self.death_cause = "RUNECALLER FANGS".into();
                 self.check_death();
                 self.ui.dirty = true;
             }
         }
-        // ---- 1.12 (World of Color): the illusioner's blindness spell
-        // (VERIFIED w/Illusioner: "This spell gives a Blindness effect
+        // ---- 1.12 (World of Color): the miragecaller's blindness spell
+        // (VERIFIED w/Miragecaller: "This spell gives a Blindness effect
         // that lasts for 20 seconds upon first engaging a new player
         // opponent") — applied to the player effect list; the render
         // layer pulls the fog in and the movement layer blocks sprint
@@ -7257,7 +7257,7 @@ impl GameApp {
                 self.ui.dirty = true;
             }
         }
-        // ---- 1.13 (Update Aquatic): the dolphin's grace queue —
+        // ---- 1.13 (Aquatic-era update): the dolphin's grace queue —
         // VERIFIED w/Dolphin: "Players who sprint-swim within a 9 block
         // spherical radius of a dolphin receive a swimming speed boost
         // for 5 seconds, replenished as long as the player stays close".
@@ -7337,9 +7337,9 @@ impl GameApp {
             let drops: &[(u16, u8)] = match kind {
                 mobs::MobKind::Zombie => &[(ROTTEN_FLESH, 2)],
                 mobs::MobKind::Skeleton => &[(BONE, 2), (ARROW_ITEM, 2)],
-                mobs::MobKind::Creeper => &[(GUNPOWDER, 2)],
+                mobs::MobKind::Fuseling => &[(GUNPOWDER, 2)],
                 mobs::MobKind::Spider => &[(STRING, 2)],
-                mobs::MobKind::Enderman => &[(ENDER_PEARL, 1)],
+                mobs::MobKind::Voidling => &[(VOID_PEARL, 1)],
                 mobs::MobKind::Cow => &[(BEEF, 3), (LEATHER, 2)],
                 mobs::MobKind::Pig => &[(PORKCHOP, 3)],
                 mobs::MobKind::Sheep => &[(MUTTON, 2), (WOOL_WHITE, 1)],
@@ -7349,12 +7349,12 @@ impl GameApp {
                 mobs::MobKind::Blaze => &[(BLAZE_ROD, 1)],
                 // zombie villager drops = zombie loot (VERIFIED)
                 mobs::MobKind::ZombieVillager => &[(ROTTEN_FLESH, 2)],
-                // backlog round (weather): the zombified piglin —
+                // backlog round (weather): the zombified pigoblin —
                 // rotten flesh like the zombie family (its gold-nugget
                 // drop waits on the gold-nugget item, disclosed)
-                mobs::MobKind::ZombifiedPiglin => &[(ROTTEN_FLESH, 2)],
-                // mooshroom drops = cow loot (VERIFIED w/Mooshroom)
-                mobs::MobKind::Mooshroom => &[(BEEF, 3), (LEATHER, 2)],
+                mobs::MobKind::ZombifiedPigoblin => &[(ROTTEN_FLESH, 2)],
+                // shroomcow drops = cow loot (VERIFIED w/Shroomcow)
+                mobs::MobKind::Shroomcow => &[(BEEF, 3), (LEATHER, 2)],
                 // 1.15: bees drop no items (VERIFIED w/Bee §Drops —
                 // only 1-3 XP, already granted via the XP orb path)
                 mobs::MobKind::Bee => &[],
@@ -7363,10 +7363,10 @@ impl GameApp {
                 // §Drops: the spider-family rows) + the spider-eye roll
                 // below (the 1/3 row, same as the spider's)
                 mobs::MobKind::CaveSpider => &[(STRING, 2)],
-                // the ghast: gunpowder + the ghast tear — both are
+                // the weepgeist: gunpowder + the weepgeist tear — both are
                 // percentage rows handled below (the blaze/phantom
                 // pattern)
-                mobs::MobKind::Ghast => &[],
+                mobs::MobKind::Weepgeist => &[],
                 // the silverfish: "Silverfish have no drops other than
                 // 5 XP experience points" (VERIFIED w/Silverfish §Drops
                 // — the XP rides the orb path)
@@ -7384,16 +7384,16 @@ impl GameApp {
                 mobs::MobKind::Ocelot => &[],
                 // ---- Phase E2 (VERIFIED 2026-09-06,
                 // docs/research/phase2-1.3-1.4-research.md) ----
-                // wither skeleton: coal 0-1 @ 33%, bone 0-2 @ 67%, skull
+                // blight skeleton: coal 0-1 @ 33%, bone 0-2 @ 67%, skull
                 // 0-1 @ 2.5% (the skull roll rides the special-cased path
                 // below — it is NOT a guaranteed drop)
-                mobs::MobKind::WitherSkeleton => &[(COAL, 1), (BONE, 2)],
-                // witch: the verified per-item 0-2 rolls (redstone,
+                mobs::MobKind::BlightSkeleton => &[(COAL, 1), (BONE, 2)],
+                // witch: the verified per-item 0-2 rolls (fluxstone,
                 // glowstone, gunpowder, spider eye, sugar, glass bottle,
                 // stick — engine items exist for 5 of the 7; sugar and
                 // glass-bottle items are absent -> covered by the 5)
                 mobs::MobKind::Witch => &[
-                    (REDSTONE_ORE, 2),
+                    (FLUXSTONE_ORE, 2),
                     (GLOWSTONE, 2),
                     (GUNPOWDER, 2),
                     (SPIDER_EYE, 2),
@@ -7428,27 +7428,27 @@ impl GameApp {
                 // llama: "0–2 Leather" at 66.67% (w/Llama §Drops; the
                 // 66.67% roll rides the count max, engine convention)
                 mobs::MobKind::Llama => &[(LEATHER, 2)],
-                // vindicator: emerald 0–1 @ 50% (w/Vindicator §Drops);
+                // cleaver: emerald 0–1 @ 50% (w/Cleaver §Drops);
                 // its iron axe also drops in vanilla — no axe items in
                 // the engine (disclosed)
-                mobs::MobKind::Vindicator => &[(EMERALD, 1)],
-                // evoker: the totem is a 100% drop (changelog: "Evokers
+                mobs::MobKind::Cleaver => &[(EMERALD, 1)],
+                // runecaller: the totem is a 100% drop (changelog: "Runecallers
                 // always drop one of these upon death") + emerald 0–1
-                // (w/Evoker §Drops)
-                mobs::MobKind::Evoker => &[(TOTEM_OF_UNDYING, 1), (EMERALD, 1)],
-                // vex: no item drops (the iron sword never drops —
-                // VERIFIED w/Vex: HandDropChances 0)
-                mobs::MobKind::Vex => &[],
+                // (w/Runecaller §Drops)
+                mobs::MobKind::Runecaller => &[(TOTEM_OF_REVIVAL, 1), (EMERALD, 1)],
+                // wisp: no item drops (the iron sword never drops —
+                // VERIFIED w/Wisp: HandDropChances 0)
+                mobs::MobKind::Wisp => &[],
                 // ---- 1.12 (World of Color, VERIFIED live 2026-09-07) ----
                 // parrot: "Feather 1–2" at 100% (w/Parrot §Drops — the
                 // JE table's guaranteed 1-2 with Looting scaling out of
                 // scope, no Looting enchant)
                 mobs::MobKind::Parrot => &[(FEATHER, 2)],
-                // illusioner: naturally-spawned equipment drops at
+                // miragecaller: naturally-spawned equipment drops at
                 // 8.5% (its bow — no bow item in the engine, disclosed)
-                // + 5 XP (w/Illusioner §Drops: "5XP experience orbs")
-                mobs::MobKind::Illusioner => &[],
-                // ---- 1.13 (Update Aquatic, VERIFIED live 2026-09-07) ----
+                // + 5 XP (w/Miragecaller §Drops: "5XP experience orbs")
+                mobs::MobKind::Miragecaller => &[],
+                // ---- 1.13 (Aquatic-era update, VERIFIED live 2026-09-07) ----
                 // drowned: "0–1 Rotten Flesh" + its held trident at
                 // 8.5% on a player kill (w/Drowned §Drops + w/Trident:
                 // "only drop from drowned ... at 8.5%") — the trident
@@ -7479,19 +7479,19 @@ impl GameApp {
                 // spawns — a defensive empty row; the squid is a
                 // pre-1.13 legacy the engine's brackets skipped)
                 mobs::MobKind::Squid => &[],
-                // ---- 1.16 (Nether Update, part 2) ----
-                // strider: "String 2–5 100.00%" (VERIFIED w/Strider
+                // ---- 1.16 (Hollows Update, part 2) ----
+                // emberhopper: "String 2–5 100.00%" (VERIFIED w/Emberhopper
                 // §Drops) — the exact 2-5 roll rides the special-case
                 // path below
-                mobs::MobKind::Strider => &[],
-                // piglin: drops nothing but equipment (the golden
+                mobs::MobKind::Emberhopper => &[],
+                // pigoblin: drops nothing but equipment (the golden
                 // sword's 8.5% hand-drop — no sword items in the
-                // engine, disclosed; VERIFIED w/Piglin §Drops)
-                mobs::MobKind::Piglin => &[],
-                // hoglin: "Raw Porkchop 2–4 100.00%" + "Leather 0–1
-                // 50.00%" (VERIFIED w/Hoglin §Drops) — both exact rolls
+                // engine, disclosed; VERIFIED w/Pigoblin §Drops)
+                mobs::MobKind::Pigoblin => &[],
+                // boarling: "Raw Porkchop 2–4 100.00%" + "Leather 0–1
+                // 50.00%" (VERIFIED w/Boarling §Drops) — both exact rolls
                 // ride the special-case path below
-                mobs::MobKind::Hoglin => &[],
+                mobs::MobKind::Boarling => &[],
             };
             // blaze rod is a 50% roll (VERIFIED), others roll count 1..max
             if kind == mobs::MobKind::Blaze && self.audio_rng.next_f32() < 0.5 {
@@ -7519,19 +7519,19 @@ impl GameApp {
                     0,
                 );
             }
-            // ---- the completeness audit: the ghast's exact drop rows
-            // (VERIFIED w/Ghast §Drops, live 2026-09-08): "Ghast Tear
+            // ---- the completeness audit: the weepgeist's exact drop rows
+            // (VERIFIED w/Weepgeist §Drops, live 2026-09-08): "Weepgeist Tear
             // 0-1 50.00%" + "Gunpowder 0-2 66.67%" (the uniform 0-2
             // whose P(>=1) is the printed 2/3; the Music Disc "Tears"
             // row is trimmed with the engine's no-music-disc class,
             // disclosed) ----
-            if kind == mobs::MobKind::Ghast {
+            if kind == mobs::MobKind::Weepgeist {
                 if self.audio_rng.next_range(2) == 1 {
                     self.sim.items.drop_block(
                         pos[0].floor() as i32,
                         pos[1].floor() as i32,
                         pos[2].floor() as i32,
-                        GHAST_TEAR,
+                        WEEPGEIST_TEAR,
                         2,
                         15,
                         0,
@@ -7550,10 +7550,10 @@ impl GameApp {
                     );
                 }
             }
-            // ---- 1.16 (Nether Update, part 2): the forest mobs' exact
+            // ---- 1.16 (Hollows Update, part 2): the forest mobs' exact
             // drop rolls ----
-            // strider: "String 2–5" at 100% (VERIFIED w/Strider)
-            if kind == mobs::MobKind::Strider {
+            // emberhopper: "String 2–5" at 100% (VERIFIED w/Emberhopper)
+            if kind == mobs::MobKind::Emberhopper {
                 let n = 2 + (self.audio_rng.next_f32() * 4.0) as u8; // 2..=5
                 for _ in 0..n {
                     self.sim.items.drop_block(
@@ -7567,10 +7567,10 @@ impl GameApp {
                     );
                 }
             }
-            // hoglin: "Raw Porkchop 2–4" at 100% + "Leather 0–1" at 50%
-            // (VERIFIED w/Hoglin; the cooked-if-on-fire variant is the
+            // boarling: "Raw Porkchop 2–4" at 100% + "Leather 0–1" at 50%
+            // (VERIFIED w/Boarling; the cooked-if-on-fire variant is the
             // no-fire-on-entities deferral, disclosed)
-            if kind == mobs::MobKind::Hoglin {
+            if kind == mobs::MobKind::Boarling {
                 let n = 2 + (self.audio_rng.next_f32() * 3.0) as u8; // 2..=4
                 for _ in 0..n {
                     self.sim.items.drop_block(
@@ -7747,7 +7747,7 @@ impl GameApp {
             );
             self.edits += 1;
         }
-        // ---- 3. creeper explosions ----
+        // ---- 3. fuseling explosions ----
         let booms = mobs::take_explosions(&mut self.sim.mobs);
         for (center, power) in booms {
             self.explode(center, power);
@@ -7809,7 +7809,7 @@ impl GameApp {
                 }
                 mobs::ProjKind::Pearl => {
                     // "teleports the player to where the pearl lands,
-                    // dealing 5 HP damage" (VERIFIED w/Ender_Pearl) +
+                    // dealing 5 HP damage" (VERIFIED w/Void_Pearl) +
                     // the pre-landing throw negates the accumulated
                     // fall ("the fall damage is negated, dealing only
                     // the pearl's damage")
@@ -7833,7 +7833,7 @@ impl GameApp {
                     if !self.mode.invulnerable() && self.mode.depletes_items() {
                         self.player.damage(5.0);
                     }
-                    self.play_event("entity.enderman.teleport", None, 0.9);
+                    self.play_event("entity.voidling.teleport", None, 0.9);
                     self.ui.dirty = true;
                     vc_render::render::report_boot_log(&format!(
                         "e2e: pearl teleport -> [{x}, {y}, {z}] + 5 HP (VERIFIED)"
@@ -7893,14 +7893,14 @@ impl GameApp {
                     if b == AIR || b == BEDROCK || b == OBSIDIAN || b == WATER {
                         continue; // resistant / already gone
                     }
-                    // 1.16 (Nether Update, part 1): the blast-1,200 class
+                    // 1.16 (Hollows Update, part 1): the blast-1,200 class
                     // joins obsidian (VERIFIED w/Ancient_Debris /
-                    // w/Crying_Obsidian / w/Respawn_Anchor /
-                    // w/Block_of_Netherite — all "1,200")
+                    // w/Weeping_Obsidian / w/Rebirth_Anchor /
+                    // w/Block_of_Hollowite — all "1,200")
                     if b == ANCIENT_DEBRIS
-                        || b == CRYING_OBSIDIAN
-                        || b == RESPAWN_ANCHOR
-                        || b == NETHERITE_BLOCK
+                        || b == WEEPING_OBSIDIAN
+                        || b == REBIRTH_ANCHOR
+                        || b == HOLLOWITE_BLOCK
                     {
                         continue;
                     }
@@ -7942,7 +7942,7 @@ impl GameApp {
                     self.player.vel[0] += dir.x * 10.0;
                     self.player.vel[2] += dir.z * 10.0;
                     self.player.vel[1] += 6.0;
-                    self.death_cause = "BLOWN UP BY A CREEPER".into();
+                    self.death_cause = "BLOWN UP BY A FUSELING".into();
                     self.play_event("entity.player.hurt", None, 1.0);
                     self.ui.dirty = true;
                 }
@@ -8523,7 +8523,7 @@ impl GameApp {
             ui::ID_ACC_FOVEFF => self.settings.acc_fov_effects = t,
             // Round 14b: Accessibility Distortion Effects (1.16.2 pre1)
             // — registered + persisted; the engine has no
-            // nether-portal/nausea warp renderer yet (disclosed)
+            // hollow-portal/nausea warp renderer yet (disclosed)
             ui::ID_ACC_DISTORT_SLIDER => self.settings.acc_distortion = t,
             // Round 14b: the Chat Settings sliders (grayed rows — the
             // drag still moves the knob visually, the values persist;
@@ -8626,8 +8626,8 @@ impl GameApp {
         // breaking yields NO drops (infinite inventory —
         // blocks just vanish, vanilla behavior)
         if self.mode.drops_blocks() {
-            if broke == ENDER_CHEST {
-                // Phase E2 (VERIFIED w/Ender_Chest): breaks
+            if broke == VOID_CHEST {
+                // Phase E2 (VERIFIED w/Void_Chest): breaks
                 // into 8 obsidian (no Silk Touch in the
                 // engine — the always-obsidian row,
                 // documented); contents stay in the shared
@@ -8644,17 +8644,17 @@ impl GameApp {
                 self.sim
                     .items
                     .drop_block(pos[0], pos[1], pos[2], EMERALD, biome, sky, blk);
-            } else if broke == NETHER_QUARTZ_ORE {
+            } else if broke == HOLLOW_QUARTZ_ORE {
                 // Phase E3 (VERIFIED live 2026-09-06,
-                // reference wiki /Nether_Quartz_Ore:
-                // "it drops 1 Nether quartz" — Fortune up
+                // reference wiki /Hollow_Quartz_Ore:
+                // "it drops 1 Hollow quartz" — Fortune up
                 // to 4 deferred, no Fortune enchant; ore
                 // XP 2–5 rides the ore_xp path)
                 self.sim
                     .items
-                    .drop_block(pos[0], pos[1], pos[2], NETHER_QUARTZ, biome, sky, blk);
+                    .drop_block(pos[0], pos[1], pos[2], HOLLOW_QUARTZ, biome, sky, blk);
             } else if broke == GILDED_BLACKSTONE {
-                // 1.16 (Nether Update, part 1) — VERIFIED
+                // 1.16 (Hollows Update, part 1) — VERIFIED
                 // w/Gilded_Blackstone §Breaking: "a 10%
                 // chance to drop 2–5 gold nuggets when
                 // mined with any pickaxe. If it does not
@@ -8681,17 +8681,17 @@ impl GameApp {
                         .items
                         .drop_block(pos[0], pos[1], pos[2], broke, biome, sky, blk);
                 }
-                // 1.16 part 2: the piglin gold-mining anger
+                // 1.16 part 2: the pigoblin gold-mining anger
                 // hook — mining gold-related blocks angers
-                // nearby piglins (the w/Piglin aggravation
+                // nearby pigoblins (the w/Pigoblin aggravation
                 // rows; the 16-block medium-aggravation
                 // range, disclosed)
-                let _ = self.sim.mobs.anger_piglins_near(
+                let _ = self.sim.mobs.anger_pigoblins_near(
                     [pos[0] as f32 + 0.5, pos[1] as f32, pos[2] as f32 + 0.5],
                     16.0,
                 );
-            } else if broke == NETHER_GOLD_ORE {
-                // 1.16 — VERIFIED w/Nether_Gold_Ore
+            } else if broke == HOLLOW_GOLD_ORE {
+                // 1.16 — VERIFIED w/Hollow_Gold_Ore
                 // §Drops: "2–6 gold nuggets when mined
                 // with any pickaxe" (the iron-nugget
                 // stand-in; Fortune multiplies — absent,
@@ -8703,20 +8703,20 @@ impl GameApp {
                         .items
                         .drop_block(pos[0], pos[1], pos[2], IRON_NUGGET, biome, sky, blk);
                 }
-                // 1.16 part 2: the piglin gold-mining anger
+                // 1.16 part 2: the pigoblin gold-mining anger
                 // hook (the same aggravation class)
-                let _ = self.sim.mobs.anger_piglins_near(
+                let _ = self.sim.mobs.anger_pigoblins_near(
                     [pos[0] as f32 + 0.5, pos[1] as f32, pos[2] as f32 + 0.5],
                     16.0,
                 );
-            } else if broke == SOUL_FIRE {
-                // 1.16 — soul fire cannot be collected
+            } else if broke == SPIRIT_FIRE {
+                // 1.16 — spirit fire cannot be collected
                 // (fire blocks drop nothing, VERIFIED
-                // w/Soul_Fire — the creative picker is
+                // w/Spirit_Fire — the creative picker is
                 // the only manual placement path, the
                 // disclosed no-flint adaptation)
-            } else if broke == NETHER_SPROUTS {
-                // 1.16 part 2 — VERIFIED w/Nether_Sprouts:
+            } else if broke == HOLLOW_SPROUTS {
+                // 1.16 part 2 — VERIFIED w/Hollow_Sprouts:
                 // drops nothing when broken without
                 // shears (no tool-gated drops in the
                 // engine — the empty-handed result,
@@ -8747,14 +8747,14 @@ impl GameApp {
                         .items
                         .drop_block(pos[0], pos[1], pos[2], MELON_SLICE, biome, sky, blk);
                 }
-            } else if broke == CRIMSON_NYLIUM || broke == WARPED_NYLIUM {
-                // 1.16 part 2 — the nylium row: mining a
-                // nylium drops its netherrack base (the
+            } else if broke == SCARLET_MOLD || broke == VIRIDIAN_MOLD {
+                // 1.16 part 2 — the mold row: mining a
+                // mold drops its hollowstone base (the
                 // grass-block-to-dirt class; silk-touch
                 // absent, disclosed)
                 self.sim
                     .items
-                    .drop_block(pos[0], pos[1], pos[2], NETHERRACK, biome, sky, blk);
+                    .drop_block(pos[0], pos[1], pos[2], HOLLOWSTONE, biome, sky, blk);
             } else if broke == LEAVES || broke == DARK_OAK_LEAVES {
                 // the completeness audit: the apple roll
                 // — VERIFIED (reference wiki /Apple, live
@@ -8938,7 +8938,7 @@ impl GameApp {
     // --------------------------------------- 2026-09-14: resource packs --
 
     /// The Resource Packs screen lists (vanilla two-pane model):
-    /// * `avail` — Available (disabled): "Programmer Art" (when the pack
+    /// * `avail` — Available (disabled): "Classic Art" (when the pack
     ///   source resolved) + every scanned user pack not on the Selected
     ///   list, alphabetical.
     /// * `sel` — Selected (enabled) in priority order (index 0 = TOP =
@@ -8952,13 +8952,13 @@ impl GameApp {
             .map(|n| self.pack_display_name(n))
             .collect();
         let mut avail: Vec<String> = Vec::new();
-        if self.programmer_art.is_some()
+        if self.classic_art.is_some()
             && !self
                 .settings
                 .resource_packs
-                .contains(&"programmer-art".to_string())
+                .contains(&"classic-art".to_string())
         {
-            avail.push("PROGRAMMER ART".to_string());
+            avail.push("CLASSIC ART".to_string());
         }
         for (name, _src) in &self.user_packs {
             if !self.settings.resource_packs.contains(name) {
@@ -8996,7 +8996,7 @@ impl GameApp {
     /// name; ours derives it from the folder/zip name or the builtin id)
     fn pack_display_name(&self, key: &str) -> String {
         match key {
-            "programmer-art" => "PROGRAMMER ART".to_string(),
+            "classic-art" => "CLASSIC ART".to_string(),
             other => other.to_uppercase().replace('_', " "),
         }
     }
@@ -9006,8 +9006,8 @@ impl GameApp {
         &self,
         name: &str,
     ) -> Option<std::sync::Arc<dyn vc_pack::pack::PackSource>> {
-        if name == "programmer-art" {
-            self.programmer_art.clone()
+        if name == "classic-art" {
+            self.classic_art.clone()
         } else {
             self.user_packs
                 .iter()
@@ -9019,7 +9019,7 @@ impl GameApp {
     /// 1-2 hover lines describing a pack (the vanilla pack-row hover)
     fn pack_tooltip(&self, key: &str) -> Vec<String> {
         match key {
-            "programmer-art" => vec![
+            "classic-art" => vec![
                 "The classic look of VoxelCraft (built-in).".to_string(),
                 "The old pre-1.14-style textures, clean-room look-alikes.".to_string(),
             ],
@@ -9305,8 +9305,8 @@ impl GameApp {
     fn resource_pack_key_avail(&self, idx: usize) -> Option<String> {
         let (avail, _) = self.resource_pack_lists();
         let display = avail.get(idx)?;
-        if display == "PROGRAMMER ART" {
-            Some("programmer-art".to_string())
+        if display == "CLASSIC ART" {
+            Some("classic-art".to_string())
         } else {
             // reverse the display-name transform by matching user packs
             self.user_packs
@@ -10185,7 +10185,7 @@ impl GameApp {
             if let Container::Chest { pos } = c {
                 if self.world.get_block(pos[0], pos[1], pos[2]) == TRAPPED_CHEST {
                     let (w, sched) = (&mut self.world, &mut self.sim.sched);
-                    vc_sim::redstone::trapped_chest_tick(w, sched, pos[0], pos[1], pos[2], false);
+                    vc_sim::fluxstone::trapped_chest_tick(w, sched, pos[0], pos[1], pos[2], false);
                 }
             }
             match c {
@@ -10482,14 +10482,14 @@ impl GameApp {
                     | Container::Barrel { pos },
                 ) = self.container
                 {
-                    // 1.11 no-nesting rule (VERIFIED w/Shulker_Box:
-                    // "Cannot be placed inside another shulker box"):
-                    // a shulker-box item never enters a shulker-box
+                    // 1.11 no-nesting rule (VERIFIED w/Lurkshell_Box:
+                    // "Cannot be placed inside another lurkshell box"):
+                    // a lurkshell-box item never enters a lurkshell-box
                     // container — checked BEFORE the mutable borrow
-                    let is_shulker_container = self.shulker_container_at(&pos);
-                    if is_shulker_container
+                    let is_lurkshell_container = self.lurkshell_container_at(&pos);
+                    if is_lurkshell_container
                         && !self.cursor_stack.is_empty()
-                        && self.cursor_stack.block == SHULKER_BOX
+                        && self.cursor_stack.block == LURKSHELL_BOX
                     {
                         return; // rejected (no nesting, VERIFIED)
                     }
@@ -11255,13 +11255,13 @@ impl GameApp {
         ));
     }
 
-    /// 1.11: was the container entity at `pos` created as a SHULKER_BOX
+    /// 1.11: was the container entity at `pos` created as a LURKSHELL_BOX
     /// (27 slots, chest-keyed)? The container map stores only the slot
     /// count, so the kind is tracked by the entry-point bookkeeping —
-    /// containers entered via `entry(pos, SHULKER_BOX)` register in
-    /// `shulker_positions`.
-    fn shulker_container_at(&self, pos: &[i32; 3]) -> bool {
-        self.shulker_positions.contains(pos)
+    /// containers entered via `entry(pos, LURKSHELL_BOX)` register in
+    /// `lurkshell_positions`.
+    fn lurkshell_container_at(&self, pos: &[i32; 3]) -> bool {
+        self.lurkshell_positions.contains(pos)
     }
 
     /// craft grid width per open container: 2 (inventory) or 3 (table)
@@ -11774,7 +11774,7 @@ impl GameApp {
         }
     }
 
-    /// E2E hook: place a block / water source / redstone component.
+    /// E2E hook: place a block / water source / fluxstone component.
     /// 1.14 (Village & Pillage — nature half) E2E: place a campfire +
     /// feed it a potato, a barrel, a mature berry bush, a bamboo shoot,
     /// and a fox; sim `ticks` full-scope steps; report every piece via
@@ -12159,10 +12159,10 @@ impl GameApp {
         // — the poison payload + one-sting + death timer.
     }
 
-    /// E2E stage (1.16 Nether Update, part 1 — the anchor family): the
+    /// E2E stage (1.16 Hollows Update, part 1 — the anchor family): the
     /// anchor charge ladder + respawn drain, the target hit pulse +
     /// decay + wire feed, the craft contracts, the smelting contracts,
-    /// the gilded/gold-ore drop rolls, and the soul-fire contact rate
+    /// the gilded/gold-ore drop rolls, and the spirit-fire contact rate
     /// — the CI smoke greps the "e2e: v116" boot lines (E2E_V116=1).
     fn e2e_v116(&mut self) {
         let pos = [
@@ -12176,8 +12176,8 @@ impl GameApp {
         // 1. the anchor: place (charge 0 default), the charge ladder
         //    (states + light + emissive), then the respawn drain — a
         //    charge-1 anchor set as the spawn point loses exactly one
-        //    charge on respawn (VERIFIED w/Respawn_Anchor)
-        self.test_place(RESPAWN_ANCHOR, pos[0] - 2, pos[1], pos[2]);
+        //    charge on respawn (VERIFIED w/Rebirth_Anchor)
+        self.test_place(REBIRTH_ANCHOR, pos[0] - 2, pos[1], pos[2]);
         let apos = [pos[0] - 2, pos[1], pos[2]];
         let charge0 = anchor_charge(self.world.get_state(apos[0], apos[1], apos[2]));
         let mut ladder_ok = charge0 == 0;
@@ -12189,7 +12189,7 @@ impl GameApp {
             }
             ladder_ok &= anchor_charge(st) == c
                 && state_emissive(st) == anchor_light(st)
-                && state_block(st) == RESPAWN_ANCHOR;
+                && state_block(st) == REBIRTH_ANCHOR;
         }
         let anchor_desc = state_description(self.world.get_state(apos[0], apos[1], apos[2]));
         // the respawn drain: charge back to 1, register, respawn
@@ -12200,7 +12200,7 @@ impl GameApp {
             self.light
                 .on_block_changed(&self.world, apos[0], apos[1], apos[2], old, new);
         }
-        self.respawn_anchor = Some(apos);
+        self.rebirth_anchor = Some(apos);
         // snapshot the loading-flow flags — respawn() arms the spawn
         // pipeline, but the E2E is already in-game
         let (pp, ss, ls) = (self.pending_play, self.spawn_snapped, self.load_start);
@@ -12215,7 +12215,7 @@ impl GameApp {
         //    adjacent wire lights at 11 and the state decays to 0
         self.test_place(TARGET, pos[0] + 2, pos[1], pos[2]);
         let tpos = [pos[0] + 2, pos[1], pos[2]];
-        self.test_place(REDSTONE_WIRE, pos[0] + 1, pos[1], pos[2]);
+        self.test_place(FLUXSTONE_WIRE, pos[0] + 1, pos[1], pos[2]);
         let wpos = [pos[0] + 1, pos[1], pos[2]];
         let hit_state = target_state(11);
         if let Some((old, new)) = self
@@ -12248,49 +12248,49 @@ impl GameApp {
         //    gold = the iron stand-in, the disclosed convention)
         let anchor_craft = vc_gameplay::craft::match_grid(
             &[
-                ItemStack::new(CRYING_OBSIDIAN, 1),
+                ItemStack::new(WEEPING_OBSIDIAN, 1),
                 ItemStack::new(GLOWSTONE, 1),
-                ItemStack::new(CRYING_OBSIDIAN, 1),
-                ItemStack::new(CRYING_OBSIDIAN, 1),
+                ItemStack::new(WEEPING_OBSIDIAN, 1),
+                ItemStack::new(WEEPING_OBSIDIAN, 1),
                 ItemStack::new(GLOWSTONE, 1),
-                ItemStack::new(CRYING_OBSIDIAN, 1),
-                ItemStack::new(CRYING_OBSIDIAN, 1),
+                ItemStack::new(WEEPING_OBSIDIAN, 1),
+                ItemStack::new(WEEPING_OBSIDIAN, 1),
                 ItemStack::new(GLOWSTONE, 1),
-                ItemStack::new(CRYING_OBSIDIAN, 1),
+                ItemStack::new(WEEPING_OBSIDIAN, 1),
             ],
             3,
         );
         let target_craft = vc_gameplay::craft::match_grid(
             &[
                 ItemStack::EMPTY,
-                ItemStack::new(REDSTONE_BLOCK, 1),
+                ItemStack::new(FLUXSTONE_BLOCK, 1),
                 ItemStack::EMPTY,
-                ItemStack::new(REDSTONE_BLOCK, 1),
+                ItemStack::new(FLUXSTONE_BLOCK, 1),
                 ItemStack::new(HAY_BALE, 1),
-                ItemStack::new(REDSTONE_BLOCK, 1),
+                ItemStack::new(FLUXSTONE_BLOCK, 1),
                 ItemStack::EMPTY,
-                ItemStack::new(REDSTONE_BLOCK, 1),
+                ItemStack::new(FLUXSTONE_BLOCK, 1),
                 ItemStack::EMPTY,
             ],
             3,
         );
         let ingot_craft = vc_gameplay::craft::match_grid(
             &[
-                ItemStack::new(NETHERITE_SCRAP, 1),
+                ItemStack::new(HOLLOWITE_SCRAP, 1),
                 ItemStack::new(IRON_ORE, 1),
-                ItemStack::new(NETHERITE_SCRAP, 1),
+                ItemStack::new(HOLLOWITE_SCRAP, 1),
                 ItemStack::new(IRON_ORE, 1),
                 ItemStack::EMPTY,
                 ItemStack::new(IRON_ORE, 1),
-                ItemStack::new(NETHERITE_SCRAP, 1),
+                ItemStack::new(HOLLOWITE_SCRAP, 1),
                 ItemStack::new(IRON_ORE, 1),
-                ItemStack::new(NETHERITE_SCRAP, 1),
+                ItemStack::new(HOLLOWITE_SCRAP, 1),
             ],
             3,
         );
         let block_craft =
-            vc_gameplay::craft::match_grid(&[ItemStack::new(NETHERITE_INGOT, 1); 9], 3);
-        let ingots_back = vc_gameplay::craft::match_grid(&[ItemStack::new(NETHERITE_BLOCK, 1)], 1);
+            vc_gameplay::craft::match_grid(&[ItemStack::new(HOLLOWITE_INGOT, 1); 9], 3);
+        let ingots_back = vc_gameplay::craft::match_grid(&[ItemStack::new(HOLLOWITE_BLOCK, 1)], 1);
         let chain_craft = vc_gameplay::craft::match_grid(
             &[
                 ItemStack::EMPTY,
@@ -12306,19 +12306,19 @@ impl GameApp {
             3,
         );
         let crafts_ok = anchor_craft
-            .map(|o| o.block == RESPAWN_ANCHOR && o.count == 1)
+            .map(|o| o.block == REBIRTH_ANCHOR && o.count == 1)
             .unwrap_or(false)
             && target_craft
                 .map(|o| o.block == TARGET && o.count == 1)
                 .unwrap_or(false)
             && ingot_craft
-                .map(|o| o.block == NETHERITE_INGOT && o.count == 1)
+                .map(|o| o.block == HOLLOWITE_INGOT && o.count == 1)
                 .unwrap_or(false)
             && block_craft
-                .map(|o| o.block == NETHERITE_BLOCK && o.count == 1)
+                .map(|o| o.block == HOLLOWITE_BLOCK && o.count == 1)
                 .unwrap_or(false)
             && ingots_back
-                .map(|o| o.block == NETHERITE_INGOT && o.count == 9)
+                .map(|o| o.block == HOLLOWITE_INGOT && o.count == 9)
                 .unwrap_or(false)
             && chain_craft
                 .map(|o| o.block == CHAIN && o.count == 1)
@@ -12326,12 +12326,12 @@ impl GameApp {
 
         // 4. the smelting contracts: debris → scrap, gold ore → ingot
         //    (the blast-furnace metal class, VERIFIED §Smelting rows)
-        let smelt_ok = vc_gameplay::furnace::smelt_result(ANCIENT_DEBRIS) == Some(NETHERITE_SCRAP)
-            && vc_gameplay::furnace::smelt_result(NETHER_GOLD_ORE) == Some(IRON_ORE)
+        let smelt_ok = vc_gameplay::furnace::smelt_result(ANCIENT_DEBRIS) == Some(HOLLOWITE_SCRAP)
+            && vc_gameplay::furnace::smelt_result(HOLLOW_GOLD_ORE) == Some(IRON_ORE)
             && vc_gameplay::furnace::is_ore_smelting(ANCIENT_DEBRIS);
 
         // 5. the drop rolls: gilded blackstone (10% → 2-5 nuggets, else
-        //    self) + nether gold ore (2-6 nuggets) — roll the gilded
+        //    self) + hollow gold ore (2-6 nuggets) — roll the gilded
         //    10x for a both-branch sample
         self.test_place(GILDED_BLACKSTONE, pos[0], pos[1], pos[2]);
         let before = self.sim.items.dropped_total;
@@ -12344,27 +12344,27 @@ impl GameApp {
             .iter()
             .filter(|it| it.block == IRON_NUGGET)
             .count();
-        self.test_place(NETHER_GOLD_ORE, pos[0], pos[1], pos[2]);
+        self.test_place(HOLLOW_GOLD_ORE, pos[0], pos[1], pos[2]);
         let before = self.sim.items.dropped_total;
         self.test_break(pos[0], pos[1], pos[2]);
         let gold_drop = (self.sim.items.dropped_total - before) as usize;
         let gold_ok = (2..=6).contains(&gold_drop);
 
-        // 6. the soul-fire contact rate: 2 HP per 0.5 s through the
-        //    shared immunity window (VERIFIED w/Soul_Fire) — the player
+        // 6. the spirit-fire contact rate: 2 HP per 0.5 s through the
+        //    shared immunity window (VERIFIED w/Spirit_Fire) — the player
         //    stands in a placed flame for 0.6 s. Determinism hardening
         //    (restored 2026-09-19 from the last-green form): the anchor
         //    drain test above calls respawn(), which leaves the player
         //    at the mid-air world-spawn position — place a stone floor
         //    and PIN the player at the fire cell so the check measures
-        //    the soul-fire rate, not the fall trajectory.
+        //    the spirit-fire rate, not the fall trajectory.
         let feet = [
             self.player.pos.x.floor() as i32,
             self.player.pos.y.floor() as i32,
             self.player.pos.z.floor() as i32,
         ];
         self.test_place(STONE, feet[0], feet[1] - 1, feet[2]);
-        self.test_place(SOUL_FIRE, feet[0], feet[1], feet[2]);
+        self.test_place(SPIRIT_FIRE, feet[0], feet[1], feet[2]);
         self.player.pos =
             glam::Vec3::new(feet[0] as f32 + 0.5, feet[1] as f32, feet[2] as f32 + 0.5);
         self.player.vel = glam::Vec3::ZERO;
@@ -12375,25 +12375,25 @@ impl GameApp {
                 .player
                 .update(0.1, 0.0, &self.world, &mut input, 1.0, true);
         }
-        let soul_dmg = self.player.take_pending_hazard_damage();
+        let spirit_dmg = self.player.take_pending_hazard_damage();
         if let Some((old, new)) = self.world.set_block(feet[0], feet[1], feet[2], AIR) {
             self.light
                 .on_block_changed(&self.world, feet[0], feet[1], feet[2], old, new);
         }
 
         vc_render::render::report_boot_log(&format!(
-            "e2e: v116 anchor={}(ladder={} desc=\"{}\" drain={}) target={}(feed={}@11 decay={}) crafts={} smelt={} gilded={}({} nuggets) gold-ore={}({} drops) soulfire-dmg={:.1}",
+            "e2e: v116 anchor={}(ladder={} desc=\"{}\" drain={}) target={}(feed={}@11 decay={}) crafts={} smelt={} gilded={}({} nuggets) gold-ore={}({} drops) spiritfire-dmg={:.1}",
             charge0 == 0, ladder_ok, anchor_desc, drained,
             fed_power == 11, fed_power, decayed,
-            crafts_ok, smelt_ok, gilded_drop > 0, nugget_roll, gold_ok, gold_drop, soul_dmg
+            crafts_ok, smelt_ok, gilded_drop > 0, nugget_roll, gold_ok, gold_drop, spirit_dmg
         ));
     }
 
-    /// 1.16 (Nether Update, part 2) E2E stage — the forest families:
-    /// the V14 registry + placement (the soul lantern's sitting/hanging
+    /// 1.16 (Hollows Update, part 2) E2E stage — the forest families:
+    /// the V14 registry + placement (the spirit lantern's sitting/hanging
     /// pair), the soul lights (10/15), the six forest crafts + the two
-    /// shapeless soul recipes, the strider's lava physics, the hoglin's
-    /// warped-fungus flee, and the piglin's barter round trip (the
+    /// shapeless soul recipes, the emberhopper's lava physics, the boarling's
+    /// viridian-fungus flee, and the pigoblin's barter round trip (the
     /// gold examine → the thrown item). CI smoke greps the
     /// "e2e: v116b" boot lines (rides the shared E2E_V116 gate — one
     /// CI run covers the whole bracket, the v114 trio precedent).
@@ -12407,27 +12407,27 @@ impl GameApp {
         use vc_inventory::inventory::ItemStack;
 
         // 1. the registry + placement: the family blocks place and fold
-        //    back (stems/nylium/planks/fungi/vines/wart/shroomlight);
-        //    the soul lantern carries its sitting/hanging pair
+        //    back (stems/mold/planks/fungi/vines/wart/glowcap);
+        //    the spirit lantern carries its sitting/hanging pair
         let mut family_ok = true;
         for (i, b) in [
-            CRIMSON_STEM,
-            CRIMSON_HYPHAE,
-            CRIMSON_PLANKS,
-            CRIMSON_NYLIUM,
-            CRIMSON_FUNGUS,
-            CRIMSON_ROOTS,
+            SCARLET_STEM,
+            SCARLET_HYPHAE,
+            SCARLET_PLANKS,
+            SCARLET_MOLD,
+            SCARLET_FUNGUS,
+            SCARLET_ROOTS,
             WEEPING_VINES,
-            WARPED_STEM,
-            WARPED_HYPHAE,
-            WARPED_PLANKS,
-            WARPED_NYLIUM,
-            WARPED_FUNGUS,
-            WARPED_ROOTS,
+            VIRIDIAN_STEM,
+            VIRIDIAN_HYPHAE,
+            VIRIDIAN_PLANKS,
+            VIRIDIAN_MOLD,
+            VIRIDIAN_FUNGUS,
+            VIRIDIAN_ROOTS,
             TWISTING_VINES,
-            WARPED_WART_BLOCK,
-            SHROOMLIGHT,
-            NETHER_SPROUTS,
+            VIRIDIAN_WART_BLOCK,
+            GLOWCAP,
+            HOLLOW_SPROUTS,
             POLISHED_BASALT,
             POLISHED_BLACKSTONE,
             POLISHED_BLACKSTONE_BRICKS,
@@ -12440,28 +12440,28 @@ impl GameApp {
             let s = self.world.get_state(p[0], p[1], p[2]);
             family_ok &= state_block(s) == *b && default_state(*b) == s;
         }
-        // the soul lantern's two forms: sitting places, hanging folds
-        self.test_place(SOUL_LANTERN, pos[0] + 4, pos[1], pos[2]);
+        // the spirit lantern's two forms: sitting places, hanging folds
+        self.test_place(SPIRIT_LANTERN, pos[0] + 4, pos[1], pos[2]);
         let sitting = self.world.get_state(pos[0] + 4, pos[1], pos[2]);
-        let lantern_pair = !soul_lantern_hanging(sitting)
-            && state_block(sitting) == SOUL_LANTERN
-            && soul_lantern_hanging(v14_state(SOUL_LANTERN).unwrap() + 1)
-            && state_description(v14_state(SOUL_LANTERN).unwrap() + 1)
-                == "Soul Lantern[hanging=true]";
-        // the soul lights: torch + lantern 10, shroomlight 15
-        let lights_ok = emissive(SOUL_TORCH) == 10
-            && emissive(SOUL_LANTERN) == 10
+        let lantern_pair = !spirit_lantern_hanging(sitting)
+            && state_block(sitting) == SPIRIT_LANTERN
+            && spirit_lantern_hanging(v14_state(SPIRIT_LANTERN).unwrap() + 1)
+            && state_description(v14_state(SPIRIT_LANTERN).unwrap() + 1)
+                == "Spirit Lantern[hanging=true]";
+        // the soul lights: torch + lantern 10, glowcap 15
+        let lights_ok = emissive(SPIRIT_TORCH) == 10
+            && emissive(SPIRIT_LANTERN) == 10
             && state_emissive(sitting) == 10
-            && emissive(SHROOMLIGHT) == 15;
+            && emissive(GLOWCAP) == 15;
 
         // 2. the crafts: the four 1:4 plank recipes + the three 2x2
         //    polished stones + the two shapeless soul recipes
         let mut crafts_ok = true;
         for (stem, planks) in [
-            (CRIMSON_STEM, CRIMSON_PLANKS),
-            (CRIMSON_HYPHAE, CRIMSON_PLANKS),
-            (WARPED_STEM, WARPED_PLANKS),
-            (WARPED_HYPHAE, WARPED_PLANKS),
+            (SCARLET_STEM, SCARLET_PLANKS),
+            (SCARLET_HYPHAE, SCARLET_PLANKS),
+            (VIRIDIAN_STEM, VIRIDIAN_PLANKS),
+            (VIRIDIAN_HYPHAE, VIRIDIAN_PLANKS),
         ] {
             let out = vc_gameplay::craft::match_grid(&[ItemStack::new(stem, 1)], 1).unwrap();
             crafts_ok &= out.block == planks && out.count == 4;
@@ -12481,7 +12481,7 @@ impl GameApp {
                 ItemStack::EMPTY,
                 ItemStack::new(STICK, 1),
                 ItemStack::EMPTY,
-                ItemStack::new(SOUL_SOIL, 1),
+                ItemStack::new(SPIRIT_SOIL, 1),
                 ItemStack::EMPTY,
                 ItemStack::EMPTY,
                 ItemStack::EMPTY,
@@ -12496,7 +12496,7 @@ impl GameApp {
                 ItemStack::new(IRON_NUGGET, 1),
                 ItemStack::new(IRON_NUGGET, 1),
                 ItemStack::new(IRON_NUGGET, 1),
-                ItemStack::new(SOUL_TORCH, 1),
+                ItemStack::new(SPIRIT_TORCH, 1),
                 ItemStack::new(IRON_NUGGET, 1),
                 ItemStack::new(IRON_NUGGET, 1),
                 ItemStack::new(IRON_NUGGET, 1),
@@ -12505,11 +12505,11 @@ impl GameApp {
             3,
         )
         .unwrap();
-        crafts_ok &= st.block == SOUL_TORCH && st.count == 4;
-        crafts_ok &= sl.block == SOUL_LANTERN && sl.count == 1;
+        crafts_ok &= st.block == SPIRIT_TORCH && st.count == 4;
+        crafts_ok &= sl.block == SPIRIT_LANTERN && sl.count == 1;
 
-        // 3. the strider's lava physics: a lava pad + a strider on it
-        //    (feet in lava + air above = standing, VERIFIED w/Strider)
+        // 3. the emberhopper's lava physics: a lava pad + a emberhopper on it
+        //    (feet in lava + air above = standing, VERIFIED w/Emberhopper)
         let lava_p = [pos[0] + 6, pos[1], pos[2] + 6];
         for dz in -1..=1i32 {
             for dx in -1..=1i32 {
@@ -12518,17 +12518,17 @@ impl GameApp {
                     .set_block(lava_p[0] + dx, lava_p[1], lava_p[2] + dz, LAVA);
             }
         }
-        let strider = self
+        let emberhopper = self
             .sim
             .mobs
             .spawn_at(
-                vc_gameplay::mobs::MobKind::Strider,
+                vc_gameplay::mobs::MobKind::Emberhopper,
                 lava_p[0],
                 lava_p[1],
                 lava_p[2],
             )
             .unwrap();
-        if let Some(m) = self.sim.mobs.by_id_mut(strider) {
+        if let Some(m) = self.sim.mobs.by_id_mut(emberhopper) {
             m.pos = [
                 lava_p[0] as f32 + 0.5,
                 lava_p[1] as f32,
@@ -12545,35 +12545,35 @@ impl GameApp {
             &mut self.light,
             &vc_sim::sim::TickScope::everything(),
         );
-        let strider_stands = self
+        let emberhopper_stands = self
             .sim
             .mobs
-            .by_id(strider)
+            .by_id(emberhopper)
             .map(|m| m.on_ground && m.vel[1] == 0.0)
             .unwrap_or(false);
 
-        // 4. the hoglin's warped-fungus flee: place the fungus near a
-        //    hoglin, tick, its velocity points AWAY (the 7-block rule)
+        // 4. the boarling's viridian-fungus flee: place the fungus near a
+        //    boarling, tick, its velocity points AWAY (the 7-block rule)
         let hog_p = [pos[0] - 6, pos[1] + 1, pos[2] + 6];
         self.test_place(GRASS, hog_p[0], hog_p[1] - 1, hog_p[2]); // a floor
-        let hoglin = self
+        let boarling = self
             .sim
             .mobs
             .spawn_at(
-                vc_gameplay::mobs::MobKind::Hoglin,
+                vc_gameplay::mobs::MobKind::Boarling,
                 hog_p[0],
                 hog_p[1],
                 hog_p[2],
             )
             .unwrap();
-        if let Some(m) = self.sim.mobs.by_id_mut(hoglin) {
+        if let Some(m) = self.sim.mobs.by_id_mut(boarling) {
             m.pos = [
                 hog_p[0] as f32 + 0.5,
                 hog_p[1] as f32,
                 hog_p[2] as f32 + 0.5,
             ];
         }
-        self.test_place(WARPED_FUNGUS, hog_p[0] + 3, hog_p[1], hog_p[2]);
+        self.test_place(VIRIDIAN_FUNGUS, hog_p[0] + 3, hog_p[1], hog_p[2]);
         // the player anchor must exist for the AI arm to run
         self.sim.mobs.player = Some([hog_p[0] as f32 - 20.0, hog_p[1] as f32, hog_p[2] as f32]);
         for _ in 0..4 {
@@ -12583,35 +12583,35 @@ impl GameApp {
                 &vc_sim::sim::TickScope::everything(),
             );
         }
-        let hoglin_flees = self
+        let boarling_flees = self
             .sim
             .mobs
-            .by_id(hoglin)
+            .by_id(boarling)
             .map(|m| {
                 // the flee velocity points away from the fungus
-                // (fungus at +x from the hoglin → flee has -x component)
+                // (fungus at +x from the boarling → flee has -x component)
                 m.vel[0] < -0.01
             })
             .unwrap_or(false);
         let _ = self.world.set_block(hog_p[0] + 3, hog_p[1], hog_p[2], AIR);
 
-        // 5. the piglin's barter round trip: hand the gold (the
+        // 5. the pigoblin's barter round trip: hand the gold (the
         //    iron-ore stand-in), the 120-gt examine ends in a dropped
-        //    item entity (VERIFIED w/Piglin §Bartering)
+        //    item entity (VERIFIED w/Pigoblin §Bartering)
         let pig_p = [pos[0] + 6, pos[1] + 1, pos[2] - 6];
         self.test_place(GRASS, pig_p[0], pig_p[1] - 1, pig_p[2]);
-        let piglin = self
+        let pigoblin = self
             .sim
             .mobs
             .spawn_at(
-                vc_gameplay::mobs::MobKind::Piglin,
+                vc_gameplay::mobs::MobKind::Pigoblin,
                 pig_p[0],
                 pig_p[1],
                 pig_p[2],
             )
             .unwrap();
         let items_before = self.sim.items.len();
-        let barter_armed = self.sim.mobs.try_barter_piglin(piglin, IRON_ORE);
+        let barter_armed = self.sim.mobs.try_barter_pigoblin(pigoblin, IRON_ORE);
         for _ in 0..125 {
             self.sim.step(
                 &mut self.world,
@@ -12626,20 +12626,20 @@ impl GameApp {
             }
         }
         let barter_delivered = self.sim.items.len() > items_before;
-        // the mining anger hook: nearby piglins provoke on gold mining
+        // the mining anger hook: nearby pigoblins provoke on gold mining
         let angered = self
             .sim
             .mobs
-            .anger_piglins_near([pig_p[0] as f32, pig_p[1] as f32, pig_p[2] as f32], 16.0);
+            .anger_pigoblins_near([pig_p[0] as f32, pig_p[1] as f32, pig_p[2] as f32], 16.0);
 
         vc_render::render::report_boot_log(&format!(
-            "e2e: v116b family={} lantern-pair={} lights={} crafts={} strider-lava={} hoglin-flee={} barter={}(delivered={} angered={})",
+            "e2e: v116b family={} lantern-pair={} lights={} crafts={} emberhopper-lava={} boarling-flee={} barter={}(delivered={} angered={})",
             family_ok,
             lantern_pair,
             lights_ok,
             crafts_ok,
-            strider_stands,
-            hoglin_flees,
+            emberhopper_stands,
+            boarling_flees,
             barter_armed && barter_delivered,
             barter_delivered,
             angered > 0
@@ -12649,7 +12649,7 @@ impl GameApp {
     /// the 1.0-1.16.5 completeness-audit E2E stage (rides the shared
     /// E2E_V116 gate, the v116b precedent): the cooked-meat smelting
     /// class, the kitchen crafts (the bowl/stews/sugar/pie chain), the
-    /// purpur + end-rod crafts, the ghast's 3-second fireball, the
+    /// violetstone + end-rod crafts, the weepgeist's 3-second fireball, the
     /// cave spider's venom payload, the egg-laying steady state's
     /// plumbing (the 1/9000 roll is unit-tested statistically), and
     /// the new food rows. CI smoke greps the "e2e: audit16" boot line.
@@ -12749,19 +12749,19 @@ impl GameApp {
                 .map(|o| o.block == PUMPKIN_PIE)
                 .unwrap_or(false);
         }
-        // the purpur family: 4 popped chorus -> 4 purpur
-        let purpur_ok = {
-            let g = vec![ItemStack::new(POPPED_CHORUS_FRUIT, 1); 4];
+        // the violetstone family: 4 popped echo -> 4 violetstone
+        let violetstone_ok = {
+            let g = vec![ItemStack::new(POPPED_ECHO_FRUIT, 1); 4];
             match_grid(&g, 2)
-                .map(|o| (o.block, o.count) == (PURPUR_BLOCK, 4))
+                .map(|o| (o.block, o.count) == (VIOLETSTONE_BLOCK, 4))
                 .unwrap_or(false)
         };
 
-        // 3. the audit trio in the world: the ghast (a 20-block spawn
+        // 3. the audit trio in the world: the weepgeist (a 20-block spawn
         //    fires the 60-tick fireball), the cave spider (the venom
         //    payload), the silverfish (alive + hostile)
         // the mobs layer needs the player reference to aim at (restored
-        // 2026-09-19 — losing this line left the ghast without a target,
+        // 2026-09-19 — losing this line left the weepgeist without a target,
         // so no fireball and no cave-spider bite reached the hits queue)
         self.sim.mobs.player = Some([
             pos[0] as f32 + 0.5,
@@ -12769,8 +12769,8 @@ impl GameApp {
             pos[2] as f32 + 0.5,
         ]);
         self.test_place(GRASS, pos[0] + 8, pos[1], pos[2]);
-        let _ghast = self.sim.mobs.spawn_at(
-            vc_gameplay::mobs::MobKind::Ghast,
+        let _weepgeist = self.sim.mobs.spawn_at(
+            vc_gameplay::mobs::MobKind::Weepgeist,
             pos[0] + 8,
             pos[1] + 4,
             pos[2],
@@ -12829,33 +12829,33 @@ impl GameApp {
             && food_values(COOKIE) == (2, 0.4);
 
         vc_render::render::report_boot_log(&format!(
-            "e2e: audit16 smelt={} smoker={} kitchen={} purpur={} trio={} food={}",
-            smelt_ok, smoker_ok, kitchen_ok, purpur_ok, trio_ok, food_ok
+            "e2e: audit16 smelt={} smoker={} kitchen={} violetstone={} trio={} food={}",
+            smelt_ok, smoker_ok, kitchen_ok, violetstone_ok, trio_ok, food_ok
         ));
     }
 
-    /// the sweep-2 chorus teleport — "up to 16 attempts are made to
+    /// the sweep-2 echo teleport — "up to 16 attempts are made to
     /// choose a random destination within ±8 on all three axes in the
-    /// same manner as enderman teleportation, with the exception that
+    /// same manner as voidling teleportation, with the exception that
     /// the entity may teleport into an area only 2 blocks high ... If
     /// there are no valid blocks within this range, the teleportation
     /// attempt fails and the entity remains in place" (VERIFIED live
-    /// 2026-09-09, w/Chorus_Fruit §Teleportation). Enderman-style
+    /// 2026-09-09, w/Echo_Fruit §Teleportation). Voidling-style
     /// validity: a solid floor with two air blocks above it.
-    fn chorus_teleport(&mut self) {
+    fn echo_teleport(&mut self) {
         let px = self.player.pos.x.floor() as i32;
         let py = self.player.pos.y.floor() as i32;
         let pz = self.player.pos.z.floor() as i32;
-        if let Some([x, y, z]) = chorus_destination(&self.world, px, py, pz, &mut self.audio_rng) {
+        if let Some([x, y, z]) = echo_destination(&self.world, px, py, pz, &mut self.audio_rng) {
             self.player.pos = glam::Vec3::new(x as f32 + 0.5, y as f32, z as f32 + 0.5);
             // the warp cancels the accumulated fall (the pearl's own
-            // class of negation, VERIFIED w/Chorus_Fruit)
+            // class of negation, VERIFIED w/Echo_Fruit)
             self.player.fall_dist = 0.0;
             self.player.vel.y = 0.0;
-            self.play_event("entity.enderman.teleport", None, 0.9);
+            self.play_event("entity.voidling.teleport", None, 0.9);
             self.ui.dirty = true;
             vc_render::render::report_boot_log(&format!(
-                "e2e: chorus teleport -> [{x}, {y}, {z}] (the 16-attempt +-8 rule)"
+                "e2e: echo teleport -> [{x}, {y}, {z}] (the 16-attempt +-8 rule)"
             ));
         }
         // the None case: "the teleportation attempt fails and the
@@ -12881,12 +12881,12 @@ impl GameApp {
         // columns; the retired hunger/2 direct-heal pins became these)
         let food_ok = is_food(ROTTEN_FLESH)
             && is_food(SPIDER_EYE)
-            && is_food(CHORUS_FRUIT)
+            && is_food(ECHO_FRUIT)
             && is_food(GOLDEN_APPLE)
             && is_food(MELON_SLICE)
             && food_values(ROTTEN_FLESH) == (4, 0.8)
             && food_values(SPIDER_EYE) == (2, 3.2)
-            && food_values(CHORUS_FRUIT) == (4, 2.4)
+            && food_values(ECHO_FRUIT) == (4, 2.4)
             && food_values(GOLDEN_APPLE) == (4, 9.6)
             && food_values(MELON_SLICE) == (2, 1.2);
 
@@ -12998,7 +12998,7 @@ impl GameApp {
         let hatch_ok = matches!(landed_chicks, 0 | 1 | 4);
         let landings_ok = self.sim.mobs.landings.is_empty(); // drained
 
-        // 5. the chorus bound: one real warp attempt — the invariant
+        // 5. the echo bound: one real warp attempt — the invariant
         //    is the ±8 box around the origin (a failed warp stays put,
         //    a successful one lands inside; both are correct)
         let origin = (
@@ -13006,19 +13006,19 @@ impl GameApp {
             self.player.pos.y.floor() as i32,
             self.player.pos.z.floor() as i32,
         );
-        self.chorus_teleport();
-        let chorus_ok = (self.player.pos.x.floor() as i32 - origin.0).abs() <= 8
+        self.echo_teleport();
+        let echo_ok = (self.player.pos.x.floor() as i32 - origin.0).abs() <= 8
             && (self.player.pos.y.floor() as i32 - origin.1).abs() <= 8
             && (self.player.pos.z.floor() as i32 - origin.2).abs() <= 8;
 
         vc_render::render::report_boot_log(&format!(
-            "e2e: audit16b food={} melon={} golden={} throw={} hatch={} chorus={} (pearl moved={}, paid={})",
+            "e2e: audit16b food={} melon={} golden={} throw={} hatch={} echo={} (pearl moved={}, paid={})",
             food_ok,
             melon_craft && seeds_craft,
             golden_ok,
             landings_ok && moved && paid,
             hatch_ok,
-            chorus_ok,
+            echo_ok,
             moved,
             paid
         ));
@@ -13212,7 +13212,7 @@ impl GameApp {
             }
         }
         self.prev_in_water = self.player.in_water;
-        // the ambient roll (portal shimmer / redstone dust / leaf drips
+        // the ambient roll (portal shimmer / fluxstone dust / leaf drips
         // while it rains) — every 0.25 s, a few random blocks near the
         // player are checked so the scans stay cheap
         if self.time >= self.particle_ambient_next {
@@ -13223,7 +13223,7 @@ impl GameApp {
                 let bz = pz as i32 + self.audio_rng.next_range(24) as i32 - 12;
                 let b = self.world.get_block(bx, by, bz);
                 match b {
-                    REDSTONE_TORCH => {
+                    FLUXSTONE_TORCH => {
                         // the red dust mote above a lit torch
                         self.particles.spawn_kind(
                             "dust",
@@ -13355,7 +13355,7 @@ impl GameApp {
         // is the sun-up half of the cycle (sun_dir.y > 0 at noon; the
         // bees' night-return + the hives' day-release gate)
         self.sim.is_day =
-            self.day_time < 0.5 || self.world.dimension == vc_world::world::Dimension::Nether;
+            self.day_time < 0.5 || self.world.dimension == vc_world::world::Dimension::Hollow;
         // Backlog round (weather): the machine + particles + strikes
         self.weather_update(dt);
         // DAY_LEN_SECS = 1200 = the vanilla 1.16.5 full daylight cycle
@@ -13380,7 +13380,7 @@ impl GameApp {
             }
         }
 
-        // E2E_MENU: the settings-tree script ran to the end — verify the
+        // E2E_MENU: the settings-tree script ran to the void — verify the
         // tree round-tripped back to the title and exit clean
         if self.smoke_menu_e2e && self.smoke_script.is_empty() && self.screen == Screen::Title {
             vc_render::render::report_boot_log(
@@ -13452,13 +13452,13 @@ impl GameApp {
                 if std::env::var("E2E_V115").is_ok() {
                     self.e2e_v115(2600);
                 }
-                // 1.16 (Nether Update, part 1): the anchor family stage
+                // 1.16 (Hollows Update, part 1): the anchor family stage
                 // (E2E_V116=1 — the state ladder + target pulse + the
                 // material path)
                 if std::env::var("E2E_V116").is_ok() {
                     self.e2e_v116();
                 }
-                // 1.16 (Nether Update, part 2): the forest-families
+                // 1.16 (Hollows Update, part 2): the forest-families
                 // stage (rides the shared E2E_V116 gate — one CI run
                 // covers the whole bracket, the v114 trio precedent)
                 if std::env::var("E2E_V116").is_ok() {
@@ -13752,9 +13752,9 @@ impl GameApp {
                         // Phase E3: the signal lands in the plate's POWER
                         // state (the vanilla `power` blockstate — a real
                         // source for the stateless wire re-derivation)
-                        let signal = vc_sim::redstone::weighted_plate_signal(pb, count);
+                        let signal = vc_sim::fluxstone::weighted_plate_signal(pb, count);
                         let (w, sched) = (&mut self.world, &mut self.sim.sched);
-                        vc_sim::redstone::plate_tick(w, sched, p[0], p[1], p[2], signal);
+                        vc_sim::fluxstone::plate_tick(w, sched, p[0], p[1], p[2], signal);
                     }
                     for i in dead.into_iter().rev() {
                         self.plates.swap_remove(i);
@@ -13768,9 +13768,9 @@ impl GameApp {
             // Phase E1: drain the dragon fight's events (fireballs,
             // crystal explosions, the victory sequence)
             self.drain_dragon_events();
-            // Phase E2: drain the wither fight's events (skulls, the
+            // Phase E2: drain the blight fight's events (skulls, the
             // birth explosion, block breaking, the death drop)
-            self.drain_wither_events();
+            self.drain_blight_events();
         });
 
         // Phase 2: melee cooldown recovery clock
@@ -13809,7 +13809,7 @@ impl GameApp {
         // §21 music + ambient scheduling — Sub-round 5 (2026-09-15)
         // expanded: the vanilla music.track set (game day/night, the
         // creative pad in creative, music.under_water while the camera
-        // is submerged, music.nether in the nether), ambient.cave below
+        // is submerged, music.hollow in the hollow), ambient.cave below
         // sea level with no skylight (the vanilla cave-ambience gate),
         // the underwater enter/exit/loop bed with the master-bus
         // muffle, and the weather.rain loop while rain falls.
@@ -13818,8 +13818,8 @@ impl GameApp {
                 self.music_next = self.time + 150.0 + self.audio_rng.next_f32() * 90.0;
                 let ev = if self.player.head_in_water {
                     "music.under_water"
-                } else if self.world.dimension == vc_world::world::Dimension::Nether {
-                    "music.nether"
+                } else if self.world.dimension == vc_world::world::Dimension::Hollow {
+                    "music.hollow"
                 } else if self.mode.picks_creative() {
                     "music.creative"
                 } else if self.day_time < 0.55 {
@@ -13972,13 +13972,13 @@ impl GameApp {
                     }
                     Some("probe") => {
                         // probe:x:y:z — Phase 3 E2E read-back: decode the
-                        // redstone state at a cell and report via boot log
+                        // fluxstone state at a cell and report via boot log
                         let p = coords();
                         if p.len() == 3 {
                             let s = self.world.get_state(p[0], p[1], p[2]);
                             let b = vc_blocks::blocks::state_block(s);
                             let msg = match b {
-                                REDSTONE_WIRE => format!(
+                                FLUXSTONE_WIRE => format!(
                                     "e2e: probe ({},{},{}) WIRE power={}",
                                     p[0],
                                     p[1],
@@ -14105,19 +14105,19 @@ impl GameApp {
                     Some("wire") => {
                         let p = coords();
                         if p.len() == 3 {
-                            self.test_place(REDSTONE_WIRE, p[0], p[1], p[2]);
+                            self.test_place(FLUXSTONE_WIRE, p[0], p[1], p[2]);
                         }
                     }
                     Some("torch") => {
                         let p = coords();
                         if p.len() == 3 {
-                            self.test_place(REDSTONE_TORCH, p[0], p[1], p[2]);
+                            self.test_place(FLUXSTONE_TORCH, p[0], p[1], p[2]);
                         }
                     }
                     Some("toggle") => {
                         let p = coords();
                         if p.len() == 3 {
-                            vc_sim::redstone::toggle_lever(
+                            vc_sim::fluxstone::toggle_lever(
                                 &mut self.world,
                                 &mut self.sim.sched,
                                 p[0],
@@ -14272,7 +14272,7 @@ impl GameApp {
                                 // brew:<ticks> — scripted §29 flow: place a
                                 // stand, load it through REAL slot
                                 // semantics (3 water bottles, wart
-                                // ingredient, netherrack fuel), sim N ticks,
+                                // ingredient, hollowstone fuel), sim N ticks,
                                 // report the bottle contents.
                                 // brew:corrupt:<ticks> — Phase 4 §26 flow:
                                 // a HEALING bottle + a fermented spider eye
@@ -14319,7 +14319,7 @@ impl GameApp {
                                     entry.ingredient =
                                         vc_inventory::inventory::ItemStack::new(MUSHROOM_RED, 1);
                                 }
-                                entry.fuel = vc_inventory::inventory::ItemStack::new(NETHERRACK, 1);
+                                entry.fuel = vc_inventory::inventory::ItemStack::new(HOLLOWSTONE, 1);
                                 // advance the sim deterministically (the
                                 // full 1.16.5-unticked scope — E2E brew
                                 // fast-forward must behave like live play)
@@ -14380,20 +14380,20 @@ impl GameApp {
                             Some("potion_healing_2") => Some(POTION_HEALING_II),
                             Some("mushroom_red") => Some(MUSHROOM_RED),
                             Some("mushroom_brown") => Some(MUSHROOM_BROWN),
-                            Some("netherrack") => Some(NETHERRACK),
+                            Some("hollowstone") => Some(HOLLOWSTONE),
                             Some("glowstone") => Some(GLOWSTONE),
                             // Phase E2 (1.3–1.4 bracket)
                             Some("anvil") => Some(ANVIL),
                             Some("beacon") => Some(BEACON),
-                            Some("ender_chest") => Some(ENDER_CHEST),
+                            Some("void_chest") => Some(VOID_CHEST),
                             Some("cobble_wall") => Some(COBBLE_WALL),
                             Some("flower_pot") => Some(FLOWER_POT),
                             Some("item_frame") => Some(ITEM_FRAME),
                             Some("tripwire_hook") => Some(TRIPWIRE_HOOK),
-                            Some("wither_skull") => Some(WITHER_SKELETON_SKULL),
+                            Some("blight_skull") => Some(BLIGHT_SKELETON_SKULL),
                             Some("command_block") => Some(COMMAND_BLOCK),
                             Some("emerald") => Some(EMERALD),
-                            Some("nether_star") => Some(NETHER_STAR),
+                            Some("hollow_star") => Some(HOLLOW_STAR),
                             Some("potato") => Some(POTATO),
                             // Round 17: the foods the live hunger E2E
                             // feeds through the real eat path
@@ -14402,7 +14402,7 @@ impl GameApp {
                             Some("baked_potato") => Some(BAKED_POTATO),
                             Some("carrot") => Some(CARROT),
                             Some("pumpkin_pie") => Some(PUMPKIN_PIE),
-                            Some("soul_sand") => Some(SOUL_SAND),
+                            Some("spirit_sand") => Some(SPIRIT_SAND),
                             Some("iron_block") => Some(IRON_BLOCK),
                             Some("lava") => Some(LAVA),
                             // Phase 4 §26: corruption chain
@@ -14523,10 +14523,10 @@ impl GameApp {
                             vc_render::render::report_boot_log("e2e: enchant offer not affordable");
                         }
                     }
-                    Some("wither") => {
-                        // wither — E2E: build the summon structure 3 blocks
-                        // ahead (T of 4 soul sand + 3 skulls) and place the
-                        // LAST skull (the trigger) — VERIFIED w/Wither
+                    Some("blight") => {
+                        // blight — E2E: build the summon structure 3 blocks
+                        // ahead (T of 4 spirit sand + 3 skulls) and place the
+                        // LAST skull (the trigger) — VERIFIED w/Blight
                         // Spawning
                         let d = self.player.look_dir();
                         let px = self.player.pos.x.floor() as i32 + d.x.round() as i32 * 3;
@@ -14539,25 +14539,25 @@ impl GameApp {
                         }
                         let by = y + 2; // skull row
                         for dx in -1..=1i32 {
-                            for (yy, blk) in [(by, WITHER_SKELETON_SKULL), (by - 1, SOUL_SAND)] {
+                            for (yy, blk) in [(by, BLIGHT_SKELETON_SKULL), (by - 1, SPIRIT_SAND)] {
                                 self.world.set_block(px + dx, yy, pz, blk);
                             }
                         }
-                        self.world.set_block(px, by - 2, pz, SOUL_SAND);
+                        self.world.set_block(px, by - 2, pz, SPIRIT_SAND);
                         // the last-placed skull (the center one) triggers
                         // the summon
-                        if vc_gameplay::wither::wither_pattern(&self.world, px, by, pz) {
-                            for c in vc_gameplay::wither::wither_pattern_blocks(px, by, pz) {
+                        if vc_gameplay::blight::blight_pattern(&self.world, px, by, pz) {
+                            for c in vc_gameplay::blight::blight_pattern_blocks(px, by, pz) {
                                 self.world.set_block(c[0], c[1], c[2], AIR);
                             }
-                            self.sim.wither.begin_summon(px, by, pz);
+                            self.sim.blight.begin_summon(px, by, pz);
                             vc_render::render::report_boot_log(
-                                "e2e: wither summoned (300 HP, 220-tick charge — VERIFIED)",
+                                "e2e: blight summoned (300 HP, 220-tick charge — VERIFIED)",
                             );
                             self.ui.dirty = true;
                         } else {
                             vc_render::render::report_boot_log(
-                                "e2e: wither structure failed to validate",
+                                "e2e: blight structure failed to validate",
                             );
                         }
                     }
@@ -15309,7 +15309,7 @@ impl GameApp {
                     Some("dim") => {
                         // §28 E2E: dim:<0|1> — dimension travel through the
                         // full pipeline (world swap, 8:1 coords, mesh reset,
-                        // Loading snap); stats `dim`/`dimName` + the nether
+                        // Loading snap); stats `dim`/`dimName` + the hollow
                         // fog verify it. Travel lands asynchronously — the
                         // Loading screen holds the player until the spawn
                         // chunk meshes, then returns to the game.
@@ -16157,24 +16157,24 @@ impl GameApp {
                     }
 
                     // Phase E2 (+ 1.7.2 pufferfish poison, unified): timed
-                    // status effects tick (wither / poison / regeneration —
+                    // status effects tick (blight / poison / regeneration —
                     // VERIFIED w/Effect rows; beacons refresh these through
                     // the same apply path). Poison damage is floored at 1
-                    // HP inside the system (cannot kill); wither can.
+                    // HP inside the system (cannot kill); blight can.
                     {
                         let (edmg, eheal) = self.player.effects.tick(self.player.health);
                         if edmg > 0.0 && !self.mode.invulnerable() {
                             let applied = self.player.damage(edmg);
                             if applied > 0.0 {
                                 self.play_event("entity.player.hurt", None, 0.9);
-                                // wither can kill, poison cannot — pick the
+                                // blight can kill, poison cannot — pick the
                                 // cause from which effect is actually running
                                 let poisoned =
                                     self.player.effects.amplifier(EffectKind::Poison).is_some();
                                 self.death_cause = if poisoned {
                                     "POISONED".into()
                                 } else {
-                                    "WITHERED AWAY".into()
+                                    "BLIGHTED AWAY".into()
                                 };
                                 self.ui.dirty = true;
                             }
@@ -16294,10 +16294,10 @@ impl GameApp {
                 }
             }
 
-            // 1.13 (Update Aquatic): conduit power — VERIFIED w/Conduit
+            // 1.13 (Aquatic-era update): conduit power — VERIFIED w/Conduit
             // §Usage (live capture, scripts/v113_page_conduit_text.txt):
-            // "The frame must include 16-42 blocks of prismarine, dark
-            // prismarine, sea lanterns, and/or prismarine bricks";
+            // "The frame must include 16-42 blocks of abyssprism, dark
+            // abyssprism, sea lanterns, and/or abyssprism bricks";
             // "When activated, conduits give the 'Conduit Power'
             // effect to all players in contact with rain or water,
             // within a spherical range of 32-96 blocks"; "The effective
@@ -16358,9 +16358,9 @@ impl GameApp {
                                     }
                                     let b =
                                         self.world.get_block(pos[0] + dx, pos[1] + dy, pos[2] + dz);
-                                    if b == PRISMARINE
-                                        || b == PRISMARINE_BRICKS
-                                        || b == DARK_PRISMARINE
+                                    if b == ABYSSPRISM
+                                        || b == ABYSSPRISM_BRICKS
+                                        || b == DARK_ABYSSPRISM
                                         || b == SEA_LANTERN
                                     {
                                         frame += 1;
@@ -16968,11 +16968,11 @@ impl GameApp {
                         }
                     }
                 }
-                // ---- 1.16 (Nether Update, part 2): the forest-mob
-                // interactions — strider feeding (warped fungus),
-                // hoglin feeding (crimson fungus, the flee-gated
-                // form) + piglin bartering ("Use a gold ingot on an
-                // adult piglin", VERIFIED w/Piglin §Bartering; gold =
+                // ---- 1.16 (Hollows Update, part 2): the forest-mob
+                // interactions — emberhopper feeding (viridian fungus),
+                // boarling feeding (scarlet fungus, the flee-gated
+                // form) + pigoblin bartering ("Use a gold ingot on an
+                // adult pigoblin", VERIFIED w/Pigoblin §Bartering; gold =
                 // the iron-ingot stand-in, the disclosed convention).
                 // First feeding arms love mode; a second with a loving
                 // partner spawns the baby (the fox/bee pattern). ----
@@ -16991,26 +16991,26 @@ impl GameApp {
                             .map(|m| {
                                 matches!(
                                     m.kind,
-                                    vc_gameplay::mobs::MobKind::Strider
-                                        | vc_gameplay::mobs::MobKind::Hoglin
-                                        | vc_gameplay::mobs::MobKind::Piglin
+                                    vc_gameplay::mobs::MobKind::Emberhopper
+                                        | vc_gameplay::mobs::MobKind::Boarling
+                                        | vc_gameplay::mobs::MobKind::Pigoblin
                                 )
                             })
                             .unwrap_or(false)
                     })
                 {
                     let held = self.player.held().block;
-                    // (1) STRIDER: warped fungus ("They can be fed
-                    // warped fungus to breed", VERIFIED w/Strider)
-                    if held == WARPED_FUNGUS
+                    // (1) EMBERHOPPER: viridian fungus ("They can be fed
+                    // viridian fungus to breed", VERIFIED w/Emberhopper)
+                    if held == VIRIDIAN_FUNGUS
                         && self
                             .sim
                             .mobs
                             .by_id(eid)
-                            .map(|m| m.kind == vc_gameplay::mobs::MobKind::Strider)
+                            .map(|m| m.kind == vc_gameplay::mobs::MobKind::Emberhopper)
                             .unwrap_or(false)
                     {
-                        if let Some(out) = self.sim.mobs.try_feed_strider(eid, held) {
+                        if let Some(out) = self.sim.mobs.try_feed_emberhopper(eid, held) {
                             if self.mode.depletes_items() {
                                 let h = self.player.held_mut();
                                 h.count -= 1;
@@ -17018,8 +17018,8 @@ impl GameApp {
                                     *h = vc_inventory::inventory::ItemStack::EMPTY;
                                 }
                             }
-                            self.play_event("entity.strider.eat", None, 1.0);
-                            if let vc_gameplay::mobs::StriderFeedOutcome::Bred(_) = out {
+                            self.play_event("entity.emberhopper.eat", None, 1.0);
+                            if let vc_gameplay::mobs::EmberhopperFeedOutcome::Bred(_) = out {
                                 let (px, py, pz) = {
                                     let m = self.sim.mobs.by_id(eid).unwrap();
                                     (m.pos[0] as i32, m.pos[1] as i32, m.pos[2] as i32)
@@ -17027,9 +17027,9 @@ impl GameApp {
                                 // the calf: baby bit + the 24000-tick
                                 // maturity clock ("All babies obtained
                                 // through breeding take 20 minutes to
-                                // grow up", VERIFIED w/Strider)
+                                // grow up", VERIFIED w/Emberhopper)
                                 let kid = self.sim.mobs.spawn_variant(
-                                    vc_gameplay::mobs::MobKind::Strider,
+                                    vc_gameplay::mobs::MobKind::Emberhopper,
                                     px,
                                     py,
                                     pz,
@@ -17040,30 +17040,30 @@ impl GameApp {
                                         m.aux = 24000;
                                     }
                                 }
-                                self.play_event("entity.strider.ambient", None, 1.0);
+                                self.play_event("entity.emberhopper.ambient", None, 1.0);
                                 vc_render::render::report_boot_log(
-                                    "e2e: warped fungus fed -> strider pair bred a calf (VERIFIED)",
+                                    "e2e: viridian fungus fed -> emberhopper pair bred a calf (VERIFIED)",
                                 );
                             }
                             self.place_timer = 0.5;
                         }
                     }
-                    // (2) HOGLIN: crimson fungus ("Hoglins can be bred
-                    // with crimson fungi", VERIFIED w/Hoglin — the
-                    // warped-fungus flee gate is inside the feed)
-                    else if held == CRIMSON_FUNGUS
+                    // (2) BOARLING: scarlet fungus ("Boarlings can be bred
+                    // with scarlet fungi", VERIFIED w/Boarling — the
+                    // viridian-fungus flee gate is inside the feed)
+                    else if held == SCARLET_FUNGUS
                         && self
                             .sim
                             .mobs
                             .by_id(eid)
-                            .map(|m| m.kind == vc_gameplay::mobs::MobKind::Hoglin)
+                            .map(|m| m.kind == vc_gameplay::mobs::MobKind::Boarling)
                             .unwrap_or(false)
                     {
                         let outcome = {
                             // split borrow: mobs (mut) + world (shared)
                             let mobs = &mut self.sim.mobs;
                             let world = &self.world;
-                            mobs.try_feed_hoglin(eid, held, world)
+                            mobs.try_feed_boarling(eid, held, world)
                         };
                         if let Some(out) = outcome {
                             if self.mode.depletes_items() {
@@ -17073,14 +17073,14 @@ impl GameApp {
                                     *h = vc_inventory::inventory::ItemStack::EMPTY;
                                 }
                             }
-                            self.play_event("entity.hoglin.ambient", None, 1.0);
-                            if let vc_gameplay::mobs::HoglinFeedOutcome::Bred(_) = out {
+                            self.play_event("entity.boarling.ambient", None, 1.0);
+                            if let vc_gameplay::mobs::BoarlingFeedOutcome::Bred(_) = out {
                                 let (px, py, pz) = {
                                     let m = self.sim.mobs.by_id(eid).unwrap();
                                     (m.pos[0] as i32, m.pos[1] as i32, m.pos[2] as i32)
                                 };
                                 let kid = self.sim.mobs.spawn_variant(
-                                    vc_gameplay::mobs::MobKind::Hoglin,
+                                    vc_gameplay::mobs::MobKind::Boarling,
                                     px,
                                     py,
                                     pz,
@@ -17092,25 +17092,25 @@ impl GameApp {
                                     }
                                 }
                                 vc_render::render::report_boot_log(
-                                    "e2e: crimson fungus fed -> hoglin pair bred a piglet (VERIFIED)",
+                                    "e2e: scarlet fungus fed -> boarling pair bred a piglet (VERIFIED)",
                                 );
                             }
                             self.place_timer = 0.5;
                         }
                     }
-                    // (3) PIGLIN: the gold-ingot barter (the iron-ore
+                    // (3) PIGOBLIN: the gold-ingot barter (the iron-ore
                     // stand-in) — arms the 6-second examine; the loot
                     // surfaces via pending_drops when the countdown
                     // ends ("then drops a random item from the chart",
-                    // VERIFIED w/Piglin)
+                    // VERIFIED w/Pigoblin)
                     else if held == IRON_ORE
                         && self
                             .sim
                             .mobs
                             .by_id(eid)
-                            .map(|m| m.kind == vc_gameplay::mobs::MobKind::Piglin)
+                            .map(|m| m.kind == vc_gameplay::mobs::MobKind::Pigoblin)
                             .unwrap_or(false)
-                        && self.sim.mobs.try_barter_piglin(eid, held)
+                        && self.sim.mobs.try_barter_pigoblin(eid, held)
                     {
                         if self.mode.depletes_items() {
                             let h = self.player.held_mut();
@@ -17119,9 +17119,9 @@ impl GameApp {
                                 *h = vc_inventory::inventory::ItemStack::EMPTY;
                             }
                         }
-                        self.play_event("entity.piglin.admiring_item", None, 1.0);
+                        self.play_event("entity.pigoblin.admiring_item", None, 1.0);
                         vc_render::render::report_boot_log(
-                                "e2e: gold ingot handed -> piglin examines (6 s), barter follows (VERIFIED)",
+                                "e2e: gold ingot handed -> pigoblin examines (6 s), barter follows (VERIFIED)",
                             );
                         self.place_timer = 0.5;
                     }
@@ -17355,7 +17355,7 @@ impl GameApp {
                 } else if let Some((tpos, tb, _)) = self.target {
                     // §25: right-click a lever toggles it (vanilla interaction)
                     if tb == LEVER {
-                        vc_sim::redstone::toggle_lever(
+                        vc_sim::fluxstone::toggle_lever(
                             &mut self.world,
                             &mut self.sim.sched,
                             tpos[0],
@@ -17372,20 +17372,20 @@ impl GameApp {
                             1.0,
                         );
                         self.place_timer = 0.24;
-                    } else if tb == RESPAWN_ANCHOR {
-                        // 1.16 (Nether Update, part 1) — the signature
-                        // mechanic. VERIFIED w/Respawn_Anchor:
+                    } else if tb == REBIRTH_ANCHOR {
+                        // 1.16 (Hollows Update, part 1) — the signature
+                        // mechanic. VERIFIED w/Rebirth_Anchor:
                         // (a) charging: "glowstone adds one charge, max
                         //     4" — using it while holding glowstone
                         //     charges the block (the charge light
                         //     3/7/11/15 rides state_emissive);
                         // (b) setting respawn: needs >= 1 charge AND
-                        //     the Nether ("a block that allows the
+                        //     the Hollow ("a block that allows the
                         //     player to set their spawn point in the
-                        //     Nether, provided it's fueled");
+                        //     Hollow, provided it's fueled");
                         // (c) using it in any other dimension: the
                         //     block EXPLODES, power 5 (the bed-in-
-                        //     nether pattern; fire-spread disclosed —
+                        //     hollow pattern; fire-spread disclosed —
                         //     the engine's explosion path does not
                         //     ignite)
                         let charge = vc_blocks::blocks::anchor_charge(
@@ -17429,20 +17429,20 @@ impl GameApp {
                                 "e2e: anchor charged to {} (glowstone consumed, VERIFIED)",
                                 charge + 1
                             ));
-                        } else if self.world.dimension == vc_world::world::Dimension::Nether
+                        } else if self.world.dimension == vc_world::world::Dimension::Hollow
                             && charge >= 1
                         {
                             // the spawn point: on top of the anchor (the
                             // bed-wake position pattern); each respawn
                             // consumes one charge (the respawn() path)
-                            self.respawn_anchor = Some(tpos);
+                            self.rebirth_anchor = Some(tpos);
                             self.respawn_pos = glam::Vec3::new(
                                 tpos[0] as f32 + 0.5,
                                 tpos[1] as f32 + 1.0,
                                 tpos[2] as f32 + 0.5,
                             );
                             self.play_event(
-                                "block.respawn_anchor.set_spawn",
+                                "block.rebirth_anchor.set_spawn",
                                 Some([
                                     tpos[0] as f32 + 0.5,
                                     tpos[1] as f32 + 0.5,
@@ -17453,7 +17453,7 @@ impl GameApp {
                             vc_render::render::report_boot_log(
                                 "e2e: respawn point set on anchor (charge kept, VERIFIED)",
                             );
-                        } else if self.world.dimension != vc_world::world::Dimension::Nether {
+                        } else if self.world.dimension != vc_world::world::Dimension::Hollow {
                             // the overworld/End misuse: power-5 blast (the
                             // anchor itself is destroyed first — it is
                             // blast-resistant, so the explosion would
@@ -17478,7 +17478,7 @@ impl GameApp {
                                 ],
                                 5.0,
                             );
-                            self.death_cause = "BLOWN UP BY A RESPAWN ANCHOR".into();
+                            self.death_cause = "BLOWN UP BY A REBIRTH ANCHOR".into();
                         }
                         self.place_timer = 0.3;
                     } else if tb == CRAFTING_TABLE {
@@ -17530,8 +17530,8 @@ impl GameApp {
                         // open-path scan (first match N/E/S/W order).
                         // Trapped chests pair only with trapped chests
                         // (VERIFIED w/Chest §Double chests) — they ride
-                        // their own branch below; shulker boxes NEVER
-                        // merge (VERIFIED w/Shulker_Box).
+                        // their own branch below; lurkshell boxes NEVER
+                        // merge (VERIFIED w/Lurkshell_Box).
                         self.sim.containers.entry(tpos, CHEST);
                         if let Some(other) =
                             Container::double_chest_partner(&self.world, tpos, CHEST)
@@ -17544,7 +17544,7 @@ impl GameApp {
                         self.place_timer = 0.3;
                     } else if tb == TRAPPED_CHEST {
                         // Phase E3 (VERIFIED w/Trapped_Chest): container
-                        // + redstone — "a power level equal to the number
+                        // + fluxstone — "a power level equal to the number
                         // of players ... accessing the trapped chest at
                         // once (maximum 15)" (single-player: 1 while the
                         // GUI is open). Opening feeds adjacent wires the
@@ -17564,32 +17564,32 @@ impl GameApp {
                             self.open_container(Container::Chest { pos: tpos });
                         }
                         let (w, sched) = (&mut self.world, &mut self.sim.sched);
-                        vc_sim::redstone::trapped_chest_tick(
+                        vc_sim::fluxstone::trapped_chest_tick(
                             w, sched, tpos[0], tpos[1], tpos[2], true,
                         );
                         self.place_timer = 0.3;
-                    } else if tb == ENDER_CHEST {
-                        // Phase E2 (VERIFIED w/Ender_Chest): 27 slots,
-                        // shared across EVERY ender chest — the single
+                    } else if tb == VOID_CHEST {
+                        // Phase E2 (VERIFIED w/Void_Chest): 27 slots,
+                        // shared across EVERY void chest — the single
                         // container entity at the sentinel key makes all
                         // opens the same inventory (single-player = the
                         // vanilla per-player rule). Interactions stay
                         // available in Adventure (containers are
                         // interactions, not block edits).
-                        self.sim.containers.entry(ENDER_CHEST_KEY, CHEST);
+                        self.sim.containers.entry(VOID_CHEST_KEY, CHEST);
                         self.open_container(Container::Chest {
-                            pos: ENDER_CHEST_KEY,
+                            pos: VOID_CHEST_KEY,
                         });
                         self.place_timer = 0.3;
-                    } else if tb == SHULKER_BOX {
-                        // 1.11 (VERIFIED w/Shulker_Box): opens like a
+                    } else if tb == LURKSHELL_BOX {
+                        // 1.11 (VERIFIED w/Lurkshell_Box): opens like a
                         // chest with the same 27-slot grid (Container::
                         // Chest keys the position; the kind row comes from
-                        // slot_count(SHULKER_BOX)=27). The no-nesting rule
-                        // ("cannot be placed inside another" shulker box)
+                        // slot_count(LURKSHELL_BOX)=27). The no-nesting rule
+                        // ("cannot be placed inside another" lurkshell box)
                         // is enforced on the insert path.
-                        self.sim.containers.entry(tpos, SHULKER_BOX);
-                        self.shulker_positions.insert(tpos);
+                        self.sim.containers.entry(tpos, LURKSHELL_BOX);
+                        self.lurkshell_positions.insert(tpos);
                         self.open_container(Container::Chest { pos: tpos });
                         self.place_timer = 0.3;
                     } else if tb == BARREL {
@@ -17812,17 +17812,17 @@ impl GameApp {
                             self.ui.dirty = true;
                         }
                     } else if !self.player.held().is_empty()
-                        && self.player.held().block == EYE_OF_ENDER
-                        && tb == END_PORTAL_FRAME
+                        && self.player.held().block == VOID_EYE
+                        && tb == VOID_GATE_FRAME
                     {
-                        // Phase E1: insert an eye of ender into the frame
-                        // (VERIFIED w/The_End: 12 frames form the 5×5 ring
+                        // Phase E1: insert an void eye into the frame
+                        // (VERIFIED w/The_Void: 12 frames form the 5×5 ring
                         // with corners cut; filling all 12 activates the
-                        // portal — the central 3×3 becomes End portal)
+                        // portal — the central 3×3 becomes Void gate)
                         let (cx, cy, cz) = (tpos[0], tpos[1], tpos[2]);
                         let cur = self.world.get_state(cx, cy, cz);
-                        if cur != END_PORTAL_FRAME_EYE {
-                            self.world.set_block_state(cx, cy, cz, END_PORTAL_FRAME_EYE);
+                        if cur != VOID_GATE_FRAME_EYE {
+                            self.world.set_block_state(cx, cy, cz, VOID_GATE_FRAME_EYE);
                             if self.mode.depletes_items() {
                                 let held = self.player.held_mut();
                                 held.count -= 1;
@@ -17831,7 +17831,7 @@ impl GameApp {
                                 }
                             }
                             self.play_event(
-                                "block.end_portal_frame.fill",
+                                "block.void_gate_frame.fill",
                                 Some([cx as f32 + 0.5, cy as f32 + 1.0, cz as f32 + 0.5]),
                                 1.0,
                             );
@@ -17844,25 +17844,25 @@ impl GameApp {
                             for dz in -3..=3i32 {
                                 for dx in -3..=3i32 {
                                     let s = self.world.get_state(cx + dx, cy, cz + dz);
-                                    if s == END_PORTAL_FRAME_EYE {
+                                    if s == VOID_GATE_FRAME_EYE {
                                         eyes += 1;
                                     }
                                 }
                             }
                             if eyes >= 12 {
-                                self.activate_end_portal(cx, cy, cz);
+                                self.activate_void_gate(cx, cy, cz);
                             }
                             self.place_timer = 0.3;
                             self.ui.dirty = true;
                         }
-                    } else if tb == END_PORTAL {
-                        // Phase E1: entering an end portal dimension-travels
+                    } else if tb == VOID_GATE {
+                        // Phase E1: entering an void gate dimension-travels
                         // (walk-in trigger; vanilla jumps in). Overworld
-                        // portal → the End; the End's exit fountain → home.
-                        let target = if self.world.dimension == vc_world::world::Dimension::End {
+                        // portal → the Void; the Void's exit fountain → home.
+                        let target = if self.world.dimension == vc_world::world::Dimension::Void {
                             vc_world::world::Dimension::Overworld
                         } else {
-                            vc_world::world::Dimension::End
+                            vc_world::world::Dimension::Void
                         };
                         self.travel_to_dimension(target);
                         self.place_timer = 0.5;
@@ -17896,15 +17896,15 @@ impl GameApp {
                         self.place_timer = 0.3;
                         self.ui.dirty = true;
                     } else if !self.player.held().is_empty()
-                        && self.player.held().block == CHORUS_FRUIT
+                        && self.player.held().block == ECHO_FRUIT
                     {
-                        // 1.9 chorus fruit (VERIFIED — wiki /w/Chorus_Fruit,
+                        // 1.9 echo fruit (VERIFIED — wiki /w/Echo_Fruit,
                         // live 2026-09-06): heals 4, "can be eaten even if
                         // the player is not hungry... teleports the player
                         // to a random nearby location". Vanilla rolls up to
                         // 16 attempts within an 8-block cube for a spot
                         // with floor + headroom; ours mirrors that, then
-                        // plays the enderman-ish teleport pop.
+                        // plays the voidling-ish teleport pop.
                         if self.mode.depletes_items() {
                             let held = self.player.held_mut();
                             held.count -= 1;
@@ -17938,9 +17938,9 @@ impl GameApp {
                                 glam::Vec3::new(tx as f32 + 0.5, ty as f32, tz as f32 + 0.5);
                             self.player.vel = glam::Vec3::ZERO;
                             self.player.reset_fall();
-                            self.play_event("entity.enderman.teleport", None, 1.0);
+                            self.play_event("entity.voidling.teleport", None, 1.0);
                             vc_render::render::report_boot_log(&format!(
-                                "e2e: chorus teleport -> ({tx}, {ty}, {tz})"
+                                "e2e: echo teleport -> ({tx}, {ty}, {tz})"
                             ));
                             break 'tp;
                         }
@@ -18185,7 +18185,7 @@ impl GameApp {
                         self.place_timer = 0.3;
                         self.ui.dirty = true;
                     } else if !self.player.held().is_empty()
-                        && matches!(self.player.held().block, SNOWBALL | EGG | ENDER_PEARL)
+                        && matches!(self.player.held().block, SNOWBALL | EGG | VOID_PEARL)
                     {
                         // ---- the sweep-2 throwable family (the
                         // 1.0-era player throws, all VERIFIED live
@@ -18194,7 +18194,7 @@ impl GameApp {
                         // deal damage except to blazes, but they still
                         // knock back"; w/Egg "When thrown by pressing
                         // the use button, an egg has a 1/8 chance of
-                        // spawning a chick"; w/Ender_Pearl "can be
+                        // spawning a chick"; w/Void_Pearl "can be
                         // thrown by pressing the use button, which
                         // consumes the item and teleports the player to
                         // where the pearl lands, dealing 5 HP damage")
@@ -18233,15 +18233,15 @@ impl GameApp {
                             }
                         }
                         // the pearl's "cooldown of one second (20
-                        // ticks)" (VERIFIED w/Ender_Pearl); the light
+                        // ticks)" (VERIFIED w/Void_Pearl); the light
                         // pair use the standard use cooldown
-                        self.place_timer = if b == ENDER_PEARL { 1.0 } else { 0.3 };
+                        self.place_timer = if b == VOID_PEARL { 1.0 } else { 0.3 };
                         let what = if b == SNOWBALL {
                             "snowball"
                         } else if b == EGG {
                             "egg"
                         } else {
-                            "ender pearl"
+                            "void pearl"
                         };
                         self.play_event("entity.snowball.throw", None, 0.8);
                         vc_render::render::report_boot_log(&format!(
@@ -18345,14 +18345,14 @@ impl GameApp {
                             );
                             self.ui.dirty = true;
                         }
-                        // the chorus teleport: "up to 16 attempts are
+                        // the echo teleport: "up to 16 attempts are
                         // made to choose a random destination within
                         // ±8 on all three axes in the same manner as
-                        // enderman teleportation" (VERIFIED
-                        // w/Chorus_Fruit §Teleportation) — runs after
+                        // voidling teleportation" (VERIFIED
+                        // w/Echo_Fruit §Teleportation) — runs after
                         // the heal, exactly vanilla's eat-then-warp
-                        if b == CHORUS_FRUIT {
-                            self.chorus_teleport();
+                        if b == ECHO_FRUIT {
+                            self.echo_teleport();
                         }
                         self.play_event("entity.generic.drink", None, 0.8);
                         vc_render::render::report_boot_log(&format!(
@@ -18703,21 +18703,21 @@ impl GameApp {
                                         u16::MAX
                                     }
                                 } else if is_forest_plant(b) {
-                                    // 1.16 (Nether Update, part 2) — the
-                                    // forest plants root on the nether
-                                    // ground family (VERIFIED w/Crimson_
-                                    // Fungus §Placement: the nylium family;
+                                    // 1.16 (Hollows Update, part 2) — the
+                                    // forest plants root on the hollow
+                                    // ground family (VERIFIED w/Scarlet_
+                                    // Fungus §Placement: the mold family;
                                     // the overworld soil family joins for
                                     // creative transplanting, disclosed) —
                                     // a solid floor below or deny
                                     let below = self.world.get_block(prev[0], prev[1] - 1, prev[2]);
                                     if matches!(
                                         below,
-                                        CRIMSON_NYLIUM
-                                            | WARPED_NYLIUM
-                                            | NETHERRACK
-                                            | SOUL_SOIL
-                                            | SOUL_SAND
+                                        SCARLET_MOLD
+                                            | VIRIDIAN_MOLD
+                                            | HOLLOWSTONE
+                                            | SPIRIT_SOIL
+                                            | SPIRIT_SAND
                                             | GRASS
                                             | DIRT
                                             | PODZOL
@@ -18817,7 +18817,7 @@ impl GameApp {
                                     let hanging = prev[1] < tpos[1];
                                     vc_blocks::blocks::V11_STATE_BASE + if hanging { 5 } else { 4 }
                                 } else if b == CHAIN {
-                                    // 1.16 (Nether Update, part 1) — VERIFIED
+                                    // 1.16 (Hollows Update, part 1) — VERIFIED
                                     // w/Chain §Usage: "chains can be placed
                                     // on the top or side of a block, or
                                     // beneath" — the lantern's face-matched
@@ -18826,9 +18826,9 @@ impl GameApp {
                                     let hanging = prev[1] < tpos[1];
                                     vc_blocks::blocks::V13_STATE_BASE
                                         + if hanging { 30 } else { 29 }
-                                } else if b == SOUL_LANTERN {
-                                    // 1.16 (Nether Update, part 2) — VERIFIED
-                                    // w/Soul_Lantern §Usage: "To hang a soul
+                                } else if b == SPIRIT_LANTERN {
+                                    // 1.16 (Hollows Update, part 2) — VERIFIED
+                                    // w/Spirit_Lantern §Usage: "To hang a soul
                                     // lantern from the bottom of a block,
                                     // aim at the block's bottom face, and
                                     // press use" — the lantern/chain
@@ -18877,7 +18877,7 @@ impl GameApp {
                                     if b == LIGHT_WEIGHTED_PLATE || b == HEAVY_WEIGHTED_PLATE {
                                         self.plates.push(prev);
                                     }
-                                    // 1.13 (Update Aquatic): register a placed
+                                    // 1.13 (Aquatic-era update): register a placed
                                     // CONDUIT for the Conduit Power scan
                                     // (frame activation + range + hostile
                                     // attacks live in the game layer tick)
@@ -18906,14 +18906,14 @@ impl GameApp {
                                         prev[1],
                                         prev[2],
                                     );
-                                    // Phase E2 (VERIFIED w/Wither Spawning): the
-                                    // wither is summoned when the LAST wither
+                                    // Phase E2 (VERIFIED w/Blight Spawning): the
+                                    // blight is summoned when the LAST blight
                                     // skeleton skull is placed on the T of 4
-                                    // soul sand (4 soul sand + 3 skulls, the
+                                    // spirit sand (4 spirit sand + 3 skulls, the
                                     // final block must be a skull)
-                                    if b == WITHER_SKELETON_SKULL
+                                    if b == BLIGHT_SKELETON_SKULL
                                         && self.mode.edits_world_blocks()
-                                        && vc_gameplay::wither::wither_pattern(
+                                        && vc_gameplay::blight::blight_pattern(
                                             &self.world,
                                             prev[0],
                                             prev[1],
@@ -18921,7 +18921,7 @@ impl GameApp {
                                         )
                                     {
                                         // consume the pattern (7 blocks)
-                                        for c in vc_gameplay::wither::wither_pattern_blocks(
+                                        for c in vc_gameplay::blight::blight_pattern_blocks(
                                             prev[0], prev[1], prev[2],
                                         ) {
                                             self.world.set_block(c[0], c[1], c[2], AIR);
@@ -18934,9 +18934,9 @@ impl GameApp {
                                                 0,
                                             );
                                         }
-                                        self.sim.wither.begin_summon(prev[0], prev[1], prev[2]);
+                                        self.sim.blight.begin_summon(prev[0], prev[1], prev[2]);
                                         self.play_event(
-                                            "entity.wither.spawn",
+                                            "entity.blight.spawn",
                                             Some([
                                                 prev[0] as f32 + 0.5,
                                                 prev[1] as f32 + 1.0,
@@ -18945,7 +18945,7 @@ impl GameApp {
                                             1.0,
                                         );
                                         vc_render::render::report_boot_log(
-                                        "e2e: wither summon begun (T of 4 soul sand + 3 skulls, 220-tick charge, VERIFIED)",
+                                        "e2e: blight summon begun (T of 4 spirit sand + 3 skulls, 220-tick charge, VERIFIED)",
                                     );
                                         self.place_timer = 0.5;
                                         self.ui.dirty = true;
@@ -19374,7 +19374,7 @@ impl GameApp {
     /// reset every dimension-local system:
     ///
     /// * player position follows the vanilla 8:1 coordinate rule
-    ///   (overworld → nether divides by 8; nether → overworld multiplies);
+    ///   (overworld → hollow divides by 8; hollow → overworld multiplies);
     ///   the exact landing spot is refined when the spawn chunk arrives
     ///   (the Loading snap), like vanilla's portal search
     /// * GPU meshes, section-mesh caches, generation/mesh queues, light
@@ -19382,7 +19382,7 @@ impl GameApp {
     ///   open containers are all reset
     /// * the inventory travels with the player (vanilla behavior)
     /// * native: the outgoing dimension's dirty chunks flush to its own
-    ///   save dir first (overworld = world root, nether = DIM-1)
+    ///   save dir first (overworld = world root, hollow = DIM-1)
     pub fn travel_to_dimension(&mut self, dim: vc_world::world::Dimension) {
         if dim == self.world.dimension {
             return;
@@ -19403,7 +19403,7 @@ impl GameApp {
             self.web_save_world();
         }
 
-        // 8:1 horizontal mapping (vanilla nether portals)
+        // 8:1 horizontal mapping (vanilla hollow portals)
         let cur = self.world.dimension;
         let (nx, nz) = cur.map_coords(
             dim,
@@ -19448,15 +19448,15 @@ impl GameApp {
         self.place_timer = 0.0;
 
         // player: inventory persists, position rescales; y waits for the snap
-        let y = if dim == vc_world::world::Dimension::Nether {
+        let y = if dim == vc_world::world::Dimension::Hollow {
             90.0
-        } else if dim == vc_world::world::Dimension::End {
+        } else if dim == vc_world::world::Dimension::Void {
             64.0 // the obsidian platform (VERIFIED arrival x/z: 100/0)
         } else {
             120.0
         };
-        let (ax, az) = if dim == vc_world::world::Dimension::End {
-            (100, 0) // VERIFIED w/The_End: arrival at X:100, Z:0
+        let (ax, az) = if dim == vc_world::world::Dimension::Void {
+            (100, 0) // VERIFIED w/The_Void: arrival at X:100, Z:0
         } else {
             (nx, nz)
         };
@@ -19464,14 +19464,14 @@ impl GameApp {
         self.player.vel = Vec3::ZERO;
         self.player.flying = false;
 
-        // Phase E1: first End entry spawns the ender-dragon fight — 200 HP
+        // Phase E1: first End entry spawns the voider-dragon fight — 200 HP
         // dragon + 10 crystals on the pillar tops (VERIFIED counts). The
         // fight lives in the fresh sim (created above).
-        if dim == vc_world::world::Dimension::End && !self.dragon_defeated {
-            let tops = self.world.gen.end_pillar_tops();
+        if dim == vc_world::world::Dimension::Void && !self.dragon_defeated {
+            let tops = self.world.gen.void_pillar_tops();
             self.sim.dragon.begin_fight(&tops);
             vc_render::render::report_boot_log(
-                "e2e: the ender dragon rises (200 HP, 10 crystals — VERIFIED)",
+                "e2e: the void wyrm rises (200 HP, 10 crystals — VERIFIED)",
             );
         }
 
@@ -19490,18 +19490,18 @@ impl GameApp {
         ));
     }
 
-    /// Phase E1: stronghhold end-portal activation (VERIFIED w/The_End:
-    /// all 12 eyes placed → the central 3×3 becomes End portal blocks —
+    /// Phase E1: stronghhold end-portal activation (VERIFIED w/The_Void:
+    /// all 12 eyes placed → the central 3×3 becomes Void gate blocks —
     /// "the portal destroys all blocks in the central 3×3 square"). The
     /// (cx, cy, cz) frame anchors the ring scan.
-    fn activate_end_portal(&mut self, cx: i32, cy: i32, cz: i32) {
+    fn activate_void_gate(&mut self, cx: i32, cy: i32, cz: i32) {
         // recover the ring center: the frame ring is 5×5-minus-corners →
         // the center is the mean of the eye frames
         let mut xs = Vec::new();
         let mut zs = Vec::new();
         for dz in -3..=3i32 {
             for dx in -3..=3i32 {
-                if self.world.get_state(cx + dx, cy, cz + dz) == END_PORTAL_FRAME_EYE {
+                if self.world.get_state(cx + dx, cy, cz + dz) == VOID_GATE_FRAME_EYE {
                     xs.push(cx + dx);
                     zs.push(cz + dz);
                 }
@@ -19512,29 +19512,29 @@ impl GameApp {
         }
         let center_x = xs.iter().sum::<i32>() / xs.len() as i32;
         let center_z = zs.iter().sum::<i32>() / zs.len() as i32;
-        // the central 3×3 → END_PORTAL (the portal destroys whatever sits
+        // the central 3×3 → VOID_GATE (the portal destroys whatever sits
         // there — VERIFIED)
         for dx in -1..=1i32 {
             for dz in -1..=1i32 {
                 self.world
-                    .set_block(center_x + dx, cy, center_z + dz, END_PORTAL);
+                    .set_block(center_x + dx, cy, center_z + dz, VOID_GATE);
                 for dy in 1..=2 {
                     self.world
                         .set_block(center_x + dx, cy + dy, center_z + dz, AIR);
                 }
             }
         }
-        self.play_event("block.end_portal.spawn", None, 1.0);
+        self.play_event("block.void_gate.spawn", None, 1.0);
         vc_render::render::report_boot_log(&format!(
-            "e2e: end portal activated at ({center_x},{cy},{center_z}) — 12 eyes (VERIFIED)"
+            "e2e: void gate activated at ({center_x},{cy},{center_z}) — 12 eyes (VERIFIED)"
         ));
         self.edits += 1;
     }
 
-    /// §28: nether floor search for the travel snap — a cavern cell with a
+    /// §28: hollow floor search for the travel snap — a cavern cell with a
     /// solid floor and 2 blocks of headroom, nearest to the target height.
-    /// (top_solid_y is wrong in the nether: the bedrock ROOF is the top.)
-    fn nether_floor_y(&self, chunk: &vc_chunk::chunk::Chunk, lx: usize, lz: usize) -> Option<i32> {
+    /// (top_solid_y is wrong in the hollow: the bedrock ROOF is the top.)
+    fn hollow_floor_y(&self, chunk: &vc_chunk::chunk::Chunk, lx: usize, lz: usize) -> Option<i32> {
         use vc_blocks::blocks::{is_solid, state_block};
         let target = self.player.pos.y;
         let mut best: Option<i32> = None;
@@ -19578,7 +19578,7 @@ impl GameApp {
                 "drawPath",
                 StatsVal::S(self.renderer.draw_path_name().into()),
             ),
-            // §28: current dimension (0 = overworld, 1 = nether) + name
+            // §28: current dimension (0 = overworld, 1 = hollow) + name
             ("dim", StatsVal::F(self.world.dimension as u8 as f32)),
             ("dimName", StatsVal::S(self.world.dimension.id().into())),
             ("traveling", StatsVal::B(self.traveling)),
@@ -19815,11 +19815,11 @@ impl GameApp {
             return; // data not generated yet — retry next frame
         };
         // §28: the snap depends on the dimension — the overworld snaps to
-        // the topmost solid block; the nether needs a CAVERN floor
+        // the topmost solid block; the hollow needs a CAVERN floor
         // (top_solid_y there is the bedrock roof). Travel keeps flying on
         // until a spot exists so the player never spawns inside rock.
-        let snap = if self.world.dimension == vc_world::world::Dimension::Nether {
-            self.nether_floor_y(c, lx.min(15), lz.min(15))
+        let snap = if self.world.dimension == vc_world::world::Dimension::Hollow {
+            self.hollow_floor_y(c, lx.min(15), lz.min(15))
         } else {
             let t = c.top_solid_y(lx.min(15), lz.min(15));
             if t >= 0 {
@@ -20708,20 +20708,20 @@ impl GameApp {
             match mob.kind {
                 K::Zombie
                 | K::Skeleton
-                | K::Creeper
+                | K::Fuseling
                 | K::Spider
-                | K::Enderman
+                | K::Voidling
                 | K::MagmaCube
                 | K::Blaze
                 | K::ZombieVillager
-                | K::WitherSkeleton
+                | K::BlightSkeleton
                 | K::Witch
                 | K::Stray
                 | K::Husk
-                | K::Vindicator
-                | K::Evoker
-                | K::Vex
-                | K::Illusioner
+                | K::Cleaver
+                | K::Runecaller
+                | K::Wisp
+                | K::Miragecaller
                 | K::Drowned
                 | K::Phantom => m += 1,
                 K::Bat | K::Parrot => a += 1,
@@ -21139,7 +21139,7 @@ impl GameApp {
 
         // Phase E1: the dragon boss bar while the fight is live (VERIFIED:
         // light purple, top of the screen)
-        if self.world.dimension == vc_world::world::Dimension::End {
+        if self.world.dimension == vc_world::world::Dimension::Void {
             if let Some(d) = self.sim.dragon.dragon.as_ref() {
                 if d.dying.is_none() {
                     self.ui
@@ -21148,18 +21148,18 @@ impl GameApp {
             }
         }
 
-        // Phase E2: the wither boss bar (any dimension; VERIFIED w/Wither:
+        // Phase E2: the blight boss bar (any dimension; VERIFIED w/Blight:
         // the boss bar fills through the charge then tracks health)
-        if let Some(w) = self.sim.wither.wither.as_ref() {
+        if let Some(w) = self.sim.blight.blight.as_ref() {
             if w.alive() {
                 if w.charging() {
                     // the charge fills the bar (VERIFIED §Creation: the
                     // bar charges up over the 220 ticks)
-                    let frac = (w.phase_t as f32) / (vc_gameplay::wither::CHARGE_TICKS as f32);
+                    let frac = (w.phase_t as f32) / (vc_gameplay::blight::CHARGE_TICKS as f32);
                     self.ui.boss_bar(frac.clamp(0.0, 1.0));
                 } else {
                     self.ui
-                        .boss_bar(w.health / vc_gameplay::wither::WITHER_HEALTH);
+                        .boss_bar(w.health / vc_gameplay::blight::BLIGHT_HEALTH);
                 }
             }
         }
@@ -21318,11 +21318,11 @@ impl GameApp {
                 self.screen
             ));
         }
-        // day/night state — §28: the Nether has no sky: constant dim
-        // ambient (vanilla's flat nether light), thick dark-red fog close
+        // day/night state — §28: the Hollow has no sky: constant dim
+        // ambient (vanilla's flat hollow light), thick dark-red fog close
         // in, no sun/shadows/clouds (the skyless flag drops the sky pass)
-        let nether = self.world.dimension == vc_world::world::Dimension::Nether;
-        let (sun_dir, day_light, fog) = if nether {
+        let hollow = self.world.dimension == vc_world::world::Dimension::Hollow;
+        let (sun_dir, day_light, fog) = if hollow {
             (
                 Vec3::new(0.0, 1.0, 0.0), // cosmetic only — skyless
                 0.30,
@@ -21396,8 +21396,8 @@ impl GameApp {
         let (fog_start, fog_end, fog_col) =
             if self.player.head_in_water && self.screen == Screen::Game {
                 (2.0, 28.0, [0.11, 0.22, 0.45])
-            } else if nether {
-                // thick nether fog well inside any render distance
+            } else if hollow {
+                // thick hollow fog well inside any render distance
                 (8.0, 44.0, fog)
             } else {
                 let end = (rd * 16 - 12) as f32;
@@ -21555,9 +21555,9 @@ impl GameApp {
             time: self.time,
             underwater: self.player.head_in_water && self.screen == Screen::Game,
             min_light: 0.05 + self.settings.brightness * 0.25,
-            // §28: no sky pass in the Nether — the fog-colored clear is the
+            // §28: no sky pass in the Hollow — the fog-colored clear is the
             // whole "sky" (dark red haze, no sun, no gradient)
-            skyless: nether,
+            skyless: hollow,
         };
 
         // particle billboards: camera basis from the active camera (game
@@ -21619,14 +21619,14 @@ impl GameApp {
             if self.settings.entity_shadows {
                 self.push_mob_shadows();
             }
-            // Phase E1: XP orbs + the dragon + end crystals (billboards
+            // Phase E1: XP orbs + the dragon + void crystals (billboards
             // through the same particle stream)
             self.sim
                 .xp_orbs
                 .build_vertices(self.time, right, up, &mut self.particle_verts);
             self.build_end_entity_vertices(right, up);
-            // Phase E2: the wither (any dimension — player-summoned)
-            self.build_wither_vertices(right, up);
+            // Phase E2: the blight (any dimension — player-summoned)
+            self.build_blight_vertices(right, up);
             vc_gameplay::mobs::build_arrow_vertices(
                 &self.sim.mobs.arrows,
                 right,
@@ -21683,8 +21683,8 @@ impl GameApp {
                 // `mode` stays 0 permanently
                 mode: 0,
                 menu_blur,
-                // §28: the Nether has no sun — no shadow pass
-                shadows: if nether {
+                // §28: the Hollow has no sun — no shadow pass
+                shadows: if hollow {
                     0.0
                 } else {
                     self.settings.shadow_strength()
@@ -21694,7 +21694,7 @@ impl GameApp {
                 // EASU already reconstructs most of the edge contrast)
                 sharpen: if self.settings.upscale > 0 { 0.6 } else { 0.0 },
             },
-            if self.settings.graphics >= 1 && !nether {
+            if self.settings.graphics >= 1 && !hollow {
                 self.settings.clouds_level
             } else {
                 0
@@ -21777,10 +21777,10 @@ fn fence_state_for(world: &World, wx: i32, wy: i32, wz: i32) -> Option<u16> {
 }
 
 /// block-change notification for the whole sim (fluids + gravity +
-/// redstone) — the §25 ordering backbone entry point
+/// fluxstone) — the §25 ordering backbone entry point
 fn notify_sim(world: &World, sched: &mut vc_sim::ticks::TickScheduler, x: i32, y: i32, z: i32) {
     vc_sim::fluids::on_block_changed(sched, world, x, y, z);
-    vc_sim::redstone::on_block_changed(sched, world, x, y, z);
+    vc_sim::fluxstone::on_block_changed(sched, world, x, y, z);
 }
 
 /// Phase E3 (1.5–1.6): the apex a launch velocity reaches under the
@@ -21846,8 +21846,8 @@ fn fill_structure_chest(
 
 /// biome + (sky, block) light levels at a world position — for baking
 /// particle tint/brightness at spawn (Phase 5)
-/// 1.11: the totem-of-undying revival payload (VERIFIED live
-/// 2026-09-07, reference wiki /Totem_of_Undying: "restores 1 HP,
+/// 1.11: the totem-of-revival revival payload (VERIFIED live
+/// 2026-09-07, reference wiki /Totem_of_Revival: "restores 1 HP,
 /// removes all existing status effects and grants" Regeneration II for
 /// 45 s + Absorption II for 5 s; Absorption II = 8 absorption points).
 /// Extracted from check_death so the values are unit-testable. Fire
@@ -21877,7 +21877,7 @@ fn is_leaves(b: u16) -> bool {
 }
 
 /// biome registry id ("Biome: voxelcraft:jungle") — the display name in
-/// snake_case ("Nether Wastes" -> "nether_wastes", matching the vanilla
+/// snake_case ("Hollow Wastes" -> "hollow_wastes", matching the vanilla
 /// id table for every biome this generator emits)
 fn biome_registry_id(b: Biome) -> String {
     b.name().to_lowercase().replace(' ', "_")
@@ -22018,10 +22018,10 @@ fn is_food(b: u16) -> bool {
             // table's "Cookie 2" row)
             | COOKIE
             // ---- the sweep-2 rows (hunger values VERIFIED live
-            // 2026-09-09: Rotten_Flesh 4, Spider_Eye 2, Chorus_Fruit
+            // 2026-09-09: Rotten_Flesh 4, Spider_Eye 2, Echo_Fruit
             // 4, Golden_Apple 4, Melon_Slice 2 — the pages above) ----
             | SPIDER_EYE
-            | CHORUS_FRUIT
+            | ECHO_FRUIT
             | GOLDEN_APPLE
             | MELON_SLICE
     )
@@ -22059,7 +22059,7 @@ fn food_values(b: u16) -> (i32, f32) {
         COOKED_RABBIT => (5, 6.0),
         // ---- the 4-hunger family ----
         APPLE => (4, 2.4),
-        CHORUS_FRUIT => (4, 2.4),
+        ECHO_FRUIT => (4, 2.4),
         ROTTEN_FLESH => (4, 0.8),
         GOLDEN_APPLE => (4, 9.6),
         // ---- the 3-hunger family (raw meats sat 1.8; carrot 3.6) ----
@@ -22097,15 +22097,15 @@ fn food_values(b: u16) -> (i32, f32) {
     }
 }
 
-/// the sweep-2 chorus destination pick — "up to 16 attempts are made
+/// the sweep-2 echo destination pick — "up to 16 attempts are made
 /// to choose a random destination within ±8 on all three axes in the
-/// same manner as enderman teleportation, with the exception that the
+/// same manner as voidling teleportation, with the exception that the
 /// entity may teleport into an area only 2 blocks high ... If there
 /// are no valid blocks within this range, the teleportation attempt
 /// fails and the entity remains in place" (VERIFIED live 2026-09-09,
-/// w/Chorus_Fruit §Teleportation). Enderman-style validity: solid
+/// w/Echo_Fruit §Teleportation). Voidling-style validity: solid
 /// floor + a 2-block air column.
-fn chorus_destination(
+fn echo_destination(
     world: &World,
     px: i32,
     py: i32,
@@ -22369,7 +22369,7 @@ fn report_datapacks(loaded: &vc_pack::datapack::LoadedData) {
         return; // no packs — no log noise
     }
     for pack in &loaded.packs {
-        if pack.pack_format != vc_pack::datapack::PACK_FORMAT_1_16_5 {
+        if pack.pack_format != vc_pack::datapack::PACK_FORMAT_LEGACY_ERA {
             vc_render::render::report_boot_log(&format!(
                 "data pack {}: pack_format {} (1.16.5 wants 6) — loading anyway",
                 pack.id, pack.pack_format
@@ -22723,7 +22723,7 @@ mod settings_tests {
     }
 
     /// Round 12 — the double-chest partner scan: two adjacent CHESTs
-    /// pair; a trapped chest beside a normal chest does NOT; a shulker
+    /// pair; a trapped chest beside a normal chest does NOT; a lurkshell
     /// box never matches the CHEST scan; vertical neighbors don't pair
     /// (VERIFIED w/Chest §Double chests, live 2026-09-15).
     #[test]
@@ -22774,13 +22774,13 @@ mod settings_tests {
             Some([30, 70, 11]),
             "+Z pairs for trapped"
         );
-        // shulker boxes never merge (scan is CHEST-only)
+        // lurkshell boxes never merge (scan is CHEST-only)
         w.set_block(40, 70, 10, CHEST);
-        w.set_block(41, 70, 10, SHULKER_BOX);
+        w.set_block(41, 70, 10, LURKSHELL_BOX);
         assert_eq!(
             Container::double_chest_partner(&w, [40, 70, 10], CHEST),
             None,
-            "shulker neighbor does not merge"
+            "lurkshell neighbor does not merge"
         );
         // vertical neighbors never pair (vanilla: side-by-side only)
         w.set_block(50, 70, 10, CHEST);
@@ -23008,7 +23008,7 @@ mod settings_tests {
 
         // 2026-09-14 (user directive): the SHADER PACKS screen is removed
         // entirely — only the real two-pane Resource Packs manager remains
-        let avail = vec!["PROGRAMMER ART".to_string()];
+        let avail = vec!["CLASSIC ART".to_string()];
         let sel = vec![];
         let ws = vc_render::ui::layout_resource_packs(&avail, &sel);
         cases.push((
@@ -23225,7 +23225,7 @@ mod settings_tests {
         use vc_pack::datapack::{GridItem, MemoryFiles};
         let files = MemoryFiles::demo();
         let report = vc_pack::datapack::scan_pack("demo", &files).expect("demo pack valid");
-        assert_eq!(report.pack_format, vc_pack::datapack::PACK_FORMAT_1_16_5);
+        assert_eq!(report.pack_format, vc_pack::datapack::PACK_FORMAT_LEGACY_ERA);
         assert_eq!(report.recipes.len(), 2);
         assert_eq!(report.loot_tables.len(), 1);
         assert_eq!(report.tags.len(), 1);
@@ -23420,7 +23420,7 @@ mod tests {
     fn effect_icon_mapping_is_bijection_with_positive_split() {
         use vc_gameplay::effects::EffectKind;
         let kinds = [
-            EffectKind::Wither,
+            EffectKind::Blight,
             EffectKind::Poison,
             EffectKind::Regeneration,
             EffectKind::Speed,
@@ -23456,7 +23456,7 @@ mod tests {
         assert_eq!(sorted.len(), kinds.len(), "indices are distinct");
         // the wiki split: harmful kinds are NOT positive
         for k in [
-            EffectKind::Wither,
+            EffectKind::Blight,
             EffectKind::Poison,
             EffectKind::Slowness,
             EffectKind::Hunger,
@@ -23563,11 +23563,11 @@ mod tests {
 mod auditfix_food_tests {
     use super::*;
 
-    /// the sweep-2: the chorus destination rule — the ±8 box, the
+    /// the sweep-2: the echo destination rule — the ±8 box, the
     /// solid-floor + 2-air validity, and the all-solid failure (VERIFIED
-    /// w/Chorus_Fruit §Teleportation, live 2026-09-09)
+    /// w/Echo_Fruit §Teleportation, live 2026-09-09)
     #[test]
-    fn audit16_sweep2_chorus_destination() {
+    fn audit16_sweep2_echo_destination() {
         // a stone floor world: y <= 64 solid, y >= 65 air (the
         // flat-world convention from the mobs tests)
         let mut w = World::new(11);
@@ -23581,10 +23581,10 @@ mod auditfix_food_tests {
         }
         w.insert_generated((0, 0), std::sync::Arc::new(c), Vec::new());
         let mut rng = vc_rng::rng::Rng::new(55);
-        let mut warped = 0;
+        let mut viridian = 0;
         for _ in 0..200 {
-            if let Some([x, y, z]) = chorus_destination(&w, 8, 65, 8, &mut rng) {
-                warped += 1;
+            if let Some([x, y, z]) = echo_destination(&w, 8, 65, 8, &mut rng) {
+                viridian += 1;
                 assert!((x - 8).abs() <= 8, "the ±8 x bound");
                 assert!((y - 65).abs() <= 8, "the ±8 y bound");
                 assert!((z - 8).abs() <= 8, "the ±8 z bound");
@@ -23592,8 +23592,8 @@ mod auditfix_food_tests {
             }
         }
         assert!(
-            warped >= 80,
-            "the flat-floor warp rate (dy=0 is 1/17), got {warped}/200"
+            viridian >= 80,
+            "the flat-floor warp rate (dy=0 is 1/17), got {viridian}/200"
         );
         // the failure case: an all-solid world has no valid destination
         let mut solid = World::new(12);
@@ -23607,7 +23607,7 @@ mod auditfix_food_tests {
         }
         solid.insert_generated((0, 0), std::sync::Arc::new(sc), Vec::new());
         assert!(
-            chorus_destination(&solid, 8, 70, 8, &mut rng).is_none(),
+            echo_destination(&solid, 8, 70, 8, &mut rng).is_none(),
             "no air column -> the failed warp (the entity stays)"
         );
     }
@@ -23640,11 +23640,11 @@ mod auditfix_food_tests {
             "hunger 10 — the top food"
         );
         // ---- the sweep-2 rows (VERIFIED live 2026-09-09, re-verified
-        // 2026-09-18: the Rotten_Flesh/Spider_Eye/Chorus_Fruit/
+        // 2026-09-18: the Rotten_Flesh/Spider_Eye/Echo_Fruit/
         // Golden_Apple/Melon_Slice rows) ----
         assert_eq!(food_values(ROTTEN_FLESH), (4, 0.8), "hunger 4 / sat 0.8");
         assert_eq!(food_values(SPIDER_EYE), (2, 3.2), "hunger 2 / sat 3.2");
-        assert_eq!(food_values(CHORUS_FRUIT), (4, 2.4), "hunger 4 / sat 2.4");
+        assert_eq!(food_values(ECHO_FRUIT), (4, 2.4), "hunger 4 / sat 2.4");
         assert_eq!(food_values(GOLDEN_APPLE), (4, 9.6), "hunger 4 / sat 9.6");
         assert_eq!(food_values(MELON_SLICE), (2, 1.2), "hunger 2 / sat 1.2");
         // ---- Round 17: the raw-meat rows now carry their REAL wiki
@@ -23690,7 +23690,7 @@ mod auditfix_food_tests {
             "edible since Phase 2 — value now correct"
         );
         assert!(is_food(SPIDER_EYE), "the 1.0 spider eye now edible");
-        assert!(is_food(CHORUS_FRUIT), "the 1.9 chorus fruit now edible");
+        assert!(is_food(ECHO_FRUIT), "the 1.9 echo fruit now edible");
         assert!(is_food(GOLDEN_APPLE), "the golden apple now edible");
         assert!(is_food(MELON_SLICE), "the 1.0 melon slice");
         // the golden apple's effect pair: Absorption 2:00 (2400) +
@@ -23753,14 +23753,14 @@ mod auditfix_food_tests {
 }
 
 // ---------------------------------------------------------------------------
-// 1.11 bracket tests (Exploration Update, live 2026-09-07)
+// 1.11 bracket tests (Exploration-era update, live 2026-09-07)
 // ---------------------------------------------------------------------------
 #[cfg(test)]
 mod v111_tests {
     use super::*;
     use crate::player::Player;
 
-    /// the totem-of-undying revival payload (VERIFIED live w/Totem_of_
+    /// the totem-of-revival revival payload (VERIFIED live w/Totem_of_
     /// Undying: "restores 1 HP, removes all existing status effects and
     /// grants" Regeneration II 45 s + Absorption II 5 s; Fire Resistance
     /// I 0:40 is a 1.16.2 addition — version-scoped out)
@@ -23850,29 +23850,29 @@ mod v111_tests {
         assert!(!binding.name.is_empty() && !vanishing.name.is_empty());
     }
 
-    /// shulker box: 27 container slots (VERIFIED w/Shulker_Box: "All
-    /// shulker boxes have 27 inventory slots, the same as a barrel, a
-    /// single chest, or an ender chest"), solid placeable, craft recipe
+    /// lurkshell box: 27 container slots (VERIFIED w/Lurkshell_Box: "All
+    /// lurkshell boxes have 27 inventory slots, the same as a barrel, a
+    /// single chest, or an void chest"), solid placeable, craft recipe
     /// = shell + chest column (VERIFIED changelog \u00a7Blocks)
     #[test]
-    fn v111_shulker_box_registry_and_recipe() {
+    fn v111_lurkshell_box_registry_and_recipe() {
         assert_eq!(
-            vc_sim::containers::slot_count(SHULKER_BOX),
+            vc_sim::containers::slot_count(LURKSHELL_BOX),
             Some(27),
             "27 slots like a chest"
         );
-        assert!(vc_blocks::blocks::is_solid(SHULKER_BOX));
-        assert!(vc_blocks::blocks::is_item_block(SHULKER_SHELL));
+        assert!(vc_blocks::blocks::is_solid(LURKSHELL_BOX));
+        assert!(vc_blocks::blocks::is_item_block(LURKSHELL_SHELL));
         // the recipe: shell / chest / shell middle column
         let slots: Vec<vc_inventory::inventory::ItemStack> = [
             vc_blocks::blocks::AIR,
-            SHULKER_SHELL,
+            LURKSHELL_SHELL,
             vc_blocks::blocks::AIR,
             vc_blocks::blocks::AIR,
             CHEST,
             vc_blocks::blocks::AIR,
             vc_blocks::blocks::AIR,
-            SHULKER_SHELL,
+            LURKSHELL_SHELL,
             vc_blocks::blocks::AIR,
         ]
         .iter()
@@ -23881,8 +23881,8 @@ mod v111_tests {
         let out = vc_gameplay::craft::match_grid(&slots, 3);
         assert_eq!(
             out.map(|s| s.block),
-            Some(SHULKER_BOX),
-            "the shell+chest column crafts a shulker box"
+            Some(LURKSHELL_BOX),
+            "the shell+chest column crafts a lurkshell box"
         );
     }
 
@@ -23914,9 +23914,9 @@ mod v111_tests {
             vec!["facing: north".to_string(), "half: bottom".to_string()],
             "one line per blockstate property"
         );
-        // single-property state: Redstone Lamp[lit=true]
+        // single-property state: Fluxstone Lamp[lit=true]
         assert_eq!(
-            state_prop_lines(REDSTONE_LAMP_LIT),
+            state_prop_lines(FLUXSTONE_LAMP_LIT),
             vec!["lit: true".to_string()]
         );
         // a state with no properties yields nothing
@@ -23925,14 +23925,14 @@ mod v111_tests {
     }
 
     /// registry ids for the F3 "Biome:"/"Targeted Block:" lines: display
-    /// names in vanilla snake_case (Grass Block -> grass_block, Nether
-    /// Wastes -> nether_wastes, Jungle -> jungle).
+    /// names in vanilla snake_case (Grass Block -> grass_block, Hollow
+    /// Wastes -> hollow_wastes, Jungle -> jungle).
     #[test]
     fn registry_ids_are_snake_case() {
         assert_eq!(block_id_name(GRASS), "grass_block");
         assert_eq!(block_id_name(OAK_LOG), "oak_log");
         assert_eq!(biome_registry_id(Biome::Jungle), "jungle");
-        assert_eq!(biome_registry_id(Biome::NetherWastes), "nether_wastes");
+        assert_eq!(biome_registry_id(Biome::HollowWastes), "hollow_wastes");
         assert_eq!(biome_registry_id(Biome::Snowy), "snowy_taiga");
     }
 
@@ -24091,7 +24091,7 @@ mod round14b_settings_tests {
             POISONOUS_POTATO,
             COOKIE,
             SPIDER_EYE,
-            CHORUS_FRUIT,
+            ECHO_FRUIT,
             GOLDEN_APPLE,
             MELON_SLICE,
         ];

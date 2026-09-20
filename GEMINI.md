@@ -11,14 +11,14 @@
 - **All production executables, release packages, and standalone release binaries must be compiled and distributed via GitHub Actions CI**.
 
 ## 2. Clean-Room Legal Compliance
-- **Zero Copied Assets**: Do NOT extract, copy, or bundle proprietary Minecraft .jar assets, textures, sounds, or Mojang code.
+- **Zero Copied Assets**: Do NOT extract, copy, or bundle proprietary the reference game .jar assets, textures, sounds, or the original publisher code.
 - **Procedural Art & Textures**: All 16x16 tiles, fonts, and particle textures must be synthesized procedurally at boot or generated cleanly via non-infringing math.
 - **Independent Clean-Room Architecture**: Re-implement vanilla mechanics using clean-room specifications and open architectural comparisons with Luanti (Minetest).
 
 ## 3. Visual & Rendering Standards
 - **Seamless Tiling**: Block faces must tile continuously without artificial border insets, clamping gaps, or "chocolate bar" seams.
 - **Explicit Atlas Gradients**: Atlas UV gradients must be explicitly scaled to the 32x32 atlas dimensions (`dpdx(in.uv) / 32.0`) to avoid LOD explosion and coarse mipmap bleeding across tile seams.
-- **Minecraft 1.16.5 Fidelity**: Smooth lighting curve, ambient occlusion, water flow/transparency, 15x15 crosshair, and lower-right first-person 3D player arm with walk bobbing and attack swing animation.
+- **the reference game 1.16.5 Fidelity**: Smooth lighting curve, ambient occlusion, water flow/transparency, 15x15 crosshair, and lower-right first-person 3D player arm with walk bobbing and attack swing animation.
 
 ## 4. UI & Menu Layout Parity
 - **Creative Inventory**: 12 top/bottom category tabs, 3D player preview avatar tracking the cursor, working armor & offhand slots, 9x5 block grid with vertical scrollbar, live search filter box, 9-slot hotbar, and trash slot.
@@ -28,9 +28,9 @@
 
 ## 5. Continuous Documentation, Worklog Sync & Clean-Room Verification
 - **Continuous Worklog Maintenance**: Append detailed, factual work units to `docs/WORKLOG.md` in every session, documenting all architectural changes, bug fixes, test results, and benchmark metrics.
-- **Parity Backlog Maintenance**: Keep `docs/PARITY-BACKLOG.md` synchronized with the verified clean-room parity status against Minecraft 1.16.5.
+- **Parity Backlog Maintenance**: Keep `docs/PARITY-BACKLOG.md` synchronized with the verified clean-room parity status against the reference game 1.16.5.
 - **Strict Clean-Room Verification & Source Citations**:
-  - Every numerical constant, formula, tick timing, or gameplay mechanic added to code or documentation MUST cite an authoritative public source (e.g., live `minecraft.wiki`, vendor specifications like AMD GPUOpen, or open clean-room implementations like Luanti).
+  - Every numerical constant, formula, tick timing, or gameplay mechanic added to code or documentation MUST cite an authoritative public source (e.g., live `the reference game.wiki`, vendor specifications like AMD GPUOpen, or open clean-room implementations like Luanti).
   - Any values without an authoritative public source MUST be explicitly flagged as `[ESTIMATED / APPROXIMATION]` rather than asserted as fact.
   - **Zero Decompiled Code Transcription**: Strictly forbid copying, reproducing, or transcribing proprietary decompiled source code, variable names, or pseudocode into repository comments or documentation; express all mechanics purely as clean-room behavioral descriptions.
 - **Repository Documentation Sync**: All documentation files (`docs/WORKLOG.md`, `docs/PARITY-BACKLOG.md`, `GEMINI.md`, and README) must be committed and pushed to GitHub alongside code changes.

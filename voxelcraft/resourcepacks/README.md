@@ -7,15 +7,15 @@ art. Both plain folders and `.zip` archives work.
 
 | Logical name          | File in your pack                              | Size     |
 |-----------------------|------------------------------------------------|----------|
-| `gui/hearts`          | `assets/minecraft/textures/gui/hearts.png`     | 27 x 9   |
-| `gui/hunger`          | `assets/minecraft/textures/gui/hunger.png`     | 27 x 9   |
-| `gui/armor`           | `assets/minecraft/textures/gui/armor.png`      | 27 x 9   |
-| `gui/bubbles`         | `assets/minecraft/textures/gui/bubbles.png`    | 18 x 9   |
-| `gui/widgets`         | `assets/minecraft/textures/gui/widgets.png`    | 120 x 20 |
-| `gui/hotbar`          | `assets/minecraft/textures/gui/hotbar.png`     | 182 x 22 |
-| `gui/hotbar_sel`      | `assets/minecraft/textures/gui/hotbar_sel.png` | 24 x 22  |
-| `gui/options_background` | `assets/minecraft/textures/gui/options_background.png` | 16 x 16 |
-| `gui/font`            | `assets/minecraft/textures/gui/font.png`       | 128 x 48 |
+| `gui/hearts`          | `assets/the reference game/textures/gui/hearts.png`     | 27 x 9   |
+| `gui/hunger`          | `assets/the reference game/textures/gui/hunger.png`     | 27 x 9   |
+| `gui/armor`           | `assets/the reference game/textures/gui/armor.png`      | 27 x 9   |
+| `gui/bubbles`         | `assets/the reference game/textures/gui/bubbles.png`    | 18 x 9   |
+| `gui/widgets`         | `assets/the reference game/textures/gui/widgets.png`    | 120 x 20 |
+| `gui/hotbar`          | `assets/the reference game/textures/gui/hotbar.png`     | 182 x 22 |
+| `gui/hotbar_sel`      | `assets/the reference game/textures/gui/hotbar_sel.png` | 24 x 22  |
+| `gui/options_background` | `assets/the reference game/textures/gui/options_background.png` | 16 x 16 |
+| `gui/font`            | `assets/the reference game/textures/gui/font.png`       | 128 x 48 |
 
 Each sheet is a horizontal strip of tiles (hearts: Empty / Full / Half;
 widgets: ButtonNormal, ButtonHover, ButtonDisabled, SlotEmpty,

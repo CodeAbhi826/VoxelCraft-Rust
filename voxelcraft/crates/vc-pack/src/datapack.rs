@@ -54,7 +54,10 @@ use vc_blocks::blocks::*;
 use vc_rng::rng::Rng;
 
 /// the 1.16.5 data-pack format id (verified live, wiki Pack format table)
-pub const PACK_FORMAT_1_16_5: i32 = 6;
+/// the wider ecosystem's datapack manifest format for the 1.16.5 era —
+/// a READ-side interop check for USER-SUPPLIED packs (we warn, never
+/// reject; our own packs declare format 1 in pack.json)
+pub const PACK_FORMAT_LEGACY_ERA: i32 = 6;
 
 // ---------------------------------------------------------------------------
 // 1) the item-name bridge — `voxelcraft:xxx` ⇄ engine u8 item ids
@@ -104,7 +107,7 @@ pub const VANILLA_ITEM_NAMES: &[(&str, u16)] = &[
     ("voxelcraft:iron_ore", IRON_ORE),
     ("voxelcraft:gold_ore", GOLD_ORE),
     ("voxelcraft:diamond_ore", DIAMOND_ORE),
-    ("voxelcraft:redstone_ore", REDSTONE_ORE),
+    ("voxelcraft:fluxstone_ore", FLUXSTONE_ORE),
     ("voxelcraft:lapis_ore", LAPIS_ORE),
     ("voxelcraft:emerald_ore", EMERALD_ORE),
     ("voxelcraft:iron_block", IRON_BLOCK),
@@ -131,15 +134,15 @@ pub const VANILLA_ITEM_NAMES: &[(&str, u16)] = &[
     ("voxelcraft:red_mushroom", MUSHROOM_RED),
     ("voxelcraft:brown_mushroom", MUSHROOM_BROWN),
     ("voxelcraft:dead_bush", DEAD_BUSH),
-    // redstone core
-    ("voxelcraft:redstone", REDSTONE_WIRE), // item form of the wire block
-    ("voxelcraft:redstone_torch", REDSTONE_TORCH),
+    // fluxstone core
+    ("voxelcraft:fluxstone", FLUXSTONE_WIRE), // item form of the wire block
+    ("voxelcraft:fluxstone_torch", FLUXSTONE_TORCH),
     ("voxelcraft:lever", LEVER),
     ("voxelcraft:furnace", FURNACE),
-    // nether
-    ("voxelcraft:netherrack", NETHERRACK),
-    ("voxelcraft:nether_quartz_ore", NETHER_QUARTZ_ORE),
-    ("voxelcraft:soul_sand", SOUL_SAND),
+    // hollow
+    ("voxelcraft:hollowstone", HOLLOWSTONE),
+    ("voxelcraft:hollow_quartz_ore", HOLLOW_QUARTZ_ORE),
+    ("voxelcraft:spirit_sand", SPIRIT_SAND),
     // brewing
     ("voxelcraft:brewing_stand", BREWING_STAND),
     ("voxelcraft:glass_bottle", POTION_EMPTY),
@@ -156,10 +159,10 @@ pub const VANILLA_ITEM_NAMES: &[(&str, u16)] = &[
     ("voxelcraft:bone", BONE),
     ("voxelcraft:string", STRING),
     ("voxelcraft:gunpowder", GUNPOWDER),
-    ("voxelcraft:ender_pearl", ENDER_PEARL),
+    ("voxelcraft:void_pearl", VOID_PEARL),
     ("voxelcraft:rotten_flesh", ROTTEN_FLESH),
     ("voxelcraft:arrow", ARROW_ITEM),
-    // redstone components (Phase 3)
+    // fluxstone components (Phase 3)
     ("voxelcraft:repeater", REPEATER),
     ("voxelcraft:comparator", COMPARATOR),
     ("voxelcraft:piston", PISTON),
@@ -182,7 +185,7 @@ pub const VANILLA_ITEM_NAMES: &[(&str, u16)] = &[
 ///
 /// Namespace interop (read-side): names arriving from USER-SUPPLIED data
 /// packs are authored for the wider 1.16.5-era ecosystem and carry the
-/// legacy `minecraft:` prefix — map it onto our own namespace here (the
+/// whatever namespace prefix that ecosystem used — map it onto our own namespace here (the
 /// single parse boundary every item reference crosses). We never write
 /// the legacy prefix.
 pub fn item_id_by_name(name: &str) -> Option<u16> {
@@ -193,13 +196,26 @@ pub fn item_id_by_name(name: &str) -> Option<u16> {
         .map(|(_, id)| *id)
 }
 
-/// Map the legacy ecosystem namespace prefix onto ours; everything else
-/// (including custom mod namespaces) passes through untouched.
+/// Canonicalize any item/type reference into OUR namespace:
+/// "somemod:fluxstone" | "fluxstone" | "anyothermod:fluxstone"
+/// → "voxelcraft:fluxstone".
+///
+/// Namespace interop (read-side): names arriving from USER-SUPPLIED data
+/// packs are authored for the wider 1.16.5-era ecosystem and carry
+/// whatever namespace prefix that ecosystem used. We are
+/// namespace-AGNOSTIC at this single parse boundary — every reference
+/// crosses it exactly once, unknown items filter out at lookup, and no
+/// external namespace string is ever hardcoded here.
 pub fn norm_id(s: &str) -> std::borrow::Cow<'_, str> {
-    match s.strip_prefix(&format!("{}:", crate::model::NS_LEGACY_INTEROP)) {
-        Some(rest) => std::borrow::Cow::Owned(format!("{}:{rest}", crate::model::NS)),
-        None => std::borrow::Cow::Borrowed(s),
-    }
+    let bare = match s.split_once(':') {
+        Some((_, rest)) => rest,
+        None => s,
+    };
+    // legacy-NAME interop: the ecosystem's own coined names map onto
+    // OUR vocabulary (see legacy_aliases) — read-side only
+    let bare = crate::legacy_aliases::legacy_name_alias(bare)
+        .unwrap_or(std::borrow::Cow::Borrowed(bare));
+    std::borrow::Cow::Owned(format!("{}:{bare}", crate::model::NS))
 }
 
 /// reverse lookup (E2E / logs: show the vanilla name of an engine id)
@@ -238,9 +254,11 @@ pub struct TagStore {
 
 impl TagStore {
     /// apply one pack's tag file to the store (call in pack order).
-    /// `id` is the fully-qualified tag name `ns:name`.
+    /// `id` is the fully-qualified tag name `ns:name` — canonicalized
+    /// onto our namespace (any input namespace is accepted).
     pub fn apply(&mut self, registry: &str, id: &str, file: &TagFile) {
-        let key = (registry.to_string(), id.to_string());
+        let id = norm_id(id);
+        let key = (registry.to_string(), id.into_owned());
         match self.map.get_mut(&key) {
             // merge semantics: replace=false appends (dedup); replace=true
             // discards the earlier values entirely
@@ -267,8 +285,9 @@ impl TagStore {
     pub fn members(&self, registry: &str, tag: &str) -> (Vec<String>, Vec<String>) {
         let mut out: Vec<String> = Vec::new();
         let mut unknown: Vec<String> = Vec::new();
-        let mut visited: Vec<String> = vec![tag.to_string()];
-        self.walk(registry, tag, &mut out, &mut unknown, &mut visited);
+        let tag = norm_id(tag).into_owned();
+        let mut visited: Vec<String> = vec![tag.clone()];
+        self.walk(registry, &tag, &mut out, &mut unknown, &mut visited);
         (out, unknown)
     }
 
@@ -290,14 +309,17 @@ impl TagStore {
         };
         for v in &file.values {
             if let Some(nested) = v.strip_prefix('#') {
-                if visited.iter().any(|s| s == nested) {
+                // nested `#ns:tag` refs carry any namespace —
+                // canonicalize onto ours before the store lookup
+                let nested = norm_id(nested).into_owned();
+                if visited.contains(&nested) {
                     unknown.push(format!("#{nested} (tag cycle at #{tag})"));
                     continue;
                 }
-                visited.push(nested.to_string());
-                self.walk(registry, nested, out, unknown, visited);
+                visited.push(nested.clone());
+                self.walk(registry, &nested, out, unknown, visited);
                 visited.pop();
-            } else if !out.iter().any(|o| o == v) {
+            } else if !out.contains(v) {
                 out.push(v.clone());
             }
         }
@@ -310,6 +332,7 @@ impl TagStore {
         let (members, _) = self.members(registry, tag);
         members.iter().any(|m| m == item_name)
     }
+
 
     pub fn len(&self) -> usize {
         self.map.len()
@@ -587,10 +610,10 @@ fn parse_ingredient(spec: &serde_json::Value) -> Result<Ingredient, String> {
             item_id_by_name(item).ok_or(format!("ingredient {item} not in the engine palette"))?,
         ))
     } else if let Some(tag) = spec.get("tag").and_then(|t| t.as_str()) {
-        // tag names arrive as `voxelcraft:planks`; tag ids are stored
-        // without the `#` (vanilla values use `#ns:tag` inside tag files
-        // but ingredient specs use the bare name)
-        Ok(Ingredient::Tag(tag.to_string()))
+        // tag refs arrive as `ns:tag` with ANY namespace — canonicalize
+        // onto ours at this single parse boundary (the tag-store keys
+        // are built through the same canonicalization)
+        Ok(Ingredient::Tag(norm_id(tag).into_owned()))
     } else {
         Err("ingredient without item/tag".into())
     }
@@ -763,7 +786,7 @@ pub fn parse_loot_table(json: &serde_json::Value) -> Result<LootTable, String> {
                         for f in fns {
                             let f_kind = f.get("function").and_then(|n| n.as_str());
                             if f_kind == Some("voxelcraft:set_count")
-                                || f_kind == Some("minecraft:set_count")
+                                || f_kind == Some("voxelcraft:set_count")
                             {
                                 if let Some(c) = f.get("count") {
                                     functions.push(LootFn::SetCount {
@@ -949,7 +972,7 @@ pub fn builtin_structure_table(name: &str) -> Option<LootTable> {
                         loot_item_w(ROTTEN_FLESH, 5, 1.0, 4.0),
                         loot_item_w(BONE, 4, 1.0, 4.0),
                         loot_item_w(FEATHER, 3, 1.0, 3.0),
-                        loot_item_w(ENDER_PEARL, 1, 1.0, 1.0),
+                        loot_item_w(VOID_PEARL, 1, 1.0, 1.0),
                     ],
                 },
             ],
@@ -962,8 +985,8 @@ pub fn builtin_structure_table(name: &str) -> Option<LootTable> {
                     entries: vec![
                         loot_item_w(IRON_ORE, 5, 1.0, 4.0),
                         loot_item_w(GOLD_ORE, 3, 1.0, 3.0),
-                        loot_item_w(REDSTONE_ORE, 3, 4.0, 8.0),
-                        loot_item_w(ENDER_PEARL, 1, 1.0, 2.0),
+                        loot_item_w(FLUXSTONE_ORE, 3, 4.0, 8.0),
+                        loot_item_w(VOID_PEARL, 1, 1.0, 2.0),
                     ],
                 },
             ],
@@ -989,11 +1012,11 @@ pub fn builtin_structure_table(name: &str) -> Option<LootTable> {
         // scripts/v111_page_woodland_mansion.json — "each woodland
         // mansion chest contains items drawn from 4 pools"). Palette-
         // limited with the page's own §History version-scoping: the
-        // Vex Armor Trim (1.20, 23w04a) and Resin Clump (1.21.4, 24w44a)
+        // Wisp Armor Trim (1.20, 23w04a) and Resin Clump (1.21.4, 24w44a)
         // rows are post-1.11 additions — scoped OUT of this bracket; the
         // name tag (removed 26.1 snap11) and diamond hoe / chainmail /
         // music discs / diamond chestplate / enchanted golden apple /
-        // wheat / bread / redstone dust / seeds / iron ingot / bucket /
+        // wheat / bread / fluxstone dust / seeds / iron ingot / bucket /
         // gold ingot rows are palette-absent — they don't roll (the
         // established honest policy; surviving weights keep their live
         // relative values).
@@ -1026,7 +1049,7 @@ pub fn builtin_structure_table(name: &str) -> Option<LootTable> {
                         loot_item_w(STRING, 10, 1.0, 8.0),
                     ],
                 },
-                // pool 4: rolls 1 — live shows Nothing (1/2) + Vex Armor
+                // pool 4: rolls 1 — live shows Nothing (1/2) + Wisp Armor
                 // Trim (1/2); the trim is a 1.20 addition (scoped out),
                 // leaving the empty partner
                 LootPool {
@@ -1147,11 +1170,15 @@ impl PackFiles for FolderFiles {
 /// prompts Safe Mode for broken packs; we degrade to the working parts
 /// and report, because the engine has no pack-selection screen).
 pub fn scan_pack(id: &str, files: &dyn PackFiles) -> Option<DataPackReport> {
-    // pack.mcmeta is mandatory (wiki: "the only mandatory file")
-    let mcmeta = files.read("pack.mcmeta")?;
+    // a manifest is mandatory: ours (`pack.json`) or the wider
+    // ecosystem's (`pack.mcmeta` in user packs) — either validates
+    let mcmeta = files
+        .read("pack.json")
+        .or_else(|| files.read("pack.mcmeta"))?;
     let meta: serde_json::Value = serde_json::from_slice(&mcmeta).ok()?;
     let pack_format = meta
         .pointer("/pack/pack_format")
+        .or_else(|| meta.pointer("/pack/format"))
         .and_then(|v| v.as_i64())
         .unwrap_or(0) as i32;
     let description = meta
@@ -1257,17 +1284,12 @@ pub fn scan_pack(id: &str, files: &dyn PackFiles) -> Option<DataPackReport> {
 
 /// namespace of a `data/<ns>/...` path
 ///
-/// Interop: `data/<legacy-ns>/…` folders in USER-SUPPLIED packs map onto
-/// our own namespace (read-side alias — external content addresses OUR
-/// registries through the ecosystem's legacy layout). Custom mod
-/// namespaces pass through untouched.
-fn ns_of(path_after_data: &str) -> String {
-    path_after_data
-        .split('/')
-        .next()
-        .map(crate::model::norm_ns)
-        .unwrap_or(crate::model::NS)
-        .to_string()
+/// Interop: namespace-AGNOSTIC — whatever `<ns>` folder a USER-SUPPLIED
+/// pack carries, its content addresses OUR single registry set (unknown
+/// items/names filter out at lookup). No external namespace string is
+/// hardcoded anywhere in this engine.
+fn ns_of(_path_after_data: &str) -> String {
+    crate::model::NS.to_string()
 }
 
 /// aggregate the scan reports in load order (the wiki rule, live-verified:
@@ -1310,6 +1332,10 @@ impl LoadedData {
     /// `builtin_structure_table`)
     pub fn roll(&self, name: &str, rng: &mut Rng) -> Option<Vec<(u16, u8)>> {
         let builtin;
+        // loot ids arrive as `ns:name` with ANY namespace — canonicalize
+        // onto ours before the map lookup
+        let name = norm_id(name);
+        let name = name.as_ref();
         let table = match self.loot_tables.get(name) {
             Some(t) => t,
             None => {
@@ -1677,7 +1703,7 @@ mod tests {
     fn demo_pack_end_to_end() {
         let files = MemoryFiles::demo();
         let report = scan_pack("demo", &files).expect("demo pack is valid");
-        assert_eq!(report.pack_format, PACK_FORMAT_1_16_5);
+        assert_eq!(report.pack_format, PACK_FORMAT_LEGACY_ERA);
         assert_eq!(report.recipes.len(), 2);
         assert_eq!(report.loot_tables.len(), 1);
         assert_eq!(report.tags.len(), 1);
@@ -1726,7 +1752,7 @@ mod tests {
         std::fs::create_dir_all(a.join("data/first/loot_tables/chests")).unwrap();
         std::fs::write(
             a.join("pack.mcmeta"),
-            format!("{{\"pack\":{{\"pack_format\":{},\"description\":\"a\"}}}}", PACK_FORMAT_1_16_5),
+            format!("{{\"pack\":{{\"pack_format\":{},\"description\":\"a\"}}}}", PACK_FORMAT_LEGACY_ERA),
         )
         .unwrap();
         std::fs::write(
@@ -1741,7 +1767,7 @@ mod tests {
         std::fs::create_dir_all(b.join("data/voxelcraft/loot_tables/chests")).unwrap();
         std::fs::write(
             b.join("pack.mcmeta"),
-            format!("{{\"pack\":{{\"pack_format\":{},\"description\":\"b\"}}}}", PACK_FORMAT_1_16_5),
+            format!("{{\"pack\":{{\"pack_format\":{},\"description\":\"b\"}}}}", PACK_FORMAT_LEGACY_ERA),
         )
         .unwrap();
         std::fs::write(
@@ -1773,7 +1799,7 @@ mod tests {
         let files: Vec<(&str, Vec<u8>)> = vec![
             (
                 "pack.mcmeta",
-                format!("{{\"pack\":{{\"pack_format\":{}}}}}", PACK_FORMAT_1_16_5).into_bytes(),
+                format!("{{\"pack\":{{\"pack_format\":{}}}}}", PACK_FORMAT_LEGACY_ERA).into_bytes(),
             ),
             (
                 "data/z/recipes/cobble_stone.json",
@@ -1875,7 +1901,7 @@ mod tests {
     /// 1.11: the woodland_mansion chest table — 4 pools (VERIFIED live
     /// 2026-09-07, reference wiki /Woodland_Mansion §Loot capture:
     /// "each woodland mansion chest contains items drawn from 4 pools"),
-    /// palette-limited with the §History version-scoping (vex trim 1.20
+    /// palette-limited with the §History version-scoping (wisp trim 1.20
     /// / resin 1.21.4 / name-tag removal 26.1 all post-1.11)
     #[test]
     fn v111_woodland_mansion_table() {

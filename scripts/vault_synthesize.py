@@ -6,7 +6,7 @@ Usage: python3 scripts/vault_synthesize.py [--only NAME_SUBSTR]
 
 Output tree (NOT referenced by the engine — a library for future
 versions, per the owner's directive):
-  voxelcraft/assets-vault/assets/minecraft/textures/**.png (+ .mcmeta)
+  voxelcraft/assets-vault/assets/the reference game/textures/**.png (+ .mcmeta)
 
 Clean-room chain: spec (measurements) + procedural rules -> pixels.
 The reference zip is never read here.
@@ -24,7 +24,7 @@ import vault_synth_special as X
 from voxel_synth_shim import Pal, canvas, fill, disc, rng_for, fbm
 
 SPEC = "/home/z/my-project/voxelcraft/assets-vault/spec/spec.json"
-OUT_ROOT = "/home/z/my-project/voxelcraft/assets-vault/assets/minecraft/textures"
+OUT_ROOT = "/home/z/my-project/voxelcraft/assets-vault/assets/the reference game/textures"
 
 # ------------------------------------------------------------------ font pages
 def synth_font_page(rec, name):

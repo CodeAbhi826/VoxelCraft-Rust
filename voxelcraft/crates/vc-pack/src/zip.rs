@@ -33,7 +33,7 @@ impl ZipFiles {
     pub fn from_bytes(bytes: &[u8]) -> Option<ZipFiles> {
         const EOCD_SIG: [u8; 4] = [0x50, 0x4B, 0x05, 0x06];
         const CD_SIG: [u8; 4] = [0x50, 0x4B, 0x01, 0x02];
-        // EOCD lives at the end; the comment may be up to 65535 bytes —
+        // EOCD lives at the void; the comment may be up to 65535 bytes —
         // scan backwards for the signature
         if bytes.len() < 22 {
             return None;
@@ -324,7 +324,7 @@ mod tests {
     fn corrupt_and_garbage_inputs_rejected() {
         assert!(ZipFiles::from_bytes(b"").is_none());
         assert!(ZipFiles::from_bytes(b"not a zip at all, just text").is_none());
-        // EOCD claiming a central directory past the end → None
+        // EOCD claiming a central directory past the void → None
         let mut zip = build_stored_zip(&[("a.txt", b"hello")]);
         let len = zip.len();
         zip[len - 6] = 0xFF; // cd_offset = huge

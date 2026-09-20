@@ -128,7 +128,7 @@ crates/
   vc-mesh/        greedy mesher + skylight BFS + per-vertex AO
   vc-particles/   break/hit particle pool (vanilla physics)
   vc-gameplay/    crafting, furnaces, brewing, enchanting, villagers
-  vc-sim/         20 Hz tick loop, fluids, redstone, item entities
+  vc-sim/         20 Hz tick loop, fluids, fluxstone, item entities
   vc-anvil/       vanilla 1.16.5 save/load (NBT + .mca regions)
   vc-render/      wgpu renderer, atlas, FSR 1.0, shader packs, UI canvas
   vc-audio/       synthesized sound bank + rodio/WebAudio backends

@@ -2,32 +2,47 @@
 //!
 //! Abstracts where pack bytes come from (§36 platform abstraction):
 //! * native — `FolderSource` rooted at a real directory (the builtin pack at
-//!   `voxelcraft/assets/`, or any user folder later);
+//!   `voxelcraft/builtin-pack/`, or any user folder later);
 //! * wasm — pack files are `fetch()`ed at boot into a `MemorySource` (the
-//!   builtin pack is deployed to the web `public/assets/` by CI), so the
-//!   compile pipeline stays identical across platforms.
+//!   builtin pack is deployed to the web `public/voxelcraft-pack/` by CI),
+//!   so the compile pipeline stays identical across platforms.
 //!
-//! `pack.mcmeta` is validated: pack_format 6 = 1.16.2–1.16.5 (VERIFIED,
-//! the reference wiki). Mismatched formats log a warning but never abort (§46 —
+//! Packs are validated through their manifest: OUR packs carry `pack.json`
+//! (`{"pack":{"format":1,…}}`); user-supplied packs from the wider
+//! 1.16.5-era ecosystem carry `pack.mcmeta` (`{"pack":{"pack_format":N,…}}`)
+//! — both are accepted. Mismatches log a warning but never abort (§46 —
 //! a user-supplied imperfect pack must not crash the engine).
+//!
+//! Namespace interop: user packs may lay files out under ANY
+//! `assets/<namespace>/…` (or `data/<namespace>/…`) prefix. At open time
+//! the source's entry list is scanned once and every such entry is aliased
+//! onto its namespace-stripped flat key — no hardcoded namespace strings,
+//! every pack resolves onto the same flat key space as our builtin assets.
 
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-/// 1.16.2 – 1.16.5 resource-pack format (VERIFIED)
-pub const PACK_FORMAT_1_16_5: u32 = 6;
+/// OUR pack manifest format version (`pack.json` → `pack.format`).
+pub const PACK_FORMAT_OURS: u32 = 1;
 
 #[derive(Deserialize, Debug)]
-struct McMeta {
-    pack: PackInfo,
+struct Manifest {
+    pack: ManifestInfo,
 }
 
 #[derive(Deserialize, Debug)]
-struct PackInfo {
-    pack_format: u32,
+struct ManifestInfo {
+    /// our schema (`pack.json`)
+    #[serde(default)]
+    format: Option<u32>,
+    /// the wider ecosystem's schema (`pack.mcmeta` in user packs)
+    #[serde(default)]
+    pack_format: Option<u32>,
     #[serde(default)]
     description: String,
+    #[serde(default)]
+    name: String,
 }
 
 #[derive(Clone, Debug)]
@@ -38,36 +53,156 @@ pub struct PackMeta {
 
 /// where pack files come from
 pub trait PackSource: Send + Sync {
-    /// read a pack-relative path, e.g. "assets/voxelcraft/blockstates/oak_slab.json"
+    /// read a pack-relative path, e.g. "blockstates/oak_slab.json"
     fn read(&self, path: &str) -> Option<Vec<u8>>;
     /// human-readable source name for logs
     fn name(&self) -> String;
-    /// enumerate nothing yet (targeted reads only for Phase 1)
+    /// enumerate every pack-relative path (empty = not enumerable; used
+    /// by the namespace-alias scan in [`open`])
+    fn list(&self) -> Vec<String> {
+        Vec::new()
+    }
+    /// is this a browsable folder pack? (folder packs extract natively)
     fn is_folder(&self) -> bool {
         false
     }
 }
 
-/// open a pack: validate pack.mcmeta and return the usable source
+/// open a pack: validate the manifest (ours `pack.json`, the wider
+/// ecosystem's `pack.mcmeta` in user packs — either is accepted) and
+/// return the usable source wrapped in the namespace-alias shim.
 pub fn open(source: Arc<dyn PackSource>) -> Result<(PackMeta, Arc<dyn PackSource>), String> {
-    let bytes = source
-        .read("pack.mcmeta")
-        .ok_or_else(|| format!("pack.mcmeta not found in {}", source.name()))?;
-    let meta: McMeta = serde_json::from_slice(&bytes)
-        .map_err(|e| format!("pack.mcmeta: bad JSON: {e}"))?;
+    let (bytes, manifest_path) = match source.read("pack.json") {
+        Some(b) => (b, "pack.json"),
+        None => source
+            .read("pack.mcmeta")
+            .map(|b| (b, "pack.mcmeta"))
+            .ok_or_else(|| {
+                format!(
+                    "pack manifest not found (pack.json / pack.mcmeta) in {}",
+                    source.name()
+                )
+            })?,
+    };
+    let meta: Manifest = serde_json::from_slice(&bytes)
+        .map_err(|e| format!("{manifest_path}: bad JSON: {e}"))?;
+    let pack_format = meta.pack.format.or(meta.pack.pack_format).unwrap_or(0);
+    let description = if meta.pack.description.is_empty() {
+        meta.pack.name.clone()
+    } else {
+        meta.pack.description
+    };
     let meta = PackMeta {
-        pack_format: meta.pack.pack_format,
-        description: meta.pack.description,
+        pack_format,
+        description,
     };
     // §46 resilience: warn on version mismatch, do not fail
-    if meta.pack_format != PACK_FORMAT_1_16_5 {
+    if meta.pack_format != PACK_FORMAT_OURS {
         log_warn(&format!(
-            "pack {} declares pack_format {} (target is 6 for 1.16.5) — loading anyway",
+            "pack {} declares pack format {} (ours is {PACK_FORMAT_OURS}) — loading anyway",
             source.name(),
             meta.pack_format
         ));
     }
-    Ok((meta, source))
+    // namespace-alias scan: map every "assets/<ns>/<rest>" (and
+    // "data/<ns>/<rest>") entry onto its stripped flat key
+    let mut aliases: HashMap<String, String> = HashMap::new();
+    for entry in source.list() {
+        for prefix in ["assets/", "data/"] {
+            let Some(after_ns) = entry.strip_prefix(prefix) else {
+                continue;
+            };
+            let Some((ns, rest)) = after_ns.split_once('/') else {
+                continue;
+            };
+            if ns.is_empty() || rest.is_empty() {
+                continue;
+            }
+            // flat key = the namespace-stripped path
+            // ("textures/gui/hearts.png"), mapping to the real entry
+            let flat = rest.to_string();
+            // first entry wins; prefer our own namespace when present by
+            // letting an exact "voxelcraft" hit override an earlier alias
+            if !aliases.contains_key(&flat) || ns == crate::model::NS {
+                aliases.insert(flat, entry.clone());
+            }
+        }
+    }
+    Ok((meta, Arc::new(NsAliasSource { inner: source, aliases })))
+}
+
+/// Read-side namespace shim: answers flat-key reads (`textures/gui/x.png`)
+/// from the underlying source either directly (our layout), through the
+/// alias map (packs laid out under `assets/<any-namespace>/…`), or
+/// through the legacy-NAME map (packs that reference the wider
+/// ecosystem's coined names — see `legacy_aliases`).
+struct NsAliasSource {
+    inner: Arc<dyn PackSource>,
+    aliases: HashMap<String, String>,
+}
+
+impl NsAliasSource {
+    /// remap each path segment through the legacy-name table
+    /// (`textures/block/<legacy>.png` → `textures/block/<ours>.png`)
+    fn remap_legacy_name(&self, path: &str) -> Option<String> {
+        let mut parts: Vec<std::borrow::Cow<'_, str>> =
+            path.split('/').map(std::borrow::Cow::Borrowed).collect();
+        let mut changed = false;
+        for part in parts.iter_mut() {
+            let (stem, tail) = match part.rsplit_once('.') {
+                Some((s, t)) if matches!(t, "png" | "json" | "mcmeta") => (s, ".".to_string() + t),
+                _ => (part.as_ref(), String::new()),
+            };
+            if let Some(new_stem) = crate::legacy_aliases::legacy_name_alias(stem) {
+                *part = std::borrow::Cow::Owned(format!("{new_stem}{tail}"));
+                changed = true;
+            }
+        }
+        if changed {
+            Some(parts.join("/"))
+        } else {
+            None
+        }
+    }
+}
+
+impl PackSource for NsAliasSource {
+    fn read(&self, path: &str) -> Option<Vec<u8>> {
+        if let Some(bytes) = self.inner.read(path) {
+            return Some(bytes);
+        }
+        if let Some(real) = self.aliases.get(path) {
+            if let Some(bytes) = self.inner.read(real) {
+                return Some(bytes);
+            }
+        }
+        // legacy-NAME interop: retry the remapped path (direct, then
+        // through the namespace alias) — the ecosystem's packs carry
+        // its own coined names in their paths
+        if let Some(remapped) = self.remap_legacy_name(path) {
+            if let Some(bytes) = self.inner.read(&remapped) {
+                return Some(bytes);
+            }
+            if let Some(real) = self.aliases.get(&remapped) {
+                if let Some(bytes) = self.inner.read(real) {
+                    return Some(bytes);
+                }
+            }
+        }
+        None
+    }
+
+    fn name(&self) -> String {
+        self.inner.name()
+    }
+
+    fn list(&self) -> Vec<String> {
+        self.inner.list()
+    }
+
+    fn is_folder(&self) -> bool {
+        self.inner.is_folder()
+    }
 }
 
 fn log_warn(msg: &str) {
@@ -96,7 +231,7 @@ impl FolderSource {
     }
 
     pub fn exists(&self) -> bool {
-        self.root.join("pack.mcmeta").is_file()
+        self.root.join("pack.json").is_file() || self.root.join("pack.mcmeta").is_file()
     }
 }
 
@@ -112,6 +247,27 @@ impl PackSource for FolderSource {
 
     fn name(&self) -> String {
         format!("folder:{} ({})", self.root.display(), self.label)
+    }
+
+    fn list(&self) -> Vec<String> {
+        let mut out = Vec::new();
+        let mut stack = vec![(self.root.clone(), String::new())];
+        while let Some((dir, rel)) = stack.pop() {
+            let Ok(entries) = std::fs::read_dir(&dir) else {
+                continue;
+            };
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let name = entry.file_name().to_string_lossy().to_string();
+                if path.is_dir() {
+                    stack.push((path, format!("{rel}{name}/")));
+                } else {
+                    out.push(format!("{rel}{name}"));
+                }
+            }
+        }
+        out.sort();
+        out
     }
 
     fn is_folder(&self) -> bool {
@@ -155,6 +311,12 @@ impl PackSource for MemorySource {
     fn name(&self) -> String {
         format!("memory:{} ({} files)", self.label, self.files.len())
     }
+
+    fn list(&self) -> Vec<String> {
+        let mut v: Vec<String> = self.files.keys().cloned().collect();
+        v.sort();
+        v
+    }
 }
 
 // ----------------------------------------------------------- wasm fetches --
@@ -167,15 +329,15 @@ pub async fn fetch_builtin_pack(
     specs: &[crate::model::BlockDispatchSpec],
 ) -> Option<MemorySource> {
     let mut mem = MemorySource::new("builtin (fetched)");
-    // 1. pack.mcmeta + all blockstates
-    let mut wanted: Vec<String> = vec!["pack.mcmeta".to_string()];
+    // 1. pack.json + all blockstates
+    let mut wanted: Vec<String> = vec!["pack.json".to_string()];
     for spec in specs {
-        wanted.push(format!("assets/voxelcraft/blockstates/{}.json", spec.name));
+        wanted.push(format!("blockstates/{}.json", spec.name));
     }
     // fetch blockstates first, parse model refs from them
     let mut models: Vec<String> = Vec::new();
     for spec in specs {
-        let bs_path = format!("assets/voxelcraft/blockstates/{}.json", spec.name);
+        let bs_path = format!("blockstates/{}.json", spec.name);
         let bytes = fetch_bytes(&bs_path).await?;
         collect_model_refs(&bytes, &mut models);
         mem.insert(&bs_path, bytes);
@@ -195,99 +357,98 @@ pub async fn fetch_builtin_pack(
         collect_parent_and_texture_refs(&bytes, &mut queue, &mut textures);
         mem.insert(&path, bytes);
     }
-    // 3. fetch textures (and their .mcmeta animation metadata if present)
+    // 3. fetch textures (and their .png.json animation metadata if present)
     for tex in textures {
         let path = crate::model::texture_path(&crate::model::normalize_loc(&tex));
         if seen.insert(path.clone()) {
             if let Some(bytes) = fetch_bytes(&path).await {
                 mem.insert(&path, bytes);
             }
-            let mcmeta = path.replace(".png", ".png.mcmeta");
-            if seen.insert(mcmeta.clone()) {
-                if let Some(bytes) = fetch_bytes(&mcmeta).await {
-                    mem.insert(&mcmeta, bytes);
+            let anim = path.replace(".png", ".png.json");
+            if seen.insert(anim.clone()) {
+                if let Some(bytes) = fetch_bytes(&anim).await {
+                    mem.insert(&anim, bytes);
                 }
             }
         }
     }
-    // pack.mcmeta last (for open()) — fetch it too
-    if let Some(bytes) = fetch_bytes("pack.mcmeta").await {
-        mem.insert("pack.mcmeta", bytes);
+    // pack.json last (for open()) — fetch it too
+    if let Some(bytes) = fetch_bytes("pack.json").await {
+        mem.insert("pack.json", bytes);
     }
     let _ = wanted;
     Some(mem)
 }
 
-/// The Programmer Art builtin pack's file manifest (the 52 clean-room
-/// retro look-alike textures + pack.mcmeta). Deployed to the web as
-/// `/voxelcraft-pack-programmer-art/**` by the bundle script; the exact
+/// The Classic Art builtin pack's file manifest (the 52 clean-room
+/// retro look-alike textures + pack.json). Deployed to the web as
+/// `/voxelcraft-pack-classic-art/**` by the bundle script; the exact
 /// list is baked in because wasm has no directory listing.
-pub const PROGRAMMER_ART_FILES: &[&str] = &[
-    "assets/voxelcraft/textures/block/bedrock.png",
-    "assets/voxelcraft/textures/block/black_wool.png",
-    "assets/voxelcraft/textures/block/blue_wool.png",
-    "assets/voxelcraft/textures/block/bookshelf.png",
-    "assets/voxelcraft/textures/block/bricks.png",
-    "assets/voxelcraft/textures/block/clay.png",
-    "assets/voxelcraft/textures/block/coal_ore.png",
-    "assets/voxelcraft/textures/block/cobblestone.png",
-    "assets/voxelcraft/textures/block/crafting_table_side.png",
-    "assets/voxelcraft/textures/block/crafting_table_top.png",
-    "assets/voxelcraft/textures/block/dandelion.png",
-    "assets/voxelcraft/textures/block/diamond_block.png",
-    "assets/voxelcraft/textures/block/diamond_ore.png",
-    "assets/voxelcraft/textures/block/dirt.png",
-    "assets/voxelcraft/textures/block/emerald_ore.png",
-    "assets/voxelcraft/textures/block/end_stone.png",
-    "assets/voxelcraft/textures/block/furnace_front_on.png",
-    "assets/voxelcraft/textures/block/furnace_side.png",
-    "assets/voxelcraft/textures/block/furnace_top.png",
-    "assets/voxelcraft/textures/block/glass.png",
-    "assets/voxelcraft/textures/block/glowstone.png",
-    "assets/voxelcraft/textures/block/gold_block.png",
-    "assets/voxelcraft/textures/block/gold_ore.png",
-    "assets/voxelcraft/textures/block/grass_block_side.png",
-    "assets/voxelcraft/textures/block/grass_block_top.png",
-    "assets/voxelcraft/textures/block/gravel.png",
-    "assets/voxelcraft/textures/block/ice.png",
-    "assets/voxelcraft/textures/block/iron_block.png",
-    "assets/voxelcraft/textures/block/iron_ore.png",
-    "assets/voxelcraft/textures/block/lapis_ore.png",
-    "assets/voxelcraft/textures/block/mossy_cobblestone.png",
-    "assets/voxelcraft/textures/block/nether_bricks.png",
-    "assets/voxelcraft/textures/block/netherrack.png",
-    "assets/voxelcraft/textures/block/oak_leaves.png",
-    "assets/voxelcraft/textures/block/oak_log.png",
-    "assets/voxelcraft/textures/block/oak_log_top.png",
-    "assets/voxelcraft/textures/block/oak_planks.png",
-    "assets/voxelcraft/textures/block/obsidian.png",
-    "assets/voxelcraft/textures/block/poppy.png",
-    "assets/voxelcraft/textures/block/red_wool.png",
-    "assets/voxelcraft/textures/block/redstone_ore.png",
-    "assets/voxelcraft/textures/block/sand.png",
-    "assets/voxelcraft/textures/block/snow.png",
-    "assets/voxelcraft/textures/block/soul_sand.png",
-    "assets/voxelcraft/textures/block/spawner.png",
-    "assets/voxelcraft/textures/block/stone.png",
-    "assets/voxelcraft/textures/block/stone_bricks.png",
-    "assets/voxelcraft/textures/block/tall_grass.png",
-    "assets/voxelcraft/textures/block/tnt_side.png",
-    "assets/voxelcraft/textures/block/tnt_top.png",
-    "assets/voxelcraft/textures/block/white_wool.png",
-    "assets/voxelcraft/textures/block/yellow_wool.png",
-    "pack.mcmeta",
+pub const CLASSIC_ART_FILES: &[&str] = &[
+    "textures/block/bedrock.png",
+    "textures/block/black_wool.png",
+    "textures/block/blue_wool.png",
+    "textures/block/bookshelf.png",
+    "textures/block/bricks.png",
+    "textures/block/clay.png",
+    "textures/block/coal_ore.png",
+    "textures/block/cobblestone.png",
+    "textures/block/crafting_table_side.png",
+    "textures/block/crafting_table_top.png",
+    "textures/block/dandelion.png",
+    "textures/block/diamond_block.png",
+    "textures/block/diamond_ore.png",
+    "textures/block/dirt.png",
+    "textures/block/emerald_ore.png",
+    "textures/block/void_stone.png",
+    "textures/block/furnace_front_on.png",
+    "textures/block/furnace_side.png",
+    "textures/block/furnace_top.png",
+    "textures/block/glass.png",
+    "textures/block/glowstone.png",
+    "textures/block/gold_block.png",
+    "textures/block/gold_ore.png",
+    "textures/block/grass_block_side.png",
+    "textures/block/grass_block_top.png",
+    "textures/block/gravel.png",
+    "textures/block/ice.png",
+    "textures/block/iron_block.png",
+    "textures/block/iron_ore.png",
+    "textures/block/lapis_ore.png",
+    "textures/block/mossy_cobblestone.png",
+    "textures/block/hollow_bricks.png",
+    "textures/block/hollowstone.png",
+    "textures/block/oak_leaves.png",
+    "textures/block/oak_log.png",
+    "textures/block/oak_log_top.png",
+    "textures/block/oak_planks.png",
+    "textures/block/obsidian.png",
+    "textures/block/poppy.png",
+    "textures/block/red_wool.png",
+    "textures/block/fluxstone_ore.png",
+    "textures/block/sand.png",
+    "textures/block/snow.png",
+    "textures/block/spirit_sand.png",
+    "textures/block/spawner.png",
+    "textures/block/stone.png",
+    "textures/block/stone_bricks.png",
+    "textures/block/tall_grass.png",
+    "textures/block/tnt_side.png",
+    "textures/block/tnt_top.png",
+    "textures/block/white_wool.png",
+    "textures/block/yellow_wool.png",
+    "pack.json",
 ];
 
-/// wasm: fetch the Programmer Art builtin pack (the vanilla Programmer
-/// Art analog — "the old pre-1.14 textures", reference wiki /Programmer_
-/// Art) into memory. Cached by the caller at boot so the resource-pack
+/// wasm: fetch the Classic Art builtin pack (the retro "classic look"
+/// analog) into memory. Cached by the caller at boot so the resource-pack
 /// screen can toggle it synchronously afterwards.
 #[cfg(target_arch = "wasm32")]
-pub async fn fetch_programmer_art_pack() -> Option<MemorySource> {
-    let mut mem = MemorySource::new("programmer-art (fetched)");
+pub async fn fetch_classic_art_pack() -> Option<MemorySource> {
+    let mut mem = MemorySource::new("classic-art (fetched)");
     let mut any = false;
-    for path in PROGRAMMER_ART_FILES {
-        if let Some(bytes) = fetch_bytes_base("/voxelcraft-pack-programmer-art", path).await {
+    for path in CLASSIC_ART_FILES {
+        if let Some(bytes) = fetch_bytes_base("/voxelcraft-pack-classic-art", path).await {
             mem.insert(path, bytes);
             any = true;
         }
@@ -406,25 +567,13 @@ impl PackStack {
     }
 
     /// read `path` from the highest-priority source that provides it
-    /// (returns the bytes + the source name for logs)
-    ///
-    /// Namespace interop (read-side): our paths live under
-    /// `assets/voxelcraft/…`, but USER-SUPPLIED packs authored for the
-    /// wider 1.16.5-era ecosystem lay their files out under the legacy
-    /// namespace folder. When a pack doesn't carry our path, the SAME
-    /// pack is retried through the legacy layout so real packs load
-    /// unchanged — we never write that layout ourselves, and it never
-    /// appears in any user-facing surface (pure format interop, the
-    /// same convention third-party world editors use).
+    /// (returns the bytes + the source name for logs). Sources opened
+    /// through [`open`] already carry the namespace-alias shim, so a
+    /// flat-key read resolves from any pack layout.
     pub fn read_first(&self, path: &str) -> Option<(Vec<u8>, String)> {
         for s in &self.sources {
             if let Some(bytes) = s.read(path) {
                 return Some((bytes, s.name()));
-            }
-            if let Some(legacy) = legacy_ns_path(path) {
-                if let Some(bytes) = s.read(&legacy) {
-                    return Some((bytes, s.name()));
-                }
             }
         }
         None
@@ -437,15 +586,6 @@ impl PackStack {
     pub fn is_empty(&self) -> bool {
         self.sources.is_empty()
     }
-}
-
-/// `assets/voxelcraft/<rest>` → the legacy ecosystem layout
-/// `assets/<legacy-ns>/<rest>`; every other path maps to None. Read-side
-/// interop only — see [`PackStack::read_first`].
-fn legacy_ns_path(path: &str) -> Option<String> {
-    path.strip_prefix("assets/voxelcraft/").map(|rest| {
-        format!("assets/{}/{}", crate::model::NS_LEGACY_INTEROP, rest)
-    })
 }
 
 /// A `.zip` resource pack. Reuses the Phase 9 zip reader (flate2, zero
@@ -484,6 +624,10 @@ impl PackSource for ZipSource {
 
     fn name(&self) -> String {
         format!("zip:{}", self.label)
+    }
+
+    fn list(&self) -> Vec<String> {
+        super::datapack::PackFiles::list(&self.files, "")
     }
 }
 
@@ -537,11 +681,9 @@ pub fn scan_user_packs_named(dir: &std::path::Path) -> Vec<(String, Arc<dyn Pack
 }
 
 /// logical GUI texture name -> pack-relative path:
-/// "hearts" -> "assets/voxelcraft/textures/gui/hearts.png" (our own
-/// namespace; user-supplied packs that only carry the legacy ecosystem
-/// layout still resolve through [`PackStack::read_first`]'s interop
-/// fallback; custom namespaces resolve only through explicit "ns:name"
-/// requests)
+/// "hearts" -> "textures/gui/hearts.png" (our flat layout; user-supplied
+/// packs laid out under any "assets/<namespace>/" prefix resolve through
+/// the alias shim built in [`open`])
 pub fn gui_texture_path(name: &str) -> String {
     crate::model::texture_path(&format!("gui/{name}"))
 }
@@ -551,123 +693,136 @@ mod tests {
     use super::*;
 
     #[test]
-    fn mcmeta_validates_and_version_mismatch_only_warns() {
+    fn our_manifest_validates() {
         let mut mem = MemorySource::new("test");
         mem.insert(
-            "pack.mcmeta",
-            br#"{"pack":{"pack_format":5,"description":"old pack"}}"#.to_vec(),
+            "pack.json",
+            br#"{"pack":{"format":1,"name":"t","description":"our pack"}}"#.to_vec(),
         );
         let src: Arc<dyn PackSource> = Arc::new(mem);
         let (meta, _) = open(src).unwrap();
-        assert_eq!(meta.pack_format, 5);
-        assert_eq!(meta.description, "old pack");
+        assert_eq!(meta.pack_format, 1);
+        assert_eq!(meta.description, "our pack");
     }
 
     #[test]
-    fn missing_mcmeta_errors_cleanly() {
+    fn legacy_ecosystem_manifest_accepted() {
+        // user-supplied packs from the wider 1.16.5-era ecosystem carry
+        // pack.mcmeta with the pack_format key — accepted read-side
+        let mut mem = MemorySource::new("user pack");
+        mem.insert(
+            "pack.mcmeta",
+            br#"{"pack":{"pack_format":6,"description":"user pack"}}"#.to_vec(),
+        );
+        let src: Arc<dyn PackSource> = Arc::new(mem);
+        let (meta, src) = open(src).unwrap();
+        assert_eq!(meta.pack_format, 6);
+        assert_eq!(meta.description, "user pack");
+        // the opened source answers manifest reads through the shim
+        assert!(src.read("pack.mcmeta").is_some());
+    }
+
+    #[test]
+    fn missing_manifest_errors_cleanly() {
         let mem = MemorySource::new("empty");
         let src: Arc<dyn PackSource> = Arc::new(mem);
         assert!(open(src).is_err());
     }
 
     #[test]
-    fn memory_source_roundtrip() {
+    fn memory_source_roundtrip_and_list() {
         let mut mem = MemorySource::new("t");
         mem.insert("a/b.txt", b"hello".to_vec());
         assert_eq!(mem.read("a/b.txt"), Some(b"hello".to_vec()));
         assert_eq!(mem.read("missing"), None);
         assert_eq!(mem.len(), 1);
+        assert_eq!(mem.list(), vec!["a/b.txt".to_string()]);
     }
 
     #[test]
-    fn gui_texture_path_uses_the_voxelcraft_namespace() {
-        assert_eq!(
-            gui_texture_path("hearts"),
-            "assets/voxelcraft/textures/gui/hearts.png"
-        );
+    fn gui_texture_path_is_flat() {
+        assert_eq!(gui_texture_path("hearts"), "textures/gui/hearts.png");
         assert_eq!(
             gui_texture_path("options_background"),
-            "assets/voxelcraft/textures/gui/options_background.png"
+            "textures/gui/options_background.png"
         );
     }
 
     #[test]
     fn pack_stack_resolves_highest_priority_first() {
         let mut low = MemorySource::new("low");
-        low.insert("assets/voxelcraft/textures/gui/hearts.png", b"low".to_vec());
-        low.insert("assets/voxelcraft/textures/gui/hunger.png", b"low".to_vec());
+        low.insert("textures/gui/hearts.png", b"low".to_vec());
+        low.insert("textures/gui/hunger.png", b"low".to_vec());
         let mut high = MemorySource::new("high");
-        high.insert("assets/voxelcraft/textures/gui/hearts.png", b"high".to_vec());
+        high.insert("textures/gui/hearts.png", b"high".to_vec());
         let mut stack = PackStack::new();
         stack.push_front(Arc::new(high));
         stack.push_front(Arc::new(low)); // low pushed to front = now highest
         // low wins hearts AND hunger; high's hearts is shadowed
         let (hearts, name) = stack
-            .read_first("assets/voxelcraft/textures/gui/hearts.png")
+            .read_first("textures/gui/hearts.png")
             .unwrap_or_else(|| (Vec::new(), String::new()));
         assert_eq!(hearts, b"low".to_vec());
         assert!(name.contains("low"));
         let (hunger, _) = stack
-            .read_first("assets/voxelcraft/textures/gui/hunger.png")
+            .read_first("textures/gui/hunger.png")
             .unwrap_or_else(|| (Vec::new(), String::new()));
         assert_eq!(hunger, b"low".to_vec());
         // nothing provides widgets
-        assert!(stack
-            .read_first("assets/voxelcraft/textures/gui/widgets.png")
-            .is_none());
+        assert!(stack.read_first("textures/gui/widgets.png").is_none());
     }
 
     #[test]
     fn empty_stack_reads_nothing() {
         let stack = PackStack::new();
         assert!(stack.is_empty());
-        assert!(stack.read_first("pack.mcmeta").is_none());
+        assert!(stack.read_first("pack.json").is_none());
     }
 
-    /// Namespace interop: a user-supplied pack that only carries the
-    /// legacy ecosystem layout still resolves through our
-    /// `assets/voxelcraft/…` requests (read-side alias, same pack, same
-    /// priority slot — never a cross-pack priority change).
+    /// Namespace interop: a user-supplied pack laid out under ANY
+    /// `assets/<namespace>/…` prefix resolves through the alias shim
+    /// built at open() — flat-key reads find the namespaced entries,
+    /// with zero hardcoded namespace strings anywhere.
     #[test]
-    fn pack_stack_falls_back_to_the_legacy_layout() {
-        let mut legacy = MemorySource::new("legacy-layout-pack");
-        legacy.insert(
-            "assets/minecraft/textures/gui/hearts.png",
-            b"legacy".to_vec(),
+    fn namespaced_pack_layout_resolves_through_the_alias_shim() {
+        let mut ns_pack = MemorySource::new("namespaced-pack");
+        ns_pack.insert(
+            "assets/some-ecosystem-pack/textures/gui/hearts.png",
+            b"namespaced".to_vec(),
         );
-        // NOTE: the literal below is built from NS_LEGACY_INTEROP, not
-        // hardcoded — the alias lives in exactly ONE place (model.rs).
+        ns_pack.insert(
+            "pack.mcmeta",
+            br#"{"pack":{"pack_format":6}}"#.to_vec(),
+        );
+        let (_meta, src) = open(Arc::new(ns_pack)).unwrap();
+        // flat-key read resolves through the alias
         assert_eq!(
-            legacy_ns_path("assets/voxelcraft/textures/gui/hearts.png")
-                .as_deref(),
-            Some(format!("assets/{}/textures/gui/hearts.png", crate::model::NS_LEGACY_INTEROP).as_str())
+            src.read("textures/gui/hearts.png"),
+            Some(b"namespaced".to_vec())
         );
-        let mut stack = PackStack::new();
-        stack.push_front(Arc::new(legacy));
-        let (bytes, name) = stack
-            .read_first("assets/voxelcraft/textures/gui/hearts.png")
-            .expect("legacy-layout pack must resolve through the interop alias");
-        assert_eq!(bytes, b"legacy".to_vec());
-        assert!(name.contains("legacy-layout-pack"));
-        // a pack with BOTH layouts prefers our own path verbatim
+        // direct reads of the real entry still work
+        assert!(src.read("assets/some-ecosystem-pack/textures/gui/hearts.png").is_some());
+    }
+
+    /// a pack carrying BOTH layouts: the flat entry wins (alias only
+    /// fills gaps, never shadows the pack's own flat files)
+    #[test]
+    fn flat_layout_wins_over_the_alias() {
         let mut both = MemorySource::new("both");
-        both.insert("assets/voxelcraft/textures/gui/hearts.png", b"ours".to_vec());
-        both.insert("assets/minecraft/textures/gui/hearts.png", b"legacy".to_vec());
-        let mut stack2 = PackStack::new();
-        stack2.push_front(Arc::new(both));
-        let (bytes2, _) = stack2
-            .read_first("assets/voxelcraft/textures/gui/hearts.png")
-            .unwrap();
-        assert_eq!(bytes2, b"ours".to_vec());
+        both.insert("textures/gui/hearts.png", b"flat".to_vec());
+        both.insert(
+            "assets/some-ecosystem-pack/textures/gui/hearts.png",
+            b"namespaced".to_vec(),
+        );
+        both.insert("pack.json", br#"{"pack":{"format":1}}"#.to_vec());
+        let (_meta, src) = open(Arc::new(both)).unwrap();
+        assert_eq!(src.read("textures/gui/hearts.png"), Some(b"flat".to_vec()));
     }
 
     /// a real zip built in-memory: the ZipSource reads the same paths a
     /// folder pack would (zip-vs-folder parity, D8)
     #[test]
     fn zip_source_resolves_the_same_paths_as_a_folder_pack() {
-        // build a minimal zip via the `zip` writer? we have no writer —
-        // hand-assemble a STORED (method 0) zip with one file.
-        // layout: local header + data + central directory + EOCD
         fn le16(v: u16) -> [u8; 2] {
             [v as u8, (v >> 8) as u8]
         }
@@ -679,7 +834,7 @@ mod tests {
                 (v >> 24) as u8,
             ]
         }
-        let name = b"assets/voxelcraft/textures/gui/hearts.png";
+        let name = b"textures/gui/hearts.png";
         let data = b"zip-heart".to_vec();
         let crc = crc32(&data);
         let mut out: Vec<u8> = Vec::new();
@@ -731,18 +886,15 @@ mod tests {
         };
         let src: Arc<dyn PackSource> = Arc::new(zip);
         assert_eq!(
-            src.read("assets/voxelcraft/textures/gui/hearts.png"),
+            src.read("textures/gui/hearts.png"),
             Some(b"zip-heart".to_vec())
         );
         // folder parity: the same logical path through a MemorySource
         let mut folder_like = MemorySource::new("folder-like");
-        folder_like.insert(
-            "assets/voxelcraft/textures/gui/hearts.png",
-            b"zip-heart".to_vec(),
-        );
+        folder_like.insert("textures/gui/hearts.png", b"zip-heart".to_vec());
         assert_eq!(
-            folder_like.read("assets/voxelcraft/textures/gui/hearts.png"),
-            src.read("assets/voxelcraft/textures/gui/hearts.png")
+            folder_like.read("textures/gui/hearts.png"),
+            src.read("textures/gui/hearts.png")
         );
     }
 
@@ -759,19 +911,18 @@ mod tests {
         !crc
     }
 
-    /// a wrong pack_format only WARNS (the repo's §46 policy — VERIFIED
-    /// the reference wiki: pack_format 6 is 1.16.2-1.16.5, NOT the 5 the
-    /// master prompt claims) and the pack still opens
+    /// a future manifest format only WARNS (the repo's §46 policy) and
+    /// the pack still opens
     #[test]
-    fn wrong_pack_format_warns_but_opens() {
+    fn future_manifest_format_warns_but_opens() {
         let mut mem = MemorySource::new("fmt");
         mem.insert(
-            "pack.mcmeta",
-            br#"{"pack":{"pack_format":99,"description":"future"}}"#.to_vec(),
+            "pack.json",
+            br#"{"pack":{"format":99,"description":"future"}}"#.to_vec(),
         );
         let src: Arc<dyn PackSource> = Arc::new(mem);
         let r = open(src);
-        assert!(r.is_ok(), "mismatched pack_format must not reject (§46)");
+        assert!(r.is_ok(), "mismatched format must not reject (§46)");
         let (meta, _) = r.unwrap_or((PackMeta {
             pack_format: 0,
             description: String::new(),

@@ -8,7 +8,7 @@ use super::{art, put, Rng};
 /// core and soft alpha edges — drawn as a 16×16 tile but the particle
 /// system samples a thin sub-rect so each quad is a 2-px-wide streak.
 pub(super) fn rain_streak(a: &mut [u8], t: u16, _rng: &mut Rng) {
-    // vertical gradient band centered x 6..9, fading at the ends
+    // vertical gradient band centered x 6..9, fading at the voids
     for y in 0..16 {
         // taper: solid core rows 3..13, faint tips
         let core = (3..=13).contains(&y);

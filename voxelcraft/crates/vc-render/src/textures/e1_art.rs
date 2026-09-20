@@ -29,8 +29,8 @@ pub(super) fn mycelium_side(a: &mut [u8], t: u16, rng: &mut Rng) {
     }
 }
 
-/// End stone: pale cream-yellow, wart-like mottle (the End island surface).
-pub(super) fn end_stone(a: &mut [u8], t: u16, rng: &mut Rng) {
+/// Void stone: pale cream-yellow, wart-like mottle (the Void island surface).
+pub(super) fn void_stone(a: &mut [u8], t: u16, rng: &mut Rng) {
     let base = [221, 223, 165];
     noise_fill(a, t, base, 9, rng);
     // darker blotches give the "warted" vanilla look
@@ -41,8 +41,8 @@ pub(super) fn end_stone(a: &mut [u8], t: u16, rng: &mut Rng) {
     }
 }
 
-/// Nether bricks: dark crimson mortar rows (the fortress material).
-pub(super) fn nether_bricks(a: &mut [u8], t: u16, rng: &mut Rng) {
+/// Hollow bricks: dark scarlet mortar rows (the fortress material).
+pub(super) fn hollow_bricks(a: &mut [u8], t: u16, rng: &mut Rng) {
     let brick = [68, 40, 44];
     let mortar = [40, 22, 24];
     for y in 0..16 {
@@ -57,9 +57,9 @@ pub(super) fn nether_bricks(a: &mut [u8], t: u16, rng: &mut Rng) {
     }
 }
 
-/// Redstone lamp (off): amber glass grid on a dark frame — glowstone-like
+/// Fluxstone lamp (off): amber glass grid on a dark frame — glowstone-like
 /// but dim; the lit variant swaps to bright yellow cores.
-pub(super) fn redstone_lamp(a: &mut [u8], t: u16, rng: &mut Rng, lit: bool) {
+pub(super) fn fluxstone_lamp(a: &mut [u8], t: u16, rng: &mut Rng, lit: bool) {
     let frame = if lit { [120, 92, 50] } else { [66, 50, 30] };
     let cell = if lit { [255, 216, 80] } else { [148, 108, 58] };
     let hot = if lit { Some([255, 244, 160]) } else { None };
@@ -170,9 +170,9 @@ pub(super) fn mushroom_stem(a: &mut [u8], t: u16, rng: &mut Rng) {
     }
 }
 
-/// Nether wart crop stage 0..3 (VERIFIED: 4 stages; stage art grows with
+/// Hollow wart crop stage 0..3 (VERIFIED: 4 stages; stage art grows with
 /// the age — tiny sprout to a full bushy cluster).
-pub(super) fn nether_wart_art(a: &mut [u8], t: u16, stage: u8) {
+pub(super) fn hollow_wart_art(a: &mut [u8], t: u16, stage: u8) {
     // rows used per stage: sprout (2) → small (4) → tall (6) → bushy (8)
     let rows: [&str; 16] = match stage {
         0 => [
@@ -233,8 +233,8 @@ pub(super) fn dragon_egg_art(a: &mut [u8], t: u16) {
     });
 }
 
-/// End portal face: deep void purple with a star field.
-pub(super) fn end_portal_art(a: &mut [u8], t: u16) {
+/// Void gate face: deep void purple with a star field.
+pub(super) fn void_gate_art(a: &mut [u8], t: u16) {
     let rows = [
         "VVVVVVVVVVVVVVVV",
         "VVVVVVSVVVVVVVVV",
@@ -260,8 +260,8 @@ pub(super) fn end_portal_art(a: &mut [u8], t: u16) {
     });
 }
 
-/// End crystal item/entity icon: pale crystal prism on a bedrock base.
-pub(super) fn end_crystal_art(a: &mut [u8], t: u16) {
+/// Void crystal item/entity icon: pale crystal prism on a bedrock base.
+pub(super) fn void_crystal_art(a: &mut [u8], t: u16) {
     let rows = [
         "................",
         "................",
@@ -314,8 +314,8 @@ pub(super) fn xp_orb_art(a: &mut [u8], t: u16, big: bool) {
     });
 }
 
-/// Eye of ender item: green pupil in a pearl shell.
-pub(super) fn eye_of_ender_art(a: &mut [u8], t: u16) {
+/// Eye of void item: green pupil in a pearl shell.
+pub(super) fn void_eye_art(a: &mut [u8], t: u16) {
     let rows = [
         "................",
         "................",
@@ -449,8 +449,8 @@ pub(super) fn snowball_art(a: &mut [u8], t: u16) {
     });
 }
 
-/// Nether brick item: a single small dark brick.
-pub(super) fn nether_brick_art(a: &mut [u8], t: u16) {
+/// Hollow brick item: a single small dark brick.
+pub(super) fn hollow_brick_art(a: &mut [u8], t: u16) {
     let rows = [
         "................",
         "................",
@@ -512,12 +512,12 @@ pub const EGG_PALETTES: [(i32, i32, i32, i32, i32, i32); 16] = [
     (235, 200, 90, 60, 40, 30),      // ocelot: yellow + spots
     (190, 190, 200, 90, 60, 40),     // iron golem: iron + rust
     (70, 110, 70, 60, 90, 60),       // zombie villager: sickly green + robe
-    (190, 60, 60, 235, 235, 235),    // mooshroom: red + white
+    (190, 60, 60, 235, 235, 235),    // shroomcow: red + white
     (60, 110, 60, 70, 40, 40),       // zombie
     (200, 200, 200, 80, 80, 80),     // skeleton
-    (90, 200, 90, 40, 90, 40),       // creeper
+    (90, 200, 90, 40, 90, 40),       // fuseling
     (70, 60, 60, 140, 40, 40),       // spider
-    (20, 15, 20, 130, 70, 160),      // enderman
+    (20, 15, 20, 130, 70, 160),      // voidling
     (80, 60, 40, 230, 230, 230),     // cow
     (235, 170, 170, 200, 120, 120),  // pig
     (235, 235, 235, 240, 200, 200),  // sheep
@@ -691,7 +691,7 @@ pub(super) fn zombie_villager_art(a: &mut [u8], t: u16) {
     });
 }
 
-pub(super) fn mooshroom_art(a: &mut [u8], t: u16) {
+pub(super) fn shroomcow_art(a: &mut [u8], t: u16) {
     let rows = [
         "................",
         "..RR..RR..R.....",
@@ -717,7 +717,7 @@ pub(super) fn mooshroom_art(a: &mut [u8], t: u16) {
     });
 }
 
-pub(super) fn ender_dragon_art(a: &mut [u8], t: u16) {
+pub(super) fn void_wyrm_art(a: &mut [u8], t: u16) {
     let rows = [
         "W..............W",
         "WW....DDDD....WW",

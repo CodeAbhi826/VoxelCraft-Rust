@@ -1,7 +1,7 @@
 //! Phase E2 (evolution 1.3–1.4 bracket): beacon pyramid + powers.
 //! All values live-verified 2026-09-06 against the reference wiki
 //! (docs/research/phase2-1.3-1.4-research.md):
-//! - pyramid: 1–4 levels of iron/gold/emerald/diamond/netherite blocks
+//! - pyramid: 1–4 levels of iron/gold/emerald/diamond/hollowite blocks
 //!   (mixed freely — the material is purely cosmetic); block counts
 //!   9 / 34 / 83 / 164; layers 3×3, +5×5, +7×7, +9×9 (w/Beacon §Pyramids)
 //! - powers: Speed I / Haste I at level 1+; Resistance I / Jump Boost I
@@ -16,7 +16,7 @@
 //!   level (the fabricated "stacking" claim stays banned — each
 //!   application refreshes independently; the highest amplifier wins)
 //! - the beam needs an unobstructed sky view (w/Beacon §Activation)
-//! - feeding: 1 iron/gold/emerald/diamond/netherite ingot-or-gem per
+//! - feeding: 1 iron/gold/emerald/diamond/hollowite ingot-or-gem per
 //!   power change (engine adaptation: the ORE items stand in — no
 //!   ingot/gem items; documented)
 
@@ -133,7 +133,7 @@ pub fn duration_ticks(level: u8) -> i32 {
     DURATION_SECS[(level as usize).clamp(1, 4) - 1] * 20
 }
 
-/// 1.13 (Update Aquatic): the conduit's effective range from its frame
+/// 1.13 (Aquatic-era update): the conduit's effective range from its frame
 /// block count — VERIFIED w/Conduit §Usage (live 2026-09-07): "The
 /// effective radius of the conduit is 16 blocks for every seven blocks
 /// in the frame ... it extends to 48 at 21 blocks, 64 at 28, 80 at 35,

@@ -4,6 +4,7 @@
 //! model dispatch so meshers never parse JSON at mesh time.
 
 pub mod datapack;
+pub mod legacy_aliases;
 pub mod model;
 pub mod pack;
 pub mod zip;

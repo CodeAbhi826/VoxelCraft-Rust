@@ -137,7 +137,7 @@ def gen_humanoid32(rec, name, pal, rng, face_style="pair", eye_color=None,
         _region_noise(c, x, y, w, h, pal, np.random.default_rng(rng.integers(1 << 32)), target_luma=tgt)
     fx, fy = 8, 8
     if camo:
-        # camo face: extra dark splats on head-front (creeper-family style)
+        # camo face: extra dark splats on head-front (fuseling-family style)
         frng = np.random.default_rng(rng.integers(1 << 32))
         for _ in range(6):
             blob(c, 8 + frng.integers(0, 8), 8 + frng.integers(0, 8),
@@ -174,7 +174,7 @@ def gen_spider(rec, name, pal, rng):
     return c
 
 def gen_blob_mob(rec, name, pal, rng):
-    """Slime/ghast/magma-style: full noise + big face (own expression)."""
+    """Slime/weepgeist/magma-style: full noise + big face (own expression)."""
     w, h = rec["w"], rec["h"]
     tgt = rec["lm"] / max(0.15, 1.0 - rec.get("ar", 0.3))
     c = canvas(w, h)
@@ -209,8 +209,8 @@ def gen_chest(rec, name, pal, rng):
 # ------------------------------------------------------------------ patterns
 PATTERN_KINDS = ("stripe_left", "stripe_right", "stripe_center", "stripe_down",
                  "cross", "straight_cross", "diagonal_left", "diagonal_right",
-                 "gradient", "gradient_up", "bricks", "globe", "creeper",
-                 "flower", "mojang", "skull", "triangle", "triangles_bottom",
+                 "gradient", "gradient_up", "bricks", "globe", "fuseling",
+                 "flower", "the original publisher", "skull", "triangle", "triangles_bottom",
                  "triangles_top", "square", "circle", "rhombus", "bordure",
                  "chief", "pale", "saltire", "chevron", "loom", "flow",
                  "guster", "field_masoned")
@@ -304,7 +304,7 @@ def gen_pattern(rec, name, pal, rng):
     return c
 
 def gen_bigcanvas(rec, name, pal, rng):
-    """Dragon/warden/portal/large canvases: scale-noise compositions."""
+    """Dragon/depthbrute/portal/large canvases: scale-noise compositions."""
     w, h = rec["w"], rec["h"]
     tgt = rec["lm"] / max(0.15, 1.0 - rec.get("ar", 0.1))
     c = canvas(w, h)
@@ -314,7 +314,7 @@ def gen_bigcanvas(rec, name, pal, rng):
         frng = np.random.default_rng(rng.integers(1 << 32))
         m = frng.random((h, w)) < 0.04
         c[m] = (220, 230, 255, 255)
-    if "warden" in name or "glow" in name or "spot" in name or "eyes" in name:
+    if "depthbrute" in name or "glow" in name or "spot" in name or "eyes" in name:
         frng = np.random.default_rng(rng.integers(1 << 32))
         for _ in range(max(4, (w * h) // 900)):
             x = int(frng.integers(2, w - 2))
@@ -362,18 +362,18 @@ def gen_equipment_layer(rec, name, pal, rng):
     return c
 
 # ------------------------------------------------------------------ router
-HUMANOID64_MOBS = ("zombie", "husk", "drowned", "skeleton", "wither_skeleton",
-                   "piglin", "zombified", "villager", "illager", "player",
-                   "witch", "evoker", "vindicator", "pillager", "guardian",
+HUMANOID64_MOBS = ("zombie", "husk", "drowned", "skeleton", "blight_skeleton",
+                   "pigoblin", "zombified", "villager", "illager", "player",
+                   "witch", "runecaller", "cleaver", "pillager", "guardian",
                    "iron_golem", "snow_golem", "golem", "wandering", "stray",
-                   "zombie_villager", "nitwit", "creeper_armor")
-HUMANOID32_MOBS = ("creeper", "enderman", "blaze", "silverfish", "endermite")
+                   "zombie_villager", "nitwit", "fuseling_armor")
+HUMANOID32_MOBS = ("fuseling", "voidling", "blaze", "silverfish", "voidmite")
 QUADRUPED_MOBS = ("cow", "pig", "sheep", "horse", "llama", "wolf", "fox",
                   "cat", "ocelot", "rabbit", "panda", "polar_bear", "goat",
-                  "mooshroom", "donkey", "mule", "strider", "hoglin",
-                  "zoglin", "camel", "sniffer", "happy_ghast", "armadillo",
-                  "copper_golem", "allay", "vex", "breeze", "frog", "tadpole")
-BLOB_MOBS = ("slime", "magma", "ghast", "shulker", "phantom", "parrot",
+                  "shroomcow", "donkey", "mule", "emberhopper", "boarling",
+                  "rotboar", "camel", "trufflehog", "happy_weepgeist", "armadillo",
+                  "copper_golem", "sootheling", "wisp", "zephyr", "frog", "tadpole")
+BLOB_MOBS = ("slime", "magma", "weepgeist", "lurkshell", "phantom", "parrot",
              "bat", "bee", "chicken", "axolotl", "salmon", "cod", "squid",
              "glow_squid", "dolphin", "turtle", "tropical_fish", "pufferfish")
 
@@ -406,16 +406,16 @@ def synthesize_entity(rec, name):
         return gen_humanoid64(rec, name, pal, rng,
                               face_style="pair",
                               eye_color=(40, 40, 60, 255) if "zombie" in path or "drowned" in path else None)
-    if "creeper" in path:
+    if "fuseling" in path:
         return gen_humanoid32(rec, name, pal, rng, face_style="pair", camo=True)
-    if "enderman" in path:
+    if "voidling" in path:
         c = gen_humanoid32(rec, name, pal, rng)
         fx, fy = 8, 8
         fill(c, (200, 100, 240, 255), fx + 1, fy + 3, 6, 2)  # glowing eye band (own)
         return c
     if "spider" in path:
         return gen_spider(rec, name, pal, rng)
-    if "dragon" in path or "warden" in path or "portal" in path or w >= 128:
+    if "dragon" in path or "depthbrute" in path or "portal" in path or w >= 128:
         return gen_bigcanvas(rec, name, pal, rng)
     if any(m in path for m in QUADRUPED_MOBS):
         return gen_quadruped(rec, name, pal, rng, size=(w, h))

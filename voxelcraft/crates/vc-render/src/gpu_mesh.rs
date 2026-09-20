@@ -80,7 +80,7 @@ const MODEL_BASE: u32 = 63u;       // MODEL_STATE_BASE
 // 1.11 completion: STATE_COUNT=497 (V7 486..=494 + mansion spawner
 // states 495..=496), BLOCK_COUNT=291
 // 1.12 (World of Color): STATE_COUNT=615 (V8 497..=614), BLOCK_COUNT=361
-// 1.13 (Update Aquatic): STATE_COUNT=676 (V9 615..=675: coral 30 +
+// 1.13 (Aquatic-era update): STATE_COUNT=676 (V9 615..=675: coral 30 +
 // pickle 4 + kelp/dried/seagrass/egg/conduit 27 + item states),
 // BLOCK_COUNT=417 (V9 ids 361..=416)
 // 1.14 (Village & Pillage — nature half): STATE_COUNT=689 (V10
@@ -93,12 +93,12 @@ const MODEL_BASE: u32 = 63u;       // MODEL_STATE_BASE
 // BLOCK_COUNT=432 (ids 430..=431)
 // 1.15 (Buzzy Bees): STATE_COUNT=716 (V12 698..=715), BLOCK_COUNT=440
 // (ids 432..=439)
-// 1.16 (Nether Update, part 1): STATE_COUNT=750 (V13 716..=749: the
+// 1.16 (Hollows Update, part 1): STATE_COUNT=750 (V13 716..=749: the
 // anchor charges 0..=4, target power 0..=15, 12 identity blocks with
 // the chain's 2 forms, scrap/ingot items), BLOCK_COUNT=454 (ids
 // 440..=453)
-// 1.16 (Nether Update, part 2): STATE_COUNT=776 (V14 750..=775: the
-// 22 crimson/warped family identity states + the soul lantern's
+// 1.16 (Hollows Update, part 2): STATE_COUNT=776 (V14 750..=775: the
+// 22 scarlet/viridian family identity states + the spirit lantern's
 // sitting/hanging pair + the 3 spawn-egg rows), BLOCK_COUNT=479 (ids
 // 454..=478)
 // the 1.0-1.16.5 completeness audit: STATE_COUNT=804 (V15 776..=803:
@@ -583,7 +583,7 @@ fn main_emit(@builtin(workgroup_id) wid: vec3<u32>,
 
 /// LUT region offsets, ALL derived from vc-blocks (STATE_COUNT=236,
 /// BLOCK_COUNT=103) so a new block/state grows the layout with them —
-/// the Phase 10 END_PORTAL_FRAME state (235) collided with the old
+/// the Phase 10 VOID_GATE_FRAME state (235) collided with the old
 /// hardcoded layout ([0..235) state→block ended exactly where the
 /// flags region began, and the clamps/offsets were frozen at 234/101).
 /// The WGSL `L_*` constants mirror these values — guarded by the
@@ -1530,7 +1530,7 @@ mod tests {
     /// (the regions are shared through one storage buffer — the Rust
     /// build_lut writes at L_SB/L_FL/L_TC/L_ST, the shader reads at its
     /// own L_* constants; a mismatch silently reads the wrong region).
-    /// Phase 10 found this the hard way: END_PORTAL_FRAME's state 235
+    /// Phase 10 found this the hard way: VOID_GATE_FRAME's state 235
     /// collided with the old hardcoded flags base.
     #[test]
     fn wgsl_lut_offsets_match_rust() {

@@ -1,0 +1,35 @@
+Voxelfont — original pixel font of the VoxelCraft project
+==========================================================
+
+Copyright (c) 2026 The VoxelCraft Project
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this font and associated documentation files (the "Font"), to
+deal in the Font without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Font, and to permit persons to whom the Font
+is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Font.
+
+THE FONT IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE FONT
+OR THE USE OR OTHER DEALINGS IN THE FONT.
+
+------------------------------------------------------------------
+PROVENANCE (clean-room statement)
+------------------------------------------------------------------
+Every glyph in Voxelfont.ttf was generated programmatically from this
+project's own clean-room 5x8 bitmap glyph table (vc-render/src/ui.rs,
+const FONT). The bitmap set uses the decades-old industry-standard 5x7
+LCD-style shapes for ASCII capitals/digits (in continuous common use
+in display controllers since the 1970s) plus lowercase glyphs designed
+from scratch inside this project. No third-party font file was read,
+copied, traced, transformed or bundled at any point of the pipeline.
+
+Regenerate with:  python3 scripts/make_voxelfont.py

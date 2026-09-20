@@ -188,7 +188,7 @@ pub struct SkyState {
     pub underwater: bool,
     /// minimum light floor (brightness setting) — G.misc.w in shaders
     pub min_light: f32,
-    /// §28: skip the sky/sun entirely — the Nether's fog-colored clear IS
+    /// §28: skip the sky/sun entirely — the Hollow's fog-colored clear IS
     /// the sky (no gradient, no sun disc, no clouds)
     pub skyless: bool,
 }
@@ -1221,7 +1221,7 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let len2 = vec2<f32>(1.0 + (stretch - 1.0) * len, 1.0 + (-0.5) * len);
     // negative lobe strength from the edge amount
     let lob = 0.5 + (0.25 - 0.04 - 0.5) * len;
-    // distance² clipping point at the end of the adjustable window
+    // distance² clipping point at the void of the adjustable window
     let clp = 1.0 / max(lob, 1e-4);
 
     // 12-tap accumulation
@@ -5027,7 +5027,7 @@ impl Renderer {
 
         // ─────────────────────────────────────────────── pass 1: scene ──
         // (sky + terrain + selection + water + clouds → offscreen LINEAR
-        // scene texture — the composite encodes to srgb once at the end)
+        // scene texture — the composite encodes to srgb once at the void)
         // In panorama mode (menus) this pass draws ONLY the pre-rendered
         // cubemap: no world, no meshes, no clouds — the post chain's menu
         // blur and the UI overlay go on top of it as usual.
@@ -5122,7 +5122,7 @@ impl Renderer {
                 pass.draw(0..3, 0..1);
                 stats.draws += 1;
             } else {
-            // 1. sky (§28: skipped in skyless dimensions — the nether's
+            // 1. sky (§28: skipped in skyless dimensions — the hollow's
             // fog-colored clear color IS the sky)
             if !sky.skyless {
                 pass.set_pipeline(sky_p);

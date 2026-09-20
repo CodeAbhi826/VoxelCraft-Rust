@@ -358,7 +358,7 @@ impl Chunk {
     #[inline]
     /// Raw BLOCK-STATE id at a position. Phase E2: widened u8 → u16 —
     /// the E1 bracket exhausted the ≤255 state window (0..=255 fully
-    /// allocated), and E2 world blocks (anvil damage states, ender chest,
+    /// allocated), and E2 world blocks (anvil damage states, void chest,
     /// beacon, wall, frame, tripwire) need states ≥ 256. The u16 is the
     /// raw state; callers wanting a BLOCK id fold via
     /// `vc_blocks::blocks::state_block`. All previous call sites either
@@ -392,7 +392,7 @@ impl Chunk {
     /// affected section (~2.5 KiB) when the chunk is shared with in-flight
     /// mesh jobs. The u8 BLOCK id routes through `default_state` so blocks
     /// whose identity STATE slot belongs to another system (log axes 57..62,
-    /// model states, sim states, nether states) never collide — this is the
+    /// model states, sim states, hollow states) never collide — this is the
     /// generator-side guarantee (villages once placed furnaces as slabs).
     #[inline]
     pub fn set(&mut self, x: usize, y: usize, z: usize, id: u16) {

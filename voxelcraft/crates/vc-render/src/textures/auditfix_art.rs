@@ -192,7 +192,7 @@ pub(super) fn fern(a: &mut [u8], t: u16, _rng: &mut Rng) {
     });
 }
 
-// ---- 1.11 bracket (Exploration Update) tiles ----
+// ---- 1.11 bracket (Exploration-era update) tiles ----
 
 /// Llama sprite: cream body, pale face, ears.
 pub(super) fn llama(a: &mut [u8], t: u16, rng: &mut Rng) {
@@ -214,8 +214,8 @@ pub(super) fn llama(a: &mut [u8], t: u16, rng: &mut Rng) {
     put(a, t, 10, 4, 40, 34, 30, 255);
 }
 
-/// Vindicator: grey-skinned illager, dark clothes, axe.
-pub(super) fn vindicator(a: &mut [u8], t: u16, rng: &mut Rng) {
+/// Cleaver: grey-skinned illager, dark clothes, axe.
+pub(super) fn cleaver(a: &mut [u8], t: u16, rng: &mut Rng) {
     let skin = [158 + jit(0, 10, rng), 158, 152];
     let robe = [58 + jit(0, 10, rng), 54, 62];
     for y in 2..14 {
@@ -234,8 +234,8 @@ pub(super) fn vindicator(a: &mut [u8], t: u16, rng: &mut Rng) {
     put(a, t, 12, 9, 140, 100, 62, 255);
 }
 
-/// Evoker: pale-grey illager caster, dark robe, raised arms hint.
-pub(super) fn evoker(a: &mut [u8], t: u16, rng: &mut Rng) {
+/// Runecaller: pale-grey illager caster, dark robe, raised arms hint.
+pub(super) fn runecaller(a: &mut [u8], t: u16, rng: &mut Rng) {
     let skin = [178 + jit(0, 10, rng), 172, 166];
     let robe = [44 + jit(0, 10, rng), 40, 50];
     for y in 2..14 {
@@ -254,8 +254,8 @@ pub(super) fn evoker(a: &mut [u8], t: u16, rng: &mut Rng) {
     put(a, t, 13, 8, 160, 110, 190, 255);
 }
 
-/// Vex: small pale ghost with sword.
-pub(super) fn vex(a: &mut [u8], t: u16, rng: &mut Rng) {
+/// Wisp: small pale ghost with sword.
+pub(super) fn wisp(a: &mut [u8], t: u16, rng: &mut Rng) {
     let body = [196 + jit(0, 14, rng), 206, 216];
     for y in 4..12 {
         for x in 5..11 {
@@ -269,8 +269,8 @@ pub(super) fn vex(a: &mut [u8], t: u16, rng: &mut Rng) {
     put(a, t, 12, 10, 150, 150, 158, 255);
 }
 
-/// Shulker box: purple box shell with a lighter lid band.
-pub(super) fn shulker_box(a: &mut [u8], t: u16, rng: &mut Rng) {
+/// Lurkshell box: purple box shell with a lighter lid band.
+pub(super) fn lurkshell_box(a: &mut [u8], t: u16, rng: &mut Rng) {
     let shell = [138 + jit(0, 12, rng), 108, 168];
     let lid = [168, 140, 196];
     for y in 1..15 {
@@ -291,8 +291,8 @@ pub(super) fn shulker_box(a: &mut [u8], t: u16, rng: &mut Rng) {
     put(a, t, 9, 9, 230, 220, 240, 255);
 }
 
-/// Shulker shell item: a purple shell half.
-pub(super) fn shulker_shell(a: &mut [u8], t: u16, rng: &mut Rng) {
+/// Lurkshell shell item: a purple shell half.
+pub(super) fn lurkshell_shell(a: &mut [u8], t: u16, rng: &mut Rng) {
     let shell = [150 + jit(0, 12, rng), 118, 180];
     for y in 4..14 {
         for x in 4..12 {
@@ -306,7 +306,7 @@ pub(super) fn shulker_shell(a: &mut [u8], t: u16, rng: &mut Rng) {
     }
 }
 
-/// Totem of undying: golden emerald-eyed figure.
+/// Totem of revival: golden emerald-eyed figure.
 pub(super) fn totem(a: &mut [u8], t: u16, rng: &mut Rng) {
     let gold = [232 + jit(0, 12, rng), 190, 62];
     for y in 3..14 {
@@ -324,16 +324,16 @@ pub(super) fn totem(a: &mut [u8], t: u16, rng: &mut Rng) {
     }
 }
 
-/// 1.11 spawn-egg palettes (egg order 23..=28 = llama, vindicator,
-/// evoker, vex, husk, stray — the re-added zombie-villager egg keeps
+/// 1.11 spawn-egg palettes (egg order 23..=28 = llama, cleaver,
+/// runecaller, wisp, husk, stray — the re-added zombie-villager egg keeps
 /// its pre-existing tile in the base window). The E1/E2 egg_art renders
 /// the shell + spots from these pairs; colors are clean-room approximations
 /// of each mob's vanilla egg (disclosed — no third-party assets).
 pub const V7_EGG_PALETTES: [(i32, i32, i32, i32, i32, i32); 6] = [
     (226, 216, 196, 139, 90, 43),   // llama: cream body + brown spots
-    (158, 158, 152, 58, 54, 62),    // vindicator: grey skin + dark robe
-    (178, 172, 166, 216, 191, 120), // evoker: pale skin + gold accents
-    (170, 190, 200, 40, 60, 70),    // vex: pale blue + dark slate
+    (158, 158, 152, 58, 54, 62),    // cleaver: grey skin + dark robe
+    (178, 172, 166, 216, 191, 120), // runecaller: pale skin + gold accents
+    (170, 190, 200, 40, 60, 70),    // wisp: pale blue + dark slate
     (135, 110, 75, 80, 60, 40),     // husk: sandy brown + dark husk
     (208, 224, 230, 100, 120, 140), // stray: icy white + grey-blue rags
 ];

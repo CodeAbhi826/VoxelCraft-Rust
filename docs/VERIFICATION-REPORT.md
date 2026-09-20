@@ -20,7 +20,7 @@ priority list below is now fully closed — items 1+2 landed with the E2
 bracket (commit e9e79de: render-distance clamp/keys + lava fluid), and
 items 3+4 landed in the follow-up round (sprint-jump emergence + the
 coal item; the options-screen RD slider mapping — an item-1 leftover —
-was completed there too). Live sources this round: minecraft.wiki
+was completed there too). Live sources this round: the reference game.wiki
 /w/Sprinting, /w/Transportation, /w/Furnace, /w/Smelting, /w/Jumping;
 mcpk.wiki/wiki/Sprinting (the +0.2 b/t sprint-jump boost). Suite:
 **375/375** green, wasm32 lib clean.
@@ -40,7 +40,7 @@ mcpk.wiki/wiki/Sprinting (the +0.2 b/t sprint-jump boost). Suite:
 | Shadow = 25 % of glyph color (white → #3F3F3F) | ❌ | engine uses solid **black** shadow (checklist's "~50 % brightness" claim is also off — vanilla multiplies by 0.25) |
 | 16 chat colors | ⚠️ | colors exist engine-side; no § code parser in the text renderer |
 | §l bold / §o italic / §n underline / §r reset | ❌ | not supported |
-| Monocraft substitution (legal) | ⚠️ | OFL-licensed Monocraft still planned; current engine font is a clean-room 5×7 bitmap |
+| the removed third-party font substitution (legal) | ⚠️ | OFL-licensed the removed third-party font still planned; current engine font is a clean-room 5×7 bitmap |
 
 ## §2 HUD
 
@@ -118,14 +118,14 @@ mcpk.wiki/wiki/Sprinting (the +0.2 b/t sprint-jump boost). Suite:
 | Attack cooldown `0.2 + 0.8p²`, ticks = 20/attack_speed | ✅ | `combat.rs` (wiki-cited) |
 | Sweep: sword only, cooldown ≥ 84.8 % | ✅ | `combat.rs` |
 | Water spread 1 lvl/5 ticks, max level 7 | ✅ | `WATER_TICK_RATE = 5`; levels 1..7 |
-| Lava: Overworld 1/30 ticks spread 3, Nether 1/10 spread 7 | ❌ | **lava fluid simulation absent** (static lava blocks; live-verified the vanilla values for when it lands) |
+| Lava: Overworld 1/30 ticks spread 3, Hollow 1/10 spread 7 | ❌ | **lava fluid simulation absent** (static lava blocks; live-verified the vanilla values for when it lands) |
 | Smelting 200 ticks | ✅ | `COOK_TICKS = 200`; live-verified w/Smelting |
 | Coal item 1600 ticks | ✅ | **fixed (round 2)**: COAL item-block added (1600 t / 80 s / 8 items, w/Furnace); coal-ore → coal smelting recipe (0.1 XP); the COAL_ORE 800 stopgap is retired (ore is not a fuel in vanilla) |
 | Planks/logs 300, crafting table 300, fence 300 | ✅ | live-verified this round |
 | Wooden slab 150 | ✅ | **fixed this round** (was 300) — live-verified w/Smelting |
 | Day-night cycle 10 min (checklist) | ❌ | **checklist itself wrong + engine fixed this round**: vanilla = **20 min** (24000 ticks), live-verified w/Daylight_cycle |
 | Drowning: 300 air, 2 HP at −20, regen 30/4 ticks | ✅ | prior live round |
-| Mob fall damage = distance − 3 (MC-12357) | ✅ | prior round, Mojang-cited |
+| Mob fall damage = distance − 3 (MC-12357) | ✅ | prior round, the original publisher-cited |
 
 ## §7 Rendering
 
@@ -148,11 +148,11 @@ mcpk.wiki/wiki/Sprinting (the +0.2 b/t sprint-jump boost). Suite:
 ## Fixed this round (live-confirmed corrections)
 
 1. **Day-night cycle 600 s → 1200 s** — vanilla 1.16.5 = 24000 ticks @
-   20 tps = 20 min (live: minecraft.wiki/w/Daylight_cycle, w/Tick). The
+   20 tps = 20 min (live: the reference game.wiki/w/Daylight_cycle, w/Tick). The
    old value traced to the checklist/research docs (which themselves
    claimed 10 min — noted as a checklist error). Regression test
    `day_cycle_is_the_vanilla_20_minutes`.
-2. **Wooden-slab fuel 300 → 150 ticks** — live: minecraft.wiki/w/Smelting
+2. **Wooden-slab fuel 300 → 150 ticks** — live: the reference game.wiki/w/Smelting
    fuel table ("Wooden Slab 7.5 s / 150 ticks"). Regression tests
    `fuel_table_matches_the_live_wiki` + `slab_burns_half_as_long_as_planks`.
 
@@ -163,7 +163,7 @@ Suite: **342/342 green** (339 → +3), wasm32 target clean.
 **Mechanical (small, well-defined) — ALL CLOSED:**
 1. ~~Render-distance slider range 2–32~~ ✅ E2 (clamp + keys) + round 2
    (the options-screen slider mapping itself, 2+(t·14) → 2+(t·30)).
-2. ~~Lava fluid simulation~~ ✅ E2 (OW 1/30 ticks spread 3; Nether 1/10
+2. ~~Lava fluid simulation~~ ✅ E2 (OW 1/30 ticks spread 3; Hollow 1/10
    spread 7 — live-verified, in `fluids.rs`).
 3. ~~Sprint-jump 7.127 b/s emergence test~~ ✅ round 2: the vanilla
    +0.2 b/t facing boost now exists (`SPRINT_JUMP_BOOST`) plus a
@@ -172,7 +172,7 @@ Suite: **342/342 green** (339 → +3), wasm32 target clean.
    needed — the old 3×3 test world runs out of floor in 4 s).
 4. ~~Coal item + 1600-tick fuel~~ ✅ round 2: `COAL` item-block
    (id 162, tile 206, state 316) — fuel 1600 t, coal-ore → coal
-   smelting (0.1 XP), wither-skeleton drop / villager "buys coal"
+   smelting (0.1 XP), blight-skeleton drop / villager "buys coal"
    trades / dungeon-chest loot swapped from the COAL_ORE stand-in to
    the real item. Registry ripple handled: BLOCK_COUNT 163,
    STATE_COUNT 317, WGSL mesh-LUT offsets resynced (guarded by
@@ -184,7 +184,7 @@ Suite: **342/342 green** (339 → +3), wasm32 target clean.
 6. Vanilla-style light-grey container theme (#C6C6C6) + exact 176-wide
    panels + armor slots + player model on the inventory screen.
 7. Font upgrade: 8 px height with descenders, proportional widths,
-   color-derived shadow (25 %), § code support — or adopt Monocraft
+   color-derived shadow (25 %), § code support — or adopt the removed third-party font
    (already cleared legally).
 8. Vanilla-exact selection frame (24×23), XP bar height (5 vanilla-eq),
    crosshair size (15×15) — micro-adjustments to existing sprites.
@@ -193,4 +193,4 @@ Suite: **342/342 green** (339 → +3), wasm32 target clean.
 
 None of the visual items break gameplay; they are parity polish. With the
 mechanical list closed, the remaining open work is the visual list above
-plus the next evolution bracket (1.5–1.6.x, the Redstone Update).
+plus the next evolution bracket (1.5–1.6.x, the Fluxstone Update).

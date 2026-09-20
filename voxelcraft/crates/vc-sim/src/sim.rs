@@ -27,7 +27,7 @@ pub const RANDOM_PER_CHUNK: usize = 3;
 /// * random ticks: only chunks inside the ring;
 /// * scheduled ticks: WATER/SAND/GRAVEL and tick-machinery (pistons,
 ///   observers, dispensers, hoppers) outside the ring defer one tick —
-///   "pure redstone circuits continue to function infinitely far away"
+///   "pure fluxstone circuits continue to function infinitely far away"
 ///   (wiki), so wire/torch/repeater/comparator/lever entries always run;
 /// * entities (mobs/villagers/items) outside the ring freeze — 1.18+
 ///   semantics; spawning is clamped to the ring;
@@ -102,10 +102,10 @@ pub struct Sim {
     /// Detector row ("time of day, the weather, the detector's
     /// exposure to the sky, and the internal sky light level").
     pub sky_factor: f32,
-    /// Phase E1: the ender-dragon fight (End dimension only)
+    /// Phase E1: the voider-dragon fight (End dimension only)
     pub dragon: vc_gameplay::dragon::DragonSystem,
-    /// Phase E2: the wither fight (summonable in any dimension)
-    pub wither: vc_gameplay::wither::WitherSystem,
+    /// Phase E2: the blight fight (summonable in any dimension)
+    pub blight: vc_gameplay::blight::BlightSystem,
     /// Phase E2: beacon states (position-keyed; the pyramid + powers,
     /// VERIFIED w/Beacon)
     pub beacons: std::collections::HashMap<[i32; 3], vc_gameplay::beacon::BeaconState>,
@@ -114,7 +114,7 @@ pub struct Sim {
     pub anvils: std::collections::HashMap<[i32; 3], vc_gameplay::anvil::StationSlots>,
     /// Round 13: grindstone station slots (top + bottom, position-keyed)
     pub grindstones: std::collections::HashMap<[i32; 3], vc_gameplay::anvil::StationSlots>,
-    /// 1.13 (Update Aquatic): placed conduits (position-keyed; the
+    /// 1.13 (Aquatic-era update): placed conduits (position-keyed; the
     /// frame scan + Conduit Power application live in the game layer
     /// — VERIFIED w/Conduit)
     pub conduits: std::collections::HashSet<[i32; 3]>,
@@ -136,8 +136,8 @@ pub struct Sim {
     /// Phase E1: dragon-fight events queued for the game layer (world
     /// edits + XP + projectiles live there)
     pub dragon_events: Vec<vc_gameplay::dragon::DragonEvent>,
-    /// Phase E2: wither-fight events
-    pub wither_events: Vec<vc_gameplay::wither::WitherEvent>,
+    /// Phase E2: blight-fight events
+    pub blight_events: Vec<vc_gameplay::blight::BlightEvent>,
 }
 
 impl Sim {
@@ -158,7 +158,7 @@ impl Sim {
             is_day: true,
             sky_factor: 1.0,
             dragon: vc_gameplay::dragon::DragonSystem::new(seed ^ 0xDA60_0005),
-            wither: vc_gameplay::wither::WitherSystem::new(seed ^ 0xB055_0002),
+            blight: vc_gameplay::blight::BlightSystem::new(seed ^ 0xB055_0002),
             beacons: std::collections::HashMap::new(),
             anvils: std::collections::HashMap::new(),
             grindstones: std::collections::HashMap::new(),
@@ -171,7 +171,7 @@ impl Sim {
             acc: 0.0,
             ticks: 0,
             dragon_events: Vec::new(),
-            wither_events: Vec::new(),
+            blight_events: Vec::new(),
         }
     }
 
@@ -203,7 +203,7 @@ impl Sim {
 
         // 1. scheduled block updates in (due, insertion) order.
         // Phase 6 §26: entries OUTSIDE the simulation ring defer one tick —
-        // except pure redstone (wiki: "pure redstone circuits continue to
+        // except pure fluxstone (wiki: "pure fluxstone circuits continue to
         // function infinitely far away"). Deferred entries re-queue, so
         // walking back into range resumes them exactly where they left.
         let due = self.sched.tick();
@@ -211,15 +211,15 @@ impl Sim {
         for pos in due {
             if !scope.block_in(pos[0], pos[2]) {
                 let b = vc_blocks::blocks::state_block(world.get_state(pos[0], pos[1], pos[2]));
-                let pure_redstone = matches!(
+                let pure_fluxstone = matches!(
                     b,
-                    vc_blocks::blocks::REDSTONE_WIRE
-                        | vc_blocks::blocks::REDSTONE_TORCH
+                    vc_blocks::blocks::FLUXSTONE_WIRE
+                        | vc_blocks::blocks::FLUXSTONE_TORCH
                         | vc_blocks::blocks::REPEATER
                         | vc_blocks::blocks::COMPARATOR
                         | vc_blocks::blocks::LEVER
                 );
-                if !pure_redstone {
+                if !pure_fluxstone {
                     deferred.push(pos);
                     continue;
                 }
@@ -241,22 +241,22 @@ impl Sim {
                 b if vc_blocks::blocks::is_concrete_powder(b) => {
                     fluids::gravity_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
                 }
-                vc_blocks::blocks::REDSTONE_WIRE => {
-                    crate::redstone::wire_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
+                vc_blocks::blocks::FLUXSTONE_WIRE => {
+                    crate::fluxstone::wire_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
                 }
-                vc_blocks::blocks::REDSTONE_TORCH => {
-                    crate::redstone::torch_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
+                vc_blocks::blocks::FLUXSTONE_TORCH => {
+                    crate::fluxstone::torch_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
                 }
                 vc_blocks::blocks::LEVER => {
-                    crate::redstone::lever_tick(world, pos[0], pos[1], pos[2]);
+                    crate::fluxstone::lever_tick(world, pos[0], pos[1], pos[2]);
                 }
                 // ---- Phase 3 components ----
                 vc_blocks::blocks::REPEATER => {
-                    crate::redstone::repeater_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
+                    crate::fluxstone::repeater_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
                 }
                 vc_blocks::blocks::COMPARATOR => {
                     let containers = &self.containers;
-                    crate::redstone::comparator_tick(
+                    crate::fluxstone::comparator_tick(
                         world,
                         &mut self.sched,
                         containers,
@@ -266,19 +266,19 @@ impl Sim {
                     );
                 }
                 vc_blocks::blocks::PISTON | vc_blocks::blocks::STICKY_PISTON => {
-                    crate::redstone::piston_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
+                    crate::fluxstone::piston_tick(world, &mut self.sched, pos[0], pos[1], pos[2]);
                 }
                 vc_blocks::blocks::OBSERVER => {
-                    crate::redstone::observer_pulse(world, &mut self.sched, pos[0], pos[1], pos[2]);
+                    crate::fluxstone::observer_pulse(world, &mut self.sched, pos[0], pos[1], pos[2]);
                 }
                 vc_blocks::blocks::DISPENSER | vc_blocks::blocks::DROPPER => {
                     // rising-edge detection (VERIFIED: eject one item per
                     // activation, 4 game ticks later)
-                    let powered = crate::redstone::dispenser_tick(world, pos[0], pos[1], pos[2]);
+                    let powered = crate::fluxstone::dispenser_tick(world, pos[0], pos[1], pos[2]);
                     let prev = self.dispenser_prev.insert(pos, powered);
                     if powered && prev != Some(true) {
                         self.pending_eject
-                            .insert(pos, crate::redstone::DISPENSER_DELAY);
+                            .insert(pos, crate::fluxstone::DISPENSER_DELAY);
                     }
                 }
                 vc_blocks::blocks::HOPPER => {
@@ -293,7 +293,7 @@ impl Sim {
                     // every 20gt so dawn/dusk sweep. The weather factor
                     // rides in (backlog round — "Inclement weather
                     // reduces the sky light level", VERIFIED w/Weather)
-                    crate::redstone::daylight_sensor_tick(
+                    crate::fluxstone::daylight_sensor_tick(
                         world,
                         &mut self.sched,
                         pos[0],
@@ -304,11 +304,11 @@ impl Sim {
                     );
                 }
                 vc_blocks::blocks::TARGET => {
-                    // 1.16 (Nether Update, part 1): the projectile-hit
+                    // 1.16 (Hollows Update, part 1): the projectile-hit
                     // pulse decay — the game layer scheduled this entry
                     // at exactly the verified window (8 gt, or 20 gt for
                     // arrows/tridents) when the hit landed
-                    crate::redstone::target_decay_tick(
+                    crate::fluxstone::target_decay_tick(
                         world,
                         &mut self.sched,
                         pos[0],
@@ -384,17 +384,17 @@ impl Sim {
         let feet = self.mobs.player;
         self.xp_orbs.tick(world, feet);
 
-        // 4c. Phase E1: the ender-dragon fight (End only; the fight is
+        // 4c. Phase E1: the voider-dragon fight (End only; the fight is
         // dormant elsewhere — begin_fight spawns it on arrival)
-        if world.dimension == vc_world::world::Dimension::End {
+        if world.dimension == vc_world::world::Dimension::Void {
             let evs = self.dragon.tick(world, feet);
             self.dragon_events.extend(evs);
         }
 
-        // 4d. Phase E2: the wither fight (any dimension — player-summoned)
+        // 4d. Phase E2: the blight fight (any dimension — player-summoned)
         {
-            let evs = self.wither.tick(feet);
-            self.wither_events.extend(evs);
+            let evs = self.blight.tick(feet);
+            self.blight_events.extend(evs);
         }
 
         // 5. villagers (§27): wander decisions + walking physics + the
@@ -421,7 +421,7 @@ impl Sim {
 
         // 7. hoppers (Phase 3): collect items above (VERIFIED: hoppers
         // collect every game tick, then 8gt cooldown), push one item per
-        // 8gt into the container below when not redstone-locked
+        // 8gt into the container below when not fluxstone-locked
         // (Phase 6 §26: hopper positions outside the ring defer)
         self.hopper_pass(world, scope);
 
@@ -479,7 +479,7 @@ impl Sim {
                 continue;
             }
             let s = world.get_state(bx, by, bz);
-            if state_block(s) == HOPPER && crate::redstone::hopper_enabled(world, bx, by, bz) {
+            if state_block(s) == HOPPER && crate::fluxstone::hopper_enabled(world, bx, by, bz) {
                 let slot = it.block;
                 let inv = self.containers.entry([bx, by, bz], HOPPER);
                 if inv.add(slot, 1) == 0 {
@@ -502,7 +502,7 @@ impl Sim {
             if !scope.block_in(pos[0], pos[2]) {
                 continue; // outside the simulation ring: frozen this tick
             }
-            if !crate::redstone::hopper_enabled(world, pos[0], pos[1], pos[2]) {
+            if !crate::fluxstone::hopper_enabled(world, pos[0], pos[1], pos[2]) {
                 continue;
             }
             let cd = self.hopper_cd.entry(pos).or_insert(0);
@@ -529,7 +529,7 @@ impl Sim {
                     if let Some(hinv) = self.containers.get_mut(&pos) {
                         hinv.slots[slot_i] = vc_inventory::inventory::ItemStack::EMPTY;
                     }
-                    self.hopper_cd.insert(pos, crate::redstone::HOPPER_COOLDOWN);
+                    self.hopper_cd.insert(pos, crate::fluxstone::HOPPER_COOLDOWN);
                 }
             }
         }
@@ -666,11 +666,11 @@ mod tests {
         }
     }
 
-    /// water scheduled outside the ring defers; a pure-redstone entry runs
-    /// regardless (wiki: "pure redstone circuits continue to function
+    /// water scheduled outside the ring defers; a pure-fluxstone entry runs
+    /// regardless (wiki: "pure fluxstone circuits continue to function
     /// infinitely far away")
     #[test]
-    fn scheduled_ticks_defer_outside_ring_but_redstone_runs() {
+    fn scheduled_ticks_defer_outside_ring_but_fluxstone_runs() {
         let mut w = flat_world();
         let mut sim = Sim::new(7);
         let mut light = vc_world::light::LightEngine::new();
@@ -681,9 +681,9 @@ mod tests {
         fluids::on_block_changed(&mut sim.sched, &w, 0, 65, 0);
         fluids::on_block_changed(&mut sim.sched, &w, 0, 65, 16);
         // wire + torch far away: torch at (16, 65, 0) (chunk (1, 0), outside
-        // the radius-0 ring) — pure redstone must still run
-        w.set_block_state(16, 65, 0, REDSTONE_TORCH);
-        crate::redstone::on_block_changed(&mut sim.sched, &w, 16, 65, 0);
+        // the radius-0 ring) — pure fluxstone must still run
+        w.set_block_state(16, 65, 0, FLUXSTONE_TORCH);
+        crate::fluxstone::on_block_changed(&mut sim.sched, &w, 16, 65, 0);
         let tiny = TickScope {
             center: (0, 0),
             radius: 0,

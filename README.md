@@ -30,11 +30,11 @@ One codebase, two targets: **native** (Vulkan / DirectX 12 / Metal) and **browse
 
 VoxelCraft replicates the **gameplay rules, world and boot/menu flow of the 1.16.5-era reference game** — from published documentation only (the reference wiki, live-verified at implementation time, **1,913 `VERIFIED` citations in code**). It is **not** a port, contains **zero third-party assets** (every texture, sound, glyph and the title panorama is synthesized procedurally at startup), and is a from-scratch Rust/WGSL engine, not a wrapper.
 
-- **533** registered block/item entries (**863** block states), **27 biomes** (overworld families + the five 1.16 Nether biomes + the End), caves, trees, **10 structure families**
-- **20 Hz deterministic simulation** with vanilla constants: drag `v1 = (v0 − 0.08) × 0.98`, 7.127 b/s sprint-jump cap, dimension-aware lava spread (Overworld/End 3 blocks/30 ticks, Nether 7 blocks/10 ticks)
+- **533** registered block/item entries (**863** block states), **27 biomes** (overworld families + the five 1.16 the Hollow biomes + the End), caves, trees, **10 structure families**
+- **20 Hz deterministic simulation** with vanilla constants: drag `v1 = (v0 − 0.08) × 0.98`, 7.127 b/s sprint-jump cap, dimension-aware lava spread (Overworld/End 3 blocks/30 ticks, the Hollow 7 blocks/10 ticks)
 - Full **survival loop**: game modes, hunger/exhaustion/saturation model, mobs + combat (attack cooldown, armour, crits, status effects), XP orbs, death & respawn
-- Deep systems: **redstone** (repeaters, comparators, pistons, weighted plates), **crafting/furnace/brewing/enchanting** (38 entries), **villager trading** (15 professions, 5 tiers), dungeons & spawners, **weather** state machine, **farming**
-- Bosses: **Ender Dragon** (200 HP, crystal healing, 154/200-tick death timeline) and **Wither** (220-tick invulnerable charge, passive regen)
+- Deep systems: **fluxstone** (repeaters, comparators, pistons, weighted plates), **crafting/furnace/brewing/enchanting** (38 entries), **villager trading** (15 professions, 5 tiers), dungeons & spawners, **weather** state machine, **farming**
+- Bosses: **Ender Dragon** (200 HP, crystal healing, 154/200-tick death timeline) and **Blight** (220-tick invulnerable charge, passive regen)
 - The complete **vanilla menu flow**: boot intro → panorama title → world select/create (seed, mode, world type incl. Superflat) → loading → gameplay; vanilla-parity Options tree (Video/Music & Sound/Controls/Language/Chat/Accessibility/Skin/Resource Packs)
 
 The engine deliberately tracks the **historical version evolution** (1.0 → 1.16.5, 16 brackets) so each mechanic lands with its era-correct value — see [docs/VERSION-EVOLUTION.md](docs/VERSION-EVOLUTION.md) for the full per-bracket record.
@@ -112,7 +112,7 @@ The engine is split into **14 independent crates** (`vc-nbt`, `vc-blocks`, `vc-w
 voxelcraft/                  Cargo workspace — the engine + the game
   crates/                    14 vc-* libraries + the voxelcraft app (see LIBRARIES.md)
   builtin-pack/              1.16.5-format resource pack (blockstates/models/PNGs)
-  builtin-packs/             programmer-art pack (pre-1.14-style clean-room look-alikes)
+  builtin-packs/             classic-art pack (retro-style clean-room look-alikes)
   shader-packs/              user-dropped Iris-format shader packs (never shipped by us)
   wasm-out/                  prebuilt wasm-bindgen output
   play.html                  standalone browser loader
@@ -187,11 +187,11 @@ CI does exactly this on every engine change and commits the bundle back to `publ
 - **Trademark**: this project brands itself **"VoxelCraft"** everywhere user-facing — title screen, window title, file formats, and the asset namespace (`voxelcraft:`). It is not affiliated with, endorsed by, or connected to any game company.
 - **Clean-room assets**: every texture, sound, UI glyph, logo and the title panorama is **procedurally synthesized in code** (`v113_art.rs` … `v116b_art.rs`, 19 modules). No third-party asset file was ever copied, sampled or distributed — the repo contains **zero binary asset files from any rights-holder**.
 - **Mechanics, not code**: game rules, formulas, timings and recipe/loot schemas are facts replicated from published documentation, never from decompiled code. Namespaced ids in save/pack code use this project's own `voxelcraft:` namespace; a read-side compatibility alias accepts the wider ecosystem's legacy namespace when loading user-supplied packs and older saves (the same interop convention third-party world editors use), never in-game branding.
-- **Font**: the bundled Monocraft font (`voxelcraft/crates/vc-render/assets/Monocraft.ttf`) is © 2022 Idrees Hassan ([IdreesInc/Monocraft](https://github.com/IdreesInc/Monocraft)), used under the **SIL Open Font License 1.1** — see [`OFL-Monocraft.txt`](voxelcraft/crates/vc-render/assets/OFL-Monocraft.txt).
+- **Font**: the embedded **Voxelfont** pixel font (`voxelcraft/crates/vc-render/assets/Voxelfont.ttf`) is an original work of this project — generated programmatically from our own clean-room bitmap glyph table (`scripts/make_voxelfont.py`), **MIT licensed**, see [`VOXELFONT-NOTICE.txt`](voxelcraft/crates/vc-render/assets/VOXELFONT-NOTICE.txt).
 
 ## License
 
-Licensed under the **Apache License 2.0** — see [`LICENSE`](LICENSE). In short: use, copy, modify and distribute (including commercially), retaining the license notice and stating significant changes. Game *mechanics and data* (formulas, timings, recipe/loot schemas, registry names) are not copyrightable and are replicated from published documentation; all *assets* are independently authored and contain no third-party rights-holder material. The Monocraft font keeps its own OFL 1.1 license.
+Licensed under the **Apache License 2.0** — see [`LICENSE`](LICENSE). In short: use, copy, modify and distribute (including commercially), retaining the license notice and stating significant changes. Game *mechanics and data* (formulas, timings, recipe/loot schemas, registry names) are not copyrightable and are replicated from published documentation; all *assets* are independently authored and contain no third-party rights-holder material. The Voxelfont keeps its own MIT notice.
 
 ## Documentation index
 

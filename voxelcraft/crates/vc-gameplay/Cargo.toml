@@ -7,6 +7,7 @@ description = "Crafting, furnaces, brewing, enchanting and villagers"
 
 [dependencies]
 vc-blocks = { workspace = true }
+vc-pack = { workspace = true }
 vc-chunk = { workspace = true }
 vc-inventory = { workspace = true }
 vc-particles = { workspace = true }

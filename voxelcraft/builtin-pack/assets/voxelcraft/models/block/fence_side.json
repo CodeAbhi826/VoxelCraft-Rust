@@ -1,6 +1,6 @@
 {
-  "parent": "minecraft:block/block",
-  "textures": { "all": "minecraft:block/oak_planks" },
+  "parent": "voxelcraft:block/block",
+  "textures": { "all": "voxelcraft:block/oak_planks" },
   "elements": [
     {
       "from": [6, 12, 0],

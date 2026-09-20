@@ -1,5 +1,5 @@
 //! Monster spawners (Phase 5 §27): the dungeon block entity. All values
-//! VERIFIED against minecraft.wiki "Monster Spawner" (live pull, Sep 2026):
+//! VERIFIED against the reference wiki "Monster Spawner" (live pull, Sep 2026):
 //!
 //! - activates when a player is within a spherical radius of **16 blocks**
 //!   of the spawner block's center (feet-level test)

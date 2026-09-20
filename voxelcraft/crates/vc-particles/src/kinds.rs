@@ -1,6 +1,6 @@
 //! Round 15b (2026-09-16): the missing 1.16.5 particle types — the
 //! registry + the typed emitter. All facts live-verified 2026-09-16
-//! against minecraft.wiki/w/Particle (the registered 1.16.5 list;
+//! against reference wiki /Particle (the registered 1.16.5 list;
 //! docs/research/round-15b-particles-sky-audit.md).
 //!
 //! Rendering model (disclosed): every type renders as a flat-color

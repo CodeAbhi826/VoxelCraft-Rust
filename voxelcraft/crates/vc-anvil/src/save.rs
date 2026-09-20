@@ -8,7 +8,7 @@
 //! * **this module** — the *vanilla 1.16.5 disk schema* on top: chunk
 //!   `Level` compounds (paletted `Sections`, `Biomes`, `Heightmaps`),
 //!   `level.dat` (gzip NBT `Data` compound), and the state-id mapping
-//!   between our runtime registry and `minecraft:*` registry names.
+//!   between our runtime registry and `voxelcraft:*` registry names.
 //!
 //! §28 mandates separating the *internal runtime format* from the
 //! *external compatibility format* — nothing here leaks into the live
@@ -40,16 +40,16 @@ use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
-/// Minecraft 1.16.5 (`https://minecraft.wiki/w/Data_version`).
+/// the 1.16.5 reference game (`https://reference wiki /Data_version`).
 pub const DATA_VERSION: i32 = 2586;
 /// Chunk status a fully-generated+decorated chunk carries (1.16.5 names).
 const STATUS_FULL: &str = "full";
 
 // ---------------------------------------------------------------------------
-// registry mapping: our block ids ↔ vanilla `minecraft:*` names
+// registry mapping: our block ids ↔ vanilla `voxelcraft:*` names
 //
 // Vanilla 1.16.5 numeric biome ids (world-internal registry order,
-// cross-checked against minecraft.wiki / 1.16.5 data dumps):
+// cross-checked against the reference wiki / 1.16.5 data dumps):
 //   0 ocean · 1 plains · 2 desert · 3 mountains · 4 forest · 12 snowy
 //   tundra · 16 beach. Our gen.rs Biome enum maps onto those 1:1.
 // ---------------------------------------------------------------------------
@@ -96,72 +96,72 @@ fn vanilla_biome_to_ours(v: i32) -> u8 {
 /// flat block ids (0..=56) → vanilla registry names. Index 14 ("Snowy
 /// Grass") shares `grass_block` with 1 via the `snowy=true` property.
 const VANILLA_NAMES: [&str; 57] = [
-    "minecraft:air",
-    "minecraft:grass_block", // 1 Grass Block
-    "minecraft:dirt",
-    "minecraft:stone",
-    "minecraft:cobblestone",
-    "minecraft:sand",
-    "minecraft:oak_log",
-    "minecraft:oak_planks",
-    "minecraft:oak_leaves",
-    "minecraft:water",
-    "minecraft:glass",
-    "minecraft:bedrock",
-    "minecraft:gravel",
-    "minecraft:snow_block",
-    "minecraft:grass_block", // 14 Snowy Grass → + Properties{snowy:true}
-    "minecraft:grass",       // 1.16.5 name of the short-grass plant
-    "minecraft:poppy",
-    "minecraft:dandelion",
-    "minecraft:granite",
-    "minecraft:diorite",
-    "minecraft:andesite",
-    "minecraft:stone_bricks",
-    "minecraft:bricks",
-    "minecraft:mossy_cobblestone",
-    "minecraft:smooth_stone",
-    "minecraft:obsidian",
-    "minecraft:coal_ore",
-    "minecraft:iron_ore",
-    "minecraft:gold_ore",
-    "minecraft:diamond_ore",
-    "minecraft:redstone_ore",
-    "minecraft:lapis_ore",
-    "minecraft:emerald_ore",
-    "minecraft:iron_block",
-    "minecraft:gold_block",
-    "minecraft:diamond_block",
-    "minecraft:glowstone",
-    "minecraft:bookshelf",
-    "minecraft:crafting_table",
-    "minecraft:clay",
-    "minecraft:terracotta",
-    "minecraft:pumpkin",
-    "minecraft:melon",
-    "minecraft:ice",
-    "minecraft:cactus",
-    "minecraft:white_wool",
-    "minecraft:red_wool",
-    "minecraft:blue_wool",
-    "minecraft:yellow_wool",
-    "minecraft:black_wool",
-    "minecraft:birch_log",
-    "minecraft:birch_leaves",
-    "minecraft:spruce_log",
-    "minecraft:spruce_leaves",
-    "minecraft:red_mushroom",
-    "minecraft:brown_mushroom",
-    "minecraft:dead_bush",
+    "voxelcraft:air",
+    "voxelcraft:grass_block", // 1 Grass Block
+    "voxelcraft:dirt",
+    "voxelcraft:stone",
+    "voxelcraft:cobblestone",
+    "voxelcraft:sand",
+    "voxelcraft:oak_log",
+    "voxelcraft:oak_planks",
+    "voxelcraft:oak_leaves",
+    "voxelcraft:water",
+    "voxelcraft:glass",
+    "voxelcraft:bedrock",
+    "voxelcraft:gravel",
+    "voxelcraft:snow_block",
+    "voxelcraft:grass_block", // 14 Snowy Grass → + Properties{snowy:true}
+    "voxelcraft:grass",       // 1.16.5 name of the short-grass plant
+    "voxelcraft:poppy",
+    "voxelcraft:dandelion",
+    "voxelcraft:granite",
+    "voxelcraft:diorite",
+    "voxelcraft:andesite",
+    "voxelcraft:stone_bricks",
+    "voxelcraft:bricks",
+    "voxelcraft:mossy_cobblestone",
+    "voxelcraft:smooth_stone",
+    "voxelcraft:obsidian",
+    "voxelcraft:coal_ore",
+    "voxelcraft:iron_ore",
+    "voxelcraft:gold_ore",
+    "voxelcraft:diamond_ore",
+    "voxelcraft:redstone_ore",
+    "voxelcraft:lapis_ore",
+    "voxelcraft:emerald_ore",
+    "voxelcraft:iron_block",
+    "voxelcraft:gold_block",
+    "voxelcraft:diamond_block",
+    "voxelcraft:glowstone",
+    "voxelcraft:bookshelf",
+    "voxelcraft:crafting_table",
+    "voxelcraft:clay",
+    "voxelcraft:terracotta",
+    "voxelcraft:pumpkin",
+    "voxelcraft:melon",
+    "voxelcraft:ice",
+    "voxelcraft:cactus",
+    "voxelcraft:white_wool",
+    "voxelcraft:red_wool",
+    "voxelcraft:blue_wool",
+    "voxelcraft:yellow_wool",
+    "voxelcraft:black_wool",
+    "voxelcraft:birch_log",
+    "voxelcraft:birch_leaves",
+    "voxelcraft:spruce_log",
+    "voxelcraft:spruce_leaves",
+    "voxelcraft:red_mushroom",
+    "voxelcraft:brown_mushroom",
+    "voxelcraft:dead_bush",
 ];
 
 /// registry name for the three property-driven blocks (Phase 1)
 fn model_block_name(b: u16) -> &'static str {
     match b {
-        OAK_SLAB => "minecraft:oak_slab",
-        COBBLE_STAIRS => "minecraft:cobblestone_stairs",
-        OAK_FENCE => "minecraft:oak_fence",
-        _ => "minecraft:air",
+        OAK_SLAB => "voxelcraft:oak_slab",
+        COBBLE_STAIRS => "voxelcraft:cobblestone_stairs",
+        OAK_FENCE => "voxelcraft:oak_fence",
+        _ => "voxelcraft:air",
     }
 }
 
@@ -193,7 +193,7 @@ fn state_to_vanilla(s: u16) -> (String, Vec<(String, String)>) {
     // snowy grass variant
     if s == 14 {
         return (
-            "minecraft:grass_block".to_string(),
+            "voxelcraft:grass_block".to_string(),
             vec![("snowy".to_string(), "true".to_string())],
         );
     }
@@ -206,18 +206,18 @@ fn state_to_vanilla(s: u16) -> (String, Vec<(String, String)>) {
         // Phase-1 table (kelp, seagrass, ferns, bamboo, the 1.7+ flora,
         // stained terracotta, …) previously degraded to AIR on save —
         // derive the registry name from the block's display name
-        // (lowercase, spaces → underscores, prefixed minecraft:). The
+        // (lowercase, spaces → underscores, prefixed voxelcraft:). The
         // reverse path scans the same derivation, so roundtrips stay
         // closed; any name collision resolves first-wins (asserted
         // collision-free by the roundtrip test).
         match derived_registry_name(s) {
             Some(name) => (name, Vec::new()),
-            None => ("minecraft:air".to_string(), Vec::new()),
+            None => ("voxelcraft:air".to_string(), Vec::new()),
         }
     }
 }
 
-/// `minecraft:`-prefixed registry name derived from the block's display
+/// `voxelcraft:`-prefixed registry name derived from the block's display
 /// name (Identity blocks only — property/axis/snowy states are handled
 /// by the earlier branches).
 fn derived_registry_name(s: u16) -> Option<String> {
@@ -226,7 +226,7 @@ fn derived_registry_name(s: u16) -> Option<String> {
         return None;
     }
     let mut name = String::with_capacity(display.len() + 10);
-    name.push_str("minecraft:");
+    name.push_str("voxelcraft:");
     for ch in display.chars() {
         if ch == ' ' {
             name.push('_');
@@ -242,11 +242,26 @@ fn vanilla_to_state(name: &str, props: &[(String, String)]) -> Option<u16> {
     let prop = |key: &str| -> Option<&str> {
         props.iter().find(|(k, _)| k == key).map(|(_, v)| v.as_str())
     };
+    // Namespace interop (read-side): palette entries written by older
+    // builds of THIS engine, or by third-party world editors of the
+    // wider 1.16.5-era ecosystem, carry the legacy `minecraft:` prefix.
+    // Map it onto our own `voxelcraft:` namespace before any comparison;
+    // the writer always emits `voxelcraft:` (see state_to_vanilla).
+    let owned;
+    let name = {
+        match name.strip_prefix("minecraft:") {
+            Some(rest) => {
+                owned = format!("voxelcraft:{rest}");
+                owned.as_str()
+            }
+            None => name,
+        }
+    };
     // property blocks
     let prop_block = match name {
-        "minecraft:oak_slab" => Some(OAK_SLAB),
-        "minecraft:cobblestone_stairs" => Some(COBBLE_STAIRS),
-        "minecraft:oak_fence" => Some(OAK_FENCE),
+        "voxelcraft:oak_slab" => Some(OAK_SLAB),
+        "voxelcraft:cobblestone_stairs" => Some(COBBLE_STAIRS),
+        "voxelcraft:oak_fence" => Some(OAK_FENCE),
         _ => None,
     };
     if let Some(b) = prop_block {
@@ -255,7 +270,7 @@ fn vanilla_to_state(name: &str, props: &[(String, String)]) -> Option<u16> {
         return prop_state_encode(b, &set); // missing props → vanilla defaults
     }
     // grass variants (snowy property selects our Snowy Grass id)
-    if name == "minecraft:grass_block" {
+    if name == "voxelcraft:grass_block" {
         return match prop("snowy") {
             Some("true") => Some(14),
             _ => Some(1),
@@ -264,9 +279,9 @@ fn vanilla_to_state(name: &str, props: &[(String, String)]) -> Option<u16> {
     // log axis variants (per-log state triples — the axis offsets differ
     // per species, so decode via explicit constants)
     if let Some((block, x_state, z_state)) = match name {
-        "minecraft:oak_log" => Some((blocks::OAK_LOG, OAK_LOG_X, OAK_LOG_Z)),
-        "minecraft:birch_log" => Some((blocks::BIRCH_LOG, BIRCH_LOG_X, BIRCH_LOG_Z)),
-        "minecraft:spruce_log" => Some((blocks::SPRUCE_LOG, SPRUCE_LOG_X, SPRUCE_LOG_Z)),
+        "voxelcraft:oak_log" => Some((blocks::OAK_LOG, OAK_LOG_X, OAK_LOG_Z)),
+        "voxelcraft:birch_log" => Some((blocks::BIRCH_LOG, BIRCH_LOG_X, BIRCH_LOG_Z)),
+        "voxelcraft:spruce_log" => Some((blocks::SPRUCE_LOG, SPRUCE_LOG_X, SPRUCE_LOG_Z)),
         _ => None,
     } {
         return match prop("axis") {
@@ -278,7 +293,7 @@ fn vanilla_to_state(name: &str, props: &[(String, String)]) -> Option<u16> {
     // flat blocks (skip 14 — handled above via grass_block+snowy)
     if let Some(i) = VANILLA_NAMES
         .iter()
-        .position(|&n| n == name && n != "minecraft:grass_block")
+        .position(|&n| n == name && n != "voxelcraft:grass_block")
     {
         return Some(i as u16);
     }
@@ -453,7 +468,7 @@ pub fn chunk_to_nbt(
             let mut sec_nbt = Nbt::compound();
             sec_nbt.set("Y", Nbt::Byte(sy as i8));
             let mut air = Nbt::compound();
-            air.set("Name", Nbt::String("minecraft:air".into()));
+            air.set("Name", Nbt::String("voxelcraft:air".into()));
             sec_nbt.set("Palette", Nbt::List(vec![air]));
             // single-entry palette → 4-bit indices, 256 longs of zeros
             sec_nbt.set("BlockStates", Nbt::LongArray(vec![0i64; 256]));
@@ -567,7 +582,7 @@ pub fn chunk_from_nbt(data: &[u8]) -> Result<(Chunk, Option<vc_world::light::Lig
                     let name = entry
                         .get("Name")
                         .and_then(|n| n.as_str())
-                        .unwrap_or("minecraft:air");
+                        .unwrap_or("voxelcraft:air");
                     let mut props: Vec<(String, String)> = Vec::new();
                     if let Some(Nbt::Compound(pr)) = entry.get("Properties") {
                         for (k, v) in pr {
@@ -1396,14 +1411,14 @@ mod tests {
         assert_eq!(level.get("xPos").unwrap().as_i64(), Some(2));
         assert_eq!(level.get("zPos").unwrap().as_i64(), Some(3));
         assert_eq!(level.get("Status").unwrap().as_str(), Some("full"));
-        // sections: palette entries carry minecraft: names, BlockStates sized right
+        // sections: palette entries carry voxelcraft: names, BlockStates sized right
         let sections = level.get("Sections").unwrap().as_list().unwrap();
         let sec0 = sections.iter().find(|s| s.get("Y").and_then(|y| y.as_i64()) == Some(0)).unwrap();
         let palette = sec0.get("Palette").unwrap().as_list().unwrap();
         assert!(palette.len() >= 8); // bedrock/stone/ores/grass/…
         for entry in palette {
             let n = entry.get("Name").unwrap().as_str().unwrap();
-            assert!(n.starts_with("minecraft:"), "palette name {n}");
+            assert!(n.starts_with("voxelcraft:"), "palette name {n}");
         }
         // 4-bit packing → 256 longs; 5-bit (our palette ≥ 9 distinct) → 342
         let longs = sec0.get("BlockStates").unwrap().as_i64_slice().unwrap().len();
@@ -1426,11 +1441,11 @@ mod tests {
         // axis=x], 4-bit packed data placing stone at (0,0,0) and the log
         // at (1,0,0)
         let mut pal_air = Nbt::compound();
-        pal_air.set("Name", Nbt::String("minecraft:air".into()));
+        pal_air.set("Name", Nbt::String("voxelcraft:air".into()));
         let mut pal_stone = Nbt::compound();
-        pal_stone.set("Name", Nbt::String("minecraft:stone".into()));
+        pal_stone.set("Name", Nbt::String("voxelcraft:stone".into()));
         let mut pal_log = Nbt::compound();
-        pal_log.set("Name", Nbt::String("minecraft:oak_log".into()));
+        pal_log.set("Name", Nbt::String("voxelcraft:oak_log".into()));
         let mut props = Nbt::compound();
         props.set("axis", Nbt::String("x".into()));
         pal_log.set("Properties", props);
@@ -1465,15 +1480,58 @@ mod tests {
         assert_eq!(chunk.height[0], 0); // top non-air at y=0
     }
 
+    /// Namespace interop: a palette written with the legacy ecosystem
+    /// prefix (older builds of this engine, or a third-party world
+    /// editor's export) parses to the SAME blocks as our own
+    /// `voxelcraft:` names. Read-side alias only — the writer emits
+    /// voxelcraft: exclusively (asserted by nbt_layout_matches_vanilla_shape).
+    #[test]
+    fn legacy_namespace_palette_entries_parse() {
+        // same layout as foreign_vanilla_chunk_parses, but every palette
+        // Name carries the legacy prefix instead of ours
+        let mut pal_air = Nbt::compound();
+        pal_air.set("Name", Nbt::String("minecraft:air".into()));
+        let mut pal_stone = Nbt::compound();
+        pal_stone.set("Name", Nbt::String("minecraft:stone".into()));
+        let mut pal_log = Nbt::compound();
+        pal_log.set("Name", Nbt::String("minecraft:oak_log".into()));
+        let mut props = Nbt::compound();
+        props.set("axis", Nbt::String("x".into()));
+        pal_log.set("Properties", props);
+
+        let mut data = vec![0i64; 256];
+        data[0] |= 1; // (x=0,y=0,z=0) → stone
+        data[0] |= 2 << 4; // (x=1,y=0,z=0) → oak_log[axis=x]
+
+        let mut sec = Nbt::compound();
+        sec.set("Y", Nbt::Byte(0));
+        sec.set("Palette", Nbt::List(vec![pal_air, pal_stone, pal_log]));
+        sec.set("BlockStates", Nbt::LongArray(data));
+        let mut level = Nbt::compound();
+        level.set("xPos", Nbt::Int(0));
+        level.set("zPos", Nbt::Int(0));
+        level.set("Sections", Nbt::List(vec![sec]));
+        level.set("Biomes", Nbt::IntArray(vec![1; 256]));
+        let mut root = Nbt::compound();
+        root.set("DataVersion", Nbt::Int(2586));
+        root.set("Level", level);
+        let bytes = nbt::write_root("", &root).unwrap();
+
+        let (chunk, _) = chunk_from_nbt(&bytes).unwrap();
+        assert_eq!(chunk.get(0, 0, 0), STONE);
+        assert_eq!(chunk.get(1, 0, 0), OAK_LOG);
+        assert_eq!(chunk.get_state(1, 0, 0), OAK_LOG_X);
+    }
+
     #[test]
     fn unknown_names_and_corruption_degrade_gracefully() {
         let c = demo_chunk();
         let mut bytes = chunk_to_nbt(0, 0, &c, 1, None);
         // corrupt one palette name in-place (stone → sTonE) — must still
         // parse (that state becomes air), never panic
-        let needle = b"minecraft:stone";
+        let needle = b"voxelcraft:stone";
         let pos = bytes.windows(needle.len()).position(|w| w == needle).unwrap();
-        bytes[pos + 11] = b'X'; // minecraft:Xtone
+        bytes[pos + 11] = b'X'; // voxelcraft:Xtone
         let back = chunk_from_nbt(&bytes);
         assert!(back.is_ok(), "mutated chunk still parses");
         // wholesale garbage → Err (caller regenerates)

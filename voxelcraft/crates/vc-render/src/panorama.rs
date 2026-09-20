@@ -1,6 +1,6 @@
 //! Title-screen panorama — a pre-rendered, slowly panning cubemap.
 //!
-//! VERIFIED 2026-09-07 live (minecraft.wiki/w/Panorama): the real title
+//! VERIFIED 2026-09-07 live (reference wiki /Panorama): the real title
 //! screen background is NOT the live world — it is six square pre-rendered
 //! images (`panorama_0..5.png`, four horizontal faces + up + down) shown as
 //! a cubemap with a slowly rotating camera and a blur overlay, displayed
@@ -369,7 +369,7 @@ pub fn paint_cubemap(size: u32) -> Vec<u8> {
 
     // palette (sRGB, converted to linear below) — NETHER-UPDATE THEME:
     // the 1.16.x title panorama reflects the Nether Update (VERIFIED
-    // minecraft.wiki/w/Panorama history: "1.16 ... Changed panorama in all
+    // reference wiki /Panorama history: "1.16 ... Changed panorama in all
     // released 1.16 snapshots to reflect the Nether Update"). Clean-room
     // approximation of that look: crimson fog sky, lava-glow horizon,
     // netherrack ground, a dark tree belt with crimson canopies (crimson

@@ -2,7 +2,7 @@
 
 <div align="center">
 
-**A clean-room, Minecraft Java 1.16.5-style voxel engine — written in Rust on `wgpu`.**
+**A clean-room, 1.16.5-era reference-style voxel engine — written in Rust on `wgpu`.**
 One codebase, two targets: **native** (Vulkan / DirectX 12 / Metal) and **browser** (WebGPU with automatic WebGL2 fallback).
 
 [![CI](https://github.com/CodeAbhi826/VoxelCraft-Rust/actions/workflows/ci.yml/badge.svg)](https://github.com/CodeAbhi826/VoxelCraft-Rust/actions/workflows/ci.yml)
@@ -28,7 +28,7 @@ One codebase, two targets: **native** (Vulkan / DirectX 12 / Metal) and **browse
 
 ## What this is
 
-VoxelCraft replicates the **gameplay rules, world and boot/menu flow of Minecraft Java Edition 1.16.5** — from published documentation only (minecraft.wiki, live-verified at implementation time, **1,913 `VERIFIED` citations in code**). It is **not** a port, contains **zero Mojang assets** (every texture, sound, glyph and the title panorama is synthesized procedurally at startup), and is a from-scratch Rust/WGSL engine, not a wrapper.
+VoxelCraft replicates the **gameplay rules, world and boot/menu flow of the 1.16.5-era reference game** — from published documentation only (the reference wiki, live-verified at implementation time, **1,913 `VERIFIED` citations in code**). It is **not** a port, contains **zero third-party assets** (every texture, sound, glyph and the title panorama is synthesized procedurally at startup), and is a from-scratch Rust/WGSL engine, not a wrapper.
 
 - **533** registered block/item entries (**863** block states), **27 biomes** (overworld families + the five 1.16 Nether biomes + the End), caves, trees, **10 structure families**
 - **20 Hz deterministic simulation** with vanilla constants: drag `v1 = (v0 − 0.08) × 0.98`, 7.127 b/s sprint-jump cap, dimension-aware lava spread (Overworld/End 3 blocks/30 ticks, Nether 7 blocks/10 ticks)
@@ -181,17 +181,17 @@ CI does exactly this on every engine change and commits the bundle back to `publ
 
 ## Legal
 
-> **NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.**
-> (Wording follows the disclaimer Mojang's own *Usage Guidelines for Fans and Creators* asks fan projects to carry.)
+> **Independent, unaffiliated project. Not a product of, approved by, or associated with any game publisher, studio, or platform holder.**
+> All product names, company names, and trademarks referenced (directly or via the neutral "reference game" phrasing) are the property of their respective owners; none are used as this project's own branding, names, or namespaces.
 
-- **Trademark**: "Minecraft" is a trademark of Mojang Synergies AB. This project is an independent engine, not affiliated with, endorsed by or connected to Mojang or Microsoft. It brands itself "VoxelCraft" everywhere user-facing.
-- **Clean-room assets**: every texture, sound, UI glyph, logo and the title panorama is **procedurally synthesized in code** (`v113_art.rs` … `v116b_art.rs`, 19 modules). No Mojang asset file was ever copied, sampled or distributed — the repo contains **zero binary asset files from Mojang**.
-- **Mechanics, not code**: game rules, formulas, timings and recipe/loot schemas are facts replicated from published documentation, never from decompiled code. The `minecraft:` namespaced ids inside save/pack code are format interop (the same convention every third-party world editor uses), never in-game branding.
+- **Trademark**: this project brands itself **"VoxelCraft"** everywhere user-facing — title screen, window title, file formats, and the asset namespace (`voxelcraft:`). It is not affiliated with, endorsed by, or connected to any game company.
+- **Clean-room assets**: every texture, sound, UI glyph, logo and the title panorama is **procedurally synthesized in code** (`v113_art.rs` … `v116b_art.rs`, 19 modules). No third-party asset file was ever copied, sampled or distributed — the repo contains **zero binary asset files from any rights-holder**.
+- **Mechanics, not code**: game rules, formulas, timings and recipe/loot schemas are facts replicated from published documentation, never from decompiled code. Namespaced ids in save/pack code use this project's own `voxelcraft:` namespace; a read-side compatibility alias accepts the wider ecosystem's legacy namespace when loading user-supplied packs and older saves (the same interop convention third-party world editors use), never in-game branding.
 - **Font**: the bundled Monocraft font (`voxelcraft/crates/vc-render/assets/Monocraft.ttf`) is © 2022 Idrees Hassan ([IdreesInc/Monocraft](https://github.com/IdreesInc/Monocraft)), used under the **SIL Open Font License 1.1** — see [`OFL-Monocraft.txt`](voxelcraft/crates/vc-render/assets/OFL-Monocraft.txt).
 
 ## License
 
-Licensed under the **Apache License 2.0** — see [`LICENSE`](LICENSE). In short: use, copy, modify and distribute (including commercially), retaining the license notice and stating significant changes. Game *mechanics and data* (formulas, timings, recipe/loot schemas, registry names) are not copyrightable and are replicated from published documentation; all *assets* are independently authored and contain no Mojang material. The Monocraft font keeps its own OFL 1.1 license.
+Licensed under the **Apache License 2.0** — see [`LICENSE`](LICENSE). In short: use, copy, modify and distribute (including commercially), retaining the license notice and stating significant changes. Game *mechanics and data* (formulas, timings, recipe/loot schemas, registry names) are not copyrightable and are replicated from published documentation; all *assets* are independently authored and contain no third-party rights-holder material. The Monocraft font keeps its own OFL 1.1 license.
 
 ## Documentation index
 

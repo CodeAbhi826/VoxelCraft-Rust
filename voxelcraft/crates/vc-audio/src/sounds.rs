@@ -592,7 +592,7 @@ fn music_pad(minor: bool) -> Vec<f32> {
 // clean-room synthesis for the new event classes (container, XP orb,
 // underwater, weather, music variants). shape language = the vanilla
 // event's character (creak/clunk/chirp/pad); reference facts cited per
-// recipe from minecraft.wiki (live 2026-09-15); no Mojang asset was
+// recipe from the reference wiki (live 2026-09-15); no third-party asset was
 // read, copied, or traced.
 
 /// wooden container OPEN: a creaky rise (the chest-lid character —
@@ -642,7 +642,7 @@ fn shulker_recipe() -> Vec<f32> {
     clamp_amp(s)
 }
 
-/// entity.experience_orb.pickup — VERIFIED minecraft.wiki/w/Experience
+/// entity.experience_orb.pickup — VERIFIED reference wiki /Experience
 /// (live 2026-09-15): volume 0.1, pitch 0.55–1.25, attenuation 16. A
 /// bell-like FM chirp (carrier + a quick upward-blipped modulator).
 fn xp_orb_recipe() -> Vec<f32> {
@@ -1270,7 +1270,7 @@ pub fn spatialize(
 
 /// Sub-round 5 (2026-09-15): the five vanilla material events, mapped
 /// from a block SoundFamily. VERIFIED structure against vanilla 1.16.5
-/// sounds.json (minecraft.wiki/w/Sounds.json, live 2026-09-15): every
+/// sounds.json (reference wiki /Sounds.json, live 2026-09-15): every
 /// material class carries block.<mat>.break / .place / .hit / .step /
 /// .fall. Glass breaks (no plain dig); water splashes.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

@@ -1,6 +1,6 @@
 # VoxelCraft
 
-A high-performance, **single-codebase Minecraft-1.16.5-style voxel engine** written in Rust on top of `wgpu` (the same backend powering Bevy and Veloren). It compiles to:
+A high-performance, **single-codebase 1.16.5-era reference-style voxel engine** written in Rust on top of `wgpu` (the same backend powering Bevy and Veloren). It compiles to:
 
 - **Native** (Windows / Linux / macOS) → Vulkan · DirectX 12 · Metal  
 - **WASM** (browsers with WebGPU) → served as a single static bundle
@@ -10,7 +10,7 @@ Everything that an old JS/Chromium version had problems with is fixed here:
 - **Greedy meshing** + per-vertex ambient occlusion + smooth skylight flood-fill
 - **Multi-threaded chunk generation & meshing** on native (Rayon), time-budgeted inline on WASM so the browser stays at 60 fps
 - **Frustum culling** + per-chunk `draw_indexed` calls; one texture atlas = one bind-group
-- **No asset files.** All 16×16 textures and every sound are synthesized at startup (in code). They look/sound in the style of Minecraft 1.16.5 but were not copied from any Mojang asset — they are made from scratch.
+- **No asset files.** All 16×16 textures and every sound are synthesized at startup (in code). They look/sound in the style of the 1.16.5 reference game but were not copied from any third-party asset — they are made from scratch.
 - **Native build is the real high-performance target** — the WASM build is what you can preview in a browser here; both come from the exact same source.
 
 ## Build & Run
@@ -143,14 +143,14 @@ crates/
 
 - **Chunk = 16×256×16**, `u8` block ids, stored as `Arc<Chunk>` in a `HashMap`. Player edits use copy-on-write so in-flight mesh jobs with old snapshots stay consistent.
 - **Mesh job** snapshots the 3×3 neighborhood into a padded 48×256×48 buffer, computes skylight (column scan + lateral BFS), then greedy-merges per `(block, AO corner tuple, corner sky level, face light)` key.
-- **Per-vertex light**: face shade × AO × skylight — exactly the *Minecraft "smooth lighting"* look, while still allowing greedy merging (equal corner tuples).
+- **Per-vertex light**: face shade × AO × skylight — exactly the *the reference game "smooth lighting"* look, while still allowing greedy merging (equal corner tuples).
 - **Water** = separate blended pipeline (no culling, depth-write off, top at y+0.875 with a vertex wave). Greedy-merged too, so the open ocean is one quad per chunk.
 - **Sky** = fullscreen triangle, inv-`view_proj` ray, gradient + sun disc + glow + moon + stars (hash-based, twinkling), sunset band near horizon.
 - **Day cycle**: 10-minute day, sun rotates, `day_light` uniform scales skylight (0.16 floor for night), fog color blends day↔night with sunset boost.
 
 ## Disclaimer
 
-Not affiliated with Mojang or Microsoft. "Minecraft" is a trademark of Mojang Synergies AB. This project is an independent Rust engine written in the visual style of Minecraft 1.16.5; all textures and sounds are generated procedurally from scratch at startup — none are copied from Minecraft's asset files.
+Not affiliated with, endorsed by, or connected to any game publisher or studio. All product names and trademarks mentioned or implied by the "reference game" phrasing belong to their respective owners; none are used here as this project's own branding. This project is an independent Rust engine written in the visual style of the 1.16.5-era reference game; all textures and sounds are generated procedurally from scratch at startup — none are copied from any third-party asset files.
 
 ### 4. Post-build step (required): patch the generated JS glue
 
@@ -173,7 +173,7 @@ Real browser pointer events always carry `pointerType` and are unaffected.
 ## Resource pack (Phase 1, Master Spec §5.2/§19)
 
 The engine ships a clean-room **builtin pack** at `voxelcraft/builtin-pack/`
-(vanilla 1.16.5 layout: `pack.mcmeta` + `assets/minecraft/{blockstates,
+(vanilla 1.16.5 layout: `pack.mcmeta` + `assets/voxelcraft/{blockstates,
 models,textures}`). Native reads the folder — falling back to the **copy
 embedded in the binary at compile time** (`crates/voxelcraft/build.rs`
 packages the pack into `.rodata` via `include_bytes!`; the

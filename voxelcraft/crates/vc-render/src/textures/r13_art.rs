@@ -1,6 +1,6 @@
 //! Round 13 (station GUIs) procedural art: the plain-book item sprite
 //! (TILE_BOOK 791) and the grindstone block sprite (TILE_GRINDSTONE 792).
-//! Clean-room pixel art — no Mojang asset was read, copied, or traced;
+//! Clean-room pixel art — no third-party asset was read, copied, or traced;
 //! the shapes follow the wiki's public item/block descriptions only.
 //! A child module of textures.rs (shares the put/art helpers).
 

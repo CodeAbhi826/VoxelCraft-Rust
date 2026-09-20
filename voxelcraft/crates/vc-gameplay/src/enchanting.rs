@@ -37,7 +37,7 @@ pub struct EnchOption {
 
 /// the enchant registry (§29/Phase 4): id = index.
 ///
-/// VERIFIED live against minecraft.wiki on 2026-09-04 (the current
+/// VERIFIED live against the reference wiki on 2026-09-04 (the current
 /// "List of enchantments" table filtered to the 1.16.5 set by
 /// introduction version — post-1.16.5 additions excluded: Swift Sneak
 /// 1.19, Breach/Density/Wind Burst 1.21, Lunge 26.x, Cleaving
@@ -46,7 +46,7 @@ pub struct EnchOption {
 /// 2021-05-24) via the MediaWiki API. Exactly the 38 enchantments that
 /// shipped in 1.16.5.
 ///
-/// ID DISCIPLINE (Dossier Part 6 §29, Mojang MC-271039): the 1.16.5
+/// ID DISCIPLINE (Dossier Part 6 §29, the original game MC-271039): the 1.16.5
 /// registry id of Sweeping Edge is `sweeping` — it was renamed to
 /// `sweeping_edge` in snapshot 24w03a (2024). The id strings below are
 /// the 1.16.5 names for future datapack/protocol parity.
@@ -68,7 +68,7 @@ pub struct EnchantDef {
     pub table: bool,
     /// Round 13: the ANVIL cost multiplier "from item" (the "from
     /// book" multiplier is half, rounded down) — VERIFIED against
-    /// minecraft.wiki/w/Anvil_mechanics "Enchantment cost multipliers"
+    /// reference wiki /Anvil_mechanics "Enchantment cost multipliers"
     /// table, fetched live 2026-09-15 (the 1.16.5-relevant rows;
     /// post-1.16 rows excluded by the same version filter as above).
     pub cost_mult: u8,
@@ -399,7 +399,7 @@ pub fn enchant_by_id(id: &str) -> Option<u8> {
     ENCHANTS.iter().position(|e| e.id == id).map(|i| i as u8)
 }
 
-/// incompatibility groups (VERIFIED live, minecraft.wiki "List of
+/// incompatibility groups (VERIFIED live, the reference wiki "List of
 /// enchantments" Incompatible-With column, 2026-09-04, 1.16.5 subset):
 /// - the four Protections are pairwise exclusive
 /// - Sharpness / Smite / Bane of Arthropods are pairwise exclusive
@@ -476,7 +476,7 @@ pub fn ore_xp(block: u16) -> i32 {
         REDSTONE_ORE => 3, // 1..5
         DIAMOND_ORE => 5,  // 3..7
         EMERALD_ORE => 5,  // 3..7
-        // Phase E3 (VERIFIED live 2026-09-06, minecraft.wiki/w/
+        // Phase E3 (VERIFIED live 2026-09-06, reference wiki /
         // Nether_Quartz_Ore: "2–5 experience" — midpoint, the engine's
         // deterministic-ore convention)
         NETHER_QUARTZ_ORE => 3, // 2..5
@@ -495,7 +495,7 @@ pub fn smelt_xp(block: u16) -> f32 {
         // w/Smooth_Stone §Smelting: the recipe's XP column is 0.1)
         STONE => 0.1,
         // VERIFICATION-REPORT fix #4 (VERIFIED live 2026-09-06,
-        // minecraft.wiki/w/Smelting: "smelting 1 coal ore and removing
+        // reference wiki /Smelting: "smelting 1 coal ore and removing
         // the coal, the value is 0.1" — ten coal per XP on average)
         COAL_ORE => 0.1,
         // 1.12 (World of Color, VERIFIED w/Glazed_Terracotta §Smelting:

@@ -1,0 +1,6 @@
+{
+  "pack": {
+    "pack_format": 999,
+    "description": "VoxelCraft clean-room asset vault (original procedurally-synthesized art). Library copy for future versions — NOT wired into the 1.16.5-era engine. All pixels generated in-code from measurements; no third-party assets."
+  }
+}

@@ -32,7 +32,7 @@ serde_json = "1"
 bytemuck = { version = "1", features = ["derive"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
 # WGSL validation of shader-pack sources at RUNTIME (§34/§46).
-naga = { version = "22", features = ["wgsl-in"] }
+naga = { version = "22", features = ["wgsl-in", "glsl-in", "wgsl-out"] }
 wgpu = "22"
 winit = "0.29"
 glam = "0.29"

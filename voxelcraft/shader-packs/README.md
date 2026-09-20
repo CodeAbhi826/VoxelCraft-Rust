@@ -16,12 +16,16 @@ interface — no GLSL is executed):
 * read the `/* RENDERTARGETS: n */` / `DRAWBUFFERS` directives
 * report the documented uniforms the pack expects
 
-Every pack row on the Shaders screen carries its honest tier label
-(`IRIS-STRUCTURE-VALIDATED`) — meaning the pack was detected and fully
-parsed, **not** that it renders yet. The GLSL → WGSL translation lives
-in the separate vc-iris sister project; until it registers, selecting
-a pack stores your choice (persisted in options.txt as `shaderpack`)
-and reports the analysis, while the render pipeline stays vanilla.
+Every pack row on the Shaders screen carries its honest tier label.
+As of the 2026-09-21 v2 round this is not just analysis anymore:
+selecting a pack translates its `composite*`/`final` programs
+GLSL → WGSL in-engine (naga) and **runs the chain** on the post
+pipeline (`colortex0` = chained scene, `colortex1` = engine bloom).
+Passes needing more render targets than the subset provides are
+skipped WITH a logged reason — never silently. The per-pass report
+(installed / skipped-why) lands in `logs/latest.log`. `test-warm/`
+is our own self-written demo pack — a legal fixture proving the
+pipeline end-to-end.
 
 ## What may legally live here
 

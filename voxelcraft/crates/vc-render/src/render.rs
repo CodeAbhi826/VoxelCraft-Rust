@@ -860,6 +860,53 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
 }
 "#;
 
+/// v2 external-pack chain: the fullscreen vertex stage every translated
+/// composite pairs with (the v2 rewrite emits fragment-only modules with
+/// entry `main`; the GLSL `varying vec2 texcoord` input lands at
+/// @location(0), which this stage provides).
+const V2_VS: &str = r#"
+struct VsOut {
+    @builtin(position) pos: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+};
+
+@vertex
+fn vs_main(@builtin(vertex_index) vi: u32) -> VsOut {
+    var p = array<vec2<f32>, 3>(
+        vec2<f32>(-1.0, -1.0),
+        vec2<f32>(3.0, -1.0),
+        vec2<f32>(-1.0, 3.0),
+    );
+    var out: VsOut;
+    out.pos = vec4<f32>(p[vi], 0.0, 1.0);
+    // NDC→UV V-flip — the same mapping as every fullscreen pass here
+    // (BRIGHT_SHADER note): keeps the chained composites upright.
+    out.uv = vec2<f32>(p[vi].x * 0.5 + 0.5, 0.5 - p[vi].y * 0.5);
+    return out;
+}
+"#;
+
+/// one runnable pass of the v2 chain (pipeline + its uniform block)
+struct V2Pass {
+    name: String,
+    is_final: bool,
+    pipe: wgpu::RenderPipeline,
+    ubuf: wgpu::Buffer,
+    ubuf_len: u32,
+    uniforms: Vec<crate::shaderpack::UniformMember>,
+}
+
+/// the active v2 chain: passes in run order + the ping-pong scratch
+struct V2Chain {
+    id: String,
+    passes: Vec<V2Pass>,
+    /// per pass: [input = pack handoff, input = scratch] bind groups
+    bgs: Vec<[wgpu::BindGroup; 2]>,
+    /// the ping-pong scratch target (full res, LINEAR — same format as
+    /// the pack handoff target)
+    scratch: wgpu::TextureView,
+}
+
 // separable 9-tap gaussian blur (direction from aux uniform)
 const BLUR_SHADER: &str = r#"
 struct PostU { p: vec4<f32>, q: vec4<f32> };
@@ -1537,6 +1584,24 @@ pub struct Renderer {
     pub pack_tier: String,
     /// clone of the active pack (settings defaults feed PackUniform)
     active_pack_src: Option<crate::shaders::ShaderPack>,
+    // ---------------------------------------- v2 external pack chain --
+    /// 2026-09-19 v2: the translated Iris/BSL-style composite chain
+    /// (naga GLSL→WGSL, §34.2) running over the pack handoff target.
+    /// None = vanilla post pipeline only.
+    v2_chain: Option<V2Chain>,
+    /// shared v2 bind group layout (uniform block + colortex0..15
+    /// pairs + the noise pair — the fixed scheme the v2 rewrite emits)
+    v2_bgl: wgpu::BindGroupLayout,
+    /// pipeline layout over v2_bgl (all v2 passes share it — unused
+    /// layout entries are legal, missing ones are not)
+    v2_pl: wgpu::PipelineLayout,
+    /// the shared fullscreen vertex stage module (entry vs_main)
+    v2_vs_mod: wgpu::ShaderModule,
+    /// engine-provided 4×4 noise texture (packs sample it at 33/34)
+    v2_noise: wgpu::TextureView,
+    /// v2 frame state (frameTimeCounter / frameCounter fills)
+    v2_start: web_time::Instant,
+    v2_frame: std::cell::Cell<u32>,
     /// composite pipeline layout (pack composites reuse it, §34)
     comp_pl: wgpu::PipelineLayout,
     present_modes: Vec<wgpu::PresentMode>,
@@ -3184,6 +3249,14 @@ impl Renderer {
             mapped_at_creation: false,
         });
 
+        // v2 external-pack chain: shared layout + vertex stage + noise
+        let (v2_bgl, v2_pl) = Renderer::make_v2_layout(&device);
+        let v2_vs_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("v2-vs"),
+            source: wgpu::ShaderSource::Wgsl(V2_VS.into()),
+        });
+        let v2_noise = Renderer::make_v2_noise(&device, &queue);
+
         // Phase 7: construct the compute mesher BEFORE the struct literal
         // moves device/queue into the Renderer (wgpu 22 handles aren't Clone)
         let gpu_mesh = if adapter
@@ -3296,6 +3369,13 @@ impl Renderer {
             pack_id: None,
             pack_tier: String::new(),
             active_pack_src: None,
+            v2_chain: None,
+            v2_bgl,
+            v2_pl,
+            v2_vs_mod,
+            v2_noise,
+            v2_start: web_time::Instant::now(),
+            v2_frame: std::cell::Cell::new(0),
             comp_pl,
             present_modes,
             vsync,
@@ -3455,6 +3535,9 @@ impl Renderer {
         self.bg_b1 = bg_b1;
         self.bg_comp = bg_comp;
         self.bg_easu = bg_easu;
+        // v2 external-pack chain: the scratch + per-pass bind groups
+        // reference the resized handoff/bloom targets
+        self.rebuild_v2_bgs();
         // refresh blur texel steps for the new size (1/8 targets)
         let bw = (w / 8).max(1);
         let bh = (h / 8).max(1);
@@ -4511,6 +4594,455 @@ impl Renderer {
         }
     }
 
+    /// ------------------------------------------------ v2 external packs --
+    /// the shared v2 bind group layout: uniform block @0, colortex0..15
+    /// texture/sampler pairs at 1+2k / 2+2k, the noise pair at 33/34 —
+    /// exactly the fixed scheme shaderpack.rs's rewrite emits. Passes
+    /// use a subset; the extras stay legal (unused layout entries are
+    /// allowed, missing ones are not).
+    fn make_v2_layout(device: &wgpu::Device) -> (wgpu::BindGroupLayout, wgpu::PipelineLayout) {
+        let mut entries = vec![wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        }];
+        for k in 0..16u32 {
+            entries.push(wgpu::BindGroupLayoutEntry {
+                binding: 1 + 2 * k,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float {
+                        filterable: true,
+                    },
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    multisampled: false,
+                },
+                count: None,
+            });
+            entries.push(wgpu::BindGroupLayoutEntry {
+                binding: 2 + 2 * k,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            });
+        }
+        entries.push(wgpu::BindGroupLayoutEntry {
+            binding: 33,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Texture {
+                sample_type: wgpu::TextureSampleType::Float {
+                    filterable: true,
+                },
+                view_dimension: wgpu::TextureViewDimension::D2,
+                multisampled: false,
+            },
+            count: None,
+        });
+        entries.push(wgpu::BindGroupLayoutEntry {
+            binding: 34,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+            count: None,
+        });
+        let bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("v2-bgl"),
+            entries: &entries,
+        });
+        let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("v2-pl"),
+            bind_group_layouts: &[&bgl],
+            push_constant_ranges: &[],
+        });
+        (bgl, pl)
+    }
+
+    /// a 4×4 deterministic noise texture (packs sample it for dithering —
+    /// the OptiFine noise contract; values are ours, not from any pack)
+    fn make_v2_noise(device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::TextureView {
+        let mut px = [0u8; 4 * 4 * 4];
+        let mut s: u32 = 0x9E37_79B9;
+        for i in 0..16 {
+            // xorshift32 — deterministic, no rng dep
+            s ^= s << 13;
+            s ^= s >> 17;
+            s ^= s << 5;
+            let v = (s >> 24) as u8;
+            px[i * 4..i * 4 + 4].copy_from_slice(&[v, v, v, 255]);
+        }
+        let tex = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("v2-noise"),
+            size: wgpu::Extent3d {
+                width: 4,
+                height: 4,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        queue.write_texture(
+            wgpu::ImageCopyTexture {
+                texture: &tex,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            &px,
+            wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(4 * 4),
+                rows_per_image: Some(4),
+            },
+            wgpu::Extent3d {
+                width: 4,
+                height: 4,
+                depth_or_array_layers: 1,
+            },
+        );
+        tex.create_view(&wgpu::TextureViewDescriptor::default())
+    }
+
+    /// the full-res LINEAR scratch target (ping-pong partner of the pack
+    /// handoff target — same format, same size)
+    fn make_v2_scratch(device: &wgpu::Device, w: u32, h: u32) -> wgpu::TextureView {
+        let tex = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("v2-scratch"),
+            size: wgpu::Extent3d {
+                width: w.max(1),
+                height: h.max(1),
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        });
+        tex.create_view(&wgpu::TextureViewDescriptor::default())
+    }
+
+    /// one v2 bind group: uniform block + colortex0 = `input`, colortex1
+    /// = the engine bloom, colortex2+ = the bloom (only reachable by
+    /// passes the installer already skipped), noise at 33/34
+    fn v2_bg(
+        device: &wgpu::Device,
+        bgl: &wgpu::BindGroupLayout,
+        input: &wgpu::TextureView,
+        bloom: &wgpu::TextureView,
+        noise: &wgpu::TextureView,
+        samp: &wgpu::Sampler,
+        ubuf: &wgpu::Buffer,
+    ) -> wgpu::BindGroup {
+        let mut entries = vec![wgpu::BindGroupEntry {
+            binding: 0,
+            resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                buffer: ubuf,
+                offset: 0,
+                size: None,
+            }),
+        }];
+        for k in 0..16u32 {
+            let view: &wgpu::TextureView = if k == 0 { input } else { bloom };
+            entries.push(wgpu::BindGroupEntry {
+                binding: 1 + 2 * k,
+                resource: wgpu::BindingResource::TextureView(view),
+            });
+            entries.push(wgpu::BindGroupEntry {
+                binding: 2 + 2 * k,
+                resource: wgpu::BindingResource::Sampler(samp),
+            });
+        }
+        entries.push(wgpu::BindGroupEntry {
+            binding: 33,
+            resource: wgpu::BindingResource::TextureView(noise),
+        });
+        entries.push(wgpu::BindGroupEntry {
+            binding: 34,
+            resource: wgpu::BindingResource::Sampler(samp),
+        });
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("v2-bg"),
+            layout: bgl,
+            entries: &entries,
+        })
+    }
+
+    /// validate a translated pass's WGSL interface BEFORE pipeline
+    /// creation (naga front+back already ran in translate_pass; this
+    /// re-checks the fragment entry's input locations — the shared VS
+    /// provides exactly one vec2<f32> at @location(0), so any pass
+    /// wanting more inputs is an honest skip instead of a device error).
+    /// Returns Err(reason) when the pass cannot pair with the VS.
+    fn v2_check_fs_interface(wgsl: &str) -> Result<(), String> {
+        let mut fe = naga::front::wgsl::Frontend::new();
+        let module = fe
+            .parse(wgsl)
+            .map_err(|e| format!("WGSL re-parse: {e}"))?;
+        let mut val = naga::valid::Validator::new(
+            naga::valid::ValidationFlags::all(),
+            naga::valid::Capabilities::all(),
+        );
+        let info = val
+            .validate(&module)
+            .map_err(|e| format!("WGSL re-validate: {e:?}"))?;
+        let ep = module
+            .entry_points
+            .iter()
+            .find(|e| e.name == "main")
+            .ok_or("no `main` entry point")?;
+        for arg in ep.function.arguments.iter() {
+            let loc = arg.binding.as_ref().and_then(|b| match b {
+                naga::Binding::Location { location, .. } => Some(*location),
+                _ => None,
+            });
+            match loc {
+                None => {
+                    return Err("a non-location fragment input (builtin?)".into());
+                }
+                Some(0) => {
+                    // must be vec2<f32> to match the VS output
+                    let inner = &module.types[arg.ty].inner;
+                    let ok = matches!(
+                        inner,
+                        naga::TypeInner::Vector { size: naga::VectorSize::Bi, scalar }
+                            if scalar.kind == naga::ScalarKind::Float && scalar.width == 4
+                    );
+                    if !ok {
+                        return Err("@location(0) input is not vec2<f32>".into());
+                    }
+                }
+                Some(n) => {
+                    return Err(format!(
+                        "fragment input @location({n}) has no VS provider — outside the subset"
+                    ));
+                }
+            }
+        }
+        let _ = info;
+        Ok(())
+    }
+
+    /// Install a v2 external pack: translate-report passes in, runnable
+    /// chain out. Passes sampling colortex2+ (or whose interface cannot
+    /// pair with the shared VS) are skipped WITH their reasons — the
+    /// returned report string carries every line (the host logs it).
+    /// An empty runnable set installs nothing (vanilla post stays).
+    pub fn set_v2_pack(
+        &mut self,
+        passes: &[crate::shaderpack::TranslatedPass],
+        id: &str,
+    ) -> String {
+        self.v2_chain = None;
+        let mut report = String::new();
+        let mut built: Vec<V2Pass> = Vec::new();
+        for p in passes {
+            let ctx = crate::shaderpack::colortexes_sampled(&p.wgsl);
+            if let Some(&k) = ctx.iter().find(|&&k| k >= 2 && k != 255) {
+                report.push_str(&format!(
+                    "  {}: skipped — samples colortex{k} (outside the runnable subset)\n",
+                    p.program
+                ));
+                continue;
+            }
+            if let Err(e) = Self::v2_check_fs_interface(&p.wgsl) {
+                report.push_str(&format!("  {}: skipped — {e}\n", p.program));
+                continue;
+            }
+            let module = self
+                .device
+                .create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("v2-pass"),
+                    source: wgpu::ShaderSource::Wgsl(p.wgsl.as_str().into()),
+                });
+            let target_fmt = if p.is_final {
+                self.config.format
+            } else {
+                wgpu::TextureFormat::Rgba8Unorm
+            };
+            let pipe = self
+                .device
+                .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some("v2-pipe"),
+                    layout: Some(&self.v2_pl),
+                    vertex: wgpu::VertexState {
+                        module: &self.v2_vs_mod,
+                        entry_point: "vs_main",
+                        compilation_options: Default::default(),
+                        buffers: &[],
+                    },
+                    fragment: Some(wgpu::FragmentState {
+                        module: &module,
+                        entry_point: "main",
+                        compilation_options: Default::default(),
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format: target_fmt,
+                            blend: None,
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
+                    }),
+                    primitive: wgpu::PrimitiveState {
+                        topology: wgpu::PrimitiveTopology::TriangleList,
+                        strip_index_format: None,
+                        front_face: wgpu::FrontFace::Ccw,
+                        cull_mode: None,
+                        polygon_mode: wgpu::PolygonMode::Fill,
+                        unclipped_depth: false,
+                        conservative: false,
+                    },
+                    depth_stencil: None,
+                    multisample: wgpu::MultisampleState::default(),
+                    multiview: None,
+                    cache: None,
+                });
+            let end = p
+                .uniforms
+                .iter()
+                .map(|u| u.offset + u.size)
+                .max()
+                .unwrap_or(0);
+            let ubuf_len = end.max(16);
+            let ubuf = self.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("v2-uniforms"),
+                size: ubuf_len as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            report.push_str(&format!("  {}: installed ({})\n", p.program, if p.is_final { "final→surface" } else { "composite" }));
+            built.push(V2Pass {
+                name: p.program.clone(),
+                is_final: p.is_final,
+                pipe,
+                ubuf,
+                ubuf_len,
+                uniforms: p.uniforms.clone(),
+            });
+        }
+        if built.is_empty() {
+            return report;
+        }
+        let scratch =
+            Self::make_v2_scratch(&self.device, self.config.width, self.config.height);
+        let bgs = built
+            .iter()
+            .map(|p| {
+                [
+                    Self::v2_bg(
+                        &self.device,
+                        &self.v2_bgl,
+                        &self.post_targets.pack_view,
+                        &self.post_targets.b2_view,
+                        &self.v2_noise,
+                        &self.post_samp,
+                        &p.ubuf,
+                    ),
+                    Self::v2_bg(
+                        &self.device,
+                        &self.v2_bgl,
+                        &scratch,
+                        &self.post_targets.b2_view,
+                        &self.v2_noise,
+                        &self.post_samp,
+                        &p.ubuf,
+                    ),
+                ]
+            })
+            .collect();
+        self.v2_chain = Some(V2Chain {
+            id: id.to_string(),
+            passes: built,
+            bgs,
+            scratch,
+        });
+        report
+    }
+
+    /// deactivate the v2 chain (back to the vanilla post pipeline)
+    pub fn clear_v2_pack(&mut self) {
+        self.v2_chain = None;
+    }
+
+    /// the active v2 pack id (F3/boot reports)
+    pub fn v2_pack_id(&self) -> Option<&str> {
+        self.v2_chain.as_ref().map(|c| c.id.as_str())
+    }
+
+    /// resize follow-up: the scratch + bind groups reference the resized
+    /// handoff/bloom targets — rebuild them (pipelines stay valid: the
+    /// formats did not change, only the target sizes)
+    fn rebuild_v2_bgs(&mut self) {
+        let Some(chain) = self.v2_chain.as_mut() else {
+            return;
+        };
+        chain.scratch =
+            Self::make_v2_scratch(&self.device, self.config.width, self.config.height);
+        for (i, p) in chain.passes.iter().enumerate() {
+            chain.bgs[i] = [
+                Self::v2_bg(
+                    &self.device,
+                    &self.v2_bgl,
+                    &self.post_targets.pack_view,
+                    &self.post_targets.b2_view,
+                    &self.v2_noise,
+                    &self.post_samp,
+                    &p.ubuf,
+                ),
+                Self::v2_bg(
+                    &self.device,
+                    &self.v2_bgl,
+                    &chain.scratch,
+                    &self.post_targets.b2_view,
+                    &self.v2_noise,
+                    &self.post_samp,
+                    &p.ubuf,
+                ),
+            ];
+        }
+    }
+
+    /// per-frame uniform fills for the chain: the known OptiFine-style
+    /// names get engine values (view size, aspect, frame counter/time);
+    /// everything else stays zero-filled — the pack report already
+    /// listed every member, so the zeroed set is disclosed, not hidden.
+    fn fill_v2_uniforms(&self, chain: &V2Chain) {
+        let frame = self.v2_frame.get();
+        self.v2_frame.set(frame.wrapping_add(1));
+        let w = self.config.width as f32;
+        let h = self.config.height as f32;
+        let t = self.v2_start.elapsed().as_secs_f32() % 3600.0;
+        for p in &chain.passes {
+            if p.uniforms.is_empty() {
+                continue;
+            }
+            let mut bytes = vec![0u8; p.ubuf_len as usize];
+            let mut put = |off: u32, v: f32| {
+                let o = off as usize;
+                if o + 4 <= bytes.len() {
+                    bytes[o..o + 4].copy_from_slice(&v.to_le_bytes());
+                }
+            };
+            for u in &p.uniforms {
+                match u.name.as_str() {
+                    "viewWidth" => put(u.offset, w),
+                    "viewHeight" => put(u.offset, h),
+                    "aspect" | "aspectRatio" => put(u.offset, w / h),
+                    "frameTimeCounter" => put(u.offset, t),
+                    "frameCounter" => put(u.offset, frame as f32),
+                    _ => {} // zero-filled (disclosed in the pack report)
+                }
+            }
+            self.queue.write_buffer(&p.ubuf, 0, &bytes);
+        }
+    }
+
     /// pack settings row 0 → PackUniform.params (v1: the pack's declared
     /// defaults — first slider's default, or 1.0 = neutral)
     fn pack_params_row(p: &crate::shaders::ShaderPack) -> [f32; 4] {
@@ -5285,7 +5817,7 @@ impl Renderer {
         // STAGE the composite writes the LINEAR pack handoff target and
         // pass 4.5 encodes to srgb on the surface (Phase 11 §34).
         {
-            let pack_active = self.pack_pipe.is_some();
+            let pack_active = self.pack_pipe.is_some() || self.v2_chain.is_some();
             let out_view: &wgpu::TextureView = if pack_active {
                 &self.post_targets.pack_view
             } else {
@@ -5317,9 +5849,49 @@ impl Renderer {
         }
 
         // ───────── pass 4.5: shader-pack composite → surface (§34) ──
-        // The pack's packGrade() runs on the LINEAR composite output + the
-        // bloom buffer; its result is srgb-encoded by the surface write.
-        if let Some((pipe, bg)) = &self.pack_pipe {
+        // The v2 EXTERNAL chain runs first when installed: the translated
+        // Iris/BSL-style composites ping-pong between the pack handoff
+        // target and the scratch target (colortex0 = chained scene,
+        // colortex1 = the engine bloom), the last pass writing the
+        // surface (the srgb write encodes — same as the v1 path).
+        if let Some(chain) = &self.v2_chain {
+            self.fill_v2_uniforms(chain);
+            let n = chain.passes.len();
+            for (i, p) in chain.passes.iter().enumerate() {
+                // the INPUT view per parity is encoded in the bind group
+                // (bgs[i][0] = handoff input, bgs[i][1] = scratch input);
+                // the OUTPUT alternates scratch ↔ handoff, last → surface
+                let out_view: &wgpu::TextureView = if i + 1 == n {
+                    &frame_view
+                } else if i % 2 == 0 {
+                    &chain.scratch
+                } else {
+                    &self.post_targets.pack_view
+                };
+                let att = wgpu::RenderPassColorAttachment {
+                    view: out_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: wgpu::StoreOp::Store,
+                    },
+                };
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("v2-pack-pass"),
+                    color_attachments: &[Some(att)],
+                    depth_stencil_attachment: None,
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                });
+                pass.set_pipeline(&p.pipe);
+                pass.set_bind_group(0, &chain.bgs[i][(i % 2) as usize], &[]);
+                pass.draw(0..3, 0..1);
+            }
+        }
+        // The v1 ENGINE pack's packGrade() runs on the LINEAR composite
+        // output + the bloom buffer; its result is srgb-encoded by the
+        // surface write.
+        else if let Some((pipe, bg)) = &self.pack_pipe {
             let att = wgpu::RenderPassColorAttachment {
                 view: &frame_view,
                 resolve_target: None,

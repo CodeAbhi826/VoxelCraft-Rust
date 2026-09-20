@@ -14,6 +14,7 @@ pub mod iris;
 /// material scan 2026-09-20)
 pub mod pbr;
 pub mod render;
+pub mod shaderpack;
 pub mod shaders;
 pub mod textures;
 pub mod ui;

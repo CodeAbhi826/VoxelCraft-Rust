@@ -4,10 +4,12 @@
 # copied TOGETHER, never one without the other).
 set -euo pipefail
 source "$HOME/.cargo/env"
+export PKG_CONFIG_PATH="$HOME/sysroot/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
+export C_INCLUDE_PATH="$HOME/sysroot/usr/include"
 cd /home/z/my-project/voxelcraft
 
 echo "[web] building wasm32 release lib (this takes a few minutes)"
-cargo build --release --no-default-features --target wasm32-unknown-unknown --lib
+timeout 500 cargo build --release --no-default-features --target wasm32-unknown-unknown --lib -j 3
 
 echo "[web] wasm-bindgen 0.2.127 (must match the crate pin)"
 rm -rf wasm-out

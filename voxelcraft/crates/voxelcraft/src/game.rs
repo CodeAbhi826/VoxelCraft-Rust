@@ -2487,11 +2487,48 @@ impl GameApp {
         renderer.set_msaa(settings.msaa);
         renderer.set_occlusion(settings.occlusion);
 
-        // 2026-09-14 (user directive): the pre-created shader-pack
-        // discovery + persisted selection is REMOVED with the SHADER
-        // PACKS screen — no builtin packs are compiled in and no pack is
-        // ever activated. The engine post pipeline stays vanilla-only
-        // (menu blur / FSR-lite upscale path untouched).
+        // 2026-09-21 (v2 external packs): honor the persisted selection
+        // at boot — scan shader-packs/, build the selected Iris/BSL-style
+        // pack through the naga GLSL→WGSL pipeline, install the runnable
+        // composite chain. NO pack ships with the engine (the
+        // 2026-09-14 directive stands); this only loads USER-provided
+        // files from the game folder (see docs/PACKS-README.md in the repo root).
+        #[cfg(not(target_arch = "wasm32"))]
+        if settings.shader_pack.is_some() {
+            let packs =
+                vc_render::shaderpack::scan_pack_files(std::path::Path::new("shader-packs"));
+            let picked = settings.shader_pack.clone();
+            if let Some((id, files)) = packs
+                .into_iter()
+                .find(|(id, _)| Some(id) == picked.as_ref())
+            {
+                let pack = vc_render::shaderpack::build_pack(
+                    &id,
+                    &files,
+                    &std::collections::BTreeMap::new(),
+                );
+                let report = renderer.set_v2_pack(&pack.passes, &id);
+                let installed = renderer.v2_pack_id().is_some();
+                vc_render::render::report_boot_log(&format!(
+                    "shader pack {id}: tier {} — {} passes translated, {}",
+                    pack.tier,
+                    pack.passes.len(),
+                    if installed {
+                        "chain installed"
+                    } else {
+                        "no runnable passes (vanilla post stays)"
+                    }
+                ));
+                for line in report.lines().filter(|l| !l.is_empty()) {
+                    vc_render::render::report_boot_log(line);
+                }
+            } else {
+                vc_render::render::report_boot_log(&format!(
+                    "shader pack {} not found in shader-packs/ — vanilla post stays",
+                    picked.unwrap_or_default()
+                ));
+            }
+        }
 
         // Phase 9: scan the restored world's data packs (recipes + loot
         // tables + tags, the original game's official format — folders AND zips).
@@ -8019,6 +8056,9 @@ impl GameApp {
             ID_SHDR_NONE => {
                 if self.settings.shader_pack.is_some() {
                     self.settings.shader_pack = None;
+                    // deactivate the installed v2 chain (renderer back
+                    // to the vanilla post pipeline)
+                    self.apply_shader_pack();
                     // persists immediately (same contract as a slider
                     // change — after_settings_change saves options.txt)
                     self.after_settings_change();
@@ -8033,6 +8073,11 @@ impl GameApp {
                     let name = name.clone();
                     if self.settings.shader_pack.as_deref() != Some(name.as_str()) {
                         self.settings.shader_pack = Some(name);
+                        // build + install the v2 chain (translate →
+                        // pipelines → post chain); the report lands in
+                        // the boot log, the row keeps the structural
+                        // tier summary
+                        self.apply_shader_pack();
                         // persists immediately (the slider-change contract)
                         self.after_settings_change();
                     }
@@ -8968,12 +9013,59 @@ impl GameApp {
         (avail, sel)
     }
 
+    /// v2 external shader packs (2026-09-21): scan shader-packs/, build
+    /// the SELECTED pack (naga GLSL→WGSL translation), install the
+    /// runnable composite chain on the renderer. None / missing pack /
+    /// zero runnable passes → the vanilla post pipeline stays. The
+    /// per-pass report (installed / skipped-with-reason) goes to the
+    /// boot log — same honesty contract as the v1 structural scan.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn apply_shader_pack(&mut self) {
+        let Some(name) = self.settings.shader_pack.clone() else {
+            self.renderer.clear_v2_pack();
+            return;
+        };
+        let packs =
+            vc_render::shaderpack::scan_pack_files(std::path::Path::new("shader-packs"));
+        let Some((id, files)) = packs.into_iter().find(|(id, _)| *id == name) else {
+            vc_render::render::report_boot_log(&format!(
+                "shader pack {name} not found in shader-packs/ — vanilla post stays"
+            ));
+            self.renderer.clear_v2_pack();
+            return;
+        };
+        let pack = vc_render::shaderpack::build_pack(
+            &id,
+            &files,
+            &std::collections::BTreeMap::new(),
+        );
+        let report = self.renderer.set_v2_pack(&pack.passes, &id);
+        let installed = self.renderer.v2_pack_id().is_some();
+        vc_render::render::report_boot_log(&format!(
+            "shader pack {id}: tier {} — {} passes translated, {}",
+            pack.tier,
+            pack.passes.len(),
+            if installed {
+                "chain installed"
+            } else {
+                "no runnable passes (vanilla post stays)"
+            }
+        ));
+        for line in report.lines().filter(|l| !l.is_empty()) {
+            vc_render::render::report_boot_log(line);
+        }
+    }
+    /// wasm twin: no filesystem — the v2 chain stays uninstalled (the
+    /// honest empty state; browser pack loading is a future round)
+    #[cfg(target_arch = "wasm32")]
+    pub fn apply_shader_pack(&mut self) {}
+
     /// 2026-09-20: refresh the EXTERNAL shader-pack list from
     /// shader-packs/ (the Iris-format structure scan — analysis only,
-    /// never loads GLSL). Native only; the wasm build has no
-    /// filesystem and keeps the honest empty list. Cheap enough to
-    /// run on every SHADERS... click so newly dropped packs appear
-    /// without a restart.
+    /// tier + pass/uniform counts per pack; reports only). Native only;
+    /// the wasm build has no filesystem and keeps the honest empty
+    /// list. Cheap enough to run on every SHADERS... click so newly
+    /// dropped packs appear without a restart.
     #[cfg(not(target_arch = "wasm32"))]
     fn scan_shader_packs(&mut self) {
         self.shader_packs =

@@ -8,7 +8,7 @@ trims / painting / mob_effect / map / misc / environment / font / colormap
 
 ```
 upload/textures.zip  ──(vault_analyze.py: MEASUREMENTS ONLY)──▶  spec/spec.json
-spec/spec.json       ──(vault_synthesize.py: 100% code-drawn)──▶  assets/**.png
+spec/spec.json       ──(vault_synthesize.py: 100% code-drawn)──▶  textures/**.png
 output + reference   ──(vault_verify.py + legal_audit.py)─────▶  [PASS]
 ```
 

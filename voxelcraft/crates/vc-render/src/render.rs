@@ -404,12 +404,31 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     //     (mip 0 even at max render distance — distant shimmer instead of
     //     vanilla's graded blur). The exact scale is /32.
     // Deep-distance note: at mip 3/4 (2px/1px per tile) bilinear still
-    // mixes neighboring tiles — same residual vanilla 1.16.5 has (the
-    // reason its mipmap slider stops at 4); covered by fog at that range.
+    // mixes neighboring tiles — the 2026-09-21 "black outlines on
+    // distant blocks" regression report (fog OFF exposes the range the
+    // default fog normally covers). Vanilla 1.13+ makes cross-tile
+    // sampling structurally IMPOSSIBLE (per-sprite texture arrays);
+    // the single-atlas design gets the same guarantee by capping the
+    // LOD chain at mip 2 — the deepest level where the 0.5-texel inset
+    // (= 2 texels at mip 2) still keeps every bilinear tap inside the
+    // tile. The cap scales the gradient ELLIPSE uniformly (never
+    // axis-wise) so anisotropic filtering keeps its footprint ratio.
+    // (4) MIP-2 LOD CAP (2026-09-21): gradient length is clamped to the
+    //     mip-2 texel footprint (4 texels = 4/512 atlas units) before
+    //     sampling — mip 3/4 are never selected, so tiles can never
+    //     bleed; the distant cost is one mip level of extra shimmer,
+    //     far less visible than the dark lattice it kills.
     let fuv = clamp(fract(in.uv), vec2<f32>(0.03125), vec2<f32>(0.9375));
     let tuv = (in.tile + fuv) / vec2<f32>(32.0, 32.0);
-    let gdx = dpdx(in.uv) / vec2<f32>(32.0, 32.0);
-    let gdy = dpdy(in.uv) / vec2<f32>(32.0, 32.0);
+    var gdx = dpdx(in.uv) / vec2<f32>(32.0, 32.0);
+    var gdy = dpdy(in.uv) / vec2<f32>(32.0, 32.0);
+    let glen = max(length(gdx), length(gdy));
+    let gcap = 4.0 / 512.0;
+    if (glen > gcap) {
+        let gs = gcap / glen;
+        gdx = gdx * gs;
+        gdy = gdy * gs;
+    }
     let c = textureSampleGrad(atlas_tex, atlas_samp, tuv, gdx, gdy);
     if (c.a < 0.5) { discard; }
     let day = G.misc.x;
@@ -574,8 +593,20 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let scroll = vec2<f32>(G.misc.y * 0.06, G.misc.y * 0.025);
     let fuv = clamp(fract(in.uv + scroll), vec2<f32>(0.03125), vec2<f32>(0.9375));
     let tuv = (in.tile + fuv) / vec2<f32>(32.0, 32.0);
-    let gdx = dpdx(in.uv) / vec2<f32>(32.0, 32.0);
-    let gdy = dpdy(in.uv) / vec2<f32>(32.0, 32.0);
+    // MIP-2 LOD CAP — same as TERRAIN_SHADER (4) (2026-09-21 distant
+    // dark-lattice fix): clamp the gradient-ellipse LENGTH to the mip-2
+    // texel footprint (4/512) so mip 3/4 are never selected — the water
+    // tile can never bleed its atlas neighbors; aniso ratio is preserved
+    // by scaling the ellipse uniformly.
+    var gdx = dpdx(in.uv) / vec2<f32>(32.0, 32.0);
+    var gdy = dpdy(in.uv) / vec2<f32>(32.0, 32.0);
+    let glen = max(length(gdx), length(gdy));
+    let gcap = 4.0 / 512.0;
+    if (glen > gcap) {
+        let gs = gcap / glen;
+        gdx = gdx * gs;
+        gdy = gdy * gs;
+    }
     let c = textureSampleGrad(atlas_tex, atlas_samp, tuv, gdx, gdy);
     let day = G.misc.x;
     // water is a flat plane — the up normal is exact
@@ -1596,6 +1627,9 @@ pub struct Renderer {
     /// pipeline layout over v2_bgl (all v2 passes share it — unused
     /// layout entries are legal, missing ones are not)
     v2_pl: wgpu::PipelineLayout,
+    /// how many colortex pairs the clamped v2 layout actually declares
+    /// (device-limit-aware — see make_v2_layout; WebGL2 = 15, native = 16)
+    v2_ctx_count: u32,
     /// the shared fullscreen vertex stage module (entry vs_main)
     v2_vs_mod: wgpu::ShaderModule,
     /// engine-provided 4×4 noise texture (packs sample it at 33/34)
@@ -3251,7 +3285,7 @@ impl Renderer {
         });
 
         // v2 external-pack chain: shared layout + vertex stage + noise
-        let (v2_bgl, v2_pl) = Renderer::make_v2_layout(&device);
+        let (v2_bgl, v2_pl, v2_ctx_count) = Renderer::make_v2_layout(&device);
         let v2_vs_mod = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("v2-vs"),
             source: wgpu::ShaderSource::Wgsl(V2_VS.into()),
@@ -3373,6 +3407,7 @@ impl Renderer {
             v2_chain: None,
             v2_bgl,
             v2_pl,
+            v2_ctx_count,
             v2_vs_mod,
             v2_noise,
             v2_start: web_time::Instant::now(),
@@ -4601,7 +4636,31 @@ impl Renderer {
     /// exactly the fixed scheme shaderpack.rs's rewrite emits. Passes
     /// use a subset; the extras stay legal (unused layout entries are
     /// allowed, missing ones are not).
-    fn make_v2_layout(device: &wgpu::Device) -> (wgpu::BindGroupLayout, wgpu::PipelineLayout) {
+    /// 2026-09-21 fix: the ORIGINAL layout declared all 16 colortex
+    /// pairs + the noise pair = 17 sampled textures in the FRAGMENT
+    /// stage — one over WebGL2's hard `max_sampled_textures_per_shader_
+    /// stage` limit of 16, so `create_bind_group_layout` panicked AT
+    /// BOOT on every WebGL2 device (the whole preview died at the boot
+    /// screen; native Vulkan limits are ~2^20 so it hid there). The
+    /// layout is now clamped to the device's own texture/sampler
+    /// limits, reserving one slot of each for the noise pair. The
+    /// runnable subset only ever feeds colortex0/1, so any device that
+    /// can hold 2 colortex pairs + noise keeps full v2 functionality;
+    /// passes sampling beyond the clamp are skipped by set_v2_pack.
+    fn make_v2_layout(device: &wgpu::Device) -> (wgpu::BindGroupLayout, wgpu::PipelineLayout, u32) {
+        let limits = device.limits();
+        let tex_budget = limits
+            .max_sampled_textures_per_shader_stage
+            .saturating_sub(1) // the noise pair
+            .min(16);
+        let samp_budget = limits
+            .max_samplers_per_shader_stage
+            .saturating_sub(1) // the noise sampler
+            .min(16);
+        // (both budgets are u32 and saturate at 0 — the count itself can
+        // be 0 on a device with no headroom; set_v2_pack's <2 guard then
+        // disables v2 honestly instead of failing a layout create)
+        let ctx_count = tex_budget.min(samp_budget);
         let mut entries = vec![wgpu::BindGroupLayoutEntry {
             binding: 0,
             visibility: wgpu::ShaderStages::FRAGMENT,
@@ -4612,7 +4671,7 @@ impl Renderer {
             },
             count: None,
         }];
-        for k in 0..16u32 {
+        for k in 0..ctx_count {
             entries.push(wgpu::BindGroupLayoutEntry {
                 binding: 1 + 2 * k,
                 visibility: wgpu::ShaderStages::FRAGMENT,
@@ -4659,7 +4718,7 @@ impl Renderer {
             bind_group_layouts: &[&bgl],
             push_constant_ranges: &[],
         });
-        (bgl, pl)
+        (bgl, pl, ctx_count)
     }
 
     /// a 4×4 deterministic noise texture (packs sample it for dithering —
@@ -4734,9 +4793,11 @@ impl Renderer {
     /// one v2 bind group: uniform block + colortex0 = `input`, colortex1
     /// = the engine bloom, colortex2+ = the bloom (only reachable by
     /// passes the installer already skipped), noise at 33/34
+    #[allow(clippy::too_many_arguments)]
     fn v2_bg(
         device: &wgpu::Device,
         bgl: &wgpu::BindGroupLayout,
+        ctx_count: u32,
         input: &wgpu::TextureView,
         bloom: &wgpu::TextureView,
         noise: &wgpu::TextureView,
@@ -4751,7 +4812,7 @@ impl Renderer {
                 size: None,
             }),
         }];
-        for k in 0..16u32 {
+        for k in 0..ctx_count {
             let view: &wgpu::TextureView = if k == 0 { input } else { bloom };
             entries.push(wgpu::BindGroupEntry {
                 binding: 1 + 2 * k,
@@ -4844,6 +4905,15 @@ impl Renderer {
     ) -> String {
         self.v2_chain = None;
         let mut report = String::new();
+        // device-limit honesty: a device that cannot hold 2 colortex pairs
+        // + the noise pair cannot run ANY v2 pass — say so and stop
+        if self.v2_ctx_count < 2 {
+            report.push_str(&format!(
+                "  v2 disabled: device texture/sampler limits fit only {} colortex pairs (need 2)\n",
+                self.v2_ctx_count
+            ));
+            return report;
+        }
         let mut built: Vec<V2Pass> = Vec::new();
         for p in passes {
             let ctx = crate::shaderpack::colortexes_sampled(&p.wgsl);
@@ -4851,6 +4921,13 @@ impl Renderer {
                 report.push_str(&format!(
                     "  {}: skipped — samples colortex{k} (outside the runnable subset)\n",
                     p.program
+                ));
+                continue;
+            }
+            if let Some(&k) = ctx.iter().find(|&&k| k < 255 && k >= self.v2_ctx_count as u8) {
+                report.push_str(&format!(
+                    "  {}: skipped — colortex{k} is beyond this device's binding budget ({} pairs)\n",
+                    p.program, self.v2_ctx_count
                 ));
                 continue;
             }
@@ -4937,6 +5014,7 @@ impl Renderer {
                     Self::v2_bg(
                         &self.device,
                         &self.v2_bgl,
+                        self.v2_ctx_count,
                         &self.post_targets.pack_view,
                         &self.post_targets.b2_view,
                         &self.v2_noise,
@@ -4946,6 +5024,7 @@ impl Renderer {
                     Self::v2_bg(
                         &self.device,
                         &self.v2_bgl,
+                        self.v2_ctx_count,
                         &scratch,
                         &self.post_targets.b2_view,
                         &self.v2_noise,
@@ -4988,6 +5067,7 @@ impl Renderer {
                 Self::v2_bg(
                     &self.device,
                     &self.v2_bgl,
+                    self.v2_ctx_count,
                     &self.post_targets.pack_view,
                     &self.post_targets.b2_view,
                     &self.v2_noise,
@@ -4997,6 +5077,7 @@ impl Renderer {
                 Self::v2_bg(
                     &self.device,
                     &self.v2_bgl,
+                    self.v2_ctx_count,
                     &chain.scratch,
                     &self.post_targets.b2_view,
                     &self.v2_noise,
@@ -6373,6 +6454,20 @@ mod shader_tests {
             assert!(
                 !src.contains("textureSample(atlas_tex"),
                 "{name}: implicit-derivative atlas sampling is the seam bug — do not reintroduce"
+            );
+            // 5. the MIP-2 LOD cap (2026-09-21 distant dark-lattice fix):
+            //    the gradient-ellipse length is clamped to the mip-2 texel
+            //    footprint (4/512) before sampling, so mip 3/4 — where a
+            //    16px tile is 2px/1px and bilinear/aniso footprints cross
+            //    tile borders — is never selected. Dropping the cap
+            //    resurrects the "black outlines on distant blocks" bug.
+            assert!(
+                src.contains("let gcap = 4.0 / 512.0;"),
+                "{name}: the mip-2 gradient cap (the distant dark-lattice guard) is missing"
+            );
+            assert!(
+                src.contains("let gs = gcap / glen;"),
+                "{name}: the cap must scale the gradient ellipse uniformly (aniso-preserving), not clamp axes"
             );
         }
     }
